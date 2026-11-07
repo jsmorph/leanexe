@@ -45,7 +45,7 @@
   (assume-reg |MDSCR_EL1| nil (_ struct (|bits| #x0000000000000000)))
   (assume-reg |OSLSR_EL1| nil (_ struct (|bits| #x0000000000000008)))
   (assume-reg |MDCCSR_EL0| nil (_ struct (|bits| #x0000000000000000)))
-  (assume-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+  (assume-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (assume-reg |TCR_EL1| nil (_ struct (|bits| #x0000000080a03520)))
   (declare-const v294 (_ BitVec 64)) ; 0:0 - 0:0
   (assume-reg |VBAR_EL1| nil v294)
@@ -217,8 +217,8 @@
           (declare-const v860 (_ BitVec 56)) ; src/prelude.sail 331:29 - 331:38
           (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
           (read-reg |HCR_EL2| nil (_ struct (|bits| #x0000000480000000)))
-          (abstract-primop |sail_take_exception| (_ unit) (_ struct (|exception| (_ struct (|trappedsyscallinst| false) (|pavalid| false) (|syndrome| #b0000000000000000000000000) (|vaddress| #x0000000000000000) (|syndrome2| #x000000) (|ipavalid| false) (|NS| #b0) (|ipaddress| #x00000000000000) (|paddress| (_ struct (|address| v860) (|paspace| v859))) (|exceptype| |Exception_SPAlignment|))) (|fault| (|None| (_ unit)))))
-          (read-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+          (abstract-primop |sail_take_exception| (_ unit) (_ struct (|exception| (_ struct (|ipavalid| false) (|pavalid| false) (|NS| #b0) (|exceptype| |Exception_SPAlignment|) (|paddress| (_ struct (|paspace| v859) (|address| v860))) (|syndrome| #b0000000000000000000000000) (|ipaddress| #x00000000000000) (|trappedsyscallinst| false) (|syndrome2| #x000000) (|vaddress| #x0000000000000000))) (|fault| (|None| (_ unit)))))
+          (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
           (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
           (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
           (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b0)))
@@ -493,7 +493,7 @@
               (assert (not (= ((_ extract 55 16) v2996) #x0000003c00))) ; 0:0 - 0:0
               (define-const v3761 ((_ zero_extend 8) v2996)) ; src/interface.sail 106:23 - 106:47
               (read-reg |__monomorphize_reads| nil false)
-              (read-mem #x0060000000000401 (_ struct (|access_kind| (|AK_ttw| (_ unit))) (|va| (|Some| v1074)) (|pa| v2996) (|size| (_ bv8 128)) (|translation| (|Some| (_ struct (|s1level| (|Some| (_ bv1 128))) (|asid| (|None| (_ unit))) (|s1params| (|Some| (_ struct (|mtx| #b0) (|t0sz| v2034) (|d128| #b0) (|emec| #b0) (|nv1| #b0) (|t1sz| v2035) (|pir| (_ struct (|bits| v2030))) (|dc| #b0) (|ntlsmd| #b1) (|pie| #b0) (|tgx| |TGx_4KB|) (|mair| (_ struct (|bits| #x000000000000ff00))) (|orgn| #b01) (|skl| #b00) (|uwxn| v2036) (|sif| #b0) (|amec| v2033) (|tbid| #b0) (|mair2| (_ struct (|bits| v2016))) (|aie| #b0) (|e0pd| #b0) (|ds| #b0) (|ee| #b0) (|txsz| #b100000) (|sh| #b11) (|pnch| #b0) (|nfd| #b0) (|tbi| #b0) (|dct| #b0) (|haft| #b0) (|epan| #b0) (|hpd| #b0) (|pire0| (_ struct (|bits| v2031))) (|wxn| #b0) (|irgn| #b01) (|ha| #b0) (|cmow| #b0) (|ps| #b000) (|disch| #b0) (|hd| #b0)))) (|s2params| (|None| (_ unit))) (|regime| |Regime_EL10|) (|memattrs| (_ struct (|tags| |MemTag_Untagged|) (|xs| #b0) (|notagaccess| false) (|memtype| |MemType_Normal|) (|device| v2679) (|shareability| |Shareability_ISH|) (|outer| (_ struct (|attrs| #b11) (|hints| #b11) (|transient| false))) (|inner| (_ struct (|transient| false) (|attrs| #b11) (|hints| #b11))))) (|va| v1074) (|s2info| (|None| (_ unit))) (|vmid| (|None| (_ unit)))))) (|tag| false)) v3761 8)
+              (read-mem #x0060000000000401 (_ struct (|translation| (|Some| (_ struct (|s2params| (|None| (_ unit))) (|s2info| (|None| (_ unit))) (|va| v1074) (|regime| |Regime_EL10|) (|vmid| (|None| (_ unit))) (|s1level| (|Some| (_ bv1 128))) (|asid| (|None| (_ unit))) (|memattrs| (_ struct (|tags| |MemTag_Untagged|) (|notagaccess| false) (|inner| (_ struct (|attrs| #b11) (|hints| #b11) (|transient| false))) (|xs| #b0) (|memtype| |MemType_Normal|) (|device| v2679) (|shareability| |Shareability_ISH|) (|outer| (_ struct (|hints| #b11) (|attrs| #b11) (|transient| false))))) (|s1params| (|Some| (_ struct (|nv1| #b0) (|hpd| #b0) (|mair| (_ struct (|bits| #x000000000000ff00))) (|tbi| #b0) (|nfd| #b0) (|irgn| #b01) (|ntlsmd| #b1) (|aie| #b0) (|amec| v2033) (|ee| #b0) (|wxn| #b0) (|hd| #b0) (|epan| #b0) (|dct| #b0) (|d128| #b0) (|orgn| #b01) (|tbid| #b0) (|cmow| #b0) (|pie| #b0) (|e0pd| #b0) (|tgx| |TGx_4KB|) (|haft| #b0) (|pire0| (_ struct (|bits| v2031))) (|ds| #b0) (|uwxn| v2036) (|t1sz| v2035) (|txsz| #b100000) (|sh| #b11) (|ha| #b0) (|disch| #b0) (|mtx| #b0) (|sif| #b0) (|emec| #b0) (|pnch| #b0) (|ps| #b000) (|pir| (_ struct (|bits| v2030))) (|skl| #b00) (|dc| #b0) (|mair2| (_ struct (|bits| v2016))) (|t0sz| v2034))))))) (|va| (|Some| v1074)) (|pa| v2996) (|size| (_ bv8 128)) (|tag| false) (|access_kind| (|AK_ttw| (_ unit)))) v3761 8)
               (read-reg |__monomorphize_descriptors| nil false)
               (read-reg |__block_bbm_implemented| nil (_ bv2 128))
               (assert (not (not (= (bvand (bvand ((_ extract 55 0) v1074) #x0000003fffffff) #xffffff00000000) #x00000000000000)))) ; 0:0 - 0:0
@@ -504,7 +504,7 @@
               (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
               (read-reg |PSTATE| ((_ field |D|)) (_ struct (|D| #b1)))
               (read-reg |OSLSR_EL1| nil (_ struct (|bits| #x0000000000000008)))
-              (read-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+              (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
               (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
               (read-reg |MDCR_EL2| nil (_ struct (|bits| #x0000000000000000)))
               (read-reg |MDSCR_EL1| nil (_ struct (|bits| #x0000000000000000)))
@@ -520,7 +520,7 @@
               (define-const v5410 ((_ zero_extend 8) v4121)) ; src/interface.sail 106:23 - 106:47
               (read-reg |__monomorphize_writes| nil false)
               (declare-const v5411 Bool) ; 0:0 - 0:0
-              (write-mem v5411 (_ struct (|va| (|Some| v5346)) (|tag| (|None| (_ unit))) (|value| (|Some| v1142)) (|access_kind| (|AK_explicit| (_ struct (|strength| |AS_normal|) (|variety| |AV_plain|)))) (|translation| (|None| (_ unit))) (|size| (_ bv1 128)) (|pa| v4121)) v5410 v1142 1))
+              (write-mem v5411 (_ struct (|pa| v4121) (|access_kind| (|AK_explicit| (_ struct (|strength| |AS_normal|) (|variety| |AV_plain|)))) (|tag| (|None| (_ unit))) (|size| (_ bv1 128)) (|value| (|Some| v1142)) (|translation| (|None| (_ unit))) (|va| (|Some| v5346))) v5410 v1142 1))
             (trace
               (assert (not v1079)) ; 0:0 - 0:0
               (define-const v5470 ((_ zero_extend 64) v1074)) ; src/prelude.sail 245:44 - 245:55
@@ -602,7 +602,7 @@
               (assert (not (= ((_ extract 55 16) v7265) #x0000003c00))) ; 0:0 - 0:0
               (define-const v8030 ((_ zero_extend 8) v7265)) ; src/interface.sail 106:23 - 106:47
               (read-reg |__monomorphize_reads| nil false)
-              (read-mem #x0060000000000401 (_ struct (|translation| (|Some| (_ struct (|memattrs| (_ struct (|memtype| |MemType_Normal|) (|shareability| |Shareability_ISH|) (|xs| #b0) (|inner| (_ struct (|attrs| #b11) (|transient| false) (|hints| #b11))) (|outer| (_ struct (|hints| #b11) (|transient| false) (|attrs| #b11))) (|notagaccess| false) (|tags| |MemTag_Untagged|) (|device| v6948))) (|vmid| (|None| (_ unit))) (|asid| (|None| (_ unit))) (|regime| |Regime_EL10|) (|va| v1074) (|s1level| (|Some| (_ bv1 128))) (|s2params| (|None| (_ unit))) (|s1params| (|Some| (_ struct (|hd| #b0) (|irgn| #b01) (|sif| #b0) (|hpd| #b0) (|ds| #b0) (|disch| #b0) (|emec| #b0) (|skl| #b00) (|mair2| (_ struct (|bits| v6285))) (|nfd| #b0) (|pire0| (_ struct (|bits| v6300))) (|pir| (_ struct (|bits| v6299))) (|t0sz| v6303) (|pie| #b0) (|mtx| #b0) (|uwxn| v6305) (|ee| #b0) (|nv1| #b0) (|e0pd| #b0) (|orgn| #b01) (|sh| #b11) (|d128| #b0) (|mair| (_ struct (|bits| #x000000000000ff00))) (|tgx| |TGx_4KB|) (|aie| #b0) (|ha| #b0) (|cmow| #b0) (|tbid| #b0) (|pnch| #b0) (|wxn| #b0) (|amec| v6302) (|dc| #b0) (|haft| #b0) (|ps| #b000) (|t1sz| v6304) (|tbi| #b0) (|epan| #b0) (|dct| #b0) (|ntlsmd| #b1) (|txsz| #b100000)))) (|s2info| (|None| (_ unit)))))) (|pa| v7265) (|tag| false) (|va| (|Some| v1074)) (|access_kind| (|AK_ttw| (_ unit))) (|size| (_ bv8 128))) v8030 8)
+              (read-mem #x0060000000000401 (_ struct (|translation| (|Some| (_ struct (|vmid| (|None| (_ unit))) (|s2params| (|None| (_ unit))) (|s1params| (|Some| (_ struct (|e0pd| #b0) (|irgn| #b01) (|dct| #b0) (|d128| #b0) (|wxn| #b0) (|nv1| #b0) (|sif| #b0) (|t1sz| v6304) (|ps| #b000) (|pir| (_ struct (|bits| v6299))) (|cmow| #b0) (|epan| #b0) (|ds| #b0) (|haft| #b0) (|mtx| #b0) (|ntlsmd| #b1) (|pnch| #b0) (|tbid| #b0) (|tgx| |TGx_4KB|) (|ha| #b0) (|nfd| #b0) (|pie| #b0) (|hd| #b0) (|disch| #b0) (|uwxn| v6305) (|amec| v6302) (|orgn| #b01) (|mair2| (_ struct (|bits| v6285))) (|aie| #b0) (|emec| #b0) (|skl| #b00) (|t0sz| v6303) (|tbi| #b0) (|mair| (_ struct (|bits| #x000000000000ff00))) (|hpd| #b0) (|sh| #b11) (|txsz| #b100000) (|dc| #b0) (|pire0| (_ struct (|bits| v6300))) (|ee| #b0)))) (|asid| (|None| (_ unit))) (|s1level| (|Some| (_ bv1 128))) (|va| v1074) (|memattrs| (_ struct (|tags| |MemTag_Untagged|) (|xs| #b0) (|shareability| |Shareability_ISH|) (|inner| (_ struct (|hints| #b11) (|attrs| #b11) (|transient| false))) (|notagaccess| false) (|memtype| |MemType_Normal|) (|outer| (_ struct (|attrs| #b11) (|transient| false) (|hints| #b11))) (|device| v6948))) (|regime| |Regime_EL10|) (|s2info| (|None| (_ unit)))))) (|va| (|Some| v1074)) (|tag| false) (|access_kind| (|AK_ttw| (_ unit))) (|size| (_ bv8 128)) (|pa| v7265)) v8030 8)
               (read-reg |__monomorphize_descriptors| nil false)
               (read-reg |__block_bbm_implemented| nil (_ bv2 128))
               (assert (not (not (= (bvand (bvand ((_ extract 55 0) v1074) #x0000003fffffff) #xffffff00000000) #x00000000000000)))) ; 0:0 - 0:0
@@ -613,7 +613,7 @@
               (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
               (read-reg |PSTATE| ((_ field |D|)) (_ struct (|D| #b1)))
               (read-reg |OSLSR_EL1| nil (_ struct (|bits| #x0000000000000008)))
-              (read-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+              (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
               (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
               (read-reg |MDCR_EL2| nil (_ struct (|bits| #x0000000000000000)))
               (read-reg |MDSCR_EL1| nil (_ struct (|bits| #x0000000000000000)))
@@ -629,7 +629,7 @@
               (define-const v9679 ((_ zero_extend 8) v8390)) ; src/interface.sail 106:23 - 106:47
               (read-reg |__monomorphize_writes| nil false)
               (declare-const v9680 Bool) ; 0:0 - 0:0
-              (write-mem v9680 (_ struct (|tag| (|None| (_ unit))) (|va| (|Some| v9615)) (|value| (|Some| #x00)) (|size| (_ bv1 128)) (|pa| v8390) (|translation| (|None| (_ unit))) (|access_kind| (|AK_explicit| (_ struct (|strength| |AS_normal|) (|variety| |AV_plain|))))) v9679 #x00 1))))))
+              (write-mem v9680 (_ struct (|translation| (|None| (_ unit))) (|va| (|Some| v9615)) (|pa| v8390) (|value| (|Some| #x00)) (|access_kind| (|AK_explicit| (_ struct (|variety| |AV_plain|) (|strength| |AS_normal|)))) (|size| (_ bv1 128)) (|tag| (|None| (_ unit)))) v9679 #x00 1))))))
     (trace
       (assert (not v748)) ; 0:0 - 0:0
       (define-const v9681 ((_ sign_extend 64) v548)) ; src/instrs64.sail 32835:18 - 32835:31
@@ -735,7 +735,7 @@
           (assert (not (= ((_ extract 55 16) v11671) #x0000003c00))) ; 0:0 - 0:0
           (define-const v12436 ((_ zero_extend 8) v11671)) ; src/interface.sail 106:23 - 106:47
           (read-reg |__monomorphize_reads| nil false)
-          (read-mem #x0060000000000401 (_ struct (|pa| v11671) (|translation| (|Some| (_ struct (|asid| (|None| (_ unit))) (|vmid| (|None| (_ unit))) (|s2params| (|None| (_ unit))) (|regime| |Regime_EL10|) (|memattrs| (_ struct (|tags| |MemTag_Untagged|) (|inner| (_ struct (|hints| #b11) (|transient| false) (|attrs| #b11))) (|outer| (_ struct (|attrs| #b11) (|transient| false) (|hints| #b11))) (|xs| #b0) (|notagaccess| false) (|memtype| |MemType_Normal|) (|device| v11354) (|shareability| |Shareability_ISH|))) (|s1level| (|Some| (_ bv1 128))) (|s1params| (|Some| (_ struct (|aie| #b0) (|tbid| #b0) (|hpd| #b0) (|uwxn| v10711) (|nv1| #b0) (|skl| #b00) (|pie| #b0) (|disch| #b0) (|ee| #b0) (|pnch| #b0) (|t0sz| v10709) (|mair| (_ struct (|bits| #x000000000000ff00))) (|nfd| #b0) (|pire0| (_ struct (|bits| v10706))) (|cmow| #b0) (|epan| #b0) (|ds| #b0) (|haft| #b0) (|ha| #b0) (|dc| #b0) (|ps| #b000) (|wxn| #b0) (|orgn| #b01) (|emec| #b0) (|dct| #b0) (|pir| (_ struct (|bits| v10705))) (|irgn| #b01) (|t1sz| v10710) (|e0pd| #b0) (|ntlsmd| #b1) (|sh| #b11) (|tbi| #b0) (|d128| #b0) (|sif| #b0) (|tgx| |TGx_4KB|) (|txsz| #b100000) (|hd| #b0) (|mtx| #b0) (|amec| v10708) (|mair2| (_ struct (|bits| v10691)))))) (|s2info| (|None| (_ unit))) (|va| v9749)))) (|access_kind| (|AK_ttw| (_ unit))) (|va| (|Some| v9749)) (|tag| false) (|size| (_ bv8 128))) v12436 8)
+          (read-mem #x0060000000000401 (_ struct (|tag| false) (|access_kind| (|AK_ttw| (_ unit))) (|translation| (|Some| (_ struct (|s1params| (|Some| (_ struct (|cmow| #b0) (|haft| #b0) (|hpd| #b0) (|nv1| #b0) (|pir| (_ struct (|bits| v10705))) (|wxn| #b0) (|disch| #b0) (|mair| (_ struct (|bits| #x000000000000ff00))) (|pnch| #b0) (|skl| #b00) (|ds| #b0) (|tbi| #b0) (|uwxn| v10711) (|dct| #b0) (|irgn| #b01) (|tbid| #b0) (|tgx| |TGx_4KB|) (|txsz| #b100000) (|t1sz| v10710) (|ps| #b000) (|ee| #b0) (|amec| v10708) (|emec| #b0) (|nfd| #b0) (|mair2| (_ struct (|bits| v10691))) (|d128| #b0) (|aie| #b0) (|mtx| #b0) (|pie| #b0) (|hd| #b0) (|ntlsmd| #b1) (|ha| #b0) (|pire0| (_ struct (|bits| v10706))) (|dc| #b0) (|e0pd| #b0) (|orgn| #b01) (|sh| #b11) (|sif| #b0) (|t0sz| v10709) (|epan| #b0)))) (|va| v9749) (|regime| |Regime_EL10|) (|s1level| (|Some| (_ bv1 128))) (|asid| (|None| (_ unit))) (|s2info| (|None| (_ unit))) (|s2params| (|None| (_ unit))) (|vmid| (|None| (_ unit))) (|memattrs| (_ struct (|device| v11354) (|inner| (_ struct (|attrs| #b11) (|transient| false) (|hints| #b11))) (|outer| (_ struct (|attrs| #b11) (|transient| false) (|hints| #b11))) (|shareability| |Shareability_ISH|) (|notagaccess| false) (|xs| #b0) (|memtype| |MemType_Normal|) (|tags| |MemTag_Untagged|)))))) (|va| (|Some| v9749)) (|size| (_ bv8 128)) (|pa| v11671)) v12436 8)
           (read-reg |__monomorphize_descriptors| nil false)
           (read-reg |__block_bbm_implemented| nil (_ bv2 128))
           (assert (not (not (= (bvand (bvand ((_ extract 55 0) v9749) #x0000003fffffff) #xffffff00000000) #x00000000000000)))) ; 0:0 - 0:0
@@ -746,7 +746,7 @@
           (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
           (read-reg |PSTATE| ((_ field |D|)) (_ struct (|D| #b1)))
           (read-reg |OSLSR_EL1| nil (_ struct (|bits| #x0000000000000008)))
-          (read-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+          (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
           (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
           (read-reg |MDCR_EL2| nil (_ struct (|bits| #x0000000000000000)))
           (read-reg |MDSCR_EL1| nil (_ struct (|bits| #x0000000000000000)))
@@ -762,7 +762,7 @@
           (define-const v14085 ((_ zero_extend 8) v12796)) ; src/interface.sail 106:23 - 106:47
           (read-reg |__monomorphize_writes| nil false)
           (declare-const v14086 Bool) ; 0:0 - 0:0
-          (write-mem v14086 (_ struct (|size| (_ bv1 128)) (|translation| (|None| (_ unit))) (|value| (|Some| v9817)) (|pa| v12796) (|tag| (|None| (_ unit))) (|va| (|Some| v14021)) (|access_kind| (|AK_explicit| (_ struct (|strength| |AS_normal|) (|variety| |AV_plain|))))) v14085 v9817 1))
+          (write-mem v14086 (_ struct (|access_kind| (|AK_explicit| (_ struct (|variety| |AV_plain|) (|strength| |AS_normal|)))) (|size| (_ bv1 128)) (|tag| (|None| (_ unit))) (|translation| (|None| (_ unit))) (|va| (|Some| v14021)) (|value| (|Some| v9817)) (|pa| v12796)) v14085 v9817 1))
         (trace
           (assert (not v9754)) ; 0:0 - 0:0
           (define-const v14145 ((_ zero_extend 64) v9749)) ; src/prelude.sail 245:44 - 245:55
@@ -845,7 +845,7 @@
           (assert (not (= ((_ extract 55 16) v15940) #x0000003c00))) ; 0:0 - 0:0
           (define-const v16705 ((_ zero_extend 8) v15940)) ; src/interface.sail 106:23 - 106:47
           (read-reg |__monomorphize_reads| nil false)
-          (read-mem #x0060000000000401 (_ struct (|access_kind| (|AK_ttw| (_ unit))) (|va| (|Some| v9749)) (|translation| (|Some| (_ struct (|vmid| (|None| (_ unit))) (|s1level| (|Some| (_ bv1 128))) (|asid| (|None| (_ unit))) (|s1params| (|Some| (_ struct (|dc| #b0) (|tbid| #b0) (|nv1| #b0) (|tgx| |TGx_4KB|) (|aie| #b0) (|e0pd| #b0) (|pie| #b0) (|ee| #b0) (|pir| (_ struct (|bits| v14974))) (|skl| #b00) (|t1sz| v14979) (|t0sz| v14978) (|mtx| #b0) (|amec| v14977) (|ha| #b0) (|txsz| #b100000) (|dct| #b0) (|hd| #b0) (|ps| #b000) (|epan| #b0) (|irgn| #b01) (|mair| (_ struct (|bits| #x000000000000ff00))) (|hpd| #b0) (|mair2| (_ struct (|bits| v14960))) (|orgn| #b01) (|wxn| #b0) (|ds| #b0) (|haft| #b0) (|sh| #b11) (|sif| #b0) (|ntlsmd| #b1) (|nfd| #b0) (|pire0| (_ struct (|bits| v14975))) (|d128| #b0) (|cmow| #b0) (|disch| #b0) (|emec| #b0) (|pnch| #b0) (|tbi| #b0) (|uwxn| v14980)))) (|regime| |Regime_EL10|) (|va| v9749) (|s2params| (|None| (_ unit))) (|s2info| (|None| (_ unit))) (|memattrs| (_ struct (|device| v15623) (|xs| #b0) (|outer| (_ struct (|attrs| #b11) (|hints| #b11) (|transient| false))) (|tags| |MemTag_Untagged|) (|memtype| |MemType_Normal|) (|inner| (_ struct (|transient| false) (|attrs| #b11) (|hints| #b11))) (|notagaccess| false) (|shareability| |Shareability_ISH|)))))) (|pa| v15940) (|size| (_ bv8 128)) (|tag| false)) v16705 8)
+          (read-mem #x0060000000000401 (_ struct (|pa| v15940) (|access_kind| (|AK_ttw| (_ unit))) (|va| (|Some| v9749)) (|tag| false) (|size| (_ bv8 128)) (|translation| (|Some| (_ struct (|s1params| (|Some| (_ struct (|ha| #b0) (|d128| #b0) (|t1sz| v14979) (|epan| #b0) (|sh| #b11) (|ds| #b0) (|ntlsmd| #b1) (|wxn| #b0) (|emec| #b0) (|dct| #b0) (|haft| #b0) (|tbi| #b0) (|e0pd| #b0) (|t0sz| v14978) (|cmow| #b0) (|tgx| |TGx_4KB|) (|hd| #b0) (|mair2| (_ struct (|bits| v14960))) (|mtx| #b0) (|nfd| #b0) (|uwxn| v14980) (|amec| v14977) (|irgn| #b01) (|pir| (_ struct (|bits| v14974))) (|aie| #b0) (|orgn| #b01) (|disch| #b0) (|dc| #b0) (|sif| #b0) (|skl| #b00) (|txsz| #b100000) (|nv1| #b0) (|tbid| #b0) (|pie| #b0) (|ps| #b000) (|mair| (_ struct (|bits| #x000000000000ff00))) (|ee| #b0) (|pire0| (_ struct (|bits| v14975))) (|pnch| #b0) (|hpd| #b0)))) (|s2params| (|None| (_ unit))) (|s2info| (|None| (_ unit))) (|s1level| (|Some| (_ bv1 128))) (|vmid| (|None| (_ unit))) (|memattrs| (_ struct (|tags| |MemTag_Untagged|) (|notagaccess| false) (|outer| (_ struct (|hints| #b11) (|transient| false) (|attrs| #b11))) (|device| v15623) (|xs| #b0) (|shareability| |Shareability_ISH|) (|inner| (_ struct (|hints| #b11) (|transient| false) (|attrs| #b11))) (|memtype| |MemType_Normal|))) (|asid| (|None| (_ unit))) (|regime| |Regime_EL10|) (|va| v9749))))) v16705 8)
           (read-reg |__monomorphize_descriptors| nil false)
           (read-reg |__block_bbm_implemented| nil (_ bv2 128))
           (assert (not (not (= (bvand (bvand ((_ extract 55 0) v9749) #x0000003fffffff) #xffffff00000000) #x00000000000000)))) ; 0:0 - 0:0
@@ -856,7 +856,7 @@
           (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
           (read-reg |PSTATE| ((_ field |D|)) (_ struct (|D| #b1)))
           (read-reg |OSLSR_EL1| nil (_ struct (|bits| #x0000000000000008)))
-          (read-reg |_EDSCR| nil (_ struct (|bits| #x00000002)))
+          (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
           (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
           (read-reg |MDCR_EL2| nil (_ struct (|bits| #x0000000000000000)))
           (read-reg |MDSCR_EL1| nil (_ struct (|bits| #x0000000000000000)))
@@ -872,4 +872,4 @@
           (define-const v18354 ((_ zero_extend 8) v17065)) ; src/interface.sail 106:23 - 106:47
           (read-reg |__monomorphize_writes| nil false)
           (declare-const v18355 Bool) ; 0:0 - 0:0
-          (write-mem v18355 (_ struct (|access_kind| (|AK_explicit| (_ struct (|variety| |AV_plain|) (|strength| |AS_normal|)))) (|size| (_ bv1 128)) (|translation| (|None| (_ unit))) (|tag| (|None| (_ unit))) (|pa| v17065) (|va| (|Some| v18290)) (|value| (|Some| #x00))) v18354 #x00 1))))))
+          (write-mem v18355 (_ struct (|tag| (|None| (_ unit))) (|translation| (|None| (_ unit))) (|va| (|Some| v18290)) (|pa| v17065) (|value| (|Some| #x00)) (|size| (_ bv1 128)) (|access_kind| (|AK_explicit| (_ struct (|variety| |AV_plain|) (|strength| |AS_normal|))))) v18354 #x00 1))))))

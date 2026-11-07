@@ -36,9 +36,11 @@
 # exception entry of the SP alignment fault tests and whose firmware values are unknown.  Runs with
 # HCR_EL2, SCR_EL3, MDCR_EL2, and VTCR_EL2 symbolic except for the tested bits show no other bit
 # tested, and the other bits are 0.  The debug registers, PSTATE.D, and PSTATE.PAN take QEMU's and
-# KVM's reset values, which the startup leaves.  On the fault's exception entry, VBAR_EL1 is
-# symbolic, and ZCR_EL3 and SMCR_EL3 are 0, Isla's configuration value, which keeps that path's
-# vector length concrete.
+# KVM's reset values, which the startup leaves, except EDSCR.PipeAdv, which __InstructionExecute
+# sets before the decode, where the traces start (fetch.sail 284 in the Sail model).  In both
+# profiles, no other write before the decode changes a register that the traces read.  On the
+# fault's exception entry, VBAR_EL1 is symbolic, and ZCR_EL3 and SMCR_EL3 are 0, Isla's
+# configuration value, which keeps that path's vector length concrete.
 #
 # The Sail model computes UDIV's quotient by dividing real numbers, which Isla does not implement,
 # so UDIV's trace comes from armv9p4-udiv.ir, a copy of the IR that tests/isla/armv9p4-udiv.diff
@@ -50,9 +52,10 @@
 #
 # Usage: tests/isla/traces.sh tcg|kvm [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
-# DIR/FORM.trace and prints "FORM SECONDS KIB", the elapsed time and peak resident memory.  With
-# PRINT_ARGS set to a directory, it writes each form's arguments to Isla, separated by NUL bytes,
-# to PRINT_ARGS/FORM.args and runs nothing.
+# DIR/FORM.opcode, which holds on one line the pattern of the opcode's bits that it passes to Isla
+# with -i, then writes DIR/FORM.trace and prints "FORM SECONDS KIB", the elapsed time and peak
+# resident memory.  With PRINT_ARGS set to a directory, it writes DIR/FORM.opcode and each form's
+# arguments to Isla, separated by NUL bytes, to PRINT_ARGS/FORM.args, and runs nothing.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 profile=$1
@@ -85,7 +88,7 @@ base+=(-R PSTATE.EL=0b01 -R PSTATE.SP=0b1 -R PSTATE.D=0b1 -R PSTATE.PAN=0b0
   -R "MDCR_EL2={bits=0x0000000000000000}" -R "VTCR_EL2={bits=0x0000000000000000}"
   -R "MDSCR_EL1={bits=0x0000000000000000}" -R "OSLSR_EL1={bits=$oslsr}"
   -R "OSDLR_EL1={bits=0x0000000000000000}" -R "DBGPRCR_EL1={bits=0x0000000000000000}"
-  -R "MDCCSR_EL0={bits=0x0000000000000000}" -R "_EDSCR={bits=0x00000002}")
+  -R "MDCCSR_EL0={bits=0x0000000000000000}" -R "_EDSCR={bits=0x02000002}")
 tcr=(-R "TCR_EL1={bits=0x0000000080a03520}")
 branch=(-R "TCR_EL1=undefined:%struct TCR_EL1_Type")
 
@@ -108,55 +111,58 @@ memory=("${tcr[@]}" -R VBAR_EL1=undefined:%bv64 -R "ZCR_EL3={bits=0x000000000000
 dword="bvadd ($x) ((_ zero_extend 49) (concat imm12 #b000))"
 byte="bvadd ($x) ((_ zero_extend 52) imm12)"
 
+# run FORM OPCODE ARG...: OPCODE is the pattern that Isla's -i takes with --partial.
 run() {
-  local name=$1
-  shift
+  local name=$1 opcode=$2
+  shift 2
   if [ ${#only[@]} -gt 0 ] && ! printf '%s\n' "${only[@]}" | grep -qx "$name"; then
     return
   fi
+  local args=(-A "$ir" "${base[@]}" "$@" --partial -i "$opcode")
+  printf '%s\n' "$opcode" > "$dir/$name.opcode"
   if [ -n "${PRINT_ARGS:-}" ]; then
-    printf '%s\0' -A "$ir" "${base[@]}" "$@" > "$PRINT_ARGS/$name.args"
+    printf '%s\0' "${args[@]}" > "$PRINT_ARGS/$name.args"
     return
   fi
   /usr/bin/time -f "$name %e %M" -o /dev/fd/3 \
     systemd-run --user --scope -q -p MemoryMax=16G -p MemorySwapMax=0 timeout 1800 \
-    "$isla" -A "$ir" "${base[@]}" "$@" > "$dir/$name.trace"
+    "$isla" "${args[@]}" > "$dir/$name.trace"
 }
 only=("$@")
 
-run movz "${tcr[@]}" --partial -i "110100101 hw:2 imm16:16 Rd:5"
-run movk "${tcr[@]}" --partial -i "111100101 hw:2 imm16:16 Rd:5"
-run add-imm "${tcr[@]}" -L AddWithCarry --partial -i "1001000100 imm12:12 Rn:5 Rd:5"
-run sub-imm "${tcr[@]}" -L AddWithCarry --partial -i "1101000100 imm12:12 Rn:5 Rd:5"
-run subs-imm "${tcr[@]}" -L AddWithCarry --partial -i "1111000100 imm12:12 Rn:5 Rd:5"
-run subs-reg "${tcr[@]}" -L AddWithCarry --partial -i "11101011000 Rm:5 000000 Rn:5 Rd:5"
-run csinc "${tcr[@]}" -L ConditionHolds --partial -i "10011010100 Rm:5 cond:4 01 Rn:5 Rd:5"
-run orr-reg "${tcr[@]}" --partial -i "10101010000 Rm:5 000000 Rn:5 Rd:5"
-run lsr-imm "${tcr[@]}" --partial -i "1101001101 immr:6 111111 Rn:5 Rd:5"
-run ldr "${memory[@]}" --partial -i "1111100101 imm12:12 Rn:5 Rt:5" \
+run movz "110100101 hw:2 imm16:16 Rd:5" "${tcr[@]}"
+run movk "111100101 hw:2 imm16:16 Rd:5" "${tcr[@]}"
+run add-imm "1001000100 imm12:12 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run sub-imm "1101000100 imm12:12 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run subs-imm "1111000100 imm12:12 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run subs-reg "11101011000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run csinc "10011010100 Rm:5 cond:4 01 Rn:5 Rd:5" "${tcr[@]}" -L ConditionHolds
+run orr-reg "10101010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
+run lsr-imm "1101001101 immr:6 111111 Rn:5 Rd:5" "${tcr[@]}"
+run ldr "1111100101 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "and (bvuge ($dword) 0x0000000040000000) (bvule ($dword) 0x000000007ffffff8)"
-run str "${memory[@]}" --partial -i "1111100100 imm12:12 Rn:5 Rt:5" \
+run str "1111100100 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "and (bvuge ($dword) 0x0000000040000000) (bvule ($dword) 0x000000007ffffff8)"
-run strb "${memory[@]}" --partial -i "0011100100 imm12:12 Rn:5 Rt:5" \
+run strb "0011100100 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "and (bvuge ($byte) 0x0000000040000000) (bvule ($byte) 0x000000007fffffff)"
-run strb-uart "${memory[@]}" --partial -i "0011100100 imm12:12 Rn:5 Rt:5" \
+run strb-uart "0011100100 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "= ($byte) 0x0000000009000000"
-run b "${branch[@]}" --partial -i "000101 imm26:26"
-run bl "${branch[@]}" --partial -i "100101 imm26:26"
-run cbz "${branch[@]}" --partial -i "10110100 imm19:19 Rt:5"
-run cbnz "${branch[@]}" --partial -i "10110101 imm19:19 Rt:5"
-run ret "${branch[@]}" --partial -i "1101011001011111000000 Rn:5 00000"
-run b-cond "${branch[@]}" -L ConditionHolds --partial -i "01010100 imm19:19 0 cond:4"
-run msub "${tcr[@]}" --partial -i "10011011000 Rm:5 1 Ra:5 Rn:5 Rd:5"
-run madd "${tcr[@]}" --partial -i "10011011000 Rm:5 0 Ra:5 Rn:5 Rd:5"
-run add-reg "${tcr[@]}" -L AddWithCarry --partial -i "10001011000 Rm:5 000000 Rn:5 Rd:5"
-run sub-reg "${tcr[@]}" -L AddWithCarry --partial -i "11001011000 Rm:5 000000 Rn:5 Rd:5"
-run and-reg "${tcr[@]}" --partial -i "10001010000 Rm:5 000000 Rn:5 Rd:5"
-run eor-reg "${tcr[@]}" --partial -i "11001010000 Rm:5 000000 Rn:5 Rd:5"
-run lslv "${tcr[@]}" --partial -i "10011010110 Rm:5 001000 Rn:5 Rd:5"
-run lsrv "${tcr[@]}" --partial -i "10011010110 Rm:5 001001 Rn:5 Rd:5"
-run orr-w "${tcr[@]}" --partial -i "00101010000 Rm:5 000000 Rn:5 Rd:5"
-run adr "${tcr[@]}" --partial -i "0 immlo:2 10000 immhi:19 Rd:5"
-run adrp "${tcr[@]}" --partial -i "1 immlo:2 10000 immhi:19 Rd:5"
+run b "000101 imm26:26" "${branch[@]}"
+run bl "100101 imm26:26" "${branch[@]}"
+run cbz "10110100 imm19:19 Rt:5" "${branch[@]}"
+run cbnz "10110101 imm19:19 Rt:5" "${branch[@]}"
+run ret "1101011001011111000000 Rn:5 00000" "${branch[@]}"
+run b-cond "01010100 imm19:19 0 cond:4" "${branch[@]}" -L ConditionHolds
+run msub "10011011000 Rm:5 1 Ra:5 Rn:5 Rd:5" "${tcr[@]}"
+run madd "10011011000 Rm:5 0 Ra:5 Rn:5 Rd:5" "${tcr[@]}"
+run add-reg "10001011000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run sub-reg "11001011000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}" -L AddWithCarry
+run and-reg "10001010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
+run eor-reg "11001010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
+run lslv "10011010110 Rm:5 001000 Rn:5 Rd:5" "${tcr[@]}"
+run lsrv "10011010110 Rm:5 001001 Rn:5 Rd:5" "${tcr[@]}"
+run orr-w "00101010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
+run adr "0 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
+run adrp "1 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
 ir=$probe/ir/armv9p4-udiv.ir
-run udiv "${tcr[@]}" --partial -i "10011010110 Rm:5 000010 Rn:5 Rd:5"
+run udiv "10011010110 Rm:5 000010 Rn:5 Rd:5" "${tcr[@]}"

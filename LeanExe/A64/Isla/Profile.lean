@@ -131,9 +131,10 @@ def bv {w : Nat} (x : BitVec w) : Val := .bits w x.toNat
 entry point sets `SEE` and `DBGEN` and builds `FeatureImpl` from the `features` file.  `-I` sets
 `__isla_vector_gpr`, `__supported_pa_size`, and each register that the `features` file names.
 `-R` sets the fields `EL`, `SP`, `D`, and `PAN` of `PSTATE`, `SCTLR_EL1` to `0x30d0198d`,
-`MAIR_EL1` to `0xff00`, `HCR_EL2`, `SCR_EL3` to `0x401`, `OSLSR_EL1`, `_EDSCR` to 2, `MDCR_EL2`,
-`VTCR_EL2`, `MDSCR_EL1`, `OSDLR_EL1`, `DBGPRCR_EL1`, and `MDCCSR_EL0` to 0, and the group's
-`TCR_EL1` and `VBAR_EL1`.  The reset of `armv9p4.toml` sets `PSTATE.nRW` to 0.  The defaults of
+`MAIR_EL1` to `0xff00`, `HCR_EL2`, `SCR_EL3` to `0x401`, `OSLSR_EL1`, `_EDSCR` to `0x02000002`,
+with PipeAdv set as `__InstructionExecute` sets it before the decode, `MDCR_EL2`, `VTCR_EL2`,
+`MDSCR_EL1`, `OSDLR_EL1`, `DBGPRCR_EL1`, and `MDCCSR_EL0` to 0, and the group's `TCR_EL1` and
+`VBAR_EL1`.  The reset of `armv9p4.toml` sets `PSTATE.nRW` to 0.  The defaults of
 `armv9p4.toml` and the model's initializers set `SPESampleInFlight`, `__tlb_enabled`, and the three
 `__monomorphize` flags to false, `ZCR_EL3` and `SMCR_EL3` to 0, `VBAR_EL1` to 0 outside the loads
 and stores, `__max_implemented_smeveclen` to 512, and `__block_bbm_implemented` to 2. -/
@@ -158,7 +159,7 @@ def Profile.sys (p : Profile) (g : Group) (u : Unknown) : Sys
   | "OSDLR_EL1" => some (sysreg 64 0)
   | "DBGPRCR_EL1" => some (sysreg 64 0)
   | "MDCCSR_EL0" => some (sysreg 64 0)
-  | "_EDSCR" => some (sysreg 32 2)
+  | "_EDSCR" => some (sysreg 32 0x02000002)
   | "TCR_EL1" => some (sysreg 64 (if g = .branch then u.tcr.toNat else 0x80a03520))
   | "VBAR_EL1" => some (.bits 64 (if g = .memory then u.vbar.toNat else 0))
   | "ZCR_EL3" => some (sysreg 64 0)
