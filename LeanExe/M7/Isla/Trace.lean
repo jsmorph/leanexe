@@ -25,14 +25,18 @@ The rules differ from those of the A64 semantics as follows.
 1. A write of `_PC` sets the model's program counter when the value is below 2^32 and ends the path
    in `fail` otherwise.  A write of `R0` to `R14` sets the register's low word in the model and its
    high word in `Mach.hi`, and one of `R15` to `R30` sets `Mach.xs`.
-2. At the end of a path the program counter advances by the instruction's length, 4 bytes for a
-   32-bit opcode and 2 for a 16-bit one, modulo 2^32, while `__BranchTaken` is false.
-   `__InstructionExecute` advances `_PC` by `ThisInstrLength()` divided by 8 (`fetch.sail` 331-333),
-   and the AArch32 next-instruction address `NextInstrAddr(32)` takes the low 32 bits of that sum
-   (`fetch.sail` 189-192).  The harness functions `isla_footprint_t32` and `isla_footprint_t16` of
+2. At the end of a path, while `__BranchTaken` is false, the program counter advances by the
+   instruction's length, 4 bytes for a 32-bit opcode and 2 for a 16-bit one, and the path ends in
+   `fail` when the sum reaches 2^32.  `__InstructionExecute` writes `_PC` with the sum of `_PC` and
+   `ThisInstrLength()` divided by 8 in 64 bits (`fetch.sail` 331-333), a value that rule 1 rejects
+   from 2^32.  The harness functions `isla_footprint_t32` and `isla_footprint_t16` of
    `tests/isla/armv9p4-t32.diff` replace the rest of `__InstructionExecute` as
-   `isla_footprint_no_init` does for A64 (reading 4 of the A64 semantics), and they compute
-   `__currentCond` after the trace's `cycle` event, so that the trace records it.
+   `isla_footprint_no_init` does for A64 (reading 4 of the A64 semantics), and they write
+   `__DefaultCond`, AL outside an IT block, to `__currentCond` after the trace's `cycle` event, so
+   that the trace records the write.  The same diff edits the decode clause of B T3
+   (`instrs32.sail` 1478-1487) to write the opcode's `cond` field to `__currentCond`, the
+   condition of B T3 that `CurrentCond()` of DDI 0403E.e A7.3.1 gives.  Arm's ASL declares
+   `AArch32.CurrentCond` without defining it, and the check assumes the edit.
 3. A read of `k` bytes at the physical address `a` is a device read when `k` is 4, `a` is below
    2^32, and the platform names `a` a device address: its value must be the next value of the
    device sequence `δ`, and the model's state records the access and counts the read.  A write of
@@ -81,9 +85,11 @@ def Mach.setX (m : Mach) (i n : Nat) : Mach :=
 def Mach.mem (m : Mach) (a : UInt64) : UInt8 :=
   if a.toNat < 4294967296 then m.s.mem a.toUInt32 else m.far a
 
-/-- The machine with its memory replaced by `f`. -/
+/-- The machine whose memory holds the bytes of `f`: the model's memory takes those below 2^32 and
+`far` those from 2^32, keeping its own values below 2^32, which `Mach.mem` does not read. -/
 def Mach.setMem (m : Mach) (f : UInt64 → UInt8) : Mach :=
-  { m with s := { m.s with mem := fun b => f b.toUInt64 }, far := f }
+  { m with s := { m.s with mem := fun b => f b.toUInt64 },
+           far := fun a => if a.toNat < 4294967296 then m.far a else f a }
 
 /-- The registers `R0` to `R30` of the Sail model with their numbers. -/
 def gprs : List (String × Nat) :=
@@ -202,11 +208,15 @@ inductive Outcome where
   | done (m : Mach) (σ : Sys)
   | fail
 
-/-- The outcome at the end of a path from the machine `m` and the registers `σ`: the program
-counter advances by `len` bytes modulo 2^32 while `__BranchTaken` is false. -/
+/-- The outcome at the end of a path from the machine `m` and the registers `σ`: while
+`__BranchTaken` is false, the program counter advances by `len` bytes, and the path fails when the
+sum reaches 2^32. -/
 def finish (len : Nat) (m : Mach) (σ : Sys) : Outcome :=
   match σ "__BranchTaken" with
-  | some (.bool false) => .done { m with s := { m.s with pc := m.s.pc + .ofNat len } } σ
+  | some (.bool false) =>
+    if m.s.pc.toNat + len < 4294967296 then
+      .done { m with s := { m.s with pc := m.s.pc + .ofNat len } } σ
+    else .fail
   | some (.bool true) => .done m σ
   | _ => .fail
 

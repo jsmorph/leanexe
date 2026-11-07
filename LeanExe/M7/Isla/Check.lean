@@ -23,7 +23,9 @@ memory, and device accesses, and the registers outside the model that they chang
 out the effects of `__InstructionExecute` around the decode and execution, as in
 `LeanExe/A64/Isla/Check.lean`.  A trace's `assume` events, which Isla records for the
 configuration's constraints, end a path in `fail` when false, so the theorem of such a trace
-carries the constraint as a premise.
+carries the constraint as a premise.  A path also ends in `fail` when the program counter would
+advance to 2^32 or beyond, so every theorem takes the premise that the program counter plus the
+opcode's length is below 2^32.
 
 `t32_simp`, `t32_fwd`, `t32_walk`, `t32_bwd`, and `t32_gprs` are the tactics `isla_simp`,
 `isla_fwd`, `isla_walk`, `isla_bwd`, and `isla_gprs` of the A64 check with this semantics'
@@ -32,7 +34,8 @@ values of `R0` to `R30`, and `chain_eq` folds the chain over the machine's regis
 indexed register.  `x_mod` and `low_r` turn the low word of an X register into the model's
 register, and `setX_low`, `setX_keep`, and `setLow_r` turn the trace's two writes of an X register
 into `State.setR`.  `t32_reg_end` and `t32_reg_bwd` compare the outcome of a path with `exec`'s
-for a form that writes one register.
+for a form that writes one register, after `t32_pc` advances the program counter under the
+theorem's premise.
 -/
 
 namespace LeanExe.M7.Isla
@@ -80,6 +83,15 @@ theorem decode_halves {p : Opcode} {f : Fields} {i : Instr} (hw : p.width = 32)
   have := decode_encode i []
   simp only [encode, (wide_encodeNat i).mpr hi, ↓reduceIte, List.append_nil, List.length_cons,
     List.length_nil] at this
+  exact this
+
+/-- The decoder reads the halfword of a 16-bit opcode as `BX LR` when the opcode's word is the
+form's encoding. -/
+theorem decode_halves_bxLr {p : Opcode} {f : Fields} (hw : p.width = 16)
+    (h : p.word f = (encodeNat .bxLr).1) : decode (halves p f) = some (.bxLr, p.width / 16) := by
+  have := decode_encode .bxLr []
+  rw [encode_bxLr, List.append_nil] at this
+  simp only [halves, hw, h, ↓reduceIte]
   exact this
 
 /-! Reads and writes of the X registers. -/
@@ -283,6 +295,23 @@ theorem setX_far (m : Mach) (i n : Nat) : (m.setX i n).far = m.far := by
   unfold Mach.setX
   split <;> rfl
 
+theorem setX_pc (m : Mach) (i n : Nat) : (m.setX i n).s.pc = m.s.pc := by
+  unfold Mach.setX setLow
+  split
+  · split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+/-- Takes the branch of `finish` that advances the program counter at the end of a path that
+writes only X registers and flags, so that the program counter is the machine's.  `omega` proves
+the bound from the theorem's premise on the program counter. -/
+macro "t32_pc" : tactic => `(tactic| (
+  rw [if_pos]
+  rotate_left
+  · simp -failIfUnchanged only [setX_pc]
+    omega))
+
 /-- A machine whose model state is `s'` and whose X15 to X30 and upper memory are `m`'s is `m` with
 `s'` and some high words. -/
 theorem exists_mach {m m' : Mach} {s' : State} (h : m'.s = s') (hx : m'.xs = m.xs)
@@ -401,9 +430,9 @@ brackets that turn the written value into the model's. -/
 syntax "t32_reg_end " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_reg_end [$xs,*]) => `(tactic| (
-    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
-      Outcome.done.injEq, and_true,
-      true_and]
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte]
+    t32_pc
+    simp only [Outcome.done.injEq, and_true, true_and]
     simp (disch := first | omega | t32_lt) only [setX_low, setX_keep]
     apply exists_mach
     · simp only [setLow_r]
@@ -417,9 +446,9 @@ keeps bits 63 to 32 of the written register, as `t32_reg_end` does. -/
 syntax "t32_reg_bwd " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_reg_bwd [$xs,*]) => `(tactic| (
-    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
-      Outcome.done.injEq, and_true,
-      true_and]
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte]
+    t32_pc
+    simp only [Outcome.done.injEq, and_true, true_and]
     simp (disch := first | omega | t32_lt) only [setX_keep]
     simp only [setLow_r]
     congr 1
@@ -427,27 +456,15 @@ macro_rules
     apply state_eq
     simp (disch := omega) only [x_mod, low_r, $xs,*]))
 
-/-- The harness's test for the pattern of B T3 fails on an opcode whose bits 31 to 27 are not
-11110. -/
-theorem mask_top {w : Nat} (hw : w < 4294967296) (h : w / 134217728 ≠ 30) :
-    ¬(w &&& 4160802816 = 4026564608) := by
-  intro heq
-  have h1 := congrArg (· >>> 27) heq
-  simp only [Nat.shiftRight_and_distrib] at h1
-  rw [show (4160802816 : Nat) >>> 27 = 2 ^ 5 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod,
-    show (4026564608 : Nat) >>> 27 = 30 from rfl, Nat.shiftRight_eq_div_pow] at h1
-  omega
-
 /-- Proves a side condition of a path of a trace: a bound of a value that a declaration chose, a
-condition on the fields, a comparison of signed numbers, the harness's test of the opcode, or the
-equation of `FeatureImpl` with the profile's. -/
+condition on the fields, a comparison of signed numbers, or the equation of `FeatureImpl` with the
+profile's. -/
 macro "t32_side" : tactic => `(tactic| first
   | omega
   | (simp only [LeanExe.A64.Isla.sint]; omega)
   | exact x_lt_pow _ _
   | exact Nat.lt_trans (UInt32.toNat_lt _) (by decide)
   | (split <;> omega)
-  | (apply mask_top <;> omega)
   | rfl)
 
 theorem ofNat_four : UInt32.ofNat 4 = 4 := rfl
@@ -485,9 +502,9 @@ of the registers as the `toNat` of the model's result. -/
 syntax "t32_nz_end " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_nz_end [$xs,*]) => `(tactic| (
-    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
-      Outcome.done.injEq, and_true,
-      true_and]
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte]
+    t32_pc
+    simp only [Outcome.done.injEq, and_true, true_and]
     simp (disch := first | omega | t32_lt) only [setX_low, setX_keep]
     apply exists_mach
     · simp (disch := omega) only [setLow_r, x_mod, low_r, $xs,*] at *
@@ -504,9 +521,9 @@ keeps bits 63 to 32 of the written register, as `t32_nz_end` does. -/
 syntax "t32_nz_bwd " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_nz_bwd [$xs,*]) => `(tactic| (
-    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
-      Outcome.done.injEq, and_true,
-      true_and]
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte]
+    t32_pc
+    simp only [Outcome.done.injEq, and_true, true_and]
     simp (disch := first | omega | t32_lt) only [setX_keep]
     congr 1
     simp (disch := omega) only [setLow_r, x_mod, low_r, $xs,*] at *
