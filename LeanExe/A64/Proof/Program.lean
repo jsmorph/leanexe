@@ -1,4 +1,5 @@
 import LeanExe.A64.Proof.Function
+import LeanExe.Proof.Area
 import LeanExe.ProofKit.Array
 
 /-!
@@ -506,88 +507,8 @@ theorem typed_words : ∀ {ts : List ValueType} {ws : List UInt64}, ts.all wordT
 /-- The operand registers of the heights below 16 are X0 to X15. -/
 theorem regOf_small : ∀ i < 16, regOf i = ⟨i % 32, Nat.mod_lt _ (by decide)⟩ := by decide
 
-/-! ## The area -/
-
-/-- The store in which the program's function starts: the module's initial store with a memory
-of `cap` pages. -/
-def initStore (m : Module) (cap : Nat) : Store Unit :=
-  { (m.initialStore : Store Unit) with memoryCaps := [cap] }
-
-theorem memIs64_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
-    m.memIs64 = false := by
-  unfold areaOk at h
-  unfold Module.memIs64
-  cases hd : m.memory with
-  | none => rfl
-  | some d =>
-      rw [hd] at h
-      simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
-      exact h.1.1.1
-
-theorem cap_lt_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) : cap < 4096 := by
-  unfold areaOk at h
-  cases hd : m.memory with
-  | none => rw [hd] at h; cases h
-  | some d =>
-      rw [hd] at h
-      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
-      exact h.2
-
-/-- The memory of `m` starts with at most `cap` pages when `areaOk m cap` holds. -/
-theorem pages_le_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
-    (m.memory.map (·.pagesMin.toNat)).getD 0 ≤ cap := by
-  unfold areaOk at h
-  cases hd : m.memory with
-  | none => rw [hd] at h; cases h
-  | some d =>
-      rw [hd] at h
-      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
-      simpa using h.1.2
-
-theorem foldl_pages {β : Type} (f : Mem → β → Mem) (hf : ∀ acc b, (f acc b).pages = acc.pages) :
-    ∀ (l : List β) (m0 : Mem), (l.foldl f m0).pages = m0.pages
-  | [], _ => rfl
-  | b :: l, m0 => by rw [List.foldl_cons, foldl_pages f hf l, hf]
-
-theorem initialStore_pages {m : Module} {d : MemDecl} (h : m.memory = some d) :
-    (m.initialStore : Store Unit).mem.pages = d.pagesMin.toNat := by
-  unfold Module.initialStore
-  simp only [h]
-  rw [foldl_pages]
-  · rfl
-  · intro acc seg
-    split
-    · split
-      · split
-        · rfl
-        · rfl
-      · rfl
-    · rfl
-
-theorem hasType_of_valueType {v : Value} {t : ValueType} (h : valueType v = some t) :
-    HasType t v := by
-  cases v <;> simp [valueType] at h <;> subst h <;> trivial
-
 theorem valRel_wordOf {t : ValueType} {v : Value} (h : HasType t v) : ValRel v (wordOf v) := by
   cases v <;> first | rfl | (cases t <;> exact h.elim)
-
-theorem typed_of_valueTypes : ∀ (gs : List GlobalDecl) (gts : List ValueType),
-    gs.mapM (fun g => valueType g.init) = some gts → Typed gts (gs.map (·.init))
-  | [], gts, h => by
-      simp only [List.mapM_nil, pure, Option.some.injEq] at h
-      subst h
-      trivial
-  | g :: gs, gts, h => by
-      rw [List.mapM_cons] at h
-      cases hv : valueType g.init with
-      | none => simp [hv] at h
-      | some t =>
-          cases hr : gs.mapM (fun g => valueType g.init) with
-          | none => simp [hv, hr] at h
-          | some ts =>
-              simp [hv, hr] at h
-              subst h
-              exact ⟨hasType_of_valueType hv, typed_of_valueTypes gs ts hr⟩
 
 /-- A machine whose X17 holds the address of the bytes of the area of the module's initial store
 holds that store with a memory of `cap` pages. -/

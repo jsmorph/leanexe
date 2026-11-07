@@ -3,8 +3,9 @@ import LeanExe.M7.Boot
 /-!
 The kernel's check of a generated image in parts.  The memory of the kernel's evaluation of
 `fileOk` or `bootFileOk` grows with the code that one declaration evaluates, and the check of the
-gateway's whole image as one declaration exceeds 16 GiB.  These checks divide the image into
-`main`, each function that calls reach from the step, and the trap stubs with `udivmod64`, and each
+gateway's whole image as one declaration exceeds 16 GiB.  These checks, for a program without an
+area, divide the image into `main`, each function that calls reach from the step, and the trap
+stubs with `udivmod64`, and each
 states one part's bytes as a slice of the number that `file_nat%` reads: the `len` bytes from byte
 `off`, `n / 256 ^ off % 256 ^ len`, and forms the number of the part's bytes with
 `natOfBytesPaired`.  A function's part takes the layout from the list `ns` of the
@@ -43,14 +44,16 @@ def entriesOfSizes : UInt32 → List (Nat × Function) → List Nat →
 
 /-- The part of the program of step `k` of `m` from the state `s0` at `base` that holds `main`,
 at byte `off` of the number `n`: step `k` comes first among the functions that calls reach from
-it, with `s0.length + 1` parameters and results of type `i64`, and `main`'s code for the entry
-after `main` has `mainSize s0` instructions and the bytes of `n` from `off`. -/
+it, with `s0.length + 1` parameters and results of type `i64`, none of those functions accesses
+the area, and `main`'s code for the entry after `main` has `mainSize s0` instructions and the
+bytes of `n` from `off`. -/
 def mainPartOk (m : Module) (k : Nat) (s0 : List UInt64) (base dev : UInt32) (n off : Nat) :
     Bool :=
   match (reachFrom m k).mapM (funcOf m) with
-  | .ok (x :: _) =>
+  | .ok (x :: rest) =>
       x.1 == k && decide (x.2.params = List.replicate (s0.length + 1) .i64) &&
         decide (x.2.results = List.replicate (s0.length + 1) .i64) &&
+        !(x :: rest).any (fun y => listArea y.2.body) &&
         sliceOk (do
             let main ← genMain base (after base (mainSize s0)) dev s0
             if main.length = mainSize s0 then pure main else throw "main")
@@ -69,7 +72,7 @@ def functionPartOk (m : Module) (k : Nat) (s0 : List UInt64) (base limit : UInt3
   match fs[i]?, ns[i]? with
   | some x, some size =>
       functionSize (sigOf callee) x.2 == size &&
-        sliceOk (genFunction callee (progShared (after first ns.sum) limit)
+        sliceOk (genFunction callee (progShared (after first ns.sum) limit none)
             (after first (ns.take i).sum) x.2)
           n (off + 4 * (mainSize s0 + (ns.take i).sum)) (4 * size)
   | _, _ => false

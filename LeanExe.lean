@@ -12,7 +12,6 @@ import LeanExe.A64.Isla.Trace
 import LeanExe.A64.Isla.Walk
 import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Addr
-import LeanExe.A64.Proof.Area
 import LeanExe.A64.Proof.Arith
 import LeanExe.A64.Proof.Bits
 import LeanExe.A64.Proof.Boot
@@ -42,6 +41,7 @@ import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
 import LeanExe.A64.Startup
 import LeanExe.A64.Table
+import LeanExe.Area
 import LeanExe.Attr
 import LeanExe.CallGraph
 import LeanExe.Common
@@ -88,6 +88,7 @@ import LeanExe.M7.Isla.Trace
 import LeanExe.M7.Isla.Walk
 import LeanExe.M7.Machine
 import LeanExe.M7.Parts
+import LeanExe.M7.Setup
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
 import LeanExe.M7.Proof.Branch
@@ -106,9 +107,11 @@ import LeanExe.M7.Proof.Parts
 import LeanExe.M7.Proof.Program
 import LeanExe.M7.Proof.Relation
 import LeanExe.M7.Proof.Runs
+import LeanExe.M7.Proof.Setup
 import LeanExe.M7.Proof.Sim
 import LeanExe.M7.Proof.Slots
 import LeanExe.M7.Proof.Step
+import LeanExe.M7.Proof.Store
 import LeanExe.M7.Proof.Straight
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes
@@ -126,6 +129,7 @@ import LeanExe.Pipeline.AlignedImplements
 import LeanExe.Pipeline.ImplementsAligned
 import LeanExe.Pipeline.AlignedRuns
 import LeanExe.Pipeline.Slotted
+import LeanExe.Proof.Area
 import LeanExe.ProofKit.AlignedAllocate
 import LeanExe.ProofKit.AlignedDefs
 import LeanExe.ProofKit.AlignedAtomic

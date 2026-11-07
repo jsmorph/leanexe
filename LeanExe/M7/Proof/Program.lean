@@ -3,9 +3,10 @@ import LeanExe.M7.Proof.Function
 /-!
 The simulation of the step that the generator's program calls, as `LeanExe/A64/Proof/Program.lean`
 lays out the AArch64 program.  `gen_program` inverts `genProgram`: `main`, of `mainSize s0` units
-of 4 bytes, the functions that calls reach from the step, the step first, three trap stubs, and the
-code of `udivmod64`, and `gen_program_entry` adds that the step comes first among the functions,
-so that `main`'s call of the step targets the address after `main`.  `gen_functions` places each function at the entry that `entriesFrom` gives
+of 4 bytes, the functions that calls reach from the step, the step first, the trap stubs, three
+or, for a program with an area, four, and the code of `udivmod64`, and `gen_program_entry` adds
+that the step comes first among the functions, so that `main`'s call of the step targets the
+address after `main`.  `gen_functions` places each function at the entry that `entriesFrom` gives
 it, from `genFunctions`'s check that each function's halfwords number twice its size in units, and
 `sigOf_tableOf` identifies the numbers of parameters and results of the table with those from
 which the generator computed the frames.  `step_sim` combines these with `calls_ok` and `fun_sim`:
@@ -67,18 +68,23 @@ theorem genMain_wide {a step dev : UInt32} {s0 : List UInt64} {main : List Instr
 
 /-! ## The generator's program -/
 
+theorem codeSize_trapStubs (area : Option (List ValueType)) :
+    codeSize (trapStubs area) = 4 * stubCount area := by
+  cases area <;> rfl
+
 theorem gen_program {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
     {div is : List Instr} (hg : genProgram m k s0 base limit dev div = .ok is) :
-    ∃ fs e main fns, (reachFrom m k).mapM (funcOf m) = .ok fs ∧
+    ∃ fs e main area fns, (reachFrom m k).mapM (funcOf m) = .ok fs ∧
       ((entriesFrom (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs).find?
           (·.1 = k)).map (·.2) =
         some (e, List.replicate (s0.length + 1) .i64, List.replicate (s0.length + 1) .i64) ∧
       genMain base e dev s0 = .ok main ∧ main.length = mainSize s0 ∧
+      areaOf m fs limit = .ok area ∧
       genFunctions (tableOf (callTargets m k)
           (entriesFrom (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs))
-        (progShared (endOf (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs) limit)
+        (progShared (endOf (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs) limit area)
         (after base (mainSize s0)) fs = .ok fns ∧
-      is = main ++ fns ++ [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] ++ div := by
+      is = main ++ fns ++ trapStubs area ++ div := by
   unfold genProgram at hg
   simp only [except_bind_ok] at hg
   obtain ⟨fs, hfs, hg⟩ := hg
@@ -96,8 +102,8 @@ theorem gen_program {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : 
         exact absurd h except_throw_ok
       · rename_i hlen
         simp only [except_bind_ok, except_pure_ok] at hg
-        obtain ⟨fns, hfns, rfl⟩ := hg
-        exact ⟨fs, _, main, fns, hfs, hen, hmain, by omega, hfns, rfl⟩
+        obtain ⟨area, harea, fns, hfns, rfl⟩ := hg
+        exact ⟨fs, _, main, area, fns, hfs, hen, hmain, by omega, harea, hfns, rfl⟩
     · simp only [except_bind_ok] at hg
       obtain ⟨_, h, -⟩ := hg
       exact absurd h except_throw_ok
@@ -114,16 +120,16 @@ theorem gen_program_entry {m : Module} {k : Nat} {s0 : List UInt64} {base limit 
     ∃ f fs', (reachFrom m k).mapM (funcOf m) = .ok ((k, f) :: fs') ∧ m.funcs[k]? = some f ∧
       f.params = List.replicate (s0.length + 1) .i64 ∧
       f.results = List.replicate (s0.length + 1) .i64 ∧
-      ∃ main fns, genMain base (after base (mainSize s0)) dev s0 = .ok main ∧
-        main.length = mainSize s0 ∧
+      ∃ main fns area, genMain base (after base (mainSize s0)) dev s0 = .ok main ∧
+        main.length = mainSize s0 ∧ areaOf m ((k, f) :: fs') limit = .ok area ∧
         genFunctions (tableOf (callTargets m k)
             (entriesFrom (sigIn (callTargets m k) ((k, f) :: fs')) (after base (mainSize s0))
               ((k, f) :: fs')))
           (progShared (endOf (sigIn (callTargets m k) ((k, f) :: fs')) (after base (mainSize s0))
-            ((k, f) :: fs')) limit)
+            ((k, f) :: fs')) limit area)
           (after base (mainSize s0)) ((k, f) :: fs') = .ok fns ∧
-        is = main ++ fns ++ [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] ++ div := by
-  obtain ⟨fs, e, main, fns, hfs, hen, hmain, hml, hfns, rfl⟩ := gen_program hg
+        is = main ++ fns ++ trapStubs area ++ div := by
+  obtain ⟨fs, e, main, area, fns, hfs, hen, hmain, hml, harea, hfns, rfl⟩ := gen_program hg
   obtain ⟨rest, hrk⟩ := reachFrom_cons m k
   rw [hrk] at hfs
   obtain ⟨f, fs', hkf, rfl⟩ := mapM_funcOf_cons hfs
@@ -132,7 +138,7 @@ theorem gen_program_entry {m : Module} {k : Nat} {s0 : List UInt64} {base limit 
       f.results = List.replicate (s0.length + 1) .i64 := by
     simpa [entriesFrom] using hen
   obtain ⟨rfl, hps, hrs⟩ := hen'
-  exact ⟨f, fs', hfs, hkf, hps, hrs, main, fns, hmain, hml, hfns, rfl⟩
+  exact ⟨f, fs', hfs, hkf, hps, hrs, main, fns, area, hmain, hml, harea, hfns, rfl⟩
 
 /-! ## The layout of the functions -/
 
@@ -230,7 +236,8 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
       f.params = List.replicate (s0.length + 1) .i64 ∧
       f.results = List.replicate (s0.length + 1) .i64 ∧ need k = stackBound m k ∧
       ∀ g, FunSim P σ code m S need g k (after base (mainSize s0), f.params, f.results) := by
-  obtain ⟨f, fs', hfs, hkf, hps, hrs, main, fns, hmain, hml, hfns, rfl⟩ := gen_program_entry hg
+  obtain ⟨f, fs', hfs, hkf, hps, hrs, main, fns, area, hmain, hml, -, hfns, rfl⟩ :=
+    gen_program_entry hg
   generalize hsig : sigIn (callTargets m k) ((k, f) :: fs') = sig at hfns
   generalize hfirst : after base (mainSize s0) = first at hmain hfns ⊢
   generalize hcallee : tableOf (callTargets m k) (entriesFrom sig first ((k, f) :: fs')) =
@@ -241,8 +248,7 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
   -- the code of `main`, the functions, the stubs, and `udivmod64`
   have hcm : codeSize main = 4 * mainSize s0 := by
     rw [codeSize_of_wide (genMain_wide hmain), hml]
-  have hcode' : CodeAt code base (main ++ (fns ++ ([Instr.bTo (-4), Instr.bTo (-4),
-      Instr.bTo (-4)] ++ udivmod64))) := by
+  have hcode' : CodeAt code base (main ++ (fns ++ (trapStubs area ++ udivmod64))) := by
     simpa only [List.append_assoc] using hcode
   obtain ⟨-, hc1⟩ := CodeAt.append.mp hcode'
   rw [hcm, ← after_eq, hfirst] at hc1
@@ -250,13 +256,12 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
   obtain ⟨hfsz, hend, hents⟩ :=
     gen_functions htab hfns hcF (by rw [← hfirst]; exact even_after hev _)
   obtain ⟨-, hcD⟩ := CodeAt.append.mp hc2
-  have hdiv : DivAt code (progShared (endOf sig first ((k, f) :: fs')) limit) := by
-    show CodeAt code (after (endOf sig first ((k, f) :: fs')) 3) udivmod64
+  have hdiv : DivAt code (progShared (endOf sig first ((k, f) :: fs')) limit area) := by
+    show CodeAt code (after (endOf sig first ((k, f) :: fs')) (stubCount area)) udivmod64
     rw [hend, after_after, after_eq]
-    rw [hfsz, show codeSize [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] = 12 from rfl,
-      add_ofNat_add] at hcD
-    rw [show 4 * ((((k, f) :: fs').map fun x => functionSize sig x.2).sum + 3) =
-      4 * (((k, f) :: fs').map fun x => functionSize sig x.2).sum + 12 by omega]
+    rw [hfsz, codeSize_trapStubs, add_ofNat_add] at hcD
+    rw [show 4 * ((((k, f) :: fs').map fun x => functionSize sig x.2).sum + stubCount area) =
+      4 * (((k, f) :: fs').map fun x => functionSize sig x.2).sum + 4 * stubCount area by omega]
     exact hcD
   -- the table and the bound
   let need : Nat → Nat := stackNeedOf m (fun f => (frameOf sig f).size) m.funcs.length
@@ -288,8 +293,8 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
   have hkf' : m.funcs[k]? = some f' := mapM_funcOf hfs _ hm'
   rw [hkf] at hkf'
   cases hkf'
-  refine ⟨f, progShared (endOf sig first ((k, f) :: fs')) limit, need, hkf, rfl, hps, hrs, ?_,
-    fun g => ?_⟩
+  refine ⟨f, progShared (endOf sig first ((k, f) :: fs')) limit area, need, hkf, rfl, hps, hrs,
+    ?_, fun g => ?_⟩
   · show stackNeedOf m (fun f => (frameOf sig f).size) m.funcs.length k = stackBound m k
     unfold stackBound
     rw [hfs]

@@ -28,6 +28,7 @@ integer, a fraction, a number from 2^64 up, a negative number, or a NaN.
 namespace TestSupport.A64.Fp
 
 open LeanExe.A64
+open LeanExe (roundUp)
 
 /-- The forms under test. -/
 inductive Form where

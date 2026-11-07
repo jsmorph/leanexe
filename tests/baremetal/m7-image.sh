@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# The kernel's checks of the Cortex-M7 code of the echo and of the gateway.  It builds m7-windows,
-# the step theorems of tests/TestSupport/M7/Step.lean and GwStep.lean, the gateway's sizes and loop
-# theorems of GwImages.lean and GwLoop.lean, and the parts' theorems of
+# The kernel's checks of the Cortex-M7 code of the echo, of the gateway, and of the SHA-256 step.
+# It builds m7-windows, the step theorems of tests/TestSupport/M7/Step.lean and GwStep.lean, the
+# gateway's sizes and loop theorems of GwImages.lean and GwLoop.lean, and the parts' theorems of
 # LeanExe/M7/Proof/Parts.lean, writes the bytes of the programs that LeanExe/M7/Gen.lean generates
-# for usart3Tick and gwTickUsart3 with m7-windows image, and elaborates
-# tests/TestSupport/M7/ImageFile.lean and GwImageFile.lean in the directory of those files, so that
-# the kernel checks that each file holds the generated instructions' bytes, the gateway's in parts.
+# for usart3Tick, gwTickUsart3, and shaUsart3Tick with m7-windows image, and elaborates
+# tests/TestSupport/M7/ImageFile.lean, GwImageFile.lean, and ShaImageFile.lean in the directory of
+# those files, so that the kernel checks that each file holds the generated instructions' bytes, the
+# gateway's in parts.  No theorem states the behavior of the SHA-256 step's code.
 # A memory cap of MEM, 16G unless set, bounds the build and each check.  It requires that the
 # checks, the step theorems, and the parts' theorems depend on no axiom beyond propext,
 # Classical.choice, and Quot.sound, and reports each check's elapsed time and peak memory.  The
@@ -39,4 +40,5 @@ check() {
 }
 check echo-usart3 ImageFile 5
 check gateway-usart3 GwImageFile 7
+check sha-usart3 ShaImageFile 1
 exit "$status"

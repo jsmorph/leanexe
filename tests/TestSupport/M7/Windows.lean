@@ -2,19 +2,25 @@ import Std.Data.HashMap
 import LeanExe.M7.Div
 import LeanExe.M7.Image
 import TestSupport.M7.Asm
+import TestSupport.M7.Crc
+import TestSupport.M7.Sha
 import TestSupport.Bare.Req
 import Demos.Energy.Loop
 
 /-!
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`
-generates, the echo's steps `usart3Tick` and `cmsdkTick` and the gateway's steps `gwTickUsart3`
-and `gwTick`, measured by running the generated code in the model of `LeanExe/M7/Machine.lean`.
-A window runs from the loop's head of `main` to its next arrival there: the call of the step and
-the request's register access.
+generates, the echo's steps `usart3Tick` and `cmsdkTick`, the gateway's steps `gwTickUsart3`
+and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, and the SHA-256 steps
+`shaUsart3Tick` and `shaCmsdkTick`, measured by running the
+generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs from the loop's head of
+`main` to its next arrival there: the call of the step and the request's register access.
 
 `runProgram` places the code at `codeBase`, in the ITCM alias of the board's flash, with SP at the
-top of DTCM and DTCM as the only Normal memory, and executes it instruction by instruction with
-`exec`, the model's step after its fetch and decoding.  The code never changes, so the decoding of
+top of DTCM and DTCM as the only Normal memory.  For a program with an area, the stack's limit is
+the area's end and DTCM starts with the area's first bytes, `areaPrefixBytes` of
+`LeanExe/Area.lean`, the bytes that the setup of `LeanExe/M7/Setup.lean` writes; every other byte
+is 0.  The run executes the code instruction by instruction with `exec`, the model's step after
+its fetch and decoding.  The code never changes, so the decoding of
 every halfword address is computed once, by the model's `decode`, before the run.  The model's
 registers and memory are functions, and a step builds them from an array of registers and a byte
 array of DTCM and writes the step's result back to those arrays, so that each step takes the same
@@ -26,7 +32,12 @@ the next input byte, and a write of the transmit register appends to the output.
 
 At each return from the step, the run compares the step's results in `main`'s outgoing area with
 the words of the state and the request that the step computes in native Lean, and at the end it
-compares the output with the expected bytes.  The program holds the code of `udivmod64`, which
+compares the output with the expected bytes: for the echo, the input with bit 5 of each byte
+flipped, for CRC-32, the low byte of the CRC-32 of each prefix of the input, which `crc32Bits`
+computes bit by bit with the reflected polynomial `0xEDB88320`, and for SHA-256, after each block
+of 64 bytes, the 32 bytes of the digest that `sha256` of `Library/Hashing/Sha256/Program.lean`
+gives for the input up to the block's end.  The program holds the code of
+`udivmod64`, which
 the run does not execute: at its entry the run sets r0:r1 to the quotient and r2:r3 to the
 remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word, returns to LR, and counts
 the call by the routine's path, both high words 0, the divisor's low word 0, or the loop, so that
@@ -67,7 +78,8 @@ def cmsdk : Port := ⟨0x1000, 0x1000, 0x1001, 2, 1, 0⟩
 
 /-- A program with requests: its module, the index of its step, the step's state type, initial
 state, words, and native step, its UART, the phase of a state, the kind of a window from the
-state and the last value, and the bytes of an input record and of an output record. -/
+state and the last value, the bytes of an input record and of an output record, the stack's limit,
+the bytes of DTCM from its base at the start, and the expected output for an input. -/
 structure Prog where
   name : String
   module : Module
@@ -81,6 +93,10 @@ structure Prog where
   kind : G → UInt64 → String
   inRec : Nat
   outRec : Nat
+  limit : UInt32
+  start : List UInt8
+  answer : Array UInt8 → Array UInt8
+  input : Option (Array UInt8) := none
 
 def echoKind (p : Port) (s v : UInt64) : String :=
   match s &&& 255 with
@@ -96,43 +112,115 @@ def gwKind (p : Port) (f : Demos.Energy.GwFrame) (v : UInt64) : String :=
   else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
   else if f.nbyte < 7 then "sent" else if f.nword < 5 then "sentword" else "sentrecord"
 
+/-- The CRC-32 register after the byte `b` from the register `r`, bit by bit with the reflected
+polynomial `0xEDB88320`. -/
+def crc32Bits (r : UInt32) (b : UInt8) : UInt32 :=
+  (List.range 8).foldl (fun c _ => if c &&& 1 = 1 then (c >>> 1) ^^^ 0xEDB88320 else c >>> 1)
+    (r ^^^ b.toUInt32)
+
+/-- The replies of the CRC-32 step to the bytes `input`: the low byte of the CRC-32 of each
+prefix. -/
+def crcReplies (input : Array UInt8) : Array UInt8 :=
+  (input.foldl (fun (r, out) b => let r' := crc32Bits r b; (r', out.push (~~~r').toUInt8))
+    ((0xFFFFFFFF : UInt32), #[])).2
+
 def echoProg (name : String) (k : Nat) (tick : UInt64 → UInt64 → UInt64 × UInt64) (p : Port) :
     Prog :=
   { name, module := TestSupport.Bare.reqCompiled.module, k, G := UInt64, s0 := 3,
     words := fun s => [s], tick, port := p, phase := fun s => s &&& 255, kind := echoKind p,
-    inRec := 1, outRec := 1 }
+    inRec := 1, outRec := 1, limit := stackLimit, start := [],
+    answer := fun input => input.map (· ^^^ 0x20) }
 
 def gwProg (name : String) (k : Nat) (tick : Demos.Energy.GwFrame → UInt64 →
     Demos.Energy.GwFrame × UInt64) (p : Port) : Prog :=
   { name, module := Demos.Energy.gwCompiled.module, k, G := Demos.Energy.GwFrame,
     s0 := Demos.Energy.gwInit, words := Demos.Energy.gwWords, tick, port := p,
-    phase := fun f => f.phase, kind := gwKind p, inRec := 144, outRec := 48 }
+    phase := fun f => f.phase, kind := gwKind p, inRec := 144, outRec := 48, limit := stackLimit,
+    start := [], answer := fun _ => #[] }
+
+def crcProg (name : String) (m : Module) (tick : UInt64 → UInt64 → UInt64 × UInt64) (p : Port) :
+    Prog :=
+  { name, module := m, k := 5, G := UInt64, s0 := TestSupport.M7.Crc.crcInit,
+    words := fun s => [s], tick, port := p, phase := fun s => s &&& 255, kind := echoKind p,
+    inRec := 1, outRec := 1, limit := areaEnd, start := LeanExe.areaPrefixBytes m,
+    answer := crcReplies }
+
+open TestSupport.M7.Sha in
+def shaKind (p : Port) (f : ShaFrame) (v : UInt64) : String :=
+  if f.phase == 0 then (if v &&& p.rxFull != 0 then "rxne" else "idle")
+  else if f.phase == 1 then
+    (if f.nbyte < 7 then "byte" else if f.nword < 7 then "word" else "block")
+  else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
+  else if f.nbyte < 7 then "sent" else if f.nword < 3 then "sentword" else "sentblock"
+
+/-- The bytes `bs` packed eight to a word, the lowest first. -/
+def packBytes (bs : Array UInt8) : Array UInt64 :=
+  (Array.range ((bs.size + 7) / 8)).map fun j =>
+    (List.range 8).foldl (fun acc i =>
+      acc ||| (bs[8 * j + i]?.getD 0).toUInt64 <<< (8 * i).toUInt64) 0
+
+/-- The answers of the SHA-256 step to the bytes `input`: after each whole block of 64 bytes, the
+32 bytes of the digest of the input up to the block's end.  `paddedWord` reads the word after the
+message's last byte, which a message of `64 (j + 1)` bytes lacks, so a zero word follows the packed
+bytes, and no read lies outside the array. -/
+def shaAnswers (input : Array UInt8) : Array UInt8 :=
+  ((List.range (input.size / 64)).flatMap fun j =>
+    let n := 64 * (j + 1)
+    let d := Library.Hashing.Sha256.sha256 ((packBytes (input.extract 0 n)).push 0)
+      (UInt64.ofNat n)
+    [d.w0, d.w1, d.w2, d.w3].flatMap fun w =>
+      (List.range 8).map fun i => (w >>> (8 * i).toUInt64).toUInt8).toArray
+
+/-- The input of a SHA-256 run: a block of zero bytes, a block of `0xFF` bytes, and 62 blocks of
+the bytes `37 i + 11`. -/
+def shaInput : Array UInt8 :=
+  (List.replicate 64 0 ++ List.replicate 64 255 ++
+    (List.range (62 * 64)).map fun i => UInt8.ofNat (37 * i + 11)).toArray
+
+open TestSupport.M7.Sha in
+def shaProg (name : String) (m : Module) (tick : ShaFrame → UInt64 → ShaFrame × UInt64)
+    (p : Port) : Prog :=
+  { name, module := m, k := 13, G := ShaFrame, s0 := shaInit, words := shaWords, tick,
+    port := p, phase := fun f => f.phase, kind := shaKind p, inRec := 64, outRec := 32,
+    limit := areaEnd, start := LeanExe.areaPrefixBytes m, answer := shaAnswers,
+    input := some shaInput }
 
 def programs : List Prog :=
   [echoProg "echo-usart3" 9 TestSupport.Bare.usart3Tick usart3,
     echoProg "echo-cmsdk" 5 TestSupport.Bare.cmsdkTick cmsdk,
     gwProg "gateway-usart3" 34 Demos.Energy.gwTickUsart3 usart3,
-    gwProg "gateway-cmsdk" 33 Demos.Energy.gwTick cmsdk]
+    gwProg "gateway-cmsdk" 33 Demos.Energy.gwTick cmsdk,
+    crcProg "crc-usart3" TestSupport.M7.Crc.crcStepCompiled.module
+      TestSupport.M7.Crc.crcUsart3Tick usart3,
+    crcProg "crc-cmsdk" TestSupport.M7.Crc.crcCmsdkCompiled.module
+      TestSupport.M7.Crc.crcCmsdkTick cmsdk,
+    shaProg "sha-usart3" TestSupport.M7.Sha.shaStepCompiled.module
+      TestSupport.M7.Sha.shaUsart3Tick usart3,
+    shaProg "sha-cmsdk" TestSupport.M7.Sha.shaCmsdkCompiled.module
+      TestSupport.M7.Sha.shaCmsdkTick cmsdk]
 
 /-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=
-  genProgram P.module P.k (P.words P.s0) codeBase stackLimit devBase udivmod64
+  genProgram P.module P.k (P.words P.s0) codeBase P.limit devBase udivmod64
 
 /-- The address of the loop's head of `main`. -/
 def headOf (P : Prog) : UInt32 := after codeBase (mainStart (P.words P.s0))
 
-/-- The functions of `P`'s program, with their entries, as `genProgram` lays them out. -/
+/-- The functions of `P`'s program, with their entries, as `genProgram` lays them out, the end of
+the functions, and the address of `udivmod64` after the trap stubs. -/
 def layout (P : Prog) : GenM (List (Nat × Function) × List (Nat × UInt32 × List ValueType ×
-    List ValueType) × (Nat → Option (Nat × Nat)) × UInt32) := do
+    List ValueType) × (Nat → Option (Nat × Nat)) × UInt32 × UInt32) := do
   let fs ← (LeanExe.CallGraph.reachFrom P.module P.k).mapM (LeanExe.CallGraph.funcOf P.module)
   let sig := LeanExe.CallGraph.sigIn (LeanExe.CallGraph.callTargets P.module P.k) fs
   let first := after codeBase (mainSize (P.words P.s0))
-  return (fs, entriesFrom sig first fs, sig, endOf sig first fs)
+  let traps := endOf sig first fs
+  let area ← areaOf P.module fs P.limit
+  return (fs, entriesFrom sig first fs, sig, traps, (progShared traps P.limit area).udivmod)
 
 /-- The address of `udivmod64` in `P`'s program. -/
 def divOf (P : Prog) : GenM UInt32 := do
-  let (_, _, _, traps) ← layout P
-  return after traps 3
+  let (_, _, _, _, divA) ← layout P
+  return divA
 
 /-- The name that the module exports for function `j`, or its index. -/
 def nameOf (m : Module) (j : Nat) : String :=
@@ -143,7 +231,7 @@ def nameOf (m : Module) (j : Nat) : String :=
 /-- One line for each function of `P`'s program: its parameters, results, declared and named
 locals, outgoing slots, operand slots, frame size, largest offset from SP, and code size. -/
 def frames (P : Prog) : GenM (List String) := do
-  let (fs, entries, sig, _) ← layout P
+  let (fs, entries, sig, _, _) ← layout P
   return fs.map fun (j, f) =>
     let fr := frameOf sig f
     let p := f.params.length
@@ -292,7 +380,7 @@ def runProgram (P : Prog) (input expected : Array UInt8) (maxWindows : Nat)
   let n := (P.words P.s0).length
   let mut m : Machine :=
     ⟨Array.replicate 13 0, stackTop, 0xFFFFFFFF, codeBase, false, false, false, false,
-      ByteArray.mk (Array.replicate memSize.toNat 0)⟩
+      ByteArray.mk (P.start.toArray ++ Array.replicate (memSize.toNat - P.start.length) 0)⟩
   let mut stats : Std.HashMap String Stat := {}
   let mut traces : Std.HashMap String (Array String) := {}
   let mut longest : Std.HashMap String (Array String) := {}
@@ -415,8 +503,7 @@ instructions from its entry to its `BX LR` and the largest number of calls of `u
 path, with the routine's instructions excluded, as lines, and the length for the step's entry. -/
 def longest (P : Prog) : Except String (List String × Int × Nat) := do
   let is ← generate P
-  let (fs, entries, _, traps) ← layout P
-  let divA := after traps 3
+  let (fs, entries, _, traps, divA) ← layout P
   let first := after codeBase (mainSize (P.words P.s0))
   let starts : Array (UInt32 × Instr) := Id.run do
     let mut a := codeBase
