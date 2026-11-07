@@ -13,8 +13,9 @@ the lower address, as the processor fetches halfwords (DDI 0403E.e section A3.3.
 
 `boot_image` turns the kernel's check `bootFileOk` of an image into the words of its vector table
 and its instructions, each at its address in the code map.  `boot_run` runs the image from reset:
-the initialization, which `InitRuns` describes by the device accesses that it appends to the
-trace, then `main_run` of `LeanExe/M7/Proof/Main.lean`.
+the initialization, which `InitRuns` describes by the number of its device reads and the accesses
+that it appends to the trace as a function of the values that its reads return, then `main_run`
+of `LeanExe/M7/Proof/Main.lean`, whose windows read the values after the initialization's.
 -/
 
 namespace LeanExe.M7
@@ -182,17 +183,19 @@ theorem boot_image {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64} {limit d
 
 /-! ## The run from reset -/
 
-/-- The initialization `init`, placed at the program counter, runs to its end with the device
-accesses `t0` appended to the trace and SP and the read count unchanged. -/
+/-- The initialization `init`, placed at the program counter, runs to its end with SP unchanged,
+`r` device reads, and the accesses `t0 τ` appended to the trace, where `τ` gives the values of
+its reads in order: `τ j` is the value of the read numbered `j` from the reads before it. -/
 def InitRuns (P : Platform) (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
-    (init : List Instr) (t0 : List Access) : Prop :=
+    (init : List Instr) (t0 : (Nat → UInt32) → List Access) (r : Nat) : Prop :=
   ∀ s : State, CodeAt code s.pc init → ∃ t, Reach P σ code s t ∧
-    t.pc = s.pc + UInt32.ofNat (4 * init.length) ∧ t.sp = s.sp ∧ t.trace = s.trace ++ t0 ∧
-    t.reads = s.reads
+    t.pc = s.pc + UInt32.ofNat (4 * init.length) ∧ t.sp = s.sp ∧
+    t.trace = s.trace ++ t0 (fun j => σ (j + s.reads)) ∧ t.reads = s.reads + r
 
 /-- The image of step `k` of `m`, whose bytes the kernel's check `hk` finds in the code map, run
-from reset: the initialization appends `t0` to the trace, and `main` reaches the loop's head after
-`N` windows with their accesses appended, the windows reading `σ` from its start.  The table lies
+from reset: the initialization appends `t0 σ` to the trace with its `r` reads, and `main` reaches
+the loop's head after `N` windows with their accesses appended, the windows reading `σ` from
+`σ r` on.  The table lies
 at a multiple of 4, its initial SP is a multiple of 4 above the outgoing area, and every state
 whose SP lies at the outgoing area has the stack that `StackOk` states. -/
 theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
@@ -207,14 +210,15 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     (hcap : st.memoryCap m 0 ≤ 65535)
     (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
     (hk : bootFileOk B (bootProgram B m k s0 limit dev) n len = true)
-    (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0) {t0 : List Access}
-    (hinit : InitRuns P σ code B.init t0) (hsp : B.sp.toNat % 4 = 0)
+    (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
+    {t0 : (Nat → UInt32) → List Access} {r : Nat} (hinit : InitRuns P σ code B.init t0 r)
+    (hsp : B.sp.toNat % 4 = 0)
     (hfit : 8 * (s0.length + 1) ≤ B.sp.toNat)
     (hstk : ∀ s : State, s.sp = B.sp - UInt32.ofNat (8 * (s0.length + 1)) →
       StackOk P limit (s0.length + 1) (stackBound m k) s)
     (g0 : G) (hs0 : words g0 = s0) (b : State) (hb : Reset code B.org b) (N : Nat) :
     ∃ t, Reach P σ code b t ∧ t.pc = after B.base (mainStart s0) ∧
-      t.trace = t0 ++ windows (reqTrace (devBus dev) tick g0 σ) N := by
+      t.trace = t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) N := by
   obtain ⟨prog, hprog, hcp, hci, hw0, hw1⟩ := boot_image hent hw hk hf
   obtain ⟨w0, e0, hbsp⟩ := hb.sp
   obtain ⟨w1, e1, -, hbpc⟩ := hb.pc
@@ -236,7 +240,7 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     hprog hcp (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat hcap g0 hs0 t1 hp1
     (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1])) N
   refine ⟨t, r1.trans rt, pt, ?_⟩
-  rw [trt, tr1, rd1, hb.trace, hb.reads, List.nil_append]
+  rw [trt, tr1, rd1, hb.trace, hb.reads, List.nil_append, Nat.zero_add]
   rfl
 
 end LeanExe.M7

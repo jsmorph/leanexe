@@ -47,9 +47,9 @@ theorem exec_str_dev {σ : Nat → UInt32} {s : State} {t n : Fin 8} {imm : Fin 
         pc := s.pc + 4 } := by
   simp only [exec, storeWord, ha, h4, hd, ne_eq, not_true_eq_false, ↓reduceIte, Option.map_some]
 
-/-- UART0's initialization stores 16 into `BAUDDIV` and 3 into `CTRL`. -/
+/-- UART0's initialization stores 16 into `BAUDDIV` and 3 into `CTRL` and reads nothing. -/
 theorem initRuns (σ : Nat → UInt32) (code : UInt32 → Option UInt16) :
-    InitRuns platform σ code init initTrace := by
+    InitRuns platform σ code init (fun _ => initTrace) 0 := by
   intro s hc
   obtain ⟨s1, hs1⟩ : ∃ s1 : State, s1 = { s.setR 1 0x4000 with pc := s.pc + 4 } := ⟨_, rfl⟩
   have e1 : exec platform σ (Instr.movwOf 1 0x4000) s = some s1 := by rw [hs1]; rfl

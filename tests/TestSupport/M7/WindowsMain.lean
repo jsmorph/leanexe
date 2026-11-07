@@ -1,5 +1,6 @@
 import TestSupport.M7.Windows
 import TestSupport.M7.Qemu
+import TestSupport.M7.Nucleo
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
@@ -10,6 +11,10 @@ The command `m7-windows` of the window counts of the Cortex-M7 back end's progra
 - `m7-windows qemu FILE` writes to FILE the image of the echo of `cmsdkTick` for QEMU's
   `mps2-an500` (`tests/TestSupport/M7/Qemu.lean`): the vector table, UART0's initialization, and
   the program, from address 0.
+- `m7-windows board FILE` writes to FILE the image of the echo of `usart3Tick` for the
+  NUCLEO-F767ZI (`tests/TestSupport/M7/Nucleo.lean`): the vector table, the board's
+  initialization, and the program, from the flash's ITCM address `0x00200000`, and prints the
+  addresses of `main` and of its loop's head.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -55,6 +60,11 @@ def withProg (name : String) (act : Prog → IO UInt32) : IO UInt32 :=
       IO.eprintln s!"m7-windows: no program {name}"
       return 1
 
+/-- The word `w` as `0x` and eight hexadecimal digits. -/
+def hex32 (w : UInt32) : String :=
+  let d := Nat.toDigits 16 w.toNat
+  "0x" ++ String.mk (List.replicate (8 - d.length) '0' ++ d)
+
 def statLine (kind : String) (s : Stat) : String :=
   s!"{kind} windows {s.count} least {s.least} most {s.most} total {s.total} " ++
     s!"divisions fast {s.divFast} low {s.divLow} loop {s.divLoop} passes {s.divLoopPasses}"
@@ -89,6 +99,17 @@ def main (args : List String) : IO UInt32 := do
           return 0
       | .error e =>
           IO.eprintln s!"m7-windows: echo-cmsdk-qemu: {e}"
+          return 1
+  | ["board", file] =>
+      match TestSupport.M7.Nucleo.echoImage with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println (s!"m7-windows: echo-usart3-board: {bytes.length} bytes, main " ++
+            s!"{hex32 LeanExe.M7.Nucleo.boot.base}, loop head " ++
+            s!"{hex32 TestSupport.M7.Nucleo.echoHead}")
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: echo-usart3-board: {e}"
           return 1
   | ["static", name] => withProg name fun p => do
       match longest p with
@@ -132,6 +153,6 @@ def main (args : List String) : IO UInt32 := do
           return 1
       | none => return 0
   | _ =>
-      IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | static NAME | " ++
-        "run NAME DIR [IN OUT]")
+      IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
+        "static NAME | run NAME DIR [IN OUT]")
       return 2

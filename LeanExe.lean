@@ -71,12 +71,15 @@ import LeanExe.Encoding.Spec.Values
 import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
 import LeanExe.FileNat
+import LeanExe.M7.Board
 import LeanExe.M7.Boot
 import LeanExe.M7.Div
 import LeanExe.M7.Encode
 import LeanExe.M7.Gen
 import LeanExe.M7.Image
+import LeanExe.M7.Init
 import LeanExe.M7.Machine
+import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
 import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Call
@@ -84,6 +87,7 @@ import LeanExe.M7.Proof.Constructs
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Forms
 import LeanExe.M7.Proof.Function
+import LeanExe.M7.Proof.Init
 import LeanExe.M7.Proof.Machine
 import LeanExe.M7.Proof.Main
 import LeanExe.M7.Proof.Memory
@@ -91,6 +95,7 @@ import LeanExe.M7.Proof.Ops
 import LeanExe.M7.Proof.Pair
 import LeanExe.M7.Proof.Program
 import LeanExe.M7.Proof.Relation
+import LeanExe.M7.Proof.Runs
 import LeanExe.M7.Proof.Sim
 import LeanExe.M7.Proof.Slots
 import LeanExe.M7.Proof.Step
