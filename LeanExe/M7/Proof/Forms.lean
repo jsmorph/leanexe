@@ -21,6 +21,11 @@ theorem after_eq (a : UInt32) (n : Nat) : after a n = a + UInt32.ofNat (4 * n) :
 /-- Proves an equation of addresses that `after` and numerals give, as `addr_eq` does. -/
 macro "addr_after" : tactic => `(tactic| ((try simp only [after_eq]) <;> addr_eq))
 
+theorem after_after (a : UInt32) (m n : Nat) : after (after a m) n = after a (m + n) := by
+  rw [after_eq, after_eq, after_eq, add_ofNat_add]
+  congr 2
+  omega
+
 theorem getElem?_reverse_cons {β : Type} {x : β} {l : List β} {h : Nat} (hh : h < l.length) :
     (x :: l).reverse[h]? = l.reverse[h]? := by
   rw [List.reverse_cons, List.getElem?_append_left (by simpa using hh)]

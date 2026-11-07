@@ -97,4 +97,18 @@ theorem Typed.head_cons {σs : List ValueType} {v : Value} {vs : List Value} {t 
       subst ht
       exact h.1
 
+/-- Values whose types start with `i32` start with an `i32`. -/
+theorem Typed.i32_head {σs : List ValueType} {vs : List Value} (h : Typed σs vs)
+    (ht : σs.head? = some .i32) : ∃ c rest, vs = .i32 c :: rest := by
+  cases vs with
+  | nil =>
+      cases σs with
+      | nil => simp at ht
+      | cons _ _ => exact h.elim
+  | cons v rest =>
+      have hv := h.head_cons ht
+      cases v with
+      | i32 c => exact ⟨c, rest, rfl⟩
+      | _ => simp [HasType] at hv
+
 end LeanExe.ProofKit
