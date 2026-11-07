@@ -18,13 +18,12 @@
   (assume-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
   (cycle)
-  (assert (not (= (bvand (concat (concat (concat (concat (concat #b11110 v0) #b10101011010) v1) #xd) v2) #xf800d000) #xf0008000))) ; 0:0 - 0:0
   (read-reg |PSTATE| ((_ field |IT|)) (_ struct (|IT| #x00)))
   (write-reg |__currentCond| nil #xe)
   (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
-  (declare-const v299 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
-  (read-reg |_PC| nil v299)
+  (declare-const v295 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
+  (read-reg |_PC| nil v295)
   (assert (not (= (concat (concat #b11110 v0) #b10101) #b11101011010))) ; 0:0 - 0:0
   (assert (not (= (concat (concat #b11110 v0) #b10101) #b11101011000))) ; 0:0 - 0:0
   (assert (not (= (concat (concat #b11110 v0) #b10101) #b11101011000))) ; 0:0 - 0:0
@@ -339,20 +338,20 @@
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
   (read-reg |__isla_vector_gpr| nil true)
-  (declare-const v939 (_ BitVec 64)) ; src/v8_base.sail 2297:46 - 2297:75
-  (read-reg |R13| nil v939)
-  (define-const v979 (bvadd (bvadd ((_ extract 31 0) ((_ zero_extend 96) ((_ extract 31 0) v939))) ((_ extract 31 0) ((_ zero_extend 96) (bvnot ((_ zero_extend 20) (concat (concat v0 v1) v2)))))) #x00000001)) ; 0:0 - 0:0
+  (declare-const v935 (_ BitVec 64)) ; src/v8_base.sail 2297:46 - 2297:75
+  (read-reg |R13| nil v935)
+  (define-const v975 (bvadd (bvadd ((_ extract 31 0) ((_ zero_extend 96) ((_ extract 31 0) v935))) ((_ extract 31 0) ((_ zero_extend 96) (bvnot ((_ zero_extend 20) (concat (concat v0 v1) v2)))))) #x00000001)) ; 0:0 - 0:0
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
-  (declare-const v990 Bool) ; src/prelude.sail 334:46 - 334:55
+  (declare-const v986 Bool) ; src/prelude.sail 334:46 - 334:55
 
   (cases "src/v8_base.sail 13989:8 - 13993:9"
     (trace
-      (assert v990) ; 0:0 - 0:0
-      (define-const v991 ((_ zero_extend 32) v979)) ; src/v8_base.sail 13990:40 - 13990:66
-      (write-reg |R13| nil v991))
+      (assert v986) ; 0:0 - 0:0
+      (define-const v987 ((_ zero_extend 32) v975)) ; src/v8_base.sail 13990:40 - 13990:66
+      (write-reg |R13| nil v987))
     (trace
-      (assert (not v990)) ; 0:0 - 0:0
-      (define-const v992 (bvor (bvand v939 #xffffffff00000000) ((_ zero_extend 32) v979))) ; 0:0 - 0:0
-      (write-reg |R13| nil v992))))
+      (assert (not v986)) ; 0:0 - 0:0
+      (define-const v988 (bvor (bvand v935 #xffffffff00000000) ((_ zero_extend 32) v975))) ; 0:0 - 0:0
+      (write-reg |R13| nil v988))))

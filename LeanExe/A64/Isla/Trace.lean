@@ -22,8 +22,8 @@ in order of their first appearance.  It folds the operators of many arguments to
 the access kind of a memory read and the kind and the result of a memory write, which the
 semantics does not use, reads a name of the header in an expression as the field's variable,
 reads a vector primitive only over the references `R0` to `R30` in order, and reads the events
-`cycle`, `call`, `return`, `define-enum`, and `branch-address`, and the primitive
-`sail_take_exception` with a unit result, as `skip`.
+`cycle`, `call`, `return`, `define-enum`, and `branch-address`, and the primitives
+`sail_take_exception` and `sail_barrier` with a unit result, as `skip`.
 
 `Trace.Run P t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
 section 3, and `theories/opsem.v` of its repository): `declare-const` picks any value of its type,
@@ -82,9 +82,11 @@ e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
    `assume-reg` (`executor.rs` 694-720), so the variable that a reset to an undefined value
    declares, such as that of `TCR_EL1` in the traces of the branches, names the register's
    initial value.
-9. `sail_take_exception` has no effect.  Isla runs an `abstract` function of the IR by recording
-   an `abstract-primop` event and returning a fresh value (`executor.rs` 927-947), and
-   `sail_take_exception` returns unit (`armv9p4.ir` 70791).
+9. `sail_take_exception` and `sail_barrier` have no effect.  Isla runs an `abstract` function of
+   the IR by recording an `abstract-primop` event and returning a fresh value (`executor.rs`
+   927-947), and both functions return unit (`armv9p4.ir` 70791 and 1929600).  A barrier constrains
+   the order and the completion of memory accesses, which the semantics of one instruction on one
+   core does not observe, and Islaris steps over a barrier without effect (`opsem.v` 425-426).
 -/
 
 namespace LeanExe.A64.Isla
@@ -807,8 +809,8 @@ partial def Sx.beq : Sx → Sx → Bool
   | _, _ => false
 
 /-- An event other than `cases`.  A memory read's kind and a memory write's kind and result are
-dropped, a vector primitive must name `R0` to `R30` in order, and `sail_take_exception`, whose
-result is unit, has no effect. -/
+dropped, a vector primitive must name `R0` to `R30` in order, and `sail_take_exception` and
+`sail_barrier`, whose results are unit, have no effect. -/
 def toEvent (segs : List Segment) : Sx → Except String Event
   | .list [.atom "declare-const", x, ty] => return .declare (← toVar x) (← toTy ty)
   | .list [.atom "define-const", x, e] => return .define (← toVar x) (← toExp segs e)
@@ -831,6 +833,8 @@ def toEvent (segs : List Segment) : Sx → Except String Event
       return .writeGprs (← toBase i) (← toBase v) (← toAtoms xs)
     else .error "write_register_from_vector of registers other than R0 to R30"
   | .list (.atom "abstract-primop" :: .name "sail_take_exception" ::
+      .list [.atom "_", .atom "unit"] :: _) => .ok .skip
+  | .list (.atom "abstract-primop" :: .name "sail_barrier" ::
       .list [.atom "_", .atom "unit"] :: _) => .ok .skip
   | .list (.atom h :: _) =>
     if h ∈ ["cycle", "call", "return", "define-enum", "branch-address"] then .ok .skip

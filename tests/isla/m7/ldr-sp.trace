@@ -35,13 +35,12 @@
   (assert (and (= (bvadd ((_ extract 1 0) ((_ zero_extend 32) ((_ extract 31 0) v294))) ((_ extract 1 0) ((_ zero_extend 52) v1))) #b00) (and (bvuge (bvadd ((_ zero_extend 32) ((_ extract 31 0) v294)) ((_ zero_extend 52) v1)) #x0000000020000000) (bvule (bvadd ((_ zero_extend 32) ((_ extract 31 0) v294)) ((_ zero_extend 52) v1)) #x000000002001fffc)))) ; 0:0 - 0:0
   (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
   (cycle)
-  (assert (not (= (bvand (concat (concat #b11111000110111010 v0) v1) #xf800d000) #xf0008000))) ; 0:0 - 0:0
   (read-reg |PSTATE| ((_ field |IT|)) (_ struct (|IT| #x00)))
   (write-reg |__currentCond| nil #xe)
   (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
-  (declare-const v300 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
-  (read-reg |_PC| nil v300)
+  (declare-const v296 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
+  (read-reg |_PC| nil v296)
   (assert (not (= (concat (concat #b11111000110111010 v0) v1) #xf3bf8f2f))) ; 0:0 - 0:0
   (assert (not (= (concat (concat #b11111000110111010 v0) ((_ extract 11 4) v1)) #xf3af80f))) ; 0:0 - 0:0
   (assert (not (= (concat (concat #b11111000110111010 v0) ((_ extract 11 4) v1)) #xf3bf8f5))) ; 0:0 - 0:0
@@ -50,8 +49,8 @@
   (read-reg |SEE| nil (_ bv-1 128))
   (write-reg |SEE| nil (_ bv2963 128))
   (read-reg |__currentCond| nil #xe)
-  (define-const v321 ((_ extract 63 0) ((_ zero_extend 124) (concat #b0 v0)))) ; src/instrs32.sail 5517:17 - 5517:25
-  (assert (not (= ((_ sign_extend 64) v321) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
+  (define-const v317 ((_ extract 63 0) ((_ zero_extend 124) (concat #b0 v0)))) ; src/instrs32.sail 5517:17 - 5517:25
+  (assert (not (= ((_ sign_extend 64) v317) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
   (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
   (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
   (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v260))
@@ -60,8 +59,8 @@
   (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
   (read-reg |__isla_vector_gpr| nil true)
   (read-reg |R13| nil v294)
-  (define-const v332 (bvadd ((_ extract 31 0) v294) ((_ zero_extend 20) v1))) ; src/instrs32.sail 5444:45 - 5444:62
-  (assert (not (= ((_ sign_extend 64) v321) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
+  (define-const v328 (bvadd ((_ extract 31 0) v294) ((_ zero_extend 20) v1))) ; src/instrs32.sail 5444:45 - 5444:62
+  (assert (not (= ((_ sign_extend 64) v317) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
   (define-enum |MemOp| 3 (|MemOp_LOAD| |MemOp_STORE| |MemOp_PREFETCH|)) ; 0:0 - 0:0
   (define-enum |AccessType| 14 (|AccessType_IFETCH| |AccessType_GPR| |AccessType_ASIMD| |AccessType_SVE| |AccessType_SME| |AccessType_IC| |AccessType_DC| |AccessType_DCZero| |AccessType_AT| |AccessType_NV2| |AccessType_SPE| |AccessType_GCS| |AccessType_GPTW| |AccessType_TTW|)) ; 0:0 - 0:0
   (define-enum |MemAtomicOp| 11 (|MemAtomicOp_GCSSS1| |MemAtomicOp_ADD| |MemAtomicOp_BIC| |MemAtomicOp_EOR| |MemAtomicOp_ORR| |MemAtomicOp_SMAX| |MemAtomicOp_SMIN| |MemAtomicOp_UMAX| |MemAtomicOp_UMIN| |MemAtomicOp_SWP| |MemAtomicOp_CAS|)) ; 0:0 - 0:0
@@ -75,21 +74,21 @@
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (define-enum |Constraint| 29 (|Constraint_NONE| |Constraint_UNKNOWN| |Constraint_UNDEF| |Constraint_UNDEFEL0| |Constraint_NOP| |Constraint_TRUE| |Constraint_FALSE| |Constraint_DISABLED| |Constraint_UNCOND| |Constraint_COND| |Constraint_ADDITIONAL_DECODE| |Constraint_WBSUPPRESS| |Constraint_FAULT| |Constraint_LIMITED_ATOMICITY| |Constraint_NVNV1_00| |Constraint_NVNV1_01| |Constraint_NVNV1_11| |Constraint_EL1TIMESTAMP| |Constraint_EL2TIMESTAMP| |Constraint_OSH| |Constraint_ISH| |Constraint_NSH| |Constraint_NC| |Constraint_WT| |Constraint_WB| |Constraint_FORCE| |Constraint_FORCENOSLCHECK| |Constraint_MAPTOALLOCATED| |Constraint_PMSCR_PCT_VIRT|)) ; 0:0 - 0:0
-  (define-const v524 ((_ zero_extend 96) v332)) ; src/prelude.sail 245:44 - 245:55
-  (assert (not (bvslt v524 #x00000000000000000000000000000000))) ; 0:0 - 0:0
-  (assert (bvsgt v524 #x00000000000000000000000000000000)) ; 0:0 - 0:0
-  (define-const v530 (= v332 ((_ extract 31 0) (bvmul (bvsdiv v524 #x00000000000000000000000000000004) #x00000000000000000000000000000004)))) ; src/v8_base.sail 8036:11 - 8036:27
-  (assert (not (not v530))) ; 0:0 - 0:0
-  (assert v530) ; 0:0 - 0:0
-  (define-const v533 ((_ zero_extend 96) v332)) ; src/prelude.sail 245:44 - 245:55
-  (assert (not (bvslt v533 #x00000000000000000000000000000000))) ; 0:0 - 0:0
-  (assert (bvsgt v533 #x00000000000000000000000000000000)) ; 0:0 - 0:0
-  (assert (= v332 ((_ extract 31 0) (bvmul (bvsdiv v533 #x00000000000000000000000000000004) #x00000000000000000000000000000004)))) ; 0:0 - 0:0
+  (define-const v520 ((_ zero_extend 96) v328)) ; src/prelude.sail 245:44 - 245:55
+  (assert (not (bvslt v520 #x00000000000000000000000000000000))) ; 0:0 - 0:0
+  (assert (bvsgt v520 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (define-const v526 (= v328 ((_ extract 31 0) (bvmul (bvsdiv v520 #x00000000000000000000000000000004) #x00000000000000000000000000000004)))) ; src/v8_base.sail 8036:11 - 8036:27
+  (assert (not (not v526))) ; 0:0 - 0:0
+  (assert v526) ; 0:0 - 0:0
+  (define-const v529 ((_ zero_extend 96) v328)) ; src/prelude.sail 245:44 - 245:55
+  (assert (not (bvslt v529 #x00000000000000000000000000000000))) ; 0:0 - 0:0
+  (assert (bvsgt v529 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (= v328 ((_ extract 31 0) (bvmul (bvsdiv v529 #x00000000000000000000000000000004) #x00000000000000000000000000000004)))) ; 0:0 - 0:0
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (define-enum |Regime| 5 (|Regime_EL3| |Regime_EL30| |Regime_EL2| |Regime_EL20| |Regime_EL10|)) ; 0:0 - 0:0
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
-  (define-const v547 ((_ zero_extend 32) v332)) ; src/v8_base.sail 40848:40 - 40848:58
+  (define-const v543 ((_ zero_extend 32) v328)) ; src/v8_base.sail 40848:40 - 40848:58
   (call |AArch64_TranslateAddress|)
   (read-reg |SPESampleInFlight| nil false)
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
@@ -106,54 +105,54 @@
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |HCR_EL2| nil (_ struct (|bits| #x0000000080000000)))
   (read-reg |SCTLR_EL1| nil (_ struct (|bits| #x0000000030d0198d)))
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
-  (declare-const v1327 (_ BitVec 64)) ; 3906:0 - 0:0
-  (declare-const v1341 (_ BitVec 64)) ; 3913:0 - 0:0
-  (declare-const v1342 (_ BitVec 64)) ; 3913:0 - 0:0
-  (declare-const v1344 (_ BitVec 1)) ; 6330:0 - 0:0
-  (declare-const v1345 (_ BitVec 3)) ; 6336:0 - 0:0
-  (declare-const v1346 (_ BitVec 3)) ; 6342:0 - 0:0
-  (declare-const v1347 (_ BitVec 1)) ; 6348:0 - 0:0
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (declare-const v1323 (_ BitVec 64)) ; 3906:0 - 0:0
+  (declare-const v1337 (_ BitVec 64)) ; 3913:0 - 0:0
+  (declare-const v1338 (_ BitVec 64)) ; 3913:0 - 0:0
+  (declare-const v1340 (_ BitVec 1)) ; 6330:0 - 0:0
+  (declare-const v1341 (_ BitVec 3)) ; 6336:0 - 0:0
+  (declare-const v1342 (_ BitVec 3)) ; 6342:0 - 0:0
+  (declare-const v1343 (_ BitVec 1)) ; 6348:0 - 0:0
   (read-reg |TCR_EL1| nil (_ struct (|bits| #x0000000180a03520)))
   (read-reg |MAIR_EL1| ((_ field |bits|)) (_ struct (|bits| #x000000000000ff00)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
-  (assert (not (not (= (bvand v547 #xffffffff00000000) #x0000000000000000)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (assert (not (not (= (bvand v543 #xffffffff00000000) #x0000000000000000)))) ; 0:0 - 0:0
   (read-reg |__tlb_enabled| nil false)
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
-  (declare-const v1967 (_ BitVec 128)) ; src/v8_base.sail 12952:25 - 12952:35
-  (read-reg |_TTBR0_EL1| nil (_ struct (|bits| v1967)))
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (declare-const v1963 (_ BitVec 128)) ; src/v8_base.sail 12952:25 - 12952:35
+  (read-reg |_TTBR0_EL1| nil (_ struct (|bits| v1963)))
   (read-reg |TTBR0_NS| nil (_ struct (|bits| #x0000000100000000)))
-  (define-const v1976 ((_ zero_extend 72) (bvshl ((_ zero_extend 9) ((_ extract 47 1) ((_ zero_extend 0) (bvor (bvand v1967 #xffffffffffffffff0000000000000000) #x00000000000000000000000100000000)))) #x00000000000001))) ; src/prelude.sail 245:44 - 245:55
-  (assert (not (bvslt v1976 #x00000000000000000000000000000000))) ; 0:0 - 0:0
-  (assert (bvsgt v1976 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (define-const v1972 ((_ zero_extend 72) (bvshl ((_ zero_extend 9) ((_ extract 47 1) ((_ zero_extend 0) (bvor (bvand v1963 #xffffffffffffffff0000000000000000) #x00000000000000000000000100000000)))) #x00000000000001))) ; src/prelude.sail 245:44 - 245:55
+  (assert (not (bvslt v1972 #x00000000000000000000000000000000))) ; 0:0 - 0:0
+  (assert (bvsgt v1972 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (declare-const v1980 Bool) ; 4787:0 - 0:0
+  (declare-const v1982 Bool) ; 4787:0 - 0:0
   (declare-const v1984 Bool) ; 4787:0 - 0:0
-  (declare-const v1986 Bool) ; 4787:0 - 0:0
-  (declare-const v1988 Bool) ; 4787:0 - 0:0
-  (define-const v1989 (ite v1988 |DeviceType_GRE| (ite v1986 |DeviceType_nGnRnE| (ite v1984 |DeviceType_nGnRE| |DeviceType_nGRE|)))) ; 4787:0 - 0:0
+  (define-const v1985 (ite v1984 |DeviceType_GRE| (ite v1982 |DeviceType_nGnRnE| (ite v1980 |DeviceType_nGnRE| |DeviceType_nGRE|)))) ; 4787:0 - 0:0
   (define-enum |DescriptorType| 3 (|DescriptorType_Table| |DescriptorType_Leaf| |DescriptorType_Invalid|)) ; 0:0 - 0:0
-  (define-const v2306 (bvor ((_ extract 55 0) (bvmul (bvsdiv v1976 #x00000000000000000000000000000020) #x00000000000000000000000000000020)) (bvshl ((_ extract 55 0) (bvlshr (bvand v547 #x00000000c0000000) #x000000000000001e)) #x00000000000003))) ; src/v8_base.sail 25688:26 - 25688:51
+  (define-const v2302 (bvor ((_ extract 55 0) (bvmul (bvsdiv v1972 #x00000000000000000000000000000020) #x00000000000000000000000000000020)) (bvshl ((_ extract 55 0) (bvlshr (bvand v543 #x00000000c0000000) #x000000000000001e)) #x00000000000003))) ; src/v8_base.sail 25688:26 - 25688:51
   (read-reg |__supported_pa_size| nil (_ bv44 128))
-  (assert (not (not (= (bvand v2306 #xfffff000000000) #x00000000000000)))) ; 0:0 - 0:0
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (assert (not (not (= (bvand v2302 #xfffff000000000) #x00000000000000)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |VTCR_EL2| nil (_ struct (|bits| #x0000000000000000)))
-  (declare-const v3003 (_ BitVec 64)) ; src/v8_base.sail 25788:20 - 25788:33
-  (read-reg |SCTLR_EL2| nil (_ struct (|bits| v3003)))
-  (assert (not (= ((_ extract 55 16) v2306) #x0000002c00))) ; 0:0 - 0:0
-  (assert (not (= ((_ extract 55 16) v2306) #x0000003c00))) ; 0:0 - 0:0
-  (define-const v3071 ((_ zero_extend 8) v2306)) ; src/interface.sail 106:23 - 106:47
+  (declare-const v2999 (_ BitVec 64)) ; src/v8_base.sail 25788:20 - 25788:33
+  (read-reg |SCTLR_EL2| nil (_ struct (|bits| v2999)))
+  (assert (not (= ((_ extract 55 16) v2302) #x0000002c00))) ; 0:0 - 0:0
+  (assert (not (= ((_ extract 55 16) v2302) #x0000003c00))) ; 0:0 - 0:0
+  (define-const v3067 ((_ zero_extend 8) v2302)) ; src/interface.sail 106:23 - 106:47
   (read-reg |__monomorphize_reads| nil false)
-  (read-mem #x0000000000000745 (_ struct (|pa| v2306) (|tag| false) (|translation| (|Some| (_ struct (|s1level| (|Some| (_ bv1 128))) (|vmid| (|None| (_ unit))) (|s2info| (|None| (_ unit))) (|va| v547) (|s1params| (|Some| (_ struct (|uwxn| v1347) (|ha| #b0) (|irgn| #b01) (|pie| #b0) (|t0sz| v1345) (|wxn| #b0) (|e0pd| #b0) (|haft| #b0) (|cmow| #b0) (|nv1| #b0) (|emec| #b0) (|pire0| (_ struct (|bits| v1342))) (|t1sz| v1346) (|pnch| #b0) (|txsz| #b100000) (|d128| #b0) (|ntlsmd| #b1) (|epan| #b0) (|orgn| #b01) (|mair2| (_ struct (|bits| v1327))) (|ee| #b0) (|dct| #b0) (|tbid| #b0) (|pir| (_ struct (|bits| v1341))) (|amec| v1344) (|ps| #b001) (|tbi| #b0) (|mtx| #b0) (|nfd| #b0) (|aie| #b0) (|tgx| |TGx_4KB|) (|sh| #b11) (|sif| #b0) (|hd| #b0) (|disch| #b0) (|dc| #b0) (|skl| #b00) (|mair| (_ struct (|bits| #x000000000000ff00))) (|ds| #b0) (|hpd| #b0)))) (|memattrs| (_ struct (|inner| (_ struct (|transient| false) (|attrs| #b11) (|hints| #b11))) (|device| v1989) (|outer| (_ struct (|transient| false) (|attrs| #b11) (|hints| #b11))) (|shareability| |Shareability_ISH|) (|xs| #b0) (|memtype| |MemType_Normal|) (|tags| |MemTag_Untagged|) (|notagaccess| false))) (|s2params| (|None| (_ unit))) (|regime| |Regime_EL10|) (|asid| (|None| (_ unit)))))) (|va| (|Some| v547)) (|access_kind| (|AK_ttw| (_ unit))) (|size| (_ bv8 128))) v3071 8)
+  (read-mem #x0000000000000745 (_ struct (|access_kind| (|AK_ttw| (_ unit))) (|pa| v2302) (|tag| false) (|translation| (|Some| (_ struct (|memattrs| (_ struct (|notagaccess| false) (|device| v1985) (|memtype| |MemType_Normal|) (|inner| (_ struct (|hints| #b11) (|attrs| #b11) (|transient| false))) (|outer| (_ struct (|transient| false) (|attrs| #b11) (|hints| #b11))) (|shareability| |Shareability_ISH|) (|tags| |MemTag_Untagged|) (|xs| #b0))) (|regime| |Regime_EL10|) (|s1level| (|Some| (_ bv1 128))) (|asid| (|None| (_ unit))) (|s2params| (|None| (_ unit))) (|s1params| (|Some| (_ struct (|sif| #b0) (|hpd| #b0) (|t0sz| v1341) (|haft| #b0) (|sh| #b11) (|mair2| (_ struct (|bits| v1323))) (|irgn| #b01) (|orgn| #b01) (|skl| #b00) (|d128| #b0) (|disch| #b0) (|ds| #b0) (|ha| #b0) (|ntlsmd| #b1) (|emec| #b0) (|ee| #b0) (|ps| #b001) (|pie| #b0) (|mtx| #b0) (|e0pd| #b0) (|tbi| #b0) (|wxn| #b0) (|tbid| #b0) (|tgx| |TGx_4KB|) (|pir| (_ struct (|bits| v1337))) (|epan| #b0) (|hd| #b0) (|dc| #b0) (|nfd| #b0) (|dct| #b0) (|uwxn| v1343) (|pire0| (_ struct (|bits| v1338))) (|t1sz| v1342) (|amec| v1340) (|pnch| #b0) (|nv1| #b0) (|mair| (_ struct (|bits| #x000000000000ff00))) (|cmow| #b0) (|txsz| #b100000) (|aie| #b0)))) (|s2info| (|None| (_ unit))) (|vmid| (|None| (_ unit))) (|va| v543)))) (|va| (|Some| v543)) (|size| (_ bv8 128))) v3067 8)
   (read-reg |__monomorphize_descriptors| nil false)
-  (assert (not (not (= (bvand (bvand ((_ extract 55 0) v547) #x0000003fffffff) #xfffff000000000) #x00000000000000)))) ; 0:0 - 0:0
-  (define-const v3436 (bvand ((_ extract 55 0) v547) #x0000003fffffff)) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail 147:2 - 147:58
-  (assert (= ((_ extract 0 0) (bvlshr v547 #x0000000000000037)) #b0)) ; 0:0 - 0:0
+  (assert (not (not (= (bvand (bvand ((_ extract 55 0) v543) #x0000003fffffff) #xfffff000000000) #x00000000000000)))) ; 0:0 - 0:0
+  (define-const v3432 (bvand ((_ extract 55 0) v543) #x0000003fffffff)) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail 147:2 - 147:58
+  (assert (= ((_ extract 0 0) (bvlshr v543 #x0000000000000037)) #b0)) ; 0:0 - 0:0
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (read-reg |PSTATE| ((_ field |D|)) (_ struct (|D| v262)))
   (read-reg |OSLSR_EL1| nil (_ struct (|bits| #x000000000000000a)))
@@ -161,115 +160,115 @@
   (read-reg |OSDLR_EL1| nil (_ struct (|bits| #x0000000000000000)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (read-reg |DBGEN| nil |Signal_Low|)
-  (define-const v4663 ((_ zero_extend 0) v547)) ; src/v8_base.sail 27831:22 - 27831:40
+  (define-const v4659 ((_ zero_extend 0) v543)) ; src/v8_base.sail 27831:22 - 27831:40
   (return |AArch64_TranslateAddress|)
-  (assert (not (= ((_ extract 55 16) v3436) #x0000002c00))) ; 0:0 - 0:0
-  (assert (not (= ((_ extract 55 16) v3436) #x0000003c00))) ; 0:0 - 0:0
+  (assert (not (= ((_ extract 55 16) v3432) #x0000002c00))) ; 0:0 - 0:0
+  (assert (not (= ((_ extract 55 16) v3432) #x0000003c00))) ; 0:0 - 0:0
   (define-enum |Access_variety| 3 (|AV_plain| |AV_exclusive| |AV_atomic_rmw|)) ; 0:0 - 0:0
   (define-enum |Access_strength| 3 (|AS_normal| |AS_rel_or_acq| |AS_acq_rcpc|)) ; 0:0 - 0:0
-  (define-const v4728 ((_ zero_extend 8) v3436)) ; src/interface.sail 106:23 - 106:47
-  (declare-const v4729 (_ BitVec 32)) ; 0:0 - 0:0
-  (read-mem v4729 (_ struct (|tag| false) (|translation| (|None| (_ unit))) (|va| (|Some| v4663)) (|size| (_ bv4 128)) (|access_kind| (|AK_explicit| (_ struct (|variety| |AV_plain|) (|strength| |AS_normal|)))) (|pa| v3436)) v4728 4)
+  (define-const v4724 ((_ zero_extend 8) v3432)) ; src/interface.sail 106:23 - 106:47
+  (declare-const v4725 (_ BitVec 32)) ; 0:0 - 0:0
+  (read-mem v4725 (_ struct (|access_kind| (|AK_explicit| (_ struct (|strength| |AS_normal|) (|variety| |AV_plain|)))) (|translation| (|None| (_ unit))) (|va| (|Some| v4659)) (|size| (_ bv4 128)) (|pa| v3432) (|tag| false)) v4724 4)
   (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
   (read-reg |PSTATE| ((_ field |E|)) (_ struct (|E| #b0)))
-  (assert (not (= ((_ sign_extend 64) v321) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
-  (define-const v4733 ((_ sign_extend 64) v321)) ; src/instrs32.sail 5461:8 - 5461:23
-  (assert (bvsge v4733 #x00000000000000000000000000000000)) ; 0:0 - 0:0
-  (assert (bvsle v4733 #x0000000000000000000000000000000e)) ; 0:0 - 0:0
+  (assert (not (= ((_ sign_extend 64) v317) #x0000000000000000000000000000000f))) ; 0:0 - 0:0
+  (define-const v4729 ((_ sign_extend 64) v317)) ; src/instrs32.sail 5461:8 - 5461:23
+  (assert (bvsge v4729 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (bvsle v4729 #x0000000000000000000000000000000e)) ; 0:0 - 0:0
   (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
   (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
   (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
-  (declare-const v4741 Bool) ; src/prelude.sail 334:46 - 334:55
+  (declare-const v4737 Bool) ; src/prelude.sail 334:46 - 334:55
 
   (cases "src/v8_base.sail 13989:8 - 13993:9"
     (trace
-      (assert v4741) ; 0:0 - 0:0
-      (define-const v4742 ((_ extract 63 0) v4733)) ; src/v8_base.sail 13990:15 - 13990:36
-      (assert (bvsge ((_ sign_extend 64) v4742) #x00000000000000000000000000000000)) ; 0:0 - 0:0
-      (assert (bvsle ((_ sign_extend 64) v4742) #x0000000000000000000000000000000e)) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x00000000000000000000000000000008))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x00000000000000000000000000000009))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x0000000000000000000000000000000a))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x0000000000000000000000000000000b))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x0000000000000000000000000000000c))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x0000000000000000000000000000000d))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4742) #x0000000000000000000000000000000e))) ; 0:0 - 0:0
-      (define-const v4768 ((_ zero_extend 32) v4729)) ; src/v8_base.sail 13990:40 - 13990:66
-      (declare-const v4771 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4774 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4777 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4780 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4783 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4786 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4789 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4792 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4795 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4798 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4801 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4804 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4807 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4812 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4815 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4818 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4821 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4824 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4827 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4830 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4833 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4836 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4839 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4842 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4845 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4848 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4851 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4854 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4857 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (declare-const v4860 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
-      (abstract-primop |write_register_from_vector| (_ unit) v4742 v4768 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4771 v4774 v4777 v4780 v4783 v4786 v4789 v4792 v4795 v4798 v4801 v4804 v4807 v294 v4812 v4815 v4818 v4821 v4824 v4827 v4830 v4833 v4836 v4839 v4842 v4845 v4848 v4851 v4854 v4857 v4860)))
+      (assert v4737) ; 0:0 - 0:0
+      (define-const v4738 ((_ extract 63 0) v4729)) ; src/v8_base.sail 13990:15 - 13990:36
+      (assert (bvsge ((_ sign_extend 64) v4738) #x00000000000000000000000000000000)) ; 0:0 - 0:0
+      (assert (bvsle ((_ sign_extend 64) v4738) #x0000000000000000000000000000000e)) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x00000000000000000000000000000008))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x00000000000000000000000000000009))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x0000000000000000000000000000000a))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x0000000000000000000000000000000b))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x0000000000000000000000000000000c))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x0000000000000000000000000000000d))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4738) #x0000000000000000000000000000000e))) ; 0:0 - 0:0
+      (define-const v4764 ((_ zero_extend 32) v4725)) ; src/v8_base.sail 13990:40 - 13990:66
+      (declare-const v4767 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4770 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4773 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4776 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4779 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4782 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4785 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4788 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4791 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4794 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4797 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4800 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4803 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4808 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4811 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4814 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4817 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4820 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4823 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4826 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4829 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4832 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4835 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4838 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4841 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4844 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4847 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4850 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4853 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (declare-const v4856 (_ BitVec 64)) ; src/v8_base.sail 2316:30 - 2316:63
+      (abstract-primop |write_register_from_vector| (_ unit) v4738 v4764 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4767 v4770 v4773 v4776 v4779 v4782 v4785 v4788 v4791 v4794 v4797 v4800 v4803 v294 v4808 v4811 v4814 v4817 v4820 v4823 v4826 v4829 v4832 v4835 v4838 v4841 v4844 v4847 v4850 v4853 v4856)))
     (trace
-      (assert (not v4741)) ; 0:0 - 0:0
-      (define-const v4862 ((_ extract 63 0) v4733)) ; src/v8_base.sail 13992:15 - 13992:36
-      (assert (bvsge ((_ sign_extend 64) v4862) #x00000000000000000000000000000000)) ; 0:0 - 0:0
-      (assert (bvsle ((_ sign_extend 64) v4862) #x0000000000000000000000000000000e)) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x00000000000000000000000000000008))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x00000000000000000000000000000009))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x0000000000000000000000000000000a))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x0000000000000000000000000000000b))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x0000000000000000000000000000000c))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x0000000000000000000000000000000d))) ; 0:0 - 0:0
-      (assert (not (= ((_ sign_extend 64) v4862) #x0000000000000000000000000000000e))) ; 0:0 - 0:0
-      (define-const v4888 ((_ extract 4 0) v4862)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4889 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4891 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4894 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4897 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4900 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4903 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4906 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4909 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4912 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4915 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4918 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4921 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4924 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4929 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4932 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4935 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4938 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4941 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4944 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4947 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4950 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4953 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4956 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4959 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4962 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4965 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4968 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4971 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4974 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (declare-const v4977 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
-      (define-const v4978 (ite (= v4888 #b11110) v4977 (ite (= v4888 #b11101) v4974 (ite (= v4888 #b11100) v4971 (ite (= v4888 #b11011) v4968 (ite (= v4888 #b11010) v4965 (ite (= v4888 #b11001) v4962 (ite (= v4888 #b11000) v4959 (ite (= v4888 #b10111) v4956 (ite (= v4888 #b10110) v4953 (ite (= v4888 #b10101) v4950 (ite (= v4888 #b10100) v4947 (ite (= v4888 #b10011) v4944 (ite (= v4888 #b10010) v4941 (ite (= v4888 #b10001) v4938 (ite (= v4888 #b10000) v4935 (ite (= v4888 #b01111) v4932 (ite (= v4888 #b01110) v4929 (ite (= v4888 #b01101) v294 (ite (= v4888 #b01100) v4924 (ite (= v4888 #b01011) v4921 (ite (= v4888 #b01010) v4918 (ite (= v4888 #b01001) v4915 (ite (= v4888 #b01000) v4912 (ite (= v4888 #b00111) v4909 (ite (= v4888 #b00110) v4906 (ite (= v4888 #b00101) v4903 (ite (= v4888 #b00100) v4900 (ite (= v4888 #b00011) v4897 (ite (= v4888 #b00010) v4894 (ite (= v4888 #b00001) v4891 v4889))))))))))))))))))))))))))))))) ; src/v8_base.sail 2306:23 - 2306:52
-      (abstract-primop |read_register_from_vector| v4978 v4862 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4889 v4891 v4894 v4897 v4900 v4903 v4906 v4909 v4912 v4915 v4918 v4921 v4924 v294 v4929 v4932 v4935 v4938 v4941 v4944 v4947 v4950 v4953 v4956 v4959 v4962 v4965 v4968 v4971 v4974 v4977))
-      (define-const v4979 (bvor (bvand v4978 #xffffffff00000000) ((_ zero_extend 32) v4729))) ; 0:0 - 0:0
-      (abstract-primop |write_register_from_vector| (_ unit) v4862 v4979 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4889 v4891 v4894 v4897 v4900 v4903 v4906 v4909 v4912 v4915 v4918 v4921 v4924 v294 v4929 v4932 v4935 v4938 v4941 v4944 v4947 v4950 v4953 v4956 v4959 v4962 v4965 v4968 v4971 v4974 v4977)))))
+      (assert (not v4737)) ; 0:0 - 0:0
+      (define-const v4858 ((_ extract 63 0) v4729)) ; src/v8_base.sail 13992:15 - 13992:36
+      (assert (bvsge ((_ sign_extend 64) v4858) #x00000000000000000000000000000000)) ; 0:0 - 0:0
+      (assert (bvsle ((_ sign_extend 64) v4858) #x0000000000000000000000000000000e)) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x00000000000000000000000000000008))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x00000000000000000000000000000009))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x0000000000000000000000000000000a))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x0000000000000000000000000000000b))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x0000000000000000000000000000000c))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x0000000000000000000000000000000d))) ; 0:0 - 0:0
+      (assert (not (= ((_ sign_extend 64) v4858) #x0000000000000000000000000000000e))) ; 0:0 - 0:0
+      (define-const v4884 ((_ extract 4 0) v4858)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4885 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4887 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4890 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4893 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4896 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4899 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4902 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4905 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4908 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4911 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4914 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4917 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4920 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4925 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4928 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4931 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4934 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4937 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4940 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4943 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4946 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4949 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4952 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4955 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4958 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4961 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4964 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4967 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4970 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (declare-const v4973 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+      (define-const v4974 (ite (= v4884 #b11110) v4973 (ite (= v4884 #b11101) v4970 (ite (= v4884 #b11100) v4967 (ite (= v4884 #b11011) v4964 (ite (= v4884 #b11010) v4961 (ite (= v4884 #b11001) v4958 (ite (= v4884 #b11000) v4955 (ite (= v4884 #b10111) v4952 (ite (= v4884 #b10110) v4949 (ite (= v4884 #b10101) v4946 (ite (= v4884 #b10100) v4943 (ite (= v4884 #b10011) v4940 (ite (= v4884 #b10010) v4937 (ite (= v4884 #b10001) v4934 (ite (= v4884 #b10000) v4931 (ite (= v4884 #b01111) v4928 (ite (= v4884 #b01110) v4925 (ite (= v4884 #b01101) v294 (ite (= v4884 #b01100) v4920 (ite (= v4884 #b01011) v4917 (ite (= v4884 #b01010) v4914 (ite (= v4884 #b01001) v4911 (ite (= v4884 #b01000) v4908 (ite (= v4884 #b00111) v4905 (ite (= v4884 #b00110) v4902 (ite (= v4884 #b00101) v4899 (ite (= v4884 #b00100) v4896 (ite (= v4884 #b00011) v4893 (ite (= v4884 #b00010) v4890 (ite (= v4884 #b00001) v4887 v4885))))))))))))))))))))))))))))))) ; src/v8_base.sail 2306:23 - 2306:52
+      (abstract-primop |read_register_from_vector| v4974 v4858 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4885 v4887 v4890 v4893 v4896 v4899 v4902 v4905 v4908 v4911 v4914 v4917 v4920 v294 v4925 v4928 v4931 v4934 v4937 v4940 v4943 v4946 v4949 v4952 v4955 v4958 v4961 v4964 v4967 v4970 v4973))
+      (define-const v4975 (bvor (bvand v4974 #xffffffff00000000) ((_ zero_extend 32) v4725))) ; 0:0 - 0:0
+      (abstract-primop |write_register_from_vector| (_ unit) v4858 v4975 (_ vec (_ reg |R0|) (_ reg |R1|) (_ reg |R2|) (_ reg |R3|) (_ reg |R4|) (_ reg |R5|) (_ reg |R6|) (_ reg |R7|) (_ reg |R8|) (_ reg |R9|) (_ reg |R10|) (_ reg |R11|) (_ reg |R12|) (_ reg |R13|) (_ reg |R14|) (_ reg |R15|) (_ reg |R16|) (_ reg |R17|) (_ reg |R18|) (_ reg |R19|) (_ reg |R20|) (_ reg |R21|) (_ reg |R22|) (_ reg |R23|) (_ reg |R24|) (_ reg |R25|) (_ reg |R26|) (_ reg |R27|) (_ reg |R28|) (_ reg |R29|) (_ reg |R30|)) (_ vec v4885 v4887 v4890 v4893 v4896 v4899 v4902 v4905 v4908 v4911 v4914 v4917 v4920 v294 v4925 v4928 v4931 v4934 v4937 v4940 v4943 v4946 v4949 v4952 v4955 v4958 v4961 v4964 v4967 v4970 v4973)))))

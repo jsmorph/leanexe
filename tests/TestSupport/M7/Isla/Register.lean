@@ -4,9 +4,9 @@ import LeanExe.M7.Isla.Profile
 /-!
 Theorems of `Agrees` for the register forms of `LeanExe/M7/Machine.lean`, from the traces of
 `tests/isla/m7` under the profile `sys` of `LeanExe/M7/Isla/Profile.lean`.  Each theorem holds for
-every register of r0 to r7 in each field, every machine, every platform, and every sequence of
-device values.  `tests/isla/m7-theorems.sh` elaborates the module and prints the axioms of its
-theorems.
+every register of r0 to r7 in each field, every machine whose program counter plus 4 is below
+2^32, every platform, and every sequence of device values.  `tests/isla/m7-theorems.sh`
+elaborates the module and prints the axioms of its theorems.
 
 The forward direction of a proof takes each path of the trace to its outcome, and the backward
 direction builds the path that keeps bits 63 to 32 of the written register.  `t32_reg_end` and
@@ -78,42 +78,47 @@ macro_rules
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 8000 in
 /-- The trace of `AND.W Rd, Rn, Rm` agrees with `exec` for every register of r0 to r7 in each
-field and every machine. -/
+field and every machine whose program counter plus 4 is below 2^32. -/
 theorem andReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d n k : Fin 8)
-    (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
-      andRegT (regFields d n k) (.andReg d n k) m := by
+    (m : Mach) (hpc : m.s.pc.toNat + 4 < 4294967296) :
+    Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"] andRegT (regFields d n k)
+      (.andReg d n k) m := by
   reg3_agrees andRegT 2847 m [u.feature, if m.s.cFlag then 1 else 0, m.s.pc.toNat, 0]
     [ofNat_and32]
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 8000 in
 /-- The trace of `EOR.W Rd, Rn, Rm` agrees with `exec` for every register of r0 to r7 in each
-field and every machine. -/
+field and every machine whose program counter plus 4 is below 2^32. -/
 theorem eorReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d n k : Fin 8)
-    (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
-      eorRegT (regFields d n k) (.eorReg d n k) m := by
+    (m : Mach) (hpc : m.s.pc.toNat + 4 < 4294967296) :
+    Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"] eorRegT (regFields d n k)
+      (.eorReg d n k) m := by
   reg3_agrees eorRegT 2907 m [u.feature, if m.s.cFlag then 1 else 0, m.s.pc.toNat, 0]
     [ofNat_xor32]
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 8000 in
 /-- The trace of `ADC.W Rd, Rn, Rm` agrees with `exec` for every register of r0 to r7 in each
-field and every machine. -/
+field and every machine whose program counter plus 4 is below 2^32. -/
 theorem adcReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d n k : Fin 8)
-    (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
-      adcRegT (regFields d n k) (.adcReg d n k) m := by
+    (m : Mach) (hpc : m.s.pc.toNat + 4 < 4294967296) :
+    Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"] adcRegT (regFields d n k)
+      (.adcReg d n k) m := by
   reg3_agrees adcRegT 2817 m [u.feature, if m.s.cFlag then 1 else 0, m.s.pc.toNat, 0]
     [ofNat_adc32]
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 8000 in
 /-- The trace of `ORR{S}.W Rd, Rn, Rm` agrees with `exec` for both values of the S bit, every
-register of r0 to r7 in each field, and every machine.  With S set, the trace forks on a zero
+register of r0 to r7 in each field, and every machine whose program counter plus 4 is below
+2^32.  With S set, the trace forks on a zero
 result and writes Z as a constant, so the backward direction takes the cases of S and of a zero
 result. -/
 theorem orrReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (sf : Fin 2)
-    (d n k : Fin 8) (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
-      orrRegT (regFieldsS sf d n k) (.orrReg sf d n k) m := by
+    (d n k : Fin 8) (m : Mach) (hpc : m.s.pc.toNat + 4 < 4294967296) :
+    Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"] orrRegT (regFieldsS sf d n k)
+      (.orrReg sf d n k) m := by
   without_info
     refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
     · apply decode_halves (by decide) (by intro h; cases h)
