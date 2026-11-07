@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
-# usart3Tick, NAME echo, and the energy controller's gateway of gwTickUsart3, NAME gateway.
+# usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, and the
+# SHA-256 step shaUsart3Tick, NAME sha.
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -12,7 +13,9 @@
 # axioms that file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound,
 # and reports the check's elapsed time and peak memory.  It also writes the measurement images of
 # tests/TestSupport/M7/Dwt.lean, NAME-dwt.bin and for the echo div-dwt.bin, which no theorem
-# covers.
+# covers.  For the SHA-256 step it builds m7-windows and tests/TestSupport/M7/ShaImages.lean and
+# writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, without a
+# kernel check: no theorem covers the image.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -34,6 +37,9 @@
 # set, checks the commands and the monitoring, and writes the records NAME.records.in and
 # NAME.records.out, and the script then reads USART_ISR over SWD into NAME.isr and requires ORE,
 # bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
+# For the SHA-256 step, tests/baremetal/uart_sha.py sends blocks of 64 bytes in lockstep and checks
+# each answer against hashlib.sha256 of the bytes sent so far, and the script then requires ORE
+# clear in the same way.
 # The reset over SWD leaves the debug state that the probe set, which the theorems' power-on
 # premise excludes.  "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without
 # st-flash, for a run from the power-on reset of a replug after NAME.bin lies in the flash.
@@ -93,7 +99,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway) ;;
+    echo|gateway|sha) ;;
     *) usage ;;
   esac
 }
@@ -151,6 +157,7 @@ host_run() {
   local host
   case $1 in
     echo) host=(uart_echo.py) ;;
+    sha) host=(uart_sha.py) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
       rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
@@ -176,12 +183,18 @@ case $1 in
         mem=${MEM:-12G} ;;
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
         count=13 mem=${MEM:-16G} ;;
+      sha) lib=TestSupport.M7.ShaImages cmd=sha-board dwt= file= count=0 mem=${MEM:-12G} ;;
     esac
-    rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.* "${out:?}/$file".*
+    rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
+    [ -z "$file" ] || rm -f "${out:?}/$file".*
     tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build m7-windows \
       "$lib"
     tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
       tee "$out/$name.addr"
+    if [ -z "$file" ]; then
+      echo "unproved: $name.bin, $(stat -c %s "$out/$name.bin") bytes, without a kernel check"
+      exit 0
+    fi
     tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
     if [ "$name" = echo ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
@@ -270,7 +283,7 @@ EOF
       flash "$2.bin"
     fi
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
-    if [ "$2" = gateway ]; then
+    if [ "$2" != echo ]; then
       overrun "$2"
     fi
     ;;
@@ -285,7 +298,10 @@ EOF
     ;;
   measure)
     [ "$#" -eq 3 ] || usage
-    program "$2"
+    case $2 in
+      echo|gateway) ;;
+      *) usage ;;
+    esac
     name=$2
     flash "$name-dwt.bin"
     status=0

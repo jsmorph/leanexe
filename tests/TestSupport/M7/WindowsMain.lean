@@ -2,12 +2,13 @@ import TestSupport.M7.Windows
 import TestSupport.M7.Qemu
 import TestSupport.M7.GwImages
 import TestSupport.M7.CrcImages
+import TestSupport.M7.ShaImages
 import TestSupport.M7.Dwt
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
-`echo-usart3` and `echo-cmsdk`, the gateways `gateway-usart3` and `gateway-cmsdk`, and the CRC-32
-steps `crc-usart3` and `crc-cmsdk`.
+`echo-usart3` and `echo-cmsdk`, the gateways `gateway-usart3` and `gateway-cmsdk`, the CRC-32
+steps `crc-usart3` and `crc-cmsdk`, and the SHA-256 steps `sha-usart3` and `sha-cmsdk`.
 
 - `m7-windows frames` prints each program's functions with their frames and sizes.
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
@@ -26,6 +27,11 @@ steps `crc-usart3` and `crc-cmsdk`.
   QEMU's `mps2-an500` with the setup of its area, which no theorem covers
   (`tests/TestSupport/M7/CrcImages.lean`), and prints the addresses of `main` and of its loop's
   head.
+- `m7-windows sha-qemu FILE` writes to FILE the image of the SHA-256 step `shaCmsdkTick` for QEMU's
+  `mps2-an500`, and `m7-windows sha-board FILE` the image of `shaUsart3Tick` for the NUCLEO-F767ZI,
+  each with the setup of its area, which no theorem covers
+  (`tests/TestSupport/M7/ShaImages.lean`), and each prints the addresses of `main` and of its
+  loop's head.
 - `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, and `m7-windows div-dwt FILE` write
   the measurement images of `tests/TestSupport/M7/Dwt.lean`: the echo and the gateway with the
   cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
@@ -37,7 +43,8 @@ steps `crc-usart3` and `crc-cmsdk`.
   receives the bytes of `uart_echo.py`'s lockstep message, blocks of its burst lengths 2, 16, 322,
   and 65,536, and the message again, and must answer each with bit 5 flipped.  A CRC-32 step
   receives the same bytes and must answer each with the low byte of the CRC-32 of the bytes so
-  far.  A gateway receives
+  far.  A SHA-256 step receives the 64 blocks of `shaInput` and must answer each with the 32
+  bytes of the digest of the bytes so far.  A gateway receives
   the input records of the file IN, 18 words a line, and must send the output records of the file
   OUT, 6 words a line, each word's bytes the most significant first.
 
@@ -150,6 +157,12 @@ def main (args : List String) : IO UInt32 := do
   | ["crc-qemu", file] =>
       writeImage "crc-cmsdk-qemu" file TestSupport.M7.CrcImages.image
         TestSupport.M7.CrcImages.boot.base TestSupport.M7.CrcImages.loopHead
+  | ["sha-qemu", file] =>
+      writeImage "sha-cmsdk-qemu" file TestSupport.M7.ShaImages.qemuImage
+        TestSupport.M7.ShaImages.qemuBoot.base TestSupport.M7.ShaImages.qemuHead
+  | ["sha-board", file] =>
+      writeImage "sha-usart3-board" file TestSupport.M7.ShaImages.boardImage
+        TestSupport.M7.ShaImages.boardBoot.base TestSupport.M7.ShaImages.boardHead
   | ["gateway-dwt", file] =>
       match TestSupport.M7.Dwt.gwDwt with
       | .ok bytes =>
@@ -185,7 +198,9 @@ def main (args : List String) : IO UInt32 := do
           return 1
   | "run" :: name :: dir :: rest => withProg name fun p => do
       let (input, expected) ← match rest with
-        | [] => pure (echoInput, p.answer echoInput)
+        | [] =>
+            let input := p.input.getD echoInput
+            pure (input, p.answer input)
         | [inPath, outPath] =>
             let ins ← readRecords inPath 18
             let outs ← readRecords outPath 6
@@ -217,7 +232,8 @@ def main (args : List String) : IO UInt32 := do
       | none => return 0
   | _ =>
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
-        "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | board-dwt FILE | " ++
+        "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | sha-qemu FILE | " ++
+        "sha-board FILE | board-dwt FILE | " ++
         "gateway-dwt FILE | " ++
         "div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
       return 2
