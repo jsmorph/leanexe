@@ -218,7 +218,7 @@ def Instr.isSys : Instr → Bool
 the SIMD and floating-point registers: the double-precision forms. -/
 def Instr.isFP : Instr → Bool
   | .fmovDX _ _ | .fmovXD _ _ | .fadd _ _ _ | .fsub _ _ _ | .fmul _ _ _ | .fdiv _ _ _
-  | .fsqrt _ _ | .ucvtf _ _ => true
+  | .fsqrt _ _ | .ucvtf _ _ | .fcmp _ _ => true
   | _ => false
 
 /-- A load or a store. -/
