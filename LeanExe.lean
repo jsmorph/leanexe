@@ -70,6 +70,8 @@ import LeanExe.Encoding.Spec.Values
 import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
 import LeanExe.M7.Encode
+import LeanExe.M7.Gen
+import LeanExe.M7.Image
 import LeanExe.M7.Machine
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes
