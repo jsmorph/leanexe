@@ -647,7 +647,7 @@ theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt6
   unfold genImage
   rw [hp']
   simp only [bind, Except.bind, layoutOf_shift, Layout.shift_eq, hr, and_self, ite_true, hs',
-    pure, Except.pure, add_sub_add]
+    pure, Except.pure, add_sub_add, List.append_assoc, length_imageBytes, List.length_append]
 
 /-- The kernel's check of the image at `image` holds for the image at `image + d`, when `d` is a
 multiple of 4096 and the image at `image + d` lies in the RAM GiB. -/
