@@ -3,8 +3,10 @@
    writes one line: "C", the case's number, the instruction's two halfwords, its address, the
    window's address, r0 to r12, SP, LR, and APSR before the instruction, the window's 64 bytes
    before it, the same registers after it followed by the number of the landing word, and the
-   window's bytes after it, every number in hexadecimal.  It writes through lx_putc of the board's
-   board.S. */
+   window's bytes after it, every number in hexadecimal.  For each division case it writes one line:
+   "D", the case's number, the address of udivmod64, the return address, r0 to r12, SP, LR, and
+   APSR before the call, and the same registers after it followed by the landing word's number.
+   It writes through lx_putc of the board's board.S. */
 
 extern void lx_putc(unsigned int c);
 extern const unsigned int cosim_count;
@@ -13,6 +15,11 @@ extern unsigned int *const cosim_out[];
 extern unsigned char *const cosim_inwin[];
 extern const unsigned short *const cosim_test[];
 extern unsigned char cosim_win[];
+extern const unsigned int cosim_dcount;
+extern const unsigned int cosim_udiv;
+extern unsigned int *const cosim_din[];
+extern unsigned int *const cosim_dout[];
+extern const unsigned int cosim_dret[];
 
 static const char digits[] = "0123456789abcdef";
 
@@ -52,6 +59,16 @@ int cosim_print(void) {
     bytes(cosim_inwin[k]);
     for (i = 0; i < 17; i++) hex(o[i]);
     bytes((const unsigned char *) (o + 17));
+    out('\n');
+  }
+  for (k = 0; k < cosim_dcount; k++) {
+    unsigned int *in = cosim_din[k], *o = cosim_dout[k];
+    out('D');
+    hex(k);
+    hex(cosim_udiv & ~1U);
+    hex(cosim_dret[k] & ~1U);
+    for (i = 0; i < 16; i++) hex(in[i]);
+    for (i = 0; i < 17; i++) hex(o[i]);
     out('\n');
   }
   return 0;
