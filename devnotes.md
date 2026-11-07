@@ -42353,7 +42353,10 @@ Choice: the reset vector names the ITCM alias, which the boot model already cove
 - [x] T0: model and encoder, with CPUID and the errata.
 - [x] G0 (a): window counts.
 - [x] T1: division.
-- [ ] T2: the echo's step.  T3: the loop under QEMU.  T4: the board's echo.  T5: Isla and the board's co-simulation.  G1: the gateway.  G2: timing.
+- [x] T2: the echo's step.
+- [x] T3: the loop under QEMU.
+- [x] T4: the board's echo.
+- [ ] T5: Isla and the board's co-simulation.  G1: the gateway.  G2: timing.
 
 ## 2026-11-07: Cortex-M7 back end, T0: the model, the encoder, and the co-simulation
 
@@ -42590,7 +42593,7 @@ All Lean ran on minideb2 in the checkout `~/src/leanexe-m7gen`, whose `.lake/pac
 - [x] G0 (c): the kernel's check of the echo's image; the gateway's does not fit one declaration on minideb2.
 - [ ] T4: a kernel check of the gateway's image that fits, for example one declaration for each function's code, and the board's DWT measurement of the windows.
 - [x] T1: `udivmod64` and its theorem, in T1's entry.
-- [ ] The board's measurement of `UDIV` and of `udivmod64`'s paths.
+- [x] The board's measurement of `UDIV` and of `udivmod64`'s paths, in T4's entry.
 - [ ] T2: the moves and lemmas that the review lists.
 
 ### References
@@ -42673,7 +42676,7 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through 
 - [x] The slot relation, the covered forms, `list_sim`, `fun_sim`, `calls_ok`, and `step_sim`.
 - [x] `step_call`, `usart3_step`, `cmsdk_step`, and the kernel's check of the echo's code.
 - [x] T3: `main`'s windows and the loop theorem from `step_call`, in T3's entry.
-- [ ] T4: `CodeAt` of the program from the bytes at the code's base, the vector table, the board's initialization, and the board.
+- [x] T4: `CodeAt` of the program from the bytes at the code's base, the vector table, the board's initialization, and the board, in T4's entry.
 - [ ] G1: the gateway's forms, its frames, and the step theorems of `gwTickUsart3` and `gwTick`.
 
 ### References
@@ -42763,7 +42766,7 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through 
 - [x] The T2 review's items: `gen_program_entry`, the docstring of `Sim.lean`, and the statements on functions' addresses.
 - [x] `main_window`, `main_loop`, `main_start`, and `main_run`.
 - [x] `Boot`, `Reset`, `FileAt`, `boot_image`, and `boot_run`, and the QEMU image, its kernel check, `echo_qemu`, and `uart_echo.py` under QEMU.
-- [ ] T4: the board's `Boot` at the ITCM alias, an `InitRuns` whose trace depends on `σ` for the read-modify-writes of `board.S`, the corollary that the run never stops, and `echo_board`.
+- [x] T4: the board's `Boot` at the ITCM alias, an `InitRuns` whose trace depends on `σ` for the read-modify-writes of `board.S`, the corollary that the run never stops, and `echo_board`, in T4's entry.
 
 ### References
 
@@ -42772,3 +42775,167 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through 
 - [QEMU 8.2.2, `hw/arm/mps2.c`](https://gitlab.com/qemu-project/qemu/-/blob/v8.2.2/hw/arm/mps2.c)
 - [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
 - [Lean language reference](https://lean-lang.org/doc/reference/latest/)
+
+## 2026-11-07: Cortex-M7 back end, T4: the board's echo
+
+T4 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, sections 5 and 6, the increment T4, decisions 4 and 7, and items 8, 10, and 11 of its revisions) proves the echo of `usart3Tick` from the state 3 on the board, from reset, for every sequence `σ` of device values and every number of windows.  Lean writes `board_init`'s accesses of `tools/baremetal/armv7m/nucleo-f767zi/board.S` into the image, the kernel checks `echo.bin` through `file_nat%`, and `echo_board` states the loop theorem over that file, with a corollary that the run never stops and a lemma that confines the device accesses to USART3's three registers in the windows and to RCC, GPIOD, and USART3 in the initialization.  The image ran in Renode and on the board, where `uart_echo.py` passed, and two measurement images apart from the proved one gave the cycles of `UDIV`, of `udivmod64`'s paths, and of the echo's windows.  During the last measurement the ST-LINK's virtual COM port stopped forwarding the board's output, and the board work stopped there.
+
+### RM0410 Rev 5
+
+A research agent obtained RM0410 Rev 5 from the Internet Archive's capture `20250124092644` of ST's URL, after st.com failed twice over HTTP/2 (curl error 92) and once over HTTP/1.1 (a timeout of 60 s).  The CDX index gives the same digest for every capture from 2024-08-09 to 2026-10-03, so st.com served this file for that whole period.  The PDF, of 23,532,557 bytes with SHA-256 `104ed739…35dfdb64`, reads "July 2024 RM0410 Rev 5" on its title page, and its revision history dates Rev 5 18-Jul-2024.  It lies in `tmp/m7/manuals/rm0410-rev5-wayback-20250124092644/`, its text in `tmp/m7/manuals/text/rm0410-rev5.txt`, and the agent's comparison scripts in the worktree's `tmp/m7/scripts/`.  Every section that the boot and the initialization depend on keeps its number, and the comparison found no difference that changes the boot model, the layout, or the initialization.
+
+| Item | Rev 5 against Rev 4 |
+|---|---|
+| Boot, section 2.5 and Table 2 | Table 2 unchanged: BOOT0 low selects BOOT_ADD0, ST's value "Flash on ITCM at 0x0020 0000"; one sentence's upper bound of the boot addresses changes from 0x3FFF FFFF to 0x2007 FFFF |
+| Option bytes, 3.4.1, 3.7.6, 3.7.7 | FLASH_OPTCR resets to 0xFFFFAAFD and FLASH_OPTCR1 to 0x0040 0080 in both; IWDG_SW and WWDG_SW, bits 5 and 4, unchanged; the BOOT_ADDx range and the SRAM examples are corrected in some passages and not in others; the example "0x0080: Boot from Flash on ITCM interface (0x0020 0000)" unchanged |
+| VTOR, INITVTOR | named in neither revision |
+| Memory map, Figure 2, Table 1, 2.3, 3.3.1 | Rev 5 moves the start of the reserved range after the ITCM alias from 0x0030 0000 to 0x0040 0000, which removes its overlap with the alias 0x0020 0000 to 0x003F FFFF; flash on AXIM, ITCM RAM, DTCM of 128 KB, the rows of RCC, GPIOD, and USART3, and "Write accesses are not supported on ITCM interface" unchanged |
+| RCC_DCKCFGR2, RCC_AHB1ENR, RCC_APB1ENR | offsets 0x90, 0x30, 0x40, the fields USART3SEL, GPIODEN, and USART3EN, and the reset values 0, 0x0010 0000, and 0x0000 0400 unchanged; only WWDGEN's description changes |
+| Clock enable delay, 5.2.12 | unchanged: two peripheral clock cycles after the enable; neither revision mentions a read-back, which `board.S` takes from ST's HAL |
+| GPIO registers | unchanged in substance: offsets, the encodings of alternate function, high speed, pull-up, and AF7, and the reset values of port D |
+| USART_CR1, CR2, BRR, ISR, RDR, TDR | offsets, reset values (ISR 0x0200 00C0, the others 0), and the fields that the echo uses unchanged; the corrections in USART_ISR concern the interrupt enables of ORE, FE, ABRF, and EOBF; the overrun text of 34.5.3 changes wording only |
+| Reset clock, 3.3.2, 3.7.1, 5.2.6 | unchanged: HSI at 16 MHz and 0 wait states after reset, FLASH_ACR resets to 0; one of the two passages that place ARTEN in FLASH_CR is corrected |
+| Debug, 44.10 | unchanged: DHCSR, DCRSR, DCRDR, and DEMCR are reset only by a power-on reset |
+
+### The initialization
+
+`LeanExe/M7/Init.lean` describes an initialization as a list of `InitOp`: a read-modify-write of a register with a mask to clear and a mask to set, a read whose value is discarded, a write of a constant, and `DSB SY`.  `opCode` loads each address into r0 with `MOVW` and `MOVT` and accesses it with a word load or store at offset 0, and a read-modify-write computes `(x AND NOT clear) OR set` with `AND` and `ORR` of registers and the masks in r2, so the initialization needs no form beyond T0's.  `initTrace ops σ` is the trace of the accesses when the reads return `σ 0`, `σ 1`, and so on, so each written value is a function of the value read, and no reset value enters the statement.  `LeanExe/M7/Board.lean` lists `board_init`'s 14 accesses in its order, with 11 reads, among them the read-backs of `RCC_AHB1ENR` and `RCC_APB1ENR`, and `init_addrs` states the sequence of their registers by `rfl`.  `run_op` proves the code of each kind of access once, and `init_runs` composes the list by induction, so the board's initialization of 107 instructions needs no proof of its own beyond the check that each address is a device word.
+
+`InitRuns` now takes the trace as a function of the values that the initialization's reads return and the number `r` of those reads, and `boot_run` gives the trace `t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) N`, the windows reading `σ` after the initialization's reads.  QEMU's initialization, which only writes, is the instance `fun _ => initTrace` with `r = 0`, and `echo_qemu` keeps its statement.
+
+### The boot model and the image
+
+`Flash code n len` states that the code map holds the file's bytes from `0x08000000` and from `0x00200000`, the two addresses of the flash (RM0410, section 2.2.2), and `echo_board` assumes it with `Reset code flashItcm b`, T3's `Reset`, which requires bit 0 of the reset vector.  The kernel's check finds that bit set, since word 1 of the table is `0x002001FD`.  Because both copies hold the same halfwords, a state that reset gives from the table at either address satisfies `Reset code flashItcm b`.  The theorem therefore needs only that VTOR's reset value is one of the flash's two addresses.  RM0410 Rev 4 and Rev 5 give BOOT_ADD0's address and name no INITVTOR, so the inference that ST drives INITVTOR from BOOT_ADD0 stays in the trusted base in that weaker form.  The platform names DTCM, `0x20000000` to `0x2001FFFF`, as Normal memory and the 65,536 words from `0x40000000` as devices, and SP starts at `0x20020000` with the stack's limit at `0x20000000`.  The step needs 312 bytes below its outgoing area of 16.
+
+The image holds 4,406 bytes, SHA-256 `6d47aea8…0a40bd`.  Its table of the 16 system entries and the 110 interrupts of the STM32F767 lies at `0x00200000` with SP `0x20020000`, the reset entry `0x002001FD`, and the self-loop's `0x002001F9` in every other entry.  The self-loop lies at `0x002001F8`, the initialization from `0x002001FC`, and T2's program of 3,470 bytes from `0x002003A8`, with `main`'s loop head at `0x002003C8` and the step at `0x0020041C`.  `arm-none-eabi-objdump` of the image reads the table, the initialization, and `main` as Lean lists them.
+
+### The theorems
+
+```lean
+theorem echo_board (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
+    ∃ s, Reach platform σ code b s ∧ s.pc = echoHead ∧
+      s.trace = initTrace init σ ++
+        windows (reqTrace (devBus devBase) usart3Tick 3 (fun k => σ (k + initReads init))) N
+
+theorem echo_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
+    (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
+    ∀ k, ∃ t, run platform σ code k b = some t
+
+theorem usart3_requests (s v : UInt64) :
+    reqReg (usart3Tick s v).2 = 0x1207 ∨ reqReg (usart3Tick s v).2 = 0x1209 ∨
+      reqReg (usart3Tick s v).2 = 0x120A
+
+theorem echo_confined (σ : Nat → UInt32) (N : Nat) :
+    (∀ e ∈ initTrace init σ, InitBlock e.addr) ∧
+      ∀ e ∈ windows (reqTrace (devBus devBase) usart3Tick 3 (fun j => σ (j + initReads init))) N,
+        e.addr = usartIsr ∨ e.addr = usartRdr ∨ e.addr = usartTdr
+```
+
+`echo_board` and `echo_board_runs` in `tests/TestSupport/M7/NucleoFile.lean` hold over the file that `file_nat%` reads, through `echo_file`, the kernel's check.  They instantiate `board_run` and `board_runs` of `LeanExe/M7/Proof/Board.lean`, which hold for any step with the compiler's theorem and a stack within DTCM, so the gateway of G1 reuses them.  `InitBlock` names the register blocks of RCC, GPIOD, and USART3, and `usartIsr`, `usartRdr`, and `usartTdr` are `0x4000481C`, `0x40004824`, and `0x40004828`.  The never-stopping corollary follows from `runs_forever` of `LeanExe/M7/Proof/Runs.lean`: a step appends at most one access to the trace, so a run that reaches a trace of `c + N` accesses for every `N` takes at least `N` steps to get there, and `run` succeeds for every number of steps.  The headers of `Proof/Board.lean` and `NucleoFile.lean` state the run conditions of revision 8: a power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA during the run.
+
+### Choices
+
+| Choice | Reason |
+|---|---|
+| The initialization as a list of `InitOp` with one proof per kind of access, and `board.S`'s order and read-backs kept | the board's 107 instructions need no proof of their own, and the list states the accesses as `board.S` performs them (decision 4) |
+| `AND` and `ORR` of registers with masks from `MOVW` and `MOVT` in place of `BIC` and `ORR` with immediates | the model has neither `BIC` nor `ORR` with an immediate, and new forms would reopen the encoder, `decode_encode`, the GNU `as` samples, and the co-simulation |
+| Each address in full with `MOVW` and `MOVT`, at offset 0 | one code shape for every access, so `run_op` needs no case on the offset; the cost is 2 instructions an access in code that runs once |
+| `InitRuns` takes the trace as a function of the read values, applied to `σ` shifted by the reads before the initialization | the statement then holds from any state, and from reset it is `initTrace init σ` |
+| `Flash` holds both addresses of the flash, and the proof uses the ITCM copy | the boot model of plan section 5 places the bytes at both, and with both, `Reset` at `0x00200000` covers a reset that reads either copy |
+| The board's platform, layout, and initialization in `LeanExe/M7/Board.lean`, the echo's instance in `tests/TestSupport/M7/` | G1's gateway runs on the same board with the same initialization |
+| `echo_confined` states the initialization's blocks and the windows' three registers, and `init_addrs` the exact sequence | the device assumption of item 16 of the plan's trusted base then concerns those registers alone |
+| `tests/baremetal/m7-board.sh` in place of new cases in `usart3.sh` | the image is a raw file that Renode needs at two addresses with VTOR set, and `usart3.sh build` empties its own output directory; the script follows `m7-qemu.sh` and runs `uart_echo.py` as `usart3.sh run echo` does |
+| Renode gets a memory of the flash's size at `0x00200000` with a copy of the image and `cpu VectorTableOffset 0x00200000` | Renode's `stm32f777.repl` maps the flash at `0x08000000` alone and, for a raw binary, takes no vector table from an ELF |
+| The flash's read-back compares the image's length | `st-flash` 1.8.0 reads and writes whole words, and the two bytes after the image read 0x0000 |
+| The C path for this board stays (decision 7) | its scripts and theorems are unchanged, and both paths compile the same step |
+
+### Tests
+
+| Test | Result |
+|---|---|
+| Build of the new modules on edgexpert-18ff, 8 cores, cap 12 GiB | `Proof/Runs.lean` 0.6 s, `Proof/Init.lean` 1.0 s, `Proof/Board.lean` 1.8 s, `NucleoLoop.lean` 1.7 s, with no warning |
+| `lake build LeanExe`, 8 cores | passed |
+| `tests/baremetal/m7-board.sh check` | the kernel's check of `echo.bin` and the theorems over it in 4.9 s with a peak of 5.15 GB; the twelve theorems that `NucleoFile.lean` prints depend on `propext`, `Classical.choice`, and `Quot.sound` at most |
+| `tests/baremetal/m7-qemu.sh`, after the change to `boot_run` | T3's kernel check of the QEMU image of 3,690 bytes in 4.7 s with a peak of 5.09 GB, and `uart_echo.py` under QEMU in 3.3 s |
+| `m7-board.sh emulate`, Renode 1.17.0 on edgexpert-18ff | passed: 644 bytes in lockstep and bursts of 2, 16, 322, and 65,536 bytes with at most 2 unanswered, in 48.8 s; Renode set PC `0x2001FD` and SP `0x20020000` from the table at `0x00200000`, and its log held only the warnings of its translation cache and of `RCC_DCKCFGR2` |
+| `m7-board.sh run /dev/ttyACM0` on the board | `st-flash` wrote `echo.bin`, erasing sector 0, the read-back equals the file, and after `st-flash reset` `uart_echo.py` passed: 644 bytes in lockstep and the four bursts with at most 2 unanswered, in 168.8 s |
+| `m7-board.sh measure-div` | every quotient and remainder of `udivmod64` on the board equals Python's for the 60 calls; the cycles below |
+| `m7-board.sh measure-echo /dev/ttyACM0` | failed: no reply reached the host (below); the table read over SWD gives the cycles of five kinds of window |
+
+The board test ran after a reset over SWD, which differs from the theorem's power-on premise: `st-flash` connects with the core halted, the ST-LINK leaves DHCSR's C_DEBUGEN and DEMCR at 0x01000500, and the DWT stays unlocked (T0 and G0 (b)).  A run under the premise needs a power cycle after the image is written and no `st-flash` session before the host script.
+
+### The board's resets
+
+Both measurement images log each boot at `0x2001E000`: a magic word, a count, and the value of `RCC_CSR`, whose flags name the reset's causes, which the image then clears with RMVF.  After `measure-div`, which runs `st-flash write`, `st-flash read`, and `st-flash reset`, the log held two boots, the first with the flags accumulated since power-on (SFT, POR, PIN, and BOR) and the second with PINRSTF alone.  A lone `st-flash reset` then added one boot with PINRSTF, a plain `st-flash read` added none, and two resets added two.  Each `st-flash reset` therefore boots the image once, by the NRST pin, and by elimination the write session boots it once more.  The count of two boots for each reset in G0 (b) was not reproduced.  A hypothesis that these runs support but do not establish is that G0 (b) counted the boot after the write session with the reset's.  The source of stlink 1.8.0 (`src/st-flash/flash.c` and `src/stlink-lib/common.c`) shows that every command without `--hot-plug` connects with `stlink_reset(sl, RESET_AUTO)`, a pulse of NRST followed by the ST-LINK's RESETSYS command, then halts the core, and ends with `stlink_run`, which sets EPSR.T when it reads it clear ("Go to Thumb mode") and resumes the core, and that `reset` repeats `RESET_AUTO` before it.  By that reading a plain read would boot the image too, and the log shows that it does not, so the source does not explain the counts, and which step of the write session lets the image run stays open.
+
+### Cycles on the board
+
+`tests/TestSupport/M7/Dwt.lean` writes both measurement images from Lean with T0's encoder.  Each enables DEMCR.TRCENA, unlocks the DWT through `DWT_LAR`, clears `DWT_CYCCNT`, and sets `DWT_CTRL.CYCCNTENA` with bits 16 to 22, the other counters' and events' enables, cleared, since erratum 486321 miscounts stall cycles in those counters.  Each runs from the ITCM address at reset clocking, HSI at 16 MHz with the caches off and FLASH_ACR 0, as the proved image does.  The division image brackets each case with two loads of the counter, stores the inputs and the results, and runs each case 5 times.  The call of a routine that only returns took 11 cycles in every pass, and a block of 16 `MOV` 12 cycles.  `tests/baremetal/m7_dwt.py` reads the records and checks every result.
+
+| `udivmod64` path | Case | Instructions, entry to `BX LR` | Cycles less the empty call, median (least, most) |
+|---|---|---|---|
+| high, divisor's low word 0 | `0x123456789ABCDEF0 / 2^32` | 8 | 27 (27, 27) |
+| high | `(2^64 - 1) / 2^32` | 8 | 28 (23, 28) |
+| low, both high words 0 | `0xFFFFFFFF / 7` | 8 | 33 (28, 33) |
+| low | `1 / 1` | 8 | 19 (14, 19) |
+| small, dividend below divisor | `5 / 0x100000001` | 12 | 17 (17, 17) |
+| loop, 1 pass | `0x100000005 / 0x100000001` | 41 | 36 (36, 47) |
+| loop, 2 passes | `0x200000000 / 0x100000001` | 55 | 45 (45, 56) |
+| loop, 8 passes | `2^40 / 0x200000001` | 127 | 104 (98, 104) |
+| loop, 16 passes | `2^48 / 0x200000001` | 223 | 158 (158, 158) |
+| loop, 32 passes | `2^63 / 0x100000001` | 415 | 286 (286, 286) |
+| loop, 33 passes | `(2^64 - 1) / 0x80000001` | 429 | 299 (299, 299) |
+| loop, 64 passes | `(2^64 - 1) / 1` | 797 | 546 (546, 546) |
+
+| `UDIV r4, r0, r2` | Quotient | Cycles less a `MOV`'s, every pass |
+|---|---|---|
+| `0xFFFFFFFF / 1` | 32 bits | 18.5 |
+| `0x80000000 / 3` | 30 bits | 18.5 |
+| `0x12345678 / 0x1234` | 17 bits | 11.5 |
+| `0xFFFFFFFF / 0x10000` | 16 bits | 10.5 |
+| `0 / 1` | 0 | 6.5 |
+| `0xFFFFFFFF / 0xFFFFFFFF` | 1 | 3.5 |
+| `1 / 1` | 1 | 3.5 |
+
+A `MOV` costs at most three quarters of a cycle in that block, bracket included, so `UDIV` takes from about 4 to about 19 cycles, and its time grows with the length of the quotient, as an early-terminating divider would give.  Seven cases do not establish the rule.  The path of `writeReq`'s remainder by 2^32, which runs in every write window, divides the high word by 1, a quotient of up to 32 bits, and takes 27 to 28 cycles, of which its `UDIV` takes up to about 19.  The loop takes about 8 cycles a pass, 0.7 to 0.8 cycles an instruction from 8 passes up, so the worst case of 64 passes takes 546 cycles, against G0's bound of 925 instructions.
+
+The echo's image redirects the call at the loop's head to a routine after the program, which records the cycles from its previous exit in a table indexed by the phases before and after the window and branches to the step.  The interval holds the window and five instructions of the routine, and `m7_dwt.py` compares each kind with G0's instruction count plus those five.  The board received one byte of `uart_echo.py` before the port failed and then a probe byte, so the table holds five kinds of window, and `txwait` did not occur.
+
+| Window | Windows | Cycles: least, most, mean | Instructions: G0's count plus 5 |
+|---|---|---|---|
+| `idle` | 7,940,907 | 320, 331, 320.0 | 324 |
+| `rxne` | 2 | 330, 330, 330 | 323 |
+| `byte` | 2 | 365, 365, 365 | 366 |
+| `tx`, with the routine's 8 | 2 | 543, 583, 563 | 528 |
+| `sent` | 3 | 372, 377, 374.3 | 360 |
+
+The windows run at about one cycle an instruction.  G0's cost model gave 357 to 597 cycles for these windows without the routine's and the measurement's instructions, and the board's 320 to 583 cycles with them lie below that range, the shortest by about 10%.  The longest, 583 cycles, is 3.5% of the 16,667 cycles of half a byte time at 4,800 baud.
+
+### The virtual COM port
+
+`measure-echo` wrote `echo-dwt.bin`, which read back equal, and after the reset `uart_echo.py` sent its first byte and received no reply within 120 s.  The window table read over SWD showed that the board had received the byte and written its reply to `USART_TDR`, and a probe byte sent afterwards was received and answered in the same way while no byte reached the host.  The ST-LINK's virtual COM port therefore still forwarded the host's bytes to the board and had stopped forwarding the board's output, the failure recorded on 2026-11-06 after a series of `st-flash` sessions.  The proved image had passed at 07:17, and about 15 `st-flash` sessions ran between that run and the failure at 07:28, about 24 in the task.  Only a replug of the board's USB cable has restored the port, so the board work stopped, with `echo-dwt.bin` in the board's flash.
+
+### Remote host
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, updated with rsync from the worktree, one job at a time through `tools/leanrun` with a memory cap of 12 or 16 GiB and a timeout, and no job had to be stopped.  The host kept 117 GB available throughout.  Renode 1.17.0 and QEMU ran there, and `st-flash`, the serial port, and `uart_echo.py` on this machine.
+
+- [x] RM0410 Rev 5 obtained and compared with Rev 4.
+- [x] `InitOp`, `initCode`, `initTrace`, `init_runs`, and the board's initialization of `board.S`'s accesses in its order.
+- [x] `InitRuns` with a trace that depends on `σ`, and `boot_run` reading the windows' values after the initialization's.
+- [x] `Flash` at both addresses, `Reset` at `0x00200000`, the board's platform and layout, `board_run`, and `board_runs`.
+- [x] `echo.bin`, `echo_file`, `echo_board`, `echo_board_runs`, `usart3_requests`, and `echo_confined`, with their axioms checked.
+- [x] Renode and the board: `uart_echo.py` passed on both, with the flash read back.
+- [x] The DWT images: `UDIV` and `udivmod64`'s paths, and five kinds of the echo's windows.
+- [ ] After a replug of the board's USB cable: `measure-echo` with its bursts, for `txwait` and the windows of bursts, and a run of `echo.bin` from a power cycle with no `st-flash` session before `uart_echo.py`.
+- [ ] T5: Isla and the board's co-simulation.  G1: the gateway, with a kernel check of its image that fits.
+
+### References
+
+- [RM0410, STM32F76xxx and STM32F77xxx reference manual](https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [RM0410 Rev 5, the Internet Archive's capture of 2025-01-24](https://web.archive.org/web/20250124092644/https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [Cortex-M7 Software Developer Errata Notice, SDEN-1068427](https://developer.arm.com/documentation/SDEN1068427/latest/)
+- [stlink 1.8.0, `src/st-flash/flash.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/st-flash/flash.c)
+- [stlink 1.8.0, `src/stlink-lib/common.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/stlink-lib/common.c)
+- [Renode 1.17.0](https://github.com/renode/renode/releases/tag/v1.17.0)
