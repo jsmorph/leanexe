@@ -162,6 +162,7 @@ def m7Witness (isBool : Bool) (b : Option LeanExe.A64.Isla.Bind) (P δ ρ m σ :
         ← mkAppM ``memVal #[P, δ, m, k]]
     | .gpr j =>
       mkAppM ``GetElem?.getElem? #[← mkAppM ``LeanExe.M7.Isla.gprVals #[m], mkNatLit j]
+    | .abs _ _ => throwError "m7_wit: an abstract call, at which an M7 trace's run fails"
   mkAppM (if isBool then ``LeanExe.A64.Isla.witBool else ``LeanExe.A64.Isla.witBits) #[opt]
 
 /-- Gives the variable that a goal
