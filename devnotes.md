@@ -42416,3 +42416,103 @@ All Lean ran on edgexpert-18ff in the checkout `~/src/leanexe-m7`, whose `.lake/
 - [ES0334, STM32F76xxx and STM32F77xxx device errata](https://www.st.com/resource/en/errata_sheet/es0334-stm32f76xxx-and-stm32f77xxx-device-errata-stmicroelectronics.pdf)
 - [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
 - [GNU assembler, ARM directives](https://sourceware.org/binutils/docs/as/ARM-Directives.html)
+
+## 2026-11-07: Cortex-M7 back end, G0: the generator and the window counts
+
+G0 (a) and (c) of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, with its revisions of 2026-11-07) add the generator that T2 will prove, count the instructions of every kind of window of the echo's and the gateway's steps by running the generated code in the model of T0, convert the counts to cycles with the board's measurements of G0 (b), and measure the kernel's check of the images.  A fresh review of the generator (`tmp/m7/gen-review.md`) found no IR program on which the generated code differs from Talos, and it found defects of low weight in a check of `genMain` and in a statement about addresses, which this entry fixes.
+
+### The generator
+
+`LeanExe/M7/Gen.lean` compiles the module that the verified compiler emits, the index of a step, and the words of the step's initial state to a program of the model's forms: `main`, the functions that calls reach from the step, the trap stubs, and the code of `udivmod64`, which the generator takes as a list of instructions and places at a label after the stubs.  It follows `LeanExe/A64/Gen.lean` definition by definition, with `Env`, `Ctl`, `Shared`, `genInstr` and `genList`, `instrSize` and `listSize`, `genFunction`, `entriesFrom`, `tableOf`, and `genProgram`, so that T2's `InstrSim`, `ListSim`, `CallsOk`, and `FunSim` keep A64's shapes.  It uses A64's call-graph functions `callsIn`, `reachFrom`, `callTargets`, `funcOf`, and `sigIn` instead of copies, and it accepts the integer forms of A64's subset, the constructs, `br`, `br_if`, `ret`, `unreachable`, and calls.  It rejects globals, linear memory, and floating point, which the steps do not reach (plan, section 4).  `LeanExe/M7/Image.lean` gives the image's bytes, each halfword's low byte first, and `fileOk`, the comparison of `LeanExe/A64/File.lean` over those bytes.
+
+The design is the plan's with its revisions: every operand-stack height in a frame slot of 8 bytes with r0 to r7 as working registers, a `UInt64` in a pair of words, no slot and no clearing for a declared local that the body never names, and the check `F + 8 * max p r - 4 ≤ 4095` for each frame.  Parameters stay in the caller's outgoing area, results go there, and `main` keeps the step's state in its own outgoing area between windows.  `divUI64` and `remUI64` are `ORRS r4, r2, r3`, `BEQ` to a trap stub, and `BL udivmod64`, and each trap stub is a branch to itself.  The plan left the following choices open.
+
+| Choice | Reason |
+|---|---|
+| `Frame` holds a function's layout, `Env` carries it, and `Env.op` and `Env.loc` fail for a height at or above the frame's operand slots and for a local without a slot | the relation reads every offset from one structure, and the facts that offsets lie in range and that slots do not overlap follow from the generator's success, so no lemma about `listPeak` or `listLocals` enters T2's proofs |
+| Every function ends with two `BX LR`, of which the second never runs | the two take one unit of 4 bytes, so every function starts at a multiple of 4, and so does each 32-bit instruction of `main` and of the functions, as in the code that G0 (b) measured; `genFunctions` checks each function's halfwords against `2 * functionSize` |
+| `eq`, `eqz`, and `and` of `i32` load and store the low words alone, `wrapI64` stores 0 to the high word, and `extendUI32` emits nothing | the relation states that the high word of an `i32` slot is 0 (plan, section 2), and the generator checks that the operands' static types are `i32` |
+| A shift loads the low word of its amount alone | Wasm shifts by the amount mod 64, and `AND r2, r2, #63` reads only the low word |
+| A word below 2^16 takes one `MOVW`, a larger one `MOVW` and `MOVT` | a zero half costs one instruction, as the plan's `MOV #0` does |
+
+Sizes count units of 4 bytes, and `after a n = a + 4n` holds for unit counts: a function's list of instructions holds one element more than its size, and a position in the program's list exceeds the unit count by one for each function before it.  The review's first defect was that `genMain` checked the offsets of the last slot but not `8 * (n + 1)` before `SUBW SP, SP`, whose field reduces modulo 4096, so 511 state words gave `SUBW SP, SP, #0`; `genMain` now checks it.  Its second was the statement, in the module's header and in this entry's draft, that addresses are `a + 4n` for list positions, now corrected as above.  The review leaves to T2: moving the call-graph definitions, their lemmas, and `natOfBytes` into modules that import only the Wasm syntax; the frame size's dependence on `sig` in the stack bound; a memory clause of two regions, since `local.set` of a parameter writes the caller's area; T1's theorem as a premise of `InstrSim`; a halfword-indexed `CodeAt`; inversion lemmas for `mapM` in `Except`; and the clash of `structure Frame` with A64's predicate `Frame`.
+
+### Frames
+
+The generator accepts the echo's and the gateway's steps.  The C path's helpers for shifts and division are gone, the code of the USART3 gateway takes 98,636 bytes against the C image's 80,480, and that of the USART3 echo 3,240.  The frame of `gwTickWith`, 2,656 bytes with a largest offset of 3,068, is the revision's estimate.
+
+| Function | p | r | Declared locals | Named | Outgoing slots | Operand slots | Frame | Largest offset |
+|---|---|---|---|---|---|---|---|---|
+| `gwTickWith` | 52 | 46 | 794 | 230 | 35 | 66 | 2,656 | 3,068 |
+| `gatewayWith` | 50 | 23 | 481 | 127 | 36 | 39 | 1,624 | 2,020 |
+| `gwTickUsart3`, `gwTick` | 46 | 46 | 92 | 0 | 52 | 52 | 840 | 1,204 |
+| `gateway` | 35 | 23 | 70 | 0 | 50 | 50 | 808 | 1,084 |
+| `authorizeFlat` | 28 | 4 | 164 | 36 | 29 | 30 | 768 | 988 |
+| `lowBF`, `highBF` | 28 | 1 | 68 | 4 | 28 | 28 | 488 | 708 |
+| `floorOkF`, `ceilingOkF` | 29 | 1 | 58 | 0 | 16 | 17 | 272 | 500 |
+| `expire` | 18 | 17 | 87 | 17 | 0 | 17 | 280 | 420 |
+| `echoTick` | 8 | 2 | 43 | 9 | 2 | 4 | 128 | 188 |
+| `usart3Tick`, `cmsdkTick` | 2 | 2 | 4 | 0 | 8 | 8 | 136 | 148 |
+
+### Window counts
+
+`m7-windows run` (`tests/TestSupport/M7/Windows.lean`) runs a generated program in the model, instruction by instruction with `exec`, with DTCM as the only Normal memory and a far end that answers the UART's registers.  The decoding of each code address is computed once by the model's `decode`, and each step builds the model's register and memory functions from arrays and writes its result back, so that a step takes constant time.  At every return from the step the run compares the results in `main`'s outgoing area with the step's words and request in native Lean, and at the end it compares the output with the expected bytes.  The far end withholds the received byte at the first status read of each input record and the transmitter's room at the first status read of each output record, so that every kind of window occurs.  At `udivmod64`'s entry the run sets the quotient and the remainder of Lean's division, writes a marker word to r4 to r7, returns, and records the call's path, so the counts below exclude the routine's instructions.
+
+| Run | Input | Windows | Instructions | Result |
+|---|---|---|---|---|
+| `gateway-usart3` | the 1,440 records of `Demos/Energy/board-day/gateway1440.records.in` | 555,841 | 1,644,599,401 | every step's results equal native Lean's, and the 69,120 output bytes equal `gateway1440.records.out`, in 3,409 s |
+| `gateway-cmsdk` | `tmp/m7/gw5.records.in` | 1,931 | 5,698,806 | equal to native Lean's and to `gw5.records.out`, with the counts of `gateway-usart3` on the same records |
+| `echo-usart3`, `echo-cmsdk` | `uart_echo.py`'s message, blocks of 2, 16, 322, and 65,536 bytes, and the message again, 66,520 bytes | 399,121 each | 151,799,003 each | every reply is the byte with bit 5 flipped, in 248 s and 269 s |
+
+Every kind of window but the tick took one count in every window of the day.  The windows that run while bytes may arrive are `idle`, `rxne`, `byte`, `word`, and `sentrecord`, after whose transmitted byte the far end sends the next record; the tick follows the record's last byte, and the far end sends nothing until it has the output record.  `udivmod64` runs once in each `tx` window, from `writeReq`'s remainder by 2^32, on the path of a divisor whose low word is 0, and at most twice in a tick, on the loop's path, with at most 23 passes in a call; the run recorded the largest numbers for each kind of window and not each call.
+
+| Gateway window | Windows of the day | Instructions | Model cycles | Margin at 4,800 | At 2,400 | At 1,200 |
+|---|---|---|---|---|---|---|
+| `idle`: phase 0, no byte | 1,441 | 2,501 | 1,415 | 15,252 | 31,918 | 65,252 |
+| `rxne`: phase 0, a byte | 207,360 | 2,500 | 1,417 | 15,250 | 31,916 | 65,250 |
+| `byte`: phase 1, a byte of a word | 181,440 | 2,936 | 1,700 | 14,967 | 31,633 | 64,967 |
+| `word`: phase 1, a word's last byte | 24,480 | 3,643 | 2,107 | 14,560 | 31,226 | 64,560 |
+| `tick`: phase 1, the record's last byte | 1,440 | 11,614 to 29,962 | 6,918 to 21,568 | −4,901 | 11,765 | 45,099 |
+| `txwait`: phase 2, no room | 1,440 | 3,300 | 1,896 | 14,771 | 31,437 | 64,771 |
+| `tx`: phase 2, a byte written | 69,120 | 3,401 and the routine | 2,007 and the routine | 14,660 | 31,326 | 64,660 |
+| `sent`: phase 3, a word's byte | 60,480 | 3,367 | 1,945 | 14,722 | 31,388 | 64,722 |
+| `sentword`: phase 3, a word's last byte | 7,200 | 3,700 | 2,138 | 14,529 | 31,195 | 64,529 |
+| `sentrecord`: phase 3, the record's last byte | 1,440 | 3,689 | 2,122 | 14,545 | 31,211 | 64,545 |
+
+The echo's windows take 318 to 515 instructions: `idle` 319, `rxne` 318, `byte` 361, `txwait` 414, `tx` 515 and the routine, and `sent` 355, or 357 to 597 model cycles.  In the gateway's `idle` window, `gwTickUsart3` executes 795 instructions and `gwTickWith` 1,660, of which 461 clear the 230 named locals; copying the 46 words of the state through both calls and their epilogues takes about 1,130.  Counted from T1's draft of `udivmod64` (`LeanExe/M7/Div.lean` in its worktree, uncommitted), a call takes 8 instructions when the divisor's low word is 0 or both high words are 0, 12 when the dividend lies below the divisor, and 29 + 14 (s + 1) on the loop, at most 925, so a `tx` window takes 3,409 instructions and the longest tick at most 30,664.
+
+`m7-windows static` computes, over the generated code, the largest number of instructions on a path from a function's entry to its `BX LR`, a call costing its callee's longest path and `udivmod64` nothing, and it fails on a backward branch, which the reached functions lack.  The gateway's step has a longest path of 30,007 instructions with 2 calls of the routine, so a window takes at most 30,023, 61 more than the day's longest tick, and at most 31,873 with the routine's worst case.  The echo's step has 499, so a window takes at most 515, the measured `tx` window.
+
+### Cycles
+
+`tests/baremetal/m7_timing.py` estimates a window's cycles from its trace with a cost model calibrated on the ITCM path of G0 (b) (`tmp/m7/bench/results.txt`).  It charges a load or store 0.5 cycles (`slot_copy`), a data-processing instruction 0.615 (the mean of the register-only pair sequences), `UMULL` and `MLA` 0.99, a conditional branch 0.27 not taken and 5.885 taken, `B.W` 4.0, and a `BL` with its `BX LR` 12, and a load of a word stored k instructions earlier 4 more cycles for k up to 2, then 6 − k, and none from k = 6.  Against the blocks that the generated code consists of, slot moves and copies, pair sequences from slots, calls, branches, and LDRD blocks, the model lies within −7.9% and +2.7% of the measurement, with `constI64` at +14.6%.  It lies within −12.1% and +25.5% for the short register-only sequences and within −26% and +29% for the hazard suite's blocks with dependent fill chains, and it misses the bank conflict of a store and a load in the same DTCM bank (`haz_none_k0`, −65%), which the generated copies avoid, since their stores alternate between the banks.  The windows consist mostly of slot copies, which the model places at 0.5 cycles an instruction, the fetch limit of 64 bits a cycle; it underestimates `slot_move_other` by 7.7%, so the windows' cycles may lie that much higher.  `UDIV` was not measured, so the routine's cycles are unknown.
+
+Without the model, the largest cost per instruction of any block measured on the board, 4.25 cycles (`call_min`), gives 15,483 cycles for the `word` window and 15,678 for `sentrecord`, below the 16,667 of half a byte at 4,800 baud.  The counts therefore support 4,800 baud, the rate of the C path, and a lower rate gains nothing that the margins need.  The tick exceeds half a byte at 4,800 by the model, which the protocol allows, since the far end waits for each output record (plan, section 8).
+
+### LDRD and the operand stack's top
+
+`LDRD` and `STRD` for slot pairs whose offset lies within 1,020 bytes: the model gives 1,401 cycles for `idle`, 1,682 for `byte`, 2,089 for `word`, and 20,364 for the longest tick, against 1,415, 1,700, 2,107, and 21,568, a gain of 1% for the windows that receive and 6% for the tick.  The copies that dominate the windows already run at the fetch limit, and the measured LDRD copy takes 2.00 cycles against 2.03; LDRD gains where a load rereads a stored word, which happens 34 to 67 times in a receiving window, and it reaches no slot of `gwTickWith`'s parameters, which lie from 2,656 bytes up.  The cost is new forms in the model, the decoder and its lemmas, the co-simulation, and Isla's probes.  Recommendation: not now.
+
+Keeping the operand stack's top in registers: the loads that reread a word stored within the last 8 instructions, with their stores and penalties, take 138 cycles of `idle`'s 1,415, 217 of `byte`'s 1,700, 264 of `word`'s 2,107, and 7,034 of the longest tick's 21,568, which bounds what a register for the top removes.  The copies of the 46-word state and the clearing of named locals, which dominate, stay, and the change replaces decision 1 and adds a second relation to every lemma.  Recommendation: keep decision 1.  The review agrees with the recommendations, with the reservation that every estimate excludes `udivmod64`'s cycles and rests on microbenchmarks until the DWT measurements of T4 and G1.
+
+### The kernel's check
+
+The check reads an image with `file_nat%` and proves `fileOk (genProgram ...) n len = true` by `decide +kernel`, as `LeanExe/A64/File.lean` does, each run under `tools/leanrun` with a memory cap.  The echo's image of 3,240 bytes holds `main` at 0x00200200, `usart3Tick`, `echoTick`, `readReq`, `writeReq`, and the trap stubs, with no `udivmod64`, no vector table, and no board initialization; its check took 6.5 s and a peak of 5.02 GB, against 3.2 s and 4.24 GB for the same file with its imports and the reading alone.  The gateway's image of 98,860 bytes holds `main` at 0x00200200, the functions that calls reach from `gwTickUsart3`, the trap stubs, and a copy of T1's 58 instructions of `udivmod64` (`Div.lean`, SHA-256 `38421f82…36f1963` of 00:53), with no vector table and no board initialization.  Its check reached the scope's limit of 7 GiB within 30 s, above a baseline of 4.30 GB for the imports and the reading, and then ran throttled, with 52 s of processor time in 6 min 51 s and its 1 GiB of swap full, so I stopped it.  A probe of the generation alone, a theorem on the number of instructions that `genProgram` returns, behaved the same, 43 s of processor time in 2 min 12 s, so the cost lies in the kernel's evaluation of the generator on the gateway's module and not in the bytes.  The check of the gateway's image does not fit minideb2's 11 GB as one declaration; the echo's, 30 times smaller, used about 0.8 GB above its baseline.
+
+### Remote host
+
+All Lean ran on minideb2 in the checkout `~/src/leanexe-m7gen`, whose `.lake/packages` and `.lake/build` were copied from `~/src/leanexe-energy`, with lake rebuilding the modules whose sources differ; building `Demos.Energy.Loop` and `TestSupport.Bare.Req` took about 25 min.  The first echo run and the first run on five records ran without a memory cap, at about 100 MB, and every later run went through `tools/leanrun`.  Stopping a leanrun job by its session's process group leaves `timeout`, which leanrun's command runs in a process group of its own, so each stop also named that group.  The checkout keeps the build of `m7-windows` and its dependencies for T2.
+
+- [x] G0 (a): the generator, the frames, and the window counts of the echo's and the gateway's steps in the model, with the gateway's 1,440 ticks.
+- [x] G0 (a): the static longest paths and the cycle estimates with their margins.
+- [x] G0 (c): the kernel's check of the echo's image; the gateway's does not fit one declaration on minideb2.
+- [ ] T4: a kernel check of the gateway's image that fits, for example one declaration for each function's code, and the board's DWT measurement of the windows.
+- [ ] T1: `udivmod64` and its theorem, and the measurement of `UDIV`.
+- [ ] T2: the moves and lemmas that the review lists.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [Arm Cortex-M7 Processor Technical Reference Manual, DDI 0489](https://developer.arm.com/documentation/ddi0489/latest)
+- [RM0410, STM32F76xxx and STM32F77xxx reference manual](https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [CompCert 3.18, `runtime/arm`](https://github.com/AbsInt/CompCert/tree/v3.18/runtime/arm)
