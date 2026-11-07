@@ -13,8 +13,9 @@ exclude traps through the compiler's theorem without a trap.  The functions that
 the gateway's steps reach contain no `br`, `br_if`, `return`, or `loop`, so a branch out of a
 construct and a return have the outcome `False`, which the covered forms never give.
 
-`coveredInstr` and `coveredList` name the forms whose simulation this increment proves: the forms
-of the functions that the echo's steps reach, with `divUI64`.  `InstrSim F inst` states the simulation of `inst` at fuel
+`coveredInstr` and `coveredList` name the forms whose simulation is proved: the forms of the
+functions that the echo's and the gateway's steps reach, which the kernel's evaluation of
+`reachCovered` checks for each step.  `InstrSim F inst` states the simulation of `inst` at fuel
 `F` for every placement at an even address that the generator gives it, from a state whose stack
 holds at least `D` bytes below SP, where `D` bounds the stack of each call that `inst` makes.  The
 address is even because `BL` sets LR to the next address with bit 0 set, and the return to LR
@@ -34,11 +35,11 @@ variable (P : Platform) (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
 /-! ## The covered forms -/
 
 mutual
-/-- The forms whose simulation this increment proves. -/
+/-- The forms whose simulation is proved. -/
 def coveredInstr : Instruction → Bool
-  | .localGet _ | .localSet _ | .constI64 _ | .andI64 | .orI64 | .xorI64 | .addI64 | .mulI64
-  | .eqI64 | .neI64 | .eqzI64 | .extendUI32 | .shlI64 | .shrUI64 | .divUI64 | .remUI64
-  | .call _ => true
+  | .localGet _ | .localSet _ | .constI64 _ | .andI64 | .orI64 | .xorI64 | .addI64 | .subI64
+  | .mulI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .eqzI64 | .extendUI32 | .shlI64 | .shrUI64
+  | .divUI64 | .remUI64 | .call _ => true
   | .iff _ _ thn els _ _ => coveredList thn && coveredList els
   | _ => false
 

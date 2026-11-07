@@ -1,11 +1,12 @@
 import LeanExe.M7.Proof.Forms
 
 /-!
-The simulation of the multiplication, the comparisons for equality, the shifts, `eqzI64`, and
-`extendUI32`.  Each lemma about words states that the register code leaves the words of Talos's
-result, from the words of the operands in r0 to r3: `UMULL` and two `MLA`s give the product's low
-word and the high word of its low 64 bits, `CLZ` and `LSR #5` give 1 for a zero word and 0
-otherwise, and the shift sequences follow CompCert's `__compcert_i64_shl` and
+The simulation of the multiplication, the comparisons, the shifts, `eqzI64`, and `extendUI32`.
+Each lemma about words states that the register code leaves the words of Talos's result, from the
+words of the operands in r0 to r3: `UMULL` and two `MLA`s give the product's low word and the high
+word of its low 64 bits, `CLZ` and `LSR #5` give 1 for a zero word and 0 otherwise, the carry of
+`SUBS` and `SBCS` is set when the subtraction does not borrow, so `ADC` of two zero words gives
+the unsigned order, and the shift sequences follow CompCert's `__compcert_i64_shl` and
 `__compcert_i64_shr`.
 -/
 
@@ -222,6 +223,88 @@ theorem sim_neI64 (F : Nat) : InstrSim P σ code F .neI64 :=
   sim_binary (inst := .neI64) (ops := eqOps ++ [Instr.eorImm 0 0 1]) (res := (0, 1)) (t := .i32)
     (op := fun a b => .i32 (if a ≠ b then 1 else 0)) gen_neI64 regForm_neOps exec_neI64
     invalid_neI64 regs_neI64 type_neI64 F
+
+/-! ## Unsigned order -/
+
+/-- `ADC` of two zero words gives the carry. -/
+theorem adc_zero (c : Bool) : (addWithCarry 0 0 c).1 = if c then 1 else 0 := by
+  cases c <;> rfl
+
+theorem lt_slot (a b : UInt64) :
+    SlotRel (.i32 (if a < b then 1 else 0))
+      ((if (addWithCarry (a >>> 32).toUInt32 (~~~(b >>> 32).toUInt32)
+          (addWithCarry a.toUInt32 (~~~b.toUInt32) true).2.1).2.1 then 1 else 0) ^^^ 1) 0 := by
+  have h := (sub_pair a.toUInt32 (a >>> 32).toUInt32 b.toUInt32 (b >>> 32).toUInt32).2
+  rw [pairNat_toUInt32, pairNat_toUInt32] at h
+  refine ⟨?_, rfl⟩
+  by_cases hab : a < b
+  · have hn : ¬ b.toNat ≤ a.toNat := Nat.not_le.mpr (UInt64.lt_iff_toNat_lt.mp hab)
+    rw [ite_eq_right_of_eq_false _ _ (eq_false fun e => hn (h.mp e)),
+      ite_eq_left_of_eq_true _ _ (eq_true hab)]
+    decide
+  · have hc : b.toNat ≤ a.toNat :=
+      Nat.not_lt.mp fun hlt => hab (UInt64.lt_iff_toNat_lt.mpr hlt)
+    rw [ite_eq_left_of_eq_true _ _ (eq_true (h.mpr hc)),
+      ite_eq_right_of_eq_false _ _ (eq_false hab)]
+    decide
+
+theorem le_slot (a b : UInt64) :
+    SlotRel (.i32 (if a ≤ b then 1 else 0))
+      (if (addWithCarry (b >>> 32).toUInt32 (~~~(a >>> 32).toUInt32)
+          (addWithCarry b.toUInt32 (~~~a.toUInt32) true).2.1).2.1 then 1 else 0) 0 := by
+  have h := (sub_pair b.toUInt32 (b >>> 32).toUInt32 a.toUInt32 (a >>> 32).toUInt32).2
+  rw [pairNat_toUInt32, pairNat_toUInt32] at h
+  refine ⟨?_, rfl⟩
+  by_cases hab : a ≤ b
+  · rw [ite_eq_left_of_eq_true _ _ (eq_true (h.mpr (UInt64.le_iff_toNat_le.mp hab))),
+      ite_eq_left_of_eq_true _ _ (eq_true hab)]
+  · rw [ite_eq_right_of_eq_false _ _ (eq_false fun e => hab (UInt64.le_iff_toNat_le.mpr (h.mp e))),
+      ite_eq_right_of_eq_false _ _ (eq_false hab)]
+
+theorem gen_ltUI64 (E : Env) (ctl : List Ctl) (σs : List ValueType) (a : UInt32) :
+    genInstr E ctl σs a .ltUI64 = genBin E ctl σs (geOps ++ [.eorImm 0 0 1]) (0, 1) .i32 := rfl
+
+theorem exec_ltUI64 (f : Nat) {α : Type} (m : Module) (st : Store α) (sl : Locals) (b a : UInt64)
+    (vs : List Value) (hv : sl.values = .i64 b :: .i64 a :: vs) :
+    execOne (f + 1) m st sl .ltUI64 =
+      .Fallthrough st { sl with values := .i32 (if a < b then 1 else 0) :: vs } := by
+  simp only [execOne.eq_def, hv]
+
+theorem invalid_ltUI64 (f : Nat) {α : Type} (m : Module) (st : Store α) (sl : Locals)
+    (hn : ∀ b a vs, sl.values ≠ .i64 b :: .i64 a :: vs) :
+    ∃ msg, execOne (f + 1) m st sl .ltUI64 = .Invalid msg := by
+  revert f α m st sl hn
+  invalid_tac
+
+theorem regs_ltUI64 (u : State) (a b : UInt64) (h0 : u.r 0 = a.toUInt32)
+    (h1 : u.r 1 = (a >>> 32).toUInt32) (h2 : u.r 2 = b.toUInt32)
+    (h3 : u.r 3 = (b >>> 32).toUInt32) :
+    SlotRel (.i32 (if a < b then 1 else 0)) ((slotRun P σ (geOps ++ [.eorImm 0 0 1]) u).r 0)
+      ((slotRun P σ (geOps ++ [.eorImm 0 0 1]) u).r 1) := by
+  simp only [geOps]
+  slot_regs
+  rw [h0, h1, h2, h3, ofNat_imm0, ofNat_imm1, adc_zero]
+  exact lt_slot a b
+
+theorem regForm_ltOps : (geOps ++ [Instr.eorImm 0 0 1]).all Instr.regForm = true := rfl
+
+theorem type_ltUI64 (a b : UInt64) : HasType .i32 (.i32 (if a < b then 1 else 0)) := trivial
+
+theorem sim_ltUI64 (F : Nat) : InstrSim P σ code F .ltUI64 :=
+  sim_binary (inst := .ltUI64) (ops := geOps ++ [Instr.eorImm 0 0 1]) (res := (0, 1)) (t := .i32)
+    (op := fun a b => .i32 (if a < b then 1 else 0)) gen_ltUI64 regForm_ltOps exec_ltUI64
+    invalid_ltUI64 regs_ltUI64 type_ltUI64 F
+
+theorem sim_leUI64 (F : Nat) : InstrSim P σ code F .leUI64 :=
+  sim_binary (inst := .leUI64) (ops := leOps) (res := (0, 1)) (t := .i32)
+    (op := fun a b => .i32 (if a ≤ b then 1 else 0)) (fun _ _ _ _ => rfl) rfl
+    (fun f α m st sl b a vs hv => by simp only [execOne.eq_def, hv]) (by invalid_tac)
+    (fun u a b h0 h1 h2 h3 => by
+      simp only [leOps]
+      slot_regs
+      rw [h0, h1, h2, h3, ofNat_imm0, adc_zero]
+      exact le_slot a b)
+    (fun _ _ => trivial) F
 
 /-! ## Shifts -/
 

@@ -517,6 +517,29 @@ theorem sim_addI64 (F : Nat) : InstrSim P σ code F .addI64 :=
       exact add_slot a b)
     (fun _ _ => trivial) F
 
+theorem sub_slot (a b : UInt64) :
+    SlotRel (.i64 (a - b)) (addWithCarry a.toUInt32 (~~~b.toUInt32) true).1
+      (addWithCarry (a >>> 32).toUInt32 (~~~(b >>> 32).toUInt32)
+        (addWithCarry a.toUInt32 (~~~b.toUInt32) true).2.1).1 := by
+  have h := (sub_pair a.toUInt32 (a >>> 32).toUInt32 b.toUInt32 (b >>> 32).toUInt32).1
+  rw [pairNat_toUInt32, pairNat_toUInt32] at h
+  apply eq_of_pairNat
+  have hb : b.toNat < 18446744073709551616 := b.toNat_lt_size
+  rw [h, UInt64.toNat_sub]
+  simp only [Nat.reducePow]
+  omega
+
+theorem sim_subI64 (F : Nat) : InstrSim P σ code F .subI64 :=
+  sim_binary (inst := .subI64) (ops := [.subReg 1 0 0 2, .sbcReg 0 1 1 3]) (res := (0, 1))
+    (t := .i64) (op := fun a b => .i64 (a - b)) (fun _ _ _ _ => rfl) rfl
+    (fun f α m st sl b a vs hv => by simp only [execOne.eq_def, hv]) (by invalid_tac)
+    (fun u a b h0 h1 h2 h3 => by
+      simp only [slotRun_cons, slotRun_nil, slotStep, exec, Option.getD_some]
+      state_simp
+      rw [h0, h1, h2, h3]
+      exact sub_slot a b)
+    (fun _ _ => trivial) F
+
 theorem sim_andI64 (F : Nat) : InstrSim P σ code F .andI64 :=
   sim_binary (inst := .andI64) (ops := [.andReg 0 0 2, .andReg 1 1 3]) (res := (0, 1)) (t := .i64)
     (op := fun a b => .i64 (a &&& b)) (fun _ _ _ _ => rfl) rfl
