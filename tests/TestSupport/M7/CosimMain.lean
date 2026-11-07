@@ -10,23 +10,24 @@ first differences, the number of agreeing cases of each form, the division cases
 their instruction counts on each path of `udivmod64`, and a summary, and exits with status 1 when
 a line differs or cannot be checked, or when no line of either kind is present.
 
-`m7-cosim board SEED PER_FORM OUT` writes to OUT the board's image of PER_FORM cases of each form of
-`tests/TestSupport/M7/BoardCosim.lean` from the seed SEED and prints its layout and a line
-`results ADDRESS BYTES` that names the bytes of DTCM that hold the results.  `m7-cosim board-check
-SEED PER_FORM RESULTS [adc-carry]` checks the output records of the bytes RESULTS that `st-flash`
-read from that address against the model, prints every difference with the case's inputs, the
-agreeing and differing cases of each form, the differences by field, and a summary, and exits with
-status 1 when a case
-differs, when the header names another image, or when the board saved fewer cases than the image
-holds.  With `adc-carry` the model's `ADC` ignores its carry in.
+`m7-cosim board SEED PER_FORM OUT [seeded]` writes to OUT the board's image of PER_FORM cases of
+each form of `tests/TestSupport/M7/BoardCosim.lean` from the seed SEED, followed by the fixed cases
+unless `seeded` is given, and prints its layout and a line `results ADDRESS BYTES` that names the
+bytes of DTCM that hold the results.  `m7-cosim board-check SEED PER_FORM RESULTS [seeded]
+[adc-carry]` checks the output records of the bytes RESULTS that `st-flash` read from that address
+against the model, prints every difference with the case's inputs, the agreeing and differing cases
+of each form and fixed case, the differences by field, and a summary, and exits with status 1 when
+a case differs, when the header names another image, or when the board saved fewer cases than the
+image holds.  With `adc-carry` the model's `ADC` ignores its carry in.
 -/
 
 open TestSupport.M7
 
 /-- The check of the board's results. -/
-def boardCheck (seed : UInt64) (per : Nat) (path : String) (mutate : Bool) : IO UInt32 := do
+def boardCheck (seed : UInt64) (per : Nat) (seeded : Bool) (path : String) (mutate : Bool) :
+    IO UInt32 := do
   let res ← IO.FS.readBinFile path
-  let cases := BoardCosim.boardCases seed per
+  let cases ← IO.ofExcept (BoardCosim.boardCases seed per seeded)
   let n := cases.size
   let L := BoardCosim.layout n
   if res.size < BoardCosim.resultBytes n then
@@ -43,8 +44,7 @@ def boardCheck (seed : UInt64) (per : Nat) (path : String) (mutate : Bool) : IO 
   let mut agree : Std.HashMap String Nat := {}
   let mut differ : Std.HashMap String Nat := {}
   let mut fields : Std.HashMap String Nat := {}
-  for ((form, b), k) in cases.toList.zipIdx.take saved do
-    let name := BoardCosim.kindName form b.c.instr
+  for ((name, b), k) in cases.toList.zipIdx.take saved do
     match BoardCosim.checkCase mutate L res k b with
     | [] => agree := agree.insert name (agree.getD name 0 + 1)
     | diffs =>
@@ -56,8 +56,8 @@ def boardCheck (seed : UInt64) (per : Nat) (path : String) (mutate : Bool) : IO 
           fields := fields.insert f (fields.getD f 0 + 1)
         IO.println s!"differ: case {k}, {asm b.c.instr}: {"; ".intercalate diffs}"
         IO.println s!"  inputs: {BoardCosim.inputs L k b}"
-  let names := (List.range BoardCosim.kinds).filterMap fun f =>
-    (cases.find? (·.1 = f)).map fun (_, b) => BoardCosim.kindName f b.c.instr
+  let names := (cases.foldl (fun acc (nm, _) => if acc.contains nm then acc else acc.push nm)
+    #[]).toList
   IO.println ("m7-cosim: agreeing cases by form: " ++
     ", ".intercalate (names.map fun f => s!"{f} {agree.getD f 0}"))
   let bad := differ.toList.foldl (fun a p => a + p.2) 0
@@ -66,7 +66,8 @@ def boardCheck (seed : UInt64) (per : Nat) (path : String) (mutate : Bool) : IO 
       ", ".intercalate (names.filterMap fun f => (differ.get? f).map fun c => s!"{f} {c}"))
     IO.println ("m7-cosim: differences by field: " ++ ", ".intercalate
       ((fields.toList.toArray.qsort (·.1 < ·.1)).toList.map fun (f, c) => s!"{f} {c}"))
-  IO.println (s!"m7-cosim: {saved - bad} of {n} cases of {names.length} forms agree with the " ++
+  IO.println (s!"m7-cosim: {saved - bad} of {n} cases, {per} of each of {BoardCosim.kinds} " ++
+    s!"forms and {n - per * BoardCosim.kinds} fixed, agree with the " ++
     s!"model{if mutate then " with ADC's carry in replaced by 0" else ""}; the board saved " ++
     s!"{(h 1).toNat} cases" ++
     (if h 0 = BoardCosim.doneWord then " and finished" else " and did not finish"))
@@ -135,14 +136,15 @@ def main (args : List String) : IO UInt32 := do
       IO.println (s!"m7-cosim: {dlines.size - dbad} of {dlines.size} division cases agree with " ++
         "the model, with UInt64 / and %, and with the paths' instruction counts")
       return if bad = 0 ∧ dbad = 0 ∧ lines.size > 0 ∧ dlines.size > 0 then 0 else 1
-  | ["board", seed, perForm, out] =>
-      match seed.toNat?, perForm.toNat? with
-      | some s, some n =>
-          match BoardCosim.image (UInt64.ofNat s) n with
+  | "board" :: seed :: perForm :: out :: rest =>
+      match seed.toNat?, perForm.toNat?, rest with
+      | some s, some n, [] | some s, some n, ["seeded"] =>
+          match BoardCosim.image (UInt64.ofNat s) n (rest = ["seeded"]) with
           | .ok (bytes, L) =>
               IO.FS.writeBinFile out (ByteArray.mk bytes.toArray)
               IO.println (s!"m7-cosim: board image of {L.n} cases, {n} of each of " ++
-                s!"{BoardCosim.kinds} forms, seed {s}: {bytes.length} bytes, cases from " ++
+                s!"{BoardCosim.kinds} forms and {L.n - n * BoardCosim.kinds} fixed, seed {s}: " ++
+                s!"{bytes.length} bytes, cases from " ++
                 s!"{hex L.cases.toNat}, landing code {hex L.land.toNat}, save " ++
                 s!"{hex L.save.toNat}, setup {hex L.setup.toNat}, input records " ++
                 s!"{hex L.data.toNat}")
@@ -151,17 +153,24 @@ def main (args : List String) : IO UInt32 := do
           | .error e =>
               IO.eprintln s!"m7-cosim: board: {e}"
               return 1
-      | _, _ =>
-          IO.eprintln "m7-cosim: SEED and PER_FORM must be natural numbers"
+      | _, _, _ =>
+          IO.eprintln "m7-cosim: board SEED PER_FORM OUT [seeded]"
           return 2
   | "board-check" :: seed :: perForm :: results :: rest =>
-      match seed.toNat?, perForm.toNat?, rest with
-      | some s, some n, [] => boardCheck (UInt64.ofNat s) n results false
-      | some s, some n, ["adc-carry"] => boardCheck (UInt64.ofNat s) n results true
-      | _, _, _ =>
-          IO.eprintln "m7-cosim: board-check SEED PER_FORM RESULTS [adc-carry]"
+      let seeded := rest.contains "seeded"
+      let mutate := rest.contains "adc-carry"
+      match seed.toNat?, perForm.toNat? with
+      | some s, some n =>
+          if rest.all (fun a => a = "seeded" ∨ a = "adc-carry") then
+            boardCheck (UInt64.ofNat s) n seeded results mutate
+          else
+            IO.eprintln "m7-cosim: board-check SEED PER_FORM RESULTS [seeded] [adc-carry]"
+            return 2
+      | _, _ =>
+          IO.eprintln "m7-cosim: board-check SEED PER_FORM RESULTS [seeded] [adc-carry]"
           return 2
   | _ =>
       IO.eprintln ("usage: m7-cosim gen SEED PER_FORM DIV OUT | m7-cosim check SERIAL | " ++
-        "m7-cosim board SEED PER_FORM OUT | m7-cosim board-check SEED PER_FORM RESULTS [adc-carry]")
+        "m7-cosim board SEED PER_FORM OUT [seeded] | " ++
+        "m7-cosim board-check SEED PER_FORM RESULTS [seeded] [adc-carry]")
       return 2
