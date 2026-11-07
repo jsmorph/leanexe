@@ -33,6 +33,7 @@ import Library.Numerics.Arithmetic.Uscale.Program
 import Library.Numerics.Bounds.Program
 import Library.Numerics.Decimal.ParseFloat.Program
 import Library.Numerics.Decimal.PrintFloat.Program
+import Library.Numerics.Filters.Cic.Program
 import Library.Numerics.Float64.Asin.Program
 import Library.Numerics.Float64.Asinh.Program
 import Library.Numerics.Float64.Atan.Program
