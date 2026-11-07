@@ -42306,3 +42306,7 @@ The user asked to proceed with the plan after the merge of `controller` into `ma
 - [ ] F0: FP enabled in the startup and the boot model.
 - [ ] F1: Euler on the AArch64 path.
 - [ ] F2: Isla checks of F1's forms with size-tested wrappers.
+
+## 2026-11-06: The NUCLEO-F767ZI board attached
+
+The user attached a NUCLEO-F767ZI to this machine over USB.  Its ST-LINK/V2.1 (USB 0483:374b, firmware V2J39M27, mbed code 0818) presents the drive `NOD_F767ZI`, which writes a copied `.bin` to flash at 0x08000000, and the virtual COM port `/dev/ttyACM0`, which carries USART3 on PD8 and PD9.  The user added the account to `dialout` and installed Debian's `stlink-tools` 1.8.0, and after a replug applied its udev rule, `st-info --probe` read flash 2,097,152 bytes, SRAM 524,288 bytes, chip ID 0x451, STM32F76x/F77x.  The port opens through `sg dialout` and was silent for 3 s at 115200 baud under the factory firmware.  No image of the project has been written to the board.
