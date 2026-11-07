@@ -9,37 +9,42 @@ read, synchronizes them with `ISB`, invalidates the TLBs, and turns the MMU on w
 translation table of 1 GiB blocks.  `BootStep` takes one step of that machine.
 
 The state `Boot` extends the program's `State` with two copies of the writable system registers:
-`written`, which `MSR` sets, and `eff`, the values that translation uses, which an `ISB` makes
-equal to `written`.  An instruction must be fetched successfully under both copies, since the
-architecture may use either until an `ISB`.  `tlb` records whether the TLBs may hold entries that
-a walk under `eff` would not give: a write of a register that a TLB may cache makes it `unknown`,
+`written`, which `MSR` sets, and `eff`, the values that translation and the traps of floating point
+use, which an `ISB` makes equal to `written`.  An instruction must be fetched successfully under
+both copies, since the architecture may use either until an `ISB`.  `FPCR` is among the copied
+registers, although the architecture puts its writes in effect in program order, so the model is
+stricter than the architecture there.  `tlb` records whether the TLBs may hold entries that a walk
+under `eff` would not give: a write of a register that a TLB may cache makes it `unknown`,
 `TLBI VMALLE1` after an `ISB` makes it `pending`, and a `DSB` makes a `pending` one `clean`.
 `spSel` records that SP_EL1 is the stack pointer, which every step but `MSR SPSel, #1` requires.
 `uartDone` records that every byte store to the UART has completed, which a `DSB` ensures.
 
 `classify` gives the type of memory at an address from the table's bytes for the one configuration
-that the model covers, `covered`, and `none` for every other configuration, descriptor, or
-address, where the model stops.  A system instruction steps by `sysExec`.  Another instruction that
-touches no memory steps by `exec` while the MMU may be off, when its next program counter lies
-below 2^55 or address tagging is off, since a branch under tagging changes the top byte of a
-larger target.  Every instruction other than a system
-instruction steps by `exec` with the platform `Boot.platform` once translation is on in the covered
-configuration with valid TLBs: its Normal memory is the writable Normal memory of the table outside
-the protected bytes `R`, the image's code, vectors, and table, which no store may change, so the
-fixed map of code words stays the memory's, and its UART is QEMU's at `uartAddr`, which the table
-must map as writable Device memory.  `HVC` has no step: a run that reaches it with `X0` holding
-PSCI's `SYSTEM_OFF` has finished, and the platform's firmware turns the machine off.
+that the model covers, `covered`, and `none` for every other configuration, descriptor, or address,
+where the model stops.  The covered configuration includes floating point enabled with `cpacrValue`
+and `fpcrValue`.  A system instruction steps by `sysExec`, in which `MSR FPCR` stops unless both
+copies of `CPACR_EL1` let EL1 access floating point.  Another instruction that touches no memory
+steps by `exec` while the MMU may be off, when its next program counter lies below 2^55 or address
+tagging is off, since a branch under tagging changes the top byte of a larger target, and, for a
+floating-point instruction, when both copies of `CPACR_EL1` and `FPCR` hold their covered values.
+Every instruction other than a system instruction steps by `exec` with the platform `Boot.platform`
+once translation is on in the covered configuration with valid TLBs: its Normal memory is the
+writable Normal memory of the table outside the protected bytes `R`, the image's code, vectors, and
+table, which no store may change, so the fixed map of code words stays the memory's, and its UART is
+QEMU's at `uartAddr`, which the table must map as writable Device memory.  `HVC` has no step: a run
+that reaches it with `X0` holding PSCI's `SYSTEM_OFF` has finished, and the platform's firmware
+turns the machine off.
 -/
 
 namespace LeanExe.A64
 
 /-- The system registers that the startup writes or reads. -/
 inductive SysReg where
-  | sctlr | cpacr | mair | tcr | tcr2 | ttbr0 | vbar | currentEL | mmfr3
+  | sctlr | cpacr | mair | tcr | tcr2 | ttbr0 | vbar | fpcr | currentEL | mmfr3
   deriving DecidableEq, Repr
 
 /-- The field `op0<0>:op1:CRn:CRm:op2` of `MSR` and `MRS` for each register: `SCTLR_EL1`,
-`CPACR_EL1`, `MAIR_EL1`, `TCR_EL1`, `TCR2_EL1`, `TTBR0_EL1`, `VBAR_EL1`, `CurrentEL`, and
+`CPACR_EL1`, `MAIR_EL1`, `TCR_EL1`, `TCR2_EL1`, `TTBR0_EL1`, `VBAR_EL1`, `FPCR`, `CurrentEL`, and
 `ID_AA64MMFR3_EL1`. -/
 def SysReg.code : SysReg → Nat
   | .sctlr => 0x4080
@@ -49,12 +54,13 @@ def SysReg.code : SysReg → Nat
   | .tcr2 => 0x4103
   | .ttbr0 => 0x4100
   | .vbar => 0x4600
+  | .fpcr => 0x5A20
   | .currentEL => 0x4212
   | .mmfr3 => 0x403B
 
 /-- The register whose field is `k`, if the model covers it. -/
 def SysReg.ofCode (k : Nat) : Option SysReg :=
-  [SysReg.sctlr, .cpacr, .mair, .tcr, .tcr2, .ttbr0, .vbar, .currentEL, .mmfr3].find?
+  [SysReg.sctlr, .cpacr, .mair, .tcr, .tcr2, .ttbr0, .vbar, .fpcr, .currentEL, .mmfr3].find?
     (·.code = k)
 
 /-- The values of the writable system registers. -/
@@ -66,6 +72,7 @@ structure Sys where
   tcr2 : UInt64
   ttbr0 : UInt64
   vbar : UInt64
+  fpcr : UInt64
   deriving DecidableEq
 
 /-- What the TLBs may hold for the EL1&0 translation regime. -/
@@ -101,13 +108,15 @@ def Sys.set (h : Hw) (s : Sys) : SysReg → UInt64 → Option Sys
   | .tcr2, v => if h.tcrx then some { s with tcr2 := v } else none
   | .ttbr0, v => some { s with ttbr0 := v }
   | .vbar, v => some { s with vbar := v }
+  | .fpcr, v => some { s with fpcr := v }
   | .currentEL, _ | .mmfr3, _ => none
 
 /-- A write of `r` that changes `s` to `s'` leaves the TLBs' contents valid: a write of
-`VBAR_EL1` or `CPACR_EL1`, which no TLB caches, or of `SCTLR_EL1` that changes no field but M. -/
+`VBAR_EL1`, `CPACR_EL1`, or `FPCR`, which no TLB caches, or of `SCTLR_EL1` that changes no field
+but M. -/
 def keepsTlb (r : SysReg) (s s' : Sys) : Bool :=
   match r with
-  | .vbar | .cpacr => true
+  | .vbar | .cpacr | .fpcr => true
   | .sctlr => s.sctlr ||| 1 == s'.sctlr ||| 1
   | _ => false
 
@@ -122,14 +131,33 @@ def tcrValue : UInt64 := 0x80A03520
 /-- The value of `MAIR_EL1`: attribute 0 Device-nGnRnE, attribute 1 Normal Write-Back. -/
 def mairValue : UInt64 := 0xFF00
 
+/-- The value of `CPACR_EL1`: FPEN, bits 21 and 20, `0b11`, so that no access to the SIMD and
+floating-point registers, `FPCR`, or `FPSR` traps at EL1, and every other field clear, which keeps
+SVE and SME instructions trapped. -/
+def cpacrValue : UInt64 := 0x300000
+
+/-- The value of `FPCR`: DN set, so that every NaN result is the default NaN, and every other field
+clear: rounding to nearest with ties to even, no flushing of denormalized numbers, AH and NEP clear,
+and every trap enable clear. -/
+def fpcrValue : UInt64 := 0x02000000
+
+/-- `CPACR_EL1.FPEN` lets EL1 access the SIMD and floating-point registers and `FPCR`: its bit 20 is
+set, since the values `0b00` and `0b10` trap those accesses at EL1. -/
+def Sys.fpAccess (s : Sys) : Bool := s.cpacr &&& 0x100000 != 0
+
+/-- Floating point is enabled with the covered control: `CPACR_EL1` holds `cpacrValue` and `FPCR`
+holds `fpcrValue`. -/
+def Sys.fpOn (s : Sys) : Bool := s.cpacr == cpacrValue && s.fpcr == fpcrValue
+
 /-- Address tagging is off: `TCR_EL1.TBI0` and `TBI1`, bits 37 and 38, are clear, so a branch
 keeps the top byte of its target. -/
 def Sys.untagged (s : Sys) : Bool := s.tcr &&& 0x6000000000 == 0
 
-/-- `s` is the configuration of translation that the model covers. -/
+/-- `s` is the configuration that the model covers: translation with the image's table and
+floating point enabled with the covered control. -/
 def Sys.covered (h : Hw) (s : Sys) : Bool :=
   s.sctlr == sctlrOn && s.tcr == tcrValue && s.mair == mairValue && (!h.tcrx || s.tcr2 == 0) &&
-    s.ttbr0 % 32 == 0 && s.ttbr0 < 0x100000000
+    s.ttbr0 % 32 == 0 && s.ttbr0 < 0x100000000 && s.fpOn
 
 /-- A type of memory: Device memory or Normal memory, each with or without write permission at EL1,
 and Normal memory with or without execute permission at EL1. -/
@@ -186,14 +214,25 @@ def Instr.isSys : Instr → Bool
   | .msr _ _ | .mrs _ _ | .spsel1 | .isb | .dsbIsh | .dsbSy | .tlbiVmalle1 | .hvc0 => true
   | _ => false
 
+/-- An instruction other than a system instruction that `CPACR_EL1.FPEN` traps, one that accesses
+the SIMD and floating-point registers.  No form of the program model is one. -/
+def Instr.isFP (_ : Instr) : Bool := false
+
 /-- A load or a store. -/
 def Instr.accessesMemory : Instr → Bool
   | .ldr _ _ _ | .str _ _ _ | .strb _ _ _ => true
   | _ => false
 
+/-- `MSR` of `r` traps at EL1 under `b`: `MSR FPCR` while `CPACR_EL1.FPEN` traps EL1's accesses
+to floating point in either copy, since the access's check reads `CPACR_EL1`, whose write may take
+effect for it only after an `ISB`. -/
+def Boot.msrTraps (b : Boot) : SysReg → Bool
+  | .fpcr => !(b.eff.fpAccess && b.written.fpAccess)
+  | _ => false
+
 /-- The step of a system instruction from `b`, or `none` where the model stops: `HVC`, `MSR` of a
-register that it cannot write, and `MRS` of a register other than `CurrentEL`, which reads 4 for
-EL1, and `ID_AA64MMFR3_EL1`. -/
+register that it cannot write or whose write traps, and `MRS` of a register other than
+`CurrentEL`, which reads 4 for EL1, and `ID_AA64MMFR3_EL1`. -/
 def sysExec (h : Hw) (i : Instr) (b : Boot) : Option Boot :=
   let core := { b.core with pc := b.core.pc + 4 }
   match i with
@@ -209,12 +248,13 @@ def sysExec (h : Hw) (i : Instr) (b : Boot) : Option Boot :=
   | .msr k t =>
       match SysReg.ofCode k.val with
       | some r =>
-          match b.written.set h r (b.core.x t) with
-          | some w => some { b with
-              core := core
-              written := w
-              tlb := if keepsTlb r b.written w then b.tlb else .unknown }
-          | none => none
+          if b.msrTraps r then none
+          else match b.written.set h r (b.core.x t) with
+            | some w => some { b with
+                core := core
+                written := w
+                tlb := if keepsTlb r b.written w then b.tlb else .unknown }
+            | none => none
       | none => none
   | .mrs t k =>
       match SysReg.ofCode k.val with
@@ -235,12 +275,14 @@ inductive BootStep (h : Hw) (R : UInt64 → Bool) (code : UInt64 → Option UInt
       (he : sysExec h i b = some b') : BootStep h R code b b'
   /-- An instruction that touches no memory, with the MMU on or off.  The next program counter
   lies below 2^55, or address tagging is off in both copies of `TCR_EL1`, since a branch under
-  `TCR_EL1.TBI0` or `TBI1` replaces the top byte of a target at or above 2^55. -/
+  `TCR_EL1.TBI0` or `TBI1` replaces the top byte of a target at or above 2^55.  A floating-point
+  instruction requires `CPACR_EL1` and `FPCR` at their covered values in both copies. -/
   | plain {b : Boot} {w : UInt32} {i : Instr} {c : State} (hc : code b.core.pc = some w)
       (hd : decode w = some i) (hsp : b.spSel = true)
       (hf : fetchOk h b.eff b.tlb b.core.mem b.core.pc)
       (hw : fetchOk h b.written b.tlb b.core.mem b.core.pc)
       (hn : i.isSys = false) (hm : i.accessesMemory = false)
+      (hfp : i.isFP = false ∨ (b.eff.fpOn = true ∧ b.written.fpOn = true))
       (he : exec noMemory i b.core = some c)
       (ht : c.pc.toNat < 2 ^ 55 ∨ (b.eff.untagged = true ∧ b.written.untagged = true)) :
       BootStep h R code b { b with core := c }

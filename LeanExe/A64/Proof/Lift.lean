@@ -186,7 +186,7 @@ theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 →
       | next hs' _ =>
         obtain ⟨w', _, hc', _, _⟩ := step_some hs'
         exact hdom _ _ hc'
-    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm he (.inl hpc))
+    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm (.inl rfl) he (.inl hpc))
       (ih hend (by rw [ho, ht]) { b' with core := t } rfl hsp hoff)
 
 /-- A run keeps every byte that its platform does not map as Normal memory. -/

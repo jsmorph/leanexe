@@ -33,7 +33,7 @@ theorem boot_plain {b : Boot} {i : Instr} {c : State} (hc : code b.core.pc = som
     (hsp : b.spSel = true) (hoff : b.mmuOff) (hn : i.isSys = false)
     (hm : i.accessesMemory = false) (he : exec noMemory i b.core = some c)
     (ht : c.pc.toNat < 2 ^ 55) : BootStep h R code b { b with core := c } :=
-  .plain hc (decode_encode i) hsp (.inl hoff.1) (.inl hoff.2) hn hm he (.inl ht)
+  .plain hc (decode_encode i) hsp (.inl hoff.1) (.inl hoff.2) hn hm (.inl rfl) he (.inl ht)
 
 /-- A step of a system instruction while the MMU is off. -/
 theorem boot_sys {b b' : Boot} {i : Instr} (hc : code b.core.pc = some (encode i))
