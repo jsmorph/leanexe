@@ -5,19 +5,20 @@ import LeanExe.M7.Machine
 The traces that Isla computes for the Thumb forms of `LeanExe/M7/Machine.lean` from the A-profile
 Sail model, in AArch32 Thumb state at EL0 under an AArch64 EL1, as a relation between states of an
 A-profile machine that contains the model's state.  The syntax, the values, the operators, and the
-reader `isla_trace%` are those of `LeanExe/A64/Isla/Trace.lean`, whose documentation describes them,
-and the semantics follows the A64 semantics there, with the changes that the AArch32 state needs.
+reader `isla_trace%` are those of `LeanExe/A64/Isla/Trace.lean`, whose documentation describes
+them, and the semantics follows the A64 semantics there, with the changes that the AArch32 state
+needs.
 
 AArch32 at EL0 under an AArch64 EL1 keeps its registers in the low 32 bits of the X registers: in
-User mode, r0 to r12 are bits 31 to 0 of X0 to X12, SP is those of X13, and LR those of X14, and the
-other X registers hold the banked registers of the other modes (DDI 0487, the mapping of AArch32
-registers to AArch64 registers; `LookUpRIndex` in the Sail model).  `Mach` holds the model's
-`State` and the parts of the A-profile machine that the model lacks: bits 63 to 32 of X0 to X14, X15
-to X30, and the bytes of memory at physical addresses from 2^32, where the traces of the loads and
-stores find their translation table.  The registers `R0` to `R30` of the Sail model are X0 to X30,
-the program counter `_PC` holds the model's program counter zero-extended to 64 bits, and the fields
-`N`, `Z`, `C`, and `V` of `PSTATE` are the model's flags.  Every other register lies outside the
-model, in `σ`, with `PSTATE`'s other fields in a struct.
+User mode, r0 to r12 are bits 31 to 0 of X0 to X12, SP is those of X13, and LR those of X14, and
+the other X registers hold the banked registers of the other modes (`LookUpRIndex`, `v8_base.sail`
+6343).  `Mach` holds the model's `State` and the parts of the A-profile machine that the model
+lacks: bits 63 to 32 of X0 to X14, X15 to X30, and the bytes of memory at physical addresses from
+2^32, where the traces of the loads and stores find their translation table.  The registers `R0`
+to `R30` of the Sail model are X0 to X30, the program counter `_PC` holds the model's program
+counter zero-extended to 64 bits, and the fields `N`, `Z`, `C`, and `V` of `PSTATE` are the
+model's flags.  Every other register lies outside the model, in `σ`, with `PSTATE`'s other fields
+in a struct.
 
 The rules differ from those of the A64 semantics as follows.
 
@@ -36,9 +37,9 @@ The rules differ from those of the A64 semantics as follows.
    2^32, and the platform names `a` a device address: its value must be the next value of the
    device sequence `δ`, and the model's state records the access and counts the read.  A write of
    4 bytes there appends a write event.  Every other read and write concerns the bytes of memory,
-   the model's below 2^32 and `Mach.far` above.  The traces' descriptors map the model's device
-   window as Device memory, whose word accesses the model takes as events, and an access to Device
-   memory reaches the device once and in program order (DDI 0487, Device memory).
+   the model's below 2^32 and `Mach.far` above.  A trace's memory event carries no memory type, so
+   the platform decides which accesses are device accesses, and the traces of `m7-traces.sh` map
+   the model's device window as Device memory and DTCM as Normal memory.
 4. The vector primitives read and write `R0` to `R30` as `Mach.x` and `Mach.setX` give them.
 -/
 
