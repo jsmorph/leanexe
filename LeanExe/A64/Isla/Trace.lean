@@ -21,21 +21,23 @@ variables, in the header's order and widths, since Isla numbers the variables of
 in order of their first appearance.  It folds the operators of many arguments to the left, drops
 the access kind of a memory read and the kind and the result of a memory write, which the
 semantics does not use, reads a name of the header in an expression as the field's variable,
-reads a vector primitive only over the references `R0` to `R30` in order, and reads the events
-`cycle`, `call`, `return`, `define-enum`, and `branch-address`, and the primitives
-`sail_take_exception` and `sail_barrier` with a unit result, as `skip`.
+reads a vector primitive only over the references `R0` to `R30` in order, reads the arguments of
+an `abstract-call` event as register values, and reads the events `cycle`, `call`, `return`,
+`define-enum`, and `branch-address`, and the primitives `sail_take_exception` and `sail_barrier`
+with a unit result, as `skip`.
 
-`Trace.Run P t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
+`Trace.Run P A t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
 section 3, and `theories/opsem.v` of its repository): `declare-const` picks any value of its type,
 a read of a register or of memory whose value differs from the state's ends the path without an
 outcome, as does a false `assert`, while a false `assume` and every ill-formed event end it in
 `fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and
 `branch-address` and the result of a write have no effect.  The model's `State` holds the
-registers `R0` to `R30`, `SP_EL1`, `_PC`, and the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the
-bytes of memory, and the UART's output.  `σ` holds every other register by name, and `PSTATE`'s
-other fields in a struct.  The outcome of a path that ends holds the model's state and `σ`, so
-that a theorem can state the whole effect of the instruction's decode and execution.  An `ite`
-evaluates both branches, which differs from Islaris only where a branch cannot be evaluated.
+registers `R0` to `R30`, `SP_EL1`, `_PC`, the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the low
+64 bits of each element of `_Z`, the bytes of memory, and the UART's output.  `σ` holds every
+other register by name, the upper bits of `_Z`, and `PSTATE`'s other fields in a struct.  The
+outcome of a path that ends holds the model's state and `σ`, so that a theorem can state the whole
+effect of the instruction's decode and execution.  An `ite` evaluates both branches, which differs
+from Islaris only where a branch cannot be evaluated.
 
 The rules below read Isla or the Sail model instead of Islaris, which binds no field, steps over
 an `abstract-primop` without effect (`opsem.v` 427-429), leaves the program counter to the trace,
@@ -87,6 +89,18 @@ e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
    927-947), and both functions return unit (`armv9p4.ir` 70791 and 1929600).  A barrier constrains
    the order and the completion of memory accesses, which the semantics of one instruction on one
    core does not observe, and Islaris steps over a barrier without effect (`opsem.v` 425-426).
+10. The register `_Z`, which the Sail model declares as a vector of 32 bit vectors of 2048 bits
+   (`register z_Z : %fvec(32, %bv2048)`, `armv9p4.ir` 21941), holds the SIMD and floating-point
+   registers: element `i` is Zi, whose low 128 bits are Vi and whose low 64 bits are Di.  The
+   model's `dregs` holds the low 64 bits of each element, and `σ` holds the upper 1984 bits as a
+   vector of 32 bit vectors.  A read of `_Z` gives the vector that joins the two, and a write sets
+   the D registers to the low 64 bits of its elements and the vector in `σ` to their upper bits.
+11. Isla runs a function that `--abstract` names by declaring a fresh variable for its result and
+   recording an `abstract-call` event with the function's name, the variable, and the arguments'
+   values (`executor.rs` 950-971 of Isla e9b5d945).  `A` gives each such function a meaning, a
+   partial function of the arguments' values.  The event ends the path in `fail` where `A` gives no
+   result, and without an outcome where the variable differs from the result, as a read does.  A
+   theorem states the meaning that it assumes as a hypothesis on `A`.
 -/
 
 namespace LeanExe.A64.Isla
@@ -175,6 +189,7 @@ inductive Event where
   | writeMem (a d : Base) (k : Nat)
   | readGprs (v i : Base) (xs : List Base)
   | writeGprs (i v : Base) (xs : List Base)
+  | abstractCall (f : String) (r : Base) (args : List RVal)
   | skip
   deriving Lean.ToExpr
 
@@ -246,6 +261,13 @@ inductive Val where
 /-- The values of the variables. -/
 abbrev Vars := Nat → Option Val
 
+/-- The meanings of the functions that a trace leaves abstract: the result of the function named
+`f` on the arguments `vs`, or `none` where the meaning is not given. -/
+abbrev Abstract := String → List Val → Option Val
+
+/-- The meanings of a trace without abstract functions. -/
+def noAbstract : Abstract := fun _ _ => none
+
 /-- `ρ` with the variable `x` set to `v`. -/
 def Vars.set (ρ : Vars) (x : Nat) (v : Val) : Vars := fun y => if y = x then some v else ρ y
 
@@ -281,6 +303,14 @@ def RVal.eval (ρ : Vars) : RVal → Option Val
   | .base b => b.eval ρ
   | .struct fs => (Base.evalFields ρ fs).map .struct
   | .vec bs => (Base.evalAll ρ bs).map .vec
+
+/-- The values of a list of register values, `none` when one has none. -/
+def RVal.evalAll (ρ : Vars) : List RVal → Option (List Val)
+  | [] => some []
+  | v :: vs =>
+    match v.eval ρ, RVal.evalAll ρ vs with
+    | some x, some xs => some (x :: xs)
+    | _, _ => none
 
 /-- The part of `v` at the accessor path `al`, a list of field names. -/
 def acc : List String → Val → Option Val
@@ -357,22 +387,67 @@ def partPut (s : State) : Part → Val → Option State
   | .v, .bits 1 n => some { s with vFlag := n = 1 }
   | _, _ => none
 
-/-- The value of the register `r` at the accessor path `al`: the model's part that they name, or
-else the part at `al` of the register outside the model.  `PSTATE` as a whole has no value, since
-the model holds four of its fields. -/
+/-- D register `i` of the state, and 0 from 32. -/
+def dAt (s : State) (i : Nat) : UInt64 := if h : i < 32 then s.dregs ⟨i, h⟩ else 0
+
+/-- The state with D register `j` set to `v`. -/
+def setDAt (s : State) (j : Nat) (v : UInt64) : State :=
+  { s with dregs := fun i => if i.val = j then v else s.dregs i }
+
+/-- The elements of `_Z` from element `j` on, from the values `hs` of their bits above bit 63:
+element `j` is the 2048 bits whose low 64 bits are D register `j` and whose upper 1984 bits are
+the first value of `hs`, which must have that width. -/
+def zJoin (s : State) : List Val → Nat → Option (List Val)
+  | [], _ => some []
+  | .bits w h :: hs, j =>
+    if w = 1984 then (zJoin s hs (j + 1)).map (.bits 2048 (h * 2 ^ 64 + (dAt s j).toNat) :: ·)
+    else none
+  | _ :: _, _ => none
+
+/-- The value of `_Z`, the vector of the 32 registers Z0 to Z31 of 2048 bits, from the state's D
+registers and `v`, the vector of the 32 values of their upper 1984 bits that `σ` holds. -/
+def zGet (s : State) : Val → Option Val
+  | .vec hs => if hs.length = 32 then (zJoin s hs 0).map .vec else none
+  | _ => none
+
+/-- The state after a write of the elements `xs` of `_Z` from element `j` on, and the values of
+their upper 1984 bits: each element must have 2048 bits, and D register `j` takes the low 64 bits
+of the first. -/
+def zSplit (s : State) : List Val → Nat → Option (State × List Val)
+  | [], _ => some (s, [])
+  | .bits w x :: xs, j =>
+    if w = 2048 then
+      (zSplit (setDAt s j (.ofNat x)) xs (j + 1)).map fun p => (p.1, .bits 1984 (x / 2 ^ 64) :: p.2)
+    else none
+  | _ :: _, _ => none
+
+/-- The state and the upper bits after a write of `v`, a vector of 32 elements, to `_Z`. -/
+def zPut (s : State) : Val → Option (State × Val)
+  | .vec xs => if xs.length = 32 then (zSplit s xs 0).map fun p => (p.1, .vec p.2) else none
+  | _ => none
+
+/-- The value of the register `r` at the accessor path `al`: the model's part that they name, the
+value of `_Z` from the D registers and the upper bits that `σ` holds, or else the part at `al` of
+the register outside the model.  `PSTATE` as a whole has no value, since the model holds four of
+its fields. -/
 def regGet (s : State) (σ : Sys) (r : String) (al : List String) : Option Val :=
   match part r al with
   | some p => some (partGet s p)
-  | none => if r = "PSTATE" ∧ al = [] then none else σ.get r al
+  | none =>
+    if r = "PSTATE" ∧ al = [] then none
+    else if r = "_Z" then if al = [] then (σ.get r []).bind (zGet s) else none
+    else σ.get r al
 
 /-- The state and registers after writing `x` to the register `r` at the accessor path `al`.  A
-whole register outside the model takes `x` whether or not `σ` holds it. -/
+write of `_Z` sets the D registers to the low 64 bits of its elements and the value of `_Z` in `σ`
+to their upper bits.  A whole register outside the model takes `x` whether or not `σ` holds it. -/
 def regSet (s : State) (σ : Sys) (r : String) (al : List String) (x : Val) :
     Option (State × Sys) :=
   match part r al with
   | some p => (partPut s p x).map (·, σ)
   | none =>
     if r = "PSTATE" ∧ al = [] then none
+    else if r = "_Z" then if al = [] then (zPut s x).map fun p => (p.1, σ.set r p.2) else none
     else match al with
       | [] => some (s, σ.set r x)
       | _ :: _ => (σ r).bind fun w => (upd al w x).map fun w' => (s, σ.set r w')
@@ -520,70 +595,78 @@ def finish (s : State) (σ : Sys) : Outcome :=
 mutual
 
 /-- Some path of the trace from the state `s`, the registers `σ`, and the variables `ρ` ends in
-the outcome `o`. -/
-def Trace.Run (P : Platform) : Trace → Vars → State → Sys → Outcome → Prop
+the outcome `o`, where the abstract functions of the trace mean `A`. -/
+def Trace.Run (P : Platform) (A : Abstract) : Trace → Vars → State → Sys → Outcome → Prop
   | .done, _, s, σ, o => o = finish s σ
-  | .cases ts, ρ, s, σ, o => Trace.RunSome P ts ρ s σ o
+  | .cases ts, ρ, s, σ, o => Trace.RunSome P A ts ρ s σ o
   | .event (.declare x (.bv w)) t, ρ, s, σ, o =>
     match ρ x with
-    | none => ∃ n, n < 2 ^ w ∧ t.Run P (ρ.set x (.bits w n)) s σ o
-    | some (.bits w' n) => if w' = w ∧ n < 2 ^ w then t.Run P ρ s σ o else o = .fail
+    | none => ∃ n, n < 2 ^ w ∧ t.Run P A (ρ.set x (.bits w n)) s σ o
+    | some (.bits w' n) => if w' = w ∧ n < 2 ^ w then t.Run P A ρ s σ o else o = .fail
     | some _ => o = .fail
   | .event (.declare x .bool) t, ρ, s, σ, o =>
     match ρ x with
-    | none => ∃ b, t.Run P (ρ.set x (.bool b)) s σ o
-    | some (.bool _) => t.Run P ρ s σ o
+    | none => ∃ b, t.Run P A (ρ.set x (.bool b)) s σ o
+    | some (.bool _) => t.Run P A ρ s σ o
     | some _ => o = .fail
   | .event (.define x e) t, ρ, s, σ, o =>
     match e.eval s σ ρ with
-    | some v => t.Run P (ρ.set x v) s σ o
+    | some v => t.Run P A (ρ.set x v) s σ o
     | none => o = .fail
   | .event (.assert e) t, ρ, s, σ, o =>
     match e.eval s σ ρ with
-    | some (.bool b) => b = true ∧ t.Run P ρ s σ o
+    | some (.bool b) => b = true ∧ t.Run P A ρ s σ o
     | _ => o = .fail
   | .event (.assume e) t, ρ, s, σ, o =>
     match e.eval s σ ρ with
-    | some (.bool b) => if b then t.Run P ρ s σ o else o = .fail
+    | some (.bool b) => if b then t.Run P A ρ s σ o else o = .fail
     | _ => o = .fail
   | .event (.assumeReg r al v) t, ρ, s, σ, o =>
     match regGet s σ r al, v.eval ρ with
-    | some w, some w' => w = w' ∧ t.Run P ρ s σ o
+    | some w, some w' => w = w' ∧ t.Run P A ρ s σ o
     | _, _ => o = .fail
   | .event (.readReg r al v) t, ρ, s, σ, o =>
     match regGet s σ r al, (v.eval ρ).bind (acc al) with
-    | some w, some w' => w = w' ∧ t.Run P ρ s σ o
+    | some w, some w' => w = w' ∧ t.Run P A ρ s σ o
     | _, _ => o = .fail
   | .event (.writeReg r al v) t, ρ, s, σ, o =>
     match ((v.eval ρ).bind (acc al)).bind (regSet s σ r al) with
-    | some (s', σ') => t.Run P ρ s' σ' o
+    | some (s', σ') => t.Run P A ρ s' σ' o
     | none => o = .fail
   | .event (.readMem d a k) t, ρ, s, σ, o =>
     match d.eval ρ, a.eval ρ with
     | some (.bits w x), some (.bits 64 y) =>
-      if w = 8 * k then x = bytes s.mem (.ofNat y) k ∧ t.Run P ρ s σ o else o = .fail
+      if w = 8 * k then x = bytes s.mem (.ofNat y) k ∧ t.Run P A ρ s σ o else o = .fail
     | _, _ => o = .fail
   | .event (.writeMem a d k) t, ρ, s, σ, o =>
     match a.eval ρ, d.eval ρ with
     | some (.bits 64 y), some (.bits w x) =>
-      if w = 8 * k then t.Run P ρ (store P s (.ofNat y) x k) σ o else o = .fail
+      if w = 8 * k then t.Run P A ρ (store P s (.ofNat y) x k) σ o else o = .fail
     | _, _ => o = .fail
   | .event (.readGprs v i xs) t, ρ, s, σ, o =>
     match v.eval ρ, i.eval ρ, Base.evalAll ρ xs with
     | some (.bits 64 y), some (.bits _ k), some ws =>
-      ws = gprVals s ∧ y = (regAt s (k % 32)).toNat ∧ t.Run P ρ s σ o
+      ws = gprVals s ∧ y = (regAt s (k % 32)).toNat ∧ t.Run P A ρ s σ o
     | _, _, _ => o = .fail
   | .event (.writeGprs i v xs) t, ρ, s, σ, o =>
     match i.eval ρ, v.eval ρ, Base.evalAll ρ xs with
     | some (.bits _ k), some (.bits 64 y), some ws =>
-      ws = gprVals s ∧ t.Run P ρ (setRegAt s (k % 32) (.ofNat y)) σ o
+      ws = gprVals s ∧ t.Run P A ρ (setRegAt s (k % 32) (.ofNat y)) σ o
     | _, _, _ => o = .fail
-  | .event .skip t, ρ, s, σ, o => t.Run P ρ s σ o
+  | .event (.abstractCall f r args) t, ρ, s, σ, o =>
+    match RVal.evalAll ρ args, r.eval ρ with
+    | some vs, some v =>
+      match A f vs with
+      | some w => w = v ∧ t.Run P A ρ s σ o
+      | none => o = .fail
+    | _, _ => o = .fail
+  | .event .skip t, ρ, s, σ, o => t.Run P A ρ s σ o
 
 /-- Some path of some trace of `ts` ends in the outcome `o`. -/
-def Trace.RunSome (P : Platform) : List Trace → Vars → State → Sys → Outcome → Prop
+def Trace.RunSome (P : Platform) (A : Abstract) :
+    List Trace → Vars → State → Sys → Outcome → Prop
   | [], _, _, _, _ => False
-  | t :: ts, ρ, s, σ, o => t.Run P ρ s σ o ∨ Trace.RunSome P ts ρ s σ o
+  | t :: ts, ρ, s, σ, o => t.Run P A ρ s σ o ∨ Trace.RunSome P A ts ρ s σ o
 
 end
 
@@ -593,10 +676,11 @@ def Footprint.vars (F : Footprint) (f : Fields) : Vars :=
     fun _ => none
 
 /-- Some path of the footprint `F` for the fields `f` ends in the outcome `o`: its trace runs
-with the header's variables bound and `__BranchTaken` false. -/
+with the header's variables bound and `__BranchTaken` false, and with the meanings `A` of its
+abstract functions, none unless given. -/
 def Footprint.Run (P : Platform) (F : Footprint) (f : Fields) (s : State) (σ : Sys)
-    (o : Outcome) : Prop :=
-  F.trace.Run P (F.vars f) s (σ.set "__BranchTaken" (.bool false)) o
+    (o : Outcome) (A : Abstract := noAbstract) : Prop :=
+  F.trace.Run P A (F.vars f) s (σ.set "__BranchTaken" (.bool false)) o
 
 /-- The registers that an expression reads, with their accessor paths. -/
 def Exp.regs : Exp → List (String × List String)
@@ -832,6 +916,8 @@ def toEvent (segs : List Segment) : Sx → Except String Event
     if Sx.beq (.list refs) (.list (.atom "_" :: .atom "vec" :: gprRefs)) then
       return .writeGprs (← toBase i) (← toBase v) (← toAtoms xs)
     else .error "write_register_from_vector of registers other than R0 to R30"
+  | .list (.atom "abstract-call" :: .name f :: r :: args) =>
+    return .abstractCall f (← toBase r) (← args.mapM toRVal)
   | .list (.atom "abstract-primop" :: .name "sail_take_exception" ::
       .list [.atom "_", .atom "unit"] :: _) => .ok .skip
   | .list (.atom "abstract-primop" :: .name "sail_barrier" ::

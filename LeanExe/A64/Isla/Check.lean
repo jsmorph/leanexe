@@ -69,6 +69,32 @@ theorem Agrees.of_reads {P : Platform} {π π' : Sys} {W : List String} {F : Foo
     Agrees P π' W F f i s :=
   ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
 
+/-- `Agrees` for a trace whose abstract functions mean `A` and whose paths may end with different
+registers outside the model: the header names the fields of `F`'s opcode, the opcode has 32 bits,
+its word decodes to `i`, and for every `σ` that agrees with the profile `π` on the registers that
+the trace reads, if `exec` gives `s'`, some outcome of the trace is `s'` with some registers, and
+every outcome is `s'` with registers that differ from `σ` only at the registers `W`.  A write of a
+D register leaves such a choice: `V_set` zeroes the bits of the register's element of `_Z` above
+bit 127 or keeps them, a CONSTRAINED UNPREDICTABLE choice of which the trace takes both
+branches. -/
+def AgreesAll (P : Platform) (A : Abstract) (π : Sys) (W : List String) (F : Footprint)
+    (f : Fields) (i : Instr) (s : State) : Prop :=
+  F.segments.map (fun g => (g.name, g.width)) = F.opcode.fields ∧
+  F.opcode.width = 32 ∧
+  decode (.ofNat (F.opcode.word f)) = some i ∧
+  ∀ σ : Sys, (∀ q ∈ F.trace.reads, σ.get q.1 q.2 = π.get q.1 q.2) →
+    ∀ s', exec P i s = some s' →
+      (∃ σ', F.Run P f s σ (.done s' σ') A) ∧
+      ∀ o, F.Run P f s σ o A → ∃ σ', o = .done s' σ' ∧ ∀ r, r ∉ W → σ' r = σ r
+
+/-- `AgreesAll` under the profile `π` holds under a profile `π'` that agrees with `π` on the
+registers that the trace reads. -/
+theorem AgreesAll.of_reads {P : Platform} {A : Abstract} {π π' : Sys} {W : List String}
+    {F : Footprint} {f : Fields} {i : Instr} {s : State}
+    (h : ∀ q ∈ F.trace.reads, π'.get q.1 q.2 = π.get q.1 q.2)
+    (a : AgreesAll P A π W F f i s) : AgreesAll P A π' W F f i s :=
+  ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
+
 theorem Vars.set_apply (ρ : Vars) (x : Nat) (v : Val) (y : Nat) :
     ρ.set x v y = if y = x then some v else ρ y := rfl
 
