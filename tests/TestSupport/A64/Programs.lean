@@ -21,8 +21,9 @@ result is the array of the words of its 32 scores, the exponential `Exp.exp` of
 `Library.Numerics.Float64.Exp` on 1 and on -740, whose result is subnormal and whose run takes the
 branch of `specialCase` that compares the scaled result with 1 and with 0, and the sine `Trig.sin`
 of `Library.Numerics.Float64.Trig` on 10, whose argument reduction converts its count of `π/2` to an
-integer with `FCVTZU`.  Each program's arm64 Image is `genImage` of the program at `imageBase`, with
-the stack's room `room` and the memory's cap `cap`.
+integer with `FCVTZU`, and on 10^22, whose Payne–Hanek reduction reads the tables of `2/π` and
+`π/2`.  Each program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's
+room `room` and the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
@@ -91,6 +92,10 @@ def programs : List Program := [
   { name := "sin10", module := Library.Numerics.Float64.Trig.compiled.module, entry := 15
     args := [0x4024000000000000], output := .word
     bytes := LeanExe.Native.encodeWord
-      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4024000000000000)).toBits }]
+      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4024000000000000)).toBits },
+  { name := "sin1e22", module := Library.Numerics.Float64.Trig.compiled.module, entry := 15
+    args := [0x4480F0CF064DD592], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4480F0CF064DD592)).toBits }]
 
 end TestSupport.A64

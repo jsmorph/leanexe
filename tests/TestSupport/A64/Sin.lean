@@ -16,7 +16,7 @@ is a given number.
 
 namespace TestSupport.A64.Sin
 
-open LeanExe.A64 Library.Numerics.Float64
+open LeanExe LeanExe.A64 Library.Numerics.Float64
 
 /-- The facts about entry 15 of `Trig.compiled.module` that `genProgram` leaves unchecked, for one
 argument of type `f64` and a result written as a word. -/

@@ -30,7 +30,7 @@ tools/leanrun --timeout 60m --memory-high 8G lake --log-level error build a64-pr
   TestSupport.A64.Sin LeanExe.A64.File LeanExe.A64.Proof.ImageTheorem
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
-for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1" "ImageFilesExp 4" "ImageFilesSin 2"; do
+for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1" "ImageFilesExp 4" "ImageFilesSin 4"; do
   set -- $f
   if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
       "$root/tests/TestSupport/A64/$1.lean" >"$out/$1.check" 2>&1 &&
