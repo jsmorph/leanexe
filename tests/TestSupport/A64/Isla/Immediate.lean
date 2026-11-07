@@ -109,17 +109,6 @@ and `immhi`, `hi`. -/
 def adrFields (d : Fin 32) (lo : Fin 4) (hi : Fin 524288) : Fields :=
   [("immlo", lo.val), ("immhi", hi.val), ("Rd", d.val)]
 
-/-- The model's read of a register below 31, where register 31 is the stack pointer, as the
-vector primitive reads it. -/
-theorem xsp_lt {s : State} {n : Fin 32} (h : n.val < 31) : s.xsp n = regAt s n.val := by
-  unfold State.xsp regAt
-  rw [dite_eq_left h, dite_eq_left h]
-
-/-- The model's read of register 31 as the stack pointer. -/
-theorem xsp_31 {s : State} {n : Fin 32} (h : n.val = 31) : s.xsp n = s.sp := by
-  unfold State.xsp
-  rw [dite_eq_right (by omega)]
-
 /-- The model's write of a register below 31, where register 31 is the stack pointer, as the
 vector primitive writes it. -/
 theorem setXsp_lt {s : State} {d : Fin 32} (h : d.val < 31) (v : UInt64) :
@@ -132,10 +121,6 @@ theorem setXsp_31 {s : State} {d : Fin 32} (h : d.val = 31) (v : UInt64) :
     s.setXsp d v = { s with sp := v } := by
   unfold State.setXsp
   rw [ite_eq_right (by omega)]
-
-/-- The flag `N`, `Z`, `C`, or `V` as the bit that the trace of `CSINC` reads is below 2. -/
-theorem bit_lt (b : Bool) : (if b = true then 1 else 0) < 2 := by
-  cases b <;> decide
 
 /-- `bvand immr #b111111`, which the trace of `LSR` computes, is `immr`. -/
 theorem and63 (r : Fin 64) : r.val &&& 63 = r.val := by
@@ -329,13 +314,10 @@ two directions evaluate take more than the default budget of heartbeats. -/
 theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
       (.addImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : addImmTcg.opcode.word (arithFields d n imm) = encodeNat (.addImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, addImmTcg, arithFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, addImmTcg, arithFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [addImmTcg, Profile.sys_get, Profile.sys] at hσ
@@ -389,13 +371,10 @@ with register 31 the stack pointer, every immediate, and every state.  Its proof
 theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
       (.subImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : subImmTcg.opcode.word (arithFields d n imm) = encodeNat (.subImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, subImmTcg, arithFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, subImmTcg, arithFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [subImmTcg, Profile.sys_get, Profile.sys] at hσ
@@ -481,13 +460,10 @@ the first operand. -/
 theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
       (.subsImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : subsImmTcg.opcode.word (arithFields d n imm) = encodeNat (.subsImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, subsImmTcg, arithFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, subsImmTcg, arithFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [subsImmTcg, Profile.sys_get, Profile.sys] at hσ
@@ -565,13 +541,10 @@ theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
       (.movz d imm hw) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : movzTcg.opcode.word (moveFields d imm hw) = encodeNat (.movz d imm hw) := by
-      simp only [Opcode.word, Opcode.wordFrom, movzTcg, moveFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, movzTcg, moveFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [movzTcg, Profile.sys_get, Profile.sys] at hσ
@@ -617,13 +590,10 @@ theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
       (.movk d imm hw) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : movkTcg.opcode.word (moveFields d imm hw) = encodeNat (.movk d imm hw) := by
-      simp only [Opcode.word, Opcode.wordFrom, movkTcg, moveFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, movkTcg, moveFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [movkTcg, Profile.sys_get, Profile.sys] at hσ
@@ -680,13 +650,10 @@ among `d` and `n`. -/
 theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : lsrImmTcg.opcode.word (lsrImmFields d n sh) = encodeNat (.lsrImm d n sh) := by
-      simp only [Opcode.word, Opcode.wordFrom, lsrImmTcg, lsrImmFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, lsrImmTcg, lsrImmFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [lsrImmTcg, Profile.sys_get, Profile.sys] at hσ
@@ -745,13 +712,10 @@ condition, takes the branch that `condHolds` selects, and proves the trace's con
 theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
       (.csinc d n m cond) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : csincTcg.opcode.word (csincFields d n m cond) = encodeNat (.csinc d n m cond) := by
-      simp only [Opcode.word, Opcode.wordFrom, csincTcg, csincFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, csincTcg, csincFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [csincTcg, Profile.sys_get, Profile.sys] at hσ
@@ -816,13 +780,10 @@ theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
       (.adr d lo hi) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : adrTcg.opcode.word (adrFields d lo hi) = encodeNat (.adr d lo hi) := by
-      simp only [Opcode.word, Opcode.wordFrom, adrTcg, adrFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, adrTcg, adrFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [adrTcg, Profile.sys_get, Profile.sys] at hσ
@@ -865,13 +826,10 @@ theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fi
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
       (.adrp d lo hi) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : adrpTcg.opcode.word (adrFields d lo hi) = encodeNat (.adrp d lo hi) := by
-      simp only [Opcode.word, Opcode.wordFrom, adrpTcg, adrFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
+  refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+  · simp only [Opcode.word, Opcode.wordFrom, adrpTcg, adrFields, encodeNat, List.lookup,
+      String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+    omega
   · simp only [exec, Option.some.injEq] at hs
     subst hs
     isla_reads [adrpTcg, Profile.sys_get, Profile.sys] at hσ

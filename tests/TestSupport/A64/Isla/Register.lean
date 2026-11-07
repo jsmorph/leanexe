@@ -158,15 +158,13 @@ theorem div_toNat_mod (a : UInt64) (k : Nat) :
 /-- `bvsdiv` of two registers zero-extended to 128 bits is their quotient for a nonzero
 divisor. -/
 theorem sdiv_toNat {x y : UInt64} (h : y.toNat ≠ 0) :
-    sdiv 128 x.toNat y.toNat = x.toNat / y.toNat := by
-  have := toNat_lt x
-  have := toNat_lt y
-  rw [sdiv, ite_eq_right (by omega), ite_eq_right (by omega), udiv, ite_eq_right h]
+    sdiv 128 x.toNat y.toNat = x.toNat / y.toNat :=
+  sdiv_128 (Nat.lt_trans (toNat_lt x) (by decide)) (Nat.lt_trans (toNat_lt y) (by decide))
+    (Nat.pos_of_ne_zero h)
 
 /-- `bvsdiv` of zero, the zero register, by a nonzero register is zero. -/
 theorem sdiv_zero {y : UInt64} (h : y.toNat ≠ 0) : sdiv 128 0 y.toNat = 0 := by
-  have := toNat_lt y
-  rw [sdiv, ite_eq_right (by omega), ite_eq_right (by omega), udiv, ite_eq_right h,
+  rw [sdiv_128 (by decide) (Nat.lt_trans (toNat_lt y) (by decide)) (Nat.pos_of_ne_zero h),
     Nat.zero_div]
 
 /-- The model's division by a register that holds zero. -/
@@ -366,13 +364,6 @@ macro_rules
            Nat.mod_mod, subs_r $hB, subs_r_m31, subs_r_n31 $hB])
       | decide))
 
-open Lean Elab Tactic in
-/-- Runs the tactics without recording info trees.  The command-line driver keeps the info tree of
-every command of a file until it ends, and those of these proofs hold the goals of every step of
-the tactics above.  With them, the elaboration of this module under `tests/isla/theorems.sh`
-approached the cap of 10 GiB that the script sets. -/
-elab "without_info " t:tacticSeq : tactic => withEnableInfoTree false (evalTactic t)
-
 set_option maxHeartbeats 4000000 in
 /-- The trace of `ADD Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state.  The backward direction builds the path of each of
@@ -382,13 +373,10 @@ theorem addReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addRegTcg (regFields d n m)
       (.addReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : addRegTcg.opcode.word (regFields d n m) = encodeNat (.addReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, addRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, addRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [addRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -429,13 +417,10 @@ theorem subReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subRegTcg (regFields d n m)
       (.subReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : subRegTcg.opcode.word (regFields d n m) = encodeNat (.subReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, subRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [subRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -478,13 +463,10 @@ theorem andReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] andRegTcg (regFields d n m)
       (.andReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : andRegTcg.opcode.word (regFields d n m) = encodeNat (.andReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, andRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, andRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [andRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -525,13 +507,10 @@ theorem eorReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] eorRegTcg (regFields d n m)
       (.eorReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : eorRegTcg.opcode.word (regFields d n m) = encodeNat (.eorReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, eorRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, eorRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [eorRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -572,13 +551,10 @@ theorem orrReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrRegTcg (regFields d n m)
       (.orrReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : orrRegTcg.opcode.word (regFields d n m) = encodeNat (.orrReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, orrRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, orrRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [orrRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -620,13 +596,10 @@ theorem orrW_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrWTcg (regFields d n m)
       (.orrW d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : orrWTcg.opcode.word (regFields d n m) = encodeNat (.orrW d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, orrWTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, orrWTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [orrWTcg, Profile.sys_get, Profile.sys] at hσ
@@ -668,13 +641,10 @@ theorem subsReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsRegTcg (regFields d n m)
       (.subsReg d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : subsRegTcg.opcode.word (regFields d n m) = encodeNat (.subsReg d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, subsRegTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subsRegTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [subsRegTcg, Profile.sys_get, Profile.sys] at hσ
@@ -718,13 +688,10 @@ theorem madd_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] maddTcg (regFields4 d n m a)
       (.madd d n m a) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : maddTcg.opcode.word (regFields4 d n m a) = encodeNat (.madd d n m a) := by
-        simp only [Opcode.word, Opcode.wordFrom, maddTcg, regFields4, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, maddTcg, regFields4, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [maddTcg, Profile.sys_get, Profile.sys] at hσ
@@ -767,13 +734,10 @@ theorem msub_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] msubTcg (regFields4 d n m a)
       (.msub d n m a) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : msubTcg.opcode.word (regFields4 d n m a) = encodeNat (.msub d n m a) := by
-        simp only [Opcode.word, Opcode.wordFrom, msubTcg, regFields4, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, msubTcg, regFields4, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [msubTcg, Profile.sys_get, Profile.sys] at hσ
@@ -815,13 +779,10 @@ theorem lslv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lslvTcg (regFields d n m)
       (.lslv d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : lslvTcg.opcode.word (regFields d n m) = encodeNat (.lslv d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, lslvTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, lslvTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [lslvTcg, Profile.sys_get, Profile.sys] at hσ
@@ -864,13 +825,10 @@ theorem lsrv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrvTcg (regFields d n m)
       (.lsrv d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : lsrvTcg.opcode.word (regFields d n m) = encodeNat (.lsrv d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, lsrvTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, lsrvTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [lsrvTcg, Profile.sys_get, Profile.sys] at hσ
@@ -915,13 +873,10 @@ theorem udiv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] udivTcg (regFields d n m)
       (.udiv d n m) s := by
   without_info
-    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-    · have h : udivTcg.opcode.word (regFields d n m) = encodeNat (.udiv d n m) := by
-        simp only [Opcode.word, Opcode.wordFrom, udivTcg, regFields, encodeNat, List.lookup,
-          String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-        omega
-      rw [h]
-      exact decode_encode _
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, udivTcg, regFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       isla_reads [udivTcg, Profile.sys_get, Profile.sys] at hσ
