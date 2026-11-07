@@ -153,7 +153,7 @@ theorem boot_image {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64} {limit d
   unfold bootFileOk at hk
   split at hk
   · rename_i is hb
-    simp only [Bool.and_eq_true, beq_iff_eq] at hk
+    simp only [Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq] at hk
     obtain ⟨hn, hl⟩ := hk
     unfold bootProgram at hb
     simp only [except_bind_ok, except_pure_ok] at hb
