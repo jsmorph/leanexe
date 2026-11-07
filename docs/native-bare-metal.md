@@ -237,7 +237,7 @@ With `CCR.UNALIGN_TRP` clear, `LDRD`, `STRD`, `LDM`, `STM`, `PUSH`, `POP`, `LDRE
 
 ## The NUCLEO-F767ZI
 
-The NUCLEO-F767ZI is ST's board with the STM32F767ZI, whose Cortex-M7 has a double-precision floating-point unit, and `tools/baremetal/armv7m/nucleo-f767zi/` holds its `board.S` and `link.ld`, outside every proof.  `tests/baremetal/usart3.sh` builds the echo of `usart3Tick` and the energy controller's program of `gwTickUsart3` for the board and plays the far end of USART3 through a serial port.  The echo has run on a board, where `usart3.sh run echo` passes, and every image runs in Renode's model of the board, which the end of this section describes.  `link.ld` places the program in the memories that ST's device header `stm32f767xx.h` gives:
+The NUCLEO-F767ZI is ST's board with the STM32F767ZI, whose Cortex-M7 has a double-precision floating-point unit, and `tools/baremetal/armv7m/nucleo-f767zi/` holds its `board.S` and `link.ld`, outside every proof.  `tests/baremetal/usart3.sh` builds the echo of `usart3Tick` and the energy controller's program of `gwTickUsart3` for the board and plays the far end of USART3 through a serial port.  The echo has run on a board, where `usart3.sh run echo` passes, and the echo, the gateway, and `guard` run in Renode's model of the board, which the end of this section describes.  `link.ld` places the program in the memories that ST's device header `stm32f767xx.h` gives:
 
 | Memory | Address | Contents |
 | --- | --- | --- |
