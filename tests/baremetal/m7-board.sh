@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
-# usart3Tick, NAME echo, and the energy controller's gateway of gwTickUsart3, NAME gateway.
+# usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, and the
+# echo after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean).
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -12,7 +13,13 @@
 # axioms that file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound,
 # and reports the check's elapsed time and peak memory.  It also writes the measurement images of
 # tests/TestSupport/M7/Dwt.lean, NAME-dwt.bin and for the echo div-dwt.bin, which no theorem
-# covers.
+# covers.  For NAME area, m7-windows area-board also writes area.expected, the area's bytes as the
+# setup leaves them, and the file elaborated is tests/TestSupport/M7/AreaFile.lean, under 12G unless
+# MEM is set, with the setup's theorem from reset in place of the loop theorems.
+#
+# "m7-board.sh area-read" writes area.bin to the board's flash as "run" does, waits 2 s after the
+# reset, reads the area's 69,632 bytes from DTCM at 0x20000000 over SWD into area.read, and
+# requires them to equal area.expected.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -27,7 +34,7 @@
 # "m7-board.sh run NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
 # reads the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a
 # whole number of words, resets the board with st-flash, and plays the far end through the serial
-# port DEVICE, the virtual COM port of the board's ST-LINK.  For the echo,
+# port DEVICE, the virtual COM port of the board's ST-LINK.  For the echo and NAME area,
 # tests/baremetal/uart_echo.py checks each reply, as tests/baremetal/usart3.sh run echo does.  For
 # the gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 1,440 unless set (5 under
 # emulate), of the plant of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless
@@ -71,12 +78,13 @@
 # line NAME.echo and the messages of uv in NAME.stderr.  RENODE names Renode 1.17.0's renode,
 # STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
 # script in seconds.
-# Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |
+# Usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME | run NAME DEVICE |
 #          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |
 #          cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |" \
+  echo "usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME |" \
+    "run NAME DEVICE |" \
     "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |" \
     "cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]" >&2
   exit 2
@@ -93,7 +101,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway) ;;
+    echo|gateway|area) ;;
     *) usage ;;
   esac
 }
@@ -150,7 +158,7 @@ overrun() {
 host_run() {
   local host
   case $1 in
-    echo) host=(uart_echo.py) ;;
+    echo|area) host=(uart_echo.py) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
       rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
@@ -176,13 +184,20 @@ case $1 in
         mem=${MEM:-12G} ;;
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
         count=13 mem=${MEM:-16G} ;;
+      area) lib=LeanExe.M7.Proof.Board cmd=area-board dwt= file=AreaFile count=9
+        mem=${MEM:-12G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.* "${out:?}/$file".*
     tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build m7-windows \
       "$lib"
-    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
-      tee "$out/$name.addr"
-    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
+    if [ "$name" = area ]; then
+      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" \
+        "$out/$name.expected" | tee "$out/$name.addr"
+    else
+      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
+        tee "$out/$name.addr"
+      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
+    fi
     if [ "$name" = echo ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
     fi
@@ -273,6 +288,19 @@ EOF
     if [ "$2" = gateway ]; then
       overrun "$2"
     fi
+    ;;
+  area-read)
+    [ "$#" -eq 1 ] || usage
+    [ -f "$out/area.expected" ] || { echo "fail: area.expected is missing"; exit 1; }
+    flash area.bin
+    sleep 2
+    readmem area.read 0x20000000 "$(stat -c %s "$out/area.expected")"
+    if ! cmp -s "$out/area.expected" "$out/area.read"; then
+      echo "fail: DTCM differs from area.expected: $(cmp "$out/area.expected" "$out/area.read" |
+        head -c 300), $(cmp -l "$out/area.expected" "$out/area.read" | wc -l) bytes"
+      exit 1
+    fi
+    echo "pass: DTCM holds the $(stat -c %s "$out/area.expected") bytes of area.expected"
     ;;
   measure-div)
     [ "$#" -eq 1 ] || usage
