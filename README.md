@@ -200,8 +200,10 @@ The back end in `LeanExe/A64` generates machine code from a module without impor
 | SHA-256 of a constant | `shaCheck` of `abc` | The result |
 | Deep recursion | `recursive 1000` of [the fold example](Verified/Examples/Fold.lean) | The result, or status 1 or 4, and status 1 under QEMU |
 | CIC decimation filter | `cicCheck 64`, [the filter](Library/Numerics/Filters/Cic/README.md) of order 3, decimation 8, and delay 1 on a table of 64 samples | The result, whose words `cic_outputs` states as the specification's outputs over ℤ |
+| Euler solver | `Buffered.solve 4` of [the Euler solvers](Demos/Euler/README.md) on a grid of 4 by 4 cells | The result |
+| GPT-2 scores | `scoresCheck 3`, which calls `scores` of [GPT-2 in binary64](Demos/Gpt/README.md) on a cache of 3 positions, 32 token embeddings, and the final layer norm's gains and biases | The result, whose words `gptscores` states as those of `Demos.Gpt.scores` |
 
-[The Image theorems](tests/TestSupport/A64/ImageFiles.lean) state these runs.  `tests/baremetal/a64-images.sh` writes each Image, has the kernel check the Image theorems, checks QEMU's loading of each file, and runs it on QEMU's `virt` machine, under TCG by default and under KVM with `ACCEL=kvm`, requiring the expected bytes and status.  `tests/isla/theorems.sh` checks the proofs that compare the model's instruction forms with traces of Arm's specification, which `tests/isla/traces.sh` produces with a patched Isla, as [the Isla section](docs/a64-bare-metal.md#isla) describes.
+[The Image theorems](tests/TestSupport/A64/ImageFiles.lean), [the Euler solver's Image theorem](tests/TestSupport/A64/ImageFilesEuler.lean), and [the GPT-2 kernel's Image theorem](tests/TestSupport/A64/ImageFilesGpt.lean) state these runs.  `tests/baremetal/a64-images.sh` writes each Image, has the kernel check the Image theorems, checks QEMU's loading of each file, and runs it on QEMU's `virt` machine, under TCG by default and under KVM with `ACCEL=kvm`, requiring the expected bytes and status.  `tests/isla/theorems.sh` checks the proofs that compare the model's instruction forms with traces of Arm's specification, which `tests/isla/traces.sh` produces with a patched Isla, as [the Isla section](docs/a64-bare-metal.md#isla) describes.
 
 ## Trusted base
 
