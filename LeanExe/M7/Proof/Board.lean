@@ -23,9 +23,9 @@ NMI, debug halt, debugger access, or DMA during the run.  A reset over SWD with 
 is not a power-on reset: the probe leaves DHCSR's C_DEBUGEN and DEMCR set, which the model does
 not track.
 
-`board_setup` runs the image of a program whose module has a memory, laid out by `areaBoot`, from
+`board_setup` runs the image of a program whose module has an area, laid out by `areaBoot`, from
 reset to the initialization's start: the setup leaves the module's initial store in the area at
-DTCM's base, below the stack's limit `areaLimit cap`, when the area fits in DTCM.
+DTCM's base, below the stack's limit `areaEnd`.
 -/
 
 namespace LeanExe.M7.Nucleo
@@ -182,35 +182,32 @@ theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt6
       hs0 hf b hb N
     exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
 
-/-- The bytes of an area of `cap` pages at DTCM's base lie in DTCM when the area fits. -/
-theorem area_ram {cap : Nat} (hcap : areaSize cap ≤ 0x20000) :
-    ∀ j < areaSize cap, Ram platform (areaBase + UInt32.ofNat j) := fun j hj => by
-  have h := toNat_add_ofNat (a := areaBase) (k := j)
-    (by rw [show areaBase.toNat = 536870912 from rfl]; omega)
-  rw [show areaBase.toNat = 536870912 from rfl] at h
-  exact ram_of (by omega) (by omega)
+/-- The bytes of the generator's area lie in DTCM. -/
+theorem area_ram : ∀ j < areaSize areaPages, Ram platform (areaHeader + UInt32.ofNat j) :=
+  fun j hj => by
+    have h := toNat_add_ofNat (a := areaHeader) (k := j)
+      (by rw [show areaHeader.toNat = 536870912 from rfl]; unfold areaSize areaPages at hj; omega)
+    rw [show areaHeader.toNat = 536870912 from rfl] at h
+    unfold areaSize areaPages at hj
+    exact ram_of (by omega) (by omega)
 
-theorem areaLimit_toNat {cap : Nat} (hcap : areaSize cap ≤ 0x20000) :
-    (areaLimit cap).toNat = areaBase.toNat + areaSize cap :=
-  toNat_add_ofNat (by rw [show areaBase.toNat = 536870912 from rfl]; omega)
+theorem areaEnd_toNat : areaEnd.toNat = areaHeader.toNat + areaSize areaPages := by decide
 
-/-- The image of a program whose module `am` has a memory of `cap` pages, laid out by `areaBoot`
-with the program of step `k` of `m`, whose bytes the kernel's check `hk` finds in flash, run from
-reset to the initialization's start: SP holds the top of DTCM, LR 0xFFFFFFFF, the trace is empty,
-and the machine holds the store in which `am` starts in the area at DTCM's base, below the stack's
-limit at the area's end.  The theorem holds under the run conditions of the module's header. -/
-theorem board_setup {am m : Module} {cap : Nat} {gts : List ValueType} {k : Nat}
-    {s0 : List UInt64} {n len : Nat} (hok : setupOk am cap = true)
-    (hgt : globalTypesOf am = some gts) (hcap : areaSize cap ≤ 0x20000)
-    (hk : bootFileOk (areaBoot am cap)
-      (bootProgram (areaBoot am cap) m k s0 (areaLimit cap) devBase) n len = true)
+/-- The image of a program whose module `am` has an area, laid out by `areaBoot` with the program
+of step `k` of `m`, whose bytes the kernel's check `hk` finds in flash, run from reset to the
+initialization's start: SP holds the top of DTCM, LR 0xFFFFFFFF, the trace is empty, and the
+machine holds the store in which `am` starts in the area at DTCM's base, below the stack's limit
+at the area's end.  The theorem holds under the run conditions of the module's header. -/
+theorem board_setup {am m : Module} {gts : List ValueType} {k : Nat} {s0 : List UInt64}
+    {n len : Nat} (hok : setupOk am areaPages = true) (hgt : globalTypesOf am = some gts)
+    (hk : bootFileOk (areaBoot am) (bootProgram (areaBoot am) m k s0 areaEnd devBase) n len = true)
     {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
     (hb : Reset code flashItcm b) :
-    ∃ t, Reach platform σ code b t ∧ t.pc = after boot.reset (setupCode areaBase cap am).length ∧
+    ∃ t, Reach platform σ code b t ∧
+      t.pc = after boot.reset (setupCode areaHeader areaPages am).length ∧
       CodeAt code t.pc (initCode init) ∧ t.sp = stackTop ∧ t.lr = 0xFFFFFFFF ∧ t.trace = [] ∧
-      t.reads = 0 ∧ StoreRel platform areaBase (areaLimit cap) cap gts (initStore am cap) t :=
-  setup_boot (B := boot) hok hgt (by decide) (area_ram hcap)
-    (Nat.le_of_eq (areaLimit_toNat hcap).symm) (by decide) (initCode_wide init) hk hf.itcm
-    (by decide) (by decide) b hb
+      t.reads = 0 ∧ StoreRel platform areaHeader areaEnd areaPages gts (initStore am areaPages) t :=
+  setup_boot (B := boot) hok hgt (by decide) area_ram (Nat.le_of_eq areaEnd_toNat.symm)
+    (by decide) (initCode_wide init) hk hf.itcm (by decide) (by decide) b hb
 
 end LeanExe.M7.Nucleo

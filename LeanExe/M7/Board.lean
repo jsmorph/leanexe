@@ -15,9 +15,9 @@ the option byte BOOT_ADD0 names, and this board's BOOT_ADD0, 0x0080, names `0x00
 Rev 4, section 2.5 and Table 2; OPTCR1 reads `0x00400080`).  The image's table therefore lies at
 `0x00200000`, and its reset entry names the initialization there, so the program runs from the
 ITCM alias.  SP starts at the top of DTCM, and the stack's limit is DTCM's base.  A program whose
-module has a memory of `cap` pages keeps the module's store in an area at DTCM's base, below the
-stack, whose limit is then the area's end, and its image runs the setup of
-`LeanExe/M7/Setup.lean` before the initialization.
+functions access linear memory or globals keeps the module's store in the generator's area from
+`areaHeader`, DTCM's base, below the stack, whose limit is then the area's end `areaEnd`, and its
+image runs the setup of `LeanExe/M7/Setup.lean` before the initialization.
 
 `platform` names DTCM as Normal memory and the 65,536 words from `0x40000000` that requests address
 as devices; RCC at `0x40023800`, GPIOD at `0x40020C00`, and USART3 at `0x40004800` lie among them
@@ -100,14 +100,8 @@ def image (m : Wasm.Module) (k : Nat) (s0 : List UInt64) : GenM (List UInt8) := 
 /-- The address of the loop's head of `main` for the initial state `s0`. -/
 def loopHead (s0 : List UInt64) : UInt32 := after boot.base (mainStart s0)
 
-/-- The address of the area of a program with a memory, DTCM's base. -/
-def areaBase : UInt32 := 0x20000000
-
-/-- The stack's limit of a program whose area holds `cap` pages: the area's end. -/
-def areaLimit (cap : Nat) : UInt32 := areaBase + UInt32.ofNat (areaSize cap)
-
-/-- The layout of an image whose area holds the store of `m` with a memory of `cap` pages: the
-setup of the area before the initialization. -/
-def areaBoot (m : Wasm.Module) (cap : Nat) : Boot := boot.setup (setupCode areaBase cap m)
+/-- The layout of an image whose area holds the store of `m`: the setup of the generator's area
+before the initialization. -/
+def areaBoot (m : Wasm.Module) : Boot := boot.setup (setupCode areaHeader areaPages m)
 
 end LeanExe.M7.Nucleo

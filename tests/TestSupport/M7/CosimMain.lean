@@ -3,8 +3,8 @@ import TestSupport.M7.BoardCosim
 
 /-!
 The command `m7-cosim` of the co-simulation of the Cortex-M7 model.  `m7-cosim gen SEED PER_FORM
-DIV OUT` writes to OUT the harness of PER_FORM cases of each of the model's forms and of the
-division cases with DIV random pairs from the seed SEED.  `m7-cosim check SERIAL` checks every case
+DIV OUT` writes to OUT the harness of PER_FORM cases of each of the model's forms, of the
+division cases with DIV random pairs, and of the fixed cases of `fixedForms`, from the seed SEED.  `m7-cosim check SERIAL` checks every case
 line and every division line of the harness's UART output SERIAL against the model, prints the
 first differences, the number of agreeing cases of each form, the division cases and the range of
 their instruction counts on each path of `udivmod64`, and a summary, and exits with status 1 when
@@ -79,7 +79,8 @@ def main (args : List String) : IO UInt32 := do
       match seed.toNat?, perForm.toNat?, div.toNat? with
       | some s, some n, some k =>
           IO.FS.writeFile out (harness (UInt64.ofNat s) n k)
-          IO.println (s!"m7-cosim: {n * formCount} cases, {n} of each form, " ++
+          IO.println (s!"m7-cosim: {n * formCount + fixedForms.length} cases, {n} of each " ++
+            s!"form and {fixedForms.length} fixed, " ++
             s!"{boundaries.size * (boundaries.size - 1) + k} division cases, seed {s}")
           return 0
       | _, _, _ =>
