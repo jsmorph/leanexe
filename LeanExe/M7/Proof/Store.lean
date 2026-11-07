@@ -9,7 +9,10 @@ memory at `area + 4096 + j`, with the area's bytes `Ram` and its end at or below
 `lim`.  The code reads only the low word of the size, whose high word the area's bytes make 0.
 `storeRel_init` derives the relation for the store in which a module starts, `initStore m cap`,
 from a memory that holds `areaByte` of the module's initial store at each of the area's bytes, as
-the setup of `LeanExe/M7/Setup.lean` leaves it.
+the setup of `LeanExe/M7/Setup.lean` leaves it.  `StoreRel.congr` keeps the relation under code
+that keeps every byte below the stack's limit, `StoreRel.load` gives the two words of the memory's
+8 bytes from an address as those of Talos's `read64`, and `StoreRel.write` and
+`StoreRel.setGlobal` give the relation after the word stores of a `store64` and a `globalSet`.
 -/
 
 namespace LeanExe.M7

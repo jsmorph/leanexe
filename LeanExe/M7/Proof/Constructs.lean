@@ -7,9 +7,12 @@ The simulation of instruction lists and of `if`, as `LeanExe/A64/Proof/Construct
 for the AArch64 back end.  The generator places an `if`'s branch past the `then` code and its end
 at the addresses that `instrSize` and `listSize` compute before it emits the bodies, so the proofs
 rest on `genList_size`: the code of a covered list has the length that `listSize` computes, and
-every instruction of it takes 4 bytes.  `list_sim` proves the simulation of every covered list at
-every fuel by strong induction on the fuel, the fuel at which Talos runs a construct's body and a
-call's callee being one less.
+every instruction of it takes 4 bytes.  `construct_outcome` gives the outcome of a construct from
+its body's: a fall-through and a branch to the construct reach the construct's end with the
+values that it keeps over the stack of its entry, a branch further out and a return pass through,
+and `Inv.of_kept` rebuilds the relation at a branch's target.  `list_sim` proves the simulation of
+every covered list at every fuel by strong induction on the fuel, the fuel at which Talos runs a
+construct's body and a call's callee being one less.
 -/
 
 namespace LeanExe.M7

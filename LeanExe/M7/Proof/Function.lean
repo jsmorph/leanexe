@@ -7,10 +7,12 @@ which `StackOk` places at least `need k` bytes, and so at least the frame's size
 branch to the stub of the stack therefore falls through.  The prologue then lowers SP, stores LR
 in its slot, and clears the slots of the named declared locals.  The parameters stay in the
 caller's outgoing area, where the frame's offsets of the parameters reach them, so Talos's locals
-on entry and the state after the prologue satisfy `Inv`.  The body's outcome under the function's
-construct reaches the epilogue, which copies the results from the bottom operand slots to the
-caller's outgoing area, reloads LR from its slot, which `BodyKeeps` keeps, raises SP, and
-returns.  `calls_ok` proves `CallsOk` at every fuel for a table of functions whose code the
+on entry and the state after the prologue satisfy `Inv`.  The body's fall-through, a branch to the
+function's construct, and a return each reach the epilogue with the results in the bottom operand
+slots, as `Kept` states them, and the epilogue copies them to the caller's outgoing area, reloads
+LR from its slot, which `BodyKeeps` keeps, raises SP, and returns.  Every store of the prologue,
+the epilogue, and the copies lies at or above the frame's SP, above the stack's limit, so the
+store in the area survives them.  `calls_ok` proves `CallsOk` at every fuel for a table of functions whose code the
 generator placed, by strong induction on the fuel.
 -/
 

@@ -282,7 +282,8 @@ theorem area_of_usesArea {m : Module} {k : Nat} {fs : List (Nat × Function)} {l
 address `base`: the step's code, from its entry after `main`, simulates the call at every fuel, in
 a module that imports nothing and whose functions that calls reach from `k` have the covered
 forms, with a bound `need` of the stack that its calls use whose value for `k` is
-`stackBound m k`. -/
+`stackBound m k`.  The program has an area exactly when `usesArea m k` holds, and then the
+module's memory has 32-bit addresses and the area holds the module's globals. -/
 theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
     {is : List Instr} (hm : m.imports = [])
     (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)

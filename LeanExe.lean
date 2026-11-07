@@ -89,8 +89,10 @@ import LeanExe.M7.Isla.Walk
 import LeanExe.M7.Machine
 import LeanExe.M7.Parts
 import LeanExe.M7.Setup
+import LeanExe.M7.Proof.Access
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
+import LeanExe.M7.Proof.Bounds
 import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Call
 import LeanExe.M7.Proof.Constructs

@@ -14,9 +14,11 @@ slot `n` then holds, or a word store of the request's low word, after which slot
 induction on `n`: the machine returns to the loop's head with the state of `reqRun` in the
 outgoing area and the window traces of `reqTrace (devBus dev)` appended to its trace.  The reads
 of the windows take the values of `σ` from the number of reads before the loop on.  `main_start`
-runs `main`'s start to the loop's head, and `main_run` combines the two from `main`'s entry.  The
-relation of the simulation holds no Talos store, so each call passes the same store to
-`step_call`.
+runs `main`'s start to the loop's head with the bytes below SP unchanged, and `main_run` combines
+the two from `main`'s entry.  Each window passes to `step_call` the store that the call before it
+left, with a heap at it, the invariant `J` of `StepCall`, and the area's relation `AreaHolds`,
+which the window's device access and its stores into the outgoing area keep, since they leave
+every byte below the stack's limit.
 -/
 
 namespace LeanExe.M7
