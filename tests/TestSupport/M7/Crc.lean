@@ -4,28 +4,31 @@ import Verified.Reflect.Command
 import Verified.Call
 
 /-!
-A CRC-32 step over USART3 for the Cortex-M7 back end, a program with requests whose table lies in
-linear memory.  `crcStepWith t s v` keeps the phases of the echo `echoTick` of
-`tests/TestSupport/Bare/Req.lean`: it reads `USART_ISR` until `RXNE` is set, reads the byte from
-`USART_RDR`, reads `USART_ISR` until `TXE` is set, and writes the reply to `USART_TDR`.  The
-state's low byte is the phase, its second byte the reply, and its upper 32 bits the CRC register,
-which `byteStep t` of `Library/Hashing/Crc/Program.lean` updates with each byte received.  The
-reply is the low byte of the CRC of the bytes received so far, the register's ones complement.
-`crcUsart3Tick` applies the step to `crc32Table`, as `crcCheck` of
-`tests/TestSupport/Bare/Programs.lean` applies `crcMsg`, so the compiled module holds the table
-in its initial memory and the wrapper's theorems name it.  The initial state `crcInit` holds the
-register of the empty message, 32 ones, in phase 3, whose window reads the status.
+A CRC-32 step over a UART for the Cortex-M7 back end, a program with requests whose table lies
+in linear memory.  `crcPhases` keeps the phases of the echo `echoTick` of
+`tests/TestSupport/Bare/Req.lean`, with its register map: it reads the status until the receiver
+holds a byte, reads the byte, reads the status until the transmitter has room, and writes the
+reply.  The state's low byte is the phase, its second byte the reply, and its upper 32 bits the
+CRC register, which `byteStep t` of `Library/Hashing/Crc/Program.lean` updates with each byte
+received.  The reply is the low byte of the CRC of the bytes received so far, the register's ones
+complement.  `crcPhases` is `@[inline]`, so `verified_compile` reflects `crcStepWith`, for
+USART3 of the STM32F767ZI, and `crcCmsdkWith`, for UART0 of QEMU's `mps2-an500`, each with the
+map's constants in its own code.  `crcUsart3Tick` and `crcCmsdkTick` apply them to `crc32Table`,
+as `crcCheck` of `tests/TestSupport/Bare/Programs.lean` applies `crcMsg`, so each compiled module
+holds the table in its initial memory and the wrapper's theorems name it.  The initial state
+`crcInit` holds the register of the empty message, 32 ones, in phase 3, whose window reads the
+status.
 
-`verified_compile` gives the wrapper, function 5 of `crcStepCompiled.module`, the theorems
-`implements`, `trapFree`, and `aligned`, each with the table `(4096, crc32Table)`, and
-`crc_check` compares the step's replies to `123456789` with `zlib.crc32`.  `CrcInv` is what a loop
+`verified_compile` gives each wrapper, function 5 of `crcStepCompiled.module` and of
+`crcCmsdkCompiled.module`, the theorems `implements`, `trapFree`, and `aligned`, each with the
+table `(4096, crc32Table)`, and `crc_check` compares the replies of `crcUsart3Tick` to
+`123456789` with `zlib.crc32`.  `CrcInv` is what a loop
 of the step must keep from one call to the next besides the allocator's invariant: an aligned
 heap and the table borrowed.  `crcInv_initial` derives it at the module's initial store from
 `crcStepCompiled.initial`, and `crc_call` derives from `aligned` that each call keeps it, with the
 premises of `aligned` other than the heap, the table, and the memory cap discharged for every pair
-of words.  The functions that the step reaches load from the table with `load64`, which the
-Cortex-M7 generator rejects, and use `wrapI64`, which the simulation does not cover, so no image of
-the step exists yet.
+of words.  The functions that the step reaches load from the table with `load64` and use
+`wrapI64`, which the Cortex-M7 generator emits and the simulation does not yet cover.
 -/
 
 namespace TestSupport.M7.Crc
@@ -34,30 +37,48 @@ open LeanExe.Native (readReq writeReq)
 open Library.Hashing.Crc
 
 /-- The CRC-32 step by the table `t` from the state `s` and the value `v` that the last request
-read, for USART3's registers: `USART_RDR` at index `0x1209`, `USART_TDR` at `0x120A`, and
-`USART_ISR` at `0x1207`, with `RXNE` in bit 5 and `TXE` in bit 7. -/
-def crcStepWith (t : Array UInt64) (s v : UInt64) : UInt64 × UInt64 :=
+read, for the register map `rx`, `tx`, `status`, `rxFull`, `txMask`, and `txRoom` of `echoTick`. -/
+@[inline] def crcPhases (rx tx status rxFull txMask txRoom : UInt64) (t : Array UInt64)
+    (s v : UInt64) : UInt64 × UInt64 :=
   let phase := s &&& 255
   let reg := s >>> 32
   let hi := reg <<< 32
   if phase == 0 then
-    if v &&& 0x20 != 0 then (hi ||| 1, readReq 0x1209) else (hi, readReq 0x1207)
+    if v &&& rxFull != 0 then (hi ||| 1, readReq rx) else (hi, readReq status)
   else if phase == 1 then
     let r := byteStep t reg (v &&& 255)
-    (((2 : UInt64) ||| (((r &&& 255) ^^^ 255) <<< 8)) ||| (r <<< 32), readReq 0x1207)
+    (((2 : UInt64) ||| (((r &&& 255) ^^^ 255) <<< 8)) ||| (r <<< 32), readReq status)
   else if phase == 2 then
-    if v &&& 0x80 == 0x80 then (hi ||| 3, writeReq 0x120A ((s >>> 8) &&& 255))
-    else (s, readReq 0x1207)
-  else (hi, readReq 0x1207)
+    if v &&& txMask == txRoom then (hi ||| 3, writeReq tx ((s >>> 8) &&& 255))
+    else (s, readReq status)
+  else (hi, readReq status)
+
+/-- The CRC-32 step by the table `t` for USART3's registers: `USART_RDR` at index `0x1209`,
+`USART_TDR` at `0x120A`, and `USART_ISR` at `0x1207`, with `RXNE` in bit 5 and `TXE` in bit 7. -/
+def crcStepWith (t : Array UInt64) (s v : UInt64) : UInt64 × UInt64 :=
+  crcPhases 0x1209 0x120A 0x1207 0x20 0x80 0x80 t s v
 
 /-- The CRC-32 step over USART3. -/
 def crcUsart3Tick (s v : UInt64) : UInt64 × UInt64 := crcStepWith crc32Table s v
+
+/-- The CRC-32 step by the table `t` for the CMSDK APB UART0 of `mps2-an500`, whose map
+`cmsdkTick` of `tests/TestSupport/Bare/Req.lean` gives: data at index `0x1000` for both
+directions and status at `0x1001`, with bit 1 set while the receive buffer is full and bit 0 set
+while the transmit buffer is full. -/
+def crcCmsdkWith (t : Array UInt64) (s v : UInt64) : UInt64 × UInt64 :=
+  crcPhases 0x1000 0x1000 0x1001 2 1 0 t s v
+
+/-- The CRC-32 step over UART0 of `mps2-an500`. -/
+def crcCmsdkTick (s v : UInt64) : UInt64 × UInt64 := crcCmsdkWith crc32Table s v
 
 /-- The initial state: the register of the empty message in phase 3. -/
 def crcInit : UInt64 := 0xFFFFFFFF00000003
 
 verified_compile (pages := 1) (cap := 1) crcStepCompiled := [readReq, writeReq, crcStepWith,
   crcUsart3Tick]
+
+verified_compile (pages := 1) (cap := 1) crcCmsdkCompiled := [readReq, writeReq, crcCmsdkWith,
+  crcCmsdkTick]
 
 /-- The state after the four windows of the byte `b` from phase 0: the status read that shows
 `RXNE`, the read of `b`, the status read that shows `TXE`, whose request writes the reply, and the
