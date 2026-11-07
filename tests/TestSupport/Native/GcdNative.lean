@@ -25,10 +25,13 @@ theorem rec_funcs : recCompiled.translation.funcs = [0, 1, 2, 3] :=
 /-- From the state that `lx_init` leaves, `lxf_gcd` on `a` and `b` returns `gcd a b` with
 `lx_status` 0. -/
 theorem loop_native_init (A : Archi) (X : ExtSem) (a b : UInt64) :
-    ∃ m1 fd t m', StoreRel (envOf loopCompiled.translation loopCompiled.module.globals.length cap) (nativeStore loopCompiled.module cap) m1 ∧
+    ∃ m1 fd t m',
+      StoreRel A (envOf loopCompiled.translation loopCompiled.module.globals.length cap)
+        (nativeStore loopCompiled.module cap) m1 ∧
       (funId 2, globdef.Gfun (fundef.Internal fd)) ∈ loopCompiled.translation.cprogram.prog_defs ∧
       eval_funcall A X (globalenv loopCompiled.translation.cprogram) m1 (.Internal fd) [.Vlong a, .Vlong b] t m'
-        (.Vlong (gcd a b)) ∧ StatusRel (envOf loopCompiled.translation loopCompiled.module.globals.length cap) m' 0 := by
+        (.Vlong (gcd a b)) ∧
+      StatusRel A (envOf loopCompiled.translation loopCompiled.module.globals.length cap) m' 0 := by
   obtain ⟨-, -, m1, -, -, -, -, hst, hs, hE, hG, hcap, hnres, hF⟩ := start loopCompiled.translation_eq A X
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := loopCompiled.gcd.native A X
   obtain ⟨rfl, rfl⟩ := sig_of hsig (ps0 := [.i64, .i64]) (rs0 := [.i64]) rfl
@@ -53,11 +56,15 @@ theorem loop_native_init (A : Archi) (X : ExtSem) (a b : UInt64) :
 /-- From the state that `lx_init` leaves, `lxf_gcd` on `a` and `b` returns `gcd a b` with
 `lx_status` 0, or ends with `lx_status` set to the code of `unreachable`. -/
 theorem rec_native_init (A : Archi) (X : ExtSem) (a b : UInt64) :
-    ∃ m1 fd t m' vres, StoreRel (envOf recCompiled.translation recCompiled.module.globals.length cap) (nativeStore recCompiled.module cap) m1 ∧
+    ∃ m1 fd t m' vres,
+      StoreRel A (envOf recCompiled.translation recCompiled.module.globals.length cap)
+        (nativeStore recCompiled.module cap) m1 ∧
       (funId 3, globdef.Gfun (fundef.Internal fd)) ∈ recCompiled.translation.cprogram.prog_defs ∧
       eval_funcall A X (globalenv recCompiled.translation.cprogram) m1 (.Internal fd) [.Vlong a, .Vlong b] t m' vres ∧
-      ((vres = .Vlong (gcd a b) ∧ StatusRel (envOf recCompiled.translation recCompiled.module.globals.length cap) m' 0) ∨
-        StatusRel (envOf recCompiled.translation recCompiled.module.globals.length cap) m' trapUnreachable) := by
+      ((vres = .Vlong (gcd a b) ∧
+          StatusRel A (envOf recCompiled.translation recCompiled.module.globals.length cap) m' 0) ∨
+        StatusRel A (envOf recCompiled.translation recCompiled.module.globals.length cap) m'
+          trapUnreachable) := by
   obtain ⟨-, -, m1, -, -, -, -, hst, hs, hE, hG, hcap, hnres, hF⟩ := start recCompiled.translation_eq A X
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := recCompiled.gcd.native A X
   obtain ⟨rfl, rfl⟩ := sig_of hsig (ps0 := [.i64, .i64]) (rs0 := [.i64]) rfl

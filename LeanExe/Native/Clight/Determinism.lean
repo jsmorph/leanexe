@@ -55,9 +55,9 @@ theorem eventval_match_determ {ev : eventval} {ty : typ} {v₁ v₂ : val}
     (h₁ : eventval_match ev ty v₁) (h₂ : eventval_match ev ty v₂) : v₁ = v₂ := by
   cases h₁ <;> cases h₂ <;> rfl
 
-theorem volatile_load_determ {F V : Type} {ge : Genv.t F V} {chunk : memory_chunk} {m : mem}
-    {b : block} {ofs : ptrofs} {t₁ t₂ u₁ u₂ : trace} {v₁ v₂ : val}
-    (h₁ : volatile_load ge chunk m b ofs t₁ v₁) (h₂ : volatile_load ge chunk m b ofs t₂ v₂)
+theorem volatile_load_determ {A : Archi} {F V : Type} {ge : Genv.t F V} {chunk : memory_chunk}
+    {m : mem} {b : block} {ofs : ptrofs} {t₁ t₂ u₁ u₂ : trace} {v₁ v₂ : val}
+    (h₁ : volatile_load A ge chunk m b ofs t₁ v₁) (h₂ : volatile_load A ge chunk m b ofs t₂ v₂)
     (hu : t₁ ++ u₁ = t₂ ++ u₂) : t₁ = t₂ ∧ v₁ = v₂ := by
   cases h₁ with
   | volatile_load_vol _ _ _ hvol _ hm =>
@@ -76,9 +76,10 @@ theorem volatile_load_determ {F V : Type} {ge : Genv.t F V} {chunk : memory_chun
       | volatile_load_nonvol _ _ hl' =>
           exact ⟨rfl, Option.some.inj (hl.symm.trans hl')⟩
 
-theorem volatile_store_determ {F V : Type} {ge : Genv.t F V} {chunk : memory_chunk} {m : mem}
-    {b : block} {ofs : ptrofs} {v : val} {t₁ t₂ u₁ u₂ : trace} {m₁ m₂ : mem}
-    (h₁ : volatile_store ge chunk m b ofs v t₁ m₁) (h₂ : volatile_store ge chunk m b ofs v t₂ m₂)
+theorem volatile_store_determ {A : Archi} {F V : Type} {ge : Genv.t F V} {chunk : memory_chunk}
+    {m : mem} {b : block} {ofs : ptrofs} {v : val} {t₁ t₂ u₁ u₂ : trace} {m₁ m₂ : mem}
+    (h₁ : volatile_store A ge chunk m b ofs v t₁ m₁)
+    (h₂ : volatile_store A ge chunk m b ofs v t₂ m₂)
     (hu : t₁ ++ u₁ = t₂ ++ u₂) : t₁ = t₂ ∧ m₁ = m₂ := by
   cases h₁ with
   | volatile_store_vol _ _ _ hvol _ _ =>
@@ -138,7 +139,7 @@ section Eval
 variable {A : Archi} {ge : genv} {e : env} {le : temp_env} {m : mem}
 
 theorem deref_loc_determ {ty : type} {m : mem} {b : block} {ofs : ptrofs} {bf : bitfield}
-    {v₁ v₂ : val} (h₁ : deref_loc ty m b ofs bf v₁) (h₂ : deref_loc ty m b ofs bf v₂) :
+    {v₁ v₂ : val} (h₁ : deref_loc A ty m b ofs bf v₁) (h₂ : deref_loc A ty m b ofs bf v₂) :
     v₁ = v₂ := by
   cases h₁ with
   | deref_loc_value _ _ ha hl =>
@@ -158,8 +159,8 @@ theorem deref_loc_determ {ty : type} {m : mem} {b : block} {ofs : ptrofs} {bf : 
       | deref_loc_reference _ => rfl
 
 theorem assign_loc_determ {ty : type} {m : mem} {b : block} {ofs : ptrofs} {bf : bitfield}
-    {v : val} {m₁ m₂ : mem} (h₁ : assign_loc ty m b ofs bf v m₁)
-    (h₂ : assign_loc ty m b ofs bf v m₂) : m₁ = m₂ := by
+    {v : val} {m₁ m₂ : mem} (h₁ : assign_loc A ty m b ofs bf v m₁)
+    (h₂ : assign_loc A ty m b ofs bf v m₂) : m₁ = m₂ := by
   cases h₁ with
   | assign_loc_value _ _ _ ha hs =>
       cases h₂ with
@@ -357,7 +358,7 @@ theorem function_entry2_determ {f : function} {vargs : List val} {m : mem} {e₁
       | intro _ _ _ _ hb' => exact ⟨rfl, Option.some.inj (hb.symm.trans hb'), rfl⟩
 
 theorem outcome_result_value_determ {out : outcome} {ty : type} {v₁ v₂ : val} {m : mem}
-    (h₁ : outcome_result_value out ty v₁ m) (h₂ : outcome_result_value out ty v₂ m) :
+    (h₁ : outcome_result_value A out ty v₁ m) (h₂ : outcome_result_value A out ty v₂ m) :
     v₁ = v₂ := by
   unfold outcome_result_value at h₁ h₂
   split at h₁ <;> simp_all

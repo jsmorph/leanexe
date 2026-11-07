@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import Std.Data.TreeMap
 import LeanExe.Native.Clight.Memdata
@@ -24,7 +24,8 @@ Only the operations that the semantics in this directory use are copied: `perm_o
 `perm`, `range_perm`, `valid_access`, `valid_pointer`, `weak_valid_pointer`, `empty`, `alloc`,
 `unchecked_free`, `free`, `free_list`, `getN`, `setN`, `load`, `loadv`, `store`, `storev`, and
 `drop_perm`.  `loadv` and `storev` check that the accessed bytes end at most at
-`Ptrofs.modulus`, as CompCert 3.18 does.
+`Ptrofs.modulus`, as CompCert 3.18 does.  `load`, `store`, `loadv`, and `storev` take the
+architecture, through which `encode_val`, `decode_val`, and the modulus depend on `ptr64`.
 
 `mem` drops the invariants `access_max`, `nextblock_noaccess`, and `contents_default` of
 CompCert's `mem`, so a `mem` need not satisfy them.  Forgetting them maps each CompCert memory to
@@ -188,31 +189,32 @@ def setN : List memval → _root_.Int → contents → contents
   | [], _, c => c
   | v :: vl, p, c => setN vl (p + 1) (ZMap.set p v c)
 
-def load (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) : Option val :=
+def load (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) :
+    Option val :=
   if valid_access m chunk b ofs .Readable then
-    some (decode_val chunk (getN (size_chunk_nat chunk) ofs (contents_of m b)))
+    some (decode_val A chunk (getN (size_chunk_nat chunk) ofs (contents_of m b)))
   else none
 
-def loadv (chunk : memory_chunk) (m : mem) (addr : val) : Option val :=
+def loadv (A : Archi) (chunk : memory_chunk) (m : mem) (addr : val) : Option val :=
   match addr with
   | .Vptr b ofs =>
-      if Ptrofs.unsigned ofs + size_chunk chunk ≤ Ptrofs.modulus then
-        load chunk m b (Ptrofs.unsigned ofs)
+      if Ptrofs.unsigned ofs + size_chunk chunk ≤ Ptrofs.modulus A then
+        load A chunk m b (Ptrofs.unsigned ofs)
       else none
   | _ => none
 
-def store (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) :
+def store (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) :
     Option mem :=
   if valid_access m chunk b ofs .Writable then
     some { m with
-      mem_contents := m.mem_contents.insert b (setN (encode_val chunk v) ofs (contents_of m b)) }
+      mem_contents := m.mem_contents.insert b (setN (encode_val A chunk v) ofs (contents_of m b)) }
   else none
 
-def storev (chunk : memory_chunk) (m : mem) (addr v : val) : Option mem :=
+def storev (A : Archi) (chunk : memory_chunk) (m : mem) (addr v : val) : Option mem :=
   match addr with
   | .Vptr b ofs =>
-      if Ptrofs.unsigned ofs + size_chunk chunk ≤ Ptrofs.modulus then
-        store chunk m b (Ptrofs.unsigned ofs) v
+      if Ptrofs.unsigned ofs + size_chunk chunk ≤ Ptrofs.modulus A then
+        store A chunk m b (Ptrofs.unsigned ofs) v
       else none
   | _ => none
 

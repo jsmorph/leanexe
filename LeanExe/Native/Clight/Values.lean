@@ -7,14 +7,14 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.AST
 
 /-!
 The values of CompCert 3.18's `common/Values.v` and the few operations on them that the memory
-model and the operators use, on a 64-bit target.
+model and the operators use.
 -/
 
 namespace LClight
@@ -37,8 +37,9 @@ def Vone : val := .Vint Int.one
 def Vtrue : val := .Vint Int.one
 def Vfalse : val := .Vint Int.zero
 
-/-- `Vptrofs` with `Archi.ptr64` true. -/
-def Vptrofs (n : ptrofs) : val := .Vlong (Ptrofs.to_int64 n)
+/-- `Vptrofs`. -/
+def Vptrofs (A : Archi) (n : ptrofs) : val :=
+  if A.ptr64 then .Vlong (Ptrofs.to_int64 n) else .Vint (Ptrofs.to_int n)
 
 namespace Val
 
@@ -48,8 +49,8 @@ def is_bool (v : val) : Bool := v == Vtrue || v == Vfalse
 
 def norm_bool (v : val) : val := if is_bool v then v else .Vundef
 
-/-- `Val.load_result` with `Archi.ptr64` true. -/
-def load_result (chunk : memory_chunk) (v : val) : val :=
+/-- `Val.load_result`. -/
+def load_result (A : Archi) (chunk : memory_chunk) (v : val) : val :=
   match chunk, v with
   | .Mbool, .Vint n => norm_bool (.Vint (Int.zero_ext 8 n))
   | .Mint8signed, .Vint n => .Vint (Int.sign_ext 8 n)
@@ -57,12 +58,14 @@ def load_result (chunk : memory_chunk) (v : val) : val :=
   | .Mint16signed, .Vint n => .Vint (Int.sign_ext 16 n)
   | .Mint16unsigned, .Vint n => .Vint (Int.zero_ext 16 n)
   | .Mint32, .Vint n => .Vint n
+  | .Mint32, .Vptr b ofs => if A.ptr64 then .Vundef else .Vptr b ofs
   | .Mint64, .Vlong n => .Vlong n
-  | .Mint64, .Vptr b ofs => .Vptr b ofs
+  | .Mint64, .Vptr b ofs => if A.ptr64 then .Vptr b ofs else .Vundef
   | .Mfloat32, .Vsingle f => .Vsingle f
   | .Mfloat64, .Vfloat f => .Vfloat f
   | .Many32, .Vint _ => v
   | .Many32, .Vsingle _ => v
+  | .Many32, .Vptr _ _ => if A.ptr64 then .Vundef else v
   | .Many64, _ => v
   | _, _ => .Vundef
 

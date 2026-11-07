@@ -259,11 +259,11 @@ theorem lk {le : temp_env} {a b : ident} {v w : val} (h : le[a]? = some v) (hne 
   rw [te_insert_ne _ hne]; exact h
 
 theorem cond_bool (m : mem) (b : Prop) [Decidable b] :
-    bool_val (.Vint (if b then 1 else 0)) tint m = some (decide b) := by
+    bool_val A (.Vint (if b then 1 else 0)) tint m = some (decide b) := by
   by_cases hb : b <;> simp [hb, bool_int]
 
-theorem cond_uint (m : mem) (v : UInt32) : bool_val (.Vint v) tuint m = some (decide (v ≠ 0)) :=
-  bool_uint m v
+theorem cond_uint (m : mem) (v : UInt32) : bool_val A (.Vint v) tuint m = some (decide (v ≠ 0)) :=
+  bool_uint A m v
 
 theorem eval_w {le : temp_env} {m : mem} {k : Nat} {v : UInt32}
     (h : le[slotId k .i32]? = some (.Vint v)) :
@@ -410,12 +410,13 @@ theorem exec_round32 {le : temp_env} {m : mem} {h : Nat} {q0 r hh : UInt32}
         by rw [hq']; exact hq, fun _ _ => rfl⟩
 
 theorem cast_uint_single (m : mem) (q : UInt32) :
-    sem_cast (.Vint q) tuint tfloat m = some (.Vsingle (IEEE32.fromInt (q.toNat : _root_.Int))) := by
+    sem_cast A (.Vint q) tuint tfloat m =
+      some (.Vsingle (IEEE32.fromInt (q.toNat : _root_.Int))) := by
   show some (val.Vsingle (cast_int_single .Unsigned q)) = _
   rfl
 
 theorem sem_neg_single (m : mem) (f : UInt32) :
-    sem_unary_operation .Oneg (.Vsingle f) tfloat m = some (.Vsingle (IEEE32.negate f)) := rfl
+    sem_unary_operation A .Oneg (.Vsingle f) tfloat m = some (.Vsingle (IEEE32.negate f)) := rfl
 
 theorem not_nan_signMask (b : Bool) : IEEE32.isNaN (IEEE32.signMask b) = false := by
   cases b <;> decide
@@ -438,14 +439,14 @@ set_option maxRecDepth 100000 in
 changing only slots from height `h` up and `lx_pun`. -/
 theorem exec_nearest32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem}
     {h : Nat} {x : UInt32} (hx : le[slotId h .f32]? = some (.Vsingle x))
-    (hst : StoreRel E st m) (hs : StatusRel E m 0) :
+    (hst : StoreRel A E st m) (hs : StatusRel A E m 0) :
     ∃ le' m', exec_stmt A X E.ge empty_env le m (nearest32Stmt h) E0 le' m' .Out_normal ∧
       le'[slotId h .f32]? = some (.Vsingle (IEEE32.nearest x)) ∧ Keeps h le le' ∧
-      StoreRel E st m' ∧ StatusRel E m' 0 := by
+      StoreRel A E st m' ∧ StatusRel A E m' 0 := by
   have x1 := exec_punBits32 (A := A) (X := X) (k := h) hE hx hst
   have hst1 := hst.store_pun hE .Mfloat32 (.Vsingle x)
   have hs1 := hs.store_pun hE .Mfloat32 (.Vsingle x)
-  generalize Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x) = m1 at x1 hst1 hs1
+  generalize Mem.stored A .Mfloat32 m E.pun 0 (.Vsingle x) = m1 at x1 hst1 hs1
   generalize hle1 : le.insert (slotId h .i32) (.Vint x) = le1 at x1
   have hu1 : le1[slotId h .i32]? = some (.Vint x) := by rw [← hle1]; exact te_insert_same _ _ _
   have hx1 : le1[slotId h .f32]? = some (.Vsingle x) := by
@@ -472,7 +473,7 @@ theorem exec_nearest32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
         (.Vint (x >>> UInt32.ofNat 31)) :=
     fun le' m' hu => .eval_Ebinop _ _ _ _ _ _ _ (eval_w hu) (eval_cint 31)
       (sem_shr_ii A m' x _ (by decide))
-  have hbsgn : ∀ m' : mem, bool_val (.Vint (x >>> UInt32.ofNat 31)) tuint m' =
+  have hbsgn : ∀ m' : mem, bool_val A (.Vint (x >>> UInt32.ofNat 31)) tuint m' =
       some (IEEE32.sign x) := by
     intro m'
     rw [cond_uint]

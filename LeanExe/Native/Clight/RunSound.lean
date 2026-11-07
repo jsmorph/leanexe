@@ -43,9 +43,9 @@ theorem lvar_sound {e : env} {le : temp_env} {m : mem} {id : ident} {ty : type} 
           cases h
 
 theorem deref_loc_fn_sound {ty : type} {m : mem} {l : block} {ofs : ptrofs} {v : val}
-    (h : deref_loc_fn ty m l ofs = some v) : deref_loc ty m l ofs .Full v := by
+    (h : deref_loc_fn A ty m l ofs = some v) : deref_loc A ty m l ofs .Full v := by
   unfold deref_loc_fn at h
-  cases hm : access_mode ty with
+  cases hm : access_mode A ty with
   | By_value chunk =>
       simp only [hm] at h
       exact .deref_loc_value chunk v hm h
@@ -57,12 +57,12 @@ theorem deref_loc_fn_sound {ty : type} {m : mem} {l : block} {ofs : ptrofs} {v :
   | By_nothing => simp [hm] at h
 
 theorem assign_loc_fn_sound {ty : type} {m : mem} {b : block} {ofs : ptrofs} {bf : bitfield}
-    {v : val} {m' : mem} (h : assign_loc_fn ty m b ofs bf v = some m') :
-    assign_loc ty m b ofs bf v m' := by
+    {v : val} {m' : mem} (h : assign_loc_fn A ty m b ofs bf v = some m') :
+    assign_loc A ty m b ofs bf v m' := by
   unfold assign_loc_fn at h
   cases bf with
   | Full =>
-      cases hm : access_mode ty with
+      cases hm : access_mode A ty with
       | By_value chunk =>
           simp only [hm] at h
           exact .assign_loc_value v chunk m' hm h
@@ -220,7 +220,7 @@ theorem eval_exprlist_fn_sound {e : env} {le : temp_env} {m : mem} :
       cases h1 : eval_expr_fn A ge e le m a with
       | none => simp [h1] at h
       | some v1 =>
-          cases h2 : sem_cast v1 (typeof a) ty m with
+          cases h2 : sem_cast A v1 (typeof a) ty m with
           | none => simp [h1, h2] at h
           | some v2 =>
               cases h3 : eval_exprlist_fn A ge e le m bl tyl with
@@ -293,7 +293,7 @@ theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : 
                             (val_of_eventval_sound he))
           · have hv' : Genv.block_is_volatile ge b = false := by simpa using hv
             simp only [hv', Bool.false_eq_true, ite_false] at h
-            cases hs : Mem.loadv chunk m (.Vptr b ofs) with
+            cases hs : Mem.loadv A chunk m (.Vptr b ofs) with
             | none => simp [hs] at h
             | some v =>
                 simp only [hs, Option.some.injEq, Prod.mk.injEq] at h
@@ -316,7 +316,7 @@ theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : 
             cases hi : invert_symbol_fn ge b with
             | none => simp [hi] at h
             | some id =>
-                cases he : eventval_of_val (Val.load_result chunk v) (type_of_chunk chunk) with
+                cases he : eventval_of_val (Val.load_result A chunk v) (type_of_chunk chunk) with
                 | none => simp [hi, he] at h
                 | some ev =>
                     simp only [hi, he, Option.some.injEq, Prod.mk.injEq] at h
@@ -326,7 +326,7 @@ theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : 
                         (eventval_of_val_sound he))
           · have hv' : Genv.block_is_volatile ge b = false := by simpa using hv
             simp only [hv', Bool.false_eq_true, ite_false] at h
-            cases hs : Mem.storev chunk m (.Vptr b ofs) v with
+            cases hs : Mem.storev A chunk m (.Vptr b ofs) v with
             | none => simp [hs] at h
             | some m1 =>
                 simp only [hs, Option.some.injEq, Prod.mk.injEq] at h
@@ -354,7 +354,7 @@ theorem function_entry2_fn_sound {f : function} {vargs : List val} {le : temp_en
     cases h
 
 theorem outcome_result_value_fn_sound {out : outcome} {t : type} {m : mem} {v : val}
-    (h : outcome_result_value_fn out t m = some v) : outcome_result_value out t v m := by
+    (h : outcome_result_value_fn A out t m = some v) : outcome_result_value A out t v m := by
   cases out with
   | Out_normal =>
       cases t with
@@ -409,10 +409,10 @@ theorem fn_sound (fuel : Nat) :
               cases hv : eval_expr_fn A ge e le m a2 with
               | none => simp [hl, hv] at h
               | some v2 =>
-                  cases hc : sem_cast v2 (typeof a2) (typeof a1) m with
+                  cases hc : sem_cast A v2 (typeof a2) (typeof a1) m with
                   | none => simp [hl, hv, hc] at h
                   | some v =>
-                      cases ha : assign_loc_fn (typeof a1) m loc ofs bf v with
+                      cases ha : assign_loc_fn A (typeof a1) m loc ofs bf v with
                       | none => simp [hl, hv, hc, ha] at h
                       | some m'' =>
                           simp only [hl, hv, hc, ha] at h
@@ -507,7 +507,7 @@ theorem fn_sound (fuel : Nat) :
           cases hv : eval_expr_fn A ge e le m a with
           | none => simp [hv] at h
           | some v1 =>
-              cases hb : bool_val v1 (typeof a) m with
+              cases hb : bool_val A v1 (typeof a) m with
               | none => simp [hv, hb] at h
               | some b =>
                   simp only [hv, hb] at h
@@ -630,10 +630,10 @@ theorem fn_sound (fuel : Nat) :
               | error err => simp [he, hb] at h
               | ok r =>
                   obtain ⟨t0, le2, m2, out⟩ := r
-                  cases hr : outcome_result_value_fn out f.fn_return m2 with
+                  cases hr : outcome_result_value_fn A out f.fn_return m2 with
                   | none => simp [he, hb, hr] at h
                   | some vres0 =>
-                      cases hfl : Mem.free_list m2 (blocks_of_env empty_env) with
+                      cases hfl : Mem.free_list m2 (blocks_of_env A empty_env) with
                       | none => simp [he, hb, hr, hfl] at h
                       | some m3 =>
                           simp only [he, hb, hr, hfl] at h
@@ -671,11 +671,11 @@ from the program's initial memory. -/
 theorem run_sound {A : Archi} {X : ExtSem} {p : program function} {name : ident}
     {args : List val} {fuel : Nat} {t : trace} {m : mem} {vres : val}
     (h : run A p name args fuel = .ok (t, m, vres)) :
-    ∃ m0 b fd, init_mem p = some m0 ∧ Genv.find_symbol (globalenv p) name = some b ∧
+    ∃ m0 b fd, init_mem A p = some m0 ∧ Genv.find_symbol (globalenv p) name = some b ∧
       Genv.find_funct_ptr (globalenv p) b = some fd ∧
       eval_funcall A X (globalenv p) m0 fd args t m vres := by
   unfold run at h
-  cases hm : init_mem p with
+  cases hm : init_mem A p with
   | none => simp [hm] at h
   | some m0 =>
       cases hs : Genv.find_symbol (globalenv p) name with
@@ -693,7 +693,7 @@ theorem run_program_sound {A : Archi} {X : ExtSem} {p : program function} {fuel 
     {t : trace} {r : int} (h : run_program A p fuel = .ok (t, r)) :
     bigstep_program_terminates A X p t r := by
   unfold run_program at h
-  cases hm : init_mem p with
+  cases hm : init_mem A p with
   | none => simp [hm] at h
   | some m0 =>
       cases hs : Genv.find_symbol (globalenv p) p.prog_main with
@@ -705,7 +705,7 @@ theorem run_program_sound {A : Archi} {X : ExtSem} {p : program function} {fuel 
               simp only [hm, hs, hf] at h
               by_cases hty : type_of_fundef fd = .Tfunction [] type_int32s cc_default
               · rw [ite_eq_left hty] at h
-                cases he : eval_funcall_fn A (globalenv p) (world_vload p) fuel m0 fd [] with
+                cases he : eval_funcall_fn A (globalenv p) (world_vload A p) fuel m0 fd [] with
                 | error err => simp [he] at h
                 | ok res =>
                     obtain ⟨t0, m1, v⟩ := res

@@ -198,6 +198,11 @@ theorem Int64.zero_eq : Int64.zero = 0 := rfl
 theorem Int.zero_eq : Int.zero = 0 := rfl
 theorem Int.one_eq : Int.one = 1 := rfl
 
+/-! ## Pointer offsets -/
+
+theorem Ptrofs.modulus_ge (A : Archi) : 2 ^ 32 ≤ Ptrofs.modulus A := by
+  unfold Ptrofs.modulus Ptrofs.wordsize; split <;> omega
+
 /-! ## Values of comparisons -/
 
 theorem of_bool_true : Val.of_bool true = .Vint 1 := rfl

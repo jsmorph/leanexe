@@ -59,9 +59,9 @@ theorem exec_brGo {le : temp_env} {m : mem} (l : Label) (k : Nat) :
 /-- A branch `k` levels out from a state related at `σ`. -/
 theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
     (hs : brStmt L σ k = some s) {α : Type} {st : Store α} {sl : Locals} {le : temp_env}
-    {m : mem} (hinv : Inv E c σ st sl le m) :
+    {m : mem} (hinv : Inv A E c σ st sl le m) :
     ∃ t le' out, exec_stmt A X E.ge empty_env le m s t le' m out ∧
-      BreakRel E c L k st sl le' m out ∧ ∀ l, L[k]? = some l → Frame l.base le le' := by
+      BreakRel A E c L k st sl le' m out ∧ ∀ l, L[k]? = some l → Frame l.base le le' := by
   obtain ⟨l, hl, hk, hfin, hcase⟩ := brStmt_spec hs
   have hbrk : ∀ (le1 : temp_env), le1[brkId]? = some (.Vint 0) →
       ∀ (le' : temp_env) (out : outcome),
@@ -129,7 +129,7 @@ theorem sim_br (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallO
   simp [trInstr, hs0] at htr
   obtain ⟨rfl, rfl, rfl⟩ := htr
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       simp only [execOne.eq_def]
       obtain ⟨t, le', out, hx, hrel, hf⟩ := br_outcome hs0 hinv
@@ -140,10 +140,11 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
   rcases σ with _ | ⟨a, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at htr
   obtain ⟨hb, rfl, s0, hs0, rfl, rfl, rfl⟩ := htr
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
-      have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
+      have hinv' : Inv A E c σr st
+          { params := sl.params, locals := sl.locals, values := vs } le m :=
         { stack := hrest, locals := hinv.locals, store := hinv.store, status := hinv.status,
           brk := hinv.brk, lim := hinv.lim }
       have hc : eval_expr A E.ge empty_env le m (tmp σr.length .i32) (.Vint x) :=
@@ -153,7 +154,7 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
         simp only [execOne.eq_def, hvs]
         refine ⟨σr, rfl, hb, E0, le, m, ?_, hinv', Frame.refl _ _⟩
         exact .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hc
-          (by show bool_val _ tuint m = _; simpa using bool_uint m 0) (.exec_Sskip _ _ _)
+          (by show bool_val A _ tuint m = _; simpa using bool_uint A m 0) (.exec_Sskip _ _ _)
       · have heq : execOne (f + 1) mod st sl (.br_if k) env =
             .Break k st { params := sl.params, locals := sl.locals, values := vs } := by
           simp only [execOne.eq_def, hvs]
@@ -161,14 +162,14 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
         obtain ⟨t, le', out, hx', hrel, hf⟩ := br_outcome hs0 hinv'
         exact ⟨t, le', m, out,
           .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc
-            (by show bool_val _ tuint m = _; simpa [hx0] using bool_uint m x) hx',
+            (by show bool_val A _ tuint m = _; simpa [hx0] using bool_uint A m x) hx',
           hrel, hf⟩
 
 theorem sim_ret (hE : EnvOk E) (hres : ResOk E c.results) (F : Nat) {CallOk : Nat → Prop} :
     InstrSimL A X E mod c CallOk F .ret := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env _ hinv
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       simp only [execOne.eq_def]
       rcases hrs : c.results with _ | ⟨t, _ | ⟨t2, rs⟩⟩

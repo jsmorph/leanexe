@@ -1,0 +1,33 @@
+tests/isla/traces.sh traces every form from armv9p4-checked.ir, which this diff makes from
+armv9p4.ir, the Armv9.4-A snapshot of the Sail model (isla-snapshots d8b31014).  Isla's harness
+function isla_footprint_common (isla_main.sail 61-66) calls __DecodeA64 in a try block whose one
+handler clears the exception and returns false, and the trace records nothing of the throw, so a
+path on which the decoder throws SEE, UNDEFINED, or UNPREDICTABLE looks like a completed path.
+Every exception entry of the model ends in EndOfInstruction, which throws Error_ExceptionTaken
+(builtins.sail 52).  The edit keeps the handler for that exception and makes every other exception
+fail a Sail assertion, which ends Isla's run with an error, so no trace that the script writes
+holds a path that ended in another exception.  In Isla's IR, `x is C` holds when the constructor
+of x differs from C (executor.rs 418-421 of Isla e9b5d945).  The edit inserts five statements, so
+the jump that skips the handler moves from statement 32 to 37, the return.  With the permanently
+undefined encoding UDF, the unedited IR gives a trace that looks complete, and the edited IR stops
+with the assertion.  Apply with
+`cp armv9p4.ir armv9p4-checked.ir && patch armv9p4-checked.ir < armv9p4-checked.diff`.
+
+--- armv9p4.ir
++++ armv9p4-checked.ir
+@@ -3771824,9 +3771824,14 @@
+   goto 28;
+   goto 29;
+   zz40 = true `31 63:4-63:8;
+-  jump @not(have_exception) goto 32 `31 61:2-66:3;
++  jump @not(have_exception) goto 37 `31 61:2-66:3;
+   have_exception = false `31 61:2-66:3;
++  jump current_exception is zError_ExceptionTaken goto 34 `31 61:2-66:3;
+   zz40 = false `31 65:9-65:14;
++  goto 37;
++  zz411 : %unit `31 61:2-66:3;
++  zz411 = zsail_assert(false, "__DecodeA64 threw an exception other than Error_ExceptionTaken") `31 61:2-66:3;
++  goto 37;
+   return = zz40 `31 61:2-66:3;
+   end;
+ }

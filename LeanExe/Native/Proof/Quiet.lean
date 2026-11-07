@@ -61,7 +61,7 @@ variable {A : Archi} {X : ExtSem} {Q : ident → Bool} {ge : genv}
 
 /-- The function that a call of `Evar id` of a function type finds is the one under `id`. -/
 theorem callee_of_evar {e : env} (he : e = empty_env) {le : temp_env} {m : mem} {id : ident}
-    {ty : type} (hty : access_mode ty = .By_reference) {vf : val}
+    {ty : type} (hty : access_mode A ty = .By_reference) {vf : val}
     (h : eval_expr A ge e le m (.Evar id ty) vf) :
     ∃ b, Genv.find_symbol ge id = some b ∧ vf = .Vptr b Ptrofs.zero := by
   subst he
@@ -499,7 +499,7 @@ under an identifier of `trCallable` is quiet. -/
 theorem genvQuiet_whole {m : Wasm.Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
     {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T)
     (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1))
-    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 4 ∨ x = 28 ∨ x = 32) :
+    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 0 ∨ x = 4 ∨ x = 28 ∨ x = 32) :
     GenvQuiet trCallable (globalenv (wholeProgram pre post T)) := by
   intro id b fd hq hs hf
   have hd : Genv.find_def (globalenv (wholeProgram pre post T)) b = some (.Gfun fd) := by

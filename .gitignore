@@ -7,6 +7,8 @@
 *.ilean
 *.olean.hash
 *.trace
+!tests/isla/*.trace
+!tests/isla/*/*.trace
 
 # Local configuration
 __pycache__/

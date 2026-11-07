@@ -78,16 +78,16 @@ open Verified.Examples.Loops
 and `lx_r1_l` holding the word of its second. -/
 theorem firstAbove_native_init (A : Archi) (X : ExtSem) (limit n : UInt64) :
     ∃ m1 fd t m' b0 b1,
-      StoreRel (envOf compiled.translation compiled.module.globals.length cap)
+      StoreRel A (envOf compiled.translation compiled.module.globals.length cap)
         (nativeStore compiled.module cap) m1 ∧
       (funId 8, globdef.Gfun (fundef.Internal fd)) ∈ compiled.translation.cprogram.prog_defs ∧
       eval_funcall A X (globalenv compiled.translation.cprogram) m1 (.Internal fd)
         [.Vlong limit, .Vlong n] t m' .Vundef ∧
-      StatusRel (envOf compiled.translation compiled.module.globals.length cap) m' 0 ∧
+      StatusRel A (envOf compiled.translation compiled.module.globals.length cap) m' 0 ∧
       Genv.find_symbol (globalenv compiled.translation.cprogram) (resId 0 .i64) = some b0 ∧
-      Mem.load .Mint64 m' b0 0 = some (.Vlong (firstAbove limit n).1) ∧
+      Mem.load A .Mint64 m' b0 0 = some (.Vlong (firstAbove limit n).1) ∧
       Genv.find_symbol (globalenv compiled.translation.cprogram) (resId 1 .i64) = some b1 ∧
-      Mem.load .Mint64 m' b1 0 = some (.Vlong (cond (firstAbove limit n).2 1 0)) := by
+      Mem.load A .Mint64 m' b1 0 = some (.Vlong (cond (firstAbove limit n).2 1 0)) := by
   obtain ⟨-, -, m1, -, -, -, -, hst, hs, hE, hG, hcap, hnres, hF⟩ :=
     start compiled.translation_eq A X
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := compiled.firstAbove.native A X
@@ -223,9 +223,9 @@ set_option maxRecDepth 100000 in
 module's initial store, capped at `cap` pages, in which the allocator invariant holds and both
 tables are borrowed arrays at their addresses. -/
 theorem crc_start (A : Archi) (X : ExtSem) :
-    ∃ m1, StoreRel (envOf compiled.translation compiled.module.globals.length cap)
+    ∃ m1, StoreRel A (envOf compiled.translation compiled.module.globals.length cap)
         (nativeStore compiled.module cap) m1 ∧
-      StatusRel (envOf compiled.translation compiled.module.globals.length cap) m1 0 ∧
+      StatusRel A (envOf compiled.translation compiled.module.globals.length cap) m1 0 ∧
       (Verified.initialHeap compiled.tables).At (nativeStore compiled.module cap) ∧
       (nativeStore compiled.module cap).memoryCap compiled.module 0 ≤ 65535 ∧
       ∀ k (hk : k < compiled.tables.length),

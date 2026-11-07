@@ -407,19 +407,19 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
 /-! ## The first four bytes of `lx_pun` -/
 
-theorem pun_valid32 {α : Type} {st : Store α} {m : mem} (hst : StoreRel E st m)
+theorem pun_valid32 {α : Type} {st : Store α} {m : mem} (hst : StoreRel A E st m)
     {chunk : memory_chunk} (hc : size_chunk chunk = 4) (ha : align_chunk chunk = 4) :
     Mem.valid_access m chunk E.pun 0 .Writable :=
   Mem.valid_access_four hst.2.punW hc ha
 
 theorem eval_punAt_single (hE : EnvOk E) {le : temp_env} {m : mem} {x : UInt32}
-    (hl : Mem.load .Mfloat32 m E.pun 0 = some (.Vsingle x)) :
+    (hl : Mem.load A .Mfloat32 m E.pun 0 = some (.Vsingle x)) :
     eval_expr A E.ge empty_env le m (punAt tfloat) (.Vsingle x) :=
   .eval_Elvalue _ _ _ _ _ (eval_punAt_lvalue hE le m _)
     (.deref_loc_value .Mfloat32 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
 
 theorem eval_punAt_int (hE : EnvOk E) {le : temp_env} {m : mem} {x : UInt32}
-    (hl : Mem.load .Mint32 m E.pun 0 = some (.Vint x)) :
+    (hl : Mem.load A .Mint32 m E.pun 0 = some (.Vint x)) :
     eval_expr A E.ge empty_env le m (punAt tuint) (.Vint x) :=
   .eval_Elvalue _ _ _ _ _ (eval_punAt_lvalue hE le m _)
     (.deref_loc_value .Mint32 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
@@ -428,8 +428,9 @@ theorem exec_punAssign_int (hE : EnvOk E) {le : temp_env} {m : mem} {e : expr} {
     (he : eval_expr A E.ge empty_env le m e (.Vint x)) (hty : typeof e = tuint)
     (hva : Mem.valid_access m .Mint32 E.pun 0 .Writable) :
     exec_stmt A X E.ge empty_env le m (.Sassign (punAt tuint) e) E0 le
-      (Mem.stored .Mint32 m E.pun 0 (.Vint x)) .Out_normal :=
-  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he (by rw [hty]; rfl)
+      (Mem.stored A .Mint32 m E.pun 0 (.Vint x)) .Out_normal :=
+  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he
+    (by rw [hty]; exact cast_i32 A m x)
     (.assign_loc_value _ .Mint32 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
@@ -437,7 +438,7 @@ theorem exec_punAssign_single (hE : EnvOk E) {le : temp_env} {m : mem} {e : expr
     (he : eval_expr A E.ge empty_env le m e (.Vsingle x)) (hty : typeof e = tfloat)
     (hva : Mem.valid_access m .Mfloat32 E.pun 0 .Writable) :
     exec_stmt A X E.ge empty_env le m (.Sassign (punAt tfloat) e) E0 le
-      (Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x)) .Out_normal :=
+      (Mem.stored A .Mfloat32 m E.pun 0 (.Vsingle x)) .Out_normal :=
   .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he (by rw [hty]; rfl)
     (.assign_loc_value _ .Mfloat32 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
@@ -445,9 +446,9 @@ theorem exec_punAssign_single (hE : EnvOk E) {le : temp_env} {m : mem} {e : expr
 /-- `punStore32 w h`: the float slot at height `h` gets the bits of the word `w`. -/
 theorem exec_punStore32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem}
     {e : expr} {x : UInt32} {h : Nat} (he : eval_expr A E.ge empty_env le m e (.Vint x))
-    (hty : typeof e = tuint) (hst : StoreRel E st m) :
+    (hty : typeof e = tuint) (hst : StoreRel A E st m) :
     exec_stmt A X E.ge empty_env le m (punStore32 e h) E0
-      (le.insert (slotId h .f32) (.Vsingle x)) (Mem.stored .Mint32 m E.pun 0 (.Vint x))
+      (le.insert (slotId h .f32) (.Vsingle x)) (Mem.stored A .Mint32 m E.pun 0 (.Vint x))
       .Out_normal :=
   .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
     (exec_punAssign_int hE he hty (pun_valid32 hst rfl rfl))
@@ -457,9 +458,9 @@ theorem exec_punStore32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_en
 /-- `punBits32 h k`: the word slot at height `k` gets the bits of the float at height `h`. -/
 theorem exec_punBits32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem}
     {x : UInt32} {h k : Nat} (hx : le[slotId h .f32]? = some (.Vsingle x))
-    (hst : StoreRel E st m) :
+    (hst : StoreRel A E st m) :
     exec_stmt A X E.ge empty_env le m (punBits32 h k) E0
-      (le.insert (slotId k .i32) (.Vint x)) (Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x))
+      (le.insert (slotId k .i32) (.Vint x)) (Mem.stored A .Mfloat32 m E.pun 0 (.Vsingle x))
       .Out_normal :=
   .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
     (exec_punAssign_single hE (.eval_Etempvar _ _ _ hx) rfl (pun_valid32 hst rfl rfl))
@@ -468,12 +469,12 @@ theorem exec_punBits32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
 
 /-- `canonStmt32 h` replaces a NaN in the float slot at height `h` by the canonical NaN. -/
 theorem exec_canon32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem}
-    {h : Nat} {q : UInt32} (hq : le[slotId h .f32]? = some (.Vsingle q)) (hst : StoreRel E st m)
-    (hs : StatusRel E m 0) :
+    {h : Nat} {q : UInt32} (hq : le[slotId h .f32]? = some (.Vsingle q)) (hst : StoreRel A E st m)
+    (hs : StatusRel A E m 0) :
     ∃ le' m', exec_stmt A X E.ge empty_env le m (canonStmt32 h) E0 le' m' .Out_normal ∧
       le'[slotId h .f32]? = some (.Vsingle (canonOf32 q)) ∧
-      (∀ id, id ≠ slotId h .f32 → le'[id]? = le[id]?) ∧ StoreRel E st m' ∧
-      StatusRel E m' 0 := by
+      (∀ id, id ≠ slotId h .f32 → le'[id]? = le[id]?) ∧ StoreRel A E st m' ∧
+      StatusRel A E m' 0 := by
   have hc : eval_expr A E.ge empty_env le m (.Ebinop .One (tmp h .f32) (tmp h .f32) tint)
       (Val.of_bool (IEEE32.isNaN q)) := by
     refine .eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hq) (.eval_Etempvar _ _ _ hq) ?_
@@ -485,7 +486,7 @@ theorem exec_canon32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} 
       rw [hn]; rfl
     · rw [hq]; simp [canonOf32, hn]
   · refine ⟨le.insert (slotId h .f32) (.Vsingle IEEE32.canonicalNaN),
-      Mem.stored .Mint32 m E.pun 0 (.Vint IEEE32.canonicalNaN), ?_, ?_,
+      Mem.stored A .Mint32 m E.pun 0 (.Vint IEEE32.canonicalNaN), ?_, ?_,
       fun id hid => te_insert_ne _ (Ne.symm hid), hst.store_pun hE _ _, hs.store_pun hE _ _⟩
     · refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc ?_
         (exec_punStore32 hE (.eval_Econst_int _ _) rfl hst)
@@ -615,7 +616,7 @@ theorem sim_fcmp32 (F : Nat) (inst : Instruction) (op : binary_operation)
       refine .eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
         (.eval_Etempvar _ _ _ hy) (hsem m x y)) ?_
       rw [of_bool_eq]
-      exact cast_int_uint m _
+      exact cast_i32 A m _
 
 theorem tr_fcmp32 {inst : Instruction} {op : binary_operation} (hop : f32Cmp inst = some op)
     {L : List Label} {σ : List VT} {n : Nat} {s : statement} {σ' : Option (List VT)} {n' : Nat}
@@ -692,7 +693,7 @@ theorem sim_f32ConvertI32S (F : Nat) : InstrSim A X E mod c F .f32ConvertI32S :=
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      have hc : sem_cast (.Vint x) tuint tint m = some (.Vint x) := rfl
+      have hc : sem_cast A (.Vint x) tuint tint m = some (.Vint x) := cast_i32 A m x
       refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ (.Vint x) _ (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) hc) ?_) rfl hb
       show some (val.Vsingle (LClight.Float32.of_int x)) = some (val.Vsingle (f32ConvertI32S x))
@@ -774,8 +775,8 @@ theorem push_exec_scratch {L : List Label} {σr : List VT} {α : Type} {st : Sto
     (hx : exec_stmt A X E.ge empty_env le m s E0 le' m' .Out_normal)
     (hslot : le'[slotId σr.length t]? = some (cval v)) (ht : t.has v = true)
     (hfr : Frame σr.length le le') (hl : ∀ i, le'[localId i]? = le[localId i]?)
-    (hk : le'[brkId]? = le[brkId]? ∧ le'[limId]? = le[limId]?) (hg : StoreRel E st m')
-    (hs : StatusRel E m' 0) :
+    (hk : le'[brkId]? = le[brkId]? ∧ le'[limId]? = le[limId]?) (hg : StoreRel A E st m')
+    (hs : StatusRel A E m' 0) :
     Outcome A X E c L (some (t :: σr))
       (.Fallthrough st { params := sl.params, locals := sl.locals, values := v :: vr }) s le m := by
   refine ⟨t :: σr, rfl, by simp; omega, E0, le', m', hx, ?_, hfr.mono hbase⟩
@@ -801,13 +802,13 @@ theorem sim_f32Abs (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f32Abs := 
       have hst1 := hinv.store.store_pun hE .Mfloat32 (.Vsingle x)
       have hs1 := hinv.status.store_pun hE .Mfloat32 (.Vsingle x)
       have he : eval_expr A E.ge empty_env (le.insert (slotId σr.length .i32) (.Vint x))
-          (Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x))
+          (Mem.stored A .Mfloat32 m E.pun 0 (.Vsingle x))
           (.Ebinop .Oand (tmp σr.length .i32) (cint 0x7FFFFFFF) tuint)
           (.Vint (IEEE32.abs x)) := by
         refine .eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _))
           (.eval_Econst_int _ _) ?_
         show sem_binary_operation A .Oand (.Vint x) tuint (.Vint (UInt32.ofNat 0x7FFFFFFF)) tuint
-          (Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x)) = _
+          (Mem.stored A .Mfloat32 m E.pun 0 (.Vsingle x)) = _
         rw [sem_and_ii, abs_mask]
       have h2 := exec_punStore32 (A := A) (X := X) (h := σr.length) hE he rfl hst1
       exact push_exec_scratch hrest hinv.locals hinv.brk hinv.lim hb
@@ -828,7 +829,7 @@ theorem eval_minusTwo31f {le : temp_env} {m : mem} :
     eval_expr A E.ge empty_env le m minusTwo31f (.Vsingle m31Bits32) :=
   .eval_Eunop _ _ _ _ _ (.eval_Econst_single _ _) rfl
 
-theorem bool_of_bool (m : mem) (b : Bool) : bool_val (Val.of_bool b) tint m = some b := by
+theorem bool_of_bool (m : mem) (b : Bool) : bool_val A (Val.of_bool b) tint m = some b := by
   cases b <;> rfl
 
 /-- `truncSat32UStmt h` sets the `i64` slot at height `h` to Talos's `i64.trunc_sat_f32_u` of
@@ -917,7 +918,7 @@ theorem exec_truncSat32S {le : temp_env} {m : mem} {h : Nat} {x : UInt32}
       · refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hc3
           (by rw [hg]; exact bool_of_bool m false) ?_
         refine .exec_Sset _ _ _ _ _ _ (.eval_Ecast _ _ (.Vint (IEEE32.truncSatI32S x)) _
-          (.eval_Ecast _ _ _ _ hd ?_) (cast_int_uint m _))
+          (.eval_Ecast _ _ _ _ hd ?_) (cast_i32 A m _))
         show (match LClight.Float32.to_int x with
           | some i => some (val.Vint (cast_int_int .I32 .Signed i))
           | none => none) = _

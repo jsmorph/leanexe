@@ -4,12 +4,21 @@
    clight2_bigstep_to_asm.  clight2_bigstep_asm_unique adds, from the determinacy of Asm, that
    the termination is the Asm program's only behavior when its trace has no inputs, and
    clight2_bigstep_asm_reads that the behaviors of a program whose volatile loads read a
-   sequence of values are the terminations of a family indexed by those values.  rocq/check.sh
-   checks the file against a CompCert 3.18 tree for AArch64 whose proofs are built. *)
+   sequence of values are the terminations of a family indexed by those values.
+   clight2_loop_to_asm carries a main that runs an initialization and then a loop forever, each
+   iteration with a nonempty trace, to the reactive behaviors of the Asm program, one for each
+   sequence of values read, and shows that every behavior of the Asm program is bisimilar to one
+   of them.  The uniqueness halves of clight2_bigstep_asm_reads and clight2_loop_to_asm take the
+   premise int_loads, which holds of every behavior when pointers are 64 bits wide, and the
+   corollaries clight2_bigstep_asm_reads_ptr64 and clight2_loop_to_asm_ptr64 state them without
+   it.  rocq/check.sh checks the file against a CompCert 3.18 tree whose proofs are built, configured
+   for AArch64 or for ARMv7-M. *)
 
 From Coq Require Classical ClassicalEpsilon.
-Require Import Coqlib Errors AST Integers Linking Events Smallstep Behaviors.
-Require Csyntax Clight ClightBigstep Asm.
+Require Import Coqlib Errors AST Integers Linking Values Memory Globalenvs Events Smallstep.
+Require Import Behaviors Determinism.
+Require Csyntax Ctypes Clight ClightBigstep Asm.
+Import (coercions) Ctypes Clight.
 Require Import Compiler Compopts.
 Require SimplExpr SimplLocals Cshmgen Cminorgen Selection RTLgen Tailcall Inlining Renumber.
 Require Constprop CSE Deadcode Unusedglob Allocation Tunneling Linearize CleanupLabels.
@@ -114,9 +123,9 @@ Proof.
 Qed.
 
 (* The behavior of the Asm program is unique.  Asm's semantics is determinate
-   (aarch64/Asm.v, semantics_determinate): two steps from one state have traces that
-   match_traces relates (common/Events.v, lines 505 to 517), and with equal traces they reach
-   one state.  match_traces relates a trace without inputs, a system call or a volatile load,
+   (semantics_determinate in the Asm.v of each back end): two steps from one state have traces
+   that match_traces relates (common/Events.v, lines 505 to 517), and with equal traces they
+   reach one state.  match_traces relates a trace without inputs, a system call or a volatile load,
    only to itself, so every run follows a terminating run whose trace has no inputs, and the
    program has no behavior but that run's. *)
 
@@ -415,14 +424,27 @@ Proof.
   intros. inversion H; subst. eauto.
 Qed.
 
-(* On AArch64, pointers are 64 bits wide (aarch64/Archi.v, line 22), so an event value of the
-   type of int is an integer. *)
-Local Transparent Archi.ptr64.
+(* An event value of the type of int is an integer EVint or, when pointers are 32 bits wide and
+   Tptr is Tint (common/AST.v), a pointer EVptr_global, which ev_match_ptr (common/Events.v)
+   lets a volatile load of a chunk of that type read for every public symbol.  The Lean copy of
+   Clight omits ev_match_ptr, so the traces of its executions have no pointer events, and the
+   uniqueness theorems below consider the behaviors in which no such load reads a pointer.
+   int_loads beh holds when every volatile load of beh whose value has the type of int reads an
+   integer.  With 64-bit pointers it holds of every behavior (int_loads_ptr64).  Every behavior
+   that the uniqueness theorems describe satisfies it (reads_int_loads, reacts_int_loads), so the
+   premise excludes only behaviors that no such theorem describes and is the weakest premise on
+   behaviors under which they hold.  A premise about the program would have to rule out pointer
+   events by the chunks of its volatile loads or by its public symbols, but the input program
+   and the controller load Mint8unsigned, whose type is int, and clightgen makes main public. *)
+Definition int_loads (beh: program_behavior) : Prop :=
+  forall t chunk id ofs ev,
+  behavior_prefix (t ** Event_vload chunk id ofs ev :: nil) beh ->
+  eventval_type ev = Tint -> exists i, ev = EVint i.
 
-Lemma eventval_type_int:
-  forall ev, eventval_type ev = Tint -> exists i, ev = EVint i.
+Lemma int_loads_ptr64: Archi.ptr64 = true -> forall beh, int_loads beh.
 Proof.
-  destruct ev; simpl; intros H; try discriminate; eauto.
+  intros P beh t chunk id ofs ev _ TY.
+  destruct ev; simpl in TY; try (unfold Tptr in TY; rewrite P in TY); try discriminate TY; eauto.
 Qed.
 
 (* reads sigma t: the trace t has no system call, and its k-th volatile load reads the value
@@ -434,6 +456,15 @@ Definition reads (sigma: nat -> int) (t: trace) : Prop :=
   | Event_vload _ _ _ v => v = EVint (sigma (count_vloads tp))
   | _ => True
   end.
+
+Lemma reads_int_loads:
+  forall sigma t r, reads sigma t -> int_loads (Terminates t r).
+Proof.
+  intros sigma t r R tp chunk id ofs ev [b E] _.
+  destruct b as [u r1 | u | U | u]; simpl in E; try discriminate. inv E.
+  exists (sigma (count_vloads tp)).
+  exact (R tp (Event_vload chunk id ofs ev) u ltac:(rewrite Eapp_assoc; reflexivity)).
+Qed.
 
 (* kth_vload beh k ev: the k-th volatile load of the behavior beh reads ev.  read_values beh k
    is the integer that the k-th volatile load of beh reads, when there is one. *)
@@ -466,30 +497,28 @@ Proof.
   rewrite V. reflexivity.
 Qed.
 
-(* Q holds of a sequence sigma of values and of a termination when the termination's trace reads
-   sigma, and of a determinate semantics with such a termination for every sigma, every behavior
-   is one of them.  For a behavior beh, take the termination for read_values beh.  Where beh would
-   leave it, beh reads at its k-th volatile load a value other than the k-th of read_values beh,
-   which is the value of that load, since kth_vload makes the load unique. *)
-Theorem determinate_reads:
-  forall L, determinate L ->
-  forall (Q: (nat -> int) -> trace -> int -> Prop),
-  (forall sigma, exists t r,
-     program_behaves L (Terminates t r) /\ reads sigma t /\ Q sigma t r) ->
-  forall beh, program_behaves L beh ->
-  exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r.
+(* A behavior beh with int_loads cannot leave a trace that reads read_values beh: where the
+   trace has the event e after the prefix tp, beh cannot have a different event e' that
+   match_traces relates to e.  Both would be volatile loads, e' would read a value of the type of
+   int, which int_loads makes an integer, and e reads the value of the load of beh, since
+   kth_vload makes that load unique. *)
+Lemma read_values_leaves:
+  forall ge tp e e' b beh,
+  int_loads beh ->
+  match e with
+  | Event_syscall _ _ _ => False
+  | Event_vload _ _ _ v => v = EVint (read_values beh (count_vloads tp))
+  | _ => True
+  end ->
+  match_traces ge (e :: nil) (e' :: nil) -> e <> e' ->
+  beh = behavior_app (tp ** e' :: nil) b -> False.
 Proof.
-  intros L DET Q HB beh B.
-  destruct (HB (read_values beh)) as [t [r [BT [HR HQ]]]].
-  exists (read_values beh), t, r. split; [|split; auto].
-  destruct (determinate_behavior_leaves L DET _ _ BT _ B)
-    as [EQ | [tp [e [e' [u [A [NE [M [b' PRE]]]]]]]]]; auto.
-  exfalso.
-  generalize (HR tp e u A). intro HE.
+  intros ge tp e e' b beh IL HE M NE PRE.
   destruct e as [name args res | chunk id ofs res1 | chunk id ofs v | txt args]; simpl in HE.
   - exact HE.
   - destruct (match_traces_vload_inv _ _ _ _ _ _ M) as [res2 [E' TY]]. subst e'.
-    destruct (eventval_type_int res2) as [i2 EV].
+    destruct (IL tp chunk id ofs res2) as [i2 EV].
+    { exists b. exact PRE. }
     { rewrite <- TY, HE. reflexivity. }
     subst res2.
     apply NE. rewrite HE, (read_values_kth _ _ _ _ _ _ _ PRE). reflexivity.
@@ -497,10 +526,55 @@ Proof.
   - inversion M; subst. elim NE; reflexivity.
 Qed.
 
+(* Q holds of a sequence sigma of values and of a termination when the termination's trace reads
+   sigma, and of a determinate semantics with such a termination for every sigma, every behavior
+   with int_loads is one of them.  For a behavior beh, take the termination for read_values beh,
+   which beh cannot leave by read_values_leaves. *)
+Theorem determinate_reads:
+  forall L, determinate L ->
+  forall (Q: (nat -> int) -> trace -> int -> Prop),
+  (forall sigma, exists t r,
+     program_behaves L (Terminates t r) /\ reads sigma t /\ Q sigma t r) ->
+  forall beh, program_behaves L beh -> int_loads beh ->
+  exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r.
+Proof.
+  intros L DET Q HB beh B IL.
+  destruct (HB (read_values beh)) as [t [r [BT [HR HQ]]]].
+  exists (read_values beh), t, r. split; [|split; auto].
+  destruct (determinate_behavior_leaves L DET _ _ BT _ B)
+    as [EQ | [tp [e [e' [u [A [NE [M [b' PRE]]]]]]]]]; auto.
+  exfalso. exact (read_values_leaves _ _ _ _ _ _ IL (HR tp e u A) M NE PRE).
+Qed.
+
 (** For a Clight program with a termination that reads sigma and satisfies Q for every sequence
     sigma of values, the Asm program has such a termination for every sigma, and every behavior
-    of the Asm program is one of them. *)
+    of the Asm program with int_loads is one of them. *)
 Theorem clight2_bigstep_asm_reads:
+  forall p p1 p2 tp (Q: (nat -> int) -> trace -> int -> Prop),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, exists t r,
+     ClightBigstep.Clight2.bigstep_program_terminates p2 t r /\ reads sigma t /\ Q sigma t r) ->
+  (forall sigma, exists t r,
+     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh -> int_loads beh ->
+     exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r).
+Proof.
+  intros p p1 p2 tp Q E1 E2 TR H.
+  assert (HA: forall sigma, exists t r,
+     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r).
+  { intros sigma. destruct (H sigma) as [t [r [B [HR HQ]]]].
+    exists t, r. split; auto. eapply clight2_bigstep_to_asm; eauto. }
+  split; auto.
+  intros beh B' IL. eapply determinate_reads; eauto.
+  apply Asm.semantics_determinate.
+Qed.
+
+(** With 64-bit pointers, as on AArch64, every behavior of the Asm program is one of the
+    terminations. *)
+Corollary clight2_bigstep_asm_reads_ptr64:
+  Archi.ptr64 = true ->
   forall p p1 p2 tp (Q: (nat -> int) -> trace -> int -> Prop),
   SimplExpr.transl_program p = OK p1 ->
   SimplLocals.transf_program p1 = OK p2 ->
@@ -512,16 +586,516 @@ Theorem clight2_bigstep_asm_reads:
   (forall beh, program_behaves (Asm.semantics tp) beh ->
      exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r).
 Proof.
-  intros p p1 p2 tp Q E1 E2 TR H.
-  assert (HA: forall sigma, exists t r,
-     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r).
-  { intros sigma. destruct (H sigma) as [t [r [B [HR HQ]]]].
-    exists t, r. split; auto. eapply clight2_bigstep_to_asm; eauto. }
+  intros P p p1 p2 tp Q E1 E2 TR H.
+  destruct (clight2_bigstep_asm_reads p p1 p2 tp Q E1 E2 TR H) as [A U].
+  split; auto. intros beh B. apply U; auto. apply int_loads_ptr64; auto.
+Qed.
+
+(* loop_entry s init body post holds when the statement s runs init and then the loop Sloop body
+   post, through sequences that precede or follow the loop.  loop_reacts p t0 W, the twin of the
+   Lean definition LoopReacts, holds when main runs init with the trace t0 and then the loop
+   forever, its n-th iteration running body and post with the nonempty trace W n.  The iterations
+   follow from an invariant Inv that holds after init and that every iteration preserves. *)
+
+Inductive loop_entry:
+  Clight.statement -> Clight.statement -> Clight.statement -> Clight.statement -> Prop :=
+  | loop_entry_loop: forall body post,
+      loop_entry (Clight.Sloop body post) Clight.Sskip body post
+  | loop_entry_seq_after: forall s init body post rest,
+      loop_entry s init body post ->
+      loop_entry (Clight.Ssequence s rest) init body post
+  | loop_entry_seq_before: forall s init body post pre,
+      loop_entry s init body post ->
+      loop_entry (Clight.Ssequence pre s) (Clight.Ssequence pre init) body post.
+
+Definition loop_reacts (p: Clight.program) (t0: trace) (W: nat -> trace) : Prop :=
+  (forall n, W n <> E0) /\
+  exists (b: block) (f: Clight.function) (m0 m1: mem) (e: Clight.env) (le0: Clight.temp_env)
+    (init body post: Clight.statement) (Inv: nat -> Clight.temp_env -> mem -> Prop),
+    Genv.init_mem p = Some m0 /\
+    Genv.find_symbol (Clight.globalenv p) p.(Ctypes.prog_main) = Some b /\
+    Genv.find_funct_ptr (Clight.globalenv p) b = Some (Ctypes.Internal f) /\
+    Clight.type_of_function f = Ctypes.Tfunction nil Ctypes.type_int32s cc_default /\
+    loop_entry f.(Clight.fn_body) init body post /\
+    Clight.function_entry2 (Clight.globalenv p) f nil m0 e le0 m1 /\
+    (exists le m, ClightBigstep.Clight2.exec_stmt (Clight.globalenv p) e le0 m1 init t0 le m
+                    ClightBigstep.Out_normal /\ Inv O le m) /\
+    forall n le m, Inv n le m -> exists le' m',
+      ClightBigstep.Clight2.exec_stmt (Clight.globalenv p) e le m (Clight.Ssequence body post)
+        (W n) le' m' ClightBigstep.Out_normal /\
+      Inv (n + 1)%nat le' m'.
+
+(* windows W n is the trace W 0 ** ... ** W (n - 1) of the first n iterations, and concat W NE
+   is the infinite trace of all iterations, built through traceinf' as Vélus's mk_trace is
+   (src/Traces.v at commit 27ba860c). *)
+
+Fixpoint windows (W: nat -> trace) (n: nat) : trace :=
+  match n with
+  | O => E0
+  | S k => windows W k ** W k
+  end.
+
+CoFixpoint concat' (W: nat -> trace) (NE: forall n, W n <> E0) (n: nat) : traceinf' :=
+  Econsinf' (W n) (concat' W NE (S n)) (NE n).
+
+Definition concat_from (W: nat -> trace) (NE: forall n, W n <> E0) (n: nat) : traceinf :=
+  traceinf_of_traceinf' (concat' W NE n).
+
+Definition concat (W: nat -> trace) (NE: forall n, W n <> E0) : traceinf := concat_from W NE O.
+
+Lemma concat_from_unfold:
+  forall W NE n, concat_from W NE n = W n *** concat_from W NE (S n).
+Proof.
+  intros. unfold concat_from.
+  rewrite (unroll_traceinf' (concat' W NE n)). simpl.
+  apply traceinf_traceinf'_app.
+Qed.
+
+Lemma concat_windows:
+  forall W NE t0 n, t0 *** concat W NE = (t0 ** windows W n) *** concat_from W NE n.
+Proof.
+  induction n; simpl.
+  - rewrite E0_right. reflexivity.
+  - rewrite IHn, concat_from_unfold, !Eappinf_assoc. reflexivity.
+Qed.
+
+Lemma windows_length:
+  forall W, (forall n, W n <> E0) -> forall n, (n <= length (windows W n))%nat.
+Proof.
+  intros W NE. induction n; simpl.
+  - lia.
+  - unfold Eapp. rewrite app_length.
+    destruct (W n) eqn:WN.
+    + elim (NE n). rewrite WN. reflexivity.
+    + simpl. lia.
+Qed.
+
+Lemma Eappinf_prefix:
+  forall t1 T1 t2 T2, t1 *** T1 = t2 *** T2 -> (length t1 <= length t2)%nat ->
+  exists u, t2 = t1 ** u.
+Proof.
+  induction t1 as [|x t1 IH]; intros T1 t2 T2 E LEN.
+  - exists t2. reflexivity.
+  - destruct t2 as [|y t2]; simpl in LEN. lia.
+    change (Econsinf x (t1 *** T1) = Econsinf y (t2 *** T2)) in E.
+    injection E as EX ET. subst y.
+    destruct (IH T1 t2 T2 ET ltac:(lia)) as [u U].
+    exists u. subst t2. reflexivity.
+Qed.
+
+(* Every finite prefix of t0 *** concat W NE is a prefix of t0 ** windows W n for some n, so
+   the infinite trace reads sigma when every t0 ** windows W n does. *)
+Lemma windows_reads:
+  forall sigma t0 W NE,
+  (forall n, reads sigma (t0 ** windows W n)) ->
+  forall tp ev T', t0 *** concat W NE = (tp ** ev :: nil) *** T' ->
+  match ev with
+  | Event_syscall _ _ _ => False
+  | Event_vload _ _ _ v => v = EVint (sigma (count_vloads tp))
+  | _ => True
+  end.
+Proof.
+  intros sigma t0 W NE R tp ev T' E.
+  rewrite (concat_windows W NE t0 (S (length tp))) in E.
+  destruct (Eappinf_prefix _ _ _ _ (eq_sym E)) as [u U].
+  { generalize (windows_length W NE (S (length tp))).
+    unfold Eapp. rewrite !app_length. simpl. lia. }
+  apply (R (S (length tp)) tp ev u).
+  rewrite U, Eapp_assoc. reflexivity.
+Qed.
+
+Lemma traceinf_sim_app_inv:
+  forall t T1 T2, traceinf_sim (t *** T1) T2 -> exists T2', T2 = t *** T2'.
+Proof.
+  induction t as [|e t IH]; intros T1 T2 S.
+  - exists T2. reflexivity.
+  - change ((e :: t) *** T1) with (Econsinf e (t *** T1)) in S.
+    inversion S as [e' T1' T2' S' E1 E2]; subst.
+    destruct (IH _ _ S') as [T U]. exists T. subst. reflexivity.
+Qed.
+
+Lemma reacts_int_loads:
+  forall sigma t0 W NE beh,
+  (forall n, reads sigma (t0 ** windows W n)) ->
+  same_behaviors beh (Reacts (t0 *** concat W NE)) -> int_loads beh.
+Proof.
+  intros sigma t0 W NE beh R S tp chunk id ofs ev [b E] _.
+  destruct beh as [u r | u | T | u]; simpl in S; try contradiction.
+  destruct b as [u r | u | T' | u]; simpl in E; try discriminate. inv E.
+  destruct (traceinf_sim_app_inv _ _ _ S) as [T2 E].
+  exists (sigma (count_vloads tp)).
+  exact (windows_reads sigma t0 W NE R tp (Event_vload chunk id ofs ev) T2 E).
+Qed.
+
+(* One iteration in small steps: step_loop enters body, the steps of body end in Sskip,
+   step_skip_or_continue_loop1 enters post, the steps of post end in Sskip, and step_skip_loop2
+   returns to the loop with the same continuation. *)
+
+Lemma exec_seq_normal:
+  forall ge e le m s1 s2 t le' m',
+  ClightBigstep.exec_stmt Clight.function_entry2 ge e le m (Clight.Ssequence s1 s2) t le' m'
+    ClightBigstep.Out_normal ->
+  exists t1 le1 m1 t2, t = t1 ** t2 /\
+    ClightBigstep.exec_stmt Clight.function_entry2 ge e le m s1 t1 le1 m1
+      ClightBigstep.Out_normal /\
+    ClightBigstep.exec_stmt Clight.function_entry2 ge e le1 m1 s2 t2 le' m'
+      ClightBigstep.Out_normal.
+Proof.
+  intros. inversion H; subst.
+  - do 4 eexists. split. reflexivity. split; eassumption.
+  - congruence.
+Qed.
+
+Lemma exec_star:
+  forall p e le m s t le' m' f k,
+  ClightBigstep.exec_stmt Clight.function_entry2 (Clight.globalenv p) e le m s t le' m'
+    ClightBigstep.Out_normal ->
+  Star (Clight.semantics2 p) (Clight.State f s k e le m) t
+       (Clight.State f Clight.Sskip k e le' m').
+Proof.
+  intros p e le m s t le' m' f k EX.
+  destruct (ClightBigstep.exec_stmt_steps Clight.function_entry2 p _ _ _ _ _ _ _ _ EX f k)
+    as [S [ST OSM]].
+  inversion OSM; subst. exact ST.
+Qed.
+
+Lemma window_star:
+  forall p f e body post k le m t le' m',
+  ClightBigstep.Clight2.exec_stmt (Clight.globalenv p) e le m (Clight.Ssequence body post)
+    t le' m' ClightBigstep.Out_normal ->
+  Star (Clight.semantics2 p) (Clight.State f (Clight.Sloop body post) k e le m) t
+       (Clight.State f (Clight.Sloop body post) k e le' m').
+Proof.
+  intros p f e body post k le m t le' m' EX.
+  destruct (exec_seq_normal _ _ _ _ _ _ _ _ _ EX) as [t1 [le1 [m1 [t2 [T [EX1 EX2]]]]]].
+  subst t.
+  replace (t1 ** t2) with (E0 ** t1 ** E0 ** t2 ** E0) by traceEq.
+  eapply star_step; [apply Clight.step_loop | | reflexivity].
+  eapply star_trans; [apply exec_star; eexact EX1 | | reflexivity].
+  eapply star_step; [apply Clight.step_skip_or_continue_loop1; auto | | reflexivity].
+  eapply star_trans; [apply exec_star; eexact EX2 | | reflexivity].
+  apply star_one. apply Clight.step_skip_loop2.
+Qed.
+
+(* From a statement s with loop_entry s init body post, the steps reach the loop with the trace of
+   init.  step_seq and step_skip_seq pass the sequences before the loop, whose first statements
+   make up init, and step_seq enters the sequences after it, whose second statements the loop
+   never reaches. *)
+Lemma entry_star:
+  forall p f e s init body post, loop_entry s init body post ->
+  forall k le m t le' m',
+  ClightBigstep.Clight2.exec_stmt (Clight.globalenv p) e le m init t le' m'
+    ClightBigstep.Out_normal ->
+  exists k', Star (Clight.semantics2 p) (Clight.State f s k e le m) t
+                  (Clight.State f (Clight.Sloop body post) k' e le' m').
+Proof.
+  intros p f e s init body post LE.
+  induction LE as [body post | s init body post rest LE IH | s init body post pre LE IH];
+    intros k le m t le' m' EX.
+  - exists k. inversion EX; subst. apply star_refl.
+  - destruct (IH (Clight.Kseq rest k) le m t le' m' EX) as [k' ST].
+    exists k'. replace t with (E0 ** t) by traceEq.
+    eapply star_step; [apply Clight.step_seq | exact ST | reflexivity].
+  - destruct (exec_seq_normal _ _ _ _ _ _ _ _ _ EX) as [t1 [le1 [m1 [t2 [T [EX1 EX2]]]]]].
+    destruct (IH k le1 m1 t2 le' m' EX2) as [k' ST].
+    exists k'. subst t.
+    replace (t1 ** t2) with (E0 ** t1 ** E0 ** t2) by traceEq.
+    eapply star_step; [apply Clight.step_seq | | reflexivity].
+    eapply star_trans; [apply exec_star; eexact EX1 | | reflexivity].
+    eapply star_step; [apply Clight.step_skip_seq | exact ST | reflexivity].
+Qed.
+
+(* From a state of the invariant at iteration n, the loop is Forever_reactive with the trace of
+   the iterations from n on, by cofixpoint as in Vélus's reactive_loop
+   (src/ObcToClight/Correctness.v at commit 27ba860c). *)
+Lemma loop_forever_reactive:
+  forall p f e body post k (Inv: nat -> Clight.temp_env -> mem -> Prop) W
+         (NE: forall n, W n <> E0),
+  (forall n le m, Inv n le m -> exists le' m',
+     ClightBigstep.Clight2.exec_stmt (Clight.globalenv p) e le m (Clight.Ssequence body post)
+       (W n) le' m' ClightBigstep.Out_normal /\
+     Inv (n + 1)%nat le' m') ->
+  forall n le m, Inv n le m ->
+  Forever_reactive (Clight.semantics2 p) (Clight.State f (Clight.Sloop body post) k e le m)
+    (concat_from W NE n).
+Proof.
+  intros p f e body post k Inv W NE WIN.
+  cofix COINDHYP. intros n le m I.
+  destruct (WIN n le m I) as [le' [m' [EX I']]].
+  replace (n + 1)%nat with (S n) in I' by lia.
+  rewrite concat_from_unfold.
+  econstructor.
+  - apply window_star. exact EX.
+  - apply NE.
+  - exact (COINDHYP (S n) le' m' I').
+Qed.
+
+Theorem loop_reacts_clight:
+  forall p t0 W (NE: forall n, W n <> E0), loop_reacts p t0 W ->
+  program_behaves (Clight.semantics2 p) (Reacts (t0 *** concat W NE)).
+Proof.
+  intros p t0 W NE [_ [b [f [m0 [m1 [e [le0 [init [body [post [Inv
+    [IM [FS [FF [TY [LE [FE [[le [m [EI I0]]] WIN]]]]]]]]]]]]]]]]]].
+  destruct (entry_star p f e _ _ _ _ LE Clight.Kstop le0 m1 t0 le m EI) as [k ST].
+  eapply program_runs.
+  - eapply Clight.initial_state_intro; eauto.
+  - apply state_reacts.
+    eapply star_forever_reactive.
+    + replace t0 with (E0 ** t0) by traceEq.
+      eapply star_step;
+        [eapply Clight.step_internal_function; eexact FE | exact ST | reflexivity].
+    + unfold concat. eapply loop_forever_reactive; eauto.
+Qed.
+
+(* Two runs of a determinate semantics from one state, one of them reactive with the trace T,
+   agree until a step at which their events differ, which match_traces allows only at a pair of
+   system calls or of volatile loads.  A run that agrees with the reactive run at every step
+   cannot stop or diverge silently, and a reactive run that agrees with it at every step has a
+   trace bisimilar to T. *)
+
+Section REACTIVE.
+
+Variable L: semantics.
+Hypothesis DET: determinate L.
+
+Lemma star_reactive_follows_or_leaves:
+  forall s t2 s2, Star L s t2 s2 ->
+  forall T, Forever_reactive L s T ->
+  (exists T', T = t2 *** T' /\ Forever_reactive L s2 T') \/
+  exists tp e e' u T', t2 = tp ** e' :: u /\ T = (tp ** e :: nil) *** T' /\ e <> e' /\
+    match_traces (symbolenv L) (e :: nil) (e' :: nil).
+Proof.
+  induction 1 as [s | s1 t1 s2 t2 s3 t12 STEP STAR IH EQ]; intros T F.
+  - left. exists T. split; auto.
+  - inversion F as [s0 s4 ta T1 STARA NEA FA EQT]; subst.
+    inversion STARA as [s0 | s0 tx sx ty s0' txy STEPX STARX EQX]; subst.
+    + elim NEA; auto.
+    + destruct (sd_determ DET _ _ _ _ _ STEPX STEP) as [M E].
+      destruct (Classical_Prop.classic (tx = t1)) as [EQ1 | NE1].
+      * subst tx. assert (sx = s2) by (apply E; auto). subst sx.
+        destruct (IH _ (star_forever_reactive STARX FA))
+          as [[T' [A B]] | [tp [e [e' [u [T' [A [B [C D]]]]]]]]].
+        { left. exists T'. split; auto. rewrite !Eappinf_assoc, A. reflexivity. }
+        { right. exists (t1 ** tp), e, e', u, T'. subst.
+          split. rewrite Eapp_assoc. reflexivity.
+          split. rewrite !Eappinf_assoc, B, !Eappinf_assoc. reflexivity.
+          split; auto. }
+      * right.
+        assert (X: exists e e', tx = e :: nil /\ t1 = e' :: nil)
+          by (inversion M; subst; first [elim NE1; reflexivity | do 2 eexists; split; reflexivity]).
+        destruct X as [e [e' [X1 X2]]]. subst tx t1.
+        exists E0, e, e', t2, (ty *** T1).
+        split. reflexivity.
+        split. rewrite Eappinf_assoc. reflexivity.
+        split; auto. intro EE. apply NE1. rewrite EE. reflexivity.
+Qed.
+
+Lemma nostep_not_reactive:
+  forall s T, Nostep L s -> ~ Forever_reactive L s T.
+Proof.
+  intros s T NS F. inversion F as [s0 s1 t T1 STAR NE F1]; subst.
+  inversion STAR; subst.
+  - elim NE; auto.
+  - eapply NS; eauto.
+Qed.
+
+Lemma star_forever_silent_E0:
+  forall s t s', Star L s t s' -> Forever_silent L s -> t = E0.
+Proof.
+  induction 1 as [s | s1 t1 s2 t2 s3 t STEP STAR IH EQ]; intros F; auto.
+  inversion F as [s0 s4 STEP0 F0]; subst.
+  destruct (sd_determ DET _ _ _ _ _ STEP STEP0) as [M E].
+  inv M. assert (s2 = s4) by (apply E; auto). subst.
+  rewrite IH; auto.
+Qed.
+
+Lemma forever_silent_not_reactive:
+  forall s T, Forever_silent L s -> ~ Forever_reactive L s T.
+Proof.
+  intros s T FS F. inversion F as [s0 s1 t T1 STAR NE F1]; subst.
+  elim NE. eapply star_forever_silent_E0; eauto.
+Qed.
+
+(* leaves_inf T T2: the infinite traces T and T2 share a prefix followed by two different events
+   that match_traces relates. *)
+Definition leaves_inf (T T2: traceinf) : Prop :=
+  exists tp e e' T' T2', T = (tp ** e :: nil) *** T' /\ T2 = (tp ** e' :: nil) *** T2' /\
+    e <> e' /\ match_traces (symbolenv L) (e :: nil) (e' :: nil).
+
+Lemma leaves_inf_app:
+  forall t T T2, leaves_inf T T2 -> leaves_inf (t *** T) (t *** T2).
+Proof.
+  intros t T T2 [tp [e [e' [T' [T2' [A [B [C D]]]]]]]].
+  exists (t ** tp), e, e', T', T2'. subst. rewrite !Eappinf_assoc. auto.
+Qed.
+
+Lemma reactive_inv2:
+  forall s t1 s1, Star L s t1 s1 ->
+  forall t2 s2 T1 T2,
+  Star L s t2 s2 -> t1 <> E0 -> t2 <> E0 ->
+  Forever_reactive L s1 T1 -> Forever_reactive L s2 T2 ->
+  ~ leaves_inf (t1 *** T1) (t2 *** T2) ->
+  exists s' t T1' T2', t <> E0 /\ Forever_reactive L s' T1' /\ Forever_reactive L s' T2' /\
+    t1 *** T1 = t *** T1' /\ t2 *** T2 = t *** T2'.
+Proof.
+  induction 1 as [s | s ta sa tb s1 t1 STEPA STARA IH EQA];
+    intros t2 s2 T1 T2 S2 NE1 NE2 F1 F2 NL.
+  - elim NE1; auto.
+  - inversion S2 as [s0 | s0 tc sc td s2' t2' STEPC STARC EQC]; subst.
+    + elim NE2; auto.
+    + destruct (sd_determ DET _ _ _ _ _ STEPA STEPC) as [M E].
+      destruct (Classical_Prop.classic (ta = tc)) as [EQ | NEQ].
+      * subst tc. assert (sc = sa) by (symmetry; apply E; auto). subst sc.
+        destruct ta as [|ev ta].
+        { eapply IH; eauto. }
+        { exists sa, (ev :: ta), (tb *** T1), (td *** T2).
+          split. discriminate.
+          split. eapply star_forever_reactive; eauto.
+          split. eapply star_forever_reactive; eauto.
+          split; apply Eappinf_assoc. }
+      * elim NL.
+        assert (X: exists e e', ta = e :: nil /\ tc = e' :: nil)
+          by (inversion M; subst; first [elim NEQ; reflexivity | do 2 eexists; split; reflexivity]).
+        destruct X as [e [e' [X1 X2]]]. subst ta tc.
+        exists E0, e, e', (tb *** T1), (td *** T2).
+        split. rewrite Eappinf_assoc. reflexivity.
+        split. rewrite Eappinf_assoc. reflexivity.
+        split; auto. intro EE. apply NEQ. rewrite EE. reflexivity.
+Qed.
+
+Lemma reactive_sim':
+  forall s T T2, Forever_reactive L s T -> Forever_reactive L s T2 -> ~ leaves_inf T T2 ->
+  traceinf_sim' T T2.
+Proof.
+  cofix COINDHYP; intros s T T2 F F2 NL.
+  inversion F as [s0 s1 t1 T1 STAR1 NE1 F1]; subst.
+  inversion F2 as [s0 s2 t2 T2' STAR2 NE2 F2']; subst.
+  destruct (reactive_inv2 _ _ _ STAR1 _ _ _ _ STAR2 NE1 NE2 F1 F2' NL)
+    as [s' [t [T1' [T2'' [NE [A [B [C D]]]]]]]].
+  assert (NL': ~ leaves_inf T1' T2'').
+  { intro LV. apply NL. rewrite C, D. apply leaves_inf_app. exact LV. }
+  rewrite C, D. constructor.
+  - exact NE.
+  - exact (COINDHYP s' T1' T2'' A B NL').
+Qed.
+
+Lemma reactive_sim_or_leaves:
+  forall s T T2, Forever_reactive L s T -> Forever_reactive L s T2 ->
+  traceinf_sim T T2 \/ leaves_inf T T2.
+Proof.
+  intros s T T2 F F2.
+  destruct (Classical_Prop.classic (leaves_inf T T2)) as [LV | NL]; auto.
+  left. apply traceinf_sim'_sim. exact (reactive_sim' s T T2 F F2 NL).
+Qed.
+
+End REACTIVE.
+
+(* For a determinate semantics with the behavior Reacts (t0 *** concat (W sigma) _) for every
+   sequence sigma of values, whose finite prefixes read sigma, every behavior beh with int_loads
+   is bisimilar to the one for read_values beh, since beh cannot leave it by
+   read_values_leaves. *)
+Theorem determinate_reacts_reads:
+  forall L, determinate L ->
+  forall t0 (W: (nat -> int) -> nat -> trace) (NE: forall sigma n, W sigma n <> E0),
+  (forall sigma, program_behaves L (Reacts (t0 *** concat (W sigma) (NE sigma)))) ->
+  (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
+  forall beh, program_behaves L beh -> int_loads beh ->
+  exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma))).
+Proof.
+  intros L DET t0 W NE HB HR beh B IL.
+  exists (read_values beh).
+  generalize (HB (read_values beh)).
+  generalize (windows_reads _ t0 _ (NE (read_values beh)) (HR (read_values beh))).
+  generalize (t0 *** concat (W (read_values beh)) (NE (read_values beh))).
+  intros T RT BT.
+  assert (X: forall tp e e' T' b, T = (tp ** e :: nil) *** T' -> e <> e' ->
+             match_traces (symbolenv L) (e :: nil) (e' :: nil) ->
+             beh = behavior_app (tp ** e' :: nil) b -> False)
+    by (intros tp e e' T' b A C D PRE;
+        exact (read_values_leaves _ _ _ _ _ _ IL (RT _ _ _ A) D C PRE)).
+  clear RT HB HR IL.
+  inversion BT as [s beh0 INIT SB | NOINIT]; subst.
+  inversion SB as [ | | T0 REACT | ]; subst.
+  inversion B as [s0 beh1 INIT' SB' | NOINIT']; subst.
+  - assert (s0 = s) by (eapply sd_initial_determ; eauto). subst s0.
+    inversion SB' as [t2 s2 r2 STAR2 FINAL2 | t2 s2 STAR2 SIL | T2 REACT2
+                     | t2 s2 STAR2 NS2 NF2]; subst; simpl.
+    + destruct (star_reactive_follows_or_leaves L DET _ _ _ STAR2 _ REACT)
+        as [[T' [A F]] | [tp [e [e' [u [T' [A [A2 [C D]]]]]]]]].
+      * elim (nostep_not_reactive L _ _ (sd_final_nostep DET _ _ FINAL2) F).
+      * apply (X tp e e' T' (Terminates u r2) A2 C D). subst. simpl.
+        rewrite Eapp_assoc. reflexivity.
+    + destruct (star_reactive_follows_or_leaves L DET _ _ _ STAR2 _ REACT)
+        as [[T' [A F]] | [tp [e [e' [u [T' [A [A2 [C D]]]]]]]]].
+      * elim (forever_silent_not_reactive L DET _ _ SIL F).
+      * apply (X tp e e' T' (Diverges u) A2 C D). subst. simpl.
+        rewrite Eapp_assoc. reflexivity.
+    + destruct (reactive_sim_or_leaves L DET _ _ _ REACT REACT2)
+        as [SIM | [tp [e [e' [T' [T2' [A [A2 [C D]]]]]]]]].
+      * apply traceinf_sim_sym. exact SIM.
+      * exfalso. apply (X tp e e' T' (Reacts T2') A C D). subst. reflexivity.
+    + destruct (star_reactive_follows_or_leaves L DET _ _ _ STAR2 _ REACT)
+        as [[T' [A F]] | [tp [e [e' [u [T' [A [A2 [C D]]]]]]]]].
+      * elim (nostep_not_reactive L _ _ NS2 F).
+      * apply (X tp e e' T' (Goes_wrong u) A2 C D). subst. simpl.
+        rewrite Eapp_assoc. reflexivity.
+  - elim (NOINIT' s INIT).
+Qed.
+
+(** For a Clight program whose main runs an initialization with the trace t0 and then a loop
+    forever, with the trace W sigma n in its n-th iteration when the volatile loads read the
+    sequence sigma of values, the Asm program has the reactive behavior with the trace t0 ***
+    concat (W sigma) (NE sigma) for every sigma, and every behavior of the Asm program with
+    int_loads is bisimilar to one of them. *)
+Theorem clight2_loop_to_asm:
+  forall p p1 p2 tp t0 (W: (nat -> int) -> nat -> trace)
+         (NE: forall sigma n, W sigma n <> E0),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, loop_reacts p2 t0 (W sigma)) ->
+  (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
+  (forall sigma, program_behaves (Asm.semantics tp)
+                   (Reacts (t0 *** concat (W sigma) (NE sigma)))) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh -> int_loads beh ->
+     exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+Proof.
+  intros p p1 p2 tp t0 W NE E1 E2 T LR R.
+  assert (HA: forall sigma, program_behaves (Asm.semantics tp)
+                              (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+  { intros sigma. eapply forward_simulation_same_safe_behavior.
+    - eapply clight2_to_asm_forward; eauto.
+    - apply loop_reacts_clight. apply LR.
+    - red; auto. }
   split; auto.
-  intros beh B'. eapply determinate_reads; eauto.
+  intros beh B IL. eapply determinate_reacts_reads; eauto.
   apply Asm.semantics_determinate.
+Qed.
+
+(** With 64-bit pointers, as on AArch64, every behavior of the Asm program is bisimilar to one of
+    the reactive behaviors. *)
+Corollary clight2_loop_to_asm_ptr64:
+  Archi.ptr64 = true ->
+  forall p p1 p2 tp t0 (W: (nat -> int) -> nat -> trace)
+         (NE: forall sigma n, W sigma n <> E0),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, loop_reacts p2 t0 (W sigma)) ->
+  (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
+  (forall sigma, program_behaves (Asm.semantics tp)
+                   (Reacts (t0 *** concat (W sigma) (NE sigma)))) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh ->
+     exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+Proof.
+  intros P p p1 p2 tp t0 W NE E1 E2 T LR R.
+  destruct (clight2_loop_to_asm p p1 p2 tp t0 W NE E1 E2 T LR R) as [A U].
+  split; auto. intros beh B. apply U; auto. apply int_loads_ptr64; auto.
 Qed.
 
 Print Assumptions clight2_bigstep_to_asm.
 Print Assumptions clight2_bigstep_asm_unique.
 Print Assumptions clight2_bigstep_asm_reads.
+Print Assumptions clight2_bigstep_asm_reads_ptr64.
+Print Assumptions clight2_loop_to_asm.
+Print Assumptions clight2_loop_to_asm_ptr64.

@@ -40,6 +40,17 @@ lean_exe «running-sumfp-native» where
   root := `Demos.RunningSumFp.Native
   moreLinkObjs := #[`@/runningSumRead]
 
+-- The co-simulation of the AArch64 model (tests/baremetal/a64-cosim.sh); not a default target.
+lean_exe «a64-cosim» where
+  srcDir := "tests"
+  root := `TestSupport.A64.CosimMain
+
+-- The arm64 Images of the AArch64 back end's bare-metal programs (tests/baremetal/a64-images.sh);
+-- not a default target.
+lean_exe «a64-programs» where
+  srcDir := "tests"
+  root := `TestSupport.A64.ProgramsMain
+
 -- The checks of the hashing transcriptions and programs on their vectors
 -- (tests/TestSupport/Hashing); not default targets.
 lean_exe «sha3-vectors» where

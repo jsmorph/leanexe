@@ -414,7 +414,8 @@ structure MaterializedProgram where
   pureHasLiterals : Bool
 
 def materializeProgram (base : Name) (state : ProgramReflection)
-    (poolOverride? : Option Lean.Expr := none) : TermElabM MaterializedProgram := do
+    (poolOverride? : Option Lean.Expr := none) (minPages : Nat := 16) :
+    TermElabM MaterializedProgram := do
   let sigs := state.sigs
   let prog := state.prog
   let funs := state.funs
@@ -460,7 +461,7 @@ def materializeProgram (base : Name) (state : ProgramReflection)
   addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
     (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
       Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers),
-      Lean.mkConst (base ++ `literalPool)])
+      Lean.mkConst (base ++ `literalPool), mkNatLit minPages])
   let literals ← mkAppM ``Prog.literals #[prog]
   let empty := listExpr (mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)) []
   return { base, pureHasLiterals := !(← isDefEq literals empty) }
@@ -471,7 +472,8 @@ inductive NativeKind where
   | tables
   | static
 
-syntax (name := verifiedCompile) "verified_compile " ident " := " "[" ident,* "]" : command
+syntax (name := verifiedCompile) "verified_compile " ("(" &"pages" " := " num ")")?
+  ("(" &"cap" " := " num ")")? ident " := " "[" ident,* "]" : command
 
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
 order, each of which may call those before it and, when recursive, itself; the meanings
@@ -487,7 +489,8 @@ aligned; `p.initial`, that the store in which the module starts satisfies the al
 and holds the tables; `p.inSubset`, that the module is in the subset that the translator to C
 accepts, when it is, from the theorems `p.native_part_k`, one per function, which also give the
 callees of each function's C function as `p.translation_infos` lists them; when the module
-translates, its translation `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list
+translates, its translation `p.translation` to C, with `lx_mem` of `nativeCap` pages or of the
+`cap` that the option `(cap := C)` gives, the list
 `p.translation_funcs` of the functions that the translation contains, the equation
 `p.translation_eq`, and, for each definition `f` whose function the translation contains, the
 theorem `p.f.native` that the C function computes `f` as `p.f.implements` states, for an
@@ -497,17 +500,25 @@ theorem `p.f.native` that the C function computes `f` as `p.f.implements` states
 for each definition `f` whose function it contains, the theorem `p.f.nativeAligned` that the C
 function computes `f` as `p.f.implements` states from an aligned input, as `NativeAlignedImpl` or
 `NativeTablesAlignedImpl` states it; and `p.bytes`, the module's bytes with all the functions'
-theorems. -/
+theorems.  The option `(pages := N)` starts the module's memory with `N` pages, 16 by default, or
+more when its static data needs them, and `(cap := C)` gives the translation `C` pages of
+`lx_mem`. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
-  | `(verified_compile $target := [$sources,*]) => do
+  | `(verified_compile $[(pages := $pages?)]? $[(cap := $cap?)]? $target := [$sources,*]) => do
+    let minPages : Nat := (pages?.map (·.getNat)).getD 16
+    let pagesLit : Term := Syntax.mkNumLit (toString minPages)
+    let capNat : Nat := (cap?.map (·.getNat)).getD LeanExe.Native.nativeCap
+    let capTerm : Term ← match cap? with
+      | some c => pure c
+      | none => `(LeanExe.Native.nativeCap)
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
     requireRecursiveTypes "verified_compile" names
     let mut state : ProgramReflection := {}
     for name in names do
       state ← liftTermElabM (reflectProgramFunction base name state)
-    let materialized ← liftTermElabM (materializeProgram base state)
+    let materialized ← liftTermElabM (materializeProgram base state (minPages := minPages))
     let reflected := state.out
     let wraps := state.wraps
     let tableNames := state.tableNames
@@ -525,11 +536,11 @@ def elabVerifiedCompile : CommandElab
     let noLiterals := mkIdent noLiteralsName
     -- The store in which the module starts.
     let initialProof ← if hasLiterals then
-        `(Verified.compileWith_initialStaticStore $(mkIdent (base ++ `program))
-          $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers))
+        `(Verified.compileWith_initialStaticStore (minPages := $pagesLit)
+          $(mkIdent (base ++ `program)) $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers))
           $(mkIdent (base ++ `literalPool)) rfl (by decide +kernel))
       else
-        `(Verified.compileWith_initialStore $(mkIdent (base ++ `program))
+        `(Verified.compileWith_initialStore (minPages := $pagesLit) $(mkIdent (base ++ `program))
           $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers))
           (by decide +kernel) $noLiterals)
     elabCommand (← `(theorem $(mkIdent (target.getId ++ `initial)) : type_of% $initialProof :=
@@ -541,8 +552,8 @@ def elabVerifiedCompile : CommandElab
     let tablesId := mkIdent (base ++ `tables)
     let wrappersId := mkIdent (base ++ `wrappers)
     let poolId := mkIdent (base ++ `literalPool)
-    let staticCalls ← `(Verified.Prog.correctStaticWith $progId $funsId $meaningId
-      $tablesId $wrappersId $poolId (Verified.Prog.covered_literalPool _ _))
+    let staticCalls ← `(Verified.Prog.correctStaticWith (minPages := $pagesLit) $progId $funsId
+      $meaningId $tablesId $wrappersId $poolId (Verified.Prog.covered_literalPool _ _))
     let n := reflected.size
     let mut claims : Array Term := #[]
     let mut proofs : Array Term := #[]
@@ -563,17 +574,17 @@ def elabVerifiedCompile : CommandElab
         let (hImpl, hFree) ← if r.depth then
             let j := entries
             entries := entries + 1
-            let impl ← `(Verified.Prog.correct_entryStaticWith $progId $funsId $meaningId
-              $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j)) $hEntry $poolId
-              (Verified.Prog.covered_literalPool _ _))
+            let impl ← `(Verified.Prog.correct_entryStaticWith (minPages := $pagesLit)
+              $progId $funsId $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j))
+              $hEntry $poolId (Verified.Prog.covered_literalPool _ _))
             let free ← if r.paid then
-                `(Verified.Prog.entry_trapFreeStaticWith $progId $funsId $meaningId
-                  $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j)) $hEntry $poolId
-                  (Verified.Prog.covered_literalPool _ _))
+                `(Verified.Prog.entry_trapFreeStaticWith (minPages := $pagesLit)
+                  $progId $funsId $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j))
+                  $hEntry $poolId (Verified.Prog.covered_literalPool _ _))
               else
-                `(Verified.Prog.entry_trapFreeStaticWith_unpaid $progId $funsId $meaningId
-                  $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j)) $hEntry
-                  (by decide +kernel) $poolId (Verified.Prog.covered_literalPool _ _))
+                `(Verified.Prog.entry_trapFreeStaticWith_unpaid (minPages := $pagesLit)
+                  $progId $funsId $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j))
+                  $hEntry (by decide +kernel) $poolId (Verified.Prog.covered_literalPool _ _))
             pure (impl, free)
           else if r.paid then
             pure (← `(Verified.FunSpec.implementsStaticBounded ($staticCalls $fvar 0) rfl),
@@ -600,16 +611,18 @@ def elabVerifiedCompile : CommandElab
       let (hStx, index) ← if r.depth then
           let j := entries
           entries := entries + 1
-          pure (← `(Verified.Prog.correct_entryWith $progId $funsId $meaningId $tablesId
-            $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)
-            $noLiterals), 2 + n + j)
+          pure (← `(Verified.Prog.correct_entryWith (minPages := $pagesLit)
+            $progId $funsId $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote j))
+            (by decide +kernel) $noLiterals), 2 + n + j)
         else if r.paid then
           pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB
-            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar 0)
+            (Verified.Prog.correctWith (minPages := $pagesLit) $progId $funsId $meaningId
+              $tablesId $wrappersId $noLiterals $fvar 0)
             rfl)), 2 + k)
         else
           pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB_unpaid
-            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar 0)
+            (Verified.Prog.correctWith (minPages := $pagesLit) $progId $funsId $meaningId
+              $tablesId $wrappersId $noLiterals $fvar 0)
             rfl (by decide +kernel))), 2 + k)
       -- The theorem for the flattened types, transferred to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
@@ -632,11 +645,12 @@ def elabVerifiedCompile : CommandElab
       -- run at every fuel from some bound on makes only aligned 64-bit accesses inside memory,
       -- and the final heap and the result's blocks are aligned.
       let alignedStx ← if r.depth then
-          `(Verified.Prog.entry_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+          `(Verified.Prog.entry_alignedWith (minPages := $pagesLit)
+            $progId $funsId $meaningId $tablesId $wrappersId
             $fvar rfl (j := $(Lean.quote (index - 2 - n))) (by decide +kernel) $noLiterals)
         else
-          `(Verified.Prog.implementsAlignedWith $progId $funsId $meaningId $tablesId
-            $wrappersId $noLiterals $fvar rfl)
+          `(Verified.Prog.implementsAlignedWith (minPages := $pagesLit)
+            $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar rfl)
       liftTermElabM do
         let h ← Term.elabTerm (← `(Verified.ImplementsAligned.lean $alignedStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
@@ -666,11 +680,11 @@ def elabVerifiedCompile : CommandElab
         let (h, pre?, post) ← if r.depth then
             let frames ← evalNat (mkApp (mkConst ``framesAt) (toExpr (0 : UInt64)))
             let h0 ← Term.elabTerm (← if r.paid then
-                `(Verified.Prog.entry_trapFreeWith $progId $funsId
+                `(Verified.Prog.entry_trapFreeWith (minPages := $pagesLit) $progId $funsId
                   $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := $noLiterals) (j := $(Lean.quote (index - 2 - n)))
                   (by decide +kernel))
               else
-                `(Verified.Prog.entry_trapFreeWith_unpaid $progId $funsId
+                `(Verified.Prog.entry_trapFreeWith_unpaid (minPages := $pagesLit) $progId $funsId
                   $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := $noLiterals) (j := $(Lean.quote (index - 2 - n)))
                   (by decide +kernel) (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
@@ -698,11 +712,13 @@ def elabVerifiedCompile : CommandElab
               ← `(fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + $boundId $fr x))
           else
             let h0 ← Term.elabTerm (← if r.paid then
-                `(Verified.FunSpec.implementsB (Verified.Prog.correctWith $progId $funsId
-                  $meaningId $tablesId $wrappersId $noLiterals $fvar 0) rfl)
+                `(Verified.FunSpec.implementsB
+                  (Verified.Prog.correctWith (minPages := $pagesLit) $progId $funsId $meaningId
+                    $tablesId $wrappersId $noLiterals $fvar 0) rfl)
               else
-                `(Verified.FunSpec.implementsB_unpaid (Verified.Prog.correctWith $progId $funsId
-                  $meaningId $tablesId $wrappersId $noLiterals $fvar 0) rfl (by decide +kernel))) none
+                `(Verified.FunSpec.implementsB_unpaid
+                  (Verified.Prog.correctWith (minPages := $pagesLit) $progId $funsId $meaningId
+                    $tablesId $wrappersId $noLiterals $fvar 0) rfl (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
             let h0 ← instantiateMVars h0
             let #[_, _, _, _, _, _, _, _, boundFn] := (← inferType h0).getAppArgs
@@ -742,11 +758,11 @@ def elabVerifiedCompile : CommandElab
       let implName := base ++ simple ++ `implements
       if hasLiterals then
         let index := 2 + n + entries + j
-        let hImpl ← `(Verified.Prog.correct_wrapperStatic $progId $funsId $meaningId
-          $tablesId $wrappersId (j := $(Lean.quote j)) rfl $poolId
+        let hImpl ← `(Verified.Prog.correct_wrapperStatic (minPages := $pagesLit)
+          $progId $funsId $meaningId $tablesId $wrappersId (j := $(Lean.quote j)) rfl $poolId
           (Verified.Prog.covered_literalPool _ _))
-        let hFree ← `(Verified.Prog.wrapper_trapFreeStatic $progId $funsId $meaningId
-          $tablesId $wrappersId (j := $(Lean.quote j)) rfl $poolId
+        let hFree ← `(Verified.Prog.wrapper_trapFreeStatic (minPages := $pagesLit)
+          $progId $funsId $meaningId $tablesId $wrappersId (j := $(Lean.quote j)) rfl $poolId
           (Verified.Prog.covered_literalPool _ _))
         liftTermElabM do
           let tables ← tableEntries (base ++ `tables) tableNames idxs
@@ -762,7 +778,8 @@ def elabVerifiedCompile : CommandElab
         natives := natives.push (simple, index, .static)
         j := j + 1
         continue
-      let hStx ← `(Verified.Prog.correct_wrapper $progId $funsId $meaningId $tablesId $wrappersId
+      let hStx ← `(Verified.Prog.correct_wrapper (minPages := $pagesLit)
+        $progId $funsId $meaningId $tablesId $wrappersId
         (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals))
       liftTermElabM do
         let h ← Term.elabTerm (← `(Verified.ImplementsTables.lean $hStx)) none
@@ -783,7 +800,8 @@ def elabVerifiedCompile : CommandElab
       -- The alignment theorem with the arguments of `p.f.implements`.
       liftTermElabM do
         let h ← Term.elabTerm (← `(Verified.ImplementsTablesAligned.lean
-          (Verified.Prog.wrapper_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+          (Verified.Prog.wrapper_alignedWith (minPages := $pagesLit)
+            $progId $funsId $meaningId $tablesId $wrappersId
             (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals)))) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
@@ -806,10 +824,12 @@ def elabVerifiedCompile : CommandElab
         let boundName := base ++ simple ++ `bound
         liftTermElabM do
           let h0Stx ← if r.aborts then
-              `(Verified.Prog.wrapper_trapFree $progId $funsId $meaningId $tablesId $wrappersId
+              `(Verified.Prog.wrapper_trapFree (minPages := $pagesLit)
+                $progId $funsId $meaningId $tablesId $wrappersId
                 (j := $(Lean.quote j)) rfl rfl (hNoLiterals := $noLiterals))
             else
-              `(Verified.Prog.wrapper_noTrap $progId $funsId $meaningId $tablesId $wrappersId
+              `(Verified.Prog.wrapper_noTrap (minPages := $pagesLit)
+                $progId $funsId $meaningId $tablesId $wrappersId
                 (j := $(Lean.quote j)) rfl rfl rfl (hNoLiterals := $noLiterals))
           let h0 ← Term.elabTerm h0Stx none
           Term.synthesizeSyntheticMVarsNoPostponing
@@ -927,12 +947,12 @@ def elabVerifiedCompile : CommandElab
         logWarning m!"verified_compile: the module is outside the subset of the translator to C: \
           {reason}"
     | none =>
-        let infos := (List.range nb).map (LeanExe.Native.callInfo LeanExe.Native.nativeCap evaluated)
+        let infos := (List.range nb).map (LeanExe.Native.callInfo capNat evaluated)
         liftCoreM <| addLiteral (base ++ `translation_infos) (toTypeExpr (List (Option (List Nat))))
           (toExpr infos)
         let infosId := mkIdent (base ++ `translation_infos)
         let P ← `(fun k : Nat => LeanExe.Native.functionViolation k ($moduleId).funcs[k]! = none ∧
-          LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k = ($infosId)[k]?.join)
+          LeanExe.Native.callInfo $capTerm $moduleId k = ($infosId)[k]?.join)
         let mut nativeChain ← `(Wasm.Encoding.forall_lt_zero $P)
         for k in [0:nb] do
           trace[Verified.reflect] "native part of function {k}"
@@ -941,14 +961,14 @@ def elabVerifiedCompile : CommandElab
           elabCommand (← `(set_option maxRecDepth 100000 in
             theorem $partId :
                 LeanExe.Native.functionViolation $kq ($moduleId).funcs[$kq]! = none ∧
-                  LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId $kq =
+                  LeanExe.Native.callInfo $capTerm $moduleId $kq =
                     ($infosId)[$kq]?.join := by
               decide +kernel))
           nativeChain ← `(Wasm.Encoding.forall_lt_succ (P := $P) (n := $kq) $nativeChain $partId)
         let partsId := mkIdent (target.getId ++ `native_parts)
         elabCommand (← `(theorem $partsId : ∀ k < $(Lean.quote nb),
             LeanExe.Native.functionViolation k ($moduleId).funcs[k]! = none ∧
-              LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k = ($infosId)[k]?.join :=
+              LeanExe.Native.callInfo $capTerm $moduleId k = ($infosId)[k]?.join :=
           $nativeChain))
         let inSubsetId := mkIdent (target.getId ++ `inSubset)
         elabCommand (← `(set_option maxRecDepth 100000 in
@@ -958,25 +978,25 @@ def elabVerifiedCompile : CommandElab
         -- The translation to C.  The native translator gives the list of the functions that it
         -- contains, which follows from the parts; each function's theorem then follows from the
         -- function's theorem and its membership in that list.
-        match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated with
+        match LeanExe.Native.translate capNat evaluated with
         | none =>
             logWarning m!"verified_compile: the module does not translate to C with \
-              {LeanExe.Native.nativeCap} pages"
+              {capNat} pages"
         | some t =>
             let funcsId := mkIdent (target.getId ++ `translation_funcs)
             let translationId := mkIdent (target.getId ++ `translation)
             let eqId := mkIdent (target.getId ++ `translation_eq)
             elabCommand (← `(set_option maxRecDepth 100000 in
-              theorem $funcsId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).map
+              theorem $funcsId : (LeanExe.Native.translate $capTerm $moduleId).map
                   LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) :=
                 LeanExe.Native.translate_funcs_of_parts (infos := $infosId) $inSubsetId
                   (by decide +kernel) (by decide +kernel) $countId (by decide +kernel)
                   (fun k hk => ($partsId k hk).2) (by decide +kernel) (by decide +kernel)))
             elabCommand (← `(noncomputable def $translationId : LeanExe.Native.Translation :=
-              (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).get
+              (LeanExe.Native.translate $capTerm $moduleId).get
                 (LeanExe.Native.translate_isSome $funcsId)))
             elabCommand (← `(theorem $eqId :
-                LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId = some $translationId :=
+                LeanExe.Native.translate $capTerm $moduleId = some $translationId :=
               (Option.some_get _).symm))
             elabCommand (← `(attribute [irreducible] $translationId:ident))
             for (simple, index, kind) in natives do
@@ -987,36 +1007,36 @@ def elabVerifiedCompile : CommandElab
               match kind with
               | .tables =>
                   elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      Verified.NativeTablesImpl $implId A X LeanExe.Native.nativeCap
+                      Verified.NativeTablesImpl $implId A X $capTerm
                         $translationId :=
                     Verified.ImplementsTables.nativeImpl _ $eqId $hk))
               | .static =>
                   elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      Verified.NativeStaticImpl $implId A X LeanExe.Native.nativeCap
+                      Verified.NativeStaticImpl $implId A X $capTerm
                         $translationId :=
                     Verified.ImplementsStatic.nativeImpl _ $eqId $hk))
               | .plain =>
                   elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      LeanExe.Native.NativeImpl $implId A X LeanExe.Native.nativeCap
+                      LeanExe.Native.NativeImpl $implId A X $capTerm
                         $translationId :=
                     LeanExe.Native.ImplementsA.nativeImpl _ $eqId $hk))
         -- Under the option, the translation without the test of alignment, from parts with the
         -- flag as above, and each function's theorem for it from `p.f.implements` and
         -- `p.f.aligned`.  A program with byte literals has no aligned theorems.
         if verified_compile.alignedNative.get (← getOptions) && !hasLiterals then
-          match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated true with
+          match LeanExe.Native.translate capNat evaluated true with
           | none =>
               logWarning m!"verified_compile: the module does not translate to C without the \
-                test of alignment with {LeanExe.Native.nativeCap} pages"
+                test of alignment with {capNat} pages"
           | some t =>
               let infosA := (List.range nb).map fun k =>
-                LeanExe.Native.callInfo LeanExe.Native.nativeCap evaluated k true
+                LeanExe.Native.callInfo capNat evaluated k true
               let infosAId ← if infosA == infos then pure infosId else do
                 liftCoreM <| addLiteral (base ++ `translationAligned_infos)
                   (toTypeExpr (List (Option (List Nat)))) (toExpr infosA)
                 pure (mkIdent (base ++ `translationAligned_infos))
               let PA ← `(fun k : Nat =>
-                LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k true =
+                LeanExe.Native.callInfo $capTerm $moduleId k true =
                   ($infosAId)[k]?.join)
               let mut chainA ← `(Wasm.Encoding.forall_lt_zero $PA)
               for k in [0:nb] do
@@ -1026,29 +1046,29 @@ def elabVerifiedCompile : CommandElab
                 let kq := Lean.quote k
                 elabCommand (← `(set_option maxRecDepth 100000 in
                   theorem $partId :
-                      LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId $kq true =
+                      LeanExe.Native.callInfo $capTerm $moduleId $kq true =
                         ($infosAId)[$kq]?.join := by
                     decide +kernel))
                 chainA ← `(Wasm.Encoding.forall_lt_succ (P := $PA) (n := $kq) $chainA $partId)
               let partsAId := mkIdent (target.getId ++ `translationAligned_parts)
               elabCommand (← `(theorem $partsAId : ∀ k < $(Lean.quote nb),
-                  LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k true =
+                  LeanExe.Native.callInfo $capTerm $moduleId k true =
                     ($infosAId)[k]?.join :=
                 $chainA))
               let funcsAId := mkIdent (target.getId ++ `translationAligned_funcs)
               let translationAId := mkIdent (target.getId ++ `translationAligned)
               let eqAId := mkIdent (target.getId ++ `translationAligned_eq)
               elabCommand (← `(set_option maxRecDepth 100000 in
-                theorem $funcsAId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId
+                theorem $funcsAId : (LeanExe.Native.translate $capTerm $moduleId
                     true).map LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) :=
                   LeanExe.Native.translate_funcs_of_parts (infos := $infosAId) $inSubsetId
                     (by decide +kernel) (by decide +kernel) $countId (by decide +kernel)
                     $partsAId (by decide +kernel) (by decide +kernel)))
               elabCommand (← `(noncomputable def $translationAId : LeanExe.Native.Translation :=
-                (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId true).get
+                (LeanExe.Native.translate $capTerm $moduleId true).get
                   (LeanExe.Native.translate_isSome $funcsAId)))
               elabCommand (← `(theorem $eqAId :
-                  LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId true =
+                  LeanExe.Native.translate $capTerm $moduleId true =
                     some $translationAId :=
                 (Option.some_get _).symm))
               elabCommand (← `(attribute [irreducible] $translationAId:ident))
@@ -1061,12 +1081,12 @@ def elabVerifiedCompile : CommandElab
                 match kind with
                 | .tables =>
                     elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                        Verified.NativeTablesAlignedImpl $implId A X LeanExe.Native.nativeCap
+                        Verified.NativeTablesAlignedImpl $implId A X $capTerm
                           $translationAId :=
                       Verified.ImplementsTablesAligned.nativeImpl $implId $alignedId $eqAId $hk))
                 | .plain =>
                     elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                        LeanExe.Native.NativeAlignedImpl $implId A X LeanExe.Native.nativeCap
+                        LeanExe.Native.NativeAlignedImpl $implId A X $capTerm
                           $translationAId :=
                       LeanExe.Native.ImplementsAligned.nativeImpl $implId $alignedId $eqAId $hk))
                 | .static => pure ()

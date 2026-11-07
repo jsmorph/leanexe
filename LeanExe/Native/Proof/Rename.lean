@@ -357,6 +357,28 @@ theorem function_entry2_inv {f : function} {vargs : List val} {m : mem} {e : env
   cases h with
   | intro le hv hn hd hb => exact ⟨rfl, rfl, hv, hn, hd, hb⟩
 
+/-- The entry of a function with its temporaries renamed by `t`. -/
+theorem function_entry2_ren (g : ident → ident) {t : ident → ident} (ht : Function.Injective t)
+    {f : function} {vargs : List val} {m : mem} {e : env} {le1 : temp_env} {m1 : mem}
+    (h : function_entry2 f vargs m e le1 m1) :
+    ∃ le1', function_entry2 (renFunction g t f) vargs m e le1' m1 ∧ TempRen t le1 le1' ∧
+      e = empty_env := by
+  obtain ⟨he, hm1, hvars, hnodup, hdisj, hbind⟩ := function_entry2_inv h
+  obtain ⟨le1', hbind', hr1⟩ := bind_parameter_temps_ren ht f.fn_params vargs _ _ le1
+    (create_undef_temps_ren ht f.fn_temps) hbind
+  subst he
+  subst hm1
+  refine ⟨le1', .intro le1' (by simp [renFunction, renBindings, hvars]) ?_ ?_ hbind', hr1, rfl⟩
+  · have hn := nodup_map_inj ht hnodup
+    simp only [var_names, List.map_map, Function.comp_def] at hn ⊢
+    simpa [renFunction, renBindings, List.map_map, Function.comp_def] using hn
+  · intro x hx y hy hxy
+    simp only [renFunction, renBindings, var_names, List.map_map, List.mem_map,
+      Function.comp_apply] at hx hy
+    obtain ⟨p, hp, rfl⟩ := hx
+    obtain ⟨q, hq, rfl⟩ := hy
+    exact hdisj p.1 (List.mem_map_of_mem hp) q.1 (List.mem_map_of_mem hq) (ht hxy)
+
 section Stmts
 
 variable {A : Archi} {X X' : ExtSem} {g : ident → ident} {τ : ident → ident → ident}
@@ -460,24 +482,10 @@ mutual
       eval_funcall A X' ge' m (renFundef g t fd) vargs (renTrace g tr) m' vres := by
     match h with
     | .eval_funcall_internal _ f _ tr e le1 le2 m1 m2 out _ m3 hentry hbody hres hfree =>
-        obtain ⟨he, hm1, hvars, hnodup, hdisj, hbind⟩ := function_entry2_inv hentry
-        obtain ⟨le1', hbind', hr1⟩ := bind_parameter_temps_ren ht f.fn_params vargs _ _ le1
-          (create_undef_temps_ren ht f.fn_temps) hbind
+        obtain ⟨le1', hentry', hr1, he⟩ := function_entry2_ren g ht hentry
         obtain ⟨le2', hbody', -⟩ := exec_stmt_ren hX hge hτ ht he hbody hr1
-        subst he
-        subst hm1
-        refine .eval_funcall_internal _ (renFunction g t f) vargs _ empty_env le1' le2' m1 m2 out
-          vres m3 ?_ hbody' hres hfree
-        refine .intro le1' (by simp [renFunction, renBindings, hvars]) ?_ ?_ hbind'
-        · have hn := nodup_map_inj ht hnodup
-          simp only [var_names, List.map_map, Function.comp_def] at hn ⊢
-          simpa [renFunction, renBindings, List.map_map, Function.comp_def] using hn
-        · intro x hx y hy hxy
-          simp only [renFunction, renBindings, var_names, List.map_map, List.mem_map,
-            Function.comp_apply] at hx hy
-          obtain ⟨p, hp, rfl⟩ := hx
-          obtain ⟨q, hq, rfl⟩ := hy
-          exact hdisj p.1 (List.mem_map_of_mem hp) q.1 (List.mem_map_of_mem hq) (ht hxy)
+        exact .eval_funcall_internal _ (renFunction g t f) vargs _ e le1' le2' m1 m2 out
+          vres m3 hentry' hbody' hres hfree
     | .eval_funcall_external _ ef targs tres cconv _ tr _ _ hx =>
         exact .eval_funcall_external _ ef targs tres cconv vargs _ vres m'
           (external_call_ren hX hge hx)
@@ -489,7 +497,7 @@ end Stmts
 
 section Programs
 
-variable {g : ident → ident} {τ : ident → ident → ident}
+variable {A : Archi} {g : ident → ident} {τ : ident → ident → ident}
 
 theorem add_globals_ren (hg : Function.Injective g) :
     ∀ (gl : List (ident × globdef (fundef function) type)) (ge ge' : genv),
@@ -526,33 +534,36 @@ theorem globalenv_ren (hg : Function.Injective g) {p p' : program function}
 
 theorem store_init_data_list_ren {ge ge' : genv} (hge : GenvRen g τ ge ge') (b : block) :
     ∀ (l : List init_data) (m : mem) (p : _root_.Int),
-      Genv.store_init_data_list ge' m b p (l.map (renInit g)) = Genv.store_init_data_list ge m b p l
+      Genv.store_init_data_list A ge' m b p (l.map (renInit g)) =
+        Genv.store_init_data_list A ge m b p l
   | [], _, _ => rfl
   | d :: l, m, p => by
-      have hsize : init_data_size (renInit g d) = init_data_size d := by cases d <;> rfl
-      have hstore : Genv.store_init_data ge' m b p (renInit g d) = Genv.store_init_data ge m b p d := by
+      have hsize : init_data_size A (renInit g d) = init_data_size A d := by cases d <;> rfl
+      have hstore :
+          Genv.store_init_data A ge' m b p (renInit g d) = Genv.store_init_data A ge m b p d := by
         cases d with
         | Init_addrof id ofs => simp [Genv.store_init_data, renInit, hge.symb]
         | _ => rfl
       simp only [List.map_cons, Genv.store_init_data_list, hstore, hsize]
-      cases Genv.store_init_data ge m b p d with
+      cases Genv.store_init_data A ge m b p d with
       | none => rfl
       | some m' => exact store_init_data_list_ren hge b l m' _
 
 theorem init_data_list_size_ren (l : List init_data) :
-    init_data_list_size (l.map (renInit g)) = init_data_list_size l := by
+    init_data_list_size A (l.map (renInit g)) = init_data_list_size A l := by
   induction l with
   | nil => rfl
   | cons d l ih =>
-      have hsize : init_data_size (renInit g d) = init_data_size d := by cases d <;> rfl
+      have hsize : init_data_size A (renInit g d) = init_data_size A d := by cases d <;> rfl
       simp [init_data_list_size, hsize, ih]
 
 theorem alloc_globals_ren {ge ge' : genv} (hge : GenvRen g τ ge ge') :
     ∀ (gl : List (ident × globdef (fundef function) type)) (m : mem),
-      Genv.alloc_globals ge' m (renDefs g τ gl) = Genv.alloc_globals ge m gl
+      Genv.alloc_globals A ge' m (renDefs g τ gl) = Genv.alloc_globals A ge m gl
   | [], _ => rfl
   | x :: gl, m => by
-      have hx : Genv.alloc_global ge' m (g x.1, renGlobdef g (τ x.1) x.2) = Genv.alloc_global ge m x := by
+      have hx : Genv.alloc_global A ge' m (g x.1, renGlobdef g (τ x.1) x.2) =
+          Genv.alloc_global A ge m x := by
         obtain ⟨id, d⟩ := x
         cases d with
         | Gfun f => rfl
@@ -561,12 +572,12 @@ theorem alloc_globals_ren {ge ge' : genv} (hge : GenvRen g τ ge ge') :
               store_init_data_list_ren hge, Genv.perm_globvar]
       simp only [renDefs, List.map_cons, Genv.alloc_globals] at hx ⊢
       rw [hx]
-      cases Genv.alloc_global ge m x with
+      cases Genv.alloc_global A ge m x with
       | none => rfl
       | some m' => exact alloc_globals_ren hge gl m'
 
 theorem init_mem_ren (hg : Function.Injective g) {p p' : program function}
-    (hdefs : p'.prog_defs = renDefs g τ p.prog_defs) : init_mem p' = init_mem p := by
+    (hdefs : p'.prog_defs = renDefs g τ p.prog_defs) : init_mem A p' = init_mem A p := by
   unfold init_mem
   rw [hdefs]
   exact alloc_globals_ren (globalenv_ren hg hdefs) p.prog_defs Mem.empty
@@ -880,19 +891,16 @@ theorem renGlobdef_congr (d : globdef (fundef function) type) (hg : ∀ x ∈ gl
 
 end Congr
 
-/-- The judgment of a whole program is preserved by every renaming that is injective on the
-identifiers of globals in the program, `progG p`, and, for each identifier `id`, on the
-temporaries of the definitions under `id`.  The trace is renamed by an injective map that agrees
-with `g` on `progG p`. -/
-theorem bigstep_program_terminates_rename_on {A : Archi} {g : ident → ident}
-    {τ : ident → ident → ident} {p p' : program function}
+/-- Injective renamings that agree with `g` on `progG p` and with each `τ id` on the temporaries
+of the definitions under `id`, and that rename the definitions of `p` as `g` and `τ` do. -/
+theorem exists_injective_renaming {g : ident → ident} {τ : ident → ident → ident}
+    {p : program function}
     (hg : ∀ x ∈ progG p, ∀ y ∈ progG p, g x = g y → x = y)
     (hτ : ∀ id, ∀ x ∈ tempsOf p.prog_defs id, ∀ y ∈ tempsOf p.prog_defs id,
-      τ id x = τ id y → x = y)
-    (hdefs : p'.prog_defs = renDefs g τ p.prog_defs) (hmain : p'.prog_main = g p.prog_main)
-    {tr : trace} {r : int} (h : bigstep_program_terminates A ExtSem.none p tr r) (X' : ExtSem) :
-    ∃ g' : ident → ident, (∀ x ∈ progG p, g' x = g x) ∧
-      bigstep_program_terminates A X' p' (renTrace g' tr) r := by
+      τ id x = τ id y → x = y) :
+    ∃ (g' : ident → ident) (τ' : ident → ident → ident), Function.Injective g' ∧
+      (∀ id, Function.Injective (τ' id)) ∧ (∀ x ∈ progG p, g' x = g x) ∧
+      renDefs g' τ' p.prog_defs = renDefs g τ p.prog_defs := by
   obtain ⟨g', hinj, heq⟩ := exists_injective_extension (progG p) g hg
   have hext := fun id => exists_injective_extension (tempsOf p.prog_defs id) (τ id) (hτ id)
   let τ' := fun id => Classical.choose (hext id)
@@ -908,6 +916,22 @@ theorem bigstep_program_terminates_rename_on {A : Archi} {g : ident → ident}
         (List.mem_flatMap.mpr ⟨d, hd, List.mem_cons_of_mem _ hx⟩)))
       (fun x hx => hτeq d.1 x (List.mem_flatMap.mpr
         ⟨d, List.mem_filter.mpr ⟨hd, by simp⟩, hx⟩))]
+  exact ⟨g', τ', hinj, hτ', heq, hsame⟩
+
+/-- The judgment of a whole program is preserved by every renaming that is injective on the
+identifiers of globals in the program, `progG p`, and, for each identifier `id`, on the
+temporaries of the definitions under `id`.  The trace is renamed by an injective map that agrees
+with `g` on `progG p`. -/
+theorem bigstep_program_terminates_rename_on {A : Archi} {g : ident → ident}
+    {τ : ident → ident → ident} {p p' : program function}
+    (hg : ∀ x ∈ progG p, ∀ y ∈ progG p, g x = g y → x = y)
+    (hτ : ∀ id, ∀ x ∈ tempsOf p.prog_defs id, ∀ y ∈ tempsOf p.prog_defs id,
+      τ id x = τ id y → x = y)
+    (hdefs : p'.prog_defs = renDefs g τ p.prog_defs) (hmain : p'.prog_main = g p.prog_main)
+    {tr : trace} {r : int} (h : bigstep_program_terminates A ExtSem.none p tr r) (X' : ExtSem) :
+    ∃ g' : ident → ident, (∀ x ∈ progG p, g' x = g x) ∧
+      bigstep_program_terminates A X' p' (renTrace g' tr) r := by
+  obtain ⟨g', τ', hinj, hτ', heq, hsame⟩ := exists_injective_renaming hg hτ
   exact ⟨g', heq, bigstep_program_terminates_rename_none hinj hτ' (by rw [hdefs, hsame])
     (by rw [hmain, heq _ (List.mem_cons_self ..)]) h X'⟩
 

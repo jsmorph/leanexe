@@ -1,6 +1,7 @@
 import LeanExe.Native.Proof.Ops
 import Interpreter.Wasm.Semantics.Lemmas
 import LeanExe.ProofKit.AlignedDefs
+import LeanExe.ProofKit.Exec
 
 /-!
 The simulation of instruction lists, of `block`, `loop`, and `iff`, and of `br`, `br_if`, and
@@ -30,7 +31,7 @@ def InstrSimL (CallOk : Nat → Prop) (F : Nat) (inst : Instruction) : Prop :=
     (∀ k, funId k ∈ callees s → CallOk k) →
     ∀ {α : Type} (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (env : HostEnv α),
       (c.alignedAccess = true → AlignedOne F mod st sl inst env) →
-      Inv E c σ st sl le m → Outcome A X E c L σ' (execOne F mod st sl inst env) s le m
+      Inv A E c σ st sl le m → Outcome A X E c L σ' (execOne F mod st sl inst env) s le m
 
 /-- The simulation of an instruction list at fuel `F`, with the alignment of the list's 64-bit
 accesses inside memory when the translation omits the test. -/
@@ -40,7 +41,7 @@ def ProgSim (CallOk : Nat → Prop) (F : Nat) : Prop :=
     (∀ k, funId k ∈ callees s → CallOk k) →
     ∀ {α : Type} (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (env : HostEnv α),
       (c.alignedAccess = true → AlignedExec F mod st sl p env) →
-      Inv E c σ st sl le m → Outcome A X E c L (some σend) (exec F mod st sl p env) s le m
+      Inv A E c σ st sl le m → Outcome A X E c L (some σend) (exec F mod st sl p env) s le m
 
 variable {A X E mod c}
 
@@ -51,7 +52,7 @@ theorem InstrSim.toL {CallOk : Nat → Prop} {F : Nat} {inst : Instruction}
 /-! ## Outcomes of sequences -/
 
 theorem BreakRel.ne_normal {L : List Label} {k : Nat} {α : Type} {st : Store α} {sl : Locals}
-    {le : temp_env} {m : mem} {out : outcome} (h : BreakRel E c L k st sl le m out) :
+    {le : temp_env} {m : mem} {out : outcome} (h : BreakRel A E c L k st sl le m out) :
     out ≠ .Out_normal := by
   by_cases hk : k = 0
   · obtain ⟨l, _, h0, _, _⟩ := h.target
@@ -60,14 +61,14 @@ theorem BreakRel.ne_normal {L : List Label} {k : Nat} {α : Type} {st : Store α
   · rw [h.outer hk]; simp
 
 theorem ReturnRel.ne_normal {E : Env} {rs : List VT} {vs : List Value} {out : outcome} {m : mem}
-    (h : ReturnRel E rs vs out m) : out ≠ .Out_normal := by
+    (h : ReturnRel A E rs vs out m) : out ≠ .Out_normal := by
   match rs, h with
   | [], h => rw [h]; simp
   | [_], h => obtain ⟨_, _, _, h⟩ := h; rw [h]; simp
   | _ :: _ :: _, h => rw [h.1]; simp
 
 theorem ReturnRel.isReturn {E : Env} {rs : List VT} {vs : List Value} {out : outcome} {m : mem}
-    (h : ReturnRel E rs vs out m) : ∃ rv, out = .Out_return rv := by
+    (h : ReturnRel A E rs vs out m) : ∃ rv, out = .Out_return rv := by
   match rs, h with
   | [], h => exact ⟨none, h⟩
   | [_], h => obtain ⟨_, _, _, h⟩ := h; exact ⟨_, h⟩
@@ -122,19 +123,6 @@ theorem Outcome.seq_normal {L : List Label} (hL : LabelsOk L) {σend : List VT} 
   | OutOfFuel => trivial
   | ReturnCall _ _ _ => exact h
   | Throwing _ _ _ _ => exact h
-
-theorem exec_cons {α : Type} (F : Nat) (st : Store α) (sl : Locals) (env : HostEnv α)
-    (i : Instruction) (rest : Program) :
-    exec F mod st sl (i :: rest) env =
-      match execOne F mod st sl i env with
-      | .Fallthrough st s => exec F mod st s rest env
-      | other => other := by
-  simp only [exec]
-  rfl
-
-theorem exec_nil {α : Type} (F : Nat) (st : Store α) (sl : Locals) (env : HostEnv α) :
-    exec F mod st sl [] env = .Fallthrough st sl := by
-  simp only [exec]
 
 theorem callees_seq (s1 s2 : statement) :
     callees (.Ssequence s1 s2) = callees s1 ++ callees s2 := rfl

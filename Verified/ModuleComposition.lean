@@ -39,10 +39,11 @@ theorem Prog.functions_prefix_consTail {S : List Sig} (prog : Prog S) (f : TailF
     prog.functions (pool := pool) <+: (Prog.consTail f prog).functions (pool := pool) :=
   ⟨[f.function (2 + S.length) pool], rfl⟩
 
-theorem Prog.functions_prefix_compileWith {S : List Sig} (prog : Prog S)
+theorem Prog.functions_prefix_compileWith {minPages : Nat} {S : List Sig} (prog : Prog S)
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
-    prog.functions (pool := pool) <+: (compileWith prog tables wrappers pool).funcs.drop 2 := by
+    prog.functions (pool := pool) <+:
+      (compileWith prog tables wrappers pool (minPages := minPages)).funcs.drop 2 := by
   refine ⟨prog.entries S.length ++ wrappers.mapIdx (fun j w =>
     wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
       w.params w.result w.depth w.callee.callIndex
@@ -50,13 +51,13 @@ theorem Prog.functions_prefix_compileWith {S : List Sig} (prog : Prog S)
   simp only [compileWith, List.cons_append, List.nil_append, List.drop_succ_cons,
     List.drop_zero, List.append_assoc]
 
-theorem Prog.calls_extension {S T : List Sig} (prog : Prog S) (larger : Prog T)
+theorem Prog.calls_extension {minPages : Nat} {S T : List Sig} (prog : Prog S) (larger : Prog T)
     (funs : Funs S) (hMeaning : prog.Meaning funs)
     {pool : Bytes.LiteralPool}
     (hPrefix : prog.functions (pool := pool) <+: larger.functions (pool := pool))
     (tables : List (Array UInt64)) (wrappers : List (Wrapper T tables.length))
     (hCovered : prog.Covered pool) :
-    Calls (compileWith larger tables wrappers pool) funs prog.flags
+    Calls (compileWith larger tables wrappers pool (minPages := minPages)) funs prog.flags
       (prog.boundsAt funs) (prog.fitsAt funs) pool :=
   prog.calls_prefix funs hMeaning _ (compileWith_runtime larger tables wrappers pool)
     (hPrefix.trans (larger.functions_prefix_compileWith tables wrappers pool)) hCovered

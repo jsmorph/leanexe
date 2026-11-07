@@ -6,8 +6,8 @@ import LeanExe.Native.Proof.Native
 The run of `main` of a bare-metal program (`LeanExe/Native/Bare.lean`), statement by statement:
 the call of `lx_init`, the call of the entry, the test of `lx_status`, and the stores of the
 result's bytes to `lx_out`, each a volatile store that emits one event.  A result of the kind
-`words` lies in the result globals of the C memory, so `OutOk` takes the environment and the
-memory.
+`words` lies in the result globals of the C memory, so `OutOk` takes the architecture, the
+environment, and the memory.
 -/
 
 namespace LeanExe.Native
@@ -76,7 +76,8 @@ theorem eval_consts (le : temp_env) (m : mem) : ∀ args : List UInt64,
     eval_exprlist A ge empty_env le m (args.map fun a => .Econst_long a tulong)
       (args.map fun _ => tulong) (args.map .Vlong)
   | [] => .eval_Enil
-  | _ :: as => .eval_Econs _ _ _ _ _ _ _ (.eval_Econst_long _ _) rfl (eval_consts le m as)
+  | a :: as => .eval_Econs _ _ _ _ _ _ _ (.eval_Econst_long _ _) (cast_ll A m a)
+      (eval_consts le m as)
 
 /-- `l0 = lxf_k(args);`. -/
 theorem exec_entryCall {le : temp_env} {m m' : mem} {fd : function} {bk : block} {t : trace}
@@ -112,7 +113,7 @@ section
 variable {A : Archi} {X : ExtSem} {E : Env}
 
 theorem eval_statusTest {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
-    (h : StatusRel E m code) (hc : code < 2 ^ 32) :
+    (h : StatusRel A E m code) (hc : code < 2 ^ 32) :
     eval_expr A E.ge empty_env le m (.Ebinop .One (.Evar statusId tuint) (.Econst_int 0 tuint) tint)
       (.Vint (if code ≠ 0 then 1 else 0)) := by
   refine .eval_Ebinop _ _ _ _ _ _ _ (eval_global_int hE.status h.1) (.eval_Econst_int _ _) ?_
@@ -125,22 +126,23 @@ theorem eval_statusTest {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
     simp [this, h0]
 
 /-- The test of `lx_status` when it is 0. -/
-theorem exec_statusTest_ok {le : temp_env} {m : mem} (hE : EnvOk E) (h : StatusRel E m 0) :
+theorem exec_statusTest_ok {le : temp_env} {m : mem} (hE : EnvOk E) (h : StatusRel A E m 0) :
     exec_stmt A X E.ge empty_env le m statusTest E0 le m .Out_normal := by
   refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ (eval_statusTest hE h (by decide)) ?_
     (by simpa using .exec_Sskip _ _ _)
-  show bool_val _ tint m = _
-  simpa using bool_int m 0
+  show bool_val A _ tint m = _
+  simpa using bool_int A m 0
 
 /-- The test of `lx_status` when it is `code`, not 0: `main` returns `code`. -/
 theorem exec_statusTest_trap {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
-    (h : StatusRel E m code) (h0 : code ≠ 0) (hc : code < 2 ^ 32) :
+    (h : StatusRel A E m code) (h0 : code ≠ 0) (hc : code < 2 ^ 32) :
     exec_stmt A X E.ge empty_env le m statusTest E0 le m
       (.Out_return (some (.Vint (UInt32.ofNat code), tint))) := by
   refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ (eval_statusTest hE h hc) ?_
-    (.exec_Sreturn_some _ _ _ _ _ (.eval_Ecast _ _ _ _ (eval_global_int hE.status h.1) rfl))
-  show bool_val _ tint m = _
-  simpa [h0] using bool_int m 1
+    (.exec_Sreturn_some _ _ _ _ _
+      (.eval_Ecast _ _ _ _ (eval_global_int hE.status h.1) (cast_i32 A m _)))
+  show bool_val A _ tint m = _
+  simpa [h0] using bool_int A m 1
 
 end
 
@@ -156,7 +158,7 @@ theorem exec_outStore {le : temp_env} {m : mem} {e : expr} {n : UInt32} {bo : bl
       [.Event_vstore .Mint32 outId Ptrofs.zero (.EVint n)] le m .Out_normal :=
   .exec_Sbuiltin _ _ _ none (.EF_vstore .Mint32) _ _ [.Vptr bo Ptrofs.zero, .Vint n] _ m .Vundef
     (.eval_Econs _ _ _ _ _ _ _ (.eval_Eaddrof _ _ _ _ (eval_lvalue_global hs)) rfl
-      (.eval_Econs _ _ _ _ _ _ _ he rfl .eval_Enil))
+      (.eval_Econs _ _ _ _ _ _ _ he (cast_i32 A m n) .eval_Enil))
     (.volatile_store_sem_intro bo Ptrofs.zero m (.Vint n) _ m
       (.volatile_store_vol .Mint32 m bo Ptrofs.zero outId (.EVint n) (.Vint n) hv hs
         (.ev_match_int n)))
@@ -180,7 +182,7 @@ theorem exec_wordOut {le : temp_env} {m : mem} {y : UInt64} {bo : block}
     (.eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _
       (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hr) (.eval_Econst_long _ _)
         (sem_shr_const A m y (8 * j) (by omega))) (.eval_Econst_long _ _) (sem_and_ll A m _ _))
-      (cast_long_uint m _))
+      (cast_long_uint A m _))
   rw [byte_of_and] at h
   exact h
 
@@ -206,7 +208,7 @@ variable {A : Archi} {X : ExtSem} {E : Env}
 /-- Byte `j` of the word in the result global `i`. -/
 theorem exec_globalOut (hE : EnvOk E) {le : temp_env} {m : mem} {y : UInt64} {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
-    {i : Nat} (hi : i < E.nres) (hl : Mem.load .Mint64 m (E.res i .i64) 0 = some (.Vlong y))
+    {i : Nat} (hi : i < E.nres) (hl : Mem.load A .Mint64 m (E.res i .i64) 0 = some (.Vlong y))
     {j : Nat} (hj : j < 8) :
     exec_stmt A X E.ge empty_env le m (globalOut i j)
       (outTrace [(y >>> UInt64.ofNat (8 * j)).toUInt8]) le m .Out_normal := by
@@ -218,14 +220,14 @@ theorem exec_globalOut (hE : EnvOk E) {le : temp_env} {m : mem} {y : UInt64} {bo
     (.eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _
       (.eval_Ebinop _ _ _ _ _ _ _ hev (.eval_Econst_long _ _)
         (sem_shr_const A m y (8 * j) (by omega))) (.eval_Econst_long _ _) (sem_and_ll A m _ _))
-      (cast_long_uint m _))
+      (cast_long_uint A m _))
   rw [byte_of_and] at h
   exact h
 
 /-- The stores of the bytes `js` of the word in the result global `i`. -/
 theorem exec_globalOuts (hE : EnvOk E) {le : temp_env} {m : mem} {y : UInt64} {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
-    {i : Nat} (hi : i < E.nres) (hl : Mem.load .Mint64 m (E.res i .i64) 0 = some (.Vlong y)) :
+    {i : Nat} (hi : i < E.nres) (hl : Mem.load A .Mint64 m (E.res i .i64) 0 = some (.Vlong y)) :
     ∀ js : List Nat, js ≠ [] → (∀ j ∈ js, j < 8) →
       exec_stmt A X E.ge empty_env le m (seqList (js.map (globalOut i)))
         (outTrace (js.map fun j => (y >>> UInt64.ofNat (8 * j)).toUInt8)) le m .Out_normal
@@ -240,7 +242,7 @@ theorem exec_wordsOut (hE : EnvOk E) {le : temp_env} {m : mem} {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
     (w : Nat → UInt64) :
     ∀ k, k ≤ E.nres →
-      (∀ i < k, Mem.load .Mint64 m (E.res i .i64) 0 = some (.Vlong (w i))) →
+      (∀ i < k, Mem.load A .Mint64 m (E.res i .i64) 0 = some (.Vlong (w i))) →
       exec_stmt A X E.ge empty_env le m
         (seqList ((List.range k).flatMap fun i => (List.range 8).map (globalOut i)))
         (outTrace (encodeWords ((List.range k).map w))) le m .Out_normal
@@ -369,7 +371,7 @@ variable {A : Archi} {X : ExtSem} {E : Env}
 
 /-- `(unsigned int) ((unsigned char *) lx_mem)[l0 + l2]`. -/
 theorem eval_byteUint (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (hm : MemRel E wm caps m) (cap : Nat) {le : temp_env} {p i : UInt64}
+    (hm : MemRel A E wm caps m) (cap : Nat) {le : temp_env} {p i : UInt64}
     (hr : le[resTemp]? = some (.Vlong p)) (hi : le[idxTemp]? = some (.Vlong i))
     (hin : (p + i).toNat < 65536 * E.cap) :
     eval_expr A E.ge empty_env le m
@@ -379,11 +381,11 @@ theorem eval_byteUint (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   have he : eval_expr A E.ge empty_env le m
       (.Ebinop .Oadd (.Etempvar resTemp tulong) (.Etempvar idxTemp tulong) tulong) (.Vlong (p + i)) :=
     .eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hr) (.eval_Etempvar _ _ _ hi) (sem_add_ll A m p i)
-  refine .eval_Ecast _ _ (.Vint (UInt32.ofNat (wm.bytes (p + i).toNat).toNat)) _
-    (.eval_Elvalue _ _ _ _ _ (eval_byteAt_lvalue hE cap he rfl)
-      (.deref_loc_value .Mint8unsigned _ rfl ?_)) rfl
   have := hE.cap
-  rw [loadv_mem _ (by simp [size_chunk]; omega) (by decide)]
+  refine .eval_Ecast _ _ (.Vint (UInt32.ofNat (wm.bytes (p + i).toNat).toNat)) _
+    (.eval_Elvalue _ _ _ _ _ (eval_byteAt_lvalue hE cap he rfl (lt_of_lt_of_le hin (by omega)))
+      (.deref_loc_value .Mint8unsigned _ rfl ?_)) (cast_uchar_uint _ m)
+  rw [loadv_mem _ (by simp only [size_chunk]; omega) (by decide)]
   exact hm.load_byte hin
 
 theorem resTemp_ne_lenTemp : resTemp ≠ lenTemp := by decide
@@ -396,7 +398,7 @@ theorem toNat_add_ofNat {p : UInt64} {i : Nat} (h : p.toNat + i < 2 ^ 64) :
 
 /-- The loop writes the `d` bytes from `l0 + l2`, while `l2` counts up to `l1`. -/
 theorem exec_bytesLoop (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (hm : MemRel E wm caps m) (cap : Nat) {bo : block}
+    (hm : MemRel A E wm caps m) (cap : Nat) {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
     {p N : UInt64} (hfit : p.toNat + N.toNat ≤ 65536 * E.cap) :
     ∀ (d i : Nat) (le : temp_env), i + d = N.toNat → le[resTemp]? = some (.Vlong p) →
@@ -416,7 +418,7 @@ theorem exec_bytesLoop (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem
       refine ⟨le, exec_trace (.exec_Sloop_stop1 _ _ _ _ _ E0 le m .Out_break .Out_normal
         (.exec_Sseq_2 _ _ _ _ _ _ _ _ _
           (.exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 0)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 0)
             (by simpa using .exec_Sbreak _ _ _)) (by simp))
         .Out_break_or_return_B) (by simp [memBytes, outTrace, E0])⟩
   | d + 1, i, le, hd, hr, hn, hi => by
@@ -451,7 +453,7 @@ theorem exec_bytesLoop (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem
         .Out_normal
         (.exec_Sseq_1 _ _ _ _ _ _ le m _ le1 m _
           (.exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 1)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 1)
             (.exec_Sskip _ _ _))
           (.exec_Sseq_1 _ _ _ _ _ _ le m _ le1 m _ hstore (.exec_Sset _ _ _ _ _ _ hinc)))
         .Out_normal_or_continue_N (.exec_Sskip _ _ _) hrest) ?_⟩
@@ -469,7 +471,7 @@ variable {A : Archi} {X : ExtSem} {E : Env}
 /-- The statements that write an array: the length word read from memory, the number of bytes,
 the index, and the loop. -/
 theorem exec_arrayOut (hE : EnvOk E) {st : Wasm.Store Unit} {caps : List Nat} {m : mem}
-    (hm : MemRel E st.mem caps m) (cap : Nat) {bo : block}
+    (hm : MemRel A E st.mem caps m) (cap : Nat) {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
     {le : temp_env} {p : UInt64} {ws : Array UInt64} (hr : le[resTemp]? = some (.Vlong p))
     (hat : LeanExe.ProofKit.UInt64Array.At st p ws) :
@@ -522,13 +524,13 @@ theorem exec_arrayOut (hE : EnvOk E) {st : Wasm.Store Unit} {caps : List Nat} {m
 
 /-- What the entry's result gives `main` to write: a word, the address of an array that `At`
 describes, or the words in the first `k` result globals of the memory `m`. -/
-def OutOk (E : Env) (kind : OutKind) (st : Wasm.Store Unit) (m : mem) (vres : val)
+def OutOk (A : Archi) (E : Env) (kind : OutKind) (st : Wasm.Store Unit) (m : mem) (vres : val)
     (bs : List UInt8) : Prop :=
   match kind with
   | .word => ∃ y, vres = .Vlong y ∧ bs = encodeWord y
   | .array => ∃ p ws, vres = .Vlong p ∧ LeanExe.ProofKit.UInt64Array.At st p ws ∧ bs = encodeArray ws
   | .words k => ∃ w : Nat → UInt64, k ≤ E.nres ∧
-      (∀ i < k, Mem.load .Mint64 m (E.res i .i64) 0 = some (.Vlong (w i))) ∧
+      (∀ i < k, Mem.load A .Mint64 m (E.res i .i64) 0 = some (.Vlong (w i))) ∧
       bs = encodeWords ((List.range k).map w)
 
 /-- The return type of the entry of a result of the kind `kind`. -/
@@ -537,11 +539,11 @@ def outRet : OutKind → type
   | _ => tulong
 
 theorem exec_outStmts (hE : EnvOk E) {st : Wasm.Store Unit} {caps : List Nat} {m : mem}
-    (hm : MemRel E st.mem caps m) (cap : Nat) (kind : OutKind) {bo : block}
+    (hm : MemRel A E st.mem caps m) (cap : Nat) (kind : OutKind) {bo : block}
     (hs : Genv.find_symbol E.ge outId = some bo) (hv : Genv.block_is_volatile E.ge bo = true)
     {le : temp_env} {vres : val} {bs : List UInt8}
     (hr : outRet kind = tulong → le[resTemp]? = some vres)
-    (hout : OutOk E kind st m vres bs) :
+    (hout : OutOk A E kind st m vres bs) :
     ∃ le', exec_stmt A X E.ge empty_env le m (seqList (outStmts cap kind)) (outTrace bs) le' m
       .Out_normal := by
   cases kind with
@@ -596,11 +598,11 @@ theorem eval_main {E : Env} (hE : EnvOk E) (cap k : Nat) (args : List UInt64) (k
     (hvo : Genv.block_is_volatile E.ge bo = true)
     {m0 m1 m' : mem} {vi vres : val} (hinit : eval_funcall A X E.ge m0 (.Internal fi) [] E0 m1 vi)
     (hcall : eval_funcall A X E.ge m1 (.Internal fd) (args.map .Vlong) E0 m' vres)
-    {st : Wasm.Store Unit} {caps : List Nat} (hm : MemRel E st.mem caps m') :
-    (∀ bs, StatusRel E m' 0 → OutOk E kind st m' vres bs →
+    {st : Wasm.Store Unit} {caps : List Nat} (hm : MemRel A E st.mem caps m') :
+    (∀ bs, StatusRel A E m' 0 → OutOk A E kind st m' vres bs →
       eval_funcall A X E.ge m0 (.Internal (bareMain cap k args kind)) [] (outTrace bs) m'
         (.Vint 0)) ∧
-    (∀ code, StatusRel E m' code → code ≠ 0 → code < 2 ^ 32 →
+    (∀ code, StatusRel A E m' code → code ≠ 0 → code < 2 ^ 32 →
       eval_funcall A X E.ge m0 (.Internal (bareMain cap k args kind)) [] E0 m'
         (.Vint (UInt32.ofNat code))) := by
   let le0 := create_undef_temps (mainTemps kind)
@@ -618,14 +620,14 @@ theorem eval_main {E : Env} (hE : EnvOk E) (cap k : Nat) (args : List UInt64) (k
     refine .eval_funcall_internal _ _ _ _ _ le0 le' m0 m' _ _ m' hentry
       (exec_trace (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hbody
         (.exec_Sreturn_some _ _ _ _ _ (.eval_Econst_int _ _))) (by simp [E0]))
-      ⟨(fun h => by cases h), rfl⟩ rfl
+      ⟨(fun h => by cases h), cast_i32 A m' _⟩ rfl
   · have hbody := exec_seqList_cons (by simp) hc1 (exec_seqList_cons (by simp)
       hc2 (exec_seqList_stop (l := outStmts cap kind) (exec_statusTest_trap hE hs h0 hc)
         (by simp)))
     rw [← hl] at hbody
     refine .eval_funcall_internal _ _ _ _ _ le0 le2 m0 m' _ _ m' hentry
       (exec_trace (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ hbody (by simp)) (by simp [E0]))
-      ⟨(fun h => by cases h), rfl⟩ rfl
+      ⟨(fun h => by cases h), cast_i32 A m' _⟩ rfl
 
 end
 
@@ -649,11 +651,11 @@ def EntryRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Transl
     (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd)) →
-    ∀ m1, StoreRel E (nativeStore m cap) m1 → StatusRel E m1 0 →
+    ∀ m1, StoreRel A E (nativeStore m cap) m1 → StatusRel A E m1 0 →
       ∃ t m' vres st', eval_funcall A X E.ge m1 (.Internal fd) (args.map .Vlong) t m' vres ∧
-        StoreRel E st' m' ∧
-        ((StatusRel E m' 0 ∧ OutOk E kind st' m' vres bs) ∨
-          (aborts = true ∧ StatusRel E m' trapUnreachable))
+        StoreRel A E st' m' ∧
+        ((StatusRel A E m' 0 ∧ OutOk A E kind st' m' vres bs) ∨
+          (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 /-- The bare-metal program of a translation terminates with the trace of the bytes `bs` and
 the result 0, or, when the entry may abort, with no event and the code of `unreachable`, given
@@ -673,7 +675,7 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
     start_whole h hw A X
   have hidp : ∀ x : Nat, x ∈ (bareTail (bareMain cap k args kind)).map (·.1) →
-      x = 4 ∨ x = 28 ∨ x = 32 := by
+      x = 0 ∨ x = 4 ∨ x = 28 ∨ x = 32 := by
     intro x hx
     simp only [bareTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
       or_false] at hx
@@ -724,10 +726,11 @@ theorem entry_type {m : Wasm.Module} {cap : Nat} {T : Translation} (h : translat
 
 open LeanExe.Pipeline in
 /-- A result of type `UInt64` gives its eight bytes. -/
-theorem outOk_word {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem} {heap' : Heap}
-    {final : Wasm.Store Unit} {y : UInt64} (hr : ResultRel E [.i64] vs rest vres m')
-    (hrest : rest = []) (hown : Represent.owned heap' final vs.reverse y) :
-    OutOk E .word final m' vres (encodeWord y) := by
+theorem outOk_word {A : Archi} {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem}
+    {heap' : Heap} {final : Wasm.Store Unit} {y : UInt64}
+    (hr : ResultRel A E [.i64] vs rest vres m') (hrest : rest = [])
+    (hown : Represent.owned heap' final vs.reverse y) :
+    OutOk A E .word final m' vres (encodeWord y) := by
   subst hrest
   obtain ⟨v, rfl, -, rfl⟩ := hr
   have hv : [v] = [Wasm.Value.i64 y] := hown
@@ -736,10 +739,11 @@ theorem outOk_word {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem}
 
 open LeanExe.Pipeline in
 /-- A result of type `Array UInt64` gives the bytes of the array in memory. -/
-theorem outOk_array {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem} {heap' : Heap}
-    {final : Wasm.Store Unit} {ws : Array UInt64} (hr : ResultRel E [.i64] vs rest vres m')
-    (hrest : rest = []) (hown : Represent.owned heap' final vs.reverse ws) :
-    OutOk E .array final m' vres (encodeArray ws) := by
+theorem outOk_array {A : Archi} {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem}
+    {heap' : Heap} {final : Wasm.Store Unit} {ws : Array UInt64}
+    (hr : ResultRel A E [.i64] vs rest vres m') (hrest : rest = [])
+    (hown : Represent.owned heap' final vs.reverse ws) :
+    OutOk A E .array final m' vres (encodeArray ws) := by
   subst hrest
   obtain ⟨v, rfl, -, rfl⟩ := hr
   obtain ⟨ptr, hv, hO⟩ := hown
@@ -806,8 +810,8 @@ theorem bare_of_nativeA {α β : Type} [Represent α] [Represent β] {A : Archi}
     (hsep : Separate (nativeStore m cap) (Represent.moves (nativeStore m cap) (args.map .i64) x)
       (Represent.reads (nativeStore m cap) (args.map .i64) x))
     (hcap : cap ≤ 65535)
-    (hout : ∀ (E : Env) vs vres m' (heap' : Heap) final, ResultRel E [.i64] vs [] vres m' →
-      Represent.owned heap' final vs.reverse (f x) → OutOk E kind final m' vres bs) :
+    (hout : ∀ (E : Env) vs vres m' (heap' : Heap) final, ResultRel A E [.i64] vs [] vres m' →
+      Represent.owned heap' final vs.reverse (f x) → OutOk A E kind final m' vres bs) :
     bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind)) (outTrace bs) 0 ∨
       (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind))
         E0 (UInt32.ofNat trapUnreachable)) := by

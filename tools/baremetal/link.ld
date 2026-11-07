@@ -1,11 +1,13 @@
-/* The layout of a CompCert program on QEMU's virt machine for AArch64.  RAM is the 1 GiB from
+/* The layout of a program on QEMU's virt machine for AArch64.  RAM is the 1 GiB from
    0x40000000, where QEMU places the device tree for a bare-metal guest, so the image starts 1 MiB
-   higher.  Code and read-only data form one segment, readable and executable, and data and .bss
-   another, readable and writable.  The five translation tables of the startup code follow .bss,
-   then an exception stack of 4 KiB, a guard page of 4 KiB that the tables leave unmapped, and
-   the stack of STACK_SIZE bytes, which the linker's --defsym sets.  lx_out is the data register
-   of the PL011 UART that QEMU 8.2.2's device tree gives.  lx_in is the start of the 16 MiB of
-   RAM into which QEMU's generic loader places a program's input, above the stack. */
+   higher.  Code and read-only data form one segment, readable and executable, which the startup
+   code's tables map read-only, and data and .bss another, readable and writable, from __rw_start
+   at the next 2 MiB boundary, so that the tables' blocks of 2 MiB separate the two.  The five
+   translation tables of the startup code follow .bss, then an exception stack of 4 KiB, a guard
+   page of 4 KiB that the tables leave unmapped, and the stack of STACK_SIZE bytes, which the
+   linker's --defsym sets.  lx_out is the data register of the PL011 UART that QEMU 8.2.2's device
+   tree gives.  lx_in is the start of the 16 MiB of RAM into which QEMU's generic loader places a
+   program's input, above the stack. */
 ENTRY(_start)
 PHDRS
 {
@@ -20,7 +22,8 @@ SECTIONS
   .text : { KEEP(*(.text.boot)) *(.text .text.*) } :text
   .rodata : { *(.rodata .rodata.*) } :text
   .eh_frame : { *(.eh_frame) } :text
-  . = ALIGN(4096);
+  . = ALIGN(0x200000);
+  __rw_start = .;
   .data : { *(.data .data.*) } :data
   .got : { *(.got .got.plt) } :data
   .bss (NOLOAD) : {

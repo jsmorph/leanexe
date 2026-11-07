@@ -19,6 +19,8 @@ namespace LClight
 
 namespace Mem
 
+variable {A : Archi}
+
 /-- `m'` holds what `m` holds in block `b`: the same contents and permissions. -/
 def SameBlock (b : block) (m m' : mem) : Prop :=
   contents_of m' b = contents_of m b ∧ ∀ ofs k, m'.mem_access b ofs k = m.mem_access b ofs k
@@ -39,7 +41,7 @@ theorem SameBlock.valid_access_iff {b : block} {m m' : mem} (h : SameBlock b m m
   simp only [valid_access, range_perm, h.perm_eq]
 
 theorem SameBlock.load_eq {b : block} {m m' : mem} (h : SameBlock b m m') (chunk : memory_chunk)
-    (ofs : _root_.Int) : load chunk m' b ofs = load chunk m b ofs := by
+    (ofs : _root_.Int) : load A chunk m' b ofs = load A chunk m b ofs := by
   unfold load
   rw [h.1]
   by_cases hva : valid_access m chunk b ofs .Readable
@@ -47,7 +49,7 @@ theorem SameBlock.load_eq {b : block} {m m' : mem} (h : SameBlock b m m') (chunk
   · rw [ite_eq_right (fun x => hva ((h.valid_access_iff _ _ _).mp x)), ite_eq_right hva]
 
 theorem SameBlock.of_stored {b b' : block} (chunk : memory_chunk) (m : mem) (ofs : _root_.Int)
-    (v : val) (h : b' ≠ b) : SameBlock b m (stored chunk m b' ofs v) :=
+    (v : val) (h : b' ≠ b) : SameBlock b m (stored A chunk m b' ofs v) :=
   ⟨contents_stored_other _ _ _ _ _ _ h, fun _ _ => rfl⟩
 
 theorem alloc_other (m : mem) (lo hi : _root_.Int) {b : block} (h : b ≠ m.nextblock) :
@@ -69,7 +71,7 @@ theorem alloc_perm (m : mem) (lo hi : _root_.Int) {ofs : _root_.Int} (h1 : lo �
 /-- `store_zeros` writes zero bytes from `p` on, when they can be written. -/
 theorem store_zeros_go (b : block) : ∀ (n : Nat) (m : mem) (p : _root_.Int),
     (∀ ofs, p ≤ ofs → ofs < p + n → perm m b ofs .Cur .Writable) →
-    ∃ m', Genv.store_zeros.go b n m p = some m' ∧ m'.nextblock = m.nextblock ∧
+    ∃ m', Genv.store_zeros.go A b n m p = some m' ∧ m'.nextblock = m.nextblock ∧
       m'.mem_access = m.mem_access ∧ (∀ b', b' ≠ b → contents_of m' b' = contents_of m b') ∧
       ∀ ofs, ZMap.get ofs (contents_of m' b) =
         if p ≤ ofs ∧ ofs < p + n then .Byte 0 else ZMap.get ofs (contents_of m b)
@@ -80,7 +82,8 @@ theorem store_zeros_go (b : block) : ∀ (n : Nat) (m : mem) (p : _root_.Int),
           have h2' : ofs < p + 1 := h2
           exact hp ofs h1 (by omega), ⟨p, by simp [align_chunk]⟩⟩
       obtain ⟨m', hgo, hnext, hacc, hother, hc⟩ := store_zeros_go b n
-        (stored .Mint8unsigned m b p Vzero) (p + 1) (fun ofs h1 h2 => hp ofs (by omega) (by omega))
+        (stored A .Mint8unsigned m b p Vzero) (p + 1)
+        (fun ofs h1 h2 => hp ofs (by omega) (by omega))
       refine ⟨m', ?_, hnext, hacc, fun b' hb' => (hother b' hb').trans
         (contents_stored_other _ _ _ _ _ _ (Ne.symm hb')), fun ofs => ?_⟩
       · simp only [Genv.store_zeros.go, store_ok _ hva]
@@ -117,7 +120,7 @@ namespace Genv
 
 open Mem
 
-variable {F V : Type}
+variable {A : Archi} {F V : Type}
 
 /-- The definitions that the translator emits: functions, and writable variables initialized by
 one `Init_int32`, `Init_int64`, or `Init_space`. -/
@@ -128,18 +131,18 @@ def InitShape : globdef F V → Prop
         (∃ n : Nat, v.gvar_init = [.Init_space n]))
 
 /-- What the block `b` of a definition holds after its allocation. -/
-def InitFact (m : mem) (b : block) (g : globdef F V) : Prop :=
+def InitFact (A : Archi) (m : mem) (b : block) (g : globdef F V) : Prop :=
   ∀ v, g = .Gvar v →
     (∀ n, v.gvar_init = [.Init_int32 n] →
-      load .Mint32 m b 0 = some (.Vint n) ∧ valid_access m .Mint32 b 0 .Writable) ∧
+      load A .Mint32 m b 0 = some (.Vint n) ∧ valid_access m .Mint32 b 0 .Writable) ∧
     (∀ n, v.gvar_init = [.Init_int64 n] →
-      load .Mint64 m b 0 = some (.Vlong n) ∧ valid_access m .Mint64 b 0 .Writable) ∧
+      load A .Mint64 m b 0 = some (.Vlong n) ∧ valid_access m .Mint64 b 0 .Writable) ∧
     (∀ n : _root_.Int, v.gvar_init = [.Init_space n] → ∀ i : Nat, (i : _root_.Int) < n →
       ZMap.get (i : _root_.Int) (contents_of m b) = .Byte 0 ∧
         perm m b (i : _root_.Int) .Cur .Writable)
 
-theorem InitFact.same {m m' : mem} {b : block} {g : globdef F V} (h : InitFact m b g)
-    (hs : SameBlock b m m') : InitFact m' b g := by
+theorem InitFact.same {m m' : mem} {b : block} {g : globdef F V} (h : InitFact A m b g)
+    (hs : SameBlock b m m') : InitFact A m' b g := by
   intro v hv
   obtain ⟨h1, h2, h3⟩ := h v hv
   refine ⟨fun n hn => ?_, fun n hn => ?_, fun n hn i hi => ?_⟩
@@ -164,14 +167,14 @@ theorem dropped_other {m : mem} {b b' : block} {lo hi : _root_.Int} {p : permiss
 
 theorem load_of_contents {m m' : mem} {b : block} {chunk : memory_chunk} {ofs : _root_.Int}
     (hc : contents_of m' b = contents_of m b) (hv' : valid_access m' chunk b ofs .Readable)
-    (hv : valid_access m chunk b ofs .Readable) : load chunk m' b ofs = load chunk m b ofs := by
+    (hv : valid_access m chunk b ofs .Readable) : load A chunk m' b ofs = load A chunk m b ofs := by
   unfold load
   rw [ite_eq_left hv', ite_eq_left hv, hc]
 
 theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
     (hg : InitShape g.2) :
-    ∃ m', alloc_global ge m g = some m' ∧ m'.nextblock = m.nextblock + 1 ∧
-      (∀ b, b ≠ m.nextblock → SameBlock b m m') ∧ InitFact m' m.nextblock g.2 := by
+    ∃ m', alloc_global A ge m g = some m' ∧ m'.nextblock = m.nextblock + 1 ∧
+      (∀ b, b ≠ m.nextblock → SameBlock b m m') ∧ InitFact A m' m.nextblock g.2 := by
   obtain ⟨id, g⟩ := g
   cases g with
   | Gfun f =>
@@ -187,22 +190,23 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
       obtain ⟨hro, hvol, hinit⟩ := hg
       have hperm : perm_globvar v = .Writable := by simp [perm_globvar, hro, hvol]
       -- The block, zeroed: the steps that every variable takes.
-      have hsz0 : 0 ≤ init_data_list_size v.gvar_init := by
+      have hsz0 : 0 ≤ init_data_list_size A v.gvar_init := by
         rcases hinit with ⟨n, hn⟩ | ⟨n, hn⟩ | ⟨n, hn⟩ <;> rw [hn] <;>
           simp [init_data_list_size, init_data_size]
       obtain ⟨m2, hgo, hnext2, hacc2, hoth2, hc2⟩ := store_zeros_go m.nextblock
-        (init_data_list_size v.gvar_init).toNat (alloc m 0 (init_data_list_size v.gvar_init)).1 0
+        (init_data_list_size A v.gvar_init).toNat
+        (alloc m 0 (init_data_list_size A v.gvar_init)).1 0
         (fun ofs h1 h2 => by
-          have := alloc_perm m 0 (init_data_list_size v.gvar_init) h1 (by omega) .Cur .Writable
+          have := alloc_perm m 0 (init_data_list_size A v.gvar_init) h1 (by omega) .Cur .Writable
           exact this)
-      have hzero : Genv.store_zeros (alloc m 0 (init_data_list_size v.gvar_init)).1 m.nextblock 0
-          (init_data_list_size v.gvar_init) = some m2 := hgo
-      have hperm2 : ∀ ofs, 0 ≤ ofs → ofs < init_data_list_size v.gvar_init →
+      have hzero : Genv.store_zeros A (alloc m 0 (init_data_list_size A v.gvar_init)).1
+          m.nextblock 0 (init_data_list_size A v.gvar_init) = some m2 := hgo
+      have hperm2 : ∀ ofs, 0 ≤ ofs → ofs < init_data_list_size A v.gvar_init →
           ∀ k p, perm m2 m.nextblock ofs k p := fun ofs h1 h2 k p => by
         simp only [perm, hacc2]
         exact alloc_perm m 0 _ h1 h2 k p
       have hcont2 : ∀ ofs, ZMap.get ofs (contents_of m2 m.nextblock) =
-          if 0 ≤ ofs ∧ ofs < init_data_list_size v.gvar_init then .Byte 0 else .Undef := by
+          if 0 ≤ ofs ∧ ofs < init_data_list_size A v.gvar_init then .Byte 0 else .Undef := by
         intro ofs
         rw [hc2 ofs, alloc_contents]
         split_ifs <;> first | rfl | omega
@@ -210,30 +214,31 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
         (alloc_other m 0 _ hb).trans ⟨hoth2 b hb, fun ofs k => by rw [hacc2]⟩
       have hnext2' : m2.nextblock = m.nextblock + 1 := hnext2
       -- The allocation, for the memory `m3` after the initializers.
-      have hfinish : ∀ m3, store_init_data_list ge m2 m.nextblock 0 v.gvar_init = some m3 →
+      have hfinish : ∀ m3, store_init_data_list A ge m2 m.nextblock 0 v.gvar_init = some m3 →
           m3.mem_access = m2.mem_access → m3.nextblock = m2.nextblock →
           (∀ b, b ≠ m.nextblock → contents_of m3 b = contents_of m2 b) →
-          alloc_global ge m (id, .Gvar v) =
-            some (dropped m3 m.nextblock 0 (init_data_list_size v.gvar_init) .Writable) ∧
-          (dropped m3 m.nextblock 0 (init_data_list_size v.gvar_init) .Writable).nextblock =
+          alloc_global A ge m (id, .Gvar v) =
+            some (dropped m3 m.nextblock 0 (init_data_list_size A v.gvar_init) .Writable) ∧
+          (dropped m3 m.nextblock 0 (init_data_list_size A v.gvar_init) .Writable).nextblock =
             m.nextblock + 1 ∧
           ∀ b, b ≠ m.nextblock →
-            SameBlock b m (dropped m3 m.nextblock 0 (init_data_list_size v.gvar_init) .Writable) := by
+            SameBlock b m
+              (dropped m3 m.nextblock 0 (init_data_list_size A v.gvar_init) .Writable) := by
         intro m3 hsi hacc3 hnext3 hc3
-        have hrp : range_perm m3 m.nextblock 0 (init_data_list_size v.gvar_init) .Cur .Freeable :=
+        have hrp : range_perm m3 m.nextblock 0 (init_data_list_size A v.gvar_init) .Cur .Freeable :=
           fun ofs h1 h2 => by
             have := hperm2 ofs h1 h2 .Cur .Freeable
             simp only [perm, hacc3] at this ⊢
             exact this
         refine ⟨?_, by simp only [dropped]; rw [hnext3]; exact hnext2', fun b hb =>
           ((hother2 b hb).trans ⟨hc3 b hb, fun ofs k => by rw [hacc3]⟩).trans (dropped_other hb)⟩
-        show (match Genv.store_zeros (alloc m 0 (init_data_list_size v.gvar_init)).1 m.nextblock 0
-            (init_data_list_size v.gvar_init) with
+        show (match Genv.store_zeros A (alloc m 0 (init_data_list_size A v.gvar_init)).1
+            m.nextblock 0 (init_data_list_size A v.gvar_init) with
           | none => none
           | some m2 =>
-            match store_init_data_list ge m2 m.nextblock 0 v.gvar_init with
+            match store_init_data_list A ge m2 m.nextblock 0 v.gvar_init with
             | none => none
-            | some m3 => drop_perm m3 m.nextblock 0 (init_data_list_size v.gvar_init)
+            | some m3 => drop_perm m3 m.nextblock 0 (init_data_list_size A v.gvar_init)
                 (perm_globvar v)) = _
         rw [hzero]
         dsimp only
@@ -242,11 +247,11 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
         rw [hperm]
         exact drop_perm_ok hrp _
       rcases hinit with ⟨n, hn⟩ | ⟨n, hn⟩ | ⟨N, hn⟩
-      · have hsz : init_data_list_size v.gvar_init = 4 := by rw [hn]; rfl
+      · have hsz : init_data_list_size A v.gvar_init = 4 := by rw [hn]; rfl
         have hva : valid_access m2 .Mint32 m.nextblock 0 .Writable :=
           ⟨fun ofs h1 h2 => hperm2 ofs h1 (by rw [hsz]; exact h2) _ _, ⟨0, rfl⟩⟩
-        have hsi : store_init_data_list ge m2 m.nextblock 0 v.gvar_init =
-            some (stored .Mint32 m2 m.nextblock 0 (.Vint n)) := by
+        have hsi : store_init_data_list A ge m2 m.nextblock 0 v.gvar_init =
+            some (stored A .Mint32 m2 m.nextblock 0 (.Vint n)) := by
           rw [hn]
           simp only [store_init_data_list, store_init_data, store_ok _ hva]
         obtain ⟨h1, h2, h3⟩ := hfinish _ hsi rfl rfl
@@ -263,20 +268,20 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
         injection hn' with e
         injection e with e
         subst e
-        have hvd : valid_access (dropped (stored .Mint32 m2 m.nextblock 0 (.Vint n)) m.nextblock 0
-            (init_data_list_size v.gvar_init) .Writable) .Mint32 m.nextblock 0 .Writable :=
+        have hvd : valid_access (dropped (stored A .Mint32 m2 m.nextblock 0 (.Vint n)) m.nextblock 0
+            (init_data_list_size A v.gvar_init) .Writable) .Mint32 m.nextblock 0 .Writable :=
           ⟨fun ofs h1 h2 => dropped_perm h1 (by rw [hsz]; exact h2) _ (.perm_refl _), ⟨0, rfl⟩⟩
         refine ⟨?_, hvd⟩
-        rw [load_of_contents (m := stored .Mint32 m2 m.nextblock 0 (.Vint n))
-          (m' := dropped (stored .Mint32 m2 m.nextblock 0 (.Vint n)) m.nextblock 0
-            (init_data_list_size v.gvar_init) .Writable) rfl
+        rw [load_of_contents (m := stored A .Mint32 m2 m.nextblock 0 (.Vint n))
+          (m' := dropped (stored A .Mint32 m2 m.nextblock 0 (.Vint n)) m.nextblock 0
+            (init_data_list_size A v.gvar_init) .Writable) rfl
           (valid_access_readable hvd) (valid_access_readable hva)]
         exact load_stored_int _ _ _ _ hva
-      · have hsz : init_data_list_size v.gvar_init = 8 := by rw [hn]; rfl
+      · have hsz : init_data_list_size A v.gvar_init = 8 := by rw [hn]; rfl
         have hva : valid_access m2 .Mint64 m.nextblock 0 .Writable :=
           ⟨fun ofs h1 h2 => hperm2 ofs h1 (by rw [hsz]; exact h2) _ _, ⟨0, rfl⟩⟩
-        have hsi : store_init_data_list ge m2 m.nextblock 0 v.gvar_init =
-            some (stored .Mint64 m2 m.nextblock 0 (.Vlong n)) := by
+        have hsi : store_init_data_list A ge m2 m.nextblock 0 v.gvar_init =
+            some (stored A .Mint64 m2 m.nextblock 0 (.Vlong n)) := by
           rw [hn]
           simp only [store_init_data_list, store_init_data, store_ok _ hva]
         obtain ⟨h1, h2, h3⟩ := hfinish _ hsi rfl rfl
@@ -293,18 +298,19 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
         injection hn' with e
         injection e with e
         subst e
-        have hvd : valid_access (dropped (stored .Mint64 m2 m.nextblock 0 (.Vlong n)) m.nextblock 0
-            (init_data_list_size v.gvar_init) .Writable) .Mint64 m.nextblock 0 .Writable :=
+        have hvd : valid_access
+            (dropped (stored A .Mint64 m2 m.nextblock 0 (.Vlong n)) m.nextblock 0
+              (init_data_list_size A v.gvar_init) .Writable) .Mint64 m.nextblock 0 .Writable :=
           ⟨fun ofs h1 h2 => dropped_perm h1 (by rw [hsz]; exact h2) _ (.perm_refl _), ⟨0, rfl⟩⟩
         refine ⟨?_, hvd⟩
-        rw [load_of_contents (m := stored .Mint64 m2 m.nextblock 0 (.Vlong n))
-          (m' := dropped (stored .Mint64 m2 m.nextblock 0 (.Vlong n)) m.nextblock 0
-            (init_data_list_size v.gvar_init) .Writable) rfl
+        rw [load_of_contents (m := stored A .Mint64 m2 m.nextblock 0 (.Vlong n))
+          (m' := dropped (stored A .Mint64 m2 m.nextblock 0 (.Vlong n)) m.nextblock 0
+            (init_data_list_size A v.gvar_init) .Writable) rfl
           (valid_access_readable hvd) (valid_access_readable hva)]
         exact load_stored_long _ _ _ _ hva
-      · have hsz : init_data_list_size v.gvar_init = N := by
+      · have hsz : init_data_list_size A v.gvar_init = N := by
           rw [hn]; simp [init_data_list_size, init_data_size]
-        have hsi : store_init_data_list ge m2 m.nextblock 0 v.gvar_init = some m2 := by
+        have hsi : store_init_data_list A ge m2 m.nextblock 0 v.gvar_init = some m2 := by
           rw [hn]; rfl
         obtain ⟨h1, h2, h3⟩ := hfinish _ hsi rfl rfl (fun _ _ => rfl)
         refine ⟨_, h1, h2, h3, fun v' hv' => ?_⟩
@@ -325,12 +331,12 @@ theorem alloc_global_spec (ge : t F V) (m : mem) (g : ident × globdef F V)
 
 theorem alloc_globals_spec (ge : t F V) : ∀ (gl : List (ident × globdef F V)) (m : mem),
     (∀ g ∈ gl, InitShape g.2) →
-    ∃ m', alloc_globals ge m gl = some m' ∧ m'.nextblock = m.nextblock + gl.length ∧
+    ∃ m', alloc_globals A ge m gl = some m' ∧ m'.nextblock = m.nextblock + gl.length ∧
       (∀ b, b < m.nextblock → SameBlock b m m') ∧
-      ∀ k (hk : k < gl.length), InitFact m' (m.nextblock + k) gl[k].2
+      ∀ k (hk : k < gl.length), InitFact A m' (m.nextblock + k) gl[k].2
   | [], m, _ => ⟨m, rfl, rfl, fun _ _ => SameBlock.refl _ _, fun k hk => absurd hk (by simp)⟩
   | g :: gl, m, h => by
-      obtain ⟨m1, h1, hn1, hs1, hf1⟩ := alloc_global_spec ge m g (h g (by simp))
+      obtain ⟨m1, h1, hn1, hs1, hf1⟩ := alloc_global_spec (A := A) ge m g (h g (by simp))
       obtain ⟨m', h', hn', hs', hf'⟩ := alloc_globals_spec ge gl m1
         (fun g hg => h g (by simp [hg]))
       refine ⟨m', by simp only [alloc_globals, h1]; exact h',
@@ -740,16 +746,17 @@ theorem valid_access_of_bytes4 {m : mem} {b : block} {chunk : memory_chunk}
 /-- The initial memory of a translated program: its blocks are those of `envOf`, `lx_status` is
 0, the C globals hold the module's initial globals, `lx_pages` holds the initial pages, and
 `lx_mem` is zero. -/
-theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
-    ∃ decl m0, m.memory = some decl ∧ init_mem T.cprogram = some m0 ∧
-      EnvOk (envOf T m.globals.length cap) ∧ StatusRel (envOf T m.globals.length cap) m0 0 ∧
-      GlobalsRel (envOf T m.globals.length cap) (m.globals.map (·.init)) m0 ∧
-      MemRel (envOf T m.globals.length cap) (Wasm.Mem.empty decl.pagesMin.toNat) [cap] m0 := by
+theorem init_spec {A : Archi} {m : Module} {cap : Nat} {T : Translation}
+    (h : translate cap m = some T) :
+    ∃ decl m0, m.memory = some decl ∧ init_mem A T.cprogram = some m0 ∧
+      EnvOk (envOf T m.globals.length cap) ∧ StatusRel A (envOf T m.globals.length cap) m0 0 ∧
+      GlobalsRel A (envOf T m.globals.length cap) (m.globals.map (·.init)) m0 ∧
+      MemRel A (envOf T m.globals.length cap) (Wasm.Mem.empty decl.pagesMin.toNat) [cap] m0 := by
   obtain ⟨decl, gdefs, funs, hdecl, -, hc1, hc2, hg, hfuns, hdefs⟩ := translate_defs h
   have hG : gdefs.length = m.globals.length := mapM_length hg
   have hnd := progDefs_nodup (decl := decl) (gdefs := gdefs) (nres := T.nres) hfuns
   have hsh := progDefs_shape (decl := decl) (nres := T.nres) hg hfuns
-  obtain ⟨m0, hm0, -, -, hfact⟩ := Genv.alloc_globals_spec (globalenv T.cprogram)
+  obtain ⟨m0, hm0, -, -, hfact⟩ := Genv.alloc_globals_spec (A := A) (globalenv T.cprogram)
     (progDefs cap decl gdefs T.nres funs) Mem.empty hsh
   have hsym := Genv.find_add_globals_idx (Genv.empty_genv T.cprogram.prog_public)
     (progDefs cap decl gdefs T.nres funs) hnd
@@ -757,7 +764,8 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
       (progDefs cap decl gdefs T.nres funs) := by
     unfold globalenv; rw [hdefs]
   have at_idx : ∀ k x, (progDefs cap decl gdefs T.nres funs)[k]? = some x →
-      Genv.find_symbol (globalenv T.cprogram) x.1 = some (1 + k) ∧ Genv.InitFact m0 (1 + k) x.2 := by
+      Genv.find_symbol (globalenv T.cprogram) x.1 = some (1 + k) ∧
+      Genv.InitFact A m0 (1 + k) x.2 := by
     intro k x hk
     obtain ⟨hlt, heq⟩ := List.getElem?_eq_some_iff.mp hk
     obtain ⟨h1, -⟩ := hsym k hlt
@@ -802,7 +810,7 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
   rw [hpg] at hp1 hp2
   rw [hmb] at hm1 hm2
   refine ⟨decl, m0, hdecl, ?_, ?_, ?_, ?_, ?_⟩
-  · show Genv.alloc_globals (globalenv T.cprogram) Mem.empty T.cprogram.prog_defs = some m0
+  · show Genv.alloc_globals A (globalenv T.cprogram) Mem.empty T.cprogram.prog_defs = some m0
     rw [hdefs]; exact hm0
   · refine { status := hs1, globals := fun i hi => ?_, nodup := ?_, status_not := ?_, pages := hp1,
              mem := hm1, pages_not := ?_, mem_not := ?_, pages_status := ?_, mem_status := ?_,
@@ -886,9 +894,9 @@ theorem writeBytes_bytes (wm : Wasm.Mem) (a : Nat) (bs : List UInt8) (i : Nat) :
     rfl
   · rfl
 
-theorem MemRel.congr {E : Env} {wm wm' : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) (hp : wm'.pages = wm.pages)
-    (hb : ∀ i, i < 65536 * E.cap → wm'.bytes i = wm.bytes i) : MemRel E wm' caps m where
+theorem MemRel.congr {A : Archi} {E : Env} {wm wm' : Wasm.Mem} {caps : List Nat} {m : mem}
+    (h : MemRel A E wm caps m) (hp : wm'.pages = wm.pages)
+    (hb : ∀ i, i < 65536 * E.cap → wm'.bytes i = wm.bytes i) : MemRel A E wm' caps m where
   pages := by rw [hp]; exact h.pages
   pagesW := h.pagesW
   le_cap := hp ▸ h.le_cap
@@ -906,21 +914,22 @@ section
 variable {A : Archi} {X : ExtSem} {E : Env}
 
 theorem exec_wordStore (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) (le : temp_env) (cap a : Nat) (ha : a % 8 = 0)
+    (h : MemRel A E wm caps m) (le : temp_env) (cap a : Nat) (ha : a % 8 = 0)
     (hin : a + 8 ≤ 65536 * E.cap) (ws : List UInt8) :
     ∃ m', exec_stmt A X E.ge empty_env le m (wordStore cap a ws) E0 le m' .Out_normal ∧
-      Mem.SameExcept E.mem m m' ∧ MemRel E (wm.write64 (UInt32.ofNat a) (wordOfBytes ws)) caps m' := by
+      Mem.SameExcept E.mem m m' ∧
+      MemRel A E (wm.write64 (UInt32.ofNat a) (wordOfBytes ws)) caps m' := by
   have hcap := hE.cap
   have ha32 : (UInt32.ofNat a).toNat = a := toNat_ofNat32 (by omega)
   have hk : (UInt64.ofNat (a / 8)).toNat = a / 8 := toNat_ofNat64 (by omega)
   have hptr : UInt64.ofNat (8 * (UInt64.ofNat (a / 8)).toNat) = UInt64.ofNat a := by
     rw [hk]; congr 1; omega
   have hva := h.valid_word (i := a) hin ha
-  refine ⟨Mem.stored .Mint64 m E.mem a (.Vlong (wordOfBytes ws)), ?_,
+  refine ⟨Mem.stored A .Mint64 m E.mem a (.Vlong (wordOfBytes ws)), ?_,
     Mem.SameExcept.of_stored _ _ _ _ _, ?_⟩
   · refine .exec_Sassign _ _ _ _ _ E.mem (UInt64.ofNat a) _ _ _ _
       (.eval_Ederef _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (eval_memVar hE le m cap)
-        (.eval_Econst_long _ _) ?_)) (.eval_Econst_long _ _) (cast_ll m _)
+        (.eval_Econst_long _ _) ?_)) (.eval_Econst_long _ _) (cast_ll A m _)
       (.assign_loc_value _ .Mint64 _ rfl ?_)
     · show sem_binary_operation A .Oadd (.Vptr E.mem Ptrofs.zero) (memType cap) (.Vlong _) tulong m = _
       rw [sem_add_mem_word A m E.mem cap _ (by rw [hk]; omega), hptr]
@@ -932,15 +941,15 @@ theorem exec_wordStore (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem
     exact this
 
 theorem exec_byteStore' (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) (le : temp_env) (cap a : Nat) (hin : a < 65536 * E.cap) (b : UInt8) :
+    (h : MemRel A E wm caps m) (le : temp_env) (cap a : Nat) (hin : a < 65536 * E.cap) (b : UInt8) :
     ∃ m', exec_stmt A X E.ge empty_env le m (byteStore cap a b) E0 le m' .Out_normal ∧
-      Mem.SameExcept E.mem m m' ∧ MemRel E (wm.write8 (UInt32.ofNat a) b) caps m' := by
+      Mem.SameExcept E.mem m m' ∧ MemRel A E (wm.write8 (UInt32.ofNat a) b) caps m' := by
   have hcap := hE.cap
   have ha32 : (UInt32.ofNat a).toNat = a := toNat_ofNat32 (by omega)
   have hva := h.valid_byte hin
-  refine ⟨Mem.stored .Mint8unsigned m E.mem a (.Vint (UInt32.ofNat (b.toNat % 256))), ?_,
+  refine ⟨Mem.stored A .Mint8unsigned m E.mem a (.Vint (UInt32.ofNat (b.toNat % 256))), ?_,
     Mem.SameExcept.of_stored _ _ _ _ _, ?_⟩
-  · have hcast : sem_cast (.Vint b.toUInt32) tuint tuchar m =
+  · have hcast : sem_cast A (.Vint b.toUInt32) tuint tuchar m =
         some (.Vint (UInt32.ofNat (b.toNat % 256))) := by
       show some (val.Vint (cast_int_int .I8 .Unsigned b.toUInt32)) = _
       congr 2
@@ -950,7 +959,8 @@ theorem exec_byteStore' (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : me
       have := b.toNat_lt
       simp; omega
     refine .exec_Sassign _ _ _ _ _ E.mem (UInt64.ofNat a) _ _ _ _
-      (eval_byteAt_lvalue hE cap (.eval_Econst_long _ _) rfl)
+      (eval_byteAt_lvalue hE cap (.eval_Econst_long _ _) rfl
+        (by rw [toNat_ofNat64 (by omega)]; omega))
       (.eval_Ecast _ _ _ _ (.eval_Econst_int _ _) hcast)
       (cast_uchar _ m) (.assign_loc_value _ .Mint8unsigned _ rfl ?_)
     rw [storev_mem _ (by rw [toNat_ofNat64 (by omega)]; simp [size_chunk]; omega) (by decide),
@@ -1076,9 +1086,9 @@ variable {A : Archi} {X : ExtSem} {E : Env}
 
 theorem exec_initStores (hE : EnvOk E) {caps : List Nat} (le : temp_env) (cap : Nat) :
     ∀ (a : Nat) (bs : List UInt8) (wm : Wasm.Mem) (m : mem), a + bs.length ≤ 65536 * E.cap →
-      MemRel E wm caps m →
+      MemRel A E wm caps m →
       ∃ m', ExecList A X E.ge le m (initStores cap a bs) le m' ∧ Mem.SameExcept E.mem m m' ∧
-        MemRel E (wm.writeBytes a bs) caps m' := by
+        MemRel A E (wm.writeBytes a bs) caps m' := by
   have hcap := hE.cap
   intro a bs
   induction a, bs using initStores.induct with
@@ -1133,9 +1143,9 @@ theorem initialStore_mem {m : Module} {decl : MemDecl} (h : m.memory = some decl
 theorem exec_segments (hE : EnvOk E) {caps : List Nat} (le : temp_env) (cap pages : Nat)
     (hp : pages * 65536 ≤ 65536 * E.cap) :
     ∀ (segs : List DataSegment) (wm : Wasm.Mem) (m : mem), segs.all (segmentOk pages) = true →
-      wm.pages = pages → MemRel E wm caps m →
+      wm.pages = pages → MemRel A E wm caps m →
       ∃ m', ExecList A X E.ge le m (segs.flatMap (segmentStores cap)) le m' ∧
-        Mem.SameExcept E.mem m m' ∧ MemRel E (segs.foldl segApply wm) caps m'
+        Mem.SameExcept E.mem m m' ∧ MemRel A E (segs.foldl segApply wm) caps m'
   | [], wm, m, _, _, h => ⟨m, ExecList.nil le m, Mem.SameExcept.refl _ _, h⟩
   | seg :: segs, wm, m, hall, hpg, h => by
       simp only [List.all_cons, Bool.and_eq_true] at hall
@@ -1184,20 +1194,21 @@ def nativeStore (m : Module) (cap : Nat) : Store Unit :=
   { (m.initialStore : Store Unit) with memoryCaps := [cap] }
 
 /-- `lx_init` from the program's initial memory gives a memory related to `nativeStore`. -/
-theorem lx_init_correct {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
-    ∃ decl m0, m.memory = some decl ∧ init_mem T.cprogram = some m0 ∧
+theorem lx_init_correct {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+    (A : Archi) :
+    ∃ decl m0, m.memory = some decl ∧ init_mem A T.cprogram = some m0 ∧
       EnvOk (envOf T m.globals.length cap) ∧
       (initId, globdef.Gfun (.Internal (initFunction cap decl.data))) ∈ T.cprogram.prog_defs ∧
-      ∀ (A : Archi) (X : ExtSem), ∃ m1,
+      ∀ X : ExtSem, ∃ m1,
         eval_funcall A X (globalenv T.cprogram) m0 (.Internal (initFunction cap decl.data)) [] E0
           m1 .Vundef ∧
-        StoreRel (envOf T m.globals.length cap) (nativeStore m cap) m1 ∧
-        StatusRel (envOf T m.globals.length cap) m1 0 := by
-  obtain ⟨decl, m0, hdecl, hinit, hE, hs, hg, hmr⟩ := init_spec h
+        StoreRel A (envOf T m.globals.length cap) (nativeStore m cap) m1 ∧
+        StatusRel A (envOf T m.globals.length cap) m1 0 := by
+  obtain ⟨decl, m0, hdecl, hinit, hE, hs, hg, hmr⟩ := init_spec (A := A) h
   obtain ⟨decl', gdefs, funs, hdecl', hv, hc1, -, -, -, hdefs⟩ := translate_defs h
   rw [hdecl] at hdecl'
   cases hdecl'
-  refine ⟨decl, m0, hdecl, hinit, hE, by rw [hdefs]; simp [progDefs], fun A X => ?_⟩
+  refine ⟨decl, m0, hdecl, hinit, hE, by rw [hdefs]; simp [progDefs], fun X => ?_⟩
   obtain ⟨m1, hx, hsame, hmr1⟩ := exec_segments (A := A) (X := X) hE (create_undef_temps [])
     cap decl.pagesMin.toNat (by simp [envOf]; omega) decl.data _ m0
     (violation_segments hv hdecl) rfl hmr
@@ -1208,7 +1219,7 @@ theorem lx_init_correct {m : Module} {cap : Nat} {T : Translation} (h : translat
       hx rfl ?_
     rfl
   · exact GlobalsRel.sameExcept hg hsame hE.mem_not
-  · show MemRel _ (m.initialStore : Store Unit).mem [cap] m1
+  · show MemRel A _ (m.initialStore : Store Unit).mem [cap] m1
     rw [initialStore_mem hdecl]
     exact hmr1
 

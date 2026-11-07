@@ -46,12 +46,13 @@ theorem VT.has_ofValueType {vt : ValueType} {t : VT} (h : VT.ofValueType vt = so
     t.has vt.zero = true ∧ cval vt.zero = zval t := by
   cases vt <;> simp [VT.ofValueType] at h <;> subst h <;> exact ⟨rfl, rfl⟩
 
-theorem cast_cval {t : VT} {v : Value} (h : t.has v = true) (m : mem) :
-    sem_cast (cval v) t.ty t.ty m = some (cval v) := by
-  cases t <;> cases v <;> simp [VT.has] at h <;> rfl
+theorem cast_cval {A : Archi} {t : VT} {v : Value} (h : t.has v = true) (m : mem) :
+    sem_cast A (cval v) t.ty t.ty m = some (cval v) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> cases t <;> cases v <;> simp [VT.has] at h <;> rfl
 
-theorem cast_zval (t : VT) (m : mem) : sem_cast (zval t) t.ty t.ty m = some (zval t) := by
-  cases t <;> rfl
+theorem cast_zval {A : Archi} (t : VT) (m : mem) :
+    sem_cast A (zval t) t.ty t.ty m = some (zval t) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> cases t <;> rfl
 
 theorem eval_zero (A : Archi) (ge : genv) (e : env) (le : temp_env) (m : mem) (t : VT) :
     eval_expr A ge e le m t.zero (zval t) := by
@@ -165,18 +166,18 @@ def VT.chunk : VT → memory_chunk
   | .f64 => .Mfloat64
 
 /-- The C globals hold the Talos globals `gs`, each an `i64`, and can be written. -/
-def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
+def GlobalsRel (A : Archi) (E : Env) (gs : List Value) (m : mem) : Prop :=
   gs.length = E.globals.length ∧
     ∀ i (hi : i < E.globals.length), ∃ n, gs[i]? = some (.i64 n) ∧
-      Mem.load .Mint64 m E.globals[i] 0 = some (.Vlong n) ∧
+      Mem.load A .Mint64 m E.globals[i] 0 = some (.Vlong n) ∧
       Mem.valid_access m .Mint64 E.globals[i] 0 .Writable
 
 /-- The memory `wm` of a store whose caps are `caps`: below `cap` pages, each byte of `lx_mem`
 holds the byte of `wm` at the same address and can be written; `lx_pages` holds the number of
 pages, at most `cap`, and can be written; the store's cap on the memory's pages is `cap`; and the
 result globals and `lx_pun` can be written. -/
-structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop where
-  pages : Mem.load .Mint32 m E.pages 0 = some (.Vint (UInt32.ofNat wm.pages))
+structure MemRel (A : Archi) (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop where
+  pages : Mem.load A .Mint32 m E.pages 0 = some (.Vint (UInt32.ofNat wm.pages))
   pagesW : Mem.valid_access m .Mint32 E.pages 0 .Writable
   le_cap : wm.pages ≤ E.cap
   memCap : caps[0]? = some E.cap
@@ -188,24 +189,24 @@ structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop wh
   punW : Mem.valid_access m .Mint64 E.pun 0 .Writable
 
 /-- The C globals and `lx_mem` hold Talos's globals and memory. -/
-def StoreRel (E : Env) {α : Type} (st : Store α) (m : mem) : Prop :=
-  GlobalsRel E st.globals.globals m ∧ MemRel E st.mem st.memoryCaps m
+def StoreRel (A : Archi) (E : Env) {α : Type} (st : Store α) (m : mem) : Prop :=
+  GlobalsRel A E st.globals.globals m ∧ MemRel A E st.mem st.memoryCaps m
 
 /-- `lx_status` holds `code` and can be written. -/
-def StatusRel (E : Env) (m : mem) (code : Nat) : Prop :=
-  Mem.load .Mint32 m E.status 0 = some (.Vint (UInt32.ofNat code)) ∧
+def StatusRel (A : Archi) (E : Env) (m : mem) (code : Nat) : Prop :=
+  Mem.load A .Mint32 m E.status 0 = some (.Vint (UInt32.ofNat code)) ∧
     Mem.valid_access m .Mint32 E.status 0 .Writable
 
 /-- The value of `lim` for a memory of `p` pages, `p × 65536`. -/
 def limVal (p : Nat) : val := .Vlong (UInt64.ofNat (p * 65536))
 
 /-- The relation at a point whose static stack is `σ`. -/
-structure Inv (E : Env) (c : FCtx) (σ : List VT) {α : Type} (st : Store α) (sl : Locals)
+structure Inv (A : Archi) (E : Env) (c : FCtx) (σ : List VT) {α : Type} (st : Store α) (sl : Locals)
     (le : temp_env) (m : mem) : Prop where
   stack : StackRel le σ sl.values
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  store : StoreRel E st m
-  status : StatusRel E m 0
+  store : StoreRel A E st m
+  status : StatusRel A E m 0
   brk : le[brkId]? = some (.Vint 0)
   lim : le[limId]? = some (limVal st.mem.pages)
 
@@ -215,8 +216,8 @@ def Frame (h : Nat) (le le' : temp_env) : Prop :=
 
 /-- A branch `k` levels out: the C statement ended with `break` or `continue` for `k = 0` and
 with `brk = k` and `break` otherwise, and the kept value is in the target's result slot. -/
-structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (st : Store α)
-    (sl : Locals) (le : temp_env) (m : mem) (out : outcome) : Prop where
+structure BreakRel (A : Archi) (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type}
+    (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (out : outcome) : Prop where
   target : ∃ l, L[k]? = some l ∧
     (k = 0 → out = (if l.isLoop then .Out_continue else .Out_break)) ∧
     l.final = false ∧
@@ -226,24 +227,25 @@ structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (
   brk : le[brkId]? = some (.Vint (UInt32.ofNat k))
   small : k < 2 ^ 31
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  store : StoreRel E st m
-  status : StatusRel E m 0
+  store : StoreRel A E st m
+  status : StatusRel A E m 0
   lim : le[limId]? = some (limVal st.mem.pages)
 
 /-- The results of the types `rs` of a return with the values `vs`, top first, are in the result
 globals: `lx_r<i>_<t>` holds result `i`, the value at depth `rs.length - 1 - i`. -/
-def ResultsIn (E : Env) (rs : List VT) (vs : List Value) (m : mem) : Prop :=
+def ResultsIn (A : Archi) (E : Env) (rs : List VT) (vs : List Value) (m : mem) : Prop :=
   rs.length ≤ vs.length ∧ ∀ i (hi : i < rs.length), ∃ v, (vs.take rs.length).reverse[i]? = some v ∧
-    rs[i].has v = true ∧ Mem.load rs[i].chunk m (E.res i rs[i]) 0 = some (cval v)
+    rs[i].has v = true ∧ Mem.load A rs[i].chunk m (E.res i rs[i]) 0 = some (cval v)
 
 /-- A return with the values `vs`, top first, from a function with results `rs`, in the memory
 `m`: with none, `return;`; with one, `return` of its value; with several, `return;` with the
 results in the result globals. -/
-def ReturnRel (E : Env) (rs : List VT) (vs : List Value) (out : outcome) (m : mem) : Prop :=
+def ReturnRel (A : Archi) (E : Env) (rs : List VT) (vs : List Value) (out : outcome)
+    (m : mem) : Prop :=
   match rs with
   | [] => out = .Out_return none
   | [t] => ∃ v, vs.head? = some v ∧ t.has v = true ∧ out = .Out_return (some (cval v, t.ty))
-  | rs => out = .Out_return none ∧ ResultsIn E rs vs m
+  | rs => out = .Out_return none ∧ ResultsIn A E rs vs m
 
 /-- The outcome of the `return` after a trap. -/
 def trapOut : Option VT → outcome
@@ -257,17 +259,17 @@ def Outcome (A : Archi) (X : ExtSem) (E : Env) (c : FCtx) (L : List Label) (σ' 
     {α : Type} (r : Continuation α) (s : statement) (le : temp_env) (m : mem) : Prop :=
   match r with
   | .Fallthrough st' sl' => ∃ σ'', σ' = some σ'' ∧ curBase L ≤ σ''.length ∧ ∃ t le' m',
-      exec_stmt A X E.ge empty_env le m s t le' m' .Out_normal ∧ Inv E c σ'' st' sl' le' m' ∧
+      exec_stmt A X E.ge empty_env le m s t le' m' .Out_normal ∧ Inv A E c σ'' st' sl' le' m' ∧
       Frame (curBase L) le le'
   | .Break k st' sl' => ∃ t le' m' out,
-      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ BreakRel E c L k st' sl' le' m' out ∧
+      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ BreakRel A E c L k st' sl' le' m' out ∧
       ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
-      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ ReturnRel E c.results vs out m' ∧
-      StoreRel E st' m' ∧ StatusRel E m' 0
+      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ ReturnRel A E c.results vs out m' ∧
+      StoreRel A E st' m' ∧ StatusRel A E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m s t le' m' (trapOut c.result) ∧
-      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel A E st' m' ∧ StatusRel A E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
@@ -358,11 +360,11 @@ theorem lim_insert_call {le : temp_env} {p : Nat} (k : Nat) (v : val)
 
 /-- Setting `lim` to the store's number of bytes completes the relation, after a statement that
 may have changed the store's pages. -/
-theorem Inv.of_lim {E : Env} {c : FCtx} {σ : List VT} {α : Type} {st : Store α} {sl : Locals}
-    {le : temp_env} {m : mem} (hstack : StackRel le σ sl.values)
-    (hloc : LocalsRel le c.locals (sl.params ++ sl.locals)) (hg : StoreRel E st m)
-    (hs : StatusRel E m 0) (hb : le[brkId]? = some (.Vint 0)) :
-    Inv E c σ st sl (le.insert limId (limVal st.mem.pages)) m where
+theorem Inv.of_lim {A : Archi} {E : Env} {c : FCtx} {σ : List VT} {α : Type} {st : Store α}
+    {sl : Locals} {le : temp_env} {m : mem} (hstack : StackRel le σ sl.values)
+    (hloc : LocalsRel le c.locals (sl.params ++ sl.locals)) (hg : StoreRel A E st m)
+    (hs : StatusRel A E m 0) (hb : le[brkId]? = some (.Vint 0)) :
+    Inv A E c σ st sl (le.insert limId (limVal st.mem.pages)) m where
   stack := hstack.insert_other _ (fun x t => (slotId_ne_limId x t).symm)
   locals := hloc.insert_other _ (fun i => (localId_ne_limId i).symm)
   store := hg

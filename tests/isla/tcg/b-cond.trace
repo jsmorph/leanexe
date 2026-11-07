@@ -1,0 +1,99 @@
+(segments
+  (|imm19| 19 v0)
+  (|cond| 4 v1))
+(trace
+  (declare-const v0 (_ BitVec 19)) ; 0:0 - 0:0
+  (declare-const v1 (_ BitVec 4)) ; 0:0 - 0:0
+  (define-enum |Feature| 258 (|FEAT_AA32EL0| |FEAT_AA32EL1| |FEAT_AA32EL2| |FEAT_AA32EL3| |FEAT_AA64EL0| |FEAT_AA64EL1| |FEAT_AA64EL2| |FEAT_AA64EL3| |FEAT_EL0| |FEAT_EL1| |FEAT_EL2| |FEAT_EL3| |FEAT_AES| |FEAT_AdvSIMD| |FEAT_CSV2_1p1| |FEAT_CSV2_1p2| |FEAT_CSV2_2| |FEAT_CSV2_3| |FEAT_DoubleLock| |FEAT_ETMv4| |FEAT_ETMv4p1| |FEAT_ETMv4p2| |FEAT_ETMv4p3| |FEAT_ETMv4p4| |FEAT_ETMv4p5| |FEAT_ETMv4p6| |FEAT_ETS2| |FEAT_FP| |FEAT_GICv3| |FEAT_GICv3_LEGACY| |FEAT_GICv3_TDIR| |FEAT_GICv3p1| |FEAT_GICv4| |FEAT_GICv4p1| |FEAT_IVIPT| |FEAT_PCSRv8| |FEAT_PMULL| |FEAT_PMUv3| |FEAT_PMUv3_EXT| |FEAT_PMUv3_EXT32| |FEAT_SHA1| |FEAT_SHA256| |FEAT_TRC_EXT| |FEAT_TRC_SR| |FEAT_nTLBPA| |FEAT_CRC32| |FEAT_Debugv8p1| |FEAT_HAFDBS| |FEAT_HPDS| |FEAT_LOR| |FEAT_LSE| |FEAT_PAN| |FEAT_PMUv3p1| |FEAT_RDM| |FEAT_VHE| |FEAT_VMID16| |FEAT_AA32BF16| |FEAT_AA32HPD| |FEAT_AA32I8MM| |FEAT_ASMv8p2| |FEAT_DPB| |FEAT_Debugv8p2| |FEAT_EDHSR| |FEAT_F32MM| |FEAT_F64MM| |FEAT_FP16| |FEAT_HPDS2| |FEAT_I8MM| |FEAT_IESB| |FEAT_LPA| |FEAT_LSMAOC| |FEAT_LVA| |FEAT_MPAM| |FEAT_PAN2| |FEAT_PCSRv8p2| |FEAT_RAS| |FEAT_SHA3| |FEAT_SHA512| |FEAT_SM3| |FEAT_SM4| |FEAT_SPE| |FEAT_SVE| |FEAT_TTCNP| |FEAT_UAO| |FEAT_VPIPT| |FEAT_XNX| |FEAT_CCIDX| |FEAT_CONSTPACFIELD| |FEAT_EPAC| |FEAT_FCMA| |FEAT_FPAC| |FEAT_FPACCOMBINE| |FEAT_JSCVT| |FEAT_LRCPC| |FEAT_NV| |FEAT_PACIMP| |FEAT_PACQARMA3| |FEAT_PACQARMA5| |FEAT_PAuth| |FEAT_SPEv1p1| |FEAT_AMUv1| |FEAT_BBM| |FEAT_CNTSC| |FEAT_DIT| |FEAT_Debugv8p4| |FEAT_DotProd| |FEAT_DoubleFault| |FEAT_FHM| |FEAT_FlagM| |FEAT_IDST| |FEAT_LRCPC2| |FEAT_LSE2| |FEAT_NV2| |FEAT_PMUv3p4| |FEAT_RASSAv1p1| |FEAT_RASv1p1| |FEAT_S2FWB| |FEAT_SEL2| |FEAT_TLBIOS| |FEAT_TLBIRANGE| |FEAT_TRF| |FEAT_TTL| |FEAT_TTST| |FEAT_BTI| |FEAT_CSV2| |FEAT_CSV3| |FEAT_DPB2| |FEAT_E0PD| |FEAT_EVT| |FEAT_ExS| |FEAT_FRINTTS| |FEAT_FlagM2| |FEAT_GTG| |FEAT_MTE| |FEAT_MTE2| |FEAT_PMUv3p5| |FEAT_RNG| |FEAT_RNG_TRAP| |FEAT_SB| |FEAT_SPECRES| |FEAT_SSBS| |FEAT_SSBS2| |FEAT_AMUv1p1| |FEAT_BF16| |FEAT_DGH| |FEAT_ECV| |FEAT_FGT| |FEAT_HPMN0| |FEAT_MPAMv0p1| |FEAT_MPAMv1p1| |FEAT_MTPMU| |FEAT_PAuth2| |FEAT_TWED| |FEAT_AFP| |FEAT_EBF16| |FEAT_HCX| |FEAT_LPA2| |FEAT_LS64| |FEAT_LS64_ACCDATA| |FEAT_LS64_V| |FEAT_MTE3| |FEAT_PAN3| |FEAT_PMUv3p7| |FEAT_RPRES| |FEAT_SPEv1p2| |FEAT_WFxT| |FEAT_XS| |FEAT_CMOW| |FEAT_Debugv8p8| |FEAT_GICv3_NMI| |FEAT_HBC| |FEAT_MOPS| |FEAT_NMI| |FEAT_PMUv3_EXT64| |FEAT_PMUv3_TH| |FEAT_PMUv3p8| |FEAT_SCTLR2| |FEAT_SPEv1p3| |FEAT_TCR2| |FEAT_TIDCP1| |FEAT_ADERR| |FEAT_AIE| |FEAT_ANERR| |FEAT_CLRBHB| |FEAT_CSSC| |FEAT_Debugv8p9| |FEAT_DoubleFault2| |FEAT_ECBHB| |FEAT_FGT2| |FEAT_HAFT| |FEAT_LRCPC3| |FEAT_MTE4| |FEAT_MTE_ASYM_FAULT| |FEAT_MTE_ASYNC| |FEAT_MTE_CANONICAL_TAGS| |FEAT_MTE_NO_ADDRESS_TAGS| |FEAT_MTE_PERM| |FEAT_MTE_STORE_ONLY| |FEAT_MTE_TAGGED_FAR| |FEAT_PCSRv8p9| |FEAT_PFAR| |FEAT_PMUv3_EDGE| |FEAT_PMUv3_ICNTR| |FEAT_PMUv3_SS| |FEAT_PMUv3p9| |FEAT_PRFMSLC| |FEAT_RASSAv2| |FEAT_RASv2| |FEAT_RPRFM| |FEAT_S1PIE| |FEAT_S1POE| |FEAT_S2PIE| |FEAT_S2POE| |FEAT_SPECRES2| |FEAT_SPE_CRR| |FEAT_SPE_FDS| |FEAT_SPEv1p4| |FEAT_SPMU| |FEAT_THE| |FEAT_DoPD| |FEAT_ETE| |FEAT_SVE2| |FEAT_SVE_AES| |FEAT_SVE_BitPerm| |FEAT_SVE_PMULL128| |FEAT_SVE_SHA3| |FEAT_SVE_SM4| |FEAT_TME| |FEAT_TRBE| |FEAT_ETEv1p1| |FEAT_BRBE| |FEAT_ETEv1p2| |FEAT_RME| |FEAT_SME| |FEAT_SME_F64F64| |FEAT_SME_FA64| |FEAT_SME_I16I64| |FEAT_BRBEv1p1| |FEAT_MEC| |FEAT_SME2| |FEAT_ABLE| |FEAT_CHK| |FEAT_D128| |FEAT_EBEP| |FEAT_ETEv1p3| |FEAT_GCS| |FEAT_ITE| |FEAT_LSE128| |FEAT_LVA3| |FEAT_SEBEP| |FEAT_SME2p1| |FEAT_SME_F16F16| |FEAT_SVE2p1| |FEAT_SVE_B16B16| |FEAT_SYSINSTR128| |FEAT_SYSREG128| |FEAT_TRBE_EXT| |FEAT_TRBE_MPAM|)) ; 0:0 - 0:0
+  (declare-const v260 Bool) ; src/v8_base.sail 902:4 - 902:45
+  (define-enum |Signal| 2 (|Signal_Low| |Signal_High|)) ; 0:0 - 0:0
+  (declare-const v266 (_ BitVec 1)) ; src/isla_main.sail 54:2 - 54:24
+  (declare-const v269 (_ BitVec 1)) ; src/isla_main.sail 54:2 - 54:24
+  (declare-const v279 (_ BitVec 1)) ; src/isla_main.sail 54:2 - 54:24
+  (declare-const v290 (_ BitVec 1)) ; src/isla_main.sail 54:2 - 54:24
+  (assume-reg |PSTATE| ((_ field |nRW|)) #b0)
+  (assume-reg |PSTATE| ((_ field |EL|)) #b01)
+  (assume-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+  (declare-const v293 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |TCR_EL1| nil (_ struct (|bits| v293)))
+  (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
+  (cycle)
+  (declare-const v294 (_ BitVec 64)) ; src/isla_main.sail 62:16 - 62:25
+  (read-reg |_PC| nil v294)
+  (assert (not (= (concat #x54 ((_ extract 18 5) v0)) #b1101010100000011001000))) ; 0:0 - 0:0
+  (assert (not (= (concat #x54 ((_ extract 18 5) v0)) #b1101010100000011001000))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat (concat #x54 v0) #b0) v1) #xd500405f))) ; 0:0 - 0:0
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv69 128))
+  (define-const v307 ((_ sign_extend 43) (concat v0 #b00))) ; src/instrs64.sail 2677:28 - 2677:56
+  (define-const v309 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+  (define-const v310 (= v309 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+  (define-const v311 (= v309 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+  (define-const v312 (= v309 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+  (define-const v313 (= v309 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+  (define-const v314 (= v309 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+  (define-const v315 (= v309 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+  (define-const v316 (= v309 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+  (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v279)))
+  (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v290)))
+  (define-const v317 (= v279 v290)) ; src/v8_base.sail 8962:19 - 8962:39
+  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v266)))
+  (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v269)))
+  (define-const v337 (= v269 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+  (define-const v450 (ite (or (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) (not v317)) (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) v317)) (ite (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) (not v317)) false (= v266 #b0)) (ite (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not (not v315))) (= v279 v290) (ite (or (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) (not v337)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) v337)) (ite (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) (not v337)) false (= v266 #b0)) (ite (and (and (and (not v310) (not v311)) (not v312)) (not (not v313))) (= v290 #b1) (ite (and (and (not v310) (not v311)) (not (not v312))) (= v279 #b1) (ite (and (not v310) (not (not v311))) (= v269 #b1) (ite (not (not v310)) (= v266 #b1) true)))))))) ; 0:0 - 0:0
+  (define-const v453 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+  (define-const v789 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) (not v317)) (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) v317)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not (not v315)))) (or (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) (not v337)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) v337))) (and (and (and (not v310) (not v311)) (not v312)) (not (not v313)))) (and (and (not v310) (not v311)) (not (not v312)))) (and (not v310) (not (not v311)))) (not (not v310))) (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not v316))) (not v453)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) (not v317)) (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) v317)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not (not v315)))) (or (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) (not v337)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) v337))) (and (and (and (not v310) (not v311)) (not v312)) (not (not v313)))) (and (and (not v310) (not v311)) (not (not v312)))) (and (not v310) (not (not v311)))) (not (not v310))) (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not v316))) v453)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) (not v317)) (and (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not (not v316))) v317)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not (not v315)))) (or (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) (not v337)) (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not (not v314))) v337))) (and (and (and (not v310) (not v311)) (not v312)) (not (not v313)))) (and (and (not v310) (not v311)) (not (not v312)))) (and (not v310) (not (not v311)))) (not (not v310))) (and (and (and (and (and (and (not v310) (not v311)) (not v312)) (not v313)) (not v314)) (not v315)) (not v316))) (not v453)) false (not (= v1 #xf))))) v450 (not v450))) ; 0:0 - 0:0
+
+  (cases "src/instrs64.sail 2667:4 - 2671:5"
+    (trace
+      (assert v789) ; 0:0 - 0:0
+      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+      (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+      (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b0)))
+      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v260))
+      (define-const v791 (bvadd ((_ extract 63 0) v294) ((_ extract 63 0) v307))) ; src/v8_base.sail 6794:60 - 6794:75
+      (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b01)))
+      (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+      (define-const v802 (= ((_ extract 0 0) (bvlshr v791 #x0000000000000037)) #b1)) ; src/v8_base.sail 6070:19 - 6070:39
+    
+      (cases "src/v8_base.sail 6070:16 - 6070:77"
+        (trace
+          (assert v802) ; 0:0 - 0:0
+          (read-reg |TCR_EL1| nil (_ struct (|bits| v293)))
+          (define-const v804 (= ((_ extract 38 38) v293) #b1)) ; src/v8_base.sail 6103:14 - 6103:24
+        
+          (cases "src/v8_base.sail 6103:14 - 6103:87"
+            (trace
+              (assert v804) ; 0:0 - 0:0
+              (assert (= ((_ extract 0 0) (bvlshr v791 #x0000000000000037)) #b1)) ; 0:0 - 0:0
+              (define-const v811 ((_ sign_extend 0) (bvashr (bvshl (bvand v791 #x00ffffffffffffff) #x0000000000000008) #x0000000000000008))) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail 64:37 - 64:59
+              (branch-address v811)
+              (write-reg |_PC| nil v811)
+              (write-reg |__BranchTaken| nil true))
+            (trace
+              (assert (not v804)) ; 0:0 - 0:0
+              (branch-address v791)
+              (write-reg |_PC| nil v791)
+              (write-reg |__BranchTaken| nil true))))
+        (trace
+          (assert (not v802)) ; 0:0 - 0:0
+          (read-reg |TCR_EL1| nil (_ struct (|bits| v293)))
+          (define-const v813 (= ((_ extract 37 37) v293) #b1)) ; src/v8_base.sail 6103:14 - 6103:24
+        
+          (cases "src/v8_base.sail 6103:14 - 6103:87"
+            (trace
+              (assert v813) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 0 0) (bvlshr v791 #x0000000000000037)) #b1))) ; 0:0 - 0:0
+              (define-const v818 ((_ zero_extend 0) (bvand v791 #x00ffffffffffffff))) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail 59:37 - 59:59
+              (branch-address v818)
+              (write-reg |_PC| nil v818)
+              (write-reg |__BranchTaken| nil true))
+            (trace
+              (assert (not v813)) ; 0:0 - 0:0
+              (branch-address v791)
+              (write-reg |_PC| nil v791)
+              (write-reg |__BranchTaken| nil true))))))
+    (trace
+      (assert (not v789)) ; 0:0 - 0:0
+      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v260)))))

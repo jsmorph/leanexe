@@ -591,7 +591,8 @@ def compareDef (defs : List (String × Term)) (n : Names) (name : String)
 and the whole program of the translation `t`, or none.  The file's `global_definitions` must list
 CompCert's external declarations, then the translation's definitions but `__builtin_fsqrt` in
 order, then the definitions of `tail`: none for the translation alone, `bareTail` of the
-`main` of a bare-metal program, and `inTail` of the `main` of a program with input.  Each
+`main` of a bare-metal program, `inTail` of the `main` of a program with input or a controller,
+and `reqTail` of the `main` of a program with requests.  Each
 external declaration must be a built-in, run-time, or external function, and `__builtin_fsqrt`
 must be declared as the translation declares it.  Each variable and internal function must
 equal the translation's under its name, with the temporaries of calls and of built-in functions
@@ -613,7 +614,7 @@ def check (t : Translation) (text : String)
     else none
   let tailName (id : ident) : String :=
     if id == outId then "lx_out" else if id == mainId then "main" else if id == inId then "lx_in"
-    else s!"lx_unnamed_{id}"
+    else if id == regId then "lx_reg" else s!"lx_unnamed_{id}"
   let allNames := t.names ++ tail.map fun (id, _) => (id, tailName id)
   let n : Names := { names, globals := allNames.map fun (id, s) => (s, id) }
   let some gdTerm := defs.lookup "global_definitions"

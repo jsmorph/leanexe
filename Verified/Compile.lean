@@ -1154,10 +1154,12 @@ def Prog.exports (n : Nat) : {S : List Sig} → Prog S → List Export
 function exported under its name.  Functions 0 and 1 are the runtime's `alloc` and `release`, the
 program's functions follow them, then the entries of the functions that take the call depth, and
 then the wrappers, each with the type of its own index.  Data segments write the tables from the
-heap base on, and the allocator's bump pointer starts after them. -/
+heap base on, and the allocator's bump pointer starts after them.  The memory starts with
+`minPages` pages, or more when the static data needs them, and the allocator grows it on demand. -/
 def compileWith (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length))
-    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) : Module :=
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) (minPages : Nat := 16) :
+    Module :=
   let n := 2 + S.length + prog.depthFuns.length
   let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes ++
     wrappers.map Wrapper.type
@@ -1167,7 +1169,7 @@ def compileWith (prog : Prog S) (tables : List (Array UInt64))
         w.params w.result w.depth w.callee.callIndex (n + j)
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
       prog.exports S.length ++ wrappers.mapIdx fun j w => { name := w.name, funcIdx := n + j }
-    memory := some { pagesMin := UInt32.ofNat (max 16 ((pool.top + 65535) / 65536))
+    memory := some { pagesMin := UInt32.ofNat (max minPages ((pool.top + 65535) / 65536))
                      pagesMax := some 65535, data := tableSegments tables ++ pool.segments }
     globals := runtimeGlobals (UInt64.ofNat pool.top)
     types
@@ -1188,10 +1190,11 @@ theorem Prog.functions_length (prog : Prog S)
   | consRec f rest ih => simp [Prog.functions, ih]
   | consTail f rest ih => simp [Prog.functions, ih]
 
-theorem compileWith_funcs (prog : Prog S) (tables : List (Array UInt64))
+theorem compileWith_funcs {minPages : Nat} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length)
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
-    (compileWith prog tables wrappers pool).funcs[2 + k]? = (prog.functions (pool := pool))[k]? := by
+    (compileWith prog tables wrappers pool (minPages := minPages)).funcs[2 + k]? =
+      (prog.functions (pool := pool))[k]? := by
   conv_lhs => rw [show 2 + k = k + 1 + 1 by omega]
   simp only [compileWith, List.cons_append, List.nil_append, List.getElem?_cons_succ,
     List.append_assoc]
@@ -1204,11 +1207,11 @@ theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length)
 
 /-- The entry of the `j`-th function whose code takes the call depth follows the program's
 functions. -/
-theorem compileWith_entries (prog : Prog S) (tables : List (Array UInt64))
+theorem compileWith_entries {minPages : Nat} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j idx : Nat} {params : List Ty} {result : Ty}
     (hj : prog.depthFuns[j]? = some (idx, params, result))
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
-    (compileWith prog tables wrappers pool).funcs[2 + S.length + j]? =
+    (compileWith prog tables wrappers pool (minPages := minPages)).funcs[2 + S.length + j]? =
       some (entryFunction params result idx (2 + S.length + j)) := by
   have hlt : j < prog.depthFuns.length := (List.getElem?_eq_some_iff.mp hj).1
   simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]
@@ -1227,11 +1230,12 @@ theorem compile_entries (prog : Prog S) {j idx : Nat} {params : List Ty} {result
   compileWith_entries prog [] [] hj pool
 
 /-- The `j`-th wrapper follows the entries. -/
-theorem compileWith_wrappers (prog : Prog S) (tables : List (Array UInt64))
+theorem compileWith_wrappers {minPages : Nat} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (hj : wrappers[j]? = some w)
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
-    (compileWith prog tables wrappers pool).funcs[2 + S.length + prog.depthFuns.length + j]? =
+    (compileWith prog tables wrappers pool
+      (minPages := minPages)).funcs[2 + S.length + prog.depthFuns.length + j]? =
       some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val) w.params w.result
         w.depth w.callee.callIndex (2 + S.length + prog.depthFuns.length + j)) := by
   simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]

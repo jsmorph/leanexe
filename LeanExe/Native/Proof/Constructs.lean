@@ -90,8 +90,8 @@ structure PendingBreak (L : List Label) (k : Nat) {α : Type} (st : Store α) (s
   brk : le[brkId]? = some (.Vint (UInt32.ofNat (k + 1)))
   small : k + 1 < 2 ^ 31
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  store : StoreRel E st m
-  status : StatusRel E m 0
+  store : StoreRel A E st m
+  status : StatusRel A E m 0
   lim : le[limId]? = some (limVal st.mem.pages)
 
 /-- What the construct's loop `W` does when Talos's result for the construct is `r`. -/
@@ -99,17 +99,17 @@ def ConstructOutcome (L : List Label) (σ' : List VT) {α : Type} (r : Continuat
     (W : statement) (le : temp_env) (m : mem) : Prop :=
   match r with
   | .Fallthrough st' sl' => curBase L ≤ σ'.length ∧ ∃ t le' m',
-      exec_stmt A X E.ge empty_env le m W t le' m' .Out_normal ∧ Inv E c σ' st' sl' le' m' ∧
+      exec_stmt A X E.ge empty_env le m W t le' m' .Out_normal ∧ Inv A E c σ' st' sl' le' m' ∧
       Frame (curBase L) le le'
   | .Break k st' sl' => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m W t le' m' .Out_normal ∧
-      PendingBreak E c L k st' sl' le' m' ∧ ∀ l, L[k]? = some l → Frame l.base le le'
+      PendingBreak A E c L k st' sl' le' m' ∧ ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
-      exec_stmt A X E.ge empty_env le m W t le' m' out ∧ ReturnRel E c.results vs out m' ∧
-      StoreRel E st' m' ∧ StatusRel E m' 0
+      exec_stmt A X E.ge empty_env le m W t le' m' out ∧ ReturnRel A E c.results vs out m' ∧
+      StoreRel A E st' m' ∧ StatusRel A E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m W t le' m' (trapOut c.result) ∧
-      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel A E st' m' ∧ StatusRel A E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
@@ -157,7 +157,7 @@ theorem exec_dispatch_zero {le : temp_env} {m : mem} (parent : Label)
   have hc := eval_brk_ne (A := A) (E := E) (m := m) (k := 0) h (by decide)
   refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hc ?_ (.exec_Sskip _ _ _)
   simp only [ne_eq, not_true_eq_false, ite_false]
-  exact bool_int m 0
+  exact bool_int A m 0
 
 theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
     {r : Continuation α} {W : statement} {le : temp_env} {m : mem} {parent : Label}
@@ -191,8 +191,8 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
             (jump parent.isLoop) .Sbreak) E0 le2 m' out := by
         refine .exec_Sifthenelse _ _ _ _ _ _ _ (decide (k = 0)) _ _ _ _ hc2 ?_ ?_
         · by_cases hk0 : k = 0
-          · subst hk0; simp; exact bool_int m' 1
-          · simp [hk0]; exact bool_int m' 0
+          · subst hk0; simp; exact bool_int A m' 1
+          · simp [hk0]; exact bool_int A m' 0
         · by_cases hk0 : k = 0
           · simp only [hk0, decide_true, ite_true, out]
             cases parent.isLoop
@@ -207,7 +207,7 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
         have : UInt32.ofNat (k + 1) ≠ 0 := fun e => by
           have := (uint32_ofNat_eq_zero hk1).mp e; omega
         simp
-        exact bool_int m' 1
+        exact bool_int A m' 1
       refine ⟨t ++ (E0 ++ E0), le2, m', out, .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx hd, ?_,
         fun l' hl' => fun x hx' t' => by rw [hframe]; exact hf l' hl' x hx' t'⟩
       refine { target := ⟨l, hl, ?_, hfin, ?_⟩, outer := ?_, brk := hb2,

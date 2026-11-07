@@ -247,7 +247,7 @@ theorem eval_exprlist_export (hge : GenvExport ge' ge) {e : env} {le : temp_env}
 
 theorem volatile_store_export (hge : GenvExport ge' ge) :
     ∀ {chunk : memory_chunk} {m : mem} {b : block} {ofs : ptrofs} {v : val} {t : trace} {m' : mem},
-      volatile_store ge' chunk m b ofs v t m' → volatile_store ge chunk m b ofs v t m'
+      volatile_store A ge' chunk m b ofs v t m' → volatile_store A ge chunk m b ofs v t m'
   | _, _, _, _, _, _, _, .volatile_store_vol chunk m b ofs id ev v hvol hs hm =>
       .volatile_store_vol chunk m b ofs id ev v (hge.block_is_volatile b ▸ hvol)
         (hge.find_symbol id ▸ hs) hm
@@ -256,13 +256,14 @@ theorem volatile_store_export (hge : GenvExport ge' ge) :
 
 theorem volatile_store_sem_export (hge : GenvExport ge' ge) {chunk : memory_chunk} :
     ∀ {vargs : List val} {m : mem} {t : trace} {vres : val} {m' : mem},
-      volatile_store_sem chunk ge' vargs m t vres m' → volatile_store_sem chunk ge vargs m t vres m'
+      volatile_store_sem A chunk ge' vargs m t vres m' →
+        volatile_store_sem A chunk ge vargs m t vres m'
   | _, _, _, _, _, .volatile_store_sem_intro b ofs m1 v t m2 hv =>
       .volatile_store_sem_intro b ofs m1 v t m2 (volatile_store_export hge hv)
 
 theorem volatile_load_export (hge : GenvExport ge' ge) :
     ∀ {chunk : memory_chunk} {m : mem} {b : block} {ofs : ptrofs} {t : trace} {v : val},
-      volatile_load ge' chunk m b ofs t v → volatile_load ge chunk m b ofs t v
+      volatile_load A ge' chunk m b ofs t v → volatile_load A ge chunk m b ofs t v
   | _, _, _, _, _, _, .volatile_load_vol chunk m b ofs id ev v hvol hs hm =>
       .volatile_load_vol chunk m b ofs id ev v (hge.block_is_volatile b ▸ hvol)
         (hge.find_symbol id ▸ hs) hm
@@ -271,7 +272,8 @@ theorem volatile_load_export (hge : GenvExport ge' ge) :
 
 theorem volatile_load_sem_export (hge : GenvExport ge' ge) {chunk : memory_chunk} :
     ∀ {vargs : List val} {m : mem} {t : trace} {vres : val} {m' : mem},
-      volatile_load_sem chunk ge' vargs m t vres m' → volatile_load_sem chunk ge vargs m t vres m'
+      volatile_load_sem A chunk ge' vargs m t vres m' →
+        volatile_load_sem A chunk ge vargs m t vres m'
   | _, _, _, _, _, .volatile_load_sem_intro b ofs m t v hv =>
       .volatile_load_sem_intro b ofs m t v (volatile_load_export hge hv)
 
@@ -402,7 +404,7 @@ mutual
               rw [hf] at hentry
               cases hentry with
               | intro _ hv hn hd hb => exact .intro _ hv hn hd hb
-            have hres' : outcome_result_value out f.fn_return vres m2 := by
+            have hres' : outcome_result_value A out f.fn_return vres m2 := by
               rw [hf] at hres; exact hres
             exact .eval_funcall_internal _ f _ tr e le1 le2 m1 m2 out _ m3 he
               (hw.exec (exec_export_core hge hbody hc)) hres' hfree
@@ -459,38 +461,40 @@ theorem globalenv_export (p : program function) :
   (add_globals_export p.prog_defs (Genv.empty_genv p.prog_public)
     (Genv.empty_genv p.prog_public) rfl ⟨rfl, fun b => by simp [Genv.find_def, Genv.empty_genv]⟩).2
 
-theorem store_init_data_list_export {ge' ge : genv} (h : GenvExport ge' ge) (b : block) :
-    ∀ (l : List init_data) (m : mem) (p : _root_.Int),
-      Genv.store_init_data_list ge' m b p l = Genv.store_init_data_list ge m b p l
+theorem store_init_data_list_export {A : Archi} {ge' ge : genv} (h : GenvExport ge' ge)
+    (b : block) : ∀ (l : List init_data) (m : mem) (p : _root_.Int),
+      Genv.store_init_data_list A ge' m b p l = Genv.store_init_data_list A ge m b p l
   | [], _, _ => rfl
   | d :: l, m, p => by
-      have hstore : Genv.store_init_data ge' m b p d = Genv.store_init_data ge m b p d := by
+      have hstore : Genv.store_init_data A ge' m b p d = Genv.store_init_data A ge m b p d := by
         cases d with
         | Init_addrof id ofs => simp [Genv.store_init_data, h.find_symbol]
         | _ => rfl
       simp only [Genv.store_init_data_list, hstore]
-      cases Genv.store_init_data ge m b p d with
+      cases Genv.store_init_data A ge m b p d with
       | none => rfl
       | some m' => exact store_init_data_list_export h b l m' _
 
-theorem alloc_globals_export {ge' ge : genv} (h : GenvExport ge' ge) :
+theorem alloc_globals_export {A : Archi} {ge' ge : genv} (h : GenvExport ge' ge) :
     ∀ (gl : List (ident × globdef (fundef function) type)) (m : mem),
-      Genv.alloc_globals ge' m (gl.map fun d => (d.1, exportGlobdef d.2)) =
-        Genv.alloc_globals ge m gl
+      Genv.alloc_globals A ge' m (gl.map fun d => (d.1, exportGlobdef d.2)) =
+        Genv.alloc_globals A ge m gl
   | [], _ => rfl
   | x :: gl, m => by
-      have hx : Genv.alloc_global ge' m (x.1, exportGlobdef x.2) = Genv.alloc_global ge m x := by
+      have hx :
+          Genv.alloc_global A ge' m (x.1, exportGlobdef x.2) = Genv.alloc_global A ge m x := by
         obtain ⟨id, d⟩ := x
         cases d with
         | Gfun f => rfl
         | Gvar v => simp only [Genv.alloc_global, exportGlobdef, store_init_data_list_export h]
       simp only [List.map_cons, Genv.alloc_globals] at hx ⊢
       rw [hx]
-      cases Genv.alloc_global ge m x with
+      cases Genv.alloc_global A ge m x with
       | none => rfl
       | some m' => exact alloc_globals_export h gl m'
 
-theorem init_mem_export (p : program function) : init_mem (exportProgram p) = init_mem p :=
+theorem init_mem_export (A : Archi) (p : program function) :
+    init_mem A (exportProgram p) = init_mem A p :=
   alloc_globals_export (globalenv_export p) p.prog_defs Mem.empty
 
 /-- A run of the program of `clightgen`'s Coq file is a run of the program inside `clightgen`

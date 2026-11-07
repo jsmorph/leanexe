@@ -17,43 +17,61 @@ variable (A : Archi) (m : mem)
 
 theorem sem_add_ll (x y : UInt64) :
     sem_binary_operation A .Oadd (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x + y)) := by
-  rw [← Int64.add_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.add_eq]; rfl
 
 theorem sem_sub_ll (x y : UInt64) :
     sem_binary_operation A .Osub (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x - y)) := by
-  rw [← Int64.sub_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.sub_eq]; rfl
 
 theorem sem_mul_ll (x y : UInt64) :
     sem_binary_operation A .Omul (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x * y)) := by
-  rw [← Int64.mul_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.mul_eq]; rfl
 
 theorem sem_and_ll (x y : UInt64) :
     sem_binary_operation A .Oand (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x &&& y)) := by
-  rw [← Int64.and_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.and_eq]; rfl
 
 theorem sem_or_ll (x y : UInt64) :
     sem_binary_operation A .Oor (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x ||| y)) := by
-  rw [← Int64.or_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.or_eq]; rfl
 
 theorem sem_xor_ll (x y : UInt64) :
     sem_binary_operation A .Oxor (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x ^^^ y)) := by
-  rw [← Int64.xor_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.xor_eq]; rfl
 
 theorem sem_div_ll (x y : UInt64) (hy : y ≠ 0) :
     sem_binary_operation A .Odiv (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x / y)) := by
-  rw [← Int64.divu_eq]
-  have : Int64.eq y Int64.zero = false := by
-    rw [Int64.eq_eq, Int64.zero_eq]; simpa using hy
-  show (if Int64.eq y Int64.zero then (none : Option val) else some (val.Vlong (Int64.divu x y))) = _
-  rw [this]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.divu_eq]
+    have : Int64.eq y Int64.zero = false := by
+      rw [Int64.eq_eq, Int64.zero_eq]; simpa using hy
+    show (if Int64.eq y Int64.zero then (none : Option val)
+      else some (val.Vlong (Int64.divu x y))) = _
+    rw [this]; rfl
 
 theorem sem_mod_ll (x y : UInt64) (hy : y ≠ 0) :
     sem_binary_operation A .Omod (.Vlong x) tulong (.Vlong y) tulong m = some (.Vlong (x % y)) := by
-  rw [← Int64.modu_eq]
-  have : Int64.eq y Int64.zero = false := by
-    rw [Int64.eq_eq, Int64.zero_eq]; simpa using hy
-  show (if Int64.eq y Int64.zero then (none : Option val) else some (val.Vlong (Int64.modu x y))) = _
-  rw [this]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← Int64.modu_eq]
+    have : Int64.eq y Int64.zero = false := by
+      rw [Int64.eq_eq, Int64.zero_eq]; simpa using hy
+    show (if Int64.eq y Int64.zero then (none : Option val)
+      else some (val.Vlong (Int64.modu x y))) = _
+    rw [this]; rfl
 
 theorem sem_shl_ll (x y : UInt64) :
     sem_binary_operation A .Oshl (.Vlong x) tulong (.Vlong (y &&& 63)) tulong m =
@@ -82,67 +100,89 @@ theorem sem_shr_ll (x y : UInt64) :
 theorem sem_eq_ll (x y : UInt64) :
     sem_binary_operation A .Oeq (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x = y then 1 else 0)) := by
-  show some (Val.of_bool (Int64.eq x y)) = _
-  rw [Int64.eq_eq, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (Int64.eq x y)) = _
+    rw [Int64.eq_eq, of_bool_decide]
 
 theorem sem_ne_ll (x y : UInt64) :
     sem_binary_operation A .One (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x ≠ y then 1 else 0)) := by
-  show some (Val.of_bool (!Int64.eq x y)) = _
-  rw [Int64.eq_eq, ← decide_not, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!Int64.eq x y)) = _
+    rw [Int64.eq_eq, ← decide_not, of_bool_decide]
 
 theorem sem_lt_ll (x y : UInt64) :
     sem_binary_operation A .Olt (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x < y then 1 else 0)) := by
-  show some (Val.of_bool (Int64.ltu x y)) = _
-  rw [Int64.ltu_eq, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (Int64.ltu x y)) = _
+    rw [Int64.ltu_eq, of_bool_decide]
 
 theorem sem_le_ll (x y : UInt64) :
     sem_binary_operation A .Ole (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x ≤ y then 1 else 0)) := by
-  show some (Val.of_bool (!Int64.ltu y x)) = _
-  rw [Int64.ltu_eq, ← decide_not, of_bool_decide]
-  simp only [UInt64.not_lt]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!Int64.ltu y x)) = _
+    rw [Int64.ltu_eq, ← decide_not, of_bool_decide]
+    simp only [UInt64.not_lt]
 
 theorem sem_ge_ll (x y : UInt64) :
     sem_binary_operation A .Oge (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x ≥ y then 1 else 0)) := by
-  show some (Val.of_bool (!Int64.ltu x y)) = _
-  rw [Int64.ltu_eq, ← decide_not, of_bool_decide]
-  simp only [UInt64.not_lt, ge_iff_le]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!Int64.ltu x y)) = _
+    rw [Int64.ltu_eq, ← decide_not, of_bool_decide]
+    simp only [UInt64.not_lt, ge_iff_le]
 
 theorem sem_eq_ii (x y : UInt32) :
     sem_binary_operation A .Oeq (.Vint x) tuint (.Vint y) tuint m =
       some (.Vint (if x = y then 1 else 0)) := by
-  show some (Val.of_bool (LClight.Int.eq x y)) = _
-  rw [LClight.Int.eq_eq, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (LClight.Int.eq x y)) = _
+    rw [LClight.Int.eq_eq, of_bool_decide]
 
 theorem sem_ne_ii (x y : UInt32) :
     sem_binary_operation A .One (.Vint x) tuint (.Vint y) tuint m =
       some (.Vint (if x ≠ y then 1 else 0)) := by
-  show some (Val.of_bool (!LClight.Int.eq x y)) = _
-  rw [LClight.Int.eq_eq, ← decide_not, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!LClight.Int.eq x y)) = _
+    rw [LClight.Int.eq_eq, ← decide_not, of_bool_decide]
 
 theorem sem_and_ii (x y : UInt32) :
     sem_binary_operation A .Oand (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x &&& y)) := by
-  rw [← LClight.Int.and_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← LClight.Int.and_eq]; rfl
 
 theorem sem_sub_ii (x y : UInt32) :
     sem_binary_operation A .Osub (.Vint x) tuint (.Vint y) tuint m =
-      some (.Vint (LClight.Int.sub x y)) :=
-  rfl
+      some (.Vint (LClight.Int.sub x y)) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
 
 theorem sem_add_ii (x y : UInt32) :
     sem_binary_operation A .Oadd (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x + y)) := by
-  rw [← LClight.Int.add_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← LClight.Int.add_eq]; rfl
 
 theorem sem_sub_ii' (x y : UInt32) :
     sem_binary_operation A .Osub (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x - y)) := by
-  rw [← LClight.Int.sub_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← LClight.Int.sub_eq]; rfl
 
 theorem sem_or_ii (x y : UInt32) :
     sem_binary_operation A .Oor (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x ||| y)) := by
-  rw [← LClight.Int.or_eq]; rfl
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    rw [← LClight.Int.or_eq]; rfl
 
 theorem sem_shl_ii (x k : UInt32) (hk : k.toNat < 32) :
     sem_binary_operation A .Oshl (.Vint x) tuint (.Vint k) tuint m = some (.Vint (x <<< k)) := by
@@ -169,28 +209,38 @@ theorem sem_shr_ii (x k : UInt32) (hk : k.toNat < 32) :
 theorem sem_lt_ii (x y : UInt32) :
     sem_binary_operation A .Olt (.Vint x) tuint (.Vint y) tuint m =
       some (.Vint (if x < y then 1 else 0)) := by
-  show some (Val.of_bool (LClight.Int.ltu x y)) = _
-  rw [LClight.Int.ltu_eq, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (LClight.Int.ltu x y)) = _
+    rw [LClight.Int.ltu_eq, of_bool_decide]
 
 theorem sem_ge_ii (x y : UInt32) :
     sem_binary_operation A .Oge (.Vint x) tuint (.Vint y) tuint m =
       some (.Vint (if x ≥ y then 1 else 0)) := by
-  show some (Val.of_bool (!LClight.Int.ltu x y)) = _
-  rw [LClight.Int.ltu_eq, ← decide_not, of_bool_decide]
-  simp only [UInt32.not_lt, ge_iff_le]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!LClight.Int.ltu x y)) = _
+    rw [LClight.Int.ltu_eq, ← decide_not, of_bool_decide]
+    simp only [UInt32.not_lt, ge_iff_le]
 
 theorem sem_gt_ii (x y : UInt32) :
     sem_binary_operation A .Ogt (.Vint x) tuint (.Vint y) tuint m =
       some (.Vint (if y < x then 1 else 0)) := by
-  show some (Val.of_bool (LClight.Int.ltu y x)) = _
-  rw [LClight.Int.ltu_eq, of_bool_decide]
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (LClight.Int.ltu y x)) = _
+    rw [LClight.Int.ltu_eq, of_bool_decide]
 
 /-! ## Casts and conditions -/
 
-theorem cast_int_uint (x : UInt32) : sem_cast (.Vint x) tint tuint m = some (.Vint x) := rfl
+/-- A cast between 32-bit integer types, which `classify_cast` makes `cast_case_i2i` when
+`ptr64` holds and `cast_case_pointer` otherwise. -/
+theorem cast_i32 {si1 si2 : signedness} {a1 a2 : attr} (x : UInt32) :
+    sem_cast A (.Vint x) (.Tint .I32 si1 a1) (.Tint .I32 si2 a2) m = some (.Vint x) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
 
 theorem cast_long_uint (x : UInt64) :
-    sem_cast (.Vlong x) tulong tuint m = some (.Vint (UInt32.ofNat (x.toNat % 2 ^ 32))) := by
+    sem_cast A (.Vlong x) tulong tuint m = some (.Vint (UInt32.ofNat (x.toNat % 2 ^ 32))) := by
   show some (val.Vint (LClight.Int.repr (Int64.unsigned x))) = _
   simp only [Int64.unsigned, LClight.Int.repr_natCast]
   congr 2
@@ -199,22 +249,24 @@ theorem cast_long_uint (x : UInt64) :
   omega
 
 theorem cast_uint_long (x : UInt32) :
-    sem_cast (.Vint x) tuint tulong m = some (.Vlong (UInt64.ofNat x.toNat)) := by
+    sem_cast A (.Vint x) tuint tulong m = some (.Vlong (UInt64.ofNat x.toNat)) := by
   show some (val.Vlong (Int64.repr (LClight.Int.unsigned x))) = _
   simp only [LClight.Int.unsigned, Int64.repr_natCast]
 
-theorem cast_ll (x : UInt64) : sem_cast (.Vlong x) tulong tulong m = some (.Vlong x) := rfl
-theorem cast_ii (x : UInt32) : sem_cast (.Vint x) tuint tuint m = some (.Vint x) := rfl
+theorem cast_ll (x : UInt64) : sem_cast A (.Vlong x) tulong tulong m = some (.Vlong x) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
 theorem cast_dd (x : UInt64) :
-    sem_cast (.Vfloat x) (VT.ty .f64) (VT.ty .f64) m = some (.Vfloat x) := rfl
+    sem_cast A (.Vfloat x) (VT.ty .f64) (VT.ty .f64) m = some (.Vfloat x) :=
+  rfl
 theorem cast_ss (x : UInt32) :
-    sem_cast (.Vsingle x) (VT.ty .f32) (VT.ty .f32) m = some (.Vsingle x) := rfl
+    sem_cast A (.Vsingle x) (VT.ty .f32) (VT.ty .f32) m = some (.Vsingle x) :=
+  rfl
 
-theorem bool_uint (x : UInt32) : bool_val (.Vint x) tuint m = some (decide (x ≠ 0)) := by
+theorem bool_uint (x : UInt32) : bool_val A (.Vint x) tuint m = some (decide (x ≠ 0)) := by
   show some (!LClight.Int.eq x LClight.Int.zero) = _
   rw [LClight.Int.eq_eq, LClight.Int.zero_eq, decide_not]
 
-theorem bool_int (x : UInt32) : bool_val (.Vint x) tint m = some (decide (x ≠ 0)) := by
+theorem bool_int (x : UInt32) : bool_val A (.Vint x) tint m = some (decide (x ≠ 0)) := by
   show some (!LClight.Int.eq x LClight.Int.zero) = _
   rw [LClight.Int.eq_eq, LClight.Int.zero_eq, decide_not]
 

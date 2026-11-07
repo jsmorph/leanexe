@@ -47,20 +47,20 @@ theorem nativeStore_memoryCap (m : Module) (cap : Nat) : (nativeStore m cap).mem
 environment of `NativeA`, relates to `nativeStore` with `lx_status` 0. -/
 theorem start {m : Module} {T : Translation} (h : translate cap m = some T) (A : Archi)
     (X : ExtSem) :
-    ∃ decl m0 m1, m.memory = some decl ∧ init_mem T.cprogram = some m0 ∧
+    ∃ decl m0 m1, m.memory = some decl ∧ init_mem A T.cprogram = some m0 ∧
       (initId, globdef.Gfun (.Internal (initFunction cap decl.data))) ∈ T.cprogram.prog_defs ∧
       eval_funcall A X (globalenv T.cprogram) m0 (.Internal (initFunction cap decl.data)) [] E0
         m1 .Vundef ∧
-      StoreRel (envOf T m.globals.length cap) (nativeStore m cap) m1 ∧
-      StatusRel (envOf T m.globals.length cap) m1 0 ∧
+      StoreRel A (envOf T m.globals.length cap) (nativeStore m cap) m1 ∧
+      StatusRel A (envOf T m.globals.length cap) m1 0 ∧
       EnvOk (envOf T m.globals.length cap) ∧
       (envOf T m.globals.length cap).globals.length = m.globals.length ∧
       (envOf T m.globals.length cap).cap = cap ∧ T.nres ≤ (envOf T m.globals.length cap).nres ∧
       (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
         ∃ b, Genv.find_symbol (envOf T m.globals.length cap).ge (funId k) = some b ∧
           Genv.find_funct_ptr (envOf T m.globals.length cap).ge b = some (.Internal fd)) := by
-  obtain ⟨decl, m0, hdecl, hinit, hE, hmem, hrun⟩ := lx_init_correct h
-  obtain ⟨m1, hcall, hst, hs⟩ := hrun A X
+  obtain ⟨decl, m0, hdecl, hinit, hE, hmem, hrun⟩ := lx_init_correct h A
+  obtain ⟨m1, hcall, hst, hs⟩ := hrun X
   exact ⟨decl, m0, m1, hdecl, hinit, hmem, hcall, hst, hs, hE, by simp [envOf], rfl,
     Nat.le_refl _, funcs_found h⟩
 

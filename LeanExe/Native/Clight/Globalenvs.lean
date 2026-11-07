@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
-changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
+with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Ctypes
 
@@ -78,64 +78,64 @@ def empty_genv (pub : List ident) : t F V :=
 
 /-- `store_zeros m b p n`, by recursion on `n` read as a natural number, which is zero exactly
 when `n ≤ 0`. -/
-def store_zeros (m : mem) (b : block) (p n : _root_.Int) : Option mem :=
+def store_zeros (A : Archi) (m : mem) (b : block) (p n : _root_.Int) : Option mem :=
   go n.toNat m p
 where
   go : Nat → mem → _root_.Int → Option mem
     | 0, m, _ => some m
     | k + 1, m, p =>
-        match Mem.store .Mint8unsigned m b p Vzero with
+        match Mem.store A .Mint8unsigned m b p Vzero with
         | some m' => go k m' (p + 1)
         | none => none
 
-def store_init_data (ge : t F V) (m : mem) (b : block) (p : _root_.Int) :
+def store_init_data (A : Archi) (ge : t F V) (m : mem) (b : block) (p : _root_.Int) :
     init_data → Option mem
-  | .Init_int8 n => Mem.store .Mint8unsigned m b p (.Vint n)
-  | .Init_int16 n => Mem.store .Mint16unsigned m b p (.Vint n)
-  | .Init_int32 n => Mem.store .Mint32 m b p (.Vint n)
-  | .Init_int64 n => Mem.store .Mint64 m b p (.Vlong n)
-  | .Init_float32 n => Mem.store .Mfloat32 m b p (.Vsingle n)
-  | .Init_float64 n => Mem.store .Mfloat64 m b p (.Vfloat n)
+  | .Init_int8 n => Mem.store A .Mint8unsigned m b p (.Vint n)
+  | .Init_int16 n => Mem.store A .Mint16unsigned m b p (.Vint n)
+  | .Init_int32 n => Mem.store A .Mint32 m b p (.Vint n)
+  | .Init_int64 n => Mem.store A .Mint64 m b p (.Vlong n)
+  | .Init_float32 n => Mem.store A .Mfloat32 m b p (.Vsingle n)
+  | .Init_float64 n => Mem.store A .Mfloat64 m b p (.Vfloat n)
   | .Init_addrof symb ofs =>
       match find_symbol ge symb with
       | none => none
-      | some b' => Mem.store Mptr m b p (.Vptr b' ofs)
+      | some b' => Mem.store A (Mptr A) m b p (.Vptr b' ofs)
   | .Init_space _ => some m
 
-def store_init_data_list (ge : t F V) (m : mem) (b : block) (p : _root_.Int) :
+def store_init_data_list (A : Archi) (ge : t F V) (m : mem) (b : block) (p : _root_.Int) :
     List init_data → Option mem
   | [] => some m
   | id :: idl' =>
-      match store_init_data ge m b p id with
+      match store_init_data A ge m b p id with
       | none => none
-      | some m' => store_init_data_list ge m' b (p + init_data_size id) idl'
+      | some m' => store_init_data_list A ge m' b (p + init_data_size A id) idl'
 
 def perm_globvar (gv : globvar V) : permission :=
   if gv.gvar_volatile then .Nonempty
   else if gv.gvar_readonly then .Readable
   else .Writable
 
-def alloc_global (ge : t F V) (m : mem) : ident × globdef F V → Option mem
+def alloc_global (A : Archi) (ge : t F V) (m : mem) : ident × globdef F V → Option mem
   | (_, .Gfun _) =>
       let (m1, b) := Mem.alloc m 0 1
       Mem.drop_perm m1 b 0 1 .Nonempty
   | (_, .Gvar v) =>
       let init := v.gvar_init
-      let sz := init_data_list_size init
+      let sz := init_data_list_size A init
       let (m1, b) := Mem.alloc m 0 sz
-      match store_zeros m1 b 0 sz with
+      match store_zeros A m1 b 0 sz with
       | none => none
       | some m2 =>
-          match store_init_data_list ge m2 b 0 init with
+          match store_init_data_list A ge m2 b 0 init with
           | none => none
           | some m3 => Mem.drop_perm m3 b 0 sz (perm_globvar v)
 
-def alloc_globals (ge : t F V) (m : mem) : List (ident × globdef F V) → Option mem
+def alloc_globals (A : Archi) (ge : t F V) (m : mem) : List (ident × globdef F V) → Option mem
   | [] => some m
   | g :: gl' =>
-      match alloc_global ge m g with
+      match alloc_global A ge m g with
       | none => none
-      | some m' => alloc_globals ge m' gl'
+      | some m' => alloc_globals A ge m' gl'
 
 end Genv
 

@@ -2,21 +2,22 @@
 # Compares LClight.run with CompCert's reference interpreter on random programs.  The executable
 # clight-diff (tests/TestSupport/Native/ClightDiff.lean) writes COUNT programs from SEED as C,
 # and the fixed programs of ClightGen.nanPrograms, each with the output that LClight.run gives
-# under the NaN parameters of ARCHI, and `ccomp -interp -quiet` runs each C file.  It also writes
-# COUNT trace programs, whose main stores to volatile globals, with the events and the exit code
-# that LClight.run_program gives, and `ccomp -interp` runs each of them, and COUNT input
+# under the instance of Archi that ARCHI names, and `ccomp -interp -quiet` runs each C file.  It
+# also writes COUNT trace programs, whose main stores to volatile globals, with the events and the
+# exit code that LClight.run_program gives, and `ccomp -interp` runs each of them, and COUNT input
 # programs, which also load from const volatile globals, in the same way.  A program that the
 # copy finds stuck must stop with CompCert's "Undefined behavior", and every other program must
 # print the same lines, the events and the exit code for a trace program.  A program whose run
 # exhausts the fuel is counted and skipped.  CCOMP names the CompCert 3.18 driver, `ccomp` by
-# default, configured for the target of ARCHI.
+# default, configured for the target of ARCHI, which for arm is a little-endian ARM target such
+# as `armv7m-eabihf`.
 # LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
 # the caller sets it, as for tests/native/run.sh.
-# Usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64]
+# Usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64|arm]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
-  echo "usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64]" >&2
+  echo "usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64|arm]" >&2
   exit 2
 fi
 seed=$1

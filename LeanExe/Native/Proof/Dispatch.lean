@@ -19,7 +19,7 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 theorem sim_zero {CallOk : Nat → Prop} (inst : Instruction) :
     InstrSimL A X E mod c CallOk 0 inst := by
   intro L σ n s σ' n' _ _ _ _ α st sl le m env _ _
-  rw [execOne_zero]; trivial
+  rw [ProofKit.execOne_zero]; trivial
 
 theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
     (h64 : mod.memIs64 = false) (hres : ResOk E c.results) {CallOk : Nat → Prop}

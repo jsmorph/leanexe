@@ -1,7 +1,7 @@
 LeanExe/Native/Clight/
 
-The files Integers.lean, Floats.lean, AST.lean, Values.lean, Memdata.lean, Memory.lean,
-Ctypes.lean, Globalenvs.lean, Events.lean, Cop.lean, Clight.lean, and Bigstep.lean in
+The files Archi.lean, Integers.lean, Floats.lean, AST.lean, Values.lean, Memdata.lean,
+Memory.lean, Ctypes.lean, Globalenvs.lean, Events.lean, Cop.lean, Clight.lean, and Bigstep.lean in
 LeanExe/Native/Clight/ transcribe definitions of the CompCert verified compiler, release 3.18,
 into Lean, and are a derived work of it.  CompCert is Copyright Institut National de Recherche en
 Informatique et en Automatique (INRIA) and AbsInt Angewandte Informatik GmbH.
@@ -16,21 +16,21 @@ URL.  The archive's Changelog.md begins with Release 3.18, and its VERSION file 
 The transcribed CompCert files are lib/Integers.v, lib/Floats.v, lib/IEEE754_extra.v,
 lib/Maps.v, common/AST.v, common/Values.v, common/Memdata.v, common/Memtype.v, common/Memory.v,
 common/Globalenvs.v, common/Events.v, common/Builtins0.v, common/Builtins.v, cfrontend/Ctypes.v,
-cfrontend/Cop.v, cfrontend/Clight.v, cfrontend/ClightBigstep.v, x86_64/Archi.v, and
-aarch64/Archi.v.  Each states the copyright of INRIA, and CompCert's LICENSE file lists each of
+cfrontend/Cop.v, cfrontend/Clight.v, cfrontend/ClightBigstep.v, x86_64/Archi.v, aarch64/Archi.v,
+and arm/Archi.v.  Each states the copyright of INRIA, and CompCert's LICENSE file lists each of
 them among the files distributed both under the INRIA Non-Commercial License Agreement and under
 the GNU Lesser General Public License, version 2.1 or any later version, with the choice left to
 the user.  The rest of CompCert, including the compiler's back end, is under the INRIA agreement
 only, and its commercial use requires a Software Usage Agreement from AbsInt.
 
 License: LeanExe takes the GNU Lesser General Public License, version 2.1 or (at your option) any
-later version, for the twelve Lean files named above.  The text of version 2.1 is
+later version, for the Lean files named above.  The text of version 2.1 is
 LeanExe/Native/Clight/LICENSE-LGPL-2.1, copied unchanged from lines 173 to 674 of CompCert's
 LICENSE file (SHA-256 dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551).  Each of
-the twelve files begins with a notice that names its CompCert sources, CompCert's copyright
+these files begins with a notice that names its CompCert sources, CompCert's copyright
 holders, this license, and the date of the change from CompCert.  The rest of LeanExe, including
-the files that import these twelve, such as Run.lean, RunSound.lean, and the translator, is not
-covered by the LGPL; it uses the twelve files as a library.
+the files that import them, such as Run.lean, RunSound.lean, and the translator, is not covered
+by the LGPL.  It uses these files as a library.
 
 Changes, made on 2026-10-26: the Lean files keep CompCert's names and only the definitions that the
 semantics of this directory uses, without proof fields.  Machine integers are Lean's fixed-width
@@ -48,3 +48,13 @@ of external_call, and Bigstep.lean the judgment about a whole program,
 bigstep_program_terminates.  external_call takes the global environment, where
 CompCert takes a symbol environment, and passes its symbol map to the parameter of external
 functions as before.
+
+Changes, made on 2026-11-04: Archi.lean holds the architecture parameters, which Floats.lean held
+before, and adds ptr64 and the instance arm, from arm/Archi.v with big_endian false, as the
+configuration armv7m-eabihf sets it.  The definitions that depend on Archi.ptr64 in CompCert take
+the architecture and keep CompCert's branches on ptr64: the operations of Ptrofs, whose word size
+is 64 or 32 bits, Mptr, the sizes of pointers and of Init_addrof, Vptrofs, Val.load_result,
+encode_val, decode_val, Mem.load, Mem.loadv, Mem.store, Mem.storev, sizeof, access_mode, the
+operators of Cop.lean, the volatile loads and stores of Events.lean, the allocation of globals in
+Globalenvs.lean, and the semantics of Clight.lean and Bigstep.lean.  A ptrofs is a 64-bit word at
+both widths, below the modulus of the architecture.

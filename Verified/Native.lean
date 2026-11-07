@@ -32,18 +32,18 @@ def NativeTablesA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : 
       Represent.borrowed heap store params x →
       Separate store (Represent.moves store params x) (Represent.reads store params x) →
       store.memoryCap mod 0 ≤ 65535 → ArgsTyped ps params.reverse →
-      ∀ m, StoreRel E store m → StatusRel E m 0 →
+      ∀ m, StoreRel A E store m → StatusRel A E m 0 →
       ∃ t m' vres final, eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t m'
-          vres ∧ StoreRel E final m' ∧
-        ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
-            ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
+          vres ∧ StoreRel A E final m' ∧
+        ((StatusRel A E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
+            ResultRel A E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
             final.memoryCaps = store.memoryCaps ∧
             (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
               (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                 heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
-          (aborts = true ∧ StatusRel E m' trapUnreachable))
+          (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 /-- The translation of the wrapper of the theorem `h` computes its function as `h` states. -/
 def NativeTablesImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool} {mod : Module}
@@ -91,18 +91,18 @@ def NativeStaticA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : 
       Represent.borrowed heap store params x →
       Separate store (Represent.moves store params x) (Represent.reads store params x) →
       store.memoryCap mod 0 ≤ 65535 → ArgsTyped ps params.reverse →
-      ∀ m, StoreRel E store m → StatusRel E m 0 →
+      ∀ m, StoreRel A E store m → StatusRel A E m 0 →
       ∃ t m' vres final, eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t m'
-          vres ∧ StoreRel E final m' ∧
-        ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
-            ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
+          vres ∧ StoreRel A E final m' ∧
+        ((StatusRel A E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
+            ResultRel A E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
             final.memoryCaps = store.memoryCaps ∧
             (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
               (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                 heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
-          (aborts = true ∧ StatusRel E m' trapUnreachable))
+          (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 /-- The translation of the function of the theorem `h` computes its function as `h` states. -/
 def NativeStaticImpl {α β : Type} [Represent α] [Represent β] {pool : Bytes.LiteralPool}

@@ -1,0 +1,376 @@
+Two changes to isla-footprint of Isla e9b5d945 (https://github.com/rems-project/isla), which
+tests/isla/traces.sh uses to trace the A64 model's loads and stores.  Without the two new options
+the patched Isla runs as the original: Memory::read returns to its old code at once when memory
+holds no fixed entry, and the lookup of reset constraints consults the instruction's fields only
+under the new flag.  Apply with `patch -p1` in a copy of the e9b5d945 tree.
+
+--fixed-memory EXPRESSION=VALUE.  The reset builtin evaluates EXPRESSION, an SMT expression over
+registers, after it asserts the reset constraints and with their lookup, and fixes the bytes of
+VALUE, 1 to 8 of them, at the resulting address in the frame's memory, which every path inherits.
+Memory::read answers an untagged read of that many bytes with VALUE when Z3 proves the read's
+address equal to the entry's, fails with Z3Unknown when Z3 cannot decide, and otherwise reads as
+before.  An answered read records a read-mem event with VALUE at the address that the
+specification passed, so a checker of the trace verifies that memory holds VALUE at the address
+that the translation table walk computed.  The change adds no assertion to the solver and changes
+no write.  It lets TTBR0_EL1 stay symbolic while the walk reads the startup's descriptors, which no
+stock mechanism provides: --armv8-page-tables places tables at concrete addresses only, and a read
+from symbolic memory returns a fresh value whose fields fork the walk without bound.
+
+--reset-constraint-fields.  With this flag, a name in a --reset-constraint that names a field of
+the --partial instruction denotes the field's variable.  The lookup consults the fields before the
+symbol table, which also holds the IR's local variables, among them names such as imm12, and it
+fails on a name that is both a field and a register.  Isla records the constraint as an assume
+event and asserts it, as it does any reset constraint, so a theorem over the trace carries it as a
+premise.  The flag lets one constraint relate a base register to an immediate, such as
+X[Rn] + 8 * imm12 lying in the RAM GiB.
+
+isla-lib/src/memory.rs holds the entries and the test in Memory::read, isla-lib/src/executor.rs
+the lookup and the evaluation of the entries at reset, isla-lib/src/executor/task.rs the entries
+and the field variables that TaskState carries, and src/footprint.rs the options and the field
+variables that instruction_to_val returns.
+
+diff -ruN a/isla-lib/src/executor/task.rs b/isla-lib/src/executor/task.rs
+--- a/isla-lib/src/executor/task.rs
++++ b/isla-lib/src/executor/task.rs
+@@ -35,7 +35,7 @@
+ use crate::executor::frame::{Backtrace, Frame};
+ use crate::fraction::Fraction;
+ use crate::ir::{Loc, Name, Reset, SharedState};
+-use crate::smt::{smtlib, Checkpoint, Event};
++use crate::smt::{smtlib, Checkpoint, Event, Sym};
+ use crate::zencode;
+ 
+ static TASK_COUNTER: AtomicUsize = AtomicUsize::new(0);
+@@ -82,17 +82,37 @@
+     // Exit if we ever announce an instruction with all bits set to zero
+     pub(super) zero_announce_exit: bool,
+     pub(super) interrupts: Vec<TaskInterrupt<B>>,
++    // Addresses, as expressions over registers, and the values of the bytes there, which the
++    // reset builtin fixes in memory
++    pub(super) fixed_memory: Vec<(smtlib::Exp<Loc<String>>, B)>,
++    // The variables of a partial instruction's fields, which reset constraints may name
++    pub(super) opcode_vars: HashMap<String, Sym>,
+ }
+ 
+ impl<B> TaskState<B> {
+     pub fn new() -> Self {
+-        TaskState { reset_registers: HashMap::new(), pc_limit: None, zero_announce_exit: true, interrupts: Vec::new() }
++        TaskState {
++            reset_registers: HashMap::new(),
++            pc_limit: None,
++            zero_announce_exit: true,
++            interrupts: Vec::new(),
++            fixed_memory: Vec::new(),
++            opcode_vars: HashMap::new(),
++        }
+     }
+ 
+     pub fn with_reset_registers(self, reset_registers: HashMap<Loc<Name>, Reset<B>>) -> Self {
+         TaskState { reset_registers, ..self }
+     }
+ 
++    pub fn with_fixed_memory(self, fixed_memory: Vec<(smtlib::Exp<Loc<String>>, B)>) -> Self {
++        TaskState { fixed_memory, ..self }
++    }
++
++    pub fn with_opcode_vars(self, opcode_vars: HashMap<String, Sym>) -> Self {
++        TaskState { opcode_vars, ..self }
++    }
++
+     pub fn with_pc_limit(self, pc: Name, limit: usize) -> Self {
+         TaskState { pc_limit: Some((pc, limit)), ..self }
+     }
+diff -ruN a/isla-lib/src/executor.rs b/isla-lib/src/executor.rs
+--- a/isla-lib/src/executor.rs
++++ b/isla-lib/src/executor.rs
+@@ -683,6 +683,38 @@
+     Ok(false)
+ }
+ 
++// Resolves a name of a reset constraint or of a fixed memory address: a field of the partial
++// instruction, if the task names one, and otherwise a location of the symbol table.
++fn reset_lookup<'ir, B: BV>(
++    s: &Loc<String>,
++    frame: &mut LocalFrame<'ir, B>,
++    task_state: &TaskState<B>,
++    shared_state: &SharedState<'ir, B>,
++    solver: &mut Solver<B>,
++    info: SourceLoc,
++) -> Result<smtlib::Exp<Sym>, String> {
++    if let Loc::Id(name) = s {
++        let field = zencode::decode(name);
++        if let Some(v) = task_state.opcode_vars.get(&field) {
++            return match shared_state.symtab.get(name) {
++                Some(id) if shared_state.registers.contains_key(&id) => {
++                    Err(format!("{} names both an instruction field and a register", field))
++                }
++                _ => Ok(smtlib::Exp::Var(*v)),
++            };
++        }
++    }
++    match shared_state.symtab.get_loc(s) {
++        Some(loc) => {
++            let value =
++                get_loc_and_initialize(&loc, &mut frame.local_state, shared_state, solver, &mut Vec::new(), info, false)
++                    .map_err(|e| e.to_string())?;
++            smt_value(&value, info).map_err(|e| e.to_string())
++        }
++        None => Err(format!("Location {} not found", s)),
++    }
++}
++
+ pub fn reset_registers<'ir, B: BV>(
+     _tid: usize,
+     frame: &mut LocalFrame<'ir, B>,
+@@ -720,23 +752,9 @@
+     }
+     if !shared_state.reset_constraints.is_empty() {
+         for constraint in &shared_state.reset_constraints {
+-            let mut lookup = |s| match shared_state.symtab.get_loc(s) {
+-                Some(loc) => {
+-                    let value = get_loc_and_initialize(
+-                        &loc,
+-                        &mut frame.local_state,
+-                        shared_state,
+-                        solver,
+-                        &mut Vec::new(),
+-                        info,
+-                        false,
+-                    )
+-                    .map_err(|e| e.to_string())?;
+-                    smt_value(&value, info).map_err(|e| e.to_string())
+-                }
+-                None => Err(format!("Location {} not found", s)),
+-            };
+-            let assertion_exp = constraint.map_var(&mut lookup).map_err(ExecError::Unreachable)?;
++            let assertion_exp = constraint
++                .map_var(&mut |s| reset_lookup(s, frame, task_state, shared_state, solver, info))
++                .map_err(ExecError::Unreachable)?;
+             solver.add_event(Event::Assume(constraint.clone()));
+             solver.add(Def::Assert(assertion_exp));
+         }
+@@ -744,6 +762,12 @@
+             return Err(ExecError::InconsistentRegisterReset);
+         }
+     }
++    for (address, value) in &task_state.fixed_memory {
++        let address = address
++            .map_var(&mut |s| reset_lookup(s, frame, task_state, shared_state, solver, info))
++            .map_err(ExecError::Unreachable)?;
++        frame.memory.add_fixed(address, *value, solver)?;
++    }
+     // The arguments and result of any function assumptions are
+     // evaluated now so that they can refer to register values in the
+     // prestate of an instruction.
+diff -ruN a/isla-lib/src/memory.rs b/isla-lib/src/memory.rs
+--- a/isla-lib/src/memory.rs
++++ b/isla-lib/src/memory.rs
+@@ -48,7 +48,7 @@
+ use crate::ir::Val;
+ use crate::log;
+ use crate::probe;
+-use crate::smt::smtlib::{bits64, Def, Exp};
++use crate::smt::smtlib::{bits64, Def, Exp, Ty};
+ use crate::smt::{Event, Model, ModelVal, ReadOpts, SmtResult, Solver, Sym, WriteOpts};
+ use crate::source_loc::SourceLoc;
+ 
+@@ -232,9 +232,11 @@
+ pub struct Memory<B> {
+     regions: Vec<Region<B>>,
+     client_info: Option<Box<dyn MemoryCallbacks<B>>>,
++    fixed: Vec<(Exp<Sym>, u32, B)>,
+ }
+ 
+ static DEFAULT_REGION_NAME: &str = "default";
++static FIXED_REGION_NAME: &str = "fixed";
+ 
+ enum Overlap {
+     Unique(u64),
+@@ -243,7 +245,7 @@
+ 
+ impl<B: BV> Memory<B> {
+     pub fn new() -> Self {
+-        Memory { regions: Vec::new(), client_info: None }
++        Memory { regions: Vec::new(), client_info: None, fixed: Vec::new() }
+     }
+ 
+     pub fn regions(&self) -> &[Region<B>] {
+@@ -321,6 +323,46 @@
+         self.client_info = Some(info);
+     }
+ 
++    /// Fixes the bytes of `value` at `address`, an expression over the solver's variables: an
++    /// untagged read of `value.len() / 8` bytes returns `value` when the solver proves the
++    /// read's address equal to `address`.
++    pub fn add_fixed(&mut self, address: Exp<Sym>, value: B, solver: &mut Solver<B>) -> Result<(), ExecError> {
++        let tcx: HashMap<Sym, Ty> =
++            address.variables().into_iter().filter_map(|v| Some((v, Ty::BitVec(solver.length(v)?)))).collect();
++        match address.infer(&tcx, &HashMap::new()) {
++            Some(Ty::BitVec(width)) => {
++                self.fixed.push((address, width, value));
++                Ok(())
++            }
++            _ => Err(ExecError::Type(format!("fixed memory address {:?}", address), SourceLoc::unknown())),
++        }
++    }
++
++    fn read_fixed(&self, address: &Val<B>, bytes: u32, solver: &mut Solver<B>) -> Result<Option<B>, ExecError> {
++        if self.fixed.is_empty() {
++            return Ok(None);
++        }
++        let (address, width) = match address {
++            Val::Bits(bv) => (crate::primop_util::smt_sbits(*bv), bv.len()),
++            Val::Symbolic(v) => match solver.length(*v) {
++                Some(width) => (Exp::Var(*v), width),
++                None => return Ok(None),
++            },
++            _ => return Ok(None),
++        };
++        for (entry, entry_width, value) in &self.fixed {
++            if *entry_width == width && value.len() == 8 * bytes {
++                let differs = Exp::Neq(Box::new(address.clone()), Box::new(entry.clone()));
++                match solver.check_sat_with(&differs, SourceLoc::unknown()) {
++                    SmtResult::Unsat => return Ok(Some(*value)),
++                    SmtResult::Unknown => return Err(ExecError::Z3Unknown),
++                    SmtResult::Sat => (),
++                }
++            }
++        }
++        Ok(None)
++    }
++
+     pub fn write_byte(&mut self, address: Address, byte: u8) {
+         for region in &mut self.regions {
+             match region {
+@@ -458,6 +500,21 @@
+         if let Val::I128(bytes) = bytes.widen_int() {
+             let bytes = u32::try_from(bytes).expect("Bytes did not fit in u32 in memory read");
+ 
++            if !tag {
++                if let Some(value) = self.read_fixed(&address, bytes, solver)? {
++                    solver.add_event(Event::ReadMem {
++                        value: Val::Bits(value),
++                        read_kind,
++                        address,
++                        bytes,
++                        tag_value: None,
++                        opts,
++                        region: FIXED_REGION_NAME,
++                    });
++                    return Ok(Val::Bits(value));
++                }
++            }
++
+             match address {
+                 Val::Bits(concrete_addr) => {
+                     for region in &self.regions {
+diff -ruN a/src/footprint.rs b/src/footprint.rs
+--- a/src/footprint.rs
++++ b/src/footprint.rs
+@@ -97,13 +97,14 @@
+     s
+ }
+ 
++// The value of the instruction and the variable of each symbolic field by name.
+ fn instruction_to_val<B: BV>(
+     opcode: &[InstructionSegment<B>],
+     constraints: &[String],
+     solver: &mut Solver<B>,
+-) -> Val<B> {
++) -> (Val<B>, HashMap<String, smt::Sym>) {
+     match opcode {
+-        [InstructionSegment::Concrete(bv)] => Val::Bits(*bv),
++        [InstructionSegment::Concrete(bv)] => (Val::Bits(*bv), HashMap::new()),
+         _ => {
+             print!("(segments");
+             let mut var_map = HashMap::new();
+@@ -146,7 +147,7 @@
+                 let assertion_exp = assertion.map_var(&mut lookup).expect("Bad instruction constraint");
+                 solver.add(smtlib::Def::Assert(assertion_exp));
+             }
+-            val
++            (val, var_map.into_iter().map(|(name, (_, v))| (name.clone(), v)).collect())
+         }
+     }
+ }
+@@ -313,6 +314,13 @@
+     opts.optflag("", "partial", "parse instruction as binary with unknown bits");
+     opts.optopt("", "from-file", "parse instruction from opcodes file", "<file>");
+     opts.optmulti("", "instruction-constraint", "add constraint on variables in a partial instruction", "<constraint>");
++    opts.optflag("", "reset-constraint-fields", "let reset constraints name the fields of a partial instruction");
++    opts.optmulti(
++        "",
++        "fixed-memory",
++        "answer reads of the value's bytes at an address that the solver proves equal to the expression, which the reset builtin evaluates",
++        "<expression>=<value>",
++    );
+     opts.optflag("", "eval-carefully", "during simplification check the results of symbolic evaluation");
+     opts.optmulti(
+         "k",
+@@ -371,6 +379,28 @@
+ 
+     let instruction = matches.opt_str("instruction").unwrap();
+ 
++    let mut fixed_memory: Vec<(smtlib::Exp<Loc<String>>, B129)> = Vec::new();
++    for entry in matches.opt_strs("fixed-memory") {
++        let Some((address, value)) = entry.rsplit_once('=') else {
++            eprintln!("--fixed-memory {} has no =<value>", entry);
++            return 1;
++        };
++        let address = match smt_parser::ExpParser::new().parse(address) {
++            Ok(address) => address,
++            Err(e) => {
++                eprintln!("--fixed-memory address parse error: {}", e);
++                return 1;
++            }
++        };
++        match B129::from_str(value) {
++            Some(value) if value.len() % 8 == 0 && (8..=64).contains(&value.len()) => fixed_memory.push((address, value)),
++            _ => {
++                eprintln!("--fixed-memory value {} is not a bitvector of 1 to 8 bytes", value);
++                return 1;
++            }
++        }
++    }
++
+     let mut reset_registers: HashMap<Loc<Name>, Reset<B129>> = HashMap::new();
+     let mut constraints: Vec<String> = matches.opt_strs("instruction-constraint");
+ 
+@@ -579,12 +609,15 @@
+         None => "zisla_footprint".to_string(),
+     };
+ 
+-    let (initial_checkpoint, opcode_val) = {
++    let (initial_checkpoint, opcode_val, opcode_vars) = {
+         let solver_cfg = smt::Config::new();
+         let solver_ctx = smt::Context::new(solver_cfg);
+         let mut solver = Solver::from_checkpoint(&solver_ctx, elf_checkpoint);
+-        let opcode_val =
+-            if have_elf { elf_opcode_val.unwrap() } else { instruction_to_val(&opcode, &constraints, &mut solver) };
++        let (opcode_val, opcode_vars) = if have_elf {
++            (elf_opcode_val.unwrap(), HashMap::new())
++        } else {
++            instruction_to_val(&opcode, &constraints, &mut solver)
++        };
+         // Record register assumptions from defaults; others are recorded at reset-registers
+         let mut sorted_regs: Vec<(&Name, &Register<_>)> = regs.iter().collect();
+         sorted_regs.sort_by_key(|(name, _)| *name);
+@@ -593,12 +626,16 @@
+                 solver.add_event(Event::AssumeReg(*name, vec![], value.clone()))
+             }
+         }
+-        (smt::checkpoint(&mut solver), opcode_val)
++        (smt::checkpoint(&mut solver), opcode_val, opcode_vars)
+     };
+ 
+     let function_id = shared_state.symtab.lookup(&footprint_function);
+     let (args, ret_ty, instrs) = shared_state.functions.get(&function_id).unwrap();
+-    let task_state = TaskState::new().with_reset_registers(reset_registers);
++    let opcode_vars = if matches.opt_present("reset-constraint-fields") { opcode_vars } else { HashMap::new() };
++    let task_state = TaskState::new()
++        .with_reset_registers(reset_registers)
++        .with_fixed_memory(fixed_memory)
++        .with_opcode_vars(opcode_vars);
+     let mut task = LocalFrame::new(function_id, args, ret_ty, Some(&[opcode_val.clone()]), instrs)
+         .add_lets(lets)
+         .add_regs(regs)
