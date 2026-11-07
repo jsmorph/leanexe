@@ -4,6 +4,7 @@ import TestSupport.M7.GwImages
 import TestSupport.M7.CrcImages
 import TestSupport.M7.ShaImages
 import TestSupport.M7.Dwt
+import TestSupport.M7.Area
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
@@ -23,6 +24,10 @@ steps `crc-usart3` and `crc-cmsdk`, and the SHA-256 steps `sha-usart3` and `sha-
   `mps2-an500`, and `m7-windows gateway-board FILE` the image of the gateway of `gwTickUsart3`
   for the NUCLEO-F767ZI, as `tests/TestSupport/M7/GwImages.lean` lays them out, and each prints
   the addresses of `main` and of its loop's head.
+- `m7-windows area-board FILE AREA` writes to FILE the image of `tests/TestSupport/M7/Area.lean`:
+  the setup of the area of the CRC-32 step's module, the board's initialization, and the echo of
+  `usart3Tick`, and to AREA the area's bytes as the setup leaves them, and prints the address of
+  the initialization and the numbers of the setup's instructions and of the area's bytes.
 - `m7-windows crc-qemu FILE` writes to FILE the image of the CRC-32 step `crcCmsdkTick` for
   QEMU's `mps2-an500` with the setup of its area, which no theorem covers
   (`tests/TestSupport/M7/CrcImages.lean`), and prints the addresses of `main` and of its loop's
@@ -147,6 +152,22 @@ def main (args : List String) : IO UInt32 := do
           return 0
       | .error e =>
           IO.eprintln s!"m7-windows: echo-usart3-board: {e}"
+          return 1
+  | ["area-board", file, area] =>
+      match TestSupport.M7.Area.areaEchoImage with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          let a := TestSupport.M7.Area.areaExpected
+          IO.FS.writeBinFile area (ByteArray.mk a.toArray)
+          let su := LeanExe.M7.setupCode LeanExe.M7.areaHeader LeanExe.M7.areaPages
+            TestSupport.M7.Crc.crcStepCompiled.module
+          IO.println (s!"m7-windows: area-echo-usart3-board: {bytes.length} bytes, setup " ++
+            s!"{su.length} instructions, initialization {hex32 TestSupport.M7.Area.areaInit}, " ++
+            s!"area {a.length} bytes with a prefix of " ++
+            s!"{LeanExe.areaPrefix TestSupport.M7.Crc.crcStepCompiled.module}")
+          return 0
+      | .error e => do
+          IO.eprintln s!"m7-windows: area-echo-usart3-board: {e}"
           return 1
   | ["gateway-qemu", file] =>
       writeImage "gateway-cmsdk-qemu" file TestSupport.M7.Gw.qemuImage

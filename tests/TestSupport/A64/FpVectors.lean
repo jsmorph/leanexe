@@ -25,6 +25,7 @@ grid of doubles.
 namespace TestSupport.A64.Fp
 
 open LeanExe.A64
+open LeanExe (roundUp)
 
 /-- The forms under test. -/
 inductive Form where

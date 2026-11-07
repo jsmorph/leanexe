@@ -15,7 +15,7 @@ nothing until LOG shows that the transmitter waits, and then reads the answers; 
 from a generator with a fixed seed.  Each answer must equal hashlib.sha256 of every byte sent
 before it, so that a lost, repeated, or reordered byte changes every later answer.  QEMU's UART
 takes a byte only while its receive buffer is empty, so (b) and (c) lose no byte although bytes
-wait while the step computes; on the board they would overrun USART3.
+wait while the step computes.  On the board they would overrun USART3.
 
 With --device DEVICE, the script runs no QEMU and talks through the serial port DEVICE, the
 virtual COM port of a NUCLEO-F767ZI's ST-LINK or Renode's pseudo-terminal, with Serial of
