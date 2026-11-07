@@ -42416,3 +42416,83 @@ All Lean ran on edgexpert-18ff in the checkout `~/src/leanexe-m7`, whose `.lake/
 - [ES0334, STM32F76xxx and STM32F77xxx device errata](https://www.st.com/resource/en/errata_sheet/es0334-stm32f76xxx-and-stm32f77xxx-device-errata-stmicroelectronics.pdf)
 - [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
 - [GNU assembler, ARM directives](https://sourceware.org/binutils/docs/as/ARM-Directives.html)
+
+## 2026-11-07: Cortex-M7 back end, T1: the division routine and its theorem
+
+T1 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, section 2 "Division", the increment T1, and item 5 of the revisions) adds `udivmod64`, which `LeanExe/M7/Div.lean` writes as a list of the model's instructions, and its theorem in the model, `udivmod64_spec` in `LeanExe/M7/Proof/Div.lean`.  The routine takes the dividend in r0 and r1 and a nonzero divisor in r2 and r3, each with its low word first, returns the quotient in r0 and r1 and the remainder in r2 and r3, changes r4 to r7 and the flags, and accesses no memory.  It uses only forms of T0's model, so the model, the encoder, `decode_encode`, and the GNU `as` samples stay as T0 left them.  `LeanExe/M7/Proof/Machine.lean`, `Straight.lean`, and `Pair.lean` hold the multi-step relation, the lemmas about placed straight-line code and branches, and the lemmas about pairs of words, in the forms that T2's step theorem will take.
+
+### The routine
+
+The routine tests the divisor's low word first, because the remainder by 2^32 of `writeReq`, which runs in every write window of both programs (plan, section 2), takes that test's path.  When the divisor's low word is 0, `UDIV` and `MLS` give the high words' quotient and remainder, and the dividend's low word is the remainder's.  When both high words are 0, `UDIV` and `MLS` give the low words' quotient and remainder.  Otherwise `SUBS` and `SBCS` compare the dividend with the divisor, and a dividend below the divisor is the remainder with the quotient 0.  Otherwise the routine shifts the divisor left by `s`, the divisor's leading zero count less the dividend's, and runs `s + 1` passes of a restoring shift-subtract loop.  Each pass subtracts the shifted divisor from the remainder with `SUBS` and `SBCS`, shifts the carry into the quotient, adds the divisor back with `ADDS` and `ADC` when the subtraction borrowed, and halves the shifted divisor.
+
+| Piece | Offset | Instructions |
+|---|---|---|
+| `test` | 0 | `CMP r2, #0`, `BEQ high`, `ORRS r4, r1, r3`, `BNE compare` |
+| `low` | 16 | `UDIV r4, r0, r2`, `MLS r2, r4, r2, r0`, `MOV r0, r4`, `BX LR`, `BX LR` |
+| `high` | 32 | `UDIV r4, r1, r3`, `MLS r3, r4, r3, r1`, `MOV r2, r0`, `MOV r0, r4`, `MOV r1, #0`, `BX LR`, `BX LR` |
+| `compare` | 56 | `SUBS r4, r0, r2`, `SBCS r4, r1, r3`, `BCC small` |
+| `count` | 68 | `CLZ r4, r3`, `CLZ r5, r2`, `LSR r6, r4, #5`, `MLA r4, r5, r6, r4`, `CLZ r5, r1`, `SUB r4, r4, r5` |
+| `shift` | 92 | `LSL r3, r3, r4`, `MOV r5, #32`, `SUB r5, r5, r4`, `LSR r5, r2, r5`, `ORR r3, r3, r5`, `SUB r5, r4, #32`, `LSL r5, r2, r5`, `ORR r3, r3, r5`, `LSL r2, r2, r4` |
+| `clear` | 128 | `MOV r5, #0`, `MOV r6, #0` |
+| `pass` | 136 | `SUBS r0, r0, r2`, `SBCS r1, r1, r3`, `LSR r7, r5, #31`, `ADD r6, r7, r6, LSL #1`, `ADC r5, r5, r5`, `BCS keep`, `ADDS r0, r0, r2`, `ADC r1, r1, r3`, and at `keep` `LSR r2, r2, #1`, `ADD r2, r2, r3, LSL #31`, `LSR r3, r3, #1`, `CMP r4, #0`, `SUB r4, r4, #1`, `BNE pass` |
+| `done` | 192 | `MOV r2, r0`, `MOV r3, r1`, `MOV r0, r5`, `MOV r1, r6`, `BX LR`, `BX LR` |
+| `small` | 212 | `MOV r2, r0`, `MOV r3, r1`, `MOV r0, #0`, `MOV r1, #0`, `BX LR` |
+
+The routine takes 230 bytes.  The second `BX LR` of `low`, `high`, and `done` never runs: it follows the generator's rule, which the coordinator passed on from the generator's review, that every 32-bit form start at a multiple of 4, as in the code whose cycles G0 measured on the board.  `arm-none-eabi-objdump -d` of the co-simulation's image shows the routine at an address that is a multiple of 4, every 32-bit form at such an address, and GNU's reading of every instruction as the list names it.
+
+| Path | Condition | Instructions executed |
+|---|---|---|
+| `high` | the divisor's low word is 0 | 8 |
+| `low` | both high words are 0 | 8 |
+| `small` | otherwise, the dividend lies below the divisor | 12 |
+| loop | otherwise | 29, plus 12 for each pass whose quotient bit is 1 and 14 for each pass that restores; 1 to 64 passes, 41 to 923 instructions |
+
+A pass subtracts in place and adds back, because a trial difference in temporaries needs two registers beyond the remainder, the shifted divisor, the quotient, the count, and the quotient's temporary, which fill r0 to r7.  The quotient shifts left through `LSR r7, r5, #31`, `ADD r6, r7, r6, LSL #1`, and `ADC r5, r5, r5`, which takes the carry of `SBCS`, set when the subtraction does not borrow, as the new bit and leaves the flags for `BCS`.  The count in r4 starts at `s`, and `CMP r4, #0` before `SUB r4, r4, #1` ends the loop after `s + 1` passes, since the model's `SUB` with an immediate leaves the flags and the model has no `ADD` with an immediate.  After the comparison the dividend's high word is not 0, because a dividend below 2^32 lies below every divisor with a nonzero high word, so `CLZ r5, r1` gives the dividend's leading zero count.  The divisor's count is that of its high word plus, when the high word is 0, that of its low word, which `MLA` adds as the low word's count times the high word's count shifted right by 5.  `shift` is the plan's `shlI64` sequence without `AND #63`, since `s` lies below 64, and the lemma `shl_pair` states the pair shift for every amount below 64, so T2's `shlI64` reuses it.  `small` is an exit of its own because `count` needs r5 and r6 as temporaries, so the zero quotient cannot lie in them before the comparison.
+
+### The theorem
+
+```lean
+theorem udivmod64_spec {a : UInt32} {s : State} {n d : UInt64} (hc : CodeAt code a udivmod64)
+    (hpc : s.pc = a) (hlr : s.lr % 2 = 1) (h0 : s.r 0 = n.toUInt32)
+    (h1 : s.r 1 = (n >>> 32).toUInt32) (h2 : s.r 2 = d.toUInt32)
+    (h3 : s.r 3 = (d >>> 32).toUInt32) (hd : d ≠ 0) :
+    ∃ t, Reach P σ code s t ∧ t.pc = s.lr &&& 0xFFFFFFFE ∧
+      t.r 0 = (n / d).toUInt32 ∧ t.r 1 = ((n / d) >>> 32).toUInt32 ∧
+      t.r 2 = (n % d).toUInt32 ∧ t.r 3 = ((n % d) >>> 32).toUInt32 ∧ Keeps s t
+```
+
+`Keeps s t` states that `t` has the SP, LR, r8 to r12, memory, device trace, and number of device reads of `s`.  The theorem holds for every platform and every sequence of device values, since the routine accesses no memory, and it needs bit 0 of LR set, which `BL` sets.  It covers a dividend below the divisor, which takes `high` or `low` when their conditions hold and `small` otherwise.  `udivmod64_nat` states the same over `pairNat lo hi = hi · 2^32 + lo`, and `udivmod64_spec` converts it with `pairNat_toUInt32` and `eq_of_pairNat`.  `udivmod64_spec` depends on `propext`, `Classical.choice`, and `Quot.sound`, by `#print axioms`, and the lemmas below on those or fewer; no proof uses `bv_decide`, `native_decide`, `grind`, or `sorry`.
+
+`Proof/Machine.lean` follows A64's: `Reach` is the reflexive-transitive closure of `step`, `Instr.size` gives 2 bytes for `BX LR` and 4 for every other form, `codeSize` sums them, and `CodeAt code a is` places the halfwords of `is.flatMap encode` from `a`, so that `CodeAt.append` splits a list at `a + codeSize`.  `step_at` executes a placed instruction, reading the second halfword of a 32-bit form at the program counter plus 2.  `Proof/Straight.lean` adds `execSeq`, the result of a list of instructions run one after another, `reach_seq`, which reaches it from placed code without branches, and `Keeps`, which `exec_keeps` shows of every form but the loads, the stores, the writes of SP, and `BL`.  `exec_bcondTo` gives the target of `Instr.bcondTo c off` for every even offset from -2^20 to 2^20 - 2, and `run_block` and `run_branch` run placed register code, the second followed by such a branch.  The tactic `state_simp` reads the registers and flags of a state that the register forms built, and `addr_eq` proves equations of addresses that are a word plus numerals.
+
+Each piece of the routine has a lemma that runs it from a state at its offset.  The loop's invariant `LoopInv n d k t` describes the state after a pass with `k` passes left: the shifted divisor in r2 and r3 is `d · 2^k / 2`, and the quotient in r5 and r6 and the remainder in r0 and r1 satisfy `n = q · d · 2^k + r` with `r < d · 2^k`, the plan's invariant with `i = k`.  The division by 2 states the divisor after the last pass, when it is `d / 2`, in the same form.  `run_pass` takes the invariant for `j + 1` passes to `j` passes, with the program counter at the loop's head when `j` is not 0 and at `done` otherwise, and `run_loop` iterates it by induction on `j`.  The pair lemmas, `sub_pair`, `add_pair`, `half_pair`, `double_pair`, `shl_pair`, and `clzPair_bounds`, take the words that `exec` writes and give the numbers of the results; each converts words to natural numbers and decides linear goals with `omega`, after rewriting the products with a power of 2 whose exponent is a variable.
+
+Drafts of the proofs hung several times; each run ended at its timeout or, at 9.1 and 7.0 GB, by its PID, and bisection with `sorry` in scratch copies found two causes.  In the first, reading Z after `CMP r2, #0` by `show` or by `simp` with the definitions of the state updates unfolded the value `addWithCarry x (~~~(UInt32.ofNat 0)) true`, whose sum `x.toNat + 4294967295 + 1` holds a large numeral; the draft finished in under a second until a later step used the flag, which points to the kernel's definitional check of the unfolded value, an inference that no test isolated.  The lemmas of `State` that `state_simp` uses are therefore proved after `cases s`, so that `simp` inserts them as equations and no check unfolds a concrete sum, and `run_branch` states the program counter with `cond`, whose `Bool` condition has no `Decidable` instance and can be rewritten alone.  The second was `simp only [Bool.toNat_false, Nat.add_zero]` on a goal of `run_pass` with sums of 2^64, whose cause was not established; an instance of `Nat.add_zero` for the one term replaced it.
+
+### Co-simulation
+
+`tests/baremetal/m7-cosim.sh SEED PER_FORM DIV` now writes one copy of `udivmod64` into the harness, from its `encode` halfwords, and division cases that call it with `BL`: every boundary dividend 0, 1, 2^32 - 1, 2^32, 2^63, and 2^64 - 1 with every nonzero boundary divisor, 30 cases, then `DIV` random pairs.  A random operand is a boundary value or one within 1 of it, a random word of 32 or 64 bits, a random high word above a low word of 0, or a random word shifted right by a random amount, so every path and every number of passes occurs.  A case loads r0 to r12, SP, and NZCV with random values beside the operands and saves the state at the return address as an instruction case does.  `m7-cosim check` runs the model's `step` from the printed state before the call, with LR at the return address and the routine's halfwords as the only code, until the program counter reaches the return address, on a platform without Normal memory or devices, so that a memory access would stop the model.  It compares r0 to r12, SP, LR, and NZCV with QEMU's state after the call, the result words with Lean's `/` and `%` of `UInt64`, and the number of instructions with the path's count above.
+
+| Seeds | Cases of each form | Random divisions | Instruction cases | Division cases | Agree |
+|---|---|---|---|---|---|
+| 1 | 1 | 0 | 39 | 30 | all |
+| 2 | 10 | 2,000 | 390 | 2,030 | all |
+| 3 to 12 | 100 | 5,000 | 39,000 | 50,300 | all |
+
+Every run reached the four paths, and the loop's cases ran from 1 to 64 passes and from 41 to 923 instructions; seed 3, for example, had 1,165 cases on `high`, 852 on `low`, 1,353 on `small`, and 1,660 in the loop.  Each run of seeds 3 to 12 took 5.5 to 5.7 s with a peak of 0.83 GB.  A copy of a run's output with the quotient's low word of one case changed made `check` report the case and exit with status 1.  The co-simulation tests the model and the routine on QEMU's implementation of the Cortex-M7; the board's run waits for T5.
+
+### Remote host
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 4 to 8 GiB and a timeout, and the two hung builds that reached 9.1 and 7.0 GB were stopped by the PIDs that `ps` showed for this account.  A build from clean of `LeanExe.M7.Div` and the four proof modules took 12.0 s with a peak of 0.84 GB, 4.4 s of it for `Proof/Div.lean`.  `lake build LeanExe`, which elaborates every module of the library, was not run; `LeanExe.lean` imports the new modules.  minideb1 and minideb2 were not used, and the scripts and scratch files on the host were removed after the runs.
+
+- [x] `LeanExe/M7/Div.lean`: `udivmod64`, 230 bytes, every 32-bit form at a multiple of 4.
+- [x] `LeanExe/M7/Proof/`: `Reach`, `CodeAt`, `step_at`, `execSeq`, `Keeps`, `run_block`, `run_branch`, the pair lemmas, `LoopInv`, and `udivmod64_spec`.
+- [x] `tests/baremetal/m7-cosim.sh`: 52,360 division cases and 39,429 instruction cases under QEMU's `mps2-an500`.
+- [ ] T2: the echo's step, with `divUI64` and `remUI64` as `ORRS`, `BEQ`, and `BL udivmod64`, composed with `udivmod64_spec`.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [CompCert 3.18, `runtime/arm`](https://github.com/AbsInt/CompCert/tree/v3.18/runtime/arm)
+- [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
