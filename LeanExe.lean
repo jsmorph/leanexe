@@ -84,6 +84,7 @@ import LeanExe.M7.Isla.Arith
 import LeanExe.M7.Isla.Check
 import LeanExe.M7.Isla.Profile
 import LeanExe.M7.Isla.Trace
+import LeanExe.M7.Isla.Walk
 import LeanExe.M7.Machine
 import LeanExe.M7.Parts
 import LeanExe.M7.Proof.Board
