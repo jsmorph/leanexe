@@ -21,8 +21,8 @@ form (`fBin`, `sqrtCode`, `convertCode`, `fCmp`, or `truncCode`), and stores the
 result in X2 to the UART, lowest first.  `checkRun` reads the operands from the Image's bytes and
 the results from the UART's bytes and compares each result with the model's run of the same code,
 and `tagsOf` classifies each vector's exact result by its position on the grid of doubles, a
-comparison's operands as unordered, equal, less, or greater, and a conversion's operand as an
-integer, a fraction, a number from 2^64 up, a negative number, or a NaN.
+comparison's operands as unordered, equal, less, or greater, and a conversion's operand by its
+kind.
 -/
 
 namespace TestSupport.A64.Fp
@@ -670,34 +670,37 @@ def get64 (b : ByteArray) (o : Nat) : UInt64 :=
   (List.range 8).foldr (fun k acc => (acc <<< 8) ||| b[o + k]!.toUInt64) 0
 
 /-- The position of an exact result on the grid of doubles, the special results, the order of a
-comparison's operands, and the kind of a conversion's operand: an integer below 2^64, a positive
-number below 2^64 that is not an integer, a number from 2^64 up, a negative number, or a NaN. -/
+comparison's operands, and the kind of a conversion's operand: a zero, a subnormal, an integer from
+1 below 2^64, a positive normal below 2^64 that is not an integer, a finite number from 2^64 up, an
+infinity, a negative normal above -1, a finite number at or below -1, or a NaN. -/
 inductive Tag where
   | exact | tie | nearTie | overflow | subnormal | zero | nan
   | unordered | equal | less | greater
-  | integer | fraction | high | negative
+  | integer | fraction | high | infinity | negFraction | negative
   deriving BEq, Repr
 
 def Tag.all : List Tag :=
   [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan, .unordered, .equal, .less, .greater,
-    .integer, .fraction, .high, .negative]
+    .integer, .fraction, .high, .infinity, .negFraction, .negative]
 
 /-- The tags of the form's vectors. -/
 def Form.tags : Form → List Tag
   | .fcmp => [.unordered, .equal, .less, .greater]
-  | .fcvtzu => [.integer, .fraction, .high, .negative, .nan]
+  | .fcvtzu => [.zero, .subnormal, .integer, .fraction, .high, .infinity, .negFraction, .negative,
+      .nan]
   | _ => [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan]
 
 def Tag.name : Tag → String
   | .exact => "exact" | .tie => "tie" | .nearTie => "neartie" | .overflow => "overflow"
   | .subnormal => "subnormal" | .zero => "zero" | .nan => "nan" | .unordered => "unordered"
   | .equal => "equal" | .less => "less" | .greater => "greater" | .integer => "integer"
-  | .fraction => "fraction" | .high => "high" | .negative => "negative"
+  | .fraction => "fraction" | .high => "high" | .infinity => "infinity"
+  | .negFraction => "negfraction" | .negative => "negative"
 
 def Tag.index : Tag → Nat
   | .exact => 0 | .tie => 1 | .nearTie => 2 | .overflow => 3 | .subnormal => 4 | .zero => 5
   | .nan => 6 | .unordered => 7 | .equal => 8 | .less => 9 | .greater => 10 | .integer => 11
-  | .fraction => 12 | .high => 13 | .negative => 14
+  | .fraction => 12 | .high => 13 | .infinity => 14 | .negFraction => 15 | .negative => 16
 
 /-- The tags of the positive exact result `num / den`, in units of `2^-1074`: exact when it is a
 double or zero, a tie when it lies halfway between two doubles, a near tie when it lies within
@@ -718,7 +721,9 @@ def gridTags (num den : Nat) : List Tag :=
 operands are finite, and a subnormal result, a zero result of a nonzero exact result, and a NaN
 result.  The square root's exact result carries 64 bits below the unit.  A comparison's operands
 are unordered, equal, less, or greater, as Talos's `IEEE64.eq` and `IEEE64.lt` give.  A
-conversion's operand is a NaN, negative, at least 2^64, an integer, or a fraction. -/
+conversion's operand takes one of the tags of its kind, which separate the paths of Arm's
+`FPToFixed`: a negative normal above -1 rounds up to 0, a number at or below -1 saturates at 0,
+and a number from 2^64 up saturates at 2^64 - 1. -/
 def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
   open Wasm.IEEE64 in
   if f == .fcmp then
@@ -726,8 +731,11 @@ def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
       else .greater]
   else if f == .fcvtzu then
     [if isNaN a then .nan
-      else if sign a && a != 0x8000000000000000 then .negative
-      else if !isFinite a || 2 ^ 64 * 2 ^ 1074 ≤ scaledMagnitude a then .high
+      else if !isFinite a then .infinity
+      else if scaledMagnitude a == 0 then .zero
+      else if exponent a == 0 then .subnormal
+      else if sign a then (if scaledMagnitude a < 2 ^ 1074 then .negFraction else .negative)
+      else if 2 ^ 64 * 2 ^ 1074 ≤ scaledMagnitude a then .high
       else if scaledMagnitude a % 2 ^ 1074 == 0 then .integer else .fraction]
   else
   let fin := f == .ucvtf || (isFinite a && (!f.binary || isFinite b))
