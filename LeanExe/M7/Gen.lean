@@ -506,15 +506,20 @@ def listLocals : List Instruction → List Nat
   | i :: rest => instrLocals i ++ listLocals rest
 end
 
+/-- The number whose bit `i` is set for each `i` of `is`. -/
+def bitsOf (is : List Nat) : Nat := is.foldl (fun acc i => acc ||| 1 <<< i) 0
+
 /-- The frame of the function `f`, whose calls name functions whose numbers of parameters and
-results `sig` gives. -/
+results `sig` gives.  The locals that the body names are the set bits of one number, so the
+kernel's evaluation of the generator tests each declared local with a shift and a mask, where a
+search of the list of names would compare it with each name. -/
 def frameOf (sig : Nat → Option (Nat × Nat)) (f : Function) : Frame :=
   let p := f.params.length
-  let names := listLocals f.body
+  let names := bitsOf (listLocals f.body)
   { params := p
     out := (callsIn f.body).foldl (fun acc k => max acc ((sig k).elim 0 fun (q, r) => max q r)) 0
     named := (List.range f.locals.length).filterMap fun j =>
-      if names.contains (p + j) then some (p + j) else none
+      if names.testBit (p + j) then some (p + j) else none
     height := max f.results.length (listPeak sig 0 f.body) }
 
 /-- The number of units of the clearing of the named declared locals of the frame `fr`. -/
