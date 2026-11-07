@@ -8,9 +8,8 @@ that the model's `exec` writes, in the terms of `addWithCarry`, `shl`, `shr`, an
 gives the number of the result: `SUBS` and `SBCS` subtract with a borrow, `ADDS` and `ADC` add with
 a carry, `LSL`, `LSR`, and `ORR` by a register amount below 64 shift a pair left as CompCert's
 `LSHL` does, and `CLZ`, `LSR`, and `MLA` count the leading zero bits of a pair.  The proofs convert
-words to natural numbers and decide linear goals with `omega`.  `grind` proves the identities of
-products whose factors include a power of 2 with a variable exponent, which `omega` treats as
-unknown terms.
+words to natural numbers and decide linear goals with `omega`, after rewriting the products whose
+factors include a power of 2 with a variable exponent, which `omega` treats as unknown terms.
 -/
 
 namespace LeanExe.M7
@@ -307,7 +306,10 @@ theorem mul_pow_split (x n j : Nat) (hnj : n + j = 32) :
   have h := Nat.div_add_mod x (2 ^ j)
   have hp : 2 ^ j * 2 ^ n = 4294967296 := by
     rw [← Nat.pow_add, show j + n = 32 by omega]
-  grind
+  calc x * 2 ^ n = (2 ^ j * (x / 2 ^ j) + x % 2 ^ j) * 2 ^ n := by rw [h]
+    _ = x / 2 ^ j * (2 ^ j * 2 ^ n) + x % 2 ^ j * 2 ^ n := by
+      rw [Nat.add_mul, Nat.mul_comm (2 ^ j), Nat.mul_assoc]
+    _ = _ := by rw [hp]
 
 theorem shl_pair_low {H L n : Nat} (hL : L < 4294967296) (hn : n < 32) :
     (H * 2 ^ n % 4294967296 ||| L / 2 ^ (32 - n)) * 4294967296 + L * 2 ^ n % 4294967296 =
@@ -323,7 +325,8 @@ theorem shl_pair_low {H L n : Nat} (hL : L < 4294967296) (hn : n < 32) :
     rw [← hPQ]; exact Nat.mul_le_mul_right _ (Nat.mod_lt _ hQ)
   have he : (L % 2 ^ (32 - n) + 1) * 2 ^ n ≤ 4294967296 := by
     rw [← hPQ]; exact Nat.mul_le_mul_right _ (Nat.mod_lt _ hQ)
-  have hm : (H * 4294967296 + L) * 2 ^ n = H * 2 ^ n * 4294967296 + L * 2 ^ n := by grind
+  have hm : (H * 4294967296 + L) * 2 ^ n = H * 2 ^ n * 4294967296 + L * 2 ^ n := by
+    rw [Nat.add_mul, Nat.mul_right_comm]
   have hP : 0 < 2 ^ n := Nat.two_pow_pos n
   rw [Nat.add_mul, Nat.one_mul] at hb he
   have hX : H * 2 ^ n % 4294967296 = H % 2 ^ (32 - n) * 2 ^ n := by
@@ -348,7 +351,8 @@ theorem shl_pair_high {H L n : Nat} (hL : L < 4294967296) (hn1 : 32 ≤ n) (hn2 
     rw [show (4294967296 : Nat) = 2 ^ 32 from rfl, ← Nat.pow_add, show 32 + (n - 32) = n by omega]
   have hm : (H * 4294967296 + L) * 2 ^ n =
       H * 2 ^ (n - 32) * 18446744073709551616 + L * 2 ^ (n - 32) * 4294967296 := by
-    rw [hs]; grind
+    rw [hs, Nat.add_mul, show (18446744073709551616 : Nat) = 4294967296 * 4294967296 from rfl]
+    simp only [Nat.mul_assoc, Nat.mul_comm, Nat.mul_left_comm]
   have hmid : L / 2 ^ ((4294967328 - n) % 4294967296 % 256) |||
       L * 2 ^ (n - 32) % 4294967296 = L * 2 ^ (n - 32) % 4294967296 := by
     by_cases h32 : n = 32
