@@ -215,8 +215,11 @@ def Instr.isSys : Instr → Bool
   | _ => false
 
 /-- An instruction other than a system instruction that `CPACR_EL1.FPEN` traps, one that accesses
-the SIMD and floating-point registers.  No form of the program model is one. -/
-def Instr.isFP (_ : Instr) : Bool := false
+the SIMD and floating-point registers: the double-precision forms. -/
+def Instr.isFP : Instr → Bool
+  | .fmovDX _ _ | .fmovXD _ _ | .fadd _ _ _ | .fsub _ _ _ | .fmul _ _ _ | .fdiv _ _ _
+  | .fsqrt _ _ | .ucvtf _ _ => true
+  | _ => false
 
 /-- A load or a store. -/
 def Instr.accessesMemory : Instr → Bool

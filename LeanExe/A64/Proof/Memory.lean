@@ -1183,9 +1183,11 @@ theorem run_grow_head {cap : Nat} {gts : List ValueType} {α : Type} {st : Store
     show (s3.setX 29 (s3.x 16 + s3.x r)).out = _
     rw [State.setX_out, hout3]
 
+set_option maxHeartbeats 400000 in
 /-- The run of a successful growth from `s` at `after a 6`, with the new page count `N` in X29
 and the old one in X16: the new size less 8 stored at X17, the old count in register `r`, and a
-branch to `after a 16`. -/
+branch to `after a 16`.  The definitional checks of its chain of ten states exceed the default
+budget of heartbeats. -/
 theorem run_grow_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} {s : State}
     {a : UInt64} {r : Fin 32} {gd : Fin 67108864} {N : Nat}
     (hr : r.val < 31) (hr16 : r ≠ 16) (hr17 : r ≠ 17) (hr29 : r ≠ 29)

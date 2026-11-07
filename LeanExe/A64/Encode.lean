@@ -52,6 +52,14 @@ def encodeNat : Instr → Nat
   | .dsbSy => 0xD5033F9F
   | .tlbiVmalle1 => 0xD508871F
   | .hvc0 => 0xD4000002
+  | .fmovDX d n => 0x9E670000 + n.val * 32 + d.val
+  | .fmovXD d n => 0x9E660000 + n.val * 32 + d.val
+  | .fadd d n m => 0x1E602800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsub d n m => 0x1E603800 + m.val * 65536 + n.val * 32 + d.val
+  | .fmul d n m => 0x1E600800 + m.val * 65536 + n.val * 32 + d.val
+  | .fdiv d n m => 0x1E601800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsqrt d n => 0x1E61C000 + n.val * 32 + d.val
+  | .ucvtf d n => 0x9E630000 + n.val * 32 + d.val
 
 /-- The 32-bit word of the instruction `i`. -/
 def encode (i : Instr) : UInt32 :=
@@ -83,10 +91,11 @@ macro_rules
         Instr.addReg.injEq, Instr.subReg.injEq, Instr.andReg.injEq, Instr.eorReg.injEq,
         Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,
         Instr.bcond.injEq, Instr.adr.injEq, Instr.adrp.injEq, Instr.msr.injEq, Instr.mrs.injEq,
-        Fin.ext_iff]
+        Instr.fmovDX.injEq, Instr.fmovXD.injEq, Instr.fadd.injEq, Instr.fsub.injEq,
+        Instr.fmul.injEq, Instr.fdiv.injEq, Instr.fsqrt.injEq, Instr.ucvtf.injEq, Fin.ext_iff]
       all_goals omega))
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 2000000 in
 /-- The decoder reads every encoded form back as itself.  Each form's case decides every earlier
 condition of the decoder's chain with `omega`, so the proof's cost grows with the product of the
 number of forms and the chain's length, beyond the default budget of heartbeats. -/

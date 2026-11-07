@@ -2,16 +2,19 @@ import TestSupport.Native.Gcd
 import TestSupport.Bare.Programs
 import TestSupport.A64.CicTable
 import Verified.Examples.Fold
+import Demos.Euler.Verified
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
-CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array, and
-Fold's recursion of depth 1000, together with the CIC decimation filter of `TestSupport.A64.Cic` on
-its table of 64 samples, whose result is the array of its 8 outputs.  Each program's arm64 Image is
-`genImage` of the program at `imageBase`, with the stack's room `room` and the memory's cap `cap`.
+CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array,
+Fold's recursion of depth 1000, and the Euler solver on a grid of 4 by 4 cells, whose result is the
+array that `Demos.Euler.Buffered.solve 4` packs, together with the CIC decimation filter of
+`TestSupport.A64.Cic` on its table of 64 samples, whose result is the array of its 8 outputs.  Each
+program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room` and
+the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
@@ -60,6 +63,9 @@ def programs : List Program := [
     bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
   { name := "depth", module := Verified.Examples.Fold.compiled.module, entry := 13
     args := [1000], output := .word, bytes := [], status := 1 },
+  { name := "euler", module := Demos.Euler.Verified.compiled.module, entry := 28
+    args := [4], output := .array
+    bytes := LeanExe.Native.encodeArray (Demos.Euler.Buffered.solve 4) },
   { name := "cic", module := TestSupport.A64.Cic.compiled.module, entry := 7
     args := [64], output := .array
     bytes := LeanExe.Native.encodeArray (TestSupport.A64.Cic.cicCheck 64) }]

@@ -21,7 +21,10 @@ and the UART's output extended by the result's bytes and the status 0, or, where
 theorem allows a trap, by the status byte alone: 4 for an overflow of the stack in GCD's
 recursion, and 1 or 4 in Fold's.  `cic_outputs` states the CIC filter's run with the specification
 over ℤ: the array that the UART receives has as its elements, read as signed 64-bit integers, the
-outputs `Library.Numerics.Filters.Cic.outputs 3 8 1` of the table's samples read as integers.
+outputs `Library.Numerics.Filters.Cic.outputs 3 8 1` of the table's samples read as integers.  The
+Euler solver's Image has its theorem in `tests/TestSupport/A64/ImageFilesEuler.lean`, which the
+script elaborates on its own with a larger memory limit, since the kernel's evaluation of that
+Image alone takes about 22 GB.
 -/
 
 namespace TestSupport.A64.ImageFiles
