@@ -128,7 +128,12 @@ cases of [`Cases.lean`](Cases.lean), from single flux evaluations to whole solve
 between the Wasmtime host and native Lean.  `tests/native/verified.sh --module euler` runs the same
 cases on the module's translation to C compiled with CompCert.
 `tests/baremetal/verified.sh --module euler` runs them under QEMU without an operating system and
-checks the stack of each call against its bound.
+checks the stack of each call against its bound.  The AArch64 back end without C compiles entry 28
+on a grid of 4 by 4 cells to an arm64 Image whose theorem, `euler` of
+[the Euler Image theorem](../../tests/TestSupport/A64/ImageFilesEuler.lean), states that in the
+model of the boot machine the Image writes the encoding of `Buffered.solve 4` to the UART, with the
+floating-point instructions' meanings taken from Talos's IEEE 754 functions, as
+[the AArch64 document](../../docs/a64-bare-metal.md#floating-point) describes.
 
 ## Related examples
 
