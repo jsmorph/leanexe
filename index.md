@@ -17,6 +17,7 @@ The Forms column lists a row's codes in the order of the key below.  When an app
 | A | C file without the alignment test, with `p.f.nativeAligned`. |
 | B | Bare-metal AArch64 image with a whole-program theorem. |
 | M | AArch64 Image of the direct back end, with a theorem about its run from boot. |
+| T | Flash image of the Cortex-M7 back end, with theorems about its run from reset. |
 | I | WASI Preview 1 module with WASI theorems. |
 | G | WGSL kernel with a dispatch theorem. |
 | P | PTX kernel with a launch theorem. |

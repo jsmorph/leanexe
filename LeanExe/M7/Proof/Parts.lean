@@ -57,7 +57,7 @@ theorem sliceOk_ok {g : GenM (List Instr)} {n off len : Nat} (h : sliceOk g n of
   unfold sliceOk at h
   split at h
   · rename_i is
-    simp only [Bool.and_eq_true, beq_iff_eq] at h
+    simp only [Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq] at h
     exact ⟨is, rfl, h.1, h.2⟩
   · cases h
 
@@ -316,7 +316,7 @@ theorem fileOk_parts {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev :
   obtain ⟨is, hg, hl, hb⟩ := genProgram_parts hmain hlen hfun htail
   rw [hg]
   unfold fileOk
-  simp only [Bool.and_eq_true, beq_iff_eq]
+  simp only [Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq]
   rw [hl, hb, ← hsize, Nat.pow_zero, Nat.div_one, Nat.mod_eq_of_lt hn]
   exact ⟨rfl, rfl⟩
 
@@ -345,11 +345,11 @@ theorem bootFileOk_parts {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64}
     rw [bootBytes_eq, imageBytes_append, bootHead, List.append_assoc]
   have hh : natOfBytes (bootHead B) = n / 256 ^ 0 % 256 ^ (bootHead B).length := by
     unfold bootHeadOk at hhead
-    rw [Nat.pow_zero, Nat.div_one]
+    rw [Nat.pow_zero, Nat.div_one, ← natOfBytesPaired_eq]
     exact beq_iff_eq.mp hhead
   rw [hbp]
   unfold bootFileOk
-  simp only [Bool.and_eq_true, beq_iff_eq]
+  simp only [Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq]
   rw [hbytes, List.length_append, hl, ← hsize]
   refine ⟨?_, rfl⟩
   have := slice_append (o := 0) hh (by rw [Nat.zero_add, hl]; exact hb)

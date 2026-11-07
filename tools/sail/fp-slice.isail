@@ -1,0 +1,5 @@
+:rewrite move_termination_measures
+:slice_roots FPAdd FPSub FPMul FPDiv FPSqrt FixedToFP initialize_registers
+:slice_keep_std
+:slice
+:rewrites lean
