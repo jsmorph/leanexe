@@ -69,8 +69,13 @@ import LeanExe.Encoding.Spec.Validity
 import LeanExe.Encoding.Spec.Values
 import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
+import LeanExe.M7.Div
 import LeanExe.M7.Encode
 import LeanExe.M7.Machine
+import LeanExe.M7.Proof.Div
+import LeanExe.M7.Proof.Machine
+import LeanExe.M7.Proof.Pair
+import LeanExe.M7.Proof.Straight
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes
 import LeanExe.Pipeline.FileBytes
