@@ -42238,6 +42238,23 @@ The experiment on finding C edited `isla_footprint_common` in scratch copies of 
 
 The user adopted the edit.  `tests/isla/armv9p4-checked.diff` holds it with its reasons, every form now runs on `armv9p4-checked.ir`, and UDIV on `armv9p4-checked-udiv.ir`, to which the UDIV diff applies unchanged.  The copies built on edgexpert-18ff from the committed diffs have the SHA-256 digests of the experiment's copies, `22c1420f…` and `373b6279…`, so the experiment's traces are the outputs of the script as it stands, and the committed traces equal them once struct fields are sorted.
 
+`tests/TestSupport/A64/Isla/Memory.lean` proves `Agrees` for LDR, STR, and STRB in the RAM GiB and for STRB at the UART under both profiles, for every value of `imm12`, `Rn`, and `Rt`, register 31 included.  Each theorem states the trace's constraints in the model's terms: the mask constraint on `u.ttbr0`, the descriptor that the walk reads (`0x0040000040000705` at `u.ttbr0 + 8`, or `0x0060000000000401` at `u.ttbr0` for the UART), and the access's address, `s.xsp n` plus the scaled immediate, with every byte in the RAM GiB or at `0x09000000`.  STR needs two more premises, since a store that runs byte by byte, an unaligned one under `tcg` or one that crosses a 16-byte boundary under `kvm`, translates each byte's address after storing the bytes before it.  Reading 5 of `Trace.lean` sends a byte written at `P.uart` to the output while `exec` stores all eight bytes, so `P.normal P.uart = false` is a premise, and the walk for a later byte reads the descriptor at `u.ttbr0 + 8` from the memory that the earlier bytes changed, so the eight bytes must lie clear of it.  The UART's theorems leave `P` open: when `P.uart` is `0x09000000`, the trace and `exec` both append the byte to the output, and otherwise both store it.
+
+The walk of `Register.lean` costs the size of the remaining trace at every step, since `rw` and `simp` traverse the hypothesis, which holds the trace's literal.  On STRB's trace of 716 events it ran at about 0.7 s per event.  `isla_nodes F` defines one constant per node of the trace, so that the hypothesis names the rest of the trace.  Congruence lemmas keep `simp` out of the trace and the variables, a simproc reads a variable from the chain of `Vars.set` in one step, and another evaluates `gpr` without `List.lookup`.  `isla_ctx F π` evaluates the premise on `σ` once per footprint, keeps one equation per register instead of one per read (53 for STR under `tcg` instead of 612), and hides them from `omega` in `Opaque`.  The walk's side conditions go to `omega` without the walk's facts, a read's value replaces the variable in the walked hypothesis only, and `mem_quiet` records no info trees for the walk.  The backward direction gives each declared variable the value that the first event reading it reads, found in the trace's nodes, with `true` for a free Boolean, since the byte-wise path of an unaligned access asserts that `ConstrainUnpredictable` returned `Constraint_NONE`, its first case.
+
+A step that unfolded `Trace.Run` by the type of its equation, a change by definition instead of a rewrite, took 7.6 GiB within 136 s on one pair of STRB lemmas, and the walk rewrites with the equation instead.  Rewriting each byte insertion of an unaligned load during the walk wrote the word twice per byte, so the term's tree doubled at each of the eight bytes, and a traversal of the term that collects the bytes' bounds ran for 25 minutes without finishing.  `ins_chain` now gives the word's value from the eight insertions at the end of the path.  `simp` applies `Nat.add_zero`, a `rfl` theorem, without a proof step, so the kernel checks `x + 0 = x` by unfolding, and for the table's address in the UART's walk, a remainder of a 128-bit term, that check ran for more than nine minutes at 8 GiB.  `nat_add_zero` proves the equation by `omega`, and `isla_simp` in `Check.lean` still uses `Nat.add_zero`.  Bisection over the number of steps found the step that the kernel could not check, with each copy of the lemma keeping the walked hypothesis in its proof.  A `sorry` that leaves the hypothesis unused drops the walk's proof from the term, and the kernel then checks nothing of the walk.
+
+On minideb1 with one thread, a file with the shared lemmas and one form's theorem takes the time and reaches the peak of resident memory in the table.  `tests/isla/theorems.sh Memory` elaborates the module in 3402 s, and the axioms of all eight theorems are `propext`, `Classical.choice`, and `Quot.sound`.  The module's scope reached its `MemoryHigh` of 8 GiB with 1 GiB in swap, and the resident set of `lean`, which counts the mapped olean files, reached 9.1 GiB, against at most 4.5 GiB for one form, since the environment keeps the footprints, their nodes, and the proofs of all eight forms.
+
+| Form | `tcg` | `kvm` |
+|------|-------|-------|
+| LDR | 557 s, 3928 MiB | 697 s, 4551 MiB |
+| STR | 545 s, 3888 MiB | 686 s, 4525 MiB |
+| STRB | 222 s, 2304 MiB | 234 s, 2407 MiB |
+| STRB at the UART | 222 s, 2365 MiB | 247 s, 2844 MiB |
+
+LDR's theorem of stage 1 is gone from `Stage1.lean`, with its footprint, the lemma `ram`, and the tactic `ldr_end`, and so are `tests/isla/ldr.trace` and `tests/isla/ldr.opcode`.  `Stage1.lean` keeps the SUBS theorem, which `tests/isla/theorems.sh Stage1` checks in 21 s, and its configuration, whose entries the SUBS trace mostly does not read.  `done_end` in `Check.lean` serves only that theorem.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
@@ -42247,7 +42264,9 @@ The user adopted the edit.  `tests/isla/armv9p4-checked.diff` holds it with its 
 - [x] E: the extended semantics and ADD.
 - [x] E: ADD on the committed traces under the full TCG and KVM profiles.
 - [ ] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
-- [ ] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files once SUBS (register) and LDR hold over every field.
+- [x] E: the theorems of the memory forms in `Memory.lean`.
+- [x] E: remove LDR's part of `Stage1.lean`, `tests/isla/ldr.trace`, and `ldr.opcode`.
+- [ ] E: remove `Stage1.lean`, `tests/isla/subs.trace`, and `subs.opcode` once SUBS (register) holds over every field.
 - [ ] Check how the modules that use `binary_file%` are built.
 
 ### References
