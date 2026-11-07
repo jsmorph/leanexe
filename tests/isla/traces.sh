@@ -56,19 +56,34 @@
 #   ID_AA64MMFR1_EL1  0x0                 0x1000111010312122
 #   ID_AA64MMFR2_EL1  0x0                 0x1221011110001011
 #
-# Two edits apply to copies of the IR, and each diff's header states what it replaces.  Isla's
-# harness function isla_footprint_common catches every exception that the decoder throws, so a
-# path that ends in SEE, UNDEFINED, or UNPREDICTABLE would look complete.
-# tests/isla/armv9p4-checked.diff makes such an exception fail an assertion, which stops the run,
-# and keeps the exception that every exception entry throws.  Every form runs on
-# armv9p4-checked.ir.  The Sail model computes UDIV's quotient by dividing real numbers, which Isla
-# does not implement, so UDIV runs on armv9p4-checked-udiv.ir, which tests/isla/armv9p4-udiv.diff
-# edits further to compute the quotient with Sail's tdiv_int on the same integers.  The copies sit
-# beside the IR:
+# Edits apply to copies of the IR, and each diff's header states what it replaces.  Isla's harness
+# function isla_footprint_common catches every exception that the decoder throws, so a path that
+# ends in SEE, UNDEFINED, or UNPREDICTABLE would look complete.  tests/isla/armv9p4-checked.diff
+# makes such an exception fail an assertion, which stops the run, and keeps the exception that every
+# exception entry throws.  Every integer and memory form runs on armv9p4-checked.ir.  The Sail model
+# computes UDIV's quotient by dividing real numbers, which Isla does not implement, so UDIV runs on
+# armv9p4-checked-udiv.ir, which tests/isla/armv9p4-udiv.diff edits further to compute the quotient
+# with Sail's tdiv_int on the same integers.  The floating-point forms run on
+# armv9p4-checked-fp.ir, to which tests/isla/armv9p4-checked-fp.diff adds 64-bit wrappers of the
+# floating-point functions, such as FPAdd64, called only at 64 bits, and the arithmetic forms and
+# UCVTF leave their wrapper abstract with --abstract, since Arm's pseudocode rounds a real number.
+# The copies sit beside the IR:
 #   ir=~/isla-probe/ir && cp $ir/armv9p4.ir $ir/armv9p4-checked.ir &&
 #   patch $ir/armv9p4-checked.ir < tests/isla/armv9p4-checked.diff &&
 #   cp $ir/armv9p4-checked.ir $ir/armv9p4-checked-udiv.ir &&
-#   patch $ir/armv9p4-checked-udiv.ir < tests/isla/armv9p4-udiv.diff
+#   patch $ir/armv9p4-checked-udiv.ir < tests/isla/armv9p4-udiv.diff &&
+#   cp $ir/armv9p4-checked.ir $ir/armv9p4-checked-fp.ir &&
+#   patch $ir/armv9p4-checked-fp.ir < tests/isla/armv9p4-checked-fp.diff
+#
+# The floating-point forms run with the startup's CPACR_EL1, 0x300000, FPEN 0b11, and FPCR,
+# 0x02000000, DN set, and with the profile's CPTR_EL2 and CPTR_EL3, of which the traces test TFP
+# under tcg and FPEN, ZEN, TFP, and EZ under kvm.  Under tcg both are 0, which gives the absent
+# levels' effect.  Under kvm, CPTR_EL3 is 0x100, EZ set as Linux's boot protocol requires on a
+# processor with SVE, and CPTR_EL2 is 0x50330000, which KVM in Linux 7.0 writes through CPACR_EL1
+# under VHE once the guest owns the floating-point registers: TAM, TTA, FPEN 0b11, and ZEN 0b11 for
+# a vCPU with SVE (__activate_cptr_traps_vhe, arch/arm64/kvm/hyp/include/hyp/switch.h).  Before
+# that, KVM traps the guest's first floating-point instruction, loads the guest's registers, and
+# resumes the guest at the instruction (kvm_hyp_handle_fpsimd).
 #
 # Usage: tests/isla/traces.sh tcg|kvm [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
@@ -88,9 +103,11 @@ exec 3>&1
 
 case $profile in
   tcg)
-    hcr=0x0000000080000000 oslsr=0x000000000000000a pa=44 ;;
+    hcr=0x0000000080000000 oslsr=0x000000000000000a pa=44
+    cptr2=0x0000000000000000 cptr3=0x0000000000000000 ;;
   kvm)
-    hcr=0x0000000480000000 oslsr=0x0000000000000008 pa=40 ;;
+    hcr=0x0000000480000000 oslsr=0x0000000000000008 pa=40
+    cptr2=0x0000000050330000 cptr3=0x0000000000000100 ;;
   *)
     echo "unknown profile $profile" >&2
     exit 1 ;;
@@ -128,6 +145,8 @@ memory=("${tcr[@]}" -R VBAR_EL1=undefined:%bv64 -R "ZCR_EL3={bits=0x000000000000
   --fixed-memory "TTBR0_NS.bits=0x0060000000000401"
   --fixed-memory "bvadd TTBR0_NS.bits 0x0000000000000008=0x0040000040000705"
   --reset-constraint-fields)
+fp=("${tcr[@]}" -R "CPACR_EL1={bits=0x0000000000300000}" -R "CPTR_EL2={bits=$cptr2}"
+  -R "CPTR_EL3={bits=$cptr3}" -R "FPCR={bits=0x0000000002000000}")
 dword="bvadd ($x) ((_ zero_extend 49) (concat imm12 #b000))"
 byte="bvadd ($x) ((_ zero_extend 52) imm12)"
 
@@ -186,3 +205,12 @@ run adr "0 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
 run adrp "1 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
 ir=$probe/ir/armv9p4-checked-udiv.ir
 run udiv "10011010110 Rm:5 000010 Rn:5 Rd:5" "${tcr[@]}"
+ir=$probe/ir/armv9p4-checked-fp.ir
+run fmov-dx "1001111001100111000000 Rn:5 Rd:5" "${fp[@]}"
+run fmov-xd "1001111001100110000000 Rn:5 Rd:5" "${fp[@]}"
+run fadd "00011110011 Rm:5 001010 Rn:5 Rd:5" "${fp[@]}" --abstract FPAdd64
+run fsub "00011110011 Rm:5 001110 Rn:5 Rd:5" "${fp[@]}" --abstract FPSub64
+run fmul "00011110011 Rm:5 000010 Rn:5 Rd:5" "${fp[@]}" --abstract FPMul64
+run fdiv "00011110011 Rm:5 000110 Rn:5 Rd:5" "${fp[@]}" --abstract FPDiv64
+run fsqrt "0001111001100001110000 Rn:5 Rd:5" "${fp[@]}" --abstract FPSqrt64
+run ucvtf "1001111001100011000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP64
