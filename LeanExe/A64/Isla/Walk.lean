@@ -28,15 +28,15 @@ namespace LeanExe.A64.Isla
 
 /-- With `attribute [local congr]`, `simp` enters neither the trace of a path nor its variables,
 which a walk extends with values that `simp` already evaluated. -/
-theorem run_congr {P : Platform} {t : Trace} {ρ : Vars} {s s' : State} {σ σ' : Sys}
-    {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
-    Trace.Run P t ρ s σ o = Trace.Run P t ρ s' σ' o' := by
+theorem run_congr {P : Platform} {A : Abstract} {t : Trace} {ρ : Vars} {s s' : State}
+    {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
+    Trace.Run P A t ρ s σ o = Trace.Run P A t ρ s' σ' o' := by
   subst h2 h3 h4
   rfl
 
-theorem runSome_congr {P : Platform} {ts : List Trace} {ρ : Vars} {s s' : State}
-    {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
-    Trace.RunSome P ts ρ s σ o = Trace.RunSome P ts ρ s' σ' o' := by
+theorem runSome_congr {P : Platform} {A : Abstract} {ts : List Trace} {ρ : Vars}
+    {s s' : State} {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
+    Trace.RunSome P A ts ρ s σ o = Trace.RunSome P A ts ρ s' σ' o' := by
   subst h2 h3 h4
   rfl
 
@@ -147,7 +147,7 @@ elab "isla_ctx " F:ident ppSpace π:term : command => do
     let stx ← `(fun (σ : Sys) (u : Unknown)
         (hσ : ∀ q ∈ ($Fid).trace.reads, σ.get q.1 q.2 = ($π u).get q.1 q.2) =>
         (show _ by
-          isla_reads [$Fid:ident, Profile.sys_get, Profile.sys, tcg, kvm] at hσ
+          isla_reads [$Fid:ident, Profile.sys_get, Profile.sys, tcg, kvm, sme] at hσ
           exact hσ))
     let e ← instantiateMVars (← elabTermAndSynthesize stx none)
     if e.hasMVar then throwError "isla_ctx: unassigned metavariables"
@@ -222,12 +222,14 @@ def rvalPath? (x : Nat) (v : Expr) : Option (List String ⊕ Nat) :=
   else none
 
 /-- The event that reads a declared variable: a read or reset of the register `r` at the accessor
-path `al`, holding the variable at `path` of its value; a read of memory at `a` of `k` bytes; or
-register `j` in the values that a vector primitive lists. -/
+path `al`, holding the variable at `path` of its value; a read of memory at `a` of `k` bytes;
+register `j` in the values that a vector primitive lists; or the result of the abstract function
+`f` on the arguments `args`. -/
 inductive Bind where
   | reg (assume : Bool) (r al : Expr) (path : List String ⊕ Nat)
   | mem (a k : Expr)
   | gpr (j : Nat)
+  | abs (f args : Expr)
 
 /-- The first event of the trace `t`, in the order of its paths, that reads the variable `x`. -/
 partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
@@ -248,6 +250,9 @@ partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
         let (_, xs) ← e.appArg!.listLit?
         let j ← xs.findIdx? (isVarE x)
         some (.gpr j)
+      else if e.isAppOfArity ``Event.abstractCall 3 then
+        let args := e.getAppArgs
+        if isVarE x args[1]! then some (.abs args[0]! args[2]!) else none
       else none
     match here with
     | some b => return some b
@@ -260,10 +265,11 @@ partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
   else return none
 
 /-- The value of a declared variable that the event `b` reads from the state `s` and the
-registers `σ`, with the variables `ρ`, or 0 or `true` when no event reads it.  A free Boolean
+registers `σ`, with the variables `ρ` and the meanings `A` of the abstract functions, or 0 or
+`true` when no event reads it.  A free Boolean
 of the traces selects among the results of `ConstrainUnpredictable`, and the path of an unaligned
 access that splits it into bytes asserts the first, `Constraint_NONE`. -/
-def witness (isBool : Bool) (b : Option Bind) (ρ s σ : Expr) : MetaM Expr := do
+def witness (isBool : Bool) (b : Option Bind) (A ρ s σ : Expr) : MetaM Expr := do
   let some b := b | return if isBool then mkConst ``Bool.true else mkNatLit 0
   let opt ← match b with
     | .reg assume r al path =>
@@ -281,11 +287,13 @@ def witness (isBool : Bool) (b : Option Bind) (ρ s σ : Expr) : MetaM Expr := d
         ← mkAppM ``memAt #[← mkAppM ``State.mem #[s], k]]
     | .gpr j =>
       mkAppM ``GetElem?.getElem? #[← mkAppM ``gprVals #[s], mkNatLit j]
+    | .abs f args =>
+      mkAppM ``Option.bind #[← mkAppM ``RVal.evalAll #[ρ, args], mkApp A f]
   mkAppM (if isBool then ``witBool else ``witBits) #[opt]
 
 /-- Gives the variable that a goal
-`∃ n, n < 2 ^ w ∧ Trace.Run P t (ρ.set x (.bits w n)) s σ o`, or
-`∃ b, Trace.Run P t (ρ.set x (.bool b)) s σ o`, declares the value that the first event of `t`
+`∃ n, n < 2 ^ w ∧ Trace.Run P A t (ρ.set x (.bits w n)) s σ o`, or
+`∃ b, Trace.Run P A t (ρ.set x (.bool b)) s σ o`, declares the value that the first event of `t`
 reading it reads. -/
 elab "mem_wit" : tactic => withMainContext do
   let g ← getMainGoal
@@ -293,26 +301,26 @@ elab "mem_wit" : tactic => withMainContext do
   let_expr Exists ty p := tgt | throwError "mem_wit: not an existential"
   let .lam _ _ body _ := p | throwError "mem_wit: not a lambda"
   let run := if body.isAppOfArity ``And 2 then body.appArg! else body
-  unless run.isAppOfArity ``Trace.Run 6 do throwError "mem_wit: not a path"
+  unless run.isAppOfArity ``Trace.Run 7 do throwError "mem_wit: not a path"
   let args := run.getAppArgs
-  let ρ' := args[2]!
+  let ρ' := args[3]!
   unless ρ'.isAppOfArity ``Vars.set 3 do throwError "mem_wit: no declaration"
   let ρ := ρ'.appFn!.appFn!.appArg!
   let some x := ρ'.appFn!.appArg!.nat? | throwError "mem_wit: variable not a literal"
-  if ρ.hasLooseBVars || args[3]!.hasLooseBVars || args[4]!.hasLooseBVars then
+  if ρ.hasLooseBVars || args[4]!.hasLooseBVars || args[5]!.hasLooseBVars then
     throwError "mem_wit: the state depends on the witness"
-  let w ← witness (ty.isConstOf ``Bool) (← findBind x args[1]!) ρ args[3]! args[4]!
+  let w ← witness (ty.isConstOf ``Bool) (← findBind x args[2]!) args[1]! ρ args[4]! args[5]!
   let stx ← Term.exprToSyntax w
   evalTactic (← `(tactic| refine ⟨$stx, ?_⟩))
 
 /-- The path that `e` states, with its node constant replaced by the node's definition. -/
 def unfoldRun (e : Expr) : MetaM Expr := do
   let e := e.consumeMData.headBeta
-  unless e.isAppOfArity ``Trace.Run 6 do throwError "mem_unfold: not a path"
+  unless e.isAppOfArity ``Trace.Run 7 do throwError "mem_unfold: not a path"
   let args := e.getAppArgs
-  let .const c _ := args[1]! | throwError "mem_unfold: not a node"
+  let .const c _ := args[2]! | throwError "mem_unfold: not a node"
   let some v := (← getConstInfo c).value? | throwError "mem_unfold: {c} has no value"
-  return mkAppN e.getAppFn (args.set! 1 v)
+  return mkAppN e.getAppFn (args.set! 2 v)
 
 /-- Replaces the node constant of the path that the goal, or the hypothesis `h`, states by the
 node's definition. -/
@@ -605,7 +613,7 @@ macro_rules
               fail_if_success guard_target = False
               first
                 | (guard_target = And _ _; refine ⟨by $d, ?_⟩)
-                | guard_target = Trace.Run _ _ _ _ _ _)
+                | guard_target = Trace.Run _ _ _ _ _ _ _)
            | apply Or.inr)
       | (guard_target = And _ _; apply And.intro; rotate_left)
       | focus (rw [ite_eq_left]; rotate_left; ($d))))
