@@ -1,0 +1,47 @@
+{
+ "title": "The energy controller on a NUCLEO-F767ZI: one simulated day",
+ "lede": "The energy controller's gateway, written in Lean and compiled through the verified compiler, WebAssembly, C, and CompCert, ran on a NUCLEO-F767ZI board for 1,440 one-minute ticks.  A host program on the attached computer played the site around it over the board's USART3 at 4,800 baud: load and PV from a day of NIST's minute data, a battery, an inverter, and an optimizer that proposes limits every five minutes.  It sent one input record each tick and checked every output record, and native Lean, given the same input records, produced the same output records.",
+ "prose_html": "<h2>How to read the chart</h2><p>All four panels share one time axis, in hours from the start of the run, and a pointer over the chart shows every value at the nearest tick.  The top panel is the measured load and PV that the gateway receives; four times in the day the host adds 5,000 W to the measured load, which the optimizer's load interval does not cover, to test the gateway's monitoring.  The second panel is the battery power, positive while it charges, inside the limits that the inverter reports back: a command's limits while one is in force, and the fallback interval of −50 to +50 W otherwise.  The third panel is the stored energy interval that the gateway receives, the host's simulated energy ±0.1 kWh, between the site's floor of 3.0 kWh and ceiling of 9.5 kWh.  The host's battery model charges and discharges at 95 % efficiency and loses 10 W at all times (<code>tests/energy/replay.py</code>), so its energy falls slowly while the battery holds zero power.  The bottom panel is the gateway's decisions: each proposal accepted as a command or rejected with the authorizer's status, the minutes in which a command is in force, and each request to return to fallback.</p><h2>What ran, and what the theorems cover</h2><p>The board ran the program whose theorems are <code>gw_usart3_program</code> and <code>gw_usart3_prefix</code> in <code>Demos/Energy/Loop.lean</code>.  The first states that the program runs forever and that each window performs the one register access that the gateway's framing requests; the second states that the bytes written to USART3 begin the gateway's output records for the input records that the bytes read encode.  The authorizer's theorems, such as <code>authorize_sound</code>, state that under accepted limits every trajectory the model admits keeps the site's energy and grid limits or stays no further outside them than a return to fallback would.  The program's two theorems hold in the Lean copy of CompCert's Clight, and the Rocq composition carries such a run to CompCert's Asm; their trusted base is code B of <code>docs/trusted-base.md</code>.  The site in this run is a simulation: the battery, inverter, and optimizer are the host's models, and only the gateway's program ran on the board.</p>",
+ "facts": [
+  [
+   "Board",
+   "NUCLEO-F767ZI: STM32F767ZI, Cortex-M7 at 16 MHz from HSI, caches off; ST-LINK/V2.1 serial 066EFF565380535067104017"
+  ],
+  [
+   "Image",
+   "gateway.bin, 80,480 bytes of flash from 0x08000000, SHA-256 bc560e42d2ff905a2112c1fda3e11120b037f7f7701e141be37fae6405268c50, stack bound 6,720 bytes"
+  ],
+  [
+   "Build",
+   "verified_compile of the gateway to WebAssembly, native-bare emit-usart3 to C, the clightgen read-back compared with the program of the theorem, CompCert 3.18 configured armv7m-eabihf"
+  ],
+  [
+   "Host",
+   "tests/baremetal/uart_gateway.py --device /dev/ttyACM0, 4,800 baud, 8 data bits, no parity"
+  ],
+  [
+   "Input series",
+   "NIST's 2015–16 minute series, minutes 10,080 to 11,519, prepared by tests/energy/replay.py"
+  ],
+  [
+   "Site profile",
+   "floor 3.0 kWh, ceiling 9.5 kWh, charge and discharge at most 5,000 W, import cap 5,000 W, export cap 2,000 W, efficiency that the authorizer assumes 90 %, standing loss at most 20 W, fallback −50 to +50 W, window 900 s"
+  ],
+  [
+   "Run",
+   "started 2026-11-07 04:26:10 UTC after a reset over SWD; 1,440 ticks in 580.5 s"
+  ],
+  [
+   "Host's result",
+   "exit status 0, every check passing: “1440 ticks from minute 10080: 94 commands, 4 fallback requests, 3 of them for measurements outside a window, 1342 ticks without output, in 580.5 s”"
+  ],
+  [
+   "Native Lean",
+   "native-bare gateway-run on the same 1,440 input records gave output records equal byte for byte to the board's"
+  ],
+  [
+   "Records",
+   "gateway1440.records.in, SHA-256 32986fd4d30733398d7dce22d8402dcf841b807b32a4d02854da4a7f5e756094; gateway1440.records.out, SHA-256 11818da665e18d643b2f07769491f974821b973e663f0e090bc86a6ed296f001"
+  ]
+ ]
+}

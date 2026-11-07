@@ -1,0 +1,2 @@
+1440 ticks from minute 10080: 94 commands, 4 fallback requests, 3 of them for measurements outside a window, 1342 ticks without output, in 580.5 s
+exit 0

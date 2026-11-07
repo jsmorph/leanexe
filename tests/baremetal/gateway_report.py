@@ -14,8 +14,10 @@ fallback.  A hover readout lists every value at the nearest tick, and tables giv
 the records.  Every value comes from RECORDS.in and RECORDS.out, whose layout Demos/Energy/README.md
 gives; signed powers are words p + 2^32, and energies are joules.
 
-Usage: uv run tests/baremetal/gateway_report.py RECORDS META OUTPUT.html
-RECORDS names RECORDS.in and RECORDS.out.  META is a JSON file of strings that the page states as
+Usage: uv run tests/baremetal/gateway_report.py RECORDS META OUTPUT.html [FIRST LAST]
+RECORDS names RECORDS.in and RECORDS.out.  FIRST and LAST, when given, limit the chart to those
+ticks, whose time axis then reads in hours and minutes; the summary and the tables still cover
+every tick.  META is a JSON file of strings that the page states as
 facts of the run, such as "board", "image", "image_sha256", "started", "summary", and "lean".
 """
 
@@ -243,23 +245,27 @@ def hhmm(n):
     return f"{n // 60:02d}:{n % 60:02d}"
 
 
-def page(rows, meta):
+def page(rows, meta, t0=0, t1=None):
     n = len(rows)
+    t1 = n - 1 if t1 is None else t1
+    sel = rows[t0:t1 + 1]
     W, L, R = 1200, 100, 24
     PW = W - L - R
-    x = lambda t: L + PW * t / max(n - 1, 1)
+    x = lambda t: L + PW * (t - t0) / max(t1 - t0, 1)
     out = []
 
     def axis_x(y0, h, labels):
         g = []
-        for hour in range(0, n // 60 + 1, 2 if n > 240 else 1):
-            t = hour * 60
-            if t >= n:
-                break
+        span = t1 - t0
+        step = 10 if span <= 180 else (60 if span <= 360 else 120)
+        t = -(-t0 // step) * step
+        while t <= t1:
             g.append(f'<line class="grid" x1="{x(t):.1f}" x2="{x(t):.1f}" y1="{y0}" y2="{y0 + h}"/>')
             if labels:
+                text = hhmm(t) if span <= 360 else f"{t // 60} h"
                 g.append(f'<text class="tick" x="{x(t):.1f}" y="{y0 + h + 16}" '
-                         f'text-anchor="middle">{hour} h</text>')
+                         f'text-anchor="middle">{text}</text>')
+            t += step
         return "".join(g)
 
     def axis_y(y0, h, lo, hi, step, fmt):
@@ -277,19 +283,20 @@ def page(rows, meta):
 
     def path(vals, y0, h, lo, hi):
         pts = []
-        for t, v in enumerate(vals):
+        for k, v in enumerate(vals):
             yy = y0 + h - h * (min(max(v, lo), hi) - lo) / (hi - lo)
-            pts.append(f"{'M' if t == 0 else 'L'}{x(t):.1f},{yy:.1f}")
+            pts.append(f"{'M' if k == 0 else 'L'}{x(t0 + k):.1f},{yy:.1f}")
         return "".join(pts)
 
     def band(lows, highs, y0, h, lo, hi):
         yv = lambda v: y0 + h - h * (min(max(v, lo), hi) - lo) / (hi - lo)
-        last = len(highs) - 1
         top, bot = [], []
-        for t, v in enumerate(highs):
-            top += [f"{x(t):.1f},{yv(v):.1f}", f"{x(min(t + 1, last)):.1f},{yv(v):.1f}"]
-        for t, v in reversed(list(enumerate(lows))):
-            bot += [f"{x(min(t + 1, last)):.1f},{yv(v):.1f}", f"{x(t):.1f},{yv(v):.1f}"]
+        for k, v in enumerate(highs):
+            t = t0 + k
+            top += [f"{x(t):.1f},{yv(v):.1f}", f"{x(min(t + 1, t1)):.1f},{yv(v):.1f}"]
+        for k, v in reversed(list(enumerate(lows))):
+            t = t0 + k
+            bot += [f"{x(min(t + 1, t1)):.1f},{yv(v):.1f}", f"{x(t):.1f},{yv(v):.1f}"]
         return "M" + " L".join(top + bot) + " Z"
 
     fmtw = lambda v: f"{v:,.0f}".replace("-", "−")
@@ -298,15 +305,15 @@ def page(rows, meta):
 
     # Panel 1: load and PV.
     h1 = 190
-    peak = max(max(r["load"] for r in rows), max(r["pv"] for r in rows))
+    peak = max(max(r["load"] for r in sel), max(r["pv"] for r in sel))
     top1 = ((peak + 999) // 1000) * 1000
     p = [f'<text class="ptitle" x="{L}" y="{y}">Measured load and PV, W</text>',
          legend(L, y + 18, [("line", "k1", "Load"), ("line", "k2", "PV")])]
     y += 30
     p.append(axis_x(y, h1, False) + axis_y(y, h1, 0, top1, 1000 if top1 <= 8000 else 2000, fmtw))
-    p.append(f'<path class="s1" d="{path([r["load"] for r in rows], y, h1, 0, top1)}"/>')
-    p.append(f'<path class="s2" d="{path([r["pv"] for r in rows], y, h1, 0, top1)}"/>')
-    for r in rows:
+    p.append(f'<path class="s1" d="{path([r["load"] for r in sel], y, h1, 0, top1)}"/>')
+    p.append(f'<path class="s2" d="{path([r["pv"] for r in sel], y, h1, 0, top1)}"/>')
+    for r in sel:
         if r["spike"]:
             yy = y + h1 - h1 * min(r["load"], top1) / top1
             right = x(r["n"]) > L + PW - 230
@@ -325,8 +332,8 @@ def page(rows, meta):
          legend(L, y + 18, [("line", "k3", "Battery power"), ("rect", "bandkey", "Limits in force, from the inverter’s read-back: the commanded limits, or the fallback interval of −50 to +50 W")])]
     y += 30
     p.append(axis_x(y, h2, False) + axis_y(y, h2, lo2, hi2, 2500, fmtw))
-    p.append(f'<path class="band3" d="{band([r["limLow"] for r in rows], [r["limHigh"] for r in rows], y, h2, lo2, hi2)}"/>')
-    p.append(f'<path class="s3" d="{path([r["battery"] for r in rows], y, h2, lo2, hi2)}"/>')
+    p.append(f'<path class="band3" d="{band([r["limLow"] for r in sel], [r["limHigh"] for r in sel], y, h2, lo2, hi2)}"/>')
+    p.append(f'<path class="s3" d="{path([r["battery"] for r in sel], y, h2, lo2, hi2)}"/>')
     panels.append(("battery", y, h2, lo2, hi2))
     out.append("".join(p))
     y += h2 + 44
@@ -343,7 +350,7 @@ def page(rows, meta):
         yy = y + h3 - h3 * (kwh(j) - lo3) / (hi3 - lo3)
         p.append(f'<line class="ref" x1="{L}" x2="{L + PW}" y1="{yy:.1f}" y2="{yy:.1f}"/>'
                  f'<text class="note" x="{L + PW - 4}" y="{yy - 5:.1f}" text-anchor="end">{name}</text>')
-    p.append(f'<path class="band3e" d="{band([kwh(r["eLow"]) for r in rows], [kwh(r["eHigh"]) for r in rows], y, h3, lo3, hi3)}"/>')
+    p.append(f'<path class="band3e" d="{band([kwh(r["eLow"]) for r in sel], [kwh(r["eHigh"]) for r in sel], y, h3, lo3, hi3)}"/>')
     panels.append(("energy", y, h3, lo3, hi3))
     out.append("".join(p))
     y += h3 + 44
@@ -364,22 +371,22 @@ def page(rows, meta):
         yy = y + lh * k + lh / 2
         p.append(f'<text class="lane" x="{L - 8}" y="{yy + 4:.1f}" text-anchor="end">{name}</text>')
     lane_y = lambda k: y + lh * k + 8
-    for r in rows:
+    for r in sel:
         if r["proposal"]:
             k, cls = {1: (0, "okt"), 0: (1, "rejt"), 2: (1, "skipt")}[r["kind"]]
             p.append(f'<rect class="{cls}" x="{x(r["n"]) - 1:.1f}" y="{lane_y(k)}" width="2" '
                      f'height="14" rx="1"/>')
     start = None
-    for r in rows + [None]:
+    for r in sel + [None]:
         on = r is not None and r["mode"] == "command"
         if on and start is None:
             start = r["n"]
         if not on and start is not None:
-            end = (r["n"] if r is not None else n) - 1
+            end = (r["n"] if r is not None else t1 + 1) - 1
             p.append(f'<rect class="okbar" x="{x(start):.1f}" y="{lane_y(2) + 1}" '
-                     f'width="{max(x(end + 1) - x(start) - 2, 2):.1f}" height="12" rx="3"/>')
+                     f'width="{max(x(min(end + 1, t1)) - x(start) - 2, 2):.1f}" height="12" rx="3"/>')
             start = None
-    for r in rows:
+    for r in sel:
         if r["kind"] == 2:
             why = fallback_reason(rows, r["n"])
             p.append(f'<rect class="fb" x="{x(r["n"]) - 5:.1f}" y="{lane_y(3) + 2}" width="10" '
@@ -409,11 +416,11 @@ def page(rows, meta):
     for r in rows:
         if r["proposal"] and r["kind"] == 0:
             rej[r["status"]] = rej.get(r["status"], 0) + 1
-    return svg, ev, counts, rej, {"L": L, "PW": PW, "n": n, "W": W}
+    return svg, ev, counts, rej, {"L": L, "PW": PW, "n": n, "W": W, "t0": t0, "t1": t1}
 
 
-def document(rows, meta, records):
-    svg, ev, counts, rej, geo = page(rows, meta)
+def document(rows, meta, records, t0=0, t1=None):
+    svg, ev, counts, rej, geo = page(rows, meta, t0, t1)
     e = html.escape
     rej_text = ", ".join(f"{c:,} for {STATUS[s]}" for s, c in sorted(rej.items()))
     facts = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in meta.get("facts", []))
@@ -446,7 +453,7 @@ def document(rows, meta, records):
         rejtext=e(rej_text) or "none", skipped=f"{counts['skipped']:,}", inforce=f"{counts['inForce']:,}",
         facts=facts, svg=svg, events=ev_rows, rejected_rows=rej_rows, records=rec_rows,
         data=data, nrej=f"{sum(1 for x in ev if x[1] == 'proposal rejected'):,}",
-        L=geo["L"], PW=geo["PW"], W=geo["W"], prose=meta.get("prose_html", ""),
+        L=geo["L"], PW=geo["PW"], W=geo["W"], T0=geo["t0"], T1=geo["t1"], prose=meta.get("prose_html", ""),
         summary=summary(rows))
 
 
@@ -564,7 +571,7 @@ summary {{ cursor: pointer; color: var(--ink2); }}
 </main>
 <script>
 const D = {data};
-const L = {L}, PW = {PW}, W = {W};
+const L = {L}, PW = {PW}, W = {W}, T0 = {T0}, T1 = {T1};
 const svg = document.getElementById('chart'), hit = document.getElementById('hit');
 const cross = document.getElementById('cross'), tip = document.getElementById('tip');
 const card = document.getElementById('card');
@@ -579,8 +586,8 @@ function row(t, label, value) {{
 function show(ev) {{
   const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
   const p = pt.matrixTransform(svg.getScreenCTM().inverse());
-  const i = Math.max(0, Math.min(D.length - 1, Math.round((p.x - L) / PW * (D.length - 1))));
-  const d = D[i]; const xx = L + PW * i / Math.max(D.length - 1, 1);
+  const i = Math.max(T0, Math.min(T1, T0 + Math.round((p.x - L) / PW * (T1 - T0))));
+  const d = D[i]; const xx = L + PW * (i - T0) / Math.max(T1 - T0, 1);
   cross.setAttribute('x1', xx); cross.setAttribute('x2', xx); cross.setAttribute('visibility', 'visible');
   tip.replaceChildren();
   const head = document.createElement('div'); head.textContent = 'Tick ' + fmt(d[0]) + ', ' + hm(d[0]);
@@ -607,14 +614,15 @@ hit.addEventListener('pointerleave', () => {{ tip.style.display = 'none'; cross.
 
 
 def main():
-    if len(sys.argv) != 4:
+    if len(sys.argv) not in (4, 6):
         raise SystemExit(__doc__.split("Usage:")[1].strip().split("\n")[0])
-    records, meta_path, output = sys.argv[1:]
+    records, meta_path, output = sys.argv[1:4]
+    t0, t1 = (int(sys.argv[4]), int(sys.argv[5])) if len(sys.argv) == 6 else (0, None)
     with open(meta_path) as f:
         meta = json.load(f)
     rows = ticks(records)
     with open(output, "w") as f:
-        f.write(document(rows, meta, records))
+        f.write(document(rows, meta, records, t0, t1))
     print(f"{output}: {len(rows)} ticks")
 
 
