@@ -17,9 +17,6 @@ mkdir -p "$dest/lean-sail" "$dest/$lib"
 cp -R "$leansail/Sail.lean" "$leansail/Sail" "$dest/lean-sail/"
 cp -R "$project/$lib.lean" "$project/$lib" "$dest/$lib/"
 sh "$(dirname "$0")/fix-output.sh" "$dest/$lib" "$lib"
-# The do elaborator of Lean v4.34.0-rc2 fails on MaybeZeroSVEUppers ("Failed to assign join point
-# RHS"); its legacy do elaborator, which v4.29.0 uses, elaborates it.
-sed -i 's/^def MaybeZeroSVEUppers /set_option backward.do.legacy true in\n&/' "$dest/$lib/$lib.lean"
 if ! grep -q '^lean_lib Sail where' "$repo/lakefile.lean"; then
   cat >>"$repo/lakefile.lean" <<'EOF'
 
