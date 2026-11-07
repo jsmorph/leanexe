@@ -85,6 +85,40 @@ theorem toNat_lt (a : UInt64) : a.toNat < 2 ^ 64 := a.toNat_lt_size
 theorem toNat_mod (a : UInt64) : a.toNat % 18446744073709551616 = a.toNat :=
   Nat.mod_eq_of_lt a.toNat_lt_size
 
+theorem toNat_mod128 (a : UInt64) :
+    a.toNat % 340282366920938463463374607431768211456 = a.toNat :=
+  Nat.mod_eq_of_lt (Nat.lt_trans (toNat_lt a) (by decide))
+
+/-- `Nat.add_zero` with a proof that is not definitional.  `simp` applies `Nat.add_zero`, a `rfl`
+theorem, without a proof step, so the kernel checks `x + 0 = x` by unfolding.  For the table's
+address in the walk of a store at the UART, a remainder of a 128-bit term, that check ran for more
+than nine minutes and took 8 GiB. -/
+theorem nat_add_zero (n : Nat) : n + 0 = n := by omega
+
+/-- SMT-LIB's `bvsdiv` of 128 bits on operands below the sign bit. -/
+theorem sdiv_128 {a b : Nat} (ha : a < 170141183460469231731687303715884105728)
+    (hb : b < 170141183460469231731687303715884105728) (hb0 : 0 < b) : sdiv 128 a b = a / b := by
+  have h : (2 : Nat) ^ 128 = 340282366920938463463374607431768211456 := by decide
+  unfold sdiv udiv
+  rw [h, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega)]
+
+/-- A flag or other Boolean as the bit that a trace reads is below 2. -/
+theorem bit_lt (b : Bool) : (if b = true then 1 else 0) < 2 := by
+  cases b <;> decide
+
+/-- The word of a footprint's opcode decodes to the instruction whose encoding it equals. -/
+theorem decode_word {F : Footprint} {f : Fields} {i : Instr} (h : F.opcode.word f = encodeNat i) :
+    decode (.ofNat (F.opcode.word f)) = some i := by
+  rw [h]
+  exact decode_encode i
+
+open Lean Elab Tactic in
+/-- Runs the tactics without recording info trees.  The command-line driver keeps the info tree of
+every command of a file until it ends, and the info tree of each step of a walk holds its goals and
+metavariable contexts.  Without it, the elaboration of the register forms' theorems takes 9.5
+GiB. -/
+elab "without_info " t:tacticSeq : tactic => withEnableInfoTree false (evalTactic t)
+
 theorem fin_mod {k : Nat} (n : Fin k) {m : Nat} (h : k ≤ m) : n.val % m = n.val :=
   Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le n.isLt h)
 
@@ -261,6 +295,17 @@ theorem x_lt {s : State} {n : Fin 32} (h : n.val < 31) : s.x n = regAt s n.val :
 
 theorem x_31 {s : State} {n : Fin 32} (h : n.val = 31) : s.x n = 0 := by
   unfold State.x
+  rw [dite_eq_right (by omega)]
+
+/-- The model's read of a register below 31, where register 31 is the stack pointer, as the
+vector primitive reads it. -/
+theorem xsp_lt {s : State} {n : Fin 32} (h : n.val < 31) : s.xsp n = regAt s n.val := by
+  unfold State.xsp regAt
+  rw [dite_eq_left h, dite_eq_left h]
+
+/-- The model's read of register 31 as the stack pointer. -/
+theorem xsp_31 {s : State} {n : Fin 32} (h : n.val = 31) : s.xsp n = s.sp := by
+  unfold State.xsp
   rw [dite_eq_right (by omega)]
 
 /-- Proves that the outcome at the end of a path of the trace of a form that writes one general
