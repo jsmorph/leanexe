@@ -12,10 +12,10 @@
   ],
   "declarations": [
     "Verified.WGSL.compile",
-    "Verified.WGSL.lower",
+    "Verified.Kernel.lower",
     "Verified.WGSL.Compiled.dispatch_value",
     "Verified.WGSL.Compiled.dispatch_eq",
-    "LeanExe.WGSL.Spec.Fits"
+    "LeanExe.Source.Spec.Fits"
   ],
   "examples": [
     "Examples.Binary32.scale32_dispatch",
