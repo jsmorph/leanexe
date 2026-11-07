@@ -400,4 +400,79 @@ theorem shl_pair (lo hi k : UInt32) (hk : k.toNat < 64) :
     rw [hhi0, hlo0, Nat.zero_or, Nat.add_zero]
     exact shl_pair_high hlo (by omega) hk
 
+/-- The low word of a pair shifted right by `k`, as `LSR`, `LSL`, and `ORR` compute it with the
+amounts `k`, `32 - k`, and `k - 32`, the mirror image of `shlHigh`. -/
+def shrLow (lo hi k : UInt32) : UInt32 :=
+  shr lo (k.toNat % 256) ||| shl hi ((32 - k).toNat % 256) ||| shr hi ((k - 32).toNat % 256)
+
+theorem or_add_shift {x y k : Nat} (hx : x < 2 ^ k) : x ||| y * 2 ^ k = x + y * 2 ^ k := by
+  rw [Nat.or_comm, Nat.mul_comm, ← Nat.two_pow_add_eq_or_of_lt hx, Nat.add_comm]
+
+theorem shr_pair_low {H L n : Nat} (hL : L < 4294967296) (hn : n < 32) :
+    H / 2 ^ n * 4294967296 + (L / 2 ^ n ||| H * 2 ^ (32 - n) % 4294967296) =
+      (H * 4294967296 + L) / 2 ^ n := by
+  have hK : 0 < 2 ^ n := Nat.two_pow_pos n
+  have hKQ : 2 ^ n * 2 ^ (32 - n) = 4294967296 := by
+    rw [← Nat.pow_add, show n + (32 - n) = 32 by omega]
+  have sH := mul_pow_split H (32 - n) n (by omega)
+  have hb : L / 2 ^ n < 2 ^ (32 - n) :=
+    (Nat.div_lt_iff_lt_mul hK).mpr (by rw [Nat.mul_comm, hKQ]; exact hL)
+  have hr : (H % 2 ^ n + 1) * 2 ^ (32 - n) ≤ 4294967296 := by
+    rw [← hKQ]
+    exact Nat.mul_le_mul_right _ (Nat.mod_lt _ hK)
+  rw [Nat.add_mul, Nat.one_mul] at hr
+  have hX : H * 2 ^ (32 - n) % 4294967296 = H % 2 ^ n * 2 ^ (32 - n) := by
+    rw [sH, Nat.add_comm, Nat.add_mul_mod_self_right]
+    exact Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le (Nat.lt_add_of_pos_right (Nat.two_pow_pos _)) hr)
+  have hdiv : (H * 4294967296 + L) / 2 ^ n = L / 2 ^ n + H * 2 ^ (32 - n) := by
+    rw [show H * 4294967296 + L = L + H * 2 ^ (32 - n) * 2 ^ n by
+      rw [← hKQ, Nat.mul_comm (2 ^ n), ← Nat.mul_assoc, Nat.add_comm],
+      Nat.add_mul_div_right _ _ hK]
+  rw [hX, or_add_shift hb, hdiv, sH]
+  generalize H / 2 ^ n = A at *
+  generalize H % 2 ^ n * 2 ^ (32 - n) = X at *
+  generalize L / 2 ^ n = B at *
+  omega
+
+/-- A pair shifted right by an amount below 64. -/
+theorem shr_pair (lo hi k : UInt32) (hk : k.toNat < 64) :
+    pairNat (shrLow lo hi k) (shr hi (k.toNat % 256)) = pairNat lo hi / 2 ^ k.toNat := by
+  have hlo := toNat_lt32 lo
+  have hhi := toNat_lt32 hi
+  have e32 : (32 : UInt32).toNat = 32 := rfl
+  have h32 : (32 - k).toNat % 256 = (4294967328 - k.toNat) % 4294967296 % 256 := by
+    rw [UInt32.toNat_sub, e32] <;> simp only [Nat.reducePow] <;> omega
+  have hk32 : (k - 32).toNat % 256 = (4294967264 + k.toNat) % 4294967296 % 256 := by
+    rw [UInt32.toNat_sub, e32] <;> simp only [Nat.reducePow] <;> omega
+  unfold shrLow pairNat
+  rw [h32, hk32, Nat.mod_eq_of_lt (show k.toNat < 256 by omega), UInt32.toNat_or,
+    UInt32.toNat_or, toNat_shr, toNat_shl, toNat_shr, toNat_shr]
+  generalize k.toNat = n at *
+  generalize lo.toNat = L at *
+  generalize hi.toNat = H at *
+  have big : ∀ j, 32 ≤ j → ∀ x, x < 4294967296 → x / 2 ^ j = 0 := fun j hj x hx =>
+    Nat.div_eq_of_lt (Nat.lt_of_lt_of_le hx
+      (Nat.pow_le_pow_right (n := 2) (i := 32) (by decide) hj))
+  by_cases hn : n < 32
+  · rw [show (4294967264 + n) % 4294967296 % 256 = 224 + n by omega,
+      big (224 + n) (by omega) H hhi, Nat.or_zero,
+      show (4294967328 - n) % 4294967296 % 256 = 32 - n by omega]
+    exact shr_pair_low hlo hn
+  · have hdiv : (H * 4294967296 + L) / 2 ^ n = H / 2 ^ (n - 32) := by
+      rw [show 2 ^ n = 2 ^ 32 * 2 ^ (n - 32) by rw [← Nat.pow_add]; congr 1; omega,
+        ← Nat.div_div_eq_div_mul,
+        show (H * 4294967296 + L) / 2 ^ 32 = H by
+          rw [show (2 : Nat) ^ 32 = 4294967296 from rfl]; omega]
+    rw [hdiv, big n (by omega) H hhi, big n (by omega) L hlo, Nat.zero_or,
+      show (4294967264 + n) % 4294967296 % 256 = n - 32 by omega]
+    by_cases h32' : n = 32
+    · subst h32'
+      simp only [show (4294967328 - 32) % 4294967296 % 256 = 0 from rfl, Nat.sub_self,
+        Nat.pow_zero, Nat.mul_one, Nat.div_one, Nat.mod_eq_of_lt hhi, Nat.or_self] <;> omega
+    · have hz : H * 2 ^ ((4294967328 - n) % 4294967296 % 256) % 4294967296 = 0 := by
+        rw [show (4294967328 - n) % 4294967296 % 256 = 32 + (256 - n) by omega, Nat.pow_add,
+          show (2 : Nat) ^ 32 = 4294967296 from rfl, Nat.mul_left_comm, Nat.mul_mod_right]
+      rw [hz, Nat.zero_or]
+      omega
+
 end LeanExe.M7

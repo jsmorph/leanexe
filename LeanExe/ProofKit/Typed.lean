@@ -88,4 +88,13 @@ theorem Typed.reverse : ∀ {ts : List ValueType} {vs : List Value}, Typed ts vs
   | [], _ :: _, h => h.elim
   | _ :: _, [], h => h.elim
 
+theorem Typed.head_cons {σs : List ValueType} {v : Value} {vs : List Value} {t : ValueType}
+    (h : Typed σs (v :: vs)) (ht : σs.head? = some t) : HasType t v := by
+  cases σs with
+  | nil => exact h.elim
+  | cons t' σt =>
+      simp only [List.head?_cons, Option.some.injEq] at ht
+      subst ht
+      exact h.1
+
 end LeanExe.ProofKit
