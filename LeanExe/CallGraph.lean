@@ -30,18 +30,22 @@ def callsIn : List Instruction → List Nat
 end
 
 /-- The functions of `m` that calls reach from those of `todo`, after those of `done`, each
-once, within `fuel` steps. -/
+once, within `fuel` steps.  A step drops the functions at the front of `todo` that `done` holds,
+adds the next one to `done`, and appends the functions that it calls to `todo`, so that each step
+adds a function. -/
 def reachable (m : Module) : Nat → List Nat → List Nat → List Nat
   | 0, done, _ => done
-  | _ + 1, done, [] => done
-  | fuel + 1, done, j :: todo =>
-      if j ∈ done then reachable m fuel done todo
-      else reachable m fuel (done ++ [j])
-        (todo ++ ((m.funcs[j]?).map fun f => callsIn f.body).getD [])
+  | fuel + 1, done, todo =>
+      match todo.dropWhile (fun j => decide (j ∈ done)) with
+      | [] => done
+      | j :: rest => reachable m fuel (done ++ [j])
+          (rest ++ ((m.funcs[j]?).map fun f => callsIn f.body).getD [])
 
-/-- The functions that calls reach from function `k` of `m`, `k` first. -/
+/-- The functions that calls reach from function `k` of `m`, `k` first.  The fuel, the number of
+the module's functions plus one, suffices when every call names a function of `m`, since each step
+adds a function, and the kernel's evaluation of the fuel reads no function's body. -/
 def reachFrom (m : Module) (k : Nat) : List Nat :=
-  reachable m (1 + (m.funcs.map fun f => (callsIn f.body).length).sum) [] [k]
+  reachable m (m.funcs.length + 1) [] [k]
 
 /-- The functions that the calls of the functions that calls reach from function `k` of `m`
 name. -/
@@ -142,41 +146,36 @@ theorem mapM_funcOf_cons {m : Module} {j : Nat} {ks : List Nat} {fs : List (Nat 
 theorem reachable_prefix (m : Module) :
     ∀ (fuel : Nat) (done todo : List Nat), ∃ rest, reachable m fuel done todo = done ++ rest
   | 0, done, _ => ⟨[], by simp [reachable]⟩
-  | _ + 1, done, [] => ⟨[], by simp [reachable]⟩
-  | fuel + 1, done, j :: todo => by
+  | fuel + 1, done, todo => by
       simp only [reachable]
       split
-      · exact reachable_prefix m fuel done todo
-      · obtain ⟨rest, h⟩ := reachable_prefix m fuel (done ++ [j]) _
+      · exact ⟨[], by simp⟩
+      · rename_i j _ _
+        obtain ⟨rest, h⟩ := reachable_prefix m fuel (done ++ [j]) _
         exact ⟨j :: rest, by rw [h, List.append_assoc, List.singleton_append]⟩
 
 /-- `reachFrom m k` starts with `k`. -/
 theorem reachFrom_cons (m : Module) (k : Nat) : ∃ rest, reachFrom m k = k :: rest := by
   unfold reachFrom
-  generalize (m.funcs.map fun f => (callsIn f.body).length).sum = n
-  rw [Nat.add_comm]
-  simp only [reachable]
-  rw [ite_eq_right List.not_mem_nil]
-  obtain ⟨rest, h⟩ := reachable_prefix m n ([] ++ [k])
+  simp only [reachable, List.not_mem_nil, decide_false, List.dropWhile_cons_of_neg,
+    Bool.false_eq_true, not_false_eq_true]
+  obtain ⟨rest, h⟩ := reachable_prefix m m.funcs.length ([] ++ [k])
     ([] ++ ((m.funcs[k]?).map fun f => callsIn f.body).getD [])
   exact ⟨rest, by rw [h]; rfl⟩
 
 theorem mem_reachable (m : Module) {x : Nat} :
     ∀ (fuel : Nat) (done todo : List Nat), x ∈ done → x ∈ reachable m fuel done todo
   | 0, _, _, h => by simpa only [reachable] using h
-  | _ + 1, _, [], h => by simpa only [reachable] using h
-  | fuel + 1, done, j :: todo, h => by
+  | fuel + 1, done, todo, h => by
       simp only [reachable]
       split
-      · exact mem_reachable m fuel done todo h
+      · exact h
       · exact mem_reachable m fuel _ _ (List.mem_append_left _ h)
 
 theorem mem_reachFrom (m : Module) (k : Nat) : k ∈ reachFrom m k := by
-  unfold reachFrom
-  rw [Nat.add_comm]
-  simp only [reachable]
-  rw [ite_eq_right List.not_mem_nil]
-  exact mem_reachable m _ _ _ (by simp)
+  obtain ⟨rest, h⟩ := reachFrom_cons m k
+  rw [h]
+  exact List.mem_cons_self
 
 /-- The functions that the body of function `k` of `m` calls lie among `callTargets m k`. -/
 theorem callsIn_callTargets {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
