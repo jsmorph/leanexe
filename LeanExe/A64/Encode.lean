@@ -60,6 +60,7 @@ def encodeNat : Instr → Nat
   | .fdiv d n m => 0x1E601800 + m.val * 65536 + n.val * 32 + d.val
   | .fsqrt d n => 0x1E61C000 + n.val * 32 + d.val
   | .ucvtf d n => 0x9E630000 + n.val * 32 + d.val
+  | .fcmp n m => 0x1E602000 + m.val * 65536 + n.val * 32
 
 /-- The 32-bit word of the instruction `i`. -/
 def encode (i : Instr) : UInt32 :=
@@ -92,7 +93,8 @@ macro_rules
         Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,
         Instr.bcond.injEq, Instr.adr.injEq, Instr.adrp.injEq, Instr.msr.injEq, Instr.mrs.injEq,
         Instr.fmovDX.injEq, Instr.fmovXD.injEq, Instr.fadd.injEq, Instr.fsub.injEq,
-        Instr.fmul.injEq, Instr.fdiv.injEq, Instr.fsqrt.injEq, Instr.ucvtf.injEq, Fin.ext_iff]
+        Instr.fmul.injEq, Instr.fdiv.injEq, Instr.fsqrt.injEq, Instr.ucvtf.injEq, Instr.fcmp.injEq,
+        Fin.ext_iff]
       all_goals omega))
 
 set_option maxHeartbeats 2000000 in

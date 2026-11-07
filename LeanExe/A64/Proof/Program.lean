@@ -273,7 +273,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       first = after (after base 1) (mainSize args.length o) ∧
       T = endOf (sigIn (callTargets m k) fs) first fs ∧
       entryIn (sigIn (callTargets m k) fs) first fs k = some (e, pk, rk) ∧
-      pk.all (· == .i64) = true ∧
+      pk.all wordType = true ∧
       genMain (after base 1) e args uart room o = .ok main ∧
       genFunctions (tableOf (callTargets m k) first fs)
         ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs = .ok fns ∧
@@ -305,8 +305,8 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       | none => simp [hen, throw, throwThe, MonadExceptOf.throw] at hg
       | some c =>
           obtain ⟨e, pk, rk⟩ := c
-          have hps : pk.all (· == .i64) = true := by
-            cases h : pk.all (· == .i64) with
+          have hps : pk.all wordType = true := by
+            cases h : pk.all wordType with
             | true => rfl
             | false => simp [hen, h, throw, throwThe, MonadExceptOf.throw] at hg
           simp only [hen, hps, if_true, pure, Except.pure] at hg
@@ -470,13 +470,36 @@ theorem stack_main (sp room : UInt64) (j : Nat) :
 theorem toNat_sub_le {a b : UInt64} (h : b.toNat ≤ a.toNat) : (a - b).toNat = a.toNat - b.toNat :=
   UInt64.toNat_sub_of_le a b (UInt64.le_iff_toNat_le.mpr h)
 
-theorem typed_i64 : ∀ {ts : List ValueType} {ws : List UInt64}, ts.all (· == .i64) = true →
-    ts.length = ws.length → Typed ts (ws.map .i64)
+/-- The value of a parameter of type `t` whose word is `w`: an `f64` for `f64` and an `i64`
+otherwise. -/
+def argValue : ValueType → UInt64 → Value
+  | .f64, w => .f64 w
+  | _, w => .i64 w
+
+/-- The values of parameters of the types `ts` whose words are `ws`. -/
+def argValues (ts : List ValueType) (ws : List UInt64) : List Value :=
+  List.zipWith argValue ts ws
+
+theorem valRel_argValue (t : ValueType) (w : UInt64) : ValRel (argValue t w) w := by
+  cases t <;> rfl
+
+theorem length_argValues (ts : List ValueType) (ws : List UInt64) :
+    (argValues ts ws).length = min ts.length ws.length :=
+  List.length_zipWith
+
+theorem getElem_argValues {ts : List ValueType} {ws : List UInt64} {i : Nat}
+    (h : i < (argValues ts ws).length) :
+    (argValues ts ws)[i] = argValue (ts[i]'(by rw [length_argValues] at h; omega))
+      (ws[i]'(by rw [length_argValues] at h; omega)) :=
+  List.getElem_zipWith
+
+theorem typed_words : ∀ {ts : List ValueType} {ws : List UInt64}, ts.all wordType = true →
+    ts.length = ws.length → Typed ts (argValues ts ws)
   | [], [], _, _ => trivial
   | t :: ts, w :: ws, h, hl => by
       simp only [List.all_cons, Bool.and_eq_true] at h
       cases t <;> first
-        | exact ⟨trivial, typed_i64 h.2 (by simpa using hl)⟩
+        | exact ⟨trivial, typed_words h.2 (by simpa using hl)⟩
         | exact absurd h.1 (by intro e; cases e)
   | [], _ :: _, _, hl => by simp at hl
   | _ :: _, [], _, hl => by simp at hl
@@ -923,8 +946,9 @@ theorem ProgramOutcome.unreachable {base : UInt64} {calls : Prop} {o : Output} {
   · exact absurd habs (by decide)
 
 /-- The run of the program that runs function `k` of `m`, which imports nothing, on the words
-`args`, from `main` at `after base 1`, for Talos's run of the function on the arguments at any
-fuel from the module's initial store with a memory of `cap` pages.  The machine may reach the exit
+`args`, from `main` at `after base 1`, for Talos's run of the function at any fuel from the
+module's initial store with a memory of `cap` pages on the arguments `argValues f.params args`,
+whose words are `args`.  The machine may reach the exit
 word with the status of an overflow of the stack only when the functions that calls reach from
 function `k` call others and `room` lies below `stackBound m k`.  `main` sets the stack's limit
 `room` bytes below its frame of 16 bytes, and those `room + 16` bytes below SP must be Normal
@@ -943,7 +967,7 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
     ProgramOutcome P code base (callTargets m k ≠ [] ∧ room.toNat < stackBound m k) o
-      (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms := by
+      (Wasm.run F m k (initStore m cap) (argValues f.params args).reverse) ms := by
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hok, hgt, hgl, hfs, hfirst, hT,
     hen, hps, hmg, hfg, his, hb1, hb2, hb3, hb4⟩ := gen_program hg
   subst his
@@ -1134,23 +1158,30 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
       unfold areaSize at habove hj
       exact below_slot (Nat.le_refl _) (by rw [e16]; omega) (by decide)
         (by rw [UInt64.toNat_add, UInt64.toNat_ofNat', e16]; simp only [Nat.reducePow] at *; omega)
-  have hvs : ((args.map Value.i64).reverse).length = f.params.length := by simp [hn, hp]
+  have hvs : ((argValues f.params args).reverse).length = f.params.length := by
+    rw [List.length_reverse, length_argValues]
+    omega
   have hvt : Typed f.params.reverse
-      (((args.map Value.i64).reverse).take f.params.length) := by
+      (((argValues f.params args).reverse).take f.params.length) := by
     rw [List.take_of_length_le (by omega)]
-    exact Typed.reverse (typed_i64 hps (by simp [hn, hp]))
+    exact Typed.reverse (typed_words hps (by omega))
   rcases run_outcome P code hm h64 hk hgk cfk hcl (stackNeed_ok hk _) (initStore m cap)
-    (args.map Value.i64).reverse t4 (by omega) hvt p4 hstk hsr4 (by
+    (argValues f.params args).reverse t4 (by omega) hvt p4 hstk hsr4 (by
       rw [List.take_of_length_le (by omega)]
-      refine ⟨by simp; omega, fun i hi => ?_⟩
-      simp only [List.length_reverse, List.length_map] at hi
-      simp only [List.reverse_reverse, List.getElem_map, ValRel]
-      rw [regOf_small i (by omega)]
-      show (t3.setX 30 (t3.pc + 4)).x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = _
-      rw [State.x_setX_ne (fun e => by
-        have : 30 = i % 32 := congrArg Fin.val e
-        omega)]
-      exact hx3 i (by omega)) with ⟨hov, hovr⟩ | hro
+      refine ⟨by rw [List.length_reverse, length_argValues]; omega, fun i hi => ?_⟩
+      have hi' : i < args.length := by
+        rw [List.length_reverse, length_argValues] at hi
+        omega
+      simp only [List.reverse_reverse, getElem_argValues]
+      have hx : t4.x (regOf i) = args[i] := by
+        rw [regOf_small i (by omega)]
+        show (t3.setX 30 (t3.pc + 4)).x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = _
+        rw [State.x_setX_ne (fun e => by
+          have : 30 = i % 32 := congrArg Fin.val e
+          omega)]
+        exact hx3 i hi'
+      rw [hx]
+      exact valRel_argValue _ _) with ⟨hov, hovr⟩ | hro
   · rw [hd4] at hov
     have hct : callTargets m k ≠ [] := by
       intro hct
@@ -1167,7 +1198,7 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
     exact .inl ⟨⟨hct, hov⟩, u2, r4.trans (ru.trans ru2), pu2, xu2, by rw [outu2, outu, out4]⟩
   refine .inr ?_
   revert hro
-  cases Wasm.run F m k (initStore m cap) (args.map Value.i64).reverse with
+  cases Wasm.run F m k (initStore m cap) (argValues f.params args).reverse with
   | Trap st' msg =>
       intro hro
       obtain ⟨u, ru, outu, hmsg⟩ := hro
@@ -1282,7 +1313,7 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
     ProgramOutcome P code base (callTargets m k ≠ []) o
-      (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms :=
+      (Wasm.run F m k (initStore m cap) (argValues f.params args).reverse) ms :=
   (program_sim_stack P code hg hcode hm hk hp F ms hpc hal hroom htop hstack h17 harea hamap
     habove).mono P code And.left
 
@@ -1302,7 +1333,8 @@ theorem program_sim_bounded {m : Module} {k : Nat} {f : Function} {args : List U
     (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
-    ProgramResult P code base o (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms := by
+    ProgramResult P code base o
+      (Wasm.run F m k (initStore m cap) (argValues f.params args).reverse) ms := by
   rcases program_sim_stack P code hg hcode hm hk hp F ms hpc hal hroom htop hstack h17 harea hamap
     habove with ⟨⟨-, hlt⟩, -⟩ | h
   · omega

@@ -98,7 +98,7 @@ structure Case where
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
 in the order of `Instr`. -/
-def formCount : Nat := 38
+def formCount : Nat := 39
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -111,7 +111,10 @@ def field26 (j : Int) : Fin 67108864 :=
 def field19 (j : Int) : Fin 524288 :=
   ⟨(j % 524288).toNat % 524288, Nat.mod_lt _ (by decide)⟩
 
-/-- A case of form `form`, whose state makes the instruction run without a fault. -/
+/-- A case of form `form`, whose state makes the instruction run without a fault.  A case of
+`FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
+sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
+neighbors occur. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
@@ -190,7 +193,17 @@ def genCase (form : Nat) : Gen Case := do
   | 34 => return { c with instr := .fmul (← fin 32) (← fin 32) (← fin 32) }
   | 35 => return { c with instr := .fdiv (← fin 32) (← fin 32) (← fin 32) }
   | 36 => return { c with instr := .fsqrt (← fin 32) (← fin 32) }
-  | _ => return { c with instr := .ucvtf (← fin 32) (← fin 32) }
+  | 37 => return { c with instr := .ucvtf (← fin 32) (← fin 32) }
+  | _ =>
+      let n ← fin 32
+      let m ← fin 32
+      let a := c.dregs[n.val]!
+      let ds := match ← below 4 with
+        | 0 => c.dregs.set! m.val a
+        | 1 => c.dregs.set! m.val (a ^^^ 0x8000000000000000)
+        | 2 => c.dregs.set! m.val (a + 1)
+        | _ => c.dregs
+      return { c with instr := .fcmp n m, dregs := ds }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 

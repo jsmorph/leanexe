@@ -70,7 +70,7 @@ theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = so
     · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
-      simp [State.setXsp_mem, State.subs]
+      simp [State.setXsp_mem, State.subs, State.fcmp]
 
 /-- An instruction keeps the UART's output or appends to it. -/
 theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t) :
@@ -101,7 +101,7 @@ theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some
     · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
-      simp [State.setXsp_out, State.subs]
+      simp [State.setXsp_out, State.subs, State.fcmp]
 
 /-- The fetch, the decoding, and the execution of a step. -/
 theorem step_some {P : Platform} {code : UInt64 → Option UInt32} {s t : State}

@@ -4,8 +4,8 @@
 # tests/TestSupport/A64/Gpt.lean peaks at about 5 GB and that of Euler.lean at about 4.6 GB.
 # a64-programs emit writes each program's Image, NAME.img, with the bytes that the UART must show
 # and the status with which the program must end.  Lean then elaborates
-# tests/TestSupport/A64/ImageFiles.lean, and on their own ImageFilesEuler.lean and
-# ImageFilesGpt.lean, in the directory of those files and each with a MemoryHigh of 16G, so that
+# tests/TestSupport/A64/ImageFiles.lean, and on their own ImageFilesEuler.lean, ImageFilesGpt.lean,
+# and ImageFilesExp.lean, in the directory of those files and each with a MemoryHigh of 16G, so that
 # the kernel checks that each NAME.img holds the bytes that genImage gives and proves, for a boot
 # state whose memory holds the file at imageBase, the run to PSCI SYSTEM_OFF with the program's
 # output, with no axiom beyond propext, Classical.choice, and Quot.sound.  For each Image the
@@ -25,11 +25,11 @@ rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high 8G lake --log-level error build a64-programs \
   TestSupport.A64.Gcd TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold \
-  TestSupport.A64.Cic TestSupport.A64.Euler TestSupport.A64.Gpt LeanExe.A64.File \
-  LeanExe.A64.Proof.ImageTheorem
+  TestSupport.A64.Cic TestSupport.A64.Euler TestSupport.A64.Gpt TestSupport.A64.Exp \
+  LeanExe.A64.File LeanExe.A64.Proof.ImageTheorem
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
-for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1"; do
+for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1" "ImageFilesExp 4"; do
   set -- $f
   if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
       "$root/tests/TestSupport/A64/$1.lean" >"$out/$1.check" 2>&1 &&

@@ -312,7 +312,7 @@ theorem genInstr_shift_of {E : Env} {d : UInt64} {δ : Int}
       have hb' := bField_shift (ha _ (by omega)) (hT k _ hk : Moves d δ target) hb
       simp only [genInstr, Env.shift_eq, shiftTable_apply, hk, Option.map_some, curBase_shift,
         after_shift, hb, hb']
-  | _ => simp only [genInstr, genCmp, genBin, genFBin, genUn, curBase_shift, Env.shift_eq]
+  | _ => simp only [genInstr, genCmp, genBin, genFBin, genFCmp, genUn, curBase_shift, Env.shift_eq]
 
 mutual
 

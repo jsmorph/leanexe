@@ -7,9 +7,9 @@ arm64 Image of COUNT vectors of each form from the seed SEED, and DIR/fp.layout,
 gives the offset of the vectors' words in the Image and whose other lines give each block's form,
 class, and number of vectors.  `a64-fpvectors check DIR SERIAL` compares the result words of the
 UART output SERIAL with the model for the vectors of DIR/fp.img.  For each block and each form it
-prints the numbers of vectors, of disagreements, and of each tag of `tagsOf`, and then every
-disagreement with its operands, and it exits with status 1 when a result differs or the output
-cannot be checked.
+prints the numbers of vectors, of disagreements, and of each of the form's tags of `tagsOf`, and
+then every disagreement with its operands, and it exits with status 1 when a result differs or the
+output cannot be checked.
 -/
 
 open TestSupport.A64 TestSupport.A64.Fp
@@ -65,17 +65,17 @@ def main (args : List String) : IO UInt32 := do
           IO.println s!"fail: {e}"
           return 1
       | .ok (outcomes, diffs) =>
-          let tagText (ts : Array Nat) :=
-            ", ".intercalate (Tag.all.map fun t => s!"{t.name} {ts[t.index]!}")
+          let tagText (f : Form) (ts : Array Nat) :=
+            ", ".intercalate (f.tags.map fun t => s!"{t.name} {ts[t.index]!}")
           for o in outcomes do
-            IO.println s!"block {o.block.form.name} {o.block.cls}: {o.block.count} vectors, {o.bad} differ; {tagText o.tags}"
+            IO.println s!"block {o.block.form.name} {o.block.cls}: {o.block.count} vectors, {o.bad} differ; {tagText o.block.form o.tags}"
           for f in Form.all do
             let mine := outcomes.filter (·.block.form == f)
             let sum := mine.foldl (fun acc o => acc.zipWith (· + ·) o.tags)
               (Tag.all.toArray.map fun _ => 0)
             let n := mine.foldl (fun k o => k + o.block.count) 0
             let bad := mine.foldl (fun k o => k + o.bad) 0
-            IO.println s!"form {f.name}: {n} vectors, {bad} differ; {tagText sum}"
+            IO.println s!"form {f.name}: {n} vectors, {bad} differ; {tagText f sum}"
           for d in diffs do
             IO.println s!"differ: {d.form.name} {d.cls} {hex16 d.a} {hex16 d.b}: {hex16 d.got}, model {hex16 d.want}"
           let total := outcomes.foldl (fun n o => n + o.block.count) 0

@@ -3,9 +3,9 @@ import Interpreter.Wasm.Float
 /-!
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at
 exception level 1.  It covers the 64-bit integer forms that the back end emits, the
-double-precision forms of Wasm's f64 arithmetic, `ADR` and `ADRP`, and the system instructions of
-the startup.  `exec` gives no semantics to a system instruction: the model of the startup in
-`LeanExe/A64/Boot.lean` gives them.
+double-precision forms of Wasm's f64 arithmetic and comparisons, `ADR` and `ADRP`, and the system
+instructions of the startup.  `exec` gives no semantics to a system instruction: the model of the
+startup in `LeanExe/A64/Boot.lean` gives them.
 
 The code lies in a fixed map from addresses to 32-bit words, which the theorem derives from the
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
@@ -23,8 +23,9 @@ The state holds the low 64 bits of the SIMD and floating-point registers V0 to V
 D0 to D31, since the double-precision forms read and write only those bits.  The arithmetic forms
 compute Talos's functions of `Interpreter/Wasm/Float.lean`, such as `Wasm.f64Add` for `FADD`, which
 round to nearest with ties to even, keep subnormals, and give the canonical NaN
-`0x7FF8000000000000` for every NaN result.  The processor computes the same under the startup's
-`FPCR`, `0x02000000`: DN set and every other field clear.
+`0x7FF8000000000000` for every NaN result.  `FCMP` sets the flags from Talos's comparisons
+`IEEE64.eq` and `IEEE64.lt`, which are false when an operand is a NaN.  The processor computes the
+same under the startup's `FPCR`, `0x02000000`: DN set and every other field clear.
 -/
 
 namespace LeanExe.A64
@@ -155,6 +156,8 @@ inductive Instr where
   /-- `UCVTF Dd, Xn`, which converts the unsigned word of `Xn`, the zero register for 31, to a
   double. -/
   | ucvtf (d n : Fin 32)
+  /-- `FCMP Dn, Dm`, which sets the flags from the comparison of `Dn` with `Dm`. -/
+  | fcmp (n m : Fin 32)
   deriving DecidableEq, Repr
 
 /-- The instruction that the 32-bit word of value `v` encodes, or `none` for a word outside the
@@ -221,6 +224,7 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 6 then some (.fdiv d n m)
   else if v / 1024 = 0x79870 then some (.fsqrt d n)
   else if v / 1024 = 0x2798C0 then some (.ucvtf d n)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmp n m)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -271,6 +275,15 @@ def subs (s : State) (d : Fin 32) (a b : UInt64) : State :=
   { s.setX d r with
     nFlag := r >>> 63 == 1, zFlag := r == 0, cFlag := b ≤ a,
     vFlag := ((a ^^^ b) &&& (a ^^^ r)) >>> 63 == 1 }
+
+/-- The state after `FCMP` of the doubles `a` and `b`.  N is `IEEE64.lt a b`, Z is
+`IEEE64.eq a b`, C is the negation of N, and V holds when an operand is a NaN, so the flags N, Z,
+C, V are 0011 for an unordered pair, 0110 for equal values, 1000 when `a` lies below `b`, and 0010
+when it lies above, those of `FPCompare` in the Arm Architecture Reference Manual. -/
+def fcmp (s : State) (a b : UInt64) : State :=
+  { s with
+    nFlag := Wasm.IEEE64.lt a b, zFlag := Wasm.IEEE64.eq a b, cFlag := !Wasm.IEEE64.lt a b,
+    vFlag := Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b }
 
 /-- A load or store based on register `n` passes the stack pointer's alignment check: the base
 is not the stack pointer, or the stack pointer is a multiple of 16. -/
@@ -370,6 +383,7 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .fdiv d n m => some { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := next }
   | .fsqrt d n => some { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := next }
   | .ucvtf d n => some { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := next }
+  | .fcmp n m => some { s.fcmp (s.dregs n) (s.dregs m) with pc := next }
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the
 word at the program counter. -/
