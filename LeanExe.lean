@@ -87,6 +87,7 @@ import LeanExe.M7.Isla.Trace
 import LeanExe.M7.Isla.Walk
 import LeanExe.M7.Machine
 import LeanExe.M7.Parts
+import LeanExe.M7.Setup
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
 import LeanExe.M7.Proof.Branch
@@ -105,9 +106,11 @@ import LeanExe.M7.Proof.Parts
 import LeanExe.M7.Proof.Program
 import LeanExe.M7.Proof.Relation
 import LeanExe.M7.Proof.Runs
+import LeanExe.M7.Proof.Setup
 import LeanExe.M7.Proof.Sim
 import LeanExe.M7.Proof.Slots
 import LeanExe.M7.Proof.Step
+import LeanExe.M7.Proof.Store
 import LeanExe.M7.Proof.Straight
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes
