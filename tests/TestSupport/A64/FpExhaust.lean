@@ -182,22 +182,22 @@ def chunkDigest (c : Case) (model : Bool) (k : Nat) : Except UInt64 UInt64 := do
       h := h * digestMul + c.oracle a b
   return h
 
-/-- The digests of the chunks of `g`, of Talos's function or with `model` of the model, computed
-in `tasks` parallel tasks. -/
-def expected (g : Segment) (model : Bool) (tasks : Nat) : Except String (Array UInt64) := do
-  let per := (g.count + tasks - 1) / tasks
-  let ts := (List.range tasks).filterMap fun t =>
-    if t * per < g.count then
-      some (Task.spawn fun _ =>
-        (List.range (min per (g.count - t * per))).toArray.mapM fun j =>
-          chunkDigest g.case model (g.start + t * per + j))
-    else none
-  let mut out := #[]
+/-- The digests of the chunks `ks` of case `c`, of Talos's function or with `model` of the model,
+computed in `tasks` parallel tasks, of which task `t` takes the chunks at the positions `t`,
+`t + tasks`, and so on, so that each task meets chunks of every part of the range. -/
+def expected (c : Case) (ks : Array Nat) (model : Bool) (tasks : Nat) :
+    Except String (Array UInt64) := do
+  let T := max tasks 1
+  let ts := (List.range T).toArray.map fun t =>
+    Task.spawn fun _ =>
+      (List.range ((ks.size + T - 1 - t) / T)).toArray.mapM fun j =>
+        chunkDigest c model ks[t + j * T]!
+  let mut parts := #[]
   for t in ts do
     match t.get with
-    | .ok ds => out := out ++ ds
-    | .error i => throw s!"the model stops on {g.case.name} of word {i}"
-  return out
+    | .ok ds => parts := parts.push ds
+    | .error i => throw s!"the model stops on {c.name} of word {i}"
+  return (List.range ks.size).toArray.map fun i => parts[i % T]![i / T]!
 
 /-- The digest at chunk `k` of the UART's bytes. -/
 def digestAt (out : ByteArray) (k : Nat) : UInt64 := get64 out (8 * k)

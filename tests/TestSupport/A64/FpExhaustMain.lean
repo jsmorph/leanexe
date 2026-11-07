@@ -8,7 +8,9 @@ the arm64 Image of the cases, and DIR/ex.layout, a line for each segment with it
 chunk, and number of chunks: every chunk of each case when SAMPLE is 0, and otherwise SAMPLE
 chunks spread over the words.  A CASE is a case's name, `unary`, `binary`, or `all`.
 `a64-fpexhaust part DIR START COUNT CASE...` writes only DIR/ex.layout, with COUNT chunks from
-START of each case, for a part of the digests on another host.  `a64-fpexhaust expect DIR TASKS`
+START of each case, and `a64-fpexhaust stripes DIR LO HI CASE...` writes the layout of the blocks
+of 16 chunks whose number modulo 100 lies from LO to below HI, for a share of the digests on
+another host.  `a64-fpexhaust expect DIR TASKS`
 writes DIR/ex.expect, the digests
 of Talos's results for every chunk of the layout, computed in TASKS parallel tasks, and prints
 each case's time, and `a64-fpexhaust expect DIR TASKS model` writes DIR/ex.model, the digests of
@@ -48,6 +50,20 @@ def pick (names : List String) : Option (List Case) :=
     | "unary" => some (cases.filter (!·.binary))
     | "binary" => some (cases.filter (·.binary))
     | n => (caseOf n).map ([·])).map List.flatten
+
+/-- The chunks of each run of consecutive segments of one case, in order. -/
+def runs (segs : List Segment) : List (Case × Array Nat) :=
+  (segs.foldl (fun acc g =>
+    let ks := (List.range g.count).toArray.map (g.start + ·)
+    match acc with
+    | (c, xs) :: rest => if c.name == g.case.name then (c, xs ++ ks) :: rest else (g.case, ks) :: acc
+    | [] => [(g.case, ks)]) []).reverse
+
+/-- The segments of `16`-chunk blocks of case `c` whose number modulo 100 lies from `lo` to below
+`hi`, a share of the chunks that meets every part of the range. -/
+def stripes (c : Case) (lo hi : Nat) : List Segment :=
+  (List.range (2 ^ (32 - chunkBits) / 16)).filterMap fun b =>
+    if lo ≤ b % 100 ∧ b % 100 < hi then some { case := c, start := 16 * b, count := 16 } else none
 
 def readLayout (dir : String) : IO (List Segment) := do
   match parseLayout (← IO.FS.readFile s!"{dir}/ex.layout") with
@@ -91,6 +107,17 @@ def main (args : List String) : IO UInt32 := do
       | _, _, _ =>
           IO.eprintln "a64-fpexhaust: a CASE that does not exist, or a START or COUNT that is no number"
           return 2
+  | "stripes" :: dir :: lo :: hi :: names =>
+      match pick names, lo.toNat?, hi.toNat? with
+      | some cs, some a, some b =>
+          let segs := cs.flatMap fun c => stripes c a b
+          IO.FS.writeFile s!"{dir}/ex.layout" <| String.join <|
+            segs.map fun g => s!"{g.case.name} {g.start} {g.count}\n"
+          IO.println s!"a64-fpexhaust: {segs.length} blocks of 16 chunks"
+          return 0
+      | _, _, _ =>
+          IO.eprintln "a64-fpexhaust: a CASE that does not exist, or a START or COUNT that is no number"
+          return 2
   | "join" :: dir :: parts =>
       let segs ← readLayout dir
       let mut m : Std.HashMap (String × Nat) UInt64 := {}
@@ -130,10 +157,9 @@ def main (args : List String) : IO UInt32 := do
       let model := rest = ["model"]
       let segs ← readLayout dir
       let mut out := ByteArray.empty
-      let mut byCase : List (String × Nat × Nat) := []
-      for g in segs do
+      for (c, ks) in runs segs do
         let t0 ← IO.monoNanosNow
-        match expected g model (max t 1) with
+        match expected c ks model t with
         | .error e =>
             IO.println s!"fail: {e}"
             return 1
@@ -142,12 +168,7 @@ def main (args : List String) : IO UInt32 := do
               for k in [0:8] do
                 out := out.push (LeanExe.A64.byteOf d k)
             let t1 ← IO.monoNanosNow
-            byCase := match byCase with
-              | (n, c, ns) :: rest => if n == g.case.name then (n, c + g.count, ns + (t1 - t0)) :: rest
-                  else (g.case.name, g.count, t1 - t0) :: byCase
-              | [] => [(g.case.name, g.count, t1 - t0)]
-      for (n, c, ns) in byCase.reverse do
-        IO.println s!"expect {n}: {c} chunks in {ns / 1000000} ms"
+            IO.println s!"expect {c.name}: {ks.size} chunks in {(t1 - t0) / 1000000} ms"
       IO.FS.writeBinFile s!"{dir}/{if model then "ex.model" else "ex.expect"}" out
       return 0
   | ["check", dir, serial] =>
@@ -187,5 +208,5 @@ def main (args : List String) : IO UInt32 := do
       IO.println s!"a64-fpexhaust: {total - bad} of {total} chunks agree with the model"
       return if bad = 0 then 0 else 1
   | _ =>
-      IO.eprintln "usage: a64-fpexhaust gen DIR SAMPLE CASE... | part DIR START COUNT CASE... | expect DIR TASKS [model] | join DIR PART... | check DIR SERIAL"
+      IO.eprintln "usage: a64-fpexhaust gen DIR SAMPLE CASE... | part DIR START COUNT CASE... | stripes DIR LO HI CASE... | expect DIR TASKS [model] | join DIR PART... | check DIR SERIAL"
       return 2
