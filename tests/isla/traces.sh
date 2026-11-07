@@ -42,13 +42,19 @@
 # fault's exception entry, VBAR_EL1 is symbolic, and ZCR_EL3 and SMCR_EL3 are 0, Isla's
 # configuration value, which keeps that path's vector length concrete.
 #
-# The Sail model computes UDIV's quotient by dividing real numbers, which Isla does not implement,
-# so UDIV's trace comes from armv9p4-udiv.ir, a copy of the IR that tests/isla/armv9p4-udiv.diff
-# edits to compute the quotient with Sail's tdiv_int on the same integers.  The diff's header
-# states the replaced computation and the identity that the edit assumes.  The copy sits beside
-# the IR:
-#   cp ~/isla-probe/ir/armv9p4.ir ~/isla-probe/ir/armv9p4-udiv.ir &&
-#   patch ~/isla-probe/ir/armv9p4-udiv.ir < tests/isla/armv9p4-udiv.diff
+# Two edits apply to copies of the IR, and each diff's header states what it replaces.  Isla's
+# harness function isla_footprint_common catches every exception that the decoder throws, so a
+# path that ends in SEE, UNDEFINED, or UNPREDICTABLE would look complete.
+# tests/isla/armv9p4-checked.diff makes such an exception fail an assertion, which stops the run,
+# and keeps the exception that every exception entry throws.  Every form runs on
+# armv9p4-checked.ir.  The Sail model computes UDIV's quotient by dividing real numbers, which Isla
+# does not implement, so UDIV runs on armv9p4-checked-udiv.ir, which tests/isla/armv9p4-udiv.diff
+# edits further to compute the quotient with Sail's tdiv_int on the same integers.  The copies sit
+# beside the IR:
+#   ir=~/isla-probe/ir && cp $ir/armv9p4.ir $ir/armv9p4-checked.ir &&
+#   patch $ir/armv9p4-checked.ir < tests/isla/armv9p4-checked.diff &&
+#   cp $ir/armv9p4-checked.ir $ir/armv9p4-checked-udiv.ir &&
+#   patch $ir/armv9p4-checked-udiv.ir < tests/isla/armv9p4-udiv.diff
 #
 # Usage: tests/isla/traces.sh tcg|kvm [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
@@ -75,7 +81,7 @@ case $profile in
     echo "unknown profile $profile" >&2
     exit 1 ;;
 esac
-ir=$probe/ir/armv9p4.ir
+ir=$probe/ir/armv9p4-checked.ir
 base=(-C "$probe/isla-patched/configs/armv9p4.toml"
   -f isla_footprint_no_init -s --simplify-registers --tree -I __isla_vector_gpr=true
   -I __supported_pa_size=$pa)
@@ -164,5 +170,5 @@ run lsrv "10011010110 Rm:5 001001 Rn:5 Rd:5" "${tcr[@]}"
 run orr-w "00101010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
 run adr "0 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
 run adrp "1 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
-ir=$probe/ir/armv9p4-udiv.ir
+ir=$probe/ir/armv9p4-checked-udiv.ir
 run udiv "10011010110 Rm:5 000010 Rn:5 Rd:5" "${tcr[@]}"

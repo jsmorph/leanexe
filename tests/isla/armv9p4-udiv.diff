@@ -1,20 +1,22 @@
-tests/isla/traces.sh traces UDIV from armv9p4-udiv.ir, which this diff makes from armv9p4.ir, the
-Armv9.4-A snapshot of the Sail model (isla-snapshots d8b31014).  The function
-execute_aarch64_instrs_integer_arithmetic_div, which UDIV shares with SDIV, reads operand1 from
-X[n] and operand2 from X[m], and for a nonzero operand2 it computes the quotient as
-RoundTowardsZero(to_real(asl_Int(operand1)) / to_real(asl_Int(operand2))), where
-RoundTowardsZero(r) is ceil(r) for r < 0 and floor(r) otherwise.  Isla implements no real-number
-primitive.  The edit computes the quotient as tdiv_int(asl_Int(operand1), asl_Int(operand2)),
-which Isla evaluates with i128::wrapping_div on concrete operands and with bvsdiv over 128 bits on
-symbolic ones.
+tests/isla/traces.sh traces UDIV from armv9p4-checked-udiv.ir, which this diff makes from
+armv9p4-checked.ir, armv9p4.ir with armv9p4-checked.diff applied, where armv9p4.ir is the Armv9.4-A
+snapshot of the Sail model (isla-snapshots d8b31014).  The function
+execute_aarch64_instrs_integer_arithmetic_div, which UDIV shares with SDIV, reads operand1 from X[n]
+and operand2 from X[m], and for a nonzero operand2 it computes the quotient as
+RoundTowardsZero(to_real(asl_Int(operand1)) / to_real(asl_Int(operand2))), where RoundTowardsZero(r)
+is ceil(r) for r < 0 and floor(r) otherwise.  Isla implements no real-number primitive.  The edit
+computes the quotient as tdiv_int(asl_Int(operand1), asl_Int(operand2)), which Isla evaluates with
+i128::wrapping_div on concrete operands and with bvsdiv over 128 bits on symbolic ones.
 
-A trace from the edited IR describes the unedited model under two readings: that the edit
-divides the same integers in the same order and leaves the function otherwise unchanged, and that
-for integers a and b with b ≠ 0, a/b rounded toward zero equals tdiv_int(a, b).  Rust's i128::wrapping_div and
-SMT-LIB's bvsdiv both truncate toward zero, and neither overflows on operands below 2^64 in
-magnitude.  The edit replaces seven statements by one, so the jump to the zero case and the goto
-that skips it name the same statements as before at indices six lower.  Apply with
-`cp armv9p4.ir armv9p4-udiv.ir && patch armv9p4-udiv.ir < armv9p4-udiv.diff`.
+A trace from the edited IR describes the unedited model under two readings: that the edit divides
+the same integers in the same order and leaves the function otherwise unchanged, and that for
+integers a and b with b ≠ 0, a/b rounded toward zero equals tdiv_int(a, b).  Rust's
+i128::wrapping_div and SMT-LIB's bvsdiv both truncate toward zero, and neither overflows on operands
+below 2^64 in magnitude.  The edit replaces seven statements by one, so the jump to the zero case
+and the goto that skips it name the same statements as before at indices six lower.  The hunk
+applies to armv9p4.ir as well, since the other edit lies later in the file.  Apply with
+`cp armv9p4-checked.ir armv9p4-checked-udiv.ir` and then
+`patch armv9p4-checked-udiv.ir < armv9p4-udiv.diff`.
 
 --- armv9p4.ir
 +++ armv9p4-udiv.ir

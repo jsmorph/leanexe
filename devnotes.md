@@ -42236,11 +42236,13 @@ The Isla agent searched the IR's call graph, from the statements of `__Instructi
 
 The experiment on finding C edited `isla_footprint_common` in scratch copies of both IRs, so that an exception other than `Error_ExceptionTaken`, which every exception entry throws through `EndOfInstruction`, fails a Sail assertion and stops the run.  All 62 runs succeeded with traces equal to the committed ones once struct fields are sorted, so no traced path ends in a decoder exception that the harness swallowed.  With the permanently undefined encoding UDF, the unedited IR gives an 11-line trace that looks complete, and the edited IR stops with the assertion.  The diffs are in `tmp/isla/edscr/ir/`, and `traces.sh` does not use them.
 
+The user adopted the edit.  `tests/isla/armv9p4-checked.diff` holds it with its reasons, every form now runs on `armv9p4-checked.ir`, and UDIV on `armv9p4-checked-udiv.ir`, to which the UDIV diff applies unchanged.  The copies built on edgexpert-18ff from the committed diffs have the SHA-256 digests of the experiment's copies, `22c1420f…` and `373b6279…`, so the experiment's traces are the outputs of the script as it stands, and the committed traces equal them once struct fields are sorted.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
 - [x] E: the review's fixes in the traces' configuration, the opcode files from `traces.sh`, and the test of swallowed decoder exceptions.
-- [ ] E: the user's decision on the handler edit that stops a run on a swallowed decoder exception.
+- [x] E: the user's decision on the handler edit that stops a run on a swallowed decoder exception.
 - [x] E: UDIV's IR edit and traces.
 - [x] E: the extended semantics and ADD.
 - [x] E: ADD on the committed traces under the full TCG and KVM profiles.
