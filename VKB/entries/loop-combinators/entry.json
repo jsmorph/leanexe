@@ -53,14 +53,5 @@
     "Demos.Euler.Buffered.sweepInto_eq",
     "Demos.Euler.Buffered.advanceInto_eq",
     "Demos.Euler.Buffered.runFromInto_eq"
-  ],
-  "sources": [
-    "2026-10-24: Glushkov's theorem",
-    "2026-10-24: The matcher computes the specification",
-    "2026-10-25: The SHA-3 proofs",
-    "2026-10-26: The slew edge check proved sound",
-    "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector",
-    "2026-10-30: The buffered Euler solvers and a call theorem for every grid"
   ]
 }

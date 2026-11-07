@@ -41,15 +41,5 @@
     "Demos.RunningSumFp.decRound_bound_le",
     "Demos.RunningSumFp.initial_memoryCap",
     "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements"
-  ],
-  "sources": [
-    "2026-10-23: The SHA-512 family",
-    "2026-10-23: SHA-256 and SHA-224",
-    "2026-10-23: Hashing from a prefix",
-    "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
-    "2026-10-24: The matcher computes the specification",
-    "2026-10-25: The SHA-3 proofs",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

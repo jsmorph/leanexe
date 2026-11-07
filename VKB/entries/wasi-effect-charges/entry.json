@@ -32,11 +32,5 @@
     "Demos.RunningSum.step_body_bounded",
     "Demos.RunningSumFp.writeStep_bounded",
     "Demos.RunningSumFp.readStep_bounded"
-  ],
-  "sources": [
-    "2026-10-23: Implementing the WASI agenda",
-    "2026-10-26: Memory accounting for the process loop",
-    "2026-10-27: The charges of the integer running sum",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
   ]
 }

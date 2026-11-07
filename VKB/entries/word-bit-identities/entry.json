@@ -47,12 +47,5 @@
     "Library.Hashing.XxHash64.Proof.rotl_1",
     "Library.Hashing.XxHash64.Proof.round_eq",
     "Library.Hashing.Sha256.bigSigma0_toUInt32"
-  ],
-  "sources": [
-    "2026-10-23: Hashing library plan",
-    "2026-10-23: SHA-256 and SHA-224",
-    "2026-10-24: Glushkov's theorem",
-    "2026-10-25: The SHA-3 proofs",
-    "2026-10-25: SipHash and XXH64"
   ]
 }

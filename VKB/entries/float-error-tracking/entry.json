@@ -43,11 +43,5 @@
     "Demos.Slew.Check.edgeOk_sound",
     "Demos.Slew.NanFree.plan_finite",
     "Demos.Slew.Safety.plan_safe"
-  ],
-  "sources": [
-    "2026-10-26: The slew planner: program, theorems, and tests",
-    "2026-10-26: The slew edge check proved sound",
-    "2026-10-26: The slew safety theorem proved",
-    "2026-10-26: NaN-freedom of the slew planner"
   ]
 }

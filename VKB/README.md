@@ -4,7 +4,7 @@ The VKB collects what agents and people learn while proving properties of progra
 
 ## Entries
 
-Each entry is a directory under [`entries/`](entries) with a `README.md` and an `entry.json`.  The README states when the entry applies, what to do, what fails, and where a worked example is, in prose that a prover can follow without other context.  `entry.json` names the modules to import, the declarations the entry relies on, the worked examples, the goal shapes it addresses, and the journal entries it comes from.  A search for a constant or a goal therefore finds the entry, and [the template](TEMPLATE.md) gives the form of both files.
+Each entry is a directory under [`entries/`](entries) with a `README.md` and an `entry.json`.  The README states when the entry applies, what to do, what fails, and where a worked example is, in prose that a prover can follow without other context.  `entry.json` names the modules to import, the declarations the entry relies on, the worked examples, and the goal shapes it addresses.  A search for a constant or a goal therefore finds the entry, and [the template](TEMPLATE.md) gives the form of both files.
 
 An entry names existing declarations instead of restating them.  When several proofs repeat a lemma, the entry points to the copies, and replacing them with one shared lemma is a separate code change.  An entry may record a failure without a fix, because a recorded failure saves the next prover the same hours.
 

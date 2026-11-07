@@ -37,8 +37,5 @@
     "LeanExe.ProofKit.FixedArraySearch.guardProgram_spec",
     "LeanExe.ProofKit.FixedArrayHeader.writeLocal_specA",
     "LeanExe.Pipeline.joinProgram_spec"
-  ],
-  "sources": [
-    "2026-08-11: Fold-composition work begins"
   ]
 }

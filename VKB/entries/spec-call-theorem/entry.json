@@ -76,13 +76,5 @@
     "Demos.Euler.Verified.euler_solve_call",
     "Demos.Drone.Verified.compute_callSpec",
     "Demos.Drone.Verified.drone_compute_call"
-  ],
-  "sources": [
-    "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector",
-    "2026-10-30: One call theorem for the verified compilations",
-    "2026-10-30: The verified-request skill and its acceptance tool",
-    "2026-10-30: The numerical call lemmas on the generic call theorem",
-    "2026-10-30: The verified total theorems of the Euler solvers and the drone planner"
   ]
 }

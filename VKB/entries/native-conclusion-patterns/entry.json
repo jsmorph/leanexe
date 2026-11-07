@@ -19,8 +19,5 @@
   "examples": [
     "LeanExe.Native.bare_of_nativeA",
     "Verified.bare_of_nativeTables"
-  ],
-  "sources": [
-    "2026-10-30: The cap and region conclusions of the native statements"
   ]
 }

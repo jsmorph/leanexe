@@ -19,9 +19,5 @@
     "LeanExe.Wasi.Host.Answers.of_satisfies",
     "Verified.Wasi.OracleHost.env_satisfies"
   ],
-  "examples": [],
-  "sources": [
-    "2026-10-25: Address the WASI review findings",
-    "2026-10-26: Complete review of the WASI work"
-  ]
+  "examples": []
 }

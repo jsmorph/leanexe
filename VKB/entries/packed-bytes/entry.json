@@ -36,9 +36,5 @@
     "Library.Hashing.SipHash.Proof.le64_bytes",
     "Library.Hashing.SipHash.Proof.messageWords_eq",
     "Library.Hashing.XxHash64.Proof.lane_le"
-  ],
-  "sources": [
-    "2026-10-23: Packed bytes",
-    "2026-10-25: SipHash and XXH64"
   ]
 }

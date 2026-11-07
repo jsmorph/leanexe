@@ -25,8 +25,5 @@
   "examples": [
     "LeanExe.Native.NativeA.unique",
     "LClight.bigstep_program_terminates_E0"
-  ],
-  "sources": [
-    "2026-10-30: Determinism of the Lean copy of Clight"
   ]
 }

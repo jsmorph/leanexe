@@ -39,16 +39,5 @@
     "Verified.Examples.HeapSums.regrow",
     "Demos.Euler.Verified.solve_bound",
     "Demos.Euler.Buffered.solve_eq"
-  ],
-  "sources": [
-    "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
-    "2026-10-24: The compiled matcher",
-    "2026-10-24: The cost of a variable pattern that names the matched value",
-    "2026-10-25: The SHA-3 program",
-    "2026-10-26: Sums with heap fields: results",
-    "2026-10-26: The slew planner: program, theorems, and tests",
-    "2026-10-26: The slew planner compiled and tested in Wasmtime",
-    "2026-10-27: Deriving a recursive type's declarations once",
-    "2026-10-30: The buffered Euler solvers and a call theorem for every grid"
   ]
 }

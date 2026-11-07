@@ -71,11 +71,5 @@
     "Verified.releaseStep",
     "Verified.Step.nodeBorrowed",
     "Verified.ImplementsTables.call"
-  ],
-  "sources": [
-    "2026-10-02: Plan: Iteration 11, a region frame in `Implements`",
-    "2026-10-03: The remaining tree and ownership items",
-    "2026-10-06: The verified compiler",
-    "2026-10-30: One call theorem for the verified compilations"
   ]
 }

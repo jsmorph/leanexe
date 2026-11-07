@@ -16,8 +16,5 @@
     "Verified.Examples.Forms.compiled.climb.implements",
     "Verified.Examples.Forms.compiled.countDown.implements",
     "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements"
-  ],
-  "sources": [
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

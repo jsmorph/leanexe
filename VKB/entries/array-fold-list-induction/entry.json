@@ -23,8 +23,5 @@
     "Examples.RunningMax.foldl_largest",
     "Examples.RunningMax.compute_eq",
     "SHS.Equiv.SHA256.Pipeline.foldl_compress_lift_gen"
-  ],
-  "sources": [
-    "2026-10-30: The verified-request skill and its acceptance tool"
   ]
 }
