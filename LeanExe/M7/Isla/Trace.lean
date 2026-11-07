@@ -45,6 +45,8 @@ The rules differ from those of the A64 semantics as follows.
    the platform decides which accesses are device accesses, and the traces of `m7-traces.sh` map
    the model's device window as Device memory and DTCM as Normal memory.
 4. The vector primitives read and write `R0` to `R30` as `Mach.x` and `Mach.setX` give them.
+5. A call of an abstract function ends the path in `fail`.  The M7 traces come from runs without
+   `--abstract`, so they hold no such call, and the semantics gives no function a meaning.
 -/
 
 namespace LeanExe.M7.Isla
@@ -286,6 +288,7 @@ def run (P : Platform) (δ : Nat → UInt32) (len : Nat) :
     | some (.bits _ k), some (.bits 64 y), some ws =>
       ws = gprVals m ∧ run P δ len t ρ (setRegAt m (k % 32) y) σ o
     | _, _, _ => o = .fail
+  | .event (.abstractCall _ _ _) _, _, _, _, o => o = .fail
   | .event .skip t, ρ, m, σ, o => run P δ len t ρ m σ o
 
 /-- Some path of some trace of `ts` ends in the outcome `o`. -/
