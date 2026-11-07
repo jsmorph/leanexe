@@ -71,6 +71,8 @@ import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
 import LeanExe.M7.Div
 import LeanExe.M7.Encode
+import LeanExe.M7.Gen
+import LeanExe.M7.Image
 import LeanExe.M7.Machine
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Machine
