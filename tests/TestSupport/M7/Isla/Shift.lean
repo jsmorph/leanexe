@@ -138,7 +138,7 @@ theorem lsrReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d n k 
             | t32_val_bwd [ofNat_shr, shr_zero]
 
 set_option maxHeartbeats 4000000 in
-set_option maxRecDepth 20000 in
+set_option maxRecDepth 8000 in
 /-- The trace of `LSL.W Rd, Rm, #imm` agrees with `exec` for every register of r0 to r7 in each
 field, every shift amount `imm3:imm2`, and every machine whose program counter plus 4 is below
 2^32. -/
@@ -176,7 +176,7 @@ theorem lslImm_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d k : 
           | t32_val_bwd [ofNat_shl, ofNat_shl_lt, shl_zero, four_mul]
 
 set_option maxHeartbeats 4000000 in
-set_option maxRecDepth 20000 in
+set_option maxRecDepth 8000 in
 /-- The trace of `LSR.W Rd, Rm, #imm` agrees with `exec` for every register of r0 to r7 in each
 field, every shift amount `imm3:imm2`, of which 0 encodes 32, and every machine whose program
 counter plus 4 is below 2^32. -/

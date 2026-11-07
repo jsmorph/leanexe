@@ -13,7 +13,7 @@ the machine's structure instance, and the kernel checks the reduced type against
 one.  A proof by `rfl` that a projection of such an update equals
 `decide (x * (2^128 - 2^32) % 2 = 1)` reproduced the growth.  `awc_v`, `awc_v_c`, and `awc_v_b`
 rewrite the comparison during the walk into a condition on the signs of 32-bit values, after
-which the walk of `SUB{S}` checks in 2.3 GiB.
+which the walk of `SUB{S}` checks in 2.2 GiB.
 -/
 
 namespace LeanExe.M7.Isla
