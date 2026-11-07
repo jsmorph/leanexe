@@ -3,13 +3,15 @@ import LeanExe.M7.Div
 import LeanExe.M7.Image
 import TestSupport.M7.Asm
 import TestSupport.M7.Crc
+import TestSupport.M7.Sha
 import TestSupport.Bare.Req
 import Demos.Energy.Loop
 
 /-!
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`
 generates, the echo's steps `usart3Tick` and `cmsdkTick`, the gateway's steps `gwTickUsart3`
-and `gwTick`, and the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, measured by running the
+and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, and the SHA-256 steps
+`shaUsart3Tick` and `shaCmsdkTick`, measured by running the
 generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs from the loop's head of
 `main` to its next arrival there: the call of the step and the request's register access.
 
@@ -31,8 +33,10 @@ the next input byte, and a write of the transmit register appends to the output.
 At each return from the step, the run compares the step's results in `main`'s outgoing area with
 the words of the state and the request that the step computes in native Lean, and at the end it
 compares the output with the expected bytes: for the echo, the input with bit 5 of each byte
-flipped, and for CRC-32, the low byte of the CRC-32 of each prefix of the input, which `crc32Bits`
-computes bit by bit with the reflected polynomial `0xEDB88320`.  The program holds the code of
+flipped, for CRC-32, the low byte of the CRC-32 of each prefix of the input, which `crc32Bits`
+computes bit by bit with the reflected polynomial `0xEDB88320`, and for SHA-256, after each block
+of 64 bytes, the 32 bytes of the digest that `sha256` of `Library/Hashing/Sha256/Program.lean`
+gives for the input up to the block's end.  The program holds the code of
 `udivmod64`, which
 the run does not execute: at its entry the run sets r0:r1 to the quotient and r2:r3 to the
 remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word, returns to LR, and counts
@@ -92,6 +96,7 @@ structure Prog where
   limit : UInt32
   start : List UInt8
   answer : Array UInt8 → Array UInt8
+  input : Option (Array UInt8) := none
 
 def echoKind (p : Port) (s v : UInt64) : String :=
   match s &&& 255 with
@@ -140,6 +145,46 @@ def crcProg (name : String) (m : Module) (tick : UInt64 → UInt64 → UInt64 ×
     inRec := 1, outRec := 1, limit := areaEnd, start := LeanExe.areaPrefixBytes m,
     answer := crcReplies }
 
+open TestSupport.M7.Sha in
+def shaKind (p : Port) (f : ShaFrame) (v : UInt64) : String :=
+  if f.phase == 0 then (if v &&& p.rxFull != 0 then "rxne" else "idle")
+  else if f.phase == 1 then
+    (if f.nbyte < 7 then "byte" else if f.nword < 7 then "word" else "block")
+  else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
+  else if f.nbyte < 7 then "sent" else if f.nword < 3 then "sentword" else "sentblock"
+
+/-- The bytes `bs` packed eight to a word, the lowest first. -/
+def packBytes (bs : Array UInt8) : Array UInt64 :=
+  (Array.range ((bs.size + 7) / 8)).map fun j =>
+    (List.range 8).foldl (fun acc i =>
+      acc ||| (bs[8 * j + i]?.getD 0).toUInt64 <<< (8 * i).toUInt64) 0
+
+/-- The answers of the SHA-256 step to the bytes `input`: after each whole block of 64 bytes, the
+32 bytes of the digest of the input up to the block's end.  `paddedWord` reads the word after the
+message's last byte, which a message of `64 (j + 1)` bytes lacks, so a zero word follows the packed
+bytes, and no read lies outside the array. -/
+def shaAnswers (input : Array UInt8) : Array UInt8 :=
+  ((List.range (input.size / 64)).flatMap fun j =>
+    let n := 64 * (j + 1)
+    let d := Library.Hashing.Sha256.sha256 ((packBytes (input.extract 0 n)).push 0)
+      (UInt64.ofNat n)
+    [d.w0, d.w1, d.w2, d.w3].flatMap fun w =>
+      (List.range 8).map fun i => (w >>> (8 * i).toUInt64).toUInt8).toArray
+
+/-- The input of a SHA-256 run: a block of zero bytes, a block of `0xFF` bytes, and 62 blocks of
+the bytes `37 i + 11`. -/
+def shaInput : Array UInt8 :=
+  (List.replicate 64 0 ++ List.replicate 64 255 ++
+    (List.range (62 * 64)).map fun i => UInt8.ofNat (37 * i + 11)).toArray
+
+open TestSupport.M7.Sha in
+def shaProg (name : String) (m : Module) (tick : ShaFrame → UInt64 → ShaFrame × UInt64)
+    (p : Port) : Prog :=
+  { name, module := m, k := 13, G := ShaFrame, s0 := shaInit, words := shaWords, tick,
+    port := p, phase := fun f => f.phase, kind := shaKind p, inRec := 64, outRec := 32,
+    limit := areaEnd, start := LeanExe.areaPrefixBytes m, answer := shaAnswers,
+    input := some shaInput }
+
 def programs : List Prog :=
   [echoProg "echo-usart3" 9 TestSupport.Bare.usart3Tick usart3,
     echoProg "echo-cmsdk" 5 TestSupport.Bare.cmsdkTick cmsdk,
@@ -148,7 +193,11 @@ def programs : List Prog :=
     crcProg "crc-usart3" TestSupport.M7.Crc.crcStepCompiled.module
       TestSupport.M7.Crc.crcUsart3Tick usart3,
     crcProg "crc-cmsdk" TestSupport.M7.Crc.crcCmsdkCompiled.module
-      TestSupport.M7.Crc.crcCmsdkTick cmsdk]
+      TestSupport.M7.Crc.crcCmsdkTick cmsdk,
+    shaProg "sha-usart3" TestSupport.M7.Sha.shaStepCompiled.module
+      TestSupport.M7.Sha.shaUsart3Tick usart3,
+    shaProg "sha-cmsdk" TestSupport.M7.Sha.shaCmsdkCompiled.module
+      TestSupport.M7.Sha.shaCmsdkTick cmsdk]
 
 /-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=
