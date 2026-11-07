@@ -1,3 +1,4 @@
+import TestSupport.M7.CrcStep
 import TestSupport.M7.Windows
 
 /-!
@@ -6,7 +7,8 @@ writes.  `tests/baremetal/m7-image.sh` elaborates this file in the directory of 
 `file_nat%` and `file_size%` read it, and no build target includes it.  The kernel evaluates
 `genProgram` on `crcUsart3Tick`'s module and index, the initial state `crcInit`, the code's base,
 the stack's limit at the area's end, the device window, and the code of `udivmod64`, and checks
-that the file's bytes are those of the generated instructions.
+that the file's bytes are those of the generated instructions.  The instructions are those of
+which `crc_step` states the call of the step.
 -/
 
 namespace TestSupport.M7.CrcImageFile
@@ -31,3 +33,7 @@ theorem crc_image : ∃ is, genProgram crcStepCompiled.module 5 [crcInit] codeBa
 end TestSupport.M7.CrcImageFile
 
 #print axioms TestSupport.M7.CrcImageFile.crc_image
+#print axioms TestSupport.M7.crc_step
+#print axioms TestSupport.M7.crcCmsdk_step
+#print axioms TestSupport.M7.crc_stack
+#print axioms LeanExe.M7.step_call
