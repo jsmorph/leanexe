@@ -1,4 +1,5 @@
 import LeanExe.M7.Proof.Call
+import LeanExe.M7.Proof.Bounds
 import LeanExe.ProofKit.Exec
 
 /-!
@@ -18,17 +19,6 @@ open Wasm LeanExe.ProofKit LeanExe.CallGraph
 variable {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
 
 /-! ## Code of 4-byte forms -/
-
-/-- The instruction takes 4 bytes. -/
-def Instr.wide (i : Instr) : Bool := i.size == 4
-
-theorem codeSize_of_wide : ∀ {is : List Instr}, is.all Instr.wide = true →
-    codeSize is = 4 * is.length
-  | [], _ => rfl
-  | i :: is, h => by
-      simp only [List.all_cons, Bool.and_eq_true, Instr.wide, beq_iff_eq] at h
-      rw [codeSize_cons, h.1, codeSize_of_wide h.2, List.length_cons]
-      omega
 
 theorem wide_flatten_copies : ∀ {codes : List (List Instr)} {src dst : Nat → Nat},
     (∀ i (hi : i < codes.length), CopyCode codes[i] (src i) (dst i)) →
@@ -465,14 +455,6 @@ theorem construct_outcome {E : Env} {ctl : List Ctl} {α : Type} {r : Continuati
   | OutOfFuel => trivial
   | ReturnCall _ _ _ => exact ho.elim
   | Throwing _ _ _ _ => exact ho.elim
-
-/-- The code of `l1 ++ l2`, where every instruction of `l1` takes 4 bytes, places `l2` the
-length of `l1` in instructions on. -/
-theorem CodeAt.split_wide {a : UInt32} {l1 l2 : List Instr} (h : CodeAt code a (l1 ++ l2))
-    (hw : l1.all Instr.wide = true) : CodeAt code a l1 ∧ CodeAt code (after a l1.length) l2 := by
-  obtain ⟨h1, h2⟩ := CodeAt.append.mp h
-  rw [codeSize_of_wide hw, ← after_eq] at h2
-  exact ⟨h1, h2⟩
 
 /-! ## `if` -/
 

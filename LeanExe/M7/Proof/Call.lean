@@ -49,19 +49,6 @@ theorem outside_of_disjoint {sp : UInt32} {o x : Nat} (hd : o + 8 ≤ x ∨ x + 
 def slotWords (s : State) (o : Nat) : UInt32 × UInt32 :=
   (load32 s.mem (s.sp + UInt32.ofNat o), load32 s.mem (s.sp + UInt32.ofNat (o + 4)))
 
-theorem load32_congr {m m' : UInt32 → UInt8} {a : UInt32}
-    (h : ∀ k < 4, m' (a + UInt32.ofNat k) = m (a + UInt32.ofNat k)) : load32 m' a = load32 m a := by
-  have h0 := h 0 (by decide)
-  have h1 := h 1 (by decide)
-  have h2 := h 2 (by decide)
-  have h3 := h 3 (by decide)
-  rw [show UInt32.ofNat 0 = 0 from rfl, UInt32.add_zero] at h0
-  rw [show UInt32.ofNat 1 = 1 from rfl] at h1
-  rw [show UInt32.ofNat 2 = 2 from rfl] at h2
-  rw [show UInt32.ofNat 3 = 3 from rfl] at h3
-  unfold load32
-  rw [h0, h1, h2, h3]
-
 /-- A slot whose bytes keep their values keeps its words. -/
 theorem slotWords_congr {s t : State} {o : Nat} (hsp : t.sp = s.sp)
     (h : ∀ k < 8, t.mem (s.sp + UInt32.ofNat (o + k)) = s.mem (s.sp + UInt32.ofNat (o + k))) :

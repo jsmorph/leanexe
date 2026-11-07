@@ -99,6 +99,26 @@ theorem valAt_store2 {s t : State} {x : Nat} {w0 w1 : UInt32} {v : Value} (hsp :
     load32_store32]
   exact hv
 
+theorem toNat_add_ofNat {a : UInt32} {k : Nat} (h : a.toNat + k < 4294967296) :
+    (a + UInt32.ofNat k).toNat = a.toNat + k := by
+  rw [UInt32.toNat_add, UInt32.toNat_ofNat']
+  simp only [Nat.reducePow]
+  omega
+
+/-- A word whose four bytes keep their values keeps its value. -/
+theorem load32_congr {m m' : UInt32 → UInt8} {a : UInt32}
+    (h : ∀ k < 4, m' (a + UInt32.ofNat k) = m (a + UInt32.ofNat k)) : load32 m' a = load32 m a := by
+  have h0 := h 0 (by decide)
+  have h1 := h 1 (by decide)
+  have h2 := h 2 (by decide)
+  have h3 := h 3 (by decide)
+  rw [show UInt32.ofNat 0 = 0 from rfl, UInt32.add_zero] at h0
+  rw [show UInt32.ofNat 1 = 1 from rfl] at h1
+  rw [show UInt32.ofNat 2 = 2 from rfl] at h2
+  rw [show UInt32.ofNat 3 = 3 from rfl] at h3
+  unfold load32
+  rw [h0, h1, h2, h3]
+
 /-! ## Frames -/
 
 /-- The offset from SP of the operand slot of height `h`. -/

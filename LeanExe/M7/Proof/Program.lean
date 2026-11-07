@@ -223,6 +223,61 @@ def stackBound (m : Module) (k : Nat) : Nat :=
 def reachCovered (m : Module) (k : Nat) : Bool :=
   (reachFrom m k).all fun j => ((m.funcs[j]?).map fun f => coveredList f.body).getD true
 
+/-- Whether a function that calls reach from function `k` of `m` loads, stores, or accesses a
+global, which gives the generator's program an area: the test of `areaOf`. -/
+def usesArea (m : Module) (k : Nat) : Bool :=
+  match (reachFrom m k).mapM (funcOf m) with
+  | .ok fs => fs.any fun x => listArea x.2.body
+  | .error _ => false
+
+/-- A program whose functions do not access the area has none. -/
+theorem areaOf_none {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
+    (h : (fs.any fun x => listArea x.2.body) = false) : areaOf m fs limit = .ok none := by
+  unfold areaOf
+  rw [h]
+  rfl
+
+/-- The area of a program whose functions access it: the module's globals, at most 511 `i32`s and
+`i64`s, a memory that `areaOk` accepts for `areaPages` pages, and the stack's limit at or above the
+area's end. -/
+theorem areaOf_some {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
+    {area : Option (List ValueType)} (h : (fs.any fun x => listArea x.2.body) = true)
+    (ha : areaOf m fs limit = .ok area) :
+    ∃ gts, area = some gts ∧ globalTypesOf m = some gts ∧ areaOk m areaPages = true ∧
+      gts.length ≤ 511 ∧ gts.all intType = true ∧ areaEnd.toNat ≤ limit.toNat := by
+  unfold areaOf at ha
+  simp only [h, Bool.not_true, Bool.false_eq_true, ↓reduceIte] at ha
+  by_cases hok : areaOk m areaPages = true
+  · simp only [hok, Bool.not_true, Bool.false_eq_true, ↓reduceIte] at ha
+    cases hg : globalTypesOf m with
+    | none => simp [hg, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at ha
+    | some gts =>
+        by_cases h511 : 511 < gts.length
+        · simp [hg, h511, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at ha
+        · by_cases hint : gts.all intType = true
+          · by_cases hlim : limit.toNat < areaEnd.toNat
+            · simp [hg, h511, hint, hlim, throw, throwThe, MonadExceptOf.throw, bind,
+                Except.bind, pure, Except.pure] at ha
+            · simp [hg, h511, hint, hlim, bind, Except.bind, pure, Except.pure] at ha
+              exact ⟨gts, ha.symm, rfl, hok, by omega, hint, by omega⟩
+          · simp [hg, h511, hint, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at ha
+  · simp [hok, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at ha
+
+/-- The area of the generator's program, by `usesArea`. -/
+theorem area_of_usesArea {m : Module} {k : Nat} {fs : List (Nat × Function)} {limit : UInt32}
+    {area : Option (List ValueType)} (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs)
+    (ha : areaOf m fs limit = .ok area) :
+    (usesArea m k = false → area = none) ∧
+      (usesArea m k = true → ∃ gts, area = some gts ∧ globalTypesOf m = some gts ∧
+        areaOk m areaPages = true ∧ gts.length ≤ 511 ∧ gts.all intType = true ∧
+        areaEnd.toNat ≤ limit.toNat) := by
+  unfold usesArea
+  rw [hfs]
+  refine ⟨fun h => ?_, fun h => areaOf_some h ha⟩
+  rw [areaOf_none h] at ha
+  cases ha
+  rfl
+
 /-- The simulation of a call of the step `k` of the generator's program, placed at the even
 address `base`: the step's code, from its entry after `main`, simulates the call at every fuel, in
 a module that imports nothing and whose functions that calls reach from `k` have the covered

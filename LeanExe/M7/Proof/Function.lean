@@ -28,20 +28,6 @@ theorem imm12_field {v : Nat} (hv : v < 4096) :
   congr 1
   omega
 
-/-- The carry of `CMP x, y` is set exactly when `y ≤ x`. -/
-theorem carry_cmp (x y : UInt32) :
-    (addWithCarry x (~~~y) true).2.1 = decide (y.toNat ≤ x.toNat) := by
-  have h := toNat_carry x (~~~y) true
-  rw [toNat_not32] at h
-  have := toNat_lt32 x
-  have := toNat_lt32 y
-  simp only [Bool.toNat_true] at h
-  by_cases hy : y.toNat ≤ x.toNat
-  · rw [decide_eq_true hy]
-    exact eq_true_of_toNat (by omega)
-  · rw [decide_eq_false hy]
-    exact eq_false_of_toNat (by omega)
-
 theorem and_align {x : UInt32} (h : x.toNat % 4 = 0) : x &&& 0xFFFFFFFC = x := by
   apply UInt32.toNat_inj.mp
   have hx := toNat_lt32 x
@@ -84,12 +70,6 @@ theorem sub_frame_below {sp lim : UInt32} {F : Nat} (j : Nat) (h : lim.toNat + F
   have := toNat_lt32 lim
   rw [UInt32.toNat_add, UInt32.toNat_add, toNat_sub_frame (by omega), UInt32.toNat_ofNat',
     UInt32.toNat_ofNat']
-  simp only [Nat.reducePow]
-  omega
-
-theorem toNat_add_ofNat {a : UInt32} {k : Nat} (h : a.toNat + k < 4294967296) :
-    (a + UInt32.ofNat k).toNat = a.toNat + k := by
-  rw [UInt32.toNat_add, UInt32.toNat_ofNat']
   simp only [Nat.reducePow]
   omega
 

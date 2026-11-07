@@ -24,8 +24,6 @@ def OpOk (P : Platform) : InitOp → Prop
   | .write a _ => DevReg P a
   | .dsb => True
 
-theorem movWord_regForm (d : Fin 8) (w : UInt32) : (movWord d w).all Instr.regForm = true := rfl
-
 theorem opCode_wide (op : InitOp) : (opCode op).all Instr.wide = true := by
   cases op <;> rfl
 

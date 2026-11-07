@@ -183,13 +183,6 @@ theorem functionsPartOk_append {m : Module} {k : Nat} {s0 : List UInt64} {base l
 
 /-! ## The program -/
 
-/-- A program whose functions do not access the area has none. -/
-theorem areaOf_none {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
-    (h : (fs.any fun x => listArea x.2.body) = false) : areaOf m fs limit = .ok none := by
-  unfold areaOf
-  rw [h]
-  rfl
-
 /-- `genProgram` from its parts, the converse of `gen_program` for the entry after `main`, for a
 program whose functions do not access the area. -/
 theorem genProgram_of {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
