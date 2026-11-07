@@ -264,7 +264,7 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
     (hval : ∀ (u : State) (a b : UInt64), u.r 0 = a.toUInt32 → u.r 1 = (a >>> 32).toUInt32 →
       u.r 2 = b.toUInt32 → SlotRel (op a b) ((slotRun P σ ops u).r 0) ((slotRun P σ ops u).r 1))
     (htype : ∀ a b, HasType .i64 (op a b)) (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h4, h5, rfl, rfl⟩ := gen_shift hg
   cases F with
@@ -334,7 +334,7 @@ theorem gen_eqzI64 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32
     exact ⟨by omega, hlt, h0, h1, h2, h3, rfl, rfl⟩
 
 theorem sim_eqzI64 (F : Nat) : InstrSim P σ code F .eqzI64 := by
-  intro E ctl σs a is fin hgen hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   obtain ⟨hb1, hlt, h0, h1, h2, h3, rfl, rfl⟩ := gen_eqzI64 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -410,7 +410,7 @@ theorem gen_extendUI32 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UI
     exact ⟨by omega, rfl, rfl⟩
 
 theorem sim_extendUI32 (F : Nat) : InstrSim P σ code F .extendUI32 := by
-  intro E ctl σs a is fin hgen hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   obtain ⟨hb1, rfl, rfl⟩ := gen_extendUI32 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]

@@ -219,6 +219,28 @@ theorem cFlag_withMem (s : State) (m : UInt32 → UInt8) (p : UInt32) :
     ({ s with mem := m, pc := p } : State).cFlag = s.cFlag := by
   cases s; rfl
 
+theorem r_withLrPc (s : State) (l p : UInt32) (i : Fin 8) :
+    ({ s with lr := l, pc := p } : State).r i = s.r i := by
+  cases s; rfl
+theorem sp_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).sp = s.sp := by
+  cases s; rfl
+theorem mem_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).mem = s.mem := by
+  cases s; rfl
+theorem trace_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).trace = s.trace := by
+  cases s; rfl
+theorem reads_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).reads = s.reads := by
+  cases s; rfl
+theorem lr_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).lr = l := by
+  cases s; rfl
+theorem pc_withLrPc (s : State) (l p : UInt32) :
+    ({ s with lr := l, pc := p } : State).pc = p := by
+  cases s; rfl
+
 end State
 
 /-! ## Slot code -/

@@ -16,12 +16,14 @@ give.
 
 `Covered` names the forms whose simulation this increment proves: the forms of the functions that
 the echo's steps reach, with `divUI64`.  `InstrSim F inst` states the simulation of `inst` at fuel
-`F` for every placement that the generator gives it, from a state whose stack holds at least `D`
-bytes below SP, where `D` bounds the stack of each call that `inst` makes.  `FunSim` states the
-simulation of a call of a function from its entry, with the arguments in the caller's outgoing
-area, and `CallsOk` that every function of a table satisfies it below a fuel.  `DivAt` places the
-code of `udivmod64` at the address that the functions share, whose theorem `udivmod64_spec` the
-simulation of `divUI64` and `remUI64` uses.
+`F` for every placement at an even address that the generator gives it, from a state whose stack
+holds at least `D` bytes below SP, where `D` bounds the stack of each call that `inst` makes.  The
+address is even because `BL` sets LR to the next address with bit 0 set, and the return to LR
+with bit 0 cleared reaches that address only when it is even.  `FunSim` states the simulation of a
+call of a function from its entry, with the arguments in the caller's outgoing area, and `CallsOk`
+that every function of a table satisfies it below a fuel.  `DivAt` places the code of `udivmod64`
+at the address that the functions share, whose theorem `udivmod64_spec` the simulation of
+`divUI64` and `remUI64` uses.
 -/
 
 namespace LeanExe.M7
@@ -133,7 +135,8 @@ def room (E : Env) (s : State) : Nat := s.sp.toNat - E.limit.toNat
 def InstrSim (F : Nat) (inst : Instruction) : Prop :=
   ∀ (E : Env) (ctl : List Ctl) (σs : List ValueType) (a : UInt32) (is : List Instr)
     (fin : Option (List ValueType)),
-    genInstr E ctl σs a inst = .ok (is, fin) → CodeAt code a is → DivAt code E.toShared →
+    genInstr E ctl σs a inst = .ok (is, fin) → CodeAt code a is → a.toNat % 2 = 0 →
+    DivAt code E.toShared →
     curBase ctl ≤ σs.length →
     ∀ {α : Type} (m : Module) (st : Store α) (sl : Locals) (ms : State),
       Inv P E σs sl ms → ms.pc = a → ∀ (need : Nat → Nat) (D : Nat),
@@ -144,7 +147,8 @@ def InstrSim (F : Nat) (inst : Instruction) : Prop :=
 def ListSim (F : Nat) : Prop :=
   ∀ (E : Env) (ctl : List Ctl) (σs : List ValueType) (a : UInt32) (p : List Instruction)
     (is : List Instr) (fin : Option (List ValueType)), coveredList p = true →
-    genList E ctl σs a p = .ok (is, fin) → CodeAt code a is → DivAt code E.toShared →
+    genList E ctl σs a p = .ok (is, fin) → CodeAt code a is → a.toNat % 2 = 0 →
+    DivAt code E.toShared →
     curBase ctl ≤ σs.length →
     ∀ {α : Type} (m : Module) (st : Store α) (sl : Locals) (ms : State),
       Inv P E σs sl ms → ms.pc = a → ∀ (need : Nat → Nat) (D : Nat),

@@ -18,6 +18,9 @@ theorem after_eq (a : UInt32) (n : Nat) : after a n = a + UInt32.ofNat (4 * n) :
   rw [after, UInt32.ofNat_mul]
   rfl
 
+/-- Proves an equation of addresses that `after` and numerals give, as `addr_eq` does. -/
+macro "addr_after" : tactic => `(tactic| ((try simp only [after_eq]) <;> addr_eq))
+
 theorem getElem?_reverse_cons {β : Type} {x : β} {l : List β} {h : Nat} (hh : h < l.length) :
     (x :: l).reverse[h]? = l.reverse[h]? := by
   rw [List.reverse_cons, List.getElem?_append_left (by simpa using hh)]
@@ -140,7 +143,7 @@ theorem gen_localGet {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
   · exact absurd hg except_throw_ok
 
 theorem sim_localGet (F i : Nat) : InstrSim P σ code F (.localGet i) := by
-  intro E ctl σs a is fin hgen hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   obtain ⟨t, src, ht, hsrc, hlt, h0, h1, h2, h3, rfl, rfl⟩ := gen_localGet hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -187,7 +190,7 @@ theorem gen_localSet {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
     exact ⟨by omega, hc.2, hlt, dst, Env.loc_ok hdst, h0, h1, h2, h3, rfl, rfl⟩
 
 theorem sim_localSet (F i : Nat) : InstrSim P σ code F (.localSet i) := by
-  intro E ctl σs a is fin hgen hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   obtain ⟨hb1, hhead, hlt, dst, hdst, h0, h1, h2, h3, rfl, rfl⟩ := gen_localSet hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -310,7 +313,7 @@ theorem gen_constI64 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
   exact ⟨hlt, h0, h1, rfl, rfl⟩
 
 theorem sim_constI64 (F : Nat) (v : UInt64) : InstrSim P σ code F (.constI64 v) := by
-  intro E ctl σs a is fin hgen hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   obtain ⟨hlt, h0, h1, rfl, rfl⟩ := gen_constI64 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -449,7 +452,7 @@ theorem sim_binary {inst : Instruction} {ops : List Instr} {res : Fin 8 × Fin 8
       u.r 2 = b.toUInt32 → u.r 3 = (b >>> 32).toUInt32 →
       SlotRel (op a b) ((slotRun P σ ops u).r res.1) ((slotRun P σ ops u).r res.2))
     (htype : ∀ a b, HasType t (op a b)) (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h3, h4, h5, rfl, rfl⟩ := gen_bin hg
   cases F with

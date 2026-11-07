@@ -76,6 +76,7 @@ import LeanExe.M7.Encode
 import LeanExe.M7.Gen
 import LeanExe.M7.Image
 import LeanExe.M7.Machine
+import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Forms
 import LeanExe.M7.Proof.Machine
