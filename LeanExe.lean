@@ -81,6 +81,7 @@ import LeanExe.M7.Proof.Call
 import LeanExe.M7.Proof.Constructs
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Forms
+import LeanExe.M7.Proof.Function
 import LeanExe.M7.Proof.Machine
 import LeanExe.M7.Proof.Memory
 import LeanExe.M7.Proof.Ops

@@ -97,6 +97,12 @@ theorem Typed.head_cons {σs : List ValueType} {v : Value} {vs : List Value} {t 
       subst ht
       exact h.1
 
+theorem Typed.of_getElem? {ts : List ValueType} {vs : List Value} (h : Typed ts vs) {i : Nat}
+    {t : ValueType} {v : Value} (ht : ts[i]? = some t) (hv : vs[i]? = some v) : HasType t v := by
+  obtain ⟨hi, rfl⟩ := List.getElem?_eq_some_iff.mp ht
+  obtain ⟨_, rfl⟩ := List.getElem?_eq_some_iff.mp hv
+  exact h.getElem hi
+
 /-- Values whose types start with `i32` start with an `i32`. -/
 theorem Typed.i32_head {σs : List ValueType} {vs : List Value} (h : Typed σs vs)
     (ht : σs.head? = some .i32) : ∃ c rest, vs = .i32 c :: rest := by

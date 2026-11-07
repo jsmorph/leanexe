@@ -572,8 +572,8 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
   have hcl' := CallsOk.mono P σ code hcl (Nat.le_succ f)
   by_cases hcz : c = 0
   · -- the `else` branch
-    rw [if_neg (fun h => h hcz)]
-    rw [show (c == 0) = true by simp [hcz], if_pos rfl] at rB
+    rw [ite_eq_right (fun h => h hcz)]
+    rw [show (c == 0) = true by simp [hcz], ite_eq_left rfl] at rB
     obtain ⟨u1, hu1d⟩ : ∃ u1 : State,
         u1 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 + UInt32.ofInt oq } :=
       ⟨_, rfl⟩
@@ -593,8 +593,8 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
       (show curBase ctl ≤ σs.length - 1 by omega) hbelow hty.tail hvl (r1.trans rB') hu1sp
       hu1tr hu1rd hu1m hea (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho
   · -- the `then` branch
-    rw [if_pos hcz]
-    rw [show (c == 0) = false from beq_false_of_ne hcz, if_neg Bool.false_ne_true] at rB
+    rw [ite_eq_left hcz]
+    rw [show (c == 0) = false from beq_false_of_ne hcz, ite_eq_right Bool.false_ne_true] at rB
     obtain ⟨u1, hu1d⟩ : ∃ u1 : State,
         u1 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 } := ⟨_, rfl⟩
     have rB' : Reach P σ code (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
