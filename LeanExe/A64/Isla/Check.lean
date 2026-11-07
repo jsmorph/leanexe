@@ -6,14 +6,17 @@ Checks of the model's `exec` against Isla's traces of the Armv9.4-A Sail model. 
 what the footprint of one instruction form establishes for one value of the form's fields and one
 state of the model, and the theorem of a form quantifies over both.
 
-The opcode, the fixed bits and the named fields that `isla-footprint -i` took, is written here as
-an `Opcode`, whose fields must be those of the footprint's header, and the word that the opcode
-gives for the fields' values must decode to the instruction.  For every `σ` that agrees with the
-profile `π` on the registers outside the model that the trace reads, at the accessor paths at
-which it reads them, whenever `exec` gives a state `s'`, the outcomes of the trace from the state
-and `σ` are exactly `s'` with some `σ'` that differs from `σ` only at the registers `W`.  The
-statement covers the instruction's whole effect: the model's state, with the program counter,
-memory, and output, and the registers outside the model that the instruction changes.  The trace's
+The footprint's opcode, the fixed bits and the named fields that `isla-footprint -i` took, which
+`isla_trace%` reads from the trace's opcode file, must have 32 bits and the fields of the
+footprint's header, and the word that it gives for the fields' values must decode to the
+instruction.  For every `σ` that agrees with the profile `π` on the registers outside the model
+that the trace reads, at the accessor paths at which it reads them, whenever `exec` gives a state
+`s'`, the outcomes of the trace from the state and `σ` are exactly `s'` with some `σ'` that
+differs from `σ` only at the registers `W`.  The statement covers the whole effect of the
+instruction's decode and execution: the model's state, with the program counter, memory, and
+output, and the registers outside the model that they change.  `σ'` leaves out the effects of
+`__InstructionExecute` around the decode and execution, which reading 4 of `Trace.lean` lists,
+among them those on `_EDSCR`, `MDCCSR_EL0`, `InGuardedPage`, and `PSTATE.BTYPE`.  The trace's
 `assume` events, which Isla records for the configuration's constraints, end a path in `fail` when
 false, so the theorem of such a trace carries the constraint as a premise.  A path that Isla
 dropped leaves the states that would take it without an outcome, which makes `Agrees` false for
@@ -27,12 +30,11 @@ states, such as the exception entry of the alignment fault, need no counterpart.
 so the outcome holds `exec`'s target.  The premise on `σ` names accessor paths, so a theorem fixes
 only the fields of a register that its trace reads, such as `PSTATE.EL`.
 
-`profile` gives the registers of the startup's configuration, the arguments of
-`tests/isla/dev/add.sh`, that the traces read: Isla's flag for vector reads of the general
-registers and the decoder's `SEE`.  `config` gives those of the configuration of
-`tests/isla/traces.sh`, under which the traces of `ADD X3, X4, X5`, `SUBS X3, X4, X5`, and
-`LDR X3, [X4, #24]` ran with concrete opcodes, with the values that it leaves UNKNOWN as the
-fields of `Unknown`.
+The profiles `tcg` and `kvm` of `Profile.lean` hold the registers outside the model of the traces
+of `tests/isla/traces.sh`.  `Agrees.of_reads` carries a theorem to any profile that agrees with
+its profile on the registers that the trace reads, so a form whose two traces are equal needs one
+proof of the trace's paths.  `isla_reads` evaluates the registers that a trace reads under the
+profiles, for the premise of `Agrees` and for the condition of `Agrees.of_reads`.
 
 `isla_fwd` takes a hypothesis that a path ends in an outcome through the trace, and `isla_bwd`
 builds one path from the values of the declared variables.  Both evaluate each event with
@@ -45,103 +47,27 @@ over the state's registers into the indexed register in the backward direction.
 
 namespace LeanExe.A64.Isla
 
-/-- A piece of an opcode as `isla-footprint -i` takes it: `w` fixed bits of value `n`, or the
-field `name` of `w` bits. -/
-inductive Piece where
-  | bits (w n : Nat)
-  | field (name : String) (w : Nat)
-
-/-- An opcode, its pieces from the most significant. -/
-abbrev Opcode := List Piece
-
-/-- The names and widths of the fields of an opcode, in order. -/
-def Opcode.fields : Opcode → List (String × Nat)
-  | [] => []
-  | .bits _ _ :: p => Opcode.fields p
-  | .field name w :: p => (name, w) :: Opcode.fields p
-
-/-- The value of the word of the opcode `p` for the fields `f`, after the bits `acc`. -/
-def Opcode.wordFrom (f : Fields) (acc : Nat) : Opcode → Nat
-  | [] => acc
-  | .bits w n :: p => Opcode.wordFrom f (acc * 2 ^ w + n) p
-  | .field name w :: p => Opcode.wordFrom f (acc * 2 ^ w + (f.lookup name).getD 0) p
-
-/-- The value of the word of the opcode `p` for the fields `f`. -/
-def Opcode.word (p : Opcode) (f : Fields) : Nat := Opcode.wordFrom f 0 p
-
-/-- The footprint `F` of the opcode `p` describes the instruction `i` for the fields `f` from the
-state `s`: the header names the opcode's fields, the opcode's word decodes to `i`, and for every
-`σ` that agrees with the profile `π` on the registers that the trace reads, if `exec` gives `s'`,
-the outcomes of the trace are exactly `s'` with registers `σ'` that differ from `σ` only at the
-registers `W`. -/
-def Agrees (P : Platform) (π : Sys) (W : List String) (p : Opcode) (F : Footprint) (f : Fields)
-    (i : Instr) (s : State) : Prop :=
-  F.segments.map (fun g => (g.name, g.width)) = p.fields ∧
-  decode (.ofNat (p.word f)) = some i ∧
+/-- The footprint `F` describes the instruction `i` for the fields `f` from the state `s`: the
+header names the fields of `F`'s opcode, the opcode has 32 bits, its word decodes to `i`, and for
+every `σ` that agrees with the profile `π` on the registers that the trace reads, if `exec` gives
+`s'`, the outcomes of the trace are exactly `s'` with registers `σ'` that differ from `σ` only at
+the registers `W`. -/
+def Agrees (P : Platform) (π : Sys) (W : List String) (F : Footprint) (f : Fields) (i : Instr)
+    (s : State) : Prop :=
+  F.segments.map (fun g => (g.name, g.width)) = F.opcode.fields ∧
+  F.opcode.width = 32 ∧
+  decode (.ofNat (F.opcode.word f)) = some i ∧
   ∀ σ : Sys, (∀ q ∈ F.trace.reads, σ.get q.1 q.2 = π.get q.1 q.2) →
     ∀ s', exec P i s = some s' →
       ∃ σ', (∀ o, F.Run P f s σ o ↔ o = .done s' σ') ∧ ∀ r, r ∉ W → σ' r = σ r
 
-/-- The registers outside the model that the startup's configuration fixes and the traces read:
-`__isla_vector_gpr`, which `-I` sets, and `SEE`, the decoder's integer -1. -/
-def profile : Sys
-  | "__isla_vector_gpr" => some (.bool true)
-  | "SEE" => some (.bits 128 (2 ^ 128 - 1))
-  | _ => none
-
-/-- The values that the configuration of `tests/isla/traces.sh` leaves UNKNOWN: six system
-registers and the last element of `FeatureImpl`, which names no feature. -/
-structure Unknown where
-  mair : UInt64
-  mair2 : UInt64
-  pir : UInt64
-  pire0 : UInt64
-  sctlr2 : UInt64
-  s2pir : UInt64
-  feature : Bool
-
-/-- A system register whose one field `bits` holds `n`. -/
-def sysreg (w n : Nat) : Val := .struct [("bits", .bits w n)]
-
-/-- `FeatureImpl` but its last element, one character per feature, `1` for an implemented one. -/
-def features : String :=
-  "10001111111111111110111111111111111110111111111111111111111111111111111101110000011111" ++
-  "10011111100110111111111110111111111110111111111001111111111111111111111111111101111111" ++
-  "11111011111111111111111111111111111111111111011011111110110100111011111111111111111111"
-
-/-- The registers outside the model under the configuration of `tests/isla/traces.sh`: Isla's
-`armv9p4.toml`, `PSTATE` at EL1 with SP_EL1 and debug exceptions masked, the debug registers that
-Islaris fixed, and `SCTLR_EL1` `0x04000208`, with the MMU off and SA set.  `SEE` is the decoder's
-integer -1. -/
-def config (u : Unknown) : Sys
-  | "__isla_vector_gpr" => some (.bool false)
-  | "__monomorphize_reads" => some (.bool false)
-  | "SPESampleInFlight" => some (.bool false)
-  | "__supported_pa_size" => some (.bits 128 52)
-  | "SEE" => some (.bits 128 (2 ^ 128 - 1))
-  | "PSTATE" =>
-    some (.struct [("EL", .bits 2 1), ("SP", .bits 1 1), ("D", .bits 1 1), ("nRW", .bits 1 0)])
-  | "SCTLR_EL1" => some (sysreg 64 0x04000208)
-  | "TCR_EL1" => some (sysreg 64 0)
-  | "MDSCR_EL1" => some (sysreg 64 0)
-  | "HCR_EL2" => some (sysreg 64 0x80000000)
-  | "MDCR_EL2" => some (sysreg 32 0)
-  | "SCR_EL3" => some (sysreg 64 0x401)
-  | "VTCR_EL2" => some (sysreg 64 0)
-  | "_EDSCR" => some (sysreg 32 2)
-  | "MDCCSR_EL0" => some (sysreg 64 0)
-  | "OSLSR_EL1" => some (sysreg 64 0)
-  | "OSDLR_EL1" => some (sysreg 64 0)
-  | "DBGEN" => some (.enum "Signal_Low")
-  | "FeatureImpl" =>
-    some (.vec (features.toList.map (fun c => .bool (c == '1')) ++ [.bool u.feature]))
-  | "MAIR_EL1" => some (sysreg 64 u.mair.toNat)
-  | "MAIR2_EL1" => some (sysreg 64 u.mair2.toNat)
-  | "PIR_EL1" => some (sysreg 64 u.pir.toNat)
-  | "PIRE0_EL1" => some (sysreg 64 u.pire0.toNat)
-  | "SCTLR_EL2" => some (sysreg 64 u.sctlr2.toNat)
-  | "S2PIR_EL2" => some (sysreg 64 u.s2pir.toNat)
-  | _ => none
+/-- `Agrees` under the profile `π` holds under a profile `π'` that agrees with `π` on the registers
+that the trace reads. -/
+theorem Agrees.of_reads {P : Platform} {π π' : Sys} {W : List String} {F : Footprint}
+    {f : Fields} {i : Instr} {s : State}
+    (h : ∀ q ∈ F.trace.reads, π'.get q.1 q.2 = π.get q.1 q.2) (a : Agrees P π W F f i s) :
+    Agrees P π' W F f i s :=
+  ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
 
 theorem Vars.set_apply (ρ : Vars) (x : Nat) (v : Val) (y : Nat) :
     ρ.set x v y = if y = x then some v else ρ y := rfl
@@ -153,12 +79,6 @@ theorem Sys.get_set (σ : Sys) (r : String) (v : Val) (q : String) (al : List St
     (σ.set r v).get q al = if q = r then acc al v else σ.get q al := by
   unfold Sys.get Sys.set
   split <;> rfl
-
-theorem profile_get (r : String) (al : List String) :
-    profile.get r al = (profile r).bind (acc al) := rfl
-
-theorem config_get (u : Unknown) (r : String) (al : List String) :
-    (config u).get r al = (config u r).bind (acc al) := rfl
 
 theorem toNat_lt (a : UInt64) : a.toNat < 2 ^ 64 := a.toNat_lt_size
 
@@ -235,17 +155,18 @@ macro_rules
       Nat.reduceEqDiff, Nat.reduceLeDiff, Nat.reduceLT, Nat.reduceGT, Nat.reduceBEq,
       Bool.cond_true, Bool.cond_false, decide_true, decide_false, chain_eq, $xs,*] $(loc)?)
 
-/-- Turns the premise `h` of `Agrees` on the registers that the trace of the footprint reads
-into equations, one per read, whose right sides are the profile's values: the lemmas in brackets
-unfold the footprint and evaluate the profile. -/
-syntax "isla_premise " ident " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+/-- Turns a statement over the registers that a footprint's trace reads, such as the premise of
+`Agrees` on `σ` or the condition of `Agrees.of_reads`, into one statement per read: the lemmas in
+brackets unfold the footprint and evaluate the profiles. -/
+syntax "isla_reads " "[" Lean.Parser.Tactic.simpLemma,* "]" (Lean.Parser.Tactic.location)? :
+  tactic
 macro_rules
-  | `(tactic| isla_premise $h [$xs,*]) => `(tactic| simp only [Footprint.trace, Trace.reads,
+  | `(tactic| isla_reads [$xs,*] $(loc)?) => `(tactic| simp only [Footprint.trace, Trace.reads,
       Trace.readsAll, Event.reads, Exp.regs, List.filter, part, gpr, gprs, List.lookup,
       Option.map, Option.isNone, Option.bind, acc, String.reduceEq, String.reduceBEq,
       ↓reduceIte, Bool.false_eq_true, reduceCtorEq, List.nil_append, List.cons_append,
       List.append_nil, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
-      forall_const, and_true, $xs,*] at $h:ident)
+      forall_const, and_true, $xs,*] $(loc)?)
 
 /-- Takes the hypothesis `h`, that a path of a trace ends in an outcome, through the trace: it
 unfolds and evaluates one event at a time with `isla_simp` and the lemmas in brackets, splits the
@@ -356,64 +277,12 @@ macro "gpr_end" : tactic => `(tactic| (
        simp only [UInt64.toNat_ofNat', UInt64.toNat_add, UInt64.toNat_zero, toNat_mod,
          Nat.zero_add, Nat.add_zero, Nat.reducePow, Nat.mod_mod] <;> omega)))
 
-/-- The footprint of `ADD Xd, Xn, Xm` with Rd, Rn, and Rm symbolic, from `tests/isla/dev/add.sh`
-in the startup's configuration. -/
-def addFp : Footprint := isla_trace% "tests/isla/dev/add.trace"
-
-/-- `10001011000 Rm:5 000000 Rn:5 Rd:5`, the opcode of `tests/isla/dev/add.sh`. -/
-def addOpcode : Opcode :=
-  [.bits 11 0b10001011000, .field "Rm" 5, .bits 6 0, .field "Rn" 5, .field "Rd" 5]
-
-/-- The fields of `ADD Xd, Xn, Xm` for the registers `d`, `n`, and `m`. -/
-def addFields (d n m : Fin 32) : Fields := [("Rd", d.val), ("Rn", n.val), ("Rm", m.val)]
-
 /-- Proves that registers `σ'` that set the registers of the list `W` in `σ` agree with `σ`
 outside `W`. -/
 macro "frame_end" : tactic => `(tactic| (
   intro r hr
   simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hr
   simp only [Sys.set_apply, hr, ↓reduceIte]))
-
-set_option maxHeartbeats 4000000 in
-/-- The footprint of `ADD Xd, Xn, Xm` agrees with `exec` for every register number, with register
-31 the zero register, and every state.  The backward direction builds the path of each of the 8
-cases of register 31 among `d`, `n`, and `m`, and the 706 events that the two directions evaluate
-take more than the default budget of heartbeats. -/
-theorem addReg (P : Platform) (d n m : Fin 32) (s : State) :
-    Agrees P profile ["SEE", "__BranchTaken"] addOpcode addFp (addFields d n m) (.addReg d n m)
-      s := by
-  refine ⟨by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : addOpcode.word (addFields d n m) = encodeNat (.addReg d n m) := by
-      simp only [Opcode.word, Opcode.wordFrom, addOpcode, addFields, encodeNat, List.lookup,
-        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
-      omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_premise hσ [addFp, profile_get, profile]
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 14),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [addFp, Footprint.vars, addFields, List.foldl, List.lookup, String.reduceBEq,
-        Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals gpr_end
-    · subst h
-      unfold Footprint.Run
-      simp only [addFp, Footprint.vars, addFields, List.foldl, List.lookup, String.reduceBEq,
-        Option.getD]
-      by_cases hn : n.val = 31 <;> by_cases hm : m.val = 31 <;> by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hn, hm, hd]
-        try isla_gprs s using omega with [hσ, hn, hm, hd]
-      all_goals first
-        | exact toNat_lt _
-        | gpr_end
-        | (simp only [sint]; omega)
-        | omega
-
-/-! The traces of `tests/isla/traces.sh`, of one encoding each, in the configuration `config`. -/
 
 /-- The model's write of a general register, as `partPut` writes it. -/
 theorem setX_eq {s : State} {d : Fin 32} {i : Fin 31} (h : d.val = i.val) (v : UInt64) :
@@ -507,199 +376,10 @@ theorem load64_eq (m : UInt64 → UInt8) (a : UInt64) : load64 m a = .ofNat (byt
   apply UInt64.toNat_inj.mp
   rw [UInt64.toNat_ofNat', ← load64_toNat, Nat.mod_eq_of_lt (toNat_lt _)]
 
-/-- An address `a` with `a &&& 0xFFFFFFFFC0000007 = 0x40000000`, the constraint of the load's
-trace, is a multiple of 8 in `0x40000000`-`0x7FFFFFFF` whose bits 52 to 63 are clear. -/
-theorem ram {a : Nat} (h : a &&& 18446744072635809799 = 1073741824) (ha : a < 2 ^ 64) :
-    a % 8 = 0 ∧ a / 2 ^ 30 = 1 ∧ a &&& 18442240474082181120 = 0 := by
-  have and_eq : ∀ m, m &&& 18446744072635809799 = m → a &&& m = 1073741824 &&& m := by
-    intro m hm
-    calc a &&& m = a &&& (18446744072635809799 &&& m) := by
-          rw [Nat.and_comm 18446744072635809799, hm]
-      _ = 1073741824 &&& m := by rw [← Nat.and_assoc, h]
-  have h7 : a &&& 7 = 0 := (and_eq 7 (by decide)).trans (by decide)
-  have h8 : a % 8 = a &&& 7 := (Nat.and_two_pow_sub_one_eq_mod a 3).symm
-  have hs : a >>> 30 &&& 17179869183 = 1 := by
-    have := congrArg (· >>> 30) h
-    simpa only [Nat.shiftRight_and_distrib, Nat.reduceShiftRight] using this
-  have hm : a >>> 30 &&& 17179869183 = a >>> 30 % 2 ^ 34 := Nat.and_two_pow_sub_one_eq_mod _ 34
-  rw [hm, Nat.shiftRight_eq_div_pow] at hs
-  exact ⟨by omega, by omega, (and_eq _ (by decide)).trans (by decide)⟩
-
-/-- The footprint of `ADD X3, X4, X5`. -/
-def add1Fp : Footprint := isla_trace% "tests/isla/add.trace"
-
-/-- The footprint of `SUBS X3, X4, X5`. -/
-def subsFp : Footprint := isla_trace% "tests/isla/subs.trace"
-
-/-- The footprint of `LDR X3, [X4, #24]`. -/
-def ldrFp : Footprint := isla_trace% "tests/isla/ldr.trace"
-
 /-- Reads `__BranchTaken` at the end of a path and reduces the equation of two outcomes to the
 equation of their states. -/
 macro "done_end" : tactic => `(tactic|
   simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
     true_and])
-
-/-- Reduces an equation between two functions that update register 3 of the same registers to
-the equation between the values written. -/
-macro "regs_end" : tactic => `(tactic| (
-  funext j
-  by_cases hj : j = 3 <;> simp only [hj, eq_self_iff_true, ↓reduceIte]))
-
-/-- Proves that the state at the end of the trace of `ADD X3, X4, X5` is `exec`'s. -/
-macro "add_end" : tactic => `(tactic| (
-  done_end
-  simp only [setX_eq (d := 3) (i := 3) rfl, x_eq (d := 4) (i := 4) rfl,
-    x_eq (d := 5) (i := 5) rfl, State.mk.injEq, eq_self_iff_true, and_true]
-  regs_end
-  apply UInt64.toNat_inj.mp
-  simp only [UInt64.toNat_ofNat', UInt64.toNat_add]
-  omega))
-
-/-- The trace of `ADD X3, X4, X5` agrees with `exec` from every state. -/
-theorem add (P : Platform) (u : Unknown) (s : State) :
-    Agrees P (config u) ["SEE", "__BranchTaken"] [.bits 32 0x8B050083] add1Fp []
-      (.addReg 3 4 5) s := by
-  refine ⟨rfl, by decide, fun σ hσ s' hs => ?_⟩
-  simp only [exec, Option.some.injEq] at hs
-  subst hs
-  isla_premise hσ [add1Fp, config_get, config]
-  have := toNat_lt (s.regs 4)
-  have := toNat_lt (s.regs 5)
-  refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 14),
-    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-  · unfold Footprint.Run at h
-    simp only [add1Fp, Footprint.vars, List.foldl] at h
-    isla_fwd h using omega with [hσ]
-    add_end
-  · subst h
-    unfold Footprint.Run
-    simp only [add1Fp, Footprint.vars, List.foldl]
-    isla_bwd [s.pc.toNat, (s.regs 4).toNat, (s.regs 5).toNat] using omega with [hσ]
-    all_goals first
-      | exact toNat_lt _
-      | (apply Eq.symm; add_end)
-
-/-- Proves that the state at the end of the trace of `SUBS` from the state `s` is `exec`'s.  The
-flags of the trace are the bits of a word of 4 bits, and its V flag compares the sign-extended
-result with the sum of the sign-extended operands, which `omega` decides once the signs of the
-operands and the result and the carry are known. -/
-syntax "subs_end " term : tactic
-macro_rules
-  | `(tactic| subs_end $s) => `(tactic| (
-    done_end
-    simp only [Bool.cond_eq_ite, Bool.not_eq_true', decide_eq_false_iff_not, decide_eq_true_eq]
-    simp only [State.subs, setX_eq (d := 3) (i := 3) rfl, x_eq (d := 4) (i := 4) rfl,
-      x_eq (d := 5) (i := 5) rfl, vflag]
-    simp only [nflag, zflag, cflag, UInt64.toNat_sub, State.mk.injEq, eq_self_iff_true,
-      true_and, and_true]
-    simp (disch := first | omega | (split <;> omega)) only [word_n, word_z, word_c, word_v]
-    simp (disch := omega) only [Nat.mod_eq_of_lt, decide_eq_decide]
-    refine ⟨?_, ?_, ?_, ?_, ?_⟩
-    · regs_end
-      apply UInt64.toNat_inj.mp
-      simp only [UInt64.toNat_ofNat', UInt64.toNat_sub]
-      omega
-    · (repeat' split) <;> omega
-    · (repeat' split) <;> omega
-    · (repeat' split) <;> omega
-    · rcases Nat.lt_or_ge (State.regs $s 4).toNat (2 ^ 63) with _ | _ <;>
-        rcases Nat.lt_or_ge (State.regs $s 5).toNat (2 ^ 63) with _ | _ <;>
-        rcases Nat.lt_or_ge ((State.regs $s 4).toNat + (2 ^ 64 - (State.regs $s 5).toNat))
-          (2 ^ 64) with _ | _ <;>
-        rcases Nat.lt_or_ge (((State.regs $s 4).toNat + (2 ^ 64 - (State.regs $s 5).toNat)) %
-          2 ^ 64) (2 ^ 63) with _ | _ <;>
-        (repeat' split) <;> omega))
-
-set_option maxHeartbeats 1000000 in
-/-- The trace of `SUBS X3, X4, X5` agrees with `exec` from every state.  The proof of the V flag
-takes 32 cases of `omega`, beyond the default budget of heartbeats. -/
-theorem subs (P : Platform) (u : Unknown) (s : State) :
-    Agrees P (config u) ["SEE", "__BranchTaken"] [.bits 32 0xEB050083] subsFp []
-      (.subsReg 3 4 5) s := by
-  refine ⟨rfl, by decide, fun σ hσ s' hs => ?_⟩
-  simp only [exec, Option.some.injEq] at hs
-  subst hs
-  isla_premise hσ [subsFp, config_get, config]
-  have := toNat_lt (s.regs 4)
-  have := toNat_lt (s.regs 5)
-  refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 17),
-    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-  · unfold Footprint.Run at h
-    simp only [subsFp, Footprint.vars, List.foldl] at h
-    isla_fwd h using omega with [hσ]
-    subs_end s
-  · subst h
-    unfold Footprint.Run
-    simp only [subsFp, Footprint.vars, List.foldl]
-    isla_bwd [s.pc.toNat, (s.regs 4).toNat, (s.regs 5).toNat] using omega with [hσ]
-    all_goals first
-      | exact toNat_lt _
-      | (apply Eq.symm; subs_end s)
-
-/-- Proves that the state at the end of the trace of `LDR` is `exec`'s: the trace writes to X3
-the eight bytes at an address that the constraint on `X4 + 24` makes equal to it. -/
-macro "ldr_end" : tactic => `(tactic| (
-  done_end
-  simp only [setX_eq (d := 3) (i := 3) rfl, load64_eq, State.mk.injEq, eq_self_iff_true,
-    and_true]
-  all_goals
-    regs_end
-    refine congrArg (fun a => UInt64.ofNat (bytes _ a 8)) ?_
-    apply UInt64.toNat_inj.mp
-    simp only [UInt64.toNat_ofNat', UInt64.toNat_add, UInt64.toNat_ofNat, Nat.reducePow,
-      Nat.reduceMod]
-    omega))
-
-set_option maxRecDepth 8192 in
-set_option maxHeartbeats 2000000 in
-/-- The trace of `LDR X3, [X4, #24]` agrees with `exec` from every state whose address `X4 + 24`
-is a multiple of 8 in `0x40000000`-`0x7FFFFFFF`, as the trace's constraint states.  The
-comparison of `FeatureImpl`, a vector of 259 Booleans, recurses deeper than the default limit,
-and the trace's 98 events take more than the default budget of heartbeats. -/
-theorem ldr (P : Platform) (u : Unknown) (s : State)
-    (ha : (s.regs 4 + 24) &&& 0xFFFFFFFFC0000007 = 0x40000000) :
-    Agrees P (config u) ["SEE", "__BranchTaken", "InGuardedPage"] [.bits 32 0xF9400C83] ldrFp []
-      (.ldr 3 4 3) s := by
-  have h4 := toNat_lt (s.regs 4)
-  have hA : ((s.regs 4).toNat + 24) % 18446744073709551616 &&& 18446744072635809799 =
-      1073741824 := by
-    have := congrArg UInt64.toNat ha
-    simpa [UInt64.toNat_and, UInt64.toNat_add] using this
-  obtain ⟨h8, h30, hh⟩ := ram hA (Nat.mod_lt _ (by decide))
-  have h4' : (s.regs 4).toNat % 18446744073709551616 = (s.regs 4).toNat := Nat.mod_eq_of_lt h4
-  have hx : s.xsp 4 + UInt64.ofNat (8 * (3 : Fin 4096).val) = s.regs 4 + 24 := rfl
-  refine ⟨rfl, by decide, fun σ hσ s' hs => ?_⟩
-  simp only [exec, hx] at hs
-  split at hs
-  · simp only [Option.some.injEq] at hs
-    subst hs
-    isla_premise hσ [ldrFp, config_get, config]
-    refine ⟨((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)).set
-      "InGuardedPage" (.bool false), fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [ldrFp, Footprint.vars, List.foldl] at h
-      isla_fwd h using exact hA with [hσ, features, sysreg]
-      ldr_end
-    · subst h
-      unfold Footprint.Run
-      simp only [ldrFp, Footprint.vars, List.foldl]
-      isla_bwd [u.feature, (s.regs 4).toNat, s.pc.toNat, u.mair.toNat, u.mair2.toNat,
-        u.pir.toNat, u.pire0.toNat, u.sctlr2.toNat, u.s2pir.toNat,
-        bytes s.mem (s.regs 4 + 24) 8] using exact hA
-        with [hσ, features, sysreg]
-      all_goals first
-        | exact toNat_lt _
-        | exact hA
-        | (apply Eq.symm; ldr_end)
-        | (rw [← load64_toNat]; exact toNat_lt _)
-        | (simp only [h4'] at *; first | exact hh | omega)
-        | (simp only [sint, sdiv, udiv, neg]; (repeat' split) <;> omega)
-        | (refine congrArg (fun a => bytes _ a 8) ?_
-           apply UInt64.toNat_inj.mp
-           simp only [UInt64.toNat_ofNat', UInt64.toNat_add, UInt64.toNat_ofNat, Nat.reducePow,
-             Nat.reduceMod]
-           omega)
-  · cases hs
 
 end LeanExe.A64.Isla

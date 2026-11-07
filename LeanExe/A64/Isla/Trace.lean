@@ -11,31 +11,36 @@ expressions of `define-const`, `assert`, and `assume`, the events, and trees of 
 vector is a width `w` and a natural number below `2 ^ w`, and every operator is arithmetic on
 natural numbers modulo a power of 2, as SMT-LIB defines it.
 
-`isla_trace% "PATH"` reads the footprint, the header and the trace, in the file at PATH, relative
-to the directory in which Lean runs, when the term elaborates.  The reader `parse` is trusted: a
-theorem about the term holds of the file only as far as `parse` reads the file correctly.  It folds
-the operators of many arguments to the left, drops the access kind of a memory read and the kind
-and the result of a memory write, which the semantics does not use, reads a name of the header in
-an expression as the field's variable, reads a vector primitive only over the references `R0` to
-`R30` in order, and reads the events `cycle`, `call`, `return`, `define-enum`, and `branch-address`
-as `skip`.
+`isla_trace% "PATH"` reads the footprint, relative to the directory in which Lean runs, when the
+term elaborates: the opcode from `PATH.opcode`, which holds the argument of `isla-footprint -i`,
+and the header and the trace from `PATH.trace`.  Lake does not track these files, so
+`tests/isla/theorems.sh` elaborates the modules that read them on every run.  The reader `parse`
+is trusted: a theorem about the term holds of the files only as far as `parse` reads them
+correctly.  It rejects a trace that does not open with the declarations of the header's
+variables, in the header's order and widths, since Isla numbers the variables of a trace afresh,
+in order of their first appearance.  It folds the operators of many arguments to the left, drops
+the access kind of a memory read and the kind and the result of a memory write, which the
+semantics does not use, reads a name of the header in an expression as the field's variable,
+reads a vector primitive only over the references `R0` to `R30` in order, and reads the events
+`cycle`, `call`, `return`, `define-enum`, and `branch-address`, and the primitive
+`sail_take_exception` with a unit result, as `skip`.
 
 `Trace.Run P t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
 section 3, and `theories/opsem.v` of its repository): `declare-const` picks any value of its type,
 a read of a register or of memory whose value differs from the state's ends the path without an
-outcome, as does a false `assert`, while a false `assume` or `assume-reg` and every ill-formed
-event end it in `fail`, `cases` takes any branch, a write to memory stores its bytes least
-significant first, and `branch-address` and the result of a write have no effect.  The model's
-`State` holds the registers `R0` to `R30`, `SP_EL1`, `_PC`, and the fields `N`, `Z`, `C`, and `V`
-of `PSTATE`, the bytes of memory, and the UART's output.  `σ` holds every other register by name,
-and `PSTATE`'s other fields in a struct.  The outcome of a path that ends holds the model's state
-and `σ`, so that a theorem can state an instruction's whole effect.  An `ite` evaluates both
-branches, which differs from Islaris only where a branch cannot be evaluated.
+outcome, as does a false `assert`, while a false `assume` and every ill-formed event end it in
+`fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and
+`branch-address` and the result of a write have no effect.  The model's `State` holds the
+registers `R0` to `R30`, `SP_EL1`, `_PC`, and the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the
+bytes of memory, and the UART's output.  `σ` holds every other register by name, and `PSTATE`'s
+other fields in a struct.  The outcome of a path that ends holds the model's state and `σ`, so
+that a theorem can state the whole effect of the instruction's decode and execution.  An `ite`
+evaluates both branches, which differs from Islaris only where a branch cannot be evaluated.
 
 The rules below read Isla or the Sail model instead of Islaris, which binds no field, steps over
-an `abstract-primop` without effect (`opsem.v` 427-429), and leaves the program counter to the
-trace.  Citations of Isla give lines of its tree at e9b5d945, and those of `armv9p4.ir` lines of
-the IR of isla-snapshots d8b31014.
+an `abstract-primop` without effect (`opsem.v` 427-429), leaves the program counter to the trace,
+and ends a path at a false `assume-reg` in `fail`.  Citations of Isla give lines of its tree at
+e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
 
 1. `Footprint.Run` binds the variable of each field of the header to the field's value, and
    `declare-const` of a bound variable checks its width and range instead of choosing a value.
@@ -50,18 +55,36 @@ the IR of isla-snapshots d8b31014.
    each `Rj` and records no `write-reg` (`executor.rs` 329-351).
 4. `__BranchTaken` is false before the trace, and at the end of a path `_PC` advances by 4 while
    `__BranchTaken` is false, as in `__InstructionExecute` (`armv9p4.ir` 3768698 and
-   3768806-3768831, Sail lines 299 and 333-334), which the entry point `isla_footprint_no_init`
-   does not run.  The other effects of `__InstructionExecute` after the instruction, on
-   `InGuardedPage`, `PSTATE.BTYPE`, and the IT and single-step state, concern registers outside
-   the model, and the rule leaves them out.
+   3768806-3768831, `fetch.sail` lines 299 and 333-334).  The entry point
+   `isla_footprint_no_init` calls `__DecodeA64` directly (`armv9p4.ir` 3771797-3771831), so no
+   other part of `__InstructionExecute` (3768593-3768846) appears in a trace, and the semantics
+   leaves it out.  Before the decode, `__InstructionExecute` sets `EDSCR.PipeAdv` through
+   `EDSCR_write`, which also copies bits into `MDCCSR_EL0`, takes the OS-unlock, reset, and
+   exception catches when `EDESR` is nonzero, sets `ShouldAdvanceIT` and `ShouldAdvanceSS`,
+   fetches the instruction, signals PMU events, clears `__ExclusiveMonitorSet`, records the
+   instruction's details, and runs SPEPreExecution (`fetch.sail` 284-304).  It turns SEE,
+   UNDEFINED, and UNPREDICTABLE into an Undefined Instruction exception (305-324).  After the
+   instruction it runs SPEPostExecution, clears `InGuardedPage`, sets `PSTATE.BTYPE` from
+   `BTypeNext` except after ERET, and advances the IT and single-step state (328-341).  The
+   model's code map stands in for the fetch.
 5. A write of one byte at `P.uart` appends the byte to the output instead of writing memory, as
    the model's `Platform.uart` states.
 6. A write of a whole register outside the model sets it even when `σ` holds no value for it,
    where Islaris requires one (`opsem.v` 497-503), since `σ` holds the registers of a
    configuration that the theorems leave open.
 7. The reader takes `(|f| nil)` in an expression, where `f` names a field of the header, as the
-   field's variable.  Isla records a constraint on the fields as an `assume` over their names
-   (`isla/src/footprint.rs` 136-146).
+   field's variable.  Under `--reset-constraint-fields`, the patch's `reset_lookup` resolves the
+   name of a field in a reset constraint to the field's variable, and `reset_registers` records
+   the constraint, with the names, as an `assume` event (`isla-lib/src/executor.rs` 686-717 and
+   758 of the patched tree).  The lookup rejects a name that is both a field and a register.
+8. A mismatched `assume-reg` ends the path without an outcome, as a mismatched `read-reg` does.
+   Isla's `reset_registers` assigns each reset value to its register and records it as an
+   `assume-reg` (`executor.rs` 694-720), so the variable that a reset to an undefined value
+   declares, such as that of `TCR_EL1` in the traces of the branches, names the register's
+   initial value.
+9. `sail_take_exception` has no effect.  Isla runs an `abstract` function of the IR by recording
+   an `abstract-primop` event and returning a fresh value (`executor.rs` 927-947), and
+   `sail_take_exception` returns unit (`armv9p4.ir` 70791).
 -/
 
 namespace LeanExe.A64.Isla
@@ -104,6 +127,7 @@ inductive Binop where
   | bvmul
   | bvand
   | bvor
+  | bvxor
   | bvshl
   | bvlshr
   | bvashr
@@ -166,9 +190,44 @@ structure Segment where
   var : Nat
   deriving Lean.ToExpr
 
-/-- What `isla-footprint` prints for an opcode: the fields of the header, empty for an opcode
-without symbolic fields, and the trace. -/
+/-- A piece of an opcode as `isla-footprint -i` takes it: `w` fixed bits of value `n`, or the
+field `name` of `w` bits. -/
+inductive Piece where
+  | bits (w n : Nat)
+  | field (name : String) (w : Nat)
+  deriving Lean.ToExpr
+
+/-- An opcode, its pieces from the most significant. -/
+abbrev Opcode := List Piece
+
+/-- The values of the fields of an opcode, by name. -/
+abbrev Fields := List (String × Nat)
+
+/-- The names and widths of the fields of an opcode, in order. -/
+def Opcode.fields : Opcode → List (String × Nat)
+  | [] => []
+  | .bits _ _ :: p => Opcode.fields p
+  | .field name w :: p => (name, w) :: Opcode.fields p
+
+/-- The number of bits of an opcode. -/
+def Opcode.width : Opcode → Nat
+  | [] => 0
+  | .bits w _ :: p => w + Opcode.width p
+  | .field _ w :: p => w + Opcode.width p
+
+/-- The value of the word of the opcode `p` for the fields `f`, after the bits `acc`. -/
+def Opcode.wordFrom (f : Fields) (acc : Nat) : Opcode → Nat
+  | [] => acc
+  | .bits w n :: p => Opcode.wordFrom f (acc * 2 ^ w + n) p
+  | .field name w :: p => Opcode.wordFrom f (acc * 2 ^ w + (f.lookup name).getD 0) p
+
+/-- The value of the word of the opcode `p` for the fields `f`. -/
+def Opcode.word (p : Opcode) (f : Fields) : Nat := Opcode.wordFrom f 0 p
+
+/-- What `isla-footprint -i` takes and prints for an opcode: the opcode, the fields of the header,
+empty for an opcode without symbolic fields, and the trace. -/
 structure Footprint where
+  opcode : Opcode
   segments : List Segment
   trace : Trace
   deriving Lean.ToExpr
@@ -382,6 +441,7 @@ def Binop.arith : Binop → Nat → Nat → Nat → Option Val
   | .bvmul, w, a, b => some (.bits w (a * b % 2 ^ w))
   | .bvand, w, a, b => some (.bits w (a &&& b))
   | .bvor, w, a, b => some (.bits w (a ||| b))
+  | .bvxor, w, a, b => some (.bits w (a ^^^ b))
   | .bvshl, w, a, b => some (.bits w (if b < w then a * 2 ^ b % 2 ^ w else 0))
   | .bvlshr, w, a, b => some (.bits w (lshr w a b))
   | .bvashr, w, a, b => some (.bits w (ashr w a b))
@@ -486,7 +546,7 @@ def Trace.Run (P : Platform) : Trace → Vars → State → Sys → Outcome → 
     | _ => o = .fail
   | .event (.assumeReg r al v) t, ρ, s, σ, o =>
     match regGet s σ r al, v.eval ρ with
-    | some w, some w' => w = w' ∧ t.Run P ρ s σ o ∨ w ≠ w' ∧ o = .fail
+    | some w, some w' => w = w' ∧ t.Run P ρ s σ o
     | _, _ => o = .fail
   | .event (.readReg r al v) t, ρ, s, σ, o =>
     match regGet s σ r al, (v.eval ρ).bind (acc al) with
@@ -524,9 +584,6 @@ def Trace.RunSome (P : Platform) : List Trace → Vars → State → Sys → Out
   | t :: ts, ρ, s, σ, o => t.Run P ρ s σ o ∨ Trace.RunSome P ts ρ s σ o
 
 end
-
-/-- The values of the fields of an opcode, by name. -/
-abbrev Fields := List (String × Nat)
 
 /-- The variables of the header bound to the values of the fields `f`. -/
 def Footprint.vars (F : Footprint) (f : Fields) : Vars :=
@@ -680,6 +737,7 @@ def binop : String → Except String (Binop × Bool)
   | "bvmul" => .ok (.bvmul, true)
   | "bvand" => .ok (.bvand, true)
   | "bvor" => .ok (.bvor, true)
+  | "bvxor" => .ok (.bvxor, true)
   | "bvshl" => .ok (.bvshl, false)
   | "bvlshr" => .ok (.bvlshr, false)
   | "bvashr" => .ok (.bvashr, false)
@@ -749,7 +807,8 @@ partial def Sx.beq : Sx → Sx → Bool
   | _, _ => false
 
 /-- An event other than `cases`.  A memory read's kind and a memory write's kind and result are
-dropped, and a vector primitive must name `R0` to `R30` in order. -/
+dropped, a vector primitive must name `R0` to `R30` in order, and `sail_take_exception`, whose
+result is unit, has no effect. -/
 def toEvent (segs : List Segment) : Sx → Except String Event
   | .list [.atom "declare-const", x, ty] => return .declare (← toVar x) (← toTy ty)
   | .list [.atom "define-const", x, e] => return .define (← toVar x) (← toExp segs e)
@@ -771,6 +830,8 @@ def toEvent (segs : List Segment) : Sx → Except String Event
     if Sx.beq (.list refs) (.list (.atom "_" :: .atom "vec" :: gprRefs)) then
       return .writeGprs (← toBase i) (← toBase v) (← toAtoms xs)
     else .error "write_register_from_vector of registers other than R0 to R30"
+  | .list (.atom "abstract-primop" :: .name "sail_take_exception" ::
+      .list [.atom "_", .atom "unit"] :: _) => .ok .skip
   | .list (.atom h :: _) =>
     if h ∈ ["cycle", "call", "return", "define-enum", "branch-address"] then .ok .skip
     else .error s!"unknown event {h}"
@@ -798,8 +859,33 @@ def toSegments : List Sx → Except String (List Segment)
     return ⟨f, ← readNat 10 w.toList, ← toVar x⟩ :: (← toSegments gs)
   | _ => .error "bad segment"
 
-/-- The footprint that the text `s` of a file holds: an optional header and a trace. -/
-def parse (s : String) : Except String Footprint := do
+/-- Whether the trace `t` opens with the declarations of the variables of the fields `segs`, in
+order and with their widths. -/
+def opens : List Segment → Trace → Bool
+  | [], _ => true
+  | g :: gs, .event (.declare x (.bv w)) t => x == g.var && w == g.width && opens gs t
+  | _ :: _, _ => false
+
+/-- The opcode that the line `s` of an opcode file holds, the argument of `isla-footprint -i`: its
+pieces separated by spaces, each a string of binary digits or `name:width`. -/
+def parseOpcode (s : String) : Except String Opcode := do
+  let lines := (s.splitOn "\n").filter (· ≠ "")
+  let line ← match lines with
+    | [l] => pure l
+    | _ => throw "an opcode file holds one line"
+  ((line.splitOn " ").filter (· ≠ "")).mapM fun piece =>
+    match piece.splitOn ":" with
+    | [ds] =>
+      if ds.all (fun c => c == '0' || c == '1') then .bits ds.length <$> readNat 2 ds.toList
+      else throw s!"bad piece {piece}"
+    | [name, w] => .field name <$> readNat 10 w.toList
+    | _ => throw s!"bad piece {piece}"
+
+/-- The footprint that the texts `o` of an opcode file and `s` of a trace file hold: the opcode,
+the trace's optional header, and the trace, which must open with the declarations of the header's
+variables. -/
+def parse (o s : String) : Except String Footprint := do
+  let opcode ← parseOpcode o
   let (x, r) ← readSx s.toList
   let (segs, x, r) ← match x with
     | .list (.atom "segments" :: gs) => do
@@ -808,13 +894,16 @@ def parse (s : String) : Except String Footprint := do
       pure (segs, x, r)
     | _ => pure ([], x, r)
   if skipSpace r ≠ [] then throw "text after the trace"
-  return ⟨segs, ← toTrace segs x⟩
+  let trace ← toTrace segs x
+  unless opens segs trace do throw "the trace does not open with the header's declarations"
+  return ⟨opcode, segs, trace⟩
 
 open Lean Elab Term in
-/-- The footprint in the file at the path, read when the term elaborates. -/
+/-- The footprint in the files `PATH.opcode` and `PATH.trace`, read when the term elaborates. -/
 elab "isla_trace% " path:str : term => do
-  let s ← IO.FS.readFile path.getString
-  match parse s with
+  let o ← IO.FS.readFile (path.getString ++ ".opcode")
+  let s ← IO.FS.readFile (path.getString ++ ".trace")
+  match parse o s with
   | .ok t => return toExpr t
   | .error e => throwError "{path.getString}: {e}"
 
