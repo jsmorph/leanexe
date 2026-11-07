@@ -3,7 +3,7 @@ import LeanExe.A64.Proof.Addr
 import LeanExe.A64.Proof.Clear
 
 /-!
-The run of the startup's tail, from instruction 40, after the `ISB` that puts translation in
+The run of the startup's tail, from instruction 43, after the `ISB` that puts translation in
 effect, to `main`.  With the MMU on, the tail sets X0 and X1 to the first byte that it clears and
 the area's end, clears them with `clearLoop`, sets SP to the stack's top through X1, sets X17 to
 the area, and calls `main` with `BL`, which leaves the exit's address in X30.  The run is one of
@@ -16,18 +16,18 @@ namespace LeanExe.A64
 theorem startupCode_tail {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
     {code : UInt64 → Option UInt32} (hcode : CodeAt code (L.image + 64) is) :
     ∃ clr fin stk ar call,
-      addrOf 0 (after (L.image + 64) 40) L.clear = .ok clr ∧
-      CodeAt code (after (L.image + 64) 40) clr ∧
-      addrOf 1 (after (L.image + 64) 42) L.areaEnd = .ok fin ∧
-      CodeAt code (after (L.image + 64) 42) fin ∧
-      CodeAt code (after (L.image + 64) 44) clearLoop ∧
-      addrOf 1 (after (L.image + 64) 49) L.stackTop = .ok stk ∧
-      CodeAt code (after (L.image + 64) 49) stk ∧
-      code (after (L.image + 64) 51) = some (encode (.addImm 31 1 0)) ∧
-      addrOf 17 (after (L.image + 64) 52) L.area = .ok ar ∧
-      CodeAt code (after (L.image + 64) 52) ar ∧
-      bField (after (L.image + 64) 54) (after L.base 1) = .ok call ∧
-      code (after (L.image + 64) 54) = some (encode (.bl call)) := by
+      addrOf 0 (after (L.image + 64) 43) L.clear = .ok clr ∧
+      CodeAt code (after (L.image + 64) 43) clr ∧
+      addrOf 1 (after (L.image + 64) 45) L.areaEnd = .ok fin ∧
+      CodeAt code (after (L.image + 64) 45) fin ∧
+      CodeAt code (after (L.image + 64) 47) clearLoop ∧
+      addrOf 1 (after (L.image + 64) 52) L.stackTop = .ok stk ∧
+      CodeAt code (after (L.image + 64) 52) stk ∧
+      code (after (L.image + 64) 54) = some (encode (.addImm 31 1 0)) ∧
+      addrOf 17 (after (L.image + 64) 55) L.area = .ok ar ∧
+      CodeAt code (after (L.image + 64) 55) ar ∧
+      bField (after (L.image + 64) 57) (after L.base 1) = .ok call ∧
+      code (after (L.image + 64) 57) = some (encode (.bl call)) := by
   obtain ⟨_, _, vec, tab, clr, fin, stk, ar, call, _, -, -, hv, ht, hc, hf, hs, ha, hcall, -,
     his⟩ := startupCode_ok hg
   rw [his] at hcode
@@ -55,11 +55,11 @@ bytes that the loop clears: the machine reaches `main` with X30 at the exit, X17
 at the stack's top, the cleared bytes 0, every other byte kept, and the output kept. -/
 theorem run_startup_tail (P : Platform) {L : Layout} {is : List Instr}
     (hs : startupCode L = .ok is) {code : UInt64 → Option UInt32}
-    (hc : CodeAt code (L.image + 64) is) {s : State} (hpc : s.pc = after (L.image + 64) 40)
+    (hc : CodeAt code (L.image + 64) is) {s : State} (hpc : s.pc = after (L.image + 64) 43)
     (hcl : L.clear.toNat ≤ L.areaEnd.toNat) (h8 : (L.areaEnd.toNat - L.clear.toNat) % 8 = 0)
     (hnorm : ∀ j < L.areaEnd.toNat - L.clear.toNat,
       P.normal (L.clear + UInt64.ofNat j) = true) :
-    ∃ s', Reach P code s s' ∧ s'.pc = after L.base 1 ∧ s'.x 30 = after (L.image + 64) 55 ∧
+    ∃ s', Reach P code s s' ∧ s'.pc = after L.base 1 ∧ s'.x 30 = after (L.image + 64) 58 ∧
       s'.x 17 = L.area ∧ s'.sp = L.stackTop ∧ s'.out = s.out ∧
       (∀ a, (a - L.clear).toNat < (L.areaEnd - L.clear).toNat → s'.mem a = 0) ∧
       (∀ a, ¬ (a - L.clear).toNat < (L.areaEnd - L.clear).toNat → s'.mem a = s.mem a) := by
@@ -78,7 +78,7 @@ theorem run_startup_tail (P : Platform) {L : Layout} {is : List Instr}
   have e5 : LeanExe.A64.exec P (.addImm 31 1 0) s4 = some s5 := by
     simp only [exec, State.xsp_eq_x (show (1 : Fin 32).val < 31 by decide), State.setXsp]
     rfl
-  have p5 : s5.pc = after (L.image + 64) 52 := by
+  have p5 : s5.pc = after (L.image + 64) 55 := by
     show s4.pc + 4 = _
     rw [p4, ← after_succ]
   obtain ⟨s6, r6, p6, x6, k6, sp6, m6, o6⟩ := run_addrOf P code har (by decide) car p5

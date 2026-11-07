@@ -575,7 +575,7 @@ theorem startupCode_shift {image d : UInt64} {n : Nat} {m : Module} {cap : Nat}
   have hv := vecOff_ge n
   have hao := areaOff_ge n
   have htab : tabOff n = vecOff n + 2048 := rfl
-  have h67 : startupLength = 67 := rfl
+  have h70 : startupLength = 70 := rfl
   have hδ : ((image + d).toNat - image.toNat : Int) % 4096 = 0 := by
     have := UInt64.toNat_add image d
     have := image.toNat_lt
@@ -592,7 +592,7 @@ theorem startupCode_shift {image d : UInt64} {n : Nat} {m : Module} {cap : Nat}
     have := UInt64.toNat_add image 64
     simp only [UInt64.reduceToNat, Nat.reducePow] at this h1 ⊢
     omega
-  have hW : ∀ k ≤ 66, Moves d ((image + d).toNat - image.toNat) (after (image + 64) k) :=
+  have hW : ∀ k ≤ 69, Moves d ((image + d).toNat - image.toNat) (after (image + 64) k) :=
     fun k hk => moves_of_range h1 h2
       (by rw [toNat_after (by rw [h64]; omega), h64]; omega)
       (by rw [toNat_after (by rw [h64]; omega), h64]; omega)
@@ -605,15 +605,15 @@ theorem startupCode_shift {image d : UInt64} {n : Nat} {m : Module} {cap : Nat}
   simp only [startupCode, Layout.shift_eq, hI, hB, hV, hTb, hA, hC, hE, hS,
     after_add_comm image d 64, after_shift (image + UInt64.ofNat (64 + 4 * startupLength)) d 1,
     c0, c1, c2, c3, c4, c5, c6, c7, c8, c9,
-    cbField_shift (hW 3 (by omega)) (hW 66 (by omega)) c0,
-    cbField_shift (hW 29 (by omega)) (hW 31 (by omega)) c1,
+    cbField_shift (hW 3 (by omega)) (hW 69 (by omega)) c0,
+    cbField_shift (hW 30 (by omega)) (hW 32 (by omega)) c1,
     addrOf_shift hδ (hW 4 (by omega)) (hF _ (by omega)) c2,
-    addrOf_shift hδ (hW 23 (by omega)) (hF _ (by omega)) c3,
-    addrOf_shift hδ (hW 40 (by omega)) (hF _ (by omega)) c4,
-    addrOf_shift hδ (hW 42 (by omega)) (hF _ (by omega)) c5,
-    addrOf_shift hδ (hW 49 (by omega)) (hF _ (by omega)) c6,
-    addrOf_shift hδ (hW 52 (by omega)) (hF _ (by omega)) c7,
-    bField_shift (hW 54 (by omega)) hB1 c8, bField_shift (hF _ (by omega)) (hW 55 (by omega)) c9]
+    addrOf_shift hδ (hW 24 (by omega)) (hF _ (by omega)) c3,
+    addrOf_shift hδ (hW 43 (by omega)) (hF _ (by omega)) c4,
+    addrOf_shift hδ (hW 45 (by omega)) (hF _ (by omega)) c5,
+    addrOf_shift hδ (hW 52 (by omega)) (hF _ (by omega)) c6,
+    addrOf_shift hδ (hW 55 (by omega)) (hF _ (by omega)) c7,
+    bField_shift (hW 57 (by omega)) hB1 c8, bField_shift (hF _ (by omega)) (hW 58 (by omega)) c9]
 
 /-- The image that `genImage` writes at `image + d` has the bytes of the image at `image` and its
 layout shifted by `d`, when `d` is a multiple of 4096 and the image at `image + d` also lies in the
@@ -629,12 +629,12 @@ theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt6
   have hv := vecOff_ge prog.length
   have hao := areaOff_ge prog.length
   unfold tabOff at hao
-  have h67 : startupLength = 67 := rfl
-  have e1 : (image + UInt64.ofNat (64 + 4 * startupLength)).toNat = image.toNat + 332 := by
+  have h70 : startupLength = 70 := rfl
+  have e1 : (image + UInt64.ofNat (64 + 4 * startupLength)).toNat = image.toNat + 344 := by
     rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
     exact Nat.mod_eq_of_lt (by omega)
   have e2 : (image + d + UInt64.ofNat (64 + 4 * startupLength)).toNat =
-      (image + d).toNat + 332 := by
+      (image + d).toNat + 344 := by
     rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
     exact Nat.mod_eq_of_lt (by omega)
   have hp' := genProgram_shift hp (by rw [e1]; omega) (by rw [← add_right_comm', e2]; omega)
