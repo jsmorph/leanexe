@@ -13,6 +13,8 @@ namespace LeanExe.A64
 
 open Wasm
 
+export LeanExe.CallGraph (mapM_funcOf mem_reachable mem_reachFrom callsIn_callTargets)
+
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-! ## Code that `flatMap` lays out -/
@@ -128,34 +130,6 @@ theorem genFunction_length {callee : Table}
 
 /-! ## The layout of the functions -/
 
-theorem mapM_funcOf {m : Module} : ∀ {ks : List Nat} {fs : List (Nat × Function)},
-    ks.mapM (funcOf m) = .ok fs → ∀ x ∈ fs, m.funcs[x.1]? = some x.2
-  | [], fs, h => by
-      simp only [List.mapM_nil, pure, Except.pure, Except.ok.injEq] at h
-      subst h
-      simp
-  | j :: ks, fs, h => by
-      rw [List.mapM_cons] at h
-      cases h1 : funcOf m j with
-      | error e => simp [h1, bind, Except.bind] at h
-      | ok y =>
-          cases h2 : ks.mapM (funcOf m) with
-          | error e => simp [h1, h2, bind, Except.bind] at h
-          | ok ys =>
-              simp [h1, h2, bind, Except.bind, pure, Except.pure] at h
-              subst h
-              intro x hx
-              simp only [List.mem_cons] at hx
-              rcases hx with rfl | hx
-              · unfold funcOf at h1
-                split at h1
-                · rename_i f hf
-                  simp only [pure, Except.pure, Except.ok.injEq] at h1
-                  subst h1
-                  exact hf
-                · simp [throw, throwThe, MonadExceptOf.throw] at h1
-              · exact mapM_funcOf h2 x hx
-
 theorem find_entriesFrom (sig : Nat → Option (Nat × Nat)) (j : Nat) :
     ∀ (a : UInt64) (fs : List (Nat × Function)),
       ((entriesFrom sig a fs).find? (·.1 = j)).map (fun x => (x.2.2.1.length, x.2.2.2.length)) =
@@ -248,17 +222,11 @@ theorem gen_functions {callee : Table} {S : Shared}
 /-! ## A bound of the stack -/
 
 /-- A bound on the bytes of stack that a call of function `k` of `m` uses, following calls `d`
-deep: at depth 0, 2^64, which bounds nothing, and otherwise the function's frame plus `callNeed`
-of the bounds at depth `d - 1`, at most 2^64, or 0 when `m` has no function `k`.  A call spills
-registers into its caller's frame, so the frames of the calls in progress hold all the stack that
-the program uses below `main`'s frame. -/
-def stackNeed (m : Module) : Nat → Nat → Nat
-  | 0, _ => 2 ^ 64
-  | d + 1, k =>
-      match m.funcs[k]? with
-      | some f => min (2 ^ 64)
-          (frameSize (f.params.length + f.locals.length) + callNeed (stackNeed m d) f.body)
-      | none => 0
+deep, `stackNeedOf` with the frames of `frameSize`.  A call spills registers into its caller's
+frame, so the frames of the calls in progress hold all the stack that the program uses below
+`main`'s frame. -/
+def stackNeed (m : Module) : Nat → Nat → Nat :=
+  CallGraph.stackNeedOf m fun f => frameSize (f.params.length + f.locals.length)
 
 /-- `stackNeed` as many calls deep as `m` has functions.  When the calls from `k` reach no cycle,
 a chain of calls from `k` holds each function at most once, so the search reaches the end of every
@@ -271,68 +239,27 @@ theorem stackNeed_zero (m : Module) (k : Nat) : stackNeed m 0 k = 2 ^ 64 := rfl
 
 theorem stackNeed_some {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
     (d : Nat) : stackNeed m (d + 1) k = min (2 ^ 64)
-      (frameSize (f.params.length + f.locals.length) + callNeed (stackNeed m d) f.body) := by
-  simp only [stackNeed.eq_2, hk]
+      (frameSize (f.params.length + f.locals.length) + callNeed (stackNeed m d) f.body) :=
+  CallGraph.stackNeedOf_some hk d
 
 theorem stackNeed_none {m : Module} {k : Nat} (hk : m.funcs[k]? = none) (d : Nat) :
-    stackNeed m (d + 1) k = 0 := by
-  simp only [stackNeed.eq_2, hk]
+    stackNeed m (d + 1) k = 0 :=
+  CallGraph.stackNeedOf_none hk d
 
-theorem stackNeed_succ_le (m : Module) : ∀ d k, stackNeed m (d + 1) k ≤ stackNeed m d k
-  | 0, k => by
-      cases hk : m.funcs[k]? with
-      | none => simp only [stackNeed_none hk 0, Nat.zero_le]
-      | some f =>
-          rw [stackNeed_some hk 0, stackNeed_zero]
-          exact Nat.min_le_left _ _
-  | d + 1, k => by
-      cases hk : m.funcs[k]? with
-      | none => simp only [stackNeed_none hk (d + 1), stackNeed_none hk d, Nat.le_refl]
-      | some f =>
-          have h := callNeed_mono (stackNeed_succ_le m d) f.body
-          rw [stackNeed_some hk (d + 1), stackNeed_some hk d, Nat.min_def, Nat.min_def]
-          split <;> split <;> omega
+theorem stackNeed_succ_le (m : Module) : ∀ d k, stackNeed m (d + 1) k ≤ stackNeed m d k :=
+  CallGraph.stackNeedOf_succ_le m _
 
 /-- `stackNeed` at every depth satisfies `NeedOk` for every function of `m`. -/
 theorem stackNeed_ok {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f) :
     ∀ d, NeedOk (stackNeed m d) (frameSize (f.params.length + f.locals.length)) f.body
-      (stackNeed m d k)
-  | 0 => .inl (Nat.le_of_eq (stackNeed_zero m k).symm)
-  | d + 1 => by
-      have h := callNeed_mono (stackNeed_succ_le m d) f.body
-      unfold NeedOk
-      rw [stackNeed_some hk d, Nat.min_def]
-      split <;> omega
+      (stackNeed m d k) :=
+  CallGraph.stackNeedOf_ok hk
 
 /-- `stackNeed` of a function whose body calls no function is at most its frame. -/
 theorem stackNeed_of_nil {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
     (hc : callsIn f.body = []) (d : Nat) :
-    stackNeed m (d + 1) k ≤ frameSize (f.params.length + f.locals.length) := by
-  rw [stackNeed_some hk d, callNeed, hc, List.map_nil, List.foldr_nil, Nat.add_zero]
-  exact Nat.min_le_right _ _
-
-theorem mem_reachable (m : Module) {x : Nat} :
-    ∀ (fuel : Nat) (done todo : List Nat), x ∈ done → x ∈ reachable m fuel done todo
-  | 0, _, _, h => by simpa only [reachable] using h
-  | _ + 1, _, [], h => by simpa only [reachable] using h
-  | fuel + 1, done, j :: todo, h => by
-      simp only [reachable]
-      split
-      · exact mem_reachable m fuel done todo h
-      · exact mem_reachable m fuel _ _ (List.mem_append_left _ h)
-
-theorem mem_reachFrom (m : Module) (k : Nat) : k ∈ reachFrom m k := by
-  unfold reachFrom
-  rw [Nat.add_comm]
-  simp only [reachable]
-  rw [ite_eq_right List.not_mem_nil]
-  exact mem_reachable m _ _ _ (by simp)
-
-/-- The functions that the body of function `k` of `m` calls lie among `callTargets m k`. -/
-theorem callsIn_callTargets {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
-    {j : Nat} (hj : j ∈ callsIn f.body) : j ∈ callTargets m k := by
-  unfold callTargets
-  exact List.mem_flatMap.mpr ⟨k, mem_reachFrom m k, by simpa [hk] using hj⟩
+    stackNeed m (d + 1) k ≤ frameSize (f.params.length + f.locals.length) :=
+  CallGraph.stackNeedOf_of_nil hk hc d
 
 /-! ## The generator's program -/
 

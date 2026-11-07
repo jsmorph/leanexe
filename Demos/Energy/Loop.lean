@@ -1,6 +1,7 @@
 import Verified.Reflect.Command
 import TestSupport.Native.Common
-import LeanExe.Native.Proof.Records
+import LeanExe.Native.Proof.Req
+import LeanExe.Requests.Records
 import Verified.Bare
 import Verified.Call
 import Demos.Energy.Gateway
@@ -8,7 +9,7 @@ import Demos.Energy.Gateway
 /-!
 The energy controller's program: the gateway of `Demos/Energy/Gateway.lean` in the program with
 requests, exchanging records over a UART through the framing of
-`LeanExe/Native/Proof/Records.lean`.  `gwTickWith` holds the framing's state with the input record
+`LeanExe/Requests/Records.lean`.  `gwTickWith` holds the framing's state with the input record
 of 18 words as a shift register, the output record of 6 words, and the gateway's state, all in
 structures with `Flat` instances, for a UART's registers.  `gwTickWith_abs` states that it computes
 `frameTick` of `gwSpec`, the gateway over lists, under the map `gwAbs` to lists.  `gwTick` is the
@@ -21,7 +22,7 @@ read.
 
 namespace Demos.Energy
 
-open LeanExe.Native LeanExe.Pipeline LClight
+open LeanExe.Native LeanExe.Requests LeanExe.Pipeline LClight
 
 /-- The framing's state with the gateway's state. -/
 structure GwFrame where
@@ -160,7 +161,7 @@ theorem gw_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre gwCompiled.translation (reqMain 33 (gwWords gwInit))) E0
-      (reqTrace gwTick gwInit σ) := by
+      (reqTrace regBus gwTick gwInit σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := gwCompiled.gwTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := List.replicate 46 .i64)
     (rs0 := List.replicate 46 .i64) (by decide +kernel)
@@ -188,7 +189,7 @@ theorem gw_usart3_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre gwCompiled.translation (reqMain 34 (gwWords gwInit))) E0
-      (reqTrace gwTickUsart3 gwInit σ) := by
+      (reqTrace regBus gwTickUsart3 gwInit σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := gwCompiled.gwTickUsart3.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := List.replicate 46 .i64)
     (rs0 := List.replicate 46 .i64) (by decide +kernel)
@@ -212,9 +213,9 @@ theorem gw_usart3_program (A : Archi) (X : ExtSem)
 program write to UART0's data register begin the bytes of the gateway's output records for the
 input records of 18 words that the bytes read from the data register in those windows encode. -/
 theorem gw_prefix (σ : Nat → int) (n : Nat) :
-    dataOut gwUart (windows (reqTrace gwTick gwInit σ) n) <+:
+    dataOut regBus gwUart (windows (reqTrace regBus gwTick gwInit σ) n) <+:
       outBytes gwSpec gw0 (decode 18
-        (dataIn gwUart (windows (reqTrace gwTick gwInit σ) n))).recs := by
+        (dataIn regBus gwUart (windows (reqTrace regBus gwTick gwInit σ) n))).recs := by
   rw [← reqTrace_map gwAbs gwTick_abs]
   exact frame_prefix (u := gwUart) (kin := 18) (kout := 6) (mach := gwSpec) (m0 := gw0)
     (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
@@ -224,9 +225,9 @@ theorem gw_prefix (σ : Nat → int) (n : Nat) :
 program for USART3 write to `USART_TDR` begin the bytes of the gateway's output records for the
 input records of 18 words that the bytes read from `USART_RDR` in those windows encode. -/
 theorem gw_usart3_prefix (σ : Nat → int) (n : Nat) :
-    dataOut gwUsart3 (windows (reqTrace gwTickUsart3 gwInit σ) n) <+:
+    dataOut regBus gwUsart3 (windows (reqTrace regBus gwTickUsart3 gwInit σ) n) <+:
       outBytes gwSpec gw0 (decode 18
-        (dataIn gwUsart3 (windows (reqTrace gwTickUsart3 gwInit σ) n))).recs := by
+        (dataIn regBus gwUsart3 (windows (reqTrace regBus gwTickUsart3 gwInit σ) n))).recs := by
   rw [← reqTrace_map gwAbs gwTickUsart3_abs]
   exact frame_prefix (u := gwUsart3) (kin := 18) (kout := 6) (mach := gwSpec) (m0 := gw0)
     (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)

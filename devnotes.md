@@ -42246,6 +42246,23 @@ The user asked for an artifact code for the Images of the AArch64 back end and a
 
 `tests/TestSupport/A64/Isla/Register.lean` proves `Agrees` for SUB, AND, EOR, ORR, ORR (W), SUBS (register), MADD, MSUB, LSLV, LSRV, and UDIV beside ADD, under both profiles, for every value of every field, register 31 included, with no premise.  UDIV's theorem reads the trace of the edited IR, whose quotient is `bvsdiv` of the zero-extended operands.  On minideb2 the TCG theorems take 55 s (AND) to 164 s (MSUB) on one thread, each KVM theorem about 2 s, and the module 525 s with four threads.  The command-line driver keeps every command's info tree to the end of the file, which took the run to 9.5 GiB, so each TCG proof runs inside `without_info`, a tactic that disables info trees, and the run stays under about 5 GB; linters and hovers see nothing inside those proofs, and the kernel's check is unchanged.  `gpr_end`'s `try rfl` reached the maximum recursion depth on SUB, an error that `try` does not catch, so `reg_end` uses `with_reducible rfl`.  `omega` splits on every truncated subtraction, so the SUBS flags are lemmas `subs_*` over variables for the trace's three shapes.  The stage-1 SUBS theorem, `tests/isla/subs.trace`, and `tests/isla/subs.opcode` are gone, and `Stage1.lean` keeps LDR alone.  The agent proposes moving `reg_end`, `without_info`, and its generic lemmas on bitwise operations, division, and the reader's signed operations into `Check.lean`.
 
+`tests/TestSupport/A64/Isla/Memory.lean` proves `Agrees` for LDR, STR, and STRB in the RAM GiB and for STRB at the UART under both profiles, for every value of `imm12`, `Rn`, and `Rt`, register 31 included.  Each theorem states the trace's constraints in the model's terms: the mask constraint on `u.ttbr0`, the descriptor that the walk reads (`0x0040000040000705` at `u.ttbr0 + 8`, or `0x0060000000000401` at `u.ttbr0` for the UART), and the access's address, `s.xsp n` plus the scaled immediate, with every byte in the RAM GiB or at `0x09000000`.  STR needs two more premises, since a store that runs byte by byte, an unaligned one under `tcg` or one that crosses a 16-byte boundary under `kvm`, translates each byte's address after storing the bytes before it.  Reading 5 of `Trace.lean` sends a byte written at `P.uart` to the output while `exec` stores all eight bytes, so `P.normal P.uart = false` is a premise, and the walk for a later byte reads the descriptor at `u.ttbr0 + 8` from the memory that the earlier bytes changed, so the eight bytes must lie clear of it.  The UART's theorems leave `P` open: when `P.uart` is `0x09000000`, the trace and `exec` both append the byte to the output, and otherwise both store it.
+
+The walk of `Register.lean` costs the size of the remaining trace at every step, since `rw` and `simp` traverse the hypothesis, which holds the trace's literal.  On STRB's trace of 716 events it ran at about 0.7 s per event.  `isla_nodes F` defines one constant per node of the trace, so that the hypothesis names the rest of the trace.  Congruence lemmas keep `simp` out of the trace and the variables, a simproc reads a variable from the chain of `Vars.set` in one step, and another evaluates `gpr` without `List.lookup`.  `isla_ctx F π` evaluates the premise on `σ` once per footprint, keeps one equation per register instead of one per read (53 for STR under `tcg` instead of 612), and hides them from `omega` in `Opaque`.  The walk's side conditions go to `omega` without the walk's facts, a read's value replaces the variable in the walked hypothesis only, and `mem_quiet` records no info trees for the walk.  The backward direction gives each declared variable the value that the first event reading it reads, found in the trace's nodes, with `true` for a free Boolean, since the byte-wise path of an unaligned access asserts that `ConstrainUnpredictable` returned `Constraint_NONE`, its first case.
+
+A step that unfolded `Trace.Run` by the type of its equation, a change by definition instead of a rewrite, took 7.6 GiB within 136 s on one pair of STRB lemmas, and the walk rewrites with the equation instead.  Rewriting each byte insertion of an unaligned load during the walk wrote the word twice per byte, so the term's tree doubled at each of the eight bytes, and a traversal of the term that collects the bytes' bounds ran for 25 minutes without finishing.  `ins_chain` now gives the word's value from the eight insertions at the end of the path.  `simp` applies `Nat.add_zero`, a `rfl` theorem, without a proof step, so the kernel checks `x + 0 = x` by unfolding, and for the table's address in the UART's walk, a remainder of a 128-bit term, that check ran for more than nine minutes at 8 GiB.  `nat_add_zero` proves the equation by `omega`, and `isla_simp` in `Check.lean` still uses `Nat.add_zero`.  Bisection over the number of steps found the step that the kernel could not check, with each copy of the lemma keeping the walked hypothesis in its proof.  A `sorry` that leaves the hypothesis unused drops the walk's proof from the term, and the kernel then checks nothing of the walk.
+
+On minideb1 with one thread, a file with the shared lemmas and one form's theorem takes the time and reaches the peak of resident memory in the table.  `tests/isla/theorems.sh Memory` elaborates the module in 3402 s, and the axioms of all eight theorems are `propext`, `Classical.choice`, and `Quot.sound`.  The module's scope reached its `MemoryHigh` of 8 GiB with 1 GiB in swap, and the resident set of `lean`, which counts the mapped olean files, reached 9.1 GiB, against at most 4.5 GiB for one form, since the environment keeps the footprints, their nodes, and the proofs of all eight forms.
+
+| Form | `tcg` | `kvm` |
+|------|-------|-------|
+| LDR | 557 s, 3928 MiB | 697 s, 4551 MiB |
+| STR | 545 s, 3888 MiB | 686 s, 4525 MiB |
+| STRB | 222 s, 2304 MiB | 234 s, 2407 MiB |
+| STRB at the UART | 222 s, 2365 MiB | 247 s, 2844 MiB |
+
+LDR's theorem of stage 1 is gone from `Stage1.lean`, with its footprint, the lemma `ram`, and the tactic `ldr_end`, and so are `tests/isla/ldr.trace` and `tests/isla/ldr.opcode`.  On the memory branch `Stage1.lean` kept the SUBS theorem, which `tests/isla/theorems.sh Stage1` checked in 21 s, and its configuration.  The register group removed that theorem on the controller branch, so the merge of the two branches deletes `Stage1.lean`.  `done_end` in `Check.lean` serves the immediate and branch theorems.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
@@ -42254,9 +42271,11 @@ The user asked for an artifact code for the Images of the AArch64 back end and a
 - [x] E: UDIV's IR edit and traces.
 - [x] E: the extended semantics and ADD.
 - [x] E: ADD on the committed traces under the full TCG and KVM profiles.
-- [ ] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
+- [x] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
 - [x] Code M, the root README, and the diagrams for the AArch64 back end.
-- [ ] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files once SUBS (register) and LDR hold over every field.
+- [x] E: the theorems of the memory forms in `Memory.lean`.
+- [x] E: remove LDR's part of `Stage1.lean`, `tests/isla/ldr.trace`, and `ldr.opcode`.
+- [x] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files.
 - [ ] Check how the modules that use `binary_file%` are built.
 
 ### References
@@ -42318,3 +42337,707 @@ The gateway ran on the board.  Its first runs got no reply: the gateway's state,
 The full day ran on the board after a reset over SWD: `uart_gateway.py --device /dev/ttyACM0 --ticks 1440` passed, with 94 commands, 4 fallback requests, 3 of them for measurements outside a window, and 1,342 ticks without output in 580.5 s, and `native-bare gateway-run` on edgexpert-18ff gave output records equal to the board's.  The host proposed 285 times: the 187 proposals of the full range of ±5,000 W were all rejected with the status export cap, and of the 98 narrower ones 94 were accepted and 4 arrived on ticks that requested fallback.  The simulated energy lay up to 5.4 Wh below the floor of 3.0 kWh for 45 minutes while the inverter allowed no discharge, through the standing loss of 10 W of `replay.py`'s battery model, and the fourth load spike drew no fallback request because the last command's window of 900 s had ended.  The run's records, image, C text, and metadata are in `~/nucleo-f767zi/runs/2026-11-07-gateway-1440/`, outside the repository.  `tests/baremetal/gateway_report.py` writes from a run's records an HTML page with embedded SVG: load and PV, battery power inside the inverter's read-back limits, the energy interval between floor and ceiling, and the gateway's decisions in lanes on one time axis, with a hover readout, a summary computed from the records, and tables of the events and of every record; the page for this run is `gateway1440.html` in that directory.
 
 The energy controller's README now opens with the day on the board, after its first paragraph: the day's chart, a chart of the hour from 14:20 to 15:40 around the third load spike, the host's simulation, the results, the toolchain from `verified_compile` to the image, and the board.  `Demos/Energy/board-day/` holds the run's input, output, and native Lean records, the host's summary line, `meta.json`, the page, and the two charts, which a headless Chromium rendered from the page at twice the pixel density.  `gateway_report.py` takes a first and a last tick for the chart of a range.  `docs/native-bare-metal.md` and `docs/trusted-base.md` record that the gateway has run on the board, and the bare-metal design also records the outage of the virtual COM port, and the root README's demo list links the section.
+
+## 2026-11-07: A C-free back end for the NUCLEO-F767ZI
+
+The user asked for a compiler without C for the NUCLEO-F767ZI, like the AArch64 back end, and for its full implementation and tests once the plan is reviewed, with the standard question procedure.  A planning agent's design (`tmp/m7/plan.md`, manual extracts in `tmp/m7/manuals/`, Isla probes in `tmp/m7/probe/`) keeps the A64 structure: a model of the emitted Thumb-2 forms, an encoder with `decode_encode`, a generator that places code by size functions, a simulation by strong induction on the interpreter's fuel, a proved startup, and the kernel's check of a flat image at `0x08000000`.  A `UInt64` lives in a pair of 32-bit registers, a proved routine divides 64-bit words since the M7 divides only 32-bit ones, the operand stack lives in frame slots because the gateway's step passes 46 and 52 words, and the theorems take the reactive shape of `LoopReacts`.  No machine-readable M-profile specification is public, and the probe traced T32 and T16 forms through Isla's A-profile AArch32 decoder in about 4 s and 1 GB each when register fields stay in r0 to r7.  The main risk is time: each window must finish within about 16,667 cycles at 16 MHz with the caches off, or a received byte overruns.  A fresh agent reviews the plan before implementation.
+
+The user accepted the specification check through Isla's A-profile AArch32 traces, with a reading of each checked form's A-profile and M-profile pseudocode, and longer windows or ticks, a lower data rate, as the answer to the timing risk.  Dependencies and changes to what the theorems assume follow the standard procedure: a recommendation, a fresh review, a revision, a record here, and the work.
+
+A fresh review (`tmp/m7/review.md`) found the target facts and the register-pair sequences correct and one error: under the plan's frame layout `gwTickWith` and `gatewayWith` need 7,168 and 4,456 bytes, beyond the 4,095 that `LDR` and `STR` reach, because of 564 and 354 f64 and f32 locals that the body never names, a count I verified in the gateway's C text.  The revision (`tmp/m7/plan.md`, "Revisions after the review") gives unused locals no slot, adds a step G0 after T0 that counts the instructions of each window with an unproved generator and measures cycles per instruction on the board, drops the instruction cache and the PLL in favor of the user's lower data rate, and adds to T0 the reading of CPUID and the errata, a decoder that accepts only the encoder's patterns, and SP's masking.  The board's theorems will state their run conditions: a power-on reset, software watchdogs, and no interrupt, debug halt, or debugger access.  No decision goes to the user.
+
+Over SWD, `st-flash read` gave CPUID 0x411FC270, a Cortex-M7 r1p0, DBGMCU_IDCODE 0x10016451, device 0x451 at revision Z (REV_ID 0x1001), and OPTCR 0xFFFFAAFD, whose IWDG_SW and WWDG_SW bits select software watchdogs.
+
+G0 (b) measured on the board the cycles of the sequences that the plan's generator emits, at reset clocking (HSI at 16 MHz, CCR 0x00040200 with the caches off, FLASH_ACR 0).  Each block was 64 copies of a sequence between two loads of DWT_CYCCNT, run 5 times from each fetch path in each of 3 runs from reset, with SP in DTCM.  The empty bracket took 1 cycle in every sample, ART and prefetch changed the ITCM path by at most 0.08 cycles a copy, and a check against `objdump` found every instruction in its intended encoding.  The sources, the scripts, and the raw data lie in `tmp/m7/bench/` (`results.txt`).  Cycles per copy, medians of 15 samples:
+
+| Sequence | Instructions | ITCM, `0x00200000` | AXIM, `0x08000000` |
+|---|---|---|---|
+| `addI64` from slots: 4 `LDR`, `ADDS`, `ADC`, 2 `STR` | 8 | 11.91 | 11.97 |
+| slot move, the next copy reloading the stored words | 6 | 10.91 | 10.95 |
+| slot move, storing to another slot | 6 | 3.25 | 7.67 |
+| `mulI64` from slots | 9 | 14.91 | 14.91 |
+| `shlI64` from slots | 16 | 16.91 | 17.95 |
+| `eqI64` from slots | 12 | 15.89 | 15.97 |
+| `BL`, `STR` of LR, `LDR` of LR, `BX LR` | 4 | 16.98 | 34.22 |
+| `BL` to the plan's full prologue and epilogue | 11 | 20.98 | 41.69 |
+| `CMP.W`, `BNE.W` taken | 2 | 6.50 | 13.88 |
+| `addI64` with `LDRD` and `STRD` | 5 | 8.94 | 8.94 |
+
+A load of a word that the previous instruction stored costs up to 4 cycles more than a load of another slot, and the cost vanishes with about 8 cycles between them, so reloads of the operand stack's top dominate the slot sequences.  The ITCM path takes about half the AXIM path's cycles for calls, taken branches, and code that reloads nothing.  `LDRD` and `STRD` cut `addI64` by 25% and the slot move by 36%, but reach only 1,020 bytes, and the 16-bit `LDR` and `STR` save nothing on ITCM.  At 1.5 to 1.8 cycles an instruction, half a byte time holds about 9,100 to 11,200 instructions at 4,800 baud and about 18,000 to 22,000 at 2,400, against the plan's estimate of 6,700 to 18,000 for a receiving window.  `UDIV`, `MLS`, and `udivmod64` were not measured.
+
+Choice: the reset vector names the ITCM alias, which the boot model already covers and which needs no register write.  `LDRD` and `STRD`, and keeping the operand stack's top in registers, wait for G0 (a)'s window counts, since the second changes decision 1 and the proofs' relation.  The runs showed what a debugger leaves behind: `st-flash` halts the core when it connects (DHCSR 0x00030003), the ST-LINK leaves DEMCR at 0x01000500 with C_DEBUGEN set, and DWT_LSR read SLK 0 after a system reset with the probe attached, so the proved runs' premise of a power-on reset with no debugger excludes all of it.  Each `st-flash reset` booted the image twice, for a reason not found.  After 34 sessions of `st-flash`, `gateway.bin` was written back, read back equal, and passed 5 ticks with records equal to the earlier run's, so the virtual COM port still forwards.
+
+- [x] Review of the plan, and its revision.
+- [x] G0 (b): the board's cycles per instruction.
+- [x] T0: model and encoder, with CPUID and the errata.
+- [x] G0 (a): window counts.
+- [x] T1: division.
+- [x] T2: the echo's step.
+- [x] T3: the loop under QEMU.
+- [x] T4: the board's echo.
+- [ ] T5: Isla and the board's co-simulation.  G1: the gateway.  G2: timing.
+
+## 2026-11-07: Cortex-M7 back end, T0: the model, the encoder, and the co-simulation
+
+T0 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, with its revisions of 2026-11-07) adds the Lean model of the Thumb-2 forms that the generator will emit, the encoder with `decode_encode`, a comparison of the encoder with GNU `as`, and a co-simulation of the model against QEMU's `mps2-an500`.  `LeanExe/M7/Machine.lean` and `LeanExe/M7/Encode.lean` import only Lean's core library and follow `LeanExe/A64/Machine.lean` and `LeanExe/A64/Encode.lean`.  The encodings and the semantics come from the Armv7-M Architecture Reference Manual, DDI 0403E.e: the encoding diagrams and pseudocode of chapter A7, `AddWithCarry` and the shifts of section A2.2.1, the register access functions of section B1.4.7, and `ConditionPassed` of section A7.3.
+
+### The model
+
+The state holds r0 to r12, SP, LR, the program counter, N, Z, C, and V, memory as a map from 32-bit addresses to bytes, the list of device accesses, and the number of device reads so far, and `step` takes the sequence `σ` of the values that device reads return.  `Instr` has a constructor for each form of the plan's section 1 table.  A register field has type `Fin 8`, r0 to r7, so the constructors admit no register choice that the encodings make UNPREDICTABLE, and each form with SP or LR in a register field is a constructor of its own: `ldrSp`, `strSp`, `ldrLr`, `strLr`, `addwSp`, `subwSp`, `addwSpSp`, `subwSpSp`, and `bxLr`.  Separate constructors give each form one semantics, and they keep SP and LR concrete in the Isla traces of T5, where a symbolic register field over r0 to r7 cost about 1 GB in the probe and one over r0 to r12 cost 10.9 GB (plan, section 7).  Where an encoding splits an immediate, the constructor carries the parts: `i:imm3:imm8` of `ADDW` and `SUBW`, `imm4:i:imm3:imm8` of `MOVW` and `MOVT`, `S`, `J1`, `J2`, `imm6` or `imm10`, and `imm11` of the branches, and `imm3:imm2` of the shift amounts, and `exec` joins them.  `UMULL` carries a proof that its destinations differ.  `Instr.addLsl`, `lslBy`, `lsrBy`, `movwOf`, `movtOf`, `addwSpOf`, `subwSpOf`, `addwSpSpOf`, `subwSpSpOf`, `bcondTo`, `bTo`, and `blTo` build these forms from an immediate or a byte offset, for the tests now and for the generator of T2.
+
+`decode` decides the length from bits 15 to 11 of the first halfword (section A5.1), reads the fields of every form from the halfwords at that form's positions, reduced to the constructors' ranges, and returns the candidate whose `encodeNat` equals the halfwords.  It accepts exactly the bit patterns that the encoder writes, as revision 4 requires: `UMULL` with RdLo equal to RdHi, `CLZ` with two different Rm fields, `UDIV` with a should-be-one bit clear, a modified immediate whose `i:imm3` is not 0000, and `B<cond>.W` with condition 14 or 15 decode to nothing.  The task's list placed `decode` in `Encode.lean`.  The decoder and `encodeNat` lie in `Machine.lean` instead, because `step` uses the decoder and the encodings define it, as A64's decoder lies in its model.  `Encode.lean` holds `encode`, the list of halfwords, the lemmas, and the constructors from immediates.
+
+The flags follow revision 4.  `ADDS`, `SUBS`, `SBCS`, and `CMP` set NZCV from `AddWithCarry`, which the model transcribes with the unsigned and signed sums of the pseudocode, `ORRS` sets N and Z and keeps C and V, since its shift amount is 0, and every other form, `ADC` and `MOV.W` with the immediate among them, has S clear and leaves the flags.  A write to SP clears bits 1 and 0 of the value, as the assignment form of `R[]` does (section B1.4.7), and only `ADDW SP, SP` and `SUBW SP, SP` write SP.  `LSL` and `LSR` by register take the bottom byte of Rm and give 0 for 32 or more, and `LSR` with an immediate field of 0 shifts by 32 (`DecodeImmShift`).  `CLZ` gives 32 for 0 and `31 - log2 x` otherwise.
+
+A word load or store needs an address that is a multiple of 4.  `Platform.device` names the addresses at which a load appends `read a (σ k)`, where `k` counts the reads, and a store appends `write a v`, and `Platform.normal` names the bytes of Normal memory.  The plan fixes the device window at the word addresses from 0x40000000 below 0x40040000, and the model takes it from the platform instead, so that the co-simulation has no device and the platforms of T3's `mps2-an500` and of T4's board each state their window.  The access type `Access` is the model's own, and decision 3 of the plan, the neutral type that `reqTrace` and `windows` take, waits for T3.  `exec` stops on every other access, on `UDIV` with a zero divisor, and on `BX LR` with bit 0 of LR clear, which takes an INVSTATE UsageFault (sections A7.7.20 and B3.2.15).
+
+The branches add their offset to the instruction's address plus 4, `BL` sets LR to the next instruction's address with bit 0 set, and `BX LR` branches to LR with bit 0 cleared.  `DSB SY` is a step to the next instruction.  Every form but `BX LR` is 32 bits wide and `BX LR` always branches, so `exec` places the next instruction at the program counter plus 4.  A 16-bit form that falls through, such as the SP-relative `LDR` that G0 may choose, needs `exec` to take the decoded length.
+
+### The encoder and its lemmas
+
+`decode_encode (i : Instr) (rest : List UInt16) : decode (encode i ++ rest) = some (i, (encode i).length)` is the plan's statement.  `decode_sound` states that `decode hs = some (i, n)` implies `hs.take n = encode i`, so the decoder reads only encodings, and `encodeNat_injective` that no two instructions share an encoding.  The proof of `decode_encode` combines `mem_wideForms`, which shows that the candidates that the decoder reads from an encoding include the instruction, with injectivity and with a lemma that `find?` returns the only element that satisfies its predicate.  The proofs split on the constructors and decide every field with `omega`.  For `UMULL`, `omega` reported a possible counterexample when it had to refute the equality of the two destination fields read from the second halfword's value, so `umull_lo` and `umull_hi` rewrite those fields first.  Each theorem depends on `propext`, `Classical.choice`, and `Quot.sound` at most, by `#print axioms`, and `lake build LeanExe.M7.Encode` takes 39 s and 1.37 GB on edgexpert-18ff.
+
+### Comparison with GNU `as`
+
+`tests/baremetal/m7-encode.sh` builds `m7-encode` (`tests/TestSupport/M7/Asm.lean`), writes the samples in GNU's unified syntax with the immediates as numbers and each branch target relative to `.`, assembles them with `arm-none-eabi-as -march=armv7e-m -mthumb`, requires an object without relocations, and compares the `.text` bytes with `encode`'s halfwords sample by sample.  It also decodes the assembler's halfwords of each sample and requires the sample.  The samples set every register field to r0 and to r7, each immediate field to 0 and to its largest value, the shift amounts to their smallest and largest values and to 1, every condition, and the branch offsets of `B<cond>.W` to ±1 MiB and of `B.W` and `BL` to ±16 MiB.  GNU `as` 2.42 on edgexpert-18ff assembled the 390 samples of the 39 forms to the encoder's halfwords, and with one bit of the assembled bytes changed, `m7-encode check` reported that sample and exited with status 1.
+
+### Co-simulation
+
+`tests/baremetal/m7-cosim.sh SEED PER_FORM` builds `m7-cosim` (`tests/TestSupport/M7/Cosim.lean`), which writes an assembly harness of `PER_FORM` cases of each form with states from SplitMix64, as A64's harness does.  A case sets r0 to r12 and LR to boundary values or random words, SP to such a word with bits 1 and 0 clear, NZCV to random bits, and a window of 64 bytes to random bytes.  A load or store gets a base that puts its word-aligned access inside the window, a shift by register an amount below 64, at 32, at 255, or random, `UDIV` a nonzero divisor, a branch a target among the 16 words on each side of the instruction, and `BX LR` an LR at such a word with bit 0 set.  The harness loads the state with `MSR APSR_nzcvq`, `MOV SP`, `LDR LR`, and `LDM`, runs the instruction's halfwords, and at the landing word saves r0 to r12, SP, LR, APSR, and the landing word's number in S0 to S16, which no form of the model touches, before it stores them and the window.  `tests/baremetal/m7cosim.c` prints each case's state before and after, and `m7-cosim check` runs `exec` from each printed state with the instruction's address as the program counter and the window as the only Normal memory, and compares the result with the printed state after.
+
+The image links the harness and the printer with the startup code of `tools/baremetal/armv7m` for `mps2-an500` through `build.sh`, with CompCert 3.18 for `armv7m-eabihf` (`~/compcert/armv7m/CompCert-3.18`) as the driver for the printer, as the task allows, since it tests the model and not the product.  It runs under QEMU 8.2.2's `mps2-an500` and exits through semihosting with status 0 after `R:exit 0`.  The startup code enables the floating-point unit, which the harness needs, and the MPU with its guard, and it runs `main` on the process stack.  The board's proved run has none of these, and the inference that they change no form's result on the window, whose accesses the MPU's background region permits, rests on DDI 0403E.e until the board's co-simulation of T5.  Each run of 7,800 cases took 6 to 8 s with a peak of 0.84 GB in the Lean steps.
+
+| Seed | Cases of each form | Cases | Agree |
+|---|---|---|---|
+| 1 | 1 | 39 | all |
+| 1 | 100 | 3,900 | all |
+| 2 to 12 | 200 | 85,800 | all |
+
+A copy of a run's output with one register value changed made `check` report that case and exit with status 1.  The co-simulation tests only what the model lets run, on QEMU's implementation of the Cortex-M7: word accesses inside the window, branches within 16 words, nonzero divisors, and no device access.  Longer branches rest on `decode_encode` and on GNU `as`'s agreement with the encoder, and a test on the processor waits for the board's co-simulation of T5.
+
+### Errata
+
+The board's CPUID reads 0x411FC270, Cortex-M7 r1p0, and its DBGMCU_IDCODE 0x10016451, REV_ID 0x1001, which ES0334 Table 2 lists as revision Z or 1.  A research agent obtained Arm's Software Developer Errata Notice SDEN-1068427, version 11.0 of 28 May 2024, the only version on Arm's documentation service, and ST's ES0334 Rev 9 of December 2022, the file that the Wayback Machine shows st.com serving from 2023-06-11 to 2026-01-08, since st.com did not answer.  The session checked the summary tables, Table 2 of ES0334, and the texts of 486321, 513195, and ES0334's USART entries against the documents, and the classification of the other entries rests on the agent's reading.  Of the 13 Arm errata present in r1p0, none concerns the emitted forms, the reset state, or the plan's run conditions, with caches off, MPU off, FPU disabled, no exception, no exclusive access, no 64-bit store, and no DMA or AHBS traffic.  1259864 (category A) needs write-through cacheable data in the D-cache, 565285, 1013783, 1267980, and 1313001 need the D-cache or cache maintenance, 2328489 needs `STRD`, `STM`, `PUSH`, `VPUSH`, `VSTR.64`, or `VSTM` to TCM during AHBS writes with TCM wait states, 1315869 needs exclusive accesses, and 636315, 1518990, and 3092511 concern MBIST, big-endian DWT comparators, and halting debug.  The errata that r0p2 fixed do not affect r1p0.
+
+Three DWT errata bear on the measurement build of G0 and T4.  486321 makes stall cycles count in the wrong one of DWT_LSUCNT, DWT_CPICNT, and DWT_EXCCNT when those counters are enabled and leaves DWT_CYCCNT correct, so the measurement build enables the cycle counter alone.  505438 omits the TPIU flush on a write of DWT_CYCCNT, which affects only trace output, and 513195 makes the LSI bit of DWT_LSR, which shows whether the lock is implemented, read as one for an external debugger while software reads are unaffected, so a debugger that reads the results over SWD should ignore that bit.  In ES0334, no entry concerns reset, the option bytes, the flash interface, ART, the ITCM or AXIM paths, RCC, or GPIOD.  Of the USART entries, 2.14.1 needs RTSE and 2.14.2 the receiver timeout, which the board code does not use, and 2.14.3, with no workaround, corrupts a received byte when a glitch to zero shorter than half a bit falls in the second half of its stop bit, a fault of the receive line that belongs to the trusted behavior of USART3 (item 16 of the plan's trusted base).  ES0334 Rev 9 names the reference manual RM0341 in its first paragraph, where RM0410 is meant.  The documents and their text extracts lie in `tmp/m7/errata/`.
+
+### Remote host
+
+All Lean ran on edgexpert-18ff in the checkout `~/src/leanexe-m7`, whose `.lake/packages` were copied from `~/src/leanexe-cicm`, one job at a time through `tools/leanrun` with its memory cap and timeout, and the host kept 117 GB available throughout.  The checkout holds the build of `LeanExe.M7.Encode`, `m7-encode`, and `m7-cosim`, which T1 reuses.  Its scripts and scratch files were removed after the runs.
+
+- [x] `LeanExe/M7/Machine.lean`: state, forms, decoder, flags, SP masking, the stop rule, and `step`.
+- [x] `LeanExe/M7/Encode.lean`: `encode`, `decode_encode`, `decode_sound`, `encodeNat_injective`, and the constructors from immediates.
+- [x] `tests/baremetal/m7-encode.sh`: 390 samples of the 39 forms against GNU `as`.
+- [x] `tests/baremetal/m7-cosim.sh`: 89,739 cases under QEMU's `mps2-an500`.
+- [x] The errata of SDEN-1068427 version 11.0 and ES0334 Rev 9 for r1p0 and revision Z.
+- [x] G0 (a) and (c): the unproved generator, the window counts, and the kernel check of an image of the gateway's size, recorded in G0's entry.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [Arm Cortex-M7 Processor Technical Reference Manual, DDI 0489](https://developer.arm.com/documentation/ddi0489/latest)
+- [Cortex-M7 (AT610) and Cortex-M7 with FPU (AT611) Software Developer Errata Notice, SDEN-1068427](https://developer.arm.com/documentation/SDEN1068427/latest/)
+- [ES0334, STM32F76xxx and STM32F77xxx device errata](https://www.st.com/resource/en/errata_sheet/es0334-stm32f76xxx-and-stm32f77xxx-device-errata-stmicroelectronics.pdf)
+- [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
+- [GNU assembler, ARM directives](https://sourceware.org/binutils/docs/as/ARM-Directives.html)
+
+## 2026-11-07: Cortex-M7 back end, T1: the division routine and its theorem
+
+T1 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, section 2 "Division", the increment T1, and item 5 of the revisions) adds `udivmod64`, which `LeanExe/M7/Div.lean` writes as a list of the model's instructions, and its theorem in the model, `udivmod64_spec` in `LeanExe/M7/Proof/Div.lean`.  The routine takes the dividend in r0 and r1 and a nonzero divisor in r2 and r3, each with its low word first, returns the quotient in r0 and r1 and the remainder in r2 and r3, changes r4 to r7 and the flags, and accesses no memory.  It uses only forms of T0's model, so the model, the encoder, `decode_encode`, and the GNU `as` samples stay as T0 left them.  `LeanExe/M7/Proof/Machine.lean`, `Straight.lean`, and `Pair.lean` hold the multi-step relation, the lemmas about placed straight-line code and branches, and the lemmas about pairs of words, in the forms that T2's step theorem will take.
+
+### The routine
+
+The routine tests the divisor's low word first, because the remainder by 2^32 of `writeReq`, which runs in every write window of both programs (plan, section 2), takes that test's path.  When the divisor's low word is 0, `UDIV` and `MLS` give the high words' quotient and remainder, and the dividend's low word is the remainder's.  When both high words are 0, `UDIV` and `MLS` give the low words' quotient and remainder.  Otherwise `SUBS` and `SBCS` compare the dividend with the divisor, and a dividend below the divisor is the remainder with the quotient 0.  Otherwise the routine shifts the divisor left by `s`, the divisor's leading zero count less the dividend's, and runs `s + 1` passes of a restoring shift-subtract loop.  Each pass subtracts the shifted divisor from the remainder with `SUBS` and `SBCS`, shifts the carry into the quotient, adds the divisor back with `ADDS` and `ADC` when the subtraction borrowed, and halves the shifted divisor.
+
+| Piece | Offset | Instructions |
+|---|---|---|
+| `test` | 0 | `CMP r2, #0`, `BEQ high`, `ORRS r4, r1, r3`, `BNE compare` |
+| `low` | 16 | `UDIV r4, r0, r2`, `MLS r2, r4, r2, r0`, `MOV r0, r4`, `BX LR`, `BX LR` |
+| `high` | 32 | `UDIV r4, r1, r3`, `MLS r3, r4, r3, r1`, `MOV r2, r0`, `MOV r0, r4`, `MOV r1, #0`, `BX LR`, `BX LR` |
+| `compare` | 56 | `SUBS r4, r0, r2`, `SBCS r4, r1, r3`, `BCC small` |
+| `count` | 68 | `CLZ r4, r3`, `CLZ r5, r2`, `LSR r6, r4, #5`, `MLA r4, r5, r6, r4`, `CLZ r5, r1`, `SUB r4, r4, r5` |
+| `shift` | 92 | `LSL r3, r3, r4`, `MOV r5, #32`, `SUB r5, r5, r4`, `LSR r5, r2, r5`, `ORR r3, r3, r5`, `SUB r5, r4, #32`, `LSL r5, r2, r5`, `ORR r3, r3, r5`, `LSL r2, r2, r4` |
+| `clear` | 128 | `MOV r5, #0`, `MOV r6, #0` |
+| `pass` | 136 | `SUBS r0, r0, r2`, `SBCS r1, r1, r3`, `LSR r7, r5, #31`, `ADD r6, r7, r6, LSL #1`, `ADC r5, r5, r5`, `BCS keep`, `ADDS r0, r0, r2`, `ADC r1, r1, r3`, and at `keep` `LSR r2, r2, #1`, `ADD r2, r2, r3, LSL #31`, `LSR r3, r3, #1`, `CMP r4, #0`, `SUB r4, r4, #1`, `BNE pass` |
+| `done` | 192 | `MOV r2, r0`, `MOV r3, r1`, `MOV r0, r5`, `MOV r1, r6`, `BX LR`, `BX LR` |
+| `small` | 212 | `MOV r2, r0`, `MOV r3, r1`, `MOV r0, #0`, `MOV r1, #0`, `BX LR` |
+
+The routine takes 230 bytes.  The second `BX LR` of `low`, `high`, and `done` never runs: it follows the generator's rule, which the coordinator passed on from the generator's review, that every 32-bit form start at a multiple of 4, as in the code whose cycles G0 measured on the board.  `arm-none-eabi-objdump -d` of the co-simulation's image shows the routine at an address that is a multiple of 4, every 32-bit form at such an address, and GNU's reading of every instruction as the list names it.
+
+| Path | Condition | Instructions executed |
+|---|---|---|
+| `high` | the divisor's low word is 0 | 8 |
+| `low` | both high words are 0 | 8 |
+| `small` | otherwise, the dividend lies below the divisor | 12 |
+| loop | otherwise | 29, plus 12 for each pass whose quotient bit is 1 and 14 for each pass that restores; 1 to 64 passes, 41 to 923 instructions |
+
+A pass subtracts in place and adds back, because a trial difference in temporaries needs two registers beyond the remainder, the shifted divisor, the quotient, the count, and the quotient's temporary, which fill r0 to r7.  The quotient shifts left through `LSR r7, r5, #31`, `ADD r6, r7, r6, LSL #1`, and `ADC r5, r5, r5`, which takes the carry of `SBCS`, set when the subtraction does not borrow, as the new bit and leaves the flags for `BCS`.  The count in r4 starts at `s`, and `CMP r4, #0` before `SUB r4, r4, #1` ends the loop after `s + 1` passes, since the model's `SUB` with an immediate leaves the flags and the model has no `ADD` with an immediate.  After the comparison the dividend's high word is not 0, because a dividend below 2^32 lies below every divisor with a nonzero high word, so `CLZ r5, r1` gives the dividend's leading zero count.  The divisor's count is that of its high word plus, when the high word is 0, that of its low word, which `MLA` adds as the low word's count times the high word's count shifted right by 5.  `shift` is the plan's `shlI64` sequence without `AND #63`, since `s` lies below 64, and the lemma `shl_pair` states the pair shift for every amount below 64, so T2's `shlI64` reuses it.  `small` is an exit of its own because `count` needs r5 and r6 as temporaries, so the zero quotient cannot lie in them before the comparison.
+
+### The theorem
+
+```lean
+theorem udivmod64_spec {a : UInt32} {s : State} {n d : UInt64} (hc : CodeAt code a udivmod64)
+    (hpc : s.pc = a) (hlr : s.lr % 2 = 1) (h0 : s.r 0 = n.toUInt32)
+    (h1 : s.r 1 = (n >>> 32).toUInt32) (h2 : s.r 2 = d.toUInt32)
+    (h3 : s.r 3 = (d >>> 32).toUInt32) (hd : d ≠ 0) :
+    ∃ t, Reach P σ code s t ∧ t.pc = s.lr &&& 0xFFFFFFFE ∧
+      t.r 0 = (n / d).toUInt32 ∧ t.r 1 = ((n / d) >>> 32).toUInt32 ∧
+      t.r 2 = (n % d).toUInt32 ∧ t.r 3 = ((n % d) >>> 32).toUInt32 ∧ Keeps s t
+```
+
+`Keeps s t` states that `t` has the SP, LR, r8 to r12, memory, device trace, and number of device reads of `s`.  The theorem holds for every platform and every sequence of device values, since the routine accesses no memory, and it needs bit 0 of LR set, which `BL` sets.  It covers a dividend below the divisor, which takes `high` or `low` when their conditions hold and `small` otherwise.  `udivmod64_nat` states the same over `pairNat lo hi = hi · 2^32 + lo`, and `udivmod64_spec` converts it with `pairNat_toUInt32` and `eq_of_pairNat`.  `udivmod64_spec` depends on `propext`, `Classical.choice`, and `Quot.sound`, by `#print axioms`, and the lemmas below on those or fewer; no proof uses `bv_decide`, `native_decide`, `grind`, or `sorry`.
+
+`Proof/Machine.lean` follows A64's: `Reach` is the reflexive-transitive closure of `step`, `Instr.size` gives 2 bytes for `BX LR` and 4 for every other form, `codeSize` sums them, and `CodeAt code a is` places the halfwords of `is.flatMap encode` from `a`, so that `CodeAt.append` splits a list at `a + codeSize`.  `step_at` executes a placed instruction, reading the second halfword of a 32-bit form at the program counter plus 2.  `Proof/Straight.lean` adds `execSeq`, the result of a list of instructions run one after another, `reach_seq`, which reaches it from placed code without branches, and `Keeps`, which `exec_keeps` shows of every form but the loads, the stores, the writes of SP, and `BL`.  `exec_bcondTo` gives the target of `Instr.bcondTo c off` for every even offset from -2^20 to 2^20 - 2, and `run_block` and `run_branch` run placed register code, the second followed by such a branch.  The tactic `state_simp` reads the registers and flags of a state that the register forms built, and `addr_eq` proves equations of addresses that are a word plus numerals.
+
+Each piece of the routine has a lemma that runs it from a state at its offset.  The loop's invariant `LoopInv n d k t` describes the state after a pass with `k` passes left: the shifted divisor in r2 and r3 is `d · 2^k / 2`, and the quotient in r5 and r6 and the remainder in r0 and r1 satisfy `n = q · d · 2^k + r` with `r < d · 2^k`, the plan's invariant with `i = k`.  The division by 2 states the divisor after the last pass, when it is `d / 2`, in the same form.  `run_pass` takes the invariant for `j + 1` passes to `j` passes, with the program counter at the loop's head when `j` is not 0 and at `done` otherwise, and `run_loop` iterates it by induction on `j`.  The pair lemmas, `sub_pair`, `add_pair`, `half_pair`, `double_pair`, `shl_pair`, and `clzPair_bounds`, take the words that `exec` writes and give the numbers of the results; each converts words to natural numbers and decides linear goals with `omega`, after rewriting the products with a power of 2 whose exponent is a variable.
+
+Drafts of the proofs hung several times; each run ended at its timeout or, at 9.1 and 7.0 GB, by its PID, and bisection with `sorry` in scratch copies found two causes.  In the first, reading Z after `CMP r2, #0` by `show` or by `simp` with the definitions of the state updates unfolded the value `addWithCarry x (~~~(UInt32.ofNat 0)) true`, whose sum `x.toNat + 4294967295 + 1` holds a large numeral; the draft finished in under a second until a later step used the flag, which points to the kernel's definitional check of the unfolded value, an inference that no test isolated.  The lemmas of `State` that `state_simp` uses are therefore proved after `cases s`, so that `simp` inserts them as equations and no check unfolds a concrete sum, and `run_branch` states the program counter with `cond`, whose `Bool` condition has no `Decidable` instance and can be rewritten alone.  The second was `simp only [Bool.toNat_false, Nat.add_zero]` on a goal of `run_pass` with sums of 2^64, whose cause was not established; an instance of `Nat.add_zero` for the one term replaced it.
+
+### Co-simulation
+
+`tests/baremetal/m7-cosim.sh SEED PER_FORM DIV` now writes one copy of `udivmod64` into the harness, from its `encode` halfwords, and division cases that call it with `BL`: every boundary dividend 0, 1, 2^32 - 1, 2^32, 2^63, and 2^64 - 1 with every nonzero boundary divisor, 30 cases, then `DIV` random pairs.  A random operand is a boundary value or one within 1 of it, a random word of 32 or 64 bits, a random high word above a low word of 0, or a random word shifted right by a random amount, so every path and every number of passes occurs.  A case loads r0 to r12, SP, and NZCV with random values beside the operands and saves the state at the return address as an instruction case does.  `m7-cosim check` runs the model's `step` from the printed state before the call, with LR at the return address and the routine's halfwords as the only code, until the program counter reaches the return address, on a platform without Normal memory or devices, so that a memory access would stop the model.  It compares r0 to r12, SP, LR, and NZCV with QEMU's state after the call, the result words with Lean's `/` and `%` of `UInt64`, and the number of instructions with the path's count above.
+
+| Seeds | Cases of each form | Random divisions | Instruction cases | Division cases | Agree |
+|---|---|---|---|---|---|
+| 1 | 1 | 0 | 39 | 30 | all |
+| 2 | 10 | 2,000 | 390 | 2,030 | all |
+| 3 to 12 | 100 | 5,000 | 39,000 | 50,300 | all |
+
+Every run reached the four paths, and the loop's cases ran from 1 to 64 passes and from 41 to 923 instructions; seed 3, for example, had 1,165 cases on `high`, 852 on `low`, 1,353 on `small`, and 1,660 in the loop.  Each run of seeds 3 to 12 took 5.5 to 5.7 s with a peak of 0.83 GB.  A copy of a run's output with the quotient's low word of one case changed made `check` report the case and exit with status 1.  The co-simulation tests the model and the routine on QEMU's implementation of the Cortex-M7; the board's run waits for T5.
+
+### Remote host
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 4 to 8 GiB and a timeout, and the two hung builds that reached 9.1 and 7.0 GB were stopped by the PIDs that `ps` showed for this account.  A build from clean of `LeanExe.M7.Div` and the four proof modules took 12.0 s with a peak of 0.84 GB, 4.4 s of it for `Proof/Div.lean`.  `lake build LeanExe`, which elaborates every module of the library, was not run; `LeanExe.lean` imports the new modules.  minideb1 and minideb2 were not used, and the scripts and scratch files on the host were removed after the runs.
+
+- [x] `LeanExe/M7/Div.lean`: `udivmod64`, 230 bytes, every 32-bit form at a multiple of 4.
+- [x] `LeanExe/M7/Proof/`: `Reach`, `CodeAt`, `step_at`, `execSeq`, `Keeps`, `run_block`, `run_branch`, the pair lemmas, `LoopInv`, and `udivmod64_spec`.
+- [x] `tests/baremetal/m7-cosim.sh`: 52,360 division cases and 39,429 instruction cases under QEMU's `mps2-an500`.
+- [ ] T2: the echo's step, with `divUI64` and `remUI64` as `ORRS`, `BEQ`, and `BL udivmod64`, composed with `udivmod64_spec`.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [CompCert 3.18, `runtime/arm`](https://github.com/AbsInt/CompCert/tree/v3.18/runtime/arm)
+- [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
+
+## 2026-11-07: Cortex-M7 back end, G0: the generator and the window counts
+
+G0 (a) and (c) of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, with its revisions of 2026-11-07) add the generator that T2 will prove, count the instructions of every kind of window of the echo's and the gateway's steps by running the generated code in the model of T0, convert the counts to cycles with the board's measurements of G0 (b), and measure the kernel's check of the images.  A fresh review of the generator (`tmp/m7/gen-review.md`) found no IR program on which the generated code differs from Talos, and it found defects of low weight in a check of `genMain` and in a statement about addresses, which this entry fixes.
+
+### The generator
+
+`LeanExe/M7/Gen.lean` compiles the module that the verified compiler emits, the index of a step, and the words of the step's initial state to a program of the model's forms: `main`, the functions that calls reach from the step, the trap stubs, and the code of `udivmod64`, which the generator takes as a list of instructions and places at a label after the stubs.  It follows `LeanExe/A64/Gen.lean` definition by definition, with `Env`, `Ctl`, `Shared`, `genInstr` and `genList`, `instrSize` and `listSize`, `genFunction`, `entriesFrom`, `tableOf`, and `genProgram`, so that T2's `InstrSim`, `ListSim`, `CallsOk`, and `FunSim` keep A64's shapes.  It uses A64's call-graph functions `callsIn`, `reachFrom`, `callTargets`, `funcOf`, and `sigIn` instead of copies, and it accepts the integer forms of A64's subset, the constructs, `br`, `br_if`, `ret`, `unreachable`, and calls.  It rejects globals, linear memory, and floating point, which the steps do not reach (plan, section 4).  `LeanExe/M7/Image.lean` gives the image's bytes, each halfword's low byte first, and `fileOk`, the comparison of `LeanExe/A64/File.lean` over those bytes.
+
+The design is the plan's with its revisions: every operand-stack height in a frame slot of 8 bytes with r0 to r7 as working registers, a `UInt64` in a pair of words, no slot and no clearing for a declared local that the body never names, and the check `F + 8 * max p r - 4 ≤ 4095` for each frame.  Parameters stay in the caller's outgoing area, results go there, and `main` keeps the step's state in its own outgoing area between windows.  `divUI64` and `remUI64` are `ORRS r4, r2, r3`, `BEQ` to a trap stub, and `BL udivmod64`, and each trap stub is a branch to itself.  The plan left the following choices open.
+
+| Choice | Reason |
+|---|---|
+| `Frame` holds a function's layout, `Env` carries it, and `Env.op` and `Env.loc` fail for a height at or above the frame's operand slots and for a local without a slot | the relation reads every offset from one structure, and the facts that offsets lie in range and that slots do not overlap follow from the generator's success, so no lemma about `listPeak` or `listLocals` enters T2's proofs |
+| Every function ends with two `BX LR`, of which the second never runs | the two take one unit of 4 bytes, so every function starts at the program's base plus a multiple of 4, and so does each 32-bit instruction of `main` and of the functions, which for a base that is a multiple of 4 is the layout that G0 (b) measured; `genFunctions` checks each function's halfwords against `2 * functionSize` |
+| `eq`, `eqz`, and `and` of `i32` load and store the low words alone, `wrapI64` stores 0 to the high word, and `extendUI32` emits nothing | the relation states that the high word of an `i32` slot is 0 (plan, section 2), and the generator checks that the operands' static types are `i32` |
+| A shift loads the low word of its amount alone | Wasm shifts by the amount mod 64, and `AND r2, r2, #63` reads only the low word |
+| A word below 2^16 takes one `MOVW`, a larger one `MOVW` and `MOVT` | a zero half costs one instruction, as the plan's `MOV #0` does |
+
+Sizes count units of 4 bytes, and `after a n = a + 4n` holds for unit counts: a function's list of instructions holds one element more than its size, and a position in the program's list exceeds the unit count by one for each function before it.  The review's first defect was that `genMain` checked the offsets of the last slot but not `8 * (n + 1)` before `SUBW SP, SP`, whose field reduces modulo 4096, so 511 state words gave `SUBW SP, SP, #0`; `genMain` now checks it.  Its second was the statement, in the module's header and in this entry's draft, that addresses are `a + 4n` for list positions, now corrected as above.  The review leaves to T2: moving the call-graph definitions, their lemmas, and `natOfBytes` into modules that import only the Wasm syntax; the frame size's dependence on `sig` in the stack bound; a memory clause of two regions, since `local.set` of a parameter writes the caller's area; T1's theorem as a premise of `InstrSim`; a halfword-indexed `CodeAt`; inversion lemmas for `mapM` in `Except`; and the clash of `structure Frame` with A64's predicate `Frame`.
+
+### Frames
+
+The generator accepts the echo's and the gateway's steps.  The C path's helpers for shifts and division are gone, the code of the USART3 gateway takes 98,636 bytes against the C image's 80,480, and that of the USART3 echo 3,240.  The frame of `gwTickWith`, 2,656 bytes with a largest offset of 3,068, is the revision's estimate.
+
+| Function | p | r | Declared locals | Named | Outgoing slots | Operand slots | Frame | Largest offset |
+|---|---|---|---|---|---|---|---|---|
+| `gwTickWith` | 52 | 46 | 794 | 230 | 35 | 66 | 2,656 | 3,068 |
+| `gatewayWith` | 50 | 23 | 481 | 127 | 36 | 39 | 1,624 | 2,020 |
+| `gwTickUsart3`, `gwTick` | 46 | 46 | 92 | 0 | 52 | 52 | 840 | 1,204 |
+| `gateway` | 35 | 23 | 70 | 0 | 50 | 50 | 808 | 1,084 |
+| `authorizeFlat` | 28 | 4 | 164 | 36 | 29 | 30 | 768 | 988 |
+| `lowBF`, `highBF` | 28 | 1 | 68 | 4 | 28 | 28 | 488 | 708 |
+| `floorOkF`, `ceilingOkF` | 29 | 1 | 58 | 0 | 16 | 17 | 272 | 500 |
+| `expire` | 18 | 17 | 87 | 17 | 0 | 17 | 280 | 420 |
+| `echoTick` | 8 | 2 | 43 | 9 | 2 | 4 | 128 | 188 |
+| `usart3Tick`, `cmsdkTick` | 2 | 2 | 4 | 0 | 8 | 8 | 136 | 148 |
+
+### Window counts
+
+`m7-windows run` (`tests/TestSupport/M7/Windows.lean`) runs a generated program in the model, instruction by instruction with `exec`, with DTCM as the only Normal memory and a far end that answers the UART's registers.  The decoding of each code address is computed once by the model's `decode`, and each step builds the model's register and memory functions from arrays and writes its result back, so that a step takes constant time.  At every return from the step the run compares the results in `main`'s outgoing area with the step's words and request in native Lean, and at the end it compares the output with the expected bytes.  The far end withholds the received byte at the first status read of each input record and the transmitter's room at the first status read of each output record, so that every kind of window occurs.  At `udivmod64`'s entry the run sets the quotient and the remainder of Lean's division, writes a marker word to r4 to r7, returns, and records the call's path, so the counts below exclude the routine's instructions.
+
+| Run | Input | Windows | Instructions | Result |
+|---|---|---|---|---|
+| `gateway-usart3` | the 1,440 records of `Demos/Energy/board-day/gateway1440.records.in` | 555,841 | 1,644,599,401 | every step's results equal native Lean's, and the 69,120 output bytes equal `gateway1440.records.out`, in 3,409 s |
+| `gateway-cmsdk` | `tmp/m7/gw5.records.in` | 1,931 | 5,698,806 | equal to native Lean's and to `gw5.records.out`, with the counts of `gateway-usart3` on the same records |
+| `echo-usart3`, `echo-cmsdk` | `uart_echo.py`'s message, blocks of 2, 16, 322, and 65,536 bytes, and the message again, 66,520 bytes | 399,121 each | 151,799,003 each | every reply is the byte with bit 5 flipped, in 248 s and 269 s |
+
+Every kind of window but the tick took one count in every window of the day.  The windows that run while bytes may arrive are `idle`, `rxne`, `byte`, `word`, and `sentrecord`, after whose transmitted byte the far end sends the next record; the tick follows the record's last byte, and the far end sends nothing until it has the output record.  `udivmod64` runs once in each `tx` window, from `writeReq`'s remainder by 2^32, on the path of a divisor whose low word is 0, and at most twice in a tick, on the loop's path, with at most 23 passes in a call; the run recorded the largest numbers for each kind of window and not each call.
+
+| Gateway window | Windows of the day | Instructions | Model cycles | Margin at 4,800 | At 2,400 | At 1,200 |
+|---|---|---|---|---|---|---|
+| `idle`: phase 0, no byte | 1,441 | 2,501 | 1,415 | 15,252 | 31,918 | 65,252 |
+| `rxne`: phase 0, a byte | 207,360 | 2,500 | 1,417 | 15,250 | 31,916 | 65,250 |
+| `byte`: phase 1, a byte of a word | 181,440 | 2,936 | 1,700 | 14,967 | 31,633 | 64,967 |
+| `word`: phase 1, a word's last byte | 24,480 | 3,643 | 2,107 | 14,560 | 31,226 | 64,560 |
+| `tick`: phase 1, the record's last byte | 1,440 | 11,614 to 29,962 | 6,918 to 21,568 | −4,901 | 11,765 | 45,099 |
+| `txwait`: phase 2, no room | 1,440 | 3,300 | 1,896 | 14,771 | 31,437 | 64,771 |
+| `tx`: phase 2, a byte written | 69,120 | 3,401 and the routine | 2,007 and the routine | 14,660 | 31,326 | 64,660 |
+| `sent`: phase 3, a word's byte | 60,480 | 3,367 | 1,945 | 14,722 | 31,388 | 64,722 |
+| `sentword`: phase 3, a word's last byte | 7,200 | 3,700 | 2,138 | 14,529 | 31,195 | 64,529 |
+| `sentrecord`: phase 3, the record's last byte | 1,440 | 3,689 | 2,122 | 14,545 | 31,211 | 64,545 |
+
+The echo's windows take 318 to 515 instructions: `idle` 319, `rxne` 318, `byte` 361, `txwait` 414, `tx` 515 and the routine, and `sent` 355, or 357 to 597 model cycles.  In the gateway's `idle` window, `gwTickUsart3` executes 795 instructions and `gwTickWith` 1,660, of which 461 clear the 230 named locals; copying the 46 words of the state through both calls and their epilogues takes about 1,130.  Counted from T1's draft of `udivmod64` (`LeanExe/M7/Div.lean` in its worktree, uncommitted), a call takes 8 instructions when the divisor's low word is 0 or both high words are 0, 12 when the dividend lies below the divisor, and 29 + 14 (s + 1) on the loop, at most 925, so a `tx` window takes 3,409 instructions and the longest tick at most 30,664.
+
+`m7-windows static` computes, over the generated code, the largest number of instructions on a path from a function's entry to its `BX LR`, a call costing its callee's longest path and `udivmod64` nothing, and it fails on a backward branch, which the reached functions lack.  The gateway's step has a longest path of 30,007 instructions with 2 calls of the routine, so a window takes at most 30,023, 61 more than the day's longest tick, and at most 31,873 with the routine's worst case.  The echo's step has 499, so a window takes at most 515, the measured `tx` window.
+
+### Cycles
+
+`tests/baremetal/m7_timing.py` estimates a window's cycles from its trace with a cost model calibrated on the ITCM path of G0 (b) (`tmp/m7/bench/results.txt`).  It charges a load or store 0.5 cycles (`slot_copy`), a data-processing instruction 0.615 (the mean of the register-only pair sequences), `UMULL` and `MLA` 0.99, a conditional branch 0.27 not taken and 5.885 taken, `B.W` 4.0, and a `BL` with its `BX LR` 12, and a load of a word stored k instructions earlier 4 more cycles for k up to 2, then 6 − k, and none from k = 6.  Against the blocks that the generated code consists of, slot moves and copies, pair sequences from slots, calls, branches, and LDRD blocks, the model lies within −7.9% and +2.7% of the measurement, with `constI64` at +14.6%.  It lies within −12.1% and +25.5% for the short register-only sequences and within −26% and +29% for the hazard suite's blocks with dependent fill chains, and it misses the bank conflict of a store and a load in the same DTCM bank (`haz_none_k0`, −65%), which the generated copies avoid, since their stores alternate between the banks.  The windows consist mostly of slot copies, which the model places at 0.5 cycles an instruction, the fetch limit of 64 bits a cycle; it underestimates `slot_move_other` by 7.7%, so the windows' cycles may lie that much higher.  `UDIV` was not measured, so the routine's cycles are unknown.
+
+Without the model, the largest cost per instruction of any block measured on the board, 4.25 cycles (`call_min`), gives 15,483 cycles for the `word` window and 15,678 for `sentrecord`, below the 16,667 of half a byte at 4,800 baud.  The counts therefore support 4,800 baud, the rate of the C path, and a lower rate gains nothing that the margins need.  The tick exceeds half a byte at 4,800 by the model, which the protocol allows, since the far end waits for each output record (plan, section 8).
+
+### LDRD and the operand stack's top
+
+`LDRD` and `STRD` for slot pairs whose offset lies within 1,020 bytes: the model gives 1,401 cycles for `idle`, 1,682 for `byte`, 2,089 for `word`, and 20,364 for the longest tick, against 1,415, 1,700, 2,107, and 21,568, a gain of 1% for the windows that receive and 6% for the tick.  The copies that dominate the windows already run at the fetch limit, and the measured LDRD copy takes 2.00 cycles against 2.03; LDRD gains where a load rereads a stored word, which happens 34 to 67 times in a receiving window, and it reaches no slot of `gwTickWith`'s parameters, which lie from 2,656 bytes up.  The cost is new forms in the model, the decoder and its lemmas, the co-simulation, and Isla's probes.  Recommendation: not now.
+
+Keeping the operand stack's top in registers: the loads that reread a word stored within the last 8 instructions, with their stores and penalties, take 138 cycles of `idle`'s 1,415, 217 of `byte`'s 1,700, 264 of `word`'s 2,107, and 7,034 of the longest tick's 21,568, which bounds what a register for the top removes.  The copies of the 46-word state and the clearing of named locals, which dominate, stay, and the change replaces decision 1 and adds a second relation to every lemma.  Recommendation: keep decision 1.  The review agrees with the recommendations, with the reservation that every estimate excludes `udivmod64`'s cycles and rests on microbenchmarks until the DWT measurements of T4 and G1.
+
+### The kernel's check
+
+The check reads an image with `file_nat%` and proves `fileOk (genProgram ...) n len = true` by `decide +kernel`, as `LeanExe/A64/File.lean` does, each run under `tools/leanrun` with a memory cap.  The echo's image of 3,240 bytes holds `main` at 0x00200200, `usart3Tick`, `echoTick`, `readReq`, `writeReq`, and the trap stubs, with no `udivmod64`, no vector table, and no board initialization; its check took 6.5 s and a peak of 5.02 GB, against 3.2 s and 4.24 GB for the same file with its imports and the reading alone.  The gateway's image of 98,860 bytes holds `main` at 0x00200200, the functions that calls reach from `gwTickUsart3`, the trap stubs, and a copy of T1's 58 instructions of `udivmod64` (`Div.lean`, SHA-256 `38421f82…36f1963` of 00:53), with no vector table and no board initialization.  Its check reached the scope's limit of 7 GiB within 30 s, above a baseline of 4.30 GB for the imports and the reading, and then ran throttled, with 52 s of processor time in 6 min 51 s and its 1 GiB of swap full, so I stopped it.  A probe of the generation alone, a theorem on the number of instructions that `genProgram` returns, behaved the same, 43 s of processor time in 2 min 12 s, so the cost lies in the kernel's evaluation of the generator on the gateway's module and not in the bytes.  The check of the gateway's image does not fit minideb2's 11 GB as one declaration; the echo's, 30 times smaller, used about 0.8 GB above its baseline.
+
+### Remote host
+
+All Lean ran on minideb2 in the checkout `~/src/leanexe-m7gen`, whose `.lake/packages` and `.lake/build` were copied from `~/src/leanexe-energy`, with lake rebuilding the modules whose sources differ; building `Demos.Energy.Loop` and `TestSupport.Bare.Req` took about 25 min.  The first echo run and the first run on five records ran without a memory cap, at about 100 MB, and every later run went through `tools/leanrun`.  Stopping a leanrun job by its session's process group leaves `timeout`, which leanrun's command runs in a process group of its own, so each stop also named that group.  The checkout keeps the build of `m7-windows` and its dependencies for T2.
+
+- [x] G0 (a): the generator, the frames, and the window counts of the echo's and the gateway's steps in the model, with the gateway's 1,440 ticks.
+- [x] G0 (a): the static longest paths and the cycle estimates with their margins.
+- [x] G0 (c): the kernel's check of the echo's image; the gateway's does not fit one declaration on minideb2.
+- [ ] T4: a kernel check of the gateway's image that fits, for example one declaration for each function's code, and the board's DWT measurement of the windows.
+- [x] T1: `udivmod64` and its theorem, in T1's entry.
+- [x] The board's measurement of `UDIV` and of `udivmod64`'s paths, in T4's entry.
+- [ ] T2: the moves and lemmas that the review lists.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [Arm Cortex-M7 Processor Technical Reference Manual, DDI 0489](https://developer.arm.com/documentation/ddi0489/latest)
+- [RM0410, STM32F76xxx and STM32F77xxx reference manual](https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [CompCert 3.18, `runtime/arm`](https://github.com/AbsInt/CompCert/tree/v3.18/runtime/arm)
+
+## 2026-11-07: Cortex-M7 back end, T2: the echo's step
+
+T2 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, section 4 and the increment T2, with items 1, 2, and 6 of its revisions, and `tmp/m7/gen-review.md`) proves that the code that `LeanExe/M7/Gen.lean` emits simulates Talos for the forms of the functions that the echo's steps reach, with `divUI64` and `remUI64`.  It states the step theorems of `usart3Tick` and `cmsdkTick` from the compiler's theorems of the steps, and the kernel checks the bytes of the echo's generated program.  The proofs follow `LeanExe/A64/Proof/` statement by statement, over the slot relation of decisions 1 and 2, in `LeanExe/M7/Proof/Relation.lean`, `Sim.lean`, `Slots.lean`, `Forms.lean`, `Ops.lean`, `Branch.lean`, `Call.lean`, `Constructs.lean`, `Function.lean`, `Program.lean`, and `Step.lean`.
+
+### Shared modules
+
+The generic definitions that the M7 code used from A64 moved to modules that import only the syntax of Wasm modules, or Lean's core: `LeanExe/CallGraph.lean` holds `callsOf`, `callsIn`, `reachable`, `reachFrom`, `callTargets`, `funcOf`, `sigIn`, their lemmas, `callNeed`, `NeedOk`, and `stackNeedOf`; `LeanExe/FileNat.lean` holds `natOfBytes`, `byteAt`, `byteAt_natOfBytes`, `file_nat%`, and `file_size%`; and `LeanExe/ProofKit/Typed.lean` holds `HasType`, `Typed`, and their lemmas.  A64's modules re-export each moved name with `export`, so every reference in A64, its tests, and the CIC branch `worktree-agent-a62f614f9d1a54776` resolves; that branch's tests name only `byteAt` and `file_nat%` among the moved names.  M7's frames depend on the numbers of parameters and results of the callees, so `stackNeedOf` takes the size of each function's frame as an argument, and A64's `stackNeed` is `stackNeedOf` with `frameSize`, its lemmas one-line instances of the generic ones.
+
+### The relation and the simulation
+
+`SlotRel v lo hi` relates a value to the two words of a slot: an `i64` to its low and high words, an `i32` to its word and a high word of 0.  `Inv` relates Talos's locals and operand stack to a state: each operand height in its slot of `Frame.opAt`, each parameter in the caller's outgoing area at `F + 8i`, each named declared local in its slot, the locals' types, and `FrameOk`, which places the frame and the parameters in `Ram`, SP at a multiple of 4, and the stack's limit at least 4096 and at most SP.  `Outcome`, `InstrSim`, `ListSim`, `CallsOk`, and `FunSim` are A64's statements over this relation, and `list_sim` proves `ListSim` at every fuel by strong induction, from `instr_sim`, which dispatches on the covered forms: `localGet`, `localSet`, `constI64`, `andI64`, `orI64`, `xorI64`, `addI64`, `mulI64`, `eqI64`, `neI64`, `eqzI64`, `extendUI32`, `shlI64`, `shrUI64`, `divUI64`, `remUI64`, `iff`, and `call`.
+
+`sim_divrem` composes the divisor test, `ORRS r4, r2, r3` and `BEQ` to the stub, with `udivmod64_spec`: `DivAt code S`, the routine's code at the shared address, is a premise of `InstrSim`, `ListSim`, `fun_sim`, and `calls_ok`, and `step_sim` discharges it from the program's layout.  `fun_sim` runs the prologue, whose `BCC` falls through because `StackOk` places the limit at least the frame's size below SP, the clearing of the named locals, the body under `list_sim`, the copies of the results, and the epilogue, whose second `BX LR` never runs, and `calls_ok` gives `CallsOk` at every fuel for a table whose functions the generator placed.  `step_sim` inverts `genProgram`, places each function at its entry from `genFunctions`'s check of halfwords, identifies the table's numbers of parameters and results with those of the frames (`sigOf_tableOf`), and gives `FunSim` of the step at its entry after `main` with the bound `stackBound m k`.
+
+| Choice | Reason |
+|---|---|
+| The relation holds no store, and the step theorem quantifies over every store with a heap at it and a memory cap that the compiler's theorem admits | the covered forms neither read nor write the store; the store after the call again has a heap and the same caps, from `ImplementsA`, so a loop's invariant carries both, as `ReqRuns` does (revision 6) |
+| A branch out of a construct, a return, a tail call, and a thrown exception have the outcome `False`; a trap, an invalid state, and the end of the fuel `True` | no reached function of the echo or the gateway has `br`, `br_if`, `return`, or `loop` (revision 6), and the board's theorems exclude traps through the compiler's theorem without a trap |
+| `InstrSim` and `ListSim` require `D ≤ room E ms`, and `FunSim` requires `StackOk` with `need k` bytes below SP, in place of A64's outcome of an overflow | the prologue's branch to the stub is then never taken, and the step theorem's premise `stackBound m k ≤ SP - limit` is what the plan's board theorem discharges by the kernel's evaluation (section 4) |
+| `coveredInstr` and `coveredList` name the forms proved, and `reachCovered`, which the kernel evaluates, checks a step's reached functions | G1 extends the predicate form by form without changing a statement |
+| The code's address is even in `InstrSim`, `ListSim`, and the functions' entries | `BL` returns to LR with bit 0 cleared, which is the next instruction only from an even address; every function starts at the program's base plus a multiple of 4, so at an even address when the base is even, which the step theorems assume |
+| `BodyKeeps` keeps the LR slot's word and every byte from `SP + F + 8p` up | a body writes its own parameters' slots, which lie in the caller's outgoing area, so the memory clause needs two regions (review) |
+| `CallResult` keeps every byte from the caller's `SP + 8·max(p, r)` up | the callee writes its frame below SP and its results into the outgoing area (plan, section 4) |
+| `Inv` covers only the locals with slots | a declared local that the body never names gets no slot (revision 1) and need not have an integer type |
+| An `if`'s condition is an `i32` from the typing of the stack (`Typed.i32_head`), and `iff` rests on `ProofKit.execOne_iff` | the generator checks the static type, so Talos's invalid case never arises |
+| The predicate of unchanged lower slots is `Below`; `Frame` keeps its name | `Frame` is the generator's structure, and the clash with A64's predicate disappeared when M7 stopped importing A64 |
+| `stackBound m k` is `stackNeedOf` at depth `m.funcs.length` with the frames of `frameOf` under `sigIn` of the reached functions | the frames that the generator computes are those whose sizes the calls use; for the echo it is 312 bytes |
+| `m7-windows` generates the program with the code of `udivmod64` | the image's code is the one of which the step theorem holds; the window runs still answer the routine natively at its entry |
+
+The halfword code map of T1 enters through `Instr.wide`, true for every form but `BX LR`, and `codeSize_of_wide`, since a function's body, its copies, and its clearing hold no `BX LR`, and `genFunctions` checks that each function's halfwords number twice its size in units.  `mapM_ok` inverts the generator's `mapM` lists of copies and stores, and `run_copies` and `run_zeros` run them: the copies with sources apart from every destination, and the stores of 0 with no condition on overlap, since stores of 0 commute.  The address of `udivmod64` follows from `genMain_wide`, since every instruction of `main` takes 4 bytes and `genProgram` checks `main`'s length.
+
+### The theorems
+
+```lean
+theorem step_call {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+    {base limit dev : UInt32} {is : List Instr} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = [])
+    (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)
+    (hev : base.toNat % 2 = 0) (hcov : reachCovered m k = true)
+    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
+    (s : G) (v : UInt64) (ms : State) (hpc : ms.pc = after base (mainSize s0))
+    (hlr : ms.lr % 2 = 1) (hstk : StackOk P limit (s0.length + 1) (stackBound m k) ms)
+    (hargs : WordsAt ms (words s ++ [v])) :
+    ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = ms.lr &&& 0xFFFFFFFE ∧ ms'.sp = ms.sp ∧
+      ms'.lr = ms.lr ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
+      (∀ a : UInt32, ms.sp.toNat + 8 * (s0.length + 1) ≤ a.toNat → ms'.mem a = ms.mem a) ∧
+      WordsAt ms' (words (tick s v).1 ++ [(tick s v).2]) ∧
+      ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ st'.memoryCaps = st.memoryCaps
+```
+
+`usart3_step` and `cmsdk_step` in `tests/TestSupport/M7/Step.lean` instantiate `step_call` with `reqCompiled.usart3Tick.implements` at index 9 and `reqCompiled.cmsdkTick.implements` at index 5, for an initial state of one word, `WordsAt ms [s, v]`, and the result `WordsAt ms' [(usart3Tick s v).1, (usart3Tick s v).2]`, with the memory unchanged from `SP + 16` up.  `echo_covered` and `echo_stack`, by `decide +kernel`, give `reachCovered` of both steps and `stackBound` of 312 bytes for each.  `step_call`, both step theorems, `echo_stack`, and the image's `echo_image` depend on `propext`, `Classical.choice`, and `Quot.sound` alone.
+
+### Tests
+
+| Test | Result |
+|---|---|
+| `lake build LeanExe`, 8 cores, after the last change to `CallGraph.lean` | passed in 55.5 s, peak 4.5 GB |
+| Build of the M7 proof modules from clean, one core | 59.8 s with their compiled objects, peak 3.95 GB, the most 8.1 s for `Function.lean` and 8.0 s for `Constructs.lean`; each module below 0.9 GB but `Step.lean`, whose imports of `LeanExe.Pipeline.Implements` take 3.9 GB |
+| `tests/baremetal/a64-images.sh` with `ACCEL=tcg`, after the module move, after `stackNeedOf`, and on the final tree | the kernel's check of the five Images and every Image under QEMU passed each time; the last run took 1 min 22 s with a peak of 11.9 GB in the check |
+| `tests/baremetal/m7-image.sh` | the kernel's check of `echo-usart3.bin`, 3,470 bytes and 875 instructions with the routine's 230 bytes, passed in 4.6 s with a peak of 5.08 GB, and the five theorems' axioms are the three |
+| `m7-windows run echo-usart3`, with the routine's code in the program | 399,121 windows and 151,799,003 instructions, G0's counts, in 2 min 45 s; `static` gives the step's longest path of 499 instructions |
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 8 to 24 GiB and a timeout, and no job had to be stopped.  The CIC branch was checked by a search of its tests for the moved names, not by a build, since its tree lacks the M7 modules.  The kernel's check covers the echo for USART3 alone; `cmsdk_step` rests on the same `step_call`, and its program has no image.
+
+- [x] The moves to `CallGraph.lean`, `FileNat.lean`, and `ProofKit/Typed.lean`, with A64's exports and its Images passing.
+- [x] The slot relation, the covered forms, `list_sim`, `fun_sim`, `calls_ok`, and `step_sim`.
+- [x] `step_call`, `usart3_step`, `cmsdk_step`, and the kernel's check of the echo's code.
+- [x] T3: `main`'s windows and the loop theorem from `step_call`, in T3's entry.
+- [x] T4: `CodeAt` of the program from the bytes at the code's base, the vector table, the board's initialization, and the board, in T4's entry.
+- [ ] G1: the gateway's forms, its frames, and the step theorems of `gwTickUsart3` and `gwTick`.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [WebAssembly Core Specification](https://webassembly.github.io/spec/core/)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
+
+## 2026-11-07: Cortex-M7 back end, T3: the loop under QEMU
+
+T3 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, sections 4 to 6, the increment T3, decision 3, and items 7, 8, 10, and 11 of its revisions) proves `main`'s windows and the loop theorem of `cmsdkTick` from the state 3 on QEMU's `mps2-an500`, from reset, for every sequence `σ` of device values and every number of windows.  It gives the request traces of both paths a parameter for the access type, rebuilds the C path's theorems as instances, writes the QEMU image from Lean, checks it in the kernel through `file_nat%`, and runs `uart_echo.py` against it.  The T2 review (`tmp/m7/t2-review.md`) found nothing that changes `step_call`, and T3 carries out its three items: `gen_program_entry` states the equation of `main`'s call target that `step_sim` derived and discarded, which `step_sim` and T3 both use, the header of `Sim.lean` names `coveredInstr` and `coveredList`, and `Gen.lean` and the tables of T2 and G0 say that functions start at the program's base plus a multiple of 4.
+
+### The neutral access type
+
+`LeanExe/Requests/Windows.lean` holds `reqReg`, `reqWrite`, `ReqState`, `reqNext`, `reqRun`, `Bus`, `reqEvent`, `reqTrace`, `windows`, `reqRun_map`, `reqTrace_map`, and the lemmas of the requests, and `LeanExe/Requests/Records.lean` holds the framing, `dataIn`, `dataOut`, and `frame_prefix`, which moved from `LeanExe/Native/Proof/Records.lean`.  Neither imports Clight: the first imports only `LeanExe/Native/Requests.lean`, which holds `readReq` and `writeReq` and imports nothing.  `Bus α` gives the read and the write of register `r` with value `v` in a trace of type `α`, `readOf r` and `writeOf r`, the value of an access of each kind to register `r`, and five laws for registers of 16 bits, which are the facts that the proof of `frame_prefix` uses.  `reqEvent B`, `reqTrace B`, `dataIn B`, `dataOut B`, and `frame_prefix` take the bus, and `windows` takes any list type.
+
+```lean
+structure Bus (α : Type) where
+  read : UInt64 → UInt32 → α
+  write : UInt64 → UInt32 → α
+  readOf : UInt64 → α → Option UInt32
+  writeOf : UInt64 → α → Option UInt32
+  readOf_read : ∀ r v, readOf r (read r v) = some v
+  readOf_read_ne : ∀ r r' v, r.toNat < 65536 → r'.toNat < 65536 → r ≠ r' →
+    readOf r (read r' v) = none
+  readOf_write : ∀ r r' v, readOf r (write r' v) = none
+  writeOf_write : ∀ r v, writeOf r (write r v) = some v
+  writeOf_read : ∀ r r' v, writeOf r (read r' v) = none
+
+def reqTrace (B : Bus α) (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32)
+    (n : Nat) : List α := [reqEvent B tick σ (reqRun tick s0 σ n)]
+```
+
+The C path's instance is `regBus : Bus event` in `LeanExe/Native/Proof/Req.lean`, the volatile 32-bit load or store of `lx_reg` at four times the register's index, so `regBus.write (reqReg q) v` is the event that `reqEvent` gave before and `req_program` keeps its proof.  `req_program`, `req_reads`, `echo_program`, `echo_usart3_program`, `deadline_program`, `sum_program`, `sum_prefix`, `gw_program`, `gw_usart3_program`, `gw_prefix`, and `gw_usart3_prefix` now name `reqTrace regBus`, `dataIn regBus`, and `dataOut regBus`, and the statements of `docs/native-bare-metal.md` and `docs/trusted-base.md` follow.  The Cortex-M7 instance is `devBus dev : Bus Access` in `LeanExe/M7/Proof/Main.lean`, the model's word access at `dev + 4r`, so a statement about the board's trace names no Clight definition.
+
+### `main`'s windows and the loop
+
+`gen_main` inverts `genMain`: the start, the window's `BL` and the decoding with the branch to the write, the read with its branch back, and the write with its branch back, with each branch's offset and target.  `run_decode` runs the decoding, slot code from the request's high word, and gives r3 the register's address and Z the negation of the write bit.  `run_read` and `run_write` run the device access and the stores of the new value of slot `n`, a read's value zero-extended or 0 after a write.  `main_window` composes the call, by `step_call`, with these and the branches: from the loop's head, with the state `r` of `reqRun` in the outgoing area, the model returns to the head with `reqNext`'s state there, `reqEvent (devBus dev)` appended to the trace, and the read counted.  `main_loop` iterates it by induction on the number of windows, `run_stores` and `main_start` run `main`'s start to the head with the initial state's words and 0 in the outgoing area, and `main_run` joins them from `main`'s entry.
+
+`LeanExe/M7/Boot.lean` lays out an image from reset: a vector table at `org`, a self-loop, an initialization of 32-bit forms that falls through, and the generator's program at the base after it.  Word 0 of the table is the initial SP, word 1 the reset entry with bit 0 set, and every other word the self-loop's address with bit 0 set.  `bootBytes` gives its bytes and `bootFileOk` compares them with a file's number.  `LeanExe/M7/Proof/Boot.lean` defines `Reset code vtor b`, the state that reset gives from the table at `vtor` (DDI 0403E.e section B1.5.5): SP is word 0 with bits 1 and 0 clear, the program counter word 1 with bit 0 clear, bit 0 of word 1 set, LR 0xFFFFFFFF, the trace empty, and no read done.  `FileAt code n len org` states that the code map holds the file's bytes from `org`, a halfword at each even offset with the lower byte first.  `boot_image` turns `bootFileOk` into the table's first two words and the placed code, and `boot_run` runs the initialization, which `InitRuns` describes by the accesses that it appends, and then `main_run`.
+
+### QEMU's `mps2-an500`
+
+`tests/TestSupport/M7/Qemu.lean` gives the board's platform, the image's layout, and UART0's initialization, and `QemuLoop.lean` proves the facts that `boot_run` takes and the loop theorem `echo_loop`.  QEMU 8.2.2 loads a file that is not ELF, given with `-kernel`, as a raw image at address 0, in the 4 MiB of ZBT SSRAM1 (`hw/arm/armv7m.c`, `armv7m_load_kernel`, called from `hw/arm/mps2.c` with base 0 and size `0x400000`).  The platform's Normal memory is ZBT SSRAM2 and SSRAM3, 4 MiB at `0x20000000` (`make_ram` in `hw/arm/mps2.c`), and its device window the 65,536 words from `0x40000000` that the requests address, which hold UART0 at `0x40004000`.  The initialization sets UART0's `BAUDDIV` to 16 and its `CTRL` to 3, as `board_init` of `tools/baremetal/armv7m/mps2-an500/board.S` does, and its two stores are the trace's first events.  `tests/TestSupport/M7/QemuFile.lean`, which `tests/baremetal/m7-qemu.sh` elaborates in the directory of the image, checks the file and states the theorem over it:
+
+```lean
+theorem echo_qemu (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : FileAt code echoBytes echoSize 0) (b : State) (hb : Reset code 0 b) :
+    ∃ s, Reach platform σ code b s ∧ s.pc = loopHead ∧
+      s.trace = initTrace ++ windows (reqTrace (devBus devBase) cmsdkTick 3 σ) N
+```
+
+The image holds 3,690 bytes.  The table's 48 words at 0, for the 16 system entries and the 32 interrupts of QEMU's AN500, hold SP `0x20400000`, the reset entry `0xC5`, and the self-loop's `0xC1` in every other entry.  The self-loop lies at `0xC0`, the initialization at `0xC4`, and `main` at `0xDC`, whose loop head lies at `0xFC` and whose call targets the step at `0x150`.  `arm-none-eabi-objdump -D -b binary -marm -Mforce-thumb` of the image reads the table, the initialization, and `main` as the generator lists them.
+
+| Choice | Reason |
+|---|---|
+| `reqNext` and `reqRun` take no access type | they involve no access, and they moved to the neutral module with `σ : Nat → UInt32`, which is Clight's `int`, so the C path's `σ : Nat → int` instantiates them unchanged |
+| `Bus` carries `readOf` and `writeOf` and five laws | `dataIn` and `dataOut` must pick the accesses of one register out of a trace of any type, and the laws are what `frame_prefix`'s proof uses, proved once for each instance |
+| `regBus.readOf r` compares the event's offset with `4r` | the earlier `dataInByte` compared it with `regOfs (readReq r)`, the same number for every index below 65,536, the indices that `frame_prefix` assumes |
+| `readReq` and `writeReq` stay in `LeanExe/Native/Requests.lean` | `verified_compile` reflects the dialect's functions by name, and a move would rename the compiled functions |
+| `LeanExe/Native/Proof/Records.lean` is gone, and `windows` left `Reacts.lean` | their content is the same on both paths, and `Ctl.lean` opens the neutral `windows` |
+| The loop passes the initial Talos store to every call | `step_call` quantifies over stores and the relation holds none, as the T2 review states |
+| A window reads `σ` from the number of reads before the loop | the board's initialization of T4 reads RCC's registers first, so its theorem takes `fun k => σ (k + initReads)`, as plan section 6 writes it |
+| `bootProgram` checks nothing, and `boot_image` requires a table of at least two words and an initialization of 32-bit forms | the generator's checks would add a case to every inversion, and the kernel decides both premises for QEMU's layout |
+| A full table whose other entries name a self-loop | an exception, which no proved run takes, stops at the self-loop under QEMU, as plan section 5 states for the board |
+| SP at the top of SSRAM2 and SSRAM3, the stack's limit at their base | the whole region is RAM in QEMU's model, and the step needs 312 bytes below the outgoing area of 16 |
+| `Reset` requires bit 0 of word 1 | revision 8: the model executes Thumb code only, and the kernel's check shows word 1 to be `0xC5` |
+| `InitRuns` takes a trace independent of `σ` | UART0's initialization only writes, while T4's read-modify-writes need a trace that depends on `σ` |
+| `FileAt` quantifies over code maps | the theorem holds for every map whose halfwords at even offsets from 0 are the file's.  QEMU's SSRAM1 is writable, and every store outside SSRAM2, SSRAM3, and the device window stops the model, so the program never changes its code |
+
+### Tests
+
+| Test | Result |
+|---|---|
+| `lake build LeanExe.Requests.Records` | passed in 1.0 s for the module |
+| The C path's modules after the change, 8 cores, cap 16 GiB | `Reacts.lean` 0.4 s, `Ctl.lean` 2.1 s, `Req.lean` 3.2 s, `TestSupport.Bare.Ctl` 3.8 s, `TestSupport.Bare.Records` 12 s, `TestSupport.Bare.Req` 18 s, `Demos.Energy.Loop` 188 s, and `TestSupport.Bare.Emit` 2.1 s, within the cap, and the peak was not measured |
+| `#print axioms` of `req_program`, `req_reads`, `frame_prefix`, `reqTrace_map`, the echo, deadline, and records programs, `sum_prefix`, and the gateway's four theorems, and `tests/energy/Axioms.lean` | `propext`, `Classical.choice`, and `Quot.sound` at most, in 2.0 s and 2.4 s with peaks of 4.28 and 4.29 GB |
+| `lake build LeanExe`, 8 cores | passed |
+| T3's Cortex-M7 modules from clean, one core | 19.8 s with a peak of 4.40 GB: `Proof/Main.lean` 9.2 s, `Proof/Boot.lean` 2.9 s, `Qemu.lean` 1.6 s, `QemuLoop.lean` 2.2 s |
+| `tests/baremetal/m7-qemu.sh`, the kernel's check | `echo_file` by `decide +kernel` and `echo_qemu` over the image of 3,690 bytes in 4.7 s with a peak of 5.09 GB.  `echo_qemu`, `echo_file`, `echo_loop`, `boot_run`, `main_run`, `main_loop`, and `main_window` depend on `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/baremetal/m7-qemu.sh`, the echo under QEMU 8.2.2 | `uart_echo.py` passed: 644 bytes in lockstep, bursts of 2, 16, 322, and 65,536 bytes, and 65,536 held bytes, during which the transmitter waited once, in 3.2 s, with every reply the byte sent with bit 5 flipped |
+| The kernel's check against a copy of the image with the byte at `0x105` changed from `0xEA` to `0x43` | `echo_file` failed with a kernel type mismatch |
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 8 to 16 GiB and a timeout, and no job had to be stopped.  QEMU ran there, and `uart_echo.py` ran under `~/.local/bin/uv`.  The C path's programs and their C texts did not change, since only Lean statements and proofs did, so `tests/baremetal/req.sh` was not run.  Its echo's checks are those that `m7-qemu.sh` reuses.  The scratch scripts and the QEMU products were removed from the host after the runs, and the checkout keeps its build for T4.
+
+- [x] The neutral access type: `Bus`, `reqTrace`, `windows`, `dataIn`, `dataOut`, and `frame_prefix` in `LeanExe/Requests/`, with the C path's theorems as instances of `regBus`, rebuilt, and their axioms checked.
+- [x] The T2 review's items: `gen_program_entry`, the docstring of `Sim.lean`, and the statements on functions' addresses.
+- [x] `main_window`, `main_loop`, `main_start`, and `main_run`.
+- [x] `Boot`, `Reset`, `FileAt`, `boot_image`, and `boot_run`, and the QEMU image, its kernel check, `echo_qemu`, and `uart_echo.py` under QEMU.
+- [x] T4: the board's `Boot` at the ITCM alias, an `InitRuns` whose trace depends on `σ` for the read-modify-writes of `board.S`, the corollary that the run never stops, and `echo_board`, in T4's entry.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [QEMU 8.2.2, `hw/arm/armv7m.c`](https://gitlab.com/qemu-project/qemu/-/blob/v8.2.2/hw/arm/armv7m.c)
+- [QEMU 8.2.2, `hw/arm/mps2.c`](https://gitlab.com/qemu-project/qemu/-/blob/v8.2.2/hw/arm/mps2.c)
+- [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
+
+## 2026-11-07: Cortex-M7 back end, T4: the board's echo
+
+T4 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, sections 5 and 6, the increment T4, decisions 4 and 7, and items 8, 10, and 11 of its revisions) proves the echo of `usart3Tick` from the state 3 on the board, from reset, for every sequence `σ` of device values and every number of windows.  Lean writes `board_init`'s accesses of `tools/baremetal/armv7m/nucleo-f767zi/board.S` into the image, the kernel checks `echo.bin` through `file_nat%`, and `echo_board` states the loop theorem over that file, with a corollary that the run never stops and a lemma that confines the device accesses to USART3's three registers in the windows and to RCC, GPIOD, and USART3 in the initialization.  The image ran in Renode and on the board, where `uart_echo.py` passed, and two measurement images apart from the proved one gave the cycles of `UDIV`, of `udivmod64`'s paths, and of the echo's windows.  During the last measurement the ST-LINK's virtual COM port stopped forwarding the board's output, and the board work stopped there.
+
+### RM0410 Rev 5
+
+A research agent obtained RM0410 Rev 5 from the Internet Archive's capture `20250124092644` of ST's URL, after st.com failed twice over HTTP/2 (curl error 92) and once over HTTP/1.1 (a timeout of 60 s).  The CDX index gives the same digest for every capture from 2024-08-09 to 2026-10-03, so st.com served this file for that whole period.  The PDF, of 23,532,557 bytes with SHA-256 `104ed739…35dfdb64`, reads "July 2024 RM0410 Rev 5" on its title page, and its revision history dates Rev 5 18-Jul-2024.  It lies in `tmp/m7/manuals/rm0410-rev5-wayback-20250124092644/`, its text in `tmp/m7/manuals/text/rm0410-rev5.txt`, and the agent's comparison scripts in the worktree's `tmp/m7/scripts/`.  Every section that the boot and the initialization depend on keeps its number, and the comparison found no difference that changes the boot model, the layout, or the initialization.
+
+| Item | Rev 5 against Rev 4 |
+|---|---|
+| Boot, section 2.5 and Table 2 | Table 2 unchanged: BOOT0 low selects BOOT_ADD0, ST's value "Flash on ITCM at 0x0020 0000"; one sentence's upper bound of the boot addresses changes from 0x3FFF FFFF to 0x2007 FFFF |
+| Option bytes, 3.4.1, 3.7.6, 3.7.7 | FLASH_OPTCR resets to 0xFFFFAAFD and FLASH_OPTCR1 to 0x0040 0080 in both; IWDG_SW and WWDG_SW, bits 5 and 4, unchanged; the BOOT_ADDx range and the SRAM examples are corrected in some passages and not in others; the example "0x0080: Boot from Flash on ITCM interface (0x0020 0000)" unchanged |
+| VTOR, INITVTOR | named in neither revision |
+| Memory map, Figure 2, Table 1, 2.3, 3.3.1 | Rev 5 moves the start of the reserved range after the ITCM alias from 0x0030 0000 to 0x0040 0000, which removes its overlap with the alias 0x0020 0000 to 0x003F FFFF; flash on AXIM, ITCM RAM, DTCM of 128 KB, the rows of RCC, GPIOD, and USART3, and "Write accesses are not supported on ITCM interface" unchanged |
+| RCC_DCKCFGR2, RCC_AHB1ENR, RCC_APB1ENR | offsets 0x90, 0x30, 0x40, the fields USART3SEL, GPIODEN, and USART3EN, and the reset values 0, 0x0010 0000, and 0x0000 0400 unchanged; only WWDGEN's description changes |
+| Clock enable delay, 5.2.12 | unchanged: two peripheral clock cycles after the enable; neither revision mentions a read-back, which `board.S` takes from ST's HAL |
+| GPIO registers | unchanged in substance: offsets, the encodings of alternate function, high speed, pull-up, and AF7, and the reset values of port D |
+| USART_CR1, CR2, BRR, ISR, RDR, TDR | offsets, reset values (ISR 0x0200 00C0, the others 0), and the fields that the echo uses unchanged; the corrections in USART_ISR concern the interrupt enables of ORE, FE, ABRF, and EOBF; the overrun text of 34.5.3 changes wording only |
+| Reset clock, 3.3.2, 3.7.1, 5.2.6 | unchanged: HSI at 16 MHz and 0 wait states after reset, FLASH_ACR resets to 0; one of the two passages that place ARTEN in FLASH_CR is corrected |
+| Debug, 44.10 | unchanged: DHCSR, DCRSR, DCRDR, and DEMCR are reset only by a power-on reset |
+
+### The initialization
+
+`LeanExe/M7/Init.lean` describes an initialization as a list of `InitOp`: a read-modify-write of a register with a mask to clear and a mask to set, a read whose value is discarded, a write of a constant, and `DSB SY`.  `opCode` loads each address into r0 with `MOVW` and `MOVT` and accesses it with a word load or store at offset 0, and a read-modify-write computes `(x AND NOT clear) OR set` with `AND` and `ORR` of registers and the masks in r2, so the initialization needs no form beyond T0's.  `initTrace ops σ` is the trace of the accesses when the reads return `σ 0`, `σ 1`, and so on, so each written value is a function of the value read, and no reset value enters the statement.  `LeanExe/M7/Board.lean` lists `board_init`'s 14 accesses in its order, with 11 reads, among them the read-backs of `RCC_AHB1ENR` and `RCC_APB1ENR`, and `init_addrs` states the sequence of their registers by `rfl`.  `run_op` proves the code of each kind of access once, and `init_runs` composes the list by induction, so the board's initialization of 107 instructions needs no proof of its own beyond the check that each address is a device word.
+
+`InitRuns` now takes the trace as a function of the values that the initialization's reads return and the number `r` of those reads, and `boot_run` gives the trace `t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) N`, the windows reading `σ` after the initialization's reads.  QEMU's initialization, which only writes, is the instance `fun _ => initTrace` with `r = 0`, and `echo_qemu` keeps its statement.
+
+### The boot model and the image
+
+`Flash code n len` states that the code map holds the file's bytes from `0x08000000` and from `0x00200000`, the two addresses of the flash (RM0410, section 2.2.2), and `echo_board` assumes it with `Reset code flashItcm b`, T3's `Reset`, which requires bit 0 of the reset vector.  The kernel's check finds that bit set, since word 1 of the table is `0x002001FD`.  Because both copies hold the same halfwords, a state that reset gives from the table at either address satisfies `Reset code flashItcm b`.  The theorem therefore needs only that VTOR's reset value is one of the flash's two addresses.  RM0410 Rev 4 and Rev 5 give BOOT_ADD0's address and name no INITVTOR, so the inference that ST drives INITVTOR from BOOT_ADD0 stays in the trusted base in that weaker form.  The platform names DTCM, `0x20000000` to `0x2001FFFF`, as Normal memory and the 65,536 words from `0x40000000` as devices, and SP starts at `0x20020000` with the stack's limit at `0x20000000`.  The step needs 312 bytes below its outgoing area of 16.
+
+The image holds 4,406 bytes, SHA-256 `6d47aea8…0a40bd`.  Its table of the 16 system entries and the 110 interrupts of the STM32F767 lies at `0x00200000` with SP `0x20020000`, the reset entry `0x002001FD`, and the self-loop's `0x002001F9` in every other entry.  The self-loop lies at `0x002001F8`, the initialization from `0x002001FC`, and T2's program of 3,470 bytes from `0x002003A8`, with `main`'s loop head at `0x002003C8` and the step at `0x0020041C`.  `arm-none-eabi-objdump` of the image reads the table, the initialization, and `main` as Lean lists them.
+
+### The theorems
+
+```lean
+theorem echo_board (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
+    ∃ s, Reach platform σ code b s ∧ s.pc = echoHead ∧
+      s.trace = initTrace init σ ++
+        windows (reqTrace (devBus devBase) usart3Tick 3 (fun k => σ (k + initReads init))) N
+
+theorem echo_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
+    (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
+    ∀ k, ∃ t, run platform σ code k b = some t
+
+theorem usart3_requests (s v : UInt64) :
+    reqReg (usart3Tick s v).2 = 0x1207 ∨ reqReg (usart3Tick s v).2 = 0x1209 ∨
+      reqReg (usart3Tick s v).2 = 0x120A
+
+theorem echo_confined (σ : Nat → UInt32) (N : Nat) :
+    (∀ e ∈ initTrace init σ, InitBlock e.addr) ∧
+      ∀ e ∈ windows (reqTrace (devBus devBase) usart3Tick 3 (fun j => σ (j + initReads init))) N,
+        e.addr = usartIsr ∨ e.addr = usartRdr ∨ e.addr = usartTdr
+```
+
+`echo_board` and `echo_board_runs` in `tests/TestSupport/M7/NucleoFile.lean` hold over the file that `file_nat%` reads, through `echo_file`, the kernel's check.  They instantiate `board_run` and `board_runs` of `LeanExe/M7/Proof/Board.lean`, which hold for any step with the compiler's theorem and a stack within DTCM, so the gateway of G1 reuses them.  `InitBlock` names the register blocks of RCC, GPIOD, and USART3, and `usartIsr`, `usartRdr`, and `usartTdr` are `0x4000481C`, `0x40004824`, and `0x40004828`.  The never-stopping corollary follows from `runs_forever` of `LeanExe/M7/Proof/Runs.lean`: a step appends at most one access to the trace, so a run that reaches a trace of `c + N` accesses for every `N` takes at least `N` steps to get there, and `run` succeeds for every number of steps.  The headers of `Proof/Board.lean` and `NucleoFile.lean` state the run conditions of revision 8: a power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA during the run.
+
+### Choices
+
+| Choice | Reason |
+|---|---|
+| The initialization as a list of `InitOp` with one proof per kind of access, and `board.S`'s order and read-backs kept | the board's 107 instructions need no proof of their own, and the list states the accesses as `board.S` performs them (decision 4) |
+| `AND` and `ORR` of registers with masks from `MOVW` and `MOVT` in place of `BIC` and `ORR` with immediates | the model has neither `BIC` nor `ORR` with an immediate, and new forms would reopen the encoder, `decode_encode`, the GNU `as` samples, and the co-simulation |
+| Each address in full with `MOVW` and `MOVT`, at offset 0 | one code shape for every access, so `run_op` needs no case on the offset; the cost is 2 instructions an access in code that runs once |
+| `InitRuns` takes the trace as a function of the read values, applied to `σ` shifted by the reads before the initialization | the statement then holds from any state, and from reset it is `initTrace init σ` |
+| `Flash` holds both addresses of the flash, and the proof uses the ITCM copy | the boot model of plan section 5 places the bytes at both, and with both, `Reset` at `0x00200000` covers a reset that reads either copy |
+| The board's platform, layout, and initialization in `LeanExe/M7/Board.lean`, the echo's instance in `tests/TestSupport/M7/` | G1's gateway runs on the same board with the same initialization |
+| `echo_confined` states the initialization's blocks and the windows' three registers, and `init_addrs` the exact sequence | the device assumption of item 16 of the plan's trusted base then concerns those registers alone |
+| `tests/baremetal/m7-board.sh` in place of new cases in `usart3.sh` | the image is a raw file that Renode needs at two addresses with VTOR set, and `usart3.sh build` empties its own output directory; the script follows `m7-qemu.sh` and runs `uart_echo.py` as `usart3.sh run echo` does |
+| Renode gets a memory of the flash's size at `0x00200000` with a copy of the image and `cpu VectorTableOffset 0x00200000` | Renode's `stm32f777.repl` maps the flash at `0x08000000` alone and, for a raw binary, takes no vector table from an ELF |
+| The flash's read-back compares the image's length | `st-flash` 1.8.0 reads and writes whole words, and the two bytes after the image read 0x0000 |
+| The C path for this board stays (decision 7) | its scripts and theorems are unchanged, and both paths compile the same step |
+
+### Tests
+
+| Test | Result |
+|---|---|
+| Build of the new modules on edgexpert-18ff, 8 cores, cap 12 GiB | `Proof/Runs.lean` 0.6 s, `Proof/Init.lean` 1.0 s, `Proof/Board.lean` 1.8 s, `NucleoLoop.lean` 1.7 s, with no warning |
+| `lake build LeanExe`, 8 cores | passed |
+| `tests/baremetal/m7-board.sh check` | the kernel's check of `echo.bin` and the theorems over it in 4.9 s with a peak of 5.15 GB; the twelve theorems that `NucleoFile.lean` prints depend on `propext`, `Classical.choice`, and `Quot.sound` at most |
+| `tests/baremetal/m7-qemu.sh`, after the change to `boot_run` | T3's kernel check of the QEMU image of 3,690 bytes in 4.7 s with a peak of 5.09 GB, and `uart_echo.py` under QEMU in 3.3 s |
+| `m7-board.sh emulate`, Renode 1.17.0 on edgexpert-18ff | passed: 644 bytes in lockstep and bursts of 2, 16, 322, and 65,536 bytes with at most 2 unanswered, in 48.8 s; Renode set PC `0x2001FD` and SP `0x20020000` from the table at `0x00200000`, and its log held only the warnings of its translation cache and of `RCC_DCKCFGR2` |
+| `m7-board.sh run /dev/ttyACM0` on the board | `st-flash` wrote `echo.bin`, erasing sector 0, the read-back equals the file, and after `st-flash reset` `uart_echo.py` passed: 644 bytes in lockstep and the four bursts with at most 2 unanswered, in 168.8 s |
+| `m7-board.sh measure-div` | every quotient and remainder of `udivmod64` on the board equals Python's for the 60 calls; the cycles below |
+| `m7-board.sh measure-echo /dev/ttyACM0` | failed: no reply reached the host (below); the table read over SWD gives the cycles of five kinds of window |
+
+The board test ran after a reset over SWD, which differs from the theorem's power-on premise: `st-flash` connects with the core halted, the ST-LINK leaves DHCSR's C_DEBUGEN and DEMCR at 0x01000500, and the DWT stays unlocked (T0 and G0 (b)).  A run under the premise needs a power cycle after the image is written and no `st-flash` session before the host script.
+
+### The board's resets
+
+Both measurement images log each boot at `0x2001E000`: a magic word, a count, and the value of `RCC_CSR`, whose flags name the reset's causes, which the image then clears with RMVF.  After `measure-div`, which runs `st-flash write`, `st-flash read`, and `st-flash reset`, the log held two boots, the first with the flags accumulated since power-on (SFT, POR, PIN, and BOR) and the second with PINRSTF alone.  A lone `st-flash reset` then added one boot with PINRSTF, a plain `st-flash read` added none, and two resets added two.  Each `st-flash reset` therefore boots the image once, by the NRST pin, and by elimination the write session boots it once more.  The count of two boots for each reset in G0 (b) was not reproduced.  A hypothesis that these runs support but do not establish is that G0 (b) counted the boot after the write session with the reset's.  The source of stlink 1.8.0 (`src/st-flash/flash.c` and `src/stlink-lib/common.c`) shows that every command without `--hot-plug` connects with `stlink_reset(sl, RESET_AUTO)`, a pulse of NRST followed by the ST-LINK's RESETSYS command, then halts the core, and ends with `stlink_run`, which sets EPSR.T when it reads it clear ("Go to Thumb mode") and resumes the core, and that `reset` repeats `RESET_AUTO` before it.  By that reading a plain read would boot the image too, and the log shows that it does not, so the source does not explain the counts, and which step of the write session lets the image run stays open.
+
+### Cycles on the board
+
+`tests/TestSupport/M7/Dwt.lean` writes both measurement images from Lean with T0's encoder.  Each enables DEMCR.TRCENA, unlocks the DWT through `DWT_LAR`, clears `DWT_CYCCNT`, and sets `DWT_CTRL.CYCCNTENA` with bits 16 to 22, the other counters' and events' enables, cleared, since erratum 486321 miscounts stall cycles in those counters.  Each runs from the ITCM address at reset clocking, HSI at 16 MHz with the caches off and FLASH_ACR 0, as the proved image does.  The division image brackets each case with two loads of the counter, stores the inputs and the results, and runs each case 5 times.  The call of a routine that only returns took 11 cycles in every pass, and a block of 16 `MOV` 12 cycles.  `tests/baremetal/m7_dwt.py` reads the records and checks every result.
+
+| `udivmod64` path | Case | Instructions, entry to `BX LR` | Cycles less the empty call, median (least, most) |
+|---|---|---|---|
+| high, divisor's low word 0 | `0x123456789ABCDEF0 / 2^32` | 8 | 27 (27, 27) |
+| high | `(2^64 - 1) / 2^32` | 8 | 28 (23, 28) |
+| low, both high words 0 | `0xFFFFFFFF / 7` | 8 | 33 (28, 33) |
+| low | `1 / 1` | 8 | 19 (14, 19) |
+| small, dividend below divisor | `5 / 0x100000001` | 12 | 17 (17, 17) |
+| loop, 1 pass | `0x100000005 / 0x100000001` | 41 | 36 (36, 47) |
+| loop, 2 passes | `0x200000000 / 0x100000001` | 55 | 45 (45, 56) |
+| loop, 8 passes | `2^40 / 0x200000001` | 127 | 104 (98, 104) |
+| loop, 16 passes | `2^48 / 0x200000001` | 223 | 158 (158, 158) |
+| loop, 32 passes | `2^63 / 0x100000001` | 415 | 286 (286, 286) |
+| loop, 33 passes | `(2^64 - 1) / 0x80000001` | 429 | 299 (299, 299) |
+| loop, 64 passes | `(2^64 - 1) / 1` | 797 | 546 (546, 546) |
+
+| `UDIV r4, r0, r2` | Quotient | Cycles less a `MOV`'s, every pass |
+|---|---|---|
+| `0xFFFFFFFF / 1` | 32 bits | 18.5 |
+| `0x80000000 / 3` | 30 bits | 18.5 |
+| `0x12345678 / 0x1234` | 17 bits | 11.5 |
+| `0xFFFFFFFF / 0x10000` | 16 bits | 10.5 |
+| `0 / 1` | 0 | 6.5 |
+| `0xFFFFFFFF / 0xFFFFFFFF` | 1 | 3.5 |
+| `1 / 1` | 1 | 3.5 |
+
+A `MOV` costs at most three quarters of a cycle in that block, bracket included, so `UDIV` takes from about 4 to about 19 cycles, and its time grows with the length of the quotient, as an early-terminating divider would give.  Seven cases do not establish the rule.  The path of `writeReq`'s remainder by 2^32, which runs in every write window, divides the high word by 1, a quotient of up to 32 bits, and takes 27 to 28 cycles, of which its `UDIV` takes up to about 19.  The loop takes about 8 cycles a pass, 0.7 to 0.8 cycles an instruction from 8 passes up, so the worst case of 64 passes takes 546 cycles, against G0's bound of 925 instructions.
+
+The echo's image redirects the call at the loop's head to a routine after the program, which records the cycles from its previous exit in a table indexed by the phases before and after the window and branches to the step.  The interval holds the window and five instructions of the routine, and `m7_dwt.py` compares each kind with G0's instruction count plus those five.  The board received one byte of `uart_echo.py` before the port failed and then a probe byte, so the table holds five kinds of window, and `txwait` did not occur.
+
+| Window | Windows | Cycles: least, most, mean | Instructions: G0's count plus 5 |
+|---|---|---|---|
+| `idle` | 7,940,907 | 320, 331, 320.0 | 324 |
+| `rxne` | 2 | 330, 330, 330 | 323 |
+| `byte` | 2 | 365, 365, 365 | 366 |
+| `tx`, with the routine's 8 | 2 | 543, 583, 563 | 528 |
+| `sent` | 3 | 372, 377, 374.3 | 360 |
+
+The windows run at about one cycle an instruction.  G0's cost model gave 357 to 597 cycles for these windows without the routine's and the measurement's instructions, and the board's 320 to 583 cycles with them lie below that range, the shortest by about 10%.  The longest, 583 cycles, is 3.5% of the 16,667 cycles of half a byte time at 4,800 baud.
+
+### The virtual COM port
+
+`measure-echo` wrote `echo-dwt.bin`, which read back equal, and after the reset `uart_echo.py` sent its first byte and received no reply within 120 s.  The window table read over SWD showed that the board had received the byte and written its reply to `USART_TDR`, and a probe byte sent afterwards was received and answered in the same way while no byte reached the host.  The ST-LINK's virtual COM port therefore still forwarded the host's bytes to the board and had stopped forwarding the board's output, the failure recorded on 2026-11-06 after a series of `st-flash` sessions.  The proved image had passed at 07:17, and about 15 `st-flash` sessions ran between that run and the failure at 07:28, about 24 in the task.  Only a replug of the board's USB cable has restored the port, so the board work stopped, with `echo-dwt.bin` in the board's flash.
+
+### After the replug
+
+The user replugged the board's USB cable, and the virtual COM port forwarded again.  The images came from `m7-windows` of `~/src/leanexe-m7` on edgexpert-18ff, whose sources matched controller's by SHA-256, and `echo.bin` had the checked file's digest.  `measure-echo` passed: 644 bytes in lockstep and bursts of 2, 16, 322, and 65,536 bytes with at most 2 unanswered, in 170.5 s.
+
+| Window | Windows | Cycles: least, most, mean | Instructions: G0's count plus 5 |
+|---|---|---|---|
+| `idle` | 7,548,659 | 320, 329, 320.1 | 324 |
+| `rxne` | 66,520 | 330, 330, 330.0 | 323 |
+| `byte` | 66,520 | 365, 365, 365.0 | 366 |
+| `tx`, with the routine's 8 | 66,520 | 543, 583, 543.0 | 528 |
+| `sent` | 66,521 | 372, 377, 372.0 | 360 |
+
+No `txwait` window occurred in the bursts.  The host and the board send at the same rate, so the transmitter has emptied by the time the step has a byte to send; this is an inference that no run with a faster sender has tested.  The boot log recorded three boots: the power-on reset of the replug (RCC_CSR `0x0e000000`, POR, PIN, and BOR), a boot with no reset flag during the write session, and a pin reset from `st-flash reset`, which agrees with the boots found above.
+
+`echo.bin` was then written to the flash and read back equal, and the user replugged the cable again.  With no `st-flash` or `st-util` session from that power cycle to the end of the run, `uart_echo.py` passed through `/dev/ttyACM0`: the same 644 bytes and bursts in 169.8 s.  This run starts from the power-on reset that `echo_board` assumes, with the ST-LINK connected over USB and idle.
+
+### Remote host
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, updated with rsync from the worktree, one job at a time through `tools/leanrun` with a memory cap of 12 or 16 GiB and a timeout, and no job had to be stopped.  The host kept 117 GB available throughout.  Renode 1.17.0 and QEMU ran there, and `st-flash`, the serial port, and `uart_echo.py` on this machine.
+
+- [x] RM0410 Rev 5 obtained and compared with Rev 4.
+- [x] `InitOp`, `initCode`, `initTrace`, `init_runs`, and the board's initialization of `board.S`'s accesses in its order.
+- [x] `InitRuns` with a trace that depends on `σ`, and `boot_run` reading the windows' values after the initialization's.
+- [x] `Flash` at both addresses, `Reset` at `0x00200000`, the board's platform and layout, `board_run`, and `board_runs`.
+- [x] `echo.bin`, `echo_file`, `echo_board`, `echo_board_runs`, `usart3_requests`, and `echo_confined`, with their axioms checked.
+- [x] Renode and the board: `uart_echo.py` passed on both, with the flash read back.
+- [x] The DWT images: `UDIV` and `udivmod64`'s paths, and five kinds of the echo's windows.
+- [x] After a replug of the board's USB cable: `measure-echo` with its bursts, and a run of `echo.bin` from a power cycle with no `st-flash` session before `uart_echo.py`.  No `txwait` window occurred.
+- [ ] T5: Isla and the board's co-simulation.  G1: the gateway, with a kernel check of its image that fits.
+
+### References
+
+- [RM0410, STM32F76xxx and STM32F77xxx reference manual](https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [RM0410 Rev 5, the Internet Archive's capture of 2025-01-24](https://web.archive.org/web/20250124092644/https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [Cortex-M7 Software Developer Errata Notice, SDEN-1068427](https://developer.arm.com/documentation/SDEN1068427/latest/)
+- [stlink 1.8.0, `src/st-flash/flash.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/st-flash/flash.c)
+- [stlink 1.8.0, `src/stlink-lib/common.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/stlink-lib/common.c)
+- [Renode 1.17.0](https://github.com/renode/renode/releases/tag/v1.17.0)
+
+## 2026-11-07: Isla theorems: the module layout and the full check
+
+The memory forms' theorems arrived in one module, `tests/TestSupport/A64/Isla/Memory.lean`, which took 3402 s on minideb1 and reached its scope's `MemoryHigh` of 8 GiB with a resident set of 9.1 GiB.  The recommendation was to split it into a load module and a store module, move the shared lemmas into `Check.lean`, replace `Nat.add_zero` in `isla_simp`, and delete `Stage1.lean` and `done_end`.  A fresh agent reviewed that recommendation against the code, and its findings, with the revised decision that this entry implements, follow.
+
+### The review
+
+`tests/isla/theorems.sh` refuses a module of `tests/TestSupport/A64/Isla` that imports another, so a split works only if everything that the parts share leaves the directory.  LDR and the stores share `mem_simp`, `mem_fwd`, `mem_bwd`, `mem_side`, `memFields`, `ttbr_facts`, `ttbr_toNat`, `spAligned_31`, `desc_eq`, the mask lemmas, and the `bytes_*` lemmas.  A load and a store module would be unbalanced: the load module would hold 2 theorems and take about 1254 s, and the store module 6 theorems and about 2156 s, and the store module would be the one likely to pass 8 GiB.  One module per form, with both STRB forms together, divides the time into about 1254 s for LDR, 1231 s for STR, and 925 s for STRB, and the form-specific lemmas divide the same way, while one module per profile would duplicate every form's lemmas.
+
+The modules repeated lemmas: `xsp_lt`, `xsp_31`, and `bit_lt` stood in both `Immediate.lean` and `Memory.lean`, `mem_quiet` was `Register.lean`'s `without_info`, and `Branch.lean`'s `decode_word` was repeated inline in `Register.lean`, `Immediate.lean`, and `Memory.lean`.  `nat_add_zero`, `toNat_mod128`, and `sdiv_128` are general, `Register.lean`'s `sdiv_toNat` and `sdiv_zero` are special cases of `sdiv_128`, `mem_bounds` and `byteTerms` had no use, and the two `subs_end` macros differ and stay.  `run_congr` and `runSome_congr` carried `@[congr]`, and in `Check.lean` they would keep the `simp only [<footprint>, Footprint.vars, …]` of `Register.lean`, `Immediate.lean`, and `Branch.lean` out of the trace and the variables of a path.  `isla_ctx` and `mem_simp` name definitions of `Profile.lean`, and the mask lemmas encode the constraint on `TTBR0_NS`, the RAM GiB, and the descriptors of `Table.lean`, so a library file of its own for the memory walk keeps `Check.lean` general.  `Nat.add_zero` caused no failure in `isla_simp`, and a lemma proved by `omega`, unlike a `rfl` lemma, cannot rewrite inside dependent arguments, so replacing it there could break proofs.  `Stage1.lean` holds no theorem once the memory branch merges with the controller branch, `done_end` serves `Branch.lean` and `Immediate.lean`, and `strb_end`, `str_end`, and `ldr_end` repeat its `simp`.
+
+The revised decision has five parts.  `Ldr.lean`, `Str.lean`, and `Strb.lean`, the last with STRB in RAM and at the UART, replace `Memory.lean`, each with both profiles' theorems and checked by its own `theorems.sh` invocation.  `LeanExe/A64/Isla/Walk.lean`, which imports `Check` and `Profile`, holds the walk that the three share, with `run_congr` and `runSome_congr` declared without the attribute and made `congr` by `attribute [local congr]` in each module.  `Check.lean` gains `xsp_lt`, `xsp_31`, `bit_lt`, `nat_add_zero`, `toNat_mod128`, `sdiv_128`, `decode_word`, and `without_info`, and the modules use them in place of their copies, while `isla_simp` keeps `Nat.add_zero`.  `mem_bounds`, `byteTerms`, and `Stage1.lean` go, and `done_end` stays, with the memory forms' end tactics calling it.
+
+### The moves
+
+| Declarations | From | To |
+|---|---|---|
+| `run_congr` and `runSome_congr`, without `@[congr]`; `lookupVars`, `reduceVars`, `reduceGpr`, `addNodes`, `isla_nodes`, `Opaque`, `isla_ctx`, `witBits`, `witBool`, `vecAt`, `memAt`, `mem_wit`, `mem_unfold`, `mem_clear`, `mem_subst`, `mem_omega`; the mask lemmas from `and_mul_two_pow` to `pa0_eq`; `bytes_lt1`, `bytes_lt8`, `writeBytes_one`, `ofNat_mod64`, `bytes_congr`, `bytes_store_far`; `spAligned_31`, `ttbr_toNat`, `desc_eq`, `desc0_eq`; `mem_simp`, `mem_fwd`, `mem_bwd`, `mem_side`, `memFields`; the metaprograms behind them | `Memory.lean` | `LeanExe/A64/Isla/Walk.lean` |
+| `xsp_lt`, `xsp_31`, `bit_lt` | `Immediate.lean` and `Memory.lean` | `Check.lean` |
+| `nat_add_zero`, `toNat_mod128`, `sdiv_128` | `Memory.lean` | `Check.lean` |
+| `decode_word` | `Branch.lean` | `Check.lean` |
+| `without_info`, for `mem_quiet` too | `Register.lean` | `Check.lean` |
+| `bytes_split`, `addr_eq`, `addr_add`, `and_mod64`, `testBit_lo`, `ins_*`, `exec_ldr`, `ldr_end`, the LDR theorems | `Memory.lean` | `tests/TestSupport/A64/Isla/Ldr.lean` |
+| `add_left_inj'`, `add_eq_self`, `add_sub_left'`, `eq_add_sub`, `byteOf_eq`, `store8_chain`, `writeBytes_eight`, `mapped_uart`, `exec_str`, `str_end`, the STR theorems | `Memory.lean` | `tests/TestSupport/A64/Isla/Str.lean` |
+| `toUInt8_eq`, `exec_strb`, `strb_end`, the STRB theorems in RAM and at the UART | `Memory.lean` | `tests/TestSupport/A64/Isla/Strb.lean` |
+| `mem_bounds`, `byteTerms`, `Stage1.lean` | | deleted |
+
+Each form's proof of the opcode's decoding becomes `decode_word ?_` in the `refine` of `Agrees`, with the bullet proving the word's equation, in place of a `have`, a `rw`, and `decode_encode`.  `sdiv_toNat` and `sdiv_zero` follow from `sdiv_128`.  The end tactics of the memory forms open with `done_end`, whose `simp` adds `true_and` to the one that they repeated.  Each memory module keeps `set_option Elab.async false`, so that its lemmas elaborate one after another.
+
+Choices outside the decision, with their reasons:
+
+- `without_info` over `mem_quiet`, since its name states what it does and the register forms' proofs already used it.
+- A lemma that one form uses stays in that form's module, and a lemma that `mem_simp` names or that two forms' end tactics use, such as `bytes_store_far`, `writeBytes_one`, and `ofNat_mod64`, goes to `Walk.lean`.
+- `LeanExe.lean` imports `LeanExe.A64.Isla.Walk`, as it imports `Check`, `Profile`, and `Trace`, so the default build checks the library file.
+- [The trusted-base document](docs/trusted-base.md#m-aarch64-images)'s row "Instruction model" said "for every operand" without the premises of the branches, loads, and stores, and it names them.
+- `Immediate.lean`'s TCG proofs run inside `without_info`, as `Register.lean`'s do, since without it the module's scope reached the script's `MemoryHigh`, as the full check below records.
+- debtop1 has no `rsync`, so the runs used minideb1 and minideb2 only, and the checkout begun there, with copies of `leanexe-final`'s `.git` and `.lake/packages`, is removed.
+
+### The full check
+
+Each module ran through `tests/isla/theorems.sh` in a checkout of its own, `~/src/leanexe-isla-layout`, one job per host, with the script's limits of `--memory-high 8G`, `--cpus 4`, and a timeout of 180 minutes.  A wrapper, `tmp/isla/run.sh`, read the high-water mark of the resident set, `VmHWM` of `/proc/PID/status`, of each `lean` process of the checkout every 2 s.  A smoke test first elaborated the first pair of lemmas of `strbTcg` from the new layout, which builds `Walk.lean` and uses `attribute [local congr]` and `done_end`, in 75 s.
+
+| Module | Host | Time | Peak resident set |
+|---|---|---|---|
+| `Ldr.lean` | minideb1 | 1235 s | 5563 MiB |
+| `Str.lean` | minideb2 | 1213 s | 5558 MiB |
+| `Strb.lean` | minideb2 | 867 s | 3996 MiB |
+| `Register.lean` | minideb1 | 499 s | 5197 MiB |
+| `Immediate.lean` | minideb1 | 495 s | 5329 MiB |
+| `Branch.lean` | minideb1 | 287 s | 5003 MiB |
+| `Profiles.lean` | minideb1 | 2 s | not sampled |
+
+`Immediate.lean` as the decision left it took 512 s, and its scope reached the script's `MemoryHigh`: the cgroup's `memory.peak` was 8193 MiB, with 93 `high` events and 205 MiB in swap, and the resident set reached 8576 MiB.  The module of the controller branch, before any change of this entry, ran the same way on minideb2, in 511 s with a resident set of 8640 MiB, so the layout did not cause the excess.  The resident set grew through the whole file, and the TCG proofs of `Immediate.lean`, unlike those of `Register.lean`, ran outside `without_info`, so the command-line driver kept the info trees of their walks to the end of the file.  A copy with each TCG proof inside `without_info` took 506 s with a resident set of 5262 MiB, which confirms the cause.  `Immediate.lean` takes that change, the table gives its run, and the limits stay as they are.
+
+Each memory form's module peaks at 5563 MiB or less, where `Memory.lean` reached 9.1 GiB, and their times add up to 3315 s against its 3402 s.  Every run was watched every 30 s for the host's available memory and memory pressure, and the scope of `Immediate.lean` every 15 s for its memory, swap, and `high` events, and no job had to be stopped.
+
+The axioms of every theorem are `propext`, `Classical.choice`, and `Quot.sound`, and `tcg_features` and `kvm_features` of `Profiles.lean` depend on no axiom.
+
+[The AArch64 document](docs/a64-bare-metal.md#isla)'s Isla section states what the check covers: every form on which the program's model runs, in both profiles, for every value of every opcode field.  The register, immediate, move, and address forms hold from every state, the branches assume that the target lies below 2^55 or that `TCR_EL1` clears TBI0 and TBI1, and the loads and stores assume the mask constraint on `TTBR0_EL1`, the descriptor that the walk reads, and the access's bytes in the RAM GiB or at the UART.  STR also assumes that the UART lies outside Normal memory and that its bytes lie clear of the descriptor at `TTBR0_EL1 + 8`.  The section names the IR edits of `armv9p4-checked.diff` and `armv9p4-udiv.diff` among the check's assumptions, and the row "The model's fidelity" of its trusted-base table, the final theorem's scope, and the row "Instruction model" of the trusted-base document state the same coverage.  `node tools/check-doc-links.mjs` and `tools/source-layout` passed.
+
+- [x] The merge of the memory branch, with `Stage1.lean` deleted.
+- [x] `Walk.lean`, `Ldr.lean`, `Str.lean`, and `Strb.lean` in place of `Memory.lean`.
+- [x] The general lemmas in `Check.lean`, and their copies removed from `Register.lean`, `Immediate.lean`, and `Branch.lean`.
+- [x] `mem_bounds` and `byteTerms` deleted, and `done_end` called by the memory forms' end tactics.
+- [x] `theorems.sh` on every module, with each module's time and peak memory.
+- [x] `Immediate.lean`'s TCG proofs inside `without_info`, after its scope reached `MemoryHigh`.
+- [x] The Isla section, the trusted-base row, and the final theorem's scope of the AArch64 document.

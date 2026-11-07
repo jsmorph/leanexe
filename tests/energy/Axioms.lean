@@ -39,4 +39,4 @@ import Demos.Energy.Loop
 #print axioms Demos.Energy.gwTickUsart3_abs
 #print axioms Demos.Energy.gw_usart3_program
 #print axioms Demos.Energy.gw_usart3_prefix
-#print axioms LeanExe.Native.frame_prefix
+#print axioms LeanExe.Requests.frame_prefix

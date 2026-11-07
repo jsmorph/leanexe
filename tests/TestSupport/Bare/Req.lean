@@ -9,7 +9,7 @@ import Verified.Call
 The step of the request protocol's test (`docs/native-bare-metal.md`): an echo over a UART that
 `main` drives one register access per window.  The step returns the new state and a request: a
 read of a register, or a write of a value to a register.  The register map is a parameter, as in
-`Uart` of `LeanExe/Native/Proof/Records.lean`: the indices of the receive, transmit, and status
+`Uart` of `LeanExe/Requests/Records.lean`: the indices of the receive, transmit, and status
 registers, the status bit `rxFull` that is set while the receiver holds a byte, and the status
 bits `txMask` that equal `txRoom` while the transmitter has room.  The echo reads the status until
 the receiver holds a byte, reads the byte, reads the status until the transmitter has room, and
@@ -85,13 +85,13 @@ verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echo
 
 /-! ## Polling -/
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 theorem readReq_status : reqWrite (readReq 0x1001) = false := by decide
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 theorem readReq_data : reqWrite (readReq 0x1000) = false := by decide
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- `cmsdkTick` requests a write only from the phase that follows a status read, and only when
 the value read shows room in the transmitter. -/
 theorem cmsdkTick_write (s v : UInt64) (hw : reqWrite (cmsdkTick s v).2 = true) :
@@ -109,7 +109,7 @@ theorem cmsdkTick_write (s v : UInt64) (hw : reqWrite (cmsdkTick s v).2 = true) 
         · simp [readReq_status] at hw
       · simp [readReq_status] at hw
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- `cmsdkTick` enters the phase 2 only with a request to read the status register. -/
 theorem cmsdkTick_phase2 (s v : UInt64) (h : (cmsdkTick s v).1 &&& 255 = 2) :
     (cmsdkTick s v).2 = readReq 0x1001 := by
@@ -128,7 +128,7 @@ theorem cmsdkTick_phase2 (s v : UInt64) (h : (cmsdkTick s v).1 &&& 255 = 2) :
         · rfl
       · rfl
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- In every run of the echo from the state 3, a window that requests a write follows a window
 that read the status register, and the value read has bit 0, the transmitter's full flag,
 clear.  The first window reads the status. -/
@@ -147,13 +147,13 @@ theorem echo_write_after_room (σ : Nat → LClight.int) (n : Nat)
   rw [← e]
   exact hph
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 theorem echo_first_read : reqWrite (cmsdkTick 3 0).2 = false := by decide
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 theorem readReq_timer : reqWrite (readReq 1) = false := by decide
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- The echo with a deadline requests a write only in the phase that follows a timer read, and
 only when fewer than the limit's ticks have passed since the reading in the state. -/
 theorem deadlineCmsdkTick_write (s v : UInt64) (hw : reqWrite (deadlineCmsdkTick s v).2 = true) :
@@ -175,7 +175,7 @@ theorem deadlineCmsdkTick_write (s v : UInt64) (hw : reqWrite (deadlineCmsdkTick
             · simp [readReq_status] at hw
           · simp [readReq_status] at hw
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- The echo with a deadline enters the phase 4 only with a request to read the timer. -/
 theorem deadlineCmsdkTick_phase4 (s v : UInt64) (h : (deadlineCmsdkTick s v).1 % 256 = 4) :
     (deadlineCmsdkTick s v).2 = readReq 1 := by
@@ -206,7 +206,7 @@ theorem deadlineCmsdkTick_phase4 (s v : UInt64) (h : (deadlineCmsdkTick s v).1 %
           · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_right h2, ite_eq_right h3, ite_eq_right h4] at h
             exact absurd h (by decide)
 
-open LeanExe.Native in
+open LeanExe.Native LeanExe.Requests in
 /-- In every run of the echo with a deadline from the state 5, a window that requests a write
 follows a window that read the timer, and fewer than `0x1000000` ticks separate the reading
 stored in the state from the value read. -/
@@ -227,7 +227,7 @@ theorem deadline_write_on_time (σ : Nat → LClight.int) (n : Nat)
   rw [← e]
   exact hph
 
-open Wasm LClight LeanExe.Native in
+open Wasm LClight LeanExe.Native LeanExe.Requests in
 /-- The program with requests around `cmsdkTick`, from the state 3, runs forever: for every
 sequence `σ` of the values that its volatile loads read, window `n` performs the one register
 access that `cmsdkTick` requests from the state and the last value read. -/
@@ -235,7 +235,7 @@ theorem echo_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 5 [3])) E0
-      (reqTrace cmsdkTick 3 σ) := by
+      (reqTrace regBus cmsdkTick 3 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.cmsdkTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
     (rs0 := [.i64, .i64]) (by decide +kernel)
@@ -254,7 +254,7 @@ theorem echo_program (A : Archi) (X : ExtSem)
     (reqRuns_of_nativeA (n := 0) (fun _ => rfl) (fun _ => rfl) hnat (fun _ _ _ => trivial)
       (by decide)) 3 σ
 
-open Wasm LClight LeanExe.Native in
+open Wasm LClight LeanExe.Native LeanExe.Requests in
 /-- The program with requests around `usart3Tick`, from the state 3, runs forever: for every
 sequence `σ` of the values that its volatile loads read, window `n` performs the one register
 access that `usart3Tick` requests from the state and the last value read. -/
@@ -262,7 +262,7 @@ theorem echo_usart3_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 9 [3])) E0
-      (reqTrace usart3Tick 3 σ) := by
+      (reqTrace regBus usart3Tick 3 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.usart3Tick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
     (rs0 := [.i64, .i64]) (by decide +kernel)
@@ -281,7 +281,7 @@ theorem echo_usart3_program (A : Archi) (X : ExtSem)
     (reqRuns_of_nativeA (n := 0) (fun _ => rfl) (fun _ => rfl) hnat (fun _ _ _ => trivial)
       (by decide)) 3 σ
 
-open Wasm LClight LeanExe.Native in
+open Wasm LClight LeanExe.Native LeanExe.Requests in
 /-- The program with requests around `deadlineCmsdkTick`, from the state 5, runs forever: for
 every sequence `σ` of the values that its volatile loads read, window `n` performs the one
 register access that `deadlineCmsdkTick` requests from the state and the last value read. -/
@@ -289,7 +289,7 @@ theorem deadline_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 8 [5])) E0
-      (reqTrace deadlineCmsdkTick 5 σ) := by
+      (reqTrace regBus deadlineCmsdkTick 5 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.deadlineCmsdkTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
     (rs0 := [.i64, .i64]) (by decide +kernel)

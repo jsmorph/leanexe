@@ -14,6 +14,9 @@ namespace LeanExe.A64
 
 open Wasm
 
+export LeanExe.CallGraph (foldr_max_le le_foldr_max callNeed le_callNeed callNeed_mono NeedOk
+  NeedOk.lt)
+
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-! ## The generator's function -/
@@ -262,44 +265,6 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
   · intro q hq
     show (s.setX 30 w).x q = s.x q
     exact State.x_setX_ne (Ne.symm hq)
-
-/-! ## The stack that a call uses -/
-
-theorem foldr_max_le : ∀ {l : List Nat} {c : Nat}, (∀ x ∈ l, x ≤ c) → l.foldr max 0 ≤ c
-  | [], _, _ => Nat.zero_le _
-  | x :: _, _, h => Nat.max_le.mpr ⟨h x List.mem_cons_self,
-      foldr_max_le fun y hy => h y (List.mem_cons_of_mem x hy)⟩
-
-theorem le_foldr_max : ∀ {l : List Nat} {x : Nat}, x ∈ l → x ≤ l.foldr max 0
-  | y :: _, _, h => by
-      rcases List.mem_cons.mp h with rfl | h
-      · exact Nat.le_max_left _ _
-      · exact Nat.le_trans (le_foldr_max h) (Nat.le_max_right y _)
-
-/-- The largest of `need j` over the functions `j` that the calls of `body` name, or 0. -/
-def callNeed (need : Nat → Nat) (body : List Instruction) : Nat :=
-  ((callsIn body).map need).foldr max 0
-
-theorem le_callNeed {need : Nat → Nat} {body : List Instruction} {j : Nat}
-    (h : j ∈ callsIn body) : need j ≤ callNeed need body :=
-  le_foldr_max (List.mem_map_of_mem h)
-
-theorem callNeed_mono {need need' : Nat → Nat} (h : ∀ j, need j ≤ need' j)
-    (body : List Instruction) : callNeed need body ≤ callNeed need' body :=
-  foldr_max_le fun x hx => by
-    obtain ⟨j, hj, rfl⟩ := List.mem_map.mp hx
-    exact Nat.le_trans (h j) (le_callNeed hj)
-
-/-- `n` bounds the bytes of stack that a call of a function uses, when the function's frame has
-`fs` bytes, its body is `body`, and `need` bounds the stack of the calls in the body: `n` is at
-least the frame plus `callNeed`, or at least 2^64, which bounds nothing. -/
-def NeedOk (need : Nat → Nat) (fs : Nat) (body : List Instruction) (n : Nat) : Prop :=
-  2 ^ 64 ≤ n ∨ fs + callNeed need body ≤ n
-
-/-- A count below 2^64 and below `fs` plus `callNeed` lies below `n`. -/
-theorem NeedOk.lt {need : Nat → Nat} {fs : Nat} {body : List Instruction} {n d : Nat}
-    (h : NeedOk need fs body n) (hd : d < 2 ^ 64) (hlt : d < fs + callNeed need body) : d < n := by
-  rcases h with h | h <;> omega
 
 /-! ## The function -/
 

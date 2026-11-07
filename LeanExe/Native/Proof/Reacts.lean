@@ -47,12 +47,6 @@ def LoopReacts (A : Archi) (X : ExtSem) (p : program function) (t0 : trace)
       exec_stmt A X (globalenv p) e le m (.Ssequence body post) (W n) le' m' .Out_normal ∧
         Inv (n + 1) le' m'
 
-/-- The trace of the first `n` iterations, `W 0 ++ ... ++ W (n - 1)`: `windows` of
-`rocq/Clight2Asm.v`. -/
-def windows (W : Nat → trace) : Nat → trace
-  | 0 => []
-  | n + 1 => windows W n ++ W n
-
 /-! ## The export of `clightgen` -/
 
 theorem LoopEntry.export {s' s : statement} (h : ExportRel s' s) :
