@@ -23,8 +23,8 @@ recursion, and 1 or 4 in Fold's.  `cic_outputs` states the CIC filter's run with
 over ℤ: the array that the UART receives has as its elements, read as signed 64-bit integers, the
 outputs `Library.Numerics.Filters.Cic.outputs 3 8 1` of the table's samples read as integers.  The
 Euler solver's Image has its theorem in `tests/TestSupport/A64/ImageFilesEuler.lean`, which the
-script elaborates on its own with a larger memory limit, since the kernel's evaluation of that
-Image alone takes about 22 GB.
+script elaborates on its own: the kernel's check of that Image takes about 12 GB, and the checks of
+this file about 6 GB.
 -/
 
 namespace TestSupport.A64.ImageFiles
