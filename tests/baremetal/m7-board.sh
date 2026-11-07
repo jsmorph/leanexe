@@ -51,17 +51,31 @@
 # RECORDS.lean and requires that they equal the output records RECORDS.out.  It needs Lean, and
 # the board's runs need the board, so the two run where each is.
 #
+# The co-simulation of the model on the board (tests/TestSupport/M7/BoardCosim.lean) has three
+# commands, the first and the last with Lean and the second with the board.  "m7-board.sh
+# cosim-image SEED PER_FORM" builds m7-cosim under a memory cap of MEM, 8G unless set, and writes
+# cosim.bin, the image of PER_FORM cases of each form from the seed SEED, with its layout and the
+# address and length of the results in cosim.layout.  "m7-board.sh cosim" writes cosim.bin to the
+# board as "run" does, waits 3 s after the reset, reads the results from DTCM over SWD into
+# cosim.results, and requires the header's word 0x600DCAFE and as many saved cases as the image
+# holds.  "m7-board.sh cosim-check SEED PER_FORM" checks every case of cosim.results against the
+# model with m7-cosim board-check, into cosim.check, and requires that all agree.  It then checks
+# them against the model with ADC's carry in replaced by 0, into cosim.mutant, and requires that
+# check to fail with at least one differing ADC case.
+#
 # The products lie in OUT, build/baremetal/m7-board unless set: the images, NAME.addr, the check's
 # output and times, st-flash's messages in IMAGE.flash, and for emulate and run the host script's
 # line NAME.echo and the messages of uv in NAME.stderr.  RENODE names Renode 1.17.0's renode,
 # STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
 # script in seconds.
 # Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |
-#          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS
+#          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |
+#          cosim-image SEED PER_FORM | cosim | cosim-check SEED PER_FORM
 set -euo pipefail
 usage() {
   echo "usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |" \
-    "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS" >&2
+    "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |" \
+    "cosim-image SEED PER_FORM | cosim | cosim-check SEED PER_FORM" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -81,14 +95,21 @@ program() {
   esac
 }
 
+# The time of day, for the logs of the st-flash sessions.
+stamp() {
+  date '+%H:%M:%S'
+}
+
 # Writes the image $1 of OUT to the board's flash, reads the flash back and compares its first
-# bytes with the file, and resets the board.
+# bytes with the file, and resets the board.  The log IMAGE.flash records each session's start.
 flash() {
   local image=$out/$1 size
   [ -f "$image" ] || { echo "fail: $1 is missing"; return 1; }
   size=$(stat -c %s "$image")
-  "$stflash" write "$image" 0x08000000 >"$image.flash" 2>&1 || {
+  echo "$(stamp) st-flash write" >"$image.flash"
+  "$stflash" write "$image" 0x08000000 >>"$image.flash" 2>&1 || {
     echo "fail: st-flash write $1: $(tail -c 300 "$image.flash")"; return 1; }
+  echo "$(stamp) st-flash read" >>"$image.flash"
   "$stflash" read "$image.readback" 0x08000000 "$size" >>"$image.flash" 2>&1 || {
     echo "fail: st-flash read: $(tail -c 300 "$image.flash")"; return 1; }
   if ! cmp -s -n "$size" "$image" "$image.readback"; then
@@ -96,13 +117,16 @@ flash() {
     return 1
   fi
   echo "pass: the flash holds the $size bytes of $1"
+  echo "$(stamp) st-flash reset" >>"$image.flash"
   "$stflash" reset >>"$image.flash" 2>&1 || {
     echo "fail: st-flash reset: $(tail -c 300 "$image.flash")"; return 1; }
 }
 
-# Reads $3 bytes of the board's memory from $2 into $1 of OUT without a reset.
+# Reads $3 bytes of the board's memory from $2 into $1 of OUT without a reset.  The log $1.read
+# records the session's start.
 readmem() {
-  "$stflash" --hot-plug read "$out/$1" "$2" "$3" >"$out/$1.read" 2>&1 || {
+  echo "$(stamp) st-flash --hot-plug read" >"$out/$1.read"
+  "$stflash" --hot-plug read "$out/$1" "$2" "$3" >>"$out/$1.read" 2>&1 || {
     echo "fail: st-flash read $1: $(tail -c 300 "$out/$1.read")"; return 1; }
 }
 
@@ -291,6 +315,55 @@ EOF
       exit 1
     fi
     echo "pass: the output records equal native Lean's for $(wc -l <"$records.in") input records"
+    ;;
+  cosim-image)
+    [ "$#" -eq 3 ] || usage
+    cd "$root"
+    mkdir -p "$out"
+    rm -f "${out:?}"/cosim.*
+    mem=${MEM:-8G}
+    tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build m7-cosim
+    tools/leanrun --timeout 10m --memory-high "$mem" lake env .lake/build/bin/m7-cosim board \
+      "$2" "$3" "$out/cosim.bin" | tee "$out/cosim.layout"
+    ;;
+  cosim)
+    [ "$#" -eq 1 ] || usage
+    [ -f "$out/cosim.layout" ] || { echo "fail: cosim.layout is missing"; exit 1; }
+    results=$(sed -n 's/^results \(0x[0-9a-f]*\) \([0-9]*\)$/\1 \2/p' "$out/cosim.layout")
+    [ -n "$results" ] || { echo "fail: no results line in cosim.layout"; exit 1; }
+    flash cosim.bin
+    sleep 3
+    readmem cosim.results "${results% *}" "${results#* }"
+    read -r magic saved _ count _ < <(od -An -tx4 -j 64 -N 16 "$out/cosim.results")
+    if [ "$magic" != 600dcafe ] || [ "$saved" != "$count" ]; then
+      echo "fail: the board saved $((0x$saved)) of $((0x$count)) cases, header word 0x$magic"
+      exit 1
+    fi
+    echo "pass: the board ran the $((0x$count)) cases and saved their results," \
+      "${results#* } bytes from ${results% *}"
+    ;;
+  cosim-check)
+    [ "$#" -eq 3 ] || usage
+    cd "$root"
+    status=0
+    if tools/leanrun --timeout 10m --memory-high "${MEM:-8G}" lake env .lake/build/bin/m7-cosim \
+        board-check "$2" "$3" "$out/cosim.results" >"$out/cosim.check" 2>&1; then
+      echo "pass: $(tail -n 1 "$out/cosim.check")"
+    else
+      echo "fail: $(head -c 1200 "$out/cosim.check")"
+      status=1
+    fi
+    if tools/leanrun --timeout 10m --memory-high "${MEM:-8G}" lake env .lake/build/bin/m7-cosim \
+        board-check "$2" "$3" "$out/cosim.results" adc-carry >"$out/cosim.mutant" 2>&1; then
+      echo "fail: the check with ADC's carry in replaced by 0 found no difference"
+      status=1
+    elif grep -q '^m7-cosim: differing cases by form: .*adcReg [1-9]' "$out/cosim.mutant"; then
+      echo "pass: the mutated model is caught: $(grep '^m7-cosim: differing' "$out/cosim.mutant")"
+    else
+      echo "fail: the check with the mutated model: $(head -c 600 "$out/cosim.mutant")"
+      status=1
+    fi
+    exit "$status"
     ;;
   *)
     usage
