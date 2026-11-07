@@ -46,9 +46,10 @@ def Form.binary : Form → Bool
   | _ => true
 
 /-- The code that the generator emits for the form on the words in X2 and X3, which leaves the
-result's word in X2.  For `FCMP` it is the code of `f64Eq` on copies in X4 and X3, of `f64Lt` on
-copies in X7 and X3, and of `f64Le` on X2 and X3, and then `X2 + X2 + X7`, doubled, plus X4: the
-result of `f64Eq` in bit 0, of `f64Lt` in bit 1, and of `f64Le` in bit 2. -/
+result's word in X2.  For `FCMP` it is the code of `f64Eq` on a copy of X2 in X4 and on X3, of
+`f64Lt` on a copy in X7 and on X3, and of `f64Le` on X2 and X3, followed by additions that leave
+`4 le + 2 lt + eq` in X2: the result of `f64Eq` in bit 0, of `f64Lt` in bit 1, and of `f64Le` in
+bit 2. -/
 def Form.code : Form → List Instr
   | .fadd => fBin .fadd 2 3
   | .fsub => fBin .fsub 2 3

@@ -1,6 +1,6 @@
 # The exponential function
 
-[The implementation](Program.lean) ports Arm's optimized-routines `exp` without fused multiply-add: reduction by `ln 2/128`, a table of 128 values of `2^(j/128)`, and a degree-5 polynomial.  `ExpTheorem.exp_one_step` proves a bound of one representable step from nearest-even rounding for every finite binary64 input.  Separate theorems give the exceptional values.  [The byte theorem](ExpTheorem.lean) transfers those results to the decoded WebAssembly module, and [the file theorems](ExpFile.lean) identify `build/verified/exp.wasm`.
+[The implementation](Program.lean) ports Arm's optimized-routines `exp` without fused multiply-add: reduction by `ln 2/128`, a table of 128 values of `2^(j/128)`, and a degree-5 polynomial.  `ExpTheorem.exp_one_step` proves a bound of one representable step from nearest-even rounding for every finite binary64 input.  Separate theorems give the exceptional values.  [The byte theorem](ExpTheorem.lean) transfers those results to the decoded WebAssembly module, and [the file theorems](ExpFile.lean) identify `build/verified/exp.wasm`.  [The AArch64 Image theorems](../../../../tests/TestSupport/A64/ImageFilesExp.lean) state the runs from boot of arm64 Images of the module on 1 and on -740, with the one-step bound for the word that each writes to the UART.
 
 ## Specification
 
