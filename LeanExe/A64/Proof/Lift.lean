@@ -15,7 +15,9 @@ held before and the run wrote no byte to the UART.
 While the MMU is off, a run of the program model with the platform `noMemory` that keeps the
 UART's output lifts by the rule `plain`: such a run executes no system instruction, on which `exec`
 stops, and no load or store, since `noMemory` maps no byte and its only store, to the UART,
-appends to the output.
+appends to the output.  The rule requires a floating-point instruction to run with floating point
+enabled, which firmware need not have done, so the run fetches from `withoutFP code`, the words of
+the code map that decode to no floating-point instruction.
 -/
 
 namespace LeanExe.A64
@@ -124,6 +126,35 @@ theorem Reach.out {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
     obtain ⟨_, _, _, _, he⟩ := step_some hs
     exact (exec_out he).trans ih
 
+/-- The code map `code` without the words that decode to a floating-point instruction. -/
+def withoutFP (code : UInt64 → Option UInt32) (a : UInt64) : Option UInt32 :=
+  match code a with
+  | some w => if (decode w).any Instr.isFP then none else some w
+  | none => none
+
+theorem withoutFP_some {code : UInt64 → Option UInt32} {a : UInt64} {w : UInt32}
+    (h : withoutFP code a = some w) :
+    code a = some w ∧ ∀ i, decode w = some i → i.isFP = false := by
+  unfold withoutFP at h
+  split at h
+  · split at h
+    · cases h
+    · rename_i hc hf
+      obtain rfl := Option.some.inj h
+      refine ⟨hc, fun i hi => ?_⟩
+      rw [hi] at hf
+      simpa using hf
+  · cases h
+
+theorem withoutFP_of {code : UInt64 → Option UInt32} {a : UInt64} {i : Instr}
+    (h : code a = some (encode i)) (hi : i.isFP = false) : withoutFP code a = some (encode i) := by
+  simp [withoutFP, h, decode_encode, hi]
+
+theorem CodeAt.noFP {code : UInt64 → Option UInt32} {a : UInt64} {is : List Instr}
+    (h : CodeAt code a is) (hfp : ∀ i ∈ is, i.isFP = false) :
+    CodeAt (withoutFP code) a is :=
+  fun k hk => withoutFP_of (h k hk) (hfp _ (List.getElem_mem hk))
+
 /-- An instruction that executes with the platform `noMemory` and keeps the UART's output is
 neither a system instruction nor a load or store. -/
 theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s = some t)
@@ -150,15 +181,16 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
     | simp only [exec, reduceCtorEq] at h
 
 /-- While SP_EL1 is the stack pointer and the MMU is off in both copies of `SCTLR_EL1`, a run of
-the program model with the platform `noMemory` that keeps the UART's output is a run of the boot
-model by its rule `plain`, which changes only the core, when the code map's addresses and the
-run's last program counter lie below 2^55. -/
+the program model with the platform `noMemory` and the code map `withoutFP code` that keeps the
+UART's output is a run of the boot model by its rule `plain`, which changes only the core, when the
+code map's addresses and the run's last program counter lie below 2^55. -/
 theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     {b : Boot} (hsp : b.spSel = true) (hoff : b.mmuOff) {c : State}
-    (hr : Reach noMemory code b.core c) (ho : c.out = b.core.out) (hend : c.pc.toNat < 2 ^ 55) :
+    (hr : Reach noMemory (withoutFP code) b.core c) (ho : c.out = b.core.out)
+    (hend : c.pc.toNat < 2 ^ 55) :
     BootReach h R code b { b with core := c } := by
-  suffices H : ∀ s, Reach noMemory code s c → c.pc.toNat < 2 ^ 55 → c.out = s.out →
+  suffices H : ∀ s, Reach noMemory (withoutFP code) s c → c.pc.toNat < 2 ^ 55 → c.out = s.out →
       ∀ b' : Boot, b'.core = s → b'.spSel = true → b'.mmuOff →
       BootReach h R code b' { b' with core := c } from
     H _ hr hend ho b rfl hsp hoff
@@ -172,7 +204,8 @@ theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 →
   | @next s t u hs hr ih =>
     intro hend ho b' hb hsp hoff
     subst hb
-    obtain ⟨w, i, hc, hd, he⟩ := step_some hs
+    obtain ⟨w, i, hcw, hd, he⟩ := step_some hs
+    obtain ⟨hc, hfp⟩ := withoutFP_some hcw
     have hst := exec_out he
     have ht : t.out = b'.core.out := (hst.eq_of_length (by
       have h1 := hst.length_le
@@ -185,8 +218,9 @@ theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 →
       | refl => exact hend
       | next hs' _ =>
         obtain ⟨w', _, hc', _, _⟩ := step_some hs'
-        exact hdom _ _ hc'
-    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm (.inl rfl) he (.inl hpc))
+        exact hdom _ _ (withoutFP_some hc').1
+    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm (.inl (hfp i hd)) he
+      (.inl hpc))
       (ih hend (by rw [ho, ht]) { b' with core := t } rfl hsp hoff)
 
 /-- A run keeps every byte that its platform does not map as Normal memory. -/

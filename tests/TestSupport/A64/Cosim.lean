@@ -3,15 +3,15 @@ import LeanExe.A64.Encode
 /-!
 The co-simulation of the AArch64 model of `LeanExe/A64/Machine.lean` against QEMU and the
 processor.  `harness` writes an assembly file of cases, each an instruction of one of the model's
-forms with a state drawn from SplitMix64: the registers, the stack pointer, the flags, and a
-window of 64 bytes of memory.  The file's `main` runs every case on QEMU's `virt` machine under
-the startup code of `tools/baremetal/start.S` and then calls `cosim_print` of
-`tests/baremetal/a64cosim.c`, which prints each case's state before and after its instruction.
-A case copies its window into `cosim_win`, adds the window's address to the registers that
-address memory, sets the target register of a `RET` to the address of a landing pad, loads the
-state, and runs the instruction's word, which `encode` gives.  The 16 words on each side of the
-instruction branch to landing code that records which word execution reached, so a case
-observes the program counter after a branch as well as after any other instruction.  `check`
+forms with a state drawn from SplitMix64: the registers, the floating-point registers D0 to D31,
+the stack pointer, the flags, and a window of 64 bytes of memory.  The file's `main` runs every
+case on QEMU's `virt` machine under the startup code of `tools/baremetal/start.S` and then calls
+`cosim_print` of `tests/baremetal/a64cosim.c`, which prints each case's state before and after its
+instruction.  A case copies its window into `cosim_win`, adds the window's address to the
+registers that address memory, sets the target register of a `RET` to the address of a landing
+pad, loads the state, and runs the instruction's word, which `encode` gives.  The 16 words on each
+side of the instruction branch to landing code that records which word execution reached, so a
+case observes the program counter after a branch as well as after any other instruction.  `check`
 reads the printed lines, runs `exec` on each printed state before the instruction, with the
 instruction's address as the program counter and the window as the only Normal memory, and
 compares the result with the printed state after it.
@@ -42,6 +42,23 @@ def below (n : Nat) : Gen Nat := do
 def fin (n : Nat) (h : 0 < n := by decide) : Gen (Fin n) := do
   return ⟨(← below n) % n, Nat.mod_lt _ h⟩
 
+/-- The word of a double, with zeros, infinities, quiet NaNs with and without a payload, signaling
+NaNs, subnormals, the largest and smallest normals, and 1.0, each with either sign, weighted. -/
+def fpValue : Gen UInt64 := do
+  let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+  match ← below 12 with
+  | 0 => return sign
+  | 1 => return sign ||| 0x7FF0000000000000
+  | 2 => return sign ||| 0x7FF8000000000000
+  | 3 => return sign ||| 0x7FF8000000000000 ||| ((← word) &&& 0x7FFFFFFFFFFFF)
+  | 4 => return sign ||| 0x7FF0000000000000 ||| ((← word) &&& 0x7FFFFFFFFFFFF) ||| 1
+  | 5 => return sign ||| 1
+  | 6 => return sign ||| ((← word) &&& 0xFFFFFFFFFFFFF)
+  | 7 => return sign ||| 0x7FEFFFFFFFFFFFFF
+  | 8 => return sign ||| 0x3FF0000000000000
+  | 9 => return sign ||| 0x0010000000000000
+  | _ => word
+
 /-- A register value, with the boundary values of signed and unsigned arithmetic weighted. -/
 def value : Gen UInt64 := do
   match ← below 10 with
@@ -65,13 +82,14 @@ def offset : Gen Int := do
 /-- The bytes of the memory window. -/
 def windowSize : Nat := 64
 
-/-- A case: the instruction, the 31 registers, the stack pointer, NZCV in bits 31 to 28, and the
-window's bytes, before the harness's changes; the registers, 31 for the stack pointer, to which
-the harness adds the window's address; and a register that the harness sets to the address of
-the landing word at an offset. -/
+/-- A case: the instruction, the 31 registers, the 32 floating-point registers, the stack pointer,
+NZCV in bits 31 to 28, and the window's bytes, before the harness's changes; the registers, 31 for
+the stack pointer, to which the harness adds the window's address; and a register that the harness
+sets to the address of the landing word at an offset. -/
 structure Case where
   instr : Instr
   regs : Array UInt64
+  dregs : Array UInt64
   sp : UInt64
   nzcv : UInt64
   win : Array UInt8
@@ -80,7 +98,7 @@ structure Case where
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
 in the order of `Instr`. -/
-def formCount : Nat := 30
+def formCount : Nat := 38
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -98,12 +116,15 @@ def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
     regs := regs.push (← value)
+  let mut dregs := #[]
+  for _ in [0:32] do
+    dregs := dregs.push (← fpValue)
   let sp ← value
   let nzcv := ((← word) >>> 60) <<< 28
   let mut win := #[]
   for _ in [0:windowSize] do
     win := win.push (← word).toUInt8
-  let c : Case := { instr := .ret 30, regs, sp, nzcv, win }
+  let c : Case := { instr := .ret 30, regs, dregs, sp, nzcv, win }
   match form with
   | 0 => return { c with instr := .movz (← fin 32) (← fin 65536) (← fin 4) }
   | 1 => return { c with instr := .movk (← fin 32) (← fin 65536) (← fin 4) }
@@ -161,7 +182,15 @@ def genCase (form : Nat) : Gen Case := do
   | 26 => return { c with instr := .orrW (← fin 32) (← fin 32) (← fin 32) }
   | 27 => return { c with instr := .bcond (← fin 16) (field19 (← offset)) }
   | 28 => return { c with instr := .adr (← fin 32) (← fin 4) (← fin 524288) }
-  | _ => return { c with instr := .adrp (← fin 32) (← fin 4) (← fin 524288) }
+  | 29 => return { c with instr := .adrp (← fin 32) (← fin 4) (← fin 524288) }
+  | 30 => return { c with instr := .fmovDX (← fin 32) (← fin 32) }
+  | 31 => return { c with instr := .fmovXD (← fin 32) (← fin 32) }
+  | 32 => return { c with instr := .fadd (← fin 32) (← fin 32) (← fin 32) }
+  | 33 => return { c with instr := .fsub (← fin 32) (← fin 32) (← fin 32) }
+  | 34 => return { c with instr := .fmul (← fin 32) (← fin 32) (← fin 32) }
+  | 35 => return { c with instr := .fdiv (← fin 32) (← fin 32) (← fin 32) }
+  | 36 => return { c with instr := .fsqrt (← fin 32) (← fin 32) }
+  | _ => return { c with instr := .ucvtf (← fin 32) (← fin 32) }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 
@@ -183,12 +212,15 @@ def caseAsm (k : Nat) (c : Case) : List String × List String :=
     | none => []
   let loads := (List.range 15).map fun p => s!"  ldp x{2 * p}, x{2 * p + 1}, [x30, #{16 * p}]"
   let saves := (List.range 15).map fun p => s!"  stp x{2 * p}, x{2 * p + 1}, [x30, #{16 * p}]"
+  let dloads := (List.range 16).map fun p =>
+    s!"  ldp d{2 * p}, d{2 * p + 1}, [x30, #{264 + 16 * p}]"
+  let dsaves := (List.range 16).map fun p => s!"  stp d{2 * p}, d{2 * p + 1}, [x1, #{16 * p}]"
   let code :=
     [l "start:", s!"  ldr x0, ={l "win"}", "  ldr x1, =cosim_win", s!"  mov x2, #{windowSize}",
       "1:", "  ldrb w3, [x0], #1", "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
       s!"  ldr x30, ={l "in"}"] ++ patches ++ padPatch ++
     ["  ldr x0, [x30, #256]", "  msr nzcv, x0", "  ldr x0, [x30, #248]", "  mov sp, x0"] ++
-    loads ++ ["  ldr x30, [x30, #240]", s!"  b {l "test"}"] ++
+    loads ++ dloads ++ ["  ldr x30, [x30, #240]", s!"  b {l "test"}"] ++
     ((List.range padRange).map fun id => s!"{pad id}: b {land id}") ++
     [s!"{l "test"}: .inst {hex (encode c.instr).toNat}"] ++
     ((List.range padRange).map fun i =>
@@ -201,15 +233,17 @@ def caseAsm (k : Nat) (c : Case) : List String × List String :=
     ["  mrs x0, tpidr_el1", "  str x0, [x30, #240]", "  mov x0, sp", "  str x0, [x30, #248]",
       "  mrs x0, nzcv", "  str x0, [x30, #256]", "  mrs x0, tpidrro_el0", "  str x0, [x30, #264]",
       s!"  ldr x0, ={l "test"}", "  str x0, [x30, #272]", "  ldr x0, =cosim_win",
-      "  str x0, [x30, #280]", "  add x1, x30, #288", s!"  mov x2, #{windowSize}", "1:",
-      "  ldrb w3, [x0], #1", "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
+      "  str x0, [x30, #280]", s!"  add x1, x30, #{288 + windowSize}"] ++ dsaves ++
+      ["  add x1, x30, #288", s!"  mov x2, #{windowSize}", "1:", "  ldrb w3, [x0], #1",
+      "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
       "  ldr x0, =cosim_sp", "  ldr x0, [x0]", "  mov sp, x0", s!"  b {l "end"}", "  .ltorg",
       s!"{l "end"}:"]
   let data :=
     ["  .balign 8", s!"{l "in"}:"] ++
-    ((c.regs.toList ++ [c.sp, c.nzcv]).map fun v => s!"  .quad {hex v.toNat}") ++
+    ((c.regs.toList ++ [c.sp, c.nzcv] ++ c.dregs.toList).map fun v =>
+      s!"  .quad {hex v.toNat}") ++
     [s!"{l "win"}:", "  .byte " ++ ", ".intercalate (c.win.toList.map fun b => hex b.toNat),
-      "  .balign 8", s!"{l "out"}:", s!"  .skip {288 + windowSize}"]
+      "  .balign 8", s!"{l "out"}:", s!"  .skip {288 + windowSize + 256}"]
   (code, data)
 
 /-- The harness of `perForm` cases of each form from the seed `seed`. -/
@@ -226,16 +260,19 @@ def harness (seed : UInt64) (perForm : Nat) : String := Id.run do
   let table (name suffix : String) :=
     [s!"  .global {name}", s!"{name}:"] ++
       (List.range n).map fun k => s!"  .quad a64c{k}_{suffix}"
-  let saved := (List.range 6).map fun p => s!"  stp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]"
-  let restored := (List.range 6).map fun p =>
-    s!"  ldp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]"
+  let saved := (List.range 6).map (fun p =>
+      s!"  stp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]") ++
+    (List.range 4).map fun p => s!"  stp d{8 + 2 * p}, d{9 + 2 * p}, [x9, #{96 + 16 * p}]"
+  let restored := (List.range 6).map (fun p =>
+      s!"  ldp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]") ++
+    (List.range 4).map fun p => s!"  ldp d{8 + 2 * p}, d{9 + 2 * p}, [x9, #{96 + 16 * p}]"
   let lines :=
     ["  .text", "  .global main", "main:", "  ldr x9, =cosim_saved"] ++ saved ++
     ["  mov x10, sp", "  ldr x11, =cosim_sp", "  str x10, [x11]"] ++
     parts.flatMap (·.1) ++
     ["  ldr x9, =cosim_saved"] ++ restored ++ ["  b cosim_print", "  .ltorg",
       "  .data", "  .balign 16", "cosim_win:", s!"  .skip {windowSize}", "cosim_sp:", "  .quad 0",
-      "cosim_saved:", "  .skip 96", "  .balign 8", "  .global cosim_count", "cosim_count:",
+      "cosim_saved:", "  .skip 160", "  .balign 8", "  .global cosim_count", "cosim_count:",
       s!"  .quad {n}"] ++
     table "cosim_in" "in" ++ table "cosim_out" "out" ++ table "cosim_inwin" "win" ++
     parts.flatMap (·.2)
@@ -261,7 +298,7 @@ def parseBytes (s : String) : Option (Array UInt8) := do
 printed state after it, or the reason that the line cannot be checked. -/
 def checkLine (line : String) : Except String (List String) := do
   let toks := (line.splitOn " ").filter (· ≠ "") |>.toArray
-  if toks.size ≠ 74 then throw s!"a line of {toks.size} fields"
+  if toks.size ≠ 138 then throw s!"a line of {toks.size} fields"
   let num (i : Nat) : Except String Nat :=
     match parseHex toks[i]! with
     | some v => pure v
@@ -277,12 +314,14 @@ def checkLine (line : String) : Except String (List String) := do
   let outWin ← match parseBytes toks[73]! with
     | some b => pure b
     | none => throw "the window after is not hexadecimal"
+  let inD ← (List.range 32).mapM fun i => do return UInt64.ofNat (← num (74 + i))
+  let outD ← (List.range 32).mapM fun i => do return UInt64.ofNat (← num (106 + i))
   let instr ← match decodeNat w with
     | some i => pure i
     | none => throw s!"the word {hex w} decodes to no form"
   let nzcv := inRegs[32]!
   let s : State :=
-    { regs := fun r => inRegs[r.val]!, sp := inRegs[31]!, pc := p,
+    { regs := fun r => inRegs[r.val]!, dregs := fun r => inD[r.val]!, sp := inRegs[31]!, pc := p,
       nFlag := (nzcv >>> 31) &&& 1 == 1, zFlag := (nzcv >>> 30) &&& 1 == 1,
       cFlag := (nzcv >>> 29) &&& 1 == 1, vFlag := (nzcv >>> 28) &&& 1 == 1,
       mem := fun a => if a - winAddr < UInt64.ofNat windowSize then inWin[(a - winAddr).toNat]!
@@ -304,7 +343,11 @@ def checkLine (line : String) : Except String (List String) := do
         let want := t.mem (winAddr + UInt64.ofNat i)
         if want = outWin[i]! then none
         else some s!"byte {i} {hex outWin[i]!.toNat}, model {hex want.toNat}"
-      return regDiffs ++
+      let dDiffs := (List.range 32).filterMap fun r =>
+        let want := t.dregs ⟨r % 32, Nat.mod_lt _ (by decide)⟩
+        if want = outD[r]! then none
+        else some s!"d{r} {hex outD[r]!.toNat}, model {hex want.toNat}"
+      return regDiffs ++ dDiffs ++
         (if t.sp = outRegs[31]! then [] else
           [s!"sp {hex outRegs[31]!.toNat}, model {hex t.sp.toNat}"]) ++
         (if UInt64.ofNat (flags * 0x10000000) = outRegs[32]! then [] else

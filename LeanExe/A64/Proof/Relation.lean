@@ -187,6 +187,23 @@ theorem x_setX_ne {s : State} {r q : Fin 32} {v : UInt64} (h : r ≠ q) :
 @[simp] theorem setX_pc {s : State} {r : Fin 32} {v : UInt64} : (s.setX r v).pc = s.pc := by
   unfold setX; split <;> rfl
 
+@[simp] theorem x_setD {s : State} {r q : Fin 32} {v : UInt64} : (s.setD r v).x q = s.x q := rfl
+
+@[simp] theorem setD_sp {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).sp = s.sp := rfl
+
+@[simp] theorem setD_mem {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).mem = s.mem := rfl
+
+@[simp] theorem setD_out {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).out = s.out := rfl
+
+@[simp] theorem setD_pc {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).pc = s.pc := rfl
+
+theorem dregs_setD_same (s : State) (r : Fin 32) (v : UInt64) : (s.setD r v).dregs r = v := by
+  simp [setD]
+
+theorem dregs_setD_ne (s : State) {r q : Fin 32} (v : UInt64) (h : q ≠ r) :
+    (s.setD r v).dregs q = s.dregs q := by
+  simp [setD, h]
+
 end State
 
 end LeanExe.A64

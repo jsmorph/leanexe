@@ -7,8 +7,10 @@ import LeanExe.A64.Proof.Table
 The run of an image's entry and the startup's first part in the boot model: the header's
 `MSR SPSel, #1` and its branch to the startup, then the startup's instructions 0 to 42, which end
 with the `ISB` that puts the MMU's enable in effect.  While the MMU is off every fetch succeeds,
-`bootReach_of_reach_off` lifts the program model's runs of the instructions that touch no memory,
-among them `addrOf` and `movImm`, and `boot_plain` takes a single such step, such as a `MOVZ`.
+`bootReach_of_reach_off` lifts the program model's runs of the instructions that touch no memory
+and no floating-point register, among them `addrOf` and `movImm`, from the code map that
+`withoutFP` restricts to such instructions, and `boot_plain` takes a single such step, such as a
+`MOVZ`.
 `OffAt` collects what the system instructions of this part keep: SP_EL1, the MMU off, the memory,
 SP, and the UART's output.
 
@@ -27,6 +29,18 @@ open Wasm
 
 variable {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
 
+theorem addrOf_noFP {d : Fin 32} {here target : UInt64} {is : List Instr}
+    (hg : addrOf d here target = .ok is) : ∀ i ∈ is, i.isFP = false := by
+  obtain ⟨_, _, _, _, rfl⟩ := addrOf_ok hg
+  intro i hi
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hi
+  rcases hi with rfl | rfl <;> rfl
+
+theorem movImm_noFP (d : Fin 32) (v : UInt64) : ∀ i ∈ movImm d v, i.isFP = false := by
+  intro i hi
+  simp only [movImm, List.mem_cons, List.not_mem_nil, or_false] at hi
+  rcases hi with rfl | rfl | rfl | rfl <;> rfl
+
 /-- With the MMU off, `addrOf`'s two instructions at `here` are two steps of the boot model by its
 rule `plain`, which set register `d`, below 31, to the target and keep the other registers, SP,
 the memory, and the output, when the code map's addresses and the next address lie below
@@ -39,7 +53,8 @@ theorem boot_addrOf (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : 
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after here 2 ∧ c.x d = target ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
       c.out = b.core.out := by
-  obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_addrOf noMemory code hg hd hc hpc
+  obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_addrOf noMemory (withoutFP code) hg hd
+    (hc.noFP (addrOf_noFP hg)) hpc
   exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
     hm, ho⟩
 
@@ -54,7 +69,8 @@ theorem boot_movImm (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : 
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after a 4 ∧ c.x d = v ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
       c.out = b.core.out := by
-  obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_movImm noMemory code hd hcode hpc
+  obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_movImm noMemory (withoutFP code) hd
+    (hcode.noFP (movImm_noFP d v)) hpc
   exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
     hm, ho⟩
 
@@ -219,7 +235,7 @@ theorem OffAt.movz {b0 b : Boot} {a : UInt64} {k : Nat} {w : Sys} {d : Fin 32}
     rw [hpc, ← after_succ]
   refine ⟨{ b with core := c },
     hb.trans (.single (boot_plain (i := .movz d imm hw) (c := c) (by rw [hpc]; exact hc) hsp hoff
-      rfl rfl rfl (by rw [hp]; exact hn))),
+      rfl rfl rfl rfl (by rw [hp]; exact hn))),
     ⟨hp, hsp, hoff, hwb, ?_, ?_, ?_⟩, State.x_setX_same hd⟩
   · show (b.core.setX d _).mem = _
     rw [State.setX_mem]
@@ -292,7 +308,7 @@ theorem OffAt.mmuOn (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b0 b
     rw [p35, ← after_succ]
   have s35 : BootStep h R code b35 b36 :=
     boot_plain (i := .movz 1 0x200 1) (c := b36.core) (by rw [p35]; exact h35) hsp off33 rfl rfl
-      rfl (by rw [p36]; exact hdom _ _ h36)
+      rfl rfl (by rw [p36]; exact hdom _ _ h36)
   have hacc : b.written.fpAccess = true := Sys.fpAccess_of_cpacr hcp
   let wf : Sys := { b.written with fpcr := fpcrValue }
   let b37 : Boot := { b36 with core := { b36.core with pc := b36.core.pc + 4 }, written := wf }
@@ -434,7 +450,7 @@ theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {
       show (4 : UInt64) + sext 26 (15 : Fin 67108864).val * 4 = 64 by decide]
   obtain ⟨b1, r1, o1⟩ : ∃ b1, BootReach h R code b b1 ∧ OffAt b (after s 0) b.written b1 :=
     ⟨_, .next (boot_sys (i := .spsel1) (by rw [hpc]; exact hh0) (.inr rfl) hoff rfl)
-      (.single (boot_plain (i := .b 15) (by rw [hpc]; exact hh1) rfl hoff rfl rfl
+      (.single (boot_plain (i := .b 15) (by rw [hpc]; exact hh1) rfl hoff rfl rfl rfl
         (congrArg (fun p : UInt64 => some ({ b.core with pc := p } : State)) e64)
         (by rw [← after_zero s]; exact hlt 0 (by decide)))),
       (after_zero s).symm, rfl, hoff, rfl, rfl, rfl, rfl⟩
@@ -443,8 +459,10 @@ theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {
   have e48 : UInt64.ofNat (0x30 : Fin 65536).val <<< UInt64.ofNat (16 * (1 : Fin 4).val) =
       cpacrValue := by decide
   obtain ⟨b2, r2, o2, x2⟩ := OffAt.mrs r1 o1 (by decide) c0 rfl
-  obtain ⟨d3, q3, p3, sp3, m3, out3⟩ := run_checkEL (P := noMemory) c1 c2 c3 o2.pc x2
-  obtain ⟨d5, q5, p5, x5, -, sp5, m5, out5⟩ := run_addrOf noMemory code hvec (by decide) cv p3
+  obtain ⟨d3, q3, p3, sp3, m3, out3⟩ := run_checkEL (P := noMemory) (code := withoutFP code)
+    (withoutFP_of c1 rfl) (withoutFP_of c2 rfl) (withoutFP_of c3 rfl) o2.pc x2
+  obtain ⟨d5, q5, p5, x5, -, sp5, m5, out5⟩ := run_addrOf noMemory (withoutFP code) hvec
+    (by decide) (cv.noFP (addrOf_noFP hvec)) p3
   obtain ⟨r5, o5⟩ := OffAt.core r2 o2
     (bootReach_of_reach_off hdom o2.spSel o2.off (q3.trans q5) (out5.trans out3)
       (by rw [p5.trans (after_after _ _ _)]; exact hlt _ (by decide)))
@@ -489,7 +507,8 @@ theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {
     rfl (by rw [x25]; rfl) hS
   obtain ⟨b27, r27, o27, x27⟩ := OffAt.mrs r26 o26 (by decide) c27 rfl
   obtain ⟨d30, q30, p30, sp30, m30, out30⟩ :=
-    run_mmfr3 (P := noMemory) c28 c29 c30 hskip o27.pc
+    run_mmfr3 (P := noMemory) (code := withoutFP code) (withoutFP_of c28 rfl)
+      (withoutFP_of c29 rfl) (withoutFP_of c30 rfl) hskip o27.pc
   rw [x27] at p30
   obtain ⟨r30, o30⟩ := OffAt.core r27 o27
     (bootReach_of_reach_off hdom o27.spSel o27.off q30 out30
