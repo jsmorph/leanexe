@@ -3,6 +3,7 @@ import TestSupport.Bare.Programs
 import TestSupport.A64.CicTable
 import Verified.Examples.Fold
 import Demos.Euler.Verified
+import Library.Numerics.Float64.Exp.Compiled
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
@@ -12,9 +13,11 @@ The bare-metal programs of the AArch64 back end, the counterparts of the program
 CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array,
 Fold's recursion of depth 1000, and the Euler solver on a grid of 4 by 4 cells, whose result is the
 array that `Demos.Euler.Buffered.solve 4` packs, together with the CIC decimation filter of
-`TestSupport.A64.Cic` on its table of 64 samples, whose result is the array of its 8 outputs.  Each
-program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room` and
-the memory's cap `cap`.
+`TestSupport.A64.Cic` on its table of 64 samples, whose result is the array of its 8 outputs, and
+the exponential `Exp.exp` of `Library.Numerics.Float64.Exp` on 1 and on -740, whose result is
+subnormal and whose run takes the branch of `specialCase` that compares the scaled result with 1 and
+with 0.  Each program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's
+room `room` and the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
@@ -68,6 +71,14 @@ def programs : List Program := [
     bytes := LeanExe.Native.encodeArray (Demos.Euler.Buffered.solve 4) },
   { name := "cic", module := TestSupport.A64.Cic.compiled.module, entry := 7
     args := [64], output := .array
-    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Cic.cicCheck 64) }]
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Cic.cicCheck 64) },
+  { name := "exp1", module := Library.Numerics.Float64.Exp.compiled.module, entry := 5
+    args := [0x3FF0000000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Exp.exp (Float.ofBits 0x3FF0000000000000)).toBits },
+  { name := "expsub", module := Library.Numerics.Float64.Exp.compiled.module, entry := 5
+    args := [0xC087200000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Exp.exp (Float.ofBits 0xC087200000000000)).toBits }]
 
 end TestSupport.A64
