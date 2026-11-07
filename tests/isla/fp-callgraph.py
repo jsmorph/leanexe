@@ -2,15 +2,16 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Checks, over the call graph of Isla's IR, the readings on which the abstract floating-point
-calls of the traces of tests/isla rest.  The traces of the floating-point forms leave FPAdd64,
-FPSub64, FPMul64, FPDiv64, FPSqrt64, FixedToFP64, and FPToFixed64 abstract
-(tests/isla/armv9p4-checked-fp.diff), and a theorem of tests/TestSupport/A64/Isla takes as a
-hypothesis that each call returns the reference interpreter's function of its arguments.  That
-reading needs the original functions FPAdd, FPSub, FPMul, FPDiv, FPSqrt, FixedToFP, and FPToFixed,
-which the wrappers call, to return without a Sail exception, to compute their result from their
-arguments and from registers that the configuration fixes and the instruction does not change, and
-to write no register but FPSR, which the theorems list among the registers that a form changes.
+"""Checks, over the call graph of Isla's IR, the readings on which the abstract floating-point calls
+of the traces of tests/isla rest.  The traces of the floating-point forms leave FPAdd64, FPSub64,
+FPMul64, FPDiv64, FPSqrt64, FixedToFP64, and FPToFixed64 abstract
+(tests/isla/armv9p4-checked-fp.diff), and FPCompare, whose result has 4 bits at every width, and a
+theorem of tests/TestSupport/A64/Isla takes as a hypothesis that each call returns the reference
+interpreter's function of its arguments.  That reading needs the original functions FPAdd, FPSub,
+FPMul, FPDiv, FPSqrt, FixedToFP, and FPToFixed, which the wrappers call, and FPCompare to return
+without a Sail exception, to compute their result from their arguments and from registers that the
+configuration fixes and the instruction does not change, and to write no register but FPSR, which
+the theorems list among the registers that a form changes.
 
 For each function, the script follows the statements that the function's entry reaches, and the
 functions that those statements call, without the edges of PRUNED and the branches that KNOWN
@@ -49,7 +50,8 @@ a summary for each function and exits with status 1 if a check fails.
 import re
 import sys
 
-ROOTS = ['zFPAdd', 'zFPSub', 'zFPMul', 'zFPDiv', 'zFPSqrt', 'zFixedToFP', 'zFPToFixed']
+ROOTS = ['zFPAdd', 'zFPSub', 'zFPMul', 'zFPDiv', 'zFPSqrt', 'zFixedToFP', 'zFPToFixed',
+         'zFPCompare']
 
 # (function, statement index of a jump, target, reason): the edges that the docstring lists.
 PRUNED = [
