@@ -594,11 +594,12 @@ def mainCode (main : UInt64) (counts : List (Form × Nat)) : GenM (List Instr) :
     code := code ++ body ++ [.bcond 1 back]
   return code ++ [.movz 0 0 0, .ret 30]
 
-/-- The Image of the vectors' words `data` with `counts` vectors of each form, at `imageBase`,
-and the offset of the words in the file. -/
-def image (data : ByteArray) (counts : List (Form × Nat)) : GenM (ByteArray × Nat) := do
+/-- The Image at `imageBase` whose program, after the startup and its exit word, is `prog main`
+for the address `main` of its first instruction, with the words `data` at the area, and the offset
+of the words in the file. -/
+def imageWith (prog : UInt64 → GenM (List Instr)) (data : ByteArray) : GenM (ByteArray × Nat) := do
   let base := imageBase + UInt64.ofNat (64 + 4 * startupLength)
-  let prog ← mainCode (base + 4) counts
+  let prog ← prog (base + 4)
   let vec := roundUp (64 + 4 * (startupLength + 1) + 4 * prog.length) 2048
   let tab := vec + 2048
   let ar := roundUp (tab + 32) 4096
@@ -616,6 +617,11 @@ def image (data : ByteArray) (counts : List (Form × Nat)) : GenM (ByteArray × 
   let head := imageHeader top ++ code ++ List.replicate (vec - 64 - code.length) 0 ++
     vectorBytes ++ tableBytes ++ List.replicate (ar - tab - 32) 0
   return (ByteArray.mk head.toArray ++ data, ar)
+
+/-- The Image of the vectors' words `data` with `counts` vectors of each form, at `imageBase`,
+and the offset of the words in the file. -/
+def image (data : ByteArray) (counts : List (Form × Nat)) : GenM (ByteArray × Nat) :=
+  imageWith (fun main => mainCode main counts) data
 
 /-! ## The check -/
 

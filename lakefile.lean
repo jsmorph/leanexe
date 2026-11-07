@@ -51,6 +51,12 @@ lean_exe «a64-fpvectors» where
   srcDir := "tests"
   root := `TestSupport.A64.FpVectorsMain
 
+-- The exhaustive test of the single-precision forms (tests/baremetal/a64-fpexhaust.sh); not a
+-- default target.
+lean_exe «a64-fpexhaust» where
+  srcDir := "tests"
+  root := `TestSupport.A64.FpExhaustMain
+
 -- The comparison of the Cortex-M7 encoder with the GNU assembler (tests/baremetal/m7-encode.sh)
 -- and the co-simulation of the Cortex-M7 model (tests/baremetal/m7-cosim.sh); not default
 -- targets.
