@@ -230,6 +230,33 @@ def absCode (r : Fin 32) : List Instr := [.addReg r r r, .lsrImm r r 1]
 back. -/
 def convertCode (r : Fin 32) : List Instr := [.ucvtf 0 r, .fmovXD r 0]
 
+/-- The code of the f32 operation `op` on the low 32 bits of registers `x` and `y` into `x`: the
+words into S0 and S1, `op` into S0, and S0's word into `x`, zero-extended. -/
+def fBin32 (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr :=
+  [.fmovSW 0 x, .fmovSW 1 y, op 0 0 1, .fmovWS x 0]
+
+/-- The code of an f32 comparison of the low 32 bits of registers `x` and `y` into `x`: the words
+into S0 and S1, `FCMP S0, S1`, and `CSINC x, XZR, XZR, c`. -/
+def fCmp32 (c : Fin 16) (x y : Fin 32) : List Instr :=
+  [.fmovSW 0 x, .fmovSW 1 y, .fcmpS 0 1, .csinc x 31 31 c]
+
+/-- The code of the f32 operation `op` of one S register on register `r`: its word into S0, `op`
+in S0, and S0's word back. -/
+def unCode32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr :=
+  [.fmovSW 0 r, op 0 0, .fmovWS r 0]
+
+/-- The code of `f32Abs` on register `r`: the word doubled, which moves the sign bit to bit 32,
+its low 32 bits, which drop it, and the shift back. -/
+def absCode32 (r : Fin 32) : List Instr := [.addReg r r r, .orrW r 31 r, .lsrImm r r 1]
+
+/-- The code of a conversion `op` of a general register to an S register, on register `r`: `op`
+of `r` into S0, and S0's word back. -/
+def toS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [op 0 r, .fmovWS r 0]
+
+/-- The code of a conversion `op` of an S register to a general register, on register `r`: its
+word into S0, and `op` of S0 into `r`. -/
+def ofS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [.fmovSW 0 r, op r 0]
+
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
 `ar` values, the innermost first, for calls of functions whose numbers of parameters and results
