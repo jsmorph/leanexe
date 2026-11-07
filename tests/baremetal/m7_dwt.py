@@ -19,6 +19,12 @@ the count, the least, the most, and the mean of the cycles, with the instruction
 counts for that kind (tests/TestSupport/M7/Windows.lean) plus the
 five instructions of the measurement.
 
+"m7_dwt.py gateway RESULTS" reads the window table of gwDwt and prints the same for each kind of
+the gateway's windows, with the range of the tick's instructions over the day of
+Demos/Energy/board-day/gateway1440.records.in, and marks the kinds whose most cycles exceed
+16,667, half a byte's time at 4,800 baud at 16 MHz.  The table's keys are the phase plus 4 when
+the byte count is 7, before and after the window.
+
 "m7_dwt.py bootlog LOG" prints the boot log: each reset's RCC_CSR flags.
 
 Each command exits with status 1 when the results are malformed or a quotient is wrong.
@@ -40,6 +46,24 @@ ECHO_KINDS = {
     (3, 0): ("sent", 355),
 }
 MEAS = 5
+
+# The model's instruction counts of the gateway's windows, from the loop's head to the loop's head
+# (tests/TestSupport/M7/Windows.lean), over the day of gateway1440.records.in, by the phase and
+# whether the byte count is 7 before the window and the phase after it, with the 8 instructions of
+# udivmod64's high path in tx.
+GW_KINDS = {
+    (0, 0, 0): ("idle", 2501), (0, 1, 0): ("idle", 2501),
+    (0, 0, 1): ("rxne", 2500), (0, 1, 1): ("rxne", 2500),
+    (1, 0, 0): ("byte", 2936),
+    (1, 1, 0): ("word", 3643),
+    (1, 1, 2): ("tick", (11614, 29962)),
+    (2, 0, 2): ("txwait", 3300), (2, 1, 2): ("txwait", 3300),
+    (2, 0, 3): ("tx", 3401 + 8), (2, 1, 3): ("tx", 3401 + 8),
+    (3, 0, 2): ("sent", 3367),
+    (3, 1, 2): ("sentword", 3700),
+    (3, 1, 0): ("sentrecord", 3689),
+}
+HALF_BYTE = 16667
 
 FLAGS = [(31, "LPWR"), (30, "WWDG"), (29, "IWDG"), (28, "SFT"), (27, "POR"), (26, "PIN"),
          (25, "BOR")]
@@ -144,6 +168,33 @@ def echo(path):
     return status
 
 
+def gateway(path):
+    w = words(path)
+    status = 0
+    kinds = {}
+    for key in range(64):
+        count, least, most, lo, hi = w[4 + 8 * key: 9 + 8 * key]
+        if count == 0:
+            continue
+        before, after = key >> 3, key & 7
+        kind = GW_KINDS.get((before & 3, before >> 2, after & 3))
+        if kind is None:
+            print(f"m7_dwt: {path}: {count} windows with the keys {before} and {after}")
+            status = 1
+            continue
+        k = kinds.setdefault(kind[0], [0, None, 0, 0, kind[1]])
+        k[0] += count
+        k[1] = least if k[1] is None else min(k[1], least)
+        k[2] = max(k[2], most)
+        k[3] += lo | hi << 32
+    print("window, count, least, most, mean cycles, model instructions plus the measurement's")
+    for name, (count, least, most, total, ins) in kinds.items():
+        model = f"{ins[0] + MEAS} to {ins[1] + MEAS}" if isinstance(ins, tuple) else ins + MEAS
+        over = f"  above {HALF_BYTE}" if most > HALF_BYTE else ""
+        print(f"  {name:10} {count:9} {least:6} {most:6} {total / count:9.1f}  {model}{over}")
+    return status
+
+
 def bootlog(path):
     w = words(path)
     if w[0] != 0xB007106E:
@@ -159,10 +210,12 @@ def bootlog(path):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("div", "echo", "bootlog"):
-        print("usage: m7_dwt.py div RESULTS | echo RESULTS | bootlog LOG", file=sys.stderr)
+    commands = {"div": div, "echo": echo, "gateway": gateway, "bootlog": bootlog}
+    if len(sys.argv) != 3 or sys.argv[1] not in commands:
+        print("usage: m7_dwt.py div RESULTS | echo RESULTS | gateway RESULTS | bootlog LOG",
+              file=sys.stderr)
         return 2
-    return {"div": div, "echo": echo, "bootlog": bootlog}[sys.argv[1]](sys.argv[2])
+    return commands[sys.argv[1]](sys.argv[2])
 
 
 if __name__ == "__main__":

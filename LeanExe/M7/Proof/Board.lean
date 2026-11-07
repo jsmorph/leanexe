@@ -9,8 +9,11 @@ len` states that the code map holds the file's bytes in flash, from `0x08000000`
 table at `0x00200000`.  `board_run` states, for every sequence `σ` of the values that device reads
 return and every number `N` of windows, that the model reaches the loop's head of `main` with
 the trace of the initialization followed by the accesses of the first `N` windows, whose reads
-take the values of `σ` after the initialization's `initReads init` reads.  `init_addrs` lists the
-initialization's registers in the order of its accesses, all in RCC, GPIOD, and USART3.
+take the values of `σ` after the initialization's `initReads init` reads, and `board_runs` that
+the run never stops.  `init_addrs` lists the initialization's registers in the order of its
+accesses, all in RCC, GPIOD, and USART3, and `windows_confined` states that every access of the
+windows of a step whose requests name `USART_ISR`, `USART_RDR`, or `USART_TDR` is an access of one
+of those registers.
 
 The theorems hold of the processor under the conditions of the model: a power-on reset, with
 BOOT0 low and BOOT_ADD0 0x0080; software watchdogs, which this board's option bytes select
@@ -95,6 +98,31 @@ theorem init_confined (σ : Nat → UInt32) : ∀ e ∈ initTrace init σ, InitB
   simp only [List.mem_cons, List.mem_nil_iff, or_false] at hm
   rcases hm with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h |
     h | h <;> rw [h] <;> unfold InitBlock <;> decide
+
+theorem event_addr {G : Type} (tick : G → UInt64 → G × UInt64) (σ' : Nat → UInt32)
+    (r : ReqState G) :
+    (reqEvent (devBus devBase) tick σ' r).addr =
+      devBase + UInt32.ofNat (4 * (reqReg (tick r.state r.last).2).toNat) := by
+  unfold reqEvent
+  split <;> rfl
+
+/-- Every access of the windows of a step whose requests name `USART_ISR`, index `0x1207`,
+`USART_RDR`, index `0x1209`, or `USART_TDR`, index `0x120A`, is an access of one of those
+registers. -/
+theorem windows_confined {G : Type} {tick : G → UInt64 → G × UInt64}
+    (hreq : ∀ s v, reqReg (tick s v).2 = 0x1207 ∨ reqReg (tick s v).2 = 0x1209 ∨
+      reqReg (tick s v).2 = 0x120A) (g : G) (σ' : Nat → UInt32) : ∀ N,
+    ∀ e ∈ windows (reqTrace (devBus devBase) tick g σ') N,
+      e.addr = usartIsr ∨ e.addr = usartRdr ∨ e.addr = usartTdr
+  | 0 => fun _ he => absurd he List.not_mem_nil
+  | N + 1 => fun e he => by
+      rw [windows] at he
+      rcases List.mem_append.mp he with h | h
+      · exact windows_confined hreq g σ' N e h
+      · rw [reqTrace, List.mem_singleton] at h
+        rw [h, event_addr]
+        rcases hreq (reqRun tick g σ' N).state (reqRun tick g σ' N).last with h | h | h <;>
+          rw [h] <;> decide
 
 theorem length_windows {α G : Type} (B : Bus α) (tick : G → UInt64 → G × UInt64) (g : G)
     (σ' : Nat → UInt32) : ∀ N, (windows (reqTrace B tick g σ') N).length = N

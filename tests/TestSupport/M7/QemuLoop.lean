@@ -29,12 +29,18 @@ theorem devWindow : DevWindow platform devBase := by
     UInt32.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
   omega
 
-/-- The stack below `main`'s outgoing area of two slots, for the step's bound of 312 bytes. -/
-theorem stackOk (s : State) (h : s.sp = 0x203FFFF0) : StackOk platform stackLimit 2 312 s := by
-  have hs : s.sp.toNat = 0x203FFFF0 := by rw [h]; rfl
+/-- The stack below an outgoing area of `n` slots at the top of SSRAM2 and SSRAM3, for a step that
+needs `need` bytes below it. -/
+theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x400000) (s : State)
+    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s := by
+  have hs : s.sp.toNat = 0x20400000 - 8 * n := by
+    rw [h, UInt32.toNat_sub, UInt32.toNat_ofNat']
+    simp only [stackTop, Nat.reducePow]
+    rw [show (UInt32.toNat 0x20400000) = 0x20400000 from rfl]
+    omega
   have hl : stackLimit.toNat = 0x20000000 := rfl
-  refine ⟨by rw [h]; decide, fun j hj => ram_of ?_ ?_, by omega, by omega, fun j hj => ram_of ?_ ?_,
-    by omega⟩
+  refine ⟨mod4_of_toNat (by rw [hs]; omega), fun j hj => ram_of ?_ ?_, by omega, by omega,
+    fun j hj => ram_of ?_ ?_, by omega⟩
   all_goals
     simp only [UInt32.toNat_add, UInt32.toNat_ofNat', hs, hl, Nat.reducePow] at *
     omega
@@ -112,6 +118,6 @@ theorem echo_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
   exact boot_run (B := boot) (words := fun g : UInt64 => [g]) (fun _ => rfl) (fun _ => rfl)
     reqCompiled.cmsdkTick.implements (fun _ _ _ => trivial) rfl echo_covered.2 devWindow hAt0
     hcap0 (by decide) (by decide) hk hf (by decide) (initRuns σ code) (by decide) (by decide)
-    (fun s hs => by rw [echo_stack.2]; exact stackOk s (by rw [hs]; decide)) 3 rfl b hb N
+    (fun s hs => by rw [echo_stack.2]; exact stackOk (by decide) s hs) 3 rfl b hb N
 
 end TestSupport.M7.Qemu

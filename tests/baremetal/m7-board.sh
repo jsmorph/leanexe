@@ -1,53 +1,67 @@
 #!/usr/bin/env bash
-# The echo of usart3Tick through the Cortex-M7 back end on the NUCLEO-F767ZI.
+# The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
+# usart3Tick, NAME echo, and the energy controller's gateway of gwTickUsart3, NAME gateway.
 #
-# "m7-board.sh check" builds m7-windows and the loop theorem of
-# tests/TestSupport/M7/NucleoLoop.lean, writes with m7-windows board the image that
-# LeanExe/M7/Board.lean lays out, echo.bin, with the addresses of main and of its loop's head in
-# echo.addr, and elaborates tests/TestSupport/M7/NucleoFile.lean in the directory of the image
-# under a memory cap of MEM, 12G unless set, so that the kernel checks that the file holds the
-# image's bytes and the theorems hold of the file.  It requires that each theorem whose axioms
-# that file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound, and
-# reports the check's elapsed time and peak memory.  It also writes the measurement images of
-# tests/TestSupport/M7/Dwt.lean, echo-dwt.bin and div-dwt.bin, which no theorem covers.
+# "m7-board.sh check NAME" builds m7-windows and the loop theorems of
+# tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
+# gateway-board the image that LeanExe/M7/Board.lean lays out, NAME.bin, with the addresses of main
+# and of its loop's head in NAME.addr, and elaborates tests/TestSupport/M7/NucleoFile.lean or
+# GwBoardFile.lean in the directory of the image under a memory cap of MEM, 12G for the echo and
+# 16G for the gateway unless set, so that the kernel checks that the file holds the image's bytes,
+# the gateway's in parts, and the theorems hold of the file.  It requires that each theorem whose
+# axioms that file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound,
+# and reports the check's elapsed time and peak memory.  It also writes the measurement images of
+# tests/TestSupport/M7/Dwt.lean, NAME-dwt.bin and for the echo div-dwt.bin, which no theorem
+# covers.
 #
-# "m7-board.sh emulate" runs echo.bin in Renode on its model of the NUCLEO-F767ZI,
+# "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
 # images.  Renode's model maps the flash at 0x08000000 alone, so the script maps a memory of the
 # flash's size at 0x00200000, the flash's ITCM address, loads the image at both addresses, and sets
 # VTOR to 0x00200000, the address that the board's BOOT_ADD0 names.  USART3 lies on a
-# pseudo-terminal, echo.pty, and a hook at main logs "reached main", which follows the board's
-# initialization; the script then plays the far end through the pseudo-terminal with
-# tests/baremetal/uart_echo.py.  Renode's log, echo.renode, may hold no warning or error other
-# than those of its translation cache and of RCC_DCKCFGR2, at offset 0x90, which its RCC model
-# lacks.
+# pseudo-terminal, NAME.pty, and a hook at main logs "reached main", which follows the board's
+# initialization; the script then plays the far end through the pseudo-terminal as "run" does.
+# Renode's log, NAME.renode, may hold no warning or error other than those of its translation
+# cache and of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks.
 #
-# "m7-board.sh run DEVICE" writes echo.bin to the board's flash at 0x08000000 with st-flash, reads
-# the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a whole
-# number of words, resets the board with st-flash, and plays the far end through the serial port
-# DEVICE, the virtual COM port of the board's ST-LINK, with uart_echo.py, as
-# tests/baremetal/usart3.sh run echo does.  The reset over SWD leaves the debug state that the
-# probe set, which the theorem's power-on premise excludes.
+# "m7-board.sh run NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
+# reads the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a
+# whole number of words, resets the board with st-flash, and plays the far end through the serial
+# port DEVICE, the virtual COM port of the board's ST-LINK.  For the echo,
+# tests/baremetal/uart_echo.py checks each reply, as tests/baremetal/usart3.sh run echo does.  For
+# the gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 1,440 unless set (5 under
+# emulate), of the plant of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless
+# set, checks the commands and the monitoring, and writes the records NAME.records.in and
+# NAME.records.out, and the script then reads USART_ISR over SWD into NAME.isr and requires ORE,
+# bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
+# The reset over SWD leaves the debug state that the probe set, which the theorems' power-on
+# premise excludes.  "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without
+# st-flash, for a run from the power-on reset of a replug after NAME.bin lies in the flash.
 #
 # "m7-board.sh measure-div" writes div-dwt.bin, the measurement image of udivmod64 and UDIV, to the
 # board's flash as "run" does, waits 3 s after the reset, and reads the records and the boot log
 # from DTCM over SWD into div.results and div.bootlog, which tests/baremetal/m7_dwt.py prints and
-# checks.  "m7-board.sh measure-echo DEVICE" writes echo-dwt.bin, the echo with the cycles of each
-# window, runs uart_echo.py through DEVICE as "run" does, and reads the window table and the boot
-# log into echo.results and echo.bootlog.  st-flash attaches with --hot-plug for these reads,
-# which halt the core.
+# checks.  "m7-board.sh measure NAME DEVICE" writes NAME-dwt.bin, the program with the cycles of
+# each window, runs the host script through DEVICE as "run" does, with the gateway's records in
+# NAME-dwt.records.in and NAME-dwt.records.out, and reads the window table and the boot log into
+# NAME-dwt.results and NAME-dwt.bootlog, and for the gateway USART_ISR as "run" does.  st-flash
+# attaches with --hot-plug for these reads, which halt the core.
 #
-# The products lie in OUT, build/baremetal/m7-board unless set: the images, echo.addr, the check's
+# "m7-board.sh compare RECORDS" runs native-bare gateway-run on the input records RECORDS.in into
+# RECORDS.lean and requires that they equal the output records RECORDS.out.  It needs Lean, and
+# the board's runs need the board, so the two run where each is.
+#
+# The products lie in OUT, build/baremetal/m7-board unless set: the images, NAME.addr, the check's
 # output and times, st-flash's messages in IMAGE.flash, and for emulate and run the host script's
-# line echo.echo and the messages of uv in echo.stderr.  RENODE names Renode 1.17.0's renode,
+# line NAME.echo and the messages of uv in NAME.stderr.  RENODE names Renode 1.17.0's renode,
 # STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
 # script in seconds.
-# Usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE | measure-div |
-#          measure-echo DEVICE
+# Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |
+#          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE | measure-div |" \
-    "measure-echo DEVICE" >&2
+  echo "usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |" \
+    "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -57,6 +71,15 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/m7-board}")
 uv=${UV:-uv}
 stflash=${STFLASH:-st-flash}
 timeout=${TIMEOUT:-120}
+series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
+
+# Requires that $1 names a program.
+program() {
+  case $1 in
+    echo|gateway) ;;
+    *) usage ;;
+  esac
+}
 
 # Writes the image $1 of OUT to the board's flash, reads the flash back and compares its first
 # bytes with the file, and resets the board.
@@ -83,79 +106,113 @@ readmem() {
     echo "fail: st-flash read $1: $(tail -c 300 "$out/$1.read")"; return 1; }
 }
 
-# Plays the far end of USART3 through the serial port $1.
-host_run() {
-  if ! "$uv" run "$here/uart_echo.py" --timeout "$timeout" --device "$1" \
-      >"$out/echo.echo" 2>"$out/echo.stderr"; then
-    echo "fail: echo: $(cat "$out/echo.echo" "$out/echo.stderr" | paste -sd' ' | head -c 400)"
+# Reads USART_ISR into $1.isr of OUT and requires ORE, bit 3, clear.
+overrun() {
+  local isr
+  readmem "$1.isr" 0x4000481C 4 || return 1
+  isr=$(od -An -tx4 -N4 "$out/$1.isr" | tr -d ' ')
+  if (( (0x$isr >> 3) & 1 )); then
+    echo "fail: $1: USART_ISR 0x$isr has ORE set"
     return 1
   fi
-  echo "pass: echo: $(cat "$out/echo.echo")"
+  echo "pass: $1: USART_ISR 0x$isr has ORE clear"
+}
+
+# Plays the far end of USART3 for program $1 through the serial port $2, with the gateway's
+# records and the host script's line under the name $3 and the gateway's ticks $4.
+host_run() {
+  local host
+  case $1 in
+    echo) host=(uart_echo.py) ;;
+    gateway)
+      host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
+      rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
+      ;;
+  esac
+  if ! "$uv" run "$here/${host[0]}" --timeout "$timeout" --device "$2" "${host[@]:1}" \
+      >"$out/$3.echo" 2>"$out/$3.stderr"; then
+    echo "fail: $3: $(cat "$out/$3.echo" "$out/$3.stderr" | paste -sd' ' | head -c 400)"
+    return 1
+  fi
+  echo "pass: $3: $(cat "$out/$3.echo")"
 }
 
 case $1 in
   check)
-    [ "$#" -eq 1 ] || usage
+    [ "$#" -eq 2 ] || usage
+    program "$2"
+    name=$2
     cd "$root"
-    rm -rf "${out:?}"
     mkdir -p "$out"
-    tools/leanrun --timeout 60m lake --log-level error build m7-windows TestSupport.M7.NucleoLoop
-    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows board "$out/echo.bin" |
-      tee "$out/echo.addr"
-    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows board-dwt "$out/echo-dwt.bin"
-    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
+    case $name in
+      echo) lib=TestSupport.M7.NucleoLoop cmd=board dwt=board-dwt file=NucleoFile count=12
+        mem=${MEM:-12G} ;;
+      gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
+        count=13 mem=${MEM:-16G} ;;
+    esac
+    rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.* "${out:?}/$file".*
+    tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build m7-windows \
+      "$lib"
+    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
+      tee "$out/$name.addr"
+    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
+    if [ "$name" = echo ]; then
+      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
+    fi
     status=0
-    if /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "${MEM:-12G}" lake env \
-        sh -c 'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/M7/NucleoFile.lean" \
-        >"$out/board.check" 2>"$out/board.time"; then
-      printed=$(grep -c 'axioms' "$out/board.check" || true)
-      other=$(grep 'depends on axioms' "$out/board.check" | sed 's/.*\[\(.*\)\]$/\1/' |
+    if /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "$mem" lake env \
+        sh -c 'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/M7/$file.lean" \
+        >"$out/$file.check" 2>"$out/$file.time"; then
+      printed=$(grep -c 'axioms' "$out/$file.check" || true)
+      other=$(grep 'depends on axioms' "$out/$file.check" | sed 's/.*\[\(.*\)\]$/\1/' |
         tr ',' '\n' | tr -d ' ' | grep -cvx 'propext\|Classical.choice\|Quot.sound' || true)
-      if [ "$printed" = 12 ] && [ "$other" = 0 ]; then
-        echo "pass: the kernel's check of echo.bin, $(stat -c %s "$out/echo.bin") bytes," \
+      if [ "$printed" = "$count" ] && [ "$other" = 0 ]; then
+        echo "pass: the kernel's check of $name.bin, $(stat -c %s "$out/$name.bin") bytes," \
           "and the theorems over it"
       else
-        echo "fail: the axioms of the check: $(head -c 600 "$out/board.check")"
+        echo "fail: the axioms of the check: $(head -c 600 "$out/$file.check")"
         status=1
       fi
     else
-      echo "fail: the kernel's check of echo.bin: $(head -c 600 "$out/board.check")"
+      echo "fail: the kernel's check of $name.bin: $(head -c 600 "$out/$file.check")"
       status=1
     fi
-    grep -E "Elapsed \(wall|Maximum resident" "$out/board.time"
+    grep -E "Elapsed \(wall|Maximum resident" "$out/$file.time"
     exit "$status"
     ;;
   emulate)
-    [ "$#" -eq 1 ] || usage
+    [ "$#" -eq 2 ] || usage
+    program "$2"
+    name=$2
     renode=${RENODE:-renode}
-    [ -f "$out/echo.bin" ] || { echo "fail: echo: $out/echo.bin is missing"; exit 1; }
-    main=$(sed -n 's/.* main \(0x[0-9a-f]*\),.*/\1/p' "$out/echo.addr")
-    [ -n "$main" ] || { echo "fail: echo: no address of main in $out/echo.addr"; exit 1; }
-    pty=$out/echo.pty
-    rm -f "${out:?}/echo.pty" "${out:?}/echo.renode.pid"
+    [ -f "$out/$name.bin" ] || { echo "fail: $name: $out/$name.bin is missing"; exit 1; }
+    main=$(sed -n 's/.* main \(0x[0-9a-f]*\),.*/\1/p' "$out/$name.addr")
+    [ -n "$main" ] || { echo "fail: $name: no address of main in $out/$name.addr"; exit 1; }
+    pty=$out/$name.pty
+    rm -f "${out:?}/$name.pty" "${out:?}/$name.renode.pid"
     cat >"$out/itcm.repl" <<EOF
 flashItcm: Memory.MappedMemory @ sysbus 0x00200000
     size: 0x200000
 EOF
-    cat >"$out/echo.resc" <<EOF
+    cat >"$out/$name.resc" <<EOF
 mach create "nucleo-f767zi"
 machine LoadPlatformDescription @platforms/boards/nucleo_f767zi.repl
 machine LoadPlatformDescription @$out/itcm.repl
 emulation CreateUartPtyTerminal "usart3" "$pty" true
 connector Connect sysbus.usart3 usart3
-sysbus LoadBinary @$out/echo.bin 0x08000000
-sysbus LoadBinary @$out/echo.bin 0x00200000
+sysbus LoadBinary @$out/$name.bin 0x08000000
+sysbus LoadBinary @$out/$name.bin 0x00200000
 cpu VectorTableOffset 0x00200000
 cpu AddHook $main "self.InfoLog('reached main')"
 start
 EOF
-    "$renode" --disable-gui --plain -P -1 --pid-file "$out/echo.renode.pid" "$out/echo.resc" \
-      >"$out/echo.renode" 2>&1 &
+    "$renode" --disable-gui --plain -P -1 --pid-file "$out/$name.renode.pid" "$out/$name.resc" \
+      >"$out/$name.renode" 2>&1 &
     renode_job=$!
     status=0
     found=0
     for _ in $(seq "$timeout"); do
-      if grep -aq "cpu: reached main" "$out/echo.renode" && [ -e "$pty" ]; then
+      if grep -aq "cpu: reached main" "$out/$name.renode" && [ -e "$pty" ]; then
         found=1
         break
       fi
@@ -163,26 +220,32 @@ EOF
       sleep 1
     done
     if [ "$found" = 1 ]; then
-      host_run "$pty" || status=1
+      host_run "$name" "$pty" "$name" "${TICKS:-5}" || status=1
     else
-      echo "fail: echo: Renode did not reach main: $(tail -c 300 "$out/echo.renode")"
+      echo "fail: $name: Renode did not reach main: $(tail -c 300 "$out/$name.renode")"
       status=1
     fi
-    kill "$(cat "$out/echo.renode.pid")" 2>/dev/null || :
+    kill "$(cat "$out/$name.renode.pid")" 2>/dev/null || :
     wait "$renode_job" 2>/dev/null || :
-    unexpected=$(grep -a '\[WARNING\]\|\[ERROR\]' "$out/echo.renode" |
+    unexpected=$(grep -a '\[WARNING\]\|\[ERROR\]' "$out/$name.renode" |
       grep -av 'Translation cache size [0-9]* is larger than maximum allowed' |
       grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' | head -c 400 || :)
     if [ -n "$unexpected" ]; then
-      echo "fail: echo: Renode logged $unexpected"
+      echo "fail: $name: Renode logged $unexpected"
       status=1
     fi
     exit "$status"
     ;;
-  run)
-    [ "$#" -eq 2 ] || usage
-    flash echo.bin
-    host_run "$2"
+  run|host)
+    [ "$#" -eq 3 ] || usage
+    program "$2"
+    if [ "$1" = run ]; then
+      flash "$2.bin"
+    fi
+    host_run "$2" "$3" "$2" "${TICKS:-1440}"
+    if [ "$2" = gateway ]; then
+      overrun "$2"
+    fi
     ;;
   measure-div)
     [ "$#" -eq 1 ] || usage
@@ -193,14 +256,41 @@ EOF
     "$uv" run "$here/m7_dwt.py" bootlog "$out/div.bootlog"
     "$uv" run "$here/m7_dwt.py" div "$out/div.results"
     ;;
-  measure-echo)
+  measure)
+    [ "$#" -eq 3 ] || usage
+    program "$2"
+    name=$2
+    flash "$name-dwt.bin"
+    status=0
+    host_run "$name" "$3" "$name-dwt" "${TICKS:-1440}" || status=1
+    case $name in
+      echo) table=528 ;;
+      gateway) table=2064 ;;
+    esac
+    readmem "$name-dwt.results" 0x20000000 "$table"
+    readmem "$name-dwt.bootlog" 0x2001E000 264
+    if [ "$name" = gateway ]; then
+      overrun "$name-dwt" || status=1
+    fi
+    "$uv" run "$here/m7_dwt.py" bootlog "$out/$name-dwt.bootlog"
+    "$uv" run "$here/m7_dwt.py" "$name" "$out/$name-dwt.results" || status=1
+    exit "$status"
+    ;;
+  compare)
     [ "$#" -eq 2 ] || usage
-    flash echo-dwt.bin
-    host_run "$2"
-    readmem echo.results 0x20000000 528
-    readmem echo.bootlog 0x2001E000 264
-    "$uv" run "$here/m7_dwt.py" bootlog "$out/echo.bootlog"
-    "$uv" run "$here/m7_dwt.py" echo "$out/echo.results"
+    records=$(realpath -m "$2")
+    cd "$root"
+    if ! tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare gateway-run \
+        "$records.in" "$records.lean" >"$records.native" 2>&1; then
+      echo "fail: native-bare gateway-run: $(paste -sd' ' "$records.native" | head -c 400)"
+      exit 1
+    fi
+    if ! cmp -s "$records.out" "$records.lean"; then
+      echo "fail: the output records differ from native Lean's:" \
+        "$(cmp "$records.out" "$records.lean" 2>&1 | head -c 300)"
+      exit 1
+    fi
+    echo "pass: the output records equal native Lean's for $(wc -l <"$records.in") input records"
     ;;
   *)
     usage
