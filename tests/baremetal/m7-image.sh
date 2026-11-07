@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The kernel's checks of the Cortex-M7 code of the echo and of the gateway.  It builds m7-windows,
-# the step theorems of tests/TestSupport/M7/Step.lean and GwStep.lean, and the parts' theorems of
+# the step theorems of tests/TestSupport/M7/Step.lean and GwStep.lean, the gateway's sizes and loop
+# theorems of GwImages.lean and GwLoop.lean, and the parts' theorems of
 # LeanExe/M7/Proof/Parts.lean, writes the bytes of the programs that LeanExe/M7/Gen.lean generates
 # for usart3Tick and gwTickUsart3 with m7-windows image, and elaborates
 # tests/TestSupport/M7/ImageFile.lean and GwImageFile.lean in the directory of those files, so that
@@ -18,7 +19,7 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/m7-image}")
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-16G}" lake --log-level error build m7-windows \
-  TestSupport.M7.Step TestSupport.M7.GwStep TestSupport.M7.Windows LeanExe.M7.Proof.Parts
+  TestSupport.M7.Step TestSupport.M7.GwLoop TestSupport.M7.Windows LeanExe.M7.Proof.Parts
 status=0
 # check NAME FILE COUNT: writes program NAME to NAME.bin, elaborates FILE.lean beside it, and
 # requires COUNT lines that name the three axioms alone.
