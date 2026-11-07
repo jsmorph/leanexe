@@ -45,6 +45,12 @@ lean_exe «a64-cosim» where
   srcDir := "tests"
   root := `TestSupport.A64.CosimMain
 
+-- The test of the floating-point forms' meanings (tests/baremetal/a64-fpvectors.sh); not a default
+-- target.
+lean_exe «a64-fpvectors» where
+  srcDir := "tests"
+  root := `TestSupport.A64.FpVectorsMain
+
 -- The comparison of the Cortex-M7 encoder with the GNU assembler (tests/baremetal/m7-encode.sh)
 -- and the co-simulation of the Cortex-M7 model (tests/baremetal/m7-cosim.sh); not default
 -- targets.
