@@ -31,6 +31,13 @@ program counter reaches the return address, on a platform without Normal memory 
 that any memory access stops the model.  It compares the registers and flags with the printed state
 after the call, compares the four result words with Lean's `/` and `%` of `UInt64`, and compares
 the number of instructions executed with the count for the case's path.
+
+The seeded cases draw their immediate fields at random, so they may miss a value that the
+generated code contains.  The fixed cases of `fixedForms` follow them: each sets one immediate
+field, offset, condition, or branch direction that `LeanExe/M7/Gen.lean` and `LeanExe/M7/Div.lean`
+emit in the state of a case of its form, and the case lines of the fixed cases are checked as the
+others are.  The board's co-simulation of `tests/TestSupport/M7/BoardCosim.lean` runs the same
+fixed cases.
 -/
 
 namespace TestSupport.M7
@@ -314,8 +321,151 @@ def routineAsm : List String :=
     | [h1, h2] => s!"  .inst.w {hex (h1.toNat * 65536 + h2.toNat)}"
     | e => s!"  .inst.n {hex (e.headD 0).toNat}"
 
-/-- The harness of `perForm` cases of each form and of the division cases with `divCount` random
-pairs, from the seed `seed`. -/
+/-- A fixed case: its name, the form whose case gives its state, and the change of that case's
+instruction to an instance that the generated code contains, or `none` when the form's
+instruction has another constructor. -/
+structure Fixed where
+  name : String
+  form : Nat
+  set : Case → Gen (Option Case)
+
+/-- The instruction `f i` in place of the case's instruction `i`. -/
+def instrTo (f : Instr → Option Instr) (c : Case) : Gen (Option Case) :=
+  pure ((f c.instr).map fun i => { c with instr := i })
+
+/-- The shift by the immediate `k` of `LSL.W` or `LSR.W`. -/
+def shiftBy (k : Nat) : Instr → Option Instr
+  | .lslImm d m _ _ => some (Instr.lslBy d m k)
+  | .lsrImm d m _ _ => some (Instr.lsrBy d m k)
+  | _ => none
+
+/-- `ADD{S}.W` with the S bit `s` and the shift `k`. -/
+def addShift (s : Fin 2) (k : Nat) : Instr → Option Instr
+  | .addReg _ d n m _ _ => some (Instr.addLsl s d n m k)
+  | _ => none
+
+/-- The S bit `s` of `SUB{S}.W`, `SBC{S}.W`, or `ORR{S}.W`. -/
+def withS (s : Fin 2) : Instr → Option Instr
+  | .subReg _ d n m => some (.subReg s d n m)
+  | .sbcReg _ d n m => some (.sbcReg s d n m)
+  | .orrReg _ d n m => some (.orrReg s d n m)
+  | _ => none
+
+/-- The 8-bit immediate `v` of `MOV.W`, `CMP.W`, `SUB.W`, `AND.W`, or `EOR.W`. -/
+def imm8 (v : Fin 256) : Instr → Option Instr
+  | .movImm d _ => some (.movImm d v)
+  | .cmpImm n _ => some (.cmpImm n v)
+  | .subImm d n _ => some (.subImm d n v)
+  | .andImm d n _ => some (.andImm d n v)
+  | .eorImm d n _ => some (.eorImm d n v)
+  | _ => none
+
+/-- The 16-bit immediate `v` of `MOVW` or `MOVT`. -/
+def imm16Of (v : Nat) : Instr → Option Instr
+  | .movw d .. => some (Instr.movwOf d v)
+  | .movt d .. => some (Instr.movtOf d v)
+  | _ => none
+
+/-- The 12-bit immediate `v` of `SUBW Rd, SP`, `ADDW SP, SP`, or `SUBW SP, SP`. -/
+def imm12Of (v : Nat) : Instr → Option Instr
+  | .subwSp d .. => some (Instr.subwSpOf d v)
+  | .addwSpSp .. => some (Instr.addwSpSpOf v)
+  | .subwSpSp .. => some (Instr.subwSpSpOf v)
+  | _ => none
+
+/-- The offset `v` of an SP-relative load or store, with SP moved so that the access reaches the
+same word of the window. -/
+def spOffset (v : Nat) (c : Case) : Gen (Option Case) :=
+  let w := field 4096 v
+  let move (i : Instr) (old : Fin 4096) : Option Case :=
+    some { c with instr := i, sp := c.sp + UInt32.ofNat old.val - UInt32.ofNat v }
+  pure <| match c.instr with
+    | .ldrSp t imm => move (.ldrSp t w) imm
+    | .strSp t imm => move (.strSp t w) imm
+    | .ldrLr imm => move (.ldrLr w) imm
+    | .strLr imm => move (.strLr w) imm
+    | _ => none
+
+/-- The offset `v` of a load or store at a register, with the base register moved so that the
+access reaches the same word of the window. -/
+def regOffset (v : Nat) (c : Case) : Gen (Option Case) :=
+  let w := field 4096 v
+  let move (i : Instr) (n : Fin 8) (old : Fin 4096) : Option Case :=
+    some { c with instr := i, regs := c.regs.set! n.val (c.regs[n.val]! + UInt32.ofNat old.val -
+      UInt32.ofNat v) }
+  pure <| match c.instr with
+    | .ldr t n imm => move (.ldr t n w) n imm
+    | .str t n imm => move (.str t n w) n imm
+    | _ => none
+
+/-- A branch `mk` to a random pad after the instruction when `fwd` holds, and before it otherwise. -/
+def branchPad (fwd : Bool) (mk : Int → Instr) (c : Case) : Gen (Option Case) := do
+  let k := Int.ofNat ((← below padRange) + 1)
+  return some { c with instr := mk (4 * (if fwd then k else -k) - 4) }
+
+/-- The direction of a branch in a fixed case's name. -/
+def dir (fwd : Bool) : String := if fwd then "forward" else "backward"
+
+/-- The change `f` with the flags NZCV set to `nzcv`. -/
+def withFlags (nzcv : UInt32) (f : Case → Gen (Option Case)) (c : Case) : Gen (Option Case) := do
+  return (← f c).map fun c => { c with apsr := nzcv <<< 28 }
+
+/-- The instances of the immediate fields of the model's forms that `LeanExe/M7/Gen.lean` and
+`LeanExe/M7/Div.lean` emit: the shifts by an immediate, `LSL #0` and `#16` and `LSR #1`, `#5`,
+`#16`, and `#31`; `ADD` and `ADDS` with no shift and `ADD` with `LSL #1`, `#2`, and `#31`; both S
+bits of `SUB`, `SBC`, and `ORR`; the 8-bit immediates `MOV #0` and `#32`, `CMP #0`, `SUB #1` and
+`#32`, `AND #63`, and `EOR #1`; `MOVW` and `MOVT` at the ends of their range, `MOVT` of the stack's
+limit and of the device window, and `MOVW` and `MOVT` of the area's header, of its memory, and of
+its end; the frame sizes of `SUBW Rd, SP` and `ADDW` and `SUBW SP, SP`, multiples of 8 from 8 to
+4088, at both ends; the SP-relative offsets, multiples of 4 from 0 to 4092 and LR's from 0 to 4080,
+at both ends; the offsets of a load or store at a register, multiples of 4 from 0 to 4092, at both
+ends; the conditions EQ, NE, CS, CC, and HI; every branch both forward and backward; and HI and
+CS with the flags that take each and those that do not. -/
+def fixedForms : List Fixed :=
+  [Fixed.mk "lslImm #0" 10 (instrTo (shiftBy 0)),
+    Fixed.mk "lslImm #16" 10 (instrTo (shiftBy 16))] ++
+  ([1, 5, 16, 31].map fun k => Fixed.mk s!"lsrImm #{k}" 11 (instrTo (shiftBy k))) ++
+  ([((1 : Fin 2), 0), (0, 0), (0, 1), (0, 2), (0, 31)].map fun (s, k) =>
+    Fixed.mk s!"addReg s{s.val} #{k}" 0 (instrTo (addShift s k))) ++
+  ([("subReg", 2), ("sbcReg", 3), ("orrReg", 5)].flatMap fun (nm, f) =>
+    [(0 : Fin 2), 1].map fun s => Fixed.mk s!"{nm} s{s.val}" f (instrTo (withS s))) ++
+  ([("movImm", 16, (0 : Fin 256)), ("movImm", 16, 32), ("cmpImm", 15, 0), ("subImm", 12, 1),
+      ("subImm", 12, 32), ("andImm", 13, 63), ("eorImm", 14, 1)].map fun (nm, f, v) =>
+    Fixed.mk s!"{nm} #{v.val}" f (instrTo (imm8 v))) ++
+  ([("movw", 17, 0), ("movw", 17, 65535), ("movt", 18, 0x2000), ("movt", 18, 0x4000),
+      ("movt", 18, 65535), ("movw", 17, 0x1000), ("movt", 18, 0x2001)].map fun (nm, f, v) =>
+    Fixed.mk s!"{nm} #{v}" f (instrTo (imm16Of v))) ++
+  ([("subwSp", 20), ("addwSpSp", 21), ("subwSpSp", 22)].flatMap fun (nm, f) =>
+    [8, 4088].map fun v => Fixed.mk s!"{nm} #{v}" f (instrTo (imm12Of v))) ++
+  ([("ldrSp", 30, 4092), ("strSp", 31, 4092), ("ldrLr", 32, 4080), ("strLr", 33, 4080)].flatMap
+    fun (nm, f, top) => [0, top].map fun v => Fixed.mk s!"{nm} #{v}" f (spOffset v)) ++
+  ([("ldr", 28), ("str", 29)].flatMap fun (nm, f) =>
+    [0, 4092].map fun v => Fixed.mk s!"{nm} #{v}" f (regOffset v)) ++
+  ([("eq", (0 : Fin 14)), ("ne", 1), ("cs", 2), ("cc", 3), ("hi", 8)].flatMap fun (nm, cond) =>
+    [true, false].map fun fwd =>
+      Fixed.mk s!"bcond {nm} {dir fwd}" 34 (branchPad fwd (Instr.bcondTo cond))) ++
+  ([("b", 35, Instr.bTo), ("bl", 36, Instr.blTo)].flatMap fun (nm, f, mk) =>
+    [true, false].map fun fwd => Fixed.mk s!"{nm} {dir fwd}" f (branchPad fwd mk)) ++
+  ([("hi", (8 : Fin 14), 0x2, "taken"), ("hi", 8, 0x0, "C clear"), ("hi", 8, 0x6, "Z set"),
+      ("cs", 2, 0x2, "taken"), ("cs", 2, 0x0, "C clear")].map fun (nm, cond, nzcv, what) =>
+    Fixed.mk s!"bcond {nm} {what}" 34
+      (withFlags nzcv (branchPad true (Instr.bcondTo cond))))
+
+/-- The fixed cases of `fixedForms` from the generator's state `rng`: each with the state of a case
+of its form, and none when the change does not fit the form. -/
+def fixedCases (rng : Rng) : Array (Option Case) × Rng := Id.run do
+  let mut rng := rng
+  let mut out := #[]
+  for x in fixedForms do
+    let (c, r) := (do x.set (← genCase x.form)).run rng
+    rng := r
+    out := out.push c
+  return (out, rng)
+
+/-- The harness of `perForm` cases of each form, of the division cases with `divCount` random
+pairs, and of the fixed cases, from the seed `seed`.  The fixed cases follow the seeded ones in
+the numbering, and their states continue the sequence after the division cases, so the seeded
+cases and the division cases stay those of a harness without them. -/
 def harness (seed : UInt64) (perForm divCount : Nat) : String := Id.run do
   let mut rng : Rng := ⟨seed⟩
   let mut cases := #[]
@@ -331,6 +481,8 @@ def harness (seed : UInt64) (perForm divCount : Nat) : String := Id.run do
     let (c, r) := (genDiv n d).run rng
     rng := r
     divs := divs.push c
+  let (fx, _) := fixedCases rng
+  cases := cases ++ fx.filterMap id
   let parts := cases.toList.zipIdx.map fun (c, k) => caseAsm k c
   let dparts := divs.toList.zipIdx.map fun (c, k) => divAsm k c
   let n := cases.size
