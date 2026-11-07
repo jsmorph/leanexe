@@ -233,3 +233,4 @@ run fdiv "00011110011 Rm:5 000110 Rn:5 Rd:5" "${fp[@]}" --abstract FPDiv64
 run fsqrt "0001111001100001110000 Rn:5 Rd:5" "${fp[@]}" --abstract FPSqrt64
 run ucvtf "1001111001100011000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP64
 run fcvtzu "1001111001111001000000 Rn:5 Rd:5" "${fp[@]}" --abstract FPToFixed64
+run fcmp "00011110011 Rm:5 001000 Rn:5 00000" "${fp[@]}" --abstract FPCompare
