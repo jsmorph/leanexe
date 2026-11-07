@@ -142,6 +142,9 @@ def field19 (j : Int) : Fin 524288 :=
 `FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
 sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
 neighbors occur, and a case of `FCMP` on S registers does the same with the low 32 bits.  A case
+of `UCVTF Sd, Xn` sets its source, with probability 1/2, to `2^k + 2^(k-24) + 1` or
+`2^k + 3 2^(k-24) - 1` for `k` from 53 to 63, words that round to different singles directly and
+through a double.  A case
 of `FCVTZU` sets its operand, with probability 1/2, to a double of either sign whose magnitude
 lies from 2^-2 to 2^66, with a random fraction, so that truncation toward zero, exact integers,
 and saturation at both ends occur.  The D registers of a single-precision form's case hold values
@@ -251,7 +254,14 @@ def genCase (form : Nat) : Gen Case := do
   | 45 => return { c with instr := .fdivS (← fin 32) (← fin 32) (← fin 32) }
   | 46 => return { c with instr := .fsqrtS (← fin 32) (← fin 32) }
   | 47 => return { c with instr := .frintnS (← fin 32) (← fin 32) }
-  | 48 => return { c with instr := .ucvtfSX (← fin 32) (← fin 32) }
+  | 48 =>
+      let d ← fin 32
+      let n ← fin 32
+      let k := 53 + (← below 11)
+      let v := UInt64.ofNat (if (← below 2) = 0 then 2 ^ k + 2 ^ (k - 24) + 1
+        else 2 ^ k + 3 * 2 ^ (k - 24) - 1)
+      let rs := if n.val < 31 ∧ (← below 2) = 0 then c.regs.set! n.val v else c.regs
+      return { c with instr := .ucvtfSX d n, regs := rs }
   | 49 => return { c with instr := .scvtfSW (← fin 32) (← fin 32) }
   | 50 => return { c with instr := .fcvtzuXS (← fin 32) (← fin 32) }
   | 51 => return { c with instr := .fcvtzsWS (← fin 32) (← fin 32) }
