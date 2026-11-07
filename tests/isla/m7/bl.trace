@@ -1,0 +1,484 @@
+(segments
+  (|S| 1 v0)
+  (|imm10| 10 v1)
+  (|J1| 1 v2)
+  (|J2| 1 v3)
+  (|imm11| 11 v4))
+(trace
+  (declare-const v0 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v1 (_ BitVec 10)) ; 0:0 - 0:0
+  (declare-const v2 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v3 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v4 (_ BitVec 11)) ; 0:0 - 0:0
+  (assume-reg |__isla_vector_gpr| nil true)
+  (define-enum |Feature| 258 (|FEAT_AA32EL0| |FEAT_AA32EL1| |FEAT_AA32EL2| |FEAT_AA32EL3| |FEAT_AA64EL0| |FEAT_AA64EL1| |FEAT_AA64EL2| |FEAT_AA64EL3| |FEAT_EL0| |FEAT_EL1| |FEAT_EL2| |FEAT_EL3| |FEAT_AES| |FEAT_AdvSIMD| |FEAT_CSV2_1p1| |FEAT_CSV2_1p2| |FEAT_CSV2_2| |FEAT_CSV2_3| |FEAT_DoubleLock| |FEAT_ETMv4| |FEAT_ETMv4p1| |FEAT_ETMv4p2| |FEAT_ETMv4p3| |FEAT_ETMv4p4| |FEAT_ETMv4p5| |FEAT_ETMv4p6| |FEAT_ETS2| |FEAT_FP| |FEAT_GICv3| |FEAT_GICv3_LEGACY| |FEAT_GICv3_TDIR| |FEAT_GICv3p1| |FEAT_GICv4| |FEAT_GICv4p1| |FEAT_IVIPT| |FEAT_PCSRv8| |FEAT_PMULL| |FEAT_PMUv3| |FEAT_PMUv3_EXT| |FEAT_PMUv3_EXT32| |FEAT_SHA1| |FEAT_SHA256| |FEAT_TRC_EXT| |FEAT_TRC_SR| |FEAT_nTLBPA| |FEAT_CRC32| |FEAT_Debugv8p1| |FEAT_HAFDBS| |FEAT_HPDS| |FEAT_LOR| |FEAT_LSE| |FEAT_PAN| |FEAT_PMUv3p1| |FEAT_RDM| |FEAT_VHE| |FEAT_VMID16| |FEAT_AA32BF16| |FEAT_AA32HPD| |FEAT_AA32I8MM| |FEAT_ASMv8p2| |FEAT_DPB| |FEAT_Debugv8p2| |FEAT_EDHSR| |FEAT_F32MM| |FEAT_F64MM| |FEAT_FP16| |FEAT_HPDS2| |FEAT_I8MM| |FEAT_IESB| |FEAT_LPA| |FEAT_LSMAOC| |FEAT_LVA| |FEAT_MPAM| |FEAT_PAN2| |FEAT_PCSRv8p2| |FEAT_RAS| |FEAT_SHA3| |FEAT_SHA512| |FEAT_SM3| |FEAT_SM4| |FEAT_SPE| |FEAT_SVE| |FEAT_TTCNP| |FEAT_UAO| |FEAT_VPIPT| |FEAT_XNX| |FEAT_CCIDX| |FEAT_CONSTPACFIELD| |FEAT_EPAC| |FEAT_FCMA| |FEAT_FPAC| |FEAT_FPACCOMBINE| |FEAT_JSCVT| |FEAT_LRCPC| |FEAT_NV| |FEAT_PACIMP| |FEAT_PACQARMA3| |FEAT_PACQARMA5| |FEAT_PAuth| |FEAT_SPEv1p1| |FEAT_AMUv1| |FEAT_BBM| |FEAT_CNTSC| |FEAT_DIT| |FEAT_Debugv8p4| |FEAT_DotProd| |FEAT_DoubleFault| |FEAT_FHM| |FEAT_FlagM| |FEAT_IDST| |FEAT_LRCPC2| |FEAT_LSE2| |FEAT_NV2| |FEAT_PMUv3p4| |FEAT_RASSAv1p1| |FEAT_RASv1p1| |FEAT_S2FWB| |FEAT_SEL2| |FEAT_TLBIOS| |FEAT_TLBIRANGE| |FEAT_TRF| |FEAT_TTL| |FEAT_TTST| |FEAT_BTI| |FEAT_CSV2| |FEAT_CSV3| |FEAT_DPB2| |FEAT_E0PD| |FEAT_EVT| |FEAT_ExS| |FEAT_FRINTTS| |FEAT_FlagM2| |FEAT_GTG| |FEAT_MTE| |FEAT_MTE2| |FEAT_PMUv3p5| |FEAT_RNG| |FEAT_RNG_TRAP| |FEAT_SB| |FEAT_SPECRES| |FEAT_SSBS| |FEAT_SSBS2| |FEAT_AMUv1p1| |FEAT_BF16| |FEAT_DGH| |FEAT_ECV| |FEAT_FGT| |FEAT_HPMN0| |FEAT_MPAMv0p1| |FEAT_MPAMv1p1| |FEAT_MTPMU| |FEAT_PAuth2| |FEAT_TWED| |FEAT_AFP| |FEAT_EBF16| |FEAT_HCX| |FEAT_LPA2| |FEAT_LS64| |FEAT_LS64_ACCDATA| |FEAT_LS64_V| |FEAT_MTE3| |FEAT_PAN3| |FEAT_PMUv3p7| |FEAT_RPRES| |FEAT_SPEv1p2| |FEAT_WFxT| |FEAT_XS| |FEAT_CMOW| |FEAT_Debugv8p8| |FEAT_GICv3_NMI| |FEAT_HBC| |FEAT_MOPS| |FEAT_NMI| |FEAT_PMUv3_EXT64| |FEAT_PMUv3_TH| |FEAT_PMUv3p8| |FEAT_SCTLR2| |FEAT_SPEv1p3| |FEAT_TCR2| |FEAT_TIDCP1| |FEAT_ADERR| |FEAT_AIE| |FEAT_ANERR| |FEAT_CLRBHB| |FEAT_CSSC| |FEAT_Debugv8p9| |FEAT_DoubleFault2| |FEAT_ECBHB| |FEAT_FGT2| |FEAT_HAFT| |FEAT_LRCPC3| |FEAT_MTE4| |FEAT_MTE_ASYM_FAULT| |FEAT_MTE_ASYNC| |FEAT_MTE_CANONICAL_TAGS| |FEAT_MTE_NO_ADDRESS_TAGS| |FEAT_MTE_PERM| |FEAT_MTE_STORE_ONLY| |FEAT_MTE_TAGGED_FAR| |FEAT_PCSRv8p9| |FEAT_PFAR| |FEAT_PMUv3_EDGE| |FEAT_PMUv3_ICNTR| |FEAT_PMUv3_SS| |FEAT_PMUv3p9| |FEAT_PRFMSLC| |FEAT_RASSAv2| |FEAT_RASv2| |FEAT_RPRFM| |FEAT_S1PIE| |FEAT_S1POE| |FEAT_S2PIE| |FEAT_S2POE| |FEAT_SPECRES2| |FEAT_SPE_CRR| |FEAT_SPE_FDS| |FEAT_SPEv1p4| |FEAT_SPMU| |FEAT_THE| |FEAT_DoPD| |FEAT_ETE| |FEAT_SVE2| |FEAT_SVE_AES| |FEAT_SVE_BitPerm| |FEAT_SVE_PMULL128| |FEAT_SVE_SHA3| |FEAT_SVE_SM4| |FEAT_TME| |FEAT_TRBE| |FEAT_ETEv1p1| |FEAT_BRBE| |FEAT_ETEv1p2| |FEAT_RME| |FEAT_SME| |FEAT_SME_F64F64| |FEAT_SME_FA64| |FEAT_SME_I16I64| |FEAT_BRBEv1p1| |FEAT_MEC| |FEAT_SME2| |FEAT_ABLE| |FEAT_CHK| |FEAT_D128| |FEAT_EBEP| |FEAT_ETEv1p3| |FEAT_GCS| |FEAT_ITE| |FEAT_LSE128| |FEAT_LVA3| |FEAT_SEBEP| |FEAT_SME2p1| |FEAT_SME_F16F16| |FEAT_SVE2p1| |FEAT_SVE_B16B16| |FEAT_SYSINSTR128| |FEAT_SYSREG128| |FEAT_TRBE_EXT| |FEAT_TRBE_MPAM|)) ; 0:0 - 0:0
+  (declare-const v263 Bool) ; src/v8_base.sail 902:4 - 902:45
+  (define-enum |Signal| 2 (|Signal_Low| |Signal_High|)) ; 0:0 - 0:0
+  (assume-reg |PSTATE| ((_ field |nRW|)) #b1)
+  (assume-reg |PSTATE| ((_ field |T|)) #b1)
+  (assume-reg |PSTATE| ((_ field |EL|)) #b00)
+  (assume-reg |PSTATE| ((_ field |M|)) #b10000)
+  (assume-reg |PSTATE| ((_ field |IT|)) #x00)
+  (assume-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+  (assume-reg |MDCCSR_EL0| nil (_ struct (|bits| #x0000000000000000)))
+  (assume-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
+  (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
+  (cycle)
+  (assert (not (= (bvand (concat (concat (concat (concat (concat (concat (concat #b11110 v0) v1) #b11) v2) #b1) v3) v4) #xf800d000) #xf0008000))) ; 0:0 - 0:0
+  (read-reg |PSTATE| ((_ field |IT|)) (_ struct (|IT| #x00)))
+  (write-reg |__currentCond| nil #xe)
+  (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
+  (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
+  (declare-const v301 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
+  (read-reg |_PC| nil v301)
+  (define-const v306 (= ((_ extract 9 5) v1) #b01010)) ; src/instrs32.sail 104:29 - 104:205
+
+  (cases "src/instrs32.sail 104:29 - 104:205"
+    (trace
+      (assert v306) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011010))) ; 0:0 - 0:0
+      (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
+      (assert (not (= ((_ extract 9 4) v1) #b100000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+      (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 #b1) #b10101011110))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 #b1) #b10000011110))) ; 0:0 - 0:0
+      (assert (not (= ((_ extract 9 5) v1) #b00000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) #b1) #b11110011011011110))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 4) v1)) #xf36))) ; 0:0 - 0:0
+      (assert (not (= ((_ extract 9 5) v1) #b00001))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+      (read-reg |SEE| nil (_ bv-1 128))
+      (write-reg |SEE| nil (_ bv2870 128))
+      (read-reg |__currentCond| nil #xe)
+      (define-const v353 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+      (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+      (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+      (define-const v370 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+      (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+      (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+      (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+      (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+      (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+      (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+      (declare-const v376 Bool) ; src/prelude.sail 334:46 - 334:55
+    
+      (cases "src/v8_base.sail 13989:8 - 13993:9"
+        (trace
+          (assert v376) ; 0:0 - 0:0
+          (define-const v377 ((_ zero_extend 32) v370)) ; src/v8_base.sail 13990:40 - 13990:66
+          (read-reg |__isla_vector_gpr| nil true)
+          (write-reg |R14| nil v377)
+          (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-const v399 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v353) #xfffffffe)) ; 0:0 - 0:0
+          (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+          (define-const v400 ((_ zero_extend 32) v399)) ; src/v8_base.sail 6790:33 - 6790:55
+          (branch-address v400)
+          (define-const v401 ((_ zero_extend 32) v399)) ; src/v8_base.sail 6791:14 - 6791:36
+          (write-reg |_PC| nil v401)
+          (write-reg |__BranchTaken| nil true))
+        (trace
+          (assert (not v376)) ; 0:0 - 0:0
+          (read-reg |__isla_vector_gpr| nil true)
+          (declare-const v402 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+          (read-reg |R14| nil v402)
+          (define-const v403 (bvor (bvand v402 #xffffffff00000000) ((_ zero_extend 32) v370))) ; 0:0 - 0:0
+          (write-reg |R14| nil v403)
+          (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-const v425 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v353) #xfffffffe)) ; 0:0 - 0:0
+          (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+          (define-const v426 ((_ zero_extend 32) v425)) ; src/v8_base.sail 6790:33 - 6790:55
+          (branch-address v426)
+          (define-const v427 ((_ zero_extend 32) v425)) ; src/v8_base.sail 6791:14 - 6791:36
+          (write-reg |_PC| nil v427)
+          (write-reg |__BranchTaken| nil true))))
+    (trace
+      (assert (not v306)) ; 0:0 - 0:0
+      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011010))) ; 0:0 - 0:0
+      (define-const v432 (= ((_ extract 9 5) v1) #b01000)) ; src/instrs32.sail 410:29 - 410:206
+    
+      (cases "src/instrs32.sail 410:29 - 410:206"
+        (trace
+          (assert v432) ; 0:0 - 0:0
+          (assert (not (= ((_ extract 9 4) v1) #b100000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+          (assert (= ((_ extract 9 5) v1) #b01000)) ; 0:0 - 0:0
+          (assert (not (= (concat ((_ extract 3 0) v1) #b1) #b11010))) ; 0:0 - 0:0
+          (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+          (assert (not (= (concat v1 #b1) #b10101011110))) ; 0:0 - 0:0
+          (assert (not (= (concat v1 #b1) #b10000011110))) ; 0:0 - 0:0
+          (assert (not (= ((_ extract 9 5) v1) #b00000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat (concat #b11110 v0) v1) #b1) #b11110011011011110))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 4) v1)) #xf36))) ; 0:0 - 0:0
+          (assert (not (= ((_ extract 9 5) v1) #b00001))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+          (read-reg |SEE| nil (_ bv-1 128))
+          (write-reg |SEE| nil (_ bv2870 128))
+          (read-reg |__currentCond| nil #xe)
+          (define-const v477 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+          (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+          (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+          (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-const v494 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+          (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+          (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+          (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+          (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+          (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+          (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+          (declare-const v500 Bool) ; src/prelude.sail 334:46 - 334:55
+        
+          (cases "src/v8_base.sail 13989:8 - 13993:9"
+            (trace
+              (assert v500) ; 0:0 - 0:0
+              (define-const v501 ((_ zero_extend 32) v494)) ; src/v8_base.sail 13990:40 - 13990:66
+              (read-reg |__isla_vector_gpr| nil true)
+              (write-reg |R14| nil v501)
+              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-const v523 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v477) #xfffffffe)) ; 0:0 - 0:0
+              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+              (define-const v524 ((_ zero_extend 32) v523)) ; src/v8_base.sail 6790:33 - 6790:55
+              (branch-address v524)
+              (define-const v525 ((_ zero_extend 32) v523)) ; src/v8_base.sail 6791:14 - 6791:36
+              (write-reg |_PC| nil v525)
+              (write-reg |__BranchTaken| nil true))
+            (trace
+              (assert (not v500)) ; 0:0 - 0:0
+              (read-reg |__isla_vector_gpr| nil true)
+              (declare-const v526 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+              (read-reg |R14| nil v526)
+              (define-const v527 (bvor (bvand v526 #xffffffff00000000) ((_ zero_extend 32) v494))) ; 0:0 - 0:0
+              (write-reg |R14| nil v527)
+              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-const v549 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v477) #xfffffffe)) ; 0:0 - 0:0
+              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+              (define-const v550 ((_ zero_extend 32) v549)) ; src/v8_base.sail 6790:33 - 6790:55
+              (branch-address v550)
+              (define-const v551 ((_ zero_extend 32) v549)) ; src/v8_base.sail 6791:14 - 6791:36
+              (write-reg |_PC| nil v551)
+              (write-reg |__BranchTaken| nil true))))
+        (trace
+          (assert (not v432)) ; 0:0 - 0:0
+          (define-const v553 (= ((_ extract 9 4) v1) #b100000)) ; src/instrs32.sail 443:29 - 443:212
+        
+          (cases "src/instrs32.sail 443:29 - 443:212"
+            (trace
+              (assert v553) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10101011110))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10000011110))) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 9 5) v1) #b00000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) #b1) #b11110011011011110))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 4) v1)) #xf36))) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 9 5) v1) #b00001))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+              (read-reg |SEE| nil (_ bv-1 128))
+              (write-reg |SEE| nil (_ bv2870 128))
+              (read-reg |__currentCond| nil #xe)
+              (define-const v593 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+              (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+              (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+              (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-const v610 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+              (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+              (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+              (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+              (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+              (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+              (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+              (declare-const v616 Bool) ; src/prelude.sail 334:46 - 334:55
+            
+              (cases "src/v8_base.sail 13989:8 - 13993:9"
+                (trace
+                  (assert v616) ; 0:0 - 0:0
+                  (define-const v617 ((_ zero_extend 32) v610)) ; src/v8_base.sail 13990:40 - 13990:66
+                  (read-reg |__isla_vector_gpr| nil true)
+                  (write-reg |R14| nil v617)
+                  (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                  (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-const v639 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v593) #xfffffffe)) ; 0:0 - 0:0
+                  (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                  (define-const v640 ((_ zero_extend 32) v639)) ; src/v8_base.sail 6790:33 - 6790:55
+                  (branch-address v640)
+                  (define-const v641 ((_ zero_extend 32) v639)) ; src/v8_base.sail 6791:14 - 6791:36
+                  (write-reg |_PC| nil v641)
+                  (write-reg |__BranchTaken| nil true))
+                (trace
+                  (assert (not v616)) ; 0:0 - 0:0
+                  (read-reg |__isla_vector_gpr| nil true)
+                  (declare-const v642 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+                  (read-reg |R14| nil v642)
+                  (define-const v643 (bvor (bvand v642 #xffffffff00000000) ((_ zero_extend 32) v610))) ; 0:0 - 0:0
+                  (write-reg |R14| nil v643)
+                  (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                  (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-const v665 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v593) #xfffffffe)) ; 0:0 - 0:0
+                  (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                  (define-const v666 ((_ zero_extend 32) v665)) ; src/v8_base.sail 6790:33 - 6790:55
+                  (branch-address v666)
+                  (define-const v667 ((_ zero_extend 32) v665)) ; src/v8_base.sail 6791:14 - 6791:36
+                  (write-reg |_PC| nil v667)
+                  (write-reg |__BranchTaken| nil true))))
+            (trace
+              (assert (not v553)) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10101011110))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 #b1) #b10000011110))) ; 0:0 - 0:0
+              (define-const v683 (= ((_ extract 9 5) v1) #b00000)) ; src/instrs32.sail 1126:29 - 1126:207
+            
+              (cases "src/instrs32.sail 1126:29 - 1126:207"
+                (trace
+                  (assert v683) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat (concat #b11110 v0) v1) #b1) #b11110011011011110))) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 4) v1)) #xf36))) ; 0:0 - 0:0
+                  (assert (not (= ((_ extract 9 5) v1) #b00001))) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+                  (read-reg |SEE| nil (_ bv-1 128))
+                  (write-reg |SEE| nil (_ bv2870 128))
+                  (read-reg |__currentCond| nil #xe)
+                  (define-const v707 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+                  (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                  (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+                  (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-const v724 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+                  (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+                  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+                  (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+                  (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+                  (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+                  (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+                  (declare-const v730 Bool) ; src/prelude.sail 334:46 - 334:55
+                
+                  (cases "src/v8_base.sail 13989:8 - 13993:9"
+                    (trace
+                      (assert v730) ; 0:0 - 0:0
+                      (define-const v731 ((_ zero_extend 32) v724)) ; src/v8_base.sail 13990:40 - 13990:66
+                      (read-reg |__isla_vector_gpr| nil true)
+                      (write-reg |R14| nil v731)
+                      (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-const v753 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v707) #xfffffffe)) ; 0:0 - 0:0
+                      (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                      (define-const v754 ((_ zero_extend 32) v753)) ; src/v8_base.sail 6790:33 - 6790:55
+                      (branch-address v754)
+                      (define-const v755 ((_ zero_extend 32) v753)) ; src/v8_base.sail 6791:14 - 6791:36
+                      (write-reg |_PC| nil v755)
+                      (write-reg |__BranchTaken| nil true))
+                    (trace
+                      (assert (not v730)) ; 0:0 - 0:0
+                      (read-reg |__isla_vector_gpr| nil true)
+                      (declare-const v756 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+                      (read-reg |R14| nil v756)
+                      (define-const v757 (bvor (bvand v756 #xffffffff00000000) ((_ zero_extend 32) v724))) ; 0:0 - 0:0
+                      (write-reg |R14| nil v757)
+                      (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-const v779 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v707) #xfffffffe)) ; 0:0 - 0:0
+                      (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                      (define-const v780 ((_ zero_extend 32) v779)) ; src/v8_base.sail 6790:33 - 6790:55
+                      (branch-address v780)
+                      (define-const v781 ((_ zero_extend 32) v779)) ; src/v8_base.sail 6791:14 - 6791:36
+                      (write-reg |_PC| nil v781)
+                      (write-reg |__BranchTaken| nil true))))
+                (trace
+                  (assert (not v683)) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat (concat #b11110 v0) v1) #b1) #b11110011011011110))) ; 0:0 - 0:0
+                  (define-const v789 (= (concat (concat #b11110 v0) ((_ extract 9 4) v1)) #xf36)) ; src/instrs32.sail 1646:29 - 1646:221
+                
+                  (cases "src/instrs32.sail 1646:29 - 1646:221"
+                    (trace
+                      (assert v789) ; 0:0 - 0:0
+                      (assert (not (= ((_ extract 9 5) v1) #b00001))) ; 0:0 - 0:0
+                      (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+                      (read-reg |SEE| nil (_ bv-1 128))
+                      (write-reg |SEE| nil (_ bv2870 128))
+                      (read-reg |__currentCond| nil #xe)
+                      (define-const v805 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+                      (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                      (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+                      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-const v822 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+                      (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+                      (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+                      (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+                      (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+                      (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+                      (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+                      (declare-const v828 Bool) ; src/prelude.sail 334:46 - 334:55
+                    
+                      (cases "src/v8_base.sail 13989:8 - 13993:9"
+                        (trace
+                          (assert v828) ; 0:0 - 0:0
+                          (define-const v829 ((_ zero_extend 32) v822)) ; src/v8_base.sail 13990:40 - 13990:66
+                          (read-reg |__isla_vector_gpr| nil true)
+                          (write-reg |R14| nil v829)
+                          (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-const v851 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v805) #xfffffffe)) ; 0:0 - 0:0
+                          (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                          (define-const v852 ((_ zero_extend 32) v851)) ; src/v8_base.sail 6790:33 - 6790:55
+                          (branch-address v852)
+                          (define-const v853 ((_ zero_extend 32) v851)) ; src/v8_base.sail 6791:14 - 6791:36
+                          (write-reg |_PC| nil v853)
+                          (write-reg |__BranchTaken| nil true))
+                        (trace
+                          (assert (not v828)) ; 0:0 - 0:0
+                          (read-reg |__isla_vector_gpr| nil true)
+                          (declare-const v854 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+                          (read-reg |R14| nil v854)
+                          (define-const v855 (bvor (bvand v854 #xffffffff00000000) ((_ zero_extend 32) v822))) ; 0:0 - 0:0
+                          (write-reg |R14| nil v855)
+                          (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-const v877 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v805) #xfffffffe)) ; 0:0 - 0:0
+                          (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                          (define-const v878 ((_ zero_extend 32) v877)) ; src/v8_base.sail 6790:33 - 6790:55
+                          (branch-address v878)
+                          (define-const v879 ((_ zero_extend 32) v877)) ; src/v8_base.sail 6791:14 - 6791:36
+                          (write-reg |_PC| nil v879)
+                          (write-reg |__BranchTaken| nil true))))
+                    (trace
+                      (assert (not v789)) ; 0:0 - 0:0
+                      (define-const v881 (= ((_ extract 9 5) v1) #b00001)) ; src/instrs32.sail 1729:29 - 1729:206
+                    
+                      (cases "src/instrs32.sail 1729:29 - 1729:206"
+                        (trace
+                          (assert v881) ; 0:0 - 0:0
+                          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+                          (read-reg |SEE| nil (_ bv-1 128))
+                          (write-reg |SEE| nil (_ bv2870 128))
+                          (read-reg |__currentCond| nil #xe)
+                          (define-const v895 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+                          (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                          (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                          (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+                          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-const v912 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+                          (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+                          (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+                          (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+                          (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+                          (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+                          (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+                          (declare-const v918 Bool) ; src/prelude.sail 334:46 - 334:55
+                        
+                          (cases "src/v8_base.sail 13989:8 - 13993:9"
+                            (trace
+                              (assert v918) ; 0:0 - 0:0
+                              (define-const v919 ((_ zero_extend 32) v912)) ; src/v8_base.sail 13990:40 - 13990:66
+                              (read-reg |__isla_vector_gpr| nil true)
+                              (write-reg |R14| nil v919)
+                              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-const v941 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v895) #xfffffffe)) ; 0:0 - 0:0
+                              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                              (define-const v942 ((_ zero_extend 32) v941)) ; src/v8_base.sail 6790:33 - 6790:55
+                              (branch-address v942)
+                              (define-const v943 ((_ zero_extend 32) v941)) ; src/v8_base.sail 6791:14 - 6791:36
+                              (write-reg |_PC| nil v943)
+                              (write-reg |__BranchTaken| nil true))
+                            (trace
+                              (assert (not v918)) ; 0:0 - 0:0
+                              (read-reg |__isla_vector_gpr| nil true)
+                              (declare-const v944 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+                              (read-reg |R14| nil v944)
+                              (define-const v945 (bvor (bvand v944 #xffffffff00000000) ((_ zero_extend 32) v912))) ; 0:0 - 0:0
+                              (write-reg |R14| nil v945)
+                              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-const v967 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v895) #xfffffffe)) ; 0:0 - 0:0
+                              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                              (define-const v968 ((_ zero_extend 32) v967)) ; src/v8_base.sail 6790:33 - 6790:55
+                              (branch-address v968)
+                              (define-const v969 ((_ zero_extend 32) v967)) ; src/v8_base.sail 6791:14 - 6791:36
+                              (write-reg |_PC| nil v969)
+                              (write-reg |__BranchTaken| nil true))))
+                        (trace
+                          (assert (not v881)) ; 0:0 - 0:0
+                          (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010001))) ; 0:0 - 0:0
+                          (read-reg |SEE| nil (_ bv-1 128))
+                          (write-reg |SEE| nil (_ bv2870 128))
+                          (read-reg |__currentCond| nil #xe)
+                          (define-const v983 ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) ; src/instrs32.sail 2007:31 - 2007:88
+                          (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                          (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                          (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
+                          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                          (define-const v1000 (concat ((_ extract 31 1) (bvadd ((_ extract 31 0) v301) #x00000004)) #b1)) ; src/instrs32.sail 1952:21 - 1952:48
+                          (read-reg |PSTATE| ((_ field |M|)) (_ struct (|M| #b10000)))
+                          (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+                          (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| #x0000000000000401)))
+                          (read-reg |SCR_EL3| nil (_ struct (|bits| #x0000000000000401)))
+                          (define-enum |SecurityState| 4 (|SS_NonSecure| |SS_Root| |SS_Realm| |SS_Secure|)) ; 0:0 - 0:0
+                          (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+                          (declare-const v1006 Bool) ; src/prelude.sail 334:46 - 334:55
+                        
+                          (cases "src/v8_base.sail 13989:8 - 13993:9"
+                            (trace
+                              (assert v1006) ; 0:0 - 0:0
+                              (define-const v1007 ((_ zero_extend 32) v1000)) ; src/v8_base.sail 13990:40 - 13990:66
+                              (read-reg |__isla_vector_gpr| nil true)
+                              (write-reg |R14| nil v1007)
+                              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-const v1029 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v983) #xfffffffe)) ; 0:0 - 0:0
+                              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                              (define-const v1030 ((_ zero_extend 32) v1029)) ; src/v8_base.sail 6790:33 - 6790:55
+                              (branch-address v1030)
+                              (define-const v1031 ((_ zero_extend 32) v1029)) ; src/v8_base.sail 6791:14 - 6791:36
+                              (write-reg |_PC| nil v1031)
+                              (write-reg |__BranchTaken| nil true))
+                            (trace
+                              (assert (not v1006)) ; 0:0 - 0:0
+                              (read-reg |__isla_vector_gpr| nil true)
+                              (declare-const v1032 (_ BitVec 64)) ; src/v8_base.sail 2306:23 - 2306:52
+                              (read-reg |R14| nil v1032)
+                              (define-const v1033 (bvor (bvand v1032 #xffffffff00000000) ((_ zero_extend 32) v1000))) ; 0:0 - 0:0
+                              (write-reg |R14| nil v1033)
+                              (write-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                              (define-const v1055 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) v983) #xfffffffe)) ; 0:0 - 0:0
+                              (write-reg |Branchtypetaken| nil |BranchType_DIRCALL|)
+                              (define-const v1056 ((_ zero_extend 32) v1055)) ; src/v8_base.sail 6790:33 - 6790:55
+                              (branch-address v1056)
+                              (define-const v1057 ((_ zero_extend 32) v1055)) ; src/v8_base.sail 6791:14 - 6791:36
+                              (write-reg |_PC| nil v1057)
+                              (write-reg |__BranchTaken| nil true))))))))))))))))

@@ -1,0 +1,143 @@
+tests/isla/m7-traces.sh traces the Thumb forms of LeanExe/M7/Machine.lean from armv9p4-t32.ir, which
+this diff makes from armv9p4-checked.ir, armv9p4.ir with tests/isla/armv9p4-checked.diff applied.
+The diff appends two harness functions, isla_footprint_t32 for a 32-bit opcode and
+isla_footprint_t16 for a 16-bit one, and changes nothing else.  Each does what
+isla_footprint_no_init and isla_footprint_common do for an A64 opcode (isla_main.sail 51-73): it
+runs InitFeatureImpl, sets SEE to -1 and DBGEN to Signal_Low, runs Isla's reset, sets __ThisInstr
+and __ThisInstrEnc, and marks the start of the trace with check_cycle_count.  It then sets
+__currentCond, which __InstructionExecute sets through __SetThisInstrDetails with __DefaultCond
+(fetch.sail 299), and calls __DecodeExecute (fetch.sail 250), which decodes and executes the
+instruction through ExecuteT32__1 or ExecuteT16 and retries the decode once after an SEE
+exception.  Around that call it keeps the handler of armv9p4-checked.ir: Error_ExceptionTaken
+ends the path normally, and every other exception fails a Sail assertion, which ends Isla's run
+with an error.
+
+__DefaultCond gives AL outside an IT block, and the decode of B T3 tests ConditionPassed(), which
+reads __currentCond, and never the cond field of its opcode (instrs32.sail 1463-1476), so with
+__InstructionExecute's setting the Sail model branches on every B<cond>.W outside an IT block.
+CurrentCond() of DDI 0403E.e A7.3.1 returns the cond field of the encoding for the T1 and T3
+encodings of B and ITSTATE's condition otherwise.  isla_footprint_t32 follows it: an opcode whose
+bits 31 to 27, 15, 14, and 12 are 11110, 1, 0, and 0 and whose bits 25 to 23 are not 111, the
+pattern of B T3 (instrs32.sail 1478), gets bits 25 to 22 as its condition, and every other opcode
+gets __DefaultCond(__T32).  isla_footprint_t16 sets __DefaultCond(__T16); the only 16-bit form of
+the model, BX, is not B T1.  The condition's computation and its write follow the cycle event, so
+a trace records them, while Isla drops the writes that come before it.  Apply with
+`cp armv9p4-checked.ir armv9p4-t32.ir && patch armv9p4-t32.ir < armv9p4-t32.diff`.
+
+--- armv9p4-checked.ir
++++ armv9p4-t32.ir
+@@ -3776261,3 +3776261,114 @@
+ 
+ files "/home/bcampbe2/.opam/4.14.2/share/sail/lib/flow.sail" "src/prelude.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/arith.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/vector.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/reverse_endianness.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/option.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/concurrency_interface/common.sail" "/home/bcampbe2/.opam/4.14.2/share/sail/lib/concurrency_interface/read_write.sail" "src/builtins.sail" "src/v8_base.sail" "" "src/impdefs.sail" "src/stubs.sail" "src/devices.sail" "src/fetch.sail" "src/interrupts.sail" "src/interface.sail" "src/mem.sail" "src/isla_splice.sail" "src/sysregs_autogen.sail" "src/reset.sail" "src/event_clauses.sail" "src/sysregs.sail" "src/instrs64.sail" "src/instrs64_sve.sail" "src/instrs64_sme.sail" "src/instrs32.sail" "src/decode_end.sail" "src/map_clauses.sail" "src/elfmain.sail" "src/isla_main.sail"
+ 
++
++val zisla_footprint_t32 : (%bv32) ->  %bool
++
++fn zisla_footprint_t32(zopcode) {
++  zz40 : %unit;
++  zz40 = zInitFeatureImpl(());
++  zz41 : %i;
++  zz41 = zz5i64zDzKz5i(-1);
++  zSEE = zz41;
++  zDBGEN = zSignal_Low;
++  zz42 : %unit;
++  zz42 = zisla_reset_registers(());
++  z__ThisInstr = zopcode;
++  z__ThisInstrEnc = z__T32;
++  zz418 : %unit;
++  zz418 = zcheck_cycle_count(());
++  zz43 : %bv4;
++  zz44 : %bv;
++  zz44 = zopcode;
++  zz45 : %bv;
++  zz45 = 0xF800D000;
++  zz46 : %bv;
++  zz46 = zand_vec(zz44, zz45);
++  zz47 : %bv;
++  zz47 = 0xF0008000;
++  zz48 : %bool;
++  zz48 = zeq_bits(zz46, zz47);
++  jump @not(zz48) goto 43;
++  zz49 : %i;
++  zz49 = zz5i64zDzKz5i(23);
++  zz410 : %i;
++  zz410 = zz5i64zDzKz5i(3);
++  zz411 : %bv;
++  zz411 = zslice(zz44, zz49, zz410);
++  zz412 : %bv;
++  zz412 = 0b111;
++  zz413 : %bool;
++  zz413 = zneq_bits(zz411, zz412);
++  jump @not(zz413) goto 43;
++  zz414 : %i;
++  zz414 = zz5i64zDzKz5i(22);
++  zz415 : %i;
++  zz415 = zz5i64zDzKz5i(4);
++  zz416 : %bv;
++  zz416 = zslice(zz44, zz414, zz415);
++  zz43 = zz416;
++  goto 44;
++  zz43 = z__DefaultCond(z__T32);
++  z__currentCond = zz43;
++  zz419 : %bool;
++  zz420 : %unit;
++  zz420 = z__DecodeExecute(z__T32, zopcode);
++  jump have_exception goto 50;
++  goto 51;
++  goto 52;
++  zz419 = true;
++  jump @not(have_exception) goto 60;
++  have_exception = false;
++  jump current_exception is zError_ExceptionTaken goto 57;
++  zz419 = false;
++  goto 60;
++  zz421 : %unit;
++  zz421 = zsail_assert(false, "__DecodeExecute threw an exception other than Error_ExceptionTaken");
++  goto 60;
++  return = zz419;
++  end;
++}
++
++val zisla_footprint_t16 : (%bv16) ->  %bool
++
++fn zisla_footprint_t16(zopcode) {
++  zz40 : %unit;
++  zz40 = zInitFeatureImpl(());
++  zz41 : %i;
++  zz41 = zz5i64zDzKz5i(-1);
++  zSEE = zz41;
++  zDBGEN = zSignal_Low;
++  zz42 : %unit;
++  zz42 = zisla_reset_registers(());
++  zz43 : %bv;
++  zz43 = zopcode;
++  zz44 : %i;
++  zz44 = zz5i64zDzKz5i(32);
++  zz45 : %bv32;
++  zz45 = zZeroExtend0(zz43, zz44);
++  z__ThisInstr = zz45;
++  z__ThisInstrEnc = z__T16;
++  zz48 : %unit;
++  zz48 = zcheck_cycle_count(());
++  zz46 : %bv4;
++  zz46 = z__DefaultCond(z__T16);
++  z__currentCond = zz46;
++  zz419 : %bool;
++  zz420 : %unit;
++  zz420 = z__DecodeExecute(z__T16, zz45);
++  jump have_exception goto 26;
++  goto 27;
++  goto 28;
++  zz419 = true;
++  jump @not(have_exception) goto 36;
++  have_exception = false;
++  jump current_exception is zError_ExceptionTaken goto 33;
++  zz419 = false;
++  goto 36;
++  zz421 : %unit;
++  zz421 = zsail_assert(false, "__DecodeExecute threw an exception other than Error_ExceptionTaken");
++  goto 36;
++  return = zz419;
++  end;
++}
++
