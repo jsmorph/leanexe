@@ -1,4 +1,5 @@
 import TestSupport.M7.Windows
+import TestSupport.M7.Qemu
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
@@ -6,6 +7,9 @@ The command `m7-windows` of the window counts of the Cortex-M7 back end's progra
 
 - `m7-windows frames` prints each program's functions with their frames and sizes.
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
+- `m7-windows qemu FILE` writes to FILE the image of the echo of `cmsdkTick` for QEMU's
+  `mps2-an500` (`tests/TestSupport/M7/Qemu.lean`): the vector table, UART0's initialization, and
+  the program, from address 0.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -77,6 +81,15 @@ def main (args : List String) : IO UInt32 := do
       | .error e =>
           IO.eprintln s!"m7-windows: {name}: {e}"
           return 1
+  | ["qemu", file] =>
+      match TestSupport.M7.Qemu.echoImage with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: echo-cmsdk-qemu: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: echo-cmsdk-qemu: {e}"
+          return 1
   | ["static", name] => withProg name fun p => do
       match longest p with
       | .ok (ls, l, d) =>
@@ -119,6 +132,6 @@ def main (args : List String) : IO UInt32 := do
           return 1
       | none => return 0
   | _ =>
-      IO.eprintln ("usage: m7-windows frames | image NAME FILE | static NAME | " ++
+      IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | static NAME | " ++
         "run NAME DIR [IN OUT]")
       return 2
