@@ -6,9 +6,9 @@ abstract, and the lemmas on the register `_Z` that the theorems of those forms u
 
 `tests/isla/armv9p4-checked-fp.diff` adds to the IR a monomorphic wrapper of each floating-point
 function that the forms of `LeanExe/A64/Machine.lean` call, `FPAdd64`, `FPSub64`, `FPMul64`,
-`FPDiv64`, `FPSqrt64`, and `FixedToFP64`, each of which calls the original function at 64 bits,
-and `tests/isla/traces.sh` leaves each wrapper abstract with `--abstract`.  The trace of a form
-then records the call with its arguments, among them the FPCR that the form read, and the
+`FPDiv64`, `FPSqrt64`, `FixedToFP64`, and `FPToFixed64`, each of which calls the original function
+at 64 bits, and `tests/isla/traces.sh` leaves each wrapper abstract with `--abstract`.  The trace of
+a form then records the call with its arguments, among them the FPCR that the form read, and the
 semantics of `Trace.lean` gives the call the meaning `A`.  Each equation below states, for one
 wrapper, that `A` gives the reference interpreter's function of `Interpreter/Wasm/Float.lean` for
 every operand under the startup's FPCR, `0x02000000`, which the traces record as the struct
@@ -64,6 +64,14 @@ def FixedToFPEq (A : Abstract) : Prop :=
   ∀ a : UInt64, A "FixedToFP64" [.bits 64 a.toNat, .bits 128 0, .bool true,
     .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_TIEEVEN"] =
     some (.bits 64 (Wasm.f64ConvertI64U a).toNat)
+
+/-- `FPToFixed(a, 0, TRUE, FPCR, FPRounding_ZERO, 64) = Wasm.i64TruncSatF64U a` under FPCR
+`0x02000000`, for the wrapper `FPToFixed64`: the conversion of the double `a` to an unsigned 64-bit
+integer with no fraction bits, rounding toward zero and saturating. -/
+def FPToFixedEq (A : Abstract) : Prop :=
+  ∀ a : UInt64, A "FPToFixed64" [.bits 64 a.toNat, .bits 128 0, .bool true,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_ZERO"] =
+    some (.bits 64 (Wasm.i64TruncSatF64U a).toNat)
 
 /-- The fields of a floating-point form of the registers `d` and `n`, such as `FSQRT Dd, Dn`. -/
 def fpFields2 (d n : Fin 32) : Fields := [("Rn", n.val), ("Rd", d.val)]
