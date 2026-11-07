@@ -1,0 +1,49 @@
+tests/isla/m7-traces.sh traces UDIV from armv9p4-t32-udiv.ir, which this diff makes from
+armv9p4-t32.ir (tests/isla/armv9p4-t32.diff).  The function execute_aarch32_instrs_UDIV_Op_A_txt
+(instrs32.sail 17324-17333) writes 0 for a divisor R[m] of zero and otherwise
+RoundTowardsZero(Real(UInt(R[n])) / Real(UInt(R[m]))), and Isla implements no real-number
+primitive.  The edit computes the quotient as tdiv_int(UInt(R[n]), UInt(R[m])) on the same
+integers, as tests/isla/armv9p4-udiv.diff does for the A64 UDIV.  A trace from the edited IR
+describes the unedited model under two readings: that the edit divides the same integers in the
+same order and leaves the function otherwise unchanged, and that for integers a ≥ 0 and b > 0,
+a/b rounded toward zero equals tdiv_int(a, b).  The edit removes six statements and replaces a
+seventh, so the jump to the zero case and the goto that skips it name the same statements as
+before at indices six lower.  Apply with `cp armv9p4-t32.ir armv9p4-t32-udiv.ir` and then
+`patch armv9p4-t32-udiv.ir < armv9p4-t32-udiv.diff`.
+
+--- armv9p4-t32.ir
++++ armv9p4-t32-udiv.ir
+@@ -3010820,9 +3010820,7 @@
+   zz428 = zz5i64zDzKz5i(zz426) `27 17326:7-17326:27;
+   zz48 = zeq_int(zz428, zz427) `27 17326:7-17326:27;
+   zz49 : %unit `27 17326:4-17330:5;
+-  jump zz48 goto 53 `27 17326:4-17330:5;
+-  zz411 : %real `27 17329:17-17329:80;
+-  zz412 : %real `27 17329:34-17329:79;
++  jump zz48 goto 47 `27 17326:4-17330:5;
+   zz420 : %i64 `27 17329:34-17329:55;
+   zz422 : %bv32 `27 17329:39-17329:54;
+   zz425 : %i `27 17329:44-17329:53;
+@@ -3010835,8 +3010833,6 @@
+   zz420 = zz5izDzKz5i64(zz424) `27 17329:39-17329:54;
+   zz421 : %i `27 17329:34-17329:55;
+   zz421 = zz5i64zDzKz5i(zz420) `27 17329:34-17329:55;
+-  zz412 = zto_real(zz421) `27 17329:34-17329:55;
+-  zz413 : %real `27 17329:34-17329:79;
+   zz414 : %i64 `27 17329:58-17329:79;
+   zz416 : %bv32 `27 17329:63-17329:78;
+   zz419 : %i `27 17329:68-17329:77;
+@@ -3010849,11 +3010845,9 @@
+   zz414 = zz5izDzKz5i64(zz418) `27 17329:63-17329:78;
+   zz415 : %i `27 17329:58-17329:79;
+   zz415 = zz5i64zDzKz5i(zz414) `27 17329:58-17329:79;
+-  zz413 = zto_real(zz415) `27 17329:58-17329:79;
+-  zz411 = zdiv_real(zz412, zz413) `27 17329:34-17329:79;
+-  zz40 = zRoundTowardsZero(zz411) `27 17329:17-17329:80;
++  zz40 = ztdiv_int(zz421, zz415) `27 17329:17-17329:80;
+   zz49 = () `27 17329:8-17329:80;
+-  goto 57;
++  goto 51;
+   zz410 : %i `27 17327:17-17327:18;
+   zz410 = zz5i64zDzKz5i(0) `27 17327:17-17327:18;
+   zz40 = zz410 `27 17327:17-17327:18;
