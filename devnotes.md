@@ -42299,7 +42299,10 @@ The plan recommends hardware instructions: the model gains the low 64 bits of V0
 
 The increments run: F0 enables floating point in the startup and the boot model; F1 brings the Euler solver, entry 28 of `Demos.Euler.Buffered`, as the approved coverage plan orders, from the forms of the reverted commit `ede7b3255` reapplied; F2 checks F1's forms against Isla with the wrappers; then exp with FCMP and f64 entries, tests of the equations, the rest of f64, binary32, and the proof of the equations.  The choice between hardware and software floating point goes to the user, and so does installing Sail before the proof of the equations.
 
+The user asked to proceed with the plan after the merge of `controller` into `main`, approved installing Sail, and asked that later floating-point decisions follow the recorded procedure: a recommendation, an independent review, and then the work, with a question to the user only for a problem or a risk, one at a time.
+
 - [x] The user's choice between hardware and software floating point: hardware.
+- [x] Installing Sail on edgexpert-18ff before the proof of the equations: approved by the user.
 - [ ] F0: FP enabled in the startup and the boot model.
 - [ ] F1: Euler on the AArch64 path.
 - [ ] F2: Isla checks of F1's forms with size-tested wrappers.
