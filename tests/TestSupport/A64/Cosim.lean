@@ -114,7 +114,7 @@ def field19 (j : Int) : Fin 524288 :=
 /-- A case of form `form`, whose state makes the instruction run without a fault.  A case of
 `FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
 sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
-neighbours occur. -/
+neighbors occur. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do

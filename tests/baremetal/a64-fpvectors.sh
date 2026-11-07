@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The test of the floating-point forms' meanings in LeanExe/A64/Machine.lean against QEMU and the
 # processor (tests/TestSupport/A64/FpVectors.lean).  It builds a64-fpvectors, writes the arm64
-# Image of COUNT vectors of each of FADD, FSUB, FMUL, FDIV, FSQRT, and UCVTF from the seed SEED,
-# checks QEMU's loading of it with tests/baremetal/a64-loadcheck.sh under each accelerator that
-# the platforms use, and runs it on QEMU's virt machine with 1 GiB of RAM on every PLATFORM at
+# Image of COUNT vectors of each of FADD, FSUB, FMUL, FDIV, FSQRT, UCVTF, and FCMP from the seed
+# SEED, checks QEMU's loading of it with tests/baremetal/a64-loadcheck.sh under each accelerator
+# that the platforms use, and runs it on QEMU's virt machine with 1 GiB of RAM on every PLATFORM at
 # once: tcg, under which QEMU emulates a Cortex-A57, kvm, under KVM on the host's processor, or
 # kvm:N, under KVM pinned with taskset to processor N.  Each run must end within TIMEOUT seconds,
 # 3600 unless set, with QEMU's status 0, and after each run a64-fpvectors check compares every

@@ -3,10 +3,12 @@ import LeanExe.A64.Startup
 import LeanExe.A64.Table
 
 /-!
-The test of the floating-point forms' meanings: for `FADD`, `FSUB`, `FMUL`, `FDIV`, `FSQRT`, and
-`UCVTF`, vectors of operand words that stress the corner cases of IEEE 754, an arm64 Image that
-runs each form on each vector and writes each result's word to the UART, and a check of every
-result word against the model, whose forms compute Talos's functions.
+The test of the floating-point forms' meanings: for `FADD`, `FSUB`, `FMUL`, `FDIV`, `FSQRT`,
+`UCVTF`, and `FCMP`, vectors of operand words that stress the corner cases of IEEE 754, an arm64
+Image that runs each form on each vector and writes each result's word to the UART, and a check of
+every result word against the model, whose forms compute Talos's functions.  `FCMP` runs as the
+generator's three comparisons, `f64Eq`, `f64Lt`, and `f64Le`, on the same operands, whose results
+form bits 0, 1, and 2 of the result word.
 
 A form's vectors fall into classes, each of which receives an equal share of the form's count,
 with the remainder to the last class, and each class draws its operands from SplitMix64.  A
@@ -15,11 +17,11 @@ forms compute the same exact sums.  `image` writes the Image: the header, the st
 `LeanExe.A64.Startup`, which enables floating point and writes FPCR as `fpcrValue` as the back
 end's Images do, the program `mainCode`, the vector and translation tables, and the operand words
 at the area.  For each form, `mainCode` loads each vector's words into X2 and X3, runs the code
-that the generator emits for the form (`fBin`, `sqrtCode`, or `convertCode`), and stores the
-eight bytes of the result in X2 to the UART, lowest first.  `checkRun` reads the operands from
+that the generator emits for the form (`fBin`, `sqrtCode`, `convertCode`, or `fCmp`), and stores
+the eight bytes of the result in X2 to the UART, lowest first.  `checkRun` reads the operands from
 the Image's bytes and the results from the UART's bytes and compares each result with the model's
 run of the same code, and `tagsOf` classifies each vector's exact result by its position on the
-grid of doubles.
+grid of doubles, or a comparison's operands as unordered, equal, less, or greater.
 -/
 
 namespace TestSupport.A64.Fp
@@ -28,14 +30,14 @@ open LeanExe.A64
 
 /-- The forms under test. -/
 inductive Form where
-  | fadd | fsub | fmul | fdiv | fsqrt | ucvtf
+  | fadd | fsub | fmul | fdiv | fsqrt | ucvtf | fcmp
   deriving BEq, Repr, Inhabited
 
-def Form.all : List Form := [.fadd, .fsub, .fmul, .fdiv, .fsqrt, .ucvtf]
+def Form.all : List Form := [.fadd, .fsub, .fmul, .fdiv, .fsqrt, .ucvtf, .fcmp]
 
 def Form.name : Form → String
   | .fadd => "fadd" | .fsub => "fsub" | .fmul => "fmul" | .fdiv => "fdiv" | .fsqrt => "fsqrt"
-  | .ucvtf => "ucvtf"
+  | .ucvtf => "ucvtf" | .fcmp => "fcmp"
 
 def Form.ofName (s : String) : Option Form := Form.all.find? (·.name == s)
 
@@ -44,7 +46,9 @@ def Form.binary : Form → Bool
   | _ => true
 
 /-- The code that the generator emits for the form on the words in X2 and X3, which leaves the
-result's word in X2. -/
+result's word in X2.  For `FCMP` it is the code of `f64Eq` on copies in X4 and X3, of `f64Lt` on
+copies in X7 and X3, and of `f64Le` on X2 and X3, and then `X2 + X2 + X7`, doubled, plus X4: the
+result of `f64Eq` in bit 0, of `f64Lt` in bit 1, and of `f64Le` in bit 2. -/
 def Form.code : Form → List Instr
   | .fadd => fBin .fadd 2 3
   | .fsub => fBin .fsub 2 3
@@ -52,6 +56,8 @@ def Form.code : Form → List Instr
   | .fdiv => fBin .fdiv 2 3
   | .fsqrt => sqrtCode 2
   | .ucvtf => convertCode 2
+  | .fcmp => [mov 4 2] ++ fCmp 1 4 3 ++ [mov 7 2] ++ fCmp 5 7 3 ++ fCmp 8 2 3 ++
+      [.addReg 2 2 2, .addReg 2 2 7, .addReg 2 2 2, .addReg 2 2 4]
 
 /-- X2 after the model runs the form's code from a state with `a` in X2 and `b` in X3. -/
 def Form.model (f : Form) (a b : UInt64) : Option UInt64 := do
@@ -469,6 +475,34 @@ def cvtRandom : Gen UInt64 := do
   let low ← bits (L - 1)
   return if L = 0 then 0 else UInt64.ofNat (2 ^ (L - 1) + low)
 
+/-! ## Comparisons -/
+
+/-- Equal words. -/
+def cmpEqual (_ : Nat) : Gen (UInt64 × UInt64) := do
+  let a ← anyWord
+  return (a, a)
+
+/-- A word and its negation, a zero of either sign in half of the vectors. -/
+def cmpSigns (_ : Nat) : Gen (UInt64 × UInt64) := do
+  let neg ← coin
+  let w ← anyWord
+  let a := if ← coin then dbl neg 0 0 else w
+  return (a, negW a)
+
+/-- Neighboring words in either order, which cross a binade, the boundary between subnormals and
+normals, or the boundary between the largest normal and infinity at their ends. -/
+def cmpAdjacent (_ : Nat) : Gen (UInt64 × UInt64) := do
+  let a ← anyWord
+  let b := if ← coin then a + 1 else a - 1
+  return if ← coin then (a, b) else (b, a)
+
+/-- Words of the same sign and exponent whose fractions differ in random low bits. -/
+def cmpClose (_ : Nat) : Gen (UInt64 × UInt64) := do
+  let s ← coin
+  let e ← below 2048
+  let f ← bits 52
+  return (dbl s e f, dbl s e (f ^^^ (← bits (← between 1 52))))
+
 /-! ## Classes -/
 
 /-- A class: its name and its vectors by their index in the class. -/
@@ -502,6 +536,9 @@ def Form.classes : Form → List Class
       [⟨"special", fun i => unary (cvtSpecial i) i⟩, ⟨"tie", unary cvtTie⟩,
         ⟨"neartie", unary cvtNearTie⟩, ⟨"carry", unary cvtCarry⟩, ⟨"exact", unary cvtExact⟩,
         ⟨"random", unary cvtRandom⟩]
+  | .fcmp =>
+      [⟨"special", specialPair⟩, ⟨"equal", cmpEqual⟩, ⟨"signs", cmpSigns⟩,
+        ⟨"adjacent", cmpAdjacent⟩, ⟨"close", cmpClose⟩, ⟨"random", randomPair⟩]
 
 /-- A run of vectors of one form and class. -/
 structure Block where
@@ -584,20 +621,29 @@ def image (data : ByteArray) (counts : List (Form × Nat)) : GenM (ByteArray × 
 def get64 (b : ByteArray) (o : Nat) : UInt64 :=
   (List.range 8).foldr (fun k acc => (acc <<< 8) ||| b[o + k]!.toUInt64) 0
 
-/-- The position of an exact result on the grid of doubles, and the special results. -/
+/-- The position of an exact result on the grid of doubles, the special results, and the order of
+a comparison's operands. -/
 inductive Tag where
   | exact | tie | nearTie | overflow | subnormal | zero | nan
+  | unordered | equal | less | greater
   deriving BEq, Repr
 
-def Tag.all : List Tag := [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan]
+def Tag.all : List Tag :=
+  [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan, .unordered, .equal, .less, .greater]
+
+/-- The tags of the form's vectors. -/
+def Form.tags : Form → List Tag
+  | .fcmp => [.unordered, .equal, .less, .greater]
+  | _ => [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan]
 
 def Tag.name : Tag → String
   | .exact => "exact" | .tie => "tie" | .nearTie => "neartie" | .overflow => "overflow"
-  | .subnormal => "subnormal" | .zero => "zero" | .nan => "nan"
+  | .subnormal => "subnormal" | .zero => "zero" | .nan => "nan" | .unordered => "unordered"
+  | .equal => "equal" | .less => "less" | .greater => "greater"
 
 def Tag.index : Tag → Nat
   | .exact => 0 | .tie => 1 | .nearTie => 2 | .overflow => 3 | .subnormal => 4 | .zero => 5
-  | .nan => 6
+  | .nan => 6 | .unordered => 7 | .equal => 8 | .less => 9 | .greater => 10
 
 /-- The tags of the positive exact result `num / den`, in units of `2^-1074`: exact when it is a
 double or zero, a tie when it lies halfway between two doubles, a near tie when it lies within
@@ -616,9 +662,14 @@ def gridTags (num den : Nat) : List Tag :=
 
 /-- The tags of the form's vector `a`, `b` with the result `w`: those of the exact result when the
 operands are finite, and a subnormal result, a zero result of a nonzero exact result, and a NaN
-result.  The square root's exact result carries 64 bits below the unit. -/
+result.  The square root's exact result carries 64 bits below the unit.  A comparison's operands
+are unordered, equal, less, or greater, as Talos's `IEEE64.eq` and `IEEE64.lt` give. -/
 def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
   open Wasm.IEEE64 in
+  if f == .fcmp then
+    [if isNaN a || isNaN b then .unordered else if eq a b then .equal else if lt a b then .less
+      else .greater]
+  else
   let fin := f == .ucvtf || (isFinite a && (!f.binary || isFinite b))
   let exact : Option (Nat × Nat) :=
     if !fin then none
@@ -633,6 +684,7 @@ def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
           if sign a && scaledMagnitude a != 0 then none
           else some (Nat.sqrt (scaledMagnitude a * 2 ^ (1074 + 128)), 2 ^ 64)
       | .ucvtf => some (a.toNat * 2 ^ 1074, 1)
+      | .fcmp => none
   let grid := match exact with
     | some (n, d) => gridTags n d
     | none => []
