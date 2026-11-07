@@ -45,8 +45,6 @@ The rules differ from those of the A64 semantics as follows.
    the platform decides which accesses are device accesses, and the traces of `m7-traces.sh` map
    the model's device window as Device memory and DTCM as Normal memory.
 4. The vector primitives read and write `R0` to `R30` as `Mach.x` and `Mach.setX` give them.
-5. A call of an abstract function ends the path in `fail`.  The M7 traces come from runs without
-   `--abstract`, so they hold no such call, and the semantics gives no function a meaning.
 -/
 
 namespace LeanExe.M7.Isla
