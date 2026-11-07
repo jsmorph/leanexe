@@ -1,5 +1,6 @@
 import TestSupport.M7.Windows
 import TestSupport.M7.Qemu
+import TestSupport.M7.GwImages
 import TestSupport.M7.Dwt
 
 /-!
@@ -15,9 +16,13 @@ The command `m7-windows` of the window counts of the Cortex-M7 back end's progra
   NUCLEO-F767ZI (`tests/TestSupport/M7/Nucleo.lean`): the vector table, the board's
   initialization, and the program, from the flash's ITCM address `0x00200000`, and prints the
   addresses of `main` and of its loop's head.
-- `m7-windows board-dwt FILE` and `m7-windows div-dwt FILE` write the measurement images of
-  `tests/TestSupport/M7/Dwt.lean`: the echo with the cycles of each window, and the cycles of
-  `udivmod64`'s paths and of `UDIV`.
+- `m7-windows gateway-qemu FILE` writes to FILE the image of the gateway of `gwTick` for QEMU's
+  `mps2-an500`, and `m7-windows gateway-board FILE` the image of the gateway of `gwTickUsart3`
+  for the NUCLEO-F767ZI, as `tests/TestSupport/M7/GwImages.lean` lays them out, and each prints
+  the addresses of `main` and of its loop's head.
+- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, and `m7-windows div-dwt FILE` write
+  the measurement images of `tests/TestSupport/M7/Dwt.lean`: the echo and the gateway with the
+  cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -72,6 +77,20 @@ def statLine (kind : String) (s : Stat) : String :=
   s!"{kind} windows {s.count} least {s.least} most {s.most} total {s.total} " ++
     s!"divisions fast {s.divFast} low {s.divLow} loop {s.divLoop} passes {s.divLoopPasses}"
 
+/-- Writes the image `g` named `name` to `file` and prints its size and the addresses of `main`,
+`base`, and of its loop's head, `head`. -/
+def writeImage (name file : String) (g : LeanExe.M7.GenM (List UInt8)) (base head : UInt32) :
+    IO UInt32 :=
+  match g with
+  | .ok bytes => do
+      IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+      IO.println (s!"m7-windows: {name}: {bytes.length} bytes, main {hex32 base}, " ++
+        s!"loop head {hex32 head}")
+      return 0
+  | .error e => do
+      IO.eprintln s!"m7-windows: {name}: {e}"
+      return 1
+
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["frames"] =>
@@ -113,6 +132,21 @@ def main (args : List String) : IO UInt32 := do
           return 0
       | .error e =>
           IO.eprintln s!"m7-windows: echo-usart3-board: {e}"
+          return 1
+  | ["gateway-qemu", file] =>
+      writeImage "gateway-cmsdk-qemu" file TestSupport.M7.Gw.qemuImage
+        TestSupport.M7.Qemu.boot.base TestSupport.M7.Gw.qemuHead
+  | ["gateway-board", file] =>
+      writeImage "gateway-usart3-board" file TestSupport.M7.Gw.boardImage
+        LeanExe.M7.Nucleo.boot.base TestSupport.M7.Gw.boardHead
+  | ["gateway-dwt", file] =>
+      match TestSupport.M7.Dwt.gwDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: gateway-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: gateway-usart3-board-dwt: {e}"
           return 1
   | ["board-dwt", file] =>
       match TestSupport.M7.Dwt.echoDwt with
@@ -172,5 +206,6 @@ def main (args : List String) : IO UInt32 := do
       | none => return 0
   | _ =>
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
-        "board-dwt FILE | div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
+        "gateway-qemu FILE | gateway-board FILE | board-dwt FILE | gateway-dwt FILE | " ++
+        "div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
       return 2
