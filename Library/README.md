@@ -24,6 +24,7 @@ The library groups reusable implementations and their proofs by algorithm family
 | [Statistics](../index.md#5-statistics) | V F C | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | V S F C | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | V S F C | Minmod and its real slope and face properties. |
+| [Decimation filter](Numerics/Filters/Cic/README.md) | V S | The cascaded integrator–comb filter: its specification over ℤ, its block form over ℤ and 64-bit words, the exactness of its word outputs under Hogenauer's bound, and a program of order 3, decimation 8, and delay 1 with an AArch64 Image. |
 | [Packed bytes](Bytes/Packed.lean) | – | Byte strings held eight bytes to a word, as the libraries that take byte strings state their arguments. |
 | [Little-endian values](Bytes/LittleEndian.lean) | – | Values of byte strings read least significant byte first, and of the bytes of a word, which the SipHash and XXH64 proofs use. |
 | [Hashing](Hashing/README.md) | V S F C A B | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and SHA-512/256, with the FIPS 180-4 transcription and equivalence proofs they use, HMAC-SHA-256 and HMAC-SHA-512 with a transcription of FIPS 198-1, SHA3-224, SHA3-256, SHA3-384, SHA3-512, SHAKE128, and SHAKE256 with a transcription of FIPS 202, CRC-32 and CRC-32C with a transcription of ITU-T V.42 and RFC 3720, SipHash-2-4 and SipHash-1-3 with a transcription of the SipHash paper, and XXH64 with a transcription of the xxHash specification. |

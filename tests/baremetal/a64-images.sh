@@ -21,14 +21,14 @@ source tests/baremetal/qemu.sh
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m lake --log-level error build a64-programs TestSupport.A64.Gcd \
-  TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold LeanExe.A64.File \
-  LeanExe.A64.Proof.ImageTheorem
+  TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold TestSupport.A64.Cic \
+  LeanExe.A64.File LeanExe.A64.Proof.ImageTheorem
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
 if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
     "$root/tests/TestSupport/A64/ImageFiles.lean" >"$out/images.check" 2>&1 &&
     [ "$(grep -c 'depends on axioms: \[propext, Classical.choice, Quot.sound\]$' \
-      "$out/images.check")" = 5 ]; then
+      "$out/images.check")" = 7 ]; then
   echo "pass: the kernel's check of the Images"
 else
   echo "fail: the kernel's check of the Images: $(head -c 600 "$out/images.check")"

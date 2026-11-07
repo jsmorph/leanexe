@@ -33,7 +33,9 @@ The Forms column lists a row's codes in the order of the key below.  When an app
 - [6. Elementary and special functions](#6-elementary-and-special-functions)
   - [6.1. Bessel functions](#61-bessel-functions)
 - [7. Linear algebra](#7-linear-algebra)
-- [8. Discrete Fourier transform](#8-discrete-fourier-transform)
+- [8. Signal processing](#8-signal-processing)
+  - [8.1. Discrete Fourier transform](#81-discrete-fourier-transform)
+  - [8.2. Decimation filter](#82-decimation-filter)
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
 - [11. Hash functions](#11-hash-functions)
@@ -246,7 +248,9 @@ The integer-order theorems exclude `2 ≤ |x| < 2^302` with `|n| > |x|/2`.  That
 | `add32` | V F C (gpt32: A G) | [Linear algebra](Library/Numerics/LinearAlgebra/README.md) | Adds elementwise over the first array's length. | [`compiled.add32.implements`](Library/Numerics/LinearAlgebra/Binary32/Compiled.lean).  [`addKernel_dispatch`](Demos/Gpt32/VerifiedDispatch.lean): the dispatch of the verified kernel computes `add32` and is race-free, for sizes below `2^29`, under its output-buffer and invocation-count premises. |
 | `linear32` | V F C (gpt32: A G) | [Linear algebra](Library/Numerics/LinearAlgebra/README.md) | Multiplies a row of `k` values by a `k × m` matrix, returning `m` values.  Each output adds `b[c]` after its column dot product. | [`compiled.linear32.implements`](Library/Numerics/LinearAlgebra/Binary32/Compiled.lean).  [`linearKernel_dispatch`](Demos/Gpt32/VerifiedDispatch.lean): the dispatch of the verified kernel computes `linear32` and is race-free, for sizes below `2^29`, under its output-buffer and invocation-count premises. |
 
-## 8. Discrete Fourier transform
+## 8. Signal processing
+
+### 8.1. Discrete Fourier transform
 
 [The Fourier guide](Library/Numerics/Fourier/README.md) explains the signal layout, transform signs, inverse normalization, compilation, and accuracy comparisons.  A complex signal is a flat binary64 array with real and imaginary parts interleaved.  The direct transform takes quadratic time and ignores an odd final float, and its trigonometric factors use the sine and cosine implementations of [section 6](#6-elementary-and-special-functions), compiled in the same module with their tables, which the wrappers pass.  Transform and spectrum error bounds remain open.
 
@@ -258,6 +262,14 @@ The integer-order theorems exclude `2 ≤ |x| < 2^302` with `|n| > |x|/2`.  That
 | `powerSpectrum` | V F C | [Discrete Fourier transform](Library/Numerics/Fourier/README.md) | Transforms real samples and returns `\|X_k\|²` for `0 ≤ k ≤ n/2`.  An empty input returns an empty array. | [`compiled.powerSpectrum.implements`](Library/Numerics/Fourier/Compiled.lean). |
 
 [The native accuracy test](tests/TestSupport/Numerics/FourierAccuracy.lean) compares its test signals with a reference transform computed using exact integer sums and 300-bit approximations to the trigonometric factors, then rounded to binary64.  It reports the largest error relative to its test tolerance.  It also checks impulse and single-frequency transforms, the round trip, Parseval's identity, and the power spectrum.
+
+### 8.2. Decimation filter
+
+[The CIC guide](Library/Numerics/Filters/Cic/README.md) states the specification over ℤ of the cascaded integrator–comb decimation filter, its block form, and the exactness of its outputs in 64-bit words under Hogenauer's bound, each for every order, decimation, and differential delay.  The compiled program fixes order 3, decimation 8, and delay 1, and [its module](tests/TestSupport/A64/CicTable.lean) compiles it with a table of 64 samples for an Image of [the AArch64 back end](docs/a64-bare-metal.md), an artifact that the key's codes do not list.  The Image's theorem names the specification and the table, and its runs under QEMU with TCG and with KVM write the outputs of an independent Python reference.
+
+| Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |
+|---|---|---|---|---|
+| `cic` | V S | [CIC decimation filter](Library/Numerics/Filters/Cic/README.md) | Filters an array of words by three integrator passes, decimation by 8, and three comb passes of delay 1, in words that wrap modulo `2^64`.  An input of `n` samples gives `⌊n / 8⌋` outputs. | [`cic_toList`](Library/Numerics/Filters/Cic/Proof.lean): the block cascade `cascade 3 8 1` at `UInt64`, for every input.  [`cascade_eq_outputs`](Library/Numerics/Filters/Cic/Cascade.lean): the cascade over ℤ computes the specification's `outputs`.  [`toInt_cascade_of_width`](Library/Numerics/Filters/Cic/Exact.lean): each output word, read as a signed integer, is the exact output for samples of `B` bits when `(R·M)^N·2^(B−1) ≤ 2^63`.  [`compiled.cicCheck.implements`](tests/TestSupport/A64/CicTable.lean).  [`cic_outputs`](tests/TestSupport/A64/ImageFiles.lean): the AArch64 Image writes to the UART the specification's outputs on its table of 64 signed 16-bit samples, with no other outcome. |
 
 ## 9. Conversion between decimal strings and binary floating point
 
