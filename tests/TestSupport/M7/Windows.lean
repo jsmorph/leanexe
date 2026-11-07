@@ -148,9 +148,10 @@ def crcProg (name : String) (m : Module) (tick : UInt64 → UInt64 → UInt64 ×
 open TestSupport.M7.Sha in
 def shaKind (p : Port) (f : ShaFrame) (v : UInt64) : String :=
   if f.phase == 0 then (if v &&& p.rxFull != 0 then "rxne" else "idle")
-  else if f.phase == 1 then (if f.count == 63 then "block" else "byte")
+  else if f.phase == 1 then
+    (if f.nbyte < 7 then "byte" else if f.nword < 7 then "word" else "block")
   else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
-  else if f.count == 32 then "sentblock" else "sent"
+  else if f.nbyte < 7 then "sent" else if f.nword < 3 then "sentword" else "sentblock"
 
 /-- The bytes `bs` packed eight to a word, the lowest first. -/
 def packBytes (bs : Array UInt8) : Array UInt64 :=

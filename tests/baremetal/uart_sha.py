@@ -13,16 +13,19 @@ from a second thread while it reads the answers; (c) sends HELD blocks from a se
 nothing until LOG shows that the transmitter waits, and then reads the answers; and (d) repeats
 (a).  The first block of (a) holds zero bytes, the second 0xff bytes, and every other block comes
 from a generator with a fixed seed.  Each answer must equal hashlib.sha256 of every byte sent
-before it, so that a lost, repeated, or reordered byte changes every later answer.  QEMU's UART
-takes a byte only while its receive buffer is empty, so (b) and (c) lose no byte although bytes
-wait while the step computes.  On the board they would overrun USART3.
+before it, so that a lost, repeated, or reordered byte changes every later answer, and the
+program must have received no byte since reset before the script's first.  QEMU's UART takes a byte only while
+its receive buffer is empty, so (b) and (c) lose no byte although bytes wait while the step
+computes.  On the board they would overrun USART3.  QEMU's transmitter waits after about 278
+unread one-byte writes (uart_echo.py), so (c) must hold at least 9 blocks, whose answers take 288
+bytes, before the log can show the wait, and HELD is 16.
 
 With --device DEVICE, the script runs no QEMU and talks through the serial port DEVICE, the
 virtual COM port of a NUCLEO-F767ZI's ST-LINK or Renode's pseudo-terminal, with Serial of
-uart_echo.py at BAUD, 4,800 unless set, and it runs (a) alone.  The protocol of the step requires
-that the host send a block only after it has read the whole answer to the block before, since the
-window of a block's last byte computes two compressions while USART3, which holds one byte and
-has no flow control, would overrun.  The script prints one line, a summary or the cause of the
+uart_echo.py at BAUD, 4,800 unless set, and it runs (a) alone.  The protocol of the step
+requires that the host send a block only after it has read the whole answer to the block before:
+USART3 holds one byte and has no flow control, and the step reads no byte while it computes a
+block's two compressions or sends the block's answer.  The script prints one line, a summary or the cause of the
 failure, and exits with status 0 or 1.  TIMEOUT bounds each wait in seconds.
 
 Usage: uv run tests/baremetal/uart_sha.py [--timeout TIMEOUT] LOG QEMU [ARG...]
