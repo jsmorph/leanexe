@@ -286,6 +286,7 @@ def run (P : Platform) (δ : Nat → UInt32) (len : Nat) :
     | some (.bits _ k), some (.bits 64 y), some ws =>
       ws = gprVals m ∧ run P δ len t ρ (setRegAt m (k % 32) y) σ o
     | _, _, _ => o = .fail
+  | .event (.abstractCall _ _ _) _, _, _, _, o => o = .fail
   | .event .skip t, ρ, m, σ, o => run P δ len t ρ m σ o
 
 /-- Some path of some trace of `ts` ends in the outcome `o`. -/
