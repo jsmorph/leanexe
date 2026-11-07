@@ -425,7 +425,7 @@ def cvtFixed : List Nat :=
     2 ^ 53 + 3, 2 ^ 54 - 1, 2 ^ 54 + 1, 2 ^ 63 - 1, 2 ^ 63, 2 ^ 63 + 1, 2 ^ 64 - 1, 2 ^ 64 - 2 ^ 10,
     2 ^ 64 - 2 ^ 10 - 1, 2 ^ 64 - 2 ^ 11, 2 ^ 64 - 2 ^ 11 + 2 ^ 10]
 
-/-- The words of `cvtFixed` in turn, and powers of two and their neighbours. -/
+/-- The words of `cvtFixed` in turn, and powers of two and their neighbors. -/
 def cvtSpecial (i : Nat) : Gen UInt64 := do
   if i % 2 = 0 then return UInt64.ofNat cvtFixed[i / 2 % cvtFixed.length]!
   let k ← between 0 63
