@@ -484,6 +484,70 @@ macro "t32_side" : tactic => `(tactic| first
   | (apply mask_top <;> omega)
   | rfl)
 
+theorem ofNat_four : UInt32.ofNat 4 = 4 := rfl
+
+theorem ofNat_zero32 : UInt32.ofNat 0 = 0 := rfl
+
+/-- The N flag of a result, as the trace computes it from bit 31. -/
+theorem nflag32 (r : UInt32) : (r >>> 31 == 1) = decide (r.toNat / 2147483648 % 2 = 1) := by
+  have h : (r >>> 31).toNat = r.toNat / 2147483648 := by
+    rw [UInt32.toNat_shiftRight, show (31 : UInt32).toNat % 32 = 31 from rfl,
+      Nat.shiftRight_eq_div_pow]
+  have hr : r.toNat < 4294967296 := r.toNat_lt
+  apply Bool.eq_iff_iff.mpr
+  simp only [beq_iff_eq, decide_eq_true_eq, ← UInt32.toNat_inj, h,
+    show (1 : UInt32).toNat = 1 from rfl]
+  omega
+
+/-- The Z flag of a result. -/
+theorem zflag32 (r : UInt32) : (r == 0) = decide (r.toNat = 0) := by
+  apply Bool.eq_iff_iff.mpr
+  simp only [beq_iff_eq, decide_eq_true_eq, ← UInt32.toNat_inj,
+    show (0 : UInt32).toNat = 0 from rfl]
+
+theorem toNat_zero_iff (a : UInt32) : a.toNat = 0 ↔ a = 0 := by
+  rw [← UInt32.toNat_inj, show (0 : UInt32).toNat = 0 from rfl]
+
+/-- A flag read as a bit and written back. -/
+theorem bit_eq_one (b : Bool) : decide ((if b = true then 1 else 0) = 1) = b := by
+  cases b <;> rfl
+
+/-- Proves that the outcome at the end of a path of the trace of a form that writes one register
+of r0 to r7 and, when its S bit is set, the flags N and Z from the result and C and V from the
+model, is `exec`'s.  The lemmas in brackets state the trace's value of the result on the low words
+of the registers as the `toNat` of the model's result. -/
+syntax "t32_nz_end " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+macro_rules
+  | `(tactic| t32_nz_end [$xs,*]) => `(tactic| (
+    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+      true_and]
+    simp (disch := first | omega | t32_lt) only [setX_low, setX_keep]
+    apply exists_mach
+    · simp (disch := omega) only [setLow_r, x_mod, low_r, $xs,*] at *
+      simp -failIfUnchanged only [toNat_zero_iff] at *
+      simp -failIfUnchanged only [State.result, State.setNZCV, State.setR, ↓reduceIte,
+        State.mk.injEq, nflag32, zflag32, toNat_zero_iff, bit_eq_one, ofNat_toNat32, ofNat_four,
+        ofNat_zero32, UInt32.toNat_zero, Nat.zero_div, Nat.zero_mod, Nat.reduceEqDiff, decide_true,
+        decide_false, true_and, and_true, *]
+    · rfl
+    · rfl))
+
+/-- Proves that the outcome of `exec` equals the outcome at the end of the path of the trace that
+keeps bits 63 to 32 of the written register, as `t32_nz_end` does. -/
+syntax "t32_nz_bwd " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+macro_rules
+  | `(tactic| t32_nz_bwd [$xs,*]) => `(tactic| (
+    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+      true_and]
+    simp (disch := first | omega | t32_lt) only [setX_keep]
+    congr 1
+    simp (disch := omega) only [setLow_r, x_mod, low_r, $xs,*] at *
+    simp -failIfUnchanged only [toNat_zero_iff] at *
+    simp -failIfUnchanged only [State.result, State.setNZCV, State.setR, ↓reduceIte,
+      State.mk.injEq, nflag32, zflag32, toNat_zero_iff, bit_eq_one, ofNat_toNat32, ofNat_four,
+      ofNat_zero32, UInt32.toNat_zero, Nat.zero_div, Nat.zero_mod, Nat.reduceEqDiff, decide_true,
+      decide_false, true_and, and_true, *]))
+
 /-- Proves that registers `σ'` that set the registers of the list `W` in `σ` agree with `σ`
 outside `W`. -/
 macro "t32_frame" : tactic => `(tactic| (

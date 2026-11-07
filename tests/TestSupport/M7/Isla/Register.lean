@@ -31,6 +31,13 @@ def eorRegT : Footprint := isla_trace% "tests/isla/m7/eor-reg"
 /-- The footprint of `ADC.W Rd, Rn, Rm`. -/
 def adcRegT : Footprint := isla_trace% "tests/isla/m7/adc-reg"
 
+/-- The footprint of `ORR{S}.W Rd, Rn, Rm`. -/
+def orrRegT : Footprint := isla_trace% "tests/isla/m7/orr-reg"
+
+/-- The fields of a form of the three registers `d`, `n`, and `m` with the flag bit `s`. -/
+def regFieldsS (s : Fin 2) (d n m : Fin 8) : Fields :=
+  [("S", s.val), ("Rn", n.val), ("Rd", d.val), ("Rm", m.val)]
+
 /-- Proves `Agrees` for the footprint `F` of a form that writes one register of r0 to r7 from two
 registers and leaves the flags: the decode from the opcode's word, the premise on `σ`, every path
 of the trace by `t32_fwd` and `t32_reg_end`, and the path that keeps the high words with the values
@@ -98,8 +105,50 @@ theorem adcReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (d n k 
   reg3_agrees adcRegT 2817 m [u.feature, if m.s.cFlag then 1 else 0, m.s.pc.toNat, 0]
     [ofNat_adc32]
 
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 8000 in
+/-- The trace of `ORR{S}.W Rd, Rn, Rm` agrees with `exec` for both values of the S bit, every
+register of r0 to r7 in each field, and every machine.  With S set, the trace forks on a zero
+result and writes Z as a constant, so the backward direction takes the cases of S and of a zero
+result. -/
+theorem orrReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (sf : Fin 2)
+    (d n k : Fin 8) (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
+      orrRegT (regFieldsS sf d n k) (.orrReg sf d n k) m := by
+  t32_quiet
+    refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
+    · apply decode_halves (by decide) (by intro h; cases h)
+      simp only [Opcode.word, LeanExe.A64.Isla.Opcode.wordFrom, orrRegT, regFieldsS, encodeNat,
+        List.lookup, String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      t32_reads [orrRegT, sys_get, sys] at hσ
+      refine ⟨((σ.set "__BranchTaken" (.bool false)).set "__currentCond" (.bits 4 14)).set "SEE"
+        (.bits 128 3045), fun o h => ?_, ?_, by t32_frame⟩
+      · unfold footRun at h
+        simp only [orrRegT, LeanExe.A64.Isla.Footprint.vars, regFieldsS, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD, LeanExe.A64.Isla.Opcode.width, Nat.reduceAdd,
+          Nat.reduceDiv] at h
+        t32_fwd h using omega with [hσ]
+        all_goals t32_nz_end [← UInt32.toNat_or]
+      · unfold footRun
+        simp only [orrRegT, LeanExe.A64.Isla.Footprint.vars, regFieldsS, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD, LeanExe.A64.Isla.Opcode.width, Nat.reduceAdd,
+          Nat.reduceDiv]
+        by_cases hS : sf.val = 1 <;>
+          by_cases hz : (m.x n.val % 4294967296 ||| m.x k.val % 4294967296) = 0
+        all_goals
+          t32_bwd [u.feature, if m.s.cFlag then 1 else 0, m.s.pc.toNat, 0] using omega
+            with [hσ, hS, hz]
+          t32_gprs m using omega with [hσ, hS, hz]
+          t32_bwd [false] using omega with [hσ, hS, hz]
+        all_goals first
+          | t32_nz_bwd [← UInt32.toNat_or]
+          | t32_side
+
 #print axioms andReg_agrees
 #print axioms adcReg_agrees
+#print axioms orrReg_agrees
 #print axioms eorReg_agrees
 
 end TestSupport.M7.Isla
