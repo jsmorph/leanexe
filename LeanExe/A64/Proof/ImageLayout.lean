@@ -1,6 +1,6 @@
 import LeanExe.A64.BootImage
 import LeanExe.A64.Proof.StartupCode
-import LeanExe.A64.Proof.Area
+import LeanExe.Proof.Area
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.File
 
@@ -24,15 +24,6 @@ def tabOff (n : Nat) : Nat := vecOff n + 2048
 
 /-- The byte offset of the area. -/
 def areaOff (n : Nat) : Nat := roundUp (tabOff n + 32) 4096
-
-theorem roundUp_ge (n a : Nat) (ha : 0 < a) : n ≤ roundUp n a := by
-  unfold roundUp
-  have h1 := Nat.div_add_mod (n + a - 1) a
-  have h2 := Nat.mod_lt (n + a - 1) ha
-  rw [Nat.mul_comm]
-  omega
-
-theorem roundUp_dvd (n a : Nat) : a ∣ roundUp n a := Nat.dvd_mul_left a _
 
 theorem layoutOf_fields (image : UInt64) (n : Nat) (m : Module) (cap : Nat) (room : UInt64) :
     (layoutOf image n m cap room).image = image ∧

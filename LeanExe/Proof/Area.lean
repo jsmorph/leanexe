@@ -1,15 +1,29 @@
-import LeanExe.A64.Gen
+import LeanExe.Area
+import LeanExe.ProofKit.Typed
 
 /-!
-The area's bytes past its prefix are 0.  The module's initial memory starts as `Mem.empty`, whose
-bytes are 0, and each data segment with an offset writes only the bytes from its offset below its
-end, so every byte at or past `dataEnd` keeps the value 0.  `areaByte` reads the memory's byte
-`j - 4096` for `j` at or past 4096, so every byte of the area from `areaPrefix` on is 0.
+Facts about the area of `LeanExe/Area.lean` and the store in which a module starts.  The module's
+initial memory starts as `Mem.empty`, whose bytes are 0, and each data segment with an offset writes
+only the bytes from its offset below its end, so every byte at or past `dataEnd` keeps the value 0.
+`areaByte` reads the memory's byte `j - 4096` for `j` at or past 4096, so every byte of the area
+from `areaPrefix` on is 0, and `areaPrefixBytes_getElem` states that the area's prefix holds the
+area's bytes.  `initStore m cap` is the module's initial store with a memory cap of `cap` pages,
+whose memory has the pages of the module's declaration and whose globals have the types that
+`globalTypesOf` gives.
 -/
 
-namespace LeanExe.A64
+namespace LeanExe
 
-open Wasm
+open Wasm LeanExe.ProofKit
+
+theorem roundUp_ge (n a : Nat) (ha : 0 < a) : n ≤ roundUp n a := by
+  unfold roundUp
+  have h1 := Nat.div_add_mod (n + a - 1) a
+  have h2 := Nat.mod_lt (n + a - 1) ha
+  rw [Nat.mul_comm]
+  omega
+
+theorem roundUp_dvd (n a : Nat) : a ∣ roundUp n a := Nat.dvd_mul_left a _
 
 theorem le_foldl_segEnd (segs : List DataSegment) (acc : Nat) : acc ≤ segs.foldl segEnd acc := by
   induction segs generalizing acc with
@@ -192,4 +206,82 @@ theorem areaPrefixBytes_getElem (m : Module) (j : Nat) (hj : j < areaPrefix m) :
     unfold areaByte
     rw [ite_eq_right (by omega), ite_eq_right (by omega)]
 
-end LeanExe.A64
+/-- The store in which the program's function starts: the module's initial store with a memory
+of `cap` pages. -/
+def initStore (m : Module) (cap : Nat) : Store Unit :=
+  { (m.initialStore : Store Unit) with memoryCaps := [cap] }
+
+theorem memIs64_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
+    m.memIs64 = false := by
+  unfold areaOk at h
+  unfold Module.memIs64
+  cases hd : m.memory with
+  | none => rfl
+  | some d =>
+      rw [hd] at h
+      simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
+      exact h.1.1.1
+
+theorem cap_lt_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) : cap < 4096 := by
+  unfold areaOk at h
+  cases hd : m.memory with
+  | none => rw [hd] at h; cases h
+  | some d =>
+      rw [hd] at h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+      exact h.2
+
+/-- The memory of `m` starts with at most `cap` pages when `areaOk m cap` holds. -/
+theorem pages_le_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
+    (m.memory.map (·.pagesMin.toNat)).getD 0 ≤ cap := by
+  unfold areaOk at h
+  cases hd : m.memory with
+  | none => rw [hd] at h; cases h
+  | some d =>
+      rw [hd] at h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+      simpa using h.1.2
+
+theorem foldl_pages {β : Type} (f : Mem → β → Mem) (hf : ∀ acc b, (f acc b).pages = acc.pages) :
+    ∀ (l : List β) (m0 : Mem), (l.foldl f m0).pages = m0.pages
+  | [], _ => rfl
+  | b :: l, m0 => by rw [List.foldl_cons, foldl_pages f hf l, hf]
+
+theorem initialStore_pages {m : Module} {d : MemDecl} (h : m.memory = some d) :
+    (m.initialStore : Store Unit).mem.pages = d.pagesMin.toNat := by
+  unfold Module.initialStore
+  simp only [h]
+  rw [foldl_pages]
+  · rfl
+  · intro acc seg
+    split
+    · split
+      · split
+        · rfl
+        · rfl
+      · rfl
+    · rfl
+
+theorem hasType_of_valueType {v : Value} {t : ValueType} (h : valueType v = some t) :
+    HasType t v := by
+  cases v <;> simp [valueType] at h <;> subst h <;> trivial
+
+theorem typed_of_valueTypes : ∀ (gs : List GlobalDecl) (gts : List ValueType),
+    gs.mapM (fun g => valueType g.init) = some gts → Typed gts (gs.map (·.init))
+  | [], gts, h => by
+      simp only [List.mapM_nil, pure, Option.some.injEq] at h
+      subst h
+      trivial
+  | g :: gs, gts, h => by
+      rw [List.mapM_cons] at h
+      cases hv : valueType g.init with
+      | none => simp [hv] at h
+      | some t =>
+          cases hr : gs.mapM (fun g => valueType g.init) with
+          | none => simp [hv, hr] at h
+          | some ts =>
+              simp [hv, hr] at h
+              subst h
+              exact ⟨hasType_of_valueType hv, typed_of_valueTypes gs ts hr⟩
+
+end LeanExe

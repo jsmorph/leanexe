@@ -1,3 +1,4 @@
+import LeanExe.Area
 import LeanExe.CallGraph
 import LeanExe.M7.Init
 
@@ -37,17 +38,17 @@ quotient in r0:r1 and the remainder in r2:r3, changes r4 to r7 and LR, and touch
 Each trap stub is a branch to itself.
 
 A program whose functions load, store, or access a global has an area at the base of DTCM, in the
-layout of `areaByte` of `LeanExe/A64/Gen.lean`: at `areaHeader` the size word, which holds the
+layout of `areaByte` of `LeanExe/Area.lean`: at `areaHeader` the size word, which holds the
 memory's size in bytes less 8, then global `i` in the slot at `areaHeader + 8 * (i + 1)`, and
-from `areaMemory`, 4,096 bytes above the header, the memory's bytes.  The module's memory has
-32-bit addresses and from 1 to `areaPages` pages, its globals are at most 511 `i32`s and `i64`s,
-and the stack's limit lies at or above `areaEnd`.  A load or a store of 8 bytes at an offset `off` of at most 4,088
-loads the address's words into r0:r1 and the size word into r3, subtracts `off` from r3, and
-branches to the trap stub `trapBounds` when r1 is nonzero or r0 exceeds r3, the test of
-`a + off + 8 ≤ pages * 65536` on registers before any addition; it then accesses the two words at
-`areaMemory + a + off`.  The test of r1 is the same for an `i32` address, whose high word is 0.
-An access of a global copies the two words of its slot through r0:r1.  Only a program with an area
-has the stub `trapBounds`, after the other three.
+from `areaMemory`, 4,096 bytes above the header, the memory's bytes.  The module's memory
+satisfies `areaOk` for `areaPages` pages, its globals are at most 511 `i32`s and `i64`s, and the
+stack's limit lies at or above `areaEnd`, `areaSize areaPages` bytes above the header.  A load or
+a store of 8 bytes at an offset `off` of at most 4,088 loads the address's words into r0:r1 and
+the size word into r3, subtracts `off` from r3, and branches to the trap stub `trapBounds` when r1
+is nonzero or r0 exceeds r3, the test of `a + off + 8 ≤ pages * 65536` on registers before any
+addition.  It then accesses the two words at `areaMemory + a + off`.  The test of r1 is the same
+for an `i32` address, whose high word is 0.  An access of a global copies the two words of its
+slot through r0:r1.  Only a program with an area has the stub `trapBounds`, after the other three.
 
 The generator places code as it emits it, in units of 4 bytes: `after a n` is the address `n`
 units after `a`.  Every form but `BX LR` is 32 bits wide and takes one unit, and a function ends
@@ -138,14 +139,14 @@ def condHI : Fin 14 := 8
 /-- The address of the area's header: the size word and the slots of the globals. -/
 def areaHeader : UInt32 := 0x20000000
 
-/-- The address of the memory's byte 0, 4,096 bytes above the header. -/
-def areaMemory : UInt32 := 0x20001000
+/-- The address of the memory's byte 0, 4,096 bytes above the header, where `areaByte` places it. -/
+def areaMemory : UInt32 := areaHeader + 4096
 
 /-- The number of pages of the memory that the area holds. -/
 def areaPages : Nat := 1
 
 /-- The address after the area's last byte. -/
-def areaEnd : UInt32 := areaMemory + UInt32.ofNat (65536 * areaPages)
+def areaEnd : UInt32 := areaHeader + UInt32.ofNat (areaSize areaPages)
 
 /-- A function's frame: the numbers of its parameters, of the slots of its outgoing area, and of
 its operand-stack slots, and the indices of the declared locals that its body names, in order.
@@ -745,13 +746,6 @@ def genFunctions (callee : Table) (S : Shared) :
         throw s!"function {j}: {halfwordsOf is} halfwords against a size of {n} units"
       return is ++ (← genFunctions callee S (after a n) rest)
 
-/-- The types of the globals of `m`, when each is an `i32` or an `i64`. -/
-def intGlobals (m : Module) : Option (List ValueType) :=
-  m.globals.mapM fun g => match g.init with
-    | .i32 _ => some .i32
-    | .i64 _ => some .i64
-    | _ => none
-
 /-- The types of the globals of `m` when one of the functions `fs` accesses the area, or `none`
 when none does.  With an area, the memory of `m` has 32-bit addresses and from 1 to `areaPages`
 pages, the globals are at most 511 `i32`s and `i64`s, and the stack's limit `limit` lies at or
@@ -759,14 +753,13 @@ above the area's end. -/
 def areaOf (m : Module) (fs : List (Nat × Function)) (limit : UInt32) :
     GenM (Option (List ValueType)) := do
   if !fs.any fun x => listArea x.2.body then return none
-  match m.memory with
-  | some d =>
-      if d.is64 ∨ d.pagesMin.toNat < 1 ∨ areaPages < d.pagesMin.toNat then
-        throw s!"a memory that an area of {areaPages} pages does not hold"
-  | none => throw "an access of memory or of a global in a module without memory"
-  let gts ← match intGlobals m with
-    | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
-    | none => throw "a global that is neither an i32 nor an i64"
+  if !areaOk m areaPages then throw s!"a memory that an area of {areaPages} pages does not hold"
+  let gts ← match globalTypesOf m with
+    | some gts =>
+        if 511 < gts.length then throw "more than 511 globals"
+        else if gts.all intType then pure gts
+        else throw "a global that is neither an i32 nor an i64"
+    | none => throw "a global that is not a number"
   if limit.toNat < areaEnd.toNat then throw s!"a stack's limit of {limit} below the area's end"
   return some gts
 

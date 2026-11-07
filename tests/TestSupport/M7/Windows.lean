@@ -1,5 +1,4 @@
 import Std.Data.HashMap
-import LeanExe.A64.Gen
 import LeanExe.M7.Div
 import LeanExe.M7.Image
 import TestSupport.M7.Asm
@@ -17,9 +16,9 @@ generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs from th
 `runProgram` places the code at `codeBase`, in the ITCM alias of the board's flash, with SP at the
 top of DTCM and DTCM as the only Normal memory.  For a program with an area, the stack's limit is
 the area's end and DTCM starts with the area's first bytes, `areaPrefixBytes` of
-`LeanExe/A64/Gen.lean`, the bytes that the startup writes; every other byte is 0.  The run
-executes the code instruction by instruction with
-`exec`, the model's step after its fetch and decoding.  The code never changes, so the decoding of
+`LeanExe/Area.lean`, the bytes that the setup of `LeanExe/M7/Setup.lean` writes; every other byte
+is 0.  The run executes the code instruction by instruction with `exec`, the model's step after
+its fetch and decoding.  The code never changes, so the decoding of
 every halfword address is computed once, by the model's `decode`, before the run.  The model's
 registers and memory are functions, and a step builds them from an array of registers and a byte
 array of DTCM and writes the step's result back to those arrays, so that each step takes the same
@@ -138,7 +137,7 @@ def crcProg (name : String) (m : Module) (tick : UInt64 → UInt64 → UInt64 ×
     Prog :=
   { name, module := m, k := 5, G := UInt64, s0 := TestSupport.M7.Crc.crcInit,
     words := fun s => [s], tick, port := p, phase := fun s => s &&& 255, kind := echoKind p,
-    inRec := 1, outRec := 1, limit := areaEnd, start := LeanExe.A64.areaPrefixBytes m,
+    inRec := 1, outRec := 1, limit := areaEnd, start := LeanExe.areaPrefixBytes m,
     answer := crcReplies }
 
 def programs : List Prog :=

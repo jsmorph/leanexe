@@ -410,17 +410,17 @@ def dir (fwd : Bool) : String := if fwd then "forward" else "backward"
 def withFlags (nzcv : UInt32) (f : Case → Gen (Option Case)) (c : Case) : Gen (Option Case) := do
   return (← f c).map fun c => { c with apsr := nzcv <<< 28 }
 
-/-- The instances of the immediate fields of the model's forms that `LeanExe/M7/Gen.lean` and
-`LeanExe/M7/Div.lean` emit: the shifts by an immediate, `LSL #0` and `#16` and `LSR #1`, `#5`,
-`#16`, and `#31`; `ADD` and `ADDS` with no shift and `ADD` with `LSL #1`, `#2`, and `#31`; both S
-bits of `SUB`, `SBC`, and `ORR`; the 8-bit immediates `MOV #0` and `#32`, `CMP #0`, `SUB #1` and
-`#32`, `AND #63`, and `EOR #1`; `MOVW` and `MOVT` at the ends of their range, `MOVT` of the stack's
-limit and of the device window, and `MOVW` and `MOVT` of the area's header, of its memory, and of
-its end; the frame sizes of `SUBW Rd, SP` and `ADDW` and `SUBW SP, SP`, multiples of 8 from 8 to
-4088, at both ends; the SP-relative offsets, multiples of 4 from 0 to 4092 and LR's from 0 to 4080,
-at both ends; the offsets of a load or store at a register, multiples of 4 from 0 to 4092, at both
-ends; the conditions EQ, NE, CS, CC, and HI; every branch both forward and backward; and HI and
-CS with the flags that take each and those that do not. -/
+/-- The instances of the immediate fields of the model's forms that `LeanExe/M7/Gen.lean`,
+`LeanExe/M7/Setup.lean`, and `LeanExe/M7/Div.lean` emit: the shifts by an immediate, `LSL #0` and
+`#16` and `LSR #1`, `#5`, `#16`, and `#31`; `ADD` and `ADDS` with no shift and `ADD` with `LSL #1`,
+`#2`, and `#31`; both S bits of `SUB`, `SBC`, and `ORR`; the 8-bit immediates `MOV #0`, `#4`, and
+`#32`, `CMP #0`, `SUB #1` and `#32`, `AND #63`, and `EOR #1`; `MOVW` and `MOVT` at the ends of their
+range, `MOVT` of the stack's limit and of the device window, and `MOVW` and `MOVT` of the area's
+header, of its memory, and of its end; the frame sizes of `SUBW Rd, SP` and `ADDW` and
+`SUBW SP, SP`, multiples of 8 from 8 to 4088, at both ends; the SP-relative offsets, multiples of 4
+from 0 to 4092 and LR's from 0 to 4080, at both ends; the offsets of a load or store at a register,
+multiples of 4 from 0 to 4092, at both ends; the conditions EQ, NE, CS, CC, and HI; every branch
+both forward and backward; and HI and CS with the flags that take each and those that do not. -/
 def fixedForms : List Fixed :=
   [Fixed.mk "lslImm #0" 10 (instrTo (shiftBy 0)),
     Fixed.mk "lslImm #16" 10 (instrTo (shiftBy 16))] ++
@@ -429,8 +429,9 @@ def fixedForms : List Fixed :=
     Fixed.mk s!"addReg s{s.val} #{k}" 0 (instrTo (addShift s k))) ++
   ([("subReg", 2), ("sbcReg", 3), ("orrReg", 5)].flatMap fun (nm, f) =>
     [(0 : Fin 2), 1].map fun s => Fixed.mk s!"{nm} s{s.val}" f (instrTo (withS s))) ++
-  ([("movImm", 16, (0 : Fin 256)), ("movImm", 16, 32), ("cmpImm", 15, 0), ("subImm", 12, 1),
-      ("subImm", 12, 32), ("andImm", 13, 63), ("eorImm", 14, 1)].map fun (nm, f, v) =>
+  ([("movImm", 16, (0 : Fin 256)), ("movImm", 16, 4), ("movImm", 16, 32), ("cmpImm", 15, 0),
+      ("subImm", 12, 1), ("subImm", 12, 32), ("andImm", 13, 63), ("eorImm", 14, 1)].map
+    fun (nm, f, v) =>
     Fixed.mk s!"{nm} #{v.val}" f (instrTo (imm8 v))) ++
   ([("movw", 17, 0), ("movw", 17, 65535), ("movt", 18, 0x2000), ("movt", 18, 0x4000),
       ("movt", 18, 65535), ("movw", 17, 0x1000), ("movt", 18, 0x2001)].map fun (nm, f, v) =>
