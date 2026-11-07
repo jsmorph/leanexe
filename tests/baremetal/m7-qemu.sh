@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on QEMU's mps2-an500: the echo of
-# cmsdkTick, NAME echo, the default, and the energy controller's gateway of gwTick, NAME gateway.
-# It builds m7-windows and the loop theorem of tests/TestSupport/M7/QemuLoop.lean or GwLoop.lean,
-# writes the image that tests/TestSupport/M7/Qemu.lean or GwImages.lean lays out with m7-windows
-# qemu or gateway-qemu, and elaborates tests/TestSupport/M7/QemuFile.lean or GwQemuFile.lean in the
-# directory of the image under a memory cap of MEM, 12G for the echo and 16G for the gateway unless
-# set, so that the kernel checks that the file holds the image's bytes, the gateway's in parts, and
-# the loop theorem holds of the file.  It requires that each theorem whose axioms that file prints
-# depends on no axiom beyond propext, Classical.choice, and Quot.sound, and reports the check's
-# elapsed time and peak memory.
+# cmsdkTick, NAME echo, the default, the energy controller's gateway of gwTick, NAME gateway, and
+# the CRC-32 step crcCmsdkTick, NAME crc.  It builds m7-windows and, for the echo and the gateway,
+# the loop theorem of tests/TestSupport/M7/QemuLoop.lean or GwLoop.lean, and writes the image that
+# tests/TestSupport/M7/Qemu.lean, GwImages.lean, or CrcImages.lean lays out with m7-windows qemu,
+# gateway-qemu, or crc-qemu.  For the echo and the gateway it elaborates
+# tests/TestSupport/M7/QemuFile.lean or GwQemuFile.lean in the directory of the image under a
+# memory cap of MEM, 12G for the echo and 16G for the gateway unless set, so that the kernel checks
+# that the file holds the image's bytes, the gateway's in parts, and the loop theorem holds of the
+# file.  It requires that each theorem whose axioms that file prints depends on no axiom beyond
+# propext, Classical.choice, and Quot.sound, and reports the check's elapsed time and peak memory.
+# No theorem covers the CRC-32 step's image, which the script runs without a check.
 #
 # It then runs the image in QEMU with UART0 on a Unix-domain socket and plays the far end of the
 # UART, as tests/baremetal/req.sh does for the C path's programs.  For the echo,
-# tests/baremetal/uart_echo.py checks that each reply is the byte sent with bit 5 flipped.  For the
+# tests/baremetal/uart_echo.py checks that each reply is the byte sent with bit 5 flipped, and for
+# CRC-32, tests/baremetal/uart_crc.py that each reply is the low byte of zlib.crc32 of the bytes
+# sent so far.  For the
 # gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 10,080 unless set, of the plant
 # of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless set, and checks the
 # commands and the monitoring, and native-bare gateway-run then runs the gateway in native Lean on
@@ -22,9 +26,9 @@
 # output and times, QEMU's trace log NAME.trace, the host script's line NAME.echo, the messages of
 # uv and QEMU in NAME.stderr, and for the gateway the records gateway.records.in,
 # gateway.records.out, and gateway.records.lean.
-# Usage: tests/baremetal/m7-qemu.sh [echo | gateway]
+# Usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc]
 set -euo pipefail
-usage() { echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway]" >&2; exit 2; }
+usage() { echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc]" >&2; exit 2; }
 [ "$#" -le 1 ] || usage
 name=${1:-echo}
 case $name in
@@ -32,6 +36,8 @@ case $name in
     mem=${MEM:-12G} ;;
   gateway) image=gateway-cmsdk-qemu cmd=gateway-qemu lib=TestSupport.M7.GwLoop file=GwQemuFile
     count=5 mem=${MEM:-16G} ;;
+  crc) image=crc-cmsdk-qemu cmd=crc-qemu lib=TestSupport.M7.CrcImages file= count=0
+    mem=${MEM:-12G} ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -41,13 +47,16 @@ qemu=${QEMU:-qemu-system-arm}
 uv=${UV:-uv}
 series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 mkdir -p "$out"
-rm -f "${out:?}/$name".* "${out:?}/$image".* "${out:?}/$file".*
+rm -f "${out:?}/$name".* "${out:?}/$image".*
+[ -z "$file" ] || rm -f "${out:?}/$file".*
 targets=(m7-windows "$lib")
 [ "$name" = gateway ] && targets+=(native-bare)
 tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build "${targets[@]}"
 tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$image.bin"
 status=0
-if /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "$mem" lake env \
+if [ -z "$file" ]; then
+  echo "unproved: $image.bin, $(stat -c %s "$out/$image.bin") bytes, without a kernel check"
+elif /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "$mem" lake env \
     sh -c 'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/M7/$file.lean" \
     >"$out/$file.check" 2>"$out/$file.time"; then
   printed=$(grep -c 'axioms' "$out/$file.check" || true)
@@ -64,9 +73,10 @@ else
   echo "fail: the kernel's check of $image.bin: $(head -c 600 "$out/$file.check")"
   status=1
 fi
-grep -E "Elapsed \(wall|Maximum resident" "$out/$file.time"
+[ -z "$file" ] || grep -E "Elapsed \(wall|Maximum resident" "$out/$file.time"
 case $name in
   echo) host=(uart_echo.py) ;;
+  crc) host=(uart_crc.py) ;;
   gateway) host=(uart_gateway.py --ticks "${TICKS:-10080}" "$series" "$out/$name.records") ;;
 esac
 if "$uv" run "$root/tests/baremetal/${host[0]}" --timeout "${TIMEOUT:-120}" "${host[@]:1}" \

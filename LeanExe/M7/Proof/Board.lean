@@ -1,6 +1,7 @@
 import LeanExe.M7.Board
 import LeanExe.M7.Proof.Init
 import LeanExe.M7.Proof.Runs
+import LeanExe.M7.Proof.Setup
 
 /-!
 The run of a program with requests on the NUCLEO-F767ZI from reset, in the model.  `Flash code n
@@ -21,6 +22,10 @@ BOOT0 low and BOOT_ADD0 0x0080; software watchdogs, which this board's option by
 NMI, debug halt, debugger access, or DMA during the run.  A reset over SWD with the probe attached
 is not a power-on reset: the probe leaves DHCSR's C_DEBUGEN and DEMCR set, which the model does
 not track.
+
+`board_setup` runs the image of a program whose module has an area, laid out by `areaBoot`, from
+reset to the initialization's start: the setup leaves the module's initial store in the area at
+DTCM's base, below the stack's limit `areaEnd`.
 -/
 
 namespace LeanExe.M7.Nucleo
@@ -176,5 +181,33 @@ theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt6
     obtain ⟨t, r, -, tr⟩ := board_run (σ := σ) hwords hlen himpl hPre hm hcov hat hcap hk hfit g0
       hs0 hf b hb N
     exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
+
+/-- The bytes of the generator's area lie in DTCM. -/
+theorem area_ram : ∀ j < areaSize areaPages, Ram platform (areaHeader + UInt32.ofNat j) :=
+  fun j hj => by
+    have h := toNat_add_ofNat (a := areaHeader) (k := j)
+      (by rw [show areaHeader.toNat = 536870912 from rfl]; unfold areaSize areaPages at hj; omega)
+    rw [show areaHeader.toNat = 536870912 from rfl] at h
+    unfold areaSize areaPages at hj
+    exact ram_of (by omega) (by omega)
+
+theorem areaEnd_toNat : areaEnd.toNat = areaHeader.toNat + areaSize areaPages := by decide
+
+/-- The image of a program whose module `am` has an area, laid out by `areaBoot` with the program
+of step `k` of `m`, whose bytes the kernel's check `hk` finds in flash, run from reset to the
+initialization's start: SP holds the top of DTCM, LR 0xFFFFFFFF, the trace is empty, and the
+machine holds the store in which `am` starts in the area at DTCM's base, below the stack's limit
+at the area's end.  The theorem holds under the run conditions of the module's header. -/
+theorem board_setup {am m : Module} {gts : List ValueType} {k : Nat} {s0 : List UInt64}
+    {n len : Nat} (hok : setupOk am areaPages = true) (hgt : globalTypesOf am = some gts)
+    (hk : bootFileOk (areaBoot am) (bootProgram (areaBoot am) m k s0 areaEnd devBase) n len = true)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) :
+    ∃ t, Reach platform σ code b t ∧
+      t.pc = after boot.reset (setupCode areaHeader areaPages am).length ∧
+      CodeAt code t.pc (initCode init) ∧ t.sp = stackTop ∧ t.lr = 0xFFFFFFFF ∧ t.trace = [] ∧
+      t.reads = 0 ∧ StoreRel platform areaHeader areaEnd areaPages gts (initStore am areaPages) t :=
+  setup_boot (B := boot) hok hgt (by decide) area_ram (Nat.le_of_eq areaEnd_toNat.symm)
+    (by decide) (initCode_wide init) hk hf.itcm (by decide) (by decide) b hb
 
 end LeanExe.M7.Nucleo
