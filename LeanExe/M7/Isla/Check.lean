@@ -1,6 +1,7 @@
 import LeanExe.M7.Isla.Trace
 import LeanExe.M7.Encode
 import LeanExe.M7.Isla.Profile
+import LeanExe.A64.Isla.Check
 
 /-!
 Checks of the model's `exec` against Isla's traces of the A-profile Sail model in AArch32 Thumb
@@ -36,7 +37,7 @@ for a form that writes one register.
 
 namespace LeanExe.M7.Isla
 
-open LeanExe.A64.Isla (Footprint Fields Opcode Val Vars Sys acc upd)
+open LeanExe.A64.Isla (Footprint Fields Opcode Val Vars Sys acc upd pick pick_eq)
 
 /-- The footprint `F` describes the instruction `i` for the fields `f` from the machine `m`: the
 header names the fields of `F`'s opcode, the opcode has 16 or 32 bits, its halfwords decode to `i`
@@ -83,17 +84,6 @@ theorem decode_halves {p : Opcode} {f : Fields} {i : Instr} (hw : p.width = 32)
 
 /-! Reads and writes of the X registers. -/
 
-theorem Vars.set_apply (ρ : Vars) (x : Nat) (v : Val) (y : Nat) :
-    ρ.set x v y = if y = x then some v else ρ y := rfl
-
-theorem Sys.set_apply (σ : Sys) (r : String) (v : Val) (q : String) :
-    σ.set r v q = if q = r then some v else σ q := rfl
-
-theorem Sys.get_set (σ : Sys) (r : String) (v : Val) (q : String) (al : List String) :
-    (σ.set r v).get q al = if q = r then acc al v else σ.get q al := by
-  unfold LeanExe.A64.Isla.Sys.get LeanExe.A64.Isla.Sys.set
-  split <;> rfl
-
 /-- `cond (decide (k = 30)) (m.x 30) (... (m.x 0))`, the chain of a read at the index `k` from the
 X registers of the machine `m`, as `t32_simp` writes it. -/
 syntax "chain32% " term:max term:max : term
@@ -104,23 +94,6 @@ macro_rules
       let lit := Lean.Syntax.mkNumLit (toString j)
       t ← `(cond (decide ($k = $lit)) (Mach.x $m $lit) $t)
     return t
-
-/-- `cond (decide (k = j)) (f j) (... (cond (decide (k = 1)) (f 1) (f 0)))`, the value of the
-chain that Isla builds for a read at the symbolic index `k`. -/
-def pick (k : Nat) (f : Nat → Nat) : Nat → Nat
-  | 0 => f 0
-  | j + 1 => cond (decide (k = j + 1)) (f (j + 1)) (pick k f j)
-
-theorem pick_eq (k : Nat) (f : Nat → Nat) : ∀ j, k ≤ j → pick k f j = f k
-  | 0, h => by
-    obtain rfl := Nat.le_zero.mp h
-    rfl
-  | j + 1, h => by
-    unfold pick
-    by_cases hk : k = j + 1
-    · rw [decide_eq_true hk, Bool.cond_true, hk]
-    · rw [decide_eq_false hk, Bool.cond_false]
-      exact pick_eq k f j (by omega)
 
 /-- The chain of a read at the index `k` below 31 is X register `k`. -/
 theorem chain_eq {m : Mach} {k : Nat} (hk : k < 31) : chain32% m k = m.x k :=
@@ -134,17 +107,6 @@ theorem bit_div (b : Bool) {k : Nat} (h : 2 ≤ k) : (if b = true then 1 else 0)
 theorem bit_mod (b : Bool) {k : Nat} (h : 2 ≤ k) :
     (if b = true then 1 else 0) % k = (if b = true then 1 else 0) := by
   split <;> exact Nat.mod_eq_of_lt (by omega)
-
-/-- `x + 0 = x` by `omega`.  `simp` applies `Nat.add_zero`, an `rfl` theorem, without a proof
-step, and the kernel then checks the equation by unfolding, which takes minutes on the large terms
-of a trace's addresses. -/
-theorem nat_add_zero (x : Nat) : x + 0 = x := by omega
-
-theorem fin_mod {k : Nat} (n : Fin k) {m : Nat} (h : k ≤ m) : n.val % m = n.val :=
-  Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le n.isLt h)
-
-theorem fin_div {k : Nat} (n : Fin k) {m : Nat} (h : k ≤ m) : n.val / m = 0 :=
-  Nat.div_eq_of_lt (Nat.lt_of_lt_of_le n.isLt h)
 
 theorem regAt_lt {m : Mach} {k : Nat} (h : k < 31) : regAt m k = m.x k := ite_eq_left h
 
@@ -201,8 +163,9 @@ macro_rules
       LeanExe.A64.Isla.Base.evalAll, LeanExe.A64.Isla.Base.evalFields,
       LeanExe.A64.Isla.Unop.apply, LeanExe.A64.Isla.Binop.apply, LeanExe.A64.Isla.Binop.arith,
       LeanExe.A64.Isla.lshr, regGet, regSet, part, gprs, partGet, partPut, LeanExe.A64.Isla.bit,
-      LeanExe.A64.Isla.acc, LeanExe.A64.Isla.upd, gprVals, runSome, Vars.set_apply,
-      Sys.set_apply, Sys.get_set, List.lookup,
+      LeanExe.A64.Isla.acc, LeanExe.A64.Isla.upd, gprVals, runSome,
+      LeanExe.A64.Isla.Vars.set_apply, LeanExe.A64.Isla.Sys.set_apply,
+      LeanExe.A64.Isla.Sys.get_set, List.lookup,
       Option.bind, Option.map, Option.getD, LeanExe.A64.Isla.Val.bits.injEq,
       LeanExe.A64.Isla.Val.bool.injEq, LeanExe.A64.Isla.Val.enum.injEq,
       LeanExe.A64.Isla.Val.struct.injEq, LeanExe.A64.Isla.Val.vec.injEq, Option.some.injEq,
@@ -212,7 +175,8 @@ macro_rules
       Bool.true_and, Bool.and_false, Bool.false_and, Bool.or_true, Bool.true_or, Bool.or_false,
       Bool.false_or, and_true, true_and, and_self, ne_eq, not_true_eq_false, not_false_eq_true,
       false_and, and_false, or_false, false_or, Nat.pow_zero, Nat.div_one, Nat.mod_mod,
-      Nat.zero_add, nat_add_zero, Nat.zero_mul, bit_div, bit_mod, fin_mod, fin_div, regAt_lt,
+      Nat.zero_add, LeanExe.A64.Isla.nat_add_zero, Nat.zero_mul, bit_div, bit_mod,
+      LeanExe.A64.Isla.fin_mod, LeanExe.A64.Isla.fin_div, regAt_lt,
       setRegAt_lt, Fin.is_lt, ↓reduceIte,
       ↓reduceDIte, reduceCtorEq, String.reduceEq, String.reduceNe, String.reduceBEq,
       String.reduceAppend, String.reduceToList, Char.reduceBEq, Nat.reduceAdd, Nat.reduceSub,
@@ -437,7 +401,8 @@ brackets that turn the written value into the model's. -/
 syntax "t32_reg_end " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_reg_end [$xs,*]) => `(tactic| (
-    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
+      Outcome.done.injEq, and_true,
       true_and]
     simp (disch := first | omega | t32_lt) only [setX_low, setX_keep]
     apply exists_mach
@@ -452,7 +417,8 @@ keeps bits 63 to 32 of the written register, as `t32_reg_end` does. -/
 syntax "t32_reg_bwd " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_reg_bwd [$xs,*]) => `(tactic| (
-    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
+      Outcome.done.injEq, and_true,
       true_and]
     simp (disch := first | omega | t32_lt) only [setX_keep]
     simp only [setLow_r]
@@ -519,7 +485,8 @@ of the registers as the `toNat` of the model's result. -/
 syntax "t32_nz_end " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_nz_end [$xs,*]) => `(tactic| (
-    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
+      Outcome.done.injEq, and_true,
       true_and]
     simp (disch := first | omega | t32_lt) only [setX_low, setX_keep]
     apply exists_mach
@@ -537,7 +504,8 @@ keeps bits 63 to 32 of the written register, as `t32_nz_end` does. -/
 syntax "t32_nz_bwd " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| t32_nz_bwd [$xs,*]) => `(tactic| (
-    simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte, Outcome.done.injEq, and_true,
+    simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte,
+      Outcome.done.injEq, and_true,
       true_and]
     simp (disch := first | omega | t32_lt) only [setX_keep]
     congr 1
@@ -553,10 +521,6 @@ outside `W`. -/
 macro "t32_frame" : tactic => `(tactic| (
   intro r hr
   simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hr
-  simp only [Sys.set_apply, hr, ↓reduceIte]))
-
-open Lean Elab Tactic in
-/-- Runs the tactics without recording info trees, as `Register.lean` of the A64 check does. -/
-elab "t32_quiet " t:tacticSeq : tactic => withEnableInfoTree false (evalTactic t)
+  simp only [LeanExe.A64.Isla.Sys.set_apply, hr, ↓reduceIte]))
 
 end LeanExe.M7.Isla

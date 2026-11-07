@@ -47,7 +47,7 @@ writes to `SEE`, and the lemmas in brackets turn the written value into the mode
 syntax "reg3_agrees " ident num term:max "[" term,* "]" "[" Lean.Parser.Tactic.simpLemma,* "]" :
   tactic
 macro_rules
-  | `(tactic| reg3_agrees $F $k $m [$vs,*] [$xs,*]) => `(tactic| t32_quiet
+  | `(tactic| reg3_agrees $F $k $m [$vs,*] [$xs,*]) => `(tactic| without_info
     refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
     · apply decode_halves (by decide) (by intro h; cases h)
       simp only [Opcode.word, LeanExe.A64.Isla.Opcode.wordFrom, $F:ident, regFields, encodeNat,
@@ -114,7 +114,7 @@ result. -/
 theorem orrReg_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (sf : Fin 2)
     (d n k : Fin 8) (m : Mach) : Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond"]
       orrRegT (regFieldsS sf d n k) (.orrReg sf d n k) m := by
-  t32_quiet
+  without_info
     refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
     · apply decode_halves (by decide) (by intro h; cases h)
       simp only [Opcode.word, LeanExe.A64.Isla.Opcode.wordFrom, orrRegT, regFieldsS, encodeNat,
