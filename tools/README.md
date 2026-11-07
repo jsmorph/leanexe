@@ -57,6 +57,14 @@ identify their outputs and how the kernel checks them.  [The Euler runner](euler
 [Euler](../Demos/Euler/README.md) and [GPT](../Demos/Gpt/README.md) documents give their input
 formats and reproduction commands, with the theorem premises for compiled calls.
 
+## Sail translation
+
+[The Sail scripts](sail/README.md) translate the floating-point functions of the Armv9.4-A Sail
+model into Lean with Sail's Lean back end, elaborate the output with Lean v4.29.0 and with the
+repository's toolchain, and evaluate it with exact rationals against Talos's binary64 functions.
+Their README gives the versions, the edits that the output needs before it elaborates, the
+measured times and memory, and the commands.  The A64 model and its proofs do not use them.
+
 ## Repository checks
 
 [The documentation checker](check-doc-links.mjs) follows relative links from the root README
