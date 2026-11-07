@@ -27,6 +27,7 @@ grid of doubles, or a comparison's operands as unordered, equal, less, or greate
 namespace TestSupport.A64.Fp
 
 open LeanExe.A64
+open LeanExe (roundUp)
 
 /-- The forms under test. -/
 inductive Form where

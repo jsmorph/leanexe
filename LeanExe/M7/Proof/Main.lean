@@ -518,7 +518,7 @@ theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt
       ms'.reads = (reqNext tick (fun j => σ (j + r0)) r).reads + r0 ∧
       WordsAt ms' (words (reqNext tick (fun j => σ (j + r0)) r).state ++
         [(reqNext tick (fun j => σ (j + r0)) r).last]) := by
-  obtain ⟨f, fs', -, -, -, -, main, fns, hmain, hml, -, his⟩ := gen_program_entry hg
+  obtain ⟨f, fs', -, -, -, -, main, fns, _, hmain, hml, -, -, his⟩ := gen_program_entry hg
   have hmw := genMain_wide hmain
   obtain ⟨start, wds, hq, hqh, o1, o2, o3, o4, -, -, -, hmeq, b1, b2, b3, b4⟩ := gen_main hmain
   subst hmeq
@@ -763,7 +763,7 @@ theorem main_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
       { b with sp := b.sp - UInt32.ofNat (8 * (s0.length + 1)) }) (n : Nat) :
     ∃ t, Reach P σ code b t ∧ t.pc = after base (mainStart s0) ∧
       t.trace = b.trace ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + b.reads))) n := by
-  obtain ⟨f, fs', -, -, -, -, main, fns, hmain, hml, -, his⟩ := gen_program_entry hg
+  obtain ⟨f, fs', -, -, -, -, main, fns, _, hmain, hml, -, -, his⟩ := gen_program_entry hg
   obtain ⟨start, wds, hq, hqh, o1, o2, o3, o4, harea, hw, hst, hmeq, -⟩ := gen_main hmain
   have hmw := genMain_wide hmain
   subst hmeq

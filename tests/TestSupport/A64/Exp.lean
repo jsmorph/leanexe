@@ -15,7 +15,7 @@ initial store, and `stackBound` gives at most 4096 bytes, which the room holds. 
 
 namespace TestSupport.A64.Exp
 
-open LeanExe.A64 Library.Numerics.Float64
+open LeanExe LeanExe.A64 Library.Numerics.Float64
 
 /-- The facts about entry 5 of `Exp.compiled.module` that `genProgram` leaves unchecked, for one
 argument of type `f64` and a result written as a word. -/

@@ -7,8 +7,8 @@ joins the bytes of two adjacent slices of a number, and `genFunctions_slices` jo
 the functions, from each function's code at its entry and the sizes `ns`, into the code that
 `genFunctions` returns.  With the sizes, `entriesFrom` and `endOf` give the layout that the parts
 assume, and the table's numbers of parameters and results are those of the functions.
-`genProgram_parts` concludes that `genProgram` succeeds with code whose bytes are a slice of the
-number, and `fileOk_parts` and `bootFileOk_parts` give the checks of a file that the theorems over
+`genProgram_parts` concludes, for a program whose functions do not access the area, that
+`genProgram` succeeds with code whose bytes are a slice of the number, and `fileOk_parts` and `bootFileOk_parts` give the checks of a file that the theorems over
 an image take.
 -/
 
@@ -183,7 +183,15 @@ theorem functionsPartOk_append {m : Module} {k : Nat} {s0 : List UInt64} {base l
 
 /-! ## The program -/
 
-/-- `genProgram` from its parts, the converse of `gen_program` for the entry after `main`. -/
+/-- A program whose functions do not access the area has none. -/
+theorem areaOf_none {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
+    (h : (fs.any fun x => listArea x.2.body) = false) : areaOf m fs limit = .ok none := by
+  unfold areaOf
+  rw [h]
+  rfl
+
+/-- `genProgram` from its parts, the converse of `gen_program` for the entry after `main`, for a
+program whose functions do not access the area. -/
 theorem genProgram_of {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
     {div : List Instr} {fs : List (Nat × Function)} {main fns : List Instr}
     (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs)
@@ -193,9 +201,10 @@ theorem genProgram_of {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev 
         List.replicate (s0.length + 1) .i64))
     (hmain : genMain base (after base (mainSize s0)) dev s0 = .ok main)
     (hml : main.length = mainSize s0)
+    (hA : (fs.any fun x => listArea x.2.body) = false)
     (hfns : genFunctions (tableOf (callTargets m k)
         (entriesFrom (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs))
-      (progShared (endOf (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs) limit)
+      (progShared (endOf (sigIn (callTargets m k) fs) (after base (mainSize s0)) fs) limit none)
       (after base (mainSize s0)) fs = .ok fns) :
     genProgram m k s0 base limit dev div =
       .ok (main ++ fns ++ [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] ++ div) := by
@@ -214,6 +223,8 @@ theorem genProgram_of {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev 
     rw [except_bind_ok]
     refine ⟨main, hmain, ?_⟩
     simp only [hml, ne_eq, not_true_eq_false, ↓reduceIte]
+    rw [except_bind_ok]
+    refine ⟨none, areaOf_none hA, ?_⟩
     rw [except_bind_ok]
     exact ⟨fns, hfns, rfl⟩
   · rename_i heq
@@ -236,7 +247,10 @@ theorem genProgram_parts {m : Module} {k : Nat} {s0 : List UInt64} {base limit d
   · rename_i x rest hfs
     obtain ⟨j, f⟩ := x
     simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hmain
-    obtain ⟨⟨⟨hjk, hps⟩, hrs⟩, hm⟩ := hmain
+    obtain ⟨⟨⟨⟨hjk, hps⟩, hrs⟩, hA⟩, hm⟩ := hmain
+    replace hA : (((j, f) :: rest : List (Nat × Function)).any fun y => listArea y.2.body) =
+        false := by
+      simpa using hA
     subst hjk
     -- `main`
     obtain ⟨mc, hgm, hml, hmn⟩ := sliceOk_ok hm
@@ -251,14 +265,14 @@ theorem genProgram_parts {m : Module} {k : Nat} {s0 : List UInt64} {base limit d
     -- the functions
     have hreach : reachedFns m j = (j, f) :: rest := by simp [reachedFns, hfs]
     rw [hreach] at hlen
-    generalize hfsd : ((j, f) :: rest : List (Nat × Function)) = fs at hfs hlen hreach
+    generalize hfsd : ((j, f) :: rest : List (Nat × Function)) = fs at hfs hlen hreach hA
     have hsig := sigOf_tableOf_sizes (callTargets m j) (after base (mainSize s0)) fs ns hlen
     have hparts : ∀ i (h1 : i < fs.length) (h2 : i < ns.length),
         functionSize (sigOf (tableOf (callTargets m j)
           (entriesOfSizes (after base (mainSize s0)) fs ns))) fs[i].2 = ns[i] ∧
         sliceOk (genFunction (tableOf (callTargets m j)
             (entriesOfSizes (after base (mainSize s0)) fs ns))
-            (progShared (after (after base (mainSize s0)) ns.sum) limit)
+            (progShared (after (after base (mainSize s0)) ns.sum) limit none)
             (after (after base (mainSize s0)) (ns.take i).sum) fs[i].2) n
           (off + 4 * mainSize s0 + 4 * (ns.take i).sum) (4 * ns[i]) = true := by
       intro i h1 h2
@@ -289,7 +303,7 @@ theorem genProgram_parts {m : Module} {k : Nat} {s0 : List UInt64} {base limit d
       subst hfsd
       simp [entriesFrom, hps, hrs]
     refine ⟨main ++ fns ++ [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] ++ div,
-      genProgram_of hfs hen hgen hmlen (by rw [hent, hend]; exact hfns), ?_, ?_⟩
+      genProgram_of hfs hen hgen hmlen hA (by rw [hent, hend]; exact hfns), ?_, ?_⟩
     · rw [List.append_assoc, List.append_assoc, imageBytes_append, imageBytes_append,
         List.length_append, List.length_append, hml, hlf, hll]
       omega
