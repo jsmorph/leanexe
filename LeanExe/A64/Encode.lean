@@ -61,6 +61,7 @@ def encodeNat : Instr → Nat
   | .fsqrt d n => 0x1E61C000 + n.val * 32 + d.val
   | .ucvtf d n => 0x9E630000 + n.val * 32 + d.val
   | .fcmp n m => 0x1E602000 + m.val * 65536 + n.val * 32
+  | .fcvtzu d n => 0x9E790000 + n.val * 32 + d.val
   | .fmovSW d n => 0x1E270000 + n.val * 32 + d.val
   | .fmovWS d n => 0x1E260000 + n.val * 32 + d.val
   | .faddS d n m => 0x1E202800 + m.val * 65536 + n.val * 32 + d.val
@@ -107,10 +108,10 @@ macro_rules
         Instr.bcond.injEq, Instr.adr.injEq, Instr.adrp.injEq, Instr.msr.injEq, Instr.mrs.injEq,
         Instr.fmovDX.injEq, Instr.fmovXD.injEq, Instr.fadd.injEq, Instr.fsub.injEq,
         Instr.fmul.injEq, Instr.fdiv.injEq, Instr.fsqrt.injEq, Instr.ucvtf.injEq, Instr.fcmp.injEq,
-        Instr.fmovSW.injEq, Instr.fmovWS.injEq, Instr.faddS.injEq, Instr.fsubS.injEq,
-        Instr.fmulS.injEq, Instr.fdivS.injEq, Instr.fsqrtS.injEq, Instr.frintnS.injEq,
-        Instr.ucvtfSX.injEq, Instr.scvtfSW.injEq, Instr.fcvtzuXS.injEq, Instr.fcvtzsWS.injEq,
-        Instr.fcmpS.injEq, Fin.ext_iff]
+        Instr.fcvtzu.injEq, Instr.fmovSW.injEq, Instr.fmovWS.injEq, Instr.faddS.injEq,
+        Instr.fsubS.injEq, Instr.fmulS.injEq, Instr.fdivS.injEq, Instr.fsqrtS.injEq,
+        Instr.frintnS.injEq, Instr.ucvtfSX.injEq, Instr.scvtfSW.injEq, Instr.fcvtzuXS.injEq,
+        Instr.fcvtzsWS.injEq, Instr.fcmpS.injEq, Fin.ext_iff]
       all_goals omega))
 
 set_option maxHeartbeats 2000000 in

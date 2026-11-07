@@ -4,8 +4,8 @@ import Interpreter.Wasm.Float
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at
 exception level 1.  It covers the 64-bit integer forms that the back end emits, the
 double-precision and single-precision forms of Wasm's f64 and f32 arithmetic, comparisons, and
-conversions, `ADR` and `ADRP`, and the system instructions of the startup.  `exec` gives no semantics to a system instruction: the model of the
-startup in `LeanExe/A64/Boot.lean` gives them.
+conversions, `ADR` and `ADRP`, and the system instructions of the startup.  `exec` gives no
+semantics to a system instruction: the model of the startup in `LeanExe/A64/Boot.lean` gives them.
 
 The code lies in a fixed map from addresses to 32-bit words, which the theorem derives from the
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
@@ -28,8 +28,9 @@ FPCR.NEP is clear.  The arithmetic forms compute Talos's functions of
 of S registers, which round to nearest with ties to even, keep subnormals, and give the canonical
 NaN, `0x7FF8000000000000` or `0x7FC00000`, for every NaN result.  `FCMP` sets the flags from
 Talos's comparisons `IEEE64.eq` and `IEEE64.lt`, or `IEEE32.eq` and `IEEE32.lt`, which are false
-when an operand is a NaN.  The processor computes the same under the startup's `FPCR`,
-`0x02000000`: DN set and every other field clear.
+when an operand is a NaN, and `FCVTZU` computes `Wasm.i64TruncSatF64U` or `Wasm.i64TruncSatF32U`,
+which truncate toward zero, saturate, and give 0 for a NaN.  The processor computes the same under
+the startup's `FPCR`, `0x02000000`: DN set and every other field clear.
 -/
 
 namespace LeanExe.A64
@@ -162,6 +163,9 @@ inductive Instr where
   | ucvtf (d n : Fin 32)
   /-- `FCMP Dn, Dm`, which sets the flags from the comparison of `Dn` with `Dm`. -/
   | fcmp (n m : Fin 32)
+  /-- `FCVTZU Xd, Dn`, which converts the double of `Dn` to an unsigned 64-bit integer, rounding
+  toward zero and saturating, and writes it to `Xd`, the zero register for 31. -/
+  | fcvtzu (d n : Fin 32)
   /-- `FMOV Sd, Wn`, which copies the low 32 bits of `Xn`, the zero register for 31, to `Sd`. -/
   | fmovSW (d n : Fin 32)
   /-- `FMOV Wd, Sn`, which copies `Sn` to `Wd`. -/
@@ -259,6 +263,7 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 1024 = 0x79870 then some (.fsqrt d n)
   else if v / 1024 = 0x2798C0 then some (.ucvtf d n)
   else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmp n m)
+  else if v / 1024 = 0x279E40 then some (.fcvtzu d n)
   else if v / 1024 = 0x789C0 then some (.fmovSW d n)
   else if v / 1024 = 0x78980 then some (.fmovWS d n)
   else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 10 then some (.faddS d n m)
@@ -438,6 +443,7 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .fsqrt d n => some { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := next }
   | .ucvtf d n => some { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := next }
   | .fcmp n m => some { s.fcmp (s.dregs n) (s.dregs m) with pc := next }
+  | .fcvtzu d n => some { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := next }
   | .fmovSW d n => some { s.setD d (s.x n).toUInt32.toUInt64 with pc := next }
   | .fmovWS d n => some { s.setX d (s.dregs n).toUInt32.toUInt64 with pc := next }
   | .faddS d n m =>
