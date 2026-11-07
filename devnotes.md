@@ -42327,5 +42327,27 @@ The user accepted the specification check through Isla's A-profile AArch32 trace
 
 A fresh review (`tmp/m7/review.md`) found the target facts and the register-pair sequences correct and one error: under the plan's frame layout `gwTickWith` and `gatewayWith` need 7,168 and 4,456 bytes, beyond the 4,095 that `LDR` and `STR` reach, because of 564 and 354 f64 and f32 locals that the body never names, a count I verified in the gateway's C text.  The revision (`tmp/m7/plan.md`, "Revisions after the review") gives unused locals no slot, adds a step G0 after T0 that counts the instructions of each window with an unproved generator and measures cycles per instruction on the board, drops the instruction cache and the PLL in favor of the user's lower data rate, and adds to T0 the reading of CPUID and the errata, a decoder that accepts only the encoder's patterns, and SP's masking.  The board's theorems will state their run conditions: a power-on reset, software watchdogs, and no interrupt, debug halt, or debugger access.  No decision goes to the user.
 
+Over SWD, `st-flash read` gave CPUID 0x411FC270, a Cortex-M7 r1p0, DBGMCU_IDCODE 0x10016451, device 0x451 at revision Z (REV_ID 0x1001), and OPTCR 0xFFFFAAFD, whose IWDG_SW and WWDG_SW bits select software watchdogs.
+
+G0 (b) measured on the board the cycles of the sequences that the plan's generator emits, at reset clocking (HSI at 16 MHz, CCR 0x00040200 with the caches off, FLASH_ACR 0).  Each block was 64 copies of a sequence between two loads of DWT_CYCCNT, run 5 times from each fetch path in each of 3 runs from reset, with SP in DTCM.  The empty bracket took 1 cycle in every sample, ART and prefetch changed the ITCM path by at most 0.08 cycles a copy, and a check against `objdump` found every instruction in its intended encoding.  The sources, the scripts, and the raw data lie in `tmp/m7/bench/` (`results.txt`).  Cycles per copy, medians of 15 samples:
+
+| Sequence | Instructions | ITCM, `0x00200000` | AXIM, `0x08000000` |
+|---|---|---|---|
+| `addI64` from slots: 4 `LDR`, `ADDS`, `ADC`, 2 `STR` | 8 | 11.91 | 11.97 |
+| slot move, the next copy reloading the stored words | 6 | 10.91 | 10.95 |
+| slot move, storing to another slot | 6 | 3.25 | 7.67 |
+| `mulI64` from slots | 9 | 14.91 | 14.91 |
+| `shlI64` from slots | 16 | 16.91 | 17.95 |
+| `eqI64` from slots | 12 | 15.89 | 15.97 |
+| `BL`, `STR` of LR, `LDR` of LR, `BX LR` | 4 | 16.98 | 34.22 |
+| `BL` to the plan's full prologue and epilogue | 11 | 20.98 | 41.69 |
+| `CMP.W`, `BNE.W` taken | 2 | 6.50 | 13.88 |
+| `addI64` with `LDRD` and `STRD` | 5 | 8.94 | 8.94 |
+
+A load of a word that the previous instruction stored costs up to 4 cycles more than a load of another slot, and the cost vanishes with about 8 cycles between them, so reloads of the operand stack's top dominate the slot sequences.  The ITCM path takes about half the AXIM path's cycles for calls, taken branches, and code that reloads nothing.  `LDRD` and `STRD` cut `addI64` by 25% and the slot move by 36%, but reach only 1,020 bytes, and the 16-bit `LDR` and `STR` save nothing on ITCM.  At 1.5 to 1.8 cycles an instruction, half a byte time holds about 9,100 to 11,200 instructions at 4,800 baud and about 18,000 to 22,000 at 2,400, against the plan's estimate of 6,700 to 18,000 for a receiving window.  `UDIV`, `MLS`, and `udivmod64` were not measured.
+
+Choice: the reset vector names the ITCM alias, which the boot model already covers and which needs no register write.  `LDRD` and `STRD`, and keeping the operand stack's top in registers, wait for G0 (a)'s window counts, since the second changes decision 1 and the proofs' relation.  The runs showed what a debugger leaves behind: `st-flash` halts the core when it connects (DHCSR 0x00030003), the ST-LINK leaves DEMCR at 0x01000500 with C_DEBUGEN set, and DWT_LSR read SLK 0 after a system reset with the probe attached, so the proved runs' premise of a power-on reset with no debugger excludes all of it.  Each `st-flash reset` booted the image twice, for a reason not found.  After 34 sessions of `st-flash`, `gateway.bin` was written back, read back equal, and passed 5 ticks with records equal to the earlier run's, so the virtual COM port still forwards.
+
 - [x] Review of the plan, and its revision.
-- [ ] T0: model and encoder, with CPUID and the errata.  G0: window counts and the board's cycles per instruction.  T1: division.  T2: the echo's step.  T3: the loop under QEMU.  T4: the board's echo.  T5: Isla and the board's co-simulation.  G1: the gateway.  G2: timing.
+- [x] G0 (b): the board's cycles per instruction.
+- [ ] T0: model and encoder, with CPUID and the errata.  G0 (a): window counts.  T1: division.  T2: the echo's step.  T3: the loop under QEMU.  T4: the board's echo.  T5: Isla and the board's co-simulation.  G1: the gateway.  G2: timing.
