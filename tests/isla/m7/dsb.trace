@@ -18,6 +18,7 @@
   (read-reg |_PC| nil v292)
   (read-reg |SEE| nil (_ bv-1 128))
   (write-reg |SEE| nil (_ bv2854 128))
+  (write-reg |__currentCond| nil #xe)
   (read-reg |__currentCond| nil #xe)
   (read-reg |SEE| nil (_ bv2854 128))
   (write-reg |SEE| nil (_ bv2902 128))
@@ -29,4 +30,4 @@
   (declare-const v313 (_ BitVec 32)) ; src/v8_base.sail 8391:19 - 8391:23
   (read-reg |_HCR| nil (_ struct (|bits| v313)))
   (read-reg |HCR_EL2| ((_ field |bits|)) (_ struct (|bits| #x0000000080000000)))
-  (abstract-primop |sail_barrier| (_ unit) (|Barrier_DSB| (_ struct (|domain| |MBReqDomain_FullSystem|) (|types| |MBReqTypes_All|) (|nXS| false)))))
+  (abstract-primop |sail_barrier| (_ unit) (|Barrier_DSB| (_ struct (|nXS| false) (|types| |MBReqTypes_All|) (|domain| |MBReqDomain_FullSystem|)))))

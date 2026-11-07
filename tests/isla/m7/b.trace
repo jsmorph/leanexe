@@ -20,18 +20,17 @@
   (assume-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
   (cycle)
-  (assert (not (= (bvand (concat (concat (concat (concat (concat (concat (concat #b11110 v0) v1) #b10) v2) #b1) v3) v4) #xf800d000) #xf0008000))) ; 0:0 - 0:0
   (read-reg |PSTATE| ((_ field |IT|)) (_ struct (|IT| #x00)))
   (write-reg |__currentCond| nil #xe)
   (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
-  (declare-const v301 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
-  (read-reg |_PC| nil v301)
-  (define-const v306 (= ((_ extract 9 5) v1) #b01010)) ; src/instrs32.sail 104:29 - 104:205
+  (declare-const v297 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
+  (read-reg |_PC| nil v297)
+  (define-const v302 (= ((_ extract 9 5) v1) #b01010)) ; src/instrs32.sail 104:29 - 104:205
 
   (cases "src/instrs32.sail 104:29 - 104:205"
     (trace
-      (assert v306) ; 0:0 - 0:0
+      (assert v302) ; 0:0 - 0:0
       (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011010))) ; 0:0 - 0:0
       (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
       (assert (not (= ((_ extract 9 4) v1) #b100000))) ; 0:0 - 0:0
@@ -51,21 +50,21 @@
       (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
       (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
       (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
-      (define-const v360 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
+      (define-const v356 (bvand (bvadd (bvadd ((_ extract 31 0) v297) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
       (write-reg |Branchtypetaken| nil |BranchType_DIR|)
-      (define-const v361 ((_ zero_extend 32) v360)) ; src/v8_base.sail 6790:33 - 6790:55
-      (branch-address v361)
-      (define-const v362 ((_ zero_extend 32) v360)) ; src/v8_base.sail 6791:14 - 6791:36
-      (write-reg |_PC| nil v362)
+      (define-const v357 ((_ zero_extend 32) v356)) ; src/v8_base.sail 6790:33 - 6790:55
+      (branch-address v357)
+      (define-const v358 ((_ zero_extend 32) v356)) ; src/v8_base.sail 6791:14 - 6791:36
+      (write-reg |_PC| nil v358)
       (write-reg |__BranchTaken| nil true))
     (trace
-      (assert (not v306)) ; 0:0 - 0:0
+      (assert (not v302)) ; 0:0 - 0:0
       (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011010))) ; 0:0 - 0:0
-      (define-const v367 (= ((_ extract 9 5) v1) #b01000)) ; src/instrs32.sail 410:29 - 410:206
+      (define-const v363 (= ((_ extract 9 5) v1) #b01000)) ; src/instrs32.sail 410:29 - 410:206
     
       (cases "src/instrs32.sail 410:29 - 410:206"
         (trace
-          (assert v367) ; 0:0 - 0:0
+          (assert v363) ; 0:0 - 0:0
           (assert (not (= ((_ extract 9 4) v1) #b100000))) ; 0:0 - 0:0
           (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
           (assert (= ((_ extract 9 5) v1) #b01000)) ; 0:0 - 0:0
@@ -84,20 +83,20 @@
           (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
           (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
           (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
-          (define-const v419 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
+          (define-const v415 (bvand (bvadd (bvadd ((_ extract 31 0) v297) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
           (write-reg |Branchtypetaken| nil |BranchType_DIR|)
-          (define-const v420 ((_ zero_extend 32) v419)) ; src/v8_base.sail 6790:33 - 6790:55
-          (branch-address v420)
-          (define-const v421 ((_ zero_extend 32) v419)) ; src/v8_base.sail 6791:14 - 6791:36
-          (write-reg |_PC| nil v421)
+          (define-const v416 ((_ zero_extend 32) v415)) ; src/v8_base.sail 6790:33 - 6790:55
+          (branch-address v416)
+          (define-const v417 ((_ zero_extend 32) v415)) ; src/v8_base.sail 6791:14 - 6791:36
+          (write-reg |_PC| nil v417)
           (write-reg |__BranchTaken| nil true))
         (trace
-          (assert (not v367)) ; 0:0 - 0:0
-          (define-const v423 (= ((_ extract 9 4) v1) #b100000)) ; src/instrs32.sail 443:29 - 443:212
+          (assert (not v363)) ; 0:0 - 0:0
+          (define-const v419 (= ((_ extract 9 4) v1) #b100000)) ; src/instrs32.sail 443:29 - 443:212
         
           (cases "src/instrs32.sail 443:29 - 443:212"
             (trace
-              (assert v423) ; 0:0 - 0:0
+              (assert v419) ; 0:0 - 0:0
               (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
               (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
               (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
@@ -114,26 +113,26 @@
               (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
               (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
               (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
-              (define-const v470 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
+              (define-const v466 (bvand (bvadd (bvadd ((_ extract 31 0) v297) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
               (write-reg |Branchtypetaken| nil |BranchType_DIR|)
-              (define-const v471 ((_ zero_extend 32) v470)) ; src/v8_base.sail 6790:33 - 6790:55
-              (branch-address v471)
-              (define-const v472 ((_ zero_extend 32) v470)) ; src/v8_base.sail 6791:14 - 6791:36
-              (write-reg |_PC| nil v472)
+              (define-const v467 ((_ zero_extend 32) v466)) ; src/v8_base.sail 6790:33 - 6790:55
+              (branch-address v467)
+              (define-const v468 ((_ zero_extend 32) v466)) ; src/v8_base.sail 6791:14 - 6791:36
+              (write-reg |_PC| nil v468)
               (write-reg |__BranchTaken| nil true))
             (trace
-              (assert (not v423)) ; 0:0 - 0:0
+              (assert (not v419)) ; 0:0 - 0:0
               (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
               (assert (not (= ((_ extract 9 5) v1) #b01000))) ; 0:0 - 0:0
               (assert (not (= (concat v1 #b1) #b10000011010))) ; 0:0 - 0:0
               (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101011000))) ; 0:0 - 0:0
               (assert (not (= (concat v1 #b1) #b10101011110))) ; 0:0 - 0:0
               (assert (not (= (concat v1 #b1) #b10000011110))) ; 0:0 - 0:0
-              (define-const v488 (= ((_ extract 9 5) v1) #b00000)) ; src/instrs32.sail 1126:29 - 1126:207
+              (define-const v484 (= ((_ extract 9 5) v1) #b00000)) ; src/instrs32.sail 1126:29 - 1126:207
             
               (cases "src/instrs32.sail 1126:29 - 1126:207"
                 (trace
-                  (assert v488) ; 0:0 - 0:0
+                  (assert v484) ; 0:0 - 0:0
                   (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
                   (read-reg |SEE| nil (_ bv-1 128))
                   (write-reg |SEE| nil (_ bv2855 128))
@@ -143,15 +142,15 @@
                   (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
                   (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
                   (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
-                  (define-const v519 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
+                  (define-const v515 (bvand (bvadd (bvadd ((_ extract 31 0) v297) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
                   (write-reg |Branchtypetaken| nil |BranchType_DIR|)
-                  (define-const v520 ((_ zero_extend 32) v519)) ; src/v8_base.sail 6790:33 - 6790:55
-                  (branch-address v520)
-                  (define-const v521 ((_ zero_extend 32) v519)) ; src/v8_base.sail 6791:14 - 6791:36
-                  (write-reg |_PC| nil v521)
+                  (define-const v516 ((_ zero_extend 32) v515)) ; src/v8_base.sail 6790:33 - 6790:55
+                  (branch-address v516)
+                  (define-const v517 ((_ zero_extend 32) v515)) ; src/v8_base.sail 6791:14 - 6791:36
+                  (write-reg |_PC| nil v517)
                   (write-reg |__BranchTaken| nil true))
                 (trace
-                  (assert (not v488)) ; 0:0 - 0:0
+                  (assert (not v484)) ; 0:0 - 0:0
                   (assert (not (= (concat (concat #b11110 v0) ((_ extract 9 5) v1)) #b11101010000))) ; 0:0 - 0:0
                   (read-reg |SEE| nil (_ bv-1 128))
                   (write-reg |SEE| nil (_ bv2855 128))
@@ -161,10 +160,10 @@
                   (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v263))
                   (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
                   (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
-                  (define-const v552 (bvand (bvadd (bvadd ((_ extract 31 0) v301) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
+                  (define-const v548 (bvand (bvadd (bvadd ((_ extract 31 0) v297) #x00000004) ((_ sign_extend 7) (concat (concat (concat (concat (concat v0 (bvnot (bvxor v2 v0))) (bvnot (bvxor v3 v0))) v1) v4) #b0))) #xfffffffe)) ; 0:0 - 0:0
                   (write-reg |Branchtypetaken| nil |BranchType_DIR|)
-                  (define-const v553 ((_ zero_extend 32) v552)) ; src/v8_base.sail 6790:33 - 6790:55
-                  (branch-address v553)
-                  (define-const v554 ((_ zero_extend 32) v552)) ; src/v8_base.sail 6791:14 - 6791:36
-                  (write-reg |_PC| nil v554)
+                  (define-const v549 ((_ zero_extend 32) v548)) ; src/v8_base.sail 6790:33 - 6790:55
+                  (branch-address v549)
+                  (define-const v550 ((_ zero_extend 32) v548)) ; src/v8_base.sail 6791:14 - 6791:36
+                  (write-reg |_PC| nil v550)
                   (write-reg |__BranchTaken| nil true))))))))))

@@ -5,12 +5,13 @@
 # ~/isla-probe/isla-patched on edgexpert-18ff.  No machine-readable specification of the M-profile
 # exists, so the traces check each form against the A-profile's AArch32 pseudocode.
 #
-# Two edits make the IR of the traces.  tests/isla/armv9p4-t32.diff appends to armv9p4-checked.ir
-# the harness functions isla_footprint_t32 and isla_footprint_t16, which do for a 32-bit and a
-# 16-bit Thumb opcode what isla_footprint_no_init does for an A64 one, with the condition that
-# CurrentCond() of DDI 0403E.e A7.3.1 gives, and tests/isla/armv9p4-t32-udiv.diff
-# edits a copy for UDIV, whose quotient the Sail model computes by dividing real numbers.  Each
-# diff's header states what it changes.  The copies sit beside the IR:
+# Two diffs make the IR of the traces.  tests/isla/armv9p4-t32.diff edits armv9p4-checked.ir so
+# that the decode of B T3 takes its condition from the opcode's cond field, as CurrentCond() of
+# DDI 0403E.e A7.3.1 does, and appends the harness functions isla_footprint_t32 and
+# isla_footprint_t16, which do for a 32-bit and a 16-bit Thumb opcode what isla_footprint_no_init
+# does for an A64 one.  tests/isla/armv9p4-t32-udiv.diff edits a copy for UDIV, whose quotient the
+# Sail model computes by dividing real numbers.  Each diff's header states what it changes.  The
+# copies sit beside the IR:
 #   ir=~/isla-probe/ir && cp $ir/armv9p4-checked.ir $ir/armv9p4-t32.ir &&
 #   patch $ir/armv9p4-t32.ir < tests/isla/armv9p4-t32.diff &&
 #   cp $ir/armv9p4-t32.ir $ir/armv9p4-t32-udiv.ir &&
