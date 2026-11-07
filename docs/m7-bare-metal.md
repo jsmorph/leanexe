@@ -158,7 +158,7 @@ The kernel's check of the gateway's image as one declaration does not fit in 16 
 | `echo-cmsdk-qemu.bin` | `cmsdkTick` from 3, on QEMU | 3,690 | 4.7 s | 5.09 GB |
 | `gateway-cmsdk-qemu.bin` | `gwTick` from `gwInit`, on QEMU | 99,086 | 1 min 20 s, in parts | 13.33 GB |
 | The code images of `m7-image.sh` | The programs of `usart3Tick` and `gwTickUsart3` without a head | 3,470 and 98,866 | 4.4 s, and 1 min 20 s in parts | 5.03 and 13.32 GB |
-| `sha-usart3.bin` of `m7-image.sh` | The program of `shaUsart3Tick` from `shaInit` without a head, which no theorem covers | 35,722 | 25.3 s | 10.37 GB |
+| `sha-usart3.bin` of `m7-image.sh` | The program of `shaUsart3Tick` from `shaInit` without a head, which no theorem covers | 41,850 | 39.4 s | 11.25 GB |
 
 With one byte of an image changed, the kernel rejects that image's theorem.  The byte at `0x105` of the QEMU echo's image, a byte of the board's initialization in `gateway.bin`, and a byte of `gwTickWith`'s code in the gateway's code image each made the check fail with a kernel type mismatch, the last two at the part that holds the byte.  The test drivers elaborate the checks on every run.
 
