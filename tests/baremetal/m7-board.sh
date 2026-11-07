@@ -8,7 +8,8 @@
 # under a memory cap of MEM, 12G unless set, so that the kernel checks that the file holds the
 # image's bytes and the theorems hold of the file.  It requires that each theorem whose axioms
 # that file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound, and
-# reports the check's elapsed time and peak memory.
+# reports the check's elapsed time and peak memory.  It also writes the measurement images of
+# tests/TestSupport/M7/Dwt.lean, echo-dwt.bin and div-dwt.bin, which no theorem covers.
 #
 # "m7-board.sh emulate" runs echo.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -22,19 +23,31 @@
 # lacks.
 #
 # "m7-board.sh run DEVICE" writes echo.bin to the board's flash at 0x08000000 with st-flash, reads
-# the flash back and compares it with the file, resets the board with st-flash, and plays the far
-# end through the serial port DEVICE, the virtual COM port of the board's ST-LINK, with
-# uart_echo.py, as tests/baremetal/usart3.sh run echo does.  The reset over SWD leaves the debug
-# state that the probe set, which the theorem's power-on premise excludes.
+# the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a whole
+# number of words, resets the board with st-flash, and plays the far end through the serial port
+# DEVICE, the virtual COM port of the board's ST-LINK, with uart_echo.py, as
+# tests/baremetal/usart3.sh run echo does.  The reset over SWD leaves the debug state that the
+# probe set, which the theorem's power-on premise excludes.
 #
-# The products lie in OUT, build/baremetal/m7-board unless set: echo.bin and echo.addr, the
-# check's output and times, and for emulate and run the host script's line echo.echo and the
-# messages of uv in echo.stderr.  RENODE names Renode 1.17.0's renode, STFLASH names st-flash, UV
-# names uv, and TIMEOUT, 120 unless set, bounds each wait of the host script in seconds.
-# Usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE
+# "m7-board.sh measure-div" writes div-dwt.bin, the measurement image of udivmod64 and UDIV, to the
+# board's flash as "run" does, waits 3 s after the reset, and reads the records and the boot log
+# from DTCM over SWD into div.results and div.bootlog, which tests/baremetal/m7_dwt.py prints and
+# checks.  "m7-board.sh measure-echo DEVICE" writes echo-dwt.bin, the echo with the cycles of each
+# window, runs uart_echo.py through DEVICE as "run" does, and reads the window table and the boot
+# log into echo.results and echo.bootlog.  st-flash attaches with --hot-plug for these reads,
+# which halt the core.
+#
+# The products lie in OUT, build/baremetal/m7-board unless set: the images, echo.addr, the check's
+# output and times, st-flash's messages in IMAGE.flash, and for emulate and run the host script's
+# line echo.echo and the messages of uv in echo.stderr.  RENODE names Renode 1.17.0's renode,
+# STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
+# script in seconds.
+# Usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE | measure-div |
+#          measure-echo DEVICE
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE" >&2
+  echo "usage: tests/baremetal/m7-board.sh check | emulate | run DEVICE | measure-div |" \
+    "measure-echo DEVICE" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -42,7 +55,33 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 here=$root/tests/baremetal
 out=$(realpath -m "${OUT:-$root/build/baremetal/m7-board}")
 uv=${UV:-uv}
+stflash=${STFLASH:-st-flash}
 timeout=${TIMEOUT:-120}
+
+# Writes the image $1 of OUT to the board's flash, reads the flash back and compares its first
+# bytes with the file, and resets the board.
+flash() {
+  local image=$out/$1 size
+  [ -f "$image" ] || { echo "fail: $1 is missing"; return 1; }
+  size=$(stat -c %s "$image")
+  "$stflash" write "$image" 0x08000000 >"$image.flash" 2>&1 || {
+    echo "fail: st-flash write $1: $(tail -c 300 "$image.flash")"; return 1; }
+  "$stflash" read "$image.readback" 0x08000000 "$size" >>"$image.flash" 2>&1 || {
+    echo "fail: st-flash read: $(tail -c 300 "$image.flash")"; return 1; }
+  if ! cmp -s -n "$size" "$image" "$image.readback"; then
+    echo "fail: the flash differs from $1: $(cmp -n "$size" "$image" "$image.readback")"
+    return 1
+  fi
+  echo "pass: the flash holds the $size bytes of $1"
+  "$stflash" reset >>"$image.flash" 2>&1 || {
+    echo "fail: st-flash reset: $(tail -c 300 "$image.flash")"; return 1; }
+}
+
+# Reads $3 bytes of the board's memory from $2 into $1 of OUT without a reset.
+readmem() {
+  "$stflash" --hot-plug read "$out/$1" "$2" "$3" >"$out/$1.read" 2>&1 || {
+    echo "fail: st-flash read $1: $(tail -c 300 "$out/$1.read")"; return 1; }
+}
 
 # Plays the far end of USART3 through the serial port $1.
 host_run() {
@@ -63,6 +102,8 @@ case $1 in
     tools/leanrun --timeout 60m lake --log-level error build m7-windows TestSupport.M7.NucleoLoop
     tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows board "$out/echo.bin" |
       tee "$out/echo.addr"
+    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows board-dwt "$out/echo-dwt.bin"
+    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
     status=0
     if /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "${MEM:-12G}" lake env \
         sh -c 'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/M7/NucleoFile.lean" \
@@ -140,21 +181,26 @@ EOF
     ;;
   run)
     [ "$#" -eq 2 ] || usage
-    stflash=${STFLASH:-st-flash}
-    [ -f "$out/echo.bin" ] || { echo "fail: echo: $out/echo.bin is missing"; exit 1; }
-    size=$(stat -c %s "$out/echo.bin")
-    "$stflash" write "$out/echo.bin" 0x08000000 >"$out/echo.flash" 2>&1 || {
-      echo "fail: echo: st-flash write: $(tail -c 300 "$out/echo.flash")"; exit 1; }
-    "$stflash" read "$out/echo.readback" 0x08000000 "$size" >>"$out/echo.flash" 2>&1 || {
-      echo "fail: echo: st-flash read: $(tail -c 300 "$out/echo.flash")"; exit 1; }
-    if ! cmp -s "$out/echo.bin" "$out/echo.readback"; then
-      echo "fail: echo: the flash differs from echo.bin: $(cmp "$out/echo.bin" "$out/echo.readback")"
-      exit 1
-    fi
-    echo "pass: echo: the flash holds the $size bytes of echo.bin"
-    "$stflash" reset >>"$out/echo.flash" 2>&1 || {
-      echo "fail: echo: st-flash reset: $(tail -c 300 "$out/echo.flash")"; exit 1; }
+    flash echo.bin
     host_run "$2"
+    ;;
+  measure-div)
+    [ "$#" -eq 1 ] || usage
+    flash div-dwt.bin
+    sleep 3
+    readmem div.results 0x20000000 8192
+    readmem div.bootlog 0x2001E000 264
+    "$uv" run "$here/m7_dwt.py" bootlog "$out/div.bootlog"
+    "$uv" run "$here/m7_dwt.py" div "$out/div.results"
+    ;;
+  measure-echo)
+    [ "$#" -eq 2 ] || usage
+    flash echo-dwt.bin
+    host_run "$2"
+    readmem echo.results 0x20000000 528
+    readmem echo.bootlog 0x2001E000 264
+    "$uv" run "$here/m7_dwt.py" bootlog "$out/echo.bootlog"
+    "$uv" run "$here/m7_dwt.py" echo "$out/echo.results"
     ;;
   *)
     usage
