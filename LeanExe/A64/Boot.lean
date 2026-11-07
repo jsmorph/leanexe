@@ -12,28 +12,28 @@ The state `Boot` extends the program's `State` with two copies of the writable s
 `written`, which `MSR` sets, and `eff`, the values that translation and the traps of floating point
 use, which an `ISB` makes equal to `written`.  An instruction must be fetched successfully under
 both copies, since the architecture may use either until an `ISB`.  `FPCR` is among the copied
-registers, although its writes take effect in program order: the model is stricter than the
-architecture there and runs a floating-point instruction only when both copies hold `fpcrValue`.  `tlb` records whether the TLBs may hold entries that
-a walk under `eff` would not give: a write of a register that a TLB may cache makes it `unknown`,
+registers, although the architecture puts its writes in effect in program order, so the model is
+stricter than the architecture there.  `tlb` records whether the TLBs may hold entries that a walk
+under `eff` would not give: a write of a register that a TLB may cache makes it `unknown`,
 `TLBI VMALLE1` after an `ISB` makes it `pending`, and a `DSB` makes a `pending` one `clean`.
 `spSel` records that SP_EL1 is the stack pointer, which every step but `MSR SPSel, #1` requires.
 `uartDone` records that every byte store to the UART has completed, which a `DSB` ensures.
 
 `classify` gives the type of memory at an address from the table's bytes for the one configuration
-that the model covers, `covered`, and `none` for every other configuration, descriptor, or
-address, where the model stops.  The covered configuration includes floating point enabled with
-the control `fpcrValue`.  A system instruction steps by `sysExec`, in which `MSR FPCR` stops unless
-`CPACR_EL1` lets EL1 access floating point in both copies.  Another instruction that touches no
-memory steps by `exec` while the MMU may be off, when its next program counter lies below 2^55 or
-address tagging is off, since a branch under tagging changes the top byte of a larger target, and,
-for a floating-point instruction, when both copies of `CPACR_EL1` and `FPCR` hold the covered
-values.  Every instruction other than a system
-instruction steps by `exec` with the platform `Boot.platform` once translation is on in the covered
-configuration with valid TLBs: its Normal memory is the writable Normal memory of the table outside
-the protected bytes `R`, the image's code, vectors, and table, which no store may change, so the
-fixed map of code words stays the memory's, and its UART is QEMU's at `uartAddr`, which the table
-must map as writable Device memory.  `HVC` has no step: a run that reaches it with `X0` holding
-PSCI's `SYSTEM_OFF` has finished, and the platform's firmware turns the machine off.
+that the model covers, `covered`, and `none` for every other configuration, descriptor, or address,
+where the model stops.  The covered configuration includes floating point enabled with `cpacrValue`
+and `fpcrValue`.  A system instruction steps by `sysExec`, in which `MSR FPCR` stops unless both
+copies of `CPACR_EL1` let EL1 access floating point.  Another instruction that touches no memory
+steps by `exec` while the MMU may be off, when its next program counter lies below 2^55 or address
+tagging is off, since a branch under tagging changes the top byte of a larger target, and, for a
+floating-point instruction, when both copies of `CPACR_EL1` and `FPCR` hold their covered values.
+Every instruction other than a system instruction steps by `exec` with the platform `Boot.platform`
+once translation is on in the covered configuration with valid TLBs: its Normal memory is the
+writable Normal memory of the table outside the protected bytes `R`, the image's code, vectors, and
+table, which no store may change, so the fixed map of code words stays the memory's, and its UART is
+QEMU's at `uartAddr`, which the table must map as writable Device memory.  `HVC` has no step: a run
+that reaches it with `X0` holding PSCI's `SYSTEM_OFF` has finished, and the platform's firmware
+turns the machine off.
 -/
 
 namespace LeanExe.A64

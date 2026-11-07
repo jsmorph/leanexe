@@ -7,18 +7,18 @@ import LeanExe.A64.Proof.Table
 The run of an image's entry and the startup's first part in the boot model: the header's
 `MSR SPSel, #1` and its branch to the startup, then the startup's instructions 0 to 42, which end
 with the `ISB` that puts the MMU's enable in effect.  While the MMU is off every fetch succeeds,
-and `bootReach_of_reach_off` lifts the program model's runs of the instructions that touch no
-memory, among them `addrOf`, `movImm`, and `MOVZ`.  `OffAt` collects what the system instructions
-of this part keep: SP_EL1, the MMU off, the memory, SP, and the UART's output.
+`bootReach_of_reach_off` lifts the program model's runs of the instructions that touch no memory,
+among them `addrOf` and `movImm`, and `boot_plain` takes a single such step, such as a `MOVZ`.
+`OffAt` collects what the system instructions of this part keep: SP_EL1, the MMU off, the memory,
+SP, and the UART's output.
 
 `MRS X1, CurrentEL` reads 4 at EL1, so `B.NE` falls through, and `CBZ` on the field TCRX of
 `ID_AA64MMFR3_EL1` skips the write of `TCR2_EL1` exactly when the processor lacks the register.
 The write of `cpacrValue` to `CPACR_EL1` enables floating point.  After the first `ISB`,
 `TLBI VMALLE1` and `DSB ISH` clean the TLBs, `MSR FPCR`, which the effective `CPACR_EL1` permits,
 writes `fpcrValue`, and the write of `sctlrOn` changes only the field M of `SCTLR_EL1`, so the TLBs
-stay clean.  The last `ISB` is fetched while
-the written registers have the MMU on, so the table must map its address as executable Normal
-memory, which it does for an image in the RAM GiB.
+stay clean.  The last `ISB` is fetched while the written registers have the MMU on, so the table
+must map its address as executable Normal memory, which it does for an image in the RAM GiB.
 -/
 
 namespace LeanExe.A64
@@ -495,9 +495,10 @@ theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {
     (bootReach_of_reach_off hdom o27.spSel o27.off q30 out30
       (by rw [p30]; split <;> exact hlt _ (by decide)))
     p30 m30 sp30 out30
-  obtain ⟨w, b32, r32, o32, hw32, hcp32, hcov32, hT32'⟩ : ∃ w b32, BootReach h R code b b32 ∧
-      OffAt b (after s 32) w b32 ∧ w.sctlr = sctlrOn - 1 ∧ w.cpacr = cpacrValue ∧
-      { w with sctlr := sctlrOn, fpcr := fpcrValue }.covered h = true ∧ w.ttbr0 = L.table := by
+  obtain ⟨w, b32, r32, o32, hw32, hcp32, hcov32, hT32'⟩ :
+      ∃ w b32, BootReach h R code b b32 ∧ OffAt b (after s 32) w b32 ∧ w.sctlr = sctlrOn - 1 ∧
+        w.cpacr = cpacrValue ∧ { w with sctlr := sctlrOn, fpcr := fpcrValue }.covered h = true ∧
+        w.ttbr0 = L.table := by
     cases ht : h.tcrx
     · have hz : h.mmfr3 &&& 15 = 0 := by simpa [Hw.tcrx] using ht
       rw [ite_eq_left hz] at o30
