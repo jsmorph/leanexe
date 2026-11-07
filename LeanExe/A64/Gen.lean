@@ -8,9 +8,10 @@ compiler and its arguments, a bare-metal program of the model's instruction form
 calls the function, writes its result to the UART, and returns 0 to the startup code of
 `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer comparisons and
 operations of the C path's subset, calls, globals, the 64-bit loads and stores of linear memory,
-and the f64 forms of the Euler solver: constants, the reinterpretations, `f64ConvertI64U`, `f64Add`,
-`f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, and `f64Abs`.  It rejects every other form with a
-message.
+and the f64 forms that the verified compiler emits other than `i64TruncSatF64U`: constants, the
+reinterpretations, `f64ConvertI64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, `f64Abs`,
+`f64Eq`, `f64Lt`, and `f64Le`.  It rejects every other form with a message.  The function that
+`main` calls takes `i64` and `f64` parameters.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
@@ -18,32 +19,34 @@ types and checks the types of the values that a `local.set`, a branch, and a cal
 the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
 a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` lies there as its
 word, so a reinterpretation emits nothing.  An f64 operation moves its operands' words into D0 and
-D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and
-`f64Abs` clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  X16 is the scratch
-register of
-`remUI64`, of the prologue, and of the memory's instructions, and X29 is a second one of
-`memory.grow`.  X17 holds the address of the area of the module's store: the memory's size less 8,
-the globals, and the memory's bytes, which a load or store reaches after a check of its bounds.  A
-function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by 26 spill
-slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue checks that
-the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the parameters
-into it from the registers of the heights 0 upward, and clears the other locals.  A call spills the
-operand registers below its arguments to the spill slots, moves the arguments into the registers of
-the heights 0 upward, branches with `BL`, moves the results from those registers into the registers
-of their heights, and reloads the spilled registers.  The callee may change every register but SP,
-X17, and X18, and it changes no memory from its caller's SP upward.  A construct carries at most one
-value, and a branch to one moves the value that it carries, if any, into the register of the
-construct's base height with one `ORR` and branches to the construct's target: the end of a `block`
-or an `iff`, the start of a `loop`, or the epilogue for the function itself, which also serves
-`ret`.  The results lie at the heights from 0, in the registers of those heights, when the epilogue
-releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is
-unreachable, and the generator emits nothing for it, while the code after a construct is reachable,
-as Wasm's typing has it.  No instruction may pop below the base height of its innermost construct,
-`curBase`, as valid Wasm never does: Talos runs a construct's body on the whole operand stack and
-restores the values below the construct afterwards, which the registers of those heights would not
-follow.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1,
-2, or 3, or to 4 for an overflow of the stack, and branches to the program's exit word, which the
-image fills with a branch to `lx_exit` of the startup code.
+D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and `f64Abs`
+clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  An f64 comparison moves the words
+into D0 and D1, compares them with `FCMP`, and sets the register of the lower operand with `CSINC`
+and the inverse of `EQ`, `MI`, or `LS`, the conditions that hold after `FCMP` exactly when `f64Eq`,
+`f64Lt`, or `f64Le` gives 1.  X16 is the scratch register of `remUI64`, of the prologue, and of the
+memory's instructions, and X29 is a second one of `memory.grow`.  X17 holds the address of the area
+of the module's store: the memory's size less 8, the globals, and the memory's bytes, which a load
+or store reaches after a check of its bounds.  A function keeps its parameters and locals in a frame
+at `SP` of 8 bytes each, followed by 26 spill slots and the slot of the return address, a multiple
+of 16 bytes in all.  Its prologue checks that the frame fits above the stack's limit, which X18
+holds, reserves the frame, stores the parameters into it from the registers of the heights 0 upward,
+and clears the other locals.  A call spills the operand registers below its arguments to the spill
+slots, moves the arguments into the registers of the heights 0 upward, branches with `BL`, moves the
+results from those registers into the registers of their heights, and reloads the spilled registers.
+The callee may change every register but SP, X17, and X18, and it changes no memory from its
+caller's SP upward.  A construct carries at most one value, and a branch to one moves the value that
+it carries, if any, into the register of the construct's base height with one `ORR` and branches to
+the construct's target: the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for
+the function itself, which also serves `ret`.  The results lie at the heights from 0, in the
+registers of those heights, when the epilogue releases the frame and returns.  Code after a `br`, a
+`ret`, or `unreachable` in the same list is unreachable, and the generator emits nothing for it,
+while the code after a construct is reachable, as Wasm's typing has it.  No instruction may pop
+below the base height of its innermost construct, `curBase`, as valid Wasm never does: Talos runs a
+construct's body on the whole operand stack and restores the values below the construct afterwards,
+which the registers of those heights would not follow.  A trap branches to a stub that sets X0 to
+the trap's code of `LeanExe.Native.trapCode`, 1, 2, or 3, or to 4 for an overflow of the stack, and
+branches to the program's exit word, which the image fills with a branch to `lx_exit` of the startup
+code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -195,6 +198,20 @@ def genFBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → F
   let x ← opReg (σ.length - 2)
   return (fBin op x (← opReg (σ.length - 1)), some (.f64 :: σ.drop 2))
 
+/-- The code of an f64 comparison of the words of registers `x` and `y` into `x`: the words into D0
+and D1, `FCMP D0, D1`, and `CSINC x, XZR, XZR, c`, which sets `x` to 1 when the inverse of `c`
+holds and to 0 otherwise. -/
+def fCmp (c : Fin 16) (x y : Fin 32) : List Instr :=
+  [.fmovDX 0 x, .fmovDX 1 y, .fcmp 0 1, .csinc x 31 31 c]
+
+/-- An f64 comparison of the two values on top, which the code `fCmp c` replaces by 1 or 0, an
+`i32`. -/
+def genFCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"a comparison at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fCmp c x (← opReg (σ.length - 1)), some (.i32 :: σ.drop 2))
+
 /-- An operation on the value on top, in the register `r`, which the code `ops r` replaces by its
 result, of type `t`. -/
 def genUn (ctl : List Ctl) (σ : List ValueType) (ops : Fin 32 → List Instr) (t : ValueType) :
@@ -227,7 +244,7 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
       (1, some (h - 1))
-  | .f64Add | .f64Sub | .f64Mul | .f64Div => (4, some (h - 1))
+  | .f64Add | .f64Sub | .f64Mul | .f64Div | .f64Eq | .f64Lt | .f64Le => (4, some (h - 1))
   | .f64Sqrt => (3, some h)
   | .f64Abs | .f64ConvertI64U => (2, some h)
   | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
@@ -306,6 +323,9 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .f64Sub => genFBin ctl σ .fsub
   | .f64Mul => genFBin ctl σ .fmul
   | .f64Div => genFBin ctl σ .fdiv
+  | .f64Eq => genFCmp ctl σ 1
+  | .f64Lt => genFCmp ctl σ 5
+  | .f64Le => genFCmp ctl σ 8
   | .f64Sqrt => genUn ctl σ sqrtCode .f64
   | .f64Abs => genUn ctl σ absCode .f64
   | .f64ConvertI64U => genUn ctl σ convertCode .f64
@@ -670,14 +690,20 @@ def memPrefix (m : Module) (n : Nat) : List UInt8 :=
 def areaPrefixBytes (m : Module) : List UInt8 :=
   (List.range 4096).map (areaByte m.initialStore) ++ memPrefix m (areaPrefix m - 4096)
 
+/-- A type whose values `main` passes to the function that it calls as words in X0 upward: `i64`
+or `f64`. -/
+def wordType : ValueType → Bool
+  | .i64 | .f64 => true
+  | _ => false
+
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
 with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
 a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,
 `k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the
-exit word.  The parameters of function `k` are `i64`s, the memory satisfies `areaOk`, and the
-globals are at most 511 numbers.  The table of the functions' calls holds the functions that
-`callTargets` names.  `main` writes the result as `o` says.  The image puts a branch to `lx_exit`
-at `base` and `areaBytes` at `area`. -/
+exit word.  The parameters of function `k` are `i64`s and `f64`s, whose words `args` holds, the
+memory satisfies `areaOk`, and the globals are at most 511 numbers.  The table of the functions'
+calls holds the functions that `callTargets` names.  `main` writes the result as `o` says.  The
+image puts a branch to `lx_exit` at `base` and `areaBytes` at `area`. -/
 def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
     (cap : Nat) (o : Output) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
@@ -693,7 +719,7 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
   let traps := endOf sig first fs
   let entry ← match entryIn sig first fs k with
     | some (e, ps, _) =>
-        if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
+        if ps.all wordType then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
   let main ← genMain mainA entry args uart room o
   let S : Shared :=

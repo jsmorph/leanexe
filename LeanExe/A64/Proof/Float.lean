@@ -8,9 +8,12 @@ type.  `genFBin` moves the words of the two values on top into D0 and D1 with `F
 value; the model's meaning of each form is Talos's function, so the register then holds Talos's
 result.  `f64Sqrt` goes through D0 in the same way, `f64ConvertI64U` converts the register's word
 into D0 with `UCVTF`, and `f64Abs` adds the register to itself, which drops the sign bit, and
-shifts the sum right by 1, which gives Talos's `IEEE64.abs`.  No f64 form changes a general
-register but the one of its result, SP, the memory, or the UART's output, and the D registers lie
-outside the relation.
+shifts the sum right by 1, which gives Talos's `IEEE64.abs`.  `genFCmp` moves the two words into
+D0 and D1, compares them with `FCMP`, and sets the lower value's register with `CSINC XZR, XZR`
+and a condition: `f64Eq` with `NE`, `f64Lt` with `PL`, and `f64Le` with `HI`, each the inverse of
+the condition that holds after `FCMP` when the comparison gives 1, `EQ`, `MI`, or `LS`.  No f64
+form changes a general register but the one of its result, SP, the memory, or the UART's output,
+and the D registers and the flags lie outside the relation.
 -/
 
 namespace LeanExe.A64
@@ -212,6 +215,106 @@ theorem runs_abs : UnRuns P code absCode Wasm.f64Abs := by
     show (s.setX r (s.x r + s.x r)).out = _
     rw [State.setX_out]
 
+/-- The code `fCmp c x y` sets `x`, below 31, to 0 when the condition `c` holds of the flags of
+`FCMP` of the words of `x` and `y`, and to 1 otherwise, and keeps the other general registers, SP,
+the memory, and the output. -/
+theorem run_fCmp {s : State} {a : UInt64} {c : Fin 16} {x y : Fin 32} (hx : x.val < 31)
+    (hcode : CodeAt code a (fCmp c x y)) (hpc : s.pc = a) :
+    ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧
+      s'.x x = (if (s.fcmp (s.x x) (s.x y)).condHolds c then 0 else 1) ∧
+      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+  have c0 := hcode 0 (by simp [fCmp])
+  have c1 := hcode 1 (by simp [fCmp])
+  have c2 := hcode 2 (by simp [fCmp])
+  have c3 := hcode 3 (by simp [fCmp])
+  simp only [fCmp, List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1 c2 c3
+  let s1 : State := { s.setD 0 (s.x x) with pc := s.pc + 4 }
+  let s2 : State := { s1.setD 1 (s1.x y) with pc := s1.pc + 4 }
+  let s3 : State := { s2.fcmp (s2.dregs 0) (s2.dregs 1) with pc := s2.pc + 4 }
+  let s4 : State :=
+    { s3.setX x (if s3.condHolds c then s3.x 31 else s3.x 31 + 1) with pc := s3.pc + 4 }
+  have p1 : s1.pc = after a 1 := by
+    show s.pc + 4 = _
+    rw [hpc, after_succ, after_zero]
+  have p2 : s2.pc = after a 2 := by
+    show s1.pc + 4 = _
+    rw [p1, ← after_succ]
+  have p3 : s3.pc = after a 3 := by
+    show s2.pc + 4 = _
+    rw [p2, ← after_succ]
+  have hd0 : s2.dregs 0 = s.x x := by
+    show (s1.setD 1 (s1.x y)).dregs 0 = _
+    rw [State.dregs_setD_ne s1 (r := 1) (q := 0) _ (by decide)]
+    show (s.setD 0 (s.x x)).dregs 0 = _
+    rw [State.dregs_setD_same]
+  have hd1 : s2.dregs 1 = s.x y := by
+    show (s1.setD 1 (s1.x y)).dregs 1 = _
+    rw [State.dregs_setD_same]
+    rfl
+  have hc : s3.condHolds c = (s.fcmp (s.x x) (s.x y)).condHolds c := by
+    show (s2.fcmp (s2.dregs 0) (s2.dregs 1)).condHolds c = _
+    rw [hd0, hd1]
+    rfl
+  have h31 : s3.x 31 = 0 := by unfold State.x; rw [dite_eq_right (by decide)]
+  refine ⟨s4, reach_exec P code (by rw [hpc]; exact c0) rfl
+      (reach_exec P code (by rw [p1]; exact c1) rfl
+        (reach_exec P code (by rw [p2]; exact c2) rfl
+          (reach_exec P code (by rw [p3]; exact c3) rfl (.refl _)))), ?_, ?_, fun q hq => ?_,
+    ?_, ?_, ?_⟩
+  · show s3.pc + 4 = _
+    rw [p3, ← after_succ]
+  · show (s3.setX x (if s3.condHolds c then s3.x 31 else s3.x 31 + 1)).x x = _
+    rw [State.x_setX_same hx, hc, h31]
+    rfl
+  · show (s3.setX x _).x q = s3.x q
+    exact State.x_setX_ne (Ne.symm hq)
+  · show (s3.setX x _).sp = s3.sp
+    exact State.setX_sp
+  · show (s3.setX x _).mem = s3.mem
+    exact State.setX_mem
+  · show (s3.setX x _).out = s3.out
+    exact State.setX_out
+
+/-- Talos's `le` holds exactly when `lt` or `eq` does. -/
+theorem le_eq_lt_or_eq (a b : UInt64) :
+    Wasm.IEEE64.le a b = (Wasm.IEEE64.lt a b || Wasm.IEEE64.eq a b) := by
+  unfold Wasm.IEEE64.le Wasm.IEEE64.lt Wasm.IEEE64.eq
+  by_cases hn : (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b) = true
+  · rw [if_pos hn, if_pos hn, if_pos hn]
+    rfl
+  · rw [if_neg hn, if_neg hn, if_neg hn]
+    generalize Wasm.IEEE64.scaledValue a = u
+    generalize Wasm.IEEE64.scaledValue b = v
+    by_cases h : u < v
+    · have : u ≤ v := Int.le_of_lt h
+      simp [h, this]
+    · by_cases he : u = v
+      · subst he
+        simp
+      · have : ¬ u ≤ v := by omega
+        simp [h, he, this]
+
+/-- The condition `NE` holds after `FCMP` exactly when `eq` does not. -/
+theorem fcmp_ne (s : State) (a b : UInt64) : (s.fcmp a b).condHolds 1 = !Wasm.f64Eq a b := rfl
+
+/-- The condition `PL` holds after `FCMP` exactly when `lt` does not. -/
+theorem fcmp_pl (s : State) (a b : UInt64) : (s.fcmp a b).condHolds 5 = !Wasm.f64Lt a b := rfl
+
+/-- The condition `HI` holds after `FCMP` exactly when `le` does not. -/
+theorem fcmp_hi (s : State) (a b : UInt64) : (s.fcmp a b).condHolds 8 = !Wasm.f64Le a b := by
+  show (!Wasm.IEEE64.lt a b && !Wasm.IEEE64.eq a b) = !Wasm.IEEE64.le a b
+  rw [le_eq_lt_or_eq, Bool.not_or]
+
+/-- The register of `CSINC` after `FCMP` holds the comparison `R` as an `i32`, for the condition
+`c` that holds exactly when `R` does not. -/
+theorem fcset_val {c : Fin 16} {R : UInt64 → UInt64 → Bool}
+    (h : ∀ (s : State) (a b : UInt64), (s.fcmp a b).condHolds c = !R a b) (s : State)
+    (a b : UInt64) :
+    (if (s.fcmp a b).condHolds c then (0 : UInt64) else 1) =
+      (if R a b then (1 : UInt32) else 0).toUInt64 := by
+  rw [h]
+  cases R a b <;> rfl
+
 /-! ## The generator's code -/
 
 theorem genFBin_ok {ctl : List Ctl} {σ : List ValueType} {op : Fin 32 → Fin 32 → Fin 32 → Instr}
@@ -243,6 +346,23 @@ theorem genUn_ok {ctl : List Ctl} {σ : List ValueType} {ops : Fin 32 → List I
     exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
     simp [genUn, hc, he, bind, Except.bind] at hg
+
+theorem genFCmp_ok {ctl : List Ctl} {σ : List ValueType} {c : Fin 16} {is : List Instr}
+    {fin : Option (List ValueType)} (hg : genFCmp ctl σ c = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = fCmp c (regOf (σ.length - 2)) (regOf (σ.length - 1)) ∧
+      fin = some (.i32 :: σ.drop 2) := by
+  by_cases hc : σ.length < curBase ctl + 2
+  · simp [genFCmp, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  by_cases hlt : σ.length - 1 < 26
+  · simp [genFCmp, hc, opReg_ok hlt, opReg_ok (show σ.length - 2 < 26 by omega), bind,
+      Except.bind, pure, Except.pure] at hg
+    exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
+  · obtain ⟨e, he⟩ := opReg_error hlt
+    by_cases hlt2 : σ.length - 2 < 26
+    · simp [genFCmp, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
+    · obtain ⟨e2, he2⟩ := opReg_error hlt2
+      simp [genFCmp, hc, he2, bind, Except.bind] at hg
 
 /-! ## The simulations -/
 
@@ -287,6 +407,58 @@ theorem sim_fbin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → F
           trivial (hty.drop 2) hinv hsr (by omega) (by omega) hst.pop.pop hr
         · exact hp
         · rw [hvl, hres, hx, hy]
+        · intro k hk
+          exact hkeep _ (fun e => absurd (regOf_inj k (by omega) (h - 2) (by omega) e) (by omega))
+        · exact hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega)))
+        · exact hkeep 17 (Ne.symm (regOf_ne_17 _ (by omega)))
+        · exact hsp
+        · exact hmem
+        · exact hout
+      · rw [hex]; exact .inr trivial
+
+/-- The simulation of an f64 comparison of the two values on top, whose code is `fCmp c` for a
+condition `c` that holds after `FCMP` exactly when `R` does not, and whose rule in Talos replaces
+`.f64 b :: .f64 a` by the `i32` of `R a b`. -/
+theorem sim_fcmp_of {F : Nat} {inst : Instruction} {c : Fin 16} (R : UInt64 → UInt64 → Bool)
+    (hR : ∀ (s : State) (a b : UInt64), (s.fcmp a b).condHolds c = !R a b)
+    (hgen : ∀ E ctl σ a, genInstr E ctl σ a inst = genFCmp ctl σ c)
+    (hcase : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
+      (∃ a b vs, sl.values = .f64 b :: .f64 a :: vs ∧
+        execOne (f + 1) m st sl inst =
+          .Fallthrough st { sl with values := .i32 (if R a b then 1 else 0) :: vs }) ∨
+      ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
+    InstrSim P code F inst := by
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
+  rw [hgen] at hg
+  obtain ⟨hhb, hlt, rfl, rfl⟩ := genFCmp_ok hg
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
+  cases F with
+  | zero => rw [ProofKit.execOne_zero]; exact .inr trivial
+  | succ f =>
+      rcases hcase f m st sl with ⟨x, y, vs, hvs, hex⟩ | ⟨msg, hex⟩
+      · have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hvs] at hst
+        have hy : ms.x (regOf (h - 1)) = y := by
+          have := hst.top
+          rw [show (Value.f64 x :: vs).length = h - 1 by simp; omega] at this
+          exact this
+        have hx : ms.x (regOf (h - 2)) = x := by
+          have := hst.pop.top
+          rw [hvl] at this
+          exact this
+        rw [hex]
+        rw [hvs] at hty
+        obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
+          run_fCmp P code (regOf_lt_31 (h - 2) (by omega)) hcode hpc
+        apply res_outcome P code (v := .i32 (if R x y then 1 else 0))
+          (w := (if R x y then (1 : UInt32) else 0).toUInt64) rfl (vs := vs) (t := .i32)
+          trivial (hty.drop 2) hinv hsr (by omega) (by omega) hst.pop.pop hr
+        · exact hp
+        · rw [hvl, hres, hx, hy]
+          exact fcset_val hR ms x y
         · intro k hk
           exact hkeep _ (fun e => absurd (regOf_inj k (by omega) (h - 2) (by omega) e) (by omega))
         · exact hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega)))
@@ -351,6 +523,24 @@ theorem f64_bin_case {inst : Instruction} (g : UInt64 → UInt64 → UInt64) {f 
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     (∃ a b vs, sl.values = .f64 b :: .f64 a :: vs ∧
       execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := .f64 (g a b) :: vs }) ∨
+    ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg := by
+  by_cases h : ∃ a b vs, sl.values = .f64 b :: .f64 a :: vs
+  · obtain ⟨a, b, vs, hv⟩ := h
+    exact .inl ⟨a, b, vs, hv, hgood a b vs hv⟩
+  · exact .inr (hbad fun a b vs hv => h ⟨a, b, vs, hv⟩)
+
+/-- Talos's cases of an f64 comparison whose rule replaces `.f64 b :: .f64 a` by the `i32` of
+`R a b`. -/
+theorem f64_cmp_case {inst : Instruction} (R : UInt64 → UInt64 → Bool) {f : Nat} {α : Type}
+    {m : Module} {st : Store α} {sl : Locals}
+    (hgood : ∀ a b vs, sl.values = .f64 b :: .f64 a :: vs →
+      execOne (f + 1) m st sl inst =
+        .Fallthrough st { sl with values := .i32 (if R a b then 1 else 0) :: vs })
+    (hbad : (∀ a b vs, sl.values ≠ .f64 b :: .f64 a :: vs) →
+      ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
+    (∃ a b vs, sl.values = .f64 b :: .f64 a :: vs ∧
+      execOne (f + 1) m st sl inst =
+        .Fallthrough st { sl with values := .i32 (if R a b then 1 else 0) :: vs }) ∨
     ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg := by
   by_cases h : ∃ a b vs, sl.values = .f64 b :: .f64 a :: vs
   · obtain ⟨a, b, vs, hv⟩ := h
@@ -422,6 +612,24 @@ theorem sim_f64Div (F : Nat) : InstrSim P code F .f64Div :=
   sim_fbin_of P code (inst := .f64Div) (op := Instr.fdiv) Wasm.f64Div
     (fun _ _ _ _ => by simp only [genInstr]) (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply f64_bin_case Wasm.f64Div
+      i64_rule_tac
+
+theorem sim_f64Eq (F : Nat) : InstrSim P code F .f64Eq :=
+  sim_fcmp_of P code (inst := .f64Eq) (c := 1) Wasm.f64Eq fcmp_ne
+    (fun _ _ _ _ => by simp only [genInstr]) fun _ _ _ _ _ => by
+      apply f64_cmp_case Wasm.f64Eq
+      i64_rule_tac
+
+theorem sim_f64Lt (F : Nat) : InstrSim P code F .f64Lt :=
+  sim_fcmp_of P code (inst := .f64Lt) (c := 5) Wasm.f64Lt fcmp_pl
+    (fun _ _ _ _ => by simp only [genInstr]) fun _ _ _ _ _ => by
+      apply f64_cmp_case Wasm.f64Lt
+      i64_rule_tac
+
+theorem sim_f64Le (F : Nat) : InstrSim P code F .f64Le :=
+  sim_fcmp_of P code (inst := .f64Le) (c := 8) Wasm.f64Le fcmp_hi
+    (fun _ _ _ _ => by simp only [genInstr]) fun _ _ _ _ _ => by
+      apply f64_cmp_case Wasm.f64Le
       i64_rule_tac
 
 theorem sim_f64Sqrt (F : Nat) : InstrSim P code F .f64Sqrt :=

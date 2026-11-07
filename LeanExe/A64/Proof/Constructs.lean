@@ -197,6 +197,11 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
       obtain ⟨_, _, rfl, rfl⟩ := genFBin_ok hg
       simp [instrSize, fBin]
       omega
+  | f64Eq | f64Lt | f64Le =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFCmp_ok hg
+      simp [instrSize, fCmp]
+      omega
   | f64Sqrt =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
@@ -365,6 +370,12 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | f64Add | f64Sub | f64Mul | f64Div =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genFBin_ok hg
+      cases he
+      simp
+      omega
+  | f64Eq | f64Lt | f64Le =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFCmp_ok hg
       cases he
       simp
       omega
@@ -864,6 +875,9 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case f64Sub => exact sim_f64Sub P code F
   case f64Mul => exact sim_f64Mul P code F
   case f64Div => exact sim_f64Div P code F
+  case f64Eq => exact sim_f64Eq P code F
+  case f64Lt => exact sim_f64Lt P code F
+  case f64Le => exact sim_f64Le P code F
   case f64Sqrt => exact sim_f64Sqrt P code F
   case f64Abs => exact sim_f64Abs P code F
   case f64ConvertI64U => exact sim_f64ConvertI64U P code F
