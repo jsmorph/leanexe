@@ -16,6 +16,10 @@ Register 31 is `SP_EL1` as `Rn` of `ADD`, `SUB`, and `SUBS` and as `Rd` of `ADD`
 the traces read `PSTATE.SP` and `PSTATE.EL` and access `SP_EL1` as a register of the model, and
 the zero register elsewhere.  `MOVZ` and `MOVK` shift the immediate by `concat hw #x0`, so
 their proofs take the four values of `hw` in turn, which leaves numbers for the shifts and masks.
+Each TCG proof runs inside `without_info`, as in `Register.lean`.  The command-line driver keeps
+every command's info tree to the end of the file, and with the info trees of the walks the
+elaboration under `tests/isla/theorems.sh` reached a resident set of 8,576 MiB and the script's
+`MemoryHigh` of 8 GiB, against 5,262 MiB without them.
 
 The trace of `LSR` computes `UBFM` with the shift as `immr` and 63 as `imms`, through a rotation,
 masks, and remainders of 128-bit integers, and forks on `immr = 0`.  Its proof decides the
@@ -109,17 +113,6 @@ and `immhi`, `hi`. -/
 def adrFields (d : Fin 32) (lo : Fin 4) (hi : Fin 524288) : Fields :=
   [("immlo", lo.val), ("immhi", hi.val), ("Rd", d.val)]
 
-/-- The model's read of a register below 31, where register 31 is the stack pointer, as the
-vector primitive reads it. -/
-theorem xsp_lt {s : State} {n : Fin 32} (h : n.val < 31) : s.xsp n = regAt s n.val := by
-  unfold State.xsp regAt
-  rw [dite_eq_left h, dite_eq_left h]
-
-/-- The model's read of register 31 as the stack pointer. -/
-theorem xsp_31 {s : State} {n : Fin 32} (h : n.val = 31) : s.xsp n = s.sp := by
-  unfold State.xsp
-  rw [dite_eq_right (by omega)]
-
 /-- The model's write of a register below 31, where register 31 is the stack pointer, as the
 vector primitive writes it. -/
 theorem setXsp_lt {s : State} {d : Fin 32} (h : d.val < 31) (v : UInt64) :
@@ -132,10 +125,6 @@ theorem setXsp_31 {s : State} {d : Fin 32} (h : d.val = 31) (v : UInt64) :
     s.setXsp d v = { s with sp := v } := by
   unfold State.setXsp
   rw [ite_eq_right (by omega)]
-
-/-- The flag `N`, `Z`, `C`, or `V` as the bit that the trace of `CSINC` reads is below 2. -/
-theorem bit_lt (b : Bool) : (if b = true then 1 else 0) < 2 := by
-  cases b <;> decide
 
 /-- `bvand immr #b111111`, which the trace of `LSR` computes, is `immr`. -/
 theorem and63 (r : Fin 64) : r.val &&& 63 = r.val := by
@@ -329,49 +318,47 @@ two directions evaluate take more than the default budget of heartbeats. -/
 theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
       (.addImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : addImmTcg.opcode.word (arithFields d n imm) = encodeNat (.addImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, addImmTcg, arithFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, addImmTcg, arithFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [addImmTcg, Profile.sys_get, Profile.sys] at hσ
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 18),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [addImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals imm_end [UInt64.toNat_add]
-    · subst h
-      unfold Footprint.Run
-      simp only [addImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [addImmTcg, Profile.sys_get, Profile.sys] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 18),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [addImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ]
+        all_goals imm_end [UInt64.toNat_add]
+      · subst h
+        unfold Footprint.Run
+        simp only [addImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
         all_goals first
           | exact toNat_lt _
           | imm_end [UInt64.toNat_add]
           | (simp only [sint, Nat.reducePow]; omega)
           | omega
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-        all_goals first
-          | exact toNat_lt _
-          | imm_end [UInt64.toNat_add]
-          | (simp only [sint, Nat.reducePow]; omega)
-          | omega
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-      all_goals first
-        | exact toNat_lt _
-        | imm_end [UInt64.toNat_add]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
 
 /-- The trace of `ADD Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
@@ -389,49 +376,47 @@ with register 31 the stack pointer, every immediate, and every state.  Its proof
 theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
       (.subImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : subImmTcg.opcode.word (arithFields d n imm) = encodeNat (.subImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, subImmTcg, arithFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subImmTcg, arithFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [subImmTcg, Profile.sys_get, Profile.sys] at hσ
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 20),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [subImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals imm_end [UInt64.toNat_sub]
-    · subst h
-      unfold Footprint.Run
-      simp only [subImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subImmTcg, Profile.sys_get, Profile.sys] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 20),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ]
+        all_goals imm_end [UInt64.toNat_sub]
+      · subst h
+        unfold Footprint.Run
+        simp only [subImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
         all_goals first
           | exact toNat_lt _
           | imm_end [UInt64.toNat_sub]
           | (simp only [sint, Nat.reducePow]; omega)
           | omega
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-        all_goals first
-          | exact toNat_lt _
-          | imm_end [UInt64.toNat_sub]
-          | (simp only [sint, Nat.reducePow]; omega)
-          | omega
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-      all_goals first
-        | exact toNat_lt _
-        | imm_end [UInt64.toNat_sub]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
 
 /-- The trace of `SUB Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
@@ -481,54 +466,52 @@ the first operand. -/
 theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
       (.subsImm d n imm) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : subsImmTcg.opcode.word (arithFields d n imm) = encodeNat (.subsImm d n imm) := by
-      simp only [Opcode.word, Opcode.wordFrom, subsImmTcg, arithFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subsImmTcg, arithFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [subsImmTcg, Profile.sys_get, Profile.sys] at hσ
-    have : s.sp.toNat < 18446744073709551616 := toNat_lt s.sp
-    have : (regAt s n.val).toNat < 18446744073709551616 := toNat_lt _
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 21),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [subsImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      by_cases hn : n.val = 31
-      · isla_fwd h using omega with [hσ, hn]
-        all_goals subs_end s.sp.toNat imm.val
-      · isla_fwd h using omega with [hσ, hn]
-        all_goals subs_end (regAt s n.val).toNat imm.val
-    · subst h
-      unfold Footprint.Run
-      simp only [subsImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subsImmTcg, Profile.sys_get, Profile.sys] at hσ
+      have : s.sp.toNat < 18446744073709551616 := toNat_lt s.sp
+      have : (regAt s n.val).toNat < 18446744073709551616 := toNat_lt _
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 21),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subsImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        by_cases hn : n.val = 31
+        · isla_fwd h using omega with [hσ, hn]
+          all_goals subs_end s.sp.toNat imm.val
+        · isla_fwd h using omega with [hσ, hn]
+          all_goals subs_end (regAt s n.val).toNat imm.val
+      · subst h
+        unfold Footprint.Run
+        simp only [subsImmTcg, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
+          isla_gprs s using omega with [hσ, hn, hd]
         all_goals first
           | exact toNat_lt _
-          | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+          | (apply Eq.symm; subs_end (regAt s n.val).toNat imm.val)
           | (simp only [sint, Nat.reducePow]; omega)
           | omega
-      · isla_bwd [s.pc.toNat, s.sp.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-        all_goals first
-          | exact toNat_lt _
-          | (apply Eq.symm; subs_end s.sp.toNat imm.val)
-          | (simp only [sint, Nat.reducePow]; omega)
-          | omega
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd]
-        isla_gprs s using omega with [hσ, hn, hd]
-      all_goals first
-        | exact toNat_lt _
-        | (apply Eq.symm; subs_end (regAt s n.val).toNat imm.val)
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
 
 /-- The trace of `SUBS Xd, Xn|SP, #imm` under `kvm` agrees with `exec` for every register number,
 every immediate, and every state. -/
@@ -565,39 +548,37 @@ theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
       (.movz d imm hw) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : movzTcg.opcode.word (moveFields d imm hw) = encodeNat (.movz d imm hw) := by
-      simp only [Opcode.word, Opcode.wordFrom, movzTcg, moveFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, movzTcg, moveFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [movzTcg, Profile.sys_get, Profile.sys] at hσ
-    have hk : hw.val = 0 ∨ hw.val = 1 ∨ hw.val = 2 ∨ hw.val = 3 := by omega
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 698),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [movzTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      rcases hk with hk | hk | hk | hk
-      all_goals
-        isla_fwd h using omega with [hσ, hk]
-        all_goals move_end [hk]
-    · subst h
-      unfold Footprint.Run
-      simp only [movzTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      rcases hk with hk | hk | hk | hk <;> by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hk, hd]
-        try isla_gprs s using omega with [hσ, hk, hd]
-      all_goals first
-        | exact toNat_lt _
-        | move_end [hk]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [movzTcg, Profile.sys_get, Profile.sys] at hσ
+      have hk : hw.val = 0 ∨ hw.val = 1 ∨ hw.val = 2 ∨ hw.val = 3 := by omega
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 698),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [movzTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        rcases hk with hk | hk | hk | hk
+        all_goals
+          isla_fwd h using omega with [hσ, hk]
+          all_goals move_end [hk]
+      · subst h
+        unfold Footprint.Run
+        simp only [movzTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        rcases hk with hk | hk | hk | hk <;> by_cases hd : d.val = 31
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hk, hd]
+          try isla_gprs s using omega with [hσ, hk, hd]
+        all_goals first
+          | exact toNat_lt _
+          | move_end [hk]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 /-- The trace of `MOVZ Xd, #imm, LSL #(16 * hw)` under `kvm` agrees with `exec` for every register
 number, every immediate, every shift, and every state. -/
@@ -617,40 +598,38 @@ theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
       (.movk d imm hw) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : movkTcg.opcode.word (moveFields d imm hw) = encodeNat (.movk d imm hw) := by
-      simp only [Opcode.word, Opcode.wordFrom, movkTcg, moveFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, movkTcg, moveFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [movkTcg, Profile.sys_get, Profile.sys] at hσ
-    have hk : hw.val = 0 ∨ hw.val = 1 ∨ hw.val = 2 ∨ hw.val = 3 := by omega
-    have : (regAt s d.val).toNat < 18446744073709551616 := toNat_lt _
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 696),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [movkTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      rcases hk with hk | hk | hk | hk
-      all_goals
-        isla_fwd h using omega with [hσ, hk]
-        all_goals move_end [hk]
-    · subst h
-      unfold Footprint.Run
-      simp only [movkTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      rcases hk with hk | hk | hk | hk <;> by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hk, hd]
-        try isla_gprs s using omega with [hσ, hk, hd]
-      all_goals first
-        | exact toNat_lt _
-        | move_end [hk]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [movkTcg, Profile.sys_get, Profile.sys] at hσ
+      have hk : hw.val = 0 ∨ hw.val = 1 ∨ hw.val = 2 ∨ hw.val = 3 := by omega
+      have : (regAt s d.val).toNat < 18446744073709551616 := toNat_lt _
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 696),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [movkTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        rcases hk with hk | hk | hk | hk
+        all_goals
+          isla_fwd h using omega with [hσ, hk]
+          all_goals move_end [hk]
+      · subst h
+        unfold Footprint.Run
+        simp only [movkTcg, Footprint.vars, moveFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        rcases hk with hk | hk | hk | hk <;> by_cases hd : d.val = 31
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hk, hd]
+          try isla_gprs s using omega with [hσ, hk, hd]
+        all_goals first
+          | exact toNat_lt _
+          | move_end [hk]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 /-- The trace of `MOVK Xd, #imm, LSL #(16 * hw)` under `kvm` agrees with `exec` for every register
 number, every immediate, every shift, and every state. -/
@@ -680,42 +659,40 @@ among `d` and `n`. -/
 theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : lsrImmTcg.opcode.word (lsrImmFields d n sh) = encodeNat (.lsrImm d n sh) := by
-      simp only [Opcode.word, Opcode.wordFrom, lsrImmTcg, lsrImmFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, lsrImmTcg, lsrImmFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [lsrImmTcg, Profile.sys_get, Profile.sys] at hσ
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 78),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [lsrImmTcg, Footprint.vars, lsrImmFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ, and63, sint, srem64, sub64, Nat.div_eq_of_lt,
-        Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false, Nat.zero_div, Nat.zero_mod,
-        Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
-      all_goals lsr_end
-    · subst h
-      unfold Footprint.Run
-      simp only [lsrImmTcg, Footprint.vars, lsrImmFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases h0 : sh.val = 0 <;> by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd, and63, sint, srem64, sub64,
-          Nat.div_eq_of_lt, Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false,
-          Nat.zero_div, Nat.zero_mod, Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
-        try isla_gprs s using omega with [hσ, hn, hd, and63, sint, srem64, sub64,
-          Nat.div_eq_of_lt, Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false,
-          Nat.zero_div, Nat.zero_mod, Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
-      all_goals first
-        | exact toNat_lt _
-        | (apply Eq.symm; lsr_end)
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [lsrImmTcg, Profile.sys_get, Profile.sys] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 78),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [lsrImmTcg, Footprint.vars, lsrImmFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ, and63, sint, srem64, sub64, Nat.div_eq_of_lt,
+          Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false, Nat.zero_div,
+          Nat.zero_mod, Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
+        all_goals lsr_end
+      · subst h
+        unfold Footprint.Run
+        simp only [lsrImmTcg, Footprint.vars, lsrImmFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases h0 : sh.val = 0 <;> by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hn, hd, and63, sint, srem64, sub64,
+            Nat.div_eq_of_lt, Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false,
+            Nat.zero_div, Nat.zero_mod, Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
+          try isla_gprs s using omega with [hσ, hn, hd, and63, sint, srem64, sub64,
+            Nat.div_eq_of_lt, Nat.mod_eq_of_lt, ite_eq_left, decide_eq_true, decide_eq_false,
+            Nat.zero_div, Nat.zero_mod, Nat.zero_or, Nat.zero_and, Nat.or_zero, Nat.and_zero]
+        all_goals first
+          | exact toNat_lt _
+          | (apply Eq.symm; lsr_end)
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 /-- The trace of `LSR Xd, Xn, #sh` under `kvm` agrees with `exec` for every register number, every
 shift, and every state. -/
@@ -745,60 +722,58 @@ condition, takes the branch that `condHolds` selects, and proves the trace's con
 theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
       (.csinc d n m cond) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : csincTcg.opcode.word (csincFields d n m cond) = encodeNat (.csinc d n m cond) := by
-      simp only [Opcode.word, Opcode.wordFrom, csincTcg, csincFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, csincTcg, csincFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [csincTcg, Profile.sys_get, Profile.sys] at hσ
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 188),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [csincTcg, Footprint.vars, csincFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals first
-        | (have hc : State.condHolds s cond = true := by cond_fwd s cond
-           csinc_end hc)
-        | (have hc : State.condHolds s cond = false := by cond_fwd s cond
-           csinc_end hc)
-    · subst h
-      unfold Footprint.Run
-      simp only [csincTcg, Footprint.vars, csincFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hc : State.condHolds s cond = true
-      · by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
-        all_goals
-          isla_bwd [if s.zFlag then 1 else 0, if s.cFlag then 1 else 0, if s.nFlag then 1 else 0,
-            if s.vFlag then 1 else 0, s.pc.toNat] using omega with [hσ, hn, hd]
-          refine Or.inl ?_
-          isla_walk using omega with [hσ, hn, hd]
-          try isla_gprs s using omega with [hσ, hn, hd]
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [csincTcg, Profile.sys_get, Profile.sys] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 188),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [csincTcg, Footprint.vars, csincFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ]
         all_goals first
-          | exact toNat_lt _
-          | exact bit_lt _
-          | cond_bwd hc s cond
-          | csinc_end hc
-          | (simp only [sint, Nat.reducePow]; omega)
-          | omega
-      · by_cases hm : m.val = 31 <;> by_cases hd : d.val = 31
-        all_goals
-          isla_bwd [if s.zFlag then 1 else 0, if s.cFlag then 1 else 0, if s.nFlag then 1 else 0,
-            if s.vFlag then 1 else 0, s.pc.toNat] using omega with [hσ, hm, hd]
-          refine Or.inr ?_
-          isla_walk using omega with [hσ, hm, hd]
-          try isla_gprs s using omega with [hσ, hm, hd]
-        all_goals first
-          | exact toNat_lt _
-          | exact bit_lt _
-          | cond_bwd hc s cond
-          | csinc_end hc
-          | (simp only [sint, Nat.reducePow]; omega)
-          | omega
+          | (have hc : State.condHolds s cond = true := by cond_fwd s cond
+             csinc_end hc)
+          | (have hc : State.condHolds s cond = false := by cond_fwd s cond
+             csinc_end hc)
+      · subst h
+        unfold Footprint.Run
+        simp only [csincTcg, Footprint.vars, csincFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hc : State.condHolds s cond = true
+        · by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+          all_goals
+            isla_bwd [if s.zFlag then 1 else 0, if s.cFlag then 1 else 0, if s.nFlag then 1 else 0,
+              if s.vFlag then 1 else 0, s.pc.toNat] using omega with [hσ, hn, hd]
+            refine Or.inl ?_
+            isla_walk using omega with [hσ, hn, hd]
+            try isla_gprs s using omega with [hσ, hn, hd]
+          all_goals first
+            | exact toNat_lt _
+            | exact bit_lt _
+            | cond_bwd hc s cond
+            | csinc_end hc
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · by_cases hm : m.val = 31 <;> by_cases hd : d.val = 31
+          all_goals
+            isla_bwd [if s.zFlag then 1 else 0, if s.cFlag then 1 else 0, if s.nFlag then 1 else 0,
+              if s.vFlag then 1 else 0, s.pc.toNat] using omega with [hσ, hm, hd]
+            refine Or.inr ?_
+            isla_walk using omega with [hσ, hm, hd]
+            try isla_gprs s using omega with [hσ, hm, hd]
+          all_goals first
+            | exact toNat_lt _
+            | exact bit_lt _
+            | cond_bwd hc s cond
+            | csinc_end hc
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
 
 /-- The trace of `CSINC Xd, Xn, Xm, cond` under `kvm` agrees with `exec` for every register number,
 every condition, and every state. -/
@@ -816,37 +791,35 @@ theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
       (.adr d lo hi) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : adrTcg.opcode.word (adrFields d lo hi) = encodeNat (.adr d lo hi) := by
-      simp only [Opcode.word, Opcode.wordFrom, adrTcg, adrFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, adrTcg, adrFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [adrTcg, Profile.sys_get, Profile.sys] at hσ
-    have : s.pc.toNat < 18446744073709551616 := toNat_lt s.pc
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 34),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [adrTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals imm_end [UInt64.toNat_add, sext21]
-    · subst h
-      unfold Footprint.Run
-      simp only [adrTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hd]
-        try isla_gprs s using omega with [hσ, hd]
-      all_goals first
-        | exact toNat_lt _
-        | imm_end [UInt64.toNat_add, sext21]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [adrTcg, Profile.sys_get, Profile.sys] at hσ
+      have : s.pc.toNat < 18446744073709551616 := toNat_lt s.pc
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 34),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [adrTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ]
+        all_goals imm_end [UInt64.toNat_add, sext21]
+      · subst h
+        unfold Footprint.Run
+        simp only [adrTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hd : d.val = 31
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hd]
+          try isla_gprs s using omega with [hσ, hd]
+        all_goals first
+          | exact toNat_lt _
+          | imm_end [UInt64.toNat_add, sext21]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 /-- The trace of `ADR Xd` under `kvm` agrees with `exec` for every register number, every
 immediate, and every state. -/
@@ -865,39 +838,37 @@ theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fi
     (s : State) :
     Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
       (.adrp d lo hi) s := by
-  refine ⟨by decide, by decide, ?_, fun σ hσ s' hs => ?_⟩
-  · have h : adrpTcg.opcode.word (adrFields d lo hi) = encodeNat (.adrp d lo hi) := by
-      simp only [Opcode.word, Opcode.wordFrom, adrpTcg, adrFields, encodeNat, List.lookup,
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, adrpTcg, adrFields, encodeNat, List.lookup,
         String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
       omega
-    rw [h]
-    exact decode_encode _
-  · simp only [exec, Option.some.injEq] at hs
-    subst hs
-    isla_reads [adrpTcg, Profile.sys_get, Profile.sys] at hσ
-    have : s.pc.toNat < 18446744073709551616 := toNat_lt s.pc
-    refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 35),
-      fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
-    · unfold Footprint.Run at h
-      simp only [adrpTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD] at h
-      isla_fwd h using omega with [hσ]
-      all_goals imm_end [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_mul, UInt64.toNat_mod,
-        sext21, and_page]
-    · subst h
-      unfold Footprint.Run
-      simp only [adrpTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
-        String.reduceBEq, Option.getD]
-      by_cases hd : d.val = 31
-      all_goals
-        isla_bwd [s.pc.toNat] using omega with [hσ, hd]
-        try isla_gprs s using omega with [hσ, hd]
-      all_goals first
-        | exact toNat_lt _
-        | imm_end [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_mul, UInt64.toNat_mod, sext21,
-            and_page]
-        | (simp only [sint, Nat.reducePow]; omega)
-        | omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [adrpTcg, Profile.sys_get, Profile.sys] at hσ
+      have : s.pc.toNat < 18446744073709551616 := toNat_lt s.pc
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 35),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [adrpTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ]
+        all_goals imm_end [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_mul, UInt64.toNat_mod,
+          sext21, and_page]
+      · subst h
+        unfold Footprint.Run
+        simp only [adrpTcg, Footprint.vars, adrFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hd : d.val = 31
+        all_goals
+          isla_bwd [s.pc.toNat] using omega with [hσ, hd]
+          try isla_gprs s using omega with [hσ, hd]
+        all_goals first
+          | exact toNat_lt _
+          | imm_end [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_mul, UInt64.toNat_mod, sext21,
+              and_page]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 /-- The trace of `ADRP Xd` under `kvm` agrees with `exec` for every register number, every
 immediate, and every state. -/

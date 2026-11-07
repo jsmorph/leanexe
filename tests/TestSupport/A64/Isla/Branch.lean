@@ -82,12 +82,6 @@ conditions cover every case. -/
 theorem or_cases {p q a b : Prop} (h : p ∨ q) (ha : p → a) (hb : q → b) : p ∧ a ∨ q ∧ b :=
   h.elim (fun hp => .inl ⟨hp, ha hp⟩) (fun hq => .inr ⟨hq, hb hq⟩)
 
-/-- The word of a footprint's opcode decodes to the instruction whose encoding it equals. -/
-theorem decode_word {F : Footprint} {f : Fields} {i : Instr} (h : F.opcode.word f = encodeNat i) :
-    decode (.ofNat (F.opcode.word f)) = some i := by
-  rw [h]
-  exact decode_encode i
-
 /-- Splits the goals that `isla_bwd` leaves.  It evaluates the events of a path, splits a
 disjunction whose disjuncts open with complementary conditions, a proposition and its negation or
 a Boolean that is true and false, into one goal per disjunct with its condition as a hypothesis,

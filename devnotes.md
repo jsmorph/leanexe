@@ -42246,6 +42246,23 @@ The user asked for an artifact code for the Images of the AArch64 back end and a
 
 `tests/TestSupport/A64/Isla/Register.lean` proves `Agrees` for SUB, AND, EOR, ORR, ORR (W), SUBS (register), MADD, MSUB, LSLV, LSRV, and UDIV beside ADD, under both profiles, for every value of every field, register 31 included, with no premise.  UDIV's theorem reads the trace of the edited IR, whose quotient is `bvsdiv` of the zero-extended operands.  On minideb2 the TCG theorems take 55 s (AND) to 164 s (MSUB) on one thread, each KVM theorem about 2 s, and the module 525 s with four threads.  The command-line driver keeps every command's info tree to the end of the file, which took the run to 9.5 GiB, so each TCG proof runs inside `without_info`, a tactic that disables info trees, and the run stays under about 5 GB; linters and hovers see nothing inside those proofs, and the kernel's check is unchanged.  `gpr_end`'s `try rfl` reached the maximum recursion depth on SUB, an error that `try` does not catch, so `reg_end` uses `with_reducible rfl`.  `omega` splits on every truncated subtraction, so the SUBS flags are lemmas `subs_*` over variables for the trace's three shapes.  The stage-1 SUBS theorem, `tests/isla/subs.trace`, and `tests/isla/subs.opcode` are gone, and `Stage1.lean` keeps LDR alone.  The agent proposes moving `reg_end`, `without_info`, and its generic lemmas on bitwise operations, division, and the reader's signed operations into `Check.lean`.
 
+`tests/TestSupport/A64/Isla/Memory.lean` proves `Agrees` for LDR, STR, and STRB in the RAM GiB and for STRB at the UART under both profiles, for every value of `imm12`, `Rn`, and `Rt`, register 31 included.  Each theorem states the trace's constraints in the model's terms: the mask constraint on `u.ttbr0`, the descriptor that the walk reads (`0x0040000040000705` at `u.ttbr0 + 8`, or `0x0060000000000401` at `u.ttbr0` for the UART), and the access's address, `s.xsp n` plus the scaled immediate, with every byte in the RAM GiB or at `0x09000000`.  STR needs two more premises, since a store that runs byte by byte, an unaligned one under `tcg` or one that crosses a 16-byte boundary under `kvm`, translates each byte's address after storing the bytes before it.  Reading 5 of `Trace.lean` sends a byte written at `P.uart` to the output while `exec` stores all eight bytes, so `P.normal P.uart = false` is a premise, and the walk for a later byte reads the descriptor at `u.ttbr0 + 8` from the memory that the earlier bytes changed, so the eight bytes must lie clear of it.  The UART's theorems leave `P` open: when `P.uart` is `0x09000000`, the trace and `exec` both append the byte to the output, and otherwise both store it.
+
+The walk of `Register.lean` costs the size of the remaining trace at every step, since `rw` and `simp` traverse the hypothesis, which holds the trace's literal.  On STRB's trace of 716 events it ran at about 0.7 s per event.  `isla_nodes F` defines one constant per node of the trace, so that the hypothesis names the rest of the trace.  Congruence lemmas keep `simp` out of the trace and the variables, a simproc reads a variable from the chain of `Vars.set` in one step, and another evaluates `gpr` without `List.lookup`.  `isla_ctx F π` evaluates the premise on `σ` once per footprint, keeps one equation per register instead of one per read (53 for STR under `tcg` instead of 612), and hides them from `omega` in `Opaque`.  The walk's side conditions go to `omega` without the walk's facts, a read's value replaces the variable in the walked hypothesis only, and `mem_quiet` records no info trees for the walk.  The backward direction gives each declared variable the value that the first event reading it reads, found in the trace's nodes, with `true` for a free Boolean, since the byte-wise path of an unaligned access asserts that `ConstrainUnpredictable` returned `Constraint_NONE`, its first case.
+
+A step that unfolded `Trace.Run` by the type of its equation, a change by definition instead of a rewrite, took 7.6 GiB within 136 s on one pair of STRB lemmas, and the walk rewrites with the equation instead.  Rewriting each byte insertion of an unaligned load during the walk wrote the word twice per byte, so the term's tree doubled at each of the eight bytes, and a traversal of the term that collects the bytes' bounds ran for 25 minutes without finishing.  `ins_chain` now gives the word's value from the eight insertions at the end of the path.  `simp` applies `Nat.add_zero`, a `rfl` theorem, without a proof step, so the kernel checks `x + 0 = x` by unfolding, and for the table's address in the UART's walk, a remainder of a 128-bit term, that check ran for more than nine minutes at 8 GiB.  `nat_add_zero` proves the equation by `omega`, and `isla_simp` in `Check.lean` still uses `Nat.add_zero`.  Bisection over the number of steps found the step that the kernel could not check, with each copy of the lemma keeping the walked hypothesis in its proof.  A `sorry` that leaves the hypothesis unused drops the walk's proof from the term, and the kernel then checks nothing of the walk.
+
+On minideb1 with one thread, a file with the shared lemmas and one form's theorem takes the time and reaches the peak of resident memory in the table.  `tests/isla/theorems.sh Memory` elaborates the module in 3402 s, and the axioms of all eight theorems are `propext`, `Classical.choice`, and `Quot.sound`.  The module's scope reached its `MemoryHigh` of 8 GiB with 1 GiB in swap, and the resident set of `lean`, which counts the mapped olean files, reached 9.1 GiB, against at most 4.5 GiB for one form, since the environment keeps the footprints, their nodes, and the proofs of all eight forms.
+
+| Form | `tcg` | `kvm` |
+|------|-------|-------|
+| LDR | 557 s, 3928 MiB | 697 s, 4551 MiB |
+| STR | 545 s, 3888 MiB | 686 s, 4525 MiB |
+| STRB | 222 s, 2304 MiB | 234 s, 2407 MiB |
+| STRB at the UART | 222 s, 2365 MiB | 247 s, 2844 MiB |
+
+LDR's theorem of stage 1 is gone from `Stage1.lean`, with its footprint, the lemma `ram`, and the tactic `ldr_end`, and so are `tests/isla/ldr.trace` and `tests/isla/ldr.opcode`.  On the memory branch `Stage1.lean` kept the SUBS theorem, which `tests/isla/theorems.sh Stage1` checked in 21 s, and its configuration.  The register group removed that theorem on the controller branch, so the merge of the two branches deletes `Stage1.lean`.  `done_end` in `Check.lean` serves the immediate and branch theorems.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
@@ -42254,9 +42271,11 @@ The user asked for an artifact code for the Images of the AArch64 back end and a
 - [x] E: UDIV's IR edit and traces.
 - [x] E: the extended semantics and ADD.
 - [x] E: ADD on the committed traces under the full TCG and KVM profiles.
-- [ ] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
+- [x] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
 - [x] Code M, the root README, and the diagrams for the AArch64 back end.
-- [ ] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files once SUBS (register) and LDR hold over every field.
+- [x] E: the theorems of the memory forms in `Memory.lean`.
+- [x] E: remove LDR's part of `Stage1.lean`, `tests/isla/ldr.trace`, and `ldr.opcode`.
+- [x] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files.
 - [ ] Check how the modules that use `binary_file%` are built.
 
 ### References
@@ -42955,3 +42974,70 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, updated with rsync from th
 - [stlink 1.8.0, `src/st-flash/flash.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/st-flash/flash.c)
 - [stlink 1.8.0, `src/stlink-lib/common.c`](https://github.com/stlink-org/stlink/blob/v1.8.0/src/stlink-lib/common.c)
 - [Renode 1.17.0](https://github.com/renode/renode/releases/tag/v1.17.0)
+
+## 2026-11-07: Isla theorems: the module layout and the full check
+
+The memory forms' theorems arrived in one module, `tests/TestSupport/A64/Isla/Memory.lean`, which took 3402 s on minideb1 and reached its scope's `MemoryHigh` of 8 GiB with a resident set of 9.1 GiB.  The recommendation was to split it into a load module and a store module, move the shared lemmas into `Check.lean`, replace `Nat.add_zero` in `isla_simp`, and delete `Stage1.lean` and `done_end`.  A fresh agent reviewed that recommendation against the code, and its findings, with the revised decision that this entry implements, follow.
+
+### The review
+
+`tests/isla/theorems.sh` refuses a module of `tests/TestSupport/A64/Isla` that imports another, so a split works only if everything that the parts share leaves the directory.  LDR and the stores share `mem_simp`, `mem_fwd`, `mem_bwd`, `mem_side`, `memFields`, `ttbr_facts`, `ttbr_toNat`, `spAligned_31`, `desc_eq`, the mask lemmas, and the `bytes_*` lemmas.  A load and a store module would be unbalanced: the load module would hold 2 theorems and take about 1254 s, and the store module 6 theorems and about 2156 s, and the store module would be the one likely to pass 8 GiB.  One module per form, with both STRB forms together, divides the time into about 1254 s for LDR, 1231 s for STR, and 925 s for STRB, and the form-specific lemmas divide the same way, while one module per profile would duplicate every form's lemmas.
+
+The modules repeated lemmas: `xsp_lt`, `xsp_31`, and `bit_lt` stood in both `Immediate.lean` and `Memory.lean`, `mem_quiet` was `Register.lean`'s `without_info`, and `Branch.lean`'s `decode_word` was repeated inline in `Register.lean`, `Immediate.lean`, and `Memory.lean`.  `nat_add_zero`, `toNat_mod128`, and `sdiv_128` are general, `Register.lean`'s `sdiv_toNat` and `sdiv_zero` are special cases of `sdiv_128`, `mem_bounds` and `byteTerms` had no use, and the two `subs_end` macros differ and stay.  `run_congr` and `runSome_congr` carried `@[congr]`, and in `Check.lean` they would keep the `simp only [<footprint>, Footprint.vars, …]` of `Register.lean`, `Immediate.lean`, and `Branch.lean` out of the trace and the variables of a path.  `isla_ctx` and `mem_simp` name definitions of `Profile.lean`, and the mask lemmas encode the constraint on `TTBR0_NS`, the RAM GiB, and the descriptors of `Table.lean`, so a library file of its own for the memory walk keeps `Check.lean` general.  `Nat.add_zero` caused no failure in `isla_simp`, and a lemma proved by `omega`, unlike a `rfl` lemma, cannot rewrite inside dependent arguments, so replacing it there could break proofs.  `Stage1.lean` holds no theorem once the memory branch merges with the controller branch, `done_end` serves `Branch.lean` and `Immediate.lean`, and `strb_end`, `str_end`, and `ldr_end` repeat its `simp`.
+
+The revised decision has five parts.  `Ldr.lean`, `Str.lean`, and `Strb.lean`, the last with STRB in RAM and at the UART, replace `Memory.lean`, each with both profiles' theorems and checked by its own `theorems.sh` invocation.  `LeanExe/A64/Isla/Walk.lean`, which imports `Check` and `Profile`, holds the walk that the three share, with `run_congr` and `runSome_congr` declared without the attribute and made `congr` by `attribute [local congr]` in each module.  `Check.lean` gains `xsp_lt`, `xsp_31`, `bit_lt`, `nat_add_zero`, `toNat_mod128`, `sdiv_128`, `decode_word`, and `without_info`, and the modules use them in place of their copies, while `isla_simp` keeps `Nat.add_zero`.  `mem_bounds`, `byteTerms`, and `Stage1.lean` go, and `done_end` stays, with the memory forms' end tactics calling it.
+
+### The moves
+
+| Declarations | From | To |
+|---|---|---|
+| `run_congr` and `runSome_congr`, without `@[congr]`; `lookupVars`, `reduceVars`, `reduceGpr`, `addNodes`, `isla_nodes`, `Opaque`, `isla_ctx`, `witBits`, `witBool`, `vecAt`, `memAt`, `mem_wit`, `mem_unfold`, `mem_clear`, `mem_subst`, `mem_omega`; the mask lemmas from `and_mul_two_pow` to `pa0_eq`; `bytes_lt1`, `bytes_lt8`, `writeBytes_one`, `ofNat_mod64`, `bytes_congr`, `bytes_store_far`; `spAligned_31`, `ttbr_toNat`, `desc_eq`, `desc0_eq`; `mem_simp`, `mem_fwd`, `mem_bwd`, `mem_side`, `memFields`; the metaprograms behind them | `Memory.lean` | `LeanExe/A64/Isla/Walk.lean` |
+| `xsp_lt`, `xsp_31`, `bit_lt` | `Immediate.lean` and `Memory.lean` | `Check.lean` |
+| `nat_add_zero`, `toNat_mod128`, `sdiv_128` | `Memory.lean` | `Check.lean` |
+| `decode_word` | `Branch.lean` | `Check.lean` |
+| `without_info`, for `mem_quiet` too | `Register.lean` | `Check.lean` |
+| `bytes_split`, `addr_eq`, `addr_add`, `and_mod64`, `testBit_lo`, `ins_*`, `exec_ldr`, `ldr_end`, the LDR theorems | `Memory.lean` | `tests/TestSupport/A64/Isla/Ldr.lean` |
+| `add_left_inj'`, `add_eq_self`, `add_sub_left'`, `eq_add_sub`, `byteOf_eq`, `store8_chain`, `writeBytes_eight`, `mapped_uart`, `exec_str`, `str_end`, the STR theorems | `Memory.lean` | `tests/TestSupport/A64/Isla/Str.lean` |
+| `toUInt8_eq`, `exec_strb`, `strb_end`, the STRB theorems in RAM and at the UART | `Memory.lean` | `tests/TestSupport/A64/Isla/Strb.lean` |
+| `mem_bounds`, `byteTerms`, `Stage1.lean` | | deleted |
+
+Each form's proof of the opcode's decoding becomes `decode_word ?_` in the `refine` of `Agrees`, with the bullet proving the word's equation, in place of a `have`, a `rw`, and `decode_encode`.  `sdiv_toNat` and `sdiv_zero` follow from `sdiv_128`.  The end tactics of the memory forms open with `done_end`, whose `simp` adds `true_and` to the one that they repeated.  Each memory module keeps `set_option Elab.async false`, so that its lemmas elaborate one after another.
+
+Choices outside the decision, with their reasons:
+
+- `without_info` over `mem_quiet`, since its name states what it does and the register forms' proofs already used it.
+- A lemma that one form uses stays in that form's module, and a lemma that `mem_simp` names or that two forms' end tactics use, such as `bytes_store_far`, `writeBytes_one`, and `ofNat_mod64`, goes to `Walk.lean`.
+- `LeanExe.lean` imports `LeanExe.A64.Isla.Walk`, as it imports `Check`, `Profile`, and `Trace`, so the default build checks the library file.
+- [The trusted-base document](docs/trusted-base.md#m-aarch64-images)'s row "Instruction model" said "for every operand" without the premises of the branches, loads, and stores, and it names them.
+- `Immediate.lean`'s TCG proofs run inside `without_info`, as `Register.lean`'s do, since without it the module's scope reached the script's `MemoryHigh`, as the full check below records.
+- debtop1 has no `rsync`, so the runs used minideb1 and minideb2 only, and the checkout begun there, with copies of `leanexe-final`'s `.git` and `.lake/packages`, is removed.
+
+### The full check
+
+Each module ran through `tests/isla/theorems.sh` in a checkout of its own, `~/src/leanexe-isla-layout`, one job per host, with the script's limits of `--memory-high 8G`, `--cpus 4`, and a timeout of 180 minutes.  A wrapper, `tmp/isla/run.sh`, read the high-water mark of the resident set, `VmHWM` of `/proc/PID/status`, of each `lean` process of the checkout every 2 s.  A smoke test first elaborated the first pair of lemmas of `strbTcg` from the new layout, which builds `Walk.lean` and uses `attribute [local congr]` and `done_end`, in 75 s.
+
+| Module | Host | Time | Peak resident set |
+|---|---|---|---|
+| `Ldr.lean` | minideb1 | 1235 s | 5563 MiB |
+| `Str.lean` | minideb2 | 1213 s | 5558 MiB |
+| `Strb.lean` | minideb2 | 867 s | 3996 MiB |
+| `Register.lean` | minideb1 | 499 s | 5197 MiB |
+| `Immediate.lean` | minideb1 | 495 s | 5329 MiB |
+| `Branch.lean` | minideb1 | 287 s | 5003 MiB |
+| `Profiles.lean` | minideb1 | 2 s | not sampled |
+
+`Immediate.lean` as the decision left it took 512 s, and its scope reached the script's `MemoryHigh`: the cgroup's `memory.peak` was 8193 MiB, with 93 `high` events and 205 MiB in swap, and the resident set reached 8576 MiB.  The module of the controller branch, before any change of this entry, ran the same way on minideb2, in 511 s with a resident set of 8640 MiB, so the layout did not cause the excess.  The resident set grew through the whole file, and the TCG proofs of `Immediate.lean`, unlike those of `Register.lean`, ran outside `without_info`, so the command-line driver kept the info trees of their walks to the end of the file.  A copy with each TCG proof inside `without_info` took 506 s with a resident set of 5262 MiB, which confirms the cause.  `Immediate.lean` takes that change, the table gives its run, and the limits stay as they are.
+
+Each memory form's module peaks at 5563 MiB or less, where `Memory.lean` reached 9.1 GiB, and their times add up to 3315 s against its 3402 s.  Every run was watched every 30 s for the host's available memory and memory pressure, and the scope of `Immediate.lean` every 15 s for its memory, swap, and `high` events, and no job had to be stopped.
+
+The axioms of every theorem are `propext`, `Classical.choice`, and `Quot.sound`, and `tcg_features` and `kvm_features` of `Profiles.lean` depend on no axiom.
+
+[The AArch64 document](docs/a64-bare-metal.md#isla)'s Isla section states what the check covers: every form on which the program's model runs, in both profiles, for every value of every opcode field.  The register, immediate, move, and address forms hold from every state, the branches assume that the target lies below 2^55 or that `TCR_EL1` clears TBI0 and TBI1, and the loads and stores assume the mask constraint on `TTBR0_EL1`, the descriptor that the walk reads, and the access's bytes in the RAM GiB or at the UART.  STR also assumes that the UART lies outside Normal memory and that its bytes lie clear of the descriptor at `TTBR0_EL1 + 8`.  The section names the IR edits of `armv9p4-checked.diff` and `armv9p4-udiv.diff` among the check's assumptions, and the row "The model's fidelity" of its trusted-base table, the final theorem's scope, and the row "Instruction model" of the trusted-base document state the same coverage.  `node tools/check-doc-links.mjs` and `tools/source-layout` passed.
+
+- [x] The merge of the memory branch, with `Stage1.lean` deleted.
+- [x] `Walk.lean`, `Ldr.lean`, `Str.lean`, and `Strb.lean` in place of `Memory.lean`.
+- [x] The general lemmas in `Check.lean`, and their copies removed from `Register.lean`, `Immediate.lean`, and `Branch.lean`.
+- [x] `mem_bounds` and `byteTerms` deleted, and `done_end` called by the memory forms' end tactics.
+- [x] `theorems.sh` on every module, with each module's time and peak memory.
+- [x] `Immediate.lean`'s TCG proofs inside `without_info`, after its scope reached `MemoryHigh`.
+- [x] The Isla section, the trusted-base row, and the final theorem's scope of the AArch64 document.
