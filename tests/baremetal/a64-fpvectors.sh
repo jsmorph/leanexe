@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The test of the floating-point forms' meanings in LeanExe/A64/Machine.lean against QEMU and the
 # processor (tests/TestSupport/A64/FpVectors.lean).  It builds a64-fpvectors, writes the arm64
-# Image of COUNT vectors of each of FADD, FSUB, FMUL, FDIV, FSQRT, UCVTF, and FCMP from the seed
+# Image of COUNT vectors of each of FADD, FSUB, FMUL, FDIV, FSQRT, UCVTF, FCMP, and FCVTZU from
 # SEED, checks QEMU's loading of it with tests/baremetal/a64-loadcheck.sh under each accelerator
 # that the platforms use, and runs it on QEMU's virt machine with 1 GiB of RAM on every PLATFORM at
 # once: tcg, under which QEMU emulates a Cortex-A57, kvm, under KVM on the host's processor, or
@@ -10,8 +10,9 @@
 # result word of its UART output with the model and writes each block's and each form's counts
 # and every disagreement to OUT/PLATFORM.check, with a colon in PLATFORM written as a hyphen.
 # The script prints each run's time and the check's summary, and it exits with status 1 when a
-# run fails or a result differs.  The platforms default to tcg and kvm.  The products lie in OUT,
-# build/baremetal/a64-fpvectors unless set.
+# run fails or a result differs.  The platforms default to tcg and kvm.  FORMS, when set, names the
+# forms whose vectors the Image holds, such as fcvtzu, every form unless set.  The products lie in
+# OUT, build/baremetal/a64-fpvectors unless set.
 # Usage: tests/baremetal/a64-fpvectors.sh SEED COUNT [PLATFORM...]
 set -euo pipefail
 [ "$#" -ge 2 ] || { echo "usage: tests/baremetal/a64-fpvectors.sh SEED COUNT [PLATFORM...]" >&2
@@ -33,7 +34,8 @@ done
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 30m lake --log-level error build a64-fpvectors
-tools/leanrun --timeout 60m lake env .lake/build/bin/a64-fpvectors gen "$seed" "$count" "$out"
+tools/leanrun --timeout 60m lake env .lake/build/bin/a64-fpvectors gen "$seed" "$count" "$out" \
+  ${FORMS:-}
 status=0
 for accel in tcg kvm; do
   if printf '%s\n' "$@" | grep -q "^$accel"; then
