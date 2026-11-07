@@ -641,6 +641,12 @@ def genFunctions (callee : Table) (S : Shared) :
         throw s!"function {j}: {halfwordsOf is} halfwords against a size of {n} units"
       return is ++ (← genFunctions callee S (after a n) rest)
 
+/-- The addresses that the functions of a program share, from the end `traps` of the functions,
+with the stack's limit `limit`: the trap stubs and `udivmod64` after them. -/
+def progShared (traps limit : UInt32) : Shared :=
+  { trapUnreachable := traps, trapDiv := after traps 1, trapStack := after traps 2,
+    udivmod := after traps 3, limit }
+
 /-- The program that runs function `k` of `m` as a step from the state of the words `s0`, placed
 at `base`, with the stack's limit `limit`, the device window from `dev`, and the code `div` of
 `udivmod64`: `main`, the functions that calls reach from function `k`, `k` first, the trap stubs
@@ -663,10 +669,7 @@ def genProgram (m : Module) (k : Nat) (s0 : List UInt64) (base limit dev : UInt3
     | none => throw s!"no function {k}"
   let main ← genMain base entry dev s0
   if main.length ≠ mainSize s0 then throw s!"main: {main.length} units against {mainSize s0}"
-  let S : Shared :=
-    { trapUnreachable := traps, trapDiv := after traps 1, trapStack := after traps 2,
-      udivmod := after traps 3, limit }
-  let fns ← genFunctions callee S first fs
+  let fns ← genFunctions callee (progShared traps limit) first fs
   return main ++ fns ++ [.bTo (-4), .bTo (-4), .bTo (-4)] ++ div
 
 end LeanExe.M7

@@ -83,6 +83,7 @@ import LeanExe.M7.Isla.Check
 import LeanExe.M7.Isla.Profile
 import LeanExe.M7.Isla.Trace
 import LeanExe.M7.Machine
+import LeanExe.M7.Parts
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
 import LeanExe.M7.Proof.Branch
@@ -97,6 +98,7 @@ import LeanExe.M7.Proof.Main
 import LeanExe.M7.Proof.Memory
 import LeanExe.M7.Proof.Ops
 import LeanExe.M7.Proof.Pair
+import LeanExe.M7.Proof.Parts
 import LeanExe.M7.Proof.Program
 import LeanExe.M7.Proof.Relation
 import LeanExe.M7.Proof.Runs

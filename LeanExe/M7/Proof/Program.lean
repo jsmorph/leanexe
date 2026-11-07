@@ -67,12 +67,6 @@ theorem genMain_wide {a step dev : UInt32} {s0 : List UInt64} {main : List Instr
 
 /-! ## The generator's program -/
 
-/-- The addresses that the functions of a program share, from the end `traps` of the functions,
-with the stack's limit `limit`. -/
-def progShared (traps limit : UInt32) : Shared :=
-  { trapUnreachable := traps, trapDiv := after traps 1, trapStack := after traps 2,
-    udivmod := after traps 3, limit }
-
 theorem gen_program {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
     {div is : List Instr} (hg : genProgram m k s0 base limit dev div = .ok is) :
     ∃ fs e main fns, (reachFrom m k).mapM (funcOf m) = .ok fs ∧
