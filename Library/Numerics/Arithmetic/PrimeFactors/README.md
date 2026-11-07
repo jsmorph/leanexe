@@ -17,12 +17,11 @@ reads the condition `remaining ≤ 1 ∨ divisor ≤ 1` as the disjunction of it
 termination proof of the loop splits each case of Lean's functional induction on the step's
 conditions, since Lean states the negated condition as `1 < remaining ∧ 1 < divisor`.  The reflector
 states the equations of `countFactors` without unfolding its measure, `remaining.toNat * 2 ^ 64 +
-…`, which would exhaust the kernel's recursion, as [the
-journal](../../../../devnotes.md#2026-10-30-array-literals-and-conditions-on-propositions-in-the-reflector)
-records.  The functions take and return words and allocate nothing, so the generated
-`compiled.compute.pure` states that function 3 computes `compute` from every store without a trap
-and leaves the store unchanged.  The generated `compiled.countFactors.native` and
-`compiled.compute.native` state the computations of the C functions of the module's translation.
+…`, which would exhaust the kernel's recursion.  The functions take and return words and allocate
+nothing, so the generated `compiled.compute.pure` states that function 3 computes `compute` from
+every store without a trap and leaves the store unchanged.  The generated
+`compiled.countFactors.native` and `compiled.compute.native` state the computations of the C
+functions of the module's translation.
 
 | Theorem | Statement |
 |---------|-----------|

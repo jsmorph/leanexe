@@ -16,7 +16,7 @@ of the block of 16 MOV, divided by 16.
 
 "m7_dwt.py echo RESULTS" reads the window table of echoDwt and prints, for each kind of window,
 the count, the least, the most, and the mean of the cycles, with the instructions that the model
-counts for that kind (tests/TestSupport/M7/Windows.lean, the counts of G0 in devnotes.md) plus the
+counts for that kind (tests/TestSupport/M7/Windows.lean) plus the
 five instructions of the measurement.
 
 "m7_dwt.py bootlog LOG" prints the boot log: each reset's RCC_CSR flags.
@@ -30,7 +30,7 @@ import sys
 MASK64 = (1 << 64) - 1
 
 # The model's instruction counts of the echo's windows, from the loop's head to the loop's head
-# (devnotes.md, "Cortex-M7 back end, G0"), with the 8 instructions of udivmod64's high path in tx.
+# (tests/TestSupport/M7/Windows.lean), with the 8 instructions of udivmod64's high path in tx.
 ECHO_KINDS = {
     (0, 0): ("idle", 319),
     (0, 1): ("rxne", 318),

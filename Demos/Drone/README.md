@@ -42,9 +42,7 @@ of three words, after the first row of 45 choices, and `output` builds at most 1
 `drone_compute_call` states that the store in which the module starts is ready, and the host's
 placement of the terrain below address 8192 remains a premise.  Its 35 pages hold the 8192 bytes
 below that address and the 2,251,064 bytes of `compute_bound`.  It states no final page count,
-because no theorem of the verified compiler bounds the pages to which memory grows, as [the journal
-entry](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
-explains.  The axiom reports of `drone_compute_call` and its lemmas in [the call
+because no theorem of the verified compiler bounds the pages to which memory grows.  The axiom reports of `drone_compute_call` and its lemmas in [the call
 theorem](VerifiedCall.lean) name only `propext`, `Classical.choice`, and `Quot.sound`, and [the full
 check](../../docs/verified-manual.md#the-full-check) fails on a report that names another axiom.
 

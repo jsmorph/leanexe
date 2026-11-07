@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-[The WASI manual](wasi.md) describes the public API and generated declarations.  [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records implementation and test results.
+[The WASI manual](wasi.md) describes the public API and generated declarations.
 
 ## Scope and sources
 

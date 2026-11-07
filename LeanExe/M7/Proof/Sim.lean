@@ -10,9 +10,8 @@ trace, and the read count as they were, the word of the LR slot and the bytes fr
 parameters up unchanged, and the operand slots below the innermost construct's base unchanged.
 A trap, an invalid state, and the end of the fuel give no claim, since the board's theorems
 exclude traps through the compiler's theorem without a trap.  The functions that the echo's and
-the gateway's steps reach contain no `br`, `br_if`, `return`, or `loop` (`devnotes.md`, G0), so a
-branch out of a construct and a return have the outcome `False`, which the covered forms never
-give.
+the gateway's steps reach contain no `br`, `br_if`, `return`, or `loop`, so a branch out of a
+construct and a return have the outcome `False`, which the covered forms never give.
 
 `coveredInstr` and `coveredList` name the forms whose simulation this increment proves: the forms
 of the functions that the echo's steps reach, with `divUI64`.  `InstrSim F inst` states the simulation of `inst` at fuel

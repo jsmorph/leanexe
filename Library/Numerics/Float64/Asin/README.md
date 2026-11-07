@@ -57,7 +57,7 @@ The port is written in the dialect of the verified compiler as [the exponential 
 | `pio4_hi` | `0x3FE921FB54442D18` | `pi` | `0x400921FB54442D18` |
 | `huge` | `0x7E37E43C8800759C` (`1.0e300`) | | |
 
-Each file gives the bits of 14 constants beside their decimal values, and each decimal value rounds to the word given for it ([the journal's audit of the ports](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Each `Float.ofBits` word of [the implementation](Program.lean) equals the word that the pinned `e_asin.c` or `e_acos.c` gives for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
+Each file gives the bits of 14 constants beside their decimal values, and each decimal value rounds to the word given for it.  Each `Float.ofBits` word of [the implementation](Program.lean) equals the word that the pinned `e_asin.c` or `e_acos.c` gives for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
 
 ## Theorems
 
@@ -76,13 +76,13 @@ The theorems are in [the `asin` theorem](AsinTheorem.lean), [the `acos` theorem]
 | `AsinBytes.asin_module_accuracy` | Conjunction of the byte theorems. |
 | `AsinFile.asin_file`, `asin_file_decode` | `build/verified/asin.wasm` holds `encode Asin.compiled.module`, and the file decodes to the module of `asin_module_accuracy`. |
 
-`asin_file_decode` uses the bytes of `asin_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the axiom reports of the file module.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Asin.AsinBytes`, checks `AsinFile.lean` against the `asin.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passes that check and prints `[propext, Classical.choice, Quot.sound]` for both accuracy theorems, every exceptional value, and the byte theorems.  [The journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that accepted `asin_within_one`, `acos_within_one`, the exceptional values, the byte theorems, and the file theorems.
+`asin_file_decode` uses the bytes of `asin_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the axiom reports of the file module.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Asin.AsinBytes`, checks `AsinFile.lean` against the `asin.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passes that check and prints `[propext, Classical.choice, Quot.sound]` for both accuracy theorems, every exceptional value, and the byte theorems.
 
 ## Proof
 
 ### Modules
 
-The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which states that `pio2_hi + pio2_lo` lies within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
+The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which states that `pio2_hi + pio2_lo` lies within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory.
 
 | Module | Content |
 |---|---|
@@ -103,7 +103,7 @@ The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/READM
 
 Mathlib has no series for `arcsin`, so [the arcsine remainder](../../../../LeanExe/ProofKit/AsinRemainder.lean) proves one without series.  The truncation `S` of the binomial series of `(1 - u)^(-1/2)` to 36 terms satisfies `1 - (1 - u) S(u)² = u^36 G(u)`: `defect_low` checks that the first 36 coefficients of the left side vanish, and `defect_high` bounds `G` by `1/2` on `[0, 1/4]`.  With `y = 1/√(1 - u)`, the identity `(y - S)(1 - u)(y + S) = u^36 G(u)` bounds `y - S`, and the mean value inequality, applied to `arcsin` minus its Taylor polynomial, whose derivative is `y - S` at `u = t²`, bounds the remainder by `(4/3) γ |x|^73`.  The derivative of `arcsin` and the mean value inequality come from Mathlib [7].
 
-fdlibm's comment bounds the Remez error of `R` by `2^-58.75`, which describes the approximation with exact coefficients.  `pS0` is `1/6` rounded down, and its rounding alone gives an error of `1/6 - pS0 ≈ 2^-56.58` at `x = 0`, the largest on `[0, 1/2]` ([the journal on the kernel polynomials](../../../../devnotes.md#2026-10-10-kernel-polynomials-of-stage-3-track-poly)).  The function proofs use the proved bound, `(11/16) · 2^-56`, about `2^-56.54`, and the margins below include it.
+fdlibm's comment bounds the Remez error of `R` by `2^-58.75`, which describes the approximation with exact coefficients.  `pS0` is `1/6` rounded down, and its rounding alone gives an error of `1/6 - pS0 ≈ 2^-56.58` at `x = 0`, the largest on `[0, 1/2]`.  The function proofs use the proved bound, `(11/16) · 2^-56`, about `2^-56.54`, and the margins below include it.
 
 ### Error budget
 
@@ -142,7 +142,7 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 
 ### Proof structure
 
-`AsinTheoremMid` and `AcosTheoremPos.pos_core` raise `maxHeartbeats` to 1,000,000 and 4,000,000, because their many `nlinarith` calls run in large contexts.  `AsinTheoremMid` clears the hypothesis `scaledMagnitude w = q * 2^(e - 1 + 32)` once used, since `nlinarith` would otherwise spend minutes in `whnf` on its power.  The proofs name `√t` with `set`, since `rw [← hsqv]` with `hsqv : √t * √t = t` would also rewrite the `t` inside `√t` ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
+`AsinTheoremMid` and `AcosTheoremPos.pos_core` raise `maxHeartbeats` to 1,000,000 and 4,000,000, because their many `nlinarith` calls run in large contexts.  `AsinTheoremMid` clears the hypothesis `scaledMagnitude w = q * 2^(e - 1 + 32)` once used, since `nlinarith` would otherwise spend minutes in `whnf` on its power.  The proofs name `√t` with `set`, since `rw [← hsqv]` with `hsqv : √t * √t = t` would also rewrite the `t` inside `√t`.
 
 ## Tests
 

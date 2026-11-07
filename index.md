@@ -173,7 +173,7 @@ Mean and sum of squares allocate nothing, so their generated execution theorems 
 | `sumSquares` | V F C | [Sum of squares](Library/Numerics/Statistics/SumSquares/README.md) | Accumulates squares left to right from zero. | [`compiled.sumSquares.implements`](Library/Numerics/Statistics/SumSquares/Compiled.lean). |
 | `mean` | V F C | [Mean](Library/Numerics/Statistics/Mean/README.md) | Divides the left-to-right sum by the length converted to binary64.  An empty array gives NaN. | [`compiled.mean.implements`](Library/Numerics/Statistics/Mean/Compiled.lean). |
 
-Variance, standard deviation, incremental and merged moments, generalized sample quantiles, weighted quantiles, covariance, correlation, and dispersion measures remain open, and [the statistics plan](devnotes.md#2026-10-22-statistics-work-and-the-generator-index) lists them.  Empty samples, exceptional values, probability and weight domains, and numerical-error bounds require specifications.  The layer normalizations of the two GPT-2 models, which compute a mean and a population variance, are in the applications of section 15.
+Variance, standard deviation, incremental and merged moments, generalized sample quantiles, weighted quantiles, covariance, correlation, and dispersion measures remain open.  Empty samples, exceptional values, probability and weight domains, and numerical-error bounds require specifications.  The layer normalizations of the two GPT-2 models, which compute a mean and a population variance, are in the applications of section 15.
 
 ## 6. Elementary and special functions
 

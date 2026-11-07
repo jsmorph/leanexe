@@ -14,8 +14,7 @@ the initial store.  Native algorithm definitions are in
 [the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
 compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
 modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and
-`Quot.sound`.  [The journal](../devnotes.md#2026-10-06-the-verified-compiler) records the analysis
-that led to the library and its plan.
+`Quot.sound`.
 
 ## Source language and code
 
@@ -621,7 +620,6 @@ Each accepted module receives `Spec.Validity.Module`, checked encoding and decod
 entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
 Real engine instantiation, host conformance, file emission, and host progress remain external
 assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and emitted modules.
-The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof and execution runs.
 
 ## WGSL kernels
 

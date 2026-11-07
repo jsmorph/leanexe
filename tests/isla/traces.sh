@@ -26,7 +26,7 @@
 # which descriptor 0 maps as Device memory.
 #
 # Each profile's directory holds its feature settings, `features`, derived from the guest's ID
-# registers (devnotes.md lists them) with Arm's feature constraints (AARCHMRS 2026-09), and
+# registers with Arm's feature constraints (AARCHMRS 2026-09), and
 # __supported_pa_size is the guest's physical address size, 44 bits under tcg and 40 under kvm.
 # The Sail model's HaveEL is true at every exception level, so the registers of EL2 and EL3 that
 # the traces read take values that reproduce the profile: under tcg, EL2 and EL3 are absent, and
@@ -41,6 +41,20 @@
 # profiles, no other write before the decode changes a register that the traces read.  On the
 # fault's exception entry, VBAR_EL1 is symbolic, and ZCR_EL3 and SMCR_EL3 are 0, Isla's
 # configuration value, which keeps that path's vector length concrete.
+#
+# The features derive from these ID registers of the guests.  Every other ID_AA64 register reads
+# 0 in both profiles, and under kvm only MIDR_EL1 and REVIDR_EL1 differ between the core types.
+#   Register          tcg                 kvm
+#   ID_AA64PFR0_EL1   0x0000000000000022  0x1101001121111111
+#   ID_AA64PFR1_EL1   0x0                 0x0000000000000021
+#   ID_AA64ZFR0_EL1   0x0                 0x0000110100110021
+#   ID_AA64DFR0_EL1   0x0000000010305106  0x000000f010305609
+#   ID_AA64ISAR0_EL1  0x0000000000011120  0x0221111110212120
+#   ID_AA64ISAR1_EL1  0x0                 0x0111111100211002
+#   ID_AA64ISAR2_EL1  0x0                 0x0000000000005102
+#   ID_AA64MMFR0_EL1  0x0000000000001124  0x2100022200101122
+#   ID_AA64MMFR1_EL1  0x0                 0x1000111010312122
+#   ID_AA64MMFR2_EL1  0x0                 0x1221011110001011
 #
 # Two edits apply to copies of the IR, and each diff's header states what it replaces.  Isla's
 # harness function isla_footprint_common catches every exception that the decoder throws, so a

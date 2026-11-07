@@ -91,14 +91,10 @@ holds `Demos.Euler.solve n`.  The call leaves a ready store, as `Verified.Ready`
 `top` is at least `solveBytes n` bytes below its cap.
 
 `euler_solve_call` states no final page count, because no theorem of the verified compiler bounds
-the pages to which memory grows, as [the journal entry on the call
-theorems](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
-explains.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound the timesteps that build
-new grids by two grids for each try, through `loopCost_le_mul`.  On Wasmtime, the buffered solvers
-took from 0.2 seconds on the 32 grid to 119 seconds for the reconstructed solver on the 192 grid,
-as [the journal entry on the buffered
-solvers](../../devnotes.md#2026-10-30-the-buffered-euler-solvers-and-a-call-theorem-for-every-grid)
-records.
+the pages to which memory grows.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound
+the timesteps that build new grids by two grids for each try, through `loopCost_le_mul`.  On
+Wasmtime, the buffered solvers took from 0.2 seconds on the 32 grid to 119 seconds for the
+reconstructed solver on the 192 grid.
 
 ## Building, running, and testing
 
