@@ -5,8 +5,9 @@ The calls of a module's functions, which the code generators of the AArch64 and 
 ends share: the functions that an instruction list calls, the functions that calls reach from one
 function, the targets of those calls, the lookup of a function with its index, and the numbers of
 parameters and results of the functions that a list of targets names.  `callNeed` gives the
-largest of a bound over the functions that a body calls, from which each back end bounds the stack
-of a call.  The definitions depend only on the syntax of Wasm modules.
+largest of a bound over the functions that a body calls, and `stackNeedOf` bounds the stack of a
+call from the size of each function's frame, which each back end gives.  The definitions depend
+only on the syntax of Wasm modules.
 -/
 
 namespace LeanExe.CallGraph
@@ -135,5 +136,76 @@ theorem callNeed_mono {need need' : Nat → Nat} (h : ∀ j, need j ≤ need' j)
   foldr_max_le fun x hx => by
     obtain ⟨j, hj, rfl⟩ := List.mem_map.mp hx
     exact Nat.le_trans (h j) (le_callNeed hj)
+
+/-! ## A bound of the stack -/
+
+/-- `n` bounds the bytes of stack that a call of a function uses, when the function's frame has
+`fs` bytes, its body is `body`, and `need` bounds the stack of the calls in the body: `n` is at
+least the frame plus `callNeed`, or at least 2^64, which bounds nothing. -/
+def NeedOk (need : Nat → Nat) (fs : Nat) (body : List Instruction) (n : Nat) : Prop :=
+  2 ^ 64 ≤ n ∨ fs + callNeed need body ≤ n
+
+/-- A count below 2^64 and below `fs` plus `callNeed` lies below `n`. -/
+theorem NeedOk.lt {need : Nat → Nat} {fs : Nat} {body : List Instruction} {n d : Nat}
+    (h : NeedOk need fs body n) (hd : d < 2 ^ 64) (hlt : d < fs + callNeed need body) : d < n := by
+  rcases h with h | h <;> omega
+
+/-- A bound on the bytes of stack that a call of function `k` of `m` uses, following calls `d`
+deep, when the frame of function `f` has `frame f` bytes: at depth 0, 2^64, which bounds nothing,
+and otherwise the function's frame plus `callNeed` of the bounds at depth `d - 1`, at most 2^64,
+or 0 when `m` has no function `k`. -/
+def stackNeedOf (m : Module) (frame : Function → Nat) : Nat → Nat → Nat
+  | 0, _ => 2 ^ 64
+  | d + 1, k =>
+      match m.funcs[k]? with
+      | some f => min (2 ^ 64) (frame f + callNeed (stackNeedOf m frame d) f.body)
+      | none => 0
+
+theorem stackNeedOf_zero (m : Module) (frame : Function → Nat) (k : Nat) :
+    stackNeedOf m frame 0 k = 2 ^ 64 := rfl
+
+theorem stackNeedOf_some {m : Module} {frame : Function → Nat} {k : Nat} {f : Function}
+    (hk : m.funcs[k]? = some f) (d : Nat) :
+    stackNeedOf m frame (d + 1) k =
+      min (2 ^ 64) (frame f + callNeed (stackNeedOf m frame d) f.body) := by
+  simp only [stackNeedOf.eq_2, hk]
+
+theorem stackNeedOf_none {m : Module} {frame : Function → Nat} {k : Nat}
+    (hk : m.funcs[k]? = none) (d : Nat) : stackNeedOf m frame (d + 1) k = 0 := by
+  simp only [stackNeedOf.eq_2, hk]
+
+theorem stackNeedOf_succ_le (m : Module) (frame : Function → Nat) :
+    ∀ d k, stackNeedOf m frame (d + 1) k ≤ stackNeedOf m frame d k
+  | 0, k => by
+      cases hk : m.funcs[k]? with
+      | none => simp only [stackNeedOf_none hk 0, Nat.zero_le]
+      | some f =>
+          rw [stackNeedOf_some hk 0, stackNeedOf_zero]
+          exact Nat.min_le_left _ _
+  | d + 1, k => by
+      cases hk : m.funcs[k]? with
+      | none => simp only [stackNeedOf_none hk (d + 1), stackNeedOf_none hk d, Nat.le_refl]
+      | some f =>
+          have h := callNeed_mono (stackNeedOf_succ_le m frame d) f.body
+          rw [stackNeedOf_some hk (d + 1), stackNeedOf_some hk d, Nat.min_def, Nat.min_def]
+          split <;> split <;> omega
+
+/-- `stackNeedOf` at every depth satisfies `NeedOk` for every function of `m`. -/
+theorem stackNeedOf_ok {m : Module} {frame : Function → Nat} {k : Nat} {f : Function}
+    (hk : m.funcs[k]? = some f) :
+    ∀ d, NeedOk (stackNeedOf m frame d) (frame f) f.body (stackNeedOf m frame d k)
+  | 0 => .inl (Nat.le_of_eq (stackNeedOf_zero m frame k).symm)
+  | d + 1 => by
+      have h := callNeed_mono (stackNeedOf_succ_le m frame d) f.body
+      unfold NeedOk
+      rw [stackNeedOf_some hk d, Nat.min_def]
+      split <;> omega
+
+/-- `stackNeedOf` of a function whose body calls no function is at most its frame. -/
+theorem stackNeedOf_of_nil {m : Module} {frame : Function → Nat} {k : Nat} {f : Function}
+    (hk : m.funcs[k]? = some f) (hc : callsIn f.body = []) (d : Nat) :
+    stackNeedOf m frame (d + 1) k ≤ frame f := by
+  rw [stackNeedOf_some hk d, callNeed, hc, List.map_nil, List.foldr_nil, Nat.add_zero]
+  exact Nat.min_le_right _ _
 
 end LeanExe.CallGraph

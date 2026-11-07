@@ -14,7 +14,8 @@ namespace LeanExe.A64
 
 open Wasm
 
-export LeanExe.CallGraph (foldr_max_le le_foldr_max callNeed le_callNeed callNeed_mono)
+export LeanExe.CallGraph (foldr_max_le le_foldr_max callNeed le_callNeed callNeed_mono NeedOk
+  NeedOk.lt)
 
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
@@ -264,19 +265,6 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
   · intro q hq
     show (s.setX 30 w).x q = s.x q
     exact State.x_setX_ne (Ne.symm hq)
-
-/-! ## The stack that a call uses -/
-
-/-- `n` bounds the bytes of stack that a call of a function uses, when the function's frame has
-`fs` bytes, its body is `body`, and `need` bounds the stack of the calls in the body: `n` is at
-least the frame plus `callNeed`, or at least 2^64, which bounds nothing. -/
-def NeedOk (need : Nat → Nat) (fs : Nat) (body : List Instruction) (n : Nat) : Prop :=
-  2 ^ 64 ≤ n ∨ fs + callNeed need body ≤ n
-
-/-- A count below 2^64 and below `fs` plus `callNeed` lies below `n`. -/
-theorem NeedOk.lt {need : Nat → Nat} {fs : Nat} {body : List Instruction} {n d : Nat}
-    (h : NeedOk need fs body n) (hd : d < 2 ^ 64) (hlt : d < fs + callNeed need body) : d < n := by
-  rcases h with h | h <;> omega
 
 /-! ## The function -/
 
