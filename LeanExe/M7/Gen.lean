@@ -1,4 +1,4 @@
-import LeanExe.A64.Gen
+import LeanExe.CallGraph
 import LeanExe.M7.Encode
 
 /-!
@@ -50,7 +50,7 @@ emitted, and every branch is encoded after a check that its offset fits.
 namespace LeanExe.M7
 
 open Wasm
-open LeanExe.A64 (callsIn reachFrom callTargets funcOf sigIn)
+open LeanExe.CallGraph
 
 abbrev GenM := Except String
 

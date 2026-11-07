@@ -40,6 +40,7 @@ import LeanExe.A64.Proof.Traps
 import LeanExe.A64.Startup
 import LeanExe.A64.Table
 import LeanExe.Attr
+import LeanExe.CallGraph
 import LeanExe.Common
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Float32
@@ -69,6 +70,7 @@ import LeanExe.Encoding.Spec.Validity
 import LeanExe.Encoding.Spec.Values
 import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
+import LeanExe.FileNat
 import LeanExe.M7.Div
 import LeanExe.M7.Encode
 import LeanExe.M7.Gen

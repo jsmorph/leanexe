@@ -1,5 +1,6 @@
 import Interpreter.Wasm.Syntax
 import LeanExe.A64.Encode
+import LeanExe.CallGraph
 
 /-!
 The code generator of the AArch64 back end: from a function of a module of the verified
@@ -47,6 +48,8 @@ encoded with its offset after a check that the offset fits.
 namespace LeanExe.A64
 
 open Wasm
+
+export LeanExe.CallGraph (callsOf callsIn reachable reachFrom callTargets funcOf sigIn)
 
 /-- The registers of the operand stack's heights. -/
 def opRegs : List Nat := List.range 16 ++ (List.range 10).map (· + 19)
@@ -496,53 +499,6 @@ def genMain (a entry : UInt64) (args : List UInt64) (uart room : UInt64) (o : Ou
   return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
     [.subReg 18 18 16] ++ loads ++ [call] ++ movImm 1 uart ++ out ++
     movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
-
-mutual
-/-- The indices of the functions that `ins` calls. -/
-def callsOf : Instruction → List Nat
-  | .call k => [k]
-  | .block _ _ body _ _ => callsIn body
-  | .loop _ _ body _ _ => callsIn body
-  | .iff _ _ thn els _ _ => callsIn thn ++ callsIn els
-  | _ => []
-
-/-- The indices of the functions that the instructions `is` call. -/
-def callsIn : List Instruction → List Nat
-  | [] => []
-  | i :: rest => callsOf i ++ callsIn rest
-end
-
-/-- The functions of `m` that calls reach from those of `todo`, after those of `done`, each
-once, within `fuel` steps. -/
-def reachable (m : Module) : Nat → List Nat → List Nat → List Nat
-  | 0, done, _ => done
-  | _ + 1, done, [] => done
-  | fuel + 1, done, j :: todo =>
-      if j ∈ done then reachable m fuel done todo
-      else reachable m fuel (done ++ [j])
-        (todo ++ ((m.funcs[j]?).map fun f => callsIn f.body).getD [])
-
-/-- The functions that calls reach from function `k` of `m`, `k` first. -/
-def reachFrom (m : Module) (k : Nat) : List Nat :=
-  reachable m (1 + (m.funcs.map fun f => (callsIn f.body).length).sum) [] [k]
-
-/-- The functions that the calls of the functions that calls reach from function `k` of `m`
-name. -/
-def callTargets (m : Module) (k : Nat) : List Nat :=
-  (reachFrom m k).flatMap fun j => ((m.funcs[j]?).map fun f => callsIn f.body).getD []
-
-/-- Function `j` of `m` with its index. -/
-def funcOf (m : Module) (j : Nat) : GenM (Nat × Function) :=
-  match m.funcs[j]? with
-  | some f => pure (j, f)
-  | none => throw s!"no function {j}"
-
-/-- The numbers of parameters and results of the functions of `fs` that `targets` names, by
-index. -/
-def sigIn (targets : List Nat) (fs : List (Nat × Function)) (k : Nat) : Option (Nat × Nat) :=
-  if k ∈ targets then
-    (fs.find? (·.1 = k)).map fun (_, f) => (f.params.length, f.results.length)
-  else none
 
 /-- The entries of the functions of `fs`, laid out one after another from `a`, with the types of
 their parameters and results, by index. -/

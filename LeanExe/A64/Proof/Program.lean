@@ -13,6 +13,8 @@ namespace LeanExe.A64
 
 open Wasm
 
+export LeanExe.CallGraph (mapM_funcOf mem_reachable mem_reachFrom callsIn_callTargets)
+
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-! ## Code that `flatMap` lays out -/
@@ -127,34 +129,6 @@ theorem genFunction_length {callee : Table}
   simp only [List.length_append, List.length_cons, List.length_nil, hsl, hs, functionSize]
 
 /-! ## The layout of the functions -/
-
-theorem mapM_funcOf {m : Module} : ∀ {ks : List Nat} {fs : List (Nat × Function)},
-    ks.mapM (funcOf m) = .ok fs → ∀ x ∈ fs, m.funcs[x.1]? = some x.2
-  | [], fs, h => by
-      simp only [List.mapM_nil, pure, Except.pure, Except.ok.injEq] at h
-      subst h
-      simp
-  | j :: ks, fs, h => by
-      rw [List.mapM_cons] at h
-      cases h1 : funcOf m j with
-      | error e => simp [h1, bind, Except.bind] at h
-      | ok y =>
-          cases h2 : ks.mapM (funcOf m) with
-          | error e => simp [h1, h2, bind, Except.bind] at h
-          | ok ys =>
-              simp [h1, h2, bind, Except.bind, pure, Except.pure] at h
-              subst h
-              intro x hx
-              simp only [List.mem_cons] at hx
-              rcases hx with rfl | hx
-              · unfold funcOf at h1
-                split at h1
-                · rename_i f hf
-                  simp only [pure, Except.pure, Except.ok.injEq] at h1
-                  subst h1
-                  exact hf
-                · simp [throw, throwThe, MonadExceptOf.throw] at h1
-              · exact mapM_funcOf h2 x hx
 
 theorem find_entriesFrom (sig : Nat → Option (Nat × Nat)) (j : Nat) :
     ∀ (a : UInt64) (fs : List (Nat × Function)),
@@ -310,29 +284,6 @@ theorem stackNeed_of_nil {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]?
     stackNeed m (d + 1) k ≤ frameSize (f.params.length + f.locals.length) := by
   rw [stackNeed_some hk d, callNeed, hc, List.map_nil, List.foldr_nil, Nat.add_zero]
   exact Nat.min_le_right _ _
-
-theorem mem_reachable (m : Module) {x : Nat} :
-    ∀ (fuel : Nat) (done todo : List Nat), x ∈ done → x ∈ reachable m fuel done todo
-  | 0, _, _, h => by simpa only [reachable] using h
-  | _ + 1, _, [], h => by simpa only [reachable] using h
-  | fuel + 1, done, j :: todo, h => by
-      simp only [reachable]
-      split
-      · exact mem_reachable m fuel done todo h
-      · exact mem_reachable m fuel _ _ (List.mem_append_left _ h)
-
-theorem mem_reachFrom (m : Module) (k : Nat) : k ∈ reachFrom m k := by
-  unfold reachFrom
-  rw [Nat.add_comm]
-  simp only [reachable]
-  rw [ite_eq_right List.not_mem_nil]
-  exact mem_reachable m _ _ _ (by simp)
-
-/-- The functions that the body of function `k` of `m` calls lie among `callTargets m k`. -/
-theorem callsIn_callTargets {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
-    {j : Nat} (hj : j ∈ callsIn f.body) : j ∈ callTargets m k := by
-  unfold callTargets
-  exact List.mem_flatMap.mpr ⟨k, mem_reachFrom m k, by simpa [hk] using hj⟩
 
 /-! ## The generator's program -/
 

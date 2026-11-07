@@ -123,8 +123,8 @@ def headOf (P : Prog) : UInt32 := after codeBase (mainStart (P.words P.s0))
 /-- The functions of `P`'s program, with their entries, as `genProgram` lays them out. -/
 def layout (P : Prog) : GenM (List (Nat × Function) × List (Nat × UInt32 × List ValueType ×
     List ValueType) × (Nat → Option (Nat × Nat)) × UInt32) := do
-  let fs ← (LeanExe.A64.reachFrom P.module P.k).mapM (LeanExe.A64.funcOf P.module)
-  let sig := LeanExe.A64.sigIn (LeanExe.A64.callTargets P.module P.k) fs
+  let fs ← (LeanExe.CallGraph.reachFrom P.module P.k).mapM (LeanExe.CallGraph.funcOf P.module)
+  let sig := LeanExe.CallGraph.sigIn (LeanExe.CallGraph.callTargets P.module P.k) fs
   let first := after codeBase (mainSize (P.words P.s0))
   return (fs, entriesFrom sig first fs, sig, endOf sig first fs)
 
