@@ -10,13 +10,14 @@ unpacking of a binary64 word, the processing of NaNs, and the two loops of FPRou
 
 The Lean back end evaluates both operands of `&&` and `||`, where Sail and the IR that Isla runs
 evaluate the second only when the first does not decide the result.  On the paths of FPAdd, FPSub,
-FPMul, FPDiv, FPSqrt, and FixedToFP, the eagerly evaluated operands are `HaveAltFP`,
-`UsingAArch32`, `HaveSME`, `InStreamingMode`, reads of PSTATE, and `IsFullA64Enabled`, the last in
-FPProcessException and in FPRoundBase__1's test of a trapped underflow.  `ro_fullA64` states that
-`IsFullA64Enabled` returns without an error and changes nothing but the choice state from every
-state whose register map satisfies `FARegs`, whatever the features, PSTATE, and the system
-registers hold, and `bind_fa` lets `sail_simp` step over the call.  The other operands read
-FeatureImpl and PSTATE only, which the proofs check as they unfold them.
+FPMul, FPDiv, FPSqrt, and FixedToFP, the operands that run although Sail may skip them are
+`UsingAArch32`, `HaveSME`, `InStreamingMode`, reads of FeatureImpl and PSTATE, and
+`IsFullA64Enabled`, the last in FPProcessException and in FPRoundBase__1's test of a trapped
+underflow.  `ro_fullA64` states that `IsFullA64Enabled` returns without an error and changes
+nothing but the choice state from every state whose register map satisfies `FARegs`, whatever the
+features, PSTATE, and the system registers hold, and `bind_fa` lets `sail_simp` step over the
+call.  The other operands read FeatureImpl and PSTATE only, which the proofs check as they unfold
+them.
 
 The proofs keep `trivialChoiceSource`, the instance `Real.instInhabited`, and `unspecReal`, the
 real that `undefined_real` returns, irreducible, so that the unspecified values that the model
@@ -700,7 +701,7 @@ def isNaNT (t : FPType) : Bool := t == .FPType_QNaN || t == .FPType_SNaN
 /-- FPSR after an invalid-operation exception. -/
 def ioc (v : BitVec 64) : BitVec 64 := Sail.BitVec.update v 0 (Bit 1#1)
 
-set_option maxHeartbeats 2000000 in
+set_option maxHeartbeats 800000 in
 theorem fpProcessNaNs_run (t1 t2 : FPType) (a b : BitVec 64) {R : Std.ExtDHashMap Register RegisterType}
     (h : Hyp R fi ps fpsr) (hs : s.regs = R) :
     ∃ s', (FPProcessNaNs__1 t1 t2 a b fpcrV true).run s =

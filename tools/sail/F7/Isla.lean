@@ -1,4 +1,5 @@
 import F7.FPAdd
+import F7.FPMul
 import LeanExe.A64.Isla.Float
 
 /-!
@@ -17,7 +18,7 @@ rests on three claims: the IR's `zFPAdd64` returns `zFPAdd`'s result at 64 bits
 111345b, computes what the translation's FPAdd, from sail-arm 7d0581642, computes; and Isla's state
 at each abstract call, read as a register map of the translation, satisfies `Hyp`.
 `fpAddEq_of_sail` derives `FPAddEq A` from `SailFPAdd A` and `fpAdd_eq_f64Add`, converting between
-`UInt64` and `BitVec 64`.
+`UInt64` and `BitVec 64`, and `fpMulEq_of_sail` derives `FPMulEq A` in the same way.
 
 The derivation needs a state that satisfies `Hyp`.  `islaState p u` builds one from the profile `p`
 of `LeanExe/A64/Isla/Profile.lean` and its unknown values `u`: FeatureImpl from the values of the
@@ -163,6 +164,20 @@ def unknown0 : Unknown where
 theorem fpAddEq_of_sail (A : Abstract) (h : SailFPAdd A) : LeanExe.A64.Isla.FPAddEq A := by
   intro a b
   obtain ⟨s', hrun, -, -⟩ := fpAdd_eq_f64Add a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV] at e
+  exact e
+
+/-- The link between the abstract call `FPMul64` and the translation's FPMul at 64 bits under FPCR
+0x02000000, which review supports. -/
+def SailFPMul (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 64) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr v : BitVec 64)
+    (s' : State), Hyp s.regs fi ps fpsr → (FPMul a b fpcrV).run s = .ok v s' →
+    A "FPMul64" [.bits 64 a.toNat, .bits 64 b.toNat, islaFPCR fpcrV] = some (.bits 64 v.toNat)
+
+theorem fpMulEq_of_sail (A : Abstract) (h : SailFPMul A) : LeanExe.A64.Isla.FPMulEq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpMul_eq_f64Mul a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV] at e
   exact e
