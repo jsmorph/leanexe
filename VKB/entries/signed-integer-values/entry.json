@@ -1,0 +1,38 @@
+{
+  "id": "signed-integer-values",
+  "goals": [
+    "(w.toInt64 >>> 52).toInt = E - 1023",
+    "(a + b).toInt = n for Int64 values computed from words",
+    "CodeLib.IEEE64.Finite k.toFloat.toBits ∧ CodeLib.IEEE64.value k.toFloat.toBits = (k.toInt : ℝ)",
+    "k > 60 for an Int64 k with a known integer",
+    "(k.toNat : Int) = K % 2 ^ 64 for a two's complement word k"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.Signed64Value",
+    "Library.Numerics.Float64.Log.LogCoreStep",
+    "Library.Numerics.Float64.Log2.Log2Power",
+    "Library.Numerics.Float64.Log10.Log10Bits",
+    "Library.Numerics.Float64.Log1p.Log1pTheoremCorr",
+    "Library.Numerics.Float64.Atan.AtanTwoBits"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.Signed64Value.toInt_toInt64",
+    "LeanExe.ProofKit.Signed64Value.toInt_of_word",
+    "LeanExe.ProofKit.Signed64Value.toNat_toUInt64",
+    "LeanExe.ProofKit.Signed64Value.toInt_shiftRight",
+    "LeanExe.ProofKit.Signed64Value.toFloat_exact",
+    "LeanExe.ProofKit.Signed64Wasm.toBits_toFloat",
+    "Int64.lt_iff_toInt_lt"
+  ],
+  "examples": [
+    "Library.Numerics.Float64.Log.LogCoreBits.fields_upper",
+    "Library.Numerics.Float64.Log.LogCoreStep.core_within",
+    "Library.Numerics.Float64.Log2.Log2Power.core2_power",
+    "Library.Numerics.Float64.Log10.Log10Bits.xr_fields",
+    "Library.Numerics.Float64.Log1p.Log1pTheoremReduce.main_reduce",
+    "Library.Numerics.Float64.Log1p.Log1pTheoremCorr.k_cases",
+    "Library.Numerics.Float64.Atan.AtanTwoBits.k_cases",
+    "Library.Numerics.Float64.Atan.AtanTwoBits.big_cond",
+    "Library.Numerics.Float64.Atan.AtanTwoBits.tiny_cond"
+  ]
+}
