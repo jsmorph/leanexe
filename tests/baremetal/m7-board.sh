@@ -202,7 +202,7 @@ case $1 in
       echo) lib=TestSupport.M7.NucleoLoop cmd=board dwt=board-dwt file=NucleoFile count=17
         mem=${MEM:-12G} ;;
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
-        count=13 mem=${MEM:-16G} ;;
+        count=17 mem=${MEM:-16G} ;;
       area) lib=LeanExe.M7.Proof.Board cmd=area-board dwt= file=AreaFile count=9
         mem=${MEM:-12G} ;;
       crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=18

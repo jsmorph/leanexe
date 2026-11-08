@@ -3,10 +3,11 @@ import LeanExe.M7.Encode
 /-!
 Facts about runs of the Cortex-M7 model that the proofs about emitted code use: `Reach`, the states
 that zero or more steps reach; `Steps c`, the states that at most `c` steps of `run` reach, which
-bounds the instructions that a piece of code executes; `codeSize`, the bytes of a list of instructions; `CodeAt`,
-instructions placed at an address in the halfwords that `encode` gives; and the step at a placed
-instruction, which executes it.  Addresses are 32-bit words, so code that a theorem places at `a`
-covers the addresses `a + UInt32.ofNat k`, which wrap at 2^32 as the processor's do.
+bounds the instructions that a piece of code executes; `codeSize`, the bytes of a list of
+instructions; `CodeAt`, instructions placed at an address in the halfwords that `encode` gives; and
+the step at a placed instruction, which executes it.  Addresses are 32-bit words, so code that a
+theorem places at `a` covers the addresses `a + UInt32.ofNat k`, which wrap at 2^32 as the
+processor's do.
 -/
 
 namespace LeanExe.M7

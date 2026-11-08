@@ -104,7 +104,8 @@ gives for Talos's run of the call at some fuel, with SP, LR, the device trace, a
 as they were, every byte from the end of the outgoing area's `s0.length + 1` slots up unchanged,
 and the words of the step's result in the outgoing area.  The store after Talos's call again has a
 heap at it, `J`, and the same memory caps, and the machine holds it in the area. -/
-theorem step_call_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
+theorem step_call_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
+    {base limit dev : UInt32}
     {is : List Instr} {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
     {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
     (hcall : StepCall m k words tick J) (hm : m.imports = [])

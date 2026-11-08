@@ -8,11 +8,12 @@ and no build target includes it.  The kernel evaluates `bootProgram` on `usart3T
 index and the initial state 3, with the board's layout and initialization, and checks that the
 file's bytes are those of the vector table and the instructions.
 
-`echo_board` states the loop theorem for every code map that holds the file's bytes in flash at
-both of its addresses, `echo_board_runs` that the run never stops, and `echo_board_steps` that
-each window takes at most 1,440 steps of the model.  The three hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0
-low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
-debugger access, or DMA during the run.
+`echo_board` states the loop theorem for every code map that holds the file's bytes in flash at both
+of its addresses, `echo_board_runs` that the run never stops, and `echo_board_steps` that each
+window takes at most 1,440 steps of the model.  The three hold of the processor under the run
+conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0 low and BOOT_ADD0 0x0080,
+software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA
+during the run.
 -/
 
 namespace TestSupport.M7.NucleoFile

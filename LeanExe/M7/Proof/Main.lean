@@ -629,7 +629,8 @@ theorem main_window_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
   have htr3 : t3.trace = ms.trace := tr3.trans (tr2.trans hs1tr)
   have hrd3 : t3.reads = ms.reads := rd3.trans (rd2.trans hs1rd)
   obtain ⟨hal, hdv⟩ := hdev.reg q
-  have hreach : Steps P σ code (costRun F m k st (stepArgs words r.state r.last) {} + 8 + 1) ms t3 :=
+  have hreach :
+      Steps P σ code (costRun F m k st (stepArgs words r.state r.last) {} + 8 + 1) ms t3 :=
     steps_exec hcBL eBL (r2.trans r3)
   obtain ⟨hn1, hn2, hn3, hn4⟩ := reqNext_of (B := devBus dev) (σ := fun j => σ (j + r0)) ht
   cases hw : reqWrite q
@@ -932,7 +933,8 @@ theorem main_run_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
     (hsr : AreaHolds P m k limit st b) (n : Nat) :
     Counted P σ code b (after base (mainStart s0)) n
       (WindowBound m k words tick g0 (fun j => σ (j + b.reads)))
-      (fun i => b.trace ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + b.reads))) i) := by
+      (fun i => b.trace ++
+        windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + b.reads))) i) := by
   obtain ⟨f, fs', -, -, -, -, main, fns, _, hmain, hml, -, -, his⟩ := gen_program_entry hg
   obtain ⟨start, wds, hq, hqh, o1, o2, o3, o4, harea, hw, hst, hmeq, -⟩ := gen_main hmain
   have hmw := genMain_wide hmain

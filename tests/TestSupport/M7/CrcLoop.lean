@@ -20,12 +20,12 @@ gives, the model reaches the loop's head with the initialization's accesses foll
 the first `N` windows.
 
 `crc_loop_runs` states that the board's run never stops, `crc_loop_steps` counts its windows, each
-in at most 1,482 steps, 16 of `main` and the 1,466 of `crc_static` for the step, `crc_requests` that every request names
-`USART_ISR`, `USART_RDR`, or `USART_TDR`, and `crc_confined` that the run's accesses lie in RCC,
-GPIOD, and USART3.  `crc_prefix` and `crcQemu_prefix` add from `crc_replies` of
+in at most 1,482 steps, 16 of `main` and the 1,466 of `crc_static` for the step, `crc_requests` that
+every request names `USART_ISR`, `USART_RDR`, or `USART_TDR`, and `crc_confined` that the run's
+accesses lie in RCC, GPIOD, and USART3.  `crc_prefix` and `crcQemu_prefix` add from `crc_replies` of
 `tests/TestSupport/M7/CrcReplies.lean` that the bytes that the windows write to the transmit
-register begin the low bytes of the CRC-32 of the nonempty prefixes of the bytes that they read
-from the receive register, and that at most one byte read has no reply.
+register begin the low bytes of the CRC-32 of the nonempty prefixes of the bytes that they read from
+the receive register, and that at most one byte read has no reply.
 -/
 
 namespace TestSupport.M7.Crc

@@ -3,17 +3,17 @@ import LeanExe.M7.Div
 import Interpreter.Wasm.Semantics
 
 /-!
-The instructions that the generated code executes for a run of Talos.  `costOne fuel m st s ar
-inst env` follows the recursion of Talos's `execOne`, as `AlignedOne` of
-`LeanExe/ProofKit/AlignedDefs.lean` does, and takes every intermediate state from Talos's
-`execOne` and `exec`.  It bounds the instructions that the code of `inst`, which `genInstr` emits
-under constructs whose branches carry `ar` values, executes from a state that the simulation
-relates to Talos's `st` and `s`, until the code falls through, branches, or returns.  A straight-line
-form costs its units from `instrSize`, a division its 9 units and `udivmod64`'s `divBound`, an
-`if` its test, the taken branch, and for the then-branch the branch over the else-branch, a block
-its body, a loop its body and, after a branch back to its head, the loop again, and a call the
-copies of its arguments and results, `BL`, and the callee's run.  `costRun` adds a function's
-prologue, clearing, and epilogue to its body's cost.
+The instructions that the generated code executes for a run of Talos.  `costOne fuel m st s ar inst
+env` follows the recursion of Talos's `execOne`, as `AlignedOne` of
+`LeanExe/ProofKit/AlignedDefs.lean` does, and takes every intermediate state from Talos's `execOne`
+and `exec`.  It bounds the instructions that the code of `inst`, which `genInstr` emits under
+constructs whose branches carry `ar` values, executes from a state that the simulation relates to
+Talos's `st` and `s`, until the code falls through, branches, or returns.  A straight-line form
+costs its units from `instrSize`, a division its 9 units and `udivmod64`'s `divBound`, an `if` its
+test, the taken branch, and for the then-branch the branch over the else-branch, a block its body, a
+loop its body and, after a branch back to its head, the loop again, and a call the copies of its
+arguments and results, `BL`, and the callee's run.  `costRun` adds a function's prologue, clearing,
+and epilogue to its body's cost.
 -/
 
 namespace LeanExe.M7
@@ -122,7 +122,8 @@ theorem costExec_cons {fuel : Nat} {m : Module} {st : Store α} {s : Locals} {ar
 
 theorem costOne_block {f pa ra : Nat} {m : Module} {st : Store α} {s : Locals} {ar : List Nat}
     {body : Program} {pt rt : List ValueType} {env : HostEnv α} :
-    costOne (f + 1) m st s ar (.block pa ra body pt rt) env = costExec f m st s (ra :: ar) body env := by
+    costOne (f + 1) m st s ar (.block pa ra body pt rt) env =
+      costExec f m st s (ra :: ar) body env := by
   rw [costOne.eq_def]
 
 theorem costOne_loop {f pa ra : Nat} {m : Module} {st : Store α} {s : Locals} {ar : List Nat}
@@ -168,7 +169,8 @@ theorem costOne_remUI64 {f : Nat} {m : Module} {st : Store α} {s : Locals} {ar 
 
 theorem le_costOne_plain {n f : Nat} {m : Module} {st : Store α} {s : Locals} {ar : List Nat}
     {inst : Instruction} {env : HostEnv α} (h : plainForm inst = true)
-    (hn : n = (instrSize (fun _ => none) ar 0 inst).1) : n ≤ costOne (f + 1) m st s ar inst env := by
+    (hn : n = (instrSize (fun _ => none) ar 0 inst).1) :
+    n ≤ costOne (f + 1) m st s ar inst env := by
   rw [costOne_plain h, hn]
   exact Nat.le_refl _
 
