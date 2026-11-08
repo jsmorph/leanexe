@@ -96,6 +96,7 @@ import LeanExe.M7.Proof.Bounds
 import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Call
 import LeanExe.M7.Proof.Constructs
+import LeanExe.M7.Proof.Control
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Forms
 import LeanExe.M7.Proof.Function
