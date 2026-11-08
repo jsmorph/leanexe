@@ -1,5 +1,6 @@
 import Examples.Increment.Compiled
 import Examples.Floor.Compiled
+import Examples.Convert.Compiled
 import Examples.Below100.Compiled
 import Examples.RemoveZero.Compiled
 import Examples.Binary32.Compiled
