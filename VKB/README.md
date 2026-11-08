@@ -49,6 +49,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, and joins its output with a specification. |
 | [Image files](entries/image-file-checks/README.md) | Checks a written A64 or M7 image against its generator in the kernel, in parts when it is large. |
 | [Cortex-M7 board theorems](entries/m7-board-theorem/README.md) | Proves a step's run from reset through every window from its compiler theorem. |
+| [Signed integers](entries/signed-int64/README.md) | Proves `Int64` programs against specifications over the integers or WebAssembly's signed conversions, and runs them on the A64 and M7 back ends. |
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
 | [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
@@ -70,7 +71,7 @@ A change of its own retires an entry that is wrong beyond repair, whose code is 
 
 ## Check
 
-[`Check.lean`](Check.lean) imports the modules that the entries list.  It reports every listed declaration or example that does not exist and every entry whose directory name differs from its `id`, and it stops with an error at a listed module that does not exist or an entry without a `README.md`.  It needs the listed modules built, which the first step of the full check does.  Run the build and the check from the repository root:
+[`Check.lean`](Check.lean) imports the modules that the entries list and reports these problems: a listed declaration or example that does not exist or that the entry's own modules do not import; a qualified name in a README's code spans that is no declaration, module, or namespace of the imported environment and no file at the repository's root, unless the entry's `unimported` lists it; a file of `unimported` that does not exist, or a name of it that an imported module declares; and an entry whose directory name differs from its `id`.  It stops with an error at a listed module that does not exist, an entry without a `README.md`, or an `entry.json` that does not parse.  [The template](TEMPLATE.md) states which code spans the check reads.  It needs the listed modules built, which the first step of the full check does.  Run the build and the check from the repository root:
 
 ```sh
 tools/leanrun --timeout 12h lake build LeanExe Examples Demos Verified Library TestSupport \
@@ -78,12 +79,18 @@ tools/leanrun --timeout 12h lake build LeanExe Examples Demos Verified Library T
 tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries
 ```
 
+With `--changed`, the same program prints a report instead and exits with status 0: for each entry, the repository's files that hold the declarations it names, in `entry.json` or in its README, and the files of its `unimported`, which differ in the working tree from the last commit that changed the entry.  The report points a reviewer at guidance that may have gone stale, and it needs `git` and the same build:
+
+```sh
+tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean --changed VKB/entries
+```
+
 The check does not catch these defects, which the rules of [admission and growth](#admission-and-growth) leave to the changes that cause them:
 
 - a name in an entry's README that its `entry.json` omits;
-- an id in backticks that refers to a renamed or merged entry;
+- a name in a code span that starts with a lower-case letter, such as a partial name;
 - guidance that a change to a declaration's statement, to the verified compiler, or to the library has made wrong;
 - a measurement that a later change altered;
 - a listed module that starts to read a file at elaboration.
 
-A module that reads a file at elaboration, such as a file-theorem module, does not belong in `modules`, because the check would then depend on emitted files.  The README of an entry names a theorem of such a module together with the module's file.
+A link from one entry to another names the other's README, so the repository's link check fails when an entry is renamed or merged.  A module that reads a file at elaboration, such as a file-theorem module, does not belong in `modules`, because the check would then depend on emitted files, and the README names a theorem of such a module together with the module's file and lists it in `unimported`.

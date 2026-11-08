@@ -12,7 +12,8 @@
     "Verified.Bound",
     "Demos.RunningSum.Charges",
     "Demos.RunningSumFp.Charges",
-    "Verified.Examples.WasiRetainBudget"
+    "Verified.Examples.WasiRetainBudget",
+    "Demos.OrderBook.ProcessCharges"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -36,6 +37,12 @@
     "Demos.RunningSum.step_body_bounded",
     "Demos.RunningSumFp.writeStep_bounded",
     "Demos.RunningSumFp.readStep_bounded",
-    "Verified.Examples.WasiRetain.call_prefix_bound"
+    "Verified.Examples.WasiRetain.call_prefix_bound",
+    "Demos.OrderBook.Process.RunBound",
+    "Demos.OrderBook.Process.runBound_74",
+    "Demos.OrderBook.Bound.run_bound_le_sized",
+    "Demos.OrderBook.Process.begin_prefix_bound",
+    "Demos.OrderBook.Process.stepBudget_le",
+    "Demos.OrderBook.Process.step_prefix_bound"
   ]
 }

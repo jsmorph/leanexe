@@ -25,7 +25,8 @@
     "LeanExe.A64.Isla.nat_add_zero",
     "LeanExe.A64.Isla.Opaque",
     "LeanExe.M7.Isla.awc_v",
-    "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf"
+    "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf",
+    "Verified.Reflect.assignFamilyEquation"
   ],
   "examples": [
     "Library.Numerics.Float64.Lgamma.LgammaSign.ite_sgn",

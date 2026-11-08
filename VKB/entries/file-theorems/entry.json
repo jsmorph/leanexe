@@ -6,7 +6,9 @@
     "a theorem that an emitted .wasm file holds the encoding of a module"
   ],
   "modules": [
-    "LeanExe.Pipeline.FileBytes"
+    "LeanExe.Pipeline.FileBytes",
+    "Verified.Examples.Modes",
+    "Verified.Examples.TailCore"
   ],
   "declarations": [
     "LeanExe.Pipeline.elabFileTheorems",

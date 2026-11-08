@@ -17,7 +17,8 @@
     "Demos.RunningSum.TerminationTarget",
     "Demos.RunningSumFp.Correct",
     "Verified.Wasi.CostTotal",
-    "Verified.Examples.WasiRetainTotal"
+    "Verified.Examples.WasiRetainTotal",
+    "Demos.OrderBook.ProcessCompiledCorrect"
   ],
   "declarations": [
     "Verified.Wasi.ProcessTotalPremises",
@@ -39,6 +40,11 @@
     "Demos.RunningSum.Termination.target_terminates",
     "Demos.RunningSum.initial_terminates_integer",
     "Demos.RunningSumFp.initial_terminates_fp",
-    "Verified.Examples.WasiRetain.retain_total"
+    "Verified.Examples.WasiRetain.retain_total",
+    "Demos.OrderBook.Process.Sized",
+    "Demos.OrderBook.Process.stepCharge",
+    "Demos.OrderBook.Process.initial_room",
+    "Demos.OrderBook.Process.terminates_of_room",
+    "Demos.OrderBook.Process.initial_terminates"
   ]
 }

@@ -5,7 +5,8 @@
     "LeanExe.A64.Isla.AgreesAll P A (tcg.sys .fp u) [\"SEE\", \"__BranchTaken\", \"_Z\", \"FPSR\"] F f i s",
     "LeanExe.M7.Isla.Agrees P δ (sys u) W F f i m",
     "memory exhaustion or deep recursion in a trace walk",
-    "a walk step whose cost grows with the remaining trace"
+    "a walk step whose cost grows with the remaining trace",
+    "a WebAssembly form that a back end lacks"
   ],
   "modules": [
     "LeanExe.A64.Isla.Trace",
@@ -15,7 +16,10 @@
     "LeanExe.M7.Isla.Trace",
     "LeanExe.M7.Isla.Check",
     "LeanExe.M7.Isla.Walk",
-    "LeanExe.M7.Isla.Arith"
+    "LeanExe.M7.Isla.Arith",
+    "LeanExe.A64.Gen",
+    "LeanExe.M7.Gen",
+    "LeanExe.M7.Proof.Ops"
   ],
   "declarations": [
     "LeanExe.A64.Isla.Footprint",
@@ -39,7 +43,12 @@
     "LeanExe.M7.Isla.awc_v",
     "LeanExe.M7.Isla.awc_v_c",
     "LeanExe.M7.Isla.awc_v_b",
-    "LeanExe.M7.Isla.awc_eq"
+    "LeanExe.M7.Isla.awc_eq",
+    "LeanExe.A64.sarCode",
+    "LeanExe.M7.biasOps",
+    "LeanExe.M7.sarOps",
+    "LeanExe.M7.sim_ltSI64",
+    "LeanExe.M7.sim_shrSI64"
   ],
   "examples": []
 }

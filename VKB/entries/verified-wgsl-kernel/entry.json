@@ -48,7 +48,9 @@
     "Demos.Gpt32.Device",
     "Demos.Gpt32.Backend",
     "Demos.Gpt32.Item.execAll_sim",
-    "Demos.Gpt32.generate_host"
+    "Demos.Gpt32.generate_host",
+    "Verified.Kernel.binOp",
+    "Verified.Kernel.cmpExpr"
   ],
   "examples": [
     "Examples.Binary32.scale32_dispatch",

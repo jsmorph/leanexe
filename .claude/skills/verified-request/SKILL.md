@@ -174,16 +174,26 @@ argument's representation gives the premise of `compute_eq`.
 Before each proof, search [the verification knowledge base](../../../VKB/README.md) for the
 declarations and goal shapes of the proof.  Search the `entry.json` files under `VKB/entries/` for the
 constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
-every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
-`loop-combinators`, `array-fold-list-induction`, and `reflector-forms` cover the shapes of the
-table.  For shapes beyond the table, `sorted-permutation`, `heap-sift-invariant`,
-`operation-stream-refinement`, `tail-recursive-spec`, `tree-link-reversal`, `signed-int64`, and
-`decimal-conversions` cover sorting and selection, array heaps, loops over streams of operations,
-recursion on a measure or a fuel, tree updates by link reversal, `Int64` arithmetic, and decimal
-text.  When the program must also run as an AArch64 Image, a Cortex-M7 image, or a bare-metal C
-program, `a64-image-theorem`, `m7-board-theorem`, `bare-metal-programs`, and
-`request-output-prefix` describe the theorems of those targets, which the check of Stage 4 does not
-state.  [The manual's section on
+every entry that names them.  The entries on
+[specification call theorems](../../../VKB/entries/spec-call-theorem/README.md),
+[closed-form allocation bounds](../../../VKB/entries/verified-bound-closed-form/README.md),
+[loops and builds](../../../VKB/entries/loop-combinators/README.md),
+[array folds by list induction](../../../VKB/entries/array-fold-list-induction/README.md), and
+[array literals, proposition tests, and structure patterns](../../../VKB/entries/reflector-forms/README.md)
+cover the shapes of the table.  For shapes beyond the table, the entries on
+[sorting and selection](../../../VKB/entries/sorted-permutation/README.md),
+[array heaps](../../../VKB/entries/heap-sift-invariant/README.md),
+[operation streams](../../../VKB/entries/operation-stream-refinement/README.md),
+[tail-recursive and fuel-bounded functions](../../../VKB/entries/tail-recursive-spec/README.md),
+[link-reversing tree updates](../../../VKB/entries/tree-link-reversal/README.md),
+[signed integers](../../../VKB/entries/signed-int64/README.md), and
+[decimal text](../../../VKB/entries/decimal-conversions/README.md) cover those shapes.  When the
+program must also run as an AArch64 Image, a Cortex-M7 image, or a bare-metal C program, the entries
+on [AArch64 Image theorems](../../../VKB/entries/a64-image-theorem/README.md),
+[Cortex-M7 board theorems](../../../VKB/entries/m7-board-theorem/README.md),
+[bare-metal C programs](../../../VKB/entries/bare-metal-programs/README.md), and
+[output of request programs](../../../VKB/entries/request-output-prefix/README.md) describe the
+theorems of those targets, which the check of Stage 4 does not state.  [The manual's section on
 proving](../../../docs/verified-manual.md#proving) describes the generated theorems and the bounds.
 Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosing lemmas, and
 never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can

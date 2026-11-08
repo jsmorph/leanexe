@@ -9,7 +9,8 @@
     "LeanExe.Native.Proof.Unique",
     "Verified.Bare",
     "LeanExe.Native.Proof.Req",
-    "LeanExe.Native.Proof.Ctl"
+    "LeanExe.Native.Proof.Ctl",
+    "TestSupport.Native.GcdNative"
   ],
   "declarations": [
     "LeanExe.Native.NativeA",
@@ -22,6 +23,7 @@
     "LeanExe.Native.bare_of_nativeA",
     "Verified.bare_of_nativeTables",
     "LeanExe.Native.reqRuns_of_nativeA",
-    "LeanExe.Native.ctlRuns_of_nativeA"
+    "LeanExe.Native.ctlRuns_of_nativeA",
+    "TestSupport.Native.Gcd.loop_native_init"
   ]
 }

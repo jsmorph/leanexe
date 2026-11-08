@@ -30,6 +30,7 @@ import TestSupport.A64.Sin
 import TestSupport.A64.GptLayer32Runs
 import TestSupport.A64.Conv32Runs
 import TestSupport.A64.Floor
+import TestSupport.A64.Convert
 import TestSupport.M7.Step
 import TestSupport.M7.GwStep
 import TestSupport.M7.CrcStep
@@ -40,3 +41,5 @@ import TestSupport.M7.CrcLoop
 import TestSupport.M7.ShaLoop
 import TestSupport.M7.CrcReplies
 import TestSupport.M7.ShaSpec
+import TestSupport.M7.Signed
+import TestSupport.M7.SignedLoop
