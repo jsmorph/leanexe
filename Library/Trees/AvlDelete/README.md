@@ -14,19 +14,19 @@
 
 | Theorem | File | Statement |
 |---|---|---|
-| `shrinkLeft_eq`, `shrinkRight_eq` | [The proof](Proof.lean) | The program's adjustments give the nodes of `shrinkLeftA` and `shrinkRightA`. |
-| `ascendDel_left`, `ascendDel_right`, `ascendMin_step`, `ascendMin_found` | [The proof](Proof.lean) | A step of each return loop with the flag set applies the adjustment of the specification to the node above, and a step with the flag clear rebuilds it. |
-| `minDel_eq`, `descendDel_eq` | [The proof](Proof.lean) | The loops down return what the loops up return from the flag and the tree of `deleteMinA` and `deleteA`. |
-| `delete_eq` | [The proof](Proof.lean) | `delete x t` is the tree of `deleteA x t`, for every tree. |
-| `shrinkLeftA_props`, `shrinkRightA_props` | [The proof](Proof.lean) | The adjustment of a node above a subtree that shrank one level keeps the node balanced, and the node shrinks exactly when the flag is set. |
-| `deleteMinA_props`, `deleteA_props` | [The proof](Proof.lean) | On a balanced tree, the removals keep the tree balanced and lower it one level exactly when they report it. |
-| `keys_deleteMinA`, `keys_deleteA` | [The proof](Proof.lean) | `deleteMinA` takes the first key of a tree in symmetric order and leaves the rest, and on a binary search tree the keys afterward are those of `t` without `x`. |
-| `deleteA_of_searchA`, `searchA_of_not_mem` | [The proof](Proof.lean) | A failed search, which every absent key gives, leaves every tree as it is. |
-| `removes` | [The proof](Proof.lean) | `Removes x t` holds for every balanced binary search tree `t`. |
-| `delete_export` | [The compilation](Compiled.lean) | Export `delete` of `compiled.module` is function 9. |
-| `delete_implements` | [The compilation](Compiled.lean) | Function 9, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.delete.bound`, returns without a trap the tree of `deleteA` and raises `top` by at most the bound. |
-| `delete_bound` | [The compilation](Compiled.lean) | `compiled.delete.bound` is 0, so a call does not raise `top`. |
-| `avlDelete_file`, `avlDelete_file_decode` | [The file theorems](File.lean) | `build/verified/avlDelete.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `shrinkLeft_eq`, `shrinkRight_eq` | [`Proof.lean`](Proof.lean) | The program's adjustments give the nodes of `shrinkLeftA` and `shrinkRightA`. |
+| `ascendDel_left`, `ascendDel_right`, `ascendMin_step`, `ascendMin_found` | [`Proof.lean`](Proof.lean) | A step of each return loop with the flag set applies the adjustment of the specification to the node above, and a step with the flag clear rebuilds it. |
+| `minDel_eq`, `descendDel_eq` | [`Proof.lean`](Proof.lean) | The loops down return what the loops up return from the flag and the tree of `deleteMinA` and `deleteA`. |
+| `delete_eq` | [`Proof.lean`](Proof.lean) | `delete x t` is the tree of `deleteA x t`, for every tree. |
+| `shrinkLeftA_props`, `shrinkRightA_props` | [`Proof.lean`](Proof.lean) | The adjustment of a node above a subtree that shrank one level keeps the node balanced, and the node shrinks exactly when the flag is set. |
+| `deleteMinA_props`, `deleteA_props` | [`Proof.lean`](Proof.lean) | On a balanced tree, the removals keep the tree balanced and lower it one level exactly when they report it. |
+| `keys_deleteMinA`, `keys_deleteA` | [`Proof.lean`](Proof.lean) | `deleteMinA` takes the first key of a tree in symmetric order and leaves the rest, and on a binary search tree the keys afterward are those of `t` without `x`. |
+| `deleteA_of_searchA`, `searchA_of_not_mem` | [`Proof.lean`](Proof.lean) | A failed search, which every absent key gives, leaves every tree as it is. |
+| `removes` | [`Proof.lean`](Proof.lean) | `Removes x t` holds for every balanced binary search tree `t`. |
+| `delete_export` | [`Compiled.lean`](Compiled.lean) | Export `delete` of `compiled.module` is function 9. |
+| `delete_implements` | [`Compiled.lean`](Compiled.lean) | Function 9, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.delete.bound`, returns without a trap the tree of `deleteA` and raises `top` by at most the bound. |
+| `delete_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.delete.bound` is 0, so a call does not raise `top`. |
+| `avlDelete_file`, `avlDelete_file_decode` | [`File.lean`](File.lean) | `build/verified/avlDelete.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 ## Building, running, and testing
 

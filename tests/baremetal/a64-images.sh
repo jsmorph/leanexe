@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # The AArch64 back end's programs as arm64 Images that Lean writes whole (LeanExe/A64/Startup.lean),
-# under QEMU's virt machine.  The build runs with a MemoryHigh of 8G, since the elaboration of
-# tests/TestSupport/A64/Gpt.lean peaks at about 5 GB and that of Euler.lean at about 4.6 GB.
+# under QEMU's virt machine.  The build runs with a MemoryHigh of MEM, 8G unless set, since the
+# elaboration of tests/TestSupport/A64/Gpt.lean peaks at about 5 GB and that of Euler.lean at about
+# 4.6 GB; with LEANRUN_THREADS above 1 those modules elaborate at once, and MEM must hold them all,
+# or the build stalls at the limit.
 # a64-programs emit writes each program's Image, NAME.img, with the bytes that the UART must show
 # and the status with which the program must end.  Lean then elaborates
 # tests/TestSupport/A64/ImageFiles.lean, and on their own ImageFilesEuler.lean, ImageFilesGpt.lean,
@@ -24,7 +26,7 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/a64-images}")
 source tests/baremetal/qemu.sh
 rm -rf "${out:?}"
 mkdir -p "$out"
-tools/leanrun --timeout 60m --memory-high 8G lake --log-level error build a64-programs \
+tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-programs \
   TestSupport.A64.Gcd TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold \
   TestSupport.A64.Cic TestSupport.A64.Euler TestSupport.A64.Gpt TestSupport.A64.Exp \
   TestSupport.A64.Sin TestSupport.A64.GptLayer32Runs TestSupport.A64.Conv32Runs \

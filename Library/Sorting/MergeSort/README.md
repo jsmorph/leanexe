@@ -18,15 +18,15 @@ Knuth's Algorithm S takes its runs from the two ends of one area of `N` records 
 
 | Theorem | File | Statement |
 |---|---|---|
-| `merge_toList` | [The proof](Proof.lean) | The merge writes `List.merge` of the two runs at `k` and keeps the rest of `out`. |
-| `pass_toList` | [The proof](Proof.lean) | The array pass writes `passList` of the segment `[lo, n)` after the first `lo` words of `out`. |
-| `passList_perm`, `passList_runs` | [The proof](Proof.lean) | A pass permutes its list and turns sorted runs of width `w` into sorted runs of width `2w`. |
-| `sortLoop_toList`, `sortList_spec` | [The proof](Proof.lean) | The array passes compute `sortList`, which returns a sorted permutation of its list. |
-| `mergeSort_eq` | [The proof](Proof.lean) | `mergeSort xs = expected xs` for every array with fewer than `2^64` elements. |
-| `mergeSort_export` | [The compilation](Compiled.lean) | Export `mergeSort` of `compiled.module` is function 6. |
-| `mergeSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `mergeSort_bound` | [The compilation](Compiled.lean) | `compiled.mergeSort.bound xs` equals `compiled.sortLoop.bound (1, n, xs)`, the bound of the passes. |
-| `mergeSort_file`, `mergeSort_file_decode` | [The file theorems](File.lean) | `build/verified/mergeSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `merge_toList` | [`Proof.lean`](Proof.lean) | The merge writes `List.merge` of the two runs at `k` and keeps the rest of `out`. |
+| `pass_toList` | [`Proof.lean`](Proof.lean) | The array pass writes `passList` of the segment `[lo, n)` after the first `lo` words of `out`. |
+| `passList_perm`, `passList_runs` | [`Proof.lean`](Proof.lean) | A pass permutes its list and turns sorted runs of width `w` into sorted runs of width `2w`. |
+| `sortLoop_toList`, `sortList_spec` | [`Proof.lean`](Proof.lean) | The array passes compute `sortList`, which returns a sorted permutation of its list. |
+| `mergeSort_eq` | [`Proof.lean`](Proof.lean) | `mergeSort xs = expected xs` for every array with fewer than `2^64` elements. |
+| `mergeSort_export` | [`Compiled.lean`](Compiled.lean) | Export `mergeSort` of `compiled.module` is function 6. |
+| `mergeSort_implements` | [`Compiled.lean`](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `mergeSort_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.mergeSort.bound xs` equals `compiled.sortLoop.bound (1, n, xs)`, the bound of the passes. |
+| `mergeSort_file`, `mergeSort_file_decode` | [`File.lean`](File.lean) | `build/verified/mergeSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 The proof states each pass on lists with `passList w l`, which merges each pair of adjacent runs of width `w` with `List.merge`, and relates the array to its list with `Array.toList`.  `List.merge_perm_append` and `List.pairwise_merge` of Lean's library give the permutation and the sortedness of each merge.  Every list satisfies `RunsSorted 1`, each pass doubles the width, and the last pass leaves one run that covers the list.  A sorted permutation is unique, which `eq_mergeSort_of_sorted_perm` of [the sorted lists](../Sorted.lean) states, so the result equals `expected`.  The axiom report of `mergeSort_implements` names only `propext`, `Classical.choice`, and `Quot.sound`.
 

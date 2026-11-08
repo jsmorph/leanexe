@@ -16,17 +16,17 @@ Knuth's Algorithm L visits every arrangement in one run and stops at the greates
 
 | Theorem | File | Statement |
 |---|---|---|
-| `lt_of_append_lt_append`, `append_lt_append` | [The proof](Proof.lean) | A common prefix does not change the order of two lists. |
-| `lt_split` | [The proof](Proof.lean) | A list above `P ++ M` has a greater word at its first difference inside `P`, or continues `P` with a list above `M`. |
-| `not_lt_of_antitone`, `not_lt_of_monotone` | [The proof](Proof.lean) | A list in nonincreasing order lies below none of its arrangements, and a list in nondecreasing order above none. |
-| `ascent_spec`, `lastAbove_spec`, `reverseRange_spec` | [The proof](Proof.lean) | Steps L2, L3, and L4 return the positions and the array that the program's docstrings describe. |
-| `least_above` | [The proof](Proof.lean) | With `S` nonincreasing, no arrangement above `P ++ p :: S` lies below `P ++ q :: S'`, when `P ++ q :: S'` is an arrangement of `P ++ p :: S`, `q` is at most every word of `S` above `p`, and `S'` is nondecreasing. |
-| `nextPerm_isNext` | [The proof](Proof.lean) | `nextPerm a` is the pair that `IsNext a` states, for every array of fewer than `2^64` words. |
-| `list_lt_trichotomy`, `isNext_unique` | [The proof](Proof.lean) | The order on lists of words is total, so `IsNext xs` determines the flag and the array. |
-| `nextPerm_export` | [The compilation](Compiled.lean) | Export `nextPerm` of `compiled.module` is function 6. |
-| `nextPerm_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs` and raises `top` by at most the bound. |
-| `nextPerm_bound` | [The compilation](Compiled.lean) | `compiled.nextPerm.bound` is 0, so a call does not raise `top`. |
-| `nextPermutation_file`, `nextPermutation_file_decode` | [The file theorems](File.lean) | `build/verified/nextPermutation.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `lt_of_append_lt_append`, `append_lt_append` | [`Proof.lean`](Proof.lean) | A common prefix does not change the order of two lists. |
+| `lt_split` | [`Proof.lean`](Proof.lean) | A list above `P ++ M` has a greater word at its first difference inside `P`, or continues `P` with a list above `M`. |
+| `not_lt_of_antitone`, `not_lt_of_monotone` | [`Proof.lean`](Proof.lean) | A list in nonincreasing order lies below none of its arrangements, and a list in nondecreasing order above none. |
+| `ascent_spec`, `lastAbove_spec`, `reverseRange_spec` | [`Proof.lean`](Proof.lean) | Steps L2, L3, and L4 return the positions and the array that the program's docstrings describe. |
+| `least_above` | [`Proof.lean`](Proof.lean) | With `S` nonincreasing, no arrangement above `P ++ p :: S` lies below `P ++ q :: S'`, when `P ++ q :: S'` is an arrangement of `P ++ p :: S`, `q` is at most every word of `S` above `p`, and `S'` is nondecreasing. |
+| `nextPerm_isNext` | [`Proof.lean`](Proof.lean) | `nextPerm a` is the pair that `IsNext a` states, for every array of fewer than `2^64` words. |
+| `list_lt_trichotomy`, `isNext_unique` | [`Proof.lean`](Proof.lean) | The order on lists of words is total, so `IsNext xs` determines the flag and the array. |
+| `nextPerm_export` | [`Compiled.lean`](Compiled.lean) | Export `nextPerm` of `compiled.module` is function 6. |
+| `nextPerm_implements` | [`Compiled.lean`](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs` and raises `top` by at most the bound. |
+| `nextPerm_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.nextPerm.bound` is 0, so a call does not raise `top`. |
+| `nextPermutation_file`, `nextPermutation_file_decode` | [`File.lean`](File.lean) | `build/verified/nextPermutation.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 In the proof of `nextPerm_isNext`, an input without an ascent is nonincreasing, so it has no greater arrangement, and its reversal is nondecreasing, which makes it `List.mergeSort` of the input.  Otherwise the input is `P ++ a[j] :: S` with `S` nonincreasing, and the result is `P ++ a[l] :: S'`, where `a[l]` is the least word of `S` above `a[j]`, since `S` is nonincreasing and no word after `l` exceeds `a[j]`, and `S'` holds the other words of `a[j] :: S` in nondecreasing order.  An arrangement above the input either has a greater word at its first difference inside `P`, and so lies above the result, or continues `P` with a word of `S` above `a[j]`, and so starts its remainder with a word at least `a[l]`, and when that word is `a[l]`, the rest is an arrangement of `S'`, and `S'`, in nondecreasing order, lies above none of its arrangements, by `not_lt_of_monotone`.  `nextPerm_implements` states that the module returns `nextPerm xs`, and every array that the representation of a call holds has fewer than `2^64` words, so `nextPerm_isNext` applies to it, but no theorem combines the two.  The axiom reports of `nextPerm_implements` and `nextPerm_isNext` name only `propext`, `Classical.choice`, and `Quot.sound`.
 

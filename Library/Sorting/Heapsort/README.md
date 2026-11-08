@@ -18,19 +18,19 @@ Knuth's step H7 moves the larger child up into the vacant node and step H8 store
 
 | Theorem | File | Statement |
 |---|---|---|
-| `swap_get`, `swap_perm` | [The proof](Proof.lean) | An exchange changes the two positions and no other, and it permutes the elements. |
-| `maxChild_spec` | [The proof](Proof.lean) | The larger child of node `i < n / 2` is `2i + 1` or `2i + 2`, lies below `n`, and holds a word at least as large as each child. |
-| `siftDown_eq` | [The proof](Proof.lean) | The sift's two branches move to the larger child, `maxChild`, which the proof defines. |
-| `siftDown_frame` | [The proof](Proof.lean) | The sift keeps the size, permutes the elements, leaves the elements at `n` and beyond unchanged, and keeps every upper bound on the elements below `n`. |
-| `siftDown_spec` | [The proof](Proof.lean) | When the heap order holds at every node at or after `L` except the moving node `i`, and, when `L < i`, the children of `i` are at most the parent of `i`, the sift makes the heap order hold at every node at or after `L`. |
-| `heap_root` | [The proof](Proof.lean) | In a heap the root is the largest element. |
-| `heapify_spec` | [The proof](Proof.lean) | `heapify n a` keeps the size, permutes the elements, and makes `a[0, n)` a heap. |
-| `heapsort_sorted_perm` | [The proof](Proof.lean) | `heapsort` returns a permutation of its input, sorted in nondecreasing order. |
-| `heapsort_eq` | [The proof](Proof.lean) | `heapsort xs = expected xs` for every array with fewer than `2^64` elements. |
-| `heapsort_export` | [The compilation](Compiled.lean) | Export `heapsort` of `compiled.module` is function 5. |
-| `heapsort_implements` | [The compilation](Compiled.lean) | Function 5, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.heapsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `heapsort_bound` | [The compilation](Compiled.lean) | `compiled.heapsort.bound` is 0, so a call does not raise `top`. |
-| `heapsort_file`, `heapsort_file_decode` | [The file theorems](File.lean) | `build/verified/heapsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `swap_get`, `swap_perm` | [`Proof.lean`](Proof.lean) | An exchange changes the two positions and no other, and it permutes the elements. |
+| `maxChild_spec` | [`Proof.lean`](Proof.lean) | The larger child of node `i < n / 2` is `2i + 1` or `2i + 2`, lies below `n`, and holds a word at least as large as each child. |
+| `siftDown_eq` | [`Proof.lean`](Proof.lean) | The sift's two branches move to the larger child, `maxChild`, which the proof defines. |
+| `siftDown_frame` | [`Proof.lean`](Proof.lean) | The sift keeps the size, permutes the elements, leaves the elements at `n` and beyond unchanged, and keeps every upper bound on the elements below `n`. |
+| `siftDown_spec` | [`Proof.lean`](Proof.lean) | When the heap order holds at every node at or after `L` except the moving node `i`, and, when `L < i`, the children of `i` are at most the parent of `i`, the sift makes the heap order hold at every node at or after `L`. |
+| `heap_root` | [`Proof.lean`](Proof.lean) | In a heap the root is the largest element. |
+| `heapify_spec` | [`Proof.lean`](Proof.lean) | `heapify n a` keeps the size, permutes the elements, and makes `a[0, n)` a heap. |
+| `heapsort_sorted_perm` | [`Proof.lean`](Proof.lean) | `heapsort` returns a permutation of its input, sorted in nondecreasing order. |
+| `heapsort_eq` | [`Proof.lean`](Proof.lean) | `heapsort xs = expected xs` for every array with fewer than `2^64` elements. |
+| `heapsort_export` | [`Compiled.lean`](Compiled.lean) | Export `heapsort` of `compiled.module` is function 5. |
+| `heapsort_implements` | [`Compiled.lean`](Compiled.lean) | Function 5, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.heapsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `heapsort_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.heapsort.bound` is 0, so a call does not raise `top`. |
+| `heapsort_file`, `heapsort_file_decode` | [`File.lean`](File.lean) | `build/verified/heapsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 In the proof of `heapsort_sorted_perm`, each pass of the second phase moves the root, the largest word of the prefix by `heap_root`, to the front of the suffix, and `siftDown_spec` restores the heap on the shorter prefix.  A sorted permutation is unique, which `eq_mergeSort_of_sorted_perm` of [the sorted lists](../Sorted.lean) states, so the result equals `expected`.  `heapsort_implements` is an `ImplementsA` theorem: `Verified.Call` and `Verified.CallSpec`, which the library's functions of borrowed arguments state, assume arguments that move no object, and the caller moves the array into `heapsort`.  The axiom report of `heapsort_implements` names only `propext`, `Classical.choice`, and `Quot.sound`.
 

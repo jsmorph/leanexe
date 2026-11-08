@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # The startup code of tools/baremetal/armv7m and the controller programs on QEMU's mps2-an500, a
-# Cortex-M7, without Lean.  DIR holds the files that native-bare emit-ctl writes for each
-# program NAME: NAME.c, NAME.depth, NAME.in, and NAME.expected (tests/baremetal/ctl.sh).
+# Cortex-M7.  native-bare emit-ctl writes each program's C text, its translation followed by
+# lx_in, lx_out, and the main that runs the step forever, the names of the functions that take the
+# call depth, the eight bytes of lx_in, and the bytes of the first windows, which the step's Lean
+# function gives (tests/baremetal/ctl.sh).  The ARMv7-M tree's clightgen reads each C text back,
+# and native-bare check-ctl compares the whole program with the program of the theorem.  A
+# difference stops the script before CompCert compiles anything.  Given DIR, the script skips
+# these steps and takes NAME.c, NAME.depth, NAME.in, and NAME.expected from DIR, as an earlier
+# run wrote them.  DIR must lie outside OUT, which the script empties.
 #
 # QEMU's memory map, from its monitor's "info mtree", must place ZBT SSRAM1 and SSRAM2 and 3 at
 # the CODE and SRAM regions of tools/baremetal/armv7m/mps2-an500/link.ld, PSRAM's 16 MiB at
@@ -19,24 +25,35 @@
 # MMFAR.  Each of these faults ends with status 255.  With the UART's transmitter and receiver
 # disabled, it must write nothing and exit with status 42.
 #
-# Each program NAME of DIR is built with tools/baremetal/armv7m/build.sh, whose stack bound and
-# access check must hold, and runs in its own QEMU process, with QEMU's generic loader placing
-# NAME.in at lx_in.  main never returns, so once the UART output reaches the size of
-# NAME.expected, eight bytes per window, QEMU stops and must exit with status 0, and the output
-# must equal NAME.expected.  The products lie in OUT, build/baremetal/m7 unless set.  CCOMP and
-# CCOMP_STDLIB are as for build.sh, QEMU names qemu-system-arm, OBJDUMP and NM name objdump and
-# nm for ARM, and TIMEOUT, 120 unless set, bounds each run in seconds.
-# Usage: tests/baremetal/m7.sh DIR
+# Each program NAME is built with tools/baremetal/armv7m/build.sh, whose stack bound and access
+# check must hold, and runs in its own QEMU process, with QEMU's generic loader placing NAME.in at
+# lx_in.  main never returns, so once the UART output reaches the size of NAME.expected, eight
+# bytes per window, QEMU stops and must exit with status 0, and the output must equal
+# NAME.expected.  The products lie in OUT, build/baremetal/m7 unless set.  CCOMP and CCOMP_STDLIB
+# are as for build.sh, CLIGHTGEN names the clightgen of CompCert 3.18 configured armv7m-eabihf,
+# QEMU names qemu-system-arm, OBJDUMP and NM name objdump and nm for ARM, and TIMEOUT, 120 unless
+# set, bounds each run in seconds.
+# Usage: tests/baremetal/m7.sh [DIR]
 set -euo pipefail
-if [ "$#" -ne 1 ]; then
-  echo "usage: tests/baremetal/m7.sh DIR" >&2
+if [ "$#" -gt 1 ]; then
+  echo "usage: tests/baremetal/m7.sh [DIR]" >&2
   exit 2
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 here=$root/tests/baremetal
 tools=$root/tools/baremetal/armv7m
-dir=$(cd "$1" && pwd)
-out=${OUT:-$root/build/baremetal/m7}
+out=$(realpath -m "${OUT:-$root/build/baremetal/m7}")
+dir=$out
+if [ "$#" -eq 1 ]; then
+  dir=$(realpath "$1")
+  case $dir/ in
+    "$out"/*)
+      echo "tests/baremetal/m7.sh: DIR lies in OUT, $out, which the script empties" >&2
+      exit 2
+      ;;
+  esac
+fi
+clightgen=${CLIGHTGEN:-clightgen}
 qemu=${QEMU:-qemu-system-arm}
 ccomp=${CCOMP:-ccomp}
 nm=${NM:-arm-none-eabi-nm}
@@ -47,6 +64,15 @@ if [ -n "${CCOMP_STDLIB:-}" ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out"
+if [ "$#" -eq 0 ]; then
+  cd "$root"
+  tools/leanrun --timeout 60m lake --log-level error build native-bare
+  tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare emit-ctl "$out"
+  for c in "$out"/*.c; do
+    (cd "$out" && "$clightgen" "$(basename "$c")")
+  done
+  tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare check-ctl "$out"
+fi
 status=0
 
 fail() {
