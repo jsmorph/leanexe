@@ -13,7 +13,7 @@ import Verified.Reflect.RecursiveLayout
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
-import LeanExe.ProofKit.Signed64
+import LeanExe.ProofKit.Signed64Float
 import LeanExe.Pipeline.Int64
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
@@ -48,9 +48,11 @@ enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
 `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, the `Int64` operations `+`, `-`, `*`, `&&&`, `|||`, `^^^`, `<<<`, `>>>`, `/`, `%`,
-negation, the comparisons, `==`, `!=`, `min`, `max`, literals, `x.toUInt64`, and `w.toInt64`,
-as operations on words, the order comparisons and `>>>` signed and `/` and `%` through
-`LeanExe.ProofKit.Signed64`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
+negation, the comparisons, `==`, `!=`, `min`, `max`, literals, `x.toUInt64`, `w.toInt64`, and the
+conversions `Int64.toFloat`, `Int64.toFloat32`, `Float.toInt64`, and `Float32.toInt64`, as
+operations on words, the order comparisons and `>>>` signed, and `/`, `%`, and the conversions
+through `LeanExe.ProofKit.Signed64` and `LeanExe.ProofKit.Signed64Float`,
+`LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
 and, in a recursive definition, calls of itself.  A definition
@@ -2614,6 +2616,25 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``UInt64.toFloat, #[x] =>
     return (← reflectConv ``Expr.toFloat ``toFloat_eq ``toFloat_bound ``toFloat_fits
       (mkConst ``ToFloat.convert) x .float).as' e
+  | ``Int64.toFloat, #[x] | ``Int64.toFloat32, #[x] =>
+    -- The unsigned conversion of the magnitude, negated when the sign bit is set.  The form reads
+    -- its operand's word more than once, so an operand that is neither a variable or the `Int64`
+    -- of a word variable is bound first.  The `Int64` of a word variable `w` is the word `w`.
+    let (form, thm) := if fn == ``Int64.toFloat then
+        (``LeanExe.ProofKit.Signed64.toFloat, ``LeanExe.ProofKit.Signed64.toFloat_word)
+      else (``LeanExe.ProofKit.Signed64.toFloat32, ``LeanExe.ProofKit.Signed64.toFloat32_word)
+    let word? ← match x.consumeMData.getAppFnArgs with
+      | (``UInt64.toInt64, #[w]) | (``Int64.ofUInt64, #[w]) =>
+        pure (if (← projReduce w).isFVar then some w else none)
+      | _ => pure none
+    if let some w := word? then
+      let T ← mkAppM form #[w]
+      return ← reflectVia T (← mkExpectedTypeHint (← mkAppM thm #[x]) (← mkEq T e))
+    unless (← projReduce x).isFVar do
+      return ← reflectAs (← bindArgs e.getAppFn [x] [true] #[] #[]) e
+    let eq ← mkAppM thm #[x]
+    let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+    reflectVia T eq
   | ``Float.ofBits, #[x] =>
     return (← reflectConv ``Expr.toFloat ``toFloat_eq ``toFloat_bound ``toFloat_fits
       (mkConst ``ToFloat.ofBits) x .float).as' e
@@ -3751,7 +3772,9 @@ where
   on the operands' words, and `>>>` is the arithmetic shift `sar`, which the kernel identifies with
   the `Int64` operations, `<<<` and negation are `shl` and `0 - a` by `shl_eq` and `neg_eq`, and
   `/` and `%` are the word forms `div` and `rem` by their equations, with operands that are not
-  variables bound first, since the forms read them more than once. -/
+  variables bound first, since the forms read them more than once.  `Float.toInt64` and
+  `Float32.toInt64` are the word forms `ofFloat` and `ofFloat32` of `Signed64Float`, with the
+  operand bound first. -/
   reflectInt64? (e : Lean.Expr) : MetaM (Option Reflection) := do
     unless (← whnfR (← inferType e)).isConstOf ``Int64 do return none
     if !e.hasFVar && !e.hasLooseBVars && (← int64Lit? e) then
@@ -3764,6 +3787,15 @@ where
     let binary (op proof : Lean.Expr) (rl rr : Reflection) : MetaM Reflection := do
       return ⟨← mkAppM ``Expr.bin #[op, rl.src, rr.src], proof, .word, e,
         binBound c ``bin_bound [(`op, op)] rl rr, binFits c ``bin_fits [(`op, op)] rl rr, none⟩
+    if (fn == ``Float.toInt64 || fn == ``Float32.toInt64) && args.size == 1 then
+      let x := args[0]!
+      unless (← projReduce x).isFVar do
+        return some (← reflectAs (← bindArgs e.getAppFn [x] [true] #[] #[]) e)
+      let thm := if fn == ``Float.toInt64 then ``LeanExe.ProofKit.Signed64.ofFloat_word
+        else ``LeanExe.ProofKit.Signed64.ofFloat32_word
+      let eq ← mkAppM thm #[x]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return some (← reflectVia T eq)
     if fn == ``Neg.neg && args.size == 3 then
       let rz ← reflect c (toExpr (0 : UInt64))
       let ra ← reflect c args[2]!

@@ -157,3 +157,4 @@ calculator:Examples.Calc.Compiled:Examples/Calc/File.lean
 exampleTrees:Examples.Trees.Compiled:Examples/Trees/File.lean
 signed:Verified.Examples.Signed:Verified/Examples/SignedFile.lean
 floor:Examples.Floor.Compiled:Examples/Floor/File.lean
+convert:Examples.Convert.Compiled:Examples/Convert/File.lean

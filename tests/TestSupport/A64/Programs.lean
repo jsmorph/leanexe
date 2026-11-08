@@ -9,6 +9,7 @@ import Demos.Euler.Verified
 import Library.Numerics.Float64.Exp.Compiled
 import Library.Numerics.Float64.Trig.Compiled
 import Examples.Floor.Compiled
+import Examples.Convert.Compiled
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
@@ -29,7 +30,10 @@ integer with `FCVTZU`, and on 10^22, whose Payne–Hanek reduction reads the tab
 whose result is the array of the words of the row after the layer, and the binary32 conversions of
 `TestSupport.A64.Conv32` on 64 inputs, whose result is the array of their 256 words, and the
 `Int64` functions of `Examples.Floor`: `floorDiv` on -7 and 2 and on `minValue` and -1, and
-`average` on `minValue` and -1, each `Int64` passed and written as its word.  Each
+`average` on `minValue` and -1, each `Int64` passed and written as its word, and the conversions
+of `Examples.Convert`: `toDouble` on `-(2^53 + 3)`, `toSingle` on `-(2^62 + 2^38 + 1)`, `ofDouble`
+on the double below `-2^63`, and `scale` on -7 and 0.5, each double passed and written as its
+bits and each single written as its bits zero-extended.  Each
 program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room`
 and the memory's cap `cap`.
 -/
@@ -119,6 +123,21 @@ def programs : List Program := [
     bytes := LeanExe.Native.encodeWord (Examples.Floor.floorDiv Int64.minValue (-1)).toUInt64 },
   { name := "average", module := Examples.Floor.compiled.module, entry := 3
     args := [Int64.minValue.toUInt64, (-1 : Int64).toUInt64], output := .word
-    bytes := LeanExe.Native.encodeWord (Examples.Floor.average Int64.minValue (-1)).toUInt64 }]
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.average Int64.minValue (-1)).toUInt64 },
+  { name := "todouble", module := Examples.Convert.compiled.module, entry := 2
+    args := [(-9007199254740995 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Convert.toDouble (-9007199254740995)).toBits },
+  { name := "tosingle", module := Examples.Convert.compiled.module, entry := 3
+    args := [(-4611686293305294849 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.toSingle (-4611686293305294849)).toBits.toUInt64 },
+  { name := "ofdouble", module := Examples.Convert.compiled.module, entry := 4
+    args := [0xC3E0000000000001], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.ofDouble (Float.ofBits 0xC3E0000000000001)).toUInt64 },
+  { name := "convscale", module := Examples.Convert.compiled.module, entry := 6
+    args := [(-7 : Int64).toUInt64, 0x3FE0000000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.scale (-7) (Float.ofBits 0x3FE0000000000000)).toUInt64 }]
 
 end TestSupport.A64

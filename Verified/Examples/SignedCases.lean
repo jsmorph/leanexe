@@ -1,11 +1,15 @@
 import Verified.Examples.Signed
 import Examples.Floor.Program
 import Examples.Floor.Cases
+import Examples.Convert.Program
+import Examples.Convert.Cases
 import TestSupport.Host
 
-/-! The cases of the modules `signed` and `floor`: each function of `Verified.Examples.Signed`
-and of `Examples.Floor` on the extremes of `Int64`, the values near 0, and arbitrary words, each
-`Int64` passed and printed as its word, against native Lean. -/
+/-! The cases of the modules `signed`, `floor`, and `convert`: each function of
+`Verified.Examples.Signed` and of `Examples.Floor` on the extremes of `Int64`, the values near 0,
+and arbitrary words, and each function of `Examples.Convert` on the integers and floats of
+`Examples.Convert.Cases`, each `Int64` passed and printed as its word and each float as its bits,
+against native Lean. -/
 
 namespace Verified.Examples.Signed
 
@@ -55,5 +59,22 @@ def cases : IO Unit := do
   for n in ([0, 1, 3, 10] : List UInt64) do
     IO.println s!"signed|count|array-u64|i64:{n}|{intsOut (count n)}"
   IO.println s!"signed|lits|i64||{lits.toUInt64}|0|0"
+  for a in Examples.Convert.ints do
+    for x in Examples.Convert.doubles do
+      IO.println s!"signed|floats|f64|{i a} f64:{x}|{(floats a (Float.ofBits x)).toBits}|0|0"
+    for y in Examples.Convert.singles do
+      IO.println s!"signed|singles|i64|i64:{a.toUInt64} f32:{y}|\
+        {(singles a.toUInt64 (Float32.ofBits y)).toUInt64}|0|0"
+    IO.println s!"convert|toDouble|f64|{i a}|{(Examples.Convert.toDouble a).toBits}|0|0"
+    IO.println s!"convert|toSingle|f32|{i a}|{(Examples.Convert.toSingle a).toBits}|0|0"
+    for k in Examples.Convert.gains do
+      IO.println s!"convert|scale|i64|{i a} f64:{k}|\
+        {(Examples.Convert.scale a (Float.ofBits k)).toUInt64}|0|0"
+  for x in Examples.Convert.doubles do
+    IO.println s!"convert|ofDouble|i64|f64:{x}|\
+      {(Examples.Convert.ofDouble (Float.ofBits x)).toUInt64}|0|0"
+  for y in Examples.Convert.singles do
+    IO.println s!"convert|ofSingle|i64|f32:{y}|\
+      {(Examples.Convert.ofSingle (Float32.ofBits y)).toUInt64}|0|0"
 
 end Verified.Examples.Signed

@@ -193,6 +193,7 @@ import LeanExe.ProofKit.F32Encoding
 import LeanExe.ProofKit.F32Mul
 import LeanExe.ProofKit.F32MulFinite
 import LeanExe.ProofKit.F32Nearest
+import LeanExe.ProofKit.F32Negate
 import LeanExe.ProofKit.F32Normalize
 import LeanExe.ProofKit.F32Packing
 import LeanExe.ProofKit.F32RationalNormalize
@@ -408,6 +409,8 @@ import LeanExe.ProofKit.RealSqrtError
 import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.Signed32
 import LeanExe.ProofKit.Signed64
+import LeanExe.ProofKit.Signed64Float
+import LeanExe.ProofKit.Signed64Wasm
 import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel
 import LeanExe.ProofKit.TaylorRemainder
