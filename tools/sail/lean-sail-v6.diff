@@ -11,3 +11,15 @@
  
  -- A function to provide a default toplevel for Sail models
  
+--- a/Sail/Sail.lean
++++ b/Sail/Sail.lean
+@@ -70,9 +70,6 @@
+   go init fuel
+ 
+ 
+-instance : CoeT Int x Nat where
+-  coe := x.toNat
+-
+ instance : CoeT (BitVec n) x (BitVec m) where
+   coe := x.setWidth m
+ 
