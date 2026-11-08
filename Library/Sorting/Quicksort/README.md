@@ -18,18 +18,18 @@ Each stage lowers the loop's rank, twice the sum of the sizes of the current sub
 
 | Theorem | File | Statement |
 |---|---|---|
-| `scanUp_ge`, `scanDown_bounds` | [The program](Program.lean) | Step Q3 stops at or after its start, and step Q4 stops at or before its start and, from a start at or after `l`, at or after `l`. |
-| `part_fst` | [The program](Program.lean) | From `l ≤ i < j`, the final position of `K` lies in `[l, j)`. |
-| `stacked_push`, `dec_left`, `dec_right`, `dec_push_left`, `dec_push_right`, `dec_pop` | [The program](Program.lean) | Each stage of `stages` lowers the loop's rank. |
-| `part_perm` | [The proof](Proof.lean) | When the subfile ends within the array, steps Q3 to Q6 return a permutation of the array of the same size. |
-| `part_within` | [The proof](Proof.lean) | The partition of `[l, e)` puts `K` at a position of the subfile and permutes the array. |
-| `push_within`, `pop_within` | [The proof](Proof.lean) | A push and a pop keep every stacked subfile within the array, and a pop takes such a subfile. |
-| `stages_perm` | [The proof](Proof.lean) | When the current subfile and the stacked subfiles end within the array, `stages` returns a permutation of the array of the same size. |
-| `quicksort_eq` | [The proof](Proof.lean) | `quicksort xs = expected xs` for every array with fewer than `2^64` elements. |
-| `quicksort_export` | [The compilation](Compiled.lean) | Export `quicksort` of `compiled.module` is function 9. |
-| `quicksort_implements` | [The compilation](Compiled.lean) | Function 9, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.quicksort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `quicksort_bound` | [The compilation](Compiled.lean) | `compiled.quicksort.bound` is `Verified.blockCost 128`, the block of the stack. |
-| `quicksort_file`, `quicksort_file_decode` | [The file theorems](File.lean) | `build/verified/quicksort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `scanUp_ge`, `scanDown_bounds` | [`Program.lean`](Program.lean) | Step Q3 stops at or after its start, and step Q4 stops at or before its start and, from a start at or after `l`, at or after `l`. |
+| `part_fst` | [`Program.lean`](Program.lean) | From `l ≤ i < j`, the final position of `K` lies in `[l, j)`. |
+| `stacked_push`, `dec_left`, `dec_right`, `dec_push_left`, `dec_push_right`, `dec_pop` | [`Program.lean`](Program.lean) | Each stage of `stages` lowers the loop's rank. |
+| `part_perm` | [`Proof.lean`](Proof.lean) | When the subfile ends within the array, steps Q3 to Q6 return a permutation of the array of the same size. |
+| `part_within` | [`Proof.lean`](Proof.lean) | The partition of `[l, e)` puts `K` at a position of the subfile and permutes the array. |
+| `push_within`, `pop_within` | [`Proof.lean`](Proof.lean) | A push and a pop keep every stacked subfile within the array, and a pop takes such a subfile. |
+| `stages_perm` | [`Proof.lean`](Proof.lean) | When the current subfile and the stacked subfiles end within the array, `stages` returns a permutation of the array of the same size. |
+| `quicksort_eq` | [`Proof.lean`](Proof.lean) | `quicksort xs = expected xs` for every array with fewer than `2^64` elements. |
+| `quicksort_export` | [`Compiled.lean`](Compiled.lean) | Export `quicksort` of `compiled.module` is function 9. |
+| `quicksort_implements` | [`Compiled.lean`](Compiled.lean) | Function 9, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.quicksort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `quicksort_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.quicksort.bound` is `Verified.blockCost 128`, the block of the stack. |
+| `quicksort_file`, `quicksort_file_decode` | [`File.lean`](File.lean) | `build/verified/quicksort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 Step Q9 sorts every array, so the proof of `quicksort_eq` needs only that steps Q1 to Q8 permute the input, and `straightInsertion_sorted_perm` of [straight insertion's proof](../StraightInsertion/Proof.lean) gives a nondecreasing permutation of that permutation.  `part_perm` follows the recursion of `part`: each exchange of step Q6 lies below the end of the subfile, and the exchange of step Q5 lies between `l` and the position where step Q4 stopped.  `stages_perm` proceeds by functional induction on `stages`, with the invariant that the current subfile and every stacked subfile end within the array.  `quicksort_implements` is an `ImplementsA` theorem, since the caller moves the array into the call, and its axiom report names only `propext`, `Classical.choice`, and `Quot.sound`.
 

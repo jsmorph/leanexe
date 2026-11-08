@@ -18,13 +18,13 @@ Each pass of `oddGcd` that subtracts replaces the larger odd number `L` by at mo
 
 | Theorem | File | Statement |
 |---|---|---|
-| `removeTwos_spec` | [The proof](Proof.lean) | `x` is `2^j` times `removeTwos x` for some `j`, and `removeTwos x` is odd when `x` is not 0. |
-| `commonTwos_spec` | [The proof](Proof.lean) | `commonTwos u v k` divides `u` and `v` by one power `2^j` and adds `j` to `k`, and for nonzero `u` the first quotient is not 0 and the two quotients are not both even. |
-| `oddGcd_spec` | [The proof](Proof.lean) | On two odd words, `oddGcd` returns their greatest common divisor. |
-| `binaryGcd_eq` | [The proof](Proof.lean) | `binaryGcd u v = expected (u, v)` for every pair of words. |
-| `binaryGcd_export` | [The compilation](Compiled.lean) | Export `binaryGcd` of `compiled.module` is function 5. |
-| `binaryGcd_callSpec` | [The compilation](Compiled.lean) | From a ready store with room for `compiled.binaryGcd.bound (u, v)` bytes, function 5 returns `expected (u, v)` without a trap and leaves a ready store, as `Verified.CallSpec` states. |
-| `binaryGcd_file`, `binaryGcd_file_decode` | [The file theorems](File.lean) | `build/verified/binaryGcd.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `removeTwos_spec` | [`Proof.lean`](Proof.lean) | `x` is `2^j` times `removeTwos x` for some `j`, and `removeTwos x` is odd when `x` is not 0. |
+| `commonTwos_spec` | [`Proof.lean`](Proof.lean) | `commonTwos u v k` divides `u` and `v` by one power `2^j` and adds `j` to `k`, and for nonzero `u` the first quotient is not 0 and the two quotients are not both even. |
+| `oddGcd_spec` | [`Proof.lean`](Proof.lean) | On two odd words, `oddGcd` returns their greatest common divisor. |
+| `binaryGcd_eq` | [`Proof.lean`](Proof.lean) | `binaryGcd u v = expected (u, v)` for every pair of words. |
+| `binaryGcd_export` | [`Compiled.lean`](Compiled.lean) | Export `binaryGcd` of `compiled.module` is function 5. |
+| `binaryGcd_callSpec` | [`Compiled.lean`](Compiled.lean) | From a ready store with room for `compiled.binaryGcd.bound (u, v)` bytes, function 5 returns `expected (u, v)` without a trap and leaves a ready store, as `Verified.CallSpec` states. |
+| `binaryGcd_file`, `binaryGcd_file_decode` | [`File.lean`](File.lean) | `build/verified/binaryGcd.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `oddGcd_spec` uses these facts about natural numbers: `gcd u v = gcd u (v - u)` for `u ≤ v`, which Lean's core library states as `Nat.gcd_sub_self_right`, and `gcd u (2^j * b) = gcd u b` for odd `u`, since a power of 2 is coprime to an odd number.  `binaryGcd_eq` adds `gcd (2^j * a) (2^j * b) = 2^j * gcd a b` for step B1 and shows that the final shift does not wrap, because the result is at most `u`.  The axiom report of `binaryGcd_callSpec` names only `propext`, `Classical.choice`, and `Quot.sound`.
 

@@ -18,12 +18,12 @@ Each pass of `euclid` that continues performs one division step of Euclid's algo
 
 | Theorem | File | Statement |
 |---|---|---|
-| `euclid_spec` | [The proof](Proof.lean) | For `m ≥ 2`, from a state that meets the invariant, the loop returns, when `gcd a m = 1`, a word `x < m` with `a * x = 1` in `ZMod m`, and 0 otherwise. |
-| `val_inv_eq` | [The proof](Proof.lean) | For `a` coprime to `m`, a number `x < m` with `a * x = 1` in `ZMod m` is the value of the inverse of `a` in `ZMod m`. |
-| `modInverse_eq` | [The proof](Proof.lean) | `modInverse a m = expected (a, m)` for every pair of words. |
-| `modInverse_export` | [The compilation](Compiled.lean) | Export `modInverse` of `compiled.module` is function 3. |
-| `modInverse_callSpec` | [The compilation](Compiled.lean) | From a ready store with room for `compiled.modInverse.bound (a, m)` bytes, function 3 returns `expected (a, m)` without a trap and leaves a ready store, as `Verified.CallSpec` states. |
-| `modInverse_file`, `modInverse_file_decode` | [The file theorems](File.lean) | `build/verified/modInverse.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `euclid_spec` | [`Proof.lean`](Proof.lean) | For `m ≥ 2`, from a state that meets the invariant, the loop returns, when `gcd a m = 1`, a word `x < m` with `a * x = 1` in `ZMod m`, and 0 otherwise. |
+| `val_inv_eq` | [`Proof.lean`](Proof.lean) | For `a` coprime to `m`, a number `x < m` with `a * x = 1` in `ZMod m` is the value of the inverse of `a` in `ZMod m`. |
+| `modInverse_eq` | [`Proof.lean`](Proof.lean) | `modInverse a m = expected (a, m)` for every pair of words. |
+| `modInverse_export` | [`Compiled.lean`](Compiled.lean) | Export `modInverse` of `compiled.module` is function 3. |
+| `modInverse_callSpec` | [`Compiled.lean`](Compiled.lean) | From a ready store with room for `compiled.modInverse.bound (a, m)` bytes, function 3 returns `expected (a, m)` without a trap and leaves a ready store, as `Verified.CallSpec` states. |
+| `modInverse_file`, `modInverse_file_decode` | [`File.lean`](File.lean) | `build/verified/modInverse.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 The proof of `euclid_spec` follows the recursion of `euclid`, and `linear_combination` checks each step's congruences.  `modInverse_eq` applies `euclid_spec` to the state that `modInverse` builds and identifies the result with the inverse in `ZMod m` by `val_inv_eq`.  The axiom report of `modInverse_callSpec` names only `propext`, `Classical.choice`, and `Quot.sound`.
 

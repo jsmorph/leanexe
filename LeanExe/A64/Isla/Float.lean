@@ -17,8 +17,12 @@ wrapper, that `A` gives the reference interpreter's function of `Interpreter/Was
 every operand under the startup's FPCR, `0x02000000`, which the traces record as the struct
 `(_ struct (|bits| #x0000000002000000))`.  The theorem of a form takes its equation as a
 hypothesis, so the theorem holds for the meaning of Arm's function as far as the equation does.
-No theorem proves the equations, since Isla does not evaluate the pseudocode's arithmetic on real
-numbers.
+Isla does not evaluate the pseudocode's arithmetic on real numbers, so the traces give no proof of
+the equations.  The modules of `tools/sail/F7` prove that Sail's Lean translation of each
+function returns the function of `Interpreter/Wasm/Float.lean` for every operand, from every
+state that meets their hypothesis `Hyp`, and derive each equation from a link stating that Isla's
+call returns what the translation returns.  `tools/sail/check.sh` checks those proofs on a host
+with Sail, outside the repository's build.
 
 The traces read `_Z` as a whole and select the element of a symbolic register number with a chain
 of 31 `ite` expressions from index 0 upward, which the walk evaluates to a chain of `cond`.

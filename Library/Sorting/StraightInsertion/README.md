@@ -16,16 +16,16 @@ Step S4 runs once for each inversion of the input, a pair of positions whose wor
 
 | Theorem | File | Statement |
 |---|---|---|
-| `orderedInsert_append_of_lt`, `orderedInsert_of_forall_not_lt` | [The proof](Proof.lean) | Inserting `v` after every word at most `v`, `orderedInsert (· < ·) v`, into `l ++ [y]` with `v < y` gives the insertion into `l` followed by `y`, and into a list with no word above `v` appends `v`. |
-| `pairwise_orderedInsert` | [The proof](Proof.lean) | The insertion keeps a list in nondecreasing order. |
-| `shift_toList` | [The proof](Proof.lean) | When `xs[0, i)` is in order, `shift v i xs` holds `xs[0, i)` with `v` inserted in positions `0` to `i`, followed by the words of `xs` after `i`. |
-| `straightInsertion_sorted_perm` | [The proof](Proof.lean) | `straightInsertion` returns a permutation of its input in nondecreasing order. |
-| `straightInsertion_eq` | [The proof](Proof.lean) | `straightInsertion xs = expected xs` for every array with fewer than `2^64` elements. |
-| `eq_mergeSort_of_sorted_perm` | [The sorted lists](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
-| `straightInsertion_export` | [The compilation](Compiled.lean) | Export `straightInsertion` of `compiled.module` is function 3. |
-| `straightInsertion_implements` | [The compilation](Compiled.lean) | Function 3, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `straightInsertion_bound` | [The compilation](Compiled.lean) | `compiled.straightInsertion.bound` is 0, so a call does not raise `top`. |
-| `straightInsertion_file`, `straightInsertion_file_decode` | [The file theorems](File.lean) | `build/verified/straightInsertion.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `orderedInsert_append_of_lt`, `orderedInsert_of_forall_not_lt` | [`Proof.lean`](Proof.lean) | Inserting `v` after every word at most `v`, `orderedInsert (· < ·) v`, into `l ++ [y]` with `v < y` gives the insertion into `l` followed by `y`, and into a list with no word above `v` appends `v`. |
+| `pairwise_orderedInsert` | [`Proof.lean`](Proof.lean) | The insertion keeps a list in nondecreasing order. |
+| `shift_toList` | [`Proof.lean`](Proof.lean) | When `xs[0, i)` is in order, `shift v i xs` holds `xs[0, i)` with `v` inserted in positions `0` to `i`, followed by the words of `xs` after `i`. |
+| `straightInsertion_sorted_perm` | [`Proof.lean`](Proof.lean) | `straightInsertion` returns a permutation of its input in nondecreasing order. |
+| `straightInsertion_eq` | [`Proof.lean`](Proof.lean) | `straightInsertion xs = expected xs` for every array with fewer than `2^64` elements. |
+| `eq_mergeSort_of_sorted_perm` | [`Library/Sorting/Sorted.lean`](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
+| `straightInsertion_export` | [`Compiled.lean`](Compiled.lean) | Export `straightInsertion` of `compiled.module` is function 3. |
+| `straightInsertion_implements` | [`Compiled.lean`](Compiled.lean) | Function 3, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `straightInsertion_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.straightInsertion.bound` is 0, so a call does not raise `top`. |
+| `straightInsertion_file`, `straightInsertion_file_decode` | [`File.lean`](File.lean) | `build/verified/straightInsertion.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 In the proof of `straightInsertion_sorted_perm`, each pass of the loop keeps the first `j + 1` words in order, a permutation of the first `j + 1` words of the input, and the rest of the input unchanged.  `shift_toList` proceeds by induction on the vacant position: a move turns the insertion into `xs[0, i)` into the insertion into `xs[0, i - 1)` followed by the moved word, and the store at a word at most `v` appends `v`, since every word of the sorted prefix is at most that word.  `straightInsertion_implements` is an `ImplementsA` theorem, since the caller moves the array into the call, and its axiom report names only `propext`, `Classical.choice`, and `Quot.sound`.
 

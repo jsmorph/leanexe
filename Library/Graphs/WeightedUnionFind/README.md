@@ -16,16 +16,16 @@ Union by size keeps every tree of `k` elements at a height of at most `‚åälg k‚å
 
 | Theorem | File | Statement |
 |---|---|---|
-| `rank_mono`, `rank_lt_root` | [The proof](Proof.lean) | Along the links of a forest the rank does not decrease, and an element that is not a root has a lower rank than its root. |
-| `rootOf_eq_of` | [The proof](Proof.lean) | On a forest whose links keep a function `R` and whose roots `R` fixes, the root of every element is its value under `R`. |
-| `link_root` | [The proof](Proof.lean) | A link from an element to its root keeps a forest and the root of every element. |
-| `compress_spec` | [The proof](Proof.lean) | Path compression keeps a forest and the root of every element, and gives each element its old parent or its root. |
-| `unite_inv`, `forest_inv` | [The proof](Proof.lean) | `unite` for pair `t` keeps `Inv` of the module of Algorithm E, so after all pairs the links satisfy it. |
-| `classes_spec` | [The proof](Proof.lean) | `LeastLabels n js ks (classes n js ks)` for arrays of fewer than `2^64` words, by `labels_spec`. |
-| `classes_export` | [The compilation](Compiled.lean) | Export `classes` of `compiled.module` is function 6. |
-| `classes_call` | [The compilation](Compiled.lean) | Function 6, called with a count and two lent arrays from a ready store with room for `compiled.classes.bound`, returns without a trap the owned array `classes n js ks`. |
-| `classes_bound` | [The compilation](Compiled.lean) | `compiled.classes.bound` is four blocks of `n` words, `4 * Verified.blockCost n`. |
-| `weightedUnionFind_file`, `weightedUnionFind_file_decode` | [The file theorems](File.lean) | `build/verified/weightedUnionFind.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `rank_mono`, `rank_lt_root` | [`Proof.lean`](Proof.lean) | Along the links of a forest the rank does not decrease, and an element that is not a root has a lower rank than its root. |
+| `rootOf_eq_of` | [`Proof.lean`](Proof.lean) | On a forest whose links keep a function `R` and whose roots `R` fixes, the root of every element is its value under `R`. |
+| `link_root` | [`Proof.lean`](Proof.lean) | A link from an element to its root keeps a forest and the root of every element. |
+| `compress_spec` | [`Proof.lean`](Proof.lean) | Path compression keeps a forest and the root of every element, and gives each element its old parent or its root. |
+| `unite_inv`, `forest_inv` | [`Proof.lean`](Proof.lean) | `unite` for pair `t` keeps `Inv` of the module of Algorithm E, so after all pairs the links satisfy it. |
+| `classes_spec` | [`Proof.lean`](Proof.lean) | `LeastLabels n js ks (classes n js ks)` for arrays of fewer than `2^64` words, by `labels_spec`. |
+| `classes_export` | [`Compiled.lean`](Compiled.lean) | Export `classes` of `compiled.module` is function 6. |
+| `classes_call` | [`Compiled.lean`](Compiled.lean) | Function 6, called with a count and two lent arrays from a ready store with room for `compiled.classes.bound`, returns without a trap the owned array `classes n js ks`. |
+| `classes_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.classes.bound` is four blocks of `n` words, `4 * Verified.blockCost n`. |
+| `weightedUnionFind_file`, `weightedUnionFind_file_decode` | [`File.lean`](File.lean) | `build/verified/weightedUnionFind.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 The proof uses the invariant `Inv` of the module of Algorithm E: the links form a forest, every element is equivalent to its parent, and the two elements of every pair taken so far that are both below `n` have the same root.  The rank function of a forest increases along the link of every element that is not a root, and so from such an element to its root, so a link from such an element to its root keeps the same rank function, and the root of every element is unchanged, which `rootOf_eq_of` shows with the old roots as `R`.  `unite` links one root to the other in either direction, which `link_inv` covers, and the sizes determine only the direction, so the proof does not use them.  The axiom reports of `classes_call` and `classes_spec` name only `propext`, `Classical.choice`, and `Quot.sound`.
 

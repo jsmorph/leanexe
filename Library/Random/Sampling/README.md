@@ -34,22 +34,22 @@ The third part of [the request](request.txt) asks for Algorithm R with the candi
 
 | Theorem | File | Statement |
 |---|---|---|
-| `scale_toNat`, `scale_lt` | [The index](Scale.lean) | `scale u m = ⌊u·m / 2^64⌋` when `m < 2^32`, and `scale u m < m` for every `m ≥ 1`. |
-| `scale_card` | [The index](Scale.lean) | For `0 < m < 2^32` and `i < m`, between `⌊2^64 / m⌋` and `⌈2^64 / m⌉` words `u` have `scale u m = i`. |
-| `byIndices_frame`, `byIndices_top` | [The shuffle's proof](Proof.lean) | With indices `k j ≤ j`, `byIndices k m a` permutes `a`, keeps the words after `m`, and puts at `m` the word that was at `k m`. |
-| `byIndices_unique`, `byIndices_exists` | [The shuffle's proof](Proof.lean) | For distinct words in positions `0` to `m`, the result determines the indices, and every arrangement of those words has indices. |
-| `shuffle_method`, `shuffle_perm`, `shuffle_positions`, `shuffle_count` | [The shuffle's proof](Proof.lean) | The properties of `Shuffles` for `shuffle`. |
-| `shuffle_spec` | [The shuffle's proof](Proof.lean) | `Shuffles shuffle`. |
-| `sample_eq`, `selectFrom_length` | [The selection sampling proofs](Select.lean) | `sample` computes `algorithmS`, which chooses `k - m` of the remaining records. |
-| `selL_count` | [The selection sampling proofs](Select.lean) | A list of `c` of `M` distinct records comes from between `c!(M - c)! ∏ ⌊2^64 / M'⌋` and `c!(M - c)! ∏ ⌈2^64 / M'⌉` word arrays. |
-| `sample_spec` | [The selection sampling proofs](Select.lean) | `Samples sample`. |
-| `reservoir_eq`, `reservoirFrom_subperm` | [The reservoir proofs](Reservoir.lean) | `reservoir` computes `algorithmR`, whose candidates are a sub-multiset of the records. |
-| `cands_count` | [The reservoir proofs](Reservoir.lean) | After `L` records, every set of `k` positions below `k + L` comes from between `L! ∏ ⌊2^64 / (t + 1)⌋` and `L! ∏ ⌈2^64 / (t + 1)⌉` word arrays. |
-| `reservoir_spec` | [The reservoir proofs](Reservoir.lean) | `Reservoirs reservoir`. |
-| `shuffle_bound` | [The compilation](Compiled.lean) | `compiled.shuffle.bound` is 0, so a call of `shuffle` does not raise `top`. |
-| `sample_bound`, `reservoir_bound` | [The compilation](Compiled.lean) | The bounds are `Verified.blockCost` of `min n N`: each call allocates one block of `min n N` words. |
-| `shuffle_export`, `sample_export`, `reservoir_export` | [The compilation](Compiled.lean) | The exports are functions 4, 5, and 6 of `compiled.module`. |
-| `sampling_file`, `sampling_file_decode` | [The file theorems](File.lean) | `build/verified/sampling.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `scale_toNat`, `scale_lt` | [`Scale.lean`](Scale.lean) | `scale u m = ⌊u·m / 2^64⌋` when `m < 2^32`, and `scale u m < m` for every `m ≥ 1`. |
+| `scale_card` | [`Scale.lean`](Scale.lean) | For `0 < m < 2^32` and `i < m`, between `⌊2^64 / m⌋` and `⌈2^64 / m⌉` words `u` have `scale u m = i`. |
+| `byIndices_frame`, `byIndices_top` | [`Proof.lean`](Proof.lean) | With indices `k j ≤ j`, `byIndices k m a` permutes `a`, keeps the words after `m`, and puts at `m` the word that was at `k m`. |
+| `byIndices_unique`, `byIndices_exists` | [`Proof.lean`](Proof.lean) | For distinct words in positions `0` to `m`, the result determines the indices, and every arrangement of those words has indices. |
+| `shuffle_method`, `shuffle_perm`, `shuffle_positions`, `shuffle_count` | [`Proof.lean`](Proof.lean) | The properties of `Shuffles` for `shuffle`. |
+| `shuffle_spec` | [`Proof.lean`](Proof.lean) | `Shuffles shuffle`. |
+| `sample_eq`, `selectFrom_length` | [`Select.lean`](Select.lean) | `sample` computes `algorithmS`, which chooses `k - m` of the remaining records. |
+| `selL_count` | [`Select.lean`](Select.lean) | A list of `c` of `M` distinct records comes from between `c!(M - c)! ∏ ⌊2^64 / M'⌋` and `c!(M - c)! ∏ ⌈2^64 / M'⌉` word arrays. |
+| `sample_spec` | [`Select.lean`](Select.lean) | `Samples sample`. |
+| `reservoir_eq`, `reservoirFrom_subperm` | [`Reservoir.lean`](Reservoir.lean) | `reservoir` computes `algorithmR`, whose candidates are a sub-multiset of the records. |
+| `cands_count` | [`Reservoir.lean`](Reservoir.lean) | After `L` records, every set of `k` positions below `k + L` comes from between `L! ∏ ⌊2^64 / (t + 1)⌋` and `L! ∏ ⌈2^64 / (t + 1)⌉` word arrays. |
+| `reservoir_spec` | [`Reservoir.lean`](Reservoir.lean) | `Reservoirs reservoir`. |
+| `shuffle_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.shuffle.bound` is 0, so a call of `shuffle` does not raise `top`. |
+| `sample_bound`, `reservoir_bound` | [`Compiled.lean`](Compiled.lean) | The bounds are `Verified.blockCost` of `min n N`: each call allocates one block of `min n N` words. |
+| `shuffle_export`, `sample_export`, `reservoir_export` | [`Compiled.lean`](Compiled.lean) | The exports are functions 4, 5, and 6 of `compiled.module`. |
+| `sampling_file`, `sampling_file_decode` | [`File.lean`](File.lean) | `build/verified/sampling.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 ## Building, running, and testing
 
