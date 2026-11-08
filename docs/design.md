@@ -227,7 +227,7 @@ result of an operation by Talos's canonical NaN.
 kernels and the add-one kernel run on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).
 `Demos.Gpt32.VerifiedPtx.generate_host` proves the scores of a GPT-2 generation step with the PTX
 kernels in a session of that host, with the statement of the memory model for each launch.
-[The trusted-base document](trusted-base.md#p-ptx-kernels) lists what applying the launch
+[The trusted-base document](trusted-base.md#ptx-ptx-kernels) lists what applying the launch
 theorems to a GPU assumes, including the No Thin Air axiom of the PTX memory model and the
 meaning of `cvt.rni.f32.f32`.
 

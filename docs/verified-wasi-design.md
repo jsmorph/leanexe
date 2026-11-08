@@ -100,7 +100,7 @@ The memory frame excludes scratch and, for a read, the newly allocated writable 
 
 ## Observable semantics and host assumptions
 
-[The trusted-base document](trusted-base.md#i-wasi-preview-1-modules) lists the host assumptions of the WASI theorems, with the check and the source of each.  It names the definitions of the Preview 1 model that a statement unfolds to and the theorems that state when a satisfying host exists.  The command meaning and the rules for errors and traps that the subsections state are part of what those theorems depend on without proof.
+[The trusted-base document](trusted-base.md#wasi-wasi-preview-1-modules) lists the host assumptions of the WASI theorems, with the check and the source of each.  It names the definitions of the Preview 1 model that a statement unfolds to and the theorems that state when a satisfying host exists.  The command meaning and the rules for errors and traps that the subsections state are part of what those theorems depend on without proof.
 
 ### Command meaning
 

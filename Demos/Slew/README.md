@@ -283,7 +283,7 @@ admitted node unreached.
 The theorems depend on the verified compiler's [trusted
 base](../../docs/verified-manual.md#trusted-base): Lean's kernel with the three axioms, the
 semantics of WebAssembly of
-[Talos](../../docs/trusted-base.md#v-webassembly-modules-of-the-verified-compiler), an
+[Talos](../../docs/trusted-base.md#wasm-webassembly-modules-of-the-verified-compiler), an
 interpreter written in Lean, the binary decoder, the module emitter, and, for the file theorems,
 the elaborator `binary_file%`, which reads the written file.  The manual's section [outside the
 proofs](../../docs/verified-manual.md#outside-the-proofs) lists what those semantics leave out,

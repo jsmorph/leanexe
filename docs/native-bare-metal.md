@@ -370,7 +370,7 @@ On the Cortex-M7, `tools/baremetal/armv7m/stack-bound.sh` applies the same rules
 
 ## Trusted base
 
-[The trusted-base document](trusted-base.md#b-bare-metal-images) lists these items, with the check and the source of each, together with the items of the other artifacts.  It also states the step from the Lean termination to the Coq judgment that the Rocq theorems take as their hypothesis.  The trusted base of a bare-metal image consists of these items:
+[The trusted-base document](trusted-base.md#metal-bare-metal-images) lists these items, with the check and the source of each, together with the items of the other artifacts.  It also states the step from the Lean termination to the Coq judgment that the Rocq theorems take as their hypothesis.  The trusted base of a bare-metal image consists of these items:
 
 1. Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound`.
 2. The Lean copy of the Clight subset, with the program-level judgment, volatile accesses, and the pointer width, checked by review and by differential tests against `ccomp -interp` of a tree configured for each `Archi` instance.

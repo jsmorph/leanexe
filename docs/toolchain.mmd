@@ -26,8 +26,8 @@ flowchart TB
 
   subgraph CB["C backend"]
     TR["LeanExe/Native translate<br/>simulation theorem translate_correct"]
-    CL["Clight program, Lean copy of CompCert 3.18<br/>C: p.f.native, A: p.f.nativeAligned"]
-    BARE["Whole program with a generated main<br/>B: p.f.program, by bare_program,<br/>or LoopReacts of a step run forever"]
+    CL["Clight program, Lean copy of CompCert 3.18<br/>C: p.f.native, CALIGN: p.f.nativeAligned"]
+    BARE["Whole program with a generated main<br/>METAL: p.f.program, by bare_program,<br/>or LoopReacts of a step run forever"]
     CTXT["C text<br/>clightgen reads it back,<br/>and it must equal the translation"]
     CC["CompCert ccomp"]
     ROCQ["Rocq composition rocq/Clight2Asm.v<br/>CompCert's simulations from Clight to Asm"]
@@ -36,31 +36,31 @@ flowchart TB
   subgraph WASMB["WebAssembly backend"]
     CW["compileWith<br/>universal theorem Prog.correctStaticWith"]
     CWW["WASI compiler<br/>EffectProg.correctWith"]
-    MOD["Wasm.Module in Talos's semantics<br/>V: p.f.implements, p.f.bound, p.f.trapFree"]
-    MODW["Wasm.Module with WASI Preview 1 imports<br/>I: p.f.implements, p.start, p.f.total, p.total"]
+    MOD["Wasm.Module in Talos's semantics<br/>WASM: p.f.implements, p.f.bound, p.f.trapFree"]
+    MODW["Wasm.Module with WASI Preview 1 imports<br/>WASI: p.f.implements, p.start, p.f.total, p.total"]
     ENC["encode, with decode_encode<br/>tools/Emit.lean writes the file"]
-    WASMF[".wasm file<br/>F: NAME_file, NAME_file_decode<br/>for the modules of the registry"]
+    WASMF[".wasm file<br/>WASMF: NAME_file, NAME_file_decode<br/>for the modules of the registry"]
   end
 
   subgraph A64B["AArch64 backend"]
     GEN["LeanExe/A64 genProgram<br/>simulation theorem program_sim<br/>in a Lean model of the machine"]
-    IMG["genImage: startup, program, translation table<br/>M: image_run_at, from boot_startupOff,<br/>the run from boot to SYSTEM_OFF"]
+    IMG["genImage: startup, program, translation table<br/>A64: image_run_at, from boot_startupOff,<br/>the run from boot to SYSTEM_OFF"]
     IMGF["arm64 Image file<br/>a64-programs emit writes it,<br/>and the kernel compares its bytes"]
     ISLA["Isla traces of Arm's Sail model<br/>Lean proofs compare the model's<br/>instruction forms with them"]
   end
 
   subgraph M7B["Cortex-M7 backend"]
     M7GEN["LeanExe/M7 genProgram<br/>the step of a program with requests<br/>simulation theorem step_call<br/>in a Lean model of the Cortex-M7"]
-    M7IMG["Vector table, the area's setup,<br/>initialization, main, step, udivmod64<br/>T: board_run and areaBoard_run,<br/>every window of the run from reset"]
+    M7IMG["Vector table, the area's setup,<br/>initialization, main, step, udivmod64<br/>M7: board_run and areaBoard_run,<br/>every window of the run from reset"]
     M7F["Flash image file<br/>m7-windows writes it,<br/>and the kernel compares its bytes"]
     M7ISLA["Isla traces of Arm's A-profile Sail model<br/>in AArch32 Thumb state: Lean proofs<br/>compare the Thumb forms with them"]
   end
 
   subgraph GPU["GPU backends"]
-    WG["Verified.WGSL.compile<br/>G: dispatch theorems, Dispatch.executions<br/>under the Vulkan memory model"]
+    WG["Verified.WGSL.compile<br/>WGSL: dispatch theorems, Dispatch.executions<br/>under the Vulkan memory model"]
     WGM["LeanExe.WGSL.Module<br/>tools/EmitWgsl.lean prints the .wgsl text,<br/>and the proved parser reads it back"]
     HOST["Host programs: generate_host composes<br/>the GPT-2 kernels' theorems on either device"]
-    PT["Verified.PTX.compile<br/>P: launch theorems, Kernel.executions_eq<br/>under the PTX memory model"]
+    PT["Verified.PTX.compile<br/>PTX: launch theorems, Kernel.executions_eq<br/>under the PTX memory model"]
     PTM["LeanExe.PTX.Module<br/>tools/EmitPtx.lean prints the .ptx text,<br/>and the proved parser reads it back"]
     PTXAS["ptxas -O3 --fmad=false<br/>writes a cubin"]
   end
