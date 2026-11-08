@@ -96,6 +96,7 @@ import LeanExe.M7.Proof.Bounds
 import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Call
 import LeanExe.M7.Proof.Constructs
+import LeanExe.M7.Proof.Control
 import LeanExe.M7.Proof.Div
 import LeanExe.M7.Proof.Forms
 import LeanExe.M7.Proof.Function
@@ -418,6 +419,7 @@ import LeanExe.PTX.Runs
 import LeanExe.PTX.Semantics
 import LeanExe.PTX.Syntax
 import LeanExe.PTX.Translate
+import LeanExe.Requests.Reads
 import LeanExe.Requests.Records
 import LeanExe.Requests.Windows
 import LeanExe.Runtime.Defs

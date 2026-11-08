@@ -1,6 +1,7 @@
 import F7.FPAdd
 import F7.FPSub
 import F7.FPMul
+import F7.FPDiv
 import F7.FPSqrt
 import F7.FixedToFP
 import LeanExe.A64.Isla.Float
@@ -21,11 +22,11 @@ rests on three claims: the IR's `zFPAdd64` returns `zFPAdd`'s result at 64 bits
 111345b, computes what the translation's FPAdd, from sail-arm 7d0581642, computes; and Isla's state
 at each abstract call, read as a register map of the translation, satisfies `Hyp`.
 `fpAddEq_of_sail` derives `FPAddEq A` from `SailFPAdd A` and `fpAdd_eq_f64Add`, converting between
-`UInt64` and `BitVec 64`, and `fpSubEq_of_sail`, `fpMulEq_of_sail`, `fpSqrtEq_of_sail`, and
-`fixedToFPEq_of_sail` derive `FPSubEq`, `FPMulEq`, `FPSqrtEq`, and `FixedToFPEq` in the same way.
-The link `SailFixedToFP` also reads two of Isla's argument values: the integer `fbits` 0 of the
-model, which Isla passes as the 128-bit vector 0, and the rounding mode, which Isla passes as the
-enumeration member `FPRounding_TIEEVEN` by name.
+`UInt64` and `BitVec 64`, and `fpSubEq_of_sail`, `fpMulEq_of_sail`, `fpDivEq_of_sail`,
+`fpSqrtEq_of_sail`, and `fixedToFPEq_of_sail` derive `FPSubEq`, `FPMulEq`, `FPDivEq`, `FPSqrtEq`,
+and `FixedToFPEq` in the same way.  The link `SailFixedToFP` also reads two of Isla's argument
+values: the integer `fbits` 0 of the model, which Isla passes as the 128-bit vector 0, and the
+rounding mode, which Isla passes as the enumeration member `FPRounding_TIEEVEN` by name.
 
 The derivation needs a state that satisfies `Hyp`.  `islaState p u` builds one from the profile `p`
 of `LeanExe/A64/Isla/Profile.lean` and its unknown values `u`: FeatureImpl from the values of the
@@ -199,6 +200,20 @@ def SailFPSub (A : Abstract) : Prop :=
 theorem fpSubEq_of_sail (A : Abstract) (h : SailFPSub A) : LeanExe.A64.Isla.FPSubEq A := by
   intro a b
   obtain ⟨s', hrun, -, -⟩ := fpSub_eq_f64Sub a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV] at e
+  exact e
+
+/-- The link between the abstract call `FPDiv64` and the translation's FPDiv at 64 bits under FPCR
+0x02000000, which review supports. -/
+def SailFPDiv (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 64) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr v : BitVec 64)
+    (s' : State), Hyp s.regs fi ps fpsr → (FPDiv a b fpcrV).run s = .ok v s' →
+    A "FPDiv64" [.bits 64 a.toNat, .bits 64 b.toNat, islaFPCR fpcrV] = some (.bits 64 v.toNat)
+
+theorem fpDivEq_of_sail (A : Abstract) (h : SailFPDiv A) : LeanExe.A64.Isla.FPDivEq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpDiv_eq_f64Div a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV] at e
   exact e

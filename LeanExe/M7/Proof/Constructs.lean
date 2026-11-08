@@ -1,18 +1,24 @@
 import LeanExe.M7.Proof.Call
 import LeanExe.M7.Proof.Access
+import LeanExe.M7.Proof.Control
 import LeanExe.ProofKit.Exec
+import Interpreter.Wasm.Semantics.Lemmas
 
 /-!
-The simulation of instruction lists and of `if`, as `LeanExe/A64/Proof/Constructs.lean` states it
-for the AArch64 back end.  The generator places an `if`'s branch past the `then` code and its end
-at the addresses that `instrSize` and `listSize` compute before it emits the bodies, so the proofs
-rest on `genList_size`: the code of a covered list has the length that `listSize` computes, and
-every instruction of it takes 4 bytes.  `construct_outcome` gives the outcome of a construct from
-its body's: a fall-through and a branch to the construct reach the construct's end with the
-values that it keeps over the stack of its entry, a branch further out and a return pass through,
-and `Inv.of_kept` rebuilds the relation at a branch's target.  `list_sim` proves the simulation of
-every covered list at every fuel by strong induction on the fuel, the fuel at which Talos runs a
-construct's body and a call's callee being one less.
+The simulation of instruction lists and of `block`, `loop`, and `if`, as
+`LeanExe/A64/Proof/Constructs.lean` states it for the AArch64 back end.  The generator places a
+block's end, an `if`'s branch past the `then` code, and its end at the addresses that `instrSize`
+and `listSize` compute before it emits the bodies, so the proofs rest on `genList_size`: the code
+of a covered list has the length that `listSize` computes, and every instruction of it takes 4
+bytes.  A block and a loop emit no code of their own, and a branch to a loop targets the loop's
+first instruction.  `construct_outcome` gives the outcome of a construct from its body's: a
+fall-through and a branch to the construct reach the construct's end with the values that it
+keeps over the stack of its entry, a branch further out and a return pass through, and
+`Inv.of_kept` rebuilds the relation at a branch's target.  `sim_loop` proves a loop by induction on
+the fuel, since a branch to the loop's head runs the loop again at one less fuel from the stack of
+its entry.  `list_sim` proves the simulation of every covered list at every fuel by strong
+induction on the fuel, the fuel at which Talos runs a construct's body and a call's callee being
+one less.
 -/
 
 namespace LeanExe.M7
@@ -138,6 +144,56 @@ theorem gen_iff {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32} {
     hti, hei, any_ne (not_or.mp hends).1, any_ne (not_or.mp hends).2, q1, q2, q3, q4, b1, b2, b3,
     b4, by simp⟩
 
+theorem gen_block {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32} {pa ra : Nat}
+    {body : List Instruction} {pts rts : List ValueType} {is : List Instr}
+    {fin : Option (List ValueType)}
+    (hg : genInstr E ctl σs a (.block pa ra body pts rts) = .ok (is, fin)) :
+    let n := (listSize (sigOf E.callee) (ra :: ctl.map (·.arity)) σs.length body).1
+    pa = 0 ∧ ra ≤ 1 ∧ rts.length = ra ∧ fin = some (rts.reverse ++ σs) ∧ ∃ fb,
+      genList E ({ target := after a n, types := rts.reverse, base := σs.length } :: ctl) σs a
+        body = .ok (is, fb) ∧ ∀ x, fb = some x → x = rts.reverse ++ σs := by
+  intro n
+  by_cases hc : pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra
+  · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  have hpa : pa = 0 := by omega
+  have hra : ¬ ra > 1 := by omega
+  have hrl : rts.length = ra := by omega
+  subst hpa
+  simp [genInstr, hra, hrl, bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at hg
+  split at hg
+  · cases hg
+  rename_i v hl
+  split at hg
+  · cases hg
+  rename_i hend
+  cases hg
+  exact ⟨rfl, by omega, hrl, rfl, v.2, hl, any_ne hend⟩
+
+theorem gen_loop {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32} {pa ra : Nat}
+    {body : List Instruction} {pts rts : List ValueType} {is : List Instr}
+    {fin : Option (List ValueType)}
+    (hg : genInstr E ctl σs a (.loop pa ra body pts rts) = .ok (is, fin)) :
+    pa = 0 ∧ ra ≤ 1 ∧ rts.length = ra ∧ fin = some (rts.reverse ++ σs) ∧ ∃ fb,
+      genList E ({ target := a, types := [], base := σs.length } :: ctl) σs a body =
+        .ok (is, fb) ∧ ∀ x, fb = some x → x = rts.reverse ++ σs := by
+  by_cases hc : pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra
+  · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  have hpa : pa = 0 := by omega
+  have hra : ¬ ra > 1 := by omega
+  have hrl : rts.length = ra := by omega
+  subst hpa
+  simp [genInstr, hra, hrl, bind, Except.bind, pure, Except.pure, throw, throwThe,
+    MonadExceptOf.throw] at hg
+  split at hg
+  · cases hg
+  rename_i v hl
+  split at hg
+  · cases hg
+  rename_i hend
+  cases hg
+  exact ⟨rfl, by omega, hrl, rfl, v.2, hl, any_ne hend⟩
+
 @[simp] theorem Ctl.arity_mk (tg : UInt32) (ts : List ValueType) (b : Nat) :
     (Ctl.mk tg ts b).arity = ts.length := rfl
 
@@ -170,7 +226,8 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : 
       refine ⟨by simp [instrSize, movPair, movConst_length, constSize]; omega, rfl, ?_⟩
       simp only [movPair, List.all_append, movConst_wide, Bool.true_and]
       rfl
-  | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64 =>
+  | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64
+  | geUI64 =>
       simp only [genInstr] at hg
       obtain ⟨hb2, -, -, -, -, -, -, -, rfl, rfl⟩ := gen_bin hg
       exact ⟨by simp [instrSize, eqOps, geOps, leOps], by simp [instrSize]; omega, rfl⟩
@@ -225,6 +282,49 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : 
         omega
       · simp only [List.all_append, st.2, se.2]
         rfl
+  | br n =>
+      obtain ⟨t, ht, hbr, rfl⟩ := gen_br hg
+      obtain ⟨-, -, -, moves, ob, hmv, -, -, -, -, rfl⟩ := gen_branchTo hbr
+      rcases hmv with ⟨h0, rfl⟩ | ⟨h1, -, -, -, -, -, -, rfl⟩
+      · exact ⟨by simp [instrSize, ht, h0], by simp [instrSize], rfl⟩
+      · exact ⟨by simp [instrSize, ht, h1], by simp [instrSize], rfl⟩
+  | ret =>
+      obtain ⟨t, ht, hbr, rfl⟩ := gen_ret hg
+      obtain ⟨-, -, -, moves, ob, hmv, -, -, -, -, rfl⟩ := gen_branchTo hbr
+      rcases hmv with ⟨h0, rfl⟩ | ⟨h1, -, -, -, -, -, -, rfl⟩
+      · exact ⟨by simp [instrSize, List.getLast?_map, ht, h0], by simp [instrSize], rfl⟩
+      · exact ⟨by simp [instrSize, List.getLast?_map, ht, h1], by simp [instrSize], rfl⟩
+  | br_if n =>
+      obtain ⟨hb1, -, -, rfl, t, hc, ht, hcase⟩ := gen_br_if hg
+      refine ⟨?_, by simp [instrSize] <;> omega, ?_⟩
+      · rcases hcase with ⟨h0, oq, -, -, -, -, rfl⟩ | ⟨h0, oq, bs, -, -, -, -, hbt, rfl⟩
+        · simp [instrSize, ht, h0]
+        · obtain ⟨-, ha1, -, moves, ob, hmv, -, -, -, -, rfl⟩ := gen_branchTo hbt
+          rcases hmv with ⟨h0', -⟩ | ⟨h1, -, -, -, -, -, -, rfl⟩
+          · omega
+          · simp [instrSize, ht, h1]
+      · rcases hcase with ⟨h0, oq, -, -, -, -, rfl⟩ | ⟨h0, oq, bs, -, -, -, -, hbt, rfl⟩
+        · rfl
+        · obtain ⟨-, ha1, -, moves, ob, hmv, -, -, -, -, rfl⟩ := gen_branchTo hbt
+          rcases hmv with ⟨h0', rfl⟩ | ⟨h1, -, -, -, -, -, -, rfl⟩ <;> rfl
+  | block pa ra body pts rts =>
+      obtain ⟨rfl, -, hrl, rfl, fb, hl, -⟩ := gen_block hg
+      simp only [coveredInstr] at hcov
+      have sb := ih _ _ _ body is fb (by simp; omega) hcov hl
+      simp only [List.map_cons, Ctl.arity_mk, List.length_reverse, hrl] at sb
+      refine ⟨by simp only [instrSize]; exact sb.1, ?_, sb.2⟩
+      simp only [instrSize, Option.map_some, List.length_append, List.length_reverse, hrl]
+      congr 1
+      omega
+  | loop pa ra body pts rts =>
+      obtain ⟨rfl, -, hrl, rfl, fb, hl, -⟩ := gen_loop hg
+      simp only [coveredInstr] at hcov
+      have sb := ih _ _ _ body is fb (by simp; omega) hcov hl
+      simp only [List.map_cons, Ctl.arity_mk, List.length_nil] at sb
+      refine ⟨by simp only [instrSize]; exact sb.1, ?_, sb.2⟩
+      simp only [instrSize, Option.map_some, List.length_append, List.length_reverse, hrl]
+      congr 1
+      omega
   | call k =>
       obtain ⟨target, ps, rs, hk, hbp, -, -, args, res, off, hal, hargs, -, hrl, hres, -, -, -, -, -,
         rfl, rfl⟩ := gen_call hg
@@ -296,7 +396,8 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
   | localSet i =>
       obtain ⟨h1, _, _, _, _, _, _, _, _, _, he⟩ := gen_localSet hg; cases he; simp; omega
   | constI64 v => obtain ⟨_, _, _, _, he⟩ := gen_constI64 hg; cases he; simp; omega
-  | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64 =>
+  | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64
+  | geUI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, -, -, -, -, -, -, -, -, he⟩ := gen_bin hg
       cases he; simp; omega
@@ -325,6 +426,17 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
       cases he; simp; omega
   | iff pa ra thn els pts rts =>
       obtain ⟨_, _, _, h1, _, _, he, _⟩ := gen_iff hg
+      cases he; simp; omega
+  | br n => obtain ⟨_, _, _, he⟩ := gen_br hg; cases he
+  | ret => obtain ⟨_, _, _, he⟩ := gen_ret hg; cases he
+  | br_if n =>
+      obtain ⟨h1, _, _, he, _⟩ := gen_br_if hg
+      cases he; simp; omega
+  | block pa ra body pts rts =>
+      obtain ⟨_, _, _, he, _⟩ := gen_block hg
+      cases he; simp; omega
+  | loop pa ra body pts rts =>
+      obtain ⟨_, _, _, he, _⟩ := gen_loop hg
       cases he; simp; omega
   | call k =>
       obtain ⟨_, _, _, _, hbp, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, he⟩ := gen_call hg
@@ -433,30 +545,6 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, coveredInstr inst = true → InstrSim
         | _ => intro hi; exact hi
 
 /-! ## Results of constructs -/
-
-theorem ValAt.of_mem {s t : State} {o : Nat} {v : Value} (h : ValAt s o v) (hsp : t.sp = s.sp)
-    (hmem : t.mem = s.mem) : ValAt t o v :=
-  h.congr hsp ⟨by rw [hmem], by rw [hmem]⟩
-
-theorem Below.of_mem {fr : Frame} {b : Nat} {s t : State} (hmem : t.mem = s.mem) :
-    Below fr b s t :=
-  fun _ _ => ⟨by rw [hmem], by rw [hmem]⟩
-
-/-- The relation after the pop of the top `v` of the stack `v :: vs`, at a state with the SP and
-the memory of `ms`. -/
-theorem Inv.pop {E : Env} {σs : List ValueType} {sl : Locals} {ms ms1 : State} {v : Value}
-    {vs : List Value} (hinv : Inv P E σs sl ms) (hv : sl.values = v :: vs) (hsp : ms1.sp = ms.sp)
-    (hmem : ms1.mem = ms.mem) : Inv P E σs.tail { sl with values := vs } ms1 := by
-  have hh := hinv.height
-  rw [hv] at hh
-  refine ⟨by simp at hh ⊢; omega, fun h v' hv' => ?_, hinv.count,
-    fun i v' o h1 h2 => (hinv.locals i v' o h1 h2).of_mem hsp hmem, hinv.ltypes,
-    hinv.frame.congr hsp, ?_⟩
-  · have hl : h < vs.length := getElem?_reverse_lt hv'
-    exact (hinv.stack h v' (by rw [hv, getElem?_reverse_cons hl]; exact hv')).of_mem hsp hmem
-  · have h1 := hinv.types
-    rw [hv] at h1
-    exact h1.tail
 
 /-- The values that a branch to `t` carries, read through the reverse of their prefix. -/
 theorem Kept.valAt {fr : Frame} {t : Ctl} {vs : List Value} {s : State} (h : Kept fr t vs s)
@@ -759,6 +847,95 @@ theorem sim_zero (inst : Instruction) : InstrSim P σ code 0 inst := by
   rw [ProofKit.execOne_zero]
   trivial
 
+/-! ## `block` and `loop` -/
+
+theorem sim_block {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (body : List Instruction)
+    (pts rts : List ValueType) (hcov : coveredList body = true) :
+    InstrSim P σ code (f + 1) (.block pa ra body pts rts) := by
+  intro E ctl σs a is fin hgen hcode hev hdiv hb hctl α m st sl ms hinv hsr hpc hal need D hcl hD
+    hroom
+  obtain ⟨rfl, -, hrl, rfl, fb, hl, hfb⟩ := gen_block hgen
+  have hn := (genList_size _ σs a body is fb hcov hl).1
+  simp only [List.map_cons, Ctl.arity_mk, List.length_reverse, hrl] at hn
+  let t : Ctl := { target := after a is.length, types := rts.reverse, base := σs.length }
+  have hl' : genList E (t :: ctl) σs a body = .ok (is, fb) := by
+    show genList E ({ target := after a is.length, types := rts.reverse, base := σs.length } ::
+      ctl) σs a body = _
+    rw [hn]
+    exact hl
+  have ho := hP E (t :: ctl) σs a body is fb hcov hl' hcode hev hdiv (Nat.le_refl _)
+    (hctl.push hb) m st sl ms hinv hsr hpc
+    (fun h => ⟨(hal h).1, alignedOne_block (hal h).2⟩) need D (CallsOk.mono P σ code hcl (by omega))
+    (fun j hj => hD j (by simpa [callsOf] using hj)) hroom
+  rw [ProofKit.execOne_block, List.drop_zero]
+  exact construct_outcome (t := t) (below := sl.values) (σb := σs)
+    (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl hb rfl hinv.frame
+    hinv.stack hinv.types hinv.len (.refl _) rfl rfl rfl rfl hfb
+    (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho
+
+/-- The simulation of a loop at every fuel up to `F`, by induction on the fuel: a branch back to
+the loop's head reaches the head with the stack of the loop's entry, from which the loop runs again
+at one less fuel. -/
+theorem sim_loop {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (pa ra : Nat)
+    (body : List Instruction) (pts rts : List ValueType) (hcov : coveredList body = true) :
+    InstrSim P σ code F (.loop pa ra body pts rts) := by
+  suffices key : ∀ g, g ≤ F → InstrSim P σ code g (.loop pa ra body pts rts) from
+    key F (Nat.le_refl _)
+  intro g
+  induction g with
+  | zero => exact fun _ => sim_zero _
+  | succ f ih =>
+      intro hf E ctl σs a is fin hgen hcode hev hdiv hb hctl α m st sl ms hinv hsr hpc hal need D
+        hcl hD hroom
+      obtain ⟨rfl, -, hrl, rfl, fb, hl, hfb⟩ := gen_loop hgen
+      let t : Ctl := { target := a, types := [], base := σs.length }
+      have hD' : ∀ j ∈ callsIn body, need j ≤ D := fun j hj => hD j (by simpa [callsOf] using hj)
+      have ho := hP f (by omega) E (t :: ctl) σs a body is fb hcov hl hcode hev hdiv
+        (Nat.le_refl _) (hctl.push hb) m st sl ms hinv hsr hpc
+        (fun h => ⟨(hal h).1, (alignedOne_loop (hal h).2).1⟩) need D
+        (CallsOk.mono P σ code hcl (by omega)) hD' hroom
+      rw [execOne_loop_succ f m st sl {} 0 ra body pts rts]
+      revert ho
+      cases hex : Wasm.exec f m st sl body with
+      | Fallthrough st' sl' =>
+          intro ho
+          let t2 : Ctl := { target := after a is.length, types := rts.reverse, base := σs.length }
+          exact construct_outcome (t := t2) (r := .Fallthrough st' sl') (below := sl.values)
+            (σb := σs) (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl hb
+            rfl hinv.frame hinv.stack hinv.types hinv.len (.refl _) rfl rfl rfl rfl hfb
+            (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho
+      | Break k st' sl' =>
+          intro ho
+          obtain ⟨t', ht', ms', hr, hp, hsp, htr, hrd, hk, hbl, hloc, hkt, hsr'⟩ := ho
+          cases k with
+          | zero =>
+              have ht0 : t' = t := by simpa using ht'.symm
+              subst ht0
+              have hinv2 : Inv P E σs
+                  { sl' with values := sl'.values.take 0 ++ sl.values.drop 0 } ms' :=
+                ⟨hinv.height, fun h v hv => (hinv.stack h v hv).congr hsp
+                  (hbl h (by
+                    have := getElem?_reverse_lt (l := sl.values) hv
+                    rw [hinv.len] at this; exact this)),
+                  hloc.count, hloc.vals, hloc.types, hinv.frame.congr hsp, hinv.types⟩
+              have ho2 := ih (by omega) E ctl σs a is _ hgen hcode hev hdiv hb hctl m st' _ ms'
+                hinv2 hsr' hp (fun h => ⟨(hal h).1, (alignedOne_loop (hal h).2).2 st' sl' hex⟩)
+                need D (CallsOk.mono P σ code hcl (by omega)) hD
+                (by unfold room at *; rw [hsp]; exact hroom)
+              exact Outcome.trans hctl hr hsp htr hrd hk (hbl.mono hb) ho2
+          | succ k =>
+              exact ⟨t', by simpa using ht', ms', hr, hp, hsp, htr, hrd, hk, hbl, hloc, hkt,
+                hsr'⟩
+      | Return st' vs =>
+          intro ho
+          obtain ⟨t', ht', rest⟩ := ho
+          exact ⟨t', by rwa [getLast?_push hctl.nonempty] at ht', rest⟩
+      | Trap _ _ => intro; trivial
+      | Invalid _ => intro; trivial
+      | OutOfFuel => intro; trivial
+      | ReturnCall _ _ _ => intro ho; exact ho.elim
+      | Throwing _ _ _ _ => intro ho; exact ho.elim
+
 /-- The simulation of every covered instruction at fuel `F`, given that of covered lists at every
 fuel below `F`. -/
 theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (inst : Instruction)
@@ -777,6 +954,7 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (inst : Instru
   case neI64 => exact sim_neI64 F
   case ltUI64 => exact sim_ltUI64 F
   case leUI64 => exact sim_leUI64 F
+  case geUI64 => exact sim_geUI64 F
   case eqzI64 => exact sim_eqzI64 F
   case extendUI32 => exact sim_extendUI32 F
   case wrapI64 => exact sim_wrapI64 F
@@ -793,6 +971,14 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (inst : Instru
     cases F with
     | zero => exact sim_zero _
     | succ f => exact sim_iff (hP f (by omega)) pa ra thn els pts rts hcov.1 hcov.2
+  case br n => exact sim_br F n
+  case br_if n => exact sim_br_if F n
+  case ret => exact sim_ret F
+  case block pa ra body pts rts =>
+    cases F with
+    | zero => exact sim_zero _
+    | succ f => exact sim_block (hP f (by omega)) pa ra body pts rts hcov
+  case loop pa ra body pts rts => exact sim_loop hP pa ra body pts rts hcov
   case call k =>
     cases F with
     | zero => exact sim_zero _

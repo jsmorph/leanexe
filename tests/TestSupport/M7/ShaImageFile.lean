@@ -1,3 +1,4 @@
+import TestSupport.M7.ShaStep
 import TestSupport.M7.Windows
 
 /-!
@@ -6,8 +7,8 @@ writes.  `tests/baremetal/m7-image.sh` elaborates this file in the directory of 
 `file_nat%` and `file_size%` read it, and no build target includes it.  The kernel evaluates
 `genProgram` on `shaUsart3Tick`'s module and index, the words of `shaInit`, the code's base, the
 stack's limit at the area's end, the device window, and the code of `udivmod64`, and checks that
-the file's bytes are those of the generated instructions.  No theorem states the behavior of these
-instructions, since the simulation does not cover the forms of `compress`'s loop.
+the file's bytes are those of the generated instructions.  The instructions are those of which
+`sha_step` states the call of the step.
 -/
 
 namespace TestSupport.M7.ShaImageFile
@@ -32,3 +33,6 @@ theorem sha_image : ∃ is, genProgram shaStepCompiled.module 13 (shaWords shaIn
 end TestSupport.M7.ShaImageFile
 
 #print axioms TestSupport.M7.ShaImageFile.sha_image
+#print axioms TestSupport.M7.sha_step
+#print axioms TestSupport.M7.sha_stack
+#print axioms TestSupport.M7.sha_covered

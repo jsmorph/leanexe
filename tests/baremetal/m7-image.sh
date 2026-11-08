@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # The kernel's checks of the Cortex-M7 code of the echo, of the gateway, of the CRC-32 step, and of
 # the SHA-256 step.  It builds m7-windows, the step theorems of tests/TestSupport/M7/Step.lean,
-# GwStep.lean, and CrcStep.lean, the gateway's sizes and loop theorems of GwImages.lean and
-# GwLoop.lean, and the parts' theorems of LeanExe/M7/Proof/Parts.lean, writes the bytes of the
-# programs that LeanExe/M7/Gen.lean generates for usart3Tick, gwTickUsart3, crcUsart3Tick, and
-# shaUsart3Tick with m7-windows image, and elaborates tests/TestSupport/M7/ImageFile.lean,
-# GwImageFile.lean, CrcImageFile.lean, and ShaImageFile.lean in the directory of those files, so
-# that the kernel checks that each file holds the generated instructions' bytes, the gateway's in
-# parts.  No theorem states the behavior of the SHA-256 step's code.
+# GwStep.lean, CrcStep.lean, and ShaStep.lean, the gateway's sizes and loop theorems of
+# GwImages.lean and GwLoop.lean, and the parts' theorems of LeanExe/M7/Proof/Parts.lean, writes the
+# bytes of the programs that LeanExe/M7/Gen.lean generates for usart3Tick, gwTickUsart3,
+# crcUsart3Tick, and shaUsart3Tick with m7-windows image, and elaborates
+# tests/TestSupport/M7/ImageFile.lean, GwImageFile.lean, CrcImageFile.lean, and ShaImageFile.lean
+# in the directory of those files, so that the kernel checks that each file holds the generated
+# instructions' bytes, the gateway's in parts.
 # A memory cap of MEM, 16G unless set, bounds the build and each check.  It requires that the
 # checks, the step theorems, and the parts' theorems depend on no axiom beyond propext,
 # Classical.choice, and Quot.sound, and reports each check's elapsed time and peak memory.  The
@@ -21,8 +21,8 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/m7-image}")
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-16G}" lake --log-level error build m7-windows \
-  TestSupport.M7.Step TestSupport.M7.GwLoop TestSupport.M7.CrcStep TestSupport.M7.Windows \
-  LeanExe.M7.Proof.Parts
+  TestSupport.M7.Step TestSupport.M7.GwLoop TestSupport.M7.CrcStep TestSupport.M7.ShaStep \
+  TestSupport.M7.Windows LeanExe.M7.Proof.Parts
 status=0
 # check NAME FILE COUNT: writes program NAME to NAME.bin, elaborates FILE.lean beside it, and
 # requires COUNT lines that name the three axioms alone.
@@ -43,5 +43,5 @@ check() {
 check echo-usart3 ImageFile 5
 check gateway-usart3 GwImageFile 7
 check crc-usart3 CrcImageFile 5
-check sha-usart3 ShaImageFile 1
+check sha-usart3 ShaImageFile 4
 exit "$status"

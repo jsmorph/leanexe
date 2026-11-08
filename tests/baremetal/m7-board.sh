@@ -25,9 +25,10 @@
 # reset, reads the area's 69,632 bytes from DTCM at 0x20000000 over SWD into area.read, and
 # requires them to equal area.expected.
 #
-# For NAME sha, "m7-board.sh check sha" builds m7-windows and tests/TestSupport/M7/ShaImages.lean
-# and writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, without a
-# kernel check: no theorem covers the image.
+# For NAME sha, "m7-board.sh check sha" builds m7-windows and tests/TestSupport/M7/ShaLoop.lean,
+# writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, and
+# elaborates tests/TestSupport/M7/ShaBoardFile.lean under 16G unless MEM is set, whose sha_board
+# states that the bytes written begin the SHA-256 digests of the blocks read.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -205,7 +206,8 @@ case $1 in
         mem=${MEM:-12G} ;;
       crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=14
         mem=${MEM:-12G} ;;
-      sha) lib=TestSupport.M7.ShaImages cmd=sha-board dwt= file= count=0 mem=${MEM:-12G} ;;
+      sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt= file=ShaBoardFile count=16
+        mem=${MEM:-16G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
     [ -z "$file" ] || rm -f "${out:?}/$file".*
@@ -214,8 +216,6 @@ case $1 in
     if [ "$name" = sha ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
         tee "$out/$name.addr"
-      echo "unproved: $name.bin, $(stat -c %s "$out/$name.bin") bytes, without a kernel check"
-      exit 0
     elif [ "$name" = area ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" \
         "$out/$name.expected" | tee "$out/$name.addr"
