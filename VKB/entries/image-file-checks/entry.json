@@ -1,0 +1,50 @@
+{
+  "id": "image-file-checks",
+  "goals": [
+    "LeanExe.A64.bytesOk (LeanExe.A64.genImage m k args room cap o imageBase) n len = true",
+    "LeanExe.M7.bootFileOk boot program n len = true",
+    "LeanExe.M7.fileOk (genProgram m k s0 base limit dev udivmod64) n len = true",
+    "LeanExe.M7.functionsPartOk m k s0 base limit ns n off lo hi = true",
+    "file_nat% \"NAME.img\"",
+    "memory exhaustion in the kernel's check of an image file"
+  ],
+  "modules": [
+    "LeanExe.FileNat",
+    "LeanExe.CallGraph",
+    "LeanExe.A64.File",
+    "LeanExe.A64.BootImage",
+    "LeanExe.M7.Boot",
+    "LeanExe.M7.Image",
+    "LeanExe.M7.Parts",
+    "LeanExe.M7.Proof.Parts",
+    "TestSupport.M7.GwLoop"
+  ],
+  "declarations": [
+    "LeanExe.FileNat.natOfBytes",
+    "LeanExe.FileNat.natOfBytesPaired",
+    "LeanExe.FileNat.natOfBytesPaired_eq",
+    "LeanExe.FileNat.byteAt",
+    "LeanExe.FileNat.byteAt_natOfBytes",
+    "LeanExe.CallGraph.reachFrom",
+    "LeanExe.A64.genImage",
+    "LeanExe.A64.bytesOk",
+    "LeanExe.A64.of_bytesOk",
+    "LeanExe.M7.bootFileOk",
+    "LeanExe.M7.fileOk",
+    "LeanExe.M7.fileOk_ok",
+    "LeanExe.M7.sliceOk",
+    "LeanExe.M7.reachedFns",
+    "LeanExe.M7.bootHeadOk",
+    "LeanExe.M7.mainPartOk",
+    "LeanExe.M7.functionPartOk",
+    "LeanExe.M7.functionsPartOk",
+    "LeanExe.M7.tailPartOk",
+    "LeanExe.M7.functionsPartOk_append",
+    "LeanExe.M7.fileOk_parts",
+    "LeanExe.M7.bootFileOk_parts"
+  ],
+  "examples": [
+    "TestSupport.M7.Gw.gwSizes",
+    "TestSupport.M7.Gw.gw_count"
+  ]
+}
