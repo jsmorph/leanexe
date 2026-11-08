@@ -60,7 +60,7 @@ def islaRegs (p : Profile) (u : Unknown) : Std.ExtDHashMap Register RegisterType
 /-- A state of the translation with the registers of `islaRegs`. -/
 def islaState (p : Profile) (u : Unknown) : State := { (default : State) with regs := islaRegs p u }
 
-attribute [local irreducible] trivialChoiceSource Real.instInhabited
+attribute [local irreducible] trivialChoiceSource Real.instInhabited unspecReal
 
 theorem islaRegs_get (p : Profile) (u : Unknown) :
     (islaRegs p u).get? Register.FeatureImpl = some (featureImpl p.features.impl u.feature) ∧
@@ -168,9 +168,3 @@ theorem fpAddEq_of_sail (A : Abstract) (h : SailFPAdd A) : LeanExe.A64.Isla.FPAd
   exact e
 
 end F7
-
-#print axioms F7.fpAddEq_of_sail
-#print axioms F7.hyp_tcg
-#print axioms F7.hyp_kvm
-#print axioms F7.hyp_sme
-#print axioms F7.names_sme

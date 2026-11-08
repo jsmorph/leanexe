@@ -188,12 +188,16 @@ enumeration members from the choice source, and reals from `undefined_real`, whi
 `default` (`Armv9fp/Real.lean`) and does not consult the choice source.  The type `SailM` fixes
 the choice source to lean-sail's `trivialChoiceSource`, which answers `false` and 0, and Mathlib's
 `default : ℝ` is 0, so each theorem speaks of the translation with these values.  The proofs keep
-`trivialChoiceSource` and the instance `Real.instInhabited` irreducible, and `sail_simp` steps
-over each draw with `bind_choose` and `bind_undefined_real`, never unfolding `undefined_real`.
-Every drawn value thus stays a term that no step evaluates, and each proof ends with a result and a
-register map free of such terms.  That a theorem would hold for another choice source or another
-unspecified real is a property of how its proof was built, which the kernel's check of the
-statement does not establish.
+`trivialChoiceSource`, the instance `Real.instInhabited`, and `unspecReal`, the real that
+`undefined_real` returns, irreducible, and `sail_simp` steps over each draw with `bind_choose` and
+`bind_undefined_real`, never unfolding `undefined_real`.  Every drawn value thus stays a term that
+no step evaluates, and each proof ends with a result and a register map free of such terms.  That
+a theorem would hold for another choice source is a property of how its proof was built, which the
+kernel's check of the statement does not establish.  For the reals the check below establishes
+more: it also elaborates the proofs against a variant of the translation whose `undefined_real`
+returns `opaqueReal`, an `opaque` constant whose value the kernel cannot unfold.  The theorems
+check there with the same statements, so their proofs use no property of the unspecified real,
+and they hold for every value of it.
 
 ## Tests
 
@@ -289,6 +293,31 @@ that the line of each `features` file at the index `num_of_Feature F` names `F`,
 that the proofs read: FEAT_AA64EL0 to FEAT_AA64EL3, FEAT_AFP, FEAT_SME, FEAT_SME_FA64, FEAT_VHE,
 and FEAT_SEL2.  The theorems depend on `propext`, `Classical.choice`, and `Quot.sound` only.
 
+## The check
+
+[`check.sh`](check.sh) regenerates the translation from pinned inputs and checks the proofs
+against it, on a host with Sail 0.20.3 in the opam switch `sail-0.20.3`, a scratch copy of the
+repository whose `.lake/packages` are built, sail-arm at `7d0581642`, and lean-sail at `v6`.  It
+copies the model files that `translate.sh` reads and lean-sail's sources into a new work
+directory, applies `lean-sail-v6.diff`, and translates the slice with the options of the
+real-number translation.  It compares the SHA-256 hashes of the model files, of lean-sail's
+sources after the patch, of every generated file, and of the files after `fix-output.sh` with
+[`check.sha256`](check.sha256), and fails on a difference; `--record` writes the file instead.
+It then builds the translation and the library `F7` of [`F7/`](F7/) in the copy, whose lakefile
+gains the libraries `Sail`, `Armv9fp`, and `F7`, first with `undefined_real` returning the
+opaque constant `opaqueReal` and then as generated.  After each build it prints the axioms of
+the theorems that [`Axioms.lean`](Axioms.lean) names and fails on any axiom besides `propext`,
+`Classical.choice`, and `Quot.sound`.  The repository's own build takes neither Sail nor
+lean-sail: whether it should is a decision on dependencies that remains open.
+
+The generated files' hashes equal those of the translation that the pilot proved, so the
+translation is reproducible from the pinned inputs.
+
+| Measure | Value |
+|---|---|
+| A run on edgexpert-18ff under `tools/leanrun --cpus 2` | 11 min 17 s, peak 4.2 GB |
+| Its parts | translation about 30 s; each of the two builds `Armv9fp` 158 to 165 s, `F7.Base` 46 to 49 s, `F7.FPAdd` 83 to 89 s, `F7.Isla` 2 to 3 s |
+
 ## What the proofs trust
 
 A theorem of `F7/` speaks about the Lean translation; it states Arm's FPAdd only as far as
@@ -310,12 +339,13 @@ the chain below translates the ASL faithfully.
 
 ## Commands
 
-On a host with the Debian packages, with `$M` sail-arm's arm-v9.4-a directory, `$L` lean-sail v6,
-`$T` this directory, `$O` an output directory, and `$R` a scratch copy of the repository whose
-`.lake/packages` are built:
+On a host with the Debian packages, with `$S` sail-arm at `7d0581642`, `$M` its arm-v9.4-a
+directory, `$L` lean-sail v6, `$T` this directory, `$O` an output directory, `$W` a new work
+directory, and `$R` a scratch copy of the repository whose `.lake/packages` are built:
 
 ```sh
 sh $T/install.sh
+sh $T/check.sh $S $L $R $W
 opam exec --switch sail-0.20.3 -- sh $T/translate.sh $M $O/real armv9fp $T/fp-slice.isail \
   --lean-real-numbers --lean-noncomputable --lean-single-file
 opam exec --switch sail-0.20.3 -- sh $T/translate.sh $M $O/float armv9float $T/fp-slice.isail \

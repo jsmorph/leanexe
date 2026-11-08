@@ -18,9 +18,9 @@ state whose register map satisfies `FARegs`, whatever the features, PSTATE, and 
 registers hold, and `bind_fa` lets `sail_simp` step over the call.  The other operands read
 FeatureImpl and PSTATE only, which the proofs check as they unfold them.
 
-The proofs keep `trivialChoiceSource` and the instance `Real.instInhabited` irreducible, so that
-the unspecified values that the model draws, and the real `default` that `undefined_real` returns,
-stay terms that no step evaluates.
+The proofs keep `trivialChoiceSource`, the instance `Real.instInhabited`, and `unspecReal`, the
+real that `undefined_real` returns, irreducible, so that the unspecified values that the model
+draws stay terms that no step evaluates.
 -/
 
 open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
@@ -372,9 +372,18 @@ theorem bind_fa {β} (f : Bool → SailM β) (s : State) :
   · rw [if_pos h, bind_run (run_fa s h)]
   · rw [if_neg h]; unfold stuckRun; rfl
 
-/-- `undefined_real` returns `default` and changes no state; the proofs keep `default` opaque. -/
+/-- The real that `undefined_real` returns: `default` in the translation, and an opaque constant in
+the variant that `check.sh` also checks.  The proofs keep it irreducible. -/
+noncomputable def unspecReal : ℝ :=
+  match (undefined_real () : SailM ℝ).run default with
+  | .ok v _ => v
+  | .error _ _ => 0
+
+/-- `undefined_real` returns `unspecReal` and changes no state. -/
 theorem bind_undefined_real {β} (f : ℝ → SailM β) (s : State) :
-    (undefined_real () >>= f).run s = (f default).run s := rfl
+    (undefined_real () >>= f).run s = (f unspecReal).run s := rfl
+
+attribute [local irreducible] unspecReal
 
 theorem fpcr_AH : _get_FPCRType_AH fpcrV = 0#1 := by decide
 theorem fpcr_DN : _get_FPCRType_DN fpcrV = 1#1 := by decide

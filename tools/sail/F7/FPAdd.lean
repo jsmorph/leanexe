@@ -13,7 +13,7 @@ open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
 
 namespace F7
 
-attribute [local irreducible] trivialChoiceSource Real.instInhabited
+attribute [local irreducible] trivialChoiceSource Real.instInhabited unspecReal
 
 variable {s : State} {fi : Vector Bool 259} {ps : ProcState} {fpsr : BitVec 64}
 
@@ -732,7 +732,3 @@ theorem fpAdd_eq_f64Add (a b : BitVec 64) (s : State) (fi : Vector Bool 259) (ps
   fpAdd_run a b h rfl
 
 end F7
-
-#print axioms F7.fpAdd_eq_f64Add
-#print axioms F7.loop1_exit
-#print axioms F7.loop2_exit
