@@ -10,6 +10,7 @@ flowchart TB
   C["C, through Clight (C, A)<br/>each C function computes the Lean result,<br/>in the Lean copy of CompCert's Clight"]
   BARE["Bare-metal AArch64 program (B)<br/>the whole program writes the result;<br/>a Rocq proof carries it to Asm"]
   A64["AArch64 Image (M)<br/>the run from boot writes the result,<br/>in a Lean model of the machine"]
+  M7["Cortex-M7 flash image (T)<br/>the run from reset performs each window's<br/>request, in a Lean model of the Cortex-M7"]
   WGSL["WGSL kernels (G)<br/>a dispatch writes the Lean result,<br/>under the Vulkan memory model"]
   PTX["PTX kernels (P)<br/>a launch writes the Lean result,<br/>under the PTX memory model"]
 
@@ -18,6 +19,7 @@ flowchart TB
     T1["Wasmtime, browsers, Node.js"]
     T2["Linux on AArch64 and x86-64"]
     T3["QEMU virt, AArch64"]
+    T7["NUCLEO-F767ZI, Cortex-M7"]
     T4["Vulkan: SwiftShader, llvmpipe"]
     T6["Browser WebGPU"]
     T5["NVIDIA GB10, CUDA"]
@@ -35,6 +37,8 @@ flowchart TB
   C -- "CompCert ccomp" --> T2
   BARE -- "CompCert ccomp" --> T3
   A64 --> T3
+  WASM -- "steps of programs with requests" --> M7
+  M7 --> T7
   WGSL --> T4
   WGSL --> T6
   PTX -- "ptxas" --> T5
@@ -45,5 +49,5 @@ flowchart TB
   classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
   class SRC,REF src
   class EXPR,KSRC ir
-  class WASM,C,BARE,A64,WGSL,PTX back
-  class T1,T2,T3,T4,T5,T6 run
+  class WASM,C,BARE,A64,M7,WGSL,PTX back
+  class T1,T2,T3,T4,T5,T6,T7 run
