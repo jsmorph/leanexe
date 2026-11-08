@@ -48,9 +48,9 @@ mutual
 /-- The forms whose simulation is proved. -/
 def coveredInstr : Instruction → Bool
   | .localGet _ | .localSet _ | .constI64 _ | .andI64 | .orI64 | .xorI64 | .addI64 | .subI64
-  | .mulI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64 | .eqzI64 | .extendUI32 | .wrapI64
-  | .shlI64 | .shrUI64 | .divUI64 | .remUI64 | .load64 _ | .store64 _ | .globalGet _
-  | .globalSet _ | .br _ | .br_if _ | .ret | .call _ => true
+  | .mulI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64 | .ltSI64 | .leSI64 | .eqzI64
+  | .extendUI32 | .wrapI64 | .shlI64 | .shrUI64 | .shrSI64 | .divUI64 | .remUI64 | .load64 _
+  | .store64 _ | .globalGet _ | .globalSet _ | .br _ | .br_if _ | .ret | .call _ => true
   | .block _ _ body _ _ | .loop _ _ body _ _ => coveredList body
   | .iff _ _ thn els _ _ => coveredList thn && coveredList els
   | _ => false

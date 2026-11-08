@@ -224,10 +224,10 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : 
       simp only [movPair, List.all_append, movConst_wide, Bool.true_and]
       rfl
   | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64
-  | geUI64 =>
+  | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨hb2, -, -, -, -, -, -, -, rfl, rfl⟩ := gen_bin hg
-      exact ⟨by simp [instrSize, eqOps, geOps, leOps], by simp [instrSize]; omega, rfl⟩
+      exact ⟨by simp [instrSize, eqOps, geOps, leOps, biasOps], by simp [instrSize]; omega, rfl⟩
   | eqzI64 =>
       obtain ⟨hb1, -, -, -, -, -, rfl, rfl⟩ := gen_eqzI64 hg
       exact ⟨rfl, by simp [instrSize]; omega, rfl⟩
@@ -255,10 +255,10 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : 
   | globalSet i =>
       obtain ⟨A, -, hb1, -, -, h0, h1, h2, h3, rfl, rfl⟩ := gen_globalSet hg
       exact ⟨rfl, by simp [instrSize], rfl⟩
-  | shlI64 | shrUI64 =>
+  | shlI64 | shrUI64 | shrSI64 =>
       simp only [genInstr] at hg
       obtain ⟨hb2, -, -, -, -, -, -, rfl, rfl⟩ := gen_shift hg
-      exact ⟨by simp [instrSize, shlOps, shrOps], by simp [instrSize]; omega, rfl⟩
+      exact ⟨by simp [instrSize, shlOps, shrOps, sarOps], by simp [instrSize]; omega, rfl⟩
   | divUI64 | remUI64 =>
       simp only [genInstr] at hg
       obtain ⟨hb2, -, -, -, -, -, -, -, oq, ob, -, -, -, -, -, -, -, -, rfl, rfl⟩ := gen_div hg
@@ -394,7 +394,7 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
       obtain ⟨h1, _, _, _, _, _, _, _, _, _, he⟩ := gen_localSet hg; cases he; simp; omega
   | constI64 v => obtain ⟨_, _, _, _, he⟩ := gen_constI64 hg; cases he; simp; omega
   | addI64 | subI64 | andI64 | orI64 | xorI64 | mulI64 | eqI64 | neI64 | ltUI64 | leUI64
-  | geUI64 =>
+  | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, -, -, -, -, -, -, -, -, he⟩ := gen_bin hg
       cases he; simp; omega
@@ -413,7 +413,7 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
   | globalSet i =>
       obtain ⟨_, _, h1, _, _, _, _, _, _, _, he⟩ := gen_globalSet hg
       cases he; simp; omega
-  | shlI64 | shrUI64 =>
+  | shlI64 | shrUI64 | shrSI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, -, -, -, -, -, -, -, he⟩ := gen_shift hg
       cases he; simp; omega
@@ -964,11 +964,14 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (inst : Instru
   case ltUI64 => exact sim_ltUI64 F
   case leUI64 => exact sim_leUI64 F
   case geUI64 => exact sim_geUI64 F
+  case ltSI64 => exact sim_ltSI64 F
+  case leSI64 => exact sim_leSI64 F
   case eqzI64 => exact sim_eqzI64 F
   case extendUI32 => exact sim_extendUI32 F
   case wrapI64 => exact sim_wrapI64 F
   case shlI64 => exact sim_shlI64 F
   case shrUI64 => exact sim_shrUI64 F
+  case shrSI64 => exact sim_shrSI64 F
   case divUI64 => exact sim_divUI64 F
   case remUI64 => exact sim_remUI64 F
   case load64 off => exact sim_load64 F off

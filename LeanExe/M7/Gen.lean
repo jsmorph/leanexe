@@ -300,6 +300,17 @@ def shrOps : List Instr :=
   [.andImm 2 2 63, .movImm 3 32, .subReg 0 3 3 2, .lsrReg 0 0 2, .lslReg 3 1 3, .orrReg 0 0 0 3,
     .subImm 3 2 32, .lsrReg 3 1 3, .orrReg 0 0 0 3, .lsrReg 1 1 2]
 
+/-- Adds 2^31 to the high words r1 and r3, which adds 2^63 to r0:r1 and r2:r3 and maps their
+order as `Int64` values onto their unsigned order: `MOV r5, #1` and `ADD` of r5 shifted left by
+31. -/
+def biasOps : List Instr := [.movImm 5 1, .addLsl 0 1 1 5 31, .addLsl 0 3 3 5 31]
+
+/-- r0:r1 shifted right arithmetically by r2 mod 64: the sign mask `0 - (r1 >> 31)` in r4, which
+is 0 or all ones, and `shrOps` between two exclusive ors of both halves with it. -/
+def sarOps : List Instr :=
+  [.lsrBy 4 1 31, .movImm 5 0, .subReg 0 4 5 4, .eorReg 0 0 4, .eorReg 1 1 4] ++ shrOps ++
+    [.eorReg 0 0 4, .eorReg 1 1 4]
+
 /-- A division of the `i64` below the top by the top, placed at `a`: the loads of the dividend into
 r0:r1 and of the divisor into r2:r3, the test of the divisor and the branch to `trapDiv` when it is
 0, the call of `udivmod64`, and the store of the pair `res`, r0:r1 for the quotient or r2:r3 for
@@ -339,12 +350,15 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .eq => (6, some (h - 1))
   | .ltUI64 => (12, some (h - 1))
   | .leUI64 | .geUI64 => (11, some (h - 1))
+  | .ltSI64 => (15, some (h - 1))
+  | .leSI64 => (14, some (h - 1))
   | .eqzI64 => (8, some h)
   | .eqz => (4, some h)
   | .addI64 | .subI64 | .andI64 | .orI64 | .xorI64 => (8, some (h - 1))
   | .mulI64 => (9, some (h - 1))
   | .and => (4, some (h - 1))
   | .shlI64 | .shrUI64 => (15, some (h - 1))
+  | .shrSI64 => (22, some (h - 1))
   | .wrapI64 => (2, some h)
   | .extendUI32 => (0, some h)
   | .divUI64 | .remUI64 => (9, some (h - 1))
@@ -405,6 +419,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
   | .ltUI64 => genBin E ctl σ (geOps ++ [.eorImm 0 0 1]) (0, 1) .i32
   | .leUI64 => genBin E ctl σ leOps (0, 1) .i32
   | .geUI64 => genBin E ctl σ geOps (0, 1) .i32
+  | .ltSI64 => genBin E ctl σ (biasOps ++ geOps ++ [.eorImm 0 0 1]) (0, 1) .i32
+  | .leSI64 => genBin E ctl σ (biasOps ++ leOps) (0, 1) .i32
   | .eqzI64 => do
       if σ.length < curBase ctl + 1 then throw s!"eqz at height {σ.length}"
       let x ← E.op (σ.length - 1)
@@ -426,6 +442,7 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
   | .xorI64 => genBin E ctl σ [.eorReg 0 0 2, .eorReg 1 1 3] (0, 1) .i64
   | .shlI64 => genShift E ctl σ shlOps
   | .shrUI64 => genShift E ctl σ shrOps
+  | .shrSI64 => genShift E ctl σ sarOps
   | .wrapI64 => do
       if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
       return ([.movImm 0 0, .strSp 0 (← imm ((← E.op (σ.length - 1)) + 4))],
