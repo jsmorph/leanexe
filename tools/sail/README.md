@@ -2,11 +2,13 @@
 
 These scripts translate the floating-point functions of the Armv9.4-A Sail model into Lean with
 Sail's Lean back end, elaborate the output, test it against Talos's binary64 functions, and prove
-three of the equations that the A64 Isla check assumes: [`F7/FPAdd.lean`](F7/FPAdd.lean),
-[`F7/FPMul.lean`](F7/FPMul.lean), and [`F7/FPDiv.lean`](F7/FPDiv.lean) prove that the translated
-`FPAdd(a, b, 0x02000000)`, `FPMul(a, b, 0x02000000)`, and `FPDiv(a, b, 0x02000000)` at 64 bits
-return `f64Add a b`, `f64Mul a b`, and `f64Div a b` for every pair of words, and
-[`check.sh`](check.sh) regenerates the translation and checks the proofs.  Sail's C emulator
+six of the equations that the A64 Isla check assumes.  The modules of [`F7/`](F7/) prove that the
+translated `FPAdd`, `FPSub`, `FPMul`, and `FPDiv` of `(a, b, 0x02000000)` at 64 bits return
+`f64Add a b`, `f64Sub a b`, `f64Mul a b`, and `f64Div a b` for every pair of words, that
+`FPSqrt(a, 0x02000000)` returns `f64Sqrt a`, and that
+`FixedToFP(a, 0, TRUE, 0x02000000, FPRounding_TIEEVEN, 64)` returns `f64ConvertI64U a` for every
+word, and [`check.sh`](check.sh) regenerates the translation and checks the proofs.  Sail's C
+emulator
 of the same slice tests the same functions with exact rationals ([`emu/`](emu/)).  Nothing in the
 A64 model or its proofs depends on these files.
 
@@ -199,7 +201,9 @@ kernel's check of the statement does not establish.  For the reals the check bel
 more: it also elaborates the proofs against a variant of the translation whose `undefined_real`
 returns `opaqueReal`, an `opaque` constant whose value the kernel cannot unfold.  The theorems
 check there with the same statements, so their proofs use no property of the unspecified real,
-and they hold for every value of it.
+and they hold for every value of it.  FPSqrt draws the real `value_name` before FPUnpack assigns
+it, and FPRoundBase__1, which FPSqrt and FixedToFP reach, draws `mantissa` before the loops assign
+it; the variant checks `fpSqrt_eq_f64Sqrt` and `fixedToFP_eq_f64ConvertI64U` with the others.
 
 ## Tests
 
@@ -227,7 +231,7 @@ Every class of every form agrees, among them the vector test's ties, near ties, 
 underflows, cancellations, and special values.  [`Eval.lean`](Eval.lean), the probe's first
 evaluation, compares 10,484 operand pairs per binary function and 10,086 integers.
 
-## The FPAdd, FPMul, and FPDiv proofs
+## The proofs
 
 `fpAdd_eq_f64Add` in [`F7/FPAdd.lean`](F7/FPAdd.lean) states that for every pair of words `a`,
 `b` and every state `s` with `Hyp s.regs fi ps fpsr`, the translated `FPAdd a b 0x02000000` at 64
@@ -241,8 +245,16 @@ an inexact product, and UFC and IXC on an inexact subnormal product.  `fpDiv_eq_
 [`F7/FPDiv.lean`](F7/FPDiv.lean) states the same of FPDiv and Talos's `f64Div`, with `divMask`: IOC
 for a signaling NaN operand and for the quotients of two infinities and of two zeros, DZC for a
 finite nonzero dividend over a zero, OFC and IXC on overflow, IXC on an inexact quotient, and UFC
-and IXC on an inexact subnormal quotient.  Each theorem depends on `propext`, `Classical.choice`,
-and `Quot.sound` only.
+and IXC on an inexact subnormal quotient.  `fpSub_eq_f64Sub` in [`F7/FPSub.lean`](F7/FPSub.lean)
+states the same of FPSub and `f64Sub`, with `subMask`: IOC for a signaling NaN operand and for the
+difference of equal infinities, and the bits of `roundMask` for the exact difference.
+`fpSqrt_eq_f64Sqrt` in [`F7/FPSqrt.lean`](F7/FPSqrt.lean) states it of FPSqrt and `f64Sqrt` for
+every word, with `sqrtMask`: IOC for a signaling NaN and for a negative operand other than a zero
+or a NaN, and IXC for an inexact root.  `fixedToFP_eq_f64ConvertI64U` in
+[`F7/FixedToFP.lean`](F7/FixedToFP.lean) states it of
+`FixedToFP a 0 true 0x02000000 FPRounding_TIEEVEN 64`, the call of the wrapper FixedToFP64 that
+UCVTF D←X uses, and `f64ConvertI64U`, with `cvtMask`: IXC for an inexact result.  Each theorem
+depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 The proofs follow the translated code.  `sail_simp` rewrites a run of the monadic code step by
 step with lemmas for register reads and writes, the choice source, the exception monad of
@@ -279,23 +291,66 @@ a definition in its place, the kernel's check of the word against that of `f64Di
 `fpDiv_run` take the 36 pairs of operand types and the signs of infinities and zeros, and
 `fpAdd_run` the sign of a nonzero exact sum.
 
+Talos's `sub a b` is `add a (negate b)`.  `negW b`, the word of `negate b`, has the type and the
+magnitude of `b` and the opposite sign (`ty_negW`, `sv_negW`, `sg_negW`), so Talos's side of FPSub
+becomes FPAdd's with the sign of `b` inverted, and FPSub__1 differs from FPAdd__1 only in its tests
+of the signs and in `sub_real`.  `fpSub_run` follows `fpAdd_run` with the exact difference
+`(sv a − sv b) · 2^-1074` (`sub_diff`) and `fpRound_run`.
+
+FixedToFP reads the word as the natural `n`, returns +0 for `n = 0`, and otherwise rounds the real
+`n / 2^0`.  That real is the magnitude `n · 2^1074` in units of 2^-1074 (`cvt_val`), so
+`fpRound_run` gives `roundScaledMagnitude` of `n · 2^1074`.  `fromInt_nat` identifies that word
+with Talos's `fromInt n`, which `f64ConvertI64U` computes.
+
+For a positive finite operand of magnitude `N`, FPSqrt rounds `√R · 2^-1074` with the radicand
+`R = N · 2^1074`.  Talos's `roundSqrtMagnitude` takes `r = Nat.sqrt R`, the shift
+`k = log2 r − 52`, and `l = r / 2^k`, rounds `l` up when `4 · R` exceeds `(2 · l + 1)^2 · 2^(2k)` or
+equals it with `l` odd, and packs the result times `2^k` with `roundScaledMagnitude`.  Every such
+result is normal: `2^(k+52) ≤ r < 2^(k+53)` and `k + 2 < 2047` for `R` in `[2^1074, 2^3172)`
+(`root_facts`).  `round_normalR` in [`F7/RoundR.lean`](F7/RoundR.lean) states FPRoundBase__1's
+normal case for a positive real `M` over the exponent of `M`, the scaled mantissa, its floor, and
+the decisions of its error against 1/2 and 0, and gives Talos's `roundScaledMagnitude` of the
+rounded mantissa times `2^j`; its proof is `round_normalG`'s with these in place of a quotient and
+a remainder.  For FPSqrt the scaled mantissa is `√R / 2^k`, whose floor is `l` by Mathlib's
+`Real.floor_real_sqrt_eq_nat_sqrt`, and the comparisons of its error become Talos's comparisons of
+`4 · R` with `(2 · l + 1)^2 · 2^(2k)` and of `R` with `l^2 · 2^(2k)` (`round_root`).  The tie
+`4 · R = (2 · l + 1)^2 · 2^(2k)` cannot occur, since the odd part of `R` has at most 53 bits and
+`(2 · l + 1)^2` is odd and above 2^106, but the proof does not use this: both sides round a tie to
+even.
+
+Lean's core library, in which Talos is written, and Mathlib elaborate `2 ^ 1074 : ℕ` with
+different instances of `Pow`.  When the kernel compares the bit vectors of two words that differ
+syntactically, it reduces each projection by evaluating its word, and the evaluation unfolds
+`N * 2 ^ 1074` with `N` a variable one successor at a time: a test of such a comparison reached
+9.7 GB before the kernel stopped at its recursion limit.  FPDiv's check with a definition in
+place of the written-out word, above, also stopped; whether its cause is the same was not tested.
+`fromInt_nat` and `tSqrtU` therefore state Talos's side as an equation of words, whose two sides
+the kernel compares argument by argument, and the proofs reach each bit vector by rewriting.
+
 | Module | Lines | Contents |
 |---|---|---|
 | `F7/Base.lean` | 878 | the monad lemmas, the state hypothesis, the read-only lemmas of IsFullA64Enabled (about 250), the FPCR fields, the 72 comparisons of enumeration constants, unpacking and NaNs (about 130), and the loops (about 130) |
 | `F7/Round.lean` | 778 | lemmas on words and bit vectors (about 320), Talos's two stages (about 275), and FPRoundBase__1 (about 185) |
-| `F7/FPAdd.lean` | 158 | FPAdd's cases |
-| `F7/FPMul.lean` | 147 | FPMul's cases |
 | `F7/RoundQ.lean` | 397 | Talos's rounder of a quotient and `maskQ` (about 110), the exponent and mantissa of a rational in FPRoundBase__1 (about 80), and FPRoundBase__1 (about 175) |
+| `F7/RoundR.lean` | 137 | FPRoundBase__1's normal case over a real scaled mantissa |
+| `F7/FPAdd.lean` | 158 | FPAdd's cases |
+| `F7/FPSub.lean` | 212 | the negation of a word and FPSub's cases |
+| `F7/FPMul.lean` | 147 | FPMul's cases |
 | `F7/FPDiv.lean` | 133 | the exact quotient and FPDiv's cases |
-| `F7/Isla.lean` | 201 | the join with the Isla equations and the profile witnesses |
+| `F7/FPSqrt.lean` | 343 | the square root on the reals, Talos's rounding of a root, FPRound__2 on a root, and FPSqrt's cases |
+| `F7/FixedToFP.lean` | 85 | Talos's conversion and FixedToFP |
+| `F7/Isla.lean` | 255 | the join with the Isla equations and the profile witnesses |
 
 `lake build F7` on edgexpert-18ff under `tools/leanrun --cpus 2`, after the translation is built,
 takes `F7.Base` 47 to 51 s, `F7.Round` 48 to 60 s, `F7.FPAdd` 35 to 38 s, `F7.FPMul` 42 to 43 s,
-`F7.RoundQ` 43 to 48 s, `F7.FPDiv` 37 to 38 s, and `F7.Isla` 2 to 3 s, at a peak of 2.9 GB.  The
-heartbeat limits are about twice the measured use: 406,886 thousand heartbeats for
-`fpProcessNaNs_run`, 649,219 for `round_normalG`, 182,938 for `round_subG`, 653,810 for
-`round_normalQ`, 182,566 for `round_subQ`, 442,830 for `fpAdd_run`, 488,265 for `fpMul_run`, and
-451,965 for `fpDiv_run`.
+`F7.RoundQ` 43 to 48 s, `F7.FPDiv` 37 to 38 s, and `F7.Isla` 2 to 3 s, at a peak of 2.9 GB.
+In separate builds with 1 or 2 CPUs, `F7.FPSub` takes 39 s, `F7.RoundR` 29 s, `F7.FPSqrt` 10 to
+13 s, and `F7.FixedToFP` 2 to 3 s.  The heartbeat limits are about twice the measured use: 406,886
+thousand heartbeats for `fpProcessNaNs_run`, 649,219 for `round_normalG`, 182,938 for
+`round_subG`, 653,810 for `round_normalQ`, 182,566 for `round_subQ`, 401,760 for `round_normalR`,
+442,830 for `fpAdd_run`, 448,450 for `fpSub_run`, 488,265 for `fpMul_run`, and 451,965 for
+`fpDiv_run`.  `fixedToFP_run` (3,308), `round_root` (17,241), and `fpSqrt_run` (92,831) check
+under the default limit of 200,000.
 
 FPMul cost 147 lines of its own and about 200 lines of the rounding's generalization: the pilot's
 rounding at the fixed scale 2^-1074 took about 500 lines, and its generalization over `X`, which
@@ -304,15 +359,8 @@ rounding, 530 in all, against an estimate of 650 to 700 from FPMul's measures.  
 rounding takes from `F7/Round.lean` the lemmas on words and bit vectors, `rsm_exact`, `rsm_carry`,
 and the lemmas `floor_div_nat`, `err_div`, `gt_half`, and `eq_half`, which hold for every natural
 divisor, and its proofs of FPRoundBase__1 follow `round_normalG` and `round_subG` step by step,
-with the divisor `Q · 2^j` or `Q` in place of `2^(X + j)` or `2^X`.  FPSub mirrors FPAdd, and
-FixedToFP rounds an integer `n`, the magnitude `n · 2^1074` at `X = 0`, at about 150 lines each.
-FPSqrt rounds `√(A · 2^1074) · 2^-1074`.  Every result of a positive finite operand is normal, and
-Mathlib's `Real.floor_real_sqrt_eq_nat_sqrt` gives the integer mantissa as `Nat.sqrt` of the
-radicand shifted, so its rounding lemma needs the normal case only, with the comparison of the
-error and 1/2 stated as Talos's `4 · radicand` against `(2 · lower + 1)^2 · 4^j`, at about 400 to
-500 lines with its cases.  The figures for FPSub, FixedToFP, and FPSqrt are inferences from the
-measures of FPMul and FPDiv, and each of those proofs would check in about 1 to 2 minutes and under
-3 GB with 2 CPUs.
+with the divisor `Q · 2^j` or `Q` in place of `2^(X + j)` or `2^X`.  FPSub took 212 lines,
+FixedToFP 85, and FPSqrt 343 with the 137 of `RoundR.lean`.
 
 ## The join with the Isla equations
 
@@ -330,8 +378,12 @@ state at each abstract call, read as a register map of the translation, satisfie
 the pilot's result is the same from every state that satisfies `Hyp`, quantifying the link over all
 of them asks of Isla only what holds at the state of the call.  `fpAddEq_of_sail` derives
 `FPAddEq A` from `SailFPAdd A` and `fpAdd_eq_f64Add`, converting between `UInt64` and `BitVec 64`,
-and `fpMulEq_of_sail` and `fpDivEq_of_sail` derive `FPMulEq A` and `FPDivEq A` from `SailFPMul A`
-and `SailFPDiv A` likewise.
+and `fpSubEq_of_sail`, `fpMulEq_of_sail`, `fpDivEq_of_sail`, `fpSqrtEq_of_sail`, and
+`fixedToFPEq_of_sail` derive `FPSubEq`, `FPMulEq`, `FPDivEq`, `FPSqrtEq`, and `FixedToFPEq` from
+the links `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToFP` likewise.
+`SailFixedToFP` also identifies two of Isla's argument values with the translation's: the integer
+`fbits` 0, which Isla passes as the 128-bit vector 0, as it passes every integer of the model, and
+the rounding mode, which Isla passes as the enumeration member `FPRounding_TIEEVEN` by name.
 
 The derivation needs a state that satisfies `Hyp`, and the witness comes from the profiles.
 `islaState p u` builds the registers that `Hyp` names from the profile `p` of
@@ -372,10 +424,12 @@ reproducible from the pinned inputs.
 | Its parts | translation about 30 s; each of the two builds `Armv9fp` 149 to 159 s, `F7.Base` 47 to 48 s, `F7.Round` 50 to 66 s, `F7.FPAdd` 38 to 44 s, `F7.FPMul` 42 to 48 s, `F7.Isla` 2 s |
 | A run under `tools/leanrun --cpus 3`, with FPAdd, FPMul, and FPDiv | 13 min 16 s, peak 4.1 GB |
 | Its parts | each of the two builds `Armv9fp` 157 to 162 s, `F7.Base` 45 to 46 s, `F7.Round` 47 s, then `F7.FPAdd`, `F7.FPMul`, and `F7.RoundQ` side by side in 62 to 82 s each, `F7.FPDiv` 37 to 39 s, `F7.Isla` 2 to 3 s |
+| A run under `tools/leanrun --cpus 3`, with the six functions | 12 min 48 s, peak 4.2 GB |
+| Its parts | each of the two builds `Armv9fp` 137 to 144 s, `F7.Base` 43 to 48 s, `F7.Round` 43 to 48 s, then the other modules side by side: `F7.FPAdd` 41 to 51 s, `F7.FPSub` 38 to 39 s, `F7.FPMul` 42 to 44 s, `F7.RoundQ` 50 to 55 s, `F7.RoundR` 32 to 43 s, `F7.FPDiv` 37 to 40 s, `F7.FPSqrt` 10 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 s |
 
 ## What the proofs trust
 
-A theorem of `F7/` speaks about the Lean translation; it states Arm's FPAdd only as far as
+A theorem of `F7/` speaks about the Lean translation; it states Arm's functions only as far as
 the chain below translates the ASL faithfully.
 
 | Item | Role |
@@ -389,9 +443,8 @@ the chain below translates the ASL faithfully.
 | `fp-measures.sail` | the loop measures, whose sufficiency `loop1_exit` and `loop2_exit` prove |
 | `fix-output.sh` | the three textual edits above |
 | The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library | the comparison in Sources |
-| `armv9p4-checked-fp.diff`: `FPAdd64` returns `FPAdd` at 64 bits | in the Isla row |
-| The links `SailFPAdd`, `SailFPMul`, and `SailFPDiv`: the IR's `zFPAdd`, `zFPMul`, and `zFPDiv` and the translation's FPAdd, FPMul, and FPDiv compute the same functions, Isla's values correspond to the translation's, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
-| `armv9p4-checked-fp.diff`: `FPMul64` and `FPDiv64` return `FPMul` and `FPDiv` at 64 bits | in the Isla row |
+| `armv9p4-checked-fp.diff`: `FPAdd64`, `FPSub64`, `FPMul64`, `FPDiv64`, and `FPSqrt64` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 64 bits, and `FixedToFP64` returns `FixedToFP` at N = 64 | in the Isla row |
+| The links `SailFPAdd`, `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToFP`: each IR function and the translation's function compute the same function, Isla's values correspond to the translation's, among them the 128-bit integer and the enumeration member of `FixedToFP64`, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
 
 ## Commands
 

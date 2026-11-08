@@ -29,7 +29,8 @@ in its own code.  `shaUsart3Tick` and `shaCmsdkTick` apply them to `roundConstan
 compiled module holds the constants in its initial memory and the wrapper's theorems name them.
 No function allocates.  `sha_check` compares the step's answers to two blocks with Python's
 `hashlib.sha256` in the kernel, and `ShaInv`, `shaInv_initial`, and `sha_call` are the
-counterparts of the CRC-32 step's `CrcInv`, `crcInv_initial`, and `crc_call`.
+counterparts of the CRC-32 step's `CrcInv`, `crcInv_initial`, and `crc_call`, as
+`shaCmsdkInv_initial` and `shaCmsdk_call` are for `shaCmsdkCompiled`.
 -/
 
 namespace TestSupport.M7.Sha
@@ -206,18 +207,32 @@ theorem shaUsart3Tick_abs (f : ShaFrame) (v : UInt64) :
       (shaAbs (shaUsart3Tick f v).1, (shaUsart3Tick f v).2) :=
   shaTickWith_abs 0x1209 0x120A 0x1207 0x20 0x80 0x80 roundConstants f v
 
-/-- For every trace type with its `Bus` and every sequence `σ` of the values read, the bytes that
-the first `n` windows of `shaUsart3Tick` from `shaInit` write to `USART_TDR` begin the bytes of the
-record machine's outputs for the blocks of 8 words that the bytes read from `USART_RDR` in those
-windows encode. -/
-theorem sha_windows_prefix {α : Type} (B : Bus α) (σ : Nat → UInt32) (n : Nat) :
-    dataOut B shaUsart3 (windows (reqTrace B shaUsart3Tick shaInit σ) n) <+:
+/-- UART0's registers in `shaCmsdkWith`. -/
+def shaCmsdk : Uart := ⟨0x1000, 0x1000, 0x1001, 2, 1, 0⟩
+
+theorem shaCmsdkTick_abs (f : ShaFrame) (v : UInt64) :
+    frameTick shaCmsdk 8 4 (shaSpec roundConstants) (shaAbs f) v =
+      (shaAbs (shaCmsdkTick f v).1, (shaCmsdkTick f v).2) :=
+  shaTickWith_abs 0x1000 0x1000 0x1001 2 1 0 roundConstants f v
+
+/-- For every trace type with its `Bus`, every UART `u` whose registers lie below 65536 and whose
+receive and status registers differ, every step `tick` that `shaAbs` relates to the framing over
+`u`, as `shaUsart3Tick_abs` and `shaCmsdkTick_abs` relate the two steps, and every sequence `σ` of
+the values read, the bytes that the first `n` windows of `tick` from `shaInit` write to the
+transmit register begin the bytes of the record machine's outputs for the blocks of 8 words that
+the bytes read from the receive register in those windows encode. -/
+theorem sha_windows_prefix {α : Type} (B : Bus α) {u : Uart}
+    {tick : ShaFrame → UInt64 → ShaFrame × UInt64}
+    (habs : ∀ f v, frameTick u 8 4 (shaSpec roundConstants) (shaAbs f) v =
+      (shaAbs (tick f v).1, (tick f v).2))
+    (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536) (hs : u.status.toNat < 65536)
+    (hrs : u.rx ≠ u.status) (σ : Nat → UInt32) (n : Nat) :
+    dataOut B u (windows (reqTrace B tick shaInit σ) n) <+:
       outBytes (shaSpec roundConstants) sha0
-        (decode 8 (dataIn B shaUsart3 (windows (reqTrace B shaUsart3Tick shaInit σ) n))).recs := by
-  rw [← reqTrace_map shaAbs shaUsart3Tick_abs]
-  exact frame_prefix (u := shaUsart3) (kin := 8) (kout := 4) (mach := shaSpec roundConstants)
-    (m0 := sha0) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-    (by decide) (by decide) (fun _ _ _ => rfl) σ n
+        (decode 8 (dataIn B u (windows (reqTrace B tick shaInit σ) n))).recs := by
+  rw [← reqTrace_map shaAbs habs]
+  exact frame_prefix (kin := 8) (kout := 4) (mach := shaSpec roundConstants) (m0 := sha0) hrx htx
+    hs hrs (by decide) (by decide) (by decide) (by decide) (fun _ _ _ => rfl) σ n
 
 /-! ## The answers to two blocks -/
 
@@ -296,6 +311,42 @@ theorem sha_call (env : HostEnv Unit) {heap : Heap} {store : Store Unit} (s : Sh
     subst ht
     exact ⟨hJ.2, Apart.nil⟩
   obtain ⟨hAl, hRun⟩ := shaStepCompiled.shaUsart3Tick.aligned env store heap
+    ((shaWords s ++ [v]).map Value.i64) (s, v) hAt trivial hT rfl Separate.nil hCap
+    ⟨hJ.1, nofun, nofun⟩
+  refine ⟨hAl, hRun.mono fun final values ⟨heap', hAt', hOwn, hCaps, hReg, _, hAl', _⟩ => ?_⟩
+  have hpos : 0 < 8 * (roundConstants.size + 1) := by omega
+  obtain ⟨hBytes, hReg', -⟩ := hReg _ hJ.2.region hpos Apart.nil
+  exact ⟨heap', hAt', ⟨hAl', hJ.2.keepIn hAt' hBytes hReg'⟩, hCaps, hOwn⟩
+
+/-- The store in which the CMSDK step's module starts satisfies `ShaInv` with the heap of
+`initialHeap`, from `shaCmsdkCompiled.initial`. -/
+theorem shaCmsdkInv_initial :
+    ShaInv (Verified.initialHeap shaCmsdkCompiled.tables) shaCmsdkCompiled.module.initialStore := by
+  obtain ⟨-, -, hT⟩ : Verified.Ready shaCmsdkCompiled.module shaCmsdkCompiled.tables
+      (Verified.initialHeap shaCmsdkCompiled.tables) shaCmsdkCompiled.module.initialStore :=
+    Verified.Ready.initial rfl shaCmsdkCompiled.initial
+  exact ⟨⟨by decide +kernel, nofun, nofun⟩, hT 0 (by decide)⟩
+
+set_option maxRecDepth 100000 in
+/-- `sha_call` for the CMSDK step, function 13 of `shaCmsdkCompiled.module`. -/
+theorem shaCmsdk_call (env : HostEnv Unit) {heap : Heap} {store : Store Unit} (s : ShaFrame)
+    (v : UInt64) (hAt : heap.At store) (hJ : ShaInv heap store)
+    (hCap : store.memoryCap shaCmsdkCompiled.module 0 ≤ 65535) :
+    (∃ N, ∀ fuel ≥ N, AlignedRun fuel shaCmsdkCompiled.module 13 store
+      ((shaWords s ++ [v]).map Value.i64).reverse env) ∧
+    Runs false env shaCmsdkCompiled.module 13 store ((shaWords s ++ [v]).map Value.i64).reverse
+      fun final values =>
+        ∃ heap' : Heap, heap'.At final ∧ ShaInv heap' final ∧
+          final.memoryCaps = store.memoryCaps ∧
+          values.reverse =
+            (shaWords (shaCmsdkTick s v).1 ++ [(shaCmsdkTick s v).2]).map Value.i64 := by
+  have hT : ∀ t ∈ [((4096 : UInt64), roundConstants)], heap.Borrowed store t.1 t.2 ∧
+      Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
+    intro t ht
+    rw [List.mem_singleton] at ht
+    subst ht
+    exact ⟨hJ.2, Apart.nil⟩
+  obtain ⟨hAl, hRun⟩ := shaCmsdkCompiled.shaCmsdkTick.aligned env store heap
     ((shaWords s ++ [v]).map Value.i64) (s, v) hAt trivial hT rfl Separate.nil hCap
     ⟨hJ.1, nofun, nofun⟩
   refine ⟨hAl, hRun.mono fun final values ⟨heap', hAt', hOwn, hCaps, hReg, _, hAl', _⟩ => ?_⟩

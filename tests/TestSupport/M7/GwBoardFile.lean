@@ -15,7 +15,10 @@ joins them into the check `bootFileOk` that the board's theorems take.
 `gw_board` states the loop theorem for every code map that holds the file's bytes in flash at
 both of its addresses, `gw_board_runs` that the run never stops, and `gw_board_prefix` that the
 bytes that the run writes to `USART_TDR` begin the bytes of the gateway's output records for the
-input records that the bytes it reads from `USART_RDR` encode.  The theorems hold of the processor
+input records that the bytes it reads from `USART_RDR` encode.  `gw_board_bytes` states the same
+with the input records given by their bytes: records of 18 words whose bytes are the bytes read up
+to the last complete record, which `flatMap_recordBytes_inj` of `LeanExe/Requests/Reads.lean`
+makes unique.  The theorems hold of the processor
 under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0 low and
 BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
 debugger access, or DMA during the run.
@@ -108,15 +111,33 @@ theorem gw_board_prefix (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Optio
         outBytes gwSpec gw0 (decode 18 (dataIn (devBus devBase) gwUsart3 w)).recs :=
   board_prefix gw_file hf b hb N
 
+/-- `gw_board_prefix` over the bytes `bs` that the windows read from `USART_RDR`: the bytes that `w`
+writes to `USART_TDR` begin the bytes of the gateway's output records for the input records
+`recs`, which are records of 18 words whose bytes are those of `bs` up to its last complete
+record. -/
+theorem gw_board_bytes (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code gwBytes gwSize) (b : State) (hb : Reset code flashItcm b) :
+    let w := windows (reqTrace (devBus devBase) gwTickUsart3 gwInit
+      (fun k => σ (k + initReads init))) N
+    let bs := dataIn (devBus devBase) gwUsart3 w
+    ∃ s, Reach platform σ code b s ∧ s.trace = initTrace init σ ++ w ∧
+      ∃ recs : List (List UInt64), (∀ r ∈ recs, r.length = 18) ∧
+        recs.flatMap recordBytes = bs.take (144 * (bs.length / 144)) ∧
+        dataOut (devBus devBase) gwUsart3 w <+: outBytes gwSpec gw0 recs :=
+  board_bytes gw_file hf b hb N
+
 end TestSupport.M7.GwBoardFile
 
 #print axioms TestSupport.M7.GwBoardFile.gw_board
 #print axioms TestSupport.M7.GwBoardFile.gw_board_runs
 #print axioms TestSupport.M7.GwBoardFile.gw_board_prefix
+#print axioms TestSupport.M7.GwBoardFile.gw_board_bytes
 #print axioms TestSupport.M7.GwBoardFile.gw_file
 #print axioms TestSupport.M7.Gw.board_loop
 #print axioms TestSupport.M7.Gw.board_loop_runs
 #print axioms TestSupport.M7.Gw.board_prefix
+#print axioms TestSupport.M7.Gw.board_bytes
+#print axioms LeanExe.Requests.flatMap_recordBytes_inj
 #print axioms TestSupport.M7.Gw.windows_prefix
 #print axioms TestSupport.M7.Gw.gw_requests
 #print axioms TestSupport.M7.Gw.gw_confined

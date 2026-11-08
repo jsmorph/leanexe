@@ -2,6 +2,8 @@ import TestSupport.Native.Gcd
 import TestSupport.Bare.Programs
 import TestSupport.A64.CicTable
 import TestSupport.A64.GptScores
+import TestSupport.A64.GptLayer32
+import TestSupport.A64.Conv32
 import Verified.Examples.Fold
 import Demos.Euler.Verified
 import Library.Numerics.Float64.Exp.Compiled
@@ -22,8 +24,11 @@ result is the array of the words of its 32 scores, the exponential `Exp.exp` of
 branch of `specialCase` that compares the scaled result with 1 and with 0, and the sine `Trig.sin`
 of `Library.Numerics.Float64.Trig` on 10, whose argument reduction converts its count of `π/2` to an
 integer with `FCVTZU`, and on 10^22, whose Payne–Hanek reduction reads the tables of `2/π` and
-`π/2`.  Each program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's
-room `room` and the memory's cap `cap`.
+`π/2`, together with the binary32 GPT-2 layer of `TestSupport.A64.GptLayer32` at position 2,
+whose result is the array of the words of the row after the layer, and the binary32 conversions of
+`TestSupport.A64.Conv32` on 64 inputs, whose result is the array of their 256 words.  Each
+program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room`
+and the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
@@ -96,6 +101,12 @@ def programs : List Program := [
   { name := "sin1e22", module := Library.Numerics.Float64.Trig.compiled.module, entry := 15
     args := [0x4480F0CF064DD592], output := .word
     bytes := LeanExe.Native.encodeWord
-      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4480F0CF064DD592)).toBits }]
+      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4480F0CF064DD592)).toBits },
+  { name := "gptlayer32", module := TestSupport.A64.Gpt32.compiled.module, entry := 14
+    args := [2], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Gpt32.layerCheck 2) },
+  { name := "conv32", module := TestSupport.A64.Conv32.compiled.module, entry := 4
+    args := [64], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Conv32.convCheck 64) }]
 
 end TestSupport.A64

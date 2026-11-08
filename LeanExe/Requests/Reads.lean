@@ -1,13 +1,20 @@
 import LeanExe.Requests.Records
 
 /-!
-The rate of the framing's reads of the receive register and the lengths of the records that the
-bytes encode.  `frameTick` reads the receive register only in phase 0, after a status read that
-shows a byte, and the window after that read reads the status again, so no two consecutive windows
-read a byte and the first window reads none.  `frame_reads` states that the first `n` windows read
-at most `n / 2` bytes, and `decode_lengths` that each record that bytes encode has `kin` words and
-takes `8 kin` of the bytes, which together bound the records that a step with records receives in
-a number of windows.
+The rate of the framing's reads of the receive register, and the records that the bytes encode.
+`frameTick` reads the receive register only in phase 0, after a status read that shows a byte, and
+the window after that read reads the status again, so no two consecutive windows read a byte and
+the first window reads none.  `frame_reads` states that the first `n` windows read at most `n / 2`
+bytes, and `decode_lengths` that each record that bytes encode has `kin` words and takes `8 kin`
+of the bytes, which together bound the records that a step with records receives in a number of
+windows.
+
+`decode_take` states that `recordBytes` inverts `decode` on bytes below 256, which every byte of
+`dataIn` is by `dataIn_lt`: the bytes of the first `i` records that `decode` gives are the first
+`8 kin i` bytes, and `decode_length` states that `decode` gives one record for each `8 kin` bytes.
+`flatMap_recordBytes_inj` states that records of `kin` words are determined by their bytes, so
+`decode_recs` characterizes the records.  A statement over the records that the bytes read encode
+can therefore name prefixes of the bytes read in their place.
 -/
 
 namespace LeanExe.Requests
@@ -268,5 +275,205 @@ theorem decode_lengths {kin : Nat} (hkin : 0 < kin) (bs : List UInt64) :
       by simp only [List.length_nil]; omega⟩
   rw [Nat.zero_add] at h
   exact h
+
+/-- The `k` low bytes of the word `a`, the most significant first. -/
+def lowBytes (a : UInt64) : Nat → List UInt64
+  | 0 => []
+  | k + 1 => lowBytes (a / 256) k ++ [a % 256]
+
+theorem lowBytes_push {a b : UInt64} {k : Nat} (ha : a.toNat < 256 ^ k) (hk : k ≤ 7)
+    (hb : b.toNat < 256) : lowBytes (a * 256 + b) (k + 1) = lowBytes a k ++ [b] := by
+  have hp : 256 ^ k ≤ 256 ^ 7 := Nat.pow_le_pow_right (by decide) hk
+  have e : (a * 256 + b).toNat = a.toNat * 256 + b.toNat := by
+    rw [UInt64.toNat_add, UInt64.toNat_mul]
+    simp only [UInt64.reduceToNat, Nat.reducePow] at *
+    omega
+  have e1 : (a * 256 + b) / 256 = a := UInt64.toNat_inj.mp (by
+    rw [UInt64.toNat_div, e]
+    simp only [UInt64.reduceToNat]
+    omega)
+  have e2 : (a * 256 + b) % 256 = b := UInt64.toNat_inj.mp (by
+    rw [UInt64.toNat_mod, e]
+    simp only [UInt64.reduceToNat]
+    omega)
+  rw [lowBytes, e1, e2]
+
+theorem wordBytes_lowBytes (w : UInt64) : wordBytes w 8 = lowBytes w 8 := by
+  have hw := w.toNat_lt
+  simp only [wordBytes, lowBytes, List.nil_append, List.cons_append, List.cons.injEq, and_true]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> apply UInt64.toNat_inj.mp <;>
+    simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight, UInt64.toNat_div,
+      UInt64.toNat_mod, UInt64.reduceToNat, Nat.reduceMod, Nat.shiftLeft_eq,
+      Nat.shiftRight_eq_div_pow, Nat.reducePow] at * <;> omega
+
+theorem length_wordBytes (w : UInt64) (k : Nat) : (wordBytes w k).length = k := by
+  induction k generalizing w with
+  | zero => rfl
+  | succ k ih => simp [wordBytes, ih]
+
+theorem length_recordBytes (ws : List UInt64) : (recordBytes ws).length = 8 * ws.length := by
+  induction ws with
+  | nil => rfl
+  | cons w ws ih =>
+      rw [recordBytes_cons, List.length_append, length_wordBytes, ih, List.length_cons]
+      omega
+
+theorem length_flatMap_recordBytes {kin : Nat} :
+    ∀ {recs : List (List UInt64)}, (∀ r ∈ recs, r.length = kin) →
+      (recs.flatMap recordBytes).length = 8 * kin * recs.length
+  | [], _ => rfl
+  | r :: rs, h => by
+      rw [List.flatMap_cons, List.length_append, length_recordBytes, h r (by simp),
+        length_flatMap_recordBytes fun x hx => h x (by simp [hx]), List.length_cons]
+      rw [Nat.mul_succ]
+      omega
+
+/-- The bytes that the decoder's state `d` holds after the bytes `bs`: those of the complete
+records, of the words of the current record, and of the current word, each most significant
+first. -/
+def DecodeBytes (d : Decoded) (bs : List UInt64) : Prop :=
+  d.nbyte ≤ 7 ∧ d.acc.toNat < 256 ^ d.nbyte ∧
+    bs = d.recs.flatMap recordBytes ++ d.words.flatMap (fun w => wordBytes w 8) ++
+      lowBytes d.acc d.nbyte
+
+theorem decodeByte_bytes {kin : Nat} {d : Decoded} {bs : List UInt64} (h : DecodeBytes d bs)
+    {b : UInt64} (hb : b.toNat < 256) : DecodeBytes (decodeByte kin d b) (bs ++ [b]) := by
+  obtain ⟨h7, ha, e⟩ := h
+  unfold decodeByte
+  split
+  · have hp : 256 ^ d.nbyte * 256 = 256 ^ (d.nbyte + 1) := (Nat.pow_succ ..).symm
+    refine ⟨by simp only; omega, ?_, ?_⟩
+    · have hp7 : 256 ^ d.nbyte ≤ 256 ^ 7 := Nat.pow_le_pow_right (by decide) h7
+      show (d.acc * 256 + b).toNat < 256 ^ (d.nbyte + 1)
+      rw [UInt64.toNat_add, UInt64.toNat_mul]
+      simp only [UInt64.reduceToNat, Nat.reducePow] at *
+      omega
+    · show bs ++ [b] = _ ++ _ ++ lowBytes (d.acc * 256 + b) (d.nbyte + 1)
+      rw [lowBytes_push ha h7 hb, e, List.append_assoc _ (lowBytes d.acc d.nbyte)]
+  · have h7' : d.nbyte = 7 := by omega
+    rw [h7'] at ha
+    have hw : wordBytes (d.acc * 256 + b) 8 = lowBytes d.acc 7 ++ [b] := by
+      rw [wordBytes_lowBytes, lowBytes_push ha (Nat.le_refl _) hb]
+    split
+    · refine ⟨by simp only; omega, by simp only [UInt64.reduceToNat]; omega, ?_⟩
+      show bs ++ [b] = _ ++ (d.words ++ [d.acc * 256 + b]).flatMap _ ++ lowBytes 0 0
+      rw [e, h7', List.flatMap_append, List.flatMap_singleton, hw]
+      simp only [lowBytes, List.append_nil, List.append_assoc]
+    · refine ⟨by simp only; omega, by simp only [UInt64.reduceToNat]; omega, ?_⟩
+      show bs ++ [b] = (d.recs ++ [d.words ++ [d.acc * 256 + b]]).flatMap recordBytes ++
+        ([] : List UInt64).flatMap _ ++ lowBytes 0 0
+      rw [e, h7', List.flatMap_append, List.flatMap_singleton, recordBytes, List.flatMap_append,
+        List.flatMap_singleton, hw]
+      simp only [lowBytes, List.flatMap_nil, List.append_nil, List.append_assoc]
+
+theorem foldl_decodeByte_bytes {kin : Nat} :
+    ∀ (bs : List UInt64) (d : Decoded) (pre : List UInt64), DecodeBytes d pre →
+      (∀ b ∈ bs, b.toNat < 256) → DecodeBytes (bs.foldl (decodeByte kin) d) (pre ++ bs)
+  | [], _, pre, h, _ => by rw [List.append_nil]; exact h
+  | b :: bs, d, pre, h, hb => by
+      rw [List.foldl_cons, show pre ++ b :: bs = pre ++ [b] ++ bs by simp]
+      exact foldl_decodeByte_bytes bs _ _ (decodeByte_bytes h (hb b (by simp)))
+        fun x hx => hb x (by simp [hx])
+
+theorem decode_bytes (kin : Nat) {bs : List UInt64} (hb : ∀ b ∈ bs, b.toNat < 256) :
+    DecodeBytes (decode kin bs) bs := by
+  have h := foldl_decodeByte_bytes (kin := kin) bs ⟨[], [], 0, 0⟩ [] ⟨by simp, by simp, rfl⟩ hb
+  rw [List.nil_append] at h
+  exact h
+
+/-- The number of records that the bytes `bs` encode. -/
+theorem decode_length {kin : Nat} (hkin : 0 < kin) (bs : List UInt64) :
+    (decode kin bs).recs.length = bs.length / (8 * kin) := by
+  obtain ⟨-, hw, hn, hlen⟩ := decode_lengths hkin bs
+  have hr : (decode kin bs).words.length * 8 + (decode kin bs).nbyte < 8 * kin := by omega
+  rw [← hlen, Nat.mul_comm _ (8 * kin), Nat.add_assoc, Nat.add_comm,
+    Nat.add_mul_div_left _ _ (by omega), Nat.div_eq_of_lt hr, Nat.zero_add]
+
+/-- The bytes of the first `i` records that the bytes `bs` encode are the first `8 kin i` bytes of
+`bs`. -/
+theorem decode_take {kin : Nat} (hkin : 0 < kin) {bs : List UInt64}
+    (hb : ∀ b ∈ bs, b.toNat < 256) {i : Nat} (hi : i ≤ (decode kin bs).recs.length) :
+    ((decode kin bs).recs.take i).flatMap recordBytes = bs.take (8 * kin * i) := by
+  obtain ⟨-, -, e⟩ := decode_bytes kin hb
+  obtain ⟨h8, -⟩ := decode_lengths hkin bs
+  generalize decode kin bs = d at e h8 hi
+  subst e
+  have hl : ((d.recs.take i).flatMap recordBytes).length = 8 * kin * i := by
+    rw [length_flatMap_recordBytes fun r hr => h8 r (List.mem_of_mem_take hr), List.length_take,
+      Nat.min_eq_left hi]
+  calc (d.recs.take i).flatMap recordBytes
+      = ((d.recs.take i).flatMap recordBytes ++ ((d.recs.drop i).flatMap recordBytes ++
+          d.words.flatMap (fun w => wordBytes w 8) ++ lowBytes d.acc d.nbyte)).take
+          (8 * kin * i) := (List.take_left' hl).symm
+    _ = _ := by
+      rw [← List.append_assoc, ← List.append_assoc, ← List.flatMap_append, List.take_append_drop]
+
+/-- The records that the bytes `bs` encode are records of `kin` words whose bytes are those of `bs`
+up to its last complete record. -/
+theorem decode_recs {kin : Nat} (hkin : 0 < kin) {bs : List UInt64}
+    (hb : ∀ b ∈ bs, b.toNat < 256) :
+    (∀ r ∈ (decode kin bs).recs, r.length = kin) ∧
+      (decode kin bs).recs.flatMap recordBytes = bs.take (8 * kin * (bs.length / (8 * kin))) := by
+  refine ⟨(decode_lengths hkin bs).1, ?_⟩
+  have h := decode_take hkin hb (Nat.le_refl _)
+  rwa [List.take_length, decode_length hkin] at h
+
+/-- The value of the `k` low bytes of `a`, read most significant first. -/
+theorem lowBytes_value (a : UInt64) (k : Nat) :
+    (lowBytes a k).foldl (fun n b => n * 256 + b.toNat) 0 = a.toNat % 256 ^ k := by
+  induction k generalizing a with
+  | zero => simp [lowBytes, Nat.mod_one]
+  | succ k ih =>
+      rw [lowBytes, List.foldl_append, ih, List.foldl_cons, List.foldl_nil, UInt64.toNat_div,
+        UInt64.toNat_mod, Nat.pow_succ', Nat.mod_mul]
+      simp only [UInt64.reduceToNat]
+      omega
+
+theorem wordBytes_inj {w w' : UInt64} (h : wordBytes w 8 = wordBytes w' 8) : w = w' := by
+  rw [wordBytes_lowBytes, wordBytes_lowBytes] at h
+  have e := congrArg (fun l => l.foldl (fun n b => n * 256 + b.toNat) 0) h
+  simp only [lowBytes_value, Nat.reducePow] at e
+  apply UInt64.toNat_inj.mp
+  rwa [Nat.mod_eq_of_lt w.toNat_lt, Nat.mod_eq_of_lt w'.toNat_lt] at e
+
+theorem recordBytes_inj : ∀ {ws ws' : List UInt64}, ws.length = ws'.length →
+    recordBytes ws = recordBytes ws' → ws = ws'
+  | [], [], _, _ => rfl
+  | w :: ws, w' :: ws', hl, h => by
+      rw [recordBytes_cons, recordBytes_cons] at h
+      obtain ⟨h1, h2⟩ := List.append_inj h (by rw [length_wordBytes, length_wordBytes])
+      rw [wordBytes_inj h1, recordBytes_inj (by simpa using hl) h2]
+  | [], _ :: _, hl, _ => absurd hl (by simp)
+  | _ :: _, [], hl, _ => absurd hl (by simp)
+
+/-- Records of `kin` words are determined by their bytes. -/
+theorem flatMap_recordBytes_inj {kin : Nat} (hkin : 0 < kin) {recs recs' : List (List UInt64)}
+    (h : ∀ r ∈ recs, r.length = kin) (h' : ∀ r ∈ recs', r.length = kin)
+    (e : recs.flatMap recordBytes = recs'.flatMap recordBytes) : recs = recs' := by
+  have hl : recs.length = recs'.length := by
+    have := congrArg List.length e
+    rw [length_flatMap_recordBytes h, length_flatMap_recordBytes h'] at this
+    exact Nat.eq_of_mul_eq_mul_left (by omega) this
+  induction recs generalizing recs' with
+  | nil => exact (List.eq_nil_of_length_eq_zero hl.symm).symm
+  | cons r rs ih =>
+      obtain _ | ⟨r', rs'⟩ := recs'
+      · simp at hl
+      · rw [List.flatMap_cons, List.flatMap_cons] at e
+        have hr := h r (by simp)
+        have hr' := h' r' (by simp)
+        obtain ⟨e1, e2⟩ := List.append_inj e
+          (by rw [length_recordBytes, length_recordBytes, hr, hr'])
+        rw [recordBytes_inj (hr.trans hr'.symm) e1, ih (fun x hx => h x (by simp [hx]))
+          (fun x hx => h' x (by simp [hx])) e2 (by simpa using hl)]
+
+/-- Every byte that a trace reads from the receive register is below 256. -/
+theorem dataIn_lt {α : Type} (B : Bus α) (u : Uart) (tr : List α) :
+    ∀ b ∈ dataIn B u tr, b.toNat < 256 := by
+  intro b hb
+  simp only [dataIn, List.mem_filterMap, dataInByte, Option.map_eq_some_iff] at hb
+  obtain ⟨e, -, v, -, rfl⟩ := hb
+  rw [UInt64.toNat_and]
+  exact Nat.lt_of_le_of_lt Nat.and_le_right (by decide)
 
 end LeanExe.Requests

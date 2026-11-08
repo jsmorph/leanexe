@@ -4,11 +4,13 @@
 # ///
 """Checks, over the call graph of Isla's IR, the readings on which the abstract floating-point calls
 of the traces of tests/isla rest.  The traces of the floating-point forms leave FPAdd64, FPSub64,
-FPMul64, FPDiv64, FPSqrt64, FixedToFP64, and FPToFixed64 abstract
-(tests/isla/armv9p4-checked-fp.diff), and FPCompare, whose result has 4 bits at every width, and a
-theorem of tests/TestSupport/A64/Isla takes as a hypothesis that each call returns the reference
-interpreter's function of its arguments.  That reading needs the original functions FPAdd, FPSub,
-FPMul, FPDiv, FPSqrt, FixedToFP, and FPToFixed, which the wrappers call, and FPCompare to return
+FPMul64, FPDiv64, FPSqrt64, FixedToFP64, and FPToFixed64 abstract, and those of the
+single-precision forms FPAdd32, FPSub32, FPMul32, FPDiv32, FPSqrt32, FPRoundInt32, FixedToFP64_32,
+FixedToFP32_32, FPToFixed32_64, and FPToFixed32_32 (tests/isla/armv9p4-checked-fp.diff), and
+FPCompare, whose result has 4 bits at every width, and a theorem of tests/TestSupport/A64/Isla
+takes as a hypothesis that each call returns the reference interpreter's function of its
+arguments.  That reading needs the original functions FPAdd, FPSub, FPMul, FPDiv, FPSqrt,
+FPRoundInt, FixedToFP, and FPToFixed, which the wrappers call, and FPCompare to return
 without a Sail exception, to compute their result from their arguments and from registers that the
 configuration fixes and the instruction does not change, and to write no register but FPSR, which
 the theorems list among the registers that a form changes.
@@ -26,9 +28,9 @@ AArch64 state at EL1, or the pseudocode itself rules out:
   * the default cases of FPRoundBase's two matches on the rounding mode leave its variables
     round_up and overflow_to_inf undefined, and only FPRounding_TIEAWAY reaches them, which
     FPRoundBase's assertion at its entry excludes (v8_base.sail 15647);
-  * the default case of FPToFixed's match on the rounding mode leaves its variable round_up
-    undefined, and only FPRounding_ODD reaches it, which FPToFixed's assertion at its entry
-    excludes (v8_base.sail 17847);
+  * the default cases of FPToFixed's and FPRoundInt's matches on the rounding mode leave their
+    variables round_up undefined, and only FPRounding_ODD reaches them, which the assertions at
+    their entries exclude (v8_base.sail 17847 and 17468);
   * the default case of FPDecodeRounding returns an undefined mode, and no 2-bit RMode reaches it;
   * UsingAArch32() is false at EL1 with PSTATE.nRW 0, so the branches that write FPSCR, which
     holds FPCR and FPSR, do not run.
@@ -50,8 +52,8 @@ a summary for each function and exits with status 1 if a check fails.
 import re
 import sys
 
-ROOTS = ['zFPAdd', 'zFPSub', 'zFPMul', 'zFPDiv', 'zFPSqrt', 'zFixedToFP', 'zFPToFixed',
-         'zFPCompare']
+ROOTS = ['zFPAdd', 'zFPSub', 'zFPMul', 'zFPDiv', 'zFPSqrt', 'zFPRoundInt', 'zFixedToFP',
+         'zFPToFixed', 'zFPCompare']
 
 # (function, statement index of a jump, target, reason): the edges that the docstring lists.
 PRUNED = [
@@ -62,6 +64,7 @@ PRUNED = [
     ('zFPRoundBase__1', 765, 775, 'the rounding mode is not FPRounding_TIEAWAY'),
     ('zFPDecodeRounding', 48, 50, 'RMode has two bits, of which the four cases cover every value'),
     ('zFPToFixed', 244, 268, 'the rounding mode is not FPRounding_ODD'),
+    ('zFPRoundInt', 205, 229, 'the rounding mode is not FPRounding_ODD'),
 ]
 
 # Functions of no arguments whose result is known: a jump on a variable that one of them sets
