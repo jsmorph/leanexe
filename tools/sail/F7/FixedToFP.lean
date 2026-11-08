@@ -29,7 +29,10 @@ theorem cvt_zero (n : ℕ) :
     eq_real (div_real (to_real (n : ℤ)) (real_power 2 0)) 0 = decide (n = 0) := by
   simp [eq_real, div_real, to_real, real_power]
 
-/-- Talos's `fromInt` of a natural `n`: `roundScaledMagnitude` of `n · 2^1074`. -/
+/-- Talos's `fromInt` of a natural `n`: `roundScaledMagnitude` of `n · 2^1074`.  Lean's core
+library, in which Talos is written, and Mathlib elaborate `2 ^ 1074 : ℕ` with different instances
+of `Pow`; `congr 1` compares the two sides below `roundScaledMagnitude`, where the kernel checks
+the instances without evaluating the word. -/
 theorem fromInt_nat (n : ℕ) :
     Wasm.IEEE64.fromInt (n : ℤ) = Wasm.IEEE64.roundScaledMagnitude false (n * 2 ^ 1074) := by
   unfold Wasm.IEEE64.fromInt
