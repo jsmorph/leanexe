@@ -1,35 +1,41 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on QEMU's mps2-an500: the echo of
 # cmsdkTick, NAME echo, the default, the energy controller's gateway of gwTick, NAME gateway, the
-# CRC-32 step crcCmsdkTick, NAME crc, and the SHA-256 step shaCmsdkTick, NAME sha.  It builds
-# m7-windows and the loop theorem of tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean,
-# CrcLoop.lean, or ShaLoop.lean, and writes the image that tests/TestSupport/M7/Qemu.lean,
-# GwImages.lean, CrcImages.lean, or ShaImages.lean lays out with m7-windows qemu, gateway-qemu,
-# crc-qemu, or sha-qemu.  It elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean,
-# CrcQemuFile.lean, or ShaQemuFile.lean in the directory of the image under a memory cap of MEM,
-# 16G for the gateway and the SHA-256 step and 12G otherwise unless set, so that the kernel checks
-# that the file holds the image's bytes, the gateway's in parts, and the loop theorem holds of the
-# file.  It requires that each theorem whose axioms that file prints depends on no axiom beyond
-# propext, Classical.choice, and Quot.sound, and reports the check's elapsed time and peak memory.
+# CRC-32 step crcCmsdkTick, NAME crc, the SHA-256 step shaCmsdkTick, NAME sha, and the signed step
+# sgCmsdkTick, NAME signed.  It builds m7-windows and the loop theorem of
+# tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean, CrcLoop.lean, ShaLoop.lean, or SignedLoop.lean,
+# and writes the image that tests/TestSupport/M7/Qemu.lean, GwImages.lean, CrcImages.lean,
+# ShaImages.lean, or SignedImages.lean lays out with m7-windows qemu, gateway-qemu, crc-qemu,
+# sha-qemu, or signed-qemu.  It elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean,
+# CrcQemuFile.lean, ShaQemuFile.lean, or SignedQemuFile.lean in the directory of the image under a
+# memory cap of MEM, 16G for the gateway and the SHA-256 step and 12G otherwise unless set, so
+# that the kernel checks that the file holds the image's bytes, the gateway's in parts, and the
+# loop theorem holds of the file.  It requires that each theorem whose axioms that file prints
+# depends on no axiom beyond propext, Classical.choice, and Quot.sound, and reports the check's
+# elapsed time and peak memory.
 #
 # It then runs the image in QEMU with UART0 on a Unix-domain socket and plays the far end of the
 # UART, as tests/baremetal/req.sh does for the C path's programs.  For the echo,
 # tests/baremetal/uart_echo.py checks that each reply is the byte sent with bit 5 flipped, for
 # CRC-32, tests/baremetal/uart_crc.py that each reply is the low byte of zlib.crc32 of the bytes
-# sent so far, and for SHA-256, tests/baremetal/uart_sha.py that each answer to a block of 64 bytes
-# is hashlib.sha256 of the bytes sent so far.  For the gateway, tests/baremetal/uart_gateway.py
-# simulates TICKS minutes, 10,080 unless set, of the plant of the minute series SERIES,
-# $HOME/data/energy/series/nist-2015.csv unless set, and checks the commands and the monitoring,
-# and native-bare gateway-run then runs the gateway in native Lean on the same input records,
-# whose output records must equal the image's.  QEMU names
+# sent so far, for SHA-256, tests/baremetal/uart_sha.py that each answer to a block of 64 bytes
+# is hashlib.sha256 of the bytes sent so far, and for the signed step,
+# tests/baremetal/uart_signed.py that each reply is its model's of the step's integrator.  For the
+# gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 10,080 unless set, of the
+# plant of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless set, and checks
+# the commands and the monitoring, and native-bare gateway-run then runs the gateway in native
+# Lean on the same input records, whose output records must equal the image's.  QEMU names
 # qemu-system-arm, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host script in
 # seconds.  The products lie in OUT, build/baremetal/m7-qemu unless set: the image, the check's
 # output and times, QEMU's trace log NAME.trace, the host script's line NAME.echo, the messages of
 # uv and QEMU in NAME.stderr, and for the gateway the records gateway.records.in,
 # gateway.records.out, and gateway.records.lean.
-# Usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha]
+# Usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed]
 set -euo pipefail
-usage() { echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha]" >&2; exit 2; }
+usage() {
+  echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed]" >&2
+  exit 2
+}
 [ "$#" -le 1 ] || usage
 name=${1:-echo}
 case $name in
@@ -41,6 +47,8 @@ case $name in
     mem=${MEM:-12G} ;;
   sha) image=sha-cmsdk-qemu cmd=sha-qemu lib=TestSupport.M7.ShaLoop file=ShaQemuFile count=7
     mem=${MEM:-16G} ;;
+  signed) image=signed-cmsdk-qemu cmd=signed-qemu lib=TestSupport.M7.SignedLoop
+    file=SignedQemuFile count=4 mem=${MEM:-12G} ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -78,6 +86,7 @@ case $name in
   echo) host=(uart_echo.py) ;;
   crc) host=(uart_crc.py) ;;
   sha) host=(uart_sha.py) ;;
+  signed) host=(uart_signed.py) ;;
   gateway) host=(uart_gateway.py --ticks "${TICKS:-10080}" "$series" "$out/$name.records") ;;
 esac
 if "$uv" run "$root/tests/baremetal/${host[0]}" --timeout "${TIMEOUT:-120}" "${host[@]:1}" \

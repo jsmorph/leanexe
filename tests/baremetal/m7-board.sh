@@ -2,7 +2,8 @@
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
 # usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, the echo
 # after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), the
-# CRC-32 step crcUsart3Tick, NAME crc, and the SHA-256 step shaUsart3Tick, NAME sha.
+# CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, and the signed
+# step sgUsart3Tick, NAME signed (tests/TestSupport/M7/Signed.lean).
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -29,6 +30,10 @@
 # writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, and
 # elaborates tests/TestSupport/M7/ShaBoardFile.lean under 16G unless MEM is set, whose sha_board
 # and sha_board_bytes state that the bytes written begin the SHA-256 digests of the blocks read.
+# For NAME signed, "m7-board.sh check signed" builds m7-windows and
+# tests/TestSupport/M7/SignedLoop.lean, writes signed.bin with m7-windows signed-board and
+# signed.addr, and elaborates tests/TestSupport/M7/SignedBoardFile.lean under 12G unless MEM is
+# set; the signed step has no measurement image.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -55,7 +60,8 @@
 # bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
 # For the SHA-256 step, tests/baremetal/uart_sha.py sends blocks of 64 bytes in lockstep and checks
 # each answer against hashlib.sha256 of the bytes sent so far, and the script then requires ORE
-# clear in the same way.
+# clear in the same way.  For the signed step, tests/baremetal/uart_signed.py checks each reply
+# against its model of the step's integrator, and the script then requires ORE clear.
 # The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
 # theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
 # the read-back as "run" does, without st-flash's reset, runs tools/baremetal/stlink_nrst.py, with
@@ -136,7 +142,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway|area|crc|sha) ;;
+    echo|gateway|area|crc|sha|signed) ;;
     *) usage ;;
   esac
 }
@@ -224,6 +230,7 @@ host_run() {
     echo|area) host=(uart_echo.py) ;;
     crc) host=(uart_crc.py) ;;
     sha) host=(uart_sha.py) ;;
+    signed) host=(uart_signed.py) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
       rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
@@ -255,6 +262,8 @@ case $1 in
         mem=${MEM:-12G} ;;
       sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt=sha-dwt file=ShaBoardFile count=19
         mem=${MEM:-16G} ;;
+      signed) lib=TestSupport.M7.SignedLoop cmd=signed-board dwt= file=SignedBoardFile count=16
+        mem=${MEM:-12G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
     [ -z "$file" ] || rm -f "${out:?}/$file".*
@@ -270,7 +279,8 @@ case $1 in
     else
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
         tee "$out/$name.addr"
-      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
+      [ -z "$dwt" ] ||
+        tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
     fi
     if [ "$name" = echo ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows div-dwt "$out/div-dwt.bin"
@@ -364,7 +374,7 @@ EOF
     esac
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
-      gateway|crc|sha) overrun "$2" ;;
+      gateway|crc|sha|signed) overrun "$2" ;;
     esac
     ;;
   diag-image)

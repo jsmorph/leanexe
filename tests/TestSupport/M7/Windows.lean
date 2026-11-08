@@ -4,16 +4,18 @@ import LeanExe.M7.Image
 import TestSupport.M7.Asm
 import TestSupport.M7.Crc
 import TestSupport.M7.Sha
+import TestSupport.M7.Signed
 import TestSupport.Bare.Req
 import Demos.Energy.Loop
 
 /-!
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`
 generates, the echo's steps `usart3Tick` and `cmsdkTick`, the gateway's steps `gwTickUsart3`
-and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, and the SHA-256 steps
-`shaUsart3Tick` and `shaCmsdkTick`, measured by running the
-generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs from the loop's head of
-`main` to its next arrival there: the call of the step and the request's register access.
+and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, the SHA-256 steps
+`shaUsart3Tick` and `shaCmsdkTick`, and the signed steps `sgUsart3Tick` and `sgCmsdkTick`,
+measured by running the generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs
+from the loop's head of `main` to its next arrival there: the call of the step and the request's
+register access.
 
 `runProgram` places the code at `codeBase`, in the ITCM alias of the board's flash, with SP at the
 top of DTCM and DTCM as the only Normal memory.  For a program with an area, the stack's limit is
@@ -34,14 +36,14 @@ At each return from the step, the run compares the step's results in `main`'s ou
 the words of the state and the request that the step computes in native Lean, and at the end it
 compares the output with the expected bytes: for the echo, the input with bit 5 of each byte
 flipped, for CRC-32, the low byte of the CRC-32 of each prefix of the input, which `crc32Bits`
-computes bit by bit with the reflected polynomial `0xEDB88320`, and for SHA-256, after each block
+computes bit by bit with the reflected polynomial `0xEDB88320`, for SHA-256, after each block
 of 64 bytes, the 32 bytes of the digest that `sha256` of `Library/Hashing/Sha256/Program.lean`
-gives for the input up to the block's end.  The program holds the code of
-`udivmod64`, which
-the run does not execute: at its entry the run sets r0:r1 to the quotient and r2:r3 to the
-remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word, returns to LR, and counts
-the call by the routine's path, both high words 0, the divisor's low word 0, or the loop, so that
-the windows' counts exclude the routine's instructions.
+gives for the input up to the block's end, and for the signed step, the low byte of the
+integrator of `leak` shifted right by 4 after each byte, in native Lean.  The program holds the
+code of `udivmod64`, which the run does not execute: at its entry the run sets r0:r1 to the
+quotient and r2:r3 to the remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word,
+returns to LR, and counts the call by the routine's path, both high words 0, the divisor's low
+word 0, or the loop, so that the windows' counts exclude the routine's instructions.
 
 `longest` computes, over the generated code, the largest number of instructions on a path from a
 function's entry to its `BX LR`, with a call costing its callee's longest path and each call of
@@ -185,6 +187,21 @@ def shaProg (name : String) (m : Module) (tick : ShaFrame → UInt64 → ShaFram
     limit := areaEnd, start := LeanExe.areaPrefixBytes m, answer := shaAnswers,
     input := some shaInput }
 
+/-- The replies of the signed step to the bytes `input`: after each byte, read as a signed value,
+the low byte of the integrator of `leak` shifted right arithmetically by 4. -/
+def sgReplies (input : Array UInt8) : Array UInt8 :=
+  (input.foldl (fun (acc, out) b =>
+      let acc' := TestSupport.M7.Signed.leak acc ((b.toUInt64 <<< 56).toInt64 >>> 56)
+      (acc', out.push (acc' >>> 4).toUInt64.toUInt8))
+    ((0 : Int64), #[])).2
+
+open TestSupport.M7.Signed in
+def sgProg (name : String) (k : Nat) (tick : SgState → UInt64 → SgState × UInt64) (p : Port) :
+    Prog :=
+  { name, module := sgCompiled.module, k, G := SgState, s0 := sgInit, words := sgWords, tick,
+    port := p, phase := fun s => s.phase, kind := fun s v => echoKind p s.phase v, inRec := 1,
+    outRec := 1, limit := stackLimit, start := [], answer := sgReplies }
+
 def programs : List Prog :=
   [echoProg "echo-usart3" 9 TestSupport.Bare.usart3Tick usart3,
     echoProg "echo-cmsdk" 5 TestSupport.Bare.cmsdkTick cmsdk,
@@ -197,7 +214,9 @@ def programs : List Prog :=
     shaProg "sha-usart3" TestSupport.M7.Sha.shaStepCompiled.module
       TestSupport.M7.Sha.shaUsart3Tick usart3,
     shaProg "sha-cmsdk" TestSupport.M7.Sha.shaCmsdkCompiled.module
-      TestSupport.M7.Sha.shaCmsdkTick cmsdk]
+      TestSupport.M7.Sha.shaCmsdkTick cmsdk,
+    sgProg "signed-usart3" 4 TestSupport.M7.Signed.sgUsart3Tick usart3,
+    sgProg "signed-cmsdk" 5 TestSupport.M7.Signed.sgCmsdkTick cmsdk]
 
 /-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=
