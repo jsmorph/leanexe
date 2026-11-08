@@ -6,7 +6,8 @@ import LeanExe.M7.Proof.Boot
 The loop theorem of the echo of `cmsdkTick` on QEMU's `mps2-an500`, from reset.  `devWindow`,
 `stackOk`, and `initRuns` state the facts of the board that `boot_run` takes: the device window
 of the requests, the stack below the outgoing area of `main`, and UART0's initialization, whose
-two stores are the first events of the trace.  `echo_loop` states, for every sequence `σ` of the
+two stores are the first events of the trace.  `area_ram` and `stackOk_of` state the area's
+memory and a stack above the area for a program with one.  `echo_loop` states, for every sequence `σ` of the
 values that device reads return, every number `N` of windows, every code map that holds the
 bytes of a file whose kernel check `bootFileOk` passes, and every state that reset gives from the
 file's vector table, that the model reaches the loop's head with the trace of the
@@ -22,6 +23,16 @@ theorem ram_of {a : UInt32} (h1 : 0x20000000 ≤ a.toNat) (h2 : a.toNat < 0x2040
   ⟨by simp only [platform, decide_eq_true_eq]; omega,
     by simp only [platform, decide_eq_false_iff_not]; omega⟩
 
+/-- The bytes of the generator's area lie in SSRAM2. -/
+theorem area_ram : ∀ j < LeanExe.areaSize areaPages, Ram platform (areaHeader + UInt32.ofNat j) :=
+  fun j hj => by
+    have h := toNat_add_ofNat (a := areaHeader) (k := j)
+      (by rw [show areaHeader.toNat = 536870912 from rfl]; unfold LeanExe.areaSize areaPages at hj
+          omega)
+    rw [show areaHeader.toNat = 536870912 from rfl] at h
+    unfold LeanExe.areaSize areaPages at hj
+    exact ram_of (by omega) (by omega)
+
 /-- The 65,536 registers of the requests lie in the platform's device window. -/
 theorem devWindow : DevWindow platform devBase := by
   refine ⟨by decide, fun j hj => ?_⟩
@@ -29,21 +40,27 @@ theorem devWindow : DevWindow platform devBase := by
     UInt32.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
   omega
 
-/-- The stack below an outgoing area of `n` slots at the top of SSRAM2 and SSRAM3, for a step that
-needs `need` bytes below it. -/
-theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x400000) (s : State)
-    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s := by
+/-- The stack below an outgoing area of `n` slots at the top of SSRAM2 and SSRAM3, down to the
+limit `lim` in SSRAM2, for a step that needs `need` bytes below it. -/
+theorem stackOk_of {lim : UInt32} {n need : Nat} (hl : 0x20000000 ≤ lim.toNat)
+    (hfit : lim.toNat + 8 * n + need ≤ 0x20400000) (s : State)
+    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform lim n need s := by
   have hs : s.sp.toNat = 0x20400000 - 8 * n := by
     rw [h, UInt32.toNat_sub, UInt32.toNat_ofNat']
     simp only [stackTop, Nat.reducePow]
     rw [show (UInt32.toNat 0x20400000) = 0x20400000 from rfl]
     omega
-  have hl : stackLimit.toNat = 0x20000000 := rfl
   refine ⟨mod4_of_toNat (by rw [hs]; omega), fun j hj => ram_of ?_ ?_, by omega, by omega,
     fun j hj => ram_of ?_ ?_, by omega⟩
   all_goals
-    simp only [UInt32.toNat_add, UInt32.toNat_ofNat', hs, hl, Nat.reducePow] at *
+    simp only [UInt32.toNat_add, UInt32.toNat_ofNat', hs, Nat.reducePow] at *
     omega
+
+/-- The stack below an outgoing area of `n` slots at the top of SSRAM2 and SSRAM3, for a step that
+needs `need` bytes below it. -/
+theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x400000) (s : State)
+    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s :=
+  stackOk_of (by decide) (by rw [show stackLimit.toNat = 0x20000000 from rfl]; omega) s h
 
 /-- A word store of `r t` to the device register at `a`. -/
 theorem exec_str_dev {σ : Nat → UInt32} {s : State} {t n : Fin 8} {imm : Fin 4096} {a : UInt32}
@@ -53,7 +70,8 @@ theorem exec_str_dev {σ : Nat → UInt32} {s : State} {t n : Fin 8} {imm : Fin 
         pc := s.pc + 4 } := by
   simp only [exec, storeWord, ha, h4, hd, ne_eq, not_true_eq_false, ↓reduceIte, Option.map_some]
 
-/-- UART0's initialization stores 16 into `BAUDDIV` and 3 into `CTRL` and reads nothing. -/
+/-- UART0's initialization stores 16 into `BAUDDIV` and 3 into `CTRL`, reads nothing, and keeps
+memory. -/
 theorem initRuns (σ : Nat → UInt32) (code : UInt32 → Option UInt16) :
     InitRuns platform σ code init (fun _ => initTrace) 0 := by
   intro s hc
@@ -92,12 +110,14 @@ theorem initRuns (σ : Nat → UInt32) (code : UInt32 → Option UInt16) :
   have he : execSeq platform σ init s = some s6 := by
     simp only [init, execSeq, e1, e2, e3, e4, e5, e6, Option.bind_some]
   obtain ⟨r, hp⟩ := reach_seq (hf := rfl) hc he
-  refine ⟨s6, r, by rw [hp]; rfl, ?_, ?_, ?_⟩
+  refine ⟨s6, r, by rw [hp]; rfl, ?_, ?_, ?_, ?_⟩
   · subst hs6 hs5 hs4 hs3 hs2 hs1
     rfl
   · subst hs6 hs5 hs4 hs3 hs2 hs1
     show (s.trace ++ [Access.write 0x40004010 16]) ++ [Access.write 0x40004008 3] = _
     rw [List.append_assoc]
+    rfl
+  · subst hs6 hs5 hs4 hs3 hs2 hs1
     rfl
   · subst hs6 hs5 hs4 hs3 hs2 hs1
     rfl

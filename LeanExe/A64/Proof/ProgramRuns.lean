@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.ImageTheorem
 import LeanExe.A64.Image
 import LeanExe.Pipeline.Implements
+import LeanExe.Proof.AreaHeap
 
 /-!
 `ProgramRuns` from the compiler's theorem of the function that a program calls.  `program_runs`
@@ -63,9 +64,7 @@ theorem writes_array (heap : Heap) (st : Store Unit) (vs : List Value) (y : Arra
   obtain ⟨ptr, hv, hO⟩ := h
   exact ⟨ptr, y, hv, hO.values, rfl⟩
 
-theorem heapAt_initStore {heap : Heap} {m : Module} (h : heap.At (m.initialStore : Store Unit))
-    (cap : Nat) : heap.At (initStore m cap) :=
-  ⟨h.globals, h.freeList, h.base, h.top, h.pages, h.above, h.below⟩
+export LeanExe (heapAt_initStore)
 
 /-- A heap whose `top` can rise by `n` bytes within the initial pages of the memory of `m` can do
 so within a cap of `cap` pages at or above them. -/

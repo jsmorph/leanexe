@@ -25,7 +25,10 @@ not track.
 
 `board_setup` runs the image of a program whose module has an area, laid out by `areaBoot`, from
 reset to the initialization's start: the setup leaves the module's initial store in the area at
-DTCM's base, below the stack's limit `areaEnd`.
+DTCM's base, below the stack's limit `areaEnd`.  `areaBoard_run` states for such a program what
+`board_run` states for a program without an area, from the step's call fact `StepCall` with its
+invariant and from a fit condition that adds the area's size, and `areaBoard_runs` that its run
+never stops.
 -/
 
 namespace LeanExe.M7.Nucleo
@@ -50,21 +53,27 @@ theorem devWindow : DevWindow platform devBase := by
     UInt32.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
   omega
 
-/-- The stack below an outgoing area of `n` slots at the top of DTCM, for a step that needs
-`need` bytes below it. -/
-theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x20000) (s : State)
-    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s := by
+/-- The stack below an outgoing area of `n` slots at the top of DTCM, down to the limit `lim` in
+DTCM, for a step that needs `need` bytes below it. -/
+theorem stackOk_of {lim : UInt32} {n need : Nat} (hl : 0x20000000 ≤ lim.toNat)
+    (hfit : lim.toNat + 8 * n + need ≤ 0x20020000) (s : State)
+    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform lim n need s := by
   have hs : s.sp.toNat = 0x20020000 - 8 * n := by
     rw [h, UInt32.toNat_sub, UInt32.toNat_ofNat']
     simp only [stackTop, Nat.reducePow]
     rw [show (UInt32.toNat 0x20020000) = 0x20020000 from rfl]
     omega
-  have hl : stackLimit.toNat = 0x20000000 := rfl
   refine ⟨mod4_of_toNat (by rw [hs]; omega), fun j hj => ram_of ?_ ?_, by omega, by omega,
     fun j hj => ram_of ?_ ?_, by omega⟩
   all_goals
-    simp only [UInt32.toNat_add, UInt32.toNat_ofNat', hs, hl, Nat.reducePow] at *
+    simp only [UInt32.toNat_add, UInt32.toNat_ofNat', hs, Nat.reducePow] at *
     omega
+
+/-- The stack below an outgoing area of `n` slots at the top of DTCM, for a step that needs
+`need` bytes below it. -/
+theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x20000) (s : State)
+    (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s :=
+  stackOk_of (by decide) (by rw [show stackLimit.toNat = 0x20000000 from rfl]; omega) s h
 
 theorem init_ok : ∀ op ∈ init, OpOk platform op := by
   intro op hop
@@ -209,5 +218,52 @@ theorem board_setup {am m : Module} {gts : List ValueType} {k : Nat} {s0 : List 
       t.reads = 0 ∧ StoreRel platform areaHeader areaEnd areaPages gts (initStore am areaPages) t :=
   setup_boot (B := boot) hok hgt (by decide) area_ram (Nat.le_of_eq areaEnd_toNat.symm)
     (by decide) (initCode_wide init) hk hf.itcm (by decide) (by decide) b hb
+
+/-- A program whose module `m` has an area, from reset on the board: for every sequence `σ` of
+the values that device reads return and every number `N` of windows, the image of step `k` of `m`
+from the state `g0` in the layout `areaBoot m`, whose bytes the kernel's check `hk` finds in flash,
+runs the setup of the area, which leaves the store in which `m` starts there, and reaches the
+loop's head of `main` with the initialization's accesses followed by those of the first `N`
+windows, which read `σ` from the value after the initialization's reads.  The step's call keeps
+the invariant `J`, which holds of the initial store with the heap `heap`, and the area, the
+outgoing area of `main`, and the stack's bound fit in DTCM.  The theorem holds under the run
+conditions of the module's header. -/
+theorem areaBoard_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
+    {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
+    {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
+    (hcall : StepCall m k words tick J) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hok : setupOk m areaPages = true) {heap : Heap} (hat : heap.At (initStore m areaPages))
+    (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBoot m) (bootProgram (areaBoot m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) (N : Nat) :
+    ∃ t, Reach platform σ code b t ∧ t.pc = areaLoopHead m s0 ∧
+      t.trace = initTrace init σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) N := by
+  have he : areaEnd.toNat = 0x20011000 := by decide
+  have ha : areaSize areaPages = 69632 := rfl
+  exact setupBoot_run (B := boot) hlen hcall hm hcov hok area_ram
+    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (by decide) (initCode_wide init) hk hf.itcm
+    (by decide) (initRuns σ code) (by decide)
+    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+
+/-- The run of `areaBoard_run` succeeds for every number of steps: the model never stops. -/
+theorem areaBoard_runs {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
+    {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
+    {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
+    (hcall : StepCall m k words tick J) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hok : setupOk m areaPages = true) {heap : Heap} (hat : heap.At (initStore m areaPages))
+    (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBoot m) (bootProgram (areaBoot m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) :
+    ∀ j, ∃ t, run platform σ code j b = some t :=
+  runs_forever (c := (initTrace init σ).length) fun N => by
+    obtain ⟨t, r, -, tr⟩ := areaBoard_run (σ := σ) hlen hcall hm hcov hok hat hJ hk hfit g0 hs0
+      hf b hb N
+    exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
 
 end LeanExe.M7.Nucleo
