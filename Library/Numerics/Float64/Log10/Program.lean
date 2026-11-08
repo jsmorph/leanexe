@@ -72,18 +72,18 @@ def log10 (x : Float) : Float :=
   if (neg || hx < 0x00100000) && ((hx &&& 0x7fffffff) ||| lx) == 0 then -two54 / 0.0
   else if neg then (x - x) / 0.0
   else
-    let (x, k) : Float × UInt64 := if hx < 0x00100000 then (x * two54, 0 - 54) else (x, 0)
+    let (x, k) : Float × Int64 := if hx < 0x00100000 then (x * two54, -54) else (x, 0)
     let hx := x.toBits >>> 32
     if hx ≥ 0x7ff00000 then x + x
     else if hx == 0x3ff00000 && lx == 0 then 0.0
     else
-      let k := k + (hx >>> 20) - 1023
+      let k := k + (hx >>> 20).toInt64 - 1023
       let hx := hx &&& 0x000fffff
       let i := (hx + 0x95f64) &&& 0x100000
       let x :=
         Float.ofBits (((hx ||| (i ^^^ 0x3ff00000)) <<< 32) ||| (x.toBits &&& 0xFFFFFFFF))
-      let k := k + (i >>> 20)
-      let y := if k >>> 63 == 1 then -(0 - k).toFloat else k.toFloat
+      let k := k + (i >>> 20).toInt64
+      let y := k.toFloat
       let f := x - 1.0
       let hfsq := 0.5 * f * f
       let r := kLog1p f

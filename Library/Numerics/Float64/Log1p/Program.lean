@@ -19,7 +19,7 @@ decimal value, and `0.66666666666666666` as the bits of the nearest double.  The
 floating-point flags, and the expressions that fdlibm evaluates only for their flags keep their
 values: `-two54/vzero` is `-two54/0`, and the guard `two54 + x > 0` stays.  fdlibm's signed high
 word `hx` is a word here, so a comparison of `hx` with a positive bound also tests its sign bit, and
-its signed `k` is two's complement, converted to a double as `Log.logCore` converts its `k`.
+its signed `k` is an `Int64`.
 `Log1pAccuracy.lean` checks the results against a reference computed with Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
@@ -38,11 +38,11 @@ The notices of the ported files follow verbatim, as their licenses require.
 
 namespace Library.Numerics.Float64.Log1p
 
-/-- The end of fdlibm's `log1p` for `1 + x = 2 ^ k (1 + f)`, with `k` in two's complement, the
-correction `c` divided by `u`, and `hu`, the high word of `1 + f` or of `(1 + f)/2` without its
+/-- The end of fdlibm's `log1p` for `1 + x = 2 ^ k (1 + f)`, with the correction `c` divided by
+`u`, and `hu`, the high word of `1 + f` or of `(1 + f)/2` without its
 exponent, or the word that fdlibm derives from it, 0 only for `f` in `[-3 · 2 ^ -21, 2 ^ -20)`.  For
 `k = 0` the correction is not used. -/
-def log1pTail (f c : Float) (k hu : UInt64) : Float :=
+def log1pTail (f c : Float) (k : Int64) (hu : UInt64) : Float :=
   let ln2Hi := Float.ofBits 0x3FE62E42FEE00000  --  6.93147180369123816490e-01
   let ln2Lo := Float.ofBits 0x3DEA39EF35793C76  --  1.90821492927058770002e-10
   let Lp1 := Float.ofBits 0x3FE5555555555593    --  6.666666666666735130e-01
@@ -53,7 +53,7 @@ def log1pTail (f c : Float) (k hu : UInt64) : Float :=
   let Lp6 := Float.ofBits 0x3FC39A09D078C69F    --  1.531383769920937332e-01
   let Lp7 := Float.ofBits 0x3FC2F112DF3E5244    --  1.479819860511658591e-01
   let hfsq := 0.5 * f * f
-  let kd := if k >>> 63 == 1 then -(0 - k).toFloat else k.toFloat
+  let kd := k.toFloat
   if hu == 0 then
     if f == 0.0 then
       if k == 0 then 0.0
@@ -92,10 +92,10 @@ def log1p (x : Float) : Float :=
     let (u, k, c) :=
       if neg || hx < 0x43400000 then
         let u := 1.0 + x
-        let k := ((u.toBits >>> 32) >>> 20) - 1023
-        let c := if k >>> 63 == 0 && k != 0 then 1.0 - (u - x) else x - (u - 1.0)
+        let k := ((u.toBits >>> 32) >>> 20).toInt64 - 1023
+        let c := if k > 0 then 1.0 - (u - x) else x - (u - 1.0)
         (u, k, c / u)
-      else (x, ((x.toBits >>> 32) >>> 20) - 1023, 0.0)
+      else (x, ((x.toBits >>> 32) >>> 20).toInt64 - 1023, 0.0)
     let hu := (u.toBits >>> 32) &&& 0x000fffff
     let low := u.toBits &&& 0xFFFFFFFF
     if hu < 0x6a09e then

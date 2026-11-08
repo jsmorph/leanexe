@@ -48,7 +48,7 @@ The port is written in the verified compiler's dialect, which [the verified comp
 |---|---|---|
 | `if (shuge + x > one) return x` | test kept | The expression raises the inexact flag in C, and the test holds for every `\|x\| < 2^-28`. |
 | `h = 0.5; if (jx < 0) h = -h;` | `if jx >>> 31 == 1 then -0.5 else 0.5` | One `let`. |
-| `int` exponents `expt` and `ex_expt` | two's complement words, the caller's `-1` as `0 - 1` | The dialect has unsigned words only. |
+| `int` exponents `expt` and `ex_expt` | two's complement words, the caller's `-1` as `0 - 1` | The exponents enter only a sum and the shift that builds the scale's high word, whose low 32 bits the words compute as C's `int` arithmetic does. |
 | `INSERT_WORDS (scale, (0x3ff + expt) << 20, 0)` | low 32 bits of `(0x3ff + expt) <<< 20`, shifted into the high half | The C expression is a 32-bit `int`. |
 | `GET_HIGH_WORD`, `SET_HIGH_WORD` | top half of the 64-bit word | |
 | `fabs` | `Float.abs`, compiled to `f64.abs` | |

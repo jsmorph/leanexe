@@ -130,8 +130,8 @@ def log2Near1 (x : Float) : Float :=
   y + lo
 
 /-- The main path of Arm's `log2` for the bits `ix` of a positive normal `x`, or of a subnormal
-`x` scaled by `2 ^ 52` with 52 taken from the exponent field.  `tmp >>> 52`, extended by the sign
-of `tmp`, is C's arithmetic shift of `(int64_t) tmp`, and `kd` is its conversion to a double. -/
+`x` scaled by `2 ^ 52` with 52 taken from the exponent field.  `k` is the arithmetic shift of
+`(int64_t) tmp`, and `kd` is its conversion to a double. -/
 def log2Core (tab tab2 : Array UInt64) (ix : UInt64) : Float :=
   let invln2hi := Float.ofBits 0x3FF7154765200000  --  0x1.7154765200000p+0
   let invln2lo := Float.ofBits 0x3DE705FC2EEFA200  --  0x1.705fc2eefa200p-33
@@ -143,12 +143,12 @@ def log2Core (tab tab2 : Array UInt64) (ix : UInt64) : Float :=
   let A5 := Float.ofBits 0x3FCA6225E117F92E        --  0x1.a6225e117f92ep-3
   let tmp := ix - 0x3fe6000000000000
   let i := (tmp >>> 46) % 64
-  let k := (tmp >>> 52) ||| (if tmp >>> 63 == 1 then 0xFFFFFFFFFFFFF000 else 0)
+  let k := tmp.toInt64 >>> 52
   let iz := ix - (tmp &&& ((0xfff : UInt64) <<< 52))
   let invc := Float.ofBits tab[(2 * i).toNat]!
   let logc := Float.ofBits tab[(2 * i + 1).toNat]!
   let z := Float.ofBits iz
-  let kd := if k >>> 63 == 1 then -(0 - k).toFloat else k.toFloat
+  let kd := k.toFloat
   let r := (z - Float.ofBits tab2[(2 * i).toNat]! - Float.ofBits tab2[(2 * i + 1).toNat]!) * invc
   let rhi := Float.ofBits (r.toBits &&& 0xFFFFFFFF00000000)
   let rlo := r - rhi

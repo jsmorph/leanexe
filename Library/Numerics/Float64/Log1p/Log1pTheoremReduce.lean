@@ -104,17 +104,17 @@ theorem hi_mag : Wasm.IEEE64.scaledMagnitude 0x3FE62E42FEE00000 = 0xB17217F7 * 2
   decide +kernel
 
 /-- `kd` is the integer `K` exactly, and so is `kd ln2Hi`. -/
-theorem kd_exact (k : UInt64) (K : ℤ) (hK1 : -1100 ≤ K) (hK2 : K ≤ 1100)
-    (hk : (k.toNat : ℤ) = K % 2 ^ 64) :
-    FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0 ∧
-      FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0 := by
-  obtain ⟨hf, hv⟩ := Library.Numerics.Float64.Log.LogCoreBits.kd_value k K (by omega) (by omega) (by rw [hk]; norm_num)
-  have hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0 := ⟨hf, by rw [hv, sub_self, abs_zero]⟩
+theorem kd_exact (k : Int64) (K : ℤ) (hK1 : -1100 ≤ K) (hK2 : K ≤ 1100) (hk : k.toInt = K) :
+    FApprox (k.toFloat) K 0 ∧
+      FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0 := by
+  obtain ⟨hf, hv⟩ := Signed64Value.toFloat_exact k (by rw [hk]; omega)
+  rw [hk] at hv
+  have hkd : FApprox (k.toFloat) K 0 := ⟨hf, by rw [hv, sub_self, abs_zero]⟩
   refine ⟨hkd, ?_⟩
-  have hmag : Wasm.IEEE64.scaledMagnitude (Library.Numerics.Float64.Log.LogCoreBits.kdOf k).toBits = K.natAbs * 2 ^ 1074 := by
-    have h1 := abs_value (Library.Numerics.Float64.Log.LogCoreBits.kdOf k).toBits
+  have hmag : Wasm.IEEE64.scaledMagnitude (k.toFloat).toBits = K.natAbs * 2 ^ 1074 := by
+    have h1 := abs_value (k.toFloat).toBits
     rw [hv] at h1
-    have h3 : (Wasm.IEEE64.scaledMagnitude (Library.Numerics.Float64.Log.LogCoreBits.kdOf k).toBits : ℝ) =
+    have h3 : (Wasm.IEEE64.scaledMagnitude (k.toFloat).toBits : ℝ) =
         (K.natAbs * 2 ^ 1074 : ℕ) := by
       push_cast
       rw [Nat.cast_natAbs, Int.cast_abs]
@@ -129,7 +129,7 @@ theorem kd_exact (k : UInt64) (K : ℤ) (hK1 : -1100 ≤ K) (hK2 : K ≤ 1100)
     simp only [Bool.false_eq_true, ite_false]
   unfold FApprox
   rw [F64Bits.toBits_mul, hhb]
-  have hm := F64ExactProduct.int_mul_exact (Library.Numerics.Float64.Log.LogCoreBits.kdOf k).toBits 0x3FE62E42FEE00000 hf hhi
+  have hm := F64ExactProduct.int_mul_exact (k.toFloat).toBits 0x3FE62E42FEE00000 hf hhi
     K.natAbs 0xB17217F7 1042 hmag hi_mag (by omega) (by norm_num)
   refine ⟨hm.1, ?_⟩
   rw [hm.2.1, hv, sub_self, abs_zero]
@@ -162,24 +162,24 @@ theorem pos_word (w : UInt64) (h0 : 0 < value w) : w.toNat < 2 ^ 63 := by
     linarith [(Nat.cast_nonneg (Wasm.IEEE64.scaledMagnitude w) : (0 : ℝ) ≤ _)]
   linarith
 
-theorem k_nat (u : Float) :
-    (kOf u).toNat = (u.toBits.toNat / 2 ^ 52 + (2 ^ 64 - 1023)) % 2 ^ 64 := by
-  unfold kOf
-  rw [UInt64.toNat_sub, e_nat]
-  simp
+theorem k_int (u : Float) : (kOf u).toInt = ((u.toBits.toNat / 2 ^ 52 : ℕ) : ℤ) - 1023 := by
+  have hw := u.toBits.toNat_lt
+  refine Signed64Value.toInt_of_word _ _ (by omega) (by omega) ?_
+  show (((u.toBits >>> 32) >>> 20 - 1023).toNat : ℤ) = _
+  rw [UInt64.toNat_sub, e_nat, show (1023 : UInt64).toNat = 1023 from rfl]
   omega
 
 /-- A positive normal `u` away from `[√2/2, √2)` as `2 ^ K (1 + f)` through `mainTail`. -/
 theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤ value u.toBits)
     (hfar : value u.toBits < 1482910 / 2097152 ∨ 14142132 / 10 ^ 7 ≤ value u.toBits) :
-    ∃ (f : Float) (k hu' : UInt64) (K : ℤ),
+    ∃ (f : Float) (k : Int64) (hu' : UInt64) (K : ℤ),
       mainTail u c (kOf u) = Log1p.log1pTail f c k hu' ∧
       Finite f.toBits ∧ -2929 / 10000 ≤ value f.toBits ∧ value f.toBits ≤ 41422 / 100000 ∧
       value u.toBits = (2 : ℝ) ^ K * (1 + value f.toBits) ∧
       ((hu' == 0) = false → 1 / 2 ^ 30 ≤ |value f.toBits|) ∧
       ((hu' == 0) = true → |value f.toBits| ≤ 1 / 2 ^ 19) ∧
       (value f.toBits ≠ 0 → 1 / 2 ^ 1000 ≤ |value f.toBits|) ∧
-      (k == 0) = false ∧ (k.toNat : ℤ) = K % 2 ^ 64 ∧ -60 ≤ K ∧ K ≤ 1024 ∧ K ≠ 0 := by
+      (k == 0) = false ∧ k.toInt = K ∧ -60 ≤ K ∧ K ≤ 1024 ∧ K ≠ 0 := by
   set w := u.toBits with hw
   have hwl := w.toNat_lt
   have hp0 : (0 : ℝ) < 1 / 2 ^ 60 := by positivity
@@ -202,7 +202,7 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
   obtain ⟨-, hvu⟩ := value_fields w e F (by omega) he2 (by omega) hwe
   have hF0 : (0 : ℝ) ≤ F := Nat.cast_nonneg F
   have hF52 : (F : ℝ) < 2 ^ 52 := by exact_mod_cast (show F < 2 ^ 52 by omega)
-  have hkn : (kOf u).toNat = (e + (2 ^ 64 - 1023)) % 2 ^ 64 := k_nat u
+  have hkn : (kOf u).toInt = (e : ℤ) - 1023 := k_int u
   have hhu := hu_nat w
   rw [← hF] at hhu
   have hFq0 : 0 ≤ (F : ℝ) / 2 ^ 52 := div_nonneg hF0 (by positivity)
@@ -279,11 +279,10 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
       linarith
     · simp only [beq_eq_false_iff_ne, ne_eq]
       intro h0
-      have : (kOf u).toNat = 0 := by rw [h0]; rfl
+      have : (kOf u).toInt = 0 := by rw [h0]; rfl
       rw [hkn] at this
       omega
-    · rw [hkn]
-      omega
+    · exact hkn
   · have hbF : 0x6a09e * 2 ^ 32 ≤ F := by
       have := UInt64.not_lt.mp hb
       have := UInt64.le_iff_toNat_le.mp this
@@ -338,6 +337,12 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
       rw [UInt64.toNat_shiftRight, UInt64.toNat_sub_of_le _ _ hu1, hhu,
         show (2 : UInt64).toNat % 64 = 2 from rfl, Nat.shiftRight_eq_div_pow]
       rfl
+    have hk1 : (kOf u + 1).toInt = (e : ℤ) - 1022 := by
+      have h1 := Signed64Value.toNat_toUInt64 (kOf u)
+      rw [hkn] at h1
+      refine Signed64Value.toInt_of_word _ _ (by omega) (by omega) ?_
+      rw [Int64.toUInt64_add, UInt64.toNat_add, show (1 : Int64).toUInt64.toNat = 1 from rfl]
+      omega
     refine ⟨Float.ofBits mw - 1.0, kOf u + 1,
       ((0x00100000 : UInt64) - ((w >>> 32) &&& 0x000fffff)) >>> 2,
       (e : ℤ) - 1022, ?_, hff, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, by omega, hK0⟩
@@ -384,10 +389,9 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
       linarith
     · simp only [beq_eq_false_iff_ne, ne_eq]
       intro h0
-      have : (kOf u + 1).toNat = 0 := by rw [h0]; rfl
-      rw [UInt64.toNat_add, hkn, show (1 : UInt64).toNat = 1 from rfl] at this
+      have : (kOf u + 1).toInt = 0 := by rw [h0]; rfl
+      rw [hk1] at this
       omega
-    · rw [UInt64.toNat_add, hkn, show (1 : UInt64).toNat = 1 from rfl]
-      omega
+    · exact hk1
 
 end Library.Numerics.Float64.Log1p.Log1pTheoremReduce

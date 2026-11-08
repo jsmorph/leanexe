@@ -237,7 +237,7 @@ theorem log10_subnormal_within (x : Float) (hlo : 0 < x.toBits.toNat)
     left
     rw [decide_eq_false_iff_not]
     omega
-  obtain ⟨hxr, hhi', hwithin⟩ := Log10Main.main10 w (0 - 54) e f (-54) he1 (by omega) hflt hwN
+  obtain ⟨hxr, hhi', hwithin⟩ := Log10Main.main10 w (-54) e f (-54) he1 (by omega) hflt hwN
     (by decide) (by norm_num) (by omega)
   rw [Log10Bits.subnormal_bits x hneg hlo' hz hinf hone hxr hhi', Real.logb]
   have hxv : value x.toBits = ((2 : ℝ) ^ 52 + f) * (2 : ℝ) ^ ((e : Int) - 1075) * (2 : ℝ) ^ (-54 : Int) := by

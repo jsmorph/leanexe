@@ -43,7 +43,7 @@ The port is written in the dialect of the verified compiler as [the exponential 
 | `p`, `q`, and `p/q` written out in each branch | `asinRatio t`, with the same operations in the same order | Every branch calls one function. |
 | `SET_LOW_WORD (w, 0)` | `Float.ofBits (s.toBits &&& 0xFFFFFFFF00000000)` | The dialect has word operations and no word macros. |
 | `huge + x > one` | kept as a test | Its only purpose is to raise inexact, and it holds for every finite `x` with `\|x\| < 1` (`AtanTheorem.huge_gt`), so it changes no result. |
-| Signed `int32_t` high word `hx`, tested with `hx > 0` | `UInt64` word, its sign the top bit | The dialect has no signed integers, and `hx = 0` cannot occur on the paths that test it. |
+| Signed `int32_t` high word `hx`, tested with `hx > 0` | `UInt64` word, its sign the top bit | The sign bit of the word is the sign of `x`, and `hx = 0` cannot occur on the paths that test it. |
 | `pio2_lo` volatile in `e_acos.c` | its value | The only purpose of the volatile access is to prevent constant folding. |
 
 | Constant | Bits | Constant | Bits |

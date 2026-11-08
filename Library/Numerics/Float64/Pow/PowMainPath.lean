@@ -24,15 +24,14 @@ theorem log_one : (Pow.powLog Pow.powLogTable 0x3FF0000000000000).1.toBits = 0 �
   have hi : PowLogBits.indexOf 0x3FF0000000000000 = 75 := by decide
   have hz : PowLogBits.zOf 0x3FF0000000000000 = 0x3FF0000000000000 := by decide
   rw [hk, hi, hz]
-  obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits 0x3FF0000000000000 (Library.Numerics.Float64.Log.LogCoreBits.kdOf 0)
+  obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits 0x3FF0000000000000 (0 : Int64).toFloat
     (Float.ofBits Pow.powLogTable[(4 * (75 : UInt64)).toNat]!)
     (Float.ofBits Pow.powLogTable[(4 * (75 : UInt64) + 2).toNat]!)
     (Float.ofBits Pow.powLogTable[(4 * (75 : UInt64) + 3).toNat]!)
     (by unfold CodeLib.IEEE64.Finite; decide) (by unfold CodeLib.IEEE64.Finite; decide)
   rw [b1, b2]
-  have hkd : (Library.Numerics.Float64.Log.LogCoreBits.kdOf 0).toBits = 0 := by
-    simp only [Library.Numerics.Float64.Log.LogCoreBits.kdOf, show ((0 : UInt64) >>> 63 == 1) = false by decide,
-      Bool.false_eq_true, ite_false, F64Convert.toBits_toFloat]
+  have hkd : (0 : Int64).toFloat.toBits = 0 := by
+    rw [Signed64Wasm.toBits_toFloat]
     decide
   rw [hkd, F64Bits.toBits_ofBits, F64Bits.toBits_ofBits, F64Bits.toBits_ofBits]
   constructor <;> decide +kernel

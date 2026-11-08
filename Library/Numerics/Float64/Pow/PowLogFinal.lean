@@ -74,7 +74,7 @@ theorem log_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E 
       |value P.1.toBits + value P.2.toBits - Real.log X| ≤ 7 / 8 / 2 ^ 65 * |Real.log X| ∧
       |value P.2.toBits| ≤ |value P.1.toBits| / 2 ^ 50 := by
   intro P X
-  have hP : P = PowLogBits.finalOf (PowLogBits.zOf ix) (Library.Numerics.Float64.Log.LogCoreBits.kdOf (PowLogBits.kOf ix))
+  have hP : P = PowLogBits.finalOf (PowLogBits.zOf ix) (PowLogBits.kOf ix).toFloat
       (Float.ofBits Pow.powLogTable[(4 * PowLogBits.indexOf ix).toNat]!)
       (Float.ofBits Pow.powLogTable[(4 * PowLogBits.indexOf ix + 2).toNat]!)
       (Float.ofBits Pow.powLogTable[(4 * PowLogBits.indexOf ix + 3).toNat]!) :=
@@ -100,12 +100,14 @@ theorem log_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E 
     have hn : n ≤ 75 := by omega
     obtain ⟨h4, h42, h43⟩ := hidx n (by omega) hi
     let i : Fin 128 := ⟨n, by omega⟩
-    obtain ⟨hkf, hkv⟩ := Library.Numerics.Float64.Log.LogCoreBits.kd_value (PowLogBits.kOf ix) (E - 1022) (by omega) (by omega) hk
+    obtain ⟨hkf, hkv⟩ := Signed64Value.toFloat_exact (PowLogBits.kOf ix)
+      (by rw [hk]; simp only [Nat.reducePow]; omega)
+    rw [hk] at hkv
     have hiz : (PowLogBits.zOf ix).toNat = 1022 * 2 ^ 52 + f := hz.trans (by norm_num)
     obtain ⟨-, hzv⟩ := z_value _ 1022 f (by norm_num) (by norm_num) (by norm_num; omega) hiz
     obtain ⟨Z, Zh, hzf, hhf, -⟩ := PowLogReduce.split_state _ 1022 f (Or.inl rfl) (by norm_num; omega)
       (by intro h; omega) hiz
-    obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits (PowLogBits.zOf ix) (Library.Numerics.Float64.Log.LogCoreBits.kdOf (PowLogBits.kOf ix))
+    obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits (PowLogBits.zOf ix) (PowLogBits.kOf ix).toFloat
       (Float.ofBits Pow.powLogTable[4 * i.val]!) (Float.ofBits Pow.powLogTable[4 * i.val + 2]!)
       (Float.ofBits Pow.powLogTable[4 * i.val + 3]!) hzf hhf
     rw [(hent i).1, (hent i).2.1, (hent i).2.2] at b1 b2
@@ -142,7 +144,7 @@ theorem log_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E 
       have h3 := nat_cast_lt_pow _ 53 h2
       linarith
     obtain ⟨r1, r2, r3, r4⟩ := PowLogCases.core_relative (PowLogBits.zOf ix)
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf (PowLogBits.kOf ix)).toBits 1022 f (Or.inl rfl) (by norm_num; omega)
+      (PowLogBits.kOf ix).toFloat.toBits 1022 f (Or.inl rfl) (by norm_num; omega)
       (by intro h; omega) hiz i (fun _ => hn) (by intro h; omega) hzl (by intro h; omega)
       (E - 1022) hkf hkv (by rw [abs_le]; constructor <;> omega) hx1
     have hL : ((E - 1022 : Int) : ℝ) * Real.log 2 + Real.log (value (PowLogBits.zOf ix)) =
@@ -161,12 +163,14 @@ theorem log_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E 
     have hn2 : n < 128 := by omega
     obtain ⟨h4, h42, h43⟩ := hidx n hn2 hi
     let i : Fin 128 := ⟨n, hn2⟩
-    obtain ⟨hkf, hkv⟩ := Library.Numerics.Float64.Log.LogCoreBits.kd_value (PowLogBits.kOf ix) (E - 1023) (by omega) (by omega) hk
+    obtain ⟨hkf, hkv⟩ := Signed64Value.toFloat_exact (PowLogBits.kOf ix)
+      (by rw [hk]; simp only [Nat.reducePow]; omega)
+    rw [hk] at hkv
     have hiz : (PowLogBits.zOf ix).toNat = 1023 * 2 ^ 52 + f := hz.trans (by norm_num)
     obtain ⟨-, hzv⟩ := z_value _ 1023 f (by norm_num) (by norm_num) (by norm_num; omega) hiz
     obtain ⟨Z, Zh, hzf, hhf, -⟩ := PowLogReduce.split_state _ 1023 f (Or.inr rfl) (by norm_num; omega)
       (by intro _; simp only [Nat.reducePow]; omega) hiz
-    obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits (PowLogBits.zOf ix) (Library.Numerics.Float64.Log.LogCoreBits.kdOf (PowLogBits.kOf ix))
+    obtain ⟨b1, b2⟩ := PowLogEval.finalOf_bits (PowLogBits.zOf ix) (PowLogBits.kOf ix).toFloat
       (Float.ofBits Pow.powLogTable[4 * i.val]!) (Float.ofBits Pow.powLogTable[4 * i.val + 2]!)
       (Float.ofBits Pow.powLogTable[4 * i.val + 3]!) hzf hhf
     rw [(hent i).1, (hent i).2.1, (hent i).2.2] at b1 b2
@@ -200,7 +204,7 @@ theorem log_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E 
       have h3 : 2 ^ 52 + f = 2 ^ 52 + 0 := Nat.cast_injective h2
       exact hX1 ⟨by omega, Nat.add_left_cancel h3⟩
     obtain ⟨r1, r2, r3, r4⟩ := PowLogCases.core_relative (PowLogBits.zOf ix)
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf (PowLogBits.kOf ix)).toBits 1023 f (Or.inr rfl) (by norm_num; omega)
+      (PowLogBits.kOf ix).toFloat.toBits 1023 f (Or.inr rfl) (by norm_num; omega)
       (by intro _; simp only [Nat.reducePow]; omega) hiz i (by intro h; omega) (fun _ => hn1)
       (by intro h; omega) hzl' (E - 1023) hkf hkv (by rw [abs_le]; constructor <;> omega) hx1
     have hL : ((E - 1023 : Int) : ℝ) * Real.log 2 + Real.log (value (PowLogBits.zOf ix)) =

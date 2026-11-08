@@ -40,7 +40,6 @@ The sources are Arm's `math/pow.c` (`Copyright (c) 2018-2026, Arm Limited`), `ma
 |---|---|---|
 | `(a) == (b)` on two comparisons, in the `y = ±∞` case and the `\|y\| ≥ 2^63` case | nested tests with the same results | The dialect compares no Booleans. |
 | `checkint (iy)` evaluated once for a negative `x` | evaluated in each of the two tests that use it | `checkint` is a pure function, so the results are the same. |
-| `k = (int64_t) tmp >> 52`, an arithmetic shift | logical shift with the sign bits set for a negative `tmp`, and `kd` converted through its magnitude | Words are unsigned. |
 | `abstop = 0` marks the special path | Boolean `special` of `powExpCore` | The exponential implementation passes the path choice as an explicit Boolean. |
 | `opt_barrier_double`, `force_eval_double`, `check_oflow`, `check_uflow` | identities or omitted | WebAssembly has no floating-point status flags. |
 | `1.0 + 0x1p-60 != 1.0` in `specialcase` | kept | It is false in rounding to nearest, so the `DBL_MAX` branch is never taken. |

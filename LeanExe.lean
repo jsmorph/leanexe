@@ -410,6 +410,7 @@ import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.Signed32
 import LeanExe.ProofKit.Signed64
 import LeanExe.ProofKit.Signed64Float
+import LeanExe.ProofKit.Signed64Value
 import LeanExe.ProofKit.Signed64Wasm
 import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel

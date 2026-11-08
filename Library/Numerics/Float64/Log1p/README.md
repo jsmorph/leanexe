@@ -33,7 +33,7 @@ The source is `lib/msun/src/s_log1p.c` of FreeBSD [1].  Its notice reads "Copyri
 |---|---|---|
 | End of the function after the reduction | `log1pTail f c k hu` | The `k = 0` path and the normalized paths call one function. |
 | Signed `int32_t` high words `hx`, `hu` | `UInt64` words, with the sign bit tested separately | A signed comparison with a positive bound becomes a sign test and an unsigned comparison: `hx < 0x3FDA827A` is `neg ∨ hx < 0x3FDA827A`. |
-| Signed `k`, converted with `(double) k` | two's complement word, converted as `Log.logCore` converts its `k` | The dialect has no signed integers. |
+| Signed `k`, `k > 0`, and `(double) k` | `Int64` `k`, `k > 0`, and `k.toFloat` | `k > 0` compiles to `i64.lt_s`, and `toFloat` to the conversion of the magnitude, negated for a negative `k`. |
 | `-two54/vzero` | `-two54 / 0.0` | The only purpose of the volatile zero is to raise divideByZero, and the value is `-∞` either way. |
 | `two54 + x > zero` | kept as a test | Its only purpose is to raise inexact, and it holds for every `\|x\| < 2^-29`, so it changes no result. |
 | `c` unset on the `k = 0` path | `c = 0.0` | C never reads `c` there. |
@@ -73,7 +73,7 @@ The theorems are in [the accuracy theorem](Log1pTheorem.lean), [the exceptional 
 
 ### Modules
 
-The table below lists the chain's own modules in dependency order.  It reuses `LogCoreBits.kd_value` of [the logarithm's proof](../Log/LogCoreBits.lean) for the conversion of `k`, and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules they import, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the library aggregate](../../../../Library.lean) also includes.
+The table below lists the chain's own modules in dependency order.  It takes the exact conversion of `k` from `Signed64Value.toFloat_exact` of [the `Int64` values](../../../../LeanExe/ProofKit/Signed64Value.lean), and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules they import, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the library aggregate](../../../../Library.lean) also includes.
 
 | Module | Content |
 |---|---|
