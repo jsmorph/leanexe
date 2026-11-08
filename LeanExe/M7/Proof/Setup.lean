@@ -681,9 +681,10 @@ theorem setupBoot_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {lim 
     rw [List.length_append]
     addr_after
   have hsp1 : t1.sp = B.sp := sp1.trans spt
-  obtain ⟨t2, r2, p2, tr2⟩ := main_run (P := P) (σ := σ) (code := code) hlen hcall hm hprog hcp
-    (by rw [Boot.base]; exact even_after (a := B.org) (by omega) _) hcov hdev hat hJ
-    (by show areaPages ≤ 65535; decide) g0 hs0 t1 hp1
+  obtain ⟨t2, r2, p2, tr2⟩ := main_run (P := P) (σ := σ) (code := code)
+    (fun g _ _ _ h => by rw [h.1]; exact hlen g) hcall.rep hm hprog hcp
+    (by rw [Boot.base]; exact even_after (a := B.org) (by omega) _) hcov hdev hat
+    (by show areaPages ≤ 65535; decide) g0 ⟨hs0.symm, hJ⟩ t1 hp1
     (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
     (fun _ => ⟨gts, hgt, hsr.congr (KeepsBelow.of_mem mm1)⟩) N
   refine ⟨t2, rt.trans (r1.trans r2), p2, ?_⟩

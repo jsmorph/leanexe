@@ -237,9 +237,10 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     rw [p1, hbpc, Boot.reset, Boot.base]
     addr_after
   have hsp1 : t1.sp = B.sp := sp1.trans hbsp
-  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code) hlen
-    (stepCall_of_implementsA hwords himpl hPre hna) hm hprog hcp
-    (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat trivial hcap g0 hs0 t1 hp1
+  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code)
+    (fun g _ _ _ h => by rw [h.1]; exact hlen g)
+    (stepCall_of_implementsA hwords himpl hPre hna).rep hm hprog hcp (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat hcap g0
+    ⟨hs0.symm, trivial⟩ t1 hp1
     (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
     (areaHolds_none hna) N
   refine ⟨t, r1.trans rt, pt, ?_⟩
