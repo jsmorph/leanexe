@@ -326,7 +326,7 @@ def i64Op : Instruction → Option binary_operation
   | .xorI64 => some .Oxor
   | _ => none
 
-/-- The `i64` comparisons. -/
+/-- The `i64` comparisons other than the signed ones, whose operands the translation casts. -/
 def i64Cmp : Instruction → Option binary_operation
   | .eqI64 => some .Oeq
   | .neI64 => some .One

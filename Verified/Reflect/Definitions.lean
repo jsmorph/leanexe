@@ -49,7 +49,8 @@ enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, the `Int64` operations `+`, `-`, `*`, `&&&`, `|||`, `^^^`, `<<<`, `>>>`, `/`, `%`,
 negation, the comparisons, `==`, `!=`, `min`, `max`, literals, `x.toUInt64`, and `w.toInt64`,
-which `LeanExe.ProofKit.Signed64` writes over words, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
+as operations on words, the order comparisons and `>>>` signed and `/` and `%` through
+`LeanExe.ProofKit.Signed64`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
 and, in a recursive definition, calls of itself.  A definition
