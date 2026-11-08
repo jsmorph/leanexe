@@ -27,7 +27,7 @@ flowchart TB
   subgraph CB["C backend"]
     TR["LeanExe/Native translate<br/>simulation theorem translate_correct"]
     CL["Clight program, Lean copy of CompCert 3.18<br/>C: p.f.native, A: p.f.nativeAligned"]
-    BARE["Whole program with a generated main<br/>B: p.f.program, by bare_program"]
+    BARE["Whole program with a generated main<br/>B: p.f.program, by bare_program,<br/>or LoopReacts of a step run forever"]
     CTXT["C text<br/>clightgen reads it back,<br/>and it must equal the translation"]
     CC["CompCert ccomp"]
     ROCQ["Rocq composition rocq/Clight2Asm.v<br/>CompCert's simulations from Clight to Asm"]
@@ -92,7 +92,7 @@ flowchart TB
     direction LR
     LNX["Linux on AArch64 and x86-64<br/>executable linked with<br/>tools/native-host.c"]
     QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code,<br/>or arm64 Image"]
-    NUC["NUCLEO-F767ZI, Cortex-M7<br/>flash image from reset,<br/>also in Renode, and on QEMU<br/>mps2-an500 for UART0's images"]
+    NUC["Cortex-M7: NUCLEO-F767ZI,<br/>QEMU mps2-an500, and Renode<br/>images of the C programs,<br/>or the back end's images from reset"]
     WT["Wasmtime<br/>leanexe-wasmtime-host,<br/>WASI Preview 1"]
     JS["Browsers and Node.js<br/>GPT-2 pages,<br/>gpt32-wasm-host.mjs"]
     VK["wgpu-native on Vulkan<br/>SwiftShader, llvmpipe<br/>leanexe-webgpu-host"]
@@ -102,6 +102,7 @@ flowchart TB
 
   CC --> LNX
   CC --> QEMU
+  CC --> NUC
   IMGF --> QEMU
   M7F --> NUC
   WASMF --> WT
