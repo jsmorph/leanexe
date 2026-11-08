@@ -1,5 +1,5 @@
 :rewrite move_termination_measures
-:slice_roots FPAdd FPSub FPMul FPDiv FPSqrt FixedToFP FPToFixed FPCompare initialize_registers
+:slice_roots FPAdd FPSub FPMul FPDiv FPSqrt FixedToFP FPRoundInt FPToFixed FPCompare initialize_registers
 :slice_cuts AArch64_FPTrappedException AArch32_FPTrappedException
 :slice_keep_std
 :slice
