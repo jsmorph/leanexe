@@ -5,11 +5,11 @@
 # a64-programs emit writes each program's Image, NAME.img, with the bytes that the UART must show
 # and the status with which the program must end.  Lean then elaborates
 # tests/TestSupport/A64/ImageFiles.lean, and on their own ImageFilesEuler.lean, ImageFilesGpt.lean,
-# ImageFilesExp.lean, and ImageFilesSin.lean, in the directory of those files and each with a
-# MemoryHigh of 16G, so that the kernel checks that each NAME.img holds the bytes that genImage
-# gives and proves, for a boot state whose memory holds the file at imageBase, the run to PSCI
-# SYSTEM_OFF with the program's output, with no axiom beyond propext, Classical.choice, and
-# Quot.sound.  For each Image the script checks QEMU's loading of it with
+# ImageFilesExp.lean, ImageFilesSin.lean, and ImageFilesF32.lean, in the directory of those files
+# and each with a MemoryHigh of 16G, so that the kernel checks that each NAME.img holds the bytes
+# that genImage gives and proves, for a boot state whose memory holds the file at imageBase, the
+# run to PSCI SYSTEM_OFF with the program's output, with no axiom beyond propext,
+# Classical.choice, and Quot.sound.  For each Image the script checks QEMU's loading of it with
 # tests/baremetal/a64-loadcheck.sh, runs it with the machine, CPU, and 1 GiB of RAM of
 # tests/baremetal/qemu.sh within TIMEOUT seconds, 120 unless set, and requires QEMU to exit with
 # status 0, which PSCI SYSTEM_OFF gives, and the UART output to be the expected bytes followed by
@@ -27,10 +27,12 @@ mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high 8G lake --log-level error build a64-programs \
   TestSupport.A64.Gcd TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold \
   TestSupport.A64.Cic TestSupport.A64.Euler TestSupport.A64.Gpt TestSupport.A64.Exp \
-  TestSupport.A64.Sin LeanExe.A64.File LeanExe.A64.Proof.ImageTheorem
+  TestSupport.A64.Sin TestSupport.A64.GptLayer32Runs TestSupport.A64.Conv32Runs LeanExe.A64.File \
+  LeanExe.A64.Proof.ImageTheorem
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
-for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1" "ImageFilesExp 4" "ImageFilesSin 4"; do
+for f in "ImageFiles 7" "ImageFilesEuler 1" "ImageFilesGpt 1" "ImageFilesExp 4" "ImageFilesSin 4" \
+    "ImageFilesF32 2"; do
   set -- $f
   if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
       "$root/tests/TestSupport/A64/$1.lean" >"$out/$1.check" 2>&1 &&
