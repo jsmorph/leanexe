@@ -218,6 +218,23 @@ single-precision equations name their operands. -/
 theorem low32_eq (x : UInt64) : x.toNat % 4294967296 = x.toUInt32.toNat := by
   simp only [UInt64.toNat_toUInt32, Nat.reducePow]
 
+/-- The word of a 32-bit result, zero-extended. -/
+theorem ofNat_u32 (x : UInt32) : UInt64.ofNat x.toNat = x.toUInt64 := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_ofNat', UInt32.toNat_toUInt64]
+  have := x.toNat_lt
+  omega
+
+theorem u32_mod (x : UInt32) : x.toNat % 4294967296 = x.toNat :=
+  Nat.mod_eq_of_lt x.toNat_lt
+
+theorem zero_u32 : (UInt64.toUInt32 0).toUInt64 = 0 := rfl
+
+/-- The low 32 bits of an element of `_Z`, the upper bits `h` above the word `n`. -/
+theorem hi_lo_mod32 (h n : Nat) :
+    (h * 18446744073709551616 + n) % 4294967296 = n % 4294967296 := by
+  omega
+
 /-- The fields of `FCMP Dn, Dm`. -/
 def fcmpFields (n m : Fin 32) : Fields := [("Rm", m.val), ("Rn", n.val)]
 
@@ -273,6 +290,36 @@ theorem zchain_eq {s : State} {k : Nat} (hk : k < 32) : zchain% s k = (dAt s k).
 
 theorem uchain_eq {s : State} {k : Nat} (hk : k < 32) : uchain% s k = dAt s k :=
   upick_eq k (dAt s) 31 0 (Nat.zero_le _) (by omega)
+
+/-- The chain of the low 32 bits of the elements of `_Z` at the index `k`, as numbers, in the form
+in which the walk leaves it after `low32_eq`. -/
+syntax "schain% " term:max term:max : term
+macro_rules
+  | `(schain% $s $k) => do
+    let mut t ← `(UInt32.toNat (UInt64.toUInt32 (dAt $s 31)))
+    for j' in [0:31] do
+      let lit := Lean.Syntax.mkNumLit (toString (30 - j'))
+      t ← `(cond (decide ($k = $lit)) (UInt32.toNat (UInt64.toUInt32 (dAt $s $lit))) $t)
+    return t
+
+/-- The chain of the low 32 bits of the elements of `_Z` at the index `k`, zero-extended, in the
+form in which the walk leaves it after `ofNat_u32`. -/
+syntax "wchain% " term:max term:max : term
+macro_rules
+  | `(wchain% $s $k) => do
+    let mut t ← `(UInt32.toUInt64 (UInt64.toUInt32 (dAt $s 31)))
+    for j' in [0:31] do
+      let lit := Lean.Syntax.mkNumLit (toString (30 - j'))
+      t ← `(cond (decide ($k = $lit)) (UInt32.toUInt64 (UInt64.toUInt32 (dAt $s $lit))) $t)
+    return t
+
+theorem schain_eq {s : State} {k : Nat} (hk : k < 32) :
+    schain% s k = (dAt s k).toUInt32.toNat :=
+  upick_eq k (fun j => (dAt s j).toUInt32.toNat) 31 0 (Nat.zero_le _) (by omega)
+
+theorem wchain_eq {s : State} {k : Nat} (hk : k < 32) :
+    wchain% s k = (dAt s k).toUInt32.toUInt64 :=
+  upick_eq k (fun j => (dAt s j).toUInt32.toUInt64) 31 0 (Nat.zero_le _) (by omega)
 
 /-- The state after the writes of D registers 0 to `n - 1` from `b`, where D register `j` takes
 `r` for `j = k` and D register `j` of `s` otherwise. -/
@@ -443,6 +490,31 @@ macro "dreg_end" : tactic => `(tactic| (
   refine ⟨_, done_eq ?_, by frame_end⟩
   simp (disch := omega) only [dwrite_eq, State.setD, x_lt, x_31, dAt_val, Fin.ext_iff,
     UInt64.reduceOfNat, State.mk.injEq, and_true, true_and, and_self]))
+
+/-- Proves that the outcome at the end of a path of the trace of a single-precision form that
+writes a D register is `exec`'s, as `dreg_end` does, with the zero-extended 32-bit result. -/
+macro "sreg_end" : tactic => `(tactic| (
+  simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte]
+  refine ⟨_, done_eq ?_, by frame_end⟩
+  simp (disch := omega) only [dwrite_eq, State.setD, x_lt, x_31, dAt_val, Fin.ext_iff,
+    UInt64.reduceOfNat, low32_eq, ofNat_u32, u32_mod, zero_u32, State.mk.injEq, and_true,
+    true_and, and_self]))
+
+/-- Proves that the outcome at the end of a path of the trace of a single-precision form that
+writes a general register is `exec`'s, as `xreg_end` does, with the zero-extended 32-bit
+result. -/
+macro "wreg_end" : tactic => `(tactic| (
+  done_end
+  simp (disch := omega) only [setX_eq_setRegAt, setRegAt_pc, setRegAt_31, dAt_val, low32_eq,
+    ofNat_u32, u32_mod, zero_u32, UInt64.ofNat_toNat, State.mk.injEq, and_true, true_and,
+    and_self]))
+
+/-- Proves that the outcome at the end of the path of the trace of `FCMP Sn, Sm` is `exec`'s, as
+`flags_end` does for doubles. -/
+macro "flags32_end" : tactic => `(tactic| (
+  done_end
+  simp (disch := omega) only [State.fcmpS, dAt_val, fcmpNZCV32_n, fcmpNZCV32_z, fcmpNZCV32_c,
+    fcmpNZCV32_v, Nat.div_one, State.mk.injEq, and_true, true_and, and_self]))
 
 /-- Proves that the outcome at the end of a path of the trace of `FMOV Xd, Dn` is `exec`'s: it
 reads `__BranchTaken` and compares the write of the general register. -/
