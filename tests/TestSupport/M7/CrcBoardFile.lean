@@ -12,8 +12,9 @@ of the area's prefix as immediates, and on the module, the index 5, and the init
 `crc_board` states the loop theorem for every code map that holds the file's bytes in flash at
 both of its addresses, `crc_board_runs` that the run never stops, and `crc_board_prefix` that the
 bytes that the run writes to `USART_TDR` begin the low bytes of the CRC-32 of the nonempty
-prefixes of the bytes that it reads from `USART_RDR`, with at most one byte without a reply.  The
-theorems hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
+prefixes of the bytes that it reads from `USART_RDR`, with at most one byte without a reply.
+`crc_board_steps` states that each window takes at most 1,482 steps of the model.  The theorems
+hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
 power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
 interrupt, NMI, debug halt, debugger access, or DMA during the run.
 -/
@@ -43,6 +44,20 @@ theorem crc_board (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt
           (fun k => σ (k + initReads init))) N :=
   crc_loop crc_file hf b hb N
 
+/-- The CRC-32 step's windows from reset over the image file, counted: for every `σ`, `N`, code
+map that holds the file's bytes in flash, and state that reset gives, the run reaches the loop's
+head after the setup's and the initialization's `c` steps, and window `i` takes `cs[i]` steps, at
+most 1,482, after which the run is at the head with the accesses of the initialization and of the
+first `i + 1` windows. -/
+theorem crc_board_steps (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code crcBytes crcSize) (b : State) (hb : Reset code flashItcm b) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 1482) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = boardHead ∧
+        s.trace = initTrace init σ ++
+          windows (reqTrace (devBus devBase) crcUsart3Tick crcInit
+            (fun k => σ (k + initReads init))) i :=
+  crc_loop_steps crc_file hf b hb N
+
 /-- The CRC-32 step's run from reset over the image file succeeds for every number of steps. -/
 theorem crc_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (hf : Flash code crcBytes crcSize) (b : State) (hb : Reset code flashItcm b) :
@@ -68,6 +83,10 @@ end TestSupport.M7.CrcBoardFile
 
 #print axioms TestSupport.M7.CrcBoardFile.crc_board
 #print axioms TestSupport.M7.CrcBoardFile.crc_board_runs
+#print axioms TestSupport.M7.CrcBoardFile.crc_board_steps
+#print axioms TestSupport.M7.Crc.crc_loop_steps
+#print axioms TestSupport.M7.crc_static
+#print axioms LeanExe.M7.Nucleo.areaBoard_run_steps
 #print axioms TestSupport.M7.CrcBoardFile.crc_board_prefix
 #print axioms TestSupport.M7.CrcBoardFile.crc_file
 #print axioms TestSupport.M7.Crc.crc_loop

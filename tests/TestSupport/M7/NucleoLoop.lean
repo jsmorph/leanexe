@@ -10,7 +10,9 @@ store: for every sequence `σ` of the values that device reads return, every num
 windows, every code map that holds in flash the bytes of a file whose kernel check `bootFileOk`
 passes, and every state that reset gives from the vector table at `0x00200000`, the model reaches
 the loop's head with the initialization's accesses followed by those of the first `N` windows.
-`echo_runs` states that the run never stops.
+`echo_runs` states that the run never stops, and `echo_loop_steps` counts the run: the
+initialization's steps, and each window in at most 1,440 steps, 16 of `main` and the 1,424 of
+`echo_static` for the step.
 
 `usart3_requests` states that every request of `usart3Tick` names `USART_ISR`, `USART_RDR`, or
 `USART_TDR`, and `echo_confined` that every access of the trace of `echo_loop` lies in RCC, GPIOD,
@@ -37,6 +39,24 @@ theorem echo_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
     reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 echo_noArea.1
     hAt0 hcap0 hk
     (by rw [echo_stack.1]; decide) 3 rfl hf b hb N
+
+/-- The echo of `usart3Tick` from the state 3 on the board, from reset, counted: after the
+initialization's `c` steps the machine is at the loop's head, and window `i` takes `cs[i]` steps,
+at most 1,440, after which the machine is at the head with the first `i + 1` windows' accesses. -/
+theorem echo_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk boot echoProgram n len = true) (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) (N : Nat) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 1440) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = echoHead ∧
+        s.trace = initTrace init σ ++
+          windows (reqTrace (devBus devBase) usart3Tick 3 (fun j => σ (j + initReads init))) i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
+      (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
+    Verified.Ready.initial rfl reqCompiled.initial
+  exact (board_run_steps (words := fun g : UInt64 => [g]) (fun _ => rfl) (fun _ => rfl)
+    reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 echo_noArea.1
+    hAt0 hcap0 hk (by rw [echo_stack.1]; decide) 3 rfl hf b hb N).uniform
+    (fun F st vs => costRun_le_staticCost rfl echo_static.1 F st vs)
 
 /-- The echo's run on the board succeeds for every number of steps. -/
 theorem echo_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}

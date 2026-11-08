@@ -37,10 +37,10 @@ steps `crc-usart3` and `crc-cmsdk`, and the SHA-256 steps `sha-usart3` and `sha-
   each with the setup of its area, which no theorem covers
   (`tests/TestSupport/M7/ShaImages.lean`), and each prints the addresses of `main` and of its
   loop's head.
-- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`, and
-  `m7-windows div-dwt FILE` write the measurement images of `tests/TestSupport/M7/Dwt.lean`: the
-  echo, the gateway, and the CRC-32 step with the cycles of each window, and the cycles of
-  `udivmod64`'s paths and of `UDIV`.
+- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`,
+  `m7-windows sha-dwt FILE`, and `m7-windows div-dwt FILE` write the measurement images of
+  `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step, and the SHA-256 step
+  with the cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -205,6 +205,15 @@ def main (args : List String) : IO UInt32 := do
           return 0
       | .error e =>
           IO.eprintln s!"m7-windows: crc-usart3-board-dwt: {e}"
+          return 1
+  | ["sha-dwt", file] =>
+      match TestSupport.M7.Dwt.shaDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: sha-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: sha-usart3-board-dwt: {e}"
           return 1
   | ["board-dwt", file] =>
       match TestSupport.M7.Dwt.echoDwt with

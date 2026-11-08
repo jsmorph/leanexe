@@ -1,4 +1,5 @@
 import LeanExe.M7.Proof.Step
+import LeanExe.M7.Proof.Bound
 import TestSupport.M7.Crc
 
 /-!
@@ -39,6 +40,12 @@ theorem crc_globals :
 /-- The stack that a call of each CRC-32 step uses, with the generator's frames. -/
 theorem crc_stack :
     stackBound crcStepCompiled.module 5 = 248 ∧ stackBound crcCmsdkCompiled.module 5 = 248 := by
+  decide +kernel
+
+/-- The static bound on the instructions of every run of each CRC-32 step. -/
+theorem crc_static :
+    staticCost crcStepCompiled.module 5 = some 1466 ∧
+      staticCost crcCmsdkCompiled.module 5 = some 1466 := by
   decide +kernel
 
 /-- Talos's run of `crcUsart3Tick` keeps `CrcInv`. -/

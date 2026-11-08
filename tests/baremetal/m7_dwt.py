@@ -24,7 +24,8 @@ of crcDwt, the CRC-32 step's, whose windows have the echo's phases.
 the gateway's windows, with the range of the tick's instructions over the day of
 Demos/Energy/board-day/gateway1440.records.in, and marks the kinds whose most cycles exceed
 16,667, half a byte's time at 4,800 baud at 16 MHz.  The table's keys are the phase plus 4 when
-the byte count is 7, before and after the window.
+the byte count is 7, before and after the window.  "m7_dwt.py sha RESULTS" does the same for the
+window table of shaDwt, the SHA-256 step's, whose framing has the gateway's phases and keys.
 
 "m7_dwt.py bootlog LOG" prints the boot log: each reset's RCC_CSR flags.
 
@@ -76,6 +77,22 @@ GW_KINDS = {
     (3, 1, 0): ("sentrecord", 3689),
 }
 HALF_BYTE = 16667
+
+# The model's instruction counts of the SHA-256 step's windows, from the loop's head to the loop's
+# head (tests/TestSupport/M7/Windows.lean), by the gateway's keys, with the 8 instructions of
+# udivmod64's high path in tx.  Every window of a kind takes the same count.
+SHA_KINDS = {
+    (0, 0, 0): ("idle", 1461), (0, 1, 0): ("idle", 1461),
+    (0, 0, 1): ("rxne", 1460), (0, 1, 1): ("rxne", 1460),
+    (1, 0, 0): ("byte", 1736),
+    (1, 1, 0): ("word", 2123),
+    (1, 1, 2): ("block", 247927),
+    (2, 0, 2): ("txwait", 1940), (2, 1, 2): ("txwait", 1940),
+    (2, 0, 3): ("tx", 2041 + 8), (2, 1, 3): ("tx", 2041 + 8),
+    (3, 0, 2): ("sent", 1991),
+    (3, 1, 2): ("sentword", 2180),
+    (3, 1, 0): ("sentblock", 2169),
+}
 
 FLAGS = [(31, "LPWR"), (30, "WWDG"), (29, "IWDG"), (28, "SFT"), (27, "POR"), (26, "PIN"),
          (25, "BOR")]
@@ -180,7 +197,7 @@ def phases(path, kinds):
     return status
 
 
-def gateway(path):
+def framed(path, table):
     w = words(path)
     status = 0
     kinds = {}
@@ -189,7 +206,7 @@ def gateway(path):
         if count == 0:
             continue
         before, after = key >> 3, key & 7
-        kind = GW_KINDS.get((before & 3, before >> 2, after & 3))
+        kind = table.get((before & 3, before >> 2, after & 3))
         if kind is None:
             print(f"m7_dwt: {path}: {count} windows with the keys {before} and {after}")
             status = 1
@@ -223,11 +240,12 @@ def bootlog(path):
 
 def main():
     commands = {"div": div, "echo": lambda path: phases(path, ECHO_KINDS),
-                "crc": lambda path: phases(path, CRC_KINDS), "gateway": gateway,
-                "bootlog": bootlog}
+                "crc": lambda path: phases(path, CRC_KINDS),
+                "gateway": lambda path: framed(path, GW_KINDS),
+                "sha": lambda path: framed(path, SHA_KINDS), "bootlog": bootlog}
     if len(sys.argv) != 3 or sys.argv[1] not in commands:
         print("usage: m7_dwt.py div RESULTS | echo RESULTS | crc RESULTS | gateway RESULTS | "
-              "bootlog LOG", file=sys.stderr)
+              "sha RESULTS | bootlog LOG", file=sys.stderr)
         return 2
     return commands[sys.argv[1]](sys.argv[2])
 

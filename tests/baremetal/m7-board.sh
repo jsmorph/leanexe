@@ -66,8 +66,9 @@
 # checks.  "m7-board.sh measure NAME DEVICE" writes NAME-dwt.bin, the program with the cycles of
 # each window, runs the host script through DEVICE as "run" does, with the gateway's records in
 # NAME-dwt.records.in and NAME-dwt.records.out, and reads the window table, at 0x20000000 or for
-# the CRC-32 step at 0x2001C000 above its area, and the boot log into NAME-dwt.results and
-# NAME-dwt.bootlog, and for the gateway and the CRC-32 step USART_ISR as "run" does.  st-flash
+# the CRC-32 and SHA-256 steps at 0x2001C000 above their areas, and the boot log into
+# NAME-dwt.results and NAME-dwt.bootlog, and for the gateway and the CRC-32 and SHA-256 steps
+# USART_ISR as "run" does.  st-flash
 # attaches with --hot-plug for these reads, which halt the core.
 #
 # "m7-board.sh compare RECORDS" runs native-bare gateway-run on the input records RECORDS.in into
@@ -198,15 +199,15 @@ case $1 in
     cd "$root"
     mkdir -p "$out"
     case $name in
-      echo) lib=TestSupport.M7.NucleoLoop cmd=board dwt=board-dwt file=NucleoFile count=12
+      echo) lib=TestSupport.M7.NucleoLoop cmd=board dwt=board-dwt file=NucleoFile count=17
         mem=${MEM:-12G} ;;
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
         count=13 mem=${MEM:-16G} ;;
       area) lib=LeanExe.M7.Proof.Board cmd=area-board dwt= file=AreaFile count=9
         mem=${MEM:-12G} ;;
-      crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=14
+      crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=18
         mem=${MEM:-12G} ;;
-      sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt= file=ShaBoardFile count=16
+      sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt=sha-dwt file=ShaBoardFile count=16
         mem=${MEM:-16G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
@@ -216,6 +217,7 @@ case $1 in
     if [ "$name" = sha ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" |
         tee "$out/$name.addr"
+      tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$dwt" "$out/$name-dwt.bin"
     elif [ "$name" = area ]; then
       tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$name.bin" \
         "$out/$name.expected" | tee "$out/$name.addr"
@@ -340,7 +342,7 @@ EOF
   measure)
     [ "$#" -eq 3 ] || usage
     case $2 in
-      echo|gateway|crc) ;;
+      echo|gateway|crc|sha) ;;
       *) usage ;;
     esac
     name=$2
@@ -351,11 +353,12 @@ EOF
       echo) table=528 tab=0x20000000 ;;
       gateway) table=2064 tab=0x20000000 ;;
       crc) table=528 tab=0x2001C000 ;;
+      sha) table=2064 tab=0x2001C000 ;;
     esac
     readmem "$name-dwt.results" "$tab" "$table"
     readmem "$name-dwt.bootlog" 0x2001E000 264
     case $name in
-      gateway|crc) overrun "$name-dwt" || status=1 ;;
+      gateway|crc|sha) overrun "$name-dwt" || status=1 ;;
     esac
     "$uv" run "$here/m7_dwt.py" bootlog "$out/$name-dwt.bootlog"
     "$uv" run "$here/m7_dwt.py" "$name" "$out/$name-dwt.results" || status=1
