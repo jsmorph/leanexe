@@ -56,7 +56,7 @@ def tailLemma (name : Name) (t : TailContext) (c : Ctx)
       let type ← instantiateMVars (← inferType value)
       if type.isAppOf ``Decidable then app.assign name inst
   for (name, proof) in proofs do
-    app.assign name (← mkExpectedTypeHint proof (← app.hypType name))
+    app.assignHint name proof
   app.finish
 
 def reflectTailCondition (c : Ctx) (p inst : Lean.Expr) : MetaM Reflection := do
