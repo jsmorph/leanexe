@@ -87,6 +87,8 @@ import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Floats32
+import Verified.Examples.Signed
+import Verified.Examples.WasiSigned
 import Verified.Examples.Sums
 import Verified.Examples.HeapSums
 import Verified.Examples.TypedTrees

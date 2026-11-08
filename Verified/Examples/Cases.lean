@@ -20,6 +20,7 @@ import Verified.Examples.Fold
 import Verified.Examples.TreeCopyCases
 import Verified.Examples.TreeCases
 import Verified.Examples.ListsCases
+import Verified.Examples.SignedCases
 import Verified.Examples.CompositionCases
 import Verified.Examples.ScalarCompositionCases
 import Verified.Examples.RelocationCases
@@ -810,6 +811,7 @@ def main : IO Unit := do
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases
+  Verified.Examples.Signed.cases
   Verified.Examples.Composition.cases
   Verified.Examples.ScalarComposition.cases
   Verified.Examples.Relocation.cases

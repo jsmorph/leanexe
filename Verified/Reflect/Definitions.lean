@@ -13,6 +13,8 @@ import Verified.Reflect.RecursiveLayout
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
+import LeanExe.ProofKit.Signed64
+import LeanExe.Pipeline.Int64
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
@@ -27,8 +29,8 @@ module's bytes decode to the module, which computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
-definition's parameters and result are `UInt64`, `Bool`, `Float`, structures with a `Flat` instance
-whose tuple is their fields, enumerations with a `Flat` instance to words, arrays of these, and
+definition's parameters and result are `UInt64`, `Int64`, `Bool`, `Float`, structures with a `Flat`
+instance whose tuple is their fields, enumerations with a `Flat` instance to words, arrays of these, and
 pairs, and structures whose `Flat` tuple holds arrays, which are represented as that tuple and split
 as pairs are.  Its body may also hold arrays of tuples, which have no `Represent` instance.  A
 structure's source value is its flattening `φ`, the source value of its `Flat` tuple, an array's is
@@ -45,7 +47,9 @@ constructors, enumeration constructors, `Flat.flat` of enumerations, `match` and
 enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
 `xs.set! i.toNat v`, `xs.push v`,
-`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
+`xs ++ ys`, the `Int64` operations `+`, `-`, `*`, `&&&`, `|||`, `^^^`, `<<<`, `>>>`, `/`, `%`,
+negation, the comparisons, `==`, `!=`, `min`, `max`, literals, `x.toUInt64`, and `w.toInt64`,
+which `LeanExe.ProofKit.Signed64` writes over words, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
 and, in a recursive definition, calls of itself.  A definition
@@ -511,6 +515,47 @@ def iteLemma : CmpOp → Name
   | .ne => ``ite_ne_eq
   | .lt => ``ite_lt_eq
   | .le => ``ite_le_eq
+
+/-- Whether a closed `Int64` term is a literal: a numeral, the negation of a literal,
+`Int64.minValue`, `Int64.maxValue`, or `Int64.ofNat`, `Int64.ofInt`, `Nat.toInt64`, or
+`Int.toInt64` of a closed term. -/
+partial def int64Lit? (e : Lean.Expr) : MetaM Bool := do
+  match e.consumeMData.getAppFnArgs with
+  | (``OfNat.ofNat, #[_, n, _]) => return (natOf (← instantiateMVars n)).isSome
+  | (``Neg.neg, #[_, _, x]) => int64Lit? x
+  | (``Int64.ofNat, #[n]) | (``Int64.ofInt, #[n]) | (``Nat.toInt64, #[n])
+  | (``Int.toInt64, #[n]) => return !n.hasFVar && !n.hasLooseBVars
+  | _ => return e.isConstOf ``Int64.minValue || e.isConstOf ``Int64.maxValue
+
+/-- A comparison of `Int64` values as a proposition: the comparison of their words that
+`Signed64` states, and its equivalence with the comparison, with `>` and `≥` as `<` and `≤` on
+swapped operands. -/
+def int64Cmp? (p : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+  let p := p.consumeMData
+  let isInt64 (α : Lean.Expr) : MetaM Bool := return (← whnfR α).isConstOf ``Int64
+  let via (h : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+    let some (_, q) := (← whnfR (← inferType h)).iff?
+      | throwError "verified_compile: the equivalence {h}"
+    return some (q, ← mkExpectedTypeHint (← mkAppM ``Iff.symm #[h]) (mkIff q p))
+  let thm (n : Name) (a b : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+    via (← mkAppM n #[a, b])
+  match p.getAppFnArgs with
+  | (``LT.lt, #[α, _, a, b]) =>
+    if ← isInt64 α then thm ``LeanExe.ProofKit.Signed64.lt_iff a b else return none
+  | (``LE.le, #[α, _, a, b]) =>
+    if ← isInt64 α then thm ``LeanExe.ProofKit.Signed64.le_iff a b else return none
+  | (``GT.gt, #[α, _, a, b]) =>
+    if ← isInt64 α then thm ``LeanExe.ProofKit.Signed64.lt_iff b a else return none
+  | (``GE.ge, #[α, _, a, b]) =>
+    if ← isInt64 α then thm ``LeanExe.ProofKit.Signed64.le_iff b a else return none
+  | (``Eq, #[α, a, b]) =>
+    if ← isInt64 α then thm ``LeanExe.ProofKit.Signed64.eq_iff a b else return none
+  | (``Ne, #[α, a, b]) =>
+    unless ← isInt64 α do return none
+    let h ← mkAppM ``not_congr #[← mkAppM ``LeanExe.ProofKit.Signed64.eq_iff #[a, b]]
+    let q ← mkAppM ``Ne #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]]
+    return some (q, ← mkExpectedTypeHint (← mkAppM ``Iff.symm #[h]) (mkIff q p))
+  | _ => return none
 
 /-- The context of the variables `vars` and `Env.cons v₀ (… (Env.cons vₙ Env.nil))`, with each
 context built once and shared by the longer ones. -/
@@ -2274,6 +2319,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.word #[some c.sigs, some c.ctx, some w]
     return ⟨src, ← rflProof c src (← flatValue e), .word, e,
       leafBound c ``word_bound [(`v, w)], leafFits c src, none⟩
+  if let some r ← reflectInt64? e then return r
   if !e.hasFVar && !e.hasLooseBVars && shape.flat.isNone then
     match shape.ty with
     | .word =>
@@ -2456,6 +2502,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         binBound c (if fp32 then ``fbin32_bound else ``fbin_bound) [(`op, fop)] rl rr,
         binFits c (if fp32 then ``fbin32_fits else ``fbin_fits) [(`op, fop)] rl rr, none⟩
     if args.size == 6 then
+      unless (← whnfR args[0]!).isConstOf ``UInt64 do
+        throwError "verified_compile: unsupported operation {fn} on {args[0]!}"
       let rl ← reflect c args[4]!
       let rr ← reflect c args[5]!
       return ⟨← mkAppM ``Expr.bin #[op, rl.src, rr.src],
@@ -2476,6 +2524,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let notEq ← mkAppOptM ``decide_not #[some (← mkEq a b), none, some inst]
       let T ← mkAppM ``not #[← mkDecide (← mkEq a b)]
       return ← reflectVia T (← mkExpectedTypeHint (← mkEqSymm notEq) (← mkEq T e))
+    if let some (_, h) ← int64Cmp? p then
+      -- A comparison of `Int64` values is the comparison of their words of `Signed64`.
+      let eq ← mkAppOptM ``LeanExe.ProofKit.Signed64.decide_iff
+        #[none, none, none, some h, some inst]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T eq
     if let (``Eq, #[α, a, b]) := p.consumeMData.getAppFnArgs then
       if (← whnfR α).isConstOf ``Bool then
         return ← reflectVia (← boolEqTerm a b)
@@ -2486,6 +2540,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       | throwError "verified_compile: unsupported decision {p}"
     return (← reflectCmp op a b).as' e
   | ``BEq.beq, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Int64 then
+      return ← reflectVia (← mkAppM ``BEq.beq
+          #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]])
+        (← mkAppM ``LeanExe.ProofKit.Signed64.beq_word #[a, b])
     if (← whnfR α).isConstOf ``Bool then
       let lawful ← enumLawful α inst
       return ← reflectVia (← boolEqTerm a b)
@@ -2494,6 +2552,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let r ← if ← isFloat α then reflectFCmp .eq a b else reflectCmp .eq a b
     return r.as' e
   | ``bne, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Int64 then
+      return ← reflectVia (← mkAppM ``bne
+          #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]])
+        (← mkAppM ``LeanExe.ProofKit.Signed64.bne_word #[a, b])
     if (← whnfR α).isConstOf ``Bool then
       return ← reflectAs (← mkAppM ``not #[← mkAppOptM ``BEq.beq
         #[some α, some inst, some a, some b]]) e
@@ -2555,7 +2617,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       (mkConst ``ToWord.toBits) x .word).as' e
   | ``Float.abs, #[x] => return (← reflectFUnary (mkConst ``FUnOp.abs) x).as' e
   | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
-    unless (← isFloat α) || (← whnfR α).isConstOf ``UInt64 do
+    let word := (← whnfR α).isConstOf ``UInt64 || (← whnfR α).isConstOf ``Int64
+    unless (← isFloat α) || word do
       throwError "verified_compile: unsupported {fn} on {α}"
     -- `min` and `max` on floats and words are `if a ≤ b`, with operands that are not variables
     -- bound first.
@@ -2650,6 +2713,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     -- rule of `decide` reads as the Boolean connective of the two decisions.
     if p.consumeMData.isAppOfArity ``And 2 || p.consumeMData.isAppOfArity ``Or 2 then
       let eq ← mkAppOptM ``ite_decide_eq #[some α, some p, some inst, some a, some b]
+      let some (_, T, _) := (← inferType eq).eq?
+        | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T eq
+    if let some (_, h) ← int64Cmp? p then
+      -- An `if` on a comparison of `Int64` values tests the comparison of their words.
+      let eq ← mkAppOptM ``LeanExe.ProofKit.Signed64.ite_iff
+        #[some α, none, none, none, some h, some inst, some a, some b]
       let some (_, T, _) := (← inferType eq).eq?
         | throwError "verified_compile: the equation {eq}"
       return ← reflectVia T eq
@@ -3666,6 +3736,64 @@ where
   reflectAs (T e : Lean.Expr) : MetaM Reflection := do
     let r ← reflect c T
     return r.as (← restate r.proof (← bareEq T e)) e
+  /-- An `Int64` term over words, after `Signed64`.  A closed literal is the constructor of its
+  word, which the kernel computes.  `+`, `-`, `*`, `&&&`, `|||`, and `^^^` are the word operations
+  on the operands' words, which the kernel identifies with the `Int64` operations, `<<<` and
+  negation are `shl` and `0 - a` by `shl_eq` and `neg_eq`, and `>>>`, `/`, and `%` are the word
+  forms `sar`, `div`, and `rem` by their equations, with operands that are not variables bound
+  first, since the forms read them more than once. -/
+  reflectInt64? (e : Lean.Expr) : MetaM (Option Reflection) := do
+    unless (← whnfR (← inferType e)).isConstOf ``Int64 do return none
+    if !e.hasFVar && !e.hasLooseBVars && (← int64Lit? e) then
+      let n ← kernelWhnf (← mkAppM ``UInt64.toNat #[← mkAppM ``Int64.toUInt64 #[e]])
+      let some v := natOf n
+        | throwError "verified_compile: the Int64 constant {e} does not reduce to a word"
+      let T ← mkAppM ``Int64.ofUInt64 #[toExpr (UInt64.ofNat v)]
+      return some (← reflectVia T (← mkExpectedTypeHint (← mkEqRefl e) (← mkEq T e)))
+    let (fn, args) := e.getAppFnArgs
+    let binary (op proof : Lean.Expr) (rl rr : Reflection) : MetaM Reflection := do
+      return ⟨← mkAppM ``Expr.bin #[op, rl.src, rr.src], proof, .word, e,
+        binBound c ``bin_bound [(`op, op)] rl rr, binFits c ``bin_fits [(`op, op)] rl rr, none⟩
+    if fn == ``Neg.neg && args.size == 3 then
+      let rz ← reflect c (toExpr (0 : UInt64))
+      let ra ← reflect c args[2]!
+      let op := Lean.mkConst ``BinOp.sub
+      let eq ← mkEqSymm (← mkAppM ``LeanExe.ProofKit.Signed64.neg_eq #[args[2]!])
+      return some (← binary op (← transHint (← mkAppM ``bin_eq #[op, rz.proof, ra.proof]) eq)
+        rz ra)
+    unless args.size == 6 do return none
+    let a := args[4]!
+    let b := args[5]!
+    let word? : Option Name := match fn with
+      | ``HAdd.hAdd => some ``BinOp.add
+      | ``HSub.hSub => some ``BinOp.sub
+      | ``HMul.hMul => some ``BinOp.mul
+      | ``HAnd.hAnd => some ``BinOp.and
+      | ``HOr.hOr => some ``BinOp.or
+      | ``HXor.hXor => some ``BinOp.xor
+      | ``HShiftLeft.hShiftLeft => some ``BinOp.shl
+      | _ => none
+    if let some name := word? then
+      let op := Lean.mkConst name
+      let rl ← reflect c a
+      let rr ← reflect c b
+      let proof ← mkAppM ``bin_eq #[op, rl.proof, rr.proof]
+      if name == ``BinOp.shl then
+        let eq ← mkEqSymm (← mkAppM ``LeanExe.ProofKit.Signed64.shl_eq #[a, b])
+        return some (← binary op (← transHint proof eq) rl rr)
+      return some (← binary op proof rl rr)
+    let form? : Option Name := match fn with
+      | ``HShiftRight.hShiftRight => some ``LeanExe.ProofKit.Signed64.sar_word
+      | ``HDiv.hDiv => some ``LeanExe.ProofKit.Signed64.div_word
+      | ``HMod.hMod => some ``LeanExe.ProofKit.Signed64.rem_word
+      | _ => none
+    let some thm := form? | return none
+    let bind := [false, false, false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
+    if bind.any id then
+      return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
+    let eq ← mkAppM thm #[a, b]
+    let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+    return some (← reflectVia T eq)
   /-- `if a = b` and `if a ≠ b` on enumerations, as the same test on their words. -/
   enumIte? (α p inst x y : Lean.Expr) : MetaM (Option Reflection) := do
     let (thm, rel, a, b) ← match p.consumeMData.getAppFnArgs with

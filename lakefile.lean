@@ -112,6 +112,9 @@ lean_exe «verified-cases-treecore» where
 lean_exe «verified-cases-lists» where
   root := `Verified.Examples.ListsCasesMain
 
+lean_exe «verified-cases-signed» where
+  root := `Verified.Examples.SignedCasesMain
+
 lean_exe «verified-cases-composition» where
   root := `Verified.Examples.CompositionCasesMain
 
