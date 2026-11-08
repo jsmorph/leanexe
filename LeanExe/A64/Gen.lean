@@ -9,9 +9,12 @@ compiler and its arguments, a bare-metal program of the model's instruction form
 calls the function, writes its result to the UART, and returns 0 to the startup code of
 `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer comparisons and
 operations of the C path's subset, calls, globals, the 64-bit loads and stores of linear memory,
-and the f64 forms that the verified compiler emits: constants, the reinterpretations,
+the f64 forms that the verified compiler emits: constants, the reinterpretations,
 `f64ConvertI64U`, `i64TruncSatF64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, `f64Abs`,
-`f64Eq`, `f64Lt`, and `f64Le`.  It rejects every other form with a message.  The function that
+`f64Eq`, `f64Lt`, and `f64Le`, and the f32 forms that it emits: constants, the reinterpretations,
+`f32ConvertI64U`, `f32ConvertI32S`, `i64TruncSatF32U`, `i32TruncSatF32S`, `f32Add`, `f32Sub`,
+`f32Mul`, `f32Div`, `f32Sqrt`, `f32Nearest`, `f32Abs`, `f32Eq`, `f32Lt`, and `f32Le`.  It rejects
+every other form with a message.  The function that
 `main` calls takes `i64` and `f64` parameters.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
@@ -22,7 +25,11 @@ a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` li
 word, so a reinterpretation emits nothing.  An f64 operation moves its operands' words into D0 and
 D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and `f64Abs`
 clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  `i64TruncSatF64U` moves the word
-into D0 and converts it back with `FCVTZU`.  An f64 comparison moves the words
+into D0 and converts it back with `FCVTZU`.  An `f32` lies there as its word, zero-extended, as
+an `i32` does, and an f32 operation goes through S0 and S1, the low 32 bits of D0 and D1, in the
+same way, with `FMOV Sd, Wn` and `FMOV Wd, Sn`, whose 32-bit result the processor zero-extends.
+`f32Nearest` is `FRINTN`, and `f32Abs` doubles the word, keeps its low 32 bits with a 32-bit `ORR`,
+which drops the sign bit, and shifts it back.  An f64 comparison moves the words
 into D0 and D1, compares them with `FCMP`, and sets the register of the lower operand with `CSINC`
 and the inverse of `EQ`, `MI`, or `LS`, the conditions that hold after `FCMP` exactly when `f64Eq`,
 `f64Lt`, or `f64Le` gives 1.  X16 is the scratch register of `remUI64`, of the prologue, and of the
@@ -262,6 +269,22 @@ def toS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [op 0 
 word into S0, and `op` of S0 into `r`. -/
 def ofS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [.fmovSW 0 r, op r 0]
 
+/-- An f32 operation on the two values on top, which the code `fBin32 op` replaces by its result,
+an `f32`. -/
+def genFBin32 (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fBin32 op x (← opReg (σ.length - 1)), some (.f32 :: σ.drop 2))
+
+/-- An f32 comparison of the two values on top, which the code `fCmp32 c` replaces by 1 or 0, an
+`i32`. -/
+def genFCmp32 (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"a comparison at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fCmp32 c x (← opReg (σ.length - 1)), some (.i32 :: σ.drop 2))
+
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
 `ar` values, the innermost first, for calls of functions whose numbers of parameters and results
@@ -271,7 +294,7 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .localGet _ => (1, some (h + 1))
   | .localSet _ => (1, some (h - 1))
   | .localTee _ => (1, some h)
-  | .constI64 _ | .const _ | .f64Const _ => (4, some (h + 1))
+  | .constI64 _ | .const _ | .f64Const _ | .f32Const _ => (4, some (h + 1))
   | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 => (2, some (h - 1))
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
@@ -280,6 +303,10 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .f64Sqrt => (3, some h)
   | .f64Abs | .f64ConvertI64U | .i64TruncSatF64U => (2, some h)
   | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
+  | .f32Add | .f32Sub | .f32Mul | .f32Div | .f32Eq | .f32Lt | .f32Le => (4, some (h - 1))
+  | .f32Sqrt | .f32Nearest | .f32Abs => (3, some h)
+  | .f32ConvertI64U | .f32ConvertI32S | .i64TruncSatF32U | .i32TruncSatF32S => (2, some h)
+  | .f32ReinterpretI32 | .i32ReinterpretF32 => (0, some h)
   | .wrapI64 => (1, some h)
   | .extendUI32 => (0, some h)
   | .remUI64 => (3, some (h - 1))
@@ -364,6 +391,23 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .i64TruncSatF64U => genUn ctl σ truncCode .i64
   | .i64ReinterpretF64 => genUn ctl σ (fun _ => []) .i64
   | .f64ReinterpretI64 => genUn ctl σ (fun _ => []) .f64
+  | .f32Const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.f32 :: σ))
+  | .f32Add => genFBin32 ctl σ .faddS
+  | .f32Sub => genFBin32 ctl σ .fsubS
+  | .f32Mul => genFBin32 ctl σ .fmulS
+  | .f32Div => genFBin32 ctl σ .fdivS
+  | .f32Eq => genFCmp32 ctl σ 1
+  | .f32Lt => genFCmp32 ctl σ 5
+  | .f32Le => genFCmp32 ctl σ 8
+  | .f32Sqrt => genUn ctl σ (unCode32 .fsqrtS) .f32
+  | .f32Nearest => genUn ctl σ (unCode32 .frintnS) .f32
+  | .f32Abs => genUn ctl σ absCode32 .f32
+  | .f32ConvertI64U => genUn ctl σ (toS32 .ucvtfSX) .f32
+  | .f32ConvertI32S => genUn ctl σ (toS32 .scvtfSW) .f32
+  | .i64TruncSatF32U => genUn ctl σ (ofS32 .fcvtzuXS) .i64
+  | .i32TruncSatF32S => genUn ctl σ (ofS32 .fcvtzsWS) .i32
+  | .f32ReinterpretI32 => genUn ctl σ (fun _ => []) .f32
+  | .i32ReinterpretF32 => genUn ctl σ (fun _ => []) .i32
   | .wrapI64 => do
       if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
       let r ← opReg (σ.length - 1)

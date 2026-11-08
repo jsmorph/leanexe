@@ -325,21 +325,23 @@ theorem gen_const {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
     {is : List Instr} {fin : Option (List ValueType)} {inst : Instruction} {w : UInt64}
     {t : ValueType}
     (hinst : inst = .constI64 w ∧ t = .i64 ∨ (∃ c : UInt32, inst = .const c ∧ w = c.toUInt64 ∧
-      t = .i32) ∨ inst = .f64Const w ∧ t = .f64)
+      t = .i32) ∨ inst = .f64Const w ∧ t = .f64 ∨
+      (∃ c : UInt32, inst = .f32Const c ∧ w = c.toUInt64 ∧ t = .f32))
     (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
     σ.length < 26 ∧ is = movImm (regOf σ.length) w ∧ fin = some (t :: σ) := by
   by_cases hlt : σ.length < 26
-  · rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+  · rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
       simp [genInstr, opReg_ok hlt, bind, Except.bind, pure, Except.pure] at hg <;>
       exact ⟨hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
-    rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+    rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
       simp [genInstr, he, bind, Except.bind] at hg
 
 /-- The simulation of a constant `v` that `w`, its register word, holds. -/
 theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t : ValueType}
     (hinst : inst = .constI64 w ∧ t = .i64 ∨ (∃ c : UInt32, inst = .const c ∧ w = c.toUInt64 ∧
-      t = .i32) ∨ inst = .f64Const w ∧ t = .f64)
+      t = .i32) ∨ inst = .f64Const w ∧ t = .f64 ∨
+      (∃ c : UInt32, inst = .f32Const c ∧ w = c.toUInt64 ∧ t = .f32))
     (hv : ValRel v w) (ht : HasType t v)
     (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := v :: sl.values }) :
@@ -349,7 +351,7 @@ theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t 
   have hh := hinv.len
   cases F with
   | zero =>
-      rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
+      rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
         simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
       rw [hexec f m st sl]
