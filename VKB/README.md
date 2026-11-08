@@ -19,6 +19,11 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
+| [Accuracy against real functions](entries/real-function-accuracy/README.md) | Bounds a binary64 function's distance from the rounding of a Mathlib function and transfers the bound to the module. |
+| [Kernel checks over ℚ](entries/kernel-rational-checks/README.md) | Proves polynomial, series, and table bounds by evaluation in parts. |
+| [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |
+| [Decimal text](entries/decimal-conversions/README.md) | Proves parsers and printers of floating-point values against a grammar, rounding, and round trips. |
+| [Transcriptions of standards](entries/spec-transcription/README.md) | Relates a program to a transcription of a published standard, its vectors, and its test references. |
 | [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
 | [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays and trees across a call through the region clause, and composes the frames of steps. |
 | [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
