@@ -7,7 +7,8 @@ which corrects the truncating quotient by one exactly when the divisor does not 
 and their signs differ.  The corrected quotient does not wrap, since a divisor that does not divide
 has magnitude at least 2.  `average_spec` follows from `add_eq_xor_add_and`, `u + v = (u ^^^ v) +
 2 (u &&& v)` on the words' natural numbers, and a case split on the operands' sign bits, which
-give the sign bits of the conjunction and the exclusive or. -/
+give the sign bits of the conjunction and the exclusive or.  `clamp_spec` follows from `toInt_min`
+and `toInt_max`, which hold because `Int64`'s order is the order of the integers. -/
 
 namespace Examples.Floor
 
@@ -151,5 +152,29 @@ theorem floorDiv_spec (a b : Int64) (hb : b ≠ 0) (ho : ¬(a = Int64.minValue �
         | true => exact absurd (hlb.mp h) hsb
       simp [hc, hla', hlb', hd]
       omega
+
+theorem toInt_min (a b : Int64) : (min a b).toInt = min a.toInt b.toInt := by
+  show (if a ≤ b then a else b).toInt = _
+  by_cases h : a ≤ b
+  · have h' := Int64.le_iff_toInt_le.mp h
+    simp only [h, ↓reduceIte]
+    omega
+  · have h' : ¬a.toInt ≤ b.toInt := fun h'' => h (Int64.le_iff_toInt_le.mpr h'')
+    simp only [h, ↓reduceIte]
+    omega
+
+theorem toInt_max (a b : Int64) : (max a b).toInt = max a.toInt b.toInt := by
+  show (if a ≤ b then b else a).toInt = _
+  by_cases h : a ≤ b
+  · have h' := Int64.le_iff_toInt_le.mp h
+    simp only [h, ↓reduceIte]
+    omega
+  · have h' : ¬a.toInt ≤ b.toInt := fun h'' => h (Int64.le_iff_toInt_le.mpr h'')
+    simp only [h, ↓reduceIte]
+    omega
+
+/-- `clamp` bounds the value by the interval on every triple. -/
+theorem clamp_spec (x lo hi : Int64) : (clamp x lo hi).toInt = expectedClamp x lo hi := by
+  rw [clamp, expectedClamp, toInt_max, toInt_min]
 
 end Examples.Floor

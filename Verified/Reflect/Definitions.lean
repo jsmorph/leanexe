@@ -2635,8 +2635,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
     let cond ← mkAppM ``LE.le #[a, b]
     let t ← if fn == ``Min.min then mkAppM ``ite #[cond, a, b] else mkAppM ``ite #[cond, b, a]
-    let r ← reflect c t
-    return r.as (← mkExpectedTypeHint r.proof (← mkEq (← denoteExpr c r.src) e)) e
+    reflectAs t e
   | ``not, #[a] =>
     let r ← reflect c a
     return ⟨← mkAppM ``Expr.not #[r.src], ← mkAppM ``not_eq #[r.proof], .bool, e,

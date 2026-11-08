@@ -32,6 +32,11 @@ def cases : IO Unit := do
       IO.println s!"signed|arith|i64|{args}|{(arith a b).toUInt64}|0|0"
       IO.println s!"signed|divs|i64|{args}|{(divs a b).toUInt64}|0|0"
       IO.println s!"signed|cmps|i64|{args}|{if cmps a b then 1 else 0}|0|0"
+      IO.println s!"signed|dist|i64|{args}|{(dist a b).toUInt64}|0|0"
+      IO.println s!"signed|least|i64|{args}|{(least a b).toUInt64}|0|0"
+      IO.println s!"signed|most|i64|{args}|{(most a b).toUInt64}|0|0"
+      for c in [Int64.minValue, -1, 0, 7, Int64.maxValue] do
+        IO.println s!"floor|clamp|i64|{i a} {i b} {i c}|{(Examples.Floor.clamp a b c).toUInt64}|0|0"
       IO.println s!"floor|floorDiv|i64|{args}|{(Examples.Floor.floorDiv a b).toUInt64}|0|0"
       IO.println s!"floor|average|i64|{args}|{(Examples.Floor.average a b).toUInt64}|0|0"
     IO.println s!"signed|sign|i64|{i a}|{sign a}|0|0"

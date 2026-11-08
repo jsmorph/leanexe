@@ -1,16 +1,17 @@
 import Examples.Floor.Proof
 import Verified.Reflect.Command
 
-/-! The verified compiler's module of `floorDiv` and `average`.  The generated
-`compiled.floorDiv.pure` and `compiled.average.pure` state that functions 2 and 3 compute the Lean
-definitions from every store without a trap and keep the store, each `Int64` passed and returned as
-its word.  `floorDiv_call` and `average_call` compose them with the specifications. -/
+/-! The verified compiler's module of `floorDiv`, `average`, and `clamp`.  The generated
+`compiled.floorDiv.pure`, `compiled.average.pure`, and `compiled.clamp.pure` state that functions 2,
+3, and 4 compute the Lean definitions from every store without a trap and keep the store, each
+`Int64` passed and returned as its word.  `floorDiv_call`, `average_call`, and `clamp_call` compose
+them with the specifications. -/
 
 namespace Examples.Floor
 
 open Wasm LeanExe.Pipeline
 
-verified_compile compiled := [floorDiv, average]
+verified_compile compiled := [floorDiv, average, clamp]
 
 theorem floorDiv_export :
     ({ name := "floorDiv", funcIdx := 2 } : Wasm.Export) ∈ compiled.module.exports := by
@@ -42,8 +43,20 @@ theorem average_call (env : HostEnv Unit) (store : Store Unit) (a b : Int64) :
     refine ⟨hs, (average a b).toUInt64, ?_, average_spec a b⟩
     simpa [Scalar.values, Flat.flat] using congrArg List.reverse hv
 
+/-- Function 4, the export `clamp`, called with the words of `x`, `lo`, and `hi` from any store,
+returns without a trap the word of the `Int64` whose integer is `x` bounded by `lo` and `hi` and
+leaves the store unchanged. -/
+theorem clamp_call (env : HostEnv Unit) (store : Store Unit) (x lo hi : Int64) :
+    Runs false env compiled.module 4 store [.i64 hi.toUInt64, .i64 lo.toUInt64, .i64 x.toUInt64]
+      fun final values => final = store ∧ ∃ w : UInt64, values = [.i64 w] ∧
+        w.toInt64.toInt = expectedClamp x lo hi :=
+  (compiled.clamp.pure env store (x, lo, hi)).mono fun _ values ⟨hs, hv⟩ => by
+    refine ⟨hs, (clamp x lo hi).toUInt64, ?_, clamp_spec x lo hi⟩
+    simpa [Scalar.values, Flat.flat] using congrArg List.reverse hv
+
 #print axioms compiled.bytes
 #print axioms floorDiv_call
 #print axioms average_call
+#print axioms clamp_call
 
 end Examples.Floor

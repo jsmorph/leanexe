@@ -6,7 +6,8 @@ import LeanExe.Dialect.RepeatWhile
 admits an `Int64` value, each reflected through the word forms of `LeanExe.ProofKit.Signed64`.
 `arith` applies the operations whose bits are the word operations' and negation, `divs` the word
 forms of `/`, `%`, and `>>>` on variables and on compound operands, `cmps` the comparisons as
-`Bool` values, `sign` an `if` with word branches on comparisons, `update` and `count` `set!`,
+`Bool` values, `sign` an `if` with word branches on comparisons, `dist` an `if` with `Int64`
+branches on an `Int64` comparison, `least` and `most` `min` and `max`, `update` and `count` `set!`,
 `push`, and `LeanExe.build` on `Array Int64`, `triple` a loop and `grow` a `repeatWhile` with
 `Int64` state, `walk` a recognized tail recursion that tests an `Int64` value, `addItem` a
 structure with an `Int64` field and an array of `Int64`, and `lits` the literals. -/
@@ -24,6 +25,12 @@ def cmps (a b : Int64) : Bool :=
   a < b && b ≤ 7 || a > -3 && b ≥ a || a == b || a != -1 || decide (a = b) || decide (a ≠ b)
 
 def sign (a : Int64) : UInt64 := if a < 0 then 1 else if a = 0 then 0 else 2
+
+def dist (a b : Int64) : Int64 := if a < b then b - a else a - b
+
+def least (a b : Int64) : Int64 := min a b
+
+def most (a b : Int64) : Int64 := max a b
 
 def update (xs : Array Int64) (i : UInt64) (v : Int64) : Array Int64 :=
   (xs.set! i.toNat (v / 2)).push (-v)
@@ -55,7 +62,7 @@ def addItem (s : Acc) (v : Int64) : Acc := { total := s.total + v, items := s.it
 def lits : Int64 := Int64.minValue + Int64.maxValue + (-9) * 2
 
 verified_compile compiled :=
-  [arith, divs, cmps, sign, update, count, triple, grow, walk, addItem, lits]
+  [arith, divs, cmps, sign, dist, least, most, update, count, triple, grow, walk, addItem, lits]
 
 #print axioms compiled.bytes
 #print axioms compiled.divs.implements
