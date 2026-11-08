@@ -19,12 +19,13 @@ code map that holds the bytes of a file whose kernel check passes, and every sta
 gives, the model reaches the loop's head with the initialization's accesses followed by those of
 the first `N` windows.
 
-`crc_loop_runs` states that the board's run never stops, `crc_requests` that every request names
-`USART_ISR`, `USART_RDR`, or `USART_TDR`, and `crc_confined` that the run's accesses lie in RCC,
-GPIOD, and USART3.  `crc_prefix` and `crcQemu_prefix` add from `crc_replies` of
+`crc_loop_runs` states that the board's run never stops, `crc_loop_steps` counts its windows, each
+in at most 1,482 steps, 16 of `main` and the 1,466 of `crc_static` for the step, `crc_requests` that
+every request names `USART_ISR`, `USART_RDR`, or `USART_TDR`, and `crc_confined` that the run's
+accesses lie in RCC, GPIOD, and USART3.  `crc_prefix` and `crcQemu_prefix` add from `crc_replies` of
 `tests/TestSupport/M7/CrcReplies.lean` that the bytes that the windows write to the transmit
-register begin the low bytes of the CRC-32 of the nonempty prefixes of the bytes that they read
-from the receive register, and that at most one byte read has no reply.
+register begin the low bytes of the CRC-32 of the nonempty prefixes of the bytes that they read from
+the receive register, and that at most one byte read has no reply.
 -/
 
 namespace TestSupport.M7.Crc
@@ -78,6 +79,23 @@ theorem crc_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len 
   Nucleo.areaBoard_run (words := fun g : UInt64 => [g]) (fun _ => rfl) crc_stepCall rfl
     crc_covered.1 crc_setupOk.1 crc_initStore.1 crc_initStore.2 hk
     (by rw [crc_stack.1]; decide) crcInit rfl hf b hb N
+
+/-- The CRC-32 step on the board, from reset, counted: after the setup's and the
+initialization's `c` steps the machine is at the loop's head, and window `i` takes `cs[i]` steps,
+at most 1,482, after which the machine is at the head with the first `i + 1` windows' accesses. -/
+theorem crc_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk boardBoot boardProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 1482) ∧
+      ∀ i ≤ N, ∃ s, run Nucleo.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = boardHead ∧
+        s.trace = initTrace Nucleo.init σ ++
+          windows (reqTrace (devBus Nucleo.devBase) crcUsart3Tick crcInit
+            (fun j => σ (j + initReads Nucleo.init))) i :=
+  (Nucleo.areaBoard_run_steps (words := fun g : UInt64 => [g]) (fun _ => rfl) crc_stepCall rfl
+    crc_covered.1 crc_setupOk.1 crc_initStore.1 crc_initStore.2 hk
+    (by rw [crc_stack.1]; decide) crcInit rfl hf b hb N).uniform
+    (fun F st vs => costRun_le_staticCost rfl crc_static.1 F st vs)
 
 /-- The CRC-32 step's run on the board succeeds for every number of steps. -/
 theorem crc_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}

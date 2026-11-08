@@ -690,4 +690,52 @@ theorem setupBoot_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {lim 
   rw [tr2, tr1, rd1, trt, rdt, List.nil_append, Nat.zero_add]
   rfl
 
+/-- The run of `setupBoot_run`, counted: the setup's and the initialization's steps, and window
+`i` in at most 16 steps of `main` and the cost of Talos's run of the step from the window's
+state. -/
+theorem setupBoot_run_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
+    {lim dev : UInt32} {B : Boot} {n len : Nat} {words : G → List UInt64}
+    (hlen : ∀ g, (words g).length = s0.length)
+    {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
+    (hcall : StepCall m k words tick J) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hok : setupOk m areaPages = true)
+    (hram : ∀ j < areaSize areaPages, Ram P (areaHeader + UInt32.ofNat j))
+    (hbelow : areaHeader.toNat + areaSize areaPages ≤ lim.toNat) (hdev : DevWindow P dev)
+    {heap : Heap} (hat : heap.At (initStore m areaPages)) (hJ : J heap (initStore m areaPages))
+    (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
+    (hk : bootFileOk (B.setup (setupCode areaHeader areaPages m))
+      (bootProgram (B.setup (setupCode areaHeader areaPages m)) m k s0 lim dev) n len = true)
+    (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
+    {t0 : (Nat → UInt32) → List Access} {r : Nat} (hinit : InitRuns P σ code B.init t0 r)
+    (hsp : B.sp.toNat % 4 = 0) (hfit : 8 * (s0.length + 1) ≤ B.sp.toNat)
+    (hstk : ∀ s : State, s.sp = B.sp - UInt32.ofNat (8 * (s0.length + 1)) →
+      StackOk P lim (s0.length + 1) (stackBound m k) s)
+    (g0 : G) (hs0 : words g0 = s0) (b : State) (hb : Reset code B.org b) (N : Nat) :
+    Counted P σ code b (after (B.setup (setupCode areaHeader areaPages m)).base (mainStart s0)) N
+      (WindowBound m k words tick g0 (fun j => σ (j + r)))
+      (fun i => t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) i) := by
+  obtain ⟨-, -, gts, hgt, -, -⟩ := of_setupOk hok
+  have hw' : (B.setup (setupCode areaHeader areaPages m)).init.all Instr.wide = true := by
+    show (setupCode areaHeader areaPages m ++ B.init).all Instr.wide = true
+    rw [List.all_append, setupCode_wide, hw]
+    rfl
+  obtain ⟨prog, hprog, hcp, -, -, -⟩ := boot_image (code := code)
+    (B := B.setup (setupCode areaHeader areaPages m)) hent hw' hk hf
+  obtain ⟨t, rt, pt, ct, spt, -, trt, rdt, hsr⟩ := setup_boot (P := P) (σ := σ) hok hgt
+    (by decide) hram hbelow hent hw hk hf hsp horg b hb
+  obtain ⟨t1, r1, p1, sp1, tr1, rd1, mm1⟩ := hinit t ct
+  have hp1 : t1.pc = (B.setup (setupCode areaHeader areaPages m)).base := by
+    rw [p1, pt, Boot.base, Boot.reset]
+    show _ = after B.org (B.entries + 1 + (setupCode areaHeader areaPages m ++ B.init).length)
+    rw [List.length_append]
+    addr_after
+  have hsp1 : t1.sp = B.sp := sp1.trans spt
+  have h := main_run_steps (P := P) (σ := σ) (code := code) hlen hcall hm hprog hcp
+    (by rw [Boot.base]; exact even_after (a := B.org) (by omega) _) hcov hdev hat hJ
+    (by show areaPages ≤ 65535; decide) g0 hs0 t1 hp1
+    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
+    (fun _ => ⟨gts, hgt, hsr.congr (KeepsBelow.of_mem mm1)⟩) N
+  rw [tr1, rd1, trt, rdt, List.nil_append, Nat.zero_add] at h
+  exact h.of_reach (rt.trans r1)
+
 end LeanExe.M7

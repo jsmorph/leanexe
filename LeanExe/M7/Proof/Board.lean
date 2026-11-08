@@ -172,6 +172,31 @@ theorem board_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64
     (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
     (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
 
+/-- The run of `board_run`, counted: the initialization's steps, and window `i` in at most 16 steps
+of `main` and the cost of Talos's run of the step from the window's state.  The theorem holds
+under the run conditions of the module's header. -/
+theorem board_run_steps {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+    {n len : Nat} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (hk : bootFileOk boot (program m k s0) n len = true)
+    (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) (N : Nat) :
+    Counted platform σ code b (loopHead s0) N
+      (WindowBound m k words tick g0 (fun j => σ (j + initReads init)))
+      (fun i => initTrace init σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) i) :=
+  boot_run_steps (B := boot) hwords hlen himpl hPre hm hcov hna devWindow hat hcap (by decide)
+    (initCode_wide init) hk hf.itcm (by decide) (initRuns σ code) (by decide)
+    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
+
 /-- The run of `board_run` succeeds for every number of steps: the model never stops. -/
 theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {n len : Nat} {words : G → List UInt64}
@@ -244,6 +269,31 @@ theorem areaBoard_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n le
   have he : areaEnd.toNat = 0x20011000 := by decide
   have ha : areaSize areaPages = 69632 := rfl
   exact setupBoot_run (B := boot) hlen hcall hm hcov hok area_ram
+    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (by decide) (initCode_wide init) hk hf.itcm
+    (by decide) (initRuns σ code) (by decide)
+    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+
+/-- The run of `areaBoard_run`, counted: the setup's and the initialization's steps, and window
+`i` in at most 16 steps of `main` and the cost of Talos's run of the step from the window's
+state.  The theorem holds under the run conditions of the module's header. -/
+theorem areaBoard_run_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
+    {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
+    {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
+    (hcall : StepCall m k words tick J) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hok : setupOk m areaPages = true) {heap : Heap} (hat : heap.At (initStore m areaPages))
+    (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBoot m) (bootProgram (areaBoot m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) (N : Nat) :
+    Counted platform σ code b (areaLoopHead m s0) N
+      (WindowBound m k words tick g0 (fun j => σ (j + initReads init)))
+      (fun i => initTrace init σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) i) := by
+  have he : areaEnd.toNat = 0x20011000 := by decide
+  have ha : areaSize areaPages = 69632 := rfl
+  exact setupBoot_run_steps (B := boot) hlen hcall hm hcov hok area_ram
     (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (by decide) (initCode_wide init) hk hf.itcm
     (by decide) (initRuns σ code) (by decide)
     (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)

@@ -14,7 +14,9 @@ with the step `gwTickUsart3`, both from the state `gwInit`, with the compiler's 
 step, the kernel's evaluations of `reachCovered` and of the stack bound of
 `tests/TestSupport/M7/GwStep.lean`, and the module's initial store.  Each holds for every code map
 that holds the bytes of a file whose kernel check `bootFileOk` passes, and every state that reset
-gives from the file's vector table.  `board_loop_runs` states that the board's run never stops.
+gives from the file's vector table.  `board_loop_runs` states that the board's run never stops,
+and `board_loop_steps` counts its windows, each in at most 17,553 steps, 16 of `main` and the
+17,537 of `gw_static` for the step.
 
 `gw_requests` states that every request of `gwTickUsart3` names `USART_ISR`, `USART_RDR`, or
 `USART_TDR`, and `gw_confined` that every access of the trace of `board_loop` lies in RCC, GPIOD,
@@ -78,6 +80,26 @@ theorem board_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n le
     gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 gw_noArea.1 hAt0
     hcap0 hk
     (by rw [gw_stack.1]; decide) gwInit rfl hf b hb N
+
+/-- The gateway of `gwTickUsart3` from `gwInit` on the board, from reset, counted: after the
+initialization's `c` steps the machine is at the loop's head, and window `i` takes `cs[i]` steps,
+at most 17,553, after which the machine is at the head with the first `i + 1` windows' accesses. -/
+theorem board_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk Nucleo.boot boardProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 17553) ∧
+      ∀ i ≤ N, ∃ s, run Nucleo.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = boardHead ∧
+        s.trace = initTrace Nucleo.init σ ++
+          windows (reqTrace (devBus Nucleo.devBase) gwTickUsart3 gwInit
+            (fun j => σ (j + initReads Nucleo.init))) i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready gwCompiled.module gwCompiled.tables
+      (Verified.initialHeap gwCompiled.tables) gwCompiled.module.initialStore :=
+    Verified.Ready.initial rfl gwCompiled.initial
+  exact (Nucleo.board_run_steps (s0 := gwState) (words := gwWords) (fun _ => rfl) (fun _ => rfl)
+    gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 gw_noArea.1 hAt0
+    hcap0 hk (by rw [gw_stack.1]; decide) gwInit rfl hf b hb N).uniform
+    (fun F st vs => costRun_le_staticCost rfl gw_static.1 F st vs)
 
 /-- The gateway's run on the board succeeds for every number of steps. -/
 theorem board_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}

@@ -92,14 +92,22 @@ theorem gen_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is
     obtain ⟨ob, rfl, b1, b2, b3, b4⟩ := bAt_ok hi
     exact ⟨[], ob, .inl ⟨by omega, rfl⟩, b1, b2, b3, b4, rfl⟩
 
-/-- The run of a branch to `t` from a related state: the model reaches `t.target` with the value
-that the branch carries in the slot of `t.base`, and with SP, the device trace, the read count,
-the slot of LR, the bytes from the end of the parameters up, the slots below `t.base`, the slots of
-the locals, and the bytes below the stack's limit unchanged. -/
+/-- The code of a branch to `t` has one instruction and four for each value that it carries. -/
+theorem length_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is : List Instr}
+    (hg : branchTo E t σs a = .ok is) : is.length = 4 * t.arity + 1 := by
+  obtain ⟨-, -, -, moves, ob, hmv, -, -, -, -, rfl⟩ := gen_branchTo hg
+  rcases hmv with ⟨h0, rfl⟩ | ⟨h1, -, -, -, -, -, -, rfl⟩
+  · simp [h0]
+  · simp [h1]
+
+/-- The run of a branch to `t` from a related state, in one step for each instruction: the model
+reaches `t.target` with the value that the branch carries in the slot of `t.base`, and with SP, the
+device trace, the read count, the slot of LR, the bytes from the end of the parameters up, the
+slots below `t.base`, the slots of the locals, and the bytes below the stack's limit unchanged. -/
 theorem run_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is : List Instr}
     {sl : Locals} {ms : State} (hg : branchTo E t σs a = .ok is) (hcode : CodeAt code a is)
     (hpc : ms.pc = a) (hinv : Inv P E σs sl ms) :
-    ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = t.target ∧ ms'.sp = ms.sp ∧
+    ∃ ms', Steps P σ code is.length ms ms' ∧ ms'.pc = t.target ∧ ms'.sp = ms.sp ∧
       ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧ BodyKeeps E.frame ms.sp ms ms' ∧
       Below E.frame t.base ms ms' ∧ LocalsOk E (sl.params ++ sl.locals) ms' ∧
       Kept E.frame t sl.values ms' ∧ KeepsBelow E.limit ms ms' := by
@@ -112,7 +120,7 @@ theorem run_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is
   · rw [List.nil_append, ← hpc] at hcode
     have hA : after a ([] : List Instr).length = a := by rw [after_eq]; simp
     rw [hA] at b4
-    refine ⟨_, reach_exec hcode (exec_bTo b1 b2 b3 ms) (.refl _), ?_, State.sp_withPc _ _,
+    refine ⟨_, steps_exec hcode (exec_bTo b1 b2 b3 ms) (.refl _), ?_, State.sp_withPc _ _,
       State.trace_withPc _ _, State.reads_withPc _ _, BodyKeeps.of_mem (State.mem_withPc _ _),
       Below.of_mem (State.mem_withPc _ _), ⟨hinv.count, fun i v o h1 h2 =>
         (hinv.locals i v o h1 h2).of_mem (State.sp_withPc _ _) (State.mem_withPc _ _),
@@ -133,7 +141,7 @@ theorem run_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is
         (slotsOk_st (hinv.frame.word (by omega) (by omega))
         (slotsOk_st (hinv.frame.word (by omega) (by omega)) (slotsOk_nil _))))
     rw [← hpc] at hcL
-    obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := run_slots (σ := σ) hok hcL
+    obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hcL
     have hu : (slotRun P σ L ms).pc = after a L.length := by rw [p1, hpc, after_eq]
     rw [← hu] at hcB
     have hmem : ({ slotRun P σ L ms with
@@ -155,7 +163,7 @@ theorem run_branchTo {E : Env} {t : Ctl} {σs : List ValueType} {a : UInt32} {is
       rw [hv, List.reverse_cons, List.getElem?_append_right (by simp), List.length_reverse,
         Nat.sub_self, List.getElem?_cons_zero])
     rw [hvl] at htop
-    refine ⟨_, r1.trans (reach_exec hcB (exec_bTo b1 b2 b3 _) (.refl _)), ?_, hsp,
+    refine ⟨_, r1.trans (steps_exec hcB (exec_bTo b1 b2 b3 _) (.refl _)), ?_, hsp,
       by rw [State.trace_withPc]; exact tr1, by rw [State.reads_withPc]; exact rd1,
       keeps_write_op hinv.frame hmem hlb, below_write_op hinv.frame hmem hlb (Nat.le_refl _),
       LocalsOk.write_op hinv hsp hmem hlb, ⟨by omega, by omega, fun j hj => ?_, hkt⟩,
@@ -207,7 +215,9 @@ theorem sim_br (F n : Nat) : InstrSim P σ code F (.br n) := by
         simp only [execOne.eq_def]
       rw [hex]
       obtain ⟨ms', hr, hp, hsp, htr, hrd, hk, hb, hl, hkt, hkb⟩ := run_branchTo hbr hcode hpc hinv
-      exact ⟨t, ht, ms', hr, hp, hsp, htr, hrd, hk, hb, hl, hkt, hsr.congr hkb⟩
+      refine ⟨t, ht, ms', hr.mono (le_costOne_plain rfl ?_), hp, hsp, htr, hrd, hk, hb, hl, hkt,
+        hsr.congr hkb⟩
+      simp [instrSize, List.getElem?_map, ht, length_branchTo hbr]
 
 theorem sim_ret (F : Nat) : InstrSim P σ code F .ret := by
   intro E ctl σs a is fin hgen hcode _ _ _ _ α m st sl ms hinv hsr hpc _ need D _ _ _
@@ -219,7 +229,9 @@ theorem sim_ret (F : Nat) : InstrSim P σ code F .ret := by
         simp only [execOne.eq_def]
       rw [hex]
       obtain ⟨ms', hr, hp, hsp, htr, hrd, hk, -, -, hkt, hkb⟩ := run_branchTo hbr hcode hpc hinv
-      exact ⟨t, ht, ms', hr, hp, hsp, htr, hrd, hk, hkt, hsr.congr hkb⟩
+      refine ⟨t, ht, ms', hr.mono (le_costOne_plain rfl ?_), hp, hsp, htr, hrd, hk, hkt,
+        hsr.congr hkb⟩
+      simp [instrSize, List.getLast?_map, ht, length_branchTo hbr]
 
 /-! ## `br_if` -/
 
@@ -263,15 +275,15 @@ theorem gen_br_if {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32}
   · exact absurd hg except_throw_ok
 
 /-- `LDR` of the low word of the `i32` `c` on top and `CMP` with 0: the model reaches the next
-instruction with Z set exactly when `c` is 0, and with SP, the memory, the device trace, and the
-read count unchanged. -/
+instruction in two steps with Z set exactly when `c` is 0, and with SP, the memory, the device
+trace, and the read count unchanged. -/
 theorem run_cmp {E : Env} {σs : List ValueType} {sl : Locals} {ms : State} {c : UInt32}
     {vs : List Value} {hc : E.frame.opAt (σs.length - 1) < 4096} {rest : List Instr}
     (hinv : Inv P E σs sl ms) (hv : sl.values = .i32 c :: vs)
     (hlt : σs.length - 1 < E.frame.height)
     (hcode : CodeAt code ms.pc
       ([Instr.ldrSp 0 ⟨E.frame.opAt (σs.length - 1), hc⟩, Instr.cmpImm 0 0] ++ rest)) :
-    ∃ u, Reach P σ code ms u ∧ u.pc = after ms.pc 2 ∧ u.sp = ms.sp ∧ u.mem = ms.mem ∧
+    ∃ u, Steps P σ code 2 ms u ∧ u.pc = after ms.pc 2 ∧ u.sp = ms.sp ∧ u.mem = ms.mem ∧
       u.trace = ms.trace ∧ u.reads = ms.reads ∧ u.zFlag = (c == 0) ∧ CodeAt code u.pc rest := by
   have hh := hinv.len
   have hvl : vs.length = σs.length - 1 := by rw [hv, List.length_cons] at hh; omega
@@ -288,7 +300,7 @@ theorem run_cmp {E : Env} {σs : List ValueType} {sl : Locals} {ms : State} {c :
   have hok : SlotsOk P ms.sp L :=
     slotsOk_ld (hinv.frame.word (by omega) (by omega))
       (slotsOk_cons rfl (fun o ho => by cases ho) (slotsOk_nil _))
-  obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := run_slots (σ := σ) hok hcL
+  obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hcL
   have hz : (slotRun P σ L ms).zFlag = (c == 0) := by
     simp only [L, slotRun_cons, slotRun_nil, slotStep, exec, Option.getD_some]
     state_simp
@@ -309,19 +321,25 @@ theorem sim_br_if (F n : Nat) : InstrSim P σ code F (.br_if n) := by
       have hbase : t.base ≤ curBase ctl := hctl.bases t (List.mem_of_getElem? ht)
       have hloc := hinv.localsOk
       rw [← hpc] at hcode
+      have hcost : costOne (f + 1) m st sl (ctl.map Ctl.arity) (.br_if n) {} =
+          if t.arity = 0 then 3 else 4 * t.arity + 4 := by
+        rw [costOne_plain rfl]
+        simp [instrSize, List.getElem?_map, ht]
       -- the fall-through when `c` is 0, at `after a k` with `k` the code's length
-      have fall : c = 0 → ∀ u : State, Reach P σ code ms u → u.pc = after a is.length →
+      have fall : c = 0 → ∀ u : State, Steps P σ code 3 ms u → u.pc = after a is.length →
           u.sp = ms.sp → u.mem = ms.mem → u.trace = ms.trace → u.reads = ms.reads →
           Outcome P σ code E ctl (some σs.tail) (after a is.length)
-            (execOne (f + 1) m st sl (.br_if n)) ms := by
+            (execOne (f + 1) m st sl (.br_if n))
+            (costOne (f + 1) m st sl (ctl.map Ctl.arity) (.br_if n) {}) ms := by
         intro hc0 u hr hp hsp hmem htr hrd
         subst hc0
         have hex : execOne (f + 1) m st sl (.br_if n) =
             .Fallthrough st { sl with values := vs } := by
           simp only [execOne.eq_def, hv]
         rw [hex]
-        exact ⟨σs.tail, rfl, u, hr, hp, hsp, htr, hrd, BodyKeeps.of_mem hmem, Below.of_mem hmem,
-          Inv.pop hinv hv hsp hmem, hsr.congr (KeepsBelow.of_mem hmem)⟩
+        exact ⟨σs.tail, rfl, u, hr.mono (by rw [hcost]; split <;> omega), hp, hsp, htr, hrd,
+          BodyKeeps.of_mem hmem, Below.of_mem hmem, Inv.pop hinv hv hsp hmem,
+          hsr.congr (KeepsBelow.of_mem hmem)⟩
       have hex1 : c ≠ 0 → execOne (f + 1) m st sl (.br_if n) =
           .Break n st { sl with values := vs } := fun hc0 => by
         simp only [execOne.eq_def, hv]
@@ -329,7 +347,7 @@ theorem sim_br_if (F n : Nat) : InstrSim P σ code F (.br_if n) := by
       · -- `BNE` to the target of a construct that carries nothing
         obtain ⟨u, ru, pu, spu, mu, tru, rdu, zu, hcu⟩ :=
           run_cmp (rest := [.bcondTo condNE oq]) hinv hv hlt hcode
-        have rB := reach_bcondTo (P := P) (σ := σ) q1 q2 q3 hcu
+        have rB := steps_bcondTo (P := P) (σ := σ) q1 q2 q3 hcu
         have hcnd : u.condHolds condNE = !(c == 0) := by
           rw [show condNE = (1 : Fin 14) from rfl, condHolds_ne, zu]
         rw [hcnd] at rB
@@ -348,7 +366,8 @@ theorem sim_br_if (F n : Nat) : InstrSim P σ code F (.br_if n) := by
             (hu1sp _) (hu1m _) (hu1tr _) (hu1rd _)
         · rw [show (!(c == 0)) = true by simp [hc0], ite_eq_left rfl] at rB
           rw [hex1 hc0]
-          refine ⟨t, ht, _, ru.trans rB, by rw [State.pc_withPc, pu, hpc]; exact q4, hu1sp _,
+          refine ⟨t, ht, _, (ru.trans rB).mono (by rw [hcost]; simp [h0]),
+            by rw [State.pc_withPc, pu, hpc]; exact q4, hu1sp _,
             hu1tr _, hu1rd _, BodyKeeps.of_mem (hu1m _), Below.of_mem (hu1m _),
             ⟨hloc.count, fun i v o h1 h2 => (hloc.vals i v o h1 h2).of_mem (hu1sp _) (hu1m _),
               hloc.types⟩,
@@ -371,7 +390,7 @@ theorem sim_br_if (F n : Nat) : InstrSim P σ code F (.br_if n) := by
         obtain ⟨u, ru, pu, spu, mu, tru, rdu, zu, hcu⟩ :=
           run_cmp (rest := .bcondTo condEQ oq :: bs) hinv hv hlt hcode
         obtain ⟨hcQ, hcB⟩ := CodeAt.cons.mp hcu
-        have rB := reach_bcondTo (P := P) (σ := σ) q1 q2 q3 hcQ
+        have rB := steps_bcondTo (P := P) (σ := σ) q1 q2 q3 hcQ
         have hcnd : u.condHolds condEQ = (c == 0) := by
           rw [show condEQ = (0 : Fin 14) from rfl, condHolds_eq, zu]
         rw [hcnd] at rB
@@ -397,7 +416,9 @@ theorem sim_br_if (F n : Nat) : InstrSim P σ code F (.br_if n) := by
               (Inv.pop hinv hv (hu1sp (u.pc + 4)) (hu1m (u.pc + 4)))
           have hk' : BodyKeeps E.frame ms.sp ({ u with pc := u.pc + 4 } : State) ms' := by
             rw [← hu1sp (u.pc + 4)]; exact hk
-          refine ⟨t, ht, ms', ru.trans (rB.trans hr), hp, hsp.trans (hu1sp _),
+          refine ⟨t, ht, ms',
+            (ru.trans (rB.trans hr)).mono (by rw [hcost, ite_eq_right h0, hbl]; omega),
+            hp, hsp.trans (hu1sp _),
             htr.trans (hu1tr _), hrd.trans (hu1rd _), (BodyKeeps.of_mem (hu1m _)).trans hk',
             (Below.of_mem (hu1m _)).trans hbw (hu1sp _), hl, hkt,
             hsr.congr ((KeepsBelow.of_mem (hu1m _)).trans hkb)⟩

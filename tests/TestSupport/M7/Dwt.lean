@@ -1,6 +1,7 @@
 import TestSupport.M7.Nucleo
 import TestSupport.M7.GwImages
 import TestSupport.M7.CrcImages
+import TestSupport.M7.ShaImages
 
 /-!
 The cycle measurements of the Cortex-M7 back end on the NUCLEO-F767ZI, in images apart from the
@@ -25,9 +26,11 @@ for each pair of keys, the count, the least, the most, and the sum of the cycles
 low first, at the key before times `2 ^ bits` plus the key after, for keys below `2 ^ bits`.  The
 CRC-32 step's area occupies DTCM's base, so its image, `crcDwt`, starts with the setup of the area
 and keeps the table at `0x2001C000`, between the area's end and the stack's 264 bytes below the
-top of DTCM.  The echo's key and the CRC-32 step's is the phase, the state's low byte, below 4.  The gateway's key is its phase plus 4
-when the byte count `nbyte`, the state's second word, is 7, below 8, which distinguishes each kind
-of window of `tests/TestSupport/M7/Windows.lean` by the keys before and after it.
+top of DTCM.  The SHA-256 step's image, `shaDwt`, does the same with the setup of its own area.
+The echo's key and the CRC-32 step's is the phase, the state's low byte, below 4.  The gateway's
+key, and the SHA-256 step's, is the phase plus 4 when the byte count `nbyte`, the state's second
+word, is 7, below 8, which distinguishes each kind of window of
+`tests/TestSupport/M7/Windows.lean` by the keys before and after it.
 
 `divDwt` measures `udivmod64`'s paths and `UDIV`.  Each case loads r0 to r3, stores them in its
 record, reads the counter, runs its body, reads the counter again, and stores the difference and
@@ -142,6 +145,13 @@ def crcDwt : GenM (List UInt8) :=
   imageDwtIn TestSupport.M7.CrcImages.boardBoot areaEnd crcTab
     TestSupport.M7.Crc.crcStepCompiled.module 5 [TestSupport.M7.Crc.crcInit]
     [.ldrSp 3 0, .andImm 3 3 255] 2
+
+/-- The SHA-256 step's measurement image: the layout `areaBoot` of the step's module with the
+measurement's initialization after the board's, the stack's limit at the area's end, the window
+table at `crcTab`, and the gateway's key, since the step frames records as the gateway does. -/
+def shaDwt : GenM (List UInt8) :=
+  imageDwtIn TestSupport.M7.ShaImages.boardBoot areaEnd crcTab
+    TestSupport.M7.Sha.shaStepCompiled.module 13 TestSupport.M7.ShaImages.shaState gwKey 3
 
 /-- A case of the division measurements: `kind` 0 calls `udivmod64`, 1 a routine that returns,
 2 runs 16 `UDIV r4, r0, r2`, and 3 runs 16 `MOV r4, r0`. -/

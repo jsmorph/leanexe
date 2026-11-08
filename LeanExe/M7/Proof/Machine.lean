@@ -2,10 +2,12 @@ import LeanExe.M7.Encode
 
 /-!
 Facts about runs of the Cortex-M7 model that the proofs about emitted code use: `Reach`, the states
-that zero or more steps reach; `codeSize`, the bytes of a list of instructions; `CodeAt`,
-instructions placed at an address in the halfwords that `encode` gives; and the step at a placed
-instruction, which executes it.  Addresses are 32-bit words, so code that a theorem places at `a`
-covers the addresses `a + UInt32.ofNat k`, which wrap at 2^32 as the processor's do.
+that zero or more steps reach; `Steps c`, the states that at most `c` steps of `run` reach, which
+bounds the instructions that a piece of code executes; `codeSize`, the bytes of a list of
+instructions; `CodeAt`, instructions placed at an address in the halfwords that `encode` gives; and
+the step at a placed instruction, which executes it.  Addresses are 32-bit words, so code that a
+theorem places at `a` covers the addresses `a + UInt32.ofNat k`, which wrap at 2^32 as the
+processor's do.
 -/
 
 namespace LeanExe.M7
@@ -26,6 +28,55 @@ theorem Reach.trans {s t u : State} (h1 : Reach P σ code s t) (h2 : Reach P σ 
 
 theorem Reach.single {s t : State} (h : step P σ code s = some t) : Reach P σ code s t :=
   .next h (.refl t)
+
+/-! ## Counted runs -/
+
+/-- `a + b` steps are `a` steps and then `b`. -/
+theorem run_add (a b : Nat) (s : State) :
+    run P σ code (a + b) s = (run P σ code a s).bind (run P σ code b) := by
+  induction a generalizing s with
+  | zero => simp [run]
+  | succ a ih =>
+      rw [Nat.add_right_comm]
+      cases h : step P σ code s with
+      | none => simp [run, h]
+      | some t => simp [run, h, ih]
+
+theorem reach_of_run : ∀ {n : Nat} {s t : State}, run P σ code n s = some t → Reach P σ code s t
+  | 0, s, t, h => by
+      simp only [run, Option.some.injEq] at h
+      exact h ▸ .refl s
+  | n + 1, s, t, h => by
+      simp only [run, Option.bind_eq_some_iff] at h
+      obtain ⟨u, hs, hr⟩ := h
+      exact .next hs (reach_of_run hr)
+
+/-- At most `c` steps reach `t` from `s`. -/
+def Steps (P : Platform) (σ : Nat → UInt32) (code : UInt32 → Option UInt16) (c : Nat)
+    (s t : State) : Prop :=
+  ∃ n, n ≤ c ∧ run P σ code n s = some t
+
+theorem Steps.refl (s : State) : Steps P σ code 0 s s := ⟨0, Nat.le_refl 0, rfl⟩
+
+theorem Steps.trans {a b : Nat} {s t u : State} (h1 : Steps P σ code a s t)
+    (h2 : Steps P σ code b t u) : Steps P σ code (a + b) s u := by
+  obtain ⟨n1, l1, r1⟩ := h1
+  obtain ⟨n2, l2, r2⟩ := h2
+  exact ⟨n1 + n2, Nat.add_le_add l1 l2, by rw [run_add, r1, Option.bind_some, r2]⟩
+
+theorem Steps.mono {a b : Nat} {s t : State} (h : Steps P σ code a s t) (hab : a ≤ b) :
+    Steps P σ code b s t :=
+  let ⟨n, l, r⟩ := h
+  ⟨n, Nat.le_trans l hab, r⟩
+
+theorem Steps.next {c : Nat} {s t u : State} (hs : step P σ code s = some t)
+    (hr : Steps P σ code c t u) : Steps P σ code (c + 1) s u := by
+  obtain ⟨n, l, r⟩ := hr
+  exact ⟨n + 1, Nat.succ_le_succ l, by simp only [run, hs, Option.bind_some, r]⟩
+
+theorem Steps.reach {c : Nat} {s t : State} (h : Steps P σ code c s t) : Reach P σ code s t :=
+  let ⟨_, _, r⟩ := h
+  reach_of_run r
 
 /-- The bytes of the instruction `i`: 2 for `BX LR` and 4 for every other form. -/
 def Instr.size : Instr → Nat
@@ -142,6 +193,11 @@ theorem step_at {s : State} {i : Instr} (h : CodeAt code s.pc [i]) :
 /-- A step at a placed instruction that executes, followed by more steps. -/
 theorem reach_exec {s t u : State} {i : Instr} (hc : CodeAt code s.pc [i])
     (he : exec P σ i s = some t) (hr : Reach P σ code t u) : Reach P σ code s u :=
+  .next (by rw [step_at hc]; exact he) hr
+
+/-- A step at a placed instruction that executes, followed by at most `c` steps. -/
+theorem steps_exec {c : Nat} {s t u : State} {i : Instr} (hc : CodeAt code s.pc [i])
+    (he : exec P σ i s = some t) (hr : Steps P σ code c t u) : Steps P σ code (c + 1) s u :=
   .next (by rw [step_at hc]; exact he) hr
 
 end LeanExe.M7

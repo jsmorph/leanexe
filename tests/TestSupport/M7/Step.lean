@@ -1,4 +1,5 @@
 import LeanExe.M7.Proof.Step
+import LeanExe.M7.Proof.Bound
 import TestSupport.Bare.Req
 
 /-!
@@ -7,7 +8,8 @@ The step theorems of the echo on the Cortex-M7: the calls of `usart3Tick`, funct
 with the code of `udivmod64`.  Each follows from `step_call` with the compiler's theorem of the
 step, which states no trap, and the kernel's evaluation of `reachCovered`: from the step's entry,
 with the state's word and the value that the last request read in slots 0 and 1 of the outgoing
-area, the model returns with the words of the step's result in those slots.
+area, the model returns with the words of the step's result in those slots.  `echo_static` is the
+kernel's evaluation of `staticCost` for both steps, which bounds the cost of every run of each.
 -/
 
 namespace TestSupport.M7
@@ -77,6 +79,11 @@ theorem cmsdk_step {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Optio
 /-- The stack that a call of each echo's step uses, with the generator's frames. -/
 theorem echo_stack : stackBound reqCompiled.module 9 = 312 ∧
     stackBound reqCompiled.module 5 = 312 := by
+  decide +kernel
+
+/-- The static bound on the instructions of every run of each echo's step. -/
+theorem echo_static : staticCost reqCompiled.module 9 = some 1424 ∧
+    staticCost reqCompiled.module 5 = some 1424 := by
   decide +kernel
 
 end TestSupport.M7

@@ -165,18 +165,18 @@ theorem aboveSame_store2 {s t : State} {lim c w0 w1 : UInt32} {x : Nat}
 
 /-! ## Loads and stores of a pair at r2 -/
 
-/-- Two loads at r2 plus `o` and plus `o + 4` into r0 and r1. -/
+/-- Two loads at r2 plus `o` and plus `o + 4` into r0 and r1, in two steps. -/
 theorem run_ldr2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : UInt32}
     (hb : s.r 2 = b) (hc : CodeAt code s.pc [.ldr 0 2 ⟨o, h0⟩, .ldr 1 2 ⟨o + 4, h1⟩])
     (hw0 : WordOk P (b + UInt32.ofNat o)) (hw1 : WordOk P (b + UInt32.ofNat (o + 4))) :
-    ∃ t, Reach P σ code s t ∧ t.pc = s.pc + 8 ∧ Keeps s t ∧
+    ∃ t, Steps P σ code 2 s t ∧ t.pc = s.pc + 8 ∧ Keeps s t ∧
       t.r 0 = load32 s.mem (b + UInt32.ofNat o) ∧
       t.r 1 = load32 s.mem (b + UInt32.ofNat (o + 4)) := by
   obtain ⟨u1, hu1⟩ : ∃ u : State,
       u = { s.setR 0 (load32 s.mem (s.r 2 + UInt32.ofNat o)) with pc := s.pc + 4 } := ⟨_, rfl⟩
   have e0 : exec P σ (.ldr 0 2 ⟨o, h0⟩) s = some u1 := by
     rw [hu1]; exact exec_ldr (by rw [hb]; exact hw0)
-  obtain ⟨r1, c1, p1⟩ := reach_falls hc rfl e0
+  obtain ⟨r1, c1, p1⟩ := steps_falls hc rfl e0
   have k1 : Keeps s u1 := by rw [hu1]; exact ((Keeps.refl s).setR _ _).withPc _
   have u1r2 : u1.r 2 = b := by rw [hu1, State.r_withPc, State.r_setR_ne _ _ (by decide), hb]
   obtain ⟨u2, hu2⟩ : ∃ u : State,
@@ -184,18 +184,18 @@ theorem run_ldr2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : 
     ⟨_, rfl⟩
   have e1 : exec P σ (.ldr 1 2 ⟨o + 4, h1⟩) u1 = some u2 := by
     rw [hu2]; exact exec_ldr (by rw [u1r2]; exact hw1)
-  obtain ⟨r2, -, p2⟩ := reach_falls c1 rfl e1
+  obtain ⟨r2, -, p2⟩ := steps_falls c1 rfl e1
   have k2 : Keeps u1 u2 := by rw [hu2]; exact ((Keeps.refl u1).setR _ _).withPc _
   refine ⟨u2, r1.trans r2, by rw [p2, p1]; addr_eq, k1.trans k2, ?_, ?_⟩
   · rw [hu2, State.r_withPc, State.r_setR_ne _ _ (by decide), hu1, State.r_withPc,
       State.r_setR_same, hb]
   · rw [hu2, State.r_withPc, State.r_setR_same, u1r2, k1.mem]
 
-/-- Two stores of r0 and r1 at r2 plus `o` and plus `o + 4`. -/
+/-- Two stores of r0 and r1 at r2 plus `o` and plus `o + 4`, in two steps. -/
 theorem run_str2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : UInt32}
     (hb : s.r 2 = b) (hc : CodeAt code s.pc [.str 0 2 ⟨o, h0⟩, .str 1 2 ⟨o + 4, h1⟩])
     (hw0 : WordOk P (b + UInt32.ofNat o)) (hw1 : WordOk P (b + UInt32.ofNat (o + 4))) :
-    ∃ t, Reach P σ code s t ∧ t.pc = s.pc + 8 ∧ t.sp = s.sp ∧ t.lr = s.lr ∧
+    ∃ t, Steps P σ code 2 s t ∧ t.pc = s.pc + 8 ∧ t.sp = s.sp ∧ t.lr = s.lr ∧
       t.trace = s.trace ∧ t.reads = s.reads ∧
       t.mem = store32 (store32 s.mem (b + UInt32.ofNat o) (s.r 0))
         (b + UInt32.ofNat (o + 4)) (s.r 1) := by
@@ -204,7 +204,7 @@ theorem run_str2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : 
         mem := store32 s.mem (s.r 2 + UInt32.ofNat o) (s.r 0), pc := s.pc + 4 } := ⟨_, rfl⟩
   have e0 : exec P σ (.str 0 2 ⟨o, h0⟩) s = some u1 := by
     rw [hu1]; exact exec_str (by rw [hb]; exact hw0)
-  obtain ⟨r1, c1, p1⟩ := reach_falls hc rfl e0
+  obtain ⟨r1, c1, p1⟩ := steps_falls hc rfl e0
   have u1r : ∀ i, u1.r i = s.r i := fun i => by rw [hu1]; rfl
   obtain ⟨u2, hu2⟩ : ∃ u : State,
       u = { u1 with
@@ -212,7 +212,7 @@ theorem run_str2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : 
     ⟨_, rfl⟩
   have e1 : exec P σ (.str 1 2 ⟨o + 4, h1⟩) u1 = some u2 := by
     rw [hu2]; exact exec_str (by rw [u1r, hb]; exact hw1)
-  obtain ⟨r2, -, p2⟩ := reach_falls c1 rfl e1
+  obtain ⟨r2, -, p2⟩ := steps_falls c1 rfl e1
   refine ⟨u2, r1.trans r2, by rw [p2, p1]; addr_eq, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hu2, hu1]
   · rw [hu2, hu1]
@@ -224,17 +224,17 @@ theorem run_str2 {o : Nat} {h0 : o < 4096} {h1 : o + 4 < 4096} {s : State} {b : 
     show store32 (store32 s.mem (s.r 2 + UInt32.ofNat o) (s.r 0)) _ _ = _
     rw [hb]
 
-/-- The stores of r0 and r1 into the slot at the offset `x` from SP. -/
+/-- The stores of r0 and r1 into the slot at the offset `x` from SP, in two steps. -/
 theorem run_stPair {x : Nat} {h0 : x < 4096} {h1 : x + 4 < 4096} {s : State}
     (hc : CodeAt code s.pc [.strSp 0 ⟨x, h0⟩, .strSp 1 ⟨x + 4, h1⟩])
     (hw0 : WordOk P (s.sp + UInt32.ofNat x)) (hw1 : WordOk P (s.sp + UInt32.ofNat (x + 4))) :
-    ∃ t, Reach P σ code s t ∧ t.pc = s.pc + 8 ∧ t.sp = s.sp ∧ t.lr = s.lr ∧
+    ∃ t, Steps P σ code 2 s t ∧ t.pc = s.pc + 8 ∧ t.sp = s.sp ∧ t.lr = s.lr ∧
       t.trace = s.trace ∧ t.reads = s.reads ∧
       t.mem = store32 (store32 s.mem (s.sp + UInt32.ofNat x) (s.r 0))
         (s.sp + UInt32.ofNat (x + 4)) (s.r 1) := by
   have hok : SlotsOk P s.sp [.strSp 0 ⟨x, h0⟩, .strSp 1 ⟨x + 4, h1⟩] :=
     slotsOk_st hw0 (slotsOk_st hw1 (slotsOk_nil _))
-  obtain ⟨r, p, sp, lr, tr, rd, -⟩ := run_slots (σ := σ) hok hc
+  obtain ⟨r, p, sp, lr, tr, rd, -⟩ := steps_slots (σ := σ) hok hc
   exact ⟨_, r, by rw [p]; rfl, sp, lr, tr, rd, slotRun_st2 s 0 1 x h0 h1⟩
 
 /-! ## `wrapI64` -/
@@ -277,10 +277,10 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P σ code F .wrapI64 := by
             [.movImm 0 0, .strSp 0 ⟨E.frame.opAt (σs.length - 1) + 4, h1⟩] :=
           slotsOk_cons rfl (fun o ho => by cases ho)
             (slotsOk_st (hinv.frame.word (by omega) (by omega)) (slotsOk_nil _))
-        refine outcome_write
+        refine Outcome.mono (outcome_write
           (w0 := load32 ms.mem (ms.sp + UInt32.ofNat (E.frame.opAt (σs.length - 1))))
           (w1 := 0) hinv hsr hpc hcode hok ?_ hlt (by omega) hvl (fun h v hv' => ?_) ?_
-          (Typed.cons trivial ?_)
+          (Typed.cons trivial ?_)) (le_costOne_plain rfl rfl)
         · rw [store32_load32]
           rfl
         · have hl := getElem?_reverse_lt hv'
@@ -359,7 +359,7 @@ theorem load_outcome {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
       (after a (bs ++ [Instr.ldr 0 2 ⟨off.toNat, h0⟩, Instr.ldr 1 2 ⟨off.toNat + 4, h1⟩,
         Instr.strSp 0 ⟨E.frame.opAt (σs.length - 1), h2⟩,
         Instr.strSp 1 ⟨E.frame.opAt (σs.length - 1) + 4, h3⟩]).length)
-      (.Fallthrough st { sl with values := .i64 (st.mem.read64 (lo + off)) :: vs }) ms := by
+      (.Fallthrough st { sl with values := .i64 (st.mem.read64 (lo + off)) :: vs }) 18 ms := by
   have hsrA := hsr A hA
   obtain ⟨hsz, hp1, hp2⟩ := hsrA.size_toNat
   have hlim := hinv.frame.limit
@@ -445,8 +445,8 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P σ code F (.load64 off)
         · trivial
         · rename_i hnot
           have hin : x.toNat + off.toNat + 8 ≤ st.mem.pages * 65536 := by omega
-          exact load_outcome hA hb1 hoff hlt hbs hcode hinv hsr hpc hvl hbelow hty.tail htop.1
-            htop.2 hin (hali.1 x vs hv hin)
+          exact (load_outcome hA hb1 hoff hlt hbs hcode hinv hsr hpc hvl hbelow hty.tail htop.1
+            htop.2 hin (hali.1 x vs hv hin)).mono (le_costOne_plain rfl rfl)
       case i64 x =>
         simp only [execOne.eq_def, hv]
         split
@@ -460,8 +460,9 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P σ code F (.load64 off)
             rw [toNat_hi64]
             show x.toNat / 4294967296 % 4294967296 = 0
             rw [Nat.div_eq_of_lt (by omega)]
-          exact load_outcome hA hb1 hoff hlt hbs hcode hinv hsr hpc hvl hbelow hty.tail htop.1
-            (by rw [htop.2, hhi]) (by rw [hxl]; exact hin) (hali.2 x vs hv hin)
+          exact (load_outcome hA hb1 hoff hlt hbs hcode hinv hsr hpc hvl hbelow hty.tail htop.1
+            (by rw [htop.2, hhi]) (by rw [hxl]; exact hin) (hali.2 x vs hv hin)).mono
+            (le_costOne_plain rfl rfl)
       all_goals (simp only [execOne.eq_def, hv]; trivial)
 
 /-! ## `store64` -/
@@ -526,7 +527,7 @@ theorem store_outcome {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
         Instr.ldrSp 1 ⟨E.frame.opAt (σs.length - 1) + 4, h1⟩, Instr.str 0 2 ⟨off.toNat, h2⟩,
         Instr.str 1 2 ⟨off.toNat + 4, h3⟩]).length)
       (.Fallthrough { st with mem := st.mem.write64 (lo + off) val }
-        { sl with values := vs }) ms := by
+        { sl with values := vs }) 18 ms := by
   have hsrA := hsr A hA
   obtain ⟨hsz, hp1, hp2⟩ := hsrA.size_toNat
   have hlim := hinv.frame.limit
@@ -565,7 +566,7 @@ theorem store_outcome {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UIn
     rw [kt.sp]
     exact slotsOk_ld (hinv.frame.word (by omega) (by omega))
       (slotsOk_ld (hinv.frame.word (by omega) (by omega)) (slotsOk_nil _))
-  obtain ⟨ru, pu, spu, lru, tru, rdu, hiu⟩ := run_slots (σ := σ) hokL cL1
+  obtain ⟨ru, pu, spu, lru, tru, rdu, hiu⟩ := steps_slots (σ := σ) hokL cL1
   generalize hu : slotRun P σ [Instr.ldrSp 0 ⟨E.frame.opAt (σs.length - 1), h0⟩,
     .ldrSp 1 ⟨E.frame.opAt (σs.length - 1) + 4, h1⟩] t = u at ru pu spu lru tru rdu hiu
   have hum : u.mem = t.mem := by rw [← hu]; rfl
@@ -651,8 +652,8 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P σ code F (.store64 of
           · trivial
           · rename_i hnot
             have hin : x.toNat + off.toNat + 8 ≤ st.mem.pages * 65536 := by omega
-            exact store_outcome hA hb2 hoff hlt hbs hcode hinv hsr hpc hv (by omega) haddr.1
-              haddr.2 hin (hali.1 val x vs hv hin)
+            exact (store_outcome hA hb2 hoff hlt hbs hcode hinv hsr hpc hv (by omega) haddr.1
+              haddr.2 hin (hali.1 val x vs hv hin)).mono (le_costOne_plain rfl rfl)
         case i64 x =>
           simp only [execOne.eq_def, hv]
           split
@@ -666,8 +667,9 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P σ code F (.store64 of
               rw [toNat_hi64]
               show x.toNat / 4294967296 % 4294967296 = 0
               rw [Nat.div_eq_of_lt (by omega)]
-            exact store_outcome hA hb2 hoff hlt hbs hcode hinv hsr hpc hv (by omega) haddr.1
-              (by rw [haddr.2, hhi]) (by rw [hxl]; exact hin) (hali.2 val x vs hv hin)
+            exact (store_outcome hA hb2 hoff hlt hbs hcode hinv hsr hpc hv (by omega) haddr.1
+              (by rw [haddr.2, hhi]) (by rw [hxl]; exact hin) (hali.2 val x vs hv hin)).mono
+              (le_costOne_plain rfl rfl)
         all_goals (simp only [execOne.eq_def, hv]; trivial)
       · simp only [execOne.eq_def]
         split
@@ -722,7 +724,7 @@ theorem sim_globalGet (F i : Nat) : InstrSim P σ code F (.globalGet i) := by
       obtain ⟨c12, c3⟩ := hc.split_wide rfl
       obtain ⟨c1, c2⟩ := c12.split_wide rfl
       rw [← hpc] at c1
-      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) (slotsOk_reg rfl _) c1
+      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) (slotsOk_reg rfl _) c1
       obtain ⟨hm1, -, -⟩ := slotRun_reg (P := P) (σ := σ) (movWord_regForm 2 areaHeader) ms
       generalize hu1 : slotRun P σ (movWord 2 areaHeader) ms = u1 at r1 p1 sp1 lr1 tr1 rd1 hm1
       have hr2 : u1.r 2 = areaHeader := by rw [← hu1]; exact (slotRun_movWord 2 areaHeader ms).1
@@ -739,9 +741,10 @@ theorem sim_globalGet (F i : Nat) : InstrSim P σ code F (.globalGet i) := by
       obtain ⟨v, rv, pv, spv, -, trv, rdv, memv⟩ := run_stPair (P := P) (σ := σ) c3
         (by rw [k2.sp, sp1]; exact hinv.frame.word (by omega) (by omega))
         (by rw [k2.sp, sp1]; exact hinv.frame.word (by omega) (by omega))
-      refine outcome_store (z := v) hinv hsr (r1.trans (r2.trans rv)) ?_
+      refine Outcome.mono (outcome_store (z := v) hinv hsr (r1.trans (r2.trans rv)) ?_
         (by rw [spv, k2.sp, sp1]) (by rw [trv, k2.trace, tr1]) (by rw [rdv, k2.reads, rd1]) ?_ hlt
-        hb (by rw [hh]) hinv.stack (hsrA.globals i hi') (Typed.cons ?_ hinv.types)
+        hb (by rw [hh]) hinv.stack (hsrA.globals i hi') (Typed.cons ?_ hinv.types))
+        (le_costOne_plain rfl rfl)
       · rw [pv, hp2']
         simp only [movWord, List.length_append, List.length_cons, List.length_nil]
         addr_after
@@ -826,7 +829,7 @@ theorem sim_globalSet (F i : Nat) : InstrSim P σ code F (.globalSet i) := by
           .ldrSp 1 ⟨E.frame.opAt (σs.length - 1) + 4, h1⟩] ++ movWord 2 areaHeader) :=
         slotsOk_ld (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (hinv.frame.word (by omega) (by omega)) (slotsOk_reg rfl _))
-      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok c1
+      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok c1
       generalize hu1 : slotRun P σ ([Instr.ldrSp 0 ⟨E.frame.opAt (σs.length - 1), h0⟩,
         .ldrSp 1 ⟨E.frame.opAt (σs.length - 1) + 4, h1⟩] ++ movWord 2 areaHeader) ms = u1
         at r1 p1 sp1 lr1 tr1 rd1
@@ -867,7 +870,8 @@ theorem sim_globalSet (F i : Nat) : InstrSim P σ code F (.globalSet i) := by
         rw [areaHeader_toNat]
         omega
       have hwsp : w.sp = ms.sp := by rw [spw, sp1]
-      refine ⟨σs.tail, rfl, w, r1.trans rw', ?_, hwsp, by rw [trw, tr1], by rw [rdw, rd1],
+      refine ⟨σs.tail, rfl, w, (r1.trans rw').mono (le_costOne_plain rfl rfl), ?_, hwsp,
+        by rw [trw, tr1], by rw [rdw, rd1],
         BodyKeeps.of_above hinv.frame hab,
         Below.of_above hinv.frame (by have := hinv.height; have := hinv.len; omega) hwsp hab,
         Inv.pop_above hinv (fun h u hu => by

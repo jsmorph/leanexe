@@ -8,11 +8,12 @@ and no build target includes it.  The kernel evaluates `bootProgram` on `usart3T
 index and the initial state 3, with the board's layout and initialization, and checks that the
 file's bytes are those of the vector table and the instructions.
 
-`echo_board` states the loop theorem for every code map that holds the file's bytes in flash at
-both of its addresses, and `echo_board_runs` that the run never stops.  Both hold of the
-processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0
-low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
-debugger access, or DMA during the run.
+`echo_board` states the loop theorem for every code map that holds the file's bytes in flash at both
+of its addresses, `echo_board_runs` that the run never stops, and `echo_board_steps` that each
+window takes at most 1,440 steps of the model.  The three hold of the processor under the run
+conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0 low and BOOT_ADD0 0x0080,
+software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA
+during the run.
 -/
 
 namespace TestSupport.M7.NucleoFile
@@ -39,6 +40,18 @@ theorem echo_board (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UIn
         windows (reqTrace (devBus devBase) usart3Tick 3 (fun k => σ (k + initReads init))) N :=
   echo_loop echo_file hf b hb N
 
+/-- The echo's windows from reset over the image file, counted: for every `σ`, `N`, code map that
+holds the file's bytes in flash, and state that reset gives, the run reaches the loop's head after
+the initialization's `c` steps, and window `i` takes `cs[i]` steps, at most 1,440, after which the
+run is at the head with the accesses of the initialization and of the first `i + 1` windows. -/
+theorem echo_board_steps (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 1440) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = echoHead ∧
+        s.trace = initTrace init σ ++
+          windows (reqTrace (devBus devBase) usart3Tick 3 (fun k => σ (k + initReads init))) i :=
+  echo_loop_steps echo_file hf b hb N
+
 /-- The echo's run from reset over the image file succeeds for every number of steps. -/
 theorem echo_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (hf : Flash code echoBytes echoSize) (b : State) (hb : Reset code flashItcm b) :
@@ -49,6 +62,11 @@ end TestSupport.M7.NucleoFile
 
 #print axioms TestSupport.M7.NucleoFile.echo_board
 #print axioms TestSupport.M7.NucleoFile.echo_board_runs
+#print axioms TestSupport.M7.NucleoFile.echo_board_steps
+#print axioms TestSupport.M7.Nucleo.echo_loop_steps
+#print axioms TestSupport.M7.echo_static
+#print axioms LeanExe.M7.Nucleo.board_run_steps
+#print axioms LeanExe.M7.costRun_le_staticCost
 #print axioms TestSupport.M7.NucleoFile.echo_file
 #print axioms TestSupport.M7.Nucleo.echo_loop
 #print axioms TestSupport.M7.Nucleo.echo_runs

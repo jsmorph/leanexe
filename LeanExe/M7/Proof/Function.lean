@@ -140,14 +140,15 @@ theorem wide_zeros : ∀ {codes : List (List Instr)},
         wide_zeros (codes := cs) fun j hj => h (j + 1) (by simp; omega)]
       rfl
 
-/-- Placed stores of r0, which holds 0, into slots whose words pass the checks: every byte of
-each slot holds 0, and every byte outside the slots keeps its value. -/
+/-- Placed stores of r0, which holds 0, into slots whose words pass the checks, in two steps each:
+every byte of each slot holds 0, and every byte outside the slots keeps its value. -/
 theorem run_zeros {s : State} (h0 : s.r 0 = 0) :
     ∀ {codes : List (List Instr)},
       (∀ j (hj : j < codes.length), ∃ o, ZeroCode codes[j] o ∧
         WordOk P (s.sp + UInt32.ofNat o) ∧ WordOk P (s.sp + UInt32.ofNat (o + 4))) →
       CodeAt code s.pc codes.flatten →
-      ∃ t, Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (8 * codes.length) ∧ t.sp = s.sp ∧
+      ∃ t, Steps P σ code (2 * codes.length) s t ∧
+        t.pc = s.pc + UInt32.ofNat (8 * codes.length) ∧ t.sp = s.sp ∧
         t.lr = s.lr ∧ t.trace = s.trace ∧ t.reads = s.reads ∧
         (∀ j (hj : j < codes.length) o, ZeroCode codes[j] o → ∀ b, ¬ Outside s.sp o b →
           t.mem b = 0) ∧
@@ -163,7 +164,7 @@ theorem run_zeros {s : State} (h0 : s.r 0 = 0) :
         slotsOk_st w0 (slotsOk_st w1 (slotsOk_nil _))
       rw [List.flatten_cons] at hc
       obtain ⟨hc1, hc2⟩ := CodeAt.append.mp hc
-      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hc1
+      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hc1
       have hm1 : (slotRun P σ [.strSp 0 ⟨o0, q0⟩, .strSp 0 ⟨o0 + 4, q1⟩] s).mem =
           store32 (store32 s.mem (s.sp + UInt32.ofNat o0) (s.r 0))
             (s.sp + UInt32.ofNat (o0 + 4)) (s.r 0) := rfl
@@ -177,7 +178,8 @@ theorem run_zeros {s : State} (h0 : s.r 0 = 0) :
         run_zeros (s := s1) hr0 (codes := cs) (fun j hj => by
           obtain ⟨o, hzo, wa, wb⟩ := hz (j + 1) (by simp; omega)
           exact ⟨o, hzo, by rw [sp1]; exact wa, by rw [sp1]; exact wb⟩) hc2
-      refine ⟨t, r1.trans rt, ?_, spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
+      refine ⟨t, (r1.trans rt).mono (by simp only [List.length_cons, List.length_nil]; omega), ?_,
+        spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
         fun j hj o hzo b hb => ?_, fun b hb => ?_⟩
       · rw [pt, p1]
         simp only [List.length_cons, List.length_nil]
@@ -201,18 +203,29 @@ theorem run_zeros {s : State} (h0 : s.r 0 = 0) :
 /-- The clearing of the named declared locals of the frame `fr` that the generator emits. -/
 def ClearCode (fr : Frame) (clear : List Instr) : Prop :=
   (fr.named = [] ∧ clear = []) ∨
-    ∃ codes : List (List Instr), codes.length = fr.named.length ∧
+    fr.named ≠ [] ∧ ∃ codes : List (List Instr), codes.length = fr.named.length ∧
       (∀ j (hj : j < codes.length), ∃ i o, fr.named[j]? = some i ∧ fr.localOff i = some o ∧
         ZeroCode codes[j] o) ∧ clear = Instr.movImm 0 0 :: codes.flatten
 
 theorem ClearCode.wide {fr : Frame} {clear : List Instr} (h : ClearCode fr clear) :
     clear.all Instr.wide = true := by
-  rcases h with ⟨-, rfl⟩ | ⟨codes, -, hz, rfl⟩
+  rcases h with ⟨-, rfl⟩ | ⟨-, codes, -, hz, rfl⟩
   · rfl
   · rw [List.all_cons, wide_zeros fun j hj => by
       obtain ⟨i, o, -, -, h⟩ := hz j hj
       exact ⟨o, h⟩]
     rfl
+
+/-- The clearing has the length that `clearSize` gives. -/
+theorem ClearCode.length {fr : Frame} {clear : List Instr} (h : ClearCode fr clear) :
+    clear.length = clearSize fr := by
+  rcases h with ⟨hn, rfl⟩ | ⟨hn, codes, hcl, hz, rfl⟩
+  · simp [clearSize, hn]
+  · have hl := length_zeros (codes := codes) fun j hj =>
+      let ⟨_, o, _, _, h⟩ := hz j hj
+      ⟨o, h⟩
+    simp only [clearSize, hn, ↓reduceIte, List.length_cons, hl, hcl]
+    omega
 
 /-- The offset of a named local's slot. -/
 theorem Frame.localOff_named {fr : Frame} {i o : Nat} (hp : fr.params ≤ i)
@@ -224,18 +237,19 @@ theorem Frame.localOff_named {fr : Frame} {i o : Nat} (hp : fr.params ≤ i)
 
 /-- The clearing of the named locals of the frame `fr`, whose names lie at or above its
 parameters: every byte of the slot of a named local holds 0, and every byte outside the slots of
-the named locals keeps its value. -/
+the named locals keeps its value, in one step for each instruction. -/
 theorem run_clearing {fr : Frame} {clear : List Instr} (hcc : ClearCode fr clear)
     (hge : ∀ i ∈ fr.named, fr.params ≤ i) {s : State}
     (hw : ∀ j < fr.named.length, WordOk P (s.sp + UInt32.ofNat (8 * (fr.out + j))) ∧
       WordOk P (s.sp + UInt32.ofNat (8 * (fr.out + j) + 4)))
     (hc : CodeAt code s.pc clear) :
-    ∃ t, Reach P σ code s t ∧ t.pc = after s.pc clear.length ∧ t.sp = s.sp ∧ t.lr = s.lr ∧
+    ∃ t, Steps P σ code clear.length s t ∧ t.pc = after s.pc clear.length ∧ t.sp = s.sp ∧
+      t.lr = s.lr ∧
       t.trace = s.trace ∧ t.reads = s.reads ∧
       (∀ i o, fr.params ≤ i → fr.localOff i = some o → ∀ b, ¬ Outside s.sp o b →
         t.mem b = 0) ∧
       ∀ b, (∀ j < fr.named.length, Outside s.sp (8 * (fr.out + j)) b) → t.mem b = s.mem b := by
-  rcases hcc with ⟨hn, rfl⟩ | ⟨codes, hcl, hz, rfl⟩
+  rcases hcc with ⟨hn, rfl⟩ | ⟨-, codes, hcl, hz, rfl⟩
   · refine ⟨s, .refl _, by rw [after_eq]; simp, rfl, rfl, rfl, rfl, fun i o hi ho => ?_,
       fun _ _ => rfl⟩
     obtain ⟨j, hj, -⟩ := Frame.localOff_named hi ho
@@ -253,7 +267,7 @@ theorem run_clearing {fr : Frame} {clear : List Instr} (hcc : ClearCode fr clear
     slotsOk_cons rfl (fun o ho => by cases ho) (slotsOk_nil _)
   have hc' : CodeAt code s.pc ([Instr.movImm 0 0] ++ codes.flatten) := hc
   obtain ⟨hc1, hc2⟩ := hc'.split_wide rfl
-  obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hc1
+  obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hc1
   have hr0 : (slotRun P σ [Instr.movImm 0 0] s).r 0 = 0 := by
     simp only [slotRun_cons, slotRun_nil, slotStep, exec, Option.getD_some]
     state_simp
@@ -267,7 +281,8 @@ theorem run_clearing {fr : Frame} {clear : List Instr} (hcc : ClearCode fr clear
       obtain ⟨o, hzc, j', hj', rfl⟩ := hzo j hj
       exact ⟨_, hzc, by rw [sp1]; exact (hw j' hj').1, by rw [sp1]; exact (hw j' hj').2⟩) hc2
   have hlen := length_zeros fun j hj => (hzo j hj).imp fun _ h => h.1
-  refine ⟨t, r1.trans rt, ?_, spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
+  refine ⟨t, (r1.trans rt).mono (by simp only [List.length_cons, List.length_nil, hlen]; omega),
+    ?_, spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
     fun i o hi ho b hb => ?_, fun b hb => ?_⟩
   · rw [pt, p1]
     simp only [List.length_cons, List.length_nil, hlen, after_eq]
@@ -428,8 +443,8 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt32} {f : Functio
     cases hg
     rw [← List.length_flatten] at hv3
     obtain ⟨hl2, hr2⟩ := mapM_ok hv2
-    refine key (Instr.movImm 0 0 :: v2.flatten) i0 c1 c5 v3 v4 (.inr ⟨v2, hl2, fun j hj => ?_,
-      rfl⟩) hi0 hc1 hv3 hend hv4 (by cases hc5; exact hc1) (by simp)
+    refine key (Instr.movImm 0 0 :: v2.flatten) i0 c1 c5 v3 v4 (.inr ⟨hn, v2, hl2,
+      fun j hj => ?_, rfl⟩) hi0 hc1 hv3 hend hv4 (by cases hc5; exact hc1) (by simp)
     have := hr2 j (by omega) hj
     split at this
     · cases this
@@ -440,7 +455,7 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt32} {f : Functio
 
 /-- The prologue of a frame of `F` bytes whose LR slot lies at `lr`, from a state whose SP lies at
 least `F` bytes above the stack's limit `lim`: the branch to the stub of the stack falls through,
-SP drops by `F`, and the LR slot holds LR. -/
+SP drops by `F`, and the LR slot holds LR, in seven steps. -/
 theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 4 = 0)
     {lim : UInt32} {oq : Int} {entry : UInt32} (q1 : oq % 2 = 0) (q2 : -1048576 ≤ oq)
     (q3 : oq < 1048576)
@@ -450,7 +465,7 @@ theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 
     {ms : State} (hpc : ms.pc = entry) (hal : ms.sp.toNat % 4 = 0)
     (hfit : lim.toNat + F ≤ ms.sp.toNat)
     (hw : WordOk P (ms.sp - UInt32.ofNat F + UInt32.ofNat lr)) :
-    ∃ s, Reach P σ code ms s ∧ s.pc = after entry 7 ∧ s.sp = ms.sp - UInt32.ofNat F ∧
+    ∃ s, Steps P σ code 7 ms s ∧ s.pc = after entry 7 ∧ s.sp = ms.sp - UInt32.ofNat F ∧
       s.lr = ms.lr ∧ s.trace = ms.trace ∧ s.reads = ms.reads ∧
       s.mem = store32 ms.mem (ms.sp - UInt32.ofNat F + UInt32.ofNat lr) ms.lr := by
   have hlim := toNat_lt32 lim
@@ -470,7 +485,7 @@ theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 
       (slotsOk_cons rfl (fun o ho => by cases ho) (slotsOk_cons rfl (fun o ho => by cases ho)
         (slotsOk_nil _))))
   rw [← hpc] at hcL
-  obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hcL
+  obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hcL
   have hm1 := (slotRun_reg (P := P) (σ := σ) (ops := L) rfl ms).1
   have hC : (slotRun P σ L ms).cFlag = true := by
     simp only [L, slotRun_cons, slotRun_nil, slotStep, exec, Option.getD_some, Instr.subwSpOf,
@@ -485,14 +500,14 @@ theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 
     rw [p1, hpc, after_eq]
     try rfl
   rw [← hBpc] at hcB
-  have rB := reach_bcondTo (P := P) (σ := σ) q1 q2 q3 hcB
+  have rB := steps_bcondTo (P := P) (σ := σ) q1 q2 q3 hcB
   have hc3' : (slotRun P σ L ms).condHolds 3 = false := by rw [condHolds_cc, hC]; rfl
   rw [show condCC = (3 : Fin 14) from rfl, hc3'] at rB
   simp only [Bool.false_eq_true, ↓reduceIte] at rB
   -- `SUBW SP`
   obtain ⟨u2, hu2⟩ : ∃ u2 : State,
       u2 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 } := ⟨_, rfl⟩
-  have rB' : Reach P σ code (slotRun P σ L ms) u2 := by rw [hu2]; exact rB
+  have rB' : Steps P σ code 1 (slotRun P σ L ms) u2 := by rw [hu2]; exact rB
   have hu2pc : u2.pc = after entry 5 := by
     rw [hu2, State.pc_withPc, hBpc]
     addr_after
@@ -517,7 +532,7 @@ theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 
   rw [← hu3pc] at hcS
   -- `STR LR`
   have e4 := exec_strLr (P := P) (σ := σ) (s := u3) (o := ⟨lr, hlr4⟩) (by rw [hu3sp]; exact hw)
-  refine ⟨_, r1.trans (rB'.trans (reach_exec hcW e3 (reach_exec hcS e4 (.refl _)))), ?_, ?_, ?_,
+  refine ⟨_, r1.trans (rB'.trans (steps_exec hcW e3 (steps_exec hcS e4 (.refl _)))), ?_, ?_, ?_,
     ?_, ?_, ?_⟩
   · show u3.pc + 4 = _
     rw [hu3pc]
@@ -552,13 +567,14 @@ theorem run_prologue {F lr : Nat} (hF : F < 4096) (hlr4 : lr < 4096) (hF4 : F % 
       exact lr1
     rw [hm3, hu3sp, hl3]
 
-/-- The epilogue's reload of LR from its slot at `lr`, the rise of SP by `F`, and the return. -/
+/-- The epilogue's reload of LR from its slot at `lr`, the rise of SP by `F`, and the return, in
+three steps. -/
 theorem run_epilogue {F lr : Nat} (hlr4 : lr < 4096) (hF : F < 4096) {a : UInt32} {s : State}
     (hc : CodeAt code a [Instr.ldrLr ⟨lr, hlr4⟩, Instr.addwSpSpOf F, Instr.bxLr])
     (hpc : s.pc = a) (hw : WordOk P (s.sp + UInt32.ofNat lr))
     (hodd : load32 s.mem (s.sp + UInt32.ofNat lr) % 2 = 1)
     (hal : (s.sp + UInt32.ofNat F).toNat % 4 = 0) :
-    ∃ t, Reach P σ code s t ∧ t.pc = load32 s.mem (s.sp + UInt32.ofNat lr) &&& 0xFFFFFFFE ∧
+    ∃ t, Steps P σ code 3 s t ∧ t.pc = load32 s.mem (s.sp + UInt32.ofNat lr) &&& 0xFFFFFFFE ∧
       t.sp = s.sp + UInt32.ofNat F ∧ t.lr = load32 s.mem (s.sp + UInt32.ofNat lr) ∧
       t.mem = s.mem ∧ t.trace = s.trace ∧ t.reads = s.reads := by
   have hc' : CodeAt code a ([Instr.ldrLr ⟨lr, hlr4⟩] ++ [Instr.addwSpSpOf F] ++ [Instr.bxLr]) :=
@@ -589,8 +605,8 @@ theorem run_epilogue {F lr : Nat} (hlr4 : lr < 4096) (hF : F < 4096) {a : UInt32
     rw [hu2]
     show u1.lr = _
     rw [hu1, State.lr_withLrPc]
-  have rX := reach_bxLr (P := P) (σ := σ) hcX (by rw [hu2lr]; exact hodd)
-  refine ⟨_, reach_exec hcL e1 (reach_exec hcA e2 rX), ?_, ?_, ?_, ?_, ?_, ?_⟩
+  have rX := steps_bxLr (P := P) (σ := σ) hcX (by rw [hu2lr]; exact hodd)
+  refine ⟨_, steps_exec hcL e1 (steps_exec hcA e2 rX), ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [State.pc_withPc, hu2lr]
   · rw [State.sp_withPc, hu2]
     show (addWithCarry u1.sp _ false).1 &&& 0xFFFFFFFC = _
@@ -626,13 +642,16 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
     {need : Nat → Nat} (hcl : CallsOk P σ code g m callee S need)
     (hneed : NeedOk need (frameOf (sigOf callee) f).size f.body (need k)) :
     FunSim P σ code m S need g k (entry, f.params, f.results) := by
+  refine ⟨by simp [callCost, hm, hk], ?_⟩
   intro α st vs ms hp hvt hpc hlr hstk hargs hsr hal
   change f.params.length ≤ vs.length at hp
   change Typed f.params.reverse (vs.take f.params.length) at hvt
   change ms.pc = entry at hpc
   change StackOk P S.limit (max f.params.length f.results.length) (need k) ms at hstk
   change ArgsAt ms (vs.take f.params.length) at hargs
-  change CallResult P σ code S f.params f.results vs (Wasm.run g m k st vs) ms
+  change CallResult P σ code S f.params f.results vs (Wasm.run g m k st vs)
+    (costRun g m k st vs {}) ms
+  rw [costRun_some (f := f) (by simp [hm]) (by simp [hm, hk])]
   have hal' : S.area.isSome = true → m.memIs64 = false ∧
       AlignedExec g m st (f.toLocals (vs.take f.params.length).reverse) f.body {} := fun h => by
     obtain ⟨h64, ha⟩ := hal h
@@ -644,6 +663,7 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
   have hfp : (frameOf (sigOf callee) f).params = f.params.length := rfl
   have hge : ∀ i ∈ (frameOf (sigOf callee) f).named, (frameOf (sigOf callee) f).params ≤ i :=
     fun i hi => frameOf_named_ge hi
+  have hcs : clearSize (frameOf (fun _ => none) f) = clearSize (frameOf (sigOf callee) f) := rfl
   obtain ⟨-, hnm, hF, hFm, hlr4, oq, clear, body, fin, results, q1, q2, q3, q4, hcc, hbody,
     hfin, hrl, hres, his⟩ := gen_function rfl hg
   generalize frameOf (sigOf callee) f = fr at *
@@ -831,21 +851,27 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
     (f.toLocals (vs.take f.params.length).reverse) s2 hinv (hsr.congr hkb2) hp2' hal' need
     (callNeed need f.body) hcl (fun j hj => le_callNeed hj)
     (by show callNeed need f.body ≤ s2.sp.toNat - S.limit.toNat; rw [hs2sp, hsp1n]; omega)
+  simp only [List.map_cons, List.map_nil, Ctl.arity_mk, List.length_reverse] at ho
   have hbl : body.length = (listSize (sigOf callee) [f.results.length] 0 f.body).1 := by
     have := hbs.1
     simpa only [List.map_cons, List.map_nil, Ctl.arity_mk, List.length_reverse, List.length_nil]
       using this
   -- the copies of the results, the epilogue, and the return, from the body's end, from a branch to
   -- the function's label, or from a return
-  have finish : ∀ (st' : Store α) (vals : List Value) (ms' : State), Reach P σ code s2 ms' →
+  have finish : ∀ (cb : Nat) (st' : Store α) (vals : List Value) (ms' : State),
+      Steps P σ code cb s2 ms' →
+      cb ≤ costExec g m st (f.toLocals (vs.take f.params.length).reverse) [f.results.length]
+        f.body {} →
       ms'.pc = after (after entry (prologueSize + clear.length)) body.length → ms'.sp = s2.sp →
       ms'.trace = s2.trace → ms'.reads = s2.reads → BodyKeeps fr s2.sp s2 ms' →
       Kept fr ⟨after (after entry (prologueSize + clear.length))
         (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ vals ms' →
       StoreOk P S st' ms' →
       CallResult P σ code S f.params f.results vs
-        (.Success (vals.take f.results.length ++ vs.drop f.params.length) st') ms := by
-    intro st' vals ms' hr' hp' hsp' htr' hrd' hk' hkt hsr'
+        (.Success (vals.take f.results.length ++ vs.drop f.params.length) st')
+        (frameCost f + costExec g m st (f.toLocals (vs.take f.params.length).reverse)
+          [f.results.length] f.body {}) ms := by
+    intro cb st' vals ms' hr' hcb hp' hsp' htr' hrd' hk' hkt hsr'
     have hl' : f.results.length ≤ vals.length := by
       have := hkt.len
       simpa only [Ctl.arity, List.length_reverse] using this
@@ -899,9 +925,12 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
     have hvals : (vals.take f.results.length ++ vs.drop f.params.length).take
         f.results.length = vals.take f.results.length :=
       List.take_left' htake
-    refine ⟨t3, r4.trans (r2.trans (hr'.trans (rt.trans rt3))), pt3, spt3, lrt3, ?_, ?_,
+    refine ⟨t3, (r4.trans (r2.trans (hr'.trans (rt.trans rt3)))).mono ?_, pt3, spt3, lrt3, ?_, ?_,
       fun a ha => ?_, by rw [List.length_append, htake, List.length_drop],
       List.drop_left' htake, ?_, ?_, hsr'.congr fun b hb => ?_⟩
+    · rw [hcc.length, hrl]
+      simp only [frameCost, prologueSize, hcs]
+      omega
     · rw [trt3, trt, htr', tr2, tr4]
     · rw [rdt3, rdt, hrd', rd2, rd4]
     · have ha32 := toNat_lt32 a
@@ -943,7 +972,8 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
       obtain ⟨σ', hf', ms', hr', hp', hsp', htr', hrd', hk', -, hinv', hsr'⟩ := ho
       have e := hfin σ' hf'
       subst e
-      exact finish st' sl'.values ms' hr' hp' hsp' htr' hrd' hk' (Kept.of_inv hinv' rfl rfl) hsr'
+      exact finish _ st' sl'.values ms' hr' (Nat.le_refl _) hp' hsp' htr' hrd' hk'
+        (Kept.of_inv hinv' rfl rfl) hsr'
   | Break k st' sl' =>
       cases k with
       | zero =>
@@ -952,7 +982,8 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
               (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ := by
             simpa using ht.symm
           subst ht0
-          exact finish st' sl'.values ms' hr' (by rw [hp', hbl]) hsp' htr' hrd' hk' hkt hsr'
+          exact finish _ st' sl'.values ms' hr' (Nat.le_refl _) (by rw [hp', hbl]) hsp' htr' hrd'
+            hk' hkt hsr'
       | succ k => trivial
   | Return st' vals =>
       obtain ⟨t, ht, ms', hr', hp', hsp', htr', hrd', hk', hkt, hsr'⟩ := ho
@@ -960,7 +991,8 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
           (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ := by
         simpa using ht.symm
       subst ht0
-      exact finish st' vals ms' hr' (by rw [hp', hbl]) hsp' htr' hrd' hk' hkt hsr'
+      exact finish _ st' vals ms' hr' (Nat.le_refl _) (by rw [hp', hbl]) hsp' htr' hrd' hk' hkt
+        hsr'
   | Trap _ _ => trivial
   | Invalid _ => trivial
   | OutOfFuel => trivial

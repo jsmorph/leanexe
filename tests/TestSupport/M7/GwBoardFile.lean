@@ -18,10 +18,10 @@ bytes that the run writes to `USART_TDR` begin the bytes of the gateway's output
 input records that the bytes it reads from `USART_RDR` encode.  `gw_board_bytes` states the same
 with the input records given by their bytes: records of 18 words whose bytes are the bytes read up
 to the last complete record, which `flatMap_recordBytes_inj` of `LeanExe/Requests/Reads.lean`
-makes unique.  The theorems hold of the processor
-under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0 low and
-BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
-debugger access, or DMA during the run.
+makes unique.  `gw_board_steps` states that each window takes at most 17,553 steps of the model.
+The theorems hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
+power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
+interrupt, NMI, debug halt, debugger access, or DMA during the run.
 -/
 
 namespace TestSupport.M7.GwBoardFile
@@ -91,6 +91,20 @@ theorem gw_board (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt1
           (fun k => σ (k + initReads init))) N :=
   board_loop gw_file hf b hb N
 
+/-- The gateway's windows from reset over the image file, counted: for every `σ`, `N`, code map
+that holds the file's bytes in flash, and state that reset gives, the run reaches the loop's head
+after the initialization's `c` steps, and window `i` takes `cs[i]` steps, at most 17,553, after
+which the run is at the head with the accesses of the initialization and of the first `i + 1`
+windows. -/
+theorem gw_board_steps (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code gwBytes gwSize) (b : State) (hb : Reset code flashItcm b) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 17553) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = boardHead ∧
+        s.trace = initTrace init σ ++
+          windows (reqTrace (devBus devBase) gwTickUsart3 gwInit
+            (fun k => σ (k + initReads init))) i :=
+  board_loop_steps gw_file hf b hb N
+
 /-- The gateway's run from reset over the image file succeeds for every number of steps. -/
 theorem gw_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (hf : Flash code gwBytes gwSize) (b : State) (hb : Reset code flashItcm b) :
@@ -130,6 +144,10 @@ end TestSupport.M7.GwBoardFile
 
 #print axioms TestSupport.M7.GwBoardFile.gw_board
 #print axioms TestSupport.M7.GwBoardFile.gw_board_runs
+#print axioms TestSupport.M7.GwBoardFile.gw_board_steps
+#print axioms TestSupport.M7.Gw.board_loop_steps
+#print axioms TestSupport.M7.gw_static
+#print axioms LeanExe.M7.Nucleo.board_run_steps
 #print axioms TestSupport.M7.GwBoardFile.gw_board_prefix
 #print axioms TestSupport.M7.GwBoardFile.gw_board_bytes
 #print axioms TestSupport.M7.GwBoardFile.gw_file

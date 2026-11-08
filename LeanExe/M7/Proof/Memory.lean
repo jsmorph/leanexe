@@ -313,12 +313,12 @@ theorem exec_slotStep {i : Instr} {s : State} (hf : i.slotForm = true)
     | exact exec_slotStep_reg rfl rfl rfl
     | simp [Instr.slotForm, Instr.regOnly, Instr.falls] at hf
 
-/-- Placed slot code whose loads and stores pass the checks takes the model to the state that
-`slotRun` gives, at the address after the code, with SP, LR, r8 to r12, the device trace, and
-the read count as they were. -/
-theorem run_slots {is : List Instr} {s : State} (hok : SlotsOk P s.sp is)
+/-- Placed slot code whose loads and stores pass the checks takes the model, in one step for each
+instruction, to the state that `slotRun` gives, at the address after the code, with SP, LR, r8 to
+r12, the device trace, and the read count as they were. -/
+theorem steps_slots {is : List Instr} {s : State} (hok : SlotsOk P s.sp is)
     (hc : CodeAt code s.pc is) :
-    Reach P σ code s (slotRun P σ is s) ∧
+    Steps P σ code is.length s (slotRun P σ is s) ∧
       (slotRun P σ is s).pc = s.pc + UInt32.ofNat (4 * is.length) ∧
       (slotRun P σ is s).sp = s.sp ∧ (slotRun P σ is s).lr = s.lr ∧
       (slotRun P σ is s).trace = s.trace ∧ (slotRun P σ is s).reads = s.reads ∧
@@ -336,9 +336,22 @@ theorem run_slots {is : List Instr} {s : State} (hok : SlotsOk P s.sp is)
       rw [hsz, show s.pc + UInt32.ofNat 4 = (slotStep P σ i s).pc by rw [hpc]; rfl] at hcs
       obtain ⟨r, p, sp', lr', tr', rd', hi'⟩ := ih hok' hcs
       rw [slotRun_cons]
-      refine ⟨reach_exec hci he r, ?_, by rw [sp', hsp], by rw [lr', hlr], by rw [tr', htr],
+      refine ⟨steps_exec hci he r, ?_, by rw [sp', hsp], by rw [lr', hlr], by rw [tr', htr],
         by rw [rd', hrd], fun j hj => by rw [hi' j hj, hhi j hj]⟩
       rw [p, hpc, List.length_cons]
       addr_eq
+
+/-- Placed slot code whose loads and stores pass the checks takes the model to the state that
+`slotRun` gives, at the address after the code, with SP, LR, r8 to r12, the device trace, and
+the read count as they were. -/
+theorem run_slots {is : List Instr} {s : State} (hok : SlotsOk P s.sp is)
+    (hc : CodeAt code s.pc is) :
+    Reach P σ code s (slotRun P σ is s) ∧
+      (slotRun P σ is s).pc = s.pc + UInt32.ofNat (4 * is.length) ∧
+      (slotRun P σ is s).sp = s.sp ∧ (slotRun P σ is s).lr = s.lr ∧
+      (slotRun P σ is s).trace = s.trace ∧ (slotRun P σ is s).reads = s.reads ∧
+      ∀ j : Fin 13, 8 ≤ j.val → (slotRun P σ is s).regs j = s.regs j :=
+  let ⟨r, h⟩ := steps_slots (σ := σ) hok hc
+  ⟨r.reach, h⟩
 
 end LeanExe.M7
