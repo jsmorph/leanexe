@@ -3,6 +3,8 @@ import F7.FPSub32
 import F7.FPDiv32
 import F7.FPSqrt32
 import F7.FixedToFP32
+import F7.FPToFixed32
+import F7.FPCompare32
 
 /-!
 The join of the translation's floating-point functions at 32 bits and the equations of the 32-bit
@@ -23,7 +25,11 @@ satisfies `Hyp`.  `fpAdd32Eq_of_sail` derives `FPAdd32Eq A` from `SailFPAdd32 A`
 `SailFPDiv32`, and `SailFPSqrt32` likewise, and `fixedToFP64_32Eq_of_sail` derives
 `FixedToFP64_32Eq` from `SailFixedToFP64_32`, which identifies Isla's 128-bit vector 0 with the
 integer `fbits` 0 and the enumeration member `FPRounding_TIEEVEN` with the rounding mode, as
-`SailFixedToFP` of `F7/Isla.lean` does.
+`SailFixedToFP` of `F7/Isla.lean` does, and `fixedToFP32_32Eq_of_sail` derives `FixedToFP32_32Eq`
+from `SailFixedToFP32_32` likewise.  `fpToFixed32_64Eq_of_sail` derives `FPToFixed32_64Eq`, the
+equation of FCVTZU X←S, from `SailFPToFixed32_64`, and `fpCompare32Eq_of_sail` derives
+`FPCompare32Eq`, the equation of FCMP S, from `SailFPCompare32`, which names the abstract call
+`FPCompare` on two 32-bit operands, as `SailFPCompare` names it on two 64-bit ones.
 -/
 
 open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
@@ -123,6 +129,64 @@ theorem fixedToFP64_32Eq_of_sail (A : Abstract) (h : SailFixedToFP64_32 A) :
     fixedToFP32_eq_f32ConvertI64U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV, UInt64.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FixedToFP32_32` and the translation's FixedToFP from a
+32-bit signed integer with no fraction bits to 32 bits under FPCR 0x02000000, rounding to nearest
+with ties to even, which review supports. -/
+def SailFixedToFP32_32 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr →
+    (FixedToFP a 0 false fpcrV .FPRounding_TIEEVEN 32).run s = .ok v s' →
+    A "FixedToFP32_32" [.bits 32 a.toNat, .bits 128 0, .bool false, islaFPCR fpcrV,
+      .enum "FPRounding_TIEEVEN"] = some (.bits 32 v.toNat)
+
+theorem fixedToFP32_32Eq_of_sail (A : Abstract) (h : SailFixedToFP32_32 A) :
+    LeanExe.A64.Isla.FixedToFP32_32Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fixedToFP32_eq_f32ConvertI32S a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPToFixed32_64` and the translation's FPToFixed of a
+32-bit operand to an unsigned 64-bit integer with no fraction bits under FPCR 0x02000000,
+rounding toward zero, which review supports. -/
+def SailFPToFixed32_64 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr v : BitVec 64)
+    (s' : State), Hyp s.regs fi ps fpsr →
+    (FPToFixed a 0 true fpcrV .FPRounding_ZERO 64).run s = .ok v s' →
+    A "FPToFixed32_64" [.bits 32 a.toNat, .bits 128 0, .bool true, islaFPCR fpcrV,
+      .enum "FPRounding_ZERO"] = some (.bits 64 v.toNat)
+
+theorem fpToFixed32_64Eq_of_sail (A : Abstract) (h : SailFPToFixed32_64 A) :
+    LeanExe.A64.Isla.FPToFixed32_64Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpToFixed32_eq_i64TruncSatF32U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPCompare` on two 32-bit operands and the translation's
+FPCompare at 32 bits under FPCR 0x02000000 with `signal_nans` false, which review supports. -/
+def SailFPCompare32 (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 4) (s' : State), Hyp s.regs fi ps fpsr →
+    (FPCompare a b false fpcrV).run s = .ok v s' →
+    A "FPCompare" [.bits 32 a.toNat, .bits 32 b.toNat, .bool false, islaFPCR fpcrV] =
+      some (.bits 4 v.toNat)
+
+theorem fpCompare32Eq_of_sail (A : Abstract) (h : SailFPCompare32 A) :
+    LeanExe.A64.Isla.FPCompare32Eq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpCompare32_eq_fcmpNZCV32 a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec, UInt32.ofBitVec_toBitVec, BitVec.toNat_ofNat,
+    Nat.mod_eq_of_lt (lt_of_lt_of_eq (LeanExe.A64.Isla.fcmpNZCV32_lt a b)
+      (by norm_num : (16 : ℕ) = 2 ^ 4))] at e
   exact e
 
 end F7

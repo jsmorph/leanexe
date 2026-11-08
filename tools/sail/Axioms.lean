@@ -29,6 +29,9 @@ import F7.Isla32
 #print axioms F7.fpDiv32_eq_f32Div
 #print axioms F7.fpSqrt32_eq_f32Sqrt
 #print axioms F7.fixedToFP32_eq_f32ConvertI64U
+#print axioms F7.fixedToFP32_eq_f32ConvertI32S
+#print axioms F7.fpToFixed32_eq_i64TruncSatF32U
+#print axioms F7.fpCompare32_eq_fcmpNZCV32
 #print axioms F7.fpAddEq_of_sail
 #print axioms F7.fpSubEq_of_sail
 #print axioms F7.fpMulEq_of_sail
@@ -43,6 +46,9 @@ import F7.Isla32
 #print axioms F7.fpDiv32Eq_of_sail
 #print axioms F7.fpSqrt32Eq_of_sail
 #print axioms F7.fixedToFP64_32Eq_of_sail
+#print axioms F7.fixedToFP32_32Eq_of_sail
+#print axioms F7.fpToFixed32_64Eq_of_sail
+#print axioms F7.fpCompare32Eq_of_sail
 #print axioms F7.hyp_tcg
 #print axioms F7.hyp_kvm
 #print axioms F7.hyp_sme
