@@ -16,12 +16,15 @@ accesses, all in RCC, GPIOD, and USART3, and `windows_confined` states that ever
 windows of a step whose requests name `USART_ISR`, `USART_RDR`, or `USART_TDR` is an access of one
 of those registers.
 
-The theorems hold of the processor under the conditions of the model: a power-on reset, with
-BOOT0 low and BOOT_ADD0 0x0080; software watchdogs, which this board's option bytes select
-(OPTCR reads 0xFFFFAAFD, IWDG_SW and WWDG_SW set), so that no watchdog runs; and no interrupt,
-NMI, debug halt, debugger access, or DMA during the run.  A reset over SWD with the probe attached
-is not a power-on reset: the probe leaves DHCSR's C_DEBUGEN and DEMCR set, which the model does
-not track.
+The theorems hold of the processor under the conditions of the model: a power-on reset, or an
+NRST reset with DHCSR, DEMCR, the FPB, the DWT, the ITM, and the DBGMCU registers at their
+power-on values, with BOOT0 low and BOOT_ADD0 0x0080; software watchdogs, which this board's
+option bytes select (OPTCR reads 0xFFFFAAFD, IWDG_SW and WWDG_SW set), so that no watchdog runs;
+and no interrupt, NMI, debug halt, debugger access, or DMA during the run.  The reset of
+`st-flash` does not meet the first condition: it leaves DHCSR's C_DEBUGEN set and DBGMCU_APB1_FZ
+at 0x1800, which a system reset keeps, and with C_DEBUGEN set a debug event halts the processor.
+`tools/baremetal/stlink_nrst.py` writes those registers' power-on values over SWD, leaves debug
+mode, and then pulses NRST.
 
 `board_setup` runs the image of a program whose module has an area, laid out by `areaBoot`, from
 reset to the initialization's start: the setup leaves the module's initial store in the area at
