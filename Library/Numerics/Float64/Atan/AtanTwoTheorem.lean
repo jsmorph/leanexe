@@ -391,19 +391,16 @@ theorem atan2_within_two (y x : Float) (hy : Finite y.toBits) (hx : Finite x.toB
     exact hx0
   have h4 := inf_test x hx
   have h5 := inf_test y hy
-  by_cases h6 : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = true
+  by_cases h6 : kOf2 y x > 60
   · rw [atan2_big_eq y x hn h1' h2 h3 h4 h5 h6]
     exact big_case y x hy hx hy0 hx0 (big_cond y x h6)
-  have h6' : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = false := by simpa using h6
-  by_cases h7 : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = true
-  · rw [atan2_tiny_eq y x hn h1' h2 h3 h4 h5 h6' h7]
+  by_cases h7 : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = true
+  · rw [atan2_tiny_eq y x hn h1' h2 h3 h4 h5 h6 h7]
     obtain ⟨hsx, hk⟩ := tiny_cond y x h7
     exact tiny_case y x hy hx hy0 hx0 hsx hk
-  have h7' : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = false := by simpa using h7
-  rw [atan2_gen_eq y x hn h1' h2 h3 h4 h5 h6' h7']
-  exact gen_case y x hy hx hy0 hx0 (quot_lt y x hy hx0 (nbig_cond y x h6'))
+  have h7' : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = false := by simpa using h7
+  rw [atan2_gen_eq y x hn h1' h2 h3 h4 h5 h6 h7']
+  exact gen_case y x hy hx hy0 hx0 (quot_lt y x hy hx0 (nbig_cond y x h6))
 
 #print axioms atan2_within_two
 

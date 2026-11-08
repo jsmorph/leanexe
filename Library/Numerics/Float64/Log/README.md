@@ -37,8 +37,7 @@ The port uses the verified compiler's dialect, the subset of Lean that [the veri
 | C code | Port | Reason |
 |---|---|---|
 | 32-bit `top - 0x0010` against `0x7ff0 - 0x0010` | 64-bit comparison | The difference wraps for `top < 0x0010` in both widths and exceeds `0x7ff0 - 0x0010` either way, so the results agree.  The docstring of `logWith` records this. |
-| `k = (int64_t) tmp >> 52`, an arithmetic shift | `tmp >>> 52` with the top 12 bits set when `tmp` is negative | The dialect's shift is logical. |
-| `kd = (double) k` | `-(0 - k).toFloat` for a negative two's complement `k`, else `k.toFloat` | The dialect converts unsigned words. |
+| `k = (int64_t) tmp >> 52`, `kd = (double) k` | `k := tmp.toInt64 >>> 52`, `kd := k.toFloat` | `>>>` on `Int64` compiles to `i64.shr_s`, and `Int64.toFloat` to the conversion of the magnitude by `UInt64.toFloat`, negated for a negative `k`, which rounds as `(double) k` does. |
 | `__math_divzero (1)` | `-1.0 / 0.0` | Expression that computes it in `math_err.c` [3]. |
 | `__math_invalid (x)` | `(x - x) / (x - x)` | Expression that computes it, without `errno`. |
 | `eval_as_double`, `WANT_ROUNDING` | identity, assumed 1 | WebAssembly arithmetic rounds to nearest, ties to even, and `log 1` returns `0.0`. |
@@ -86,7 +85,7 @@ The proof's own modules, in `Library/Numerics/Float64/Log/`, import the implemen
 
 | Stage | Modules | Content |
 |---|---|---|
-| Words | `LogCoreBits`, `LogBranches` | `logCore_eq` restates `logCore` through the reduced argument and the arithmetic after it.  The words of `i`, `k`, and `z` for an argument `E · 2^52 + f` modulo `2^64`, the exact value of `kd`, and the paths of `logWith` by argument bits. |
+| Words | `LogCoreBits`, `LogBranches` | `logCore_eq` restates `logCore` through the reduced argument and the arithmetic after it.  The words of `i` and `z` and the integer of the `Int64` `k` for an argument `E · 2^52 + f` modulo `2^64`, and the paths of `logWith` by argument bits.  `Signed64Value.toFloat_exact` gives `kd` the value of `k`. |
 | Arithmetic after `r` | `LogCoreFinal` | `final_error`: `kd · ln2hi` and `kd · ln2hi + logc` are exact, and the other operations add at most `(5/4) 2^-61` before the final rounding. |
 | Tables and polynomials | `LogTables`, `LogKernelPoly` | 128 entries checked in the kernel, and both polynomials against `log (1 + r)`. |
 | Main path | `LogCoreStep`, `LogMain` | `core_within`, one step for every argument word for which the code calls `logCore`, and its use for normal and subnormal arguments. |

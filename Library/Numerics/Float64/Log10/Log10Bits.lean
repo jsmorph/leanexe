@@ -7,9 +7,9 @@ import LeanExe.ProofKit.F64HighWord
 The word arithmetic of `Log10.log10`.  On the main path the code takes the high word `hx` of the
 argument, scaled by `2 ^ 54` if it is subnormal, and forms `x' = 2 ^ -k x` with the exponent field
 of `x'` 1023 or 1022: 1022 when the top 20 fraction bits reach `0x6a09c`, the fraction of `√2`.
-`xr_fields` gives the word of `x'` and the word of `k` from the exponent field `E` and fraction
-field `F` of the argument.  `tailWord` is the arithmetic after `f = x' - 1` and the double `y` of
-`k`, and the branch lemmas restate `Log10.log10` through it.
+`xr_fields` gives the word of `x'` and the integer of the `Int64` `k` from the exponent field `E`
+and fraction field `F` of the argument.  `tailWord` is the arithmetic after `f = x' - 1` and the
+double `y` of `k`, and the branch lemmas restate `Log10.log10` through it.
 -/
 
 namespace Library.Numerics.Float64.Log10.Log10Bits
@@ -66,10 +66,11 @@ def xrOf (xw : UInt64) : UInt64 :=
         (0x3ff00000 : UInt64))) <<< 32) |||
     (xw &&& (0xFFFFFFFF : UInt64))
 
-/-- The word of `k`, from the word `k0` of the scaling. -/
-def kWord10 (xw k0 : UInt64) : UInt64 :=
-  k0 + (xw >>> 32 >>> 20) - (1023 : UInt64) +
-    ((xw >>> 32 &&& (0x000fffff : UInt64)) + (0x95f64 : UInt64) &&& (0x100000 : UInt64)) >>> 20
+/-- `k`, from `k0` of the scaling. -/
+def kWord10 (xw : UInt64) (k0 : Int64) : Int64 :=
+  k0 + UInt64.toInt64 (xw >>> 32 >>> 20) - (1023 : Int64) +
+    UInt64.toInt64
+      (((xw >>> 32 &&& (0x000fffff : UInt64)) + (0x95f64 : UInt64) &&& (0x100000 : UInt64)) >>> 20)
 
 theorem and_bit20 (n : Nat) (hn : n < 2 ^ 21) : n &&& 1048576 = n / 1048576 * 1048576 := by
   apply Nat.eq_of_testBit_eq
@@ -90,15 +91,16 @@ theorem and_bit20 (n : Nat) (hn : n < 2 ^ 21) : n &&& 1048576 = n / 1048576 * 10
 /-- The fields of `x'` and `k` for an argument word with exponent field `E` from 1 to 2046 and
 fraction field `F`: `x'` has exponent field `1023 - b` and fraction field `F`, and
 `k = k0 + E - 1023 + b`, where `b` is 1 when the top 20 bits of `F` reach `0x6a09c`. -/
-theorem xr_fields (xw k0 : UInt64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E) (hE2 : E ≤ 2046)
-    (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
-    (hk0 : (k0.toNat : Int) = K0 % 18446744073709551616) :
+theorem xr_fields (xw : UInt64) (k0 : Int64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E)
+    (hE2 : E ≤ 2046) (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
+    (hk0 : k0.toInt = K0) (hK0 : -54 ≤ K0 ∧ K0 ≤ 0) :
     (xrOf xw).toNat =
         (1023 - (F / 4294967296 + 614244) / 1048576) * 4503599627370496 + F ∧
-      ((kWord10 xw k0).toNat : Int) =
-        (K0 + E - 1023 + ((F / 4294967296 + 614244) / 1048576 : Nat)) % 18446744073709551616 ∧
+      (kWord10 xw k0).toInt = K0 + E - 1023 + ((F / 4294967296 + 614244) / 1048576 : Nat) ∧
       (F / 4294967296 + 614244) / 1048576 ≤ 1 := by
-  have hk0lt := k0.toNat_lt
+  have hk0lt := k0.toUInt64.toNat_lt
+  have hk0w := Signed64Value.toNat_toUInt64 k0
+  rw [hk0] at hk0w
   set G := F / 4294967296 with hG
   have hGlt : G < 1048576 := by omega
   have hhx : (xw >>> 32).toNat = E * 1048576 + G := by
@@ -162,14 +164,13 @@ theorem xr_fields (xw k0 : UInt64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E) (hE2 :
       rw [UInt64.toNat_shiftRight, hi]
       simp only [UInt64.reduceToNat, Nat.reduceMod, Nat.shiftRight_eq_div_pow, Nat.reducePow]
       omega
-    simp only [kWord10]
+    refine Signed64Value.toInt_of_word _ _ (by omega) (by omega) ?_
+    show ((k0.toUInt64 + (xw >>> 32 >>> 20) - (1023 : UInt64) +
+      ((xw >>> 32 &&& (0x000fffff : UInt64)) + (0x95f64 : UInt64) &&& (0x100000 : UInt64)) >>>
+        20).toNat : Int) = _
     rw [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_add, hE, hb']
     simp only [UInt64.reduceToNat, Nat.reducePow]
     omega
-
-theorem kd_ite (k : UInt64) :
-    (if k >>> 63 == 1 then -(0 - k).toFloat else k.toFloat).toBits = Library.Numerics.Float64.Log2.Log2Power.kdBits k :=
-  Library.Numerics.Float64.Log2.Log2Power.kd_bits k
 
 /-- `Log10.log10` on a positive normal argument other than 1 below infinity. -/
 theorem normal_bits (x : Float)
@@ -195,7 +196,8 @@ theorem normal_bits (x : Float)
   simp only [Log10.log10, hneg, hlo, hinf, hone, decide_false, Bool.false_or, Bool.false_and,
     Bool.false_eq_true,
     ↓reduceIte, F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_ofBits,
-    kLog1p_bits, kd_ite, h1, h5, c1, c2, c3, c4, hxr, hhi, tailWord, xrOf, kWord10,
+    kLog1p_bits, Library.Numerics.Float64.Log2.Log2Power.kd_bits, h1, h5, c1, c2, c3, c4, hxr, hhi,
+    tailWord, xrOf, kWord10,
     F64HighWord.high]
 
 #print axioms kLog1p_bits
@@ -221,7 +223,8 @@ theorem subnormal_bits (x : Float)
     (Log10.log10 x).toBits =
       tailWord (Wasm.IEEE64.sub (xrOf (Wasm.IEEE64.mul x.toBits 0x4350000000000000))
           0x3FF0000000000000)
-        (Library.Numerics.Float64.Log2.Log2Power.kdBits (kWord10 (Wasm.IEEE64.mul x.toBits 0x4350000000000000) (0 - 54))) := by
+        (Library.Numerics.Float64.Log2.Log2Power.kdBits
+          (kWord10 (Wasm.IEEE64.mul x.toBits 0x4350000000000000) (-54))) := by
   have h1 : (1.0 : Float).toBits = 0x3FF0000000000000 := rfl
   have h5 : (0.5 : Float).toBits = 0x3FE0000000000000 := rfl
   have c0 : Wasm.IEEE64.isNaN 0x4350000000000000 = false := by decide
@@ -232,7 +235,8 @@ theorem subnormal_bits (x : Float)
   simp only [xrOf] at hxr hhi
   simp only [Log10.log10, hneg, hlo, hz, hinf, hone, decide_true, Bool.false_or, Bool.true_and,
     Bool.false_eq_true, ↓reduceIte, F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul,
-    F64Bits.toBits_ofBits, kLog1p_bits, kd_ite, h1, h5, c0, c1, c2, c3, c4, hxr, hhi, tailWord,
+    F64Bits.toBits_ofBits, kLog1p_bits, Library.Numerics.Float64.Log2.Log2Power.kd_bits, h1, h5, c0,
+    c1, c2, c3, c4, hxr, hhi, tailWord,
     xrOf, kWord10, F64HighWord.high]
 
 /-- `(x - x) / 0` for a NaN, a finite `x`, or negative infinity is the canonical NaN. -/

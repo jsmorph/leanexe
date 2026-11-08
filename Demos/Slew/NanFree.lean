@@ -156,18 +156,16 @@ theorem atan2_nonneg (y x : Float) (hy : Finite y.toBits) (hx : Finite x.toBits)
   have hm := mOf_zero hys hxs
   have h4 := Library.Numerics.Float64.Atan.AtanTwoBits.inf_test x hx
   have h5 := Library.Numerics.Float64.Atan.AtanTwoBits.inf_test y hy
-  by_cases h6 : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = true
+  by_cases h6 : kOf2 y x > 60
   · rw [atan2_big_eq y x hn h1' h2 h3' h4 h5 h6, hm, show (0 : UInt64) &&& 1 = 0 from rfl,
       quadTail_zero]
     exact value_nonneg_of_sign half_pi_lo_sign
-  have h6' : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = false := by simpa using h6
-  have h7 : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = false := by
+  have h7 : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = false := by
     rw [sign_test', hxs]; rfl
-  rw [atan2_gen_eq y x hn h1' h2 h3' h4 h5 h6' h7, hm, quadTail_zero]
+  rw [atan2_gen_eq y x hn h1' h2 h3' h4 h5 h6 h7, hm, quadTail_zero]
   obtain ⟨hqf, _⟩ := Library.Numerics.Float64.Atan.AtanTwoQuot.quot_facts y x hy hx hxne
     (Library.Numerics.Float64.Atan.AtanTwoTheorem.quot_lt y x hy hxne
-      (Library.Numerics.Float64.Atan.AtanTwoBits.nbig_cond y x h6'))
+      (Library.Numerics.Float64.Atan.AtanTwoBits.nbig_cond y x h6))
   have hqs : Wasm.IEEE64.sign (y / x).abs.toBits = false := by
     rw [F64Bits.toBits_abs]; exact (F64Sign.fields_abs _).2.2
   exact atan_nonneg _ hqf hqs

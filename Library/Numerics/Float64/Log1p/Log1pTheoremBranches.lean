@@ -1,5 +1,5 @@
 import Library.Numerics.Float64.Log1p.Compiled
-import Library.Numerics.Float64.Log.LogCoreBits
+import LeanExe.ProofKit.Signed64Value
 import LeanExe.ProofKit.F64UpperWord
 
 /-!
@@ -45,31 +45,30 @@ theorem tail_k0_eq (f c : Float) (hu : UInt64) (h : (hu == 0) = false) :
   simp only [Log1p.log1pTail, h, Bool.false_eq_true, ite_false, beq_self_eq_true, ite_true]
   rfl
 
-theorem tail_s_eq (f c : Float) (k hu : UInt64) (hk : (k == 0) = false)
+theorem tail_s_eq (f c : Float) (k : Int64) (hu : UInt64) (hk : (k == 0) = false)
     (h : (hu == 0) = false) :
     Log1p.log1pTail f c k hu =
-      Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f) := by
+      k.toFloat * ln2HiF - ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f) := by
   simp only [Log1p.log1pTail, h, hk, Bool.false_eq_true, ite_false]
   rfl
 
-theorem tail_q_eq (f c : Float) (k hu : UInt64) (hk : (k == 0) = false) (h : (hu == 0) = true)
+theorem tail_q_eq (f c : Float) (k : Int64) (hu : UInt64) (hk : (k == 0) = false) (h : (hu == 0) = true)
     (hf : (f == 0.0) = false) :
-    Log1p.log1pTail f c k hu = Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c)) - f) := by
+    Log1p.log1pTail f c k hu = k.toFloat * ln2HiF - ((RqOf f - (k.toFloat * ln2LoF + c)) - f) := by
   simp only [Log1p.log1pTail, h, hk, hf, Bool.false_eq_true, ite_false, ite_true]
   rfl
 
-theorem tail_z_eq (f c : Float) (k hu : UInt64) (hk : (k == 0) = false) (h : (hu == 0) = true)
+theorem tail_z_eq (f c : Float) (k : Int64) (hu : UInt64) (hk : (k == 0) = false) (h : (hu == 0) = true)
     (hf : (f == 0.0) = true) :
-    Log1p.log1pTail f c k hu = Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF + (c + Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF) := by
+    Log1p.log1pTail f c k hu = k.toFloat * ln2HiF + (c + k.toFloat * ln2LoF) := by
   simp only [Log1p.log1pTail, h, hk, hf, Bool.false_eq_true, ite_false, ite_true]
   rfl
 
-def kOf (u : Float) : UInt64 := ((u.toBits >>> 32) >>> 20) - 1023
+def kOf (u : Float) : Int64 := ((u.toBits >>> 32) >>> 20).toInt64 - 1023
 
-def cOf (x u : Float) : Float :=
-  if kOf u >>> 63 == 0 && kOf u != 0 then 1.0 - (u - x) else x - (u - 1.0)
+def cOf (x u : Float) : Float := if kOf u > 0 then 1.0 - (u - x) else x - (u - 1.0)
 
-def mainTail (u c : Float) (k : UInt64) : Float :=
+def mainTail (u c : Float) (k : Int64) : Float :=
   let hu := (u.toBits >>> 32) &&& 0x000fffff
   let low := u.toBits &&& 0xFFFFFFFF
   if hu < 0x6a09e then

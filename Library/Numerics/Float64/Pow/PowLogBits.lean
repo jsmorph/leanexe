@@ -8,8 +8,8 @@ reaches down to `-51` for a subnormal argument that `Pow.powWith` scales by `2 ^
 is `OFF = 0x3fe6955500000000`, whose fraction field is `0x6955500000000`: for a fraction field
 from `0x6955500000000` on, `z` has exponent field 1022, `i` is `(f - 0x6955500000000) / 2 ^ 45`,
 and `k = E - 1022`; below it, `z` has exponent field 1023, `i` is `(f + 2 ^ 52 -
-0x6955500000000) / 2 ^ 45`, and `k = E - 1023`.  `powLog_eq` restates `Pow.powLog` through
-`finalOf`, the arithmetic after the table lookup.
+0x6955500000000) / 2 ^ 45`, and `k = E - 1023`, the integer of the `Int64` `k`.  `powLog_eq`
+restates `Pow.powLog` through `finalOf`, the arithmetic after the table lookup.
 -/
 
 namespace Library.Numerics.Float64.Pow.PowLogBits
@@ -19,8 +19,7 @@ set_option exponentiation.threshold 4096
 
 def tmpOf (ix : UInt64) : UInt64 := ix - 0x3fe6955500000000
 def indexOf (ix : UInt64) : UInt64 := (tmpOf ix >>> 45) % 128
-def kOf (ix : UInt64) : UInt64 :=
-  (tmpOf ix >>> 52) ||| (if tmpOf ix >>> 63 == 1 then 0xFFFFFFFFFFFFF000 else 0)
+def kOf (ix : UInt64) : Int64 := (tmpOf ix).toInt64 >>> 52
 def zOf (ix : UInt64) : UInt64 := ix - (tmpOf ix &&& ((0xfff : UInt64) <<< 52))
 
 /-- The word of `zhi`: the word `iz` of `z` rounded to a multiple of `2 ^ 32`. -/
@@ -62,20 +61,19 @@ def finalOf (iz : UInt64) (kd invc logc logctail : Float) : Float × Float :=
 
 theorem powLog_eq (tab : Array UInt64) (ix : UInt64) :
     Pow.powLog tab ix =
-      finalOf (zOf ix) (Library.Numerics.Float64.Log.LogCoreBits.kdOf (kOf ix)) (Float.ofBits tab[(4 * indexOf ix).toNat]!)
+      finalOf (zOf ix) (kOf ix).toFloat (Float.ofBits tab[(4 * indexOf ix).toNat]!)
         (Float.ofBits tab[(4 * indexOf ix + 2).toNat]!)
         (Float.ofBits tab[(4 * indexOf ix + 3).toNat]!) := rfl
 
-/-- The words of `tmp`, `i`, `k`, and `z` in terms of `ix`. -/
+/-- The words of `tmp`, `i`, and `z`, and the integer of `k`, in terms of `ix`. -/
 theorem fields (ix : UInt64) :
     (indexOf ix).toNat = (tmpOf ix).toNat / 35184372088832 % 128 ∧
     (zOf ix).toNat = (18446744073709551616 - (tmpOf ix).toNat / 4503599627370496 * 4503599627370496 +
       ix.toNat) % 18446744073709551616 ∧
     (tmpOf ix).toNat = (18446744073709551616 - 4604531861337669632 + ix.toNat) %
       18446744073709551616 ∧
-    (kOf ix).toNat = (if (tmpOf ix).toNat / 9223372036854775808 = 1 then
-      18446744073709547520 + (tmpOf ix).toNat / 4503599627370496
-      else (tmpOf ix).toNat / 4503599627370496) := by
+    (kOf ix).toInt = (if (tmpOf ix).toNat < 9223372036854775808 then ((tmpOf ix).toNat : Int)
+      else ((tmpOf ix).toNat : Int) - 18446744073709551616) / 4503599627370496 := by
   have hT := (tmpOf ix).toNat_lt
   have hA : (tmpOf ix &&& (4095 : UInt64) <<< 52).toNat =
       (tmpOf ix).toNat / 4503599627370496 * 4503599627370496 := by
@@ -87,26 +85,9 @@ theorem fields (ix : UInt64) :
       Nat.reduceMod, Nat.shiftRight_eq_div_pow, Nat.reducePow]
   · simp only [zOf, UInt64.toNat_sub, hA, Nat.reducePow]
   · simp only [tmpOf, UInt64.toNat_sub, UInt64.reduceToNat, Nat.reducePow]
-  · have hQ : (tmpOf ix >>> 52).toNat = (tmpOf ix).toNat / 4503599627370496 := by
-      simp only [UInt64.toNat_shiftRight, UInt64.reduceToNat, Nat.reduceMod,
-        Nat.shiftRight_eq_div_pow, Nat.reducePow]
-    have hS : (tmpOf ix >>> 63).toNat = (tmpOf ix).toNat / 9223372036854775808 := by
-      simp only [UInt64.toNat_shiftRight, UInt64.reduceToNat, Nat.reduceMod,
-        Nat.shiftRight_eq_div_pow, Nat.reducePow]
-    have hQlt : (tmpOf ix).toNat / 4503599627370496 < 2 ^ 12 := by
-      simp only [Nat.reducePow] at hT ⊢
-      omega
-    by_cases hc : (tmpOf ix).toNat / 9223372036854775808 = 1
-    · have hb : (tmpOf ix >>> 63 == 1) = true := by
-        rw [beq_iff_eq, ← UInt64.toNat_inj, hS, hc]
-        rfl
-      simp only [kOf, hb, ↓reduceIte, UInt64.toNat_or, hQ, hc, UInt64.reduceToNat]
-      exact Library.Numerics.Float64.Log.LogCoreBits.or_high _ hQlt
-    · have hb : ¬ (tmpOf ix >>> 63 == 1) = true := by
-        rw [beq_iff_eq, ← UInt64.toNat_inj, hS]
-        exact hc
-      simp only [kOf, hb, Bool.false_eq_true, ↓reduceIte, UInt64.toNat_or, hQ, hc,
-        UInt64.reduceToNat, Nat.or_zero]
+  · rw [kOf, Signed64Value.toInt_shiftRight (tmpOf ix).toInt64 52 (by decide),
+      Signed64Value.toInt_toInt64, show (52 : Int64).toUInt64.toNat = 52 from rfl]
+    simp only [Nat.reducePow, Int.reducePow]
 
 /-- The fields for a fraction field from `0x6955500000000` on: `z` has exponent field 1022,
 `i = (f - 0x6955500000000) / 2 ^ 45`, and `k = E - 1022`. -/
@@ -115,7 +96,7 @@ theorem fields_upper (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : 
     (hix : (ix.toNat : Int) = (E * 4503599627370496 + f) % 18446744073709551616) :
     (zOf ix).toNat = 1022 * 4503599627370496 + f ∧
     (indexOf ix).toNat = (f - 1853042165022720) / 35184372088832 ∧
-    ((kOf ix).toNat : Int) = (E - 1022) % 18446744073709551616 := by
+    (kOf ix).toInt = E - 1022 := by
   obtain ⟨hi, hz, ht, hk⟩ := fields ix
   have hN := ix.toNat_lt
   simp only [Nat.reducePow] at hN
@@ -131,7 +112,7 @@ theorem fields_lower (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : 
     (hix : (ix.toNat : Int) = (E * 4503599627370496 + f) % 18446744073709551616) :
     (zOf ix).toNat = 1023 * 4503599627370496 + f ∧
     (indexOf ix).toNat = (f + 2650557462347776) / 35184372088832 ∧
-    ((kOf ix).toNat : Int) = (E - 1023) % 18446744073709551616 := by
+    (kOf ix).toInt = E - 1023 := by
   obtain ⟨hi, hz, ht, hk⟩ := fields ix
   have hN := ix.toNat_lt
   simp only [Nat.reducePow] at hN

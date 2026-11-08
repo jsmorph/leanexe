@@ -21,19 +21,19 @@ theorem one_word : Finite (0x3FF0000000000000 : UInt64) ∧ value (0x3FF00000000
   norm_num
 
 /-- The reduction of an argument word with exponent field `E` and fraction field `F`. -/
-theorem reduce10 (xw k0 : UInt64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E) (hE2 : E ≤ 2046)
-    (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
-    (hk0 : (k0.toNat : Int) = K0 % 18446744073709551616) :
+theorem reduce10 (xw : UInt64) (k0 : Int64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E)
+    (hE2 : E ≤ 2046) (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
+    (hk0 : k0.toInt = K0) (hK0 : -54 ≤ K0 ∧ K0 ≤ 0) :
     ∃ b : Nat, b ≤ 1 ∧
       Finite (Wasm.IEEE64.sub (xrOf xw) 0x3FF0000000000000) ∧
       value (Wasm.IEEE64.sub (xrOf xw) 0x3FF0000000000000) =
         ((2 : ℝ) ^ 52 + F) / 2 ^ (52 + b) - 1 ∧
       -29290 / 100000 ≤ ((2 : ℝ) ^ 52 + F) / 2 ^ (52 + b) - 1 ∧
       ((2 : ℝ) ^ 52 + F) / 2 ^ (52 + b) - 1 ≤ 41422 / 100000 ∧
-      ((kWord10 xw k0).toNat : Int) = (K0 + E - 1023 + b) % 18446744073709551616 ∧
+      (kWord10 xw k0).toInt = K0 + E - 1023 + b ∧
       Wasm.IEEE64.isNaN (xrOf xw) = false ∧
       (b = 0 ↔ F / 4294967296 < 434332) := by
-  obtain ⟨hxr, hk, hb1⟩ := xr_fields xw k0 E F K0 hE1 hE2 hF hxw hk0
+  obtain ⟨hxr, hk, hb1⟩ := xr_fields xw k0 E F K0 hE1 hE2 hF hxw hk0 hK0
   set b := (F / 4294967296 + 614244) / 1048576 with hb
   have hbiff : b = 0 ↔ F / 4294967296 < 434332 := by omega
   have hxrs : Wasm.IEEE64.sign (xrOf xw) = false := by
@@ -150,9 +150,9 @@ theorem f_grid (fw : UInt64) (F b : Nat) (hb : b ≤ 1)
 /-- The main path from an argument word with exponent field `E` and fraction field `F`, scaled
 by `2 ^ -K0` before the reduction: one step against `log (2 ^ K0 X) / log 10`, where `X` is the
 value of the word, when the result is not exactly 0. -/
-theorem main10 (xw k0 : UInt64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E) (hE2 : E ≤ 2046)
-    (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
-    (hk0 : (k0.toNat : Int) = K0 % 18446744073709551616) (hK0 : -54 ≤ K0 ∧ K0 ≤ 0)
+theorem main10 (xw : UInt64) (k0 : Int64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E)
+    (hE2 : E ≤ 2046) (hF : F < 4503599627370496) (hxw : xw.toNat = E * 4503599627370496 + F)
+    (hk0 : k0.toInt = K0) (hK0 : -54 ≤ K0 ∧ K0 ≤ 0)
     (hnot : K0 + E = 1023 → F ≠ 0) :
     Wasm.IEEE64.isNaN (xrOf xw) = false ∧
     Wasm.IEEE64.isNaN (Wasm.IEEE64.sub (Wasm.IEEE64.sub (xrOf xw) 0x3FF0000000000000)
@@ -163,11 +163,13 @@ theorem main10 (xw k0 : UInt64) (E F : Nat) (K0 : Int) (hE1 : 1 ≤ E) (hE2 : E 
       (Real.log (((2 : ℝ) ^ 52 + F) * (2 : ℝ) ^ ((E : Int) - 1075) * (2 : ℝ) ^ K0) / Real.log 10)
       (tailWord (Wasm.IEEE64.sub (xrOf xw) 0x3FF0000000000000)
         (Library.Numerics.Float64.Log2.Log2Power.kdBits (kWord10 xw k0))) := by
-  obtain ⟨b, hb1, hff, hfv, hflo, hfhi, hk, hxrn, hbiff⟩ := reduce10 xw k0 E F K0 hE1 hE2 hF hxw hk0
+  obtain ⟨b, hb1, hff, hfv, hflo, hfhi, hk, hxrn, hbiff⟩ :=
+    reduce10 xw k0 E F K0 hE1 hE2 hF hxw hk0 hK0
   obtain ⟨hgrid, hmag⟩ := f_grid _ F b hb1 hfv
   set fw := Wasm.IEEE64.sub (xrOf xw) 0x3FF0000000000000 with hfw
-  have hkd := Library.Numerics.Float64.Log.LogCoreBits.kd_value (kWord10 xw k0) (K0 + E - 1023 + b) (by omega) (by omega) hk
-  rw [Library.Numerics.Float64.Log2.Log2Power.kd_bits] at hkd
+  have hkd := Signed64Value.toFloat_exact (kWord10 xw k0)
+    (by rw [hk]; simp only [Nat.reducePow]; omega)
+  rw [Library.Numerics.Float64.Log2.Log2Power.kd_bits, hk] at hkd
   have hK : |K0 + (E : Int) - 1023 + (b : Int)| ≤ 1077 := by
     rw [abs_le]
     constructor <;> omega

@@ -35,9 +35,9 @@ The port uses the verified compiler's dialect, the subset of Lean that [the veri
 
 | C code | Port | Reason |
 |---|---|---|
-| signed `int32_t hx`, tested with `hx < 0x00100000` and `hx < 0` | word `x.toBits >>> 32`, with the sign bit tested first | The dialect's words are unsigned, and a comparison with a positive bound must also test the sign. |
+| signed `int32_t hx`, tested with `hx < 0x00100000` and `hx < 0` | word `x.toBits >>> 32`, with the sign bit tested first | The sign bit of the word is the sign of `x`, and the comparison of the word with a positive bound is unsigned. |
 | zero test inside `hx < 0x00100000`, then `hx < 0`, then the subnormal scaling | zero test for a negative or small `hx`, then sign, then scaling | Same results in the same cases, as nested tests on words. |
-| signed `int32_t k`, `y = (double) k` | two's complement word, converted as `Log.logCore` converts its `k` | The dialect converts unsigned words. |
+| signed `int32_t k`, `y = (double) k` | `Int64` `k`, `y := k.toFloat` | `Int64` arithmetic wraps as words do, and no value of `k` comes near the bounds of either type. |
 | `-two54/vzero`, `(x - x)/zero` | `-two54 / 0.0`, `(x - x) / 0.0` | The dialect has no floating-point flags, and these expressions keep their values. |
 | `SET_HIGH_WORD`, `SET_LOW_WORD`, `EXTRACT_WORDS` | shifts, masks, and `Float.ofBits` | In the dialect, `toBits` and `ofBits` read and write the words of a double. |
 

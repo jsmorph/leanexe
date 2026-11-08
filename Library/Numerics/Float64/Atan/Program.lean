@@ -20,8 +20,8 @@ and the expressions that fdlibm evaluates only for their flags keep their values
 `huge + x > 1` stays, and `π + tiny` is `π` rounded.  fdlibm's index `id = -1` of the direct
 polynomial is 4 here, its four table entries are selected by comparisons, and its signed high
 words are words, so a comparison with a positive bound also tests the sign bit.  `atan2`'s
-`k = (iy - ix) >> 20` is the arithmetic shift of the difference in two's complement, and
-`nan_mix (x, y)` is `x + y`.  `AtanAccuracy.lean` checks the results against a reference computed
+`k = (iy - ix) >> 20` is the `Int64` arithmetic shift of the difference, and `nan_mix (x, y)` is
+`x + y`.  `AtanAccuracy.lean` checks the results against a reference computed
 with Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
@@ -137,11 +137,10 @@ def atan2 (y x : Float) : Float :=
     else if iy == 0x7ff00000 then
       if hy >>> 31 == 1 then -pi_o_2 - tiny else pi_o_2 + tiny
     else
-      let d := iy - ix
-      let k := (d >>> 20) ||| (if d >>> 63 == 1 then 0xFFFFF00000000000 else 0)
+      let k := (iy - ix).toInt64 >>> 20
       let (z, m) :=
-        if k >>> 63 == 0 && k > 60 then (pi_o_2 + 0.5 * pi_lo, m &&& (1 : UInt64))
-        else if hx >>> 31 == 1 && k >>> 63 == 1 && k < 0xFFFFFFFFFFFFFFC4 then (0.0, m)
+        if k > 60 then (pi_o_2 + 0.5 * pi_lo, m &&& (1 : UInt64))
+        else if hx >>> 31 == 1 && k < -60 then (0.0, m)
         else (atan (y / x).abs, m)
       if m == 0 then z else if m == 1 then -z
       else if m == 2 then pi - (z - pi_lo) else (z - pi_lo) - pi

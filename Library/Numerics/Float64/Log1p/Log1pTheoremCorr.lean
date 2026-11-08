@@ -36,12 +36,12 @@ theorem one_scaled : Wasm.IEEE64.scaledValue (1.0 : Float).toBits = 2 ^ 1074 := 
 
 /-- The test of `cOf` on `k`. -/
 theorem k_cases (u : Float) (hu : Finite u.toBits) (h0 : 0 < value u.toBits) :
-    (value u.toBits < 1 → (kOf u >>> 63 == 0 && kOf u != 0) = false) ∧
-    (1 ≤ value u.toBits → value u.toBits < 2 → (kOf u >>> 63 == 0 && kOf u != 0) = false) ∧
-    (2 ≤ value u.toBits → (kOf u >>> 63 == 0 && kOf u != 0) = true) := by
+    (value u.toBits < 1 → ¬ kOf u > 0) ∧
+    (1 ≤ value u.toBits → value u.toBits < 2 → ¬ kOf u > 0) ∧
+    (2 ≤ value u.toBits → kOf u > 0) := by
   set w := u.toBits with hw
   have hw63 := pos_word w h0
-  have hk := k_nat u
+  have hk := k_int u
   rw [← hw] at hk
   have hexp : Wasm.IEEE64.exponent w = w.toNat / 2 ^ 52 := by
     simp only [Wasm.IEEE64.exponent]
@@ -50,9 +50,7 @@ theorem k_cases (u : Float) (hu : Finite u.toBits) (h0 : 0 < value u.toBits) :
     have h := hu
     simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, hexp, bne_iff_ne, ne_eq] at h
     omega
-  have hsh : (kOf u >>> 63).toNat = (kOf u).toNat / 2 ^ 63 := by
-    rw [UInt64.toNat_shiftRight, show (63 : UInt64).toNat % 64 = 63 from rfl,
-      Nat.shiftRight_eq_div_pow]
+  have h00 : (0 : Int64).toInt = 0 := rfl
   have habs : |value w| = value w := abs_of_pos h0
   refine ⟨fun h1 => ?_, fun h1 h2 => ?_, fun h1 => ?_⟩
   · have he : w.toNat / 2 ^ 52 ≤ 1022 := by
@@ -62,14 +60,8 @@ theorem k_cases (u : Float) (hu : Finite u.toBits) (h0 : 0 < value u.toBits) :
       rw [habs] at this
       norm_num at this
       linarith
-    have h3 : (kOf u >>> 63 == 0) = false := by
-      simp only [beq_eq_false_iff_ne, ne_eq]
-      intro h
-      have := congrArg UInt64.toNat h
-      rw [hsh, hk] at this
-      simp at this
-      omega
-    simp [h3]
+    rw [gt_iff_lt, Int64.lt_iff_toInt_lt, hk, h00]
+    omega
   · have he : w.toNat / 2 ^ 52 = 1023 := by
       have ha : 1023 ≤ w.toNat / 2 ^ 52 := by
         by_contra hc
@@ -85,32 +77,16 @@ theorem k_cases (u : Float) (hu : Finite u.toBits) (h0 : 0 < value u.toBits) :
         norm_num at this
         linarith
       omega
-    have h3 : (kOf u != 0) = false := by
-      simp only [bne_eq_false_iff_eq]
-      apply UInt64.toNat_inj.mp
-      rw [hk, he]
-      rfl
-    simp [h3]
+    rw [gt_iff_lt, Int64.lt_iff_toInt_lt, hk, h00]
+    omega
   · have he : 1024 ≤ w.toNat / 2 ^ 52 := by
       by_contra hc
       have := F64Magnitude.magnitude_lt w 1024 1 (by norm_num) (by norm_num) (by rw [hexp]; omega)
       rw [habs] at this
       norm_num at this
       linarith
-    have h3 : (kOf u >>> 63 == 0) = true := by
-      simp only [beq_iff_eq]
-      apply UInt64.toNat_inj.mp
-      rw [hsh, hk]
-      simp
-      omega
-    have h4 : (kOf u != 0) = true := by
-      simp only [bne_iff_ne, ne_eq]
-      intro h
-      have := congrArg UInt64.toNat h
-      rw [hk] at this
-      simp at this
-      omega
-    simp [h3, h4]
+    rw [gt_iff_lt, Int64.lt_iff_toInt_lt, hk, h00]
+    omega
 
 /-- A word's scaled value is a multiple of `2 ^ (exponent - 1)`. -/
 theorem scaled_dvd (w : UInt64) (s : ℕ) (hs : s ≤ Wasm.IEEE64.exponent w - 1) :
@@ -180,8 +156,7 @@ theorem corr_low (x : Float) (hx : Finite x.toBits) (h1 : -1 < value x.toBits)
   refine ⟨hsum.1, hsum.2, hgrid, ?_⟩
   have hc : cOf x (1.0 + x) = x - ((1.0 + x) - 1.0) := by
     unfold cOf
-    rw [(k_cases (1.0 + x) hsum.1 hvu0).1 (by rw [← hvu, hsum.2]; linarith)]
-    rfl
+    exact if_neg ((k_cases (1.0 + x) hsum.1 hvu0).1 (by rw [← hvu, hsum.2]; linarith))
   rw [hc]
   -- `u - 1 = x`
   have hsu := scaled_of_value (1.0 + x).toBits (1 + vx) hsum.2
@@ -240,7 +215,7 @@ theorem sum_facts (x : Float) (hx : Finite x.toBits) (h1 : -1 < value x.toBits)
 /-- `u` within `[1/2, 2]` and `c = x - (u - 1)`: `u - 1` is exact and `x - (u - 1)` rounds the
 small value `1 + x - u`. -/
 theorem corr_sterbenz (x : Float) (hx : Finite x.toBits) (hx1 : -1 < value x.toBits)
-    (hk : (kOf (1.0 + x) >>> 63 == 0 && kOf (1.0 + x) != 0) = false) (mb : ℝ) (hmb : 1 / 2 ≤ mb)
+    (hk : ¬ kOf (1.0 + x) > 0) (mb : ℝ) (hmb : 1 / 2 ≤ mb)
     (hu1 : mb ≤ value (1.0 + x).toBits) (hu2 : value (1.0 + x).toBits ≤ 2)
     (hu : Finite (1.0 + x).toBits) (hx2 : 1 + value x.toBits ≤ 2)
     (herr : |value (1.0 + x).toBits - (1 + value x.toBits)| ≤ (1 + value x.toBits) / 2 ^ 53) :
@@ -251,8 +226,7 @@ theorem corr_sterbenz (x : Float) (hx : Finite x.toBits) (hx1 : -1 < value x.toB
   set vu := value (1.0 + x).toBits with hvu
   have hc : cOf x (1.0 + x) = x - ((1.0 + x) - 1.0) := by
     unfold cOf
-    rw [hk]
-    rfl
+    exact if_neg hk
   rw [hc]
   have hm1 : FApprox ((1.0 + x) - 1.0) (vu - 1) 0 := by
     unfold FApprox
@@ -477,8 +451,7 @@ theorem corr_big (x : Float) (hx : Finite x.toBits) (h1 : 1 ≤ value x.toBits)
   have hk := (k_cases u hu hvu0).2.2 hvu2
   have hc : cOf x u = 1.0 - (u - x) := by
     unfold cOf
-    rw [hk]
-    rfl
+    exact if_pos hk
   have hcr : FApprox (1.0 - (u - x)) (1 + vx - vu) 0 :=
     ⟨h1d.1, by rw [h1d.2, ← hvu, ← hvx, show (1 : ℝ) - (vu - vx) - (1 + vx - vu) = 0 by ring,
       abs_zero]⟩

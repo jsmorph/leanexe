@@ -54,7 +54,7 @@ The port is written in the verified compiler's dialect, which [the verified comp
 |---|---|---|
 | `if (huge + x > one) return x` and `(huge + x) > zero` | tests kept | The expressions raise the inexact flag in C, and the tests hold for every `\|x\| < 2^-28`. |
 | `x/zero` with `zero = 0.0` | `x / 0.0` | Same value. |
-| signed `int32_t hx` | word `x.toBits >>> 32`, with `hx >>> 31 == 1` for a negative sign | The dialect has unsigned words only.  `acosh` tests `hx >>> 31 == 1 \|\| hx < 0x3ff00000` for C's signed `hx < 0x3ff00000`. |
+| signed `int32_t hx` | word `x.toBits >>> 32`, with `hx >>> 31 == 1` for a negative sign | The sign bit of the word is the sign of `x`.  `acosh` tests `hx >>> 31 == 1 \|\| hx < 0x3ff00000` for C's signed `hx < 0x3ff00000`. |
 | `if (hx > 0) return w; else return -w;` in `asinh` | `if hx >>> 31 == 0 then w else -w` | The two differ only for a positive `x` whose high word is 0, which returns earlier as tiny. |
 | `(lx \| (-lx)) >> 31` on `u_int32_t` in `atanh` | `(lx \|\|\| ((0 - lx) &&& 0xFFFFFFFF)) >>> 31` | The negation is taken modulo `2^32`, as in C. |
 | `SET_HIGH_WORD (x, ix)` in `atanh` | `Float.ofBits ((ix <<< 32) \|\|\| lx)` | Word of `\|x\|`. |

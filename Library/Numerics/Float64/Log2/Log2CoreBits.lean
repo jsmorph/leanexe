@@ -3,9 +3,10 @@ import Library.Numerics.Float64.Log.LogCoreBits
 
 /-!
 The word arithmetic of `Log2.log2Core`.  The reduction is that of `Log.logCore`, with the
-subinterval among 64 taken from bits 46 to 51 of `tmp`, so `Library.Numerics.Float64.Log.LogCoreBits.tmpOf`, `kOf`, `zOf`, and
-`kdOf` describe it.  `log2Core_eq` restates `Log2.log2Core` through `Library.Numerics.Float64.Log.LogCoreBits.reduced` and
-`final2`, the arithmetic after `r`.
+subinterval among 64 taken from bits 46 to 51 of `tmp`, so
+`Library.Numerics.Float64.Log.LogCoreBits.tmpOf`, `kOf`, and `zOf` describe it, and `kd` is
+`(kOf ix).toFloat`.  `log2Core_eq` restates `Log2.log2Core` through
+`Library.Numerics.Float64.Log.LogCoreBits.reduced` and `final2`, the arithmetic after `r`.
 -/
 
 namespace Library.Numerics.Float64.Log2.Log2CoreBits
@@ -42,7 +43,7 @@ theorem log2Core_eq (tab tab2 : Array UInt64) (ix : UInt64) :
       final2 (reduced (Float.ofBits (zOf ix)) (Float.ofBits tab2[(2 * index2Of ix).toNat]!)
           (Float.ofBits tab2[(2 * index2Of ix + 1).toNat]!)
           (Float.ofBits tab[(2 * index2Of ix).toNat]!))
-        (kdOf (kOf ix)) (Float.ofBits tab[(2 * index2Of ix + 1).toNat]!) := rfl
+        (kOf ix).toFloat (Float.ofBits tab[(2 * index2Of ix + 1).toNat]!) := rfl
 
 theorem index2_toNat (ix : UInt64) :
     (index2Of ix).toNat = (tmpOf ix).toNat / 70368744177664 % 64 := by
