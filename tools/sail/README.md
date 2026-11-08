@@ -337,8 +337,8 @@ the kernel compares argument by argument, and the proofs reach each bit vector b
 | `F7/FPSub.lean` | 212 | the negation of a word and FPSub's cases |
 | `F7/FPMul.lean` | 147 | FPMul's cases |
 | `F7/FPDiv.lean` | 133 | the exact quotient and FPDiv's cases |
-| `F7/FPSqrt.lean` | 341 | the square root on the reals, Talos's rounding of a root, FPRound__2 on a root, and FPSqrt's cases |
-| `F7/FixedToFP.lean` | 82 | Talos's conversion and FixedToFP |
+| `F7/FPSqrt.lean` | 343 | the square root on the reals, Talos's rounding of a root, FPRound__2 on a root, and FPSqrt's cases |
+| `F7/FixedToFP.lean` | 85 | Talos's conversion and FixedToFP |
 | `F7/Isla.lean` | 255 | the join with the Isla equations and the profile witnesses |
 
 `lake build F7` on edgexpert-18ff under `tools/leanrun --cpus 2`, after the translation is built,
@@ -360,7 +360,7 @@ rounding takes from `F7/Round.lean` the lemmas on words and bit vectors, `rsm_ex
 and the lemmas `floor_div_nat`, `err_div`, `gt_half`, and `eq_half`, which hold for every natural
 divisor, and its proofs of FPRoundBase__1 follow `round_normalG` and `round_subG` step by step,
 with the divisor `Q · 2^j` or `Q` in place of `2^(X + j)` or `2^X`.  FPSub took 212 lines,
-FixedToFP 82, and FPSqrt 341 with the 137 of `RoundR.lean`.
+FixedToFP 85, and FPSqrt 343 with the 137 of `RoundR.lean`.
 
 ## The join with the Isla equations
 
