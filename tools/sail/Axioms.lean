@@ -7,8 +7,10 @@ import F7.Isla
 #print axioms F7.loop2_exit
 #print axioms F7.fpRound_dy
 #print axioms F7.fpAdd_eq_f64Add
+#print axioms F7.fpSub_eq_f64Sub
 #print axioms F7.fpMul_eq_f64Mul
 #print axioms F7.fpAddEq_of_sail
+#print axioms F7.fpSubEq_of_sail
 #print axioms F7.fpMulEq_of_sail
 #print axioms F7.hyp_tcg
 #print axioms F7.hyp_kvm
