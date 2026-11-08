@@ -2,17 +2,15 @@
 # The programs with requests through the Cortex-M7 back end on QEMU's mps2-an500: the echo of
 # cmsdkTick, NAME echo, the default, the energy controller's gateway of gwTick, NAME gateway, the
 # CRC-32 step crcCmsdkTick, NAME crc, and the SHA-256 step shaCmsdkTick, NAME sha.  It builds
-# m7-windows and, for the echo, the gateway, and the CRC-32 step, the loop theorem of
-# tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean, or CrcLoop.lean, and writes the image that
-# tests/TestSupport/M7/Qemu.lean, GwImages.lean, CrcImages.lean, or ShaImages.lean lays out with
-# m7-windows qemu, gateway-qemu, crc-qemu, or sha-qemu.  For the echo, the gateway, and the CRC-32
-# step it elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean, or CrcQemuFile.lean in
-# the directory of the image under a memory cap of MEM, 16G for the gateway and 12G otherwise
-# unless set, so that the kernel checks that the file holds the image's bytes, the gateway's in
-# parts, and the loop theorem holds of the file.  It requires that each theorem whose axioms that
-# file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound, and reports the
-# check's elapsed time and peak memory.  No theorem covers the image of the SHA-256 step, which the
-# script runs without a check.
+# m7-windows and the loop theorem of tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean,
+# CrcLoop.lean, or ShaLoop.lean, and writes the image that tests/TestSupport/M7/Qemu.lean,
+# GwImages.lean, CrcImages.lean, or ShaImages.lean lays out with m7-windows qemu, gateway-qemu,
+# crc-qemu, or sha-qemu.  It elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean,
+# CrcQemuFile.lean, or ShaQemuFile.lean in the directory of the image under a memory cap of MEM,
+# 16G for the gateway and the SHA-256 step and 12G otherwise unless set, so that the kernel checks
+# that the file holds the image's bytes, the gateway's in parts, and the loop theorem holds of the
+# file.  It requires that each theorem whose axioms that file prints depends on no axiom beyond
+# propext, Classical.choice, and Quot.sound, and reports the check's elapsed time and peak memory.
 #
 # It then runs the image in QEMU with UART0 on a Unix-domain socket and plays the far end of the
 # UART, as tests/baremetal/req.sh does for the C path's programs.  For the echo,
@@ -41,8 +39,8 @@ case $name in
     count=5 mem=${MEM:-16G} ;;
   crc) image=crc-cmsdk-qemu cmd=crc-qemu lib=TestSupport.M7.CrcLoop file=CrcQemuFile count=6
     mem=${MEM:-12G} ;;
-  sha) image=sha-cmsdk-qemu cmd=sha-qemu lib=TestSupport.M7.ShaImages file= count=0
-    mem=${MEM:-12G} ;;
+  sha) image=sha-cmsdk-qemu cmd=sha-qemu lib=TestSupport.M7.ShaLoop file=ShaQemuFile count=7
+    mem=${MEM:-16G} ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -52,16 +50,13 @@ qemu=${QEMU:-qemu-system-arm}
 uv=${UV:-uv}
 series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 mkdir -p "$out"
-rm -f "${out:?}/$name".* "${out:?}/$image".*
-[ -z "$file" ] || rm -f "${out:?}/$file".*
+rm -f "${out:?}/$name".* "${out:?}/$image".* "${out:?}/$file".*
 targets=(m7-windows "$lib")
 [ "$name" = gateway ] && targets+=(native-bare)
 tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build "${targets[@]}"
 tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows "$cmd" "$out/$image.bin"
 status=0
-if [ -z "$file" ]; then
-  echo "unproved: $image.bin, $(stat -c %s "$out/$image.bin") bytes, without a kernel check"
-elif /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "$mem" lake env \
+if /usr/bin/time -v tools/leanrun --timeout 30m --memory-high "$mem" lake env \
     sh -c 'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/M7/$file.lean" \
     >"$out/$file.check" 2>"$out/$file.time"; then
   printed=$(grep -c 'axioms' "$out/$file.check" || true)
@@ -78,7 +73,7 @@ else
   echo "fail: the kernel's check of $image.bin: $(head -c 600 "$out/$file.check")"
   status=1
 fi
-[ -z "$file" ] || grep -E "Elapsed \(wall|Maximum resident" "$out/$file.time"
+grep -E "Elapsed \(wall|Maximum resident" "$out/$file.time"
 case $name in
   echo) host=(uart_echo.py) ;;
   crc) host=(uart_crc.py) ;;

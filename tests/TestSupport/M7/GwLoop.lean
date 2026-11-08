@@ -3,6 +3,7 @@ import TestSupport.M7.GwStep
 import TestSupport.M7.QemuLoop
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Parts
+import LeanExe.Requests.Reads
 
 /-!
 The loop theorems of the energy controller's gateway through the Cortex-M7 back end, from reset,
@@ -14,8 +15,8 @@ step, the kernel's evaluations of `reachCovered` and of the stack bound of
 `tests/TestSupport/M7/GwStep.lean`, and the module's initial store.  Each holds for every code map
 that holds the bytes of a file whose kernel check `bootFileOk` passes, and every state that reset
 gives from the file's vector table.  `board_loop_runs` states that the board's run never stops,
-and `board_loop_steps` counts its windows, each in at most 31,873 steps, 16 of `main` and the
-31,857 of `gw_static` for the step.
+and `board_loop_steps` counts its windows, each in at most 17,553 steps, 16 of `main` and the
+17,537 of `gw_static` for the step.
 
 `gw_requests` states that every request of `gwTickUsart3` names `USART_ISR`, `USART_RDR`, or
 `USART_TDR`, and `gw_confined` that every access of the trace of `board_loop` lies in RCC, GPIOD,
@@ -23,7 +24,9 @@ or USART3 for the initialization and is one of those three registers for the win
 `windows_prefix` states that the bytes that the windows write to `USART_TDR` begin the bytes of
 the gateway's output records for the input records that the bytes read from `USART_RDR` encode,
 from `frame_prefix` of `LeanExe/Requests/Records.lean`, and `board_prefix` joins it to
-`board_loop`.  `gw_count` states that `gwSizes` has an entry for each function that calls reach
+`board_loop`.  `board_bytes` states the same over the bytes read: the input records are the
+records of 18 words whose bytes are the bytes read up to the last complete record, by
+`decode_recs` of `LeanExe/Requests/Reads.lean`.  `gw_count` states that `gwSizes` has an entry for each function that calls reach
 from either step, which the checks of the images in parts take.
 
 The board's theorems hold of the processor under the run conditions of
@@ -80,11 +83,11 @@ theorem board_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n le
 
 /-- The gateway of `gwTickUsart3` from `gwInit` on the board, from reset, counted: after the
 initialization's `c` steps the machine is at the loop's head, and window `i` takes `cs[i]` steps,
-at most 31,873, after which the machine is at the head with the first `i + 1` windows' accesses. -/
+at most 17,553, after which the machine is at the head with the first `i + 1` windows' accesses. -/
 theorem board_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
     (hk : bootFileOk Nucleo.boot boardProgram n len = true) (hf : Nucleo.Flash code n len)
     (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
-    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 31873) ∧
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 17553) ∧
       ∀ i ≤ N, ∃ s, run Nucleo.platform σ code (c + (cs.take i).sum) b = some s ∧
         s.pc = boardHead ∧
         s.trace = initTrace Nucleo.init σ ++
@@ -161,5 +164,24 @@ theorem board_prefix {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n 
   intro w
   obtain ⟨s, r, -, tr⟩ := board_loop hk hf b hb N
   exact ⟨s, r, tr, windows_prefix _ N⟩
+
+/-- `board_prefix` over the bytes `bs` that the windows read from `USART_RDR`: the bytes that the
+windows write to `USART_TDR` begin the bytes of the gateway's output records for the input records
+`recs` of 18 words whose bytes are those of `bs` up to its last complete record. -/
+theorem board_bytes {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk Nucleo.boot boardProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    let w := windows (reqTrace (devBus Nucleo.devBase) gwTickUsart3 gwInit
+      (fun j => σ (j + initReads Nucleo.init))) N
+    let bs := dataIn (devBus Nucleo.devBase) gwUsart3 w
+    ∃ s, Reach Nucleo.platform σ code b s ∧ s.trace = initTrace Nucleo.init σ ++ w ∧
+      ∃ recs : List (List UInt64), (∀ r ∈ recs, r.length = 18) ∧
+        recs.flatMap recordBytes = bs.take (144 * (bs.length / 144)) ∧
+        dataOut (devBus Nucleo.devBase) gwUsart3 w <+: outBytes gwSpec gw0 recs := by
+  intro w bs
+  obtain ⟨s, r, -, tr⟩ := board_loop hk hf b hb N
+  obtain ⟨h18, e⟩ := decode_recs (kin := 18) (by decide)
+    (dataIn_lt (devBus Nucleo.devBase) gwUsart3 w)
+  exact ⟨s, r, tr, _, h18, e, windows_prefix _ N⟩
 
 end TestSupport.M7.Gw

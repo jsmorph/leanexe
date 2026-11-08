@@ -59,6 +59,33 @@ def fpValue : Gen UInt64 := do
   | 9 => return sign ||| 0x0010000000000000
   | _ => word
 
+/-- The word of a single, with zeros, infinities, quiet NaNs with and without a payload, signaling
+NaNs, subnormals, the largest and smallest normals, 1.0, values from 2^-2 to 2^24, where rounding
+to an integral value has a fraction to drop, and values from 2^23 to 2^64, the range of the
+integer conversions, each with either sign, weighted. -/
+def fpValue32 : Gen UInt32 := do
+  let sign : UInt32 := if (← below 2) = 0 then 0 else 0x80000000
+  let frac : UInt32 := (← word).toUInt32 &&& 0x7FFFFF
+  match ← below 14 with
+  | 0 => return sign
+  | 1 => return sign ||| 0x7F800000
+  | 2 => return sign ||| 0x7FC00000
+  | 3 => return sign ||| 0x7FC00000 ||| (frac &&& 0x3FFFFF)
+  | 4 => return sign ||| 0x7F800000 ||| (frac &&& 0x3FFFFF) ||| 1
+  | 5 => return sign ||| 1
+  | 6 => return sign ||| frac
+  | 7 => return sign ||| 0x7F7FFFFF
+  | 8 => return sign ||| 0x3F800000
+  | 9 => return sign ||| 0x00800000
+  | 10 | 11 => return sign ||| (UInt32.ofNat (125 + (← below 27)) <<< 23) ||| frac
+  | 12 => return sign ||| (UInt32.ofNat (150 + (← below 42)) <<< 23) ||| frac
+  | _ => return (← word).toUInt32
+
+/-- A D register's word for a single-precision form: a value of `fpValue32` in the low 32 bits and
+random upper bits, which the form ignores. -/
+def fpLow32 : Gen UInt64 := do
+  return ((← word) &&& 0xFFFFFFFF00000000) ||| (← fpValue32).toUInt64
+
 /-- A register value, with the boundary values of signed and unsigned arithmetic weighted. -/
 def value : Gen UInt64 := do
   match ← below 10 with
@@ -98,7 +125,7 @@ structure Case where
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
 in the order of `Instr`. -/
-def formCount : Nat := 40
+def formCount : Nat := 53
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -114,16 +141,21 @@ def field19 (j : Int) : Fin 524288 :=
 /-- A case of form `form`, whose state makes the instruction run without a fault.  A case of
 `FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
 sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
-neighbors occur.  A case of `FCVTZU` sets its operand, with probability 1/2, to a double of either
-sign whose magnitude lies from 2^-2 to 2^66, with a random fraction, so that truncation toward
-zero, exact integers, and saturation at both ends occur. -/
+neighbors occur, and a case of `FCMP` on S registers does the same with the low 32 bits.  A case
+of `UCVTF Sd, Xn` sets its source, with probability 1/2, to `2^k + 2^(k-24) + 1` or
+`2^k + 3 2^(k-24) - 1` for `k` from 53 to 63, words that round to different singles directly and
+through a double.  A case
+of `FCVTZU` sets its operand, with probability 1/2, to a double of either sign whose magnitude
+lies from 2^-2 to 2^66, with a random fraction, so that truncation toward zero, exact integers,
+and saturation at both ends occur.  The D registers of a single-precision form's case hold values
+of `fpLow32`. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
     regs := regs.push (← value)
   let mut dregs := #[]
   for _ in [0:32] do
-    dregs := dregs.push (← fpValue)
+    dregs := dregs.push (← if form < 40 then fpValue else fpLow32)
   let sp ← value
   let nzcv := ((← word) >>> 60) <<< 28
   let mut win := #[]
@@ -206,7 +238,7 @@ def genCase (form : Nat) : Gen Case := do
         | 2 => c.dregs.set! m.val (a + 1)
         | _ => c.dregs
       return { c with instr := .fcmp n m, dregs := ds }
-  | _ =>
+  | 39 =>
       let d ← fin 32
       let n ← fin 32
       let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
@@ -214,6 +246,37 @@ def genCase (form : Nat) : Gen Case := do
       let v := sign ||| (e <<< 52) ||| ((← word) &&& 0xFFFFFFFFFFFFF)
       let ds := if (← below 2) = 0 then c.dregs.set! n.val v else c.dregs
       return { c with instr := .fcvtzu d n, dregs := ds }
+  | 40 => return { c with instr := .fmovSW (← fin 32) (← fin 32) }
+  | 41 => return { c with instr := .fmovWS (← fin 32) (← fin 32) }
+  | 42 => return { c with instr := .faddS (← fin 32) (← fin 32) (← fin 32) }
+  | 43 => return { c with instr := .fsubS (← fin 32) (← fin 32) (← fin 32) }
+  | 44 => return { c with instr := .fmulS (← fin 32) (← fin 32) (← fin 32) }
+  | 45 => return { c with instr := .fdivS (← fin 32) (← fin 32) (← fin 32) }
+  | 46 => return { c with instr := .fsqrtS (← fin 32) (← fin 32) }
+  | 47 => return { c with instr := .frintnS (← fin 32) (← fin 32) }
+  | 48 =>
+      let d ← fin 32
+      let n ← fin 32
+      let k := 53 + (← below 11)
+      let v := UInt64.ofNat (if (← below 2) = 0 then 2 ^ k + 2 ^ (k - 24) + 1
+        else 2 ^ k + 3 * 2 ^ (k - 24) - 1)
+      let rs := if n.val < 31 ∧ (← below 2) = 0 then c.regs.set! n.val v else c.regs
+      return { c with instr := .ucvtfSX d n, regs := rs }
+  | 49 => return { c with instr := .scvtfSW (← fin 32) (← fin 32) }
+  | 50 => return { c with instr := .fcvtzuXS (← fin 32) (← fin 32) }
+  | 51 => return { c with instr := .fcvtzsWS (← fin 32) (← fin 32) }
+  | _ =>
+      let n ← fin 32
+      let m ← fin 32
+      let a := c.dregs[n.val]!
+      let low := a &&& 0xFFFFFFFF
+      let high := c.dregs[m.val]! &&& 0xFFFFFFFF00000000
+      let ds := match ← below 4 with
+        | 0 => c.dregs.set! m.val (high ||| low)
+        | 1 => c.dregs.set! m.val (high ||| (low ^^^ 0x80000000))
+        | 2 => c.dregs.set! m.val (high ||| ((low + 1) &&& 0xFFFFFFFF))
+        | _ => c.dregs
+      return { c with instr := .fcmpS n m, dregs := ds }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 

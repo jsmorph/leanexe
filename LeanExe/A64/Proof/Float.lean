@@ -624,7 +624,7 @@ theorem i64_in (a w : UInt64) (h : ValRel (.i64 a) w) : w = a := h
 /-! ## The forms -/
 
 theorem sim_f64Const (F : Nat) (w : UInt64) : InstrSim P code F (.f64Const w) :=
-  sim_const_of P code (v := .f64 w) (.inr (.inr ⟨rfl, rfl⟩)) rfl trivial
+  sim_const_of P code (v := .f64 w) (.inr (.inr (.inl ⟨rfl, rfl⟩))) rfl trivial
     (fun _ _ _ _ _ => by simp only [execOne.eq_def])
 
 theorem sim_f64Add (F : Nat) : InstrSim P code F .f64Add :=
