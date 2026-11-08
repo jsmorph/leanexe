@@ -30,8 +30,8 @@ mutual
   def instrOk (instr : Instruction) : Bool :=
     match instr with
     | .constI64 _ | .addI64 | .subI64 | .mulI64 | .divUI64 | .remUI64 | .andI64 | .orI64
-    | .xorI64 | .shlI64 | .shrUI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64
-    | .eqzI64 => true
+    | .xorI64 | .shlI64 | .shrUI64 | .shrSI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64
+    | .ltSI64 | .leSI64 | .eqzI64 => true
     | .const _ | .eq | .eqz | .and | .wrapI64 | .extendUI32 => true
     | .localGet _ | .localSet _ | .localTee _ | .globalGet _ | .globalSet _ => true
     | .load64 _ | .store64 _ | .load8U _ | .store8 _ | .memorySize | .memoryGrow => true

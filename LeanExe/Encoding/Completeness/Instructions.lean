@@ -27,11 +27,12 @@ mutual
     cases form with
     | unreachable | nop | ret | drop | eqz | eq
     | ltU | gtU | leU | geU | eqzI64 | eqI64
-    | neI64 | ltUI64 | leUI64 | geUI64 | add | and | f64Eq | f64Lt | f64Le | f64Abs
+    | neI64 | ltUI64 | leUI64 | geUI64 | ltSI64 | leSI64 | add | and | f64Eq | f64Lt | f64Le
+    | f64Abs
     | f32Eq | f32Lt | f32Le | f32Abs | f32ConvertI64U | i64TruncSatF32U
     | f64ConvertI64U | i64TruncSatF64U
     | addI64 | subI64 | mulI64 | divUI64 | remUI64 | andI64
-    | orI64 | xorI64 | shlI64 | shrUI64 | f32Nearest | f32Sqrt
+    | orI64 | xorI64 | shlI64 | shrUI64 | shrSI64 | f32Nearest | f32Sqrt
     | f32Add | f32Sub | f32Mul | f32Div | f64Sqrt | f64Add
     | f64Sub | f64Mul | f64Div | wrapI64 | extendUI32 | f32ConvertI32S
     | f32DemoteF64 | f64PromoteF32 | i32ReinterpretF32

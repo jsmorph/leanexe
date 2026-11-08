@@ -3,13 +3,14 @@ import LeanExe.Dialect.Build
 import LeanExe.Dialect.RepeatWhile
 
 /-! `Int64` in the verified compiler's dialect: one function for each place where the reflector
-admits an `Int64` value, each reflected through the word forms of `LeanExe.ProofKit.Signed64`.
-`arith` applies the operations whose bits are the word operations' and negation, `divs` the word
-forms of `/`, `%`, and `>>>` on variables and on compound operands, `cmps` the comparisons as
-`Bool` values, `sign` an `if` with word branches on comparisons, `dist` an `if` with `Int64`
-branches on an `Int64` comparison, `least` and `most` `min` and `max`, `update` and `count` `set!`,
-`push`, and `LeanExe.build` on `Array Int64`, `triple` a loop and `grow` a `repeatWhile` with
-`Int64` state, `walk` a recognized tail recursion that tests an `Int64` value, `addItem` a
+admits an `Int64` value: the comparisons and `>>>` as the source language's signed comparisons and
+arithmetic shift, and the other operations over words, division and remainder through the word forms
+of `LeanExe.ProofKit.Signed64`.  `arith` applies the operations whose bits are the word operations'
+and negation, `divs` `/`, `%`, and `>>>` on variables and on compound operands, `cmps` the
+comparisons as `Bool` values, `sign` an `if` with word branches on comparisons, `dist` an `if` with
+`Int64` branches on an `Int64` comparison, `least` and `most` `min` and `max`, `update` and `count`
+`set!`, `push`, and `LeanExe.build` on `Array Int64`, `triple` a loop and `grow` a `repeatWhile`
+with `Int64` state, `walk` a recognized tail recursion that tests an `Int64` value, `addItem` a
 structure with an `Int64` field and an array of `Int64`, `lits` the literals, and `floats` and
 `singles` the conversions between `Int64` and the floats on compound operands, which the reflector
 binds before the word forms of `LeanExe.ProofKit.Signed64Float` read them. -/

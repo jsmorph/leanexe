@@ -34,6 +34,8 @@ mutual
     | .neI64 => .ok ⟨[0x52], .plain _ _ .neI64⟩
     | .ltUI64 => .ok ⟨[0x54], .plain _ _ .ltUI64⟩
     | .leUI64 => .ok ⟨[0x58], .plain _ _ .leUI64⟩
+    | .ltSI64 => .ok ⟨[0x53], .plain _ _ .ltSI64⟩
+    | .leSI64 => .ok ⟨[0x57], .plain _ _ .leSI64⟩
     | .f64Eq => .ok ⟨[0x61], .plain _ _ .f64Eq⟩
     | .f64Lt => .ok ⟨[0x63], .plain _ _ .f64Lt⟩
     | .f64Le => .ok ⟨[0x65], .plain _ _ .f64Le⟩
@@ -56,6 +58,7 @@ mutual
     | .xorI64 => .ok ⟨[0x85], .plain _ _ .xorI64⟩
     | .shlI64 => .ok ⟨[0x86], .plain _ _ .shlI64⟩
     | .shrUI64 => .ok ⟨[0x88], .plain _ _ .shrUI64⟩
+    | .shrSI64 => .ok ⟨[0x87], .plain _ _ .shrSI64⟩
     | .f32Nearest => .ok ⟨[0x90], .plain _ _ .f32Nearest⟩
     | .f32Sqrt => .ok ⟨[0x91], .plain _ _ .f32Sqrt⟩
     | .f32Add => .ok ⟨[0x92], .plain _ _ .f32Add⟩

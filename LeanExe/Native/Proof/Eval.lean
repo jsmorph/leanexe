@@ -121,6 +121,40 @@ theorem sem_lt_ll (x y : UInt64) :
     show some (Val.of_bool (Int64.ltu x y)) = _
     rw [Int64.ltu_eq, of_bool_decide]
 
+/-- `<` on two `long long` operands, CompCert's signed comparison. -/
+theorem sem_lt_ss (x y : UInt64) :
+    sem_binary_operation A .Olt (.Vlong x) tlong (.Vlong y) tlong m =
+      some (.Vint (if x.toInt64 < y.toInt64 then 1 else 0)) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (LClight.Int64.lt x y)) = _
+    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, of_bool_decide]
+    simp only [_root_.Int64.lt_iff_toInt_lt]
+
+/-- `<=` on two `long long` operands, CompCert's signed comparison. -/
+theorem sem_le_ss (x y : UInt64) :
+    sem_binary_operation A .Ole (.Vlong x) tlong (.Vlong y) tlong m =
+      some (.Vint (if x.toInt64 ≤ y.toInt64 then 1 else 0)) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    show some (Val.of_bool (!LClight.Int64.lt y x)) = _
+    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, ← decide_not,
+      of_bool_decide]
+    simp only [_root_.Int64.le_iff_toInt_le, Int.not_lt]
+
+/-- `>>` of a `long long` by an `unsigned long long` below 64, CompCert's arithmetic shift. -/
+theorem sem_shr_sl (x y : UInt64) :
+    sem_binary_operation A .Oshr (.Vlong x) tlong (.Vlong (y &&& 63)) tulong m =
+      some (.Vlong (UInt64.ofNat (BitVec.sshiftRight x.toBitVec (y % 64).toNat).toNat)) := by
+  rw [UInt64.and_63_eq_mod, ← LClight.Int64.shr_eq _ _ (UInt64.mod_64_lt y)]
+  have : LClight.Int64.ltu (y % 64) LClight.Int64.iwordsize = true := by
+    rw [LClight.Int64.ltu_eq]
+    simp only [decide_eq_true_eq]
+    exact UInt64.lt_iff_toNat_lt.mpr (UInt64.mod_64_lt y)
+  show (if LClight.Int64.ltu (y % 64) LClight.Int64.iwordsize then
+    some (val.Vlong (LClight.Int64.shr x (y % 64))) else (none : Option val)) = _
+  rw [this]; rfl
+
 theorem sem_le_ll (x y : UInt64) :
     sem_binary_operation A .Ole (.Vlong x) tulong (.Vlong y) tulong m =
       some (.Vint (if x ≤ y then 1 else 0)) := by
@@ -254,6 +288,12 @@ theorem cast_uint_long (x : UInt32) :
   simp only [LClight.Int.unsigned, Int64.repr_natCast]
 
 theorem cast_ll (x : UInt64) : sem_cast A (.Vlong x) tulong tulong m = some (.Vlong x) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
+
+theorem cast_ulong_long (x : UInt64) : sem_cast A (.Vlong x) tulong tlong m = some (.Vlong x) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
+
+theorem cast_long_ulong (x : UInt64) : sem_cast A (.Vlong x) tlong tulong m = some (.Vlong x) := by
   rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
 theorem cast_dd (x : UInt64) :
     sem_cast A (.Vfloat x) (VT.ty .f64) (VT.ty .f64) m = some (.Vfloat x) :=

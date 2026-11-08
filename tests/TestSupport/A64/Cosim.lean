@@ -124,8 +124,25 @@ structure Case where
   relPad : Option (Nat × Int) := none
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
-in the order of `Instr`. -/
-def formCount : Nat := 53
+in the order of `Instr`, and five kinds of cases of the code of the signed comparisons and of the
+arithmetic shift. -/
+def formCount : Nat := 58
+
+/-- A pair of words for a comparison: equal, adjacent, or of different signs, the largest
+positive and the least negative `Int64` among them. -/
+def cmpPair : Gen (UInt64 × UInt64) := do
+  let a ← value
+  let (x, y) ← match ← below 4 with
+    | 0 => pure (a, a)
+    | 1 => pure (a, a + 1)
+    | 2 => pure (a ||| 0x8000000000000000, (← value) &&& 0x7FFFFFFFFFFFFFFF)
+    | _ => pure (0x7FFFFFFFFFFFFFFF, 0x8000000000000000)
+  return if (← below 2) = 0 then (x, y) else (y, x)
+
+/-- A word with its sign bit set or clear, each with probability 1/2. -/
+def signedWord : Gen UInt64 := do
+  let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+  return ((← word) &&& 0x7FFFFFFFFFFFFFFF) ||| sign
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -148,7 +165,10 @@ through a double.  A case
 of `FCVTZU` sets its operand, with probability 1/2, to a double of either sign whose magnitude
 lies from 2^-2 to 2^66, with a random fraction, so that truncation toward zero, exact integers,
 and saturation at both ends occur.  The D registers of a single-precision form's case hold values
-of `fpLow32`. -/
+of `fpLow32`.  Cases 53 to 57 run the forms of the signed comparisons and of the arithmetic shift
+on the values that their code meets: `SUBS XZR` of a pair of `cmpPair`, `CSINC` with GE or GT on
+the flags that `SUBS` sets for such a pair, `LSRV` of a word with its sign bit set or clear by 0,
+1, 63, 64, or 65, `LSR` by 63 of such a word, and `SUB` of 0 or 1 from `XZR`. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
@@ -265,6 +285,46 @@ def genCase (form : Nat) : Gen Case := do
   | 49 => return { c with instr := .scvtfSW (← fin 32) (← fin 32) }
   | 50 => return { c with instr := .fcvtzuXS (← fin 32) (← fin 32) }
   | 51 => return { c with instr := .fcvtzsWS (← fin 32) (← fin 32) }
+  | 53 =>
+      let n ← fin 31
+      let m ← fin 31
+      let (a, b) ← cmpPair
+      return { c with
+        instr := .subsReg 31 n.castSucc m.castSucc, regs := (c.regs.set! n.val a).set! m.val b }
+  | 54 =>
+      let d ← fin 32
+      let (a, b) ← cmpPair
+      let s : State :=
+        { regs := fun _ => 0, dregs := fun _ => 0, sp := 0, pc := 0, nFlag := false,
+          zFlag := false, cFlag := false, vFlag := false, mem := fun _ => 0, out := [] }
+      let f := s.subs 31 a b
+      let bit (b : Bool) (k : Nat) : UInt64 := if b then UInt64.ofNat (2 ^ k) else 0
+      let nzcv := bit f.nFlag 31 ||| bit f.zFlag 30 ||| bit f.cFlag 29 ||| bit f.vFlag 28
+      let cond : Fin 16 := if (← below 2) = 0 then 10 else 12
+      return { c with instr := .csinc d 31 31 cond, nzcv := nzcv }
+  | 55 =>
+      let d ← fin 32
+      let n ← fin 31
+      let m ← fin 31
+      let v ← signedWord
+      let k : UInt64 := match ← below 5 with
+        | 0 => 0
+        | 1 => 1
+        | 2 => 63
+        | 3 => 64
+        | _ => 65
+      return { c with
+        instr := .lsrv d n.castSucc m.castSucc, regs := (c.regs.set! n.val v).set! m.val k }
+  | 56 =>
+      let d ← fin 32
+      let n ← fin 31
+      let v ← signedWord
+      return { c with instr := .lsrImm d n.castSucc 63, regs := c.regs.set! n.val v }
+  | 57 =>
+      let d ← fin 32
+      let n ← fin 31
+      let v := UInt64.ofNat (← below 2)
+      return { c with instr := .subReg d 31 n.castSucc, regs := c.regs.set! n.val v }
   | _ =>
       let n ← fin 32
       let m ← fin 32

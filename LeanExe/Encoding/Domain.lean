@@ -20,6 +20,8 @@ mutual
     | neI64 : InstructionForm .neI64
     | ltUI64 : InstructionForm .ltUI64
     | leUI64 : InstructionForm .leUI64
+    | ltSI64 : InstructionForm .ltSI64
+    | leSI64 : InstructionForm .leSI64
     | f64Eq : InstructionForm .f64Eq
     | f64Lt : InstructionForm .f64Lt
     | f64Le : InstructionForm .f64Le
@@ -42,6 +44,7 @@ mutual
     | xorI64 : InstructionForm .xorI64
     | shlI64 : InstructionForm .shlI64
     | shrUI64 : InstructionForm .shrUI64
+    | shrSI64 : InstructionForm .shrSI64
     | f32Nearest : InstructionForm .f32Nearest
     | f32Sqrt : InstructionForm .f32Sqrt
     | f32Add : InstructionForm .f32Add
