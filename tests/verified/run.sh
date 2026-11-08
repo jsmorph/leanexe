@@ -59,6 +59,8 @@ elif [ "$case_module" = "treecore" ]; then
   cases_exe=verified-cases-treecore
 elif [ "$case_module" = "lists" ]; then
   cases_exe=verified-cases-lists
+elif [ "$case_module" = "signed" ] || [ "$case_module" = "floor" ]; then
+  cases_exe=verified-cases-signed
 elif [ "$case_module" = "composition" ]; then
   cases_exe=verified-cases-composition
 elif [ "$case_module" = "scalarcomposition" ]; then

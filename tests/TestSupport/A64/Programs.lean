@@ -8,6 +8,7 @@ import Verified.Examples.Fold
 import Demos.Euler.Verified
 import Library.Numerics.Float64.Exp.Compiled
 import Library.Numerics.Float64.Trig.Compiled
+import Examples.Floor.Compiled
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
@@ -26,7 +27,9 @@ of `Library.Numerics.Float64.Trig` on 10, whose argument reduction converts its 
 integer with `FCVTZU`, and on 10^22, whose Payne–Hanek reduction reads the tables of `2/π` and
 `π/2`, together with the binary32 GPT-2 layer of `TestSupport.A64.GptLayer32` at position 2,
 whose result is the array of the words of the row after the layer, and the binary32 conversions of
-`TestSupport.A64.Conv32` on 64 inputs, whose result is the array of their 256 words.  Each
+`TestSupport.A64.Conv32` on 64 inputs, whose result is the array of their 256 words, and the
+`Int64` functions of `Examples.Floor`: `floorDiv` on -7 and 2 and on `minValue` and -1, and
+`average` on `minValue` and -1, each `Int64` passed and written as its word.  Each
 program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room`
 and the memory's cap `cap`.
 -/
@@ -107,6 +110,15 @@ def programs : List Program := [
     bytes := LeanExe.Native.encodeArray (TestSupport.A64.Gpt32.layerCheck 2) },
   { name := "conv32", module := TestSupport.A64.Conv32.compiled.module, entry := 4
     args := [64], output := .array
-    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Conv32.convCheck 64) }]
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Conv32.convCheck 64) },
+  { name := "floordiv", module := Examples.Floor.compiled.module, entry := 2
+    args := [(-7 : Int64).toUInt64, (2 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.floorDiv (-7) 2).toUInt64 },
+  { name := "floordivmin", module := Examples.Floor.compiled.module, entry := 2
+    args := [Int64.minValue.toUInt64, (-1 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.floorDiv Int64.minValue (-1)).toUInt64 },
+  { name := "average", module := Examples.Floor.compiled.module, entry := 3
+    args := [Int64.minValue.toUInt64, (-1 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.average Int64.minValue (-1)).toUInt64 }]
 
 end TestSupport.A64

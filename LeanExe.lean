@@ -125,6 +125,7 @@ import LeanExe.Pipeline.Bytes
 import LeanExe.Pipeline.FileBytes
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
+import LeanExe.Pipeline.Int64
 import LeanExe.Pipeline.Records
 import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.Runtime
@@ -406,6 +407,7 @@ import LeanExe.ProofKit.RealRusanovError
 import LeanExe.ProofKit.RealSqrtError
 import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.Signed32
+import LeanExe.ProofKit.Signed64
 import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel
 import LeanExe.ProofKit.TaylorRemainder

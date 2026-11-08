@@ -155,3 +155,5 @@ exampleUpdates:Examples.Updates.Compiled:Examples/Updates/File.lean
 exampleGrids:Examples.Grids.Compiled:Examples/Grids/File.lean
 calculator:Examples.Calc.Compiled:Examples/Calc/File.lean
 exampleTrees:Examples.Trees.Compiled:Examples/Trees/File.lean
+signed:Verified.Examples.Signed:Verified/Examples/SignedFile.lean
+floor:Examples.Floor.Compiled:Examples/Floor/File.lean

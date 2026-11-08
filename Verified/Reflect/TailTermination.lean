@@ -39,11 +39,12 @@ def deriveTailAcc (name stepName : Name) (params : Array Lean.Expr)
   -- A case whose step equation keeps an `if` that the case's hypotheses decide only in another
   -- form, such as `r ≤ 1 ∨ d ≤ 1` against `1 < r ∧ 1 < d`, splits the equation on its `if`s.  A
   -- branch whose condition contradicts the case's hypotheses closes by `omega` on the words'
-  -- natural numbers.
+  -- natural numbers and on the integers of `Int64` values.
   let script ← `(tactic|
     (refine Acc.intro _ ?_; intro next hs; simp_all [$stepId:ident]) <;>
       try ((repeat' split at hs) <;> try simp_all) <;>
-      try ((simp only [UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, UInt64.reduceToNat] at *)
+      try ((simp only [UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, UInt64.reduceToNat,
+          Int64.lt_iff_toInt_lt, Int64.le_iff_toInt_le, Int64.reduceToInt] at *)
         <;> omega))
   let cases ← Tactic.run goal.mvarId! <| Tactic.evalTactic (← `(tactic| fun_induction $app))
   let remaining ← cases.flatMapM fun case => do

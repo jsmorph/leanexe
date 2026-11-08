@@ -9,6 +9,8 @@ import Examples.Bucket.Cases
 import Examples.Bucket.Program
 import Examples.Calc.Cases
 import Examples.Calc.Program
+import Examples.Floor.Cases
+import Examples.Floor.Program
 import Examples.Grids.Cases
 import Examples.Increment.Cases
 import Examples.Increment.Program
