@@ -10,7 +10,9 @@ forms of `/`, `%`, and `>>>` on variables and on compound operands, `cmps` the c
 branches on an `Int64` comparison, `least` and `most` `min` and `max`, `update` and `count` `set!`,
 `push`, and `LeanExe.build` on `Array Int64`, `triple` a loop and `grow` a `repeatWhile` with
 `Int64` state, `walk` a recognized tail recursion that tests an `Int64` value, `addItem` a
-structure with an `Int64` field and an array of `Int64`, and `lits` the literals. -/
+structure with an `Int64` field and an array of `Int64`, `lits` the literals, and `floats` and
+`singles` the conversions between `Int64` and the floats on compound operands, which the reflector
+binds before the word forms of `LeanExe.ProofKit.Signed64Float` read them. -/
 
 namespace Verified.Examples.Signed
 
@@ -61,12 +63,19 @@ def addItem (s : Acc) (v : Int64) : Acc := { total := s.total + v, items := s.it
 
 def lits : Int64 := Int64.minValue + Int64.maxValue + (-9) * 2
 
+def floats (a : Int64) (x : Float) : Float := (a + 1).toFloat + (x * 2).toInt64.toFloat
+
+def singles (w : UInt64) (y : Float32) : Int64 := w.toInt64.toFloat32.toInt64 + (y + y).toInt64
+
 verified_compile compiled :=
-  [arith, divs, cmps, sign, dist, least, most, update, count, triple, grow, walk, addItem, lits]
+  [arith, divs, cmps, sign, dist, least, most, update, count, triple, grow, walk, addItem, lits,
+    floats, singles]
 
 #print axioms compiled.bytes
 #print axioms compiled.divs.implements
 #print axioms compiled.walk.implements
 #print axioms compiled.addItem.implements
+#print axioms compiled.floats.implements
+#print axioms compiled.singles.implements
 
 end Verified.Examples.Signed
