@@ -7,7 +7,8 @@
     "{ name := \"f\", funcIdx := k } ∈ compiled.module.exports",
     "∀ E, E < N → P E = true over a bounded range",
     "Verified.Prog.Covered prog pool for a program without byte literals",
-    "({ name := \"compute\", funcIdx := k } : Wasm.Export) ∈ compiled.module.exports"
+    "({ name := \"compute\", funcIdx := k } : Wasm.Export) ∈ compiled.module.exports",
+    "memory exhaustion in the kernel's check of one declaration"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",
@@ -23,12 +24,14 @@
     "Library.Numerics.Arithmetic.Gcd.Compiled",
     "Library.Random.SplitMix64.Compiled",
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
-    "Examples.Lookup.Compiled"
+    "Examples.Lookup.Compiled",
+    "LeanExe.Pipeline.FileBytes"
   ],
   "declarations": [
     "Verified.Prog.literals",
     "Verified.Prog.Covered",
-    "Verified.Ready.initial"
+    "Verified.Ready.initial",
+    "LeanExe.Pipeline.elabFileTheorems"
   ],
   "examples": [
     "Library.Hashing.Crc.crc32c_table",
