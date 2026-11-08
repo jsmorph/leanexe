@@ -96,6 +96,28 @@ def StepRep (m : Module) (k : Nat) {G : Type} (Rep : G → List UInt64 → Heap 
       ∃ (heap' : Heap) (ws' : List UInt64), heap'.At final ∧ Rep (tick s v).1 ws' heap' final ∧
         final.memoryCaps = st.memoryCaps ∧ values.reverse = (ws' ++ [(tick s v).2]).map Value.i64
 
+/-- Two statements of the same run, the first without a trap: from some fuel on the run returns
+values that satisfy both postconditions.  A step's `trapFree` and `aligned` theorems state its
+run so. -/
+theorem _root_.Wasm.Runs.both {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
+    {st : Store α} {args : List Value} {P Q : Store α → List Value → Prop} {aborts : Bool}
+    (h1 : Runs false env m id st args P) (h2 : Runs aborts env m id st args Q) :
+    Runs false env m id st args fun s vs => P s vs ∧ Q s vs := by
+  obtain ⟨N1, h1⟩ := h1
+  obtain ⟨N2, h2⟩ := h2
+  refine ⟨N1 + N2, fun fuel hf => ?_⟩
+  rcases h1 fuel (by omega) with ⟨vs, s, hr, hp⟩ | ht
+  · rcases h2 fuel (by omega) with ⟨vs', s', hr', hq⟩ | ht'
+    · rw [hr] at hr'
+      cases hr'
+      exact .inl ⟨vs, s, hr, hp, hq⟩
+    · cases aborts
+      · exact ht'.elim
+      · obtain ⟨s', hs'⟩ := ht'
+        rw [hr] at hs'
+        cases hs'
+  · exact ht.elim
+
 /-- `StepCall` is `StepRep` for the words `words g` of the state and the invariant `J`. -/
 theorem StepCall.rep {m : Module} {k : Nat} {G : Type} {words : G → List UInt64}
     {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
