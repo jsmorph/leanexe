@@ -3,15 +3,15 @@ import LeanExe.A64.Encode
 /-!
 The co-simulation of the AArch64 model of `LeanExe/A64/Machine.lean` against QEMU and the
 processor.  `harness` writes an assembly file of cases, each an instruction of one of the model's
-forms with a state drawn from SplitMix64: the registers, the stack pointer, the flags, and a
-window of 64 bytes of memory.  The file's `main` runs every case on QEMU's `virt` machine under
-the startup code of `tools/baremetal/start.S` and then calls `cosim_print` of
-`tests/baremetal/a64cosim.c`, which prints each case's state before and after its instruction.
-A case copies its window into `cosim_win`, adds the window's address to the registers that
-address memory, sets the target register of a `RET` to the address of a landing pad, loads the
-state, and runs the instruction's word, which `encode` gives.  The 16 words on each side of the
-instruction branch to landing code that records which word execution reached, so a case
-observes the program counter after a branch as well as after any other instruction.  `check`
+forms with a state drawn from SplitMix64: the registers, the floating-point registers D0 to D31,
+the stack pointer, the flags, and a window of 64 bytes of memory.  The file's `main` runs every
+case on QEMU's `virt` machine under the startup code of `tools/baremetal/start.S` and then calls
+`cosim_print` of `tests/baremetal/a64cosim.c`, which prints each case's state before and after its
+instruction.  A case copies its window into `cosim_win`, adds the window's address to the
+registers that address memory, sets the target register of a `RET` to the address of a landing
+pad, loads the state, and runs the instruction's word, which `encode` gives.  The 16 words on each
+side of the instruction branch to landing code that records which word execution reached, so a
+case observes the program counter after a branch as well as after any other instruction.  `check`
 reads the printed lines, runs `exec` on each printed state before the instruction, with the
 instruction's address as the program counter and the window as the only Normal memory, and
 compares the result with the printed state after it.
@@ -42,6 +42,50 @@ def below (n : Nat) : Gen Nat := do
 def fin (n : Nat) (h : 0 < n := by decide) : Gen (Fin n) := do
   return ⟨(← below n) % n, Nat.mod_lt _ h⟩
 
+/-- The word of a double, with zeros, infinities, quiet NaNs with and without a payload, signaling
+NaNs, subnormals, the largest and smallest normals, and 1.0, each with either sign, weighted. -/
+def fpValue : Gen UInt64 := do
+  let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+  match ← below 12 with
+  | 0 => return sign
+  | 1 => return sign ||| 0x7FF0000000000000
+  | 2 => return sign ||| 0x7FF8000000000000
+  | 3 => return sign ||| 0x7FF8000000000000 ||| ((← word) &&& 0x7FFFFFFFFFFFF)
+  | 4 => return sign ||| 0x7FF0000000000000 ||| ((← word) &&& 0x7FFFFFFFFFFFF) ||| 1
+  | 5 => return sign ||| 1
+  | 6 => return sign ||| ((← word) &&& 0xFFFFFFFFFFFFF)
+  | 7 => return sign ||| 0x7FEFFFFFFFFFFFFF
+  | 8 => return sign ||| 0x3FF0000000000000
+  | 9 => return sign ||| 0x0010000000000000
+  | _ => word
+
+/-- The word of a single, with zeros, infinities, quiet NaNs with and without a payload, signaling
+NaNs, subnormals, the largest and smallest normals, 1.0, values from 2^-2 to 2^24, where rounding
+to an integral value has a fraction to drop, and values from 2^23 to 2^64, the range of the
+integer conversions, each with either sign, weighted. -/
+def fpValue32 : Gen UInt32 := do
+  let sign : UInt32 := if (← below 2) = 0 then 0 else 0x80000000
+  let frac : UInt32 := (← word).toUInt32 &&& 0x7FFFFF
+  match ← below 14 with
+  | 0 => return sign
+  | 1 => return sign ||| 0x7F800000
+  | 2 => return sign ||| 0x7FC00000
+  | 3 => return sign ||| 0x7FC00000 ||| (frac &&& 0x3FFFFF)
+  | 4 => return sign ||| 0x7F800000 ||| (frac &&& 0x3FFFFF) ||| 1
+  | 5 => return sign ||| 1
+  | 6 => return sign ||| frac
+  | 7 => return sign ||| 0x7F7FFFFF
+  | 8 => return sign ||| 0x3F800000
+  | 9 => return sign ||| 0x00800000
+  | 10 | 11 => return sign ||| (UInt32.ofNat (125 + (← below 27)) <<< 23) ||| frac
+  | 12 => return sign ||| (UInt32.ofNat (150 + (← below 42)) <<< 23) ||| frac
+  | _ => return (← word).toUInt32
+
+/-- A D register's word for a single-precision form: a value of `fpValue32` in the low 32 bits and
+random upper bits, which the form ignores. -/
+def fpLow32 : Gen UInt64 := do
+  return ((← word) &&& 0xFFFFFFFF00000000) ||| (← fpValue32).toUInt64
+
 /-- A register value, with the boundary values of signed and unsigned arithmetic weighted. -/
 def value : Gen UInt64 := do
   match ← below 10 with
@@ -65,13 +109,14 @@ def offset : Gen Int := do
 /-- The bytes of the memory window. -/
 def windowSize : Nat := 64
 
-/-- A case: the instruction, the 31 registers, the stack pointer, NZCV in bits 31 to 28, and the
-window's bytes, before the harness's changes; the registers, 31 for the stack pointer, to which
-the harness adds the window's address; and a register that the harness sets to the address of
-the landing word at an offset. -/
+/-- A case: the instruction, the 31 registers, the 32 floating-point registers, the stack pointer,
+NZCV in bits 31 to 28, and the window's bytes, before the harness's changes; the registers, 31 for
+the stack pointer, to which the harness adds the window's address; and a register that the harness
+sets to the address of the landing word at an offset. -/
 structure Case where
   instr : Instr
   regs : Array UInt64
+  dregs : Array UInt64
   sp : UInt64
   nzcv : UInt64
   win : Array UInt8
@@ -79,8 +124,25 @@ structure Case where
   relPad : Option (Nat × Int) := none
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
-in the order of `Instr`. -/
-def formCount : Nat := 30
+in the order of `Instr`, and five kinds of cases of the code of the signed comparisons and of the
+arithmetic shift. -/
+def formCount : Nat := 58
+
+/-- A pair of words for a comparison: equal, adjacent, or of different signs, the largest
+positive and the least negative `Int64` among them. -/
+def cmpPair : Gen (UInt64 × UInt64) := do
+  let a ← value
+  let (x, y) ← match ← below 4 with
+    | 0 => pure (a, a)
+    | 1 => pure (a, a + 1)
+    | 2 => pure (a ||| 0x8000000000000000, (← value) &&& 0x7FFFFFFFFFFFFFFF)
+    | _ => pure (0x7FFFFFFFFFFFFFFF, 0x8000000000000000)
+  return if (← below 2) = 0 then (x, y) else (y, x)
+
+/-- A word with its sign bit set or clear, each with probability 1/2. -/
+def signedWord : Gen UInt64 := do
+  let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+  return ((← word) &&& 0x7FFFFFFFFFFFFFFF) ||| sign
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -93,17 +155,33 @@ def field26 (j : Int) : Fin 67108864 :=
 def field19 (j : Int) : Fin 524288 :=
   ⟨(j % 524288).toNat % 524288, Nat.mod_lt _ (by decide)⟩
 
-/-- A case of form `form`, whose state makes the instruction run without a fault. -/
+/-- A case of form `form`, whose state makes the instruction run without a fault.  A case of
+`FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
+sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
+neighbors occur, and a case of `FCMP` on S registers does the same with the low 32 bits.  A case
+of `UCVTF Sd, Xn` sets its source, with probability 1/2, to `2^k + 2^(k-24) + 1` or
+`2^k + 3 2^(k-24) - 1` for `k` from 53 to 63, words that round to different singles directly and
+through a double.  A case
+of `FCVTZU` sets its operand, with probability 1/2, to a double of either sign whose magnitude
+lies from 2^-2 to 2^66, with a random fraction, so that truncation toward zero, exact integers,
+and saturation at both ends occur.  The D registers of a single-precision form's case hold values
+of `fpLow32`.  Cases 53 to 57 run the forms of the signed comparisons and of the arithmetic shift
+on the values that their code meets: `SUBS XZR` of a pair of `cmpPair`, `CSINC` with GE or GT on
+the flags that `SUBS` sets for such a pair, `LSRV` of a word with its sign bit set or clear by 0,
+1, 63, 64, or 65, `LSR` by 63 of such a word, and `SUB` of 0 or 1 from `XZR`. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
     regs := regs.push (← value)
+  let mut dregs := #[]
+  for _ in [0:32] do
+    dregs := dregs.push (← if form < 40 then fpValue else fpLow32)
   let sp ← value
   let nzcv := ((← word) >>> 60) <<< 28
   let mut win := #[]
   for _ in [0:windowSize] do
     win := win.push (← word).toUInt8
-  let c : Case := { instr := .ret 30, regs, sp, nzcv, win }
+  let c : Case := { instr := .ret 30, regs, dregs, sp, nzcv, win }
   match form with
   | 0 => return { c with instr := .movz (← fin 32) (← fin 65536) (← fin 4) }
   | 1 => return { c with instr := .movk (← fin 32) (← fin 65536) (← fin 4) }
@@ -161,7 +239,104 @@ def genCase (form : Nat) : Gen Case := do
   | 26 => return { c with instr := .orrW (← fin 32) (← fin 32) (← fin 32) }
   | 27 => return { c with instr := .bcond (← fin 16) (field19 (← offset)) }
   | 28 => return { c with instr := .adr (← fin 32) (← fin 4) (← fin 524288) }
-  | _ => return { c with instr := .adrp (← fin 32) (← fin 4) (← fin 524288) }
+  | 29 => return { c with instr := .adrp (← fin 32) (← fin 4) (← fin 524288) }
+  | 30 => return { c with instr := .fmovDX (← fin 32) (← fin 32) }
+  | 31 => return { c with instr := .fmovXD (← fin 32) (← fin 32) }
+  | 32 => return { c with instr := .fadd (← fin 32) (← fin 32) (← fin 32) }
+  | 33 => return { c with instr := .fsub (← fin 32) (← fin 32) (← fin 32) }
+  | 34 => return { c with instr := .fmul (← fin 32) (← fin 32) (← fin 32) }
+  | 35 => return { c with instr := .fdiv (← fin 32) (← fin 32) (← fin 32) }
+  | 36 => return { c with instr := .fsqrt (← fin 32) (← fin 32) }
+  | 37 => return { c with instr := .ucvtf (← fin 32) (← fin 32) }
+  | 38 =>
+      let n ← fin 32
+      let m ← fin 32
+      let a := c.dregs[n.val]!
+      let ds := match ← below 4 with
+        | 0 => c.dregs.set! m.val a
+        | 1 => c.dregs.set! m.val (a ^^^ 0x8000000000000000)
+        | 2 => c.dregs.set! m.val (a + 1)
+        | _ => c.dregs
+      return { c with instr := .fcmp n m, dregs := ds }
+  | 39 =>
+      let d ← fin 32
+      let n ← fin 32
+      let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+      let e := UInt64.ofNat (1021 + (← below 68))
+      let v := sign ||| (e <<< 52) ||| ((← word) &&& 0xFFFFFFFFFFFFF)
+      let ds := if (← below 2) = 0 then c.dregs.set! n.val v else c.dregs
+      return { c with instr := .fcvtzu d n, dregs := ds }
+  | 40 => return { c with instr := .fmovSW (← fin 32) (← fin 32) }
+  | 41 => return { c with instr := .fmovWS (← fin 32) (← fin 32) }
+  | 42 => return { c with instr := .faddS (← fin 32) (← fin 32) (← fin 32) }
+  | 43 => return { c with instr := .fsubS (← fin 32) (← fin 32) (← fin 32) }
+  | 44 => return { c with instr := .fmulS (← fin 32) (← fin 32) (← fin 32) }
+  | 45 => return { c with instr := .fdivS (← fin 32) (← fin 32) (← fin 32) }
+  | 46 => return { c with instr := .fsqrtS (← fin 32) (← fin 32) }
+  | 47 => return { c with instr := .frintnS (← fin 32) (← fin 32) }
+  | 48 =>
+      let d ← fin 32
+      let n ← fin 32
+      let k := 53 + (← below 11)
+      let v := UInt64.ofNat (if (← below 2) = 0 then 2 ^ k + 2 ^ (k - 24) + 1
+        else 2 ^ k + 3 * 2 ^ (k - 24) - 1)
+      let rs := if n.val < 31 ∧ (← below 2) = 0 then c.regs.set! n.val v else c.regs
+      return { c with instr := .ucvtfSX d n, regs := rs }
+  | 49 => return { c with instr := .scvtfSW (← fin 32) (← fin 32) }
+  | 50 => return { c with instr := .fcvtzuXS (← fin 32) (← fin 32) }
+  | 51 => return { c with instr := .fcvtzsWS (← fin 32) (← fin 32) }
+  | 53 =>
+      let n ← fin 31
+      let m ← fin 31
+      let (a, b) ← cmpPair
+      return { c with
+        instr := .subsReg 31 n.castSucc m.castSucc, regs := (c.regs.set! n.val a).set! m.val b }
+  | 54 =>
+      let d ← fin 32
+      let (a, b) ← cmpPair
+      let s : State :=
+        { regs := fun _ => 0, dregs := fun _ => 0, sp := 0, pc := 0, nFlag := false,
+          zFlag := false, cFlag := false, vFlag := false, mem := fun _ => 0, out := [] }
+      let f := s.subs 31 a b
+      let bit (b : Bool) (k : Nat) : UInt64 := if b then UInt64.ofNat (2 ^ k) else 0
+      let nzcv := bit f.nFlag 31 ||| bit f.zFlag 30 ||| bit f.cFlag 29 ||| bit f.vFlag 28
+      let cond : Fin 16 := if (← below 2) = 0 then 10 else 12
+      return { c with instr := .csinc d 31 31 cond, nzcv := nzcv }
+  | 55 =>
+      let d ← fin 32
+      let n ← fin 31
+      let m ← fin 31
+      let v ← signedWord
+      let k : UInt64 := match ← below 5 with
+        | 0 => 0
+        | 1 => 1
+        | 2 => 63
+        | 3 => 64
+        | _ => 65
+      return { c with
+        instr := .lsrv d n.castSucc m.castSucc, regs := (c.regs.set! n.val v).set! m.val k }
+  | 56 =>
+      let d ← fin 32
+      let n ← fin 31
+      let v ← signedWord
+      return { c with instr := .lsrImm d n.castSucc 63, regs := c.regs.set! n.val v }
+  | 57 =>
+      let d ← fin 32
+      let n ← fin 31
+      let v := UInt64.ofNat (← below 2)
+      return { c with instr := .subReg d 31 n.castSucc, regs := c.regs.set! n.val v }
+  | _ =>
+      let n ← fin 32
+      let m ← fin 32
+      let a := c.dregs[n.val]!
+      let low := a &&& 0xFFFFFFFF
+      let high := c.dregs[m.val]! &&& 0xFFFFFFFF00000000
+      let ds := match ← below 4 with
+        | 0 => c.dregs.set! m.val (high ||| low)
+        | 1 => c.dregs.set! m.val (high ||| (low ^^^ 0x80000000))
+        | 2 => c.dregs.set! m.val (high ||| ((low + 1) &&& 0xFFFFFFFF))
+        | _ => c.dregs
+      return { c with instr := .fcmpS n m, dregs := ds }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 
@@ -183,12 +358,15 @@ def caseAsm (k : Nat) (c : Case) : List String × List String :=
     | none => []
   let loads := (List.range 15).map fun p => s!"  ldp x{2 * p}, x{2 * p + 1}, [x30, #{16 * p}]"
   let saves := (List.range 15).map fun p => s!"  stp x{2 * p}, x{2 * p + 1}, [x30, #{16 * p}]"
+  let dloads := (List.range 16).map fun p =>
+    s!"  ldp d{2 * p}, d{2 * p + 1}, [x30, #{264 + 16 * p}]"
+  let dsaves := (List.range 16).map fun p => s!"  stp d{2 * p}, d{2 * p + 1}, [x1, #{16 * p}]"
   let code :=
     [l "start:", s!"  ldr x0, ={l "win"}", "  ldr x1, =cosim_win", s!"  mov x2, #{windowSize}",
       "1:", "  ldrb w3, [x0], #1", "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
       s!"  ldr x30, ={l "in"}"] ++ patches ++ padPatch ++
     ["  ldr x0, [x30, #256]", "  msr nzcv, x0", "  ldr x0, [x30, #248]", "  mov sp, x0"] ++
-    loads ++ ["  ldr x30, [x30, #240]", s!"  b {l "test"}"] ++
+    loads ++ dloads ++ ["  ldr x30, [x30, #240]", s!"  b {l "test"}"] ++
     ((List.range padRange).map fun id => s!"{pad id}: b {land id}") ++
     [s!"{l "test"}: .inst {hex (encode c.instr).toNat}"] ++
     ((List.range padRange).map fun i =>
@@ -201,15 +379,17 @@ def caseAsm (k : Nat) (c : Case) : List String × List String :=
     ["  mrs x0, tpidr_el1", "  str x0, [x30, #240]", "  mov x0, sp", "  str x0, [x30, #248]",
       "  mrs x0, nzcv", "  str x0, [x30, #256]", "  mrs x0, tpidrro_el0", "  str x0, [x30, #264]",
       s!"  ldr x0, ={l "test"}", "  str x0, [x30, #272]", "  ldr x0, =cosim_win",
-      "  str x0, [x30, #280]", "  add x1, x30, #288", s!"  mov x2, #{windowSize}", "1:",
-      "  ldrb w3, [x0], #1", "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
+      "  str x0, [x30, #280]", s!"  add x1, x30, #{288 + windowSize}"] ++ dsaves ++
+      ["  add x1, x30, #288", s!"  mov x2, #{windowSize}", "1:", "  ldrb w3, [x0], #1",
+      "  strb w3, [x1], #1", "  subs x2, x2, #1", "  b.ne 1b",
       "  ldr x0, =cosim_sp", "  ldr x0, [x0]", "  mov sp, x0", s!"  b {l "end"}", "  .ltorg",
       s!"{l "end"}:"]
   let data :=
     ["  .balign 8", s!"{l "in"}:"] ++
-    ((c.regs.toList ++ [c.sp, c.nzcv]).map fun v => s!"  .quad {hex v.toNat}") ++
+    ((c.regs.toList ++ [c.sp, c.nzcv] ++ c.dregs.toList).map fun v =>
+      s!"  .quad {hex v.toNat}") ++
     [s!"{l "win"}:", "  .byte " ++ ", ".intercalate (c.win.toList.map fun b => hex b.toNat),
-      "  .balign 8", s!"{l "out"}:", s!"  .skip {288 + windowSize}"]
+      "  .balign 8", s!"{l "out"}:", s!"  .skip {288 + windowSize + 256}"]
   (code, data)
 
 /-- The harness of `perForm` cases of each form from the seed `seed`. -/
@@ -226,16 +406,19 @@ def harness (seed : UInt64) (perForm : Nat) : String := Id.run do
   let table (name suffix : String) :=
     [s!"  .global {name}", s!"{name}:"] ++
       (List.range n).map fun k => s!"  .quad a64c{k}_{suffix}"
-  let saved := (List.range 6).map fun p => s!"  stp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]"
-  let restored := (List.range 6).map fun p =>
-    s!"  ldp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]"
+  let saved := (List.range 6).map (fun p =>
+      s!"  stp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]") ++
+    (List.range 4).map fun p => s!"  stp d{8 + 2 * p}, d{9 + 2 * p}, [x9, #{96 + 16 * p}]"
+  let restored := (List.range 6).map (fun p =>
+      s!"  ldp x{19 + 2 * p}, x{20 + 2 * p}, [x9, #{16 * p}]") ++
+    (List.range 4).map fun p => s!"  ldp d{8 + 2 * p}, d{9 + 2 * p}, [x9, #{96 + 16 * p}]"
   let lines :=
     ["  .text", "  .global main", "main:", "  ldr x9, =cosim_saved"] ++ saved ++
     ["  mov x10, sp", "  ldr x11, =cosim_sp", "  str x10, [x11]"] ++
     parts.flatMap (·.1) ++
     ["  ldr x9, =cosim_saved"] ++ restored ++ ["  b cosim_print", "  .ltorg",
       "  .data", "  .balign 16", "cosim_win:", s!"  .skip {windowSize}", "cosim_sp:", "  .quad 0",
-      "cosim_saved:", "  .skip 96", "  .balign 8", "  .global cosim_count", "cosim_count:",
+      "cosim_saved:", "  .skip 160", "  .balign 8", "  .global cosim_count", "cosim_count:",
       s!"  .quad {n}"] ++
     table "cosim_in" "in" ++ table "cosim_out" "out" ++ table "cosim_inwin" "win" ++
     parts.flatMap (·.2)
@@ -261,7 +444,7 @@ def parseBytes (s : String) : Option (Array UInt8) := do
 printed state after it, or the reason that the line cannot be checked. -/
 def checkLine (line : String) : Except String (List String) := do
   let toks := (line.splitOn " ").filter (· ≠ "") |>.toArray
-  if toks.size ≠ 74 then throw s!"a line of {toks.size} fields"
+  if toks.size ≠ 138 then throw s!"a line of {toks.size} fields"
   let num (i : Nat) : Except String Nat :=
     match parseHex toks[i]! with
     | some v => pure v
@@ -277,12 +460,14 @@ def checkLine (line : String) : Except String (List String) := do
   let outWin ← match parseBytes toks[73]! with
     | some b => pure b
     | none => throw "the window after is not hexadecimal"
+  let inD ← (List.range 32).mapM fun i => do return UInt64.ofNat (← num (74 + i))
+  let outD ← (List.range 32).mapM fun i => do return UInt64.ofNat (← num (106 + i))
   let instr ← match decodeNat w with
     | some i => pure i
     | none => throw s!"the word {hex w} decodes to no form"
   let nzcv := inRegs[32]!
   let s : State :=
-    { regs := fun r => inRegs[r.val]!, sp := inRegs[31]!, pc := p,
+    { regs := fun r => inRegs[r.val]!, dregs := fun r => inD[r.val]!, sp := inRegs[31]!, pc := p,
       nFlag := (nzcv >>> 31) &&& 1 == 1, zFlag := (nzcv >>> 30) &&& 1 == 1,
       cFlag := (nzcv >>> 29) &&& 1 == 1, vFlag := (nzcv >>> 28) &&& 1 == 1,
       mem := fun a => if a - winAddr < UInt64.ofNat windowSize then inWin[(a - winAddr).toNat]!
@@ -304,7 +489,11 @@ def checkLine (line : String) : Except String (List String) := do
         let want := t.mem (winAddr + UInt64.ofNat i)
         if want = outWin[i]! then none
         else some s!"byte {i} {hex outWin[i]!.toNat}, model {hex want.toNat}"
-      return regDiffs ++
+      let dDiffs := (List.range 32).filterMap fun r =>
+        let want := t.dregs ⟨r % 32, Nat.mod_lt _ (by decide)⟩
+        if want = outD[r]! then none
+        else some s!"d{r} {hex outD[r]!.toNat}, model {hex want.toNat}"
+      return regDiffs ++ dDiffs ++
         (if t.sp = outRegs[31]! then [] else
           [s!"sp {hex outRegs[31]!.toNat}, model {hex t.sp.toNat}"]) ++
         (if UInt64.ofNat (flags * 0x10000000) = outRegs[32]! then [] else

@@ -56,7 +56,13 @@ theorem gib_of_lt {a : UInt64} (ha : a < 0x100000000) :
 theorem Sys.mair_of_covered {h : Hw} {s : Sys} (hc : s.covered h = true) :
     s.mair = mairValue := by
   simp only [Sys.covered, Bool.and_eq_true, beq_iff_eq] at hc
-  exact hc.1.1.1.2
+  exact hc.1.1.1.1.2
+
+/-- With `CPACR_EL1` at `cpacrValue`, EL1 may access floating point. -/
+theorem Sys.fpAccess_of_cpacr {s : Sys} (hc : s.cpacr = cpacrValue) : s.fpAccess = true := by
+  unfold Sys.fpAccess
+  rw [hc]
+  decide
 
 /-- Under the covered configuration with the table at `TTBR0_EL1`, the type of memory at an
 address below 2 ^ 32 depends only on its GiB, `a >>> 30`: writable Device memory in the first,

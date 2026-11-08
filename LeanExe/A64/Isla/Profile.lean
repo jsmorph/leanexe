@@ -62,12 +62,16 @@ elab "isla_features% " path:str : term => do
   | .error e => throwError "{path.getString}: {e}"
 
 /-- What a processor profile of `traces.sh` sets: the features, `__supported_pa_size`, and the
-values of `HCR_EL2` and `OSLSR_EL1`. -/
+values of `HCR_EL2`, `OSLSR_EL1`, and, for the floating-point forms, `CPTR_EL2`, `CPTR_EL3`, and
+`SMCR_EL3`. -/
 structure Profile where
   features : Features
   paSize : Nat
   hcr : Nat
   oslsr : Nat
+  cptr2 : Nat
+  cptr3 : Nat
+  smcr3 : Nat
 
 /-- The profile `tcg` of `traces.sh`, QEMU 8.2.2's Cortex-A57 under TCG. -/
 def tcg : Profile where
@@ -75,6 +79,9 @@ def tcg : Profile where
   paSize := 44
   hcr := 0x80000000
   oslsr := 0xa
+  cptr2 := 0
+  cptr3 := 0
+  smcr3 := 0
 
 /-- The profile `kvm` of `traces.sh`, the guest of KVM in Linux 7.0 on the Cortex-X925 and
 Cortex-A725 cores of edgexpert-18ff. -/
@@ -83,22 +90,41 @@ def kvm : Profile where
   paSize := 40
   hcr := 0x480000000
   oslsr := 0x8
+  cptr2 := 0x50330000
+  cptr3 := 0x100
+  smcr3 := 0
+
+/-- The profile `sme` of `traces.sh`: `kvm` on a processor that also implements FEAT_SME and
+FEAT_SME_FA64, with the settings that Linux's boot protocol requires of it, for the floating-point
+forms. -/
+def sme : Profile where
+  features := isla_features% "tests/isla/sme/features"
+  paSize := 40
+  hcr := 0x480000000
+  oslsr := 0x8
+  cptr2 := 0x53330000
+  cptr3 := 0x1100
+  smcr3 := 0x80000000
 
 /-- The arguments of `traces.sh` that differ among the forms: `tcr` for the arithmetic, logical,
 move, and address forms, which fix `TCR_EL1`, `branch` for the branches, which leave it undefined,
-and `memory` for the loads and stores, which fix `TCR_EL1`, leave `VBAR_EL1` undefined, and set
-`ZCR_EL3` and `SMCR_EL3` to 0, the values of `armv9p4.toml`. -/
+`memory` for the loads and stores, which fix `TCR_EL1`, leave `VBAR_EL1` undefined, and set
+`ZCR_EL3` and `SMCR_EL3` to 0, the values of `armv9p4.toml`, and `fp` for the floating-point
+forms, which fix `TCR_EL1`, `CPACR_EL1`, `CPTR_EL2`, `CPTR_EL3`, and `FPCR`. -/
 inductive Group where
   | tcr
   | branch
   | memory
+  | fp
   deriving DecidableEq
 
 /-- The values that the configuration leaves UNKNOWN and some committed trace reads: the last
 element of `FeatureImpl`; `TCR_EL1` of the branches and `VBAR_EL1` of the loads and stores;
 `TTBR0_NS`, which holds `TTBR0_EL1`, and the model's 128-bit register `_TTBR0_EL1`; `SCTLR_EL2`,
-`SPSR_EL1`, `ZCR_EL1`, `ZCR_EL2`, `SMCR_EL1`, and `SMCR_EL2`; and the fields `A`, `F`, `I`, `IL`,
-`SS`, `BTYPE`, `DIT`, `SSBS`, and `UAO` of `PSTATE`. -/
+`SPSR_EL1`, `ZCR_EL1`, `ZCR_EL2`, `SMCR_EL1`, and `SMCR_EL2`; the fields `A`, `F`, `I`, `IL`,
+`SS`, `BTYPE`, `DIT`, `SSBS`, `UAO`, and `SM` of `PSTATE`, the last of which only the traces of
+the profile `sme` read; and the bits of Z0 to Z31 above bit 63, the upper 1984 bits of each
+element of `_Z`, whose low 64 bits the model holds. -/
 structure Unknown where
   feature : Bool
   tcr : BitVec 64
@@ -120,12 +146,21 @@ structure Unknown where
   dit : BitVec 1
   ssbs : BitVec 1
   uao : BitVec 1
+  sm : BitVec 1
+  z : Fin 32 → BitVec 1984
 
 /-- A system register whose one field `bits` holds `n`. -/
 def sysreg (w n : Nat) : Val := .struct [("bits", .bits w n)]
 
 /-- The bit vector `x` as a value. -/
 def bv {w : Nat} (x : BitVec w) : Val := .bits w x.toNat
+
+/-- The upper bits of Z0 to Z31 as the vector that `σ` holds for `_Z`. -/
+def zHigh (z : Fin 32 → BitVec 1984) : Val :=
+  .vec [bv (z 0), bv (z 1), bv (z 2), bv (z 3), bv (z 4), bv (z 5), bv (z 6), bv (z 7), bv (z 8),
+    bv (z 9), bv (z 10), bv (z 11), bv (z 12), bv (z 13), bv (z 14), bv (z 15), bv (z 16),
+    bv (z 17), bv (z 18), bv (z 19), bv (z 20), bv (z 21), bv (z 22), bv (z 23), bv (z 24),
+    bv (z 25), bv (z 26), bv (z 27), bv (z 28), bv (z 29), bv (z 30), bv (z 31)]
 
 /-- The registers outside the model under the profile `p` for the forms of the group `g`.  The
 entry point sets `SEE` and `DBGEN` and builds `FeatureImpl` from the `features` file.  `-I` sets
@@ -134,10 +169,12 @@ entry point sets `SEE` and `DBGEN` and builds `FeatureImpl` from the `features` 
 `MAIR_EL1` to `0xff00`, `HCR_EL2`, `SCR_EL3` to `0x401`, `OSLSR_EL1`, `_EDSCR` to `0x02000002`,
 with PipeAdv set as `__InstructionExecute` sets it before the decode, `MDCR_EL2`, `VTCR_EL2`,
 `MDSCR_EL1`, `OSDLR_EL1`, `DBGPRCR_EL1`, and `MDCCSR_EL0` to 0, and the group's `TCR_EL1` and
-`VBAR_EL1`.  The reset of `armv9p4.toml` sets `PSTATE.nRW` to 0.  The defaults of
-`armv9p4.toml` and the model's initializers set `SPESampleInFlight`, `__tlb_enabled`, and the three
-`__monomorphize` flags to false, `ZCR_EL3` and `SMCR_EL3` to 0, `VBAR_EL1` to 0 outside the loads
-and stores, `__max_implemented_smeveclen` to 512, and `__block_bbm_implemented` to 2. -/
+`VBAR_EL1`, and for the floating-point forms `CPACR_EL1` to `0x300000` and `FPCR` to `0x02000000`,
+the startup's values, and the profile's `CPTR_EL2` and `CPTR_EL3`, and under `sme` `SMCR_EL3`.  The
+reset of `armv9p4.toml` sets `PSTATE.nRW` to 0.  The defaults of `armv9p4.toml` and the model's
+initializers set `SPESampleInFlight`, `__tlb_enabled`, and the three `__monomorphize` flags to
+false, `ZCR_EL3` and `SMCR_EL3` to 0, `VBAR_EL1` to 0 outside the loads and stores,
+`__max_implemented_smeveclen` to 512, and `__block_bbm_implemented` to 2. -/
 def Profile.sys (p : Profile) (g : Group) (u : Unknown) : Sys
   | "SEE" => some (.bits 128 (2 ^ 128 - 1))
   | "DBGEN" => some (.enum "Signal_Low")
@@ -147,7 +184,7 @@ def Profile.sys (p : Profile) (g : Group) (u : Unknown) : Sys
   | "PSTATE" => some (.struct [("EL", .bits 2 1), ("SP", .bits 1 1), ("D", .bits 1 1),
       ("PAN", .bits 1 0), ("nRW", .bits 1 0), ("A", bv u.a), ("F", bv u.f), ("I", bv u.i),
       ("IL", bv u.il), ("SS", bv u.ss), ("BTYPE", bv u.btype), ("DIT", bv u.dit),
-      ("SSBS", bv u.ssbs), ("UAO", bv u.uao)])
+      ("SSBS", bv u.ssbs), ("UAO", bv u.uao), ("SM", bv u.sm)])
   | "SCTLR_EL1" => some (sysreg 64 0x30d0198d)
   | "MAIR_EL1" => some (sysreg 64 0xff00)
   | "HCR_EL2" => some (sysreg 64 p.hcr)
@@ -163,7 +200,7 @@ def Profile.sys (p : Profile) (g : Group) (u : Unknown) : Sys
   | "TCR_EL1" => some (sysreg 64 (if g = .branch then u.tcr.toNat else 0x80a03520))
   | "VBAR_EL1" => some (.bits 64 (if g = .memory then u.vbar.toNat else 0))
   | "ZCR_EL3" => some (sysreg 64 0)
-  | "SMCR_EL3" => some (sysreg 64 0)
+  | "SMCR_EL3" => some (sysreg 64 (if g = .fp then p.smcr3 else 0))
   | "SPESampleInFlight" => some (.bool false)
   | "__tlb_enabled" => some (.bool false)
   | "__monomorphize_reads" => some (.bool false)
@@ -179,6 +216,11 @@ def Profile.sys (p : Profile) (g : Group) (u : Unknown) : Sys
   | "ZCR_EL2" => some (sysreg 64 u.zcr2.toNat)
   | "SMCR_EL1" => some (sysreg 64 u.smcr1.toNat)
   | "SMCR_EL2" => some (sysreg 64 u.smcr2.toNat)
+  | "CPACR_EL1" => if g = .fp then some (sysreg 64 0x300000) else none
+  | "CPTR_EL2" => if g = .fp then some (sysreg 64 p.cptr2) else none
+  | "CPTR_EL3" => if g = .fp then some (sysreg 64 p.cptr3) else none
+  | "FPCR" => if g = .fp then some (sysreg 64 0x02000000) else none
+  | "_Z" => some (zHigh u.z)
   | r => (p.features.settings.lookup r).map .bool
 
 theorem Profile.sys_get (p : Profile) (g : Group) (u : Unknown) (r : String) (al : List String) :

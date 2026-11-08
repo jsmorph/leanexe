@@ -1,0 +1,59 @@
+{
+  "id": "real-function-accuracy",
+  "goals": [
+    "LeanExe.ProofKit.F64SignedRounding.WithinSteps 1 (Real.sin (value x.toBits)) (f x).toBits",
+    "c.toNat ≤ (LeanExe.ProofKit.F64PositiveRounding.roundNearestEven y).toNat + 1",
+    "|value w - Real.exp x| ≤ e for the word of a library function",
+    "Runs false env compiled.module k store [.f64 x.toBits] fun final values => ∃ w, values = [.f64 w] ∧ (Finite x.toBits → WithinSteps 1 (f (value x.toBits)) w)",
+    "a Taylor remainder of Real.sin, Real.exp, Real.arcsin, or Real.log",
+    "an equation between definitions built from Wasm.IEEE64 operations"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.F64PositiveRounding",
+    "LeanExe.ProofKit.F64SignedRounding",
+    "LeanExe.ProofKit.F64FullStep",
+    "LeanExe.ProofKit.F64RelativeStep",
+    "LeanExe.ProofKit.F64SelfStep",
+    "LeanExe.ProofKit.F64UnitStep",
+    "LeanExe.ProofKit.F64ErrorTrack",
+    "LeanExe.ProofKit.TaylorRemainder",
+    "LeanExe.ProofKit.RealExpError",
+    "LeanExe.ProofKit.AsinRemainder",
+    "LeanExe.ProofKit.LogRatioRemainder",
+    "Library.Numerics.Float64.Exp.ExpOneStep",
+    "Library.Numerics.Float64.Exp.ExpTheorem",
+    "Library.Numerics.Float64.Trig.TrigSinCos",
+    "Library.Numerics.Float64.Asin.AsinBytes",
+    "Library.Numerics.Float64.Tan.TanOdd",
+    "Library.Numerics.Float64.Tgamma.TgammaTop"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.F64PositiveRounding.roundNearestEven",
+    "LeanExe.ProofKit.F64SignedRounding.roundNearestEven",
+    "LeanExe.ProofKit.F64SignedRounding.WithinSteps",
+    "LeanExe.ProofKit.F64FullStep.one_step_binades",
+    "LeanExe.ProofKit.F64RelativeStep.within_one_relative",
+    "LeanExe.ProofKit.F64UnitStep.unit_step",
+    "LeanExe.ProofKit.F64SelfStep.self_step",
+    "LeanExe.ProofKit.F64Approx.Approx",
+    "LeanExe.ProofKit.F64ErrorTrack.add_approx",
+    "LeanExe.ProofKit.TaylorRemainder.sin_remainder",
+    "LeanExe.ProofKit.RealExpError.taylor_error_one",
+    "LeanExe.ProofKit.AsinRemainder.asin_remainder",
+    "LeanExe.ProofKit.LogRatioRemainder.log_ratio_remainder",
+    "Library.Numerics.Float64.Exp.ExpOneStep.one_step_of_error",
+    "Library.Numerics.Float64.Tgamma.TgammaTop.add_top",
+    "Library.Numerics.Float64.Tgamma.TgammaTop.div_top"
+  ],
+  "examples": [
+    "Library.Numerics.Float64.Exp.ExpTheorem.exp_one_step",
+    "Library.Numerics.Float64.Exp.ExpTheorem.exp_entry_call",
+    "Library.Numerics.Float64.Exp.ExpTheorem.exp_bytes_accuracy",
+    "Library.Numerics.Float64.Trig.TrigSinCos.sin_within",
+    "Library.Numerics.Float64.Trig.TrigStep.sin_final",
+    "Library.Numerics.Float64.Asin.AsinBytes.ready_initial",
+    "Library.Numerics.Float64.Asin.AsinBytes.asin_entry_call",
+    "Library.Numerics.Float64.Asin.AsinBytes.asin_module_accuracy",
+    "Library.Numerics.Float64.Tan.TanOdd.smallW_odd"
+  ]
+}

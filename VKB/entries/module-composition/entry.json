@@ -1,0 +1,55 @@
+{
+  "id": "module-composition",
+  "goals": [
+    "LeanExe.Pipeline.ImplementsA false (Verified.compile (Verified.Prog.cons f p.program)) k g Pre Post",
+    "LeanExe.Pipeline.ImplementsPureA false m k g",
+    "Verified.Calls module funs flags bounds fits pool",
+    "prog.functions pool <+: larger.functions pool",
+    "caller.denote funs env = g x"
+  ],
+  "modules": [
+    "Verified.ModuleComposition",
+    "Verified.ProgramAppendCorrect",
+    "Verified.ProgramAppend",
+    "Verified.FunRelocation",
+    "Verified.ProgramLiterals",
+    "Verified.Correct",
+    "Verified.ScalarCalibration",
+    "Verified.ScalarTransport",
+    "Verified.Reflect.ScalarProof",
+    "Verified.Examples.Composition",
+    "Verified.Examples.CompositionPure",
+    "Verified.Examples.Relocation"
+  ],
+  "declarations": [
+    "Verified.Prog.append",
+    "Verified.Funs.append",
+    "Verified.Prog.Meaning.append",
+    "Verified.FVar.appendLeft",
+    "Verified.FVar.appendRight",
+    "Verified.FVar.callIndex",
+    "Verified.Prog.functions_prefix_cons",
+    "Verified.Prog.functions_prefix_append",
+    "Verified.Prog.calls_prefix",
+    "Verified.Prog.calls_extension",
+    "Verified.Prog.calls_append",
+    "Verified.Prog.covered_append",
+    "Verified.Prog.correct",
+    "Verified.Prog.correct_funs",
+    "Verified.Prog.correctStatic",
+    "Verified.Calls",
+    "Verified.FunSpec.implementsB_unpaid",
+    "Verified.ImplementsA.lean",
+    "Verified.implementsPure_of_uniform",
+    "Wasm.EntryUniform.of_code",
+    "Verified.Reflect.scalarEntryProof"
+  ],
+  "examples": [
+    "Verified.Examples.Composition.base_calls",
+    "Verified.Examples.Composition.wordCaller_implements",
+    "Verified.Examples.CompositionBase.add_pure",
+    "Verified.Examples.Relocation.caller_denote",
+    "Verified.Examples.Relocation.callBoth_implements",
+    "Verified.Examples.Relocation.callBoth_pure"
+  ]
+}

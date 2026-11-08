@@ -29,7 +29,7 @@ accesses of the first `N` windows of `cmsdkTick` from the state 3. -/
 theorem echo_qemu (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
     (hf : FileAt code echoBytes echoSize 0) (b : State) (hb : Reset code 0 b) :
     ∃ s, Reach platform σ code b s ∧ s.pc = loopHead ∧
-      s.trace = initTrace ++ windows (reqTrace (devBus devBase) cmsdkTick 3 σ) N :=
+      s.trace = Qemu.initTrace ++ windows (reqTrace (devBus devBase) cmsdkTick 3 σ) N :=
   echo_loop echo_file hf b hb N
 
 end TestSupport.M7.QemuFile

@@ -31,55 +31,56 @@ theorem addrOf_length {d : Fin 32} {here target : UInt64} {is : List Instr}
 
 theorem startupCode_ok {L : Layout} {is : List Instr} (h : startupCode L = .ok is) :
     ∃ toHalt skip vec tab clr fin stk ar call back,
-      cbField (after (L.image + 64) 3) (after (L.image + 64) 66) = .ok toHalt ∧
-      cbField (after (L.image + 64) 29) (after (L.image + 64) 31) = .ok skip ∧
+      cbField (after (L.image + 64) 3) (after (L.image + 64) 69) = .ok toHalt ∧
+      cbField (after (L.image + 64) 30) (after (L.image + 64) 32) = .ok skip ∧
       addrOf 1 (after (L.image + 64) 4) L.vectors = .ok vec ∧
-      addrOf 1 (after (L.image + 64) 23) L.table = .ok tab ∧
-      addrOf 0 (after (L.image + 64) 40) L.clear = .ok clr ∧
-      addrOf 1 (after (L.image + 64) 42) L.areaEnd = .ok fin ∧
-      addrOf 1 (after (L.image + 64) 49) L.stackTop = .ok stk ∧
-      addrOf 17 (after (L.image + 64) 52) L.area = .ok ar ∧
-      bField (after (L.image + 64) 54) (after L.base 1) = .ok call ∧
-      bField L.base (after (L.image + 64) 55) = .ok back ∧
+      addrOf 1 (after (L.image + 64) 24) L.table = .ok tab ∧
+      addrOf 0 (after (L.image + 64) 43) L.clear = .ok clr ∧
+      addrOf 1 (after (L.image + 64) 45) L.areaEnd = .ok fin ∧
+      addrOf 1 (after (L.image + 64) 52) L.stackTop = .ok stk ∧
+      addrOf 17 (after (L.image + 64) 55) L.area = .ok ar ∧
+      bField (after (L.image + 64) 57) (after L.base 1) = .ok call ∧
+      bField L.base (after (L.image + 64) 58) = .ok back ∧
       is = [mrsOf 1 .currentEL, .lsrImm 1 1 2, .subsImm 31 1 1, .bcond 1 toHalt] ++
-        vec ++ [msrOf .vbar 1] ++ movImm 1 (sctlrOn - 1) ++ [msrOf .sctlr 1, msrOf .cpacr 31] ++
+        vec ++ [msrOf .vbar 1] ++ movImm 1 (sctlrOn - 1) ++
+        [msrOf .sctlr 1, .movz 1 0x30 1, msrOf .cpacr 1] ++
         movImm 1 mairValue ++ [msrOf .mair 1] ++ movImm 1 tcrValue ++ [msrOf .tcr 1] ++
         tab ++ [msrOf .ttbr0 1, mrsOf 1 .mmfr3, .movz 2 15 0, .andReg 1 1 2, .cbz 1 skip,
-          msrOf .tcr2 31, .isb, .tlbiVmalle1, .dsbIsh] ++
+          msrOf .tcr2 31, .isb, .tlbiVmalle1, .dsbIsh, .movz 1 0x200 1, msrOf .fpcr 1] ++
         movImm 1 sctlrOn ++ [msrOf .sctlr 1, .isb] ++ clr ++ fin ++ clearLoop ++ stk ++
         [.addImm 31 1 0] ++ ar ++ [.bl call] ++
         movImm 1 uartAddr ++ [.strb 0 1 0, .dsbSy] ++ movImm 0 0x84000008 ++
         [.hvc0, .b 0, .b back] := by
   unfold startupCode at h
   dsimp only at h
-  cases h0 : cbField (after (L.image + 64) 3) (after (L.image + 64) 66) with
+  cases h0 : cbField (after (L.image + 64) 3) (after (L.image + 64) 69) with
   | error e => simp [h0, bind, Except.bind] at h
   | ok toHalt => ?_
-  cases h1 : cbField (after (L.image + 64) 29) (after (L.image + 64) 31) with
+  cases h1 : cbField (after (L.image + 64) 30) (after (L.image + 64) 32) with
   | error e => simp [h0, h1, bind, Except.bind] at h
   | ok skip => ?_
   cases h2 : addrOf 1 (after (L.image + 64) 4) L.vectors with
   | error e => simp [h0, h1, h2, bind, Except.bind] at h
   | ok vec => ?_
-  cases h3 : addrOf 1 (after (L.image + 64) 23) L.table with
+  cases h3 : addrOf 1 (after (L.image + 64) 24) L.table with
   | error e => simp [h0, h1, h2, h3, bind, Except.bind] at h
   | ok tab => ?_
-  cases h4 : addrOf 0 (after (L.image + 64) 40) L.clear with
+  cases h4 : addrOf 0 (after (L.image + 64) 43) L.clear with
   | error e => simp [h0, h1, h2, h3, h4, bind, Except.bind] at h
   | ok clr => ?_
-  cases h5 : addrOf 1 (after (L.image + 64) 42) L.areaEnd with
+  cases h5 : addrOf 1 (after (L.image + 64) 45) L.areaEnd with
   | error e => simp [h0, h1, h2, h3, h4, h5, bind, Except.bind] at h
   | ok fin => ?_
-  cases h6 : addrOf 1 (after (L.image + 64) 49) L.stackTop with
+  cases h6 : addrOf 1 (after (L.image + 64) 52) L.stackTop with
   | error e => simp [h0, h1, h2, h3, h4, h5, h6, bind, Except.bind] at h
   | ok stk => ?_
-  cases h7 : addrOf 17 (after (L.image + 64) 52) L.area with
+  cases h7 : addrOf 17 (after (L.image + 64) 55) L.area with
   | error e => simp [h0, h1, h2, h3, h4, h5, h6, h7, bind, Except.bind] at h
   | ok ar => ?_
-  cases h8 : bField (after (L.image + 64) 54) (after L.base 1) with
+  cases h8 : bField (after (L.image + 64) 57) (after L.base 1) with
   | error e => simp [h0, h1, h2, h3, h4, h5, h6, h7, h8, bind, Except.bind] at h
   | ok call => ?_
-  cases h9 : bField L.base (after (L.image + 64) 55) with
+  cases h9 : bField L.base (after (L.image + 64) 58) with
   | error e => simp [h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, bind, Except.bind] at h
   | ok back => ?_
   simp only [h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, bind, Except.bind,

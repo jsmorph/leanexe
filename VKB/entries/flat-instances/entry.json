@@ -19,8 +19,5 @@
     "Examples.Bools.compiled.bytes",
     "Verified.Examples.Records.compiled.bytes",
     "Verified.Examples.Enums.compiled.bytes"
-  ],
-  "sources": [
-    "2026-10-30: The example ports to the verified compiler"
   ]
 }

@@ -68,7 +68,7 @@ theorem image_main {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {
           (fetchFrom b.core.mem image (codeWords prog.length)) b b1 ∧
         Ready h (protectedBytes image prog.length)
           (fetchFrom b.core.mem image (codeWords prog.length)) b1 ∧
-        b1.core.pc = after L.base 1 ∧ b1.core.x 30 = after (image + 64) 55 ∧
+        b1.core.pc = after L.base 1 ∧ b1.core.x 30 = after (image + 64) 58 ∧
         b1.core.x 17 = L.area ∧ b1.core.sp % 16 = 0 ∧ b1.core.sp.toNat ≤ 2 ^ 63 ∧
         (∀ j < room.toNat + 16, (b1.platform h (protectedBytes image prog.length)).normal
           (b1.core.sp - 16 - room + UInt64.ofNat j) = true) ∧
@@ -298,12 +298,12 @@ theorem imageProgLength_shift {m : Module} {k : Nat} {args : List UInt64} {room 
   have hv := vecOff_ge prog.length
   have hao := areaOff_ge prog.length
   unfold tabOff at hao
-  have h67 : startupLength = 67 := rfl
-  have e1 : (image + UInt64.ofNat (64 + 4 * startupLength)).toNat = image.toNat + 332 := by
+  have h70 : startupLength = 70 := rfl
+  have e1 : (image + UInt64.ofNat (64 + 4 * startupLength)).toNat = image.toNat + 344 := by
     rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
     exact Nat.mod_eq_of_lt (by omega)
   have e2 : (image + d + UInt64.ofNat (64 + 4 * startupLength)).toNat =
-      (image + d).toNat + 332 := by
+      (image + d).toNat + 344 := by
     rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
     exact Nat.mod_eq_of_lt (by omega)
   have hp' := genProgram_shift hp (by rw [e1]; omega) (by rw [← add_right_comm', e2]; omega)

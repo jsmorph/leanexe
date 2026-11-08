@@ -43,7 +43,8 @@ def shiftIn (i : GwIn) (w : UInt64) : GwIn :=
     i.readHigh, i.proposal, i.loadLow, i.loadHigh, i.pvLow, i.pvHigh, i.low, i.high, w⟩
 
 /-- The framing of the gateway over the UART whose registers are `rx`, `tx`, `status`, `rxFull`,
-`txMask`, and `txRoom`, as in `Uart`. -/
+`txMask`, and `txRoom`, as in `Uart`.  In the window of an input record's last byte it computes
+the record and `gateway`'s result once, under `let`. -/
 def gwTickWith (rx tx status rxFull txMask txRoom : UInt64) (f : GwFrame) (v : UInt64) :
     GwFrame × UInt64 :=
   if f.phase == 0 then
@@ -57,10 +58,10 @@ def gwTickWith (rx tx status rxFull txMask txRoom : UInt64) (f : GwFrame) (v : U
           phase := 0, nbyte := 0, nword := f.nword + 1, acc := 0,
           inb := shiftIn f.inb (f.acc * 256 + (v &&& 255)) }, readReq status)
     else
-      ({ phase := 2, nbyte := 0, nword := 0, acc := 0,
-          inb := shiftIn f.inb (f.acc * 256 + (v &&& 255)),
-          outb := (gateway f.g (shiftIn f.inb (f.acc * 256 + (v &&& 255)))).2,
-          g := (gateway f.g (shiftIn f.inb (f.acc * 256 + (v &&& 255)))).1 }, readReq status)
+      let inb := shiftIn f.inb (f.acc * 256 + (v &&& 255))
+      let r := gateway f.g inb
+      ({ phase := 2, nbyte := 0, nword := 0, acc := 0, inb, outb := r.2, g := r.1 },
+        readReq status)
   else if f.phase == 2 then
     if v &&& txMask == txRoom then ({ f with phase := 3 }, writeReq tx (f.outb.seq >>> 56))
     else (f, readReq status)

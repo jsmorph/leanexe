@@ -113,11 +113,12 @@ theorem core_near (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E �
     have := aR.abs_le hre
     norm_num at this ⊢ <;> linarith
   -- `k`
-  have hkd := kd_value (kOf ix) (E - e) (by omega) (by omega) (by rw [hk])
+  have hkd := Signed64Value.toFloat_exact (kOf ix) (by rw [hk]; simp only [Nat.reducePow]; omega)
+  rw [hk] at hkd
   have hk1075 : |E - (e : Int)| ≤ 1075 := by
     rw [abs_le]
     constructor <;> omega
-  obtain ⟨hresf, hres⟩ := final_error _ (kdOf (kOf ix)).toBits Log.logTable[2 * n + 1]! (E - e)
+  obtain ⟨hresf, hres⟩ := final_error _ (kOf ix).toFloat.toBits Log.logTable[2 * n + 1]! (E - e)
     aR.1 hRb hkd.1 hkd.2 hk1075 hf2 hlcR (Int.dvd_of_emod_eq_zero hglc)
     (Real.log (((2 : ℝ) ^ 52 + f) * (2 : ℝ) ^ (E - 1075)))
   have hT := target_close (E - e) hk1075 (value (zOf ix)) (centerQ n : ℝ) (value Log.logTable[2 * n]!)

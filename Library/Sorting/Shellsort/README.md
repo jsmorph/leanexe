@@ -16,17 +16,17 @@
 
 | Theorem | File | Statement |
 |---|---|---|
-| `set!_self` | [The proof](Proof.lean) | Storing an array's own word at a position leaves the array unchanged. |
-| `move_eq` | [The proof](Proof.lean) | One move of step D5, the word at `j` stored at `i` and then `v` at `j`, gives the array that holds `v` at `i` with positions `i` and `j` exchanged. |
-| `insertBy_perm` | [The proof](Proof.lean) | `insertBy v h i xs` has the size of `xs` and is a permutation of `xs.set! i v`. |
-| `pass_perm`, `passes_perm` | [The proof](Proof.lean) | A pass, and the passes from any increment, keep the size and permute the array. |
-| `shellsort_eq` | [The proof](Proof.lean) | `shellsort xs = expected xs` for every array with fewer than `2^64` elements. |
-| `straightInsertion_sorted_perm` | [Straight insertion's proof](../StraightInsertion/Proof.lean) | `straightInsertion` returns a permutation of its input in nondecreasing order. |
-| `eq_mergeSort_of_sorted_perm` | [The sorted lists](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
-| `shellsort_export` | [The compilation](Compiled.lean) | Export `shellsort` of `compiled.module` is function 8. |
-| `shellsort_implements` | [The compilation](Compiled.lean) | Function 8, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.shellsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `shellsort_bound` | [The compilation](Compiled.lean) | `compiled.shellsort.bound` is 0, so a call does not raise `top`. |
-| `shellsort_file`, `shellsort_file_decode` | [The file theorems](File.lean) | `build/verified/shellsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `set!_self` | [`Proof.lean`](Proof.lean) | Storing an array's own word at a position leaves the array unchanged. |
+| `move_eq` | [`Proof.lean`](Proof.lean) | One move of step D5, the word at `j` stored at `i` and then `v` at `j`, gives the array that holds `v` at `i` with positions `i` and `j` exchanged. |
+| `insertBy_perm` | [`Proof.lean`](Proof.lean) | `insertBy v h i xs` has the size of `xs` and is a permutation of `xs.set! i v`. |
+| `pass_perm`, `passes_perm` | [`Proof.lean`](Proof.lean) | A pass, and the passes from any increment, keep the size and permute the array. |
+| `shellsort_eq` | [`Proof.lean`](Proof.lean) | `shellsort xs = expected xs` for every array with fewer than `2^64` elements. |
+| `straightInsertion_sorted_perm` | [`Library/Sorting/StraightInsertion/Proof.lean`](../StraightInsertion/Proof.lean) | `straightInsertion` returns a permutation of its input in nondecreasing order. |
+| `eq_mergeSort_of_sorted_perm` | [`Library/Sorting/Sorted.lean`](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
+| `shellsort_export` | [`Compiled.lean`](Compiled.lean) | Export `shellsort` of `compiled.module` is function 8. |
+| `shellsort_implements` | [`Compiled.lean`](Compiled.lean) | Function 8, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.shellsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `shellsort_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.shellsort.bound` is 0, so a call does not raise `top`. |
+| `shellsort_file`, `shellsort_file_decode` | [`File.lean`](File.lean) | `build/verified/shellsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 The proof needs only that the passes with increments above 1 permute the array, since straight insertion sorts every array and a sorted permutation is unique.  `insertBy_perm` proceeds by induction on the vacant position, with `move_eq` turning each move into an exchange in the array that holds `v` at the vacant position, so each insertion permutes `xs.set! i v`, and `set!_self` gives `xs` itself when `v` is the word at `i`.  `shellsort_implements` is an `ImplementsA` theorem, since the caller moves the array into the call, and its axiom report names only `propext`, `Classical.choice`, and `Quot.sound`.
 

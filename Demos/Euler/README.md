@@ -91,14 +91,10 @@ holds `Demos.Euler.solve n`.  The call leaves a ready store, as `Verified.Ready`
 `top` is at least `solveBytes n` bytes below its cap.
 
 `euler_solve_call` states no final page count, because no theorem of the verified compiler bounds
-the pages to which memory grows, as [the journal entry on the call
-theorems](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
-explains.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound the timesteps that build
-new grids by two grids for each try, through `loopCost_le_mul`.  On Wasmtime, the buffered solvers
-took from 0.2 seconds on the 32 grid to 119 seconds for the reconstructed solver on the 192 grid,
-as [the journal entry on the buffered
-solvers](../../devnotes.md#2026-10-30-the-buffered-euler-solvers-and-a-call-theorem-for-every-grid)
-records.
+the pages to which memory grows.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound
+the timesteps that build new grids by two grids for each try, through `loopCost_le_mul`.  On
+Wasmtime, the buffered solvers took from 0.2 seconds on the 32 grid to 119 seconds for the
+reconstructed solver on the 192 grid.
 
 ## Building, running, and testing
 
@@ -132,7 +128,12 @@ cases of [`Cases.lean`](Cases.lean), from single flux evaluations to whole solve
 between the Wasmtime host and native Lean.  `tests/native/verified.sh --module euler` runs the same
 cases on the module's translation to C compiled with CompCert.
 `tests/baremetal/verified.sh --module euler` runs them under QEMU without an operating system and
-checks the stack of each call against its bound.
+checks the stack of each call against its bound.  The AArch64 back end without C compiles entry 28
+on a grid of 4 by 4 cells to an arm64 Image whose theorem, `euler` of
+[the Euler Image theorem](../../tests/TestSupport/A64/ImageFilesEuler.lean), states that in the
+model of the boot machine the Image writes the encoding of `Buffered.solve 4` to the UART, with the
+floating-point instructions' meanings taken from Talos's IEEE 754 functions, as
+[the AArch64 document](../../docs/a64-bare-metal.md#floating-point) describes.
 
 ## Related examples
 

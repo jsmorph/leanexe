@@ -28,7 +28,7 @@ Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and 
 
 ## Input: the Wasm subset and the semantics to simulate
 
-The verified compiler emits 73 instruction forms, one memory, four i64 globals, and no imports, tables, or exceptions.  The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof concerns no other module.
+The verified compiler emits 76 instruction forms, one memory, four i64 globals, and no imports, tables, or exceptions.  The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof concerns no other module.
 
 **Module shape** (`compileWith` in `Verified/Compile.lean`):
 
@@ -42,7 +42,7 @@ The verified compiler emits 73 instruction forms, one memory, four i64 globals, 
 
 | Group | Forms | Count |
 | --- | --- | --- |
-| i64 arithmetic and comparison | `constI64` `addI64` `subI64` `mulI64` `divUI64` `remUI64` `andI64` `orI64` `xorI64` `shlI64` `shrUI64` `eqI64` `neI64` `ltUI64` `leUI64` `geUI64` `eqzI64` | 17 |
+| i64 arithmetic and comparison | `constI64` `addI64` `subI64` `mulI64` `divUI64` `remUI64` `andI64` `orI64` `xorI64` `shlI64` `shrUI64` `shrSI64` `eqI64` `neI64` `ltUI64` `leUI64` `geUI64` `ltSI64` `leSI64` `eqzI64` | 20 |
 | i32 | `const` `eq` `eqz` `and` `wrapI64` `extendUI32` | 6 |
 | Variables | `localGet` `localSet` `localTee` `globalGet` `globalSet` | 5 |
 | Memory | `load64` `store64` `load8U` `store8` `memorySize` `memoryGrow` | 6 |
@@ -153,6 +153,8 @@ else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
 | Wasm form | C shape | Why |
 | --- | --- | --- |
 | `shlI64`, `shrUI64` | `a << (b & 63)`, `a >> (b & 63)` | Wasm masks the amount; CompCert leaves a shift by 64 or more undefined |
+| `shrSI64` | `(unsigned long long) ((long long) a >> (b & 63))` | CompCert defines the conversions to and from `long long` as the wrap modulo 2^64 and the shift of a `long long` as the arithmetic shift, which C11 leaves to the implementation |
+| `ltSI64`, `leSI64` | `(unsigned int) ((long long) a < (long long) b)` and `<=` | CompCert compares two `long long` operands signed |
 | `divUI64`, `remUI64` | `if (b == 0) { lx_status = LX_DIV0; return 0; }`, then `a / b` | Talos traps; C leaves it undefined |
 | comparisons, `eqz` | `(unsigned int)(a < b)` | C comparisons yield `int` |
 | `wrapI64`, `extendUI32` | casts between `unsigned int` and `unsigned long long` | |
@@ -261,7 +263,7 @@ These steps relate the Lean theorem to the binary:
 | --- | --- | --- |
 | Lean | Kernel, with `propext`, `Classical.choice`, and `Quot.sound`; toolchain pinned in `lean-toolchain` | `#print axioms` of the native theorems; no `sorry`, `native_decide`, or `bv_decide` |
 | Lean copy of Clight | `LeanExe/Native/Clight/` means what CompCert 3.18's Clight means for the programs the translator produces: `Clight.v`, `ClightBigstep.v`, `Cop.v`, `Memory.v`, `Values.v`, `Floats.v`, and the parts of `Globalenvs.v` and `Events.v` that they use, with the pointer width and the NaN choices of `Archi` left as parameters | Side-by-side review against the cited definitions; the differential test `tests/native/clight.sh` against `ccomp -interp` on 921 programs, under `Archi.x86_64`, `Archi.aarch64`, and `Archi.arm`, each against a CompCert tree configured for that target; and the corpus run natively |
-| CompCert's proof | Theorems `bigstep_semantics_sound` (`ClightBigstep.v`), which derives a behaviour of Clight's small-step semantics from a terminating big-step execution, and `transf_c_program_correct`, or `separate_transf_c_program_correct` when the host is a separate file (both in `Compiler.v`), which transfer the behaviour to assembly; `SimplExpr` and `SimplLocals` are part of the compiler theorem.  These depend on Coq's kernel; on the axioms of CompCert's `lib/Axioms.v`, functional extensionality and proof irrelevance, and the classical logic that `Behaviors.v` imports; and on its hypotheses about the target: the `Archi.v` parameters, which the Lean copy's `Archi` instances copy, the assembly semantics, and the semantics of the run-time helper functions | CompCert's development, checked by Coq when it is built from the release archive whose SHA-256 and SHA-512 the journal records |
+| CompCert's proof | Theorems `bigstep_semantics_sound` (`ClightBigstep.v`), which derives a behaviour of Clight's small-step semantics from a terminating big-step execution, and `transf_c_program_correct`, or `separate_transf_c_program_correct` when the host is a separate file (both in `Compiler.v`), which transfer the behaviour to assembly; `SimplExpr` and `SimplLocals` are part of the compiler theorem.  These depend on Coq's kernel; on the axioms of CompCert's `lib/Axioms.v`, functional extensionality and proof irrelevance, and the classical logic that `Behaviors.v` imports; and on its hypotheses about the target: the `Archi.v` parameters, which the Lean copy's `Archi` instances copy, the assembly semantics, and the semantics of the run-time helper functions | CompCert's development, checked by Coq when it is built from the release archive whose SHA-256 and SHA-512 [`LeanExe/Native/NOTICE`](../LeanExe/Native/NOTICE) records |
 | CompCert's unverified parts | Parser and elaborator that convert the C text to CompCert C; extraction of the compiler to OCaml; printer of assembly; and assembler and linker it calls.  The translation is compiled with `-fno-common`, which makes the printer emit `lx_mem` and `lx_pun`, globals without initializers, as `.bss` definitions rather than `.comm` symbols, and makes the AArch64 and x86-64 back ends address them directly rather than through the global offset table.  The option changes no Clight program, and the compiler's proof holds for either addressing | The front end by the `clightgen` comparison below; the rest is shared by every CompCert user |
 | Printer | `LeanExe/Native/Print.lean` and `CText.lean` write C text whose parse is `p.translation` | Not trusted: `native-verified build` has `clightgen` read the text back, and `ClightCheck.lean` compares the result with the translation before `ccomp` runs |
 | Written file | C file that `ccomp` compiles is the file whose parse matched the translation | Not trusted: `native-verified build` compiles the very file that `clightgen` read, after the comparison passes, so the comparison covers the write |

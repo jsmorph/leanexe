@@ -18,21 +18,21 @@ The loops of addition and subtraction take `k` steps, and the inner loop of mult
 
 | Theorem | File | Statement |
 |---|---|---|
-| `prefixValue_digit` | [The proof](Proof.lean) | Digit `i` of the value of the first `n` digits of a digit array is its word `i`, for `i < n`. |
-| `digits_eq` | [The proof](Proof.lean) | An array of `N` digits whose value is `x` modulo `b^N` is `digits N x`. |
-| `add_result`, `add_eq` | [The proof](Proof.lean) | The loop of Algorithm A and its final carry give `addSpec (u, v)`, for digit arrays of fewer than `2^64` words. |
-| `sub_result`, `sub_eq` | [The proof](Proof.lean) | The loop of Algorithm S gives `subSpec (u, v)`, for digit arrays of fewer than `2^64` words. |
-| `mul_outer_step`, `mul_eq` | [The proof](Proof.lean) | Each pass of Algorithm M keeps the invariant of the outer loop, and `mul` gives `mulSpec (u, v)` for digit arrays whose lengths sum to less than `2^64`. |
-| `value_eq_val` | [The division proof](DivideProof.lean) | `value` equals the Uscale module's `val`, in whose terms `mulSmall_spec` states its result. |
-| `quot_le_trial`, `quot_lt_of_tooBig`, `trial_le_quot_succ`, `passes_of_large` | [The division proof](DivideProof.lean) | Knuth's bounds on the trial digit: the first trial digit is at least the quotient digit, each decrease of step D3 happens above it, a digit whose remainder `r̂` reaches `b` passes the test, and a digit that passes the test is at most one above it. |
-| `trial_spec` | [The division proof](DivideProof.lean) | `trial` returns the quotient digit of the window or one more, and a digit. |
-| `mulsub_spec`, `addback_spec` | [The division proof](DivideProof.lean) | The loops of steps D4 and D6 subtract the multiple of the divisor from, and add the divisor to, the `t + 1` digits from position `j`. |
-| `main_step`, `longDiv_loop` | [The division proof](DivideProof.lean) | Each step of the main loop keeps `DivInv`, and the loop ends with it at position 0. |
-| `shortDiv_spec`, `normalize` | [The division proof](DivideProof.lean) | Short division returns the quotient digits and the remainder, and the shift of step D1 makes the top digit of the divisor at least `b / 2` without a carry. |
-| `longDiv_eq`, `divide_eq` | [The division proof](DivideProof.lean) | `divide u v = divSpec (u, v)` for digit arrays whose lengths sum to less than `2^62`. |
-| `add_export`, `sub_export`, `mul_export`, `divide_export` | [The compilation](Compiled.lean) | The exports `add`, `sub`, `mul`, and `divide` of `compiled.module` are functions 3, 4, 5, and 13. |
-| `add_call`, `sub_call`, `mul_call`, `divide_call` | [The compilation](Compiled.lean) | Each function, called from a ready store with digit arrays, with the bound on the lengths for `mul` and `divide`, and with room for its generated bound, returns its specification's array without a trap and leaves a ready store. |
-| `multiPrecision_file`, `multiPrecision_file_decode` | [The file theorems](File.lean) | `build/verified/multiPrecision.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `prefixValue_digit` | [`Proof.lean`](Proof.lean) | Digit `i` of the value of the first `n` digits of a digit array is its word `i`, for `i < n`. |
+| `digits_eq` | [`Proof.lean`](Proof.lean) | An array of `N` digits whose value is `x` modulo `b^N` is `digits N x`. |
+| `add_result`, `add_eq` | [`Proof.lean`](Proof.lean) | The loop of Algorithm A and its final carry give `addSpec (u, v)`, for digit arrays of fewer than `2^64` words. |
+| `sub_result`, `sub_eq` | [`Proof.lean`](Proof.lean) | The loop of Algorithm S gives `subSpec (u, v)`, for digit arrays of fewer than `2^64` words. |
+| `mul_outer_step`, `mul_eq` | [`Proof.lean`](Proof.lean) | Each pass of Algorithm M keeps the invariant of the outer loop, and `mul` gives `mulSpec (u, v)` for digit arrays whose lengths sum to less than `2^64`. |
+| `value_eq_val` | [`DivideProof.lean`](DivideProof.lean) | `value` equals the Uscale module's `val`, in whose terms `mulSmall_spec` states its result. |
+| `quot_le_trial`, `quot_lt_of_tooBig`, `trial_le_quot_succ`, `passes_of_large` | [`DivideProof.lean`](DivideProof.lean) | Knuth's bounds on the trial digit: the first trial digit is at least the quotient digit, each decrease of step D3 happens above it, a digit whose remainder `r̂` reaches `b` passes the test, and a digit that passes the test is at most one above it. |
+| `trial_spec` | [`DivideProof.lean`](DivideProof.lean) | `trial` returns the quotient digit of the window or one more, and a digit. |
+| `mulsub_spec`, `addback_spec` | [`DivideProof.lean`](DivideProof.lean) | The loops of steps D4 and D6 subtract the multiple of the divisor from, and add the divisor to, the `t + 1` digits from position `j`. |
+| `main_step`, `longDiv_loop` | [`DivideProof.lean`](DivideProof.lean) | Each step of the main loop keeps `DivInv`, and the loop ends with it at position 0. |
+| `shortDiv_spec`, `normalize` | [`DivideProof.lean`](DivideProof.lean) | Short division returns the quotient digits and the remainder, and the shift of step D1 makes the top digit of the divisor at least `b / 2` without a carry. |
+| `longDiv_eq`, `divide_eq` | [`DivideProof.lean`](DivideProof.lean) | `divide u v = divSpec (u, v)` for digit arrays whose lengths sum to less than `2^62`. |
+| `add_export`, `sub_export`, `mul_export`, `divide_export` | [`Compiled.lean`](Compiled.lean) | The exports `add`, `sub`, `mul`, and `divide` of `compiled.module` are functions 3, 4, 5, and 13. |
+| `add_call`, `sub_call`, `mul_call`, `divide_call` | [`Compiled.lean`](Compiled.lean) | Each function, called from a ready store with digit arrays, with the bound on the lengths for `mul` and `divide`, and with room for its generated bound, returns its specification's array without a trap and leaves a ready store. |
+| `multiPrecision_file`, `multiPrecision_file_decode` | [`File.lean`](File.lean) | `build/verified/multiPrecision.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 Each step's equation in the loops of Algorithms A, S, and M follows from the identity of its digit, `t % b + b * (t / b) = t`, by `linear_combination` over the integers.  In the division, the trial-digit theorems show that the digit of step D3 is in `{X / V, X / V + 1}`.  A borrow out of step D4 shows that the digit is one too large, and step D6 then leaves `X % V` in the window.  At position 0 the quotient digits are `U / V = value u / value v`, and the partial remainder is `(value u % value v) * d`, which step D8 divides by `d`.  The bounds on the lengths keep every index and every size below `2^64`, and the call theorems obtain the bound on each array from its presence in memory.  The limb routines of [the Uscale module](../Arithmetic/Uscale/README.md) use the same representation, which they state with `val` and `Limbs`.  The axiom reports of the call theorems name only `propext`, `Classical.choice`, and `Quot.sound`.
 

@@ -32,6 +32,18 @@ theorem cmp_eq (op : CmpOp) {l r : Expr S Γ .word} {L R : UInt64}
     (Expr.cmp op l r).denote funs env = op.apply L R := by
   subst hl hr; rfl
 
+/-- The signed comparisons of the words of `Int64` values are Lean's comparisons of the values,
+for every instance of the comparison. -/
+theorem slt_apply (a b : Int64) (inst : Decidable (a < b)) :
+    CmpOp.slt.apply a.toUInt64 b.toUInt64 = @decide (a < b) inst := by
+  simp only [CmpOp.apply]
+  exact decide_eq_decide.mpr Iff.rfl
+
+theorem sle_apply (a b : Int64) (inst : Decidable (a ≤ b)) :
+    CmpOp.sle.apply a.toUInt64 b.toUInt64 = @decide (a ≤ b) inst := by
+  simp only [CmpOp.apply]
+  exact decide_eq_decide.mpr Iff.rfl
+
 theorem not_eq {e : Expr S Γ .bool} {E : Bool} (h : e.denote funs env = E) :
     (Expr.not e).denote funs env = !E := by
   subst h; rfl

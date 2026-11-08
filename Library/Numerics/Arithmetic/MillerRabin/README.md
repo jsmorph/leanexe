@@ -18,14 +18,14 @@ The product of two residues modulo a word can need 128 bits, so the modular arit
 
 | Theorem | File | Statement |
 |---|---|---|
-| `addMod_spec`, `mulMod_spec` | [The proof](Proof.lean) | `addMod` gives `(a + b) mod m` for residues `a` and `b`, and `mulMod` gives `a b mod m` for a residue `a`. |
-| `powMod_spec`, `powMod_eq` | [The proof](Proof.lean) | `powMod x n m = powModSpec (x, n, m)` for all words. |
-| `twos_spec` | [The proof](Proof.lean) | `twos x` is `padicValNat 2 x` for `x > 0`. |
-| `testLoop_spec`, `test_eq` | [The proof](Proof.lean) | The squarings of step P4 find `n - 1` exactly when some `x^(2^j q)` with `1 ≤ j < k` is `n - 1` modulo `n`, and `test n x = testSpec (n, x)` for all words. |
-| `prime_passes`, `test_prime` | [The proof](Proof.lean) | A prime `n ≥ 3` is a strong probable prime to every base that it does not divide, so `test n x = 1`. |
-| `powMod_export`, `test_export` | [The compilation](Compiled.lean) | The exports `powMod` and `test` of `compiled.module` are functions 4 and 6. |
-| `powMod_callSpec`, `test_callSpec` | [The compilation](Compiled.lean) | From a ready store with room for the generated bound, functions 4 and 6 return `powModSpec x` and `testSpec x` without a trap and leave a ready store, as `Verified.CallSpec` states. |
-| `millerRabin_file`, `millerRabin_file_decode` | [The file theorems](File.lean) | `build/verified/millerRabin.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `addMod_spec`, `mulMod_spec` | [`Proof.lean`](Proof.lean) | `addMod` gives `(a + b) mod m` for residues `a` and `b`, and `mulMod` gives `a b mod m` for a residue `a`. |
+| `powMod_spec`, `powMod_eq` | [`Proof.lean`](Proof.lean) | `powMod x n m = powModSpec (x, n, m)` for all words. |
+| `twos_spec` | [`Proof.lean`](Proof.lean) | `twos x` is `padicValNat 2 x` for `x > 0`. |
+| `testLoop_spec`, `test_eq` | [`Proof.lean`](Proof.lean) | The squarings of step P4 find `n - 1` exactly when some `x^(2^j q)` with `1 ≤ j < k` is `n - 1` modulo `n`, and `test n x = testSpec (n, x)` for all words. |
+| `prime_passes`, `test_prime` | [`Proof.lean`](Proof.lean) | A prime `n ≥ 3` is a strong probable prime to every base that it does not divide, so `test n x = 1`. |
+| `powMod_export`, `test_export` | [`Compiled.lean`](Compiled.lean) | The exports `powMod` and `test` of `compiled.module` are functions 4 and 6. |
+| `powMod_callSpec`, `test_callSpec` | [`Compiled.lean`](Compiled.lean) | From a ready store with room for the generated bound, functions 4 and 6 return `powModSpec x` and `testSpec x` without a trap and leave a ready store, as `Verified.CallSpec` states. |
+| `millerRabin_file`, `millerRabin_file_decode` | [`File.lean`](File.lean) | `build/verified/millerRabin.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `twos_spec` uses Mathlib's facts that `2^k` divides `x` and `2^(k + 1)` does not, so the bits below `k` are 0 and bit `k` is 1.  `prime_passes` works in the field `ZMod n`.  There `x^(n - 1) = 1` by Fermat's little theorem, so the powers `x^(2^j q)` reach 1 by `j = k`.  The power before the first 1 squares to 1 and is not 1, so it is `-1`.  The axiom reports of the call theorems and of `test_prime` name only `propext`, `Classical.choice`, and `Quot.sound`.
 

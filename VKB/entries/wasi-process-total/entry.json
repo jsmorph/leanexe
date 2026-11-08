@@ -4,7 +4,8 @@
     "Verified.Wasi.ProcessTotalPremises source host pure program entry represented relation charge beginCharge initial heap",
     "∃ bound, ∀ fuel ≥ bound, run fuel module startIndex store [] targetHost = .Trap final exitTrap",
     "room for a step: heap.top.toNat + copyCost + charge ≤ 65536 * memoryCap",
-    "a budget for a whole run of a WASI process"
+    "a budget for a whole run of a WASI process",
+    "Verified.Wasi.ReturnOrAcceptedExit host action initial (run fuel module index store [] targetHost)"
   ],
   "modules": [
     "Verified.Wasi.ProcessTotalCorrect",
@@ -14,7 +15,10 @@
     "Demos.RunningSum.Limits",
     "Demos.RunningSum.Charges",
     "Demos.RunningSum.TerminationTarget",
-    "Demos.RunningSumFp.Correct"
+    "Demos.RunningSumFp.Correct",
+    "Verified.Wasi.CostTotal",
+    "Verified.Examples.WasiRetainTotal",
+    "Demos.OrderBook.ProcessCompiledCorrect"
   ],
   "declarations": [
     "Verified.Wasi.ProcessTotalPremises",
@@ -22,7 +26,8 @@
     "Verified.Wasi.ProcessStored",
     "Verified.Wasi.wp_process_compact",
     "Verified.Ty.compactable",
-    "Verified.Ty.copyCost_mod"
+    "Verified.Ty.copyCost_mod",
+    "Verified.Wasi.ReturnOrAcceptedExit"
   ],
   "examples": [
     "Demos.RunningSum.RunCharges",
@@ -34,13 +39,12 @@
     "Demos.RunningSum.Termination.StepAdvances",
     "Demos.RunningSum.Termination.target_terminates",
     "Demos.RunningSum.initial_terminates_integer",
-    "Demos.RunningSumFp.initial_terminates_fp"
-  ],
-  "sources": [
-    "2026-10-25: Address the WASI review findings",
-    "2026-10-26: Complete review of the WASI work",
-    "2026-10-26: Memory accounting for the process loop",
-    "2026-10-26: Building the process compaction",
-    "2026-10-27: The charges of the integer running sum"
+    "Demos.RunningSumFp.initial_terminates_fp",
+    "Verified.Examples.WasiRetain.retain_total",
+    "Demos.OrderBook.Process.Sized",
+    "Demos.OrderBook.Process.stepCharge",
+    "Demos.OrderBook.Process.initial_room",
+    "Demos.OrderBook.Process.terminates_of_room",
+    "Demos.OrderBook.Process.initial_terminates"
   ]
 }

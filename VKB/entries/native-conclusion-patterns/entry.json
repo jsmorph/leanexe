@@ -7,7 +7,10 @@
   ],
   "modules": [
     "LeanExe.Native.Proof.Unique",
-    "Verified.Bare"
+    "Verified.Bare",
+    "LeanExe.Native.Proof.Req",
+    "LeanExe.Native.Proof.Ctl",
+    "TestSupport.Native.GcdNative"
   ],
   "declarations": [
     "LeanExe.Native.NativeA",
@@ -18,9 +21,9 @@
   ],
   "examples": [
     "LeanExe.Native.bare_of_nativeA",
-    "Verified.bare_of_nativeTables"
-  ],
-  "sources": [
-    "2026-10-30: The cap and region conclusions of the native statements"
+    "Verified.bare_of_nativeTables",
+    "LeanExe.Native.reqRuns_of_nativeA",
+    "LeanExe.Native.ctlRuns_of_nativeA",
+    "TestSupport.Native.Gcd.loop_native_init"
   ]
 }

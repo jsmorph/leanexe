@@ -2,20 +2,55 @@
   "id": "verified-wgsl-kernel",
   "goals": [
     "k.dispatch [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer] output count = some (arrayWords (floatWords (f a x))) ∧ k.RaceFree",
-    "gpu.spec.Fits (gpu.args env) n"
+    "gpu.spec.Fits (gpu.args env) n",
+    "LeanExe.WGSL.Dispatch.Meets d out",
+    "Verified.PTX.LaunchSeq m args n ys blocks block value",
+    "Verified.PTX.LaunchMeets m args n ys blocks block value",
+    "Demos.Gpt32.Backend D"
   ],
   "modules": [
     "Verified.WGSL.Compile",
+    "Verified.WGSL.Dispatch",
+    "LeanExe.WGSL.MemoryModelProof",
+    "Verified.PTX.Compile",
+    "Verified.WgslPtx",
+    "LeanExe.PTX.Launch",
+    "LeanExe.PTX.AddOne",
     "Examples.Binary32.Compiled",
+    "Examples.Binary32.CompiledPtx",
     "Demos.Gpt32.VerifiedDispatch",
-    "Verified.Examples.WgslProof"
+    "Demos.Gpt32.VerifiedPtx",
+    "Demos.Gpt32.VerifiedHost",
+    "Demos.Gpt32.VerifiedPtxHost",
+    "Verified.Examples.WgslProof",
+    "Verified.Examples.Ptx"
   ],
   "declarations": [
     "Verified.WGSL.compile",
-    "Verified.WGSL.lower",
+    "Verified.PTX.compile",
+    "Verified.Kernel.KernelPlan.ofBuild",
+    "Verified.Kernel.lower",
     "Verified.WGSL.Compiled.dispatch_value",
     "Verified.WGSL.Compiled.dispatch_eq",
-    "LeanExe.WGSL.Spec.Fits"
+    "Verified.WGSL.Kernel.executions_eq",
+    "LeanExe.WGSL.Dispatch.executions",
+    "LeanExe.WGSL.Dispatch.Meets",
+    "LeanExe.WGSL.Dispatch.meets",
+    "LeanExe.Source.Spec.Fits",
+    "Verified.PTX.Compiled.launch_value",
+    "Verified.PTX.Compiled.executions_eq",
+    "Verified.PTX.Kernel.executions_eq",
+    "Verified.PTX.LaunchSeq",
+    "Verified.PTX.LaunchMeets",
+    "Verified.PTX.Compiled.of_wgsl",
+    "LeanExe.PTX.Launch.seq_some",
+    "LeanExe.PTX.Launch.executions",
+    "Demos.Gpt32.Device",
+    "Demos.Gpt32.Backend",
+    "Demos.Gpt32.Item.execAll_sim",
+    "Demos.Gpt32.generate_host",
+    "Verified.Kernel.binOp",
+    "Verified.Kernel.cmpExpr"
   ],
   "examples": [
     "Examples.Binary32.scale32_dispatch",
@@ -23,10 +58,15 @@
     "Examples.Binary32.matVec32_dispatch",
     "Demos.Gpt32.Verified.expKernel_dispatch",
     "Verified.Examples.Wgsl.scale_dispatch",
-    "Examples.Binary32.condMix32_dispatch"
-  ],
-  "sources": [
-    "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "Examples.Binary32.condMix32_dispatch",
+    "Verified.Examples.Ptx.words_executions",
+    "Examples.Binary32.scale32_executions",
+    "Demos.Gpt32.VerifiedPtx.expKernel_launch",
+    "LeanExe.PTX.addOne_seq",
+    "LeanExe.PTX.addOne_executions",
+    "Demos.Gpt32.Verified.apply_dispatch",
+    "Demos.Gpt32.VerifiedPtx.apply_launch",
+    "Demos.Gpt32.Verified.generate_host",
+    "Demos.Gpt32.VerifiedPtx.generate_host"
   ]
 }

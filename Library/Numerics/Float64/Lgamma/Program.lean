@@ -28,9 +28,8 @@ The global `signgam` is the second result of `lgammaWith`.  C's 32-bit `unsigned
 piece index does not overflow for these arguments, so the port computes it in words, and the final
 test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask, masks with `0xFFFFFFFF`.
 The `verified_compile` call at the end of the module checks the encoding one function at a time and
-needs about 2.1 GB, and its elaboration needs more than the default 200,000 heartbeats.  The journal
-records the measurements.  `LgammaAccuracy.lean` checks the results against a reference computed
-with Lean's integers.
+needs about 2.1 GB, and its elaboration needs more than the default 200,000 heartbeats.
+`LgammaAccuracy.lean` checks the results against a reference computed with Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 

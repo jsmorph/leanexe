@@ -11,7 +11,7 @@ that holds the bytes of a file.
 
 namespace LeanExe.A64
 
-export LeanExe.FileNat (natOfBytes byteAt byteAt_natOfBytes)
+export LeanExe.FileNat (natOfBytes byteAt byteAt_natOfBytes natOfBytesPaired natOfBytesPaired_eq)
 
 /-- The generator's result `g` is code whose bytes have the number `n` and the length `len`. -/
 def fileOk (g : Except String (List Instr)) (n len : Nat) : Bool :=
@@ -37,10 +37,12 @@ theorem of_file {g : Except String (List Instr)} {n len : Nat} (hk : fileOk g n 
       refine ⟨is, by rw [← hl, length_imageBytes], hthm is hg fun j hj => ?_⟩
       rw [h j (hl ▸ hj), ← hn, byteAt_natOfBytes]
 
-/-- The generator's result `g` holds bytes with the number `n` and the length `len`. -/
+/-- The generator's result `g` holds bytes with the number `n` and the length `len`.  The number
+of the bytes is `natOfBytesPaired`, which equals `natOfBytes` and which the kernel evaluates in
+memory about linear in the number of bytes. -/
 def bytesOk {α : Type} (g : Except String (List UInt8 × α)) (n len : Nat) : Bool :=
   match g with
-  | .ok (bytes, _) => natOfBytes bytes == n && bytes.length == len
+  | .ok (bytes, _) => natOfBytesPaired bytes == n && bytes.length == len
   | .error _ => false
 
 /-- When the kernel's check `hk` passes, the generator's bytes are the `len` bytes of the number
@@ -54,7 +56,7 @@ theorem of_bytesOk {α : Type} {g : Except String (List UInt8 × α)} {n len : N
   | ok r =>
       obtain ⟨bytes, x⟩ := r
       rw [hg] at hk
-      simp only [bytesOk, Bool.and_eq_true, beq_iff_eq] at hk
+      simp only [bytesOk, Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq] at hk
       obtain ⟨hn, hl⟩ := hk
       exact ⟨bytes, x, rfl, hl, fun j hj => by rw [← hn, byteAt_natOfBytes]⟩
 

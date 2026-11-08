@@ -42,11 +42,5 @@
     "Examples.Lookup.lookup_call",
     "Examples.Binary32.condMix32_dispatch",
     "Library.Numerics.Arithmetic.PrimeFactors.primeFactors_call"
-  ],
-  "sources": [
-    "2026-10-30: Array literals and conditions on propositions in the reflector",
-    "2026-10-30: The example ports to the verified compiler",
-    "2026-10-30: A reflector rule for structure patterns, and the port of Calc",
-    "2026-10-31: The structure-pattern rule on structures with a `Flat` instance"
   ]
 }

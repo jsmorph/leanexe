@@ -13,13 +13,14 @@ context `Γ` that may call functions
 with the signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only
 variables in scope, and calls only functions that exist.  Each operation means Lean's operation:
 arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and
-a shift uses its amount modulo 64. -/
+a shift uses its amount modulo 64.  The arithmetic shift and the signed comparisons read a word as
+Lean's `Int64` of its two's-complement bits. -/
 
 namespace Verified
 
-/-- A binary operation on words. -/
+/-- A binary operation on words.  `sar` is the arithmetic shift right. -/
 inductive BinOp where
-  | add | sub | mul | div | rem | and | or | xor | shl | shr
+  | add | sub | mul | div | rem | and | or | xor | shl | shr | sar
   deriving Repr, DecidableEq
 
 /-- Lean's operation. -/
@@ -34,18 +35,21 @@ def BinOp.apply : BinOp → UInt64 → UInt64 → UInt64
   | .xor, a, b => a ^^^ b
   | .shl, a, b => a <<< b
   | .shr, a, b => a >>> b
+  | .sar, a, b => (a.toInt64 >>> b.toInt64).toUInt64
 
-/-- A comparison of words. -/
+/-- A comparison of words: `lt` and `le` unsigned, `slt` and `sle` signed. -/
 inductive CmpOp where
-  | eq | ne | lt | le
+  | eq | ne | lt | le | slt | sle
   deriving Repr, DecidableEq
 
-/-- Lean's comparison, unsigned. -/
+/-- Lean's comparison of the words, or of their `Int64` values. -/
 def CmpOp.apply : CmpOp → UInt64 → UInt64 → Bool
   | .eq, a, b => a == b
   | .ne, a, b => a != b
   | .lt, a, b => decide (a < b)
   | .le, a, b => decide (a ≤ b)
+  | .slt, a, b => decide (a.toInt64 < b.toInt64)
+  | .sle, a, b => decide (a.toInt64 ≤ b.toInt64)
 
 /-- A binary operation on floats. -/
 inductive FBinOp where

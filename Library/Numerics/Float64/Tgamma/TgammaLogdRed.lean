@@ -14,8 +14,8 @@ a signed word, so that the product wraps modulo `2^64` for the negative `B_i` of
 the ends of an interval of `t` that contains every mantissa with index `j`: from `f` within `|B_i|`
 of the linear function `i 2^47 + A_i + (m - i 2^47) (2^16 + B_i)/2^16`.  `red_sound` turns the
 check into the bound, and `redCheck_logd` evaluates it for `Tgamma.logdTable` with the kernel.
-A sample of 2.6 million mantissas gives `4.03 · 10^-4` against `1/2400 ≈ 4.17 · 10^-4`
-(`devnotes.md`), and the check's intervals reach `4.0297 · 10^-4`.
+A sample of 2.6 million mantissas gives `4.03 · 10^-4` against `1/2400 ≈ 4.17 · 10^-4`, and the
+check's intervals reach `4.0297 · 10^-4`.
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaLogdRed

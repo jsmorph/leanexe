@@ -4,7 +4,10 @@
     "LeanExe.ProofKit.F64Approx.FApprox x v e",
     "|value x.toBits - v| ≤ e for a Float computed by a chain of operations",
     "CodeLib.IEEE64.Finite (Wasm.IEEE64.add a b) → Finite a ∧ Finite b",
-    "max a b with a NaN operand"
+    "max a b with a NaN operand",
+    "Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest → |value (Fma.fma a b c).toBits - (value a.toBits * value b.toBits + value c.toBits)| ≤ e",
+    "LeanExe.ProofKit.F64Outward.Sound up result x from result.status = 0",
+    "the value of an operation that selects an operand, such as minmod"
   ],
   "modules": [
     "LeanExe.ProofKit.F64Approx",
@@ -12,7 +15,16 @@
     "Demos.Slew.Valid",
     "Demos.Slew.Check",
     "Demos.Slew.NanFree",
-    "Demos.Slew.Safety"
+    "Demos.Slew.Safety",
+    "LeanExe.ProofKit.F64NearReal",
+    "LeanExe.ProofKit.F64OutwardAccepted",
+    "LeanExe.ProofKit.F64Order",
+    "Library.Numerics.Arithmetic.Fma.FmaSpec",
+    "Library.Numerics.Float64.Tgamma.TgammaDD",
+    "Library.Numerics.Float64.Erfc.ErfcTrack",
+    "Library.Numerics.Bounds.Proof",
+    "Library.Numerics.Limiters.Minmod.Proof",
+    "Demos.Euler.Enclosure"
   ],
   "declarations": [
     "LeanExe.ProofKit.F64Approx.Approx",
@@ -37,17 +49,26 @@
     "Demos.Slew.Valid.finite_of_sub",
     "Demos.Slew.Valid.finite_of_mul",
     "Demos.Slew.Valid.fin_add",
-    "Demos.Slew.Valid.lower_of_enclosure"
+    "Demos.Slew.Valid.lower_of_enclosure",
+    "Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest",
+    "LeanExe.ProofKit.F64NearReal.nearest_bound",
+    "LeanExe.ProofKit.F64Outward.add",
+    "LeanExe.ProofKit.F64Outward.Sound",
+    "LeanExe.ProofKit.F64Outward.add_accepted",
+    "Library.Numerics.Bounds.outAdd_word",
+    "Library.Numerics.Bounds.outAdd_accepted",
+    "LeanExe.ProofKit.F64Order.abs_value_mono"
   ],
   "examples": [
     "Demos.Slew.Check.edgeOk_sound",
     "Demos.Slew.NanFree.plan_finite",
-    "Demos.Slew.Safety.plan_safe"
-  ],
-  "sources": [
-    "2026-10-26: The slew planner: program, theorems, and tests",
-    "2026-10-26: The slew edge check proved sound",
-    "2026-10-26: The slew safety theorem proved",
-    "2026-10-26: NaN-freedom of the slew planner"
+    "Demos.Slew.Safety.plan_safe",
+    "Library.Numerics.Float64.Tgamma.TgammaDD.fma_approx",
+    "Library.Numerics.Float64.Erfc.ErfcOps.fma_f",
+    "Library.Numerics.Float64.Erfc.ErfcOps.nearest_err",
+    "Library.Numerics.Float64.Erfc.ErfcTrack.tr_fma",
+    "Demos.Euler.kineticLower_le",
+    "Demos.Euler.speedUpper_ge",
+    "Library.Numerics.Limiters.Minmod.real_minmod"
   ]
 }

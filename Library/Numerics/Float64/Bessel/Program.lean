@@ -32,8 +32,8 @@ special values are those of POSIX.1-2017: `j0 (±∞) = j1 (±∞) = 0`, `y0`, `
 `LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel, more than it can take, and the constants are
 the bit patterns that fdlibm's comments give, which match its decimal literals.  The
 `verified_compile` call at the end of the module checks the encoding one function at a time and
-needs about 1.0 GB.  The journal records the measurements.  `BesselAccuracy.lean` checks the results
-against references computed with Lean's integers.
+needs about 1.0 GB.  `BesselAccuracy.lean` checks the results against references computed with
+Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 

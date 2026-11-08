@@ -1,10 +1,8 @@
 # Verified compiler: WASI Preview 1 design
 
-[The WASI manual](wasi.md) describes the public API and generated declarations.  [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records implementation and test results.
-
 ## Scope and sources
 
-The host interface consists of `fd_read`, `fd_write`, and `proc_exit` in `wasi_snapshot_preview1`.  Source operations select stdin 0, stdout 1, or stderr 2.  A program can compute between operations, inspect errors and short transfers, and return or exit.  Later work may add other Preview 1 operations and library retry policies.
+The host interface consists of `fd_read`, `fd_write`, and `proc_exit` in `wasi_snapshot_preview1`.  Source operations select stdin 0, stdout 1, or stderr 2.  A program can compute between operations, inspect errors and short transfers, and return or exit.  Later work may add other Preview 1 operations and library retry policies.  [The WASI manual](wasi.md) describes the public API and generated declarations.
 
 The specification pin is WebAssembly/WASI commit `fae981bae14809d91f9bc2d63852d461f331d161`.  Its [interface definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), [generated reference](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/docs.md), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md) are the external references.  A future specification update requires review of the ABI, host assumptions, and proof statements.
 
@@ -102,7 +100,7 @@ The memory frame excludes scratch and, for a read, the newly allocated writable 
 
 ## Observable semantics and host assumptions
 
-[The trusted-base document](trusted-base.md#i-wasi-preview-1-modules) lists the host assumptions of the WASI theorems, with the check and the source of each.  It names the definitions of the Preview 1 model that a statement unfolds to and the theorems that state when a satisfying host exists.  The command meaning and the rules for errors and traps that the subsections state are part of what those theorems depend on without proof.
+[The trusted-base document](trusted-base.md#wasi-wasi-preview-1-modules) lists the host assumptions of the WASI theorems, with the check and the source of each.  It names the definitions of the Preview 1 model that a statement unfolds to and the theorems that state when a satisfying host exists.  The command meaning and the rules for errors and traps that the subsections state are part of what those theorems depend on without proof.
 
 ### Command meaning
 

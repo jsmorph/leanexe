@@ -4,8 +4,8 @@ import Library.Numerics.Float64.Atan.AtanTwoArg
 /-!
 Word facts for `Atan.atan2`.  The tests of the code on the high words `ix`, `iy` and the low
 words `lx`, `ly` become arithmetic on `toNat`: the NaN test fails for finite inputs, the zero test
-holds exactly for `±0`, and the shifted difference `k` of the high words is `(iy - ix)/2 ^ 20` for
-`iy ≥ ix` and `2 ^ 64` minus the rounded-up quotient otherwise.  `m` is the sign bit of `y` plus
+holds exactly for `±0`, and the shifted difference `k` of the high words is the floor of
+`(iy - ix)/2 ^ 20`.  `m` is the sign bit of `y` plus
 twice that of `x`.  The words of the constant results come from evaluating the operations.
 -/
 
@@ -30,14 +30,6 @@ theorem exp_ix (x : Float) : Wasm.IEEE64.exponent x.toBits = (ixOf x).toNat / 2 
   simp only [Wasm.IEEE64.exponent]
   have := x.toBits.toNat_lt
   omega
-
-theorem shr63 (k : UInt64) : (k >>> 63).toNat = k.toNat / 2 ^ 63 := by
-  rw [UInt64.toNat_shiftRight, show (63 : UInt64).toNat % 64 = 63 from rfl,
-    Nat.shiftRight_eq_div_pow]
-
-theorem shr20 (k : UInt64) : (k >>> 20).toNat = k.toNat / 2 ^ 20 := by
-  rw [UInt64.toNat_shiftRight, show (20 : UInt64).toNat % 64 = 20 from rfl,
-    Nat.shiftRight_eq_div_pow]
 
 theorem sign_toNat (w : UInt64) :
     (Wasm.IEEE64.sign w = true ↔ w.toNat / 2 ^ 63 = 1) ∧
@@ -155,85 +147,40 @@ theorem inf_test (x : Float) (hx : Finite x.toBits) : (ixOf x == 0x7ff00000) = f
   omega
 
 theorem k_cases (y x : Float) :
-    ((ixOf x).toNat ≤ (ixOf y).toNat →
-      (kOf2 y x).toNat = ((ixOf y).toNat - (ixOf x).toNat) / 2 ^ 20) ∧
-    ((ixOf y).toNat < (ixOf x).toNat →
-      (kOf2 y x).toNat =
-        2 ^ 64 - 2 ^ 44 + (2 ^ 64 - ((ixOf x).toNat - (ixOf y).toNat)) / 2 ^ 20) := by
+    (kOf2 y x).toInt = (((ixOf y).toNat : Int) - (ixOf x).toNat) / 2 ^ 20 := by
   have hix := ix_lt x
   have hiy := ix_lt y
   have hd : (ixOf y - ixOf x).toNat = (2 ^ 64 - (ixOf x).toNat + (ixOf y).toNat) % 2 ^ 64 :=
     UInt64.toNat_sub _ _
-  constructor
-  · intro hle
-    have hz : ((ixOf y - ixOf x) >>> 63 == 1) = false := by
-      rw [beq_eq_false_iff_ne]
-      intro h
-      have := congrArg UInt64.toNat h
-      rw [shr63, hd, show (1 : UInt64).toNat = 1 from rfl] at this
-      omega
-    unfold kOf2
-    rw [hz, if_neg (by decide)]
-    simp only [UInt64.toNat_or, shr20, hd, show (0 : UInt64).toNat = 0 from rfl, Nat.or_zero]
-    omega
-  · intro hlt
-    have ho : ((ixOf y - ixOf x) >>> 63 == 1) = true := by
-      rw [beq_iff_eq, ← UInt64.toNat_inj, shr63, hd, show (1 : UInt64).toNat = 1 from rfl]
-      omega
-    unfold kOf2
-    rw [ho, if_pos rfl]
-    simp only [UInt64.toNat_or, shr20, hd]
-    rw [show (0xFFFFF00000000000 : UInt64).toNat = 2 ^ 44 * (2 ^ 20 - 1) from rfl]
-    have hb : (2 ^ 64 - (ixOf x).toNat + (ixOf y).toNat) % 2 ^ 64 / 2 ^ 20 < 2 ^ 44 := by omega
-    rw [Nat.or_comm, ← Nat.two_pow_add_eq_or_of_lt hb]
-    omega
+  rw [kOf2, Signed64Value.toInt_shiftRight (ixOf y - ixOf x).toInt64 20 (by decide),
+    Signed64Value.toInt_toInt64, hd, show (20 : Int64).toUInt64.toNat = 20 from rfl]
+  split <;> omega
 
-theorem big_cond (y x : Float)
-    (h : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = true) :
+theorem big_cond (y x : Float) (h : kOf2 y x > 60) :
     (ixOf x).toNat + 61 * 2 ^ 20 ≤ (ixOf y).toNat := by
-  obtain ⟨k1, k2⟩ := k_cases y x
   have hix := ix_lt x
   have hiy := ix_lt y
-  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq, gt_iff_lt, ← UInt64.toNat_inj,
-    shr63, UInt64.lt_iff_toNat_lt, show (0 : UInt64).toNat = 0 from rfl] at h
-  rw [show (60 : UInt64).toNat = 60 from rfl] at h
-  rcases Nat.lt_or_ge (ixOf y).toNat (ixOf x).toNat with hlt | hge
-  · rw [k2 hlt] at h
-    omega
-  · rw [k1 hge] at h
-    omega
+  rw [gt_iff_lt, Int64.lt_iff_toInt_lt, k_cases, show (60 : Int64).toInt = 60 by decide] at h
+  omega
 
-theorem nbig_cond (y x : Float)
-    (h : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = false) :
+theorem nbig_cond (y x : Float) (h : ¬ kOf2 y x > 60) :
     (ixOf y).toNat < (ixOf x).toNat + 61 * 2 ^ 20 := by
-  by_contra hc
-  push Not at hc
-  have hk := (k_cases y x).1 (by omega)
+  have hix := ix_lt x
   have hiy := ix_lt y
-  simp only [Bool.and_eq_false_iff, beq_eq_false_iff_ne, decide_eq_false_iff_not, ne_eq,
-    ← UInt64.toNat_inj, shr63, gt_iff_lt, UInt64.lt_iff_toNat_lt,
-    show (0 : UInt64).toNat = 0 from rfl, show (60 : UInt64).toNat = 60 from rfl, hk] at h
+  rw [gt_iff_lt, Int64.lt_iff_toInt_lt, k_cases, show (60 : Int64).toInt = 60 by decide] at h
   omega
 
 theorem tiny_cond (y x : Float)
-    (h : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = true) :
+    (h : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = true) :
     Wasm.IEEE64.sign x.toBits = true ∧ (ixOf y).toNat + 60 * 2 ^ 20 < (ixOf x).toNat := by
-  obtain ⟨k1, k2⟩ := k_cases y x
   have hix := ix_lt x
   have hiy := ix_lt y
   simp only [Bool.and_eq_true, decide_eq_true_eq] at h
-  obtain ⟨⟨hs, h63⟩, hlt⟩ := h
+  obtain ⟨hs, hlt⟩ := h
   rw [F64UpperWord.sign_test] at hs
   refine ⟨hs, ?_⟩
-  rw [beq_iff_eq, ← UInt64.toNat_inj, shr63, show (1 : UInt64).toNat = 1 from rfl] at h63
-  rw [UInt64.lt_iff_toNat_lt,
-    show (0xFFFFFFFFFFFFFFC4 : UInt64).toNat = 2 ^ 64 - 60 from rfl] at hlt
-  rcases Nat.lt_or_ge (ixOf y).toNat (ixOf x).toNat with hl | hge
-  · rw [k2 hl] at hlt
-    omega
-  · rw [k1 hge] at h63
-    omega
+  rw [Int64.lt_iff_toInt_lt, k_cases, show (-60 : Int64).toInt = -60 by decide] at hlt
+  omega
 
 theorem m_toNat (y x : Float) :
     (mOf y x).toNat = y.toBits.toNat / 2 ^ 63 + 2 * (x.toBits.toNat / 2 ^ 63) := by

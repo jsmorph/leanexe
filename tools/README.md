@@ -57,6 +57,20 @@ identify their outputs and how the kernel checks them.  [The Euler runner](euler
 [Euler](../Demos/Euler/README.md) and [GPT](../Demos/Gpt/README.md) documents give their input
 formats and reproduction commands, with the theorem premises for compiled calls.
 
+## Sail translation
+
+[The Sail scripts](sail/README.md) translate the floating-point functions of the Armv9.4-A Sail
+model into Lean with Sail's Lean back end, elaborate the output with Lean v4.29.0 and with the
+repository's toolchain, test it with exact rationals and with Sail's C emulator against Talos's
+binary64 functions, and prove that the translated FPAdd, FPSub, FPMul, FPDiv, FPSqrt, FixedToFP,
+and FPToFixed at 64 bits compute Talos's `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`,
+`f64ConvertI64U`, and `i64TruncSatF64U`, and that FPCompare at 64 bits gives the flags of Talos's
+comparisons.  They prove the same of the single-precision forms, FRINTN's FPRoundInt among them,
+against Talos's binary32 functions.  Their README gives the versions, the sources, the edits that
+the output needs before it elaborates, the state hypothesis, the tests, the proofs' measures, the
+join with the Isla equations, the check that regenerates the translation, what the proofs trust,
+and the commands.  The A64 model and its proofs do not use them.
+
 ## Repository checks
 
 [The documentation checker](check-doc-links.mjs) follows relative links from the root README

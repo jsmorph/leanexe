@@ -18,14 +18,14 @@ The main loop keeps `OuterInv` after `f` steps: the queue holds distinct vertice
 
 | Theorem | File | Statement |
 |---|---|---|
-| `countPredecessors_spec` | [The proof](Proof.lean) | The counts have one word per vertex, and each is the number of relations into its vertex. |
-| `initialQueue_spec` | [The proof](Proof.lean) | The initial queue lists, in increasing order, the vertices whose count is 0. |
-| `inner_step` | [The proof](Proof.lean) | One relation of the scan for the vertex at position `f` keeps the scan's invariant. |
-| `outer_init`, `outer_step`, `process_spec` | [The proof](Proof.lean) | The counts and the initial queue meet `OuterInv`, each step of the main loop keeps it, and it holds at the end of the loop. |
-| `topoSort_spec` | [The proof](Proof.lean) | On a valid input with fewer than `2^64` words, `topoSort xs` is a topological order, or it is the empty array and no topological order exists. |
-| `topoSort_export` | [The compilation](Compiled.lean) | Export `topoSort` of `compiled.module` is function 5. |
-| `topoSort_call` | [The compilation](Compiled.lean) | Function 5, called from a ready store with room for `compiled.topoSort.bound xs` bytes, returns without a trap the owned array `topoSort xs` and leaves a ready store. |
-| `topoSort_file`, `topoSort_file_decode` | [The file theorems](File.lean) | `build/verified/topoSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `countPredecessors_spec` | [`Proof.lean`](Proof.lean) | The counts have one word per vertex, and each is the number of relations into its vertex. |
+| `initialQueue_spec` | [`Proof.lean`](Proof.lean) | The initial queue lists, in increasing order, the vertices whose count is 0. |
+| `inner_step` | [`Proof.lean`](Proof.lean) | One relation of the scan for the vertex at position `f` keeps the scan's invariant. |
+| `outer_init`, `outer_step`, `process_spec` | [`Proof.lean`](Proof.lean) | The counts and the initial queue meet `OuterInv`, each step of the main loop keeps it, and it holds at the end of the loop. |
+| `topoSort_spec` | [`Proof.lean`](Proof.lean) | On a valid input with fewer than `2^64` words, `topoSort xs` is a topological order, or it is the empty array and no topological order exists. |
+| `topoSort_export` | [`Compiled.lean`](Compiled.lean) | Export `topoSort` of `compiled.module` is function 5. |
+| `topoSort_call` | [`Compiled.lean`](Compiled.lean) | Function 5, called from a ready store with room for `compiled.topoSort.bound xs` bytes, returns without a trap the owned array `topoSort xs` and leaves a ready store. |
+| `topoSort_file`, `topoSort_file_decode` | [`File.lean`](File.lean) | `build/verified/topoSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 The equation of `InnerInv` shows that a count is at least 1 whenever the scan decreases it, so the subtraction, which the program applies only to counts other than 1, does not wrap.  At the end, a queue of `n` vertices is a topological order.  A shorter queue leaves every vertex outside it with a predecessor outside it, and in any order the first vertex outside the queue has such a predecessor, which the order must put before it, so no topological order exists.  The axiom reports of `topoSort_call` and `topoSort_spec` name only `propext`, `Classical.choice`, and `Quot.sound`.
 

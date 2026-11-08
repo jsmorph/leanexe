@@ -16,21 +16,21 @@ The library's `KeyTree.insert` computes the same tree by recursion, and the comp
 
 | Theorem | File | Statement |
 |---|---|---|
-| `search_eq` | [The proof](Proof.lean) | `search x t` is the flag of `algorithmT x t`, for every tree. |
-| `descend_eq` | [The proof](Proof.lean) | `descend x path t` returns what `ascend x path` returns from the tree of `algorithmT x t`. |
-| `insert_eq` | [The proof](Proof.lean) | `insert x t` is the tree of `algorithmT x t`, for every tree. |
-| `algorithmT_snd` | [The proof](Proof.lean) | The tree of `algorithmT x t` is the library's `t.insert x`. |
-| `mem_keys_algorithmT`, `mem_keys_insert` | [The proof](Proof.lean) | The keys after the insertion are those of `t` and `x`, for every tree. |
-| `found_algorithmT` | [The proof](Proof.lean) | On a binary search tree the search succeeds exactly when `x` is a key. |
-| `ordered_algorithmT`, `ordered_insert` | [The proof](Proof.lean) | On a binary search tree the tree afterward is a binary search tree. |
-| `keys_algorithmT` | [The proof](Proof.lean) | On a binary search tree the keys afterward in symmetric order are those of `t`, with `x` inserted in order when the search fails. |
-| `searchTree` | [The proof](Proof.lean) | `SearchTree x t` holds for every binary search tree `t`. |
-| `search_export`, `insert_export` | [The compilation](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 5. |
-| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a borrowed tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap the flag of `algorithmT` and raises `top` by at most the bound. |
-| `insert_implements` | [The compilation](Compiled.lean) | Function 5, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmT` and raises `top` by at most the bound. |
-| `search_bound`, `ascend_bound` | [The compilation](Compiled.lean) | `compiled.search.bound` and `compiled.ascend.bound` are 0. |
-| `descend_bound`, `insert_bound` | [The compilation](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 72 bytes, the block of one node, when it fails. |
-| `treeSearch_file`, `treeSearch_file_decode` | [The file theorems](File.lean) | `build/verified/treeSearch.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `search_eq` | [`Proof.lean`](Proof.lean) | `search x t` is the flag of `algorithmT x t`, for every tree. |
+| `descend_eq` | [`Proof.lean`](Proof.lean) | `descend x path t` returns what `ascend x path` returns from the tree of `algorithmT x t`. |
+| `insert_eq` | [`Proof.lean`](Proof.lean) | `insert x t` is the tree of `algorithmT x t`, for every tree. |
+| `algorithmT_snd` | [`Proof.lean`](Proof.lean) | The tree of `algorithmT x t` is the library's `t.insert x`. |
+| `mem_keys_algorithmT`, `mem_keys_insert` | [`Proof.lean`](Proof.lean) | The keys after the insertion are those of `t` and `x`, for every tree. |
+| `found_algorithmT` | [`Proof.lean`](Proof.lean) | On a binary search tree the search succeeds exactly when `x` is a key. |
+| `ordered_algorithmT`, `ordered_insert` | [`Proof.lean`](Proof.lean) | On a binary search tree the tree afterward is a binary search tree. |
+| `keys_algorithmT` | [`Proof.lean`](Proof.lean) | On a binary search tree the keys afterward in symmetric order are those of `t`, with `x` inserted in order when the search fails. |
+| `searchTree` | [`Proof.lean`](Proof.lean) | `SearchTree x t` holds for every binary search tree `t`. |
+| `search_export`, `insert_export` | [`Compiled.lean`](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 5. |
+| `search_implements` | [`Compiled.lean`](Compiled.lean) | Function 2, called with a key and a borrowed tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap the flag of `algorithmT` and raises `top` by at most the bound. |
+| `insert_implements` | [`Compiled.lean`](Compiled.lean) | Function 5, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmT` and raises `top` by at most the bound. |
+| `search_bound`, `ascend_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.search.bound` and `compiled.ascend.bound` are 0. |
+| `descend_bound`, `insert_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 72 bytes, the block of one node, when it fails. |
+| `treeSearch_file`, `treeSearch_file_decode` | [`File.lean`](File.lean) | `build/verified/treeSearch.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `descend_eq` proceeds by induction on `t` for every `path`: a step of `descend` into the left child pushes a node that `ascend` destructures again with the left child replaced, which is the node of `algorithmT`, and the right child is symmetric.  `insert_eq` follows with the empty path, from which `ascend` returns its tree.  The properties of `SearchTree` follow by induction on the tree, with the keys of the left subtree below the root's key and those of the right subtree above it.  The generated bound of `descend` sums a charge for each state of the loop up to the loop's rank, and `descend_bound` evaluates the sum by induction on the tree with `Verified.Tail.costAt_rank_eq`: a state at a node is charged nothing, and the state at an empty subtree is charged the new node's block.  The axiom reports of `search_implements`, `insert_implements`, and `insert_bound` name only `propext`, `Classical.choice`, and `Quot.sound`.
 

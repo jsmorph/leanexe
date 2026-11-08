@@ -7,7 +7,9 @@
     "compiled.module or compiled.f.bound inside a goal",
     "p.f.bound (x, f y) for a call f y passed as a tuple component",
     "(kernel) deep recursion detected at a verified_compile command",
-    "#print axioms lists p.f.meaning_eq or p.f.fixed"
+    "#print axioms lists p.f.meaning_eq or p.f.fixed",
+    "toSpec b or slotsFrom b 4097 s inside a goal closed by rfl or unification",
+    "a local definition introduced by set that omega or rw unfolds"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -21,7 +23,10 @@
     "LeanExe.ProofKit.BorrowedKept",
     "Verified.TailTransport",
     "Verified.Reflect.Definitions",
-    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
+    "Demos.OrderBook.RefineChains",
+    "Library.Numerics.Arithmetic.Fma.FmaParts",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -31,7 +36,9 @@
     "Verified.Wasi.PureTransport.erase_restore",
     "LeanExe.ProofKit.BorrowedKept.borrowed_kept",
     "Verified.Tail.fixed_restate",
-    "Verified.Reflect.addBoundDefinition"
+    "Verified.Reflect.addBoundDefinition",
+    "Demos.OrderBook.Refinement.toSpec_eq",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.strict_top"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -40,16 +47,9 @@
     "Demos.RunningSumFp.sciLayoutW_bound_le",
     "Demos.RunningSumFp.decRound_bound_le",
     "Demos.RunningSumFp.initial_memoryCap",
-    "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements"
-  ],
-  "sources": [
-    "2026-10-23: The SHA-512 family",
-    "2026-10-23: SHA-256 and SHA-224",
-    "2026-10-23: Hashing from a prefix",
-    "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
-    "2026-10-24: The matcher computes the specification",
-    "2026-10-25: The SHA-3 proofs",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements",
+    "Library.Numerics.Arithmetic.Fma.FmaParts.fmaBits_eq",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.nearest_even",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.positive_reference"
   ]
 }

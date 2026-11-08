@@ -15,7 +15,8 @@ table's length and the initialization's.
 number of the table's words, the initial SP, and the initialization.  `bootProgram` gives the
 instructions from the self-loop on, `bootHalfs` the image's halfwords, the table's words as two
 halfwords each, the lower first, and `bootBytes` its bytes, each halfword's low byte first.
-`bootFileOk` compares those bytes with the number that `file_nat%` reads from a file.
+`bootFileOk` compares those bytes with the number that `file_nat%` reads from a file, forming
+their number with `natOfBytesPaired` as `fileOk` does.
 -/
 
 namespace LeanExe.M7
@@ -66,7 +67,8 @@ def bootBytes (B : Boot) (is : List Instr) : List UInt8 := (bootHalfs B is).flat
 `len`. -/
 def bootFileOk (B : Boot) (g : GenM (List Instr)) (n len : Nat) : Bool :=
   match g with
-  | .ok is => LeanExe.FileNat.natOfBytes (bootBytes B is) == n && (bootBytes B is).length == len
+  | .ok is =>
+      LeanExe.FileNat.natOfBytesPaired (bootBytes B is) == n && (bootBytes B is).length == len
   | .error _ => false
 
 end LeanExe.M7

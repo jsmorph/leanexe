@@ -131,6 +131,55 @@ theorem store2_above {m : UInt32 → UInt8} {sp w0 w1 : UInt32} {x : Nat}
   · rw [UInt32.lt_iff_toNat_lt, e (x + 4) (by omega), show (4 : UInt32).toNat = 4 from rfl]
     omega
 
+/-- Two word stores at the offsets `x` and `x + 4` from SP leave every byte below SP, when the slot
+lies below 2^32. -/
+theorem store2_below {m : UInt32 → UInt8} {sp w0 w1 : UInt32} {x : Nat}
+    (hx : sp.toNat + x + 8 ≤ 4294967296) {a : UInt32} (ha : a.toNat < sp.toNat) :
+    store32 (store32 m (sp + UInt32.ofNat x) w0) (sp + UInt32.ofNat (x + 4)) w1 a = m a := by
+  have := toNat_lt32 a
+  have := toNat_lt32 sp
+  have e : ∀ c, c ≤ x + 4 →
+      (a - (sp + UInt32.ofNat c)).toNat = a.toNat + 4294967296 - sp.toNat - c := fun c hc => by
+    rw [UInt32.toNat_sub, UInt32.toNat_add, UInt32.toNat_ofNat']
+    simp only [Nat.reducePow]
+    omega
+  rw [store32_far, store32_far]
+  · rw [UInt32.lt_iff_toNat_lt, e x (by omega), show (4 : UInt32).toNat = 4 from rfl]; omega
+  · rw [UInt32.lt_iff_toNat_lt, e (x + 4) (by omega), show (4 : UInt32).toNat = 4 from rfl]
+    omega
+
+/-- The bytes below the stack's limit after the store of two words into a slot of the frame or
+the parameters. -/
+theorem keepsBelow_store2 {E : Env} {ms t : State} {x : Nat} {w0 w1 : UInt32}
+    (hf : FrameOk P E.frame E.limit ms)
+    (hmem : t.mem = store32 (store32 ms.mem (ms.sp + UInt32.ofNat x) w0)
+      (ms.sp + UInt32.ofNat (x + 4)) w1)
+    (hx : x + 8 ≤ E.frame.size + 8 * E.frame.params) : KeepsBelow E.limit ms t := by
+  have hfit := hf.fits
+  have hl := hf.limit
+  intro a ha
+  rw [hmem]
+  exact store2_below (by omega) (by omega)
+
+/-- The bytes below the stack's limit after the store of two words into the operand slot of
+height `k`. -/
+theorem keepsBelow_write_op {E : Env} {ms t : State} {k : Nat} {w0 w1 : UInt32}
+    (hf : FrameOk P E.frame E.limit ms)
+    (hmem : t.mem = store32 (store32 ms.mem (ms.sp + UInt32.ofNat (E.frame.opAt k)) w0)
+      (ms.sp + UInt32.ofNat (E.frame.opAt k + 4)) w1)
+    (hk : k < E.frame.height) : KeepsBelow E.limit ms t := by
+  obtain ⟨hk8, hklr, hlrs⟩ := E.frame.opAt_bounds hk
+  exact keepsBelow_store2 hf hmem (by omega)
+
+/-- The bytes below the stack's limit after the store of two words into the slot of local `i`. -/
+theorem keepsBelow_write_local {E : Env} {ms t : State} {i dst : Nat} {w0 w1 : UInt32}
+    (hf : FrameOk P E.frame E.limit ms)
+    (hmem : t.mem = store32 (store32 ms.mem (ms.sp + UInt32.ofNat dst) w0)
+      (ms.sp + UInt32.ofNat (dst + 4)) w1)
+    (hdst : E.frame.localOff i = some dst) : KeepsBelow E.limit ms t := by
+  obtain ⟨hd8, hdb, -, -⟩ := Frame.localOff_bounds hdst
+  exact keepsBelow_store2 hf hmem hdb
+
 /-! ## The relation after stores -/
 
 /-- The relation after the store of `r` into the operand slot of height `k`, the top of the new

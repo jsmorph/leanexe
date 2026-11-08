@@ -1,13 +1,14 @@
+import LeanExe.Area
 import LeanExe.CallGraph
-import LeanExe.M7.Encode
+import LeanExe.M7.Init
 
 /-!
 The code generator of the Cortex-M7 back end: from the module that the verified compiler emits,
 the index of a step function, and the words of the step's initial state, a program of the model's
 instruction forms whose `main` calls the step forever and performs, after each call, the one
 register access that the step requests.  It covers the integer forms of the C path's subset,
-calls, and the constructs, and it rejects globals, linear memory, floating point, and every other
-form with a message.
+calls, the constructs, and the 64-bit loads and stores of linear memory and the accesses of
+globals, and it rejects floating point and every other form with a message.
 
 The value at operand-stack height `h` lies in a frame slot of 8 bytes, its low word first, and r0
 to r7 serve as working registers: an operation loads its operands into r0:r1 and r2:r3, computes in
@@ -35,6 +36,19 @@ low word of the condition and compare it with 0.  `divUI64` and `remUI64` test t
 address `Shared.udivmod`, which takes the dividend in r0:r1 and the divisor in r2:r3, returns the
 quotient in r0:r1 and the remainder in r2:r3, changes r4 to r7 and LR, and touches no memory.
 Each trap stub is a branch to itself.
+
+A program whose functions load, store, or access a global has an area at the base of DTCM, in the
+layout of `areaByte` of `LeanExe/Area.lean`: at `areaHeader` the size word, which holds the
+memory's size in bytes less 8, then global `i` in the slot at `areaHeader + 8 * (i + 1)`, and
+from `areaMemory`, 4,096 bytes above the header, the memory's bytes.  The module's memory
+satisfies `areaOk` for `areaPages` pages, its globals are at most 511 `i32`s and `i64`s, and the
+stack's limit lies at or above `areaEnd`, `areaSize areaPages` bytes above the header.  A load or
+a store of 8 bytes at an offset `off` of at most 4,088 loads the address's words into r0:r1 and
+the size word into r3, subtracts `off` from r3, and branches to the trap stub `trapBounds` when r1
+is nonzero or r0 exceeds r3, the test of `a + off + 8 ≤ pages * 65536` on registers before any
+addition.  It then accesses the two words at `areaMemory + a + off`.  The test of r1 is the same
+for an `i32` address, whose high word is 0.  An access of a global copies the two words of its
+slot through r0:r1.  Only a program with an area has the stub `trapBounds`, after the other three.
 
 The generator places code as it emits it, in units of 4 bytes: `after a n` is the address `n`
 units after `a`.  Every form but `BX LR` is 32 bits wide and takes one unit, and a function ends
@@ -115,10 +129,24 @@ def bAt (here target : UInt32) : GenM Instr := do
 def blAt (here target : UInt32) : GenM Instr := do
   return .blTo (← offsetTo 24 here target)
 
-/-- The conditions of `B<c>.W` that the generator uses: EQ, NE, and CC, unsigned lower. -/
+/-- The conditions of `B<c>.W` that the generator uses: EQ, NE, CC, unsigned lower, and HI,
+unsigned higher. -/
 def condEQ : Fin 14 := 0
 def condNE : Fin 14 := 1
 def condCC : Fin 14 := 3
+def condHI : Fin 14 := 8
+
+/-- The address of the area's header: the size word and the slots of the globals. -/
+def areaHeader : UInt32 := 0x20000000
+
+/-- The address of the memory's byte 0, 4,096 bytes above the header, where `areaByte` places it. -/
+def areaMemory : UInt32 := areaHeader + 4096
+
+/-- The number of pages of the memory that the area holds. -/
+def areaPages : Nat := 1
+
+/-- The address after the area's last byte. -/
+def areaEnd : UInt32 := areaHeader + UInt32.ofNat (areaSize areaPages)
 
 /-- A function's frame: the numbers of its parameters, of the slots of its outgoing area, and of
 its operand-stack slots, and the indices of the declared locals that its body names, in order.
@@ -160,15 +188,22 @@ def Ctl.arity (t : Ctl) : Nat := t.types.length
 parameters and of its results. -/
 abbrev Table := Nat → Option (UInt32 × List ValueType × List ValueType)
 
+/-- What the functions of a program with an area share besides what every program shares: the
+address of the trap stub for an access outside memory and the types of the module's globals. -/
+structure AreaShared where
+  trapBounds : UInt32
+  globals : List ValueType
+
 /-- What the functions of a program share: the addresses of the trap stubs for `unreachable`, for
 a division by zero, and for a frame that would pass the stack's limit, the entry of `udivmod64`,
-and the stack's limit. -/
+the stack's limit, and, for a program with an area, what the accesses of the area share. -/
 structure Shared where
   trapUnreachable : UInt32
   trapDiv : UInt32
   trapStack : UInt32
   udivmod : UInt32
   limit : UInt32
+  area : Option AreaShared
 
 /-- What the instructions of one function need: what the program's functions share, the
 function's frame, the types of its locals, parameters included, and the table of the functions
@@ -265,6 +300,17 @@ def shrOps : List Instr :=
   [.andImm 2 2 63, .movImm 3 32, .subReg 0 3 3 2, .lsrReg 0 0 2, .lslReg 3 1 3, .orrReg 0 0 0 3,
     .subImm 3 2 32, .lsrReg 3 1 3, .orrReg 0 0 0 3, .lsrReg 1 1 2]
 
+/-- Adds 2^31 to the high words r1 and r3, which adds 2^63 to r0:r1 and r2:r3 and maps their
+order as `Int64` values onto their unsigned order: `MOV r5, #1` and `ADD` of r5 shifted left by
+31. -/
+def biasOps : List Instr := [.movImm 5 1, .addLsl 0 1 1 5 31, .addLsl 0 3 3 5 31]
+
+/-- r0:r1 shifted right arithmetically by r2 mod 64: the sign mask `0 - (r1 >> 31)` in r4, which
+is 0 or all ones, and `shrOps` between two exclusive ors of both halves with it. -/
+def sarOps : List Instr :=
+  [.lsrBy 4 1 31, .movImm 5 0, .subReg 0 4 5 4, .eorReg 0 0 4, .eorReg 1 1 4] ++ shrOps ++
+    [.eorReg 0 0 4, .eorReg 1 1 4]
+
 /-- A division of the `i64` below the top by the top, placed at `a`: the loads of the dividend into
 r0:r1 and of the divisor into r2:r3, the test of the divisor and the branch to `trapDiv` when it is
 0, the call of `udivmod64`, and the store of the pair `res`, r0:r1 for the quotient or r2:r3 for
@@ -277,6 +323,16 @@ def genDiv (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) (res : 
   return ((← ldPair 0 1 x) ++ (← ldPair 2 3 y) ++ [.orrReg 1 4 2 3,
     ← bcondAt condEQ (after a 5) E.trapDiv, ← blAt (after a 6) E.udivmod] ++
     (← stPair res.1 res.2 x), some (.i64 :: σ.drop 2))
+
+/-- The test of an access of 8 bytes at the offset `off` from the address in the slot at offset
+`x` from SP, placed at `a`, with the trap stub `trap`: the loads of the address into r0:r1 and of
+the size word into r3, the subtraction of `off` from r3, the branches to `trap` when r1 is nonzero
+or r0 exceeds r3, and r2 set to the memory's base plus r0. -/
+def boundsCode (trap : UInt32) (x off : Nat) (a : UInt32) : GenM (List Instr) := do
+  return (← ldPair 0 1 x) ++ movWord 2 areaHeader ++
+    [.ldr 3 2 0, .movwOf 4 off, .subReg 0 3 3 4, .cmpImm 1 0, ← bcondAt condNE (after a 8) trap,
+      .cmpReg 0 3, ← bcondAt condHI (after a 10) trap] ++ movWord 2 areaMemory ++
+    [.addLsl 0 2 2 0 0]
 
 mutual
 /-- The number of units of `ins` at height `h`, under constructs whose branches carry `ar`
@@ -294,15 +350,22 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .eq => (6, some (h - 1))
   | .ltUI64 => (12, some (h - 1))
   | .leUI64 | .geUI64 => (11, some (h - 1))
+  | .ltSI64 => (15, some (h - 1))
+  | .leSI64 => (14, some (h - 1))
   | .eqzI64 => (8, some h)
   | .eqz => (4, some h)
   | .addI64 | .subI64 | .andI64 | .orI64 | .xorI64 => (8, some (h - 1))
   | .mulI64 => (9, some (h - 1))
   | .and => (4, some (h - 1))
   | .shlI64 | .shrUI64 => (15, some (h - 1))
+  | .shrSI64 => (22, some (h - 1))
   | .wrapI64 => (2, some h)
   | .extendUI32 => (0, some h)
   | .divUI64 | .remUI64 => (9, some (h - 1))
+  | .load64 _ => (18, some h)
+  | .store64 _ => (18, some (h - 2))
+  | .globalGet _ => (6, some (h + 1))
+  | .globalSet _ => (6, some (h - 1))
   | .unreachable => (1, none)
   | .br n => (4 * ar[n]?.getD 0 + 1, none)
   | .br_if n => (if ar[n]?.getD 0 = 0 then 3 else 4 * ar[n]?.getD 0 + 4, some (h - 1))
@@ -356,6 +419,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
   | .ltUI64 => genBin E ctl σ (geOps ++ [.eorImm 0 0 1]) (0, 1) .i32
   | .leUI64 => genBin E ctl σ leOps (0, 1) .i32
   | .geUI64 => genBin E ctl σ geOps (0, 1) .i32
+  | .ltSI64 => genBin E ctl σ (biasOps ++ geOps ++ [.eorImm 0 0 1]) (0, 1) .i32
+  | .leSI64 => genBin E ctl σ (biasOps ++ leOps) (0, 1) .i32
   | .eqzI64 => do
       if σ.length < curBase ctl + 1 then throw s!"eqz at height {σ.length}"
       let x ← E.op (σ.length - 1)
@@ -377,6 +442,7 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
   | .xorI64 => genBin E ctl σ [.eorReg 0 0 2, .eorReg 1 1 3] (0, 1) .i64
   | .shlI64 => genShift E ctl σ shlOps
   | .shrUI64 => genShift E ctl σ shrOps
+  | .shrSI64 => genShift E ctl σ sarOps
   | .wrapI64 => do
       if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
       return ([.movImm 0 0, .strSp 0 (← imm ((← E.op (σ.length - 1)) + 4))],
@@ -387,6 +453,47 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
       return ([], some (.i64 :: σ.tail))
   | .divUI64 => genDiv E ctl σ a (0, 1)
   | .remUI64 => genDiv E ctl σ a (2, 3)
+  | .load64 off => do
+      match E.area with
+      | none => throw "a load in a program without an area"
+      | some A =>
+          if σ.length < curBase ctl + 1 ∨ ¬ (σ.head? = some .i32 ∨ σ.head? = some .i64) then
+            throw s!"a load at height {σ.length}"
+          if 4088 < off.toNat then throw s!"a load at offset {off}"
+          let x ← E.op (σ.length - 1)
+          return ((← boundsCode A.trapBounds x off.toNat a) ++
+            [.ldr 0 2 (← imm off.toNat), .ldr 1 2 (← imm (off.toNat + 4))] ++
+            (← stPair 0 1 x), some (.i64 :: σ.tail))
+  | .store64 off => do
+      match E.area with
+      | none => throw "a store in a program without an area"
+      | some A =>
+          if σ.length < curBase ctl + 2 ∨ σ.head? ≠ some .i64 ∨
+              ¬ (σ[1]? = some .i32 ∨ σ[1]? = some .i64) then
+            throw s!"a store at height {σ.length}"
+          if 4088 < off.toNat then throw s!"a store at offset {off}"
+          let x ← E.op (σ.length - 2)
+          let y ← E.op (σ.length - 1)
+          return ((← boundsCode A.trapBounds x off.toNat a) ++ (← ldPair 0 1 y) ++
+            [.str 0 2 (← imm off.toNat), .str 1 2 (← imm (off.toNat + 4))], some (σ.drop 2))
+  | .globalGet i => do
+      match E.area with
+      | none => throw s!"global {i} in a program without an area"
+      | some A =>
+          match A.globals[i]? with
+          | some t =>
+              return (movWord 2 areaHeader ++ [.ldr 0 2 (← imm (8 * (i + 1))),
+                .ldr 1 2 (← imm (8 * (i + 1) + 4))] ++ (← stPair 0 1 (← E.op σ.length)),
+                some (t :: σ))
+          | none => throw s!"global {i} of {A.globals.length}"
+  | .globalSet i => do
+      match E.area with
+      | none => throw s!"global {i} in a program without an area"
+      | some A =>
+          if σ.length < curBase ctl + 1 ∨ σ.head? ≠ A.globals[i]? then
+            throw s!"global.set {i} at height {σ.length}"
+          return ((← ldPair 0 1 (← E.op (σ.length - 1))) ++ movWord 2 areaHeader ++
+            [.str 0 2 (← imm (8 * (i + 1))), .str 1 2 (← imm (8 * (i + 1) + 4))], some σ.tail)
   | .unreachable => do return ([← bAt a E.trapUnreachable], none)
   | .br n => do
       match ctl[n]? with
@@ -506,15 +613,35 @@ def listLocals : List Instruction → List Nat
   | i :: rest => instrLocals i ++ listLocals rest
 end
 
+mutual
+/-- Whether `ins` accesses the area: a load, a store, or an access of a global, also in the body
+of a construct. -/
+def instrArea : Instruction → Bool
+  | .load64 _ | .store64 _ | .globalGet _ | .globalSet _ => true
+  | .block _ _ body _ _ | .loop _ _ body _ _ => listArea body
+  | .iff _ _ thn els _ _ => listArea thn || listArea els
+  | _ => false
+
+/-- Whether one of the instructions `is` accesses the area. -/
+def listArea : List Instruction → Bool
+  | [] => false
+  | i :: rest => instrArea i || listArea rest
+end
+
+/-- The number whose bit `i` is set for each `i` of `is`. -/
+def bitsOf (is : List Nat) : Nat := is.foldl (fun acc i => acc ||| 1 <<< i) 0
+
 /-- The frame of the function `f`, whose calls name functions whose numbers of parameters and
-results `sig` gives. -/
+results `sig` gives.  The locals that the body names are the set bits of one number, so the
+kernel's evaluation of the generator tests each declared local with a shift and a mask, where a
+search of the list of names would compare it with each name. -/
 def frameOf (sig : Nat → Option (Nat × Nat)) (f : Function) : Frame :=
   let p := f.params.length
-  let names := listLocals f.body
+  let names := bitsOf (listLocals f.body)
   { params := p
     out := (callsIn f.body).foldl (fun acc k => max acc ((sig k).elim 0 fun (q, r) => max q r)) 0
     named := (List.range f.locals.length).filterMap fun j =>
-      if names.contains (p + j) then some (p + j) else none
+      if names.testBit (p + j) then some (p + j) else none
     height := max f.results.length (listPeak sig 0 f.body) }
 
 /-- The number of units of the clearing of the named declared locals of the frame `fr`. -/
@@ -636,11 +763,48 @@ def genFunctions (callee : Table) (S : Shared) :
         throw s!"function {j}: {halfwordsOf is} halfwords against a size of {n} units"
       return is ++ (← genFunctions callee S (after a n) rest)
 
+/-- Whether one of the functions `fs` accesses the area. -/
+def fnsArea (fs : List (Nat × Function)) : Bool := fs.any fun x => listArea x.2.body
+
+/-- The types of the globals of `m` when one of the functions `fs` accesses the area, or `none`
+when none does.  With an area, the memory of `m` has 32-bit addresses and from 1 to `areaPages`
+pages, the globals are at most 511 `i32`s and `i64`s, and the stack's limit `limit` lies at or
+above the area's end. -/
+def areaOf (m : Module) (fs : List (Nat × Function)) (limit : UInt32) :
+    GenM (Option (List ValueType)) := do
+  if !fnsArea fs then return none
+  if !areaOk m areaPages then throw s!"a memory that an area of {areaPages} pages does not hold"
+  let gts ← match globalTypesOf m with
+    | some gts =>
+        if 511 < gts.length then throw "more than 511 globals"
+        else if gts.all intType then pure gts
+        else throw "a global that is neither an i32 nor an i64"
+    | none => throw "a global that is not a number"
+  if limit.toNat < areaEnd.toNat then throw s!"a stack's limit of {limit} below the area's end"
+  return some gts
+
+/-- The number of trap stubs of a program with an area, when `area` holds its globals' types, or
+without one. -/
+def stubCount (area : Option (List ValueType)) : Nat := if area.isSome then 4 else 3
+
+/-- The trap stubs, each a branch to itself. -/
+def trapStubs (area : Option (List ValueType)) : List Instr :=
+  List.replicate (stubCount area) (.bTo (-4))
+
+/-- The addresses that the functions of a program share, from the end `traps` of the functions,
+with the stack's limit `limit`, for a program with an area, when `area` holds its globals' types,
+or without one: the trap stubs and `udivmod64` after them. -/
+def progShared (traps limit : UInt32) (area : Option (List ValueType)) : Shared :=
+  { trapUnreachable := traps, trapDiv := after traps 1, trapStack := after traps 2,
+    udivmod := after traps (stubCount area), limit,
+    area := area.map fun gts => { trapBounds := after traps 3, globals := gts } }
+
 /-- The program that runs function `k` of `m` as a step from the state of the words `s0`, placed
 at `base`, with the stack's limit `limit`, the device window from `dev`, and the code `div` of
 `udivmod64`: `main`, the functions that calls reach from function `k`, `k` first, the trap stubs
-of `unreachable`, of a division by zero, and of the stack, each a branch to itself, and `div`.
-Function `k` takes and returns `s0.length + 1` values of type `i64`. -/
+of `unreachable`, of a division by zero, of the stack, and, with an area, of an access outside
+memory, each a branch to itself, and `div`.  Function `k` takes and returns `s0.length + 1` values
+of type `i64`. -/
 def genProgram (m : Module) (k : Nat) (s0 : List UInt64) (base limit dev : UInt32)
     (div : List Instr) : GenM (List Instr) := do
   let fs ← (reachFrom m k).mapM (funcOf m)
@@ -658,10 +822,8 @@ def genProgram (m : Module) (k : Nat) (s0 : List UInt64) (base limit dev : UInt3
     | none => throw s!"no function {k}"
   let main ← genMain base entry dev s0
   if main.length ≠ mainSize s0 then throw s!"main: {main.length} units against {mainSize s0}"
-  let S : Shared :=
-    { trapUnreachable := traps, trapDiv := after traps 1, trapStack := after traps 2,
-      udivmod := after traps 3, limit }
-  let fns ← genFunctions callee S first fs
-  return main ++ fns ++ [.bTo (-4), .bTo (-4), .bTo (-4)] ++ div
+  let area ← areaOf m fs limit
+  let fns ← genFunctions callee (progShared traps limit area) first fs
+  return main ++ fns ++ trapStubs area ++ div
 
 end LeanExe.M7

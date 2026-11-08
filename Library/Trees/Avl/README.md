@@ -14,20 +14,20 @@
 
 | Theorem | File | Statement |
 |---|---|---|
-| `search_eq` | [The proof](Proof.lean) | `search x t` is `searchA x t`, for every tree. |
-| `growLeft_rotate`, `growRight_rotate` | [The proof](Proof.lean) | The program's rotations of a node give the trees of `growLeft` and `growRight` when the node was higher on the side that grew. |
-| `ascend_left`, `ascend_right`, `descend_eq` | [The proof](Proof.lean) | A step of `ascend` with the flag set applies `growLeft` or `growRight` to the node above, and a step with the flag clear rebuilds it, so `descend x path t` returns what `ascend` returns from the flag and the tree of `algorithmA x t`. |
-| `insert_eq` | [The proof](Proof.lean) | `insert x t` is the tree of `algorithmA x t`, for every tree. |
-| `growLeft_props`, `growRight_props` | [The proof](Proof.lean) | Steps A6 to A9 at a node whose subtree grew one level and has a nonzero factor at its root, unless the old subtree was empty, keep the node balanced, and the node grows exactly when the flag is set. |
-| `algorithmA_props` | [The proof](Proof.lean) | On a balanced tree, Algorithm A gives a balanced tree that is one level higher exactly when it reports growth. |
-| `keys_growLeft`, `keys_growRight`, `keys_algorithmA` | [The proof](Proof.lean) | Rotations keep the symmetric order, and on a binary search tree the keys afterward are the old keys with `x` inserted in order when the search fails. |
-| `searchTree` | [The proof](Proof.lean) | `SearchTree x t` holds for every balanced binary search tree `t`. |
-| `search_export`, `insert_export` | [The compilation](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 7. |
-| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a lent tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap `searchA x t` and raises `top` by at most the bound. |
-| `insert_implements` | [The compilation](Compiled.lean) | Function 7, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmA` and raises `top` by at most the bound. |
-| `search_bound`, `rotateRight_bound`, `rotateLeft_bound`, `ascend_bound` | [The compilation](Compiled.lean) | The generated bounds of the search, the rotations, and the return are 0. |
-| `descend_bound`, `insert_bound` | [The compilation](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 80 bytes, the block of one node, when it fails. |
-| `avlTree_file`, `avlTree_file_decode` | [The file theorems](File.lean) | `build/verified/avlTree.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `search_eq` | [`Proof.lean`](Proof.lean) | `search x t` is `searchA x t`, for every tree. |
+| `growLeft_rotate`, `growRight_rotate` | [`Proof.lean`](Proof.lean) | The program's rotations of a node give the trees of `growLeft` and `growRight` when the node was higher on the side that grew. |
+| `ascend_left`, `ascend_right`, `descend_eq` | [`Proof.lean`](Proof.lean) | A step of `ascend` with the flag set applies `growLeft` or `growRight` to the node above, and a step with the flag clear rebuilds it, so `descend x path t` returns what `ascend` returns from the flag and the tree of `algorithmA x t`. |
+| `insert_eq` | [`Proof.lean`](Proof.lean) | `insert x t` is the tree of `algorithmA x t`, for every tree. |
+| `growLeft_props`, `growRight_props` | [`Proof.lean`](Proof.lean) | Steps A6 to A9 at a node whose subtree grew one level and has a nonzero factor at its root, unless the old subtree was empty, keep the node balanced, and the node grows exactly when the flag is set. |
+| `algorithmA_props` | [`Proof.lean`](Proof.lean) | On a balanced tree, Algorithm A gives a balanced tree that is one level higher exactly when it reports growth. |
+| `keys_growLeft`, `keys_growRight`, `keys_algorithmA` | [`Proof.lean`](Proof.lean) | Rotations keep the symmetric order, and on a binary search tree the keys afterward are the old keys with `x` inserted in order when the search fails. |
+| `searchTree` | [`Proof.lean`](Proof.lean) | `SearchTree x t` holds for every balanced binary search tree `t`. |
+| `search_export`, `insert_export` | [`Compiled.lean`](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 7. |
+| `search_implements` | [`Compiled.lean`](Compiled.lean) | Function 2, called with a key and a lent tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap `searchA x t` and raises `top` by at most the bound. |
+| `insert_implements` | [`Compiled.lean`](Compiled.lean) | Function 7, called with a key and a tree that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmA` and raises `top` by at most the bound. |
+| `search_bound`, `rotateRight_bound`, `rotateLeft_bound`, `ascend_bound` | [`Compiled.lean`](Compiled.lean) | The generated bounds of the search, the rotations, and the return are 0. |
+| `descend_bound`, `insert_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 80 bytes, the block of one node, when it fails. |
+| `avlTree_file`, `avlTree_file_decode` | [`File.lean`](File.lean) | `build/verified/avlTree.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 ## Building, running, and testing
 

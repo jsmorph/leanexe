@@ -1,10 +1,11 @@
 import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+import LeanExe.ProofKit.Signed64Value
 
 /-!
 The branches of `Atan.atan2 y x` as equations.  `quadTail z m` is the code's last step for the
 angle `z` of `|y/x|` and the quadrant `m`, whose bit 0 is the sign of `y` and whose bit 1 is the
-sign of `x`.  `kOf2` is the shifted difference of the high words, which is the difference of the
-exponents or one less.
+sign of `x`.  `kOf2` is the `Int64` shifted difference of the high words, which is the difference
+of the exponents or one less.
 -/
 
 namespace Library.Numerics.Float64.Atan.AtanTwoBranches
@@ -25,9 +26,7 @@ def quadTail (z : Float) (m : UInt64) : Float :=
 def mOf (y x : Float) : UInt64 :=
   ((y.toBits >>> 32 >>> 31) &&& (1 : UInt64)) ||| ((x.toBits >>> 32 >>> 30) &&& (2 : UInt64))
 
-def kOf2 (y x : Float) : UInt64 :=
-  (ixOf y - ixOf x) >>> 20 |||
-    (if (ixOf y - ixOf x) >>> 63 == 1 then 0xFFFFF00000000000 else 0)
+def kOf2 (y x : Float) : Int64 := (ixOf y - ixOf x).toInt64 >>> 20
 
 /-- Neither input is NaN. -/
 def notNaN (y x : Float) : Prop :=
@@ -40,9 +39,8 @@ theorem atan2_gen_eq (y x : Float) (hn : notNaN y x)
     (h1 : (x.toBits >>> 32 == 0x3ff00000 && lxOf x == 0) = false)
     (h2 : (ixOf y ||| lxOf y == 0) = false) (h3 : (ixOf x ||| lxOf x == 0) = false)
     (h4 : (ixOf x == 0x7ff00000) = false) (h5 : (ixOf y == 0x7ff00000) = false)
-    (h6 : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = false)
-    (h7 : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = false) :
+    (h6 : ¬ kOf2 y x > 60)
+    (h7 : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = false) :
     Atan.atan2 y x = quadTail (Atan.atan (y / x).abs) (mOf y x) := by
   unfold notNaN kOf2 mOf ixOf lxOf at *
   simp only [Atan.atan2, hn, h1, h2, h3, h4, h5, h6, h7, Bool.false_eq_true, ite_false]
@@ -53,7 +51,7 @@ theorem atan2_big_eq (y x : Float) (hn : notNaN y x)
     (h1 : (x.toBits >>> 32 == 0x3ff00000 && lxOf x == 0) = false)
     (h2 : (ixOf y ||| lxOf y == 0) = false) (h3 : (ixOf x ||| lxOf x == 0) = false)
     (h4 : (ixOf x == 0x7ff00000) = false) (h5 : (ixOf y == 0x7ff00000) = false)
-    (h6 : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = true) :
+    (h6 : kOf2 y x > 60) :
     Atan.atan2 y x = quadTail (Float.ofBits 0x3FF921FB54442D18 + 0.5 * piLoF)
       (mOf y x &&& (1 : UInt64)) := by
   unfold notNaN kOf2 mOf ixOf lxOf at *
@@ -65,9 +63,8 @@ theorem atan2_tiny_eq (y x : Float) (hn : notNaN y x)
     (h1 : (x.toBits >>> 32 == 0x3ff00000 && lxOf x == 0) = false)
     (h2 : (ixOf y ||| lxOf y == 0) = false) (h3 : (ixOf x ||| lxOf x == 0) = false)
     (h4 : (ixOf x == 0x7ff00000) = false) (h5 : (ixOf y == 0x7ff00000) = false)
-    (h6 : (kOf2 y x >>> 63 == 0 && decide (kOf2 y x > 60)) = false)
-    (h7 : (x.toBits >>> 32 >>> 31 == 1 && kOf2 y x >>> 63 == 1 &&
-      decide (kOf2 y x < 0xFFFFFFFFFFFFFFC4)) = true) :
+    (h6 : ¬ kOf2 y x > 60)
+    (h7 : (x.toBits >>> 32 >>> 31 == 1 && decide (kOf2 y x < -60)) = true) :
     Atan.atan2 y x = quadTail 0.0 (mOf y x) := by
   unfold notNaN kOf2 mOf ixOf lxOf at *
   simp only [Atan.atan2, hn, h1, h2, h3, h4, h5, h6, h7, Bool.false_eq_true, ite_false,

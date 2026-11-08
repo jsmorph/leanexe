@@ -1,0 +1,60 @@
+{
+  "id": "decimal-conversions",
+  "goals": [
+    "parse64 general (words s) = (true, round64 n) from Derives general s n",
+    "parse64 true (print64 w) = (true, canon64 w)",
+    "Derives general s n ↔ decode general s = some n",
+    "∃ s neg d e, print64 w = words s ∧ Derives false s (.dec neg d e) ∧ Shortest64 w neg d e",
+    "isDigitW b.toUInt64 = isDigit b for every byte b",
+    "LeanExe.build n f = words l",
+    "limb (words s) j = (byteAt s j.toNat).toUInt64"
+  ],
+  "modules": [
+    "Library.Numerics.Decimal.Shared.StrconvDecode",
+    "Library.Numerics.Decimal.Shared.StrconvRound",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatBytes",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem",
+    "Library.Numerics.Arithmetic.Uscale.UscaleBase",
+    "Demos.RunningSumFp.ArithmeticProof"
+  ],
+  "declarations": [
+    "Library.Numerics.Decimal.Shared.StrconvGrammar.Derives",
+    "Library.Numerics.Decimal.Shared.StrconvGrammar.words",
+    "Library.Numerics.Decimal.Shared.StrconvDecode.decode",
+    "Library.Numerics.Decimal.Shared.StrconvDecode.derives_iff_decode",
+    "Library.Numerics.Decimal.Shared.StrconvDecode.derives_unique",
+    "Library.Numerics.Decimal.Shared.StrconvRound.round64",
+    "Library.Numerics.Decimal.Shared.StrconvRound.canon64",
+    "Library.Numerics.Decimal.Shared.StrconvRound.Shortest64",
+    "Library.Numerics.Arithmetic.Uscale.limb",
+    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.limb_eq",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.limb_words",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.byte_cases",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.span_spec",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.satE",
+    "Library.Numerics.Decimal.ParseFloat.expDigits",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout.words_append",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout.build_words"
+  ],
+  "examples": [
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.isDigitW_byte",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.sign_scan",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.dec64",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.parse64_spec",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.parse64_accept",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.parse64_reject",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem.parse32_accept",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatBytes.parse64_bytes_accuracy",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatHexParse.hexParse_spec",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem.print64_derives",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem.print64_roundtrip",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem.print64_shortest",
+    "Demos.RunningSumFp.stripCR_words",
+    "Demos.RunningSumFp.parse_accept",
+    "Demos.RunningSumFp.render_roundtrip",
+    "Demos.RunningSumFp.render_shortest"
+  ]
+}

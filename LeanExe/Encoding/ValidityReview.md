@@ -17,6 +17,9 @@ a constant offset expression of its address type.  The 2026-10-19 review adds
 `f32.convert_i64_u : i64 -> f32` and `i64.trunc_sat_f32_u : f32 -> i64` under
 the same [numeric conversion typing rule][current-instructions].  The 2026-10-23
 review adds the table profile of the `shape` condition and `tableProfile_valid`.
+The 2026-11-08 review adds `i64.lt_s : [i64, i64] -> [i32]`,
+`i64.le_s : [i64, i64] -> [i32]`, and `i64.shr_s : [i64, i64] -> [i64]` under the
+[rendered comparison and binary operator rules][current-instructions].
 
 The comparison uses the official [instruction rules][instructions], [type
 rules][types], and [module rules][modules] at revision
@@ -190,6 +193,12 @@ The 2026-10-23 review of the table profile covers this revision:
 
 ```text
 5eded76fae8fb1b7cfaea8f245e142f19705d7ecdb6ada567f9da7fa23812bd3  Spec/Validity.lean
+```
+
+The 2026-11-08 review of the signed `i64` forms covers this revision:
+
+```text
+1b4c83cb37c49176a049ac7ef3839ddc5a39526b854de34de2ae4463ad06274f  Spec/Validity.lean
 ```
 
 [instructions]:

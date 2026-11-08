@@ -13,6 +13,8 @@ import Verified.Reflect.RecursiveLayout
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
+import LeanExe.ProofKit.Signed64Float
+import LeanExe.Pipeline.Int64
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
@@ -27,8 +29,8 @@ module's bytes decode to the module, which computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
-definition's parameters and result are `UInt64`, `Bool`, `Float`, structures with a `Flat` instance
-whose tuple is their fields, enumerations with a `Flat` instance to words, arrays of these, and
+definition's parameters and result are `UInt64`, `Int64`, `Bool`, `Float`, structures with a `Flat`
+instance whose tuple is their fields, enumerations with a `Flat` instance to words, arrays of these, and
 pairs, and structures whose `Flat` tuple holds arrays, which are represented as that tuple and split
 as pairs are.  Its body may also hold arrays of tuples, which have no `Represent` instance.  A
 structure's source value is its flattening `φ`, the source value of its `Flat` tuple, an array's is
@@ -45,7 +47,12 @@ constructors, enumeration constructors, `Flat.flat` of enumerations, `match` and
 enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
 `xs.set! i.toNat v`, `xs.push v`,
-`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
+`xs ++ ys`, the `Int64` operations `+`, `-`, `*`, `&&&`, `|||`, `^^^`, `<<<`, `>>>`, `/`, `%`,
+negation, the comparisons, `==`, `!=`, `min`, `max`, literals, `x.toUInt64`, `w.toInt64`, and the
+conversions `Int64.toFloat`, `Int64.toFloat32`, `Float.toInt64`, and `Float32.toInt64`, as
+operations on words, the order comparisons and `>>>` signed, and `/`, `%`, and the conversions
+through `LeanExe.ProofKit.Signed64` and `LeanExe.ProofKit.Signed64Float`,
+`LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
 and, in a recursive definition, calls of itself.  A definition
@@ -505,12 +512,49 @@ def cmpExpr : CmpOp → Lean.Expr
   | .ne => mkConst ``CmpOp.ne
   | .lt => mkConst ``CmpOp.lt
   | .le => mkConst ``CmpOp.le
+  | .slt => mkConst ``CmpOp.slt
+  | .sle => mkConst ``CmpOp.sle
 
-def iteLemma : CmpOp → Name
-  | .eq => ``ite_eqP_eq
-  | .ne => ``ite_ne_eq
-  | .lt => ``ite_lt_eq
-  | .le => ``ite_le_eq
+/-- Whether a closed `Int64` term is a literal: a numeral, the negation of a literal,
+`Int64.minValue`, `Int64.maxValue`, or `Int64.ofNat`, `Int64.ofInt`, `Nat.toInt64`, or
+`Int.toInt64` of a closed term. -/
+partial def int64Lit? (e : Lean.Expr) : MetaM Bool := do
+  match e.consumeMData.getAppFnArgs with
+  | (``OfNat.ofNat, #[_, n, _]) => return (natOf (← instantiateMVars n)).isSome
+  | (``Neg.neg, #[_, _, x]) => int64Lit? x
+  | (``Int64.ofNat, #[n]) | (``Int64.ofInt, #[n]) | (``Nat.toInt64, #[n])
+  | (``Int.toInt64, #[n]) => return !n.hasFVar && !n.hasLooseBVars
+  | _ => return e.isConstOf ``Int64.minValue || e.isConstOf ``Int64.maxValue
+
+/-- An order comparison of `Int64` values as a proposition: the signed comparison of their
+words and its operands, with `>` and `≥` as `<` and `≤` on swapped operands. -/
+def int64Order? (p : Lean.Expr) : MetaM (Option (CmpOp × Lean.Expr × Lean.Expr)) := do
+  let isInt64 (α : Lean.Expr) : MetaM Bool := return (← whnfR α).isConstOf ``Int64
+  match p.consumeMData.getAppFnArgs with
+  | (``LT.lt, #[α, _, a, b]) => if ← isInt64 α then return some (.slt, a, b) else return none
+  | (``LE.le, #[α, _, a, b]) => if ← isInt64 α then return some (.sle, a, b) else return none
+  | (``GT.gt, #[α, _, a, b]) => if ← isInt64 α then return some (.slt, b, a) else return none
+  | (``GE.ge, #[α, _, a, b]) => if ← isInt64 α then return some (.sle, b, a) else return none
+  | _ => return none
+
+/-- An equality or inequality of `Int64` values as a proposition: that of their words, and its
+equivalence with the proposition. -/
+def int64Eq? (p : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+  let p := p.consumeMData
+  let isInt64 (α : Lean.Expr) : MetaM Bool := return (← whnfR α).isConstOf ``Int64
+  match p.getAppFnArgs with
+  | (``Eq, #[α, a, b]) =>
+    unless ← isInt64 α do return none
+    let h ← mkAppM ``LeanExe.ProofKit.Signed64.eq_iff #[a, b]
+    let some (_, q) := (← whnfR (← inferType h)).iff?
+      | throwError "verified_compile: the equivalence {h}"
+    return some (q, ← mkExpectedTypeHint (← mkAppM ``Iff.symm #[h]) (mkIff q p))
+  | (``Ne, #[α, a, b]) =>
+    unless ← isInt64 α do return none
+    let h ← mkAppM ``not_congr #[← mkAppM ``LeanExe.ProofKit.Signed64.eq_iff #[a, b]]
+    let q ← mkAppM ``Ne #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]]
+    return some (q, ← mkExpectedTypeHint (← mkAppM ``Iff.symm #[h]) (mkIff q p))
+  | _ => return none
 
 /-- The context of the variables `vars` and `Env.cons v₀ (… (Env.cons vₙ Env.nil))`, with each
 context built once and shared by the longer ones. -/
@@ -1716,7 +1760,7 @@ def LemmaApp.childBuys (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM B
   let r ← b modes paid live
   unless ← withReducible (isDefEq rhs r.term) do
     throwError "verified_compile: the credit for {name} of {a.name} differs from {r.term}"
-  a.assign name (← mkExpectedTypeHint r.proof (← a.hypType name))
+  a.assignHint name r.proof
   return r
 
 /-- The credits of the source expression `src` in the context `c`, a form at which the result of
@@ -1802,27 +1846,50 @@ def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
   boundOf
     (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
 
-/-- Assigns the family `valueName` of `app` to `family`, and its equation `proofName`, which
-states each entry, from the proofs of `values`. -/
+/-- Assigns the family `valueName` of `app` to the family that `build` makes of the right sides of
+the proofs of `values`, and its equation `proofName`, which states each entry, from those proofs.
+The equation is proved for variables in place of the entries and applied to the entries and their
+proofs, which the kernel substitutes without comparing them.  With an entry in place of its
+variable, the kernel compares the entry with the family at its index, `id` of the family, and
+unfolds the head of greater height first, or both at equal heights: an `if` (height 2) before `id`
+(height 1), and an `if` together with the `dite` (height 2) that `TreeShape.wordsOf` reduces to.
+Unfolding the `if` evaluates its condition's `Decidable` instance, in a number of steps linear in
+the value of a literal added to a word. -/
 def assignFamilyEquation (app : LemmaApp) (valueName proofName : Name)
-    (family : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  app.assign valueName (← mkExpectedTypeHint family (← app.hypType valueName))
-  let expected ← app.hypType proofName
-  let .forallE name domain body _ := expected
-    | throwError "verified_compile: a finite field equation must quantify its index"
-  let P := Lean.mkLambda name .default domain body
-  let proof ← finiteForall values.length P fun i => do
-    let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
-      | throwError "verified_compile: a finite field index is not a numeral"
-    let some value := values[j]?
-      | throwError "verified_compile: finite field index {j} is out of range"
-    mkExpectedTypeHint value.proof (P.beta #[i])
+    (build : List Lean.Expr → MetaM Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
+  let types ← values.mapM fun value => do instantiateMVars (← inferType value.proof)
+  let entries ← types.mapM fun type => do
+    let some (_, _, entry) := type.eq?
+      | throwError "verified_compile: a finite field proof is not an equation:{indentExpr type}"
+    pure entry
+  let family ← build entries
+  app.assignHint valueName family
+  let expected ← app.argType proofName
+  let decls ← entries.toArray.mapIdxM fun j entry => do
+    pure (Name.mkSimple s!"x{j}", ← inferType entry)
+  let equation ← withLocalDeclsDND decls fun xs => do
+    let familyX ← mkExpectedTypeHint (← build xs.toList) (← app.argType valueName)
+    let expectedX ← app.argType proofName [(valueName, familyX)]
+    let hyps := (types.zip xs.toList).toArray.mapIdx fun j (type, x) =>
+      (Name.mkSimple s!"h{j}", mkApp type.appFn! x)
+    withLocalDeclsDND hyps fun hs => do
+      let .forallE name domain body _ := expectedX
+        | throwError "verified_compile: a finite field equation must quantify its index"
+      let P := Lean.mkLambda name .default domain body
+      let proof ← finiteForall values.length P fun i => do
+        let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
+          | throwError "verified_compile: a finite field index is not a numeral"
+        let some h := hs[j]?
+          | throwError "verified_compile: finite field index {j} is out of range"
+        mkExpectedTypeHint h (P.beta #[i])
+      mkLambdaFVars (xs ++ hs) (← mkExpectedTypeHint proof expectedX)
+  let proof := mkAppN equation (entries.toArray ++ values.toArray.map (·.proof))
   app.assign proofName (← mkExpectedTypeHint proof expected)
   return family
 
 def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
     (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  assignFamilyEquation app valueName proofName (← finiteFn type (values.map (·.term))) values
+  assignFamilyEquation app valueName proofName (finiteFn type) values
 
 def finiteFieldBounds (app : LemmaApp) (name : Name) (fields : List Reflection) :
     MetaM (List Bound) :=
@@ -2250,6 +2317,14 @@ place are bound with `let` first.  A `let` of a place is replaced by its body wi
 the variable, and every variable of a pair type is split into variables for its components, so
 that a projection reads a component and a use of the whole is the pair of the components. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
+  -- A beta redex, such as the function of a loop, a fold, or a match alternative applied to the
+  -- binders' variables, is reflected as its reduction, with the proof restated for the redex,
+  -- which the lemmas of those forms state.  The kernel reduces the redex at the top of the
+  -- equation of `bareEq`.  Under a flattening, it would compare projections of the redex and of
+  -- the reduction and unfold the head of the reduction before reducing the redex: for an `if`, it
+  -- reduces the condition's `Decidable` instance, in a number of steps linear in the value of a
+  -- literal added to a word.
+  if e.consumeMData.isHeadBetaTarget then return ← reflectAs e.consumeMData.headBeta e
   let e ← projReduce e
   if e.isFVar then
     if let some r ← keyedComponent? c e [] then return r.as' e
@@ -2274,6 +2349,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.word #[some c.sigs, some c.ctx, some w]
     return ⟨src, ← rflProof c src (← flatValue e), .word, e,
       leafBound c ``word_bound [(`v, w)], leafFits c src, none⟩
+  if let some r ← reflectInt64? e then return r
   if !e.hasFVar && !e.hasLooseBVars && shape.flat.isNone then
     match shape.ty with
     | .word =>
@@ -2456,6 +2532,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         binBound c (if fp32 then ``fbin32_bound else ``fbin_bound) [(`op, fop)] rl rr,
         binFits c (if fp32 then ``fbin32_fits else ``fbin_fits) [(`op, fop)] rl rr, none⟩
     if args.size == 6 then
+      unless (← whnfR args[0]!).isConstOf ``UInt64 do
+        throwError "verified_compile: unsupported operation {fn} on {args[0]!}"
       let rl ← reflect c args[4]!
       let rr ← reflect c args[5]!
       return ⟨← mkAppM ``Expr.bin #[op, rl.src, rr.src],
@@ -2476,6 +2554,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let notEq ← mkAppOptM ``decide_not #[some (← mkEq a b), none, some inst]
       let T ← mkAppM ``not #[← mkDecide (← mkEq a b)]
       return ← reflectVia T (← mkExpectedTypeHint (← mkEqSymm notEq) (← mkEq T e))
+    if let some (op, a, b) ← int64Order? p then
+      -- An order comparison of `Int64` values is the signed comparison of their words.
+      return (← reflectSCmp op a b inst).as' e
+    if let some (_, h) ← int64Eq? p then
+      -- An equality of `Int64` values is the equality of their words.
+      let eq ← mkAppOptM ``LeanExe.ProofKit.Signed64.decide_iff
+        #[none, none, none, some h, some inst]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T eq
     if let (``Eq, #[α, a, b]) := p.consumeMData.getAppFnArgs then
       if (← whnfR α).isConstOf ``Bool then
         return ← reflectVia (← boolEqTerm a b)
@@ -2486,6 +2573,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       | throwError "verified_compile: unsupported decision {p}"
     return (← reflectCmp op a b).as' e
   | ``BEq.beq, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Int64 then
+      return ← reflectVia (← mkAppM ``BEq.beq
+          #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]])
+        (← mkAppM ``LeanExe.ProofKit.Signed64.beq_word #[a, b])
     if (← whnfR α).isConstOf ``Bool then
       let lawful ← enumLawful α inst
       return ← reflectVia (← boolEqTerm a b)
@@ -2494,6 +2585,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let r ← if ← isFloat α then reflectFCmp .eq a b else reflectCmp .eq a b
     return r.as' e
   | ``bne, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Int64 then
+      return ← reflectVia (← mkAppM ``bne
+          #[← mkAppM ``Int64.toUInt64 #[a], ← mkAppM ``Int64.toUInt64 #[b]])
+        (← mkAppM ``LeanExe.ProofKit.Signed64.bne_word #[a, b])
     if (← whnfR α).isConstOf ``Bool then
       return ← reflectAs (← mkAppM ``not #[← mkAppOptM ``BEq.beq
         #[some α, some inst, some a, some b]]) e
@@ -2544,6 +2639,25 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``UInt64.toFloat, #[x] =>
     return (← reflectConv ``Expr.toFloat ``toFloat_eq ``toFloat_bound ``toFloat_fits
       (mkConst ``ToFloat.convert) x .float).as' e
+  | ``Int64.toFloat, #[x] | ``Int64.toFloat32, #[x] =>
+    -- The unsigned conversion of the magnitude, negated when the sign bit is set.  The form reads
+    -- its operand's word more than once, so an operand that is neither a variable or the `Int64`
+    -- of a word variable is bound first.  The `Int64` of a word variable `w` is the word `w`.
+    let (form, thm) := if fn == ``Int64.toFloat then
+        (``LeanExe.ProofKit.Signed64.toFloat, ``LeanExe.ProofKit.Signed64.toFloat_word)
+      else (``LeanExe.ProofKit.Signed64.toFloat32, ``LeanExe.ProofKit.Signed64.toFloat32_word)
+    let word? ← match x.consumeMData.getAppFnArgs with
+      | (``UInt64.toInt64, #[w]) | (``Int64.ofUInt64, #[w]) =>
+        pure (if (← projReduce w).isFVar then some w else none)
+      | _ => pure none
+    if let some w := word? then
+      let T ← mkAppM form #[w]
+      return ← reflectVia T (← mkExpectedTypeHint (← mkAppM thm #[x]) (← mkEq T e))
+    unless (← projReduce x).isFVar do
+      return ← reflectAs (← bindArgs e.getAppFn [x] [true] #[] #[]) e
+    let eq ← mkAppM thm #[x]
+    let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+    reflectVia T eq
   | ``Float.ofBits, #[x] =>
     return (← reflectConv ``Expr.toFloat ``toFloat_eq ``toFloat_bound ``toFloat_fits
       (mkConst ``ToFloat.ofBits) x .float).as' e
@@ -2555,7 +2669,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       (mkConst ``ToWord.toBits) x .word).as' e
   | ``Float.abs, #[x] => return (← reflectFUnary (mkConst ``FUnOp.abs) x).as' e
   | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
-    unless (← isFloat α) || (← whnfR α).isConstOf ``UInt64 do
+    let word := (← whnfR α).isConstOf ``UInt64 || (← whnfR α).isConstOf ``Int64
+    unless (← isFloat α) || word do
       throwError "verified_compile: unsupported {fn} on {α}"
     -- `min` and `max` on floats and words are `if a ≤ b`, with operands that are not variables
     -- bound first.
@@ -2564,8 +2679,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
     let cond ← mkAppM ``LE.le #[a, b]
     let t ← if fn == ``Min.min then mkAppM ``ite #[cond, a, b] else mkAppM ``ite #[cond, b, a]
-    let r ← reflect c t
-    return r.as (← mkExpectedTypeHint r.proof (← mkEq (← denoteExpr c r.src) e)) e
+    reflectAs t e
   | ``not, #[a] =>
     let r ← reflect c a
     return ⟨← mkAppM ``Expr.not #[r.src], ← mkAppM ``not_eq #[r.proof], .bool, e,
@@ -2647,9 +2761,19 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     reflectAs (← mkAppOptM ``ite #[some α, some p, some inst, some ta, some tb]) e
   | ``ite, #[α, p, inst, a, b] =>
     -- `if p ∧ q` and `if p ∨ q` on propositions test the decision of the proposition, which the
-    -- rule of `decide` reads as the Boolean connective of the two decisions.
-    if p.consumeMData.isAppOfArity ``And 2 || p.consumeMData.isAppOfArity ``Or 2 then
+    -- rule of `decide` reads as the Boolean connective of the two decisions, and an `if` on an
+    -- order comparison of `Int64` values tests the decision, which the rule of `decide` reads as
+    -- the signed comparison of their words.
+    if p.consumeMData.isAppOfArity ``And 2 || p.consumeMData.isAppOfArity ``Or 2 ||
+        (← int64Order? p).isSome then
       let eq ← mkAppOptM ``ite_decide_eq #[some α, some p, some inst, some a, some b]
+      let some (_, T, _) := (← inferType eq).eq?
+        | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T eq
+    if let some (_, h) ← int64Eq? p then
+      -- An `if` on an equality of `Int64` values tests the equality of their words.
+      let eq ← mkAppOptM ``LeanExe.ProofKit.Signed64.ite_iff
+        #[some α, none, none, none, some h, some inst, some a, some b]
       let some (_, T, _) := (← inferType eq).eq?
         | throwError "verified_compile: the equation {eq}"
       return ← reflectVia T eq
@@ -2663,7 +2787,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rn ← reflect c n
     let ri ← reflect c init
     let u ← reflectUnder c [] (mkConst ``UInt64) α .word ri.ty fun i acc =>
-      return f.beta #[i, acc]
+      return mkApp2 f i acc
     let rb := u.r
     let cs ← mkAppOptM ``Expr.bool
       #[some c.sigs, some (consCtx ri.ty c.ctx), some (mkConst ``Bool.true)]
@@ -2712,7 +2836,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let vars := [(current, .tree listShape), (acc, .elem el)] ++ captured
         let (ctx, env) ← ctxEnvExpr vars
         withListCaseFields { c with vars, ctx, env } current fun inner head tail => do
-          let r ← reflect inner (f.beta #[acc, head])
+          let r ← reflect inner (mkApp2 f acc head)
           let binders := #[current, acc, head, tail]
           pure (⟨{ r with proof := ← userProof inner r }, binders,
             ← binders.toList.mapM fun value => value.fvarId!.getDecl⟩ : Under)
@@ -2726,8 +2850,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       (`xs, xs), (`init, init), (`step, f), (`captured, capturedEnv)]
     let rule (name : Name) (extra : List (Name × Lean.Expr)) : MetaM LemmaApp := do
       let app ← LemmaApp.start name (extra ++ common)
-      app.assign `hargs (← mkExpectedTypeHint hargs (← app.hypType `hargs))
-      app.assign `hstep (← mkExpectedTypeHint hstep (← app.hypType `hstep))
+      app.assignHint `hargs hargs
+      app.assignHint `hstep hstep
       return app
     let src ← mkAppM ``Expr.listFold #[args, u.r.src]
     let proof ← (← rule ``listFold_eq []).finish
@@ -2748,7 +2872,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let bodyLive := mkApp2 (mkConst ``ListFold.bodyLive) (elemExpr el) captureTypes
       let b ← withExistingLocalDecls u.decls do u.r.bound bodyModes bodyPaid bodyLive
       app.assign `B (← specialize b.term)
-      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      app.assignHint `hB (← specialize b.proof)
       boundOf (← app.finish)
     let fits : FitsBuilder := do
       let app ← rule ``listFold_fits (fitsArgs c)
@@ -2757,7 +2881,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       app.assign `hI initial.proof
       let b ← withExistingLocalDecls u.decls do u.r.fits
       app.assign `B (← specialize b.term)
-      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      app.assignHint `hB (← specialize b.proof)
       fitsOf (← app.finish)
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, fits, none⟩
@@ -2777,7 +2901,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let ri ← reflect c init
     let u ← reflectUnder3 c (mkConst ``UInt64) β α .word ri.ty (.elem el)
-      fun _ acc value => return f.beta #[acc, value]
+      fun _ acc value => return mkApp2 f acc value
     let src ← mkAppM ``Expr.fold #[x, ri.src, u.r.src]
     let vx ← mkAppOptM ``Expr.var
       #[some c.sigs, some c.ctx, some (tyExpr (.array el)), some x]
@@ -2795,10 +2919,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``LeanExe.repeatWhile, #[α, n, init, cnd, step] =>
     let rn ← reflect c n
     let ri ← reflect c init
-    let uc ← reflectUnder1 c α ri.ty fun acc => return cnd.beta #[acc]
+    let uc ← reflectUnder1 c α ri.ty fun acc => return mkApp cnd acc
     let rc := uc.r
     let u ← reflectUnder c [] (mkConst ``UInt64) α .word ri.ty fun _ acc =>
-      return step.beta #[acc]
+      return mkApp step acc
     let rb := u.r
     let sa ← shapeOf α
     let src ← mkAppM ``Expr.loop #[rn.src, ri.src, rc.src, rb.src]
@@ -2807,7 +2931,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       else mkAppM ``repeatWhile_flat_eq #[← sa.fn α, init, cnd, step, rn.proof, ri.proof,
         rc.proof, rb.proof]
     let F ← withLocalDeclD `i (mkConst ``UInt64) fun i => withLocalDeclD `s α fun s => do
-      mkLambdaFVars #[i, s] (step.beta #[s])
+      mkLambdaFVars #[i, s] (mkApp step s)
     let hc (cTy : Lean.Expr) : MetaM Lean.Expr := mkExpectedTypeHint rc.proof cTy
     let bound := loopBound rn ri u rc.src α init cnd hc F
       (fun hcaTy _ => withExistingLocalDecls uc.decls do
@@ -3031,7 +3155,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let (fs, hf, ue) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
       let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env', ctx := consCtx .word c.ctx }
-      let rf ← reflect c' (f.beta #[i])
+      let rf ← reflect c' (mkApp f i)
       unless rf.ty == .elem el do throwError "verified_compile: an element of {e} is not a {α}"
       return (rf.src, ← mkLambdaFVars #[i] rf.proof,
         (⟨rf, #[i], [← i.fvarId!.getDecl]⟩ : Under))
@@ -3239,7 +3363,7 @@ where
       app.assign `hn (← userProof c rn)
       app.assign `hi (← userProof c ri)
       app.assign `hc (← hc (← app.hypType `hc))
-      app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+      app.assignHint `hb u.r.proof
       let _ ← app.child `hna rn.bound
       let _ ← app.child `hia ri.bound
       let _ ← assignCoerce c.base app `hka ri.ty init
@@ -3294,7 +3418,7 @@ where
       boundOf (← congr2 lhs.appFn!.appFn! sum b.term credits y.term (some b.proof) (some hy))
     -- The function of the index and the state that a pass hypothesis `name` states, built by `f`.
     let passes (app : LemmaApp) (cost proof : Name) (f : Lean.Expr → MetaM Bound) : MetaM Unit := do
-      let ty ← app.hypType proof
+      let ty ← app.argType proof
       let (term, prf) ← withExistingLocalDecls u.decls do
         let ty ← u.instantiate ty
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the loop's body"
@@ -3353,8 +3477,8 @@ where
     else
       assignFlag app `hps
     assignFlag app `hpair
-    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hi ri.proof
+    app.assignHint `hb u.r.proof
     let _ ← app.child `hia ri.bound
     let _ ← assignCoerce c.base app `hka ri.ty init
     let some (_, credit, _) := (← app.hypType `hcr).eq?
@@ -3378,7 +3502,7 @@ where
     | none => throwError "verified_compile: a fold whose body charges credits at the `if`s in its \
         result is not supported"
     let pass (cost proof : Name) : MetaM Unit := do
-      let hbaTy ← app.hypType proof
+      let hbaTy ← app.argType proof
       let (term, prf) ← withExistingLocalDecls u.decls do
         let ty ← u.instantiate hbaTy
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the fold's body"
@@ -3407,12 +3531,12 @@ where
     let app ← LemmaApp.start ``fold_flat_fits
       (fitsArgs c ++ [(`φ, ← sb.fn β), (`ψ, ← sa.fn α), (`xs, xs), (`I, init), (`F, F),
         (`x, x), (`init, ri.src), (`body, u.r.src), (`hx, hx)])
-    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hi ri.proof
+    app.assignHint `hb u.r.proof
     app.childFits `hif ri.fits
     let bf ← u.fits
     app.assign `BF bf.term
-    app.assign `hbf (← mkExpectedTypeHint bf.proof (← app.hypType `hbf))
+    app.assignHint `hbf bf.proof
     fitsOf (← app.finish)
   /-- The frames builder of a loop, with the parts that `loopBound` takes and the builder
   `condFits` of the condition's frames under its state, or `none` for the condition `true`. -/
@@ -3429,7 +3553,7 @@ where
     app.assign `hn (← userProof c rn)
     app.assign `hi (← userProof c ri)
     app.assign `hc (← hc (← app.hypType `hc))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hb u.r.proof
     app.childFits `hnf rn.fits
     app.childFits `hif ri.fits
     match condFits with
@@ -3527,19 +3651,29 @@ where
       let _ ← assignFiniteEquation app `wordValues `hw (mkConst ``UInt64) wordValues
     else
       let _ ← assignFamilyEquation app `wordValues `hw
-        (← wordFamily layout.shape r (elems.zip (wordValues.map (·.term)))) wordValues
+        (fun terms => wordFamily layout.shape r (elems.zip terms)) wordValues
     let _ ← assignFiniteEquation app `childValues `hc (mkApp (mkConst ``Tree) shape)
       (← values children)
     let arrayValues ← values arrays
     let _ ← assignFamilyEquation app `arrayValues `ha
-      (← arrayFamily layout.shape r ((typedArrays.map (·.1)).zip (arrayValues.map (·.term))))
-      arrayValues
+      (fun terms => arrayFamily layout.shape r ((typedArrays.map (·.1)).zip terms)) arrayValues
     let bufferValues ← values buffers
-    let _ ← assignFamilyEquation app `bufferValues `hb
-      (← bufferFamily layout.shape r (bufferValues.map (·.term))) bufferValues
+    let _ ← assignFamilyEquation app `bufferValues `hb (bufferFamily layout.shape r) bufferValues
     let proof ← app.finish
     let (_, value) ← eqSides proof
-    let proof ← transHint proof (← bareEq value (← flatValue e))
+    -- The value is the flattening of `e` by `rfl`, proved for variables in place of the children
+    -- that are not variables and applied to the children.  With such a child in place, the kernel
+    -- reduces it while it unfolds the structural recursion of the flattening, and for an `if` it
+    -- evaluates the condition's `Decidable` instance.
+    let compound := (args.zip natives).filterMap fun (a, kind) =>
+      if kind matches .child && !a.consumeMData.isFVar then some a else none
+    let decls ← compound.toArray.mapIdxM fun j a => do
+      pure (Name.mkSimple s!"c{j}", ← inferType a)
+    let flatEq ← withLocalDeclsDND decls fun xs => do
+      let generalize (t : Lean.Expr) : Lean.Expr := (compound.zip xs.toList).foldl
+        (fun t (a, x) => t.replace fun s => if s == a then some x else none) t
+      mkLambdaFVars xs (← bareEq (generalize value) (← flatValue (generalize e)))
+    let proof ← transHint proof (mkAppN flatEq compound.toArray)
     let addBounds (a b : Bound) : MetaM Bound := do
       let (left, _) ← eqSides a.proof
       let (right, _) ← eqSides b.proof
@@ -3565,7 +3699,11 @@ where
           | throwError "verified_compile: recursive array coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive array coercion has an invalid form"
-        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr (.array el)))
+        -- The value with the type of the coercion lemmas, by a `let` that the kernel removes by
+        -- zeta reduction when it compares the coercion with `(arrays i).denote funs env`.  Against
+        -- `id` of the value it would unfold `Expr.denote`, whose height is greater, and evaluate
+        -- the field's source, such as an `if`'s condition.
+        let value := mkLet `v (mkApp (mkConst ``Ty.denote) (tyExpr (.array el))) value (mkBVar 0)
         let (cost, proof) ← coerceEq c.base (.array el) s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
@@ -3580,7 +3718,6 @@ where
           | throwError "verified_compile: recursive buffer coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive buffer coercion has an invalid form"
-        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr .bytes))
         let (cost, proof) ← coerceEq c.base .bytes s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `B `hb (mkConst ``Nat) bb
@@ -3666,6 +3803,75 @@ where
   reflectAs (T e : Lean.Expr) : MetaM Reflection := do
     let r ← reflect c T
     return r.as (← restate r.proof (← bareEq T e)) e
+  /-- An `Int64` term over words, after `Signed64`.  A closed literal is the constructor of its
+  word, which the kernel computes.  `+`, `-`, `*`, `&&&`, `|||`, and `^^^` are the word operations
+  on the operands' words, and `>>>` is the arithmetic shift `sar`, which the kernel identifies with
+  the `Int64` operations, `<<<` and negation are `shl` and `0 - a` by `shl_eq` and `neg_eq`, and
+  `/` and `%` are the word forms `div` and `rem` by their equations, with operands that are not
+  variables bound first, since the forms read them more than once.  `Float.toInt64` and
+  `Float32.toInt64` are the word forms `ofFloat` and `ofFloat32` of `Signed64Float`, with the
+  operand bound first. -/
+  reflectInt64? (e : Lean.Expr) : MetaM (Option Reflection) := do
+    unless (← whnfR (← inferType e)).isConstOf ``Int64 do return none
+    if !e.hasFVar && !e.hasLooseBVars && (← int64Lit? e) then
+      let n ← kernelWhnf (← mkAppM ``UInt64.toNat #[← mkAppM ``Int64.toUInt64 #[e]])
+      let some v := natOf n
+        | throwError "verified_compile: the Int64 constant {e} does not reduce to a word"
+      let T ← mkAppM ``Int64.ofUInt64 #[toExpr (UInt64.ofNat v)]
+      return some (← reflectVia T (← mkExpectedTypeHint (← mkEqRefl e) (← mkEq T e)))
+    let (fn, args) := e.getAppFnArgs
+    let binary (op proof : Lean.Expr) (rl rr : Reflection) : MetaM Reflection := do
+      return ⟨← mkAppM ``Expr.bin #[op, rl.src, rr.src], proof, .word, e,
+        binBound c ``bin_bound [(`op, op)] rl rr, binFits c ``bin_fits [(`op, op)] rl rr, none⟩
+    if (fn == ``Float.toInt64 || fn == ``Float32.toInt64) && args.size == 1 then
+      let x := args[0]!
+      unless (← projReduce x).isFVar do
+        return some (← reflectAs (← bindArgs e.getAppFn [x] [true] #[] #[]) e)
+      let thm := if fn == ``Float.toInt64 then ``LeanExe.ProofKit.Signed64.ofFloat_word
+        else ``LeanExe.ProofKit.Signed64.ofFloat32_word
+      let eq ← mkAppM thm #[x]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return some (← reflectVia T eq)
+    if fn == ``Neg.neg && args.size == 3 then
+      let rz ← reflect c (toExpr (0 : UInt64))
+      let ra ← reflect c args[2]!
+      let op := Lean.mkConst ``BinOp.sub
+      let eq ← mkEqSymm (← mkAppM ``LeanExe.ProofKit.Signed64.neg_eq #[args[2]!])
+      return some (← binary op (← transHint (← mkAppM ``bin_eq #[op, rz.proof, ra.proof]) eq)
+        rz ra)
+    unless args.size == 6 do return none
+    let a := args[4]!
+    let b := args[5]!
+    let word? : Option Name := match fn with
+      | ``HAdd.hAdd => some ``BinOp.add
+      | ``HSub.hSub => some ``BinOp.sub
+      | ``HMul.hMul => some ``BinOp.mul
+      | ``HAnd.hAnd => some ``BinOp.and
+      | ``HOr.hOr => some ``BinOp.or
+      | ``HXor.hXor => some ``BinOp.xor
+      | ``HShiftLeft.hShiftLeft => some ``BinOp.shl
+      | ``HShiftRight.hShiftRight => some ``BinOp.sar
+      | _ => none
+    if let some name := word? then
+      let op := Lean.mkConst name
+      let rl ← reflect c a
+      let rr ← reflect c b
+      let proof ← mkAppM ``bin_eq #[op, rl.proof, rr.proof]
+      if name == ``BinOp.shl then
+        let eq ← mkEqSymm (← mkAppM ``LeanExe.ProofKit.Signed64.shl_eq #[a, b])
+        return some (← binary op (← transHint proof eq) rl rr)
+      return some (← binary op proof rl rr)
+    let form? : Option Name := match fn with
+      | ``HDiv.hDiv => some ``LeanExe.ProofKit.Signed64.div_word
+      | ``HMod.hMod => some ``LeanExe.ProofKit.Signed64.rem_word
+      | _ => none
+    let some thm := form? | return none
+    let bind := [false, false, false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
+    if bind.any id then
+      return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
+    let eq ← mkAppM thm #[a, b]
+    let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+    return some (← reflectVia T eq)
   /-- `if a = b` and `if a ≠ b` on enumerations, as the same test on their words. -/
   enumIte? (α p inst x y : Lean.Expr) : MetaM (Option Reflection) := do
     let (thm, rel, a, b) ← match p.consumeMData.getAppFnArgs with
@@ -3695,7 +3901,7 @@ where
     let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
     let re ← reflect c empty
     let ub ← withListCaseFields c xs fun inner head tail => do
-      let rn ← reflect inner (branch.beta #[head, tail])
+      let rn ← reflect inner (mkApp2 branch head tail)
       unless rn.ty == re.ty do
         throwError "verified_compile: list branches have different source types"
       pure (⟨{ rn with proof := ← userProof inner rn }, #[head, tail],
@@ -3711,8 +3917,8 @@ where
       let rule ← LemmaApp.start ``listCase_eq (common ++
         [(`flatten, ← (← shapeOf (← inferType empty)).fn (← inferType empty)),
           (`a, empty), (`b, branch)])
-      rule.assign `he (← mkExpectedTypeHint (← userProof c re) (← rule.hypType `he))
-      rule.assign `hn (← mkExpectedTypeHint hn (← rule.hypType `hn))
+      rule.assignHint `he (← userProof c re)
+      rule.assignHint `hn hn
       rule.finish
     let bound : BoundBuilder := fun modes paid live => do
       let app ← LemmaApp.start ``listCase_bound
@@ -3727,17 +3933,17 @@ where
       app.assign `hc (← root.finish)
       let _ ← assignBranch c.base app `he re.ty re
       let nodeBound ← withExistingLocalDecls ub.decls do
-        let b ← branchBound c.base (← ub.instantiate (← app.hypType `hn)) re.ty ub.r
+        let b ← branchBound c.base (← ub.instantiate (← app.argType `hn)) re.ty ub.r
         pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
       app.assign `N nodeBound.term
-      app.assign `hn (← mkExpectedTypeHint nodeBound.proof (← app.hypType `hn))
+      app.assignHint `hn nodeBound.proof
       boundOf (← app.finish)
     let fits : FitsBuilder := do
       let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
       app.childFits `he re.fits
       let nb ← ub.fits
       app.assign `N nb.term
-      app.assign `hn (← mkExpectedTypeHint nb.proof (← app.hypType `hn))
+      app.assignHint `hn nb.proof
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, re.ty, app.toExpr, bound, fits, none⟩
   reflectRecursiveMatch (app : MatcherApp) (xs : Lean.Expr) (layout : RecursiveLayout) :
@@ -3760,7 +3966,7 @@ where
         emptyR := some re
       | some r =>
         let ub ← withRecursiveCaseFields c layout r fun inner fields => do
-          let rn ← reflect inner (branches[j]!.beta fields)
+          let rn ← reflect inner (mkAppN branches[j]! fields)
           pure (⟨{ rn with proof := ← userProof inner rn }, fields,
             ← fields.toList.mapM fun field => field.fvarId!.getDecl⟩ : Under)
         if let some ty := ty? then
@@ -3818,11 +4024,10 @@ where
           let _ ← root.child `h (varBound c x (.tree layout.shape) xs)
           app.assign (name "hc" j) (← root.finish)
           let nodeBound ← withExistingLocalDecls ub.decls do
-            let b ← branchBound c.base (← ub.instantiate (← app.hypType (name "h" j))) ty ub.r
+            let b ← branchBound c.base (← ub.instantiate (← app.argType (name "h" j))) ty ub.r
             pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
           app.assign (name "N" j) nodeBound.term
-          app.assign (name "h" j)
-            (← mkExpectedTypeHint nodeBound.proof (← app.hypType (name "h" j)))
+          app.assignHint (name "h" j) nodeBound.proof
         | none, none => throwError "verified_compile: a null branch without a reflection"
       boundOf (← app.finish)
     let fits : FitsBuilder := do
@@ -3833,7 +4038,7 @@ where
         | some i, _ =>
           let nb ← (← underAt i).fits
           app.assign (name "N" j) nb.term
-          app.assign (name "h" j) (← mkExpectedTypeHint nb.proof (← app.hypType (name "h" j)))
+          app.assignHint (name "h" j) nb.proof
         | none, none => throwError "verified_compile: a null branch without a reflection"
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, ty, app.toExpr, bound, fits, none⟩
@@ -4000,13 +4205,14 @@ where
     let rl ← reflect c l
     let rr ← reflect c r
     let cond ← mkAppM ``Expr.cmp #[cmpExpr op, rl.src, rr.src]
-    let (bthm, fthm) := match op with
-      | .lt => (``ite_lt_bound, ``ite_lt_fits)
-      | .le => (``ite_le_bound, ``ite_le_fits)
-      | .eq => (``ite_eqP_bound, ``ite_eqP_fits)
-      | .ne => (``ite_ne_bound, ``ite_ne_fits)
+    let (thm, bthm, fthm) ← match op with
+      | .lt => pure (``ite_lt_eq, ``ite_lt_bound, ``ite_lt_fits)
+      | .le => pure (``ite_le_eq, ``ite_le_bound, ``ite_le_fits)
+      | .eq => pure (``ite_eqP_eq, ``ite_eqP_bound, ``ite_eqP_fits)
+      | .ne => pure (``ite_ne_eq, ``ite_ne_bound, ``ite_ne_fits)
+      | .slt | .sle => throwError "verified_compile: unsupported condition {p}"
     return ⟨← mkAppM ``Expr.ite #[cond, ra.src, rb.src],
-      ← mkAppM (iteLemma op) #[rl.proof, rr.proof, ra.proof, rb.proof], ra.ty, a,
+      ← mkAppM thm #[rl.proof, rr.proof, ra.proof, rb.proof], ra.ty, a,
       iteBound bthm [(`l, rl.src), (`r, rr.src)] [(`hl, rl), (`hr, rr)]
         (binBound c ``cmp_bound [(`op, cmpExpr op)] rl rr),
       iteFits fthm [(`l, rl.src), (`r, rr.src)] [(`hl, rl), (`hr, rr)]
@@ -4384,6 +4590,17 @@ where
     let rr ← reflect c b
     return ⟨← mkAppM ``Expr.cmp #[cmpExpr op, rl.src, rr.src],
       ← mkAppM ``cmp_eq #[cmpExpr op, rl.proof, rr.proof], .bool, a,
+      binBound c ``cmp_bound [(`op, cmpExpr op)] rl rr,
+      binFits c ``cmp_fits [(`op, cmpExpr op)] rl rr, none⟩
+  /-- The decision of the signed comparison `op` of the `Int64` values `a` and `b`, at the
+  instance `inst`, as `i64.lt_s` or `i64.le_s` on their words. -/
+  reflectSCmp (op : CmpOp) (a b inst : Lean.Expr) : MetaM Reflection := do
+    let rl ← reflect c a
+    let rr ← reflect c b
+    let apply ← mkAppOptM (if op == .slt then ``slt_apply else ``sle_apply)
+      #[some a, some b, some inst]
+    return ⟨← mkAppM ``Expr.cmp #[cmpExpr op, rl.src, rr.src],
+      ← transHint (← mkAppM ``cmp_eq #[cmpExpr op, rl.proof, rr.proof]) apply, .bool, a,
       binBound c ``cmp_bound [(`op, cmpExpr op)] rl rr,
       binFits c ``cmp_fits [(`op, cmpExpr op)] rl rr, none⟩
   reflectFCmp (op : FCmpOp) (a b : Lean.Expr) : MetaM Reflection := do
@@ -4851,11 +5068,11 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
     app.assign `hfl (← mkExpectedTypeHint (← mkEqRefl fl) (← mkEq flTerm fl))
   let call := mkAppN (mkConst r.name) params
   app.assign `V (resultShape.apply call)
-  app.assign `hv (← mkExpectedTypeHint (mkAppN (mkConst denoteEq) params) (← app.hypType `hv))
+  app.assignHint `hv (mkAppN (mkConst denoteEq) params)
   let (bodyModes, paid, live) ← app.allocsArgs `hba
   let b ← body.bound bodyModes paid live
   app.assign `BA b.term
-  app.assign `hba (← mkExpectedTypeHint b.proof (← app.hypType `hba))
+  app.assignHint `hba b.proof
   -- The copy of a borrowed result, stated with the result's type and body as the terms of the
   -- function, which the kernel unfolds.
   let some (_, coerce, _) := (← app.hypType `hk).eq?
@@ -4864,7 +5081,7 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
     | throwError "verified_compile: the result of {r.name}"
   let (K, hk) ← coerceEq base r.result s M v call
   app.assign `KA K
-  app.assign `hk (← mkExpectedTypeHint hk (← app.hypType `hk))
+  app.assignHint `hk hk
   boundOf (← app.finish)
 
 /-- The equation of a function's frames condition by the lemma `thm`, which states it from its
@@ -4874,7 +5091,7 @@ def bodyFitsEq (thm : Name) (args : List (Name × Lean.Expr)) (env : Lean.Expr)
   let app ← LemmaApp.start thm (args ++ [(`args, env)])
   let b ← body.fits
   app.assign `B b.term
-  app.assign `h (← mkExpectedTypeHint b.proof (← app.hypType `h))
+  app.assignHint `h b.proof
   return ⟨b.term, ← app.finish⟩
 
 /-- For definition `r`, whose code takes the call depth, adds `base.cost` and `base.fits`, its
@@ -5006,10 +5223,14 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
     -- `name = fun params => body` by `rfl`: against a lambda the kernel can only unfold `name`.
     -- Applied to the parameters, it relates the body to `name params` by beta reduction, so the
     -- kernel never compares `name params` with a body headed by a matcher, which it would unfold
-    -- first, evaluating the matcher's discriminant.
+    -- first, evaluating the matcher's discriminant.  The type hint states the result with `body`
+    -- in place of the redex `value params`, which the kernel reduces at the top of the hint's
+    -- equation; `restate` places the two under the flattening, where it would not (see the rule
+    -- for beta redexes in `reflect`).
     let value ← instantiateMVars info.value
     let hdef ← mkExpectedTypeHint (← mkEqRefl (mkConst name)) (← mkEq (mkConst name) value)
-    let happ ← params.foldlM (fun h p => mkCongrFun h p) hdef
+    let happ ← mkExpectedTypeHint (← params.foldlM (fun h p => mkCongrFun h p) hdef)
+      (← mkEq (mkAppN (mkConst name) params) body)
     let full ← restate r.proof (← mkEqSymm happ)
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params full)
     let aborts ← evalBool m!"whether {name} may trap" (← mkAppM ``Func.aborts #[f])

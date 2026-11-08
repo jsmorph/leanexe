@@ -49,19 +49,6 @@ theorem outside_of_disjoint {sp : UInt32} {o x : Nat} (hd : o + 8 ≤ x ∨ x + 
 def slotWords (s : State) (o : Nat) : UInt32 × UInt32 :=
   (load32 s.mem (s.sp + UInt32.ofNat o), load32 s.mem (s.sp + UInt32.ofNat (o + 4)))
 
-theorem load32_congr {m m' : UInt32 → UInt8} {a : UInt32}
-    (h : ∀ k < 4, m' (a + UInt32.ofNat k) = m (a + UInt32.ofNat k)) : load32 m' a = load32 m a := by
-  have h0 := h 0 (by decide)
-  have h1 := h 1 (by decide)
-  have h2 := h 2 (by decide)
-  have h3 := h 3 (by decide)
-  rw [show UInt32.ofNat 0 = 0 from rfl, UInt32.add_zero] at h0
-  rw [show UInt32.ofNat 1 = 1 from rfl] at h1
-  rw [show UInt32.ofNat 2 = 2 from rfl] at h2
-  rw [show UInt32.ofNat 3 = 3 from rfl] at h3
-  unfold load32
-  rw [h0, h1, h2, h3]
-
 /-- A slot whose bytes keep their values keeps its words. -/
 theorem slotWords_congr {s t : State} {o : Nat} (hsp : t.sp = s.sp)
     (h : ∀ k < 8, t.mem (s.sp + UInt32.ofNat (o + k)) = s.mem (s.sp + UInt32.ofNat (o + k))) :
@@ -86,7 +73,7 @@ def CopyCode (c : List Instr) (x y : Nat) : Prop :=
   ∃ h0 h1 h2 h3, c = [.ldrSp 0 ⟨x, h0⟩, .ldrSp 1 ⟨x + 4, h1⟩, .strSp 0 ⟨y, h2⟩, .strSp 1 ⟨y + 4, h3⟩]
 
 /-- Placed copies whose sources lie apart from every destination and whose destinations lie apart
-from each other, all within `Ram` words of a region that the checks accept. -/
+from each other, all within `Ram` words of a region that the checks accept, in four steps each. -/
 theorem run_copies {s : State} :
     ∀ {codes : List (List Instr)} {src dst : Nat → Nat},
       (∀ i (hi : i < codes.length), CopyCode codes[i] (src i) (dst i)) →
@@ -97,7 +84,8 @@ theorem run_copies {s : State} :
       (∀ i < codes.length, ∀ j < codes.length, i ≠ j → dst i + 8 ≤ dst j ∨ dst j + 8 ≤ dst i) →
       (∀ i < codes.length, src i + 8 ≤ 4294967296 ∧ dst i + 8 ≤ 4294967296) →
       CodeAt code s.pc codes.flatten →
-      ∃ t, Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (16 * codes.length) ∧ t.sp = s.sp ∧
+      ∃ t, Steps P σ code (4 * codes.length) s t ∧
+        t.pc = s.pc + UInt32.ofNat (16 * codes.length) ∧ t.sp = s.sp ∧
         t.lr = s.lr ∧ t.trace = s.trace ∧ t.reads = s.reads ∧
         (∀ i < codes.length, slotWords t (dst i) = slotWords s (src i)) ∧
         (∀ b, (∀ i < codes.length, Outside s.sp (dst i) b) → t.mem b = s.mem b)
@@ -111,7 +99,7 @@ theorem run_copies {s : State} :
         slotsOk_ld w0 (slotsOk_ld w1 (slotsOk_st w2 (slotsOk_st w3 (slotsOk_nil _))))
       rw [List.flatten_cons] at hc
       obtain ⟨hc1, hc2⟩ := CodeAt.append.mp hc
-      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hc1
+      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hc1
       have hm1 : (slotRun P σ [.ldrSp 0 ⟨src 0, h0⟩, .ldrSp 1 ⟨src 0 + 4, h1⟩,
           .strSp 0 ⟨dst 0, h2⟩, .strSp 1 ⟨dst 0 + 4, h3⟩] s).mem =
           store32 (store32 s.mem (s.sp + UInt32.ofNat (dst 0))
@@ -139,7 +127,8 @@ theorem run_copies {s : State} :
           (fun i hi j hj hij => hdd (i + 1) (by simp; omega) (j + 1) (by simp; omega)
             (by omega))
           (fun i hi => hb (i + 1) (by simp; omega)) hc2
-      refine ⟨t, r1.trans rt, ?_, spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
+      refine ⟨t, (r1.trans rt).mono (by simp only [List.length_cons, List.length_nil]; omega), ?_,
+        spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
         fun i hi => ?_, fun b hbo => ?_⟩
       · rw [pt, p1]
         simp only [List.length_cons, List.length_nil]
@@ -184,6 +173,15 @@ theorem drop_reverse_getElem? {β : Type} {l : List β} {p j : Nat} (hj : j < l.
 
 theorem outside_above {sp b : UInt32} {x : Nat} (h : sp.toNat + x + 8 ≤ b.toNat) :
     Outside sp x b := by
+  unfold Outside
+  rw [UInt32.toNat_sub, UInt32.toNat_add, UInt32.toNat_ofNat']
+  have := toNat_lt32 b
+  have := toNat_lt32 sp
+  simp only [Nat.reducePow]
+  omega
+
+theorem outside_below {sp b : UInt32} {x : Nat} (hb : b.toNat < sp.toNat)
+    (hx : sp.toNat + x + 8 ≤ 4294967296) : Outside sp x b := by
   unfold Outside
   rw [UInt32.toNat_sub, UInt32.toNat_add, UInt32.toNat_ofNat']
   have := toNat_lt32 b
@@ -282,13 +280,17 @@ theorem take_reverse_getElem? {β : Type} {l : List β} {p i : Nat} (hp : p ≤ 
   omega
 
 /-- The simulation of a call of function `k`: the copies of the arguments into the outgoing
-area, `BL`, the callee's `FunSim` from `CallsOk`, and the copies of the results. -/
+area, `BL`, the callee's `FunSim` from `CallsOk`, and the copies of the results, whose
+instructions besides the callee's `callCost` counts. -/
 theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
-  intro E ctl σs a is fin hgen hcode hev _ hb α m st sl ms hinv hpc need D hcl hD hroom
+  intro E ctl σs a is fin hgen hcode hev _ hb _ α m st sl ms hinv hsr hpc hga need D hcl hD hroom
   obtain ⟨target, ps, rs, hk, hbp, hout, htake, args, res, off, hal, hargs, hah, hrl, hres, hrh,
     o1, o2, o3, o4, rfl, rfl⟩ := gen_call hgen
   have hfun : FunSim P σ code m E.toShared need f k (target, ps, rs) :=
     hcl k (target, ps, rs) hk f (by omega)
+  have hcc : callCost m k = 4 * ps.length + 1 + 4 * rs.length := hfun.1
+  have hcost : costOne (f + 1) m st sl (ctl.map Ctl.arity) (.call k) {} =
+      callCost m k + costRun f m k st sl.values {} := costOne_call
   have hh := hinv.len
   have hfit := hinv.frame.fits
   have hsz := E.frame.size_eq
@@ -328,6 +330,10 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
   have hwpc : w.pc = target := by rw [hwd, State.pc_withLrPc, ht1pc]; exact o4
   have hwsp : w.sp = ms.sp := by rw [hwd, State.sp_withLrPc]; exact sp1
   have hwmem : w.mem = t1.mem := by rw [hwd, State.mem_withLrPc]
+  have hkw : KeepsBelow E.limit ms w := fun b hb => by
+    have := hinv.frame.limit
+    rw [hwmem]
+    exact hm1 b fun i hi => outside_below (by omega) (by omega)
   -- the callee's simulation
   have hpv : p ≤ sl.values.length := by omega
   have hst : StackOk P E.limit (max p r) (need k) w := by
@@ -348,10 +354,11 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
     rw [Prod.mk.injEq] at e
     rw [e.1, e.2]
     exact hv0
-  have hres0 := hfun st sl.values w (by simp only; omega)
+  have hres0 := hfun.2 st sl.values w (by simp only; omega)
     (by have := hinv.types.take p; rw [htake] at this; simpa [hp] using this) hwpc
     (by rw [hwd, State.lr_withLrPc]; exact or1_odd _) (by simpa [hp, hr] using hst)
-    (by simpa [hp] using hargsW)
+    (by simpa [hp] using hargsW) (hsr.congr hkw)
+    (fun h => ⟨(hga h).1, alignedOne_call (hga h).2⟩)
   simp only [execOne.eq_def]
   revert hres0
   cases hR : Wasm.run f m k st sl.values with
@@ -361,7 +368,7 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
   | Thrown _ _ _ => intro h; exact h.elim
   | Success vs' st' =>
       intro hres0
-      obtain ⟨ms', r2, p2, sp2, lr2, tr2, rd2, hm2, hl2, hd2, hargs2, hty2⟩ := hres0
+      obtain ⟨ms', r2, p2, sp2, lr2, tr2, rd2, hm2, hl2, hd2, hargs2, hty2, hsr2⟩ := hres0
       simp only [hp, hr] at hm2 hl2 hd2 hargs2 hty2
       -- the copies of the results
       have hms'sp : ms'.sp = ms.sp := sp2.trans hwsp
@@ -416,13 +423,12 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
             (by have := hrh j (by omega); have := hop (h - p + j); omega) hk) ht2sp
       have hvs' : vs' = vs'.take r ++ sl.values.drop p := by
         rw [← hd2, List.take_append_drop]
-      have hvs' : vs' = vs'.take r ++ sl.values.drop p := by
-        rw [← hd2, List.take_append_drop]
       have hhp : h - p + r ≤ E.frame.height := by
         rcases Nat.eq_zero_or_pos r with hr0 | hr0
         · have := hinv.height; omega
         · have := hrh (r - 1) (by omega); omega
-      refine ⟨_, rfl, t2, r1.trans (reach_exec hcB eBL (r2.trans r3)), ?_, ht2sp,
+      refine ⟨_, rfl, t2, (r1.trans (steps_exec hcB eBL (r2.trans r3))).mono
+          (by rw [hcost, hcc, hal, hrl]; omega), ?_, ht2sp,
         tr3.trans (tr2.trans (by rw [hwd, State.trace_withLrPc]; exact tr1)),
         rd3.trans (rd2.trans (by rw [hwd, State.reads_withLrPc]; exact rd1)),
         ⟨(hslot E.frame.lrOff (by omega) (by omega) fun j hj => by
@@ -430,7 +436,7 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
           fun b hb => hkeep b (by omega) fun j hj => outside_above (by
             have := hrh j (by omega); have := hop (h - p + j); omega)⟩,
         fun j hj => hslot _ (by have := hop j; omega) (by have := hop j; omega) fun j' hj' => by
-          have := hop j; have := hop (h - p + j'); omega, ?_⟩
+          have := hop j; have := hop (h - p + j'); omega, ?_, hsr2.congr fun b hb => ?_⟩
       · rw [p3, hpc2, hrl, List.length_append, List.length_append, length_copies hargs,
           length_copies hres, hal, hrl]
         simp only [List.length_cons, List.length_nil]
@@ -464,5 +470,8 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
         · show Typed _ vs'
           rw [hvs']
           exact hty2.append (hinv.types.drop p)
+      · have := hinv.frame.limit
+        exact hm3 b fun j hj => outside_below (by rw [hms'sp]; omega)
+          (by rw [hms'sp]; have := hrh j (by omega); have := hop (h - p + j); omega)
 
 end LeanExe.M7

@@ -174,18 +174,37 @@ argument's representation gives the premise of `compute_eq`.
 Before each proof, search [the verification knowledge base](../../../VKB/README.md) for the
 declarations and goal shapes of the proof.  Search the `entry.json` files under `VKB/entries/` for the
 constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
-every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
-`loop-combinators`, `array-fold-list-induction`, and `reflector-forms` cover the shapes of the
-table.  [The manual's section on
+every entry that names them.  The entries on
+[specification call theorems](../../../VKB/entries/spec-call-theorem/README.md),
+[closed-form allocation bounds](../../../VKB/entries/verified-bound-closed-form/README.md),
+[loops and builds](../../../VKB/entries/loop-combinators/README.md),
+[array folds by list induction](../../../VKB/entries/array-fold-list-induction/README.md), and
+[array literals, proposition tests, and structure patterns](../../../VKB/entries/reflector-forms/README.md)
+cover the shapes of the table.  For shapes beyond the table, the entries on
+[sorting and selection](../../../VKB/entries/sorted-permutation/README.md),
+[array heaps](../../../VKB/entries/heap-sift-invariant/README.md),
+[operation streams](../../../VKB/entries/operation-stream-refinement/README.md),
+[tail-recursive and fuel-bounded functions](../../../VKB/entries/tail-recursive-spec/README.md),
+[link-reversing tree updates](../../../VKB/entries/tree-link-reversal/README.md),
+[programs over `Int64`](../../../VKB/entries/signed-int64/README.md), and
+[decimal text](../../../VKB/entries/decimal-conversions/README.md) cover those shapes.  When the
+program must also run as an AArch64 Image, a Cortex-M7 image, or a bare-metal C program, the entries
+on [AArch64 Image theorems](../../../VKB/entries/a64-image-theorem/README.md),
+[Cortex-M7 board theorems](../../../VKB/entries/m7-board-theorem/README.md),
+[bare-metal C programs](../../../VKB/entries/bare-metal-programs/README.md), and
+[output of request programs](../../../VKB/entries/request-output-prefix/README.md) describe the
+theorems of those targets, which the check of Stage 4 does not state.  [The manual's section on
 proving](../../../docs/verified-manual.md#proving) describes the generated theorems and the bounds.
 Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosing lemmas, and
 never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can
 take minutes.  A `simp` call that unfolds a large term may need `set_option maxHeartbeats 1000000
 in`.  Build with `tools/leanrun --timeout 60m lake build Examples.Name.Proof` and then
-`Examples.Name.Compiled`.  End the stage with proposals for new VKB entries or changes to
-existing ones, in the form of [the template](../../../VKB/TEMPLATE.md), for each lesson of the
-proofs that applies beyond this program: a missing lemma, a tactic that misled, or a goal shape
-that no entry names.  Put them in `journal.md` and in the report to the user.
+`Examples.Name.Compiled`.  End the stage with the lessons of the proofs that apply beyond this
+program: a missing lemma, a tactic that misled, or a goal shape that no entry names.  Write each
+such lesson that names existing declarations as a new entry or a change to an entry under
+`VKB/entries/` in the run's branch, in the form of [the template](../../../VKB/TEMPLATE.md), and
+give a new entry its row in the table of [the VKB README](../../../VKB/README.md).  Keep each other
+lesson as a proposal in the same form in `journal.md`.
 
 ## Stage 4: acceptance and records
 
@@ -228,10 +247,12 @@ that no entry names.  Put them in `journal.md` and in the report to the user.
    `tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries`.  [The verified
    compiler manual's full check](../../../docs/verified-manual.md#the-full-check) remains the required check
    for a change to the verified compiler or the runtime.
-5. Report the result to the user with the theorem line, the sample counts, the results of those checks, and
-   the VKB proposals.  Commit only when the user's instructions call for it, after those checks pass.
+5. Report the result to the user with the theorem line, the sample counts, the results of those checks,
+   the VKB entries that the run wrote or changed, and the proposals in `journal.md`.  Commit only when the user's instructions call for it, after those checks pass.
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the VKB entries and worked
 examples that helped or failed, and any missing general rule.  Record failures as they happen.
-[The running-maximum journal](../../../Examples/RunningMax/journal.md) gives the form.
+The journal's closing paragraph names the VKB entries that the run consulted and whether each
+helped, which gives later revisions and retirements of entries their evidence.  [The
+running-maximum journal](../../../Examples/RunningMax/journal.md) gives the form.

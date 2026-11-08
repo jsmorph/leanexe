@@ -28,8 +28,8 @@ with the same result.  The dialect has no floating-point flags and no `errno`, s
 and the assignments to `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
 `verified_compile` call at the end of the module checks the encoding one function at a time and
-needs about 1.9 GB.  The journal records the measurements.  `TgammaAccuracy.lean` checks the
-results against a reference computed with Lean's integers.
+needs about 1.9 GB.  `TgammaAccuracy.lean` checks the results against a reference computed with
+Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 

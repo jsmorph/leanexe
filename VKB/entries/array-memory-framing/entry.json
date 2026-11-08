@@ -53,9 +53,5 @@
     "Verified.wp_copyInto",
     "Verified.wp_copyDown",
     "Verified.wp_shiftUp"
-  ],
-  "sources": [
-    "2026-09-12: Framed copy support for initialization",
-    "2026-10-19: Extending the verified compiler"
   ]
 }

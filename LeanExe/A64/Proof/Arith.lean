@@ -1,14 +1,17 @@
 import LeanExe.A64.Proof.Traps
 import LeanExe.ProofKit.Exec
+import LeanExe.ProofKit.Signed64
 
 /-!
 The simulation of the integer comparisons and operations beyond GCD's loop.  `genCmp` compares
 the two values on top with `SUBS` and sets the lower one's register to 1 or 0 with `CSINC` and a
-condition: `neI64` with `EQ`, `ltUI64` with `HS`, `leUI64` with `HI`, and `geUI64` with `LO`,
-each the inverse of the comparison's.  `genBin` replaces them by the result of one instruction:
-`ADD`, `SUB`, `MADD` with `XZR` for `mulI64`, `AND` for `andI64` and the `i32` `and`, `ORR`,
-`EOR`, `LSLV`, and `LSRV`.  `wrapI64` is a 32-bit `ORR`, whose result the processor
-zero-extends.
+condition: `neI64` with `EQ`, `ltUI64` with `HS`, `leUI64` with `HI`, `geUI64` with `LO`,
+`ltSI64` with `GE`, and `leSI64` with `GT`, each the inverse of the comparison's.  After `SUBS`,
+N equals V exactly when the minuend is at least the subtrahend as `Int64` values.  `genBin`
+replaces them by the result of one instruction: `ADD`, `SUB`, `MADD` with `XZR` for `mulI64`,
+`AND` for `andI64` and the `i32` `and`, `ORR`, `EOR`, `LSLV`, and `LSRV`.  `shrSI64` is
+`sarCode`, the logical shift between two copies of the sign mask in X16, which computes
+`Signed64.sar`.  `wrapI64` is a 32-bit `ORR`, whose result the processor zero-extends.
 -/
 
 namespace LeanExe.A64
@@ -108,6 +111,72 @@ theorem cset_leU : CsetOk 8 (fun x y => x ≤ y) := by
     · have : ¬ x ≤ y := by rw [hle]; rw [hle'] at h1; rw [heq] at h2; omega
       simp [h1, h2, this]
     · have : x ≤ y := by rw [hle]; rw [hle'] at h1; omega
+      simp [h1, h2, this]
+
+theorem condHolds_10 (s : State) : s.condHolds 10 = (s.nFlag == s.vFlag) := rfl
+theorem condHolds_12 (s : State) : s.condHolds 12 = (s.nFlag == s.vFlag && !s.zFlag) := rfl
+
+/-- The word `w >>> 63 == 1` is the sign bit of `w`. -/
+theorem msb63 (w : UInt64) : (w >>> 63 == 1) = w.toBitVec.msb := by
+  rw [ProofKit.Signed64.shr63]
+  cases w.toBitVec.msb <;> rfl
+
+/-- After `SUBS` of `x` and `y`, N equals V exactly when `y ≤ x` as `Int64` values. -/
+theorem subs_nv (s : State) (x y : UInt64) :
+    ((s.subs 31 x y).nFlag == (s.subs 31 x y).vFlag) = decide (y.toInt64 ≤ x.toInt64) := by
+  show (((x - y) >>> 63 == 1) == (((x ^^^ y) &&& (x ^^^ (x - y))) >>> 63 == 1)) = _
+  rw [msb63, msb63, UInt64.toBitVec_and, UInt64.toBitVec_xor, UInt64.toBitVec_xor,
+    BitVec.msb_and, BitVec.msb_xor, BitVec.msb_xor]
+  simp only [Int64.le_iff_toInt_le]
+  show _ = decide (y.toBitVec.toInt ≤ x.toBitVec.toInt)
+  simp only [BitVec.toInt_eq_msb_cond]
+  have hx := x.toNat_lt
+  have hy := y.toNat_lt
+  have hr : (x - y).toNat = (2 ^ 64 - y.toNat + x.toNat) % 2 ^ 64 := UInt64.toNat_sub x y
+  have ex : x.toBitVec.toNat = x.toNat := rfl
+  have ey : y.toBitVec.toNat = y.toNat := rfl
+  have er : (x - y).toBitVec.toNat = (x - y).toNat := rfl
+  rw [ex, ey]
+  cases h1 : x.toBitVec.msb <;> cases h2 : y.toBitVec.msb <;> cases h3 : (x - y).toBitVec.msb <;>
+  · first
+    | (have a1 := BitVec.msb_eq_true_iff_two_mul_ge.mp h1)
+    | (have a1 := BitVec.msb_eq_false_iff_two_mul_lt.mp h1)
+    first
+    | (have a2 := BitVec.msb_eq_true_iff_two_mul_ge.mp h2)
+    | (have a2 := BitVec.msb_eq_false_iff_two_mul_lt.mp h2)
+    first
+    | (have a3 := BitVec.msb_eq_true_iff_two_mul_ge.mp h3)
+    | (have a3 := BitVec.msb_eq_false_iff_two_mul_lt.mp h3)
+    rw [ex] at a1
+    rw [ey] at a2
+    rw [er, hr] at a3
+    simp <;> omega
+
+theorem cset_ltS : CsetOk 10 (fun x y => x.toInt64 < y.toInt64) := by
+  intro s x y
+  rw [condHolds_10, subs_nv]
+  by_cases h : y.toInt64 ≤ x.toInt64
+  · have : ¬ x.toInt64 < y.toInt64 := by
+      rw [Int64.lt_iff_toInt_lt]; rw [Int64.le_iff_toInt_le] at h; omega
+    simp [h, this]
+  · have : x.toInt64 < y.toInt64 := by
+      rw [Int64.lt_iff_toInt_lt]; rw [Int64.le_iff_toInt_le] at h; omega
+    simp [h, this]
+
+theorem cset_leS : CsetOk 12 (fun x y => x.toInt64 ≤ y.toInt64) := by
+  intro s x y
+  rw [condHolds_12, subs_nv, subs_z]
+  have heq : x = y ↔ x.toInt64.toInt = y.toInt64.toInt :=
+    ⟨fun e => e ▸ rfl, fun e => congrArg Int64.toUInt64 (Int64.toInt_inj.mp e)⟩
+  have hle := Int64.le_iff_toInt_le (x := x.toInt64) (y := y.toInt64)
+  have hle' := Int64.le_iff_toInt_le (x := y.toInt64) (y := x.toInt64)
+  by_cases h2 : x = y
+  · subst h2
+    simp
+  · by_cases h1 : y.toInt64 ≤ x.toInt64
+    · have : ¬ x.toInt64 ≤ y.toInt64 := by rw [hle]; rw [hle'] at h1; rw [heq] at h2; omega
+      simp [h1, h2, this]
+    · have : x.toInt64 ≤ y.toInt64 := by rw [hle]; rw [hle'] at h1; omega
       simp [h1, h2, this]
 
 theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
@@ -309,6 +378,20 @@ theorem sim_geUI64 (F : Nat) : InstrSim P code F .geUI64 :=
       apply i64_cmp_case (fun x y => x ≥ y)
       i64_rule_tac
 
+theorem sim_ltSI64 (F : Nat) : InstrSim P code F .ltSI64 :=
+  sim_cmp_of P code (inst := .ltSI64)
+    (fun x y => x.toInt64 < y.toInt64) cset_ltS (fun _ _ _ _ => by simp only [genInstr])
+    fun _ _ _ _ _ => by
+      apply i64_cmp_case (fun x y => x.toInt64 < y.toInt64)
+      i64_rule_tac
+
+theorem sim_leSI64 (F : Nat) : InstrSim P code F .leSI64 :=
+  sim_cmp_of P code (inst := .leSI64)
+    (fun x y => x.toInt64 ≤ y.toInt64) cset_leS (fun _ _ _ _ => by simp only [genInstr])
+    fun _ _ _ _ _ => by
+      apply i64_cmp_case (fun x y => x.toInt64 ≤ y.toInt64)
+      i64_rule_tac
+
 theorem sim_addI64 (F : Nat) : InstrSim P code F .addI64 :=
   sim_bin_of P code (inst := .addI64) (t := .i64) (op := Instr.addReg) (fun x y => x + y)
     (fun _ _ _ _ => by simp only [genInstr])
@@ -365,6 +448,143 @@ theorem sim_shrUI64 (F : Nat) : InstrSim P code F .shrUI64 :=
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a >>> (b % 64)) _ (fun _ _ => rfl)
       i64_rule_tac
+
+/-! ## The arithmetic shift -/
+
+theorem gen_shrS {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {is : List Instr}
+    {fin : Option (List ValueType)} (hg : genInstr E ctl σ a .shrSI64 = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = sarCode (regOf (σ.length - 2)) (regOf (σ.length - 1)) ∧
+      fin = some (.i64 :: σ.drop 2) := by
+  by_cases hc : σ.length < curBase ctl + 2
+  · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  by_cases hlt : σ.length - 1 < 26
+  · simp [genInstr, hc, opReg_ok hlt, opReg_ok (show σ.length - 2 < 26 by omega), bind,
+      Except.bind, pure, Except.pure] at hg
+    exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
+  · obtain ⟨e, he⟩ := opReg_error hlt
+    by_cases hlt2 : σ.length - 2 < 26
+    · simp [genInstr, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
+    · obtain ⟨e2, he2⟩ := opReg_error hlt2
+      simp [genInstr, hc, he2, bind, Except.bind] at hg
+
+/-- `sarCode x y`, placed at `a`, leaves `Signed64.sar` of the registers `x` and `y` in `x` and
+changes no other register but the scratch register. -/
+theorem run_sar {ms : State} {a : UInt64} {x y : Fin 32} (hx : x.val < 31) (hxs : x ≠ scratch)
+    (hys : y ≠ scratch) (hxy : x ≠ y) (hcode : CodeAt code a (sarCode x y)) (hpc : ms.pc = a) :
+    ∃ ms', Reach P code ms ms' ∧ ms'.pc = after a 5 ∧
+      ms'.x x = ProofKit.Signed64.sar (ms.x x) (ms.x y) ∧
+      (∀ q, q ≠ x → q ≠ scratch → ms'.x q = ms.x q) ∧
+      ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧ ms'.out = ms.out := by
+  have c0 := hcode 0 (by simp [sarCode])
+  have c1 := hcode 1 (by simp [sarCode])
+  have c2 := hcode 2 (by simp [sarCode])
+  have c3 := hcode 3 (by simp [sarCode])
+  have c4 := hcode 4 (by simp [sarCode])
+  simp only [sarCode, List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1 c2 c3 c4
+  have hsc : scratch.val < 31 := by decide
+  have h31 : ∀ s : State, s.x 31 = 0 := fun s => by unfold State.x; rw [dite_eq_right (by decide)]
+  let s1 : State :=
+    { ms.setX scratch (ms.x x >>> UInt64.ofNat (63 : Fin 64).val) with pc := ms.pc + 4 }
+  let s2 : State := { s1.setX scratch (s1.x 31 - s1.x scratch) with pc := s1.pc + 4 }
+  let s3 : State := { s2.setX x (s2.x x ^^^ s2.x scratch) with pc := s2.pc + 4 }
+  let s4 : State := { s3.setX x (s3.x x >>> (s3.x y % 64)) with pc := s3.pc + 4 }
+  let s5 : State := { s4.setX x (s4.x x ^^^ s4.x scratch) with pc := s4.pc + 4 }
+  have p1 : s1.pc = after a 1 := by simp [s1, hpc, after]
+  have p2 : s2.pc = after a 2 := by
+    show s1.pc + 4 = _; rw [p1]; exact (after_succ a 1).symm
+  have p3 : s3.pc = after a 3 := by
+    show s2.pc + 4 = _; rw [p2]; exact (after_succ a 2).symm
+  have p4 : s4.pc = after a 4 := by
+    show s3.pc + 4 = _; rw [p3]; exact (after_succ a 3).symm
+  let S : UInt64 := (0 : UInt64) - (ms.x x >>> 63)
+  have k1 : s1.x scratch = ms.x x >>> 63 := State.x_setX_same (s := ms) hsc
+  have x1 : s1.x x = ms.x x := State.x_setX_ne (s := ms) (Ne.symm hxs)
+  have y1 : s1.x y = ms.x y := State.x_setX_ne (s := ms) (Ne.symm hys)
+  have k2 : s2.x scratch = S := by
+    have e : s2.x scratch = s1.x 31 - s1.x scratch := State.x_setX_same (s := s1) hsc
+    rw [e, h31, k1]
+  have x2 : s2.x x = ms.x x := (State.x_setX_ne (s := s1) (Ne.symm hxs)).trans x1
+  have y2 : s2.x y = ms.x y := (State.x_setX_ne (s := s1) (Ne.symm hys)).trans y1
+  have k3 : s3.x scratch = S := (State.x_setX_ne (s := s2) hxs).trans k2
+  have x3 : s3.x x = ms.x x ^^^ S := by
+    have e : s3.x x = s2.x x ^^^ s2.x scratch := State.x_setX_same (s := s2) hx
+    rw [e, x2, k2]
+  have y3 : s3.x y = ms.x y := (State.x_setX_ne (s := s2) hxy).trans y2
+  have k4 : s4.x scratch = S := (State.x_setX_ne (s := s3) hxs).trans k3
+  have x4 : s4.x x = (ms.x x ^^^ S) >>> (ms.x y % 64) := by
+    have e : s4.x x = s3.x x >>> (s3.x y % 64) := State.x_setX_same (s := s3) hx
+    rw [e, x3, y3]
+  have keep : ∀ q, q ≠ x → q ≠ scratch → s5.x q = ms.x q := fun q hq hqs =>
+    (State.x_setX_ne (s := s4) (Ne.symm hq)).trans
+      ((State.x_setX_ne (s := s3) (Ne.symm hq)).trans
+        ((State.x_setX_ne (s := s2) (Ne.symm hq)).trans
+          ((State.x_setX_ne (s := s1) (Ne.symm hqs)).trans
+            (State.x_setX_ne (s := ms) (Ne.symm hqs)))))
+  refine ⟨s5, reach_exec P code (by rw [hpc]; exact c0) rfl
+    (reach_exec P code (by rw [p1]; exact c1) rfl
+      (reach_exec P code (by rw [p2]; exact c2) rfl
+        (reach_exec P code (by rw [p3]; exact c3) rfl
+          (reach_exec P code (by rw [p4]; exact c4) rfl (.refl _))))), ?_, ?_, keep, ?_, ?_, ?_⟩
+  · show s4.pc + 4 = _; rw [p4]; exact (after_succ a 4).symm
+  · have e : s5.x x = s4.x x ^^^ s4.x scratch := State.x_setX_same (s := s4) hx
+    rw [e, x4, k4, ← UInt64.shiftRight_eq_shiftRight_mod]
+    rfl
+  · show (s4.setX x _).sp = ms.sp
+    simp [s4, s3, s2, s1]
+  · show (s4.setX x _).mem = ms.mem
+    simp [s4, s3, s2, s1]
+  · show (s4.setX x _).out = ms.out
+    simp [s4, s3, s2, s1]
+
+theorem sim_shrSI64 (F : Nat) : InstrSim P code F .shrSI64 := by
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
+  obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_shrS hg
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
+  cases F with
+  | zero => rw [ProofKit.execOne_zero]; exact .inr trivial
+  | succ f =>
+      have hcase : (∃ va vb vs, sl.values = vb :: va :: vs ∧ ∀ wa wb, ValRel va wa →
+          ValRel vb wb → ∃ vr, ValRel vr (ProofKit.Signed64.sar wa wb) ∧ HasType .i64 vr ∧
+            execOne (f + 1) m st sl .shrSI64 = .Fallthrough st { sl with values := vr :: vs }) ∨
+          ∃ msg, execOne (f + 1) m st sl .shrSI64 = .Invalid msg := by
+        apply i64_bin_case
+          (fun a b => UInt64.ofNat (BitVec.sshiftRight a.toBitVec (b % 64).toNat).toNat) _
+          (fun a b => (ProofKit.Signed64.shrS_sar a b).symm)
+        i64_rule_tac
+      rcases hcase with ⟨va, vb, vs, hvs, hex⟩ | ⟨msg, hex⟩
+      · have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hvs] at hst
+        have hb' : ValRel vb (ms.x (regOf (h - 1))) := by
+          have := hst.top
+          rwa [show (va :: vs).length = h - 1 by simp; omega] at this
+        have ha' : ValRel va (ms.x (regOf (h - 2))) := by
+          have := hst.pop.top
+          rwa [hvl] at this
+        obtain ⟨vr, hvr, htr, hex'⟩ := hex _ _ ha' hb'
+        rw [hex']
+        rw [hvs] at hty
+        have hne : regOf (h - 2) ≠ regOf (h - 1) := fun e =>
+          absurd (regOf_inj (h - 2) (by omega) (h - 1) hlt e) (by omega)
+        obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
+          run_sar P code (regOf_lt_31 _ (by omega)) (regOf_ne_scratch _ (by omega))
+            (regOf_ne_scratch _ hlt) hne hcode hpc
+        apply res_outcome P code hvr (vs := vs) htr (hty.drop 2) hinv hsr (by omega) (by omega)
+          hst.pop.pop hr
+        · rw [hp]; rfl
+        · rw [hvl, hres]
+        · intro k hk
+          exact hkeep _ (fun e => absurd (regOf_inj k (by omega) (h - 2) (by omega) e) (by omega))
+            (regOf_ne_scratch k (by omega))
+        · exact hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega))) (by decide)
+        · exact hkeep 17 (Ne.symm (regOf_ne_17 _ (by omega))) (by decide)
+        · exact hsp
+        · exact hmem
+        · exact hout
+      · rw [hex]; exact .inr trivial
 
 theorem sim_and (F : Nat) : InstrSim P code F .and :=
   sim_bin_of P code (inst := .and) (t := .i32) (op := Instr.andReg) (fun x y => x &&& y)

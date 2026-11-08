@@ -11,7 +11,9 @@
     "Verified.TailExpand",
     "Verified.Bound",
     "Demos.RunningSum.Charges",
-    "Demos.RunningSumFp.Charges"
+    "Demos.RunningSumFp.Charges",
+    "Verified.Examples.WasiRetainBudget",
+    "Demos.OrderBook.ProcessCharges"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -24,19 +26,23 @@
     "Verified.Wasi.Resource.callBounded_here",
     "Verified.Wasi.Resource.callBounded_there",
     "Verified.Ty.copyCost_of_scalar",
-    "Verified.Expr.fits_of_depthCalls"
+    "Verified.Expr.fits_of_depthCalls",
+    "Verified.Wasi.Resource.ResourceLoopExec",
+    "Verified.Wasi.Resource.ResourceLoopPrefix",
+    "Verified.Wasi.Resource.call_prefix_rule"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
     "Demos.RunningSum.readStep_bounded",
     "Demos.RunningSum.step_body_bounded",
     "Demos.RunningSumFp.writeStep_bounded",
-    "Demos.RunningSumFp.readStep_bounded"
-  ],
-  "sources": [
-    "2026-10-23: Implementing the WASI agenda",
-    "2026-10-26: Memory accounting for the process loop",
-    "2026-10-27: The charges of the integer running sum",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
+    "Demos.RunningSumFp.readStep_bounded",
+    "Verified.Examples.WasiRetain.call_prefix_bound",
+    "Demos.OrderBook.Process.RunBound",
+    "Demos.OrderBook.Process.runBound_74",
+    "Demos.OrderBook.Bound.run_bound_le_sized",
+    "Demos.OrderBook.Process.begin_prefix_bound",
+    "Demos.OrderBook.Process.stepBudget_le",
+    "Demos.OrderBook.Process.step_prefix_bound"
   ]
 }

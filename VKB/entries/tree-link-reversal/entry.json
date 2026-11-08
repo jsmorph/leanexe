@@ -1,0 +1,46 @@
+{
+  "id": "tree-link-reversal",
+  "goals": [
+    "descend x path t = ascend x path (spec x t).2",
+    "descend x path t = ascend x (spec x t).1 path (spec x t).2",
+    "ascend x g (.node p k b c) t = if g then ascend x (growLeft t k b c).1 p (growLeft t k b c).2 else ascend x false p (.node t k b c)",
+    "Ordered (spec x t).2",
+    "keys (spec x t).2 = if x ∈ keys t then keys t else (keys t).orderedInsert (· ≤ ·) x",
+    "b = -1 after simp, from a program that writes 0 - 1"
+  ],
+  "modules": [
+    "Library.Trees.Search.Proof",
+    "Library.Trees.Avl.Proof",
+    "Library.Trees.AvlDelete.Proof"
+  ],
+  "declarations": [
+    "Library.Trees.Avl.ascend_left",
+    "Library.Trees.Avl.ascend_right",
+    "Library.Trees.Avl.growLeft_rotate",
+    "Library.Trees.Avl.ordered_node",
+    "Library.Trees.Search.ordered_node",
+    "Library.Trees.Search.orderedInsert_append_cons",
+    "Library.Trees.Search.orderedInsert_append_of_lt",
+    "Library.Trees.Avl.growLeft_props",
+    "Library.Trees.Avl.growRight_props",
+    "Library.Trees.AvlDelete.ascendDel_left",
+    "Library.Trees.AvlDelete.ascendDel_right",
+    "Library.Trees.AvlDelete.ascendMin_step",
+    "Library.Trees.AvlDelete.ascendMin_found",
+    "UInt64.zero_sub"
+  ],
+  "examples": [
+    "Library.Trees.Search.descend_eq",
+    "Library.Trees.Search.insert_eq",
+    "Library.Trees.Search.searchTree",
+    "Library.Trees.Avl.descend_eq",
+    "Library.Trees.Avl.insert_eq",
+    "Library.Trees.Avl.keys_algorithmA",
+    "Library.Trees.Avl.algorithmA_props",
+    "Library.Trees.Avl.searchTree",
+    "Library.Trees.AvlDelete.descendDel_eq",
+    "Library.Trees.AvlDelete.minDel_eq",
+    "Library.Trees.AvlDelete.delete_eq",
+    "Library.Trees.AvlDelete.removes"
+  ]
+}

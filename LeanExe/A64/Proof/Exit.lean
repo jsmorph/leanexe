@@ -6,7 +6,7 @@ import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Traps
 
 /-!
-The run of the startup's exit in the boot model, from its instruction 55 to the `HVC #0` at 65,
+The run of the startup's exit in the boot model, from its instruction 58 to the `HVC #0` at 68,
 with translation on in the covered configuration.  The exit sets X1 to `uartAddr` and stores the
 low byte of X0 there, a run of the program model that `bootReach_of_reach` lifts.  `DSB SY` then
 completes the store by the rule `sys`, whose fetch succeeds because the TLBs are clean and the
@@ -17,17 +17,17 @@ byte to the UART and so keeps `uartDone`.
 
 namespace LeanExe.A64
 
-/-- The exit's instructions as the startup places them: `movImm 1 uartAddr` from instruction 55,
-`STRB` and `DSB SY` at 59 and 60, `movImm 0 0x84000008` from 61, `HVC #0` at 65, and the exit
-word at 67, a branch to instruction 55. -/
+/-- The exit's instructions as the startup places them: `movImm 1 uartAddr` from instruction 58,
+`STRB` and `DSB SY` at 62 and 63, `movImm 0 0x84000008` from 64, `HVC #0` at 68, and the exit
+word at 70, a branch to instruction 58. -/
 theorem startupCode_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
     {code : UInt64 → Option UInt32} (hcode : CodeAt code (L.image + 64) is) :
-    CodeAt code (after (L.image + 64) 55) (movImm 1 uartAddr) ∧
-      CodeAt code (after (L.image + 64) 59) [.strb 0 1 0, .dsbSy] ∧
-      CodeAt code (after (L.image + 64) 61) (movImm 0 0x84000008) ∧
-      code (after (L.image + 64) 65) = some (encode .hvc0) ∧
-      ∃ back, bField L.base (after (L.image + 64) 55) = .ok back ∧
-        code (after (L.image + 64) 67) = some (encode (.b back)) := by
+    CodeAt code (after (L.image + 64) 58) (movImm 1 uartAddr) ∧
+      CodeAt code (after (L.image + 64) 62) [.strb 0 1 0, .dsbSy] ∧
+      CodeAt code (after (L.image + 64) 64) (movImm 0 0x84000008) ∧
+      code (after (L.image + 64) 68) = some (encode .hvc0) ∧
+      ∃ back, bField L.base (after (L.image + 64) 58) = .ok back ∧
+        code (after (L.image + 64) 70) = some (encode (.b back)) := by
   obtain ⟨_, _, vec, tab, clr, fin, stk, ar, _, back, -, -, hv, ht, hc, hf, hs, ha, -, hb, his⟩ :=
     startupCode_ok hg
   rw [his] at hcode
@@ -39,11 +39,11 @@ theorem startupCode_exit {L : Layout} {is : List Instr} (hg : startupCode L = .o
   simp only [List.length_append, List.length_cons, List.length_nil, hm, addrOf_length hv,
     addrOf_length ht, addrOf_length hc, addrOf_length hf, addrOf_length hs, addrOf_length ha,
     show clearLoop.length = 5 from rfl] at cT cM0 cS cM1
-  have c67 : code (after (L.image + 64) 67) = some (encode (.b back)) := by
+  have c70 : code (after (L.image + 64) 70) = some (encode (.b back)) := by
     have := cT 2 (by simp)
     rw [after_after] at this
     exact this
-  exact ⟨cM1, cS, cM0, ((CodeAt.cons (code := code)).mp cT).1, back, hb, c67⟩
+  exact ⟨cM1, cS, cM0, ((CodeAt.cons (code := code)).mp cT).1, back, hb, c70⟩
 
 /-- The run of the exit in the boot model.  From a state after the startup, with the program
 counter at the exit's first instruction, SP_EL1 selected, the written system registers in effect,
@@ -58,8 +58,8 @@ theorem boot_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
     (hm : ∀ j (hj : j < 32), b.core.mem (b.eff.ttbr0 + UInt64.ofNat j) = tableBytes[j])
     (hR : ∀ j < 32, R (b.eff.ttbr0 + UInt64.ofNat j) = true)
     (hx : ∀ a w, code a = some w → ∃ x, classify h b.eff b.core.mem a = some (.normal x true))
-    (hpc : b.core.pc = after (L.image + 64) 55) :
-    ∃ b', BootReach h R code b b' ∧ b'.core.pc = after (L.image + 64) 65 ∧
+    (hpc : b.core.pc = after (L.image + 64) 58) :
+    ∃ b', BootReach h R code b b' ∧ b'.core.pc = after (L.image + 64) 68 ∧
       code b'.core.pc = some (encode .hvc0) ∧ b'.core.x 0 = 0x84000008 ∧
       b'.core.out = b.core.out ++ [(b.core.x 0).toUInt8] ∧ b'.uartDone = true := by
   obtain ⟨c1, cS, c0, cH, -⟩ := startupCode_exit hg hcode
@@ -91,7 +91,7 @@ theorem boot_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
     refine .sys hc (decode_encode _) (.inl hsp) (.inr ⟨htlb, hf⟩)
       (.inr ⟨htlb, by rw [hsync]; exact hf⟩) ?_
     simp [sysExec, b3, htlb]
-  have hp3 : b3.core.pc = after (L.image + 64) 61 := by
+  have hp3 : b3.core.pc = after (L.image + 64) 64 := by
     show s1.pc + 4 + 4 = _
     rw [p1, ← after_succ, ← after_succ]
   obtain ⟨s4, r4, p4, x4, -, -, -, o4⟩ :=
@@ -108,13 +108,13 @@ theorem boot_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
   · show (true && s4.out == b3.core.out) = true
     rw [o4, beq_self_eq_true, Bool.and_true]
 
-/-- The exit word, which the trap stubs reach, branches to the exit, instruction 55. -/
+/-- The exit word, which the trap stubs reach, branches to the exit, instruction 58. -/
 theorem run_exitWord {P : Platform} {code : UInt64 → Option UInt32} {L : Layout}
     {is : List Instr} (hs : startupCode L = .ok is) (hc : CodeAt code (L.image + 64) is)
-    (hbase : L.base = after (L.image + 64) 67) {s : State} (hpc : s.pc = L.base) :
-    Reach P code s { s with pc := after (L.image + 64) 55 } := by
+    (hbase : L.base = after (L.image + 64) 70) {s : State} (hpc : s.pc = L.base) :
+    Reach P code s { s with pc := after (L.image + 64) 58 } := by
   obtain ⟨-, -, -, -, back, hb, cb⟩ := startupCode_exit hs hc
-  have he : LeanExe.A64.exec P (.b back) s = some { s with pc := after (L.image + 64) 55 } := by
+  have he : LeanExe.A64.exec P (.b back) s = some { s with pc := after (L.image + 64) 58 } := by
     show some { s with pc := s.pc + sext 26 back.val * 4 } = _
     rw [hpc, bField_target hb]
   exact reach_exec P code (by rw [hpc, hbase]; exact cb) he (.refl _)

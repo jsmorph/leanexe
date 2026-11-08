@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Memory
+import LeanExe.A64.Proof.Float32
 import LeanExe.ProofKit.Exec
 import Interpreter.Wasm.Semantics.Lemmas
 
@@ -187,16 +188,94 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
   | constI64 w =>
       obtain ⟨_, rfl, rfl⟩ := gen_const (.inl ⟨rfl, rfl⟩) hg; simp [instrSize, movImm]
   | const c =>
-      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr ⟨c, rfl, rfl, rfl⟩) hg; simp [instrSize, movImm]
+      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr (.inl ⟨c, rfl, rfl, rfl⟩)) hg
+      simp [instrSize, movImm]
+  | f64Const w =>
+      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr (.inr (.inl ⟨rfl, rfl⟩))) hg
+      simp [instrSize, movImm]
+  | f32Const c =>
+      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr (.inr (.inr ⟨c, rfl, rfl, rfl⟩))) hg
+      simp [instrSize, movImm]
+  | f32Add | f32Sub | f32Mul | f32Div =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFBin32_ok hg
+      simp [instrSize, fBin32]
+      omega
+  | f32Eq | f32Lt | f32Le =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFCmp32_ok hg
+      simp [instrSize, fCmp32]
+      omega
+  | f32Sqrt | f32Nearest =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, unCode32]
+      omega
+  | f32Abs =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, absCode32]
+      omega
+  | f32ConvertI64U | f32ConvertI32S =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, toS32]
+      omega
+  | i64TruncSatF32U | i32TruncSatF32S =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, ofS32]
+      omega
+  | f32ReinterpretI32 | i32ReinterpretF32 =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize]
+      omega
+  | f64Add | f64Sub | f64Mul | f64Div =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFBin_ok hg
+      simp [instrSize, fBin]
+      omega
+  | f64Eq | f64Lt | f64Le =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFCmp_ok hg
+      simp [instrSize, fCmp]
+      omega
+  | f64Sqrt =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, sqrtCode]
+      omega
+  | f64Abs =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, absCode]
+      omega
+  | f64ConvertI64U =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, convertCode]
+      omega
+  | i64TruncSatF64U =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, truncCode]
+      omega
+  | i64ReinterpretF64 | f64ReinterpretI64 =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize]
+      omega
   | eqI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_cmp (.inl rfl) hg; simp [instrSize]; omega
   | eq => obtain ⟨_, _, rfl, rfl⟩ := gen_cmp (.inr rfl) hg; simp [instrSize]; omega
   | eqzI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_eqz (.inl rfl) hg; simp [instrSize]; omega
   | eqz => obtain ⟨_, _, rfl, rfl⟩ := gen_eqz (.inr rfl) hg; simp [instrSize]; omega
-  | neI64 | ltUI64 | leUI64 | geUI64 =>
+  | neI64 | ltUI64 | leUI64 | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genCmp_ok hg
       simp [instrSize]
       omega
+  | shrSI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_shrS hg; simp [instrSize, sarCode]; omega
   | addI64 | subI64 | mulI64 | andI64 | and | orI64 | xorI64 | shlI64 | shrUI64 =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genBin_ok hg
@@ -329,17 +408,61 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | localTee i =>
       obtain ⟨_, _, h1, _, _, _, he⟩ := gen_localStore (.inr ⟨rfl, rfl⟩) hg; cases he; omega
   | constI64 w => obtain ⟨_, _, he⟩ := gen_const (.inl ⟨rfl, rfl⟩) hg; cases he; simp; omega
-  | const c => obtain ⟨_, _, he⟩ := gen_const (.inr ⟨c, rfl, rfl, rfl⟩) hg; cases he; simp; omega
+  | const c =>
+      obtain ⟨_, _, he⟩ := gen_const (.inr (.inl ⟨c, rfl, rfl, rfl⟩)) hg; cases he; simp; omega
+  | f64Const w =>
+      obtain ⟨_, _, he⟩ := gen_const (.inr (.inr (.inl ⟨rfl, rfl⟩))) hg; cases he; simp; omega
+  | f64Add | f64Sub | f64Mul | f64Div =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFBin_ok hg
+      cases he
+      simp
+      omega
+  | f64Eq | f64Lt | f64Le =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFCmp_ok hg
+      cases he
+      simp
+      omega
+  | f64Sqrt | f64Abs | f64ConvertI64U | i64TruncSatF64U | i64ReinterpretF64 | f64ReinterpretI64 =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genUn_ok hg
+      cases he
+      simp
+      omega
+  | f32Const c =>
+      obtain ⟨_, _, he⟩ := gen_const (.inr (.inr (.inr ⟨c, rfl, rfl, rfl⟩))) hg; cases he; simp
+      omega
+  | f32Add | f32Sub | f32Mul | f32Div =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFBin32_ok hg
+      cases he
+      simp
+      omega
+  | f32Eq | f32Lt | f32Le =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFCmp32_ok hg
+      cases he
+      simp
+      omega
+  | f32Sqrt | f32Nearest | f32Abs | f32ConvertI64U | f32ConvertI32S | i64TruncSatF32U
+  | i32TruncSatF32S | f32ReinterpretI32 | i32ReinterpretF32 =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genUn_ok hg
+      cases he
+      simp
+      omega
   | eqI64 => obtain ⟨h1, _, _, he⟩ := gen_cmp (.inl rfl) hg; cases he; simp; omega
   | eq => obtain ⟨h1, _, _, he⟩ := gen_cmp (.inr rfl) hg; cases he; simp; omega
   | eqzI64 => obtain ⟨h1, _, _, he⟩ := gen_eqz (.inl rfl) hg; cases he; simp; omega
   | eqz => obtain ⟨h1, _, _, he⟩ := gen_eqz (.inr rfl) hg; cases he; simp; omega
-  | neI64 | ltUI64 | leUI64 | geUI64 =>
+  | neI64 | ltUI64 | leUI64 | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genCmp_ok hg
       cases he
       simp
       omega
+  | shrSI64 => obtain ⟨h1, _, _, he⟩ := gen_shrS hg; cases he; simp; omega
   | addI64 | subI64 | mulI64 | andI64 | and | orI64 | xorI64 | shlI64 | shrUI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genBin_ok hg
@@ -805,6 +928,8 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case ltUI64 => exact sim_ltUI64 P code F
   case leUI64 => exact sim_leUI64 P code F
   case geUI64 => exact sim_geUI64 P code F
+  case ltSI64 => exact sim_ltSI64 P code F
+  case leSI64 => exact sim_leSI64 P code F
   case addI64 => exact sim_addI64 P code F
   case subI64 => exact sim_subI64 P code F
   case mulI64 => exact sim_mulI64 P code F
@@ -814,7 +939,39 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case xorI64 => exact sim_xorI64 P code F
   case shlI64 => exact sim_shlI64 P code F
   case shrUI64 => exact sim_shrUI64 P code F
+  case shrSI64 => exact sim_shrSI64 P code F
   case wrapI64 => exact sim_wrapI64 P code F
+  case f64Const w => exact sim_f64Const P code F w
+  case f64Add => exact sim_f64Add P code F
+  case f64Sub => exact sim_f64Sub P code F
+  case f64Mul => exact sim_f64Mul P code F
+  case f64Div => exact sim_f64Div P code F
+  case f64Eq => exact sim_f64Eq P code F
+  case f64Lt => exact sim_f64Lt P code F
+  case f64Le => exact sim_f64Le P code F
+  case f64Sqrt => exact sim_f64Sqrt P code F
+  case f64Abs => exact sim_f64Abs P code F
+  case f64ConvertI64U => exact sim_f64ConvertI64U P code F
+  case i64TruncSatF64U => exact sim_i64TruncSatF64U P code F
+  case i64ReinterpretF64 => exact sim_i64ReinterpretF64 P code F
+  case f64ReinterpretI64 => exact sim_f64ReinterpretI64 P code F
+  case f32Const c => exact sim_f32Const P code F c
+  case f32Add => exact sim_f32Add P code F
+  case f32Sub => exact sim_f32Sub P code F
+  case f32Mul => exact sim_f32Mul P code F
+  case f32Div => exact sim_f32Div P code F
+  case f32Eq => exact sim_f32Eq P code F
+  case f32Lt => exact sim_f32Lt P code F
+  case f32Le => exact sim_f32Le P code F
+  case f32Sqrt => exact sim_f32Sqrt P code F
+  case f32Nearest => exact sim_f32Nearest P code F
+  case f32Abs => exact sim_f32Abs P code F
+  case f32ConvertI64U => exact sim_f32ConvertI64U P code F
+  case f32ConvertI32S => exact sim_f32ConvertI32S P code F
+  case i64TruncSatF32U => exact sim_i64TruncSatF32U P code F
+  case i32TruncSatF32S => exact sim_i32TruncSatF32S P code F
+  case f32ReinterpretI32 => exact sim_f32ReinterpretI32 P code F
+  case i32ReinterpretF32 => exact sim_i32ReinterpretF32 P code F
   case remUI64 => exact sim_remUI64 P code F
   case divUI64 => exact sim_divUI64 P code F
   case unreachable => exact sim_unreachable P code F

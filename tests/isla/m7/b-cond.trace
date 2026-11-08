@@ -1,0 +1,322 @@
+(segments
+  (|S| 1 v0)
+  (|cond| 4 v1)
+  (|imm6| 6 v2)
+  (|J1| 1 v3)
+  (|J2| 1 v4)
+  (|imm11| 11 v5))
+(trace
+  (declare-const v0 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v1 (_ BitVec 4)) ; 0:0 - 0:0
+  (declare-const v2 (_ BitVec 6)) ; 0:0 - 0:0
+  (declare-const v3 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v4 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v5 (_ BitVec 11)) ; 0:0 - 0:0
+  (define-enum |Feature| 258 (|FEAT_AA32EL0| |FEAT_AA32EL1| |FEAT_AA32EL2| |FEAT_AA32EL3| |FEAT_AA64EL0| |FEAT_AA64EL1| |FEAT_AA64EL2| |FEAT_AA64EL3| |FEAT_EL0| |FEAT_EL1| |FEAT_EL2| |FEAT_EL3| |FEAT_AES| |FEAT_AdvSIMD| |FEAT_CSV2_1p1| |FEAT_CSV2_1p2| |FEAT_CSV2_2| |FEAT_CSV2_3| |FEAT_DoubleLock| |FEAT_ETMv4| |FEAT_ETMv4p1| |FEAT_ETMv4p2| |FEAT_ETMv4p3| |FEAT_ETMv4p4| |FEAT_ETMv4p5| |FEAT_ETMv4p6| |FEAT_ETS2| |FEAT_FP| |FEAT_GICv3| |FEAT_GICv3_LEGACY| |FEAT_GICv3_TDIR| |FEAT_GICv3p1| |FEAT_GICv4| |FEAT_GICv4p1| |FEAT_IVIPT| |FEAT_PCSRv8| |FEAT_PMULL| |FEAT_PMUv3| |FEAT_PMUv3_EXT| |FEAT_PMUv3_EXT32| |FEAT_SHA1| |FEAT_SHA256| |FEAT_TRC_EXT| |FEAT_TRC_SR| |FEAT_nTLBPA| |FEAT_CRC32| |FEAT_Debugv8p1| |FEAT_HAFDBS| |FEAT_HPDS| |FEAT_LOR| |FEAT_LSE| |FEAT_PAN| |FEAT_PMUv3p1| |FEAT_RDM| |FEAT_VHE| |FEAT_VMID16| |FEAT_AA32BF16| |FEAT_AA32HPD| |FEAT_AA32I8MM| |FEAT_ASMv8p2| |FEAT_DPB| |FEAT_Debugv8p2| |FEAT_EDHSR| |FEAT_F32MM| |FEAT_F64MM| |FEAT_FP16| |FEAT_HPDS2| |FEAT_I8MM| |FEAT_IESB| |FEAT_LPA| |FEAT_LSMAOC| |FEAT_LVA| |FEAT_MPAM| |FEAT_PAN2| |FEAT_PCSRv8p2| |FEAT_RAS| |FEAT_SHA3| |FEAT_SHA512| |FEAT_SM3| |FEAT_SM4| |FEAT_SPE| |FEAT_SVE| |FEAT_TTCNP| |FEAT_UAO| |FEAT_VPIPT| |FEAT_XNX| |FEAT_CCIDX| |FEAT_CONSTPACFIELD| |FEAT_EPAC| |FEAT_FCMA| |FEAT_FPAC| |FEAT_FPACCOMBINE| |FEAT_JSCVT| |FEAT_LRCPC| |FEAT_NV| |FEAT_PACIMP| |FEAT_PACQARMA3| |FEAT_PACQARMA5| |FEAT_PAuth| |FEAT_SPEv1p1| |FEAT_AMUv1| |FEAT_BBM| |FEAT_CNTSC| |FEAT_DIT| |FEAT_Debugv8p4| |FEAT_DotProd| |FEAT_DoubleFault| |FEAT_FHM| |FEAT_FlagM| |FEAT_IDST| |FEAT_LRCPC2| |FEAT_LSE2| |FEAT_NV2| |FEAT_PMUv3p4| |FEAT_RASSAv1p1| |FEAT_RASv1p1| |FEAT_S2FWB| |FEAT_SEL2| |FEAT_TLBIOS| |FEAT_TLBIRANGE| |FEAT_TRF| |FEAT_TTL| |FEAT_TTST| |FEAT_BTI| |FEAT_CSV2| |FEAT_CSV3| |FEAT_DPB2| |FEAT_E0PD| |FEAT_EVT| |FEAT_ExS| |FEAT_FRINTTS| |FEAT_FlagM2| |FEAT_GTG| |FEAT_MTE| |FEAT_MTE2| |FEAT_PMUv3p5| |FEAT_RNG| |FEAT_RNG_TRAP| |FEAT_SB| |FEAT_SPECRES| |FEAT_SSBS| |FEAT_SSBS2| |FEAT_AMUv1p1| |FEAT_BF16| |FEAT_DGH| |FEAT_ECV| |FEAT_FGT| |FEAT_HPMN0| |FEAT_MPAMv0p1| |FEAT_MPAMv1p1| |FEAT_MTPMU| |FEAT_PAuth2| |FEAT_TWED| |FEAT_AFP| |FEAT_EBF16| |FEAT_HCX| |FEAT_LPA2| |FEAT_LS64| |FEAT_LS64_ACCDATA| |FEAT_LS64_V| |FEAT_MTE3| |FEAT_PAN3| |FEAT_PMUv3p7| |FEAT_RPRES| |FEAT_SPEv1p2| |FEAT_WFxT| |FEAT_XS| |FEAT_CMOW| |FEAT_Debugv8p8| |FEAT_GICv3_NMI| |FEAT_HBC| |FEAT_MOPS| |FEAT_NMI| |FEAT_PMUv3_EXT64| |FEAT_PMUv3_TH| |FEAT_PMUv3p8| |FEAT_SCTLR2| |FEAT_SPEv1p3| |FEAT_TCR2| |FEAT_TIDCP1| |FEAT_ADERR| |FEAT_AIE| |FEAT_ANERR| |FEAT_CLRBHB| |FEAT_CSSC| |FEAT_Debugv8p9| |FEAT_DoubleFault2| |FEAT_ECBHB| |FEAT_FGT2| |FEAT_HAFT| |FEAT_LRCPC3| |FEAT_MTE4| |FEAT_MTE_ASYM_FAULT| |FEAT_MTE_ASYNC| |FEAT_MTE_CANONICAL_TAGS| |FEAT_MTE_NO_ADDRESS_TAGS| |FEAT_MTE_PERM| |FEAT_MTE_STORE_ONLY| |FEAT_MTE_TAGGED_FAR| |FEAT_PCSRv8p9| |FEAT_PFAR| |FEAT_PMUv3_EDGE| |FEAT_PMUv3_ICNTR| |FEAT_PMUv3_SS| |FEAT_PMUv3p9| |FEAT_PRFMSLC| |FEAT_RASSAv2| |FEAT_RASv2| |FEAT_RPRFM| |FEAT_S1PIE| |FEAT_S1POE| |FEAT_S2PIE| |FEAT_S2POE| |FEAT_SPECRES2| |FEAT_SPE_CRR| |FEAT_SPE_FDS| |FEAT_SPEv1p4| |FEAT_SPMU| |FEAT_THE| |FEAT_DoPD| |FEAT_ETE| |FEAT_SVE2| |FEAT_SVE_AES| |FEAT_SVE_BitPerm| |FEAT_SVE_PMULL128| |FEAT_SVE_SHA3| |FEAT_SVE_SM4| |FEAT_TME| |FEAT_TRBE| |FEAT_ETEv1p1| |FEAT_BRBE| |FEAT_ETEv1p2| |FEAT_RME| |FEAT_SME| |FEAT_SME_F64F64| |FEAT_SME_FA64| |FEAT_SME_I16I64| |FEAT_BRBEv1p1| |FEAT_MEC| |FEAT_SME2| |FEAT_ABLE| |FEAT_CHK| |FEAT_D128| |FEAT_EBEP| |FEAT_ETEv1p3| |FEAT_GCS| |FEAT_ITE| |FEAT_LSE128| |FEAT_LVA3| |FEAT_SEBEP| |FEAT_SME2p1| |FEAT_SME_F16F16| |FEAT_SVE2p1| |FEAT_SVE_B16B16| |FEAT_SYSINSTR128| |FEAT_SYSREG128| |FEAT_TRBE_EXT| |FEAT_TRBE_MPAM|)) ; 0:0 - 0:0
+  (declare-const v264 Bool) ; src/v8_base.sail 902:4 - 902:45
+  (define-enum |Signal| 2 (|Signal_Low| |Signal_High|)) ; 0:0 - 0:0
+  (declare-const v270 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v273 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v283 (_ BitVec 1)) ; 0:0 - 0:0
+  (declare-const v294 (_ BitVec 1)) ; 0:0 - 0:0
+  (assume-reg |PSTATE| ((_ field |nRW|)) #b1)
+  (assume-reg |PSTATE| ((_ field |T|)) #b1)
+  (assume-reg |PSTATE| ((_ field |IT|)) #x00)
+  (assume-reg |MDCCSR_EL0| nil (_ struct (|bits| #x0000000000000000)))
+  (assume-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
+  (assume (bvule (|cond| nil) #xd))
+  (assert (bvule v1 #xd)) ; 0:0 - 0:0
+  (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
+  (cycle)
+  (read-reg |PSTATE| ((_ field |IT|)) (_ struct (|IT| #x00)))
+  (write-reg |__currentCond| nil #xe)
+  (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
+  (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))
+  (declare-const v298 (_ BitVec 64)) ; src/fetch.sail 173:20 - 173:29
+  (read-reg |_PC| nil v298)
+  (define-const v304 (= (concat v1 ((_ extract 5 5) v2)) #b01010)) ; src/instrs32.sail 104:29 - 104:205
+
+  (cases "src/instrs32.sail 104:29 - 104:205"
+    (trace
+      (assert v304) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011010))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b01000))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 ((_ extract 5 4) v2)) #b100000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b01000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat v1 v2) #b1) #b10000011010))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat v1 v2) #b1) #b10101011110))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat v1 v2) #b1) #b10000011110))) ; 0:0 - 0:0
+      (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b00000))) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101010000))) ; 0:0 - 0:0
+      (assert (not (= v1 #xf))) ; 0:0 - 0:0
+      (read-reg |SEE| nil (_ bv-1 128))
+      (write-reg |SEE| nil (_ bv2854 128))
+      (write-reg |__currentCond| nil v1)
+      (read-reg |__currentCond| nil v1)
+      (define-const v337 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+      (define-const v338 (= v337 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+      (define-const v339 (= v337 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+      (define-const v340 (= v337 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+      (define-const v341 (= v337 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+      (define-const v342 (= v337 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+      (define-const v343 (= v337 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+      (define-const v344 (= v337 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+      (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v283)))
+      (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v294)))
+      (define-const v345 (= v283 v294)) ; src/v8_base.sail 8962:19 - 8962:39
+      (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v270)))
+      (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v273)))
+      (define-const v365 (= v273 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+      (define-const v478 (ite (or (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) (not v345)) (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) v345)) (ite (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) (not v345)) false (= v270 #b0)) (ite (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not (not v343))) (= v283 v294) (ite (or (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) (not v365)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) v365)) (ite (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) (not v365)) false (= v270 #b0)) (ite (and (and (and (not v338) (not v339)) (not v340)) (not (not v341))) (= v294 #b1) (ite (and (and (not v338) (not v339)) (not (not v340))) (= v283 #b1) (ite (and (not v338) (not (not v339))) (= v273 #b1) (ite (not (not v338)) (= v270 #b1) true)))))))) ; 0:0 - 0:0
+      (define-const v481 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+      (define-const v817 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) (not v345)) (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) v345)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not (not v343)))) (or (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) (not v365)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) v365))) (and (and (and (not v338) (not v339)) (not v340)) (not (not v341)))) (and (and (not v338) (not v339)) (not (not v340)))) (and (not v338) (not (not v339)))) (not (not v338))) (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not v344))) (not v481)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) (not v345)) (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) v345)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not (not v343)))) (or (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) (not v365)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) v365))) (and (and (and (not v338) (not v339)) (not v340)) (not (not v341)))) (and (and (not v338) (not v339)) (not (not v340)))) (and (not v338) (not (not v339)))) (not (not v338))) (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not v344))) v481)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) (not v345)) (and (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not (not v344))) v345)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not (not v343)))) (or (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) (not v365)) (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not (not v342))) v365))) (and (and (and (not v338) (not v339)) (not v340)) (not (not v341)))) (and (and (not v338) (not v339)) (not (not v340)))) (and (not v338) (not (not v339)))) (not (not v338))) (and (and (and (and (and (and (not v338) (not v339)) (not v340)) (not v341)) (not v342)) (not v343)) (not v344))) (not v481)) false (not (= v1 #xf))))) v478 (not v478))) ; 0:0 - 0:0
+    
+      (cases "src/instrs32.sail 1464:4 - 1474:5"
+        (trace
+          (assert v817) ; 0:0 - 0:0
+          (assert (not (= v1 #xf))) ; 0:0 - 0:0
+          (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+          (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+          (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+          (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v264))
+          (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+          (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+          (define-const v843 (bvand (bvadd (bvadd ((_ extract 31 0) v298) #x00000004) ((_ sign_extend 11) (concat (concat (concat (concat (concat v0 v4) v3) v2) v5) #b0))) #xfffffffe)) ; 0:0 - 0:0
+          (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+          (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+          (define-const v847 ((_ zero_extend 32) v843)) ; src/v8_base.sail 6790:33 - 6790:55
+          (branch-address v847)
+          (define-const v848 ((_ zero_extend 32) v843)) ; src/v8_base.sail 6791:14 - 6791:36
+          (write-reg |_PC| nil v848)
+          (write-reg |__BranchTaken| nil true))
+        (trace
+          (assert (not v817)) ; 0:0 - 0:0
+        )))
+    (trace
+      (assert (not v304)) ; 0:0 - 0:0
+      (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011010))) ; 0:0 - 0:0
+      (define-const v854 (= (concat v1 ((_ extract 5 5) v2)) #b01000)) ; src/instrs32.sail 410:29 - 410:206
+    
+      (cases "src/instrs32.sail 410:29 - 410:206"
+        (trace
+          (assert v854) ; 0:0 - 0:0
+          (assert (not (= (concat v1 ((_ extract 5 4) v2)) #b100000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+          (assert (= (concat v1 ((_ extract 5 5) v2)) #b01000)) ; 0:0 - 0:0
+          (assert (not (= (concat ((_ extract 3 0) v2) #b1) #b11010))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat v1 v2) #b1) #b10000011010))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat v1 v2) #b1) #b10101011110))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat v1 v2) #b1) #b10000011110))) ; 0:0 - 0:0
+          (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b00000))) ; 0:0 - 0:0
+          (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101010000))) ; 0:0 - 0:0
+          (assert (not (= v1 #xf))) ; 0:0 - 0:0
+          (read-reg |SEE| nil (_ bv-1 128))
+          (write-reg |SEE| nil (_ bv2854 128))
+          (write-reg |__currentCond| nil v1)
+          (read-reg |__currentCond| nil v1)
+          (define-const v884 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+          (define-const v885 (= v884 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+          (define-const v886 (= v884 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+          (define-const v887 (= v884 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+          (define-const v888 (= v884 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+          (define-const v889 (= v884 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+          (define-const v890 (= v884 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+          (define-const v891 (= v884 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+          (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v283)))
+          (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v294)))
+          (define-const v892 (= v283 v294)) ; src/v8_base.sail 8962:19 - 8962:39
+          (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v270)))
+          (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v273)))
+          (define-const v912 (= v273 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+          (define-const v1025 (ite (or (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) (not v892)) (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) v892)) (ite (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) (not v892)) false (= v270 #b0)) (ite (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not (not v890))) (= v283 v294) (ite (or (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) (not v912)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) v912)) (ite (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) (not v912)) false (= v270 #b0)) (ite (and (and (and (not v885) (not v886)) (not v887)) (not (not v888))) (= v294 #b1) (ite (and (and (not v885) (not v886)) (not (not v887))) (= v283 #b1) (ite (and (not v885) (not (not v886))) (= v273 #b1) (ite (not (not v885)) (= v270 #b1) true)))))))) ; 0:0 - 0:0
+          (define-const v1028 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+          (define-const v1364 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) (not v892)) (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) v892)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not (not v890)))) (or (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) (not v912)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) v912))) (and (and (and (not v885) (not v886)) (not v887)) (not (not v888)))) (and (and (not v885) (not v886)) (not (not v887)))) (and (not v885) (not (not v886)))) (not (not v885))) (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not v891))) (not v1028)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) (not v892)) (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) v892)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not (not v890)))) (or (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) (not v912)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) v912))) (and (and (and (not v885) (not v886)) (not v887)) (not (not v888)))) (and (and (not v885) (not v886)) (not (not v887)))) (and (not v885) (not (not v886)))) (not (not v885))) (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not v891))) v1028)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) (not v892)) (and (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not (not v891))) v892)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not (not v890)))) (or (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) (not v912)) (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not (not v889))) v912))) (and (and (and (not v885) (not v886)) (not v887)) (not (not v888)))) (and (and (not v885) (not v886)) (not (not v887)))) (and (not v885) (not (not v886)))) (not (not v885))) (and (and (and (and (and (and (not v885) (not v886)) (not v887)) (not v888)) (not v889)) (not v890)) (not v891))) (not v1028)) false (not (= v1 #xf))))) v1025 (not v1025))) ; 0:0 - 0:0
+        
+          (cases "src/instrs32.sail 1464:4 - 1474:5"
+            (trace
+              (assert v1364) ; 0:0 - 0:0
+              (assert (not (= v1 #xf))) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+              (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+              (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+              (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v264))
+              (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+              (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+              (define-const v1390 (bvand (bvadd (bvadd ((_ extract 31 0) v298) #x00000004) ((_ sign_extend 11) (concat (concat (concat (concat (concat v0 v4) v3) v2) v5) #b0))) #xfffffffe)) ; 0:0 - 0:0
+              (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+              (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+              (define-const v1394 ((_ zero_extend 32) v1390)) ; src/v8_base.sail 6790:33 - 6790:55
+              (branch-address v1394)
+              (define-const v1395 ((_ zero_extend 32) v1390)) ; src/v8_base.sail 6791:14 - 6791:36
+              (write-reg |_PC| nil v1395)
+              (write-reg |__BranchTaken| nil true))
+            (trace
+              (assert (not v1364)) ; 0:0 - 0:0
+            )))
+        (trace
+          (assert (not v854)) ; 0:0 - 0:0
+          (define-const v1398 (= (concat v1 ((_ extract 5 4) v2)) #b100000)) ; src/instrs32.sail 443:29 - 443:212
+        
+          (cases "src/instrs32.sail 443:29 - 443:212"
+            (trace
+              (assert v1398) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b01000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10000011010))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10101011110))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10000011110))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b00000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101010000))) ; 0:0 - 0:0
+              (assert (not (= v1 #xf))) ; 0:0 - 0:0
+              (read-reg |SEE| nil (_ bv-1 128))
+              (write-reg |SEE| nil (_ bv2854 128))
+              (write-reg |__currentCond| nil v1)
+              (read-reg |__currentCond| nil v1)
+              (define-const v1422 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+              (define-const v1423 (= v1422 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+              (define-const v1424 (= v1422 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+              (define-const v1425 (= v1422 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+              (define-const v1426 (= v1422 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+              (define-const v1427 (= v1422 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+              (define-const v1428 (= v1422 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+              (define-const v1429 (= v1422 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+              (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v283)))
+              (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v294)))
+              (define-const v1430 (= v283 v294)) ; src/v8_base.sail 8962:19 - 8962:39
+              (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v270)))
+              (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v273)))
+              (define-const v1450 (= v273 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+              (define-const v1563 (ite (or (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) (not v1430)) (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) v1430)) (ite (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) (not v1430)) false (= v270 #b0)) (ite (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not (not v1428))) (= v283 v294) (ite (or (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) (not v1450)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) v1450)) (ite (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) (not v1450)) false (= v270 #b0)) (ite (and (and (and (not v1423) (not v1424)) (not v1425)) (not (not v1426))) (= v294 #b1) (ite (and (and (not v1423) (not v1424)) (not (not v1425))) (= v283 #b1) (ite (and (not v1423) (not (not v1424))) (= v273 #b1) (ite (not (not v1423)) (= v270 #b1) true)))))))) ; 0:0 - 0:0
+              (define-const v1566 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+              (define-const v1902 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) (not v1430)) (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) v1430)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not (not v1428)))) (or (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) (not v1450)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) v1450))) (and (and (and (not v1423) (not v1424)) (not v1425)) (not (not v1426)))) (and (and (not v1423) (not v1424)) (not (not v1425)))) (and (not v1423) (not (not v1424)))) (not (not v1423))) (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not v1429))) (not v1566)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) (not v1430)) (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) v1430)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not (not v1428)))) (or (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) (not v1450)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) v1450))) (and (and (and (not v1423) (not v1424)) (not v1425)) (not (not v1426)))) (and (and (not v1423) (not v1424)) (not (not v1425)))) (and (not v1423) (not (not v1424)))) (not (not v1423))) (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not v1429))) v1566)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) (not v1430)) (and (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not (not v1429))) v1430)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not (not v1428)))) (or (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) (not v1450)) (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not (not v1427))) v1450))) (and (and (and (not v1423) (not v1424)) (not v1425)) (not (not v1426)))) (and (and (not v1423) (not v1424)) (not (not v1425)))) (and (not v1423) (not (not v1424)))) (not (not v1423))) (and (and (and (and (and (and (not v1423) (not v1424)) (not v1425)) (not v1426)) (not v1427)) (not v1428)) (not v1429))) (not v1566)) false (not (= v1 #xf))))) v1563 (not v1563))) ; 0:0 - 0:0
+            
+              (cases "src/instrs32.sail 1464:4 - 1474:5"
+                (trace
+                  (assert v1902) ; 0:0 - 0:0
+                  (assert (not (= v1 #xf))) ; 0:0 - 0:0
+                  (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                  (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                  (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v264))
+                  (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                  (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                  (define-const v1928 (bvand (bvadd (bvadd ((_ extract 31 0) v298) #x00000004) ((_ sign_extend 11) (concat (concat (concat (concat (concat v0 v4) v3) v2) v5) #b0))) #xfffffffe)) ; 0:0 - 0:0
+                  (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                  (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+                  (define-const v1932 ((_ zero_extend 32) v1928)) ; src/v8_base.sail 6790:33 - 6790:55
+                  (branch-address v1932)
+                  (define-const v1933 ((_ zero_extend 32) v1928)) ; src/v8_base.sail 6791:14 - 6791:36
+                  (write-reg |_PC| nil v1933)
+                  (write-reg |__BranchTaken| nil true))
+                (trace
+                  (assert (not v1902)) ; 0:0 - 0:0
+                )))
+            (trace
+              (assert (not v1398)) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat v1 ((_ extract 5 5) v2)) #b01000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10000011010))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101011000))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10101011110))) ; 0:0 - 0:0
+              (assert (not (= (concat (concat v1 v2) #b1) #b10000011110))) ; 0:0 - 0:0
+              (define-const v1951 (= (concat v1 ((_ extract 5 5) v2)) #b00000)) ; src/instrs32.sail 1126:29 - 1126:207
+            
+              (cases "src/instrs32.sail 1126:29 - 1126:207"
+                (trace
+                  (assert v1951) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101010000))) ; 0:0 - 0:0
+                  (assert (not (= v1 #xf))) ; 0:0 - 0:0
+                  (read-reg |SEE| nil (_ bv-1 128))
+                  (write-reg |SEE| nil (_ bv2854 128))
+                  (write-reg |__currentCond| nil v1)
+                  (read-reg |__currentCond| nil v1)
+                  (define-const v1957 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+                  (define-const v1958 (= v1957 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+                  (define-const v1959 (= v1957 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+                  (define-const v1960 (= v1957 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+                  (define-const v1961 (= v1957 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+                  (define-const v1962 (= v1957 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+                  (define-const v1963 (= v1957 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+                  (define-const v1964 (= v1957 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+                  (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v283)))
+                  (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v294)))
+                  (define-const v1965 (= v283 v294)) ; src/v8_base.sail 8962:19 - 8962:39
+                  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v270)))
+                  (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v273)))
+                  (define-const v1985 (= v273 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+                  (define-const v2098 (ite (or (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) (not v1965)) (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) v1965)) (ite (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) (not v1965)) false (= v270 #b0)) (ite (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not (not v1963))) (= v283 v294) (ite (or (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) (not v1985)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) v1985)) (ite (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) (not v1985)) false (= v270 #b0)) (ite (and (and (and (not v1958) (not v1959)) (not v1960)) (not (not v1961))) (= v294 #b1) (ite (and (and (not v1958) (not v1959)) (not (not v1960))) (= v283 #b1) (ite (and (not v1958) (not (not v1959))) (= v273 #b1) (ite (not (not v1958)) (= v270 #b1) true)))))))) ; 0:0 - 0:0
+                  (define-const v2101 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+                  (define-const v2437 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) (not v1965)) (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) v1965)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not (not v1963)))) (or (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) (not v1985)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) v1985))) (and (and (and (not v1958) (not v1959)) (not v1960)) (not (not v1961)))) (and (and (not v1958) (not v1959)) (not (not v1960)))) (and (not v1958) (not (not v1959)))) (not (not v1958))) (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not v1964))) (not v2101)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) (not v1965)) (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) v1965)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not (not v1963)))) (or (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) (not v1985)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) v1985))) (and (and (and (not v1958) (not v1959)) (not v1960)) (not (not v1961)))) (and (and (not v1958) (not v1959)) (not (not v1960)))) (and (not v1958) (not (not v1959)))) (not (not v1958))) (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not v1964))) v2101)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) (not v1965)) (and (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not (not v1964))) v1965)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not (not v1963)))) (or (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) (not v1985)) (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not (not v1962))) v1985))) (and (and (and (not v1958) (not v1959)) (not v1960)) (not (not v1961)))) (and (and (not v1958) (not v1959)) (not (not v1960)))) (and (not v1958) (not (not v1959)))) (not (not v1958))) (and (and (and (and (and (and (not v1958) (not v1959)) (not v1960)) (not v1961)) (not v1962)) (not v1963)) (not v1964))) (not v2101)) false (not (= v1 #xf))))) v2098 (not v2098))) ; 0:0 - 0:0
+                
+                  (cases "src/instrs32.sail 1464:4 - 1474:5"
+                    (trace
+                      (assert v2437) ; 0:0 - 0:0
+                      (assert (not (= v1 #xf))) ; 0:0 - 0:0
+                      (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                      (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                      (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v264))
+                      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                      (define-const v2463 (bvand (bvadd (bvadd ((_ extract 31 0) v298) #x00000004) ((_ sign_extend 11) (concat (concat (concat (concat (concat v0 v4) v3) v2) v5) #b0))) #xfffffffe)) ; 0:0 - 0:0
+                      (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                      (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+                      (define-const v2467 ((_ zero_extend 32) v2463)) ; src/v8_base.sail 6790:33 - 6790:55
+                      (branch-address v2467)
+                      (define-const v2468 ((_ zero_extend 32) v2463)) ; src/v8_base.sail 6791:14 - 6791:36
+                      (write-reg |_PC| nil v2468)
+                      (write-reg |__BranchTaken| nil true))
+                    (trace
+                      (assert (not v2437)) ; 0:0 - 0:0
+                    )))
+                (trace
+                  (assert (not v1951)) ; 0:0 - 0:0
+                  (assert (not (= (concat (concat (concat #b11110 v0) v1) ((_ extract 5 5) v2)) #b11101010000))) ; 0:0 - 0:0
+                  (assert (not (= v1 #xf))) ; 0:0 - 0:0
+                  (read-reg |SEE| nil (_ bv-1 128))
+                  (write-reg |SEE| nil (_ bv2854 128))
+                  (write-reg |__currentCond| nil v1)
+                  (read-reg |__currentCond| nil v1)
+                  (define-const v2474 ((_ extract 3 1) v1)) ; src/v8_base.sail 8942:10 - 8942:22
+                  (define-const v2475 (= v2474 #b000)) ; src/v8_base.sail 8943:6 - 8943:11
+                  (define-const v2476 (= v2474 #b001)) ; src/v8_base.sail 8946:6 - 8946:11
+                  (define-const v2477 (= v2474 #b010)) ; src/v8_base.sail 8949:6 - 8949:11
+                  (define-const v2478 (= v2474 #b011)) ; src/v8_base.sail 8952:6 - 8952:11
+                  (define-const v2479 (= v2474 #b100)) ; src/v8_base.sail 8955:6 - 8955:11
+                  (define-const v2480 (= v2474 #b101)) ; src/v8_base.sail 8958:6 - 8958:11
+                  (define-const v2481 (= v2474 #b110)) ; src/v8_base.sail 8961:6 - 8961:11
+                  (read-reg |PSTATE| ((_ field |N|)) (_ struct (|N| v283)))
+                  (read-reg |PSTATE| ((_ field |V|)) (_ struct (|V| v294)))
+                  (define-const v2482 (= v283 v294)) ; src/v8_base.sail 8962:19 - 8962:39
+                  (read-reg |PSTATE| ((_ field |Z|)) (_ struct (|Z| v270)))
+                  (read-reg |PSTATE| ((_ field |C|)) (_ struct (|C| v273)))
+                  (define-const v2502 (= v273 #b1)) ; src/v8_base.sail 8956:19 - 8956:34
+                  (define-const v2615 (ite (or (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) (not v2482)) (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) v2482)) (ite (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) (not v2482)) false (= v270 #b0)) (ite (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not (not v2480))) (= v283 v294) (ite (or (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) (not v2502)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) v2502)) (ite (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) (not v2502)) false (= v270 #b0)) (ite (and (and (and (not v2475) (not v2476)) (not v2477)) (not (not v2478))) (= v294 #b1) (ite (and (and (not v2475) (not v2476)) (not (not v2477))) (= v283 #b1) (ite (and (not v2475) (not (not v2476))) (= v273 #b1) (ite (not (not v2475)) (= v270 #b1) true)))))))) ; 0:0 - 0:0
+                  (define-const v2618 (= ((_ extract 0 0) (bvlshr v1 #x0)) #b1)) ; src/v8_base.sail 8968:7 - 8968:23
+                  (define-const v2954 (ite (and (or (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) (not v2482)) (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) v2482)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not (not v2480)))) (or (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) (not v2502)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) v2502))) (and (and (and (not v2475) (not v2476)) (not v2477)) (not (not v2478)))) (and (and (not v2475) (not v2476)) (not (not v2477)))) (and (not v2475) (not (not v2476)))) (not (not v2475))) (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not v2481))) (not v2618)) (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) (not v2482)) (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) v2482)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not (not v2480)))) (or (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) (not v2502)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) v2502))) (and (and (and (not v2475) (not v2476)) (not v2477)) (not (not v2478)))) (and (and (not v2475) (not v2476)) (not (not v2477)))) (and (not v2475) (not (not v2476)))) (not (not v2475))) (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not v2481))) v2618)) (not (ite (and (or (or (or (or (or (or (or (or (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) (not v2482)) (and (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not (not v2481))) v2482)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not (not v2480)))) (or (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) (not v2502)) (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not (not v2479))) v2502))) (and (and (and (not v2475) (not v2476)) (not v2477)) (not (not v2478)))) (and (and (not v2475) (not v2476)) (not (not v2477)))) (and (not v2475) (not (not v2476)))) (not (not v2475))) (and (and (and (and (and (and (not v2475) (not v2476)) (not v2477)) (not v2478)) (not v2479)) (not v2480)) (not v2481))) (not v2618)) false (not (= v1 #xf))))) v2615 (not v2615))) ; 0:0 - 0:0
+                
+                  (cases "src/instrs32.sail 1464:4 - 1474:5"
+                    (trace
+                      (assert v2954) ; 0:0 - 0:0
+                      (assert (not (= v1 #xf))) ; 0:0 - 0:0
+                      (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                      (define-enum |InstrSet| 3 (|InstrSet_A64| |InstrSet_A32| |InstrSet_T32|)) ; 0:0 - 0:0
+                      (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b1)))
+                      (read-reg |FeatureImpl| nil (_ vec true true false false true true false false true true false false true true false false false false true false false false false false false false false true false false false false false false true true true true false false true true false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v264))
+                      (read-reg |PSTATE| ((_ field |T|)) (_ struct (|T| #b1)))
+                      (define-enum |BranchType| 11 (|BranchType_DIRCALL| |BranchType_INDCALL| |BranchType_ERET| |BranchType_DBGEXIT| |BranchType_RET| |BranchType_DIR| |BranchType_INDIR| |BranchType_EXCEPTION| |BranchType_TMFAIL| |BranchType_RESET| |BranchType_UNKNOWN|)) ; 0:0 - 0:0
+                      (define-const v2980 (bvand (bvadd (bvadd ((_ extract 31 0) v298) #x00000004) ((_ sign_extend 11) (concat (concat (concat (concat (concat v0 v4) v3) v2) v5) #b0))) #xfffffffe)) ; 0:0 - 0:0
+                      (assert (not (= ((_ extract 3 1) v1) #b111))) ; 0:0 - 0:0
+                      (write-reg |Branchtypetaken| nil |BranchType_DIR|)
+                      (define-const v2984 ((_ zero_extend 32) v2980)) ; src/v8_base.sail 6790:33 - 6790:55
+                      (branch-address v2984)
+                      (define-const v2985 ((_ zero_extend 32) v2980)) ; src/v8_base.sail 6791:14 - 6791:36
+                      (write-reg |_PC| nil v2985)
+                      (write-reg |__BranchTaken| nil true))
+                    (trace
+                      (assert (not v2954)) ; 0:0 - 0:0
+                    )))))))))))

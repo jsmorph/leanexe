@@ -5,7 +5,8 @@
     "(x <<< k) ||| (x >>> (64 - k)) = UInt64.ofBitVec (x.toBitVec.rotateLeft k)",
     "(Library.Hashing.Sha256.rot (Library.Hashing.Sha256.low32 x) r).toUInt32",
     "Library.Bytes.byteOf (Library.Hashing.Words.bswap x) k",
-    "((s >>> q) &&& 1 == 1) = bit s q.toNat"
+    "((s >>> q) &&& 1 == 1) = bit s q.toNat",
+    "a rewrite with a lemma about UInt64.ofNat n that fails on a literal such as 1377 : UInt64"
   ],
   "modules": [
     "Library.Hashing.Words.Proof",
@@ -14,7 +15,8 @@
     "Library.Hashing.SipHash.Proof",
     "Library.Hashing.XxHash64.Proof",
     "Library.Hashing.Sha2.Equiv.SHA512.Bridge",
-    "Library.Regex.Bits"
+    "Library.Regex.Bits",
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack"
   ],
   "declarations": [
     "Library.Hashing.Words.rotr",
@@ -39,20 +41,16 @@
     "Library.Regex.Bits.bit_and",
     "Library.Regex.Bits.bit_one_shiftLeft",
     "Library.Regex.Bits.shiftRight_and_one",
-    "Library.Regex.Bits.ext"
+    "Library.Regex.Bits.ext",
+    "Library.Numerics.Arithmetic.Fma.FmaRound.lit_le"
   ],
   "examples": [
     "Library.Hashing.SipHash.Proof.rotl_13",
     "Library.Hashing.SipHash.Proof.sipRound_eq",
     "Library.Hashing.XxHash64.Proof.rotl_1",
     "Library.Hashing.XxHash64.Proof.round_eq",
-    "Library.Hashing.Sha256.bigSigma0_toUInt32"
-  ],
-  "sources": [
-    "2026-10-23: Hashing library plan",
-    "2026-10-23: SHA-256 and SHA-224",
-    "2026-10-24: Glushkov's theorem",
-    "2026-10-25: The SHA-3 proofs",
-    "2026-10-25: SipHash and XXH64"
+    "Library.Hashing.Sha256.bigSigma0_toUInt32",
+    "Library.Numerics.Arithmetic.Fma.FmaRound.assemble_spec",
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack.normal_right"
   ]
 }

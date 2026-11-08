@@ -52,6 +52,29 @@ def encodeNat : Instr → Nat
   | .dsbSy => 0xD5033F9F
   | .tlbiVmalle1 => 0xD508871F
   | .hvc0 => 0xD4000002
+  | .fmovDX d n => 0x9E670000 + n.val * 32 + d.val
+  | .fmovXD d n => 0x9E660000 + n.val * 32 + d.val
+  | .fadd d n m => 0x1E602800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsub d n m => 0x1E603800 + m.val * 65536 + n.val * 32 + d.val
+  | .fmul d n m => 0x1E600800 + m.val * 65536 + n.val * 32 + d.val
+  | .fdiv d n m => 0x1E601800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsqrt d n => 0x1E61C000 + n.val * 32 + d.val
+  | .ucvtf d n => 0x9E630000 + n.val * 32 + d.val
+  | .fcmp n m => 0x1E602000 + m.val * 65536 + n.val * 32
+  | .fcvtzu d n => 0x9E790000 + n.val * 32 + d.val
+  | .fmovSW d n => 0x1E270000 + n.val * 32 + d.val
+  | .fmovWS d n => 0x1E260000 + n.val * 32 + d.val
+  | .faddS d n m => 0x1E202800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsubS d n m => 0x1E203800 + m.val * 65536 + n.val * 32 + d.val
+  | .fmulS d n m => 0x1E200800 + m.val * 65536 + n.val * 32 + d.val
+  | .fdivS d n m => 0x1E201800 + m.val * 65536 + n.val * 32 + d.val
+  | .fsqrtS d n => 0x1E21C000 + n.val * 32 + d.val
+  | .frintnS d n => 0x1E244000 + n.val * 32 + d.val
+  | .ucvtfSX d n => 0x9E230000 + n.val * 32 + d.val
+  | .scvtfSW d n => 0x1E220000 + n.val * 32 + d.val
+  | .fcvtzuXS d n => 0x9E390000 + n.val * 32 + d.val
+  | .fcvtzsWS d n => 0x1E380000 + n.val * 32 + d.val
+  | .fcmpS n m => 0x1E202000 + m.val * 65536 + n.val * 32
 
 /-- The 32-bit word of the instruction `i`. -/
 def encode (i : Instr) : UInt32 :=
@@ -83,10 +106,15 @@ macro_rules
         Instr.addReg.injEq, Instr.subReg.injEq, Instr.andReg.injEq, Instr.eorReg.injEq,
         Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,
         Instr.bcond.injEq, Instr.adr.injEq, Instr.adrp.injEq, Instr.msr.injEq, Instr.mrs.injEq,
-        Fin.ext_iff]
+        Instr.fmovDX.injEq, Instr.fmovXD.injEq, Instr.fadd.injEq, Instr.fsub.injEq,
+        Instr.fmul.injEq, Instr.fdiv.injEq, Instr.fsqrt.injEq, Instr.ucvtf.injEq, Instr.fcmp.injEq,
+        Instr.fcvtzu.injEq, Instr.fmovSW.injEq, Instr.fmovWS.injEq, Instr.faddS.injEq,
+        Instr.fsubS.injEq, Instr.fmulS.injEq, Instr.fdivS.injEq, Instr.fsqrtS.injEq,
+        Instr.frintnS.injEq, Instr.ucvtfSX.injEq, Instr.scvtfSW.injEq, Instr.fcvtzuXS.injEq,
+        Instr.fcvtzsWS.injEq, Instr.fcmpS.injEq, Fin.ext_iff]
       all_goals omega))
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 2000000 in
 /-- The decoder reads every encoded form back as itself.  Each form's case decides every earlier
 condition of the decoder's chain with `omega`, so the proof's cost grows with the product of the
 number of forms and the chain's length, beyond the default budget of heartbeats. -/

@@ -2,8 +2,9 @@
    outside every proof.  The harness's main calls cosim_print after its cases.  For each case it
    writes one line: "C", the case's number, the instruction's word, its address, the window's
    address, the 31 registers, the stack pointer, and NZCV before the instruction, the window's 64
-   bytes before it, the same registers after it followed by the number of the landing word, and
-   the window's bytes after it, every number in hexadecimal. */
+   bytes before it, the same registers after it followed by the number of the landing word, the
+   window's bytes after it, and the 32 floating-point registers before and after it, every number
+   in hexadecimal. */
 
 extern volatile unsigned int lx_out;
 extern const unsigned long long cosim_count;
@@ -46,6 +47,8 @@ int cosim_print(void) {
     bytes(cosim_inwin[k]);
     for (i = 0; i < 34; i++) hex(o[i]);
     bytes((const unsigned char *) (o + 36));
+    for (i = 0; i < 32; i++) hex(in[33 + i]);
+    for (i = 0; i < 32; i++) hex(o[44 + i]);
     out('\n');
   }
   return 0;

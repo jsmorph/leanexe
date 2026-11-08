@@ -1,0 +1,37 @@
+{
+  "id": "kernel-evaluation-costs",
+  "goals": [
+    "(kernel) deterministic timeout",
+    "(kernel) deep recursion detected",
+    "a declaration that passes with set_option debug.skipKernelTC true and fails without it",
+    "UInt64.decLt (a + M) (b + M) under a projection, with a large literal M",
+    "Flat.flat ((fun x => …) a) = Flat.flat (ite …)",
+    "a projection r.2.2.2 of a large block compared with another term"
+  ],
+  "modules": [
+    "Verified.Reflect.Definitions",
+    "Verified.Reflect.BoundPass",
+    "Verified.Reflect.Command",
+    "LeanExe.A64.Isla.Check",
+    "LeanExe.A64.Isla.Walk",
+    "LeanExe.M7.Isla.Arith",
+    "Library.Numerics.Float64.Lgamma.LgammaSign"
+  ],
+  "declarations": [
+    "Verified.Reflect.reflect",
+    "Verified.Reflect.meaningAt",
+    "Verified.Reflect.LemmaApp.argType",
+    "Verified.Reflect.LemmaApp.assignHint",
+    "LeanExe.A64.Isla.nat_add_zero",
+    "LeanExe.A64.Isla.Opaque",
+    "LeanExe.M7.Isla.awc_v",
+    "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf",
+    "Verified.Reflect.assignFamilyEquation"
+  ],
+  "examples": [
+    "Library.Numerics.Float64.Lgamma.LgammaSign.ite_sgn",
+    "Library.Numerics.Float64.Lgamma.LgammaSign.m1_sgn",
+    "Library.Numerics.Float64.Lgamma.LgammaSign.m3_sgn",
+    "Library.Numerics.Float64.Lgamma.LgammaSign.sign_code"
+  ]
+}

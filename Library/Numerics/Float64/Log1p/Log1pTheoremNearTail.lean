@@ -107,13 +107,13 @@ theorem k0_near_high (f : Float) (hf : Finite f.toBits) (hv1 : 285 / 1000 ≤ va
 
 set_option maxHeartbeats 2000000 in
 /-- `log1pTail` for `K ≥ 1`, with the bound refined for `K = 1`, `f < -0.175`. -/
-theorem tail_near (f c : Float) (k hu : UInt64) (K t et E : ℝ) (hf : Finite f.toBits)
+theorem tail_near (f c : Float) (k : Int64) (hu : UInt64) (K t et E : ℝ) (hf : Finite f.toBits)
     (hv1 : -2929 / 10000 ≤ value f.toBits) (hv2 : value f.toBits ≤ 41422 / 100000)
     (hhu1 : (hu == 0) = false → 1 / 2 ^ 30 ≤ |value f.toBits|)
     (hhu2 : (hu == 0) = true → |value f.toBits| ≤ 1 / 2 ^ 19)
     (hvz : value f.toBits ≠ 0 → 1 / 2 ^ 1000 ≤ |value f.toBits|)
-    (hk : (k == 0) = false) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
+    (hk : (k == 0) = false) (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
     (hK : K = 1 ∨ (2 ≤ K ∧ K ≤ 1100))
     (hc : FApprox c t et) (ht : |t| ≤ 1 / 2 ^ 52) (het : et ≤ 1 / 2 ^ 60)
     (hE1 : K = 1 → value f.toBits < -2501 / 10000 → 85 / 100 / 2 ^ 54 ≤ E)

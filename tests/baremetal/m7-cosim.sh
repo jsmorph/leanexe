@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # The co-simulation of the Cortex-M7 model of LeanExe/M7/Machine.lean against QEMU's mps2-an500,
 # an emulated Cortex-M7 (tests/TestSupport/M7/Cosim.lean).  It builds m7-cosim, writes the harness
-# of PER_FORM cases of each of the model's forms and of the calls of udivmod64 for the boundary
-# operands and DIV random pairs from the seed SEED, assembles it with CompCert's driver, links it
+# of PER_FORM cases of each of the model's forms, of the calls of udivmod64 for the boundary
+# operands and DIV random pairs, and of the fixed cases of the immediates that the generator
+# emits, from the seed SEED, assembles it with CompCert's driver, links it
 # with tests/baremetal/m7cosim.c and the startup code of tools/baremetal/armv7m for the board
 # mps2-an500 through tools/baremetal/armv7m/build.sh, runs the image under QEMU, and checks every
 # case line and division line of its UART output against the model with m7-cosim check.  The

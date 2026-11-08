@@ -12,14 +12,20 @@ def lower : {Γ : List Ty} → {t : Ty} → (e : Verified.Expr S Γ t) → (ctx 
   | _, _, .bool v, _, _, _ => some (.bool v)
   | _, _, .float32 bits, _, _, _ => some (.float32 bits)
   | _, _, .var v, _, _, bound => some (.var v bound)
-  | _, _, .bin op left right, ctx, base, bound => do
-      let a ← lower left ctx base bound
-      let b ← lower right ctx a.next (bound.mono a.grows)
-      pure (.bin op a b)
-  | _, _, .cmp op left right, ctx, base, bound => do
-      let a ← lower left ctx base bound
-      let b ← lower right ctx a.next (bound.mono a.grows)
-      pure (.cmp op a b)
+  | _, _, .bin op left right, ctx, base, bound =>
+      match hk : binOp op with
+      | none => none
+      | some _ => do
+          let a ← lower left ctx base bound
+          let b ← lower right ctx a.next (bound.mono a.grows)
+          pure (.bin op hk a b)
+  | _, _, .cmp op left right, ctx, base, bound =>
+      match hf : cmpExpr op with
+      | none => none
+      | some _ => do
+          let a ← lower left ctx base bound
+          let b ← lower right ctx a.next (bound.mono a.grows)
+          pure (.cmp op hf a b)
   | _, _, .not value, ctx, base, bound => do
       pure (← lower value ctx base bound).not
   | _, _, .and left right, ctx, base, bound => do

@@ -166,6 +166,8 @@ private def binary? : Wasm.Instruction → Option (Name × ValueType × ValueTyp
   | .neI64 => some (``Spec.Validity.Binary.neI64, .i64, .i32)
   | .ltUI64 => some (``Spec.Validity.Binary.ltUI64, .i64, .i32)
   | .leUI64 => some (``Spec.Validity.Binary.leUI64, .i64, .i32)
+  | .ltSI64 => some (``Spec.Validity.Binary.ltSI64, .i64, .i32)
+  | .leSI64 => some (``Spec.Validity.Binary.leSI64, .i64, .i32)
   | .geUI64 => some (``Spec.Validity.Binary.geUI64, .i64, .i32)
   | .f64Eq => some (``Spec.Validity.Binary.f64Eq, .f64, .i32)
   | .f64Lt => some (``Spec.Validity.Binary.f64Lt, .f64, .i32)
@@ -183,6 +185,7 @@ private def binary? : Wasm.Instruction → Option (Name × ValueType × ValueTyp
   | .xorI64 => some (``Spec.Validity.Binary.xorI64, .i64, .i64)
   | .shlI64 => some (``Spec.Validity.Binary.shlI64, .i64, .i64)
   | .shrUI64 => some (``Spec.Validity.Binary.shrUI64, .i64, .i64)
+  | .shrSI64 => some (``Spec.Validity.Binary.shrSI64, .i64, .i64)
   | .f32Add => some (``Spec.Validity.Binary.f32Add, .f32, .f32)
   | .f32Sub => some (``Spec.Validity.Binary.f32Sub, .f32, .f32)
   | .f32Mul => some (``Spec.Validity.Binary.f32Mul, .f32, .f32)
@@ -339,7 +342,8 @@ private def instructionType (context instruction : Lean.Expr) (inputs outputs : 
 private def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
   let type ← instantiateMVars type
   if type.hasFVar || type.hasMVar then return ← mkDecideProof type
-  let name := Name.num `_private.validityLookup type.hash.toNat
+  -- The module's name keeps two modules that state the same fact from declaring one name.
+  let name := Name.num (`_private.validityLookup ++ (← getEnv).mainModule) type.hash.toNat
   if let some declaration := (← getEnv).find? name then
     if declaration.type == type then return mkConst name
   let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityLookup else pure name
@@ -369,7 +373,8 @@ private def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM 
     ← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context])]
   let value ← instantiateMVars value
   if value.hasFVar || value.hasMVar then return value
-  let name := Name.num `_private.validityContext value.hash.toNat
+  -- The module's name keeps two modules that state the same context from declaring one name.
+  let name := Name.num (`_private.validityContext ++ (← getEnv).mainModule) value.hash.toNat
   if let some (.defnInfo declaration) := (← getEnv).find? name then
     if declaration.value == value then return mkConst name
   let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityContext else pure name

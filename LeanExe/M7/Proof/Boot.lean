@@ -153,7 +153,7 @@ theorem boot_image {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64} {limit d
   unfold bootFileOk at hk
   split at hk
   · rename_i is hb
-    simp only [Bool.and_eq_true, beq_iff_eq] at hk
+    simp only [Bool.and_eq_true, beq_iff_eq, natOfBytesPaired_eq] at hk
     obtain ⟨hn, hl⟩ := hk
     unfold bootProgram at hb
     simp only [except_bind_ok, except_pure_ok] at hb
@@ -183,14 +183,15 @@ theorem boot_image {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64} {limit d
 
 /-! ## The run from reset -/
 
-/-- The initialization `init`, placed at the program counter, runs to its end with SP unchanged,
-`r` device reads, and the accesses `t0 τ` appended to the trace, where `τ` gives the values of
-its reads in order: `τ j` is the value of the read numbered `j` from the reads before it. -/
+/-- The initialization `init`, placed at the program counter, runs to its end with SP and memory
+unchanged, `r` device reads, and the accesses `t0 τ` appended to the trace, where `τ` gives the
+values of its reads in order: `τ j` is the value of the read numbered `j` from the reads before
+it. -/
 def InitRuns (P : Platform) (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (init : List Instr) (t0 : (Nat → UInt32) → List Access) (r : Nat) : Prop :=
   ∀ s : State, CodeAt code s.pc init → ∃ t, Reach P σ code s t ∧
     t.pc = s.pc + UInt32.ofNat (4 * init.length) ∧ t.sp = s.sp ∧
-    t.trace = s.trace ++ t0 (fun j => σ (j + s.reads)) ∧ t.reads = s.reads + r
+    t.trace = s.trace ++ t0 (fun j => σ (j + s.reads)) ∧ t.reads = s.reads + r ∧ t.mem = s.mem
 
 /-- The image of step `k` of `m`, whose bytes the kernel's check `hk` finds in the code map, run
 from reset: the initialization appends `t0 σ` to the trace with its `r` reads, and `main` reaches
@@ -206,8 +207,8 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
     (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
     (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
-    (hdev : DevWindow P dev) {st : Store Unit} {heap : Heap} (hat : heap.At st)
-    (hcap : st.memoryCap m 0 ≤ 65535)
+    (hna : usesArea m k = false) (hdev : DevWindow P dev) {st : Store Unit} {heap : Heap}
+    (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
     (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
     (hk : bootFileOk B (bootProgram B m k s0 limit dev) n len = true)
     (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
@@ -231,16 +232,67 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
   rw [or1_and _ hev] at hbpc
   rw [and_align hsp] at hbsp
   rw [← hbpc] at hci
-  obtain ⟨t1, r1, p1, sp1, tr1, rd1⟩ := hinit b hci
+  obtain ⟨t1, r1, p1, sp1, tr1, rd1, -⟩ := hinit b hci
   have hp1 : t1.pc = B.base := by
     rw [p1, hbpc, Boot.reset, Boot.base]
     addr_after
   have hsp1 : t1.sp = B.sp := sp1.trans hbsp
-  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code) hwords hlen himpl hPre hm
-    hprog hcp (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat hcap g0 hs0 t1 hp1
-    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1])) N
+  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code) hlen
+    (stepCall_of_implementsA hwords himpl hPre hna) hm hprog hcp
+    (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat trivial hcap g0 hs0 t1 hp1
+    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
+    (areaHolds_none hna) N
   refine ⟨t, r1.trans rt, pt, ?_⟩
   rw [trt, tr1, rd1, hb.trace, hb.reads, List.nil_append, Nat.zero_add]
   rfl
+
+/-- The run of `boot_run`, counted: the initialization's steps, and window `i` in at most 16 steps
+of `main` and the cost of Talos's run of the step from the window's state. -/
+theorem boot_run_steps {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+    {limit dev : UInt32} {B : Boot} {n len : Nat} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hna : usesArea m k = false) (hdev : DevWindow P dev) {st : Store Unit} {heap : Heap}
+    (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
+    (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
+    (hk : bootFileOk B (bootProgram B m k s0 limit dev) n len = true)
+    (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
+    {t0 : (Nat → UInt32) → List Access} {r : Nat} (hinit : InitRuns P σ code B.init t0 r)
+    (hsp : B.sp.toNat % 4 = 0)
+    (hfit : 8 * (s0.length + 1) ≤ B.sp.toNat)
+    (hstk : ∀ s : State, s.sp = B.sp - UInt32.ofNat (8 * (s0.length + 1)) →
+      StackOk P limit (s0.length + 1) (stackBound m k) s)
+    (g0 : G) (hs0 : words g0 = s0) (b : State) (hb : Reset code B.org b) (N : Nat) :
+    Counted P σ code b (after B.base (mainStart s0)) N
+      (WindowBound m k words tick g0 (fun j => σ (j + r)))
+      (fun i => t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) i) := by
+  obtain ⟨prog, hprog, hcp, hci, hw0, hw1⟩ := boot_image hent hw hk hf
+  obtain ⟨w0, e0, hbsp⟩ := hb.sp
+  obtain ⟨w1, e1, -, hbpc⟩ := hb.pc
+  rw [hw0, Option.some.injEq] at e0
+  rw [hw1, Option.some.injEq] at e1
+  subst e0 e1
+  have hev : (B.reset).toNat % 2 = 0 := by
+    rw [Boot.reset]
+    exact even_after (by omega) _
+  rw [or1_and _ hev] at hbpc
+  rw [and_align hsp] at hbsp
+  rw [← hbpc] at hci
+  obtain ⟨t1, r1, p1, sp1, tr1, rd1, -⟩ := hinit b hci
+  have hp1 : t1.pc = B.base := by
+    rw [p1, hbpc, Boot.reset, Boot.base]
+    addr_after
+  have hsp1 : t1.sp = B.sp := sp1.trans hbsp
+  have h := main_run_steps (P := P) (σ := σ) (code := code) hlen
+    (stepCall_of_implementsA hwords himpl hPre hna) hm hprog hcp
+    (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat trivial hcap g0 hs0 t1 hp1
+    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
+    (areaHolds_none hna) N
+  rw [tr1, rd1, hb.trace, hb.reads, List.nil_append, Nat.zero_add] at h
+  exact h.of_reach r1
 
 end LeanExe.M7

@@ -1,0 +1,53 @@
+{
+  "id": "generator-orbits",
+  "goals": [
+    "Function.minimalPeriod step x = N",
+    "∃! n, advance n x = y",
+    "((Finset.univ : Finset UInt64).filter fun n => (advance n x).toNat / 2 ^ (64 - j) = v).card = 2 ^ (64 - j)",
+    "jump n x = advance n x",
+    "LeanExe.loop n x (fun _ s => f s) = f^[n.toNat] x",
+    "a bound on the number of word arrays that give each outcome of a sampling algorithm"
+  ],
+  "modules": [
+    "Library.Random.Orbit.Basic",
+    "Library.Random.Lcg.Jump",
+    "Library.Random.Lcg.Spectral",
+    "Library.Random.ParkMiller.Period",
+    "Library.Random.Xorshift.Columns",
+    "Library.Random.Xorshift.Period",
+    "Library.Random.Xorshift.Jump",
+    "Library.Random.Sampling.Scale",
+    "Library.Random.Sampling.Proof"
+  ],
+  "declarations": [
+    "Library.Random.Orbit.loop_eq_iterate",
+    "Library.Random.Orbit.existsUnique_iterate",
+    "Library.Random.Orbit.minimalPeriod_eq_of_primes",
+    "Library.Random.Orbit.card_topBits",
+    "Library.Random.Lcg.iterate_two_pow",
+    "Library.Random.Lcg.le_of_certificate",
+    "Library.Random.Xorshift.applyList_cols",
+    "Library.Random.Xorshift.jumpList_pows",
+    "Library.Random.Sampling.scale_card"
+  ],
+  "examples": [
+    "Library.Random.Lcg.minimalPeriod_affine_iff",
+    "Library.Random.Lcg.step_minimalPeriod",
+    "Library.Random.Lcg.advance_topBits",
+    "Library.Random.Lcg.jumpPasses_spec",
+    "Library.Random.Lcg.jump_eq",
+    "Library.Random.Lcg.spectral_two",
+    "Library.Random.ParkMiller.prime_modulus",
+    "Library.Random.ParkMiller.orderOf_multiplier",
+    "Library.Random.ParkMiller.step_minimalPeriod",
+    "Library.Random.ParkMiller.check_value",
+    "Library.Random.Xorshift.orbitCheck_eq",
+    "Library.Random.Xorshift.minimalPeriod_one",
+    "Library.Random.Xorshift.step_minimalPeriod",
+    "Library.Random.Xorshift.advance_topBits",
+    "Library.Random.Xorshift.jumpPasses_spec",
+    "Library.Random.Xorshift.jump_eq",
+    "Library.Random.Sampling.ceil_diff_bounds",
+    "Library.Random.Sampling.shuffle_count"
+  ]
+}

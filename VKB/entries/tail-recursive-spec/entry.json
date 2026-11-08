@@ -1,0 +1,51 @@
+{
+  "id": "tail-recursive-spec",
+  "goals": [
+    "P (f args) for f with termination_by",
+    "(root p (UInt64.ofNat x) F).toNat = (up p)^[d] x given d ≤ F.toNat",
+    "P (fall pat pi c k F) given k.toNat ≤ F.toNat",
+    "P (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
+    "Q (LeanExe.repeatWhile fuel init cond step) from an invariant and a measure below the fuel"
+  ],
+  "modules": [
+    "Library.Arrays.BinarySearch.Proof",
+    "Library.Sorting.Quicksort.Proof",
+    "Library.Sorting.Shellsort.Proof",
+    "Library.Sorting.Find.Proof",
+    "Library.Graphs.UnionFind.Proof",
+    "Library.Graphs.WeightedUnionFind.Proof",
+    "Library.Strings.Kmp.Proof",
+    "Library.HashTables.LinearProbing.Proof",
+    "Library.Combinatorics.DancingLinks.Links",
+    "Library.Combinatorics.DancingLinks.Column",
+    "Library.Combinatorics.DancingLinks.Proof",
+    "Demos.Euler.Spec",
+    "Demos.Slew.Search",
+    "Demos.OrderBook.RefineChains"
+  ],
+  "declarations": [
+    "Library.Combinatorics.DancingLinks.repeatWhile_inv",
+    "Library.Combinatorics.DancingLinks.repeatWhile_of_inv",
+    "Library.Graphs.UnionFind.root_iter",
+    "Library.Sorting.Quicksort.part_within",
+    "Demos.Euler.repeatWhile_inv",
+    "Demos.Slew.Search.repeatWhile_induction",
+    "Demos.OrderBook.Refinement.repeatWhile_inv"
+  ],
+  "examples": [
+    "Library.Arrays.BinarySearch.search_spec",
+    "Library.Arrays.BinarySearch.lowerBound_eq",
+    "Library.Sorting.Quicksort.stages_perm",
+    "Library.Sorting.Shellsort.passes_perm",
+    "Library.Sorting.Find.find_spec",
+    "Library.Graphs.UnionFind.root_eq",
+    "Library.Graphs.UnionFind.classes_spec",
+    "Library.Graphs.WeightedUnionFind.compress_spec",
+    "Library.Graphs.WeightedUnionFind.classes_spec",
+    "Library.Strings.Kmp.fall_spec",
+    "Library.HashTables.LinearProbing.probe_spec",
+    "Library.HashTables.LinearProbing.close_spec",
+    "Library.Combinatorics.DancingLinks.hideColumn_eq",
+    "Library.Combinatorics.DancingLinks.count_eq"
+  ]
+}

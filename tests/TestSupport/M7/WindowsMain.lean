@@ -1,10 +1,18 @@
 import TestSupport.M7.Windows
 import TestSupport.M7.Qemu
+import TestSupport.M7.GwImages
+import TestSupport.M7.CrcImages
+import TestSupport.M7.ShaImages
+import TestSupport.M7.SignedImages
 import TestSupport.M7.Dwt
+import TestSupport.M7.Area
+import TestSupport.M7.Diag
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
-`echo-usart3` and `echo-cmsdk` and the gateways `gateway-usart3` and `gateway-cmsdk`.
+`echo-usart3` and `echo-cmsdk`, the gateways `gateway-usart3` and `gateway-cmsdk`, the CRC-32
+steps `crc-usart3` and `crc-cmsdk`, the SHA-256 steps `sha-usart3` and `sha-cmsdk`, and the
+signed steps `signed-usart3` and `signed-cmsdk`.
 
 - `m7-windows frames` prints each program's functions with their frames and sizes.
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
@@ -15,18 +23,46 @@ The command `m7-windows` of the window counts of the Cortex-M7 back end's progra
   NUCLEO-F767ZI (`tests/TestSupport/M7/Nucleo.lean`): the vector table, the board's
   initialization, and the program, from the flash's ITCM address `0x00200000`, and prints the
   addresses of `main` and of its loop's head.
-- `m7-windows board-dwt FILE` and `m7-windows div-dwt FILE` write the measurement images of
-  `tests/TestSupport/M7/Dwt.lean`: the echo with the cycles of each window, and the cycles of
-  `udivmod64`'s paths and of `UDIV`.
+- `m7-windows gateway-qemu FILE` writes to FILE the image of the gateway of `gwTick` for QEMU's
+  `mps2-an500`, and `m7-windows gateway-board FILE` the image of the gateway of `gwTickUsart3`
+  for the NUCLEO-F767ZI, as `tests/TestSupport/M7/GwImages.lean` lays them out, and each prints
+  the addresses of `main` and of its loop's head.
+- `m7-windows area-board FILE AREA` writes to FILE the image of `tests/TestSupport/M7/Area.lean`:
+  the setup of the area of the CRC-32 step's module, the board's initialization, and the echo of
+  `usart3Tick`, and to AREA the area's bytes as the setup leaves them, and prints the address of
+  the initialization and the numbers of the setup's instructions and of the area's bytes.
+- `m7-windows crc-qemu FILE` writes to FILE the image of the CRC-32 step `crcCmsdkTick` for
+  QEMU's `mps2-an500`, and `m7-windows crc-board FILE` the image of `crcUsart3Tick` for the
+  NUCLEO-F767ZI, each with the setup of its area (`tests/TestSupport/M7/CrcImages.lean`), and each
+  prints the addresses of `main` and of its loop's head.
+- `m7-windows sha-qemu FILE` writes to FILE the image of the SHA-256 step `shaCmsdkTick` for QEMU's
+  `mps2-an500`, and `m7-windows sha-board FILE` the image of `shaUsart3Tick` for the NUCLEO-F767ZI,
+  each with the setup of its area, which no theorem covers
+  (`tests/TestSupport/M7/ShaImages.lean`), and each prints the addresses of `main` and of its
+  loop's head.
+- `m7-windows signed-qemu FILE` writes to FILE the image of the signed step `sgCmsdkTick` for
+  QEMU's `mps2-an500`, and `m7-windows signed-board FILE` the image of `sgUsart3Tick` for the
+  NUCLEO-F767ZI (`tests/TestSupport/M7/SignedImages.lean`), and each prints the addresses of `main`
+  and of its loop's head.
+- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`,
+  `m7-windows sha-dwt FILE`, and `m7-windows div-dwt FILE` write the measurement images of
+  `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step, and the SHA-256 step
+  with the cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
+- `m7-windows diag FILE` writes the diagnostic image of `tests/TestSupport/M7/Diag.lean`, which
+  reports the debug registers and `RCC_CSR` as reset left them.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
   `DIR/NAME.KIND.longest` the longest window of the kind `tick`, and to `DIR/NAME.divisions` each
   call of `udivmod64` in a window of that kind, with its path, operands, and loop passes.  An echo
   receives the bytes of `uart_echo.py`'s lockstep message, blocks of its burst lengths 2, 16, 322,
-  and 65,536, and the message again, and must answer each with bit 5 flipped.  A gateway receives
-  the input records of the file IN, 18 words a line, and must send the output records of the file
-  OUT, 6 words a line, each word's bytes the most significant first.
+  and 65,536, and the message again, and must answer each with bit 5 flipped.  A CRC-32 step
+  receives the same bytes and must answer each with the low byte of the CRC-32 of the bytes so
+  far, and a signed step with the low byte of its integrator shifted right by 4.  A SHA-256 step
+  receives the 64 blocks of `shaInput` and must answer each with the 32 bytes of the digest of the
+  bytes so far.  A gateway receives the input records of the file IN, 18 words a line, and must
+  send the output records of the file OUT, 6 words a line, each word's bytes the most significant
+  first.
 
 Each command exits with status 1 on a failure.
 -/
@@ -72,6 +108,20 @@ def statLine (kind : String) (s : Stat) : String :=
   s!"{kind} windows {s.count} least {s.least} most {s.most} total {s.total} " ++
     s!"divisions fast {s.divFast} low {s.divLow} loop {s.divLoop} passes {s.divLoopPasses}"
 
+/-- Writes the image `g` named `name` to `file` and prints its size and the addresses of `main`,
+`base`, and of its loop's head, `head`. -/
+def writeImage (name file : String) (g : LeanExe.M7.GenM (List UInt8)) (base head : UInt32) :
+    IO UInt32 :=
+  match g with
+  | .ok bytes => do
+      IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+      IO.println (s!"m7-windows: {name}: {bytes.length} bytes, main {hex32 base}, " ++
+        s!"loop head {hex32 head}")
+      return 0
+  | .error e => do
+      IO.eprintln s!"m7-windows: {name}: {e}"
+      return 1
+
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["frames"] =>
@@ -114,6 +164,73 @@ def main (args : List String) : IO UInt32 := do
       | .error e =>
           IO.eprintln s!"m7-windows: echo-usart3-board: {e}"
           return 1
+  | ["area-board", file, area] =>
+      match TestSupport.M7.Area.areaEchoImage with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          let a := TestSupport.M7.Area.areaExpected
+          IO.FS.writeBinFile area (ByteArray.mk a.toArray)
+          let su := LeanExe.M7.setupCode LeanExe.M7.areaHeader LeanExe.M7.areaPages
+            TestSupport.M7.Crc.crcStepCompiled.module
+          IO.println (s!"m7-windows: area-echo-usart3-board: {bytes.length} bytes, setup " ++
+            s!"{su.length} instructions, initialization {hex32 TestSupport.M7.Area.areaInit}, " ++
+            s!"area {a.length} bytes with a prefix of " ++
+            s!"{LeanExe.areaPrefix TestSupport.M7.Crc.crcStepCompiled.module}")
+          return 0
+      | .error e => do
+          IO.eprintln s!"m7-windows: area-echo-usart3-board: {e}"
+          return 1
+  | ["gateway-qemu", file] =>
+      writeImage "gateway-cmsdk-qemu" file TestSupport.M7.Gw.qemuImage
+        TestSupport.M7.Qemu.boot.base TestSupport.M7.Gw.qemuHead
+  | ["gateway-board", file] =>
+      writeImage "gateway-usart3-board" file TestSupport.M7.Gw.boardImage
+        LeanExe.M7.Nucleo.boot.base TestSupport.M7.Gw.boardHead
+  | ["crc-qemu", file] =>
+      writeImage "crc-cmsdk-qemu" file TestSupport.M7.CrcImages.qemuImage
+        TestSupport.M7.CrcImages.qemuBoot.base TestSupport.M7.CrcImages.qemuHead
+  | ["crc-board", file] =>
+      writeImage "crc-usart3-board" file TestSupport.M7.CrcImages.boardImage
+        TestSupport.M7.CrcImages.boardBoot.base TestSupport.M7.CrcImages.boardHead
+  | ["sha-qemu", file] =>
+      writeImage "sha-cmsdk-qemu" file TestSupport.M7.ShaImages.qemuImage
+        TestSupport.M7.ShaImages.qemuBoot.base TestSupport.M7.ShaImages.qemuHead
+  | ["sha-board", file] =>
+      writeImage "sha-usart3-board" file TestSupport.M7.ShaImages.boardImage
+        TestSupport.M7.ShaImages.boardBoot.base TestSupport.M7.ShaImages.boardHead
+  | ["signed-qemu", file] =>
+      writeImage "signed-cmsdk-qemu" file TestSupport.M7.Signed.qemuImage
+        TestSupport.M7.Qemu.boot.base TestSupport.M7.Signed.qemuHead
+  | ["signed-board", file] =>
+      writeImage "signed-usart3-board" file TestSupport.M7.Signed.boardImage
+        LeanExe.M7.Nucleo.boot.base TestSupport.M7.Signed.boardHead
+  | ["gateway-dwt", file] =>
+      match TestSupport.M7.Dwt.gwDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: gateway-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: gateway-usart3-board-dwt: {e}"
+          return 1
+  | ["crc-dwt", file] =>
+      match TestSupport.M7.Dwt.crcDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: crc-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: crc-usart3-board-dwt: {e}"
+          return 1
+  | ["sha-dwt", file] =>
+      match TestSupport.M7.Dwt.shaDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: sha-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: sha-usart3-board-dwt: {e}"
+          return 1
   | ["board-dwt", file] =>
       match TestSupport.M7.Dwt.echoDwt with
       | .ok bytes =>
@@ -129,6 +246,12 @@ def main (args : List String) : IO UInt32 := do
       IO.println (s!"m7-windows: div-dwt: {bytes.length} bytes, " ++
         s!"{TestSupport.M7.Dwt.runs.length} records")
       return 0
+  | ["diag", file] =>
+      let bytes := TestSupport.M7.Diag.diagImage
+      IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+      IO.println (s!"m7-windows: diag: {bytes.length} bytes, main " ++
+        s!"{hex32 TestSupport.M7.Diag.diagBoot.base}")
+      return 0
   | ["static", name] => withProg name fun p => do
       match longest p with
       | .ok (ls, l, d) =>
@@ -140,7 +263,9 @@ def main (args : List String) : IO UInt32 := do
           return 1
   | "run" :: name :: dir :: rest => withProg name fun p => do
       let (input, expected) ← match rest with
-        | [] => pure (echoInput, echoInput.map (· ^^^ 0x20))
+        | [] =>
+            let input := p.input.getD echoInput
+            pure (input, p.answer input)
         | [inPath, outPath] =>
             let ins ← readRecords inPath 18
             let outs ← readRecords outPath 6
@@ -172,5 +297,8 @@ def main (args : List String) : IO UInt32 := do
       | none => return 0
   | _ =>
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
-        "board-dwt FILE | div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
+        "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
+        "sha-qemu FILE | sha-board FILE | signed-qemu FILE | signed-board FILE | " ++
+        "board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
+        "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2

@@ -6,7 +6,9 @@
     "a theorem that an emitted .wasm file holds the encoding of a module"
   ],
   "modules": [
-    "LeanExe.Pipeline.FileBytes"
+    "LeanExe.Pipeline.FileBytes",
+    "Verified.Examples.Modes",
+    "Verified.Examples.TailCore"
   ],
   "declarations": [
     "LeanExe.Pipeline.elabFileTheorems",
@@ -15,10 +17,5 @@
     "LeanExe.Pipeline.decode_eq_of_file",
     "Wasm.Encoding.decode_encode"
   ],
-  "examples": [],
-  "sources": [
-    "2026-10-30: One command for the theorems of the file modules",
-    "2026-10-30: File theorems for the module registry",
-    "2026-10-30: File modules for the modules built without the reflector"
-  ]
+  "examples": []
 }

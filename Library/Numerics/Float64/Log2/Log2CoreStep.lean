@@ -138,7 +138,7 @@ theorem core2_index (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E
     (hix : (ix.toNat : Int) = (E * 4503599627370496 + f) % 18446744073709551616) :
     ∃ e n : Nat, (e = 1022 ∨ e = 1023) ∧ n < 64 ∧
       (zOf ix).toNat = e * 4503599627370496 + f ∧ (index2Of ix).toNat = n ∧
-      ((kOf ix).toNat : Int) = (E - e) % 18446744073709551616 ∧
+      (kOf ix).toInt = E - e ∧
       (lowQ n : ℝ) ≤ ((2 : ℝ) ^ 52 + f) * 2 ^ (e - 1) / 2 ^ 1074 ∧
       ((2 : ℝ) ^ 52 + f) * 2 ^ (e - 1) / 2 ^ 1074 ≤ (highQ n : ℝ) ∧
       1 / 2 ≤ ((2 : ℝ) ^ 52 + f) * 2 ^ (e - 1) / 2 ^ 1074 ∧
@@ -295,7 +295,7 @@ theorem core2_word (ix : UInt64) (n : Nat) (hn : n < 64) (hi : (index2Of ix).toN
     (Log2.log2Core Log2.log2Table Log2.log2Table2 ix).toBits =
       final2Word (Wasm.IEEE64.mul (Wasm.IEEE64.sub (Wasm.IEEE64.sub (zOf ix)
           Log2.log2Table2[2 * n]!) Log2.log2Table2[2 * n + 1]!) Log2.log2Table[2 * n]!)
-        (kdOf (kOf ix)).toBits Log2.log2Table[2 * n + 1]! := by
+        (kOf ix).toFloat.toBits Log2.log2Table[2 * n + 1]! := by
   obtain ⟨hf1, hf2, hf3, hf4, -⟩ := checked_entries ⟨n, hn⟩
   have hi2 : (2 * index2Of ix).toNat = 2 * n := by
     rw [UInt64.toNat_mul, hi]
@@ -419,7 +419,8 @@ theorem core2_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : 
     norm_num at this ⊢ <;> linarith
   rw [core2_word ix n hn hi hzf aR.1]
   -- `k`
-  have hkd := kd_value (kOf ix) (E - e) (by omega) (by omega) (by rw [hk])
+  have hkd := Signed64Value.toFloat_exact (kOf ix) (by rw [hk]; simp only [Nat.reducePow]; omega)
+  rw [hk] at hkd
   have hk1075 : |E - (e : Int)| ≤ 1075 := by
     rw [abs_le]
     constructor <;> omega
@@ -459,7 +460,8 @@ theorem core2_within (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : 
         (-value Log2.log2Table[2 * n + 1]!)
       rw [abs_neg, add_neg_cancel_right] at this
       linarith
-  obtain ⟨hresf, hres⟩ := final2_error _ (kdOf (kOf ix)).toBits Log2.log2Table[2 * n + 1]! (E - e)
+  obtain ⟨hresf, hres⟩ := final2_error _ (kOf ix).toFloat.toBits Log2.log2Table[2 * n + 1]!
+    (E - e)
     aR.1 hRb hkd.1 hkd.2 hk1075 hf2 hlcR (Int.dvd_of_emod_eq_zero hglc) hT3
     (Real.log (((2 : ℝ) ^ 52 + f) * (2 : ℝ) ^ (E - 1075)) / Real.log 2)
   have hT := target2_close (E - e) (value (zOf ix)) (centerQ n : ℝ)

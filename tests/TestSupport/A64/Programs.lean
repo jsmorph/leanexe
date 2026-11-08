@@ -1,15 +1,41 @@
 import TestSupport.Native.Gcd
 import TestSupport.Bare.Programs
+import TestSupport.A64.CicTable
+import TestSupport.A64.GptScores
+import TestSupport.A64.GptLayer32
+import TestSupport.A64.Conv32
 import Verified.Examples.Fold
+import Demos.Euler.Verified
+import Library.Numerics.Float64.Exp.Compiled
+import Library.Numerics.Float64.Trig.Compiled
+import Examples.Floor.Compiled
+import Examples.Convert.Compiled
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
-CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array, and
-Fold's recursion of depth 1000.  Each program's arm64 Image is `genImage` of the program at
-`imageBase`, with the stack's room `room` and the memory's cap `cap`.
+CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array,
+Fold's recursion of depth 1000, and the Euler solver on a grid of 4 by 4 cells, whose result is the
+array that `Demos.Euler.Buffered.solve 4` packs, together with the CIC decimation filter of
+`TestSupport.A64.Cic` on its table of 64 samples, whose result is the array of its 8 outputs, the
+GPT-2 kernel of `TestSupport.A64.GptScores`, `Demos.Gpt.scores` on a cache of 3 positions, whose
+result is the array of the words of its 32 scores, the exponential `Exp.exp` of
+`Library.Numerics.Float64.Exp` on 1 and on -740, whose result is subnormal and whose run takes the
+branch of `specialCase` that compares the scaled result with 1 and with 0, and the sine `Trig.sin`
+of `Library.Numerics.Float64.Trig` on 10, whose argument reduction converts its count of `π/2` to an
+integer with `FCVTZU`, and on 10^22, whose Payne–Hanek reduction reads the tables of `2/π` and
+`π/2`, together with the binary32 GPT-2 layer of `TestSupport.A64.GptLayer32` at position 2,
+whose result is the array of the words of the row after the layer, and the binary32 conversions of
+`TestSupport.A64.Conv32` on 64 inputs, whose result is the array of their 256 words, and the
+`Int64` functions of `Examples.Floor`: `floorDiv` on -7 and 2 and on `minValue` and -1, and
+`average` on `minValue` and -1, each `Int64` passed and written as its word, and the conversions
+of `Examples.Convert`: `toDouble` on `-(2^53 + 3)`, `toSingle` on `-(2^62 + 2^38 + 1)`, `ofDouble`
+on the double below `-2^63`, and `scale` on -7 and 0.5, each double passed and written as its
+bits and each single written as its bits zero-extended.  Each
+program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room`
+and the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
@@ -57,6 +83,61 @@ def programs : List Program := [
     args := [0x636261], output := .array
     bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
   { name := "depth", module := Verified.Examples.Fold.compiled.module, entry := 13
-    args := [1000], output := .word, bytes := [], status := 1 }]
+    args := [1000], output := .word, bytes := [], status := 1 },
+  { name := "euler", module := Demos.Euler.Verified.compiled.module, entry := 28
+    args := [4], output := .array
+    bytes := LeanExe.Native.encodeArray (Demos.Euler.Buffered.solve 4) },
+  { name := "cic", module := TestSupport.A64.Cic.compiled.module, entry := 7
+    args := [64], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Cic.cicCheck 64) },
+  { name := "gptscores", module := TestSupport.A64.Gpt.compiled.module, entry := 14
+    args := [3], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Gpt.scoresCheck 3) },
+  { name := "exp1", module := Library.Numerics.Float64.Exp.compiled.module, entry := 5
+    args := [0x3FF0000000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Exp.exp (Float.ofBits 0x3FF0000000000000)).toBits },
+  { name := "expsub", module := Library.Numerics.Float64.Exp.compiled.module, entry := 5
+    args := [0xC087200000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Exp.exp (Float.ofBits 0xC087200000000000)).toBits },
+  { name := "sin10", module := Library.Numerics.Float64.Trig.compiled.module, entry := 15
+    args := [0x4024000000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4024000000000000)).toBits },
+  { name := "sin1e22", module := Library.Numerics.Float64.Trig.compiled.module, entry := 15
+    args := [0x4480F0CF064DD592], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Library.Numerics.Float64.Trig.sin (Float.ofBits 0x4480F0CF064DD592)).toBits },
+  { name := "gptlayer32", module := TestSupport.A64.Gpt32.compiled.module, entry := 14
+    args := [2], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Gpt32.layerCheck 2) },
+  { name := "conv32", module := TestSupport.A64.Conv32.compiled.module, entry := 4
+    args := [64], output := .array
+    bytes := LeanExe.Native.encodeArray (TestSupport.A64.Conv32.convCheck 64) },
+  { name := "floordiv", module := Examples.Floor.compiled.module, entry := 2
+    args := [(-7 : Int64).toUInt64, (2 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.floorDiv (-7) 2).toUInt64 },
+  { name := "floordivmin", module := Examples.Floor.compiled.module, entry := 2
+    args := [Int64.minValue.toUInt64, (-1 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.floorDiv Int64.minValue (-1)).toUInt64 },
+  { name := "average", module := Examples.Floor.compiled.module, entry := 3
+    args := [Int64.minValue.toUInt64, (-1 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Floor.average Int64.minValue (-1)).toUInt64 },
+  { name := "todouble", module := Examples.Convert.compiled.module, entry := 2
+    args := [(-9007199254740995 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord (Examples.Convert.toDouble (-9007199254740995)).toBits },
+  { name := "tosingle", module := Examples.Convert.compiled.module, entry := 3
+    args := [(-4611686293305294849 : Int64).toUInt64], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.toSingle (-4611686293305294849)).toBits.toUInt64 },
+  { name := "ofdouble", module := Examples.Convert.compiled.module, entry := 4
+    args := [0xC3E0000000000001], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.ofDouble (Float.ofBits 0xC3E0000000000001)).toUInt64 },
+  { name := "convscale", module := Examples.Convert.compiled.module, entry := 6
+    args := [(-7 : Int64).toUInt64, 0x3FE0000000000000], output := .word
+    bytes := LeanExe.Native.encodeWord
+      (Examples.Convert.scale (-7) (Float.ofBits 0x3FE0000000000000)).toUInt64 }]
 
 end TestSupport.A64

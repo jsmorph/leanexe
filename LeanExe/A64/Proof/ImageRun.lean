@@ -71,7 +71,7 @@ theorem image_add_64 (a : UInt64) : a + 64 = after a 16 := by
   simp [after]
 
 theorem layout_base (image : UInt64) (n : Nat) (m : Wasm.Module) (cap : Nat) (room : UInt64) :
-    (layoutOf image n m cap room).base = after (image + 64) 67 := by
+    (layoutOf image n m cap room).base = after (image + 64) 70 := by
   show image + UInt64.ofNat (64 + 4 * startupLength) = image + 64 + 4 * UInt64.ofNat startupLength
   rw [UInt64.add_assoc]
   rfl
@@ -111,11 +111,11 @@ model reaches the `HVC #0` with X0 holding `SYSTEM_OFF`, every UART store comple
 showing `out` followed by the byte 0, or the status's byte alone. -/
 theorem boot_after_main {L : Layout} {is : List Instr} (hs : startupCode L = .ok is)
     {code pcode : UInt64 → Option UInt32} (hc : CodeAt code (L.image + 64) is)
-    (hbase : L.base = after (L.image + 64) 67) (hmono : ∀ a w, pcode a = some w → code a = some w)
+    (hbase : L.base = after (L.image + 64) 70) (hmono : ∀ a w, pcode a = some w → code a = some w)
     {h : Hw} {R : UInt64 → Bool} {b : Boot} (hr : Ready h R code b) {out : List UInt8}
     {T : UInt64 → Prop}
     (hout : (∃ ms', Reach (b.platform h R) pcode b.core ms' ∧
-        ms'.pc = after (L.image + 64) 55 ∧ ms'.x 0 = 0 ∧ ms'.out = b.core.out ++ out) ∨
+        ms'.pc = after (L.image + 64) 58 ∧ ms'.x 0 = 0 ∧ ms'.out = b.core.out ++ out) ∨
       ∃ ms', Reach (b.platform h R) pcode b.core ms' ∧ ms'.pc = L.base ∧ T (ms'.x 0) ∧
         ms'.out = b.core.out) :
     ∃ b', BootReach h R code b b' ∧ code b'.core.pc = some (encode .hvc0) ∧

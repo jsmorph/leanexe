@@ -1,0 +1,31 @@
+{
+  "id": "sail-fp-equations",
+  "goals": [
+    "LeanExe.A64.Isla.FPAddEq A",
+    "an equation between an Arm floating-point function and Talos's IEEE 754 function under FPCR 0x02000000",
+    "Stack overflow detected in lake env lean on a module of Sail's translation"
+  ],
+  "modules": [
+    "LeanExe.A64.Isla.Float"
+  ],
+  "declarations": [
+    "LeanExe.A64.Isla.FPAddEq",
+    "LeanExe.A64.Isla.FPAdd32Eq",
+    "LeanExe.A64.Isla.FPCompareEq",
+    "LeanExe.A64.Isla.FPRoundInt32Eq"
+  ],
+  "examples": [],
+  "unimported": {
+    "tools/sail/F7/Base.lean": [
+      "F7.Hyp"
+    ],
+    "tools/sail/F7/FPAdd.lean": [
+      "F7.fpAdd_eq_f64Add"
+    ],
+    "tools/sail/F7/Isla.lean": [
+      "F7.SailFPAdd",
+      "F7.fpAddEq_of_sail",
+      "F7.fpCompareEq_of_sail"
+    ]
+  }
+}

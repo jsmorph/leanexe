@@ -22,8 +22,5 @@
   "examples": [
     "Verified.Wasi.pwp_process_loop",
     "Verified.Wasi.wp_process_loop_ranked"
-  ],
-  "sources": [
-    "2026-10-24: Port running sum to Verified WASI"
   ]
 }

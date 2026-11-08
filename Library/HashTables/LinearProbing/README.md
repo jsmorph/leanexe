@@ -18,18 +18,18 @@ When the table holds `n` keys, a search inspects at most `n + 1` slots, and at m
 
 | Theorem | File | Statement |
 |---|---|---|
-| `adv_dist`, `dist_adv`, `dist_add`, `dist_from_adv` | [The proof](Proof.lean) | Slot arithmetic: `adv m r d` is the slot `d` steps after `r`, and `dist m a b` the steps from `a` to `b`.  `adv m r (dist m r s) = s` and `dist m r (adv m r d) = d`, a slot `p` no farther before `s` than `r` splits the distance from `r` to `s`, and `dist m (adv m r d) s = dist m r s - d` for `d ≤ dist m r s`. |
-| `tableKeys_fill` | [The proof](Proof.lean) | Filling an empty slot with a key adds that key to the keys of the occupied slots. |
-| `Good.free` | [The proof](Proof.lean) | A table that meets `Good` with at least one slot has an empty slot. |
-| `probe_spec`, `slot_spec` | [The proof](Proof.lean) | The search for `k` passes occupied slots that hold other keys and ends at an empty slot or at the slot of `k`, which is occupied exactly when `k` is a key. |
-| `insert_good` | [The proof](Proof.lean) | Writing an absent key into the empty slot where its search ends keeps `Good`. |
-| `close_spec` | [The proof](Proof.lean) | Algorithm R, from a state that meets `CloseInv`, returns a table that meets `Good`. |
-| `delete_good` | [The proof](Proof.lean) | Deleting a key keeps `Good` with that key erased. |
-| `step_agrees` | [The proof](Proof.lean) | One operation keeps `Agrees`, the invariant of the loop. |
-| `hashTable_eq` | [The proof](Proof.lean) | `hashTable xs = expected xs` for every array with fewer than `2^64` words and `slots xs < 2^63`. |
-| `hashTable_export` | [The compilation](Compiled.lean) | Export `hashTable` of `compiled.module` is function 8. |
-| `hashTable_call` | [The compilation](Compiled.lean) | Function 8, called from a ready store with `slots xs < 2^63` and room for `compiled.hashTable.bound xs` bytes, returns `expected xs` without a trap and leaves a ready store. |
-| `hashTable_file`, `hashTable_file_decode` | [The file theorems](File.lean) | `build/verified/hashTable.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `adv_dist`, `dist_adv`, `dist_add`, `dist_from_adv` | [`Proof.lean`](Proof.lean) | Slot arithmetic: `adv m r d` is the slot `d` steps after `r`, and `dist m a b` the steps from `a` to `b`.  `adv m r (dist m r s) = s` and `dist m r (adv m r d) = d`, a slot `p` no farther before `s` than `r` splits the distance from `r` to `s`, and `dist m (adv m r d) s = dist m r s - d` for `d ≤ dist m r s`. |
+| `tableKeys_fill` | [`Proof.lean`](Proof.lean) | Filling an empty slot with a key adds that key to the keys of the occupied slots. |
+| `Good.free` | [`Proof.lean`](Proof.lean) | A table that meets `Good` with at least one slot has an empty slot. |
+| `probe_spec`, `slot_spec` | [`Proof.lean`](Proof.lean) | The search for `k` passes occupied slots that hold other keys and ends at an empty slot or at the slot of `k`, which is occupied exactly when `k` is a key. |
+| `insert_good` | [`Proof.lean`](Proof.lean) | Writing an absent key into the empty slot where its search ends keeps `Good`. |
+| `close_spec` | [`Proof.lean`](Proof.lean) | Algorithm R, from a state that meets `CloseInv`, returns a table that meets `Good`. |
+| `delete_good` | [`Proof.lean`](Proof.lean) | Deleting a key keeps `Good` with that key erased. |
+| `step_agrees` | [`Proof.lean`](Proof.lean) | One operation keeps `Agrees`, the invariant of the loop. |
+| `hashTable_eq` | [`Proof.lean`](Proof.lean) | `hashTable xs = expected xs` for every array with fewer than `2^64` words and `slots xs < 2^63`. |
+| `hashTable_export` | [`Compiled.lean`](Compiled.lean) | Export `hashTable` of `compiled.module` is function 8. |
+| `hashTable_call` | [`Compiled.lean`](Compiled.lean) | Function 8, called from a ready store with `slots xs < 2^63` and room for `compiled.hashTable.bound xs` bytes, returns `expected xs` without a trap and leaves a ready store. |
+| `hashTable_file`, `hashTable_file_decode` | [`File.lean`](File.lean) | `build/verified/hashTable.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `Agrees` states that the table meets `Good` for the specification's list of keys, that the count `n` is the list's length, and that the outputs so far are the specification's.  `Good.free` gives a table of at least one slot an empty slot, which makes every search end within `M` steps, at the key's slot when the key is present.  `CloseInv` places the empty slot `j` and the next slot `i` to inspect `b` and `a` slots after the slot `j0` where Algorithm R started, with the other slots from `j0` to the slot before `i` occupied.  When the scan reaches an empty slot, no key's path can include `j`, because that path would also include the empty slot, so the table meets `Good`.  Slot indices are numbers below `M`, and the proof writes `adv` and `dist` without `%`, so that `omega` decides the slot arithmetic after a split on their cases.  The precondition `slots xs < 2^63` keeps `2M`, `2s + 1`, and `i + M` below `2^64`.  No store could hold a table of `2^63` slots or more, and on such inputs `M + M` wraps.  The axiom report of `hashTable_call` names only `propext`, `Classical.choice`, and `Quot.sound`.
 

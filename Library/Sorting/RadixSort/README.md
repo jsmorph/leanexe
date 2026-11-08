@@ -16,19 +16,19 @@
 
 | Theorem | File | Statement |
 |---|---|---|
-| `digit_lt`, `digit_eq` | [The proof](Proof.lean) | A byte is below 256, and the byte at bit `8k` is `x / 2^(8k) % 256`. |
-| `countDigits_spec` | [The proof](Proof.lean) | Steps D1 to D4 leave 256 counts, with `count[v]` the number of words whose byte is at most `v`. |
-| `pos` | [The proof](Proof.lean) | The position of the word at `j` after a pass: the number of words with a smaller byte, plus the number of words before `j` with the same byte. |
-| `pos_lt`, `pos_injective`, `pos_lt_of_digit_lt`, `pos_lt_of_lt` | [The proof](Proof.lean) | The positions lie below the size and are distinct, a smaller byte gives an earlier position, and of two words with the same byte the earlier gives the earlier position. |
-| `distribute_spec` | [The proof](Proof.lean) | With the counts of steps D1 to D4, steps D5 and D6 put the word at `j` at `pos s src j`. |
-| `pass_spec` | [The proof](Proof.lean) | A pass permutes the words, and when a relation `R` holds between the words of the input in order, the output is in nondecreasing order of the byte, with `R` between words of the same byte. |
-| `low_step` | [The proof](Proof.lean) | Two words in order by byte `k`, or with equal byte `k` and in order modulo `2^(8k)`, are in order modulo `2^(8(k + 1))`. |
-| `passes_spec` | [The proof](Proof.lean) | From byte `k`, on words in nondecreasing order modulo `2^(8k)`, the passes return a permutation in nondecreasing order. |
-| `radixSort_eq` | [The proof](Proof.lean) | `radixSort xs = expected xs` for every array of fewer than `2^64` elements. |
-| `radixSort_export` | [The compilation](Compiled.lean) | Export `radixSort` of `compiled.module` is function 6. |
-| `radixSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.radixSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
-| `radixSort_bound` | [The compilation](Compiled.lean) | `compiled.radixSort.bound` is `blockCost n + blockCost 256`, the costs of the program's two builds. |
-| `radixSort_file`, `radixSort_file_decode` | [The file theorems](File.lean) | `build/verified/radixSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `digit_lt`, `digit_eq` | [`Proof.lean`](Proof.lean) | A byte is below 256, and the byte at bit `8k` is `x / 2^(8k) % 256`. |
+| `countDigits_spec` | [`Proof.lean`](Proof.lean) | Steps D1 to D4 leave 256 counts, with `count[v]` the number of words whose byte is at most `v`. |
+| `pos` | [`Proof.lean`](Proof.lean) | The position of the word at `j` after a pass: the number of words with a smaller byte, plus the number of words before `j` with the same byte. |
+| `pos_lt`, `pos_injective`, `pos_lt_of_digit_lt`, `pos_lt_of_lt` | [`Proof.lean`](Proof.lean) | The positions lie below the size and are distinct, a smaller byte gives an earlier position, and of two words with the same byte the earlier gives the earlier position. |
+| `distribute_spec` | [`Proof.lean`](Proof.lean) | With the counts of steps D1 to D4, steps D5 and D6 put the word at `j` at `pos s src j`. |
+| `pass_spec` | [`Proof.lean`](Proof.lean) | A pass permutes the words, and when a relation `R` holds between the words of the input in order, the output is in nondecreasing order of the byte, with `R` between words of the same byte. |
+| `low_step` | [`Proof.lean`](Proof.lean) | Two words in order by byte `k`, or with equal byte `k` and in order modulo `2^(8k)`, are in order modulo `2^(8(k + 1))`. |
+| `passes_spec` | [`Proof.lean`](Proof.lean) | From byte `k`, on words in nondecreasing order modulo `2^(8k)`, the passes return a permutation in nondecreasing order. |
+| `radixSort_eq` | [`Proof.lean`](Proof.lean) | `radixSort xs = expected xs` for every array of fewer than `2^64` elements. |
+| `radixSort_export` | [`Compiled.lean`](Compiled.lean) | Export `radixSort` of `compiled.module` is function 6. |
+| `radixSort_implements` | [`Compiled.lean`](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.radixSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `radixSort_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.radixSort.bound` is `blockCost n + blockCost 256`, the costs of the program's two builds. |
+| `radixSort_file`, `radixSort_file_decode` | [`File.lean`](File.lean) | `build/verified/radixSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 In the proof of `pass_spec`, the positions `pos s src j` form a bijection of the indices, so the output is the input permuted, which `Equiv.Perm.ofFn_comp_perm` turns into `List.Perm`, and the order of the positions gives the order of the bytes and, for equal bytes, the order of the input.  `low_step` then gives the order modulo `2^(8(k + 1))` from the order of byte `k` and, for equal bytes, the order modulo `2^(8k)`, and after eight passes the order modulo `2^64` is the order of the words.  A sorted permutation is unique, which `eq_mergeSort_of_sorted_perm` of [the sorted lists](../Sorted.lean) states, so the result equals `expected`.  The axiom report of `radixSort_implements`, whose proof uses `radixSort_eq`, names only `propext`, `Classical.choice`, and `Quot.sound`.
 

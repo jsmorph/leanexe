@@ -1,43 +1,61 @@
 import Interpreter.Wasm.Syntax
+import LeanExe.Area
 import LeanExe.A64.Encode
 import LeanExe.CallGraph
 
 /-!
 The code generator of the AArch64 back end: from a function of a module of the verified
 compiler and its arguments, a bare-metal program of the model's instruction forms whose `main`
-calls the function, writes the eight bytes of its result to the UART, and returns 0 to the
-startup code of `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer
-comparisons and operations of the C path's subset, calls, globals, and the 64-bit loads and stores
-of linear memory, and it rejects every other form with a message.
+calls the function, writes its result to the UART, and returns 0 to the startup code of
+`tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer comparisons and
+operations of the C path's subset, calls, globals, the 64-bit loads and stores of linear memory,
+the f64 forms that the verified compiler emits: constants, the reinterpretations,
+`f64ConvertI64U`, `i64TruncSatF64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, `f64Abs`,
+`f64Eq`, `f64Lt`, and `f64Le`, and the f32 forms that it emits: constants, the reinterpretations,
+`f32ConvertI64U`, `f32ConvertI32S`, `i64TruncSatF32U`, `i32TruncSatF32S`, `f32Add`, `f32Sub`,
+`f32Mul`, `f32Div`, `f32Sqrt`, `f32Nearest`, `f32Abs`, `f32Eq`, `f32Lt`, and `f32Le`.  It rejects
+every other form with a message.  The function that
+`main` calls takes `i64` and `f64` parameters.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
 types and checks the types of the values that a `local.set`, a branch, and a call receive against
 the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
-a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  X16 is the scratch register of
-`remUI64`, of the prologue, and of the memory's instructions, and X29 is a second one of
-`memory.grow`.  X17 holds the address of the area of the module's store: the memory's size less 8,
-the globals, and the memory's bytes, which a load or store reaches after a check of its bounds.  A
-function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by 26 spill
-slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue checks that
-the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the parameters
-into it from the registers of the heights 0 upward, and clears the other locals.  A call spills the
-operand registers below its arguments to the spill slots, moves the arguments into the registers of
-the heights 0 upward, branches with `BL`, moves the results from those registers into the registers
-of their heights, and reloads the spilled registers.  The callee may change every register but SP,
-X17, and X18, and it changes no memory from its caller's SP upward.  A construct carries at most one
-value, and a branch to one moves the value that it carries, if any, into the register of the
-construct's base height with one `ORR` and branches to the construct's target: the end of a `block`
-or an `iff`, the start of a `loop`, or the epilogue for the function itself, which also serves
-`ret`.  The results lie at the heights from 0, in the registers of those heights, when the epilogue
-releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is
-unreachable, and the generator emits nothing for it, while the code after a construct is reachable,
-as Wasm's typing has it.  No instruction may pop below the base height of its innermost construct,
-`curBase`, as valid Wasm never does: Talos runs a construct's body on the whole operand stack and
-restores the values below the construct afterwards, which the registers of those heights would not
-follow.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1,
-2, or 3, or to 4 for an overflow of the stack, and branches to the program's exit word, which the
-image fills with a branch to `lx_exit` of the startup code.
+a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` lies there as its
+word, so a reinterpretation emits nothing.  An f64 operation moves its operands' words into D0 and
+D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and `f64Abs`
+clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  `i64TruncSatF64U` moves the word
+into D0 and converts it back with `FCVTZU`.  An `f32` lies there as its word, zero-extended, as
+an `i32` does, and an f32 operation goes through S0 and S1, the low 32 bits of D0 and D1, in the
+same way, with `FMOV Sd, Wn` and `FMOV Wd, Sn`, whose 32-bit result the processor zero-extends.
+`f32Nearest` is `FRINTN`, and `f32Abs` doubles the word, keeps its low 32 bits with a 32-bit `ORR`,
+which drops the sign bit, and shifts it back.  An f64 comparison moves the words
+into D0 and D1, compares them with `FCMP`, and sets the register of the lower operand with `CSINC`
+and the inverse of `EQ`, `MI`, or `LS`, the conditions that hold after `FCMP` exactly when `f64Eq`,
+`f64Lt`, or `f64Le` gives 1.  X16 is the scratch register of `remUI64`, of the prologue, and of the
+memory's instructions, and X29 is a second one of `memory.grow`.  X17 holds the address of the area
+of the module's store: the memory's size less 8, the globals, and the memory's bytes, which a load
+or store reaches after a check of its bounds.  A function keeps its parameters and locals in a frame
+at `SP` of 8 bytes each, followed by 26 spill slots and the slot of the return address, a multiple
+of 16 bytes in all.  Its prologue checks that the frame fits above the stack's limit, which X18
+holds, reserves the frame, stores the parameters into it from the registers of the heights 0 upward,
+and clears the other locals.  A call spills the operand registers below its arguments to the spill
+slots, moves the arguments into the registers of the heights 0 upward, branches with `BL`, moves the
+results from those registers into the registers of their heights, and reloads the spilled registers.
+The callee may change every register but SP, X17, and X18, and it changes no memory from its
+caller's SP upward.  A construct carries at most one value, and a branch to one moves the value that
+it carries, if any, into the register of the construct's base height with one `ORR` and branches to
+the construct's target: the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for
+the function itself, which also serves `ret`.  The results lie at the heights from 0, in the
+registers of those heights, when the epilogue releases the frame and returns.  Code after a `br`, a
+`ret`, or `unreachable` in the same list is unreachable, and the generator emits nothing for it,
+while the code after a construct is reachable, as Wasm's typing has it.  No instruction may pop
+below the base height of its innermost construct, `curBase`, as valid Wasm never does: Talos runs a
+construct's body on the whole operand stack and restores the values below the construct afterwards,
+which the registers of those heights would not follow.  A trap branches to a stub that sets X0 to
+the trap's code of `LeanExe.Native.trapCode`, 1, 2, or 3, or to 4 for an overflow of the stack, and
+branches to the program's exit word, which the image fills with a branch to `lx_exit` of the startup
+code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -168,6 +186,13 @@ def genCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
   let r ← opReg (σ.length - 2)
   return ([.subsReg 31 r (← opReg (σ.length - 1)), .csinc r 31 31 c], some (.i32 :: σ.drop 2))
 
+/-- `i64.shr_s` of the register `x` by the register `y` into `x`, through the logical shift
+between two copies of the sign mask in the scratch register: `LSR X16, Xx, #63`,
+`SUB X16, XZR, X16`, `EOR Xx, Xx, X16`, `LSRV Xx, Xx, Xy`, and `EOR Xx, Xx, X16`. -/
+def sarCode (x y : Fin 32) : List Instr :=
+  [.lsrImm scratch x 63, .subReg scratch 31 scratch, .eorReg x x scratch, .lsrv x x y,
+    .eorReg x x scratch]
+
 /-- An operation on the two values on top, which the instruction `op d n m` replaces by its
 result, of type `t`. -/
 def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr)
@@ -175,6 +200,97 @@ def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fi
   if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
   let r ← opReg (σ.length - 2)
   return ([op r r (← opReg (σ.length - 1))], some (t :: σ.drop 2))
+
+/-- The code of the f64 operation `op` on the words of registers `x` and `y` into `x`: the words
+into D0 and D1, `op` into D0, and the word of D0 into `x`. -/
+def fBin (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr :=
+  [.fmovDX 0 x, .fmovDX 1 y, op 0 0 1, .fmovXD x 0]
+
+/-- An f64 operation on the two values on top, which the code `fBin op` replaces by its result,
+an `f64`. -/
+def genFBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fBin op x (← opReg (σ.length - 1)), some (.f64 :: σ.drop 2))
+
+/-- The code of an f64 comparison of the words of registers `x` and `y` into `x`: the words into D0
+and D1, `FCMP D0, D1`, and `CSINC x, XZR, XZR, c`, which sets `x` to 1 when the inverse of `c`
+holds and to 0 otherwise. -/
+def fCmp (c : Fin 16) (x y : Fin 32) : List Instr :=
+  [.fmovDX 0 x, .fmovDX 1 y, .fcmp 0 1, .csinc x 31 31 c]
+
+/-- An f64 comparison of the two values on top, which the code `fCmp c` replaces by 1 or 0, an
+`i32`. -/
+def genFCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"a comparison at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fCmp c x (← opReg (σ.length - 1)), some (.i32 :: σ.drop 2))
+
+/-- An operation on the value on top, in the register `r`, which the code `ops r` replaces by its
+result, of type `t`. -/
+def genUn (ctl : List Ctl) (σ : List ValueType) (ops : Fin 32 → List Instr) (t : ValueType) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 1 then throw s!"an operation at height {σ.length}"
+  return (ops (← opReg (σ.length - 1)), some (t :: σ.tail))
+
+/-- The code of `f64Sqrt` on register `r`: its word into D0, `FSQRT` in D0, and D0's word back. -/
+def sqrtCode (r : Fin 32) : List Instr := [.fmovDX 0 r, .fsqrt 0 0, .fmovXD r 0]
+
+/-- The code of `f64Abs` on register `r`: the word doubled, which drops the sign bit, and shifted
+back. -/
+def absCode (r : Fin 32) : List Instr := [.addReg r r r, .lsrImm r r 1]
+
+/-- The code of `f64ConvertI64U` on register `r`: `UCVTF` of its word into D0, and D0's word
+back. -/
+def convertCode (r : Fin 32) : List Instr := [.ucvtf 0 r, .fmovXD r 0]
+
+/-- The code of `i64TruncSatF64U` on register `r`: its word into D0, and `FCVTZU` of D0 into `r`,
+which truncates toward zero, saturates, and gives 0 for a NaN, as Wasm's `trunc_sat` does. -/
+def truncCode (r : Fin 32) : List Instr := [.fmovDX 0 r, .fcvtzu r 0]
+/-- The code of the f32 operation `op` on the low 32 bits of registers `x` and `y` into `x`: the
+words into S0 and S1, `op` into S0, and S0's word into `x`, zero-extended. -/
+def fBin32 (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr :=
+  [.fmovSW 0 x, .fmovSW 1 y, op 0 0 1, .fmovWS x 0]
+
+/-- The code of an f32 comparison of the low 32 bits of registers `x` and `y` into `x`: the words
+into S0 and S1, `FCMP S0, S1`, and `CSINC x, XZR, XZR, c`. -/
+def fCmp32 (c : Fin 16) (x y : Fin 32) : List Instr :=
+  [.fmovSW 0 x, .fmovSW 1 y, .fcmpS 0 1, .csinc x 31 31 c]
+
+/-- The code of the f32 operation `op` of one S register on register `r`: its word into S0, `op`
+in S0, and S0's word back. -/
+def unCode32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr :=
+  [.fmovSW 0 r, op 0 0, .fmovWS r 0]
+
+/-- The code of `f32Abs` on register `r`: the word doubled, which moves the sign bit to bit 32,
+its low 32 bits, which drop it, and the shift back. -/
+def absCode32 (r : Fin 32) : List Instr := [.addReg r r r, .orrW r 31 r, .lsrImm r r 1]
+
+/-- The code of a conversion `op` of a general register to an S register, on register `r`: `op`
+of `r` into S0, and S0's word back. -/
+def toS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [op 0 r, .fmovWS r 0]
+
+/-- The code of a conversion `op` of an S register to a general register, on register `r`: its
+word into S0, and `op` of S0 into `r`. -/
+def ofS32 (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr := [.fmovSW 0 r, op r 0]
+
+/-- An f32 operation on the two values on top, which the code `fBin32 op` replaces by its result,
+an `f32`. -/
+def genFBin32 (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fBin32 op x (← opReg (σ.length - 1)), some (.f32 :: σ.drop 2))
+
+/-- An f32 comparison of the two values on top, which the code `fCmp32 c` replaces by 1 or 0, an
+`i32`. -/
+def genFCmp32 (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"a comparison at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fCmp32 c x (← opReg (σ.length - 1)), some (.i32 :: σ.drop 2))
 
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
@@ -185,11 +301,20 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .localGet _ => (1, some (h + 1))
   | .localSet _ => (1, some (h - 1))
   | .localTee _ => (1, some h)
-  | .constI64 _ | .const _ => (4, some (h + 1))
-  | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 => (2, some (h - 1))
+  | .constI64 _ | .const _ | .f64Const _ | .f32Const _ => (4, some (h + 1))
+  | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 | .ltSI64 | .leSI64 => (2, some (h - 1))
+  | .shrSI64 => (5, some (h - 1))
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
       (1, some (h - 1))
+  | .f64Add | .f64Sub | .f64Mul | .f64Div | .f64Eq | .f64Lt | .f64Le => (4, some (h - 1))
+  | .f64Sqrt => (3, some h)
+  | .f64Abs | .f64ConvertI64U | .i64TruncSatF64U => (2, some h)
+  | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
+  | .f32Add | .f32Sub | .f32Mul | .f32Div | .f32Eq | .f32Lt | .f32Le => (4, some (h - 1))
+  | .f32Sqrt | .f32Nearest | .f32Abs => (3, some h)
+  | .f32ConvertI64U | .f32ConvertI32S | .i64TruncSatF32U | .i32TruncSatF32S => (2, some h)
+  | .f32ReinterpretI32 | .i32ReinterpretF32 => (0, some h)
   | .wrapI64 => (1, some h)
   | .extendUI32 => (0, some h)
   | .remUI64 => (3, some (h - 1))
@@ -246,11 +371,14 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
       return ([.str (← opReg (σ.length - 1)) 31 (← slotOf i)], some σ)
   | .constI64 v => do return (movImm (← opReg σ.length) v, some (.i64 :: σ))
   | .const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.i32 :: σ))
+  | .f64Const v => do return (movImm (← opReg σ.length) v, some (.f64 :: σ))
   | .eqI64 | .eq => genCmp ctl σ 1
   | .neI64 => genCmp ctl σ 0
   | .ltUI64 => genCmp ctl σ 2
   | .leUI64 => genCmp ctl σ 8
   | .geUI64 => genCmp ctl σ 3
+  | .ltSI64 => genCmp ctl σ 10
+  | .leSI64 => genCmp ctl σ 12
   | .addI64 => genBin ctl σ .addReg .i64
   | .subI64 => genBin ctl σ .subReg .i64
   | .mulI64 => genBin ctl σ (fun d n m => .madd d n m 31) .i64
@@ -260,6 +388,40 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .xorI64 => genBin ctl σ .eorReg .i64
   | .shlI64 => genBin ctl σ .lslv .i64
   | .shrUI64 => genBin ctl σ .lsrv .i64
+  | .shrSI64 => do
+      if σ.length < curBase ctl + 2 then throw s!"a shift at height {σ.length}"
+      let x ← opReg (σ.length - 2)
+      return (sarCode x (← opReg (σ.length - 1)), some (.i64 :: σ.drop 2))
+  | .f64Add => genFBin ctl σ .fadd
+  | .f64Sub => genFBin ctl σ .fsub
+  | .f64Mul => genFBin ctl σ .fmul
+  | .f64Div => genFBin ctl σ .fdiv
+  | .f64Eq => genFCmp ctl σ 1
+  | .f64Lt => genFCmp ctl σ 5
+  | .f64Le => genFCmp ctl σ 8
+  | .f64Sqrt => genUn ctl σ sqrtCode .f64
+  | .f64Abs => genUn ctl σ absCode .f64
+  | .f64ConvertI64U => genUn ctl σ convertCode .f64
+  | .i64TruncSatF64U => genUn ctl σ truncCode .i64
+  | .i64ReinterpretF64 => genUn ctl σ (fun _ => []) .i64
+  | .f64ReinterpretI64 => genUn ctl σ (fun _ => []) .f64
+  | .f32Const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.f32 :: σ))
+  | .f32Add => genFBin32 ctl σ .faddS
+  | .f32Sub => genFBin32 ctl σ .fsubS
+  | .f32Mul => genFBin32 ctl σ .fmulS
+  | .f32Div => genFBin32 ctl σ .fdivS
+  | .f32Eq => genFCmp32 ctl σ 1
+  | .f32Lt => genFCmp32 ctl σ 5
+  | .f32Le => genFCmp32 ctl σ 8
+  | .f32Sqrt => genUn ctl σ (unCode32 .fsqrtS) .f32
+  | .f32Nearest => genUn ctl σ (unCode32 .frintnS) .f32
+  | .f32Abs => genUn ctl σ absCode32 .f32
+  | .f32ConvertI64U => genUn ctl σ (toS32 .ucvtfSX) .f32
+  | .f32ConvertI32S => genUn ctl σ (toS32 .scvtfSW) .f32
+  | .i64TruncSatF32U => genUn ctl σ (ofS32 .fcvtzuXS) .i64
+  | .i32TruncSatF32S => genUn ctl σ (ofS32 .fcvtzsWS) .i32
+  | .f32ReinterpretI32 => genUn ctl σ (fun _ => []) .f32
+  | .i32ReinterpretF32 => genUn ctl σ (fun _ => []) .i32
   | .wrapI64 => do
       if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
       let r ← opReg (σ.length - 1)
@@ -532,101 +694,20 @@ functions that `targets` names. -/
 def tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Function)) : Table :=
   fun j => if j ∈ targets then entryIn (sigIn targets fs) a fs j else none
 
-/-- The type of a number. -/
-def valueType : Value → Option ValueType
-  | .i32 _ => some .i32
-  | .i64 _ => some .i64
-  | .f32 _ => some .f32
-  | .f64 _ => some .f64
-  | _ => none
-
-/-- The types of the globals of `m`, when each is a number. -/
-def globalTypesOf (m : Module) : Option (List ValueType) :=
-  m.globals.mapM fun g => valueType g.init
-
-/-- The memory of `m` fits an area of `cap` pages: it has 32-bit addresses and between 1 and
-`cap` pages, and `cap` lies below 4096. -/
-def areaOk (m : Module) (cap : Nat) : Bool :=
-  match m.memory with
-  | some d => !d.is64 && 1 ≤ d.pagesMin.toNat && d.pagesMin.toNat ≤ cap && cap < 4096
-  | none => false
-
-/-- The number of bytes of the area of a memory of `cap` pages. -/
-def areaSize (cap : Nat) : Nat := 4096 + cap * 65536
-
-/-- The word of a number in a register. -/
-def wordOf : Value → UInt64
-  | .i32 x => x.toUInt64
-  | .i64 x => x
-  | .f32 x => x.toUInt64
-  | .f64 x => x
-  | _ => 0
-
-/-- Byte `j` of the area of the store `st`: the size of its memory less 8, the words of its
-globals from byte 8, and from byte 4096 the bytes of its memory. -/
-def areaByte (st : Store Unit) (j : Nat) : UInt8 :=
-  if j < 8 then byteOf (UInt64.ofNat (st.mem.pages * 65536 - 8)) j
-  else if j < 4096 then
-    match st.globals.globals[j / 8 - 1]? with
-    | some v => byteOf (wordOf v) (j % 8)
-    | none => 0
-  else st.mem.bytes (j - 4096)
-
-/-- The bytes of the area of module `m` with `cap` pages, as the module starts. -/
-def areaBytes (m : Module) (cap : Nat) : List UInt8 :=
-  (List.range (areaSize cap)).map (areaByte m.initialStore)
-
-/-- `n` rounded up to a multiple of `a`. -/
-def roundUp (n a : Nat) : Nat := (n + a - 1) / a * a
-
-/-- The larger of `acc` and the end of the data segment `seg`, if it has an offset. -/
-def segEnd (acc : Nat) (seg : DataSegment) : Nat :=
-  match seg.offset with
-  | some off => max acc (off.toNat + seg.bytes.length)
-  | none => acc
-
-/-- The end of the data segments of `m`'s memory: the largest offset plus length of a segment
-with an offset, or 0. -/
-def dataEnd (m : Module) : Nat :=
-  match m.memory with
-  | some d => d.data.foldl segEnd 0
-  | none => 0
-
-/-- The number of the area's bytes that an image holds: the size word, the globals, and the
-memory up to the end of its data segments, a multiple of 8.  Every later byte of the area is 0. -/
-def areaPrefix (m : Module) : Nat := roundUp (4096 + dataEnd m) 8
-
-/-- `acc` with the bytes of the data segment `seg` written from its offset, when the module's
-start writes them into memory 0 of `pages` pages, as `Module.initialStore` does. -/
-def segWrite (pages : Nat) (acc : List UInt8) (seg : DataSegment) : List UInt8 :=
-  match seg.offset with
-  | some off =>
-      if seg.memIdx = 0 && seg.offsetExpr.isEmpty then
-        if off.toNat + seg.bytes.length ≤ pages * 65536 then
-          acc.take off.toNat ++ seg.bytes ++ acc.drop (off.toNat + seg.bytes.length)
-        else acc
-      else acc
-  | none => acc
-
-/-- The first `n` bytes of the initial memory of `m`, for `n` at or past `dataEnd m`, computed by
-writing each data segment into a list of zeros. -/
-def memPrefix (m : Module) (n : Nat) : List UInt8 :=
-  match m.memory with
-  | some d => d.data.foldl (segWrite d.pagesMin.toNat) (List.replicate n 0)
-  | none => List.replicate n 0
-
-/-- The area's first `areaPrefix m` bytes: the size word and the globals, then the memory. -/
-def areaPrefixBytes (m : Module) : List UInt8 :=
-  (List.range 4096).map (areaByte m.initialStore) ++ memPrefix m (areaPrefix m - 4096)
+/-- A type whose values `main` passes to the function that it calls as words in X0 upward: `i64`
+or `f64`. -/
+def wordType : ValueType → Bool
+  | .i64 | .f64 => true
+  | _ => false
 
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
 with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
 a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,
 `k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the
-exit word.  The parameters of function `k` are `i64`s, the memory satisfies `areaOk`, and the
-globals are at most 511 numbers.  The table of the functions' calls holds the functions that
-`callTargets` names.  `main` writes the result as `o` says.  The image puts a branch to `lx_exit`
-at `base` and `areaBytes` at `area`. -/
+exit word.  The parameters of function `k` are `i64`s and `f64`s, whose words `args` holds, the
+memory satisfies `areaOk`, and the globals are at most 511 numbers.  The table of the functions'
+calls holds the functions that `callTargets` names.  `main` writes the result as `o` says.  The
+image puts a branch to `lx_exit` at `base` and `areaBytes` at `area`. -/
 def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
     (cap : Nat) (o : Output) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
@@ -642,7 +723,7 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
   let traps := endOf sig first fs
   let entry ← match entryIn sig first fs k with
     | some (e, ps, _) =>
-        if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
+        if ps.all wordType then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
   let main ← genMain mainA entry args uart room o
   let S : Shared :=

@@ -11,7 +11,11 @@
     "compute xs = expected xs from xs.size < 2 ^ 64",
     "Verified.Call.spec: unknown identifier, from a module that imports only Verified.Reflect.Command",
     "Verified.Ready compiled.module compiled.tables (Verified.initialHeap compiled.tables) { compiled.module.initialStore with memoryCaps := [cap] }",
-    "final.mem.pages ≤ P after a call of a verified module"
+    "final.mem.pages ≤ P after a call of a verified module",
+    "Verified.Call compiled.module compiled.tables k expected (fun x heap store => P x ∧ Pre x heap store) Post",
+    "ImplementsA false compiled.module k (fun x : Moved (Array UInt64) => expected x.val) Pre Post",
+    "Spec x (f x) and Spec x r → Spec x r' → r = r'",
+    "∃ x : Trajectory, x.AdmittedUntil p q c t"
   ],
   "modules": [
     "Library.Numerics.Float64.Bessel.BesselBytes",
@@ -31,7 +35,17 @@
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
     "Examples.RunningMax.Compiled",
     "Demos.Euler.VerifiedCall",
-    "Demos.Drone.VerifiedCall"
+    "Demos.Drone.VerifiedCall",
+    "Verified.Congr",
+    "Library.Arrays.BinarySearch.Compiled",
+    "Library.HashTables.LinearProbing.Compiled",
+    "Library.Sorting.Heapsort.Compiled",
+    "Library.Graphs.Dijkstra.Compiled",
+    "Library.Graphs.UnionFind.Compiled",
+    "Library.Combinatorics.NextPermutation.Compiled",
+    "Demos.Energy.Window",
+    "Demos.Energy.Compose",
+    "Demos.Energy.Authorize"
   ],
   "declarations": [
     "Verified.tables_at",
@@ -49,7 +63,9 @@
     "LeanExe.Pipeline.memoryCap_le_of_caps",
     "LeanExe.Pipeline.ImplementsPureA.implementsA",
     "Wasm.Runs.mono",
-    "LeanExe.Pipeline.Heap.Within.mono"
+    "LeanExe.Pipeline.Heap.Within.mono",
+    "Verified.call_on",
+    "Verified.implementsA_congr"
   ],
   "examples": [
     "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call",
@@ -75,14 +91,23 @@
     "Demos.Euler.Verified.solve_callSpec",
     "Demos.Euler.Verified.euler_solve_call",
     "Demos.Drone.Verified.compute_callSpec",
-    "Demos.Drone.Verified.drone_compute_call"
-  ],
-  "sources": [
-    "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector",
-    "2026-10-30: One call theorem for the verified compilations",
-    "2026-10-30: The verified-request skill and its acceptance tool",
-    "2026-10-30: The numerical call lemmas on the generic call theorem",
-    "2026-10-30: The verified total theorems of the Euler solvers and the drone planner"
+    "Demos.Drone.Verified.drone_compute_call",
+    "Library.Arrays.BinarySearch.lowerBound_call",
+    "Library.HashTables.LinearProbing.hashTable_call",
+    "Library.Sorting.Heapsort.heapsort_implements",
+    "Library.Graphs.Dijkstra.dijkstra_call",
+    "Library.Graphs.Dijkstra.dijkstra_spec",
+    "Library.Graphs.Dijkstra.distances_unique",
+    "Library.Graphs.UnionFind.classes_call",
+    "Library.Graphs.UnionFind.classes_spec",
+    "Library.Combinatorics.NextPermutation.nextPerm_implements",
+    "Library.Combinatorics.NextPermutation.nextPerm_isNext",
+    "Library.Combinatorics.NextPermutation.isNext_unique",
+    "Demos.Energy.Spec.window_sound",
+    "Demos.Energy.Spec.admitted_exists",
+    "Demos.Energy.Authorize.authorizeWith_admits",
+    "Demos.Energy.Spec.operates_exists",
+    "Demos.Energy.Spec.run_sound",
+    "Demos.Energy.Spec.operation_sound"
   ]
 }

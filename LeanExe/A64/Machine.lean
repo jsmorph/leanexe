@@ -1,8 +1,11 @@
+import Interpreter.Wasm.Float
+
 /-!
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at
-exception level 1.  It covers the 64-bit integer forms that the back end emits, `ADR` and `ADRP`,
-and the system instructions of the startup.  `exec` gives no semantics to a system instruction:
-the model of the startup in `LeanExe/A64/Boot.lean` gives them.
+exception level 1.  It covers the 64-bit integer forms that the back end emits, the
+double-precision and single-precision forms of Wasm's f64 and f32 arithmetic, comparisons, and
+conversions, `ADR` and `ADRP`, and the system instructions of the startup.  `exec` gives no
+semantics to a system instruction: the model of the startup in `LeanExe/A64/Boot.lean` gives them.
 
 The code lies in a fixed map from addresses to 32-bit words, which the theorem derives from the
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
@@ -15,6 +18,19 @@ register 31 follow the pseudocode of the Arm Architecture Reference Manual (DDI 
 is the stack pointer as the base of a load or store and as an operand or destination of `ADD` and
 `SUB` with an immediate, and the zero register elsewhere.  Unaligned accesses to Normal memory
 succeed, as they do while `SCTLR_EL1.A` is clear.
+
+The state holds the low 64 bits of the SIMD and floating-point registers V0 to V31, the registers
+D0 to D31, since the double-precision forms read and write only those bits.  A single-precision
+form reads the low 32 bits of a D register, the register S of the same number, and writes its
+result zero-extended into the D register, as the processor clears the bits above an S result while
+FPCR.NEP is clear.  The arithmetic forms compute Talos's functions of
+`Interpreter/Wasm/Float.lean`, such as `Wasm.f64Add` for `FADD` of D registers and `Wasm.f32Add`
+of S registers, which round to nearest with ties to even, keep subnormals, and give the canonical
+NaN, `0x7FF8000000000000` or `0x7FC00000`, for every NaN result.  `FCMP` sets the flags from
+Talos's comparisons `IEEE64.eq` and `IEEE64.lt`, or `IEEE32.eq` and `IEEE32.lt`, which are false
+when an operand is a NaN, and `FCVTZU` computes `Wasm.i64TruncSatF64U` or `Wasm.i64TruncSatF32U`,
+which truncate toward zero, saturate, and give 0 for a NaN.  The processor computes the same under
+the startup's `FPCR`, `0x02000000`: DN set and every other field clear.
 -/
 
 namespace LeanExe.A64
@@ -26,10 +42,12 @@ structure Platform where
   normal : UInt64 → Bool
   uart : UInt64
 
-/-- The state that the emitted code uses: the general registers X0 to X30, the stack pointer, the
-program counter, the condition flags, the memory as bytes, and the bytes written to the UART. -/
+/-- The state that the emitted code uses: the general registers X0 to X30, the floating-point
+registers D0 to D31, the stack pointer, the program counter, the condition flags, the memory as
+bytes, and the bytes written to the UART. -/
 structure State where
   regs : Fin 31 → UInt64
+  dregs : Fin 32 → UInt64
   sp : UInt64
   pc : UInt64
   nFlag : Bool
@@ -39,8 +57,9 @@ structure State where
   mem : UInt64 → UInt8
   out : List UInt8
 
-/-- The instruction forms of the model, all with 64-bit registers but `orrW`.  A register field is
-the 5-bit number of the encoding, and an immediate field is the encoding's unsigned field. -/
+/-- The instruction forms of the model, all with 64-bit or double-precision registers but `orrW`
+and the single-precision forms.  A register field is the 5-bit number of the encoding, and an
+immediate field is the encoding's unsigned field. -/
 inductive Instr where
   /-- `MOVZ Xd, #imm, LSL #(16 * hw)`. -/
   | movz (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
@@ -125,6 +144,58 @@ inductive Instr where
   | tlbiVmalle1
   /-- `HVC #0`. -/
   | hvc0
+  /-- `FMOV Dd, Xn`, which copies the word of `Xn`, the zero register for 31, to `Dd`. -/
+  | fmovDX (d n : Fin 32)
+  /-- `FMOV Xd, Dn`, which copies the word of `Dn` to `Xd`. -/
+  | fmovXD (d n : Fin 32)
+  /-- `FADD Dd, Dn, Dm`. -/
+  | fadd (d n m : Fin 32)
+  /-- `FSUB Dd, Dn, Dm`, which computes `Dn - Dm`. -/
+  | fsub (d n m : Fin 32)
+  /-- `FMUL Dd, Dn, Dm`. -/
+  | fmul (d n m : Fin 32)
+  /-- `FDIV Dd, Dn, Dm`, which computes `Dn / Dm`. -/
+  | fdiv (d n m : Fin 32)
+  /-- `FSQRT Dd, Dn`. -/
+  | fsqrt (d n : Fin 32)
+  /-- `UCVTF Dd, Xn`, which converts the unsigned word of `Xn`, the zero register for 31, to a
+  double. -/
+  | ucvtf (d n : Fin 32)
+  /-- `FCMP Dn, Dm`, which sets the flags from the comparison of `Dn` with `Dm`. -/
+  | fcmp (n m : Fin 32)
+  /-- `FCVTZU Xd, Dn`, which converts the double of `Dn` to an unsigned 64-bit integer, rounding
+  toward zero and saturating, and writes it to `Xd`, the zero register for 31. -/
+  | fcvtzu (d n : Fin 32)
+  /-- `FMOV Sd, Wn`, which copies the low 32 bits of `Xn`, the zero register for 31, to `Sd`. -/
+  | fmovSW (d n : Fin 32)
+  /-- `FMOV Wd, Sn`, which copies `Sn` to `Wd`. -/
+  | fmovWS (d n : Fin 32)
+  /-- `FADD Sd, Sn, Sm`. -/
+  | faddS (d n m : Fin 32)
+  /-- `FSUB Sd, Sn, Sm`, which computes `Sn - Sm`. -/
+  | fsubS (d n m : Fin 32)
+  /-- `FMUL Sd, Sn, Sm`. -/
+  | fmulS (d n m : Fin 32)
+  /-- `FDIV Sd, Sn, Sm`, which computes `Sn / Sm`. -/
+  | fdivS (d n m : Fin 32)
+  /-- `FSQRT Sd, Sn`. -/
+  | fsqrtS (d n : Fin 32)
+  /-- `FRINTN Sd, Sn`, which rounds `Sn` to an integral value, ties to even. -/
+  | frintnS (d n : Fin 32)
+  /-- `UCVTF Sd, Xn`, which converts the unsigned word of `Xn`, the zero register for 31, to a
+  single. -/
+  | ucvtfSX (d n : Fin 32)
+  /-- `SCVTF Sd, Wn`, which converts the low 32 bits of `Xn`, the zero register for 31, read as a
+  signed number, to a single. -/
+  | scvtfSW (d n : Fin 32)
+  /-- `FCVTZU Xd, Sn`, which converts `Sn` to an unsigned word, rounding toward zero and
+  saturating. -/
+  | fcvtzuXS (d n : Fin 32)
+  /-- `FCVTZS Wd, Sn`, which converts `Sn` to a signed 32-bit number, rounding toward zero and
+  saturating. -/
+  | fcvtzsWS (d n : Fin 32)
+  /-- `FCMP Sn, Sm`, which sets the flags from the comparison of `Sn` with `Sm`. -/
+  | fcmpS (n m : Fin 32)
   deriving DecidableEq, Repr
 
 /-- The instruction that the 32-bit word of value `v` encodes, or `none` for a word outside the
@@ -183,6 +254,29 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v = 0xD5033F9F then some .dsbSy
   else if v = 0xD508871F then some .tlbiVmalle1
   else if v = 0xD4000002 then some .hvc0
+  else if v / 1024 = 0x2799C0 then some (.fmovDX d n)
+  else if v / 1024 = 0x279980 then some (.fmovXD d n)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 10 then some (.fadd d n m)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 14 then some (.fsub d n m)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 2 then some (.fmul d n m)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 6 then some (.fdiv d n m)
+  else if v / 1024 = 0x79870 then some (.fsqrt d n)
+  else if v / 1024 = 0x2798C0 then some (.ucvtf d n)
+  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmp n m)
+  else if v / 1024 = 0x279E40 then some (.fcvtzu d n)
+  else if v / 1024 = 0x789C0 then some (.fmovSW d n)
+  else if v / 1024 = 0x78980 then some (.fmovWS d n)
+  else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 10 then some (.faddS d n m)
+  else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 14 then some (.fsubS d n m)
+  else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 2 then some (.fmulS d n m)
+  else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 6 then some (.fdivS d n m)
+  else if v / 1024 = 0x78870 then some (.fsqrtS d n)
+  else if v / 1024 = 0x78910 then some (.frintnS d n)
+  else if v / 1024 = 0x2788C0 then some (.ucvtfSX d n)
+  else if v / 1024 = 0x78880 then some (.scvtfSW d n)
+  else if v / 1024 = 0x278E40 then some (.fcvtzuXS d n)
+  else if v / 1024 = 0x78E00 then some (.fcvtzsWS d n)
+  else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmpS n m)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -202,6 +296,10 @@ def xsp (s : State) (r : Fin 32) : UInt64 :=
 /-- The state with register `r` set to `v`, where a write to 31 has no effect. -/
 def setX (s : State) (r : Fin 32) (v : UInt64) : State :=
   if r.val < 31 then { s with regs := fun i => if i.val = r.val then v else s.regs i } else s
+
+/-- The state with the floating-point register `r` set to the word `v`. -/
+def setD (s : State) (r : Fin 32) (v : UInt64) : State :=
+  { s with dregs := fun i => if i = r then v else s.dregs i }
 
 /-- The state with register `r` set to `v`, where 31 is the stack pointer. -/
 def setXsp (s : State) (r : Fin 32) (v : UInt64) : State :=
@@ -229,6 +327,22 @@ def subs (s : State) (d : Fin 32) (a b : UInt64) : State :=
   { s.setX d r with
     nFlag := r >>> 63 == 1, zFlag := r == 0, cFlag := b ≤ a,
     vFlag := ((a ^^^ b) &&& (a ^^^ r)) >>> 63 == 1 }
+
+/-- The state after `FCMP` of the doubles `a` and `b`.  N is `IEEE64.lt a b`, Z is
+`IEEE64.eq a b`, C is the negation of N, and V holds when an operand is a NaN, so the flags N, Z,
+C, V are 0011 for an unordered pair, 0110 for equal values, 1000 when `a` lies below `b`, and 0010
+when it lies above, those of `FPCompare` in the Arm Architecture Reference Manual. -/
+def fcmp (s : State) (a b : UInt64) : State :=
+  { s with
+    nFlag := Wasm.IEEE64.lt a b, zFlag := Wasm.IEEE64.eq a b, cFlag := !Wasm.IEEE64.lt a b,
+    vFlag := Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b }
+
+/-- The state after `FCMP` of the singles `a` and `b`, with the flags of `fcmp` from Talos's
+`IEEE32.lt`, `IEEE32.eq`, and `IEEE32.isNaN`. -/
+def fcmpS (s : State) (a b : UInt32) : State :=
+  { s with
+    nFlag := Wasm.IEEE32.lt a b, zFlag := Wasm.IEEE32.eq a b, cFlag := !Wasm.IEEE32.lt a b,
+    vFlag := Wasm.IEEE32.isNaN a || Wasm.IEEE32.isNaN b }
 
 /-- A load or store based on register `n` passes the stack pointer's alignment check: the base
 is not the stack pointer, or the stack pointer is a multiple of 16. -/
@@ -320,6 +434,41 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .adrp d lo hi =>
       some { s.setX d (s.pc - s.pc % 4096 + sext 21 (4 * hi.val + lo.val) * 4096) with pc := next }
   | .msr _ _ | .mrs _ _ | .spsel1 | .isb | .dsbIsh | .dsbSy | .tlbiVmalle1 | .hvc0 => none
+  | .fmovDX d n => some { s.setD d (s.x n) with pc := next }
+  | .fmovXD d n => some { s.setX d (s.dregs n) with pc := next }
+  | .fadd d n m => some { s.setD d (Wasm.f64Add (s.dregs n) (s.dregs m)) with pc := next }
+  | .fsub d n m => some { s.setD d (Wasm.f64Sub (s.dregs n) (s.dregs m)) with pc := next }
+  | .fmul d n m => some { s.setD d (Wasm.f64Mul (s.dregs n) (s.dregs m)) with pc := next }
+  | .fdiv d n m => some { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := next }
+  | .fsqrt d n => some { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := next }
+  | .ucvtf d n => some { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := next }
+  | .fcmp n m => some { s.fcmp (s.dregs n) (s.dregs m) with pc := next }
+  | .fcvtzu d n => some { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := next }
+  | .fmovSW d n => some { s.setD d (s.x n).toUInt32.toUInt64 with pc := next }
+  | .fmovWS d n => some { s.setX d (s.dregs n).toUInt32.toUInt64 with pc := next }
+  | .faddS d n m =>
+      some { s.setD d (Wasm.f32Add (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
+        pc := next }
+  | .fsubS d n m =>
+      some { s.setD d (Wasm.f32Sub (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
+        pc := next }
+  | .fmulS d n m =>
+      some { s.setD d (Wasm.f32Mul (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
+        pc := next }
+  | .fdivS d n m =>
+      some { s.setD d (Wasm.f32Div (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
+        pc := next }
+  | .fsqrtS d n => some { s.setD d (Wasm.f32Sqrt (s.dregs n).toUInt32).toUInt64 with pc := next }
+  | .frintnS d n =>
+      some { s.setD d (Wasm.f32Nearest (s.dregs n).toUInt32).toUInt64 with pc := next }
+  | .ucvtfSX d n => some { s.setD d (Wasm.f32ConvertI64U (s.x n)).toUInt64 with pc := next }
+  | .scvtfSW d n =>
+      some { s.setD d (Wasm.f32ConvertI32S (s.x n).toUInt32).toUInt64 with pc := next }
+  | .fcvtzuXS d n =>
+      some { s.setX d (Wasm.i64TruncSatF32U (s.dregs n).toUInt32) with pc := next }
+  | .fcvtzsWS d n =>
+      some { s.setX d (Wasm.i32TruncSatF32S (s.dregs n).toUInt32).toUInt64 with pc := next }
+  | .fcmpS n m => some { s.fcmpS (s.dregs n).toUInt32 (s.dregs m).toUInt32 with pc := next }
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the
 word at the program counter. -/

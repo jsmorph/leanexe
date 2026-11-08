@@ -1,4 +1,5 @@
 import LeanExe.M7.Proof.Step
+import LeanExe.M7.Proof.Bound
 import TestSupport.Bare.Req
 
 /-!
@@ -7,7 +8,8 @@ The step theorems of the echo on the Cortex-M7: the calls of `usart3Tick`, funct
 with the code of `udivmod64`.  Each follows from `step_call` with the compiler's theorem of the
 step, which states no trap, and the kernel's evaluation of `reachCovered`: from the step's entry,
 with the state's word and the value that the last request read in slots 0 and 1 of the outgoing
-area, the model returns with the words of the step's result in those slots.
+area, the model returns with the words of the step's result in those slots.  `echo_static` is the
+kernel's evaluation of `staticCost` for both steps, which bounds the cost of every run of each.
 -/
 
 namespace TestSupport.M7
@@ -18,6 +20,12 @@ open Wasm LeanExe.M7 LeanExe.Pipeline TestSupport.Bare
 covers. -/
 theorem echo_covered :
     reachCovered reqCompiled.module 9 = true ∧ reachCovered reqCompiled.module 5 = true := by
+  decide +kernel
+
+/-- No function that calls reach from the echo's steps loads, stores, or accesses a global, so
+their programs have no area. -/
+theorem echo_noArea :
+    usesArea reqCompiled.module 9 = false ∧ usesArea reqCompiled.module 5 = false := by
   decide +kernel
 
 /-- The call of `usart3Tick` in the generated program at the even address `base`, for the initial
@@ -35,12 +43,14 @@ theorem usart3_step {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Opti
       (∀ a : UInt32, ms.sp.toNat + 16 ≤ a.toNat → ms'.mem a = ms.mem a) ∧
       WordsAt ms' [(usart3Tick s v).1, (usart3Tick s v).2] ∧
       ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ st'.memoryCaps = st.memoryCaps := by
-  have h := step_call (P := P) (σ := σ) (words := fun g : UInt64 => [g]) (tick := usart3Tick)
-    (fun _ => rfl) (fun _ => by simp [hs0]) reqCompiled.usart3Tick.implements
-    (fun _ _ _ => trivial) rfl hg hcode hev echo_covered.1 hat hcap s v ms hpc hlr
-    (by rw [hs0]; exact hstk) hargs
-  rw [hs0] at h
-  exact h
+  obtain ⟨ms', h1, h2, h3, h4, h5, h6, h7, h8, st', heap', hat', -, hcaps, -⟩ :=
+    step_call (P := P) (σ := σ) (words := fun g : UInt64 => [g]) (tick := usart3Tick)
+      (fun _ => by simp [hs0]) (stepCall_of_implementsA (fun _ => rfl)
+        reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) echo_noArea.1)
+      rfl hg hcode hev echo_covered.1 hat trivial hcap s v ms hpc hlr (by rw [hs0]; exact hstk)
+      (areaHolds_none echo_noArea.1) hargs
+  rw [hs0] at h7
+  exact ⟨ms', h1, h2, h3, h4, h5, h6, h7, h8, st', heap', hat', hcaps⟩
 
 /-- The call of `cmsdkTick` in the generated program at the even address `base`, for the initial
 state `s0` of one word. -/
@@ -57,16 +67,23 @@ theorem cmsdk_step {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Optio
       (∀ a : UInt32, ms.sp.toNat + 16 ≤ a.toNat → ms'.mem a = ms.mem a) ∧
       WordsAt ms' [(cmsdkTick s v).1, (cmsdkTick s v).2] ∧
       ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ st'.memoryCaps = st.memoryCaps := by
-  have h := step_call (P := P) (σ := σ) (words := fun g : UInt64 => [g]) (tick := cmsdkTick)
-    (fun _ => rfl) (fun _ => by simp [hs0]) reqCompiled.cmsdkTick.implements
-    (fun _ _ _ => trivial) rfl hg hcode hev echo_covered.2 hat hcap s v ms hpc hlr
-    (by rw [hs0]; exact hstk) hargs
-  rw [hs0] at h
-  exact h
+  obtain ⟨ms', h1, h2, h3, h4, h5, h6, h7, h8, st', heap', hat', -, hcaps, -⟩ :=
+    step_call (P := P) (σ := σ) (words := fun g : UInt64 => [g]) (tick := cmsdkTick)
+      (fun _ => by simp [hs0]) (stepCall_of_implementsA (fun _ => rfl)
+        reqCompiled.cmsdkTick.implements (fun _ _ _ => trivial) echo_noArea.2)
+      rfl hg hcode hev echo_covered.2 hat trivial hcap s v ms hpc hlr (by rw [hs0]; exact hstk)
+      (areaHolds_none echo_noArea.2) hargs
+  rw [hs0] at h7
+  exact ⟨ms', h1, h2, h3, h4, h5, h6, h7, h8, st', heap', hat', hcaps⟩
 
 /-- The stack that a call of each echo's step uses, with the generator's frames. -/
 theorem echo_stack : stackBound reqCompiled.module 9 = 312 ∧
     stackBound reqCompiled.module 5 = 312 := by
+  decide +kernel
+
+/-- The static bound on the instructions of every run of each echo's step. -/
+theorem echo_static : staticCost reqCompiled.module 9 = some 1424 ∧
+    staticCost reqCompiled.module 5 = some 1424 := by
   decide +kernel
 
 end TestSupport.M7

@@ -159,21 +159,23 @@ theorem or1_odd (x : UInt32) : (x ||| 1) % 2 = 1 := by
 
 /-! ## The outcome of a write after a run -/
 
-/-- The outcome when the model reaches, from `ms`, the end of an instruction's code with SP, the
-device trace, and the read count unchanged and the memory that of `ms` with the slot of height
-`k` holding `r`, the top of the new stack `r :: vs`. -/
+/-- The outcome when the model reaches, from `ms` in at most `c` steps, the end of an
+instruction's code with SP, the device trace, and the read count unchanged and the memory that of
+`ms` with the slot of height `k` holding `r`, the top of the new stack `r :: vs`. -/
 theorem outcome_store {E : Env} {ctl : List Ctl} {σs σ' : List ValueType} {sl : Locals}
-    {ms z : State} {endA : UInt32} {α : Type} {st : Store α} {k : Nat} {vs : List Value}
-    {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms) (hr' : Reach P σ code ms z)
+    {ms z : State} {endA : UInt32} {α : Type} {st : Store α} {k c : Nat} {vs : List Value}
+    {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms) (hsr : StoreOk P E.toShared st ms)
+    (hr' : Steps P σ code c ms z)
     (hp : z.pc = endA) (hsp : z.sp = ms.sp) (htr : z.trace = ms.trace) (hrd : z.reads = ms.reads)
     (hmem : z.mem = store32 (store32 ms.mem (ms.sp + UInt32.ofNat (E.frame.opAt k)) w0)
       (ms.sp + UInt32.ofNat (E.frame.opAt k + 4)) w1)
     (hk : k < E.frame.height) (hb : curBase ctl ≤ k) (hvs : vs.length = k)
     (hbelow : ∀ h v, vs.reverse[h]? = some v → ValAt ms (E.frame.opAt h) v)
     (hr : SlotRel r w0 w1) (hty : Typed σ' (r :: vs)) :
-    Outcome P σ code E ctl (some σ') endA (.Fallthrough st { sl with values := r :: vs }) ms :=
+    Outcome P σ code E ctl (some σ') endA (.Fallthrough st { sl with values := r :: vs }) c ms :=
   ⟨σ', rfl, z, hr', hp, hsp, htr, hrd, keeps_write_op hinv.frame hmem hk,
-    below_write_op hinv.frame hmem hk hb, Inv.write_op hinv hsp hmem hk hvs hbelow hr hty⟩
+    below_write_op hinv.frame hmem hk hb, Inv.write_op hinv hsp hmem hk hvs hbelow hr hty,
+    hsr.congr (keepsBelow_write_op hinv.frame hmem hk)⟩
 
 /-! ## Division -/
 
@@ -218,7 +220,8 @@ theorem pair_ne_zero {b : UInt64} (hb : b ≠ 0) : b.toUInt32 ||| (b >>> 32).toU
   rfl
 
 /-- The simulation of a division that the generator compiles with `genDiv`, whose result `op a b`
-for the dividend `a` and the nonzero divisor `b` `udivmod64` leaves in the pair `res`. -/
+for the dividend `a` and the nonzero divisor `b` `udivmod64` leaves in the pair `res`, in at most
+the code's 9 instructions and `udivmod64`'s `divBound`. -/
 theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → UInt64 → UInt64}
     (hgen : ∀ E ctl σs a, genInstr E ctl σs a inst = genDiv E ctl σs a res)
     (hfall : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals) (b a : UInt64)
@@ -233,8 +236,10 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
     (hres : ∀ (t : State) (a b : UInt64), t.r 0 = (a / b).toUInt32 →
       t.r 1 = ((a / b) >>> 32).toUInt32 → t.r 2 = (a % b).toUInt32 →
       t.r 3 = ((a % b) >>> 32).toUInt32 → SlotRel (.i64 (op a b)) (t.r res.1) (t.r res.2))
+    (hcost : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals) (ar : List Nat),
+      costOne (f + 1) m st sl ar inst {} = 9 + divBound)
     (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode hev hdiv hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode hev hdiv hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h3, h4, h5, oq, ob, q1, q2, q3, q4, b1, b2, b3, b4, rfl, rfl⟩ :=
     gen_div hg
@@ -269,7 +274,7 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
           (slotsOk_ld (hinv.frame.word (by omega) (by omega))
           (slotsOk_cons rfl (fun o ho => by cases ho) (slotsOk_nil _)))))
         rw [← hpc] at hcL
-        obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hcL
+        obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hcL
         have horr : ∀ w : State, (slotRun P σ [.orrReg 1 4 2 3] w).r 0 = w.r 0 ∧
             (slotRun P σ [.orrReg 1 4 2 3] w).r 1 = w.r 1 ∧
             (slotRun P σ [.orrReg 1 4 2 3] w).r 2 = w.r 2 ∧
@@ -311,14 +316,14 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
         rw [hcs1, show a + UInt32.ofNat 20 = (slotRun P σ L ms).pc by
           rw [hBpc]
           try addr_after] at hcB
-        have rB := reach_bcondTo (P := P) (σ := σ) q1 q2 q3 hcB
+        have rB := steps_bcondTo (P := P) (σ := σ) q1 q2 q3 hcB
         have hc0 : (slotRun P σ L ms).condHolds 0 = false := by rw [condHolds_eq, hz]
         rw [show condEQ = (0 : Fin 14) from rfl, hc0] at rB
         simp only [Bool.false_eq_true, ↓reduceIte] at rB
         -- the call of `udivmod64`
         obtain ⟨u1, hu1d⟩ : ∃ u1 : State,
             u1 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 } := ⟨_, rfl⟩
-        have rB' : Reach P σ code (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
+        have rB' : Steps P σ code 1 (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
         have hp1 : u1.pc = after a 6 := by
           rw [hu1d, State.pc_withPc, hBpc]
           try addr_after
@@ -361,12 +366,13 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
         rw [hcs3, show a + UInt32.ofNat 28 = t.pc by
           rw [htpc]
           try addr_after] at hcS
-        obtain ⟨rS, pS, spS, -, trS, rdS, -⟩ := run_slots (σ := σ) hokS hcS
-        refine outcome_store hinv
-          (Reach.trans r1 (Reach.trans rB' (Reach.trans (reach_exec hcBL eBL rt) rS))) ?_
+        obtain ⟨rS, pS, spS, -, trS, rdS, -⟩ := steps_slots (σ := σ) hokS hcS
+        refine Outcome.mono (outcome_store hinv hsr
+          (r1.trans (rB'.trans ((steps_exec hcBL eBL rt).trans rS))) ?_
           (by rw [spS, hwsp]) (by rw [trS, hwtr]) (by rw [rdS, hwrd]) ?_
           (by omega) (by omega) hvl (fun h v hv' => ?_) (hres t a' b t0 t1 t2 t3)
-          (Typed.cons trivial (by have := hinv.types.drop 2; rw [hv] at this; simpa using this))
+          (Typed.cons trivial (by have := hinv.types.drop 2; rw [hv] at this; simpa using this)))
+          (Nat.le_of_eq (by rw [hcost]; rfl))
         · rw [pS, htpc, show S.length = 2 from rfl]
           simp only [List.length_append, List.length_cons, List.length_nil, Nat.reduceAdd]
           try addr_after
@@ -384,7 +390,7 @@ theorem sim_divUI64 (F : Nat) : InstrSim P σ code F .divUI64 :=
     (fun f α m st sl b a vs hv hb => ⟨st, "integer divide by zero", by
       simp only [execOne.eq_def, hv, hb, ↓reduceIte]⟩)
     (by invalid_tac)
-    (fun t a b h0 h1 _ _ => ⟨h0, h1⟩) F
+    (fun t a b h0 h1 _ _ => ⟨h0, h1⟩) (fun _ _ _ _ _ _ => costOne_divUI64) F
 
 theorem sim_remUI64 (F : Nat) : InstrSim P σ code F .remUI64 :=
   sim_divrem (inst := .remUI64) (res := (2, 3)) (op := fun a b => a % b) (fun _ _ _ _ => rfl)
@@ -392,6 +398,6 @@ theorem sim_remUI64 (F : Nat) : InstrSim P σ code F .remUI64 :=
     (fun f α m st sl b a vs hv hb => ⟨st, "integer divide by zero", by
       simp only [execOne.eq_def, hv, hb, ↓reduceIte]⟩)
     (by invalid_tac)
-    (fun t a b _ _ h2 h3 => ⟨h2, h3⟩) F
+    (fun t a b _ _ h2 h3 => ⟨h2, h3⟩) (fun _ _ _ _ _ _ => costOne_remUI64) F
 
 end LeanExe.M7
