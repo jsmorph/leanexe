@@ -10,9 +10,10 @@ file's bytes are those of the vector table and the instructions.
 
 `echo_board` states the loop theorem for every code map that holds the file's bytes in flash at
 both of its addresses, and `echo_board_runs` that the run never stops.  Both hold of the
-processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0
-low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
-debugger access, or DMA during the run.
+processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on reset, or an
+NRST reset with the debug registers at their power-on values, with BOOT0 low and BOOT_ADD0 0x0080,
+software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA
+during the run.
 -/
 
 namespace TestSupport.M7.NucleoFile

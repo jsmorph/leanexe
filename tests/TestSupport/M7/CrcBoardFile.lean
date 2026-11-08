@@ -14,8 +14,9 @@ both of its addresses, `crc_board_runs` that the run never stops, and `crc_board
 bytes that the run writes to `USART_TDR` begin the low bytes of the CRC-32 of the nonempty
 prefixes of the bytes that it reads from `USART_RDR`, with at most one byte without a reply.  The
 theorems hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
-power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
-interrupt, NMI, debug halt, debugger access, or DMA during the run.
+power-on reset, or an NRST reset with the debug registers at their power-on values, with BOOT0 low
+and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
+debugger access, or DMA during the run.
 -/
 
 namespace TestSupport.M7.CrcBoardFile

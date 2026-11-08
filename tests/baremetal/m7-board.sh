@@ -58,10 +58,10 @@
 # clear in the same way.
 # The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
 # theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
-# the read-back as "run" does, without st-flash's reset, and then runs
-# tools/baremetal/stlink_nrst.py, with its messages in NAME.nrst, which sets the debug registers
-# that a system reset keeps to their power-on values, leaves debug mode, and pulses NRST, and then
-# does what "run" does after the reset, for a run from an NRST reset with no debugger attached.
+# the read-back as "run" does, without st-flash's reset, runs tools/baremetal/stlink_nrst.py, with
+# its messages in NAME.nrst, and then does what "run" does after the reset.  The tool sets the
+# debug registers that a system reset keeps to their power-on values, leaves debug mode, and
+# pulses NRST, so that the run starts from an NRST reset with no debugger attached.
 # "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without st-flash, for a run
 # from the power-on reset of a replug after NAME.bin lies in the flash.  When the virtual COM port
 # forwards none of the board's bytes, a USB reset of the ST-LINK, usbreset BUS/DEVICE, before the
