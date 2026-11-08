@@ -2,15 +2,17 @@
 
 These scripts translate the floating-point functions of the Armv9.4-A Sail model into Lean with
 Sail's Lean back end, elaborate the output, test it against Talos's binary64 functions, and prove
-six of the equations that the A64 Isla check assumes.  The modules of [`F7/`](F7/) prove that the
-translated `FPAdd`, `FPSub`, `FPMul`, and `FPDiv` of `(a, b, 0x02000000)` at 64 bits return
-`f64Add a b`, `f64Sub a b`, `f64Mul a b`, and `f64Div a b` for every pair of words, that
-`FPSqrt(a, 0x02000000)` returns `f64Sqrt a`, and that
-`FixedToFP(a, 0, TRUE, 0x02000000, FPRounding_TIEEVEN, 64)` returns `f64ConvertI64U a` for every
-word, and [`check.sh`](check.sh) regenerates the translation and checks the proofs.  Sail's C
-emulator
-of the same slice tests the same functions with exact rationals ([`emu/`](emu/)).  Nothing in the
-A64 model or its proofs depends on these files.
+the equations of the double-precision functions that the A64 Isla check assumes.  The modules of
+[`F7/`](F7/) prove that the translated `FPAdd`, `FPSub`, `FPMul`, and `FPDiv` of
+`(a, b, 0x02000000)` at 64 bits return `f64Add a b`, `f64Sub a b`, `f64Mul a b`, and `f64Div a b`
+for every pair of words, that `FPSqrt(a, 0x02000000)` returns `f64Sqrt a`,
+`FixedToFP(a, 0, TRUE, 0x02000000, FPRounding_TIEEVEN, 64)` returns `f64ConvertI64U a`, and
+`FPToFixed(a, 0, TRUE, 0x02000000, FPRounding_ZERO, 64)` returns `i64TruncSatF64U a` for every
+word, and that `FPCompare(a, b, FALSE, 0x02000000)` returns the flags `fcmpNZCV a b` that the
+model's FCMP sets, for every pair of words.  [`check.sh`](check.sh) regenerates the translation
+and checks the proofs.  Sail's C emulator of the same slice tests the arithmetic functions and
+FixedToFP with exact rationals ([`emu/`](emu/)).  Nothing in the A64 model or its proofs depends on
+these files.
 
 ## Versions and installation
 
@@ -58,17 +60,18 @@ reads is Sail 0.20.3's, while the IR came from Isla's Sail; the two are not comp
 
 [`translate.sh`](translate.sh) type-checks the model, runs the REPL commands of
 [`fp-slice.isail`](fp-slice.isail), and writes a Lake project.  The commands keep the definitions
-that FPAdd, FPSub, FPMul, FPDiv, FPSqrt, FixedToFP, and `initialize_registers` reach, with the
-standard library, up to the two cut trap functions, and apply the Lean rewrites.  The slice keeps
-`initialize_registers` because the back end's rewrite `add_register_init_function` calls it, and
-`:rewrite move_termination_measures` runs before the slice, which would otherwise drop the loop
-measures.  [`fp-measures.sail`](fp-measures.sail) gives FPRoundBase__1's loops the measures that
-`termination_measures.sail` gives the Rocq target only, so the back end writes them with
+that FPAdd, FPSub, FPMul, FPDiv, FPSqrt, FixedToFP, FPRoundInt, FPToFixed, FPCompare, and
+`initialize_registers` reach, with the standard library, up to the two cut trap functions, and
+apply the Lean rewrites.
+The slice keeps `initialize_registers` because the back end's rewrite `add_register_init_function`
+calls it, and `:rewrite move_termination_measures` runs before the slice, which would otherwise drop
+the loop measures.  [`fp-measures.sail`](fp-measures.sail) gives FPRoundBase__1's loops the measures
+that `termination_measures.sail` gives the Rocq target only, so the back end writes them with
 lean-sail's `whileFuelM`.  The model's files after `mem.sail` other than `decode_end.sail` and
-`fetch.sail` are left out: Sail parses and checks every file before the slice, and the whole
-model exceeded a 7 GiB cap after 7 min.  The options are `--lean-real-numbers` (Mathlib's ℝ for
-the specification's reals), `--lean-noncomputable`, and `--lean-single-file`, without which the
-back end fails on the slice with `Invalid_argument("List.combine")`.
+`fetch.sail` are left out: Sail parses and checks every file before the slice, and the whole model
+exceeded a 7 GiB cap after 7 min.  The options are `--lean-real-numbers` (Mathlib's ℝ for the
+specification's reals), `--lean-noncomputable`, and `--lean-single-file`, without which the back end
+fails on the slice with `Invalid_argument("List.combine")`.
 
 The cut keeps the declarations of the two trap functions and drops their bodies, and the back
 end calls each as a pure function that returns `Unit`.  [`ArmExtras.lean`](ArmExtras.lean)
@@ -80,7 +83,7 @@ exception returns to its caller, and it supplies `sign_extend`, as sail-arm's ow
 |---|---|
 | Time | about 20 s a translation, with Sail's cache of Z3 results (`sail_smt_cache`); four in 87 s |
 | Peak memory | 1.6 GB |
-| Output | 7,288 lines with 920 definitions, and 4,168 lines of types |
+| Output | 7,528 lines with 926 definitions, and 4,168 lines of types |
 | Loops | the two `whileFuelM` loops of FPRoundBase__1, and no other loop |
 
 The output is monadic.  Each function runs in `SailM`, an `EStateM` over a state whose map holds
@@ -99,8 +102,8 @@ applies to lean-sail the fix that its tag `v9` carries.
 | Failure | Lean versions | Edit | Rewrites | Check that the edit changes nothing else |
 |---|---|---|---|---|
 | `Real.lean` opens a namespace `Defs` that no output declares | both, with reals | delete the line | 1 | the deleted command declares nothing |
-| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 32 | on v4.29.0 the 6,457 constants of the output hash identically with and without the edit |
-| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 6 fractions, no negative | 3 lines of the output change, each `1/2` becoming `(1/2)`; without the edit the output does not elaborate |
+| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 41 | on v4.29.0 the 6,457 constants of the output hash identically with and without the edit |
+| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 14 fractions, no negative | 7 lines of the output change, each `1/2` becoming `(1/2)`; without the edit the output does not elaborate |
 | `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | the cut changes FPProcessException and no other function: against the uncut slice on v4.29.0, the 6,457 constants of the cut output differ only in FPProcessException, `sail_model_init`, and constants that Lean derives for the inductive types |
 | lean-sail's `ArchSemSequential.lean`: `Decidable (0 < choice)` | v4.34.0-rc2 | `lean-sail-v6.diff` | | the edited `interpretSailEffects` belongs to the version-2 interface, which the output does not name |
 
@@ -115,6 +118,13 @@ definitions of the enumerations, whose difference was not traced.  The uncut sli
 two edits that the cut makes unnecessary, since both functions lie on exception paths: a
 comparison of two `BitVec.join1 [b]` in IncrementInstructionCounter that runs in `whnf` without
 end, and the do elaborator's failure on MaybeZeroSVEUppers on v4.34.0-rc2.
+
+The comparisons of constants on v4.29.0 ran on the slice without the roots FPRoundInt, FPToFixed,
+and FPCompare and were not repeated on the output with them.  The three roots add the definitions
+FPRoundInt, SatQ, SignedSatQ, UnsignedSatQ, FPCompare, and FPToFixed and change the text of no
+other definition: the two outputs differ elsewhere only in the generated names of two type
+quantifiers in a comment.  The nine `assert` calls and the eight fractions of the added
+definitions take the same edits as the others.
 
 [`elaborate.sh`](elaborate.sh) builds the real-number output with the repository's toolchain and
 Mathlib in a scratch copy of the repository in 162 s, and its rational counterpart (below) in
@@ -157,12 +167,12 @@ The Lean back end evaluates both operands of `&&` and `||`.  It writes each mona
 in place for short-circuiting (Sail 0.20.3 `src/lib/rewrites.ml`) and the IR that Isla runs
 evaluates them only when the first operand does not decide the result (`AE_short_circuit`,
 `src/lib/anf.ml`).  A translated function therefore runs calls that Sail's function skips.  On
-the paths of FPAdd, FPSub, FPMul, FPDiv, FPSqrt, and FixedToFP at 64 bits under FPCR 0x02000000,
-the eagerly evaluated operands are these:
+the paths of FPAdd, FPSub, FPMul, FPDiv, FPSqrt, FixedToFP, FPToFixed, and FPCompare at 64 bits
+under FPCR 0x02000000, the eagerly evaluated operands are these:
 
 | Function | Expression | Operands that run although Sail skips them |
 |---|---|---|
-| FPUnpackBase__1, FPProcessNaNs__1, FPDefaultNaN__1, FPRoundBase__1, FPProcessDenorms, FPProcessDenorm | `HaveAltFP() && !UsingAArch32()`, with `&& FPCR.AH == 1` in all but the first and FPDefaultNaN__1 | UsingAArch32, which reads PSTATE and FeatureImpl |
+| FPUnpackBase__1, FPProcessNaNs__1, FPDefaultNaN__1, FPRoundBase__1, FPProcessDenorms, FPProcessDenorm, FPToFixed | `HaveAltFP() && !UsingAArch32()`, with `&& FPCR.AH == 1` in all but the first and FPDefaultNaN__1 | UsingAArch32, which reads PSTATE and FeatureImpl |
 | FPRoundBase__1 | `FPCR.UFE == 1 && (!InStreamingMode() \|\| IsFullA64Enabled())` | InStreamingMode, which reads FeatureImpl and PSTATE, and IsFullA64Enabled |
 | FPProcessException | `FPCR<enable> == 1 && (!HaveSME() \|\| PSTATE.SM == 0 \|\| IsFullA64Enabled())` | HaveSME, a read of PSTATE, and IsFullA64Enabled |
 | HaveAArch64 | the four tests of FEAT_AA64EL0 to FEAT_AA64EL3 | reads of FeatureImpl |
@@ -203,7 +213,9 @@ returns `opaqueReal`, an `opaque` constant whose value the kernel cannot unfold.
 check there with the same statements, so their proofs use no property of the unspecified real,
 and they hold for every value of it.  FPSqrt draws the real `value_name` before FPUnpack assigns
 it, and FPRoundBase__1, which FPSqrt and FixedToFP reach, draws `mantissa` before the loops assign
-it; the variant checks `fpSqrt_eq_f64Sqrt` and `fixedToFP_eq_f64ConvertI64U` with the others.
+it; FPToFixed draws `value_name`, and FPCompare `value1_name` and `value2_name`, before FPUnpack
+assigns them.  The variant checks `fpSqrt_eq_f64Sqrt`, `fixedToFP_eq_f64ConvertI64U`,
+`fpToFixed_eq_i64TruncSatF64U`, and `fpCompare_eq_fcmpNZCV` with the others.
 
 ## Tests
 
@@ -228,8 +240,9 @@ boundary.
 | FPSqrt margin | 153,948 that reach `sqrt_real` | none unresolved; the smallest margin is 55 times `c` | |
 
 Every class of every form agrees, among them the vector test's ties, near ties, overflows,
-underflows, cancellations, and special values.  [`Eval.lean`](Eval.lean), the probe's first
-evaluation, compares 10,484 operand pairs per binary function and 10,086 integers.
+underflows, cancellations, and special values.  Neither test runs FPToFixed or FPCompare.
+[`Eval.lean`](Eval.lean), the probe's first evaluation, compares 10,484 operand pairs per binary
+function and 10,086 integers.
 
 ## The proofs
 
@@ -253,8 +266,15 @@ every word, with `sqrtMask`: IOC for a signaling NaN and for a negative operand 
 or a NaN, and IXC for an inexact root.  `fixedToFP_eq_f64ConvertI64U` in
 [`F7/FixedToFP.lean`](F7/FixedToFP.lean) states it of
 `FixedToFP a 0 true 0x02000000 FPRounding_TIEEVEN 64`, the call of the wrapper FixedToFP64 that
-UCVTF D←X uses, and `f64ConvertI64U`, with `cvtMask`: IXC for an inexact result.  Each theorem
-depends on `propext`, `Classical.choice`, and `Quot.sound` only.
+UCVTF D←X uses, and `f64ConvertI64U`, with `cvtMask`: IXC for an inexact result.
+`fpToFixed_eq_i64TruncSatF64U` in [`F7/FPToFixed.lean`](F7/FPToFixed.lean) states it of
+`FPToFixed a 0 true 0x02000000 FPRounding_ZERO 64`, the call of the wrapper FPToFixed64 that
+FCVTZU X←D uses, and `i64TruncSatF64U`, with `fixMask`: IOC for a NaN, an infinity, or a
+truncation outside `[0, 2^64)`, and IXC for an inexact truncation inside it.
+`fpCompare_eq_fcmpNZCV` in [`F7/FPCompare.lean`](F7/FPCompare.lean) states it of
+`FPCompare a b false 0x02000000`, the call that FCMP D makes, and the 4-bit word of
+`fcmpNZCV a b`, the flags of the model's `State.fcmp`, with `cmpMask`: IOC for a signaling NaN
+operand.  Each theorem depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 The proofs follow the translated code.  `sail_simp` rewrites a run of the monadic code step by
 step with lemmas for register reads and writes, the choice source, the exception monad of
@@ -318,6 +338,31 @@ a remainder.  For FPSqrt the scaled mantissa is `√R / 2^k`, whose floor is `l`
 `(2 · l + 1)^2` is odd and above 2^106, but the proof does not use this: both sides round a tie to
 even.
 
+FPToFixed unpacks its operand with FPUnpack__1, which gives a NaN the value 0 and an infinity
+±2^1000000, signals Invalid Operation for a NaN, and takes the floor of the value and the error
+between the value and its floor.  Under FPRounding_ZERO it adds 1 to the floor of a negative value
+with a nonzero error, and SatQ clamps the integer to `[0, 2^64 − 1]`.  FPToFixed then signals
+Invalid Operation when SatQ clamps, and Inexact when SatQ does not clamp and the error is nonzero.
+`bind_satQ` gives SatQ's word and its flag of saturation for every integer.  For a finite word of
+magnitude `m` in units of 2^-1074, `fix_pos`, `fix_neg0`, and `fix_neg1` give the floor and the test
+of a zero error through the quotient `q` and the remainder `r` of `m` by 2^1074: the floor is `q`
+for a word with a clear sign bit, and `−q` or `−q − 1` for a negative one as `r` is 0 or not, so the integer that
+SatQ receives is `±q`, the value of Talos's `truncatedInt` (`trunc_fin`).  The value of an infinity
+is a natural number of at least 2^64 (`inf_val_nat`), which SatQ clamps, and Talos's `truncatedInt`
+gives an infinity and a NaN no value (`trunc_none`).  After these lemmas the proof keeps `q`, `r`,
+and the infinity's value as variables, so no step evaluates 2^1074 or 2^1000000.
+
+FPCompare with `signal_nans` false unpacks both operands, returns 0011 when either is a NaN, and
+otherwise compares the real values with `eq_real` and `lt_real`.  FPUnpack's value of a word that
+is not a NaN is `extV` of Talos's `scaledValue` (`val_extV`): `scaledValue · 2^-1074` for a finite
+word, whose `scaledValue` lies strictly between −2^2098 and 2^2098 (`mag_fin_lt`), and ±2^1000000
+for an infinity, whose `scaledValue` is ±2^2098 (`mag_inf_eq`).  Every finite value lies strictly
+between −2^1024 and 2^1024, so `extV` is strictly increasing on `[−2^2098, 2^2098]`
+(`extV_strictMonoOn`), and `eq_real` and `lt_real` of the values equal Talos's `eq` and `lt`, which
+compare `scaledValue` (`val_eq_sv`, `val_lt_sv`).  `fpCompare_run` takes the NaN case, with or
+without a signaling NaN, and the case of two ordered operands, whose result is the number that
+`fcmpNZCV` gives for equal, smaller, and greater values.
+
 Lean's core library, in which Talos is written, and Mathlib elaborate `2 ^ 1074 : ℕ` with
 different instances of `Pow`.  When the kernel compares the bit vectors of two words that differ
 syntactically, it reduces each projection by evaluating its word, and the evaluation unfolds
@@ -339,18 +384,21 @@ the kernel compares argument by argument, and the proofs reach each bit vector b
 | `F7/FPDiv.lean` | 133 | the exact quotient and FPDiv's cases |
 | `F7/FPSqrt.lean` | 343 | the square root on the reals, Talos's rounding of a root, FPRound__2 on a root, and FPSqrt's cases |
 | `F7/FixedToFP.lean` | 85 | Talos's conversion and FixedToFP |
-| `F7/Isla.lean` | 255 | the join with the Isla equations and the profile witnesses |
+| `F7/FPToFixed.lean` | 336 | SatQ, the floor and the error of a word's value (about 120), Talos's truncation, and FPToFixed's cases |
+| `F7/FPCompare.lean` | 234 | the bounds of `scaledValue`, `extV` and its monotonicity (about 130), and FPCompare's cases |
+| `F7/Isla.lean` | 300 | the join with the Isla equations and the profile witnesses |
 
 `lake build F7` on edgexpert-18ff under `tools/leanrun --cpus 2`, after the translation is built,
 takes `F7.Base` 47 to 51 s, `F7.Round` 48 to 60 s, `F7.FPAdd` 35 to 38 s, `F7.FPMul` 42 to 43 s,
-`F7.RoundQ` 43 to 48 s, `F7.FPDiv` 37 to 38 s, and `F7.Isla` 2 to 3 s, at a peak of 2.9 GB.
-In separate builds with 1 or 2 CPUs, `F7.FPSub` takes 39 s, `F7.RoundR` 29 s, `F7.FPSqrt` 10 to
-13 s, and `F7.FixedToFP` 2 to 3 s.  The heartbeat limits are about twice the measured use: 406,886
-thousand heartbeats for `fpProcessNaNs_run`, 649,219 for `round_normalG`, 182,938 for
-`round_subG`, 653,810 for `round_normalQ`, 182,566 for `round_subQ`, 401,760 for `round_normalR`,
-442,830 for `fpAdd_run`, 448,450 for `fpSub_run`, 488,265 for `fpMul_run`, and 451,965 for
-`fpDiv_run`.  `fixedToFP_run` (3,308), `round_root` (17,241), and `fpSqrt_run` (92,831) check
-under the default limit of 200,000.
+`F7.RoundQ` 43 to 48 s, `F7.FPDiv` 37 to 38 s, and `F7.Isla` 2 to 3 s, at a peak of 2.9 GB. In
+separate builds with 1 or 2 CPUs, `F7.FPSub` takes 39 s, `F7.RoundR` 29 s, `F7.FPSqrt` 10 to 13 s,
+`F7.FixedToFP` 2 to 3 s, `F7.FPToFixed` 8 to 10 s, and `F7.FPCompare` 3 to 5 s.  The heartbeat
+limits are about twice the measured use: 406,886 thousand heartbeats for `fpProcessNaNs_run`,
+649,219 for `round_normalG`, 182,938 for `round_subG`, 653,810 for `round_normalQ`, 182,566 for
+`round_subQ`, 401,760 for `round_normalR`, 442,830 for `fpAdd_run`, 448,450 for `fpSub_run`, 488,265
+for `fpMul_run`, and 451,965 for `fpDiv_run`.  `fixedToFP_run` (3,308), `round_root` (17,241), and
+`fpSqrt_run` (92,831) check under the default limit of 200,000, and `fpToFixed_run` (81,332) and
+`fpCompare_run` (18,072) under limits of 160,000 and 40,000.
 
 FPMul cost 147 lines of its own and about 200 lines of the rounding's generalization: the pilot's
 rounding at the fixed scale 2^-1074 took about 500 lines, and its generalization over `X`, which
@@ -360,7 +408,7 @@ rounding takes from `F7/Round.lean` the lemmas on words and bit vectors, `rsm_ex
 and the lemmas `floor_div_nat`, `err_div`, `gt_half`, and `eq_half`, which hold for every natural
 divisor, and its proofs of FPRoundBase__1 follow `round_normalG` and `round_subG` step by step,
 with the divisor `Q · 2^j` or `Q` in place of `2^(X + j)` or `2^X`.  FPSub took 212 lines,
-FixedToFP 85, and FPSqrt 343 with the 137 of `RoundR.lean`.
+FixedToFP 85, FPSqrt 343 with the 137 of `RoundR.lean`, FPToFixed 336, and FPCompare 234.
 
 ## The join with the Isla equations
 
@@ -384,6 +432,11 @@ the links `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToF
 `SailFixedToFP` also identifies two of Isla's argument values with the translation's: the integer
 `fbits` 0, which Isla passes as the 128-bit vector 0, as it passes every integer of the model, and
 the rounding mode, which Isla passes as the enumeration member `FPRounding_TIEEVEN` by name.
+`fpToFixedEq_of_sail` derives `FPToFixedEq` from `SailFPToFixed` in the same way, with the rounding
+mode `FPRounding_ZERO`.  FCMP calls FPCompare without a wrapper, so `SailFPCompare` links the
+abstract call `FPCompare` on two 64-bit operands, `signal_nans` false, and FPCR to the
+translation's FPCompare, and `fpCompareEq_of_sail` derives `FPCompareEq` from it and
+`fpCompare_eq_fcmpNZCV`, reading the 4-bit result as the number `fcmpNZCV`.
 
 The derivation needs a state that satisfies `Hyp`, and the witness comes from the profiles.
 `islaState p u` builds the registers that `Hyp` names from the profile `p` of
@@ -414,9 +467,8 @@ the theorems that [`Axioms.lean`](Axioms.lean) names and fails on any axiom besi
 `Classical.choice`, and `Quot.sound`.  The repository's own build takes neither Sail nor
 lean-sail: whether it should is a decision on dependencies that remains open.
 
-The generated files' hashes equal those of the translation that the pilot proved, and a second
-run, which compared them with `check.sha256`, found every hash equal, so the translation is
-reproducible from the pinned inputs.
+A run with `--record` wrote `check.sha256`, and a second run, which compared the hashes with it,
+found every hash equal, so the translation is reproducible from the pinned inputs.
 
 | Measure | Value |
 |---|---|
@@ -426,6 +478,8 @@ reproducible from the pinned inputs.
 | Its parts | each of the two builds `Armv9fp` 157 to 162 s, `F7.Base` 45 to 46 s, `F7.Round` 47 s, then `F7.FPAdd`, `F7.FPMul`, and `F7.RoundQ` side by side in 62 to 82 s each, `F7.FPDiv` 37 to 39 s, `F7.Isla` 2 to 3 s |
 | A run under `tools/leanrun --cpus 3`, with the six functions | 12 min 48 s, peak 4.2 GB |
 | Its parts | each of the two builds `Armv9fp` 137 to 144 s, `F7.Base` 43 to 48 s, `F7.Round` 43 to 48 s, then the other modules side by side: `F7.FPAdd` 41 to 51 s, `F7.FPSub` 38 to 39 s, `F7.FPMul` 42 to 44 s, `F7.RoundQ` 50 to 55 s, `F7.RoundR` 32 to 43 s, `F7.FPDiv` 37 to 40 s, `F7.FPSqrt` 10 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 s |
+| Runs under `tools/leanrun --cpus 3`, with the eight functions, with `--record` and then comparing | 14 min 20 s and 13 min 13 s, peak 4.3 GB |
+| Their parts | each of the four builds `Armv9fp` 146 to 171 s, `F7.Base` 43 to 46 s, `F7.Round` 45 to 52 s, then the other modules side by side: `F7.FPAdd` 42 to 70 s, `F7.FPSub` 37 to 58 s, `F7.FPMul` 42 to 48 s, `F7.RoundQ` 50 to 68 s, `F7.RoundR` 33 to 46 s, `F7.FPDiv` 38 to 43 s, `F7.FPSqrt` 10 to 16 s, `F7.FPToFixed` 9 to 13 s, `F7.FPCompare` 3 to 5 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 to 3 s |
 
 ## What the proofs trust
 
@@ -443,8 +497,8 @@ the chain below translates the ASL faithfully.
 | `fp-measures.sail` | the loop measures, whose sufficiency `loop1_exit` and `loop2_exit` prove |
 | `fix-output.sh` | the three textual edits above |
 | The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library | the comparison in Sources |
-| `armv9p4-checked-fp.diff`: `FPAdd64`, `FPSub64`, `FPMul64`, `FPDiv64`, and `FPSqrt64` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 64 bits, and `FixedToFP64` returns `FixedToFP` at N = 64 | in the Isla row |
-| The links `SailFPAdd`, `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToFP`: each IR function and the translation's function compute the same function, Isla's values correspond to the translation's, among them the 128-bit integer and the enumeration member of `FixedToFP64`, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
+| `armv9p4-checked-fp.diff`: `FPAdd64`, `FPSub64`, `FPMul64`, `FPDiv64`, and `FPSqrt64` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 64 bits, `FixedToFP64` returns `FixedToFP` at N = 64, and `FPToFixed64` returns `FPToFixed` at M = 64 | in the Isla row |
+| The links `SailFPAdd`, `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, `SailFixedToFP`, `SailFPToFixed`, and `SailFPCompare`: each IR function and the translation's function compute the same function, Isla's values correspond to the translation's, among them the 128-bit integers and the enumeration members of `FixedToFP64` and `FPToFixed64` and the Boolean `signal_nans` of `FPCompare`, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
 
 ## Commands
 
