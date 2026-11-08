@@ -1,0 +1,62 @@
+{
+  "id": "bare-metal-programs",
+  "goals": [
+    "LClight.bigstep_program_terminates A X (LeanExe.Native.bareProgram pre p.translation (LeanExe.Native.bareMain LeanExe.Native.nativeCap k args kind)) (LeanExe.Native.outTrace bs) 0",
+    "∃ t r, LClight.bigstep_program_terminates A X (LeanExe.Native.inProgram pre T (LeanExe.Native.inMain cap k kind)) t r ∧ LeanExe.Native.InResult σ aborts out t r",
+    "LeanExe.Native.EntryInRuns A X cap m T fd kind aborts heap out",
+    "LClight.LoopReacts A X (LeanExe.Native.reqProgram pre T (LeanExe.Native.reqMain k (words s0))) LClight.E0 (LeanExe.Requests.reqTrace LeanExe.Native.regBus tick s0 σ)",
+    "LClight.LoopReacts A X (LeanExe.Native.inProgram pre T (LeanExe.Native.ctlMain k s0)) LClight.E0 (LeanExe.Native.ctlTrace ctl s0 σ)"
+  ],
+  "modules": [
+    "LeanExe.Native.Proof.Main",
+    "LeanExe.Native.Proof.Input",
+    "LeanExe.Native.Proof.Req",
+    "LeanExe.Native.Proof.Ctl",
+    "LeanExe.Native.Proof.Reacts",
+    "Verified.Bare",
+    "Demos.Energy.Loop",
+    "TestSupport.Bare.Input",
+    "TestSupport.Bare.Req",
+    "TestSupport.Bare.Records",
+    "TestSupport.Bare.Ctl"
+  ],
+  "declarations": [
+    "Verified.elabBareProgram",
+    "LeanExe.Native.PrefixOk",
+    "LeanExe.Native.bare_program",
+    "LeanExe.Native.bare_of_nativeA",
+    "Verified.bare_of_nativeTables",
+    "Verified.borrowed_nativeStore",
+    "LeanExe.Native.entry_type",
+    "LeanExe.Native.sig_eq",
+    "LeanExe.Native.translate_nres",
+    "LeanExe.Native.heapAt_nativeStore",
+    "Verified.Ready.initial",
+    "LeanExe.Native.input_program",
+    "LeanExe.Native.EntryInRuns",
+    "LeanExe.Native.InResult",
+    "LeanExe.Native.InResult.reads",
+    "LeanExe.Native.input_owned",
+    "LeanExe.Pipeline.Heap.Borrowed.allocate_within",
+    "LeanExe.Native.req_program",
+    "LeanExe.Native.ReqRuns",
+    "LeanExe.Native.reqRuns_of_nativeA",
+    "LeanExe.Native.req_reads",
+    "LeanExe.Native.ctl_program",
+    "LeanExe.Native.CtlRuns",
+    "LeanExe.Native.ctlRuns_of_nativeA",
+    "LeanExe.Native.ctl_reads",
+    "LClight.LoopReacts",
+    "Library.Hashing.Sha256.sha256_bytes"
+  ],
+  "examples": [
+    "TestSupport.Bare.sha256_runs",
+    "TestSupport.Bare.sha256_input",
+    "TestSupport.Bare.echo_program",
+    "TestSupport.Bare.deadline_program",
+    "TestSupport.Bare.sum_program",
+    "TestSupport.Bare.filter_program",
+    "Demos.Energy.gw_program",
+    "Demos.Energy.gw_usart3_program"
+  ]
+}

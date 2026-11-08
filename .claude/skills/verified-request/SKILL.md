@@ -176,7 +176,14 @@ declarations and goal shapes of the proof.  Search the `entry.json` files under 
 constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
 every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
 `loop-combinators`, `array-fold-list-induction`, and `reflector-forms` cover the shapes of the
-table.  [The manual's section on
+table.  For shapes beyond the table, `sorted-permutation`, `heap-sift-invariant`,
+`operation-stream-refinement`, `tail-recursive-spec`, `tree-link-reversal`, `signed-int64`, and
+`decimal-conversions` cover sorting and selection, array heaps, loops over streams of operations,
+recursion on a measure or a fuel, tree updates by link reversal, `Int64` arithmetic, and decimal
+text.  When the program must also run as an AArch64 Image, a Cortex-M7 image, or a bare-metal C
+program, `a64-image-theorem`, `m7-board-theorem`, `bare-metal-programs`, and
+`request-output-prefix` describe the theorems of those targets, which the check of Stage 4 does not
+state.  [The manual's section on
 proving](../../../docs/verified-manual.md#proving) describes the generated theorems and the bounds.
 Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosing lemmas, and
 never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can
