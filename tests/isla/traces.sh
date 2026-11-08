@@ -65,8 +65,9 @@
 # armv9p4-checked-udiv.ir, which tests/isla/armv9p4-udiv.diff edits further to compute the quotient
 # with Sail's tdiv_int on the same integers.  The floating-point forms run on
 # armv9p4-checked-fp.ir, to which tests/isla/armv9p4-checked-fp.diff adds 64-bit wrappers of the
-# floating-point functions, such as FPAdd64, called only at 64 bits, and the arithmetic forms and
-# UCVTF leave their wrapper abstract with --abstract, since Arm's pseudocode rounds a real number.
+# floating-point functions, such as FPAdd64, called only at 64 bits, and the arithmetic forms,
+# UCVTF, and FCVTZU leave their wrapper abstract with --abstract, since Arm's pseudocode rounds a
+# real number.  FCMP leaves FPCompare itself abstract, whose result has 4 bits at every width.
 # The copies sit beside the IR:
 #   ir=~/isla-probe/ir && cp $ir/armv9p4.ir $ir/armv9p4-checked.ir &&
 #   patch $ir/armv9p4-checked.ir < tests/isla/armv9p4-checked.diff &&
@@ -96,8 +97,11 @@
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
 # DIR/FORM.opcode, which holds on one line the pattern of the opcode's bits that it passes to Isla
 # with -i, then writes DIR/FORM.trace and prints "FORM SECONDS KIB", the elapsed time and peak
-# resident memory.  With PRINT_ARGS set to a directory, it writes DIR/FORM.opcode and each form's
-# arguments to Isla, separated by NUL bytes, to PRINT_ARGS/FORM.args, and runs nothing.
+# resident memory.  ISLA_IR names the directory of the IR copies, ~/isla-probe/ir unless set, where
+# the commands above made armv9p4-checked.ir, armv9p4-checked-udiv.ir, and armv9p4-checked-fp.ir on
+# edgexpert-18ff from the committed diffs.  With PRINT_ARGS set to a directory, it writes
+# DIR/FORM.opcode and each form's arguments to Isla, separated by NUL bytes, to
+# PRINT_ARGS/FORM.args, and runs nothing.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 profile=$1
@@ -124,7 +128,8 @@ case $profile in
     echo "unknown profile $profile" >&2
     exit 1 ;;
 esac
-ir=$probe/ir/armv9p4-checked.ir
+irdir=${ISLA_IR:-$probe/ir}
+ir=$irdir/armv9p4-checked.ir
 base=(-C "$probe/isla-patched/configs/armv9p4.toml"
   -f isla_footprint_no_init -s --simplify-registers --tree -I __isla_vector_gpr=true
   -I __supported_pa_size=$pa)
@@ -169,7 +174,7 @@ run() {
   if [ ${#only[@]} -gt 0 ] && ! printf '%s\n' "${only[@]}" | grep -qx "$name"; then
     return
   fi
-  if [ -n "$fp_only" ] && [ "$ir" != "$probe/ir/armv9p4-checked-fp.ir" ]; then
+  if [ -n "$fp_only" ] && [ "$ir" != "$irdir/armv9p4-checked-fp.ir" ]; then
     return
   fi
   local args=(-A "$ir" "${base[@]}" "$@" --partial -i "$opcode")
@@ -218,9 +223,9 @@ run lsrv "10011010110 Rm:5 001001 Rn:5 Rd:5" "${tcr[@]}"
 run orr-w "00101010000 Rm:5 000000 Rn:5 Rd:5" "${tcr[@]}"
 run adr "0 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
 run adrp "1 immlo:2 10000 immhi:19 Rd:5" "${tcr[@]}"
-ir=$probe/ir/armv9p4-checked-udiv.ir
+ir=$irdir/armv9p4-checked-udiv.ir
 run udiv "10011010110 Rm:5 000010 Rn:5 Rd:5" "${tcr[@]}"
-ir=$probe/ir/armv9p4-checked-fp.ir
+ir=$irdir/armv9p4-checked-fp.ir
 run fmov-dx "1001111001100111000000 Rn:5 Rd:5" "${fp[@]}"
 run fmov-xd "1001111001100110000000 Rn:5 Rd:5" "${fp[@]}"
 run fadd "00011110011 Rm:5 001010 Rn:5 Rd:5" "${fp[@]}" --abstract FPAdd64
@@ -229,3 +234,5 @@ run fmul "00011110011 Rm:5 000010 Rn:5 Rd:5" "${fp[@]}" --abstract FPMul64
 run fdiv "00011110011 Rm:5 000110 Rn:5 Rd:5" "${fp[@]}" --abstract FPDiv64
 run fsqrt "0001111001100001110000 Rn:5 Rd:5" "${fp[@]}" --abstract FPSqrt64
 run ucvtf "1001111001100011000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP64
+run fcvtzu "1001111001111001000000 Rn:5 Rd:5" "${fp[@]}" --abstract FPToFixed64
+run fcmp "00011110011 Rm:5 001000 Rn:5 00000" "${fp[@]}" --abstract FPCompare

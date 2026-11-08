@@ -2,8 +2,9 @@ import TestSupport.A64.FpVectors
 
 /-!
 The command `a64-fpvectors` of the test of the floating-point forms' meanings
-(`tests/baremetal/a64-fpvectors.sh`).  `a64-fpvectors gen SEED COUNT DIR` writes DIR/fp.img, the
-arm64 Image of COUNT vectors of each form from the seed SEED, and DIR/fp.layout, whose first line
+(`tests/baremetal/a64-fpvectors.sh`).  `a64-fpvectors gen SEED COUNT DIR [FORM...]` writes
+DIR/fp.img, the arm64 Image of COUNT vectors of each form from the seed SEED, or of each named
+form, such as `fcvtzu`, and DIR/fp.layout, whose first line
 gives the offset of the vectors' words in the Image and whose other lines give each block's form,
 class, and number of vectors.  `a64-fpvectors check DIR SERIAL` compares the result words of the
 UART output SERIAL with the model for the vectors of DIR/fp.img.  For each block and each form it
@@ -37,10 +38,11 @@ def parseLayout (text : String) : Except String (Nat × List Block) := do
 
 def main (args : List String) : IO UInt32 := do
   match args with
-  | ["gen", seed, count, dir] =>
-      match seed.toNat?, count.toNat? with
-      | some s, some n =>
-          let (data, blocks) := vectors (UInt64.ofNat s) n
+  | "gen" :: seed :: count :: dir :: names =>
+      match seed.toNat?, count.toNat?, names.mapM Form.ofName with
+      | some s, some n, some named =>
+          let forms := if named.isEmpty then Form.all else named
+          let (data, blocks) := vectors (UInt64.ofNat s) n forms
           let counts := Form.all.map fun f =>
             (f, blocks.foldl (fun k b => if b.form == f then k + b.count else k) 0)
           match image data counts with
@@ -53,8 +55,8 @@ def main (args : List String) : IO UInt32 := do
                 s!"data {off}\n" :: blocks.map fun b => s!"{b.form.name} {b.cls} {b.count}\n"
               IO.println s!"a64-fpvectors: {n} vectors of each form from seed {s}, an Image of {img.size} bytes"
               return 0
-      | _, _ =>
-          IO.eprintln "a64-fpvectors: SEED and COUNT must be natural numbers"
+      | _, _, _ =>
+          IO.eprintln "a64-fpvectors: SEED and COUNT must be natural numbers and each FORM a form"
           return 2
   | ["check", dir, serial] =>
       let img ← IO.FS.readBinFile s!"{dir}/fp.img"
@@ -82,5 +84,6 @@ def main (args : List String) : IO UInt32 := do
           IO.println s!"a64-fpvectors: {total - diffs.size} of {total} results agree with the model"
           return if diffs.isEmpty then 0 else 1
   | _ =>
-      IO.eprintln "usage: a64-fpvectors gen SEED COUNT DIR | a64-fpvectors check DIR SERIAL"
+      IO.eprintln
+        "usage: a64-fpvectors gen SEED COUNT DIR [FORM...] | a64-fpvectors check DIR SERIAL"
       return 2

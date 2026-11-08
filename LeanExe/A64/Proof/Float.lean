@@ -7,7 +7,8 @@ type.  `genFBin` moves the words of the two values on top into D0 and D1 with `F
 `FADD`, `FSUB`, `FMUL`, or `FDIV` into D0, and moves D0's word into the register of the lower
 value; the model's meaning of each form is Talos's function, so the register then holds Talos's
 result.  `f64Sqrt` goes through D0 in the same way, `f64ConvertI64U` converts the register's word
-into D0 with `UCVTF`, and `f64Abs` adds the register to itself, which drops the sign bit, and
+into D0 with `UCVTF`, `i64TruncSatF64U` moves the word into D0 and converts it back into the
+register with `FCVTZU`, and `f64Abs` adds the register to itself, which drops the sign bit, and
 shifts the sum right by 1, which gives Talos's `IEEE64.abs`.  `genFCmp` moves the two words into
 D0 and D1, compares them with `FCMP`, and sets the lower value's register with `CSINC XZR, XZR`
 and a condition: `f64Eq` with `NE`, `f64Lt` with `PL`, and `f64Le` with `HI`, each the inverse of
@@ -162,11 +163,47 @@ theorem run_viaX {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt64)
   · show (s1.setX r (s1.dregs 0)).out = s1.out
     exact State.setX_out
 
+/-- The code `FMOV D0, Xr`, `op Xr, D0`, for an `op` that sets its destination general register to
+`g` of the word of its operand D register, computes `g` on the word of `r`. -/
+theorem run_toX {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt64)
+    (hexec : ∀ (s : State) (d n : Fin 32), LeanExe.A64.exec P (op d n) s =
+      some { s.setX d (g (s.dregs n)) with pc := s.pc + 4 }) :
+    UnRuns P code (fun r => [.fmovDX 0 r, op r 0]) g := by
+  intro s a r hr hcode hpc
+  have c0 := hcode 0 (by simp)
+  have c1 := hcode 1 (by simp)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1
+  let s1 : State := { s.setD 0 (s.x r) with pc := s.pc + 4 }
+  let s2 : State := { s1.setX r (g (s1.dregs 0)) with pc := s1.pc + 4 }
+  have p1 : s1.pc = after a 1 := by
+    show s.pc + 4 = _
+    rw [hpc, after_succ, after_zero]
+  refine ⟨s2, reach_exec P code (by rw [hpc]; exact c0) rfl
+      (reach_exec P code (by rw [p1]; exact c1) (hexec s1 r 0) (.refl _)), ?_, ?_, fun q hq => ?_,
+    ?_, ?_, ?_⟩
+  · show s1.pc + 4 = after a 2
+    rw [p1, ← after_succ]
+  · show (s1.setX r (g (s1.dregs 0))).x r = _
+    rw [State.x_setX_same hr]
+    show g ((s.setD 0 (s.x r)).dregs 0) = _
+    rw [State.dregs_setD_same]
+  · show (s1.setX r (g (s1.dregs 0))).x q = s1.x q
+    exact State.x_setX_ne (Ne.symm hq)
+  · show (s1.setX r (g (s1.dregs 0))).sp = s1.sp
+    exact State.setX_sp
+  · show (s1.setX r (g (s1.dregs 0))).mem = s1.mem
+    exact State.setX_mem
+  · show (s1.setX r (g (s1.dregs 0))).out = s1.out
+    exact State.setX_out
+
 theorem runs_sqrt : UnRuns P code sqrtCode Wasm.f64Sqrt :=
   run_viaD P code Wasm.f64Sqrt (op := Instr.fsqrt) fun _ _ _ => rfl
 
 theorem runs_convert : UnRuns P code convertCode Wasm.f64ConvertI64U :=
   run_viaX P code Wasm.f64ConvertI64U (op := Instr.ucvtf) fun _ _ _ => rfl
+
+theorem runs_trunc : UnRuns P code truncCode Wasm.i64TruncSatF64U :=
+  run_toX P code Wasm.i64TruncSatF64U (op := Instr.fcvtzu) fun _ _ _ => rfl
 
 /-- A word added to itself and shifted right by 1 has its sign bit clear and its other bits kept,
 which is Talos's absolute value of a double. -/
@@ -652,6 +689,14 @@ theorem sim_f64ConvertI64U (F : Nat) : InstrSim P code F .f64ConvertI64U :=
     fun _ _ _ _ _ => by
       apply word_un_case (t := .f64) Value.i64 Value.f64 Wasm.f64ConvertI64U i64_in (fun _ => rfl)
         (fun _ => trivial)
+      un_rule_tac
+
+theorem sim_i64TruncSatF64U (F : Nat) : InstrSim P code F .i64TruncSatF64U :=
+  sim_un_of P code (inst := .i64TruncSatF64U) (ops := truncCode) (t := .i64)
+    Wasm.i64TruncSatF64U (fun _ _ _ _ => by simp only [genInstr]) (runs_trunc P code)
+    fun _ _ _ _ _ => by
+      apply word_un_case (t := .i64) Value.f64 Value.i64 Wasm.i64TruncSatF64U f64_in
+        (fun _ => rfl) (fun _ => trivial)
       un_rule_tac
 
 theorem sim_i64ReinterpretF64 (F : Nat) : InstrSim P code F .i64ReinterpretF64 :=

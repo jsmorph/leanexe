@@ -217,6 +217,11 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
       obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
       simp [instrSize, convertCode]
       omega
+  | i64TruncSatF64U =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, truncCode]
+      omega
   | i64ReinterpretF64 | f64ReinterpretI64 =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
@@ -379,7 +384,7 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
       cases he
       simp
       omega
-  | f64Sqrt | f64Abs | f64ConvertI64U | i64ReinterpretF64 | f64ReinterpretI64 =>
+  | f64Sqrt | f64Abs | f64ConvertI64U | i64TruncSatF64U | i64ReinterpretF64 | f64ReinterpretI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genUn_ok hg
       cases he
@@ -881,6 +886,7 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case f64Sqrt => exact sim_f64Sqrt P code F
   case f64Abs => exact sim_f64Abs P code F
   case f64ConvertI64U => exact sim_f64ConvertI64U P code F
+  case i64TruncSatF64U => exact sim_i64TruncSatF64U P code F
   case i64ReinterpretF64 => exact sim_i64ReinterpretF64 P code F
   case f64ReinterpretI64 => exact sim_f64ReinterpretI64 P code F
   case remUI64 => exact sim_remUI64 P code F

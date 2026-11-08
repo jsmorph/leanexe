@@ -9,8 +9,8 @@ compiler and its arguments, a bare-metal program of the model's instruction form
 calls the function, writes its result to the UART, and returns 0 to the startup code of
 `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer comparisons and
 operations of the C path's subset, calls, globals, the 64-bit loads and stores of linear memory,
-and the f64 forms that the verified compiler emits other than `i64TruncSatF64U`: constants, the
-reinterpretations, `f64ConvertI64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, `f64Abs`,
+and the f64 forms that the verified compiler emits: constants, the reinterpretations,
+`f64ConvertI64U`, `i64TruncSatF64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, `f64Abs`,
 `f64Eq`, `f64Lt`, and `f64Le`.  It rejects every other form with a message.  The function that
 `main` calls takes `i64` and `f64` parameters.
 
@@ -21,7 +21,8 @@ the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits no
 a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` lies there as its
 word, so a reinterpretation emits nothing.  An f64 operation moves its operands' words into D0 and
 D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and `f64Abs`
-clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  An f64 comparison moves the words
+clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  `i64TruncSatF64U` moves the word
+into D0 and converts it back with `FCVTZU`.  An f64 comparison moves the words
 into D0 and D1, compares them with `FCMP`, and sets the register of the lower operand with `CSINC`
 and the inverse of `EQ`, `MI`, or `LS`, the conditions that hold after `FCMP` exactly when `f64Eq`,
 `f64Lt`, or `f64Le` gives 1.  X16 is the scratch register of `remUI64`, of the prologue, and of the
@@ -231,6 +232,10 @@ def absCode (r : Fin 32) : List Instr := [.addReg r r r, .lsrImm r r 1]
 back. -/
 def convertCode (r : Fin 32) : List Instr := [.ucvtf 0 r, .fmovXD r 0]
 
+/-- The code of `i64TruncSatF64U` on register `r`: its word into D0, and `FCVTZU` of D0 into `r`,
+which truncates toward zero, saturates, and gives 0 for a NaN, as Wasm's `trunc_sat` does. -/
+def truncCode (r : Fin 32) : List Instr := [.fmovDX 0 r, .fcvtzu r 0]
+
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
 `ar` values, the innermost first, for calls of functions whose numbers of parameters and results
@@ -247,7 +252,7 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
       (1, some (h - 1))
   | .f64Add | .f64Sub | .f64Mul | .f64Div | .f64Eq | .f64Lt | .f64Le => (4, some (h - 1))
   | .f64Sqrt => (3, some h)
-  | .f64Abs | .f64ConvertI64U => (2, some h)
+  | .f64Abs | .f64ConvertI64U | .i64TruncSatF64U => (2, some h)
   | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
   | .wrapI64 => (1, some h)
   | .extendUI32 => (0, some h)
@@ -330,6 +335,7 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .f64Sqrt => genUn ctl σ sqrtCode .f64
   | .f64Abs => genUn ctl σ absCode .f64
   | .f64ConvertI64U => genUn ctl σ convertCode .f64
+  | .i64TruncSatF64U => genUn ctl σ truncCode .i64
   | .i64ReinterpretF64 => genUn ctl σ (fun _ => []) .i64
   | .f64ReinterpretI64 => genUn ctl σ (fun _ => []) .f64
   | .wrapI64 => do

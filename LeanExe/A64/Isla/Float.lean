@@ -6,9 +6,9 @@ abstract, and the lemmas on the register `_Z` that the theorems of those forms u
 
 `tests/isla/armv9p4-checked-fp.diff` adds to the IR a monomorphic wrapper of each floating-point
 function that the forms of `LeanExe/A64/Machine.lean` call, `FPAdd64`, `FPSub64`, `FPMul64`,
-`FPDiv64`, `FPSqrt64`, and `FixedToFP64`, each of which calls the original function at 64 bits,
-and `tests/isla/traces.sh` leaves each wrapper abstract with `--abstract`.  The trace of a form
-then records the call with its arguments, among them the FPCR that the form read, and the
+`FPDiv64`, `FPSqrt64`, `FixedToFP64`, and `FPToFixed64`, each of which calls the original function
+at 64 bits, and `tests/isla/traces.sh` leaves each wrapper abstract with `--abstract`.  The trace of
+a form then records the call with its arguments, among them the FPCR that the form read, and the
 semantics of `Trace.lean` gives the call the meaning `A`.  Each equation below states, for one
 wrapper, that `A` gives the reference interpreter's function of `Interpreter/Wasm/Float.lean` for
 every operand under the startup's FPCR, `0x02000000`, which the traces record as the struct
@@ -64,6 +64,58 @@ def FixedToFPEq (A : Abstract) : Prop :=
   ∀ a : UInt64, A "FixedToFP64" [.bits 64 a.toNat, .bits 128 0, .bool true,
     .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_TIEEVEN"] =
     some (.bits 64 (Wasm.f64ConvertI64U a).toNat)
+
+/-- `FPToFixed(a, 0, TRUE, FPCR, FPRounding_ZERO, 64) = Wasm.i64TruncSatF64U a` under FPCR
+`0x02000000`, for the wrapper `FPToFixed64`: the conversion of the double `a` to an unsigned 64-bit
+integer with no fraction bits, rounding toward zero and saturating. -/
+def FPToFixedEq (A : Abstract) : Prop :=
+  ∀ a : UInt64, A "FPToFixed64" [.bits 64 a.toNat, .bits 128 0, .bool true,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_ZERO"] =
+    some (.bits 64 (Wasm.i64TruncSatF64U a).toNat)
+
+/-- The flags N, Z, C, and V that `State.fcmp` sets from the doubles `a` and `b`, as the 4-bit
+number NZCV: N is `IEEE64.lt a b`, Z is `IEEE64.eq a b`, C is the negation of N, and V holds when an
+operand is a NaN. -/
+def fcmpNZCV (a b : UInt64) : Nat :=
+  8 * (Wasm.IEEE64.lt a b).toNat + 4 * (Wasm.IEEE64.eq a b).toNat +
+    2 * (!Wasm.IEEE64.lt a b).toNat + (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b).toNat
+
+/-- `FPCompare(a, b, FALSE, FPCR)` gives the flags of `State.fcmp` under FPCR `0x02000000`: 0011 for
+an unordered pair, 0110 for equal values, 1000 when `a` lies below `b`, and 0010 when it lies above.
+`FCMP` calls `FPCompare` itself, whose result has 4 bits at every width, so the traces leave it
+abstract without a wrapper, and a call on operands of another width carries arguments that the
+equation does not name. -/
+def FPCompareEq (A : Abstract) : Prop :=
+  ∀ a b : UInt64, A "FPCompare" [.bits 64 a.toNat, .bits 64 b.toNat, .bool false,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 4 (fcmpNZCV a b))
+
+theorem nzcv_bits (n z c v : Bool) :
+    decide ((8 * n.toNat + 4 * z.toNat + 2 * c.toNat + v.toNat) / 8 % 2 = 1) = n ∧
+      decide ((8 * n.toNat + 4 * z.toNat + 2 * c.toNat + v.toNat) / 4 % 2 = 1) = z ∧
+      decide ((8 * n.toNat + 4 * z.toNat + 2 * c.toNat + v.toNat) / 2 % 2 = 1) = c ∧
+      decide ((8 * n.toNat + 4 * z.toNat + 2 * c.toNat + v.toNat) % 2 = 1) = v := by
+  cases n <;> cases z <;> cases c <;> cases v <;> decide
+
+theorem fcmpNZCV_lt (a b : UInt64) : fcmpNZCV a b < 16 := by
+  unfold fcmpNZCV
+  cases Wasm.IEEE64.lt a b <;> cases Wasm.IEEE64.eq a b <;>
+    cases (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b) <;> decide
+
+theorem fcmpNZCV_n (a b : UInt64) :
+    decide (fcmpNZCV a b / 8 % 2 = 1) = Wasm.IEEE64.lt a b := (nzcv_bits _ _ _ _).1
+
+theorem fcmpNZCV_z (a b : UInt64) :
+    decide (fcmpNZCV a b / 4 % 2 = 1) = Wasm.IEEE64.eq a b := (nzcv_bits _ _ _ _).2.1
+
+theorem fcmpNZCV_c (a b : UInt64) :
+    decide (fcmpNZCV a b / 2 % 2 = 1) = !Wasm.IEEE64.lt a b := (nzcv_bits _ _ _ _).2.2.1
+
+theorem fcmpNZCV_v (a b : UInt64) :
+    decide (fcmpNZCV a b % 2 = 1) = (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b) :=
+  (nzcv_bits _ _ _ _).2.2.2
+
+/-- The fields of `FCMP Dn, Dm`. -/
+def fcmpFields (n m : Fin 32) : Fields := [("Rm", m.val), ("Rn", n.val)]
 
 /-- The fields of a floating-point form of the registers `d` and `n`, such as `FSQRT Dd, Dn`. -/
 def fpFields2 (d n : Fin 32) : Fields := [("Rn", n.val), ("Rd", d.val)]
@@ -294,5 +346,13 @@ macro "xreg_end" : tactic => `(tactic| (
   done_end
   simp (disch := omega) only [setX_eq_setRegAt, setRegAt_pc, setRegAt_31, dAt_val,
     UInt64.ofNat_toNat, State.mk.injEq, and_true, true_and, and_self]))
+
+/-- Proves that the outcome at the end of the path of the trace of `FCMP Dn, Dm` is `exec`'s: it
+reads `__BranchTaken` and compares the flags that the trace writes from `FPCompare`'s result with
+those of `State.fcmp`. -/
+macro "flags_end" : tactic => `(tactic| (
+  done_end
+  simp (disch := omega) only [State.fcmp, dAt_val, fcmpNZCV_n, fcmpNZCV_z, fcmpNZCV_c,
+    fcmpNZCV_v, Nat.div_one, State.mk.injEq, and_true, true_and, and_self]))
 
 end LeanExe.A64.Isla

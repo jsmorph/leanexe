@@ -5,16 +5,18 @@ floating-point result by rounding a real number, which Isla does not implement, 
 leave the floating-point functions abstract with --abstract, and Isla makes the result of an
 abstract function a fresh variable, which needs a return type of fixed width (executor.rs 950-971
 of Isla e9b5d945).  FPAdd, FPSub, FPMul, FPDiv, FPSqrt, and FixedToFP return bits(N) for the width
-N of their operands or their argument N.
+N of their operands or their argument N, and FPToFixed returns bits(M) for its argument M.
 
-The diff adds FPAdd64, FPSub64, FPMul64, FPDiv64, FPSqrt64, and FixedToFP64, which take and return
-64-bit vectors and call the original function, FixedToFP64 with N = 64, and a dispatcher of each,
-FPAdd_sized and the others, which calls the wrapper when its first operand has 64 bits, and
-FixedToFP_sized when N is 64 as well, and calls the original function otherwise.  The call of each
+The diff adds FPAdd64, FPSub64, FPMul64, FPDiv64, FPSqrt64, FixedToFP64, and FPToFixed64, which
+take and return 64-bit vectors and call the original function, FixedToFP64 with N = 64 and
+FPToFixed64 with M = 64, and a dispatcher of each, FPAdd_sized and the others, which calls the
+wrapper when its first operand has 64 bits, and FixedToFP_sized when N is 64 as well and
+FPToFixed_sized when M is 64 as well, and calls the original function otherwise.  The call of each
 function in the execute function of FADD and FSUB (float_arithmetic_add_sub), FMUL
 (float_arithmetic_mul_product), FDIV (float_arithmetic_div), FSQRT (float_arithmetic_unary), and
-UCVTF and SCVTF from a general register (float_convert_int) serves the forms of every element
-size, and the diff makes it call the dispatcher in place of the function.  An abstract wrapper
+UCVTF and SCVTF from a general register and the conversions such as FCVTZU to a general register
+(float_convert_int) serves the forms of every element size, and the diff makes it call the
+dispatcher in place of the function.  An abstract wrapper
 therefore stands only for the 64-bit call: FADD on S registers still calls FPAdd, whose
 arithmetic on real numbers stops Isla's run with an error.  A dispatcher computes what the original
 function computes for every width, so without --abstract the edit changes no trace: the traces of
@@ -29,7 +31,7 @@ jump target moves.  Apply with
 
 --- armv9p4-checked.ir
 +++ armv9p4-checked-fp.ir
-@@ -114635,6 +114635,207 @@
+@@ -114635,6 +114635,248 @@
    arbitrary;
  }
  
@@ -234,10 +236,51 @@ jump target moves.  Apply with
 +  arbitrary;
 +}
 +
++val zFPToFixed64 : (%bv64, %i, %bool, %struct zFPCRType, %enum zFPRounding) ->  %bv64
++
++fn zFPToFixed64(zop, zfbits, zis_unsigned, zfpcr, zrounding) {
++  zz40 : %bv64;
++  zz41 : %i;
++  zz41 = zz5i64zDzKz5i(64);
++  zz42 : %i64;
++  zz42 = zz5izDzKz5i64(zz41);
++  zz40 = zFPToFixed(zop, zfbits, zis_unsigned, zfpcr, zrounding, zz42);
++  jump have_exception goto 9;
++  return = zz40;
++  end;
++  arbitrary;
++}
++
++val zFPToFixed_sized : (%bv, %i, %bool, %struct zFPCRType, %enum zFPRounding, %i64) ->  %bv
++
++fn zFPToFixed_sized(zop, zfbits, zis_unsigned, zfpcr, zrounding, zM) {
++  zz40 : %bv;
++  zz41 : %i;
++  zz41 = zbitvector_length(zop);
++  zz42 : %i;
++  zz42 = zz5i64zDzKz5i(64);
++  zz43 : %bool;
++  zz43 = zeq_int(zz41, zz42);
++  zz44 : %i;
++  zz44 = zz5i64zDzKz5i(zM);
++  zz45 : %bool;
++  zz45 = zeq_int(zz44, zz42);
++  jump @not(zz43) goto 13;
++  jump zz45 goto 16;
++  zz40 = zFPToFixed(zop, zfbits, zis_unsigned, zfpcr, zrounding, zM);
++  jump have_exception goto 20;
++  goto 18;
++  zz40 = zFPToFixed64(zop, zfbits, zis_unsigned, zfpcr, zrounding);
++  jump have_exception goto 20;
++  return = zz40;
++  end;
++  arbitrary;
++}
++
  val zFPSub_ZA : (%bv, %bv, %struct zFPCRType) ->  %bv
  
  fn zFPSub_ZA(zop1, zop2, zfpcr_in) {
-@@ -1932559,7 +1932760,7 @@
+@@ -1932559,7 +1932801,7 @@
    zz48 = () `24 10907:10-10907:61;
    goto 103;
    zz410 : %bv `24 10910:19-10910:68;
@@ -246,7 +289,7 @@ jump target moves.  Apply with
    jump have_exception goto 92 `24 10910:46-10910:67;
    goto 93;
    goto 115;
-@@ -1938592,7 +1938793,7 @@
+@@ -1938592,7 +1938834,7 @@
    zz49 : %unit `24 12533:4-12537:5;
    jump zsub_op goto 52 `24 12533:4-12537:5;
    zz415 : %bv `24 12536:17-12536:76;
@@ -255,7 +298,7 @@ jump target moves.  Apply with
    jump have_exception goto 40 `24 12536:44-12536:75;
    goto 41;
    goto 77;
-@@ -1938608,7 +1938809,7 @@
+@@ -1938608,7 +1938850,7 @@
    zz49 = () `24 12536:8-12536:76;
    goto 67;
    zz410 : %bv `24 12534:17-12534:76;
@@ -264,7 +307,16 @@ jump target moves.  Apply with
    jump have_exception goto 56 `24 12534:44-12534:75;
    goto 57;
    goto 77;
-@@ -1946300,7 +1946501,7 @@
+@@ -1946175,7 +1946417,7 @@
+   zz4178 : %bv `24 14273:10-14274:36;
+   zz4180 : %i `24 14273:40-14273:98;
+   zz4180 = zz5i64zDzKz5i(0) `24 14273:40-14273:98;
+-  zz4178 = zFPToFixed(zz4177, zz4180, zis_unsigned, zz40, zrounding, zintsizze) `24 14273:40-14273:98;
++  zz4178 = zFPToFixed_sized(zz4177, zz4180, zis_unsigned, zz40, zrounding, zintsizze) `24 14273:40-14273:98;
+   jump have_exception goto 167 `24 14273:40-14273:98;
+   goto 168;
+   goto 562;
+@@ -1946300,7 +1946542,7 @@
    zz4126 : %bv `24 14281:19-14281:107;
    zz4130 : %i `24 14281:48-14281:106;
    zz4130 = zz5i64zDzKz5i(0) `24 14281:48-14281:106;
@@ -273,7 +325,7 @@ jump target moves.  Apply with
    jump have_exception goto 292 `24 14281:48-14281:106;
    goto 293;
    goto 562;
-@@ -1961366,7 +1961567,7 @@
+@@ -1961366,7 +1961608,7 @@
    zz49 : %bv `24 17417:13-17417:79;
    zz415 : %struct zFPCRType `24 17417:40-17417:78;
    zz415 = zFPCR_read(()) `24 17417:66-17417:77;
@@ -282,7 +334,7 @@ jump target moves.  Apply with
    jump have_exception goto 40 `24 17417:40-17417:78;
    goto 41;
    goto 62;
-@@ -1971582,7 +1971783,7 @@
+@@ -1971582,7 +1971824,7 @@
    zz419 = zV_read(zz417, zz418) `24 19841:39-19841:53;
    zz44 = zz419 `24 19841:39-19841:53;
    zz45 : %bv `24 19841:4-19847:26;
