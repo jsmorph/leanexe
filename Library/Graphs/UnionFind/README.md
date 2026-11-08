@@ -14,18 +14,18 @@
 
 | Theorem | File | Statement |
 |---|---|---|
-| `exists_root` | [The proof](Proof.lean) | On a forest of `n` elements, fewer than `n` steps from an element reach a root. |
-| `root_eq` | [The proof](Proof.lean) | `root` with a count of at least `n` returns `rootOf`, the root of the element's tree. |
-| `forest_link`, `rootOf_link` | [The proof](Proof.lean) | A link from one root to another keeps a forest, and it gives the second root to every element of the first root's tree and keeps the root of every other element. |
-| `inv_keep`, `link_inv` | [The proof](Proof.lean) | `Inv` for the pairs below `t` gives `Inv` for the pairs below `t + 1` when pair `t` has an element of `n` or more or both elements in one tree, and after a link between the roots of the pair's elements in either direction. |
-| `merge_inv`, `forest_inv` | [The proof](Proof.lean) | After the pairs below `t`, the links form a forest, every element is equivalent to its parent, and the two elements of every pair taken whose elements are both below `n` have the same root. |
-| `equivalent_iff` | [The proof](Proof.lean) | After all pairs, two elements below `n` are equivalent exactly when they have the same root. |
-| `labels_spec` | [The proof](Proof.lean) | The labeling loop of `classes`, on any links that satisfy `Inv` for all the pairs, gives the least element of each class. |
-| `classes_spec` | [The proof](Proof.lean) | `LeastLabels n js ks (classes n js ks)` for arrays of fewer than `2^64` words. |
-| `classes_export` | [The compilation](Compiled.lean) | Export `classes` of `compiled.module` is function 5. |
-| `classes_call` | [The compilation](Compiled.lean) | Function 5, called with a count and two lent arrays from a ready store with room for `compiled.classes.bound`, returns without a trap the owned array `classes n js ks`. |
-| `classes_bound` | [The compilation](Compiled.lean) | `compiled.classes.bound` is three blocks of `n` words, `3 * Verified.blockCost n`. |
-| `unionFind_file`, `unionFind_file_decode` | [The file theorems](File.lean) | `build/verified/unionFind.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `exists_root` | [`Proof.lean`](Proof.lean) | On a forest of `n` elements, fewer than `n` steps from an element reach a root. |
+| `root_eq` | [`Proof.lean`](Proof.lean) | `root` with a count of at least `n` returns `rootOf`, the root of the element's tree. |
+| `forest_link`, `rootOf_link` | [`Proof.lean`](Proof.lean) | A link from one root to another keeps a forest, and it gives the second root to every element of the first root's tree and keeps the root of every other element. |
+| `inv_keep`, `link_inv` | [`Proof.lean`](Proof.lean) | `Inv` for the pairs below `t` gives `Inv` for the pairs below `t + 1` when pair `t` has an element of `n` or more or both elements in one tree, and after a link between the roots of the pair's elements in either direction. |
+| `merge_inv`, `forest_inv` | [`Proof.lean`](Proof.lean) | After the pairs below `t`, the links form a forest, every element is equivalent to its parent, and the two elements of every pair taken whose elements are both below `n` have the same root. |
+| `equivalent_iff` | [`Proof.lean`](Proof.lean) | After all pairs, two elements below `n` are equivalent exactly when they have the same root. |
+| `labels_spec` | [`Proof.lean`](Proof.lean) | The labeling loop of `classes`, on any links that satisfy `Inv` for all the pairs, gives the least element of each class. |
+| `classes_spec` | [`Proof.lean`](Proof.lean) | `LeastLabels n js ks (classes n js ks)` for arrays of fewer than `2^64` words. |
+| `classes_export` | [`Compiled.lean`](Compiled.lean) | Export `classes` of `compiled.module` is function 5. |
+| `classes_call` | [`Compiled.lean`](Compiled.lean) | Function 5, called with a count and two lent arrays from a ready store with room for `compiled.classes.bound`, returns without a trap the owned array `classes n js ks`. |
+| `classes_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.classes.bound` is three blocks of `n` words, `3 * Verified.blockCost n`. |
+| `unionFind_file`, `unionFind_file_decode` | [`File.lean`](File.lean) | `build/verified/unionFind.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `Forest` states that a rank increases from every element that is not a root to its parent, so the elements of a path are distinct, and `exists_root` follows by counting: a path of `n + 1` elements below `n` without a root would repeat one.  A link from the root `ra` to the root `rb` raises the ranks of every tree other than that of `ra` above the rank of `ra`, which keeps the ranks increasing.  `labels_spec` derives the label of each element from its root: by `equivalent_iff`, the elements with the root of `i` form the class of `i`, and the loop of `classes` records the least of them.  [Equivalence classes with path compression and union by size](../WeightedUnionFind/README.md) uses `inv_keep`, `link_inv`, and `labels_spec` with other links.
 

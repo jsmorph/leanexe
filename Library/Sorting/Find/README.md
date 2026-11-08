@@ -16,18 +16,18 @@ The first word of each subfile is the partitioning word, so on an array in incre
 
 | Theorem | File | Statement |
 |---|---|---|
-| `scanUp_spec`, `scanDown_spec` | [The proof](Proof.lean) | Step Q3 from `i` stops at the first word not below `K`, or at `e`, after words below `K`, and step Q4 from `j` stops at the last word not above `K`, or at `l`, before words above `K`. |
-| `swap_within`, `Frame.trans`, `FromSeg.trans`, `Frame.widen`, `FromSeg.widen` | [The proof](Proof.lean) | An exchange of two positions of `[l, e)` keeps every word outside the subfile in place and takes every word inside it from the subfile, and such changes compose and hold for every larger subfile. |
-| `part_spec` | [The proof](Proof.lean) | Steps Q3 to Q6 put `K` at its final position `m`, every word of `[l, m)` at most `K`, and every word of `(m, e)` at least `K`, by a change within `[l, e)`. |
-| `part_full` | [The proof](Proof.lean) | The partition of `[l, e)` around its first word, as the record `Parted`, which adds the size and the permutation. |
-| `find_spec` | [The proof](Proof.lean) | `find` permutes the array by a change within `[l, e)`, and when the subfile holds `k`, it leaves at `k` a word at least every word of `[l, k)` and at most every word of `(k, e)`. |
-| `rank_of_around` | [The proof](Proof.lean) | In a permutation of `xs` whose word at `k` is at least every earlier word and at most every later word, that word is the word at `k` of `xs` sorted. |
-| `select_eq` | [The proof](Proof.lean) | `select xs k = expected xs k` for every array with fewer than `2^64` elements and every rank. |
-| `pairwise_mergeSort_le` | [The sorted lists](../Sorted.lean) | `List.mergeSort` with the unsigned order of words returns a list in nondecreasing order. |
-| `select_export` | [The compilation](Compiled.lean) | Export `select` of `compiled.module` is function 7. |
-| `select_implements` | [The compilation](Compiled.lean) | Function 7, called with an array that the caller moves to it and a rank `k`, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.select.bound`, returns without a trap `expected xs k` and raises `top` by at most the bound. |
-| `select_bound` | [The compilation](Compiled.lean) | `compiled.select.bound` is 0, so a call does not raise `top`. |
-| `find_file`, `find_file_decode` | [The file theorems](File.lean) | `build/verified/find.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `scanUp_spec`, `scanDown_spec` | [`Proof.lean`](Proof.lean) | Step Q3 from `i` stops at the first word not below `K`, or at `e`, after words below `K`, and step Q4 from `j` stops at the last word not above `K`, or at `l`, before words above `K`. |
+| `swap_within`, `Frame.trans`, `FromSeg.trans`, `Frame.widen`, `FromSeg.widen` | [`Proof.lean`](Proof.lean) | An exchange of two positions of `[l, e)` keeps every word outside the subfile in place and takes every word inside it from the subfile, and such changes compose and hold for every larger subfile. |
+| `part_spec` | [`Proof.lean`](Proof.lean) | Steps Q3 to Q6 put `K` at its final position `m`, every word of `[l, m)` at most `K`, and every word of `(m, e)` at least `K`, by a change within `[l, e)`. |
+| `part_full` | [`Proof.lean`](Proof.lean) | The partition of `[l, e)` around its first word, as the record `Parted`, which adds the size and the permutation. |
+| `find_spec` | [`Proof.lean`](Proof.lean) | `find` permutes the array by a change within `[l, e)`, and when the subfile holds `k`, it leaves at `k` a word at least every word of `[l, k)` and at most every word of `(k, e)`. |
+| `rank_of_around` | [`Proof.lean`](Proof.lean) | In a permutation of `xs` whose word at `k` is at least every earlier word and at most every later word, that word is the word at `k` of `xs` sorted. |
+| `select_eq` | [`Proof.lean`](Proof.lean) | `select xs k = expected xs k` for every array with fewer than `2^64` elements and every rank. |
+| `pairwise_mergeSort_le` | [`Library/Sorting/Sorted.lean`](../Sorted.lean) | `List.mergeSort` with the unsigned order of words returns a list in nondecreasing order. |
+| `select_export` | [`Compiled.lean`](Compiled.lean) | Export `select` of `compiled.module` is function 7. |
+| `select_implements` | [`Compiled.lean`](Compiled.lean) | Function 7, called with an array that the caller moves to it and a rank `k`, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.select.bound`, returns without a trap `expected xs k` and raises `top` by at most the bound. |
+| `select_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.select.bound` is 0, so a call does not raise `top`. |
+| `find_file`, `find_file_decode` | [`File.lean`](File.lean) | `build/verified/find.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 `part_spec` follows the recursion of `part` with the invariant that the words of `(l, i]` are at most `K` and the words of `[j, e)` at least `K`: step Q6 exchanges a word not below `K` with a word not above `K`, and when the scans cross, step Q5 moves `K` to the position where step Q4 stopped.  `find_spec` proceeds by functional induction on `find`.  When the loop continues with the part before `j`, the word that it leaves at `k` comes from that part and is at most `K`, while every word from `j` on is at least `K`, and the part after `j` is symmetric.  `rank_of_around` sorts the words before `k` and after `k` around the word at `k`, which gives a nondecreasing permutation of the array, equal to `List.mergeSort` by `eq_mergeSort_of_sorted_perm`, and that sorted list holds at position `k` the permutation's word at `k`.  `select_implements` is an `ImplementsA` theorem, since the caller moves the array into the call, and its axiom report names only `propext`, `Classical.choice`, and `Quot.sound`.
 

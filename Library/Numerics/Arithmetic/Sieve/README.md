@@ -16,16 +16,16 @@ The crossing-off sets `⌊(N - 1 - p·p) / p⌋ + 1` flags for each prime `p` wi
 
 | Theorem | File | Statement |
 |---|---|---|
-| `struck_iff` | [The proof](Proof.lean) | Below `n`, a number has a factor `q` with `2 ≤ q` and `q·q` at most the number, `Struck n m`, exactly when it is at least 2 and not prime. |
-| `crossOff_spec` | [The proof](Proof.lean) | For `N` flags, `1 ≤ p`, and `p·p < N`, `crossOff p N` keeps `N` flags and sets the flags of the multiples of `p` from `p·p`, and no other. |
-| `sieveFrom_spec` | [The proof](Proof.lean) | From `p ≥ 2` with the flags of `Struck p`, the sieve ends with the flags of `Struck N`. |
-| `sieve_spec`, `sieve_unset` | [The proof](Proof.lean) | Below `N`, the sieve's flag of `m` is set exactly when `m` is at least 2 and not prime, so the numbers from 2 with unset flags are the primes. |
-| `countUnmarked_eq` | [The proof](Proof.lean) | `countUnmarked` counts the primes below `N`. |
-| `primes_eq` | [The proof](Proof.lean) | `primes N = expected N` for every word `N`. |
-| `primes_export` | [The compilation](Compiled.lean) | Export `primes` of `compiled.module` is function 5. |
-| `primes_implements` | [The compilation](Compiled.lean) | Function 5, called with a word `N` from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.primes.bound N`, returns without a trap the owned array `expected N` and raises `top` by at most the bound. |
-| `primes_bound` | [The compilation](Compiled.lean) | `compiled.primes.bound N` is `blockCost N + blockCost (expected N).size`: a block of `N` flags and a block of the result's words. |
-| `sieve_file`, `sieve_file_decode` | [The file theorems](File.lean) | `build/verified/sieve.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
+| `struck_iff` | [`Proof.lean`](Proof.lean) | Below `n`, a number has a factor `q` with `2 ≤ q` and `q·q` at most the number, `Struck n m`, exactly when it is at least 2 and not prime. |
+| `crossOff_spec` | [`Proof.lean`](Proof.lean) | For `N` flags, `1 ≤ p`, and `p·p < N`, `crossOff p N` keeps `N` flags and sets the flags of the multiples of `p` from `p·p`, and no other. |
+| `sieveFrom_spec` | [`Proof.lean`](Proof.lean) | From `p ≥ 2` with the flags of `Struck p`, the sieve ends with the flags of `Struck N`. |
+| `sieve_spec`, `sieve_unset` | [`Proof.lean`](Proof.lean) | Below `N`, the sieve's flag of `m` is set exactly when `m` is at least 2 and not prime, so the numbers from 2 with unset flags are the primes. |
+| `countUnmarked_eq` | [`Proof.lean`](Proof.lean) | `countUnmarked` counts the primes below `N`. |
+| `primes_eq` | [`Proof.lean`](Proof.lean) | `primes N = expected N` for every word `N`. |
+| `primes_export` | [`Compiled.lean`](Compiled.lean) | Export `primes` of `compiled.module` is function 5. |
+| `primes_implements` | [`Compiled.lean`](Compiled.lean) | Function 5, called with a word `N` from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.primes.bound N`, returns without a trap the owned array `expected N` and raises `top` by at most the bound. |
+| `primes_bound` | [`Compiled.lean`](Compiled.lean) | `compiled.primes.bound N` is `blockCost N + blockCost (expected N).size`: a block of `N` flags and a block of the result's words. |
+| `sieve_file`, `sieve_file_decode` | [`File.lean`](File.lean) | `build/verified/sieve.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
 In the proof of `sieveFrom_spec`, the flags when the sieve reaches `p` are those of `Struck p m`, a factor `q` of `m` with `2 ≤ q < p` and `q·q ≤ m`.  `Struck (p + 1)` holds for the numbers of `Struck p` and the multiples of `p` from `p·p`, whose flags `crossOff` sets for an unflagged `p`, by `crossOff_spec`.  A flagged `p` has a factor `q < p` with `q·q ≤ p`, and `q` divides every multiple of `p` from `p·p` with `q·q` below it, so skipping `p` adds nothing.  When the sieve stops, every `q` with `q·q ≤ m < N` lies below `p`, so the flags are those of `Struck N`, and `struck_iff`, with `Nat.minFac` for the converse, shows that they are the composite numbers.  `primes_implements` composes the generated `compiled.primes.trapFree` with `primes_eq`, and its axiom report names only `propext`, `Classical.choice`, and `Quot.sound`.  Its heap premise needs room for `8N + 8π(N) + 112` bytes below the cap of 65,535 pages, so with `top` at 0 it admits `N` up to about `5.1 × 10^8`, and `primes_implements` says nothing about a larger `N`, while `primes_eq` holds for every word.
 
