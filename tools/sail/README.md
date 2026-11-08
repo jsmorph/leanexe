@@ -260,6 +260,35 @@ root, which needs `Real.sqrt` against `Nat.sqrt` and the plan's argument that no
 about 600 lines.  By that estimate, inferred from the pilot and not measured, the six forms take
 about 3,300 lines in all, and checks of 3 to 5 minutes and 3 to 4 GB each.
 
+## The join with the Isla equations
+
+`FPAddEq A` (`LeanExe/A64/Isla/Float.lean`) constrains the meaning `A` that Isla's semantics gives
+the abstract call `FPAdd64`, on Isla's values: two 64-bit vectors and the struct of FPCR whose one
+field `bits` holds 0x02000000.  The theorems here speak of the translation's functions on
+`BitVec 64`, with FPCR a `BitVec 64`, from a state that satisfies `Hyp`.  `SailFPAdd A` in
+[`F7/Isla.lean`](F7/Isla.lean) states the link between the two: from every state that satisfies
+`Hyp`, whatever the translation's `FPAdd a b 0x02000000` returns, `A` returns on the same words and
+on `islaFPCR fpcrV`, the struct whose `bits` holds FPCR.  Lean does not check the link.  It rests on
+three claims that review supports: the IR's `zFPAdd64` returns `zFPAdd`'s result at 64 bits
+(`tests/isla/armv9p4-checked-fp.diff`); the IR's `zFPAdd`, which isla-sail compiled from sail-arm
+`111345b`, computes what the translation's FPAdd, from `7d0581642`, computes (Sources); and Isla's
+state at each abstract call, read as a register map of the translation, satisfies `Hyp`.  Since
+the pilot's result is the same from every state that satisfies `Hyp`, quantifying the link over all
+of them asks of Isla only what holds at the state of the call.  `fpAddEq_of_sail` derives
+`FPAddEq A` from `SailFPAdd A` and `fpAdd_eq_f64Add`, converting between `UInt64` and `BitVec 64`.
+
+The derivation needs a state that satisfies `Hyp`, and the witness comes from the profiles.
+`islaState p u` builds the registers that `Hyp` names from the profile `p` of
+`LeanExe/A64/Isla/Profile.lean` and its unknown values `u`: FeatureImpl from the values of the
+`features` file's lines in order, with `u.feature` last, as `InitFeatureImpl` builds it; PSTATE
+with the fields that `Profile.sys` sets and those of `u`; SCR_EL3, HCR_EL2, and SMCR_EL3 as the
+profile sets them; SMCR_EL1 and SMCR_EL2 from `u`; and FPSR 0.  `hyp_tcg`, `hyp_kvm`, and
+`hyp_sme` prove `Hyp` for every `u` under each profile, reading FEAT_AA64EL0 to FEAT_AA64EL3
+through the translation's `num_of_Feature`, and `names_tcg`, `names_kvm`, and `names_sme` prove
+that the line of each `features` file at the index `num_of_Feature F` names `F`, for the features
+that the proofs read: FEAT_AA64EL0 to FEAT_AA64EL3, FEAT_AFP, FEAT_SME, FEAT_SME_FA64, FEAT_VHE,
+and FEAT_SEL2.  The theorems depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
 ## What the proofs trust
 
 A theorem of `F7/` speaks about the Lean translation; it states Arm's FPAdd only as far as
@@ -276,7 +305,8 @@ the chain below translates the ASL faithfully.
 | `fp-measures.sail` | the loop measures, whose sufficiency `loop1_exit` and `loop2_exit` prove |
 | `fix-output.sh` | the three textual edits above |
 | The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library | the comparison in Sources |
-| F2's wrappers of the IR (planned) | the link between an `abstract-call` in a trace and `FPAdd` at 64 bits |
+| `armv9p4-checked-fp.diff`: `FPAdd64` returns `FPAdd` at 64 bits | in the Isla row |
+| The link `SailFPAdd`: the IR's `zFPAdd` and the translation's FPAdd compute one function, Isla's values correspond to the translation's, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
 
 ## Commands
 
