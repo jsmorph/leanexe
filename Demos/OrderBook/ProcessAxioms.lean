@@ -1,16 +1,20 @@
 import Demos.OrderBook.ProcessCompiledCorrect
 
-/-! The axiom audit of the order book's compiled process: every theorem in the namespace
-`Demos.OrderBook.Process`, which holds the native proofs, the declarations that
-`verified_compile_wasi` generates under `io`, the module's theorems, and the charges, the lemmas
-about `Program` that bound the events of a record and keep the sizes of the book's arrays, and every
-theorem of the closed forms of `run`'s bound in `Demos.OrderBook.Bound` use only `propext`,
-`Classical.choice`, and `Quot.sound`. -/
+/-! The axiom audit of the order book's process, native and compiled: every theorem in the
+namespace `Demos.OrderBook.Process`, which holds the native proofs, the declarations that
+`verified_compile_wasi` generates under `io`, the module's theorems, and the charges, every theorem
+of the closed forms of `run`'s bound in `Demos.OrderBook.Bound`, the lemmas about `Spec.run` that
+the process's batch lemma adds, and the lemmas about `Program` that bound the events of a record
+and keep the sizes of the book's arrays use only `propext`, `Classical.choice`, and `Quot.sound`.
+The full check's build reports the `#print axioms` lines and fails on the audit's error. -/
 
 open Lean Elab Command in
-elab "check_orderbook_compiled_axioms" : command => do
+run_cmd do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
-  let added := [``Demos.OrderBook.Program.matchStep_out_size,
+  let added := [``Demos.OrderBook.Spec.foldl_nextId_le, ``Demos.OrderBook.Spec.run_nextId_le,
+    ``Demos.OrderBook.Spec.foldl_events_length, ``Demos.OrderBook.Spec.run_events_length,
+    ``Demos.OrderBook.Spec.encodeAll_size,
+    ``Demos.OrderBook.Program.matchStep_out_size,
     ``Demos.OrderBook.Program.repeatWhile_out_size, ``Demos.OrderBook.Program.fillArrays_out_size,
     ``Demos.OrderBook.Program.submitArrays_out_size, ``Demos.OrderBook.Program.step_out_size,
     ``Demos.OrderBook.Program.fold_out_size, ``Demos.OrderBook.Program.loop_out_size,
@@ -27,11 +31,14 @@ elab "check_orderbook_compiled_axioms" : command => do
     for axiomName in ← collectAxioms declaration do
       unless permitted.contains axiomName do
         throwError "{declaration} uses forbidden axiom {axiomName}"
-  logInfo m!"Order book compiled process axiom check passed for \
-    {theorems.length + added.length} theorems"
+  logInfo m!"Order book process axiom check passed for {theorems.length + added.length} theorems"
 
-check_orderbook_compiled_axioms
-
+#print axioms Demos.OrderBook.Process.process_output
+#print axioms Demos.OrderBook.Process.process_exec_correct
+#print axioms Demos.OrderBook.Process.process_terminates
+#print axioms Demos.OrderBook.Process.process_terminates_future
+#print axioms Demos.OrderBook.Process.batch_refines
+#print axioms Demos.OrderBook.Process.future_step
 #print axioms Demos.OrderBook.Process.initial_terminates
 #print axioms Demos.OrderBook.Process.terminates_bytes
 #print axioms Demos.OrderBook.Process.runBound_74

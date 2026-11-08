@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests the order book's WASI process, native and compiled: the axiom audits of its proofs, the
+# Tests the order book's WASI process, native and compiled: the axiom audit of its proofs, the
 # emission and validation of the compiled module, the scripted-host runs of orderbook-process,
 # and the streams of tests/orderbook/run.sh through orderbook-native and through the module in the
 # Wasmtime host, compared byte for byte with the event words that orderbook-compare checks against
@@ -31,11 +31,8 @@ if [ tools/wasmtime-host.c -nt "$host" ]; then
 fi
 mkdir -p "$out/streams" "$out/ends" || exit 2
 
-tools/leanrun --timeout 90m lake build Demos.OrderBook.ProcessCorrect \
-  Demos.OrderBook.ProcessCompiledCorrect orderbook-native orderbook-process orderbook-compare ||
-  exit 1
-tools/leanrun --timeout 10m lake env lean "$tests/ProcessAxioms.lean" || exit 1
-tools/leanrun --timeout 20m lake env lean "$tests/ProcessCompiledAxioms.lean" || exit 1
+tools/leanrun --timeout 90m lake build Demos.OrderBook.ProcessAxioms orderbook-native \
+  orderbook-process orderbook-compare || exit 1
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Demos.OrderBook.ProcessModule \
   Demos.OrderBook.Process.module "$wasm" || exit 1
 wasm-tools validate "$wasm" || exit 1
