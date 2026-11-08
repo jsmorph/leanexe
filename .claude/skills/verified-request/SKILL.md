@@ -186,7 +186,7 @@ cover the shapes of the table.  For shapes beyond the table, the entries on
 [operation streams](../../../VKB/entries/operation-stream-refinement/README.md),
 [tail-recursive and fuel-bounded functions](../../../VKB/entries/tail-recursive-spec/README.md),
 [link-reversing tree updates](../../../VKB/entries/tree-link-reversal/README.md),
-[signed integers](../../../VKB/entries/signed-int64/README.md), and
+[programs over `Int64`](../../../VKB/entries/signed-int64/README.md), and
 [decimal text](../../../VKB/entries/decimal-conversions/README.md) cover those shapes.  When the
 program must also run as an AArch64 Image, a Cortex-M7 image, or a bare-metal C program, the entries
 on [AArch64 Image theorems](../../../VKB/entries/a64-image-theorem/README.md),
