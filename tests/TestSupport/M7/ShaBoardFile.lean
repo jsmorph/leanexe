@@ -18,9 +18,9 @@ begin the 32-byte digests of the blocks of 64 bytes that it reads from `USART_RD
 the SHA-256 digest of FIPS 180-4 of blocks 0 to `i`.  `sha_board_bytes` states the digests over the
 bytes read, with no records: one digest for each 64 bytes, digest `i` that of the first
 `64 (i + 1)` bytes.  `sha_board_runs` states that the run never stops.  The theorems hold of the processor under the run conditions of
-`LeanExe/M7/Proof/Board.lean`: a power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software
-watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt, debugger access, or DMA during
-the run.
+`LeanExe/M7/Proof/Board.lean`: a power-on reset, or an NRST reset with the debug registers at
+their power-on values, with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD),
+and no interrupt, NMI, debug halt, debugger access, or DMA during the run.
 -/
 
 namespace TestSupport.M7.ShaBoardFile

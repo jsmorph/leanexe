@@ -15,6 +15,7 @@ import F7.Isla32
 #print axioms F7.rdm_eq_rrm32
 #print axioms F7.round_normalR32
 #print axioms F7.fpRound_sqrt32
+#print axioms F7.round_zeroQ32
 #print axioms F7.fpAdd_eq_f64Add
 #print axioms F7.fpSub_eq_f64Sub
 #print axioms F7.fpMul_eq_f64Mul
@@ -33,6 +34,7 @@ import F7.Isla32
 #print axioms F7.fpToFixed32_eq_i64TruncSatF32U
 #print axioms F7.fpToFixed32S_eq_i32TruncSatF32S
 #print axioms F7.fpCompare32_eq_fcmpNZCV32
+#print axioms F7.fpRoundInt32_eq_f32Nearest
 #print axioms F7.fpAddEq_of_sail
 #print axioms F7.fpSubEq_of_sail
 #print axioms F7.fpMulEq_of_sail
@@ -51,6 +53,7 @@ import F7.Isla32
 #print axioms F7.fpToFixed32_64Eq_of_sail
 #print axioms F7.fpToFixed32_32Eq_of_sail
 #print axioms F7.fpCompare32Eq_of_sail
+#print axioms F7.fpRoundInt32Eq_of_sail
 #print axioms F7.hyp_tcg
 #print axioms F7.hyp_kvm
 #print axioms F7.hyp_sme

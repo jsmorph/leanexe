@@ -29,6 +29,13 @@
 # exception 4, with CFSR 0x00000082, DACCVIOL and MMARVALID, and MMFAR at the word below the
 # stack, and that of ldrd a UsageFault, exception 6, with CFSR 0x01000000, UNALIGNED.
 #
+# "usart3.sh nrst NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
+# reads the flash back and compares its first bytes with the file, and resets the board with
+# tools/baremetal/stlink_nrst.py, with its messages in NAME.nrst, which sets the debug registers
+# that a system reset keeps to their power-on values, leaves debug mode, and pulses NRST.  It then
+# plays the far end as "run" does, and for guard and ldrd it resets the board 2 s after the host
+# script starts.
+#
 # "usart3.sh emulate NAME" runs NAME.elf in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl.  For echo and gateway, USART3 lies on a pseudo-terminal,
 # NAME.pty, and a hook at main logs "reached main".  The model drops a byte that arrives while UE
@@ -50,14 +57,16 @@
 # for gateway the records NAME.records.in, NAME.records.out, and NAME.records.lean.  CCOMP,
 # CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen
 # configured armv7m-eabihf, OBJCOPY, OBJDUMP, and NM name objcopy, objdump, and nm for ARM, UV
-# names uv, RENODE names Renode 1.17.0's renode, and TIMEOUT, 120 unless set, bounds each wait of
-# the host script in seconds.
+# names uv, RENODE names Renode 1.17.0's renode, STFLASH names st-flash, and TIMEOUT, 120 unless
+# set, bounds each wait of the host script in seconds.
 # Usage: tests/baremetal/usart3.sh build [DIR]
 #        tests/baremetal/usart3.sh run NAME DEVICE
+#        tests/baremetal/usart3.sh nrst NAME DEVICE
 #        tests/baremetal/usart3.sh emulate NAME
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/usart3.sh build [DIR] | run NAME DEVICE | emulate NAME" >&2
+  echo "usage: tests/baremetal/usart3.sh build [DIR] | run NAME DEVICE | nrst NAME DEVICE |" \
+    "emulate NAME" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -65,6 +74,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 here=$root/tests/baremetal
 out=$(realpath -m "${OUT:-$root/build/baremetal/usart3}")
 uv=${UV:-uv}
+stflash=${STFLASH:-st-flash}
 timeout=${TIMEOUT:-120}
 nm=${NM:-arm-none-eabi-nm}
 
@@ -138,6 +148,32 @@ host_run() {
   fi
 }
 
+# Writes NAME.bin of OUT to the board's flash and compares the flash read back with it, with
+# st-flash's messages in NAME.flash.
+write_flash() {
+  local image=$out/$1.bin size
+  [ -f "$image" ] || { echo "fail: $1: $image is missing"; return 1; }
+  size=$(stat -c %s "$image")
+  "$stflash" write "$image" 0x08000000 >"$out/$1.flash" 2>&1 || {
+    echo "fail: st-flash write $1.bin: $(tail -c 300 "$out/$1.flash")"; return 1; }
+  "$stflash" read "$out/$1.readback" 0x08000000 "$size" >>"$out/$1.flash" 2>&1 || {
+    echo "fail: st-flash read: $(tail -c 300 "$out/$1.flash")"; return 1; }
+  if ! cmp -s -n "$size" "$image" "$out/$1.readback"; then
+    echo "fail: the flash differs from $1.bin: $(cmp -n "$size" "$image" "$out/$1.readback")"
+    return 1
+  fi
+  echo "pass: the flash holds the $size bytes of $1.bin"
+}
+
+# Resets the board through NRST with the debug registers at their power-on values, with the
+# messages of stlink_nrst.py in $1.nrst.
+nrst_reset() {
+  "$uv" run "$root/tools/baremetal/stlink_nrst.py" >"$out/$1.nrst" 2>&1 || {
+    echo "fail: stlink_nrst.py: $(tail -n 2 "$out/$1.nrst" | paste -sd' ' | head -c 400)"
+    return 1; }
+  tail -n 1 "$out/$1.nrst"
+}
+
 case $1 in
   build)
     [ "$#" -le 2 ] || usage
@@ -197,6 +233,26 @@ case $1 in
     case $2 in
       guard|ldrd) echo "usart3.sh: reset the board within $timeout s" >&2 ;;
     esac
+    host_run "$2" "$3"
+    ;;
+  nrst)
+    [ "$#" -eq 3 ] || usage
+    case $2 in
+      echo|gateway|guard|ldrd) ;;
+      *) usage ;;
+    esac
+    write_flash "$2"
+    case $2 in
+      guard|ldrd)
+        { sleep 2; nrst_reset "$2"; } &
+        reset_job=$!
+        status=0
+        host_run "$2" "$3" || status=1
+        wait "$reset_job" || status=1
+        exit "$status"
+        ;;
+    esac
+    nrst_reset "$2"
     host_run "$2" "$3"
     ;;
   emulate)

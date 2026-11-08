@@ -40,6 +40,18 @@ def leanFun (r : Reflected) : MetaM Lean.Expr :=
     let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
     mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
 
+/-- The proof of `b = r.flatResult (F y)` from the equation `r.meaningEq` at the projections `ps`
+of the argument tuple `y`, whose left side is `b` up to the kernel's reduction.  `F y` is a beta
+redex of `r.name ps`, which the kernel reduces at the top of the equation `r.name ps = F y` before
+`congrArg` applies the flattening.  Under the flattening, the kernel would unfold `r.name` and the
+head of its body before it reduces the redex (see the rule for beta redexes in `reflect`). -/
+def meaningAt (r : Reflected) (F y b : Lean.Expr) : MetaM Lean.Expr := do
+  let ps ← argProjsE y (paramModes r.params r.modes) r.params.length
+  let lean := mkAppN (mkConst r.name) ps.toArray
+  let hbeta ← mkExpectedTypeHint (← mkEqRefl lean) (← mkEq lean (mkApp F y))
+  let eq ← transHint (mkAppN (mkConst r.meaningEq) ps.toArray) (← mkCongrArg r.flatResult hbeta)
+  mkExpectedTypeHint eq (← mkEq b (mkApp r.flatResult (mkApp F y)))
+
 /-- The proof of the theorem `claim` that the module computes the definition of `r`: the
 compiler's theorem `h` for its source function, transferred to Lean's instances by `transfer`, which
 is `ImplementsA.transferAgree`, or `ImplementsAligned.transferAgree` for `p.f.aligned`.  The
@@ -56,7 +68,6 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     | throwError "verified_compile: the compiler's theorem {hTy}"
   let β := r.argsType
   let δ := r.resultType
-  let modes := paramModes r.params r.modes
   let hF ← withLocalDeclD `y β fun y => do
     let a := mkApp f (mkApp r.flatArgs y)
     let get := a.headBeta
@@ -67,10 +78,7 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let chain ← getChain funsVal fv env
     let some (_, _, b) := (← inferType chain).eq?
       | throwError "verified_compile: the meaning of {get}"
-    let c := mkApp r.flatResult (mkApp F y)
-    let projs ← argProjsE y modes r.params.length
-    let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
-    mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
+    mkLambdaFVars #[y] (← transHint (← transHint step chain) (← meaningAt r F y b))
   return mkAppN (mkConst transfer)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, pre, post, h,
       r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
@@ -85,7 +93,6 @@ def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     | throwError "verified_compile: the wrapper's theorem {hTy}"
   let β := r.argsType
   let δ := r.resultType
-  let modes := paramModes r.params r.modes
   let hF ← withLocalDeclD `y β fun y => do
     let a := mkApp f (mkApp r.flatArgs y)
     let get := a.headBeta
@@ -97,10 +104,7 @@ def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let chain ← getChain funsVal (← whnf fv) env
     let some (_, _, b) := (← inferType chain).eq?
       | throwError "verified_compile: the meaning of {get}"
-    let c := mkApp r.flatResult (mkApp F y)
-    let projs ← argProjsE y modes r.params.length
-    let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
-    mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
+    mkLambdaFVars #[y] (← transHint (← transHint step chain) (← meaningAt r F y b))
   return mkAppN (mkConst transfer)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, pre, post,
       h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
@@ -112,7 +116,6 @@ def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     | throwError "verified_compile: the static theorem {hTy}"
   let β := r.argsType
   let δ := r.resultType
-  let modes := paramModes r.params r.modes
   let hF ← withLocalDeclD `y β fun y => do
     let a := mkApp f (mkApp r.flatArgs y)
     let get := a.headBeta
@@ -123,10 +126,7 @@ def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let chain ← getChain funsVal (← whnf fv) env
     let some (_, _, b) := (← inferType chain).eq?
       | throwError "verified_compile: the meaning of {get}"
-    let c := mkApp r.flatResult (mkApp F y)
-    let projs ← argProjsE y modes r.params.length
-    let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
-    mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
+    mkLambdaFVars #[y] (← transHint (← transHint step chain) (← meaningAt r F y b))
   return mkAppN (mkConst ``ImplementsStatic.transferAgree)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, pool, aborts, m, entry, f,
       tables, pre, post, h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree,
