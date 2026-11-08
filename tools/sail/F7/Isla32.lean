@@ -5,6 +5,7 @@ import F7.FPSqrt32
 import F7.FixedToFP32
 import F7.FPToFixed32
 import F7.FPCompare32
+import F7.FPRoundInt32
 
 /-!
 The join of the translation's floating-point functions at 32 bits and the equations of the 32-bit
@@ -26,12 +27,14 @@ satisfies `Hyp`.  `fpAdd32Eq_of_sail` derives `FPAdd32Eq A` from `SailFPAdd32 A`
 `FixedToFP64_32Eq` from `SailFixedToFP64_32`, which identifies Isla's 128-bit vector 0 with the
 integer `fbits` 0 and the enumeration member `FPRounding_TIEEVEN` with the rounding mode, as
 `SailFixedToFP` of `F7/Isla.lean` does, and `fixedToFP32_32Eq_of_sail` derives `FixedToFP32_32Eq`
-from `SailFixedToFP32_32` likewise.  `fpToFixed32_64Eq_of_sail` derives `FPToFixed32_64Eq`, the
-equation of FCVTZU X←S, from `SailFPToFixed32_64`, `fpToFixed32_32Eq_of_sail` derives
-`FPToFixed32_32Eq`, the equation of FCVTZS W←S, from `SailFPToFixed32_32`, and
-`fpCompare32Eq_of_sail` derives
-`FPCompare32Eq`, the equation of FCMP S, from `SailFPCompare32`, which names the abstract call
-`FPCompare` on two 32-bit operands, as `SailFPCompare` names it on two 64-bit ones.
+from `SailFixedToFP32_32` likewise.  `fpRoundInt32Eq_of_sail` derives `FPRoundInt32Eq`, the
+equation of FRINTN S, from `SailFPRoundInt32`, which identifies Isla's enumeration member
+`FPRounding_TIEEVEN` and Boolean `false` with the rounding mode and the argument `exact`.
+`fpToFixed32_64Eq_of_sail` derives `FPToFixed32_64Eq`, the equation of FCVTZU X←S, from
+`SailFPToFixed32_64`, `fpToFixed32_32Eq_of_sail` derives `FPToFixed32_32Eq`, the equation of
+FCVTZS W←S, from `SailFPToFixed32_32`, and `fpCompare32Eq_of_sail` derives `FPCompare32Eq`, the
+equation of FCMP S, from `SailFPCompare32`, which names the abstract call `FPCompare` on two 32-bit
+operands, as `SailFPCompare` names it on two 64-bit ones.
 -/
 
 open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
@@ -110,6 +113,25 @@ theorem fpSqrt32Eq_of_sail (A : Abstract) (h : SailFPSqrt32 A) :
     LeanExe.A64.Isla.FPSqrt32Eq A := by
   intro a
   obtain ⟨s', hrun, -, -⟩ := fpSqrt32_eq_f32Sqrt a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPRoundInt32` and the translation's FPRoundInt at 32 bits
+under FPCR 0x02000000, rounding to nearest with ties to even and without the inexact exception,
+which review supports. -/
+def SailFPRoundInt32 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr →
+    (FPRoundInt a fpcrV .FPRounding_TIEEVEN false).run s = .ok v s' →
+    A "FPRoundInt32" [.bits 32 a.toNat, islaFPCR fpcrV, .enum "FPRounding_TIEEVEN", .bool false] =
+      some (.bits 32 v.toNat)
+
+theorem fpRoundInt32Eq_of_sail (A : Abstract) (h : SailFPRoundInt32 A) :
+    LeanExe.A64.Isla.FPRoundInt32Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpRoundInt32_eq_f32Nearest a.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
   exact e
