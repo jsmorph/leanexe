@@ -15,12 +15,16 @@ import F7.Isla
 #print axioms F7.fpDiv_eq_f64Div
 #print axioms F7.fpSqrt_eq_f64Sqrt
 #print axioms F7.fixedToFP_eq_f64ConvertI64U
+#print axioms F7.fpToFixed_eq_i64TruncSatF64U
+#print axioms F7.fpCompare_eq_fcmpNZCV
 #print axioms F7.fpAddEq_of_sail
 #print axioms F7.fpSubEq_of_sail
 #print axioms F7.fpMulEq_of_sail
 #print axioms F7.fpDivEq_of_sail
 #print axioms F7.fpSqrtEq_of_sail
 #print axioms F7.fixedToFPEq_of_sail
+#print axioms F7.fpToFixedEq_of_sail
+#print axioms F7.fpCompareEq_of_sail
 #print axioms F7.hyp_tcg
 #print axioms F7.hyp_kvm
 #print axioms F7.hyp_sme
