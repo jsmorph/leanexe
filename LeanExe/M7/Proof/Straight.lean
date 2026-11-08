@@ -8,7 +8,9 @@ SP, LR, r8 to r12, memory, device trace, and read count of `s`, which every form
 r0 to r7, the flags, and the program counter keeps.  `exec_bcondTo` gives the target of a
 conditional branch that `Instr.bcondTo` builds from a byte offset, and `reach_bxLr` the return of
 `BX LR`.  `run_block` and `run_branch` run placed register code, the second followed by a
-conditional branch.  The tactic `state_simp` reads the registers and flags of a state that `exec`
+conditional branch.  `steps_seq`, `steps_bcondTo`, `steps_bxLr`, `steps_bcond`, `steps_block`, and
+`steps_branch` state the same runs with their numbers of steps, one for each instruction.  The
+tactic `state_simp` reads the registers and flags of a state that `exec`
 built, and `addr_eq` proves equations of addresses.
 -/
 
@@ -119,10 +121,10 @@ def execSeq (P : Platform) (σ : Nat → UInt32) : List Instr → State → Opti
   | i :: is, s => (exec P σ i s).bind (execSeq P σ is)
 
 /-- Placed instructions that do not branch take the model from their first address to the state
-that `execSeq` gives, at the address after them. -/
-theorem reach_seq {is : List Instr} {s t : State} (hf : is.all Instr.falls = true)
+that `execSeq` gives, at the address after them, in one step each. -/
+theorem steps_seq {is : List Instr} {s t : State} (hf : is.all Instr.falls = true)
     (hc : CodeAt code s.pc is) (he : execSeq P σ is s = some t) :
-    Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (codeSize is) := by
+    Steps P σ code is.length s t ∧ t.pc = s.pc + UInt32.ofNat (codeSize is) := by
   induction is generalizing s with
   | nil =>
       cases he
@@ -135,9 +137,16 @@ theorem reach_seq {is : List Instr} {s t : State} (hf : is.all Instr.falls = tru
       have hpc := exec_falls_pc hf.1 hu
       rw [size_of_falls hf.1, show s.pc + UInt32.ofNat 4 = u.pc from hpc.symm] at hcs
       obtain ⟨hr, hp⟩ := ih hf.2 hcs hut
-      refine ⟨reach_exec hci hu hr, ?_⟩
+      refine ⟨steps_exec hci hu hr, ?_⟩
       rw [hp, hpc, codeSize_cons, size_of_falls hf.1, ← add_ofNat_add]
       rfl
+
+/-- Placed instructions that do not branch take the model from their first address to the state
+that `execSeq` gives, at the address after them. -/
+theorem reach_seq {is : List Instr} {s t : State} (hf : is.all Instr.falls = true)
+    (hc : CodeAt code s.pc is) (he : execSeq P σ is s = some t) :
+    Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (codeSize is) :=
+  ⟨(steps_seq hf hc he).1.reach, (steps_seq hf hc he).2⟩
 
 /-- `UDIV` with a nonzero divisor writes the quotient. -/
 theorem exec_udiv {d n m : Fin 8} {s : State} (h : s.r m ≠ 0) :
@@ -257,27 +266,54 @@ theorem condHolds_cc (s : State) : s.condHolds 3 = !s.cFlag := by cases s; rfl
 
 /-- A placed `B<cond>.W` from `Instr.bcondTo` reaches its target when its condition holds and the
 next instruction otherwise. -/
+theorem steps_bcondTo {cond : Fin 14} {off : Int} {s : State} (he : off % 2 = 0)
+    (hlo : -1048576 ≤ off) (hhi : off < 1048576) (hc : CodeAt code s.pc [Instr.bcondTo cond off]) :
+    Steps P σ code 1 s
+      { s with pc := if s.condHolds cond then s.pc + 4 + UInt32.ofInt off else s.pc + 4 } :=
+  steps_exec hc (exec_bcondTo cond he hlo hhi s) (.refl _)
+
 theorem reach_bcondTo {cond : Fin 14} {off : Int} {s : State} (he : off % 2 = 0)
     (hlo : -1048576 ≤ off) (hhi : off < 1048576) (hc : CodeAt code s.pc [Instr.bcondTo cond off]) :
     Reach P σ code s
       { s with pc := if s.condHolds cond then s.pc + 4 + UInt32.ofInt off else s.pc + 4 } :=
-  reach_exec hc (exec_bcondTo cond he hlo hhi s) (.refl _)
+  (steps_bcondTo he hlo hhi hc).reach
+
+/-- A placed `BX LR` returns to LR with bit 0 clear when bit 0 is set, in one step. -/
+theorem steps_bxLr {s : State} (hc : CodeAt code s.pc [.bxLr]) (hlr : s.lr % 2 = 1) :
+    Steps P σ code 1 s { s with pc := s.lr &&& 0xFFFFFFFE } :=
+  steps_exec hc (by simp [exec, hlr]) (.refl _)
 
 /-- A placed `BX LR` returns to LR with bit 0 clear when bit 0 is set. -/
 theorem reach_bxLr {s : State} (hc : CodeAt code s.pc [.bxLr]) (hlr : s.lr % 2 = 1) :
     Reach P σ code s { s with pc := s.lr &&& 0xFFFFFFFE } :=
-  reach_exec hc (by simp [exec, hlr]) (.refl _)
+  (steps_bxLr hc hlr).reach
+
+/-- A placed `B<cond>.W` from `Instr.bcondTo` whose target, its address plus 4 plus the offset,
+is `target`, in one step. -/
+theorem steps_bcond {cond : Fin 14} {off : Int} {s : State} (target : UInt32) (he : off % 2 = 0)
+    (hlo : -1048576 ≤ off) (hhi : off < 1048576) (hc : CodeAt code s.pc [Instr.bcondTo cond off])
+    (ht : s.pc + 4 + UInt32.ofInt off = target) :
+    Steps P σ code 1 s { s with pc := if s.condHolds cond then target else s.pc + 4 } := by
+  rw [← ht]
+  exact steps_bcondTo he hlo hhi hc
 
 /-- A placed `B<cond>.W` from `Instr.bcondTo` whose target, its address plus 4 plus the offset,
 is `target`. -/
 theorem reach_branch {cond : Fin 14} {off : Int} {s : State} (target : UInt32) (he : off % 2 = 0)
     (hlo : -1048576 ≤ off) (hhi : off < 1048576) (hc : CodeAt code s.pc [Instr.bcondTo cond off])
     (ht : s.pc + 4 + UInt32.ofInt off = target) :
-    Reach P σ code s { s with pc := if s.condHolds cond then target else s.pc + 4 } := by
-  rw [← ht]
-  exact reach_bcondTo he hlo hhi hc
+    Reach P σ code s { s with pc := if s.condHolds cond then target else s.pc + 4 } :=
+  (steps_bcond target he hlo hhi hc ht).reach
 
 /-! ## Placed register code and the tactics that read its states -/
+
+/-- Placed straight-line register code reaches the state that `execSeq` gives, in one step for
+each instruction, and keeps what `Keeps` names. -/
+theorem steps_block {is : List Instr} {s t : State} (hf : is.all Instr.falls = true)
+    (hr : is.all Instr.regOnly = true) (hc : CodeAt code s.pc is)
+    (he : execSeq P σ is s = some t) :
+    Steps P σ code is.length s t ∧ t.pc = s.pc + UInt32.ofNat (codeSize is) ∧ Keeps s t :=
+  ⟨(steps_seq hf hc he).1, (steps_seq hf hc he).2, execSeq_keeps hr he⟩
 
 /-- Placed straight-line register code reaches the state that `execSeq` gives and keeps what
 `Keeps` names. -/
@@ -285,12 +321,31 @@ theorem run_block {is : List Instr} {s t : State} (hf : is.all Instr.falls = tru
     (hr : is.all Instr.regOnly = true) (hc : CodeAt code s.pc is)
     (he : execSeq P σ is s = some t) :
     Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (codeSize is) ∧ Keeps s t :=
-  ⟨(reach_seq hf hc he).1, (reach_seq hf hc he).2, execSeq_keeps hr he⟩
+  let ⟨r, p, k⟩ := steps_block hf hr hc he
+  ⟨r.reach, p, k⟩
+
+/-- Placed straight-line register code followed by a placed `B<cond>.W` from `Instr.bcondTo`
+reaches, in one step for each instruction, the branch's target `target` when its condition holds
+of the code's last state and the next address `next` otherwise.  The program counter is stated
+with `cond`, whose condition is a `Bool` without a `Decidable` instance, so a proof can rewrite the
+condition alone. -/
+theorem steps_branch {xs : List Instr} {c : Fin 14} {off : Int} {s t : State}
+    (target next : UInt32) (hf : xs.all Instr.falls = true) (hr : xs.all Instr.regOnly = true)
+    (hc : CodeAt code s.pc (xs ++ [Instr.bcondTo c off])) (he : execSeq P σ xs s = some t)
+    (heven : off % 2 = 0) (hlo : -1048576 ≤ off) (hhi : off < 1048576)
+    (ht : s.pc + UInt32.ofNat (codeSize xs) + 4 + UInt32.ofInt off = target)
+    (hn : s.pc + UInt32.ofNat (codeSize xs) + 4 = next) :
+    ∃ u, Steps P σ code (xs.length + 1) s u ∧ Keeps s u ∧ u.regs = t.regs ∧
+      u.pc = cond (t.condHolds c) target next := by
+  obtain ⟨c1, c2⟩ := CodeAt.append.mp hc
+  obtain ⟨r1, p1, k1⟩ := steps_block hf hr c1 he
+  rw [← p1] at c2 ht hn
+  exact ⟨_, r1.trans (steps_bcond target heven hlo hhi c2 ht), k1.withPc _, rfl,
+    by rw [hn, Bool.cond_eq_ite]⟩
 
 /-- Placed straight-line register code followed by a placed `B<cond>.W` from `Instr.bcondTo`
 reaches the branch's target `target` when its condition holds of the code's last state and the
-next address `next` otherwise.  The program counter is stated with `cond`, whose condition is a
-`Bool` without a `Decidable` instance, so a proof can rewrite the condition alone. -/
+next address `next` otherwise. -/
 theorem run_branch {xs : List Instr} {c : Fin 14} {off : Int} {s t : State}
     (target next : UInt32) (hf : xs.all Instr.falls = true) (hr : xs.all Instr.regOnly = true)
     (hc : CodeAt code s.pc (xs ++ [Instr.bcondTo c off])) (he : execSeq P σ xs s = some t)
@@ -298,12 +353,9 @@ theorem run_branch {xs : List Instr} {c : Fin 14} {off : Int} {s t : State}
     (ht : s.pc + UInt32.ofNat (codeSize xs) + 4 + UInt32.ofInt off = target)
     (hn : s.pc + UInt32.ofNat (codeSize xs) + 4 = next) :
     ∃ u, Reach P σ code s u ∧ Keeps s u ∧ u.regs = t.regs ∧
-      u.pc = cond (t.condHolds c) target next := by
-  obtain ⟨c1, c2⟩ := CodeAt.append.mp hc
-  obtain ⟨r1, p1, k1⟩ := run_block hf hr c1 he
-  rw [← p1] at c2 ht hn
-  exact ⟨_, r1.trans (reach_branch target heven hlo hhi c2 ht), k1.withPc _, rfl,
-    by rw [hn, Bool.cond_eq_ite]⟩
+      u.pc = cond (t.condHolds c) target next :=
+  let ⟨u, r, k, g, p⟩ := steps_branch target next hf hr hc he heven hlo hhi ht hn
+  ⟨u, r.reach, k, g, p⟩
 
 /-- Proves an equation of addresses, a word plus numerals and byte counts of explicit lists of
 instructions, through `toNat`. -/

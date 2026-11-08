@@ -177,7 +177,7 @@ theorem sim_mulI64 (F : Nat) : InstrSim P σ code F .mulI64 :=
       slot_regs
       rw [h0, h1, h2, h3]
       exact mul_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 theorem sim_eqI64 (F : Nat) : InstrSim P σ code F .eqI64 :=
   sim_binary (inst := .eqI64) (ops := eqOps) (res := (0, 1)) (t := .i32)
@@ -188,7 +188,7 @@ theorem sim_eqI64 (F : Nat) : InstrSim P σ code F .eqI64 :=
       slot_regs
       rw [h0, h1, h2, h3, ofNat_imm0]
       exact eq_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 theorem gen_neI64 (E : Env) (ctl : List Ctl) (σs : List ValueType) (a : UInt32) :
     genInstr E ctl σs a .neI64 = genBin E ctl σs (eqOps ++ [.eorImm 0 0 1]) (0, 1) .i32 := rfl
@@ -222,7 +222,7 @@ theorem type_neI64 (a b : UInt64) : HasType .i32 (.i32 (if a ≠ b then 1 else 0
 theorem sim_neI64 (F : Nat) : InstrSim P σ code F .neI64 :=
   sim_binary (inst := .neI64) (ops := eqOps ++ [Instr.eorImm 0 0 1]) (res := (0, 1)) (t := .i32)
     (op := fun a b => .i32 (if a ≠ b then 1 else 0)) gen_neI64 regForm_neOps exec_neI64
-    invalid_neI64 regs_neI64 type_neI64 F
+    invalid_neI64 regs_neI64 type_neI64 rfl (fun _ => rfl) F
 
 /-! ## Unsigned order -/
 
@@ -306,7 +306,7 @@ theorem type_ltUI64 (a b : UInt64) : HasType .i32 (.i32 (if a < b then 1 else 0)
 theorem sim_ltUI64 (F : Nat) : InstrSim P σ code F .ltUI64 :=
   sim_binary (inst := .ltUI64) (ops := geOps ++ [Instr.eorImm 0 0 1]) (res := (0, 1)) (t := .i32)
     (op := fun a b => .i32 (if a < b then 1 else 0)) gen_ltUI64 regForm_ltOps exec_ltUI64
-    invalid_ltUI64 regs_ltUI64 type_ltUI64 F
+    invalid_ltUI64 regs_ltUI64 type_ltUI64 rfl (fun _ => rfl) F
 
 theorem sim_leUI64 (F : Nat) : InstrSim P σ code F .leUI64 :=
   sim_binary (inst := .leUI64) (ops := leOps) (res := (0, 1)) (t := .i32)
@@ -317,7 +317,7 @@ theorem sim_leUI64 (F : Nat) : InstrSim P σ code F .leUI64 :=
       slot_regs
       rw [h0, h1, h2, h3, ofNat_imm0, adc_zero]
       exact le_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 theorem sim_geUI64 (F : Nat) : InstrSim P σ code F .geUI64 :=
   sim_binary (inst := .geUI64) (ops := geOps) (res := (0, 1)) (t := .i32)
@@ -328,7 +328,7 @@ theorem sim_geUI64 (F : Nat) : InstrSim P σ code F .geUI64 :=
       slot_regs
       rw [h0, h1, h2, h3, ofNat_imm0, adc_zero]
       exact ge_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 /-! ## Shifts -/
 
@@ -358,7 +358,7 @@ theorem gen_shift {E : Env} {ctl : List Ctl} {σs : List ValueType} {ops : List 
 
 /-- The simulation of a shift that the generator compiles with `genShift`: the loads of the value
 below the top into r0:r1 and of the top's low word into r2, the register code `ops`, and the store
-of r0:r1. -/
+of r0:r1.  The form costs the units of its code. -/
 theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt64 → Value}
     (hgen : ∀ E ctl σs a, genInstr E ctl σs a inst = genShift E ctl σs ops)
     (hops : ops.all Instr.regForm = true)
@@ -370,7 +370,9 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg)
     (hval : ∀ (u : State) (a b : UInt64), u.r 0 = a.toUInt32 → u.r 1 = (a >>> 32).toUInt32 →
       u.r 2 = b.toUInt32 → SlotRel (op a b) ((slotRun P σ ops u).r 0) ((slotRun P σ ops u).r 1))
-    (htype : ∀ a b, HasType .i64 (op a b)) (F : Nat) : InstrSim P σ code F inst := by
+    (htype : ∀ a b, HasType .i64 (op a b)) (hplain : plainForm inst = true)
+    (hcost : ∀ ar, ops.length + 5 = (instrSize (fun _ => none) ar 0 inst).1) (F : Nat) :
+    InstrSim P σ code F inst := by
   intro E ctl σs a is fin hg hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h4, h5, rfl, rfl⟩ := gen_shift hg
@@ -383,7 +385,7 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
         obtain ⟨-, -, ha0, ha1, hb0, -⟩ := hinv.top2 hv
         obtain ⟨hk8, hklr, -⟩ := E.frame.opAt_bounds (k := σs.length - 2) (by omega)
         obtain ⟨hj8, hjlr, hlrs⟩ := E.frame.opAt_bounds hlt
-        exact outcome_two hinv hsr hpc hcode hb2 hlt
+        refine Outcome.mono (outcome_two hinv hsr hpc hcode hb2 hlt
           (slotsOk_ld (P := P) (t := 0) (h := h0) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 1) (h := h1) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 2) (h := h2) (hinv.frame.word (by omega) (by omega))
@@ -391,7 +393,10 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
           (hval (slotRun P σ [.ldrSp 0 ⟨E.frame.opAt (σs.length - 2), h0⟩,
             .ldrSp 1 ⟨E.frame.opAt (σs.length - 2) + 4, h1⟩,
             .ldrSp 2 ⟨E.frame.opAt (σs.length - 1), h2⟩] ms) a' b ha0 ha1 hb0)
-          (htype a' b)
+          (htype a' b)) (le_costOne_plain hplain ?_)
+        rw [← hcost]
+        simp only [List.length_append, List.length_cons, List.length_nil]
+        omega
       · obtain ⟨msg, he⟩ := hinvalid f m st sl (fun b a vs h => hshape ⟨b, a, vs, h⟩)
         rw [he]
         trivial
@@ -404,7 +409,7 @@ theorem sim_shlI64 (F : Nat) : InstrSim P σ code F .shlI64 :=
       slot_regs
       rw [sub_addWithCarry, sub_addWithCarry, ofNat_imm32, ofNat_imm63, h0, h1, h2]
       exact shl_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 theorem sim_shrUI64 (F : Nat) : InstrSim P σ code F .shrUI64 :=
   sim_shift (inst := .shrUI64) (ops := shrOps) (op := fun a b => .i64 (a >>> (b % 64))) (fun _ _ _ _ => rfl) rfl
@@ -414,7 +419,7 @@ theorem sim_shrUI64 (F : Nat) : InstrSim P σ code F .shrUI64 :=
       slot_regs
       rw [sub_addWithCarry, sub_addWithCarry, ofNat_imm32, ofNat_imm63, h0, h1, h2]
       exact shr_slot a b)
-    (fun _ _ => trivial) F
+    (fun _ _ => trivial) rfl (fun _ => rfl) F
 
 /-! ## `eqzI64` and `extendUI32` -/
 
@@ -476,8 +481,8 @@ theorem sim_eqzI64 (F : Nat) : InstrSim P σ code F .eqzI64 := by
           rw [show u.r 0 = x.toUInt32 from hx0, show u.r 1 = (x >>> 32).toUInt32 from hx1,
             ofNat_imm0]
           exact eqz_slot x
-        refine outcome_write hinv hsr hpc hcode hok ?_ hlt (by omega) hvl
-          (fun h v hv' => ?_) hval (Typed.cons trivial ?_)
+        refine Outcome.mono (outcome_write hinv hsr hpc hcode hok ?_ hlt (by omega) hvl
+          (fun h v hv' => ?_) hval (Typed.cons trivial ?_)) (le_costOne_plain rfl rfl)
         · rw [slotRun_append, slotRun_append, slotRun_st2, hm, hsp]
           rfl
         · have hl := getElem?_reverse_lt hv'
@@ -527,7 +532,8 @@ theorem sim_extendUI32 (F : Nat) : InstrSim P σ code F .extendUI32 := by
       · obtain ⟨x, vs, hv⟩ := hshape
         simp only [execOne.eq_def, hv]
         have hvl : vs.length = σs.length - 1 := by rw [hv] at hh; simp at hh; omega
-        refine ⟨_, rfl, ms, .refl _, by rw [hpc, after_eq]; simp, rfl, rfl, rfl,
+        refine ⟨_, rfl, ms, (Steps.refl _).mono (Nat.zero_le _), by rw [hpc, after_eq]; simp, rfl,
+          rfl, rfl,
           BodyKeeps.refl _ _ _, Below.refl _ _ _,
           ⟨by have h := hinv.height; rw [hv] at h; simpa using h, fun h v hv' => ?_,
             hinv.count, hinv.locals, hinv.ltypes, hinv.frame, ?_⟩, hsr⟩

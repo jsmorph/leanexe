@@ -73,7 +73,7 @@ def CopyCode (c : List Instr) (x y : Nat) : Prop :=
   ∃ h0 h1 h2 h3, c = [.ldrSp 0 ⟨x, h0⟩, .ldrSp 1 ⟨x + 4, h1⟩, .strSp 0 ⟨y, h2⟩, .strSp 1 ⟨y + 4, h3⟩]
 
 /-- Placed copies whose sources lie apart from every destination and whose destinations lie apart
-from each other, all within `Ram` words of a region that the checks accept. -/
+from each other, all within `Ram` words of a region that the checks accept, in four steps each. -/
 theorem run_copies {s : State} :
     ∀ {codes : List (List Instr)} {src dst : Nat → Nat},
       (∀ i (hi : i < codes.length), CopyCode codes[i] (src i) (dst i)) →
@@ -84,7 +84,8 @@ theorem run_copies {s : State} :
       (∀ i < codes.length, ∀ j < codes.length, i ≠ j → dst i + 8 ≤ dst j ∨ dst j + 8 ≤ dst i) →
       (∀ i < codes.length, src i + 8 ≤ 4294967296 ∧ dst i + 8 ≤ 4294967296) →
       CodeAt code s.pc codes.flatten →
-      ∃ t, Reach P σ code s t ∧ t.pc = s.pc + UInt32.ofNat (16 * codes.length) ∧ t.sp = s.sp ∧
+      ∃ t, Steps P σ code (4 * codes.length) s t ∧
+        t.pc = s.pc + UInt32.ofNat (16 * codes.length) ∧ t.sp = s.sp ∧
         t.lr = s.lr ∧ t.trace = s.trace ∧ t.reads = s.reads ∧
         (∀ i < codes.length, slotWords t (dst i) = slotWords s (src i)) ∧
         (∀ b, (∀ i < codes.length, Outside s.sp (dst i) b) → t.mem b = s.mem b)
@@ -98,7 +99,7 @@ theorem run_copies {s : State} :
         slotsOk_ld w0 (slotsOk_ld w1 (slotsOk_st w2 (slotsOk_st w3 (slotsOk_nil _))))
       rw [List.flatten_cons] at hc
       obtain ⟨hc1, hc2⟩ := CodeAt.append.mp hc
-      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := run_slots (σ := σ) hok hc1
+      obtain ⟨r1, p1, sp1, lr1, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hc1
       have hm1 : (slotRun P σ [.ldrSp 0 ⟨src 0, h0⟩, .ldrSp 1 ⟨src 0 + 4, h1⟩,
           .strSp 0 ⟨dst 0, h2⟩, .strSp 1 ⟨dst 0 + 4, h3⟩] s).mem =
           store32 (store32 s.mem (s.sp + UInt32.ofNat (dst 0))
@@ -126,7 +127,8 @@ theorem run_copies {s : State} :
           (fun i hi j hj hij => hdd (i + 1) (by simp; omega) (j + 1) (by simp; omega)
             (by omega))
           (fun i hi => hb (i + 1) (by simp; omega)) hc2
-      refine ⟨t, r1.trans rt, ?_, spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
+      refine ⟨t, (r1.trans rt).mono (by simp only [List.length_cons, List.length_nil]; omega), ?_,
+        spt.trans sp1, lrt.trans lr1, trt.trans tr1, rdt.trans rd1,
         fun i hi => ?_, fun b hbo => ?_⟩
       · rw [pt, p1]
         simp only [List.length_cons, List.length_nil]
@@ -278,13 +280,17 @@ theorem take_reverse_getElem? {β : Type} {l : List β} {p i : Nat} (hp : p ≤ 
   omega
 
 /-- The simulation of a call of function `k`: the copies of the arguments into the outgoing
-area, `BL`, the callee's `FunSim` from `CallsOk`, and the copies of the results. -/
+area, `BL`, the callee's `FunSim` from `CallsOk`, and the copies of the results, whose
+instructions besides the callee's `callCost` counts. -/
 theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
   intro E ctl σs a is fin hgen hcode hev _ hb _ α m st sl ms hinv hsr hpc hga need D hcl hD hroom
   obtain ⟨target, ps, rs, hk, hbp, hout, htake, args, res, off, hal, hargs, hah, hrl, hres, hrh,
     o1, o2, o3, o4, rfl, rfl⟩ := gen_call hgen
   have hfun : FunSim P σ code m E.toShared need f k (target, ps, rs) :=
     hcl k (target, ps, rs) hk f (by omega)
+  have hcc : callCost m k = 4 * ps.length + 1 + 4 * rs.length := hfun.1
+  have hcost : costOne (f + 1) m st sl (ctl.map Ctl.arity) (.call k) {} =
+      callCost m k + costRun f m k st sl.values {} := costOne_call
   have hh := hinv.len
   have hfit := hinv.frame.fits
   have hsz := E.frame.size_eq
@@ -348,7 +354,7 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
     rw [Prod.mk.injEq] at e
     rw [e.1, e.2]
     exact hv0
-  have hres0 := hfun st sl.values w (by simp only; omega)
+  have hres0 := hfun.2 st sl.values w (by simp only; omega)
     (by have := hinv.types.take p; rw [htake] at this; simpa [hp] using this) hwpc
     (by rw [hwd, State.lr_withLrPc]; exact or1_odd _) (by simpa [hp, hr] using hst)
     (by simpa [hp] using hargsW) (hsr.congr hkw)
@@ -421,7 +427,8 @@ theorem sim_call (f k : Nat) : InstrSim P σ code (f + 1) (.call k) := by
         rcases Nat.eq_zero_or_pos r with hr0 | hr0
         · have := hinv.height; omega
         · have := hrh (r - 1) (by omega); omega
-      refine ⟨_, rfl, t2, r1.trans (reach_exec hcB eBL (r2.trans r3)), ?_, ht2sp,
+      refine ⟨_, rfl, t2, (r1.trans (steps_exec hcB eBL (r2.trans r3))).mono
+          (by rw [hcost, hcc, hal, hrl]; omega), ?_, ht2sp,
         tr3.trans (tr2.trans (by rw [hwd, State.trace_withLrPc]; exact tr1)),
         rd3.trans (rd2.trans (by rw [hwd, State.reads_withLrPc]; exact rd1)),
         ⟨(hslot E.frame.lrOff (by omega) (by omega) fun j hj => by

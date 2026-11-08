@@ -86,6 +86,10 @@ def small : List Instr := [Instr.lslBy 2 0 0, Instr.lslBy 3 1 0, .movImm 0 0, .m
 
 end Udiv
 
+/-- The instructions that `udivmod64` executes at most, from its entry to its return: 29 outside
+its loop and 14 for each of at most 64 passes. -/
+def divBound : Nat := 925
+
 /-- The routine that divides the `UInt64` in r0 and r1 by the nonzero `UInt64` in r2 and r3. -/
 def udivmod64 : List Instr :=
   Udiv.test ++ Udiv.low ++ Udiv.high ++ Udiv.compare ++ Udiv.count ++ Udiv.shift ++ Udiv.clear ++

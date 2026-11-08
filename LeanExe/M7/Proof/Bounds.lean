@@ -5,7 +5,8 @@ The code of the area's accesses in the model: the loads and stores at a register
 the constants of two halves that address the area, and the bounds test of a 64-bit access.
 `run_bounds` states that the test, from a state whose address in the slot at `x` has a high word
 of 0 and a low word that `off` leaves within the size word, falls through both branches to the
-stub of an access outside memory and leaves the memory's base plus the address in r2.  Code whose
+stub of an access outside memory in its 14 steps and leaves the memory's base plus the address in
+r2.  Code whose
 every instruction takes 4 bytes splits at any of its instructions, `CodeAt.split_wide`.
 -/
 
@@ -55,15 +56,23 @@ theorem exec_str {s : State} {t n : Fin 8} {o : Fin 4096}
   simp only [exec, storeWord, h4, hd, hm, ne_eq, not_true_eq_false, ↓reduceIte, Bool.false_eq_true,
     Option.map_some]
 
+/-- A placed instruction that does not branch, followed by more code: one step executes it and
+reaches the code after it. -/
+theorem steps_falls {s u : State} {i : Instr} {rest : List Instr}
+    (hc : CodeAt code s.pc (i :: rest)) (hf : i.falls = true) (he : exec P σ i s = some u) :
+    Steps P σ code 1 s u ∧ CodeAt code u.pc rest ∧ u.pc = s.pc + 4 := by
+  obtain ⟨c0, c1⟩ := CodeAt.cons.mp hc
+  have hp := exec_falls_pc hf he
+  rw [size_of_falls hf, show s.pc + UInt32.ofNat 4 = u.pc by rw [hp]; rfl] at c1
+  exact ⟨steps_exec c0 he (.refl _), c1, hp⟩
+
 /-- A placed instruction that does not branch, followed by more code: a step executes it and
 reaches the code after it. -/
 theorem reach_falls {s u : State} {i : Instr} {rest : List Instr}
     (hc : CodeAt code s.pc (i :: rest)) (hf : i.falls = true) (he : exec P σ i s = some u) :
-    Reach P σ code s u ∧ CodeAt code u.pc rest ∧ u.pc = s.pc + 4 := by
-  obtain ⟨c0, c1⟩ := CodeAt.cons.mp hc
-  have hp := exec_falls_pc hf he
-  rw [size_of_falls hf, show s.pc + UInt32.ofNat 4 = u.pc by rw [hp]; rfl] at c1
-  exact ⟨reach_exec c0 he (.refl _), c1, hp⟩
+    Reach P σ code s u ∧ CodeAt code u.pc rest ∧ u.pc = s.pc + 4 :=
+  let ⟨r, c, p⟩ := steps_falls hc hf he
+  ⟨r.reach, c, p⟩
 
 /-! ## Register code -/
 
@@ -152,7 +161,7 @@ theorem gen_bounds_wide {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List In
 at the offset `x` from SP: when the address's high word is 0 and its low word plus `off` is at
 most the size word, which is at least `off`, the model passes both branches to the stub and
 reaches the test's end with the memory's base plus the address in r2 and with what `Keeps` names
-unchanged. -/
+unchanged, in 14 steps. -/
 theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
     (hg : boundsCode trap x off a = .ok bs) (hc : CodeAt code a bs) {s : State} (hpc : s.pc = a)
     (hw0 : WordOk P (s.sp + UInt32.ofNat x)) (hw1 : WordOk P (s.sp + UInt32.ofNat (x + 4)))
@@ -160,7 +169,7 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
     (hhi : load32 s.mem (s.sp + UInt32.ofNat (x + 4)) = 0)
     (hin : (load32 s.mem (s.sp + UInt32.ofNat x)).toNat + off ≤
       (load32 s.mem areaHeader).toNat) :
-    ∃ t, Reach P σ code s t ∧ t.pc = after a 14 ∧ Keeps s t ∧
+    ∃ t, Steps P σ code 14 s t ∧ t.pc = after a 14 ∧ Keeps s t ∧
       t.r 2 = areaMemory + load32 s.mem (s.sp + UInt32.ofNat x) := by
   obtain ⟨h0, h1, o1, o2, q1, q2, q3, q4, p1, p2, p3, p4, rfl⟩ := gen_bounds hg
   let L1 : List Instr := [.ldrSp 0 ⟨x, h0⟩, .ldrSp 1 ⟨x + 4, h1⟩] ++ movWord 2 areaHeader
@@ -181,7 +190,7 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
   -- the address's words and the header's address
   have hok : SlotsOk P s.sp L1 := slotsOk_ld hw0 (slotsOk_ld hw1 (slotsOk_reg rfl _))
   rw [← hpc] at c1
-  obtain ⟨r1, pc1, sp1, lr1, tr1, rd1, hi1⟩ := run_slots (σ := σ) hok c1
+  obtain ⟨r1, pc1, sp1, lr1, tr1, rd1, hi1⟩ := steps_slots (σ := σ) hok c1
   generalize hu1 : slotRun P σ L1 s = u1 at r1 pc1 sp1 lr1 tr1 rd1 hi1
   have hm1 : u1.mem = s.mem := by rw [← hu1]; rfl
   have hu1r : u1.r 0 = load32 s.mem (s.sp + UInt32.ofNat x) ∧ u1.r 1 = 0 ∧ u1.r 2 = areaHeader := by
@@ -214,7 +223,7 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
     (by rw [hr2]; simpa using hwh)
   generalize hu2 : ({ u1.setR 3 (load32 u1.mem (u1.r 2 + UInt32.ofNat (0 : Fin 4096).val)) with
     pc := u1.pc + 4 } : State) = u2 at e2
-  have r2 : Reach P σ code u1 u2 := reach_exec cLd e2 (.refl _)
+  have r2 : Steps P σ code 1 u1 u2 := steps_exec cLd e2 (.refl _)
   have hk2 : Keeps u1 u2 := by rw [← hu2]; exact ((Keeps.refl u1).setR _ _).withPc _
   have hpc2 : u2.pc = after a 5 := by rw [← hu2, State.pc_withPc, hpc1]; addr_after
   have hu2r : u2.r 0 = load32 s.mem (s.sp + UInt32.ofNat x) ∧ u2.r 1 = 0 ∧
@@ -227,7 +236,7 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
       simp
   -- `MOVW`, `SUB`, `CMP r1, #0`, and `BNE`
   rw [← hpc2] at cB1
-  obtain ⟨u3, r3, hk3, hrg3, hpc3⟩ := run_branch (P := P) (σ := σ) (s := u2)
+  obtain ⟨u3, r3, hk3, hrg3, hpc3⟩ := steps_branch (P := P) (σ := σ) (s := u2)
     (xs := L2) (c := condNE) trap (after a 9) rfl rfl cB1 (execSeq_reg rfl) q1 q2 q3
     (by rw [hpc2, ← q4, show codeSize L2 = 12 from rfl]; addr_after)
     (by rw [hpc2, show codeSize L2 = 12 from rfl]; addr_after)
@@ -247,7 +256,7 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
   -- `CMP r0, r3` and `BHI`
   rw [show cond false trap (after a 9) = after a 9 from rfl] at hpc3
   rw [← hpc3] at cB2
-  obtain ⟨u4, r4, hk4, hrg4, hpc4⟩ := run_branch (P := P) (σ := σ) (s := u3)
+  obtain ⟨u4, r4, hk4, hrg4, hpc4⟩ := steps_branch (P := P) (σ := σ) (s := u3)
     (xs := [Instr.cmpReg 0 3]) (c := condHI) trap (after a 11) rfl rfl cB2 (execSeq_reg rfl)
     p1 p2 p3 (by rw [hpc3, ← p4]; addr_after) (by rw [hpc3]; addr_after)
   have hsz : off ≤ (load32 s.mem areaHeader).toNat := by omega
@@ -272,9 +281,10 @@ theorem run_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
     exact hu3r.1
   -- the memory's base plus the address
   rw [← hpc4] at cL4
-  obtain ⟨r5, pc5, hk5⟩ := run_block (P := P) (σ := σ) (is := L4) (s := u4) rfl rfl cL4
+  obtain ⟨r5, pc5, hk5⟩ := steps_block (P := P) (σ := σ) (is := L4) (s := u4) rfl rfl cL4
     (execSeq_reg rfl)
-  refine ⟨slotRun P σ L4 u4, r1.trans (r2.trans (r3.trans (r4.trans r5))), ?_,
+  refine ⟨slotRun P σ L4 u4, (r1.trans (r2.trans (r3.trans (r4.trans r5)))).mono
+    (Nat.le_of_eq rfl), ?_,
     hk1.trans (hk2.trans (hk3.trans (hk4.trans hk5))), ?_⟩
   · rw [pc5, hpc4, show codeSize L4 = 12 from rfl]
     addr_after

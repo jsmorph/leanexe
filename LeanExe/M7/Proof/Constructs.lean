@@ -40,9 +40,6 @@ theorem wide_flatten_copies : ∀ {codes : List (List Instr)} {src dst : Nat →
           fun i hi => h (i + 1) (by simp; omega)]
       rfl
 
-theorem movConst_length (d : Fin 8) (w : Nat) : (movConst d w).length = halfSize w := by
-  unfold movConst halfSize; split <;> rfl
-
 theorem movConst_wide (d : Fin 8) (w : Nat) : (movConst d w).all Instr.wide = true := by
   unfold movConst; split <;> rfl
 
@@ -458,15 +455,15 @@ theorem getLast?_push {t : Ctl} {ctl : List Ctl} (h : ctl ≠ []) :
   | nil => exact absurd rfl h
   | cons c cs => simp
 
-/-- An outcome from a state that the model reaches from `ms` with SP, the device trace, the read
-count, the words that `BodyKeeps` names, and the operand slots below the innermost base
-unchanged, as an outcome from `ms`. -/
+/-- An outcome from a state that the model reaches from `ms` in at most `c1` steps with SP, the
+device trace, the read count, the words that `BodyKeeps` names, and the operand slots below the
+innermost base unchanged, as an outcome from `ms` with the steps added. -/
 theorem Outcome.trans {E : Env} {ctl : List Ctl} {fin : Option (List ValueType)} {endA : UInt32}
-    {α : Type} {r : Continuation α} {ms ms1 : State} (hctl : CtlOk ctl)
-    (hr : Reach P σ code ms ms1) (hsp : ms1.sp = ms.sp) (htr : ms1.trace = ms.trace)
+    {α : Type} {r : Continuation α} {ms ms1 : State} {c1 c2 : Nat} (hctl : CtlOk ctl)
+    (hr : Steps P σ code c1 ms ms1) (hsp : ms1.sp = ms.sp) (htr : ms1.trace = ms.trace)
     (hrd : ms1.reads = ms.reads) (hk : BodyKeeps E.frame ms.sp ms ms1)
-    (hb : Below E.frame (curBase ctl) ms ms1) (ho : Outcome P σ code E ctl fin endA r ms1) :
-    Outcome P σ code E ctl fin endA r ms := by
+    (hb : Below E.frame (curBase ctl) ms ms1) (ho : Outcome P σ code E ctl fin endA r c2 ms1) :
+    Outcome P σ code E ctl fin endA r (c1 + c2) ms := by
   cases r with
   | Fallthrough st' sl' =>
       obtain ⟨σ', hf, ms', hr', hp, hsp', htr', hrd', hk', hb', hinv', hsr'⟩ := ho
@@ -501,8 +498,8 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, coveredInstr inst = true → InstrSim
       intro is fin _ hg hcode hev hdiv hb hctl α m st sl ms hinv hsr hpc hal need D hcl hD hroom
       obtain ⟨rfl, rfl⟩ := gen_nil hg
       rw [ProofKit.exec_nil]
-      exact ⟨σs, rfl, ms, .refl _, by rw [hpc, after_eq]; simp, rfl, rfl, rfl,
-        BodyKeeps.refl _ _ _, Below.refl _ _ _, hinv, hsr⟩
+      exact ⟨σs, rfl, ms, (Steps.refl _).mono (Nat.zero_le _), by rw [hpc, after_eq]; simp, rfl,
+        rfl, rfl, BodyKeeps.refl _ _ _, Below.refl _ _ _, hinv, hsr⟩
   | cons i rest ih =>
       intro is fin hc hg hcode hev hdiv hb hctl α m st sl ms hinv hsr hpc hal need D hcl hD hroom
       simp only [coveredList, Bool.and_eq_true] at hc
@@ -516,19 +513,19 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, coveredInstr inst = true → InstrSim
       · subst his
         have hi := hI i hc.1 E ctl σs a _ none h1 hcode hev hdiv hb hctl m st sl ms hinv hsr hpc
           hali need D hcl hDi hroom
-        rw [ProofKit.exec_cons]
+        rw [ProofKit.exec_cons, costExec_cons]
         revert hi
         cases execOne F m st sl i with
         | Fallthrough st' sl' =>
             intro hi
             obtain ⟨_, hn, _⟩ := hi
             cases hn
-        | _ => intro hi; exact hi
+        | _ => intro hi; exact hi.mono (Nat.le_add_right _ _)
       · have hcs := (genInstr_size _ _ _ _ _ _ hc.1 h1).2.2
         have hc' := (CodeAt.append (code := code)).mp hcode
         have hi := hI i hc.1 E ctl σs a c1 (some σ') h1 hc'.1 hev hdiv hb hctl m st sl ms hinv hsr
           hpc hali need D hcl hDi hroom
-        rw [ProofKit.exec_cons]
+        rw [ProofKit.exec_cons, costExec_cons]
         revert hi
         cases hex : execOne F m st sl i with
         | Fallthrough st' sl' =>
@@ -542,7 +539,7 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, coveredInstr inst = true → InstrSim
               (by unfold room at *; rw [hsp]; exact hroom)
             rw [after_after, ← List.length_append] at ho
             exact Outcome.trans hctl hr hsp htr hrd hk hbl ho
-        | _ => intro hi; exact hi
+        | _ => intro hi; exact hi.of_ne_fall (Nat.le_add_right _ _) (by intro _ _ h; cases h)
 
 /-! ## Results of constructs -/
 
@@ -604,22 +601,23 @@ theorem Inv.of_kept {E : Env} {t : Ctl} {below : List Value} {σb : List ValueTy
     have hv' := hk.valAt hv
     rwa [show t.base + (h - below.length) = h by omega] at hv'
 
-/-- The outcome of a construct whose body, under the construct `t` and from `ms1`, gives `r`,
-where the model reaches `ms1` from `ms` with SP and the memory unchanged, the end `endB` of the
-body leads to `endT`, and a branch to `t` reaches `endT`, over the stack `below` of the types
-`σb`. -/
+/-- The outcome of a construct whose body, under the construct `t` and from `ms1`, gives `r` in at
+most `cb` steps, where the model reaches `ms1` from `ms` in at most `c1` steps with SP and the
+memory unchanged, the end `endB` of the body leads to `endT` in at most `cj` steps, and a branch to
+`t` reaches `endT`, over the stack `below` of the types `σb`. -/
 theorem construct_outcome {E : Env} {ctl : List Ctl} {α : Type} {r : Continuation α} {t : Ctl}
     {below : List Value} {σb : List ValueType} {ms ms1 : State} {fb : Option (List ValueType)}
-    {endB endT : UInt32} {ra : Nat} (hra : t.types.length = ra) (hctl : CtlOk ctl)
+    {endB endT : UInt32} {ra c1 cb cj : Nat} (hra : t.types.length = ra) (hctl : CtlOk ctl)
     (hb : curBase ctl ≤ t.base) (htg : t.target = endT) (hframe : FrameOk P E.frame E.limit ms)
     (hbelow : ∀ h v, below.reverse[h]? = some v → ValAt ms (E.frame.opAt h) v)
-    (hbt : Typed σb below) (hlen : below.length = t.base) (hr1 : Reach P σ code ms ms1)
+    (hbt : Typed σb below) (hlen : below.length = t.base) (hr1 : Steps P σ code c1 ms ms1)
     (hsp1 : ms1.sp = ms.sp) (htr1 : ms1.trace = ms.trace) (hrd1 : ms1.reads = ms.reads)
     (hmem1 : ms1.mem = ms.mem) (hfb : ∀ x, fb = some x → x = t.types ++ σb)
-    (hjump : ∀ s : State, s.pc = endB → ∃ s', Reach P σ code s s' ∧ s'.pc = endT ∧
+    (hjump : ∀ s : State, s.pc = endB → ∃ s', Steps P σ code cj s s' ∧ s'.pc = endT ∧
       s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.trace = s.trace ∧ s'.reads = s.reads)
-    (ho : Outcome P σ code E (t :: ctl) fb endB r ms1) :
-    Outcome P σ code E ctl (some (t.types ++ σb)) endT (ProofKit.blockResult ra below r) ms := by
+    (ho : Outcome P σ code E (t :: ctl) fb endB r cb ms1) :
+    Outcome P σ code E ctl (some (t.types ++ σb)) endT (ProofKit.blockResult ra below r)
+      (c1 + (cb + cj)) ms := by
   subst hra
   cases r with
   | Fallthrough st' sl' =>
@@ -670,17 +668,20 @@ theorem construct_outcome {E : Env} {ctl : List Ctl} {α : Type} {r : Continuati
           have ht0 : t' = t := by simpa using ht'.symm
           subst ht0
           have hb20 : Below E.frame t'.base ms ms2 := (Below.of_mem hmem1).trans hb2 hsp1
-          exact ⟨_, rfl, ms2, hr1.trans hr2, hp2.trans htg, hsp21, by rw [htr2, htr1],
+          exact ⟨_, rfl, ms2, (hr1.trans hr2).mono (by omega), hp2.trans htg, hsp21,
+            by rw [htr2, htr1],
             by rw [hrd2, hrd1], (BodyKeeps.of_mem hmem1).trans hk2, hb20.mono hb,
             Inv.of_kept hframe hsp21 hbelow hbt hlen hb20 hl2 hkt2, hsr2⟩
       | succ k =>
-          exact ⟨t', by simpa using ht', ms2, hr1.trans hr2, hp2, hsp21, by rw [htr2, htr1],
+          exact ⟨t', by simpa using ht', ms2, (hr1.trans hr2).mono (by omega), hp2, hsp21,
+            by rw [htr2, htr1],
             by rw [hrd2, hrd1], (BodyKeeps.of_mem hmem1).trans hk2,
             (Below.of_mem hmem1).trans hb2 hsp1, hl2, hkt2, hsr2⟩
   | Return st' vs =>
       obtain ⟨t', ht', ms2, hr2, hp2, hsp2, htr2, hrd2, hk2, hkt2, hsr2⟩ := ho
       rw [hsp1] at hk2
-      exact ⟨t', by rwa [getLast?_push hctl.nonempty] at ht', ms2, hr1.trans hr2, hp2,
+      exact ⟨t', by rwa [getLast?_push hctl.nonempty] at ht', ms2, (hr1.trans hr2).mono (by omega),
+        hp2,
         hsp2.trans hsp1, by rw [htr2, htr1], by rw [hrd2, hrd1],
         (BodyKeeps.of_mem hmem1).trans hk2, hkt2, hsr2⟩
   | Trap _ _ => trivial
@@ -722,7 +723,8 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
   have halb : E.area.isSome = true → m.memIs64 = false ∧
       AlignedExec f m st { sl with values := vs } (if c ≠ 0 then thn else els) {} :=
     fun h => ⟨(hal h).1, alignedOne_iff (hal h).2 hv⟩
-  rw [ProofKit.execOne_iff m st sl {} f 0 ra thn els pts rts c vs hv, List.drop_zero]
+  rw [ProofKit.execOne_iff m st sl {} f 0 ra thn els pts rts c vs hv, List.drop_zero,
+    costOne_iff hv]
   have hvl : vs.length = σs.length - 1 := by rw [hv] at hh; simp at hh; omega
   have htop : ValAt ms (E.frame.opAt (σs.length - 1)) (.i32 c) := by
     have := hinv.stack vs.length (.i32 c) (by
@@ -761,7 +763,7 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
     slotsOk_ld (hinv.frame.word (by omega) (by omega))
       (slotsOk_cons rfl (fun o ho => by cases ho) (slotsOk_nil _))
   rw [← hpc] at hcL
-  obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := run_slots (σ := σ) hok hcL
+  obtain ⟨r1, p1, sp1, -, tr1, rd1, -⟩ := steps_slots (σ := σ) hok hcL
   have hz : (slotRun P σ L ms).zFlag = (c == 0) := by
     simp only [L, slotRun_cons, slotRun_nil, slotStep, exec, Option.getD_some]
     state_simp
@@ -772,7 +774,7 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
     rw [p1, hpc, after_eq]
     try rfl
   rw [← hBpc] at hcQ
-  have rB := reach_bcondTo (P := P) (σ := σ) q1 q2 q3 hcQ
+  have rB := steps_bcondTo (P := P) (σ := σ) q1 q2 q3 hcQ
   have hc0 : (slotRun P σ L ms).condHolds 0 = (c == 0) := by rw [condHolds_eq, hz]
   rw [show condEQ = (0 : Fin 14) from rfl, hc0] at rB
   let t : Ctl :=
@@ -783,6 +785,7 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
     rw [List.length_tail]
     exact Nat.le_refl _
   have hctl' : CtlOk (t :: ctl) := hctl.push (show curBase ctl ≤ σs.length - 1 by omega)
+  have har : (t :: ctl).map Ctl.arity = ra :: ctl.map Ctl.arity := by simp [t, hrl]
   have hroom' : ∀ s : State, s.sp = ms.sp → D ≤ room E s := fun s hs => by
     unfold room at *
     rw [hs]
@@ -792,13 +795,13 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
   have hcl' := CallsOk.mono P σ code hcl (Nat.le_succ f)
   by_cases hcz : c = 0
   · -- the `else` branch
-    rw [ite_eq_right (fun h => h hcz)]
+    rw [ite_eq_right (fun h => h hcz), ite_eq_right (fun h => h hcz)]
     rw [ite_eq_right (fun h => h hcz)] at halb
     rw [show (c == 0) = true by simp [hcz], ite_eq_left rfl] at rB
     obtain ⟨u1, hu1d⟩ : ∃ u1 : State,
         u1 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 + UInt32.ofInt oq } :=
       ⟨_, rfl⟩
-    have rB' : Reach P σ code (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
+    have rB' : Steps P σ code 1 (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
     have hu1pc : u1.pc = after (after a (3 + Lt)) 1 := by
       rw [hu1d, State.pc_withPc, hBpc]; exact q4
     have hu1sp : u1.sp = ms.sp := by rw [hu1d, State.sp_withPc]; exact sp1
@@ -808,19 +811,19 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
     have ho := hP E (t :: ctl) σs.tail _ els ei ea hce hei hcE (even_after (even_after hev _) _)
       hdiv hbase hctl' m st { sl with values := vs } u1 (Inv.pop hinv hv hu1sp hu1m)
       (hsr.congr (KeepsBelow.of_mem hu1m)) hu1pc halb need D hcl' hDe (hroom' u1 hu1sp)
-    rw [hel] at ho
-    exact construct_outcome (t := t) (below := vs) (σb := σs.tail)
+    rw [hel, har] at ho
+    exact (construct_outcome (t := t) (below := vs) (σb := σs.tail)
       (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl
       (show curBase ctl ≤ σs.length - 1 by omega) rfl hinv.frame hbelow hty.tail hvl
       (r1.trans rB') hu1sp hu1tr hu1rd hu1m hea (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩)
-      ho
+      ho).mono (by have : L.length = 2 := rfl; omega)
   · -- the `then` branch
-    rw [ite_eq_left hcz]
+    rw [ite_eq_left hcz, ite_eq_left hcz]
     rw [ite_eq_left hcz] at halb
     rw [show (c == 0) = false from beq_false_of_ne hcz, ite_eq_right Bool.false_ne_true] at rB
     obtain ⟨u1, hu1d⟩ : ∃ u1 : State,
         u1 = { slotRun P σ L ms with pc := (slotRun P σ L ms).pc + 4 } := ⟨_, rfl⟩
-    have rB' : Reach P σ code (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
+    have rB' : Steps P σ code 1 (slotRun P σ L ms) u1 := by rw [hu1d]; exact rB
     have hu1pc : u1.pc = after a 3 := by
       rw [hu1d, State.pc_withPc, hBpc]
       try addr_after
@@ -831,14 +834,15 @@ theorem sim_iff {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (thn els : Li
     have ho := hP E (t :: ctl) σs.tail _ thn ti ta hct hti hcT (even_after hev _) hdiv hbase hctl'
       m st { sl with values := vs } u1 (Inv.pop hinv hv hu1sp hu1m)
       (hsr.congr (KeepsBelow.of_mem hu1m)) hu1pc halb need D hcl' hDt (hroom' u1 hu1sp)
-    rw [htl, after_after] at ho
-    exact construct_outcome (t := t) (below := vs) (σb := σs.tail)
+    rw [htl, after_after, har] at ho
+    exact (construct_outcome (t := t) (below := vs) (σb := σs.tail)
       (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl
       (show curBase ctl ≤ σs.length - 1 by omega) rfl hinv.frame hbelow hty.tail hvl
       (r1.trans rB') hu1sp hu1tr hu1rd hu1m hta
-      (fun s hs => ⟨_, reach_exec (by rw [hs]; exact hcB) (exec_bTo b1 b2 b3 s) (.refl _),
+      (fun s hs => ⟨_, steps_exec (by rw [hs]; exact hcB) (exec_bTo b1 b2 b3 s) (.refl _),
         by rw [State.pc_withPc, hs]; exact b4, State.sp_withPc _ _, State.mem_withPc _ _,
-        State.trace_withPc _ _, State.reads_withPc _ _⟩) ho
+        State.trace_withPc _ _, State.reads_withPc _ _⟩) ho).mono
+      (by have : L.length = 2 := rfl; omega)
 
 /-! ## Every covered instruction and list -/
 
@@ -867,11 +871,13 @@ theorem sim_block {f : Nat} (hP : ListSim P σ code f) (pa ra : Nat) (body : Lis
     (hctl.push hb) m st sl ms hinv hsr hpc
     (fun h => ⟨(hal h).1, alignedOne_block (hal h).2⟩) need D (CallsOk.mono P σ code hcl (by omega))
     (fun j hj => hD j (by simpa [callsOf] using hj)) hroom
-  rw [ProofKit.execOne_block, List.drop_zero]
-  exact construct_outcome (t := t) (below := sl.values) (σb := σs)
+  have har : (t :: ctl).map Ctl.arity = ra :: ctl.map Ctl.arity := by simp [t, hrl]
+  rw [har] at ho
+  rw [ProofKit.execOne_block, List.drop_zero, costOne_block]
+  exact (construct_outcome (t := t) (below := sl.values) (σb := σs)
     (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl hb rfl hinv.frame
     hinv.stack hinv.types hinv.len (.refl _) rfl rfl rfl rfl hfb
-    (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho
+    (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho).mono (by omega)
 
 /-- The simulation of a loop at every fuel up to `F`, by induction on the fuel: a branch back to
 the loop's head reaches the head with the stack of the loop's entry, from which the loop runs again
@@ -894,16 +900,18 @@ theorem sim_loop {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (pa ra : Nat)
         (Nat.le_refl _) (hctl.push hb) m st sl ms hinv hsr hpc
         (fun h => ⟨(hal h).1, (alignedOne_loop (hal h).2).1⟩) need D
         (CallsOk.mono P σ code hcl (by omega)) hD' hroom
-      rw [execOne_loop_succ f m st sl {} 0 ra body pts rts]
+      have har : (t :: ctl).map Ctl.arity = 0 :: ctl.map Ctl.arity := by simp [t]
+      rw [har] at ho
+      rw [execOne_loop_succ f m st sl {} 0 ra body pts rts, costOne_loop]
       revert ho
       cases hex : Wasm.exec f m st sl body with
       | Fallthrough st' sl' =>
           intro ho
           let t2 : Ctl := { target := after a is.length, types := rts.reverse, base := σs.length }
-          exact construct_outcome (t := t2) (r := .Fallthrough st' sl') (below := sl.values)
+          exact (construct_outcome (t := t2) (r := .Fallthrough st' sl') (below := sl.values)
             (σb := σs) (by show rts.reverse.length = ra; rw [List.length_reverse, hrl]) hctl hb
             rfl hinv.frame hinv.stack hinv.types hinv.len (.refl _) rfl rfl rfl rfl hfb
-            (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho
+            (fun s hs => ⟨s, .refl _, hs, rfl, rfl, rfl, rfl⟩) ho).mono (by omega)
       | Break k st' sl' =>
           intro ho
           obtain ⟨t', ht', ms', hr, hp, hsp, htr, hrd, hk, hbl, hloc, hkt, hsr'⟩ := ho
@@ -924,12 +932,13 @@ theorem sim_loop {F : Nat} (hP : ∀ g < F, ListSim P σ code g) (pa ra : Nat)
                 (by unfold room at *; rw [hsp]; exact hroom)
               exact Outcome.trans hctl hr hsp htr hrd hk (hbl.mono hb) ho2
           | succ k =>
-              exact ⟨t', by simpa using ht', ms', hr, hp, hsp, htr, hrd, hk, hbl, hloc, hkt,
-                hsr'⟩
+              exact ⟨t', by simpa using ht', ms', hr.mono (Nat.le_add_right _ _), hp, hsp, htr,
+                hrd, hk, hbl, hloc, hkt, hsr'⟩
       | Return st' vs =>
           intro ho
-          obtain ⟨t', ht', rest⟩ := ho
-          exact ⟨t', by rwa [getLast?_push hctl.nonempty] at ht', rest⟩
+          obtain ⟨t', ht', ms', hr, rest⟩ := ho
+          exact ⟨t', by rwa [getLast?_push hctl.nonempty] at ht', ms',
+            hr.mono (Nat.le_add_right _ _), rest⟩
       | Trap _ _ => intro; trivial
       | Invalid _ => intro; trivial
       | OutOfFuel => intro; trivial

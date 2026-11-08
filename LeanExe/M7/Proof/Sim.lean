@@ -1,6 +1,7 @@
 import LeanExe.M7.Proof.Store
 import LeanExe.M7.Div
 import LeanExe.ProofKit.AlignedDefs
+import LeanExe.M7.Cost
 
 /-!
 The simulation of Talos's `execOne` and `exec` by the generated Cortex-M7 code, as the AArch64
@@ -15,7 +16,10 @@ the locals in their slots, and a return reaches the function's epilogue with the
 in the slots from height 0.  Each of the three holds Talos's store in the area, which `StoreOk`
 states for a program with an area and leaves empty for a program without one.  A trap, an
 invalid state, and the end of the fuel give no claim, since the board's theorems exclude traps
-through the compiler's theorem without a trap.
+through the compiler's theorem without a trap.  Each clause reaches its state in at most the steps
+of a cost: `InstrSim`, `ListSim`, and `FunSim` give the costs `costOne`, `costExec`, and `costRun`
+of Talos's run (`LeanExe/M7/Cost.lean`), so every simulation lemma also bounds the instructions
+that its code executes.
 
 `coveredInstr` and `coveredList` name the forms whose simulation is proved, which the kernel's
 evaluation of `reachCovered` checks for each step.  `InstrSim F inst` states the simulation of
@@ -183,21 +187,21 @@ theorem Inv.localsOk {P : Platform} {E : Env} {σs : List ValueType} {sl : Local
 /-! ## Outcomes -/
 
 /-- What the model does from `ms` at the code of an instruction or a list, whose end is `endA`,
-when Talos gives `r`: `fin` is the types of the operand stack after the code, `none` when its end
-is unreachable. -/
+when Talos gives `r`, in at most `c` steps: `fin` is the types of the operand stack after the
+code, `none` when its end is unreachable. -/
 def Outcome (E : Env) (ctl : List Ctl) (fin : Option (List ValueType)) (endA : UInt32)
-    {α : Type} (r : Continuation α) (ms : State) : Prop :=
+    {α : Type} (r : Continuation α) (c : Nat) (ms : State) : Prop :=
   match r with
-  | .Fallthrough st' sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = endA ∧
+  | .Fallthrough st' sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Steps P σ code c ms ms' ∧ ms'.pc = endA ∧
       ms'.sp = ms.sp ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
       BodyKeeps E.frame ms.sp ms ms' ∧ Below E.frame (curBase ctl) ms ms' ∧ Inv P E σ' sl' ms' ∧
       StoreOk P E.toShared st' ms'
-  | .Break k st' sl' => ∃ t, ctl[k]? = some t ∧ ∃ ms', Reach P σ code ms ms' ∧
+  | .Break k st' sl' => ∃ t, ctl[k]? = some t ∧ ∃ ms', Steps P σ code c ms ms' ∧
       ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
       BodyKeeps E.frame ms.sp ms ms' ∧ Below E.frame t.base ms ms' ∧
       LocalsOk E (sl'.params ++ sl'.locals) ms' ∧ Kept E.frame t sl'.values ms' ∧
       StoreOk P E.toShared st' ms'
-  | .Return st' vs => ∃ t, ctl.getLast? = some t ∧ ∃ ms', Reach P σ code ms ms' ∧
+  | .Return st' vs => ∃ t, ctl.getLast? = some t ∧ ∃ ms', Steps P σ code c ms ms' ∧
       ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
       BodyKeeps E.frame ms.sp ms ms' ∧ Kept E.frame t vs ms' ∧ StoreOk P E.toShared st' ms'
   | .Trap _ _ => True
@@ -205,6 +209,47 @@ def Outcome (E : Env) (ctl : List Ctl) (fin : Option (List ValueType)) (endA : U
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
   | .Throwing _ _ _ _ => False
+
+theorem Outcome.mono {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {E : Env}
+    {ctl : List Ctl} {fin : Option (List ValueType)} {endA : UInt32} {α : Type}
+    {r : Continuation α} {c d : Nat} {ms : State} (h : Outcome P σ code E ctl fin endA r c ms)
+    (hcd : c ≤ d) : Outcome P σ code E ctl fin endA r d ms := by
+  cases r with
+  | Fallthrough st' sl' =>
+      obtain ⟨σ', hf, ms', hr, rest⟩ := h
+      exact ⟨σ', hf, ms', hr.mono hcd, rest⟩
+  | Break k st' sl' =>
+      obtain ⟨t, ht, ms', hr, rest⟩ := h
+      exact ⟨t, ht, ms', hr.mono hcd, rest⟩
+  | Return st' vs =>
+      obtain ⟨t, ht, ms', hr, rest⟩ := h
+      exact ⟨t, ht, ms', hr.mono hcd, rest⟩
+  | Trap _ _ => trivial
+  | Invalid _ => trivial
+  | OutOfFuel => trivial
+  | ReturnCall _ _ _ => exact h.elim
+  | Throwing _ _ _ _ => exact h.elim
+
+/-- An outcome other than a fall-through states nothing of the types after the code or of its
+end. -/
+theorem Outcome.of_ne_fall {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    {E : Env} {ctl : List Ctl} {fin fin' : Option (List ValueType)} {endA endA' : UInt32}
+    {α : Type} {r : Continuation α} {c d : Nat} {ms : State}
+    (h : Outcome P σ code E ctl fin endA r c ms) (hcd : c ≤ d)
+    (hr : ∀ st sl, r ≠ .Fallthrough st sl) : Outcome P σ code E ctl fin' endA' r d ms := by
+  cases r with
+  | Fallthrough st' sl' => exact absurd rfl (hr st' sl')
+  | Break k st' sl' =>
+      obtain ⟨t, ht, ms', hs, rest⟩ := h
+      exact ⟨t, ht, ms', hs.mono hcd, rest⟩
+  | Return st' vs =>
+      obtain ⟨t, ht, ms', hs, rest⟩ := h
+      exact ⟨t, ht, ms', hs.mono hcd, rest⟩
+  | Trap _ _ => trivial
+  | Invalid _ => trivial
+  | OutOfFuel => trivial
+  | ReturnCall _ _ _ => exact h.elim
+  | Throwing _ _ _ _ => exact h.elim
 
 /-- The stack at SP for a call whose parameters and results take `n` slots of the caller's
 outgoing area at SP and whose stack needs `need` bytes below SP: SP is a multiple of 4, the
@@ -225,14 +270,14 @@ def ArgsAt (s : State) (vs : List Value) : Prop :=
 
 /-- What the model does from `ms` at the entry of a function with parameters of the types `ps`
 and results of the types `rs`, called on the operand stack `vs`, when Talos's run of the call
-gives `res`: a success returns to the address in LR with bit 0 clear, with SP, LR, the device
-trace, and the read count as they were, every byte from SP plus the area of the parameters and
-results up unchanged, the results in the outgoing area, and the final store in the area of a
-program with one. -/
+gives `res`: a success returns, in at most `c` steps, to the address in LR with bit 0 clear, with
+SP, LR, the device trace, and the read count as they were, every byte from SP plus the area of the
+parameters and results up unchanged, the results in the outgoing area, and the final store in the
+area of a program with one. -/
 def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Type} (res : Result α)
-    (ms : State) : Prop :=
+    (c : Nat) (ms : State) : Prop :=
   match res with
-  | .Success vs' st' => ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = ms.lr &&& 0xFFFFFFFE ∧
+  | .Success vs' st' => ∃ ms', Steps P σ code c ms ms' ∧ ms'.pc = ms.lr &&& 0xFFFFFFFE ∧
       ms'.sp = ms.sp ∧ ms'.lr = ms.lr ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
       (∀ a : UInt32, ms.sp.toNat + 8 * max ps.length rs.length ≤ a.toNat → ms'.mem a = ms.mem a) ∧
       vs'.length = rs.length + (vs.length - ps.length) ∧ vs'.drop rs.length = vs.drop ps.length ∧
@@ -248,15 +293,17 @@ parameters and results `c` gives, at fuel `g`: from the entry, with bit 0 of LR 
 `StackOk` for `need k` bytes, the top values of the operand stack `vs`, of the parameters' types,
 in the outgoing area, and the store in the area of a program with one, whose module has 32-bit
 addresses and whose run of the call makes only aligned accesses, the model does what `CallResult`
-states of Talos's run of the call. -/
+states of Talos's run of the call, in at most the steps that `costRun` gives.  The call's copies of
+`c`'s parameters and results and its `BL` are the instructions that `callCost` counts. -/
 def FunSim (m : Module) (S : Shared) (need : Nat → Nat) (g k : Nat)
     (c : UInt32 × List ValueType × List ValueType) : Prop :=
+  callCost m k = 4 * c.2.1.length + 1 + 4 * c.2.2.length ∧
   ∀ {α : Type} (st : Store α) (vs : List Value) (ms : State), c.2.1.length ≤ vs.length →
     Typed c.2.1.reverse (vs.take c.2.1.length) → ms.pc = c.1 → ms.lr % 2 = 1 →
     StackOk P S.limit (max c.2.1.length c.2.2.length) (need k) ms →
     ArgsAt ms (vs.take c.2.1.length) → StoreOk P S st ms →
     (S.area.isSome = true → m.memIs64 = false ∧ AlignedRun g m k st vs {}) →
-    CallResult P σ code S c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
+    CallResult P σ code S c.2.1 c.2.2 vs (Wasm.run g m k st vs) (costRun g m k st vs {}) ms
 
 /-- The functions of the table `callee` simulate at every fuel below `F` in module `m`. -/
 def CallsOk (F : Nat) (m : Module) (callee : Table) (S : Shared) (need : Nat → Nat) : Prop :=
@@ -282,7 +329,8 @@ def InstrSim (F : Nat) (inst : Instruction) : Prop :=
       (E.area.isSome = true → m.memIs64 = false ∧ AlignedOne F m st sl inst {}) →
       ∀ (need : Nat → Nat) (D : Nat),
       CallsOk P σ code F m E.callee E.toShared need → (∀ j ∈ callsOf inst, need j ≤ D) →
-      D ≤ room E ms → Outcome P σ code E ctl fin (after a is.length) (execOne F m st sl inst) ms
+      D ≤ room E ms → Outcome P σ code E ctl fin (after a is.length) (execOne F m st sl inst)
+        (costOne F m st sl (ctl.map Ctl.arity) inst {}) ms
 
 /-- The simulation of instruction lists at fuel `F`. -/
 def ListSim (F : Nat) : Prop :=
@@ -295,6 +343,7 @@ def ListSim (F : Nat) : Prop :=
       (E.area.isSome = true → m.memIs64 = false ∧ AlignedExec F m st sl p {}) →
       ∀ (need : Nat → Nat) (D : Nat),
       CallsOk P σ code F m E.callee E.toShared need → (∀ j ∈ callsIn p, need j ≤ D) →
-      D ≤ room E ms → Outcome P σ code E ctl fin (after a is.length) (Wasm.exec F m st sl p) ms
+      D ≤ room E ms → Outcome P σ code E ctl fin (after a is.length) (Wasm.exec F m st sl p)
+        (costExec F m st sl (ctl.map Ctl.arity) p {}) ms
 
 end LeanExe.M7

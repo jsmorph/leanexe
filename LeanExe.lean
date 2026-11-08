@@ -76,6 +76,8 @@ import LeanExe.Encoding.Values
 import LeanExe.FileNat
 import LeanExe.M7.Board
 import LeanExe.M7.Boot
+import LeanExe.M7.Bound
+import LeanExe.M7.Cost
 import LeanExe.M7.Div
 import LeanExe.M7.Encode
 import LeanExe.M7.Gen
@@ -92,6 +94,7 @@ import LeanExe.M7.Setup
 import LeanExe.M7.Proof.Access
 import LeanExe.M7.Proof.Board
 import LeanExe.M7.Proof.Boot
+import LeanExe.M7.Proof.Bound
 import LeanExe.M7.Proof.Bounds
 import LeanExe.M7.Proof.Branch
 import LeanExe.M7.Proof.Call
