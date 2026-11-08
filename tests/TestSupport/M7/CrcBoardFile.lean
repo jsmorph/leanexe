@@ -15,8 +15,9 @@ bytes that the run writes to `USART_TDR` begin the low bytes of the CRC-32 of th
 prefixes of the bytes that it reads from `USART_RDR`, with at most one byte without a reply.
 `crc_board_steps` states that each window takes at most 1,482 steps of the model.  The theorems
 hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
-power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
-interrupt, NMI, debug halt, debugger access, or DMA during the run.
+power-on reset, or an NRST reset with the debug registers at their power-on values, with BOOT0 low
+and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
+debugger access, or DMA during the run.
 -/
 
 namespace TestSupport.M7.CrcBoardFile

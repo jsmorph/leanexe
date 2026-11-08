@@ -20,8 +20,9 @@ with the input records given by their bytes: records of 18 words whose bytes are
 to the last complete record, which `flatMap_recordBytes_inj` of `LeanExe/Requests/Reads.lean`
 makes unique.  `gw_board_steps` states that each window takes at most 17,553 steps of the model.
 The theorems hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a
-power-on reset with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
-interrupt, NMI, debug halt, debugger access, or DMA during the run.
+power-on reset, or an NRST reset with the debug registers at their power-on values, with BOOT0 low
+and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no interrupt, NMI, debug halt,
+debugger access, or DMA during the run.
 -/
 
 namespace TestSupport.M7.GwBoardFile
