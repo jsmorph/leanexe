@@ -149,7 +149,9 @@ if [ -z "$reference" ]; then
     done <"$root/tests/verified/numerics.txt"
   fi
   if runs heapsums; then targets+=($(imports tests/verified/HeapSumsAxioms.lean)); fi
-  if runs typedtrees; then targets+=($(imports tests/verified/TypedTreesAxioms.lean)); fi
+  if runs typedtrees; then
+    targets+=($(imports tests/verified/TypedTreesAxioms.lean tests/verified/TreeFieldConditions.lean))
+  fi
   if runs arraytrees; then targets+=($(imports tests/verified/ArrayTreesOrder.lean)); fi
   if runs buffertrees; then targets+=($(imports tests/verified/BufferTreesOrder.lean)); fi
   if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("$cases_exe"); fi
@@ -284,6 +286,7 @@ if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "typedtrees" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/TypedTreesAxioms.lean
+  tools/leanrun --timeout 10m lake env lean tests/verified/TreeFieldConditions.lean
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "arraytrees" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/ArrayTreesOrder.lean

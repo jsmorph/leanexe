@@ -1846,27 +1846,50 @@ def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
   boundOf
     (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
 
-/-- Assigns the family `valueName` of `app` to `family`, and its equation `proofName`, which
-states each entry, from the proofs of `values`. -/
+/-- Assigns the family `valueName` of `app` to the family that `build` makes of the right sides of
+the proofs of `values`, and its equation `proofName`, which states each entry, from those proofs.
+The equation is proved for variables in place of the entries and applied to the entries and their
+proofs, which the kernel substitutes without comparing them.  With an entry in place of its
+variable, the kernel compares the entry with the family at its index, `id` of the family, and
+unfolds the head of greater height first, or both at equal heights: an `if` (height 2) before `id`
+(height 1), and an `if` together with the `dite` (height 2) that `TreeShape.wordsOf` reduces to.
+Unfolding the `if` evaluates its condition's `Decidable` instance, in a number of steps linear in
+the value of a literal added to a word. -/
 def assignFamilyEquation (app : LemmaApp) (valueName proofName : Name)
-    (family : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
+    (build : List Lean.Expr → MetaM Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
+  let types ← values.mapM fun value => do instantiateMVars (← inferType value.proof)
+  let entries ← types.mapM fun type => do
+    let some (_, _, entry) := type.eq?
+      | throwError "verified_compile: a finite field proof is not an equation:{indentExpr type}"
+    pure entry
+  let family ← build entries
   app.assignHint valueName family
-  let expected ← app.hypType proofName
-  let .forallE name domain body _ := expected
-    | throwError "verified_compile: a finite field equation must quantify its index"
-  let P := Lean.mkLambda name .default domain body
-  let proof ← finiteForall values.length P fun i => do
-    let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
-      | throwError "verified_compile: a finite field index is not a numeral"
-    let some value := values[j]?
-      | throwError "verified_compile: finite field index {j} is out of range"
-    mkExpectedTypeHint value.proof (P.beta #[i])
+  let expected ← app.argType proofName
+  let decls ← entries.toArray.mapIdxM fun j entry => do
+    pure (Name.mkSimple s!"x{j}", ← inferType entry)
+  let equation ← withLocalDeclsDND decls fun xs => do
+    let familyX ← mkExpectedTypeHint (← build xs.toList) (← app.argType valueName)
+    let expectedX ← app.argType proofName [(valueName, familyX)]
+    let hyps := (types.zip xs.toList).toArray.mapIdx fun j (type, x) =>
+      (Name.mkSimple s!"h{j}", mkApp type.appFn! x)
+    withLocalDeclsDND hyps fun hs => do
+      let .forallE name domain body _ := expectedX
+        | throwError "verified_compile: a finite field equation must quantify its index"
+      let P := Lean.mkLambda name .default domain body
+      let proof ← finiteForall values.length P fun i => do
+        let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
+          | throwError "verified_compile: a finite field index is not a numeral"
+        let some h := hs[j]?
+          | throwError "verified_compile: finite field index {j} is out of range"
+        mkExpectedTypeHint h (P.beta #[i])
+      mkLambdaFVars (xs ++ hs) (← mkExpectedTypeHint proof expectedX)
+  let proof := mkAppN equation (entries.toArray ++ values.toArray.map (·.proof))
   app.assign proofName (← mkExpectedTypeHint proof expected)
   return family
 
 def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
     (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  assignFamilyEquation app valueName proofName (← finiteFn type (values.map (·.term))) values
+  assignFamilyEquation app valueName proofName (finiteFn type) values
 
 def finiteFieldBounds (app : LemmaApp) (name : Name) (fields : List Reflection) :
     MetaM (List Bound) :=
@@ -3628,19 +3651,29 @@ where
       let _ ← assignFiniteEquation app `wordValues `hw (mkConst ``UInt64) wordValues
     else
       let _ ← assignFamilyEquation app `wordValues `hw
-        (← wordFamily layout.shape r (elems.zip (wordValues.map (·.term)))) wordValues
+        (fun terms => wordFamily layout.shape r (elems.zip terms)) wordValues
     let _ ← assignFiniteEquation app `childValues `hc (mkApp (mkConst ``Tree) shape)
       (← values children)
     let arrayValues ← values arrays
     let _ ← assignFamilyEquation app `arrayValues `ha
-      (← arrayFamily layout.shape r ((typedArrays.map (·.1)).zip (arrayValues.map (·.term))))
-      arrayValues
+      (fun terms => arrayFamily layout.shape r ((typedArrays.map (·.1)).zip terms)) arrayValues
     let bufferValues ← values buffers
-    let _ ← assignFamilyEquation app `bufferValues `hb
-      (← bufferFamily layout.shape r (bufferValues.map (·.term))) bufferValues
+    let _ ← assignFamilyEquation app `bufferValues `hb (bufferFamily layout.shape r) bufferValues
     let proof ← app.finish
     let (_, value) ← eqSides proof
-    let proof ← transHint proof (← bareEq value (← flatValue e))
+    -- The value is the flattening of `e` by `rfl`, proved for variables in place of the children
+    -- that are not variables and applied to the children.  With such a child in place, the kernel
+    -- reduces it while it unfolds the structural recursion of the flattening, and for an `if` it
+    -- evaluates the condition's `Decidable` instance.
+    let compound := (args.zip natives).filterMap fun (a, kind) =>
+      if kind matches .child && !a.consumeMData.isFVar then some a else none
+    let decls ← compound.toArray.mapIdxM fun j a => do
+      pure (Name.mkSimple s!"c{j}", ← inferType a)
+    let flatEq ← withLocalDeclsDND decls fun xs => do
+      let generalize (t : Lean.Expr) : Lean.Expr := (compound.zip xs.toList).foldl
+        (fun t (a, x) => t.replace fun s => if s == a then some x else none) t
+      mkLambdaFVars xs (← bareEq (generalize value) (← flatValue (generalize e)))
+    let proof ← transHint proof (mkAppN flatEq compound.toArray)
     let addBounds (a b : Bound) : MetaM Bound := do
       let (left, _) ← eqSides a.proof
       let (right, _) ← eqSides b.proof
@@ -3666,7 +3699,11 @@ where
           | throwError "verified_compile: recursive array coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive array coercion has an invalid form"
-        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr (.array el)))
+        -- The value with the type of the coercion lemmas, by a `let` that the kernel removes by
+        -- zeta reduction when it compares the coercion with `(arrays i).denote funs env`.  Against
+        -- `id` of the value it would unfold `Expr.denote`, whose height is greater, and evaluate
+        -- the field's source, such as an `if`'s condition.
+        let value := mkLet `v (mkApp (mkConst ``Ty.denote) (tyExpr (.array el))) value (mkBVar 0)
         let (cost, proof) ← coerceEq c.base (.array el) s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
@@ -3681,7 +3718,6 @@ where
           | throwError "verified_compile: recursive buffer coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive buffer coercion has an invalid form"
-        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr .bytes))
         let (cost, proof) ← coerceEq c.base .bytes s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `B `hb (mkConst ``Nat) bb

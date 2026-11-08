@@ -102,13 +102,17 @@ before it substituted without beta reduction.  `hypType` reduces a function argu
 the statement, such as a loop's step at the index and the state, and the kernel does not.  A proof
 stated with the reduction makes the kernel compare it with the redex, which under a flattening it
 does by unfolding the head of the reduction first (see the rule for beta redexes in
-`Verified.Reflect.reflect`). -/
-def LemmaApp.argType (a : LemmaApp) (name : Name) : MetaM Lean.Expr := do
+`Verified.Reflect.reflect`).  The arguments that `subst` names take the terms it gives in place of
+their assignments. -/
+def LemmaApp.argType (a : LemmaApp) (name : Name) (subst : List (Name × Lean.Expr) := []) :
+    MetaM Lean.Expr := do
   let i ← a.index name
   let mut ty ← inferType a.fn
-  for m in a.mvars[:i] do
+  for (n, m) in (a.names.zip a.mvars.toList).take i do
     let .forallE _ _ body _ := ty | throwError "verified_compile: the type of {a.name}"
-    ty := body.instantiate1 (← instantiateMVars m)
+    ty := body.instantiate1 (← match subst.lookup n with
+      | some v => pure v
+      | none => instantiateMVars m)
   let .forallE _ d _ _ := ty | throwError "verified_compile: the type of {a.name}"
   instantiateMVars d
 
