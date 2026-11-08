@@ -61,10 +61,10 @@ theorem lo_bound : |value 0x3DEA39EF35793C76| ≤ 191 / 10 ^ 12 :=
   le_trans (abs_value_le _ ((191 / 10 ^ 12 : ℚ)) (by decide +kernel)) (by norm_num)
 
 /-- `kd ln2Lo + c`. -/
-theorem c_approx (k : UInt64) (c : Float) (K t et KM T : ℝ) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
+theorem c_approx (k : Int64) (c : Float) (K t et KM T : ℝ) (hkd : FApprox (k.toFloat) K 0)
     (hKM : |K| ≤ KM) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000) (hT : T ≤ 1)
     (het : et ≤ 1) :
-    FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c) (K * value 0x3DEA39EF35793C76 + t)
+    FApprox (k.toFloat * ln2LoF + c) (K * value 0x3DEA39EF35793C76 + t)
       (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et +
         (KM * (191 / 10 ^ 12) + T + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et)) /
           2 ^ 53) := by
@@ -84,11 +84,11 @@ theorem sub_close (A G : Float) (vA vG eG y d : ℝ) (hA : FApprox A vA 0) (hG :
   linarith
 
 /-- The general path's `G` and its exact value's distance from `y`. -/
-theorem tail_s_G (f c : Float) (k : UInt64) (K t et KM T F0 eh MP eP Lm : ℝ) (gD gE gG : ℕ)
+theorem tail_s_G (f c : Float) (k : Int64) (K t et KM T F0 eh MP eP Lm : ℝ) (gD gE gG : ℕ)
     (hf : Finite f.toBits) (hv : -1 < value f.toBits) (hσ1 : |value f.toBits| ≤ F0)
     (hqA : FApprox (hfsqOf f) (value f.toBits / 2 * value f.toBits) eh)
     (hPA : FApprox (POf f) (Pstar (value f.toBits)) eP) (hPM : |Pstar (value f.toBits)| ≤ MP)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0) (hKM : |K| ≤ KM) (hc : FApprox c t et) (ht : |t| ≤ T)
+    (hkd : FApprox (k.toFloat) K 0) (hKM : |K| ≤ KM) (hc : FApprox c t et) (ht : |t| ≤ T)
     (hKM1 : KM ≤ 2000) (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hlog : |Real.log (1 + value f.toBits)| ≤ Lm)
     (hs : |sStar (value f.toBits)| ≤ 1716 / 10000)
@@ -104,7 +104,7 @@ theorem tail_s_G (f c : Float) (k : UInt64) (K t et KM T F0 eh MP eP Lm : ℝ) (
       (eh + (eP + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et + (KM * (191 / 10 ^ 12) +
         T + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et)) / 2 ^ 53) +
           2 ^ gD / 2 / 2 ^ 1074) + 2 ^ gE / 2 / 2 ^ 1074) < 2 ^ (53 + gG) / 2 ^ 1074) :
-    FApprox ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f)
+    FApprox ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f)
       (value f.toBits / 2 * value f.toBits - (Pstar (value f.toBits) +
         (K * value 0x3DEA39EF35793C76 + t)) - value f.toBits)
       (eh + (eP + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et + (KM * (191 / 10 ^ 12) +
@@ -228,15 +228,15 @@ theorem y_ge (K v t KL T V : ℝ) (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (ht : |t|
 
 /-- The general path's error: the exact value of the last difference lies within `E` of `y`, for
 `E < Y ≤ |y|`. -/
-theorem finish_s_near (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
+theorem finish_s_near (f c : Float) (k : Int64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
     (gD gE gG : ℕ) (hf : Finite f.toBits) (hv : -1 < value f.toBits)
     (hσ1 : |value f.toBits| ≤ F0)
     (hq : FSApprox (hfsqOf f) (value f.toBits / 2 * value f.toBits)
       (|value f.toBits| * |value f.toBits|) Mh eh)
     (hP : FSApprox (POf f) (Pstar (value f.toBits))
       (|value f.toBits| * (|value f.toBits| * |value f.toBits|)) MP eP)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000) (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hlog : |Real.log (1 + value f.toBits)| ≤ Lm) (hLm : Lm ≤ 1)
     (hs : |sStar (value f.toBits)| ≤ 1716 / 10000)
@@ -260,7 +260,7 @@ theorem finish_s_near (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm 
     (hY : Y ≤ |K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)|)
     (hEY : E < Y) :
     F64Near.Near
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f)).toBits
+      (k.toFloat * ln2HiF - ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f)).toBits
       (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)) E := by
   set v := value f.toBits with hvdef
   have hσ0 := abs_nonneg v
@@ -284,15 +284,15 @@ theorem finish_s_near (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm 
     (by linarith) (by linarith [(by norm_num : (2 : ℝ) ^ 1022 + 2 ^ 1022 = 2 ^ 1023)])
 
 /-- The general path within one step, for a criterion binade `a` below `Y ≤ |y|`. -/
-theorem finish_s (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
+theorem finish_s (f c : Float) (k : Int64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
     (gD gE gG a : ℕ) (hf : Finite f.toBits) (hv : -1 < value f.toBits)
     (hσ1 : |value f.toBits| ≤ F0)
     (hq : FSApprox (hfsqOf f) (value f.toBits / 2 * value f.toBits)
       (|value f.toBits| * |value f.toBits|) Mh eh)
     (hP : FSApprox (POf f) (Pstar (value f.toBits))
       (|value f.toBits| * (|value f.toBits| * |value f.toBits|)) MP eP)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000) (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hlog : |Real.log (1 + value f.toBits)| ≤ Lm) (hLm : Lm ≤ 1)
     (hs : |sStar (value f.toBits)| ≤ 1716 / 10000)
@@ -318,7 +318,7 @@ theorem finish_s (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y :
     (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤ Y) :
     F64SignedRounding.WithinSteps 1
       (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f)).toBits := by
+      (k.toFloat * ln2HiF - ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f)).toBits := by
   have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
     rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
     positivity
@@ -328,16 +328,16 @@ theorem finish_s (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y :
   exact (y_lt K _ t KM Lm hKM hKM1 hlog hLm (ht.trans hT)).trans (by norm_num)
 
 /-- `f = 0`: the error of `A + (c + kd ln2Lo)`. -/
-theorem finish_z_near (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (hv0 : v = 0)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+theorem finish_z_near (c : Float) (k : Int64) (v K t et KM KL T E : ℝ) (hv0 : v = 0)
+    (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
     (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hE : et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075) + (T + KM * (191 / 10 ^ 12) +
       (et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075))) / 2 ^ 53 +
         (KM / 2 ^ 81 + 2 * T ^ 2) ≤ E)
     (hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T) :
-    F64Near.Near (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF + (c + Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF)).toBits
+    F64Near.Near (k.toFloat * ln2HiF + (c + k.toFloat * ln2LoF)).toBits
       (K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t)) E := by
   subst hv0
   have hB := fapprox_mul hkd lo_approx KM (191 / 10 ^ 12) hKM lo_bound (KM * (191 / 10 ^ 12))
@@ -387,9 +387,9 @@ theorem finish_z_near (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (hv0 :
     (by linarith [(by norm_num : (2 : ℝ) ^ 1022 + 2 ^ 1022 = 2 ^ 1023)])
 
 /-- `f = 0`: `A + (c + kd ln2Lo)`. -/
-theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (hv0 : v = 0)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+theorem finish_z (c : Float) (k : Int64) (v K t et KM KL T E : ℝ) (a : ℕ) (hv0 : v = 0)
+    (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
     (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hE : et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075) + (T + KM * (191 / 10 ^ 12) +
@@ -398,7 +398,7 @@ theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (
     (ha1 : 1 ≤ a) (ha : a < 2047) (hEa : E < (2 : ℝ) ^ (a - 1) / 2 ^ 1074)
     (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤ KL * (6931471803 / 10 ^ 10) - 2 * T) :
     F64SignedRounding.WithinSteps 1 (K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t))
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF + (c + Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF)).toBits := by
+      (k.toFloat * ln2HiF + (c + k.toFloat * ln2LoF)).toBits := by
   have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
     rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
     positivity
@@ -440,17 +440,17 @@ theorem log_cubic (v : ℝ) (hv : |v| ≤ 1 / 2) :
   linarith
 
 /-- `hu = 0`, `f ≠ 0`: the error of `A - ((f²/2 (1 - 2f/3) - (kd ln2Lo + c)) - f)`. -/
-theorem finish_q_near (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ)
+theorem finish_q_near (f c : Float) (k : Int64) (K t et KM KL T E : ℝ)
     (hf : Finite f.toBits) (hv1 : |value f.toBits| ≤ 1 / 2 ^ 19)
-    (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
     (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hE : 1 / 2 ^ 60 + et + (KM * (191 / 10 ^ 12) + T + et) / 2 ^ 50 + KM / 2 ^ 81 +
       2 * T ^ 2 ≤ E)
     (hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19) :
     F64Near.Near
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c)) - f)).toBits
+      (k.toFloat * ln2HiF - ((RqOf f - (k.toFloat * ln2LoF + c)) - f)).toBits
       (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)) E := by
   set v := value f.toBits with hvdef
   have hKM0 : 0 ≤ KM := (abs_nonneg K).trans hKM
@@ -605,10 +605,10 @@ theorem finish_q_near (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ)
 
 /-- `hu = 0`, `f ≠ 0`: `A - ((f²/2 (1 - 2f/3) - (kd ln2Lo + c)) - f)`.  The rounding errors
 other than `c`'s and those proportional to `kd ln2Lo + c` stay below `2 ^ -60`. -/
-theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
+theorem finish_q (f c : Float) (k : Int64) (K t et KM KL T E : ℝ) (a : ℕ)
     (hf : Finite f.toBits) (hv1 : |value f.toBits| ≤ 1 / 2 ^ 19)
-    (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
     (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hE : 1 / 2 ^ 60 + et + (KM * (191 / 10 ^ 12) + T + et) / 2 ^ 50 + KM / 2 ^ 81 +
@@ -618,7 +618,7 @@ theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
       KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19) :
     F64SignedRounding.WithinSteps 1
       (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c)) - f)).toBits := by
+      (k.toFloat * ln2HiF - ((RqOf f - (k.toFloat * ln2LoF + c)) - f)).toBits := by
   have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
     rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
     positivity
@@ -640,14 +640,14 @@ theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
 set_option maxHeartbeats 1000000 in
 /-- `K = -1` and `f ≥ 0.285`: `|G| ≥ 1/4`, so `A - G` is exact, and the error stays below one and
 a half spacings of `[1/4, 1/2)`. -/
-theorem finish_d (f c : Float) (k : UInt64) (t et : ℝ) (hf : Finite f.toBits)
+theorem finish_d (f c : Float) (k : Int64) (t et : ℝ) (hf : Finite f.toBits)
     (hv1 : 285 / 1000 ≤ value f.toBits) (hv2 : value f.toBits ≤ 41422 / 100000)
-    (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) (-1) 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (-1 * value 0x3FE62E42FEE00000) 0)
+    (hkd : FApprox (k.toFloat) (-1) 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (-1 * value 0x3FE62E42FEE00000) 0)
     (hc : FApprox c t et) (ht : |t| ≤ 1 / 2 ^ 52) (het : et ≤ 1 / 2 ^ 60) :
     F64SignedRounding.WithinSteps 1
       (-1 * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
-      (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f)).toBits := by
+      (k.toFloat * ln2HiF - ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f)).toBits := by
   set v := value f.toBits with hvdef
   have hσ : |v| = v := abs_of_pos (by linarith)
   have hc3 := core_P3 f hf (by rw [hσ]; linarith) (by rw [hσ]; linarith) (by linarith)
@@ -695,13 +695,13 @@ theorem finish_d (f c : Float) (k : UInt64) (t et : ℝ) (hf : Finite f.toBits)
   have hGabs := abs_le.mp hGa
   have hGabs_l := hGabs.1
   have hGabs_r := hGabs.2
-  have hG4 : 1 / 4 ≤ |value ((hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f).toBits| := by
+  have hG4 : 1 / 4 ≤ |value ((hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f).toBits| := by
     rw [abs_of_neg (by norm_num at hGabs ⊢; nlinarith)]
     norm_num at hGabs ⊢
     nlinarith
   -- `A - G` is exact
-  set Af := Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF with hAf
-  set Gf := (hfsqOf f - (POf f + (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2LoF + c))) - f with hGf
+  set Af := k.toFloat * ln2HiF with hAf
+  set Gf := (hfsqOf f - (POf f + (k.toFloat * ln2LoF + c))) - f with hGf
   have hAv : value Af.toBits = -value 0x3FE62E42FEE00000 := by
     have := hA.2
     rw [sub_eq_zero.mp (abs_nonpos_iff.mp this)]
@@ -812,13 +812,13 @@ theorem beq_zero_iff (f : Float) (hf : Finite f.toBits) :
 
 set_option maxHeartbeats 2000000 in
 /-- `log1pTail` for `k ≠ 0` within one step, for a correction `c` within `2 ^ -60` of `t`. -/
-theorem tail_main (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
+theorem tail_main (f c : Float) (k : Int64) (hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
     (hv1 : -2929 / 10000 ≤ value f.toBits) (hv2 : value f.toBits ≤ 41422 / 100000)
     (hhu1 : (hu == 0) = false → 1 / 2 ^ 30 ≤ |value f.toBits|)
     (hhu2 : (hu == 0) = true → |value f.toBits| ≤ 1 / 2 ^ 19)
     (hvz : value f.toBits ≠ 0 → 1 / 2 ^ 1000 ≤ |value f.toBits|)
-    (hk : (k == 0) = false) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
+    (hk : (k == 0) = false) (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
     (hK : K = 1 ∨ K = -1 ∨ (2 ≤ |K| ∧ |K| ≤ 1100))
     (hc : FApprox c t et) (ht : |t| ≤ 1 / 2 ^ 52) (het : et ≤ 1 / 2 ^ 60) :
     F64SignedRounding.WithinSteps 1
@@ -970,13 +970,13 @@ theorem tail_main (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.to
 
 set_option maxHeartbeats 2000000 in
 /-- `log1pTail` for `K ≥ 50`, where `y` exceeds 32, for a correction within `2 ^ -52` of `t`. -/
-theorem tail_big_near (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
+theorem tail_big_near (f c : Float) (k : Int64) (hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
     (hv1 : -2929 / 10000 ≤ value f.toBits) (hv2 : value f.toBits ≤ 41422 / 100000)
     (hhu1 : (hu == 0) = false → 1 / 2 ^ 30 ≤ |value f.toBits|)
     (hhu2 : (hu == 0) = true → |value f.toBits| ≤ 1 / 2 ^ 19)
     (hvz : value f.toBits ≠ 0 → 1 / 2 ^ 1000 ≤ |value f.toBits|)
-    (hk : (k == 0) = false) (hkd : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k) K 0)
-    (hA : FApprox (Library.Numerics.Float64.Log.LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
+    (hk : (k == 0) = false) (hkd : FApprox (k.toFloat) K 0)
+    (hA : FApprox (k.toFloat * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
     (hK1 : 50 ≤ K) (hK2 : K ≤ 1100)
     (hc : FApprox c t et) (ht : |t| ≤ 1 / 2 ^ 53) (het : et ≤ 1 / 2 ^ 52) :
     F64Near.Near (Log1p.log1pTail f c k hu).toBits

@@ -18,14 +18,10 @@ set_option exponentiation.threshold 4096
 -- the memory of the build machine, so this file elaborates its declarations in order.
 set_option Elab.async false
 
-/-- The bits of `Library.Numerics.Float64.Log.LogCoreBits.kdOf K`. -/
-def kdBits (K : UInt64) : UInt64 :=
-  if K >>> 63 == 1 then Wasm.IEEE64.sub 0x8000000000000000 (Wasm.IEEE64.convertI64U (0 - K))
-  else Wasm.IEEE64.convertI64U K
+/-- The bits of `K.toFloat`, WebAssembly's `f64.convert_i64_s` of the word of `K`. -/
+def kdBits (K : Int64) : UInt64 := Wasm.IEEE64.convertI64S K.toUInt64
 
-theorem kd_bits (K : UInt64) : (kdOf K).toBits = kdBits K := by
-  unfold kdOf kdBits
-  split_ifs <;> simp only [F64Bits.toBits_neg, F64Convert.toBits_toFloat]
+theorem kd_bits (K : Int64) : K.toFloat.toBits = kdBits K := Signed64Wasm.toBits_toFloat K
 
 /-- `final2Word` for `z = 1` in subinterval 40, after the words that do not depend on `kd`. -/
 def powStep (K : UInt64) : UInt64 :=
@@ -34,8 +30,8 @@ def powStep (K : UInt64) : UInt64 :=
   Wasm.IEEE64.add (Wasm.IEEE64.add (Wasm.IEEE64.add (Wasm.IEEE64.add (Wasm.IEEE64.sub t3 hi)
     0xBF86E77B557205FB) 0xBE0348FE46B8E4E9) 0xBF06D84894FBBE41) hi
 
-/-- The word of `k = j - 1074` as `Library.Numerics.Float64.Log.LogCoreBits.kOf` gives it. -/
-def kOfIndex (j : Nat) : UInt64 := UInt64.ofNat ((j + 18446744073709550542) % 18446744073709551616)
+/-- `k = j - 1074` as `Library.Numerics.Float64.Log.LogCoreBits.kOf` gives it. -/
+def kOfIndex (j : Nat) : Int64 := Int64.ofInt ((j : Int) - 1074)
 
 def powCheck (j : Nat) : Bool :=
   j == 1074 || powStep (kdBits (kOfIndex j)) == kdBits (kOfIndex j)
@@ -270,8 +266,8 @@ theorem core2_power (ix : UInt64) (E : Int) (hE1 : -51 ≤ E) (hE2 : E ≤ 2046)
   have hw := Log2CoreStep.core2_word ix 40 (by norm_num) hi hzf hrf
   rw [hz', e80, e81, f80, f81, r40_eq, final_pow, kd_bits] at hw
   have hK : kOf ix = kOfIndex (E + 51).toNat := by
-    apply UInt64.toNat_inj.mp
-    simp only [kOfIndex, UInt64.toNat_ofNat', Nat.reducePow]
+    rw [← Int64.toInt_inj, hk, kOfIndex,
+      Int64.toInt_ofInt_of_le (n := ((E + 51).toNat : Int) - 1074) (by omega) (by omega)]
     omega
   have hc := pow_check (E + 51).toNat (by omega)
   simp only [powCheck, Bool.or_eq_true, beq_iff_eq] at hc
@@ -279,7 +275,8 @@ theorem core2_power (ix : UInt64) (E : Int) (hE1 : -51 ≤ E) (hE2 : E ≤ 2046)
   · omega
   · rw [← hK] at hc
     rw [hw, hc, ← kd_bits]
-    exact Library.Numerics.Float64.Log.LogCoreBits.kd_value (kOf ix) (E - 1023) (by omega) (by omega) hk
+    have hkd := Signed64Value.toFloat_exact (kOf ix) (by rw [hk]; simp only [Nat.reducePow]; omega)
+    rwa [hk] at hkd
 
 /-- The scaled word of a subnormal power of two `2 ^ (j - 1074)`. -/
 theorem scaled_power : ∀ j : Fin 52,

@@ -189,9 +189,9 @@ def issignaling (x : Float) : Bool :=
   2 * (x.toBits ^^^ 0x0008000000000000) > 2 * 0x7ff8000000000000
 
 /-- Arm's `log_inline` for the bits `ix` of a positive `x`, normalized as `powWith` does for a
-subnormal: `log x` as the rounded `y` and the tail `hi - y + lo`.  `tmp >>> 52`, extended by the
-sign of `tmp`, is C's arithmetic shift of `(int64_t) tmp`.  `z` is split at bit 32 of its bits,
-rounded, so that `zhi · invc - 1` and the square of `rhi` are exact. -/
+subnormal: `log x` as the rounded `y` and the tail `hi - y + lo`.  `k` is the arithmetic shift
+of `(int64_t) tmp`.  `z` is split at bit 32 of its bits, rounded, so that `zhi · invc - 1` and the
+square of `rhi` are exact. -/
 def powLog (tab : Array UInt64) (ix : UInt64) : Float × Float :=
   let ln2hi := Float.ofBits 0x3FE62E42FEFA3800  --  0x1.62e42fefa3800p-1
   let ln2lo := Float.ofBits 0x3D2EF35793C76730  --  0x1.ef35793c76730p-45
@@ -204,10 +204,10 @@ def powLog (tab : Array UInt64) (ix : UInt64) : Float × Float :=
   let A6 := Float.ofBits 0x3FF0002B8B263FC3     -- -0x1.0002b8b263fc3p-3 * -8
   let tmp := ix - 0x3fe6955500000000
   let i := (tmp >>> 45) % 128
-  let k := (tmp >>> 52) ||| (if tmp >>> 63 == 1 then 0xFFFFFFFFFFFFF000 else 0)
+  let k := tmp.toInt64 >>> 52
   let iz := ix - (tmp &&& ((0xfff : UInt64) <<< 52))
   let z := Float.ofBits iz
-  let kd := if k >>> 63 == 1 then -(0 - k).toFloat else k.toFloat
+  let kd := k.toFloat
   let invc := Float.ofBits tab[(4 * i).toNat]!
   let logc := Float.ofBits tab[(4 * i + 2).toNat]!
   let logctail := Float.ofBits tab[(4 * i + 3).toNat]!
