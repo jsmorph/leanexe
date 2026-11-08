@@ -179,7 +179,7 @@ The kernel's check of the gateway's image as one declaration does not fit in 16 
 | `crc-cmsdk-qemu.bin` | `crcCmsdkTick` from `crcInit` after the setup of its area, on QEMU | 8,006 | 9.5 s | 5.66 GB |
 | The code images of `m7-image.sh` | The programs of `usart3Tick` and `gwTickUsart3` without a head | 3,470 and 98,866 | 4.4 s, and 1 min 20 s in parts | 5.03 and 13.32 GB |
 | `crc-usart3.bin` of `m7-image.sh` | The program of `crcUsart3Tick` from `crcInit` without a head, for which `crc_step` states the call of the step | 4,642 | 5.5 s | 5.20 GB |
-| `sha-usart3.bin` of `m7-image.sh` | The program of `shaUsart3Tick` from `shaInit` without a head, for which `sha_step` states the call of the step | 41,850 | 35 s | 11.22 GB |
+| `sha-usart3.bin` of `m7-image.sh` | The program of `shaUsart3Tick` from `shaInit` without a head, for which `sha_step` states the call of the step | 41,850 | 33 s | 11.17 GB |
 | `sha.bin` | `shaUsart3Tick` from `shaInit` after the setup of its area, on the board | 43,638 | 36 s | 11.94 GB |
 
 With one byte of an image changed, the kernel rejects that image's theorem.  The byte at `0x105` of the QEMU echo's image, a byte of the board's initialization in `gateway.bin`, a byte of `gwTickWith`'s code in the gateway's code image, the byte at offset 2,152 of `crc.bin`, in the setup's stores of CRC-32's table, and the byte at offset 30,000 of `sha.bin`, in the code of the step's functions, each made the check fail with a kernel type mismatch, the second and the third at the part that holds the byte.  The test drivers elaborate the checks on every run.
