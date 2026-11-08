@@ -120,7 +120,7 @@ coercion `CoeT Int x Nat`.
 | `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 41 | on v4.29.0 the 6,464 constants of the Float-valued output hash identically with and without the edit |
 | Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 14 fractions, no negative | each changed line has a `1/2` that becomes `(1/2)`.  Without the edit the output does not elaborate, and on v4.29.0 the 6,464 constants of the Float-valued output hash identically with and without the edit except the values of FPRoundBase__1, FPRoundInt, and FPToFixed, which hold the fractions |
 | The back end writes an integer of the model where Lean expects a natural number, as a width, an index, a shift, or a fuel, and lean-sail's coercion `CoeT Int x Nat` converts it with `x.toNat`, which maps a negative integer to 0.  `asl_Int`'s `result` takes the type Nat from its first branch, so the translation's SInt, and FixedToFP of a signed operand, gave 0 for every negative value | both | delete the coercion (`lean-sail-v6.diff`); type `asl_Int`'s `result` as Int, and write `.toNat` at each other place, with the model's guarantee that the value is nonnegative in a comment of the script | 30 | on v4.34.0-rc2 the 6,456 constants of the output hash identically with the coercion and without it after the edit, except `asl_Int` |
-| `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | the cut changes FPProcessException and no other function: against the uncut slice on v4.29.0, the 6,457 constants of the cut output without the roots FPRoundInt, FPToFixed, and FPCompare differ only in FPProcessException, `sail_model_init`, and constants that Lean derives for the inductive types |
+| `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | against the uncut slice on v4.29.0, of the 6,464 constants of the cut output the functions FPProcessException and `sail_model_init` differ, and otherwise only `RegisterType`, the type `exception`, constants that Lean derives for `Register`, and the stand-ins (below) |
 | lean-sail's `ArchSemSequential.lean`: `Decidable (0 < choice)` | v4.34.0-rc2 | `lean-sail-v6.diff` | | the edited `interpretSailEffects` belongs to the version-2 interface, which the output does not name |
 
 Lean's coercion of a type's arithmetic converts each operand, so the coercion gave the width
@@ -134,13 +134,9 @@ The literal rewrite follows `doc_lit` of the back end's `pretty_print_lean.ml`, 
 `L_real` with Zarith's `Q.to_string`, so every real literal has one of the forms `N`, `-N`,
 `N/D`, and `-N/D`; a negative integer literal prints as `(-N)` (`doc_big_int`).  [`ConstDump.lean`](ConstDump.lean) writes the hashes that the
 comparisons use: each constant's type and value, with the module name and the numbering of
-matchers normalized, in a built project or after a root module elaborated as a file (below).  The derived constants
-that differ between the cut and the uncut output are the eliminators and recursors of
-`Register`, whose constructors differ with the register set, and the `noConfusion` and `Repr`
-definitions of the enumerations, whose difference was not traced.  The uncut slice also needed
-two edits that the cut makes unnecessary, since both functions lie on exception paths: a
-comparison of two `BitVec.join1 [b]` in IncrementInstructionCounter that runs in `whnf` without
-end, and the do elaborator's failure on MaybeZeroSVEUppers on v4.34.0-rc2.
+matchers normalized, in a built project or after a root module elaborated as a file (below).
+ConstDump hashes a reference to a constant by the constant's name, so a changed definition
+changes its own hashes and not those of the constants that refer to it.
 
 The comparisons of the `assert` and fraction edits ran on the Float-valued output of the
 nine-root slice, with Lean v4.29.0 and lean-sail v6 unchanged.  For the `assert` edit, a copy of
@@ -153,11 +149,30 @@ error recovery still adds a definition whose body fails, so both runs hash every
 the edit the run gave every constant the hashes of `probe429.sh`'s build.  Without it Lean
 reported 14 errors, one at each fraction, each a failure to synthesize `HDiv Bool Nat Bool`, the
 division of a comparison's Boolean result by 2, and only the values of FPRoundBase__1,
-FPRoundInt, and FPToFixed differed.  The comparison of the cut ran on the slice without the
-roots FPRoundInt, FPToFixed, and FPCompare.  The three roots add the definitions FPRoundInt, SatQ, SignedSatQ, UnsignedSatQ,
-FPCompare, and FPToFixed and change the text of no other definition: the two outputs differ
-elsewhere only in the generated names of two type quantifiers in a comment, and in the nine-root
-output FPProcessException is the only caller of the cut functions.
+FPRoundInt, and FPToFixed differed.
+
+The comparison of the cut built the Float-valued output of `fp-slice.isail` without its
+`:slice_cuts` line on v4.29.0, with `ArmExtras.lean` without the two stand-ins, since that output
+defines both functions.  The count checks of `fix-output.sh` hold on that output, where the script
+also parenthesizes the step `-1` of a loop, and the uncut slice needs one more edit:
+IncrementInstructionCounter compares two `BitVec.join1 [b]`, whose unification runs in `whnf`
+without end, and the edit compares the two bits.  On v4.34.0-rc2 the do elaborator also fails on
+MaybeZeroSVEUppers; both functions lie on exception paths that the cut removes.  Of the 6,464
+constants of the cut output, the stand-ins are missing from the uncut output, and the translated
+functions that differ are FPProcessException, the only caller of the cut functions, and
+`sail_model_init`.  The uncut output adds the registers NUM_BRBE_RECORDS, NUM_PMU_COUNTERS,
+`__GIC_Pending`, `__block_bbm_implemented`, `__has_sve_extended_bf16`,
+`__max_implemented_smeveclen`, `__max_implemented_sveveclen`, and `__supported_pa_size`, so
+`RegisterType`, the back end's map from a register to the type of its value, differs, as do the
+constants that Lean derives for `Register`: `rec`, `recOn`, `casesOn`, `ctorIdx`, `ctorElim`,
+`ctorElimType`, `ofNat`, `ofNat_ctorIdx`, `_sizeOf_1`, 309 of the 1,098 eliminators of single
+constructors, and the functions of the derived `Hashable` and `Repr` instances.  The remaining
+difference is `exception`, the type of the model's exceptions in `SailM`.  No function of the cut
+output throws one, and the back end defines the type as `Unit`, while in the uncut output it has
+the model's eight constructors, which ThrowSError and EndOfInstruction throw on the trap path.
+The types of the functions in `SailM` refer to `exception` by name and hash identically.  With
+one CPU each, the cut build took 303 s and the uncut build 391 s, 327 s of them for the root
+module, at a peak of 4.5 GB.
 
 The root modules of the Float-valued and rational outputs differ from the real-number output's
 only in the module name, the import of `FakeReal` in place of `Real`, and `noncomputable
