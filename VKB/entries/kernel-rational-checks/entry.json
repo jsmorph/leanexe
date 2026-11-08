@@ -1,0 +1,49 @@
+{
+  "id": "kernel-rational-checks",
+  "goals": [
+    "LeanExe.ProofKit.PolyBound.check p lo hi ε d = true",
+    "∀ x ∈ Set.Icc lo hi, |p.eval x - f x| ≤ ε",
+    "LeanExe.ProofKit.PolyChecks.Covers p ε d lo hi ms",
+    "LeanExe.ProofKit.TaylorCheck.exprOk c E ε depth = true",
+    "∀ j : Fin n, a rational bound on table entry j",
+    "a certificate computed by a script and checked by decide +kernel",
+    "decide +kernel exhausts memory or time over a whole interval"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.PolyBound",
+    "LeanExe.ProofKit.PolyChecks",
+    "LeanExe.ProofKit.TaylorModel",
+    "LeanExe.ProofKit.TaylorCheck",
+    "LeanExe.ProofKit.BesselRatio",
+    "Library.Numerics.Float64.Trig.TrigKernelPoly",
+    "Library.Numerics.Float64.Atan.AtanKernelPoly",
+    "Library.Numerics.Float64.Tgamma.TgammaExpTables",
+    "Library.Numerics.Float64.Exp.ExpTableBounds",
+    "Library.Numerics.Float64.Erfc.ErfcSeriesZ",
+    "Library.Numerics.Float64.Trig.TrigDistance"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.PolyBound.check",
+    "LeanExe.ProofKit.PolyBound.check_sound",
+    "LeanExe.ProofKit.PolyBound.ratOfWord",
+    "LeanExe.ProofKit.PolyChecks.Covers",
+    "LeanExe.ProofKit.PolyChecks.bounded_of_covers",
+    "LeanExe.ProofKit.PolyChecks.abs_le_weighted",
+    "LeanExe.ProofKit.TaylorModel.tm_sound",
+    "LeanExe.ProofKit.TaylorCheck.exprOk",
+    "LeanExe.ProofKit.TaylorCheck.exprOk_sound",
+    "LeanExe.ProofKit.BesselRatio.ishift"
+  ],
+  "examples": [
+    "Library.Numerics.Float64.Trig.TrigKernelPoly.sin_check",
+    "Library.Numerics.Float64.Atan.AtanKernelPoly.atan_part_covers",
+    "Library.Numerics.Float64.Tgamma.TgammaExpTables.expErr_checked",
+    "Library.Numerics.Float64.Tgamma.TgammaExpTables.exp_poly",
+    "Library.Numerics.Float64.Exp.ExpTableBounds.checked_table_bounds",
+    "Library.Numerics.Float64.Exp.ExpTableBounds.scale_enclosure",
+    "Library.Numerics.Float64.Erfc.ErfcSeriesZ.shiftZ",
+    "Library.Numerics.Float64.Erfc.ErfcSeriesZ.rowBoundZ_eq",
+    "Library.Numerics.Float64.Trig.TrigDistance.certs_checked",
+    "Library.Numerics.Float64.Trig.TrigDistance.check_sound"
+  ]
+}

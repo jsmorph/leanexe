@@ -5,7 +5,8 @@
     "Library.Bytes.bytes msg n",
     "Library.Bytes.byteAt msg i",
     "List.foldr (fun b acc => b.toNat + 256 * acc) 0 bytes",
-    "(p.drop i).take k for a list of bytes"
+    "(p.drop i).take k for a list of bytes",
+    "((LeanExe.Requests.wordBytes w 8)[r]!).toUInt8 = Library.Bytes.byteOf w (7 - r)"
   ],
   "modules": [
     "Library.Bytes.Packed",
@@ -13,7 +14,8 @@
     "Library.Hashing.Crc.Proof",
     "Library.Regex.RunProof",
     "Library.Hashing.XxHash64.Proof",
-    "Library.Hashing.SipHash.Proof"
+    "Library.Hashing.SipHash.Proof",
+    "LeanExe.Requests.Records"
   ],
   "declarations": [
     "Library.Bytes.byteOf",
@@ -27,7 +29,8 @@
     "Library.Bytes.sum_digits",
     "Library.Bytes.byteOf_toNat",
     "Library.Bytes.foldr_byteOf",
-    "Library.Bytes.chunk_eq"
+    "Library.Bytes.chunk_eq",
+    "LeanExe.Requests.wordBytes"
   ],
   "examples": [
     "Library.Hashing.Crc.Proof.natBits_word",
