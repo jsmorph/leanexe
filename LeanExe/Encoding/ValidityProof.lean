@@ -339,7 +339,8 @@ private def instructionType (context instruction : Lean.Expr) (inputs outputs : 
 private def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
   let type ← instantiateMVars type
   if type.hasFVar || type.hasMVar then return ← mkDecideProof type
-  let name := Name.num `_private.validityLookup type.hash.toNat
+  -- The module's name keeps two modules that state the same fact from declaring one name.
+  let name := Name.num (`_private.validityLookup ++ (← getEnv).mainModule) type.hash.toNat
   if let some declaration := (← getEnv).find? name then
     if declaration.type == type then return mkConst name
   let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityLookup else pure name
@@ -369,7 +370,8 @@ private def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM 
     ← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context])]
   let value ← instantiateMVars value
   if value.hasFVar || value.hasMVar then return value
-  let name := Name.num `_private.validityContext value.hash.toNat
+  -- The module's name keeps two modules that state the same context from declaring one name.
+  let name := Name.num (`_private.validityContext ++ (← getEnv).mainModule) value.hash.toNat
   if let some (.defnInfo declaration) := (← getEnv).find? name then
     if declaration.value == value then return mkConst name
   let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityContext else pure name
