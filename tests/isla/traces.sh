@@ -67,7 +67,7 @@
 # armv9p4-checked-fp.ir, to which tests/isla/armv9p4-checked-fp.diff adds 64-bit wrappers of the
 # floating-point functions, such as FPAdd64, called only at 64 bits, and the arithmetic forms,
 # UCVTF, and FCVTZU leave their wrapper abstract with --abstract, since Arm's pseudocode rounds a
-# real number.
+# real number.  FCMP leaves FPCompare itself abstract, whose result has 4 bits at every width.
 # The copies sit beside the IR:
 #   ir=~/isla-probe/ir && cp $ir/armv9p4.ir $ir/armv9p4-checked.ir &&
 #   patch $ir/armv9p4-checked.ir < tests/isla/armv9p4-checked.diff &&
@@ -97,9 +97,11 @@
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
 # DIR/FORM.opcode, which holds on one line the pattern of the opcode's bits that it passes to Isla
 # with -i, then writes DIR/FORM.trace and prints "FORM SECONDS KIB", the elapsed time and peak
-# resident memory.  ISLA_IR names the directory of the IR copies, ~/isla-probe/ir unless set.  With
-# PRINT_ARGS set to a directory, it writes DIR/FORM.opcode and each form's arguments to Isla,
-# separated by NUL bytes, to PRINT_ARGS/FORM.args, and runs nothing.
+# resident memory.  ISLA_IR names the directory of the IR copies, ~/isla-probe/ir unless set, where
+# the commands above made armv9p4-checked.ir, armv9p4-checked-udiv.ir, and armv9p4-checked-fp.ir on
+# edgexpert-18ff from the committed diffs.  With PRINT_ARGS set to a directory, it writes
+# DIR/FORM.opcode and each form's arguments to Isla, separated by NUL bytes, to
+# PRINT_ARGS/FORM.args, and runs nothing.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 profile=$1

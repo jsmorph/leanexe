@@ -746,13 +746,16 @@ def genFunctions (callee : Table) (S : Shared) :
         throw s!"function {j}: {halfwordsOf is} halfwords against a size of {n} units"
       return is ++ (← genFunctions callee S (after a n) rest)
 
+/-- Whether one of the functions `fs` accesses the area. -/
+def fnsArea (fs : List (Nat × Function)) : Bool := fs.any fun x => listArea x.2.body
+
 /-- The types of the globals of `m` when one of the functions `fs` accesses the area, or `none`
 when none does.  With an area, the memory of `m` has 32-bit addresses and from 1 to `areaPages`
 pages, the globals are at most 511 `i32`s and `i64`s, and the stack's limit `limit` lies at or
 above the area's end. -/
 def areaOf (m : Module) (fs : List (Nat × Function)) (limit : UInt32) :
     GenM (Option (List ValueType)) := do
-  if !fs.any fun x => listArea x.2.body then return none
+  if !fnsArea fs then return none
   if !areaOk m areaPages then throw s!"a memory that an area of {areaPages} pages does not hold"
   let gts ← match globalTypesOf m with
     | some gts =>

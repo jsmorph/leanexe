@@ -150,15 +150,15 @@ theorem board_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64
     {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
     (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
     (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
-    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
-    (hk : bootFileOk boot (program m k s0) n len = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (hk : bootFileOk boot (program m k s0) n len = true)
     (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
     {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
     (hb : Reset code flashItcm b) (N : Nat) :
     ∃ t, Reach platform σ code b t ∧ t.pc = loopHead s0 ∧
       t.trace = initTrace init σ ++
         windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) N :=
-  boot_run (B := boot) hwords hlen himpl hPre hm hcov devWindow hat hcap (by decide)
+  boot_run (B := boot) hwords hlen himpl hPre hm hcov hna devWindow hat hcap (by decide)
     (initCode_wide init) hk hf.itcm (by decide) (initRuns σ code) (by decide)
     (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
     (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
@@ -172,14 +172,14 @@ theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt6
     {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
     (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
     (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
-    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
-    (hk : bootFileOk boot (program m k s0) n len = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (hk : bootFileOk boot (program m k s0) n len = true)
     (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
     {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
     (hb : Reset code flashItcm b) : ∀ j, ∃ t, run platform σ code j b = some t :=
   runs_forever (c := (initTrace init σ).length) fun N => by
-    obtain ⟨t, r, -, tr⟩ := board_run (σ := σ) hwords hlen himpl hPre hm hcov hat hcap hk hfit g0
-      hs0 hf b hb N
+    obtain ⟨t, r, -, tr⟩ := board_run (σ := σ) hwords hlen himpl hPre hm hcov hna hat hcap hk
+      hfit g0 hs0 hf b hb N
     exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
 
 /-- The bytes of the generator's area lie in DTCM. -/

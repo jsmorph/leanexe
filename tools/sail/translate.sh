@@ -9,8 +9,10 @@
 # definitions in order, so v8_base.sail's functions call only functions declared in the files
 # before it or in it.  A function declared there and defined in an omitted file would appear in
 # the Lean output without a definition, and Lean reports no such identifier for this slice.
-# The whole model does not fit in 7 GiB.  The Lean output imports ArmExtras.lean for the model's
-# external functions.
+# The whole model does not fit in 7 GiB.  fp-measures.sail gives FPRoundBase__1's loops the
+# measures that termination_measures.sail gives the Rocq target only.  The Lean output imports
+# ArmExtras.lean for the model's external functions and the stand-ins of the functions that
+# SCRIPT cuts.
 set -eu
 model=$1
 out=$2
@@ -18,11 +20,12 @@ name=$3
 script=$4
 shift 4
 mkdir -p "$out"
-extras="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/ArmExtras.lean"
+here="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+extras="$here/ArmExtras.lean"
 cd "$model"
 srcs="src/prelude.sail src/decode_start.sail src/builtins.sail src/v8_base.sail src/stubs.sail
   src/interrupts.sail src/interface.sail src/devices.sail src/impdefs.sail src/mem.sail
-  src/decode_end.sail src/fetch.sail src/termination_measures.sail"
+  src/decode_end.sail src/fetch.sail src/termination_measures.sail $here/fp-measures.sail"
 # shellcheck disable=SC2086
 { cat "$script"; echo ":target lean, $name"; } |
   sail -dprofile -no_warn -no_color -memo_z3 -undefined_gen -just_check -interact_custom \
