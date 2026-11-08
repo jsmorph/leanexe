@@ -104,4 +104,9 @@ def loopHead (s0 : List UInt64) : UInt32 := after boot.base (mainStart s0)
 before the initialization. -/
 def areaBoot (m : Wasm.Module) : Boot := boot.setup (setupCode areaHeader areaPages m)
 
+/-- The address of the loop's head of `main` in the layout `areaBoot m` for the initial state
+`s0`. -/
+def areaLoopHead (m : Wasm.Module) (s0 : List UInt64) : UInt32 :=
+  after (areaBoot m).base (mainStart s0)
+
 end LeanExe.M7.Nucleo

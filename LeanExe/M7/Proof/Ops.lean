@@ -261,6 +261,19 @@ theorem le_slot (a b : UInt64) :
   · rw [ite_eq_right_of_eq_false _ _ (eq_false fun e => hab (UInt64.le_iff_toNat_le.mpr (h.mp e))),
       ite_eq_right_of_eq_false _ _ (eq_false hab)]
 
+theorem ge_slot (a b : UInt64) :
+    SlotRel (.i32 (if a ≥ b then 1 else 0))
+      (if (addWithCarry (a >>> 32).toUInt32 (~~~(b >>> 32).toUInt32)
+          (addWithCarry a.toUInt32 (~~~b.toUInt32) true).2.1).2.1 then 1 else 0) 0 := by
+  have h := (sub_pair a.toUInt32 (a >>> 32).toUInt32 b.toUInt32 (b >>> 32).toUInt32).2
+  rw [pairNat_toUInt32, pairNat_toUInt32] at h
+  refine ⟨?_, rfl⟩
+  by_cases hab : a ≥ b
+  · rw [ite_eq_left_of_eq_true _ _ (eq_true (h.mpr (UInt64.le_iff_toNat_le.mp hab))),
+      ite_eq_left_of_eq_true _ _ (eq_true hab)]
+  · rw [ite_eq_right_of_eq_false _ _ (eq_false fun e => hab (UInt64.le_iff_toNat_le.mpr (h.mp e))),
+      ite_eq_right_of_eq_false _ _ (eq_false hab)]
+
 theorem gen_ltUI64 (E : Env) (ctl : List Ctl) (σs : List ValueType) (a : UInt32) :
     genInstr E ctl σs a .ltUI64 = genBin E ctl σs (geOps ++ [.eorImm 0 0 1]) (0, 1) .i32 := rfl
 
@@ -304,6 +317,17 @@ theorem sim_leUI64 (F : Nat) : InstrSim P σ code F .leUI64 :=
       slot_regs
       rw [h0, h1, h2, h3, ofNat_imm0, adc_zero]
       exact le_slot a b)
+    (fun _ _ => trivial) F
+
+theorem sim_geUI64 (F : Nat) : InstrSim P σ code F .geUI64 :=
+  sim_binary (inst := .geUI64) (ops := geOps) (res := (0, 1)) (t := .i32)
+    (op := fun a b => .i32 (if a ≥ b then 1 else 0)) (fun _ _ _ _ => rfl) rfl
+    (fun f α m st sl b a vs hv => by simp only [execOne.eq_def, hv]) (by invalid_tac)
+    (fun u a b h0 h1 h2 h3 => by
+      simp only [geOps]
+      slot_regs
+      rw [h0, h1, h2, h3, ofNat_imm0, adc_zero]
+      exact ge_slot a b)
     (fun _ _ => trivial) F
 
 /-! ## Shifts -/

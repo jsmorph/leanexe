@@ -15,11 +15,14 @@ and the others by `areaByte_tail`.
 
 `setup_boot` runs an image whose layout `Boot.setup` gives, from reset to the initialization's
 start, where the machine holds the module's initial store in the area by `storeRel_init`.
+`setupBoot_run` continues the run through the initialization, which keeps memory, and `main_run`
+of `LeanExe/M7/Proof/Main.lean`, whose windows carry the store in the area from the initial store
+on.
 -/
 
 namespace LeanExe.M7
 
-open Wasm LeanExe.ProofKit
+open Wasm LeanExe.ProofKit LeanExe.CallGraph LeanExe.Pipeline LeanExe.Requests
 
 variable {P : Platform} {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
 
@@ -632,5 +635,59 @@ theorem setup_boot {B : Boot} {am m : Module} {cap : Nat} {gts : List ValueType}
   refine ⟨t, r, ?_, c, by rw [sp, hbsp], by rw [lr, hb.lr], by rw [tr, hb.trace],
     by rw [rd, hb.reads], storeRel_init hao hgt hgl hint harea hram hbelow⟩
   rw [p, hbpc, after_eq]
+
+/-- The image of step `k` of `m`, whose program has an area, in a layout `B.setup` with the setup
+of the generator's area for the store of `m`, whose bytes the kernel's check `hk` finds in the code
+map, run from reset: the setup leaves the store in which `m` starts in the area, the
+initialization keeps it and appends `t0 σ` to the trace with its `r` reads, and `main` reaches the
+loop's head after `N` windows with their accesses appended, the windows reading `σ` from `σ r` on.
+The step's call keeps the invariant `J`, which holds of the initial store with the heap `heap`.
+The area's bytes are `Ram` below the stack's limit `lim`, the table lies at a multiple of 4, its
+initial SP is a multiple of 4 above the outgoing area, and every state whose SP lies at the
+outgoing area has the stack that `StackOk` states. -/
+theorem setupBoot_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {lim dev : UInt32}
+    {B : Boot} {n len : Nat} {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
+    {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
+    (hcall : StepCall m k words tick J) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hok : setupOk m areaPages = true)
+    (hram : ∀ j < areaSize areaPages, Ram P (areaHeader + UInt32.ofNat j))
+    (hbelow : areaHeader.toNat + areaSize areaPages ≤ lim.toNat) (hdev : DevWindow P dev)
+    {heap : Heap} (hat : heap.At (initStore m areaPages)) (hJ : J heap (initStore m areaPages))
+    (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
+    (hk : bootFileOk (B.setup (setupCode areaHeader areaPages m))
+      (bootProgram (B.setup (setupCode areaHeader areaPages m)) m k s0 lim dev) n len = true)
+    (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
+    {t0 : (Nat → UInt32) → List Access} {r : Nat} (hinit : InitRuns P σ code B.init t0 r)
+    (hsp : B.sp.toNat % 4 = 0) (hfit : 8 * (s0.length + 1) ≤ B.sp.toNat)
+    (hstk : ∀ s : State, s.sp = B.sp - UInt32.ofNat (8 * (s0.length + 1)) →
+      StackOk P lim (s0.length + 1) (stackBound m k) s)
+    (g0 : G) (hs0 : words g0 = s0) (b : State) (hb : Reset code B.org b) (N : Nat) :
+    ∃ t, Reach P σ code b t ∧
+      t.pc = after (B.setup (setupCode areaHeader areaPages m)).base (mainStart s0) ∧
+      t.trace = t0 σ ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + r))) N := by
+  obtain ⟨-, -, gts, hgt, -, -⟩ := of_setupOk hok
+  have hw' : (B.setup (setupCode areaHeader areaPages m)).init.all Instr.wide = true := by
+    show (setupCode areaHeader areaPages m ++ B.init).all Instr.wide = true
+    rw [List.all_append, setupCode_wide, hw]
+    rfl
+  obtain ⟨prog, hprog, hcp, -, -, -⟩ := boot_image (code := code)
+    (B := B.setup (setupCode areaHeader areaPages m)) hent hw' hk hf
+  obtain ⟨t, rt, pt, ct, spt, -, trt, rdt, hsr⟩ := setup_boot (P := P) (σ := σ) hok hgt
+    (by decide) hram hbelow hent hw hk hf hsp horg b hb
+  obtain ⟨t1, r1, p1, sp1, tr1, rd1, mm1⟩ := hinit t ct
+  have hp1 : t1.pc = (B.setup (setupCode areaHeader areaPages m)).base := by
+    rw [p1, pt, Boot.base, Boot.reset]
+    show _ = after B.org (B.entries + 1 + (setupCode areaHeader areaPages m ++ B.init).length)
+    rw [List.length_append]
+    addr_after
+  have hsp1 : t1.sp = B.sp := sp1.trans spt
+  obtain ⟨t2, r2, p2, tr2⟩ := main_run (P := P) (σ := σ) (code := code) hlen hcall hm hprog hcp
+    (by rw [Boot.base]; exact even_after (a := B.org) (by omega) _) hcov hdev hat hJ
+    (by show areaPages ≤ 65535; decide) g0 hs0 t1 hp1
+    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
+    (fun _ => ⟨gts, hgt, hsr.congr (KeepsBelow.of_mem mm1)⟩) N
+  refine ⟨t2, rt.trans (r1.trans r2), p2, ?_⟩
+  rw [tr2, tr1, rd1, trt, rdt, List.nil_append, Nat.zero_add]
+  rfl
 
 end LeanExe.M7
