@@ -1,5 +1,6 @@
 import TestSupport.M7.Sha
 import Library.Hashing.Sha256.Proof
+import LeanExe.Requests.Reads
 
 /-!
 The record machine of the SHA-256 step against FIPS 180-4.  `machRun (shaSpec roundConstants)
@@ -99,11 +100,6 @@ theorem wordBytes_byte (w : UInt64) (r : Nat) (hr : r < 8) :
      intro i hi
      simp [byteOf, UInt64.toBitVec_shiftLeft, UInt64.toBitVec_shiftRight, UInt64.toBitVec_toUInt8]
      all_goals (interval_cases i <;> simp))
-
-theorem length_wordBytes (w : UInt64) (k : Nat) : (wordBytes w k).length = k := by
-  induction k generalizing w with
-  | zero => rfl
-  | succ k ih => simp [wordBytes, ih]
 
 theorem wordBytes_lt (w : UInt64) (r : Nat) (hr : r < 8) : ((wordBytes w 8)[r]!).toNat < 256 := by
   interval_cases r <;>
