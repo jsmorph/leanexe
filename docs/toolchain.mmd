@@ -49,6 +49,13 @@ flowchart TB
     ISLA["Isla traces of Arm's Sail model<br/>Lean proofs compare the model's<br/>instruction forms with them"]
   end
 
+  subgraph M7B["Cortex-M7 backend"]
+    M7GEN["LeanExe/M7 genProgram<br/>the step of a program with requests<br/>simulation theorem step_call<br/>in a Lean model of the Cortex-M7"]
+    M7IMG["Vector table, the area's setup,<br/>initialization, main, step, udivmod64<br/>T: board_run and areaBoard_run,<br/>every window of the run from reset"]
+    M7F["Flash image file<br/>m7-windows writes it,<br/>and the kernel compares its bytes"]
+    M7ISLA["Isla traces of Arm's A-profile Sail model<br/>in AArch32 Thumb state: Lean proofs<br/>compare the Thumb forms with them"]
+  end
+
   subgraph GPU["GPU backends"]
     WG["Verified.WGSL.compile<br/>G: dispatch theorems, Dispatch.executions<br/>under the Vulkan memory model"]
     WGM["LeanExe.WGSL.Module<br/>tools/EmitWgsl.lean prints the .wgsl text,<br/>and the proved parser reads it back"]
@@ -70,8 +77,11 @@ flowchart TB
   BARE -.-> ROCQ
   CTXT --> CC
 
-  MOD --> GEN --> IMG --> IMGF
   ISLA -. "checks" .-> GEN
+  MOD --> GEN --> IMG --> IMGF
+
+  M7ISLA -. "checks" .-> M7GEN
+  MOD --> M7GEN --> M7IMG --> M7F
 
   KSRC --> WG --> WGM
   WG -.-> HOST
@@ -82,6 +92,7 @@ flowchart TB
     direction LR
     LNX["Linux on AArch64 and x86-64<br/>executable linked with<br/>tools/native-host.c"]
     QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code,<br/>or arm64 Image"]
+    NUC["NUCLEO-F767ZI, Cortex-M7<br/>flash image from reset,<br/>also in Renode, and on QEMU<br/>mps2-an500 for UART0's images"]
     WT["Wasmtime<br/>leanexe-wasmtime-host,<br/>WASI Preview 1"]
     JS["Browsers and Node.js<br/>GPT-2 pages,<br/>gpt32-wasm-host.mjs"]
     VK["wgpu-native on Vulkan<br/>SwiftShader, llvmpipe<br/>leanexe-webgpu-host"]
@@ -92,6 +103,7 @@ flowchart TB
   CC --> LNX
   CC --> QEMU
   IMGF --> QEMU
+  M7F --> NUC
   WASMF --> WT
   WASMF --> JS
   WGM ---> VK
@@ -104,5 +116,5 @@ flowchart TB
   classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
   class LEAN,ACT,VC,VCW src
   class EXPR,CMD,KSRC ir
-  class CW,CWW,MOD,MODW,ENC,WASMF,TR,CL,BARE,CTXT,CC,ROCQ,GEN,IMG,IMGF,ISLA,WG,WGM,PT,PTM,PTXAS,HOST back
-  class WT,JS,LNX,QEMU,VK,WEBGPU,NV run
+  class CW,CWW,MOD,MODW,ENC,WASMF,TR,CL,BARE,CTXT,CC,ROCQ,GEN,IMG,IMGF,ISLA,M7GEN,M7IMG,M7F,M7ISLA,WG,WGM,PT,PTM,PTXAS,HOST back
+  class WT,JS,LNX,QEMU,NUC,VK,WEBGPU,NV run
