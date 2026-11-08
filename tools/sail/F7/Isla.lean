@@ -4,6 +4,7 @@ import F7.FPMul
 import F7.FPDiv
 import F7.FPSqrt
 import F7.FixedToFP
+import F7.FPCompare
 import LeanExe.A64.Isla.Float
 
 /-!
@@ -24,9 +25,13 @@ at each abstract call, read as a register map of the translation, satisfies `Hyp
 `fpAddEq_of_sail` derives `FPAddEq A` from `SailFPAdd A` and `fpAdd_eq_f64Add`, converting between
 `UInt64` and `BitVec 64`, and `fpSubEq_of_sail`, `fpMulEq_of_sail`, `fpDivEq_of_sail`,
 `fpSqrtEq_of_sail`, and `fixedToFPEq_of_sail` derive `FPSubEq`, `FPMulEq`, `FPDivEq`, `FPSqrtEq`,
-and `FixedToFPEq` in the same way.  The link `SailFixedToFP` also reads two of Isla's argument
-values: the integer `fbits` 0 of the model, which Isla passes as the 128-bit vector 0, and the
-rounding mode, which Isla passes as the enumeration member `FPRounding_TIEEVEN` by name.
+and `FixedToFPEq` in the same way, and `fpToFixedEq_of_sail` and `fpCompareEq_of_sail` derive
+`FPToFixedEq` and `FPCompareEq`.  The links `SailFixedToFP` and `SailFPToFixed` also read two of
+Isla's argument values: the integer `fbits` 0 of the model, which Isla passes as the 128-bit vector
+0, and the rounding mode, which Isla passes as the enumeration member `FPRounding_TIEEVEN` or
+`FPRounding_ZERO` by name.  FCMP calls FPCompare without a wrapper, and `SailFPCompare` names the
+abstract call `FPCompare` on two 64-bit operands, `signal_nans` false, and FPCR, whose 4-bit
+result `fpCompareEq_of_sail` reads as the number of `fcmpNZCV`.
 
 The derivation needs a state that satisfies `Hyp`.  `islaState p u` builds one from the profile `p`
 of `LeanExe/A64/Isla/Profile.lean` and its unknown values `u`: FeatureImpl from the values of the
@@ -250,6 +255,46 @@ theorem fixedToFPEq_of_sail (A : Abstract) (h : SailFixedToFP A) :
     fixedToFP_eq_f64ConvertI64U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV, UInt64.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPToFixed64` and the translation's FPToFixed from 64 bits to
+an unsigned 64-bit integer with no fraction bits under FPCR 0x02000000, rounding toward zero, which
+review supports.  Isla passes the integer `fbits` 0 as the 128-bit vector 0 and the rounding mode
+as the enumeration member `FPRounding_ZERO`. -/
+def SailFPToFixed (A : Abstract) : Prop :=
+  ∀ (a : BitVec 64) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr v : BitVec 64)
+    (s' : State), Hyp s.regs fi ps fpsr →
+    (FPToFixed a 0 true fpcrV .FPRounding_ZERO 64).run s = .ok v s' →
+    A "FPToFixed64" [.bits 64 a.toNat, .bits 128 0, .bool true, islaFPCR fpcrV,
+      .enum "FPRounding_ZERO"] = some (.bits 64 v.toNat)
+
+theorem fpToFixedEq_of_sail (A : Abstract) (h : SailFPToFixed A) :
+    LeanExe.A64.Isla.FPToFixedEq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpToFixed_eq_i64TruncSatF64U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt64.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPCompare` on two 64-bit operands with `signal_nans` false
+and the translation's FPCompare at 64 bits under FPCR 0x02000000, which review supports. -/
+def SailFPCompare (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 64) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 4) (s' : State), Hyp s.regs fi ps fpsr →
+    (FPCompare a b false fpcrV).run s = .ok v s' →
+    A "FPCompare" [.bits 64 a.toNat, .bits 64 b.toNat, .bool false, islaFPCR fpcrV] =
+      some (.bits 4 v.toNat)
+
+theorem fpCompareEq_of_sail (A : Abstract) (h : SailFPCompare A) :
+    LeanExe.A64.Isla.FPCompareEq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpCompare_eq_fcmpNZCV a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt64.ofBitVec_toBitVec, UInt64.ofBitVec_toBitVec, BitVec.toNat_ofNat,
+    Nat.mod_eq_of_lt (lt_of_lt_of_eq (LeanExe.A64.Isla.fcmpNZCV_lt a b)
+      (by norm_num : (16 : ℕ) = 2 ^ 4))] at e
   exact e
 
 end F7
