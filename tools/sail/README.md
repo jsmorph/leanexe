@@ -2,8 +2,9 @@
 
 These scripts translate the floating-point functions of the Armv9.4-A Sail model into Lean with
 Sail's Lean back end, elaborate the output, test it against Talos's binary64 functions, and prove
-one of the equations that the A64 Isla check assumes: [`FPAdd.lean`](FPAdd.lean) proves that the
-translated `FPAdd(a, b, 0x02000000)` at 64 bits returns `f64Add a b` for every pair of words.
+one of the equations that the A64 Isla check assumes: [`F7/FPAdd.lean`](F7/FPAdd.lean) proves
+that the translated `FPAdd(a, b, 0x02000000)` at 64 bits returns `f64Add a b` for every pair of
+words.
 Sail's C emulator of the same slice tests the same functions with exact rationals
 ([`emu/`](emu/)).  Nothing in the A64 model or its proofs depends on these files.
 
@@ -122,8 +123,8 @@ builds the Float-valued output with Lean v4.29.0 and lean-sail v6 unchanged in 2
 FPRoundBase__1 doubles a mantissa `M` below 1 while it is below 1, with fuel `⌈1/M⌉`, and then
 halves it while it is at least 2, with fuel `⌈M'⌉`.  lean-sail's `whileFuelM` returns the current
 value when its fuel runs out, so a short measure would change a result without an error.
-`FPAdd.lean` proves that both loops exit by their conditions within their fuel for every
-positive real mantissa, the only inputs that FPRoundBase__1's assertion `op != 0` admits:
+[`F7/Base.lean`](F7/Base.lean) proves that both loops exit by their conditions within their fuel
+for every positive real mantissa, the only inputs that FPRoundBase__1's assertion `op != 0` admits:
 `loop1_exit` gives the number `k` of doublings, with `k < ⌈1/M⌉`, `M·2^i < 1` for `i < k`, and
 `1 ≤ M·2^k`, and `loop2_exit` gives the number of halvings likewise.  `whileFuelM_pure` and
 `loopP_of_exit` turn the loops into iterations of their bodies, and `loops_eq` gives their result
@@ -132,22 +133,67 @@ positive real mantissa, the only inputs that FPRoundBase__1's assertion `op != 0
 ## The state hypothesis
 
 `Hyp` states what the theorems assume of the state: the register map holds FeatureImpl, PSTATE,
-and FPSR; one of FEAT_AA64EL0 to FEAT_AA64EL3 is implemented; FEAT_SME_FA64 is not; and
-PSTATE.nRW is 0.  FEAT_AFP, FEAT_SME, the other features, the other fields of PSTATE, FPSR's
-value, the other registers, the memory, and the choice state are free; FPCR is FPAdd's argument,
-0x02000000.  The proofs keep `trivialChoiceSource` irreducible, so the unspecified values that the
-functions draw stay unevaluated terms, and each theorem holds for every state that satisfies
-`Hyp`.
+FPSR, SCR_EL3, HCR_EL2, and SMCR_EL1 to SMCR_EL3; one of FEAT_AA64EL0 to FEAT_AA64EL3 is
+implemented; and PSTATE.nRW is 0.  The other features, among them FEAT_AFP, FEAT_SME, and
+FEAT_SME_FA64, the other fields of PSTATE, the values of FPSR and of the five system registers, the
+other registers, the memory, and the choice state are free; FPCR is the functions' argument,
+0x02000000.  Each theorem holds for every state that satisfies `Hyp`.
 
 The Isla profiles meet the hypothesis.  `isla_footprint_no_init` (sail-arm's `isla_main.sail`)
 runs `InitFeatureImpl`, which sets FeatureImpl from the registers `FEAT_*_IMPLEMENTED` that
 `tests/isla/traces.sh` sets with `-I` from each profile's `features` file, as
-`LeanExe/A64/Isla/Profile.lean` states.  Both files set FEAT_AA64EL0 and FEAT_AA64EL1 and clear
-FEAT_SME and FEAT_SME_FA64; FEAT_AFP is clear under `tcg` and set under `kvm`.  The reset of
-Isla's `armv9p4.toml` sets PSTATE.nRW to 0, which the traces record as `assume-reg`, and Isla's
-state holds every register.  FPCR comes from the F2 traces, which the plan has not yet produced.
-With FEAT_SME_FA64 set, `IsFullA64Enabled` reads SMCR_EL1 to SMCR_EL3, HCR_EL2, and SCR_EL3
-through `ELIsInHost` and `EL2Enabled`, a path that the theorems do not cover.
+`LeanExe/A64/Isla/Profile.lean` states.  Every file sets FEAT_AA64EL0 and FEAT_AA64EL1.  FEAT_AFP
+is clear under `tcg` and set under `kvm` and `sme`, and FEAT_SME and FEAT_SME_FA64 are set under
+`sme` only (`tests/isla/sme/features` lines 234 and 236).  The reset of Isla's `armv9p4.toml`
+sets PSTATE.nRW to 0, which the traces record as `assume-reg`, and Isla's state holds every
+register.  FPCR comes from the F2 traces, which fix it to 0x02000000 (`tests/isla/traces.sh`).
+
+The Lean back end evaluates both operands of `&&` and `||`.  It writes each monadic operand as
+`(← …)`, which Lean's `do` notation runs before the test, while Sail's rewrites leave such operands
+in place for short-circuiting (Sail 0.20.3 `src/lib/rewrites.ml`) and the IR that Isla runs
+evaluates them only when the first operand does not decide the result (`AE_short_circuit`,
+`src/lib/anf.ml`).  A translated function therefore runs calls that Sail's function skips.  On
+the paths of FPAdd, FPSub, FPMul, FPDiv, FPSqrt, and FixedToFP at 64 bits under FPCR 0x02000000,
+the eagerly evaluated operands are these:
+
+| Function | Expression | Operands that run although Sail skips them |
+|---|---|---|
+| FPUnpackBase__1, FPProcessNaNs__1, FPDefaultNaN__1, FPRoundBase__1, FPProcessDenorms, FPProcessDenorm | `HaveAltFP() && !UsingAArch32()`, with `&& FPCR.AH == 1` in all but the first and FPDefaultNaN__1 | UsingAArch32, which reads PSTATE and FeatureImpl |
+| FPRoundBase__1 | `FPCR.UFE == 1 && (!InStreamingMode() \|\| IsFullA64Enabled())` | InStreamingMode, which reads FeatureImpl and PSTATE, and IsFullA64Enabled |
+| FPProcessException | `FPCR<enable> == 1 && (!HaveSME() \|\| PSTATE.SM == 0 \|\| IsFullA64Enabled())` | HaveSME, a read of PSTATE, and IsFullA64Enabled |
+| HaveAArch64 | the four tests of FEAT_AA64EL0 to FEAT_AA64EL3 | reads of FeatureImpl |
+| IsFullA64Enabled | `(PSTATE.EL == EL0 \|\| PSTATE.EL == EL1) && !IsInHost()`, `(PSTATE.EL == EL0 \|\| PSTATE.EL == EL1 \|\| PSTATE.EL == EL2) && EL2Enabled()` | reads of PSTATE, IsInHost, and EL2Enabled |
+| ELIsInHost | `!HaveVirtHostExt() \|\| ELUsingAArch32(EL2)` | ELUsingAArch32(EL2) |
+| EL2Enabled | `HaveEL(EL2) && (!HaveEL(EL3) \|\| SCR.NS == 1 \|\| IsSecureEL2Enabled())` | SCR_GEN_read and IsSecureEL2Enabled |
+| IsSecureEL2Enabled | `HaveEL(EL2) && HaveSecureEL2Ext()`, `!ELUsingAArch32(EL3) && SCR_EL3.EEL2 == 1` | HaveSecureEL2Ext, ELUsingAArch32(EL3), and a read of SCR_EL3 |
+
+Under FPCR 0x02000000 the first operand of the tests in FPProcessException and FPRoundBase__1 is
+false, so the value of IsFullA64Enabled plays no part, and its call matters only through its
+effects.  `ro_fullA64` in [`F7/Base.lean`](F7/Base.lean) proves that IsFullA64Enabled returns
+without an error and changes nothing but the choice state from every state whose register map
+satisfies `FARegs`: FeatureImpl with an implemented AArch64 exception level, PSTATE, SCR_EL3,
+HCR_EL2, and SMCR_EL1 to SMCR_EL3 present, for every setting of the features and every exception
+level and register value.  It composes the same statement for IsInHost, ELIsInHost, EL2Enabled,
+IsSecureEL2Enabled, ELUsingAArch32 at EL2 and EL3, IsSecureBelowEL3, and SCR_GEN_read, whose
+assertions hold because the configuration's `HaveEL` is true for every level and `HaveAArch32EL`
+only for EL0.  `bind_fa` then lets `sail_simp` step over each call.  The other eager operands read
+FeatureImpl and PSTATE; the proofs unfold them, and each theorem's statement that only FPSR
+changes excludes a write.
+
+## Unspecified values
+
+The ASL declares variables without initial values, sail-arm gives them `undefined`, and the
+translation draws each at the start of its function: Booleans, bit vectors, integers, and
+enumeration members from the choice source, and reals from `undefined_real`, which returns
+`default` (`Armv9fp/Real.lean`) and does not consult the choice source.  The type `SailM` fixes
+the choice source to lean-sail's `trivialChoiceSource`, which answers `false` and 0, and Mathlib's
+`default : ℝ` is 0, so each theorem speaks of the translation with these values.  The proofs keep
+`trivialChoiceSource` and the instance `Real.instInhabited` irreducible, and `sail_simp` steps
+over each draw with `bind_choose` and `bind_undefined_real`, never unfolding `undefined_real`.
+Every drawn value thus stays a term that no step evaluates, and each proof ends with a result and a
+register map free of such terms.  That a theorem would hold for another choice source or another
+unspecified real is a property of how its proof was built, which the kernel's check of the
+statement does not establish.
 
 ## Tests
 
@@ -177,9 +223,9 @@ evaluation, compares 10,484 operand pairs per binary function and 10,086 integer
 
 ## The FPAdd proof
 
-`fpAdd_eq_f64Add` in [`FPAdd.lean`](FPAdd.lean) states that for every pair of words `a`, `b` and
-every state `s` with `Hyp s.regs fi ps fpsr`, the translated `FPAdd a b 0x02000000` at 64 bits
-returns `(f64Add a b).toBitVec` and a state whose registers are `s.regs` with FPSR set to
+`fpAdd_eq_f64Add` in [`F7/FPAdd.lean`](F7/FPAdd.lean) states that for every pair of words `a`,
+`b` and every state `s` with `Hyp s.regs fi ps fpsr`, the translated `FPAdd a b 0x02000000` at 64
+bits returns `(f64Add a b).toBitVec` and a state whose registers are `s.regs` with FPSR set to
 `fpsr ||| addMask a b`, and whose memory, tags, cycle count, and output are `s`'s.  `addMask`
 sets IOC for a signaling NaN operand and for the sum of opposite infinities, OFC and IXC on
 overflow, and IXC on an inexact sum (`roundMask`).  The theorem depends on `propext`,
@@ -188,7 +234,8 @@ overflow, and IXC on an inexact sum (`roundMask`).  The theorem depends on `prop
 The proof follows the translated code.  `sail_simp` rewrites a run of the monadic code step by
 step with lemmas for register reads and writes, the choice source, the exception monad of
 `SailME.run`, and the FPCR fields; the state hypothesis resolves the reads of
-`UsingAArch32`, `HaveAltFP`, `IsFullA64Enabled`, and `FPProcessException`.
+`UsingAArch32`, `HaveAltFP`, and `FPProcessException`, and `bind_fa` the calls of
+`IsFullA64Enabled`.
 `fpUnpack_run` gives the type, sign, and value of an operand, its value `scaledValue a · 2^-1074`
 for a finite one; `fpProcessNaNs_run` the default NaN under FPCR.DN; and `fpRound_run` the
 result of FPRound__2 on `±N · 2^-1074`, equal to Talos's `roundScaledMagnitude`, with the FPSR
@@ -201,8 +248,8 @@ exact sum.
 
 | Measure | Value |
 |---|---|
-| Size | 1,298 lines, of which the loops take about 130, the rounding about 500, unpacking and NaNs about 130, FPAdd's cases about 200, and the monad lemmas, the FPCR fields, and the 72 comparisons of enumeration constants the rest |
-| Check | 3 min 6 s elapsed, 266 s of CPU, peak 3.1 GB, with `lake env lean` on Lean v4.34.0-rc2 after the translation is built |
+| Size | `F7/Base.lean` 869 lines: the monad lemmas, the state hypothesis, the read-only lemmas of IsFullA64Enabled (about 250), the FPCR fields, the 72 comparisons of enumeration constants, unpacking and NaNs (about 130), and the loops (about 130); `F7/FPAdd.lean` 738 lines: the rounding (about 500) and FPAdd's cases (about 200) |
+| Check | `lake build F7.FPAdd` on Lean v4.34.0-rc2 after the translation is built, 2 CPUs: `F7.Base` 50 s, `F7.FPAdd` 90 s, peak 3.2 GB |
 
 The other forms reuse the unpacking, the NaN processing, and, where the exact value is a multiple
 of 2^-1074, the rounding lemma.  FPSub mirrors FPAdd and FixedToFP rounds an integer, which the
@@ -215,13 +262,13 @@ about 3,300 lines in all, and checks of 3 to 5 minutes and 3 to 4 GB each.
 
 ## What the proofs trust
 
-A theorem of `FPAdd.lean` speaks about the Lean translation; it states Arm's FPAdd only as far as
+A theorem of `F7/` speaks about the Lean translation; it states Arm's FPAdd only as far as
 the chain below translates the ASL faithfully.
 
 | Item | Role |
 |---|---|
 | Arm's ASL and its translation into Sail by sail-arm | the specification that the Isla check also trusts |
-| Sail 0.20.3's front end, rewrites, and Lean back end, which its authors call experimental | the translation of the Sail slice into Lean |
+| Sail 0.20.3's front end, rewrites, and Lean back end, which its authors call experimental, with its eager `&&` and `\|\|` | the translation of the Sail slice into Lean |
 | lean-sail v6 with `lean-sail-v6.diff` | the monad, register map, bit-vector operations, and `whileFuelM` |
 | The back end's `Real.lean` | the real-number primitives on Mathlib's ℝ, and `Int.floor` for `round_down` |
 | `ArmExtras.lean` | `sign_extend`, and the stand-ins of the two cut trap functions |
@@ -249,7 +296,6 @@ cp -R $L $L-lean434 && patch -d $L-lean434 -p1 < $T/lean-sail-v6.diff
 sh $T/probe429.sh $O/float/armv9float $O/v429
 sh $T/probe434.sh $R $L-lean434 $O
 sh $T/lean-file.sh $R $T/Check.lean
-sh $T/lean-file.sh $R $T/FPAdd.lean
 sh $T/lean-file.sh $R $T/Vectors.lean
 opam exec --switch sail-0.20.3 -- sh $T/emu/build.sh $M $O/emu
 sh $T/emu/check.sh $O/emu/fpemu $R/tmp/sail/vectors.txt $O/emu/vectors.out
