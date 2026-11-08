@@ -1,5 +1,6 @@
 import TestSupport.M7.Nucleo
 import TestSupport.M7.GwImages
+import TestSupport.M7.CrcImages
 
 /-!
 The cycle measurements of the Cortex-M7 back end on the NUCLEO-F767ZI, in images apart from the
@@ -22,7 +23,9 @@ call of `meas` takes the place of the call of the step.  The table lies at `0x20
 counter's value at the last exit, the last key, and from `0x20000010` one entry of eight words
 for each pair of keys, the count, the least, the most, and the sum of the cycles in two words, the
 low first, at the key before times `2 ^ bits` plus the key after, for keys below `2 ^ bits`.  The
-echo's key is its phase, the state's low byte, below 4.  The gateway's key is its phase plus 4
+CRC-32 step's area occupies DTCM's base, so its image, `crcDwt`, starts with the setup of the area
+and keeps the table at `0x2001C000`, between the area's end and the stack's 264 bytes below the
+top of DTCM.  The echo's key and the CRC-32 step's is the phase, the state's low byte, below 4.  The gateway's key is its phase plus 4
 when the byte count `nbyte`, the state's second word, is 7, below 8, which distinguishes each kind
 of window of `tests/TestSupport/M7/Windows.lean` by the keys before and after it.
 
@@ -62,10 +65,10 @@ def bootLogCode : List Instr :=
     [.ldr 5 4 0, Instr.addLsl 0 6 0 3 2, .str 5 6 8, .movImm 1 1, Instr.addLsl 0 3 3 1 0,
       .str 3 0 4] ++ movWord 1 0x01000000 ++ [.orrReg 0 5 5 1, .str 5 4 0]
 
-/-- The window table's initial contents for `n` entries. -/
-def tableOps (n : Nat) : List InitOp :=
-  [.write res 0, .write (res + 4) 0xFFFFFFFF] ++ (List.range n).flatMap fun k =>
-    let e := res + 16 + 32 * UInt32.ofNat k
+/-- The initial contents of the window table at `tab` for `n` entries. -/
+def tableOps (tab : UInt32) (n : Nat) : List InitOp :=
+  [.write tab 0, .write (tab + 4) 0xFFFFFFFF] ++ (List.range n).flatMap fun k =>
+    let e := tab + 16 + 32 * UInt32.ofNat k
     [.write e 0, .write (e + 4) 0xFFFFFFFF, .write (e + 8) 0, .write (e + 12) 0,
       .write (e + 16) 0]
 
@@ -75,11 +78,11 @@ def off (here target : UInt32) : Int := (target.toNat : Int) - (here.toNat + 4)
 /-- The halfwords' bytes of instructions. -/
 def size (is : List Instr) : Nat := 2 * (is.flatMap encode).length
 
-/-- The measurement at the loop's head, placed at `pos`, which branches to the step at `step`.
-`key` computes into r3, with r4 and r5 as scratch registers, the key of the state that the
-outgoing area holds, below `2 ^ bits`. -/
-def meas (key : List Instr) (bits : Nat) (pos step : UInt32) : List Instr :=
-  let body := movWord 7 dwtCyccnt ++ [.ldr 0 7 0] ++ movWord 6 res ++
+/-- The measurement at the loop's head, placed at `pos`, which branches to the step at `step` and
+records into the window table at `tab`.  `key` computes into r3, with r4 and r5 as scratch
+registers, the key of the state that the outgoing area holds, below `2 ^ bits`. -/
+def meas (tab : UInt32) (key : List Instr) (bits : Nat) (pos step : UInt32) : List Instr :=
+  let body := movWord 7 dwtCyccnt ++ [.ldr 0 7 0] ++ movWord 6 tab ++
     [.ldr 1 6 0, .subReg 0 0 0 1, .ldr 2 6 4] ++ key ++ [Instr.lsrBy 4 2 31,
       .cmpImm 4 1, Instr.bcondTo 0 92,
       Instr.lslBy 4 2 bits, Instr.addLsl 0 4 4 3 0, Instr.lslBy 4 4 5, Instr.addLsl 0 4 6 4 0,
@@ -91,13 +94,14 @@ def meas (key : List Instr) (bits : Nat) (pos step : UInt32) : List Instr :=
       .str 3 6 4, .ldr 0 7 0, .str 0 6 0]
   body ++ [Instr.bTo (off (pos + UInt32.ofNat (size body)) step)]
 
-/-- The measurement image of step `k` of `m` from the state `s0` on the board, with the key
-`key` below `2 ^ bits`. -/
-def imageDwt (m : Wasm.Module) (k : Nat) (s0 : List UInt64) (key : List Instr) (bits : Nat) :
-    GenM (List UInt8) := do
+/-- The measurement image of step `k` of `m` from the state `s0` on the board in the layout `B0`
+with the stack's limit `limit`, with the key `key` below `2 ^ bits` and the window table at
+`tab`. -/
+def imageDwtIn (B0 : Boot) (limit tab : UInt32) (m : Wasm.Module) (k : Nat) (s0 : List UInt64)
+    (key : List Instr) (bits : Nat) : GenM (List UInt8) := do
   let B : Boot :=
-    { boot with init := initCode init ++ bootLogCode ++ initCode (dwtOn ++ tableOps (4 ^ bits)) }
-  let prog ← genProgram m k s0 B.base stackLimit devBase udivmod64
+    { B0 with init := B0.init ++ bootLogCode ++ initCode (dwtOn ++ tableOps tab (4 ^ bits)) }
+  let prog ← genProgram m k s0 B.base limit devBase udivmod64
   let pad := if size prog % 4 = 0 then [] else [Instr.bxLr]
   let pos := B.base + UInt32.ofNat (size (prog ++ pad))
   let head := after B.base (mainStart s0)
@@ -105,8 +109,14 @@ def imageDwt (m : Wasm.Module) (k : Nat) (s0 : List UInt64) (key : List Instr) (
   match prog[mainStart s0]? with
   | some (.bl ..) =>
       let prog' := prog.set (mainStart s0) (Instr.blTo (off head pos))
-      return bootBytes B (Instr.bTo (-4) :: B.init ++ prog' ++ pad ++ meas key bits pos step)
+      return bootBytes B (Instr.bTo (-4) :: B.init ++ prog' ++ pad ++ meas tab key bits pos step)
   | _ => throw "imageDwt: no call at the loop's head"
+
+/-- The measurement image of a program without an area: the board's layout `boot`, the stack's
+limit at DTCM's base, and the window table at `res`. -/
+def imageDwt (m : Wasm.Module) (k : Nat) (s0 : List UInt64) (key : List Instr) (bits : Nat) :
+    GenM (List UInt8) :=
+  imageDwtIn boot stackLimit res m k s0 key bits
 
 /-- The echo's measurement image: the key is the phase, the low byte of slot 0. -/
 def echoDwt : GenM (List UInt8) :=
@@ -121,6 +131,17 @@ def gwKey : List Instr :=
 /-- The gateway's measurement image. -/
 def gwDwt : GenM (List UInt8) :=
   imageDwt Demos.Energy.gwCompiled.module 34 TestSupport.M7.Gw.gwState gwKey 3
+
+/-- The window table of the CRC-32 step's measurement image, above the area's end. -/
+def crcTab : UInt32 := 0x2001C000
+
+/-- The CRC-32 step's measurement image: the layout `areaBoot` of the step's module with the
+measurement's initialization after the board's, the stack's limit at the area's end, and the
+phase as the key. -/
+def crcDwt : GenM (List UInt8) :=
+  imageDwtIn TestSupport.M7.CrcImages.boardBoot areaEnd crcTab
+    TestSupport.M7.Crc.crcStepCompiled.module 5 [TestSupport.M7.Crc.crcInit]
+    [.ldrSp 3 0, .andImm 3 3 255] 2
 
 /-- A case of the division measurements: `kind` 0 calls `udivmod64`, 1 a routine that returns,
 2 runs 16 `UDIV r4, r0, r2`, and 3 runs 16 `MOV r4, r0`. -/
