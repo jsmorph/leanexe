@@ -183,14 +183,15 @@ theorem boot_image {B : Boot} {m : Module} {k : Nat} {s0 : List UInt64} {limit d
 
 /-! ## The run from reset -/
 
-/-- The initialization `init`, placed at the program counter, runs to its end with SP unchanged,
-`r` device reads, and the accesses `t0 τ` appended to the trace, where `τ` gives the values of
-its reads in order: `τ j` is the value of the read numbered `j` from the reads before it. -/
+/-- The initialization `init`, placed at the program counter, runs to its end with SP and memory
+unchanged, `r` device reads, and the accesses `t0 τ` appended to the trace, where `τ` gives the
+values of its reads in order: `τ j` is the value of the read numbered `j` from the reads before
+it. -/
 def InitRuns (P : Platform) (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (init : List Instr) (t0 : (Nat → UInt32) → List Access) (r : Nat) : Prop :=
   ∀ s : State, CodeAt code s.pc init → ∃ t, Reach P σ code s t ∧
     t.pc = s.pc + UInt32.ofNat (4 * init.length) ∧ t.sp = s.sp ∧
-    t.trace = s.trace ++ t0 (fun j => σ (j + s.reads)) ∧ t.reads = s.reads + r
+    t.trace = s.trace ++ t0 (fun j => σ (j + s.reads)) ∧ t.reads = s.reads + r ∧ t.mem = s.mem
 
 /-- The image of step `k` of `m`, whose bytes the kernel's check `hk` finds in the code map, run
 from reset: the initialization appends `t0 σ` to the trace with its `r` reads, and `main` reaches
@@ -231,7 +232,7 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
   rw [or1_and _ hev] at hbpc
   rw [and_align hsp] at hbsp
   rw [← hbpc] at hci
-  obtain ⟨t1, r1, p1, sp1, tr1, rd1⟩ := hinit b hci
+  obtain ⟨t1, r1, p1, sp1, tr1, rd1, -⟩ := hinit b hci
   have hp1 : t1.pc = B.base := by
     rw [p1, hbpc, Boot.reset, Boot.base]
     addr_after
