@@ -1,4 +1,5 @@
 import F7.Isla
+import F7.Isla32
 
 /-! The axioms of the theorems of `F7/`, which `check.sh` prints and checks. -/
 
@@ -9,18 +10,33 @@ import F7.Isla
 #print axioms F7.fpRound_q
 #print axioms F7.round_normalR
 #print axioms F7.fpRound_sqrt
+#print axioms F7.fpRound32_q
+#print axioms F7.rsm_eq_rrm32
+#print axioms F7.rdm_eq_rrm32
+#print axioms F7.round_normalR32
+#print axioms F7.fpRound_sqrt32
 #print axioms F7.fpAdd_eq_f64Add
 #print axioms F7.fpSub_eq_f64Sub
 #print axioms F7.fpMul_eq_f64Mul
 #print axioms F7.fpDiv_eq_f64Div
 #print axioms F7.fpSqrt_eq_f64Sqrt
 #print axioms F7.fixedToFP_eq_f64ConvertI64U
+#print axioms F7.fpAdd32_eq_f32Add
+#print axioms F7.fpSub32_eq_f32Sub
+#print axioms F7.fpMul32_eq_f32Mul
+#print axioms F7.fpDiv32_eq_f32Div
+#print axioms F7.fpSqrt32_eq_f32Sqrt
 #print axioms F7.fpAddEq_of_sail
 #print axioms F7.fpSubEq_of_sail
 #print axioms F7.fpMulEq_of_sail
 #print axioms F7.fpDivEq_of_sail
 #print axioms F7.fpSqrtEq_of_sail
 #print axioms F7.fixedToFPEq_of_sail
+#print axioms F7.fpAdd32Eq_of_sail
+#print axioms F7.fpSub32Eq_of_sail
+#print axioms F7.fpMul32Eq_of_sail
+#print axioms F7.fpDiv32Eq_of_sail
+#print axioms F7.fpSqrt32Eq_of_sail
 #print axioms F7.hyp_tcg
 #print axioms F7.hyp_kvm
 #print axioms F7.hyp_sme

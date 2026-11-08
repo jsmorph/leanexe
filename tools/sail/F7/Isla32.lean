@@ -1,0 +1,105 @@
+import F7.Isla
+import F7.FPSub32
+import F7.FPDiv32
+import F7.FPSqrt32
+
+/-!
+The join of the translation's floating-point functions at 32 bits and the equations of the 32-bit
+wrappers that the Isla theorems of the single-precision forms take (`LeanExe/A64/Isla/Float.lean`).
+
+The pattern is that of `F7/Isla.lean`.  An equation such as `FPAdd32Eq A` constrains `A`, the
+meaning that Isla's semantics gives the abstract call `FPAdd32`, on two 32-bit vectors and the
+struct of FPCR.  `SailFPAdd32 A` states the link that review supports and Lean does not check:
+from every state that satisfies `Hyp`, whatever the translation's `FPAdd a b 0x02000000` returns
+on 32-bit words `a` and `b`, `A` returns on the same words and on `islaFPCR fpcrV`.  The link rests
+on the claims of `F7/Isla.lean` with the 32-bit wrapper in place of the 64-bit one: the IR's
+`zFPAdd32` returns `zFPAdd`'s result at 32 bits (`tests/isla/armv9p4-checked-fp.diff`), the IR's
+`zFPAdd` computes what the translation's FPAdd computes, and Isla's state at each abstract call
+satisfies `Hyp`.  `fpAdd32Eq_of_sail` derives `FPAdd32Eq A` from `SailFPAdd32 A` and
+`fpAdd32_eq_f32Add`, with the witness `hyp_tcg` of `F7/Isla.lean`, and `fpSub32Eq_of_sail`,
+`fpMul32Eq_of_sail`, `fpDiv32Eq_of_sail`, and `fpSqrt32Eq_of_sail` derive `FPSub32Eq`,
+`FPMul32Eq`, `FPDiv32Eq`, and `FPSqrt32Eq` from the links `SailFPSub32`, `SailFPMul32`,
+`SailFPDiv32`, and `SailFPSqrt32` likewise.
+-/
+
+open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
+open LeanExe.A64.Isla (Abstract)
+
+namespace F7
+
+/-- The link between the abstract call `FPAdd32` and the translation's FPAdd at 32 bits under
+FPCR 0x02000000, which review supports. -/
+def SailFPAdd32 (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr → (FPAdd a b fpcrV).run s = .ok v s' →
+    A "FPAdd32" [.bits 32 a.toNat, .bits 32 b.toNat, islaFPCR fpcrV] = some (.bits 32 v.toNat)
+
+theorem fpAdd32Eq_of_sail (A : Abstract) (h : SailFPAdd32 A) :
+    LeanExe.A64.Isla.FPAdd32Eq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpAdd32_eq_f32Add a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPSub32` and the translation's FPSub at 32 bits under
+FPCR 0x02000000, which review supports. -/
+def SailFPSub32 (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr → (FPSub a b fpcrV).run s = .ok v s' →
+    A "FPSub32" [.bits 32 a.toNat, .bits 32 b.toNat, islaFPCR fpcrV] = some (.bits 32 v.toNat)
+
+theorem fpSub32Eq_of_sail (A : Abstract) (h : SailFPSub32 A) :
+    LeanExe.A64.Isla.FPSub32Eq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpSub32_eq_f32Sub a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPMul32` and the translation's FPMul at 32 bits under
+FPCR 0x02000000, which review supports. -/
+def SailFPMul32 (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr → (FPMul a b fpcrV).run s = .ok v s' →
+    A "FPMul32" [.bits 32 a.toNat, .bits 32 b.toNat, islaFPCR fpcrV] = some (.bits 32 v.toNat)
+
+theorem fpMul32Eq_of_sail (A : Abstract) (h : SailFPMul32 A) :
+    LeanExe.A64.Isla.FPMul32Eq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpMul32_eq_f32Mul a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPDiv32` and the translation's FPDiv at 32 bits under
+FPCR 0x02000000, which review supports. -/
+def SailFPDiv32 (A : Abstract) : Prop :=
+  ∀ (a b : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr → (FPDiv a b fpcrV).run s = .ok v s' →
+    A "FPDiv32" [.bits 32 a.toNat, .bits 32 b.toNat, islaFPCR fpcrV] = some (.bits 32 v.toNat)
+
+theorem fpDiv32Eq_of_sail (A : Abstract) (h : SailFPDiv32 A) :
+    LeanExe.A64.Isla.FPDiv32Eq A := by
+  intro a b
+  obtain ⟨s', hrun, -, -⟩ := fpDiv32_eq_f32Div a.toBitVec b.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec b.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPSqrt32` and the translation's FPSqrt at 32 bits under
+FPCR 0x02000000, which review supports. -/
+def SailFPSqrt32 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr → (FPSqrt a fpcrV).run s = .ok v s' →
+    A "FPSqrt32" [.bits 32 a.toNat, islaFPCR fpcrV] = some (.bits 32 v.toNat)
+
+theorem fpSqrt32Eq_of_sail (A : Abstract) (h : SailFPSqrt32 A) :
+    LeanExe.A64.Isla.FPSqrt32Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ := fpSqrt32_eq_f32Sqrt a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+end F7
