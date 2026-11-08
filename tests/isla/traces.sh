@@ -234,3 +234,16 @@ run fsqrt "0001111001100001110000 Rn:5 Rd:5" "${fp[@]}" --abstract FPSqrt64
 run ucvtf "1001111001100011000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP64
 run fcvtzu "1001111001111001000000 Rn:5 Rd:5" "${fp[@]}" --abstract FPToFixed64
 run fcmp "00011110011 Rm:5 001000 Rn:5 00000" "${fp[@]}" --abstract FPCompare
+run fmov-sw "0001111000100111000000 Rn:5 Rd:5" "${fp[@]}"
+run fmov-ws "0001111000100110000000 Rn:5 Rd:5" "${fp[@]}"
+run fadd-s "00011110001 Rm:5 001010 Rn:5 Rd:5" "${fp[@]}" --abstract FPAdd32
+run fsub-s "00011110001 Rm:5 001110 Rn:5 Rd:5" "${fp[@]}" --abstract FPSub32
+run fmul-s "00011110001 Rm:5 000010 Rn:5 Rd:5" "${fp[@]}" --abstract FPMul32
+run fdiv-s "00011110001 Rm:5 000110 Rn:5 Rd:5" "${fp[@]}" --abstract FPDiv32
+run fsqrt-s "0001111000100001110000 Rn:5 Rd:5" "${fp[@]}" --abstract FPSqrt32
+run frintn-s "0001111000100100010000 Rn:5 Rd:5" "${fp[@]}" --abstract FPRoundInt32
+run ucvtf-sx "1001111000100011000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP64_32
+run scvtf-sw "0001111000100010000000 Rn:5 Rd:5" "${fp[@]}" --abstract FixedToFP32_32
+run fcvtzu-xs "1001111000111001000000 Rn:5 Rd:5" "${fp[@]}" --abstract FPToFixed32_64
+run fcvtzs-ws "0001111000111000000000 Rn:5 Rd:5" "${fp[@]}" --abstract FPToFixed32_32
+run fcmp-s "00011110001 Rm:5 001000 Rn:5 00000" "${fp[@]}" --abstract FPCompare

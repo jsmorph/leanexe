@@ -114,6 +114,110 @@ theorem fcmpNZCV_v (a b : UInt64) :
     decide (fcmpNZCV a b % 2 = 1) = (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b) :=
   (nzcv_bits _ _ _ _).2.2.2
 
+/-! The equations of the 32-bit wrappers, which the traces of the single-precision forms leave
+abstract: each states, for one wrapper, that `A` gives Talos's function of the binary32 operands
+under FPCR `0x02000000`.  FCMP calls `FPCompare` at either width, and `FPCompare32Eq` gives its
+meaning on 32-bit operands. -/
+
+/-- `FPAdd(a, b, FPCR) = Wasm.f32Add a b` under FPCR `0x02000000`, for the wrapper `FPAdd32`. -/
+def FPAdd32Eq (A : Abstract) : Prop :=
+  ∀ a b : UInt32, A "FPAdd32" [.bits 32 a.toNat, .bits 32 b.toNat,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 32 (Wasm.f32Add a b).toNat)
+
+/-- `FPSub(a, b, FPCR) = Wasm.f32Sub a b` under FPCR `0x02000000`, for the wrapper `FPSub32`. -/
+def FPSub32Eq (A : Abstract) : Prop :=
+  ∀ a b : UInt32, A "FPSub32" [.bits 32 a.toNat, .bits 32 b.toNat,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 32 (Wasm.f32Sub a b).toNat)
+
+/-- `FPMul(a, b, FPCR) = Wasm.f32Mul a b` under FPCR `0x02000000`, for the wrapper `FPMul32`. -/
+def FPMul32Eq (A : Abstract) : Prop :=
+  ∀ a b : UInt32, A "FPMul32" [.bits 32 a.toNat, .bits 32 b.toNat,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 32 (Wasm.f32Mul a b).toNat)
+
+/-- `FPDiv(a, b, FPCR) = Wasm.f32Div a b` under FPCR `0x02000000`, for the wrapper `FPDiv32`. -/
+def FPDiv32Eq (A : Abstract) : Prop :=
+  ∀ a b : UInt32, A "FPDiv32" [.bits 32 a.toNat, .bits 32 b.toNat,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 32 (Wasm.f32Div a b).toNat)
+
+/-- `FPSqrt(a, FPCR) = Wasm.f32Sqrt a` under FPCR `0x02000000`, for the wrapper `FPSqrt32`. -/
+def FPSqrt32Eq (A : Abstract) : Prop :=
+  ∀ a : UInt32, A "FPSqrt32" [.bits 32 a.toNat, .struct [("bits", .bits 64 0x2000000)]] =
+    some (.bits 32 (Wasm.f32Sqrt a).toNat)
+
+/-- `FPRoundInt(a, FPCR, FPRounding_TIEEVEN, FALSE) = Wasm.f32Nearest a` under FPCR `0x02000000`,
+for the wrapper `FPRoundInt32`: the rounding of `FRINTN` to an integral value with ties to even,
+without the inexact exception. -/
+def FPRoundInt32Eq (A : Abstract) : Prop :=
+  ∀ a : UInt32, A "FPRoundInt32" [.bits 32 a.toNat, .struct [("bits", .bits 64 0x2000000)],
+    .enum "FPRounding_TIEEVEN", .bool false] = some (.bits 32 (Wasm.f32Nearest a).toNat)
+
+/-- `FixedToFP(a, 0, TRUE, FPCR, FPRounding_TIEEVEN, 32) = Wasm.f32ConvertI64U a` under FPCR
+`0x02000000`, for the wrapper `FixedToFP64_32`: the conversion of the unsigned 64-bit integer `a`
+to binary32. -/
+def FixedToFP64_32Eq (A : Abstract) : Prop :=
+  ∀ a : UInt64, A "FixedToFP64_32" [.bits 64 a.toNat, .bits 128 0, .bool true,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_TIEEVEN"] =
+    some (.bits 32 (Wasm.f32ConvertI64U a).toNat)
+
+/-- `FixedToFP(a, 0, FALSE, FPCR, FPRounding_TIEEVEN, 32) = Wasm.f32ConvertI32S a` under FPCR
+`0x02000000`, for the wrapper `FixedToFP32_32`: the conversion of the signed 32-bit integer `a` to
+binary32. -/
+def FixedToFP32_32Eq (A : Abstract) : Prop :=
+  ∀ a : UInt32, A "FixedToFP32_32" [.bits 32 a.toNat, .bits 128 0, .bool false,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_TIEEVEN"] =
+    some (.bits 32 (Wasm.f32ConvertI32S a).toNat)
+
+/-- `FPToFixed(a, 0, TRUE, FPCR, FPRounding_ZERO, 64) = Wasm.i64TruncSatF32U a` under FPCR
+`0x02000000`, for the wrapper `FPToFixed32_64`: the conversion of the single `a` to an unsigned
+64-bit integer, rounding toward zero and saturating, with 0 for a NaN. -/
+def FPToFixed32_64Eq (A : Abstract) : Prop :=
+  ∀ a : UInt32, A "FPToFixed32_64" [.bits 32 a.toNat, .bits 128 0, .bool true,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_ZERO"] =
+    some (.bits 64 (Wasm.i64TruncSatF32U a).toNat)
+
+/-- `FPToFixed(a, 0, FALSE, FPCR, FPRounding_ZERO, 32) = Wasm.i32TruncSatF32S a` under FPCR
+`0x02000000`, for the wrapper `FPToFixed32_32`: the conversion of the single `a` to a signed 32-bit
+integer, rounding toward zero and saturating, with 0 for a NaN. -/
+def FPToFixed32_32Eq (A : Abstract) : Prop :=
+  ∀ a : UInt32, A "FPToFixed32_32" [.bits 32 a.toNat, .bits 128 0, .bool false,
+    .struct [("bits", .bits 64 0x2000000)], .enum "FPRounding_ZERO"] =
+    some (.bits 32 (Wasm.i32TruncSatF32S a).toNat)
+
+/-- The flags N, Z, C, and V that `State.fcmpS` sets from the singles `a` and `b`, as the 4-bit
+number NZCV. -/
+def fcmpNZCV32 (a b : UInt32) : Nat :=
+  8 * (Wasm.IEEE32.lt a b).toNat + 4 * (Wasm.IEEE32.eq a b).toNat +
+    2 * (!Wasm.IEEE32.lt a b).toNat + (Wasm.IEEE32.isNaN a || Wasm.IEEE32.isNaN b).toNat
+
+/-- `FPCompare(a, b, FALSE, FPCR)` of singles gives the flags of `State.fcmpS` under FPCR
+`0x02000000`. -/
+def FPCompare32Eq (A : Abstract) : Prop :=
+  ∀ a b : UInt32, A "FPCompare" [.bits 32 a.toNat, .bits 32 b.toNat, .bool false,
+    .struct [("bits", .bits 64 0x2000000)]] = some (.bits 4 (fcmpNZCV32 a b))
+
+theorem fcmpNZCV32_lt (a b : UInt32) : fcmpNZCV32 a b < 16 := by
+  unfold fcmpNZCV32
+  cases Wasm.IEEE32.lt a b <;> cases Wasm.IEEE32.eq a b <;>
+    cases (Wasm.IEEE32.isNaN a || Wasm.IEEE32.isNaN b) <;> decide
+
+theorem fcmpNZCV32_n (a b : UInt32) :
+    decide (fcmpNZCV32 a b / 8 % 2 = 1) = Wasm.IEEE32.lt a b := (nzcv_bits _ _ _ _).1
+
+theorem fcmpNZCV32_z (a b : UInt32) :
+    decide (fcmpNZCV32 a b / 4 % 2 = 1) = Wasm.IEEE32.eq a b := (nzcv_bits _ _ _ _).2.1
+
+theorem fcmpNZCV32_c (a b : UInt32) :
+    decide (fcmpNZCV32 a b / 2 % 2 = 1) = !Wasm.IEEE32.lt a b := (nzcv_bits _ _ _ _).2.2.1
+
+theorem fcmpNZCV32_v (a b : UInt32) :
+    decide (fcmpNZCV32 a b % 2 = 1) = (Wasm.IEEE32.isNaN a || Wasm.IEEE32.isNaN b) :=
+  (nzcv_bits _ _ _ _).2.2.2
+
+/-- The low 32 bits of a word as the number of its `toUInt32`, the form in which the
+single-precision equations name their operands. -/
+theorem low32_eq (x : UInt64) : x.toNat % 4294967296 = x.toUInt32.toNat := by
+  simp only [UInt64.toNat_toUInt32, Nat.reducePow]
+
 /-- The fields of `FCMP Dn, Dm`. -/
 def fcmpFields (n m : Fin 32) : Fields := [("Rm", m.val), ("Rn", n.val)]
 
