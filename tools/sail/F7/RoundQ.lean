@@ -18,9 +18,9 @@ rounding.
 
 The statements write Talos's word as `(roundRationalMagnitude neg P Q).toBitVec`, where
 `F7/Round.lean` names the dyadic rounder's word through the definition `tDy`.  With such a
-definition, the kernel's check that it equals the word of `f64Div` at `P = A · 2^1074` ran past
-60 s and 2 GB, even on identical arguments.  With `roundRationalMagnitude` on both sides the
-check takes under 2 s.
+definition, the kernel's check that it equals the word of `f64Div` at `P = A · 2^1074` reached a
+2 GB cap and ran 43 s before it was stopped, even on identical arguments.  With
+`roundRationalMagnitude` on both sides the check takes under 2 s.
 -/
 
 open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
