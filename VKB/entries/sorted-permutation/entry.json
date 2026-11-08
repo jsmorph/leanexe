@@ -1,0 +1,63 @@
+{
+  "id": "sorted-permutation",
+  "goals": [
+    "f xs = (xs.toList.mergeSort fun a b => a ≤ b).toArray",
+    "(f xs).toList.Pairwise (· ≤ ·) ∧ (f xs).toList.Perm xs.toList",
+    "(swap i j xs).toList.Perm xs.toList",
+    "(xs.toList.mergeSort fun a b => a ≤ b).toArray[k]! = R[k]!",
+    "xs.size.toUInt64.toNat = xs.size"
+  ],
+  "modules": [
+    "Library.Sorting.Sorted",
+    "Library.Sorting.Heapsort.Proof",
+    "Library.Sorting.StraightInsertion.Proof",
+    "Library.Sorting.Insertion.Proof",
+    "Library.Sorting.Quicksort.Proof",
+    "Library.Sorting.Shellsort.Proof",
+    "Library.Sorting.MergeSort.Proof",
+    "Library.Sorting.RadixSort.Proof",
+    "Library.Sorting.Find.Proof",
+    "Library.Combinatorics.NextPermutation.Proof",
+    "LeanExe.Dialect.ArrayLemmas"
+  ],
+  "declarations": [
+    "Library.Sorting.eq_mergeSort_of_sorted_perm",
+    "Library.Sorting.pairwise_mergeSort_le",
+    "Library.Sorting.Heapsort.swap_perm",
+    "Library.Sorting.Heapsort.swap_get",
+    "Library.Sorting.Heapsort.swap_size",
+    "Library.Sorting.Heapsort.wle_trans",
+    "Library.Sorting.StraightInsertion.straightInsertion_sorted_perm",
+    "Library.Sorting.StraightInsertion.shift_toList",
+    "Library.Sorting.MergeSort.pass_toList",
+    "Library.Sorting.MergeSort.sortLoop_toList",
+    "Library.Sorting.RadixSort.pos_injective",
+    "Library.Sorting.Find.Around",
+    "LeanExe.Dialect.loop_induction",
+    "LeanExe.Dialect.size_toUInt64",
+    "List.pairwise_iff_getElem",
+    "List.perm_insertIdx",
+    "List.perm_orderedInsert",
+    "Finite.injective_iff_bijective",
+    "Equiv.Perm.ofFn_comp_perm"
+  ],
+  "examples": [
+    "Library.Sorting.Heapsort.heapsort_eq",
+    "Library.Sorting.Heapsort.heapsort_sorted_perm",
+    "Library.Sorting.Insertion.sortInsert_sorted_perm",
+    "Library.Sorting.Insertion.sortInsert_eq",
+    "Library.Sorting.Quicksort.stages_perm",
+    "Library.Sorting.Quicksort.quicksort_eq",
+    "Library.Sorting.Shellsort.passes_perm",
+    "Library.Sorting.Shellsort.shellsort_eq",
+    "Library.Sorting.MergeSort.sortList_spec",
+    "Library.Sorting.MergeSort.mergeSort_eq",
+    "Library.Sorting.RadixSort.pass_spec",
+    "Library.Sorting.RadixSort.passes_spec",
+    "Library.Sorting.RadixSort.radixSort_eq",
+    "Library.Sorting.Find.find_spec",
+    "Library.Sorting.Find.rank_of_around",
+    "Library.Sorting.Find.select_eq",
+    "Library.Combinatorics.NextPermutation.isNext_of_greatest"
+  ]
+}

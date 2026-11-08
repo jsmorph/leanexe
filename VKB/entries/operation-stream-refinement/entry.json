@@ -1,0 +1,47 @@
+{
+  "id": "operation-stream-refinement",
+  "goals": [
+    "prog xs = (runOps (operations xs) [] []).toArray",
+    "runOps ops s out = (ops.foldl specStep (s, out)).2",
+    "Agrees s (((operations xs).take k).foldl specStep init)",
+    "Agrees (step op v s) (specStep st (op, v))",
+    "s.2.1.toNat ≤ k ∧ s.2.2.size ≤ k for counters after k operations",
+    "(n + 1).toNat = n.toNat + 1"
+  ],
+  "modules": [
+    "Library.Queues.BinaryHeap.Proof",
+    "Library.HashTables.LinearProbing.Proof",
+    "Library.HashTables.LinearProbing.Compiled",
+    "LeanExe.Dialect.ArrayLemmas",
+    "LeanExe.Common",
+    "Demos.OrderBook.Theorems"
+  ],
+  "declarations": [
+    "Library.Queues.BinaryHeap.specStep",
+    "Library.Queues.BinaryHeap.runOps_eq",
+    "Library.Queues.BinaryHeap.Agrees",
+    "Library.Queues.BinaryHeap.step_agrees",
+    "Library.HashTables.LinearProbing.specStep",
+    "Library.HashTables.LinearProbing.runOps_eq",
+    "Library.HashTables.LinearProbing.Agrees",
+    "Library.HashTables.LinearProbing.Good",
+    "Library.HashTables.LinearProbing.step_agrees",
+    "LeanExe.Dialect.loop_induction",
+    "LeanExe.Dialect.get_set",
+    "LeanExe.Dialect.push_get_lt",
+    "LeanExe.Dialect.push_get_size",
+    "LeanExe.Dialect.take_get_mem",
+    "LeanExe.Common.toNat_add_one",
+    "Verified.call_on",
+    "List.take_add_one",
+    "List.foldl_append",
+    "List.take_of_length_le"
+  ],
+  "examples": [
+    "Library.Queues.BinaryHeap.heapQueue_eq",
+    "Library.HashTables.LinearProbing.hashTable_eq",
+    "Library.HashTables.LinearProbing.hashTable_call",
+    "Demos.OrderBook.Spec.run_eq",
+    "Demos.OrderBook.Spec.foldl_valid"
+  ]
+}
