@@ -27,7 +27,9 @@ satisfies `Hyp`.  `fpAdd32Eq_of_sail` derives `FPAdd32Eq A` from `SailFPAdd32 A`
 integer `fbits` 0 and the enumeration member `FPRounding_TIEEVEN` with the rounding mode, as
 `SailFixedToFP` of `F7/Isla.lean` does, and `fixedToFP32_32Eq_of_sail` derives `FixedToFP32_32Eq`
 from `SailFixedToFP32_32` likewise.  `fpToFixed32_64Eq_of_sail` derives `FPToFixed32_64Eq`, the
-equation of FCVTZU X←S, from `SailFPToFixed32_64`, and `fpCompare32Eq_of_sail` derives
+equation of FCVTZU X←S, from `SailFPToFixed32_64`, `fpToFixed32_32Eq_of_sail` derives
+`FPToFixed32_32Eq`, the equation of FCVTZS W←S, from `SailFPToFixed32_32`, and
+`fpCompare32Eq_of_sail` derives
 `FPCompare32Eq`, the equation of FCMP S, from `SailFPCompare32`, which names the abstract call
 `FPCompare` on two 32-bit operands, as `SailFPCompare` names it on two 64-bit ones.
 -/
@@ -165,6 +167,25 @@ theorem fpToFixed32_64Eq_of_sail (A : Abstract) (h : SailFPToFixed32_64 A) :
   intro a
   obtain ⟨s', hrun, -, -⟩ :=
     fpToFixed32_eq_i64TruncSatF32U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FPToFixed32_32` and the translation's FPToFixed of a
+32-bit operand to a signed 32-bit integer with no fraction bits under FPCR 0x02000000, rounding
+toward zero, which review supports. -/
+def SailFPToFixed32_32 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 32) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr →
+    (FPToFixed a 0 false fpcrV .FPRounding_ZERO 32).run s = .ok v s' →
+    A "FPToFixed32_32" [.bits 32 a.toNat, .bits 128 0, .bool false, islaFPCR fpcrV,
+      .enum "FPRounding_ZERO"] = some (.bits 32 v.toNat)
+
+theorem fpToFixed32_32Eq_of_sail (A : Abstract) (h : SailFPToFixed32_32 A) :
+    LeanExe.A64.Isla.FPToFixed32_32Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fpToFixed32S_eq_i32TruncSatF32S a.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
   exact e
