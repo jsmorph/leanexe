@@ -11,7 +11,8 @@
     "Verified.TailExpand",
     "Verified.Bound",
     "Demos.RunningSum.Charges",
-    "Demos.RunningSumFp.Charges"
+    "Demos.RunningSumFp.Charges",
+    "Verified.Examples.WasiRetainBudget"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -24,13 +25,17 @@
     "Verified.Wasi.Resource.callBounded_here",
     "Verified.Wasi.Resource.callBounded_there",
     "Verified.Ty.copyCost_of_scalar",
-    "Verified.Expr.fits_of_depthCalls"
+    "Verified.Expr.fits_of_depthCalls",
+    "Verified.Wasi.Resource.ResourceLoopExec",
+    "Verified.Wasi.Resource.ResourceLoopPrefix",
+    "Verified.Wasi.Resource.call_prefix_rule"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
     "Demos.RunningSum.readStep_bounded",
     "Demos.RunningSum.step_body_bounded",
     "Demos.RunningSumFp.writeStep_bounded",
-    "Demos.RunningSumFp.readStep_bounded"
+    "Demos.RunningSumFp.readStep_bounded",
+    "Verified.Examples.WasiRetain.call_prefix_bound"
   ]
 }
