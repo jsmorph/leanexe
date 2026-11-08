@@ -4,7 +4,7 @@ The repository is one Lake package.  `Verified` contains the verified compiler, 
 
 ## Goal
 
-The compiler translates Lean functions to WebAssembly, with execution proofs in Talos.  Its reflector writes a Lean definition as a program of a typed source language, `compileWith` translates the program to a `Wasm.Module`, and a universal theorem proves that the module computes the program's meaning.  A binary decoder defines what the bytes mean, and its test decodes the modules of the official WebAssembly testsuite that lie in the decoder's subset, 712 of the 2,214 valid modules.  `decode_encode` transfers the module's execution theorem to its encoded bytes.
+The compiler translates Lean functions to WebAssembly, with execution proofs in Talos.  Its reflector writes a Lean definition as a program of a typed source language, `compileWith` translates the program to a `Wasm.Module`, and a universal theorem proves that the module computes the program's meaning.  A binary decoder defines what the bytes mean, and its test decodes the modules of the official WebAssembly testsuite that lie in the decoder's subset, 713 of the 2,214 valid modules.  `decode_encode` transfers the module's execution theorem to its encoded bytes.
 
 ## Components
 
