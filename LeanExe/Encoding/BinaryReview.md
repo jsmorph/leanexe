@@ -17,7 +17,10 @@ grammar][current-data].  The 2026-10-19 review adds `f32.convert_i64_u` at `b5` 
 `i64.trunc_sat_f32_u` at `fc 05`, bringing the inventory to 85 forms.  Both
 match the [rendered numeric instruction grammar][current-instructions].  The
 2026-10-23 review adds the WASI table profile of `Spec/Modules.lean`: section 4,
-the table export, and the profile check of `Shape`.
+the table export, and the profile check of `Shape`.  The 2026-11-08 review adds
+`i64.lt_s` at `53`, `i64.le_s` at `57`, and `i64.shr_s` at `87`, bringing the
+inventory to 88 forms, which match the [rendered numeric instruction
+grammar][current-instructions].
 
 The comparison uses WebAssembly 3.0, dated 2026-09-21, and its [specification
 source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].  The [dated
@@ -97,9 +100,9 @@ evaluation therefore yields the recorded initial value.
 
 ### Instructions
 
-All 85 instruction forms in the [instruction rules](Spec/Instructions.lean)
+All 88 instruction forms in the [instruction rules](Spec/Instructions.lean)
 were compared with the [official instruction grammar][instructions] and its
-[rendered rules][current-instructions]: 64 `Plain` rules, eight indexed rules,
+[rendered rules][current-instructions]: 67 `Plain` rules, eight indexed rules,
 six memory rules, four constants, and three
 structured controls.  Hexadecimal byte mappings are listed below.  Names are
 WASM instruction names, with a common type prefix shown once per group.
@@ -108,9 +111,9 @@ WASM instruction names, with a common type prefix shown once per group.
 | --- | --- |
 | Control and stack | `unreachable=00`, `nop=01`, `return=0f`, `drop=1a` |
 | `i32` comparisons | `eqz=45`, `eq=46`, `lt_u=49`, `gt_u=4b`, `le_u=4d`, `ge_u=4f` |
-| `i64` comparisons | `eqz=50`, `eq=51`, `ne=52`, `lt_u=54`, `le_u=58`, `ge_u=5a` |
+| `i64` comparisons | `eqz=50`, `eq=51`, `ne=52`, `lt_s=53`, `lt_u=54`, `le_s=57`, `le_u=58`, `ge_u=5a` |
 | `i32` arithmetic | `add=6a`, `and=71` |
-| `i64` arithmetic | `add=7c`, `sub=7d`, `mul=7e`, `div_u=80`, `rem_u=82`, `and=83`, `or=84`, `xor=85`, `shl=86`, `shr_u=88` |
+| `i64` arithmetic | `add=7c`, `sub=7d`, `mul=7e`, `div_u=80`, `rem_u=82`, `and=83`, `or=84`, `xor=85`, `shl=86`, `shr_s=87`, `shr_u=88` |
 | `f32` operations | `eq=5b`, `lt=5d`, `le=5f`, `abs=8b`, `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95` |
 | `f64` operations | `eq=61`, `lt=63`, `le=65`, `abs=99`, `sqrt=9f`, `add=a0`, `sub=a1`, `mul=a2`, `div=a3` |
 | Integer conversion | `i32.wrap_i64=a7`, `i64.extend_i32_u=ad`, `i32.extend8_s=c0` |
@@ -126,7 +129,9 @@ WASM instruction names, with a common type prefix shown once per group.
 The 2026-09-27 review covered 71 forms.  The 2026-10-03 review added the
 floating-point constants and binary32 comparisons and absolute value.  The
 2026-10-17 review covers the remaining binary64 operations, and the
-2026-10-19 review adds the two binary32 conversions.
+2026-10-19 review adds the two binary32 conversions, and the 2026-11-08 review
+adds the signed comparisons `lt_s` and `le_s` and the arithmetic shift `shr_s` of
+`i64`.
 Floating-point constants use N/8 bytes in the [binary value rules][values].
 
 Indexed immediates use `u32`.  In `fc 00`, `fc 05`, and `fc 07`, the second byte encodes
@@ -215,6 +220,12 @@ The 2026-10-23 review of the table profile covers this revision of the module ru
 
 ```text
 ccafcee39f369b058d0b4da263bae4ac6d13e65d7911bac7ff239eec22c9ec09  Spec/Modules.lean
+```
+
+The 2026-11-08 review of the signed `i64` forms covers this revision of the instruction rules:
+
+```text
+266478863f07d34f1579541bb632a85db6b0e1d1a1fda7c382e2e55264a6757a  Spec/Instructions.lean
 ```
 
 [spec]:

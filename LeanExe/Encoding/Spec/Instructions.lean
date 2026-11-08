@@ -18,6 +18,8 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | neI64 : Plain [0x52] .neI64
   | ltUI64 : Plain [0x54] .ltUI64
   | leUI64 : Plain [0x58] .leUI64
+  | ltSI64 : Plain [0x53] .ltSI64
+  | leSI64 : Plain [0x57] .leSI64
   | f64Eq : Plain [0x61] .f64Eq
   | f64Lt : Plain [0x63] .f64Lt
   | f64Le : Plain [0x65] .f64Le
@@ -40,6 +42,7 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | xorI64 : Plain [0x85] .xorI64
   | shlI64 : Plain [0x86] .shlI64
   | shrUI64 : Plain [0x88] .shrUI64
+  | shrSI64 : Plain [0x87] .shrSI64
   | f32Nearest : Plain [0x90] .f32Nearest
   | f32Sqrt : Plain [0x91] .f32Sqrt
   | f32Add : Plain [0x92] .f32Add

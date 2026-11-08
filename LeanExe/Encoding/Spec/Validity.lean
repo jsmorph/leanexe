@@ -54,6 +54,8 @@ inductive Binary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pr
   | neI64 : Binary .neI64 .i64 .i32
   | ltUI64 : Binary .ltUI64 .i64 .i32
   | leUI64 : Binary .leUI64 .i64 .i32
+  | ltSI64 : Binary .ltSI64 .i64 .i32
+  | leSI64 : Binary .leSI64 .i64 .i32
   | geUI64 : Binary .geUI64 .i64 .i32
   | addI64 : Binary .addI64 .i64 .i64
   | subI64 : Binary .subI64 .i64 .i64
@@ -65,6 +67,7 @@ inductive Binary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pr
   | xorI64 : Binary .xorI64 .i64 .i64
   | shlI64 : Binary .shlI64 .i64 .i64
   | shrUI64 : Binary .shrUI64 .i64 .i64
+  | shrSI64 : Binary .shrSI64 .i64 .i64
   | f32Add : Binary .f32Add .f32 .f32
   | f32Sub : Binary .f32Sub .f32 .f32
   | f32Mul : Binary .f32Mul .f32 .f32

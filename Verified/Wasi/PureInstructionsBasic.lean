@@ -10,9 +10,9 @@ def atomic : Instruction → Bool
 
 def integerAtomic : Instruction → Bool
   | .eqz | .eq | .ltU | .gtU | .leU | .geU | .add | .and
-  | .eqzI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64
+  | .eqzI64 | .eqI64 | .neI64 | .ltUI64 | .leUI64 | .geUI64 | .ltSI64 | .leSI64
   | .addI64 | .subI64 | .mulI64 | .divUI64 | .remUI64
-  | .andI64 | .orI64 | .xorI64 | .shlI64 | .shrUI64
+  | .andI64 | .orI64 | .xorI64 | .shlI64 | .shrUI64 | .shrSI64
   | .wrapI64 | .extendUI32 | .extend8S => true
   | _ => false
 

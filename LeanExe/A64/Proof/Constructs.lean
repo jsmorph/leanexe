@@ -270,11 +270,12 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
   | eq => obtain ⟨_, _, rfl, rfl⟩ := gen_cmp (.inr rfl) hg; simp [instrSize]; omega
   | eqzI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_eqz (.inl rfl) hg; simp [instrSize]; omega
   | eqz => obtain ⟨_, _, rfl, rfl⟩ := gen_eqz (.inr rfl) hg; simp [instrSize]; omega
-  | neI64 | ltUI64 | leUI64 | geUI64 =>
+  | neI64 | ltUI64 | leUI64 | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genCmp_ok hg
       simp [instrSize]
       omega
+  | shrSI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_shrS hg; simp [instrSize, sarCode]; omega
   | addI64 | subI64 | mulI64 | andI64 | and | orI64 | xorI64 | shlI64 | shrUI64 =>
       simp only [genInstr] at hg
       obtain ⟨_, _, rfl, rfl⟩ := genBin_ok hg
@@ -455,12 +456,13 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | eq => obtain ⟨h1, _, _, he⟩ := gen_cmp (.inr rfl) hg; cases he; simp; omega
   | eqzI64 => obtain ⟨h1, _, _, he⟩ := gen_eqz (.inl rfl) hg; cases he; simp; omega
   | eqz => obtain ⟨h1, _, _, he⟩ := gen_eqz (.inr rfl) hg; cases he; simp; omega
-  | neI64 | ltUI64 | leUI64 | geUI64 =>
+  | neI64 | ltUI64 | leUI64 | geUI64 | ltSI64 | leSI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genCmp_ok hg
       cases he
       simp
       omega
+  | shrSI64 => obtain ⟨h1, _, _, he⟩ := gen_shrS hg; cases he; simp; omega
   | addI64 | subI64 | mulI64 | andI64 | and | orI64 | xorI64 | shlI64 | shrUI64 =>
       simp only [genInstr] at hg
       obtain ⟨h1, _, _, he⟩ := genBin_ok hg
@@ -926,6 +928,8 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case ltUI64 => exact sim_ltUI64 P code F
   case leUI64 => exact sim_leUI64 P code F
   case geUI64 => exact sim_geUI64 P code F
+  case ltSI64 => exact sim_ltSI64 P code F
+  case leSI64 => exact sim_leSI64 P code F
   case addI64 => exact sim_addI64 P code F
   case subI64 => exact sim_subI64 P code F
   case mulI64 => exact sim_mulI64 P code F
@@ -935,6 +939,7 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case xorI64 => exact sim_xorI64 P code F
   case shlI64 => exact sim_shlI64 P code F
   case shrUI64 => exact sim_shrUI64 P code F
+  case shrSI64 => exact sim_shrSI64 P code F
   case wrapI64 => exact sim_wrapI64 P code F
   case f64Const w => exact sim_f64Const P code F w
   case f64Add => exact sim_f64Add P code F

@@ -125,6 +125,34 @@ theorem Int64.shru_eq (x k : UInt64) (hk : k.toNat < 64) : Int64.shru x k = x >>
   simp only [UInt64.toNat_ofNat', UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow,
     Nat.mod_eq_of_lt hk, Nat.mod_eq_of_lt this]
 
+/-- CompCert's signed reading of a word is Lean's `Int64.toInt` of it. -/
+theorem Int64.signed_eq (x : UInt64) : Int64.signed x = x.toInt64.toInt := by
+  show _ = x.toBitVec.toInt
+  rw [BitVec.toInt_eq_toNat_cond]
+  have h : x.toBitVec.toNat = x.toNat := rfl
+  have e : ((2 ^ 64 : Nat) : _root_.Int) = 2 ^ 64 := rfl
+  rw [h, e]
+  simp only [Int64.signed, Int64.unsigned, Int64.half_modulus, Int64.modulus]
+  by_cases hc : 2 * x.toNat < 2 ^ 64
+  · have hc' : (x.toNat : _root_.Int) < 2 ^ 64 / 2 := by omega
+    simp only [hc, hc', ↓reduceIte]
+  · have hc' : ¬ (x.toNat : _root_.Int) < 2 ^ 64 / 2 := by omega
+    simp only [hc, hc', ↓reduceIte]
+
+/-- CompCert's arithmetic shift right by an amount below 64 is the shift of `BitVec`, as Talos
+states `i64.shr_s`. -/
+theorem Int64.shr_eq (x k : UInt64) (hk : k.toNat < 64) :
+    Int64.shr x k = UInt64.ofNat (BitVec.sshiftRight x.toBitVec k.toNat).toNat := by
+  unfold Int64.shr
+  rw [ite_eq_left (by simp only [Int64.unsigned]; omega)]
+  simp only [Int64.unsigned, Int.toNat_natCast, Int64.signed_eq, Int64.repr, Int64.modulus]
+  have hs : (BitVec.sshiftRight x.toBitVec k.toNat).toNat =
+      ((x.toInt64.toInt / 2 ^ k.toNat) % 2 ^ 64).toNat := by
+    conv => lhs; rw [← BitVec.ofInt_toInt (x := x.toBitVec.sshiftRight k.toNat)]
+    rw [BitVec.toInt_sshiftRight, Int.shiftRight_eq_div_pow, BitVec.toNat_ofInt]
+    rfl
+  rw [hs]
+
 theorem Int64.eq_eq (x y : UInt64) : Int64.eq x y = decide (x = y) := by
   simp only [Int64.eq, Int64.unsigned, Int.ofNat_inj, decide_eq_decide]
   exact UInt64.toNat_inj

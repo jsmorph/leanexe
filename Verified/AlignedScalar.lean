@@ -1,5 +1,6 @@
 import Verified.AlignedSpecIn
 import LeanExe.ProofKit.AlignedAtomic
+import LeanExe.ProofKit.Signed64
 
 /-!
 The constructs whose values are scalars, under the flag: constants, the operations on words,
@@ -178,7 +179,7 @@ theorem specX_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
   cases op <;>
     simp only [CmpOp.instr, wpX_eqI64_cons, wpX_neI64_cons, wpX_ltUI64_cons,
-      wpX_leUI64_cons, wpX_extendUI32_cons]
+      wpX_leUI64_cons, wpX_ltSI64_cons, wpX_leSI64_cons, wpX_extendUI32_cons]
   · by_cases hab : left.denote funs env = right.denote funs env <;>
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
   · by_cases hab : left.denote funs env = right.denote funs env <;>
@@ -186,6 +187,10 @@ theorem specX_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
   · by_cases hab : left.denote funs env < right.denote funs env <;>
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
   · by_cases hab : left.denote funs env ≤ right.denote funs env <;>
+      simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
+  · by_cases hab : (left.denote funs env).toInt64 < (right.denote funs env).toInt64 <;>
+      simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
+  · by_cases hab : (left.denote funs env).toInt64 ≤ (right.denote funs env).toInt64 <;>
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
 
 /-- A comparison of words. -/
@@ -456,6 +461,9 @@ theorem specX_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
     · simp only [hZero, ite_false, ne_eq, not_true_eq_false]
       simpa [-Locals.get, hLeftSlot, hRightSlot, hZero, Expr.denote, BinOp.apply, hs2b] using
         hNext2 s2b _ (After.ofScalar rfl hStep' rfl hFrame hHolds rfl) hHoldsA
+  case sar =>
+    simpa [BinOp.code, Expr.denote, BinOp.apply, ← Signed64.shrS_eq] using
+      hNext2 s2 _ (After.ofScalar rfl hStep' rfl hF hH rfl) fun hs => (hAl2 hs).1
   all_goals
     simpa [BinOp.code, Expr.denote, BinOp.apply, ← UInt64.shiftLeft_eq_shiftLeft_mod,
       ← UInt64.shiftRight_eq_shiftRight_mod] using

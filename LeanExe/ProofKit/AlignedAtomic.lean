@@ -151,6 +151,16 @@ variable {α : Type} {strict : Bool} {m : Module} {Q : Assertion α} {st : Store
   · exact wp_shrUI64_cons
   · wpA_atomic
 
+@[simp] theorem wpX_shrSI64_cons :
+    wpX strict m (.shrSI64 :: rest) Q st s env ↔
+    (match s.values with
+     | .i64 b :: .i64 a :: vs => wpX strict m rest Q st
+         { s with values := .i64 (UInt64.ofNat (BitVec.sshiftRight a.toBitVec (b % 64).toNat).toNat) :: vs } env
+     | _ => Q (.Invalid "shrSI64: ill-shaped operand stack")) := by
+  cases strict
+  · exact wp_shrSI64_cons
+  · wpA_atomic
+
 @[simp] theorem wpX_eqI64_cons :
     wpX strict m (.eqI64 :: rest) Q st s env ↔
     (match s.values with
@@ -185,6 +195,26 @@ variable {α : Type} {strict : Bool} {m : Module} {Q : Assertion α} {st : Store
      | _ => Q (.Invalid "leUI64: ill-shaped operand stack")) := by
   cases strict
   · exact wp_leUI64_cons
+  · wpA_atomic
+
+@[simp] theorem wpX_ltSI64_cons :
+    wpX strict m (.ltSI64 :: rest) Q st s env ↔
+    (match s.values with
+     | .i64 b :: .i64 a :: vs => wpX strict m rest Q st
+         { s with values := .i32 (if a.toInt64 < b.toInt64 then 1 else 0) :: vs } env
+     | _ => Q (.Invalid "ltSI64: ill-shaped operand stack")) := by
+  cases strict
+  · exact wp_ltSI64_cons
+  · wpA_atomic
+
+@[simp] theorem wpX_leSI64_cons :
+    wpX strict m (.leSI64 :: rest) Q st s env ↔
+    (match s.values with
+     | .i64 b :: .i64 a :: vs => wpX strict m rest Q st
+         { s with values := .i32 (if a.toInt64 ≤ b.toInt64 then 1 else 0) :: vs } env
+     | _ => Q (.Invalid "leSI64: ill-shaped operand stack")) := by
+  cases strict
+  · exact wp_leSI64_cons
   · wpA_atomic
 
 @[simp] theorem wpX_eqzI64_cons :

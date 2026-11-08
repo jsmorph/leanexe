@@ -43,6 +43,10 @@ theorem OneUniform.shrUI64 (m : Module) : OneUniform m .shrUI64 := by scalar_ato
 
 theorem OneNoReturnCall.shrUI64 (m : Module) : OneNoReturnCall m .shrUI64 := by scalar_atom
 
+theorem OneUniform.shrSI64 (m : Module) : OneUniform m .shrSI64 := by scalar_atom
+
+theorem OneNoReturnCall.shrSI64 (m : Module) : OneNoReturnCall m .shrSI64 := by scalar_atom
+
 theorem OneUniform.eqI64 (m : Module) : OneUniform m .eqI64 := by scalar_atom
 
 theorem OneNoReturnCall.eqI64 (m : Module) : OneNoReturnCall m .eqI64 := by scalar_atom
@@ -58,6 +62,14 @@ theorem OneNoReturnCall.ltUI64 (m : Module) : OneNoReturnCall m .ltUI64 := by sc
 theorem OneUniform.leUI64 (m : Module) : OneUniform m .leUI64 := by scalar_atom
 
 theorem OneNoReturnCall.leUI64 (m : Module) : OneNoReturnCall m .leUI64 := by scalar_atom
+
+theorem OneUniform.ltSI64 (m : Module) : OneUniform m .ltSI64 := by scalar_atom
+
+theorem OneNoReturnCall.ltSI64 (m : Module) : OneNoReturnCall m .ltSI64 := by scalar_atom
+
+theorem OneUniform.leSI64 (m : Module) : OneUniform m .leSI64 := by scalar_atom
+
+theorem OneNoReturnCall.leSI64 (m : Module) : OneNoReturnCall m .leSI64 := by scalar_atom
 
 theorem OneUniform.geUI64 (m : Module) : OneUniform m .geUI64 := by scalar_atom
 

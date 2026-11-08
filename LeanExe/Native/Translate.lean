@@ -93,6 +93,7 @@ end VT
 def tuint : type := VT.ty .i32
 def tulong : type := VT.ty .i64
 def tint : type := .Tint .I32 .Signed noattr
+def tlong : type := .Tlong .Signed noattr
 def tuchar : type := .Tint .I8 .Unsigned noattr
 
 /-! ## Identifiers
@@ -653,6 +654,23 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         pure (.Sset (slotId (h - 2) .i32)
             (.Ecast (.Ebinop op (tmp (h - 2) .i64) (tmp (h - 1) .i64) tint) tuint),
           some (.i32 :: σ'), n)
+      else none
+  | .ltSI64 | .leSI64 => do
+      let σ' ← pops L σ 2
+      let op : binary_operation := if inst matches .ltSI64 then .Olt else .Ole
+      if σ.take 2 = [.i64, .i64] then
+        pure (.Sset (slotId (h - 2) .i32)
+            (.Ecast (.Ebinop op (.Ecast (tmp (h - 2) .i64) tlong) (.Ecast (tmp (h - 1) .i64) tlong)
+              tint) tuint),
+          some (.i32 :: σ'), n)
+      else none
+  | .shrSI64 => do
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.i64, .i64] then
+        pure (.Sset (slotId (h - 2) .i64)
+            (.Ecast (.Ebinop .Oshr (.Ecast (tmp (h - 2) .i64) tlong)
+              (.Ebinop .Oand (tmp (h - 1) .i64) (.Econst_long 63 tulong) tulong) tlong) tulong),
+          some (.i64 :: σ'), n)
       else none
   | .eqzI64 => do
       let σ' ← pops L σ 1

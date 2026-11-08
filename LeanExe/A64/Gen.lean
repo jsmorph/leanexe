@@ -186,6 +186,13 @@ def genCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
   let r ← opReg (σ.length - 2)
   return ([.subsReg 31 r (← opReg (σ.length - 1)), .csinc r 31 31 c], some (.i32 :: σ.drop 2))
 
+/-- `i64.shr_s` of the register `x` by the register `y` into `x`, through the logical shift
+between two copies of the sign mask in the scratch register: `LSR X16, Xx, #63`,
+`SUB X16, XZR, X16`, `EOR Xx, Xx, X16`, `LSRV Xx, Xx, Xy`, and `EOR Xx, Xx, X16`. -/
+def sarCode (x y : Fin 32) : List Instr :=
+  [.lsrImm scratch x 63, .subReg scratch 31 scratch, .eorReg x x scratch, .lsrv x x y,
+    .eorReg x x scratch]
+
 /-- An operation on the two values on top, which the instruction `op d n m` replaces by its
 result, of type `t`. -/
 def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr)
@@ -295,7 +302,8 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .localSet _ => (1, some (h - 1))
   | .localTee _ => (1, some h)
   | .constI64 _ | .const _ | .f64Const _ | .f32Const _ => (4, some (h + 1))
-  | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 => (2, some (h - 1))
+  | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 | .ltSI64 | .leSI64 => (2, some (h - 1))
+  | .shrSI64 => (5, some (h - 1))
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
       (1, some (h - 1))
@@ -369,6 +377,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .ltUI64 => genCmp ctl σ 2
   | .leUI64 => genCmp ctl σ 8
   | .geUI64 => genCmp ctl σ 3
+  | .ltSI64 => genCmp ctl σ 10
+  | .leSI64 => genCmp ctl σ 12
   | .addI64 => genBin ctl σ .addReg .i64
   | .subI64 => genBin ctl σ .subReg .i64
   | .mulI64 => genBin ctl σ (fun d n m => .madd d n m 31) .i64
@@ -378,6 +388,10 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .xorI64 => genBin ctl σ .eorReg .i64
   | .shlI64 => genBin ctl σ .lslv .i64
   | .shrUI64 => genBin ctl σ .lsrv .i64
+  | .shrSI64 => do
+      if σ.length < curBase ctl + 2 then throw s!"a shift at height {σ.length}"
+      let x ← opReg (σ.length - 2)
+      return (sarCode x (← opReg (σ.length - 1)), some (.i64 :: σ.drop 2))
   | .f64Add => genFBin ctl σ .fadd
   | .f64Sub => genFBin ctl σ .fsub
   | .f64Mul => genFBin ctl σ .fmul

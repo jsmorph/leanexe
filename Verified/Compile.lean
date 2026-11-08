@@ -76,6 +76,7 @@ def BinOp.code (op : BinOp) (base : Nat) : Program :=
   | .xor => [.xorI64]
   | .shl => [.shlI64]
   | .shr => [.shrUI64]
+  | .sar => [.shrSI64]
 
 /-- The WebAssembly comparison of a comparison. -/
 def CmpOp.instr : CmpOp → Instruction
@@ -83,6 +84,8 @@ def CmpOp.instr : CmpOp → Instruction
   | .ne => .neI64
   | .lt => .ltUI64
   | .le => .leUI64
+  | .slt => .ltSI64
+  | .sle => .leSI64
 
 def FBinOp.instr : FBinOp → Instruction
   | .add => .f64Add

@@ -2,14 +2,16 @@
 The word forms of Lean's `Int64` operations and their equations.  An `Int64` is the word
 `x.toUInt64`, its two's-complement bits, and the reflector writes each `Int64` operation as an
 expression over words.  `+`, `-`, `*`, `&&&`, `|||`, `^^^`, and `<<<` are the word operations, and
-negation is `0 - a`.  `sar` shifts right arithmetically through the logical shift, between two
-copies of the sign mask.  `div` and `rem` follow `BitVec.sdiv_eq` and `BitVec.srem_eq`: the
-unsigned quotient or remainder of the magnitudes, with the sign of the result fixed afterwards, so
-a zero divisor gives Lean's 0 and dividend through the unsigned operations, and `minValue / -1`
-gives `minValue`.  The order comparisons add `M = 2 ^ 63` to both words, which maps
-`[-2 ^ 63, 2 ^ 63)` onto `[0, 2 ^ 64)` in order.  The last section states the equations in the
-forms that the reflector takes: a word term equal to the `Int64` term, and the `decide`, `if`,
-`==`, and `!=` of a word comparison equal to those of the `Int64` comparison.
+negation is `0 - a`.  `div` and `rem` follow `BitVec.sdiv_eq` and `BitVec.srem_eq`: the unsigned
+quotient or remainder of the magnitudes, with the sign of the result fixed afterwards, so a zero
+divisor gives Lean's 0 and dividend through the unsigned operations, and `minValue / -1` gives
+`minValue`.  The order comparisons and `>>>` reflect to WebAssembly's signed comparisons and
+`i64.shr_s`, and the facts here relate those instructions to word forms that a back end computes:
+`sar` shifts right arithmetically through the logical shift, between two copies of the sign mask,
+and the order comparisons add `M = 2 ^ 63` to both words, which maps `[-2 ^ 63, 2 ^ 63)` onto
+`[0, 2 ^ 64)` in order.  The last section states the equations in the forms that the reflector
+takes: a word term equal to the `Int64` term, and the `decide`, `if`, `==`, and `!=` of a word
+equality equal to those of the `Int64` equality.
 -/
 
 namespace LeanExe.ProofKit.Signed64
@@ -72,6 +74,22 @@ theorem sar_eq (a b : Int64) : (a >>> b).toUInt64 = sar a.toUInt64 b.toUInt64 :=
   show BitVec.sshiftRight' a.toBitVec (b.toBitVec.smod 64) = _
   rw [BitVec.sshiftRight_eq', smod_toNat]
   rfl
+
+/-- Talos's `i64.shr_s` of the words `a` and `b` is `sar a b`. -/
+theorem shrS_sar (a b : UInt64) :
+    UInt64.ofNat (BitVec.sshiftRight a.toBitVec (b % 64).toNat).toNat = sar a b := by
+  apply UInt64.toBitVec_inj.mp
+  rw [toBitVec_sar]
+  show BitVec.ofNat 64 (BitVec.sshiftRight a.toBitVec (b % 64).toNat).toNat = _
+  rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]
+  rfl
+
+/-- Talos's `i64.shr_s` of the words `a` and `b` is Lean's `>>>` on their `Int64` values. -/
+theorem shrS_eq (a b : UInt64) :
+    UInt64.ofNat (BitVec.sshiftRight a.toBitVec (b % 64).toNat).toNat =
+      (a.toInt64 >>> b.toInt64).toUInt64 := by
+  rw [shrS_sar]
+  exact (sar_eq a.toInt64 b.toInt64).symm
 
 theorem shl_eq (a b : Int64) : (a <<< b).toUInt64 = a.toUInt64 <<< b.toUInt64 := by
   apply UInt64.toBitVec_inj.mp
@@ -160,9 +178,6 @@ theorem xor_word (a b : Int64) : Int64.ofUInt64 (a.toUInt64 ^^^ b.toUInt64) = a 
 
 theorem shl_word (a b : Int64) : Int64.ofUInt64 (a.toUInt64 <<< b.toUInt64) = a <<< b :=
   congrArg Int64.ofUInt64 (shl_eq a b).symm
-
-theorem sar_word (a b : Int64) : Int64.ofUInt64 (sar a.toUInt64 b.toUInt64) = a >>> b :=
-  congrArg Int64.ofUInt64 (sar_eq a b).symm
 
 theorem div_word (a b : Int64) : Int64.ofUInt64 (div a.toUInt64 b.toUInt64) = a / b :=
   congrArg Int64.ofUInt64 (div_eq a b).symm

@@ -28,7 +28,7 @@ Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and 
 
 ## Input: the Wasm subset and the semantics to simulate
 
-The verified compiler emits 73 instruction forms, one memory, four i64 globals, and no imports, tables, or exceptions.  The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof concerns no other module.
+The verified compiler emits 76 instruction forms, one memory, four i64 globals, and no imports, tables, or exceptions.  The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof concerns no other module.
 
 **Module shape** (`compileWith` in `Verified/Compile.lean`):
 
@@ -42,7 +42,7 @@ The verified compiler emits 73 instruction forms, one memory, four i64 globals, 
 
 | Group | Forms | Count |
 | --- | --- | --- |
-| i64 arithmetic and comparison | `constI64` `addI64` `subI64` `mulI64` `divUI64` `remUI64` `andI64` `orI64` `xorI64` `shlI64` `shrUI64` `eqI64` `neI64` `ltUI64` `leUI64` `geUI64` `eqzI64` | 17 |
+| i64 arithmetic and comparison | `constI64` `addI64` `subI64` `mulI64` `divUI64` `remUI64` `andI64` `orI64` `xorI64` `shlI64` `shrUI64` `shrSI64` `eqI64` `neI64` `ltUI64` `leUI64` `geUI64` `ltSI64` `leSI64` `eqzI64` | 20 |
 | i32 | `const` `eq` `eqz` `and` `wrapI64` `extendUI32` | 6 |
 | Variables | `localGet` `localSet` `localTee` `globalGet` `globalSet` | 5 |
 | Memory | `load64` `store64` `load8U` `store8` `memorySize` `memoryGrow` | 6 |
@@ -153,6 +153,8 @@ else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
 | Wasm form | C shape | Why |
 | --- | --- | --- |
 | `shlI64`, `shrUI64` | `a << (b & 63)`, `a >> (b & 63)` | Wasm masks the amount; CompCert leaves a shift by 64 or more undefined |
+| `shrSI64` | `(unsigned long long) ((long long) a >> (b & 63))` | CompCert defines the conversions to and from `long long` as the wrap modulo 2^64 and the shift of a `long long` as the arithmetic shift, which C11 leaves to the implementation |
+| `ltSI64`, `leSI64` | `(unsigned int) ((long long) a < (long long) b)` and `<=` | CompCert compares two `long long` operands signed |
 | `divUI64`, `remUI64` | `if (b == 0) { lx_status = LX_DIV0; return 0; }`, then `a / b` | Talos traps; C leaves it undefined |
 | comparisons, `eqz` | `(unsigned int)(a < b)` | C comparisons yield `int` |
 | `wrapI64`, `extendUI32` | casts between `unsigned int` and `unsigned long long` | |

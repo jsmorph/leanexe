@@ -223,6 +223,26 @@ theorem sim_shrUI64 (F : Nat) : InstrSim A X E mod c F .shrUI64 :=
     (fun st sl env => by simp only [execOne.eq_def])
     (sem_shr_ll A)
 
+/-- `i64.shr_s`, the shift of the `long long` cast of the operand by the amount's low six bits,
+cast back to `unsigned long long`. -/
+theorem sim_shrSI64 (F : Nat) : InstrSim A X E mod c F .shrSI64 := by
+  intro L σ n s σ' n' h hbase α st sl le m env hinv
+  rcases σ with _ | ⟨a, _ | ⟨b, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  obtain ⟨_, ⟨hb, rfl⟩, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩ := h
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f' =>
+      obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
+      simp only [execOne.eq_def, hvs]
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
+        (.eval_Ecast _ _ _ _
+          (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx)
+              (cast_ulong_long A m x))
+            (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hy) (.eval_Econst_long _ _)
+              (sem_and_ll A m y 63))
+            (sem_shr_sl A m x y))
+          (cast_long_ulong A m _)) rfl hb
+
 /-- A division or remainder, which traps when the divisor is zero. -/
 theorem sim_divrem (hE : EnvOk E) (F : Nat) (inst : Instruction) (op : binary_operation)
     (f : UInt64 → UInt64 → UInt64)
@@ -363,6 +383,41 @@ theorem sim_geUI64 (F : Nat) : InstrSim A X E mod c F .geUI64 := by
       simp only [execOne.eq_def, hvs]
       exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_ge_ll A m x y)) (cast_i32 A m _)) rfl hb
+
+/-- A signed comparison, of the operands cast to `long long`. -/
+theorem sim_ltSI64 (F : Nat) : InstrSim A X E mod c F .ltSI64 := by
+  intro L σ n s σ' n' h hbase α st sl le m env hinv
+  rcases σ with _ | ⟨a, _ | ⟨b, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  obtain ⟨_, ⟨hb, rfl⟩, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩ := h
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f' =>
+      obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
+      simp only [execOne.eq_def, hvs]
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
+        (.eval_Ecast _ _ _ _
+          (.eval_Ebinop _ _ _ _ _ _ _
+            (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) (cast_ulong_long A m x))
+            (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hy) (cast_ulong_long A m y))
+            (sem_lt_ss A m x y))
+          (cast_i32 A m _)) rfl hb
+
+theorem sim_leSI64 (F : Nat) : InstrSim A X E mod c F .leSI64 := by
+  intro L σ n s σ' n' h hbase α st sl le m env hinv
+  rcases σ with _ | ⟨a, _ | ⟨b, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  obtain ⟨_, ⟨hb, rfl⟩, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩ := h
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f' =>
+      obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
+      simp only [execOne.eq_def, hvs]
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
+        (.eval_Ecast _ _ _ _
+          (.eval_Ebinop _ _ _ _ _ _ _
+            (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) (cast_ulong_long A m x))
+            (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hy) (cast_ulong_long A m y))
+            (sem_le_ss A m x y))
+          (cast_i32 A m _)) rfl hb
 
 theorem sim_eqzI64 (F : Nat) : InstrSim A X E mod c F .eqzI64 := by
   intro L σ n s σ' n' h hbase α st sl le m env hinv

@@ -14,33 +14,41 @@ def Rep.boolExpr : Rep .bool → LeanExe.Source.Expr .bool
 def Rep.float32Expr : Rep .float32 → LeanExe.Source.Expr .f32
   | .float32 e => e
 
-def binOp : BinOp → LeanExe.Source.U64Op
-  | .add => .add
-  | .sub => .sub
-  | .mul => .mul
-  | .div => .divU
-  | .rem => .remU
-  | .and => .bitAnd
-  | .or => .bitOr
-  | .xor => .bitXor
-  | .shl => .shiftLeft
-  | .shr => .shiftRight
+/-- The kernel language's operation of a word operation, or `none` for the arithmetic shift,
+which the kernel language lacks. -/
+def binOp : BinOp → Option LeanExe.Source.U64Op
+  | .add => some .add
+  | .sub => some .sub
+  | .mul => some .mul
+  | .div => some .divU
+  | .rem => some .remU
+  | .and => some .bitAnd
+  | .or => some .bitOr
+  | .xor => some .bitXor
+  | .shl => some .shiftLeft
+  | .shr => some .shiftRight
+  | .sar => none
 
-theorem binOp_apply (op : BinOp) (a b : UInt64) : (binOp op).apply a b = op.apply a b := by
-  cases op <;> simp [binOp, LeanExe.Source.U64Op.apply, BinOp.apply,
-    ← UInt64.shiftLeft_eq_shiftLeft_mod, ← UInt64.shiftRight_eq_shiftRight_mod]
+theorem binOp_apply {op : BinOp} {k : LeanExe.Source.U64Op} (hk : binOp op = some k)
+    (a b : UInt64) : k.apply a b = op.apply a b := by
+  cases op <;> simp only [binOp, Option.some.injEq, reduceCtorEq] at hk <;> subst hk <;>
+    simp [LeanExe.Source.U64Op.apply, BinOp.apply,
+      ← UInt64.shiftLeft_eq_shiftLeft_mod, ← UInt64.shiftRight_eq_shiftRight_mod]
   all_goals
     intro hb
     subst b
     apply UInt64.toNat_inj.mp
     simp [UInt64.toNat_div, UInt64.toNat_mod]
 
-def cmpExpr (op : CmpOp) (a b : LeanExe.Source.Expr .u64) : LeanExe.Source.Expr .bool :=
-  match op with
-  | .eq => .eq a b
-  | .ne => .ne a b
-  | .lt => .ltU a b
-  | .le => .leU a b
+/-- The kernel language's comparison of a word comparison, or `none` for the signed
+comparisons, which the kernel language lacks. -/
+def cmpExpr : CmpOp →
+    Option (LeanExe.Source.Expr .u64 → LeanExe.Source.Expr .u64 → LeanExe.Source.Expr .bool)
+  | .eq => some .eq
+  | .ne => some .ne
+  | .lt => some .ltU
+  | .le => some .leU
+  | .slt | .sle => none
 
 def fbinOp : FBinOp → LeanExe.Source.F32Op
   | .add => .add
@@ -71,29 +79,34 @@ def Code.var (v : Var Γ t) (bound : ctx.Bounded base) :
     Code ctx base (S := S) (t := t) (fun _ env => env.get v) :=
   .atom (ctx.get v) (bound _ v) (fun _ _ _ _ agree => agree _ v)
 
-def Code.bin (op : BinOp) {left right : Funs S → Verified.Env Γ → UInt64}
+def Code.bin (op : BinOp) {k : LeanExe.Source.U64Op} (hk : binOp op = some k)
+    {left right : Funs S → Verified.Env Γ → UInt64}
     (a : Code ctx base (t := .word) left) (b : Code ctx a.next (t := .word) right) :
     Code ctx base (t := .word) (fun funs env => op.apply (left funs env) (right funs env)) :=
-  a.map₂ b op.apply (fun l r => .word (.bin (binOp op) l.wordExpr r.wordExpr))
+  a.map₂ b op.apply (fun l r => .word (.bin k l.wordExpr r.wordExpr))
     (by intro l r; cases l; cases r; exact Nat.le_refl _)
     (by
       intro l r locals arrays x y hl hr
       cases l; cases r
       simp only [Rep.Holds] at hl hr
-      simpa [Rep.Holds, Rep.wordExpr, LeanExe.Source.Expr.denote, hl, hr, binOp_apply])
+      simpa [Rep.Holds, Rep.wordExpr, LeanExe.Source.Expr.denote, hl, hr, binOp_apply hk])
 
-def Code.cmp (op : CmpOp) {left right : Funs S → Verified.Env Γ → UInt64}
+def Code.cmp (op : CmpOp)
+    {f : LeanExe.Source.Expr .u64 → LeanExe.Source.Expr .u64 → LeanExe.Source.Expr .bool}
+    (hf : cmpExpr op = some f) {left right : Funs S → Verified.Env Γ → UInt64}
     (a : Code ctx base (t := .word) left) (b : Code ctx a.next (t := .word) right) :
     Code ctx base (t := .bool) (fun funs env => op.apply (left funs env) (right funs env)) :=
-  a.map₂ b op.apply (fun l r => .bool (cmpExpr op l.wordExpr r.wordExpr))
-    (by intro l r; cases l; cases r; cases op <;> exact Nat.le_refl _)
+  a.map₂ b op.apply (fun l r => .bool (f l.wordExpr r.wordExpr))
+    (by
+      intro l r; cases l; cases r
+      cases op <;> simp only [cmpExpr, Option.some.injEq, reduceCtorEq] at hf <;> subst hf <;>
+        exact Nat.le_refl _)
     (by
       intro l r locals arrays x y hl hr
       cases l; cases r
       simp only [Rep.Holds] at hl hr
-      cases op <;>
-        simpa [Rep.Holds, Rep.wordExpr, cmpExpr, LeanExe.Source.Expr.denote, hl, hr,
-          CmpOp.apply])
+      cases op <;> simp only [cmpExpr, Option.some.injEq, reduceCtorEq] at hf <;> subst hf <;>
+        simpa [Rep.Holds, Rep.wordExpr, LeanExe.Source.Expr.denote, hl, hr, CmpOp.apply])
 
 def Code.not {value : Funs S → Verified.Env Γ → Bool} (a : Code ctx base (t := .bool) value) :
     Code ctx base (t := .bool) (fun funs env => !value funs env) :=

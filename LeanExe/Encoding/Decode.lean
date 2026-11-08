@@ -260,7 +260,9 @@ def plain : UInt8 → Option Instruction
   | 0x50 => some .eqzI64
   | 0x51 => some .eqI64
   | 0x52 => some .neI64
+  | 0x53 => some .ltSI64
   | 0x54 => some .ltUI64
+  | 0x57 => some .leSI64
   | 0x58 => some .leUI64
   | 0x5b => some .f32Eq
   | 0x5d => some .f32Lt
@@ -280,6 +282,7 @@ def plain : UInt8 → Option Instruction
   | 0x84 => some .orI64
   | 0x85 => some .xorI64
   | 0x86 => some .shlI64
+  | 0x87 => some .shrSI64
   | 0x88 => some .shrUI64
   | 0x90 => some .f32Nearest
   | 0x91 => some .f32Sqrt
