@@ -117,10 +117,10 @@ coercion `CoeT Int x Nat`.
 | Failure | Lean versions | Edit | Rewrites | Check that the edit changes nothing else |
 |---|---|---|---|---|
 | `Real.lean` opens a namespace `Defs` that no output declares | both, with reals | delete the line | 1 | the deleted command declares nothing |
-| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 41 | on v4.29.0 the 6,457 constants of the output of the six-function slice hash identically with and without the edit |
-| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 14 fractions, no negative | each changed line has a `1/2` that becomes `(1/2)`; without the edit the output does not elaborate |
+| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 41 | on v4.29.0 the 6,464 constants of the Float-valued output hash identically with and without the edit |
+| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 14 fractions, no negative | each changed line has a `1/2` that becomes `(1/2)`.  Without the edit the output does not elaborate, and on v4.29.0 the 6,464 constants of the Float-valued output hash identically with and without the edit except the values of FPRoundBase__1, FPRoundInt, and FPToFixed, which hold the fractions |
 | The back end writes an integer of the model where Lean expects a natural number, as a width, an index, a shift, or a fuel, and lean-sail's coercion `CoeT Int x Nat` converts it with `x.toNat`, which maps a negative integer to 0.  `asl_Int`'s `result` takes the type Nat from its first branch, so the translation's SInt, and FixedToFP of a signed operand, gave 0 for every negative value | both | delete the coercion (`lean-sail-v6.diff`); type `asl_Int`'s `result` as Int, and write `.toNat` at each other place, with the model's guarantee that the value is nonnegative in a comment of the script | 30 | on v4.34.0-rc2 the 6,456 constants of the output hash identically with the coercion and without it after the edit, except `asl_Int` |
-| `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | the cut changes FPProcessException and no other function: against the uncut slice on v4.29.0, the 6,457 constants of the cut output differ only in FPProcessException, `sail_model_init`, and constants that Lean derives for the inductive types |
+| `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | the cut changes FPProcessException and no other function: against the uncut slice on v4.29.0, the 6,457 constants of the cut output without the roots FPRoundInt, FPToFixed, and FPCompare differ only in FPProcessException, `sail_model_init`, and constants that Lean derives for the inductive types |
 | lean-sail's `ArchSemSequential.lean`: `Decidable (0 < choice)` | v4.34.0-rc2 | `lean-sail-v6.diff` | | the edited `interpretSailEffects` belongs to the version-2 interface, which the output does not name |
 
 Lean's coercion of a type's arithmetic converts each operand, so the coercion gave the width
@@ -134,7 +134,7 @@ The literal rewrite follows `doc_lit` of the back end's `pretty_print_lean.ml`, 
 `L_real` with Zarith's `Q.to_string`, so every real literal has one of the forms `N`, `-N`,
 `N/D`, and `-N/D`; a negative integer literal prints as `(-N)` (`doc_big_int`).  [`ConstDump.lean`](ConstDump.lean) writes the hashes that the
 comparisons use: each constant's type and value, with the module name and the numbering of
-matchers normalized, from builds of the Float-valued output with `probe429.sh`.  The derived constants
+matchers normalized, in a built project or after a root module elaborated as a file (below).  The derived constants
 that differ between the cut and the uncut output are the eliminators and recursors of
 `Register`, whose constructors differ with the register set, and the `noConfusion` and `Repr`
 definitions of the enumerations, whose difference was not traced.  The uncut slice also needed
@@ -142,17 +142,34 @@ two edits that the cut makes unnecessary, since both functions lie on exception 
 comparison of two `BitVec.join1 [b]` in IncrementInstructionCounter that runs in `whnf` without
 end, and the do elaborator's failure on MaybeZeroSVEUppers on v4.34.0-rc2.
 
-The comparisons of constants on v4.29.0 ran on the slice without the roots FPRoundInt, FPToFixed,
-and FPCompare and were not repeated on the output with them.  The three roots add the definitions
-FPRoundInt, SatQ, SignedSatQ, UnsignedSatQ, FPCompare, and FPToFixed and change the text of no
-other definition: the two outputs differ elsewhere only in the generated names of two type
-quantifiers in a comment.  The nine `assert` calls and the eight fractions of the added
-definitions take the same edits as the others.
+The comparisons of the `assert` and fraction edits ran on the Float-valued output of the
+nine-root slice, with Lean v4.29.0 and lean-sail v6 unchanged.  For the `assert` edit, a copy of
+the project that `probe429.sh` built took the generated sources with every edit but the
+qualification and built without an error, and `ConstDump.lean` gave each of the 6,464 constants
+the same hashes in the two builds.  Without the fraction edit the root module does not elaborate
+and leaves no `.olean` to import, so `lake env lean --tstack=400000` elaborated the root module as
+a file followed by the body of `ConstDump.lean`, once with the edit and once without.  Lean's
+error recovery still adds a definition whose body fails, so both runs hash every constant.  With
+the edit the run gave every constant the hashes of `probe429.sh`'s build.  Without it Lean
+reported 14 errors, one at each fraction, each a failure to synthesize `HDiv Bool Nat Bool`, the
+division of a comparison's Boolean result by 2, and only the values of FPRoundBase__1,
+FPRoundInt, and FPToFixed differed.  The comparison of the cut ran on the slice without the
+roots FPRoundInt, FPToFixed, and FPCompare.  The three roots add the definitions FPRoundInt, SatQ, SignedSatQ, UnsignedSatQ,
+FPCompare, and FPToFixed and change the text of no other definition: the two outputs differ
+elsewhere only in the generated names of two type quantifiers in a comment, and in the nine-root
+output FPProcessException is the only caller of the cut functions.
 
+The root modules of the Float-valued and rational outputs differ from the real-number output's
+only in the module name, the import of `FakeReal` in place of `Real`, and `noncomputable
+section`, so every count check of `fix-output.sh` holds on the three outputs, with 41
+qualifications, 30 conversions, and 14 fractions in each.
 [`elaborate.sh`](elaborate.sh) builds the real-number output with the repository's toolchain and
-Mathlib in a scratch copy of the repository in 162 s, and its rational counterpart (below) in
-167 s, at a peak of 4.1 GB, with only Mathlib's naming warnings.  [`probe429.sh`](probe429.sh)
-builds the Float-valued output with Lean v4.29.0 and lean-sail v6 unchanged in 226 s and 4.3 GB.
+Mathlib in a scratch copy of the repository, with only Mathlib's naming warnings, and
+[`probe429.sh`](probe429.sh) builds the Float-valued output with Lean v4.29.0 and lean-sail v6
+unchanged.  With one CPU each, `probe429.sh` took 307 s, 248 s of them for the root module, at a
+peak of 4.6 GB, and `probe434.sh` took 308 s, 210 s of them for the rational root module, at a
+peak of 3.0 GB.  In that run the real-number output was the file that `check.sh` had built, so
+Lake did not rebuild it, and `Eval.lean` found no difference.
 [`Check.lean`](Check.lean) prints the types and axioms of the six functions.
 
 ## Loops
@@ -667,4 +684,7 @@ sh $T/emu/check.sh $O/emu/fpemu $R/tmp/sail/vectors.txt $O/emu/vectors.out
 of sail-arm `111345b` and `7d0581642`, `uv run $T/srcdiff.py $A $B
 $O/real/armv9fp/Armv9fp.lean prelude.sail v8_base.sail stubs.sail interface.sail impdefs.sail
 fetch.sail` lists the changed definitions, and `ConstDump.lean`, with the module name
-substituted, writes `consts.txt` in a project that `probe429.sh` built.
+substituted, writes `consts.txt` in a project that `probe429.sh` built.  For a root module that
+does not elaborate, the root module followed by `ConstDump.lean` without its `import` line, run
+with `lake env lean --tstack=400000` in the project after `lake build` of the modules that the
+root module imports, writes the same file.
