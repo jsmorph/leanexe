@@ -11,6 +11,8 @@
 # Usage: tests/isla/m7-theorems.sh [MODULE...]
 # MODULE is the name of a file of tests/TestSupport/M7/Isla without .lean, such as Register; the
 # script elaborates every module there unless given some.
+# ISLA_CPUS, 4 unless set, is the CPU quota and thread count of each module's elaboration; a module
+# elaborates on one to four threads, so a caller that runs several modules at once sets it to 1.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
@@ -30,7 +32,7 @@ tools/leanrun --timeout 60m --memory-high 8G --cpus 4 lake --log-level error bui
 std='(propext|Classical\.choice|Quot\.sound)'
 result=0
 for f in "${files[@]}"; do
-  if ! out=$( { /usr/bin/time -f "%e %M" tools/leanrun --timeout 180m --memory-high 8G --cpus 4 \
+  if ! out=$( { /usr/bin/time -f "%e %M" tools/leanrun --timeout 180m --memory-high 8G --cpus "${ISLA_CPUS:-4}" \
       lake env lean "$f"; } 2>&1); then
     printf '%s\n' "$out"
     echo "fail: $f"
