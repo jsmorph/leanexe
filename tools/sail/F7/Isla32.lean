@@ -2,6 +2,7 @@ import F7.Isla
 import F7.FPSub32
 import F7.FPDiv32
 import F7.FPSqrt32
+import F7.FixedToFP32
 
 /-!
 The join of the translation's floating-point functions at 32 bits and the equations of the 32-bit
@@ -19,7 +20,10 @@ satisfies `Hyp`.  `fpAdd32Eq_of_sail` derives `FPAdd32Eq A` from `SailFPAdd32 A`
 `fpAdd32_eq_f32Add`, with the witness `hyp_tcg` of `F7/Isla.lean`, and `fpSub32Eq_of_sail`,
 `fpMul32Eq_of_sail`, `fpDiv32Eq_of_sail`, and `fpSqrt32Eq_of_sail` derive `FPSub32Eq`,
 `FPMul32Eq`, `FPDiv32Eq`, and `FPSqrt32Eq` from the links `SailFPSub32`, `SailFPMul32`,
-`SailFPDiv32`, and `SailFPSqrt32` likewise.
+`SailFPDiv32`, and `SailFPSqrt32` likewise, and `fixedToFP64_32Eq_of_sail` derives
+`FixedToFP64_32Eq` from `SailFixedToFP64_32`, which identifies Isla's 128-bit vector 0 with the
+integer `fbits` 0 and the enumeration member `FPRounding_TIEEVEN` with the rounding mode, as
+`SailFixedToFP` of `F7/Isla.lean` does.
 -/
 
 open Sail Sail.ConcurrencyInterfaceV1 Armv9fp Armv9fp.Functions
@@ -100,6 +104,25 @@ theorem fpSqrt32Eq_of_sail (A : Abstract) (h : SailFPSqrt32 A) :
   obtain ⟨s', hrun, -, -⟩ := fpSqrt32_eq_f32Sqrt a.toBitVec _ _ _ _ (hyp_tcg unknown0)
   have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
   rw [islaFPCR_fpcrV, UInt32.ofBitVec_toBitVec] at e
+  exact e
+
+/-- The link between the abstract call `FixedToFP64_32` and the translation's FixedToFP from a
+64-bit unsigned integer with no fraction bits to 32 bits under FPCR 0x02000000, rounding to
+nearest with ties to even, which review supports. -/
+def SailFixedToFP64_32 (A : Abstract) : Prop :=
+  ∀ (a : BitVec 64) (s : State) (fi : Vector Bool 259) (ps : ProcState) (fpsr : BitVec 64)
+    (v : BitVec 32) (s' : State), Hyp s.regs fi ps fpsr →
+    (FixedToFP a 0 true fpcrV .FPRounding_TIEEVEN 32).run s = .ok v s' →
+    A "FixedToFP64_32" [.bits 64 a.toNat, .bits 128 0, .bool true, islaFPCR fpcrV,
+      .enum "FPRounding_TIEEVEN"] = some (.bits 32 v.toNat)
+
+theorem fixedToFP64_32Eq_of_sail (A : Abstract) (h : SailFixedToFP64_32 A) :
+    LeanExe.A64.Isla.FixedToFP64_32Eq A := by
+  intro a
+  obtain ⟨s', hrun, -, -⟩ :=
+    fixedToFP32_eq_f32ConvertI64U a.toBitVec _ _ _ _ (hyp_tcg unknown0)
+  have e := h a.toBitVec _ _ _ _ _ _ (hyp_tcg unknown0) hrun
+  rw [islaFPCR_fpcrV, UInt64.ofBitVec_toBitVec] at e
   exact e
 
 end F7
