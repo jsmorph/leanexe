@@ -28,7 +28,7 @@
 # For NAME sha, "m7-board.sh check sha" builds m7-windows and tests/TestSupport/M7/ShaLoop.lean,
 # writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, and
 # elaborates tests/TestSupport/M7/ShaBoardFile.lean under 16G unless MEM is set, whose sha_board
-# states that the bytes written begin the SHA-256 digests of the blocks read.
+# and sha_board_bytes state that the bytes written begin the SHA-256 digests of the blocks read.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -201,12 +201,12 @@ case $1 in
       echo) lib=TestSupport.M7.NucleoLoop cmd=board dwt=board-dwt file=NucleoFile count=12
         mem=${MEM:-12G} ;;
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
-        count=13 mem=${MEM:-16G} ;;
+        count=16 mem=${MEM:-16G} ;;
       area) lib=LeanExe.M7.Proof.Board cmd=area-board dwt= file=AreaFile count=9
         mem=${MEM:-12G} ;;
       crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=14
         mem=${MEM:-12G} ;;
-      sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt= file=ShaBoardFile count=16
+      sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt= file=ShaBoardFile count=19
         mem=${MEM:-16G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
