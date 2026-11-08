@@ -5,6 +5,7 @@ import TestSupport.M7.CrcImages
 import TestSupport.M7.ShaImages
 import TestSupport.M7.Dwt
 import TestSupport.M7.Area
+import TestSupport.M7.Diag
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
@@ -41,6 +42,8 @@ steps `crc-usart3` and `crc-cmsdk`, and the SHA-256 steps `sha-usart3` and `sha-
   `m7-windows div-dwt FILE` write the measurement images of `tests/TestSupport/M7/Dwt.lean`: the
   echo, the gateway, and the CRC-32 step with the cycles of each window, and the cycles of
   `udivmod64`'s paths and of `UDIV`.
+- `m7-windows diag FILE` writes the diagnostic image of `tests/TestSupport/M7/Diag.lean`, which
+  reports the debug registers and `RCC_CSR` as reset left them.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -221,6 +224,12 @@ def main (args : List String) : IO UInt32 := do
       IO.println (s!"m7-windows: div-dwt: {bytes.length} bytes, " ++
         s!"{TestSupport.M7.Dwt.runs.length} records")
       return 0
+  | ["diag", file] =>
+      let bytes := TestSupport.M7.Diag.diagImage
+      IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+      IO.println (s!"m7-windows: diag: {bytes.length} bytes, main " ++
+        s!"{hex32 TestSupport.M7.Diag.diagBoot.base}")
+      return 0
   | ["static", name] => withProg name fun p => do
       match longest p with
       | .ok (ls, l, d) =>
@@ -268,5 +277,5 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
         "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
         "sha-qemu FILE | sha-board FILE | board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
-        "div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
+        "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2

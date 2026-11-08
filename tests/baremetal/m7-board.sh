@@ -56,9 +56,26 @@
 # For the SHA-256 step, tests/baremetal/uart_sha.py sends blocks of 64 bytes in lockstep and checks
 # each answer against hashlib.sha256 of the bytes sent so far, and the script then requires ORE
 # clear in the same way.
-# The reset over SWD leaves the debug state that the probe set, which the theorems' power-on
-# premise excludes.  "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without
-# st-flash, for a run from the power-on reset of a replug after NAME.bin lies in the flash.
+# The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
+# theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
+# the read-back as "run" does, without st-flash's reset, and then runs
+# tools/baremetal/stlink_nrst.py, with its messages in NAME.nrst, which sets the debug registers
+# that a system reset keeps to their power-on values, leaves debug mode, and pulses NRST, and then
+# does what "run" does after the reset, for a run from an NRST reset with no debugger attached.
+# "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without st-flash, for a run
+# from the power-on reset of a replug after NAME.bin lies in the flash.  When the virtual COM port
+# forwards none of the board's bytes, a USB reset of the ST-LINK, usbreset BUS/DEVICE, before the
+# next run restores it.
+#
+# "m7-board.sh diag-image" builds m7-windows under a memory cap of MEM, 12G unless set, and writes
+# diag.bin, the diagnostic image of tests/TestSupport/M7/Diag.lean, which no theorem covers and
+# which reports the debug registers and RCC_CSR as the last reset left them.  "m7-board.sh diag
+# DEVICE [REPEATS]" writes diag.bin and resets the board as "run" does and requires, with
+# tests/baremetal/uart_diag.py, the state that st-flash's reset leaves, C_DEBUGEN 1 and
+# DBGMCU_APB1_FZ 0x1800, which shows that the image reads those bits.  It then runs
+# stlink_nrst.py REPEATS times, 3 unless given, and after each requires the debug registers at
+# their power-on values, RCC_CSR with PINRSTF alone, and a start count one above the last, with
+# the lines of uart_diag.py in diag.N.echo and the messages of stlink_nrst.py in diag.N.nrst.
 #
 # "m7-board.sh measure-div" writes div-dwt.bin, the measurement image of udivmod64 and UDIV, to the
 # board's flash as "run" does, waits 3 s after the reset, and reads the records and the boot log
@@ -95,13 +112,14 @@
 # STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
 # script in seconds.
 # Usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME | run NAME DEVICE |
-#          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |
+#          nrst NAME DEVICE | host NAME DEVICE | diag-image | diag DEVICE [REPEATS] |
+#          measure-div | measure NAME DEVICE | compare RECORDS |
 #          cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]
 set -euo pipefail
 usage() {
   echo "usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME |" \
-    "run NAME DEVICE |" \
-    "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |" \
+    "run NAME DEVICE | nrst NAME DEVICE | host NAME DEVICE | diag-image |" \
+    "diag DEVICE [REPEATS] | measure-div | measure NAME DEVICE | compare RECORDS |" \
     "cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]" >&2
   exit 2
 }
@@ -127,9 +145,9 @@ stamp() {
   date '+%H:%M:%S'
 }
 
-# Writes the image $1 of OUT to the board's flash, reads the flash back and compares its first
-# bytes with the file, and resets the board.  The log IMAGE.flash records each session's start.
-flash() {
+# Writes the image $1 of OUT to the board's flash and reads the flash back and compares its first
+# bytes with the file.  The log IMAGE.flash records each session's start.
+write_flash() {
   local image=$out/$1 size
   [ -f "$image" ] || { echo "fail: $1 is missing"; return 1; }
   size=$(stat -c %s "$image")
@@ -144,9 +162,37 @@ flash() {
     return 1
   fi
   echo "pass: the flash holds the $size bytes of $1"
-  echo "$(stamp) st-flash reset" >>"$image.flash"
-  "$stflash" reset >>"$image.flash" 2>&1 || {
-    echo "fail: st-flash reset: $(tail -c 300 "$image.flash")"; return 1; }
+}
+
+# Writes the image $1 as write_flash does and resets the board with st-flash.
+flash() {
+  write_flash "$1" || return 1
+  echo "$(stamp) st-flash reset" >>"$out/$1.flash"
+  "$stflash" reset >>"$out/$1.flash" 2>&1 || {
+    echo "fail: st-flash reset: $(tail -c 300 "$out/$1.flash")"; return 1; }
+}
+
+# Resets the board through NRST with the debug registers at their power-on values, with the
+# messages of stlink_nrst.py in $1.nrst of OUT.
+nrst_reset() {
+  echo "$(stamp) stlink_nrst.py" >"$out/$1.nrst"
+  "$uv" run "$root/tools/baremetal/stlink_nrst.py" >>"$out/$1.nrst" 2>&1 || {
+    echo "fail: stlink_nrst.py: $(tail -n 2 "$out/$1.nrst" | paste -sd' ' | head -c 400)"
+    return 1; }
+  tail -n 1 "$out/$1.nrst"
+}
+
+# Reads the diagnostic image's record through the serial port $1 with uart_diag.py, which must
+# find the state $2, and the start count $3 unless it is empty, with its line in $4.echo of OUT.
+diag_read() {
+  local start=()
+  [ -z "$3" ] || start=(--start "$3")
+  if ! "$uv" run "$here/uart_diag.py" --timeout "$timeout" --device "$1" --expect "$2" \
+      "${start[@]}" >"$out/$4.echo" 2>"$out/$4.stderr"; then
+    echo "fail: $4: $(cat "$out/$4.echo" "$out/$4.stderr" | paste -sd' ' | head -c 600)"
+    return 1
+  fi
+  echo "pass: $4: $2: $(cat "$out/$4.echo")"
 }
 
 # Reads $3 bytes of the board's memory from $2 into $1 of OUT without a reset.  The log $1.read
@@ -304,16 +350,39 @@ EOF
     fi
     exit "$status"
     ;;
-  run|host)
+  run|nrst|host)
     [ "$#" -eq 3 ] || usage
     program "$2"
-    if [ "$1" = run ]; then
-      flash "$2.bin"
-    fi
+    case $1 in
+      run) flash "$2.bin" ;;
+      nrst)
+        write_flash "$2.bin"
+        nrst_reset "$2"
+        ;;
+    esac
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
       gateway|crc|sha) overrun "$2" ;;
     esac
+    ;;
+  diag-image)
+    [ "$#" -eq 1 ] || usage
+    cd "$root"
+    mkdir -p "$out"
+    rm -f "${out:?}"/diag.*
+    tools/leanrun --timeout 60m --memory-high "${MEM:-12G}" lake --log-level error build \
+      m7-windows
+    tools/leanrun --timeout 10m lake env .lake/build/bin/m7-windows diag "$out/diag.bin"
+    ;;
+  diag)
+    [ "$#" -eq 2 ] || [ "$#" -eq 3 ] || usage
+    flash diag.bin
+    diag_read "$2" probe "" diag.0
+    start=$(sed -n 's/^start \([0-9]*\) .*/\1/p' "$out/diag.0.echo")
+    for i in $(seq "${3:-3}"); do
+      nrst_reset "diag.$i"
+      diag_read "$2" nrst $((start + i)) "diag.$i"
+    done
     ;;
   area-read)
     [ "$#" -eq 1 ] || usage
