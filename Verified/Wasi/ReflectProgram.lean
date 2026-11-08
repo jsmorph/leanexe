@@ -122,7 +122,7 @@ def mainExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
   let constructor ← LemmaApp.start ``EffectMain.mk
     [(`effectSigs, program.signatures), (`name, toExpr reflected.signature.name),
       (`tables, listExpr (mkConst ``UInt64) addresses)]
-  constructor.assign `callee (← mkExpectedTypeHint callee (← constructor.hypType `callee))
+  constructor.assignHint `callee callee
   constructor.finish
 
 structure MaterializedProgram where

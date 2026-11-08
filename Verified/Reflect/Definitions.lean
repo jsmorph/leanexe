@@ -1716,7 +1716,7 @@ def LemmaApp.childBuys (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM B
   let r ← b modes paid live
   unless ← withReducible (isDefEq rhs r.term) do
     throwError "verified_compile: the credit for {name} of {a.name} differs from {r.term}"
-  a.assign name (← mkExpectedTypeHint r.proof (← a.hypType name))
+  a.assignHint name r.proof
   return r
 
 /-- The credits of the source expression `src` in the context `c`, a form at which the result of
@@ -1806,7 +1806,7 @@ def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
 states each entry, from the proofs of `values`. -/
 def assignFamilyEquation (app : LemmaApp) (valueName proofName : Name)
     (family : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  app.assign valueName (← mkExpectedTypeHint family (← app.hypType valueName))
+  app.assignHint valueName family
   let expected ← app.hypType proofName
   let .forallE name domain body _ := expected
     | throwError "verified_compile: a finite field equation must quantify its index"
@@ -2250,6 +2250,14 @@ place are bound with `let` first.  A `let` of a place is replaced by its body wi
 the variable, and every variable of a pair type is split into variables for its components, so
 that a projection reads a component and a use of the whole is the pair of the components. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
+  -- A beta redex, such as the function of a loop, a fold, or a match alternative applied to the
+  -- binders' variables, is reflected as its reduction, with the proof restated for the redex,
+  -- which the lemmas of those forms state.  The kernel reduces the redex at the top of the
+  -- equation of `bareEq`.  Under a flattening, it would compare projections of the redex and of
+  -- the reduction and unfold the head of the reduction before reducing the redex: for an `if`, it
+  -- reduces the condition's `Decidable` instance, in a number of steps linear in the value of a
+  -- literal added to a word.
+  if e.consumeMData.isHeadBetaTarget then return ← reflectAs e.consumeMData.headBeta e
   let e ← projReduce e
   if e.isFVar then
     if let some r ← keyedComponent? c e [] then return r.as' e
@@ -2663,7 +2671,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rn ← reflect c n
     let ri ← reflect c init
     let u ← reflectUnder c [] (mkConst ``UInt64) α .word ri.ty fun i acc =>
-      return f.beta #[i, acc]
+      return mkApp2 f i acc
     let rb := u.r
     let cs ← mkAppOptM ``Expr.bool
       #[some c.sigs, some (consCtx ri.ty c.ctx), some (mkConst ``Bool.true)]
@@ -2712,7 +2720,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let vars := [(current, .tree listShape), (acc, .elem el)] ++ captured
         let (ctx, env) ← ctxEnvExpr vars
         withListCaseFields { c with vars, ctx, env } current fun inner head tail => do
-          let r ← reflect inner (f.beta #[acc, head])
+          let r ← reflect inner (mkApp2 f acc head)
           let binders := #[current, acc, head, tail]
           pure (⟨{ r with proof := ← userProof inner r }, binders,
             ← binders.toList.mapM fun value => value.fvarId!.getDecl⟩ : Under)
@@ -2726,8 +2734,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       (`xs, xs), (`init, init), (`step, f), (`captured, capturedEnv)]
     let rule (name : Name) (extra : List (Name × Lean.Expr)) : MetaM LemmaApp := do
       let app ← LemmaApp.start name (extra ++ common)
-      app.assign `hargs (← mkExpectedTypeHint hargs (← app.hypType `hargs))
-      app.assign `hstep (← mkExpectedTypeHint hstep (← app.hypType `hstep))
+      app.assignHint `hargs hargs
+      app.assignHint `hstep hstep
       return app
     let src ← mkAppM ``Expr.listFold #[args, u.r.src]
     let proof ← (← rule ``listFold_eq []).finish
@@ -2748,7 +2756,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let bodyLive := mkApp2 (mkConst ``ListFold.bodyLive) (elemExpr el) captureTypes
       let b ← withExistingLocalDecls u.decls do u.r.bound bodyModes bodyPaid bodyLive
       app.assign `B (← specialize b.term)
-      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      app.assignHint `hB (← specialize b.proof)
       boundOf (← app.finish)
     let fits : FitsBuilder := do
       let app ← rule ``listFold_fits (fitsArgs c)
@@ -2757,7 +2765,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       app.assign `hI initial.proof
       let b ← withExistingLocalDecls u.decls do u.r.fits
       app.assign `B (← specialize b.term)
-      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      app.assignHint `hB (← specialize b.proof)
       fitsOf (← app.finish)
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, fits, none⟩
@@ -2777,7 +2785,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let ri ← reflect c init
     let u ← reflectUnder3 c (mkConst ``UInt64) β α .word ri.ty (.elem el)
-      fun _ acc value => return f.beta #[acc, value]
+      fun _ acc value => return mkApp2 f acc value
     let src ← mkAppM ``Expr.fold #[x, ri.src, u.r.src]
     let vx ← mkAppOptM ``Expr.var
       #[some c.sigs, some c.ctx, some (tyExpr (.array el)), some x]
@@ -2795,10 +2803,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``LeanExe.repeatWhile, #[α, n, init, cnd, step] =>
     let rn ← reflect c n
     let ri ← reflect c init
-    let uc ← reflectUnder1 c α ri.ty fun acc => return cnd.beta #[acc]
+    let uc ← reflectUnder1 c α ri.ty fun acc => return mkApp cnd acc
     let rc := uc.r
     let u ← reflectUnder c [] (mkConst ``UInt64) α .word ri.ty fun _ acc =>
-      return step.beta #[acc]
+      return mkApp step acc
     let rb := u.r
     let sa ← shapeOf α
     let src ← mkAppM ``Expr.loop #[rn.src, ri.src, rc.src, rb.src]
@@ -2807,7 +2815,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       else mkAppM ``repeatWhile_flat_eq #[← sa.fn α, init, cnd, step, rn.proof, ri.proof,
         rc.proof, rb.proof]
     let F ← withLocalDeclD `i (mkConst ``UInt64) fun i => withLocalDeclD `s α fun s => do
-      mkLambdaFVars #[i, s] (step.beta #[s])
+      mkLambdaFVars #[i, s] (mkApp step s)
     let hc (cTy : Lean.Expr) : MetaM Lean.Expr := mkExpectedTypeHint rc.proof cTy
     let bound := loopBound rn ri u rc.src α init cnd hc F
       (fun hcaTy _ => withExistingLocalDecls uc.decls do
@@ -3031,7 +3039,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let (fs, hf, ue) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
       let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env', ctx := consCtx .word c.ctx }
-      let rf ← reflect c' (f.beta #[i])
+      let rf ← reflect c' (mkApp f i)
       unless rf.ty == .elem el do throwError "verified_compile: an element of {e} is not a {α}"
       return (rf.src, ← mkLambdaFVars #[i] rf.proof,
         (⟨rf, #[i], [← i.fvarId!.getDecl]⟩ : Under))
@@ -3239,7 +3247,7 @@ where
       app.assign `hn (← userProof c rn)
       app.assign `hi (← userProof c ri)
       app.assign `hc (← hc (← app.hypType `hc))
-      app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+      app.assignHint `hb u.r.proof
       let _ ← app.child `hna rn.bound
       let _ ← app.child `hia ri.bound
       let _ ← assignCoerce c.base app `hka ri.ty init
@@ -3294,7 +3302,7 @@ where
       boundOf (← congr2 lhs.appFn!.appFn! sum b.term credits y.term (some b.proof) (some hy))
     -- The function of the index and the state that a pass hypothesis `name` states, built by `f`.
     let passes (app : LemmaApp) (cost proof : Name) (f : Lean.Expr → MetaM Bound) : MetaM Unit := do
-      let ty ← app.hypType proof
+      let ty ← app.argType proof
       let (term, prf) ← withExistingLocalDecls u.decls do
         let ty ← u.instantiate ty
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the loop's body"
@@ -3353,8 +3361,8 @@ where
     else
       assignFlag app `hps
     assignFlag app `hpair
-    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hi ri.proof
+    app.assignHint `hb u.r.proof
     let _ ← app.child `hia ri.bound
     let _ ← assignCoerce c.base app `hka ri.ty init
     let some (_, credit, _) := (← app.hypType `hcr).eq?
@@ -3378,7 +3386,7 @@ where
     | none => throwError "verified_compile: a fold whose body charges credits at the `if`s in its \
         result is not supported"
     let pass (cost proof : Name) : MetaM Unit := do
-      let hbaTy ← app.hypType proof
+      let hbaTy ← app.argType proof
       let (term, prf) ← withExistingLocalDecls u.decls do
         let ty ← u.instantiate hbaTy
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the fold's body"
@@ -3407,12 +3415,12 @@ where
     let app ← LemmaApp.start ``fold_flat_fits
       (fitsArgs c ++ [(`φ, ← sb.fn β), (`ψ, ← sa.fn α), (`xs, xs), (`I, init), (`F, F),
         (`x, x), (`init, ri.src), (`body, u.r.src), (`hx, hx)])
-    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hi ri.proof
+    app.assignHint `hb u.r.proof
     app.childFits `hif ri.fits
     let bf ← u.fits
     app.assign `BF bf.term
-    app.assign `hbf (← mkExpectedTypeHint bf.proof (← app.hypType `hbf))
+    app.assignHint `hbf bf.proof
     fitsOf (← app.finish)
   /-- The frames builder of a loop, with the parts that `loopBound` takes and the builder
   `condFits` of the condition's frames under its state, or `none` for the condition `true`. -/
@@ -3429,7 +3437,7 @@ where
     app.assign `hn (← userProof c rn)
     app.assign `hi (← userProof c ri)
     app.assign `hc (← hc (← app.hypType `hc))
-    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.assignHint `hb u.r.proof
     app.childFits `hnf rn.fits
     app.childFits `hif ri.fits
     match condFits with
@@ -3695,7 +3703,7 @@ where
     let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
     let re ← reflect c empty
     let ub ← withListCaseFields c xs fun inner head tail => do
-      let rn ← reflect inner (branch.beta #[head, tail])
+      let rn ← reflect inner (mkApp2 branch head tail)
       unless rn.ty == re.ty do
         throwError "verified_compile: list branches have different source types"
       pure (⟨{ rn with proof := ← userProof inner rn }, #[head, tail],
@@ -3711,8 +3719,8 @@ where
       let rule ← LemmaApp.start ``listCase_eq (common ++
         [(`flatten, ← (← shapeOf (← inferType empty)).fn (← inferType empty)),
           (`a, empty), (`b, branch)])
-      rule.assign `he (← mkExpectedTypeHint (← userProof c re) (← rule.hypType `he))
-      rule.assign `hn (← mkExpectedTypeHint hn (← rule.hypType `hn))
+      rule.assignHint `he (← userProof c re)
+      rule.assignHint `hn hn
       rule.finish
     let bound : BoundBuilder := fun modes paid live => do
       let app ← LemmaApp.start ``listCase_bound
@@ -3727,17 +3735,17 @@ where
       app.assign `hc (← root.finish)
       let _ ← assignBranch c.base app `he re.ty re
       let nodeBound ← withExistingLocalDecls ub.decls do
-        let b ← branchBound c.base (← ub.instantiate (← app.hypType `hn)) re.ty ub.r
+        let b ← branchBound c.base (← ub.instantiate (← app.argType `hn)) re.ty ub.r
         pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
       app.assign `N nodeBound.term
-      app.assign `hn (← mkExpectedTypeHint nodeBound.proof (← app.hypType `hn))
+      app.assignHint `hn nodeBound.proof
       boundOf (← app.finish)
     let fits : FitsBuilder := do
       let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
       app.childFits `he re.fits
       let nb ← ub.fits
       app.assign `N nb.term
-      app.assign `hn (← mkExpectedTypeHint nb.proof (← app.hypType `hn))
+      app.assignHint `hn nb.proof
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, re.ty, app.toExpr, bound, fits, none⟩
   reflectRecursiveMatch (app : MatcherApp) (xs : Lean.Expr) (layout : RecursiveLayout) :
@@ -3760,7 +3768,7 @@ where
         emptyR := some re
       | some r =>
         let ub ← withRecursiveCaseFields c layout r fun inner fields => do
-          let rn ← reflect inner (branches[j]!.beta fields)
+          let rn ← reflect inner (mkAppN branches[j]! fields)
           pure (⟨{ rn with proof := ← userProof inner rn }, fields,
             ← fields.toList.mapM fun field => field.fvarId!.getDecl⟩ : Under)
         if let some ty := ty? then
@@ -3818,11 +3826,10 @@ where
           let _ ← root.child `h (varBound c x (.tree layout.shape) xs)
           app.assign (name "hc" j) (← root.finish)
           let nodeBound ← withExistingLocalDecls ub.decls do
-            let b ← branchBound c.base (← ub.instantiate (← app.hypType (name "h" j))) ty ub.r
+            let b ← branchBound c.base (← ub.instantiate (← app.argType (name "h" j))) ty ub.r
             pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
           app.assign (name "N" j) nodeBound.term
-          app.assign (name "h" j)
-            (← mkExpectedTypeHint nodeBound.proof (← app.hypType (name "h" j)))
+          app.assignHint (name "h" j) nodeBound.proof
         | none, none => throwError "verified_compile: a null branch without a reflection"
       boundOf (← app.finish)
     let fits : FitsBuilder := do
@@ -3833,7 +3840,7 @@ where
         | some i, _ =>
           let nb ← (← underAt i).fits
           app.assign (name "N" j) nb.term
-          app.assign (name "h" j) (← mkExpectedTypeHint nb.proof (← app.hypType (name "h" j)))
+          app.assignHint (name "h" j) nb.proof
         | none, none => throwError "verified_compile: a null branch without a reflection"
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, ty, app.toExpr, bound, fits, none⟩
@@ -4851,11 +4858,11 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
     app.assign `hfl (← mkExpectedTypeHint (← mkEqRefl fl) (← mkEq flTerm fl))
   let call := mkAppN (mkConst r.name) params
   app.assign `V (resultShape.apply call)
-  app.assign `hv (← mkExpectedTypeHint (mkAppN (mkConst denoteEq) params) (← app.hypType `hv))
+  app.assignHint `hv (mkAppN (mkConst denoteEq) params)
   let (bodyModes, paid, live) ← app.allocsArgs `hba
   let b ← body.bound bodyModes paid live
   app.assign `BA b.term
-  app.assign `hba (← mkExpectedTypeHint b.proof (← app.hypType `hba))
+  app.assignHint `hba b.proof
   -- The copy of a borrowed result, stated with the result's type and body as the terms of the
   -- function, which the kernel unfolds.
   let some (_, coerce, _) := (← app.hypType `hk).eq?
@@ -4864,7 +4871,7 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
     | throwError "verified_compile: the result of {r.name}"
   let (K, hk) ← coerceEq base r.result s M v call
   app.assign `KA K
-  app.assign `hk (← mkExpectedTypeHint hk (← app.hypType `hk))
+  app.assignHint `hk hk
   boundOf (← app.finish)
 
 /-- The equation of a function's frames condition by the lemma `thm`, which states it from its
@@ -4874,7 +4881,7 @@ def bodyFitsEq (thm : Name) (args : List (Name × Lean.Expr)) (env : Lean.Expr)
   let app ← LemmaApp.start thm (args ++ [(`args, env)])
   let b ← body.fits
   app.assign `B b.term
-  app.assign `h (← mkExpectedTypeHint b.proof (← app.hypType `h))
+  app.assignHint `h b.proof
   return ⟨b.term, ← app.finish⟩
 
 /-- For definition `r`, whose code takes the call depth, adds `base.cost` and `base.fits`, its
@@ -5006,10 +5013,14 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
     -- `name = fun params => body` by `rfl`: against a lambda the kernel can only unfold `name`.
     -- Applied to the parameters, it relates the body to `name params` by beta reduction, so the
     -- kernel never compares `name params` with a body headed by a matcher, which it would unfold
-    -- first, evaluating the matcher's discriminant.
+    -- first, evaluating the matcher's discriminant.  The type hint states the result with `body`
+    -- in place of the redex `value params`, which the kernel reduces at the top of the hint's
+    -- equation; `restate` places the two under the flattening, where it would not (see the rule
+    -- for beta redexes in `reflect`).
     let value ← instantiateMVars info.value
     let hdef ← mkExpectedTypeHint (← mkEqRefl (mkConst name)) (← mkEq (mkConst name) value)
-    let happ ← params.foldlM (fun h p => mkCongrFun h p) hdef
+    let happ ← mkExpectedTypeHint (← params.foldlM (fun h p => mkCongrFun h p) hdef)
+      (← mkEq (mkAppN (mkConst name) params) body)
     let full ← restate r.proof (← mkEqSymm happ)
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params full)
     let aborts ← evalBool m!"whether {name} may trap" (← mkAppM ``Func.aborts #[f])

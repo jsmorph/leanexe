@@ -101,8 +101,8 @@ def addTailBounds (base : Name) (sigs funs prog k : Lean.Expr) (callees : List C
       (`flatten, state.flatten), (`flattenResult, ← resultShape.fn input.resultType),
       (`step, step), (`rank, nativeRank), (`charge, nativeCharge),
       (`meaning, mkConst (base ++ `step_eq))]
-  app.assign `rankEq (← mkExpectedTypeHint rankEq (← app.hypType `rankEq))
-  app.assign `chargeEq (← mkExpectedTypeHint chargeEq (← app.hypType `chargeEq))
+  app.assignHint `rankEq rankEq
+  app.assignHint `chargeEq chargeEq
   let nativeTuple ← argsTuple (params.toList.map (·, false))
   app.assign `state nativeTuple
   let root ← app.finish
@@ -142,8 +142,8 @@ def addTailBounds (base : Name) (sigs funs prog k : Lean.Expr) (callees : List C
       [(`func, func), (`funs, funs), (`fits, fits), (`flatten, state.flatten),
         (`flattenResult, ← resultShape.fn input.resultType), (`step, step),
         (`rank, nativeRank), (`valid, nativeValid), (`meaning, mkConst (base ++ `step_eq))]
-    app.assign `rankEq (← mkExpectedTypeHint rankEq (← app.hypType `rankEq))
-    app.assign `validEq (← mkExpectedTypeHint validEq (← app.hypType `validEq))
+    app.assignHint `rankEq rankEq
+    app.assignHint `validEq validEq
     app.assign `state nativeTuple
     let root ← fitsOf (← app.finish)
     let value ← withLocalDeclD `frames (mkConst ``Nat) fun frames =>
