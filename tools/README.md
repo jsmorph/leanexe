@@ -62,9 +62,10 @@ formats and reproduction commands, with the theorem premises for compiled calls.
 [The Sail scripts](sail/README.md) translate the floating-point functions of the Armv9.4-A Sail
 model into Lean with Sail's Lean back end, elaborate the output with Lean v4.29.0 and with the
 repository's toolchain, test it with exact rationals and with Sail's C emulator against Talos's
-binary64 functions, and prove that the translated FPAdd at 64 bits computes Talos's `f64Add`.
-Their README gives the versions, the sources, the edits that the output needs before it
-elaborates, the state hypothesis, the tests, the proof's measures, what the proof trusts, and the
+binary64 functions, and prove that the translated FPAdd and FPMul at 64 bits compute Talos's
+`f64Add` and `f64Mul`.  Their README gives the versions, the sources, the edits that the output
+needs before it elaborates, the state hypothesis, the tests, the proofs' measures, the join with
+the Isla equations, the check that regenerates the translation, what the proofs trust, and the
 commands.  The A64 model and its proofs do not use them.
 
 ## Repository checks
