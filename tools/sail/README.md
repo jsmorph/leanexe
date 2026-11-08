@@ -322,10 +322,10 @@ Lean's core library, in which Talos is written, and Mathlib elaborate `2 ^ 1074 
 different instances of `Pow`.  When the kernel compares the bit vectors of two words that differ
 syntactically, it reduces each projection by evaluating its word, and the evaluation unfolds
 `N * 2 ^ 1074` with `N` a variable one successor at a time: a test of such a comparison reached
-9.7 GB before the kernel stopped at its recursion limit.  FPDiv's check with the definition `tDy`
-in place of the written-out word, above, stopped in the same way.  `fromInt_nat` and `tSqrtU`
-therefore state Talos's side as an equation of words, whose two sides the kernel compares argument
-by argument, and the proofs reach each bit vector by rewriting.
+9.7 GB before the kernel stopped at its recursion limit.  FPDiv's check with a definition in
+place of the written-out word, above, also stopped; whether its cause is the same was not tested.
+`fromInt_nat` and `tSqrtU` therefore state Talos's side as an equation of words, whose two sides
+the kernel compares argument by argument, and the proofs reach each bit vector by rewriting.
 
 | Module | Lines | Contents |
 |---|---|---|
@@ -424,6 +424,8 @@ reproducible from the pinned inputs.
 | Its parts | translation about 30 s; each of the two builds `Armv9fp` 149 to 159 s, `F7.Base` 47 to 48 s, `F7.Round` 50 to 66 s, `F7.FPAdd` 38 to 44 s, `F7.FPMul` 42 to 48 s, `F7.Isla` 2 s |
 | A run under `tools/leanrun --cpus 3`, with FPAdd, FPMul, and FPDiv | 13 min 16 s, peak 4.1 GB |
 | Its parts | each of the two builds `Armv9fp` 157 to 162 s, `F7.Base` 45 to 46 s, `F7.Round` 47 s, then `F7.FPAdd`, `F7.FPMul`, and `F7.RoundQ` side by side in 62 to 82 s each, `F7.FPDiv` 37 to 39 s, `F7.Isla` 2 to 3 s |
+| A run under `tools/leanrun --cpus 3`, with the six functions | 12 min 48 s, peak 4.2 GB |
+| Its parts | each of the two builds `Armv9fp` 137 to 144 s, `F7.Base` 43 to 48 s, `F7.Round` 43 to 48 s, then the other modules side by side: `F7.FPAdd` 41 to 51 s, `F7.FPSub` 38 to 39 s, `F7.FPMul` 42 to 44 s, `F7.RoundQ` 50 to 55 s, `F7.RoundR` 32 to 43 s, `F7.FPDiv` 37 to 40 s, `F7.FPSqrt` 10 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 s |
 
 ## What the proofs trust
 
