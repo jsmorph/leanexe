@@ -22,7 +22,8 @@
     "Examples.Convert.Compiled",
     "TestSupport.A64.Floor",
     "TestSupport.A64.Convert",
-    "TestSupport.M7.SignedLoop"
+    "TestSupport.M7.SignedLoop",
+    "Verified.Reflect.Lemmas"
   ],
   "declarations": [
     "LeanExe.ProofKit.Signed64.div",
@@ -62,6 +63,8 @@
     "LeanExe.M7.sim_ltSI64",
     "LeanExe.M7.sim_leSI64",
     "LeanExe.M7.sim_shrSI64",
+    "Verified.Reflect.slt_apply",
+    "Verified.Reflect.sle_apply",
     "Verified.Reflect.assignFamilyEquation"
   ],
   "examples": [
