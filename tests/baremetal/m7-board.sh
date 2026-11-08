@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
 # usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, the echo
-# after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), and
-# the SHA-256 step shaUsart3Tick, NAME sha.
+# after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), the
+# CRC-32 step crcUsart3Tick, NAME crc, and the SHA-256 step shaUsart3Tick, NAME sha.
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -16,7 +16,10 @@
 # tests/TestSupport/M7/Dwt.lean, NAME-dwt.bin and for the echo div-dwt.bin, which no theorem
 # covers.  For NAME area, m7-windows area-board also writes area.expected, the area's bytes as the
 # setup leaves them, and the file elaborated is tests/TestSupport/M7/AreaFile.lean, under 12G unless
-# MEM is set, with the setup's theorem from reset in place of the loop theorems.
+# MEM is set, with the setup's theorem from reset in place of the loop theorems.  For NAME crc,
+# m7-windows crc-board writes the image that tests/TestSupport/M7/CrcImages.lean lays out with the
+# setup of its area, and crc-dwt its measurement image, and the file elaborated is
+# tests/TestSupport/M7/CrcBoardFile.lean, under 12G unless MEM is set.
 #
 # "m7-board.sh area-read" writes area.bin to the board's flash as "run" does, waits 2 s after the
 # reset, reads the area's 69,632 bytes from DTCM at 0x20000000 over SWD into area.read, and
@@ -41,6 +44,9 @@
 # whole number of words, resets the board with st-flash, and plays the far end through the serial
 # port DEVICE, the virtual COM port of the board's ST-LINK.  For the echo and NAME area,
 # tests/baremetal/uart_echo.py checks each reply, as tests/baremetal/usart3.sh run echo does.  For
+# the CRC-32 step, tests/baremetal/uart_crc.py checks each reply against zlib.crc32 of the bytes
+# sent so far, and the script then reads USART_ISR over SWD into NAME.isr and requires ORE, bit 3,
+# clear.  For
 # the gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 1,440 unless set (5 under
 # emulate), of the plant of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless
 # set, checks the commands and the monitoring, and writes the records NAME.records.in and
@@ -58,8 +64,9 @@
 # from DTCM over SWD into div.results and div.bootlog, which tests/baremetal/m7_dwt.py prints and
 # checks.  "m7-board.sh measure NAME DEVICE" writes NAME-dwt.bin, the program with the cycles of
 # each window, runs the host script through DEVICE as "run" does, with the gateway's records in
-# NAME-dwt.records.in and NAME-dwt.records.out, and reads the window table and the boot log into
-# NAME-dwt.results and NAME-dwt.bootlog, and for the gateway USART_ISR as "run" does.  st-flash
+# NAME-dwt.records.in and NAME-dwt.records.out, and reads the window table, at 0x20000000 or for
+# the CRC-32 step at 0x2001C000 above its area, and the boot log into NAME-dwt.results and
+# NAME-dwt.bootlog, and for the gateway and the CRC-32 step USART_ISR as "run" does.  st-flash
 # attaches with --hot-plug for these reads, which halt the core.
 #
 # "m7-board.sh compare RECORDS" runs native-bare gateway-run on the input records RECORDS.in into
@@ -109,7 +116,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway|area|sha) ;;
+    echo|gateway|area|crc|sha) ;;
     *) usage ;;
   esac
 }
@@ -167,6 +174,7 @@ host_run() {
   local host
   case $1 in
     echo|area) host=(uart_echo.py) ;;
+    crc) host=(uart_crc.py) ;;
     sha) host=(uart_sha.py) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
@@ -194,6 +202,8 @@ case $1 in
       gateway) lib=TestSupport.M7.GwLoop cmd=gateway-board dwt=gateway-dwt file=GwBoardFile
         count=13 mem=${MEM:-16G} ;;
       area) lib=LeanExe.M7.Proof.Board cmd=area-board dwt= file=AreaFile count=9
+        mem=${MEM:-12G} ;;
+      crc) lib=TestSupport.M7.CrcLoop cmd=crc-board dwt=crc-dwt file=CrcBoardFile count=14
         mem=${MEM:-12G} ;;
       sha) lib=TestSupport.M7.ShaImages cmd=sha-board dwt= file= count=0 mem=${MEM:-12G} ;;
     esac
@@ -302,7 +312,7 @@ EOF
     fi
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
-      gateway|sha) overrun "$2" ;;
+      gateway|crc|sha) overrun "$2" ;;
     esac
     ;;
   area-read)
@@ -330,7 +340,7 @@ EOF
   measure)
     [ "$#" -eq 3 ] || usage
     case $2 in
-      echo|gateway) ;;
+      echo|gateway|crc) ;;
       *) usage ;;
     esac
     name=$2
@@ -338,14 +348,15 @@ EOF
     status=0
     host_run "$name" "$3" "$name-dwt" "${TICKS:-1440}" || status=1
     case $name in
-      echo) table=528 ;;
-      gateway) table=2064 ;;
+      echo) table=528 tab=0x20000000 ;;
+      gateway) table=2064 tab=0x20000000 ;;
+      crc) table=528 tab=0x2001C000 ;;
     esac
-    readmem "$name-dwt.results" 0x20000000 "$table"
+    readmem "$name-dwt.results" "$tab" "$table"
     readmem "$name-dwt.bootlog" 0x2001E000 264
-    if [ "$name" = gateway ]; then
-      overrun "$name-dwt" || status=1
-    fi
+    case $name in
+      gateway|crc) overrun "$name-dwt" || status=1 ;;
+    esac
     "$uv" run "$here/m7_dwt.py" bootlog "$out/$name-dwt.bootlog"
     "$uv" run "$here/m7_dwt.py" "$name" "$out/$name-dwt.results" || status=1
     exit "$status"

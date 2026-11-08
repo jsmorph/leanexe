@@ -4,24 +4,25 @@ import LeanExe.A64.Table
 
 /-!
 The test of the floating-point forms' meanings: for `FADD`, `FSUB`, `FMUL`, `FDIV`, `FSQRT`,
-`UCVTF`, and `FCMP`, vectors of operand words that stress the corner cases of IEEE 754, an arm64
-Image that runs each form on each vector and writes each result's word to the UART, and a check of
-every result word against the model, whose forms compute Talos's functions.  `FCMP` runs as the
-generator's three comparisons, `f64Eq`, `f64Lt`, and `f64Le`, on the same operands, whose results
-form bits 0, 1, and 2 of the result word.
+`UCVTF`, `FCMP`, and `FCVTZU`, vectors of operand words that stress the corner cases of IEEE 754, an
+arm64 Image that runs each form on each vector and writes each result's word to the UART, and a
+check of every result word against the model, whose forms compute Talos's functions.  `FCMP` runs as
+the generator's three comparisons, `f64Eq`, `f64Lt`, and `f64Le`, on the same operands, whose
+results form bits 0, 1, and 2 of the result word.
 
-A form's vectors fall into classes, each of which receives an equal share of the form's count,
-with the remainder to the last class, and each class draws its operands from SplitMix64.  A
-binary class of `FSUB` is the class of `FADD` with the second operand's sign changed, so that both
-forms compute the same exact sums.  `image` writes the Image: the header, the startup of
-`LeanExe.A64.Startup`, which enables floating point and writes FPCR as `fpcrValue` as the back
-end's Images do, the program `mainCode`, the vector and translation tables, and the operand words
-at the area.  For each form, `mainCode` loads each vector's words into X2 and X3, runs the code
-that the generator emits for the form (`fBin`, `sqrtCode`, `convertCode`, or `fCmp`), and stores
-the eight bytes of the result in X2 to the UART, lowest first.  `checkRun` reads the operands from
-the Image's bytes and the results from the UART's bytes and compares each result with the model's
-run of the same code, and `tagsOf` classifies each vector's exact result by its position on the
-grid of doubles, or a comparison's operands as unordered, equal, less, or greater.
+A form's vectors fall into classes, each of which receives an equal share of the form's count, with
+the remainder to the last class, and each class draws its operands from SplitMix64.  A binary class
+of `FSUB` is the class of `FADD` with the second operand's sign changed, so that both forms compute
+the same exact sums.  `image` writes the Image: the header, the startup of `LeanExe.A64.Startup`,
+which enables floating point and writes FPCR as `fpcrValue` as the back end's Images do, the program
+`mainCode`, the vector and translation tables, and the operand words at the area.  For each form,
+`mainCode` loads each vector's words into X2 and X3, runs the code that the generator emits for the
+form (`fBin`, `sqrtCode`, `convertCode`, `fCmp`, or `truncCode`), and stores the eight bytes of the
+result in X2 to the UART, lowest first.  `checkRun` reads the operands from the Image's bytes and
+the results from the UART's bytes and compares each result with the model's run of the same code,
+and `tagsOf` classifies each vector's exact result by its position on the grid of doubles, a
+comparison's operands as unordered, equal, less, or greater, and a conversion's operand by its
+kind.
 -/
 
 namespace TestSupport.A64.Fp
@@ -31,19 +32,19 @@ open LeanExe (roundUp)
 
 /-- The forms under test. -/
 inductive Form where
-  | fadd | fsub | fmul | fdiv | fsqrt | ucvtf | fcmp
+  | fadd | fsub | fmul | fdiv | fsqrt | ucvtf | fcmp | fcvtzu
   deriving BEq, Repr, Inhabited
 
-def Form.all : List Form := [.fadd, .fsub, .fmul, .fdiv, .fsqrt, .ucvtf, .fcmp]
+def Form.all : List Form := [.fadd, .fsub, .fmul, .fdiv, .fsqrt, .ucvtf, .fcmp, .fcvtzu]
 
 def Form.name : Form → String
   | .fadd => "fadd" | .fsub => "fsub" | .fmul => "fmul" | .fdiv => "fdiv" | .fsqrt => "fsqrt"
-  | .ucvtf => "ucvtf" | .fcmp => "fcmp"
+  | .ucvtf => "ucvtf" | .fcmp => "fcmp" | .fcvtzu => "fcvtzu"
 
 def Form.ofName (s : String) : Option Form := Form.all.find? (·.name == s)
 
 def Form.binary : Form → Bool
-  | .fsqrt | .ucvtf => false
+  | .fsqrt | .ucvtf | .fcvtzu => false
   | _ => true
 
 /-- The code that the generator emits for the form on the words in X2 and X3, which leaves the
@@ -60,6 +61,7 @@ def Form.code : Form → List Instr
   | .ucvtf => convertCode 2
   | .fcmp => [mov 4 2] ++ fCmp 1 4 3 ++ [mov 7 2] ++ fCmp 5 7 3 ++ fCmp 8 2 3 ++
       [.addReg 2 2 2, .addReg 2 2 7, .addReg 2 2 2, .addReg 2 2 4]
+  | .fcvtzu => truncCode 2
 
 /-- X2 after the model runs the form's code from a state with `a` in X2 and `b` in X3. -/
 def Form.model (f : Form) (a b : UInt64) : Option UInt64 := do
@@ -477,6 +479,44 @@ def cvtRandom : Gen UInt64 := do
   let low ← bits (L - 1)
   return if L = 0 then 0 else UInt64.ofNat (2 ^ (L - 1) + low)
 
+/-! ## Conversions to an integer -/
+
+/-- The words of the doubles at which `FCVTZU`'s result changes its kind: 2^64, the largest double
+below it, 2^63, 2^53, 2^52, 1, 0.5, and their negations, each moved by up to 3 units in the last
+place in either direction, which crosses the boundary between truncation and saturation, between
+exact and rounded integers, and between 0 and 1. -/
+def toIntBoundary : Gen UInt64 := do
+  let w : UInt64 := match ← below 7 with
+    | 0 => 0x43F0000000000000
+    | 1 => 0x43EFFFFFFFFFFFFF
+    | 2 => 0x43E0000000000000
+    | 3 => 0x4340000000000000
+    | 4 => 0x4330000000000000
+    | 5 => 0x3FF0000000000000
+    | _ => 0x3FE0000000000000
+  let k := UInt64.ofNat (← below 4)
+  let w := if ← coin then w + k else w - k
+  return if ← coin then negW w else w
+
+/-- Integers below 2^64 that a double holds: odd numbers of 1 to 53 bits shifted by up to 64 less
+their length. -/
+def toIntInteger : Gen UInt64 := do
+  let k ← between 1 53
+  return scaled false (← oddWith k) (Int.ofNat (← between 0 (64 - k)))
+
+/-- Positive doubles from 2^-1 up to 2^63 with random fractions, most of which are not integers. -/
+def toIntFraction : Gen UInt64 := return dbl false (← between 1022 1086) (← bits 52)
+
+/-- Negative doubles, finite or infinite, of every exponent: those of magnitude below 1 truncate to
+0, and the others saturate at 0. -/
+def toIntNegative : Gen UInt64 := return dbl true (← below 2048) (← bits 52)
+
+/-- Positive doubles from 2^64 up and the positive infinity, which saturate at 2^64 - 1. -/
+def toIntLarge : Gen UInt64 := do
+  let e ← between 1087 2047
+  let f ← bits 52
+  return dbl false e (if e = 2047 then 0 else f)
+
 /-! ## Comparisons -/
 
 /-- Equal words. -/
@@ -541,6 +581,11 @@ def Form.classes : Form → List Class
   | .fcmp =>
       [⟨"special", specialPair⟩, ⟨"equal", cmpEqual⟩, ⟨"signs", cmpSigns⟩,
         ⟨"adjacent", cmpAdjacent⟩, ⟨"close", cmpClose⟩, ⟨"random", randomPair⟩]
+  | .fcvtzu =>
+      [⟨"special", fun i => unary (special (i % 26)) i⟩, ⟨"boundary", unary toIntBoundary⟩,
+        ⟨"integer", unary toIntInteger⟩, ⟨"fraction", unary toIntFraction⟩,
+        ⟨"negative", unary toIntNegative⟩, ⟨"large", unary toIntLarge⟩,
+        ⟨"random", unary anyWord⟩]
 
 /-- A run of vectors of one form and class. -/
 structure Block where
@@ -548,14 +593,15 @@ structure Block where
   cls : String
   count : Nat
 
-/-- The operand words of `count` vectors of each form from the seed `seed`, the forms in the
-order of `Form.all` and each form's classes in order, two words a vector for a binary form and
+/-- The operand words of `count` vectors of each form of `forms` from the seed `seed`, the forms
+in the order of `forms` and each form's classes in order, two words a vector for a binary form and
 one for a unary form, with the blocks in the same order. -/
-def vectors (seed : UInt64) (count : Nat) : ByteArray × List Block := Id.run do
+def vectors (seed : UInt64) (count : Nat) (forms : List Form := Form.all) :
+    ByteArray × List Block := Id.run do
   let mut rng : Rng := ⟨seed⟩
   let mut data := ByteArray.emptyWithCapacity (count * 64)
   let mut blocks : Array Block := #[]
-  for f in Form.all do
+  for f in forms do
     let cs := f.classes
     let share := count / cs.length
     for (c, j) in cs.zipIdx do
@@ -623,29 +669,38 @@ def image (data : ByteArray) (counts : List (Form × Nat)) : GenM (ByteArray × 
 def get64 (b : ByteArray) (o : Nat) : UInt64 :=
   (List.range 8).foldr (fun k acc => (acc <<< 8) ||| b[o + k]!.toUInt64) 0
 
-/-- The position of an exact result on the grid of doubles, the special results, and the order of
-a comparison's operands. -/
+/-- The position of an exact result on the grid of doubles, the special results, the order of a
+comparison's operands, and the kind of a conversion's operand: a zero, a subnormal, an integer from
+1 below 2^64, a positive normal below 2^64 that is not an integer, a finite number from 2^64 up, an
+infinity, a negative normal above -1, a finite number at or below -1, or a NaN. -/
 inductive Tag where
   | exact | tie | nearTie | overflow | subnormal | zero | nan
   | unordered | equal | less | greater
+  | integer | fraction | high | infinity | negFraction | negative
   deriving BEq, Repr
 
 def Tag.all : List Tag :=
-  [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan, .unordered, .equal, .less, .greater]
+  [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan, .unordered, .equal, .less, .greater,
+    .integer, .fraction, .high, .infinity, .negFraction, .negative]
 
 /-- The tags of the form's vectors. -/
 def Form.tags : Form → List Tag
   | .fcmp => [.unordered, .equal, .less, .greater]
+  | .fcvtzu => [.zero, .subnormal, .integer, .fraction, .high, .infinity, .negFraction, .negative,
+      .nan]
   | _ => [.exact, .tie, .nearTie, .overflow, .subnormal, .zero, .nan]
 
 def Tag.name : Tag → String
   | .exact => "exact" | .tie => "tie" | .nearTie => "neartie" | .overflow => "overflow"
   | .subnormal => "subnormal" | .zero => "zero" | .nan => "nan" | .unordered => "unordered"
-  | .equal => "equal" | .less => "less" | .greater => "greater"
+  | .equal => "equal" | .less => "less" | .greater => "greater" | .integer => "integer"
+  | .fraction => "fraction" | .high => "high" | .infinity => "infinity"
+  | .negFraction => "negfraction" | .negative => "negative"
 
 def Tag.index : Tag → Nat
   | .exact => 0 | .tie => 1 | .nearTie => 2 | .overflow => 3 | .subnormal => 4 | .zero => 5
-  | .nan => 6 | .unordered => 7 | .equal => 8 | .less => 9 | .greater => 10
+  | .nan => 6 | .unordered => 7 | .equal => 8 | .less => 9 | .greater => 10 | .integer => 11
+  | .fraction => 12 | .high => 13 | .infinity => 14 | .negFraction => 15 | .negative => 16
 
 /-- The tags of the positive exact result `num / den`, in units of `2^-1074`: exact when it is a
 double or zero, a tie when it lies halfway between two doubles, a near tie when it lies within
@@ -665,12 +720,23 @@ def gridTags (num den : Nat) : List Tag :=
 /-- The tags of the form's vector `a`, `b` with the result `w`: those of the exact result when the
 operands are finite, and a subnormal result, a zero result of a nonzero exact result, and a NaN
 result.  The square root's exact result carries 64 bits below the unit.  A comparison's operands
-are unordered, equal, less, or greater, as Talos's `IEEE64.eq` and `IEEE64.lt` give. -/
+are unordered, equal, less, or greater, as Talos's `IEEE64.eq` and `IEEE64.lt` give.  A
+conversion's operand takes one of the tags of its kind, which separate the paths of Arm's
+`FPToFixed`: a negative normal above -1 rounds up to 0, a number at or below -1 saturates at 0,
+and a number from 2^64 up saturates at 2^64 - 1. -/
 def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
   open Wasm.IEEE64 in
   if f == .fcmp then
     [if isNaN a || isNaN b then .unordered else if eq a b then .equal else if lt a b then .less
       else .greater]
+  else if f == .fcvtzu then
+    [if isNaN a then .nan
+      else if !isFinite a then .infinity
+      else if scaledMagnitude a == 0 then .zero
+      else if exponent a == 0 then .subnormal
+      else if sign a then (if scaledMagnitude a < 2 ^ 1074 then .negFraction else .negative)
+      else if 2 ^ 64 * 2 ^ 1074 ≤ scaledMagnitude a then .high
+      else if scaledMagnitude a % 2 ^ 1074 == 0 then .integer else .fraction]
   else
   let fin := f == .ucvtf || (isFinite a && (!f.binary || isFinite b))
   let exact : Option (Nat × Nat) :=
@@ -686,7 +752,7 @@ def tagsOf (f : Form) (a b w : UInt64) : List Tag :=
           if sign a && scaledMagnitude a != 0 then none
           else some (Nat.sqrt (scaledMagnitude a * 2 ^ (1074 + 128)), 2 ^ 64)
       | .ucvtf => some (a.toNat * 2 ^ 1074, 1)
-      | .fcmp => none
+      | .fcmp | .fcvtzu => none
   let grid := match exact with
     | some (n, d) => gridTags n d
     | none => []

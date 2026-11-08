@@ -98,7 +98,7 @@ structure Case where
 
 /-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
 in the order of `Instr`. -/
-def formCount : Nat := 39
+def formCount : Nat := 40
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -114,7 +114,9 @@ def field19 (j : Int) : Fin 524288 :=
 /-- A case of form `form`, whose state makes the instruction run without a fault.  A case of
 `FCMP` sets its second operand, each with probability 1/4, to its first, to its first with the
 sign changed, or to the word after its first, so that equal values, zeros of opposite signs, and
-neighbors occur. -/
+neighbors occur.  A case of `FCVTZU` sets its operand, with probability 1/2, to a double of either
+sign whose magnitude lies from 2^-2 to 2^66, with a random fraction, so that truncation toward
+zero, exact integers, and saturation at both ends occur. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
@@ -194,7 +196,7 @@ def genCase (form : Nat) : Gen Case := do
   | 35 => return { c with instr := .fdiv (← fin 32) (← fin 32) (← fin 32) }
   | 36 => return { c with instr := .fsqrt (← fin 32) (← fin 32) }
   | 37 => return { c with instr := .ucvtf (← fin 32) (← fin 32) }
-  | _ =>
+  | 38 =>
       let n ← fin 32
       let m ← fin 32
       let a := c.dregs[n.val]!
@@ -204,6 +206,14 @@ def genCase (form : Nat) : Gen Case := do
         | 2 => c.dregs.set! m.val (a + 1)
         | _ => c.dregs
       return { c with instr := .fcmp n m, dregs := ds }
+  | _ =>
+      let d ← fin 32
+      let n ← fin 32
+      let sign : UInt64 := if (← below 2) = 0 then 0 else 0x8000000000000000
+      let e := UInt64.ofNat (1021 + (← below 68))
+      let v := sign ||| (e <<< 52) ||| ((← word) &&& 0xFFFFFFFFFFFFF)
+      let ds := if (← below 2) = 0 then c.dregs.set! n.val v else c.dregs
+      return { c with instr := .fcvtzu d n, dregs := ds }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 
