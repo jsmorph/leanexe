@@ -47,8 +47,8 @@ The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD 
 | `id = -1` for the direct polynomial, and the arrays `atanhi[id]`, `atanlo[id]` | `id = 4`, with the entries selected by comparisons | The comparisons select the same entries, and the module needs no table. |
 | Volatile read of `atanlo[3]` in `s_atan.c`, and volatile `tiny` and `pi_lo` of `e_atan2.c` | their values | The qualifier prevents constant folding, and the dialect has no such qualifier. |
 | `huge + x > one`, `pi + tiny`, `pi_o_2 + tiny`, and the other sums with `tiny` | kept as computed | Their only purpose is to raise inexact.  The test holds for every `\|x\| < 1` (`AtanTheorem.huge_gt`), and the sums equal the rounded constants (`AtanTwoBits.half_bits`, `half_neg_bits`, and the words of `AtanTwoSpecial`). |
-| Signed `int32_t` high words | `UInt64` words with the sign bit tested separately | The dialect has no signed integers. |
-| `k = (iy - ix) >> 20`, an arithmetic shift | shift of the 64-bit two's complement difference, with the top 20 bits filled when it is negative | The same value as a two's complement word, and `k > 60` and `k < -60` test the sign bit first. |
+| Signed `int32_t` high words | `UInt64` words with the sign bit tested separately | The sign bit of a high word is the sign of its argument, and a comparison of the word with a positive bound is unsigned. |
+| `k = (iy - ix) >> 20`, an arithmetic shift | `k := (iy - ix).toInt64 >>> 20`, with `k > 60` and `k < -60` on `Int64` | `iy - ix` lies within `±2^31`, so the 64-bit difference has the value of C's 32-bit one, and the shift and comparisons compile to `i64.shr_s` and `i64.lt_s`. |
 | `nan_mix (x, y)`, a `long double` sum in `math_private.h` [2] | `x + y` | Both give a NaN, which is the canonical NaN in the deterministic profile. |
 | `switch (m)` | comparisons on `m` | The dialect has no `switch`. |
 
