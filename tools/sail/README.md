@@ -51,8 +51,21 @@ translation, the instruction fetch, and the announcements of the concurrency int
 commits: [`srcdiff.py`](srcdiff.py) maps every changed line to its top-level definition, and of
 those only `AArch64_FPTrappedException` occurs in the translation, as the name that the cut keeps.  Sail 0.20.3 does not check `111345b`'s
 `v8_base.sail`: the type of `FloorPow2`'s `n`, `{'n, 'n >= 0. int('n)}`, fails at
-`2 ^ (n - 1)`, which `7d0581642` fixes with `'n > 0`.  The Sail library that the translation
-reads is Sail 0.20.3's, while the IR came from Isla's Sail; the two are not compared.
+`2 ^ (n - 1)`, which `7d0581642` fixes with `'n > 0`.
+
+The translation reads Sail 0.20.3's library, and the IR the library of Sail commit `f3da8185`.
+isla-sail is a Sail plugin, so an IR takes the library of the Sail that ran the plugin, and the
+346 source locations that the IR records in its 38 library functions fit `f3da8185` and its two
+successors on the main branch before the snapshot, which change no `.sail` file of the library,
+and fit no release.  For every library function, extern, and built-in declaration that FPAdd,
+FPSub, FPMul, FPDiv, FPSqrt, and FixedToFP reach in the IR or in the translation, the two
+libraries agree in meaning: they differ in the `lean:` names of externs, in declarations that
+0.20.3 moves to `corelib.sail` with the same text, and in a name reservation for the C back end.
+The IR also calls `slice_mask`, `sail_mask`, `__id`, and `neq_int`, where isla-sail's
+`-mono_rewrites` and Sail's `sizeof` rewrite changed the code, and each gives on its arguments the
+value of the expression that the translation computes in its place.  Compared by name rather than
+by line, every model definition that the IR reaches below the cut is identical in the two sail-arm
+commits, except `AArch64_FPTrappedException` and the `lean:` name of `neq_any`.
 
 ## Translation
 
@@ -94,15 +107,24 @@ the type of `SailM` to lean-sail's `trivialChoiceSource`.
 
 The back end's output does not elaborate as written.  [`fix-output.sh`](fix-output.sh) makes the
 edits below and prints how many rewrites each makes, and [`lean-sail-v6.diff`](lean-sail-v6.diff)
-applies to lean-sail the fix that its tag `v9` carries.
+applies to lean-sail the fix of `ArchSemSequential.lean` that its tag `v9` carries and deletes its
+coercion `CoeT Int x Nat`.
 
 | Failure | Lean versions | Edit | Rewrites | Check that the edit changes nothing else |
 |---|---|---|---|---|
 | `Real.lean` opens a namespace `Defs` that no output declares | both, with reals | delete the line | 1 | the deleted command declares nothing |
-| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 32 | on v4.29.0 the 6,457 constants of the output hash identically with and without the edit |
-| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 6 fractions, no negative | 3 lines of the output change, each `1/2` becoming `(1/2)`; without the edit the output does not elaborate |
+| `assert` at the start of a do element parses as Lean's assert element | v4.34.0-rc2 | qualify every call as `LIB.assert` | 41 | on v4.29.0 the 6,457 constants of the output of the six-function slice hash identically with and without the edit |
+| Sail prints a real literal as `N/D` or `-N/D` without parentheses, so `gt_real e 1/2` parses as `(gt_real e 1) / 2` | both | parenthesize every `N/D`, `-N/D`, and bare `-N` outside strings and comments; fail on a decimal or exponent literal | 14 fractions, no negative | each changed line has a `1/2` that becomes `(1/2)`; without the edit the output does not elaborate |
+| The back end writes an integer of the model where Lean expects a natural number, as a width, an index, a shift, or a fuel, and lean-sail's coercion `CoeT Int x Nat` converts it with `x.toNat`, which maps a negative integer to 0.  `asl_Int`'s `result` takes the type Nat from its first branch, so the translation's SInt, and FixedToFP of a signed operand, gave 0 for every negative value | both | delete the coercion (`lean-sail-v6.diff`); type `asl_Int`'s `result` as Int, and write `.toNat` at each other place, with the model's guarantee that the value is nonnegative in a comment of the script | 30 | on v4.34.0-rc2 the 6,456 constants of the output hash identically with the coercion and without it after the edit, except `asl_Int` |
 | `sign_extend` and the cut functions are unknown | both | `ArmExtras.lean` | | the cut changes FPProcessException and no other function: against the uncut slice on v4.29.0, the 6,457 constants of the cut output differ only in FPProcessException, `sail_model_init`, and constants that Lean derives for the inductive types |
 | lean-sail's `ArchSemSequential.lean`: `Decidable (0 < choice)` | v4.34.0-rc2 | `lean-sail-v6.diff` | | the edited `interpretSailEffects` belongs to the version-2 interface, which the output does not name |
+
+Lean's coercion of a type's arithmetic converts each operand, so the coercion gave the width
+`hi - lo + 1` of `integer_subrange` as `hi.toNat - lo.toNat + 1`, and the script writes that form,
+which equals `hi - lo + 1` for the `lo = 0` of every call.  Without the coercion every place that
+used it fails to elaborate, so the 30 conversions are all of them; the comparison of constants
+shows that each reproduces the coercion's term, and that only `asl_Int` changes, its unsigned
+branch to `pure ↑x.toNat` and its signed branch to `pure x.toInt`.
 
 The literal rewrite follows `doc_lit` of the back end's `pretty_print_lean.ml`, which prints an
 `L_real` with Zarith's `Q.to_string`, so every real literal has one of the forms `N`, `-N`,
@@ -426,6 +448,7 @@ reproducible from the pinned inputs.
 | Its parts | each of the two builds `Armv9fp` 157 to 162 s, `F7.Base` 45 to 46 s, `F7.Round` 47 s, then `F7.FPAdd`, `F7.FPMul`, and `F7.RoundQ` side by side in 62 to 82 s each, `F7.FPDiv` 37 to 39 s, `F7.Isla` 2 to 3 s |
 | A run under `tools/leanrun --cpus 3`, with the six functions | 12 min 48 s, peak 4.2 GB |
 | Its parts | each of the two builds `Armv9fp` 137 to 144 s, `F7.Base` 43 to 48 s, `F7.Round` 43 to 48 s, then the other modules side by side: `F7.FPAdd` 41 to 51 s, `F7.FPSub` 38 to 39 s, `F7.FPMul` 42 to 44 s, `F7.RoundQ` 50 to 55 s, `F7.RoundR` 32 to 43 s, `F7.FPDiv` 37 to 40 s, `F7.FPSqrt` 10 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 s |
+| A run under `tools/leanrun --cpus 4` without lean-sail's coercion `CoeT Int x Nat`, with the slice of nine roots, the 64-bit functions, FPToFixed and FPCompare at 64 bits, and the 32-bit FPAdd, FPSub, FPMul, FPDiv, FPSqrt, and UCVTF S←X | 14 min 23 s, peak 4.1 GB |
 
 ## What the proofs trust
 
@@ -436,13 +459,15 @@ the chain below translates the ASL faithfully.
 |---|---|
 | Arm's ASL and its translation into Sail by sail-arm | the specification that the Isla check also trusts |
 | Sail 0.20.3's front end, rewrites, and Lean back end, which its authors call experimental, with its eager `&&` and `\|\|` | the translation of the Sail slice into Lean |
-| lean-sail v6 with `lean-sail-v6.diff` | the monad, register map, bit-vector operations, and `whileFuelM` |
+| lean-sail v6 with `lean-sail-v6.diff` | the monad, register map, bit-vector operations, and `whileFuelM`.  v6 has two defects: the coercion `CoeT Int x Nat`, which the diff deletes, and `set_slice_int`, which computes `toInt (updateSubrange' (ofInt len n) lo len x)` and so gives −1 for `[int_mant with 0 .. 0 = 0b1]`; the translation reaches `set_slice_int` only in FPRoundBase__1's `FPRounding_ODD` branch, which no theorem of `F7/` enters.  lean-sail `v9` fixes `set_slice_int` and keeps the coercion |
+| The back end's reliance on lean-sail's coercion `CoeT Int x Nat`, which maps a negative integer to 0 | removed: the translation elaborates without the coercion after the conversions below |
+| The explicit conversions of `fix-output.sh`: the type Int of `asl_Int`'s `result`, and `.toNat` in `integer_subrange` (the width from `hi` and `lo`, and `lo`), `integer_update_subrange` (the width), FPInfinity, FPMaxNormal, FPZero, and FPDefaultNaN__1 (the widths `E`, `F`, `E − 1`, and `F − 1`), FPProcessException (`enable` and `cumul`), FPRoundBase__1 (the fuel of each loop and the widths `N − (E + F + 1)` and `N − 1`), and FPProcessNaN__1 (`topfrac`), and in `to_bytes_le`, `from_bytes_le`, `slice_zeros_concat`, `subrange_zeros_concat`, `sext_slice`, `unsigned_subrange`, and `vector_update_subrange_from_integer_subrange`, which no theorem of `F7/` reaches | each value is nonnegative by the guarantee of the model that the script's comment cites, except in `sext_slice`, `slice_zeros_concat`, and `subrange_zeros_concat`, whose types do not bound each operand; each conversion other than `asl_Int`'s elaborates to the coercion's term |
 | The back end's `Real.lean` | the real-number primitives on Mathlib's ℝ, and `Int.floor` for `round_down` |
 | `ArmExtras.lean` | `sign_extend`, and the stand-ins of the two cut trap functions |
 | The slice: the files that `translate.sh` omits and the cut at the trap functions | the definitions that the translation contains |
 | `fp-measures.sail` | the loop measures, whose sufficiency `loop1_exit` and `loop2_exit` prove |
-| `fix-output.sh` | the three textual edits above |
-| The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library | the comparison in Sources |
+| `fix-output.sh` | the textual edits above |
+| The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library in place of `f3da8185`'s | the comparisons in Sources |
 | `armv9p4-checked-fp.diff`: `FPAdd64`, `FPSub64`, `FPMul64`, `FPDiv64`, and `FPSqrt64` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 64 bits, and `FixedToFP64` returns `FixedToFP` at N = 64 | in the Isla row |
 | The links `SailFPAdd`, `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToFP`: each IR function and the translation's function compute the same function, Isla's values correspond to the translation's, among them the 128-bit integer and the enumeration member of `FixedToFP64`, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
 
