@@ -46,7 +46,7 @@ def qemuHead : UInt32 := after Qemu.boot.base (mainStart gwState)
 
 /-- The sizes in units of the functions that calls reach from `gwTickUsart3` and from `gwTick`. -/
 def gwSizes : List Nat :=
-  [795, 9735, 31, 110, 154, 596, 134, 5550, 96, 512, 186, 230, 118, 177, 114, 2853, 469, 390, 390,
+  [795, 9034, 31, 110, 154, 596, 134, 5550, 96, 512, 186, 230, 118, 177, 114, 2853, 469, 390, 390,
     146, 547, 141, 84, 69, 174, 69, 174, 42, 81, 81, 160, 43]
 
 end TestSupport.M7.Gw

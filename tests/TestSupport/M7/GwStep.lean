@@ -10,7 +10,7 @@ evaluations of `reachCovered` and of `stackBound`: from the step's entry, with t
 state and the value that the last request read in slots 0 to 45 of the outgoing area, the model
 returns with the words of the step's result in those slots and with every byte from the end of
 those slots up unchanged.  The largest sum of the frames along a chain of calls from either step
-is 7,216 bytes.
+is 7,072 bytes.
 -/
 
 namespace TestSupport.M7
@@ -30,8 +30,8 @@ theorem gw_noArea :
   decide +kernel
 
 /-- The stack that a call of each gateway's step uses, with the generator's frames. -/
-theorem gw_stack : stackBound gwCompiled.module 34 = 7216 ∧
-    stackBound gwCompiled.module 33 = 7216 := by
+theorem gw_stack : stackBound gwCompiled.module 34 = 7072 ∧
+    stackBound gwCompiled.module 33 = 7072 := by
   decide +kernel
 
 /-- The call of `gwTickUsart3` in the generated program at the even address `base`, for an

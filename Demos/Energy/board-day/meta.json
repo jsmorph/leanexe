@@ -9,7 +9,7 @@
   ],
   [
    "Image",
-   "gateway.bin, 80,480 bytes of flash from 0x08000000, SHA-256 bc560e42d2ff905a2112c1fda3e11120b037f7f7701e141be37fae6405268c50, stack bound 6,720 bytes"
+   "gateway.bin, 78,160 bytes of flash from 0x08000000, SHA-256 2da74d9417e72c95c05e5482aae02ca747cf9184bb24f4a8bedd510e63f6c866, stack bound 6,664 bytes"
   ],
   [
    "Build",
@@ -29,11 +29,11 @@
   ],
   [
    "Run",
-   "started 2026-11-07 04:26:10 UTC after a reset over SWD; 1,440 ticks in 580.5 s"
+   "started 2026-11-08 04:01:44 UTC after a reset over SWD; 1,440 ticks in 580.2 s"
   ],
   [
    "Host's result",
-   "exit status 0, every check passing: “1440 ticks from minute 10080: 94 commands, 4 fallback requests, 3 of them for measurements outside a window, 1342 ticks without output, in 580.5 s”"
+   "exit status 0, every check passing: “1440 ticks from minute 10080: 94 commands, 4 fallback requests, 3 of them for measurements outside a window, 1342 ticks without output, in 580.2 s”"
   ],
   [
    "Native Lean",
