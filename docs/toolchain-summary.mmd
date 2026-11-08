@@ -8,7 +8,7 @@ flowchart TB
 
   WASM["WebAssembly (V, F, I)<br/>the module computes the Lean function,<br/>in Talos's semantics"]
   C["C, through Clight (C, A)<br/>each C function computes the Lean result,<br/>in the Lean copy of CompCert's Clight"]
-  BARE["Bare-metal AArch64 program (B)<br/>the whole program writes the result;<br/>a Rocq proof carries it to Asm"]
+  BARE["Bare-metal program (B), AArch64 or Cortex-M7<br/>the whole program writes the result,<br/>or runs a step forever with each window's trace;<br/>a Rocq proof carries it to Asm"]
   A64["AArch64 Image (M)<br/>the run from boot writes the result,<br/>in a Lean model of the machine"]
   M7["Cortex-M7 flash image (T)<br/>the run from reset performs each window's<br/>request, in a Lean model of the Cortex-M7"]
   WGSL["WGSL kernels (G)<br/>a dispatch writes the Lean result,<br/>under the Vulkan memory model"]
@@ -19,7 +19,7 @@ flowchart TB
     T1["Wasmtime, browsers, Node.js"]
     T2["Linux on AArch64 and x86-64"]
     T3["QEMU virt, AArch64"]
-    T7["NUCLEO-F767ZI, Cortex-M7"]
+    T7["Cortex-M7: NUCLEO-F767ZI,<br/>QEMU mps2-an500"]
     T4["Vulkan: SwiftShader, llvmpipe"]
     T6["Browser WebGPU"]
     T5["NVIDIA GB10, CUDA"]
@@ -36,6 +36,8 @@ flowchart TB
   WASM --> T1
   C -- "CompCert ccomp" --> T2
   BARE -- "CompCert ccomp" --> T3
+  BARE -- "CompCert ccomp" --> T7
+  A64 ~~~ BARE
   A64 --> T3
   WASM -- "steps of programs with requests" --> M7
   M7 --> T7
