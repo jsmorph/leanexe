@@ -7,7 +7,10 @@ abstract, and the lemmas on the register `_Z` that the theorems of those forms u
 `tests/isla/armv9p4-checked-fp.diff` adds to the IR a monomorphic wrapper of each floating-point
 function that the forms of `LeanExe/A64/Machine.lean` call, `FPAdd64`, `FPSub64`, `FPMul64`,
 `FPDiv64`, `FPSqrt64`, `FixedToFP64`, and `FPToFixed64`, each of which calls the original function
-at 64 bits, and `tests/isla/traces.sh` leaves each wrapper abstract with `--abstract`.  The trace of
+at 64 bits, and the 32-bit wrappers of the single-precision forms, `FPAdd32`, `FPSub32`,
+`FPMul32`, `FPDiv32`, `FPSqrt32`, `FPRoundInt32`, `FixedToFP64_32`, `FixedToFP32_32`,
+`FPToFixed32_64`, and `FPToFixed32_32`.  `tests/isla/traces.sh` leaves each wrapper abstract with
+`--abstract`.  The trace of
 a form then records the call with its arguments, among them the FPCR that the form read, and the
 semantics of `Trace.lean` gives the call the meaning `A`.  Each equation below states, for one
 wrapper, that `A` gives the reference interpreter's function of `Interpreter/Wasm/Float.lean` for
@@ -22,7 +25,9 @@ of 31 `ite` expressions from index 0 upward, which the walk evaluates to a chain
 `upick` describes the chain, `zchain%` and `uchain%` write it as the walk leaves it, over the low
 64 bits of the elements as natural numbers and as words, and `zchain_eq` and `uchain_eq` fold it
 into the indexed D register.  A write of `_Z` sets the D registers one at a time, and `dwrite_eq`
-folds the 32 writes of a trace that replaces one element into one update.  Other lemmas move the
+folds the 32 writes of a trace that replaces one element into one update.  A 32-bit write of an
+element writes it twice and reads it in between: `rwchain_eq` folds that read, and
+`ofNat_and32_or` and `ofNat_and32` reduce the element to its low 64 bits.  Other lemmas move the
 reduction to the low 64 bits into the chains and through the masks of `V_set`, and reduce the
 vector lengths that `V_set` computes from the 4-bit fields LEN of `SMCR_ELx` and `ZCR_ELx`, which
 the traces compare as signed integers.  `fp_fwd` and `fp_bwd` are `mem_fwd` and `mem_bwd` of
@@ -230,6 +235,11 @@ theorem u32_mod (x : UInt32) : x.toNat % 4294967296 = x.toNat :=
 
 theorem zero_u32 : (UInt64.toUInt32 0).toUInt64 = 0 := rfl
 
+/-- The low 32 bits of the zero register, the operand of `SCVTF Sd, WZR`. -/
+theorem toUInt32_zero : UInt64.toUInt32 0 = 0 := rfl
+
+theorem toUInt64_zero32 : UInt32.toUInt64 0 = 0 := rfl
+
 /-- The low 32 bits of an element of `_Z`, the upper bits `h` above the word `n`. -/
 theorem hi_lo_mod32 (h n : Nat) :
     (h * 18446744073709551616 + n) % 4294967296 = n % 4294967296 := by
@@ -320,6 +330,35 @@ theorem schain_eq {s : State} {k : Nat} (hk : k < 32) :
 theorem wchain_eq {s : State} {k : Nat} (hk : k < 32) :
     wchain% s k = (dAt s k).toUInt32.toUInt64 :=
   upick_eq k (fun j => (dAt s j).toUInt32.toUInt64) 31 0 (Nat.zero_le _) (by omega)
+
+/-- The chain of the elements of `_Z` at the index `k` after a write of `a` to the element at `k`,
+in the form in which the walk leaves the read that follows a write: the element `j` is `a` when
+`k = j` and otherwise its value from the state's D register and the upper bits of `u`.  `V_set`
+with a width of 32 bits writes the element twice, first clearing bits 32 to 127 and then setting
+bits 0 to 31, and reads it between the writes. -/
+syntax "rwchain% " term:max term:max term:max term:max : term
+macro_rules
+  | `(rwchain% $u $s $k $a) => do
+    let mut t ← `(cond (decide ($k = 31)) $a
+      (BitVec.toNat (Unknown.z $u 31) * 18446744073709551616 + UInt64.toNat (dAt $s 31)))
+    for j' in [0:31] do
+      let lit := Lean.Syntax.mkNumLit (toString (30 - j'))
+      t ← `(cond (decide ($k = $lit)) (cond (decide ($k = $lit)) $a
+        (BitVec.toNat (Unknown.z $u $lit) * 18446744073709551616 + UInt64.toNat (dAt $s $lit))) $t)
+    return t
+
+theorem rwchain_eq {u : Unknown} {s : State} {k a : Nat} (hk : k < 32) :
+    rwchain% u s k a = a := by
+  have h : upick k (fun j => if h : j < 32 then cond (decide (k = j)) a
+      ((u.z ⟨j, h⟩).toNat * 18446744073709551616 + (dAt s j).toNat) else a) 0 31 = a :=
+    (upick_eq k _ 31 0 (Nat.zero_le _) (by omega)).trans (by simp [hk])
+  exact h
+
+/-- The conversion of the integer 0, the operand of `UCVTF Sd, XZR`. -/
+theorem f32ConvertI64U_zero : Wasm.f32ConvertI64U 0 = 0 := by decide
+
+/-- The conversion of the integer 0, the operand of `SCVTF Sd, WZR`. -/
+theorem f32ConvertI32S_zero : Wasm.f32ConvertI32S 0 = 0 := by decide
 
 /-- The state after the writes of D registers 0 to `n - 1` from `b`, where D register `j` takes
 `r` for `j = k` and D register `j` of `s` otherwise. -/
@@ -418,6 +457,31 @@ theorem ofNat_and_high {x M : Nat} (hM : M % 18446744073709551616 = 0) :
   simp only [Nat.reducePow] at h
   simp only [UInt64.toNat_ofNat', Nat.reducePow, h, hM, Nat.and_zero, UInt64.toNat_zero]
 
+/-- The low 64 bits of the two masks of a 32-bit write of an element of `_Z` have no bit in
+common: `M` clears bits 32 to 63 and `N` bits 0 to 31. -/
+theorem and32_mod {M N : Nat} (hM : M % 18446744073709551616 = 4294967295)
+    (hN : N % 18446744073709551616 = 18446744069414584320) :
+    (M &&& N) % 18446744073709551616 = 0 := by
+  have := @Nat.and_mod_two_pow M N 64
+  simp only [Nat.reducePow] at this
+  rw [this, hM, hN]
+  rfl
+
+/-- The low 64 bits of an element of `_Z` after a 32-bit write of `y`. -/
+theorem ofNat_and32_or {x M N y : Nat} (hM : M % 18446744073709551616 = 4294967295)
+    (hN : N % 18446744073709551616 = 18446744069414584320) :
+    UInt64.ofNat (((x &&& M) &&& N) ||| y) = UInt64.ofNat y := by
+  rw [Nat.and_assoc]
+  exact ofNat_and_or (and32_mod hM hN)
+
+/-- The low 64 bits of an element of `_Z` after a 32-bit write of 0, which the trace gives
+without the disjunction. -/
+theorem ofNat_and32 {x M N : Nat} (hM : M % 18446744073709551616 = 4294967295)
+    (hN : N % 18446744073709551616 = 18446744069414584320) :
+    UInt64.ofNat ((x &&& M) &&& N) = 0 := by
+  rw [Nat.and_assoc]
+  exact ofNat_and_high (and32_mod hM hN)
+
 /-! The vector lengths that `V_set` computes from the fields `LEN` of `SMCR_ELx` and `ZCR_ELx`,
 4-bit values that the traces compare as signed integers of the model's 128 bits. -/
 
@@ -497,8 +561,8 @@ macro "sreg_end" : tactic => `(tactic| (
   simp only [finish, Sys.set_apply, String.reduceEq, ↓reduceIte]
   refine ⟨_, done_eq ?_, by frame_end⟩
   simp (disch := omega) only [dwrite_eq, State.setD, x_lt, x_31, dAt_val, Fin.ext_iff,
-    UInt64.reduceOfNat, low32_eq, ofNat_u32, u32_mod, zero_u32, State.mk.injEq, and_true,
-    true_and, and_self]))
+    UInt64.reduceOfNat, low32_eq, ofNat_u32, u32_mod, zero_u32, toUInt32_zero, toUInt64_zero32,
+    State.mk.injEq, and_true, true_and, and_self]))
 
 /-- Proves that the outcome at the end of a path of the trace of a single-precision form that
 writes a general register is `exec`'s, as `xreg_end` does, with the zero-extended 32-bit
