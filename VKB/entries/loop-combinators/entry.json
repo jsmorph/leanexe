@@ -9,7 +9,10 @@
     "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init",
     "(LeanExe.repeatWhile.go cond step k s).2",
     "LeanExe.loop n out (fun i acc => acc.set! i.toNat (f i)) = LeanExe.build n f",
-    "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'"
+    "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'",
+    "Inv n js ks (t + 1) q from Inv n js ks t p and a link of one root to the other",
+    "P n.toNat (LeanExe.loop n init f) where apply loop_induction cannot infer P",
+    "LeanExe.loop n x (fun _ s => f s) = f^[n.toNat] x"
   ],
   "modules": [
     "LeanExe.Dialect.Lemmas",
@@ -25,7 +28,15 @@
     "Examples.RemoveZero.Proof",
     "Examples.Lookup.Proof",
     "Examples.TreeLookup.Proof",
-    "Demos.Euler.BufferedSpec"
+    "Demos.Euler.BufferedSpec",
+    "Library.Graphs.UnionFind.Proof",
+    "Library.Graphs.WeightedUnionFind.Proof",
+    "Library.Graphs.TopologicalSort.Proof",
+    "Library.Numerics.MultiPrecision.DivideProof",
+    "Library.Random.Orbit.Basic",
+    "Library.Random.Xorshift.Period",
+    "Library.Numerics.Arithmetic.Uscale.UscaleBase",
+    "Demos.Slew.Search"
   ],
   "declarations": [
     "LeanExe.Dialect.loop_induction",
@@ -38,7 +49,17 @@
     "Library.Hashing.XxHash64.Proof.fold_eq",
     "Verified.loop_push_size",
     "Demos.Euler.Buffered.loop_set",
-    "Demos.Euler.Buffered.repeatWhile_map"
+    "Demos.Euler.Buffered.repeatWhile_map",
+    "Library.Graphs.UnionFind.Inv",
+    "Library.Graphs.UnionFind.inv_keep",
+    "Library.Graphs.UnionFind.link_inv",
+    "Library.Graphs.UnionFind.labels_spec",
+    "Library.Graphs.TopologicalSort.QueueInv",
+    "Library.Graphs.TopologicalSort.OuterInv",
+    "Library.Numerics.MultiPrecision.MulsubInv",
+    "Library.Random.Orbit.loop_eq_iterate",
+    "Demos.Slew.Search.loop_const",
+    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.loop_inv"
   ],
   "examples": [
     "Library.Arrays.Search.firstZero_cases",
@@ -52,6 +73,15 @@
     "Examples.TreeLookup.compute_eq",
     "Demos.Euler.Buffered.sweepInto_eq",
     "Demos.Euler.Buffered.advanceInto_eq",
-    "Demos.Euler.Buffered.runFromInto_eq"
+    "Demos.Euler.Buffered.runFromInto_eq",
+    "Library.Graphs.UnionFind.classes_spec",
+    "Library.Graphs.WeightedUnionFind.unite_inv",
+    "Library.Graphs.WeightedUnionFind.classes_spec",
+    "Library.Graphs.TopologicalSort.outer_step",
+    "Library.Graphs.TopologicalSort.process_spec",
+    "Library.Graphs.TopologicalSort.topoSort_spec",
+    "Library.Numerics.MultiPrecision.mulsub_spec",
+    "Library.Numerics.MultiPrecision.addback_spec",
+    "Library.Random.Xorshift.advance_eq_iterate"
   ]
 }

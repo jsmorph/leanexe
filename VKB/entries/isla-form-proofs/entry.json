@@ -1,0 +1,45 @@
+{
+  "id": "isla-form-proofs",
+  "goals": [
+    "LeanExe.A64.Isla.Agrees P (tcg.sys .tcr u) [\"SEE\", \"__BranchTaken\"] F f i s",
+    "LeanExe.A64.Isla.AgreesAll P A (tcg.sys .fp u) [\"SEE\", \"__BranchTaken\", \"_Z\", \"FPSR\"] F f i s",
+    "LeanExe.M7.Isla.Agrees P δ (sys u) W F f i m",
+    "memory exhaustion or deep recursion in a trace walk",
+    "a walk step whose cost grows with the remaining trace"
+  ],
+  "modules": [
+    "LeanExe.A64.Isla.Trace",
+    "LeanExe.A64.Isla.Check",
+    "LeanExe.A64.Isla.Walk",
+    "LeanExe.A64.Isla.Float",
+    "LeanExe.M7.Isla.Trace",
+    "LeanExe.M7.Isla.Check",
+    "LeanExe.M7.Isla.Walk",
+    "LeanExe.M7.Isla.Arith"
+  ],
+  "declarations": [
+    "LeanExe.A64.Isla.Footprint",
+    "LeanExe.A64.Isla.Abstract",
+    "LeanExe.A64.Isla.Profile.sys",
+    "LeanExe.A64.Isla.Agrees",
+    "LeanExe.A64.Isla.AgreesAll",
+    "LeanExe.A64.Isla.Agrees.of_reads",
+    "LeanExe.A64.Isla.AgreesAll.of_reads",
+    "LeanExe.A64.Isla.decode_word",
+    "LeanExe.A64.Isla.chain_eq",
+    "LeanExe.A64.Isla.nat_add_zero",
+    "LeanExe.A64.Isla.Opaque",
+    "LeanExe.A64.Isla.run_congr",
+    "LeanExe.A64.Isla.runSome_congr",
+    "LeanExe.A64.Isla.FPAddEq",
+    "LeanExe.M7.Isla.sys",
+    "LeanExe.M7.Isla.Agrees",
+    "LeanExe.M7.Isla.decode_halves",
+    "LeanExe.M7.Isla.chain_eq",
+    "LeanExe.M7.Isla.awc_v",
+    "LeanExe.M7.Isla.awc_v_c",
+    "LeanExe.M7.Isla.awc_v_b",
+    "LeanExe.M7.Isla.awc_eq"
+  ],
+  "examples": []
+}

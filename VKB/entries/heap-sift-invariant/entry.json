@@ -1,0 +1,43 @@
+{
+  "id": "heap-sift-invariant",
+  "goals": [
+    "HeapFrom (siftDown i n a) n.toNat L",
+    "(siftDown i n a).size = a.size ∧ (siftDown i n a).toList.Perm a.toList",
+    "HeapFrom (heapify n a) n.toNat 0",
+    "∀ k, k < n → a[k]! ≤ a[0]!",
+    "HeapFrom (siftUp i a) m 0",
+    "MinHeap (siftUp i hk hv).1 m",
+    "(pairs (swap i j hk) (swap i j hv) len).Perm (pairs hk hv len)"
+  ],
+  "modules": [
+    "Library.Sorting.Heapsort.Proof",
+    "Library.Queues.BinaryHeap.Proof",
+    "Library.Graphs.Dijkstra.Heap",
+    "Library.Graphs.Dijkstra.Proof"
+  ],
+  "declarations": [
+    "Library.Sorting.Heapsort.HeapFrom",
+    "Library.Sorting.Heapsort.siftDown_eq",
+    "Library.Sorting.Heapsort.siftDown_spec",
+    "Library.Sorting.Heapsort.siftDown_frame",
+    "Library.Sorting.Heapsort.heapify_spec",
+    "Library.Sorting.Heapsort.heap_root",
+    "Library.Queues.BinaryHeap.siftUp_spec",
+    "Library.Queues.BinaryHeap.siftUp_frame",
+    "Library.Queues.BinaryHeap.parent_toNat",
+    "Library.Graphs.Dijkstra.MinHeap",
+    "Library.Graphs.Dijkstra.pairs",
+    "Library.Graphs.Dijkstra.pairs_swap",
+    "Library.Graphs.Dijkstra.siftUp_spec",
+    "Library.Graphs.Dijkstra.siftDown_spec",
+    "LeanExe.Dialect.loop_induction"
+  ],
+  "examples": [
+    "Library.Sorting.Heapsort.heapsort_sorted_perm",
+    "Library.Queues.BinaryHeap.insert_spec",
+    "Library.Queues.BinaryHeap.remove_spec",
+    "Library.Graphs.Dijkstra.push_spec",
+    "Library.Graphs.Dijkstra.pop_spec",
+    "Library.Graphs.Dijkstra.dijkstra_spec"
+  ]
+}

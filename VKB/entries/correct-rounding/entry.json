@@ -1,0 +1,52 @@
+{
+  "id": "correct-rounding",
+  "goals": [
+    "LeanExe.ProofKit.F64PositiveRounding.roundNearestEven ((Y : ℝ) / 2 ^ 2400) = packWord 0 E Q",
+    "Library.Numerics.Decimal.Shared.StrconvGrid.refPos f y = Library.Numerics.Decimal.Shared.StrconvGrid.packInf f E Q",
+    "refPos f y = refPos f y'",
+    "Library.Numerics.Arithmetic.Fma.FmaGrid.RoundsTo Y E Q",
+    "(if Wasm.IEEE64.isNaN (fmaBits a b c) then Wasm.IEEE64.canonicalNaN else fmaBits a b c) = fmaReference a b c",
+    "(roundUnits p F u sticky tb).toNat = refPos f y",
+    "pair h l = h.toNat * 2 ^ 64 + l.toNat for a 128-bit routine"
+  ],
+  "modules": [
+    "Library.Numerics.Arithmetic.Fma.FmaSpecTheorem",
+    "Library.Numerics.Arithmetic.Fma.FmaTheorem",
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack",
+    "Library.Numerics.Arithmetic.Fma.FmaParts",
+    "Library.Numerics.Decimal.Shared.StrconvTruncate",
+    "Library.Numerics.Decimal.Shared.StrconvRational",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatRound",
+    "Library.Numerics.Arithmetic.Uscale.UscaleBase"
+  ],
+  "declarations": [
+    "Library.Numerics.Arithmetic.Fma.FmaGrid.RoundsTo",
+    "Library.Numerics.Arithmetic.Fma.FmaGrid.packWord",
+    "Library.Numerics.Arithmetic.Fma.FmaGrid.roundsTo_transfer",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.positive_reference",
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.strict_top",
+    "Library.Numerics.Arithmetic.Fma.FmaWords.pair",
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack.roundPack_spec",
+    "Library.Numerics.Arithmetic.Fma.FmaTheorem.fmaReference",
+    "Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest",
+    "Library.Numerics.Decimal.Shared.StrconvGrid.RoundsTo",
+    "Library.Numerics.Decimal.Shared.StrconvGrid.refPos",
+    "Library.Numerics.Decimal.Shared.StrconvGrid.packInf",
+    "Library.Numerics.Decimal.Shared.StrconvGrid.positive_reference",
+    "Library.Numerics.Decimal.Shared.StrconvTruncate.refPos_transfer",
+    "Library.Numerics.Decimal.Shared.StrconvRational.roundsTo_quotient",
+    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.val",
+    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.mulSmall_spec"
+  ],
+  "examples": [
+    "Library.Numerics.Arithmetic.Fma.FmaTheorem.fmaBits_spec",
+    "Library.Numerics.Arithmetic.Fma.FmaTheorem.fma_toBits",
+    "Library.Numerics.Arithmetic.Fma.FmaSpecTheorem.fma_nearest",
+    "Library.Numerics.Arithmetic.Fma.FmaParts.fmaBits_eq",
+    "Library.Numerics.Arithmetic.Fma.FmaParts.addend_spec",
+    "Library.Numerics.Decimal.ParseFloat.ParseFloatRound.roundUnits_spec",
+    "Library.Numerics.Decimal.Shared.StrconvTruncate.truncate64",
+    "Library.Numerics.Decimal.Shared.StrconvRational.rational64",
+    "Library.Numerics.Decimal.Shared.StrconvRational.dyadic64"
+  ]
+}

@@ -6,7 +6,8 @@
     "the type Prop is not UInt64, Bool, Float, Float32, Bytes, a structure with a Flat instance, an array, or a pair",
     "a && f x evaluates f x when a is false",
     "a match alternative that names the matched value",
-    "a generated bound that grows with the passes of a loop that builds a new array at each pass"
+    "a generated bound that grows with the passes of a loop that builds a new array at each pass",
+    "(deterministic) timeout at a verified_compile command of a large program"
   ],
   "modules": [
     "Verified.Reflect.Modes",
@@ -15,7 +16,8 @@
     "Demos.Slew.Bound",
     "Verified.Examples.HeapSums",
     "Demos.Euler.BufferedSpec",
-    "Demos.Euler.VerifiedCall"
+    "Demos.Euler.VerifiedCall",
+    "Demos.OrderBook.Verified"
   ],
   "declarations": [
     "Verified.Expr.paramChoice",
@@ -38,6 +40,8 @@
     "Verified.Examples.HeapSums.grow",
     "Verified.Examples.HeapSums.regrow",
     "Demos.Euler.Verified.solve_bound",
-    "Demos.Euler.Buffered.solve_eq"
+    "Demos.Euler.Buffered.solve_eq",
+    "Demos.OrderBook.Program.fillArrays",
+    "Demos.OrderBook.Verified.compiled.run.trapFree"
   ]
 }

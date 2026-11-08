@@ -1,0 +1,47 @@
+{
+  "id": "spec-transcription",
+  "goals": [
+    "program msg = Spec.f (bytes of msg) for a transcription Spec.f of a standard",
+    "digestBitVec ((sha256 msg n).bytes 32) = SHS.SHA256.sha256 (bytesToBitMessage (bytes msg n.toNat)) _",
+    "a closed constant of a standard, such as a table of rotation offsets",
+    "@[csimp] theorem f_eq_run : @f = @fRun",
+    "Spec.crc32 bs = crc32Eval bs for a transcription over polynomials",
+    "ref x = spec x for the expected values of test cases"
+  ],
+  "modules": [
+    "Library.Hashing.Sha256.Proof",
+    "Library.Hashing.Sha2.Equiv.SHA256.Main",
+    "Library.Hashing.Sha512.Proof",
+    "Library.Hashing.Crc.Division",
+    "Library.Hashing.Crc.Proof",
+    "Library.Hashing.Sha3.Spec",
+    "Library.Hashing.Sha3.Proof",
+    "Library.Hashing.SipHash.Proof",
+    "Library.Hashing.XxHash64.Proof",
+    "Library.Combinatorics.DancingLinks.Count",
+    "TestSupport.Modules.MillerRabin"
+  ],
+  "declarations": [
+    "SHS.SHA256.Impl.sha256",
+    "SHS.Equiv.SHA256.sha256_correct",
+    "Library.Hashing.Crc.Division.crc32Eval",
+    "Library.Hashing.Crc.Division.crc32_eq",
+    "Library.Hashing.Sha3.Spec.keccakP",
+    "Library.Hashing.Sha3.Spec.keccakPRun",
+    "Library.Hashing.Sha3.Spec.keccakP_eq_run",
+    "Library.Hashing.Sha3.Spec.rhoSteps_table2"
+  ],
+  "examples": [
+    "Library.Hashing.Sha256.sha256_bytes",
+    "Library.Hashing.Sha256.sha256_spec",
+    "Library.Hashing.Sha512.sha512_spec",
+    "Library.Hashing.Crc.Proof.crc32_spec",
+    "Library.Hashing.Sha3.Proof.sha3_256_spec",
+    "Library.Hashing.SipHash.Proof.siphash24_spec",
+    "Library.Hashing.XxHash64.Proof.xxh64_eq",
+    "Library.Combinatorics.DancingLinks.countRef_eq",
+    "Library.Numerics.Arithmetic.MillerRabin.refPow_eq",
+    "Library.Numerics.Arithmetic.MillerRabin.powModRef_eq",
+    "Library.Numerics.Arithmetic.MillerRabin.testRef_eq"
+  ]
+}
