@@ -2,17 +2,17 @@
 # The programs with requests through the Cortex-M7 back end on QEMU's mps2-an500: the echo of
 # cmsdkTick, NAME echo, the default, the energy controller's gateway of gwTick, NAME gateway, the
 # CRC-32 step crcCmsdkTick, NAME crc, and the SHA-256 step shaCmsdkTick, NAME sha.  It builds
-# m7-windows and, for the echo and the gateway, the loop theorem of
-# tests/TestSupport/M7/QemuLoop.lean or GwLoop.lean, and writes the image that
+# m7-windows and, for the echo, the gateway, and the CRC-32 step, the loop theorem of
+# tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean, or CrcLoop.lean, and writes the image that
 # tests/TestSupport/M7/Qemu.lean, GwImages.lean, CrcImages.lean, or ShaImages.lean lays out with
-# m7-windows qemu, gateway-qemu, crc-qemu, or sha-qemu.  For the echo and the gateway it elaborates
-# tests/TestSupport/M7/QemuFile.lean or GwQemuFile.lean in the directory of the image under a
-# memory cap of MEM, 12G for the echo and 16G for the gateway unless set, so that the kernel checks
-# that the file holds the image's bytes, the gateway's in parts, and the loop theorem holds of the
-# file.  It requires that each theorem whose axioms that file prints depends on no axiom beyond
-# propext, Classical.choice, and Quot.sound, and reports the check's elapsed time and peak memory.
-# No theorem covers the images of the CRC-32 and SHA-256 steps, which the script runs without a
-# check.
+# m7-windows qemu, gateway-qemu, crc-qemu, or sha-qemu.  For the echo, the gateway, and the CRC-32
+# step it elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean, or CrcQemuFile.lean in
+# the directory of the image under a memory cap of MEM, 16G for the gateway and 12G otherwise
+# unless set, so that the kernel checks that the file holds the image's bytes, the gateway's in
+# parts, and the loop theorem holds of the file.  It requires that each theorem whose axioms that
+# file prints depends on no axiom beyond propext, Classical.choice, and Quot.sound, and reports the
+# check's elapsed time and peak memory.  No theorem covers the image of the SHA-256 step, which the
+# script runs without a check.
 #
 # It then runs the image in QEMU with UART0 on a Unix-domain socket and plays the far end of the
 # UART, as tests/baremetal/req.sh does for the C path's programs.  For the echo,
@@ -39,7 +39,7 @@ case $name in
     mem=${MEM:-12G} ;;
   gateway) image=gateway-cmsdk-qemu cmd=gateway-qemu lib=TestSupport.M7.GwLoop file=GwQemuFile
     count=5 mem=${MEM:-16G} ;;
-  crc) image=crc-cmsdk-qemu cmd=crc-qemu lib=TestSupport.M7.CrcImages file= count=0
+  crc) image=crc-cmsdk-qemu cmd=crc-qemu lib=TestSupport.M7.CrcLoop file=CrcQemuFile count=6
     mem=${MEM:-12G} ;;
   sha) image=sha-cmsdk-qemu cmd=sha-qemu lib=TestSupport.M7.ShaImages file= count=0
     mem=${MEM:-12G} ;;

@@ -29,17 +29,18 @@ steps `crc-usart3` and `crc-cmsdk`, and the SHA-256 steps `sha-usart3` and `sha-
   `usart3Tick`, and to AREA the area's bytes as the setup leaves them, and prints the address of
   the initialization and the numbers of the setup's instructions and of the area's bytes.
 - `m7-windows crc-qemu FILE` writes to FILE the image of the CRC-32 step `crcCmsdkTick` for
-  QEMU's `mps2-an500` with the setup of its area, which no theorem covers
-  (`tests/TestSupport/M7/CrcImages.lean`), and prints the addresses of `main` and of its loop's
-  head.
+  QEMU's `mps2-an500`, and `m7-windows crc-board FILE` the image of `crcUsart3Tick` for the
+  NUCLEO-F767ZI, each with the setup of its area (`tests/TestSupport/M7/CrcImages.lean`), and each
+  prints the addresses of `main` and of its loop's head.
 - `m7-windows sha-qemu FILE` writes to FILE the image of the SHA-256 step `shaCmsdkTick` for QEMU's
   `mps2-an500`, and `m7-windows sha-board FILE` the image of `shaUsart3Tick` for the NUCLEO-F767ZI,
   each with the setup of its area, which no theorem covers
   (`tests/TestSupport/M7/ShaImages.lean`), and each prints the addresses of `main` and of its
   loop's head.
-- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, and `m7-windows div-dwt FILE` write
-  the measurement images of `tests/TestSupport/M7/Dwt.lean`: the echo and the gateway with the
-  cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
+- `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`, and
+  `m7-windows div-dwt FILE` write the measurement images of `tests/TestSupport/M7/Dwt.lean`: the
+  echo, the gateway, and the CRC-32 step with the cycles of each window, and the cycles of
+  `udivmod64`'s paths and of `UDIV`.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
@@ -176,8 +177,11 @@ def main (args : List String) : IO UInt32 := do
       writeImage "gateway-usart3-board" file TestSupport.M7.Gw.boardImage
         LeanExe.M7.Nucleo.boot.base TestSupport.M7.Gw.boardHead
   | ["crc-qemu", file] =>
-      writeImage "crc-cmsdk-qemu" file TestSupport.M7.CrcImages.image
-        TestSupport.M7.CrcImages.boot.base TestSupport.M7.CrcImages.loopHead
+      writeImage "crc-cmsdk-qemu" file TestSupport.M7.CrcImages.qemuImage
+        TestSupport.M7.CrcImages.qemuBoot.base TestSupport.M7.CrcImages.qemuHead
+  | ["crc-board", file] =>
+      writeImage "crc-usart3-board" file TestSupport.M7.CrcImages.boardImage
+        TestSupport.M7.CrcImages.boardBoot.base TestSupport.M7.CrcImages.boardHead
   | ["sha-qemu", file] =>
       writeImage "sha-cmsdk-qemu" file TestSupport.M7.ShaImages.qemuImage
         TestSupport.M7.ShaImages.qemuBoot.base TestSupport.M7.ShaImages.qemuHead
@@ -192,6 +196,15 @@ def main (args : List String) : IO UInt32 := do
           return 0
       | .error e =>
           IO.eprintln s!"m7-windows: gateway-usart3-board-dwt: {e}"
+          return 1
+  | ["crc-dwt", file] =>
+      match TestSupport.M7.Dwt.crcDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: crc-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: crc-usart3-board-dwt: {e}"
           return 1
   | ["board-dwt", file] =>
       match TestSupport.M7.Dwt.echoDwt with
@@ -253,8 +266,7 @@ def main (args : List String) : IO UInt32 := do
       | none => return 0
   | _ =>
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
-        "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | sha-qemu FILE | " ++
-        "sha-board FILE | board-dwt FILE | " ++
-        "gateway-dwt FILE | " ++
+        "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
+        "sha-qemu FILE | sha-board FILE | board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
         "div-dwt FILE | static NAME | run NAME DIR [IN OUT]")
       return 2
