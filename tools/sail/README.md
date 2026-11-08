@@ -2,15 +2,16 @@
 
 These scripts translate the floating-point functions of the Armv9.4-A Sail model into Lean with
 Sail's Lean back end, elaborate the output, test it against Talos's binary64 functions, and prove
-six of the equations that the A64 Isla check assumes.  The modules of [`F7/`](F7/) prove that the
+equations that the A64 Isla check assumes.  The modules of [`F7/`](F7/) prove that the
 translated `FPAdd`, `FPSub`, `FPMul`, and `FPDiv` of `(a, b, 0x02000000)` at 64 bits return
 `f64Add a b`, `f64Sub a b`, `f64Mul a b`, and `f64Div a b` for every pair of words, that
 `FPSqrt(a, 0x02000000)` returns `f64Sqrt a`, and that
 `FixedToFP(a, 0, TRUE, 0x02000000, FPRounding_TIEEVEN, 64)` returns `f64ConvertI64U a` for every
-word, and [`check.sh`](check.sh) regenerates the translation and checks the proofs.  Sail's C
-emulator
-of the same slice tests the same functions with exact rationals ([`emu/`](emu/)).  Nothing in the
-A64 model or its proofs depends on these files.
+word.  The modules `F7/*32.lean` prove the equations of the single-precision forms other than
+FRINTN's against Talos's binary32 functions (The binary32 proofs), and [`check.sh`](check.sh)
+regenerates the translation and checks the proofs.  Sail's C emulator of the same slice tests the
+same functions with exact rationals ([`emu/`](emu/)).  Nothing in the A64 model or its proofs
+depends on these files.
 
 ## Versions and installation
 
@@ -362,6 +363,16 @@ the kernel compares argument by argument, and the proofs reach each bit vector b
 | `F7/FPSqrt.lean` | 343 | the square root on the reals, Talos's rounding of a root, FPRound__2 on a root, and FPSqrt's cases |
 | `F7/FixedToFP.lean` | 85 | Talos's conversion and FixedToFP |
 | `F7/Isla.lean` | 255 | the join with the Isla equations and the profile witnesses |
+| `F7/Round32.lean` | 756 | binary32 fields, unpacking, and NaNs (about 225), the result words and Talos's binary32 rounders with their rational form (about 290), and FPRoundBase__1 at 32 bits on a rational (about 210) |
+| `F7/FPAdd32.lean` | 164 | FPAdd's cases at 32 bits |
+| `F7/FPSub32.lean` | 200 | the negation of a single and FPSub's cases |
+| `F7/FPMul32.lean` | 126 | the exact product and FPMul's cases |
+| `F7/FPDiv32.lean` | 130 | the exact quotient and FPDiv's cases |
+| `F7/FPSqrt32.lean` | 397 | FPRoundBase__1's normal case at 32 bits over a real mantissa, the root, and FPSqrt's cases |
+| `F7/FixedToFP32.lean` | 174 | UCVTF S←X's and SCVTF S←W's FixedToFP |
+| `F7/FPToFixed32.lean` | 451 | FCVTZU X←S's and FCVTZS W←S's FPToFixed, with SignedSatQ at 32 bits |
+| `F7/FPCompare32.lean` | 217 | FPCompare's cases at 32 bits |
+| `F7/Isla32.lean` | 213 | the join with the 32-bit Isla equations |
 
 `lake build F7` on edgexpert-18ff under `tools/leanrun --cpus 2`, after the translation is built,
 takes `F7.Base` 47 to 51 s, `F7.Round` 48 to 60 s, `F7.FPAdd` 35 to 38 s, `F7.FPMul` 42 to 43 s,
@@ -372,7 +383,16 @@ thousand heartbeats for `fpProcessNaNs_run`, 649,219 for `round_normalG`, 182,93
 `round_subG`, 653,810 for `round_normalQ`, 182,566 for `round_subQ`, 401,760 for `round_normalR`,
 442,830 for `fpAdd_run`, 448,450 for `fpSub_run`, 488,265 for `fpMul_run`, and 451,965 for
 `fpDiv_run`.  `fixedToFP_run` (3,308), `round_root` (17,241), and `fpSqrt_run` (92,831) check
-under the default limit of 200,000.
+under the default limit of 200,000.  In separate builds with 2 CPUs, `F7.Round32` takes 60 s,
+`F7.FPAdd32` 37 s, `F7.FPSub32` 42 s, `F7.FPMul32` 58 s and `F7.FPDiv32` 46 s side by side,
+`F7.FPSqrt32` 30 s, `F7.FPToFixed32` 14 s, `F7.FPCompare32` 3 s, `F7.FixedToFP32` 2 s, and
+`F7.Isla32` 1 to 2 s, at a peak of 3.2 GB.  Their limits are about twice the measured use: 411,630
+thousand heartbeats for `fpProcessNaNs_run32`, 656,024 for `round_normalQ32`, 183,392 for
+`round_subQ32`, 402,941 for `round_normalR32`, 457,325 for `fpAdd32_run`, 455,960 for
+`fpSub32_run`, 501,100 for `fpMul32_run`, 458,462 for `fpDiv32_run`, 82,021 for `fpToFixed32_run`,
+84,840 for `fpToFixed32S_run`, and 18,268 for `fpCompare32_run`; `fpUnpack_run32` (55,145),
+`round_root32` (17,875), `fpSqrt32_run` (90,718), `fixedToFP32_run` (3,454), and `fixedToFP32S_run`
+(3,500) check under the default limit.
 
 FPMul cost 147 lines of its own and about 200 lines of the rounding's generalization: the pilot's
 rounding at the fixed scale 2^-1074 took about 500 lines, and its generalization over `X`, which
@@ -383,6 +403,71 @@ and the lemmas `floor_div_nat`, `err_div`, `gt_half`, and `eq_half`, which hold 
 divisor, and its proofs of FPRoundBase__1 follow `round_normalG` and `round_subG` step by step,
 with the divisor `Q · 2^j` or `Q` in place of `2^(X + j)` or `2^X`.  FPSub took 212 lines,
 FixedToFP 85, and FPSqrt 343 with the 137 of `RoundR.lean`.
+
+## The binary32 proofs
+
+The translated functions take the width of their operands as an implicit argument, so `FPAdd a b
+0x02000000` on 32-bit words is FPAdd at 32 bits, and each root of the slice serves both widths.
+The modules `F7/*32.lean` prove the 32-bit counterparts of the 64-bit theorems for every pair of
+words, or every word, from every state that satisfies `Hyp`, with FPSR's update and the frame:
+`fpAdd32_eq_f32Add`, `fpSub32_eq_f32Sub`, `fpMul32_eq_f32Mul`, `fpDiv32_eq_f32Div`, and
+`fpSqrt32_eq_f32Sqrt` give Talos's `f32Add`, `f32Sub`, `f32Mul`, `f32Div`, and `f32Sqrt` with the
+masks `addMask32`, `subMask32`, `mulMask32`, `divMask32`, and `sqrtMask32`, whose bits are those of
+the 64-bit masks; `fixedToFP32_eq_f32ConvertI64U` gives `f32ConvertI64U` for
+`FixedToFP a 0 true 0x02000000 FPRounding_TIEEVEN 32` on a 64-bit word, the call of UCVTF S←X,
+and `fixedToFP32_eq_f32ConvertI32S` gives `f32ConvertI32S` for
+`FixedToFP a 0 false 0x02000000 FPRounding_TIEEVEN 32` on a 32-bit word, the call of SCVTF S←W,
+with `cvtMask32` and `cvtMask32S`.  The signed conversion holds for the translation with the
+explicit conversions of `fix-output.sh` (Elaboration), and it fails for the translation with
+lean-sail's coercion, whose SInt maps every negative operand to 0.
+`fpToFixed32_eq_i64TruncSatF32U` gives `i64TruncSatF32U` for
+`FPToFixed a 0 true 0x02000000 FPRounding_ZERO 64` on a 32-bit word, the call of FCVTZU X←S, and
+`fpToFixed32S_eq_i32TruncSatF32S` gives `i32TruncSatF32S` for
+`FPToFixed a 0 false 0x02000000 FPRounding_ZERO 32`, the call of FCVTZS W←S, with `fixMask32` and
+`fixMask32S`: IOC for a NaN, an infinity, or a truncation outside the integer range, and IXC for
+an inexact truncation inside it.  `fpCompare32_eq_fcmpNZCV32` gives the flags `fcmpNZCV32` of
+`State.fcmpS` for `FPCompare a b false 0x02000000` on 32-bit words, the call of FCMP S, with
+`cmpMask32`: IOC for a signaling NaN operand.
+
+[`F7/Round32.lean`](F7/Round32.lean) holds the 32-bit unpacking (`fpUnpack_run32`), the processing
+of NaNs (`fpProcessNaNs_run32`), and one rounding lemma.  `fpRound32_q` gives the result of
+FPRound__2 at 32 bits on `±(P/Q) · 2^-149` for all positive `P` and `Q`: Talos's
+`IEEE32.roundRationalMagnitude neg P Q` with the FPSR bits of `maskQ32 P Q`.  Its proof is
+`fpRound_q`'s with the binary32 constants: for `log2 ⌊P/Q⌋ = 23 + j` the loops give the exponent
+`j − 126`, the integer mantissa is the quotient of `P` by `Q · 2^j`, and the error is the remainder
+over `Q · 2^j`; for a subnormal result the divisor is `Q`.  Talos's binary32 rounders encode a
+normal result directly where the binary64 ones pass it to `roundScaledMagnitude`, so `rq_normal32`
+unfolds `roundRationalMagnitude` for `j ≥ 1` and uses `rsm_exact32` and `rsm_carry32` for `j = 0`.
+The other rounders are instances of the rational one: `rsm_eq_rrm32` states that
+`roundScaledMagnitude neg N`, the rounder of a sum and of an integer, is
+`roundRationalMagnitude neg N 1`, and `rdm_eq_rrm32` that `roundDyadicMagnitude neg N X`, the
+rounder of a product, is `roundRationalMagnitude neg N (2^X)`.  The exact sum or difference of two
+finite operands is an integer `z` times 2^-149, the rational `|z| / 1`; the exact product of the
+magnitudes `A` and `B` in units of 2^-149 is `(A · B) / 2^149`, the exact quotient
+`(A · 2^149) / B`, and the converted integer `z` is `(|z| · 2^149) / 1`.  FPSqrt's root is irrational
+in general, and `round_normalR32` in [`F7/FPSqrt32.lean`](F7/FPSqrt32.lean) states FPRoundBase__1's
+normal case at 32 bits over the scaled mantissa, as `round_normalR` does at 64 bits; the radicand
+`N · 2^149` of a positive finite single lies in `[2^149, 2^426)`, so every root is normal, with the
+shift `log2 (Nat.sqrt R) − 23` below 253 (`root_facts32`).  FPToFixed and FPCompare at 32 bits
+follow `F7/FPToFixed.lean` and `F7/FPCompare.lean` with the binary32 unpacking: the truncation of a
+finite single is the quotient of its magnitude by 2^149, and FPUnpack's value of a single that is
+not a NaN is strictly increasing in Talos's `scaledValue`, which lies in `[-2^277, 2^277]`
+(`extV32_strictMonoOn`).  SignedSatQ at 32 bits returns the low 32 bits of the saturated integer,
+`BitVec.ofInt 32` (`bind_satQS`), which is Talos's `intToUInt32` inside `(-2^31, 2^31 - 1)`.  The
+statements write Talos's words without a definition in between, and `tSqrtU32`, `fromInt32`, and
+`fromInt32_nat` state Talos's side as equations of words, for the reason above.
+
+`F7/Isla32.lean` joins each theorem to its 32-bit Isla equation in the pattern of `F7/Isla.lean`:
+`fpAdd32Eq_of_sail`, `fpSub32Eq_of_sail`, `fpMul32Eq_of_sail`, `fpDiv32Eq_of_sail`,
+`fpSqrt32Eq_of_sail`, `fixedToFP64_32Eq_of_sail`, `fixedToFP32_32Eq_of_sail`,
+`fpToFixed32_64Eq_of_sail`, `fpToFixed32_32Eq_of_sail`, and `fpCompare32Eq_of_sail` derive
+`FPAdd32Eq`, `FPSub32Eq`, `FPMul32Eq`, `FPDiv32Eq`, `FPSqrt32Eq`, `FixedToFP64_32Eq`,
+`FixedToFP32_32Eq`, `FPToFixed32_64Eq`, `FPToFixed32_32Eq`, and `FPCompare32Eq` from the links
+`SailFPAdd32` and the others, each the claim of its 64-bit counterpart with the 32-bit wrapper of
+`tests/isla/armv9p4-checked-fp.diff`, or, for FCMP S, with the call of FPCompare on two 32-bit
+operands.  FRINTN's equation `FPRoundInt32Eq` has no proof: FPRoundInt rounds the signed value to
+an integer and passes the result to FPRound__1 with `FPRounding_ZERO`, a rounding mode that no
+lemma here covers.
 
 ## The join with the Isla equations
 
@@ -449,6 +534,8 @@ reproducible from the pinned inputs.
 | A run under `tools/leanrun --cpus 3`, with the six functions | 12 min 48 s, peak 4.2 GB |
 | Its parts | each of the two builds `Armv9fp` 137 to 144 s, `F7.Base` 43 to 48 s, `F7.Round` 43 to 48 s, then the other modules side by side: `F7.FPAdd` 41 to 51 s, `F7.FPSub` 38 to 39 s, `F7.FPMul` 42 to 44 s, `F7.RoundQ` 50 to 55 s, `F7.RoundR` 32 to 43 s, `F7.FPDiv` 37 to 40 s, `F7.FPSqrt` 10 s, `F7.FixedToFP` 2 to 3 s, `F7.Isla` 2 s |
 | A run under `tools/leanrun --cpus 4` without lean-sail's coercion `CoeT Int x Nat`, with the slice of nine roots, the 64-bit functions, FPToFixed and FPCompare at 64 bits, and the 32-bit FPAdd, FPSub, FPMul, FPDiv, FPSqrt, and UCVTF S←X | 14 min 23 s, peak 4.1 GB |
+| A run under `tools/leanrun --cpus 4` with every theorem of `Axioms.lean`, the 32-bit conversions and FPCompare among them | 13 min 58 s, peak 4.1 GB, every hash equal to `check.sha256` |
+| Its parts | each of the two builds `Armv9fp` 118 to 140 s, `F7.Base` 41 s, `F7.Round` 42 s, then the other modules side by side, among them `F7.Round32` 53 to 54 s, `F7.FPAdd32` 35 s, `F7.FPSub32` 38 s, `F7.FPMul32` 40 s, `F7.FPDiv32` 39 s, `F7.FPSqrt32` 28 to 29 s, `F7.FPToFixed32` 16 s, `F7.FPCompare32` 3 s, `F7.FixedToFP32` 2 s, and `F7.Isla32` 1 s |
 
 ## What the proofs trust
 
@@ -469,6 +556,8 @@ the chain below translates the ASL faithfully.
 | `fix-output.sh` | the textual edits above |
 | The sources: sail-arm `7d0581642` in place of the IR's `111345b`, and Sail 0.20.3's library in place of `f3da8185`'s | the comparisons in Sources |
 | `armv9p4-checked-fp.diff`: `FPAdd64`, `FPSub64`, `FPMul64`, `FPDiv64`, and `FPSqrt64` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 64 bits, and `FixedToFP64` returns `FixedToFP` at N = 64 | in the Isla row |
+| `armv9p4-checked-fp.diff`: `FPAdd32`, `FPSub32`, `FPMul32`, `FPDiv32`, and `FPSqrt32` return `FPAdd`, `FPSub`, `FPMul`, `FPDiv`, and `FPSqrt` at 32 bits, `FixedToFP64_32` and `FixedToFP32_32` return `FixedToFP` at N = 32, and `FPToFixed32_64` and `FPToFixed32_32` return `FPToFixed` of a 32-bit operand at M = 64 and M = 32 | in the Isla row |
+| The links `SailFPAdd32`, `SailFPSub32`, `SailFPMul32`, `SailFPDiv32`, `SailFPSqrt32`, `SailFixedToFP64_32`, `SailFixedToFP32_32`, `SailFPToFixed32_64`, `SailFPToFixed32_32`, and `SailFPCompare32`: the claims of the 64-bit links for the 32-bit wrappers and for FPCompare on 32-bit operands | the join of `F7/Isla32.lean` |
 | The links `SailFPAdd`, `SailFPSub`, `SailFPMul`, `SailFPDiv`, `SailFPSqrt`, and `SailFixedToFP`: each IR function and the translation's function compute the same function, Isla's values correspond to the translation's, among them the 128-bit integer and the enumeration member of `FixedToFP64`, and Isla's state at each abstract call satisfies `Hyp` | the join of the section above; `hyp_tcg`, `hyp_kvm`, `hyp_sme`, and the `names_` theorems check the profile part |
 
 ## Commands

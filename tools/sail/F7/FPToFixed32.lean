@@ -324,7 +324,7 @@ macro "fix_fin32S" : tactic => `(tactic| (
       | rfl
       | (rw [BitVec.or_zero]; exact (insert_self _ _ _ h.hfpsr).symm)))
 
-set_option maxHeartbeats 200000 in
+set_option maxHeartbeats 170000 in
 theorem fpToFixed32S_run (a : BitVec 32) {R : Std.ExtDHashMap Register RegisterType}
     (h : Hyp R fi ps fpsr) (hs : s.regs = R) :
     ∃ s', (FPToFixed a 0 false fpcrV .FPRounding_ZERO 32).run s =
