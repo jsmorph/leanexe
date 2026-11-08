@@ -39,6 +39,11 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Verified WGSL kernels](entries/verified-wgsl-kernel/README.md) | Proves dispatch of an accepted outer array build. |
 | [Native theorem conclusions](entries/native-conclusion-patterns/README.md) | Extracts result, heap, region, and postcondition facts from a native call theorem. |
 | [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations and extends a proved result to every matching execution. |
+| [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |
+| [Array heaps](entries/heap-sift-invariant/README.md) | Proves sift-down, sift-up, heapify, and removal through a heap order from a node on. |
+| [Operation streams](entries/operation-stream-refinement/README.md) | Proves that a loop over operations refines a fold over an abstract value, with bounds on its counters. |
+| [Link-reversing tree updates](entries/tree-link-reversal/README.md) | Proves stackless tree updates equal to a structural recursion. |
+| [Tail-recursive and fuel-bounded functions](entries/tail-recursive-spec/README.md) | Proves specifications by recursion on the program's measure, by fuel, or by a `repeatWhile` invariant. |
 
 ## Admission and growth
 
