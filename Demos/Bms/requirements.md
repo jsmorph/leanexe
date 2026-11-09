@@ -142,6 +142,7 @@ The machine is a function `M → Except Err (List UInt8) → M × List UInt8`, w
 | `prevReset` | `RESET` bit of the last record that passed the communication checks | 1 |
 | `age` | Each relay's age, up to `D_edm` | 0 for each relay |
 | `pcCount` | Records in `PRECHARGE` without the precharge condition | 0 |
+| `first` | Whether no segment has been answered since the board reset | true |
 
 The permit is the function of the state that the table below gives.  The permit in force for a segment is the permit of the state before it, which the previous answer carried.  A relay's age at segment `t` is 0 for `t` = 0, and otherwise the number of records that passed the communication checks among segments `c + 1` to `t − 1`, where `c` is the last segment before `t` whose answer's bit for the relay differs from the bit of the answer before it, segment 0 counting as such a segment for every relay.  The age therefore depends only on the segments and answers before `t`, and the auxiliary contacts of relays that the bridge held closed before a board reset may open during the first records after it.
 
