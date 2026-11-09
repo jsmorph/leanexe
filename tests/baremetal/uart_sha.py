@@ -28,13 +28,25 @@ USART3 holds one byte and has no flow control, and the step reads no byte while 
 block's two compressions or sends the block's answer.  The script prints one line, a summary or the cause of the
 failure, and exits with status 0 or 1.  TIMEOUT bounds each wait in seconds.
 
+With --overrun after --device, (a) is followed by (e): the script sends blocks A and B in one
+write, so that B's bytes arrive while the step computes A's compressions and sends A's answer,
+and requires A's answer and no further byte within 1 s.  It then sends one byte at a time, 150 ms
+apart, until an answer arrives, at most 63 bytes, and requires the answer to equal the digest of
+every byte before A, A, the last bytes of B, at least one, and the single bytes, as many of B's
+last bytes as complete the block, which USART3 delivers when OVRDIS is set (RM0410 section
+34.8.3): B's last byte stays in USART_RDR until the step reads it.  It then sends four blocks in
+lockstep.  A program that stops receiving after an overrun gets no answer.
+
 Usage: uv run tests/baremetal/uart_sha.py [--timeout TIMEOUT] LOG QEMU [ARG...]
        uv run tests/baremetal/uart_sha.py [--timeout TIMEOUT] --device DEVICE [--baud BAUD]
+         [--overrun]
 """
 
 import argparse
 import hashlib
+import os
 import random
+import select
 import sys
 import threading
 import time
@@ -46,6 +58,9 @@ ANSWER = 32
 LOCKSTEP = 64
 PIPELINED = 64
 HELD = 16
+SINGLES = BLOCK - 1
+GAP = 0.15
+AFTER = 4
 
 
 class Sha:
@@ -123,11 +138,65 @@ def exchange(conn, log):
     return waits, sha
 
 
-def exchange_device(conn):
+def available(conn, wait):
+    """The bytes that arrive through the serial port conn within wait seconds, then until none
+    arrives for 50 ms, or b"" if none arrives."""
+    data = bytearray()
+    t = wait
+    while True:
+        ready, _, _ = select.select([conn.fd], [], [], t)
+        if not ready:
+            return bytes(data)
+        chunk = os.read(conn.fd, 4096)
+        if not chunk:
+            raise Failure(f"the serial port closed after {len(data)} bytes")
+        data += chunk
+        t = 0.05
+
+
+def overrun(conn, sha, rng):
+    """Phase (e): returns the number of B's bytes that the step kept and of the single bytes."""
+    a, b = rng.randbytes(BLOCK), rng.randbytes(BLOCK)
+    first = sha.blocks
+    expected = sha.answers(a)
+    conn.sendall(a + b)
+    check("overrun", first, expected, receive(conn, ANSWER))
+    stray = available(conn, 1.0)
+    if stray:
+        raise Failure(f"overrun: {len(stray)} bytes after the answer to block {first}")
+    singles = bytearray()
+    reply = b""
+    while not reply:
+        if len(singles) == SINGLES:
+            raise Failure(f"overrun: no answer after {SINGLES} single bytes sent {GAP} s apart")
+        byte = rng.randbytes(1)
+        conn.sendall(byte)
+        singles += byte
+        reply = available(conn, GAP)
+    if len(reply) < ANSWER:
+        reply += receive(conn, ANSWER - len(reply))
+    kept = BLOCK - len(singles)
+    h = sha.h.copy()
+    h.update(b[BLOCK - kept:] + singles)
+    if reply != h.digest():
+        raise Failure(f"overrun: the answer {reply.hex()} after {len(singles)} single bytes is "
+                      f"not the digest through B's last {kept} bytes and the single bytes, "
+                      f"{h.hexdigest()}")
+    sha.h, sha.blocks = h, sha.blocks + 1
+    for _ in range(AFTER):
+        data = rng.randbytes(BLOCK)
+        first = sha.blocks
+        expected = sha.answers(data)
+        conn.sendall(data)
+        check("after the overrun", first, expected, receive(conn, ANSWER))
+    return kept, len(singles)
+
+
+def exchange_device(conn, with_overrun):
     rng = random.Random(20261107)
     sha = Sha()
     lockstep(conn, sha, rng)
-    return sha
+    return sha, overrun(conn, sha, rng) if with_overrun else None
 
 
 def main():
@@ -135,21 +204,33 @@ def main():
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--device")
     parser.add_argument("--baud", type=int, default=4800)
+    parser.add_argument("--overrun", action="store_true")
     parser.add_argument("log", nargs="?")
     parser.add_argument("qemu", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.device:
         if args.log:
             parser.error("--device takes no LOG or QEMU")
-        sha, error, elapsed = serve_device(args.device, args.baud, args.timeout,
-                                           lambda conn, log: exchange_device(conn))
+        result, error, elapsed = serve_device(
+            args.device, args.baud, args.timeout,
+            lambda conn, log: exchange_device(conn, args.overrun))
         if error:
             print(error)
             return 1
-        print(f"{sha.blocks} blocks in lockstep on {args.device} at {args.baud} baud, each "
-              f"answer the SHA-256 digest of the bytes sent so far, the last "
+        sha, kept = result
+        if kept is None:
+            print(f"{sha.blocks} blocks in lockstep on {args.device} at {args.baud} baud, each "
+                  f"answer the SHA-256 digest of the bytes sent so far, the last "
+                  f"{sha.h.hexdigest()}, in {elapsed:.1f} s")
+            return 0
+        print(f"{LOCKSTEP} blocks in lockstep on {args.device} at {args.baud} baud, then blocks "
+              f"A and B in one write, after which the step kept B's last {kept[0]} bytes and "
+              f"answered after {kept[1]} single bytes, and {AFTER} blocks in lockstep, each "
+              f"answer the SHA-256 digest of the bytes received so far, the last "
               f"{sha.h.hexdigest()}, in {elapsed:.1f} s")
         return 0
+    if args.overrun:
+        parser.error("--overrun needs --device")
     if not args.qemu:
         parser.error("QEMU is missing")
     result, error, elapsed, early, status = serve(args.qemu, args.log, args.timeout, exchange)

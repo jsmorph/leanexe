@@ -2,8 +2,10 @@
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
 # usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, the echo
 # after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), the
-# CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, and the signed
-# step sgUsart3Tick, NAME signed (tests/TestSupport/M7/Signed.lean).
+# CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, the same step with
+# the initialization initOvrdis of LeanExe/M7/Board.lean, which disables USART3's overrun
+# detection, NAME sha-ovrdis, and the signed step sgUsart3Tick, NAME signed
+# (tests/TestSupport/M7/Signed.lean).
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -30,6 +32,9 @@
 # writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, and
 # elaborates tests/TestSupport/M7/ShaBoardFile.lean under 16G unless MEM is set, whose sha_board
 # and sha_board_bytes state that the bytes written begin the SHA-256 digests of the blocks read.
+# For NAME sha-ovrdis, it writes sha-ovrdis.bin with m7-windows sha-ovrdis-board and elaborates
+# tests/TestSupport/M7/ShaOvrdisBoardFile.lean under 16G unless MEM is set.  The image has no
+# measurement image.
 # For NAME signed, "m7-board.sh check signed" builds m7-windows and
 # tests/TestSupport/M7/SignedLoop.lean, writes signed.bin with m7-windows signed-board and
 # signed.addr, and elaborates tests/TestSupport/M7/SignedBoardFile.lean under 12G unless MEM is
@@ -60,8 +65,12 @@
 # bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
 # For the SHA-256 step, tests/baremetal/uart_sha.py sends blocks of 64 bytes in lockstep and checks
 # each answer against hashlib.sha256 of the bytes sent so far, and the script then requires ORE
-# clear in the same way.  For the signed step, tests/baremetal/uart_signed.py checks each reply
-# against its model of the step's integrator, and the script then requires ORE clear.
+# clear in the same way.  For NAME sha-ovrdis, uart_sha.py --overrun adds blocks sent ahead,
+# which overrun USART3, and requires the answers that follow from the bytes that USART3 delivers
+# with OVRDIS set.  OVRDIS forces ORE to 0, so the script reads USART_CR3 over SWD into NAME.cr3
+# instead and requires OVRDIS, bit 12, set.  For the signed step, tests/baremetal/uart_signed.py
+# checks each reply against its model of the step's integrator, and the script then requires ORE
+# clear.  "emulate" does not take NAME sha-ovrdis, since Renode's USART3 models no overrun.
 # The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
 # theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
 # the read-back as "run" does, without st-flash's reset, runs tools/baremetal/stlink_nrst.py, with
@@ -142,7 +151,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway|area|crc|sha|signed) ;;
+    echo|gateway|area|crc|sha|sha-ovrdis|signed) ;;
     *) usage ;;
   esac
 }
@@ -222,6 +231,18 @@ overrun() {
   echo "pass: $1: USART_ISR 0x$isr has ORE clear"
 }
 
+# Reads USART_CR3 into $1.cr3 of OUT and requires OVRDIS, bit 12, set.
+ovrdis() {
+  local cr3
+  readmem "$1.cr3" 0x40004808 4 || return 1
+  cr3=$(od -An -tx4 -N4 "$out/$1.cr3" | tr -d ' ')
+  if (( ((0x$cr3 >> 12) & 1) == 0 )); then
+    echo "fail: $1: USART_CR3 0x$cr3 has OVRDIS clear"
+    return 1
+  fi
+  echo "pass: $1: USART_CR3 0x$cr3 has OVRDIS set"
+}
+
 # Plays the far end of USART3 for program $1 through the serial port $2, with the gateway's
 # records and the host script's line under the name $3 and the gateway's ticks $4.
 host_run() {
@@ -230,6 +251,7 @@ host_run() {
     echo|area) host=(uart_echo.py) ;;
     crc) host=(uart_crc.py) ;;
     sha) host=(uart_sha.py) ;;
+    sha-ovrdis) host=(uart_sha.py --overrun) ;;
     signed) host=(uart_signed.py) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
@@ -262,6 +284,8 @@ case $1 in
         mem=${MEM:-12G} ;;
       sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt=sha-dwt file=ShaBoardFile count=19
         mem=${MEM:-16G} ;;
+      sha-ovrdis) lib=TestSupport.M7.ShaLoop cmd=sha-ovrdis-board dwt= file=ShaOvrdisBoardFile
+        count=11 mem=${MEM:-16G} ;;
       signed) lib=TestSupport.M7.SignedLoop cmd=signed-board dwt= file=SignedBoardFile count=16
         mem=${MEM:-12G} ;;
     esac
@@ -309,6 +333,7 @@ case $1 in
   emulate)
     [ "$#" -eq 2 ] || usage
     program "$2"
+    [ "$2" != sha-ovrdis ] || usage
     name=$2
     renode=${RENODE:-renode}
     [ -f "$out/$name.bin" ] || { echo "fail: $name: $out/$name.bin is missing"; exit 1; }
@@ -375,6 +400,7 @@ EOF
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
       gateway|crc|sha|signed) overrun "$2" ;;
+      sha-ovrdis) ovrdis "$2" ;;
     esac
     ;;
   diag-image)

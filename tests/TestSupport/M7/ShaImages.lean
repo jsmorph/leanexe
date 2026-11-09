@@ -14,7 +14,9 @@ words of its first bytes, among them the round constants at the memory's byte 40
 stack's limit lies at the area's end.  `m7-windows sha-board` writes the first to `sha.bin`,
 which `st-flash` writes to the board's flash at `0x08000000`, and `m7-windows sha-qemu` writes
 the second to `sha-cmsdk-qemu.bin`, which `tests/baremetal/m7-qemu.sh sha` runs under QEMU against
-`tests/baremetal/uart_sha.py`.
+`tests/baremetal/uart_sha.py`.  `m7-windows sha-ovrdis-board` writes to `sha-ovrdis.bin` the
+board's image with the initialization `initOvrdis`, which disables USART3's overrun detection, in
+the layout `areaBootWith initOvrdis`.
 -/
 
 namespace TestSupport.M7.ShaImages
@@ -38,6 +40,21 @@ def boardImage : GenM (List UInt8) := do
 
 /-- The address of the loop's head of `main` in the board's image. -/
 def boardHead : UInt32 := after boardBoot.base (mainStart shaState)
+
+/-- The board's layout with the initialization `initOvrdis`. -/
+def ovrdisBoot : Boot := Nucleo.areaBootWith Nucleo.initOvrdis shaStepCompiled.module
+
+/-- The board's image with the initialization `initOvrdis` from the self-loop on. -/
+def ovrdisProgram : GenM (List Instr) :=
+  bootProgram ovrdisBoot shaStepCompiled.module 13 shaState areaEnd Nucleo.devBase
+
+/-- The bytes of the board's image with the initialization `initOvrdis`. -/
+def ovrdisImage : GenM (List UInt8) := do
+  return bootBytes ovrdisBoot (← ovrdisProgram)
+
+/-- The address of the loop's head of `main` in the board's image with the initialization
+`initOvrdis`. -/
+def ovrdisHead : UInt32 := after ovrdisBoot.base (mainStart shaState)
 
 /-- QEMU's layout: QEMU's vector table and SP, and the setup of the area before UART0's
 initialization. -/
