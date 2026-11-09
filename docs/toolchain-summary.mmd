@@ -10,7 +10,7 @@ flowchart TB
   C["C, through Clight (C, CALIGN)<br/>each C function computes the Lean result,<br/>in the Lean copy of CompCert's Clight"]
   BARE["Bare-metal program (METAL),<br/>AArch64 or Cortex-M7<br/>the whole program writes the result,<br/>or runs a step forever with each window's trace;<br/>a Rocq proof carries it to Asm"]
   A64["AArch64 Image (A64)<br/>the run from boot writes the result,<br/>in a Lean model of the machine"]
-  M7["Cortex-M7 flash image (M7)<br/>the run from reset performs each window's<br/>request, in a Lean model of the Cortex-M7"]
+  M7["Cortex-M7 flash image (M7)<br/>the run from reset performs each window's<br/>request, in a Lean model of<br/>the Cortex-M7 microcontroller"]
   WGSL["WGSL kernels (WGSL)<br/>a dispatch writes the Lean result,<br/>under the Vulkan memory model"]
   PTX["PTX kernels (PTX)<br/>a launch writes the Lean result,<br/>under the PTX memory model"]
 
@@ -19,7 +19,7 @@ flowchart TB
     T1["Wasmtime, browsers, Node.js"]
     T2["Linux on AArch64 and x86-64"]
     T3["QEMU virt, AArch64"]
-    T7["Cortex-M7: NUCLEO-F767ZI,<br/>QEMU mps2-an500"]
+    T7["STM32F767ZI microcontroller,<br/>an Arm Cortex-M7, on ST's<br/>NUCLEO-F767ZI development board;<br/>QEMU mps2-an500"]
     T4["Vulkan: SwiftShader, llvmpipe"]
     T6["Browser WebGPU"]
     T5["NVIDIA GB10, CUDA"]

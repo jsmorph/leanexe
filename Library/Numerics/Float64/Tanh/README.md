@@ -43,7 +43,7 @@ The port is written in the verified compiler's dialect, which [the verified comp
 
 | C code | Port | Reason |
 |---|---|---|
-| `int32_t k` from `(int32_t)(invln2*x ± 0.5)` | sign `neg` and magnitude `m : UInt64`, with `m` the truncation of `invln2 · x + 0.5` or of `-(invln2 · x - 0.5)` | The dialect converts only between floats and unsigned words.  The negation is exact, so the magnitude equals the C truncation's. |
+| `int32_t k` from `(int32_t)(invln2*x ± 0.5)` | sign `neg` and magnitude `m : UInt64`, with `m` the truncation of `invln2 · x + 0.5` or of `-(invln2 · x - 0.5)` | The negation is exact, so the magnitude equals the C truncation's. |
 | kernel and scaling inline in `expm1` | `expm1Kernel x c neg m` | One function per path shape. |
 | `t = huge + x; return x - (t - (huge + x))` | `x - ((huge + x) - (huge + x))` | The expression raises the inexact flag in C, and its value is `x`. |
 | `x + tiny < 0` and `tiny - one` | kept | The test holds for every `x ≤ -56 ln 2`, and the value is `-1`. |

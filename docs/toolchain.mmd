@@ -50,7 +50,7 @@ flowchart TB
   end
 
   subgraph M7B["Cortex-M7 backend"]
-    M7GEN["LeanExe/M7 genProgram<br/>the step of a program with requests<br/>simulation theorem step_call<br/>in a Lean model of the Cortex-M7"]
+    M7GEN["LeanExe/M7 genProgram<br/>the step of a program with requests<br/>simulation theorem step_call<br/>in a Lean model of the<br/>Cortex-M7 microcontroller"]
     M7IMG["Vector table, the area's setup,<br/>initialization, main, step, udivmod64<br/>M7: board_run and areaBoard_run,<br/>every window of the run from reset"]
     M7F["Flash image file<br/>m7-windows writes it,<br/>and the kernel compares its bytes"]
     M7ISLA["Isla traces of Arm's A-profile Sail model<br/>in AArch32 Thumb state: Lean proofs<br/>compare the Thumb forms with them"]
@@ -92,7 +92,7 @@ flowchart TB
     direction LR
     LNX["Linux on AArch64 and x86-64<br/>executable linked with<br/>tools/native-host.c"]
     QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code,<br/>or arm64 Image"]
-    NUC["Cortex-M7: NUCLEO-F767ZI,<br/>QEMU mps2-an500, and Renode<br/>images of the C programs,<br/>or the back end's images from reset"]
+    NUC["STM32F767ZI microcontroller,<br/>an Arm Cortex-M7, on ST's<br/>NUCLEO-F767ZI development board;<br/>QEMU mps2-an500; and Renode:<br/>images of the C programs,<br/>or the back end's images from reset"]
     WT["Wasmtime<br/>leanexe-wasmtime-host,<br/>WASI Preview 1"]
     JS["Browsers and Node.js<br/>GPT-2 pages,<br/>gpt32-wasm-host.mjs"]
     VK["wgpu-native on Vulkan<br/>SwiftShader, llvmpipe<br/>leanexe-webgpu-host"]
