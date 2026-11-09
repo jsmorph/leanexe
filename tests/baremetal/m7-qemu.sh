@@ -61,7 +61,7 @@ case $name in
     file=SignedQemuFile count=4 mem=${MEM:-12G} ;;
   delim) image=delim-cmsdk-qemu cmd=delim-qemu lib=TestSupport.M7.DelimLoop
     file=DelimQemuFile count=11 mem=${MEM:-16G} ;;
-  bms) image=bms-cmsdk-qemu cmd=bms-qemu lib=TestSupport.M7.BmsLoop file=BmsQemuFile count=8
+  bms) image=bms-cmsdk-qemu cmd=bms-qemu lib=TestSupport.M7.BmsLoop file=BmsQemuFile count=10
     mem=${MEM:-24G} ;;
   *) usage ;;
 esac

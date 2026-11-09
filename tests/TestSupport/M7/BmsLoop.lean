@@ -17,7 +17,9 @@ initial store.  Each holds for every code map that holds the bytes of a file who
 `board_loop_runs` states that the board's run never stops, and `board_loop_steps` counts its
 windows, each in at most 202,799 steps, 16 of `main` and the 202,783 of `bms_static` for the step,
 a bound that the window of a `0x00` after a non-empty segment approaches and that the other
-windows lie far below.
+windows lie far below.  `board_loop_poll` and `qemu_loop_poll` add, through `Counted.split` and
+`bms_poll`, that each window whose state and value do not satisfy `BmsDecodes`, every window but
+the window of a delimiter after a non-empty segment, takes at most 3,301 steps.
 
 `qemu_prefix` and `board_prefix` join the loops to `bms_cmsdk_prefix`, `bms_cmsdk_answered`,
 `bms_usart3_prefix`, and `bms_usart3_answered` of `Demos/Bms/Abs.lean`: the bytes that the windows
@@ -122,6 +124,58 @@ theorem board_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
     (fun _ => rfl) (fun _ => rfl) bmsCompiled.bmsTickUsart3.implements (fun _ _ _ => trivial) rfl
     bms_covered.1 bms_noArea.1 hAt0 hcap0 hk (by rw [bms_stack.1]; decide) bmsInit rfl hf b hb
     N).uniform (fun F st vs => costRun_le_staticCost rfl bms_static.1 F st vs)
+
+/-- The BMS step on the board from reset, counted, with the windows other than the window of a
+delimiter bounded apart: window `i` takes at most 202,799 steps, and at most 3,301, 16 of `main`
+and the 3,285 of `bms_poll` for the step, when its state and the value that it receives do not
+satisfy `BmsDecodes`. -/
+theorem board_loop_poll {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk (Nucleo.bootWith Nucleo.initOvrdis) boardProgram n len = true)
+    (hf : Nucleo.Flash code n len) (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    let σ' := fun j => σ (j + initReads Nucleo.initOvrdis)
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 202799) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ BmsDecodes (reqRun bmsTickUsart3 bmsInit σ' i).state
+          (reqRun bmsTickUsart3 bmsInit σ' i).last → x ≤ 3301) ∧
+      ∀ i ≤ N, ∃ s, run Nucleo.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = boardHead ∧
+        s.trace = initTrace Nucleo.initOvrdis σ ++
+          windows (reqTrace (devBus Nucleo.devBase) bmsTickUsart3 bmsInit σ') i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready bmsCompiled.module bmsCompiled.tables
+      (Verified.initialHeap bmsCompiled.tables) bmsCompiled.module.initialStore :=
+    Verified.Ready.initial rfl bmsCompiled.initial
+  exact (Nucleo.boardWith_run_steps Nucleo.initOvrdis_ok (s0 := bmsState) (words := bmsWords)
+    (fun _ => rfl) (fun _ => rfl) bmsCompiled.bmsTickUsart3.implements (fun _ _ _ => trivial) rfl
+    bms_covered.1 bms_noArea.1 hAt0 hcap0 hk (by rw [bms_stack.1]; decide) bmsInit rfl hf b hb
+    N).split (Q := fun g v => ¬ BmsDecodes g v)
+    (fun F st vs => costRun_le_staticCost rfl bms_static.1 F st vs)
+    (fun F st g v h => bms_poll (Or.inl rfl) F st g v h)
+
+/-- The BMS step of `bmsTick` on `mps2-an500` from reset, counted: window `i` takes at most 202,799
+steps, and at most 3,301 when its state and the value that it receives do not satisfy
+`BmsDecodes`. -/
+theorem qemu_loop_poll {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk Qemu.boot qemuProgram n len = true) (hf : FileAt code n len 0) (b : State)
+    (hb : Reset code 0 b) (N : Nat) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 202799) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ BmsDecodes (reqRun bmsTick bmsInit σ i).state (reqRun bmsTick bmsInit σ i).last →
+        x ≤ 3301) ∧
+      ∀ i ≤ N, ∃ s, run Qemu.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = qemuHead ∧
+        s.trace = Qemu.initTrace ++
+          windows (reqTrace (devBus Qemu.devBase) bmsTick bmsInit σ) i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready bmsCompiled.module bmsCompiled.tables
+      (Verified.initialHeap bmsCompiled.tables) bmsCompiled.module.initialStore :=
+    Verified.Ready.initial rfl bmsCompiled.initial
+  exact (boot_run_steps (B := Qemu.boot) (s0 := bmsState) (words := bmsWords) (fun _ => rfl)
+    (fun _ => rfl) bmsCompiled.bmsTick.implements (fun _ _ _ => trivial) rfl bms_covered.2
+    bms_noArea.2 Qemu.devWindow hAt0 hcap0 (by decide) (by decide) hk hf (by decide)
+    (Qemu.initRuns σ code) (by decide) (by decide)
+    (fun s hs => by rw [bms_stack.2]; exact Qemu.stackOk (by decide) s hs) bmsInit rfl b hb
+    N).split (Q := fun g v => ¬ BmsDecodes g v)
+    (fun F st vs => costRun_le_staticCost rfl bms_static.2 F st vs)
+    (fun F st g v h => bms_poll (Or.inr rfl) F st g v h)
 
 /-- The run of `board_loop` succeeds for every number of steps. -/
 theorem board_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}

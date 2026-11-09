@@ -332,7 +332,7 @@ case $1 in
         mem=${MEM:-12G} ;;
       delim) lib=TestSupport.M7.DelimLoop cmd=delim-board dwt= file=DelimBoardFile count=20
         mem=${MEM:-16G} ;;
-      bms) lib=TestSupport.M7.BmsLoop cmd=bms-board dwt=bms-dwt file=BmsBoardFile count=13
+      bms) lib=TestSupport.M7.BmsLoop cmd=bms-board dwt=bms-dwt file=BmsBoardFile count=17
         mem=${MEM:-24G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*

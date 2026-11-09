@@ -103,4 +103,4 @@ The same agent checked the revision.  It reran its machine with per-relay ages a
 
 ## Open items
 
-The lemma of B3a remains open, as [the requirements' open items](requirements.md#open-items) state, and the board's run of the schedule confirmed the timing values `T_ans`, `T_lease`, `T_sample`, and `T_act`, so none of them changed.  The overrun behavior is settled by the board tests and the decision of gap 5.  No VKB entry follows from this task, which proved nothing.
+`bms_board_poll` proves B3a with the lemma `costRun_le_pathCost`, as [the requirements' open items](requirements.md#open-items) state, and the board's run of the schedule confirmed the timing values `T_ans`, `T_lease`, `T_sample`, and `T_act`, so none of them changed.  The overrun behavior is settled by the board tests and the decision of gap 5.  No VKB entry follows from this task, which proved nothing.

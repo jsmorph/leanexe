@@ -15,7 +15,9 @@
     "LeanExe.M7.Proof.Main",
     "LeanExe.M7.Proof.Board",
     "TestSupport.M7.DelimStep",
-    "TestSupport.M7.DelimLoop"
+    "TestSupport.M7.DelimLoop",
+    "TestSupport.M7.BmsStep",
+    "TestSupport.M7.BmsLoop"
   ],
   "declarations": [
     "LeanExe.M7.PureKey",
@@ -60,7 +62,17 @@
     "TestSupport.M7.dl_lenTest",
     "TestSupport.M7.dl_poll",
     "TestSupport.M7.Delim.board_loop_poll",
-    "TestSupport.M7.Delim.qemu_loop_poll"
+    "TestSupport.M7.Delim.qemu_loop_poll",
+    "Demos.Bms.Program.bmsPhases",
+    "TestSupport.M7.BmsDecodes",
+    "TestSupport.M7.bmsDispatch",
+    "TestSupport.M7.bmsPollTests",
+    "TestSupport.M7.bms_pollPath",
+    "TestSupport.M7.bms_params",
+    "TestSupport.M7.bms_dispatchTest",
+    "TestSupport.M7.bms_poll",
+    "TestSupport.M7.Bms.board_loop_poll",
+    "TestSupport.M7.Bms.qemu_loop_poll"
   ],
   "unimported": {
     "tests/TestSupport/M7/DelimBoardFile.lean": [
@@ -68,6 +80,12 @@
     ],
     "tests/TestSupport/M7/DelimQemuFile.lean": [
       "TestSupport.M7.DelimQemuFile.dl_qemu_poll"
+    ],
+    "tests/TestSupport/M7/BmsBoardFile.lean": [
+      "TestSupport.M7.BmsBoardFile.bms_board_poll"
+    ],
+    "tests/TestSupport/M7/BmsQemuFile.lean": [
+      "TestSupport.M7.BmsQemuFile.bms_qemu_poll"
     ]
   }
 }
