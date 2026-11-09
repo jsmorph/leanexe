@@ -31,6 +31,14 @@ accesses with `DSB SY`.  It gives PD8 and PD9 high speed, push-pull, pull-up, an
 function 7, and then the alternate function mode, clears `USART_CR2.STOP` for one stop bit,
 writes 3,333 to `USART_BRR` for 4,800 baud from HSI's 16 MHz, and writes `USART_CR1` with UE, RE,
 and TE set.  Each read-modify-write clears and sets the bits that `board.S` clears and sets.
+`initOvrdis` adds a write of `OVRDIS`, bit 12, to `USART_CR3` after the write of `USART_BRR` and
+before the write of `USART_CR1`, while UE is 0 from reset, since USART3 ignores the bit while UE is
+set (RM0410 Rev 4, section 34.8.3).  With `OVRDIS` set, a byte that arrives while `RXNE` is set
+replaces the byte in `USART_RDR` and sets no `ORE`, so reception continues after an overrun.
+
+`bootWith ops` lays out an image with the initialization `ops`, and `programWith`, `imageWith`,
+`loopHeadWith`, `areaBootWith`, and `areaLoopHeadWith` follow it.  `boot`, `program`, `image`,
+`loopHead`, `areaBoot`, and `areaLoopHead` are their instances for `init`.
 -/
 
 namespace LeanExe.M7.Nucleo
@@ -65,13 +73,14 @@ def gpiodPupdr : UInt32 := 0x40020C0C
 def gpiodAfrh : UInt32 := 0x40020C24
 def usartCr1 : UInt32 := 0x40004800
 def usartCr2 : UInt32 := 0x40004804
+def usartCr3 : UInt32 := 0x40004808
 def usartBrr : UInt32 := 0x4000480C
 def usartIsr : UInt32 := 0x4000481C
 def usartRdr : UInt32 := 0x40004824
 def usartTdr : UInt32 := 0x40004828
 
-/-- The accesses of `board_init`, in its order. -/
-def init : List InitOp :=
+/-- The accesses of `board_init` before its write of `USART_CR1`, which sets UE. -/
+def initConfig : List InitOp :=
   [.rmw rccDckcfgr2 0x30 0x20,
     .rmw rccAhb1enr 0 0x8, .read rccAhb1enr,
     .rmw rccApb1enr 0 0x40000, .read rccApb1enr,
@@ -82,31 +91,66 @@ def init : List InitOp :=
     .rmw gpiodAfrh 0xFF 0x77,
     .rmw gpiodModer 0xF0000 0xA0000,
     .rmw usartCr2 0x3000 0,
-    .write usartBrr 3333,
-    .write usartCr1 0xD]
+    .write usartBrr 3333]
 
-/-- The image's layout: the vector table of the 16 system entries and the 110 interrupts of the
-STM32F767 at the ITCM alias, SP at the top of DTCM, and the initialization. -/
-def boot : Boot := { org := flashItcm, entries := 126, sp := stackTop, init := initCode init }
+/-- The accesses of `board_init`, in its order. -/
+def init : List InitOp := initConfig ++ [.write usartCr1 0xD]
+
+/-- The accesses of `board_init` with a write of `OVRDIS` to `USART_CR3` before the write of
+`USART_CR1`. -/
+def initOvrdis : List InitOp := initConfig ++ [.write usartCr3 0x1000, .write usartCr1 0xD]
+
+/-- The image's layout with the initialization `ops`: the vector table of the 16 system entries
+and the 110 interrupts of the STM32F767 at the ITCM alias, SP at the top of DTCM, and the code of
+`ops`. -/
+def bootWith (ops : List InitOp) : Boot :=
+  { org := flashItcm, entries := 126, sp := stackTop, init := initCode ops }
+
+/-- The image's layout with the initialization `init`. -/
+def boot : Boot := bootWith init
+
+/-- The instructions from the self-loop on of the image with the initialization `ops` for step `k`
+of `m` from the state `s0`. -/
+def programWith (ops : List InitOp) (m : Wasm.Module) (k : Nat) (s0 : List UInt64) :
+    GenM (List Instr) :=
+  bootProgram (bootWith ops) m k s0 stackLimit devBase
 
 /-- The image's instructions from the self-loop on for step `k` of `m` from the state `s0`. -/
 def program (m : Wasm.Module) (k : Nat) (s0 : List UInt64) : GenM (List Instr) :=
-  bootProgram boot m k s0 stackLimit devBase
+  programWith init m k s0
+
+/-- The bytes of the image with the initialization `ops`. -/
+def imageWith (ops : List InitOp) (m : Wasm.Module) (k : Nat) (s0 : List UInt64) :
+    GenM (List UInt8) := do
+  return bootBytes (bootWith ops) (← programWith ops m k s0)
 
 /-- The bytes of the image. -/
-def image (m : Wasm.Module) (k : Nat) (s0 : List UInt64) : GenM (List UInt8) := do
-  return bootBytes boot (← program m k s0)
+def image (m : Wasm.Module) (k : Nat) (s0 : List UInt64) : GenM (List UInt8) :=
+  imageWith init m k s0
+
+/-- The address of the loop's head of `main` for the initialization `ops` and the initial state
+`s0`. -/
+def loopHeadWith (ops : List InitOp) (s0 : List UInt64) : UInt32 :=
+  after (bootWith ops).base (mainStart s0)
 
 /-- The address of the loop's head of `main` for the initial state `s0`. -/
-def loopHead (s0 : List UInt64) : UInt32 := after boot.base (mainStart s0)
+def loopHead (s0 : List UInt64) : UInt32 := loopHeadWith init s0
 
-/-- The layout of an image whose area holds the store of `m`: the setup of the generator's area
-before the initialization. -/
-def areaBoot (m : Wasm.Module) : Boot := boot.setup (setupCode areaHeader areaPages m)
+/-- The layout of an image with the initialization `ops` whose area holds the store of `m`: the
+setup of the generator's area before the initialization. -/
+def areaBootWith (ops : List InitOp) (m : Wasm.Module) : Boot :=
+  (bootWith ops).setup (setupCode areaHeader areaPages m)
+
+/-- The layout of an image whose area holds the store of `m`. -/
+def areaBoot (m : Wasm.Module) : Boot := areaBootWith init m
+
+/-- The address of the loop's head of `main` in the layout `areaBootWith ops m` for the initial
+state `s0`. -/
+def areaLoopHeadWith (ops : List InitOp) (m : Wasm.Module) (s0 : List UInt64) : UInt32 :=
+  after (areaBootWith ops m).base (mainStart s0)
 
 /-- The address of the loop's head of `main` in the layout `areaBoot m` for the initial state
 `s0`. -/
-def areaLoopHead (m : Wasm.Module) (s0 : List UInt64) : UInt32 :=
-  after (areaBoot m).base (mainStart s0)
+def areaLoopHead (m : Wasm.Module) (s0 : List UInt64) : UInt32 := areaLoopHeadWith init m s0
 
 end LeanExe.M7.Nucleo
