@@ -9,7 +9,8 @@
     "a rewrite with a lemma about UInt64.ofNat n that fails on a literal such as 1377 : UInt64",
     "bitStep^[8] (r ^^^ (b &&& 0xFF)) = Library.Hashing.Crc.byteStep crc32Table r b for a bitwise step linear over GF(2)",
     "((x ^^^ y) &&& 1) * c = ((x &&& 1) * c) ^^^ ((y &&& 1) * c)",
-    "(kernel) deterministic timeout after simp only [Function.iterate_succ_apply]"
+    "(kernel) deterministic timeout after simp only [Function.iterate_succ_apply]",
+    "((w <<< 8) + (v >>> 56)).toNat for bit fields joined with + instead of |||"
   ],
   "modules": [
     "Library.Hashing.Words.Proof",
@@ -20,7 +21,8 @@
     "Library.Hashing.Sha2.Equiv.SHA512.Bridge",
     "Library.Regex.Bits",
     "Library.Numerics.Arithmetic.Fma.FmaRoundPack",
-    "Library.Hashing.Crc.Bitwise.Proof"
+    "Library.Hashing.Crc.Bitwise.Proof",
+    "LeanExe.Requests.DelimitedWords"
   ],
   "declarations": [
     "Library.Hashing.Words.rotr",
@@ -52,7 +54,11 @@
     "Library.Hashing.Crc.Bitwise.bitStep_xor",
     "Library.Hashing.Crc.Bitwise.iterate_xor",
     "Library.Hashing.Crc.Bitwise.iterate_even",
-    "Library.Hashing.Crc.Bitwise.iterate_table"
+    "Library.Hashing.Crc.Bitwise.iterate_table",
+    "LeanExe.Requests.toNat_shl8_add",
+    "LeanExe.Requests.toNat_shl56_add",
+    "LeanExe.Requests.wordBytes8_shl",
+    "LeanExe.Requests.wordBytes8_shr"
   ],
   "examples": [
     "Library.Hashing.SipHash.Proof.rotl_13",
@@ -62,6 +68,8 @@
     "Library.Hashing.Sha256.bigSigma0_toUInt32",
     "Library.Numerics.Arithmetic.Fma.FmaRound.assemble_spec",
     "Library.Numerics.Arithmetic.Fma.FmaRoundPack.normal_right",
-    "Library.Hashing.Crc.Bitwise.crc32Reg_eq"
+    "Library.Hashing.Crc.Bitwise.crc32Reg_eq",
+    "LeanExe.Requests.push40_bytes",
+    "LeanExe.Requests.unshift40_bytes"
   ]
 }

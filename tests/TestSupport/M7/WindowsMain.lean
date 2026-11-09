@@ -4,6 +4,7 @@ import TestSupport.M7.GwImages
 import TestSupport.M7.CrcImages
 import TestSupport.M7.ShaImages
 import TestSupport.M7.SignedImages
+import TestSupport.M7.DelimImages
 import TestSupport.M7.Dwt
 import TestSupport.M7.Area
 import TestSupport.M7.Diag
@@ -11,8 +12,9 @@ import TestSupport.M7.Diag
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
 `echo-usart3` and `echo-cmsdk`, the gateways `gateway-usart3` and `gateway-cmsdk`, the CRC-32
-steps `crc-usart3` and `crc-cmsdk`, the SHA-256 steps `sha-usart3` and `sha-cmsdk`, and the
-signed steps `signed-usart3` and `signed-cmsdk`.
+steps `crc-usart3` and `crc-cmsdk`, the SHA-256 steps `sha-usart3` and `sha-cmsdk`, the
+signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `delim-usart3` and
+`delim-cmsdk`.
 
 - `m7-windows frames` prints each program's functions with their frames and sizes.
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
@@ -45,6 +47,10 @@ signed steps `signed-usart3` and `signed-cmsdk`.
   QEMU's `mps2-an500`, and `m7-windows signed-board FILE` the image of `sgUsart3Tick` for the
   NUCLEO-F767ZI (`tests/TestSupport/M7/SignedImages.lean`), and each prints the addresses of `main`
   and of its loop's head.
+- `m7-windows delim-qemu FILE` writes to FILE the image of the echo of records `dlCmsdkTick` for
+  QEMU's `mps2-an500`, and `m7-windows delim-board FILE` the image of `dlUsart3Tick` for the
+  NUCLEO-F767ZI with the initialization `initOvrdis` (`tests/TestSupport/M7/DelimImages.lean`),
+  and each prints the addresses of `main` and of its loop's head.
 - `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`,
   `m7-windows sha-dwt FILE`, and `m7-windows div-dwt FILE` write the measurement images of
   `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step, and the SHA-256 step
@@ -54,8 +60,9 @@ signed steps `signed-usart3` and `signed-cmsdk`.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
   the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
-  `DIR/NAME.KIND.longest` the longest window of the kind `tick`, and to `DIR/NAME.divisions` each
-  call of `udivmod64` in a window of that kind, with its path, operands, and loop passes.  An echo
+  `DIR/NAME.KIND.longest` the longest window of the kinds `tick` and `answer`, and to
+  `DIR/NAME.divisions` each call of `udivmod64` in a window of those kinds, with its path,
+  operands, and loop passes.  An echo
   receives the bytes of `uart_echo.py`'s lockstep message, blocks of its burst lengths 2, 16, 322,
   and 65,536, and the message again, and must answer each with bit 5 flipped.  A CRC-32 step
   receives the same bytes and must answer each with the low byte of the CRC-32 of the bytes so
@@ -63,7 +70,9 @@ signed steps `signed-usart3` and `signed-cmsdk`.
   receives the 64 blocks of `shaInput` and must answer each with the 32 bytes of the digest of the
   bytes so far.  A gateway receives the input records of the file IN, 18 words a line, and must
   send the output records of the file OUT, 6 words a line, each word's bytes the most significant
-  first.
+  first.  An echo of records receives `dlInput` of `tests/TestSupport/M7/Windows.lean`, records
+  encoded with their delimiters, empty, truncated, and overlong segments, and the records again,
+  and must send `delimAnswers echoMach 36 0` of those bytes.
 
 Each command exits with status 1 on a failure.
 -/
@@ -208,6 +217,13 @@ def main (args : List String) : IO UInt32 := do
   | ["signed-board", file] =>
       writeImage "signed-usart3-board" file TestSupport.M7.Signed.boardImage
         LeanExe.M7.Nucleo.boot.base TestSupport.M7.Signed.boardHead
+  | ["delim-qemu", file] =>
+      writeImage "delim-cmsdk-qemu" file TestSupport.M7.Delim.qemuImage
+        TestSupport.M7.Qemu.boot.base TestSupport.M7.Delim.qemuHead
+  | ["delim-board", file] =>
+      writeImage "delim-usart3-board" file TestSupport.M7.Delim.boardImage
+        (LeanExe.M7.Nucleo.bootWith LeanExe.M7.Nucleo.initOvrdis).base
+        TestSupport.M7.Delim.boardHead
   | ["gateway-dwt", file] =>
       match TestSupport.M7.Dwt.gwDwt with
       | .ok bytes =>
@@ -277,7 +293,7 @@ def main (args : List String) : IO UInt32 := do
               (outs.flatMap fun r => r.flatMap beBytes).toArray)
         | _ => throw <| IO.userError "usage: m7-windows run NAME DIR [IN OUT]"
       let t0 ← IO.monoMsNow
-      let r ← runProgram p input expected 100000000 ["tick"]
+      let r ← runProgram p input expected 100000000 ["tick", "answer"]
       let t1 ← IO.monoMsNow
       IO.FS.createDirAll dir
       let kinds := r.stats.toList.map (·.1) |>.toArray.qsort (· < ·)
@@ -303,7 +319,7 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
         "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
         "sha-qemu FILE | sha-board FILE | sha-ovrdis-board FILE | signed-qemu FILE | " ++
-        "signed-board FILE | " ++
+        "signed-board FILE | delim-qemu FILE | delim-board FILE | " ++
         "board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
         "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2

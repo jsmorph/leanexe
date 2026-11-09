@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # The programs with requests through the Cortex-M7 back end on QEMU's mps2-an500: the echo of
 # cmsdkTick, NAME echo, the default, the energy controller's gateway of gwTick, NAME gateway, the
-# CRC-32 step crcCmsdkTick, NAME crc, the SHA-256 step shaCmsdkTick, NAME sha, and the signed step
-# sgCmsdkTick, NAME signed.  It builds m7-windows and the loop theorem of
-# tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean, CrcLoop.lean, ShaLoop.lean, or SignedLoop.lean,
-# and writes the image that tests/TestSupport/M7/Qemu.lean, GwImages.lean, CrcImages.lean,
-# ShaImages.lean, or SignedImages.lean lays out with m7-windows qemu, gateway-qemu, crc-qemu,
-# sha-qemu, or signed-qemu.  It elaborates tests/TestSupport/M7/QemuFile.lean, GwQemuFile.lean,
-# CrcQemuFile.lean, ShaQemuFile.lean, or SignedQemuFile.lean in the directory of the image under a
-# memory cap of MEM, 16G for the gateway and the SHA-256 step and 12G otherwise unless set, so
+# CRC-32 step crcCmsdkTick, NAME crc, the SHA-256 step shaCmsdkTick, NAME sha, the signed step
+# sgCmsdkTick, NAME signed, and the echo of records dlCmsdkTick, NAME delim.  It builds m7-windows
+# and the loop theorem of tests/TestSupport/M7/QemuLoop.lean, GwLoop.lean, CrcLoop.lean,
+# ShaLoop.lean, SignedLoop.lean, or DelimLoop.lean, and writes the image that
+# tests/TestSupport/M7/Qemu.lean, GwImages.lean, CrcImages.lean, ShaImages.lean,
+# SignedImages.lean, or DelimImages.lean lays out with m7-windows qemu, gateway-qemu, crc-qemu,
+# sha-qemu, signed-qemu, or delim-qemu.  It elaborates tests/TestSupport/M7/QemuFile.lean,
+# GwQemuFile.lean, CrcQemuFile.lean, ShaQemuFile.lean, SignedQemuFile.lean, or DelimQemuFile.lean
+# in the directory of the image under a memory cap of MEM, 16G for the gateway, the SHA-256 step,
+# and the echo of records and 12G otherwise unless set, so
 # that the kernel checks that the file holds the image's bytes, the gateway's in parts, and the
 # loop theorem holds of the file.  It requires that each theorem whose axioms that file prints
 # depends on no axiom beyond propext, Classical.choice, and Quot.sound, and reports the check's
@@ -19,8 +21,10 @@
 # tests/baremetal/uart_echo.py checks that each reply is the byte sent with bit 5 flipped, for
 # CRC-32, tests/baremetal/uart_crc.py that each reply is the low byte of zlib.crc32 of the bytes
 # sent so far, for SHA-256, tests/baremetal/uart_sha.py that each answer to a block of 64 bytes
-# is hashlib.sha256 of the bytes sent so far, and for the signed step,
-# tests/baremetal/uart_signed.py that each reply is its model's of the step's integrator.  For the
+# is hashlib.sha256 of the bytes sent so far, for the signed step,
+# tests/baremetal/uart_signed.py that each reply is its model's of the step's integrator, and for
+# the echo of records, tests/baremetal/uart_delim.py that each answer to a segment is that of the
+# mirror of the delimited framing in tests/baremetal/delim_frame.py.  For the
 # gateway, tests/baremetal/uart_gateway.py simulates TICKS minutes, 10,080 unless set, of the
 # plant of the minute series SERIES, $HOME/data/energy/series/nist-2015.csv unless set, and checks
 # the commands and the monitoring, and native-bare gateway-run then runs the gateway in native
@@ -30,10 +34,10 @@
 # output and times, QEMU's trace log NAME.trace, the host script's line NAME.echo, the messages of
 # uv and QEMU in NAME.stderr, and for the gateway the records gateway.records.in,
 # gateway.records.out, and gateway.records.lean.
-# Usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed]
+# Usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed | delim]
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed]" >&2
+  echo "usage: tests/baremetal/m7-qemu.sh [echo | gateway | crc | sha | signed | delim]" >&2
   exit 2
 }
 [ "$#" -le 1 ] || usage
@@ -49,6 +53,8 @@ case $name in
     mem=${MEM:-16G} ;;
   signed) image=signed-cmsdk-qemu cmd=signed-qemu lib=TestSupport.M7.SignedLoop
     file=SignedQemuFile count=4 mem=${MEM:-12G} ;;
+  delim) image=delim-cmsdk-qemu cmd=delim-qemu lib=TestSupport.M7.DelimLoop
+    file=DelimQemuFile count=9 mem=${MEM:-16G} ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -87,6 +93,7 @@ case $name in
   crc) host=(uart_crc.py) ;;
   sha) host=(uart_sha.py) ;;
   signed) host=(uart_signed.py) ;;
+  delim) host=(uart_delim.py) ;;
   gateway) host=(uart_gateway.py --ticks "${TICKS:-10080}" "$series" "$out/$name.records") ;;
 esac
 if "$uv" run "$root/tests/baremetal/${host[0]}" --timeout "${TIMEOUT:-120}" "${host[@]:1}" \

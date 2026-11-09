@@ -5,7 +5,11 @@
     "frameTick u kin kout mach (abs s) v = (abs (tick s v).1, (tick s v).2)",
     "dataOut bus reg w <+: crcReplies (dataIn bus reg w)",
     "recs.flatMap recordBytes = bs.take (8 * kin * (bs.length / (8 * kin)))",
-    "the bytes that a request program writes to a UART as a prefix of a specification's output"
+    "the bytes that a request program writes to a UART as a prefix of a specification's output",
+    "dataOut B u (windows (reqTrace B tick s0 σ) n) <+: (delimAnswers mach maxLen m0 ((dataIn B u (windows (reqTrace B tick s0 σ) n)).map UInt64.toUInt8)).map UInt8.toUInt64",
+    "delimTick u maxLen mach (abs s) v = (abs (tick s v).1, (tick s v).2) on the states of an invariant",
+    "cobsDecode s = some r ↔ cobsEncode r = s",
+    "the answers of a request program to records delimited by zero bytes"
   ],
   "modules": [
     "LeanExe.Requests.Windows",
@@ -20,7 +24,10 @@
     "TestSupport.M7.GwLoop",
     "TestSupport.M7.CrcReplies",
     "TestSupport.M7.ShaSpec",
-    "TestSupport.M7.ShaLoop"
+    "TestSupport.M7.ShaLoop",
+    "LeanExe.Requests.Delimited",
+    "TestSupport.M7.DelimAbs",
+    "TestSupport.M7.DelimLoop"
   ],
   "declarations": [
     "LeanExe.Requests.Bus",
@@ -49,7 +56,22 @@
     "LeanExe.Native.regBus",
     "LeanExe.M7.devBus",
     "Library.Hashing.Crc.Proof.byteStep_holds",
-    "Library.Hashing.Sha256.sha256_spec"
+    "Library.Hashing.Sha256.sha256_spec",
+    "LeanExe.Requests.delimTick",
+    "LeanExe.Requests.delim0",
+    "LeanExe.Requests.DelimInv",
+    "LeanExe.Requests.delimInv_run",
+    "LeanExe.Requests.delim_prefix",
+    "LeanExe.Requests.delim_answered",
+    "LeanExe.Requests.delimAnswers",
+    "LeanExe.Requests.segments",
+    "LeanExe.Requests.split",
+    "LeanExe.Requests.SegErr",
+    "LeanExe.Requests.segments_append_zero",
+    "LeanExe.Requests.cobsEncode",
+    "LeanExe.Requests.cobsDecode",
+    "LeanExe.Requests.cobsDecode_eq_some_iff",
+    "LeanExe.Requests.reqTrace_mapOn"
   ],
   "examples": [
     "Demos.Energy.gwTickWith_abs",
@@ -65,6 +87,11 @@
     "TestSupport.M7.Sha.sha_digests",
     "TestSupport.M7.Sha.sha_digests_bytes",
     "TestSupport.M7.Crc.crc_replies",
-    "TestSupport.M7.Sha.shaSpec_fips"
+    "TestSupport.M7.Sha.shaSpec_fips",
+    "TestSupport.M7.Delim.dlPhases_abs",
+    "TestSupport.M7.Delim.dl_prefix",
+    "TestSupport.M7.Delim.dl_usart3_prefix",
+    "TestSupport.M7.Delim.dl_usart3_answered",
+    "TestSupport.M7.Delim.board_prefix"
   ]
 }

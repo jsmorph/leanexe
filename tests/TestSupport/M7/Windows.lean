@@ -5,6 +5,7 @@ import TestSupport.M7.Asm
 import TestSupport.M7.Crc
 import TestSupport.M7.Sha
 import TestSupport.M7.Signed
+import TestSupport.M7.Delim
 import TestSupport.Bare.Req
 import Demos.Energy.Loop
 
@@ -12,8 +13,9 @@ import Demos.Energy.Loop
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`
 generates, the echo's steps `usart3Tick` and `cmsdkTick`, the gateway's steps `gwTickUsart3`
 and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, the SHA-256 steps
-`shaUsart3Tick` and `shaCmsdkTick`, and the signed steps `sgUsart3Tick` and `sgCmsdkTick`,
-measured by running the generated code in the model of `LeanExe/M7/Machine.lean`.  A window runs
+`shaUsart3Tick` and `shaCmsdkTick`, the signed steps `sgUsart3Tick` and `sgCmsdkTick`, and the
+echoes of records `dlUsart3Tick` and `dlCmsdkTick`, measured by running the generated code in
+the model of `LeanExe/M7/Machine.lean`.  A window runs
 from the loop's head of `main` to its next arrival there: the call of the step and the request's
 register access.
 
@@ -38,8 +40,9 @@ compares the output with the expected bytes: for the echo, the input with bit 5 
 flipped, for CRC-32, the low byte of the CRC-32 of each prefix of the input, which `crc32Bits`
 computes bit by bit with the reflected polynomial `0xEDB88320`, for SHA-256, after each block
 of 64 bytes, the 32 bytes of the digest that `sha256` of `Library/Hashing/Sha256/Program.lean`
-gives for the input up to the block's end, and for the signed step, the low byte of the
-integrator of `leak` shifted right by 4 after each byte, in native Lean.  The program holds the
+gives for the input up to the block's end, for the signed step, the low byte of the
+integrator of `leak` shifted right by 4 after each byte, and for the echo of records,
+`delimAnswers echoMach 36 0` of the input, in native Lean.  The program holds the
 code of `udivmod64`, which the run does not execute: at its entry the run sets r0:r1 to the
 quotient and r2:r3 to the remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word,
 returns to LR, and counts the call by the routine's path, both high words 0, the divisor's low
@@ -202,6 +205,44 @@ def sgProg (name : String) (k : Nat) (tick : SgState → UInt64 → SgState × U
     port := p, phase := fun s => s.phase, kind := fun s v => echoKind p s.phase v, inRec := 1,
     outRec := 1, limit := stackLimit, start := [], answer := sgReplies }
 
+open TestSupport.M7.Delim in
+/-- The kind of a window of the echo of records: `answer` is the window of a `0x00` after a
+nonempty segment, which decodes the segment and encodes the answer, and `empty` that of a `0x00`
+after an empty one. -/
+def dlKind (p : Port) (f : DlFrame) (v : UInt64) : String :=
+  if f.phase == 0 then (if v &&& p.rxFull != 0 then "rxne" else "idle")
+  else if f.phase == 1 then
+    (if v &&& 255 != 0 then "byte" else if f.len == 0 then "empty" else "answer")
+  else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
+  else "sent"
+
+/-- The records of a run of the echo of records: the empty record, records with zeros, and the
+largest record whose segment has 36 bytes. -/
+def dlRecords : List (List UInt8) :=
+  [[], [0], [1, 2, 3], [0, 0, 0], (List.range 35).map fun i => UInt8.ofNat (7 * i + 1),
+    (List.range 35).map fun i => UInt8.ofNat (i % 3), (List.range 20).map fun i => UInt8.ofNat (i * 13)]
+
+/-- The input of a run of the echo of records: the records encoded, each followed by a `0x00`,
+an empty segment, a truncated encoding, a segment of 37 bytes and one of 50, a record of 36
+bytes, whose encoding is too long, a zero inside an encoding, and the records again. -/
+def dlInput : Array UInt8 :=
+  let good := dlRecords.flatMap fun r => LeanExe.Requests.cobsEncode r ++ [0]
+  let bad := [0, 0] ++ [5, 1, 2, 0] ++ (List.replicate 37 9 ++ [0]) ++
+    (List.replicate 50 7 ++ [0]) ++
+    (LeanExe.Requests.cobsEncode ((List.range 36).map fun i => UInt8.ofNat (i + 1)) ++ [0]) ++
+    [3, 1, 0, 2, 0]
+  ([0] ++ good ++ bad ++ good).toArray
+
+open TestSupport.M7.Delim in
+def dlProg (name : String) (k : Nat) (tick : DlFrame → UInt64 → DlFrame × UInt64) (p : Port) :
+    Prog :=
+  { name, module := dlCompiled.module, k, G := DlFrame, s0 := dlInit, words := dlWords, tick,
+    port := p, phase := fun f => f.phase, kind := dlKind p, inRec := 1, outRec := 1,
+    limit := stackLimit, start := [],
+    answer := fun input =>
+      (LeanExe.Requests.delimAnswers echoMach 36 0 input.toList).toArray,
+    input := some dlInput }
+
 def programs : List Prog :=
   [echoProg "echo-usart3" 9 TestSupport.Bare.usart3Tick usart3,
     echoProg "echo-cmsdk" 5 TestSupport.Bare.cmsdkTick cmsdk,
@@ -216,7 +257,9 @@ def programs : List Prog :=
     shaProg "sha-cmsdk" TestSupport.M7.Sha.shaCmsdkCompiled.module
       TestSupport.M7.Sha.shaCmsdkTick cmsdk,
     sgProg "signed-usart3" 4 TestSupport.M7.Signed.sgUsart3Tick usart3,
-    sgProg "signed-cmsdk" 5 TestSupport.M7.Signed.sgCmsdkTick cmsdk]
+    sgProg "signed-cmsdk" 5 TestSupport.M7.Signed.sgCmsdkTick cmsdk,
+    dlProg "delim-usart3" 22 TestSupport.M7.Delim.dlUsart3Tick usart3,
+    dlProg "delim-cmsdk" 23 TestSupport.M7.Delim.dlCmsdkTick cmsdk]
 
 /-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=

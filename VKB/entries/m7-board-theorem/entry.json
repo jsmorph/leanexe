@@ -36,7 +36,8 @@
     "TestSupport.M7.CrcLoop",
     "TestSupport.M7.ShaLoop",
     "TestSupport.M7.SignedLoop",
-    "TestSupport.M7.CrcBitwise"
+    "TestSupport.M7.CrcBitwise",
+    "TestSupport.M7.DelimLoop"
   ],
   "declarations": [
     "LeanExe.M7.StepCall",
@@ -122,7 +123,12 @@
     "TestSupport.M7.CrcBitwise.crcBitwise_covered",
     "TestSupport.M7.CrcBitwise.crcBitwise_static",
     "TestSupport.M7.CrcBitwise.crcBitwise_stack",
-    "TestSupport.M7.CrcBitwise.crcBitwise_cost"
+    "TestSupport.M7.CrcBitwise.crcBitwise_cost",
+    "TestSupport.M7.Delim.board_loop",
+    "TestSupport.M7.Delim.board_loop_steps",
+    "TestSupport.M7.Delim.board_loop_runs",
+    "TestSupport.M7.Delim.dl_confined",
+    "TestSupport.M7.dl_static"
   ],
   "unimported": {
     "tests/TestSupport/M7/SignedBoardFile.lean": [
