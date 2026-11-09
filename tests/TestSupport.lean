@@ -43,5 +43,8 @@ import TestSupport.M7.CrcReplies
 import TestSupport.M7.ShaSpec
 import TestSupport.M7.Signed
 import TestSupport.M7.SignedLoop
+import TestSupport.M7.Delim
+import TestSupport.M7.DelimAbs
+import TestSupport.M7.DelimStep
 import TestSupport.A64.CicSigned
 import TestSupport.A64.Int64Text
