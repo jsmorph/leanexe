@@ -10,7 +10,10 @@ encoder appends to the data in its logical view.  `segments` splits a stream of 
 complete segments, and `segResult` gives the result for a segment: an overflow when the segment
 is longer than a maximum length, a decoding error when it is no encoding, and the record
 otherwise.  `delimAnswers` runs a machine over the results of the nonempty segments and joins
-its answers, each encoded and followed by a `0x00`.
+its answers, each encoded and followed by a `0x00`.  `split` and `answerRun` append to the end of
+a list at each segment, and compiled code computes them as `splitLinear` and `answerRunLinear`,
+in time linear in the bytes and the segments, which the `csimp` theorems `split_eq_splitLinear`
+and `answerRun_eq_answerRunLinear` prove equal to them.
 
 F1 is `cobsDecode_encode` with `zero_not_mem_cobsEncode` and `length_cobsEncode`: decoding
 inverts encoding for every record, the encoding holds no zero byte, and a record shorter than 254
@@ -391,6 +394,31 @@ def splitByte (s : Split) (b : UInt8) : Split :=
 /-- The split of the bytes `bs`. -/
 def split (bs : List UInt8) : Split := bs.foldl splitByte ⟨[], []⟩
 
+/-- `splitByte` on the segments and the current segment's bytes in reverse order. -/
+def splitByteRev (p : List (List UInt8) × List UInt8) (b : UInt8) :
+    List (List UInt8) × List UInt8 :=
+  if b = 0 then (p.2.reverse :: p.1, []) else (p.1, b :: p.2)
+
+/-- `split` in time linear in the number of bytes. -/
+def splitLinear (bs : List UInt8) : Split :=
+  let p := bs.foldl splitByteRev ([], [])
+  ⟨p.1.reverse, p.2.reverse⟩
+
+theorem foldl_splitByteRev : ∀ (bs : List UInt8) (D : List (List UInt8)) (c : List UInt8),
+    bs.foldl splitByte ⟨D, c⟩ =
+      ⟨(bs.foldl splitByteRev (D.reverse, c.reverse)).1.reverse,
+        (bs.foldl splitByteRev (D.reverse, c.reverse)).2.reverse⟩
+  | [], D, c => by simp
+  | b :: bs, D, c => by
+      by_cases hb : b = 0
+      · simpa [splitByte, splitByteRev, hb] using foldl_splitByteRev bs (D ++ [c]) []
+      · simpa [splitByte, splitByteRev, hb] using foldl_splitByteRev bs D (c ++ [b])
+
+/-- Compiled code computes `split` as `splitLinear`. -/
+@[csimp] theorem split_eq_splitLinear : @split = @splitLinear := by
+  funext bs
+  exact foldl_splitByteRev bs [] []
+
 /-- The complete segments of the bytes `bs`: the bytes between consecutive `0x00` bytes, in
 order, the first segment beginning at the start of `bs`.  The bytes after the last `0x00` form
 no segment yet. -/
@@ -421,6 +449,38 @@ def answerRun (mach : M → Except SegErr (List UInt8) → M × List UInt8) (max
   segs.foldl (fun p s => if s = [] then p else
     ((mach p.1 (segResult maxLen s)).1,
       p.2 ++ cobsEncode (mach p.1 (segResult maxLen s)).2 ++ [0])) (m0, [])
+
+/-- The step of `answerRun` with the answers' bytes in an array. -/
+def answerStepArray (mach : M → Except SegErr (List UInt8) → M × List UInt8) (maxLen : Nat)
+    (p : M × Array UInt8) (s : List UInt8) : M × Array UInt8 :=
+  if s = [] then p else
+    let r := mach p.1 (segResult maxLen s)
+    (r.1, (p.2 ++ cobsEncode r.2).push 0)
+
+/-- `answerRun` in time linear in the number of segments and the length of the answers. -/
+def answerRunLinear (mach : M → Except SegErr (List UInt8) → M × List UInt8) (maxLen : Nat)
+    (m0 : M) (segs : List (List UInt8)) : M × List UInt8 :=
+  let p := segs.foldl (answerStepArray mach maxLen) (m0, #[])
+  (p.1, p.2.toList)
+
+theorem foldl_answerStepArray (mach : M → Except SegErr (List UInt8) → M × List UInt8)
+    (maxLen : Nat) : ∀ (segs : List (List UInt8)) (m : M) (a : Array UInt8),
+    segs.foldl (fun p s => if s = [] then p else
+        ((mach p.1 (segResult maxLen s)).1,
+          p.2 ++ cobsEncode (mach p.1 (segResult maxLen s)).2 ++ [0])) (m, a.toList) =
+      ((segs.foldl (answerStepArray mach maxLen) (m, a)).1,
+        (segs.foldl (answerStepArray mach maxLen) (m, a)).2.toList)
+  | [], m, a => rfl
+  | s :: segs, m, a => by
+      by_cases hs : s = []
+      · simpa [answerStepArray, hs] using foldl_answerStepArray mach maxLen segs m a
+      · simpa [answerStepArray, hs] using foldl_answerStepArray mach maxLen segs
+          (mach m (segResult maxLen s)).1 ((a ++ cobsEncode (mach m (segResult maxLen s)).2).push 0)
+
+/-- Compiled code computes `answerRun` as `answerRunLinear`. -/
+@[csimp] theorem answerRun_eq_answerRunLinear : @answerRun = @answerRunLinear := by
+  funext M mach maxLen m0 segs
+  exact foldl_answerStepArray mach maxLen segs m0 #[]
 
 /-- The bytes of the machine's answers to the complete segments of the bytes `bs`. -/
 def delimAnswers (mach : M → Except SegErr (List UInt8) → M × List UInt8) (maxLen : Nat) (m0 : M)
