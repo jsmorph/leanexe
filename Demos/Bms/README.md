@@ -2,7 +2,7 @@
 
 [The requirements](requirements.md) specify the protection layer of a battery management system for a pack of four lithium iron phosphate cells, a machine that answers each record of a bridge with the permits of three relays, and [the review](review.md) records their decisions.  The machine's specification and its theorems carry the code SPEC of [the index](../../index.md), the step that the verified compiler compiles carries WASM, and the flash images of the Cortex-M7 back end, with theorems about their runs from reset, carry M7.
 
-[The host side](Host.md) describes the bridge and pack simulator that play the far end of the board's USART3, its bridge rules, its models, its fault-injection scenarios, and the format of its logs.
+[The host side](Host.md) describes the bridge and pack simulator that play the far end of the board's USART3, its bridge rules, its models, its fault-injection scenarios, the format of its logs, and their replay against the specification in native Lean.
 
 ## Specification and theorems
 
