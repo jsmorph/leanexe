@@ -67,6 +67,7 @@ Library.Numerics.Float64.Sinpi.Compiled:Library.Numerics.Float64.Sinpi.compiled.
 Library.Numerics.Float64.Erf.Compiled:Library.Numerics.Float64.Erf.compiled.module:erf
 Library.Numerics.Decimal.ParseFloat.Compiled:Library.Numerics.Decimal.ParseFloat.compiled.module:parsefloat
 Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat.compiled.module:printfloat
+Library.Numerics.Decimal.Int64Text.Compiled:Library.Numerics.Decimal.Int64Text.compiled.module:int64Text
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Demos.Energy.Verified:Demos.Energy.Verified.compiled.module:energy

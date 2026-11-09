@@ -195,6 +195,7 @@ import Library.Numerics.Float64.Lgamma.LgammaSinpi
 import Library.Numerics.Decimal.ParseFloat.ParseFloatBytes
 import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
 import Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
+import Library.Numerics.Decimal.Int64Text.Compiled
 import Library.Numerics.Float64.Tgamma.TgammaFinal
 import Library.Numerics.Float64.Lgamma.LgammaAccMid
 import Library.Numerics.Float64.Lgamma.LgammaAccSmall

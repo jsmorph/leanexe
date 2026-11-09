@@ -95,7 +95,8 @@ of the skill supports no other types.  If the request needs one, say so and stop
 
 Write the program in the dialect that [the verified compiler
 manual](../../../docs/verified-manual.md#the-dialect) describes, in the sections from "The
-dialect" through "Restrictions".  Integers are `UInt64`, an array is read with `xs[i.toNat]!`,
+dialect" through "Restrictions".  Integers are `UInt64` and `Int64`, with the parameters and the
+result of the types that Stage 1 states, an array is read with `xs[i.toNat]!`,
 iteration uses `LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`, a fold over the whole array,
 or tail recursion, which compiles as a loop, and a definition calls only the definitions listed
 before it.  Use no recursion other than tail recursion and no byte literal: other recursion adds a

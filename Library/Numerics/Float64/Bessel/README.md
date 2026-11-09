@@ -45,7 +45,7 @@ The sources are FreeBSD's `lib/msun/src/e_j0.c`, `e_j1.c`, and `e_jn.c` [1, 2, 3
 | `cos (x + x)` | `Trig.cosWith` | Same. |
 | `log` | `Log.logWith` with `Log.logTable` and `Log.logTable2` | Arm's `log`, whose results may differ from fdlibm's `log` in the last bit. |
 | `sqrt` | `Float.sqrt` | Correctly rounded in both. |
-| `int n` | low 32 bits of a `UInt64`, two's complement, with `\|n\| = 2^31` for `n = -2^31` | The dialect's words are unsigned, and C's `-n` overflows there. |
+| `int n` | low 32 bits of a `UInt64`, two's complement, with `\|n\| = 2^31` for `n = -2^31` | C's `-n` overflows at `n = -2^31`, where the port's magnitude is `2^31`. |
 | `while` loop that sizes the continued fraction | `LeanExe.repeatWhile` with `2^32 - 1` steps of fuel | The dialect's loops are bounded, and the module's docstring states that the fuel exceeds the steps the loop can take. |
 | `huge + x > one`, `one/vzero`, `vzero/vzero` | same expressions with `1e300`, `1.0/0.0`, and `0.0/0.0` | The values are kept, and the dialect has no flags. |
 | `verified_compile` | present | The command checks the encoding one function at a time, and the module's build needs about 1.0 GB, as [the gamma function's Proof section](../Tgamma/README.md#proof) describes. |

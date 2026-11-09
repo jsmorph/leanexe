@@ -7,7 +7,11 @@
     "∃ s neg d e, print64 w = words s ∧ Derives false s (.dec neg d e) ∧ Shortest64 w neg d e",
     "isDigitW b.toUInt64 = isDigit b for every byte b",
     "LeanExe.build n f = words l",
-    "limb (words s) j = (byteAt s j.toNat).toUInt64"
+    "limb (words s) j = (byteAt s j.toNat).toUInt64",
+    "toString x for x : Int64 as the words of Nat.toDigits 10 of the magnitude",
+    "(Nat.toDigits 10 m)[j] = Nat.digitChar (m / 10 ^ (L - 1 - j) % 10)",
+    "readInt64 (printInt64 x) = (true, x)",
+    "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block"
   ],
   "modules": [
     "Library.Numerics.Decimal.Shared.StrconvDecode",
@@ -18,7 +22,8 @@
     "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout",
     "Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem",
     "Library.Numerics.Arithmetic.Uscale.UscaleBase",
-    "Demos.RunningSumFp.ArithmeticProof"
+    "Demos.RunningSumFp.ArithmeticProof",
+    "Library.Numerics.Decimal.Int64Text.Proof"
   ],
   "declarations": [
     "Library.Numerics.Decimal.Shared.StrconvGrammar.Derives",
@@ -37,7 +42,14 @@
     "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.satE",
     "Library.Numerics.Decimal.ParseFloat.expDigits",
     "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout.words_append",
-    "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout.build_words"
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatLayout.build_words",
+    "Int.repr_eq_ite",
+    "Nat.toList_repr",
+    "Nat.toDigits_of_lt_base",
+    "Nat.toDigits_append_toDigits",
+    "Nat.length_toDigits_le_iff",
+    "List.reverseRecOn",
+    "Option.map_some"
   ],
   "examples": [
     "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.isDigitW_byte",
@@ -55,6 +67,16 @@
     "Demos.RunningSumFp.stripCR_words",
     "Demos.RunningSumFp.parse_accept",
     "Demos.RunningSumFp.render_roundtrip",
-    "Demos.RunningSumFp.render_shortest"
+    "Demos.RunningSumFp.render_shortest",
+    "Library.Numerics.Decimal.Int64Text.expectedPrint",
+    "Library.Numerics.Decimal.Int64Text.print_toList",
+    "Library.Numerics.Decimal.Int64Text.digitWords_getElem?",
+    "Library.Numerics.Decimal.Int64Text.digitWords_of_magnitude",
+    "Library.Numerics.Decimal.Int64Text.expectedRead_print",
+    "Library.Numerics.Decimal.Int64Text.expectedPrint_of_read",
+    "Library.Numerics.Decimal.Int64Text.readInt64_printInt64",
+    "Library.Numerics.Decimal.Int64Text.printInt64_of_read",
+    "Library.Numerics.Decimal.Int64Text.denote_minus",
+    "Library.Numerics.Decimal.Int64Text.denote_plain"
   ]
 }

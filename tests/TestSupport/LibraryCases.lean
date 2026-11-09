@@ -35,6 +35,7 @@ import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
 import TestSupport.Modules.AvlDelete
 import TestSupport.Modules.NextPermutation
+import TestSupport.Modules.Int64Text
 
 namespace TestSupport.LibraryCases
 
@@ -197,6 +198,14 @@ def cases : IO Unit := do
       [{", ".intercalate ((Library.Numerics.Arithmetic.Sieve.expected n).toList.map toString)}]|1|2"
   for n in Library.Numerics.Arithmetic.Sieve.sieveTraps do
     IO.println s!"sieve|primes|array-u64|{u n}|trap"
+  for x in Library.Numerics.Decimal.Int64Text.printInputs do
+    IO.println s!"int64Text|printInt64|array-u64|{u x.toUInt64}|\
+      [{", ".intercalate ((Library.Numerics.Decimal.Int64Text.expectedPrint x).toList.map
+        toString)}]|1|1"
+  for xs in Library.Numerics.Decimal.Int64Text.readInputs do
+    let (ok, v) := Library.Numerics.Decimal.Int64Text.expectedRead xs.toArray
+    IO.println s!"int64Text|readInt64|list:i64,i64|{arrU xs}|\
+      {if ok then 1 else 0} {v.toUInt64}|1|1"
   for n in Library.Numerics.Arithmetic.PrimeFactors.primeFactorInputs do
     IO.println s!"primeFactors|compute|i64|{u n}|\
       {Library.Numerics.Arithmetic.PrimeFactors.expected n}|0|0"

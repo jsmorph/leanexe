@@ -1,0 +1,9 @@
+do Int64 decimal reader and printer
+
+The session that ran the request stated it in these terms.  A printer from Int64 to its canonical
+decimal text: "-" for negatives, no leading zeros, "0" for zero, and "-9223372036854775808" for the
+minimum.  A reader from text to Int64 that accepts exactly a documented grammar, rejects everything
+else (empty input, stray bytes, and values outside [-2^63, 2^63 - 1]), and round-trips with the
+printer.  The specification settles the grammar's open choices (a leading "+", leading zeros, and
+"-0") with reasons and says how the result reports rejection.  Text uses the byte representation
+that the library already uses for text in compiled programs.

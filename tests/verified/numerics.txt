@@ -16,6 +16,7 @@ asinh:Library.Numerics.Float64.Asinh.AsinhBytes:Library/Numerics/Float64/Asinh/A
 pow:Library.Numerics.Float64.Pow.PowBytes:Library/Numerics/Float64/Pow/PowFile.lean
 parsefloat:Library.Numerics.Decimal.ParseFloat.ParseFloatBytes:Library/Numerics/Decimal/ParseFloat/ParseFloatFile.lean
 printfloat:Library.Numerics.Decimal.PrintFloat.PrintFloatBytes:Library/Numerics/Decimal/PrintFloat/PrintFloatFile.lean
+int64Text:Library.Numerics.Decimal.Int64Text.Compiled:Library/Numerics/Decimal/Int64Text/File.lean
 bessel:Library.Numerics.Float64.Bessel.BesselBytes:Library/Numerics/Float64/Bessel/BesselFile.lean
 tgamma:Library.Numerics.Float64.Tgamma.TgammaBytes:Library/Numerics/Float64/Tgamma/TgammaFile.lean
 lgamma:Library.Numerics.Float64.Lgamma.LgammaBytes:Library/Numerics/Float64/Lgamma/LgammaFile.lean
