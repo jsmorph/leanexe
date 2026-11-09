@@ -9,7 +9,7 @@ NUCLEO-F767ZI in the layout `bootWith initOvrdis` of `LeanExe/M7/Board.lean`, wh
 initialization also writes `OVRDIS` to `USART_CR3`, and the program of `dlCmsdkTick`, function
 23, for QEMU's `mps2-an500` in the layout of `tests/TestSupport/M7/Qemu.lean`.  With `OVRDIS` set,
 a byte that arrives while `USART_RDR` holds another replaces it and reception continues, so the
-next `0x00` restores the framing's alignment after an overrun; with `OVRDIS` clear, an overrun
+next `0x00` restores the framing's alignment after an overrun.  With `OVRDIS` clear, an overrun
 stops reception until software writes `ORECF`, which a step confined to `USART_ISR`,
 `USART_RDR`, and `USART_TDR` cannot do.  `m7-windows delim-board` writes the first to
 `delim.bin`, which `st-flash` writes to the board's flash at `0x08000000`, and `m7-windows

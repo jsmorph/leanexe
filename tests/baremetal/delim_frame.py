@@ -9,7 +9,7 @@ cobs_encode transcribes StuffData of Cheshire and Baker (1999), as cobsEncode do
 with the code len + 1 at each zero byte and at the end of the data, and with the code 0xFF after
 254 nonzero bytes, so a final run of 254 nonzero bytes gets a block 0x01 after it.  cobs_decode
 is cobsDecode: each block is a code byte c from 1 to 255 followed by c - 1 nonzero bytes, and
-gives them followed by a zero when c < 0xFF; the result must end with that zero, which it drops.
+gives them followed by a zero when c < 0xFF.  The result must end with that zero, which it drops.
 It rejects the variant without the final 0x01, which the cobs package on PyPI writes, so this
 mirror does not use that package.  segments, seg_result, echo_mach, and answers mirror
 segments, segResult, echoMach, and delimAnswers.

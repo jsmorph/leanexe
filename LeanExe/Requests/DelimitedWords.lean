@@ -6,7 +6,7 @@ The delimited framing of `LeanExe/Requests/Delimited.lean` in the verified compi
 for steps that hold a segment and an answer in words.  `Bytes40` holds 40 bytes in five words,
 the first byte in the most significant byte of `w0`.  `push40` moves every byte one place toward
 the start and puts a byte at the end, and `unshift40` moves every byte one place toward the end
-and puts a byte at the start, each with five shifts and five additions; the additions join bit
+and puts a byte at the start, each with five shifts and five additions.  The additions join bit
 fields that do not overlap, so each byte of the result reduces to arithmetic on `toNat`.
 
 `decodeWords seg n` decodes the last `n` bytes of `seg`, a segment that a step stored with

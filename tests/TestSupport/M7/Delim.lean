@@ -56,8 +56,10 @@ def dlValid (d : CobsDec) (len : UInt64) : UInt64 :=
 /-- The encoder after the answer to a segment of `len` bytes, the last `len` of `seg`, with the
 count `c`: the status, 2 for an overflow above 36 bytes, 1 for a decoding error, and 0 for a
 record, then the count's low byte, then the decoded record when there is one.  The decoder and
-the encoder run on every such window, and only the status and the number of decoded bytes to
-encode depend on the segment's result, so that no `if` selects between calls. -/
+the encoder run in every such window, and only the status and the number of decoded bytes to
+encode depend on the segment's result.  `e` names the result of `encAll` before `encByte` takes
+it, since `verified_compile` timed out at `whnf` when `encByte` took the call of `encAll` as its
+argument. -/
 def dlAnswer (seg : Bytes40) (len c : UInt64) : CobsEnc :=
   let d := decodeWords seg len
   let ok := dlValid d len
