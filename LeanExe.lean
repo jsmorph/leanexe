@@ -429,6 +429,8 @@ import LeanExe.PTX.Runs
 import LeanExe.PTX.Semantics
 import LeanExe.PTX.Syntax
 import LeanExe.PTX.Translate
+import LeanExe.Requests.Delimited
+import LeanExe.Requests.DelimitedWords
 import LeanExe.Requests.Reads
 import LeanExe.Requests.Records
 import LeanExe.Requests.Windows
