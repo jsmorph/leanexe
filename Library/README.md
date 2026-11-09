@@ -17,7 +17,7 @@ The library groups reusable implementations and their proofs by algorithm family
 | [Combinatorics](../index.md#13-graphs-and-combinatorial-search) | WASM SPEC WASMF C | Exact cover by Algorithm X with dancing links, and the next arrangement in lexicographic order by Algorithm L. |
 | [Arithmetic](../index.md#1-arithmetic) | WASM SPEC WASMF C | Software FMA, limb arithmetic, multiple-precision addition, subtraction, multiplication, and division, unrounded scaling, Euclidean and binary GCD, modular inverse, modular exponentiation and the strong probable-prime test, factor counting, the sieve of Eratosthenes, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | WASM SPEC WASMF C A64 | Elementary and special functions with their accuracy proofs. |
-| [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | WASM SPEC WASMF C | Parsing and shortest-decimal printing. |
+| [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-numbers) | WASM SPEC WASMF C A64 | Parsing and shortest-decimal printing of binary64 and binary32 values, and reading and printing of `Int64` values. |
 | [Fourier transforms](Numerics/Fourier/README.md) | WASM WASMF C | DFT, inverse transform, and power spectrum. |
 | [Reductions](Numerics/Reductions/README.md) | WASM WASMF C | Word and binary64 folds, including pairwise summation. |
 | [Linear algebra](Numerics/LinearAlgebra/README.md) | WASM WASMF C | Vector and matrix operations in binary64 and binary32. |
