@@ -76,19 +76,33 @@ class Session:
         self.tally = {"segments": 0, "empty": 0, "records": 0, "decode": 0, "overflow": 0}
 
     def exchange(self, data, what):
-        """Sends data and reads and checks the answers that its 0x00 bytes call for."""
+        """Sends data one segment at a time, each up to and including its 0x00, and after each
+        reads and checks the answer that it calls for, so that no byte arrives while the step
+        decodes a segment or writes its answer."""
+        start = 0
+        while start < len(data):
+            end = data.find(b"\x00", start)
+            end = len(data) if end < 0 else end + 1
+            self.segment(data[start:end], what)
+            start = end
+
+    def segment(self, chunk, what):
         pending = bytes(self.sent[self.sent.rfind(b"\x00") + 1:]) if 0 in self.sent \
             else bytes(self.sent)
-        expected, self.count = answer_list(pending + data, self.count)
-        self.sent += data
-        self.conn.sendall(data)
-        for i, e in enumerate(expected):
-            got = read_answer(self.conn)
+        expected, self.count = answer_list(pending + chunk, self.count)
+        self.sent += chunk
+        self.conn.sendall(chunk)
+        for e in expected:
+            try:
+                got = read_answer(self.conn)
+            except Failure as err:
+                raise Failure(f"{what}: {err}, after {self.tally['segments']} segments") from None
             if got != e:
-                raise Failure(f"{what}: answer {i} is {got.hex()}, not {e.hex()}")
+                raise Failure(f"{what}: answer {got.hex()}, not {e.hex()}, after "
+                              f"{self.tally['segments']} segments")
             status = cobs_decode(e[:-1])[0]
             self.tally[("records", "decode", "overflow")[status]] += 1
-        segs = data.count(0)
+        segs = chunk.count(0)
         self.tally["segments"] += segs
         self.tally["empty"] += segs - len(expected)
 

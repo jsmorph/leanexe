@@ -90,7 +90,11 @@
 # "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without st-flash, for a run
 # from the power-on reset of a replug after NAME.bin lies in the flash.  When the virtual COM port
 # forwards none of the board's bytes, a USB reset of the ST-LINK, usbreset BUS/DEVICE, before the
-# next run restores it.
+# next run restores it.  With USBRESET set to the ST-LINK's VID:PID or BUS/DEVICE, "nrst" runs
+# usbreset USBRESET after the tool and waits 2 s before the far end starts: in sessions in which
+# the port passes no byte of the board's after each run of the tool, the USB reset restores it,
+# and it neither resets the target nor sends USART3 a byte, as a program's count of segments
+# continued across one shows.
 #
 # "m7-board.sh diag-image" builds m7-windows under a memory cap of MEM, 12G unless set, and writes
 # diag.bin, the diagnostic image of tests/TestSupport/M7/Diag.lean, which no theorem covers and
@@ -410,6 +414,11 @@ EOF
       nrst)
         write_flash "$2.bin"
         nrst_reset "$2"
+        if [ -n "${USBRESET:-}" ]; then
+          usbreset "$USBRESET" >>"$out/$2.nrst" 2>&1 || {
+            echo "fail: usbreset $USBRESET: $(tail -n 1 "$out/$2.nrst")"; exit 1; }
+          sleep 2
+        fi
         ;;
     esac
     delim_overrun=1
