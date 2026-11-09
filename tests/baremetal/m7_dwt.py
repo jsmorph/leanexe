@@ -94,6 +94,21 @@ SHA_KINDS = {
     (3, 1, 0): ("sentblock", 2169),
 }
 
+# The model's instruction counts of the BMS step's windows, from the loop's head to the loop's
+# head (tests/TestSupport/M7/Windows.lean, m7-windows run bms-usart3), by the phase before and
+# after the window: a stored byte and an empty segment both go from phase 1 to phase 0, and the
+# window of a 0x00 after a non-empty segment, which runs bmsDelim, alone goes from 1 to 2.
+BMS_KINDS = {
+    (0, 0): ("idle", 1753),
+    (0, 1): ("rxne", 1752),
+    (1, 0): ("byte", (1985, 2447)),
+    (1, 2): ("answer", (111008, 153434)),
+    (2, 2): ("txwait", 2216),
+    (2, 3): ("tx", 2376),
+    (3, 2): ("sent", (2365, 2366)),
+    (3, 0): ("sent", (2365, 2366)),
+}
+
 FLAGS = [(31, "LPWR"), (30, "WWDG"), (29, "IWDG"), (28, "SFT"), (27, "POR"), (26, "PIN"),
          (25, "BOR")]
 
@@ -190,8 +205,14 @@ def phases(path, kinds):
             continue
         name, ins = kinds.get((key >> 2, key & 3), (f"key {key}", None))
         mean = total / count
-        extra = "" if ins is None else f"  {ins + MEAS}"
-        print(f"  {name:7} {count:9} {least:6} {most:6} {mean:9.1f}{extra}")
+        if ins is None:
+            extra = ""
+        elif isinstance(ins, tuple):
+            extra = f"  {ins[0] + MEAS} to {ins[1] + MEAS}"
+        else:
+            extra = f"  {ins + MEAS}"
+        over = f"  above {HALF_BYTE}" if most > HALF_BYTE else ""
+        print(f"  {name:7} {count:9} {least:6} {most:6} {mean:9.1f}{extra}{over}")
         if ins is None:
             status = 1
     return status
@@ -241,10 +262,12 @@ def bootlog(path):
 def main():
     commands = {"div": div, "echo": lambda path: phases(path, ECHO_KINDS),
                 "crc": lambda path: phases(path, CRC_KINDS),
+                "bms": lambda path: phases(path, BMS_KINDS),
                 "gateway": lambda path: framed(path, GW_KINDS),
                 "sha": lambda path: framed(path, SHA_KINDS), "bootlog": bootlog}
     if len(sys.argv) != 3 or sys.argv[1] not in commands:
-        print("usage: m7_dwt.py div RESULTS | echo RESULTS | crc RESULTS | gateway RESULTS | "
+        print("usage: m7_dwt.py div RESULTS | echo RESULTS | crc RESULTS | bms RESULTS | "
+              "gateway RESULTS | "
               "sha RESULTS | bootlog LOG", file=sys.stderr)
         return 2
     return commands[sys.argv[1]](sys.argv[2])
