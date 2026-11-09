@@ -111,6 +111,14 @@ The replay of a run starts the framing and the machine from the state after a bo
 | `board-reset` | A board reset |
 | `inject` | A fault that no record carries: a skipped number, dropped answers, the bridge's silence, a weld, a failure to close, or a short |
 
+## Report
+
+`tests/baremetal/bms_report.py` draws a run from `PREFIX.in`, `PREFIX.out`, and `PREFIX.log` and writes `OUTPUT.png` and `OUTPUT.md`.  It splits the writes of `PREFIX.in` into segments with the framing of `bms_proto.py`, decodes the answers of `PREFIX.out` with the same module, and takes the times, the scenarios, and the bridge's actions from `PREFIX.log`.  The figure's panels share one time axis and show the cell voltages, temperatures, and pack current against their limits, the pack and bus voltages, the pack voltage minus the sum of the cells against `tol_sum`, each relay's permit bit, coil, and reported auxiliary contact, and the state and code of each answer, with the scenarios numbered along the top.  `OUTPUT.md` holds the figure and a table of events: each scenario's start and result, the injections and board resets, BR4's timeouts, lease expiries, and each answer that changed the state or the code, was not current, arrived after a timeout, or changed the leases or the coils, with the readings behind a fault and the bridge's actions.
+
+```sh
+uv run tests/baremetal/bms_report.py build/bms/board build/bms/board-report
+```
+
 ## Results against the mirror
 
 Every scenario passes against the Python machine with `STEP` 1 ms and with `STEP` 20 ms, the limit that BR5 allows for both the sampling and the first byte, and with the noise seeds 1 to 5.  With `STEP` 20 ms an exchange takes at most 156.7 ms from the sampling to the end of the current answer, and after a lost delimiter the lease of the record before outlasts the delayed answer by 66.7 ms, against the requirements' estimates of 156.7 ms and about 64.6 ms.  In the lost-answer scenario with `STEP` 1 ms, the lease of the last answered record ends 361.3 ms after the sampling of the first record whose answer is dropped, and the answer to the record after it arrives at 418.8 ms, as the requirements' timing table bounds them.  The bridge releases the relays at the end of each expired lease on the simulated clock, and every answer of each run equals the replay of its `PREFIX.in`.
