@@ -4,8 +4,9 @@
 # after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), the
 # CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, the same step with
 # the initialization initOvrdis of LeanExe/M7/Board.lean, which disables USART3's overrun
-# detection, NAME sha-ovrdis, and the signed step sgUsart3Tick, NAME signed
-# (tests/TestSupport/M7/Signed.lean).
+# detection, NAME sha-ovrdis, the signed step sgUsart3Tick, NAME signed
+# (tests/TestSupport/M7/Signed.lean), and the echo of records over the delimited framing
+# dlUsart3Tick, NAME delim (tests/TestSupport/M7/Delim.lean), whose image also takes initOvrdis.
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -38,7 +39,10 @@
 # For NAME signed, "m7-board.sh check signed" builds m7-windows and
 # tests/TestSupport/M7/SignedLoop.lean, writes signed.bin with m7-windows signed-board and
 # signed.addr, and elaborates tests/TestSupport/M7/SignedBoardFile.lean under 12G unless MEM is
-# set; the signed step has no measurement image.
+# set; the signed step has no measurement image.  For NAME delim, "m7-board.sh check delim"
+# builds m7-windows and tests/TestSupport/M7/DelimLoop.lean, writes delim.bin with m7-windows
+# delim-board and delim.addr, and elaborates tests/TestSupport/M7/DelimBoardFile.lean under 16G
+# unless MEM is set; it has no measurement image.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -70,7 +74,12 @@
 # with OVRDIS set.  OVRDIS forces ORE to 0, so the script reads USART_CR3 over SWD into NAME.cr3
 # instead and requires OVRDIS, bit 12, set.  For the signed step, tests/baremetal/uart_signed.py
 # checks each reply against its model of the step's integrator, and the script then requires ORE
-# clear.  "emulate" does not take NAME sha-ovrdis, since Renode's USART3 models no overrun.
+# clear.  "emulate" does not take NAME sha-ovrdis, since Renode's USART3 models no overrun.  For
+# the echo of records, tests/baremetal/uart_delim.py sends records, corrupted, truncated, empty,
+# and overlong segments in lockstep and checks each answer against the mirror of
+# tests/baremetal/delim_frame.py; under "run", "nrst", and "host" it adds --overrun, which sends a
+# burst while the step answers and requires the records after the next 0x00 to get their exact
+# answers, and the script then requires OVRDIS set in USART_CR3 as for NAME sha-ovrdis.
 # The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
 # theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
 # the read-back as "run" does, without st-flash's reset, runs tools/baremetal/stlink_nrst.py, with
@@ -151,7 +160,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway|area|crc|sha|sha-ovrdis|signed) ;;
+    echo|gateway|area|crc|sha|sha-ovrdis|signed|delim) ;;
     *) usage ;;
   esac
 }
@@ -253,6 +262,7 @@ host_run() {
     sha) host=(uart_sha.py) ;;
     sha-ovrdis) host=(uart_sha.py --overrun) ;;
     signed) host=(uart_signed.py) ;;
+    delim) host=(uart_delim.py ${delim_overrun:+--overrun}) ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
       rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
@@ -288,6 +298,8 @@ case $1 in
         count=11 mem=${MEM:-16G} ;;
       signed) lib=TestSupport.M7.SignedLoop cmd=signed-board dwt= file=SignedBoardFile count=16
         mem=${MEM:-12G} ;;
+      delim) lib=TestSupport.M7.DelimLoop cmd=delim-board dwt= file=DelimBoardFile count=16
+        mem=${MEM:-16G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
     [ -z "$file" ] || rm -f "${out:?}/$file".*
@@ -397,10 +409,11 @@ EOF
         nrst_reset "$2"
         ;;
     esac
+    delim_overrun=1
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
       gateway|crc|sha|signed) overrun "$2" ;;
-      sha-ovrdis) ovrdis "$2" ;;
+      sha-ovrdis|delim) ovrdis "$2" ;;
     esac
     ;;
   diag-image)

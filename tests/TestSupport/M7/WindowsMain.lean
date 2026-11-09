@@ -48,8 +48,9 @@ signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `deli
   NUCLEO-F767ZI (`tests/TestSupport/M7/SignedImages.lean`), and each prints the addresses of `main`
   and of its loop's head.
 - `m7-windows delim-qemu FILE` writes to FILE the image of the echo of records `dlCmsdkTick` for
-  QEMU's `mps2-an500` (`tests/TestSupport/M7/DelimImages.lean`), and prints the addresses of
-  `main` and of its loop's head.
+  QEMU's `mps2-an500`, and `m7-windows delim-board FILE` the image of `dlUsart3Tick` for the
+  NUCLEO-F767ZI with the initialization `initOvrdis` (`tests/TestSupport/M7/DelimImages.lean`),
+  and each prints the addresses of `main` and of its loop's head.
 - `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`,
   `m7-windows sha-dwt FILE`, and `m7-windows div-dwt FILE` write the measurement images of
   `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step, and the SHA-256 step
@@ -219,6 +220,10 @@ def main (args : List String) : IO UInt32 := do
   | ["delim-qemu", file] =>
       writeImage "delim-cmsdk-qemu" file TestSupport.M7.Delim.qemuImage
         TestSupport.M7.Qemu.boot.base TestSupport.M7.Delim.qemuHead
+  | ["delim-board", file] =>
+      writeImage "delim-usart3-board" file TestSupport.M7.Delim.boardImage
+        (LeanExe.M7.Nucleo.bootWith LeanExe.M7.Nucleo.initOvrdis).base
+        TestSupport.M7.Delim.boardHead
   | ["gateway-dwt", file] =>
       match TestSupport.M7.Dwt.gwDwt with
       | .ok bytes =>
@@ -314,7 +319,7 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
         "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
         "sha-qemu FILE | sha-board FILE | sha-ovrdis-board FILE | signed-qemu FILE | " ++
-        "signed-board FILE | delim-qemu FILE | " ++
+        "signed-board FILE | delim-qemu FILE | delim-board FILE | " ++
         "board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
         "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2
