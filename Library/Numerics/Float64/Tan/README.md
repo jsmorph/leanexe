@@ -119,7 +119,7 @@ The reduction's kernel-checked facts are those of [the sine and cosine proof](..
 
 ### Proof structure
 
-`TanOdd` proves `smallW_odd : smallW x y true = oddW x (corrW x y)` with `simp only` and the definitions in 6 seconds, since a proof by `rfl` makes the definitional check unfold `Wasm.IEEE64.add` and the other operations.  The proof of `odd_spec` is split into one lemma per rounding step, so the module builds in about 20 seconds with 0.55 GB of anonymous memory.  The plan requires equations between definitions built from IEEE operations to be proved with `simp only`, never with `rfl`.
+`TanOdd` proves `smallW_odd : smallW x y true = oddW x (corrW x y)` with `simp only` and the definitions in 6 seconds, since a proof by `rfl` makes the definitional check unfold `Wasm.IEEE64.add` and the other operations.  The proof of `odd_spec` is split into one lemma per rounding step, so the module builds in about 20 seconds with 0.55 GB of anonymous memory.  [The VKB entry on accuracy against real functions](../../../../VKB/entries/real-function-accuracy/README.md) states the same method for every equation between definitions built from IEEE operations.
 
 ## Tests
 
