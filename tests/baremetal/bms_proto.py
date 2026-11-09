@@ -7,6 +7,13 @@ the bridge sends, the answer that the board returns, the CRC over the link ident
 record's bytes, COBS framing (Cheshire and Baker 1999) with a 0x00 after each encoded record, and
 the board's communication checks.
 
+The module also holds a mirror of the protection machine of Demos/Bms/Spec.lean, which is the
+reference: State, INIT, failure, step, and machine transcribe the Lean definitions of the same
+names, and Board feeds received bytes through the delimited framing of
+LeanExe/Requests/Delimited.lean to the machine and returns each encoded answer.  The framing calls
+the machine once for each non-empty segment, with "overflow" for a segment of more than 36 bytes,
+"decode" when COBS decoding fails, and the decoded bytes otherwise.
+
 "vectors" prints the two test vectors of the requirements and the line times at 4,800 baud.
 "faults" applies every single-byte fault to the wire bytes of the first vector, one at a time: the
 loss of each byte, the insertion of each value before each byte or after the delimiter, and the
@@ -19,8 +26,9 @@ non-empty segment, starting with the board synchronized and expecting the vector
 number, and prints, for each kind of fault, the number of faults that give each list of outcomes,
 the last of which belongs to the next record.  An outcome is a diagnostic code or "accepted".  The
 model has no timing, so it keeps every byte that arrives while the board answers, which USART3
-may lose.  The script checks its COBS encoder and decoder on random records first and exits with
-status 1 if they disagree.
+may lose.  The script first checks its COBS encoder and decoder on random records, and the
+machine's answer to the scan vector in NORMAL with the vector's sequence number expected and the
+next answer numbered 8, which must be the answer vector, and exits with status 1 if a check fails.
 
 Usage: uv run tests/baremetal/bms_proto.py vectors | faults
 """
@@ -29,6 +37,7 @@ import random
 import sys
 import zlib
 from collections import Counter
+from dataclasses import dataclass
 
 LINK = b"LeanExe-BMS-0001"
 SCAN_TAG = 0x10
@@ -158,6 +167,233 @@ def comm_check(x, synced, expected):
     return 0
 
 
+V_MAX, V_MIN = 3650, 2500
+T_MAX, T_MIN = 550, -200
+T_CHG_MIN, T_CHG_MAX = 0, 450
+I_CHG_MAX = I_DIS_MAX = 280_000
+I_CHG_DETECT = 2800
+V_SENS_LO, V_SENS_HI = 1000, 4500
+T_SENS_LO, T_SENS_HI = -400, 1250
+P_SENS_HI = 20_000
+TOL_SUM, TOL_PC = 300, 500
+N_PC, D_EDM = 10, 2
+UNANSWERED = 0xFFFFFFFF
+
+RESET_REQUIRED, STANDBY, PRECHARGE, NORMAL, FAULT = range(5)
+STATES = ("RESET_REQUIRED", "STANDBY", "PRECHARGE", "NORMAL", "FAULT")
+AUX_NEG, AUX_PRE, AUX_POS, STOP_OK, RESET, RUN = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20
+
+
+def permit_of(mode):
+    return {PRECHARGE: 0x03, NORMAL: 0x05}.get(mode, 0x00)
+
+
+def signed(bits, n):
+    return n - (1 << bits) if n >= 1 << (bits - 1) else n
+
+
+@dataclass(frozen=True)
+class Scan:
+    tag: int
+    seq: int
+    cells: tuple
+    temps: tuple
+    current: int
+    pack: int
+    bus: int
+    digital: int
+
+
+def decode_scan(raw):
+    """The fields of a raw scan record of 35 bytes."""
+    f = lambda off, n: int.from_bytes(raw[off:off + n], "big")
+    return Scan(tag=raw[0], seq=f(1, 4), cells=tuple(f(5 + 2 * i, 2) for i in range(4)),
+                temps=tuple(signed(16, f(13 + 2 * i, 2)) for i in range(2)),
+                current=signed(32, f(17, 4)), pack=f(21, 4), bus=f(25, 4), digital=f(29, 2))
+
+
+@dataclass(frozen=True)
+class Answer:
+    board: int
+    answered: int
+    permit: int
+    state: int
+    code: int
+
+    def __str__(self):
+        state = STATES[self.state] if self.state < len(STATES) else f"state {self.state}"
+        return f"{self.permit:#04x} {state} {self.code:#06x}"
+
+
+def decode_answer(raw):
+    """The answer that raw holds when it is authentic in the sense of BR1: it has 17 bytes, the
+    tag 0x80, and the CRC of the link identifier and bytes 0 to 12.  Otherwise None."""
+    if (len(raw) != ANSWER_RAW or raw[0] != ANSWER_TAG
+            or int.from_bytes(raw[13:17], "big") != crc(raw[:13])):
+        return None
+    return Answer(board=int.from_bytes(raw[1:5], "big"), answered=int.from_bytes(raw[5:9], "big"),
+                  permit=raw[9], state=raw[10], code=int.from_bytes(raw[11:13], "big"))
+
+
+@dataclass(frozen=True)
+class State:
+    mode: int
+    diag: int
+    synced: bool
+    expected: int
+    answers: int
+    prev_reset: bool
+    age: tuple
+    pc_count: int
+    first: bool
+
+
+INIT = State(mode=RESET_REQUIRED, diag=0x0001, synced=False, expected=0, answers=0,
+             prev_reset=True, age=(0, 0, 0), pc_count=0, first=True)
+
+
+def record_ok(x):
+    """Whether the segment result x decodes to 35 bytes whose CRC matches."""
+    return (isinstance(x, bytes) and len(x) == SCAN_RAW
+            and int.from_bytes(x[31:35], "big") == crc(x[:31]))
+
+
+def good(x):
+    return record_ok(x) and x[0] == SCAN_TAG
+
+
+def content_failure(permit, age, sc):
+    """The code of the first of checks 7 to 17 that the record sc fails, or None."""
+    charging = sc.current > I_CHG_DETECT
+    aux = any((sc.digital >> r & 1) != (permit >> r & 1) and age[r] >= D_EDM for r in range(3))
+    for failed, code in (
+            (sc.digital >> 6 != 0, 0x1007),
+            (any(not V_SENS_LO <= c <= V_SENS_HI for c in sc.cells)
+             or any(not T_SENS_LO <= t <= T_SENS_HI for t in sc.temps)
+             or sc.pack > P_SENS_HI or sc.bus > P_SENS_HI, 0x2001),
+            (any(c > V_MAX for c in sc.cells), 0x2002),
+            (any(c < V_MIN for c in sc.cells), 0x2003),
+            (any(t > T_MAX for t in sc.temps), 0x2004),
+            (any(t < T_MIN for t in sc.temps), 0x2005),
+            (sc.current > I_CHG_MAX, 0x2006),
+            (sc.current < -I_DIS_MAX, 0x2007),
+            (charging and any(not T_CHG_MIN <= t <= T_CHG_MAX for t in sc.temps), 0x2008),
+            (abs(sum(sc.cells) - sc.pack) > TOL_SUM, 0x2009),
+            (aux, 0x3001)):
+        if failed:
+            return code
+    return None
+
+
+def failure(s, x):
+    """The code of the first check from 1 to 17 that the segment result x fails in the state s, or
+    None."""
+    if x == "decode":
+        return 0x1001
+    if x == "overflow":
+        return 0x1002
+    if len(x) != SCAN_RAW:
+        return 0x1003
+    if not record_ok(x):
+        return 0x1004
+    if x[0] != SCAN_TAG:
+        return 0x1005
+    sc = decode_scan(x)
+    if s.synced and sc.seq != s.expected:
+        return 0x1006
+    return content_failure(permit_of(s.mode), s.age, sc)
+
+
+def precharge_condition(sc):
+    return abs(sc.bus - sc.pack) <= TOL_PC and sc.digital & (AUX_NEG | AUX_PRE) == AUX_NEG | AUX_PRE
+
+
+def next_mode(s, x):
+    """The next state, code, and precharge count: rules 1 to 5 of the requirements."""
+    code = failure(s, x)
+    if code is not None:
+        return FAULT, s.diag if s.mode == FAULT else code, s.pc_count
+    sc = decode_scan(x)
+    run, aux = sc.digital & RUN, sc.digital & 7
+    if not sc.digital & STOP_OK:
+        if s.mode in (RESET_REQUIRED, FAULT):
+            return s.mode, s.diag, s.pc_count
+        return RESET_REQUIRED, 0x5001, s.pc_count
+    if s.mode in (RESET_REQUIRED, FAULT):
+        if s.synced and not s.prev_reset and sc.digital & RESET and not run and aux == 0:
+            return STANDBY, 0x0000, s.pc_count
+        return s.mode, s.diag, s.pc_count
+    if s.mode == STANDBY:
+        return (PRECHARGE, s.diag, 0) if run and aux == 0 else (STANDBY, s.diag, s.pc_count)
+    if s.mode == PRECHARGE:
+        if not run:
+            return STANDBY, s.diag, s.pc_count
+        if precharge_condition(sc):
+            return NORMAL, s.diag, s.pc_count
+        if s.pc_count + 1 >= N_PC:
+            return FAULT, 0x3002, s.pc_count
+        return PRECHARGE, s.diag, s.pc_count + 1
+    return (STANDBY if not run else NORMAL), s.diag, s.pc_count
+
+
+def step(s, x):
+    """The state after the segment result x in the state s, and the answer to it."""
+    mode, diag, pc_count = next_mode(s, x)
+    is_good = good(x)
+    sc = decode_scan(x) if is_good else None
+    comm = is_good and not (s.synced and sc.seq != s.expected)
+    before, after = permit_of(s.mode), permit_of(mode)
+    age = tuple(0 if s.first or (after ^ before) >> r & 1
+                else min(s.age[r] + 1, D_EDM) if comm else s.age[r] for r in range(3))
+    nxt = State(mode=mode, diag=diag, synced=is_good,
+                expected=(sc.seq + 1) % (1 << 32) if is_good else s.expected,
+                answers=(s.answers + 1) % (1 << 32),
+                prev_reset=bool(sc.digital & RESET) if comm else s.prev_reset,
+                age=age, pc_count=pc_count, first=False)
+    answered = int.from_bytes(x[1:5], "big") if record_ok(x) else UNANSWERED
+    return nxt, Answer(board=s.answers, answered=answered, permit=after, state=mode, code=diag)
+
+
+def answer_bytes(a):
+    return answer_record(a.board, a.answered, a.permit, a.state, a.code)
+
+
+def machine(s, x):
+    s, a = step(s, x)
+    return s, answer_bytes(a)
+
+
+class Board:
+    """The board's framing and machine from a board reset: push takes each byte that the program
+    reads and returns the encoded answer, followed by 0x00, when the byte ends a non-empty
+    segment, and None otherwise."""
+
+    def __init__(self):
+        self.state = INIT
+        self.seg = bytearray()
+        self.over = False
+
+    def push(self, b):
+        if b != 0:
+            if not self.over:
+                self.seg.append(b)
+                self.over = len(self.seg) > MAX_SEGMENT
+            return None
+        seg, over = bytes(self.seg), self.over
+        self.seg, self.over = bytearray(), False
+        if over:
+            x = "overflow"
+        elif not seg:
+            return None
+        else:
+            try:
+                x = cobs_decode(seg)
+            except DecodeError:
+                x = "decode"
+        self.state, raw = machine(self.state, x)
+        return wire(raw)
+
+
 def self_test():
     rng = random.Random(1)
     for _ in range(20000):
@@ -170,6 +406,11 @@ def self_test():
         if n < 254 and len(enc) != n + 1:
             print("COBS length", len(enc), "for", n, "bytes")
             sys.exit(1)
+    s = State(mode=NORMAL, diag=0, synced=True, expected=7, answers=8, prev_reset=False,
+              age=(2, 2, 2), pc_count=0, first=False)
+    if machine(s, scan_record(**VECTOR_SCAN))[1] != answer_record(**VECTOR_ANSWER):
+        print("the machine's answer to the scan vector is not the answer vector")
+        sys.exit(1)
 
 
 VECTOR_SCAN = dict(seq=7, cells=(3300, 3301, 3299, 3302), temps=(250, 245), current=-10000,
