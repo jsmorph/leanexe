@@ -2,6 +2,8 @@
 
 [The requirements](requirements.md) specify the protection layer of a battery management system for a pack of four lithium iron phosphate cells, a machine that answers each record of a bridge with the permits of three relays, and [the review](review.md) records their decisions.  The machine's specification and its theorems carry the code SPEC of [the index](../../index.md).
 
+[The host side](Host.md) describes the bridge and pack simulator that play the far end of the board's USART3, its bridge rules, its models, its fault-injection scenarios, and the format of its logs.
+
 ## Specification and theorems
 
 [`Spec.lean`](Spec.lean) states the machine over natural numbers, integers, lists, and structures, independent of any program.  It holds the profile's values and the diagnostic codes as named constants, the layouts of the 35-byte scan record and the 17-byte answer with their decoding and encoding, the CRC-32 of V.42 over the link identifier and a record's bytes as `crc32Eval` of [the CRC division](../../Library/Hashing/Crc/Division.lean) computes it, the state, the 17 checks in order, and the transition rules.  `step` gives the next state and the answer for the result of one non-empty segment, a framing error or the decoded bytes, and `machine` writes the answer's raw bytes.  The specification is computable, so native Lean replays recorded records against it.
