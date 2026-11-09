@@ -18,7 +18,9 @@ of the block of 16 MOV, divided by 16.
 the count, the least, the most, and the mean of the cycles, with the instructions that the model
 counts for that kind (tests/TestSupport/M7/Windows.lean) plus the
 five instructions of the measurement.  "m7_dwt.py crc RESULTS" does the same for the window table
-of crcDwt, the CRC-32 step's, whose windows have the echo's phases.
+of crcDwt, the CRC-32 step's, whose windows have the echo's phases, and "m7_dwt.py bms RESULTS" for
+the window table of bmsDwt, the BMS step's, whose key is the phase, and it marks the kinds whose
+most cycles exceed 16,667.
 
 "m7_dwt.py gateway RESULTS" reads the window table of gwDwt and prints the same for each kind of
 the gateway's windows, with the range of the tick's instructions over the day of

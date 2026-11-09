@@ -27,7 +27,9 @@
     "TestSupport.M7.ShaLoop",
     "LeanExe.Requests.Delimited",
     "TestSupport.M7.DelimAbs",
-    "TestSupport.M7.DelimLoop"
+    "TestSupport.M7.DelimLoop",
+    "Demos.Bms.Abs",
+    "TestSupport.M7.BmsLoop"
   ],
   "declarations": [
     "LeanExe.Requests.Bus",
@@ -71,7 +73,10 @@
     "LeanExe.Requests.cobsEncode",
     "LeanExe.Requests.cobsDecode",
     "LeanExe.Requests.cobsDecode_eq_some_iff",
-    "LeanExe.Requests.reqTrace_mapOn"
+    "LeanExe.Requests.reqTrace_mapOn",
+    "Demos.Bms.Program.prefix_toUInt8",
+    "Demos.Bms.Program.segments_prefix",
+    "Demos.Bms.Program.m1_prefix"
   ],
   "examples": [
     "Demos.Energy.gwTickWith_abs",
@@ -92,6 +97,7 @@
     "TestSupport.M7.Delim.dl_prefix",
     "TestSupport.M7.Delim.dl_usart3_prefix",
     "TestSupport.M7.Delim.dl_usart3_answered",
-    "TestSupport.M7.Delim.board_prefix"
+    "TestSupport.M7.Delim.board_prefix",
+    "TestSupport.M7.Bms.board_safe"
   ]
 }

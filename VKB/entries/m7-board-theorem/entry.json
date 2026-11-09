@@ -37,7 +37,10 @@
     "TestSupport.M7.ShaLoop",
     "TestSupport.M7.SignedLoop",
     "TestSupport.M7.CrcBitwise",
-    "TestSupport.M7.DelimLoop"
+    "TestSupport.M7.DelimLoop",
+    "TestSupport.M7.BmsLoop",
+    "TestSupport.M7.BmsStep",
+    "Demos.Bms.Program"
   ],
   "declarations": [
     "LeanExe.M7.StepCall",
@@ -85,7 +88,8 @@
     "LeanExe.borrowed_initStore",
     "Verified.Ready.initial",
     "LeanExe.M7.coveredInstr",
-    "TestSupport.M7.CrcBitwise.functionsOf"
+    "TestSupport.M7.CrcBitwise.functionsOf",
+    "Demos.Bms.Program.bmsPhases"
   ],
   "examples": [
     "TestSupport.M7.echo_covered",
@@ -128,7 +132,11 @@
     "TestSupport.M7.Delim.board_loop_steps",
     "TestSupport.M7.Delim.board_loop_runs",
     "TestSupport.M7.Delim.dl_confined",
-    "TestSupport.M7.dl_static"
+    "TestSupport.M7.dl_static",
+    "TestSupport.M7.bms_parts_static",
+    "TestSupport.M7.Bms.board_loop",
+    "TestSupport.M7.Bms.board_loop_steps",
+    "TestSupport.M7.Bms.board_safe"
   ],
   "unimported": {
     "tests/TestSupport/M7/SignedBoardFile.lean": [

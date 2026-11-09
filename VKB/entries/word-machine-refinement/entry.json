@@ -1,0 +1,48 @@
+{
+  "id": "word-machine-refinement",
+  "goals": [
+    "spec.step (absS s) x = (absS s', answer) for a machine over words in Flat structures",
+    "sensorFault (scanAbs sc) = sensorW sc as an equation of Bools over UInt64 comparisons",
+    "signed 16 t.toNat < -400 for a field read as a word",
+    "optCode (firstFailure checks) = a program's chain of ifs returning codes",
+    "Application type mismatch after simp unfolded a constant inside decide",
+    "(deterministic) timeout at `whnf` at a declaration whose proof splits byte equations with trivial"
+  ],
+  "modules": [
+    "Demos.Bms.Abs",
+    "Library.Hashing.Crc.Proof"
+  ],
+  "declarations": [
+    "Demos.Bms.Program.absS",
+    "Demos.Bms.Program.StInv",
+    "Demos.Bms.Program.ViewOf",
+    "Demos.Bms.Program.bitW_toNat",
+    "Demos.Bms.Program.natAbs_le_iff",
+    "Demos.Bms.Program.lt_natAbs_iff",
+    "Demos.Bms.Program.bias16",
+    "Demos.Bms.Program.signed16_eq",
+    "Demos.Bms.Program.firstFailure_cons",
+    "Demos.Bms.Program.optCode_ite",
+    "Demos.Bms.Program.min3",
+    "Demos.Bms.Program.linkCrc_spec",
+    "Library.Hashing.Crc.Proof.crc32_spec",
+    "Nat.testBit_eq_decide_div_mod_eq",
+    "Bool.eq_iff_iff",
+    "UInt64.lt_iff_toNat_lt"
+  ],
+  "examples": [
+    "Demos.Bms.Program.sensor_eq",
+    "Demos.Bms.Program.aux_eq",
+    "Demos.Bms.Program.contentW_spec",
+    "Demos.Bms.Program.failW_spec",
+    "Demos.Bms.Program.rule5W_spec",
+    "Demos.Bms.Program.nextW_spec",
+    "Demos.Bms.Program.updW_spec",
+    "Demos.Bms.Program.answer_eq",
+    "Demos.Bms.Program.decodeRec_spec",
+    "Demos.Bms.Program.answerSrc_spec",
+    "Demos.Bms.Program.view_decode",
+    "Demos.Bms.Program.bmsDelim_spec",
+    "Demos.Bms.Program.bmsPhases_abs"
+  ]
+}

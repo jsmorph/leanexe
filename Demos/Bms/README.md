@@ -1,6 +1,6 @@
 # BMS protection
 
-[The requirements](requirements.md) specify the protection layer of a battery management system for a pack of four lithium iron phosphate cells, a machine that answers each record of a bridge with the permits of three relays, and [the review](review.md) records their decisions.  The machine's specification and its theorems carry the code SPEC of [the index](../../index.md).
+[The requirements](requirements.md) specify the protection layer of a battery management system for a pack of four lithium iron phosphate cells, a machine that answers each record of a bridge with the permits of three relays, and [the review](review.md) records their decisions.  The machine's specification and its theorems carry the code SPEC of [the index](../../index.md), the step that the verified compiler compiles carries WASM, and the flash images of the Cortex-M7 back end, with theorems about their runs from reset, carry M7.
 
 [The host side](Host.md) describes the bridge and pack simulator that play the far end of the board's USART3, its bridge rules, its models, its fault-injection scenarios, and the format of its logs.
 
@@ -36,4 +36,74 @@ The theorems hold for every sequence `x` of segment results from the state after
 
 ```sh
 tools/leanrun --timeout 30m lake build Demos.Bms.Theorems Demos.Bms.Stream Demos.Bms.Cases
+```
+
+## The program
+
+[`Program.lean`](Program.lean) writes the step in the verified compiler's dialect.  Its state, `BmsFrame`, holds 24 words: the framing's phase and the segment's length, the segment and the answer in two buffers of 40 bytes, the answer's bytes left to write, and the machine's state `BmsState`, the specification's fields as 11 words, with the protection state as its code and each flag as 0 or 1.  `bmsPhases` sends the window that receives a `0x00` after a non-empty segment to `bmsDelim` and every other window to `bmsPoll`, which stores a byte, reads the status, or writes a byte of the answer.  `bmsDelim` decodes the segment with `decodeWords` of [the framing in words](../../LeanExe/Requests/DelimitedWords.lean), reads the record's fields with `decodeRec`, computes the CRC of `LINK` and bytes 0 to 30 with five calls of `crc32Word` of [the bitwise CRC-32](../../Library/Hashing/Crc/Bitwise/Program.lean) from `linkCrc`, the CRC-32 of `LINK`, runs the checks (`failW`), the transitions (`nextW`), and the state's update (`updW`), and encodes the 17 bytes that `answerSrc` lays out with their CRC.  The temperatures and the current enter the checks biased by `2 ^ 15` and `2 ^ 31`, so every check compares words with constants.  No function has a loop or a recursive call.
+
+[`Compiled.lean`](Compiled.lean) compiles the steps and the functions that they call with `verified_compile`, in 488 s and 5.4 GB, and `bmsCompiled.bmsTickUsart3.implements` and `bmsCompiled.bmsTick.implements` state that functions 56 and 57 of the module compute the steps for USART3 and for UART0 of QEMU's `mps2-an500` from every store without a trap.  [`Abs.lean`](Abs.lean) relates the program to the specification.  `absS` maps the machine's words to `State`, `StInv` bounds them as the specification's values stay bounded, and `bmsAbs` maps the step's state to the state of `delimTick`, the segment as the last `min len 36` bytes of its buffer and the answer as the first `k` bytes of its own.  The lemmas that the step shares with the echo of records of `tests/TestSupport/M7/Delim.lean`, the segment's store, the first byte of the answer, and the encoded answer's length, lie in [`DelimitedSteps.lean`](../../LeanExe/Requests/DelimitedSteps.lean).
+
+| Theorem | Statement | File |
+|---|---|---|
+| `decodeRec_spec` | The fields that `decodeRec` reads from the last 35 bytes of a buffer are those that `decodeScan` reads from those bytes | [`Abs.lean`](Abs.lean) |
+| `recCrc_spec`, `linkCrc_spec` | `recCrc` computes `crc` of bytes 0 to 30 of the record, and `linkCrc` is the CRC-32 of `LINK` | [`Abs.lean`](Abs.lean) |
+| `answerSrc_spec` | The last 17 bytes of `answerSrc` are an answer's 13 bytes followed by their CRC | [`Abs.lean`](Abs.lean) |
+| `failW_spec`, `nextW_spec`, `updW_spec`, `answer_eq` | The program's first failing check, next state, code, and answer bytes are the specification's, through the view `ViewOf` of a segment's result | [`Abs.lean`](Abs.lean) |
+| `bmsDelim_spec` | The window of a `0x00` after a non-empty segment leaves the machine's next state and the encoded answer followed by `0x00` | [`Abs.lean`](Abs.lean) |
+| `bmsPhases_abs` | `bmsPhases` computes `delimTick` of `machine` with segments of at most `maxSegment` bytes under `bmsAbs`, for every register map, on the states of `BmsInv`, and keeps `BmsInv` | [`Abs.lean`](Abs.lean) |
+| `bms_usart3_prefix`, `bms_usart3_answered`, `bms_cmsdk_prefix`, `bms_cmsdk_answered` | For every bus and every sequence of the values read, the bytes that the steps' windows write begin `delimAnswers machine maxSegment init` of the bytes read, and they are all of it whenever a window reads a byte | [`Abs.lean`](Abs.lean) |
+| `m1_prefix` | M1 for every complete answer in a prefix of `delimAnswers machine maxSegment init bs` | [`Abs.lean`](Abs.lean) |
+
+## Images and board theorems
+
+`m7-windows bms-board` writes `bms.bin`, the image of `bmsTickUsart3` for the NUCLEO-F767ZI, 99,494 bytes in the layout `bootWith initOvrdis` of [the board's definitions](../../LeanExe/M7/Board.lean), whose initialization writes `OVRDIS` to `USART_CR3` before the write of `USART_CR1` that sets UE, and `m7-windows bms-qemu` writes `bms-cmsdk-qemu.bin`, the image of `bmsTick` for `mps2-an500`, 98,758 bytes.  The kernel evaluates `reachCovered`, `usesArea`, `stackBound`, 3,480 bytes, and `staticCost`, 202,783 instructions for each step, 202,021 for `bmsDelim`, and 2,474 for `bmsPoll`, and it checks that each file holds the image's bytes, in 75 s at 20.9 GB for `bms.bin` and 66 s at 20.8 GB for `bms-cmsdk-qemu.bin`.  The theorems over the files hold for every state that reset gives while the flash holds the file, every sequence `σ` of the values that reads return, and every number `N` of windows, under the run conditions of [the board's proof](../../LeanExe/M7/Proof/Board.lean): a power-on reset, or an NRST reset with the debug registers at their power-on values, and no interrupt, debug halt, debugger access, or DMA during the run.
+
+| Theorem | Statement | File |
+|---|---|---|
+| B1 `bms_board`, `bms_board_runs` | The run reaches the accesses of `initOvrdis` followed by those of the first `N` windows of `bmsTickUsart3` from `bmsInit`, and it never stops | [`BmsBoardFile.lean`](../../tests/TestSupport/M7/BmsBoardFile.lean) |
+| B1 `bms_board_prefix` | The bytes written to `USART_TDR` begin the encoded answers `answerAt (inputs bs) t`, each followed by `0x00`, of the machine's run over the non-empty segments of the bytes `bs` read from `USART_RDR` | [`BmsBoardFile.lean`](../../tests/TestSupport/M7/BmsBoardFile.lean) |
+| B2 `bms_confined` | Every access of the initialization lies in RCC, GPIOD, or USART3, and every access of the windows is to `USART_ISR`, `USART_RDR`, or `USART_TDR` | [`BmsLoop.lean`](../../tests/TestSupport/M7/BmsLoop.lean) |
+| B3 `bms_board_steps` | Every window takes at most 202,799 steps of the model, 16 of `main` and the step's `staticCost` | [`BmsBoardFile.lean`](../../tests/TestSupport/M7/BmsBoardFile.lean) |
+| B4 `bms_qemu`, `bms_qemu_prefix` | B1's statements for `bms-cmsdk-qemu.bin` on `mps2-an500` with UART0, and all the answers whenever a window reads a byte | [`BmsQemuFile.lean`](../../tests/TestSupport/M7/BmsQemuFile.lean) |
+| B5 `bms_board_safe` | Every complete segment of the bytes written that decodes to an answer whose permit byte is not 0 is the encoded answer `a_m` of that run, and `Permitted (inputs bs) m i j`, M1's conclusion, holds of it | [`BmsBoardFile.lean`](../../tests/TestSupport/M7/BmsBoardFile.lean) |
+
+B3a, a bound on the windows other than the window of a delimiter, is pending: it needs a lemma that bounds a window's `costRun` by the dispatch and the `staticCost` of the function that the dispatch calls, which `LeanExe/M7/Proof/Bound.lean` does not provide.  The step's code has the shape such a lemma takes: 17 instructions compute the dispatch's condition, one `if` calls `bmsPoll` or `bmsDelim`, and copies of the result follow.  In the model's run of `m7-windows run bms-usart3`, whose output equals `delimAnswers machine maxSegment init` of its input, the windows other than the window of a delimiter took 1,752 to 2,447 instructions and the window of a delimiter 111,008 to 153,434.
+
+## Runs
+
+`uart_bms.py` of [the host side](Host.md) runs the fault-injection schedule against each image, and [`bms-replay`](../../tests/TestSupport/Bms/Replay.lean) checks every answer of each run's log against `delimAnswers machine maxSegment init` of the bytes written, from a board reset at the start and at each `reset` line.  On QEMU and in Renode the bridge sends its bytes at the line time of 4,800 baud, since neither emulator's UART has line time, and the scenarios with a board reset are skipped, since the script cannot reset either emulator.  QEMU connects its UART's socket before the guest runs, so on QEMU the bridge waits 3 s before its power-up.  On the board, `stlink_nrst.py` and a USB reset of the ST-LINK make the board resets of those scenarios, and the script releases the serial port before each and opens it again after it.
+
+| Run | Scenarios | Answers equal to the mirror and to `bms-replay` | Further checks |
+|---|---|---|---|
+| `m7-qemu.sh bms` | 33 passed, 4 skipped | 261 | The kernel's check of `bms-cmsdk-qemu.bin` |
+| `m7-board.sh emulate bms` | 33 passed, 4 skipped | 260 | No unexpected warning in Renode's log |
+| `USBRESET=0483:374b m7-board.sh nrst bms /dev/ttyACM0` | 37 passed | 288, in 5 parts between board resets | `USART_CR3` read `0x00001000` over SWD after the run |
+| `USBRESET=0483:374b m7-board.sh measure bms /dev/ttyACM0` | 33 passed, 4 skipped | 256 | `USART_CR3` read `0x00001000` |
+
+The measurement image `bms-dwt.bin` records the cycles of each window by the phases before and after it, with five instructions of the measurement in each, at 16 MHz and with the caches off, and `m7-board.sh measure` starts it with the reset of `st-flash`, so no theorem covers its run.  The windows other than the window of a delimiter took 1,203 to 1,766 cycles, at most 10.6% of half a byte time at 4,800 baud, and the window of a delimiter took 99,020 to 121,691 cycles, at most 7.6 ms.  The cost model of `m7_timing.py` predicts 1,121 to 1,714 cycles for the model's traces of the other windows, 2% to 8% below the measured means of their kinds, and 129,034 cycles for the longest window of a delimiter in the model's run.
+
+| Window | Windows | Cycles: least, most, mean | Instructions in the model, with the measurement's 5 |
+|---|---|---|---|
+| idle | 314,351 | 1,203, 1,220, 1,206.0 | 1,758 |
+| rxne | 9,445 | 1,214, 1,226, 1,214.0 | 1,757 |
+| byte or empty segment | 9,189 | 1,358, 1,766, 1,750.9 | 1,990 to 2,452 |
+| delimiter | 256 | 99,020, 121,691, 120,396.9 | 111,013 to 153,439 |
+| txwait | 84,992 | 1,504, 1,521, 1,507.3 | 2,221 |
+| tx | 4,864 | 1,662, 1,724, 1,674.8 | 2,381 |
+| sent | 4,864 | 1,648, 1,660, 1,650.8 | 2,370 and 2,371 |
+
+The board's run confirms the requirements' timing values.  The time from the sampling of a record to its current answer was at most 133.6 ms in normal operation, against the estimate of 156.7 ms, since the answer arrived 7.5 to 11.5 ms after the line times of the record and the answer, of which the window of a delimiter takes 7.6 ms, against the 20 ms that the estimate allows for the window and the latency.  A lease outlasted its renewal by at least 244.3 ms in normal operation, against the estimate of 166.6 ms, and by 146.0 ms after a lost delimiter, against about 64.6 ms.  The bridge sampled and sent its first byte at most 7.6 ms late, against `T_sample` of 20 ms, and released the relays at most 1.3 ms after a lease's end, against `T_act` of 20 ms, so `T_ans` of 100 ms, `T_lease` of 500 ms, `T_sample`, and `T_act` stand.
+
+The commands below build the modules, check the images, and run them.  `m7-board.sh check` and `m7-qemu.sh` need 24 GB for the kernel's checks of the files, and the compilation of the step takes 8 minutes.  The board's runs need the board and no Lean, so `m7-board.sh replay` checks their logs on a machine with Lean.
+
+```sh
+tools/leanrun --timeout 60m --memory-high 12G lake build Demos.Bms.Abs Demos.Bms.Compiled \
+  TestSupport.M7.BmsLoop bms-replay
+tests/baremetal/m7-qemu.sh bms
+tests/baremetal/m7-board.sh check bms
+RENODE=renode tests/baremetal/m7-board.sh emulate bms
+USBRESET=0483:374b tests/baremetal/m7-board.sh nrst bms /dev/ttyACM0
+USBRESET=0483:374b tests/baremetal/m7-board.sh measure bms /dev/ttyACM0
+tests/baremetal/m7-board.sh replay build/baremetal/m7-board/bms
 ```

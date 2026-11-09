@@ -61,6 +61,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Array heaps](entries/heap-sift-invariant/README.md) | Proves sift-down, sift-up, heapify, and removal through a heap order from a node on. |
 | [Operation streams](entries/operation-stream-refinement/README.md) | Proves that a loop over operations refines a fold over an abstract value, with bounds on its counters. |
 | [Safety theorems over a machine's history](entries/history-safety-theorems/README.md) | States safety theorems of a record machine over the records and answers before an answer, and relates the machine's state to the history terms. |
+| [A machine over words against its specification](entries/word-machine-refinement/README.md) | Proves that a compiled machine over words in `Flat` structures computes a specification over numbers, check by check and transition by transition. |
 | [Link-reversing tree updates](entries/tree-link-reversal/README.md) | Proves stackless tree updates equal to a structural recursion. |
 | [Tail-recursive and fuel-bounded functions](entries/tail-recursive-spec/README.md) | Proves specifications by recursion on the program's measure, by fuel, or by a `repeatWhile` invariant. |
 

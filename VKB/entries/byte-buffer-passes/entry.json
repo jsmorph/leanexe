@@ -7,14 +7,17 @@
     "EncRel (encAll (encStart src n)) (encBack (src.bytes.drop (40 - n.toNat)))",
     "a buffer of bytes in a step's state with a static cost for the Cortex-M7 back end",
     "verified_compile: (deterministic) timeout at `whnf` on a call whose argument is a call of a long straight-line function",
-    "maximum recursion depth has been reached in a proof of f8 = f^[8] by rfl"
+    "maximum recursion depth has been reached in a proof of f8 = f^[8] by rfl",
+    "a fixed field of a decoded record read from the decoder's output buffer"
   ],
   "modules": [
     "LeanExe.Requests.DelimitedWords",
     "TestSupport.M7.DelimAbs",
     "TestSupport.M7.DelimStep",
     "TestSupport.M7.DelimLoop",
-    "LeanExe.M7.Bound"
+    "LeanExe.M7.Bound",
+    "LeanExe.Requests.DelimitedSteps",
+    "Demos.Bms.Abs"
   ],
   "declarations": [
     "LeanExe.Requests.Bytes40",
@@ -51,7 +54,13 @@
     "LeanExe.Requests.encByte_spec",
     "LeanExe.Requests.encFinish_spec",
     "LeanExe.M7.staticCost",
-    "Function.iterate_mul"
+    "Function.iterate_mul",
+    "LeanExe.Requests.seg_store",
+    "LeanExe.Requests.headD_take",
+    "LeanExe.Requests.tail_take_push",
+    "LeanExe.Requests.first40_val",
+    "LeanExe.Requests.answer_rel",
+    "LeanExe.Requests.encStart"
   ],
   "examples": [
     "TestSupport.M7.Delim.dlAbs",
@@ -60,6 +69,11 @@
     "TestSupport.M7.Delim.dlPhases_abs",
     "TestSupport.M7.dl_static",
     "TestSupport.M7.dl_stack",
-    "TestSupport.M7.Delim.board_loop_steps"
+    "TestSupport.M7.Delim.board_loop_steps",
+    "Demos.Bms.Program.decodeRec",
+    "Demos.Bms.Program.decodeRec_spec",
+    "Demos.Bms.Program.answerSrc",
+    "Demos.Bms.Program.bmsDelim_spec",
+    "Demos.Bms.Program.bmsPhases_abs"
   ]
 }
