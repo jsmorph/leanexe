@@ -231,6 +231,70 @@ may stay closed for the first records. -/
 #guard outcomes [.error .decode] == [(0, .fault, codeDecode)]
 #guard outcomes [.ok ((encodeScan (scan 40 normalWord)).drop 3)] == [(0, .fault, codeLength)]
 
+/-! Rule 4 from `STANDBY` and `PRECHARGE`, and in `FAULT`. -/
+#guard (outcomes (inNormal ++ [rec (scan 6 (stopOk + auxNeg + auxPos)), rec (scan 7 0)])).getLast? ==
+  some (0, .resetRequired, codeStop)
+#guard (outcomes (startup.take 3 ++ [rec (scan 3 (run + auxNeg + auxPre) 0)])).getLast? ==
+  some (0, .resetRequired, codeStop)
+#guard (outcomes (inNormal ++ faulty (fun sc => { sc with cells := [3651, 3300, 3300, 3300] }) ++
+    [rec (scan 7 run)])).getLast? == some (0, .fault, codeOverVoltage)
+
+/-! `RUN` 0 in `PRECHARGE`, and a start refused while an auxiliary contact reports closed. -/
+#guard (outcomes (startup.take 3 ++ [rec (scan 3 (stopOk + auxNeg + auxPre) 0)])).getLast? ==
+  some (0, .standby, codeNone)
+#guard (outcomes (startup.take 2 ++ [rec (scan 2 (stopOk + run + auxPos))])).getLast? ==
+  some (0, .standby, codeNone)
+
+/-! A reset acceptance needs the auxiliary word 0, a good record before it, and a previous `RESET`
+bit of 0 that a sequence fault does not change. -/
+#guard outcomes [rec (scan 0 (stopOk + auxPos)), rec (scan 1 (stopOk + reset + auxPos))] ==
+  [(0, .resetRequired, codeBoot), (0, .resetRequired, codeBoot)]
+#guard (outcomes (inNormal ++ [.error .decode, rec (scan 7 (stopOk + reset))])).drop 6 ==
+  [(0, .fault, codeDecode), (0, .fault, codeDecode)]
+#guard outcomes [rec (scan 0 (stopOk + reset)), rec (scan 5 stopOk), rec (scan 6 (stopOk + reset))] ==
+  [(0, .resetRequired, codeBoot), (0, .fault, codeSeq), (0, .fault, codeSeq)]
+
+/-! In `FAULT` the code stays when another check fails. -/
+#guard (outcomes (inNormal ++ faulty (fun sc => { sc with cells := [3651, 3300, 3300, 3300] }) ++
+    [rec { scan 7 normalWord with cells := [2499, 3300, 3300, 3300] }, .error .overflow])).drop 6 ==
+  [(0, .fault, codeOverVoltage), (0, .fault, codeOverVoltage), (0, .fault, codeOverVoltage)]
+
+/-! Sequence numbers and board sequence numbers wrap modulo `2 ^ 32`. -/
+#guard outcomes [rec (scan 0xFFFFFFFF stopOk), rec (scan 0 (stopOk + reset))] ==
+  [(0, .resetRequired, codeBoot), (0, .standby, codeNone)]
+#guard (answers { init with answers := 0xFFFFFFFF } [rec (scan 0 stopOk), rec (scan 1 stopOk)]).map
+    (·.board) == [0xFFFFFFFF, 0]
+
+/-! The answered field of a segment that does not decode to 35 bytes with a matching CRC. -/
+#guard ((answers init (inNormal ++ [.error .overflow,
+    .ok ((encodeScan (scan 6 normalWord)).eraseIdx 9),
+    .ok (encodeScanWith ("LeanExe-BMS-0002".toList.map fun c => c.toNat.toUInt8)
+      (scan 6 normalWord))])).drop 6).map (·.answered) == [unanswered, unanswered, unanswered]
+
+/-! A short record, and the record after it synchronizes. -/
+#guard ((answers init (inNormal ++ [.ok ((encodeScan (scan 6 normalWord)).eraseIdx 9),
+    rec (scan 7 normalWord)])).drop 6).map (fun a => (a.answered, a.permit, a.state, a.code)) ==
+  [(unanswered, 0, .fault, codeLength), (7, 0, .fault, codeLength)]
+
+/-! Readings at and beyond their limits. -/
+#guard fromNormal (faulty fun sc => { sc with current := 280000 }) == some (5, .normal, codeNone)
+#guard fromNormal (faulty fun sc => { sc with current := -280000 }) == some (5, .normal, codeNone)
+#guard fromNormal (faulty fun sc => { sc with current := 2801, temps := [0, 450] }) ==
+  some (5, .normal, codeNone)
+#guard fromNormal (faulty fun sc => { sc with pack := 12900 }) == some (5, .normal, codeNone)
+#guard fromNormal (faulty fun sc => { sc with pack := 12899 }) == some (0, .fault, codeSum)
+#guard fromNormal (faulty fun sc => { sc with cells := [4501, 3300, 3300, 3300] }) ==
+  some (0, .fault, codeSensor)
+#guard fromNormal (faulty fun sc => { sc with cells := [999, 3300, 3300, 3300] }) ==
+  some (0, .fault, codeSensor)
+#guard fromNormal (faulty fun sc => { sc with pack := 20001 }) == some (0, .fault, codeSensor)
+#guard fromNormal (faulty fun sc => { sc with bus := 20001 }) == some (0, .fault, codeSensor)
+#guard fromNormal (faulty fun sc => { sc with bus := 20000 }) == some (5, .normal, codeNone)
+#guard (outcomes (startup.take 3 ++ [rec (scan 3 (stopOk + run + auxNeg + auxPre) 12700)])).getLast? ==
+  some (5, .normal, codeNone)
+#guard (outcomes (startup.take 3 ++ [rec (scan 3 (stopOk + run + auxNeg + auxPre) 12699)])).getLast? ==
+  some (3, .precharge, codeNone)
+
 /-! The history terms agree with the machine's state on a run that covers every state. -/
 
 /-- The segment results of a run through every state: `inNormal`, a sequence fault, a reset

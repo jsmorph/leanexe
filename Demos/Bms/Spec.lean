@@ -311,7 +311,8 @@ def answerBody (a : Answer) : List UInt8 :=
 def encodeAnswer (a : Answer) : List UInt8 := answerBody a ++ beBytes 4 (crc (answerBody a))
 
 /-- The answer that the raw bytes `raw` hold, when they have 17 bytes, the tag `0x80`, the CRC of
-`LINK` and bytes 0 to 12, and a state code. -/
+`LINK` and bytes 0 to 12, and a state code from 0 to 4.  The last condition goes beyond the
+bridge's test of authenticity in BR1, which accepts every state byte. -/
 def decodeAnswer (raw : List UInt8) : Option Answer :=
   if raw.length = answerLength ∧ field raw 0 1 = answerTag ∧ field raw 13 4 = crc (raw.take 13) then
     (Mode.ofCode? (field raw 10 1)).map fun m =>
@@ -477,7 +478,9 @@ def rule4 (s : State) : Next :=
   | .standby | .precharge | .normal => ⟨.resetRequired, codeStop, s.pcCount⟩
 
 /-- Rule 5: the table for a record `sc` that passes every check with `STOP_OK` 1, the first
-condition that holds in the state's rows. -/
+condition that holds in the state's rows.  A row that names no code keeps it, and `codes` of
+`Demos/Bms/Theorems.lean` proves that the code is then 0, as the requirements state for
+`STANDBY`, `PRECHARGE`, and `NORMAL`. -/
 def rule5 (s : State) (sc : Scan) : Next :=
   match s.mode with
   | .resetRequired | .fault =>
@@ -565,14 +568,15 @@ def stateBefore (x : Nat → Input) (t : Nat) : Mode :=
   if t = 0 then .resetRequired else (answerAt x (t - 1)).state
 
 /-- The permit in force for segment `t`: the permit of the state before it, which the previous
-answer carried. -/
+answer carried, and at segment 0 the permit of `RESET_REQUIRED`, 0. -/
 def permitInForce (x : Nat → Input) (t : Nat) : Nat :=
   if t = 0 then 0 else (answerAt x (t - 1)).permit
 
 /-- Whether `synced` held before segment `t`: segment `t - 1` is a good record. -/
 def syncedAt (x : Nat → Input) (t : Nat) : Bool := t != 0 && good (x (t - 1))
 
-/-- The expected sequence number at segment `t`: that of segment `t - 1` plus one. -/
+/-- The expected sequence number at segment `t`: that of segment `t - 1` plus one.  The checks read
+it only when `syncedAt x t` holds. -/
 def expectedAt (x : Nat → Input) (t : Nat) : Nat := ((scanOf (x (t - 1))).seq + 1) % 2 ^ 32
 
 /-- Whether record `t` passes the communication checks: it is a good record, and it is the first
@@ -590,7 +594,8 @@ def changedAt (x : Nat → Input) (r c : Nat) : Bool :=
 
 /-- The age of relay `r` at segment `t`: 0 for `t = 0`, and otherwise the number of records that
 passed the communication checks among segments `c + 1` to `t - 1`, where `c` is the last segment
-before `t` at which the relay's bit changed. -/
+before `t` at which the relay's bit changed.  The machine's state holds the smaller of this age and
+`D_edm`, and check 17 reads only whether the age reaches `D_edm`. -/
 def ageAt (x : Nat → Input) (r t : Nat) : Nat :=
   if t = 0 then 0
   else
@@ -649,7 +654,8 @@ structure Permitted (x : Nat → Input) (n i j : Nat) : Prop where
   content : ∀ t, i ≤ t → t ≤ n → contentFailureAt x t = none
   /-- Item 2: records `i` to `n` have `STOP_OK` 1. -/
   stopOk : ∀ t, i ≤ t → t ≤ n → (scanOf (x t)).stopOk = true
-  /-- Item 3: the last record before `i` that passed the communication checks has `RESET` 0. -/
+  /-- Item 3: a record before `i` passed the communication checks, and the last such record has
+  `RESET` 0. -/
   resetReleased : ∃ u < i, passesComm x u = true ∧ (∀ v, u < v → v < i → passesComm x v = false) ∧
     (scanOf (x u)).reset = false
   /-- Item 3: record `i` has `RESET` 1, `RUN` 0, and the auxiliary word 0. -/

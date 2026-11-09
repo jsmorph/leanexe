@@ -997,6 +997,49 @@ theorem diag_lt (t : Nat) : (stateAt x t).diag < 2 ^ 16 := by
   | zero => show init.diag < 2 ^ 16; decide
   | succ t ih => exact next_diag_lt ih
 
+/-- The codes of a fault: those of the 17 checks and of the precharge timeout. -/
+def faultCodes : List Nat :=
+  [codeDecode, codeOverflow, codeLength, codeCrc, codeTag, codeSeq, codeReserved, codeSensor,
+    codeOverVoltage, codeUnderVoltage, codeOverTemp, codeUnderTemp, codeChargeCurrent,
+    codeDischargeCurrent, codeChargeTemp, codeSum, codeAux] ++ [codePrecharge]
+
+/-- The code `d` of the state `m`: 0 in `STANDBY`, `PRECHARGE`, and `NORMAL`, `0x0001` or `0x5001`
+in `RESET_REQUIRED`, and a fault code in `FAULT`. -/
+def CodeOf (m : Mode) (d : Nat) : Prop :=
+  ((m = .standby ∨ m = .precharge ∨ m = .normal) → d = codeNone) ∧
+    (m = .resetRequired → d = codeBoot ∨ d = codeStop) ∧ (m = .fault → d ∈ faultCodes)
+
+theorem next_codeOf {s : State} {y : Input} (h : CodeOf s.mode s.diag) :
+    CodeOf (next s y).mode (next s y).diag := by
+  obtain ⟨h1, h2, h3⟩ := h
+  cases hf : failure s y with
+  | some c =>
+    rw [next_failure hf]
+    refine ⟨by simp, by simp, fun _ => ?_⟩
+    split_ifs with hm
+    · exact h3 hm
+    · have := firstFailure_mem hf
+      rw [checks_codes] at this
+      exact List.mem_append_left _ this
+  | none =>
+    have hP : codePrecharge ∈ faultCodes := List.mem_append_right _ (List.mem_singleton_self _)
+    rw [next_pass hf]
+    split_ifs
+    · unfold rule5
+      cases hm : s.mode <;> simp only [hm, CodeOf] at h1 h2 h3 ⊢ <;> split_ifs <;> simp_all
+    · unfold rule4
+      cases hm : s.mode <;> simp only [hm, CodeOf] at h1 h2 h3 ⊢ <;> simp_all
+
+/-- The code is 0 in `STANDBY`, `PRECHARGE`, and `NORMAL`, `0x0001` or `0x5001` in
+`RESET_REQUIRED`, and a fault code in `FAULT`. -/
+theorem codes (t : Nat) : CodeOf (answerAt x t).state (answerAt x t).code := by
+  have : ∀ t, CodeOf (stateAt x t).mode (stateAt x t).diag := by
+    intro t
+    induction t with
+    | zero => exact ⟨by simp [init], fun _ => Or.inl rfl, by simp [init]⟩
+    | succ t ih => exact next_codeOf ih
+  exact this (t + 1)
+
 theorem answers_eq (t : Nat) : (stateAt x t).answers = t % 2 ^ 32 := by
   induction t with
   | zero => rfl
