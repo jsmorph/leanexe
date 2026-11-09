@@ -48,5 +48,8 @@ import TestSupport.M7.Delim
 import TestSupport.M7.DelimAbs
 import TestSupport.M7.DelimStep
 import TestSupport.M7.DelimLoop
+import TestSupport.M7.BmsStep
+import TestSupport.M7.BmsImages
+import TestSupport.M7.BmsLoop
 import TestSupport.A64.CicSigned
 import TestSupport.A64.Int64Text

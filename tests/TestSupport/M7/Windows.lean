@@ -6,6 +6,8 @@ import TestSupport.M7.Crc
 import TestSupport.M7.Sha
 import TestSupport.M7.Signed
 import TestSupport.M7.Delim
+import Demos.Bms.Compiled
+import Demos.Bms.Cases
 import TestSupport.Bare.Req
 import Demos.Energy.Loop
 
@@ -13,8 +15,9 @@ import Demos.Energy.Loop
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`
 generates, the echo's steps `usart3Tick` and `cmsdkTick`, the gateway's steps `gwTickUsart3`
 and `gwTick`, the CRC-32 steps `crcUsart3Tick` and `crcCmsdkTick`, the SHA-256 steps
-`shaUsart3Tick` and `shaCmsdkTick`, the signed steps `sgUsart3Tick` and `sgCmsdkTick`, and the
-echoes of records `dlUsart3Tick` and `dlCmsdkTick`, measured by running the generated code in
+`shaUsart3Tick` and `shaCmsdkTick`, the signed steps `sgUsart3Tick` and `sgCmsdkTick`, the
+echoes of records `dlUsart3Tick` and `dlCmsdkTick`, and the BMS steps `bmsTickUsart3` and
+`bmsTick`, measured by running the generated code in
 the model of `LeanExe/M7/Machine.lean`.  A window runs
 from the loop's head of `main` to its next arrival there: the call of the step and the request's
 register access.
@@ -41,8 +44,9 @@ flipped, for CRC-32, the low byte of the CRC-32 of each prefix of the input, whi
 computes bit by bit with the reflected polynomial `0xEDB88320`, for SHA-256, after each block
 of 64 bytes, the 32 bytes of the digest that `sha256` of `Library/Hashing/Sha256/Program.lean`
 gives for the input up to the block's end, for the signed step, the low byte of the
-integrator of `leak` shifted right by 4 after each byte, and for the echo of records,
-`delimAnswers echoMach 36 0` of the input, in native Lean.  The program holds the
+integrator of `leak` shifted right by 4 after each byte, for the echo of records,
+`delimAnswers echoMach 36 0` of the input, and for the BMS step, `delimAnswers machine maxSegment
+init` of the input with the machine of `Demos/Bms/Spec.lean`, in native Lean.  The program holds the
 code of `udivmod64`, which the run does not execute: at its entry the run sets r0:r1 to the
 quotient and r2:r3 to the remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word,
 returns to LR, and counts the call by the routine's path, both high words 0, the divisor's low
@@ -243,6 +247,53 @@ def dlProg (name : String) (k : Nat) (tick : DlFrame → UInt64 → DlFrame × U
       (LeanExe.Requests.delimAnswers echoMach 36 0 input.toList).toArray,
     input := some dlInput }
 
+open Demos.Bms.Program in
+/-- The kind of a window of the BMS step, by the same rule as `dlKind`: `answer` is the window of a
+`0x00` after a non-empty segment, which runs `bmsDelim`. -/
+def bmsKind (p : Port) (f : BmsFrame) (v : UInt64) : String :=
+  if f.phase == 0 then (if v &&& p.rxFull != 0 then "rxne" else "idle")
+  else if f.phase == 1 then
+    (if v &&& 255 != 0 then "byte" else if f.len == 0 then "empty" else "answer")
+  else if f.phase == 2 then (if v &&& p.txMask == p.txRoom then "tx" else "txwait")
+  else "sent"
+
+open Demos.Bms.Cases in
+/-- The scan records of a run of the BMS step: the start of `Demos/Bms/Cases.lean` to `NORMAL`,
+records in `NORMAL`, a cell at 3,651 mV, a reset acceptance, a start, and the precharge
+condition, each as its raw bytes. -/
+def bmsRecords : List (List UInt8) :=
+  let sc := fun (seq d : Nat) (bus : Nat) => Demos.Bms.Spec.encodeScan (scan seq d bus)
+  let rst := Demos.Bms.Cases.reset
+  let rn := Demos.Bms.Cases.run
+  [sc 0 stopOk 13200, sc 1 (stopOk + rst) 13200, sc 2 (stopOk + rn) 0,
+    sc 3 (stopOk + rn + auxNeg + auxPre) 6000, sc 4 (stopOk + rn + auxNeg + auxPre) 13200,
+    sc 5 normalWord 13200, sc 6 normalWord 13200,
+    Demos.Bms.Spec.encodeScan { scan 7 normalWord with cells := [3651, 3300, 3300, 3300] },
+    sc 8 stopOk 13200, sc 9 (stopOk + rst) 13200, sc 10 (stopOk + rn) 0,
+    sc 11 (stopOk + rn + auxNeg + auxPre) 13200, sc 12 normalWord 13200]
+
+/-- The input of a run of the BMS step: the records encoded, each followed by a `0x00`, then an
+empty segment, a record with a changed byte, a truncated encoding, a segment of 50 bytes, and the
+records again, which the sequence check rejects until they synchronize. -/
+def bmsInput : Array UInt8 :=
+  let good := bmsRecords.flatMap fun r => LeanExe.Requests.cobsEncode r ++ [0]
+  let changed := match bmsRecords with
+    | r :: _ => (LeanExe.Requests.cobsEncode (r.set 9 77)) ++ [0]
+    | [] => []
+  let bad := [0] ++ changed ++ [5, 1, 2, 0] ++ (List.replicate 50 7 ++ [0])
+  ([0] ++ good ++ bad ++ good).toArray
+
+open Demos.Bms.Program in
+def bmsProg (name : String) (k : Nat) (tick : BmsFrame → UInt64 → BmsFrame × UInt64) (p : Port) :
+    Prog :=
+  { name, module := bmsCompiled.module, k, G := BmsFrame, s0 := bmsInit, words := bmsWords, tick,
+    port := p, phase := fun f => f.phase, kind := bmsKind p, inRec := 1, outRec := 1,
+    limit := stackLimit, start := [],
+    answer := fun input =>
+      (LeanExe.Requests.delimAnswers Demos.Bms.Spec.machine Demos.Bms.Spec.maxSegment
+        Demos.Bms.Spec.init input.toList).toArray,
+    input := some bmsInput }
+
 def programs : List Prog :=
   [echoProg "echo-usart3" 9 TestSupport.Bare.usart3Tick usart3,
     echoProg "echo-cmsdk" 5 TestSupport.Bare.cmsdkTick cmsdk,
@@ -259,7 +310,9 @@ def programs : List Prog :=
     sgProg "signed-usart3" 4 TestSupport.M7.Signed.sgUsart3Tick usart3,
     sgProg "signed-cmsdk" 5 TestSupport.M7.Signed.sgCmsdkTick cmsdk,
     dlProg "delim-usart3" 22 TestSupport.M7.Delim.dlUsart3Tick usart3,
-    dlProg "delim-cmsdk" 23 TestSupport.M7.Delim.dlCmsdkTick cmsdk]
+    dlProg "delim-cmsdk" 23 TestSupport.M7.Delim.dlCmsdkTick cmsdk,
+    bmsProg "bms-usart3" 56 Demos.Bms.Program.bmsTickUsart3 usart3,
+    bmsProg "bms-cmsdk" 57 Demos.Bms.Program.bmsTick cmsdk]
 
 /-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=
