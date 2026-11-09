@@ -44,8 +44,8 @@ The source is `src/binary64/tgamma/tgamma.c` of CORE-MATH [1], `Copyright (c) 20
 |---|---|---|
 | second result through a pointer | pair result | The dialect has no pointers. |
 | global `static const` tables | `Array UInt64` tables passed by `tgamma` to `tgammaWith` | The tables become borrowed arrays of the module. |
-| integers `i`, `jm`, `ip`, `k` that count or select | integer-valued doubles | The dialect's words are unsigned 64-bit integers. |
-| `int` exponents `e`, `eoff` and the index of `as_expd` | two's complement words, with `sar` for the arithmetic shift | Same reason. |
+| integers `i`, `jm`, `ip`, `k` that count or select | integer-valued doubles | Each is the floor or the nearest integer of a double.  The double takes part in double arithmetic, as `jm` does in the correction `jm * crr`, and `toUInt64` gives a loop count or the parity where the C code uses the integer. |
+| `int` exponents `e`, `eoff` and the index of `as_expd` | two's complement words, with `sar` for the arithmetic shift | Each exponent is added to or subtracted from the bit pattern of a double or its exponent field, and the index selects table entries by its low bits, so each use takes a word. |
 | `__builtin_fma` | `Fma.fma`, at all 15 calls | WebAssembly has no scalar fused multiply-add, and in the deterministic profile its relaxed SIMD multiply-add returns the unfused result [9]. |
 | `roundeven_finite`, `floor` | adding and subtracting `2^52`, and `floorF` from it | The dialect has no operation that rounds to an integer. |
 | binary search of `as_tgamma_database` | scan of all 57 rows | The scan finds the same row. |
