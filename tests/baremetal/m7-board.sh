@@ -52,7 +52,8 @@
 # pseudo-terminal, NAME.pty, and a hook at main logs "reached main", which follows the board's
 # initialization; the script then plays the far end through the pseudo-terminal as "run" does.
 # Renode's log, NAME.renode, may hold no warning or error other than those of its translation
-# cache and of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks.
+# cache, of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks, and of the write of OVRDIS,
+# bit 12 of USART_CR3, which its USART model lacks and which the image of NAME delim makes.
 #
 # "m7-board.sh run NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
 # reads the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a
@@ -392,7 +393,9 @@ EOF
     wait "$renode_job" 2>/dev/null || :
     unexpected=$(grep -a '\[WARNING\]\|\[ERROR\]' "$out/$name.renode" |
       grep -av 'Translation cache size [0-9]* is larger than maximum allowed' |
-      grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' | head -c 400 || :)
+      grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' |
+      grep -av 'usart3: Unhandled write to offset 0x8\. Unhandled bits: \[12\] when writing value 0x1000\.' |
+      head -c 400 || :)
     if [ -n "$unexpected" ]; then
       echo "fail: $name: Renode logged $unexpected"
       status=1
