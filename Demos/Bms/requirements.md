@@ -392,7 +392,7 @@ Each scenario starts in `NORMAL` unless it states otherwise.  An expected answer
 
 ## Open items
 
-The items below bound what a later phase can claim.  Each belongs to a phase of the plan or to another task that a phase depends on.  None of them changes a statement of the machine's theorems.
+No item remains open.  The table gives the items that bounded what the phases of the plan could claim, each with the result that closed it, and none of them changes a statement of the machine's theorems.
 
 | Item | State |
 |---|---|
@@ -403,7 +403,7 @@ The items below bound what a later phase can claim.  Each belongs to a phase of 
 
 ## Plan
 
-Each phase ends with its stated criterion.  The delimited framing with F1 to F3 and L1 precedes the program, and the generalized boot precedes the board theorems.  QEMU runs come before board runs.
+Each phase ends with its stated criterion.  The delimited framing with F1 to F3 and L1 precedes the program, and the generalized boot precedes the board theorems.  QEMU runs come before board runs.  Every phase has met its criterion, as [the BMS guide](README.md) and [the host side](Host.md) record.
 
 | Phase | Deliverables | Done when |
 |---|---|---|
