@@ -2,6 +2,7 @@ import TestSupport.M7.Nucleo
 import TestSupport.M7.GwImages
 import TestSupport.M7.CrcImages
 import TestSupport.M7.ShaImages
+import TestSupport.M7.BmsImages
 
 /-!
 The cycle measurements of the Cortex-M7 back end on the NUCLEO-F767ZI, in images apart from the
@@ -30,7 +31,9 @@ top of DTCM.  The SHA-256 step's image, `shaDwt`, does the same with the setup o
 The echo's key and the CRC-32 step's is the phase, the state's low byte, below 4.  The gateway's
 key, and the SHA-256 step's, is the phase plus 4 when the byte count `nbyte`, the state's second
 word, is 7, below 8, which distinguishes each kind of window of
-`tests/TestSupport/M7/Windows.lean` by the keys before and after it.
+`tests/TestSupport/M7/Windows.lean` by the keys before and after it.  The BMS step's image,
+`bmsDwt`, takes the layout `bootWith initOvrdis` of its proved image, and its key is the phase, so
+that the window of a `0x00` after a non-empty segment is the only window from phase 1 to phase 2.
 
 `divDwt` measures `udivmod64`'s paths and `UDIV`.  Each case loads r0 to r3, stores them in its
 record, reads the counter, runs its body, reads the counter again, and stores the difference and
@@ -152,6 +155,12 @@ table at `crcTab`, and the gateway's key, since the step frames records as the g
 def shaDwt : GenM (List UInt8) :=
   imageDwtIn TestSupport.M7.ShaImages.boardBoot areaEnd crcTab
     TestSupport.M7.Sha.shaStepCompiled.module 13 TestSupport.M7.ShaImages.shaState gwKey 3
+
+/-- The BMS step's measurement image: the layout `bootWith initOvrdis` with the measurement's
+initialization after the board's, the stack's limit at DTCM's base, and the phase as the key. -/
+def bmsDwt : GenM (List UInt8) :=
+  imageDwtIn (bootWith initOvrdis) stackLimit res Demos.Bms.Program.bmsCompiled.module 56
+    TestSupport.M7.Bms.bmsState [.ldrSp 3 0, .andImm 3 3 255] 2
 
 /-- A case of the division measurements: `kind` 0 calls `udivmod64`, 1 a routine that returns,
 2 runs 16 `UDIV r4, r0, r2`, and 3 runs 16 `MOV r4, r0`. -/

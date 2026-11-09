@@ -103,4 +103,4 @@ The same agent checked the revision.  It reran its machine with per-relay ages a
 
 ## Open items
 
-Boot and the board theorems over the image's own initialization list, the framing's loop-free code and decoder, the lemma of B3a, and the measured timing values remain open, as [the requirements' open items](requirements.md#open-items) state.  The overrun behavior is settled by the board tests and the decision of gap 5.  No VKB entry follows from this task, which proved nothing.
+The lemma of B3a remains open, as [the requirements' open items](requirements.md#open-items) state, and the board's run of the schedule confirmed the timing values `T_ans`, `T_lease`, `T_sample`, and `T_act`, so none of them changed.  The overrun behavior is settled by the board tests and the decision of gap 5.  No VKB entry follows from this task, which proved nothing.

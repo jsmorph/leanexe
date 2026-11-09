@@ -30,13 +30,47 @@ may lose.  The script first checks its COBS encoder and decoder on random record
 machine's answer to the scan vector in NORMAL with the vector's sequence number expected and the
 next answer numbered 8, which must be the answer vector, and exits with status 1 if a check fails.
 
-Usage: uv run tests/baremetal/bms_proto.py vectors | faults
+"gen SEED N PREFIX" writes N random writes of a bridge to PREFIX.in, in the format of
+tests/baremetal/uart_bms.py, and the mirror's answers to them to PREFIX.out, so that the native
+replay of tests/TestSupport/Bms/Replay.lean compares the mirror with Demos/Bms/Spec.lean.  The
+writes form parts, each ended by a line "reset" for a board reset after 10 to 2,999 writes or
+after a write that the reset cuts.  Each part draws its rates: a quarter of the parts are quiet,
+with no fault and rare changes of RUN and STOP_OK in PRECHARGE and NORMAL, and the others draw
+each rate from a list.  A part numbers its records from a random value or, in 3 of 10 parts,
+from fewer than 64 below 2^32, so that the numbers wrap.  A write is a scan record encoded with
+its 0x00, with the next sequence number, each field within the profile's limits or, with the
+part's probability up to 0.15, at a limit or 1 on either side of it.  With a quarter of that
+probability the current lies at I_chg_detect or 1 on either side with a temperature outside the
+charging range, and the pack voltage at P_sens_hi or 1 on either side.  The bus voltage lies
+within 600 mV of the pack voltage with the part's probability, from 0 to 1, and otherwise below
+15,000 mV or, at the part's probability of a limit, at P_sens_hi or 1 on either side.  When it
+follows the pack, it lies tol_pc from it or 1 on either side with probability at least 0.1.  The
+digital word follows the state of the mirror's last answer: in RESET_REQUIRED and FAULT the
+process presses and releases the reset button and clears RUN, in STANDBY it sets RUN, and in
+every state it toggles STOP_OK now and then.  The auxiliary contacts report the permit of the
+last answer or, with the part's delay, of the answer 1 to 3 answers before it, so that check 17
+meets disagreements at each age, and with the part's probability up to 0.05 a random word.  A
+reserved bit is set with probability 0 or 0.003.  With the part's probability up to 0.25 the
+write is the record with a lost, inserted, or changed byte, a byte set to 0x00, or a lost
+delimiter; a record with the CRC over another link identifier, another tag, a repeated,
+skipped, or random sequence number, or fields at the extremes of their types; random bytes; the
+encoding of 0 to 36 random bytes; 1 to 3 empty segments; 36 to 599 nonzero bytes; or the first
+bytes of the record followed by a board reset.  The command prints the number of answers in each
+state.
+
+"cover PREFIX..." runs the mirror's framing and machine over the parts of each PREFIX.in and
+prints counts of the segments, the transitions, the first failing check by code inside and outside
+FAULT, the precharge timeouts, the reset presses and starts with their outcomes, the records that
+reach a check with a field at its limit or 1 beyond it, the disagreements of the auxiliary
+contacts by age, the wrap of the sequence numbers, and the longest run of answers in each state.
+
+Usage: uv run tests/baremetal/bms_proto.py vectors | faults | gen SEED N PREFIX | cover PREFIX...
 """
 
 import random
 import sys
 import zlib
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass
 
 LINK = b"LeanExe-BMS-0001"
@@ -483,12 +517,269 @@ def faults():
     print("lost delimiter alone:", lost_delim)
 
 
+WORDS = 1 << 32
+
+
+def gen(seed, n, prefix):
+    rng = random.Random(seed)
+    other = b"LeanExe-BMS-0002"
+    board = Board()
+    mode = RESET_REQUIRED
+    permits = deque([0] * 4, maxlen=4)
+    digital = STOP_OK
+    ins, outs = [], []
+    seen = Counter()
+
+    def regime():
+        quiet = rng.random() < 0.25
+        mix = lambda *values: 0.0 if quiet else rng.choice(values)
+        return dict(wire=mix(0.0, 0.01, 0.05, 0.25), near=mix(0.0, 0.005, 0.03, 0.15),
+                    aux=mix(0.0, 0.003, 0.05), reserved=mix(0.0, 0.003),
+                    lag=rng.choice((0, 1, 2) if quiet else (0, 0, 1, 2, 3)),
+                    bus=rng.choice((0.8, 1.0) if quiet else (0.0, 0.3, 0.8, 1.0)),
+                    calm=0.01 if quiet else rng.choice((1.0, 0.1)),
+                    length=int(rng.choice((20, 200, 2000)) * (0.5 + rng.random())))
+
+    def first_seq():
+        return WORDS - rng.randrange(1, 64) if rng.random() < 0.3 else rng.randrange(WORDS)
+
+    def pick(lo, hi, limits, near=None):
+        if limits and rng.random() < (r["near"] if near is None else near):
+            return rng.choice(limits) + rng.choice((-1, 0, 1))
+        return rng.randrange(lo, hi + 1)
+
+    def wild(v, lo, hi):
+        u = rng.random()
+        return v if u < 0.5 else rng.choice((lo, hi)) if u < 0.75 else rng.randrange(lo, hi + 1)
+
+    def raw_scan(s, d, link=LINK, tag=SCAN_TAG, extreme=False):
+        cells = [pick(2600, 3600, (V_MIN, V_MAX, V_SENS_LO, V_SENS_HI)) for _ in range(4)]
+        temps = [pick(0, 450, (T_MIN, T_MAX, T_CHG_MIN, T_CHG_MAX, T_SENS_LO, T_SENS_HI))
+                 for _ in range(2)]
+        current = pick(-250_000, 250_000, (I_CHG_MAX, -I_DIS_MAX, I_CHG_DETECT))
+        if rng.random() < r["near"] / 4:
+            current = I_CHG_DETECT + rng.choice((-1, 0, 1))
+            temps[rng.randrange(2)] = rng.choice((rng.randrange(T_MIN, T_CHG_MIN),
+                                                  rng.randrange(T_CHG_MAX + 1, T_MAX + 1)))
+        pack = sum(cells) + pick(-280, 280, (TOL_SUM, -TOL_SUM))
+        if rng.random() < r["near"] / 4:
+            pack = P_SENS_HI + rng.choice((-1, 0, 1))
+        if rng.random() < r["bus"]:
+            bus = pack + pick(-600, 600, (TOL_PC, -TOL_PC), max(r["near"], 0.1))
+        else:
+            bus = pick(0, 15000, (P_SENS_HI,))
+        if extreme:
+            cells = [wild(c, 0, 0xFFFF) for c in cells]
+            temps = [wild(t, -0x8000, 0x7FFF) for t in temps]
+            current = wild(current, -(1 << 31), (1 << 31) - 1)
+            pack, bus, d = wild(pack, 0, WORDS - 1), wild(bus, 0, WORDS - 1), wild(d, 0, 0xFFFF)
+        body = bytes([tag]) + be(s, 4) + b"".join(be(c, 2) for c in cells)
+        body += b"".join(be(t, 2) for t in temps) + be(current, 4) + be(pack, 4) + be(bus, 4)
+        body += be(d, 2)
+        return body + be(zlib.crc32(body, zlib.crc32(link)), 4)
+
+    r, seq, written = regime(), first_seq(), 0
+    for _ in range(n):
+        if mode in (RESET_REQUIRED, FAULT):
+            toggles = ((0.3, RESET), (0.5, RUN if digital & RUN else 0), (0.03, STOP_OK))
+        elif mode == STANDBY:
+            toggles = ((0.1, RESET), (0.3, 0 if digital & RUN else RUN), (0.01, STOP_OK))
+        else:
+            toggles = ((0.05, RESET), (0.03 * r["calm"], RUN), (0.01 * r["calm"], STOP_OK))
+        for p, bit in toggles:
+            if rng.random() < p:
+                digital ^= bit
+        aux = permits[-1 - r["lag"]] if rng.random() >= r["aux"] else rng.randrange(8)
+        d = (digital & ~7) | aux
+        if rng.random() < r["reserved"]:
+            d |= 1 << rng.randrange(6, 16)
+        num, seq = seq, (seq + 1) % WORDS
+        w = wire(raw_scan(num, d))
+        reset = False
+        if rng.random() >= r["wire"]:
+            data = w
+        else:
+            f = rng.randrange(16)
+            i = rng.randrange(len(w) - 1)
+            if f == 0:
+                data = w[:i] + w[i + 1:]
+            elif f == 1:
+                data = w[:i] + bytes([rng.randrange(1, 256)]) + w[i:]
+            elif f == 2:
+                data = w[:i] + bytes([(w[i] + rng.randrange(1, 255)) % 256 or 1]) + w[i + 1:]
+            elif f == 3:
+                data = w[:i] + b"\x00" + w[i + 1:]
+            elif f == 4:
+                data = wire(raw_scan(num, d, link=other))
+            elif f == 5:
+                data = wire(raw_scan(num, d, tag=(SCAN_TAG + rng.randrange(1, 256)) % 256))
+            elif f == 6:
+                data = wire(raw_scan((num - 1) % WORDS, d))
+            elif f == 7:
+                num, seq = seq, (seq + 1) % WORDS
+                data = wire(raw_scan(num, d))
+            elif f == 8:
+                data = bytes(rng.randrange(256) for _ in range(rng.randrange(1, 45)))
+            elif f == 9:
+                data = b"\x00" * rng.randrange(1, 4)
+            elif f == 10:
+                k = rng.choice((MAX_SEGMENT, MAX_SEGMENT + 1, rng.randrange(MAX_SEGMENT + 2, 600)))
+                data = bytes(rng.randrange(1, 256) for _ in range(k)) + b"\x00"
+            elif f == 11:
+                data = w[:-1]
+            elif f == 12:
+                data = wire(bytes(rng.randrange(256) for _ in range(rng.randrange(SCAN_RAW + 2))))
+            elif f == 13:
+                data = wire(raw_scan(num, d, extreme=True))
+            elif f == 14:
+                num = rng.randrange(WORDS)
+                seq = (num + 1) % WORDS
+                data = wire(raw_scan(num, d))
+            else:
+                data = w[:rng.randrange(1, len(w) - 1)]
+                reset = True
+        ins.append(data.hex())
+        for b in data:
+            frame = board.push(b)
+            if frame:
+                outs.append(frame.hex())
+                a = decode_answer(cobs_decode(frame[:-1]))
+                permits.append(a.permit)
+                mode = a.state
+                seen[STATES[a.state]] += 1
+        written += 1
+        if reset or written >= r["length"]:
+            ins.append("reset")
+            outs.append("reset")
+            board, mode = Board(), RESET_REQUIRED
+            r, seq, written = regime(), first_seq(), 0
+    with open(prefix + ".in", "w") as f:
+        f.write("\n".join(ins) + "\n")
+    with open(prefix + ".out", "w") as f:
+        f.write("\n".join(outs) + "\n")
+    print(f"{n} writes, {sum(o != 'reset' for o in outs)} answers, {outs.count('reset')} resets "
+          f"to {prefix}.in and {prefix}.out; answers by state: "
+          + ", ".join(f"{k} {v}" for k, v in sorted(seen.items())))
+
+
+def tally(c, s, x, nxt):
+    """Adds the classification of the segment result x in the state s, with the next state nxt,
+    to the counter c."""
+    before, after = STATES[s.mode], STATES[nxt.mode]
+    c[f"transition {before} to {after}"] += 1
+    f = failure(s, x)
+    if f is not None:
+        c[f"first failing check {f:#06x} {'in' if s.mode == FAULT else 'outside'} FAULT"] += 1
+    elif s.mode == PRECHARGE and nxt.mode == FAULT:
+        c["precharge timeout 0x3002"] += 1
+    if not good(x):
+        return
+    sc = decode_scan(x)
+    if sc.seq == UNANSWERED:
+        c["good record numbered 0xFFFFFFFF"] += 1
+    if s.synced and sc.seq != s.expected:
+        return
+    if s.synced and s.expected == 0:
+        c["record checked against the expected number 0"] += 1
+    permit = permit_of(s.mode)
+    fc = content_failure(permit, s.age, sc)
+    charging = sc.current > I_CHG_DETECT
+    outside = any(not T_CHG_MIN <= t <= T_CHG_MAX for t in sc.temps)
+    for name, code, values, limit, beyond in (
+            ("V_sens_lo", 0x2001, sc.cells, V_SENS_LO, -1),
+            ("V_sens_hi", 0x2001, sc.cells, V_SENS_HI, 1),
+            ("T_sens_lo", 0x2001, sc.temps, T_SENS_LO, -1),
+            ("T_sens_hi", 0x2001, sc.temps, T_SENS_HI, 1),
+            ("P_sens_hi, pack", 0x2001, (sc.pack,), P_SENS_HI, 1),
+            ("P_sens_hi, bus", 0x2001, (sc.bus,), P_SENS_HI, 1),
+            ("V_max", 0x2002, sc.cells, V_MAX, 1),
+            ("V_min", 0x2003, sc.cells, V_MIN, -1),
+            ("T_max", 0x2004, sc.temps, T_MAX, 1),
+            ("T_min", 0x2005, sc.temps, T_MIN, -1),
+            ("I_chg_max", 0x2006, (sc.current,), I_CHG_MAX, 1),
+            ("I_dis_max", 0x2007, (sc.current,), -I_DIS_MAX, -1),
+            ("T_chg_min, charging", 0x2008, sc.temps if charging else (), T_CHG_MIN, -1),
+            ("T_chg_max, charging", 0x2008, sc.temps if charging else (), T_CHG_MAX, 1),
+            ("I_chg_detect, outside the charging range", 0x2008,
+             (sc.current,) if outside else (), I_CHG_DETECT, 1),
+            ("tol_sum", 0x2009, (abs(sum(sc.cells) - sc.pack),), TOL_SUM, 1)):
+        if fc is None or fc >= code:
+            c[f"limit {name} at"] += limit in values
+            c[f"limit {name} beyond"] += limit + beyond in values
+    disagree = [r for r in range(3) if (sc.digital >> r & 1) != (permit >> r & 1)]
+    if disagree and (fc is None or fc == 0x3001):
+        c[f"auxiliary contact disagreeing at age {max(s.age[r] for r in disagree)}"] += 1
+    if f is not None:
+        return
+    run, aux = sc.digital & RUN, sc.digital & 7
+    if not sc.digital & STOP_OK:
+        c[f"STOP_OK 0 in {before}"] += 1
+    elif s.mode in (RESET_REQUIRED, FAULT) and sc.digital & RESET:
+        c["reset press " + ("accepted" if nxt.mode == STANDBY
+                            else "refused: synchronizing record" if not s.synced
+                            else "refused: RESET held" if s.prev_reset
+                            else "refused: RUN 1" if run else "refused: auxiliary contact")] += 1
+    elif s.mode == STANDBY and run:
+        c["start " + ("accepted" if nxt.mode == PRECHARGE else "refused: auxiliary contact")] += 1
+    elif s.mode == PRECHARGE and run:
+        if aux & 3 == 3:
+            c["limit tol_pc at"] += abs(sc.bus - sc.pack) == TOL_PC
+            c["limit tol_pc beyond"] += abs(sc.bus - sc.pack) == TOL_PC + 1
+        if s.pc_count + 1 == N_PC:
+            c["limit N_pc: record " + ("with" if nxt.mode == NORMAL else "without")
+              + " the precharge condition at count N_pc"] += 1
+
+
+def cover(prefixes):
+    c, longest = Counter(), Counter()
+    for prefix in prefixes:
+        with open(prefix + ".in") as f:
+            parts = [[]]
+            for line in f.read().split():
+                if line == "reset":
+                    parts.append([])
+                else:
+                    parts[-1].append(line)
+        for part in parts:
+            stream = bytes.fromhex("".join(part))
+            xs = segments(stream)
+            c["parts"] += 1
+            c["non-empty segments"] += len(xs)
+            c["empty segments"] += stream.count(0) - len(xs)
+            longest["part"] = max(longest["part"], len(xs))
+            s, last, run = INIT, None, 0
+            for x in xs:
+                kind = (x if isinstance(x, str) else "length" if len(x) != SCAN_RAW
+                        else "crc" if not record_ok(x) else "tag" if x[0] != SCAN_TAG else "good")
+                c[f"segment result {kind}"] += 1
+                nxt, a = step(s, x)
+                tally(c, s, x, nxt)
+                c[f"answers {STATES[a.state]}"] += 1
+                run = run + 1 if a.state == last else 1
+                last = a.state
+                longest[STATES[a.state]] = max(longest[STATES[a.state]], run)
+                s = nxt
+    for k in sorted(c):
+        print(f"{c[k]:10d}  {k}")
+    for k in sorted(longest):
+        print(f"{longest[k]:10d}  longest run of answers in {k}" if k != "part"
+              else f"{longest[k]:10d}  longest part, in non-empty segments")
+
+
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("vectors", "faults"):
+    args = sys.argv[1:]
+    if len(args) == 4 and args[0] == "gen":
+        self_test()
+        gen(int(args[1]), int(args[2]), args[3])
+        return
+    if len(args) > 1 and args[0] == "cover":
+        cover(args[1:])
+        return
+    if args not in (["vectors"], ["faults"]):
         print(__doc__.strip().splitlines()[-1])
         sys.exit(2)
     self_test()
-    vectors() if sys.argv[1] == "vectors" else faults()
+    vectors() if args[0] == "vectors" else faults()
 
 
 if __name__ == "__main__":

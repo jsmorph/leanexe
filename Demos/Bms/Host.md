@@ -90,7 +90,7 @@ The bridge injects faults on the wire in its write path.  A fault that leaves th
 
 A run with the prefix `PREFIX` writes three files.  `PREFIX.in` holds one line for each write of the bridge, its bytes in lowercase hexadecimal: a record's encoding with its delimiter or a piece of it, a lone `00` of BR2 or BR4, or bytes that a fault changed.  `PREFIX.out` holds one line for each answer that the board sent, its encoding and the delimiter that ends it in hexadecimal, as received before any injected drop.  Both files hold the line `reset` at each board reset, which the bridge makes only between two writes.
 
-The replay of a run starts the framing and the machine from the state after a board reset for each part of `PREFIX.in` between `reset` lines, feeds the part's bytes in order, and writes each answer's encoding and its delimiter as one line, with `reset` between the parts.  The result must equal `PREFIX.out` line for line.  `uart_bms.py replay` performs the replay with the Python machine, and every run performs it on its own files before it reports.  The replay needs only the framing and the machine, so a native Lean program can apply it with the specification's machine and the framing of `LeanExe/Requests/Delimited.lean` and compare the result with `PREFIX.out` byte for byte, as `native-bare gateway-run` compares the records of [the energy demo](../Energy/README.md)'s gateway.
+The replay of a run starts the framing and the machine from the state after a board reset for each part of `PREFIX.in` between `reset` lines, feeds the part's bytes in order, and writes each answer's encoding and its delimiter as one line, with `reset` between the parts.  The result must equal `PREFIX.out` line for line.  `uart_bms.py replay` performs the replay with the Python machine, and every run performs it on its own files before it reports.  `bms-replay` performs it in native Lean with the specification's machine, as [the replay against the specification](#the-replay-against-the-specification) describes.
 
 `PREFIX.log` holds one event a line: the time in milliseconds since the start of the run on the bridge's clock, the event, and its fields.
 
@@ -111,13 +111,49 @@ The replay of a run starts the framing and the machine from the state after a bo
 | `board-reset` | A board reset |
 | `inject` | A fault that no record carries: a skipped number, dropped answers, the bridge's silence, a weld, a failure to close, or a short |
 
+## Report
+
+`tests/baremetal/bms_report.py` draws a run from `PREFIX.in`, `PREFIX.out`, and `PREFIX.log` and writes `OUTPUT.png` and `OUTPUT.md`.  It splits the writes of `PREFIX.in` into segments with the framing of `bms_proto.py`, decodes the answers of `PREFIX.out` with the same module, and takes the times, the scenarios, and the bridge's actions from `PREFIX.log`.  The figure's panels share one time axis and show the cell voltages, temperatures, and pack current against their limits, the pack and bus voltages, the pack voltage minus the sum of the cells against `tol_sum`, each relay's permit bit, coil, and reported auxiliary contact, and the state and code of each answer, with the scenarios numbered along the top.  `OUTPUT.md` holds the figure and a table of events: each scenario's start and result, the injections and board resets, BR4's timeouts, lease expiries, and each answer that changed the state or the code, was not current, arrived after a timeout, or changed the leases or the coils, with the readings behind a fault and the bridge's actions.
+
+```sh
+uv run tests/baremetal/bms_report.py build/bms/board build/bms/board-report
+```
+
 ## Results against the mirror
 
 Every scenario passes against the Python machine with `STEP` 1 ms and with `STEP` 20 ms, the limit that BR5 allows for both the sampling and the first byte, and with the noise seeds 1 to 5.  With `STEP` 20 ms an exchange takes at most 156.7 ms from the sampling to the end of the current answer, and after a lost delimiter the lease of the record before outlasts the delayed answer by 66.7 ms, against the requirements' estimates of 156.7 ms and about 64.6 ms.  In the lost-answer scenario with `STEP` 1 ms, the lease of the last answered record ends 361.3 ms after the sampling of the first record whose answer is dropped, and the answer to the record after it arrives at 418.8 ms, as the requirements' timing table bounds them.  The bridge releases the relays at the end of each expired lease on the simulated clock, and every answer of each run equals the replay of its `PREFIX.in`.
 
+## The replay against the specification
+
+`bms-replay PREFIX`, the program of `tests/TestSupport/Bms/Replay.lean`, applies the replay rule of [the files](#files) in native Lean.  For each part of `PREFIX.in` it computes `delimAnswers machine maxSegment init` of the part's bytes, the answers of the delimited framing around the specification's `machine` from the state after a board reset, cuts them after each `0x00`, and compares the lines, with `reset` between the parts, with those of `PREFIX.out`.  It prints the number of answers and parts and exits with status 0 when every line agrees.  Otherwise it prints the first line that differs, or the two numbers of lines when one file ends early, and exits with status 1, and it rejects a line of `PREFIX.in` that is not hexadecimal.  No Python code takes part in the comparison.
+
+By `delimAnswers_eq` of [`Stream.lean`](Stream.lean), the answers that `delimAnswers` gives for a part's bytes are the answers `a_n` of the run over the part's non-empty segments, the answers that M1 to M12 describe.  A replay that passes therefore shows that each answer in `PREFIX.out` is the specification's answer to the bytes in `PREFIX.in`, provided that the board read exactly those bytes and started from a board reset at each `reset` line.  For a mirror run the replay tests the Python machine against the specification on the run's segments, and for a run on QEMU or the board it tests the image, the UART, and the log together.  A byte that the UART lost breaks the premise and in general makes an answer differ.  Altered copies of a mirror log made the replay fail at the altered line: a changed digit of an answer, a missing answer, an extra answer, a missing `reset` line, and a line of `PREFIX.in` that is not hexadecimal.  The logs of the whole schedule in mirror mode with `STEP` 1 ms and 20 ms and the noise seeds 1 to 5, 2,798 answers in 50 parts, and the logs of the 37 scenarios each run alone, 376 answers, equal the replay.
+
+### The Python machine against the specification
+
+`bms_proto.py gen SEED N PREFIX` writes a log pair of `N` random writes of a bridge and the Python machine's answers to them, and `bms-replay` then compares that machine with the specification on every segment.  The writes form parts of 10 to 2,999 writes, each ended by a board reset, and a part draws its own rates.  A quarter of the parts carry no fault, so that the machine stays in `NORMAL` for long runs, and the others draw from lists the rates of wire faults, of fields at or beside a limit, of random auxiliary words, and of reserved bits.  A field lies within the profile's limits or, at the part's rate, at a limit or 1 on either side of it, and the digital word follows the state of the last answer through presses and releases of the reset button, `RUN`, and `STOP_OK`.  The auxiliary contacts report the permit of the last answer or, in some parts, of the answer 1 to 3 answers before it, so that check 17 meets each age.  The wire faults are the single-byte faults of [the requirements' table](requirements.md#lost-inserted-and-changed-bytes), records with another link identifier, another tag, or a repeated, skipped, or random sequence number, records with fields at the extremes of their types, random bytes, encodings of 0 to 36 random bytes, empty segments, 36 to 599 nonzero bytes, and a board reset during a record.  Three parts in ten number their records from just below 2^32, so that the numbers wrap.
+
+`bms_proto.py cover PREFIX...` runs the Python machine over the parts of the logs and counts what the inputs reach.  Over the seeds 1 to 32 with 100,000 writes each, 3,193,904 non-empty segments in 7,124 parts, every answer equals the replay, and the table counts the cases that the inputs reach.  A record counts for a limit when it reaches the limit's check, after the communication checks and the earlier content checks.
+
+| Case | Count |
+|---|---|
+| Segments | 3,172,180 good records, 5,553 decode errors, 7,210 overflows, 3,431 records of another length, 3,561 CRC mismatches, 1,969 other tags, and 4,227 empty segments |
+| Answers | 117,980 `RESET_REQUIRED`, 169,205 `STANDBY`, 119,777 `PRECHARGE`, 1,607,331 `NORMAL`, and 1,179,611 `FAULT` |
+| Transitions | Each of the 18 transitions that the rules allow, at least 569 times, the fewest from `PRECHARGE` to `RESET_REQUIRED` |
+| First failing check | Each of checks 1 to 17, at least 490 times outside `FAULT` and 1,479 times in `FAULT`, the fewest for check 5, and 1,568 precharge timeouts |
+| Limits | For each limit other than `tol_pc`, 5,196 to 29,202 records with a field at the limit and 2,923 to 29,375 with a field 1 beyond it, and for `tol_pc`, 735 records at the limit and 780 beyond it in `PRECHARGE`.  At the `N_pc`-th record in `PRECHARGE`, 153 records with the precharge condition and 1,568 without |
+| Check 17 | 52,136, 32,171, and 35,932 records whose auxiliary contacts disagree with the permit in force at ages 0, 1, and `D_edm` or more |
+| Reset presses | In records that pass every check in `RESET_REQUIRED` or `FAULT`, 63,114 acceptances, and 124,209 refusals with `RESET` held, 6,585 in a synchronizing record, 3,302 with `RUN` 1, and 2,010 with an auxiliary contact closed |
+| Starts | 41,726, and 1,265 refusals with an auxiliary contact closed |
+| `STOP_OK` 0 | Records that pass every check with `STOP_OK` 0 in every state, at least 569 in `PRECHARGE` |
+| Sequence numbers | 1,341 good records numbered `0xFFFFFFFF`, and 1,296 records checked against the expected number 0 |
+| Longest runs of answers | 2,989 in `NORMAL`, 429 in `FAULT`, 215 in `RESET_REQUIRED`, 37 in `STANDBY`, and 10, `N_pc`, in `PRECHARGE` |
+
+The counts come from the Python machine's run, which the replay confirms only through the answers.  A check that fails in `FAULT` leaves the answer unchanged, so the counts in `FAULT` describe the inputs as the Python machine classifies them.  No part reaches 2^32 answers, so the wrap of the board sequence number goes untested.  On edgexpert-18ff the replay of a log of 100,000 writes, about 220 parts of at most 3,000 segments, takes 75 to 81 s on one core with a peak resident size of at most 245 MB.  The time per segment grows with the length of a part: a single part of 3,000 segments takes 2.7 s, one of 10,000 segments 19.0 s, and one of 30,000 segments 160 s.
+
 ## Limits
 
-No run has used QEMU or the board.  QEMU's UART model moves bytes without line time, so the bridge paces its bytes at 2.083 ms on QEMU, which keeps the exchanges at the pace that the relays' times, `D_edm`, and `N_pc` assume, while the answers return at once.  The script has no way to reset QEMU's board, so the scenarios that need a board reset are skipped on QEMU, and on the board they need `--reset-command`, whose duration delays the next record.  A reset that takes longer than `T_lease` lets the leases expire during it, so the board-reset scenarios then release the relays by expiry, and the slow contacts open before the record of segment 0.
+QEMU's UART model and the pseudo-terminal of Renode's USART3 move bytes without line time, so the bridge paces its bytes at 2.083 ms on QEMU and, with `--pace`, in Renode, which keeps the exchanges at the pace that the relays' times, `D_edm`, and `N_pc` assume, while the answers return at once.  Without pacing, Renode's exchanges ran faster than the relays operate, and check 17 failed in `PRECHARGE`.  QEMU connects its UART's socket about 1 s before the guest runs, so on QEMU the bridge waits `--start-delay`, 3 s unless set, before its power-up.  The script has no way to reset QEMU's or Renode's board, so the scenarios that need a board reset are skipped there, and on the board they need `--reset-command`, whose duration delays the next record.  A reset that takes longer than `T_lease` lets the leases expire during it, so the board-reset scenarios then release the relays by expiry, and the slow contacts open before the record of segment 0.  `m7-board.sh nrst` resets the board through `stlink_nrst.py` and a USB reset of the ST-LINK, which removes the virtual COM port and adds it again, so the script, with `--reopen`, releases the port before the command and opens it again after it.  The runs on QEMU, in Renode, and on the board and their results appear in [the BMS guide](README.md#runs).
 
 No scenario delivers an answer that straddles BR4's deadline, so BR4's discard of a partial answer goes untested.  The checks of the lease's timing use the bridge's own `T_lease`, so a wrong value of that constant passes them.  The pack models are simple, the open-circuit voltage curve is not fitted to the LF280K, and the readings carry uniform noise in place of the errors of real sensors.
 
@@ -131,10 +167,15 @@ uv run tests/baremetal/uart_bms.py replay build/bms/mirror
 uv run tests/baremetal/uart_bms.py list
 uv run tests/baremetal/uart_bms.py qemu build/bms/qemu build/bms/qemu.trace \
   qemu-system-arm -M mps2-an500 -display none -monitor none -kernel IMAGE
-uv run tests/baremetal/uart_bms.py device --reset-command CMD /dev/ttyACM0 build/bms/board
+uv run tests/baremetal/uart_bms.py device --reset-command CMD --reopen /dev/ttyACM0 build/bms/board
+tools/leanrun --timeout 30m lake build bms-replay
+tools/leanrun --timeout 30m lake env .lake/build/bin/bms-replay build/bms/mirror
+uv run tests/baremetal/bms_proto.py gen 1 100000 build/bms/gen-1
+tools/leanrun --timeout 30m lake env .lake/build/bin/bms-replay build/bms/gen-1
+uv run tests/baremetal/bms_proto.py cover build/bms/gen-1
 ```
 
-The QEMU and board commands need the board image of the program phase, running from reset with no byte received.  `--seed` sets the noise generator's seed, and `--scenario`, repeated, selects scenarios in the order given.  Each run prints one line for each scenario and a summary with the number of records, the answers that equal the replay, the timeouts, the longest exchange without a channel fault, the smallest margin by which a lease outlasted its renewal, the longest delay from a lease's end to a release, and the longest delay of a sampling or a first byte.
+The QEMU and board commands need an image of [the BMS step](README.md#images-and-board-theorems), running from reset with no byte received, which `m7-qemu.sh bms` and `m7-board.sh nrst bms` and `emulate bms` arrange.  `--seed` sets the noise generator's seed, and `--scenario`, repeated, selects scenarios in the order given.  Each run prints one line for each scenario and a summary with the number of records, the answers that equal the replay, the timeouts, the longest exchange without a channel fault, the smallest margin by which a lease outlasted its renewal, the longest delay from a lease's end to a release, and the longest delay of a sampling or a first byte.  `cover` accepts the logs of any run, and each of its lines gives a count and the case it counts.
 
 ## References
 

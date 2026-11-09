@@ -5,6 +5,7 @@ import TestSupport.M7.CrcImages
 import TestSupport.M7.ShaImages
 import TestSupport.M7.SignedImages
 import TestSupport.M7.DelimImages
+import TestSupport.M7.BmsImages
 import TestSupport.M7.Dwt
 import TestSupport.M7.Area
 import TestSupport.M7.Diag
@@ -13,8 +14,8 @@ import TestSupport.M7.Diag
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes
 `echo-usart3` and `echo-cmsdk`, the gateways `gateway-usart3` and `gateway-cmsdk`, the CRC-32
 steps `crc-usart3` and `crc-cmsdk`, the SHA-256 steps `sha-usart3` and `sha-cmsdk`, the
-signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `delim-usart3` and
-`delim-cmsdk`.
+signed steps `signed-usart3` and `signed-cmsdk`, the echoes of records `delim-usart3` and
+`delim-cmsdk`, and the BMS steps `bms-usart3` and `bms-cmsdk`.
 
 - `m7-windows frames` prints each program's functions with their frames and sizes.
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
@@ -51,10 +52,15 @@ signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `deli
   QEMU's `mps2-an500`, and `m7-windows delim-board FILE` the image of `dlUsart3Tick` for the
   NUCLEO-F767ZI with the initialization `initOvrdis` (`tests/TestSupport/M7/DelimImages.lean`),
   and each prints the addresses of `main` and of its loop's head.
+- `m7-windows bms-qemu FILE` writes to FILE the image of the BMS step `bmsTick` for QEMU's
+  `mps2-an500`, and `m7-windows bms-board FILE` the image of `bmsTickUsart3` for the NUCLEO-F767ZI
+  with the initialization `initOvrdis` (`tests/TestSupport/M7/BmsImages.lean`), and each prints
+  the addresses of `main` and of its loop's head.
 - `m7-windows board-dwt FILE`, `m7-windows gateway-dwt FILE`, `m7-windows crc-dwt FILE`,
-  `m7-windows sha-dwt FILE`, and `m7-windows div-dwt FILE` write the measurement images of
-  `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step, and the SHA-256 step
-  with the cycles of each window, and the cycles of `udivmod64`'s paths and of `UDIV`.
+  `m7-windows sha-dwt FILE`, `m7-windows bms-dwt FILE`, and `m7-windows div-dwt FILE` write the
+  measurement images of `tests/TestSupport/M7/Dwt.lean`: the echo, the gateway, the CRC-32 step,
+  the SHA-256 step, and the BMS step with the cycles of each window, and the cycles of
+  `udivmod64`'s paths and of `UDIV`.
 - `m7-windows diag FILE` writes the diagnostic image of `tests/TestSupport/M7/Diag.lean`, which
   reports the debug registers and `RCC_CSR` as reset left them.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
@@ -72,7 +78,9 @@ signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `deli
   send the output records of the file OUT, 6 words a line, each word's bytes the most significant
   first.  An echo of records receives `dlInput` of `tests/TestSupport/M7/Windows.lean`, records
   encoded with their delimiters, empty, truncated, and overlong segments, and the records again,
-  and must send `delimAnswers echoMach 36 0` of those bytes.
+  and must send `delimAnswers echoMach 36 0` of those bytes.  A BMS step receives `bmsInput`, scan
+  records that bring the machine to `NORMAL` and through faults, with damaged, empty, and overlong
+  segments, and must send `delimAnswers machine maxSegment init` of those bytes.
 
 Each command exits with status 1 on a failure.
 -/
@@ -224,6 +232,22 @@ def main (args : List String) : IO UInt32 := do
       writeImage "delim-usart3-board" file TestSupport.M7.Delim.boardImage
         (LeanExe.M7.Nucleo.bootWith LeanExe.M7.Nucleo.initOvrdis).base
         TestSupport.M7.Delim.boardHead
+  | ["bms-qemu", file] =>
+      writeImage "bms-cmsdk-qemu" file TestSupport.M7.Bms.qemuImage
+        TestSupport.M7.Qemu.boot.base TestSupport.M7.Bms.qemuHead
+  | ["bms-board", file] =>
+      writeImage "bms-usart3-board" file TestSupport.M7.Bms.boardImage
+        (LeanExe.M7.Nucleo.bootWith LeanExe.M7.Nucleo.initOvrdis).base
+        TestSupport.M7.Bms.boardHead
+  | ["bms-dwt", file] =>
+      match TestSupport.M7.Dwt.bmsDwt with
+      | .ok bytes =>
+          IO.FS.writeBinFile file (ByteArray.mk bytes.toArray)
+          IO.println s!"m7-windows: bms-usart3-board-dwt: {bytes.length} bytes"
+          return 0
+      | .error e =>
+          IO.eprintln s!"m7-windows: bms-usart3-board-dwt: {e}"
+          return 1
   | ["gateway-dwt", file] =>
       match TestSupport.M7.Dwt.gwDwt with
       | .ok bytes =>
@@ -319,7 +343,7 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
         "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
         "sha-qemu FILE | sha-board FILE | sha-ovrdis-board FILE | signed-qemu FILE | " ++
-        "signed-board FILE | delim-qemu FILE | delim-board FILE | " ++
-        "board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
+        "signed-board FILE | delim-qemu FILE | delim-board FILE | bms-qemu FILE | " ++
+        "bms-board FILE | board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | bms-dwt FILE | " ++
         "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2

@@ -98,7 +98,7 @@ answer wire: 02 80 01 01 02 08 01 01 04 07 05 03 01 05 91 0a 58 a2 00           
 
 ### Line time
 
-At 4,800 baud with 8 data bits, no parity, and one stop bit, a byte takes 10 bit times, 2.083 ms.  A scan record takes 77.083 ms on the wire and an answer 39.583 ms, so one exchange takes 116.667 ms plus the board's long window, the bridge's sampling, and the latency of the host and the virtual COM port, which no run has measured.  Each byte takes two polling windows, a status read and the read of `USART_RDR`, so each polling window must end within half a byte time, 16,667 cycles at the 16 MHz of the internal oscillator.
+At 4,800 baud with 8 data bits, no parity, and one stop bit, a byte takes 10 bit times, 2.083 ms.  A scan record takes 77.083 ms on the wire and an answer 39.583 ms, so one exchange takes 116.667 ms plus the board's long window, the bridge's sampling, and the latency of the host and the virtual COM port, which the board's run measured at 7.5 to 11.5 ms, 7.6 ms of it the long window.  Each byte takes two polling windows, a status read and the read of `USART_RDR`, so each polling window must end within half a byte time, 16,667 cycles at the 16 MHz of the internal oscillator.
 
 ## Profile
 
@@ -263,7 +263,7 @@ No theorem covers the bridge.  These requirements are premises of every statemen
 | BR6 Re-energization | At power-up, and after a relay's lease ends other than through a current answer with the relay's bit clear, the bridge energizes no relay until it receives a current answer with permit 0 |
 | BR7 Fidelity | Each field reports the quantity it names within the measurement's stated error, and each digital bit reports the level of its input at the sampling |
 
-The demo's bridge uses `T_ans` 100 ms, `T_lease` 500 ms, `T_sample` 20 ms, and `T_act` 20 ms, which the runs must confirm.  The estimates below take 20 ms for the long window and the latency of the host and the virtual COM port in each exchange, which no run has measured, so an exchange from sampling to the answer's end takes at most 156.7 ms and samples lie at most 176.7 ms apart in normal operation.  The table gives each case's times after the sampling of record `k`, the record that the case names.
+The demo's bridge uses `T_ans` 100 ms, `T_lease` 500 ms, `T_sample` 20 ms, and `T_act` 20 ms, which the board's run confirmed, as [the BMS guide](README.md#runs) records.  The estimates below take 20 ms for the long window and the latency of the host and the virtual COM port in each exchange, against at most 11.5 ms measured, so an exchange from sampling to the answer's end takes at most 156.7 ms and samples lie at most 176.7 ms apart in normal operation.  The table gives each case's times after the sampling of record `k`, the record that the case names.
 
 | Case | Answers, in ms after the sampling of record `k` | Leases |
 |---|---|---|
@@ -396,10 +396,10 @@ The items below bound what a later phase can claim.  Each belongs to a phase of 
 
 | Item | State |
 |---|---|
-| Boot over the image's initialization list | Boot and the board theorems are being generalized over the initialization list, which B1 to B5 need for the list with the write of `OVRDIS` |
-| The framing's code | B3 and B3a need the framing's segment decoding and answer encoding to be loop-free, and the fault table assumes the decoder of Cheshire and Baker that `tests/baremetal/bms_proto.py` implements |
-| The lemma of B3a | A bound on a window's `costRun` by the dispatch and the `staticCost` of the function that its phase selects, which `LeanExe/M7/Proof/Bound.lean` does not provide |
-| Timing values | `T_ans`, `T_lease`, `T_sample`, and `T_act` are design choices until the runs measure the exchange and the latency of the virtual COM port |
+| Boot over the image's initialization list | Done: `boardWith_run` and its forms take the list `initOvrdis`, and B1 to B5 hold of `bms.bin` |
+| The framing's code | Done: the step decodes and encodes with the loop-free passes of `LeanExe/Requests/DelimitedWords.lean`, whose decoder accepts exactly the encodings, and `bms_board_steps` bounds every window |
+| The lemma of B3a | Pending: a bound on a window's `costRun` by the dispatch and the `staticCost` of the function that its phase selects, which `LeanExe/M7/Proof/Bound.lean` does not provide.  The step's code has the dispatch's shape, and the model's counts and the board's cycles of the polling windows appear in [the BMS guide](README.md#images-and-board-theorems) |
+| Timing values | Confirmed by the board's run of the schedule, which [the BMS guide](README.md#runs) records |
 
 ## Plan
 

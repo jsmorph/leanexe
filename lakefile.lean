@@ -227,6 +227,12 @@ lean_exe «clight-diff» where
   srcDir := "tests"
   root := `TestSupport.Native.ClightDiff
 
+-- The replay of the BMS bridge's logs against the specification (Demos/Bms/Host.md); not a
+-- default target.
+lean_exe «bms-replay» where
+  srcDir := "tests"
+  root := `TestSupport.Bms.Replay
+
 -- The C text, host programs, and Talos's results for the translator's end-to-end test
 -- (tests/native/run.sh); not a default target.
 lean_exe «native-emit» where

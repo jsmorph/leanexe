@@ -21,7 +21,9 @@ first byte STEP ms after sampling.  "qemu" runs QEMU through serve of tests/bare
 with UART0 on a Unix-domain socket and its trace in LOG, and paces the bridge's bytes at the line
 time.  "device" talks to a board through the serial port DEVICE at BAUD, 4,800 unless set, with
 Serial of the same script, and runs the command CMD to reset the board when a scenario needs a
-board reset; without CMD those scenarios are skipped.  The board must run the image from reset,
+board reset; without CMD those scenarios are skipped.  With --reopen, the script releases DEVICE
+before CMD and opens it again after CMD, waiting up to 10 s for it, so that CMD may reset the
+ST-LINK's USB, which removes the port and adds it again.  The board must run the image from reset,
 with no byte received, when the script starts.  Each run checks every answer byte for byte against
 the Python machine fed the bytes that the bridge wrote, and each scenario's answers against the
 schedule.  It writes the bytes written to PREFIX.in, the bytes received to PREFIX.out, and the
@@ -35,7 +37,7 @@ Usage: uv run tests/baremetal/uart_bms.py mirror [--scenario NAME]... [--seed SE
        uv run tests/baremetal/uart_bms.py qemu [--scenario NAME]... [--seed SEED]
            [--timeout TIMEOUT] PREFIX LOG QEMU [ARG...]
        uv run tests/baremetal/uart_bms.py device [--scenario NAME]... [--seed SEED]
-           [--timeout TIMEOUT] [--baud BAUD] [--reset-command CMD] DEVICE PREFIX
+           [--timeout TIMEOUT] [--baud BAUD] [--reset-command CMD] [--reopen] DEVICE PREFIX
        uv run tests/baremetal/uart_bms.py replay PREFIX
        uv run tests/baremetal/uart_bms.py list
 """
@@ -55,7 +57,7 @@ from dataclasses import dataclass
 
 import bms_proto as bp
 from bms_proto import FAULT, NORMAL, PRECHARGE, RESET_REQUIRED, STANDBY, UNANSWERED
-from uart_echo import Failure, report, serve, serve_device
+from uart_echo import Failure, Serial, report, serve, serve_device
 
 T_ANS, T_LEASE, T_SAMPLE, T_ACT = 0.100, 0.500, 0.020, 0.020
 N_PC, D_EDM, TOL_PC = 10, 2, 500
@@ -87,6 +89,7 @@ SLOW_RELEASE = 0.200
 PROFILE = ((8.0, -100.0), (2.0, 0.0), (8.0, 50.0), (2.0, 0.0))
 NOISE = dict(cell=2, temp=1, current=50, pack=10, bus=10)
 SIM_DT = 0.002
+REOPEN_WAIT = 10.0
 
 
 class ScenarioFailure(Exception):
@@ -283,6 +286,7 @@ class SimLink:
     exchange ends and sends its first byte step after sampling."""
 
     can_reset = True
+    start_delay = 0.0
 
     def __init__(self, step):
         self.step = step
@@ -320,14 +324,19 @@ class SimLink:
 class RealLink:
     """QEMU's UART0 through a socket, or a board's USART3 through a serial port, on the host's
     clock.  A record's end is estimated as the time of the write plus the line time of its
-    bytes, byte_time each.  With pace, the bytes leave one at a time at that rate."""
+    bytes, byte_time each.  With pace, the bytes leave one at a time at that rate.  With reopen,
+    a board reset releases the serial port before the reset command, so that a USB reset of the
+    ST-LINK in the command can enumerate the port again under its name, and then reopens it with
+    reopen() under the same descriptor."""
 
-    def __init__(self, conn, byte_time, pace, reset_command=None):
+    def __init__(self, conn, byte_time, pace, reset_command=None, reopen=None, start_delay=0.0):
+        self.start_delay = start_delay
         self.conn = conn
         self.fd = conn.fd if hasattr(conn, "fd") else conn.fileno()
         self.byte_time = byte_time
         self.pace = pace
         self.reset_command = reset_command
+        self.reopen = reopen
         self.can_reset = reset_command is not None
         self.step = 0
         self.t0 = time.monotonic()
@@ -357,6 +366,10 @@ class RealLink:
         return self.now(), data
 
     def reset_board(self, service):
+        if self.reopen is not None:
+            null = os.open(os.devnull, os.O_RDWR)
+            os.dup2(null, self.fd)
+            os.close(null)
         proc = subprocess.Popen(shlex.split(self.reset_command), stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         while proc.poll() is None:
@@ -365,6 +378,10 @@ class RealLink:
         if proc.returncode:
             raise Failure(f"the reset command exited with status {proc.returncode}: "
                           f"{proc.stdout.read().decode(errors='replace')[-300:]}")
+        if self.reopen is not None:
+            port = self.reopen(service)
+            os.dup2(port.fd, self.fd)
+            os.close(port.fd)
 
 
 class Log:
@@ -1215,6 +1232,8 @@ def summary(trace):
 
 def play(link, world, log, names):
     bridge = Bridge(link, world, log)
+    if link.start_delay:
+        bridge.idle(link.start_delay)
     bridge.power_up()
     r = Run(bridge, world, link)
     results = []
@@ -1297,9 +1316,12 @@ def main():
             p.add_argument("--step", type=float, default=1.0)
         else:
             p.add_argument("--timeout", type=float, default=120)
+            p.add_argument("--start-delay", type=float, default=3.0 if name == "qemu" else 0.0)
         if name == "device":
             p.add_argument("--baud", type=int, default=4800)
             p.add_argument("--reset-command")
+            p.add_argument("--reopen", action="store_true")
+            p.add_argument("--pace", action="store_true")
             p.add_argument("device")
         p.add_argument("prefix")
         if name == "qemu":
@@ -1336,9 +1358,21 @@ def main():
         else:
             def session(conn, trace):
                 if args.command == "qemu":
-                    link = RealLink(conn, BYTE_TIME, True)
+                    link = RealLink(conn, BYTE_TIME, True, start_delay=args.start_delay)
                 else:
-                    link = RealLink(conn, 10 / args.baud, False, args.reset_command)
+                    def reopen(service):
+                        deadline = time.monotonic() + REOPEN_WAIT
+                        while True:
+                            try:
+                                return Serial(args.device, args.baud, args.timeout)
+                            except OSError as e:
+                                if time.monotonic() > deadline:
+                                    raise Failure(f"{args.device} did not reopen: {e}")
+                            service()
+                            time.sleep(0.01)
+
+                    link = RealLink(conn, 10 / args.baud, args.pace, args.reset_command,
+                                    reopen if args.reopen else None, args.start_delay)
                 return play(link, world, log, names)
 
             if args.command == "qemu":
