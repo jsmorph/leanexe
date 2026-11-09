@@ -1,0 +1,30 @@
+{
+  "id": "linear-compiled-folds",
+  "goals": [
+    "@[csimp] theorem f_eq_fLinear : @f = @fLinear for a fold that appends to the end of a list",
+    "bs.foldl splitByte ⟨D, c⟩ = ⟨(bs.foldl splitByteRev (D.reverse, c.reverse)).1.reverse, _⟩",
+    "segs.foldl (fun p s => (_, p.2 ++ xs)) (m, a.toList) = ((segs.foldl step (m, a)).1, (segs.foldl step (m, a)).2.toList)",
+    "native evaluation of a specification takes time quadratic in the length of its input"
+  ],
+  "modules": [
+    "LeanExe.Requests.Delimited",
+    "Library.Hashing.Sha3.Spec"
+  ],
+  "declarations": [
+    "LeanExe.Requests.split",
+    "LeanExe.Requests.answerRun",
+    "LeanExe.Requests.segments",
+    "LeanExe.Requests.delimAnswers",
+    "LeanExe.Requests.splitLinear",
+    "LeanExe.Requests.answerRunLinear",
+    "LeanExe.Requests.foldl_splitByteRev",
+    "LeanExe.Requests.foldl_answerStepArray",
+    "LeanExe.Requests.split_eq_splitLinear",
+    "LeanExe.Requests.answerRun_eq_answerRunLinear"
+  ],
+  "examples": [
+    "LeanExe.Requests.split_eq_splitLinear",
+    "LeanExe.Requests.answerRun_eq_answerRunLinear",
+    "Library.Hashing.Sha3.Spec.keccakP_eq_run"
+  ]
+}
