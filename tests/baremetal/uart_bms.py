@@ -26,7 +26,10 @@ before CMD and opens it again after CMD, waiting up to 10 s for it, so that CMD 
 ST-LINK's USB, which removes the port and adds it again.  The board must run the image from reset,
 with no byte received, when the script starts.  Each run checks every answer byte for byte against
 the Python machine fed the bytes that the bridge wrote, and each scenario's answers against the
-schedule.  It writes the bytes written to PREFIX.in, the bytes received to PREFIX.out, and the
+schedule.  The bytes received after the power-up's 0x00 or a board reset and before the next
+write answer no byte written since the board started: the bridge logs them as discarded and
+leaves them out of the check and of PREFIX.out.  A board reset ends once T_ans has passed with no
+byte received.  It writes the bytes written to PREFIX.in, the bytes received to PREFIX.out, and the
 events with their times to PREFIX.log, replays PREFIX.in through the Python machine, prints one
 line for each scenario and a summary, and exits with status 0 when no scenario fails and the
 bridge kept T_sample and T_act, and 1 otherwise.  "replay" replays PREFIX.in and compares the
@@ -418,7 +421,9 @@ class Latest:
 
 class Bridge:
     """BR1 to BR6.  lease[r] is the end of relay r's lease, or None, and blocked is the
-    condition of BR6 under which no relay is energized."""
+    condition of BR6 under which no relay is energized.  While discarding names the power-up or
+    a board reset, the bytes received answer no byte written since the board started, and the
+    bridge logs and discards them until its next write."""
 
     def __init__(self, link, world, log):
         self.link, self.world, self.log = link, world, log
@@ -433,6 +438,8 @@ class Bridge:
         self.raw = bytearray()
         self.raw_dropped = False
         self.last_rx = -math.inf
+        self.discarding = "power-up"
+        self.discarded = 0
         self.frames = 0
         self.drop = False
         self.seen = []
@@ -474,6 +481,7 @@ class Bridge:
             self.log.event(now, "coils", f"{coils:#04x}")
 
     def write(self, data):
+        self.discarding = None
         self.log.ins.write(data.hex() + "\n")
         self.log.event(self.now(), "tx", data.hex())
         for b in data:
@@ -483,6 +491,11 @@ class Bridge:
         return self.link.write(data, self.service)
 
     def receive(self, t, data):
+        if self.discarding:
+            self.discarded += len(data)
+            self.last_rx = t
+            self.log.event(t, "discard", f"{self.discarding} {data.hex()}")
+            return
         for b in data:
             self.raw.append(b)
             if self.drop:
@@ -566,7 +579,9 @@ class Bridge:
     def power_up(self):
         self.world.set_coils(0, self.now())
         self.log.event(self.now(), "power-up")
-        self.quiet(self.write(b"\x00"), lambda: False)
+        end = self.write(b"\x00")
+        self.discarding = "power-up"
+        self.quiet(end, lambda: False)
         self.exchange_end = self.now()
 
     def idle(self, duration):
@@ -629,8 +644,9 @@ class Bridge:
         return self.seen
 
     def reset_board(self):
-        """A board reset between two writes.  The sampling after it counts its T_sample from the
-        end of the reset."""
+        """A board reset between two writes, which ends once T_ans has passed with no byte
+        received after the reset command.  The sampling after it counts its T_sample from the end
+        of the reset."""
         if self.expected or self.raw:
             raise Failure(f"a board reset with {len(self.expected)} answers outstanding")
         self.log.event(self.now(), "board-reset")
@@ -638,6 +654,8 @@ class Bridge:
         self.log.ins.write("reset\n")
         self.log.outs.write("reset\n")
         self.shadow = bp.Board()
+        self.discarding = "board-reset"
+        self.quiet(self.now(), lambda: False)
         self.exchange_end = self.now()
 
 
@@ -1295,8 +1313,8 @@ def finish(results, bridge, prefix, extra):
         problems.append(str(e))
     print(f"{len(results)} scenarios: {count('pass')} passed, {count('fail')} failed, "
           f"{count('skip')} skipped; {bridge.sent} records, {answers}, {bridge.timeouts} "
-          f"timeouts; sampling to the current answer at most "
-          f"{1000 * max(bridge.exchange_times, default=0):.1f} ms in exchanges without a "
+          f"timeouts, {bridge.discarded} bytes discarded at power-up and board resets; "
+          f"sampling to the current answer at most {1000 * max(bridge.exchange_times, default=0):.1f} ms in exchanges without a "
           f"channel fault, a lease renewed at least {1000 * min(bridge.margins, default=0):.1f} "
           f"ms before its end, relays released at most {1000 * bridge.lag:.1f} ms after a "
           f"lease's end, sampling and first byte at most {1000 * bridge.sample_lag:.1f} ms late")

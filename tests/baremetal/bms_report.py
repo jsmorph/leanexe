@@ -12,10 +12,10 @@ the cells against tol_sum, the relays (the permit bits of the answers, the coils
 energized, and the auxiliary contacts that the records report), the state of the answers, and
 their diagnostic codes.  Alternating bands and the numbers in the top row mark the scenarios, and
 a key under the axis names them.  OUTPUT.md holds a summary, the figure, and a table of events:
-scenario starts with their results, injections, board resets, timeouts, lease expiries, and each
-answer that changed the state or the code, was not current, arrived after a timeout, or changed
-the leases or the coils, with the check behind a fault, the answered record, and the bridge's
-actions.
+scenario starts with their results, injections, board resets, the bytes that the bridge discarded
+at power-up or after a board reset, timeouts, lease expiries, and each answer that changed the
+state or the code, was not current, arrived after a timeout, or changed the leases or the coils,
+with the check behind a fault, the answered record, and the bridge's actions.
 
 The records come from PREFIX.in, split into segments by the framing of bms_proto.py, and the
 answers from PREFIX.out, decoded by the same module, so that the k-th answer after a board reset
@@ -116,6 +116,8 @@ class Note:
     event: str
     detail: str
     coils: tuple | None = None
+    where: str = ""
+    data: str = ""
 
 
 @dataclass
@@ -232,6 +234,12 @@ def load(prefix):
             scenarios[-1][1:] = [t, name, result]
         elif kind == "inject":
             items.append(Note(t, scenario, "injection", text[0].upper() + text[1:] + "."))
+        elif kind == "discard":
+            where, data = text.split()
+            if not (items and isinstance(items[-1], Note) and items[-1].event == "discard"
+                    and items[-1].where == where):
+                items.append(Note(t, scenario, "discard", "", where=where))
+            items[-1].data += data
         elif kind == "timeout":
             timeouts += 1
             late = True
@@ -451,6 +459,11 @@ def table(run):
                 rows.append((item.t, item.scenario) + row)
         elif isinstance(item, Expiry):
             rows.append((item.t, item.scenario, "lease expiry", expiry_text(run, item)))
+        elif item.event == "discard":
+            when = "at power-up" if item.where == "power-up" else "after the board reset"
+            rows.append((item.t, item.scenario, "discarded bytes",
+                         f"The bridge discards `{item.data}`, received {when} before its next "
+                         f"write."))
         else:
             detail = "  ".join(s for s in [item.detail, bridge(coils_actions(item.coils))] if s)
             rows.append((item.t, item.scenario, item.event, detail))
@@ -675,13 +688,16 @@ def markdown(run, prefix, png):
             ("pass", "passed"), ("fail", "failed"), ("skip", "were skipped"),
             ("incomplete", "did not finish"))) if k]
     answers = sum(len(p.replies) for p in run.parts)
+    discards = any(isinstance(i, Note) and i.event == "discard" for i in run.items)
     base = os.path.basename(prefix)
     out = ["# BMS run report", "",
            f"The files `{base}.in`, `{base}.out`, and `{base}.log` hold {len(run.sampled):,} "
            f"records sent over {run.end:.1f} s, {answers:,} answers, {run.timeouts} timeouts, "
            f"and {len(run.resets)} board resets.  Of the {len(run.scenarios)} scenarios, "
            f"{names(outcomes)}.  The table lists each scenario's start, the "
-           f"injections that the log records, board resets, timeouts, lease expiries, and each "
+           f"injections that the log records, board resets, "
+           f"{'the bytes that the bridge discarded, ' if discards else ''}timeouts, lease "
+           f"expiries, and each "
            f"answer that changed the state or the code, was not current, arrived after a "
            f"timeout, or changed the leases or the coils.", "",
            f"![Cell voltages, temperatures, current, pack and bus voltages, relays, states, and "
