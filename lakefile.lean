@@ -181,6 +181,10 @@ lean_exe «verified-cases-crc» where
   srcDir := "tests"
   root := `TestSupport.Hashing.CrcCasesMain
 
+lean_exe «verified-cases-crcbitwise» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.CrcBitwiseCasesMain
+
 lean_exe «verified-cases-siphash» where
   srcDir := "tests"
   root := `TestSupport.Hashing.SipHashCasesMain

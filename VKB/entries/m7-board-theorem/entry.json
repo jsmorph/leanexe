@@ -8,7 +8,10 @@
     "LeanExe.M7.staticCost m k = some c",
     "LeanExe.M7.reachCovered m k = true",
     "LeanExe.M7.setupOk m areaPages = true",
-    "a board theorem of a step whose state has an Int64 field"
+    "a board theorem of a step whose state has an Int64 field",
+    "the Cortex-M7 generator's code, usesArea, and staticCost of a library function that no step calls yet",
+    "a board theorem with an initialization list other than init",
+    "∀ op ∈ ops, OpOk platform op"
   ],
   "modules": [
     "LeanExe.M7.Proof.Step",
@@ -32,7 +35,8 @@
     "TestSupport.M7.GwLoop",
     "TestSupport.M7.CrcLoop",
     "TestSupport.M7.ShaLoop",
-    "TestSupport.M7.SignedLoop"
+    "TestSupport.M7.SignedLoop",
+    "TestSupport.M7.CrcBitwise"
   ],
   "declarations": [
     "LeanExe.M7.StepCall",
@@ -57,6 +61,21 @@
     "LeanExe.M7.Nucleo.areaBoard_run",
     "LeanExe.M7.Nucleo.areaBoard_run_steps",
     "LeanExe.M7.Nucleo.areaBoard_runs",
+    "LeanExe.M7.Nucleo.boardWith_run",
+    "LeanExe.M7.Nucleo.boardWith_run_steps",
+    "LeanExe.M7.Nucleo.boardWith_runs",
+    "LeanExe.M7.Nucleo.boardWith_setup",
+    "LeanExe.M7.Nucleo.areaBoardWith_run",
+    "LeanExe.M7.Nucleo.areaBoardWith_run_steps",
+    "LeanExe.M7.Nucleo.areaBoardWith_runs",
+    "LeanExe.M7.Nucleo.bootWith",
+    "LeanExe.M7.Nucleo.areaBootWith",
+    "LeanExe.M7.Nucleo.initOvrdis",
+    "LeanExe.M7.Nucleo.initOvrdis_ok",
+    "LeanExe.M7.Nucleo.initOvrdis_addrs",
+    "LeanExe.M7.Nucleo.initOvrdis_confined",
+    "LeanExe.M7.Nucleo.confined_of_addrs",
+    "LeanExe.M7.OpOk",
     "LeanExe.M7.Nucleo.init_confined",
     "LeanExe.M7.Nucleo.windows_confined",
     "LeanExe.M7.boot_run",
@@ -64,7 +83,8 @@
     "LeanExe.heapAt_initStore",
     "LeanExe.borrowed_initStore",
     "Verified.Ready.initial",
-    "LeanExe.M7.coveredInstr"
+    "LeanExe.M7.coveredInstr",
+    "TestSupport.M7.CrcBitwise.functionsOf"
   ],
   "examples": [
     "TestSupport.M7.echo_covered",
@@ -92,10 +112,17 @@
     "TestSupport.M7.Crc.crc_loop",
     "TestSupport.M7.Crc.crcQemu_loop",
     "TestSupport.M7.Sha.sha_loop",
+    "TestSupport.M7.Sha.shaOvrdis_loop",
     "TestSupport.M7.Signed.sgWords",
     "TestSupport.M7.Signed.board_loop",
     "TestSupport.M7.Signed.board_loop_steps",
-    "TestSupport.M7.Signed.qemu_loop"
+    "TestSupport.M7.Signed.qemu_loop",
+    "TestSupport.M7.CrcBitwise.crcBitwise_functions",
+    "TestSupport.M7.CrcBitwise.crcBitwise_noArea",
+    "TestSupport.M7.CrcBitwise.crcBitwise_covered",
+    "TestSupport.M7.CrcBitwise.crcBitwise_static",
+    "TestSupport.M7.CrcBitwise.crcBitwise_stack",
+    "TestSupport.M7.CrcBitwise.crcBitwise_cost"
   ],
   "unimported": {
     "tests/TestSupport/M7/SignedBoardFile.lean": [

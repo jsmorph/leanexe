@@ -39,9 +39,10 @@ signed steps `signed-usart3` and `signed-cmsdk`, and the echoes of records `deli
   prints the addresses of `main` and of its loop's head.
 - `m7-windows sha-qemu FILE` writes to FILE the image of the SHA-256 step `shaCmsdkTick` for QEMU's
   `mps2-an500`, and `m7-windows sha-board FILE` the image of `shaUsart3Tick` for the NUCLEO-F767ZI,
-  each with the setup of its area, which no theorem covers
-  (`tests/TestSupport/M7/ShaImages.lean`), and each prints the addresses of `main` and of its
-  loop's head.
+  each with the setup of its area (`tests/TestSupport/M7/ShaImages.lean`), and each prints the
+  addresses of `main` and of its loop's head.  `m7-windows sha-ovrdis-board FILE` writes the image
+  of `shaUsart3Tick` with the board's initialization `initOvrdis`, which disables USART3's overrun
+  detection.
 - `m7-windows signed-qemu FILE` writes to FILE the image of the signed step `sgCmsdkTick` for
   QEMU's `mps2-an500`, and `m7-windows signed-board FILE` the image of `sgUsart3Tick` for the
   NUCLEO-F767ZI (`tests/TestSupport/M7/SignedImages.lean`), and each prints the addresses of `main`
@@ -206,6 +207,9 @@ def main (args : List String) : IO UInt32 := do
   | ["sha-board", file] =>
       writeImage "sha-usart3-board" file TestSupport.M7.ShaImages.boardImage
         TestSupport.M7.ShaImages.boardBoot.base TestSupport.M7.ShaImages.boardHead
+  | ["sha-ovrdis-board", file] =>
+      writeImage "sha-ovrdis-usart3-board" file TestSupport.M7.ShaImages.ovrdisImage
+        TestSupport.M7.ShaImages.ovrdisBoot.base TestSupport.M7.ShaImages.ovrdisHead
   | ["signed-qemu", file] =>
       writeImage "signed-cmsdk-qemu" file TestSupport.M7.Signed.qemuImage
         TestSupport.M7.Qemu.boot.base TestSupport.M7.Signed.qemuHead
@@ -309,8 +313,8 @@ def main (args : List String) : IO UInt32 := do
   | _ =>
       IO.eprintln ("usage: m7-windows frames | image NAME FILE | qemu FILE | board FILE | " ++
         "gateway-qemu FILE | gateway-board FILE | crc-qemu FILE | crc-board FILE | " ++
-        "sha-qemu FILE | sha-board FILE | signed-qemu FILE | signed-board FILE | " ++
-        "delim-qemu FILE | " ++
+        "sha-qemu FILE | sha-board FILE | sha-ovrdis-board FILE | signed-qemu FILE | " ++
+        "signed-board FILE | delim-qemu FILE | " ++
         "board-dwt FILE | gateway-dwt FILE | crc-dwt FILE | " ++
         "div-dwt FILE | diag FILE | static NAME | run NAME DIR [IN OUT]")
       return 2

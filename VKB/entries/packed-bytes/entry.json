@@ -6,7 +6,8 @@
     "Library.Bytes.byteAt msg i",
     "List.foldr (fun b acc => b.toNat + 256 * acc) 0 bytes",
     "(p.drop i).take k for a list of bytes",
-    "((LeanExe.Requests.wordBytes w 8)[r]!).toUInt8 = Library.Bytes.byteOf w (7 - r)"
+    "((LeanExe.Requests.wordBytes w 8)[r]!).toUInt8 = Library.Bytes.byteOf w (7 - r)",
+    "(LeanExe.Requests.wordBytes w k).map UInt64.toUInt8 = (List.range k).map fun i => Library.Bytes.byteOf w (7 - i)"
   ],
   "modules": [
     "Library.Bytes.Packed",
@@ -15,7 +16,8 @@
     "Library.Regex.RunProof",
     "Library.Hashing.XxHash64.Proof",
     "Library.Hashing.SipHash.Proof",
-    "LeanExe.Requests.Records"
+    "LeanExe.Requests.Records",
+    "Library.Hashing.Crc.Bitwise.Proof"
   ],
   "declarations": [
     "Library.Bytes.byteOf",
@@ -30,7 +32,11 @@
     "Library.Bytes.byteOf_toNat",
     "Library.Bytes.foldr_byteOf",
     "Library.Bytes.chunk_eq",
-    "LeanExe.Requests.wordBytes"
+    "LeanExe.Requests.wordBytes",
+    "Library.Hashing.Crc.Bitwise.wordBytes_map",
+    "Library.Hashing.Crc.Bitwise.byteOf_shl8",
+    "Library.Hashing.Crc.Bitwise.messageBytes_bswap",
+    "LeanExe.Requests.decode"
   ],
   "examples": [
     "Library.Hashing.Crc.Proof.natBits_word",
@@ -38,6 +44,7 @@
     "Library.Hashing.XxHash64.Proof.byte_eq",
     "Library.Hashing.SipHash.Proof.le64_bytes",
     "Library.Hashing.SipHash.Proof.messageWords_eq",
-    "Library.Hashing.XxHash64.Proof.lane_le"
+    "Library.Hashing.XxHash64.Proof.lane_le",
+    "Library.Hashing.Crc.Bitwise.crc32Word_spec"
   ]
 }

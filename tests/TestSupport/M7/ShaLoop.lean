@@ -31,7 +31,10 @@ digests over the bytes read, by `decode_take`: one digest for each 64 bytes, dig
 first `64 (i + 1)` bytes.  `sha_prefix` and `sha_bytes` join them to `sha_loop`, and
 `shaQemu_prefix` joins `sha_digests` to `shaQemu_loop`.  `sha_loop_runs` states that the board's
 run never stops, `sha_requests` that every request names `USART_ISR`, `USART_RDR`, or `USART_TDR`,
-and `sha_confined` that the run's accesses lie in RCC, GPIOD, and USART3.
+and `sha_confined` that the run's accesses lie in RCC, GPIOD, and USART3.  `shaOvrdis_loop`,
+`shaOvrdis_loop_runs`, `shaOvrdis_prefix`, and `shaOvrdis_confined` state the same of the board's
+image in the layout `ovrdisBoot`, whose initialization `initOvrdis` also disables USART3's overrun
+detection, through `Nucleo.areaBoardWith_run` and `Nucleo.areaBoardWith_runs`.
 -/
 
 namespace TestSupport.M7.Sha
@@ -250,6 +253,56 @@ theorem sha_bytes {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
   obtain ⟨s, r, -, tr⟩ := sha_loop hk hf b hb N
   exact ⟨s, r, tr, sha_digests_bytes (devBus Nucleo.devBase) shaUsart3Tick_abs (by decide)
     (by decide) (by decide) (by decide) _ N hN⟩
+
+/-- `sha_loop` for the board's image with the initialization `initOvrdis`, which disables USART3's
+overrun detection. -/
+theorem shaOvrdis_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk ovrdisBoot ovrdisProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    ∃ s, Reach Nucleo.platform σ code b s ∧ s.pc = ovrdisHead ∧
+      s.trace = initTrace Nucleo.initOvrdis σ ++
+        windows (reqTrace (devBus Nucleo.devBase) shaUsart3Tick shaInit
+          (fun j => σ (j + initReads Nucleo.initOvrdis))) N :=
+  Nucleo.areaBoardWith_run Nucleo.initOvrdis_ok (words := shaWords) (fun _ => rfl) sha_stepCall
+    rfl sha_covered sha_setupOk sha_initStore.1 sha_initStore.2 hk (by rw [sha_stack]; decide)
+    shaInit rfl hf b hb N
+
+/-- The run of `shaOvrdis_loop` succeeds for every number of steps. -/
+theorem shaOvrdis_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk ovrdisBoot ovrdisProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) :
+    ∀ j, ∃ t, run Nucleo.platform σ code j b = some t :=
+  Nucleo.areaBoardWith_runs Nucleo.initOvrdis_ok (words := shaWords) (fun _ => rfl) sha_stepCall
+    rfl sha_covered sha_setupOk sha_initStore.1 sha_initStore.2 hk (by rw [sha_stack]; decide)
+    shaInit rfl hf b hb
+
+/-- `sha_prefix` for the board's image with the initialization `initOvrdis`. -/
+theorem shaOvrdis_prefix {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk ovrdisBoot ovrdisProgram n len = true) (hf : Nucleo.Flash code n len)
+    (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) (hN : N < 2 ^ 62) :
+    let w := windows (reqTrace (devBus Nucleo.devBase) shaUsart3Tick shaInit
+      (fun j => σ (j + initReads Nucleo.initOvrdis))) N
+    let recs := (decode 8 (dataIn (devBus Nucleo.devBase) shaUsart3 w)).recs
+    ∃ s, Reach Nucleo.platform σ code b s ∧ s.trace = initTrace Nucleo.initOvrdis σ ++ w ∧
+      ∃ ds : List (Vector UInt8 32), ds.length = recs.length ∧
+        (∀ i (hi : i < ds.length), ∃ h, digestBitVec ds[i] =
+          SHS.SHA256.sha256
+            (bytesToBitMessage (byteArrayOf ((recs.take (i + 1)).flatMap recordBytes))) h) ∧
+        dataOut (devBus Nucleo.devBase) shaUsart3 w <+:
+          ds.flatMap fun d => d.toList.map UInt8.toUInt64 := by
+  intro w recs
+  obtain ⟨s, r, -, tr⟩ := shaOvrdis_loop hk hf b hb N
+  exact ⟨s, r, tr, sha_digests (devBus Nucleo.devBase) shaUsart3Tick_abs (by decide) (by decide)
+    (by decide) (by decide) _ N hN⟩
+
+/-- The accesses of the trace of `shaOvrdis_loop`: the initialization's lie in RCC, GPIOD, or
+USART3, and the windows' are accesses of `USART_ISR`, `USART_RDR`, and `USART_TDR`. -/
+theorem shaOvrdis_confined (σ : Nat → UInt32) (N : Nat) :
+    (∀ e ∈ initTrace Nucleo.initOvrdis σ, Nucleo.InitBlock e.addr) ∧
+      ∀ e ∈ windows (reqTrace (devBus Nucleo.devBase) shaUsart3Tick shaInit
+          (fun j => σ (j + initReads Nucleo.initOvrdis))) N,
+        e.addr = Nucleo.usartIsr ∨ e.addr = Nucleo.usartRdr ∨ e.addr = Nucleo.usartTdr :=
+  ⟨Nucleo.initOvrdis_confined σ, Nucleo.windows_confined sha_requests shaInit _ N⟩
 
 /-- The CMSDK step's module fits the area that the setup writes. -/
 theorem shaCmsdk_setupOk : setupOk shaCmsdkCompiled.module areaPages = true := by
