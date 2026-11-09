@@ -81,6 +81,8 @@ B3a, a bound on the windows other than the window of a delimiter, is pending: it
 | `USBRESET=0483:374b m7-board.sh nrst bms /dev/ttyACM0` | 37 passed | 288, in 5 parts between board resets | `USART_CR3` read `0x00001000` over SWD after the run |
 | `USBRESET=0483:374b m7-board.sh measure bms /dev/ttyACM0` | 33 passed, 4 skipped | 256 | `USART_CR3` read `0x00001000` |
 
+[The board run's report](board-run/report.md) draws that run from its logs in [`board-run/`](board-run/), with a table of its events, and `bms-replay` and `uart_bms.py replay` both find its 288 answers equal to the specification's and the mirror's.
+
 The measurement image `bms-dwt.bin` records the cycles of each window by the phases before and after it, with five instructions of the measurement in each, at 16 MHz and with the caches off, and `m7-board.sh measure` starts it with the reset of `st-flash`, so no theorem covers its run.  The windows other than the window of a delimiter took 1,203 to 1,766 cycles, at most 10.6% of half a byte time at 4,800 baud, and the window of a delimiter took 99,020 to 121,691 cycles, at most 7.6 ms.  The cost model of `m7_timing.py` predicts 1,121 to 1,714 cycles for the model's traces of the other windows, 2% to 8% below the measured means of their kinds, and 129,034 cycles for the longest window of a delimiter in the model's run.
 
 | Window | Windows | Cycles: least, most, mean | Instructions in the model, with the measurement's 5 |
