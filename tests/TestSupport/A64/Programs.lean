@@ -10,6 +10,7 @@ import Library.Numerics.Float64.Exp.Compiled
 import Library.Numerics.Float64.Trig.Compiled
 import Examples.Floor.Compiled
 import Examples.Convert.Compiled
+import Library.Numerics.Decimal.Int64Text.Compiled
 import LeanExe.Native.Bare
 import LeanExe.A64.BootImage
 
@@ -33,7 +34,9 @@ whose result is the array of the words of the row after the layer, and the binar
 `average` on `minValue` and -1, each `Int64` passed and written as its word, and the conversions
 of `Examples.Convert`: `toDouble` on `-(2^53 + 3)`, `toSingle` on `-(2^62 + 2^38 + 1)`, `ofDouble`
 on the double below `-2^63`, and `scale` on -7 and 0.5, each double passed and written as its
-bits and each single written as its bits zero-extended.  Each
+bits and each single written as its bits zero-extended, and the decimal printer `printInt64` of
+`Library.Numerics.Decimal.Int64Text` on `minValue`, whose result is the array of the words of its
+text.  Each
 program's arm64 Image is `genImage` of the program at `imageBase`, with the stack's room `room`
 and the memory's cap `cap`.
 -/
@@ -138,6 +141,10 @@ def programs : List Program := [
   { name := "convscale", module := Examples.Convert.compiled.module, entry := 6
     args := [(-7 : Int64).toUInt64, 0x3FE0000000000000], output := .word
     bytes := LeanExe.Native.encodeWord
-      (Examples.Convert.scale (-7) (Float.ofBits 0x3FE0000000000000)).toUInt64 }]
+      (Examples.Convert.scale (-7) (Float.ofBits 0x3FE0000000000000)).toUInt64 },
+  { name := "int64min", module := Library.Numerics.Decimal.Int64Text.compiled.module, entry := 4
+    args := [Int64.minValue.toUInt64], output := .array
+    bytes := LeanExe.Native.encodeArray
+      (Library.Numerics.Decimal.Int64Text.printInt64 Int64.minValue) }]
 
 end TestSupport.A64
