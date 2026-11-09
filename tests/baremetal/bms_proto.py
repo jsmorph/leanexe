@@ -30,7 +30,22 @@ may lose.  The script first checks its COBS encoder and decoder on random record
 machine's answer to the scan vector in NORMAL with the vector's sequence number expected and the
 next answer numbered 8, which must be the answer vector, and exits with status 1 if a check fails.
 
-Usage: uv run tests/baremetal/bms_proto.py vectors | faults
+"gen SEED N PREFIX" writes N random writes of a bridge to PREFIX.in, in the format of
+tests/baremetal/uart_bms.py, and the mirror's answers to them to PREFIX.out, so that the native
+replay of tests/TestSupport/Bms/Replay.lean compares the mirror with Demos/Bms/Spec.lean.  A write
+is a scan record encoded with its 0x00, with the next sequence number, each field within the
+profile's limits or, with probability 0.02, within 1 of a limit, and a digital word from a process
+that follows the state of the mirror's last answer: in RESET_REQUIRED and FAULT it presses and
+releases the reset button and clears RUN, in STANDBY it sets RUN, and in every state it toggles
+STOP_OK now and then.  The auxiliary contacts report the permit of the last answer with
+probability 0.95, and a reserved bit is set with probability 0.003.  With probability 0.04 the
+write is the record with a lost, inserted, or changed byte, a byte set to 0x00, or a lost
+delimiter, or a record with the CRC over another link identifier, another tag, a repeated or
+skipped sequence number, random bytes, an empty segment, or more than 36 nonzero bytes.  A line
+"reset" marks a board reset with probability 0.002 after each write.  The command prints the
+number of answers in each state.
+
+Usage: uv run tests/baremetal/bms_proto.py vectors | faults | gen SEED N PREFIX
 """
 
 import random
@@ -483,7 +498,109 @@ def faults():
     print("lost delimiter alone:", lost_delim)
 
 
+def gen(seed, n, prefix):
+    rng = random.Random(seed)
+    other = b"LeanExe-BMS-0002"
+    board = Board()
+    permit, mode = 0, RESET_REQUIRED
+    seq = rng.randrange(1 << 32)
+    digital = STOP_OK
+    ins, outs = [], []
+    seen = Counter()
+
+    def pick(lo, hi, near):
+        if near and rng.random() < 0.02:
+            return rng.choice(near) + rng.choice((-1, 0, 1))
+        return rng.randrange(lo, hi + 1)
+
+    def raw_scan(s, d, link=LINK, tag=SCAN_TAG):
+        cells = tuple(pick(2600, 3600, (V_MIN, V_MAX, V_SENS_LO, V_SENS_HI)) for _ in range(4))
+        temps = tuple(pick(0, 450, (T_MIN, T_MAX, T_CHG_MIN, T_CHG_MAX, T_SENS_LO, T_SENS_HI))
+                      for _ in range(2))
+        current = pick(-250_000, 250_000, (I_CHG_MAX, -I_DIS_MAX, I_CHG_DETECT))
+        pack = max(0, sum(cells) + pick(-280, 280, (TOL_SUM, -TOL_SUM)))
+        if rng.random() < 0.7:
+            bus = max(0, pack + pick(-600, 600, (TOL_PC, -TOL_PC)))
+        else:
+            bus = pick(0, 15000, ())
+        body = bytes([tag]) + be(s, 4) + b"".join(be(c, 2) for c in cells)
+        body += b"".join(be(t, 2) for t in temps) + be(current, 4) + be(pack, 4) + be(bus, 4)
+        body += be(d, 2)
+        return body + be(zlib.crc32(body, zlib.crc32(link)), 4)
+
+    for _ in range(n):
+        if mode in (RESET_REQUIRED, FAULT):
+            toggles = ((0.3, RESET), (0.5, RUN if digital & RUN else 0), (0.03, STOP_OK))
+        elif mode == STANDBY:
+            toggles = ((0.1, RESET), (0.3, 0 if digital & RUN else RUN), (0.01, STOP_OK))
+        else:
+            toggles = ((0.05, RESET), (0.03, RUN), (0.01, STOP_OK))
+        for p, bit in toggles:
+            if rng.random() < p:
+                digital ^= bit
+        aux = permit if rng.random() < 0.95 else rng.randrange(8)
+        d = (digital & ~7) | aux
+        if rng.random() < 0.003:
+            d |= 1 << rng.randrange(6, 16)
+        w = wire(raw_scan(seq, d))
+        seq = (seq + 1) % (1 << 32)
+        if rng.random() < 0.96:
+            data = w
+        else:
+            f = rng.randrange(12)
+            i = rng.randrange(len(w) - 1)
+            if f == 0:
+                data = w[:i] + w[i + 1:]
+            elif f == 1:
+                data = w[:i] + bytes([rng.randrange(1, 256)]) + w[i:]
+            elif f == 2:
+                data = w[:i] + bytes([(w[i] + rng.randrange(1, 255)) % 256 or 1]) + w[i + 1:]
+            elif f == 3:
+                data = w[:i] + b"\x00" + w[i + 1:]
+            elif f == 4:
+                data = wire(raw_scan((seq - 1) % (1 << 32), d, link=other))
+            elif f == 5:
+                data = wire(raw_scan((seq - 1) % (1 << 32), d, tag=0x11))
+            elif f == 6:
+                data = wire(raw_scan((seq - 2) % (1 << 32), d))
+            elif f == 7:
+                seq = (seq + 1) % (1 << 32)
+                data = wire(raw_scan((seq - 1) % (1 << 32), d))
+            elif f == 8:
+                data = bytes(rng.randrange(256) for _ in range(rng.randrange(1, 45)))
+            elif f == 9:
+                data = b"\x00"
+            elif f == 10:
+                data = bytes(rng.randrange(1, 256) for _ in range(rng.randrange(37, 60))) + b"\x00"
+            else:
+                data = w[:-1]
+        ins.append(data.hex())
+        for b in data:
+            frame = board.push(b)
+            if frame:
+                outs.append(frame.hex())
+                a = decode_answer(cobs_decode(frame[:-1]))
+                permit, mode = a.permit, a.state
+                seen[STATES[a.state]] += 1
+        if rng.random() < 0.002:
+            ins.append("reset")
+            outs.append("reset")
+            board = Board()
+            permit, mode = 0, RESET_REQUIRED
+    with open(prefix + ".in", "w") as f:
+        f.write("\n".join(ins) + "\n")
+    with open(prefix + ".out", "w") as f:
+        f.write("\n".join(outs) + "\n")
+    print(f"{n} writes, {sum(o != 'reset' for o in outs)} answers, {outs.count('reset')} resets "
+          f"to {prefix}.in and {prefix}.out; answers by state: "
+          + ", ".join(f"{k} {v}" for k, v in sorted(seen.items())))
+
+
 def main():
+    if len(sys.argv) == 5 and sys.argv[1] == "gen":
+        self_test()
+        gen(int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
+        return
     if len(sys.argv) != 2 or sys.argv[1] not in ("vectors", "faults"):
         print(__doc__.strip().splitlines()[-1])
         sys.exit(2)
