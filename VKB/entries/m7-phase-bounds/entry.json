@@ -1,0 +1,73 @@
+{
+  "id": "m7-phase-bounds",
+  "goals": [
+    "costRun F m k st (stepArgs words g v) env ≤ c for the states and values of one phase",
+    "LeanExe.M7.pathCost m k dec = some c",
+    "LeanExe.M7.TestOk m env ((words g ++ [v]).map Value.i64) pre b",
+    "LeanExe.M7.TestsOk m env ps dec",
+    "∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ W) ∧ (∀ i x, cs[i]? = some x → Q (reqRun tick g0 σ' i).state (reqRun tick g0 σ' i).last → x ≤ V) ∧ ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s",
+    "a bound on the polling windows of a Cortex-M7 step apart from the window that does its long work",
+    "a bound on a window's costRun by the dispatch and the staticCost of the function that its phase selects"
+  ],
+  "modules": [
+    "LeanExe.M7.Bound",
+    "LeanExe.M7.Proof.Bound",
+    "LeanExe.M7.Proof.Main",
+    "LeanExe.M7.Proof.Board",
+    "TestSupport.M7.DelimStep",
+    "TestSupport.M7.DelimLoop"
+  ],
+  "declarations": [
+    "LeanExe.M7.PureKey",
+    "LeanExe.M7.pureKey",
+    "LeanExe.M7.keyForm",
+    "LeanExe.M7.testOutcome",
+    "LeanExe.M7.pathI",
+    "LeanExe.M7.pathL",
+    "LeanExe.M7.pathCost",
+    "LeanExe.M7.TestOk",
+    "LeanExe.M7.TestsOk",
+    "LeanExe.M7.TestsOk.nil",
+    "LeanExe.M7.TestsOk.cons",
+    "LeanExe.M7.mem_of_testOutcome",
+    "LeanExe.M7.costOne_le_pathI",
+    "LeanExe.M7.costExec_le_pathL",
+    "LeanExe.M7.costRun_le_pathCost",
+    "LeanExe.M7.costRun_step_le_pathCost",
+    "LeanExe.M7.Counted.split",
+    "LeanExe.M7.Counted.uniform",
+    "LeanExe.M7.WindowBound",
+    "LeanExe.M7.staticCost",
+    "LeanExe.M7.stepArgs",
+    "LeanExe.M7.Nucleo.boardWith_run_steps",
+    "LeanExe.M7.boot_run_steps"
+  ],
+  "examples": [
+    "TestSupport.M7.Delim.dlPhases",
+    "TestSupport.M7.DlDecodes",
+    "TestSupport.M7.dlPhaseTest",
+    "TestSupport.M7.dlByteTest",
+    "TestSupport.M7.dlLenTest",
+    "TestSupport.M7.dlRxTests",
+    "TestSupport.M7.dlByteTests",
+    "TestSupport.M7.dlEmptyTests",
+    "TestSupport.M7.dlTxTests",
+    "TestSupport.M7.dlSentTests",
+    "TestSupport.M7.dl_paths",
+    "TestSupport.M7.dl_params",
+    "TestSupport.M7.dl_phaseTest",
+    "TestSupport.M7.dl_byteTest",
+    "TestSupport.M7.dl_lenTest",
+    "TestSupport.M7.dl_poll",
+    "TestSupport.M7.Delim.board_loop_poll",
+    "TestSupport.M7.Delim.qemu_loop_poll"
+  ],
+  "unimported": {
+    "tests/TestSupport/M7/DelimBoardFile.lean": [
+      "TestSupport.M7.DelimBoardFile.dl_board_poll"
+    ],
+    "tests/TestSupport/M7/DelimQemuFile.lean": [
+      "TestSupport.M7.DelimQemuFile.dl_qemu_poll"
+    ]
+  }
+}

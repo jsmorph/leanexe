@@ -54,7 +54,7 @@ case $name in
   signed) image=signed-cmsdk-qemu cmd=signed-qemu lib=TestSupport.M7.SignedLoop
     file=SignedQemuFile count=4 mem=${MEM:-12G} ;;
   delim) image=delim-cmsdk-qemu cmd=delim-qemu lib=TestSupport.M7.DelimLoop
-    file=DelimQemuFile count=9 mem=${MEM:-16G} ;;
+    file=DelimQemuFile count=11 mem=${MEM:-16G} ;;
   *) usage ;;
 esac
 root=$(cd "$(dirname "$0")/../.." && pwd)

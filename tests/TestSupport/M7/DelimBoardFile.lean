@@ -12,7 +12,8 @@ table and the instructions.
 
 `dl_board` states the loop theorem for every code map that holds the file's bytes in flash at
 both of its addresses, `dl_board_runs` that the run never stops, `dl_board_steps` that each
-window takes at most 151,558 steps of the model, and `dl_board_prefix` that the bytes that the
+window takes at most 151,558 steps of the model, `dl_board_poll` that each window that does not
+decode a segment takes at most 2,036, and `dl_board_prefix` that the bytes that the
 run writes to `USART_TDR` begin the encoded answers of `echoMach` to the nonempty segments of the
 bytes that it reads from `USART_RDR`, all of them whenever a window reads a byte.  The theorems
 hold of the processor under the run conditions of `LeanExe/M7/Proof/Board.lean`: a power-on
@@ -59,6 +60,22 @@ theorem dl_board_steps (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option
             (fun k => σ (k + initReads initOvrdis))) i :=
   board_loop_steps dl_file hf b hb N
 
+/-- The echo of records' windows from reset over the image file, counted, with the windows that do
+not decode a segment bounded apart: window `i` takes `cs[i]` steps, at most 151,558, and at most
+2,036 when its state and the value that it receives do not satisfy `DlDecodes`, which holds of the
+window of a `0x00` after a nonempty segment alone. -/
+theorem dl_board_poll (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code dlBytes dlSize) (b : State) (hb : Reset code flashItcm b) :
+    let σ' := fun k => σ (k + initReads initOvrdis)
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 151558) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ DlDecodes (reqRun dlUsart3Tick dlInit σ' i).state
+          (reqRun dlUsart3Tick dlInit σ' i).last → x ≤ 2036) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = boardHead ∧
+        s.trace = initTrace initOvrdis σ ++
+          windows (reqTrace (devBus devBase) dlUsart3Tick dlInit σ') i :=
+  board_loop_poll dl_file hf b hb N
+
 /-- The echo of records' run from reset over the image file succeeds for every number of steps. -/
 theorem dl_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
     (hf : Flash code dlBytes dlSize) (b : State) (hb : Reset code flashItcm b) :
@@ -91,16 +108,20 @@ end TestSupport.M7.DelimBoardFile
 #print axioms TestSupport.M7.DelimBoardFile.dl_board
 #print axioms TestSupport.M7.DelimBoardFile.dl_board_runs
 #print axioms TestSupport.M7.DelimBoardFile.dl_board_steps
+#print axioms TestSupport.M7.DelimBoardFile.dl_board_poll
 #print axioms TestSupport.M7.DelimBoardFile.dl_board_prefix
 #print axioms TestSupport.M7.DelimBoardFile.dl_file
 #print axioms TestSupport.M7.Delim.board_loop
 #print axioms TestSupport.M7.Delim.board_loop_steps
+#print axioms TestSupport.M7.Delim.board_loop_poll
 #print axioms TestSupport.M7.Delim.board_loop_runs
 #print axioms TestSupport.M7.Delim.board_prefix
 #print axioms TestSupport.M7.Delim.dl_requests
 #print axioms TestSupport.M7.Delim.dl_confined
 #print axioms TestSupport.M7.Delim.dlPhases_abs
 #print axioms TestSupport.M7.dl_static
+#print axioms TestSupport.M7.dl_paths
+#print axioms TestSupport.M7.dl_poll
 #print axioms LeanExe.Requests.delim_prefix
 #print axioms LeanExe.Requests.delim_answered
 #print axioms LeanExe.Requests.cobsDecode_eq_some_iff

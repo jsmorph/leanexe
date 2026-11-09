@@ -303,7 +303,7 @@ case $1 in
         count=11 mem=${MEM:-16G} ;;
       signed) lib=TestSupport.M7.SignedLoop cmd=signed-board dwt= file=SignedBoardFile count=16
         mem=${MEM:-12G} ;;
-      delim) lib=TestSupport.M7.DelimLoop cmd=delim-board dwt= file=DelimBoardFile count=16
+      delim) lib=TestSupport.M7.DelimLoop cmd=delim-board dwt= file=DelimBoardFile count=20
         mem=${MEM:-16G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*

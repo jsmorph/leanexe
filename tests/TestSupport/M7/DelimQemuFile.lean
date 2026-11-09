@@ -8,7 +8,9 @@ that `m7-windows delim-qemu` writes, `delim-cmsdk-qemu.bin`, and the theorems ov
 `bootProgram` on `dlCmsdkTick`'s module and index and the words of the initial state `dlInit`,
 with the image's layout, and checks that the file's bytes are those of the vector table and the
 instructions.  `dl_qemu` states the loop theorem for every code map that holds the file's bytes
-from address 0, where QEMU loads the image, and `dl_qemu_prefix` that the bytes that the run
+from address 0, where QEMU loads the image, `dl_qemu_poll` that each window takes at most 151,558
+steps and each window that does not decode a segment at most 2,036, and `dl_qemu_prefix` that the
+bytes that the run
 writes to UART0's data register begin the encoded answers of `echoMach` to the nonempty segments
 of the bytes that it reads, all of them whenever a window reads a byte.
 -/
@@ -36,6 +38,21 @@ theorem dl_qemu (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16
         windows (reqTrace (devBus Qemu.devBase) dlCmsdkTick dlInit σ) N :=
   qemu_loop dl_file hf b hb N
 
+/-- The echo of records' windows on `mps2-an500` from QEMU's reset over the image file, counted:
+window `i` takes `cs[i]` steps, at most 151,558, and at most 2,036 when its state and the value
+that it receives do not satisfy `DlDecodes`. -/
+theorem dl_qemu_poll (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : FileAt code dlBytes dlSize 0) (b : State) (hb : Reset code 0 b) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 151558) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ DlDecodes (reqRun dlCmsdkTick dlInit σ i).state (reqRun dlCmsdkTick dlInit σ i).last →
+        x ≤ 2036) ∧
+      ∀ i ≤ N, ∃ s, run Qemu.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = qemuHead ∧
+        s.trace = Qemu.initTrace ++
+          windows (reqTrace (devBus Qemu.devBase) dlCmsdkTick dlInit σ) i :=
+  qemu_loop_poll dl_file hf b hb N
+
 /-- The echo of records' answers on `mps2-an500` from QEMU's reset, over the image file. -/
 theorem dl_qemu_prefix (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
     (hf : FileAt code dlBytes dlSize 0) (b : State) (hb : Reset code 0 b) :
@@ -54,9 +71,11 @@ theorem dl_qemu_prefix (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option
 end TestSupport.M7.DelimQemuFile
 
 #print axioms TestSupport.M7.DelimQemuFile.dl_qemu
+#print axioms TestSupport.M7.DelimQemuFile.dl_qemu_poll
 #print axioms TestSupport.M7.DelimQemuFile.dl_qemu_prefix
 #print axioms TestSupport.M7.DelimQemuFile.dl_file
 #print axioms TestSupport.M7.Delim.qemu_loop
+#print axioms TestSupport.M7.Delim.qemu_loop_poll
 #print axioms TestSupport.M7.Delim.dlCompiled.dlCmsdkTick.implements
 #print axioms TestSupport.M7.Delim.dl_cmsdk_prefix
 #print axioms TestSupport.M7.Delim.dl_cmsdk_answered
