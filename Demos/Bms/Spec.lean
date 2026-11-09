@@ -1,4 +1,5 @@
 import Library.Hashing.Crc.Division
+import LeanExe.Requests.Delimited
 
 /-!
 The protection machine of the BMS demo, as `Demos/Bms/requirements.md` states it, over natural
@@ -11,8 +12,10 @@ bytes before the field.
 `step` processes the result of one non-empty segment from a state and gives the next state and
 the answer, applying the checks in the order of the requirements' table and the transition rules
 in their order.  `machine` writes the answer's 17 bytes, so that it has the type of the machine
-that the delimited framing calls once for each non-empty segment: an error of the segment or its
-decoded bytes, to the next state and the raw answer.  `stateAt x t` and `answerAt x t` give the
+that the delimited framing of `LeanExe/Requests/Delimited.lean` calls once for each non-empty
+segment: an error of the segment or its decoded bytes, to the next state and the raw answer.
+`delimAnswers machine maxSegment init bs` is then the specification of the board's answers to the
+bytes `bs`.  `stateAt x t` and `answerAt x t` give the
 state before segment `t` and the answer to it for every sequence `x` of segment results, from the
 state after a board reset.
 
@@ -353,14 +356,9 @@ def init : State where
 
 /-! ## Checks -/
 
-/-- The errors that the framing reports for a segment. -/
-inductive Err where
-  | decode
-  | overflow
-  deriving DecidableEq, Repr
-
-/-- The result of a non-empty segment: an error, or the segment's decoded bytes. -/
-abbrev Input := Except Err (List UInt8)
+/-- The result of a non-empty segment that the delimited framing gives: a decode error, an
+overflow, or the segment's decoded bytes. -/
+abbrev Input := Except LeanExe.Requests.SegErr (List UInt8)
 
 /-- The decoded bytes of a segment, or no bytes for an error. -/
 def bytesOf : Input → List UInt8
@@ -371,7 +369,7 @@ def bytesOf : Input → List UInt8
 def scanOf (x : Input) : Scan := decodeScan (bytesOf x)
 
 /-- Whether the framing reports the error `e`. -/
-def isError (e : Err) : Input → Bool
+def isError (e : LeanExe.Requests.SegErr) : Input → Bool
   | .error e' => e' == e
   | .ok _ => false
 

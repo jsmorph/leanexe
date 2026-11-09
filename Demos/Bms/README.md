@@ -25,9 +25,13 @@ The theorems hold for every sequence `x` of segment results from the state after
 | `codes` | The code is 0 in `STANDBY`, `PRECHARGE`, and `NORMAL`, `0x0001` or `0x5001` in `RESET_REQUIRED`, and a fault code in `FAULT` | [`Theorems.lean`](Theorems.lean) |
 | `resetAcceptance_iff`, `start_iff` | A reset acceptance is a transition from `RESET_REQUIRED` or `FAULT` to `STANDBY`, and a start one from `STANDBY` to `PRECHARGE` | [`Theorems.lean`](Theorems.lean) |
 | `failure_eq` | The machine's checks of a segment are the checks that the history defines | [`Theorems.lean`](Theorems.lean) |
+| `delimAnswers_eq`, `answer_stream` | The answers to bytes `bs` are the encoded answers of the run over `inputs bs`, the results of the non-empty segments, and the `n`-th segment of the bytes written decodes to the raw answer `a_n` | [`Stream.lean`](Stream.lean) |
+| M1 `m1_stream` | An answer among the bytes written with a nonzero permit byte is `a_n` of the run over the non-empty segments of the bytes read, and `Permitted` holds of it | [`Stream.lean`](Stream.lean) |
+| M2 `m2_stream`, M11 `m11_stream` | The permit byte of every answer written is `0x00`, `0x03`, or `0x05`, and every answer written is 17 bytes that `decodeAnswer` accepts, with the board sequence number `n` modulo 2^32 | [`Stream.lean`](Stream.lean) |
+| M12 `m12_stream` | A segment that is the encoding of a 35-byte record with one byte removed gets `0x1001` or `0x1003` when the state before was not `FAULT`, since COBS decoding of `k` bytes gives fewer than `k` (`length_cobsDecode`) | [`Stream.lean`](Stream.lean) |
 
-M5 and M8 drop the requirements' hypothesis that the record passes the communication checks, since a record that fails them gets `FAULT` by M3.  M9 holds from every state before the first record.  [`Cases.lean`](Cases.lean) evaluates the specification when it builds: the two test vectors, the machine's answer to the scan vector, the schedule's scenarios that the machine decides, limits at and beyond their values, and the agreement of the history terms with the machine's state on a run through every state.
+[`Stream.lean`](Stream.lean) carries the theorems to every byte stream: `machine` has the type of the machine of [the delimited framing](../../LeanExe/Requests/Delimited.lean), so `delimAnswers machine maxSegment init bs` is the specification of the answers to the bytes `bs`, and every theorem above holds for `inputs bs`.  M5 and M8 drop the requirements' hypothesis that the record passes the communication checks, since a record that fails them gets `FAULT` by M3.  M9 holds from every state before the first record.  [`Cases.lean`](Cases.lean) evaluates the specification when it builds: the two test vectors, the machine's answer to the scan vector, the schedule's scenarios that the machine decides, limits at and beyond their values, and the agreement of the history terms with the machine's state on a run through every state.
 
 ```sh
-tools/leanrun --timeout 30m lake build Demos.Bms.Theorems Demos.Bms.Cases
+tools/leanrun --timeout 30m lake build Demos.Bms.Theorems Demos.Bms.Stream Demos.Bms.Cases
 ```
