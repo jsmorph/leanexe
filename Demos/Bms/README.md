@@ -4,6 +4,22 @@
 
 [The host side](Host.md) describes the bridge and pack simulator that play the far end of the board's USART3, its bridge rules, its models, its fault-injection scenarios, the format of its logs, and their replay against the specification in native Lean.
 
+## A run on a NUCLEO-F767ZI
+
+![The fault-injection schedule on a NUCLEO-F767ZI: the scenario groups, the state of each answer, each relay's permit bit beside its coil, and the diagnostic codes by family, over 48 seconds](board-run/run.png)
+
+The image `bms.bin` ran the [fault-injection schedule](requirements.md#fault-injection-schedule) on a NUCLEO-F767ZI: 286 records in 48.2 s, 288 answers, 11 timeouts of the bridge, and 4 board resets, and all 37 scenarios passed.  [The host program](../../tests/baremetal/uart_bms.py) played the bridge and simulated the pack over the ST-LINK's virtual COM port, and `bms-replay` finds each of the 288 answers equal to the specification's answer to the bytes that the bridge wrote.  [The run's report](board-run/report.md) lists every scenario, fault, timeout, lease expiry, and relay change.
+
+The chart's panels share one time axis, in seconds from the start of the run.  The top strip groups the scenarios, and the panels show the state of each answer, with a mark at each answer's arrival, each relay's permit bit in the latest answer beside the coil that the bridge energized, and the diagnostic code of each answer whose code is not `0x0000`, by family.  Dashed lines mark the bridge's board resets.  A coil stays energized without a permit only after a board reset, until the lease of the last answer ends, and a permit stands without its coil only where answers were lost or the bridge stopped sending, since a coil needs a lease that a current answer renews.
+
+![The first 8 seconds: the start through PRECHARGE to NORMAL, a board reset and the release of the relays, and cells at and one millivolt beyond V_max and V_min](board-run/start.png)
+
+The first 8 seconds show the machine's sequence and its limits.  After power-up the board answered `RESET_REQUIRED` with code `0x0001`, a reset press gave `STANDBY`, and the run bit gave `PRECHARGE` with the permits of NEG and PRE, while the bus charged through PRE from 0 to 12.9 V.  `NORMAL`, with NEG and POS, followed at 1.11 s, when the bus read 12,943 mV and the pack 13,177 mV, within `tol_pc` of 500 mV.  The bridge then reset the board: the leases of NEG and POS ended at 1.49 s, the bridge released both, and no record went out until 3.37 s.  At 4.64 s cell 0 read 3,651 mV, 1 mV above `V_max`, and the answer to that record was `FAULT` with code `0x2002` and permit 0, on whose arrival the bridge released the relays.  In scenarios 5 and 6 a cell at `V_max` or `V_min` left the answer `NORMAL`, and 1 mV beyond gave `FAULT` with `0x2002` or `0x2003`.
+
+```sh
+uv run tests/baremetal/bms_figures.py Demos/Bms/board-run/bms Demos/Bms/board-run
+```
+
 ## Specification and theorems
 
 [`Spec.lean`](Spec.lean) states the machine over natural numbers, integers, lists, and structures, independent of any program.  It holds the profile's values and the diagnostic codes as named constants, the layouts of the 35-byte scan record and the 17-byte answer with their decoding and encoding, the CRC-32 of V.42 over the link identifier and a record's bytes as `crc32Eval` of [the CRC division](../../Library/Hashing/Crc/Division.lean) computes it, the state, the 17 checks in order, and the transition rules.  `step` gives the next state and the answer for the result of one non-empty segment, a framing error or the decoded bytes, and `machine` writes the answer's raw bytes.  The specification is computable, so native Lean replays recorded records against it.
