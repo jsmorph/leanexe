@@ -8,7 +8,8 @@
     "LeanExe.M7.staticCost m k = some c",
     "LeanExe.M7.reachCovered m k = true",
     "LeanExe.M7.setupOk m areaPages = true",
-    "a board theorem of a step whose state has an Int64 field"
+    "a board theorem of a step whose state has an Int64 field",
+    "the Cortex-M7 generator's code, usesArea, and staticCost of a library function that no step calls yet"
   ],
   "modules": [
     "LeanExe.M7.Proof.Step",
@@ -32,7 +33,8 @@
     "TestSupport.M7.GwLoop",
     "TestSupport.M7.CrcLoop",
     "TestSupport.M7.ShaLoop",
-    "TestSupport.M7.SignedLoop"
+    "TestSupport.M7.SignedLoop",
+    "TestSupport.M7.CrcBitwise"
   ],
   "declarations": [
     "LeanExe.M7.StepCall",
@@ -64,7 +66,8 @@
     "LeanExe.heapAt_initStore",
     "LeanExe.borrowed_initStore",
     "Verified.Ready.initial",
-    "LeanExe.M7.coveredInstr"
+    "LeanExe.M7.coveredInstr",
+    "TestSupport.M7.CrcBitwise.functionsOf"
   ],
   "examples": [
     "TestSupport.M7.echo_covered",
@@ -95,7 +98,13 @@
     "TestSupport.M7.Signed.sgWords",
     "TestSupport.M7.Signed.board_loop",
     "TestSupport.M7.Signed.board_loop_steps",
-    "TestSupport.M7.Signed.qemu_loop"
+    "TestSupport.M7.Signed.qemu_loop",
+    "TestSupport.M7.CrcBitwise.crcBitwise_functions",
+    "TestSupport.M7.CrcBitwise.crcBitwise_noArea",
+    "TestSupport.M7.CrcBitwise.crcBitwise_covered",
+    "TestSupport.M7.CrcBitwise.crcBitwise_static",
+    "TestSupport.M7.CrcBitwise.crcBitwise_stack",
+    "TestSupport.M7.CrcBitwise.crcBitwise_cost"
   ],
   "unimported": {
     "tests/TestSupport/M7/SignedBoardFile.lean": [

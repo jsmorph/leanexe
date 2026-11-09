@@ -13,6 +13,7 @@ import Library.Graphs.WeightedUnionFind.Program
 import Library.Strings.Kmp.Program
 import Library.HashTables.LinearProbing.Program
 import Library.Hashing.Crc.Program
+import Library.Hashing.Crc.Bitwise.Program
 import Library.Hashing.Hmac.Program
 import Library.Hashing.Sha256.Program
 import Library.Hashing.Sha3.Program

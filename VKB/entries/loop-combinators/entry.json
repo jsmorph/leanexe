@@ -12,7 +12,9 @@
     "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'",
     "Inv n js ks (t + 1) q from Inv n js ks t p and a link of one root to the other",
     "P n.toNat (LeanExe.loop n init f) where apply loop_induction cannot infer P",
-    "LeanExe.loop n x (fun _ s => f s) = f^[n.toNat] x"
+    "LeanExe.loop n x (fun _ s => f s) = f^[n.toNat] x",
+    "Nat.fold (min N (j + 1)) (fun i _ s => F i s) init",
+    "an unrolled chain of if k < n then step else r equal to LeanExe.loop (min n K)"
   ],
   "modules": [
     "LeanExe.Dialect.Lemmas",
@@ -36,7 +38,8 @@
     "Library.Random.Orbit.Basic",
     "Library.Random.Xorshift.Period",
     "Library.Numerics.Arithmetic.Uscale.UscaleBase",
-    "Demos.Slew.Search"
+    "Demos.Slew.Search",
+    "Library.Hashing.Crc.Bitwise.Proof"
   ],
   "declarations": [
     "LeanExe.Dialect.loop_induction",
@@ -59,7 +62,9 @@
     "Library.Numerics.MultiPrecision.MulsubInv",
     "Library.Random.Orbit.loop_eq_iterate",
     "Demos.Slew.Search.loop_const",
-    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.loop_inv"
+    "Library.Numerics.Arithmetic.Uscale.UscaleTheorem.loop_inv",
+    "Library.Hashing.Crc.Bitwise.fold_min_succ",
+    "Library.Hashing.Crc.Bitwise.regIf_fold"
   ],
   "examples": [
     "Library.Arrays.Search.firstZero_cases",
@@ -82,6 +87,7 @@
     "Library.Graphs.TopologicalSort.topoSort_spec",
     "Library.Numerics.MultiPrecision.mulsub_spec",
     "Library.Numerics.MultiPrecision.addback_spec",
-    "Library.Random.Xorshift.advance_eq_iterate"
+    "Library.Random.Xorshift.advance_eq_iterate",
+    "Library.Hashing.Crc.Bitwise.crc32Word_eq"
   ]
 }
