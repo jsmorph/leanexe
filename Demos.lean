@@ -1,4 +1,7 @@
+import Demos.Bms.Abs
 import Demos.Bms.Cases
+import Demos.Bms.Compiled
+import Demos.Bms.Program
 import Demos.Bms.Stream
 import Demos.Bms.Theorems
 import Demos.Drone.Acceleration
