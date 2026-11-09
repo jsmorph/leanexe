@@ -9,8 +9,9 @@ snapshot, where the device has settled, by 0, and by the intervals of the states
 from the snapshot on, which covers transitions between states, protective trips and deratings
 toward 0, and the return to fallback.  The gateway's rules record at each snapshot a state whose
 interval holds battery power, and allow from one accepted snapshot to the next only the state
-that the snapshot records, the command authorized from it, and fallback.  The module is
-independent of the program and its word layout. -/
+that the snapshot records, the command authorized from it, and fallback.  The rules R1 to R5 and
+assumption A7 are those of `Demos/Energy/README.md`.  The module is independent of the program and
+its word layout. -/
 
 namespace Demos.Energy.Spec
 
@@ -30,8 +31,8 @@ def time (r : Run) (j : ℕ) : ℝ := (r.snapshot j).time
 def Between (r : Run) (j : ℕ) (w : ℝ) : Prop :=
   r.time j ≤ w ∧ (j + 1 < r.length → w < r.time (j + 1))
 
-/-- Each accepted snapshot follows the one before, within the window length.  This is gateway
-rule 5 together with the acceptance of a snapshot in each window. -/
+/-- Each accepted snapshot follows the one before, within the window length.  This is rule
+R5 together with the acceptance of a snapshot in each window. -/
 def Spaced (r : Run) (p : Profile) : Prop :=
   ∀ j, j + 1 < r.length → r.time j < r.time (j + 1) ∧ r.time (j + 1) ≤ r.time j + p.window
 
@@ -43,11 +44,11 @@ namespace Trajectory
 snapshot to `t`, with `state w` the state that the device has applied at time `w`. -/
 structure OperatesIn (x : Trajectory) (p : Profile) (r : Run) (state : ℝ → State) (j : ℕ)
     (t : ℝ) : Prop where
-  /-- Gateway rule 1: at the snapshot, the device has settled, and battery power lies in the
+  /-- Rule R1: at the snapshot, the device has settled, and battery power lies in the
   interval of the state that the snapshot records. -/
   settled : ((r.snapshot j).state.low p : ℝ) ≤ x.power (r.time j) ∧
     x.power (r.time j) ≤ (r.snapshot j).state.high p
-  /-- Gateway rules 2 to 4 and assumption A7: from the snapshot to the next accepted snapshot,
+  /-- Rules R2 to R4 and assumption A7: from the snapshot to the next accepted snapshot,
   the state that the device has applied is the one that the snapshot records, the command
   authorized from that snapshot, or fallback. -/
   states : ∀ w ∈ Set.Icc (r.time j) t, r.Between j w →

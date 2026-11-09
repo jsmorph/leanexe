@@ -1,6 +1,6 @@
 # Energy: replay study
 
-The replay study measures how [the energy authorizer](README.md)'s acceptance rule limits battery dispatch, chooses the window length `W`, and compares the bills of dispatch policies.  It replays two years of minute data from a test house through a simulated battery, gateway, and authorizer.  [The replay tool](../../tests/energy/replay.py) implements the acceptance rule of [the plan](../../energy-controller-plan.md) a second time, in Python with exact integer arithmetic, and `replay.py check` agrees with native Lean on all 2,056 module cases.  The symbols are those of the README: `B` is a window's power interval, `F` the fallback interval, `e` the tolerance about a command's limits, `η` the efficiency bound, and `ℓ⁺` the largest loss rate.
+The replay study measures how [the energy authorizer](README.md)'s acceptance rule limits battery dispatch, chooses the window length `W`, and compares the bills of dispatch policies.  It replays two years of minute data from a test house through a simulated battery, gateway, and authorizer.  [The replay tool](../../tests/energy/replay.py) implements the acceptance rule of [the authorization problem](README.md#the-authorization-problem) a second time, in Python with exact integer arithmetic, and `replay.py check` agrees with native Lean on all 2,056 module cases.  The symbols are those of the README: `B` is a window's power interval, `F` the fallback interval, `e` the tolerance about a command's limits, `η` the efficiency bound, and `ℓ⁺` the largest loss rate.
 
 ## Data
 
@@ -17,7 +17,7 @@ Scaled to the whole year, the 2013–14 load lies 0.8% below NIST's published co
 
 ## The simulated site
 
-The site keeps the battery of the plan's worked example.  Its import cap is that of a 100 A, 240 V service, 24 kW, above the house's largest minute load of 22.9 kW.  With the battery idle, surplus PV exceeds the export cap of 5 kW in 50,326 minutes of 2013–14 and 47,828 of 2015–16, and the PV inverter curtails export at the cap.  A second set of runs uses caps of `2^20` W, which never bind, to separate the energy tests from the grid tests.
+The site keeps the battery of [the README's worked example](README.md#worked-example).  Its import cap is that of a 100 A, 240 V service, 24 kW, above the house's largest minute load of 22.9 kW.  With the battery idle, surplus PV exceeds the export cap of 5 kW in 50,326 minutes of 2013–14 and 47,828 of 2015–16, and the PV inverter curtails export at the cap.  A second set of runs uses caps of `2^20` W, which never bind, to separate the energy tests from the grid tests.
 
 | Quantity | Value |
 |---|---|
@@ -28,11 +28,11 @@ The site keeps the battery of the plan's worked example.  Its import cap is that
 | Simulated battery | Charge and discharge efficiencies 0.95, loss 10 W |
 | Energy estimate | The simulated energy ± 360,000 J |
 
-The gateway takes a snapshot every minute and follows the plan's rules.  It sends the proposal when the authorizer accepts it and nothing otherwise, so the command in force runs on, and it returns the device to fallback when a minute's load or PV leaves the intervals of the command in force or when data are missing.  The device follows a command from the start of its snapshot's minute to the first minute boundary at or after its expiry, and runs in the idle fallback otherwise.  A command of held setpoints holds its power, and a command of limits for the vendor's mode follows each minute's net load within them.  The data resolve nothing shorter than a minute, so the replay shows nothing about the send deadline `a` or the transition time `τ`.
+The gateway takes a snapshot every minute and follows [the gateway's rules](README.md#assumptions-and-the-gateways-rules).  It sends the proposal when the authorizer accepts it and nothing otherwise, so the command in force runs on, and it returns the device to fallback when a minute's load or PV leaves the intervals of the command in force or when data are missing.  The device follows a command from the start of its snapshot's minute to the first minute boundary at or after its expiry, and runs in the idle fallback otherwise.  A command of held setpoints holds its power, and a command of limits for the vendor's mode follows each minute's net load within them.  The data resolve nothing shorter than a minute, so the replay shows nothing about the send deadline `a` or the transition time `τ`.
 
 ## Interval rules
 
-The true-range rule takes the minimum and maximum of the minute values in the window.  It uses future data, so it bounds acceptance from above and only Stage 2 uses it.  The causal rule takes the extremes of the previous 15 minutes and widens each by a percentile, 99.9% unless a row states otherwise, of the excursions that the calibration year shows for the same window length, month, and hour.  The excursions of each month are pooled with those of the months before and after it, so that the hours of sunrise and sunset are in like bins.  Lower bounds are at least 0.
+The true-range rule takes the minimum and maximum of the minute values in the window.  It uses future data, so it bounds acceptance from above and only the margin sweep uses it.  The causal rule takes the extremes of the previous 15 minutes and widens each by a percentile, 99.9% unless a row states otherwise, of the excursions that the calibration year shows for the same window length, month, and hour.  The excursions of each month are pooled with those of the months before and after it, so that the hours of sunrise and sunset are in like bins.  Lower bounds are at least 0.
 
 | W (s) | Largest widening of the load's upper bound (W) | Largest widening of PV's upper bound (W) |
 |---|---|---|
@@ -41,9 +41,9 @@ The true-range rule takes the minimum and maximum of the minute values in the wi
 | 600 | 20,624 | 7,395 |
 | 900 | 21,071 | 7,610 |
 
-The load's widening is largest from October to April and PV's from April to September.  Both rules use minute averages, while assumption A4 concerns instantaneous power, so both overstate acceptance and coverage by the excursions within a minute, which a later section estimates.
+The load's widening is largest from October to April and PV's from April to September.  Both rules use minute averages, while [assumption A4](README.md#assumptions-and-the-gateways-rules) concerns instantaneous power, so both overstate acceptance and coverage by the excursions within a minute, which a later section estimates.
 
-## Stage 2: margins
+## Margins
 
 The sweep runs on the calibration year, with the causal rule calibrated on the same year, so that the choice of `W` uses no withheld data.  The proposer is the self-consumption rule: the previous minute's surplus PV or deficit, within the largest charge and discharge and the power that keeps the energy estimate between the floor and the ceiling.  The vendor's self-consumption mode, which follows each minute's own values, discharges 2,053 kWh in the year, and the one-minute proposer discharges 2,052 kWh when every proposal is sent without the authorizer.
 
@@ -75,9 +75,9 @@ In every run, the simulated energy and grid power met `WithinOrFallback` at ever
 
 ## The window length
 
-The study chooses, among the window lengths that the gateway's timing allows, the longest whose controller bill and wear on the calibration year lie within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The controller's bills and wear on the calibration year, with the study's caps and the causal rule, are $1,921, $1,924, $1,936, and $1,948 for 180, 300, 600, and 900 s.  The study chooses `W = 600` s, which lies 0.8% above the lowest, while 900 s lies 1.4% above it.  The choice is provisional: the equipment's expiry granularity, which Stage 4 measures, can require another length, and the excursions within a minute, which Stage 5 measures at the site, can change the margins of every length.
+The study chooses, among the window lengths that the gateway's timing allows, the longest whose controller bill and wear on the calibration year lie within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The controller's bills and wear on the calibration year, with the study's caps and the causal rule, are $1,921, $1,924, $1,936, and $1,948 for 180, 300, 600, and 900 s.  The study chooses `W = 600` s, which lies 0.8% above the lowest, while 900 s lies 1.4% above it.  The choice is provisional: a site's expiry granularity can require another length, and its excursions within a minute can change the margins of every length.
 
-## Stage 3: bills
+## Bills
 
 The test house has no tariff that values a battery, so the study assumes one.  Import follows [PG&E's Electric Home Rate Plan (E-ELEC)](https://www.pge.com/assets/pge/docs/account/rate-plans/residential-electric-rate-plan-pricing.pdf), effective March 1, 2026, for an all-electric home: from June to September 33¢ per kWh off-peak, 39¢ at partial peak (3 to 4 p.m. and 9 p.m. to midnight), and 55¢ at peak (4 to 9 p.m.), and in the other months 28¢, 30¢, and 32¢.  Export earns a flat 5¢ per kWh, and the fixed base services charge, the same for every policy, is omitted.  The study applies this California tariff to the Maryland house on its local clock.  Battery wear costs 5¢ per kWh discharged, the assumption of a $400 per kWh replacement over 8,000 full cycles, and the capacity stays constant over the year.
 
@@ -162,12 +162,11 @@ uv run tests/energy/replay.py economics nist-2014.csv nist-2015.csv \
 uv run tests/energy/replay.py within pr02_nl_2019.csv.gz pr02_prod_2019.csv.gz
 ```
 
-A NIST year directory holds that year's `Elec`, `HVAC`, `DHW`, and `Load` minute files from NIST's data page, and `prepare` writes one series of minute load and PV per year.  `calibration` prints the causal rule's widening by month, `margins` the Stage 2 tables, and `economics` the bills of each policy, with notes that give each window's coverage by month, the statuses of the controller's unlimited proposals, and the window checks.  The `within` command reads house PR_02's compressed net-load and PV files for 2019 from the PTProsumer dataset.
+A NIST year directory holds that year's `Elec`, `HVAC`, `DHW`, and `Load` minute files from NIST's data page, and `prepare` writes one series of minute load and PV per year.  `calibration` prints the causal rule's widening by month, `margins` the tables of [the margins](#margins), and `economics` the bills of each policy, with notes that give each window's coverage by month, the statuses of the controller's unlimited proposals, and the window checks.  The `within` command reads house PR_02's compressed net-load and PV files for 2019 from the PTProsumer dataset.
 
 ## References
 
 - [Energy: authorization of battery power limits](README.md)
-- [Verified Energy Controller: Plan and Design](../../energy-controller-plan.md)
 - [NIST Net-Zero Energy Residential Test Facility data](https://pages.nist.gov/netzero/data.html)
 - [Healy et al., Performance Data from the NIST Net-Zero Energy Residential Test Facility, Journal of Research of NIST 122:14 (2017)](https://doi.org/10.6028/jres.122.014)
 - [PTProsumer dataset](https://osf.io/9xs3a/)

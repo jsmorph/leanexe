@@ -1,6 +1,6 @@
 # The function log1p
 
-[The implementation](Program.lean) exports `log1p`, which computes `log (1 + x)`, a port of fdlibm's `s_log1p.c` as FreeBSD's msun has it [1, 2].  The decided bound is one representable step from the nearest-even rounding of `log (1 + x)` ([the plan](../../../../transcendentals.md#functions)).  The bound is proved for every finite `x > -1`, the exceptional values are proved as words, and `Log1pBytes.log1p_bytes_accuracy` transfers both to the decoded WebAssembly module, with `Log1pFile.log1p_file` stating that `build/verified/log1p.wasm` contains the encoding of that module.  Every accepted theorem reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+[The implementation](Program.lean) exports `log1p`, which computes `log (1 + x)`, a port of fdlibm's `s_log1p.c` as FreeBSD's msun has it [1, 2].  The bound, which [the algorithm index](../../../../index.md#6-elementary-and-special-functions) lists with the bounds of the other functions, is one representable step from the nearest-even rounding of `log (1 + x)`.  The bound is proved for every finite `x > -1`, the exceptional values are proved as words, and `Log1pBytes.log1p_bytes_accuracy` transfers both to the decoded WebAssembly module, with `Log1pFile.log1p_file` stating that `build/verified/log1p.wasm` contains the encoding of that module.  Every accepted theorem reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Specification
 

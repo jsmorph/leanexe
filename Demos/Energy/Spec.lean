@@ -8,10 +8,10 @@ for the window.  A trajectory gives stored energy, battery AC power (positive fo
 charge and discharge efficiencies, the auxiliary loss rate, the load, and the PV output as
 functions of time.  A command sets power limits, within which the device's own control follows
 the load, and a held setpoint `s` is the limits `[s, s]`.  `AdmittedUntil` states the assumptions
-from the snapshot's time to a time `t` for proposed limits, `Within` the site's limits, and
-`WithinOrFallback` the bounds of the acceptance rule: each site limit, or the worst case that an
-immediate return to fallback admits.  The module is independent of the program and its word
-layout. -/
+A1 to A5 of `Demos/Energy/README.md` from the snapshot's time to a time `t` for proposed limits,
+`Within` the site's limits, and `WithinOrFallback` the bounds of the acceptance rule: each site
+limit, or the worst case that an immediate return to fallback admits.  The module is independent
+of the program and its word layout. -/
 
 namespace Demos.Energy.Spec
 

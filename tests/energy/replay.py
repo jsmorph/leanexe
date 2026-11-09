@@ -4,7 +4,7 @@
 # ///
 """The replay tool of the energy authorizer.
 
-The tool implements the acceptance rule of energy-controller-plan.md a second time, apart from the
+The tool implements the acceptance rule of Demos/Energy/README.md a second time, apart from the
 Lean program, with exact integer arithmetic, and runs it on cases and on historical data.
 
     uv run tests/energy/replay.py check CASES
@@ -774,7 +774,7 @@ OPEN_CAPS = {"import_cap": POWER_BOUND, "export_cap": POWER_BOUND}
 
 
 def margins_report(calibration: Series, evaluation: Series) -> None:
-    """The sweep of Stage 2.  Each run is an interval rule, `W`, `e`, `η`, the causal rule's
+    """The sweep of the margins.  Each run is an interval rule, `W`, `e`, `η`, the causal rule's
     percentile, and whether the grid caps are the study's or caps that never bind."""
     q = QUANTILE
     runs = [(rule, w, 50, 900_000, q, False) for w in (180, 300, 600, 900)
@@ -866,10 +866,10 @@ def calibration_report(calibration: Series, minutes: int) -> None:
 
 def economics_report(calibration: Series, evaluation: Series, windows: list[int],
                      caps: dict, estimate: str) -> None:
-    """The bills of Stage 3: no battery, the vendor's self-consumption mode and time-of-use
-    schedule, the self-consumption rule and the controller as one-minute commands with every
-    proposal sent, and, for each window length, the controller through the authorizer and the
-    vendor's mode within authorized limits, both with the causal rule."""
+    """The bills of the dispatch policies: no battery, the vendor's self-consumption mode and
+    time-of-use schedule, the self-consumption rule and the controller as one-minute commands with
+    every proposal sent, and, for each window length, the controller through the authorizer and
+    the vendor's mode within authorized limits, both with the causal rule."""
     p = dataclasses.replace(STUDY, **caps)
     results = [("No battery", vendor(dataclasses.replace(p, charge_max=0, discharge_max=0),
                                      evaluation, False)),

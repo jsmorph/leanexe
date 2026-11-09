@@ -5,9 +5,9 @@ import Demos.Energy.Operation
 gateway reads the input records `ins`, from `gw0`.  Its recorded state changes at most twice a
 tick: slot `2n` is the expiry of tick `n`, and slot `2n + 1` its command or its request to return
 to fallback, each with the state that it records and its time on the gateway's clock.  `Follows`
-is assumption A7 of the plan over these changes: once a change has had `τ` to take effect, the
-device applies at each time `w` the state of a change whose time is at most `w`, and no change
-older than every change whose time is at most `w - τ`.  `gateway_states` states
+is assumption A7 of `Demos/Energy/README.md` over these changes: once a change has had `τ` to take
+effect, the device applies at each time `w` the state of a change whose time is at most `w`, and
+no change older than every change whose time is at most `w - τ`.  `gateway_states` states
 `OperatesIn.states` for every window of the run of the accepted snapshots up to a time `t`. -/
 
 namespace Demos.Energy

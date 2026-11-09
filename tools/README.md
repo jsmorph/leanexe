@@ -96,7 +96,7 @@ and `clightgen` are present, in the module's translation to C.
 [The full check](full-check) builds every module of the libraries `LeanExe`, `Verified`,
 `Library`, `Demos`, `Examples`, and `TestSupport` and the test executables, runs the drivers of
 the verified compiler's modules and of their C, bare-metal, WASI, and WGSL forms, checks the VKB
-and the Rocq composition, and runs Talos's conformance driver.  It writes
-[the status record](../STATUS.md), which names the checked commit and gives each step's status,
-duration, and counts.  [The verified compiler manual](../docs/verified-manual.md#the-full-check)
+and the Rocq composition, and runs Talos's conformance driver.  It writes each step's output to
+`build/full-check/` and a record that names the checked commit and gives each step's status,
+duration, and counts to `STATUS.md` at the root, which Git ignores.  [The verified compiler manual](../docs/verified-manual.md#the-full-check)
 describes its steps, its variables, and the steps that run only where their tools are present.

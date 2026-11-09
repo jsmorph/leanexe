@@ -1,11 +1,11 @@
 import Demos.Energy.Site
 import Library.Random.SplitMix64.Program
 
-/-! The cases of the module `energy`: `authorize` on the inputs of the plan's worked example, on
-invalid inputs, on inputs at the boundary of each check, and on inputs that a generator builds
-from SplitMix64 with a fixed seed, with native Lean's results.  Each case requires one retained
-block, the host's input, because `authorize` borrows its input and returns four words: the
-status, the two limits, and the expiry. -/
+/-! The cases of the module `energy`: `authorize` on the inputs of the worked example of
+`Demos/Energy/README.md`, on invalid inputs, on inputs at the boundary of each check, and on inputs
+that a generator builds from SplitMix64 with a fixed seed, with native Lean's results.  Each case
+requires one retained block, the host's input, because `authorize` borrows its input and returns
+four words: the status, the two limits, and the expiry. -/
 
 namespace TestSupport.Energy.Cases
 
