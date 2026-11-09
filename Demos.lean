@@ -1,3 +1,5 @@
+import Demos.Bms.Cases
+import Demos.Bms.Theorems
 import Demos.Drone.Acceleration
 import Demos.Drone.Correct
 import Demos.Drone.Corridor
