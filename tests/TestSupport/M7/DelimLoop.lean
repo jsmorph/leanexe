@@ -17,7 +17,10 @@ map that holds the bytes of a file whose kernel check `bootFileOk` passes, and e
 reset gives from the file's vector table.  `board_loop_runs` states that the board's run never
 stops, and `board_loop_steps` counts its windows, each in at most 151,558 steps, 16 of `main` and
 the 151,542 of `dl_static` for the step, a bound that the window of a `0x00` after a nonempty
-segment approaches and that the other windows lie far below.
+segment approaches and that the other windows lie far below.  `board_loop_poll` and
+`qemu_loop_poll` add, through `Counted.split` and `dl_poll`, that each window whose state and
+value do not satisfy `DlDecodes`, every window but one that decodes a segment, takes at most
+2,036 steps.
 
 `qemu_prefix` and `board_prefix` join the loops to `dl_cmsdk_prefix`, `dl_cmsdk_answered`,
 `dl_usart3_prefix`, and `dl_usart3_answered` of `tests/TestSupport/M7/DelimAbs.lean`: the bytes
@@ -115,6 +118,58 @@ theorem board_loop_steps {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
     (fun _ => rfl) (fun _ => rfl) dlCompiled.dlUsart3Tick.implements (fun _ _ _ => trivial) rfl
     dl_covered.1 dl_noArea.1 hAt0 hcap0 hk (by rw [dl_stack.1]; decide) dlInit rfl hf b hb
     N).uniform (fun F st vs => costRun_le_staticCost rfl dl_static.1 F st vs)
+
+/-- The echo of records on the board from reset, counted, with the windows that do not decode a
+segment bounded apart: window `i` takes at most 151,558 steps, and at most 2,036, 16 of `main`
+and the 2,020 of `dl_poll` for the step, when its state and the value that it receives do not
+satisfy `DlDecodes`. -/
+theorem board_loop_poll {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk (Nucleo.bootWith Nucleo.initOvrdis) boardProgram n len = true)
+    (hf : Nucleo.Flash code n len) (b : State) (hb : Reset code Nucleo.flashItcm b) (N : Nat) :
+    let σ' := fun j => σ (j + initReads Nucleo.initOvrdis)
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 151558) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ DlDecodes (reqRun dlUsart3Tick dlInit σ' i).state
+          (reqRun dlUsart3Tick dlInit σ' i).last → x ≤ 2036) ∧
+      ∀ i ≤ N, ∃ s, run Nucleo.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = boardHead ∧
+        s.trace = initTrace Nucleo.initOvrdis σ ++
+          windows (reqTrace (devBus Nucleo.devBase) dlUsart3Tick dlInit σ') i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready dlCompiled.module dlCompiled.tables
+      (Verified.initialHeap dlCompiled.tables) dlCompiled.module.initialStore :=
+    Verified.Ready.initial rfl dlCompiled.initial
+  exact (Nucleo.boardWith_run_steps Nucleo.initOvrdis_ok (s0 := dlState) (words := dlWords)
+    (fun _ => rfl) (fun _ => rfl) dlCompiled.dlUsart3Tick.implements (fun _ _ _ => trivial) rfl
+    dl_covered.1 dl_noArea.1 hAt0 hcap0 hk (by rw [dl_stack.1]; decide) dlInit rfl hf b hb
+    N).split (Q := fun g v => ¬ DlDecodes g v)
+    (fun F st vs => costRun_le_staticCost rfl dl_static.1 F st vs)
+    (fun F st g v h => dl_poll (Or.inl rfl) F st g v h)
+
+/-- The echo of records of `dlCmsdkTick` on `mps2-an500` from reset, counted: window `i` takes at
+most 151,558 steps, and at most 2,036 when its state and the value that it receives do not
+satisfy `DlDecodes`. -/
+theorem qemu_loop_poll {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}
+    (hk : bootFileOk Qemu.boot qemuProgram n len = true) (hf : FileAt code n len 0) (b : State)
+    (hb : Reset code 0 b) (N : Nat) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 151558) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ DlDecodes (reqRun dlCmsdkTick dlInit σ i).state (reqRun dlCmsdkTick dlInit σ i).last →
+        x ≤ 2036) ∧
+      ∀ i ≤ N, ∃ s, run Qemu.platform σ code (c + (cs.take i).sum) b = some s ∧
+        s.pc = qemuHead ∧
+        s.trace = Qemu.initTrace ++
+          windows (reqTrace (devBus Qemu.devBase) dlCmsdkTick dlInit σ) i := by
+  obtain ⟨hAt0, hcap0, -⟩ : Verified.Ready dlCompiled.module dlCompiled.tables
+      (Verified.initialHeap dlCompiled.tables) dlCompiled.module.initialStore :=
+    Verified.Ready.initial rfl dlCompiled.initial
+  exact (boot_run_steps (B := Qemu.boot) (s0 := dlState) (words := dlWords) (fun _ => rfl)
+    (fun _ => rfl) dlCompiled.dlCmsdkTick.implements (fun _ _ _ => trivial) rfl dl_covered.2
+    dl_noArea.2 Qemu.devWindow hAt0 hcap0 (by decide) (by decide) hk hf (by decide)
+    (Qemu.initRuns σ code) (by decide) (by decide)
+    (fun s hs => by rw [dl_stack.2]; exact Qemu.stackOk (by decide) s hs) dlInit rfl b hb
+    N).split (Q := fun g v => ¬ DlDecodes g v)
+    (fun F st vs => costRun_le_staticCost rfl dl_static.2 F st vs)
+    (fun F st g v h => dl_poll (Or.inr rfl) F st g v h)
 
 /-- The run of `board_loop` succeeds for every number of steps. -/
 theorem board_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len : Nat}

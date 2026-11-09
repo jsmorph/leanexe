@@ -324,11 +324,11 @@ The board theorems follow the energy gateway's files.  The statements name the s
 | B1 `bms_board`, `bms_board_runs`, `bms_board_prefix` | From every state that reset gives while the flash holds the image's bytes, for every sequence `σ` of the values that reads return and every number `N` of windows, the image performs the accesses of its initialization and then the requested access of every window, the run never stops, and the bytes written to `USART_TDR` begin the encoded answers that F3 gives for the bytes read from `USART_RDR` |
 | B2 `bms_confined` | Every access of the initialization lies in the register blocks of RCC, GPIOD, or USART3, and every access of the windows is to `USART_ISR`, `USART_RDR`, or `USART_TDR` |
 | B3 `bms_board_steps` | Every window takes at most 16 instructions plus the step's `staticCost` |
-| B3a `bms_board_poll` | Every window other than one that receives a delimiter takes at most 16 instructions plus the dispatch and the `staticCost` of the function that a polling window calls |
-| B4 `bms_qemu`, `bms_qemu_prefix` | B1's statements for the image on QEMU's `mps2-an500`, with UART0 |
+| B3a `bms_board_poll` | Every window other than one that receives a delimiter after a non-empty segment takes at most 16 instructions plus the dispatch and the `staticCost` of the function that a polling window calls |
+| B4 `bms_qemu`, `bms_qemu_prefix`, `bms_qemu_poll` | B1's, B3's, and B3a's statements for the image on QEMU's `mps2-an500`, with UART0 |
 | B5 `bms_board_safe` | For every `σ` and `N`, every complete answer among the bytes written to `USART_TDR` with a nonzero permit is the answer `a_n` of the machine's run over the non-empty segments of the bytes read, and M1 holds of it |
 
-B3 bounds the long window, whose CRCs over the record's 31 bytes and the answer's 13, COBS decoding of 36 bytes, machine, and encoding of 17 bytes dominate the bound, so B3 bounds the board's share of `T_ans`.  B3a bounds the polling windows, which determine the usable baud rate against half a byte time, 16,667 cycles at 4,800 baud.  `staticCost` fails on a loop, so both need a step without loops, and B3a needs the step written as a dispatch on its phase to a polling function and a delimiter function, with a lemma that bounds a window's `costRun` by the dispatch and the `staticCost` of the function its phase selects, which `LeanExe/M7/Proof/Bound.lean` does not yet provide.  The cycles an instruction come from measurement.
+B3 bounds the long window, whose CRCs over the record's 31 bytes and the answer's 13, COBS decoding of 36 bytes, machine, and encoding of 17 bytes dominate the bound, so B3 bounds the board's share of `T_ans`.  B3a bounds the polling windows, which determine the usable baud rate against half a byte time, 16,667 cycles at 4,800 baud.  `staticCost` fails on a loop, so both need a step without loops, and B3a needs the step written as a dispatch on its phase to a polling function and a delimiter function, whose runs `costRun_le_pathCost` of `LeanExe/M7/Proof/Bound.lean` bounds by the dispatch and the `staticCost` of the function that the phase selects.  The cycles an instruction come from measurement.
 
 ## Trusted base
 
@@ -398,7 +398,7 @@ The items below bound what a later phase can claim.  Each belongs to a phase of 
 |---|---|
 | Boot over the image's initialization list | Done: `boardWith_run` and its forms take the list `initOvrdis`, and B1 to B5 hold of `bms.bin` |
 | The framing's code | Done: the step decodes and encodes with the loop-free passes of `LeanExe/Requests/DelimitedWords.lean`, whose decoder accepts exactly the encodings, and `bms_board_steps` bounds every window |
-| The lemma of B3a | Pending: a bound on a window's `costRun` by the dispatch and the `staticCost` of the function that its phase selects, which `LeanExe/M7/Proof/Bound.lean` does not provide.  The step's code has the dispatch's shape, and the model's counts and the board's cycles of the polling windows appear in [the BMS guide](README.md#images-and-board-theorems) |
+| The lemma of B3a | Done: `costRun_le_pathCost` of `LeanExe/M7/Proof/Bound.lean` bounds a run by the path that the outcomes of its dispatch's tests select, and `bms_board_poll` bounds every window other than the window of a delimiter after a non-empty segment by 3,301 instructions, as [the BMS guide](README.md#images-and-board-theorems) records with the model's counts and the board's cycles |
 | Timing values | Confirmed by the board's run of the schedule, which [the BMS guide](README.md#runs) records |
 
 ## Plan

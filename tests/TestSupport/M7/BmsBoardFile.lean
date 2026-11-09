@@ -2,7 +2,7 @@ import TestSupport.M7.BmsLoop
 
 /-!
 The kernel's check of the image of the BMS step `bmsTickUsart3` for the NUCLEO-F767ZI that
-`m7-windows bms-board` writes, `bms.bin`, and the board theorems B1, B2, B3, and B5 of
+`m7-windows bms-board` writes, `bms.bin`, and the board theorems B1, B2, B3, B3a, and B5 of
 `Demos/Bms/requirements.md` over that file.  `tests/baremetal/m7-board.sh check bms` elaborates this
 file in the directory of the image, so that `file_nat%` and `file_size%` read it, and no build
 target includes it.  The kernel evaluates `bootProgram` on `bmsTickUsart3`'s module and index and
@@ -16,8 +16,10 @@ every sequence `σ` of the values that reads return, and every number `N` of win
 run that never stops, and `bms_board_prefix`, the bytes written to `USART_TDR` as a prefix of the
 encoded answers `answerAt (inputs bs) t` of the machine's run over the non-empty segments of the
 bytes `bs` read from `USART_RDR`.  B2 is `bms_confined`, B3 `bms_board_steps`, each window in at
-most 202,799 steps of the model, and B5 `bms_board_safe`: every complete answer among the bytes
-written whose permit byte is not 0 is the answer `a_n` of that run, and `Permitted`, the
+most 202,799 steps of the model, B3a `bms_board_poll`, each window other than the window of a
+delimiter after a non-empty segment in at most 3,301, and B5 `bms_board_safe`: every complete
+answer among the bytes written whose permit byte is not 0 is the answer `a_n` of that run, and
+`Permitted`, the
 conclusion of M1, holds of it.  The theorems hold of the processor under the run conditions of
 `LeanExe/M7/Proof/Board.lean`: a power-on reset, or an NRST reset with the debug registers at their
 power-on values, with BOOT0 low and BOOT_ADD0 0x0080, software watchdogs (OPTCR 0xFFFFAAFD), and no
@@ -62,6 +64,23 @@ theorem bms_board_steps (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Optio
           windows (reqTrace (devBus devBase) bmsTickUsart3 bmsInit
             (fun k => σ (k + initReads initOvrdis))) i :=
   board_loop_steps bms_file hf b hb N
+
+/-- B3a: the windows from reset over the image file, counted, with the windows other than the
+window of a delimiter bounded apart: window `i` takes `cs[i]` steps, at most 202,799, and at most
+3,301, 16 of `main` and the dispatch with the call of `bmsPoll`, when its state and the value that
+it receives do not satisfy `BmsDecodes`, which holds of the window of a `0x00` after a non-empty
+segment alone. -/
+theorem bms_board_poll (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : Flash code bmsBytes bmsSize) (b : State) (hb : Reset code flashItcm b) :
+    let σ' := fun k => σ (k + initReads initOvrdis)
+    ∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ 202799) ∧
+      (∀ i x, cs[i]? = some x →
+        ¬ BmsDecodes (reqRun bmsTickUsart3 bmsInit σ' i).state
+          (reqRun bmsTickUsart3 bmsInit σ' i).last → x ≤ 3301) ∧
+      ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s ∧ s.pc = boardHead ∧
+        s.trace = initTrace initOvrdis σ ++
+          windows (reqTrace (devBus devBase) bmsTickUsart3 bmsInit σ') i :=
+  board_loop_poll bms_file hf b hb N
 
 /-- B1: the run from reset over the image file succeeds for every number of steps. -/
 theorem bms_board_runs (σ : Nat → UInt32) (code : UInt32 → Option UInt16)
@@ -109,6 +128,7 @@ end TestSupport.M7.BmsBoardFile
 #print axioms TestSupport.M7.BmsBoardFile.bms_file
 #print axioms TestSupport.M7.BmsBoardFile.bms_board
 #print axioms TestSupport.M7.BmsBoardFile.bms_board_steps
+#print axioms TestSupport.M7.BmsBoardFile.bms_board_poll
 #print axioms TestSupport.M7.BmsBoardFile.bms_board_runs
 #print axioms TestSupport.M7.BmsBoardFile.bms_board_prefix
 #print axioms TestSupport.M7.BmsBoardFile.bms_board_safe
@@ -116,6 +136,9 @@ end TestSupport.M7.BmsBoardFile
 #print axioms TestSupport.M7.Bms.board_prefix
 #print axioms TestSupport.M7.bms_static
 #print axioms TestSupport.M7.bms_parts_static
+#print axioms TestSupport.M7.bms_pollPath
+#print axioms TestSupport.M7.bms_poll
+#print axioms TestSupport.M7.Bms.board_loop_poll
 #print axioms Demos.Bms.Program.bmsPhases_abs
 #print axioms Demos.Bms.Spec.m1_stream
 #print axioms LeanExe.Requests.delim_prefix

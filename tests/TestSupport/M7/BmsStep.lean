@@ -1,5 +1,4 @@
-import LeanExe.M7.Proof.Step
-import LeanExe.M7.Proof.Bound
+import LeanExe.M7.Proof.Main
 import Demos.Bms.Compiled
 
 /-!
@@ -14,7 +13,10 @@ bytes.  `bms_static` is the kernel's evaluation of `staticCost` for both steps, 
 instructions, which bounds the cost of every run of each, the window of a `0x00` after a non-empty
 segment among them.  `bms_parts_static` gives the bounds of the two functions that the steps'
 dispatch calls: 202,021 instructions for `bmsDelim`, function 54, and 2,474 for `bmsPoll`,
-function 55.
+function 55.  The body of each step is the dispatch test `bmsDispatch`, 17 instructions on the
+parameters, and one `if` whose then-branch calls `bmsPoll` and whose else-branch calls
+`bmsDelim`.  `bms_pollPath` evaluates `pathCost` with the test's outcome `true`, 3,285
+instructions, and `bms_poll` bounds by it every run from a state and value outside `BmsDecodes`.
 -/
 
 namespace TestSupport.M7
@@ -51,6 +53,59 @@ theorem bms_static : staticCost bmsCompiled.module 56 = some 202783 ∧
 theorem bms_parts_static : staticCost bmsCompiled.module 54 = some 202021 ∧
     staticCost bmsCompiled.module 55 = some 2474 := by
   decide +kernel
+
+/-- The window of the state `f` and the value `v` that the last request read receives a delimiter
+after a non-empty segment: in phase 1, with a byte `0x00` and a non-empty segment, `bmsPhases`
+calls `bmsDelim`. -/
+def BmsDecodes (f : BmsFrame) (v : UInt64) : Prop := f.phase = 1 ∧ v &&& 255 = 0 ∧ f.len ≠ 0
+
+/-- The code of the steps' dispatch test, nonzero when the window calls `bmsPoll`. -/
+def bmsDispatch : Program :=
+  [.localGet 0, .constI64 1, .eqI64, .extendUI32, .localGet 24, .constI64 255, .andI64,
+    .constI64 0, .eqI64, .extendUI32, .andI64, .localGet 1, .constI64 0, .neI64, .extendUI32,
+    .andI64, .eqzI64]
+
+/-- The outcome of the dispatch test of a window that calls `bmsPoll`. -/
+def bmsPollTests : List (Program × Bool) := [(bmsDispatch, true)]
+
+/-- The bound on the runs of each step whose dispatch calls `bmsPoll`: the frame, the test, the
+call with its copies and the 2,474 of `bmsPoll`, and the copies of the results. -/
+theorem bms_pollPath : pathCost bmsCompiled.module 56 bmsPollTests = some 3285 ∧
+    pathCost bmsCompiled.module 57 bmsPollTests = some 3285 := by
+  decide +kernel
+
+/-- Each step takes the 24 words of the state and the value. -/
+theorem bms_params :
+    (bmsCompiled.module.funcs[56]?).map Function.numParams = some 25 ∧
+      (bmsCompiled.module.funcs[57]?).map Function.numParams = some 25 := by
+  decide +kernel
+
+theorem bms_dispatchTest {env : HostEnv Unit} (g : BmsFrame) (v : UInt64) :
+    TestOk bmsCompiled.module env ((bmsWords g ++ [v]).map Value.i64) bmsDispatch
+      (!(g.phase == 1 && v &&& 255 == 0 && g.len != 0)) := by
+  intro f st ls
+  simp [bmsDispatch, bmsWords, Wasm.exec, Wasm.execOne.eq_def, Locals.get]
+  by_cases h1 : g.phase = 1 <;> by_cases h2 : v &&& 255 = 0 <;> by_cases h3 : g.len = 0 <;>
+    simp [h1, h2, h3]
+
+/-- Every run of either step from a state and a value whose window does not receive a delimiter
+after a non-empty segment takes at most 3,285 instructions, the bound of `bms_pollPath`. -/
+theorem bms_poll {k : Nat} (hk : k = 56 ∨ k = 57) {env : HostEnv Unit} (F : Nat)
+    (st : Store Unit) (g : BmsFrame) (v : UInt64) (h : ¬ BmsDecodes g v) :
+    costRun F bmsCompiled.module k st (stepArgs bmsWords g v) env ≤ 3285 := by
+  have hn : (bmsCompiled.module.funcs[k]?).map Function.numParams =
+      some ((bmsWords g).length + 1) := by
+    rcases hk with rfl | rfl
+    · exact bms_params.1
+    · exact bms_params.2
+  have hb : (!(g.phase == 1 && v &&& 255 == 0 && g.len != 0)) = true := by
+    simp only [BmsDecodes, not_and] at h
+    by_cases h1 : g.phase = 1 <;> by_cases h2 : v &&& 255 = 0 <;> simp_all
+  have hd : TestsOk bmsCompiled.module env ((bmsWords g ++ [v]).map Value.i64) bmsPollTests :=
+    .cons (hb ▸ bms_dispatchTest g v) .nil
+  rcases hk with rfl | rfl
+  · exact costRun_step_le_pathCost rfl bms_pollPath.1 hn hd F st
+  · exact costRun_step_le_pathCost rfl bms_pollPath.2 hn hd F st
 
 /-- The call of `bmsTickUsart3` in the generated program at the even address `base`, for an
 initial state `s0` of 24 words. -/
