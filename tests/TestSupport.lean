@@ -43,3 +43,4 @@ import TestSupport.M7.CrcReplies
 import TestSupport.M7.ShaSpec
 import TestSupport.M7.Signed
 import TestSupport.M7.SignedLoop
+import TestSupport.A64.CicSigned
