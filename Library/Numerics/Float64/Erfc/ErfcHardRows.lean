@@ -83,14 +83,14 @@ theorem ser_encl (n : ℕ) (neg : Bool) (q Ylo Yhi : ℚ) (h : SerEncl n neg q Y
   unfold RealErf.erfc
   unfold SerEncl at h
   cases neg
-  · rw [if_neg (by decide)] at h
+  · rw [ite_eq_right (by decide)] at h
     obtain ⟨hq0, hS, hlo, hhi⟩ := h
     obtain ⟨k1, k2⟩ := erf_encl n q hq0 hS
     have c1 : (Ylo : ℝ) ≤ ((1 - (sHi * evalQ (ser n) q + sHi * serRem n q) : ℚ) : ℝ) := by qc hlo
     have c2 : ((1 - (sLo * evalQ (ser n) q - sHi * serRem n q) : ℚ) : ℝ) ≤ (Yhi : ℝ) := by qc hhi
     push_cast at c1 c2 k1 k2
     constructor <;> linarith
-  · rw [if_pos rfl] at h
+  · rw [ite_eq_left rfl] at h
     obtain ⟨hq0, hS, hlo, hhi⟩ := h
     obtain ⟨k1, k2⟩ := erf_encl n (-q) (by linarith) hS
     have hodd : RealErf.erf (q : ℝ) = -RealErf.erf (((-q : ℚ) : ℝ)) := by

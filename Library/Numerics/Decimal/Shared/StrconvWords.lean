@@ -51,12 +51,12 @@ theorem scaledMagnitude64 (n : ℕ) (hn : n < limit b64) :
   rw [h2]
   by_cases h : n < 2 ^ 52
   · have h3 : n / 2 ^ 52 = 0 := Nat.div_eq_of_lt h
-    rw [if_pos h, h3, Nat.mod_eq_of_lt h]
+    rw [ite_eq_left h, h3, Nat.mod_eq_of_lt h]
     rfl
   · have h3 : (n / 2 ^ 52 == 0) = false := by
       simp only [beq_eq_false_iff_ne, ne_eq, Nat.div_eq_zero_iff_lt (by norm_num : 0 < 2 ^ 52)]
       exact h
-    rw [if_neg h]
+    rw [ite_eq_right h]
     dsimp only
     simp only [h3, Bool.false_eq_true, ite_false]
 
@@ -116,10 +116,10 @@ theorem ref64 (y : ℝ) :
   by_cases ht : F64PositiveRounding.overflowThreshold ≤ y
   · have ht' : threshold b64 ≤ y * 2 ^ 1074 := by
       rw [threshold_b64]; exact mul_le_mul_of_nonneg_right ht hp.le
-    rw [if_pos ht, if_pos ht', limit_b64]; rfl
+    rw [ite_eq_left ht, ite_eq_left ht', limit_b64]; rfl
   · have ht' : ¬ threshold b64 ≤ y * 2 ^ 1074 := by
       rw [threshold_b64]; intro h; exact ht (le_of_mul_le_mul_right h hp)
-    rw [if_neg ht, if_neg ht']
+    rw [ite_eq_right ht, ite_eq_right ht']
     have hc := Classical.choose_spec (exists_nearest_even b64 (y * 2 ^ 1074))
     exact F64NearestEven.roundNearestEven_eq y _ ((nearestEven64_iff y _ hc.1.1).mpr hc)
 
@@ -139,12 +139,12 @@ theorem scaledMagnitude32 (n : ℕ) (hn : n < limit b32) :
   rw [h2]
   by_cases h : n < 2 ^ 23
   · have h3 : n / 2 ^ 23 = 0 := Nat.div_eq_of_lt h
-    rw [if_pos h, h3, Nat.mod_eq_of_lt h]
+    rw [ite_eq_left h, h3, Nat.mod_eq_of_lt h]
     rfl
   · have h3 : (n / 2 ^ 23 == 0) = false := by
       simp only [beq_eq_false_iff_ne, ne_eq, Nat.div_eq_zero_iff_lt (by norm_num : 0 < 2 ^ 23)]
       exact h
-    rw [if_neg h]
+    rw [ite_eq_right h]
     dsimp only
     simp only [h3, Bool.false_eq_true, ite_false]
 
@@ -212,10 +212,10 @@ theorem ref32 (y : ℝ) :
   by_cases ht : StrconvBinary32.overflowThreshold ≤ y
   · have ht' : threshold b32 ≤ y * 2 ^ 149 := by
       rw [threshold_b32]; exact mul_le_mul_of_nonneg_right ht hp.le
-    rw [if_pos ht, if_pos ht', limit_b32]; rfl
+    rw [ite_eq_left ht, ite_eq_left ht', limit_b32]; rfl
   · have ht' : ¬ threshold b32 ≤ y * 2 ^ 149 := by
       rw [threshold_b32]; intro h; exact ht (le_of_mul_le_mul_right h hp)
-    rw [if_neg ht, if_neg ht']
+    rw [ite_eq_right ht, ite_eq_right ht']
     have hc := Classical.choose_spec (exists_nearest_even b32 (y * 2 ^ 149))
     exact nearestEven32_unique y _ _ (StrconvBinary32.nearestEven_spec y)
       ((nearestEven32_iff y _ hc.1.1).mpr hc)

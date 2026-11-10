@@ -41,11 +41,11 @@ def zerosCount (data : ByteArray) : Nat :=
 
 theorem zerosCount_lt112 (data : ByteArray) (h : data.size % 128 < 112) :
     zerosCount data = 111 - data.size % 128 := by
-  unfold zerosCount; rw [if_pos h]
+  unfold zerosCount; rw [ite_eq_left h]
 
 theorem zerosCount_ge112 (data : ByteArray) (h : ¬ data.size % 128 < 112) :
     zerosCount data = 128 + 111 - data.size % 128 := by
-  unfold zerosCount; rw [if_neg h]
+  unfold zerosCount; rw [ite_eq_right h]
 
 /-- The 128-bit big-endian length encoding (sixteen bytes): high 8 bytes
 literal zero, low 8 bytes big-endian `UInt64` of `bits`.  Matches the

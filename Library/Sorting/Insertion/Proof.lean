@@ -119,7 +119,7 @@ theorem sortInsert_sorted_perm (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
           acc.toList.insertIdx k.toNat xs.toList[i] := by
         rw [LeanExe.insertAt, Array.insertIdxIfInBounds, dite_eq_left hkle, Array.toList_insertIdx]
       refine ⟨?_, ?_, ?_⟩
-      · rw [← Array.length_toList, hl, List.length_insertIdx, if_pos (by simpa using hkle),
+      · rw [← Array.length_toList, hl, List.length_insertIdx, ite_eq_left (by simpa using hkle),
           Array.length_toList, hs]
       · rw [hl, hk]
         exact insertIdx_countP_pairwise _ _ hp

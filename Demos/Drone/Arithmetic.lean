@@ -14,8 +14,8 @@ theorem distance_nat (a b : UInt64) :
     (distance a b).toNat = if b.toNat ≤ a.toNat then a.toNat - b.toNat else b.toNat - a.toNat := by
   unfold distance
   by_cases h : b ≤ a
-  · rw [if_pos h, UInt64.toNat_sub_of_le a b h, if_pos (UInt64.le_iff_toNat_le.mp h)]
-  · rw [if_neg h, if_neg (by simpa only [← UInt64.le_iff_toNat_le] using h)]
+  · rw [ite_eq_left h, UInt64.toNat_sub_of_le a b h, ite_eq_left (UInt64.le_iff_toNat_le.mp h)]
+  · rw [ite_eq_right h, ite_eq_right (by simpa only [← UInt64.le_iff_toNat_le] using h)]
     exact UInt64.toNat_sub_of_le b a (by rw [UInt64.le_iff_toNat_le] at *; omega)
 
 theorem distance_le (a b : UInt64) (ha : a.toNat ≤ heightLimit) (hb : b.toNat ≤ heightLimit) :
@@ -72,8 +72,8 @@ private theorem accel_ceiling_nat (d : UInt64) (hd : d.toNat ≤ heightLimit) :
 private theorem max_nat (a b : UInt64) : (max a b).toNat = max a.toNat b.toNat := by
   change (if a ≤ b then b else a).toNat = max a.toNat b.toNat
   by_cases h : a ≤ b
-  · rw [if_pos h, max_eq_right (UInt64.le_iff_toNat_le.mp h)]
-  · rw [if_neg h, max_eq_left (by rw [UInt64.le_iff_toNat_le] at h; omega)]
+  · rw [ite_eq_left h, max_eq_right (UInt64.le_iff_toNat_le.mp h)]
+  · rw [ite_eq_right h, max_eq_left (by rw [UInt64.le_iff_toNat_le] at h; omega)]
 
 /-- The rest duration satisfies the horizontal and vertical limits, and its upper bound keeps
 reachable costs below the infinity sentinel. -/

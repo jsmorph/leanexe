@@ -90,9 +90,9 @@ theorem dyadic_relative_top (negative : Bool) (n : ℕ) (hmax : n + 2 ^ 3118 < 2
   have hpack := F64TopPack.pack_top negative candidate hcandidateMax
   have hactual : Wasm.IEEE64.roundDyadicMagnitude negative n 1074 =
       Wasm.IEEE64.roundScaledMagnitude negative candidate := by
-    simp only [Wasm.IEEE64.roundDyadicMagnitude, beq_iff_eq, if_neg hn]
+    simp only [Wasm.IEEE64.roundDyadicMagnitude, beq_iff_eq, ite_eq_right hn]
     rw [show Nat.log2 n - (1074 + 52) = outputShift by simp [outputShift],
-      if_neg (by omega : outputShift ≠ 0)]
+      ite_eq_right (by omega : outputShift ≠ 0)]
   have herrorCases := CodeLib.IEEE32.roundShift_error_cases n totalShift
     (by dsimp [totalShift]; omega)
   have herrHalf : |((rounded * 2 ^ totalShift : ℕ) : ℤ) - n| ≤ (2 ^ totalShift / 2 : ℕ) :=
@@ -185,7 +185,7 @@ theorem mul_real_top (a b : UInt64) (ha : Finite a) (hb : Finite b)
   have hz : |z| * (2 ^ 53 : ℤ) ≤ n := by
     have h := hs.2
     simp only [] at h
-    rw [if_neg hn0, max_eq_left hnbig] at h
+    rw [ite_eq_right hn0, max_eq_left hnbig] at h
     exact h
   have hzReal : |(z : ℝ)| * 2 ^ 53 ≤ (n : ℝ) := by
     have h1 : ((|z| * (2 ^ 53 : ℤ) : ℤ) : ℝ) ≤ ((n : ℤ) : ℝ) := by exact_mod_cast hz

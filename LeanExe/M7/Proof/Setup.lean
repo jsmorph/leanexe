@@ -185,8 +185,8 @@ theorem run_clearCheck {a : UInt32} {s : State} (hc : CodeAt code a clearLoop) (
   refine ⟨u, r, k, g, ?_⟩
   rw [p, condCS, condHolds_cs, State.cFlag_withPc, State.cFlag_setNZCV', carry_cmp]
   by_cases h : (s.r 1).toNat ≤ (s.r 0).toNat
-  · rw [decide_eq_true h, if_pos h]; rfl
-  · rw [decide_eq_false h, if_neg h]; rfl
+  · rw [decide_eq_true h, ite_eq_left h]; rfl
+  · rw [decide_eq_false h, ite_eq_right h]; rfl
 
 /-- A pass of `clearLoop` at `a`, with r0 below r1 and the word at r0 Normal memory: the machine
 stores r2 at r0, adds r3 to r0, and returns to `a`. -/
@@ -196,7 +196,7 @@ theorem run_clearPass {a : UInt32} {s : State} (hc : CodeAt code a clearLoop) (h
       u.sp = s.sp ∧ u.lr = s.lr ∧ u.trace = s.trace ∧ u.reads = s.reads ∧
       u.mem = store32 s.mem (s.r 0) (s.r 2) := by
   obtain ⟨u1, r1, k1, g1, p1⟩ := run_clearCheck (P := P) (σ := σ) hc hpc
-  rw [if_neg hlt] at p1
+  rw [ite_eq_right hlt] at p1
   rw [show clearLoop = [.cmpReg 0 1, Instr.bcondTo condCS 12] ++
     [.str 2 0 0, .addReg 0 0 0 3 0 0, .bTo (-20)] from rfl] at hc
   obtain ⟨-, c2⟩ := CodeAt.append.mp hc
@@ -227,8 +227,8 @@ theorem run_clearPass {a : UInt32} {s : State} (hc : CodeAt code a clearLoop) (h
     intro e
     rw [← hu3, State.r_withPc, State.r_result_zero]
     by_cases he : e = 0
-    · subst he; rw [State.r_setR_same, if_pos rfl]; rfl
-    · rw [State.r_setR_ne _ _ he, if_neg he]
+    · subst he; rw [State.r_setR_same, ite_eq_left rfl]; rfl
+    · rw [State.r_setR_ne _ _ he, ite_eq_right he]
   have eb := exec_bTo (P := P) (σ := σ) (off := -20) (by decide) (by decide) (by decide) u3
   have r4 : Reach P σ code u3 { u3 with pc := u3.pc + 4 + UInt32.ofInt (-20) } :=
     reach_exec (CodeAt.cons.mp c4).1 eb (.refl _)
@@ -239,9 +239,9 @@ theorem run_clearPass {a : UInt32} {s : State} (hc : CodeAt code a clearLoop) (h
     rw [p3, p2, p1]
     have := toNat_lt32 a
     addr_eq
-  · rw [State.r_withPc, e3 0, if_pos rfl, shl_zero, add_addWithCarry,
+  · rw [State.r_withPc, e3 0, ite_eq_left rfl, shl_zero, add_addWithCarry,
       State.r_of_regs g2 0, e0, hregs 3 (by decide)]
-  · rw [State.r_withPc, e3 e, if_neg he, hregs e he]
+  · rw [State.r_withPc, e3 e, ite_eq_right he, hregs e he]
   · show u3.sp = s.sp
     rw [k3.sp, sp2, k1.sp]
   · show u3.lr = s.lr
@@ -271,7 +271,7 @@ theorem run_clearLoop {a lo hi : UInt32} {s : State} (hc : CodeAt code a clearLo
   induction n generalizing s lo with
   | zero =>
       obtain ⟨u, r, k, -, p⟩ := run_clearCheck (P := P) (σ := σ) hc hpc
-      rw [h0, h1, if_pos (by omega)] at p
+      rw [h0, h1, ite_eq_left (by omega)] at p
       exact ⟨u, r, p, fun j hj => by omega, fun b _ => by rw [k.mem], k.sp, k.lr, k.trace,
         k.reads⟩
   | succ n ih =>
@@ -332,11 +332,11 @@ theorem run_base {s : State} {area q : Nat} {cur : Option Nat} {rest : List Inst
       t.sp = s.sp ∧ t.lr = s.lr ∧ t.mem = s.mem ∧ t.trace = s.trace ∧ t.reads = s.reads ∧
       t.r 1 = UInt32.ofNat area + UInt32.ofNat (4096 * q) := by
   by_cases h : cur = some q
-  · rw [if_pos h] at hc ⊢
+  · rw [ite_eq_left h] at hc ⊢
     refine ⟨s, .refl _, hc, ?_, rfl, rfl, rfl, rfl, rfl, hcur q h⟩
     rw [List.length_nil, Nat.mul_zero]
     exact (UInt32.add_zero _).symm
-  · rw [if_neg h] at hc ⊢
+  · rw [ite_eq_right h] at hc ⊢
     obtain ⟨t, r, c, p, sp, lr, m, tr, rd, h1, -⟩ := run_movConst (P := P) (σ := σ) hq hc
     exact ⟨t, r, c, p, sp, lr, m, tr, rd, by rw [h1, UInt32.ofNat_add]⟩
 
@@ -378,7 +378,7 @@ theorem run_storeWords {area : UInt32} (hal : area % 4 = 0) :
         fun j hj j' hj' => ofNat_add_ne (by omega) (by omega) (by omega)
       by_cases hw0 : w = 0
       · have hsw : storeWords area.toNat i cur (w :: ws) = storeWords area.toNat (i + 1) cur ws :=
-          by simp only [storeWords, if_pos hw0]
+          by simp only [storeWords, ite_eq_left hw0]
         have hc' : CodeAt code s.pc (storeWords area.toNat (i + 1) cur ws ++ rest) := by
           rw [hsw] at hc
           exact hc
@@ -404,7 +404,7 @@ theorem run_storeWords {area : UInt32} (hal : area % 4 = 0) :
             (if cur = some (i / 1024) then [] else movConst 1 (area.toNat + 4096 * (i / 1024))) ++
               (movConst 0 w.toNat ++ (.str 0 1 (field 4096 (4 * (i % 1024))) ::
                 storeWords area.toNat (i + 1) (some (i / 1024)) ws)) := by
-          simp only [storeWords, if_neg hw0, List.append_assoc, List.cons_append, List.nil_append]
+          simp only [storeWords, ite_eq_right hw0, List.append_assoc, List.cons_append, List.nil_append]
         rw [hcode] at hc
         simp only [List.append_assoc, List.cons_append] at hc
         have hcur' : ∀ q', cur = some q' →

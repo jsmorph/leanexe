@@ -213,11 +213,11 @@ theorem sinpi_tiny (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 1
   obtain ⟨f0, v0⟩ := zero_float
   unfold Sinpi.sinpi
   dsimp only
-  rw [if_pos (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), if_pos (c29.mpr h)]
+  rw [ite_eq_left (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), ite_eq_left (c29.mpr h)]
   by_cases h0 : value x.toBits = 0
-  · rw [if_pos ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.sin_zero]
+  · rw [ite_eq_left ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.sin_zero]
     exact F64SelfStep.zero_step _ ((Library.Numerics.Float64.Trig.TrigSinCos.zero_iff _).mpr h0)
-  · rw [if_neg (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
+  · rw [ite_eq_right (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
     obtain ⟨hf, hb⟩ := tiny_spec x.toBits hxf h
     obtain ⟨p0, p1, p2⟩ := pi_x _ (abs_ge_min _ h0) h
     exact close_within _ _ _ hf p0 p1 hb (sin_near _ p2)
@@ -230,11 +230,11 @@ theorem tanpi_tiny (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 1
   obtain ⟨f0, v0⟩ := zero_float
   unfold Sinpi.tanpi
   dsimp only
-  rw [if_pos (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), if_pos (c29.mpr h)]
+  rw [ite_eq_left (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), ite_eq_left (c29.mpr h)]
   by_cases h0 : value x.toBits = 0
-  · rw [if_pos ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.tan_zero]
+  · rw [ite_eq_left ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.tan_zero]
     exact F64SelfStep.zero_step _ ((Library.Numerics.Float64.Trig.TrigSinCos.zero_iff _).mpr h0)
-  · rw [if_neg (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
+  · rw [ite_eq_right (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
     obtain ⟨hf, hb⟩ := tiny_spec x.toBits hxf h
     obtain ⟨p0, p1, p2⟩ := pi_x _ (abs_ge_min _ h0) h
     exact close_within _ _ _ hf p0 p1 hb (tan_near _ p2)

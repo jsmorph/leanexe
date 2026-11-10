@@ -161,10 +161,10 @@ theorem args_pot_le_credits {S : List Sig} {Γ : List Ty} {sig : Sig} {funs : Fu
         funext k
         simp only [Bool.and_eq_true] at hmp
         simp only [msel, hps, hmp.1, hx, Expr.paidVar, hmp.2, Expr.uses, Bool.true_and]
-      rw [if_pos hmp, hsel, Env.pot_single]
+      rw [ite_eq_left hmp, hsel, Env.pot_single]
       simp only [hmp, Bool.not_true, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
       exact Nat.le_refl _
-    · rw [if_neg hmp]
+    · rw [ite_eq_right hmp]
       simp only [Bool.not_eq_true] at hmp
       simp only [hmp, Bool.not_false, ↓reduceIte]
       exact Nat.le_add_left _ _

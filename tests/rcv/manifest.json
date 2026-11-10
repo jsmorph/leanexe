@@ -1,0 +1,597 @@
+{
+  "sources": {
+    "alameda": {
+      "publisher": "Alameda County Registrar of Voters",
+      "index": "https://www.alamedacountyca.gov/rovresults/rcv/",
+      "terms": "https://acgov.org/government/legal.htm"
+    },
+    "otis": {
+      "publisher": "Harvard Dataverse",
+      "citation": "Otis, Deb, \"Single winner ranked choice voting CVRs\", Harvard Dataverse, version 25 (2025-09-24)",
+      "doi": "https://doi.org/10.7910/DVN/AMK8PJ",
+      "license": "CC0 1.0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0"
+    }
+  },
+  "contests": [
+    {
+      "key": "248/Oakland/001-Mayor",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "Mayor",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_001-Mayor.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/001-Mayor/RcvDetailedReport.xml",
+        "size": 88326,
+        "sha256": "3c6f30c868b6c5f37a77867a0db23f24a0e4e253a1995ee387f5ea6de03f81f5"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_Mayor.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593507?format=original",
+        "size": 26363273,
+        "sha256": "f58441a88cfb2f36fa2a84f21e5b7518c34d92846d044232df82e91efae5a6f1",
+        "dataverse_file_id": 11593507,
+        "dataverse_md5": "fba54496ed40c528a94823126be77e16"
+      }
+    },
+    {
+      "key": "248/Oakland/002-CityCouncil_District_2",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "City Council, District 2",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_002-CityCouncil_District_2.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/002-CityCouncil_District_2/RcvDetailedReport.xml",
+        "size": 5640,
+        "sha256": "458bbc46ccd39707f4b0cb4661fda3b752dae27a9328af68541f5a1ef698c8b5"
+      }
+    },
+    {
+      "key": "248/Oakland/003-CityCouncil_District_4",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "City Council, District 4",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_003-CityCouncil_District_4.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/003-CityCouncil_District_4/RcvDetailedReport.xml",
+        "size": 5641,
+        "sha256": "a619801f9f894f5c83ae3b776db50798f2733e33d10d8537766ee86b4a95db5b"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_CityCouncilmemberDistrict4.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593481?format=original",
+        "size": 5438702,
+        "sha256": "9d3accf0d8c6b43224ff112319ccf7bbfc1c94fe327e54a3db97ee8d5dd6796f",
+        "dataverse_file_id": 11593481,
+        "dataverse_md5": "ab96fb22c49f44c32809ef01fd421e1f"
+      }
+    },
+    {
+      "key": "248/Oakland/004-CityCouncil_District_6",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "City Council, District 6",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_004-CityCouncil_District_6.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/004-CityCouncil_District_6/RcvDetailedReport.xml",
+        "size": 21097,
+        "sha256": "04098326715635d505ed8fbbb5b35c7466e08e651335f484f88a5202839dad26"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_CityCouncilmemberDistrict6.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593483?format=original",
+        "size": 3437312,
+        "sha256": "4dd6ff58008590c23323cf832d19c248d99833bf69a99ecd86ebb9877a0732d0",
+        "dataverse_file_id": 11593483,
+        "dataverse_md5": "220456c203ada915e51bd7c822367aa1"
+      }
+    },
+    {
+      "key": "248/Oakland/005-CityAuditor",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "City Auditor",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_005-CityAuditor.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/005-CityAuditor/RcvDetailedReport.xml",
+        "size": 5050,
+        "sha256": "2936b0db09a99b2eae40a35ac4cb799871828175cc45db4dea86cb37f1990c6f"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_CityAuditor.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593449?format=original",
+        "size": 23115961,
+        "sha256": "6f96d94501faec64b444b7d1102bfffa4159519b4b90daf3db821f3c337f0607",
+        "dataverse_file_id": 11593449,
+        "dataverse_md5": "d41be88eafc80ec320000405d0f28e65"
+      }
+    },
+    {
+      "key": "248/Oakland/006-SchoolDirector_District_2",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "School Director, District 2",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_006-SchoolDirector_District_2.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/006-SchoolDirector_District_2/RcvDetailedReport.xml",
+        "size": 13337,
+        "sha256": "314933cbdd48c25a9083db95aa33500baa3731cd8e18dc8a3620da69e6066997"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_SchoolBoardD2.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593470?format=original",
+        "size": 3262205,
+        "sha256": "fd3990ff276b347335f89ea7cca769695558a09b23f349b966cd431bffcfbf01",
+        "dataverse_file_id": 11593470,
+        "dataverse_md5": "fcd4f71a0f1b8545a07ac0bd410eabae"
+      }
+    },
+    {
+      "key": "248/Oakland/007-SchoolDirector_District_4",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "School Director, District 4",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_007-SchoolDirector_District_4.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/007-SchoolDirector_District_4/RcvDetailedReport.xml",
+        "size": 10623,
+        "sha256": "2721461aeba973741411e341633d5d9d7814631639d9b82c2f5fa369795e97a8"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_SchoolBoardD4.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593488?format=original",
+        "size": 5434022,
+        "sha256": "abdb1a98bf1bae50435554e72cf8827a60a41b2970969adc578357732ca1e998",
+        "dataverse_file_id": 11593488,
+        "dataverse_md5": "f339db849bec471ec96fbd836ccdc008"
+      }
+    },
+    {
+      "key": "248/Oakland/008-SchoolDirector_District_6",
+      "election": 248,
+      "date": "2022-11-08",
+      "office": "School Director, District 6",
+      "report": {
+        "source": "alameda",
+        "path": "reports/248/Oakland_008-SchoolDirector_District_6.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/248/Oakland/008-SchoolDirector_District_6/RcvDetailedReport.xml",
+        "size": 13346,
+        "sha256": "9280d795efcb5e54354f1a0fe1b9cedef2a9126defdb3d539d75e5c3012a89c4"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20221108_SchoolBoardD6.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593499?format=original",
+        "size": 3249099,
+        "sha256": "f8c8f7b49f0d68513ff0783030dbfc15f8ee7f99242cbb92e34432b947b5aa0b",
+        "dataverse_file_id": 11593499,
+        "dataverse_md5": "11aea500f796e3aa115050b396f94c3b"
+      }
+    },
+    {
+      "key": "253/OaklandUSD5",
+      "election": 253,
+      "date": "2023-11-07",
+      "office": "School Director, District 5",
+      "report": {
+        "source": "alameda",
+        "path": "reports/253/OaklandUSD5.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/253/OaklandUSD5/RcvDetailedReport.xml",
+        "size": 5196,
+        "sha256": "5b12eee32870b4b22b79ebe333e3f914dd06714bcb56d45325909fbae1e21b3e"
+      }
+    },
+    {
+      "key": "251/OaklandAud",
+      "election": 251,
+      "date": "2024-03-05",
+      "office": "City Auditor, Short Term",
+      "report": {
+        "source": "alameda",
+        "path": "reports/251/OaklandAud.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/251/OaklandAud/RcvDetailedReport.xml",
+        "size": 4610,
+        "sha256": "9b2ec0ef2e373cbb455d919214af03ba4cdc9bd2f1b66844f317e81f1535d54a"
+      }
+    },
+    {
+      "key": "252/Oakland/001-CityCouncil_AtLarge",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Council, At Large",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_001-CityCouncil_AtLarge.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/001-CityCouncil_AtLarge/RcvDetailedReport.xml",
+        "size": 81027,
+        "sha256": "be18a385c92303445ac9072352e2473fb91ff5f875513e6d50799596b1c90f1c"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityCouncil_AtLarge.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593478?format=original",
+        "size": 35176206,
+        "sha256": "42d5a997d8ade2c7d5daadac7698e63016a8e7d3489000e27a93eb3eb8f99f78",
+        "dataverse_file_id": 11593478,
+        "dataverse_md5": "865fe662e8a4897202ee933a9c9df07f"
+      }
+    },
+    {
+      "key": "252/Oakland/002-CityCouncil_District_1",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Council, District 1",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_002-CityCouncil_District_1.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/002-CityCouncil_District_1/RcvDetailedReport.xml",
+        "size": 10558,
+        "sha256": "d46bfd363702ff850eef0a61873485877a4c772ea278b21cccbf4ee40f2efbe3"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityCouncilD1.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593492?format=original",
+        "size": 7108881,
+        "sha256": "65fef2d434047b65e786813b8b15bc1b385ec8d50ca461eaf9954a0b01b536be",
+        "dataverse_file_id": 11593492,
+        "dataverse_md5": "77976765cb515749c7040a35422c341b"
+      }
+    },
+    {
+      "key": "252/Oakland/003-CityCouncil_District_3",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Council, District 3",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_003-CityCouncil_District_3.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/003-CityCouncil_District_3/RcvDetailedReport.xml",
+        "size": 33683,
+        "sha256": "01edb4c2fe9abc17b20da863462de4c3926f126c5d9dc36a01fcc1a8497d8dbf"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityCouncilD3.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593469?format=original",
+        "size": 4958735,
+        "sha256": "6bfdce50007cc971ce143b1876a1032502e21529bf3fba956c18aed90d3f389a",
+        "dataverse_file_id": 11593469,
+        "dataverse_md5": "cb82143be4664798548335b8df611024"
+      }
+    },
+    {
+      "key": "252/Oakland/004-CityCouncil_District_5",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Council, District 5",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_004-CityCouncil_District_5.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/004-CityCouncil_District_5/RcvDetailedReport.xml",
+        "size": 10564,
+        "sha256": "b74062753a210d241a237f4b250f1867234773789d1a5415cdc52287fd67ffda"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityCouncilD5.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593473?format=original",
+        "size": 2554396,
+        "sha256": "c16a909962d7af56634843f52ee88d2d49650c945c36546a1524f2c525a6e3c7",
+        "dataverse_file_id": 11593473,
+        "dataverse_md5": "16775b1857ef5be450800cbf8cdfc1a1"
+      }
+    },
+    {
+      "key": "252/Oakland/005-CityCouncil_District_7",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Council, District 7",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_005-CityCouncil_District_7.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/005-CityCouncil_District_7/RcvDetailedReport.xml",
+        "size": 17079,
+        "sha256": "6500c06bde241d5677fd4e2646bda7fc55d785d239156a7861af51548e51e856"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityCouncilD7.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593501?format=original",
+        "size": 2815162,
+        "sha256": "fbc929218a69fe435cb5bd37e52b01ff687b7c011a79c03c7e28240306549b64",
+        "dataverse_file_id": 11593501,
+        "dataverse_md5": "3e275f79afbbccf9758351fb0d9127b3"
+      }
+    },
+    {
+      "key": "252/Oakland/006-CityAttorney",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "City Attorney",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_006-CityAttorney.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/006-CityAttorney/RcvDetailedReport.xml",
+        "size": 5193,
+        "sha256": "32c3b79f7ce7f9a68507c0652a7f506fe5f652723dce4152861b10168c30369d"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_CityAttorney.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593455?format=original",
+        "size": 33109813,
+        "sha256": "8a706a9b8cd952c386f45aa518259099b6bdc9dd1e7324285c3be7048beb42b2",
+        "dataverse_file_id": 11593455,
+        "dataverse_md5": "22fbc606b7a961096ab853dadb106581"
+      }
+    },
+    {
+      "key": "252/Oakland/007-SchoolDirector_District_1",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "School Director, District 1",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_007-SchoolDirector_District_1.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/007-SchoolDirector_District_1/RcvDetailedReport.xml",
+        "size": 5151,
+        "sha256": "742d3386b8c2e14a9293d77331408ef3d29e6576caa76332c44905c9b9b05af8"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_SchoolDirectorD1.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593462?format=original",
+        "size": 7148112,
+        "sha256": "bccb3211951589a3c75a997011581aea4e5f4c43e1a0d8255ce7047d00e105e3",
+        "dataverse_file_id": 11593462,
+        "dataverse_md5": "fc421b40a2881201b8d4f0dd06ae9ce3"
+      }
+    },
+    {
+      "key": "252/Oakland/008-SchoolDirector_District_3",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "School Director, District 3",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_008-SchoolDirector_District_3.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/008-SchoolDirector_District_3/RcvDetailedReport.xml",
+        "size": 5204,
+        "sha256": "0935fc08fe8b77c883af01fc767ad83e89c2db7e0d5551859afd80c3d0230862"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_SchoolDirectorD3.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593472?format=original",
+        "size": 4801529,
+        "sha256": "16d7ead98e4ad6ccf1c151a7b8340ceaf6de5a58a3f9475cc9499cd9eb9d1e53",
+        "dataverse_file_id": 11593472,
+        "dataverse_md5": "92a4a830094abf69a63ecec5ebb44a3b"
+      }
+    },
+    {
+      "key": "252/Oakland/009-SchoolDirector_District_5",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "School Director, District 5",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_009-SchoolDirector_District_5.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/009-SchoolDirector_District_5/RcvDetailedReport.xml",
+        "size": 5203,
+        "sha256": "6b3e54f1a6c027ce981d06c6066ae80863d9180d4d770e6ef8ccae8638476d87"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_SchoolDirectorD5.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593461?format=original",
+        "size": 2632000,
+        "sha256": "d9c2ca2f55c3994defb65008bd50640cc48c1a35db654751a598d8eee912e717",
+        "dataverse_file_id": 11593461,
+        "dataverse_md5": "2fb7e6dca02c66cd3bc727b0e9ccf07e"
+      }
+    },
+    {
+      "key": "252/Oakland/010-SchoolDirector_District_7",
+      "election": 252,
+      "date": "2024-11-05",
+      "office": "School Director, District 7",
+      "report": {
+        "source": "alameda",
+        "path": "reports/252/Oakland_010-SchoolDirector_District_7.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/252/Oakland/010-SchoolDirector_District_7/RcvDetailedReport.xml",
+        "size": 5167,
+        "sha256": "e10736049f13b40c2d52874b159e89b2fdc63eeeb1387cf22aaa407e8fcf3112"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20241105_SchoolDirectorD7.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593511?format=original",
+        "size": 2672246,
+        "sha256": "994fd17fbf966372955ae6075301ffd173b5f047054cd66535aa053b6cde89f9",
+        "dataverse_file_id": 11593511,
+        "dataverse_md5": "355e67f36800e679bf6131d71703ada3"
+      }
+    },
+    {
+      "key": "257/Oakland/001-Mayor",
+      "election": 257,
+      "date": "2025-04-15",
+      "office": "Mayor",
+      "report": {
+        "source": "alameda",
+        "path": "reports/257/Oakland_001-Mayor.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/257/Oakland/001-Mayor/RcvDetailedReport.xml",
+        "size": 79890,
+        "sha256": "8d68257af40c92c2fb6d803763968a9b8396841ce81babe8331483893f7e0101"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20250415_Mayor.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593491?format=original",
+        "size": 18440556,
+        "sha256": "28e4887ee945080543b9e8b27943eeffdf8c1bbb745fe8a396889566854676cc",
+        "dataverse_file_id": 11593491,
+        "dataverse_md5": "5846ecf776df072839ede763850d3e09"
+      }
+    },
+    {
+      "key": "257/Oakland/002-CityCouncil_District_2",
+      "election": 257,
+      "date": "2025-04-15",
+      "office": "City Council, District 2",
+      "report": {
+        "source": "alameda",
+        "path": "reports/257/Oakland_002-CityCouncil_District_2.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/257/Oakland/002-CityCouncil_District_2/RcvDetailedReport.xml",
+        "size": 33906,
+        "sha256": "7804c8323f5fa88e47d725922dd85985f32ff59fc1fafeaf8f4c9b0f0131988a"
+      },
+      "cvr": {
+        "source": "otis",
+        "path": "cvr/otis/Oakland_20250415_CityCouncilD2.csv",
+        "url": "https://dataverse.harvard.edu/api/access/datafile/11593446?format=original",
+        "size": 2667276,
+        "sha256": "0adb8589eafb840ccd312bd93e789a9ea5d001a69861c12fc07049e0484e2813",
+        "dataverse_file_id": 11593446,
+        "dataverse_md5": "7f1d223715413dd19066e2bc6906befb"
+      }
+    },
+    {
+      "key": "260/Oakland/001-Mayor",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "Mayor",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_001-Mayor.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/001-Mayor/RcvDetailedReport.xml",
+        "size": 15941,
+        "sha256": "5d66ca616ec72bce9db9f8f3352bcf0d457ce30e7d5e713ad4ff1677b0b80e14",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/002-CityCouncil_District_2",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "City Council, District 2",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_002-CityCouncil_District_2.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/002-CityCouncil_District_2/RcvDetailedReport.xml",
+        "size": 4684,
+        "sha256": "5eec050cf36768b2226c649d07e3fb4e0ca87b6d36299e925c69caf357f311f5",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/003-CityCouncil_District_4",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "City Council, District 4",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_003-CityCouncil_District_4.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/003-CityCouncil_District_4/RcvDetailedReport.xml",
+        "size": 4152,
+        "sha256": "1457ed2fc7476fdfa09fc73d5ad82eb3a668adaf391051c8aadc689e51ab2596",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/004-CityCouncil_District_6",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "City Council, District 6",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_004-CityCouncil_District_6.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/004-CityCouncil_District_6/RcvDetailedReport.xml",
+        "size": 4756,
+        "sha256": "fe7fadf720f29ea7a7622802c1147970163d3660bb2bf416294a214c11b20ae1",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/005-CityAuditor",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "City Auditor",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_005-CityAuditor.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/005-CityAuditor/RcvDetailedReport.xml",
+        "size": 4161,
+        "sha256": "fdf3f3658290de3f65f4f4f2e38436693754c6189363a6ec98633c702fe3d826",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/006-SchoolDirector_District_2",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "School Director, District 2",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_006-SchoolDirector_District_2.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/006-SchoolDirector_District_2/RcvDetailedReport.xml",
+        "size": 4733,
+        "sha256": "1b5d7b37377568299abb8da8aeda8fd390477793a3cb1a58476b6f9e9b1f537b",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/007-SchoolDirector_District_4",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "School Director, District 4",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_007-SchoolDirector_District_4.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/007-SchoolDirector_District_4/RcvDetailedReport.xml",
+        "size": 9877,
+        "sha256": "44df4745e7733db6db4c4b4d527c77a90cdd62f528c1643707238a587b9999ca",
+        "preliminary": true
+      }
+    },
+    {
+      "key": "260/Oakland/008-SchoolDirector_District_6",
+      "election": 260,
+      "date": "2026-11-03",
+      "office": "School Director, District 6",
+      "report": {
+        "source": "alameda",
+        "path": "reports/260/Oakland_008-SchoolDirector_District_6.xml",
+        "url": "https://www.alamedacountyca.gov/rovresults/rcv/260/Oakland/008-SchoolDirector_District_6/RcvDetailedReport.xml",
+        "size": 9737,
+        "sha256": "cea7613f0b4a03327b9a256e2b8ba8dd66764abc39e40578343777f1213fb19c",
+        "preliminary": true
+      }
+    }
+  ],
+  "documents": [
+    {
+      "source": "alameda",
+      "title": "Ranked-Choice Voting Tally, November 8, 2022 - General Election (Registrar of Voters presentation)",
+      "path": "documents/RankedChoiceVotingTallyPresentation.pdf",
+      "url": "https://www.acgov.org/board/bos_calendar/documents/RankedChoiceVotingTallyPresentation.pdf",
+      "size": 318816,
+      "sha256": "ea341b7272fb64cf553b31413822bf3c63ab6bd7c8d6d1fc796e69b3a5b66d07"
+    }
+  ]
+}

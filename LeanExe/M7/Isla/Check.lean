@@ -307,7 +307,7 @@ theorem setX_pc (m : Mach) (i n : Nat) : (m.setX i n).s.pc = m.s.pc := by
 writes only X registers and flags, so that the program counter is the machine's.  `omega` proves
 the bound from the theorem's premise on the program counter. -/
 macro "t32_pc" : tactic => `(tactic| (
-  rw [if_pos]
+  rw [ite_eq_left]
   rotate_left
   · simp -failIfUnchanged only [setX_pc]
     omega))

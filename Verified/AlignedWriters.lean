@@ -518,7 +518,7 @@ theorem specX_ownedVar (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {tTy : 
     have hNoCoerce : ¬((slots.getD x.index default).mode = .borrowed ∧ Mode.owned = .owned ∧
         tTy.scalar = false) := by
       rw [hOwned]; simp
-    rw [Var.ownedCode, Var.code, if_neg hNoCopy, coerceCode, if_neg hNoCoerce, List.append_nil]
+    rw [Var.ownedCode, Var.code, ite_eq_right hNoCopy, coerceCode, ite_eq_right hNoCoerce, List.append_nil]
     exact wpX_loadCode ws hRep.typed hh hold (hNext heap store s ws
       (After.move x hVars hAt hOwned hDead hold hRep.length)
       (fun hs => ⟨(hAl hs).live_mono fun i h => by simp [h], by

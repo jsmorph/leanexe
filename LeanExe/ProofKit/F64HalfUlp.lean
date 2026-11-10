@@ -68,7 +68,7 @@ theorem add_half (a b : UInt64) (ha : Finite a) (hb : Finite b) (g : ℕ) (hg : 
           have h2 : ((S.natAbs : Int) : ℝ) = ((-S : Int) : ℝ) := by rw [this]
           push_cast at h2
           linarith
-        rw [if_pos hneg, hSn]
+        rw [ite_eq_left hneg, hSn]
         push_cast
         rw [show -(roundedMagnitude n : ℝ) / 2 ^ 1074 - -(n : ℝ) / 2 ^ 1074 =
           -(((roundedMagnitude n : ℝ) - n) / 2 ^ 1074) by ring, abs_neg, abs_div,
@@ -79,7 +79,7 @@ theorem add_half (a b : UInt64) (ha : Finite a) (hb : Finite b) (g : ℕ) (hg : 
           have h2 : ((S.natAbs : Int) : ℝ) = ((S : Int) : ℝ) := by rw [this]
           push_cast at h2
           linarith
-        rw [if_neg (not_lt.mpr hpos), hSn]
+        rw [ite_eq_right (not_lt.mpr hpos), hSn]
         push_cast
         rw [show (roundedMagnitude n : ℝ) / 2 ^ 1074 - (n : ℝ) / 2 ^ 1074 =
           ((roundedMagnitude n : ℝ) - n) / 2 ^ 1074 by ring, abs_div,

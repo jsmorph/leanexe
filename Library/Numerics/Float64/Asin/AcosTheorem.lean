@@ -48,7 +48,7 @@ theorem acos_unit (x : Float) (h : |value x.toBits| = 1) :
       norm_num
     have he : (Asin.acos x).toBits = 0 := by
       rw [acos_one_eq x (by unfold ixA; rw [hb]; decide) (by unfold ixA lxA; rw [hb]; decide),
-        if_pos (by rw [hb]; decide)]
+        ite_eq_left (by rw [hb]; decide)]
       rfl
     rw [he, hv, Real.arccos_one]
     exact F64SignedRounding.within_of_nonneg 1 0 le_rfl 0 (by decide)
@@ -60,7 +60,7 @@ theorem acos_unit (x : Float) (h : |value x.toBits| = 1) :
       norm_num
     have he : (Asin.acos x).toBits = 0x400921FB54442D18 := by
       rw [acos_one_eq x (by unfold ixA; rw [hb]; decide) (by unfold ixA lxA; rw [hb]; decide),
-        if_neg (by rw [hb]; decide)]
+        ite_eq_right (by rw [hb]; decide)]
       unfold piF pio2LoF
       rw [F64Bits.toBits_add, F64Bits.toBits_mul, F64Bits.toBits_ofBits, F64Bits.toBits_ofBits,
         show (2.0 : Float).toBits = 0x4000000000000000 from rfl]

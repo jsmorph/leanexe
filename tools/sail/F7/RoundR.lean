@@ -48,13 +48,13 @@ theorem tRound_normal (q j : ℕ) (up : Prop) [Decidable up] (hq1 : 2 ^ 52 ≤ q
          else (Wasm.IEEE64.encodeFinite false (j + 1) (q - 2 ^ 52)).toBitVec)) := by
   unfold tRound
   by_cases hup : up
-  · rw [if_pos hup, if_pos hup]
+  · rw [ite_eq_left hup, ite_eq_left hup]
     by_cases hc : q + 1 = 2 ^ 53
-    · rw [if_pos hc, hc, rsm_carry]
+    · rw [ite_eq_left hc, hc, rsm_carry]
       split_ifs <;> rfl
-    · rw [if_neg hc, rsm_exact false (q + 1) j (by omega) (by omega)]
+    · rw [ite_eq_right hc, rsm_exact false (q + 1) j (by omega) (by omega)]
       split_ifs <;> rfl
-  · rw [if_neg hup, if_neg hup, rsm_exact false q j hq1 hq2]
+  · rw [ite_eq_right hup, ite_eq_right hup, rsm_exact false q j hq1 hq2]
     split_ifs <;> rfl
 
 /-- The bits of FPSR that FPRoundBase__1 sets for a positive normal result with the integer

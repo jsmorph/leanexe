@@ -36,9 +36,9 @@ theorem growth_transport {World : Type} {source target : Module}
             | some result => rcases result with ⟨mem, pages⟩; rfl
           | i64 delta =>
             by_cases hLarge : delta.toNat ≥ 2 ^ 32
-            · simp only [if_pos hLarge]
+            · simp only [ite_eq_left hLarge]
               rfl
-            · simp only [if_neg hLarge]
+            · simp only [ite_eq_right hLarge]
               cases hGrow : initial.mem.grow delta.toUInt32 (initial.memoryCap source 0) with
               | none => rfl
               | some result => rcases result with ⟨mem, pages⟩; rfl

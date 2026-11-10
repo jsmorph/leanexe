@@ -291,7 +291,7 @@ theorem within_two_of_rounded (c : UInt64) (S y : ℝ) (hc : Rounded c S) (a : �
       have hsa : Wasm.IEEE64.sign (Wasm.IEEE64.abs c) = false := by
         simp only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le, hctn]
         omega
-      rw [hsa, if_neg (by simp), hctn]
+      rw [hsa, ite_eq_right (by simp), hctn]
       have := c.toNat_lt
       omega
     rw [← hneq]

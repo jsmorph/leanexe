@@ -714,7 +714,7 @@ theorem w_spec (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
           (by positivity : (0 : ℝ) ≤ value xh.toBits / 2 ^ 52)]
       have := div_le_div_of_nonneg_right h1 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)
       linarith [(by ring : value xh.toBits / 2 ^ 50 / 2 ^ 53 = value xh.toBits / 2 ^ 103)]
-    refine ⟨xh, xl - 0.5, if_pos ht, hxh, hs.1, by linarith, le_rfl, ?_, ?_⟩
+    refine ⟨xh, xl - 0.5, ite_eq_left ht, hxh, hs.1, by linarith, le_rfl, ?_, ?_⟩
     · have h1 := abs_sub_abs_le_abs_sub (value (xl - 0.5).toBits) (value xl.toBits - 1 / 2)
       have h2 := abs_sub (value xl.toBits) (1 / 2)
       rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at h2
@@ -731,7 +731,7 @@ theorem w_spec (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
       · exact h
       · exact absurd ((big_test xh hxh hx0).mpr h) ht
     obtain ⟨hhf, hhv⟩ := LgammaAsymProd.half_sub_wide xh hxh (by linarith) hlt
-    refine ⟨xh - 0.5, xl, if_neg ht, hhf, hxl, by rw [hhv], by rw [hhv]; linarith, ?_, ?_⟩
+    refine ⟨xh - 0.5, xl, ite_eq_right ht, hhf, hxl, by rw [hhv], by rw [hhv]; linarith, ?_, ?_⟩
     · rw [hhv]
       have : value xh.toBits / 2 ^ 51 ≤ (value xh.toBits - 1 / 2) / 2 ^ 50 := by
         rw [div_le_div_iff₀ (by norm_num) (by norm_num)]; nlinarith
@@ -814,10 +814,10 @@ theorem asym_ranges (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     have := (abs_le.mp hlb).2; linarith
   obtain ⟨k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12⟩ := consts
   by_cases h48 : xh ≥ 48.0
-  · rw [if_pos h48]
+  · rw [ite_eq_left h48]
     have hv48 : 48 ≤ value xh.toBits := by
       have := (fle_iff 48.0 xh c48.1 hxh).mp h48; rwa [c48.2] at this
-    rw [if_neg (not_lt.mpr hv48)]
+    rw [ite_eq_right (not_lt.mpr hv48)]
     obtain ⟨a, b, c, he, hpos, hb1, hb2⟩ := asym_gen hF hLA 0 7 1 (1 / 2300) (1 / 2300) (1 / 2 ^ 58)
       (1 / 48) (831 / 10000) (834 / 10000) (1 / 2 ^ 8) a1C a1Cl a1E a1Λ a1K asym1_ok asym1_val asym1_lip
       (pz_nonneg _) (pz_nonneg _) (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
@@ -826,14 +826,14 @@ theorem asym_ranges (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
       (by push_cast; rw [div_le_div_iff₀ hx0 (by norm_num)]; linarith) hlb hw1lo hw1hi hw2 hw
     have hfact := hAF.1 (value xh.toBits + value xl.toBits) (by nlinarith)
     exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
-  · rw [if_neg h48]
+  · rw [ite_eq_right h48]
     have hv48 : value xh.toBits < 48 := by
       rcases lt_or_ge (value xh.toBits) 48 with h | h
       · exact h
       · exact absurd ((fle_iff 48.0 xh c48.1 hxh).mpr (by rw [c48.2]; exact h)) h48
-    rw [if_pos hv48]
+    rw [ite_eq_left hv48]
     by_cases h145 : xh ≥ 14.5
-    · rw [if_pos h145]
+    · rw [ite_eq_left h145]
       have hv145 : 29 / 2 ≤ value xh.toBits := by
         have := (fle_iff 14.5 xh c145.1 hxh).mp h145; rwa [c145.2] at this
       obtain ⟨a, b, c, he, hpos, hb1, hb2⟩ := asym_gen hF hLA 16 11 1 (1 / 210) (1 / 210)
@@ -845,7 +845,7 @@ theorem asym_ranges (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
         (by push_cast; rw [div_le_div_iff₀ hx0 (by norm_num)]; linarith) hlb hw1lo hw1hi hw2 hw
       have hfact := hAF.2.1 (value xh.toBits + value xl.toBits) (by nlinarith) (by nlinarith)
       exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
-    · rw [if_neg h145]
+    · rw [ite_eq_right h145]
       have hv145 : value xh.toBits < 29 / 2 := by
         rcases lt_or_ge (value xh.toBits) (29 / 2) with h | h
         · exact h
@@ -1152,8 +1152,8 @@ theorem asym_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA
   by_cases h120 : value xh.toBits < 2 ^ 120
   · have hc : xh < Float.ofBits 0x4770000000000000 :=
       (F64UpperWord.float_lt_iff _ _ hxh c120.1).mpr (by rw [c120.2]; exact h120)
-    rw [if_pos hc] at hr
-    rw [show r = _ from hr, if_pos h120]
+    rw [ite_eq_left hc] at hr
+    rw [show r = _ from hr, ite_eq_left h120]
     obtain ⟨a, b, c, e, p, q1, q2⟩ := asym_ranges hF hLA hAF xh xl hxh hxl hlo h120 hlb
     refine ⟨a, b, c, e, p, ?_, ?_⟩
     · have := div_le_div_of_nonneg_left p.le (by norm_num : (0 : ℝ) < 2 ^ 40)
@@ -1165,9 +1165,9 @@ theorem asym_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA
   · have hge : 2 ^ 120 ≤ value xh.toBits := not_lt.mp h120
     have hc : ¬ xh < Float.ofBits 0x4770000000000000 := fun h =>
       h120 (by have := (F64UpperWord.float_lt_iff _ _ hxh c120.1).mp h; rwa [c120.2] at this)
-    rw [if_neg hc] at hr
-    rw [show r = _ from hr, if_neg h120,
-      if_neg (not_lt.mpr (le_trans (by norm_num : (48 : ℝ) ≤ 2 ^ 120) hge))]
+    rw [ite_eq_right hc] at hr
+    rw [show r = _ from hr, ite_eq_right h120,
+      ite_eq_right (not_lt.mpr (le_trans (by norm_num : (48 : ℝ) ≤ 2 ^ 120) hge))]
     obtain ⟨a, b, c, e, p, q1, q2, -⟩ := asym_big hF hLA hAF xh xl hxh hxl hge
       (hhi.trans (by norm_num)) (prod_below _ hge hhi) hxl1
     refine ⟨a, b, c, ?_, p, q1, q2⟩

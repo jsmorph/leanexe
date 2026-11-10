@@ -119,9 +119,9 @@ theorem floors_nat (terrain : Array UInt64) (h : terrainBound terrain) (k : Nat)
       · right; rw [← h1]; simp
   simp only [floors, floorAt, Nat.toUInt64_eq, hkN, Bool.or_eq_true, beq_iff_eq]
   by_cases hc : k = 0 ∨ k + 1 = terrain.size
-  · rw [if_pos (hiff.mpr hc), if_pos hc, UInt64.toNat_add]
+  · rw [ite_eq_left (hiff.mpr hc), ite_eq_left hc, UInt64.toNat_add]
     simp
-  · rw [if_neg (fun h' => hc (hiff.mp h')), if_neg hc, UInt64.toNat_add]
+  · rw [ite_eq_right (fun h' => hc (hiff.mp h')), ite_eq_right hc, UInt64.toNat_add]
     simp; omega
 
 theorem floors_bound (terrain : Array UInt64) (h : terrainBound terrain) (k : Nat)
@@ -181,7 +181,7 @@ theorem compute_invalid (terrain : Array UInt64) (hsize : terrain.size < 2 ^ 64)
     rw [Nat.toUInt64_eq, UInt64.toNat_ofNat_of_lt' hsize]
   have hcount : (if (decide (0 < terrain.size.toUInt64) && decide (terrain.size.toUInt64 ≤ 64) &&
       validHeights terrain) = true then terrain.size.toUInt64 else 0) = 0 := by
-    rw [if_neg]
+    rw [ite_eq_right]
     intro hc
     simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
     obtain ⟨⟨hpos, hle⟩, hvalid⟩ := hc
@@ -228,7 +228,7 @@ theorem compute_endpoints (terrain : Array UInt64) (h : terrainBound terrain)
     apply UInt64.toNat_inj.mp
     have : (UInt64.ofNat 0 / 5 * 25 : UInt64) = 0 := rfl
     simp only [UInt64.toNat_add]
-    rw [hl, if_pos (Or.inr (by omega))]
+    rw [hl, ite_eq_left (Or.inr (by omega))]
     simp
 
 end Demos.Drone.Output

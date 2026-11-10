@@ -142,7 +142,7 @@ theorem tables_written (tables : List (Array UInt64)) (P : Nat)
         mem.writeBytes (tableStart tables n) (tableBytes tables[n]!) := by
       simp only [segStep, tableSegment, decide_true, List.isEmpty_nil, Bool.and_self, ↓reduceIte]
       rw [hAddr] at hFits ⊢
-      exact if_pos hFits
+      exact ite_eq_left hFits
     rw [hStep]
     refine ⟨hPages, fun k hk i hi => ?_⟩
     simp only [Mem.writeBytes]
@@ -205,7 +205,7 @@ theorem literalPool_written (pool : Bytes.LiteralPool) (mem : Mem)
       simp only [Bytes.LiteralPool.segments, ite_eq_right hEmpty, List.foldl_cons, List.foldl_nil,
         segStep, decide_true, List.isEmpty_nil, Bool.and_self, ↓reduceIte]
       rw [hAddr]
-      exact if_pos hMemory
+      exact ite_eq_left hMemory
     rw [hStep]
     refine ⟨rfl, ?_, by omega, hMemory, ?_⟩
     · intro address low

@@ -64,11 +64,11 @@ theorem kernelTanpi_cases (x : Float) :
     (¬ x < 0.25 → ¬ x > 0.25 → Sinpi.kernelTanpi x = 1.0) := by
   refine ⟨fun h => ?_, fun h1 h2 => ?_, fun h1 h2 => ?_⟩
   · unfold Sinpi.kernelTanpi
-    rw [if_pos h]
+    rw [ite_eq_left h]
   · unfold Sinpi.kernelTanpi
-    rw [if_neg h1, if_pos h2]
+    rw [ite_eq_right h1, ite_eq_left h2]
   · unfold Sinpi.kernelTanpi
-    rw [if_neg h1, if_neg h2]
+    rw [ite_eq_right h1, ite_eq_right h2]
 
 /-- `kernelTanpi` from `2 ^ -54` below `1/2`. -/
 theorem kernel_tanpi (x : Float) (V : ℝ) (hs : x.toBits.toNat < 2 ^ 63) (hf : Finite x.toBits)

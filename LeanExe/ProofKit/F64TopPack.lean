@@ -95,12 +95,12 @@ theorem signed_pack_relative_top (z : ℤ) (hmax : z.natAbs + 2 ^ 2044 < 2 ^ 209
   refine ⟨hf, ?_⟩
   by_cases hz : z < 0
   · have hz' := Int.eq_neg_natAbs_of_nonpos (Int.le_of_lt hz)
-    rw [hv, if_pos hz]
+    rw [hv, ite_eq_left hz]
     rw [show -(roundedMagnitude z.natAbs : ℤ) - z =
       -((roundedMagnitude z.natAbs : ℤ) - z.natAbs) by omega, abs_neg]
     exact herr
   · have hz' := Int.eq_natAbs_of_nonneg (Int.le_of_not_gt hz)
-    rw [hv, if_neg hz]
+    rw [hv, ite_eq_right hz]
     rw [show (roundedMagnitude z.natAbs : ℤ) - z =
       (roundedMagnitude z.natAbs : ℤ) - z.natAbs by omega]
     exact herr

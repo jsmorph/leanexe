@@ -513,10 +513,10 @@ theorem run_bounds {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α
   · show (if s3.condHolds 8 then s3.pc + sext 19 g.val * 4 else s3.pc + 4) = _
     rw [hcond, p3]
     by_cases hc : (ms.x r).toNat + off + 8 ≤ st.mem.pages * 65536
-    · rw [if_pos hc]
+    · rw [ite_eq_left hc]
       simp only [decide_eq_true hc, Bool.not_true, Bool.false_eq_true, ite_false]
       exact (after_succ a 3).symm
-    · rw [if_neg hc]
+    · rw [ite_eq_right hc]
       simp only [decide_eq_false hc, Bool.not_false, ite_true]
       exact cbField_target hg
 
@@ -653,8 +653,8 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P code F (.load64 off) :=
         run_bounds P code (r := regOf σ0.length) h.2 hr hr16 (CodeAt.take4 code hcode) hg hpc hsr
       rw [hn] at hpcs
       by_cases hin : n + off.toNat + 8 ≤ st.mem.pages * 65536
-      · rw [if_neg (by omega)]
-        rw [if_pos hin] at hpcs
+      · rw [ite_eq_right (by omega)]
+        rw [ite_eq_left hin] at hpcs
         have c4 := hcode 4 (by simp)
         have c5 := hcode 5 (by simp)
         simp only [List.getElem_cons_succ, List.getElem_cons_zero] at c4 c5
@@ -724,8 +724,8 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P code F (.load64 off) :=
           rw [State.setX_out]
           show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).out = _
           rw [State.setX_out, houts]
-      · rw [if_pos (by omega)]
-        rw [if_neg hin] at hpcs
+      · rw [ite_eq_left (by omega)]
+        rw [ite_eq_right hin] at hpcs
         exact .inr ⟨s, hrs, houts, .inr (.inl ⟨rfl, hpcs⟩)⟩
 
 /-! ## `i64.store` -/
@@ -911,8 +911,8 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) 
         run_bounds P code (r := regOf σ0.length) h.2 hr hr16 (CodeAt.take4 code hcode) hg hpc hsr
       rw [hn] at hpcs
       by_cases hin : n + off.toNat + 8 ≤ st.mem.pages * 65536
-      · rw [if_neg (by omega)]
-        rw [if_pos hin] at hpcs
+      · rw [ite_eq_right (by omega)]
+        rw [ite_eq_left hin] at hpcs
         have c4 := hcode 4 (by simp)
         have c5 := hcode 5 (by simp)
         simp only [List.getElem_cons_succ, List.getElem_cons_zero] at c4 c5
@@ -983,8 +983,8 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) 
             LocalsRel.store_below P (sl := sl) hinv hb8 hmem6 hsp6, hinv.count,
             hinv.frame.congr hsp6 h186, hty.2.2, hinv.ltypes⟩
         · exact hk5 _ (regOf_ne_scratch k (by omega))
-      · rw [if_pos (by omega)]
-        rw [if_neg hin] at hpcs
+      · rw [ite_eq_left (by omega)]
+        rw [ite_eq_right hin] at hpcs
         exact .inr ⟨s, hrs, houts, .inr (.inl ⟨rfl, hpcs⟩)⟩
 
 /-! ## `memory.grow` -/
@@ -1158,9 +1158,9 @@ theorem run_grow_head {cap : Nat} {gts : List ValueType} {α : Type} {st : Store
   · show (if s5.condHolds 8 then s5.pc + sext 19 gf.val * 4 else s5.pc + 4) = _
     rw [hcond, p5]
     by_cases hN : st.mem.pages + delta.toNat ≤ cap
-    · rw [if_pos hN, decide_eq_false (by omega)]
+    · rw [ite_eq_left hN, decide_eq_false (by omega)]
       exact (after_succ a 5).symm
-    · rw [if_neg hN, decide_eq_true (by omega)]
+    · rw [ite_eq_right hN, decide_eq_true (by omega)]
       exact cbField_target hgf
   · show s5.x 16 = _
     rw [hk5]
@@ -1361,8 +1361,8 @@ theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
         hu _ (regOf_ne_29 k (by omega)) (regOf_ne_scratch k (by omega))
           (fun e => absurd (regOf_inj k (by omega) _ hlt e) (by omega))
       by_cases hN : st.mem.pages + delta.toNat ≤ E.cap
-      · rw [if_pos hN]
-        rw [if_pos hN] at hp6
+      · rw [ite_eq_left hN]
+        rw [ite_eq_left hN] at hp6
         have hsr6 : StoreRel P E.cap E.globalTypes st s6 :=
           hsr.regs (hk6 17 (by decide) (by decide)) (hk6 18 (by decide) (by decide)) hmem6
         obtain ⟨s12, hr12, hp12, hx12, hk12, hsp12, hout12, hmem12⟩ :=
@@ -1405,8 +1405,8 @@ theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
             hinv.frame.congr hsp h1812, Typed.cons trivial hty.2, hinv.ltypes⟩
           rw [hvl, hx12, hx16]
           exact (toUInt64_ofNat_small (by omega)).symm
-      · rw [if_neg hN]
-        rw [if_neg hN] at hp6
+      · rw [ite_eq_right hN]
+        rw [ite_eq_right hN] at hp6
         have cM : CodeAt code (after a 12) (movImm (regOf σ0.length) 0xFFFFFFFF) := by
           simpa [movImm] using CodeAt.drop_take code hcode 12 4 (by simp [movImm])
         obtain ⟨s7, hr7, hp7, hx7, hk7, hsp7, hmem7, hout7⟩ :=

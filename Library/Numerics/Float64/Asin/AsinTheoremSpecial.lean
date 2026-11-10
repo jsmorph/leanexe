@@ -129,7 +129,7 @@ theorem asin_neg_zero (x : Float) (h : x.toBits = 0x8000000000000000) :
 
 theorem acos_one (x : Float) (h : x.toBits = 0x3FF0000000000000) : (Asin.acos x).toBits = 0 := by
   rw [acos_one_eq x (by unfold ixA; rw [h]; decide) (by unfold ixA lxA; rw [h]; decide),
-    if_pos (by rw [h]; decide)]
+    ite_eq_left (by rw [h]; decide)]
   rfl
 
 #print axioms self_quot_nan

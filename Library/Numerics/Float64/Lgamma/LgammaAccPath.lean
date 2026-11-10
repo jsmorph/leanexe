@@ -344,7 +344,7 @@ theorem accurate_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
       (fun h => hn20 (w20.mpr h)) (fun h => hn30 (w30.mpr h)) hends'
     acc_step
     intro xh xl hxx
-    rw [if_pos hsn] at hxx
+    rw [ite_eq_left hsn] at hxx
     rcases lt_or_ge (value sx.abs.toBits) (21 / 2) with h21 | h21
     · exact Or.inl ⟨h21, LgammaAccNegAsym.asym_small hF hLA hAF sx.abs hxf h154 h21 xh xl hxx⟩
     · exact Or.inr ⟨h21, asym_large hF hLA hAF sx.abs hxf h21 (by rw [hxv]; exact hbig) xh xl hxx⟩
@@ -490,7 +490,7 @@ theorem accurate_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
       (fun h => hn20 (w20.mpr h)) (fun h => hn30 (w30.mpr h)) hends'
     acc_step
     intro xh xl hxx
-    rw [if_neg hsn] at hxx
+    rw [ite_eq_right hsn] at hxx
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj hxx
     exact asym_pos hF hLA hAF sx.abs hxf h154 (by rw [hxv']; linarith [(abs_le.mp hbig).2,
       (by norm_num : (2 : ℝ) ^ 800 ≤ 2 ^ 801)])

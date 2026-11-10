@@ -21,7 +21,7 @@ theorem log1p_neg_one (x : Float) (h : x.toBits = 0xBFF0000000000000) :
   have he : (x == -1.0) = true := by
     rw [F64Bits.beq_eq, h, Library.Numerics.Float64.Atan.AtanTheoremReduce.neg_one_bits]
     decide
-  rw [if_pos he, F64Bits.toBits_div, F64Bits.toBits_neg, F64Bits.toBits_ofBits,
+  rw [ite_eq_left he, F64Bits.toBits_div, F64Bits.toBits_neg, F64Bits.toBits_ofBits,
     show (0.0 : Float).toBits = 0 from rfl]
   decide +kernel
 
@@ -38,7 +38,7 @@ theorem log1p_zero (x : Float) (h : x.toBits = 0) : (Log1p.log1p x).toBits = 0 :
   rw [log1p_tiny_eq x (by simp only [hxOf, h]; decide) (by simp only [axOf, hxOf, h]; decide),
     two54_sum x hx (by rw [hv, abs_zero]; norm_num)]
   rw [show (true && decide (axOf x < 0x3c900000)) = true by
-    simp only [axOf, hxOf, h]; decide, if_pos rfl, h]
+    simp only [axOf, hxOf, h]; decide, ite_eq_left rfl, h]
 
 theorem log1p_neg_zero (x : Float) (h : x.toBits = 0x8000000000000000) :
     (Log1p.log1p x).toBits = 0x8000000000000000 := by
@@ -50,7 +50,7 @@ theorem log1p_neg_zero (x : Float) (h : x.toBits = 0x8000000000000000) :
   rw [log1p_tiny_eq x (by simp only [hxOf, h]; decide) (by simp only [axOf, hxOf, h]; decide),
     two54_sum x hx (by rw [hv, abs_zero]; norm_num)]
   rw [show (true && decide (axOf x < 0x3c900000)) = true by
-    simp only [axOf, hxOf, h]; decide, if_pos rfl, h]
+    simp only [axOf, hxOf, h]; decide, ite_eq_left rfl, h]
 
 /-- `x - x` is `+0` for a finite `x`. -/
 theorem sub_self_bits (w : UInt64) (hw : Finite w) : Wasm.IEEE64.sub w w = 0 := by
@@ -99,7 +99,7 @@ theorem log1p_below (x : Float) (hx : Finite x.toBits) (h : value x.toBits < -1)
         rw [← PolyBound.ratOfWord_cast, show PolyBound.ratOfWord 0xBFF0000000000000 = -1 by
           decide +kernel]; norm_num] at this
       linarith
-  rw [if_neg (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, sub_self_bits _ hx]
+  rw [ite_eq_right (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, sub_self_bits _ hx]
   decide +kernel
 
 theorem log1p_neg_inf (x : Float) (h : x.toBits = 0xFFF0000000000000) :
@@ -108,7 +108,7 @@ theorem log1p_neg_inf (x : Float) (h : x.toBits = 0xFFF0000000000000) :
   have he : (x == -1.0) = false := by
     rw [F64Bits.beq_eq, h, Library.Numerics.Float64.Atan.AtanTheoremReduce.neg_one_bits]
     decide
-  rw [if_neg (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, h]
+  rw [ite_eq_right (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, h]
   decide +kernel
 
 theorem log1p_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
@@ -131,7 +131,7 @@ theorem log1p_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
       simp only [Wasm.IEEE64.eq, h, Bool.true_or, ite_true]
     have hs : Wasm.IEEE64.sub x.toBits x.toBits = Wasm.IEEE64.canonicalNaN := by
       simp only [Wasm.IEEE64.sub, Wasm.IEEE64.add, h, Bool.true_or, ite_true]
-    rw [if_neg (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, hs]
+    rw [ite_eq_right (by rw [he]; decide), F64Bits.toBits_div, F64Bits.toBits_sub, hs]
     decide +kernel
 
 #print axioms log1p_neg_one
