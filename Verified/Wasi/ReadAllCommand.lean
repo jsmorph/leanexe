@@ -71,7 +71,7 @@ theorem readAll_flat {World : Type} {host : Host World}
       execution.bind (β := (ResultTy.value (.pair .word .bytes)).denote)
         (next := fun result => .pure (result.errno, result.bytes)) (rest := []) ⟨rfl, rfl, rfl⟩
 
-theorem wp_command_readAll {World : Type} {source target : Module} {host : Host World}
+theorem wp_command_readAll {World : Type} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
     {funs : Funs pureSigs}
     {flags : Flags pureSigs} {bounds : Bounds pureSigs} {fits : Fits pureSigs}
@@ -81,8 +81,7 @@ theorem wp_command_readAll {World : Type} {source target : Module} {host : Host 
     {params : List Value} {heap : Heap} {initial : Store (Observed World)} {locals : Locals}
     {h base : Nat} {Q : Assertion (Observed World)}
     (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
-    (hHost : targetHost.Satisfies target (hostSpec host))
+    (profile : Relocation.Profile source)
     (spec : CodeSpec source funs flags bounds fits sourceHost params limit env slots paid live pool)
     (form : Encoding.ProgramForm (limit.code (pool := pool) h slots base live ++
       coerceCode h .word (limit.mode (slots.map Slot.mode)) .owned base))
@@ -204,7 +203,7 @@ theorem command_readAll_spec {source target : Wasm.Module}
   have selected : ∀ i, live i = true → (live i || limit.uses i) = true := by
     intro i hLive
     simp only [hLive, Bool.true_or]
-  refine wp_command_readAll facts.runtime facts.layout facts.profile facts.imports valid spec
+  refine wp_command_readAll facts.runtime facts.layout facts.profile spec
     (by simpa only [noCoerce, List.append_nil] using fragment.1)
     (by simpa only [noCoerce, List.append_nil] using fragment.2)
     positions rfl vars at_ safe cap low (by simpa only [Command.width] using room) place
@@ -253,7 +252,7 @@ theorem cost_command_readAll_spec {source target : Wasm.Module}
       have withinLimit := withinRead.mono (Nat.le_add_right _ _)
       simp only [Resource.PureContext.exprFits] at fitsLimit
       simp [fitsLimit, withinLimit] at failure
-  refine wp_command_readAll facts.runtime facts.layout facts.profile facts.imports valid spec
+  refine wp_command_readAll facts.runtime facts.layout facts.profile spec
     (by simpa only [noCoerce, List.append_nil] using fragment.1)
     (by simpa only [noCoerce, List.append_nil] using fragment.2)
     positions rfl vars at_ safe cap low (by simpa only [Command.width] using room) place

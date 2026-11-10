@@ -1,4 +1,5 @@
 import Verified.Examples.WasiReadAll
+import Verified.Wasi.ResourceRules
 
 /-! The axiom audit of `readAll`: its source lemmas, the proofs of its code, its command rules,
 and the generated theorems of the example module use only `propext`, `Classical.choice`, and
