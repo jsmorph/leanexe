@@ -48,6 +48,14 @@ theorem read_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
   rw [Command.denote, hValue]
   rfl
 
+theorem readAll_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (limit : Expr pureSigs context .word) (value : UInt64)
+    (hValue : limit.denote pureFuns env = value) :
+    (Command.readAll limit).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : ReadResult → UInt64 × LeanExe.Bytes) (readAll value) := by
+  rw [Command.denote, hValue]
+  rfl
+
 theorem write_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (output : Output) (bytes : Var context .bytes) (value : LeanExe.Bytes)
     (hValue : env.get bytes = value) :

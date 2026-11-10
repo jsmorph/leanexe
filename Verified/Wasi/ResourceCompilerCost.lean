@@ -151,6 +151,30 @@ theorem PrefixBound.read_resources {World : Type} {host : Host World} {pure : Pu
   rw [pure.readCost_compiler]
   exact ⟨within.mono bounded.read.1, bounded.read.2⟩
 
+theorem PureContext.readAllCost_compiler (pure : PureContext pureSigs) (depth : UInt64)
+    (slots : List Slot) (live : Nat → Bool) (limit : Expr pureSigs context .word)
+    (env : Env context) (store : Store Unit) (locals : Locals) :
+    Verified.Wasi.returnCost pure.funs pure.flags (pure.callBounds depth) limit env slots [] live
+        store locals + Verified.Wasi.readAllCost (limit.denote pure.funs env) =
+      pure.readAllCost depth (slots.map Slot.mode) live limit env := by
+  rw [pure.returnWordCost_nil]
+  rfl
+
+theorem PrefixBound.readAll_resources {World : Type} {host : Host World}
+    {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs} {depth : UInt64}
+    {slots : List Slot} {live : Nat → Bool} {limit : Expr pureSigs context .word}
+    {env : Env context} {world : World} {budget : Nat} {heap : Heap} {store : Store Unit}
+    {source : Wasm.Module} (locals : Locals)
+    (bounded : PrefixBound host pure program depth (slots.map Slot.mode) live (.readAll limit)
+      env world budget)
+    (within : heap.Within store source budget) :
+    heap.Within store source
+      (Verified.Wasi.returnCost pure.funs pure.flags (pure.callBounds depth) limit env slots []
+          live store locals + Verified.Wasi.readAllCost (limit.denote pure.funs env)) ∧
+      pure.exprFits depth limit env = true := by
+  rw [pure.readAllCost_compiler]
+  exact ⟨within.mono bounded.readAll.1, bounded.readAll.2⟩
+
 theorem PrefixBound.exit_resources {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {slots : List Slot} {live : Nat → Bool}
     {code : Expr pureSigs context .word} {env : Env context} {world : World} {budget : Nat} {result : ResultTy}

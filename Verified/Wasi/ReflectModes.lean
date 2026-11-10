@@ -24,6 +24,7 @@ def Command.demands : {context : List Ty} → {result : ResultTy} →
           !(argsAny fun other => other != i && !(signature.params.get other).scalar &&
             (args other).uses index)
   | _, _, .read capacity, live, index => capacity.demands live false index
+  | _, _, .readAll limit, live, index => limit.demands live false index
   | _, _, .write _ _, _, _ => false
   | _, _, .exit code, live, index => code.demands live false index
   | _, _, .loop count initial test step, live, index =>

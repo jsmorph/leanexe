@@ -29,6 +29,13 @@ inductive ResourcePrefix {World : Type} (host : Host World) (pure : PureContext 
       ResourcePrefix host pure program depth modes live (.read capacity) env world []
         ((Command.read capacity).denote pure.funs (program.funs pure.funs) env) world
         (pure.readCost depth modes live capacity env) (pure.exprFits depth capacity env)
+  | readAll {program : EffectProg pureSigs effectSigs}
+      {limit : Expr pureSigs context .word} {env : Env context}
+      {residual : Action (ResultTy.value (.pair .word .bytes)).denote}
+      (progress : Prefix host ((Command.readAll limit).denote pure.funs (program.funs pure.funs)
+        env) world trace residual final) :
+      ResourcePrefix host pure program depth modes live (.readAll limit) env world trace residual
+        final (pure.readAllCost depth modes live limit env) (pure.exprFits depth limit env)
   | exit_charge {program : EffectProg pureSigs effectSigs}
       (code : Expr pureSigs context .word) (env : Env context) (world : World) :
       ResourcePrefix host pure program depth modes live
@@ -328,7 +335,7 @@ theorem ResourcePrefix.erase {World : Type} {host : Host World} {pure : PureCont
     Prefix host (command.denote pure.funs (program.funs pure.funs) env) world trace residual final := by
   refine ResourcePrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -338,7 +345,7 @@ theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : Pure
     Prefix host ((program.funs pure.funs).get callee env) world trace residual final := by
   refine ResourceCallPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -352,7 +359,7 @@ theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : Pure
       world trace residual final := by
   refine ResourceLoopPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 def PrefixBound {World : Type} (host : Host World) (pure : PureContext pureSigs)
@@ -393,5 +400,14 @@ theorem PrefixBound.read {World : Type} {host : Host World} {pure : PureContext 
     (bounded : PrefixBound host pure program depth modes live (.read capacity) env world budget) :
     pure.readCost depth modes live capacity env ≤ budget ∧ pure.exprFits depth capacity env = true :=
   bounded _ _ _ _ _ (.read_charge program depth modes live capacity env world)
+
+theorem PrefixBound.readAll {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {limit : Expr pureSigs context .word} {env : Env context}
+    {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.readAll limit) env world budget) :
+    pure.readAllCost depth modes live limit env ≤ budget ∧
+      pure.exprFits depth limit env = true :=
+  bounded _ _ _ _ _ (.readAll (Prefix.refl _ world))
 
 end Verified.Wasi.Resource

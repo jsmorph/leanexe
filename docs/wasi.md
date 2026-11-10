@@ -11,6 +11,7 @@
 | Operation | Type | Behavior |
 |---|---|---|
 | `readSome capacity` | `UInt64 → Action ReadResult` | Calls `fd_read` once when `capacity < 2^32`, after any required allocation succeeds. |
+| `readAll limit` | `UInt64 → Action ReadResult` | Calls `fd_read` with capacity 4,096 until a read returns an errno or no bytes, or until more than `limit` bytes are held, after allocating one buffer of `limit + 4096` bytes. |
 | `writeStdoutSome bytes` | `Bytes → Action WriteResult` | Calls `fd_write` once for stdout. |
 | `writeStderrSome bytes` | `Bytes → Action WriteResult` | Calls `fd_write` once for stderr. |
 | `exit code` | `UInt64 → Action α` | Requests terminal exit with `code mod 2^32`. |
@@ -21,6 +22,8 @@ These call counts describe the compiled guest's WASI import invocations.  A host
 [The result definitions](../LeanExe/Wasi/Action.lean) give `ReadResult` the fields `errno : UInt64` and `bytes : Bytes`, and `WriteResult` the fields `errno : UInt64` and `count : UInt64`.  Zero errno means success.  A successful read may return fewer bytes than requested, and a successful write may report any count from zero through the supplied length.  The operations perform no retries.  Stream hosts report EOF through empty success.  A zero-capacity read still invokes the host once, so its empty result supplies no EOF evidence.  The abstract host relation has no separate EOF state.
 
 A read capacity of at least `2^32` returns errno 61 and empty bytes before allocation or host invocation.  A nonzero read errno returns empty bytes, and a nonzero write errno returns count zero.  The host model records committed prefixes on error or trap, so these public results do not prove zero device progress.  Returned errnos are bounded by the Preview 1 errno range, 0 through 76.
+
+`readAll limit` reads the whole standard input into one byte string for a program that needs all of its input before it computes.  [Its definition](../LeanExe/Wasi/ReadAll.lean) is a `loop` of `limit + 2` passes, each a `readSome 4096` whose bytes the loop appends to the bytes held, so `Exec`, `Prefix`, and the native interpreter give it the meaning of those reads.  A read that returns an errno ends the loop with that errno and the bytes read before it, a read that returns no bytes ends it with errno 0, and a read that brings the bytes above `limit` ends it with errno 0 and those bytes, so the result exceeds `limit` only when the input does, and then by less than 4,096 bytes.  Each pass that continues adds a byte, so the passes always suffice.  A limit of `2^32 - 4096` or more returns errno 61 and empty bytes before any allocation or read.  The compiled code allocates one buffer of `limit + 4096` bytes and gives each read the buffer's unused tail as its iovec, so the host writes each reply in place and no byte is copied.  Its allocation charge is `Bytes.allocationCost (limit + 4096)`, which depends on the limit alone, and every read has capacity 4,096.
 
 Actions use ordinary Lean `do` notation:
 
@@ -239,6 +242,8 @@ Exit always passes the low 32 bits of the source status.  [Wasmtime 44 accepts s
 tests/wasi/run.sh --foundations-only
 tests/wasi/run.sh
 ```
+
+[The readAll example](../Verified/Examples/WasiReadAll.lean) copies its standard input to its standard output through `readAll 1000000` and returns 1 when the input exceeds the limit.  [Its driver](../tests/wasi/readall-run.sh) audits the axioms of `readAll`'s proofs and the example's generated theorems, runs native cases against scripted replies, and runs the module in the Wasmtime host on inputs from files and from pipes of 0, 1, 4,095, 4,096, 4,097, 65,536, 1,000,000, 1,000,001, and 3,000,000 bytes, with a read error and a write error.
 
 [The WASI driver](../tests/wasi/run.sh) builds the universal proofs and audits their axioms.  The foundations-only mode also runs native interpreter, wrapper-code, and exit-model tests.  The full mode adds emitted-module validation and execution tests for packed bytes, literals, ownership and allocation counts, reflected callable and command modules, and the standard Wasmtime host.  [The public reflection driver](../tests/wasi/reflection-run.sh) tests generated modules against binary stream fixtures and separate control records.  [The host tests](../tests/wasi/host.sh) cover stream routing, accepted and rejected exits, low-32-bit conversion, and terminal lifecycle behavior.
 

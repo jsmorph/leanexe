@@ -74,6 +74,9 @@ theorem command_coverage {World : Type} {host : Host World} {pure : PureContext 
   | read capacity =>
     intro depth modes live env world trace outcome final execution
     exact ⟨_, _, .read program depth modes live capacity env execution⟩
+  | readAll limit =>
+    intro depth modes live env world trace outcome final execution
+    exact ⟨_, _, .readAll program depth modes live limit env execution⟩
   | write output bytes =>
     intro depth modes live env world trace outcome final execution
     exact ⟨_, _, .write execution⟩

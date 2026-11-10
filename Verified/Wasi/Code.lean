@@ -1,5 +1,6 @@
 import Verified.Wasi.CodeAnalysis
 import Verified.Wasi.Wrappers
+import Verified.Wasi.ReadAllCode
 
 namespace Verified.Wasi
 
@@ -53,6 +54,8 @@ def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Na
   | _, _, .read capacity =>
     Relocation.program (capacity.code (pool := pool) h slots base live) ++
       [.call (Wrappers.readIndex source)]
+  | _, _, .readAll limit =>
+    Relocation.program (limit.code (pool := pool) h slots base live) ++ readAllCode base
   | context, _, .write output bytes =>
     loadCode h (slots.getD bytes.index default).loc Ty.bytes.types ++
       [.call (match output with

@@ -1,5 +1,5 @@
 import Verified.Source
-import LeanExe.Wasi.Action
+import LeanExe.Wasi.ReadAll
 
 namespace Verified.Wasi
 
@@ -62,6 +62,8 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
       Command pureSigs effectSigs context signature.result
   | read (capacity : Expr pureSigs context .word) :
       Command pureSigs effectSigs context (.value (.pair .word .bytes))
+  | readAll (limit : Expr pureSigs context .word) :
+      Command pureSigs effectSigs context (.value (.pair .word .bytes))
   | write (output : Output) (bytes : Var context .bytes) :
       Command pureSigs effectSigs context (.value (.elem (.prod .word .word)))
   | exit (code : Expr pureSigs context .word) : Command pureSigs effectSigs context result
@@ -85,6 +87,9 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
       effectFuns.get callee (Env.ofFn fun i => (args i).denote pureFuns env)
   | _, _, .read capacity, env =>
       Action.bind (readSome (capacity.denote pureFuns env)) fun result =>
+        .pure (result.errno, result.bytes)
+  | _, _, .readAll limit, env =>
+      Action.bind (LeanExe.Wasi.readAll (limit.denote pureFuns env)) fun result =>
         .pure (result.errno, result.bytes)
   | _, _, .write output bytes, env =>
       Action.bind (match output with
