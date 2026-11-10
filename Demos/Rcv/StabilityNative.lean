@@ -106,7 +106,8 @@ def tieOf (prev : Round) : Bool :=
   | _ => false
 
 def checkCounts (name : String) (interp : Interp) (order : List Nat)
-    (ballots : List (List UInt64)) (C : List Nat) (smallSets : Bool) (s : Stats) : Stats := Id.run do
+    (ballots : List (List UInt64)) (C : List Nat) (smallSets : Bool) (s : Stats) : Stats :=
+    Id.run do
   let cnt := countFrom interp order ballots C
   let sgl := singleFrom interp order ballots C
   let cty := countyFrom interp order ballots C
@@ -210,7 +211,8 @@ def allPairs (C : List Nat) : List (List Nat × List Nat) :=
 /-- The pairs of continuing sets of the rounds of the three counts with `S' ⊆ S`. -/
 def roundPairs (interp : Interp) (order : List Nat) (ballots : List (List UInt64)) (C : List Nat) :
     List (List Nat × List Nat) :=
-  let sets := ((countFrom interp order ballots C).rounds ++ (singleFrom interp order ballots C).rounds ++
+  let sets := ((countFrom interp order ballots C).rounds ++
+    (singleFrom interp order ballots C).rounds ++
     (countyFrom interp order ballots C).rounds).map setOf
   sets.flatMap fun S : List Nat => (sets.filter fun S' : List Nat => S'.all (· ∈ S)).map (S, ·)
 
@@ -221,7 +223,8 @@ def dedup (bs : List (List UInt64)) : List (List UInt64) :=
 
 def wordsOf (bs : ByteArray) : List UInt64 :=
   (List.range (bs.size / 8)).map fun j : Nat =>
-    (List.range 8).foldr (fun (b : Nat) (acc : UInt64) => (acc <<< 8) ||| (bs.get! (8 * j + b)).toUInt64) 0
+    (List.range 8).foldr
+      (fun (b : Nat) (acc : UInt64) => (acc <<< 8) ||| (bs.get! (8 * j + b)).toUInt64) 0
 
 structure Input where
   kinds : List Kind
@@ -284,7 +287,8 @@ def randomInput (g : Gen) (maxN : Nat) : Input × Gen := Id.run do
       let (c, g4') := g.next n
       g := g4'
       ps := ps ++ [if r < 8 then 0 else if r < 36 then bit i
-        else if r < 39 then (if c + 1 == i then bit i else bit i ||| bit (c + 1)) else unnamedOvervote]
+        else if r < 39 then (if c + 1 == i then bit i else bit i ||| bit (c + 1))
+        else unnamedOvervote]
     ballots := ps :: ballots
   return ({ kinds, order, ballots }, g)
 
@@ -330,13 +334,15 @@ def alphabet : List (List UInt64) :=
   let rankings : List (List Nat) :=
     [[1], [2], [3], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2],
       [1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
-  [[0, 0, 0], [unnamedOvervote, 0, 0], [bit 1, bit 2 ||| bit 3, 0], [bit 4, 0, 0], [bit 4, bit 1, 0]] ++
+  [[0, 0, 0], [unnamedOvervote, 0, 0], [bit 1, bit 2 ||| bit 3, 0], [bit 4, 0, 0],
+      [bit 4, bit 1, 0]] ++
     rankings.map fun r : List Nat => (r.map bit) ++ List.replicate (3 - r.length) 0
 
 /-- The multisets of `size` elements of `lo, …, m - 1`, as nondecreasing lists. -/
 def multisets (m : Nat) : Nat → Nat → List (List Nat)
   | 0, _ => [[]]
-  | size + 1, lo => (List.range' lo (m - lo)).flatMap fun i : Nat => (multisets m size i).map (i :: ·)
+  | size + 1, lo =>
+    (List.range' lo (m - lo)).flatMap fun i : Nat => (multisets m size i).map (i :: ·)
 
 /-! ## Planted statements -/
 
@@ -368,7 +374,8 @@ def printStats (label : String) (s : Stats) : IO UInt32 := do
   return if s.failures == 0 then 0 else 1
 
 def roundsText (k : Count) : List UInt8 :=
-  text (((k.rounds.zipIdx 1).flatMap fun p : Round × Nat => roundLines p.2 p.1) ++ [winnerLine k.winner])
+  text (((k.rounds.zipIdx 1).flatMap fun p : Round × Nat => roundLines p.2 p.1) ++
+    [winnerLine k.winner])
 
 def stem (path : String) : String :=
   let base := (path.splitOn "/").getLast!
@@ -455,7 +462,8 @@ def main (args : List String) : IO UInt32 := do
         | some (.batch B) =>
           for j in List.range sgl.rounds.length do
             if setOf sgl.rounds[j]! == setOf rd then
-              if ((sgl.rounds.drop j).take B.length).any fun sj : Round => sj.elimination == none then
+              if ((sgl.rounds.drop j).take B.length).any
+                  fun sj : Round => sj.elimination == none then
                 t10c := t10c + 1
         | _ => pure ()
       match cnt.winner with
@@ -470,7 +478,8 @@ def main (args : List String) : IO UInt32 := do
       s!"T8 with an overvote of continuing marks only fails {t8} pairs")
     return if t10 == 0 || t10c == 0 || t11c == 0 || t8 == 0 then 1 else 0
   | _ =>
-    IO.eprintln ("usage: rcv-stability rounds MODE OUT FILE... | check FILE... | random SEED COUNT | " ++
+    IO.eprintln ("usage: rcv-stability rounds MODE OUT FILE... | check FILE... | " ++
+      "random SEED COUNT | " ++
       "general SEED COUNT | exhaustive | planted SEED COUNT")
     return 2
 

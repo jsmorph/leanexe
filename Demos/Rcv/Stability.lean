@@ -276,7 +276,8 @@ theorem votesFor_mono {interp : Interp} (hS : Stable interp) {S S' : List Nat} (
 
 theorem inactive_mono {interp : Interp} (hS : Stable interp) {S S' : List Nat} (hsub : S' ⊆ S)
     (ballots : List (List UInt64)) (r : Reason) :
-    (ballots.map (interp S)).count (.inactive r) ≤ (ballots.map (interp S')).count (.inactive r) := by
+    (ballots.map (interp S)).count (.inactive r) ≤
+      (ballots.map (interp S')).count (.inactive r) := by
   unfold List.count
   rw [List.countP_map, List.countP_map]
   apply List.countP_mono_left

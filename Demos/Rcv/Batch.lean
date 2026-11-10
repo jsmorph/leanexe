@@ -178,7 +178,8 @@ theorem batch_holder_rest (hI : Closed interp) (hS : Stable interp) {D : List Na
 
 /-- Rule 4 against a set between `C` minus the batch and `C` that holds a member of the batch
 eliminates one member of the batch. -/
-theorem batch_fewest (hI : Closed interp) (hS : Stable interp) {order D : List Nat} {e : Elimination}
+theorem batch_fewest (hI : Closed interp) (hS : Stable interp) {order D : List Nat}
+    {e : Elimination}
     (hDC : D ⊆ C) (hCD : ∀ i ∈ C, i ∉ D → i ∈ B) {b : Nat} (hbB : b ∈ B) (hbD : b ∈ D)
     (h : lowestDecision order (ruleTied (tally interp D ballots).votes) = .eliminate e) :
     ∃ z ∈ B, z ∈ D ∧ e.eliminated = [z] := by
