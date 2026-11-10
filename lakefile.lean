@@ -248,6 +248,11 @@ lean_exe «rcv-stability» where
 lean_exe «rcv-properties» where
   root := `Demos.Rcv.PropertiesNative
 
+-- The Maine specification on canonical ballot files and the native tests of its theorems'
+-- statements (Demos/Rcv/Maine/Native.lean); not a default target.
+lean_exe «rcv-maine» where
+  root := `Demos.Rcv.Maine.Native
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
