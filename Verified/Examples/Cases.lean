@@ -13,6 +13,8 @@ import TestSupport.Energy.Cases
 import TestSupport.OrderBook.Cases
 import TestSupport.Rcv.Cases
 import TestSupport.Rcv.MaineCases
+import TestSupport.Conjunction.Cases
+import TestSupport.Sgp4.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -814,6 +816,8 @@ def main : IO Unit := do
   TestSupport.OrderBook.Cases.cases
   TestSupport.Rcv.Cases.cases
   TestSupport.Rcv.MaineCases.cases
+  TestSupport.Conjunction.Cases.cases
+  TestSupport.Sgp4.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

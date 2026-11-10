@@ -1,0 +1,34 @@
+{
+  "id": "kernel-evaluated-definitions",
+  "goals": [
+    "decide +kernel on a term that runs a code generator, an encoder, or an iteration",
+    "a kernel check whose time grows faster than the size of its input",
+    "a lookup of a function's data by a match on a dependent list and a variable index",
+    "LeanExe.loop or Nat.fold with a large literal count under decide +kernel",
+    "ByteArray equality by decide +kernel",
+    "the byte theorem of a verified_compile program with large functions"
+  ],
+  "modules": [
+    "Verified.Source",
+    "Verified.Bound",
+    "Verified.Reflect.Definitions",
+    "Library.Random.ParkMiller.Period",
+    "LeanExe.Pipeline.FileBytes",
+    "LeanExe.Encoding.Completeness.Writes"
+  ],
+  "declarations": [
+    "Verified.Expr.uses",
+    "Verified.Expr.useMask",
+    "Verified.Expr.usesFast",
+    "Verified.Expr.usesFast_eq",
+    "Verified.Flags.params",
+    "Verified.Flags.result",
+    "Verified.Reflect.evalModule",
+    "Library.Random.ParkMiller.advance_eq_iterate",
+    "LeanExe.Pipeline.encode_eq_of_toList",
+    "Wasm.Encoding.encode_of_parts"
+  ],
+  "examples": [
+    "Library.Random.ParkMiller.check_value"
+  ]
+}

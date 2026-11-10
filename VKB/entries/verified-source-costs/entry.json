@@ -8,7 +8,8 @@
     "a match alternative that names the matched value",
     "a generated bound that grows with the passes of a loop that builds a new array at each pass",
     "(deterministic) timeout at a verified_compile command of a large program",
-    "a call's result or an expression that the code computes at each of its occurrences"
+    "a call's result or an expression that the code computes at each of its occurrences",
+    "the reflector's simp runs out of heartbeats on the condition of a tail loop whose sides compile alone"
   ],
   "modules": [
     "Verified.Reflect.Modes",
@@ -19,7 +20,8 @@
     "Demos.Euler.BufferedSpec",
     "Demos.Euler.VerifiedCall",
     "Demos.OrderBook.Verified",
-    "Demos.Energy.Loop"
+    "Demos.Energy.Loop",
+    "Library.HashTables.LinearProbing.Compiled"
   ],
   "declarations": [
     "Verified.Expr.paramChoice",
@@ -32,7 +34,9 @@
     "Verified.Expr.allocs",
     "Verified.Var.ownedCost",
     "Demos.Euler.Buffered.sweepInto",
-    "Demos.Euler.Buffered.tryInto"
+    "Demos.Euler.Buffered.tryInto",
+    "Lean.Elab.Command.liftTermElabM",
+    "Library.HashTables.LinearProbing.gap"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -45,6 +49,7 @@
     "Demos.Euler.Buffered.solve_eq",
     "Demos.OrderBook.Program.fillArrays",
     "Demos.OrderBook.Verified.compiled.run.trapFree",
-    "Demos.Energy.gwTickWith"
+    "Demos.Energy.gwTickWith",
+    "Library.HashTables.LinearProbing.close"
   ]
 }

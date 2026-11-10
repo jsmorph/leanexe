@@ -6,12 +6,14 @@
     "maximum recursion depth has been reached inside try or first",
     "split or ite_self does not apply to @ite α c d a b with an instance d of its own",
     "a conditional simp lemma that does not rewrite",
-    "repeat' split over a statement with several copies of one term"
+    "repeat' split over a statement with several copies of one term",
+    "tauto exhausts the heartbeats of a declaration whose context holds premises p → q with a decidable p"
   ],
   "modules": [
     "Demos.OrderBook.Bound",
     "Demos.OrderBook.ProcessCharges",
-    "LeanExe.Requests.Reads"
+    "LeanExe.Requests.Reads",
+    "Verified.AlignedTailBody"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -24,7 +26,10 @@
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
-    "LeanExe.Requests.frameTick_cases"
+    "LeanExe.Requests.frameTick_cases",
+    "Verified.tail_ite_specX",
+    "Verified.tail_let_specX",
+    "Verified.tail_letPair_specX"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

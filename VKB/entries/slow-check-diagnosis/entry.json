@@ -1,0 +1,31 @@
+{
+  "id": "slow-check-diagnosis",
+  "goals": [
+    "a Lean check that stops at its timeout without a diagnostic",
+    "(kernel) deep recursion detected",
+    "(kernel) deterministic timeout",
+    "(deterministic) timeout at whnf or isDefEq",
+    "maximum recursion depth has been reached",
+    "a module or a declaration that exhausts its memory",
+    "a declaration that passes with set_option debug.skipKernelTC true and fails without it",
+    "the cause of a check that takes much longer than comparable checks"
+  ],
+  "modules": [
+    "Lean.AddDecl",
+    "Init.System.IO",
+    "Library.Random.ParkMiller.Period",
+    "Library.Numerics.Float64.Bessel.BesselYnTheorem",
+    "Library.Numerics.Float64.Lgamma.LgammaSign",
+    "LeanExe.A64.Isla.Check",
+    "LeanExe.A64.Isla.Walk"
+  ],
+  "declarations": [
+    "Lean.addDecl",
+    "IO.FS.withFile"
+  ],
+  "examples": [
+    "Library.Random.ParkMiller.check_value",
+    "Library.Numerics.Float64.Bessel.BesselYnTheorem.yn_eq",
+    "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf"
+  ]
+}

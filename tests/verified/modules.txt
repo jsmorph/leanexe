@@ -70,6 +70,10 @@ Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat
 Library.Numerics.Decimal.Int64Text.Compiled:Library.Numerics.Decimal.Int64Text.compiled.module:int64Text
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
+Demos.Conjunction.Verified:Demos.Conjunction.compiled.module:conjunction
+Demos.Sgp4.Verified:Demos.Sgp4.compiled.module:sgp4
+Demos.Sgp4.BoxVerified:Demos.Sgp4.boxCompiled.module:sgp4box
+Demos.Sgp4.OmmVerified:Demos.Sgp4.Omm.compiled.module:sgp4omm
 Demos.Energy.Verified:Demos.Energy.Verified.compiled.module:energy
 Demos.OrderBook.Verified:Demos.OrderBook.Verified.compiled.module:orderbook
 Demos.Rcv.Compiled:Demos.Rcv.Program.compiled.module:rcvCount
@@ -115,6 +119,7 @@ Library.Numerics.LinearAlgebra.Float64.Compiled:Library.Numerics.LinearAlgebra.F
 Library.Numerics.LinearAlgebra.Binary32.Compiled:Library.Numerics.LinearAlgebra.Binary32.compiled.module:liblinalg32
 Library.Numerics.Arithmetic.CeilSqrt.Compiled:Library.Numerics.Arithmetic.CeilSqrt.compiled.module:libceilsqrt
 Library.Numerics.Bounds.Compiled:Library.Numerics.Bounds.compiled.module:libbounds
+Library.Numerics.Interval.Compiled:Library.Numerics.Interval.compiled.module:libinterval
 Library.Numerics.Limiters.Minmod.Compiled:Library.Numerics.Limiters.Minmod.compiled.module:libminmod
 Library.Trees.WordTree.Compiled:Library.Trees.WordTree.compiled.module:libtrees
 Library.Trees.Search.Compiled:Library.Trees.Search.compiled.module:treeSearch

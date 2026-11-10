@@ -13,6 +13,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Closed computations](entries/closed-computations/README.md) | Proves constants, table entries, exports, and other closed facts by kernel evaluation. |
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
 | [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
+| [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
 | [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
@@ -27,6 +28,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
+| [Interval inclusion proofs](entries/interval-enclosures/README.md) | Proves that an accepted result of an interval program contains a real quantity, with enclosures of monotone library functions and of integrals over panels. |
+| [One source for a real formula and its interval program](entries/enclosure-def/README.md) | Declares a real function, its interval program, and the inclusion theorem from one body with `enclosure_def`, and proves what the statuses of the surrounding program imply. |
 | [Accuracy against real functions](entries/real-function-accuracy/README.md) | Bounds a binary64 function's distance from the rounding of a Mathlib function and transfers the bound to the module. |
 | [Kernel checks over ℚ](entries/kernel-rational-checks/README.md) | Proves polynomial, series, and table bounds by evaluation in parts. |
 | [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |
@@ -76,6 +79,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
 | [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
+| [Definitions that the kernel evaluates](entries/kernel-evaluated-definitions/README.md) | Gives an evaluated definition a form that computes each value once, or evaluates it natively and has the kernel check the literal. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |
 | [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |
 | [Array heaps](entries/heap-sift-invariant/README.md) | Proves sift-down, sift-up, heapify, and removal through a heap order from a node on. |
