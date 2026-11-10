@@ -209,6 +209,10 @@ lean_exe «verified-cases-rcv» where
   srcDir := "tests"
   root := `TestSupport.Rcv.CasesMain
 
+lean_exe «verified-cases-rcv-maine» where
+  srcDir := "tests"
+  root := `TestSupport.Rcv.MaineCasesMain
+
 lean_exe «rcv-bound» where
   srcDir := "tests"
   root := `TestSupport.Rcv.BoundMain

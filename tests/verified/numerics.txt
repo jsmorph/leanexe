@@ -35,6 +35,7 @@ slew:Demos.Slew.Verified:Demos/Slew/File.lean
 energy:Demos.Energy.Verified:Demos/Energy/File.lean
 rcvCount:Demos.Rcv.Compiled:Demos/Rcv/File.lean
 rcvTabulate:Demos.Rcv.Tabulate:Demos/Rcv/TabulateFile.lean
+rcvMaine:Demos.Rcv.Maine.Tabulate:Demos/Rcv/Maine/TabulateFile.lean
 poly:Verified.Examples.Poly:Verified/Examples/PolyFile.lean
 mix:Verified.Examples.Mix:Verified/Examples/MixFile.lean
 lets:Verified.Examples.Lets:Verified/Examples/LetsFile.lean
