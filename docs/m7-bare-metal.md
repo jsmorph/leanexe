@@ -210,14 +210,14 @@ The kernel's check of the gateway's image as one declaration does not fit in 16 
 | `echo.bin` | `usart3Tick` from 3, on the board | 4,406 | 4.9 s | 5.15 GB |
 | `gateway.bin` | `gwTickUsart3` from `gwInit`, on the board: `main` of 205 units, 32 functions of 23,750 units, and 242 bytes of stubs and `udivmod64` | 96,998 | 1 min 31 s, in parts | 12.36 GB |
 | `area.bin` | The setup of the area of the CRC-32 step's module, the board's initialization, and the echo of `usart3Tick` with the stack's limit at the area's end, on the board | 7,550 | 9.3 s | 6.04 GB |
-| `crc.bin` | `crcUsart3Tick` from `crcInit` after the setup of its area, on the board: the setup of 786 instructions, the initialization, and `main` at `0x00200FF0` | 8,722 | 10.3 s | 5.71 GB |
+| `crc.bin` | `crcUsart3Tick` from `crcInit` after the setup of its area, on the board: the setup of 786 instructions, the initialization, and `main` at `0x00200FF0` | 8,722 | 9.4 s | 6.24 GB |
 | `echo-cmsdk-qemu.bin` | `cmsdkTick` from 3, on QEMU | 3,690 | 4.7 s | 5.09 GB |
 | `gateway-cmsdk-qemu.bin` | `gwTick` from `gwInit`, on QEMU | 96,282 | 1 min 34 s, in parts | 12.32 GB |
-| `crc-cmsdk-qemu.bin` | `crcCmsdkTick` from `crcInit` after the setup of its area, on QEMU | 8,006 | 9.5 s | 5.66 GB |
+| `crc-cmsdk-qemu.bin` | `crcCmsdkTick` from `crcInit` after the setup of its area, on QEMU | 8,006 | 10.2 s | 6.16 GB |
 | The code images of `m7-image.sh` | The programs of `usart3Tick` and `gwTickUsart3` without a head | 3,470 and 96,062 | 4.4 s, and 1 min 32 s in parts | 5.03 and 12.32 GB |
 | `crc-usart3.bin` of `m7-image.sh` | The program of `crcUsart3Tick` from `crcInit` without a head, for which `crc_step` states the call of the step | 4,642 | 5.5 s | 5.20 GB |
 | `sha-usart3.bin` of `m7-image.sh` | The program of `shaUsart3Tick` from `shaInit` without a head, for which `sha_step` states the call of the step | 41,850 | 33 s | 11.17 GB |
-| `sha.bin` | `shaUsart3Tick` from `shaInit` after the setup of its area, on the board | 43,638 | 36 s | 11.94 GB |
+| `sha.bin` | `shaUsart3Tick` from `shaInit` after the setup of its area, on the board | 43,638 | 33 s | 12.66 GB |
 | `sha-ovrdis.bin` | `shaUsart3Tick` from `shaInit` after the setup of its area, with the initialization `initOvrdis`, on the board | 43,658 | 41 s | 12.70 GB |
 | `sha-cmsdk-qemu.bin` | `shaCmsdkTick` from `shaInit` after the setup of its area, on QEMU | 42,922 | 41 s | 12.52 GB |
 | `signed.bin` | `sgUsart3Tick` from `sgInit`, on the board | 5,586 | 6.0 s | 5.31 GB |
