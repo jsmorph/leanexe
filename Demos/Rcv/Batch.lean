@@ -12,7 +12,11 @@ batch the single count eliminates one member of the batch per round.
 continue in `D` have fewer votes against `D` than every other member of `D` (`batch_lt`), so rule 4
 eliminates one of them (`batch_fewest`), no member of the batch holds a majority against `D`
 (`batch_holder`), and a candidate that does holds one against `C` minus the batch
-(`batch_holder_rest`).
+(`batch_holder_rest`).  `walk` follows a count whose eliminations are rule 4's, the single count's
+or the county count's, from such a set through the batch, and `batch_trace` compares the traces of
+the count and of the single count, from which `run_batch_winner`, `run_batch_rounds`, and
+`run_batch_members` state T10 for every such interpretation and `batch_winner`, `batch_rounds`, and
+`batch_members` for the count of the requirements.
 -/
 
 namespace Demos.Rcv.Batch

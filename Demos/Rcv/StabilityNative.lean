@@ -9,13 +9,14 @@ definitions and evaluates it on contests read from contest-word files, on random
 exhaustive set of small contests, and on random interpretations that satisfy T8.  The planted
 checks evaluate statements known to be false, so that a run shows that the checks can fail.
 
-`rcv-stability rounds MODE OUT FILE...` writes, for each contest-word file `NAME.words`, the round
-lines and the winner line of the count, the single count, or the county count (`MODE` `charter`,
-`single`, or `county`) to `OUT/NAME.MODE`.  `rcv-stability check FILE...` evaluates the statements
-on each file's contest, `random SEED COUNT` on random contests, `general SEED COUNT` on random
-interpretations that satisfy T8, `exhaustive` on every multiset of up to six ballots of a small
-alphabet under two orders, and `planted SEED COUNT` evaluates the planted statements on random
-contests.  Each mode prints its counts, and the exit status is 1 if a statement fails.
+`rcv-stability rounds MODE OUT FILE...` writes, for each contest-word file `NAME.words` of a valid
+contest, the round lines and the winner line of the count, the single count, or the county count
+(`MODE` `charter`, `single`, or `county`) to `OUT/NAME.MODE`.  `rcv-stability check FILE...`
+evaluates the statements on each file's contest, `random SEED COUNT` on random contests, `general
+SEED COUNT` on random interpretations that satisfy T8, `exhaustive` on every multiset of up to six
+ballots of a small alphabet under two orders, and `planted SEED COUNT` evaluates the planted
+statements on random contests.  `rounds` and `check` skip the files whose words are not a valid
+contest.  Each mode prints its counts, and the exit status is 1 if a statement fails.
 -/
 
 namespace Demos.Rcv.StabilityNative
@@ -231,9 +232,13 @@ structure Input where
   order : List Nat
   ballots : List (List UInt64)
 
-def readInput (path : String) : IO Input := do
-  let d := readWords (wordsOf (← IO.FS.readBinFile path))
-  return { kinds := d.kinds.map kindOfCode, order := d.order, ballots := d.ballots }
+/-- The contest of a file of contest words, or none when the words are not a valid contest. -/
+def readInput (path : String) : IO (Option Input) := do
+  let ws := wordsOf (← IO.FS.readBinFile path)
+  let d := readWords ws
+  if decide (d.Valid ws.length) then
+    return some { kinds := d.kinds.map kindOfCode, order := d.order, ballots := d.ballots }
+  else return none
 
 /-- A generator of 64-bit words, the multiplier and increment of Knuth's MMIX. -/
 structure Gen where
@@ -384,26 +389,33 @@ def stem (path : String) : String :=
 def main (args : List String) : IO UInt32 := do
   match args with
   | "rounds" :: mode :: out :: files =>
+    let mut skipped : Nat := 0
     for path in files do
-      let x ← readInput path
-      let k := match mode with
-        | "single" => singleCount x.kinds x.order x.ballots
-        | "county" => countyCount x.kinds x.order x.ballots
-        | _ => count x.kinds x.order x.ballots
-      IO.FS.writeBinFile s!"{out}/{stem path}.{mode}" ⟨(roundsText k).toArray⟩
-    IO.println s!"{files.length} files"
+      match ← readInput path with
+      | none => skipped := skipped + 1
+      | some x =>
+        let k := match mode with
+          | "single" => singleCount x.kinds x.order x.ballots
+          | "county" => countyCount x.kinds x.order x.ballots
+          | _ => count x.kinds x.order x.ballots
+        IO.FS.writeBinFile s!"{out}/{stem path}.{mode}" ⟨(roundsText k).toArray⟩
+    IO.println s!"{files.length - skipped} files, {skipped} invalid arrays skipped"
     return 0
   | "check" :: files =>
     let mut s : Stats := {}
+    let mut skipped : Nat := 0
     for path in files do
-      let x ← readInput path
-      let K := countedSet x.kinds
-      let interp := interpret x.kinds
-      let small := K.length ≤ 5
-      s := checkCounts path interp x.order x.ballots K small s
-      let distinct := dedup x.ballots
-      let pairs := if small then allPairs K else roundPairs interp x.order x.ballots K
-      s := checkPairs path interp distinct pairs s
+      match ← readInput path with
+      | none => skipped := skipped + 1
+      | some x =>
+        let K := countedSet x.kinds
+        let interp := interpret x.kinds
+        let small := K.length ≤ 5
+        s := checkCounts path interp x.order x.ballots K small s
+        let distinct := dedup x.ballots
+        let pairs := if small then allPairs K else roundPairs interp x.order x.ballots K
+        s := checkPairs path interp distinct pairs s
+    IO.println s!"{skipped} invalid arrays skipped"
     printStats "check" s
   | ["random", seed, n] =>
     let mut g : Gen := ⟨seed.toNat!.toUInt64⟩

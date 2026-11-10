@@ -8,6 +8,9 @@ consecutive rounds of the count.  `Closed` states that an interpretation counts 
 member of the continuing set, and `Stable` states both statements of T8 for an interpretation: the
 premises under which T10 holds for every interpretation, and from which `tally_follows` and
 `majority_subset` derive the inequalities between the counts of a set and of a subset.
+`trace_unique`, `trace_cons`, and `trace_suffix` hold for `Demos.Rcv.Rounds.Trace` under every
+decision: a count from a set has one trace, its first round holds the set's counts, and its rounds
+from any round on form the trace from that round's continuing set.
 -/
 
 namespace Demos.Rcv.Stability

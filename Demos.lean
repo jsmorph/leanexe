@@ -80,6 +80,7 @@ import Demos.Rcv.Rounds
 import Demos.Rcv.Spec
 import Demos.Rcv.Stability
 import Demos.Rcv.Variants
+import Demos.Rcv.Winner
 import Demos.Slew.Cost
 import Demos.Slew.Flat
 import Demos.Slew.NanFree
