@@ -16,7 +16,7 @@
 | 8. Output | One line-oriented text format printed by the proved printer, unverified scripts to convert or compare, and inactive reasons defined so that each official category is a sum | [The report](requirements.md#the-report) and the reason table, where Blanks is `blank` plus `uncounted` |
 | 9. Theorems | The stability lemma, the two-part batch theorem for strict batch rules, majority with the tied case, the majority-holder theorem, the majority and Condorcet-loser criteria, later-no-harm, and a proved counterexample to monotonicity, each tested on a model before its proof | T3, T8, T10 to T15, and the plan's rule that each theorem is tested on a model first |
 | 10. Order | Five increments, each reaching bytes and theorems | [The plan](requirements.md#plan) |
-| 11. RCTab | A pinned test tool, v2.1.0, in increment 5, with each contest's configuration committed and a table here that maps settings to the charter | Increment 5 of the plan.  [The corpus's RCTab section](../../tests/rcv/README.md#rctab) names the pinned release and the configurations, maps each setting to the provision it expresses, lists the provisions that no setting expresses, and reports the first comparisons |
+| 11. RCTab | A pinned test tool, v2.1.0, in increment 5, with each contest's configuration committed and a table that maps settings to the charter | Increment 5 of the plan.  [The corpus's RCTab section](../../tests/rcv/README.md#rctab) names the pinned release and the configurations, maps each setting to the provision it expresses, lists the provisions that no setting expresses, and reports the first comparisons |
 
 ## Readings of the governing texts
 
