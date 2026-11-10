@@ -215,6 +215,12 @@ theorem pc_eq (m1 m2 c11 c12 c22 r : ℝ) (hc : 0 < c11) (hd : 0 < det c11 c12 c
       fun x => (2 * √(2 * π * c11))⁻¹ * core m1 m2 c11 c12 c22 r x from funext key,
     intervalIntegral.integral_const_mul]
 
+theorem pc_nonneg (m1 m2 c11 c12 c22 r : ℝ) : 0 ≤ pc m1 m2 c11 c12 c22 r := by
+  unfold pc
+  refine integral_nonneg fun p => ?_
+  unfold density
+  positivity
+
 /-- The integral over an interval of a function between `L` and `U` there is the width times a
 number between `L` and `U`. -/
 theorem integral_eq_width_mul {f : ℝ → ℝ} {a b L U : ℝ} (hab : a ≤ b)
@@ -240,6 +246,7 @@ theorem integral_eq_width_mul {f : ℝ → ℝ} {a b L U : ℝ} (hab : a ≤ b)
     · field_simp
 
 #print axioms pc_eq
+#print axioms pc_nonneg
 #print axioms integral_eq_width_mul
 
 end Demos.Conjunction.Model
