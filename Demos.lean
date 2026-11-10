@@ -76,6 +76,9 @@ import Demos.OrderBook.Program
 import Demos.OrderBook.Refinement
 import Demos.OrderBook.Samples
 import Demos.OrderBook.Theorems
+import Demos.Sgp4.Flat
+import Demos.Sgp4.Kepler
+import Demos.Sgp4.Program
 import Demos.Slew.Cost
 import Demos.Slew.Flat
 import Demos.Slew.NanFree
