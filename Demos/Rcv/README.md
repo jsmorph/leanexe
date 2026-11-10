@@ -257,7 +257,7 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 | `readContest_callSpec`, `printReport_callSpec`, `printError_callSpec` | [`TabulateCall.lean`](TabulateCall.lean) | Functions 47, 60, and 62 compute `readResult` of the buffer's bytes, `printReport`, and `printError` |
 | `Demos.Rcv.TabulateProgram.exports` | [`Tabulate.lean`](Tabulate.lean) | The exports `count`, `readContest`, `printReport`, `printError`, and `tabulate` are functions 22, 47, 60, 62, and 63 |
 
-`tabulate_eq` follows the two results of the reader.  For a malformed file `read_error_lt` bounds the line number below `2 ^ 64`, and `printError_eq` gives the error report.  For a well-formed file, T2(b) gives the structure `c` whose writing is the file, `countWords_contestWords` equates the count of the reader's words with the result words of `countContest c`, `Demos.Rcv.Refine.count_eq` equates the program's count with the specification's, and `printReport_eq` prints `report c`, whose length `report_length_lt` bounds below `2 ^ 64` for a file of fewer than `2 ^ 32` bytes.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), so the call theorem covers every buffer.  The bound `compiled.tabulate.bound` is the generated one, and no theorem gives it a closed form.
+`tabulate_eq` follows the two results of the reader.  For a malformed file `read_error_lt` bounds the line number below `2 ^ 64`, and `printError_eq` gives the error report.  For a well-formed file, T2(b) gives the structure `c` whose writing is the file, `countWords_contestWords` equates the count of the reader's words with the result words of `countContest c`, `Demos.Rcv.Refine.count_eq` equates the program's count with the specification's, and `printReport_eq` prints `report c`, whose length `report_length_lt` bounds below `2 ^ 64` for a file of fewer than `2 ^ 32` bytes.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), so the call theorem covers every buffer.  The bound `compiled.tabulate.bound` is the generated one, and `tabulate_bound` of [`TabulateBound.lean`](TabulateBound.lean) closes it at `80 L + 33,702,909` bytes for a file of `L < 2 ^ 32` bytes.
 
 ## Testing the tabulator
 
@@ -296,4 +296,33 @@ verified: passed 86 failed 0
 rcvTabulate: 64 of 64 functions, 64 of 64 exports
 rcvTabulate: the clightgen program matches the translation
 native verified: passed 86 failed 0
+```
+
+## The browser page
+
+[The recount page](../../tests/web/rcv/index.html), which `uv run tests/web/serve.py` serves at http://127.0.0.1:8000/rcv/, recounts a canonical file that the reader chooses on their computer.  The browser reads the file with the File API and sends nothing to the server, and the page shows the report's bytes as text, with a link that saves them, beside the SHA-256 of the module that it loaded.  [`tabulate.js`](../../tests/web/rcv/tabulate.js) calls the export `tabulate` as `tabulate_callSpec` requires.  For each file it creates a fresh instance of the module, whose store the generated `compiled.initial` and `Verified.Ready.initial` prove ready.  It calls `alloc` with the file's length, writes the file's bytes into the block, passes the block's root and the length to `tabulate`, and copies the bytes at the root and the length that the call returns.
+
+The premise of the call theorem bounds the allocator's `top`, which the module does not export.  `top` lies inside the memory (`Heap.At`), and `alloc` raises it by at most 48 bytes and a block of `allocSize len` bytes (`Heap.allocate_top`), so the premise holds when the sum of the memory's size, `48 + allocSize len`, and the bound is at most 65,535 pages.  The page takes the bound `80 L + 33,702,909` of `tabulate_bound` for a file of `L` bytes, checks the sum before `alloc`, and grows the memory by the room it needs, so that neither `alloc` nor `tabulate` grows the memory.  Talos grows memory whenever the cap allows, while a browser may refuse, and the growth before the call turns such a refusal into a refusal of the file.  From the fresh instance's 16 pages, the cap admits files of up to 52,594,447 bytes, and the largest file of the corpus, 4,696,262 bytes, needs 414,100,181 bytes of room.
+
+The page's JavaScript lies outside the theorems, as the requirements' list of what lies outside them states.  It is trusted to create the instance, to check the room, to place the file's bytes, and to copy the report, and the browser's engine is trusted to agree with Talos's semantics, as [the trusted base](../../docs/trusted-base.md#wasm-webassembly-modules-of-the-verified-compiler) states for every host.  The page decodes the report as UTF-8 for display, and the saved file holds the report's bytes.
+
+[`tests/rcv/page.mjs`](../../tests/rcv/page.mjs) runs `tabulate.js` under Node on canonical files, with the page's bound, and requires each report to equal the reference's.  The executable `rcv-bound` of [`BoundMain.lean`](../../tests/TestSupport/Rcv/BoundMain.lean) prints each file's `compiled.tabulate.bound` in native Lean, and with `--bounds` the script requires the page's bound to be at least that value.  On the 632 edge files, the 93 files of the reader's edge cases, and the 19 contests of the corpus, the reports equal the reference's.  The page's bound is at least the generated bound on the 725 edge files, and the largest generated bound is 2,178,064 bytes, for a file of 61,449 bytes whose bound on the page is 38,618,829 bytes.  Native Lean's evaluation of the generated bound grows faster than the file: it takes a few seconds for a file of 61,449 bytes, and it had not finished the corpus's 3,312,770-byte file after 15 minutes, so the comparison leaves out the corpus.  [The recount page's description](../../tests/web/README.md#oakland-rcv-recount-rcv) gives the results of the page in headless Chromium.
+
+```sh
+uv run tests/rcv/edges.py
+uv run tests/rcv/reader_edges.py
+uv run tests/rcv/check.py
+tools/leanrun --timeout 60m lake build rcv-bound
+tools/leanrun --timeout 60m sh -c \
+  '.lake/build/bin/rcv-bound tmp/rcv-edges/*.rcv tmp/rcv-reader/*.rcv > tmp/rcv-bounds.txt'
+node tests/rcv/page.mjs --bounds tmp/rcv-bounds.txt tmp/rcv-edges tmp/rcv-reader \
+  tmp/rcv-data/canonical
+```
+
+```
+build/verified/rcvTabulate.wasm: SHA-256 769a3ba4114421d701f57d3fa31ffe9d8661d7fcf6c159e0fb206063e7c90dbc
+tmp/rcv-edges: 632 files, 283 well-formed, 349 malformed, largest bound 38618829 bytes
+tmp/rcv-reader: 93 files, 2 well-formed, 91 malformed, largest bound 33734909 bytes
+tmp/rcv-data/canonical: 19 files, 19 well-formed, 0 malformed, largest bound 409403869 bytes
+0 files refused or with a disagreement
 ```

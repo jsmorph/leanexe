@@ -209,6 +209,10 @@ lean_exe «verified-cases-rcv» where
   srcDir := "tests"
   root := `TestSupport.Rcv.CasesMain
 
+lean_exe «rcv-bound» where
+  srcDir := "tests"
+  root := `TestSupport.Rcv.BoundMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where

@@ -1,10 +1,13 @@
-# WebGPU pages
+# Browser pages
 
 [`tests/web/serve.py`](serve.py) serves pages that run this project's WGSL kernels on a browser's
-WebGPU.  The kernel test page runs the cases that [`tests/wgsl/run.sh`](../wgsl/run.sh) writes and
-compares every output word with native Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with
-each kernel on WebGPU, in `gpt32.wasm` on the CPU, or on both with their scores compared.  The pages
-run the verified compiler's kernels and modules.  They use only standard WebGPU and WebAssembly.
+WebGPU and its verified modules in the browser's WebAssembly engine.  The kernel test page runs the
+cases that [`tests/wgsl/run.sh`](../wgsl/run.sh) writes and compares every output word with native
+Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU, in `gpt32.wasm` on
+the CPU, or on both with their scores compared.  The recount page recounts an Oakland ranked-choice
+contest from a canonical ballot file on the reader's computer with the tabulator's module
+`rcvTabulate.wasm`.  The pages run the verified compiler's kernels and modules.  They use only
+standard WebGPU and WebAssembly.
 The server needs `uv` and this repository's Lean toolchain, and its first start downloads
 `transformers` and the GPT-2 tokenizer.
 
@@ -19,18 +22,20 @@ uv run tests/gpt32/generate.py --export
 uv run tests/web/serve.py
 ```
 
-The address http://127.0.0.1:8000/ links to both pages.  At start, the server writes what is missing
+The address http://127.0.0.1:8000/ links to the pages.  At start, the server writes what is missing
 from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `cases.txt`, it runs
 `tests/wgsl/run.sh --emit-only`, which writes the verified compiler's kernels and the cases of
 [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
 corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
-`build/verified/gpt32.wasm` and the sampler's module `build/verified/gpt.wasm`, and it builds the
-program printer `gpt32-lines`.  The server writes only missing files.  After a change to a kernel,
-to the cases, or to the GPT-2 programs, [`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel
-directory, and the server writes again any file that has been deleted.  The pages serve what the
-kernel directory holds: after `tests/wgsl/run.sh --verified`, the kernel page runs that option's
-cases.  [`tests/gpt32/generate.py`](../gpt32/generate.py) writes the texts of the verified GPT-2
-kernels to `build/wgsl` under the names that `tests/wgsl/run.sh` gives them.
+`build/verified/gpt32.wasm`, the sampler's module `build/verified/gpt.wasm`, and the tabulator's
+module `build/verified/rcvTabulate.wasm`, whose build and emission it runs under `tools/leanrun`
+with 8 GiB of memory and two hours, and it builds the program printer `gpt32-lines`.  The server
+writes only missing files.  After a change to a kernel, to the cases, or to the GPT-2 programs,
+[`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel directory, and the server writes again
+any file that has been deleted.  The pages serve what the kernel directory holds: after
+`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases.
+[`tests/gpt32/generate.py`](../gpt32/generate.py) writes the texts of the verified GPT-2 kernels to
+`build/wgsl` under the names that `tests/wgsl/run.sh` gives them.
 
 Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and http://localhost
 but not a plain-HTTP address of another machine.  A browser on another machine reaches the pages at
@@ -94,7 +99,24 @@ address takes the controls as parameters, such as
 `?mode=both&power=high-performance&tokens=32&seed=42&run=1`, where `run=1` loads and generates
 without clicks.
 
-## Theorems and device results
+## Oakland RCV recount: `/rcv/`
+
+The page recounts a ranked-choice contest under Oakland City Charter §1105 from a canonical ballot
+file that the reader chooses on their computer, with the export `tabulate` of
+`build/verified/rcvTabulate.wasm`.  The browser reads the file with the File API and sends nothing
+to the server.  The page shows the module's SHA-256 and size, the file's size and the bound of the
+call, the report as text, and a link that saves the report's bytes.  It needs a secure context, as
+WebGPU does, for `crypto.subtle`, which computes the SHA-256.  [`tabulate.js`](rcv/tabulate.js)
+makes the call, and [`app.js`](rcv/app.js) runs the page.  [The tabulator's
+README](../../Demos/Rcv/README.md#the-browser-page) states the call theorem and its bound, the
+premises that the page establishes, the code that the page trusts, and the tests of the call.
+
+Headless Chromium 145 on an AArch64 machine loaded the page, which showed the module's SHA-256.
+For each of the 19 contests of the corpus, chosen through the file input, the page's text and its
+saved file equal the reference's report.  The largest file, the 2024 at-large council contest of
+4,696,262 bytes, took the page 0.048 s with a bound of 409,403,869 bytes.
+
+## Theorems and device results of the GPU pages
 
 Under its shape, token, loaded-weight, and device assumptions, `Demos.Gpt32.Verified.generate_host`
 proves that the setup and step commands, run with the verified kernels, leave the bits of native
@@ -122,9 +144,10 @@ at every step.
 | Path | Contents |
 |---|---|
 | [`tests/web/serve.py`](serve.py) | Server: page files, kernel texts, Wasm modules, weights, and requests below |
-| [`tests/web/index.html`](index.html) | Page that links to both pages |
+| [`tests/web/index.html`](index.html) | Page that links to the pages |
 | [`tests/wgsl/browser/`](../wgsl/browser) | Kernel test page |
 | [`tests/gpt32/browser/`](../gpt32/browser) | GPT-2 page: `app.js` for the controls and the generation loop, `hosts.js` for the WebGPU and Wasm hosts and the sampler |
+| [`tests/web/rcv/`](rcv) | Recount page: `tabulate.js` for the call of the tabulator's module, `app.js` for the page |
 | [`Demos/Gpt32/Lines.lean`](../../Demos/Gpt32/Lines.lean) | `gpt32-lines`, the native program that prints the setup and step commands |
 
 | Request | Answer |
