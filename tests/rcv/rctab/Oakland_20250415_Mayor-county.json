@@ -1,0 +1,53 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "Oakland_20250415_Mayor county",
+    "outputDirectory": "Oakland_20250415_Mayor-county",
+    "contestDate": "2025-04-15",
+    "contestJurisdiction": "Oakland, California",
+    "contestOffice": "Mayor",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "Oakland_20250415_Mayor.cdf.json",
+      "contestId": "Oakland_20250415_Mayor",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "TYRON C. JORDAN", "excluded": false},
+    {"name": "PETER LIU", "excluded": false},
+    {"name": "RENIA JANEEN WEBB", "excluded": false},
+    {"name": "ELIZABETH SWANEY", "excluded": false},
+    {"name": "PRESIDENT CRISTINA GRAPPO", "excluded": false},
+    {"name": "BARBARA LEE", "excluded": false},
+    {"name": "SUZ ROBINSON", "excluded": false},
+    {"name": "LOREN MANUEL TAYLOR", "excluded": false},
+    {"name": "ERIC SIMPSON", "excluded": false},
+    {"name": "MINDY RUTH PECHENUK", "excluded": false},
+    {"name": "Write-in", "excluded": true}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "unlimited",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Alameda County practice"
+  }
+}
