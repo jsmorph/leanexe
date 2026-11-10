@@ -177,10 +177,13 @@ def main() -> int:
 
     name, t, _ = queries[0]
     line1, line2 = texts[name]
-    digit = "1" if line2[30] != "1" else "2"
+    def change(line: str, column: int) -> str:
+        digit = "1" if line[column] != "1" else "2"
+        return line[:column] + digit + line[column + 1:]
+
     changed = read_lines([
-        (line1, line2[:30] + digit + line2[31:], t),
-        (line1[:56] + digit + line1[57:], line2, t),
+        (line1, change(line2, 30), t),
+        (change(line1, 56), line2, t),
         (line1, line2[:68], t),
         (checksum(line1[:2] + "A" + line1[3:]), checksum(line2[:2] + "A" + line2[3:]), t),
         (checksum(line1[:2] + "A" + line1[3:]), line2, t),

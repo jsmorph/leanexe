@@ -28,6 +28,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
 | [Interval inclusion proofs](entries/interval-enclosures/README.md) | Proves that an accepted result of an interval program contains a real quantity, with enclosures of monotone library functions and of integrals over panels. |
+| [One source for a real formula and its interval program](entries/enclosure-def/README.md) | Declares a real function, its interval program, and the inclusion theorem from one body with `enclosure_def`, and proves what the statuses of the surrounding program imply. |
 | [Accuracy against real functions](entries/real-function-accuracy/README.md) | Bounds a binary64 function's distance from the rounding of a Mathlib function and transfers the bound to the module. |
 | [Kernel checks over ℚ](entries/kernel-rational-checks/README.md) | Proves polynomial, series, and table bounds by evaluation in parts. |
 | [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |

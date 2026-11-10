@@ -15,7 +15,10 @@
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
 # theorem module as well.  For the SGP4 program, it runs the axiom audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
-# well.  Each audit fails the run when a report names an axiom
+# well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
+# tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
+# reader of decimal values and checks that module's file theorems.  Each audit fails the run
+# when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
@@ -122,6 +125,10 @@ elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
+elif [ "$case_module" = "sgp4box" ]; then
+  cases_exe=verified-cases-sgp4box
+elif [ "$case_module" = "sgp4omm" ]; then
+  cases_exe=verified-cases-sgp4omm
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -157,6 +164,12 @@ if [ -z "$reference" ]; then
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if [ "$case_module" = "sgp4" ]; then
     targets+=(Demos.Sgp4.Verified $(imports Demos/Sgp4/File.lean))
+  fi
+  if [ "$case_module" = "sgp4box" ]; then
+    targets+=(Demos.Sgp4.BoxVerified $(imports Demos/Sgp4/BoxFile.lean))
+  fi
+  if [ "$case_module" = "sgp4omm" ]; then
+    targets+=(Demos.Sgp4.OmmVerified $(imports Demos/Sgp4/OmmFile.lean))
   fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
@@ -304,6 +317,14 @@ if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
   if [ "$case_module" = "sgp4" ]; then
     check_file sgp4 Demos.Sgp4.Verified Demos/Sgp4/File.lean
   fi
+fi
+if [ "$case_module" = "sgp4box" ]; then
+  check_axioms tests/sgp4/BoxAxioms.lean
+  check_file sgp4box Demos.Sgp4.BoxVerified Demos/Sgp4/BoxFile.lean
+fi
+if [ "$case_module" = "sgp4omm" ]; then
+  check_axioms tests/sgp4/OmmAxioms.lean
+  check_file sgp4omm Demos.Sgp4.OmmVerified Demos/Sgp4/OmmFile.lean
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
 if [ -z "$case_module" ]; then

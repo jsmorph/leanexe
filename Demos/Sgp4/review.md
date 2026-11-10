@@ -17,6 +17,8 @@ This review records the decisions behind [the requirements](requirements.md) and
 | Argument of latitude | The sine and the cosine of `su` from `sinu`, `cosu`, and the correction, without `atan2` | `(cosu, sinu)` is a unit vector (`anomaly_unit`), so the angle-difference formulas give the same values (`sin_latitude`, `cos_latitude`), and the program needs no enclosure of `atan2`. |
 | Constants | Each decimal constant as the quotient of two integers in interval arithmetic | Each integer is exact in binary64, so the quotient's interval contains the decimal value. |
 | Status 7 | One status for an undecided test and for a rejected operation | Both mean that the program has no enclosure to return. |
+| Two-line reader | Each field as an integer of its digits over a power of ten, the catalog fields compared byte by byte, and no value for the epoch | The quotient of two exact integers contains the decimal value without a rounding argument.  The Alpha-5 form passes, since the reader gives the catalog field no value.  The near-Earth model does not read the epoch. |
+| Reader of decimal values | The library's `parse64`, widened by one step on each side | `parse64` returns the nearest-even rounding of the decimal number, with a proof, so the widened interval contains the number. |
 | Tolerance of the intervals | `2·10⁻⁸` km and `10⁻⁹` km/s between a reference value and its interval | The reference code stops its iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, about `7·10⁻⁹` km, and it prints to `10⁻⁸` km.  The largest distances measured are `6.7·10⁻⁹` km and `4.9·10⁻¹⁰` km/s. |
 | Integer and half-integer powers | `pow`, as the reference code calls it | The binary64 program then differs from the reference code only in its elementary functions and in the points listed below. |
 | Test tolerance | `10⁻⁸` km and `10⁻⁹` km/s | The verification file prints positions to `10⁻⁸` km and velocities to `10⁻⁹` km/s.  The largest differences measured are `5.0·10⁻⁹` km and `5.0·10⁻¹⁰` km/s, half a unit of the last printed digit. |
@@ -37,4 +39,4 @@ This review records the decisions behind [the requirements](requirements.md) and
 
 ## Open
 
-The readers of OMM and TLE data and the deep-space path are not written.  The two-body limit of the model (theorem S2 of the design) is not proved.  The enclosing program takes intervals for the element set, and `sgp4BoxAround` takes binary64 values and widens each by one step on each side, which contains the decimal number that a correctly rounding parser read.
+The deep-space path is not written, and the reader of an Orbit Mean-Elements Message reads one decimal value and leaves the search for a key to the host.  The enclosing program takes intervals for the element set, and `sgp4BoxAround` takes binary64 values and widens each by one step on each side, which contains the decimal number that a correctly rounding parser read.
