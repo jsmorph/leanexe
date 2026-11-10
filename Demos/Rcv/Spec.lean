@@ -5,7 +5,8 @@ The count of the Oakland ranked-choice tabulator that [the requirements](require
 over lists, natural numbers, and the 64-bit position words, with no reference to a program.
 `interpret` is the interpretation of a ballot against a continuing set, `tally` the counts of a
 round, `rule` the four rules that end a round, in their order, and `count` the run of rounds to the
-winner or to no winner.  `write` prints a contest structure as its canonical ballot file, `report`
+winner or to no winner.  `tally` and `run` take the interpretation as an argument, which T10 states
+for every interpretation and a module of another statute supplies.  `write` prints a contest structure as its canonical ballot file, `report`
 gives the bytes of the report, whose header lines are the file's, and `countWords` is the word form
 of the first increment's export.  Every definition computes, so native Lean runs the specification
 on canonical files.
@@ -121,11 +122,12 @@ structure Tally where
 /-- `Tᵣ`, the continuing ballots: the sum of the votes. -/
 def Tally.continuing (t : Tally) : Nat := (t.votes.map fun x : Nat × Nat => x.2).sum
 
-/-- The counts of a round with the continuing set `C`: every ballot interpreted against `C`, the
-votes of a candidate the number of ballots that count for it, and each inactive count the number of
-ballots inactive with its reason. -/
-def tally (kinds : List Kind) (C : List Nat) (ballots : List (List UInt64)) : Tally :=
-  let outcomes : List Outcome := ballots.map (interpret kinds C)
+/-- The counts of a round with the continuing set `C`: every ballot interpreted against `C` by
+`interp`, the votes of a candidate the number of ballots that count for it, and each inactive count
+the number of ballots inactive with its reason. -/
+def tally (interp : List Nat → List UInt64 → Outcome) (C : List Nat) (ballots : List (List UInt64)) :
+    Tally :=
+  let outcomes : List Outcome := ballots.map (interp C)
   { votes := C.map fun i : Nat => (i, outcomes.count (.counts i))
     blank := outcomes.count (.inactive .blank)
     uncounted := outcomes.count (.inactive .uncounted)
@@ -216,18 +218,18 @@ structure Count where
   winner : Option Nat
   deriving DecidableEq, Repr
 
-/-- The rounds from the continuing set `C` on, with at most `fuel` rounds.  The next round's
-continuing set is `C` minus the eliminated candidates. -/
-def run (kinds : List Kind) (order : List Nat) (ballots : List (List UInt64)) :
-    Nat → List Nat → Count
+/-- The rounds under the interpretation `interp` from the continuing set `C` on, with at most
+`fuel` rounds.  The next round's continuing set is `C` minus the eliminated candidates. -/
+def run (interp : List Nat → List UInt64 → Outcome) (order : List Nat)
+    (ballots : List (List UInt64)) : Nat → List Nat → Count
   | 0, _ => ⟨[], none⟩
   | fuel + 1, C =>
-    let t : Tally := tally kinds C ballots
+    let t : Tally := tally interp C ballots
     match rule order t with
     | .winner w => ⟨[⟨t, none⟩], w⟩
     | .eliminate e =>
       let rest : Count :=
-        run kinds order ballots fuel (C.filter fun i : Nat => decide (i ∉ e.eliminated))
+        run interp order ballots fuel (C.filter fun i : Nat => decide (i ∉ e.eliminated))
       ⟨⟨t, some e⟩ :: rest.rounds, rest.winner⟩
 
 /-- The count of a contest with the kinds `kinds`, the tie-break order `order`, and the ballots'
@@ -237,7 +239,7 @@ rule 4 is a member of the set with the fewest votes, which is not empty since `T
 whose continuing set has one member ends the count by rule 1 or rule 2.  The `K.length + 1` rounds
 that `run` allows therefore always suffice, and its case of no round left is never reached. -/
 def count (kinds : List Kind) (order : List Nat) (ballots : List (List UInt64)) : Count :=
-  run kinds order ballots ((countedSet kinds).length + 1) (countedSet kinds)
+  run (interpret kinds) order ballots ((countedSet kinds).length + 1) (countedSet kinds)
 
 /-- The kinds of a contest's candidates, in index order. -/
 def kindsOf (c : Contest) : List Kind := c.candidates.map fun x : Candidate => x.kind
