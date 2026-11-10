@@ -7,6 +7,9 @@ The Oakland tabulator compiled by the verified compiler.  `compiled.module` expo
 `count` of `Demos/Rcv/Program.lean`, the reader `readContest`, the printers `printReport` and
 `printError`, and `tabulate`, which composes them, and `exports` gives their function indices.
 `Demos/Rcv/TabulateCall.lean` states their call theorems, among them T1 over bytes for `tabulate`.
+The option `(cap := 16384)` gives the translation to C 16,384 pages of `lx_mem`, 1 GiB, which with
+the closed form `tabulate_bound` holds the call on a file of up to about 12.8 MB, and
+`(pages := 16)`, which the syntax requires before it, is the default first page count.
 -/
 
 namespace Demos.Rcv.TabulateProgram
@@ -15,9 +18,9 @@ open LeanExe LeanExe.Pipeline Demos.Rcv.ReadProgram Demos.Rcv.PrintProgram Demos
 open Library.Numerics.Decimal.Int64Text (digitCount digitByte)
 
 set_option maxHeartbeats 1000000 in
-verified_compile compiled := [bitIndex, classify, examineAt, tallyRound, continuingOf,
-  majorityOf, lowerOf, batchOf, fewestOf, tiedOf, latestOf, decideRound, pushRound, countedOf,
-  countedSize, countValid, kindsOk, orderOk, wordsOk, validArray, count,
+verified_compile (pages := 16) (cap := 16384) compiled := [bitIndex, classify, examineAt,
+  tallyRound, continuingOf, majorityOf, lowerOf, batchOf, fewestOf, tiedOf, latestOf, decideRound,
+  pushRound, countedOf, countedSize, countValid, kindsOk, orderOk, wordsOk, validArray, count,
   findByte, wordByte, matchWord, hasPrefix, readNumber, identByteW, isIdent, nameByteW, isName,
   readAfter, isFormat, isContest, kindCode, candidateCode, orderFrom, readOrder, markFrom,
   fieldWord, fieldsFrom, countByte, ballotWords, readHead, candidatesFrom, ballotsFrom,

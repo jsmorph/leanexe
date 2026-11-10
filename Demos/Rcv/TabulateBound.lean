@@ -1,6 +1,7 @@
 import Demos.Rcv.TabulateCall
 import Demos.Rcv.VerifiedCall
 import Verified.ChargeFacts
+import LeanExe.Native.Proof.MemOps
 
 /-!
 The closed form of the generated bound of `tabulate`.  `compiled.tabulate.bound b`, the number of
@@ -19,12 +20,17 @@ report's printer pushes the first two lines, lines 2 to `6 + n` of the file, at 
 for a structure that meets the constraints (`headerText_le`), and at most 64 rounds, each of which
 costs at most `7,200 n + 18,720` bytes for `n` candidates when every number counts 20 digits, and
 it copies the report, at most 1,301,030 bytes, into the buffer that it returns.
+
+`tabulate_native_size` states the C call theorem `tabulate_native` for a file of at most `L` bytes,
+with room for `top` and `80 L + 33,702,909` bytes in the 16,384 pages of `lx_mem`, and
+`tabulate_native_12000000` for every file of at most 12,000,000 bytes.
 -/
 
 namespace Demos.Rcv.TabulateProgram
 
 open LeanExe Demos.Rcv Demos.Rcv.Spec Demos.Rcv.ReadProgram Demos.Rcv.PrintProgram
 open Library.Numerics.Decimal.Int64Text (digitCount)
+open LeanExe.Pipeline (Heap Represent)
 
 theorem paidGrowCost_one : Verified.paidGrowCost 1 = 80 := rfl
 
@@ -714,7 +720,64 @@ theorem reportFile_length_le (b : List UInt8) : (reportFile b).length ≤ 130103
     have := errorReport_length_le j (read_error_lt hr) r
     omega
 
+/-! ## The C call in the size of the file -/
+
+/-- A native call theorem holds under a precondition that, together with the relation of the C
+memory to the store, gives the precondition of the theorem. -/
+theorem nativeA_weaken {α β : Type} [Represent α] [Represent β] {A : LClight.Archi}
+    {X : LClight.ExtSem} {cap : Nat} {mod : Wasm.Module} {T : LeanExe.Native.Translation}
+    {ps rs : List LeanExe.Native.VT} {fd : LClight.function} {aborts : Bool} {f : α → β}
+    {Pre Pre' : α → Heap → Wasm.Store Unit → Prop}
+    {Post : α → Heap → Wasm.Store Unit → Heap → Wasm.Store Unit → Prop}
+    (h : LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre Post)
+    (hpre : ∀ (E : LeanExe.Native.Env) store heap x m, E.cap = cap →
+      LeanExe.Native.StoreRel A E store m → Pre' x heap store → Pre x heap store) :
+    LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre' Post := by
+  intro E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
+  exact h E hE hG hcap hnres hF store heap params x hHeap (hpre E store heap x m hcap hst hPre)
+    hArgs hSep hCapS htyped m hst hs
+
+/-- `tabulate_native` in the size of the file: the C function of function 63 returns the report
+without a trap for a file of at most `L` bytes, when `top` and `80 L + 33,702,909` bytes fit in the
+1 GiB of `lx_mem`. -/
+theorem tabulate_native_size (A : LClight.Archi) (X : LClight.ExtSem) (L : Nat) :
+    ∃ fd ps rs,
+      (LeanExe.Native.funId 63, LClight.globdef.Gfun (LClight.fundef.Internal fd)) ∈
+        compiled.translation.cprogram.prog_defs ∧
+      (∀ g, compiled.module.funcs[63]? = some g → LeanExe.Native.signatureOf g = some (ps, rs)) ∧
+      LeanExe.Native.NativeA A X 16384 compiled.module compiled.translation ps rs fd false
+        tabulateSpec
+        (fun b heap _ => b.data.size ≤ L ∧ heap.top.toNat + 80 * L + 33702909 ≤ 65536 * 16384)
+        (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native A X
+  refine ⟨fd, ps, rs, hfd, hsig, nativeA_weaken h ?_⟩
+  intro E store heap b m hcap hst hpre
+  obtain ⟨hsize, hroom⟩ := hpre
+  have hb := tabulate_bound b (by omega)
+  show heap.top.toNat + compiled.tabulate.bound b ≤ 65536 * store.memoryCap compiled.module 0
+  rw [LeanExe.Native.memoryCap_eq hst.2 compiled.module, hcap]
+  omega
+
+/-- `tabulate_native` for every file of at most 12,000,000 bytes, from a heap whose `top` is at
+most 16,777,216 bytes, as it is after a host places a file of that size in a block of the module's
+`alloc`. -/
+theorem tabulate_native_12000000 (A : LClight.Archi) (X : LClight.ExtSem) :
+    ∃ fd ps rs,
+      (LeanExe.Native.funId 63, LClight.globdef.Gfun (LClight.fundef.Internal fd)) ∈
+        compiled.translation.cprogram.prog_defs ∧
+      (∀ g, compiled.module.funcs[63]? = some g → LeanExe.Native.signatureOf g = some (ps, rs)) ∧
+      LeanExe.Native.NativeA A X 16384 compiled.module compiled.translation ps rs fd false
+        tabulateSpec
+        (fun b heap _ => b.data.size ≤ 12000000 ∧ heap.top.toNat ≤ 16777216)
+        (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native_size A X 12000000
+  refine ⟨fd, ps, rs, hfd, hsig, nativeA_weaken h ?_⟩
+  intro E store heap b m _ _ hpre
+  exact ⟨hpre.1, by omega⟩
+
 #print axioms tabulate_bound
 #print axioms reportFile_length_le
+#print axioms tabulate_native_size
+#print axioms tabulate_native_12000000
 
 end Demos.Rcv.TabulateProgram
