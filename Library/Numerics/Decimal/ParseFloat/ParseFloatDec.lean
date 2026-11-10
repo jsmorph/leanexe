@@ -71,14 +71,14 @@ theorem exact_path (f : Fmt) (p F nu : UInt64) (n d : Array UInt64)
   have hsnw : (if bitLen n ≤ bitLen d + p + 2 then bitLen d + p + 2 - bitLen n else 0).toNat =
       sn := by
     by_cases hc : bn ≤ bd + f.p + 2
-    · rw [if_pos (hcond.mpr hc), toNat_sub' _ _ (by rw [hdp, hbn]; exact hc), hdp, hbn, hsndef,
-        if_pos hc]
-    · rw [if_neg (fun h => hc (hcond.mp h)), hsndef, if_neg hc]; rfl
+    · rw [ite_eq_left (hcond.mpr hc), toNat_sub' _ _ (by rw [hdp, hbn]; exact hc), hdp, hbn, hsndef,
+        ite_eq_left hc]
+    · rw [ite_eq_right (fun h => hc (hcond.mp h)), hsndef, ite_eq_right hc]; rfl
   have hsdw : (if bitLen n ≤ bitLen d + p + 2 then 0 else bitLen n - bitLen d - p - 2).toNat =
       sd := by
     by_cases hc : bn ≤ bd + f.p + 2
-    · rw [if_pos (hcond.mpr hc), hsddef, if_pos hc]; rfl
-    · rw [if_neg (fun h => hc (hcond.mp h)), hsddef, if_neg hc]
+    · rw [ite_eq_left (hcond.mpr hc), hsddef, ite_eq_left hc]; rfl
+    · rw [ite_eq_right (fun h => hc (hcond.mp h)), hsddef, ite_eq_right hc]
       have h1 : (bitLen n - bitLen d).toNat = bn - bd := by
         rw [toNat_sub' _ _ (by rw [hbn, hbd]; omega), hbn, hbd]
       have h2 : (bitLen n - bitLen d - p).toNat = bn - bd - f.p := by
@@ -92,15 +92,15 @@ theorem exact_path (f : Fmt) (p F nu : UInt64) (n d : Array UInt64)
   have hb3 : (p + 3).toNat = f.p + 3 := by rw [toNat_add' _ _ (by rw [hp]; simp; omega), hp]; rfl
   have hlo : val d * 2 ^ sd * 2 ^ (f.p + 1) < val n * 2 ^ sn := by
     by_cases hc : bn ≤ bd + f.p + 2
-    · have e1 : sn = bd + f.p + 2 - bn := by rw [hsndef, if_pos hc]
-      have e2 : sd = 0 := by rw [hsddef, if_pos hc]
+    · have e1 : sn = bd + f.p + 2 - bn := by rw [hsndef, ite_eq_left hc]
+      have e2 : sd = 0 := by rw [hsddef, ite_eq_left hc]
       rw [e2, pow_zero, mul_one]
       calc val d * 2 ^ (f.p + 1) < 2 ^ bd * 2 ^ (f.p + 1) :=
             Nat.mul_lt_mul_of_pos_right hd2 (by positivity)
         _ = 2 ^ (bn - 1) * 2 ^ sn := by rw [← pow_add, ← pow_add, e1]; congr 1; omega
         _ ≤ val n * 2 ^ sn := Nat.mul_le_mul_right _ hn1
-    · have e1 : sn = 0 := by rw [hsndef, if_neg hc]
-      have e2 : sd = bn - bd - f.p - 2 := by rw [hsddef, if_neg hc]
+    · have e1 : sn = 0 := by rw [hsndef, ite_eq_right hc]
+      have e2 : sd = bn - bd - f.p - 2 := by rw [hsddef, ite_eq_right hc]
       rw [e1, pow_zero, mul_one]
       calc val d * 2 ^ sd * 2 ^ (f.p + 1) < 2 ^ bd * 2 ^ sd * 2 ^ (f.p + 1) := by
             apply Nat.mul_lt_mul_of_pos_right (Nat.mul_lt_mul_of_pos_right hd2 (by positivity))
@@ -109,14 +109,14 @@ theorem exact_path (f : Fmt) (p F nu : UInt64) (n d : Array UInt64)
         _ ≤ val n := hn1
   have hhi : val n * 2 ^ sn < val d * 2 ^ sd * 2 ^ (f.p + 3) := by
     by_cases hc : bn ≤ bd + f.p + 2
-    · have e1 : sn = bd + f.p + 2 - bn := by rw [hsndef, if_pos hc]
-      have e2 : sd = 0 := by rw [hsddef, if_pos hc]
+    · have e1 : sn = bd + f.p + 2 - bn := by rw [hsndef, ite_eq_left hc]
+      have e2 : sd = 0 := by rw [hsddef, ite_eq_left hc]
       rw [e2, pow_zero, mul_one]
       calc val n * 2 ^ sn < 2 ^ bn * 2 ^ sn := Nat.mul_lt_mul_of_pos_right hn2 (by positivity)
         _ = 2 ^ (bd - 1) * 2 ^ (f.p + 3) := by rw [← pow_add, ← pow_add, e1]; congr 1; omega
         _ ≤ val d * 2 ^ (f.p + 3) := Nat.mul_le_mul_right _ hd1
-    · have e1 : sn = 0 := by rw [hsndef, if_neg hc]
-      have e2 : sd = bn - bd - f.p - 2 := by rw [hsddef, if_neg hc]
+    · have e1 : sn = 0 := by rw [hsndef, ite_eq_right hc]
+      have e2 : sd = bn - bd - f.p - 2 := by rw [hsddef, ite_eq_right hc]
       rw [e1, pow_zero, mul_one]
       calc val n < 2 ^ bn := hn2
         _ = 2 ^ (bd - 1) * 2 ^ sd * 2 ^ (f.p + 3) := by
@@ -230,7 +230,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
   by_cases hk0 : K = 0
   · have hk0' : (kept == 0) = true := by
       simp only [beq_iff_eq]; exact UInt64.toNat_inj.mp (by rw [← hKdef, hk0]; rfl)
-    rw [if_pos hk0']
+    rw [ite_eq_left hk0']
     have hsf : sticky = false := by
       cases hsc : sticky
       · rfl
@@ -241,7 +241,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
     rfl
   have hk0' : (kept == 0) = false := by
     simp only [beq_eq_false_iff_ne, ne_eq]; intro h; apply hk0; rw [hKdef, h]; rfl
-  rw [if_neg (by simp [hk0'])]
+  rw [ite_eq_right (by simp [hk0'])]
   have hDK : 10 ^ (K - 1) ≤ val D := hD1.resolve_left hk0
   have hVlo : (val D : ℝ) ≤ V := by
     rw [hVdef]; split_ifs
@@ -255,7 +255,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
   have hqk : (qb + kept).toNat = qb.toNat + K := by rw [toNat_add' _ _ (by omega)]
   -- beyond the overflow threshold
   by_cases hhi : qb.toNat + K ≥ 2 ^ 62 + 1 + emax.toNat
-  · rw [if_pos (UInt64.le_iff_toNat_le.mpr (by
+  · rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr (by
       rw [hqk, toNat_add' _ _ (by simp; omega)]; simpa using hhi))]
     have hFs : (F <<< (p - 1)).toNat = limit f := by
       have h1' : (p - 1).toNat = f.p - 1 := by rw [toNat_sub' _ _ (by rw [hp]; simp; omega), hp]; rfl
@@ -265,7 +265,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
     rw [hFs]
     symm
     unfold refPos
-    rw [if_pos]
+    rw [ite_eq_left]
     refine le_trans hmax ?_
     apply mul_le_mul_of_nonneg_right _ h2nu.le
     calc (10 : ℝ) ^ emax.toNat = (10 : ℝ) ^ (((K - 1 : ℕ) : ℤ) + (emax.toNat - (K - 1 : ℕ) : ℤ)) := by
@@ -276,14 +276,14 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
       _ ≤ V * 10 ^ q := by
           apply mul_le_mul_of_nonneg_right _ h10.le
           exact le_trans (by exact_mod_cast hDK) hVlo
-  rw [if_neg (fun h => hhi (by
+  rw [ite_eq_right (fun h => hhi (by
     have := UInt64.le_iff_toNat_le.mp h
     rw [hqk, toNat_add' _ _ (by simp; omega)] at this; simpa using this))]
   -- below half the least subnormal
   have hqke : (qb + kept + emin).toNat = qb.toNat + K + emin.toNat := by
     rw [toNat_add' _ _ (by rw [hqk]; omega), hqk]
   by_cases hlo : qb.toNat + K + emin.toNat ≤ 2 ^ 62
-  · rw [if_pos (UInt64.le_iff_toNat_le.mpr (by rw [hqke, bias_toNat]; exact hlo))]
+  · rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr (by rw [hqke, bias_toNat]; exact hlo))]
     symm
     rw [Library.Numerics.Decimal.Shared.StrconvOfScientific.refPos_small f _ (by positivity)]
     · rfl
@@ -296,7 +296,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
       _ < 2 * ((10 : ℝ) ^ emin.toNat)⁻¹ * 2 ^ nu.toNat := by
           apply mul_lt_mul_of_pos_right _ h2nu; linarith
       _ ≤ 1 := hmin
-  rw [if_neg (fun h => hlo (by
+  rw [ite_eq_right (fun h => hlo (by
     have := UInt64.le_iff_toNat_le.mp h; rwa [hqke, bias_toNat] at this))]
   push Not at hhi hlo
   -- the exact rounding
@@ -323,7 +323,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
       rw [toNat_sub' _ _ (by rw [bias_toNat]; exact hq0), bias_toNat]
     obtain ⟨m1, m2, m3⟩ := mulPow10_spec D' (qb - 0x4000000000000000) d1 (by omega)
       (by rw [hk']; omega)
-    simp only [if_pos hqbw]
+    simp only [ite_eq_left hqbw]
     rw [exact_path f p F nu _ _ hp hF hp60 hlim (by omega) m1 c1 (by rw [m3, hk']; omega)
       (by rw [c3]; norm_num) (by rw [m2]; exact Nat.mul_pos hD'0 (by positivity)) hcpos]
     refine congrArg (refPos f) ?_
@@ -338,7 +338,7 @@ theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
       rw [toNat_sub' _ _ (by rw [bias_toNat]; omega), bias_toNat]
     obtain ⟨m1, m2, m3⟩ := mulPow10_spec _ (0x4000000000000000 - qb) c1 (by rw [c3]; norm_num)
       (by rw [hk']; omega)
-    simp only [if_neg hqbw]
+    simp only [ite_eq_right hqbw]
     rw [exact_path f p F nu _ _ hp hF hp60 hlim (by omega) d1 m1 (by omega)
       (by rw [m3, c3, hk']; omega) hD'0 (by rw [m2]; exact Nat.mul_pos hcpos (by positivity))]
     refine congrArg (refPos f) ?_

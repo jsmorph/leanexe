@@ -195,7 +195,7 @@ theorem t_value (xa : Float) (n : UInt64) (K : ℕ) (hxf : Finite xa.toBits)
   rw [e]
   -- the fraction against `r = J_n/J_(n-1)`
   have hcv : cfrac w M n.toNat = kern w n.toNat M / kern w (n.toNat - 1) M := by
-    unfold cfrac; rw [if_pos (by omega)]
+    unfold cfrac; rw [ite_eq_left (by omega)]
   have hJ1 := Jn_pos (n.toNat - 1) w hw0 hw2.le
   have hJn := Jn_pos n.toNat w hw0 hw2.le
   have hJM := Jn_pos M w hw0 hw2.le

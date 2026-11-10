@@ -377,11 +377,11 @@ theorem ofNat_shr (a : UInt32) (k : Nat) :
 
 theorem ofNat_shl_lt (a : UInt32) {k : Nat} (h : k < 32) :
     UInt32.ofNat (a.toNat * 2 ^ k % 4294967296) = shl a k := by
-  rw [← ofNat_shl, if_pos h]
+  rw [← ofNat_shl, ite_eq_left h]
 
 theorem ofNat_shr_lt (a : UInt32) {k : Nat} (h : k < 32) :
     UInt32.ofNat (a.toNat / 2 ^ k) = shr a k := by
-  rw [← ofNat_shr, if_pos h]
+  rw [← ofNat_shr, ite_eq_left h]
 
 theorem shr_32 (x : UInt32) : shr x 32 = 0 := by simp [shr]
 

@@ -160,9 +160,9 @@ theorem digitPos_toNat (i0 ni k : ℕ) (h : i0 + k + 1 < 2 ^ 63) (hni : ni < 2 ^
   have hn : (UInt64.ofNat ni).toNat = ni := ofNat_toNat _ (by omega)
   unfold digitPos dpos
   by_cases hc : k < ni
-  · rw [if_pos (by rw [UInt64.lt_iff_toNat_lt, hk, hn]; exact hc), if_pos hc,
+  · rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, hk, hn]; exact hc), ite_eq_left hc,
       toNat_add' _ _ (by rw [h0, hk]; omega), h0, hk]
-  · rw [if_neg (by rw [UInt64.lt_iff_toNat_lt, hk, hn]; exact hc), if_neg hc,
+  · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, hk, hn]; exact hc), ite_eq_right hc,
       toNat_add' _ _ (by rw [toNat_add' _ _ (by rw [h0, hk]; omega), h0, hk]; simp; omega),
       toNat_add' _ _ (by rw [h0, hk]; omega), h0, hk]; rfl
 
@@ -197,7 +197,7 @@ theorem repeat_first (n : ℕ) (hn : n < 2 ^ 62) (fuel : UInt64) (hf : n ≤ fue
       · have hc : (decide (UInt64.ofNat j < UInt64.ofNat n) && Pw (UInt64.ofNat j)) = true := by
           simp only [Bool.and_eq_true, decide_eq_true_eq]
           exact ⟨by rw [UInt64.lt_iff_toNat_lt, hjn, hnn]; omega, hlt j hj⟩
-        rw [if_pos hc]
+        rw [ite_eq_left hc]
         have hs : UInt64.ofNat j + 1 = UInt64.ofNat (j + 1) := by
           apply UInt64.toNat_inj.mp
           rw [toNat_add' _ _ (by rw [hjn]; simp; omega), hjn, ofNat_toNat _ (by omega)]; rfl
@@ -209,7 +209,7 @@ theorem repeat_first (n : ℕ) (hn : n < 2 ^ 62) (fuel : UInt64) (hf : n ≤ fue
           by_cases hlt' : j < n
           · right; exact hstop hlt'
           · left; rw [UInt64.lt_iff_toNat_lt, hjn, hnn]; exact hlt'
-        rw [if_neg (by simp [hc])]
+        rw [ite_eq_right (by simp [hc])]
         exact hjn
   exact key _ 0 (Nat.zero_le _) (by omega)
 

@@ -118,9 +118,9 @@ theorem xzero_case (y : Float) (hy0 : value y.toBits ≠ 0) :
       else Float.ofBits 0x3FF921FB54442D18 + Float.ofBits 0x01A56E1FC2F8F359).toBits := by
   rw [F64UpperWord.sign_test]
   cases hs : Wasm.IEEE64.sign y.toBits
-  · rw [if_neg (by decide), half_bits, arg_imag_pos _ (pos_of_sign _ hs hy0)]
+  · rw [ite_eq_right (by decide), half_bits, arg_imag_pos _ (pos_of_sign _ hs hy0)]
     exact within_half _ (by rw [sub_self, abs_zero]; positivity)
-  · rw [if_pos rfl, half_neg_bits, arg_imag_neg _ (neg_of_sign _ hs hy0)]
+  · rw [ite_eq_left rfl, half_neg_bits, arg_imag_neg _ (neg_of_sign _ hs hy0)]
     exact within_neg 2 _ _ (within_half _ (by rw [sub_self, abs_zero]; positivity))
 
 /-- `|y/x|` above `2 ^ 60`. -/

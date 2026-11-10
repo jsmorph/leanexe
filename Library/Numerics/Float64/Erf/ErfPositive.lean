@@ -192,11 +192,11 @@ theorem erf_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toB
   have ne : Wasm.IEEE64.isNaN 0x3FEB0AC160000000 = false := by decide
   have nt : Wasm.IEEE64.isNaN 0x01A56E1FC2F8F359 = false := by decide
   by_cases h1 : value x.toBits < 27 / 32
-  · rw [if_pos (hsm.mpr h1)]
+  · rw [ite_eq_left (hsm.mpr h1)]
     by_cases h2 : value x.toBits < 1 / 2 ^ 28
-    · rw [if_pos (htiny.mpr h2)]
+    · rw [ite_eq_left (htiny.mpr h2)]
       by_cases h3 : value x.toBits < 1 / 2 ^ 1015
-      · rw [if_pos (hsub.mpr h3)]
+      · rw [ite_eq_left (hsub.mpr h3)]
         rw [F64Bits.toBits_div, F64Bits.toBits_add, F64Bits.toBits_mul, F64Bits.toBits_mul,
           F64Bits.toBits_ofBits, n8, eight_bits]
         simp only [Bool.false_eq_true, ↓reduceIte]
@@ -210,29 +210,29 @@ theorem erf_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toB
         · by_cases h4 : value x.toBits < 1 / 2 ^ 1022
           · exact erf_subnormal x.toBits hxf h0 h4
           · exact erf_sub_normal x.toBits hxf (not_lt.mp h4) h3.le
-      · rw [if_neg (fun h => h3 (hsub.mp h))]
+      · rw [ite_eq_right (fun h => h3 (hsub.mp h))]
         rw [F64Bits.toBits_add, F64Bits.toBits_mul, F64Bits.toBits_ofBits, n1]
         simp only [Bool.false_eq_true, ↓reduceIte]
         exact erf_tiny x.toBits hxf (not_lt.mp h3) h2.le
-    · rw [if_neg (fun h => h2 (htiny.mp h))]
+    · rw [ite_eq_right (fun h => h2 (htiny.mp h))]
       rw [F64Bits.toBits_add, F64Bits.toBits_mul, erfSmall_bits, F64Bits.toBits_mul]
       exact ErfSmall.small_erf x.toBits hxf (not_lt.mp h2) h1.le
-  · rw [if_neg (fun h => h1 (hsm.mp h))]
+  · rw [ite_eq_right (fun h => h1 (hsm.mp h))]
     by_cases h2 : value x.toBits < 5 / 4
-    · rw [if_pos (hmid.mpr h2)]
+    · rw [ite_eq_left (hmid.mpr h2)]
       obtain ⟨hP, hQ⟩ := erfMiddle_bits (x.abs - 1.0)
       rw [F64Bits.toBits_add, F64Bits.toBits_div, hP, hQ, F64Bits.toBits_sub, hxa, one_bits,
         F64Bits.toBits_ofBits, ne]
       simp only [Bool.false_eq_true, ↓reduceIte]
       exact ErfMiddle.middle_erf_all x.toBits hxf (not_lt.mp h1) h2.le
-    · rw [if_neg (fun h => h2 (hmid.mp h))]
+    · rw [ite_eq_right (fun h => h2 (hmid.mp h))]
       by_cases h3 : 6 ≤ value x.toBits
-      · rw [if_pos (hsix.mpr h3)]
+      · rw [ite_eq_left (hsix.mpr h3)]
         rw [F64Bits.toBits_sub, F64Bits.toBits_ofBits, nt, one_bits]
         simp only [Bool.false_eq_true, ↓reduceIte]
         rw [one_sub_tiny]
         exact erf_large x.toBits h3
-      · rw [if_neg (fun h => h3 (hsix.mp h))]
+      · rw [ite_eq_right (fun h => h3 (hsix.mp h))]
         exact tail_pos x hxf hs (not_lt.mp h2) (not_le.mp h3)
 
 #print axioms expWith_relative

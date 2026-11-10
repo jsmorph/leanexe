@@ -370,8 +370,8 @@ theorem bind_fa {β} (f : Bool → SailM β) (s : State) :
     (IsFullA64Enabled () >>= f).run s =
       if FARegs s.regs then (f (faV s)).run (faS s) else stuckRun (IsFullA64Enabled () >>= f) s := by
   by_cases h : FARegs s.regs
-  · rw [if_pos h, bind_run (run_fa s h)]
-  · rw [if_neg h]; unfold stuckRun; rfl
+  · rw [ite_eq_left h, bind_run (run_fa s h)]
+  · rw [ite_eq_right h]; unfold stuckRun; rfl
 
 /-- The real that `undefined_real` returns: `default` in the translation, and an opaque constant in
 the variant that `check.sh` also checks.  The proofs keep it irreducible. -/
@@ -623,8 +623,8 @@ theorem sign_join (x : BitVec 64) : BitVec.join1 [BitVec.access x 63] = sgBit x 
   have := x.isLt
   unfold sgBit sg
   by_cases h : 2 ^ 63 ≤ x.toNat
-  · rw [if_pos (by omega), decide_eq_true h]; rfl
-  · rw [if_neg (by omega), decide_eq_false h]; rfl
+  · rw [ite_eq_left (by omega), decide_eq_true h]; rfl
+  · rw [ite_eq_right (by omega), decide_eq_false h]; rfl
 
 theorem qbit (x : BitVec 64) :
     (BitVec.join1 [BitVec.access (Sail.BitVec.extractLsb x 51 0) 51] == 1#1) =
@@ -632,8 +632,8 @@ theorem qbit (x : BitVec 64) :
   rw [join1_access _ 51 (by decide), fr_eq]
   have : fr x < 2 ^ 52 := Nat.mod_lt _ (by decide)
   by_cases h : 2 ^ 51 ≤ fr x
-  · rw [if_pos (by omega), decide_eq_true h]; rfl
-  · rw [if_neg (by omega), decide_eq_false h]; rfl
+  · rw [ite_eq_left (by omega), decide_eq_true h]; rfl
+  · rw [ite_eq_right (by omega), decide_eq_false h]; rfl
 
 theorem denorm_val (f : ℕ) :
     (2 : ℝ) ^ (-1022 : ℤ) * (((f : ℤ) : ℝ) * (2 : ℝ) ^ (-52 : ℤ)) =

@@ -217,7 +217,7 @@ theorem bool_reqWrite (m : mem) (q : UInt64) :
   by_cases h : x = UInt64.ofNat 0
   · subst h
     decide
-  · rw [if_pos h, show (x != UInt64.ofNat 0) = true from bne_iff_ne.mpr h]
+  · rw [ite_eq_left h, show (x != UInt64.ofNat 0) = true from bne_iff_ne.mpr h]
     decide
 
 /-- The access of the request in `l6`. -/

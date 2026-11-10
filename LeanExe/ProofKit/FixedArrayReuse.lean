@@ -156,7 +156,7 @@ theorem splitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : 
     omega
   simp only [splitProgram, List.cons_append, List.append_assoc]
   simp [wp_simp, frame, Nat.add_assoc]
-  rw [if_neg hBound, ← toUInt32_eq_ofNat]
+  rw [ite_eq_right hBound, ← toUInt32_eq_ofNat]
   refine FixedArrayHeader.program_spec module_ env _ _ _ _ (splitBase need choice) need stride
     rfl ?_ ?_ (by omega) (by simp only [Wasm.Mem.write64_pages]; omega) _ _ ?_
   · simp [frame, Locals.get, Nat.add_assoc, splitBase]

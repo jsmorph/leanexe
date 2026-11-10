@@ -26,7 +26,7 @@ theorem accepted_guards (r0 r1 z0 z1 u v : UInt64)
     6 * distance z0 z1 * (u + v) * (u + v) ≤ 160000 ∧
     (r0 ≤ r1 → 2 * u * (r1 - r0) ≤ 3 * (u + v) * (z0 - r0)) ∧
     (r1 < r0 → 2 * v * (r0 - r1) ≤ 3 * (u + v) * (z1 - r1)) := by
-  rw [edgeTicks_eq, if_neg ht] at h
+  rw [edgeTicks_eq, ite_eq_right ht] at h
   split at h
   · simp at h
   · rename_i hc

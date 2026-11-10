@@ -21,7 +21,7 @@ theorem tan_nonfinite (x : Float) (h : ¬ Finite x.toBits) :
   have he := Library.Numerics.Float64.Trig.TrigTheorem.high_nonfinite x h
   unfold Tan.tan Tan.tanWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
-  rw [if_neg (by omega), if_pos he, F64Bits.toBits_sub, Library.Numerics.Float64.Trig.TrigTheorem.sub_self_nonfinite _ h]
+  rw [ite_eq_right (by omega), ite_eq_left he, F64Bits.toBits_sub, Library.Numerics.Float64.Trig.TrigTheorem.sub_self_nonfinite _ h]
 
 /-- `tan (+0) = +0`. -/
 theorem tan_pos_zero : (Tan.tan (Float.ofBits 0)).toBits = 0 := by
@@ -32,7 +32,7 @@ theorem tan_pos_zero : (Tan.tan (Float.ofBits 0)).toBits = 0 := by
       (by rw [hb, TanBigWords.value_zero, abs_zero]; norm_num)
   unfold Tan.tan Tan.tanWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb, hu]
-  rw [if_pos (by decide), if_pos (by decide), hb]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), hb]
 
 /-- `tan (-0) = -0`. -/
 theorem tan_neg_zero :
@@ -45,7 +45,7 @@ theorem tan_neg_zero :
         by decide +kernel]; norm_num)
   unfold Tan.tan Tan.tanWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb, hu]
-  rw [if_pos (by decide), if_pos (by decide), hb]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), hb]
 
 /-- The store in which the module starts is ready, with the heap that holds its tables. -/
 theorem ready_initial :

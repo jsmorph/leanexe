@@ -156,10 +156,10 @@ theorem Elem.words_insertIdx (e : Elem) {xs : Array e.denote} {ws : Array UInt64
   · have hw : i' * e.width + j < i * e.width := by
       have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hlt)
       rw [Nat.succ_mul] at this; omega
-    rw [if_neg (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), if_neg (by omega),
+    rw [ite_eq_right (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), ite_eq_right (by omega),
       hPrefix _ (by omega), Elem.words_getElem! e xs (by omega) hj, dite_eq_left hlt]
   · subst heq
-    rw [if_pos (by omega), show i' * e.width + j - i' * e.width = j by omega,
+    rw [ite_eq_left (by omega), show i' * e.width + j - i' * e.width = j by omega,
       dite_eq_right (by omega), dite_eq_left rfl]
   · have hw : i * e.width + e.width ≤ i' * e.width + j := by
       have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hgt)
@@ -169,7 +169,7 @@ theorem Elem.words_insertIdx (e : Elem) {xs : Array e.denote} {ws : Array UInt64
       rw [Nat.sub_mul, Nat.one_mul]
       have : e.width ≤ i' * e.width := Nat.le_mul_of_pos_left _ (by omega)
       omega
-    rw [if_neg (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), if_pos (by omega),
+    rw [ite_eq_right (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), ite_eq_left (by omega),
       hsplit, hPrefix _ (by
         have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hi1)
         rw [Nat.succ_mul] at this; omega),
@@ -201,9 +201,9 @@ theorem Elem.words_eraseIdx (e : Elem) {xs : Array e.denote} {i : Nat} (hi : i <
   · have hw : i' * e.width + j < i * e.width := by
       have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hlt)
       rw [Nat.succ_mul] at this; omega
-    rw [if_neg (by omega), Elem.words_getElem! e xs (by omega) hj, dite_eq_left hlt]
+    rw [ite_eq_right (by omega), Elem.words_getElem! e xs (by omega) hj, dite_eq_left hlt]
   · have hw : i * e.width ≤ i' * e.width := Nat.mul_le_mul_right _ (by omega)
-    rw [if_pos (by omega), show i' * e.width + j + e.width = (i' + 1) * e.width + j by
+    rw [ite_eq_left (by omega), show i' * e.width + j + e.width = (i' + 1) * e.width + j by
       rw [Nat.succ_mul]; omega, Elem.words_getElem! e xs hi1 hj, dite_eq_right hlt]
 
 /-- The first words of an array with room, up to its old length, are the old words. -/

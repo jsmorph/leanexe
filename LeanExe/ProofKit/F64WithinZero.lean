@@ -115,7 +115,7 @@ theorem within_zero_of_close (y : ℝ) (c : UInt64) (hcf : Finite c) (n : ℕ) (
       have hs : Wasm.IEEE64.sign c = true := by
         simp only [Wasm.IEEE64.sign, decide_eq_true_eq]
         exact hneg
-      rw [hs, if_pos rfl]
+      rw [hs, ite_eq_left rfl]
       omega
     have h' : |value (Wasm.IEEE64.negate c) - -y| < (2 : ℝ) ^ (n - 1) / 2 ^ 1074 / 2 := by
       rw [hnv.2, show -value c - -y = -(value c - y) by ring, abs_neg]

@@ -137,8 +137,8 @@ theorem limb_eq (a : Array UInt64) (j : UInt64) (hs : a.size < 2 ^ 64) :
     limb a j = a[j.toNat]! := by
   unfold limb
   by_cases h : j < a.size.toUInt64
-  · rw [if_pos h]
-  · rw [if_neg h]
+  · rw [ite_eq_left h]
+  · rw [ite_eq_right h]
     have : a.size ≤ j.toNat := by
       rw [UInt64.lt_iff_toNat_lt, size_toUInt64 a hs] at h; omega
     rw [getElem!_neg a _ (by omega)]

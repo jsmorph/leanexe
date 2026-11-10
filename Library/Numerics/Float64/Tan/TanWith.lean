@@ -153,9 +153,9 @@ theorem tan_quadrant (r : ℝ) (N : Int) (k : Nat) (hk : (k : Int) = N % 4) :
   interval_cases k
   · rw [(h0 rfl).1, (h0 rfl).2]
     rfl
-  · rw [(h1 rfl).1, (h1 rfl).2, if_pos rfl, div_neg, neg_div, one_div_div]
-  · rw [(h2 rfl).1, (h2 rfl).2, if_neg (by decide), neg_div_neg_eq]
-  · rw [(h3 rfl).1, (h3 rfl).2, if_pos rfl, neg_div, neg_div, one_div_div]
+  · rw [(h1 rfl).1, (h1 rfl).2, ite_eq_left rfl, div_neg, neg_div, one_div_div]
+  · rw [(h2 rfl).1, (h2 rfl).2, ite_eq_right (by decide), neg_div_neg_eq]
+  · rw [(h3 rfl).1, (h3 rfl).2, ite_eq_left rfl, neg_div, neg_div, one_div_div]
 
 theorem odd_beq (n : UInt64) : (n &&& 1 == 1) = decide (n.toNat % 4 % 2 = 1) := by
   have h : (n &&& 1).toNat = n.toNat % 2 := by
@@ -214,10 +214,10 @@ theorem reduced_tan (xa n : UInt64) (y0 y1 : Float) (hR : Reduced xa n y0.toBits
   rw [hq, odd_beq]
   rw [odd_beq] at hk
   by_cases hp : n.toNat % 4 % 2 = 1
-  · rw [if_pos hp, decide_eq_true hp]
+  · rw [ite_eq_left hp, decide_eq_true hp]
     rw [decide_eq_true hp] at hk
     simpa using hk
-  · rw [if_neg hp, decide_eq_false hp]
+  · rw [ite_eq_right hp, decide_eq_false hp]
     rw [decide_eq_false hp] at hk
     simpa using hk
 
@@ -235,7 +235,7 @@ theorem tan_within (x : Float) (hxf : Finite x.toBits) :
   unfold Tan.tan Tan.tanWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
   by_cases h1 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 ≤ 1072243195
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     by_cases h2 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 < 1044381696
     · have hsmall : |value x.toBits| < 1 / 2 ^ 27 := by
         rw [← hav, ← t27]
@@ -244,9 +244,9 @@ theorem tan_within (x : Float) (hxf : Finite x.toBits) :
           show _ < 0x3E40000000000000
           omega)
       have hu0 := toUInt64_small x hxf (lt_trans hsmall (by norm_num))
-      rw [if_pos (by rw [hu0, decide_eq_true h2]; rfl)]
+      rw [ite_eq_left (by rw [hu0, decide_eq_true h2]; rfl)]
       exact tiny_tan x.toBits hxf hsmall (zero_iff x.toBits)
-    · rw [if_neg (by rw [decide_eq_false h2]; simp)]
+    · rw [ite_eq_right (by rw [decide_eq_false h2]; simp)]
       have hlo : 1 / 2 ^ 27 ≤ |value x.toBits| := by
         rw [← hav, ← t27]
         exact (F64PositiveOrder.value_le_iff (by decide) hA63).mpr (by
@@ -265,9 +265,9 @@ theorem tan_within (x : Float) (hxf : Finite x.toBits) :
         (by rw [zero_toBits, value_zero, abs_zero]; positivity)
         (by rw [zero_toBits, value_zero, add_zero, sub_self, abs_zero]; positivity)
       simpa using hk
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     have h3 : ¬ (2146435072 ≤ x.toBits.toNat % 2 ^ 63 / 2 ^ 32) := by omega
-    rw [if_neg h3]
+    rw [ite_eq_right h3]
     have hR := Library.Numerics.Float64.Trig.TrigReduce.remPio2_spec x.abs (by rw [F64Bits.toBits_abs]; exact hA63)
       (by rw [F64Bits.toBits_abs, habs]; omega) (by rw [F64Bits.toBits_abs, habs]; omega)
     generalize Trig.remPio2 Trig.invPi Trig.halfPi x.abs = P at hR ⊢
@@ -278,12 +278,12 @@ theorem tan_within (x : Float) (hxf : Finite x.toBits) :
     rw [hav] at hsel
     by_cases hneg : x < 0.0
     · have hv := (lt_zero_iff x hxf).mp hneg
-      rw [if_pos hneg]
+      rw [ite_eq_left hneg]
       rw [abs_of_neg hv, Real.tan_neg] at hsel
       have := neg_within _ _ hsel
       rwa [neg_neg] at this
     · have hv : 0 ≤ value x.toBits := not_lt.mp (fun h => hneg ((lt_zero_iff x hxf).mpr h))
-      rw [if_neg hneg]
+      rw [ite_eq_right hneg]
       rwa [abs_of_nonneg hv] at hsel
 
 #print axioms tan_within

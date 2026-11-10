@@ -175,7 +175,7 @@ theorem norm_top (L : ℝ) (a b c : Float) (hT : TopTriple L (a, b, c))
       1 / 2 ^ 60) (by linarith : (0 : ℝ) ≤ L)
     linarith [(by ring : L * (1 / 2 ^ 60) = L / 2 ^ 60)]
   by_cases hcnd : cond = true
-  · rw [if_pos hcnd]
+  · rw [ite_eq_left hcnd]
     refine ⟨f3, af, hh3, ?_, hL1, hL⟩
     simp only
     have hp := abs_le.mp hpair
@@ -183,7 +183,7 @@ theorem norm_top (L : ℝ) (a b c : Float) (hT : TopTriple L (a, b, c))
       div_le_div_of_nonneg_right k4' (by norm_num)
     rw [abs_le]
     constructor <;> linarith [(by ring : A / 2 ^ 38 / 2 ^ 51 = A / 2 ^ 89)]
-  · rw [if_neg hcnd]
+  · rw [ite_eq_right hcnd]
     refine ⟨f3, f4, hh3, ?_, hL1, hL⟩
     simp only
     have hp := abs_le.mp hpair
@@ -258,7 +258,7 @@ theorem tail_top (hDb : LgammaApprox.DbFact) (sx : Float) (hsx : Finite sx.toBit
     rw [F64UpperWord.float_lt_iff _ _ haf LgammaAccTail.c38.1, hafv, LgammaAccTail.c38.2,
       abs_of_pos (show (0 : ℝ) < value fh.toBits by linarith)]
     exact not_lt.mpr (by linarith)
-  rw [if_neg hn]
+  rw [ite_eq_right hn]
   exact LgammaAccFinal.final_of_sum hDb sx hsx _ fh fl
     (sum_within_top fh fl hf1 hf2 _ hL1 hL2 herr)
 
@@ -326,7 +326,7 @@ theorem asym_top (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA 
     have := (F64UpperWord.float_lt_iff _ _ hx LgammaAsymAcc.c120.1).mp h
     rw [LgammaAsymAcc.c120.2] at this
     linarith
-  rw [if_neg hc] at hr
+  rw [ite_eq_right hc] at hr
   rw [hr]
   obtain ⟨a, b, c, e, -, q1, q2, hP1⟩ := LgammaAsymAcc.asym_big hF hLA hAF x 0.0 hx c00.1 hge
     h1015 hprod (by rw [c00.2, abs_zero]; norm_num)
@@ -433,7 +433,7 @@ theorem accurate_top (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (
   intro _
   acc_step
   intro xh xl hxx
-  rw [if_neg hsn] at hxx
+  rw [ite_eq_right hsn] at hxx
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj hxx
   have h := asym_top hF hLA hAF sx.abs hxf h800 (by rw [hxv']; exact hhi)
   rwa [hxv'] at h

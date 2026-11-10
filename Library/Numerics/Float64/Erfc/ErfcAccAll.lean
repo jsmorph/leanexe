@@ -156,14 +156,14 @@ theorem erfAcc_err (hF : FmaNearest) (z : Float) (hz : ff z) (h0 : 0 ≤ fv z)
   unfold aTarget
   by_cases hs : fv z < 1 / 8
   · have hlt : z < 0.125 := (flt_iff _ _ hz f125).mpr (by rw [v125]; exact hs)
-    rw [if_pos hs]
+    rw [ite_eq_left hs]
     unfold Erfc.erfAccurate
-    rw [if_pos hlt]
+    rw [ite_eq_left hlt]
     obtain ⟨c1, c2, ce, cl⟩ := tacc_err hF z hz (by rw [abs_of_nonneg h0]; linarith)
     exact ⟨c1, c2, cl, ce⟩
   · have hlt : ¬ z < 0.125 := fun h => hs (by
       have := (flt_iff _ _ hz f125).mp h; rwa [v125] at this)
-    rw [if_neg hs]
+    rw [ite_eq_right hs]
     set i := ⌊8 * fv z⌋₊ with hi
     have h8 : 0 ≤ 8 * fv z := by linarith
     have hi1 : 1 ≤ i := Nat.le_floor (by push_cast; linarith)
@@ -213,7 +213,7 @@ theorem aTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xAcc) :
     have hi13 : ⌊8 * z⌋₊ ≤ 13 :=
       Nat.lt_succ_iff.mp ((Nat.floor_lt h8).mpr (by push_cast; linarith))
     unfold target
-    rw [if_pos hi13]
+    rw [ite_eq_left hi13]
     have h := hpos _ (by omega : ⌊8 * z⌋₊ < 14)
     have hg := erfc_ge 80 _ (le_min (by positivity) (by unfold xAcc; norm_num)) h
     have hfu := Nat.lt_floor_add_one (8 * z)

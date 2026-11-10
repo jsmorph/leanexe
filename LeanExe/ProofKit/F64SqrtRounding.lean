@@ -63,7 +63,7 @@ theorem sqrt_relative (magnitude : Nat) (hm : magnitude ≠ 0) (hmax : magnitude
   have hpack := F64PackRelative.pack_spec false candidate hcandidateMax
   have hactual : Wasm.IEEE64.roundSqrtMagnitude magnitude =
       Wasm.IEEE64.roundScaledMagnitude false candidate := by
-    simp only [Wasm.IEEE64.roundSqrtMagnitude, beq_iff_eq, if_neg hm]
+    simp only [Wasm.IEEE64.roundSqrtMagnitude, beq_iff_eq, ite_eq_right hm]
     rfl
   have herr := CodeLib.IEEE32.roundSqrtIntegral_real_error radicand outputShift
   have hrootReal : (2 : ℝ)^52 * (2 : ℝ)^outputShift ≤ Real.sqrt radicand := by

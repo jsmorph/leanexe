@@ -45,10 +45,10 @@ theorem one_facts (i j : ℕ) (hi : i < 33) (hj : j < 32) :
   simp only [List.all_eq_true, List.mem_range, Bool.and_eq_true, decide_eq_true_eq] at h
   obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h i hi j hj
   refine ⟨h1, h2, fun e => ?_, fun e => ?_, fun e => ?_, fun e => ?_⟩
-  · rw [if_pos e] at h3; simpa using h3
-  · rw [if_neg e] at h3; simpa using h3
-  · rw [if_pos e] at h4; simpa using h4
-  · rw [if_neg e] at h4; simpa using h4
+  · rw [ite_eq_left e] at h3; simpa using h3
+  · rw [ite_eq_right e] at h3; simpa using h3
+  · rw [ite_eq_left e] at h4; simpa using h4
+  · rw [ite_eq_right e] at h4; simpa using h4
 
 /-- The table's triples for `r = 1/2^g` against `E ln 2` with `E = -g`: the high parts cancel,
 and the middle and low parts cancel to within `2^-140`. -/

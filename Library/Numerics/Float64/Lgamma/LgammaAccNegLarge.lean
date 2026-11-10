@@ -50,7 +50,7 @@ theorem asym_large (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
     linarith
   · have h48 : value xh.toBits < 48 := by linarith
     have h120 : value xh.toBits < 2 ^ 120 := by linarith [(by norm_num : (48 : ℝ) < 2 ^ 120)]
-    rw [if_pos h48, if_pos h120]
+    rw [ite_eq_left h48, ite_eq_left h120]
     linarith
 
 /-- `log Γ y ≤ 111` from 2 to 33: `Γ 33 = 32! ≤ 32^32 = 2^160`. -/

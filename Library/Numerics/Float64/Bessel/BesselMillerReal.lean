@@ -77,16 +77,16 @@ theorem cf_step (x : ℝ) (hx : 0 < x) (M m : ℕ) (hm : 1 ≤ m) (hmM : m < M)
     have : (0 : ℝ) ≤ ((M - m : ℕ) : ℝ) := Nat.cast_nonneg _
     linarith [hg.1, hg.2]
   unfold cfrac
-  rw [if_pos hmM]
+  rw [ite_eq_left hmM]
   rcases hpos with ⟨hlt, h⟩ | h
-  · rw [if_pos hlt, show m + 1 - 1 = m by omega]
+  · rw [ite_eq_left hlt, show m + 1 - 1 = m by omega]
     have hK : kern x (m - 1) M = lam x m * kern x m M - kern x (m + 1) M := by linarith
     have hm0 : kern x m M ≠ 0 := h.ne'
     have e : lam x m - kern x (m + 1) M / kern x m M =
         (lam x m * kern x m M - kern x (m + 1) M) / kern x m M := by
       field_simp
     rw [e, one_div_div, ← hK]
-  · rw [if_neg (by omega), sub_zero, ← h]
+  · rw [ite_eq_right (by omega), sub_zero, ← h]
     have hk1 : kern x m (m + 1) = 1 := kern_succ x hx.ne' m
     rw [← h] at hk
     rw [hk1, kern_self] at hk

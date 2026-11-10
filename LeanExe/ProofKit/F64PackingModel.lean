@@ -107,12 +107,12 @@ theorem signed_pack_relative (z : Int) (hmax : z.natAbs < 2^2097) :
   refine ⟨hs.1, ?_⟩
   by_cases hz : z < 0
   · have hz' := Int.eq_neg_natAbs_of_nonpos (Int.le_of_lt hz)
-    rw [hv, if_pos (by simpa using hz)]
+    rw [hv, ite_eq_left (by simpa using hz)]
     rw [show -(roundedMagnitude z.natAbs : Int) - z =
       -((roundedMagnitude z.natAbs : Int) - z.natAbs) by omega, abs_neg]
     exact herr
   · have hz' := Int.eq_natAbs_of_nonneg (Int.le_of_not_gt hz)
-    rw [hv, if_neg (by simpa using hz)]
+    rw [hv, ite_eq_right (by simpa using hz)]
     rw [show (roundedMagnitude z.natAbs : Int) - z =
       (roundedMagnitude z.natAbs : Int) - z.natAbs by omega]
     exact herr

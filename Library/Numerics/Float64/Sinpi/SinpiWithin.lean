@@ -92,19 +92,19 @@ theorem cospi_big (x : Float) (hxf : Finite x.toBits) (h : 2 ^ 52 ≤ |value x.t
   rw [cos_abs_pi]
   unfold Sinpi.cospi
   dsimp only
-  rw [if_neg (fun h' => by linarith [c1.mp h']), if_neg (fun h' => by linarith [c52.mp h']),
-    if_neg cinf]
+  rw [ite_eq_right (fun h' => by linarith [c1.mp h']), ite_eq_right (fun h' => by linarith [c52.mp h']),
+    ite_eq_right cinf]
   by_cases h53 : |value x.toBits| < 2 ^ 53
-  · rw [if_pos ((high53 x hxf).mpr h53)]
+  · rw [ite_eq_left ((high53 x hxf).mpr h53)]
     obtain ⟨N, hN, hp⟩ := big_parity x hxf h h53
     rw [hp, hN, show Real.pi * (N : ℝ) = N * Real.pi by ring, Real.cos_nat_mul_pi]
     by_cases hodd : N % 2 = 1
-    · rw [decide_eq_true hodd, if_pos rfl, on1, Odd.neg_one_pow (Nat.odd_iff.mpr hodd)]
+    · rw [decide_eq_true hodd, ite_eq_left rfl, on1, Odd.neg_one_pow (Nat.odd_iff.mpr hodd)]
       exact pm_one _ _ fn1 vn1 (by norm_num)
-    · rw [decide_eq_false hodd, if_neg (show ¬((false : Bool) = true) by decide), o1,
+    · rw [decide_eq_false hodd, ite_eq_right (show ¬((false : Bool) = true) by decide), o1,
         Even.neg_one_pow (Nat.even_iff.mpr (by omega))]
       exact pm_one _ _ f1 v1 (by norm_num)
-  · rw [if_neg (fun h' => h53 ((high53 x hxf).mp h')), o1]
+  · rw [ite_eq_right (fun h' => h53 ((high53 x hxf).mp h')), o1]
     obtain ⟨n, hn⟩ := big_even x.toBits (not_lt.mp h53)
     rw [hn, show Real.pi * (2 * (n : ℝ)) = n * (2 * Real.pi) by ring, Real.cos_nat_mul_two_pi]
     exact pm_one _ _ f1 v1 (by norm_num)
@@ -122,8 +122,8 @@ theorem tanpi_big (x : Float) (hxf : Finite x.toBits) (h : 2 ^ 52 ≤ |value x.t
   obtain ⟨n, hn⟩ := big_integer x.toBits h
   unfold Sinpi.tanpi
   dsimp only
-  rw [if_neg (fun h' => by linarith [c1.mp h']), if_neg (fun h' => by linarith [c52.mp h']),
-    if_neg cinf, hn, tan_int]
+  rw [ite_eq_right (fun h' => by linarith [c1.mp h']), ite_eq_right (fun h' => by linarith [c52.mp h']),
+    ite_eq_right cinf, hn, tan_int]
   apply pm_zero
   split_ifs <;> simp only [F64Bits.toBits_neg, (zero_bits').1] <;> decide +kernel
 

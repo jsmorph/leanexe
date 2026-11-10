@@ -114,7 +114,7 @@ theorem select_reduced_one (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072
   have h5' : x.toBits >>> 32 &&& 2147483647 < 1072734898 := h5
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1', if_pos h4', if_pos h5']
+  rw [ite_eq_right h1', ite_eq_left h4', ite_eq_left h5']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -143,7 +143,7 @@ theorem select_reduced_neg (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072
   have h5' : ¬ (x.toBits >>> 32 &&& 2147483647 < 1072734898) := h5
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1', if_pos h4', if_neg h5']
+  rw [ite_eq_right h1', ite_eq_left h4', ite_eq_right h5']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -172,7 +172,7 @@ theorem select_reduced_pos (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072
   have h5' : ¬ (x.toBits >>> 32 &&& 2147483647 < 1072734898) := h5
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1', if_pos h4', if_neg h5']
+  rw [ite_eq_right h1', ite_eq_left h4', ite_eq_right h5']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -187,7 +187,7 @@ theorem select_middle (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072)
   have h5' : ¬ (x.toBits >>> 32 &&& 2147483647 < 1016070144) := h5
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1', if_neg h4', if_neg h5']
+  rw [ite_eq_right h1', ite_eq_right h4', ite_eq_right h5']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -203,7 +203,7 @@ theorem select_tiny (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072)
   have h5' : x.toBits >>> 32 &&& 2147483647 < 1016070144 := h5
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1', if_neg h4', if_pos h5']
+  rw [ite_eq_right h1', ite_eq_right h4', ite_eq_left h5']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -213,7 +213,7 @@ theorem select_overflow (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072)
   have h1' : ¬ (x.toBits >>> 32 &&& 2147483647 ≥ 2146435072) := h1
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1']
+  rw [ite_eq_right h1']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -225,7 +225,7 @@ theorem select_saturated (x : Float) (h1 : ¬ highWord x.toBits ≥ 2146435072)
   have h1' : ¬ (x.toBits >>> 32 &&& 2147483647 ≥ 2146435072) := h1
   unfold Tanh.expm1
   simp only []
-  rw [if_neg h1']
+  rw [ite_eq_right h1']
   simp only [highWord, sgn] at *
   split_ifs <;> simp_all
 
@@ -235,7 +235,7 @@ theorem select_nonfinite (x : Float) (h1 : highWord x.toBits ≥ 2146435072) :
   have h1' : x.toBits >>> 32 &&& 2147483647 ≥ 2146435072 := h1
   unfold Tanh.expm1
   simp only []
-  rw [if_pos h1']
+  rw [ite_eq_left h1']
   rfl
 
 #print axioms highWord_toNat

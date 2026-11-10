@@ -49,7 +49,7 @@ theorem truncSat_eq (value : UInt32) :
         simp only [F32Encoding.sourceSign, hs, Sign.apply, Wasm.IEEE32.truncSatI64U,
           Wasm.IEEE32.truncatedInt, hn, hfin, Bool.false_eq_true, ↓reduceIte]
       · exact clamp_nat _
-      · rw [if_pos (by omega)]
+      · rw [ite_eq_left (by omega)]
         simp only [Int.toNat_neg_natCast]
         rfl
 

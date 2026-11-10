@@ -49,7 +49,7 @@ theorem refPos_transfer (f : Fmt) (A B y y' : ℝ) (hA : 0 ≤ A) (hy1 : A < y) 
   · -- both at or beyond the threshold
     rw [← hT] at h
     unfold refPos
-    rw [if_pos (by linarith), if_pos (by linarith)]
+    rw [ite_eq_left (by linarith), ite_eq_left (by linarith)]
   · rw [← hT] at h
     have hyT : y < threshold f := by linarith
     obtain ⟨E, Q, hR⟩ := exists_roundsTo f y (by linarith)

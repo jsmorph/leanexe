@@ -147,7 +147,7 @@ theorem cospi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
   rw [cos_abs_pi]
   unfold Sinpi.cospi
   dsimp only
-  rw [ax_abs, if_neg (fun h' => by linarith [c1.mp h']), if_pos (c52.mpr h2)]
+  rw [ax_abs, ite_eq_right (fun h' => by linarith [c1.mp h']), ite_eq_left (c52.mpr h2)]
   generalize Sinpi.ffloor ((x.toBits >>> 32) &&& 0x7fffffff) (x.toBits &&& 0xFFFFFFFF) = P at *
   obtain ⟨fl, j0⟩ := P
   dsimp only at *
@@ -159,14 +159,14 @@ theorem cospi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
   · -- An integer: the result is `±1`.
     have hb : (x.abs - fl == 0.5) = false := by
       rw [beq_half _ hdf, hdv, heq, sub_self]; simp
-    rw [hb, Bool.and_false, if_neg hff, hz, show (0 : UInt64) >>> 32 = 0 by decide,
-      if_pos (show (0 : UInt64) < 0x3fd00000 by decide),
-      if_pos (show ((0 : UInt64) == 0) = true by decide), hodd, hshift, heq, sub_self, mul_zero,
+    rw [hb, Bool.and_false, ite_eq_right hff, hz, show (0 : UInt64) >>> 32 = 0 by decide,
+      ite_eq_left (show (0 : UInt64) < 0x3fd00000 by decide),
+      ite_eq_left (show ((0 : UInt64) == 0) = true by decide), hodd, hshift, heq, sub_self, mul_zero,
       Real.cos_zero]
     by_cases hp : N % 2 = 1
-    · rw [if_pos hp, decide_eq_true hp, if_pos rfl, on1]
+    · rw [ite_eq_left hp, decide_eq_true hp, ite_eq_left rfl, on1]
       exact pm_one _ _ fn1 vn1 (by norm_num)
-    · rw [if_neg hp, decide_eq_false hp, if_neg hff, o1]
+    · rw [ite_eq_right hp, decide_eq_false hp, ite_eq_right hff, o1]
       exact pm_one _ _ f1 v1 (by norm_num)
   · set F := |value x.toBits| - N with hFdef
     have hF0 : 1 / 2 ^ 52 ≤ F := by rw [hFdef]; linarith
@@ -178,13 +178,13 @@ theorem cospi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
     · -- An integer plus `1/2`: the result is `+0`.
       have hb : (x.abs - fl == 0.5) = true := by rw [beq_half _ hdf, hdv, hh]; simp
       rw [hb, Bool.and_true, decide_eq_true (ge_of_not_lt _ _ (fun h' => by linarith [t2.mp h'])),
-        decide_eq_true (t3.mpr (by linarith)), if_pos (show (true && true) = true from rfl),
+        decide_eq_true (t3.mpr (by linarith)), ite_eq_left (show (true && true) = true from rfl),
         hshift, hh,
         show Real.pi * (1 / 2) = Real.pi / 2 by ring, Real.cos_pi_div_two, neg_zero, ite_self,
         (zero_bits').1]
       exact F64SelfStep.zero_step _ (by decide)
     · have hb : (x.abs - fl == 0.5) = false := by rw [beq_half _ hdf, hdv]; simpa using hh
-      rw [hb, Bool.and_false, if_neg hff, frac_high _ F ha63 hdv hF0, hodd]
+      rw [hb, Bool.and_false, ite_eq_right hff, frac_high _ F ha63 hdv hF0, hodd]
       have hc : F64SignedRounding.WithinSteps 1 (Real.cos (Real.pi * F))
           (if (x.abs - fl).toBits >>> 32 < 0x3fd00000 then
             (if false = true then (1.0 : Float) else Sinpi.kernelCospi (x.abs - fl))
@@ -194,22 +194,22 @@ theorem cospi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
             -Sinpi.kernelSinpi ((x.abs - fl) - 0.5)
           else -Sinpi.kernelCospi (1.0 - (x.abs - fl))).toBits := by
         by_cases hq : F < 1 / 4
-        · rw [if_pos (t1.mpr hq), if_neg hff]
+        · rw [ite_eq_left (t1.mpr hq), ite_eq_right hff]
           exact hpcs.1 hq
-        rw [if_neg (fun h' => hq (t1.mp h'))]
+        rw [ite_eq_right (fun h' => hq (t1.mp h'))]
         by_cases hq2 : F < 1 / 2
-        · rw [if_pos (t2.mpr hq2)]
+        · rw [ite_eq_left (t2.mpr hq2)]
           exact hpcs.2.1 (not_lt.mp hq) hq2
-        rw [if_neg (fun h' => hq2 (t2.mp h'))]
+        rw [ite_eq_right (fun h' => hq2 (t2.mp h'))]
         by_cases hq3 : F < 3 / 4
-        · rw [if_pos (t3.mpr hq3)]
+        · rw [ite_eq_left (t3.mpr hq3)]
           exact hpcs.2.2.1 (lt_of_le_of_ne (not_lt.mp hq2) (Ne.symm hh)) hq3
-        rw [if_neg (fun h' => hq3 (t3.mp h'))]
+        rw [ite_eq_right (fun h' => hq3 (t3.mp h'))]
         exact hpcs.2.2.2 (not_lt.mp hq3)
       by_cases hp : N % 2 = 1
-      · rw [hshift, if_pos hp, decide_eq_true hp, if_pos rfl]
+      · rw [hshift, ite_eq_left hp, decide_eq_true hp, ite_eq_left rfl]
         exact neg_within _ _ hc
-      · rw [hshift, if_neg hp, decide_eq_false hp, if_neg hff]
+      · rw [hshift, ite_eq_right hp, decide_eq_false hp, ite_eq_right hff]
         exact hc
 
 #print axioms cospi_floor

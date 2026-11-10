@@ -233,7 +233,7 @@ theorem zTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xMax) :
     have hi46 : ⌊16 * z⌋₊ ≤ 46 :=
       Nat.lt_succ_iff.mp ((Nat.floor_lt h16).mpr (by push_cast; linarith))
     unfold target
-    rw [if_pos hi46]
+    rw [ite_eq_left hi46]
     have h := hpos _ (by omega : ⌊16 * z⌋₊ < 47)
     have hg := erfc_ge 80 _ (le_min (by positivity) (by unfold xMax; norm_num)) h
     have hfu := Nat.lt_floor_add_one (16 * z)

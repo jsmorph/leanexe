@@ -110,12 +110,12 @@ theorem change_even (n : ℕ) : change ins (2 * n) =
     if (gwState ins n).mode = 0 ∧ (gwState ins n).expiry ≤ tickClock (gwState ins n) (ins n)
     then some (.fallback, (gwState ins n).expiry.toNat) else none := by
   unfold change
-  rw [if_pos (by omega), show 2 * n / 2 = n by omega]
+  rw [ite_eq_left (by omega), show 2 * n / 2 = n by omega]
 
 theorem change_odd (n : ℕ) : change ins (2 * n + 1) =
     if gwKind ins n = 0 then none else some ((gwState ins (n + 1)).state, clk ins n) := by
   unfold change
-  rw [if_neg (by omega), show (2 * n + 1) / 2 = n by omega]
+  rw [ite_eq_right (by omega), show (2 * n + 1) / 2 = n by omega]
 
 theorem gwState_clock_lt : ∀ n, (gwState ins n).clock.toNat < 1099511627776
   | 0 => by show gw0.clock.toNat < 1099511627776; decide

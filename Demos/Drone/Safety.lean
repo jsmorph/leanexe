@@ -88,13 +88,13 @@ theorem floors_first (terrain : Array UInt64) (h : terrainBound terrain) (hn : 0
 theorem floors_last (terrain : Array UInt64) (h : terrainBound terrain) (hn : 0 < terrain.size) :
     floors terrain (terrain.size - 1) = terrain[terrain.size - 1]! := by
   apply UInt64.toNat_inj.mp
-  rw [floors_nat terrain h _ (by omega), if_pos (Or.inr (by omega))]
+  rw [floors_nat terrain h _ (by omega), ite_eq_left (Or.inr (by omega))]
   simp
 
 theorem interior_clearance (terrain : Array UInt64) (h : terrainBound terrain)
     (i : Nat) (hi0 : 0 < i) (hi1 : i + 1 < terrain.size) :
     (floors terrain i).toNat = terrain[i]!.toNat + 100 := by
-  rw [floors_nat terrain h i (by omega), if_neg (by omega)]
+  rw [floors_nat terrain h i (by omega), ite_eq_right (by omega)]
 
 /-- At every interior station, the returned altitude is at least 100 above the terrain, and the
 returned speed is at most 20. -/

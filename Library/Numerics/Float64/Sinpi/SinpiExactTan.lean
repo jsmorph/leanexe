@@ -20,9 +20,9 @@ theorem signed_odd (s c : Bool) (t : Float)
     (if s = true then -t else t).toBits =
       if (s != c) = true then 0x8000000000000000 else 0 := by
   cases s
-  · rw [if_neg (show ¬((false : Bool) = true) by decide), ht]
+  · rw [ite_eq_right (show ¬((false : Bool) = true) by decide), ht]
     cases c <;> decide
-  · rw [if_pos rfl, F64Bits.toBits_neg, ht]
+  · rw [ite_eq_left rfl, F64Bits.toBits_neg, ht]
     cases c <;> decide +kernel
 
 /-- `±t` by a sign, for `t` of `±∞` by a second sign. -/
@@ -31,9 +31,9 @@ theorem signed_inf (s c : Bool) (t : Float)
     (if s = true then -t else t).toBits =
       if (s != c) = true then 0xFFF0000000000000 else 0x7FF0000000000000 := by
   cases s
-  · rw [if_neg (show ¬((false : Bool) = true) by decide), ht]
+  · rw [ite_eq_right (show ¬((false : Bool) = true) by decide), ht]
     cases c <;> decide
-  · rw [if_pos rfl, F64Bits.toBits_neg, ht]
+  · rw [ite_eq_left rfl, F64Bits.toBits_neg, ht]
     cases c <;> decide +kernel
 
 theorem float_facts : (-1.0 : Float) < 0.0 ∧ ¬ (1.0 : Float) < 0.0 ∧
@@ -99,14 +99,14 @@ theorem tanpi_int (x : Float) (hxf : Finite x.toBits) (n : Int) (hn : value x.to
     have hn0 : n = 0 := by
       have : (n : ℝ) = 0 := by rw [← hn, h0]
       exact_mod_cast this
-    rw [if_pos (c1.mpr (by rw [ha]; norm_num)), if_pos (c29.mpr (by rw [ha]; positivity)),
-      if_pos ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), hn0,
+    rw [ite_eq_left (c1.mpr (by rw [ha]; norm_num)), ite_eq_left (c29.mpr (by rw [ha]; positivity)),
+      ite_eq_left ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), hn0,
       show decide ((0 : ℤ) % 2 = 1) = false by decide, Bool.bne_false]
     exact zero_word _ h0
   have h1 := int_one_le _ n hn h0
-  rw [if_neg (fun h' => by linarith [c1.mp h'])]
+  rw [ite_eq_right (fun h' => by linarith [c1.mp h'])]
   by_cases h52 : |value x.toBits| < 2 ^ 52
-  · rw [if_pos (c52.mpr h52)]
+  · rw [ite_eq_left (c52.mpr h52)]
     obtain ⟨N, hN1, hN52, hNv, hflf, -, -, -, hcase⟩ := floor_frac x hxf h1 h52
     generalize Sinpi.ffloor ((x.toBits >>> 32) &&& 0x7fffffff) (x.toBits &&& 0xFFFFFFFF) = P
       at *
@@ -114,21 +114,21 @@ theorem tanpi_int (x : Float) (hxf : Finite x.toBits) (n : Int) (hn : value x.to
     dsimp only at *
     rcases hcase with ⟨heq, hz⟩ | ⟨hgt, hlt, -⟩
     · rw [hz, show (0 : UInt64) >>> 32 = 0 by decide,
-        if_pos (show (0 : UInt64) < 0x3fe00000 by decide),
-        if_pos (show ((0 : UInt64) == 0) = true by decide), odd_float fl N hflf hNv hN1 hN52,
+        ite_eq_left (show (0 : UInt64) < 0x3fe00000 by decide),
+        ite_eq_left (show ((0 : UInt64) == 0) = true by decide), odd_float fl N hflf hNv hN1 hN52,
         ← parity_abs n N (hN N heq)]
       apply signed_odd
       by_cases hp : N % 2 = 1
-      · rw [decide_eq_true hp, if_pos rfl, if_pos hneg1, if_pos rfl, z2]
-      · rw [decide_eq_false hp, if_neg (show ¬((false : Bool) = true) by decide), if_neg hone,
-          if_neg (show ¬((false : Bool) = true) by decide), z1]
+      · rw [decide_eq_true hp, ite_eq_left rfl, ite_eq_left hneg1, ite_eq_left rfl, z2]
+      · rw [decide_eq_false hp, ite_eq_right (show ¬((false : Bool) = true) by decide), ite_eq_right hone,
+          ite_eq_right (show ¬((false : Bool) = true) by decide), z1]
     · exact (not_frac _ n N hn hgt hlt).elim
-  · rw [if_neg (fun h' => h52 (c52.mp h')), if_neg cinf]
+  · rw [ite_eq_right (fun h' => h52 (c52.mp h')), ite_eq_right cinf]
     have h52' := not_lt.mp h52
     by_cases h53 : |value x.toBits| < 2 ^ 53
     · obtain ⟨N, hNx, hp⟩ := big_parity x hxf h52' h53
       have hlt := UInt64.lt_iff_toNat_lt.mp ((high53 x hxf).mpr h53)
-      rw [if_neg (show ¬((x.toBits >>> 32) &&& 0x7fffffff ≥ 0x43400000) from
+      rw [ite_eq_right (show ¬((x.toBits >>> 32) &&& 0x7fffffff ≥ 0x43400000) from
           fun h' => by have := UInt64.le_iff_toNat_le.mp h'; omega), hp,
         ← parity_abs n N (hN N hNx)]
       exact signed_odd _ _ _ (signed_zero _)
@@ -140,7 +140,7 @@ theorem tanpi_int (x : Float) (hxf : Finite x.toBits) (n : Int) (hn : value x.to
         rw [decide_eq_false_iff_not]
         rcases abs_cases n with ⟨ha, -⟩ | ⟨ha, -⟩ <;> rw [ha] at this <;> push_cast at this <;>
           omega
-      rw [if_pos (ge_of_not_lt _ _ (fun h' => h53 ((high53 x hxf).mp h'))), he]
+      rw [ite_eq_left (ge_of_not_lt _ _ (fun h' => h53 ((high53 x hxf).mp h'))), he]
       exact signed_odd _ _ _ (by rw [z1]; decide)
 
 /-- `tanpi` of `n + 1/2` is `+∞` for even `n` and `-∞` for odd `n`. -/
@@ -193,13 +193,13 @@ theorem tanpi_half (x : Float) (hxf : Finite x.toBits) (n : Int)
       omega
     rw [hM1] at hM ⊢
     rw [Nat.cast_zero, zero_add] at hM
-    rw [if_pos (c1.mpr h1), if_neg (fun h' => by linarith [c29.mp h']),
-      if_neg (show ¬((x.toBits >>> 32) &&& 0x7fffffff < 0x3fe00000) from
+    rw [ite_eq_left (c1.mpr h1), ite_eq_right (fun h' => by linarith [c29.mp h']),
+      ite_eq_right (show ¬((x.toBits >>> 32) &&& 0x7fffffff < 0x3fe00000) from
         fun h' => by linarith [t2.mp h']),
-      if_pos ((beq_half _ hf).trans (by rw [hv, hM]; simp)),
+      ite_eq_left ((beq_half _ hf).trans (by rw [hv, hM]; simp)),
       show decide (0 % 2 = 1) = false by decide]
     exact signed_inf _ _ _ (by rw [hinf]; rfl)
-  · rw [if_neg (fun h' => h1 (c1.mp h')), if_pos (c52.mpr h52)]
+  · rw [ite_eq_right (fun h' => h1 (c1.mp h')), ite_eq_left (c52.mpr h52)]
     obtain ⟨N, hN1, hN52, hNv, hflf, -, hdf, hdv, hcase⟩ :=
       floor_frac x hxf (not_lt.mp h1) h52
     generalize Sinpi.ffloor ((x.toBits >>> 32) &&& 0x7fffffff) (x.toBits &&& 0xFFFFFFFF) = P
@@ -226,15 +226,15 @@ theorem tanpi_half (x : Float) (hxf : Finite x.toBits) (n : Int)
     obtain ⟨-, t2', -⟩ := thresholds (x.abs - fl) ((x.abs - fl).toBits >>> 32)
       (|value x.toBits| - N) (by rw [Library.Numerics.Float64.Trig.TrigWords.shr_toNat]; rfl)
       (SinpiReflect.pos_toNat _ (by rw [hdv, hF]; norm_num)) hdv
-    rw [if_neg (show ¬((x.abs - fl).toBits >>> 32 < 0x3fe00000) from
+    rw [ite_eq_right (show ¬((x.abs - fl).toBits >>> 32 < 0x3fe00000) from
         fun h' => by linarith [t2'.mp h']), beq_half _ hdf, hdv, hF,
-      if_pos (show decide ((1 : ℝ) / 2 = 1 / 2) = true by simp),
+      ite_eq_left (show decide ((1 : ℝ) / 2 = 1 / 2) = true by simp),
       odd_float fl N hflf hNv hN1 hN52, hMN]
     apply signed_inf
     by_cases hp : N % 2 = 1
-    · rw [decide_eq_true hp, if_pos rfl, if_pos rfl, hninf]
-    · rw [decide_eq_false hp, if_neg (show ¬((false : Bool) = true) by decide),
-        if_neg (show ¬((false : Bool) = true) by decide), hinf]
+    · rw [decide_eq_true hp, ite_eq_left rfl, ite_eq_left rfl, hninf]
+    · rw [decide_eq_false hp, ite_eq_right (show ¬((false : Bool) = true) by decide),
+        ite_eq_right (show ¬((false : Bool) = true) by decide), hinf]
 
 #print axioms tanpi_int
 #print axioms tanpi_half

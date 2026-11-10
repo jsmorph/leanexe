@@ -317,9 +317,9 @@ theorem le_eq_lt_or_eq (a b : UInt64) :
     Wasm.IEEE64.le a b = (Wasm.IEEE64.lt a b || Wasm.IEEE64.eq a b) := by
   unfold Wasm.IEEE64.le Wasm.IEEE64.lt Wasm.IEEE64.eq
   by_cases hn : (Wasm.IEEE64.isNaN a || Wasm.IEEE64.isNaN b) = true
-  · rw [if_pos hn, if_pos hn, if_pos hn]
+  · rw [ite_eq_left hn, ite_eq_left hn, ite_eq_left hn]
     rfl
-  · rw [if_neg hn, if_neg hn, if_neg hn]
+  · rw [ite_eq_right hn, ite_eq_right hn, ite_eq_right hn]
     generalize Wasm.IEEE64.scaledValue a = u
     generalize Wasm.IEEE64.scaledValue b = v
     by_cases h : u < v

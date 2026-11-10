@@ -40,8 +40,8 @@ theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
     simp only [List.length_nil, Nat.add_zero, List.take_nil, List.drop_nil,
       List.append_nil]
     by_cases h : acc₁.size < n
-    · rw [if_pos h]
-    · rw [if_neg h]
+    · rw [ite_eq_left h]
+    · rw [ite_eq_right h]
       have : acc₁.size = n := by omega
       simp [List.toChunks, Array.toList_push]
   | cons y ys ih =>
@@ -60,7 +60,7 @@ theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
         Array.toList_push, List.nil_append]
       have hRhsCond : ¬ (acc₁.size + (y :: ys).length < n) := by
         rw [hAcc]; simp [List.length_cons]
-      rw [if_neg hRhsCond]
+      rw [ite_eq_right hRhsCond]
       rw [hAcc, Nat.sub_self]
       simp only [List.take_zero, List.drop_zero, List.append_nil]
       obtain ⟨n', rfl⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
@@ -74,9 +74,9 @@ theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
         show (#[y] : Array α).size = 1 from rfl,
         show (#[] : Array α).size + 1 = 1 from rfl]
       by_cases h1 : 1 + ys.length < n' + 1
-      · rw [if_pos h1, if_pos h1]
+      · rw [ite_eq_left h1, ite_eq_left h1]
         simp [List.append_assoc]
-      · rw [if_neg h1, if_neg h1]
+      · rw [ite_eq_right h1, ite_eq_right h1]
         simp [List.append_assoc]
     · -- Branch B: `acc₁` not yet full; push `y` and recurse.
       simp only [show (acc₁.size == n) = false from by simp [hAcc]]
@@ -85,16 +85,16 @@ theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
       rw [ih _ _ hSize']
       simp only [Array.size_push, Array.toList_push]
       by_cases hShort : acc₁.size + 1 + ys.length < n
-      · rw [if_pos hShort]
+      · rw [ite_eq_left hShort]
         have hRhs : acc₁.size + (y :: ys).length < n := by
           simp [List.length_cons]; omega
-        rw [if_pos hRhs]
+        rw [ite_eq_left hRhs]
         simp [List.append_assoc]
       · have hLhsCond : ¬ acc₁.size + 1 + ys.length < n := by omega
-        rw [if_neg hLhsCond]
+        rw [ite_eq_right hLhsCond]
         have hRhsCond : ¬ acc₁.size + (y :: ys).length < n := by
           simp [List.length_cons]; omega
-        rw [if_neg hRhsCond]
+        rw [ite_eq_right hRhsCond]
         -- Peel one element off the take/drop by shifting `n - acc₁.size` by 1.
         have hSub : n - acc₁.size = (n - acc₁.size - 1) + 1 := by omega
         have hSubEq : n - acc₁.size - 1 = n - (acc₁.size + 1) := by omega
@@ -117,7 +117,7 @@ theorem toChunks_cons_step {α} (n : Nat) (hn : 0 < n) (L : List α)
     simp only [Array.toList_push, List.nil_append,
       show (#[x] : Array α).size = 1 from rfl]
     have hLen' : ¬ 1 + xs.length < n' + 1 := by simp at hLen; omega
-    rw [if_neg hLen']
+    rw [ite_eq_right hLen']
     simp [List.take_succ_cons, List.drop_succ_cons]
 
 /-- `toChunks` of an exact-multiple-length list: the chunks are the

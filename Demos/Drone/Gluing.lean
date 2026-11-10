@@ -14,11 +14,11 @@ theorem join_derivative (cut : ℝ) (f g df dg : ℝ → ℝ)
     (hp : f cut = g cut) (hv : df cut = dg cut) (t : ℝ) :
     HasDerivAt (join cut f g) (join cut df dg t) t := by
   rcases lt_trichotomy t cut with ht | heq | ht
-  · rw [join, if_pos (le_of_lt ht)]
+  · rw [join, ite_eq_left (le_of_lt ht)]
     exact (hf t).congr_of_eventuallyEq ((gt_mem_nhds ht).mono fun u hu => by
       simp [join, le_of_lt hu])
   · subst t
-    rw [join, if_pos le_rfl]
+    rw [join, ite_eq_left le_rfl]
     have hl : HasDerivWithinAt (join cut f g) (df cut) (Iic cut) cut :=
       (hf cut).hasDerivWithinAt.congr
         (fun u hu => by change u ≤ cut at hu; simp [join, hu]) (by simp [join])
@@ -28,7 +28,7 @@ theorem join_derivative (cut : ℝ) (f g df dg : ℝ → ℝ)
         (fun u hu => by change cut < u at hu; simp [join, not_le.mpr hu])
         (by simpa [join] using hp)
     simpa only [Iic_union_Ioi, hasDerivWithinAt_univ] using hl.union hr
-  · rw [join, if_neg (not_le.mpr ht)]
+  · rw [join, ite_eq_right (not_le.mpr ht)]
     exact (hg t).congr_of_eventuallyEq ((lt_mem_nhds ht).mono fun u hu => by
       simp [join, not_le.mpr hu])
 

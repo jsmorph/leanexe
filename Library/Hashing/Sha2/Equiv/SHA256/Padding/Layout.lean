@@ -35,11 +35,11 @@ def zerosCount (data : ByteArray) : Nat :=
 
 theorem zerosCount_lt56 (data : ByteArray) (h : data.size % 64 < 56) :
     zerosCount data = 55 - data.size % 64 := by
-  unfold zerosCount; rw [if_pos h]
+  unfold zerosCount; rw [ite_eq_left h]
 
 theorem zerosCount_ge56 (data : ByteArray) (h : ¬ data.size % 64 < 56) :
     zerosCount data = 64 + 55 - data.size % 64 := by
-  unfold zerosCount; rw [if_neg h]
+  unfold zerosCount; rw [ite_eq_right h]
 
 /-- The 64-bit big-endian length encoding (eight bytes), matching the
 inline expansion in `Impl.sha256`'s final block. -/

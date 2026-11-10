@@ -29,7 +29,7 @@ theorem sar_neg (kw : UInt64) (n s : ℕ) (hn1 : 1 ≤ n) (hn2 : n ≤ 2 ^ 62) (
   have hs' : (UInt64.ofNat s).toNat % 64 = s := by
     rw [UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)]; omega
   unfold Erfc.sar
-  rw [sign_bit, show decide (2 ^ 63 ≤ kw.toNat) = true from decide_eq_true (by omega), if_pos rfl,
+  rw [sign_bit, show decide (2 ^ 63 ≤ kw.toNat) = true from decide_eq_true (by omega), ite_eq_left rfl,
     xor_ones, UInt64.toNat_shiftRight, hs', Nat.shiftRight_eq_div_pow, xor_ones, hk]
   congr 2
   omega
