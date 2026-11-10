@@ -1,0 +1,44 @@
+{
+  "id": "interval-enclosures",
+  "goals": [
+    "Library.Numerics.Interval.Contains (Library.Numerics.Interval.add a b) (x + y)",
+    "value i.lo.toBits ≤ f x ∧ f x ≤ value i.hi.toBits for an interval i computed by a chain of interval operations",
+    "y ≤ value w for a word w two steps above a word within one step of the nearest-even rounding of y",
+    "Library.Numerics.Interval.Contains acc (∫ x in a..b, f x) for a sum of panels in LeanExe.loop"
+  ],
+  "modules": [
+    "Library.Numerics.Interval.Proof",
+    "Library.Numerics.Interval.Steps",
+    "LeanExe.Dialect.Lemmas",
+    "Demos.Conjunction.Model",
+    "Demos.Conjunction.Soundness"
+  ],
+  "declarations": [
+    "Library.Numerics.Interval.Contains",
+    "Library.Numerics.Interval.join_accepted",
+    "Library.Numerics.Interval.add_sound",
+    "Library.Numerics.Interval.mul_sound",
+    "Library.Numerics.Interval.div_sound",
+    "Library.Numerics.Interval.sqrt_sound",
+    "Library.Numerics.Interval.clamp_sound",
+    "Library.Numerics.Interval.increasing_sound",
+    "Library.Numerics.Interval.decreasing_sound",
+    "Library.Numerics.Interval.outward2_upper",
+    "Library.Numerics.Interval.Steps.upper_of_position",
+    "Library.Numerics.Interval.Steps.position_nextUp",
+    "Library.Numerics.Interval.Steps.two_up",
+    "Library.Numerics.Interval.Steps.two_down",
+    "LeanExe.ProofKit.F64SignedRounding.WithinSteps",
+    "LeanExe.ProofKit.F64SignedRounding.within_of_nonneg",
+    "LeanExe.Dialect.loop_induction",
+    "Demos.Conjunction.Model.integral_eq_width_mul",
+    "Demos.Conjunction.Model.pc_nonneg"
+  ],
+  "examples": [
+    "Demos.Conjunction.expI_sound",
+    "Demos.Conjunction.erfSumI_sound",
+    "Demos.Conjunction.panel_sound",
+    "Demos.Conjunction.panels_sound",
+    "Demos.Conjunction.pc_enclosure"
+  ]
+}

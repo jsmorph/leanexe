@@ -205,6 +205,10 @@ lean_exe «verified-cases-orderbook» where
   srcDir := "tests"
   root := `TestSupport.OrderBook.CasesMain
 
+lean_exe «verified-cases-conjunction» where
+  srcDir := "tests"
+  root := `TestSupport.Conjunction.CasesMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where

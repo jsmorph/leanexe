@@ -11,7 +11,9 @@
 # the edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
 # --cases slew it checks the planner's file theorem module as well.  For the energy authorizer, it
 # runs the axiom audit of tests/energy/Axioms.lean, and with --cases energy it checks the
-# authorizer's file theorem module as well.  Each audit fails the run when a report names an axiom
+# authorizer's file theorem module as well.  For the conjunction program, it runs the axiom audit
+# of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
+# theorem module as well.  Each audit fails the run when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
@@ -114,6 +116,8 @@ elif [ "$case_module" = "energy" ]; then
   cases_exe=verified-cases-energy
 elif [ "$case_module" = "orderbook" ]; then
   cases_exe=verified-cases-orderbook
+elif [ "$case_module" = "conjunction" ]; then
+  cases_exe=verified-cases-conjunction
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -142,6 +146,10 @@ if [ -z "$reference" ]; then
     targets+=(Demos.Slew.Verified $(imports Demos/Slew/File.lean))
   fi
   if runs energy; then targets+=($(imports tests/energy/Axioms.lean)); fi
+  if runs conjunction; then targets+=($(imports tests/conjunction/Axioms.lean)); fi
+  if [ "$case_module" = "conjunction" ]; then
+    targets+=(Demos.Conjunction.Verified $(imports Demos/Conjunction/File.lean))
+  fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
   fi
@@ -275,6 +283,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "energy" ]; then
   check_axioms tests/energy/Axioms.lean
   if [ "$case_module" = "energy" ]; then
     check_file energy Demos.Energy.Verified Demos/Energy/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "conjunction" ]; then
+  check_axioms tests/conjunction/Axioms.lean
+  if [ "$case_module" = "conjunction" ]; then
+    check_file conjunction Demos.Conjunction.Verified Demos/Conjunction/File.lean
   fi
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
