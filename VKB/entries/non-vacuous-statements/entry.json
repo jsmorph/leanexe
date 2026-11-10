@@ -1,0 +1,55 @@
+{
+  "id": "non-vacuous-statements",
+  "goals": [
+    "a hypothesis that no state of a configuration may meet",
+    "∃ x : Trajectory, x.AdmittedUntil p q c t",
+    "dataOut B u w <+: spec (dataIn B u w) and a run that writes nothing",
+    "(dataIn B u w).length ≤ (dataOut B u w).length + 1",
+    "dataOut B u (windows ...) = (delimAnswers mach maxLen m0 ...).map UInt8.toUInt64",
+    "∃ recs, recs.flatMap recordBytes = bs.take (8 * kin * (bs.length / (8 * kin))) ∧ ...",
+    "a premise copied from a tool's configuration"
+  ],
+  "modules": [
+    "LeanExe.Requests.Delimited",
+    "LeanExe.Requests.Reads",
+    "TestSupport.M7.CrcReplies",
+    "TestSupport.M7.GwLoop",
+    "TestSupport.M7.ShaLoop",
+    "Demos.Energy.Window",
+    "LeanExe.A64.Isla.Walk"
+  ],
+  "declarations": [
+    "LeanExe.Requests.delim_prefix",
+    "LeanExe.Requests.delim_answered",
+    "LeanExe.Requests.frame_reads",
+    "LeanExe.Requests.decode_lengths",
+    "LeanExe.Requests.flatMap_recordBytes_inj",
+    "LeanExe.A64.Isla.Profile.sys"
+  ],
+  "examples": [
+    "Demos.Energy.Spec.admitted_exists",
+    "TestSupport.M7.Sha.sha_digests",
+    "TestSupport.M7.Crc.crc_replies",
+    "TestSupport.M7.Gw.board_bytes"
+  ],
+  "unimported": {
+    "tools/sail/F7/Base.lean": [
+      "F7.Hyp"
+    ],
+    "tools/sail/F7/Isla.lean": [
+      "F7.hyp_tcg",
+      "F7.hyp_kvm",
+      "F7.hyp_sme",
+      "F7.names_tcg",
+      "F7.names_kvm",
+      "F7.names_sme",
+      "F7.islaState"
+    ],
+    "tests/TestSupport/M7/CrcBoardFile.lean": [
+      "TestSupport.M7.CrcBoardFile.crc_board_prefix"
+    ],
+    "tests/TestSupport/M7/Isla/MulDiv.lean": [
+      "TestSupport.M7.Isla.udiv_agrees"
+    ]
+  }
+}
