@@ -9,7 +9,9 @@ and declares three things: the real function `f`, the interval function `f.inter
 verified compiler's dialect, which takes the tables of `sin`, `cos`, and `pow` before its interval
 parameters, and the theorem `f.encloses`, that the result of `f.interval` encloses the result of
 `f` when each interval argument encloses the real argument.  A body may end in a tuple, and a
-`let` may bind the components of a tuple.
+`let` may bind the components of a tuple.  `enclosure_def f (x y) {c : k} := body` adds a last
+parameter `c` that is a tuple of `k` values, and `enclosure_def f (x y) : k := body` states the
+number `k` of components of a result that the body returns from a call.
 
 The interval function evaluates each real operation with the interval operation of the table
 below.  A call of another function `g` becomes a call of `g.interval`, whose theorem
@@ -238,11 +240,8 @@ partial def chain (rules : Array Name) (g : MVarId) : TacticM Unit := g.withCont
   | _, _ => solve rules g
 
 /-- Proves that an interval function made by `enclosure_def` encloses its real function. -/
-elab "enclose" : tactic => do
-  let mut g ← getMainGoal
-  for h in (← g.getDecl).lctx do
-    unless h.isImplementationDetail do
-      g ← split g h.fvarId
+elab "enclose" : tactic => withTheReader Core.Context ({ · with maxHeartbeats := 0 }) do
+  let g ← getMainGoal
   let rules ← labelled `enclose
   g.withContext do
     let ty ← instantiateMVars (← g.getType)
@@ -259,26 +258,62 @@ elab "enclose" : tactic => do
 
 /-! ### The command -/
 
-syntax (name := enclosureDef) (docComment)? "enclosure_def " ident "(" ident* ")" " := " term :
-  command
+/-- The type of a tuple of `k` values of type `t`. -/
+def tupleType (t : Term) : Nat → MacroM Term
+  | 0 | 1 => pure t
+  | k + 1 => do `($t × $(← tupleType t k))
+
+/-- The type of a tuple of `k` intervals. -/
+macro "interval_tuple% " k:num : term => do
+  tupleType (← `(Library.Numerics.Interval.Interval)) k.getNat
+
+/-- The relation of a tuple of `k` intervals and a tuple of `k` reals. -/
+macro "enclosure_relation% " k:num : term => resultRelation k.getNat
+
+syntax (name := enclosureDef) (docComment)? "enclosure_def " ident "(" ident* ")"
+  ("{" ident " : " num "}")? (" : " num)? " := " term : command
 
 macro_rules
-  | `($[$doc:docComment]? enclosure_def $name ($ps*) := $body) => do
+  | `($[$doc:docComment]? enclosure_def $name ($ps*) $[{$c : $k}]? $[: $size]? := $body) => do
     let iname := mkIdentFrom name (name.getId ++ `interval)
     let tname := mkIdentFrom name (name.getId ++ `encloses)
     let qs := ps.map fun p => mkIdentFrom p (p.getId.appendAfter "'")
     let hs := ps.map fun p => mkIdentFrom p (p.getId.appendBefore "h_")
-    let rel ← resultRelation (resultSize body)
-    let real ← `($[$doc:docComment]? noncomputable def $name ($ps* : ℝ) := $(← realBody body))
-    let interval ← `(set_option linter.unusedVariables false in
-      def $iname ($tables* : Array UInt64) ($ps* : Library.Numerics.Interval.Interval) :=
-        $(← intervalBody body))
-    let thm ← `(@[enclose] theorem $tname {powLog powExp : Array UInt64}
-        {$ps* : Library.Numerics.Interval.Interval} {$qs* : ℝ}
-        $[($hs : Library.Numerics.Interval.Encloses $ps $qs)]* :
+    let rel ← resultRelation (match size with | some n => n.getNat | none => resultSize body)
+    let interval ← `(Library.Numerics.Interval.Interval)
+    let mut realBinders := #[]
+    let mut intervalBinders := #[← `(bracketedBinder| ($tables* : Array UInt64))]
+    let mut theoremBinders := #[← `(bracketedBinder| {$(tables[2]!) $(tables[3]!) : Array UInt64})]
+    let mut intervalArgs : Array Term := ps.map fun p => ⟨p.raw⟩
+    let mut realArgs : Array Term := qs.map fun q => ⟨q.raw⟩
+    unless ps.isEmpty do
+      realBinders := realBinders.push (← `(bracketedBinder| ($ps* : ℝ)))
+      intervalBinders := intervalBinders.push (← `(bracketedBinder| ($ps* : $interval)))
+      theoremBinders := theoremBinders.push (← `(bracketedBinder| {$ps* : $interval}))
+      theoremBinders := theoremBinders.push (← `(bracketedBinder| {$qs* : ℝ}))
+    for p in ps, q in qs, h in hs do
+      theoremBinders := theoremBinders.push
+        (← `(bracketedBinder| ($h : Library.Numerics.Interval.Encloses $p $q)))
+    if let (some c, some k) := (c, k) then
+      let c' := mkIdentFrom c (c.getId.appendAfter "'")
+      let h := mkIdentFrom c (c.getId.appendBefore "h_")
+      let ti ← tupleType interval k.getNat
+      let tr ← tupleType (← `(ℝ)) k.getNat
+      realBinders := realBinders.push (← `(bracketedBinder| ($c : $tr)))
+      intervalBinders := intervalBinders.push (← `(bracketedBinder| ($c : $ti)))
+      theoremBinders := theoremBinders.push (← `(bracketedBinder| {$c : $ti}))
+      theoremBinders := theoremBinders.push (← `(bracketedBinder| {$c' : $tr}))
+      theoremBinders := theoremBinders.push
+        (← `(bracketedBinder| ($h : $(← resultRelation k.getNat) $c $c')))
+      intervalArgs := intervalArgs.push c
+      realArgs := realArgs.push c'
+    let real ← `($[$doc:docComment]? noncomputable def $name $realBinders* := $(← realBody body))
+    let program ← `(set_option linter.unusedVariables false in
+      def $iname $intervalBinders* := $(← intervalBody body))
+    let thm ← `(@[enclose] theorem $tname $theoremBinders* :
         $rel ($iname Library.Numerics.Float64.Trig.invPi Library.Numerics.Float64.Trig.halfPi
-          powLog powExp $ps*) ($name $qs*) := by enclose)
-    return mkNullNode #[real, interval, thm]
+          $(tables[2]!) $(tables[3]!) $intervalArgs*) ($name $realArgs*) := by enclose)
+    return mkNullNode #[real, program, thm]
 
 end Enclose
 

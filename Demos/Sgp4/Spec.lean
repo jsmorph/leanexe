@@ -260,4 +260,38 @@ enclosure_def state (radius xke j2 t ecco inclo nodeo argpo mo bstar no sinio co
   let (x, y, z, xdot, ydot, zdot) := vectors radius xke mrt mvt rvdot ux uy uz vx vy vz
   (em0, pl, mrt, x, y, z, xdot, ydot, zdot)
 
+/-! ### The whole computation -/
+
+/-- The period in minutes, `no`, `xke`, the eccentricity, the angles in radians, the drag term,
+and the constants of `constants` after `no`, for an element set in revolutions per day and
+degrees. -/
+enclosure_def elements (radius mu j2 j3oj2 j4 n ecco incl node argp m bstar) :=
+  let (noKozai, inclo, nodeo, argpo, mo) := convert n incl node argp m
+  let xke := xkeOf radius mu
+  let (no, sinio, cosio, con41, x1mth2, x7thm1, mdot, argpdot, nodedot, nodecf, cc1, cc4, cc5, t2cof,
+      omgcof, eta, xmcof, delmo, sinmao, d2, d3, d4, t3cof, t4cof, t5cof, aycof, xlcof) :=
+    constants radius xke j2 j3oj2 j4 noKozai ecco inclo argpo mo bstar
+  (period no, no, xke, ecco, inclo, nodeo, argpo, mo, bstar,
+    sinio, cosio, con41, x1mth2, x7thm1, mdot, argpdot, nodedot, nodecf, cc1, cc4, cc5, t2cof,
+    omgcof, eta, xmcof, delmo, sinmao, d2, d3, d4, t3cof, t4cof, t5cof, aycof, xlcof)
+
+/-- The result of `state` for the tuple `c` of `elements`. -/
+enclosure_def stateAt (radius j2 t) {c : 35} :=
+  let (per, no, xke, ecco, inclo, nodeo, argpo, mo, bstar,
+    sinio, cosio, con41, x1mth2, x7thm1, mdot, argpdot, nodedot, nodecf, cc1, cc4, cc5, t2cof,
+    omgcof, eta, xmcof, delmo, sinmao, d2, d3, d4, t3cof, t4cof, t5cof, aycof, xlcof) := c
+  let (em0, pl, mrt, x, y, z, xdot, ydot, zdot) :=
+    state radius xke j2 t ecco inclo nodeo argpo mo bstar no
+      sinio cosio con41 x1mth2 x7thm1 mdot argpdot nodedot nodecf cc1 cc4 cc5 t2cof omgcof eta
+      xmcof delmo sinmao d2 d3 d4 t3cof t4cof t5cof aycof xlcof
+  (em0, pl, mrt, x, y, z, xdot, ydot, zdot)
+
+/-- `elements` with the WGS-72 constants. -/
+enclosure_def wgs72 (n ecco incl node argp m bstar) : 35 :=
+  elements 6378.135 398600.8 0.001082616 (-0.00000253881 / 0.001082616) (-0.00000165597) n ecco
+    incl node argp m bstar
+
+/-- `stateAt` with the WGS-72 constants. -/
+enclosure_def wgs72State (t) {c : 35} : 9 := stateAt 6378.135 0.001082616 t c
+
 end Demos.Sgp4.Spec

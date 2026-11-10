@@ -126,6 +126,40 @@ theorem one_value : Finite (1.0 : Float).toBits ∧ value (1.0 : Float).toBits =
   · rw [one_bits]; unfold CodeLib.IEEE64.Finite; decide +kernel
   · simp only [one_bits, value, hs]; push_cast; norm_num
 
+/-! ### Signs of the points of an interval -/
+
+theorem Contains.pos_of_lo {i : Interval} {x : ℝ} (c : Contains i x) (h : 0 < i.lo) : 0 < x := by
+  obtain ⟨z0, zv⟩ := zero_value
+  have := (lt_iff_value z0 c.2.1).mp h
+  rw [zv] at this
+  exact lt_of_lt_of_le this c.2.2.2.1
+
+theorem Contains.nonneg_of_lo {i : Interval} {x : ℝ} (c : Contains i x) (h : 0 ≤ i.lo) :
+    0 ≤ x := by
+  obtain ⟨z0, zv⟩ := zero_value
+  have := (le_iff_value z0 c.2.1).mp h
+  rw [zv] at this
+  exact this.trans c.2.2.2.1
+
+theorem Contains.neg_of_hi {i : Interval} {x : ℝ} (c : Contains i x) (h : i.hi < 0) : x < 0 := by
+  obtain ⟨z0, zv⟩ := zero_value
+  have := (lt_iff_value c.2.2.1 z0).mp h
+  rw [zv] at this
+  exact lt_of_le_of_lt c.2.2.2.2 this
+
+theorem Contains.nonpos_of_hi {i : Interval} {x : ℝ} (c : Contains i x) (h : i.hi ≤ 0) :
+    x ≤ 0 := by
+  obtain ⟨z0, zv⟩ := zero_value
+  have := (le_iff_value c.2.2.1 z0).mp h
+  rw [zv] at this
+  exact c.2.2.2.2.trans this
+
+theorem Contains.lt_one_of_hi {i : Interval} {x : ℝ} (c : Contains i x) (h : i.hi < 1.0) :
+    x < 1 := by
+  have := (lt_iff_value c.2.2.1 one_value.1).mp h
+  rw [one_value.2] at this
+  exact lt_of_le_of_lt c.2.2.2.2 this
+
 /-! ### Maximum and selection -/
 
 theorem imax_sound {a b : Interval} (h : (imax a b).status = 0) :
