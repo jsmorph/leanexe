@@ -1,0 +1,45 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "Oakland_20241105_CityAttorney charter",
+    "outputDirectory": "Oakland_20241105_CityAttorney-charter",
+    "contestDate": "2024-11-05",
+    "contestJurisdiction": "Oakland, California",
+    "contestOffice": "City Attorney",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "Oakland_20241105_CityAttorney.cdf.json",
+      "contestId": "Oakland_20241105_CityAttorney",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "BRENDA HARBIN-FORTE", "excluded": false},
+    {"name": "RYAN RICHARDSON", "excluded": false},
+    {"name": "Write-in", "excluded": true}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "unlimited",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": true,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": false,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Oakland City Charter section 1105"
+  }
+}

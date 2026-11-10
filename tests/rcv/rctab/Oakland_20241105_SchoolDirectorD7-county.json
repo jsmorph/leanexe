@@ -1,0 +1,45 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "Oakland_20241105_SchoolDirectorD7 county",
+    "outputDirectory": "Oakland_20241105_SchoolDirectorD7-county",
+    "contestDate": "2024-11-05",
+    "contestJurisdiction": "Oakland, California",
+    "contestOffice": "School Director, District 7",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "Oakland_20241105_SchoolDirectorD7.cdf.json",
+      "contestId": "Oakland_20241105_SchoolDirectorD7",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "CLIFFORD THOMPSON", "excluded": false},
+    {"name": "DOMONIC WARE", "excluded": false},
+    {"name": "Write-in", "excluded": true}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "unlimited",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Alameda County practice"
+  }
+}
