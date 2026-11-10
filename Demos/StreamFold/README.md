@@ -37,6 +37,7 @@ states.  The StreamFold theorems cover successful transfers only.  A returned I/
 | [Model proofs](Model.lean) | `outcome` over appended input, the line split, `foldOutcome`, `LineValues`, and the safety of the model from `LineRooms`. |
 | [Buffer](Buffer.lean) | Input loop as a prefix of the model, through acceptance or rejection. |
 | [Stream host](StreamHost.lean) and [observed output](Observed.lean) | Host assumptions and stdout journal of an observed host. |
+| [Whole input](ReadAll.lean) | What `readAll` returns under the host assumptions: the whole input for an input within its limit, and more than the limit otherwise. |
 | [Invariant](Invariant.lean), [future base](FutureBase.lean), and [future](Future.lean) | `StreamFuture`, `StreamDone`, and their preservation by each step. |
 | [Correctness](Correct.lean) | `process_exec_correct`, `process_terminates_future`, and `initial_terminates_output`. |
 | [Sizes](Sizes.lean) | Bound of the pending line from any line-length bound that `Room` implies, bounds of the buffers after each step, and line and total of a state at which a step stops. |

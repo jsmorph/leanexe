@@ -2,11 +2,10 @@ import Demos.Rcv.Process
 import Demos.StreamFold.StreamHost
 import Verified.Wasi.ProcessTotalSource
 
-/-! The control of [the process](Process.lean): the bounds on the output that each step keeps, the
-accounting of partial writes, the append of a read to the input, and the termination of the
-process under StreamFold's `StreamProgress`.  The rank orders the unread input, the EOF flag, the
-unwritten output, and the host's credit for zero-byte writes lexicographically, and each running
-step lowers it, as the order book's process does. -/
+/-! The control of [the process](Process.lean)'s steps: the bounds on the output that each step
+keeps, the accounting of partial writes, and the termination of the steps under StreamFold's
+`StreamProgress`.  The rank orders the unwritten output and the host's credit for zero-byte writes
+lexicographically, and each running step lowers it. -/
 
 namespace Demos.Rcv.Process
 
@@ -83,7 +82,8 @@ theorem remainingOutput_nonempty {s : State} (safe : Safe s) (pending : s.writte
   rw [safe.output_toNat] at less
   omega
 
-theorem remainingOutput_empty {s : State} (safe : Safe s) (finished : ¬ s.written < s.output.size) :
+theorem remainingOutput_empty {s : State} (safe : Safe s)
+    (finished : ¬ s.written < s.output.size) :
     byteWords (remainingOutput s) = [] := by
   apply List.eq_nil_of_length_eq_zero
   rw [byteWords_length, remainingOutput_size safe, (safe.no_output finished).1]
@@ -121,13 +121,6 @@ theorem afterWrite_running (s : State) (count : UInt64) :
   simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
   split <;> exact ⟨rfl, rfl⟩
 
-theorem afterWrite_fields (s : State) (reply : WriteResult) :
-    (afterWrite s reply).state.input = s.input ∧ (afterWrite s reply).state.eof = s.eof := by
-  unfold afterWrite
-  split
-  · exact ⟨rfl, rfl⟩
-  · split <;> exact ⟨rfl, rfl⟩
-
 theorem afterWrite_output_le (s : State) (reply : WriteResult) :
     (afterWrite s reply).state.output.data.size ≤ s.output.data.size := by
   unfold afterWrite
@@ -161,114 +154,27 @@ theorem afterWrite_conservation {s : State} (safe : Safe s) (count : UInt64)
       committed ++ byteWords (remainingOutput s) := by
   rw [afterWrite_remaining safe count bound, List.append_assoc, List.take_append_drop]
 
-/-! ## Reads -/
-
-/-- The bytes of `append a b` are those of `a` followed by those of `b`. -/
-theorem append_words (a b : Bytes) (total : a.data.size + b.data.size < 2 ^ 64) :
-    byteWords (append a b) = byteWords a ++ byteWords b := by
-  have hU : UInt64.size = 2 ^ 64 := rfl
-  have aNat : a.size.toNat = a.data.size := Bytes.size_toNat a (by omega)
-  have bNat : b.size.toNat = b.data.size := Bytes.size_toNat b (by omega)
-  have sum : (a.size + b.size).toNat = a.data.size + b.data.size := by
-    rw [UInt64.toNat_add, aNat, bNat, Nat.mod_eq_of_lt total]
-  unfold append
-  apply List.ext_getElem
-  · rw [byteWords_length, Bytes.data_size_build, sum, List.length_append, byteWords_length,
-      byteWords_length]
-  · intro i left right
-    have bound : i < a.data.size + b.data.size := by
-      rw [byteWords_length, Bytes.data_size_build, sum] at left
-      exact left
-    have iNat : (UInt64.ofNat i).toNat = i := UInt64.toNat_ofNat_of_lt' (by omega)
-    rw [byteWords_build_get (a.size + b.size) _ i (by rw [sum]; exact bound)]
-    by_cases inside : i < a.data.size
-    · have test : UInt64.ofNat i < a.size := by
-        rw [UInt64.lt_iff_toNat_lt, iNat, aNat]
-        exact inside
-      simp only [test, ↓reduceIte, bytes_get_narrow]
-      rw [List.getElem_append_left (by simpa using inside)]
-      exact (byteWords_get_nat a (by omega) i inside).symm.trans (by rfl)
-    · have test : ¬ UInt64.ofNat i < a.size := by
-        rw [UInt64.lt_iff_toNat_lt, iNat, aNat]
-        exact inside
-      have difference : UInt64.ofNat i - a.size = UInt64.ofNat (i - a.data.size) := by
-        apply UInt64.toNat_inj.mp
-        rw [UInt64.toNat_sub_of_le (UInt64.ofNat i) a.size
-            (UInt64.le_iff_toNat_le.mpr (by rw [iNat, aNat]; omega)), iNat, aNat,
-          UInt64.toNat_ofNat_of_lt' (n := i - a.data.size) (by omega)]
-      simp only [test, ↓reduceIte, bytes_get_narrow, difference]
-      rw [List.getElem_append_right (by simp only [byteWords_length]; omega)]
-      simp only [byteWords_length]
-      exact (byteWords_get_nat b (by omega) (i - a.data.size) (by omega)).symm
-
-theorem append_size (a b : Bytes) (total : a.data.size + b.data.size < 2 ^ 64) :
-    (append a b).data.size = a.data.size + b.data.size := by
-  have := congrArg List.length (append_words a b total)
-  simpa only [byteWords_length, List.length_append] using this
-
-theorem afterRead_ok (s : State) (bytes : Bytes) :
-    afterRead s ⟨0, bytes⟩ =
-      if bytes.size == 0 then ⟨true, 0, ⟨Bytes.empty, TabulateProgram.tabulate s.input, 0, true⟩⟩
-      else ⟨true, 0, { s with input := append s.input bytes }⟩ := by
-  simp [afterRead]
-
-theorem afterRead_running (s : State) (bytes : Bytes) :
-    (afterRead s ⟨0, bytes⟩).running = true ∧ (afterRead s ⟨0, bytes⟩).status = 0 := by
-  rw [afterRead_ok]
-  split <;> exact ⟨rfl, rfl⟩
-
-theorem afterRead_eof (s : State) (bytes : Bytes) :
-    (afterRead s ⟨0, bytes⟩).state.eof = (s.eof || bytes.size == 0) := by
-  rw [afterRead_ok]
-  split
-  · rename_i empty
-    rw [empty, Bool.or_true]
-  · rename_i nonempty
-    simp only [Bool.not_eq_true] at nonempty
-    rw [nonempty, Bool.or_false]
 
 /-! ## Rank -/
 
-abbrev Rank := Nat × Nat × Nat × Nat
+abbrev Rank := Nat × Nat
 
-abbrev rankOrder : WellFoundedRelation Rank :=
-  Prod.lex Nat.lt_wfRel (Prod.lex Nat.lt_wfRel (Prod.lex Nat.lt_wfRel Nat.lt_wfRel))
+abbrev rankOrder : WellFoundedRelation Rank := Prod.lex Nat.lt_wfRel Nat.lt_wfRel
 
 abbrev RankLt := rankOrder.rel
 
 theorem rank_wellFounded : WellFounded RankLt := rankOrder.wf
 
-/-- The unread input, the EOF flag, the unwritten output, and the zero-write credit. -/
-def rank (unread zeroWrites : Ghost → Nat) (s : State) (ghost : Ghost) : Rank :=
-  (unread ghost, if s.eof then 0 else 1, s.output.data.size - s.written.toNat, zeroWrites ghost)
+/-- The unwritten output and the zero-write credit. -/
+def rank (zeroWrites : Ghost → Nat) (s : State) (ghost : Ghost) : Rank :=
+  (s.output.data.size - s.written.toNat, zeroWrites ghost)
 
-theorem rank_afterRead (unread zeroWrites : Ghost → Nat) {before after : Ghost}
-    {s : State} {bytes : Bytes} (eof : s.eof = false) (unreadLe : unread after ≤ unread before)
-    (nonempty : bytes.data.size ≠ 0 → unread after < unread before) :
-    RankLt (rank unread zeroWrites (afterRead s ⟨0, bytes⟩).state after)
-      (rank unread zeroWrites s before) := by
-  by_cases decreased : unread after < unread before
-  · exact Prod.Lex.left _ _ decreased
-  · have same : unread after = unread before := by omega
-    have empty : bytes.data.size = 0 := by
-      by_cases empty : bytes.data.size = 0
-      · exact empty
-      · exact False.elim (decreased (nonempty empty))
-    have bytesSize : bytes.size = 0 := by simp [Bytes.size, empty]
-    have nextEof : (afterRead s ⟨0, bytes⟩).state.eof = true := by
-      simp [afterRead_eof, bytesSize]
-    unfold rank
-    rw [same, nextEof, eof]
-    apply Prod.Lex.right
-    exact Prod.Lex.left _ _ (show (0 : Nat) < 1 by decide)
-
-theorem rank_afterWrite (unread zeroWrites : Ghost → Nat) {before after : Ghost}
+theorem rank_afterWrite (zeroWrites : Ghost → Nat) {before after : Ghost}
     {s : State} (safe : Safe s) (pending : s.written < s.output.size)
     (count : UInt64) (bound : count.toNat ≤ (remainingOutput s).data.size)
-    (same : unread after = unread before)
     (zero : count = 0 → zeroWrites after < zeroWrites before) :
-    RankLt (rank unread zeroWrites (afterWrite s ⟨0, count⟩).state after)
-      (rank unread zeroWrites s before) := by
+    RankLt (rank zeroWrites (afterWrite s ⟨0, count⟩).state after)
+      (rank zeroWrites s before) := by
   have pendingNat := UInt64.lt_iff_toNat_lt.mp pending
   rw [safe.output_toNat] at pendingNat
   obtain ⟨sumNat, sumBound⟩ := afterWrite_sum safe count bound
@@ -280,9 +186,6 @@ theorem rank_afterWrite (unread zeroWrites : Ghost → Nat) {before after : Ghos
     simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
       countZero, UInt64.add_zero, beq_iff_eq, different]
     unfold rank
-    rw [same]
-    apply Prod.Lex.right
-    apply Prod.Lex.right
     apply Prod.Lex.right
     exact zero countZero
   · have countPositive : 0 < count.toNat := by
@@ -294,14 +197,8 @@ theorem rank_afterWrite (unread zeroWrites : Ghost → Nat) {before after : Ghos
     simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
     split
     · unfold rank
-      rw [same]
-      apply Prod.Lex.right
-      apply Prod.Lex.right
       exact Prod.Lex.left _ _ (Nat.sub_pos_of_lt pendingNat)
     · unfold rank
-      rw [same]
-      apply Prod.Lex.right
-      apply Prod.Lex.right
       have smaller : s.output.data.size - (s.written + count).toNat <
           s.output.data.size - s.written.toNat := by rw [sumNat]; omega
       exact Prod.Lex.left _ _ smaller
@@ -312,22 +209,18 @@ theorem step_write {s : State} (pending : s.written < s.output.size) :
     step s = writeStep s := by
   simp [step, pending]
 
-theorem step_stop {s : State} (finished : ¬ s.written < s.output.size) (eof : s.eof = true) :
+theorem step_stop {s : State} (finished : ¬ s.written < s.output.size) :
     step s = .pure ⟨false, 0, s⟩ := by
-  simp [step, finished, eof] <;> rfl
-
-theorem step_read {s : State} (finished : ¬ s.written < s.output.size) (eof : s.eof = false) :
-    step s = readStep s := by
-  simp [step, finished, eof] <;> rfl
+  simp [step, finished] <;> rfl
 
 /-- A step's result: a state with the output bounds, status 0 when it stops, and a lower rank
 while it runs. -/
-def Advances (rep : Ghost → World → Prop) (unread zeroWrites : Ghost → Nat)
+def Advances (rep : Ghost → World → Prop) (zeroWrites : Ghost → Nat)
     (s : State) (ghost : Ghost) (next : ProcessStep State) (final : World) : Prop :=
   ∃ nextGhost, rep nextGhost final ∧ Safe next.state ∧
     (next.running = false → next.status = 0) ∧
     (next.running = true →
-      RankLt (rank unread zeroWrites next.state nextGhost) (rank unread zeroWrites s ghost))
+      RankLt (rank zeroWrites next.state nextGhost) (rank zeroWrites s ghost))
 
 /-- The printers' buffers have a size of `UInt64`'s, so every report has fewer than 2^64 bytes. -/
 theorem toBytes_size_lt (o : Array UInt64) : (PrintProgram.toBytes o).data.size < UInt64.size := by
@@ -341,19 +234,24 @@ theorem tabulate_size_lt (b : Bytes) : (TabulateProgram.tabulate b).data.size < 
   · exact toBytes_size_lt _
   · exact toBytes_size_lt _
 
-theorem afterRead_safe {s : State} (safe : Safe s) (bytes : Bytes) :
-    Safe (afterRead s ⟨0, bytes⟩).state := by
-  rw [afterRead_ok]
+/-- The state of the report of `b`, with nothing written, has the output bounds. -/
+theorem report_safe (b : Bytes) : Safe ⟨TabulateProgram.tabulate b, 0⟩ := by
+  have output := tabulate_size_lt b
+  refine ⟨output, ?_⟩
+  by_cases empty : (TabulateProgram.tabulate b).data.size = 0
+  · exact Or.inl ⟨empty, rfl⟩
+  · refine Or.inr ?_
+    show (0 : UInt64) < (TabulateProgram.tabulate b).size
+    rw [UInt64.lt_iff_toNat_lt, Bytes.size_toNat _ output, UInt64.toNat_zero]
+    omega
+
+theorem started_safe (input : ReadResult) : Safe (started input).state := by
+  unfold started
   split
-  · have output := tabulate_size_lt s.input
-    refine ⟨output, ?_⟩
-    by_cases empty : (TabulateProgram.tabulate s.input).data.size = 0
-    · exact Or.inl ⟨empty, rfl⟩
-    · refine Or.inr ?_
-      show (0 : UInt64) < (TabulateProgram.tabulate s.input).size
-      rw [UInt64.lt_iff_toNat_lt, Bytes.size_toNat _ output, UInt64.toNat_zero]
-      omega
-  · exact ⟨safe.outputSize, safe.writing⟩
+  · exact Safe.initial
+  · split
+    · exact Safe.initial
+    · exact report_safe _
 
 theorem writeStep_advances {host : Host World} {rep : Ghost → World → Prop}
     {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
@@ -361,14 +259,14 @@ theorem writeStep_advances {host : Host World} {rep : Ghost → World → Prop}
     {next : ProcessStep State} (ready : rep ghost world) (safe : Safe s)
     (pending : s.written < s.output.size)
     (execution : LeanExe.Wasi.Exec host (writeStep s) world trace (.returned next) final) :
-    Advances rep unread zeroWrites s ghost next final := by
+    Advances rep zeroWrites s ghost next final := by
   change LeanExe.Wasi.Exec host
     (.write .stdout (remainingOutput s) fun reply => .pure (afterWrite s reply))
     world trace (.returned next) final at execution
   cases execution with
   | write_return operation continuation =>
       cases continuation
-      obtain ⟨count, nextGhost, replyEq, nextRep, sameInput, zeroDrop⟩ :=
+      obtain ⟨count, nextGhost, replyEq, nextRep, _, zeroDrop⟩ :=
         progress.write_reply ready (remainingOutput_nonempty safe pending) operation
       cases replyEq
       simp only [writeResult, ↓reduceIte]
@@ -378,51 +276,21 @@ theorem writeStep_advances {host : Host World} {rep : Ghost → World → Prop}
         rw [(afterWrite_running s _).1] at stopped
         cases stopped
       · intro _
-        exact rank_afterWrite unread zeroWrites safe pending _ countBound sameInput zeroDrop
-
-theorem readStep_advances {host : Host World} {rep : Ghost → World → Prop}
-    {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
-    {s : State} {ghost : Ghost} {world final : World} {trace : List Event}
-    {next : ProcessStep State} (ready : rep ghost world) (safe : Safe s) (eof : s.eof = false)
-    (execution : LeanExe.Wasi.Exec host (readStep s) world trace (.returned next) final) :
-    Advances rep unread zeroWrites s ghost next final := by
-  change LeanExe.Wasi.Exec host
-    (.read 4096 fun reply => .pure (afterRead s reply))
-    world trace (.returned next) final at execution
-  cases execution with
-  | read_reject capacity continuation =>
-      exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-  | read_return capacity operation continuation =>
-      cases continuation
-      obtain ⟨bytes, nextGhost, replyEq, nextRep, inputLe, nonemptyDrop⟩ :=
-        progress.read_reply ready operation
-      cases replyEq
-      simp only [readResult, ↓reduceIte]
-      refine ⟨nextGhost, nextRep, afterRead_safe safe _, ?_, ?_⟩
-      · intro stopped
-        rw [(afterRead_running s _).1] at stopped
-        cases stopped
-      · intro _
-        exact rank_afterRead unread zeroWrites eof inputLe nonemptyDrop
+        exact rank_afterWrite zeroWrites safe pending _ countBound zeroDrop
 
 theorem step_advances {host : Host World} {rep : Ghost → World → Prop}
     {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
     {s : State} {ghost : Ghost} {world final : World} {trace : List Event}
     {next : ProcessStep State} (ready : rep ghost world) (safe : Safe s)
     (execution : LeanExe.Wasi.Exec host (step s) world trace (.returned next) final) :
-    Advances rep unread zeroWrites s ghost next final := by
+    Advances rep zeroWrites s ghost next final := by
   by_cases pending : s.written < s.output.size
   · rw [step_write pending] at execution
     exact writeStep_advances progress ready safe pending execution
-  · cases eof : s.eof with
-    | false =>
-        rw [step_read pending eof] at execution
-        exact readStep_advances progress ready safe eof execution
-    | true =>
-        rw [step_stop pending eof] at execution
-        cases execution
-        exact ⟨ghost, ready, safe, fun _ => rfl,
-          fun impossible => False.elim (Bool.noConfusion impossible)⟩
+  · rw [step_stop pending] at execution
+    cases execution
+    exact ⟨ghost, ready, safe, fun _ => rfl,
+      fun impossible => False.elim (Bool.noConfusion impossible)⟩
 
 theorem step_exists {host : Host World} {rep : Ghost → World → Prop}
     {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
@@ -436,16 +304,9 @@ theorem step_exists {host : Host World} {rep : Ghost → World → Prop}
       [.write .stdout (remainingOutput s) (.returned 0 count)], final, ?_⟩
     rw [step_write pending]
     exact .write_return operation (.pure final _)
-  · cases eof : s.eof with
-    | false =>
-        obtain ⟨bytes, final, operation⟩ := progress.read_available ghost world ready
-        refine ⟨afterRead s ⟨0, bytes⟩, [.read 4096 (.returned 0 bytes)], final, ?_⟩
-        rw [step_read pending eof]
-        exact .read_return (by decide) operation (.pure final _)
-    | true =>
-        refine ⟨⟨false, 0, s⟩, [], world, ?_⟩
-        rw [step_stop pending eof]
-        exact .pure world _
+  · refine ⟨⟨false, 0, s⟩, [], world, ?_⟩
+    rw [step_stop pending]
+    exact .pure world _
 
 theorem step_returned {host : Host World} {rep : Ghost → World → Prop}
     {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
@@ -466,24 +327,9 @@ theorem step_returned {host : Host World} {rep : Ghost → World → Prop}
         obtain ⟨_, _, impossible, _⟩ :=
           progress.write_reply ready (remainingOutput_nonempty safe pending) operation
         cases impossible
-  · cases eof : s.eof with
-    | false =>
-        rw [step_read pending eof] at execution
-        change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead s reply))
-          world trace outcome final at execution
-        cases execution with
-        | read_reject capacity continuation =>
-            exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-        | read_return capacity operation continuation =>
-            cases continuation
-            exact ⟨_, rfl⟩
-        | read_trap capacity operation =>
-            obtain ⟨_, _, impossible, _⟩ := progress.read_reply ready operation
-            cases impossible
-    | true =>
-        rw [step_stop pending eof] at execution
-        cases execution
-        exact ⟨_, rfl⟩
+  · rw [step_stop pending] at execution
+    cases execution
+    exact ⟨_, rfl⟩
 
 /-- From every state whose output bounds hold, some execution of the process returns status 0. -/
 theorem process_terminates {World Ghost : Type} {host : Host World}
@@ -494,7 +340,7 @@ theorem process_terminates {World Ghost : Type} {host : Host World}
       Process.Exec host process s world trace (.returned 0) final ∧ rep finalGhost final := by
   let represented (config : State × Ghost) (s : State) (world : World) : Prop :=
     config.1 = s ∧ rep config.2 world ∧ Safe s
-  let measure (config : State × Ghost) := rank unread zeroWrites config.1 config.2
+  let measure (config : State × Ghost) := rank zeroWrites config.1 config.2
   obtain ⟨trace, status, final, config, finalState, execution, statusOk, finalRep⟩ :=
     Process.exec_of_wellFounded (host := host) (process := process) represented
       (InvImage RankLt measure) (InvImage.wf measure rank_wellFounded)
