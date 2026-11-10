@@ -1,0 +1,20 @@
+{
+  "id": "run-evidence",
+  "goals": [
+    "a board run that supports a Cortex-M7 board theorem",
+    "a run after the reset of st-flash, with C_DEBUGEN set",
+    "ORE in USART_ISR or OVRDIS in USART_CR3 read over SWD after a run",
+    "the virtual COM port passes none of the board's output",
+    "a run under QEMU or in Renode offered as evidence of the board's behavior"
+  ],
+  "modules": [
+    "LeanExe.M7.Proof.Board"
+  ],
+  "declarations": [
+    "LeanExe.M7.Nucleo.Flash",
+    "LeanExe.M7.Reset",
+    "LeanExe.M7.Nucleo.init",
+    "LeanExe.M7.Nucleo.initOvrdis"
+  ],
+  "examples": []
+}

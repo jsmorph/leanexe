@@ -1,6 +1,6 @@
 # Verification knowledge base (VKB)
 
-The VKB collects what agents and people learn while proving: lemmas, proof methods, worked examples, and the ways proofs fail.  It covers the obligations of end-to-end work for every artifact and property that [the index](../index.md) names by a code (WASM, SPEC, WASMF, WASI, C, CALIGN, METAL, A64, M7, WGSL, and PTX), the specification proofs of the library, and the proofs that check the back ends' models: the instruction forms against Isla's traces and the floating-point equations from Sail.  For a program of the verified compiler, the compiler's universal theorem gives the execution theorem, `p.f.implements`, so the work that remains comes after it: equality with an independent specification, call and file theorems, allocation bounds for `p.f.trapFree`, numerical error bounds, WASI totality, and the theorems of native code, bare-metal programs, images, boards, and GPU kernels.  The verified compiler, the runtime, and the trusted statements import no part of the VKB, so an entry can help a proof or fail its own check but cannot change a theorem.
+The VKB collects what agents and people learn while proving: lemmas, proof methods, worked examples, and the ways proofs fail.  It covers the obligations of end-to-end work for every artifact and property that [the index](../index.md) names by a code (WASM, SPEC, WASMF, WASI, C, CALIGN, METAL, A64, M7, WGSL, and PTX), the specification proofs of the library, and the proofs that check the back ends' models: the instruction forms against Isla's traces and the floating-point equations from Sail.  Entries also give guidelines for the work around a proof, such as testing a statement before its proof, reviewing a specification or a design, judging a run on a board or an emulator, and showing that a check can fail, and those entries cite the scripts, reviews, and documents that record each practice.  For a program of the verified compiler, the compiler's universal theorem gives the execution theorem, `p.f.implements`, so the work that remains comes after it: equality with an independent specification, call and file theorems, allocation bounds for `p.f.trapFree`, numerical error bounds, WASI totality, and the theorems of native code, bare-metal programs, images, boards, and GPU kernels.  The verified compiler, the runtime, and the trusted statements import no part of the VKB, so an entry can help a proof or fail its own check but cannot change a theorem.
 
 ## Entries
 
@@ -12,6 +12,10 @@ An entry names existing declarations instead of restating them.  When several pr
 |---|---|
 | [Closed computations](entries/closed-computations/README.md) | Proves constants, table entries, exports, and other closed facts by kernel evaluation. |
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
+| [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
+| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance. |
+| [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
+| [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
 | [Loops and builds](entries/loop-combinators/README.md) | Proves invariants for `LeanExe.loop`, element equations for `LeanExe.build`, and equalities of loops that write into arrays of their state with the loops that build new arrays. |
 | [Array folds by list induction](entries/array-fold-list-induction/README.md) | Proves that `xs.foldl step init` meets a specification stated by positions or lists, by induction on the array's list. |
 | [Word identities](entries/word-bit-identities/README.md) | Relates shifts, masks, and packed words to bit-level specifications. |
@@ -19,7 +23,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Signed quantities as `Int64` values](entries/signed-integer-values/README.md) | Writes signed exponents and differences as `Int64` and proves their integers, comparisons, and exact conversions to binary64. |
 | [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
 | [Byte buffers in words](entries/byte-buffer-passes/README.md) | Keeps a buffer of bytes in a step's words and proves straight-line passes over it, which a static cost bounds, against folds over lists. |
-| [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select. |
+| [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select, and compares each bound with half a byte time. |
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
@@ -28,12 +32,22 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |
 | [Decimal text](entries/decimal-conversions/README.md) | Proves parsers and printers of floating-point values against a grammar, rounding, and round trips, and printers and readers of integers against `toString`. |
 | [Transcriptions of standards](entries/spec-transcription/README.md) | Relates a program to a transcription of a published standard, its vectors, and its test references. |
+| [Testing a statement before its proof](entries/statement-testing/README.md) | Evaluates a new theorem's statement on an executable model before proving it. |
+| [Independent review of specifications and designs](entries/independent-review/README.md) | Reviews a specification against its request with the reviewer's own model and wrong programs, and a design note against the tree. |
+| [Satisfiable hypotheses and complete conclusions](entries/non-vacuous-statements/README.md) | Shows each hypothesis satisfiable and makes a conclusion exclude the trivial run. |
+| [Claims and the theorems that state them](entries/claims-and-theorems/README.md) | States each claim of a document as its theorem states it. |
+| [Requirements for a safety theorem](entries/requirements-for-theorems/README.md) | Writes requirements whose terms, items, and margins a theorem can state. |
 | [Compiled forms of list specifications](entries/linear-compiled-folds/README.md) | Makes native evaluation of a fold that appends to the end of a list linear by a `csimp` theorem, while the proofs keep the definition. |
 | [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
 | [Composed and appended programs](entries/module-composition/README.md) | Proves the theorems of functions added to or appended with a compiled program. |
 | [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays and trees across a call through the region clause, and composes the frames of steps. |
 | [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
+| [Checks that can fail](entries/discriminating-checks/README.md) | Shows that a check detects a seeded fault before its passes count as evidence. |
+| [Executable mirrors of a specification](entries/mirror-cross-check/README.md) | Cross-checks a mirror that judges runs against a native replay of the specification. |
+| [Theorems outside the full check](entries/out-of-build-checks/README.md) | Identifies theorems that the full check does not check and the driver that does. |
+| [Results that show a check passed](entries/result-validity/README.md) | Takes a verdict from the check's own output on a known tree. |
+| [Changes that keep statements and bytes](entries/unchanged-statements-and-bytes/README.md) | Shapes a change of a shared definition so that existing theorems and artifacts stay as they are, and shows it. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
 | [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices, such as arrays kept in a loop's state, to allocation, generated bounds, and compilation cost. |
 | [Array literals, proposition tests, and structure patterns](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms, and the structure patterns that the reflector reads and those it rejects. |
@@ -57,6 +71,10 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
 | [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
+| [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, or another reference. |
+| [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |
+| [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
+| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |
 | [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |

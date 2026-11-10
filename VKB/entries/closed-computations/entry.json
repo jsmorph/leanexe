@@ -8,7 +8,10 @@
     "∀ E, E < N → P E = true over a bounded range",
     "Verified.Prog.Covered prog pool for a program without byte literals",
     "({ name := \"compute\", funcIdx := k } : Wasm.Export) ∈ compiled.module.exports",
-    "memory exhaustion in the kernel's check of one declaration"
+    "memory exhaustion in the kernel's check of one declaration",
+    "a bound on a quantity that a definition by well-founded recursion computes for every run",
+    "memory exhaustion in decide +kernel on the equality of two compiled modules",
+    "push_cast or field_simp evaluates a literal power such as 2^1074"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",
@@ -25,13 +28,22 @@
     "Library.Random.SplitMix64.Compiled",
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
     "Examples.Lookup.Compiled",
-    "LeanExe.Pipeline.FileBytes"
+    "LeanExe.Pipeline.FileBytes",
+    "LeanExe.M7.Proof.Bound",
+    "TestSupport.M7.Step",
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit"
   ],
   "declarations": [
     "Verified.Prog.literals",
     "Verified.Prog.Covered",
     "Verified.Ready.initial",
-    "LeanExe.Pipeline.elabFileTheorems"
+    "LeanExe.Pipeline.elabFileTheorems",
+    "LeanExe.M7.costRun",
+    "LeanExe.M7.staticCost",
+    "LeanExe.M7.costRun_le_staticCost",
+    "LeanExe.CallGraph.stackNeedOf",
+    "Nat.cast_mul",
+    "Nat.cast_pow"
   ],
   "examples": [
     "Library.Hashing.Crc.crc32c_table",
@@ -45,6 +57,10 @@
     "Library.Numerics.Arithmetic.Gcd.gcd_export",
     "Library.Random.SplitMix64.prng_module",
     "Library.Numerics.Arithmetic.PrimeFactors.compute_export",
-    "Examples.Lookup.compute_export"
+    "Examples.Lookup.compute_export",
+    "TestSupport.M7.echo_static",
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit.split_spec",
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_le",
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_grid"
   ]
 }

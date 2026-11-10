@@ -1,0 +1,34 @@
+{
+  "id": "tactic-combinator-pitfalls",
+  "goals": [
+    "first | (tac; done) | tac' where tac makes progress without closing the goal",
+    "a discharger whose last alternative fails and closes the goal with sorry",
+    "maximum recursion depth has been reached inside try or first",
+    "split or ite_self does not apply to @ite α c d a b with an instance d of its own",
+    "a conditional simp lemma that does not rewrite",
+    "repeat' split over a statement with several copies of one term"
+  ],
+  "modules": [
+    "Demos.OrderBook.Bound",
+    "Demos.OrderBook.ProcessCharges",
+    "LeanExe.Requests.Reads"
+  ],
+  "declarations": [
+    "Lean.Elab.Tactic.evalFirst",
+    "Lean.Elab.Tactic.orElse",
+    "Lean.Core.tryCatch",
+    "Lean.Exception.isRuntime",
+    "Demos.OrderBook.Bound.ite_bound",
+    "Demos.OrderBook.Process.ite_le_zero",
+    "LeanExe.Requests.TickCase"
+  ],
+  "examples": [
+    "Demos.OrderBook.Bound.step_le",
+    "LeanExe.Requests.frameTick_cases"
+  ],
+  "unimported": {
+    "tools/sail/F7/Base.lean": [
+      "F7.bind_fa"
+    ]
+  }
+}

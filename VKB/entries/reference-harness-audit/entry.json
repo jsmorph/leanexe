@@ -1,0 +1,18 @@
+{
+  "id": "reference-harness-audit",
+  "goals": [
+    "a harness function, configuration, patch, or IR edit of Isla or of Sail's translation",
+    "an exception that a reference's harness swallows, so that a failed path looks complete",
+    "a value that a fetch loop or a configuration fixes in place of the reference's clause",
+    "an edit of a reference or a translation that must change nothing else",
+    "a trusted translation at negative or extreme operands"
+  ],
+  "modules": [
+    "LeanExe.M7.Isla.Check"
+  ],
+  "declarations": [
+    "LeanExe.A64.Isla.Profile.sys",
+    "LeanExe.M7.Isla.sys"
+  ],
+  "examples": []
+}

@@ -4,7 +4,10 @@
     "Verified.Wasi.Resource.Bounded host pure program depth modes live body env budget",
     "Verified.Wasi.Resource.CallBounded host pure program callee depth env budget",
     "Verified.Wasi.Resource.CallPrefixBound for begin or a step of a WASI process",
-    "PureContext.ownedCost depth modes live value env ≤ budget"
+    "PureContext.ownedCost depth modes live value env ≤ budget",
+    "Env.get env (Var.ofIndex Γ i h) over a destructured state, unfolded exponentially",
+    "@ite Nat c d a b ≤ 0 with an instance d that holds an effect body's environment",
+    "maximum recursion depth in simp +decide on the closed goal of begin"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -29,7 +32,9 @@
     "Verified.Expr.fits_of_depthCalls",
     "Verified.Wasi.Resource.ResourceLoopExec",
     "Verified.Wasi.Resource.ResourceLoopPrefix",
-    "Verified.Wasi.Resource.call_prefix_rule"
+    "Verified.Wasi.Resource.call_prefix_rule",
+    "Demos.OrderBook.Process.ite_le_zero",
+    "Verified.Env.cons"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -43,6 +48,8 @@
     "Demos.OrderBook.Bound.run_bound_le_sized",
     "Demos.OrderBook.Process.begin_prefix_bound",
     "Demos.OrderBook.Process.stepBudget_le",
-    "Demos.OrderBook.Process.step_prefix_bound"
+    "Demos.OrderBook.Process.step_prefix_bound",
+    "Demos.OrderBook.Process.initial_entry",
+    "Demos.OrderBook.Process.begin_bounded"
   ]
 }

@@ -5,7 +5,8 @@
     "(root p (UInt64.ofNat x) F).toNat = (up p)^[d] x given d ≤ F.toNat",
     "P (fall pat pi c k F) given k.toNat ≤ F.toNat",
     "P (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
-    "Q (LeanExe.repeatWhile fuel init cond step) from an invariant and a measure below the fuel"
+    "Q (LeanExe.repeatWhile fuel init cond step) from an invariant and a measure below the fuel",
+    "compiled.f.fits 1000 x = true for a recursion that takes the call depth"
   ],
   "modules": [
     "Library.Arrays.BinarySearch.Proof",
@@ -21,7 +22,8 @@
     "Library.Combinatorics.DancingLinks.Proof",
     "Demos.Euler.Spec",
     "Demos.Slew.Search",
-    "Demos.OrderBook.RefineChains"
+    "Demos.OrderBook.RefineChains",
+    "Library.Combinatorics.DancingLinks.Compiled"
   ],
   "declarations": [
     "Library.Combinatorics.DancingLinks.repeatWhile_inv",
@@ -30,7 +32,9 @@
     "Library.Sorting.Quicksort.part_within",
     "Demos.Euler.repeatWhile_inv",
     "Demos.Slew.Search.repeatWhile_induction",
-    "Demos.OrderBook.Refinement.repeatWhile_inv"
+    "Demos.OrderBook.Refinement.repeatWhile_inv",
+    "Library.Combinatorics.DancingLinks.itemLimit",
+    "Library.Combinatorics.DancingLinks.search_fits"
   ],
   "examples": [
     "Library.Arrays.BinarySearch.search_spec",
@@ -46,6 +50,8 @@
     "Library.HashTables.LinearProbing.probe_spec",
     "Library.HashTables.LinearProbing.close_spec",
     "Library.Combinatorics.DancingLinks.hideColumn_eq",
-    "Library.Combinatorics.DancingLinks.count_eq"
+    "Library.Combinatorics.DancingLinks.count_eq",
+    "Library.Combinatorics.DancingLinks.count_fits",
+    "Library.Combinatorics.DancingLinks.count_call"
   ]
 }

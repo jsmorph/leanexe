@@ -1,0 +1,21 @@
+{
+  "id": "requirements-for-theorems",
+  "goals": [
+    "requirements in English for a safety theorem of a protocol or protection machine",
+    "a main safety theorem with numbered items over records and answers",
+    "a proved bound compared with the timing requirement it serves",
+    "a trusted base consistent with the theorems' quantifiers"
+  ],
+  "modules": [
+    "Demos.Bms.Theorems",
+    "TestSupport.M7.BmsLoop"
+  ],
+  "declarations": [
+    "Demos.Bms.Spec.Permitted",
+    "TestSupport.M7.Bms.board_loop_poll"
+  ],
+  "examples": [
+    "Demos.Bms.Spec.m1",
+    "TestSupport.M7.Bms.board_safe"
+  ]
+}

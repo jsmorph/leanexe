@@ -33,7 +33,7 @@ theorem quicksort_implements :
   Verified.implementsA_congr compiled.quicksort.trapFree fun _ _ _ x ⟨_, _, hxs⟩ =>
     quicksort_eq x.val (show _ < 2 ^ 64 from hxs.values.size_lt)
 
-/-- The module's storage beyond the array is one block of 128 words, the stack of 64 entries. -/
+/-- The generated bound on the rise of `top` is the cost of one block of 128 words, the stack of 64 entries. -/
 theorem quicksort_bound (xs : Array UInt64) :
     compiled.quicksort.bound { val := xs } = Verified.blockCost 128 :=
   compiled.quicksort.bound_eq xs

@@ -1,0 +1,34 @@
+{
+  "id": "independent-review",
+  "goals": [
+    "a specification and its samples before the program",
+    "a design note before an increment's code",
+    "a wrong program that passes every case",
+    "a specification stated only as properties of the result",
+    "f us xs = algorithmP us xs.size (xs.size - 1) xs"
+  ],
+  "modules": [
+    "Library.Random.Sampling.Spec",
+    "Library.Sorting.Quicksort.Proof",
+    "Library.Graphs.Dijkstra.Proof",
+    "Library.Trees.Avl.Proof",
+    "Library.Trees.AvlDelete.Spec"
+  ],
+  "declarations": [
+    "Library.Random.Sampling.Shuffles",
+    "Library.Random.Sampling.algorithmP",
+    "Library.Random.Sampling.algorithmS",
+    "Library.Random.Sampling.algorithmR",
+    "Library.Sorting.Quicksort.stages_perm",
+    "Library.Graphs.Dijkstra.Distances",
+    "Library.Graphs.Dijkstra.distances_unique",
+    "Library.Trees.Avl.SearchTree",
+    "Library.Trees.Avl.algorithmA",
+    "Library.Trees.Avl.algorithmA_props",
+    "Library.Trees.AvlDelete.Removes",
+    "Library.Trees.AvlDelete.deleteA"
+  ],
+  "examples": [
+    "Library.Sorting.Quicksort.quicksort_eq"
+  ]
+}

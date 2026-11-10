@@ -6,7 +6,9 @@
     "a declaration that passes with set_option debug.skipKernelTC true and fails without it",
     "UInt64.decLt (a + M) (b + M) under a projection, with a large literal M",
     "Flat.flat ((fun x => …) a) = Flat.flat (ite …)",
-    "a projection r.2.2.2 of a large block compared with another term"
+    "a projection r.2.2.2 of a large block compared with another term",
+    "@id T e compared with an ite or a definition of greater height",
+    "simp with a lemma proved by omega leaves n + 0 inside a dependent argument"
   ],
   "modules": [
     "Verified.Reflect.Definitions",
@@ -15,7 +17,8 @@
     "LeanExe.A64.Isla.Check",
     "LeanExe.A64.Isla.Walk",
     "LeanExe.M7.Isla.Arith",
-    "Library.Numerics.Float64.Lgamma.LgammaSign"
+    "Library.Numerics.Float64.Lgamma.LgammaSign",
+    "LeanExe.M7.Proof.Straight"
   ],
   "declarations": [
     "Verified.Reflect.reflect",
@@ -26,7 +29,12 @@
     "LeanExe.A64.Isla.Opaque",
     "LeanExe.M7.Isla.awc_v",
     "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf",
-    "Verified.Reflect.assignFamilyEquation"
+    "Verified.Reflect.assignFamilyEquation",
+    "Lean.Meta.mkExpectedTypeHint",
+    "Verified.Expr.denote",
+    "Lean.Meta.Simp.congrArgs",
+    "LeanExe.M7.State.r_withPc",
+    "LeanExe.M7.State.zFlag_setNZCV'"
   ],
   "examples": [
     "Library.Numerics.Float64.Lgamma.LgammaSign.ite_sgn",

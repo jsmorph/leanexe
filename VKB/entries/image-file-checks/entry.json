@@ -17,6 +17,7 @@
     "LeanExe.M7.Image",
     "LeanExe.M7.Parts",
     "LeanExe.M7.Proof.Parts",
+    "LeanExe.Proof.Area",
     "TestSupport.M7.GwLoop"
   ],
   "declarations": [
@@ -41,7 +42,11 @@
     "LeanExe.M7.tailPartOk",
     "LeanExe.M7.functionsPartOk_append",
     "LeanExe.M7.fileOk_parts",
-    "LeanExe.M7.bootFileOk_parts"
+    "LeanExe.M7.bootFileOk_parts",
+    "LeanExe.M7.frameOf",
+    "LeanExe.M7.bitsOf",
+    "LeanExe.memPrefix",
+    "LeanExe.memPrefix_agrees"
   ],
   "examples": [
     "TestSupport.M7.Gw.gwSizes",
