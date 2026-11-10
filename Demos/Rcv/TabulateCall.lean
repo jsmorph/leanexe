@@ -1,4 +1,5 @@
 import Demos.Rcv.Tabulate
+import Verified.Congr
 
 /-!
 The call theorems of the Oakland tabulator's module.  `tabulate_callSpec` is T1 over bytes: from a
@@ -9,7 +10,8 @@ store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), which `tabula
 `readContest_callSpec` states the reader's result words for function 47, and `printReport_callSpec`
 and `printError_callSpec` state that functions 60 and 62 compute the printers, which
 `printReport_eq` and `printError_eq` equate with the report of a structure from its file and its
-count's words and with the error report.
+count's words and with the error report.  `tabulate_trapFree` states `compiled.tabulate.trapFree`
+for the report of a file, and `tabulate_native` carries it to the C translation.
 -/
 
 namespace Demos.Rcv.TabulateProgram
@@ -76,7 +78,28 @@ theorem printError_callSpec :
   (Verified.ImplementsTables.call (.ofA compiled.printError.trapFree) compiled.tables nofun).spec
     (fun _ _ _ h => h) (fun _ _ _ _ _ h => h) fun _ _ _ _ _ => rfl
 
+/-- `compiled.tabulate.trapFree` for the report of a file: function 63, from a store with room for
+`compiled.tabulate.bound b` bytes, returns without a trap a buffer of the bytes of `reportFile` of
+the bytes of `b`. -/
+theorem tabulate_trapFree :
+    ImplementsA false compiled.module 63 tabulateSpec
+      (fun b heap store => heap.Within store compiled.module (compiled.tabulate.bound b))
+      (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) :=
+  Verified.implementsA_congr compiled.tabulate.trapFree
+    fun _ _ _ b hb => tabulate_spec b (size_lt_of_borrowed hb)
+
+/-- T1 for the C translation: the C function of function 63 computes `tabulateSpec` as
+`tabulate_trapFree` states for the module, without a trap, under every `Archi` and every
+semantics of external functions. -/
+theorem tabulate_native (A : LClight.Archi) (X : LClight.ExtSem) :
+    LeanExe.Native.NativeImpl tabulate_trapFree A X LeanExe.Native.nativeCap
+      compiled.translation := by
+  obtain ⟨fd, ps, rs, hfd, hsig, _⟩ := compiled.tabulate.native A X
+  exact ⟨fd, ps, rs, hfd, hsig,
+    LeanExe.Native.ImplementsA.native tabulate_trapFree compiled.translation_eq hfd hsig⟩
+
 #print axioms tabulate_callSpec
+#print axioms tabulate_native
 #print axioms readContest_callSpec
 #print axioms printReport_callSpec
 #print axioms printError_callSpec

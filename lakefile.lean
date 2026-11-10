@@ -239,6 +239,12 @@ lean_exe «rcv-spec» where
 lean_exe «rcv-tabulate» where
   root := `Demos.Rcv.TabulateNative
 
+-- The tabulator's WASI process on stdin and stdout (Demos/Rcv/ProcessNative.lean); not a default
+-- target.
+lean_exe «rcv-process» where
+  root := `Demos.Rcv.ProcessNative
+  moreLinkObjs := #[`@/runningSumRead]
+
 lean_exe «rcv-rounds» where
   root := `Demos.Rcv.RoundsNative
 
