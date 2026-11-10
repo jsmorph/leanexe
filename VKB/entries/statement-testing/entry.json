@@ -1,0 +1,27 @@
+{
+  "id": "statement-testing",
+  "goals": [
+    "a new safety theorem over a machine's history, before its proof",
+    "a loop invariant, before its proof",
+    "fewest xs.size ≤ (arraysTo f xs ys).card ∧ (arraysTo f xs ys).card ≤ most xs.size",
+    "an error figure or a count of the inputs that give each result",
+    "(answerAt x n).permit ≠ 0 → ∃ i j, Permitted x n i j"
+  ],
+  "modules": [
+    "Demos.Bms.Theorems",
+    "Demos.Bms.Cases",
+    "Library.Graphs.Dijkstra.Proof",
+    "Library.Random.Sampling.Proof"
+  ],
+  "declarations": [
+    "Demos.Bms.Spec.Permitted",
+    "Demos.Bms.Cases.mixed",
+    "Library.Graphs.Dijkstra.RelaxInv",
+    "Library.Graphs.Dijkstra.MainInv"
+  ],
+  "examples": [
+    "Demos.Bms.Spec.m1",
+    "Library.Graphs.Dijkstra.dijkstra_spec",
+    "Library.Random.Sampling.shuffle_count"
+  ]
+}

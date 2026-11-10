@@ -1,0 +1,24 @@
+{
+  "id": "claims-and-theorems",
+  "goals": [
+    "a README, docstring, or comment that states what a program or an artifact does",
+    "a property of the Lean function joined with an artifact's theorem",
+    "a claim about a running artifact and its trusted base",
+    "heap'.top.toNat ≤ heap.top.toNat + compiled.f.bound x"
+  ],
+  "modules": [
+    "TestSupport.M7.BmsLoop",
+    "Demos.Bms.Abs",
+    "Library.Sorting.Quicksort.Compiled",
+    "Library.Trees.Avl.Compiled"
+  ],
+  "declarations": [
+    "Demos.Bms.Program.m1_prefix",
+    "Library.Sorting.Quicksort.quicksort_implements",
+    "Library.Sorting.Quicksort.quicksort_bound",
+    "Library.Trees.Avl.insert_implements"
+  ],
+  "examples": [
+    "TestSupport.M7.Bms.board_safe"
+  ]
+}
