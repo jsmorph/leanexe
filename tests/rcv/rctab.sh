@@ -10,12 +10,17 @@
 #                                  compares its reports with the expected reports of the release's
 #                                  source tree line by line, ignoring line terminators and the lines
 #                                  that name the generating version or date, as RCTab's tests do
-#   rctab.sh run DIR CONFIG OUT    tabulates the contest of CONFIG and copies the reports and the
+#   rctab.sh run DIR CONFIG OUT    tabulates the contest of CONFIG in the directory OUT, which then
+#                                  holds RCTab's execution log, and copies the reports and the
 #                                  console output into OUT
+#   rctab.sh batch DIR LIST JOBS   runs `run` for each line `CONFIG OUT` of the file LIST, whose
+#                                  paths are relative to LIST's directory, JOBS at a time, under one
+#                                  virtual display when DISPLAY is unset
 #
 # RCTab exits with status 0 even when a tabulation fails, so `run` fails unless the console output
 # begins with the pinned version, holds no SEVERE line, and names a results directory that holds
-# each report.  The exit status is 0 on success and 1 otherwise.
+# each report.  RCTab's command-line mode tabulates one configuration per start.  The exit status is
+# 0 on success and 1 otherwise, and `batch` fails when one of its runs fails.
 set -eu
 
 version=2.1.0
@@ -53,12 +58,13 @@ install() {
 
 run() {
   dir=$(cd "$1" && pwd)
-  config=$2 out=$3
-  mkdir -p "$out"
+  config=$(cd "$(dirname "$2")" && pwd)/$(basename "$2")
+  mkdir -p "$3"
+  out=$(cd "$3" && pwd)
   console=$out/console.txt
-  set -- "$dir/rcv/bin/RCTab" --cli "$(basename "$config")" --name leanexe
+  set -- "$dir/rcv/bin/RCTab" --cli "$config" --name leanexe
   [ -n "${DISPLAY:-}" ] || set -- xvfb-run -a "$@"
-  (cd "$(dirname "$config")" && "$@") > "$console" 2>&1 || fail "RCTab exited with status $?, output in $console"
+  (cd "$out" && "$@") > "$console" 2>&1 || fail "RCTab exited with status $?, output in $console"
   [ "$(head -n 1 "$console")" = "RCTab version $version" ] || fail "$console does not begin with RCTab version $version"
   ! grep -q SEVERE "$console" || fail "$console holds SEVERE lines"
   results=$(sed -n 's/.*Results written to: //p' "$console")
@@ -66,8 +72,16 @@ run() {
   for r in $reports; do
     set -- "$results"/*_"$r"
     [ $# -eq 1 ] && [ -f "$1" ] || fail "no single $r in $results"
-    cp "$1" "$out/$r"
+    cp -f "$1" "$out/$r"
   done
+}
+
+batch() {
+  [ -n "${DISPLAY:-}" ] || exec xvfb-run -a sh "$0" batch "$@"
+  dir=$(cd "$1" && pwd)
+  script=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+  cd "$(dirname "$2")"
+  xargs -L 1 -P "$3" sh "$script" run "$dir" < "$(basename "$2")" || fail "a run of $2 failed"
 }
 
 selftest() {
@@ -91,5 +105,6 @@ case ${1:-} in
   install) [ $# -eq 2 ] || fail "usage: rctab.sh install DIR"; install "$2" ;;
   selftest) [ $# -eq 3 ] || fail "usage: rctab.sh selftest DIR WORK"; selftest "$2" "$3" ;;
   run) [ $# -eq 4 ] || fail "usage: rctab.sh run DIR CONFIG OUT"; run "$2" "$3" "$4" ;;
-  *) fail "usage: rctab.sh install DIR | selftest DIR WORK | run DIR CONFIG OUT" ;;
+  batch) [ $# -eq 4 ] || fail "usage: rctab.sh batch DIR LIST JOBS"; batch "$2" "$3" "$4" ;;
+  *) fail "usage: rctab.sh install DIR | selftest DIR WORK | run DIR CONFIG OUT | batch DIR LIST JOBS" ;;
 esac

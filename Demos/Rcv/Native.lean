@@ -1,19 +1,22 @@
 import Demos.Rcv.Spec
+import Demos.Rcv.Program
 
 /-!
-Native runs of the specification on canonical ballot files, for comparisons with the requirements'
-reports, the Python reference, and the module.  The reader of the requirements is not part of the
-first increment, so `load` reads a file with a parser of its own and accepts the result only when
-`Demos.Rcv.Spec.write` prints it as the file's exact bytes and it meets `Contest.WellFormed`.  A
-structure that meets the constraints and prints as the file is the file's structure, so the parser's
-own defects can reject a file but cannot change a count.
+Native runs of the specification on canonical ballot files and word arrays, for comparisons with
+the requirements' reports, the Python reference, and the module.  The reader of the requirements is
+not part of the first increment, so `load` reads a file with a parser of its own and accepts the
+result only when `Demos.Rcv.Spec.write` prints it as the file's exact bytes and it meets
+`Contest.WellFormed`.  A structure that meets the constraints and prints as the file is the file's
+structure, so the parser's own defects can reject a file but cannot change a count.
 
+Word arrays are packed as the reference packs them: little-endian 64-bit words, eight bytes each.
 `rcv-spec report FILE` writes the specification's report of the file to standard output.
-`rcv-spec words FILE` writes the result words of `countWords` on the file's contest words, one
-decimal word per line.  `rcv-spec array FILE` reads a word array, one decimal word per line, and
-writes the result words of `countWords` in the same form.  `rcv-spec district4 FILE` compares the round lines of the report with the
-District 4 report of the requirements, prints each line that differs, and exits with status 1 if
-any does.  A file that does not load gives status 1.
+`rcv-spec contest-words FILE` writes the file's contest words, and `rcv-spec words FILE` the result
+words of `countWords` on them.  `rcv-spec array FILE` reads a packed word array and writes the result
+words of `countWords`, and `rcv-spec program FILE` writes those of `Demos.Rcv.Program.count`, the
+program that the module compiles, run natively.  `rcv-spec district4 FILE` compares the round lines
+of the report with the District 4 report of the requirements, prints each line that differs, and
+exits with status 1 if any does.  A file that does not load gives status 1.
 -/
 
 namespace Demos.Rcv.Native
@@ -126,28 +129,45 @@ def compareDistrict4 (c : Contest) : IO UInt32 := do
   IO.println s!"{c.ballots.length} ballots, {got.length} round lines, {bad} differ from the requirements"
   return if bad == 0 then 0 else 1
 
+/-- The little-endian 64-bit words of `bs`. -/
+def unpack (path : String) (bs : ByteArray) : IO (Array UInt64) := do
+  if bs.size % 8 != 0 then
+    throw (IO.userError s!"{path}: {bs.size} bytes, not a multiple of 8")
+  return (Array.range (bs.size / 8)).map fun i : Nat =>
+    (List.range 8).foldl (fun (w : UInt64) (j : Nat) =>
+      w ||| bs[8 * i + j]!.toUInt64 <<< (8 * j).toUInt64) 0
+
+/-- The words `ws`, each as eight bytes, least significant first. -/
+def pack (ws : Array UInt64) : ByteArray :=
+  ws.foldl (fun (acc : ByteArray) (w : UInt64) =>
+    (List.range 8).foldl (fun (acc : ByteArray) (j : Nat) =>
+      acc.push (w >>> (8 * j).toUInt64).toUInt8) acc) ByteArray.empty
+
+def writePacked (ws : Array UInt64) : IO Unit := do
+  (← IO.getStdout).write (pack ws)
+
 def main (args : List String) : IO UInt32 := do
   try
     match args with
     | ["report", path] =>
       writeBytes (report (← load path))
       return 0
+    | ["contest-words", path] =>
+      writePacked (contestWords (← load path)).toArray
+      return 0
     | ["words", path] =>
-      writeBytes (text ((countWords (contestWords (← load path))).map fun w : UInt64 => decimal w.toNat))
+      writePacked (countWords (contestWords (← load path))).toArray
       return 0
     | ["array", path] =>
-      let bs := (← IO.FS.readBinFile path).toList
-      let fields := (split (0x0A : UInt8) bs).filter fun l : List UInt8 => !l.isEmpty
-      match fields.mapM parseNat with
-      | .error e => throw (IO.userError s!"{path}: {e}")
-      | .ok ns =>
-        if ns.any fun x : Nat => (2 : Nat) ^ 64 ≤ x then
-          throw (IO.userError s!"{path}: a number of 64 bits or more")
-        writeBytes (text ((countWords (ns.map Nat.toUInt64)).map fun w : UInt64 => decimal w.toNat))
-        return 0
+      writePacked (countArray (← unpack path (← IO.FS.readBinFile path)))
+      return 0
+    | ["program", path] =>
+      writePacked (Demos.Rcv.Program.count (← unpack path (← IO.FS.readBinFile path)))
+      return 0
     | ["district4", path] => compareDistrict4 (← load path)
     | _ =>
-      IO.eprintln ("usage: rcv-spec report FILE | rcv-spec words FILE | rcv-spec array FILE | " ++
+      IO.eprintln ("usage: rcv-spec report FILE | rcv-spec contest-words FILE | " ++
+        "rcv-spec words FILE | rcv-spec array FILE | rcv-spec program FILE | " ++
         "rcv-spec district4 FILE")
       return 2
   catch e =>
