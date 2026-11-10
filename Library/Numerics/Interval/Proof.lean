@@ -481,19 +481,22 @@ theorem outward2_lower {w : Float} {y : ℝ} (hw : F64SignedRounding.WithinSteps
   exact ⟨f3, Steps.two_down y _ hw f1 f2 f3⟩
 
 /-- The image of an interval under a function that is increasing on it, from computed values
-within one step of the nearest-even rounding of the function at the two ends. -/
+within one step of the nearest-even rounding of the function at the two ends, when the ends are
+finite. -/
 theorem increasing_sound {a : Interval} {flo fhi : Float} {f : ℝ → ℝ}
     (h : (increasing a flo fhi).status = 0)
     (hf : MonotoneOn f (Set.Icc (value a.lo.toBits) (value a.hi.toBits)))
-    (hlo : F64SignedRounding.WithinSteps 1 (f (value a.lo.toBits)) flo.toBits)
-    (hhi : F64SignedRounding.WithinSteps 1 (f (value a.hi.toBits)) fhi.toBits) :
+    (hlo : Finite a.lo.toBits →
+      F64SignedRounding.WithinSteps 1 (f (value a.lo.toBits)) flo.toBits)
+    (hhi : Finite a.hi.toBits →
+      F64SignedRounding.WithinSteps 1 (f (value a.hi.toBits)) fhi.toBits) :
     a.status = 0 ∧ ∀ x, Contains a x → Contains (increasing a flo fhi) (f x) := by
   unfold increasing at h ⊢
   obtain ⟨hok, hl, hh, he⟩ := join_accepted h
-  obtain ⟨fl, bl⟩ := outward2_lower hlo hl
-  obtain ⟨fh, bh⟩ := outward2_upper hhi hh
   refine ⟨beq_iff_eq.mp hok, fun x hx => ?_⟩
-  obtain ⟨-, -, -, hx1, hx2⟩ := hx
+  obtain ⟨-, f1, f2, hx1, hx2⟩ := hx
+  obtain ⟨fl, bl⟩ := outward2_lower (hlo f1) hl
+  obtain ⟨fh, bh⟩ := outward2_upper (hhi f2) hh
   have hle := hx1.trans hx2
   rw [he]
   exact ⟨rfl, fl, fh, bl.trans (hf ⟨le_rfl, hle⟩ ⟨hx1, hx2⟩ hx1),
@@ -503,15 +506,17 @@ theorem increasing_sound {a : Interval} {flo fhi : Float} {f : ℝ → ℝ}
 theorem decreasing_sound {a : Interval} {flo fhi : Float} {f : ℝ → ℝ}
     (h : (decreasing a flo fhi).status = 0)
     (hf : AntitoneOn f (Set.Icc (value a.lo.toBits) (value a.hi.toBits)))
-    (hlo : F64SignedRounding.WithinSteps 1 (f (value a.lo.toBits)) flo.toBits)
-    (hhi : F64SignedRounding.WithinSteps 1 (f (value a.hi.toBits)) fhi.toBits) :
+    (hlo : Finite a.lo.toBits →
+      F64SignedRounding.WithinSteps 1 (f (value a.lo.toBits)) flo.toBits)
+    (hhi : Finite a.hi.toBits →
+      F64SignedRounding.WithinSteps 1 (f (value a.hi.toBits)) fhi.toBits) :
     a.status = 0 ∧ ∀ x, Contains a x → Contains (decreasing a flo fhi) (f x) := by
   unfold decreasing at h ⊢
   obtain ⟨hok, hl, hh, he⟩ := join_accepted h
-  obtain ⟨fl, bl⟩ := outward2_lower hhi hl
-  obtain ⟨fh, bh⟩ := outward2_upper hlo hh
   refine ⟨beq_iff_eq.mp hok, fun x hx => ?_⟩
-  obtain ⟨-, -, -, hx1, hx2⟩ := hx
+  obtain ⟨-, f1, f2, hx1, hx2⟩ := hx
+  obtain ⟨fl, bl⟩ := outward2_lower (hhi f2) hl
+  obtain ⟨fh, bh⟩ := outward2_upper (hlo f1) hh
   have hle := hx1.trans hx2
   rw [he]
   exact ⟨rfl, fl, fh, bl.trans (hf ⟨hx1, hx2⟩ ⟨hle, le_rfl⟩ hx2),

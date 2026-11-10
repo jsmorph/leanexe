@@ -23,6 +23,7 @@ The library groups reusable implementations and their proofs by algorithm family
 | [Linear algebra](Numerics/LinearAlgebra/README.md) | WASM WASMF C | Vector and matrix operations in binary64 and binary32. |
 | [Statistics](../index.md#5-statistics) | WASM WASMF C | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | WASM SPEC WASMF C | Checked outward-rounded operations and their real bounds. |
+| [Interval arithmetic](Numerics/Interval/README.md) | WASM SPEC WASMF | Intervals of binary64 endpoints with a status, and inclusion theorems for arithmetic, square roots, and monotone functions. |
 | [Limiters](Numerics/Limiters/README.md) | WASM SPEC WASMF C | Minmod and its real slope and face properties. |
 | [Decimation filter](Numerics/Filters/Cic/README.md) | WASM SPEC A64 | The cascaded integrator–comb filter: its specification over ℤ, its block form over ℤ and 64-bit words, the exactness of its word outputs under Hogenauer's bound, and a program of order 3, decimation 8, and delay 1 with an AArch64 Image. |
 | [Packed bytes](Bytes/Packed.lean) | – | Byte strings held eight bytes to a word, as the libraries that take byte strings state their arguments. |
