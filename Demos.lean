@@ -72,6 +72,9 @@ import Demos.OrderBook.Program
 import Demos.OrderBook.Refinement
 import Demos.OrderBook.Samples
 import Demos.OrderBook.Theorems
+import Demos.Rcv.Cases
+import Demos.Rcv.Contest
+import Demos.Rcv.Spec
 import Demos.Slew.Cost
 import Demos.Slew.Flat
 import Demos.Slew.NanFree

@@ -221,6 +221,11 @@ lean_exe «orderbook-process» where
   srcDir := "tests"
   root := `TestSupport.OrderBook.Process
 
+-- The ranked-choice specification on canonical ballot files (Demos/Rcv/Native.lean); not a
+-- default target.
+lean_exe «rcv-spec» where
+  root := `Demos.Rcv.Native
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
