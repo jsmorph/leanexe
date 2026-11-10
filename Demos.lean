@@ -76,6 +76,7 @@ import Demos.Rcv.Batch
 import Demos.Rcv.Cases
 import Demos.Rcv.Contest
 import Demos.Rcv.Holder
+import Demos.Rcv.Properties
 import Demos.Rcv.Rounds
 import Demos.Rcv.Spec
 import Demos.Rcv.Stability
