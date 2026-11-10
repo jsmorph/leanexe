@@ -1,0 +1,33 @@
+{
+  "id": "generic-algebra-transfer",
+  "goals": [
+    "a program over wrapping UInt64 words against a specification over ℤ",
+    "(cascade N R M ws).map (fun w => w.toBitVec.toInt) = outputs N R M (ws.map fun w => w.toBitVec.toInt)",
+    "a definition over Zero, Add, and Sub at both ℤ and UInt64",
+    "List.map f (g xs) = g (List.map f xs) for a map f that preserves zero, addition, and subtraction"
+  ],
+  "modules": [
+    "Library.Numerics.Filters.Cic.Cascade",
+    "Library.Numerics.Filters.Cic.Exact",
+    "Library.Numerics.Filters.Cic.Proof",
+    "TestSupport.A64.Cic"
+  ],
+  "declarations": [
+    "Library.Numerics.Filters.Cic.cascade",
+    "Library.Numerics.Filters.Cic.outputs",
+    "Library.Numerics.Filters.Cic.cascade_map",
+    "Library.Numerics.Filters.Cic.cascade_eq_outputs",
+    "Library.Numerics.Filters.Cic.cascade_ofInt",
+    "Library.Numerics.Filters.Cic.cascade_eq_map_ofInt",
+    "Library.Numerics.Filters.Cic.toInt_cascade",
+    "Library.Numerics.Filters.Cic.outputs_bound",
+    "Library.Numerics.Filters.Cic.toInt_cascade_of_bound",
+    "Library.Numerics.Filters.Cic.toInt_cascade_of_width",
+    "UInt64.ofInt",
+    "Int.bmod"
+  ],
+  "examples": [
+    "Library.Numerics.Filters.Cic.cic_toList",
+    "TestSupport.A64.Cic.check_toInt"
+  ]
+}

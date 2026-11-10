@@ -22,7 +22,9 @@
     "LeanExe.ProofKit.Signed64Value.toInt_shiftRight",
     "LeanExe.ProofKit.Signed64Value.toFloat_exact",
     "LeanExe.ProofKit.Signed64Wasm.toBits_toFloat",
-    "Int64.lt_iff_toInt_lt"
+    "Int64.lt_iff_toInt_lt",
+    "ite_eq_left",
+    "ite_eq_right"
   ],
   "examples": [
     "Library.Numerics.Float64.Log.LogCoreBits.fields_upper",

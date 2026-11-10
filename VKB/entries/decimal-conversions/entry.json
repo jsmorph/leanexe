@@ -11,7 +11,8 @@
     "toString x for x : Int64 as the words of Nat.toDigits 10 of the magnitude",
     "(Nat.toDigits 10 m)[j] = Nat.digitChar (m / 10 ^ (L - 1 - j) % 10)",
     "readInt64 (printInt64 x) = (true, x)",
-    "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block"
+    "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block",
+    "String.toInt? as the specification of a reader of decimal integers"
   ],
   "modules": [
     "Library.Numerics.Decimal.Shared.StrconvDecode",
@@ -49,7 +50,11 @@
     "Nat.toDigits_append_toDigits",
     "Nat.length_toDigits_le_iff",
     "List.reverseRecOn",
-    "Option.map_some"
+    "Option.map_some",
+    "Library.Numerics.Decimal.Int64Text.expectedRead",
+    "String.toInt?",
+    "String.Slice.toInt?",
+    "String.Slice.isNat"
   ],
   "examples": [
     "Library.Numerics.Decimal.ParseFloat.ParseFloatScan.isDigitW_byte",

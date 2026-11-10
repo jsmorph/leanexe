@@ -1,0 +1,17 @@
+{
+  "id": "measuring-lean-checks",
+  "goals": [
+    "the elapsed time and peak memory of a Lean check",
+    "a module or a kernel check that stops at the runner's memory limit or timeout",
+    "the declaration of a module that costs its time or memory",
+    "the heartbeats of a declaration",
+    "a comparison of a change's cost with its baseline"
+  ],
+  "modules": [
+    "Init.System.IO"
+  ],
+  "declarations": [
+    "IO.getNumHeartbeats"
+  ],
+  "examples": []
+}
