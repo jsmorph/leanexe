@@ -4,7 +4,7 @@ This directory holds the test corpus of the ranked-choice tabulator for Oakland,
 
 ## Scripts
 
-The commands run from the repository root through `uv run`, and the scripts use only Python's standard library.  Each script reads `tests/rcv/manifest.json` and works in the data directory `tmp/rcv-data`, which Git ignores, unless the command names another.  Each script's docstring states its rules and its exit status.
+The commands run from the repository root through `uv run`, and the scripts use only Python's standard library.  `fetch.py`, `reports.py`, `recount.py`, `district4.py`, and `check.py` read `tests/rcv/manifest.json` and work in the data directory `tmp/rcv-data`, which Git ignores, unless the command names another.  Each script's docstring states its rules and its exit status.
 
 | File | Command | Behavior |
 |---|---|---|
@@ -12,6 +12,10 @@ The commands run from the repository root through `uv run`, and the scripts use 
 | [`reports.py`](reports.py) | `uv run tests/rcv/reports.py [DIR]` | Parses each report, checks that its tallies, inactive categories, and transfers agree within and between rounds, writes `DIR/normalized/<election>/<race>.json`, and prints the table of [the corpus](#corpus). |
 | [`recount.py`](recount.py) | `uv run tests/rcv/recount.py [KEY ...] [--suspend] [--data DIR]` | Recounts each contest that has a CVR, or the contests named by their manifest keys, and prints each round that differs from the report and a summary line per contest ([Recount](#recount)). |
 | [`district4.py`](district4.py) | `uv run tests/rcv/district4.py [--data DIR]` | Checks the 2022 District 4 counts against the County's figures ([District 4](#district-4)) and exits with status 1 on a difference. |
+| [`convert.py`](convert.py) | `uv run tests/rcv/convert.py CVR [--report XML] [--contest ID] [--order I ...] [--no-ids] [--out FILE]` | Writes the canonical ballot file of a CVR ([The converter](#the-converter)). |
+| [`reference.py`](reference.py) | `uv run tests/rcv/reference.py [--county \| --suspend \| --contest-words \| --result-words] FILE` | Prints the report of a canonical file, or writes the count's word forms ([The reference](#the-reference)). |
+| [`edges.py`](edges.py) | `uv run tests/rcv/edges.py [OUT]` | Writes the edge cases with the reference's outputs into `OUT`, `tmp/rcv-edges` by default, and checks the reference against the expectations stated by hand ([Edge cases](#edge-cases)). |
+| [`check.py`](check.py) | `uv run tests/rcv/check.py [--data DIR]` | Converts each CVR, checks the converter and the reference against the requirements and the County's reports, writes `DIR/canonical`, and runs the planted errors ([Checks](#checks)). |
 
 A normalized report holds the report's title fields (`election_name`, `election_date`, `status`, `contest`, `timestamp`), every attribute of its settings element verbatim in `settings`, the candidates in the report's order, and one object per round.  A round holds each candidate's tally, the counts `blanks`, `overvotes`, `exhausted`, `suspended`, `continuing`, and `non_transferable`, the candidates that the report eliminates or elects in the round or defeats in its final round, and the transfers that the round lists.  The member `charter` applies [the charter's rules](#charter-rules) to the published tallies.  It gives `majority_round`, the charter's rounds with the report round that each one corresponds to, the charter's `stop`, its `batches`, and `first_batch_round`.
 
@@ -111,6 +115,67 @@ In the 2024 District 3 and 2025 District 2 contests, a candidate first holds a m
 ## District 4
 
 `district4.py` counts the 2022 School Director, District 4, contest from the CVR with the rules of [Recount](#recount), eliminating the candidate with the fewest votes until two remain.  The count equals both rounds of the report that the County re-ran on 2023-03-10: Hutchinson 8,227, Manigo 8,190, and Resnick 10,015, with 4,403 blanks and 148 overvotes, in round 1, and Hutchinson 12,421 and Resnick 12,165, with 173 overvotes and 1,821 exhausted, in round 2.  With the first-round suspension, the count suspends 235 ballots and gives Hutchinson 8,112, Manigo 8,153, and Resnick 9,954 in round 1, and Manigo 11,753 and Resnick 12,352 in round 2.  These figures equal Table A of the Registrar's presentation, the count the County certified first.  Under the correct rules, the 235 suspended ballots count 115 for Hutchinson, 37 for Manigo, and 61 for Resnick, and 22 are overvotes, as slide 5 shows.  Counting the aggregate write-in as a candidate gives Hutchinson 8,147, Manigo 8,176, Resnick 9,977, and the write-in 269 in round 1, which differs from both reports.
+
+## The converter
+
+`convert.py` writes the canonical ballot file of [the requirements](../../Demos/Rcv/requirements.md#the-canonical-ballot-file) from one of D. Otis's CVRs.  With `--report`, the candidates are the report's in the report's order, each of kind `listed`, followed by `Write-in` of kind `aggregate-writein`.  Without it, the listed candidates are the CVR's distinct names in increasing order of their UTF-8 bytes, so that the header does not depend on the order of the rows.  The CVR's `Write-in` rankings name no one, and no report of the corpus lists a write-in candidate, so the converter writes no `named-writein` or `excluded` candidate.  It writes the aggregate write-in whether or not the CVR ranks it, since an Oakland ballot lets every voter rank a write-in under §1105(c), and the header then depends on the report alone.  The tie-break order is `--order` or 1 to `n`, and the contest identifier is `--contest` or the CVR's file name without its extension, such as `Oakland_20221108_SchoolBoardD4`.
+
+Each row of the CVR gives one ballot line, whose identifier is the row's `ballotID` unless `--no-ids` is given.  The ranking `skipped` gives an empty field, `overvote` gives `*`, since the CVR does not name the candidates marked, and a candidate's name or `Write-in` gives its index.  The converter refuses a CVR that the file cannot represent, with a message on standard error and exit status 1: ranking columns other than `rank1` to `rankk` with `k` from 1 to 63, a row whose length differs from the header's, a ranking that names a candidate absent from the report, more than 63 candidates, a name or an identifier outside its alphabet or length, a repeated name, an order that is not a permutation, more than 2^32 − 1 ballots, or a file that is not UTF-8.
+
+## The reference
+
+`reference.py` transcribes the reader of the canonical file with its error report, the writer, the interpretation of a ballot, the rounds, the report, and the count's word forms from [the requirements](../../Demos/Rcv/requirements.md) alone, without the Lean specification.  `reference.py FILE` prints the report of the charter's count, or the error report of a malformed file, with exit status 0 in both cases, as the module returns either report.  `--contest-words` writes the contest's words and `--result-words` reads contest words and writes the count's, each as little-endian 64-bit words.
+
+`--county` and `--suspend` give the county count and the faulty setting of the 2022 case study, which the requirements define for comparisons with the County's reports and which no module carries.  Their reports have the report's form with the rule lines `rule alameda-county-count` and `rule alameda-county-count first-round-suspension`, so that neither can be taken for the charter's report.  The faulty setting adds the line `inactive suspended x` after the other inactive lines of each round.
+
+## Edge cases
+
+`edges.py` writes the edge cases of the requirements' Tests section into a directory.  A well-formed case `NAME` gives `NAME.rcv`, the reference's report `NAME.report`, and the contest's and the count's words `NAME.words` and `NAME.result`.  A malformed case gives `NAME.rcv` and its error report, and a case of the word forms alone gives `NAME.words` and `NAME.result`.  Running the script again writes the same bytes.
+
+| Cases | Content |
+|---|---|
+| Hand-stated contests | The worked example; every reason; overvotes, named and unnamed, at each position; duplicate rankings; every kind of candidate; ties at the fewest votes among three candidates and in the final round, under both orders; batches at the boundary of the strict test, where the votes equal the sum and exceed it by one, with tied members, nested, and inside which the single count reaches a majority; every ballot inactive; no ballots; one candidate with and without a continuing ballot; no counted candidate; 63 candidates and 63 positions; identifiers of 1 and 64 bytes and the blank ballot with an identifier; names with spaces at either end, commas, bars, stars, every byte from `0x20` to `0x7E` and from `0x80` to `0xFF`, and 255 bytes; the two contests of T15; and a contest whose ballots the faulty setting suspends in each way |
+| Exhaustive contests | Every ballot of `k` positions, for `k` from 1 to 4, over the fields empty, each of five candidates of all four kinds, `1\|3`, `2\|4`, and `*`, under each of the six orders of the counted candidates |
+| Random contests | 220 seeded contests of up to 12 candidates of every kind, 6 positions, and 2,000 ballots, with identifiers on about three lines in ten |
+| Malformed files | A failure of each role: leading zeros, an index of 0 or above `n`, decreasing and repeated indices, too few and too many fields, an empty identifier, identifiers and contest identifiers of 65 bytes or with a byte outside the alphabet, names of 0 and 256 bytes or with `0x09` or `0x7F`, a carriage return, a NUL, a missing final LF, ballot counts above and below the number of lines, a bad line before the missing ones, an empty line after the last ballot when `k` is 1, and bytes without LF after the last line |
+| Edited files | 300 seeded edits of one to three bytes of the hand-stated files |
+| Word arrays | Invalid arrays of every kind that the requirements list, each with the result `[0]`, and one valid array |
+
+The hand-stated contests, the malformed files, and the word arrays carry the report lines, the error line, or the result words that the reference's author derived by hand from the requirements before running the reference on them.  The script checks the reference against them, checks that the writer reproduces every file that the reader accepts, which is T2(b), and checks that each result array describes the rounds of the report.  It prints `268 well-formed files, 61 malformed files, 300 edited files of which the reader accepts 15, 17 word arrays, 102 with hand-stated expectations, 0 failing`.  A scratch test of the same kind on 200,000 edited files found T2(a) and T2(b) to hold on the 36,511 that the reader accepts.
+
+## Checks
+
+`check.py` converts each of the 19 CVRs with the report's candidates and the order 1 to `n`, writes the file under `DATA/canonical` with the reference's report, contest words, and result words, and runs the checks of the table on the reference.  Each check takes its expected values from a source other than the reference.  Where a CVR lacks ballots of the report, a compared round passes when each of the County's figures equals or exceeds the reference's and the excesses sum to the missing ballots, which is the statement of [Recount](#recount) made into a check.
+
+| Check | Expected values | Result |
+|---|---|---|
+| Rule identifier | The requirements' block | Equal |
+| Worked example | The requirements' report | Equal byte for byte |
+| District 4 | The requirements' rounds of the converted CVR | Equal byte for byte |
+| Table A | The faulty setting on District 4 against `district4.py`'s figures of Table A | Equal: Hutchinson 8,112, Manigo 8,153, Resnick 9,954, and 235 suspended, then Manigo 11,753 and Resnick 12,352 |
+| Edge cases | The expectations stated by hand | All 646 pass |
+| Round trip | The CVR's identifiers and rankings, read back from the canonical file by the reference, and the reference's writer on the file | All 19 contests and their 1,015,392 ballots |
+| Charter count | The County's report by the requirements' comparison rule, for the 13 reports without the 2022 suspension | 9 contests exact and the 4 short CVRs within their missing ballots |
+| Charter count | The County's winner, for the 6 reports with the suspension | Equal |
+| County count | Every round of the 13 reports without the suspension | 9 contests exact and the 4 short CVRs within their missing ballots |
+| Faulty setting | Every round of the 6 reports with the suspension, Suspended included | Equal |
+
+In the charter's counts of the CVRs, the 2022 mayoral contest eliminates Jordan, Liu, and Reimann in round 1 and Hodge, Reid, Villanueva, and De La Fuente in round 3, and it elects Thao in round 4.  The 2024 at-large contest eliminates five candidates in round 3 and elects Brown in round 5 with 72,313 votes against Armstrong's 54,776, and District 3 of 2024 and District 2 of 2025 eliminate four candidates in round 1 and end in round 2.  District 7 of 2024 ends in round 3 and every other contest in round 1 or 2, and each winner is the County's.
+
+Each planted error is a copy of the reference or the converter with one change of its text, which must occur once in the script.  The reference's copies change the batch test, the tie rule, the overvote rule, and the counted kinds, and the converter's copies change the fields that rankings give.  The script runs every check of the table except the round trips on each copy of the reference, and the round trips on each copy of the converter, and it fails unless each copy fails every check predicted for it.
+
+| Planted error | Checks that fail |
+|---|---|
+| A non-strict batch test, `>=` for `>` | The edge cases `tie-lowest-and-final`, `batch-boundary-equal`, `batch-nested`, `overvote-positions`, and `suspension`, in each of which some candidate's votes equal the sum of the votes of the candidates with fewer |
+| The smallest qualifying set instead of the largest | The edge case `batch-nested` |
+| A tie that eliminates the candidate earliest in the order | The worked example and the edge cases `example-1`, `tie-final`, `tie-final-reversed`, `tie-lowest-and-final`, `kinds`, `max-size`, and `words-valid` |
+| An overvote passed like an empty position | The worked example, District 4, Table A, 7 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
+| An overvote only when two continuing candidates are marked | The same checks |
+| The aggregate write-in counted | The worked example, District 4, Table A, 6 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
+| In the converter, an overvote written as an empty field | The round trip of every contest |
+| In the converter, the candidates' indices reversed | The round trip of every contest |
+
+The batch and tie errors fail no comparison with the County's reports, so only the edge cases detect them.  The expectations stated by hand come from the reference's author, who read the requirements in the same way when writing the reference.  A misreading shared by the reference and those expectations passes both, and the requirements call for a reviewer to check the smallest reports by hand.
 
 ## References
 
