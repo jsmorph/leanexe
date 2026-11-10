@@ -1,0 +1,21 @@
+{
+  "id": "mirror-cross-check",
+  "goals": [
+    "a Python mirror of a Lean specification that judges emulator or board runs",
+    "LeanExe.Requests.delimAnswers machine maxSegment init bs",
+    "a native replay of run logs against a specification",
+    "expected answers of a host script's scenarios"
+  ],
+  "modules": [
+    "Demos.Bms.Stream",
+    "LeanExe.Requests.Delimited"
+  ],
+  "declarations": [
+    "Demos.Bms.Spec.machine",
+    "Demos.Bms.Spec.delimAnswers_eq",
+    "LeanExe.Requests.delimAnswers",
+    "LeanExe.Requests.split_eq_splitLinear",
+    "LeanExe.Requests.answerRun_eq_answerRunLinear"
+  ],
+  "examples": []
+}

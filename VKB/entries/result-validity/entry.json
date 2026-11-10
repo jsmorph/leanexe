@@ -1,0 +1,12 @@
+{
+  "id": "result-validity",
+  "goals": [
+    "a report that a build, a driver, or the full check passed",
+    "a theorem's axiom report before acceptance",
+    "a result of an earlier commit reused at a later one",
+    "a stale output file or an untested exit status in a driver"
+  ],
+  "modules": [],
+  "declarations": [],
+  "examples": []
+}

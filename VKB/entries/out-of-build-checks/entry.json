@@ -1,0 +1,34 @@
+{
+  "id": "out-of-build-checks",
+  "goals": [
+    "a theorem in a module that no root of the full check imports",
+    "a file module, Isla module, or Sail proof after a change to a definition it imports",
+    "isla_trace% \"PATH\"",
+    "isla_features% \"PATH\"",
+    "an olean that holds theorems about a changed trace or features file"
+  ],
+  "modules": [
+    "LeanExe.A64.Isla.Trace",
+    "LeanExe.A64.Isla.Profile",
+    "LeanExe.FileNat",
+    "LeanExe.Pipeline.FileBytes",
+    "TestSupport.M7.BmsLoop",
+    "TestSupport.A64.CicSigned"
+  ],
+  "declarations": [
+    "LeanExe.FileNat.natOfBytes"
+  ],
+  "examples": [
+    "TestSupport.M7.Bms.board_safe"
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/Isla/Profiles.lean": [
+      "TestSupport.A64.Isla.tcg_features",
+      "TestSupport.A64.Isla.kvm_features",
+      "TestSupport.A64.Isla.sme_features"
+    ],
+    "tests/TestSupport/M7/BmsBoardFile.lean": [
+      "TestSupport.M7.BmsBoardFile.bms_board_safe"
+    ]
+  }
+}

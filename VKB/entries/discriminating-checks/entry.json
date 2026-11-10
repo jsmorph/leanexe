@@ -1,0 +1,13 @@
+{
+  "id": "discriminating-checks",
+  "goals": [
+    "a check that has not been shown to fail",
+    "a co-simulation, replay, or kernel file check that passes",
+    "a driver that counts axiom reports or saved cases",
+    "the self-test of an independent reference",
+    "a host script that judges a run on a board or an emulator"
+  ],
+  "modules": [],
+  "declarations": [],
+  "examples": []
+}
