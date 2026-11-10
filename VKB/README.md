@@ -18,6 +18,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Programs over `Int64`](entries/signed-int64/README.md) | Proves `Int64` programs against specifications over the integers or WebAssembly's signed conversions, and runs them on the A64 and M7 back ends. |
 | [Signed quantities as `Int64` values](entries/signed-integer-values/README.md) | Writes signed exponents and differences as `Int64` and proves their integers, comparisons, and exact conversions to binary64. |
 | [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
+| [Byte buffers in words](entries/byte-buffer-passes/README.md) | Keeps a buffer of bytes in a step's words and proves straight-line passes over it, which a static cost bounds, against folds over lists. |
+| [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select. |
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
@@ -26,6 +28,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |
 | [Decimal text](entries/decimal-conversions/README.md) | Proves parsers and printers of floating-point values against a grammar, rounding, and round trips, and printers and readers of integers against `toString`. |
 | [Transcriptions of standards](entries/spec-transcription/README.md) | Relates a program to a transcription of a published standard, its vectors, and its test references. |
+| [Compiled forms of list specifications](entries/linear-compiled-folds/README.md) | Makes native evaluation of a fold that appends to the end of a list linear by a `csimp` theorem, while the proofs keep the definition. |
 | [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
 | [Composed and appended programs](entries/module-composition/README.md) | Proves the theorems of functions added to or appended with a compiled program. |
 | [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays and trees across a call through the region clause, and composes the frames of steps. |
@@ -59,6 +62,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |
 | [Array heaps](entries/heap-sift-invariant/README.md) | Proves sift-down, sift-up, heapify, and removal through a heap order from a node on. |
 | [Operation streams](entries/operation-stream-refinement/README.md) | Proves that a loop over operations refines a fold over an abstract value, with bounds on its counters. |
+| [Safety theorems over a machine's history](entries/history-safety-theorems/README.md) | States safety theorems of a record machine over the records and answers before an answer, and relates the machine's state to the history terms. |
+| [A machine over words against its specification](entries/word-machine-refinement/README.md) | Proves that a compiled machine over words in `Flat` structures computes a specification over numbers, check by check and transition by transition. |
 | [Link-reversing tree updates](entries/tree-link-reversal/README.md) | Proves stackless tree updates equal to a structural recursion. |
 | [Tail-recursive and fuel-bounded functions](entries/tail-recursive-spec/README.md) | Proves specifications by recursion on the program's measure, by fuel, or by a `repeatWhile` invariant. |
 

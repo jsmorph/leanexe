@@ -1,5 +1,6 @@
 import Library.Hashing.Crc.Division
 import Library.Hashing.Crc.Program
+import Library.Hashing.Crc.Bitwise.Program
 import TestSupport.Hashing.Packing
 
 /-! A check of the CRC transcription and the programs of `Library.Hashing.Crc` on the vectors of
@@ -10,9 +11,14 @@ up to 4,097 bytes.  The transcription's division, `crc32Eval` and `crc32cEval`, 
 programs run on the message packed eight to a word and followed by a word of nonzero bytes, which
 the result must ignore.  The update functions run from the CRC of each split of the message into
 a prefix and the rest, at six points, once with the prefix's CRC and once with nonzero high bits
-added to it, which the result must ignore.  The check exits with an error at the first
-difference.  Run the executable `crc-vectors`; `--no-spec` skips the transcription, and
-`--no-program` skips the programs. -/
+added to it, which the result must ignore.  The bitwise CRC-32 of `Library.Hashing.Crc.Bitwise`
+runs on each message from the CRC of no bytes: `crc32Byte` over its bytes, and `crc32Word` over
+its bytes in words of eight from the most significant, the last word filled with bytes `0xA5`
+after the message and passed with the count of the message's bytes in it.  A second run passes
+nonzero high bits in each CRC and byte argument and the count 2^64 - 1 for each full word, which
+the result must ignore.  The check exits with an error at the first difference.  Run the
+executable `crc-vectors`; `--no-spec` skips the transcription, and `--no-program` skips the
+programs and the bitwise CRC-32. -/
 
 namespace TestSupport.Hashing.CrcVectors
 
@@ -62,6 +68,28 @@ def checkOne (fn : Function) (label : String) (m : List UInt8) (want : Nat) (spe
         let got := (fn.update c rest (n - k).toUInt64).toNat
         unless got == want do fail s!"update from byte {k}" got
 
+/-- The bytes `m` in words of eight from the most significant, the last word filled with bytes
+`0xA5` after the message, each with the count of the message's bytes in it. -/
+def msbWords (m : List UInt8) : List (UInt64 × UInt64) :=
+  (List.range ((m.length + 7) / 8)).map fun w =>
+    ((List.range 8).foldl (fun acc j => (acc <<< 8) ||| (m.getD (8 * w + j) 0xA5).toUInt64) 0,
+      (min 8 (m.length - 8 * w)).toUInt64)
+
+/-- Checks the bitwise CRC-32 on the message `m` with the expected CRC-32 `want`. -/
+def checkBitwise (label : String) (m : List UInt8) (want : Nat) : IO Unit := do
+  let high : UInt64 := 0x5A5A5A5A00000000
+  let results := [
+    ("crc32Byte", m.foldl (fun c b => Bitwise.crc32Byte c b.toUInt64) 0),
+    ("crc32Byte with high bits",
+      m.foldl (fun c b => Bitwise.crc32Byte (c ||| high) (b.toUInt64 ||| 0xA500)) 0),
+    ("crc32Word", (msbWords m).foldl (fun c (w, n) => Bitwise.crc32Word c w n) 0),
+    ("crc32Word with high bits", (msbWords m).foldl (fun c (w, n) =>
+      Bitwise.crc32Word (c ||| high) w (if n == 8 then 0xFFFFFFFFFFFFFFFF else n)) 0)]
+  for (what, got) in results do
+    unless got.toNat == want do
+      throw <| IO.userError s!"crc32: {label} message of {m.length} bytes: {what} \
+        {hex8 got.toNat}, expected {hex8 want}"
+
 def main (args : List String) : IO UInt32 := do
   let spec := !args.contains "--no-spec"
   let program := !args.contains "--no-program"
@@ -77,12 +105,16 @@ def main (args : List String) : IO UInt32 := do
     let some vc := crcOfHex c | throw <| IO.userError s!"vectors.txt: bad CRC-32C {c}"
     for (fn, want) in functions.zip [va, vc] do
       checkOne fn label m want spec program
+    if program then checkBitwise label m va
     counts := match counts.lookup label with
       | some k => counts.map fun (l, v) => if l == label then (l, k + 1) else (l, v)
       | none => counts ++ [(label, 1)]
   for (label, k) in counts do
     IO.println s!"{label}: CRC-32 and CRC-32C agree on {k} {if k == 1 then "message" else "messages"}"
-  IO.println s!"crc: {counts.foldl (· + ·.2) 0} messages agree ({(← IO.monoMsNow) - start} ms)"
+  let total := counts.foldl (· + ·.2) 0
+  if program then
+    IO.println s!"bitwise: crc32Byte and crc32Word agree with CRC-32 on {total} messages"
+  IO.println s!"crc: {total} messages agree ({(← IO.monoMsNow) - start} ms)"
   return 0
 
 end TestSupport.Hashing.CrcVectors

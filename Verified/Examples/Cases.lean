@@ -4,6 +4,7 @@ import TestSupport.Hashing.Sha512Cases
 import TestSupport.Hashing.HmacCases
 import TestSupport.Hashing.Sha3Cases
 import TestSupport.Hashing.CrcCases
+import TestSupport.Hashing.CrcBitwiseCases
 import TestSupport.Hashing.SipHashCases
 import TestSupport.Hashing.XxHash64Cases
 import TestSupport.Regex.Cases
@@ -802,6 +803,7 @@ def main : IO Unit := do
   TestSupport.Hashing.HmacCases.cases
   TestSupport.Hashing.Sha3Cases.cases
   TestSupport.Hashing.CrcCases.cases
+  TestSupport.Hashing.CrcBitwiseCases.cases
   TestSupport.Hashing.SipHashCases.cases
   TestSupport.Hashing.XxHash64Cases.cases
   TestSupport.Regex.Cases.cases

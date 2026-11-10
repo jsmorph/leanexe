@@ -6,7 +6,11 @@
     "(Library.Hashing.Sha256.rot (Library.Hashing.Sha256.low32 x) r).toUInt32",
     "Library.Bytes.byteOf (Library.Hashing.Words.bswap x) k",
     "((s >>> q) &&& 1 == 1) = bit s q.toNat",
-    "a rewrite with a lemma about UInt64.ofNat n that fails on a literal such as 1377 : UInt64"
+    "a rewrite with a lemma about UInt64.ofNat n that fails on a literal such as 1377 : UInt64",
+    "bitStep^[8] (r ^^^ (b &&& 0xFF)) = Library.Hashing.Crc.byteStep crc32Table r b for a bitwise step linear over GF(2)",
+    "((x ^^^ y) &&& 1) * c = ((x &&& 1) * c) ^^^ ((y &&& 1) * c)",
+    "(kernel) deterministic timeout after simp only [Function.iterate_succ_apply]",
+    "((w <<< 8) + (v >>> 56)).toNat for bit fields joined with + instead of |||"
   ],
   "modules": [
     "Library.Hashing.Words.Proof",
@@ -16,7 +20,9 @@
     "Library.Hashing.XxHash64.Proof",
     "Library.Hashing.Sha2.Equiv.SHA512.Bridge",
     "Library.Regex.Bits",
-    "Library.Numerics.Arithmetic.Fma.FmaRoundPack"
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack",
+    "Library.Hashing.Crc.Bitwise.Proof",
+    "LeanExe.Requests.DelimitedWords"
   ],
   "declarations": [
     "Library.Hashing.Words.rotr",
@@ -42,7 +48,17 @@
     "Library.Regex.Bits.bit_one_shiftLeft",
     "Library.Regex.Bits.shiftRight_and_one",
     "Library.Regex.Bits.ext",
-    "Library.Numerics.Arithmetic.Fma.FmaRound.lit_le"
+    "Library.Numerics.Arithmetic.Fma.FmaRound.lit_le",
+    "Library.Hashing.Crc.Bitwise.and_one_cases",
+    "Library.Hashing.Crc.Bitwise.select_xor",
+    "Library.Hashing.Crc.Bitwise.bitStep_xor",
+    "Library.Hashing.Crc.Bitwise.iterate_xor",
+    "Library.Hashing.Crc.Bitwise.iterate_even",
+    "Library.Hashing.Crc.Bitwise.iterate_table",
+    "LeanExe.Requests.toNat_shl8_add",
+    "LeanExe.Requests.toNat_shl56_add",
+    "LeanExe.Requests.wordBytes8_shl",
+    "LeanExe.Requests.wordBytes8_shr"
   ],
   "examples": [
     "Library.Hashing.SipHash.Proof.rotl_13",
@@ -51,6 +67,9 @@
     "Library.Hashing.XxHash64.Proof.round_eq",
     "Library.Hashing.Sha256.bigSigma0_toUInt32",
     "Library.Numerics.Arithmetic.Fma.FmaRound.assemble_spec",
-    "Library.Numerics.Arithmetic.Fma.FmaRoundPack.normal_right"
+    "Library.Numerics.Arithmetic.Fma.FmaRoundPack.normal_right",
+    "Library.Hashing.Crc.Bitwise.crc32Reg_eq",
+    "LeanExe.Requests.push40_bytes",
+    "LeanExe.Requests.unshift40_bytes"
   ]
 }

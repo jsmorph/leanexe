@@ -7,14 +7,16 @@ import LeanExe.M7.Proof.Setup
 The run of a program with requests on the NUCLEO-F767ZI from reset, in the model.  `Flash code n
 len` states that the code map holds the file's bytes in flash, from `0x08000000` and from
 `0x00200000`, and `Reset code flashItcm b` that `b` is the state that reset gives from the vector
-table at `0x00200000`.  `board_run` states, for every sequence `σ` of the values that device reads
-return and every number `N` of windows, that the model reaches the loop's head of `main` with
-the trace of the initialization followed by the accesses of the first `N` windows, whose reads
-take the values of `σ` after the initialization's `initReads init` reads, and `board_runs` that
-the run never stops.  `init_addrs` lists the initialization's registers in the order of its
-accesses, all in RCC, GPIOD, and USART3, and `windows_confined` states that every access of the
-windows of a step whose requests name `USART_ISR`, `USART_RDR`, or `USART_TDR` is an access of one
-of those registers.
+table at `0x00200000`.  `boardWith_run` states, for an initialization `ops` whose accesses name
+device registers, every sequence `σ` of the values that device reads return, and every number `N`
+of windows, that the model reaches the loop's head of `main` with the trace of the initialization
+followed by the accesses of the first `N` windows, whose reads take the values of `σ` after the
+initialization's `initReads ops` reads, and `boardWith_runs` that the run never stops.
+`board_run` and `board_runs` are their instances for `init`.  `init_addrs` and
+`initOvrdis_addrs` list the registers of the two initializations in the order of their accesses,
+all in RCC, GPIOD, and USART3, and `windows_confined` states that every access of the windows of a
+step whose requests name `USART_ISR`, `USART_RDR`, or `USART_TDR` is an access of one of those
+registers.
 
 The theorems hold of the processor under the conditions of the model: a power-on reset, or an
 NRST reset with DHCSR, DEMCR, the FPB, the DWT, the ITM, and the DBGMCU registers at their
@@ -26,12 +28,14 @@ at 0x1800, which a system reset keeps, and with C_DEBUGEN set a debug event halt
 `tools/baremetal/stlink_nrst.py` writes those registers' power-on values over SWD, leaves debug
 mode, and then pulses NRST.
 
-`board_setup` runs the image of a program whose module has an area, laid out by `areaBoot`, from
-reset to the initialization's start: the setup leaves the module's initial store in the area at
-DTCM's base, below the stack's limit `areaEnd`.  `areaBoard_run` states for such a program what
-`board_run` states for a program without an area, from the step's call fact `StepCall` with its
-invariant and from a fit condition that adds the area's size, and `areaBoard_runs` that its run
-never stops.
+`boardWith_setup` runs the image of a program whose module has an area, laid out by
+`areaBootWith ops`, from reset to the initialization's start: the setup leaves the module's
+initial store in the area at DTCM's base, below the stack's limit `areaEnd`.  `areaBoardWith_run`
+states for such a program what `boardWith_run` states for a program without an area, from the
+step's call fact `StepCall` with its invariant and from a fit condition that adds the area's size,
+and `areaBoardWith_runs` that its run never stops.  `board_setup`, `areaBoard_run`, and
+`areaBoard_runs` are their instances for `init`, and each counted form `*_run_steps` has its
+instance in the same way.
 -/
 
 namespace LeanExe.M7.Nucleo
@@ -78,13 +82,13 @@ theorem stackOk {n need : Nat} (hfit : 8 * n + need ≤ 0x20000) (s : State)
     (h : s.sp = stackTop - UInt32.ofNat (8 * n)) : StackOk platform stackLimit n need s :=
   stackOk_of (by decide) (by rw [show stackLimit.toNat = 0x20000000 from rfl]; omega) s h
 
-theorem init_ok : ∀ op ∈ init, OpOk platform op := by
-  intro op hop
-  simp only [init, List.mem_cons, List.mem_nil_iff, or_false] at hop
-  rcases hop with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-    rfl <;> simp only [OpOk, DevReg] <;> decide
+theorem init_ok : ∀ op ∈ init, OpOk platform op := by decide
+
+theorem initOvrdis_ok : ∀ op ∈ initOvrdis, OpOk platform op := by decide
 
 theorem initReads_eq : initReads init = 11 := rfl
+
+theorem initReads_ovrdis : initReads initOvrdis = 11 := rfl
 
 /-- The initialization's accesses, read-modify-writes whose written values are functions of the
 values read, reach the loop's base with `initTrace init` appended. -/
@@ -102,19 +106,36 @@ theorem init_addrs (σ : Nat → UInt32) :
         gpiodAfrh, gpiodAfrh, gpiodModer, gpiodModer, usartCr2, usartCr2, usartBrr, usartCr1] :=
   rfl
 
+/-- The registers of the accesses of `initOvrdis`, in their order: those of `init` with
+`USART_CR3` between `USART_BRR` and `USART_CR1`. -/
+theorem initOvrdis_addrs (σ : Nat → UInt32) :
+    (initTrace initOvrdis σ).map Access.addr =
+      [rccDckcfgr2, rccDckcfgr2, rccAhb1enr, rccAhb1enr, rccAhb1enr, rccApb1enr, rccApb1enr,
+        rccApb1enr, gpiodOspeedr, gpiodOspeedr, gpiodOtyper, gpiodOtyper, gpiodPupdr, gpiodPupdr,
+        gpiodAfrh, gpiodAfrh, gpiodModer, gpiodModer, usartCr2, usartCr2, usartBrr, usartCr3,
+        usartCr1] :=
+  rfl
+
 /-- The register blocks of RCC, GPIOD, and USART3. -/
-def InitBlock (a : UInt32) : Prop :=
+abbrev InitBlock (a : UInt32) : Prop :=
   (0x40023800 ≤ a.toNat ∧ a.toNat < 0x40023C00) ∨ (0x40020C00 ≤ a.toNat ∧ a.toNat < 0x40021000) ∨
     (0x40004800 ≤ a.toNat ∧ a.toNat < 0x40004C00)
 
+/-- Every access of an initialization whose registers, in the order of its accesses, form the
+list `as` lies in RCC, GPIOD, or USART3 when every register of `as` does. -/
+theorem confined_of_addrs {ops : List InitOp} {as : List UInt32}
+    (haddrs : ∀ σ, (initTrace ops σ).map Access.addr = as) (has : ∀ a ∈ as, InitBlock a)
+    (σ : Nat → UInt32) : ∀ e ∈ initTrace ops σ, InitBlock e.addr :=
+  fun _ he => has _ (haddrs σ ▸ List.mem_map_of_mem he)
+
 /-- Every access of the initialization lies in RCC, GPIOD, or USART3. -/
-theorem init_confined (σ : Nat → UInt32) : ∀ e ∈ initTrace init σ, InitBlock e.addr := by
-  intro e he
-  have hm := List.mem_map_of_mem (f := Access.addr) he
-  rw [init_addrs] at hm
-  simp only [List.mem_cons, List.mem_nil_iff, or_false] at hm
-  rcases hm with h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h | h |
-    h | h <;> rw [h] <;> unfold InitBlock <;> decide
+theorem init_confined (σ : Nat → UInt32) : ∀ e ∈ initTrace init σ, InitBlock e.addr :=
+  confined_of_addrs init_addrs (by decide) σ
+
+/-- Every access of `initOvrdis` lies in RCC, GPIOD, or USART3. -/
+theorem initOvrdis_confined (σ : Nat → UInt32) :
+    ∀ e ∈ initTrace initOvrdis σ, InitBlock e.addr :=
+  confined_of_addrs initOvrdis_addrs (by decide) σ
 
 theorem event_addr {G : Type} (tick : G → UInt64 → G × UInt64) (σ' : Nat → UInt32)
     (r : ReqState G) :
@@ -148,12 +169,83 @@ theorem length_windows {α G : Type} (B : Bus α) (tick : G → UInt64 → G × 
       rw [windows, List.length_append, length_windows B tick g σ' N]
       rfl
 
-/-- A program with requests from reset on the board: for every sequence `σ` of the values that
-device reads return and every number `N` of windows, the image of step `k` of `m` from the state
-`g0`, whose bytes the kernel's check `hk` finds in flash, reaches the loop's head of `main` with
-the initialization's accesses followed by those of the first `N` windows, which read `σ` from
-the value after the initialization's reads.  The theorem holds under the run conditions of the
-module's header. -/
+/-- A program with requests from reset on the board with the initialization `ops`, whose
+accesses name device registers: for every sequence `σ` of the values that device reads return and
+every number `N` of windows, the image of step `k` of `m` from the state `g0`, whose bytes the
+kernel's check `hk` finds in flash, reaches the loop's head of `main` with the initialization's
+accesses followed by those of the first `N` windows, which read `σ` from the value after the
+initialization's reads.  The theorem holds under the run conditions of the module's header. -/
+theorem boardWith_run {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op) {G : Type}
+    [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535)
+    (hk : bootFileOk (bootWith ops) (programWith ops m k s0) n len = true)
+    (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) (N : Nat) :
+    ∃ t, Reach platform σ code b t ∧ t.pc = loopHeadWith ops s0 ∧
+      t.trace = initTrace ops σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads ops))) N :=
+  boot_run (B := bootWith ops) hwords hlen himpl hPre hm hcov hna devWindow hat hcap
+    (show 2 ≤ 126 by decide) (initCode_wide ops) hk hf.itcm (show flashItcm.toNat % 4 = 0 by decide)
+    (init_runs ops hops) (show stackTop.toNat % 4 = 0 by decide)
+    (by rw [show (bootWith ops).sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
+
+/-- The run of `boardWith_run`, counted: the initialization's steps, and window `i` in at most 16
+steps of `main` and the cost of Talos's run of the step from the window's state.  The theorem
+holds under the run conditions of the module's header. -/
+theorem boardWith_run_steps {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op) {G : Type}
+    [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535)
+    (hk : bootFileOk (bootWith ops) (programWith ops m k s0) n len = true)
+    (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) (N : Nat) :
+    Counted platform σ code b (loopHeadWith ops s0) N
+      (WindowBound m k words tick g0 (fun j => σ (j + initReads ops)))
+      (fun i => initTrace ops σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads ops))) i) :=
+  boot_run_steps (B := bootWith ops) hwords hlen himpl hPre hm hcov hna devWindow hat hcap
+    (show 2 ≤ 126 by decide) (initCode_wide ops) hk hf.itcm (show flashItcm.toNat % 4 = 0 by decide)
+    (init_runs ops hops) (show stackTop.toNat % 4 = 0 by decide)
+    (by rw [show (bootWith ops).sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
+
+/-- The run of `boardWith_run` succeeds for every number of steps: the model never stops. -/
+theorem boardWith_runs {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op) {G : Type}
+    [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
+    (hna : usesArea m k = false) {st : Store Unit} {heap : Heap} (hat : heap.At st)
+    (hcap : st.memoryCap m 0 ≤ 65535)
+    (hk : bootFileOk (bootWith ops) (programWith ops m k s0) n len = true)
+    (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) : ∀ j, ∃ t, run platform σ code j b = some t :=
+  runs_forever (c := (initTrace ops σ).length) fun N => by
+    obtain ⟨t, r, -, tr⟩ := boardWith_run (σ := σ) hops hwords hlen himpl hPre hm hcov hna hat
+      hcap hk hfit g0 hs0 hf b hb N
+    exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
+
+/-- `boardWith_run` for the initialization `init`. -/
 theorem board_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {n len : Nat} {words : G → List UInt64}
     (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
@@ -170,14 +262,9 @@ theorem board_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64
     ∃ t, Reach platform σ code b t ∧ t.pc = loopHead s0 ∧
       t.trace = initTrace init σ ++
         windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) N :=
-  boot_run (B := boot) hwords hlen himpl hPre hm hcov hna devWindow hat hcap (by decide)
-    (initCode_wide init) hk hf.itcm (by decide) (initRuns σ code) (by decide)
-    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
-    (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
+  boardWith_run init_ok hwords hlen himpl hPre hm hcov hna hat hcap hk hfit g0 hs0 hf b hb N
 
-/-- The run of `board_run`, counted: the initialization's steps, and window `i` in at most 16 steps
-of `main` and the cost of Talos's run of the step from the window's state.  The theorem holds
-under the run conditions of the module's header. -/
+/-- `boardWith_run_steps` for the initialization `init`. -/
 theorem board_run_steps {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {n len : Nat} {words : G → List UInt64}
     (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
@@ -195,12 +282,9 @@ theorem board_run_steps {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List 
       (WindowBound m k words tick g0 (fun j => σ (j + initReads init)))
       (fun i => initTrace init σ ++
         windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) i) :=
-  boot_run_steps (B := boot) hwords hlen himpl hPre hm hcov hna devWindow hat hcap (by decide)
-    (initCode_wide init) hk hf.itcm (by decide) (initRuns σ code) (by decide)
-    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
-    (fun s hs => stackOk hfit s hs) g0 hs0 b hb N
+  boardWith_run_steps init_ok hwords hlen himpl hPre hm hcov hna hat hcap hk hfit g0 hs0 hf b hb N
 
-/-- The run of `board_run` succeeds for every number of steps: the model never stops. -/
+/-- `boardWith_runs` for the initialization `init`. -/
 theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {n len : Nat} {words : G → List UInt64}
     (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
@@ -214,10 +298,7 @@ theorem board_runs {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt6
     (hfit : 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G) (hs0 : words g0 = s0)
     {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
     (hb : Reset code flashItcm b) : ∀ j, ∃ t, run platform σ code j b = some t :=
-  runs_forever (c := (initTrace init σ).length) fun N => by
-    obtain ⟨t, r, -, tr⟩ := board_run (σ := σ) hwords hlen himpl hPre hm hcov hna hat hcap hk
-      hfit g0 hs0 hf b hb N
-    exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
+  boardWith_runs init_ok hwords hlen himpl hPre hm hcov hna hat hcap hk hfit g0 hs0 hf b hb
 
 /-- The bytes of the generator's area lie in DTCM. -/
 theorem area_ram : ∀ j < areaSize areaPages, Ram platform (areaHeader + UInt32.ofNat j) :=
@@ -230,11 +311,106 @@ theorem area_ram : ∀ j < areaSize areaPages, Ram platform (areaHeader + UInt32
 
 theorem areaEnd_toNat : areaEnd.toNat = areaHeader.toNat + areaSize areaPages := by decide
 
-/-- The image of a program whose module `am` has an area, laid out by `areaBoot` with the program
-of step `k` of `m`, whose bytes the kernel's check `hk` finds in flash, run from reset to the
-initialization's start: SP holds the top of DTCM, LR 0xFFFFFFFF, the trace is empty, and the
-machine holds the store in which `am` starts in the area at DTCM's base, below the stack's limit
-at the area's end.  The theorem holds under the run conditions of the module's header. -/
+/-- The image of a program whose module `am` has an area, laid out by `areaBootWith ops` with the
+program of step `k` of `m`, whose bytes the kernel's check `hk` finds in flash, run from reset to
+the start of the initialization `ops`: SP holds the top of DTCM, LR 0xFFFFFFFF, the trace is
+empty, and the machine holds the store in which `am` starts in the area at DTCM's base, below the
+stack's limit at the area's end.  The theorem holds under the run conditions of the module's
+header. -/
+theorem boardWith_setup {ops : List InitOp} {am m : Module} {gts : List ValueType} {k : Nat}
+    {s0 : List UInt64} {n len : Nat} (hok : setupOk am areaPages = true)
+    (hgt : globalTypesOf am = some gts)
+    (hk : bootFileOk (areaBootWith ops am)
+      (bootProgram (areaBootWith ops am) m k s0 areaEnd devBase) n len = true)
+    {σ : Nat → UInt32} {code : UInt32 → Option UInt16} (hf : Flash code n len) (b : State)
+    (hb : Reset code flashItcm b) :
+    ∃ t, Reach platform σ code b t ∧
+      t.pc = after (bootWith ops).reset (setupCode areaHeader areaPages am).length ∧
+      CodeAt code t.pc (initCode ops) ∧ t.sp = stackTop ∧ t.lr = 0xFFFFFFFF ∧ t.trace = [] ∧
+      t.reads = 0 ∧ StoreRel platform areaHeader areaEnd areaPages gts (initStore am areaPages) t :=
+  setup_boot (B := bootWith ops) hok hgt (by decide) area_ram (Nat.le_of_eq areaEnd_toNat.symm)
+    (show 2 ≤ 126 by decide) (initCode_wide ops) hk hf.itcm (show stackTop.toNat % 4 = 0 by decide)
+    (show flashItcm.toNat % 4 = 0 by decide) b hb
+
+/-- A program whose module `m` has an area, from reset on the board with the initialization `ops`,
+whose accesses name device registers: for every sequence `σ` of the values that device reads
+return and every number `N` of windows, the image of step `k` of `m` from the state `g0` in the
+layout `areaBootWith ops m`, whose bytes the kernel's check `hk` finds in flash, runs the setup of
+the area, which leaves the store in which `m` starts there, and reaches the loop's head of `main`
+with the initialization's accesses followed by those of the first `N` windows, which read `σ`
+from the value after the initialization's reads.  The step's call keeps the invariant `J`, which
+holds of the initial store with the heap `heap`, and the area, the outgoing area of `main`, and
+the stack's bound fit in DTCM.  The theorem holds under the run conditions of the module's
+header. -/
+theorem areaBoardWith_run {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op) {G : Type}
+    {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
+    (hcov : reachCovered m k = true) (hok : setupOk m areaPages = true) {heap : Heap}
+    (hat : heap.At (initStore m areaPages)) (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBootWith ops m)
+      (bootProgram (areaBootWith ops m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) (N : Nat) :
+    ∃ t, Reach platform σ code b t ∧ t.pc = areaLoopHeadWith ops m s0 ∧
+      t.trace = initTrace ops σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads ops))) N := by
+  have he : areaEnd.toNat = 0x20011000 := by decide
+  have ha : areaSize areaPages = 69632 := rfl
+  exact setupBoot_run (B := bootWith ops) hlen hcall hm hcov hok area_ram
+    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (show 2 ≤ 126 by decide)
+    (initCode_wide ops) hk hf.itcm (show flashItcm.toNat % 4 = 0 by decide) (init_runs ops hops)
+    (show stackTop.toNat % 4 = 0 by decide)
+    (by rw [show (bootWith ops).sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+
+/-- The run of `areaBoardWith_run`, counted: the setup's and the initialization's steps, and
+window `i` in at most 16 steps of `main` and the cost of Talos's run of the step from the window's
+state.  The theorem holds under the run conditions of the module's header. -/
+theorem areaBoardWith_run_steps {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op)
+    {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
+    (hcov : reachCovered m k = true) (hok : setupOk m areaPages = true) {heap : Heap}
+    (hat : heap.At (initStore m areaPages)) (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBootWith ops m)
+      (bootProgram (areaBootWith ops m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) (N : Nat) :
+    Counted platform σ code b (areaLoopHeadWith ops m s0) N
+      (WindowBound m k words tick g0 (fun j => σ (j + initReads ops)))
+      (fun i => initTrace ops σ ++
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads ops))) i) := by
+  have he : areaEnd.toNat = 0x20011000 := by decide
+  have ha : areaSize areaPages = 69632 := rfl
+  exact setupBoot_run_steps (B := bootWith ops) hlen hcall hm hcov hok area_ram
+    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (show 2 ≤ 126 by decide)
+    (initCode_wide ops) hk hf.itcm (show flashItcm.toNat % 4 = 0 by decide) (init_runs ops hops)
+    (show stackTop.toNat % 4 = 0 by decide)
+    (by rw [show (bootWith ops).sp.toNat = 0x20020000 from rfl]; omega)
+    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+
+/-- The run of `areaBoardWith_run` succeeds for every number of steps: the model never stops. -/
+theorem areaBoardWith_runs {ops : List InitOp} (hops : ∀ op ∈ ops, OpOk platform op) {G : Type}
+    {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat} {words : G → List UInt64}
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
+    (hcov : reachCovered m k = true) (hok : setupOk m areaPages = true) {heap : Heap}
+    (hat : heap.At (initStore m areaPages)) (hJ : J heap (initStore m areaPages))
+    (hk : bootFileOk (areaBootWith ops m)
+      (bootProgram (areaBootWith ops m) m k s0 areaEnd devBase) n len = true)
+    (hfit : areaSize areaPages + 8 * (s0.length + 1) + stackBound m k ≤ 0x20000) (g0 : G)
+    (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
+    (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) :
+    ∀ j, ∃ t, run platform σ code j b = some t :=
+  runs_forever (c := (initTrace ops σ).length) fun N => by
+    obtain ⟨t, r, -, tr⟩ := areaBoardWith_run (σ := σ) hops hlen hcall hm hcov hok hat hJ hk hfit
+      g0 hs0 hf b hb N
+    exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
+
+/-- `boardWith_setup` for the initialization `init`. -/
 theorem board_setup {am m : Module} {gts : List ValueType} {k : Nat} {s0 : List UInt64}
     {n len : Nat} (hok : setupOk am areaPages = true) (hgt : globalTypesOf am = some gts)
     (hk : bootFileOk (areaBoot am) (bootProgram (areaBoot am) m k s0 areaEnd devBase) n len = true)
@@ -244,18 +420,9 @@ theorem board_setup {am m : Module} {gts : List ValueType} {k : Nat} {s0 : List 
       t.pc = after boot.reset (setupCode areaHeader areaPages am).length ∧
       CodeAt code t.pc (initCode init) ∧ t.sp = stackTop ∧ t.lr = 0xFFFFFFFF ∧ t.trace = [] ∧
       t.reads = 0 ∧ StoreRel platform areaHeader areaEnd areaPages gts (initStore am areaPages) t :=
-  setup_boot (B := boot) hok hgt (by decide) area_ram (Nat.le_of_eq areaEnd_toNat.symm)
-    (by decide) (initCode_wide init) hk hf.itcm (by decide) (by decide) b hb
+  boardWith_setup hok hgt hk hf b hb
 
-/-- A program whose module `m` has an area, from reset on the board: for every sequence `σ` of
-the values that device reads return and every number `N` of windows, the image of step `k` of `m`
-from the state `g0` in the layout `areaBoot m`, whose bytes the kernel's check `hk` finds in flash,
-runs the setup of the area, which leaves the store in which `m` starts there, and reaches the
-loop's head of `main` with the initialization's accesses followed by those of the first `N`
-windows, which read `σ` from the value after the initialization's reads.  The step's call keeps
-the invariant `J`, which holds of the initial store with the heap `heap`, and the area, the
-outgoing area of `main`, and the stack's bound fit in DTCM.  The theorem holds under the run
-conditions of the module's header. -/
+/-- `areaBoardWith_run` for the initialization `init`. -/
 theorem areaBoard_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
     {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
     {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
@@ -268,18 +435,10 @@ theorem areaBoard_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n le
     (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) (N : Nat) :
     ∃ t, Reach platform σ code b t ∧ t.pc = areaLoopHead m s0 ∧
       t.trace = initTrace init σ ++
-        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) N := by
-  have he : areaEnd.toNat = 0x20011000 := by decide
-  have ha : areaSize areaPages = 69632 := rfl
-  exact setupBoot_run (B := boot) hlen hcall hm hcov hok area_ram
-    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (by decide) (initCode_wide init) hk hf.itcm
-    (by decide) (initRuns σ code) (by decide)
-    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
-    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) N :=
+  areaBoardWith_run init_ok hlen hcall hm hcov hok hat hJ hk hfit g0 hs0 hf b hb N
 
-/-- The run of `areaBoard_run`, counted: the setup's and the initialization's steps, and window
-`i` in at most 16 steps of `main` and the cost of Talos's run of the step from the window's
-state.  The theorem holds under the run conditions of the module's header. -/
+/-- `areaBoardWith_run_steps` for the initialization `init`. -/
 theorem areaBoard_run_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
     {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
     {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
@@ -293,16 +452,10 @@ theorem areaBoard_run_steps {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
     Counted platform σ code b (areaLoopHead m s0) N
       (WindowBound m k words tick g0 (fun j => σ (j + initReads init)))
       (fun i => initTrace init σ ++
-        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) i) := by
-  have he : areaEnd.toNat = 0x20011000 := by decide
-  have ha : areaSize areaPages = 69632 := rfl
-  exact setupBoot_run_steps (B := boot) hlen hcall hm hcov hok area_ram
-    (Nat.le_of_eq areaEnd_toNat.symm) devWindow hat hJ (by decide) (initCode_wide init) hk hf.itcm
-    (by decide) (initRuns σ code) (by decide)
-    (by rw [show boot.sp.toNat = 0x20020000 from rfl]; omega)
-    (fun s hs => stackOk_of (by rw [he]; decide) (by rw [he]; omega) s hs) g0 hs0 b hb N
+        windows (reqTrace (devBus devBase) tick g0 (fun j => σ (j + initReads init))) i) :=
+  areaBoardWith_run_steps init_ok hlen hcall hm hcov hok hat hJ hk hfit g0 hs0 hf b hb N
 
-/-- The run of `areaBoard_run` succeeds for every number of steps: the model never stops. -/
+/-- `areaBoardWith_runs` for the initialization `init`. -/
 theorem areaBoard_runs {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n len : Nat}
     {words : G → List UInt64} (hlen : ∀ g, (words g).length = s0.length)
     {tick : G → UInt64 → G × UInt64} {J : Heap → Store Unit → Prop}
@@ -314,9 +467,6 @@ theorem areaBoard_runs {G : Type} {m : Module} {k : Nat} {s0 : List UInt64} {n l
     (hs0 : words g0 = s0) {σ : Nat → UInt32} {code : UInt32 → Option UInt16}
     (hf : Flash code n len) (b : State) (hb : Reset code flashItcm b) :
     ∀ j, ∃ t, run platform σ code j b = some t :=
-  runs_forever (c := (initTrace init σ).length) fun N => by
-    obtain ⟨t, r, -, tr⟩ := areaBoard_run (σ := σ) hlen hcall hm hcov hok hat hJ hk hfit g0 hs0
-      hf b hb N
-    exact ⟨t, r, by rw [tr, List.length_append, length_windows]⟩
+  areaBoardWith_runs init_ok hlen hcall hm hcov hok hat hJ hk hfit g0 hs0 hf b hb
 
 end LeanExe.M7.Nucleo

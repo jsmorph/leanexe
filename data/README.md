@@ -6,7 +6,7 @@
 |---|---|---|
 | [SHA-2](hashing/sha2/NOTICE) | NIST byte-oriented short-message, long-message, and Monte Carlo vectors.  The [original explanation](hashing/sha2/Readme.txt) describes the response files.  The notice identifies the downloaded archive and its digest. | [SHA-2 vector test](../tests/TestSupport/Hashing/Sha2Vectors.lean) |
 | [SHA-3 and SHAKE](hashing/sha3/NOTICE) | NIST byte-oriented vectors and short bit-oriented messages.  The bit length and the FIPS 202 byte convention determine the message, including its final partial byte. | [SHA-3 vector test](../tests/TestSupport/Hashing/Sha3Vectors.lean) |
-| [CRC](hashing/crc/NOTICE) | Published check values and generated messages compared with Python's CRC-32 and the Linux crypto API's CRC-32C. | [CRC vector test](../tests/TestSupport/Hashing/CrcVectors.lean) |
+| [CRC](hashing/crc/NOTICE) | Published check values and generated messages compared with Python's CRC-32 and the Linux crypto API's CRC-32C, and calls of the bitwise CRC-32 with the results of Python's CRC-32. | [CRC vector test](../tests/TestSupport/Hashing/CrcVectors.lean) and [the cases of the bitwise CRC-32](../tests/TestSupport/Hashing/CrcBitwiseCases.lean) |
 | [SipHash](hashing/siphash/NOTICE) | Reference SipHash-2-4 vectors and generated SipHash-2-4 and SipHash-1-3 results from OpenSSL.  The notice fixes key, message, and result byte order. | [SipHash vector test](../tests/TestSupport/Hashing/SipHashVectors.lean) |
 | [XXH64](hashing/xxhash64/NOTICE) | Reference lengths, seeds, and digests.  The notice specifies the generator that reconstructs each message. | [XXH64 vector test](../tests/TestSupport/Hashing/XxHash64Vectors.lean) |
 

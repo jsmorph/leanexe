@@ -1,5 +1,6 @@
 import LeanExe.M7.Proof.Step
 import LeanExe.M7.Proof.Runs
+import LeanExe.M7.Proof.Bound
 import LeanExe.Requests.Windows
 
 /-!
@@ -16,7 +17,9 @@ induction on `n`: the machine returns to the loop's head with the state of `reqR
 outgoing area and the window traces of `reqTrace (devBus dev)` appended to its trace.
 `main_window_steps` counts a window's steps, at most 16 of `main` and the cost of Talos's run of
 the step, and `main_loop_steps` and `main_run_steps` state the windows' counts on one run as
-`Counted`.  The reads
+`Counted`.  `Counted.uniform` bounds every window by one bound on the step's runs, and
+`Counted.split` adds a second bound for the windows whose state and value satisfy a predicate,
+such as the windows of a step's polling phases.  The reads
 of the windows take the values of `σ` from the number of reads before the loop on.  `main_start`
 runs `main`'s start to the loop's head with the bytes below SP unchanged, and `main_run` combines
 the two from `main`'s entry.  Each window passes to `step_call` the store that the call before it
@@ -847,6 +850,46 @@ theorem Counted.uniform {G : Type} {m : Module} {k : Nat} {words : G → List UI
   obtain ⟨F, st, hF⟩ := hb i (by omega)
   have := hW F st (stepArgs words (reqRun tick g0 σ' i).state (reqRun tick g0 σ' i).last)
   omega
+
+/-- A counted run of windows with two bounds on the cost of the step's runs: `W` bounds every
+run, and `V` the runs from the states and values that satisfy `Q`.  Each window takes at most
+`16 + W` steps, and window `i`, when its state and the value that it receives satisfy `Q`, at
+most `16 + V`. -/
+theorem Counted.split {G : Type} {m : Module} {k : Nat} {words : G → List UInt64}
+    {tick : G → UInt64 → G × UInt64} {g0 : G} {σ' : Nat → UInt32} {b : State} {head : UInt32}
+    {n W V : Nat} {tr : Nat → List Access} {Q : G → UInt64 → Prop}
+    (h : Counted P σ code b head n (WindowBound m k words tick g0 σ') tr)
+    (hW : ∀ (F : Nat) (st : Store Unit) (vs : List Value), costRun F m k st vs {} ≤ W)
+    (hV : ∀ (F : Nat) (st : Store Unit) (g : G) (v : UInt64), Q g v →
+      costRun F m k st (stepArgs words g v) {} ≤ V) :
+    ∃ (c : Nat) (cs : List Nat), cs.length = n ∧ (∀ x ∈ cs, x ≤ 16 + W) ∧
+      (∀ i x, cs[i]? = some x → Q (reqRun tick g0 σ' i).state (reqRun tick g0 σ' i).last →
+        x ≤ 16 + V) ∧
+      ∀ i ≤ n, ∃ t, run P σ code (c + (cs.take i).sum) b = some t ∧ t.pc = head ∧
+        t.trace = tr i := by
+  obtain ⟨c, cs, hl, hb, ht⟩ := h
+  refine ⟨c, cs, hl, fun x hx => ?_, fun i x hx hq => ?_, ht⟩
+  · obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem hx
+    obtain ⟨F, st, hF⟩ := hb i (by omega)
+    have := hW F st (stepArgs words (reqRun tick g0 σ' i).state (reqRun tick g0 σ' i).last)
+    omega
+  · obtain ⟨hi, rfl⟩ := List.getElem?_eq_some_iff.mp hx
+    obtain ⟨F, st, hF⟩ := hb i (by omega)
+    have := hV F st _ _ hq
+    omega
+
+/-- `pathCost m k dec` bounds the runs of the step `k` from the state `g` and the value `v` when
+each test of `dec` has its outcome from the words of `g` and `v`, the step's parameters. -/
+theorem costRun_step_le_pathCost {α G : Type} {words : G → List UInt64} {m : Module} {k c : Nat}
+    {dec : List (Program × Bool)} {env : HostEnv α} (hm : m.imports = [])
+    (h : pathCost m k dec = some c) {g : G} {v : UInt64}
+    (hn : (m.funcs[k]?).map Function.numParams = some ((words g).length + 1))
+    (hd : TestsOk m env ((words g ++ [v]).map Value.i64) dec) (F : Nat) (st : Store α) :
+    costRun F m k st (stepArgs words g v) env ≤ c :=
+  costRun_le_pathCost hm h F st _ fun f hf => by
+    have hn' : f.numParams = (words g).length + 1 := by simpa [hf] using hn
+    rw [hn', stepArgs, List.take_of_length_le (by simp), List.reverse_reverse]
+    exact hd
 
 /-- The first `n` windows of `main` from the loop's head, counted: window `i` takes at most 16
 steps of `main` and the cost of Talos's run of the step from the window's state. -/

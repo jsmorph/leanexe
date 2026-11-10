@@ -75,9 +75,10 @@ of the skill supports no other types.  If the request needs one, say so and stop
    plans.  Ask it to read the request, to decide for each case of the input whether `expected`
    gives what the request asks, to name every case the request leaves open and whether the
    specification's comment records the choice, and to check each sample's output by hand from the
-   request.  It reasons from the files and the output alone, runs no build, test, or Lean command,
-   and edits no file.  It reports each disagreement with the input that shows it, and the input
-   classes that no sample covers.
+   request.  It may write and run its own executable model, built from the request alone, and
+   compare the model with the samples' outputs and on random inputs.  It runs no build or test of
+   the repository's Lean code and edits no file.  It reports each disagreement with the input that
+   shows it, and the input classes that no sample covers.
 6. Summarize the reviewer's report in `review.md`.  For each disagreement, correct the
    specification or samples, or record in `review.md` why the request supports the specification.
    After any change, run steps 4 and 5 again with a new agent.

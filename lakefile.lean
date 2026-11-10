@@ -181,6 +181,10 @@ lean_exe «verified-cases-crc» where
   srcDir := "tests"
   root := `TestSupport.Hashing.CrcCasesMain
 
+lean_exe «verified-cases-crcbitwise» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.CrcBitwiseCasesMain
+
 lean_exe «verified-cases-siphash» where
   srcDir := "tests"
   root := `TestSupport.Hashing.SipHashCasesMain
@@ -222,6 +226,12 @@ lean_exe «orderbook-process» where
 lean_exe «clight-diff» where
   srcDir := "tests"
   root := `TestSupport.Native.ClightDiff
+
+-- The replay of the BMS bridge's logs against the specification (Demos/Bms/Host.md); not a
+-- default target.
+lean_exe «bms-replay» where
+  srcDir := "tests"
+  root := `TestSupport.Bms.Replay
 
 -- The C text, host programs, and Talos's results for the translator's end-to-end test
 -- (tests/native/run.sh); not a default target.

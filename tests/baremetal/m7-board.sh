@@ -2,8 +2,12 @@
 # The programs with requests through the Cortex-M7 back end on the NUCLEO-F767ZI: the echo of
 # usart3Tick, NAME echo, the energy controller's gateway of gwTickUsart3, NAME gateway, the echo
 # after the setup of the area of CRC-32's module, NAME area (tests/TestSupport/M7/Area.lean), the
-# CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, and the signed
-# step sgUsart3Tick, NAME signed (tests/TestSupport/M7/Signed.lean).
+# CRC-32 step crcUsart3Tick, NAME crc, the SHA-256 step shaUsart3Tick, NAME sha, the same step with
+# the initialization initOvrdis of LeanExe/M7/Board.lean, which disables USART3's overrun
+# detection, NAME sha-ovrdis, the signed step sgUsart3Tick, NAME signed
+# (tests/TestSupport/M7/Signed.lean), the echo of records over the delimited framing
+# dlUsart3Tick, NAME delim (tests/TestSupport/M7/Delim.lean), whose image also takes initOvrdis,
+# and the BMS step bmsTickUsart3, NAME bms (Demos/Bms/Program.lean), whose image takes initOvrdis.
 #
 # "m7-board.sh check NAME" builds m7-windows and the loop theorems of
 # tests/TestSupport/M7/NucleoLoop.lean or GwLoop.lean, writes with m7-windows board or
@@ -30,10 +34,19 @@
 # writes sha.bin with m7-windows sha-board, with the setup of its area, and sha.addr, and
 # elaborates tests/TestSupport/M7/ShaBoardFile.lean under 16G unless MEM is set, whose sha_board
 # and sha_board_bytes state that the bytes written begin the SHA-256 digests of the blocks read.
+# For NAME sha-ovrdis, it writes sha-ovrdis.bin with m7-windows sha-ovrdis-board and elaborates
+# tests/TestSupport/M7/ShaOvrdisBoardFile.lean under 16G unless MEM is set.  The image has no
+# measurement image.
 # For NAME signed, "m7-board.sh check signed" builds m7-windows and
 # tests/TestSupport/M7/SignedLoop.lean, writes signed.bin with m7-windows signed-board and
 # signed.addr, and elaborates tests/TestSupport/M7/SignedBoardFile.lean under 12G unless MEM is
-# set; the signed step has no measurement image.
+# set; the signed step has no measurement image.  For NAME delim, "m7-board.sh check delim"
+# builds m7-windows and tests/TestSupport/M7/DelimLoop.lean, writes delim.bin with m7-windows
+# delim-board and delim.addr, and elaborates tests/TestSupport/M7/DelimBoardFile.lean under 16G
+# unless MEM is set; it has no measurement image.  For NAME bms, "m7-board.sh check bms" builds
+# m7-windows and tests/TestSupport/M7/BmsLoop.lean, writes bms.bin with m7-windows bms-board,
+# bms.addr, and the measurement image bms-dwt.bin, and elaborates
+# tests/TestSupport/M7/BmsBoardFile.lean under 24G unless MEM is set.
 #
 # "m7-board.sh emulate NAME" runs NAME.bin in Renode on its model of the NUCLEO-F767ZI,
 # platforms/boards/nucleo_f767zi.repl, as tests/baremetal/usart3.sh emulate runs the C path's
@@ -43,7 +56,8 @@
 # pseudo-terminal, NAME.pty, and a hook at main logs "reached main", which follows the board's
 # initialization; the script then plays the far end through the pseudo-terminal as "run" does.
 # Renode's log, NAME.renode, may hold no warning or error other than those of its translation
-# cache and of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks.
+# cache, of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks, and of the write of OVRDIS,
+# bit 12 of USART_CR3, which its USART model lacks and which the image of NAME delim makes.
 #
 # "m7-board.sh run NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
 # reads the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a
@@ -60,8 +74,24 @@
 # bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
 # For the SHA-256 step, tests/baremetal/uart_sha.py sends blocks of 64 bytes in lockstep and checks
 # each answer against hashlib.sha256 of the bytes sent so far, and the script then requires ORE
-# clear in the same way.  For the signed step, tests/baremetal/uart_signed.py checks each reply
-# against its model of the step's integrator, and the script then requires ORE clear.
+# clear in the same way.  For NAME sha-ovrdis, uart_sha.py --overrun adds blocks sent ahead,
+# which overrun USART3, and requires the answers that follow from the bytes that USART3 delivers
+# with OVRDIS set.  OVRDIS forces ORE to 0, so the script reads USART_CR3 over SWD into NAME.cr3
+# instead and requires OVRDIS, bit 12, set.  For the signed step, tests/baremetal/uart_signed.py
+# checks each reply against its model of the step's integrator, and the script then requires ORE
+# clear.  "emulate" does not take NAME sha-ovrdis, since Renode's USART3 models no overrun.  For
+# the echo of records, tests/baremetal/uart_delim.py sends records, corrupted, truncated, empty,
+# and overlong segments in lockstep and checks each answer against the mirror of
+# tests/baremetal/delim_frame.py; under "run", "nrst", and "host" it adds --overrun, which sends a
+# burst while the step answers and requires the records after the next 0x00 to get their exact
+# answers, and the script then requires OVRDIS set in USART_CR3 as for NAME sha-ovrdis.  For the
+# BMS step, tests/baremetal/uart_bms.py device runs the fault-injection schedule of
+# Demos/Bms/requirements.md, writes the bytes of both directions to bms.in and bms.out and its
+# events to bms.log, and checks every answer against its Python mirror and the schedule; under
+# "nrst" the scenarios with a board reset reset the board with stlink_nrst.py, followed by usbreset
+# USBRESET when it is set, with uart_bms.py's --reopen, and under "emulate" and "run" those
+# scenarios are skipped.  The script then requires OVRDIS set in USART_CR3, and
+# "m7-board.sh replay bms" checks the logs against the specification with bms-replay.
 # The reset of st-flash leaves DHCSR.C_DEBUGEN and DBGMCU_APB1_FZ as the probe set them, which the
 # theorems' run conditions exclude.  "m7-board.sh nrst NAME DEVICE" writes NAME.bin and compares
 # the read-back as "run" does, without st-flash's reset, runs tools/baremetal/stlink_nrst.py, with
@@ -71,7 +101,11 @@
 # "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without st-flash, for a run
 # from the power-on reset of a replug after NAME.bin lies in the flash.  When the virtual COM port
 # forwards none of the board's bytes, a USB reset of the ST-LINK, usbreset BUS/DEVICE, before the
-# next run restores it.
+# next run restores it.  With USBRESET set to the ST-LINK's VID:PID or BUS/DEVICE, "nrst" runs
+# usbreset USBRESET after the tool and waits 2 s before the far end starts: in sessions in which
+# the port passes no byte of the board's after each run of the tool, the USB reset restores it,
+# and it neither resets the target nor sends USART3 a byte, as a program's count of segments
+# continued across one shows.
 #
 # "m7-board.sh diag-image" builds m7-windows under a memory cap of MEM, 12G unless set, and writes
 # diag.bin, the diagnostic image of tests/TestSupport/M7/Diag.lean, which no theorem covers and
@@ -90,8 +124,9 @@
 # each window, runs the host script through DEVICE as "run" does, with the gateway's records in
 # NAME-dwt.records.in and NAME-dwt.records.out, and reads the window table, at 0x20000000 or for
 # the CRC-32 and SHA-256 steps at 0x2001C000 above their areas, and the boot log into
-# NAME-dwt.results and NAME-dwt.bootlog, and for the gateway and the CRC-32 and SHA-256 steps
-# USART_ISR as "run" does.  st-flash
+# NAME-dwt.results and NAME-dwt.bootlog, for the gateway and the CRC-32 and SHA-256 steps
+# USART_ISR as "run" does, and for the BMS step USART_CR3.  NAME is echo, gateway, crc, sha, or
+# bms, and the BMS step's run skips the scenarios with a board reset.  st-flash
 # attaches with --hot-plug for these reads, which halt the core.
 #
 # "m7-board.sh compare RECORDS" runs native-bare gateway-run on the input records RECORDS.in into
@@ -120,13 +155,14 @@
 # script in seconds.
 # Usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME | run NAME DEVICE |
 #          nrst NAME DEVICE | host NAME DEVICE | diag-image | diag DEVICE [REPEATS] |
-#          measure-div | measure NAME DEVICE | compare RECORDS |
+#          measure-div | measure NAME DEVICE | compare RECORDS | replay PREFIX |
 #          cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]
 set -euo pipefail
 usage() {
   echo "usage: tests/baremetal/m7-board.sh check NAME | area-read | emulate NAME |" \
     "run NAME DEVICE | nrst NAME DEVICE | host NAME DEVICE | diag-image |" \
     "diag DEVICE [REPEATS] | measure-div | measure NAME DEVICE | compare RECORDS |" \
+    "replay PREFIX |" \
     "cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]" >&2
   exit 2
 }
@@ -142,7 +178,7 @@ series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
 # Requires that $1 names a program.
 program() {
   case $1 in
-    echo|gateway|area|crc|sha|signed) ;;
+    echo|gateway|area|crc|sha|sha-ovrdis|signed|delim|bms) ;;
     *) usage ;;
   esac
 }
@@ -222,6 +258,18 @@ overrun() {
   echo "pass: $1: USART_ISR 0x$isr has ORE clear"
 }
 
+# Reads USART_CR3 into $1.cr3 of OUT and requires OVRDIS, bit 12, set.
+ovrdis() {
+  local cr3
+  readmem "$1.cr3" 0x40004808 4 || return 1
+  cr3=$(od -An -tx4 -N4 "$out/$1.cr3" | tr -d ' ')
+  if (( ((0x$cr3 >> 12) & 1) == 0 )); then
+    echo "fail: $1: USART_CR3 0x$cr3 has OVRDIS clear"
+    return 1
+  fi
+  echo "pass: $1: USART_CR3 0x$cr3 has OVRDIS set"
+}
+
 # Plays the far end of USART3 for program $1 through the serial port $2, with the gateway's
 # records and the host script's line under the name $3 and the gateway's ticks $4.
 host_run() {
@@ -230,7 +278,23 @@ host_run() {
     echo|area) host=(uart_echo.py) ;;
     crc) host=(uart_crc.py) ;;
     sha) host=(uart_sha.py) ;;
+    sha-ovrdis) host=(uart_sha.py --overrun) ;;
     signed) host=(uart_signed.py) ;;
+    delim) host=(uart_delim.py ${delim_overrun:+--overrun}) ;;
+    bms)
+      local reset=()
+      [ -z "${bms_reset:-}" ] || reset=(--reset-command "$bms_reset")
+      [ -z "${USBRESET:-}" ] || [ -z "${bms_reset:-}" ] || reset+=(--reopen)
+      [ -z "${bms_pace:-}" ] || reset+=(--pace)
+      if ! "$uv" run "$here/uart_bms.py" device --timeout "$timeout" "${reset[@]}" "$2" \
+          "$out/$3" >"$out/$3.echo" 2>"$out/$3.stderr"; then
+        echo "fail: $3: $(cat "$out/$3.echo" "$out/$3.stderr" | tail -n 40 | paste -sd' ' |
+          head -c 2000)"
+        return 1
+      fi
+      echo "pass: $3: $(tail -n 1 "$out/$3.echo")"
+      return 0
+      ;;
     gateway)
       host=(uart_gateway.py --ticks "$4" "$series" "$out/$3.records")
       rm -f "${out:?}/$3.records.in" "${out:?}/$3.records.out"
@@ -262,8 +326,14 @@ case $1 in
         mem=${MEM:-12G} ;;
       sha) lib=TestSupport.M7.ShaLoop cmd=sha-board dwt=sha-dwt file=ShaBoardFile count=19
         mem=${MEM:-16G} ;;
+      sha-ovrdis) lib=TestSupport.M7.ShaLoop cmd=sha-ovrdis-board dwt= file=ShaOvrdisBoardFile
+        count=11 mem=${MEM:-16G} ;;
       signed) lib=TestSupport.M7.SignedLoop cmd=signed-board dwt= file=SignedBoardFile count=16
         mem=${MEM:-12G} ;;
+      delim) lib=TestSupport.M7.DelimLoop cmd=delim-board dwt= file=DelimBoardFile count=20
+        mem=${MEM:-16G} ;;
+      bms) lib=TestSupport.M7.BmsLoop cmd=bms-board dwt=bms-dwt file=BmsBoardFile count=17
+        mem=${MEM:-24G} ;;
     esac
     rm -f "${out:?}/$name".* "${out:?}/$name"-dwt.*
     [ -z "$file" ] || rm -f "${out:?}/$file".*
@@ -309,6 +379,7 @@ case $1 in
   emulate)
     [ "$#" -eq 2 ] || usage
     program "$2"
+    [ "$2" != sha-ovrdis ] || usage
     name=$2
     renode=${RENODE:-renode}
     [ -f "$out/$name.bin" ] || { echo "fail: $name: $out/$name.bin is missing"; exit 1; }
@@ -346,6 +417,7 @@ EOF
       sleep 1
     done
     if [ "$found" = 1 ]; then
+      bms_pace=1
       host_run "$name" "$pty" "$name" "${TICKS:-5}" || status=1
     else
       echo "fail: $name: Renode did not reach main: $(tail -c 300 "$out/$name.renode")"
@@ -355,7 +427,9 @@ EOF
     wait "$renode_job" 2>/dev/null || :
     unexpected=$(grep -a '\[WARNING\]\|\[ERROR\]' "$out/$name.renode" |
       grep -av 'Translation cache size [0-9]* is larger than maximum allowed' |
-      grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' | head -c 400 || :)
+      grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' |
+      grep -av 'usart3: Unhandled write to offset 0x8\. Unhandled bits: \[12\] when writing value 0x1000\.' |
+      head -c 400 || :)
     if [ -n "$unexpected" ]; then
       echo "fail: $name: Renode logged $unexpected"
       status=1
@@ -370,11 +444,21 @@ EOF
       nrst)
         write_flash "$2.bin"
         nrst_reset "$2"
+        if [ -n "${USBRESET:-}" ]; then
+          usbreset "$USBRESET" >>"$out/$2.nrst" 2>&1 || {
+            echo "fail: usbreset $USBRESET: $(tail -n 1 "$out/$2.nrst")"; exit 1; }
+          sleep 2
+        fi
+        bms_reset="$uv run $root/tools/baremetal/stlink_nrst.py"
+        [ -z "${USBRESET:-}" ] ||
+          bms_reset="sh -c '$bms_reset && usbreset $USBRESET && sleep 2'"
         ;;
     esac
+    delim_overrun=1
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     case $2 in
       gateway|crc|sha|signed) overrun "$2" ;;
+      sha-ovrdis|delim|bms) ovrdis "$2" ;;
     esac
     ;;
   diag-image)
@@ -421,11 +505,16 @@ EOF
   measure)
     [ "$#" -eq 3 ] || usage
     case $2 in
-      echo|gateway|crc|sha) ;;
+      echo|gateway|crc|sha|bms) ;;
       *) usage ;;
     esac
     name=$2
     flash "$name-dwt.bin"
+    if [ -n "${USBRESET:-}" ]; then
+      usbreset "$USBRESET" >>"$out/$name-dwt.bin.flash" 2>&1 || {
+        echo "fail: usbreset $USBRESET: $(tail -n 1 "$out/$name-dwt.bin.flash")"; exit 1; }
+      sleep 2
+    fi
     status=0
     host_run "$name" "$3" "$name-dwt" "${TICKS:-1440}" || status=1
     case $name in
@@ -433,11 +522,13 @@ EOF
       gateway) table=2064 tab=0x20000000 ;;
       crc) table=528 tab=0x2001C000 ;;
       sha) table=2064 tab=0x2001C000 ;;
+      bms) table=528 tab=0x20000000 ;;
     esac
     readmem "$name-dwt.results" "$tab" "$table"
     readmem "$name-dwt.bootlog" 0x2001E000 264
     case $name in
       gateway|crc|sha) overrun "$name-dwt" || status=1 ;;
+      bms) ovrdis "$name-dwt" || status=1 ;;
     esac
     "$uv" run "$here/m7_dwt.py" bootlog "$out/$name-dwt.bootlog"
     "$uv" run "$here/m7_dwt.py" "$name" "$out/$name-dwt.results" || status=1
@@ -458,6 +549,17 @@ EOF
       exit 1
     fi
     echo "pass: the output records equal native Lean's for $(wc -l <"$records.in") input records"
+    ;;
+  replay)
+    [ "$#" -eq 2 ] || usage
+    prefix=$(realpath -m "$2")
+    cd "$root"
+    if ! tools/leanrun --timeout 30m lake env .lake/build/bin/bms-replay "$prefix" \
+        >"$prefix.replay" 2>&1; then
+      echo "fail: bms-replay: $(paste -sd' ' "$prefix.replay" | head -c 400)"
+      exit 1
+    fi
+    echo "pass: $(cat "$prefix.replay")"
     ;;
   cosim-image)
     [ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = seeded ]; } || usage

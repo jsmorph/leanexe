@@ -34,6 +34,7 @@ import TestSupport.A64.Convert
 import TestSupport.M7.Step
 import TestSupport.M7.GwStep
 import TestSupport.M7.CrcStep
+import TestSupport.M7.CrcBitwise
 import TestSupport.M7.ShaStep
 import TestSupport.M7.NucleoLoop
 import TestSupport.M7.GwLoop
@@ -43,5 +44,12 @@ import TestSupport.M7.CrcReplies
 import TestSupport.M7.ShaSpec
 import TestSupport.M7.Signed
 import TestSupport.M7.SignedLoop
+import TestSupport.M7.Delim
+import TestSupport.M7.DelimAbs
+import TestSupport.M7.DelimStep
+import TestSupport.M7.DelimLoop
+import TestSupport.M7.BmsStep
+import TestSupport.M7.BmsImages
+import TestSupport.M7.BmsLoop
 import TestSupport.A64.CicSigned
 import TestSupport.A64.Int64Text

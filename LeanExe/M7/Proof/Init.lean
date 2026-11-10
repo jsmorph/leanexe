@@ -7,7 +7,7 @@ access whose address is a device register: a read appends the read of the regist
 value of `σ`, and a write appends the write of the value that `opTrace` names, for a
 read-modify-write the value read with the masks applied.  `init_runs` composes the accesses by
 induction on the list, which gives `InitRuns` with the trace `initTrace ops` and `initReads ops`
-reads.
+reads.  `OpOk` is decidable, so `decide` proves its premise for a list of constant accesses.
 -/
 
 namespace LeanExe.M7
@@ -23,6 +23,10 @@ def OpOk (P : Platform) : InitOp → Prop
   | .read a => DevReg P a
   | .write a _ => DevReg P a
   | .dsb => True
+
+instance (P : Platform) : DecidablePred (OpOk P)
+  | .rmw a _ _ | .read a | .write a _ => inferInstanceAs (Decidable (a % 4 = 0 ∧ P.device a = true))
+  | .dsb => isTrue trivial
 
 theorem opCode_wide (op : InitOp) : (opCode op).all Instr.wide = true := by
   cases op <;> rfl
