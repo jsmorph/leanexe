@@ -94,7 +94,7 @@ theorem ResourcePrefix.advance {World : Type} {host : Host World} {pure : PureCo
         world (trace ++ nextTrace) nextResidual nextFinal nextSpent nextFits := by
   refine ResourcePrefix.rec (motive_1 := PrefixAdvanceClosed host pure)
     (motive_2 := CallAdvanceClosed host pure) (motive_3 := LoopAdvanceClosed host pure)
-    ?commandRefl ?retCharge ?readCharge ?exitCharge ?commandReturned ?bindLeft ?bindRight
+    ?commandRefl ?retCharge ?readCharge ?readAll ?exitCharge ?commandReturned ?bindLeft ?bindRight
     ?iteCharge ?iteYes ?iteNo ?call ?loopCount ?loopInit ?loopBody ?callGuard ?callHere ?callThere
     ?loopRefl ?testCharge ?loopReturned ?loopStep ?loopNext progress
   all_goals intros
@@ -107,6 +107,9 @@ theorem ResourcePrefix.advance {World : Type} {host : Host World} {pure : PureCo
   case readCharge =>
     rename_i nextTrace nextResidual nextFinal advance
     exact ResourcePrefix.ofAdvance _ _ _ _ _ advance
+  case readAll =>
+    rename_i progress nextTrace nextResidual nextFinal advance
+    exact ⟨_, _, .readAll (progress.trans advance.toPrefix)⟩
   case exitCharge => rename_i advance; cases advance
   case commandReturned => rename_i advance; cases advance
   case bindLeft =>

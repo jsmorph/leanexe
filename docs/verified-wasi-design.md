@@ -19,6 +19,7 @@ The public namespace is `LeanExe.Wasi`.  [The native import](../LeanExe/Wasi.lea
 | Declaration | Meaning |
 |---|---|
 | `readSome (capacity : UInt64) : Action ReadResult` | One stdin read after capacity validation and any required allocation. |
+| `readAll (limit : UInt64) : Action ReadResult` | Stdin reads of capacity 4,096 into one buffer until an errno, a read of no bytes, or more than `limit` bytes. |
 | `writeStdoutSome (bytes : Bytes) : Action WriteResult` | One stdout write, borrowing `bytes`. |
 | `writeStderrSome (bytes : Bytes) : Action WriteResult` | One stderr write, borrowing `bytes`. |
 | `exit (code : UInt64) : Action α` | Terminal exit request with the low 32 bits of `code`, producing an accepted exit or a host trap. |
@@ -41,6 +42,8 @@ An effectful helper may return `Unit`.  Its result occupies zero Wasm slots, and
 A capacity above `2^32 - 1` returns errno `overflow` (61) and empty bytes before allocation or host I/O.  An address-space or allocator failure after a valid capacity follows the existing guest-trap mechanism.  It is distinct from a WASI errno.  The allocation theorem supplies sufficient-memory premises for a trap-free call.
 
 A successful read returns an owned buffer containing exactly the reported bytes, with length at most the requested capacity.  On zero-byte success the wrapper releases any allocated buffer and returns empty bytes.  On errno it releases that buffer and returns the errno with empty bytes.  An error count supplied through guest memory is ignored.
+
+`readAll limit` serves programs that need their whole input before they compute.  It is a definition over the existing actions: a `loop` of `limit + 2` passes, each a `readSome 4096` whose reply the loop appends to the bytes held, ending at an errno, at a read of no bytes, or when the bytes exceed `limit`.  Its result is the errno, or 0, and the bytes read before the read that ended it, and a limit of `2^32 - 4096` or more returns errno 61 and empty bytes before any read.  The definition unfolds to one `loop` node whatever the limit, so the kernel's checks of a reflected program that uses it stay small, and `Action`, `Exec`, and the host assumptions do not change.  A recursion on a fuel of `limit + 2` reads has the same meaning, but the kernel's check of a generated command theorem unfolds it once per unit of fuel and exceeds its recursion depth at a limit of 10,000.
 
 A successful write returns the host's count, including a short or zero count.  The count is at most the supplied length.  Empty writes still call `fd_write`, so host errors remain observable.  A write error returns its errno and a count of zero.  That zero is a sentinel: `count` describes transferred bytes only when `errno = 0`.  The input buffer remains borrowed throughout either outcome.  Source code can compare `count` with `Bytes.size bytes` before proceeding.
 
@@ -170,7 +173,9 @@ The proof covers an explicit pure instruction profile, including nested control 
 
 ### Typed commands and reflection
 
-The effect IR embeds typed pure expressions and has constructors for return, binding, conditionals, first-order effectful calls, bounded loops, the three stream operations, and exit.  Contexts record the types and ownership modes of live values.  Its result descriptor permits ordinary accepted values and erased Unit.  Read and write constructors invoke their transfer imports.  Exit emits the call to `proc_exit` followed by `unreachable`, which permits validation at any result type.  The host call terminates with a designated exit or a permitted host trap.
+The effect IR embeds typed pure expressions and has constructors for return, binding, conditionals, first-order effectful calls, bounded loops, the three stream operations, the read of the whole input, and exit.  Contexts record the types and ownership modes of live values.  Its result descriptor permits ordinary accepted values and erased Unit.  Read and write constructors invoke their transfer imports.  Exit emits the call to `proc_exit` followed by `unreachable`, which permits validation at any result type.  The host call terminates with a designated exit or a permitted host trap.
+
+The constructor `Command.readAll` compiles `readAll limit` into the calling function: the code of the limit, then [fixed code](../Verified/Wasi/ReadAllCode.lean) that uses six locals of the command's scratch.  It tests the limit, allocates the buffer with the shared allocator, and runs a structured loop whose body calls `fd_read` with an iovec at the root plus the bytes held, so that the module's functions, wrappers, and indices are those of a program without it.  [The loop's proof](../Verified/Wasi/ReadAllLoop.lean) carries an invariant of the buffer's header and bytes, the step from the start of the command, the locals, and a partial run of the source loop, and the bytes below the limit plus one decrease at every pass that continues.  [The command's rules](../Verified/Wasi/ReadAllCommand.lean) give its correctness and its charge, and its resource prefixes are the prefixes of its action with the whole charge, since the allocation precedes every read.
 
 Compilation orders operand evaluation before its effect.  It materializes operation results before evaluating a continuation.  Cleanup uses liveness across both the operation and continuation.  An unused read result is still read and then released.  A borrowed write argument remains live through the WASI import call.  Branches and loop iterations have the same ownership and caller-frame obligations as pure code.
 
@@ -199,6 +204,8 @@ A command module exports `_start : () → ()` and `memory`.  It calls a selected
 ### Resources and termination
 
 The allocator rounds a requested payload up to eight bytes, with a minimum of eight, and adds its 48-byte header.  A positive read's fresh-allocation charge is therefore `48 + 8 * max(1, ceil(capacity / 8))`, expressed with proof-side natural arithmetic.  A zero-capacity read and each write allocate no byte buffer.  Reuse can reduce the charge.  Copying, byte construction, pure calls, retained state, and call frames contribute their own proved charges.
+
+`readAll limit` charges `Bytes.allocationCost (limit + 4096)` for its buffer, or nothing for a limit that returns errno 61, and its reads add nothing to the heap top.
 
 The byte budget includes the allocation header and requested capacity rather than the short read's logical result length.  Cleanup makes released blocks available for reuse.  A memory bound must account for retained capacities throughout branches and loop iterations.
 

@@ -1,4 +1,5 @@
 import Verified.Wasi.CommandLeaves
+import Verified.Wasi.ReadAllCommand
 import Verified.Wasi.CommandCallSpec
 import Verified.Wasi.CommandBindSpec
 import Verified.Wasi.CommandBindValueSpec
@@ -25,6 +26,7 @@ theorem Command.code_spec {source target : Wasm.Module}
       exact command_ite_spec facts sourceHost yesSpec noSpec
   | call callee args => exact command_call_spec facts sourceHost callee args
   | read capacity => exact command_read_spec facts sourceHost capacity
+  | readAll limit => exact command_readAll_spec facts sourceHost limit
   | write output bytes => exact command_write_spec facts sourceHost output bytes
   | exit status => exact command_exit_spec facts sourceHost status
   | loop count initial test step stepSpec =>

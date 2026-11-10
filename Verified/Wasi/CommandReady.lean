@@ -35,6 +35,7 @@ def Command.fragments (h : Nat) (slots : List Slot) (base : Nat) (live : Nat →
       else (args i).placeCode h slots),
       releaseWhere context slots (fun i => kept i && !live i)]
   | _, _, .read capacity => [capacity.code (pool := pool) h slots base live]
+  | _, _, .readAll limit => [limit.code (pool := pool) h slots base live]
   | context, _, .write _ bytes =>
     [releaseWhere context slots (fun i => i == bytes.index && !live i)]
   | _, _, .exit status => [status.code (pool := pool) h slots base live]

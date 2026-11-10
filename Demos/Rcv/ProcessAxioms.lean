@@ -17,7 +17,8 @@ run_cmd do
     ``Demos.Rcv.TabulateProgram.reportFile_length_le,
     ``Demos.Rcv.TabulateProgram.report_length_le, ``Demos.Rcv.TabulateProgram.tabulate_trapFree,
     ``Demos.Rcv.TabulateProgram.tabulate_native, ``Demos.Rcv.TabulateProgram.tabulate_native_size,
-    ``Demos.Rcv.TabulateProgram.tabulate_native_12000000]
+    ``Demos.Rcv.TabulateProgram.tabulate_native_12000000, ``Demos.StreamFold.StreamHost.readAll,
+    ``Demos.StreamFold.StreamHost.readAll_whole, ``Demos.StreamFold.StreamHost.readAll_long]
   let env ← getEnv
   let theorems := env.constants.toList.filterMap fun (name, info) =>
     if (`Demos.Rcv.Process).isPrefixOf name && info matches .thmInfo _ then some name
@@ -39,7 +40,11 @@ run_cmd do
 #print axioms Demos.Rcv.Process.step_prefix_bound
 #print axioms Demos.Rcv.Process.terminates_of_room
 #print axioms Demos.Rcv.Process.initial_terminates
-#print axioms Demos.Rcv.Process.initial_terminates_50000000
+#print axioms Demos.Rcv.Process.initial_exits_long
+#print axioms Demos.Rcv.Process.begin_report
+#print axioms Demos.Rcv.Process.begin_long
+#print axioms Demos.Rcv.Process.begin_prefix_bound
+#print axioms Demos.StreamFold.StreamHost.readAll
 #print axioms Demos.Rcv.Process.terminates_bytes
 #print axioms Demos.Rcv.TabulateProgram.tabulate_bound
 #print axioms Demos.Rcv.TabulateProgram.tabulate_native

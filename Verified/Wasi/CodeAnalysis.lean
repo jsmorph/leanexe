@@ -26,6 +26,7 @@ def Command.width : {context : List Ty} → {result : ResultTy} →
     argsMax fun i =>
       if signature.mode i = .owned then copyWidth (signature.params.get i) else (args i).width
   | _, _, .read capacity => capacity.width
+  | _, _, .readAll limit => max limit.width 6
   | _, _, .write _ _ => 0
   | _, _, .exit code => max code.width 1
   | _, _, .loop (type := type) count initial test step =>

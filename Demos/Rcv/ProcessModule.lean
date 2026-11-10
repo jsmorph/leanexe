@@ -3,18 +3,16 @@ import Verified.Wasi.ProcessCode
 
 /-! The tabulator's process as a WASI command module: the process entry of the compiled `begin` and
 `step`, the module, its stack check, its calls with costs and effects, and its validity and
-encoding.  The state's type pairs the input and the report with the written count and the EOF
-flag. -/
+encoding.  The state's type pairs the report with the count of its bytes written. -/
 
 namespace Demos.Rcv.Process
 
 open Verified Verified.Wasi
 
 def stateTy : Ty :=
-  .pair .bytes (.pair .bytes (.elem (.prod .word .bool)))
+  .pair .bytes .word
 
-def entry : ProcessEntry [io.begin.func.sig, io.step.func.sig, io.readStep.func.sig,
-    io.writeStep.func.sig] :=
+def entry : ProcessEntry [io.begin.func.sig, io.step.func.sig, io.writeStep.func.sig] :=
   { state := stateTy
     beginName := "begin"
     stepName := "step"

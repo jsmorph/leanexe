@@ -1,4 +1,5 @@
 import Verified.Wasi.CostLeaves
+import Verified.Wasi.ReadAllCommand
 import Verified.Wasi.CostCallSpec
 import Verified.Wasi.CostBindUnit
 import Verified.Wasi.CostBindValue
@@ -27,6 +28,7 @@ theorem Command.cost_code_spec {source target : Wasm.Module}
       exact cost_command_ite_spec facts sourceHost yesSpec noSpec
   | call callee args => exact cost_command_call_spec facts calls sourceHost callee args
   | read capacity => exact cost_command_read_spec facts sourceHost capacity
+  | readAll limit => exact cost_command_readAll_spec facts sourceHost limit
   | write output bytes => exact cost_command_write_spec facts sourceHost output bytes
   | exit status => exact cost_command_exit_spec facts sourceHost status
   | loop count initial test step stepSpec => exact cost_command_loop_spec facts sourceHost stepSpec

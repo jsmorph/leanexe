@@ -1,5 +1,6 @@
 import Verified.Wasi.Return
 import Verified.Wasi.ReadCost
+import Verified.Wasi.ReadAllCost
 
 namespace Verified.Wasi.Resource
 
@@ -43,6 +44,12 @@ def PureContext.readCost (context : PureContext signatures) (depth : UInt64)
     (env : Env sourceContext) : Nat :=
   context.exprCost depth modes live capacity env +
     Verified.Wasi.readCost (capacity.denote context.funs env)
+
+def PureContext.readAllCost (context : PureContext signatures) (depth : UInt64)
+    (modes : List Mode) (live : Nat → Bool) (limit : Expr signatures sourceContext .word)
+    (env : Env sourceContext) : Nat :=
+  context.exprCost depth modes live limit env +
+    Verified.Wasi.readAllCost (limit.denote context.funs env)
 
 def bindModes : ResultTy → List Mode → List Mode
   | .unit, modes => modes

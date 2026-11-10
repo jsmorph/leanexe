@@ -45,6 +45,7 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
     condition.uses index || yes.uses index || no.uses index
   | _, _, .call _ args, index => argsAny fun i => (args i).uses index
   | _, _, .read capacity, index => capacity.uses index
+  | _, _, .readAll limit, index => limit.uses index
   | _, _, .write _ bytes, index => index == bytes.index
   | _, _, .exit code, index => code.uses index
   | _, _, .loop count initial test step, index =>
@@ -58,6 +59,7 @@ def Command.literals : {context : List Ty} → {result : ResultTy} →
   | _, _, .ite condition yes no => condition.literals ++ yes.literals ++ no.literals
   | _, _, .call _ args => (List.ofFn fun i => (args i).literals).flatten
   | _, _, .read capacity => capacity.literals
+  | _, _, .readAll limit => limit.literals
   | _, _, .exit code => code.literals
   | _, _, .loop count initial test step =>
     count.literals ++ initial.literals ++ test.literals ++ step.literals
@@ -73,6 +75,7 @@ def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
   | _, _, .ite condition yes no => condition.placeArgs && yes.placeArgs && no.placeArgs
   | _, _, .call (signature := signature) _ args => signature.placeArgs args
   | _, _, .read capacity => capacity.placeArgs
+  | _, _, .readAll limit => limit.placeArgs
   | _, _, .exit code => code.placeArgs
   | _, _, .loop count initial test step =>
     count.placeArgs && initial.placeArgs && test.placeArgs && step.placeArgs

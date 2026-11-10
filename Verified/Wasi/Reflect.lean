@@ -47,6 +47,15 @@ partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection 
       #[context.pure.funs, context.funs, context.pure.env, reflected.src, capacity,
         ← userProof context.pure reflected]
     return ← fromEquation context result expression source equation
+  if function == ``readAll then
+    let limit := args.back!
+    let reflected ← pureOperand context limit
+    let source ← mkAppOptM ``Command.readAll
+      #[some context.pure.sigs, some context.sigs, some context.pure.ctx, some reflected.src]
+    let equation ← mkAppM ``readAll_eq
+      #[context.pure.funs, context.funs, context.pure.env, reflected.src, limit,
+        ← userProof context.pure reflected]
+    return ← fromEquation context result expression source equation
   if function == ``writeStdoutSome || function == ``writeStderrSome then
     let bytes := args.back!
     let output := mkConst (if function == ``writeStdoutSome then ``Output.stdout else ``Output.stderr)

@@ -13,7 +13,7 @@ namespace Demos.Rcv.Process
 
 open Wasm Verified Verified.Wasi LeanExe.Wasi
 
-def sourceState (s : State) : stateTy.denote := (s.input, s.output, s.written, s.eof)
+def sourceState (s : State) : stateTy.denote := (s.output, s.written)
 
 def sourceProcess : Process stateTy.denote :=
   ⟨sourceState initial, entry.action (io.program.funs io.pure.funs)⟩

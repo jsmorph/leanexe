@@ -11,8 +11,8 @@ open LeanExe LeanExe.Wasi LeanExe.Pipeline Demos.Rcv.ReadProgram Demos.Rcv.Print
 open Demos.Rcv.Program Demos.Rcv.TabulateProgram
 open Library.Numerics.Decimal.Int64Text (digitCount digitByte)
 
-instance : Flat State (Bytes × Bytes × UInt64 × Bool) :=
-  ⟨fun s => (s.input, s.output, s.written, s.eof)⟩
+instance : Flat State (Bytes × UInt64) :=
+  ⟨fun s => (s.output, s.written)⟩
 
 instance : Flat (ProcessStep State) (Bool × UInt64 × State) :=
   ⟨fun result => (result.running, result.status, result.state)⟩
@@ -27,7 +27,6 @@ verified_compile_wasi io := [bitIndex, classify, examineAt, tallyRound, continui
   fieldWord, fieldsFrom, countByte, ballotWords, readHead, candidatesFrom, ballotsFrom,
   readContest, digitCount, digitByte, pushWord, pushNumber, pushRange, pushHead, pushLine,
   pushMembers, pushVotes, pushElimination, pushRoundLines, toBytes, printReport, pushRole,
-  printError, tabulate, initial, append, remainingOutput, afterWrite, afterRead, writeStep,
-  readStep, step, begin]
+  printError, tabulate, initial, remainingOutput, afterWrite, started, writeStep, step, begin]
 
 end Demos.Rcv.Process

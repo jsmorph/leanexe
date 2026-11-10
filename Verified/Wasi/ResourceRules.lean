@@ -60,6 +60,8 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
       pure.exprFits depth value env = true → conclusion
   | .read capacity => pure.readCost depth modes live capacity env ≤ budget →
       pure.exprFits depth capacity env = true → conclusion
+  | .readAll limit => pure.readAllCost depth modes live limit env ≤ budget →
+      pure.exprFits depth limit env = true → conclusion
   | .write _ _ => conclusion
   | .exit code => pure.exprCost depth modes live code env ≤ budget →
       pure.exprFits depth code env = true → conclusion
@@ -103,6 +105,7 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
   | unit => exact ⟨Nat.zero_le _, rfl⟩
   | ret => exact fun cost valid => ⟨cost, valid⟩
   | read => exact fun cost valid => ⟨cost, valid⟩
+  | readAll => exact fun cost valid => ⟨cost, valid⟩
   | write => exact ⟨Nat.zero_le _, rfl⟩
   | exit => exact fun cost valid => ⟨cost, valid⟩
   | bind_return firstRun nextRun =>
@@ -149,6 +152,7 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
     cases command <;> simp only [Rule] <;> intros <;> exact ⟨Nat.zero_le _, by trivial⟩
   | ret_charge => exact fun cost valid => ⟨cost, valid⟩
   | read_charge => exact fun cost valid => ⟨cost, valid⟩
+  | readAll => exact fun cost valid => ⟨cost, valid⟩
   | exit_charge => exact fun cost valid => ⟨cost, valid⟩
   | returned execution => exact exec_rule budget execution
   | bind_left progress =>
@@ -347,6 +351,8 @@ def ReadReturns (pure : PureContext pureSigs) {context : List Ty} {result : Resu
     (env : Env context) (outcome : Outcome result.denote) : Prop :=
   match command, outcome with
   | .read capacity, .returned value => value.2.data.size ≤ (capacity.denote pure.funs env).toNat
+  | .readAll limit, .returned value =>
+      value.2.data.size ≤ (limit.denote pure.funs env).toNat + 4096
   | _, _ => True
 
 theorem exec_readReturns {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -371,6 +377,20 @@ theorem exec_readReturns {World : Type} {host : Host World} {pure : PureContext 
       · exact bound
       · exact Nat.zero_le _
     | read_trap => trivial
+  | readAll _ _ _ _ limit env execution =>
+    change Exec host (Action.bind (readAll (limit.denote pure.funs env)) fun result =>
+      .pure (result.errno, result.bytes)) _ _ _ _ at execution
+    obtain ⟨_, _, middle, _, first, next, _⟩ := Exec.bind_iff.mp execution
+    cases middle with
+    | returned result =>
+      cases next
+      exact readAll_size first
+    | exited _ =>
+      obtain ⟨_, rfl, _⟩ := next
+      trivial
+    | trapped _ =>
+      obtain ⟨_, rfl, _⟩ := next
+      trivial
   | _ => trivial
 
 /-- A read returns at most its capacity's bytes. -/
@@ -380,6 +400,16 @@ theorem Returns.read_size {World : Type} {host : Host World} {pure : PureContext
     {value : (Ty.pair .word .bytes).denote}
     (returns : Returns host pure program depth modes live (.read capacity) env value) :
     value.2.data.size ≤ (capacity.denote pure.funs env).toNat := by
+  obtain ⟨_, _, _, _, _, run⟩ := returns
+  exact exec_readReturns run
+
+/-- `readAll` returns at most its limit's bytes and 4,096 more. -/
+theorem Returns.readAll_size {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {limit : Expr pureSigs context .word} {env : Env context}
+    {value : (Ty.pair .word .bytes).denote}
+    (returns : Returns host pure program depth modes live (.readAll limit) env value) :
+    value.2.data.size ≤ (limit.denote pure.funs env).toNat + 4096 := by
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact exec_readReturns run
 
