@@ -27,6 +27,10 @@ its limits on line length and total size, and the binary64 application from thes
 limit on line length, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution)
 states.  The StreamFold theorems cover successful transfers only.  A returned I/O error stops the process with its errno, as `afterRead` and `afterWrite` state, and the application drivers test that case.
 
+## Run time
+
+The folded state holds the pending line, and the process entry copies the state after every step, so the time of a line grows with the square of its length.  On edgexpert-18ff in the Wasmtime 44 host, one process at a time, a single rejected line of 256 KiB, 512 KiB, 1 MiB, and 2 MiB takes 0.06, 0.17, 0.53, and 2.08 s in the integer sum and 0.07, 0.17, 0.55, and 2.06 s in the binary64 sum, about four times as long at each doubling.  At that rate a line of 9,000,000 bytes, the integer theorem's limit, takes about 38 s, and a line of 50,000,000 bytes, the binary64 theorem's limit, about 20 minutes.  `LeanExe.Wasi.readAll`, which reads a whole input into one buffer, serves a program that needs all of its input before it computes and does not apply to a process that writes as it reads.  The general repair is a step that owns its state, an in-place append of bytes that doubles the buffer's capacity, and a compaction that keeps the dense blocks of the state where they are, which together would make the cost of a step proportional to the bytes it reads.  The repair changes the process entry, the compaction proofs, the resource model, and every process demo's charges, and it is not scheduled.
+
 ## Modules
 
 | Module | Contents |
