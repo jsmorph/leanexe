@@ -259,19 +259,40 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 
 `tabulate_eq` follows the two results of the reader.  For a malformed file `read_error_lt` bounds the line number below `2 ^ 64`, and `printError_eq` gives the error report.  For a well-formed file, T2(b) gives the structure `c` whose writing is the file, `countWords_contestWords` equates the count of the reader's words with the result words of `countContest c`, `Demos.Rcv.Refine.count_eq` equates the program's count with the specification's, and `printReport_eq` prints `report c`, whose length `report_length_lt` bounds below `2 ^ 64` for a file of fewer than `2 ^ 32` bytes.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), so the call theorem covers every buffer.  The bound `compiled.tabulate.bound` is the generated one, and `tabulate_bound` of [`TabulateBound.lean`](TabulateBound.lean) closes it at `80 L + 33,702,909` bytes for a file of `L < 2 ^ 32` bytes.
 
+## The closed form of the bound
+
+[`TabulateBound.lean`](TabulateBound.lean) closes the generated bound of `tabulate` in the size of the file, and each of its theorems depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  A push onto a paid array costs 80 bytes.  The reader pushes one word for each candidate line, each index of the order line, and each position field of a ballot line, whose fields end at distinct commas and LFs, so its bound grows by 80 bytes for each byte of the file.  The printers push the report's bytes, of which the header lines are at most 20,777 and the rounds at most 64 of at most 63 candidates each, and copy the report into the buffer that they return.
+
+| Theorem | Statement |
+|---|---|
+| `tabulate_bound` | `compiled.tabulate.bound b ≤ 80 * b.data.size + 33702909` for every buffer of fewer than `2 ^ 32` bytes |
+| `readContest_bound` | `compiled.readContest.bound b ≤ 80 * b.data.size + 10704`: the two array literals of 312 bytes, at most 63 candidate lines and 63 indices of the order, and the fields of the ballot lines |
+| `printReport_bound` | For `n` of at most 63 candidates and at most 64 rounds in `res`, `compiled.printReport.bound (b, n, res)` is at most 80 bytes for each byte of the header lines, the block of the report, and 30,247,832 bytes |
+| `printError_bound` | `compiled.printError.bound (j, code)` is at most the block of the error report and 20,152 bytes |
+| `count_bound_eq` | The tabulator's compilation and `Demos/Rcv/Compiled.lean` generate the same bound for `count`, which `Demos.Rcv.Program.count_bound` closes at 481,128 bytes |
+| `headerText_le`, `reportFile_length_le` | The header lines of a structure that meets the constraints hold at most 20,777 bytes, and every report at most 1,301,030 |
+
+The proofs bound each tail loop of the reader by induction on its count, with `Verified.Tail.costAt_rank_eq` and the generated step's value at each branch, and the printers' costs by `grw` with the bounds of their callees.  `report_length_le` of [`TabulateProof.lean`](TabulateProof.lean) bounds a report by its header lines and 1,280,253 bytes, and `report_length_lt` follows from it.  The page's executable `rcv-bound`, which [the browser page](#the-browser-page) describes, evaluates the generated bound in native Lean, and on the 725 edge files the bound of `tabulate_bound` is at least the generated one.
+
 ## Testing the tabulator
 
-[`tests/rcv/tabulate.py`](../../tests/rcv/tabulate.py) compares the module, native Lean, and the reference on canonical files.  For each file it computes the reference's report and requires the module's export `tabulate` in the Wasmtime host, `rcv-tabulate report`, and the report that `edges.py`, `reader_edges.py`, or `check.py` wrote to give the same bytes.  On the 632 edge files, the 93 files of the reader's edge cases, and the 19 contests of the corpus, all three equal the reference's report.  The verified compiler compiles `Tabulate.lean` in 841 s with a peak of 5.9 GB on edgexpert-18ff under `tools/leanrun --cpus 18 --threads 18 --memory-high 24G`, and the module has 32,293 bytes.
+[`tests/rcv/tabulate.py`](../../tests/rcv/tabulate.py) compares the module, the WASI process, C, native Lean, and the reference on canonical files.  For each file it computes the reference's report and requires the module's export `tabulate` in the Wasmtime host, `rcv-tabulate report`, and the report that `edges.py`, `reader_edges.py`, or `check.py` wrote to give the same bytes.  Its options add to these outputs the standard output of [the WASI process](#the-wasi-process) in the Wasmtime host, whose control record must be `wasi-exit 0`, that of the native process `rcv-process`, and that of [the C executable](#the-c-translation) `rcv-tabulate-c`.  On the 632 edge files, the 93 files of the reader's edge cases, and the 19 contests of the corpus, all of them equal the reference's report.  The run with `/bin/cat` in place of the C executable reports all 93 of the reader's edge files as disagreements, so the comparison detects an executable that prints something else.  The verified compiler compiles `Tabulate.lean` in 841 s with a peak of 5.9 GB on edgexpert-18ff under `tools/leanrun --cpus 18 --threads 18 --memory-high 24G`, and in 862 s with a peak of 6.4 GB under `--cpus 8 --threads 8`, and the module has 32,293 bytes.
 
 ```sh
-tools/leanrun --timeout 60m lake build Demos.Rcv.TabulateCall rcv-tabulate
-mkdir -p build/verified
+tools/leanrun --timeout 60m lake build Demos.Rcv.ProcessAxioms rcv-tabulate rcv-process
+mkdir -p build/verified build/rcv
 tools/leanrun --timeout 20m lake env lean --run tools/Emit.lean \
   Demos.Rcv.Tabulate Demos.Rcv.TabulateProgram.compiled.module build/verified/rcvTabulate.wasm
+tools/leanrun --timeout 20m lake env lean --run tools/Emit.lean \
+  Demos.Rcv.ProcessModule Demos.Rcv.Process.module build/rcv/process.wasm
+wasm-tools validate build/rcv/process.wasm
+tests/rcv/native.sh
 uv run tests/rcv/edges.py
 uv run tests/rcv/reader_edges.py
 uv run tests/rcv/check.py
-uv run tests/rcv/tabulate.py tmp/rcv-edges tmp/rcv-reader tmp/rcv-data/canonical
+uv run tests/rcv/tabulate.py --process build/rcv/process.wasm \
+  --lean-process .lake/build/bin/rcv-process --native build/rcv/native/rcv-tabulate-c \
+  tmp/rcv-edges tmp/rcv-reader tmp/rcv-data/canonical
 ```
 
 ```
@@ -297,6 +318,35 @@ rcvTabulate: 64 of 64 functions, 64 of 64 exports
 rcvTabulate: the clightgen program matches the translation
 native verified: passed 86 failed 0
 ```
+
+## The WASI process
+
+[`Process.lean`](Process.lean) runs the tabulator over stdin and stdout.  It reads its standard input in reads of at most 4,096 bytes and appends each read to the input that it holds.  At EOF it replaces the input with `tabulate` of it, writes the report, continuing after short writes, and stops with status 0, and a read or a write that returns an errno stops it with that errno.  [`ProcessWasi.lean`](ProcessWasi.lean) compiles the functions of `Tabulate.lean` and the process's own with `verified_compile_wasi`, which [the WASI guide](../../docs/wasi.md) describes, and [`ProcessModule.lean`](ProcessModule.lean) composes the command module, of 36,483 bytes.  Under `tools/leanrun --cpus 8 --threads 8 --memory-high 24G` on edgexpert-18ff, `ProcessWasi.lean` takes 617 s and `ProcessModule.lean` 318 s, with a peak of 10.0 GB.  [The native executable](ProcessNative.lean) `rcv-process` runs the process on the operating system's stdin and stdout.
+
+The theorems follow [the order book's process](../OrderBook/README.md#the-wasi-process) under [StreamFold's host assumptions](../StreamFold/StreamHost.lean).  [`ProcessAxioms.lean`](ProcessAxioms.lean) checks that every theorem of the namespace `Demos.Rcv.Process`, those that `verified_compile_wasi` generates among them, and the theorems of the closed form and of the C call depend on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.
+
+| Theorem | File | Statement |
+|---|---|---|
+| `process_output` | [`ProcessCorrect.lean`](ProcessCorrect.lean) | From the initial state and an empty output history, for an input of fewer than `2 ^ 32` bytes, some execution of the native process reads the whole input, writes exactly `expectedOutput` of it, the bytes of `reportFile` of the input, and returns status 0 |
+| `implements`, `run_initial` | [`ProcessProof.lean`](ProcessProof.lean) | Every modeled run of the module's `_start` that completes without exhausting Talos fuel matches a run of the native process, including runs that stop at an I/O error, a host trap, or a rejected exit |
+| T1 `initial_terminates` | [`ProcessCompiledCorrect.lean`](ProcessCompiledCorrect.lean) | For every input of at most `L` bytes with `4096 + processMemory L ≤ 65536 * 65535`, where `processMemory L = 84 L + 37,614,624` (`processMemory_eq`), under StreamFold's host assumptions, a Talos host that satisfies `hostSpec`, and a host that accepts the exit status 0, `_start` from the module's initial store exits with status 0 after writing exactly `expectedOutput` of the input |
+| `initial_terminates_50000000` | [`ProcessCompiledCorrect.lean`](ProcessCompiledCorrect.lean) | `initial_terminates` for every input of at most 50,000,000 bytes |
+| `bytes`, `terminates_bytes` | [`ProcessProof.lean`](ProcessProof.lean), [`ProcessCompiledCorrect.lean`](ProcessCompiledCorrect.lean) | One byte sequence encodes the module, decodes to it, is a valid binary, and carries `implements` or `initial_terminates` |
+
+The invariant `Future` of [`ProcessFuture.lean`](ProcessFuture.lean) relates a reached state to the whole input.  Before EOF the input is the bytes held followed by the unread input, and nothing has been written.  After EOF the input is read, and the output written so far followed by the output that remains is the report, which `reportFile_length_le` bounds at 1,301,030 bytes.  [`ProcessControl.lean`](ProcessControl.lean) proves termination with the rank of the order book's process, the unread input, the EOF flag, the unwritten output, and the host's credit for zero-byte writes.  [`ProcessCharges.lean`](ProcessCharges.lean) bounds each step from a state whose input holds at most `L` bytes: a copy of the state costs at most `L + 1,301,140` bytes (`copyLimit`), and a step at most `copyLimit L + 81 L + 33,711,204` bytes (`stepCharge`), for the read buffer, the input extended by 4,096 bytes, and the call of `tabulate` on the input.  The WASI compilation's bound of `tabulate` is `compiled.tabulate.bound` by definition (`tabulate_bound_eq`), so `tabulate_bound` closes it, and `processMemory L` holds two copies of a state and a step.
+
+The process holds the input in its state, and the process loop copies the state after every step, so the time that a file of `L` bytes takes, over its `L / 4,096` reads, grows with the square of `L`.  On the corpus's largest file, of 4,696,262 bytes, the process's module takes 3.4 s in Wasmtime, where the export `tabulate` takes 0.09 s and the native process `rcv-process` 49 s.  StreamFold's host assumptions fix the read capacity at 4,096 bytes, so a process with larger reads needs host assumptions of its own.
+
+## The C translation
+
+[`tests/rcv/native.sh`](../../tests/rcv/native.sh) builds `build/rcv/native/rcv-tabulate-c`, the module translated to C and compiled with CompCert, which reads a canonical file and writes its report.  `native-verified build` writes the C text of the translation of `compiled.module`, has `clightgen` read it back, compares that Clight with the translation, and compiles the text with `ccomp` only when they match.  `ccomp` links the object with the export tables, [`tabulate.c`](tabulate.c), and `tools/native-host.c`.  `tabulate.c` places the file's bytes in a block that the module's `alloc` returns, calls the export `tabulate`, tests `lx_status`, and writes the bytes of the returned buffer.  `tests/native/verified.sh --module rcvTabulate` runs the 86 cases of the verified compiler's tests on the same translation.
+
+| Theorem | File | Statement |
+|---|---|---|
+| `tabulate_trapFree` | [`TabulateCall.lean`](TabulateCall.lean) | Function 63, from a store with room for `compiled.tabulate.bound b` bytes, returns without a trap the buffer of `reportFile` of the bytes of `b` |
+| T1 `tabulate_native` | [`TabulateCall.lean`](TabulateCall.lean) | `NativeImpl tabulate_trapFree A X nativeCap compiled.translation` for every `Archi` and every semantics of external functions: the C function of function 63 computes `tabulateSpec` as `tabulate_trapFree` states |
+
+`tabulate_native` rests on the items that [the trusted base](../../docs/trusted-base.md#c-c-files-and-native-executables) lists for C files, among them the Lean copy of Clight, CompCert's proofs and its unverified parts, and the host calling code, which for this executable is `tabulate.c` with `tools/native-host.c`.  The translation's `lx_mem` holds `nativeCap`, 4,096 pages or 268,435,456 bytes, so with `tabulate_bound` the theorem's premise holds for files of up to about 2.9 MB.  The corpus's four largest files, of 3.3 to 4.7 MB, lie outside the premise, and the executable's reports of them equal the reference's.  On the largest, the executable takes 0.09 s.
 
 ## The browser page
 
