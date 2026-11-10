@@ -383,9 +383,13 @@ abbrev Words.Valid (d : Words) (length : Nat) : Prop :=
   (∀ x ∈ d.kinds, x < 4) ∧ d.order.Perm (List.range' 1 d.n) ∧
   ∀ w ∈ d.positions, ValidWord d.n w
 
-/-- The ballots of a valid contest array: `N` lists of `k` position words. -/
-def Words.ballots (d : Words) : List (List UInt64) :=
-  (List.range d.N).map fun b : Nat => (d.positions.drop (b * d.k)).take d.k
+/-- `m` consecutive lists of `k` words from the front of `ws`. -/
+def chunks (k : Nat) : Nat → List UInt64 → List (List UInt64)
+  | 0, _ => []
+  | m + 1, ws => ws.take k :: chunks k m (ws.drop k)
+
+/-- The ballots of a valid contest array: `N` lists of `k` position words, in order. -/
+def Words.ballots (d : Words) : List (List UInt64) := chunks d.k d.N d.positions
 
 /-- The mask of a set of candidates, with bit `i - 1` for candidate `i`. -/
 def mask (s : List Nat) : Nat := (s.map fun i : Nat => (2 : Nat) ^ (i - 1)).sum

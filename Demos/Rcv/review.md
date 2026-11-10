@@ -134,6 +134,52 @@ The same agent checked the revision.  It found findings 1 to 3 and 5 to 21 resol
 
 A reviewer who had read neither the reference nor the demo's Lean files worked out by hand, from these requirements alone, the reports of 85 well-formed edge-case files and the error lines of 83 malformed files, and compared each with the reference's output.  The well-formed files include every kind of case that the requirements' edge-case list names, the 15 edited files that the reader accepts, and the exhaustive files for `k` up to 4, whose figures the reviewer computed by formula.  Every report and error line agreed byte for byte, as did the results of the 17 word arrays.  The reviewer found two loose wordings, the inactive counts called cumulative and the reasons said to depend on the ballot alone, which the report table and the interpretation now state exactly.  The generator lacked a leading zero in the order line, an index above `n` inside a multiple field, and a ballot count of 2^32 − 1 on a valid line, and it now writes all three.
 
+## Review of the specification
+
+[The specification](README.md#specification) states the count of these requirements in `Contest.lean` and `Spec.lean`.  The table gives the details that the requirements leave to it, each decided by its author.
+
+| Detail | Choice | Reason |
+|---|---|---|
+| Bytes and words | Identifiers and names are lists of bytes, and each position is its 64-bit word | A name may hold bytes from `0x80` to `0xFF` that need not form UTF-8, so a Lean string cannot hold it, and the word is the form that the requirements' word column, the word forms, and the program use |
+| Arguments of the count | `count` takes the kinds, the order, and the position words of the ballots | The count reads nothing else, so the word form decodes into the same arguments, and identifiers and names cannot reach it |
+| Number of rounds | `run` allows one more round than there are counted candidates, and gives no rounds and no winner when its allowance runs out | A round that does not end the count eliminates a member of its continuing set, and a set of one ends the count, so the case is never reached, which T3(d) is to prove |
+| Inputs outside the constraints | Every definition gives some value, such as the first member of a tied set when the order lacks every member, and the kind `excluded` for a code above 3 | The requirements define results only for well-formed structures and valid arrays, and the module docstring of `Spec.lean` states that no requirement or theorem concerns the other values |
+| Native runs | `rcv-spec` parses a canonical file with a parser of its own and accepts it only when `write` prints the result as the file's bytes and it meets `Contest.WellFormed` | The reader belongs to the second increment, and a structure that meets the constraints and prints as the file is the file's structure, so a defect of the parser can reject a file but cannot change a count |
+| District 4 file | Written for the first run by a scratch script from D. Otis's CSV, one line per row with the `ballotID` as identifier, after a check of its rankings against `recount.ballots` | The converter of `tests/rcv/`, which came later, writes the same file apart from the contest identifier, and `rcv-spec district4` gives the same result on both |
+
+### Review
+
+A fresh agent reviewed the specification against these requirements, the decisions, and this record.  It wrote a model of the count, the report, the writer, and the word forms from the requirements before it read `Spec.lean`, and the model reproduced the worked example's file, report, and words byte for byte.  It ran `rcv-spec` on 128,519 contests, 78,176 of them exhaustive over small contests of every kind, order, and position form, 50,000 random with up to 20 candidates and 400 ballots, and 342 at the limits of 63 candidates and 63 positions or with nested qualifying sets.  The specification's reports and words equaled the model's in all 244,916 rounds, among them 18,941 batch rounds, 25,257 rounds at the equality of the strict test, 14,264 tied final rounds, and 29,052 counts with no winner.  The 11,034 word arrays, 4,712 valid and 6,322 invalid, gave the model's results, `Contest.WellFormed` rejected each of 32 files that break one constraint and accepted 10 at the limits, and the District 4 file gave the requirements' rounds.  The reviewer checked every expected value of `Cases.lean` by hand and found none wrong.
+
+| Finding | Verification | Response |
+|---|---|---|
+| 1. The docstring of `Words` says that a missing word reads as 0, which holds for `n`, `k`, and `N` and not for the kinds, the order, and the positions | Confirmed | The docstring says that the lists are shorter when the array ends before them |
+| 2. The module docstring says "over lists and natural numbers", while positions and arrays are words | Confirmed | It names the 64-bit position words |
+| 3. `eliminationLines` claims increasing index, which only `rule` provides | Confirmed | The docstring says that the lines follow the lists, which `rule` gives in increasing index |
+| 4. The requirements say that the count reads `k`, and `countContest` does not | Confirmed.  No result changes, since each ballot of a well-formed structure holds `k` words | The docstring of `countContest` says that the count reads `k` through the ballots |
+| 5. No case has a contest identifier of 1 or 64 bytes | Confirmed: the cases' contest identifiers are `case` and `example-1` | Cases of 1, 64, and 65 bytes, with the file's and the report's lines |
+| 6. The values for structures that break the constraints, such as a word with bit 63 and another bit, which `field` prints as `*`, a mark above `n`, or a ballot with other than `k` words, are recorded nowhere | Confirmed | The module docstring states that the definitions give such values and that no requirement or theorem concerns them |
+
+The reviewer could not run the `#guard`s, which need a build, or test the bound on `N` with an array of matching length, which it checked by reading.
+
+### Comparison with the reference
+
+After the first review I compared `rcv-spec` with the reference of `tests/rcv/`, which another agent wrote from the requirements without the specification.  On the files that `tests/rcv/edges.py` writes, the specification's reports equal the reference's byte for byte for all 283 files that the reference reads, over 655 rounds, and its result words equal the reference's for all 300 word arrays.  `rcv-spec` rejects each of the 349 files for which the reference gives an error report.  On the 19 canonical files that `tests/rcv/check.py` converts from D. Otis's records, 1,015,392 ballots in all, the reports and the result words are equal as well.
+
+The corpus run found that `Words.ballots` took the ballots by dropping `b · k` words for ballot `b`, which is quadratic in `N` and ran for minutes on the 2022 mayoral contest.  `chunks` now takes them in one pass, and the 19 arrays take 1.9 s in all.
+
+### Second review
+
+A second fresh agent reviewed the revised specification and cases in the same way, with a model that it wrote before it read the specification.  Its model and `rcv-spec` gave the same bytes on 77,105 contests over 150,954 rounds, 40,300 of them random with up to 63 candidates and 63 positions and 36,797 exhaustive over three ranked candidates and over every pair and triple of kinds, and on 10,042 word arrays, 5,066 valid and 4,976 invalid, which fail each condition of the validity test first.  The rounds included 5,452 batches, 36,516 eliminations by order, 8,473 tied final rounds, and tied sets of up to 24 members.  A contest of 63 candidates, 63 positions, and 20,000 ballots took 2.2 s, and one of 10 candidates and 100,000 ballots 0.6 s.  The reviewer found no disagreement, no wrong expected value, and no docstring that misstates its definition, and it found every edge case of the Tests paragraph covered, apart from the malformed files.
+
+| Note | Response |
+|---|---|
+| Rule 4 with an empty continuing set gives `.order [] 0` from the defaults of `fewest` and `latest`, and no comment records it | Unreachable: rule 2 ends every round with `Tᵣ` = 0, and a round with a continuing ballot has a continuing candidate.  Recorded here |
+| The comment of the boundary case said that no batch qualifies, while candidate 3 qualifies with the set of candidate 4 alone | Corrected: no qualifying set has two or more candidates |
+| No case of `countWords` has a lowest elimination, no valid array has the kind code 3 or no ballots, no tied set has three or more members, and no batch or tie follows round 1 with three or more candidates continuing | Recorded without new cases, as step 7 of the verified-request skill directs.  The reviewer's generated inputs cover all four with no disagreement |
+
+Neither reviewer could run the `#guard`s, which need a build, and both checked by reading the parts of `Spec.lean` that apply only outside the constraints.
+
 ## Open items
 
 | Item | State |

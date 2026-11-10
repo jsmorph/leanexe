@@ -253,7 +253,8 @@ def finalTie (order : List Nat) : Contest :=
     "inactive overvote 0", "inactive exhausted 2", "winner 2"]
 
 /-! The strict test at its boundary: candidate 1's 5 votes equal the 5 of candidates 3 and 4, so no
-batch qualifies, and 6 votes exceed them by one, so candidates 3 and 4 go as a batch. -/
+qualifying set has two or more candidates and rule 4 applies, and 6 votes exceed them by one, so
+candidates 3 and 4 go as a batch. -/
 def boundary (top : Nat) : Contest :=
   contestOf (listed 4) [1, 2, 3, 4] 2
     (copies top (bl [[1], []]) ++ copies top (bl [[2], []]) ++ copies 3 (bl [[3], []]) ++
