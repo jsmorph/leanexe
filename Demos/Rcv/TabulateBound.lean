@@ -700,6 +700,21 @@ theorem tabulate_bound (b : Bytes) (hb : b.data.size < 2 ^ 32) :
       (resultWords c.candidates.length (countContest c)).toArray).data.size
     omega
 
+/-- Every report holds at most 1,301,030 bytes: an error report at most 251, and the report of a
+count its header lines, at most 20,777 bytes, and at most 1,280,253 more. -/
+theorem reportFile_length_le (b : List UInt8) : (reportFile b).length ≤ 1301030 := by
+  unfold reportFile
+  split
+  · next c hr =>
+    have hc := (write_of_read hr).2
+    have := report_length_le c hc
+    have := headerText_le c hc
+    omega
+  · next j r hr =>
+    have := errorReport_length_le j (read_error_lt hr) r
+    omega
+
 #print axioms tabulate_bound
+#print axioms reportFile_length_le
 
 end Demos.Rcv.TabulateProgram
