@@ -130,6 +130,10 @@ The same agent checked the revision.  It found findings 1 to 3 and 5 to 21 resol
 | N7. Only the qualified candidates' votes need separating from an aggregate | Confirmed | The kinds paragraph says so |
 | N8. New counts of categories and a sentence of three joined clauses | Confirmed | Rewritten |
 
+## Hand check of the edge cases
+
+A reviewer who had read neither the reference nor the demo's Lean files worked out by hand, from these requirements alone, the reports of 85 well-formed edge-case files and the error lines of 83 malformed files, and compared each with the reference's output.  The well-formed files include every kind of case that the requirements' edge-case list names, the 15 edited files that the reader accepts, and the exhaustive files for `k` up to 4, whose figures the reviewer computed by formula.  Every report and error line agreed byte for byte, as did the results of the 17 word arrays.  The reviewer found two loose wordings, the inactive counts called cumulative and the reasons said to depend on the ballot alone, which the report table and the interpretation now state exactly.  The generator lacked a leading zero in the order line, an index above `n` inside a multiple field, and a ballot count of 2^32 − 1 on a valid line, and it now writes all three.
+
 ## Open items
 
 | Item | State |

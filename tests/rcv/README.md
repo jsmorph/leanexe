@@ -141,7 +141,7 @@ Each row of the CVR gives one ballot line, whose identifier is the row's `ballot
 | Edited files | 300 seeded edits of one to three bytes of the hand-stated files |
 | Word arrays | Invalid arrays of every kind that the requirements list, each with the result `[0]`, and one valid array |
 
-The hand-stated contests, the malformed files, and the word arrays carry the report lines, the error line, or the result words that the reference's author derived by hand from the requirements before running the reference on them.  The script checks the reference against them, checks that the writer reproduces every file that the reader accepts, which is T2(b), and checks that each result array describes the rounds of the report.  It prints `268 well-formed files, 61 malformed files, 300 edited files of which the reader accepts 15, 17 word arrays, 102 with hand-stated expectations, 0 failing`.  A scratch test of the same kind on 200,000 edited files found T2(a) and T2(b) to hold on the 36,511 that the reader accepts.
+The hand-stated contests, the malformed files, and the word arrays carry the report lines, the error line, or the result words that the reference's author derived by hand from the requirements before running the reference on them.  The script checks the reference against them, checks that the writer reproduces every file that the reader accepts, which is T2(b), and checks that each result array describes the rounds of the report.  It prints `268 well-formed files, 64 malformed files, 300 edited files of which the reader accepts 15, 17 word arrays, 105 with hand-stated expectations, 0 failing`.  A scratch test of the same kind on 200,000 edited files found T2(a) and T2(b) to hold on the 36,511 that the reader accepts.
 
 ## Checks
 

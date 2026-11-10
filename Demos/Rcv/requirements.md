@@ -132,7 +132,7 @@ The candidates of kinds `listed` and `named-writein` form the counted set `K`, a
 3. A single position for a candidate in `C` ends the examination: the ballot counts for that candidate.
 4. A single position for any other candidate passes to the next position.  The candidate is either a counted candidate eliminated in an earlier round, from whom §1105(d)(2) and (f) advance the ballot, or an uncounted candidate, whose ranking the count passes over as it passes over an empty position, since §15341 forbids counting it.
 
-When the examination passes the last position, the ballot is inactive with one of the first three reasons of the table, which depend on the ballot alone, and rule 2 gives the fourth.  An inactive ballot counts for no candidate in the round, and §1105(h) names its kind.  The table gives each reason with the charter's term and the category of Alameda County's reports.
+When the examination passes the last position, the ballot is inactive with one of the first three reasons of the table, which the ballot and the candidates' kinds determine, and rule 2 gives the fourth.  An inactive ballot counts for no candidate in the round, and §1105(h) names its kind.  The table gives each reason with the charter's term and the category of Alameda County's reports.
 
 | Reason | Condition | §1105(h) | Alameda's category |
 |---|---|---|---|
@@ -170,7 +170,7 @@ The report is text in lines that end with LF, printed by the proved printer, wit
 | For each round `r` | `round r` | Round number, from 1 |
 | | `continuing Tᵣ` | Continuing ballots |
 | | `votes i vᵣ(i)` for each `i ∈ Cᵣ` | Votes of each continuing candidate |
-| | `inactive blank x`, `inactive uncounted x`, `inactive overvote x`, `inactive exhausted x` | Inactive ballots by reason, cumulative as §1105(i)(1) requires |
+| | `inactive blank x`, `inactive uncounted x`, `inactive overvote x`, `inactive exhausted x` | For each reason, the number of ballots whose interpretation against `Cᵣ` has that reason, which includes the ballots inactive since earlier rounds and counts each once, as §1105(i)(1)'s cumulative counts require |
 | | In every round but the last, one of the forms below | The elimination |
 | Last | `winner i`, or `winner none` | The winner of rule 1, or none under rule 2 |
 
