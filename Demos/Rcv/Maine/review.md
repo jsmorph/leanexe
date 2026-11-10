@@ -149,7 +149,7 @@ The same agent checked the second revision and found the remaining disagreement 
 |---|---|
 | The general election of 2026-11-03 | Its ranked-choice contests for United States Senator and Representative to Congress were not posted on 2026-11-10 and join the corpus when the Secretary of State posts their reports and records |
 | Records and reports | Which manual-entry records the 2026 tabulation read is not public.  A request to the Secretary of State for the spreadsheets as tabulated would settle the residuals |
-| Retrieval | www.maine.gov answered `fetch.py`'s requests, which name the script, with HTTP 403.  The corpus's files were retrieved with a browser's user-agent string, and `fetch.py` verifies files saved from a browser |
+| Retrieval | www.maine.gov answered `fetch.py`'s requests, which name the script, with HTTP 403.  A script retrieved the corpus's files by sending a web browser's user-agent string in place of its own.  `fetch.py` sends its own and verifies files that a person saves from a browser, and later downloads use that path |
 | A tie in the final round of a general election | §732(2)(B) leaves Congress to the constitutions, and the module's order decides the tie with a mark |
 | The rules | Chapter 535 has not been amended since 2018.  A new filing joins the governing texts and needs a new module |
 | Contests from 2018 to 2023 | Counted under texts with batch elimination and without excluded candidates, and not in the corpus |
