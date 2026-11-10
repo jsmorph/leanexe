@@ -7,7 +7,8 @@
     "LeanExe.M7.TestsOk m env ps dec",
     "∃ (c : Nat) (cs : List Nat), cs.length = N ∧ (∀ x ∈ cs, x ≤ W) ∧ (∀ i x, cs[i]? = some x → Q (reqRun tick g0 σ' i).state (reqRun tick g0 σ' i).last → x ≤ V) ∧ ∀ i ≤ N, ∃ s, run platform σ code (c + (cs.take i).sum) b = some s",
     "a bound on the polling windows of a Cortex-M7 step apart from the window that does its long work",
-    "a bound on a window's costRun by the dispatch and the staticCost of the function that its phase selects"
+    "a bound on a window's costRun by the dispatch and the staticCost of the function that its phase selects",
+    "the cycles an instruction that half a byte time allows a window's bound"
   ],
   "modules": [
     "LeanExe.M7.Bound",

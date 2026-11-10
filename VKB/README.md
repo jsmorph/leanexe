@@ -19,7 +19,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Signed quantities as `Int64` values](entries/signed-integer-values/README.md) | Writes signed exponents and differences as `Int64` and proves their integers, comparisons, and exact conversions to binary64. |
 | [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
 | [Byte buffers in words](entries/byte-buffer-passes/README.md) | Keeps a buffer of bytes in a step's words and proves straight-line passes over it, which a static cost bounds, against folds over lists. |
-| [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select. |
+| [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select, and compares each bound with half a byte time. |
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
 | [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
@@ -67,6 +67,10 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
 | [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
+| [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, or another reference. |
+| [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |
+| [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
+| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |
 | [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |

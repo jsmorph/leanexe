@@ -1,0 +1,25 @@
+{
+  "id": "machine-form-validation",
+  "goals": [
+    "LeanExe.M7.decode (LeanExe.M7.encode i ++ rest) = some (i, (LeanExe.M7.encode i).length)",
+    "LeanExe.A64.decode (LeanExe.A64.encode i) = some i",
+    "a new machine form of the A64 or Cortex-M7 back end",
+    "the encoder against the GNU assembler",
+    "co-simulation of the model under QEMU, under KVM, or on the board"
+  ],
+  "modules": [
+    "LeanExe.A64.Encode",
+    "LeanExe.M7.Encode"
+  ],
+  "declarations": [
+    "LeanExe.A64.encode",
+    "LeanExe.A64.decode",
+    "LeanExe.A64.decode_encode",
+    "LeanExe.M7.encode",
+    "LeanExe.M7.decode",
+    "LeanExe.M7.decode_encode",
+    "LeanExe.M7.decode_sound",
+    "LeanExe.M7.encodeNat_injective"
+  ],
+  "examples": []
+}

@@ -1,0 +1,26 @@
+{
+  "id": "hardware-facts",
+  "goals": [
+    "a hardware fact that a model, premise, initialization, or timing argument uses",
+    "a register or result that the architecture leaves UNKNOWN or unspecified",
+    "an erratum of the processor or the device against the run conditions",
+    "USART3 after a receive overrun, with OVRDIS clear or set",
+    "a proof outside the build offered as evidence for a trusted item"
+  ],
+  "modules": [
+    "LeanExe.M7.Board",
+    "LeanExe.M7.Proof.Boot",
+    "LeanExe.A64.Boot",
+    "LeanExe.ProofKit.F32Canonical"
+  ],
+  "declarations": [
+    "LeanExe.M7.Nucleo.init",
+    "LeanExe.M7.Nucleo.initOvrdis",
+    "LeanExe.M7.Nucleo.initConfig",
+    "LeanExe.M7.Reset",
+    "LeanExe.A64.fpcrValue",
+    "LeanExe.canonical32",
+    "LeanExe.canonical_f32_bin"
+  ],
+  "examples": []
+}
