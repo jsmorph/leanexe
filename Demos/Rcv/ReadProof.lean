@@ -108,7 +108,8 @@ theorem parseContest_line {id : List UInt8} (h : identOk id = true) :
   simp [parseContest, after_append, h]
 
 theorem parseBounded_line {p q : String} (hq : ascii q = ascii p ++ [sp]) {lo hi v : Nat}
-    (hlo : lo ≤ v) (hhi : v ≤ hi) : parseBounded q lo hi (spaced [ascii p, decimal v]) = some v := by
+    (hlo : lo ≤ v) (hhi : v ≤ hi) :
+    parseBounded q lo hi (spaced [ascii p, decimal v]) = some v := by
   rw [spaced_two, show ascii p ++ sp :: decimal v = ascii q ++ decimal v by
     rw [hq, List.append_assoc]; rfl]
   simp [parseBounded, after_append, number_decimal, hlo, hhi]
@@ -218,7 +219,8 @@ theorem readBallots_lines (k n : Nat) (hn : n ≤ 63) (hk1 : 1 ≤ k) (bs : List
     (acc : List Ballot) (rest : List (List UInt8)) (hrest : rest ≠ [])
     (hb : ∀ b ∈ bs, b.ident.all identOk = true ∧ b.positions.length = k ∧
       ∀ w ∈ b.positions, ValidWord n w) :
-    readBallots k n j bs.length acc (bs.map ballotLine ++ rest) = .ok (acc.reverse ++ bs, rest) := by
+    readBallots k n j bs.length acc (bs.map ballotLine ++ rest) =
+      .ok (acc.reverse ++ bs, rest) := by
   induction bs generalizing j acc with
   | nil => simp [readBallots]
   | cons b bs ih =>
@@ -327,10 +329,11 @@ theorem readLines_write {c : Contest} (hc : c.WellFormed) :
             (c.ballots.map ballotLine ++ [[]]))) := by
     simp [headerLines, candidateText]
   rw [hlist]
-  obtain ⟨p0, ps0, h0⟩ := List.exists_cons_of_ne_nil (show (c.candidates.zipIdx 1).map candidateText ++
-    (spaced (ascii "order" :: c.order.map decimal) ::
-      spaced [ascii "ballots", decimal c.ballots.length] :: (c.ballots.map ballotLine ++ [[]])) ≠ []
-    by simp)
+  obtain ⟨p0, ps0, h0⟩ := List.exists_cons_of_ne_nil
+    (show (c.candidates.zipIdx 1).map candidateText ++
+      (spaced (ascii "order" :: c.order.map decimal) ::
+        spaced [ascii "ballots", decimal c.ballots.length] ::
+          (c.ballots.map ballotLine ++ [[]])) ≠ [] by simp)
   rw [h0]
   have hrest : c.ballots.map ballotLine ++ [[]] ≠ [] := by simp
   obtain ⟨p, ps, hpps⟩ := List.exists_cons_of_ne_nil hrest
@@ -342,7 +345,8 @@ theorem readLines_write {c : Contest} (hc : c.WellFormed) :
     (7 + c.candidates.length) [] [[]] (by simp) hballots
   simp only [List.reverse_nil, List.nil_append] at hbs
   have hpos := parseBounded_line (q := "positions ") (p := "positions") ascii_positions_sp hk1 hk2
-  have hcan := parseBounded_line (q := "candidates ") (p := "candidates") ascii_candidates_sp hn1 hn2
+  have hcan := parseBounded_line (q := "candidates ") (p := "candidates") ascii_candidates_sp
+    hn1 hn2
   have hbal := parseBounded_line (q := "ballots ") (p := "ballots") ascii_ballots_sp
     (Nat.zero_le c.ballots.length) hN
   simp only [readLines, readLine_cons parseFormat_line, readLine_cons (parseContest_line hid),

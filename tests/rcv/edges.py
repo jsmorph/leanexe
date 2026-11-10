@@ -172,6 +172,19 @@ inactive uncounted 1
 inactive overvote 3
 inactive exhausted 0
 winner none""")
+    yield well_formed("all-inactive-order", listed("A", "B", "C") + [(NW, "D"), (AW, "Write-in"), (EX, "X")], 2,
+                      [",", "5,", "6,5", "*,1", "1|4,", "5,2|5"], order=[4, 2, 6, 1, 5, 3], charter="""
+round 1
+continuing 0
+votes 1 0
+votes 2 0
+votes 3 0
+votes 4 0
+inactive blank 1
+inactive uncounted 2
+inactive overvote 3
+inactive exhausted 0
+winner none""")
     yield well_formed("tie-final", listed("A", "B"), 1, ["1", "2"], charter=f"""
 round 1
 continuing 2
@@ -614,8 +627,12 @@ def random_cases():
 
 
 def edited_cases():
-    """Seeded edits of one to three bytes of the hand-stated files."""
-    sources = [case.data for case in hand_cases() if case.name != "max-size"]
+    """Seeded edits of one to three bytes of the hand-stated files other than `max-size` and `all-inactive-order`.
+
+    The seeded choices depend on the number of sources, and leaving out `all-inactive-order` keeps the edited
+    files whose reports the review of the requirements checked by hand.
+    """
+    sources = [case.data for case in hand_cases() if case.name not in ("max-size", "all-inactive-order")]
     alphabet = b"0123456789|*,: \n\r\x00\x7f\x80abcdefghijklmnopqrstuvwxyz-_."
     rng = random.Random(0)
     for m in range(300):

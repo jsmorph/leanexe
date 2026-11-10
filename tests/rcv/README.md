@@ -173,7 +173,7 @@ The county count gives more votes and overvotes and fewer Blanks and Exhausted t
 | Invalid contests written | 2024 |
 | Marks whose IsVote is false passed over | The three of 2022, whose exports come from 5.5.52.6 |
 
-The manifest's `dominion` section pins each export, report, and the format document by URL, date, size, and SHA-256, and `--fetch` downloads them into `tmp/rcv-dominion-data`.  The Division's server does not send the intermediate certificate that issued its own, so `--fetch` adds GlobalSign's certificate, pinned in the same section, to the system's roots for its requests.  The Division publishes the 2024 report only as a PDF, whose figures the script holds, and the 2022 reports as tab-separated UTF-16 text, which it parses.  The script prints `56 checks, 0 failing` and one line per contest and planted error, and it took about three minutes on a four-core host.
+The manifest's `dominion` section pins each export, report, and the format document by URL, date, size, and SHA-256, [the notice](NOTICE) records their publishers' terms of use, and `--fetch` downloads them into `tmp/rcv-dominion-data`.  The Division's server does not send the intermediate certificate that issued its own, so `--fetch` adds GlobalSign's certificate, pinned in the same section, to the system's roots for its requests.  The Division publishes the 2024 report only as a PDF, whose figures the script holds, and the 2022 reports as tab-separated UTF-16 text, which it parses.  The script prints `56 checks, 0 failing` and one line per contest and planted error, and it took about three minutes on a four-core host.
 
 ```
 uv run tests/rcv/dominion_check.py --fetch
@@ -195,14 +195,14 @@ uv run tests/rcv/dominion.py tmp/rcv-dominion-data/alaska/22GENR/CVR_Export.zip 
 
 | Cases | Content |
 |---|---|
-| Hand-stated contests | The worked example; every reason; overvotes, named and unnamed, at each position; duplicate rankings; every kind of candidate; ties at the fewest votes among three candidates and in the final round, under both orders; batches at the boundary of the strict test, where the votes equal the sum and exceed it by one, with tied members, nested, and inside which the single count reaches a majority; every ballot inactive; no ballots; one candidate with and without a continuing ballot; no counted candidate; 63 candidates and 63 positions; identifiers of 1 and 64 bytes and the blank ballot with an identifier; names with spaces at either end, commas, bars, stars, every byte from `0x20` to `0x7E` and from `0x80` to `0xFF`, and 255 bytes; the two contests of T15; and a contest whose ballots the faulty setting suspends in each way |
+| Hand-stated contests | The worked example; every reason; overvotes, named and unnamed, at each position; duplicate rankings; every kind of candidate; ties at the fewest votes among three candidates and in the final round, under both orders; batches at the boundary of the strict test, where the votes equal the sum and exceed it by one, with tied members, nested, and inside which the single count reaches a majority; every ballot inactive, with two counted candidates and with four; no ballots; one candidate with and without a continuing ballot; no counted candidate; 63 candidates and 63 positions; identifiers of 1 and 64 bytes and the blank ballot with an identifier; names with spaces at either end, commas, bars, stars, every byte from `0x20` to `0x7E` and from `0x80` to `0xFF`, and 255 bytes; the two contests of T15; and a contest whose ballots the faulty setting suspends in each way |
 | Exhaustive contests | Every ballot of `k` positions, for `k` from 1 to 4, over the fields empty, each of five candidates of all four kinds, `1\|3`, `2\|4`, and `*`, under each of the six orders of the counted candidates |
 | Random contests | 220 seeded contests of up to 12 candidates of every kind, 6 positions, and 2,000 ballots, with identifiers on about three lines in ten |
 | Malformed files | A failure of each role: leading zeros, an index of 0 or above `n`, decreasing and repeated indices, too few and too many fields, an empty identifier, identifiers and contest identifiers of 65 bytes or with a byte outside the alphabet, names of 0 and 256 bytes or with `0x09` or `0x7F`, a carriage return, a NUL, a missing final LF, ballot counts above and below the number of lines, a bad line before the missing ones, an empty line after the last ballot when `k` is 1, and bytes without LF after the last line |
-| Edited files | 300 seeded edits of one to three bytes of the hand-stated files |
+| Edited files | 300 seeded edits of one to three bytes of the hand-stated files other than `max-size` and `all-inactive-order` |
 | Word arrays | Invalid arrays of every kind that the requirements list, each with the result `[0]`, and one valid array |
 
-The hand-stated contests, the malformed files, and the word arrays carry the report lines, the error line, or the result words that the reference's author derived by hand from the requirements before running the reference on them.  The script checks the reference against them, checks that the writer reproduces every file that the reader accepts, which is T2(b), and checks that each result array describes the rounds of the report.  It prints `268 well-formed files, 64 malformed files, 300 edited files of which the reader accepts 15, 17 word arrays, 105 with hand-stated expectations, 0 failing`.  A scratch test of the same kind on 200,000 edited files found T2(a) and T2(b) to hold on the 36,511 that the reader accepts.
+The hand-stated contests, the malformed files, and the word arrays carry the report lines, the error line, or the result words that the reference's author derived by hand from the requirements before running the reference on them.  The script checks the reference against them, checks that the writer reproduces every file that the reader accepts, which is T2(b), and checks that each result array describes the rounds of the report.  It prints `269 well-formed files, 64 malformed files, 300 edited files of which the reader accepts 15, 17 word arrays, 106 with hand-stated expectations, 0 failing`.  A scratch test of the same kind on 200,000 edited files found T2(a) and T2(b) to hold on the 36,511 that the reader accepts.
 
 ## Checks
 
@@ -214,7 +214,7 @@ The hand-stated contests, the malformed files, and the word arrays carry the rep
 | Worked example | The requirements' report | Equal byte for byte |
 | District 4 | The requirements' rounds of the converted CVR | Equal byte for byte |
 | Table A | The faulty setting on District 4 against `district4.py`'s figures of Table A | Equal: Hutchinson 8,112, Manigo 8,153, Resnick 9,954, and 235 suspended, then Manigo 11,753 and Resnick 12,352 |
-| Edge cases | The expectations stated by hand | All 646 pass |
+| Edge cases | The expectations stated by hand | All 650 pass |
 | Round trip | The CVR's identifiers and rankings, read back from the canonical file by the reference, and the reference's writer on the file | All 19 contests and their 1,015,392 ballots |
 | Charter count | The County's report by the requirements' comparison rule, for the 13 reports without the 2022 suspension | 9 contests exact and the 4 short CVRs within their missing ballots |
 | Charter count | The County's winner, for the 6 reports with the suspension | Equal |
@@ -230,9 +230,9 @@ Each planted error is a copy of the reference or the converter with one change o
 | A non-strict batch test, `>=` for `>` | The edge cases `tie-lowest-and-final`, `batch-boundary-equal`, `batch-nested`, `overvote-positions`, and `suspension`, in each of which some candidate's votes equal the sum of the votes of the candidates with fewer |
 | The smallest qualifying set instead of the largest | The edge case `batch-nested` |
 | A tie that eliminates the candidate earliest in the order | The worked example and the edge cases `example-1`, `tie-final`, `tie-final-reversed`, `tie-lowest-and-final`, `kinds`, `max-size`, and `words-valid` |
-| An overvote passed like an empty position | The worked example, District 4, Table A, 7 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
+| An overvote passed like an empty position | The worked example, District 4, Table A, 8 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
 | An overvote only when two continuing candidates are marked | The same checks |
-| The aggregate write-in counted | The worked example, District 4, Table A, 6 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
+| The aggregate write-in counted | The worked example, District 4, Table A, 7 edge cases, and every round-by-round comparison with the County's reports, but none of the comparisons by winner |
 | In the converter, an overvote written as an empty field | The round trip of every contest |
 | In the converter, the candidates' indices reversed | The round trip of every contest |
 
@@ -282,16 +282,16 @@ No setting expresses the provisions and practices of the next table, in which RC
 | Result | Charter configuration | County configuration |
 |---|---|---|
 | Equal | 196 | 129 |
-| Equal under `final-tie` | 60 | 61 |
+| Equal under `final-tie` | 60 | 62 |
 | Equal under `repeated-round` | 0 | 28 |
 | Equal under `no-continuing-ballot` | 2 | 0 |
-| Equal under `no-continuing-ballot` and `final-tie` | 1 | 0 |
+| Equal under `no-continuing-ballot` and `final-tie` | 2 | 0 |
 | Equal under `one-counted-candidate` | 0 | 41 |
 | Equal under `no-ballots` | 2 | 2 |
 | Equal under `no-counted-candidate` | 22 | 22 |
 | Different | 0 | 0 |
 
-`final-tie` applies in both configurations to the same files: the hand-stated contests `example-1`, `tie-final`, `tie-final-reversed`, `tie-lowest-and-final`, `kinds`, `max-size`, and `all-inactive`, every exhaustive contest, `edited-208`, and 29 random contests.  In each, RCTab elects in the tied round the tied candidate earlier in the order.  The county count names no winner there, and the charter's count elects the same candidate one round later, except in `all-inactive`, which rule 2 ends.  `repeated-round` applies to `batch-nested`, `batch-single-count-majority`, `names` and six edited copies of it, and 19 random contests, in each of which a candidate holds a majority while three or more candidates continue.  `no-continuing-ballot` applies to `all-inactive`, whose two listed candidates receive no vote, so that RCTab elects the earlier, and to `one-candidate-blank` and `random-097`, whose one counted candidate RCTab elects without a vote.  A scratch contest of three listed candidates, three inactive ballots, and the order `2 1 3` tests the rule's eliminations: RCTab eliminates C in round 1 and elects B in round 2, as the rule predicts.  `one-counted-candidate` applies to `one-candidate`, `one-candidate-blank`, `identifiers-k1`, and 38 random contests, `no-ballots` to `no-ballots` and `random-140`, and `no-counted-candidate` to `no-counted-candidate`, `edited-230`, and 20 random contests.
+`final-tie` applies in both configurations to the same files: the hand-stated contests `example-1`, `tie-final`, `tie-final-reversed`, `tie-lowest-and-final`, `kinds`, `max-size`, `all-inactive`, and `all-inactive-order`, every exhaustive contest, `edited-208`, and 29 random contests.  In each, RCTab elects in the tied round the tied candidate earlier in the order.  The county count names no winner there, and the charter's count elects the same candidate one round later, except in `all-inactive` and `all-inactive-order`, which rule 2 ends.  `repeated-round` applies to `batch-nested`, `batch-single-count-majority`, `names` and six edited copies of it, and 19 random contests, in each of which a candidate holds a majority while three or more candidates continue.  `no-continuing-ballot` applies to `all-inactive`, whose two listed candidates receive no vote, so that RCTab elects the earlier, to `all-inactive-order`, and to `one-candidate-blank` and `random-097`, whose one counted candidate RCTab elects without a vote.  In `all-inactive-order`, whose six ballots leave its three listed candidates and its named write-in without a vote, the order `4 2 6 1 5 3` lists the counted candidates as D, B, A, and C.  In both configurations RCTab eliminates C in round 1 and A in round 2 and elects D in round 3.  The charter's configuration meets the prediction of the rule and `final-tie`, and the county configuration that of `final-tie` alone, since the county count also eliminates C and A and ends in round 3 without a winner.  `one-counted-candidate` applies to `one-candidate`, `one-candidate-blank`, `identifiers-k1`, and 38 random contests, `no-ballots` to `no-ballots` and `random-140`, and `no-counted-candidate` to `no-counted-candidate`, `edited-230`, and 20 random contests.
 
 In the corpus's table, RCTab's rounds include the round that `repeated-round` names, and the County's report has one round fewer wherever that rule applies.
 

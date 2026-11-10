@@ -1,9 +1,12 @@
-Sources of the Oakland RCV corpus and their terms of use, as read on 2026-11-09
+Sources of the Oakland RCV corpus and of the Dominion converter's tests, and their terms of use
 
-The repository holds no file of the corpus.  It holds each file's URL, size, and SHA-256 in
-manifest.json, the per-round figures that README.md tabulates, and the originally certified
-District 4 figures that district4.py quotes.  fetch.py downloads every file from its publisher's
-site into a local directory that Git ignores.
+This notice records the terms of the Oakland corpus's sources as read on 2026-11-09 and those of
+the Dominion converter's tests as read on 2026-11-10.  The repository holds no file of either.  It
+holds each file's URL, size, and SHA-256 in manifest.json, the per-round figures that README.md
+tabulates, the originally certified District 4 figures that district4.py quotes, and the figures of
+the Division of Elections' 2024 report that dominion_check.py holds.  fetch.py and
+dominion_check.py --fetch download each file from its URL in the manifest into a local directory
+that Git ignores.
 
 Alameda County Registrar of Voters
 
@@ -39,3 +42,54 @@ Dataverse's general terms of use are at
 https://support.dataverse.harvard.edu/harvard-dataverse-general-terms-use.  That page returned
 HTTP 403 to scripted requests, so their text is not quoted here.  README.md and manifest.json cite
 the dataset by its DOI and version.
+
+State of Alaska, Division of Elections
+
+The Dominion converter's tests read the Division's cast vote record exports and RCV reports of the
+special general election of August 16, 2022 and the general elections of November 8, 2022 and
+November 5, 2024, from the results pages that https://www.elections.alaska.gov/election-results/
+lists.  The Division's Website Disclaimer, https://www.elections.alaska.gov/website-disclaimer/,
+states under "General": "This is a State of Alaska web site, provided as a public service.
+Government personnel and the general public may use this system to review the publicly available
+government information contained herein."  Under "Disclaimer of Liability" it states: "The
+information and data included on the Division of Elections web pages have been compiled by State
+staff from a variety of sources, and are subject to change without notice.  The Division of
+Elections makes no warranties or representations whatsoever regarding the quality, content,
+completeness, or adequacy of such information and data.  In any situation where the official
+printed publications of the Division of Elections differ from the text contained in this system,
+the official printed documents take precedence."  The page's other sections disclaim reliability
+and damages and set the rules of the Division's social media, and none of them states a condition
+on copying the files.
+
+GlobalSign
+
+The Division's server does not send the intermediate certificate that issued its own, so
+dominion_check.py --fetch adds GlobalSign's certificate "GlobalSign GCC R46 OV TLS CA 2025", from
+http://secure.globalsign.com/cacert/gsgccr46ovtlsca2025.crt, to the system's roots for its requests.
+GlobalSign lists its CA certificates at https://support.globalsign.com/ca-certificates, whose footer
+states "© 2026 GlobalSign.  All Rights Reserved." and links GlobalSign's legal repository,
+https://www.globalsign.com/en/repository.  The repository's Relying Party Agreement, version 1.2,
+https://www.globalsign.com/en/repository/GlobalSign_Relying_Party_Agreement.pdf, states in section
+3: "This Agreement becomes effective between GlobalSign and the Party ('the Relying Party') when the
+latter submits a certificate validation query or otherwise uses or relies upon any information
+provided by GlobalSign through its website."  Section 6 states: "The Relying Party is solely
+responsible for deciding whether or not to rely on the information provided by GlobalSign."
+
+City and County of San Francisco, Department of Elections, through the Internet Archive
+
+San Francisco's Department of Elections published Dominion's document "CVR export file format",
+printed to PDF on 2020-10-21, with the cast vote record export of its election of November 8, 2022,
+at https://www.sfelections.org/results/20221108/data/N22_DSuite_CVRExportFormat.pdf.  The tests
+read the Internet Archive's capture of 2025-08-26 through
+https://web.archive.org/web/20250826234510id_/https://www.sfelections.org/results/20221108/data/N22_DSuite_CVRExportFormat.pdf.
+The document's four pages carry no copyright notice or other statement of terms.  On 2026-11-10
+www.sfelections.org returned HTTP 403 to scripted requests for https://www.sfelections.org/ and
+https://www.sfelections.org/results/20221108/, so San Francisco's terms are not quoted here.  The
+Internet Archive's Terms of Use, https://archive.org/about/terms.php, returned to a scripted request
+a page that loads its text with JavaScript and holds none of it, so their text is not quoted here.
+The Internet Archive's help page "Rights", https://help.archive.org/help/rights/, states: "The
+Internet Archive does not make guarantees as to the copyright status of items on archive.org and
+cannot guarantee information posted on item details or collection pages regarding copyright or other
+intellectual property rights.  Our Terms of Use require that users make use of the Internet
+Archive's Collections at their own risk and ensure that such use is non-infringing and in accordance
+with all applicable laws."
