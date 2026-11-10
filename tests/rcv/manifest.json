@@ -593,5 +593,145 @@
       "size": 318816,
       "sha256": "ea341b7272fb64cf553b31413822bf3c63ab6bd7c8d6d1fc796e69b3a5b66d07"
     }
-  ]
+  ],
+  "dominion": {
+    "sources": {
+      "alaska": {
+        "publisher": "State of Alaska, Division of Elections",
+        "index": "https://www.elections.alaska.gov/election-results/"
+      },
+      "sfelections": {
+        "publisher": "City and County of San Francisco, Department of Elections, through the Internet Archive",
+        "index": "https://www.sfelections.org/results/20221108/"
+      },
+      "globalsign": {
+        "publisher": "GlobalSign",
+        "index": "https://support.globalsign.com/ca-certificates"
+      }
+    },
+    "documents": [
+      {
+        "source": "sfelections",
+        "path": "docs/N22_DSuite_CVRExportFormat.pdf",
+        "url": "https://web.archive.org/web/20250826234510id_/https://www.sfelections.org/results/20221108/data/N22_DSuite_CVRExportFormat.pdf",
+        "date": "2020-10-21",
+        "title": "CVR export file format, Dominion Voting Systems, published with San Francisco's CVR export of the election of November 8, 2022",
+        "original_url": "https://www.sfelections.org/results/20221108/data/N22_DSuite_CVRExportFormat.pdf",
+        "size": 618119,
+        "sha256": "02610cb7210829c0318ff8e29078a5e91b2e2ed68c722394fbffc5e65a282841"
+      },
+      {
+        "source": "globalsign",
+        "path": "tls/gsgccr46ovtlsca2025.crt",
+        "url": "http://secure.globalsign.com/cacert/gsgccr46ovtlsca2025.crt",
+        "date": "2025-09-17",
+        "title": "GlobalSign GCC R46 OV TLS CA 2025, the intermediate certificate that issued the certificate of www.elections.alaska.gov, which the server does not send",
+        "certificate": true,
+        "size": 1408,
+        "sha256": "d160e2de4e56cb10b66c1cb0adcb79cf93c78dcd9db30c2018220262c04063f9"
+      }
+    ],
+    "contests": [
+      {
+        "key": "alaska/22SSPG/69",
+        "jurisdiction": "State of Alaska",
+        "date": "2022-08-16",
+        "office": "U.S. Representative (Special General)",
+        "contest_id": 69,
+        "identifier": "AK-20220816-USRep-Special",
+        "export": {
+          "source": "alaska",
+          "path": "alaska/22SSPG/CVR_Export_20220908084311.zip",
+          "url": "https://www.elections.alaska.gov/results/22SSPG/CVR_Export_20220908084311.zip",
+          "date": "2022-09-08",
+          "version": "5.5.52.6",
+          "size": 6512608,
+          "sha256": "3d9ea12a0fa12064028057e02ad855ad63d349ccfb3b031afcdeb2eebfd1beab"
+        },
+        "report": {
+          "source": "alaska",
+          "path": "alaska/22SSPG/RcvDetailedReport.txt",
+          "url": "https://www.elections.alaska.gov/results/22SSPG/RcvDetailedReport.txt",
+          "date": "2022-09-02",
+          "size": 19550,
+          "sha256": "db5a886678aae4b91fcd93aea5f67e1c22585cdd7409757f366013cc13d56648"
+        }
+      },
+      {
+        "key": "alaska/22GENR/3",
+        "jurisdiction": "State of Alaska",
+        "date": "2022-11-08",
+        "office": "U.S. Senator",
+        "contest_id": 3,
+        "identifier": "AK-20221108-USSen",
+        "export": {
+          "source": "alaska",
+          "path": "alaska/22GENR/CVR_Export.zip",
+          "url": "https://elections.alaska.gov/results/22GENR/rcv/CVR_Export.zip",
+          "date": "2022-12-19",
+          "version": "5.5.52.6",
+          "size": 44019091,
+          "sha256": "405dce1e924c0a6557178b820d2f6e873e2375dba058c74fbc5a61e1d1004e65"
+        },
+        "report": {
+          "source": "alaska",
+          "path": "alaska/22GENR/US SEN.txt",
+          "url": "https://elections.alaska.gov/results/22GENR/US%20SEN.txt",
+          "date": "2022-11-30",
+          "size": 32490,
+          "sha256": "01ea2bef334a3204fe42d7f0830598c1344dab04fb6f96e416f06202505f9962"
+        }
+      },
+      {
+        "key": "alaska/22GENR/4",
+        "jurisdiction": "State of Alaska",
+        "date": "2022-11-08",
+        "office": "U.S. Representative",
+        "contest_id": 4,
+        "identifier": "AK-20221108-USRep",
+        "export": {
+          "source": "alaska",
+          "path": "alaska/22GENR/CVR_Export.zip",
+          "url": "https://elections.alaska.gov/results/22GENR/rcv/CVR_Export.zip",
+          "date": "2022-12-19",
+          "version": "5.5.52.6",
+          "size": 44019091,
+          "sha256": "405dce1e924c0a6557178b820d2f6e873e2375dba058c74fbc5a61e1d1004e65"
+        },
+        "report": {
+          "source": "alaska",
+          "path": "alaska/22GENR/US REP.txt",
+          "url": "https://elections.alaska.gov/results/22GENR/US%20REP.txt",
+          "date": "2022-11-30",
+          "size": 31556,
+          "sha256": "7982b3e82741a304f222852936619e60eb0b1f87ed026cd05738eb3236437f11"
+        }
+      },
+      {
+        "key": "alaska/24GENR/7",
+        "jurisdiction": "State of Alaska",
+        "date": "2024-11-05",
+        "office": "U.S. Representative",
+        "contest_id": 7,
+        "identifier": "AK-20241105-USRep",
+        "export": {
+          "source": "alaska",
+          "path": "alaska/24GENR/CVR_Export_20241130154411.zip",
+          "url": "https://www.elections.alaska.gov/results/24GENR/CVR_Export_20241130154411.zip",
+          "date": "2024-11-30",
+          "version": "5.17.18.1",
+          "size": 43712184,
+          "sha256": "368676629e46ad88199f145ce38c0b7c2edc930e70c6a3da70394ad5cbfb9b24"
+        },
+        "report": {
+          "source": "alaska",
+          "path": "alaska/24GENR/RCV-USRep.pdf",
+          "url": "https://www.elections.alaska.gov/results/24GENR/RCV-USRep.pdf",
+          "date": "2024-11-30",
+          "size": 264420,
+          "sha256": "2880b88fb540f4b6327f686d19c9bd9636ff9c8a4c5301d31361405178ad7f5e"
+        }
+      }
+    ]
+  }
 }
