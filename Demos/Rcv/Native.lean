@@ -12,11 +12,11 @@ structure, so the parser's own defects can reject a file but cannot change a cou
 Word arrays are packed as the reference packs them: little-endian 64-bit words, eight bytes each.
 `rcv-spec report FILE` writes the specification's report of the file to standard output.
 `rcv-spec contest-words FILE` writes the file's contest words, and `rcv-spec words FILE` the result
-words of `countWords` on them.  `rcv-spec array FILE` reads a packed word array and writes the result
-words of `countWords`, and `rcv-spec program FILE` writes those of `Demos.Rcv.Program.count`, the
-program that the module compiles, run natively.  `rcv-spec district4 FILE` compares the round lines
-of the report with the District 4 report of the requirements, prints each line that differs, and
-exits with status 1 if any does.  A file that does not load gives status 1.
+words of `countWords` on them.  `rcv-spec array FILE` reads a packed word array and writes the
+result words of `countWords`, and `rcv-spec program FILE` writes those of `Demos.Rcv.Program.count`,
+the program that the module compiles, run natively.  `rcv-spec district4 FILE` compares the round
+lines of the report with the District 4 report of the requirements, prints each line that differs,
+and exits with status 1 if any does.  A file that does not load gives status 1.
 -/
 
 namespace Demos.Rcv.Native
@@ -75,7 +75,8 @@ def parse (bs : List UInt8) : Except String Contest := do
   let k ← parseNat (← after (ascii "positions ") (lines.getD 2 []))
   let n ← parseNat (← after (ascii "candidates ") (lines.getD 3 []))
   let candidates ← ((lines.drop 4).take n).mapM parseCandidate
-  let order ← (split (0x20 : UInt8) (← after (ascii "order ") (lines.getD (4 + n) []))).mapM parseNat
+  let order ←
+    (split (0x20 : UInt8) (← after (ascii "order ") (lines.getD (4 + n) []))).mapM parseNat
   let ballots ← (lines.drop (6 + n)).mapM (parseBallot k)
   return { contest, positions := k, candidates, order, ballots }
 
@@ -86,8 +87,10 @@ def load (path : String) : IO Contest := do
   match parse bs with
   | .error e => throw (IO.userError s!"{path}: {e}")
   | .ok c =>
-    if write c != bs then throw (IO.userError s!"{path}: the structure read does not print as the file")
-    if !decide c.WellFormed then throw (IO.userError s!"{path}: the structure read breaks a constraint")
+    if write c != bs then
+      throw (IO.userError s!"{path}: the structure read does not print as the file")
+    if !decide c.WellFormed then
+      throw (IO.userError s!"{path}: the structure read breaks a constraint")
     return c
 
 /-- The round lines of the 2022 District 4 report in the requirements. -/
@@ -125,8 +128,10 @@ def compareDistrict4 (c : Contest) : IO UInt32 := do
     let w := want.getD i []
     if g != w then
       bad := bad + 1
-      IO.println s!"line {i + 1} after the header: {String.fromUTF8? ⟨g.toArray⟩} against {String.fromUTF8? ⟨w.toArray⟩}"
-  IO.println s!"{c.ballots.length} ballots, {got.length} round lines, {bad} differ from the requirements"
+      IO.println s!"line {i + 1} after the header: {String.fromUTF8? ⟨g.toArray⟩} \
+        against {String.fromUTF8? ⟨w.toArray⟩}"
+  IO.println s!"{c.ballots.length} ballots, {got.length} round lines, \
+    {bad} differ from the requirements"
   return if bad == 0 then 0 else 1
 
 /-- The little-endian 64-bit words of `bs`. -/

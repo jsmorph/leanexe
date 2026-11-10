@@ -22,7 +22,8 @@ open scoped List
 /-- A loop whose pass `i` appends `f i` to the array appends the passes' lists in order. -/
 theorem loop_append (n : UInt64) (o : Array UInt64) (step : UInt64 → Array UInt64 → Array UInt64)
     (f : UInt64 → List UInt64) (h : ∀ i o, (step i o).toList = o.toList ++ f i) :
-    (LeanExe.loop n o step).toList = o.toList ++ (List.range n.toNat).flatMap fun i => f (UInt64.ofNat i) := by
+    (LeanExe.loop n o step).toList =
+      o.toList ++ (List.range n.toNat).flatMap fun i => f (UInt64.ofNat i) := by
   unfold LeanExe.loop
   generalize n.toNat = m
   induction m with
@@ -44,7 +45,8 @@ theorem pushWord_toList (o : Array UInt64) (w len : UInt64) :
 
 theorem pushNumber_toList (o : Array UInt64) (v : UInt64) :
     (pushNumber o v).toList = o.toList ++ (decimal v.toNat).map UInt8.toUInt64 := by
-  show (LeanExe.loop (digitCount v) o fun i o => o.push (digitByte v (digitCount v - 1 - i))).toList = _
+  show (LeanExe.loop (digitCount v) o fun i o =>
+    o.push (digitByte v (digitCount v - 1 - i))).toList = _
   rw [loop_append (digitCount v) o _ (fun i => [digitByte v (digitCount v - 1 - i)])
     (fun i o => Array.toList_push), flatMap_single, ← digitWords_eq]
   refine congrArg (o.toList ++ ·) ?_
@@ -68,7 +70,7 @@ theorem pushNumber_toList (o : Array UInt64) (v : UInt64) :
   · rw [List.getElem?_eq_none (by simp only [List.length_range, hL]; omega), ite_eq_right hj]
     rfl
 
-theorem pushRange_toList (o : Array UInt64) (b : Bytes) (hb : b.data.size < 2 ^ 64) (s e : UInt64)
+theorem pushRange_toList (o : Array UInt64) (b : Bytes) (_hb : b.data.size < 2 ^ 64) (s e : UInt64)
     (hse : s ≤ e) (he : e.toNat ≤ b.data.size) :
     (pushRange o b s e).toList = o.toList ++ (slice b s.toNat e.toNat).map UInt8.toUInt64 := by
   have hse' := UInt64.le_iff_toNat_le.mp hse
@@ -100,7 +102,8 @@ theorem map_toUInt8_toUInt64 (L : List UInt8) :
 
 /-! ## Texts -/
 
-theorem text_cons (l : List UInt8) (ls : List (List UInt8)) : text (l :: ls) = l ++ [lf] ++ text ls := by
+theorem text_cons (l : List UInt8) (ls : List (List UInt8)) :
+    text (l :: ls) = l ++ [lf] ++ text ls := by
   simp [text, lf]
 
 theorem text_append (ls ms : List (List UInt8)) : text (ls ++ ms) = text ls ++ text ms := by
@@ -193,7 +196,8 @@ theorem mask_lt {M : List Nat} {n : Nat} (hM : M <+ List.range' 1 n) : mask M < 
     omega)
 
 theorem flatMap_filter_mem {α : Type} (M L : List Nat) (g : Nat → List α) :
-    (L.flatMap fun x => if x ∈ M then g x else []) = (L.filter fun x => decide (x ∈ M)).flatMap g := by
+    (L.flatMap fun x => if x ∈ M then g x else []) =
+      (L.filter fun x => decide (x ∈ M)).flatMap g := by
   induction L with
   | nil => rfl
   | cons x L ih =>
@@ -247,7 +251,8 @@ theorem pushMembers_toList (o : Array UInt64) {M : List Nat} {n : Nat} (hn : n �
       o.toList ++ (M.flatMap fun i => sp :: decimal i).map UInt8.toUInt64 := by
   have hnN : (UInt64.ofNat n).toNat = n := ofNat_toNat_small (by omega)
   have hmN : (UInt64.ofNat (mask M)).toNat = mask M :=
-    ofNat_toNat_small (Nat.lt_of_lt_of_le (mask_lt hM) (Nat.pow_le_pow_right (by decide) (by omega)))
+    ofNat_toNat_small
+      (Nat.lt_of_lt_of_le (mask_lt hM) (Nat.pow_le_pow_right (by decide) (by omega)))
   unfold pushMembers
   have hfm := flatMap_range_mem hM (fun i => (sp :: decimal i).map UInt8.toUInt64)
   rw [loop_append' _ o _ (fun i => if i + 1 ∈ M then
@@ -259,7 +264,8 @@ theorem pushMembers_toList (o : Array UInt64) {M : List Nat} {n : Nat} (hn : n �
       rw [UInt64.toNat_add, hiN]; simp; omega
     rw [shift_bit_one _ _ (by rw [hiN]; omega), hmN, hiN, mask_testBit hM]
     by_cases hm : i + 1 ∈ M
-    · rw [decide_eq_true hm, ite_eq_left rfl, ite_eq_left hm, pushNumber_toList, Array.toList_push, hi1]
+    · rw [decide_eq_true hm, ite_eq_left rfl, ite_eq_left hm, pushNumber_toList, Array.toList_push,
+        hi1]
       simp [sp]
     · rw [decide_eq_false hm, ite_eq_right (by simp), ite_eq_right hm]
       simp
@@ -320,7 +326,8 @@ theorem pushVotes_toList (o res : Array UInt64) {S : List Nat} {n base : Nat} (h
   have hnN : (UInt64.ofNat n).toNat = n := ofNat_toNat_small (by omega)
   have hbN : (UInt64.ofNat base).toNat = base := ofNat_toNat_small (by omega)
   have hmN : (UInt64.ofNat (mask S)).toNat = mask S :=
-    ofNat_toNat_small (Nat.lt_of_lt_of_le (mask_lt hS) (Nat.pow_le_pow_right (by decide) (by omega)))
+    ofNat_toNat_small
+      (Nat.lt_of_lt_of_le (mask_lt hS) (Nat.pow_le_pow_right (by decide) (by omega)))
   have hfm := flatMap_range_mem hS (fun i =>
     (spaced [ascii "votes", decimal i, decimal (f i)] ++ [lf]).map UInt8.toUInt64)
   unfold pushVotes
@@ -456,7 +463,7 @@ theorem getD_round_vote (n : Nat) (rd : Round) (i : Nat) (hi : i < n) :
     (roundWords n rd).getD (2 + i) 0 = (rd.tally.votes.lookup (i + 1)).getD 0 := by
   rw [roundWords_eq, List.getD_eq_getElem?_getD, List.append_assoc, List.append_assoc,
     List.getElem?_append_right (by simp), List.getElem?_append_left (by simp; omega)]
-  simp [List.getElem?_range', Nat.add_comm, hi]
+  simp [Nat.add_comm, hi]
 
 theorem getD_round_tail (n : Nat) (rd : Round) (j : Nat) :
     (roundWords n rd).getD (n + 2 + j) 0 =
@@ -564,7 +571,7 @@ theorem pushRoundLines_toList (o res : Array UInt64) {n base r : Nat} (hn : n �
     ofNat_toNat_small hex, hrN]
   simp only [roundLines, text_append, text_cons, text_nil, List.map_append, List.append_assoc,
     hvotes, elimLines]
-  rcases rd.elimination with _ | e <;> simp [elimLines, text]
+  rcases rd.elimination with _ | e <;> simp [text]
 
 /-! ## Facts of the count that the printer needs -/
 
@@ -803,7 +810,7 @@ theorem flatMap_range_zipIdx (L : List Round) (d : Round) (G : Nat → Round →
       intro i hi
       have hi := List.mem_range.mp hi
       simp only [List.getD_eq_getElem?_getD, List.getElem?_append_left hi]
-    · simp only [List.getD_eq_getElem?_getD, List.getElem?_append_right (le_refl _), Nat.sub_self]
+    · simp only [List.getD_eq_getElem?_getD]
       simp [Nat.add_comm]
 
 /-! ## The report -/
@@ -824,9 +831,10 @@ theorem printReport_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (c : Contest) (hc
   have hn : c.candidates.length ≤ 63 := hc.2.2.2.1
   have hN : c.ballots.length ≤ maxBallots := hc.2.2.2.2.1
   have hNb : c.ballots.length < 2 ^ 64 := by simp [maxBallots] at hN; omega
-  have hrep : report c = text ([ascii "rcv-report 1", spaced [ascii "rule", ascii ruleIdentifier]] ++
-      headerLines c ++ (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat =>
-        roundLines p.2 p.1) ++ [winnerLine (countContest c).winner]) := rfl
+  have hrep : report c =
+      text ([ascii "rcv-report 1", spaced [ascii "rule", ascii ruleIdentifier]] ++
+        headerLines c ++ (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat =>
+          roundLines p.2 p.1) ++ [winnerLine (countContest c).winner]) := rfl
   have hfacts := count_round_facts (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions)
   have hwin := count_winner (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions)
   have hRle := Demos.Rcv.Winner.rounds_le (kindsOf c) c.order

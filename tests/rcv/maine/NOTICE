@@ -1,0 +1,21 @@
+Sources of the Maine RCV corpus and their terms of use, as read on 2026-11-10
+
+The repository holds no file of the corpus.  It holds each file's URL, size, and SHA-256 in
+manifest.json and the figures of the summary reports that recount.py holds.  fetch.py downloads
+each file from its URL in the manifest into a local directory that Git ignores, or checks a file
+saved there from a web browser.
+
+Maine Department of the Secretary of State, Bureau of Corporations, Elections and Commissions
+
+The RCV summary reports, the first-choice results, the cast vote record spreadsheets, the 2026
+primary candidate list, and the list of candidate withdrawals of May 22, 2026 come from the
+Secretary of State's election results pages,
+https://www.maine.gov/sos/elections-voting/election-results-data and
+https://www.maine.gov/sos/elections-voting/election-results-data/election-results-2024.  21-A
+M.R.S. section 723-A, subsection 5-C, at
+https://legislature.maine.gov/statutes/21-A/title21-Asec723-A.html, states: "The Secretary of
+State shall post the complete cast vote record on its publicly accessible website as soon as the
+certified results are reported."  On 2026-11-10 www.maine.gov returned HTTP 403 to scripted
+requests for both pages, for the Secretary of State's home page https://www.maine.gov/sos/, and for
+the Maine.gov policies, https://www.maine.gov/portal/policies/index.html, and content disclaimer,
+https://www.maine.gov/portal/policies/disclaimer.html, so no terms of the site are quoted here.

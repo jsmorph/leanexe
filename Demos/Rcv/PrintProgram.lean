@@ -8,15 +8,15 @@ section "Word forms of the count", and `printError j code` prints the error repo
 the role of the code `code` that `readContest` returns.
 
 The printer collects the report's bytes in an array of words, one byte to a word, and copies them
-into a buffer at the end.  The texts of the report are words of eight bytes, least significant first,
-that `pushWord` appends, and `pushNumber` appends the decimal digits of a word with the library's
-`digitCount` and `digitByte` of `Library.Numerics.Decimal.Int64Text`.  The report repeats lines 2 to
-`6 + n` of the file byte for byte, and `printReport` copies them from `b`: they run from byte 14,
-after `rcv-ballots 1` and its LF, to the position after the LF of line `6 + n`.  Round `r`, counted
-from 0, starts at word `2 + r (n + 9)` of the result, whose words give the mask of the continuing
-set, `T`, the votes of candidates 1 to `n`, the inactive counts, the elimination's code, the mask of
-the eliminated candidates, and the mask of the tied set.  A mask's members print in increasing
-index, each after a space.
+into a buffer at the end.  The texts of the report are words of eight bytes, least significant
+first, that `pushWord` appends, and `pushNumber` appends the decimal digits of a word with the
+library's `digitCount` and `digitByte` of `Library.Numerics.Decimal.Int64Text`.  The report repeats
+lines 2 to `6 + n` of the file byte for byte, and `printReport` copies them from `b`: they run from
+byte 14, after `rcv-ballots 1` and its LF, to the position after the LF of line `6 + n`.  Round `r`,
+counted from 0, starts at word `2 + r (n + 9)` of the result, whose words give the mask of the
+continuing set, `T`, the votes of candidates 1 to `n`, the inactive counts, the elimination's code,
+the mask of the eliminated candidates, and the mask of the tied set.  A mask's members print in
+increasing index, each after a space.
 -/
 
 namespace Demos.Rcv.PrintProgram

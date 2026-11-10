@@ -28,9 +28,9 @@ theorem digitWords_eq (v : Nat) : digitWords v = (decimal v).map UInt8.toUInt64 
   simp only [digitWords, decimal, ascii, Nat.toString_eq_repr, Nat.toList_repr, List.map_map]
   rfl
 
-theorem map_toUInt64_injective {a b : List UInt8} (h : a.map UInt8.toUInt64 = b.map UInt8.toUInt64) :
-    a = b :=
-  List.map_injective_iff.mpr (fun x y hxy => UInt8.toUInt64_inj.mp hxy) h
+theorem map_toUInt64_injective {a b : List UInt8}
+    (h : a.map UInt8.toUInt64 = b.map UInt8.toUInt64) : a = b :=
+  List.map_injective_iff.mpr (fun _ _ hxy => UInt8.toUInt64_inj.mp hxy) h
 
 theorem isDigit_eq (x : UInt8) : isDigit x = isDigitWord x.toUInt64 := by
   simp only [isDigit, isDigitWord, UInt8.le_iff_toNat_le, UInt64.le_iff_toNat_le,
@@ -81,7 +81,8 @@ theorem number_decimal (v : Nat) : number (decimal v) = some v := by
     rw [hds, number_eq_magnitude d ds hd, hm]
 
 /-- The bytes that read as `v` are its decimal form. -/
-theorem decimal_of_number {bs : List UInt8} {v : Nat} (h : number bs = some v) : decimal v = bs := by
+theorem decimal_of_number {bs : List UInt8} {v : Nat} (h : number bs = some v) :
+    decimal v = bs := by
   match bs, h with
   | d :: ds, h =>
     by_cases hd : d = 0x30
@@ -205,7 +206,7 @@ theorem mapM_some_iff {α β : Type} (f : α → Option β) :
         cases h
     | cons b r =>
       rw [List.forall₂_cons, ← ih r]
-      cases hfa : f a <;> cases hl : l.mapM f <;> simp [hfa, hl]
+      cases hfa : f a <;> cases hl : l.mapM f <;> simp
 
 /-- `mapM` of `f` over the images of `g` gives the images of `h` when `f (g a) = some (h a)`. -/
 theorem mapM_map_some {α β γ : Type} (f : β → Option γ) (g : α → β) (h : α → γ) (l : List α)
@@ -237,7 +238,8 @@ theorem filter_testBit_eq (m : Nat) (h : m < 2 ^ 63) :
       omega
 
 /-- The candidates that a word without bit 63 marks are its bit indices plus one. -/
-theorem marks_eq (w : UInt64) (h : w.toNat < 2 ^ 63) : marks w = w.toNat.bitIndices.map (· + 1) := by
+theorem marks_eq (w : UInt64) (h : w.toNat < 2 ^ 63) :
+    marks w = w.toNat.bitIndices.map (· + 1) := by
   rw [marks, filter_testBit_eq _ h]
 
 /-- An increasing list of numbers is pairwise increasing. -/
@@ -288,7 +290,8 @@ theorem sum_lt_of_bits {L : List Nat} (hs : L.Pairwise (· < ·)) {n : Nat} (hL 
   intro i hi
   have hb := Nat.bitIndices_sum_map_two_pow (List.sortedLT_iff_pairwise.mpr hs)
   by_contra hc
-  have hmem : i ∈ (L.map fun j => 2 ^ j).sum.bitIndices := Nat.mem_bitIndices.mpr (by simpa using hc)
+  have hmem : i ∈ (L.map fun j => 2 ^ j).sum.bitIndices :=
+    Nat.mem_bitIndices.mpr (by simpa using hc)
   rw [hb] at hmem
   have := hL i hmem
   omega
@@ -406,11 +409,13 @@ theorem field_of_parsePosition {n : Nat} (hn : n ≤ 63) {f : List UInt8} {w : U
               (L.map fun j => 2 ^ j).sum := by
             rw [hsumeq]
             exact UInt64.toNat_ofNat_of_lt' hlt64
-          have hbitsw : (UInt64.ofNat (is.map fun i : Nat => (2 : Nat) ^ (i - 1)).sum).toNat.bitIndices
-              = L := by
+          have hbitsw :
+              (UInt64.ofNat (is.map fun i : Nat => (2 : Nat) ^ (i - 1)).sum).toNat.bitIndices
+                = L := by
             rw [hw]
             exact Nat.bitIndices_sum_map_two_pow (List.sortedLT_iff_pairwise.mpr hLs)
-          have h63 : (UInt64.ofNat (is.map fun i : Nat => (2 : Nat) ^ (i - 1)).sum).toNat < 2 ^ 63 := by
+          have h63 :
+              (UInt64.ofNat (is.map fun i : Nat => (2 : Nat) ^ (i - 1)).sum).toNat < 2 ^ 63 := by
             rw [hw]
             exact Nat.lt_of_lt_of_le hlt (Nat.pow_le_pow_right (by decide) hn)
           have his_ne : is ≠ [] := by

@@ -189,7 +189,8 @@ theorem lineOf_of_parse {j : Nat} {α : Type} {parse : List UInt8 → Option α}
     {l : List UInt8} (hl : lineOf b j = some l) (hp : parse l = some a) :
     ∃ l, lineOf b j = some l ∧ (parse l).isSome := ⟨l, hl, by simp [hp]⟩
 
-theorem roleOf_candidate {n N j : Nat} (h1 : 5 ≤ j) (h2 : j ≤ 4 + n) : roleOf n N j = .candidate := by
+theorem roleOf_candidate {n N j : Nat} (h1 : 5 ≤ j) (h2 : j ≤ 4 + n) :
+    roleOf n N j = .candidate := by
   unfold roleOf; split_ifs <;> first | rfl | omega
 
 theorem roleOf_order {n N : Nat} : roleOf n N (5 + n) = .order := by
@@ -240,7 +241,8 @@ theorem read_error_first (h : ∀ f : Contest, f.WellFormed → write f ≠ b) :
     cases hl1 : lineOf b 1 with
     | none =>
       rw [hl1] at hrl; cases hrl
-      exact ⟨le_refl _, rfl, faulty_of_absent b hl1 (by omega), fun j' h1 h2 => absurd h2 (by omega)⟩
+      exact ⟨le_refl _, rfl, faulty_of_absent b hl1 (by omega),
+        fun j' h1 h2 => absurd h2 (by omega)⟩
     | some l1 =>
     simp only [hl1] at hrl
     cases hp1 : parseFormat l1 with
@@ -488,7 +490,8 @@ theorem read_error_first (h : ∀ f : Contest, f.WellFormed → write f ≠ b) :
           simp only [faulty, hlj, Bool.or_eq_true, decide_eq_true_eq]
           right
           refine ⟨hlen.symm, ?_⟩
-          have hd : piecesAt b (7 + n + N) = [(b.splitOn lf).getLast (List.splitOn_ne_nil _ _)] := by
+          have hd :
+              piecesAt b (7 + n + N) = [(b.splitOn lf).getLast (List.splitOn_ne_nil _ _)] := by
             simp only [piecesAt]
             rw [show 7 + n + N - 1 = (b.splitOn lf).length - 1 by omega]
             exact List.drop_length_sub_one (List.splitOn_ne_nil _ _)

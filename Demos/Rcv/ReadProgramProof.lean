@@ -46,8 +46,8 @@ theorem slice_length {b : Bytes} {s e : Nat} (he : e ≤ b.data.size) :
   simp [slice]
   omega
 
-theorem slice_getElem {b : Bytes} {s e i : Nat} (he : e ≤ b.data.size) (hi : i < (slice b s e).length) :
-    (slice b s e)[i] = (bytesOf b).getD (s + i) 0 := by
+theorem slice_getElem {b : Bytes} {s e i : Nat} (he : e ≤ b.data.size)
+    (hi : i < (slice b s e).length) : (slice b s e)[i] = (bytesOf b).getD (s + i) 0 := by
   rw [slice_length he] at hi
   simp only [slice, List.getElem_take, List.getElem_drop]
   rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (by simp; omega)]
@@ -239,7 +239,8 @@ theorem wordBytes_length (w : UInt64) (n : Nat) : (wordBytes w n).length = n := 
   simp [wordBytes]
 
 theorem all_beq_range {α : Type} [BEq α] [LawfulBEq α] [DecidableEq α] (n : Nat) (f g : Nat → α) :
-    (List.range n).all (fun i => f i == g i) = decide ((List.range n).map f = (List.range n).map g) := by
+    (List.range n).all (fun i => f i == g i) =
+      decide ((List.range n).map f = (List.range n).map g) := by
   rw [Bool.eq_iff_iff, decide_eq_true_iff, List.map_inj_left, List.all_eq_true]
   simp
 
@@ -247,11 +248,14 @@ theorem all_beq_range {α : Type} [BEq α] [LawfulBEq α] [DecidableEq α] (n : 
 theorem matchWord_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (p w len : UInt64)
     (hp : p.toNat + len.toNat ≤ b.data.size) :
     matchWord b p w len =
-      decide ((slice b p.toNat (p.toNat + len.toNat)).map UInt8.toUInt64 = wordBytes w len.toNat) := by
+      decide ((slice b p.toNat (p.toNat + len.toNat)).map UInt8.toUInt64 =
+        wordBytes w len.toNat) := by
   rw [matchWord, loop_and, slice_eq_map hp, List.map_map, wordBytes, Nat.add_sub_cancel_left]
-  have h2 : (List.range len.toNat).all (fun i => b.get (p + UInt64.ofNat i) == wordByte w (UInt64.ofNat i)) =
+  have h2 : (List.range len.toNat).all
+      (fun i => b.get (p + UInt64.ofNat i) == wordByte w (UInt64.ofNat i)) =
       (List.range len.toNat).all (fun i =>
-        (UInt8.toUInt64 ∘ fun i => (bytesOf b).getD (p.toNat + i) 0) i == wordByte w (UInt64.ofNat i)) := by
+        (UInt8.toUInt64 ∘ fun i => (bytesOf b).getD (p.toNat + i) 0) i ==
+          wordByte w (UInt64.ofNat i)) := by
     apply all_range_congr
     intro i hi
     rw [get_eq, toNat_add_ofNat (by omega)]
@@ -379,7 +383,8 @@ theorem digit_sub (x : UInt8) : decide (x.toUInt64 - 48 < 10) = isDigit x := by
     h48, h57, h10, UInt64.toNat_sub, hxu, h48']
   omega
 
-theorem digit_value (x : UInt8) (h : isDigit x = true) : (x.toUInt64 - 48).toNat = x.toNat - 48 := by
+theorem digit_value (x : UInt8) (h : isDigit x = true) :
+    (x.toUInt64 - 48).toNat = x.toNat - 48 := by
   simp only [isDigit, Bool.and_eq_true, decide_eq_true_eq, UInt8.le_iff_toNat_le,
     UInt8.reduceToNat] at h
   rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simpa using h.1))]
@@ -702,9 +707,11 @@ theorem kindCode_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (s e : UInt64) (hse 
         hasPrefix_text b hb s e _ 8 _ 5 (by decide) (by decide) (ascii "named-writein") (by decide)
           (by rw [hl]; rfl) hse he]
     · rw [decide_eq_false hl, Bool.false_and,
-        decide_length_slice he (by rw [show (ascii "named-writein").length = 13 from rfl]; exact hl)]
+        decide_length_slice he
+          (by rw [show (ascii "named-writein").length = 13 from rfl]; exact hl)]
   have h3 : (e - s == 17 && hasPrefix b s e 0x7461676572676761 8 0x6965746972772d65 8 &&
-      matchWord b (s + 16) 0x6e 1) = decide (slice b s.toNat e.toNat = ascii "aggregate-writein") := by
+      matchWord b (s + 16) 0x6e 1) =
+      decide (slice b s.toNat e.toNat = ascii "aggregate-writein") := by
     rw [beq_length hse, show (17 : UInt64).toNat = 17 from rfl]
     by_cases hl : e.toNat - s.toNat = 17
     · rw [decide_eq_true hl, Bool.true_and]
@@ -733,7 +740,8 @@ theorem kindCode_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (s e : UInt64) (hse 
         rw [h1', h2']
         exact ⟨List.prefix_append _ _, rfl⟩
     · rw [decide_eq_false hl, Bool.false_and, Bool.false_and,
-        decide_length_slice he (by rw [show (ascii "aggregate-writein").length = 17 from rfl]; exact hl)]
+        decide_length_slice he
+          (by rw [show (ascii "aggregate-writein").length = 17 from rfl]; exact hl)]
   have h4 : (e - s == 8 && matchWord b s 0x646564756c637865 8) =
       decide (slice b s.toNat e.toNat = ascii "excluded") := by
     rw [beq_length hse, show (8 : UInt64).toNat = 8 from rfl]
@@ -793,7 +801,7 @@ theorem span_no_sep {s : UInt8} {l : List UInt8} (h : s ∉ l) : l.span (· != s
       simpa using this
     have := ih (fun hm => h (List.mem_cons_of_mem x hm))
     simp only [Prod.mk.injEq] at this
-    simp [List.takeWhile_cons, List.dropWhile_cons, hx, this.1, this.2]
+    simp [hx, this.1, this.2]
 
 /-- `List.span` at the separator `c` takes the bytes before the position that `findByte` finds. -/
 theorem findByte_span (b : Bytes) (c : UInt64) (c8 : UInt8) (hc : c8.toUInt64 = c) (p e : UInt64)
@@ -843,7 +851,7 @@ theorem prefix_length {b : Bytes} {s e : Nat} (he : e ≤ b.data.size) {T : List
 
 /-! ## Candidate lines -/
 
-theorem toNat_add_small {s e : UInt64} {k : Nat} (hk : k < 2 ^ 64) (h : s.toNat + k ≤ e.toNat) :
+theorem toNat_add_small {s e : UInt64} {k : Nat} (_hk : k < 2 ^ 64) (h : s.toNat + k ≤ e.toNat) :
     (s + UInt64.ofNat k).toNat = s.toNat + k := by
   have := UInt64.toNat_lt e
   exact toNat_add_ofNat (by omega)
@@ -881,7 +889,8 @@ theorem candidateCode_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (i s e : UInt64
   · rw [ite_eq_right hp, ite_eq_right hp]
   rw [ite_eq_left hp, ite_eq_left hp]
   have hlen : 10 ≤ e.toNat - s.toNat := prefix_length he hp
-  have hs10 : (s + 10).toNat = s.toNat + 10 := toNat_add_small (e := e) (k := 10) (by decide) (by omega)
+  have hs10 : (s + 10).toNat = s.toNat + 10 :=
+    toNat_add_small (e := e) (k := 10) (by decide) (by omega)
   have hle10 : s + 10 ≤ e := UInt64.le_iff_toNat_le.mpr (by omega)
   simp only []
   rw [show (ascii "candidate ").length = 10 from rfl, ← hs10,
@@ -1155,7 +1164,7 @@ theorem orderFrom_spec (b : Bytes) (hb : b.data.size < 2 ^ 64) (n : UInt64) (hn 
                 (List.mem_cons_of_mem _ hx), by simp at h4; omega⟩]
               simp
         · rw [ite_eq_right hlast, ite_eq_right hlast]
-          simp only [List.mapM_nil, Option.bind_some, Option.pure_def, Option.some.injEq]
+          simp only [List.mapM_nil, Option.pure_def]
           have hprlen : pr.length ≤ n.toNat := nodup_length_le hnd hin
           have hnd' : (pr ++ [i]).Nodup := List.nodup_append.mpr ⟨hnd, List.nodup_singleton i,
               fun a ha c hc => by simp at hc; subst hc; exact fun e => hgood.2.2 (e ▸ ha)⟩
@@ -1330,7 +1339,8 @@ theorem markFrom_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (n : UInt64) (hn : n
       · have hi64 : i < 2 ^ 64 := by omega
         have hiN := ofNat_toNat_small hi64
         rw [numberResult_of hnum hi64]
-        have hc : (true && decide (prev < UInt64.ofNat i) && decide (UInt64.ofNat i ≤ n)) = true := by
+        have hc :
+            (true && decide (prev < UInt64.ofNat i) && decide (UInt64.ofNat i ≤ n)) = true := by
           simp only [Bool.true_and, Bool.and_eq_true, decide_eq_true_eq, UInt64.lt_iff_toNat_lt,
             UInt64.le_iff_toNat_le, hiN]
           exact hgood
@@ -1347,7 +1357,8 @@ theorem markFrom_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (n : UInt64) (hn : n
           have hq1 := toNat_add_one hlast
           have hle1 : q + 1 ≤ e := UInt64.le_iff_toNat_le.mpr (by
             have := UInt64.lt_iff_toNat_lt.mp hlast; omega)
-          have hacc2 : (acc ||| (1 <<< (UInt64.ofNat i - 1))).toNat < 2 ^ (UInt64.ofNat i).toNat := by
+          have hacc2 :
+              (acc ||| (1 <<< (UInt64.ofNat i - 1))).toNat < 2 ^ (UInt64.ofNat i).toNat := by
             rw [hacc', hiN]
             have h1 : acc.toNat < 2 ^ (i - 1) := Nat.lt_of_lt_of_le hacc
               (Nat.pow_le_pow_right (by decide) (by omega))
@@ -1411,7 +1422,8 @@ theorem markFrom_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (n : UInt64) (hn : n
             simp
         rw [hc]
         simp only [Bool.false_eq_true, ite_false]
-        cases hm : (if q < e then (slice b (q.toNat + 1) e.toNat).splitOn bar else []).mapM number with
+        cases hm :
+            (if q < e then (slice b (q.toNat + 1) e.toNat).splitOn bar else []).mapM number with
         | none => rfl
         | some is =>
           simp only [Option.map_some]
@@ -1748,7 +1760,8 @@ theorem isContest_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (s e : UInt64) (hse
   by_cases hp : (ascii "contest ").isPrefixOf (slice b s.toNat e.toNat) = true
   · rw [ite_eq_left hp, hp, Bool.true_and]
     have hlen : 8 ≤ e.toNat - s.toNat := prefix_length he hp
-    have hs8 : (s + 8).toNat = s.toNat + 8 := toNat_add_small (e := e) (k := 8) (by decide) (by omega)
+    have hs8 : (s + 8).toNat = s.toNat + 8 :=
+      toNat_add_small (e := e) (k := 8) (by decide) (by omega)
     rw [isIdent_eq b _ e (UInt64.le_iff_toNat_le.mpr (by omega)) he, hs8]
     simp only [show (ascii "contest ").length = 8 from rfl]
     split <;> simp_all
