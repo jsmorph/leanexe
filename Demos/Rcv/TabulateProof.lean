@@ -453,10 +453,11 @@ theorem roundLines_length (r : Nat) (rd : Round) {n : Nat} (hn : n ≤ 63) (S : 
         omega
   omega
 
-/-- The report of a structure whose file has fewer than `2 ^ 32` bytes has fewer than `2 ^ 64`
-bytes. -/
-theorem report_length_lt (c : Contest) (hc : c.WellFormed) (hw : (write c).length < 2 ^ 32) :
-    (report c).length < 2 ^ 64 := by
+/-- The report of a structure that meets the constraints has at most 1,280,253 bytes beyond its
+header lines: the first two lines, 213 bytes, at most 64 rounds of at most 20,000 bytes each, and
+the winner's line of at most 40 bytes. -/
+theorem report_length_le (c : Contest) (hc : c.WellFormed) :
+    (report c).length ≤ (text (headerLines c)).length + 1280253 := by
   have hn : c.candidates.length ≤ 63 := hc.2.2.2.1
   have hN : c.ballots.length ≤ maxBallots := hc.2.2.2.2.1
   have hNb : c.ballots.length < 2 ^ 32 := by simp [maxBallots] at hN; omega
@@ -478,15 +479,6 @@ theorem report_length_lt (c : Contest) (hc : c.WellFormed) (hw : (write c).lengt
         roundLines p.2 p.1) ++ [winnerLine (countContest c).winner]) := rfl
   rw [hrep, text_append, text_append, text_append, List.length_append, List.length_append,
     List.length_append, head_length]
-  -- the header lines
-  have hH : (text (headerLines c)).length ≤ (write c).length := by
-    have : write c = text [ascii "rcv-ballots 1"] ++ text (headerLines c) ++
-        text (c.ballots.map ballotLine) := by
-      rw [write, show (ascii "rcv-ballots 1" :: headerLines c) ++ c.ballots.map ballotLine =
-        [ascii "rcv-ballots 1"] ++ headerLines c ++ c.ballots.map ballotLine from rfl,
-        text_append, text_append]
-    rw [this, List.length_append, List.length_append]
-    omega
   -- the rounds
   have hrounds : (text (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat =>
       roundLines p.2 p.1)).length ≤ 64 * 20000 := by
@@ -517,6 +509,25 @@ theorem report_length_lt (c : Contest) (hc : c.WellFormed) (hw : (write c).lengt
       have : (ascii "winner").length = 6 := rfl
       simp [winnerLine] at *
       omega
+  omega
+
+/-- The header lines of a structure's report are lines 2 to `6 + n` of its file. -/
+theorem headerLines_length_le (c : Contest) :
+    (text (headerLines c)).length ≤ (write c).length := by
+  have : write c = text [ascii "rcv-ballots 1"] ++ text (headerLines c) ++
+      text (c.ballots.map ballotLine) := by
+    rw [write, show (ascii "rcv-ballots 1" :: headerLines c) ++ c.ballots.map ballotLine =
+      [ascii "rcv-ballots 1"] ++ headerLines c ++ c.ballots.map ballotLine from rfl,
+      text_append, text_append]
+  rw [this, List.length_append, List.length_append]
+  omega
+
+/-- The report of a structure whose file has fewer than `2 ^ 32` bytes has fewer than `2 ^ 64`
+bytes. -/
+theorem report_length_lt (c : Contest) (hc : c.WellFormed) (hw : (write c).length < 2 ^ 32) :
+    (report c).length < 2 ^ 64 := by
+  have := report_length_le c hc
+  have := headerLines_length_le c
   omega
 
 /-! ## T1 over bytes -/
