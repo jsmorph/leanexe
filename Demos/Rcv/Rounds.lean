@@ -108,7 +108,8 @@ theorem getLast?_filter {order : List Nat} (hnd : order.Nodup) {p : Nat → Bool
 
 /-! ## The counted set -/
 
-theorem countedSet_sublist (kinds : List Kind) : countedSet kinds <+ List.range' 1 kinds.length := by
+theorem countedSet_sublist (kinds : List Kind) :
+    countedSet kinds <+ List.range' 1 kinds.length := by
   have h : ∀ l : List (Nat × Kind),
       (l.filterMap fun p : Nat × Kind => if countedKind p.2 then some p.1 else none) <+
         l.map Prod.fst := by
@@ -185,7 +186,8 @@ theorem tally_sum (interp : List Nat → List UInt64 → Outcome) (C : List Nat)
     (ballots : List (List UInt64)) (hC : C.Nodup) (hi : ∀ ps i, interp C ps = .counts i → i ∈ C) :
     ((tally interp C ballots).votes.map fun x : Nat × Nat => x.2).sum +
         (tally interp C ballots).blank + (tally interp C ballots).uncounted +
-        (tally interp C ballots).overvote + (tally interp C ballots).exhausted = ballots.length := by
+        (tally interp C ballots).overvote + (tally interp C ballots).exhausted =
+      ballots.length := by
   simp only [tally, List.map_map, Function.comp_def]
   induction ballots with
   | nil => simp [sum_map_zero]
@@ -971,7 +973,8 @@ theorem locality (c : Contest) :
 are a permutation of theirs, which covers a permutation of the ballots and a change of their
 identifiers, added, removed, or changed, leaves the count and the report unchanged. -/
 theorem invariance (c : Contest) (bs : List Ballot)
-    (h : (bs.map fun b : Ballot => b.positions).Perm (c.ballots.map fun b : Ballot => b.positions)) :
+    (h : (bs.map fun b : Ballot => b.positions).Perm
+      (c.ballots.map fun b : Ballot => b.positions)) :
     countContest { c with ballots := bs } = countContest c ∧
       report { c with ballots := bs } = report c := by
   have hcount : countContest { c with ballots := bs } = countContest c := by
@@ -991,7 +994,8 @@ theorem reportLines_order (c : Contest) :
             spaced [ascii "candidate", decimal p.2, ascii (kindWord p.1.kind), p.1.name])) ++
         spaced (ascii "order" :: c.order.map decimal) ::
           ([spaced [ascii "ballots", decimal c.ballots.length]] ++
-            (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat => roundLines p.2 p.1) ++
+            (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat =>
+              roundLines p.2 p.1) ++
             [winnerLine (countContest c).winner]) := by
   simp [reportLines, headerLines]
 
@@ -1006,7 +1010,8 @@ theorem order_choice (c : Contest) (π' : List Nat)
     countContest { c with order := π' } = countContest c ∧
       ∃ A B : List (List UInt8),
         reportLines c = A ++ spaced (ascii "order" :: c.order.map decimal) :: B ∧
-        reportLines { c with order := π' } = A ++ spaced (ascii "order" :: π'.map decimal) :: B := by
+        reportLines { c with order := π' } =
+          A ++ spaced (ascii "order" :: π'.map decimal) :: B := by
   have ht := count_trace (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions)
   have hnd : π'.Nodup := hπ.nodup_iff.2 List.nodup_range'
   have hcount : countContest { c with order := π' } = countContest c := by

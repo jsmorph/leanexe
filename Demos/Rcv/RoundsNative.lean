@@ -1,25 +1,23 @@
-import Demos.Rcv.Native
+import Demos.Rcv.Cases
 
 /-!
 Native tests of the statements of T4, T5, T6, T7, and T9 of `Demos/Rcv/Rounds.lean`, which ran
 before their proofs.  Each `ok` function decides one theorem's conclusion on a contest through the
-specification, and `hypT9` decides T9's hypothesis for an order.  The run covers the well-formed
-edge-case files that `tests/rcv/edges.py` writes and seeded random contests of every kind of
-candidate and position, and it prints the counts of contests, rounds, eliminations by kind, and
-failures.  The `fault` functions are false variants of the statements, which the run must reject on
-some contests, and `t9noHypDiffer` counts the orders that fail T9's hypothesis and change the count.
-The module reads files at elaboration, so no library imports it.  From the repository root:
+specification, and `hypT9` decides T9's hypothesis for an order.  The `fault` functions are false
+variants of the statements, which a run must reject on some contests, and `t9noHypDiffer` counts the
+orders that fail T9's hypothesis and change the count.
 
-```sh
-uv run tests/rcv/edges.py
-tools/leanrun --timeout 20m lake build rcv-spec
-tools/leanrun --timeout 50m lake env lean Demos/Rcv/RoundStatements.lean
-```
+`rcv-rounds edges FILE...` checks the contests of the contest-word files `NAME.words` that hold
+valid arrays, each with the contest identifier `case`, the names `C1` to `Cn`, and no ballot
+identifiers, and `random SEED COUNT MAXN MAXK MAXB` checks seeded random contests of up to `MAXN`
+candidates of every kind, `MAXK` positions, and `MAXB` ballots.  Each mode prints the counts of
+contests, rounds, eliminations by kind, T9's orders, rejections of the false variants, and
+failures, and the exit status is 1 if a statement fails.
 -/
 
 open Demos.Rcv Demos.Rcv.Spec
 
-namespace Demos.Rcv.RoundStatements
+namespace Demos.Rcv.RoundsNative
 
 def setOf (rd : Round) : List Nat := rd.tally.votes.map fun x : Nat × Nat => x.1
 
@@ -76,7 +74,8 @@ def okT6 (c : Contest) : Bool :=
   ((List.range n).all fun r : Nat =>
     let rd := k.rounds.getD r ⟨⟨[], 0, 0, 0, 0⟩, none⟩
     let C := setOf rd
-    rd.tally.votes == C.map (fun i : Nat => (i, ballots.countP fun ps => interp C ps == .counts i)) &&
+    rd.tally.votes ==
+        C.map (fun i : Nat => (i, ballots.countP fun ps => interp C ps == .counts i)) &&
       rd.tally.blank == ballots.countP (fun ps => interp C ps == .inactive .blank) &&
       rd.tally.uncounted == ballots.countP (fun ps => interp C ps == .inactive .uncounted) &&
       rd.tally.overvote == ballots.countP (fun ps => interp C ps == .inactive .overvote) &&
@@ -153,7 +152,8 @@ def Gen.contest (g : Gen) (maxN maxK maxBallots : Nat) : Contest × Gen := Id.ru
       ps := ps ++ [w]
     let (r, g') := g.below 3
     g := g'
-    let ident : Option (List UInt8) := if r = 0 then some (ascii ("b" ++ toString ballots.length)) else none
+    let ident : Option (List UInt8) :=
+      if r = 0 then some (ascii ("b" ++ toString ballots.length)) else none
     ballots := ballots ++ [{ ident, positions := ps }]
   let c : Contest :=
     { contest := ascii "random"
@@ -219,7 +219,8 @@ def faultT4b (c : Contest) : Bool :=
     | some (.batch s) =>
       let t := rd.tally
       t.votes.all fun y : Nat × Nat =>
-        !qualifies t.votes y || (lower t.votes y.2).length < 2 || s.length ≤ (lower t.votes y.2).length
+        !qualifies t.votes y || (lower t.votes y.2).length < 2 ||
+          s.length ≤ (lower t.votes y.2).length
     | _ => true
 
 /-- T5 with the continuing ballots counted twice. -/
@@ -289,23 +290,6 @@ def record (s : Tallies) (c : Contest) (g : Gen) (orders : Nat) : Tallies × Gen
         (if !h && countContest { c with order := π' } != k then 1 else 0) }
   return (s, g)
 
-def runEdges (dir : System.FilePath) : IO Tallies := do
-  let mut s : Tallies := {}
-  let mut g : Gen := ⟨7⟩
-  let entries ← dir.readDir
-  let files := (entries.map (·.path)).filter (·.extension == some "rcv")
-  let mut rejected := 0
-  for p in files.qsort (fun a b => a.toString < b.toString) do
-    match ← (Demos.Rcv.Native.load p.toString).toBaseIO with
-    | .error _ => rejected := rejected + 1
-    | .ok c =>
-      let orders := if c.candidates.length ≤ 8 then 6 else 2
-      let (s', g') := record s c g orders
-      s := s'
-      g := g'
-  IO.println s!"edge files: {files.size}, rejected by load: {rejected}"
-  return s
-
 def runRandom (count maxN maxK maxBallots : Nat) (seed : UInt64) : Tallies := Id.run do
   let mut s : Tallies := {}
   let mut g : Gen := ⟨seed⟩
@@ -316,12 +300,60 @@ def runRandom (count maxN maxK maxBallots : Nat) (seed : UInt64) : Tallies := Id
     g := g''
   return s
 
-end Demos.Rcv.RoundStatements
+/-! ## Main -/
 
-open Demos.Rcv.RoundStatements in
-#eval show IO Unit from do
-  let s ← runEdges "tmp/rcv-edges"
-  IO.println (repr s)
-  IO.println (repr (runRandom 4000 5 4 12 1))
-  IO.println (repr (runRandom 4000 6 4 30 2))
-  IO.println (repr (runRandom 2000 8 5 60 3))
+/-- The little-endian 64-bit words of a file. -/
+def wordsOf (bs : ByteArray) : List UInt64 :=
+  (List.range (bs.size / 8)).map fun j : Nat =>
+    (List.range 8).foldr
+      (fun (b : Nat) (acc : UInt64) => (acc <<< 8) ||| (bs.get! (8 * j + b)).toUInt64) 0
+
+/-- The contest of a word array, with the contest identifier `case`, the names `C1` to `Cn`, and no
+ballot identifiers, or none when the words are not a valid contest. -/
+def contestOfWords (ws : List UInt64) : Option Contest :=
+  let d := readWords ws
+  if decide (d.Valid ws.length) then
+    some (Demos.Rcv.Cases.contestOf (d.kinds.map kindOfCode) d.order d.k d.ballots)
+  else none
+
+/-- Prints the counts of a run and returns 1 if a statement failed. -/
+def finish (label : String) (s : Tallies) : IO UInt32 := do
+  IO.println (s!"{label}: {s.contests} contests, {s.wellFormed} well-formed, " ++
+    s!"{s.rounds} rounds, {s.batches} batches, {s.lowest} lowest eliminations, " ++
+    s!"{s.orderElims} eliminations by order, {s.noWinner} counts without a winner")
+  IO.println (s!"{label}: T9 orders {s.t9orders}, meeting the hypothesis {s.t9hyp}, " ++
+    s!"with a marked tie {s.t9hypTied}, with a marked tie and another order {s.t9hypChanged}, " ++
+    s!"failing the hypothesis and changing the count {s.t9noHypDiffer}")
+  IO.println (s!"{label}: false variants rejected: T4 with the earliest tied member {s.fault4}, " ++
+    s!"T4 with the smallest qualifying set {s.fault4b}, " ++
+    s!"T5 with the continuing ballots counted twice {s.fault5}, " ++
+    s!"T6 with an unchanged continuing set {s.fault6}")
+  IO.println (s!"{label}: failing: T4 {s.fail4}, T5 {s.fail5}, T6 {s.fail6}, T7 {s.fail7}, " ++
+    s!"T9 {s.fail9}")
+  return if s.fail4 + s.fail5 + s.fail6 + s.fail7 + s.fail9 == 0 then 0 else 1
+
+def main (args : List String) : IO UInt32 := do
+  match args with
+  | "edges" :: files =>
+    let mut s : Tallies := {}
+    let mut g : Gen := ⟨7⟩
+    let mut invalid := 0
+    for path in files do
+      match contestOfWords (wordsOf (← IO.FS.readBinFile path)) with
+      | none => invalid := invalid + 1
+      | some c =>
+        let (s', g') := record s c g (if c.candidates.length ≤ 8 then 6 else 2)
+        s := s'
+        g := g'
+    IO.println s!"edge files: {files.length}, invalid arrays: {invalid}"
+    finish "edges" s
+  | ["random", seed, n, maxN, maxK, maxB] =>
+    finish "random"
+      (runRandom n.toNat! maxN.toNat! maxK.toNat! maxB.toNat! seed.toNat!.toUInt64)
+  | _ =>
+    IO.eprintln "usage: rcv-rounds edges FILE... | random SEED COUNT MAXN MAXK MAXB"
+    return 2
+
+end Demos.Rcv.RoundsNative
+
+def main (args : List String) : IO UInt32 := Demos.Rcv.RoundsNative.main args
