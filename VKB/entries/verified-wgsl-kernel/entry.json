@@ -50,7 +50,9 @@
     "Demos.Gpt32.Item.execAll_sim",
     "Demos.Gpt32.generate_host",
     "Verified.Kernel.binOp",
-    "Verified.Kernel.cmpExpr"
+    "Verified.Kernel.cmpExpr",
+    "LeanExe.WGSL.Module.invokeE",
+    "LeanExe.PTX.Stmt.exec"
   ],
   "examples": [
     "Examples.Binary32.scale32_dispatch",

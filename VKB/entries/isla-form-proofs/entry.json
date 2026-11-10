@@ -6,7 +6,9 @@
     "LeanExe.M7.Isla.Agrees P δ (sys u) W F f i m",
     "memory exhaustion or deep recursion in a trace walk",
     "a walk step whose cost grows with the remaining trace",
-    "a WebAssembly form that a back end lacks"
+    "a WebAssembly form that a back end lacks",
+    "AgreesAll for a form with an abstract call and one outcome",
+    "a kernel stack overflow in the check of a form's decode"
   ],
   "modules": [
     "LeanExe.A64.Isla.Trace",
