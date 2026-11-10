@@ -116,6 +116,8 @@ elif [ "$case_module" = "orderbook" ]; then
   cases_exe=verified-cases-orderbook
 elif [ "$case_module" = "rcvCount" ] || [ "$case_module" = "rcvTabulate" ]; then
   cases_exe=verified-cases-rcv
+elif [ "$case_module" = "rcvMaine" ]; then
+  cases_exe=verified-cases-rcv-maine
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.

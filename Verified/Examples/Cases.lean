@@ -12,6 +12,7 @@ import TestSupport.Slew.Cases
 import TestSupport.Energy.Cases
 import TestSupport.OrderBook.Cases
 import TestSupport.Rcv.Cases
+import TestSupport.Rcv.MaineCases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -812,6 +813,7 @@ def main : IO Unit := do
   TestSupport.Energy.Cases.cases
   TestSupport.OrderBook.Cases.cases
   TestSupport.Rcv.Cases.cases
+  TestSupport.Rcv.MaineCases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

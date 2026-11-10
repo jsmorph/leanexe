@@ -1,23 +1,37 @@
 import Demos.Rcv.Maine.Rounds
+import Demos.Rcv.Maine.TabulateProgram
+import Demos.Rcv.Maine.Variants
+import Demos.Rcv.Maine.Winner
 
 /-!
-Native runs of the Maine specification on canonical ballot files and word arrays, and native tests
-of the statements of T4 to T9 of `Demos/Rcv/Maine/Rounds.lean` and
-`Demos/Rcv/Maine/Stability.lean`, which ran before their proofs.  Word arrays are packed as the
-reference packs them: little-endian 64-bit words.
+Native runs of the Maine specification and programs on canonical ballot files and word arrays, and
+native tests of the statements of T3 to T9 and T11 of `Demos/Rcv/Maine/Rounds.lean`,
+`Demos/Rcv/Maine/Stability.lean`, `Demos/Rcv/Maine/Winner.lean`, and
+`Demos/Rcv/Maine/Holder.lean`.  Those of T4 to T9 and T11 ran before their proofs, and those of T3
+after its proof.  Word arrays are packed as the reference packs them: little-endian 64-bit words.
 
 `rcv-maine report FILE` writes `reportFile` of the file, `words FILE` the result words of
 `countWords` on the file's contest words, and `array FILE` those of `countArray` on a packed word
-array.  `compare FILE…` compares the report of each canonical file `X.rcv` with the reference's
-report `X.report` beside it, and `compare-words FILE…` the result words of each word array `X.words`
-with `X.result`.  Each prints the number of files and of differences, with status 1 when one
+array.  `program-report FILE` and `program-array FILE` write the outputs of the programs
+`Demos.Rcv.Maine.TabulateProgram.tabulate` and `Demos.Rcv.Maine.Program.count`, run natively.
+`compare FILE…` compares the report of each canonical file `X.rcv` with the reference's report
+`X.report` beside it, and `compare-words FILE…` the result words of each word array `X.words` with
+`X.result`.  Each prints the number of files and of differences, with status 1 when one
 differs.
 
-`check FILE…` decides the conclusions of T4 to T9 on the contest of each well-formed canonical
+`program FILE…` compares the result words of the program `Demos.Rcv.Maine.Program.count`, run
+natively, on each word array `X.words` with those of `countArray` and with `X.result`, and
+`tabulate FILE…` compares the report of the program `Demos.Rcv.Maine.TabulateProgram.tabulate` on
+each canonical file `X.rcv` with `reportFile` and with `X.report`.  `variants FILE…` prints, for
+each well-formed canonical file, the rounds and the winner of `countWithoutTest` and of
+`singleCount` in the report's lines.
+
+`check FILE…` decides the conclusions of T3 to T9 and T11, with T11(a) on every pair of subsets
+`S' ⊆ S` of `K` when `K` has at most six candidates, on the contest of each well-formed canonical
 file, and `random SEED COUNT MAXN MAXK MAXB` on seeded random contests of up to `MAXN` candidates of
 every kind, `MAXK` positions, and `MAXB` ballots.  T7 compares each contest with a shuffle of its
-ballots whose identifiers change, and T9 tries random orders.  `pairs` decides both statements of
-T8 for every ballot of up to four positions over the fields empty, each of five candidates of every
+ballots whose identifiers change, and T9 tries random orders.  `pairs` decides both statements of T8
+for every ballot of up to four positions over the fields empty, each of five candidates of every
 kind, a named overvote, and the unnamed one, against every pair `S' ⊆ S` of subsets of the five
 candidates.  Each mode prints its counts, with the rejections of false variants of the statements,
 and exits with status 1 when a statement fails.
@@ -76,6 +90,48 @@ def compareWords (paths : List String) : IO UInt32 := do
       IO.println s!"{path}: the result words differ from the reference's"
   IO.println s!"{paths.length} word arrays, {differ} differ"
   return if differ == 0 then 0 else 1
+
+/-! ## The programs -/
+
+def comparePrograms (paths : List String) : IO UInt32 := do
+  let mut differ : Nat := 0
+  for path in paths do
+    let ws := (← IO.FS.readBinFile path)
+    let a := (unpack ws).toArray
+    let got := (Demos.Rcv.Maine.Program.count a).toList
+    let want := unpack (← IO.FS.readBinFile (withExt path "result"))
+    if got != (countArray a).toList || got != want then
+      differ := differ + 1
+      IO.println s!"{path}: the program's result words differ"
+  IO.println s!"{paths.length} word arrays, {differ} differ"
+  return if differ == 0 then 0 else 1
+
+def compareTabulate (paths : List String) : IO UInt32 := do
+  let mut differ : Nat := 0
+  for path in paths do
+    let b ← readBytes path
+    let got := (Demos.Rcv.Maine.TabulateProgram.tabulate ⟨⟨b.toArray⟩⟩).data.toList
+    if got != reportFile b || got != (← readBytes (withExt path "report")) then
+      differ := differ + 1
+      IO.println s!"{path}: the program's report differs"
+  IO.println s!"{paths.length} files, {differ} differ"
+  return if differ == 0 then 0 else 1
+
+/-- The lines of the rounds and the winner of a count. -/
+def countLines (k : Count) : List (List UInt8) :=
+  ((k.rounds.zipIdx 1).flatMap fun p : Round × Nat => roundLines p.2 p.1) ++ [winnerLine k.winner]
+
+def printVariants (paths : List String) : IO UInt32 := do
+  for path in paths do
+    match read (← readBytes path) with
+    | .error _ _ => pure ()
+    | .ok c =>
+      IO.println s!"file {path}"
+      IO.println "count-without-test"
+      writeBytes (text (countLines (countWithoutTest (kindsOf c) c.order (positionsOf c))))
+      IO.println "single-count"
+      writeBytes (text (countLines (singleCount (kindsOf c) c.order (positionsOf c))))
+  return 0
 
 /-! ## The statements -/
 
@@ -283,6 +339,105 @@ def faultT6 (c : Contest) : Bool :=
       | w :: _ => decide (i ∈ marks w)
       | [] => false)
 
+/-! ## T3 and T11 -/
+
+def subsets : List Nat → List (List Nat)
+  | [] => [[]]
+  | x :: xs => (subsets xs) ++ (subsets xs).map (x :: ·)
+
+
+def emptyCount : Count := ⟨[], none⟩
+
+/-- T3's four statements. -/
+def okT3 (c : Contest) : Bool :=
+  let kinds := kindsOf c
+  let ballots := positionsOf c
+  let k := countContest c
+  let K := countedSet kinds
+  let n := k.rounds.length
+  let a := k.winner.isSome == !K.isEmpty
+  let b1 := match initialWinner kinds ballots with
+    | some w => decide (ballots.length < 2 * firstCount ballots w)
+    | none => true
+  let b2 := match k.rounds.getLast? with
+    | some last => !(decide (0 < last.tally.continuing)) || match k.winner with
+      | some w => last.tally.votes.any fun x : Nat × Nat =>
+          x.1 == w && decide (last.tally.continuing < 2 * x.2)
+      | none => false
+    | none => true
+  let c3 := if 2 ≤ n then
+      let prev := k.rounds.getD (n - 2) emptyRound
+      let last := k.rounds.getD (n - 1) emptyRound
+      let tied := match prev.tally.votes with
+        | [x, y] => x.2 == y.2
+        | _ => false
+      ((continuingSet last).length == 1) == tied &&
+        (!tied || match prev.elimination, prev.tally.votes with
+          | some (.order Z _), [x, y] => Z == [x.1, y.1]
+          | _, _ => false)
+    else true
+  let d := (k.rounds.isEmpty == (initialWinner kinds ballots).isSome) &&
+    decide (n ≤ max 1 K.length)
+  a && b1 && b2 && c3 && d
+
+def holds (kinds : List Kind) (S : List Nat) (ballots : List (List UInt64)) (w : Nat) : Bool :=
+  decide ((tally (interpret kinds) S ballots).continuing <
+    2 * Stability.votesFor (interpret kinds) S ballots w)
+
+/-- T11(a) on every pair of subsets `S' ⊆ S` of `K`, for `K` of at most six candidates. -/
+def okT11a (c : Contest) : Bool × Nat :=
+  let kinds := kindsOf c
+  let ballots := positionsOf c
+  let K := countedSet kinds
+  if 6 < K.length then (true, 0) else Id.run do
+    let mut ok := true
+    let mut tried := 0
+    for S in subsets K do
+      for S' in subsets S do
+        for w in S' do
+          if holds kinds S ballots w then
+            tried := tried + 1
+            if !holds kinds S' ballots w then ok := false
+    return (ok, tried)
+
+/-- T11(b) for a holder of more than half, or, with `strict := false`, of at least half of a
+positive `Tᵣ`, a false variant. -/
+def okT11b (c : Contest) (strict : Bool) : Bool :=
+  let k := countContest c
+  let n := k.rounds.length
+  (List.range n).all fun r : Nat =>
+    let rd := k.rounds.getD r emptyRound
+    rd.tally.votes.all fun x : Nat × Nat =>
+      let T := rd.tally.continuing
+      if (strict && decide (T < 2 * x.2)) || (!strict && decide (0 < T ∧ T ≤ 2 * x.2)) then
+        ((List.range' (r + 1) (n - r - 1)).all fun r' : Nat =>
+          (continuingSet (k.rounds.getD r' emptyRound)).contains x.1) && k.winner == some x.1
+      else true
+
+def okT11c (c : Contest) : Bool :=
+  let kinds := kindsOf c
+  let ballots := positionsOf c
+  match initialWinner kinds ballots with
+  | some w =>
+    let k' := countWithoutTest kinds c.order ballots
+    (match k'.rounds.head? with
+      | some rd => rd.tally.votes.any fun x : Nat × Nat =>
+          x.1 == w && decide (rd.tally.continuing < 2 * x.2)
+      | none => false) && k'.winner == some w
+  | none => true
+
+def okT11d (c : Contest) : Bool :=
+  match (singleCount (kindsOf c) c.order (positionsOf c)).winner with
+  | some w => (countContest c).winner == some w
+  | none => true
+
+/-- T11(d) in the other direction, a false variant: if the count names `w`, the single count
+names `w`. -/
+def faultT11d (c : Contest) : Bool :=
+  match (countContest c).winner with
+  | some w => (singleCount (kindsOf c) c.order (positionsOf c)).winner == some w
+  | none => true
+
 structure Tallies where
   contests : Nat := 0
   wellFormed : Nat := 0
@@ -305,6 +460,14 @@ structure Tallies where
   fault4 : Nat := 0
   fault4b : Nat := 0
   fault6 : Nat := 0
+  fail3 : Nat := 0
+  fail11 : Nat := 0
+  t11aPairs : Nat := 0
+  t11bHolders : Nat := 0
+  t11cElected : Nat := 0
+  t11dNamed : Nat := 0
+  fault11b : Nat := 0
+  fault11d : Nat := 0
   deriving Repr
 
 def record (s : Tallies) (c : Contest) (g : Gen) (orders : Nat) : Tallies × Gen := Id.run do
@@ -326,7 +489,22 @@ def record (s : Tallies) (c : Contest) (g : Gen) (orders : Nat) : Tallies × Gen
     fail8 := s.fail8 + (if okT8 c then 0 else 1)
     fault4 := s.fault4 + (if faultT4 c then 0 else 1)
     fault4b := s.fault4b + (if faultT4b c then 0 else 1)
-    fault6 := s.fault6 + (if faultT6 c then 0 else 1) }
+    fault6 := s.fault6 + (if faultT6 c then 0 else 1)
+    fail3 := s.fail3 + (if okT3 c then 0 else 1) }
+  let (a11, pairs) := okT11a c
+  let holders := k.rounds.foldl (fun acc rd => acc + (rd.tally.votes.filter fun x : Nat × Nat =>
+    decide (rd.tally.continuing < 2 * x.2)).length) 0
+  s := { s with
+    fail11 := s.fail11 +
+      (if a11 && okT11b c true && okT11c c && okT11d c then 0 else 1)
+    t11aPairs := s.t11aPairs + pairs
+    t11bHolders := s.t11bHolders + holders
+    t11cElected := s.t11cElected +
+      (if (initialWinner (kindsOf c) (positionsOf c)).isSome then 1 else 0)
+    t11dNamed := s.t11dNamed +
+      (if (singleCount (kindsOf c) c.order (positionsOf c)).winner.isSome then 1 else 0)
+    fault11b := s.fault11b + (if okT11b c false then 0 else 1)
+    fault11d := s.fault11d + (if faultT11d c then 0 else 1) }
   let (b7, g') := okT7 c g
   let mut g := g'
   s := { s with fail7 := s.fail7 + (if b7 then 0 else 1) }
@@ -354,10 +532,15 @@ def finish (label : String) (s : Tallies) : IO UInt32 := do
     s!"failing the hypothesis and changing the count {s.t9noHypDiffer}")
   IO.println (s!"{label}: false variants rejected: T4 with the earliest tied member {s.fault4}, " ++
     s!"T4 with a majority in the last round {s.fault4b}, " ++
-    s!"T6 with first positions that mark several candidates {s.fault6}")
+    s!"T6 with first positions that mark several candidates {s.fault6}, " ++
+    s!"T11(b) for a holder of half {s.fault11b}, T11(d) reversed {s.fault11d}")
+  IO.println (s!"{label}: T11(a) pairs {s.t11aPairs}, T11(b) holders {s.t11bHolders}, " ++
+    s!"T11(c) contests the test decides {s.t11cElected}, " ++
+    s!"T11(d) single counts with a winner {s.t11dNamed}")
   IO.println (s!"{label}: failing: T4 {s.fail4}, T5 {s.fail5}, T6 {s.fail6}, T7 {s.fail7}, " ++
-    s!"T8 {s.fail8}, T9 {s.fail9}")
-  return if s.fail4 + s.fail5 + s.fail6 + s.fail7 + s.fail8 + s.fail9 == 0 then 0 else 1
+    s!"T8 {s.fail8}, T9 {s.fail9}, T3 {s.fail3}, T11 {s.fail11}")
+  return if s.fail3 + s.fail4 + s.fail5 + s.fail6 + s.fail7 + s.fail8 + s.fail9 + s.fail11 == 0
+    then 0 else 1
 
 def runRandom (count maxN maxK maxBallots : Nat) (seed : UInt64) : Tallies := Id.run do
   let mut s : Tallies := {}
@@ -408,10 +591,6 @@ def ballotsUpTo : Nat → List (List UInt64)
     ((List.range (k + 1)).foldl (fun (acc : List (List UInt64)) _ =>
       acc.flatMap fun b => fields.map fun w => w :: b) [[]])
 
-def subsets : List Nat → List (List Nat)
-  | [] => [[]]
-  | x :: xs => (subsets xs) ++ (subsets xs).map (x :: ·)
-
 /-- Whether `interp` satisfies both statements of T8 for the ballot `ps` and the sets `S' ⊆ S`. -/
 def stableOn (interp : List Nat → List UInt64 → Outcome) (S S' : List Nat) (ps : List UInt64) :
     Bool :=
@@ -458,16 +637,29 @@ def main (args : List String) : IO UInt32 := do
     | ["array", path] =>
       (← IO.getStdout).write (pack (countWords (unpack (← IO.FS.readBinFile path))))
       return 0
+    | ["program-report", path] =>
+      writeBytes
+        (Demos.Rcv.Maine.TabulateProgram.tabulate ⟨⟨(← readBytes path).toArray⟩⟩).data.toList
+      return 0
+    | ["program-array", path] =>
+      (← IO.getStdout).write
+        (pack (Demos.Rcv.Maine.Program.count (unpack (← IO.FS.readBinFile path)).toArray).toList)
+      return 0
     | "compare" :: paths => compare paths
     | "compare-words" :: paths => compareWords paths
     | "check" :: paths => check paths
+    | "program" :: paths => comparePrograms paths
+    | "tabulate" :: paths => compareTabulate paths
+    | "variants" :: paths => printVariants paths
     | ["random", seed, n, maxN, maxK, maxB] =>
       finish "random"
         (runRandom n.toNat! maxN.toNat! maxK.toNat! maxB.toNat! seed.toNat!.toUInt64)
     | ["pairs"] => pairs
     | _ =>
-      IO.eprintln ("usage: rcv-maine report FILE | words FILE | array FILE | compare FILE... | " ++
-        "compare-words FILE... | check FILE... | random SEED COUNT MAXN MAXK MAXB | pairs")
+      IO.eprintln ("usage: rcv-maine report FILE | words FILE | array FILE | " ++
+        "program-report FILE | program-array FILE | compare FILE... | " ++
+        "compare-words FILE... | check FILE... | program FILE... | tabulate FILE... | " ++
+        "variants FILE... | random SEED COUNT MAXN MAXK MAXB | pairs")
       return 2
   catch e =>
     IO.eprintln s!"{e}"

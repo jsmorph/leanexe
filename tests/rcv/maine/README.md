@@ -9,6 +9,7 @@ This directory holds the corpus of the tabulator's Maine module and the scripts 
 | [`convert.py`](convert.py) | `uv run python -I tests/rcv/maine/convert.py KEY [--data DIR] [--order I ...] [--named-writein NAME] [--excluded NAME] [--practice] [--out FILE]` | Writes the canonical ballot file of a contest ([The converter](#the-converter)) |
 | [`check.py`](check.py) | `uv run python -I tests/rcv/maine/check.py [--data DIR] [--out DIR]` | Converts every contest, writes the canonical files with the reference's Maine report and words, and checks them against the summary reports ([Checks](#checks)) |
 | [`edges.py`](edges.py) | `uv run tests/rcv/maine/edges.py [OUT]` | Writes the Maine edge cases and the shared ones with the reference's Maine outputs into `OUT`, `tmp/rcv-maine-edges` by default ([Edge cases](#edge-cases)) |
+| [`tabulate.py`](tabulate.py) | `uv run tests/rcv/maine/tabulate.py [--module PATH] [--host PATH] [--maine PATH] DIR ...` | Compares the exports `tabulate` and `count` of the Maine module in the Wasmtime host, the specification and the programs in native Lean, and the outputs stored beside each file with the reference's Maine report and result words |
 
 ## The converter
 
