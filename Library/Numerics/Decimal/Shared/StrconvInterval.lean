@@ -107,7 +107,7 @@ theorem pack_lt_F (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit f)
 
 theorem packInf_of (E Q : ℕ) (hE : E < f.F) (hL : pack f E Q < limit f) :
     packInf f E Q = pack f E Q := by
-  unfold packInf; rw [if_neg (by omega)]
+  unfold packInf; rw [ite_eq_right (by omega)]
 
 /-- The rounding interval: `pack f E Q` is the reference of exactly the reals in its interval. -/
 theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit f) (y : ℝ)
@@ -124,7 +124,7 @@ theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit
   have hBr : (1 : ℝ) ≤ half f := by exact_mod_cast hB
   have hQr : (Q : ℝ) + 1 ≤ 2 * half f := by exact_mod_cast hQ2
   have hlow : ∀ (h2 : ¬ (2 ≤ E ∧ Q = half f)), lower f E Q = (2 * Q - 1 : ℝ) * S / 2 :=
-    fun h2 => by unfold lower; rw [if_neg h2]
+    fun h2 => by unfold lower; rw [ite_eq_right h2]
   constructor
   · intro href
     obtain ⟨E', Q', hR⟩ := exists_roundsTo f y hy
@@ -133,8 +133,8 @@ theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit
     rw [href] at href'
     have hF' : ¬ (f.F ≤ E' ∨ limit f ≤ pack f E' Q') := by
       intro hc2
-      unfold packInf at href'; rw [if_pos hc2] at href'; omega
-    rw [packInf, if_neg hF'] at href'
+      unfold packInf at href'; rw [ite_eq_left hc2] at href'; omega
+    rw [packInf, ite_eq_right hF'] at href'
     obtain ⟨hE', hb1, hb2, hr1, hr2, htie⟩ := hR
     rcases pack_eq f E Q E' Q' hc hE' hQ' hQ1' href' with ⟨rfl, rfl⟩ | ⟨rfl, rfl, hQB⟩
     · unfold InInterval
@@ -166,12 +166,12 @@ theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit
           · exact absurd h hnt1
     · -- the carry from the binade below
       unfold InInterval
-      rw [if_pos (by rw [hQB]; exact hBe)]
+      rw [ite_eq_left (by rw [hQB]; exact hBe)]
       have hS2 : (2 : ℝ) ^ (E' + 1 - 1) = 2 * (2 : ℝ) ^ (E' - 1) := by
         rw [show E' + 1 - 1 = (E' - 1) + 1 by omega, pow_succ]; ring
       constructor
       · unfold lower
-        rw [if_pos ⟨by omega, hQB⟩, hQB, hS2]
+        rw [ite_eq_left ⟨by omega, hQB⟩, hQB, hS2]
         push_cast at hr2
         nlinarith
       · unfold upper
@@ -199,7 +199,7 @@ theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit
         · intro ht
           by_contra hpar
           unfold InInterval at hin
-          rw [if_neg hpar] at hin
+          rw [ite_eq_right hpar] at hin
           have hst : ¬ (2 ≤ E ∧ Q = half f) := by
             rintro ⟨_, h⟩; rw [h] at hpar; exact hpar hBe
           rcases ht with ht | ht
@@ -219,7 +219,7 @@ theorem interval_iff (E Q : ℕ) (hc : Canonical f E Q) (hL : pack f E Q < limit
       have hS2 : (2 : ℝ) ^ (E - 1) = 2 * (2 : ℝ) ^ (E - 1 - 1) := by
         rw [← pow_succ']; congr 1; omega
       have hlo' : (4 * (half f : ℝ) - 1) * (2 * (2 : ℝ) ^ (E - 1 - 1)) / 4 ≤ y := by
-        unfold lower at hlo; rw [if_pos ⟨hE2, hQB⟩, hQB, hS2] at hlo; exact_mod_cast hlo
+        unfold lower at hlo; rw [ite_eq_left ⟨hE2, hQB⟩, hQB, hS2] at hlo; exact_mod_cast hlo
       have hyB' : y < (half f : ℝ) * (2 * (2 : ℝ) ^ (E - 1 - 1)) := by
         rw [← hS2]; exact hyB
       have hR : RoundsTo f y (E - 1) (2 * half f) := by

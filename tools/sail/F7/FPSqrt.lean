@@ -118,7 +118,7 @@ theorem root_facts (R : ℕ) (hR1 : 2 ^ 1074 ≤ R) (hR2 : R < 2 ^ 3172) :
 theorem maskN_small (q j : ℕ) (up exact : Prop) [Decidable up] [Decidable exact]
     (hj : j + 2 < 2047) : maskN q j up exact = if exact then 0#64 else 0x10#64 := by
   unfold maskN
-  rw [if_neg (by split_ifs <;> omega)]
+  rw [ite_eq_right (by split_ifs <;> omega)]
 
 /-- Talos's `roundSqrtMagnitude N` for a nonzero `N`: the radicand `N · 2^1074`, its rounded
 integer root at the shift `rootShift`, and `roundScaledMagnitude`.  Lean's core library, in which
@@ -133,7 +133,7 @@ theorem tSqrtU (N : ℕ) (hN : 0 < N) :
           2 ^ rootShift (N * 2 ^ 1074)) := by
   have hN0 : (N == 0) = false := by simp only [beq_eq_false_iff_ne]; omega
   unfold rootShift
-  rw [Wasm.IEEE64.roundSqrtMagnitude, hN0, if_neg Bool.false_ne_true]
+  rw [Wasm.IEEE64.roundSqrtMagnitude, hN0, ite_eq_right Bool.false_ne_true]
 
 theorem tSqrt_eq (N : ℕ) (hN : 0 < N) :
     (Wasm.IEEE64.roundSqrtMagnitude N).toBitVec =

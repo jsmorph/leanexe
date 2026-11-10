@@ -449,7 +449,7 @@ theorem binv_step (scale : Bool) (xa : Float) (hxf : Finite xa.toBits)
   -- the step itself
   have hE : |value s.2.1.toBits * Jn (i + 1) w - value s.1.toBits * Jn i w| ≤
       7 * 𝐮 * (value s.1.toBits * Jn i w) := by
-    have : Er i = 7 * 𝐮 := by unfold Er; rw [if_neg (by omega)]
+    have : Er i = 7 * 𝐮 := by unfold Er; rw [ite_eq_right (by omega)]
     rw [← this]; exact hr
   have hsum' : lam w i * Jn i w = Jn (i - 1) w + Jn (i + 1) w := hsum
   obtain ⟨hbf, hbe⟩ := bstep (a := s.1) (b := s.2.1) (di := s.2.2.2) (x := xa) i ha.1 hb.1 hdi hx

@@ -631,7 +631,7 @@ theorem spec_loop_with (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr
           ((init.mode (slots.map Slot.mode)).join
             (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
           (init.denote funs env) = tTy.copyCost (init.denote funs env) := by
-        rw [coerceCost, if_pos ⟨hs, ht⟩]
+        rw [coerceCost, ite_eq_left ⟨hs, ht⟩]
       exact hw.shift (hTop2 (fits_of_not hd)) (by rw [hT]; omega)
         (by rw [aV.step.cap m, e1'.step.cap m]))
     fun heap2' store2 s3 ws0 a2 hTopCo hSame0 => ?_
@@ -1099,7 +1099,7 @@ theorem spec_loop_with (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr
           tTy.copyCost (body.denote funs (.cons (loopState (init.denote funs env)
               (fun i acc => bif cond.denote funs (.cons acc env) then
                 body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) (.cons i env))) := by
-        rw [coerceCost, if_pos ⟨by simpa only [List.map_cons] using hs, ht⟩]
+        rw [coerceCost, ite_eq_left ⟨by simpa only [List.map_cons] using hs, ht⟩]
       exact hw.of_le (by
           have := hInv' (fits_of_not hd); have := hTopC' (fits_of_not hd)
           have := congrArg UInt64.toNat hTopRel

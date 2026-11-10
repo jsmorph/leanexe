@@ -90,15 +90,15 @@ theorem mag_succ (n : ℕ) : mag f (n + 1) = mag f n + 2 ^ (n / half f - 1) := b
   by_cases h1 : n + 1 < half f
   · have h0 : n < half f := by omega
     have hd : n / half f = 0 := Nat.div_eq_of_lt h0
-    rw [if_pos h1, if_pos h0, hd]
+    rw [ite_eq_left h1, ite_eq_left h0, hd]
     simp
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     by_cases h0 : n < half f
     · have hn : n + 1 = half f := by omega
-      rw [if_pos h0, hn, Nat.mod_self, Nat.div_self hB, Nat.div_eq_of_lt h0]
+      rw [ite_eq_left h0, hn, Nat.mod_self, Nat.div_self hB, Nat.div_eq_of_lt h0]
       simp only [add_zero, Nat.sub_self, pow_zero, mul_one]
       omega
-    · rw [if_neg h0]
+    · rw [ite_eq_right h0]
       have hpos : 1 ≤ n / half f := (Nat.le_div_iff_mul_le hB).mpr (by omega)
       by_cases hm : n % half f + 1 < half f
       · have hn1 : n + 1 = (n % half f + 1) + n / half f * half f := by omega
@@ -155,7 +155,7 @@ theorem mag_pack (E Q : ℕ) (hE : 1 ≤ E) (hQ : Q ≤ 2 * half f) (hQ1 : E = 1
   unfold mag pack
   simp only [Nat.add_sub_cancel]
   by_cases h1 : k * half f + Q < half f
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have hk : k = 0 := by
       rcases hQ1 with h | h
       · omega
@@ -163,7 +163,7 @@ theorem mag_pack (E Q : ℕ) (hE : 1 ≤ E) (hQ : Q ≤ 2 * half f) (hQ1 : E = 1
         have : half f ≤ k * half f := Nat.le_mul_of_pos_left _ (by omega)
         omega
     subst hk; simp
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     have hQB : half f ≤ Q := by
       rcases hQ1 with h | h
       · have hk : k = 0 := by omega
@@ -199,7 +199,7 @@ theorem mag_dvd (E n : ℕ) (hE : 1 ≤ E) (h : E * half f ≤ n) : 2 ^ (E - 1) 
   have hn : ¬ n < half f := by
     have : half f ≤ E * half f := Nat.le_mul_of_pos_left _ (by omega)
     omega
-  rw [if_neg hn]
+  rw [ite_eq_right hn]
   have hq : E ≤ n / half f := (Nat.le_div_iff_mul_le hB).mpr h
   apply Dvd.dvd.mul_left
   exact Nat.pow_dvd_pow 2 (by omega)
@@ -467,7 +467,7 @@ theorem positive_reference (y : ℝ) (E Q : ℕ) (h : RoundsTo f y E Q) :
   have hBr : (1 : ℝ) ≤ half f := by exact_mod_cast hB
   unfold packInf refPos
   by_cases hEF : f.F ≤ E
-  · rw [if_pos (Or.inl hEF), if_pos]
+  · rw [ite_eq_left (Or.inl hEF), ite_eq_left]
     rw [hT]
     rcases hy2 with h1 | h1
     · omega
@@ -477,7 +477,7 @@ theorem positive_reference (y : ℝ) (E Q : ℕ) (h : RoundsTo f y E Q) :
         exact pow_le_pow_right₀ (by norm_num) (by omega)
       nlinarith [pow_pos (by norm_num : (0 : ℝ) < 2) (f.F - 3)]
   by_cases hW : limit f ≤ pack f E Q
-  · rw [if_pos (Or.inr hW), if_pos]
+  · rw [ite_eq_left (Or.inr hW), ite_eq_left]
     have hE' : E = f.F - 1 := by
       unfold limit pack at hW
       by_contra hne
@@ -502,7 +502,7 @@ theorem positive_reference (y : ℝ) (E Q : ℕ) (h : RoundsTo f y E Q) :
     push_cast at hr2
     nlinarith [pow_pos (by norm_num : (0 : ℝ) < 2) (f.F - 3)]
   have hnot : ¬ (f.F ≤ E ∨ limit f ≤ pack f E Q) := by tauto
-  rw [if_neg hnot, if_neg]
+  rw [ite_eq_right hnot, ite_eq_right]
   · apply nearest_even_unique f y
     · exact Classical.choose_spec (exists_nearest_even f y)
     · exact nearest_even_pack f y E Q h (by omega)

@@ -168,7 +168,7 @@ theorem fetchFrom_sub {m m' : UInt64 → UInt8} {a a' : UInt64} {o n N : Nat}
       have := a'.toNat_lt
       simp only [Nat.reducePow] at *
       omega
-    rw [if_pos ⟨by omega, by omega⟩]
+    rw [ite_eq_left ⟨by omega, by omega⟩]
     rw [← h]
     have hk : ∀ k < 4, p + UInt64.ofNat k = a' + UInt64.ofNat ((p - a').toNat + k) := by
       intro k hk

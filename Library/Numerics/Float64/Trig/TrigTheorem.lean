@@ -54,7 +54,7 @@ theorem sin_nonfinite (x : Float) (h : ¬ Finite x.toBits) :
   have he := high_nonfinite x h
   unfold Trig.sin Trig.sinWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
-  rw [if_neg (by omega), if_pos he, F64Bits.toBits_sub, sub_self_nonfinite _ h]
+  rw [ite_eq_right (by omega), ite_eq_left he, F64Bits.toBits_sub, sub_self_nonfinite _ h]
 
 /-- `cos` of an infinity or a NaN is the canonical NaN. -/
 theorem cos_nonfinite (x : Float) (h : ¬ Finite x.toBits) :
@@ -63,7 +63,7 @@ theorem cos_nonfinite (x : Float) (h : ¬ Finite x.toBits) :
   have he := high_nonfinite x h
   unfold Trig.cos Trig.cosWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
-  rw [if_neg (by omega), if_pos he, F64Bits.toBits_sub, sub_self_nonfinite _ h]
+  rw [ite_eq_right (by omega), ite_eq_left he, F64Bits.toBits_sub, sub_self_nonfinite _ h]
 
 theorem zero_bits : (Float.ofBits 0).toBits = 0 ∧
     (Float.ofBits 0x8000000000000000).toBits = 0x8000000000000000 := by
@@ -76,7 +76,7 @@ theorem sin_pos_zero : (Trig.sin (Float.ofBits 0)).toBits = 0 := by
   have hix := high_word (Float.ofBits 0).toBits
   unfold Trig.sin Trig.sinWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb]
-  rw [if_pos (by decide), if_pos (by decide), hb]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), hb]
 
 /-- `sin (-0) = -0`. -/
 theorem sin_neg_zero :
@@ -85,7 +85,7 @@ theorem sin_neg_zero :
   have hix := high_word (Float.ofBits 0x8000000000000000).toBits
   unfold Trig.sin Trig.sinWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb]
-  rw [if_pos (by decide), if_pos (by decide), hb]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), hb]
 
 /-- `cos (+0) = 1`. -/
 theorem cos_pos_zero : (Trig.cos (Float.ofBits 0)).toBits = 0x3FF0000000000000 := by
@@ -94,7 +94,7 @@ theorem cos_pos_zero : (Trig.cos (Float.ofBits 0)).toBits = 0x3FF0000000000000 :
   obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, h1⟩ := TrigKernelWords.const_bits
   unfold Trig.cos Trig.cosWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb]
-  rw [if_pos (by decide), if_pos (by decide), h1]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), h1]
   rfl
 
 /-- `cos (-0) = 1`. -/
@@ -105,7 +105,7 @@ theorem cos_neg_zero :
   obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, h1⟩ := TrigKernelWords.const_bits
   unfold Trig.cos Trig.cosWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb]
-  rw [if_pos (by decide), if_pos (by decide), h1]
+  rw [ite_eq_left (by decide), ite_eq_left (by decide), h1]
   rfl
 
 /-- The store in which the module starts is ready, with the heap that holds its tables. -/

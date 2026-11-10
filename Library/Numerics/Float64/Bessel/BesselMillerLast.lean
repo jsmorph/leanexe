@@ -146,7 +146,7 @@ theorem last_step (scale : Bool) (xa : Float) (hxf : Finite xa.toBits)
       linarith [show (2 : ℝ) ^ 333 * 2 ^ 31 ≤ 2 ^ 1020 by norm_num]
   have hE : |value s.2.1.toBits * Jn (1 + 1) w - value s.1.toBits * Jn 1 w| ≤
       12 * 𝐮 * (value s.1.toBits * Jn 1 w) := by
-    have : Er 1 = 12 * 𝐮 := by unfold Er; rw [if_pos rfl]
+    have : Er 1 = 12 * 𝐮 := by unfold Er; rw [ite_eq_left rfl]
     rw [← this]; exact hr
   have hsum' : lam w 1 * Jn 1 w = Jn (1 - 1) w + Jn (1 + 1) w := hsum
   have hdJ' : Jn (1 + 1) w ≤ d * Jn (1 - 1) w := hdJ

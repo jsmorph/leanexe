@@ -121,9 +121,9 @@ theorem toUInt64_int (x : Float) (N : Nat) (hf : Finite x.toBits) (hv : value x.
       Nat.mul_div_cancel _ (show 0 < 2 ^ 1074 by positivity)]
   unfold Wasm.IEEE64.truncSatI64U
   simp only [hnan, Bool.false_eq_true, ite_false, htr]
-  rw [if_neg (by omega), if_neg (by omega)]
+  rw [ite_eq_right (by omega), ite_eq_right (by omega)]
   unfold Wasm.IEEE64.intToUInt64
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
   rfl
 
 theorem parity (N : Nat) (h : N < 2 ^ 64) : (UInt64.ofNat N &&& 1 == 1) = decide (N % 2 = 1) := by

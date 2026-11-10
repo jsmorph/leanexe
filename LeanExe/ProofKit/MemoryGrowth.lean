@@ -89,7 +89,7 @@ theorem growProgram_abort (module_ : Wasm.Module) (env : HostEnv Unit)
   have hGrow : store.mem.grow (delta store.mem.pages required) (store.memoryCap module_ 0) =
       none := by
     simp only [Mem.grow, hDelta]
-    rw [if_neg (by omega)]
+    rw [ite_eq_right (by omega)]
   simp only [delta] at hGrow
   unfold growProgram
   simp only [List.cons_append, List.nil_append]

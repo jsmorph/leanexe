@@ -60,7 +60,7 @@ theorem word_value (e j : Nat) (he1 : 1 ≤ e) (he2 : e ≤ 2045) (hj : j ≤ 2 
   have hv := Library.Numerics.Float64.Trig.TrigMedium.value_normal _ h63 (by rw [hexp]; split <;> omega)
   rw [hv, hexp, hn]
   rcases Nat.lt_or_ge j (2 ^ 52) with hlt | hge
-  · rw [if_pos hlt]
+  · rw [ite_eq_left hlt]
     have hm : (e * 2 ^ 52 + j) % 2 ^ 52 = j := by omega
     rw [hm]
     unfold B S
@@ -72,7 +72,7 @@ theorem word_value (e j : Nat) (he1 : 1 ≤ e) (he2 : e ≤ 2045) (hj : j ≤ 2 
     ring
   · have hj' : j = 2 ^ 52 := le_antisymm hj hge
     subst hj'
-    rw [if_neg (by omega)]
+    rw [ite_eq_right (by omega)]
     have hm : (e * 2 ^ 52 + 2 ^ 52) % 2 ^ 52 = 0 := by omega
     rw [hm]
     unfold B S

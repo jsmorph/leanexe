@@ -245,7 +245,7 @@ theorem atan2_inf_x (y x : Float) (hx : x.toBits = 0x7FF0000000000000 ∨ x.toBi
   have h3 : (ixOf x ||| lxOf x == 0) = false := by
     rw [zero_test, decide_eq_false_iff_not]
     exact hx0
-  rw [atan2_xinf_eq y x hn h1 h2 h3 (inf_ix_test x hx), if_neg (by rw [inf_test y hy]; decide)]
+  rw [atan2_xinf_eq y x hn h1 h2 h3 (inf_ix_test x hx), ite_eq_right (by rw [inf_test y hy]; decide)]
   cases hsx : Wasm.IEEE64.sign x.toBits <;> cases hsy : Wasm.IEEE64.sign y.toBits <;>
     (first
       | rw [m00 y x hsy hsx]
@@ -271,7 +271,7 @@ theorem atan2_inf_both (y x : Float)
   have h3 : (ixOf x ||| lxOf x == 0) = false := by
     rw [zero_test, decide_eq_false_iff_not]
     exact hx0
-  rw [atan2_xinf_eq y x hn h1 h2 h3 (inf_ix_test x hx), if_pos (inf_ix_test y hy)]
+  rw [atan2_xinf_eq y x hn h1 h2 h3 (inf_ix_test x hx), ite_eq_left (inf_ix_test y hy)]
   cases hsx : Wasm.IEEE64.sign x.toBits <;> cases hsy : Wasm.IEEE64.sign y.toBits <;>
     (first
       | rw [m00 y x hsy hsx]

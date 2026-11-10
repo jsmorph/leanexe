@@ -248,10 +248,10 @@ theorem sin_within (x : Float) (hxf : Finite x.toBits) :
   unfold Trig.sin Trig.sinWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
   by_cases h1 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 ≤ 1072243195
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     by_cases h2 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 < 1045430272
     · -- `|x| < 2 ^ -26`: the result is `x`.
-      rw [if_pos h2]
+      rw [ite_eq_left h2]
       refine tiny_sin x.toBits hxf ?_ (zero_iff x.toBits)
       rw [← hav, ← t26]
       exact F64PositiveOrder.value_strict (by decide) (by
@@ -259,7 +259,7 @@ theorem sin_within (x : Float) (hxf : Finite x.toBits) :
         show _ < 0x3E50000000000000
         omega)
     · -- `2 ^ -26 ≤ |x| < 0x3FE921FC00000000`: the kernel without a tail.
-      rw [if_neg h2]
+      rw [ite_eq_right h2]
       have hlo : 1 / 2 ^ 26 ≤ |value x.toBits| := by
         rw [← hav, ← t26]
         exact (F64PositiveOrder.value_le_iff (by decide) hA63).mpr (by
@@ -278,9 +278,9 @@ theorem sin_within (x : Float) (hxf : Finite x.toBits) :
       exact sin_final _ t _ _ _ hcf hct hts (by rw [sub_self, abs_zero]; positivity)
         (abs_nonneg _) (le_mul_of_one_le_right (abs_nonneg _) (by norm_num))
         (le_trans (by norm_num) hlo) (le_trans hhi.le (by norm_num))
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     have h3 : ¬ (2146435072 ≤ x.toBits.toNat % 2 ^ 63 / 2 ^ 32) := by omega
-    rw [if_neg h3]
+    rw [ite_eq_right h3]
     -- The reduced argument.
     have hR := TrigReduce.remPio2_spec x.abs (by rw [F64Bits.toBits_abs]; exact hA63)
       (by rw [F64Bits.toBits_abs, habs]; omega) (by rw [F64Bits.toBits_abs, habs]; omega)
@@ -293,12 +293,12 @@ theorem sin_within (x : Float) (hxf : Finite x.toBits) :
     rw [hav] at hsel
     by_cases hneg : x < 0.0
     · have hv := (lt_zero_iff x hxf).mp hneg
-      rw [if_pos hneg]
+      rw [ite_eq_left hneg]
       rw [abs_of_neg hv, Real.sin_neg] at hsel
       have := neg_within _ _ hsel
       rwa [neg_neg] at this
     · have hv : 0 ≤ value x.toBits := not_lt.mp (fun h => hneg ((lt_zero_iff x hxf).mpr h))
-      rw [if_neg hneg]
+      rw [ite_eq_right hneg]
       rwa [abs_of_nonneg hv] at hsel
 
 /-- The accuracy of `Trig.cos` for every finite `x`. -/
@@ -314,10 +314,10 @@ theorem cos_within (x : Float) (hxf : Finite x.toBits) :
   unfold Trig.cos Trig.cosWith
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat]
   by_cases h1 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 ≤ 1072243195
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     by_cases h2 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 < 1044816030
     · -- `|x| < 0x3E46A09E00000000`: the result is 1.
-      rw [if_pos h2]
+      rw [ite_eq_left h2]
       have hhi : |value x.toBits| < 1482910 / 2 ^ 47 := by
         rw [← hav, ← t47]
         exact F64PositiveOrder.value_strict (by decide) (by
@@ -339,7 +339,7 @@ theorem cos_within (x : Float) (hxf : Finite x.toBits) :
       · rw [value_one, abs_lt]
         constructor <;> linarith
     · -- The kernel without a tail.
-      rw [if_neg h2]
+      rw [ite_eq_right h2]
       have hlo : 1482910 / 2 ^ 47 ≤ |value x.toBits| := by
         rw [← hav, ← t47]
         exact (F64PositiveOrder.value_le_iff (by decide) hA63).mpr (by
@@ -362,9 +362,9 @@ theorem cos_within (x : Float) (hxf : Finite x.toBits) :
       rw [h0v, add_zero] at hc
       exact cos_final _ _ _ hcf hc (by rw [sub_self, abs_zero]; positivity)
         (le_trans hhi.le (by norm_num))
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     have h3 : ¬ (2146435072 ≤ x.toBits.toNat % 2 ^ 63 / 2 ^ 32) := by omega
-    rw [if_neg h3]
+    rw [ite_eq_right h3]
     have hR := TrigReduce.remPio2_spec x.abs (by rw [F64Bits.toBits_abs]; exact hA63)
       (by rw [F64Bits.toBits_abs, habs]; omega) (by rw [F64Bits.toBits_abs, habs]; omega)
     generalize Trig.remPio2 Trig.invPi Trig.halfPi x.abs = P at hR ⊢

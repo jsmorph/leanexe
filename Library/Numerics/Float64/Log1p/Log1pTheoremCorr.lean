@@ -156,7 +156,7 @@ theorem corr_low (x : Float) (hx : Finite x.toBits) (h1 : -1 < value x.toBits)
   refine ⟨hsum.1, hsum.2, hgrid, ?_⟩
   have hc : cOf x (1.0 + x) = x - ((1.0 + x) - 1.0) := by
     unfold cOf
-    exact if_neg ((k_cases (1.0 + x) hsum.1 hvu0).1 (by rw [← hvu, hsum.2]; linarith))
+    exact ite_eq_right ((k_cases (1.0 + x) hsum.1 hvu0).1 (by rw [← hvu, hsum.2]; linarith))
   rw [hc]
   -- `u - 1 = x`
   have hsu := scaled_of_value (1.0 + x).toBits (1 + vx) hsum.2
@@ -226,7 +226,7 @@ theorem corr_sterbenz (x : Float) (hx : Finite x.toBits) (hx1 : -1 < value x.toB
   set vu := value (1.0 + x).toBits with hvu
   have hc : cOf x (1.0 + x) = x - ((1.0 + x) - 1.0) := by
     unfold cOf
-    exact if_neg hk
+    exact ite_eq_right hk
   rw [hc]
   have hm1 : FApprox ((1.0 + x) - 1.0) (vu - 1) 0 := by
     unfold FApprox
@@ -451,7 +451,7 @@ theorem corr_big (x : Float) (hx : Finite x.toBits) (h1 : 1 ≤ value x.toBits)
   have hk := (k_cases u hu hvu0).2.2 hvu2
   have hc : cOf x u = 1.0 - (u - x) := by
     unfold cOf
-    exact if_pos hk
+    exact ite_eq_left hk
   have hcr : FApprox (1.0 - (u - x)) (1 + vx - vu) 0 :=
     ⟨h1d.1, by rw [h1d.2, ← hvu, ← hvx, show (1 : ℝ) - (vu - vx) - (1 + vx - vu) = 0 by ring,
       abs_zero]⟩

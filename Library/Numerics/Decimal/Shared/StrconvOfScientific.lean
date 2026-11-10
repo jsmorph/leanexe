@@ -39,11 +39,11 @@ theorem refPos_small (f : Fmt) (y : ℝ) (hy : 0 ≤ y) (h : 2 * y < 1) : refPos
   unfold packInf StrconvGrid.pack
   have hF := f.hF
   have hL : 0 < limit f := by unfold limit; have := half_pos f; positivity
-  rw [if_neg (by simp only [Nat.sub_self, zero_mul, zero_add]; omega)]
+  rw [ite_eq_right (by simp only [Nat.sub_self, zero_mul, zero_add]; omega)]
   simp
 
 theorem refPos_large (f : Fmt) (y : ℝ) (h : threshold f ≤ y) : refPos f y = limit f := by
-  unfold refPos; rw [if_pos h]
+  unfold refPos; rw [ite_eq_left h]
 
 /-- `round64` of a nonnegative decimal is the word of the grid's reference. -/
 theorem round64_pos (m : ℕ) (q : ℤ) :

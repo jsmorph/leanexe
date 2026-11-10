@@ -38,7 +38,7 @@ theorem round_shift (u r : ℕ) (hr : 1 ≤ r) (φ : ℝ) (h0 : 0 ≤ φ) (h1 : 
   have hHr : (1 : ℝ) ≤ H := by exact_mod_cast hH1
   rw [hRr, hur]
   by_cases hup : H < rem ∨ (rem = H ∧ (0 < φ ∨ q0 % 2 = 1))
-  · rw [if_pos hup] at hQ
+  · rw [ite_eq_left hup] at hQ
     subst hQ
     push_cast
     rcases hup with h | ⟨h, h'⟩
@@ -54,7 +54,7 @@ theorem round_shift (u r : ℕ) (hr : 1 ≤ r) (φ : ℝ) (h0 : 0 ≤ φ) (h1 : 
         rcases h' with h' | h'
         · exfalso; linarith
         · omega
-  · rw [if_neg hup] at hQ
+  · rw [ite_eq_right hup] at hQ
     subst hQ
     push Not at hup
     obtain ⟨hle, hne⟩ := hup
@@ -150,7 +150,7 @@ theorem qOf_drop (u e tb : UInt64) (sticky : Bool) (φ : ℝ) (h0 : 0 ≤ φ) (h
   have hrw : (e - 1 + 0x4000000000000000 - tb).toNat = r := by
     rw [toNat_sub' _ _ (by rw [hsum]; exact hT), hsum, hrdef]
   have hQdef : qOf u sticky tb e = qDrop u sticky (e - 1 + 0x4000000000000000 - tb) := by
-    unfold qOf; rw [if_pos hcond]
+    unfold qOf; rw [ite_eq_left hcond]
   generalize e - 1 + 0x4000000000000000 - tb = R at hrw hQdef
   rw [hQdef] at hQ
   clear hQdef hcond hsum he1w hrdef
@@ -168,16 +168,16 @@ theorem qOf_drop (u e tb : UInt64) (sticky : Bool) (φ : ℝ) (h0 : 0 ≤ φ) (h
     subst hφ
     have hR0 : (R == 0) = true := by
       simp only [beq_iff_eq]; apply UInt64.toNat_inj.mp; rw [hrw, hr]; rfl
-    rw [if_pos hR0] at hQ
+    rw [ite_eq_left hR0] at hQ
     rw [hQ, hr]
     refine ⟨hu, by simp <;> linarith, by simp <;> linarith, fun ht => ?_⟩
     exfalso; simp at ht
   have hR0 : (R == 0) = false := by
     simp only [beq_eq_false_iff_ne, ne_eq]; intro h; apply hr; rw [← hrw, h]; rfl
-  rw [if_neg (by simp [hR0])] at hQ
+  rw [ite_eq_right (by simp [hR0])] at hQ
   by_cases h64 : 64 ≤ r
   · have hR64 : R ≥ 64 := UInt64.le_iff_toNat_le.mpr (by rw [hrw]; exact h64)
-    rw [if_pos hR64] at hQ
+    rw [ite_eq_left hR64] at hQ
     rw [hQ]
     have hp : (2 : ℝ) ^ 64 ≤ 2 ^ r := pow_le_pow_right₀ (by norm_num) h64
     have hu' : (u.toNat : ℝ) + 1 ≤ 2 ^ 63 := by exact_mod_cast hu
@@ -186,7 +186,7 @@ theorem qOf_drop (u e tb : UInt64) (sticky : Bool) (φ : ℝ) (h0 : 0 ≤ φ) (h
   · push Not at h64
     have hR64 : ¬ R ≥ 64 := fun h => by
       have := UInt64.le_iff_toNat_le.mp h; rw [hrw] at this; simp at this; omega
-    rw [if_neg hR64] at hQ
+    rw [ite_eq_right hR64] at hQ
     have hr1 : 1 ≤ r := by omega
     have hRw : R.toNat < 64 := by rw [hrw]; exact h64
     have hR1 : (R - 1).toNat = r - 1 := by
@@ -231,9 +231,9 @@ theorem qOf_drop (u e tb : UInt64) (sticky : Bool) (φ : ℝ) (h0 : 0 ≤ φ) (h
       rw [hQ]
       by_cases hc : 2 ^ (r - 1) < u.toNat % 2 ^ r ∨
           (u.toNat % 2 ^ r = 2 ^ (r - 1) ∧ (0 < φ ∨ u.toNat / 2 ^ r % 2 = 1))
-      · rw [if_pos (decide_eq_true hc), if_pos hc,
+      · rw [ite_eq_left (decide_eq_true hc), ite_eq_left hc,
           toNat_add' _ _ (by rw [hdiv, UInt64.toNat_one]; omega), hdiv, UInt64.toNat_one]
-      · rw [if_neg (by simpa using hc), if_neg hc, hdiv]
+      · rw [ite_eq_right (by simpa using hc), ite_eq_right hc, hdiv]
     obtain ⟨a1, a2, a3⟩ := round_shift u.toNat r hr1 φ h0 h1 Q hQ'
     refine ⟨?_, a1, a2, a3⟩
     rw [hQ']
@@ -274,13 +274,13 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
       rw [hst] at hs; have := of_decide_eq_false hs.symm; linarith
     have hu0' : (u == 0) = true := by
       simp only [beq_iff_eq]; exact UInt64.toNat_inj.mp (by rw [hu0]; rfl)
-    rw [if_pos hu0', hu0, hφ]
+    rw [ite_eq_left hu0', hu0, hφ]
     simp only [Nat.cast_zero, add_zero, zero_mul]
     rw [Library.Numerics.Decimal.Shared.StrconvOfScientific.refPos_small f 0 le_rfl (by norm_num)]
     rfl
   have hu0' : (u == 0) = false := by
     simp only [beq_eq_false_iff_ne, ne_eq]; intro h; apply hu0; rw [h]; rfl
-  rw [if_neg (by simp [hu0'])]
+  rw [ite_eq_right (by simp [hu0'])]
   dsimp only
   set n := Nat.size u.toNat with hndef
   have hwb : (wordBits u).toNat = n := Library.Numerics.Arithmetic.Uscale.UscaleTheorem.wordBits_spec u
@@ -296,10 +296,10 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
     have hpb : (p + 0x4000000000000000).toNat = f.p + 2 ^ 62 := by
       rw [toNat_add' _ _ (by rw [hp, bias_toNat]; omega), hp, bias_toNat]
     by_cases hc : n + T ≤ f.p + 2 ^ 62
-    · rw [if_pos (UInt64.le_iff_toNat_le.mpr (by rw [hsum, hpb]; exact hc))]
-      rw [hEdef, if_pos hc]; rfl
-    · rw [if_neg (fun h => hc (by have := UInt64.le_iff_toNat_le.mp h; rwa [hsum, hpb] at this))]
-      rw [hEdef, if_neg hc]
+    · rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr (by rw [hsum, hpb]; exact hc))]
+      rw [hEdef, ite_eq_left hc]; rfl
+    · rw [ite_eq_right (fun h => hc (by have := UInt64.le_iff_toNat_le.mp h; rwa [hsum, hpb] at this))]
+      rw [hEdef, ite_eq_right hc]
       have h1' : (wordBits u + tb - 0x4000000000000000).toNat = n + T - 2 ^ 62 := by
         rw [toNat_sub' _ _ (by rw [hsum, bias_toNat]; omega), hsum, bias_toNat]
       have h2' : (wordBits u + tb - 0x4000000000000000 - p).toNat = n + T - 2 ^ 62 - f.p := by
@@ -316,21 +316,21 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
       linarith
     have hy : y < 2 ^ n * (2 : ℝ) ^ t := mul_lt_mul_of_pos_right hu1 ht2
     by_cases hc : n + T ≤ f.p + 2 ^ 62
-    · have hE1' : E = 1 := by rw [hEdef, if_pos hc]
+    · have hE1' : E = 1 := by rw [hEdef, ite_eq_left hc]
       rw [hE1', Nat.sub_self, pow_zero, mul_one]
       calc y < 2 ^ n * (2 : ℝ) ^ t := hy
         _ = (2 : ℝ) ^ ((n : ℤ) + t) := by rw [zpow_add₀ two_ne_zero, zpow_natCast]
         _ ≤ (2 : ℝ) ^ (f.p : ℤ) := zpow_le_zpow_right₀ (by norm_num) (by omega)
         _ = 2 ^ f.p := zpow_natCast _ _
-    · have hE' : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, if_neg hc]; omega
+    · have hE' : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, ite_eq_right hc]; omega
       calc y < 2 ^ n * (2 : ℝ) ^ t := hy
         _ = 2 ^ f.p * 2 ^ (E - 1) := by
           rw [← pow_add, two_zpow_split (f.p + (E - 1)) n t (by omega)]
   have hlower : E = 1 ∨ (2 : ℝ) ^ (f.p - 1) * 2 ^ (E - 1) ≤ y := by
     by_cases hc : n + T ≤ f.p + 2 ^ 62
-    · left; rw [hEdef, if_pos hc]
+    · left; rw [hEdef, ite_eq_left hc]
     · right
-      have hE' : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, if_neg hc]; omega
+      have hE' : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, ite_eq_right hc]; omega
       have hu1 : (2 : ℝ) ^ (n - 1) ≤ (u.toNat : ℝ) + φ := by
         have : ((2 ^ (n - 1) : ℕ) : ℝ) ≤ u.toNat := by exact_mod_cast hun1
         push_cast at this; linarith
@@ -339,7 +339,7 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
         _ ≤ y := mul_le_mul_of_nonneg_right hu1 ht2.le
   by_cases hEF : f.F ≤ E
   · -- beyond the finite binades
-    rw [if_pos (UInt64.le_iff_toNat_le.mpr (by rw [hE, hF]; exact hEF))]
+    rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr (by rw [hE, hF]; exact hEF))]
     have hpw : ((1 : UInt64) <<< (p - 1)).toNat = 2 ^ (f.p - 1) := by
       rw [shl1 _ (by rw [toNat_sub' _ _ (by rw [hp]; simp; omega), hp]; simp; omega),
         toNat_sub' _ _ (by rw [hp]; simp; omega), hp]; rfl
@@ -351,7 +351,7 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
     rw [hFs]
     symm
     unfold refPos
-    rw [if_pos]
+    rw [ite_eq_left]
     rcases hlower with h | h
     · omega
     · refine le_trans ?_ h
@@ -364,7 +364,7 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
       have h4 : (0 : ℝ) ≤ 2 ^ (f.F - 3) := by positivity
       have h5 : (0 : ℝ) < 2 ^ (f.p - 1) := by positivity
       nlinarith
-  rw [if_neg (fun h => hEF (by have := UInt64.le_iff_toNat_le.mp h; rwa [hE, hF] at this))]
+  rw [ite_eq_right (fun h => hEF (by have := UInt64.le_iff_toNat_le.mp h; rwa [hE, hF] at this))]
   push Not at hEF
   have hpw : ((1 : UInt64) <<< (p - 1)).toNat = 2 ^ (f.p - 1) := by
     have h1' : (p - 1).toNat = f.p - 1 := by rw [toNat_sub' _ _ (by rw [hp]; simp; omega), hp]; rfl
@@ -383,9 +383,9 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
         intro hsc
         have := hsb hsc
         by_cases hc : n + T ≤ f.p + 2 ^ 62
-        · have : E = 1 := by rw [hEdef, if_pos hc]
+        · have : E = 1 := by rw [hEdef, ite_eq_left hc]
           omega
-        · have : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, if_neg hc]; omega
+        · have : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, ite_eq_right hc]; omega
           omega
       obtain ⟨_, a1, a2, a3⟩ := qOf_drop u e tb sticky φ h0 h1 hs hu (by rw [hE]; omega)
         (by rw [hE]; exact hE1) (by rw [hE]; exact hd) r (by rw [hE]) hr0 Q rfl
@@ -422,9 +422,9 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
         · have := hsb hsc
           exfalso
           by_cases hc : n + T ≤ f.p + 2 ^ 62
-          · have : E = 1 := by rw [hEdef, if_pos hc]
+          · have : E = 1 := by rw [hEdef, ite_eq_left hc]
             omega
-          · have : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, if_neg hc]; omega
+          · have : E - 1 = n + T - 2 ^ 62 - f.p := by rw [hEdef, ite_eq_right hc]; omega
             omega
       have hφ : φ = 0 := by
         rw [hst] at hs; have := of_decide_eq_false hs.symm; linarith
@@ -453,7 +453,7 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
         unfold qOf
         have hsum' : (e - 1 + 0x4000000000000000).toNat = E - 1 + 2 ^ 62 := by
           rw [toNat_add' _ _ (by rw [he1w, bias_toNat]; omega), he1w, bias_toNat]
-        rw [if_neg (fun h => by
+        rw [ite_eq_right (fun h => by
           have h' := UInt64.le_iff_toNat_le.mp h
           rw [hsum'] at h'
           omega)]
@@ -488,9 +488,9 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
   have hnF : ¬ (f.F ≤ E) := by omega
   simp only [hnF, false_or]
   by_cases hc : limit f ≤ pack f E Q
-  · rw [if_pos (UInt64.le_iff_toNat_le.mpr (by rw [hsum, hFs]; exact hc)), if_pos hc, hFs]
-  · rw [if_neg (fun h => hc (by have := UInt64.le_iff_toNat_le.mp h; rwa [hsum, hFs] at this)),
-      if_neg hc, hsum]
+  · rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr (by rw [hsum, hFs]; exact hc)), ite_eq_left hc, hFs]
+  · rw [ite_eq_right (fun h => hc (by have := UInt64.le_iff_toNat_le.mp h; rwa [hsum, hFs] at this)),
+      ite_eq_right hc, hsum]
 
 #print axioms round_shift
 #print axioms qOf_drop

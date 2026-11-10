@@ -176,7 +176,7 @@ theorem go_iterate {α : Type} (cond : α → Bool) (step : α → α) :
       (by rw [← Function.iterate_succ_apply]; exact hstop)
     show (if cond s = true then LeanExe.repeatWhile.go cond step k (step s) else s) =
       step^[N + 1] s
-    rw [if_pos h0, ih, Function.iterate_succ_apply]
+    rw [ite_eq_left h0, ih, Function.iterate_succ_apply]
 
 #print axioms finite_of_abs_lt
 #print axioms toFloat_exact

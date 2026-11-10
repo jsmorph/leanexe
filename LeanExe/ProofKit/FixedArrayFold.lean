@@ -202,10 +202,10 @@ theorem forwardSetupProgram_spec
     hStopIndexNeLengthIndex, hStopScratchIndexNeLengthIndex,
     hIndexIndexNeLengthIndex,
     hLengthRead, hInputAddress]
-  rw [if_neg (Nat.not_lt.mpr hLengthBound)]
-  rw [if_neg (Nat.not_lt.mpr hLengthBound)]
+  rw [ite_eq_right (Nat.not_lt.mpr hLengthBound)]
+  rw [ite_eq_right (Nat.not_lt.mpr hLengthBound)]
   refine wp_iff_cons rfl ?_
-  rw [if_neg (by simp)]
+  rw [ite_eq_right (by simp)]
   simpa [forwardSetupFrame, hParams, hValues, hArrayPositive, hArrayBound,
     hLengthPositive, hLengthBoundLocal, hIndexPositive, hIndexBound,
     hStopScratchPositive, hStopScratchBound, hStopPositive, hStopBound,

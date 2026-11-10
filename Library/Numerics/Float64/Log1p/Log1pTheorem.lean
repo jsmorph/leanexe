@@ -195,7 +195,7 @@ theorem branch_tiny (x : Float) (hx : Finite x.toBits)
     have hc : (decide (axOf x < 0x3c900000)) = true := by
       rw [decide_eq_true_eq, UInt64.lt_iff_toNat_lt]
       simpa using c0
-    rw [hc, if_pos rfl]
+    rw [hc, ite_eq_left rfl]
     exact tiny_within x hx h54
   · have h54 : ¬ |value x.toBits| < ((1 / 2 ^ 54 : ℚ) : ℝ) :=
       fun h => c0 ((ax_lt x 0x3c900000 (by norm_num) (1 / 2 ^ 54) (by decide +kernel)).mpr h)
@@ -203,7 +203,7 @@ theorem branch_tiny (x : Float) (hx : Finite x.toBits)
     have hc : (decide (axOf x < 0x3c900000)) = false := by
       rw [decide_eq_false_iff_not, UInt64.lt_iff_toNat_lt]
       simpa using c0
-    rw [hc, if_neg (by simp)]
+    rw [hc, ite_eq_right (by simp)]
     exact small_within x hx (not_lt.mp h54) h29
 
 theorem K_cases (K : ℤ) (h1 : -60 ≤ K) (h2 : K ≤ 1024) (h0 : K ≠ 0) :
@@ -331,7 +331,7 @@ theorem special_two_near (x : Float) (hxb : x.toBits = 0x3FEFFFFFFFFFFFFF) :
       rw [hu]
       decide
     unfold cOf
-    rw [hk, if_pos (by decide), F64Bits.toBits_div, F64Bits.toBits_sub, F64Bits.toBits_sub, hu,
+    rw [hk, ite_eq_left (by decide), F64Bits.toBits_div, F64Bits.toBits_sub, F64Bits.toBits_sub, hu,
       hxb, hone]
     decide +kernel
   have hc : FApprox (cOf x (1.0 + x) / (1.0 + x))

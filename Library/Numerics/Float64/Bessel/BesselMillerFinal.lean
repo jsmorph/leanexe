@@ -451,7 +451,7 @@ theorem jn_backward (xa : Float) (n : UInt64) (hxf : Finite xa.toBits)
   obtain ⟨hβ0, hβ1⟩ := βB_le (n.toNat - 2) 1 (by omega)
   have hβ : βB (n.toNat - 2) 1 = (6 * ((n.toNat : ℝ) - 2) + 5) * 𝐮 := by
     unfold βB
-    rw [if_pos rfl, hm]
+    rw [ite_eq_left rfl, hm]
     ring
   unfold bfinal
   split_ifs with hc

@@ -54,7 +54,7 @@ theorem scaled_dyadic32 (n : ℕ) (hn : 0 < n) :
       have h0 : n ≠ 0 := by omega
       exact (Nat.le_log2 h0).mp (by omega)
     unfold Wasm.IEEE32.roundScaledMagnitude
-    rw [if_neg (by omega), if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_right (by omega)]
 
 /-- The binary32 word of an integer below `2 ^ 24` is exact. -/
 theorem exact_word (m : ℕ) (hm0 : 0 < m) (hm : m < 2 ^ 24) :
@@ -82,7 +82,7 @@ theorem exact_word (m : ℕ) (hm0 : 0 < m) (hm : m < 2 ^ 24) :
   have href := positive_reference b32 _ _ _ hRT
   have hpack : packInf b32 (127 + L) Q = pack b32 (127 + L) Q := by
     unfold packInf
-    rw [if_neg]
+    rw [ite_eq_right]
     rw [limit_b32]; unfold pack; rw [half_b32]
     simp only [b32, not_or, not_le]
     omega

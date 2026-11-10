@@ -236,7 +236,7 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
     refine ⟨Float.ofBits mw - 1.0, kOf u, (w >>> 32) &&& 0x000fffff, (e : ℤ) - 1023, ?_, hff,
       ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, by omega, hK0⟩
     · unfold mainTail
-      rw [← hw, if_pos hb]
+      rw [← hw, ite_eq_left hb]
     · rw [hvf]
       linarith
     · rw [hvf]
@@ -347,7 +347,7 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
       ((0x00100000 : UInt64) - ((w >>> 32) &&& 0x000fffff)) >>> 2,
       (e : ℤ) - 1022, ?_, hff, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, by omega, by omega, hK0⟩
     · unfold mainTail
-      rw [← hw, if_neg hb]
+      rw [← hw, ite_eq_right hb]
     · rw [hvf, le_div_iff₀ (by positivity)]
       have h3 : (-2929 / 10000 : ℝ) * 2 ^ 53 ≤ 0x6a09e * 2 ^ 32 - 2 ^ 52 := by norm_num
       linarith

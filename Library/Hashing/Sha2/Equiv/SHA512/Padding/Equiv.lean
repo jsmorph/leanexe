@@ -182,7 +182,7 @@ theorem impl_sha512_eq_refactored (data : ByteArray) (hsize : data.size < 2 ^ 61
         let byteIdx := i.val % 8
         ((final[wordIdx] >>> (UInt64.ofNat ((7 - byteIdx) * 8))) &&& 0xff).toUInt8 := by
   unfold Impl.sha512
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show (Vector.ofFn fun i : Fin 64 => _) = _
   unfold implSha512Refactored
   rw [impl_sha512State_eq_refactored]
@@ -210,7 +210,7 @@ theorem impl_sha384_eq_refactored (data : ByteArray) (hsize : data.size < 2 ^ 61
         let byteIdx := i.val % 8
         ((final[wordIdx] >>> (UInt64.ofNat ((7 - byteIdx) * 8))) &&& 0xff).toUInt8 := by
   unfold Impl.sha384
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show (Vector.ofFn fun i : Fin 48 => _) = _
   unfold implSha384Refactored
   rw [impl_sha512State_eq_refactored]
@@ -231,7 +231,7 @@ theorem impl_sha512_256_eq_refactored (data : ByteArray) (hsize : data.size < 2 
         let byteIdx := i.val % 8
         ((final[wordIdx] >>> (UInt64.ofNat ((7 - byteIdx) * 8))) &&& 0xff).toUInt8 := by
   unfold Impl.sha512_256
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show (Vector.ofFn fun i : Fin 32 => _) = _
   unfold implSha512_256Refactored
   rw [impl_sha512State_eq_refactored]
@@ -252,7 +252,7 @@ theorem impl_sha512_224_eq_refactored (data : ByteArray) (hsize : data.size < 2 
         let byteIdx := i.val % 8
         ((final[wordIdx] >>> (UInt64.ofNat ((7 - byteIdx) * 8))) &&& 0xff).toUInt8 := by
   unfold Impl.sha512_224
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show (Vector.ofFn fun i : Fin 28 => _) = _
   unfold implSha512_224Refactored
   rw [impl_sha512State_eq_refactored]

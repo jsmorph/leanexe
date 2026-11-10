@@ -221,11 +221,11 @@ theorem readAt_word (ctx : Context) (env : Env) {mk ml : Bool} (b kv len : Nat) 
     rw [readAt_eval ctx env b kv len _ hbase k.toUInt32 xs.size _ hbuf hsize (by omega) hk hl,
       hlo, hbaseNat]
     by_cases hlt : k.toNat < xs.size
-    · rw [if_pos hlt, getElem!_pos (arrayWords xs) _ (by cases high <;> simp <;> omega)]
+    · rw [ite_eq_left hlt, getElem!_pos (arrayWords xs) _ (by cases high <;> simp <;> omega)]
       have := arrayWords_get xs ((if high then 3 else 2) + 2 * k.toNat)
         (by cases high <;> simp <;> omega)
       rw [Array.getElem?_eq_getElem (by cases high <;> simp <;> omega)] at this
-      rw [Option.some.inj this, if_neg (by cases high <;> simp <;> omega)]
+      rw [Option.some.inj this, ite_eq_right (by cases high <;> simp <;> omega)]
       have hd : ((if high then 3 else 2) + 2 * k.toNat - 2) / 2 = k.toNat := by
         cases high <;> simp <;> omega
       rw [hd]
@@ -234,7 +234,7 @@ theorem readAt_word (ctx : Context) (env : Env) {mk ml : Bool} (b kv len : Nat) 
         simp [hm]
       · have hm : (3 + 2 * k.toNat) % 2 = 1 := by omega
         simp [hm]
-    · rw [if_neg hlt, getElem!_neg xs _ hlt]
+    · rw [ite_eq_right hlt, getElem!_neg xs _ hlt]
       cases high <;> rfl
   · rw [readAt_eval_high ctx env b kv len _ k.toUInt32 _ xs.size _ hbuf hsize (by omega) hhi hk hl]
     have hbig : xs.size ≤ k.toNat := by
@@ -268,7 +268,7 @@ theorem arrayWords_floats (x : Array Float32) (hSize : 2 + 2 * x.size < 2 ^ 32) 
     apply UInt32.toNat_inj.mp
     simp [UInt64.toNat_shiftRight]
     omega
-  · rw [arrayWords_get _ _ (by rw [Array.size_map]; omega), if_neg (by omega)]
+  · rw [arrayWords_get _ _ (by rw [Array.size_map]; omega), ite_eq_right (by omega)]
     have hd : (2 + 2 * k - 2) / 2 = k := by omega
     have hm : ¬((2 + 2 * k) % 2 = 1) := by omega
     rw [hd]

@@ -278,73 +278,73 @@ theorem rootRange_spec (afh sx : Float) (haf : Finite afh.toBits) (hsx : Finite 
       Library.Numerics.Float64.Tgamma.TgammaWords.ofBits_value _ (by decide), m10_5.2, m10_0.2]
     exact and_assoc
   by_cases h0 : ((decide (afh < Float.ofBits 0x3FB7400000000000) && decide (sx > Float.ofBits 0xC004E147AE147AE1)) && decide (sx < (-2.0 : Float))) = true
-  · rw [if_pos h0] at hr
+  · rw [ite_eq_left h0] at hr
     exact Or.inl ⟨(c0.mp h0).1, (c0.mp h0).2.1, (c0.mp h0).2.2, hr.symm⟩
-  rw [if_neg h0] at hr
+  rw [ite_eq_right h0] at hr
   by_cases h1 : ((decide (afh < Float.ofBits 0x3FB1680000000000) && decide (sx > (-3.0 : Float))) && decide (sx < Float.ofBits 0xC004E147AE147AE1)) = true
-  · rw [if_pos h1] at hr
+  · rw [ite_eq_left h1] at hr
     exact Or.inr (Or.inl ⟨(c1.mp h1).1, (c1.mp h1).2.1, (c1.mp h1).2.2, hr.symm⟩)
-  rw [if_neg h1] at hr
+  rw [ite_eq_right h1] at hr
   by_cases h2 : ((decide (afh < Float.ofBits 0x3FB2D40000000000) && decide (sx > (-3.5 : Float))) && decide (sx < (-3.0 : Float))) = true
-  · rw [if_pos h2] at hr
+  · rw [ite_eq_left h2] at hr
     exact Or.inr (Or.inr (Or.inl ⟨(c2.mp h2).1, (c2.mp h2).2.1, (c2.mp h2).2.2, hr.symm⟩))
-  rw [if_neg h2] at hr
+  rw [ite_eq_right h2] at hr
   by_cases h3 : ((decide (afh < Float.ofBits 0x3FAEF00000000000) && decide (sx > (-4.0 : Float))) && decide (sx < (-3.5 : Float))) = true
-  · rw [if_pos h3] at hr
+  · rw [ite_eq_left h3] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inl ⟨(c3.mp h3).1, (c3.mp h3).2.1, (c3.mp h3).2.2, hr.symm⟩)))
-  rw [if_neg h3] at hr
+  rw [ite_eq_right h3] at hr
   by_cases h4 : ((decide (afh < Float.ofBits 0x3FC0000000000000) && decide (sx > (-4.5 : Float))) && decide (sx < (-4.0 : Float))) = true
-  · rw [if_pos h4] at hr
+  · rw [ite_eq_left h4] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c4.mp h4).1, (c4.mp h4).2.1, (c4.mp h4).2.2, hr.symm⟩))))
-  rw [if_neg h4] at hr
+  rw [ite_eq_right h4] at hr
   by_cases h5 : ((decide (afh < Float.ofBits 0x3FB0800000000000) && decide (sx > (-5.0 : Float))) && decide (sx < (-4.5 : Float))) = true
-  · rw [if_pos h5] at hr
+  · rw [ite_eq_left h5] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c5.mp h5).1, (c5.mp h5).2.1, (c5.mp h5).2.2, hr.symm⟩)))))
-  rw [if_neg h5] at hr
+  rw [ite_eq_right h5] at hr
   by_cases h6 : ((decide (afh < Float.ofBits 0x3FB1000000000000) && decide (sx > (-5.5 : Float))) && decide (sx < (-5.0 : Float))) = true
-  · rw [if_pos h6] at hr
+  · rw [ite_eq_left h6] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c6.mp h6).1, (c6.mp h6).2.1, (c6.mp h6).2.2, hr.symm⟩))))))
-  rw [if_neg h6] at hr
+  rw [ite_eq_right h6] at hr
   by_cases h7 : ((decide (afh < Float.ofBits 0x3FC1300000000000) && decide (sx > (-6.0 : Float))) && decide (sx < (-5.5 : Float))) = true
-  · rw [if_pos h7] at hr
+  · rw [ite_eq_left h7] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c7.mp h7).1, (c7.mp h7).2.1, (c7.mp h7).2.2, hr.symm⟩)))))))
-  rw [if_neg h7] at hr
+  rw [ite_eq_right h7] at hr
   by_cases h8 : ((decide (afh < Float.ofBits 0x3FC1500000000000) && decide (sx > (-6.5 : Float))) && decide (sx < (-6.0 : Float))) = true
-  · rw [if_pos h8] at hr
+  · rw [ite_eq_left h8] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c8.mp h8).1, (c8.mp h8).2.1, (c8.mp h8).2.2, hr.symm⟩))))))))
-  rw [if_neg h8] at hr
+  rw [ite_eq_right h8] at hr
   by_cases h9 : ((decide (afh < Float.ofBits 0x3FC3400000000000) && decide (sx > (-7.0 : Float))) && decide (sx < (-6.5 : Float))) = true
-  · rw [if_pos h9] at hr
+  · rw [ite_eq_left h9] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c9.mp h9).1, (c9.mp h9).2.1, (c9.mp h9).2.2, hr.symm⟩)))))))))
-  rw [if_neg h9] at hr
+  rw [ite_eq_right h9] at hr
   by_cases h10 : ((decide (afh < Float.ofBits 0x3FC1450000000000) && decide (sx > (-7.5 : Float))) && decide (sx < (-7.0 : Float))) = true
-  · rw [if_pos h10] at hr
+  · rw [ite_eq_left h10] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c10.mp h10).1, (c10.mp h10).2.1, (c10.mp h10).2.2, hr.symm⟩))))))))))
-  rw [if_neg h10] at hr
+  rw [ite_eq_right h10] at hr
   by_cases h11 : ((decide (afh < Float.ofBits 0x3FC76B0000000000) && decide (sx > (-8.0 : Float))) && decide (sx < (-7.5 : Float))) = true
-  · rw [if_pos h11] at hr
+  · rw [ite_eq_left h11] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c11.mp h11).1, (c11.mp h11).2.1, (c11.mp h11).2.2, hr.symm⟩)))))))))))
-  rw [if_neg h11] at hr
+  rw [ite_eq_right h11] at hr
   by_cases h12 : ((decide (afh < Float.ofBits 0x3FC76C0000000000) && decide (sx > (-8.5 : Float))) && decide (sx < (-8.0 : Float))) = true
-  · rw [if_pos h12] at hr
+  · rw [ite_eq_left h12] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c12.mp h12).1, (c12.mp h12).2.1, (c12.mp h12).2.2, hr.symm⟩))))))))))))
-  rw [if_neg h12] at hr
+  rw [ite_eq_right h12] at hr
   by_cases h13 : ((decide (afh < Float.ofBits 0x3FC9900000000000) && decide (sx > (-9.0 : Float))) && decide (sx < (-8.5 : Float))) = true
-  · rw [if_pos h13] at hr
+  · rw [ite_eq_left h13] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c13.mp h13).1, (c13.mp h13).2.1, (c13.mp h13).2.2, hr.symm⟩)))))))))))))
-  rw [if_neg h13] at hr
+  rw [ite_eq_right h13] at hr
   by_cases h14 : ((decide (afh < Float.ofBits 0x3FC9900000000000) && decide (sx > (-9.5 : Float))) && decide (sx < (-9.0 : Float))) = true
-  · rw [if_pos h14] at hr
+  · rw [ite_eq_left h14] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c14.mp h14).1, (c14.mp h14).2.1, (c14.mp h14).2.2, hr.symm⟩))))))))))))))
-  rw [if_neg h14] at hr
+  rw [ite_eq_right h14] at hr
   by_cases h15 : ((decide (afh < Float.ofBits 0x3FC76B0000000000) && decide (sx > (-10.0 : Float))) && decide (sx < (-9.5 : Float))) = true
-  · rw [if_pos h15] at hr
+  · rw [ite_eq_left h15] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c15.mp h15).1, (c15.mp h15).2.1, (c15.mp h15).2.2, hr.symm⟩)))))))))))))))
-  rw [if_neg h15] at hr
+  rw [ite_eq_right h15] at hr
   by_cases h16 : ((decide (afh < Float.ofBits 0x3FC76B0000000000) && decide (sx > (-10.5 : Float))) && decide (sx < (-10.0 : Float))) = true
-  · rw [if_pos h16] at hr
+  · rw [ite_eq_left h16] at hr
     exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨(c16.mp h16).1, (c16.mp h16).2.1, (c16.mp h16).2.2, hr.symm⟩))))))))))))))))
-  rw [if_neg h16] at hr
+  rw [ite_eq_right h16] at hr
   exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨hr.symm, fun h => h0 (c0.mpr h), fun h => h1 (c1.mpr h), fun h => h2 (c2.mpr h), fun h => h3 (c3.mpr h), fun h => h4 (c4.mpr h), fun h => h5 (c5.mpr h), fun h => h6 (c6.mpr h), fun h => h7 (c7.mpr h), fun h => h8 (c8.mpr h), fun h => h9 (c9.mpr h), fun h => h10 (c10.mpr h), fun h => h11 (c11.mpr h), fun h => h12 (c12.mpr h), fun h => h13 (c13.mpr h), fun h => h14 (c14.mpr h), fun h => h15 (c15.mpr h), fun h => h16 (c16.mpr h)⟩))))))))))))))))
 
 end Library.Numerics.Float64.Lgamma.LgammaRootSel

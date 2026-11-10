@@ -187,8 +187,8 @@ theorem arg_spec (x y : UInt64) (X : ℝ) (hxf : Finite x) (hyf : Finite y) (hX 
   unfold bigArg negZero
   rw [sign_bit]
   rcases Bool.eq_false_or_eq_true (Wasm.IEEE64.sign x) with hs | hs
-  · rw [hs, if_pos rfl, F64Sign.sub_negZero, F64Sign.sub_negZero,
-      if_neg (by simp [not_nan_of_finite hxf]), if_neg (by simp [not_nan_of_finite hyf])]
+  · rw [hs, ite_eq_left rfl, F64Sign.sub_negZero, F64Sign.sub_negZero,
+      ite_eq_right (by simp [not_nan_of_finite hxf]), ite_eq_right (by simp [not_nan_of_finite hyf])]
     obtain ⟨hnxf, hnxv⟩ := F64Magnitude.negate_value x hxf
     obtain ⟨hnyf, hnyv⟩ := F64Magnitude.negate_value y hyf
     have hxv := sign_true x hs
@@ -198,7 +198,7 @@ theorem arg_spec (x y : UInt64) (X : ℝ) (hxf : Finite x) (hyf : Finite y) (hX 
     rw [hsum]
     exact arg_core _ _ X hnxf hnyf (by rw [hnxv, hxv, hX, neg_neg]) hX0 hX1
       (by rw [hnyv, abs_neg]; exact hy)
-  · rw [hs, if_neg (by simp)]
+  · rw [hs, ite_eq_right (by simp)]
     have hxv := sign_false x hs
     have hsum : |value x + value y| = X + value y := by
       rw [hxv, hX, abs_of_nonneg (by linarith [neg_abs_le (value y)])]

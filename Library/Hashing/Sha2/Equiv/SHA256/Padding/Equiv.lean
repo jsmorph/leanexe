@@ -169,7 +169,7 @@ at the top of `Impl.sha256` (see FIPS 180-4 §5.1.1). -/
 theorem impl_sha256_eq_refactored (data : ByteArray) (hsize : data.size < 2 ^ 61) :
     Impl.sha256 data = implSha256Refactored data := by
   unfold Impl.sha256
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show extractDigest (Impl.sha256State data Impl.H256_256) = _
   rw [impl_sha256State_eq_refactored]
   rfl
@@ -197,7 +197,7 @@ IV-generic `impl_sha256State_eq_refactored`. -/
 theorem impl_sha224_eq_refactored (data : ByteArray) (hsize : data.size < 2 ^ 61) :
     Impl.sha224 data = implSha224Refactored data := by
   unfold Impl.sha224
-  rw [if_neg (Nat.not_le.mpr hsize)]
+  rw [ite_eq_right (Nat.not_le.mpr hsize)]
   show extractDigest224 (Impl.sha256State data Impl.H256_224) = _
   rw [impl_sha256State_eq_refactored]
   rfl

@@ -191,7 +191,7 @@ theorem exponent_iff (markers x : List UInt8) (e : Int) :
     | m :: t, h =>
       simp only [decodeExp] at h
       by_cases hm : m ∈ markers
-      · rw [if_pos hm] at h
+      · rw [ite_eq_left hm] at h
         match t, h with
         | b :: r, h =>
           simp only [decodeExpDigits] at h
@@ -199,27 +199,27 @@ theorem exponent_iff (markers x : List UInt8) (e : Int) :
           · subst h1
             simp only [ite_true] at h
             by_cases hc : r ≠ [] ∧ r.all isDigit = true
-            · rw [if_pos hc] at h
+            · rw [ite_eq_left hc] at h
               cases h
               exact Exponent.minus m r hm hc.1 ((all_iff _ _).mp hc.2)
-            · rw [if_neg hc] at h; cases h
-          · rw [if_neg h1] at h
+            · rw [ite_eq_right hc] at h; cases h
+          · rw [ite_eq_right h1] at h
             by_cases h2 : b = 0x2B
             · subst h2
               simp only [ite_true] at h
               by_cases hc : r ≠ [] ∧ r.all isDigit = true
-              · rw [if_pos hc] at h
+              · rw [ite_eq_left hc] at h
                 cases h
                 exact Exponent.plus m r hm hc.1 ((all_iff _ _).mp hc.2)
-              · rw [if_neg hc] at h; cases h
-            · rw [if_neg h2] at h
+              · rw [ite_eq_right hc] at h; cases h
+            · rw [ite_eq_right h2] at h
               by_cases hc : (b :: r).all isDigit = true
-              · rw [if_pos hc] at h
+              · rw [ite_eq_left hc] at h
                 cases h
                 exact Exponent.plain m (b :: r) hm (by simp) ((all_iff _ _).mp hc)
-              · rw [if_neg hc] at h; cases h
+              · rw [ite_eq_right hc] at h; cases h
         | [], h => simp [decodeExpDigits] at h
-      · rw [if_neg hm] at h; cases h
+      · rw [ite_eq_right hm] at h; cases h
     | [], h => simp [decodeExp] at h
 
 theorem optExponent_iff (markers x : List UInt8) (e : Int) :
@@ -230,7 +230,7 @@ theorem optExponent_iff (markers x : List UInt8) (e : Int) :
     | none => rfl
     | some x e h =>
       have hne : x ≠ [] := by cases h <;> simp
-      rw [decodeOptExp, if_neg hne]
+      rw [decodeOptExp, ite_eq_right hne]
       exact (exponent_iff markers x e).mp h
   · intro h
     by_cases hx : x = []
@@ -238,7 +238,7 @@ theorem optExponent_iff (markers x : List UInt8) (e : Int) :
       simp only [decodeOptExp, ite_true, Option.some.injEq] at h
       subst h
       exact OptExponent.none
-    · rw [decodeOptExp, if_neg hx] at h
+    · rw [decodeOptExp, ite_eq_right hx] at h
       exact OptExponent.some x e ((exponent_iff markers x e).mpr h)
 
 /-- An exponent starts with one of its markers. -/
@@ -311,16 +311,16 @@ theorem decodeSig_spec (digit : UInt8 → Bool) (r i f x : List UInt8)
   unfold decodeSig at h
   rcases hd : r.dropWhile digit with _ | ⟨b, t⟩ <;> rw [hd] at h hr <;> dsimp only at h
   · by_cases hne : r.takeWhile digit ≠ []
-    · rw [if_pos hne] at h
+    · rw [ite_eq_left hne] at h
       simp only [Option.some.injEq, Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl⟩ := h
       exact ⟨r.takeWhile digit, hr, Significand.int _ hne hi⟩
-    · rw [if_neg hne] at h; cases h
+    · rw [ite_eq_right hne] at h; cases h
   · by_cases hb : b = 0x2E
     · subst hb
       simp only [ite_true] at h
       by_cases hne : r.takeWhile digit ++ t.takeWhile digit ≠ []
-      · rw [if_pos hne] at h
+      · rw [ite_eq_left hne] at h
         simp only [Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
         refine ⟨r.takeWhile digit ++ ascii "." ++ t.takeWhile digit, ?_, ?_⟩
@@ -332,14 +332,14 @@ theorem decodeSig_spec (digit : UInt8 → Bool) (r i f x : List UInt8)
           rcases List.mem_append.mp ha with h' | h'
           · exact hi a h'
           · exact takeWhile_all digit t a h'
-      · rw [if_neg hne] at h; cases h
-    · rw [if_neg hb] at h
+      · rw [ite_eq_right hne] at h; cases h
+    · rw [ite_eq_right hb] at h
       by_cases hne : r.takeWhile digit ≠ []
-      · rw [if_pos hne] at h
+      · rw [ite_eq_left hne] at h
         simp only [Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
         exact ⟨r.takeWhile digit, hr, Significand.int _ hne hi⟩
-      · rw [if_neg hne] at h; cases h
+      · rw [ite_eq_right hne] at h; cases h
 
 /-! ### RFC 8259 significands -/
 
@@ -381,7 +381,7 @@ theorem decodeJson_of (i fr f x : List UInt8) (hi : JsonInt i) (hf : JsonFrac fr
   | .none =>
     obtain ⟨h1, h2⟩ := split_of_stops isDigit i x hid hx
     unfold decodeJson
-    rw [show i ++ [] ++ x = i ++ x by simp, h1, h2, if_pos (jsonIntOk_of i hi)]
+    rw [show i ++ [] ++ x = i ++ x by simp, h1, h2, ite_eq_left (jsonIntOk_of i hi)]
     cases x with
     | nil => rfl
     | cons b t =>
@@ -396,7 +396,7 @@ theorem decodeJson_of (i fr f x : List UInt8) (hi : JsonInt i) (hf : JsonFrac fr
     obtain ⟨h3, h4⟩ := split_of_stops isDigit f x hfd hx
     unfold decodeJson
     rw [show i ++ (ascii "." ++ f) ++ x = i ++ (ascii "." ++ f ++ x) by simp, h1, h2,
-      if_pos (jsonIntOk_of i hi)]
+      ite_eq_left (jsonIntOk_of i hi)]
     simp only [ascii_point, List.cons_append, List.nil_append, ite_true]
     rw [h3, h4]
     simp [hne]
@@ -407,7 +407,7 @@ theorem decodeJson_spec (r i f x : List UInt8) (h : decodeJson r = some (i, f, x
   have hi := takeWhile_all isDigit r
   unfold decodeJson at h
   by_cases hok : jsonIntOk (r.takeWhile isDigit) = true
-  · rw [if_pos hok] at h
+  · rw [ite_eq_left hok] at h
     have hj := jsonInt_of_ok _ hok hi
     rcases hd : r.dropWhile isDigit with _ | ⟨b, t⟩ <;> rw [hd] at h hr <;> dsimp only at h
     · simp only [Option.some.injEq, Prod.mk.injEq] at h
@@ -417,7 +417,7 @@ theorem decodeJson_spec (r i f x : List UInt8) (h : decodeJson r = some (i, f, x
       · subst hb
         simp only [ite_true] at h
         by_cases hne : t.takeWhile isDigit ≠ []
-        · rw [if_pos hne] at h
+        · rw [ite_eq_left hne] at h
           simp only [Option.some.injEq, Prod.mk.injEq] at h
           obtain ⟨rfl, rfl, rfl⟩ := h
           refine ⟨ascii "." ++ t.takeWhile isDigit, ?_, hj,
@@ -425,12 +425,12 @@ theorem decodeJson_spec (r i f x : List UInt8) (h : decodeJson r = some (i, f, x
           have ht := (List.takeWhile_append_dropWhile (p := isDigit) (l := t)).symm
           conv_lhs => rw [hr, ht]
           simp [ascii_point]
-        · rw [if_neg hne] at h; cases h
-      · rw [if_neg hb] at h
+        · rw [ite_eq_right hne] at h; cases h
+      · rw [ite_eq_right hb] at h
         simp only [Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
         exact ⟨[], by simpa using hr, hj, JsonFrac.none⟩
-  · rw [if_neg hok] at h; cases h
+  · rw [ite_eq_right hok] at h; cases h
 
 /-! ### Bytes -/
 
@@ -579,7 +579,7 @@ theorem decode_of_derives (general : Bool) (s : List UInt8) (n : Num)
     unfold decode
     rw [show sg ++ c :: t ++ x = sg ++ (c :: t ++ x) by simp, hsign]
     simp only [true_and]
-    rw [if_neg n1, if_neg n2, if_neg n3]
+    rw [ite_eq_right n1, ite_eq_right n2, ite_eq_right n3]
     simp only [ite_true, hsig, he, Option.map_some]
   | hex sg z m i f x neg e hs hz hm hx =>
     have hz' : z = [0x30, 0x78] ∨ z = [0x30, 0x58] := by
@@ -614,7 +614,7 @@ theorem decode_of_derives (general : Bool) (s : List UInt8) (n : Num)
     unfold decode
     rw [show sg ++ z ++ m ++ mk :: t = sg ++ (z ++ m ++ mk :: t) by simp, hsign]
     simp only [true_and]
-    rw [if_neg hn.1, if_neg hn.2, if_pos ht, hdrop, hsig]
+    rw [ite_eq_right hn.1, ite_eq_right hn.2, ite_eq_left ht, hdrop, hsig]
     simp [he]
   | inf sg w neg hs hw =>
     have hne : ∃ c u, w = c :: u ∧ lower c = 0x69 := by
@@ -632,7 +632,7 @@ theorem decode_of_derives (general : Bool) (s : List UInt8) (n : Num)
     unfold decode
     rw [hsign]
     simp only [true_and]
-    rw [if_pos (by simpa using hw)]
+    rw [ite_eq_left (by simpa using hw)]
   | nan sg w neg hs hw =>
     have hne : ∃ c u, w = c :: u ∧ lower c = 0x6E := by
       cases w with
@@ -650,7 +650,7 @@ theorem decode_of_derives (general : Bool) (s : List UInt8) (n : Num)
     unfold decode
     rw [hsign]
     simp only [true_and]
-    rw [if_neg hn, if_pos hw]
+    rw [ite_eq_right hn, ite_eq_left hw]
 
 theorem derives_of_decode (general : Bool) (s : List UInt8) (n : Num)
     (h : decode general s = some n) : Derives general s n := by
@@ -662,23 +662,23 @@ theorem derives_of_decode (general : Bool) (s : List UInt8) (n : Num)
   generalize (if neg = true then ascii "-" else if r = s then [] else ascii "+") = sg at hs hsg
   subst hs
   by_cases h1 : general = true ∧ (r.map lower = ascii "inf" ∨ r.map lower = ascii "infinity")
-  · rw [if_pos h1] at h
+  · rw [ite_eq_left h1] at h
     simp only [Option.some.injEq] at h
     subst h
     obtain ⟨hg, hw⟩ := h1
     subst hg
     exact Derives.inf sg r neg hsg (by simpa using hw)
-  rw [if_neg h1] at h
+  rw [ite_eq_right h1] at h
   by_cases h2 : general = true ∧ r.map lower = ascii "nan"
-  · rw [if_pos h2] at h
+  · rw [ite_eq_left h2] at h
     simp only [Option.some.injEq] at h
     subst h
     obtain ⟨hg, hw⟩ := h2
     subst hg
     exact Derives.nan sg r neg hsg hw
-  rw [if_neg h2] at h
+  rw [ite_eq_right h2] at h
   by_cases h3 : general = true ∧ (r.take 2 = ascii "0x" ∨ r.take 2 = ascii "0X")
-  · rw [if_pos h3] at h
+  · rw [ite_eq_left h3] at h
     obtain ⟨hg, hz⟩ := h3
     subst hg
     rcases hsig : decodeSig isHexDigit (r.drop 2) with _ | ⟨i, f, x⟩
@@ -695,7 +695,7 @@ theorem derives_of_decode (general : Bool) (s : List UInt8) (n : Num)
     rw [hr, show sg ++ (r.take 2 ++ (m ++ x)) = sg ++ r.take 2 ++ m ++ x by simp]
     exact Derives.hex sg (r.take 2) m i f x neg e hsg (by simpa using hz) hsm
       ((exponent_iff _ x e).mpr he)
-  rw [if_neg h3] at h
+  rw [ite_eq_right h3] at h
   cases general with
   | true =>
     simp only [ite_true] at h

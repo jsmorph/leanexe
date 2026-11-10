@@ -43,7 +43,7 @@ theorem roundedMagnitude_shifted (rounded shift : Nat)
       have hactualShift : Nat.log2 (2^53 * 2^shift) - 52 = shift + 1 := by
         rw [hlog, Nat.log2_two_pow]
         omega
-      simp only [roundedMagnitude, if_neg hlarge]
+      simp only [roundedMagnitude, ite_eq_right hlarge]
       rw [hactualShift, hcandidate, roundShift_mul_two_pow _ _ (by omega)]
       norm_num
     · have hroundedLt : rounded < 2^53 := by omega
@@ -53,9 +53,9 @@ theorem roundedMagnitude_shifted (rounded shift : Nat)
       have hactualShift : Nat.log2 (rounded * 2^shift) - 52 = shift := by
         rw [hlog, hlogRounded]
         omega
-      simp only [roundedMagnitude, if_neg hlarge]
+      simp only [roundedMagnitude, ite_eq_right hlarge]
       rw [hactualShift, roundShift_mul_two_pow _ _ hshiftPos]
-      simp only [beq_iff_eq, if_neg hcarry]
+      simp only [beq_iff_eq, ite_eq_right hcarry]
 
 theorem dyadic_relative (negative : Bool) (n : Nat) (hmax : n < 2^3170) :
     Finite (Wasm.IEEE64.roundDyadicMagnitude negative n 1074) ∧
@@ -99,9 +99,9 @@ theorem dyadic_relative (negative : Bool) (n : Nat) (hmax : n < 2^3170) :
   have hpack := F64Packing.pack_spec negative candidate hcandidateMax
   have hactual : Wasm.IEEE64.roundDyadicMagnitude negative n 1074 =
       Wasm.IEEE64.roundScaledMagnitude negative candidate := by
-    simp only [Wasm.IEEE64.roundDyadicMagnitude, beq_iff_eq, if_neg hn]
+    simp only [Wasm.IEEE64.roundDyadicMagnitude, beq_iff_eq, ite_eq_right hn]
     rw [show Nat.log2 n - (1074 + 52) = outputShift by simp [outputShift],
-      if_neg (by omega : outputShift ≠ 0)]
+      ite_eq_right (by omega : outputShift ≠ 0)]
   have herrorCases := CodeLib.IEEE32.roundShift_error_cases n totalShift (by dsimp [totalShift]; omega)
   have herrHalf : |((rounded * 2^totalShift : Nat) : Int) - n| ≤ (2^totalShift / 2 : Nat) :=
     CodeLib.IEEE32.abs_int_sub_le_of_error_cases _ _ _ herrorCases

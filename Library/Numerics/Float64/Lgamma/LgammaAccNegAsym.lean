@@ -90,7 +90,7 @@ theorem asym_small (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
   rw [hs, show value x.toBits + 1 = 1 + value x.toBits by ring] at he
   have h48 : value xh.toBits < 48 := by linarith
   have h120 : value xh.toBits < 2 ^ 120 := by linarith [(by norm_num : (48 : ℝ) < 2 ^ 120)]
-  rw [if_pos h48, if_pos h120] at he
+  rw [ite_eq_left h48, ite_eq_left h120] at he
   generalize Lgamma.asLgammaAsymAccurate Tgamma.logdTable H Lgamma.asymTable xh xl = r
     at f1 f2 f3 he hr0 hb hc ⊢
   have hT17 := lgamma_le_17 (1 + value x.toBits) (by linarith) (by linarith)

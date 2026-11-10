@@ -49,12 +49,12 @@ theorem signed_sin (x : Float) (hxf : Finite x.toBits) (h0 : value x.toBits ≠ 
     F64SignedRounding.WithinSteps 1 (Real.sin (Real.pi * value x.toBits))
       (if Wasm.IEEE64.sign x.toBits = true then -s else s).toBits := by
   rcases sign_cases x hxf h0 with ⟨hsg, hv⟩ | ⟨hsg, hv⟩
-  · rw [if_pos hsg]
+  · rw [ite_eq_left hsg]
     have := neg_within _ _ hs
     rwa [show Real.pi * value x.toBits = -(Real.pi * |value x.toBits|) by
       conv_lhs => rw [hv]
       ring, Real.sin_neg]
-  · rw [if_neg (by rw [hsg]; decide)]
+  · rw [ite_eq_right (by rw [hsg]; decide)]
     rwa [show Real.pi * value x.toBits = Real.pi * |value x.toBits| by rw [← hv]]
 
 /-- `sinpi` from `2 ^ -29` below 1. -/
@@ -68,7 +68,7 @@ theorem sinpi_mid (x : Float) (hxf : Finite x.toBits) (h1 : 1 / 2 ^ 29 ≤ |valu
     intro h; rw [h, abs_zero] at h1; linarith [show (0 : ℝ) < 1 / 2 ^ 29 by positivity]
   unfold Sinpi.sinpi
   dsimp only
-  rw [ax_abs, neg_flag, if_pos (c1.mpr h2), if_neg (fun h => by linarith [c29.mp h])]
+  rw [ax_abs, neg_flag, ite_eq_left (c1.mpr h2), ite_eq_right (fun h => by linarith [c29.mp h])]
   apply signed_sin x hxf h0
   exact sin_chain x.abs _ |value x.toBits| hix hs hf hv
     (le_trans (by norm_num) h1) h2
@@ -102,7 +102,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
     linarith
   unfold Sinpi.sinpi
   dsimp only
-  rw [ax_abs, neg_flag, if_neg (fun h => by linarith [c1.mp h]), if_pos (c52.mpr h2)]
+  rw [ax_abs, neg_flag, ite_eq_right (fun h => by linarith [c1.mp h]), ite_eq_left (c52.mpr h2)]
   obtain ⟨hj0, hflb⟩ := ffloor_bits x.abs.toBits _ _ hs hix hlx he1 he2
   rcases hff : Sinpi.ffloor ((x.toBits >>> 32) &&& 0x7fffffff) (x.toBits &&& 0xFFFFFFFF) with
     ⟨fl, j0⟩
@@ -142,7 +142,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
         exact (div_left_inj' (by positivity)).mp this
       exact_mod_cast h1'
     rw [show (x.abs - fl).toBits >>> 32 = 0 by rw [hz]; rfl,
-      if_pos (show ((0 : UInt64) == 0) = true by decide), heq,
+      ite_eq_left (show ((0 : UInt64) == 0) = true by decide), heq,
       show Real.pi * (N : ℝ) = (N : ℝ) * Real.pi by ring, Real.sin_nat_mul_pi]
     obtain ⟨z1, -⟩ := zero_bits'
     rw [z1]
@@ -166,7 +166,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
         rw [Library.Numerics.Float64.Trig.TrigReduce.value_word _ 1 52 (by norm_num) (by decide +kernel)]; norm_num
       rw [this, hab, hdv] at hval
       linarith
-    rw [if_neg hix0]
+    rw [ite_eq_right hix0]
     have hchain := sin_chain (x.abs - fl) ((x.abs - fl).toBits >>> 32) (|value x.toBits| - N)
       (by rw [Library.Numerics.Float64.Trig.TrigWords.shr_toNat]; rfl) hd63 (by rw [hab]; exact hdf) (by rw [hab, hdv])
       (le_trans (by norm_num) hF0) (by linarith)
@@ -183,9 +183,9 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
       omega)]
     rw [show |value x.toBits| = N + (|value x.toBits| - N) by ring, sin_shift]
     by_cases hp : N % 2 = 1
-    · rw [if_pos hp, decide_eq_true hp, if_pos rfl]
+    · rw [ite_eq_left hp, decide_eq_true hp, ite_eq_left rfl]
       exact neg_within _ _ hchain
-    · rw [if_neg hp, decide_eq_false hp, if_neg (by decide)]
+    · rw [ite_eq_right hp, decide_eq_false hp, ite_eq_right (by decide)]
       exact hchain
 
 /-- `sinpi` from `2 ^ 52` on. -/
@@ -196,8 +196,8 @@ theorem sinpi_big (x : Float) (hxf : Finite x.toBits) (h : 2 ^ 52 ≤ |value x.t
   obtain ⟨n, hn⟩ := big_integer x.toBits h
   unfold Sinpi.sinpi
   dsimp only
-  rw [ax_abs, neg_flag, if_neg (fun h' => by linarith [c1.mp h']),
-    if_neg (fun h' => by linarith [c52.mp h']), if_neg cinf, hn,
+  rw [ax_abs, neg_flag, ite_eq_right (fun h' => by linarith [c1.mp h']),
+    ite_eq_right (fun h' => by linarith [c52.mp h']), ite_eq_right cinf, hn,
     show Real.pi * (n : ℝ) = (n : ℝ) * Real.pi by ring, Real.sin_int_mul_pi]
   exact zero_choice _
 

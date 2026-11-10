@@ -127,7 +127,7 @@ theorem ldexp_dn (v e : Float) (K : ℤ) (he : ff e) (hv : fv e = K) (h2 : K ≤
     Erfc.ldexp v e = v * Erfc.pow2 e := by
   obtain ⟨-, ⟨c1f, c1v⟩, -, -⟩ := lits
   unfold Erfc.ldexp
-  rw [if_neg]
+  rw [ite_eq_right]
   intro hgt
   have := (flt_iff _ _ c1f he).mp hgt
   rw [c1v, hv] at this
@@ -378,9 +378,9 @@ theorem within_small (w : UInt64) (hw : Finite w) (hv : 0 ≤ value w) (y : ℝ)
       unfold Wasm.IEEE64.scaledMagnitude at hmag
       dsimp only at hmag
       by_cases he0 : Wasm.IEEE64.exponent w = 0
-      · rw [if_pos (by simp [he0])] at hmag
+      · rw [ite_eq_left (by simp [he0])] at hmag
         exact ⟨he0, hmag⟩
-      · rw [if_neg (by simp [he0])] at hmag
+      · rw [ite_eq_right (by simp [he0])] at hmag
         exfalso
         have : 0 < (2 ^ 52 + Wasm.IEEE64.fraction w) * 2 ^ (Wasm.IEEE64.exponent w - 1) := by
           positivity
@@ -401,7 +401,7 @@ theorem within_small (w : UInt64) (hw : Finite w) (hv : 0 ≤ value w) (y : ℝ)
       unfold Wasm.IEEE64.sign at hsign; simpa using hsign
     have hp : F64SignedRounding.position w = 0 := by
       unfold F64SignedRounding.position
-      rw [hsign, if_pos rfl]
+      rw [hsign, ite_eq_left rfl]
       have : w.toNat - 2 ^ 63 = 0 := by have := w.toNat_lt; omega
       rw [this]; simp
     have hp0 : F64SignedRounding.position 0 = 0 := by decide
@@ -475,7 +475,7 @@ theorem finA_within (h l e : Float) (K : ℤ) (y : ℝ) (hK1 : -1072 ≤ K) (hK2
       have := (flt_iff _ _ rf nmf).mp hlt
       rw [rv, nmv] at this
       linarith
-    rw [if_neg hnot]
+    rw [ite_eq_right hnot]
     have hrpos : 0 < fv (c * Erfc.pow2 e) := by rw [rv]; positivity
     have hyt : y < F64PositiveRounding.overflowThreshold :=
       F64NearestSteps.below_threshold y (by linarith [show (1 : ℝ) < 2 ^ 1023 by norm_num])
@@ -550,7 +550,7 @@ theorem finA_within (h l e : Float) (K : ℤ) (y : ℝ) (hK1 : -1072 ≤ K) (hK2
       rw [div_le_iff₀ (by norm_num)]; nlinarith
     by_cases hlt : res < Float.ofBits 0x0010000000000000
     · -- the correction
-      rw [if_pos hlt]
+      rw [ite_eq_left hlt]
       have hres1 : fv res < 1 / 2 ^ 1022 := by
         have := (flt_iff _ _ rf nmf).mp hlt; rwa [nmv] at this
       have hresa : |fv res| ≤ 1 / 2 ^ 1022 := by
@@ -689,7 +689,7 @@ theorem finA_within (h l e : Float) (K : ℤ) (y : ℝ) (hK1 : -1072 ≤ K) (hK2
         linarith
       exact within_small (res + c2).toBits ff' hfin0 y hy0.le hy1 hfin
     · -- the rounded product is the smallest normal number
-      rw [if_neg hlt]
+      rw [ite_eq_right hlt]
       have hres1 : 1 / 2 ^ 1022 ≤ fv res := by
         have : ¬ fv res < fv (Float.ofBits 0x0010000000000000) :=
           fun h' => hlt ((flt_iff _ _ rf nmf).mpr h')

@@ -61,7 +61,7 @@ theorem sourceCount_all {last : Bool} {target : UInt64} (h : (!last || target ==
 theorem sourceCount_none {last : Bool} {target : UInt64} (h : ¬(!last || target == 0) = true) :
     sourceCount last target = 0 := by
   unfold sourceCount
-  rw [if_neg h]
+  rw [ite_eq_right h]
 
 /-- An advance of a correct row is correct at the next station. -/
 theorem advance_correct (r : Nat → UInt64) (stop : Nat → Bool) (i : Nat) (hi : i ≤ 63)

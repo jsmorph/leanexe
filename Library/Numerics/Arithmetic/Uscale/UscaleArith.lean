@@ -67,11 +67,11 @@ theorem shl_spec (a : Array UInt64) (k : UInt64) (ha : Limbs a) (hs : a.size < 2
       by_cases hlt : i < k.toNat / 32
       · have : UInt64.ofNat i < k >>> 5 := by
           rw [UInt64.lt_iff_toNat_lt, ofNat_toNat i hi, hq]; exact hlt
-        rw [if_pos this, List.getElem_append_left (by simpa using hlt)]
+        rw [ite_eq_left this, List.getElem_append_left (by simpa using hlt)]
         simp
       · have : ¬ UInt64.ofNat i < k >>> 5 := by
           rw [UInt64.lt_iff_toNat_lt, ofNat_toNat i hi, hq]; exact hlt
-        rw [if_neg this, List.getElem_append_right (by simpa using hlt)]
+        rw [ite_eq_right this, List.getElem_append_right (by simpa using hlt)]
         have hsub : (UInt64.ofNat i - (k >>> 5)).toNat = i - k.toNat / 32 := by
           rw [UInt64.toNat_sub_of_le _ _ (by
             rw [UInt64.le_iff_toNat_le, ofNat_toNat i hi, hq]; omega), ofNat_toNat i hi, hq]
@@ -154,19 +154,19 @@ theorem le_spec (a b : Array UInt64) (ha : Limbs a) (hb : Limbs b) (hsa : a.size
         rw [← getElem!_digit a ha j] at sa
         rw [← getElem!_digit b hb j] at sb
         by_cases hxy : a[j]! < b[j]!
-        · rw [if_pos hxy]
+        · rw [ite_eq_left hxy]
           right; left
           refine ⟨rfl, lt_of_div_lt _ _ (2 ^ (32 * j)) ?_⟩
           rw [UInt64.lt_iff_toNat_lt] at hxy
           omega
-        · rw [if_neg hxy]
+        · rw [ite_eq_right hxy]
           by_cases hyx : b[j]! < a[j]!
-          · rw [if_pos hyx]
+          · rw [ite_eq_left hyx]
             right; right
             refine ⟨rfl, lt_of_div_lt _ _ (2 ^ (32 * j)) ?_⟩
             rw [UInt64.lt_iff_toNat_lt] at hyx
             omega
-          · rw [if_neg hyx]
+          · rw [ite_eq_right hyx]
             left
             refine ⟨rfl, ?_⟩
             rw [hjk']

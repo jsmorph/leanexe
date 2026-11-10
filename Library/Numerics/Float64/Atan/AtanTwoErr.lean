@@ -104,12 +104,12 @@ theorem sens_sharp (q Q L c : ℝ) (hL1 : 1 ≤ L) (hL : L ≤ q) (hQ0 : 0 ≤ Q
   · exact div_le_self (by positivity) hd
 
 theorem pi_word : value piF.toBits = 884279719003555 / 2 ^ 48 := by
-  rw [piF, F64Bits.toBits_ofBits, if_neg (by decide),
+  rw [piF, F64Bits.toBits_ofBits, ite_eq_right (by decide),
     AtanTheoremCases.word_eq 0x400921FB54442D18 (884279719003555 / 2 ^ 48) (by decide +kernel)]
   norm_num
 
 theorem pilo_word : value piLoF.toBits = 4967757600021511 / 2 ^ 105 := by
-  rw [piLoF, F64Bits.toBits_ofBits, if_neg (by decide),
+  rw [piLoF, F64Bits.toBits_ofBits, ite_eq_right (by decide),
     AtanTheoremCases.word_eq 0x3CA1A62633145C07 (4967757600021511 / 2 ^ 105) (by decide +kernel)]
   norm_num
 

@@ -1,0 +1,41 @@
+Sources of the Oakland RCV corpus and their terms of use, as read on 2026-11-09
+
+The repository holds no file of the corpus.  It holds each file's URL, size, and SHA-256 in
+manifest.json, the per-round figures that README.md tabulates, and the originally certified
+District 4 figures that district4.py quotes.  fetch.py downloads every file from its publisher's
+site into a local directory that Git ignores.
+
+Alameda County Registrar of Voters
+
+The RCV detailed reports come from https://www.alamedacountyca.gov/rovresults/rcv/, and the
+Registrar's presentation on the 2022 District 4 error comes from
+https://www.acgov.org/board/bos_calendar/documents/RankedChoiceVotingTallyPresentation.pdf.
+Oakland City Charter section 1105(i) requires the summary, ballot image, and comprehensive reports
+of each ranked choice voting election to be made available to the public via the internet.  The
+County's Legal / Disclaimers page, https://acgov.org/government/legal.htm, states under
+"Intellectual Property": "The content of ACGOV web pages is copyrighted, and contains some third
+party images/graphics that are used with permission.  Users are notified, therefore, that one
+should presume the need to obtain permission from the copyright holder before reproducing or
+otherwise using images/graphics from this website.  You are not entitled to copy logos, images,
+photographs, software or other material for personal or other non-County use which is made
+available through the County site that is contrary to any law, infringes on any copyright,
+trademark, or other proprietary right of any party without prior written permission of the
+County."  The corpus downloads the County's files for local use and does not redistribute them.
+
+For the elections in the corpus, the County releases its own cast vote records on request.  The
+page of the November 5, 2024 election links to the County's public records request form, and the
+results page of the November 3, 2026 election links to a request form.  A search of the County's
+election and results pages and of the web on 2026-11-09 found no County cast vote record of these
+elections at a public URL, so the corpus contains none.
+
+D. Otis, Single winner ranked choice voting CVRs (Harvard Dataverse)
+
+The cast vote records come from Deb Otis, "Single winner ranked choice voting CVRs", Harvard
+Dataverse, version 25 (2025-09-24), https://doi.org/10.7910/DVN/AMK8PJ.  The dataset's license, as
+the Dataverse API reports it, is CC0 1.0
+(http://creativecommons.org/publicdomain/zero/1.0).  fetch.py downloads each file in its original
+CSV form through https://dataverse.harvard.edu/api/access/datafile/<id>?format=original.  Harvard
+Dataverse's general terms of use are at
+https://support.dataverse.harvard.edu/harvard-dataverse-general-terms-use.  That page returned
+HTTP 403 to scripted requests, so their text is not quoted here.  README.md and manifest.json cite
+the dataset by its DOI and version.

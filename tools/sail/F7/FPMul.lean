@@ -35,7 +35,7 @@ theorem mag_beq_zero (x : BitVec 64) :
       simp only [mag, Wasm.IEEE64.scaledMagnitude, t_exp, t_frac, hf]
       simp
     have ht : ty64 x ≠ .FPType_Zero := by
-      unfold ty64; rw [if_neg (by omega), if_pos hf]; split_ifs <;> simp
+      unfold ty64; rw [ite_eq_right (by omega), ite_eq_left hf]; split_ifs <;> simp
     simp only [beq_eq_false_iff_ne.mpr hm]
     cases h : ty64 x <;> first | rfl | exact absurd h ht
   · by_cases hz : ty64 x = .FPType_Zero

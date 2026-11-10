@@ -32,16 +32,16 @@ theorem atan_pos_inf (x : Float) (h : x.toBits = 0x7FF0000000000000) :
     (Atan.atan x).toBits = 0x3FF921FB54442D18 ∧
       F64SignedRounding.WithinSteps 0 (Real.pi / 2) (Atan.atan x).toBits := by
   have he : (Atan.atan x).toBits = 0x3FF921FB54442D18 := by
-    rw [atan_huge_eq x (by simp only [ixOf, h]; decide), if_neg (by simp only [ixOf, h]; decide),
-      if_neg (by rw [h]; decide), big_bits]
+    rw [atan_huge_eq x (by simp only [ixOf, h]; decide), ite_eq_right (by simp only [ixOf, h]; decide),
+      ite_eq_right (by rw [h]; decide), big_bits]
   exact ⟨he, by rw [he]; exact half_pi_ref⟩
 
 theorem atan_neg_inf (x : Float) (h : x.toBits = 0xFFF0000000000000) :
     (Atan.atan x).toBits = 0xBFF921FB54442D18 ∧
       F64SignedRounding.WithinSteps 0 (-(Real.pi / 2)) (Atan.atan x).toBits := by
   have he : (Atan.atan x).toBits = 0xBFF921FB54442D18 := by
-    rw [atan_huge_eq x (by simp only [ixOf, h]; decide), if_neg (by simp only [ixOf, h]; decide),
-      if_pos (by rw [h]; decide), big_neg_bits]
+    rw [atan_huge_eq x (by simp only [ixOf, h]; decide), ite_eq_right (by simp only [ixOf, h]; decide),
+      ite_eq_left (by rw [h]; decide), big_neg_bits]
     decide
   refine ⟨he, ?_⟩
   rw [he, show (0xBFF921FB54442D18 : UInt64) = Wasm.IEEE64.negate 0x3FF921FB54442D18 by decide]
@@ -86,7 +86,7 @@ theorem atan_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
       decide_eq_true_eq, gt_iff_lt, UInt64.lt_iff_toNat_lt, ← UInt64.toNat_inj, hix, hlow,
       UInt64.reduceToNat]
     omega
-  rw [atan_huge_eq x h1, if_pos h2, F64Bits.toBits_add]
+  rw [atan_huge_eq x h1, ite_eq_left h2, F64Bits.toBits_add]
   simp only [Wasm.IEEE64.add, h, Bool.true_or, ite_true]
 
 #print axioms atan_pos_inf

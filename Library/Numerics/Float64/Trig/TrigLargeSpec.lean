@@ -14,7 +14,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit TrigLargeInt TrigLargeFloat TrigLarge TrigP
 
 theorem neg_word (y : Float) (hy : Finite y.toBits) :
     Finite (-y).toBits ∧ value (-y).toBits = -value y.toBits := by
-  rw [F64Bits.toBits_neg, F64Sign.sub_negZero, if_neg (by simp [not_nan_of_finite hy])]
+  rw [F64Bits.toBits_neg, F64Sign.sub_negZero, ite_eq_right (by simp [not_nan_of_finite hy])]
   exact F64Magnitude.negate_value _ hy
 
 theorem halfNum_ge : 2 ^ 127 ≤ halfNum := by decide

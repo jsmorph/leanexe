@@ -52,7 +52,7 @@ theorem getElem!_specScheduleStep_ne (M : Block) (t : Nat) (W : Schedule)
           SHS.Equiv.VecBridge.getElem_bang_eq_getElem _ _ hj']
       by_cases ht : t < 80
       · rw [SHS.Equiv.VecBridge.set_bang_eq_set _ _ ht, Vector.getElem_set,
-            if_neg (Ne.symm hj)]
+            ite_eq_right (Ne.symm hj)]
       · have hwid : W.set! t v = W := by
           apply Vector.toArray_inj.mp
           simp [Vector.toArray_set!, Array.set!_eq_setIfInBounds, Array.setIfInBounds]

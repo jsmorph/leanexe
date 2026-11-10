@@ -127,7 +127,7 @@ The kernel polynomial bounds are those of [the sine and cosine proof](../Trig/RE
 
 ### Proof structure
 
-`push_cast` and `field_simp` evaluate `2^1074` into a 324-digit numeral and exhaust 200,000 heartbeats in `split_spec`, so its proof splits into `tail_le` and `tail_grid` and rewrites with `Nat.cast_mul`, `Nat.cast_pow`, and `mul_div_assoc`.  `rw [if_neg (by decide)]` rewrites the first `if` of the goal, which after `cos_shift` is the real-valued `if N % 2 = 1`.  The proofs therefore name each condition with `show` and apply the shift after the rewrites on words.
+`push_cast` and `field_simp` evaluate `2^1074` into a 324-digit numeral and exhaust 200,000 heartbeats in `split_spec`, so its proof splits into `tail_le` and `tail_grid` and rewrites with `Nat.cast_mul`, `Nat.cast_pow`, and `mul_div_assoc`.  `rw [ite_eq_right (by decide)]` rewrites the first `if` of the goal, which after `cos_shift` is the real-valued `if N % 2 = 1`.  The proofs therefore name each condition with `show` and apply the shift after the rewrites on words.
 
 ## Tests
 

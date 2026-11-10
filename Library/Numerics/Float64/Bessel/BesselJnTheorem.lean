@@ -142,7 +142,7 @@ theorem jn_eq (n : UInt64) (x : Float) (hnan : ¬ x.toBits <<< 1 > 0xFFE00000000
       else jnAbs x.toBits (Bessel.order n).1 (if (Bessel.order n).2 = true then -x else x).abs := by
   unfold Bessel.jn Bessel.jnWith
   dsimp only
-  rw [if_neg hnan]
+  rw [ite_eq_right hnan]
   generalize Bessel.order n = p
   obtain ⟨m, neg⟩ := p
   rfl
@@ -187,7 +187,7 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
   dsimp only
   -- the zeros
   by_cases hz : (u <<< 1 == 0 || (u >>> 32) &&& 0x7fffffff ≥ 0x7ff00000) = true
-  · rw [if_pos hz]
+  · rw [ite_eq_left hz]
     have hz' : u.toNat % 2 ^ 63 = 0 := by
       rw [Bool.or_eq_true, BesselSpecial.double_zero, decide_eq_true_iff, decide_eq_true_iff] at hz
       rcases hz with h | h
@@ -203,7 +203,7 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
     refine ⟨by unfold CodeLib.IEEE64.Finite; decide, ?_⟩
     rw [zero_value, hw0', Jn_at_zero _ (by omega), sub_zero, abs_zero]
     exact mul_nonneg (mul_nonneg (by positivity) hu0) (Real.sqrt_nonneg _)
-  rw [if_neg hz]
+  rw [ite_eq_right hz]
   have hz' : u.toNat % 2 ^ 63 ≠ 0 := by
     intro h
     apply hz
@@ -230,10 +230,10 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
     push_cast at h
     exact h
   by_cases hA : m.toFloat ≤ xa
-  · rw [if_pos hA]
+  · rw [ite_eq_left hA]
     have hmw := hle_iff.mp hA
     by_cases h302 : (u >>> 32) &&& 0x7fffffff ≥ 0x52D00000
-    · rw [if_pos h302]
+    · rw [ite_eq_left h302]
       have hw302 : 2 ^ 302 ≤ w := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hix] at h302
         simp only [UInt64.reduceToNat] at h302
@@ -248,7 +248,7 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
         apply mul_le_mul_of_nonneg_right _ hu0
         linarith
       exact ⟨hhf, hh.trans this⟩
-    · rw [if_neg h302]
+    · rw [ite_eq_right h302]
       have hw302 : w < 2 ^ 302 := by
         rw [ge_iff_le, UInt64.le_iff_toNat_le, hix] at h302
         simp only [UInt64.reduceToNat] at h302
@@ -270,10 +270,10 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
         apply mul_le_mul_of_nonneg_right _ hu0
         linarith
       exact ⟨hff, hf.trans this⟩
-  · rw [if_neg hA]
+  · rw [ite_eq_right hA]
     have hmw : w < m.toNat := lt_of_not_ge (fun h => hA (hle_iff.mpr h))
     by_cases h30 : (u >>> 32) &&& 0x7fffffff < 0x3e100000
-    · rw [if_pos h30]
+    · rw [ite_eq_left h30]
       have hw30 : w < 1 / 2 ^ 30 := by
         rw [UInt64.lt_iff_toNat_lt, hix] at h30
         simp only [UInt64.reduceToNat] at h30
@@ -313,7 +313,7 @@ theorem jnAbs_bound (u m : UInt64) (xa : Float) (hxf : Finite xa.toBits)
       have := abs_sub (value (if m > 33 then (0.0 : Float) else pb / pa).toBits) (Jn m.toNat w)
       rw [abs_of_pos hJp] at this
       exact ⟨ht.1, by linarith⟩
-    · rw [if_neg h30]
+    · rw [ite_eq_right h30]
       have hw30 : 1 / 2 ^ 30 ≤ w := by
         rw [UInt64.lt_iff_toNat_lt, hix] at h30
         simp only [UInt64.reduceToNat, not_lt] at h30
@@ -419,12 +419,12 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
     rw [← hm, hx'v]
     by_cases hN0 : N < 0
     · have hn : neg = true := by rw [hneg, decide_eq_true_iff]; exact hN0
-      rw [if_pos hN0, if_pos hn, Jn_neg]
+      rw [ite_eq_left hN0, ite_eq_left hn, Jn_neg]
     · have hn : ¬ neg = true := by rw [hneg, decide_eq_true_iff]; exact hN0
-      rw [if_neg hN0, if_neg hn, pow_zero, one_mul]
+      rw [ite_eq_right hN0, ite_eq_right hn, pow_zero, one_mul]
   rw [hJ]
   by_cases h0 : m == 0
-  · rw [if_pos h0]
+  · rw [ite_eq_left h0]
     have hm0 : m.toNat = 0 := by rw [beq_iff_eq] at h0; rw [h0]; rfl
     have h := BesselJ0Theorem.j0_accuracy x' hx'f
     rw [hm0, Jn_zero]
@@ -439,9 +439,9 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
     have : 10 * 𝐮 * √(J0 |v| ^ 2 + Y0 |v| ^ 2) ≤ (23 + 12 * 0) * 𝐮 * √(J0 |v| ^ 2 + Y0 |v| ^ 2) :=
       mul_le_mul_of_nonneg_right (by nlinarith) (Real.sqrt_nonneg _)
     linarith
-  rw [if_neg h0]
+  rw [ite_eq_right h0]
   by_cases h1 : m == 1
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have hm1 : m.toNat = 1 := by rw [beq_iff_eq] at h1; rw [h1]; rfl
     have h := BesselJ1Theorem.j1_accuracy x' hx'f
     rw [hm1, Jn_one]
@@ -456,7 +456,7 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
     have : 12 * 𝐮 * √(J1 |v| ^ 2 + Y1 |v| ^ 2) ≤ (23 + 12 * 1) * 𝐮 * √(J1 |v| ^ 2 + Y1 |v| ^ 2) :=
       mul_le_mul_of_nonneg_right (by nlinarith) (Real.sqrt_nonneg _)
     linarith
-  rw [if_neg h1]
+  rw [ite_eq_right h1]
   -- orders from 2 on
   have hm2 : 2 ≤ m.toNat := by
     have a0 : m.toNat ≠ 0 := fun h => h0 (by rw [beq_iff_eq]; exact UInt64.toNat_inj.mp h)
@@ -495,8 +495,8 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
     rw [hv0, abs_zero]
     by_cases hf : (m &&& 1 == 1 && (if neg = true then (x.toBits >>> 32) ^^^ 0x80000000
         else x.toBits >>> 32) >>> 31 == 1) = true
-    · rw [if_pos hf, hnTv, sub_zero, abs_neg]; exact hb
-    · rw [if_neg hf, sub_zero]; exact hb
+    · rw [ite_eq_left hf, hnTv, sub_zero, abs_neg]; exact hb
+    · rw [ite_eq_right hf, sub_zero]; exact hb
   -- the sign of the reflected argument
   have hmag : 0 < Wasm.IEEE64.scaledMagnitude x.toBits := by
     rcases Nat.eq_zero_or_pos (Wasm.IEEE64.scaledMagnitude x.toBits) with h | h
@@ -513,7 +513,7 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
       == 1) = true ↔ value x'.toBits < 0 := by
     rw [hx'v]
     by_cases hn : neg = true
-    · rw [if_pos hn, if_pos hn, xor_sign, decide_eq_true_iff]
+    · rw [ite_eq_left hn, ite_eq_left hn, xor_sign, decide_eq_true_iff]
       constructor
       · intro h
         have : ¬ v < 0 := fun h' => by have := hsg.mpr h'; omega
@@ -524,7 +524,7 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
         push Not at hc
         have := hsg.mp hc
         linarith
-    · rw [if_neg hn, if_neg hn, BesselJ1Large.shr_sign, decide_eq_true_iff]
+    · rw [ite_eq_right hn, ite_eq_right hn, BesselJ1Large.shr_sign, decide_eq_true_iff]
       exact hsg
   have hmodd : (m &&& 1 == 1) = decide (m.toNat % 2 = 1) := by
     rw [Bool.eq_iff_iff, beq_iff_eq, decide_eq_true_iff, ← UInt64.toNat_inj, UInt64.toNat_and]
@@ -539,16 +539,16 @@ theorem jn_accuracy (n : UInt64) (x : Float) (hxf : Finite x.toBits)
   rw [hJx]
   by_cases hf : (m &&& 1 == 1 && (if neg = true then (x.toBits >>> 32) ^^^ 0x80000000
       else x.toBits >>> 32) >>> 31 == 1) = true
-  · rw [if_pos hf, hnTv]
+  · rw [ite_eq_left hf, hnTv]
     rw [Bool.and_eq_true] at hf
     have ho : m.toNat % 2 = 1 := by
       have := hf.1
       rw [hmodd, decide_eq_true_iff] at this
       exact this
-    rw [if_pos (hflag.mp hf.2), Odd.neg_one_pow ⟨m.toNat / 2, by omega⟩, neg_one_mul,
+    rw [ite_eq_left (hflag.mp hf.2), Odd.neg_one_pow ⟨m.toNat / 2, by omega⟩, neg_one_mul,
       show -value T.toBits - -Jn m.toNat |v| = -(value T.toBits - Jn m.toNat |v|) by ring, abs_neg]
     exact hb
-  · rw [if_neg hf]
+  · rw [ite_eq_right hf]
     split_ifs with hneg'
     · have he : m.toNat % 2 = 0 := by
         by_contra hc

@@ -96,7 +96,7 @@ theorem truncSat_eq (value : UInt64) :
         simp only [sourceSign, hs, Sign.apply, Wasm.IEEE64.truncSatI64U,
           Wasm.IEEE64.truncatedInt, hn, hfin, Bool.false_eq_true, ↓reduceIte]
       · exact clamp_nat _
-      · rw [if_pos (by omega)]
+      · rw [ite_eq_left (by omega)]
         simp only [Int.toNat_neg_natCast]
         rfl
 

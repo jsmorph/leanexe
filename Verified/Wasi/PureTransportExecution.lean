@@ -140,9 +140,9 @@ theorem iff_at {World : Type} {source target : Module} {fuel : Nat}
           simp only [iff_to_block (host := targetHost) hValues,
             iff_to_block (host := sourceHost) hValues]
           by_cases hCondition : condition ≠ 0
-          · simpa only [if_pos hCondition, Relocation.instruction] using
+          · simpa only [ite_eq_left hCondition, Relocation.instruction] using
               hYes initial world { locals with values := values } sourceHost targetHost
-          · simpa only [if_neg hCondition, Relocation.instruction] using
+          · simpa only [ite_eq_right hCondition, Relocation.instruction] using
               hNo initial world { locals with values := values } sourceHost targetHost
       | _ => simp only [execOne.eq_def, hValues, liftContinuation, NoReturnCall, and_self]
 

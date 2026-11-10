@@ -152,7 +152,7 @@ theorem fin_foldl_split {β : Type _} (n m : Nat) (hnm : n ≤ m)
   congr 1
   funext x i
   have hge : ¬ i.val + n < n := Nat.not_lt.mpr (Nat.le_add_left n i.val)
-  simp only [Fin.natAdd, Nat.add_comm n i.val, if_neg hge]
+  simp only [Fin.natAdd, Nat.add_comm n i.val, ite_eq_right hge]
 
 /-- Transport a `Fin.foldl` along a state-bijection `φ`: if `φ` commutes
 with each step (`φ (f a i) = g (φ a) i`), then it commutes with the

@@ -154,7 +154,7 @@ theorem storeRel_init {P : Platform} {m : Module} {cap : Nat} {gts : List ValueT
         rw [toNat_load32_lo (x := UInt64.ofNat ((initStore m cap).mem.pages * 65536 - 8))
             fun k hk => by
               rw [harea k (by unfold areaSize; omega)]
-              simp only [areaByte, if_pos (show k < 8 by omega)]
+              simp only [areaByte, ite_eq_left (show k < 8 by omega)]
               rfl,
           UInt32.toNat_ofNat', UInt64.toNat_ofNat', hpg]
         simp only [Nat.reducePow]
@@ -168,7 +168,7 @@ theorem storeRel_init {P : Platform} {m : Module} {cap : Nat} {gts : List ValueT
             have e1 : (8 * (i + 1) + k) / 8 - 1 = i := by omega
             have e2 : (8 * (i + 1) + k) % 8 = k := by omega
             simp only [areaByte, e1, e2]
-            rw [if_neg (by omega), if_pos (by omega)]
+            rw [ite_eq_right (by omega), ite_eq_left (by omega)]
             have hi'' : i < (m.initialStore : Store Unit).globals.globals.length := hi
             rw [List.getElem?_eq_getElem hi'']
             rfl
@@ -177,7 +177,7 @@ theorem storeRel_init {P : Platform} {m : Module} {cap : Nat} {gts : List ValueT
         exact slotRel_wordOf hint' hti
       · rw [harea _ (by unfold areaSize; omega)]
         simp only [areaByte]
-        rw [if_neg (by omega), if_neg (by omega), Nat.add_sub_cancel_left]
+        rw [ite_eq_right (by omega), ite_eq_right (by omega), Nat.add_sub_cancel_left]
         rfl
 
 /-! ## Talos's memory words -/

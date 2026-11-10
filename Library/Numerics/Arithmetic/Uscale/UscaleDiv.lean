@@ -77,7 +77,7 @@ theorem divBits_spec (n d : Array UInt64) (bits : UInt64) (hn : Limbs n) (hd : L
       obtain ⟨hA, hB⟩ := halve_div (val n) (val d * 2 ^ j) hD
       rw [le_spec _ _ ht1 h2 (by rw [ht3, hj]; omega) (by rw [h4]; omega), ht2, hj, h3]
       by_cases hc : val d * 2 ^ j ≤ val n % (2 * (val d * 2 ^ j))
-      · rw [if_pos (decide_eq_true hc)]
+      · rw [ite_eq_left (decide_eq_true hc)]
         obtain ⟨hq, hr⟩ := hA hc
         obtain ⟨hs1, hs2, hs3⟩ := sub_spec s.2 (shl d jw) h2 ht1 (by rw [h4]; omega)
           (by rw [ht3, hj]; omega) (by rw [h3, ht2, hj]; exact hc)
@@ -98,7 +98,7 @@ theorem divBits_spec (n d : Array UInt64) (bits : UInt64) (hn : Limbs n) (hd : L
           rw [Nat.mod_eq_of_lt (by rw [hq] at hbound; ring_nf; ring_nf at hbound; omega)]
           rw [hq]; ring
         · rw [hs2, h3, ht2, hj, hr]
-      · rw [if_neg (by simpa using hc)]
+      · rw [ite_eq_right (by simpa using hc)]
         obtain ⟨hq, hr⟩ := hB (by omega)
         refine ⟨?_, h2, ?_, h4⟩
         · rw [h1, hq]; ring

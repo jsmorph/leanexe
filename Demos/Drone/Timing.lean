@@ -11,17 +11,17 @@ open Demos.Drone Arithmetic Edges Dynamics
 theorem accepted_ticks (r0 r1 z0 z1 u v : UInt64)
     (h : 0 < edgeTicks r0 r1 z0 z1 u v) (ht : u + v ≠ 0) :
     edgeTicks r0 r1 z0 z1 u v = 33600 / ((u + v) / 5) := by
-  rw [edgeTicks_eq, if_neg ht] at h ⊢
+  rw [edgeTicks_eq, ite_eq_right ht] at h ⊢
   split at h
   · simp at h
   · rename_i hc
-    rw [if_neg hc]
+    rw [ite_eq_right hc]
 
 theorem rest_ticks (r0 r1 z0 z1 : UInt64)
     (hz0 : z0.toNat ≤ heightLimit) (hz1 : z1.toNat ≤ heightLimit) :
     (edgeTicks r0 r1 z0 z1 0 0).toNat = 840 * (restSeconds (distance z0 z1)).toNat := by
   have hb := (restSeconds_bounds (distance z0 z1) (distance_le z0 z1 hz0 hz1)).2.2.2
-  rw [edgeTicks_eq, if_pos (by decide)]
+  rw [edgeTicks_eq, ite_eq_left (by decide)]
   rw [UInt64.toNat_mul]
   exact Nat.mod_eq_of_lt (by simp; omega)
 

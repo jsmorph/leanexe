@@ -35,22 +35,22 @@ theorem roundQuotient_spec (N D : ℕ) (hD : 0 < D) :
   generalize N % D = r at hq hr ⊢
   subst hq
   by_cases h1 : 2 * r < D
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     refine ⟨by nlinarith, by nlinarith, fun h => ?_⟩
     rcases h with h | h <;> nlinarith
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     by_cases h2 : D < 2 * r
-    · rw [if_pos h2]
+    · rw [ite_eq_left h2]
       refine ⟨by nlinarith, by nlinarith, fun h => ?_⟩
       rcases h with h | h <;> nlinarith
-    · rw [if_neg h2]
+    · rw [ite_eq_right h2]
       have h3 : 2 * r = D := by omega
       by_cases h4 : q % 2 = 0
       · have h4' : (q % 2 == 0) = true := by simpa using h4
-        rw [if_pos h4']
+        rw [ite_eq_left h4']
         exact ⟨by nlinarith, by nlinarith, fun _ => h4⟩
       · have h4' : (q % 2 == 0) = false := by simpa using h4
-        rw [if_neg (by simp [h4'])]
+        rw [ite_eq_right (by simp [h4'])]
         exact ⟨by nlinarith, by nlinarith, fun _ => by omega⟩
 
 /-- The integer nearest to `N / (D · 2 ^ (E - 1))` rounds `N / D` in a binade `E` that holds it. -/
@@ -142,11 +142,11 @@ theorem roundShift_eq (n j : ℕ) (hj : 0 < j) :
   have hr := Nat.mod_lt n hp
   have e : 2 ^ (i + 1) = 2 * 2 ^ i := by rw [pow_succ]; ring
   by_cases h1 : n % 2 ^ (i + 1) < 2 ^ i
-  · rw [if_pos h1, if_pos (show 2 * (n % 2 ^ (i + 1)) < 2 ^ (i + 1) by omega)]
-  · rw [if_neg h1, if_neg (show ¬ 2 * (n % 2 ^ (i + 1)) < 2 ^ (i + 1) by omega)]
+  · rw [ite_eq_left h1, ite_eq_left (show 2 * (n % 2 ^ (i + 1)) < 2 ^ (i + 1) by omega)]
+  · rw [ite_eq_right h1, ite_eq_right (show ¬ 2 * (n % 2 ^ (i + 1)) < 2 ^ (i + 1) by omega)]
     by_cases h2 : 2 ^ i < n % 2 ^ (i + 1)
-    · rw [if_pos h2, if_pos (show 2 ^ (i + 1) < 2 * (n % 2 ^ (i + 1)) by omega)]
-    · rw [if_neg h2, if_neg (show ¬ 2 ^ (i + 1) < 2 * (n % 2 ^ (i + 1)) by omega)]
+    · rw [ite_eq_left h2, ite_eq_left (show 2 ^ (i + 1) < 2 * (n % 2 ^ (i + 1)) by omega)]
+    · rw [ite_eq_right h2, ite_eq_right (show ¬ 2 ^ (i + 1) < 2 * (n % 2 ^ (i + 1)) by omega)]
 
 /-! ### Binary64 -/
 
@@ -172,16 +172,16 @@ theorem scaled64 (R s : ℕ) (hR : R ≤ 2 ^ 53) (hR1 : s = 0 ∨ 2 ^ 52 ≤ R) 
   rcases Nat.eq_zero_or_pos s with hs | hs
   · subst hs
     simp only [pow_zero, mul_one, zero_mul, zero_add]
-    rw [if_neg (show ¬ (2047 ≤ 0 + 1 ∨ 2047 * 4503599627370496 ≤ R) by omega)]
+    rw [ite_eq_right (show ¬ (2047 ≤ 0 + 1 ∨ 2047 * 4503599627370496 ≤ R) by omega)]
     unfold Wasm.IEEE64.roundScaledMagnitude
     rw [e52, e53]
     by_cases h1 : R < 4503599627370496
-    · rw [if_pos h1, encode64]; simp
+    · rw [ite_eq_left h1, encode64]; simp
     by_cases h2 : R < 2 * 4503599627370496
-    · rw [if_neg h1, if_pos h2, encode64, e52, show 1 * 4503599627370496 + (R - 4503599627370496) = R by omega]
+    · rw [ite_eq_right h1, ite_eq_left h2, encode64, e52, show 1 * 4503599627370496 + (R - 4503599627370496) = R by omega]
     · have hR' : R = 2 * 4503599627370496 := by omega
       subst hR'
-      rw [if_neg h1, if_neg h2]
+      rw [ite_eq_right h1, ite_eq_right h2]
       have hlog : Nat.log2 (2 * 4503599627370496) - 52 = 1 := by
         rw [← e53, Nat.log2_two_pow]
       have hround : Wasm.IEEE32.roundShift (2 * 4503599627370496) 1 = 4503599627370496 := by
@@ -193,19 +193,19 @@ theorem scaled64 (R s : ℕ) (hR : R ≤ 2 ^ 53) (hR1 : s = 0 ∨ 2 ^ 52 ≤ R) 
     rw [F64RoundFinish.roundScaled_mul_pow false R s hs hR2 (by rw [e53]; exact hR), e53, e52]
     by_cases hR' : R = 2 * 4503599627370496
     · subst hR'
-      rw [if_pos rfl]
+      rw [ite_eq_left rfl]
       by_cases hi : 2047 ≤ s + 2
-      · rw [if_pos hi, if_pos (show 2047 ≤ s + 1 ∨
+      · rw [ite_eq_left hi, ite_eq_left (show 2047 ≤ s + 1 ∨
           2047 * 4503599627370496 ≤ s * 4503599627370496 + 2 * 4503599627370496 by right; omega),
           hinf]
-      · rw [if_neg hi, if_neg (show ¬ (2047 ≤ s + 1 ∨
+      · rw [ite_eq_right hi, ite_eq_right (show ¬ (2047 ≤ s + 1 ∨
           2047 * 4503599627370496 ≤ s * 4503599627370496 + 2 * 4503599627370496) by omega),
           encode64, e52, show (s + 2) * 4503599627370496 + 0 = s * 4503599627370496 + 2 * 4503599627370496 by ring]
-    · rw [if_neg hR']
+    · rw [ite_eq_right hR']
       by_cases hi : 2047 ≤ s + 1
-      · rw [if_pos hi, if_pos (show 2047 ≤ s + 1 ∨
+      · rw [ite_eq_left hi, ite_eq_left (show 2047 ≤ s + 1 ∨
           2047 * 4503599627370496 ≤ s * 4503599627370496 + R by left; exact hi), hinf]
-      · rw [if_neg hi, if_neg (show ¬ (2047 ≤ s + 1 ∨
+      · rw [ite_eq_right hi, ite_eq_right (show ¬ (2047 ≤ s + 1 ∨
           2047 * 4503599627370496 ≤ s * 4503599627370496 + R) by omega), encode64]
         have hX : 4503599627370496 ≤ R := by rw [← e52]; exact hR2
         rw [e52, show (s + 1) * 4503599627370496 + (R - 4503599627370496) = s * 4503599627370496 + R by rw [Nat.add_mul, one_mul]; omega]
@@ -301,16 +301,16 @@ theorem scaled32 (R : ℕ) (hR : R ≤ 2 ^ 24) :
   unfold packInf pack
   rw [Nat.sub_self, zero_mul, zero_add, hL, hF]
   rw [e24] at hR
-  rw [if_neg (show ¬ (255 ≤ 1 ∨ 255 * 8388608 ≤ R) by omega)]
+  rw [ite_eq_right (show ¬ (255 ≤ 1 ∨ 255 * 8388608 ≤ R) by omega)]
   unfold Wasm.IEEE32.roundScaledMagnitude
   rw [e23, e24]
   by_cases h1 : R < 8388608
-  · rw [if_pos h1, encode32]; simp
+  · rw [ite_eq_left h1, encode32]; simp
   by_cases h2 : R < 2 * 8388608
-  · rw [if_neg h1, if_pos h2, encode32, e23, show 1 * 8388608 + (R - 8388608) = R by omega]
+  · rw [ite_eq_right h1, ite_eq_left h2, encode32, e23, show 1 * 8388608 + (R - 8388608) = R by omega]
   · have hR' : R = 2 * 8388608 := by omega
     subst hR'
-    rw [if_neg h1, if_neg h2]
+    rw [ite_eq_right h1, ite_eq_right h2]
     have hlog : Nat.log2 (2 * 8388608) - 23 = 1 := by
       rw [← e24, Nat.log2_two_pow]
     have hround : Wasm.IEEE32.roundShift (2 * 8388608) 1 = 8388608 := by
@@ -380,17 +380,17 @@ theorem rational32 (N D : ℕ) (hN : 0 < N) (hD : 0 < D) :
     · subst hR'
       simp only [beq_self_eq_true, ite_true]
       by_cases hi : 255 ≤ s + 1 + 1
-      · rw [if_pos hi, if_pos (show 255 ≤ s + 1 ∨
+      · rw [ite_eq_left hi, ite_eq_left (show 255 ≤ s + 1 ∨
           255 * 8388608 ≤ s * 8388608 + 2 * 8388608 by right; omega), hinf]
-      · rw [if_neg hi, if_neg (show ¬ (255 ≤ s + 1 ∨
+      · rw [ite_eq_right hi, ite_eq_right (show ¬ (255 ≤ s + 1 ∨
           255 * 8388608 ≤ s * 8388608 + 2 * 8388608) by omega), encode32, e23,
           show (s + 1 + 1) * 8388608 + (8388608 - 8388608) = s * 8388608 + 2 * 8388608 by ring_nf]
     · have hR'' : (R == 2 * 8388608) = false := by simpa using hR'
       simp only [hR'', Bool.false_eq_true, ite_false]
       by_cases hi : 255 ≤ s + 1
-      · rw [if_pos hi, if_pos (show 255 ≤ s + 1 ∨ 255 * 8388608 ≤ s * 8388608 + R by left; exact hi),
+      · rw [ite_eq_left hi, ite_eq_left (show 255 ≤ s + 1 ∨ 255 * 8388608 ≤ s * 8388608 + R by left; exact hi),
           hinf]
-      · rw [if_neg hi, if_neg (show ¬ (255 ≤ s + 1 ∨ 255 * 8388608 ≤ s * 8388608 + R) by omega),
+      · rw [ite_eq_right hi, ite_eq_right (show ¬ (255 ≤ s + 1 ∨ 255 * 8388608 ≤ s * 8388608 + R) by omega),
           encode32, e23,
           show (s + 1) * 8388608 + (R - 8388608) = s * 8388608 + R by rw [Nat.add_mul, one_mul]; omega]
 

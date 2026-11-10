@@ -232,10 +232,10 @@ theorem t_isNaN (x : BitVec 64) : Wasm.IEEE64.isNaN (UInt64.ofBitVec x) = isNaNT
       · by_cases h3 : 2 ^ 51 ≤ fr x
         · have h1' : (fr x != 0) = true := by simpa using h1
           have h1'' : (fr x == 0) = false := by simpa using h1
-          rw [if_neg h0, if_pos h2, if_neg h1, if_pos h3, h2]; simp only [h1', h1'']; rfl
+          rw [ite_eq_right h0, ite_eq_left h2, ite_eq_right h1, ite_eq_left h3, h2]; simp only [h1', h1'']; rfl
         · have h1' : (fr x != 0) = true := by simpa using h1
           have h1'' : (fr x == 0) = false := by simpa using h1
-          rw [if_neg h0, if_pos h2, if_neg h1, if_neg h3, h2]; simp only [h1', h1'']; rfl
+          rw [ite_eq_right h0, ite_eq_left h2, ite_eq_right h1, ite_eq_right h3, h2]; simp only [h1', h1'']; rfl
     · have : (ex x == 0x7FF) = false := by simpa using h2
       simp only [h0, h2, this, if_false, Bool.false_and]; rfl
 
@@ -252,10 +252,10 @@ theorem t_isInf (x : BitVec 64) :
       · by_cases h3 : 2 ^ 51 ≤ fr x
         · have h1' : (fr x != 0) = true := by simpa using h1
           have h1'' : (fr x == 0) = false := by simpa using h1
-          rw [if_neg h0, if_pos h2, if_neg h1, if_pos h3, h2]; simp only [h1', h1'']; rfl
+          rw [ite_eq_right h0, ite_eq_left h2, ite_eq_right h1, ite_eq_left h3, h2]; simp only [h1', h1'']; rfl
         · have h1' : (fr x != 0) = true := by simpa using h1
           have h1'' : (fr x == 0) = false := by simpa using h1
-          rw [if_neg h0, if_pos h2, if_neg h1, if_neg h3, h2]; simp only [h1', h1'']; rfl
+          rw [ite_eq_right h0, ite_eq_left h2, ite_eq_right h1, ite_eq_right h3, h2]; simp only [h1', h1'']; rfl
     · have : (ex x == 0x7FF) = false := by simpa using h2
       simp only [h0, h2, this, if_false, Bool.false_and]; rfl
 
@@ -356,7 +356,7 @@ theorem rsm_exact (neg : Bool) (q j : ℕ) (h1 : 2 ^ 52 ≤ q) (h2 : q < 2 ^ 53)
   unfold Wasm.IEEE64.roundScaledMagnitude
   rcases Nat.eq_zero_or_pos j with rfl | hj
   · simp only [pow_zero, Nat.mul_one]
-    rw [if_neg (by omega), if_pos h2, if_neg (by omega)]
+    rw [ite_eq_right (by omega), ite_eq_left h2, ite_eq_right (by omega)]
   · have hp : 2 ^ 53 ≤ q * 2 ^ j := by
       have : 2 ≤ 2 ^ j := by
         calc 2 = 2 ^ 1 := rfl
@@ -370,7 +370,7 @@ theorem rsm_exact (neg : Bool) (q j : ℕ) (h1 : 2 ^ 52 ≤ q) (h2 : q < 2 ^ 53)
         exact Nat.mul_lt_mul_of_pos_right h2 (Nat.two_pow_pos j)
     have hrs : Wasm.IEEE32.roundShift (q * 2 ^ j) j = q := by
       rw [roundShift_eq _ _ hj, Nat.mul_mod_left, Nat.mul_div_cancel _ (Nat.two_pow_pos j)]
-      rw [if_neg]
+      rw [ite_eq_right]
       have := Nat.two_pow_pos j
       omega
     simp only [show ¬ q * 2 ^ j < 2 ^ 52 by omega, show ¬ q * 2 ^ j < 2 ^ 53 by omega, if_false,
@@ -420,23 +420,23 @@ theorem tDy_normal (neg : Bool) (N X j q r : ℕ) (hk : Nat.log2 N = X + j + 52)
         simp
       · simp only [beq_self_eq_true, if_true, Nat.add_zero, pow_zero, Nat.mul_one]
         have hX' : (X == 0) = false := by simp only [beq_eq_false_iff_ne]; omega
-        rw [hX', if_neg (by simp), roundShift_eq _ _ hX]
+        rw [hX', ite_eq_right (by simp), roundShift_eq _ _ hX]
         simp only [Nat.add_zero] at hq hr
         rw [hq, hr]
     · have hj' : (j == 0) = false := by simp only [beq_eq_false_iff_ne]; omega
-      rw [hj', if_neg (by simp), roundShift_eq _ _ (by omega), hq, hr]
+      rw [hj', ite_eq_right (by simp), roundShift_eq _ _ (by omega), hq, hr]
   unfold tDy Wasm.IEEE64.roundDyadicMagnitude
   have hN0' : (N == 0) = false := by simp only [beq_eq_false_iff_ne]; exact hN0
   simp only [hN0', Bool.false_eq_true, if_false]
   rw [hcand]
   by_cases hup : (2 ^ (X + j) < 2 * r ∨ 2 * r = 2 ^ (X + j) ∧ q % 2 = 1)
-  · rw [if_pos hup, if_pos hup]
+  · rw [ite_eq_left hup, ite_eq_left hup]
     by_cases hc : q + 1 = 2 ^ 53
-    · rw [if_pos hc, hc, rsm_carry]
+    · rw [ite_eq_left hc, hc, rsm_carry]
       split_ifs <;> rfl
-    · rw [if_neg hc, rsm_exact neg (q + 1) j (by omega) (by omega)]
+    · rw [ite_eq_right hc, rsm_exact neg (q + 1) j (by omega) (by omega)]
       split_ifs <;> rfl
-  · rw [if_neg hup, if_neg hup, rsm_exact neg q j hq1 hq2]
+  · rw [ite_eq_right hup, ite_eq_right hup, rsm_exact neg q j hq1 hq2]
     split_ifs <;> rfl
 
 /-- Talos's two stages for a subnormal result: the quotient `q` of `N` by `2^X` rounds to
@@ -465,19 +465,19 @@ theorem tDy_sub (neg : Bool) (N X q r : ℕ) (hN : 0 < N) (hL : Nat.log2 N < X +
       subst hq hr
       simp
     · have hX' : (X == 0) = false := by simp only [beq_eq_false_iff_ne]; omega
-      rw [hX', if_neg (by simp), roundShift_eq _ _ hX, hq, hr]
+      rw [hX', ite_eq_right (by simp), roundShift_eq _ _ hX, hq, hr]
   unfold tDy Wasm.IEEE64.roundDyadicMagnitude
   have hN0' : (N == 0) = false := by simp only [beq_eq_false_iff_ne]; omega
   simp only [hN0', Bool.false_eq_true, if_false]
   rw [hcand]
   unfold Wasm.IEEE64.roundScaledMagnitude
   by_cases hup : (2 ^ X < 2 * r ∨ 2 * r = 2 ^ X ∧ q % 2 = 1)
-  · rw [if_pos hup, if_pos hup]
+  · rw [ite_eq_left hup, ite_eq_left hup]
     by_cases hc : q + 1 = 2 ^ 52
-    · rw [if_pos hc, hc, if_neg (by norm_num), if_pos (by norm_num)]
+    · rw [ite_eq_left hc, hc, ite_eq_right (by norm_num), ite_eq_left (by norm_num)]
       simp
-    · rw [if_neg hc, if_pos (by omega)]
-  · rw [if_neg hup, if_neg hup, if_pos hq2]
+    · rw [ite_eq_right hc, ite_eq_left (by omega)]
+  · rw [ite_eq_right hup, ite_eq_right hup, ite_eq_left hq2]
 
 /-- The bits of FPSR that FPRoundBase__1 sets for the nonzero magnitude `N` in units of
 `2^-(1074 + X)`, at 64 bits under FPCR 0x02000000: OFC and IXC on overflow, IXC on an inexact

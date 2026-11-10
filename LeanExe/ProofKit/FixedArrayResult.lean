@@ -212,7 +212,7 @@ theorem lengthStore_spec
   rw [hTwo32]
   rw [← Memory.toUInt32_eq_ofNat]
   simp only [UInt32.toNat_zero, add_zero]
-  rw [if_neg (Nat.not_lt.mpr hBound)]
+  rw [ite_eq_right (Nat.not_lt.mpr hBound)]
   cases frame
   simp_all [writeLength]
 
@@ -237,7 +237,7 @@ theorem lengthStoreLocal_spec
   have hTwo32 : 2 ^ 32 = 4294967296 := by norm_num
   rw [hTwo32, ← Memory.toUInt32_eq_ofNat]
   simp only [UInt32.toNat_zero, add_zero]
-  rw [if_neg (Nat.not_lt.mpr hBound)]
+  rw [ite_eq_right (Nat.not_lt.mpr hBound)]
   cases frame
   simp_all [writeLength]
 
@@ -267,7 +267,7 @@ theorem payloadStore_spec
       (root + (UInt64.ofNat index * 1 + 1) * 8).toUInt32.toNat + 8 ≤
         st.mem.pages * 65536 := by
     simpa [payloadAddress] using hBound
-  rw [if_neg (Nat.not_lt.mpr hPayloadBound)]
+  rw [ite_eq_right (Nat.not_lt.mpr hPayloadBound)]
   simpa [writePayload, payloadAddress] using hNext
 
 set_option maxHeartbeats 1000000 in

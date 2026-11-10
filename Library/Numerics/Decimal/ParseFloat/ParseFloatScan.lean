@@ -49,11 +49,11 @@ theorem limb_words (s : List UInt8) (j : UInt64) (hs : s.length < 2 ^ 32) :
   unfold limb
   have hsz := words_size64 s hs
   by_cases h : j.toNat < s.length
-  · rw [if_pos (by rw [UInt64.lt_iff_toNat_lt, hsz]; exact h)]
+  · rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, hsz]; exact h)]
     have hj : j.toNat < (words s).size := by rw [words_size]; exact h
     rw [getElem!_pos (words s) j.toNat hj, byteAt_lt s _ h]
     simp [words]
-  · rw [if_neg (by rw [UInt64.lt_iff_toNat_lt, hsz]; exact h), byteAt_ge s _ (by omega)]
+  · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, hsz]; exact h), byteAt_ge s _ (by omega)]
     rfl
 
 theorem byte_cases (P : UInt8 → Prop) (h : ∀ n, n < 256 → P (UInt8.ofNat n)) (b : UInt8) :
@@ -147,7 +147,7 @@ theorem span_spec (s : List UInt8) (hex : Bool) (i : ℕ) (hi : i ≤ s.length)
           · rw [UInt64.lt_iff_toNat_lt, hjn, hsz]; omega
           · have := takeWhile_get (cls hex) (s.drop i) (j - i) (by omega)
             rwa [byteAt_drop, show i + (j - i) = j by omega] at this
-        rw [if_pos hc]
+        rw [ite_eq_left hc]
         have := ih (j + 1) (by omega) (by omega) (by omega)
         rwa [show UInt64.ofNat j + 1 = UInt64.ofNat (j + 1) by
           apply UInt64.toNat_inj.mp; rw [UInt64.toNat_add, hjn, ofNat_toNat _ (by omega)]; simp
@@ -162,7 +162,7 @@ theorem span_spec (s : List UInt8) (hex : Bool) (i : ℕ) (hi : i ≤ s.length)
             simp [this]
           · simp only [Bool.and_eq_false_iff, decide_eq_false_iff_not]
             left; rw [UInt64.lt_iff_toNat_lt, hjn, hsz]; exact hjl
-        rw [if_neg (by simp [hc]), hjn]; exact hje
+        rw [ite_eq_right (by simp [hc]), hjn]; exact hje
   exact key _ i le_rfl (by omega) (by rw [hsz]; omega)
 
 /-! ### Words of special names -/
@@ -444,7 +444,7 @@ theorem expPart_spec (s : List UInt8) (i : ℕ) (hi : i ≤ s.length) (hs : s.le
     simp only [byteAt_drop, add_zero, byteAt_cons_zero] at this; exact this
   have hrest : s.drop (i + 1) = rest := by rw [← List.drop_drop, hdr]; rfl
   by_cases hsg : b = 0x2D ∨ b = 0x2B
-  · have hj1 : j = i + 1 := by rw [hjdef, if_pos (by rw [hcb]; exact hsg)]
+  · have hj1 : j = i + 1 := by rw [hjdef, ite_eq_left (by rw [hcb]; exact hsg)]
     have hdj : s.drop j = rest := by rw [hj1, hrest]
     rw [hdj] at hvalid htake hval
     refine ⟨?_, fun v hv => ?_⟩
@@ -458,18 +458,18 @@ theorem expPart_spec (s : List UInt8) (i : ℕ) (hi : i ≤ s.length) (hs : s.le
             ite_false] at hv <;> split_ifs at hv with hh <;> simp_all
       rw [hval, htake hrd.2, hcb, minus_word]
       rcases hsg with h | h <;> subst h
-      · simp only [decodeExpDigits, ite_true, if_pos hrd, Option.some.injEq] at hv
+      · simp only [decodeExpDigits, ite_true, ite_eq_left hrd, Option.some.injEq] at hv
         subst hv
         simp only [decide_true, ite_true]
         rw [satE_neg]; push_cast; ring
       · simp only [decodeExpDigits, show ((0x2B : UInt8) = 0x2D) = False by decide, ite_false,
-          ite_true, if_pos hrd, Option.some.injEq] at hv
+          ite_true, ite_eq_left hrd, Option.some.injEq] at hv
         subst hv
         simp only [show ((0x2B : UInt8) = 0x2D) = False by decide, decide_false,
           Bool.false_eq_true, ite_false]
         rw [satE_pos]
   · push Not at hsg
-    have hji : j = i := by rw [hjdef, if_neg (by rw [hcb]; push Not; exact hsg)]
+    have hji : j = i := by rw [hjdef, ite_eq_right (by rw [hcb]; push Not; exact hsg)]
     have hdj : s.drop j = b :: rest := by rw [hji, hdr]
     rw [hdj] at hvalid htake hval
     refine ⟨?_, fun v hv => ?_⟩

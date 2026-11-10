@@ -67,7 +67,7 @@ theorem Env.pot_fnOff {Γ : List Ty} (store : Store Unit) (s : Locals) (tail : E
       change (if sel 0 then (ts 0).pot store (s.read (sl.loc) (ts 0).types) (values 0) else 0) +
           (Env.prependFn n (fun i => ts i.succ) (fun i => values i.succ) tail).pot store s
             (first ++ rest) (fun i => sel (i + 1)) = _
-      rw [hOff 0 (by omega), if_neg Bool.false_ne_true, Nat.zero_add, ih]
+      rw [hOff 0 (by omega), ite_eq_right Bool.false_ne_true, Nat.zero_add, ih]
       congr 1
 
 theorem Env.pot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env : Env Γ)

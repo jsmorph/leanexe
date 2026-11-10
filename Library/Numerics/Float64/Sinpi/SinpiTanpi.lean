@@ -28,8 +28,8 @@ theorem zero_prop (p : Prop) [Decidable p] :
     F64SignedRounding.WithinSteps 1 0 (if p then -(0.0 : Float) else 0.0).toBits := by
   obtain ⟨z1, z2⟩ := zero_bits'
   by_cases h : p
-  · rw [if_pos h, z2]; exact F64SelfStep.zero_step _ (by decide)
-  · rw [if_neg h, z1]; exact F64SelfStep.zero_step _ (by decide)
+  · rw [ite_eq_left h, z2]; exact F64SelfStep.zero_step _ (by decide)
+  · rw [ite_eq_right h, z1]; exact F64SelfStep.zero_step _ (by decide)
 
 /-- A signed result from a nonnegative one: `tan (π x)` is odd. -/
 theorem signed_tan (x : Float) (hxf : Finite x.toBits) (h0 : value x.toBits ≠ 0) (s : Float)
@@ -37,12 +37,12 @@ theorem signed_tan (x : Float) (hxf : Finite x.toBits) (h0 : value x.toBits ≠ 
     F64SignedRounding.WithinSteps 1 (Real.tan (Real.pi * value x.toBits))
       (if Wasm.IEEE64.sign x.toBits = true then -s else s).toBits := by
   rcases sign_cases x hxf h0 with ⟨hsg, hv⟩ | ⟨hsg, hv⟩
-  · rw [if_pos hsg]
+  · rw [ite_eq_left hsg]
     have := neg_within _ _ hs
     rwa [show Real.pi * value x.toBits = -(Real.pi * |value x.toBits|) by
       conv_lhs => rw [hv]
       ring, Real.tan_neg]
-  · rw [if_neg (by rw [hsg]; decide)]
+  · rw [ite_eq_right (by rw [hsg]; decide)]
     rwa [show Real.pi * value x.toBits = Real.pi * |value x.toBits| by rw [← hv]]
 
 /-- `tanpi` from `2 ^ -29` below 1, away from `1/2`. -/
@@ -58,13 +58,13 @@ theorem tanpi_mid (x : Float) (hxf : Finite x.toBits) (h1 : 1 / 2 ^ 29 ≤ |valu
   have hp := tan_pieces x.abs |value x.toBits| hs hf hv (le_trans (by norm_num) h1) h2
   unfold Sinpi.tanpi
   dsimp only
-  rw [ax_abs, neg_flag, if_pos (c1.mpr h2), if_neg (fun h => by linarith [c29.mp h])]
+  rw [ax_abs, neg_flag, ite_eq_left (c1.mpr h2), ite_eq_right (fun h => by linarith [c29.mp h])]
   apply signed_tan x hxf h0
   by_cases hq : |value x.toBits| < 1 / 2
-  · rw [if_pos (t2.mpr hq)]
+  · rw [ite_eq_left (t2.mpr hq)]
     exact hp.1 hq
-  · rw [if_neg (fun h' => hq (t2.mp h')), beq_half _ hf, hv, decide_eq_false hh,
-      if_neg (show ¬((false : Bool) = true) by decide)]
+  · rw [ite_eq_right (fun h' => hq (t2.mp h')), beq_half _ hf, hv, decide_eq_false hh,
+      ite_eq_right (show ¬((false : Bool) = true) by decide)]
     exact hp.2 (lt_of_le_of_ne (not_lt.mp hq) (Ne.symm hh))
 
 /-- `tanpi` from 1 below `2 ^ 52`, away from an integer plus `1/2`. -/
@@ -77,7 +77,7 @@ theorem tanpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
   have h0 : value x.toBits ≠ 0 := by intro h; rw [h, abs_zero] at h1; linarith
   unfold Sinpi.tanpi
   dsimp only
-  rw [ax_abs, neg_flag, if_neg (fun h' => by linarith [c1.mp h']), if_pos (c52.mpr h2)]
+  rw [ax_abs, neg_flag, ite_eq_right (fun h' => by linarith [c1.mp h']), ite_eq_left (c52.mpr h2)]
   apply signed_tan x hxf h0
   generalize Sinpi.ffloor ((x.toBits >>> 32) &&& 0x7fffffff) (x.toBits &&& 0xFFFFFFFF) = P at *
   obtain ⟨fl, j0⟩ := P
@@ -85,8 +85,8 @@ theorem tanpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
   rw [show |value x.toBits| = N + (|value x.toBits| - N) by ring, tan_shift]
   rcases hcase with ⟨heq, hz⟩ | ⟨hgt, hlt, ha63⟩
   · rw [hz, show (0 : UInt64) >>> 32 = 0 by decide,
-      if_pos (show (0 : UInt64) < 0x3fe00000 by decide),
-      if_pos (show ((0 : UInt64) == 0) = true by decide), heq, sub_self, mul_zero, Real.tan_zero]
+      ite_eq_left (show (0 : UInt64) < 0x3fe00000 by decide),
+      ite_eq_left (show ((0 : UInt64) == 0) = true by decide), heq, sub_self, mul_zero, Real.tan_zero]
     exact zero_prop _
   · set F := |value x.toBits| - N with hFdef
     have hF0 : 1 / 2 ^ 52 ≤ F := by rw [hFdef]; linarith
@@ -98,11 +98,11 @@ theorem tanpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
     obtain ⟨-, t2, -⟩ := thresholds (x.abs - fl) ((x.abs - fl).toBits >>> 32) F
       (by rw [Library.Numerics.Float64.Trig.TrigWords.shr_toNat]; rfl) ha63 hdv
     by_cases hq : F < 1 / 2
-    · rw [if_pos (t2.mpr hq), frac_high _ F ha63 hdv hF0,
-        if_neg (show ¬((false : Bool) = true) by decide)]
+    · rw [ite_eq_left (t2.mpr hq), frac_high _ F ha63 hdv hF0,
+        ite_eq_right (show ¬((false : Bool) = true) by decide)]
       exact hp.1 hq
-    · rw [if_neg (fun h' => hq (t2.mp h')), beq_half _ hdf, hdv, decide_eq_false hFh,
-        if_neg (show ¬((false : Bool) = true) by decide)]
+    · rw [ite_eq_right (fun h' => hq (t2.mp h')), beq_half _ hdf, hdv, decide_eq_false hFh,
+        ite_eq_right (show ¬((false : Bool) = true) by decide)]
       exact hp.2 (lt_of_le_of_ne (not_lt.mp hq) (Ne.symm hFh))
 
 #print axioms tanpi_mid

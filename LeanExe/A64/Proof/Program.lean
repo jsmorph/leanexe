@@ -532,7 +532,7 @@ theorem storeRel_init {m : Module} {cap : Nat} {gts : List ValueType} {s : State
       · apply load64_bytes
         intro k hk
         rw [harea k (by unfold areaSize; omega)]
-        simp only [areaByte, if_pos hk]
+        simp only [areaByte, ite_eq_left hk]
         rfl
       · intro i hi
         have hti := hty.getElem (i := i) (by omega)
@@ -542,14 +542,14 @@ theorem storeRel_init {m : Module} {cap : Nat} {gts : List ValueType} {s : State
           have e1 : (8 * (i + 1) + k) / 8 - 1 = i := by omega
           have e2 : (8 * (i + 1) + k) % 8 = k := by omega
           simp only [areaByte, e1, e2]
-          rw [if_neg (by omega), if_pos (by omega)]
+          rw [ite_eq_right (by omega), ite_eq_left (by omega)]
           have hi' : i < (m.initialStore : Store Unit).globals.globals.length := hi
           rw [List.getElem?_eq_getElem hi']
           rfl
       · intro j hj
         rw [harea _ (by unfold areaSize; omega)]
         simp only [areaByte]
-        rw [if_neg (by omega), if_neg (by omega), Nat.add_sub_cancel_left]
+        rw [ite_eq_right (by omega), ite_eq_right (by omega), Nat.add_sub_cancel_left]
         rfl
 
 /-- The run of a trap stub at `a`: X0 set to the trap's code `c`, then a branch to the exit word

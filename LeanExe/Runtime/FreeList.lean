@@ -82,7 +82,7 @@ theorem takeFirstFit_none_iff (need : UInt64) (nodes : List FreeNode) :
   | nil => simp [takeFirstFit]
   | cons node rest ih =>
       by_cases hfit : need ≤ node.capacity
-      · rw [takeFirstFit, if_pos hfit]
+      · rw [takeFirstFit, ite_eq_left hfit]
         constructor
         · intro h
           simp at h
@@ -91,7 +91,7 @@ theorem takeFirstFit_none_iff (need : UInt64) (nodes : List FreeNode) :
           rw [UInt64.le_iff_toNat_le] at hfit
           rw [UInt64.lt_iff_toNat_lt] at hlt
           omega
-      · rw [takeFirstFit, if_neg hfit]
+      · rw [takeFirstFit, ite_eq_right hfit]
         have hnone :
             (match takeFirstFit need rest with
               | none => none
@@ -591,7 +591,7 @@ theorem FreeListAt.unlink_takeFirstFitFrom {mem : Mem}
         _ = (skipped.dropLast ++ [predecessor]) ++ tail := by rw [hsplit]
         _ = skipped.dropLast ++ predecessor :: tail := by
           simp [List.append_assoc]
-    rw [hRemaining', unlinkFreeChoice, if_neg hPreviousNonzero,
+    rw [hRemaining', unlinkFreeChoice, ite_eq_right hPreviousNonzero,
       hPrevious, hnext]
     exact hUnlinked
 

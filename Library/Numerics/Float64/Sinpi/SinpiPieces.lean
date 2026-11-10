@@ -77,18 +77,18 @@ theorem sin_chain (a : Float) (ix : UInt64) (A : ℝ) (hix : ix.toNat = a.toBits
         else Sinpi.kernelSinpi (1.0 - a)).toBits := by
   obtain ⟨c1, c2, c3⟩ := thresholds a ix A hix hs hA
   by_cases h1 : A < 1 / 4
-  · rw [if_pos (c1.mpr h1)]
+  · rw [ite_eq_left (c1.mpr h1)]
     exact (kernel_pair a A hs hf hA hA0 h1.le).1
-  rw [if_neg (fun h => h1 (c1.mp h))]
+  rw [ite_eq_right (fun h => h1 (c1.mp h))]
   by_cases h2 : A < 1 / 2
-  · rw [if_pos (c2.mpr h2)]
+  · rw [ite_eq_left (c2.mpr h2)]
     obtain ⟨df, dv, ds, d0⟩ := half_sub a A hf hA (by linarith) h2
     have := (kernel_pair (0.5 - a) (1 / 2 - A) ds df dv d0 (by linarith)).2
     rwa [show Real.pi * (1 / 2 - A) = Real.pi / 2 - Real.pi * A by ring,
       Real.cos_pi_div_two_sub] at this
-  rw [if_neg (fun h => h2 (c2.mp h))]
+  rw [ite_eq_right (fun h => h2 (c2.mp h))]
   by_cases h3 : A < 3 / 4
-  · rw [if_pos (c3.mpr h3)]
+  · rw [ite_eq_left (c3.mpr h3)]
     obtain ⟨df, dv, dcase⟩ := sub_half a A hf hA (by linarith) h3
     rcases dcase with hq | ⟨ds, d0⟩
     · -- `a = 1/2`: `a - 0.5` is `+0`, and the kernel gives exactly 1.
@@ -112,7 +112,7 @@ theorem sin_chain (a : Float) (ix : UInt64) (A : ℝ) (hix : ix.toNat = a.toBits
     · have := (kernel_pair (a - 0.5) (A - 1 / 2) ds df dv d0 (by linarith)).2
       rwa [show Real.pi * (A - 1 / 2) = Real.pi * A - Real.pi / 2 by ring,
         Real.cos_sub_pi_div_two] at this
-  rw [if_neg (fun h => h3 (c3.mp h))]
+  rw [ite_eq_right (fun h => h3 (c3.mp h))]
   obtain ⟨df, dv, ds, d0⟩ := one_sub a A hf hA (by linarith) hA1
   have := (kernel_pair (1.0 - a) (1 - A) ds df dv d0 (by linarith)).1
   rwa [show Real.pi * (1 - A) = Real.pi - Real.pi * A by ring, Real.sin_pi_sub] at this

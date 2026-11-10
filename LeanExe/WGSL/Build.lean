@@ -457,7 +457,7 @@ theorem _root_.LeanExe.Source.Spec.wgsl_invoke (K : Source.Spec) (hK : K.WF) (m 
     have hn := h.bound
     have hidx := hK.index
     unfold Module.invoke
-    rw [if_pos (by simp [hlen])]
+    rw [ite_eq_left (by simp [hlen])]
     set ctx : Context := { gid := UInt32.ofNat g, inputs := args.map Source.Arg.wgslBuffer, outputSize }
       with hctx
     set envP := paramBindings args 0 ++ [(0, .vec2 (UInt32.ofNat g) 0, false)] with henvP
@@ -639,27 +639,27 @@ theorem build_fold (n : Nat) (word : Nat → UInt64) (output : Array UInt32)
         by_cases h3 : 3 + 2 * k = i
         · subst h3
           have hd : (3 + 2 * k - 2) / 2 = k := by omega
-          rw [if_pos rfl, if_pos (by omega),
-            if_pos (show 2 ≤ 3 + 2 * k ∧ (3 + 2 * k - 2) / 2 < k + 1 ∧ (3 + 2 * k - 2) / 2 < n by
-              omega), hd, if_neg (by omega)]
-        · rw [if_neg h3]
+          rw [ite_eq_left rfl, ite_eq_left (by omega),
+            ite_eq_left (show 2 ≤ 3 + 2 * k ∧ (3 + 2 * k - 2) / 2 < k + 1 ∧ (3 + 2 * k - 2) / 2 < n by
+              omega), hd, ite_eq_right (by omega)]
+        · rw [ite_eq_right h3]
           by_cases h2 : 2 + 2 * k = i
           · subst h2
             have hd : (2 + 2 * k - 2) / 2 = k := by omega
-            rw [if_pos rfl, if_pos (by omega),
-              if_pos (show 2 ≤ 2 + 2 * k ∧ (2 + 2 * k - 2) / 2 < k + 1 ∧ (2 + 2 * k - 2) / 2 < n by
-                omega), hd, if_pos (by omega)]
-          · rw [if_neg h2]
+            rw [ite_eq_left rfl, ite_eq_left (by omega),
+              ite_eq_left (show 2 ≤ 2 + 2 * k ∧ (2 + 2 * k - 2) / 2 < k + 1 ∧ (2 + 2 * k - 2) / 2 < n by
+                omega), hd, ite_eq_left (by omega)]
+          · rw [ite_eq_right h2]
             by_cases hc : 2 ≤ i ∧ (i - 2) / 2 < k ∧ (i - 2) / 2 < n
-            · rw [if_pos hc, if_pos (show 2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n by omega)]
-            · rw [if_neg hc, if_neg (show ¬(2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n) by omega)]
+            · rw [ite_eq_left hc, ite_eq_left (show 2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n by omega)]
+            · rw [ite_eq_right hc, ite_eq_right (show ¬(2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n) by omega)]
       · simp only [buildWrites, hk, ite_false, applyWrites, List.foldl_nil]
         refine ⟨?_, hsize⟩
         rw [hi]
         unfold buildWord
         by_cases hc : 2 ≤ i ∧ (i - 2) / 2 < k ∧ (i - 2) / 2 < n
-        · rw [if_pos hc, if_pos (show 2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n by omega)]
-        · rw [if_neg hc, if_neg (show ¬(2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n) by omega)]
+        · rw [ite_eq_left hc, ite_eq_left (show 2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n by omega)]
+        · rw [ite_eq_right hc, ite_eq_right (show ¬(2 ≤ i ∧ (i - 2) / 2 < k + 1 ∧ (i - 2) / 2 < n) by omega)]
 
 /-- A build kernel computes its build: with the arguments' buffers, an output of the result's size
 whose length word the host has written, and at least the count of invocations, the dispatch leaves
@@ -698,22 +698,22 @@ theorem _root_.LeanExe.Source.Spec.wgsl_dispatch (K : Source.Spec) (hK : K.WF) (
     by_cases hi : i < 2 + 2 * n
     · rw [arrayWords_get _ _ (by rw [hbsize]; omega)]
       by_cases hi2 : i < 2
-      · rw [if_neg (by omega), if_pos hi2]
+      · rw [ite_eq_right (by omega), ite_eq_left hi2]
         simp only [hbsize, wordHalf]
         interval_cases i
         · simp [hL0]
-        · simp only [hL1, if_pos (show (1 : Nat) = 1 from rfl)]
+        · simp only [hL1, ite_eq_left (show (1 : Nat) = 1 from rfl)]
           congr 1
           apply UInt32.toNat_inj.mp
           simp [UInt64.toNat_shiftRight]
           omega
-      · rw [if_pos (show 2 ≤ i ∧ (i - 2) / 2 < count ∧ (i - 2) / 2 < n by omega),
-          if_neg hi2, hbuild _ (by omega)]
+      · rw [ite_eq_left (show 2 ≤ i ∧ (i - 2) / 2 < count ∧ (i - 2) / 2 < n by omega),
+          ite_eq_right hi2, hbuild _ (by omega)]
         by_cases hev : i % 2 = 0
         · simp [hev, wordHalf]
         · have : i % 2 = 1 := by omega
           simp [hev, this, wordHalf]
-    · rw [if_neg (show ¬(2 ≤ i ∧ (i - 2) / 2 < count ∧ (i - 2) / 2 < n) by omega),
+    · rw [ite_eq_right (show ¬(2 ≤ i ∧ (i - 2) / 2 < count ∧ (i - 2) / 2 < n) by omega),
         Array.getElem?_eq_none (by omega),
         Array.getElem?_eq_none (by simp [arrayWords_size, hbsize]; omega)]
   · intro g k hg hk hgk wg wk hwg hwk

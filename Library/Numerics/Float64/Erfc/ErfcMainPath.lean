@@ -81,7 +81,7 @@ theorem fast_ok_asym (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : (xMax : �
     have := (fle_iff _ _ tf hx).mp h; rw [tv] at this; linarith
   obtain ⟨f1, f2, herr, hb1, hb2⟩ := asym_fast_err hF x hx (by rw [k5]; exact hlo) hhi
   unfold Erfc.erfcFast
-  rw [if_neg hxnot, if_neg hxgt, fast_eq, if_neg hxlt]
+  rw [ite_eq_right hxnot, ite_eq_right hxgt, fast_eq, ite_eq_right hxlt]
   set p := asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x
   have hy := erfc_pos (fv x)
   have hm : |fv (Float.ofBits 0x3BBD900000000000) * fv p.1| ≤ 1 / 2 := by
@@ -142,7 +142,7 @@ theorem fast_cases (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < 
       (fle_iff _ _ tf hx).mpr (by rw [tv]; linarith)
     have hfast : Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x = (0.0, 0.0, 1.0) := by
       unfold Erfc.erfcFast
-      rw [if_neg hxnot, if_neg hxgt, fast_eq, if_pos hge]
+      rw [ite_eq_right hxnot, ite_eq_right hxgt, fast_eq, ite_eq_left hge]
     rw [hfast] at htest
     simp only [F64Bits.beq_eq, F64Bits.toBits_add, F64Bits.toBits_sub,
       show (0.0 : Float).toBits = 0 from rfl,

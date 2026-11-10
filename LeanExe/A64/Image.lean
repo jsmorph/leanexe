@@ -96,7 +96,7 @@ theorem codeAt_fetchFrom {m : UInt64 → UInt8} {a : UInt64} {is : List Instr}
     simp only [Nat.reducePow] at hn ⊢
     omega
   simp only [fetchFrom, hd]
-  rw [if_pos ⟨by omega, by omega⟩]
+  rw [ite_eq_left ⟨by omega, by omega⟩]
   congr 1
   apply load32_wordBytes
   intro k hk
@@ -125,7 +125,7 @@ theorem codeAt_fetchFrom_at {m : UInt64 → UInt8} {a : UInt64} {o N : Nat} {is 
     simp only [Nat.reducePow] at hN ⊢
     omega
   simp only [fetchFrom, hd]
-  rw [if_pos ⟨by omega, by omega⟩]
+  rw [ite_eq_left ⟨by omega, by omega⟩]
   congr 1
   apply load32_wordBytes
   intro k hk

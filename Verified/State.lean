@@ -173,15 +173,15 @@ theorem writeWords_getElem! : (ws : Array UInt64) → (w0 : Nat) → (vals : Lis
     simp only [List.length_cons] at hfit
     rw [writeWords, writeWords_getElem! _ _ _ (by rw [Array.size_set!]; omega)]
     by_cases h1 : w0 + 1 ≤ w ∧ w < w0 + 1 + vals.length
-    · rw [if_pos h1, if_pos (by simp only [List.length_cons]; omega),
+    · rw [ite_eq_left h1, ite_eq_left (by simp only [List.length_cons]; omega),
         show w - w0 = (w - (w0 + 1)) + 1 by omega, List.getElem!_cons_succ]
-    · rw [if_neg h1]
+    · rw [ite_eq_right h1]
       by_cases h2 : w = w0
       · subst h2
-        rw [Array.getElem!_set!_self _ _ _ (by omega), if_pos (by simp), Nat.sub_self,
+        rw [Array.getElem!_set!_self _ _ _ (by omega), ite_eq_left (by simp), Nat.sub_self,
           List.getElem!_cons_zero]
       · rw [Array.getElem!_set!_ne _ _ _ _ (Ne.symm h2),
-          if_neg (by simp only [List.length_cons]; omega)]
+          ite_eq_right (by simp only [List.length_cons]; omega)]
 
 /-- An array of words that holds each element's words in order is the array's words. -/
 theorem Elem.words_ext (e : Elem) {xs : Array e.denote} {ws : Array UInt64}
@@ -215,7 +215,7 @@ theorem Elem.words_set (e : Elem) {xs : Array e.denote} {i : Nat} (hi : i < xs.s
   rw [writeWords_getElem! _ _ _ hfit, e.toWords_length]
   by_cases he : i' = i
   · subst he
-    rw [if_pos (by omega), show i' * e.width + j - i' * e.width = j by omega,
+    rw [ite_eq_left (by omega), show i' * e.width + j - i' * e.width = j by omega,
       Array.getElem!_set!_self _ _ _ hi]
   · have hout : ¬(i * e.width ≤ i' * e.width + j ∧ i' * e.width + j < i * e.width + e.width) := by
       intro ⟨h1, h2⟩
@@ -224,7 +224,7 @@ theorem Elem.words_set (e : Elem) {xs : Array e.denote} {i : Nat} (hi : i < xs.s
         rw [Nat.succ_mul] at this; omega
       · have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hgt)
         rw [Nat.succ_mul] at this; omega
-    rw [if_neg hout, Elem.words_getElem! e xs hi' hj, Array.getElem!_set!_ne _ _ _ _ (Ne.symm he),
+    rw [ite_eq_right hout, Elem.words_getElem! e xs hi' hj, Array.getElem!_set!_ne _ _ _ _ (Ne.symm he),
       getElem!_pos xs _ hi']
 
 /-- The words of an array with room for one more element, with that element's words written
@@ -240,13 +240,13 @@ theorem Elem.words_push_into (e : Elem) {xs : Array e.denote} {ws : Array UInt64
   rw [writeWords_getElem! _ _ _ (by rw [e.toWords_length, hSize]), e.toWords_length]
   by_cases he : i = xs.size
   · subst he
-    rw [if_pos (by omega), show xs.size * e.width + j - xs.size * e.width = j by omega,
+    rw [ite_eq_left (by omega), show xs.size * e.width + j - xs.size * e.width = j by omega,
       getElem!_pos (xs.push v) _ (by rw [Array.size_push]; omega), Array.getElem_push_eq]
   · have hlt : i < xs.size := by omega
     have hw : i * e.width + j < xs.size * e.width := by
       have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hlt)
       rw [Nat.succ_mul] at this; omega
-    rw [if_neg (by omega), hPrefix _ hw, Elem.words_getElem! e xs hlt hj,
+    rw [ite_eq_right (by omega), hPrefix _ hw, Elem.words_getElem! e xs hlt hj,
       getElem!_pos (xs.push v) i (by rw [Array.size_push]; omega), Array.getElem_push_lt hlt]
 
 /-- An element's words are the bits of its values. -/

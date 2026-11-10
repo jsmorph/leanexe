@@ -271,7 +271,7 @@ theorem implScheduleStep_value_match
   by_cases hn16 : n < 16
   · -- Initial case: spec writes `M[n]!`; impl block unchanged.
     unfold implScheduleStep specScheduleStep
-    simp only [dif_pos hn16, if_pos hn16]
+    simp only [dif_pos hn16, ite_eq_left hn16]
     rw [show impl_block[n] = block₀[n] from huntouched ⟨n, hn16⟩ (le_refl n)]
     rw [show (toSpecBlock block₀)[n]! = block₀[n].toBitVec from
         getElem!_toSpecBlock block₀ ⟨n, hn16⟩]
@@ -285,7 +285,7 @@ theorem implScheduleStep_value_match
     have h16 := hring (n - 16) (by omega) (by omega)
     rw [implScheduleStep_value_ge_16 ⟨n, hn⟩ impl_block W hn16 h2 h7 h15 h16]
     unfold specScheduleStep
-    simp only [if_neg (Nat.not_lt.mpr hn16)]
+    simp only [ite_eq_right (Nat.not_lt.mpr hn16)]
     rw [getElem!_pos _ n hn]
     rw [SHS.Equiv.VecBridge.set_bang_eq_set _ _ hn, Vector.getElem_set_self]
 

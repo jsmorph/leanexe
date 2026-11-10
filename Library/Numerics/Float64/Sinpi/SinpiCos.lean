@@ -81,34 +81,34 @@ theorem cospi_small (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 
   rw [cos_abs_pi]
   unfold Sinpi.cospi
   dsimp only
-  rw [ax_abs, if_pos (c1.mpr h)]
+  rw [ax_abs, ite_eq_left (c1.mpr h)]
   have hpcs := cos_pieces x.abs |value x.toBits| hs hf hv
   by_cases hq : |value x.toBits| < 1 / 4
-  · rw [if_pos (t1.mpr hq)]
+  · rw [ite_eq_left (t1.mpr hq)]
     by_cases ht : |value x.toBits| < 1 / 2 ^ 29
     · have hu0 := toUInt64_small x.abs hf (by rw [hv, abs_abs]; linarith)
-      rw [if_pos (by rw [decide_eq_true (c29.mpr ht), hu0]; rfl), o1]
+      rw [ite_eq_left (by rw [decide_eq_true (c29.mpr ht), hu0]; rfl), o1]
       exact one_near _ (cos_tiny _ (by rw [abs_abs]; exact ht))
-    · rw [if_neg (by rw [decide_eq_false (fun h' => ht (c29.mp h'))]; simp)]
+    · rw [ite_eq_right (by rw [decide_eq_false (fun h' => ht (c29.mp h'))]; simp)]
       exact (hpcs (le_trans (by norm_num) (not_lt.mp ht)) h).1 hq
-  rw [if_neg (fun h' => hq (t1.mp h'))]
+  rw [ite_eq_right (fun h' => hq (t1.mp h'))]
   have hA0 : 1 / 2 ^ 54 ≤ |value x.toBits| := by linarith
   by_cases h2 : |value x.toBits| < 1 / 2
-  · rw [if_pos (t2.mpr h2)]
+  · rw [ite_eq_left (t2.mpr h2)]
     exact (hpcs hA0 h).2.1 (not_lt.mp hq) h2
-  rw [if_neg (fun h' => h2 (t2.mp h'))]
+  rw [ite_eq_right (fun h' => h2 (t2.mp h'))]
   by_cases h3 : |value x.toBits| < 3 / 4
-  · rw [if_pos (t3.mpr h3)]
+  · rw [ite_eq_left (t3.mpr h3)]
     by_cases hh : |value x.toBits| = 1 / 2
-    · rw [if_pos ((feq_iff _ _ hf (by rw [q5]; exact f5)).mpr (by rw [hv, q5, v5, hh])), hh,
+    · rw [ite_eq_left ((feq_iff _ _ hf (by rw [q5]; exact f5)).mpr (by rw [hv, q5, v5, hh])), hh,
         show Real.pi * (1 / 2) = Real.pi / 2 by ring, Real.cos_pi_div_two, (zero_bits').1]
       exact F64SelfStep.zero_step _ (by decide)
-    · rw [if_neg (fun h' => hh (by
+    · rw [ite_eq_right (fun h' => hh (by
         have := (feq_iff _ _ hf (by rw [q5]; exact f5)).mp h'
         rw [hv, q5, v5] at this
         exact this))]
       exact (hpcs hA0 h).2.2.1 (lt_of_le_of_ne (not_lt.mp h2) (Ne.symm hh)) h3
-  rw [if_neg (fun h' => h3 (t3.mp h'))]
+  rw [ite_eq_right (fun h' => h3 (t3.mp h'))]
   exact (hpcs hA0 h).2.2.2 (not_lt.mp h3)
 
 #print axioms cos_tiny

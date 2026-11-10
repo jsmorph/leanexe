@@ -101,7 +101,7 @@ theorem write8_bytes_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
     (hx : x ≠ ad.toNat) : (mm.write8 ad v).bytes x = mm.bytes x := by
   unfold Wasm.Mem.write8
   dsimp only
-  rw [if_neg hx]
+  rw [ite_eq_right hx]
 
 /-- A byte write is visible at its own address.  The address is an equation
 hypothesis so the rewrite never changes the address expression itself. -/
@@ -110,7 +110,7 @@ theorem write8_bytes_hit (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
   subst hx
   unfold Wasm.Mem.write8
   dsimp only
-  rw [if_pos rfl]
+  rw [ite_eq_left rfl]
 
 /-- A word write leaves every address below it unchanged. -/
 theorem write64_bytes_lo (mm : Wasm.Mem) (ad : UInt32) (v : UInt64) {x : Nat}
@@ -196,10 +196,10 @@ macro "wp_run_with" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
 
 /-- Apply `Wasm.wp_iff_cons` to a generated conditional and select its positive branch. -/
 macro "wp_guard_pos" h:term : tactic =>
-  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_pos $h]))
+  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [ite_eq_left $h]))
 
 /-- Apply `Wasm.wp_iff_cons` to a generated conditional and select its negative branch. -/
 macro "wp_guard_neg" h:term : tactic =>
-  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_neg $h]))
+  `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [ite_eq_right $h]))
 
 end LeanExe.Common
