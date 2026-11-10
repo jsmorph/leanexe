@@ -4,6 +4,7 @@ import Library.Numerics.Float64.Trig.TrigSinCos
 import LeanExe.ProofKit.Signed64Value
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+import Mathlib.Analysis.Real.Pi.Bounds
 
 /-!
 Soundness of the operations of `Functions.lean`.  `Encloses i x` states that the interval `i`
@@ -87,6 +88,35 @@ theorem encloses_ratio' {n d : Int64} {m k : ℤ} {q : ℝ} (hn : n.toInt = m) (
     (hbn : m.natAbs ≤ 2 ^ 53) (hbd : k.natAbs ≤ 2 ^ 53) (hq : (m : ℝ) / (k : ℝ) = q) :
     Encloses (ratio n d) q :=
   encloses_ratio (by rw [hn]; exact hbn) (by rw [hd]; exact hbd) (by rw [hn, hd]; exact hq)
+
+theorem encloses_pi : Encloses piI Real.pi := fun _ => by
+  have hlo : (Float.ofBits 0x400921FB54442D18).toBits = 0x400921FB54442D18 :=
+    toBits_ofBits_of_finite (by decide)
+  have hhi : (Float.ofBits 0x400921FB54442D19).toBits = 0x400921FB54442D19 :=
+    toBits_ofBits_of_finite (by decide)
+  have slo : Wasm.IEEE64.scaledValue 0x400921FB54442D18 = 7074237752028440 * 2 ^ 1023 := by
+    decide +kernel
+  have shi : Wasm.IEEE64.scaledValue 0x400921FB54442D19 = 7074237752028441 * 2 ^ 1023 := by
+    decide +kernel
+  have vlo : value (0x400921FB54442D18 : UInt64) = 7074237752028440 / 2 ^ 51 := by
+    simp only [value, slo]; push_cast; norm_num
+  have vhi : value (0x400921FB54442D19 : UInt64) = 7074237752028441 / 2 ^ 51 := by
+    simp only [value, shi]; push_cast; norm_num
+  have h1 := Real.pi_gt_d20
+  have h2 := Real.pi_lt_d20
+  refine ⟨rfl, ?_, ?_, ?_, ?_⟩
+  · show Finite (Float.ofBits 0x400921FB54442D18).toBits
+    rw [hlo]; unfold CodeLib.IEEE64.Finite; decide +kernel
+  · show Finite (Float.ofBits 0x400921FB54442D19).toBits
+    rw [hhi]; unfold CodeLib.IEEE64.Finite; decide +kernel
+  · show value (Float.ofBits 0x400921FB54442D18).toBits ≤ Real.pi
+    rw [hlo, vlo]
+    norm_num at h1 ⊢
+    linarith
+  · show Real.pi ≤ value (Float.ofBits 0x400921FB54442D19).toBits
+    rw [hhi, vhi]
+    norm_num at h2 ⊢
+    linarith
 
 theorem one_bits : (1.0 : Float).toBits = 0x3FF0000000000000 := by decide +kernel
 

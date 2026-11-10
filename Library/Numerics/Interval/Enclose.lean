@@ -18,7 +18,7 @@ below.  A call of another function `g` becomes a call of `g.interval`, whose the
 | Real expression | Interval expression |
 |---|---|
 | `a + b`, `a - b`, `a * b`, `a / b`, `-a`, `\|a\|` | `add`, `sub`, `mul`, `div`, `neg`, `abs` |
-| A natural number literal, a decimal literal | `ofInt`, `ratio` |
+| A natural number literal, a decimal literal, `π` | `ofInt`, `ratio`, `piI` |
 | `√a`, `sin a`, `cos a`, `max a b` | `sqrt`, `sinI`, `cosI`, `imax` |
 | `a ^ (2 / 3 : ℝ)`, `a ^ (3 / 2 : ℝ)`, `a ^ (7 / 2 : ℝ)` | `twoThirds`, `threeHalves`, `sevenHalves` |
 | `if a < b then p else q`, `if a > b then p else q` | `ifPos` on the difference |
@@ -32,11 +32,12 @@ namespace Library.Numerics.Interval
 
 attribute [enclose] encloses_add encloses_sub encloses_mul encloses_div encloses_neg encloses_abs
   encloses_sqrt encloses_imax encloses_ifLt encloses_sinI encloses_cosI encloses_twoThirds
-  encloses_threeHalves encloses_sevenHalves
+  encloses_threeHalves encloses_sevenHalves encloses_pi
 
 namespace Enclose
 
 open Lean Meta Elab Tactic
+open scoped Real
 
 /-! ### The translation -/
 
@@ -128,6 +129,7 @@ partial def intervalBody (stx : Term) : MacroM Term := do
     | name =>
       let g := mkIdentFrom f (name ++ `interval)
       `($g $tables* $args'*)
+  | `(π) | `(Real.pi) => `(Library.Numerics.Interval.piI)
   | `($_:ident) => pure stx
   | _ => Macro.throwErrorAt stx "enclosure_def: unsupported term"
 

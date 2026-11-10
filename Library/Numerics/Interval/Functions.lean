@@ -19,6 +19,9 @@ def ofInt (n : Int64) : Interval := point n.toFloat
 /-- An interval that contains `n / d`. -/
 def ratio (n d : Int64) : Interval := div (ofInt n) (ofInt d)
 
+/-- The doubles on each side of `π`. -/
+abbrev piI : Interval := ⟨0, Float.ofBits 0x400921FB54442D18, Float.ofBits 0x400921FB54442D19⟩
+
 /-- The squares of the points of an interval. -/
 def sq (a : Interval) : Interval :=
   let b := abs a
