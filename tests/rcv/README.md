@@ -4,7 +4,7 @@ This directory holds the test corpus of the ranked-choice tabulator for Oakland,
 
 ## Scripts
 
-The commands run from the repository root through `uv run`, and the scripts use only Python's standard library.  `fetch.py`, `reports.py`, `recount.py`, `district4.py`, and `check.py` read `tests/rcv/manifest.json` and work in the data directory `tmp/rcv-data`, which Git ignores, unless the command names another.  Each script's docstring states its rules and its exit status.
+The Python scripts run from the repository root through `uv run` and use only Python's standard library, and `rctab.sh` runs on the host that runs RCTab.  `fetch.py`, `reports.py`, `recount.py`, `district4.py`, and `check.py` read `tests/rcv/manifest.json` and work in the data directory `tmp/rcv-data`, which Git ignores, unless the command names another.  Each script's docstring or header states its rules and its exit status.
 
 | File | Command | Behavior |
 |---|---|---|
@@ -16,6 +16,8 @@ The commands run from the repository root through `uv run`, and the scripts use 
 | [`reference.py`](reference.py) | `uv run tests/rcv/reference.py [--county \| --suspend \| --contest-words \| --result-words] FILE` | Prints the report of a canonical file, or writes the count's word forms ([The reference](#the-reference)). |
 | [`edges.py`](edges.py) | `uv run tests/rcv/edges.py [OUT]` | Writes the edge cases with the reference's outputs into `OUT`, `tmp/rcv-edges` by default, and checks the reference against the expectations stated by hand ([Edge cases](#edge-cases)). |
 | [`check.py`](check.py) | `uv run tests/rcv/check.py [--data DIR]` | Converts each CVR, checks the converter and the reference against the requirements and the County's reports, writes `DIR/canonical`, and runs the planted errors ([Checks](#checks)). |
+| [`rctab.sh`](rctab.sh) | `tests/rcv/rctab.sh install DIR`, `selftest DIR WORK`, or `run DIR CONFIG OUT` | Installs RCTab at its pinned release, runs RCTab's own test contest, or tabulates a configuration and collects RCTab's reports ([RCTab](#rctab)). |
+| [`rctab.py`](rctab.py) | `uv run tests/rcv/rctab.py cdf FILE OUT` or `compare FILE CONFIG RESULT [--county XML]` | Writes a canonical file as RCTab's input, or compares RCTab's rounds with the reference's and the County's ([RCTab](#rctab)). |
 
 A normalized report holds the report's title fields (`election_name`, `election_date`, `status`, `contest`, `timestamp`), every attribute of its settings element verbatim in `settings`, the candidates in the report's order, and one object per round.  A round holds each candidate's tally, the counts `blanks`, `overvotes`, `exhausted`, `suspended`, `continuing`, and `non_transferable`, the candidates that the report eliminates or elects in the round or defeats in its final round, and the transfers that the round lists.  The member `charter` applies [the charter's rules](#charter-rules) to the published tallies.  It gives `majority_round`, the charter's rounds with the report round that each one corresponds to, the charter's `stop`, its `batches`, and `first_batch_round`.
 
@@ -177,6 +179,70 @@ Each planted error is a copy of the reference or the converter with one change o
 
 The batch and tie errors fail no comparison with the County's reports, so only the edge cases detect them.  The expectations stated by hand come from the reference's author, who read the requirements in the same way when writing the reference.  A misreading shared by the reference and those expectations passes both, and the requirements call for a reviewer to check the smallest reports by hand.
 
+## RCTab
+
+RCTab, the ranked-choice tabulator of the Bright Spots Developers under the Mozilla Public License 2.0, counts contests of the corpus as a second tabulator, with configurations that express the charter's rules and the County's practice.  `rctab.sh` pins release v2.1.0 of 2026-07-07 by its Linux x86-64 package `rctab_v2.1.0_Linux_X64.zip`, whose SHA-256 is `46547b3be29d9c4cd807c261b977202af67a36cb7fc9248306bfd3a81ea06102`.  The package bundles a Java 21.0.7 runtime, and `install` unpacks it into `DIR/rcv`.  RCTab's command-line mode starts the JavaFX toolkit, which needs an X display and GTK 3, as RCTab's open issue 789 reports, so on a host without a display `run` runs RCTab under `xvfb-run` from Debian's package `xvfb`.  RCTab exits with status 0 when a tabulation fails, and `run` therefore checks its console output for the pinned version, for SEVERE lines, and for the results directory.  For the results below, the Python scripts ran on the machine that holds the corpus and RCTab ran on Debian 13 on x86-64, and the files moved between the two by copying.
+
+`rctab.sh selftest` downloads RCTab's test contest `2015_portland_mayor` from the release's source tree, its configuration, cast vote records, and expected reports, each pinned by SHA-256.  It tabulates the contest and compares the detailed CSV and JSON reports with the expected ones line by line, ignoring line terminators and the lines that name the generating version or date, as RCTab's own tests do.  The contest uses the ES&S reader, batch elimination, candidate order for ties, an overvote label, and undeclared write-ins, and both reports equal the expected ones.
+
+`rctab.py cdf` writes a canonical ballot file as a cast vote record report in the JSON form of NIST SP 1500-103, which RCTab's `cdf` provider reads.  Each candidate of the file becomes a candidate selection under its own name, whatever its kind, and the configuration decides whether RCTab counts it.  Each mark becomes the selection of its candidate at the position's rank, so a multiple position gives several selections at one rank, and the unnamed overvote `*` gives the selection of a candidate named `overvote`, which the configurations give as the `overvoteLabel`.  RCTab therefore reads the ballots that the reference reads, and the round trips of [Checks](#checks) test the converter against the CVR.
+
+[The configurations](rctab/) give each compared contest a configuration for the charter's count and one for the County's practice, whose rules differ in `batchElimination` and `continueUntilTwoCandidatesRemain` alone.  Each reads the contest's CDF file from the directory that holds the configuration and lists the candidates in the file's tie-break order, with `Write-in` excluded.  The table maps each setting to the provision that it expresses.
+
+| Setting | Value | Provision |
+|---|---|---|
+| `candidates`, `tiebreakMode` | The file's candidates in its tie-break order, and `useCandidateOrder` | §1105(e), by decision 3.  Of the candidates tied for the fewest votes, RCTab eliminates the one latest in the list, as rule 4 of the requirements' rounds does |
+| `excluded` | `true` for the candidates of kinds `aggregate-writein` and `excluded`, and `false` for the others | §15341, through §1103.  RCTab passes over a ranking of an excluded candidate, as rule 4 of the interpretation passes over an uncounted candidate |
+| `overvoteRule`, `overvoteLabel` | `exhaustImmediately`, `overvote` | §1105(h) and §15342(d).  A ballot that reaches a ranking with two or more marks, or with the unnamed overvote, is inactive whether or not the marked candidates continue |
+| `maxSkippedRanksAllowed` | `unlimited` | §1105(g).  No number of empty rankings makes a ballot inactive |
+| `exhaustOnDuplicateCandidate` | `false` | §1105(d)(2).  RCTab passes over a repeated ranking of an eliminated candidate |
+| `maxRankingsAllowed` | `max` | §1105(c), with the requirements' reading of §1105(k)(1).  RCTab accepts a ranking at every position, as the module accepts any number of positions |
+| `winnerElectionMode`, `numberOfWinners`, `doesFirstRoundDetermineThreshold`, `nonIntegerWinningThreshold`, `hareQuota` | `singleWinnerMajority`, `1`, `false`, `false`, `false` | §1105(a)(3) and (d)(2).  Each round's threshold is ⌊T/2⌋ + 1 for the round's continuing ballots T, which a candidate reaches exactly when it holds more than half of them |
+| `batchElimination` | `true` for the charter, `false` for the County | §1105(f).  In a round without a winner, RCTab eliminates together the largest set of two or more lowest candidates whose combined votes are fewer than the votes of every other continuing candidate, which is rule 3 with its strict test |
+| `continueUntilTwoCandidatesRemain` | `false` for the charter, `true` for the County | §1105(d)(2) ends the count at a majority, and the County counts until two candidates remain |
+| `minimumVoteThreshold`, `cutoffElimination`, `stopTabulationEarlyAfterRound` | `0`, `false`, empty | None.  Each value turns off an elimination or a stop that the charter does not have |
+| `decimalPlacesForVoteArithmetic` | `4` | None.  RCTab requires it and uses it only for the fractional transfers of contests with several winners |
+
+No setting expresses the provisions and practices of the next table.  The first two appear in the comparisons below.  The third and the fourth come from RCTab's source and its configuration documentation, since no contest of the corpus has a tied final round or a round without a continuing ballot.
+
+| Provision or practice | RCTab |
+|---|---|
+| The undervote of §1105(h) for a ballot that ranks only uncounted candidates, the reason `uncounted`, which the County's Blanks include | RCTab's undervotes count only the ballots without rankings, and it reports a ballot that ranks only excluded candidates among its exhausted choices.  The candidates' votes and the overvotes agree, and the County's Blanks and Exhausted together equal RCTab's undervotes and exhausted choices together |
+| The County's elimination in the round in which a candidate first holds a majority | With `continueUntilTwoCandidatesRemain`, RCTab elects the candidate in that round and eliminates no one, and its next round repeats the round's figures and eliminates.  RCTab's test contest `continue_tabulation_test` expects the same.  The County's rounds are RCTab's without the repeated round |
+| A final round of two candidates with equal votes, under §1105(d)(2) and (e) | In the source of v2.1.0, RCTab elects the tied candidate earliest in the list in that round, where the requirements eliminate the one latest in the order and elect the other in the next round.  The winner is the same, and RCTab's count has one round fewer |
+| Rule 2 of the requirements' rounds, which ends a count without a continuing ballot | No setting ends a count with no winner |
+| The County's first-round suspension of November 2022 | No setting suspends a ballot, so RCTab is compared only with reports without the suspension |
+
+`rctab.py compare` compares RCTab's rounds with the reference's count in the mode that the configuration's rules express, and with the County's report for the County's practice, by the rules of its docstring.  It omits RCTab's repeated round and prints a line that names it.  The table gives the results for the 2022 School Director, District 4, contest of the case study, and for the 2024 City Council, District 3, contest, whose round 1 holds a batch of four candidates under §1105(f) and whose round 4 holds the first majority of the County's count.
+
+| Contest | Configuration | RCTab's rounds | Against the reference | Against the County's report |
+|---|---|---|---|---|
+| 2022 School Director, District 4 | Charter | 2 | Equal | Not compared |
+| 2022 School Director, District 4 | County | 2 | Equal | Equal |
+| 2024 City Council, District 3 | Charter | 2 | Equal | Not compared |
+| 2024 City Council, District 3 | County | 6 | Equal without round 4 | Equal without round 4 |
+
+In District 4, RCTab gives Hutchinson 8,227, Manigo 8,190, and Resnick 10,015 in round 1, with 4,269 undervotes, 148 overvotes, and 134 exhausted choices, eliminates Manigo, and elects Hutchinson in round 2 with 12,421 against Resnick's 12,165, with 173 overvotes and 1,955 exhausted choices.  The 134 ballots rank only write-ins, and the County's corrected report counts them among its 4,403 Blanks, so its 1,821 Exhausted of round 2 are RCTab's exhausted choices without them.  Both configurations give these rounds, since the charter's count of District 4 has no batch and reaches its majority in the County's last round.  In District 3, the charter's configuration eliminates Afolabi, Hailey, Hirsch, and Semedar together in round 1 and elects Fife in round 2 with 11,437 against Logan's 8,069, the figures of the County's round 5.
+
+A comparison runs in the steps below, where `RUN`, `WORK`, and `OUT` are directories, `DIR` is RCTab's installation, and the commands of the RCTab host run after copying `RUN` and `rctab.sh` there.
+
+```
+uv run tests/rcv/convert.py tmp/rcv-data/cvr/otis/Oakland_20221108_SchoolBoardD4.csv \
+  --report tmp/rcv-data/reports/248/Oakland_007-SchoolDirector_District_4.xml --out RUN/Oakland_20221108_SchoolBoardD4.rcv
+uv run tests/rcv/rctab.py cdf RUN/Oakland_20221108_SchoolBoardD4.rcv RUN/Oakland_20221108_SchoolBoardD4.cdf.json
+cp tests/rcv/rctab/Oakland_20221108_SchoolBoardD4-*.json RUN/
+
+# on the RCTab host
+tests/rcv/rctab.sh install DIR
+tests/rcv/rctab.sh selftest DIR WORK
+tests/rcv/rctab.sh run DIR RUN/Oakland_20221108_SchoolBoardD4-county.json OUT
+
+# after copying OUT back
+uv run tests/rcv/rctab.py compare RUN/Oakland_20221108_SchoolBoardD4.rcv \
+  tests/rcv/rctab/Oakland_20221108_SchoolBoardD4-county.json OUT/detailed_report.json \
+  --county tmp/rcv-data/reports/248/Oakland_007-SchoolDirector_District_4.xml
+```
+
 ## References
 
 - [Alameda County RCV results](https://www.alamedacountyca.gov/rovresults/rcv/)
@@ -185,3 +251,8 @@ The batch and tie errors fail no comparison with the County's reports, so only t
 - [County of Alameda Elections Commission, agenda of November 21, 2024](https://alamedacountyca.gov/board/com_calendar/documents/FINALNov.21,2024ACECAgenda.pdf)
 - [Oakland City Charter, Article XI (third-party copy)](https://gocodebook.com/library/us/ca/oakland/article-xi-elections)
 - [Alameda County, Legal / Disclaimers](https://acgov.org/government/legal.htm)
+- [RCTab, Bright Spots Developers](https://github.com/BrightSpots/rcv)
+- [RCTab release v2.1.0](https://github.com/BrightSpots/rcv/releases/tag/v2.1.0)
+- [RCTab configuration documentation, v2.1.0](https://github.com/BrightSpots/rcv/blob/v2.1.0/config_file_documentation.txt)
+- [RCTab issue 789, Using CLI mode on a server with no X](https://github.com/BrightSpots/rcv/issues/789)
+- [NIST SP 1500-103, Cast Vote Records Common Data Format](https://doi.org/10.6028/NIST.SP.1500-103)

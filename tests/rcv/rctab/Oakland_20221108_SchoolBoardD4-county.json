@@ -1,0 +1,46 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "Oakland_20221108_SchoolBoardD4 county",
+    "outputDirectory": "output",
+    "contestDate": "2022-11-08",
+    "contestJurisdiction": "Oakland, California",
+    "contestOffice": "School Director, District 4",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "Oakland_20221108_SchoolBoardD4.cdf.json",
+      "contestId": "Oakland_20221108_SchoolBoardD4",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "MIKE HUTCHINSON", "excluded": false},
+    {"name": "PECOLIA MANIGO", "excluded": false},
+    {"name": "NICK RESNICK", "excluded": false},
+    {"name": "Write-in", "excluded": true}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "unlimited",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Alameda County practice"
+  }
+}
