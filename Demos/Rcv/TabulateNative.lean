@@ -10,10 +10,10 @@ compare FILE …` reads each canonical file `X.rcv` and the reference's report `
 prints each file whose report differs, and prints the number of files, of well-formed files, of
 malformed files, and of differences, with status 1 when a report differs.
 
-`rcv-tabulate programs FILE …` compares the reader program's words with `readResult` and the
-report of the reader program, the specification's count over words, and the printer program with
-the reference's report.  `rcv-tabulate summary FILE …` prints the reader's result for each file in one line.
-`rcv-tabulate t2 FILE …` tests the statements of T2(a) to (c) on each file, and `rcv-tabulate
+`rcv-tabulate programs FILE …` compares the reader program's words with `readResult` and the report
+of the reader program, the specification's count over words, and the printer program with the
+reference's report.  `rcv-tabulate summary FILE …` prints the reader's result for each file in one
+line.  `rcv-tabulate t2 FILE …` tests the statements of T2(a) to (c) on each file, and `rcv-tabulate
 t2-random SEED COUNT` on `COUNT` random structures that meet the constraints and on ten mutations of
 each one's file.  A file that `read` accepts must print as itself through `write`, and its structure
 must meet the constraints and read back as itself.  For a file that `read` rejects, the line that

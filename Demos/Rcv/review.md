@@ -180,6 +180,43 @@ A second fresh agent reviewed the revised specification and cases in the same wa
 
 Neither reviewer could run the `#guard`s, which need a build, and both checked by reading the parts of `Spec.lean` that apply only outside the constraints.
 
+## Review of the reader
+
+[The reader](README.md#the-reader) states the canonical file's grammar in `Read.lean`.  The table gives the details that the requirements leave to it.
+
+| Detail | Choice | Reason |
+|---|---|---|
+| Numbers | `number` reads a decimal of any length as a natural number, and each parser then tests the range of its table | A value at or above `2 ^ 64` fails its range as any other value outside it does, and T2(d) states the program's 64-bit reader separately |
+| Roles after the file | `roleOf` gives `end` to every line after line `7 + n + N` | No such line can be the first faulty line, since line `7 + n + N` is present and faulty whenever a later line exists |
+| Line 0 | `faulty b 0` holds for every file, and T2(c) takes lines from 1 | The requirements number lines from 1 |
+| Report of a file | `reportFile b` is the requirements' `report b` of T1, and `report c` keeps the name of the report of a structure | `report` of a structure came first, with the count, and the proofs of the first increment use it |
+
+### Review
+
+A fresh agent reviewed `Read.lean` against the requirements' sections on the canonical file and T2, with the 632 edge files of `tests/rcv/edges.py` and the reader's result on each.  It wrote three models in Python: a reader built from the requirements alone, a transliteration of `read`, and a transliteration of the error rule by line number.  The three models agreed with the specification on all 632 files, and with one another on 200,000 files mutated from them by byte, line, number, and keyword edits, on 40,000 random structures written and read back, and on 19 files of its own, and `write` reproduced every file that they accepted.  It worked out by hand the results of the 64 malformed edge files, which cover every role, and of nine well-formed files with identifiers or at the limits.  It found no disagreement and no case that the requirements leave open with an effect on the result.
+
+| Finding | Verification | Response |
+|---|---|---|
+| 1. `faulty b 0` holds for every file, so a statement of T2(c) as the least faulty line must take lines from 1 | Confirmed | `read_error_first` takes `1 ≤ j`, and the section docstring of the error rule states the case |
+| 2. The module docstring names a function `check` that `Read.lean` lacks | Confirmed | It names `readLine` |
+| 3. The docstring of `headerK` gives 0 for a line that fails its role, and the definitions also give 0 for an absent line | Confirmed | It names absent lines and lines that lack their LF |
+| 4. The docstring of `lineOf` reads as though the line included its LF | Confirmed | It says "without its LF" |
+| 5. The section comment said "apart from the order in which `read` takes the lines", which reads as an exception | Confirmed | It says "independently of" |
+| 6. The requirements call the report of a file `report b`, and `Read.lean` calls it `reportFile` | Confirmed | The docstring of `reportFile` names T1's `report b`, and the table above gives the reason |
+
+The samples lacked an absent line and a final run without LF in each header role from `contest` to `ballots`, a number of more than 10 digits, a well-formed file with `N = 2 ^ 32 − 1`, and a name of spaces alone.  [`tests/rcv/reader_edges.py`](../../tests/rcv/reader_edges.py) writes 93 further files, with the reference's reports, that cover each class but the ballot count, which would need four billion ballot lines: an absent line and a final run without LF at each of lines 2 to 11 of a small contest, ten numbers of 2 to 21 digits, next to `2 ^ 32` and `2 ^ 64` among them, in each place that holds a number, and names of 3, 255, and 256 spaces.
+
+### Second review
+
+A second fresh agent reviewed `Read.lean` in the same way, with the 632 edge files, the 93 files of `reader_edges.py`, and the reader's result on each.  It wrote a reader from the requirements alone, which finds the smallest faulty line number directly, and a transliteration of `read`, `faulty`, and `roleAt`.  The transliteration matched the native results on all 725 files, and the two readers agreed on 126,408 random structures written and read back, on 420,000 inputs made by byte, line, number, and field edits, and on 530,358 inputs that enumerate every short ballot line for `k` from 1 to 3, every short order line and candidate line, and the prefixes and single-byte edits of a small file.  It worked out by hand the results of 17 malformed edge files, 17 files of `reader_edges.py`, and six well-formed edge files with identifiers or at the limits, and found no disagreement and no case that the requirements leave open with an effect on the result.
+
+| Note | Response |
+|---|---|
+| The docstring above `headerK` describes `k`, `n`, and `N`, and Lean attaches it to `headerK` alone, so `headerN` and `headerBallots` have none | Recorded here.  The text states all three definitions correctly |
+| The docstring of `roleOf` does not say that it gives `end` after line `7 + n + N` and `candidate` for line 0 | Recorded in the table above, with the reason that neither case affects a result |
+| The requirements state no uniqueness of candidate names or ballot identifiers, and `read` accepts duplicates | The requirements' list of constraints has none, and `Contest.WellFormed` has none |
+| No sample has a ballot line of `k + 1` fields whose first field is a valid position field, an identifier with a failing position field, an empty ballot line with `k ≥ 2`, the fields `1\|\|2` and `\|1`, a contest identifier with `.` or `:`, a kind word in the wrong case, a ballot line with an identifier and `k = 63`, a number at or above `2 ^ 64` that equals a valid value modulo `2 ^ 64` or `2 ^ 32`, or a CR in the header lines from `positions` to `ballots` | Recorded without new samples, as step 7 of the verified-request skill directs.  The reviewer's two readers gave the requirements' result on each class |
+
 ## Open items
 
 | Item | State |

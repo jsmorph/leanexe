@@ -1,4 +1,5 @@
 import Demos.Rcv.Cases
+import Demos.Rcv.Read
 import Library.Random.SplitMix64.Program
 import TestSupport.OrderBook.Words
 
@@ -8,7 +9,13 @@ arrays are the contest words of the contests of `Demos/Rcv/Cases.lean`, the inva
 file, and random contests that SplitMix64 draws from fixed seeds.  Every array passes through a file
 of little-endian words under `build/verified/rcvCount/`, which `cases` writes, since the larger
 arrays exceed the length of a command-line argument.  A case requires two retained blocks, the
-host's array and the result. -/
+host's array and the result.
+
+The cases of the module `rcvTabulate`, the export `tabulate` of `Demos/Rcv/Tabulate.lean`, take
+files under `build/verified/rcvTabulate/`, and their expected results are the reports of
+`Demos.Rcv.Spec.reportFile` in native Lean.  The files are the canonical files of the contests
+above, of contests with identifiers and names outside ASCII, and of the random contests, the worked
+example's file cut after each of its lines, and edits of that file that each break one line. -/
 
 namespace TestSupport.Rcv.Cases
 
@@ -112,6 +119,67 @@ def randoms : List (UInt64 × Nat × Nat × Nat × Bool) :=
     (13, 12, 5, 2000, false), (14, 20, 8, 1500, true), (15, 63, 5, 300, true),
     (16, 63, 63, 100, true), (17, 63, 3, 2000, false), (18, 10, 5, 20000, true)]
 
+/-- The directory of the tabulator's files, relative to the repository's root. -/
+def fileDir : System.FilePath := "build/verified/rcvTabulate"
+
+/-- The bytes `bs` in hexadecimal, two digits a byte. -/
+def hex (bs : List UInt8) : String :=
+  String.join (bs.map fun b =>
+    let digits := Nat.toDigits 16 b.toNat
+    String.ofList (if digits.length < 2 then '0' :: digits else digits))
+
+/-- Writes the file `bs` of the case `name` and prints the case.  Two blocks remain, the host's
+buffer, which the host allocates for an empty file as well, and the report. -/
+def emitFile (name : String) (bs : List UInt8) : IO Unit := do
+  let path := fileDir / s!"{name}.rcv"
+  IO.FS.writeBinFile path ⟨bs.toArray⟩
+  IO.println s!"rcvTabulate|tabulate|bytes|bytes-file:{path}|{hex (reportFile bs)}|2"
+
+/-- The contest of a valid contest array, with the candidates' names of `contestOf`. -/
+def contestOfArray (ws : Array UInt64) : Contest :=
+  let d := readWords ws.toList
+  contestOf (d.kinds.map kindOfCode) d.order d.k (chunks d.k d.N d.positions)
+
+/-- Contests with ballot identifiers, contest identifiers of 1 and 64 bytes, and names of bytes
+outside ASCII. -/
+def tabulateContests : List (String × Contest) :=
+  [("idents", withIdents [some (ascii "a"), some id64, none, some (ascii "A-z_0.9:")]),
+    ("contest-x", { finalTie [1, 2] with contest := ascii "x" }),
+    ("contest-64", { finalTie [1, 2] with contest := id64 }),
+    ("names", named (List.replicate 255 (0xFF : UInt8)) [(0x20 : UInt8)])]
+
+/-- Edits of the worked example's file, each of which breaks one line: the case's name, the text
+replaced, and its replacement. -/
+def edits : List (String × String × String) :=
+  [("format-2", "rcv-ballots 1", "rcv-ballots 2"),
+    ("contest-empty", "contest example-1", "contest "),
+    ("positions-0", "positions 3", "positions 0"), ("positions-03", "positions 3", "positions 03"),
+    ("candidates-64", "candidates 5", "candidates 64"),
+    ("candidate-index", "candidate 2 listed B", "candidate 3 listed B"),
+    ("candidate-kind", "listed C", "listing C"),
+    ("order-repeat", "order 2 1 3 4 5", "order 2 1 3 4 4"),
+    ("ballots-16", "ballots 15", "ballots 16"), ("ballots-14", "ballots 15", "ballots 14"),
+    ("ballot-fields", "1,3,2\n", "1,3\n"), ("ballot-index", "1,3,2\n", "1,6,2\n"),
+    ("ballot-ident", "id-01,", "id 01,"), ("overvote-and-mark", "*,2,\n", "*|1,2,\n"),
+    ("marks-decreasing", "1|2,1,\n", "2|1,1,\n"), ("crlf", "\n", "\r\n")]
+
+/-- Writes the tabulator's files and prints its cases. -/
+def tabulateCases : IO Unit := do
+  IO.FS.createDirAll fileDir
+  for (name, c) in contests ++ tabulateContests do
+    emitFile name (write c)
+  for (seed, n, k, N, skewed) in randoms do
+    emitFile s!"random-{seed}"
+      (write (contestOfArray ((randomContest n k N skewed).run' seed).run))
+  let ls := (ascii exampleFile).splitOn 10
+  for i in [0:ls.length] do
+    emitFile s!"cut-{i}" (text (ls.take i))
+  emitFile "no-final-lf" (ascii exampleFile).dropLast
+  emitFile "extra-line" (ascii (exampleFile ++ "x\n"))
+  emitFile "extra-bytes" (ascii (exampleFile ++ "x"))
+  for (name, old, new) in edits do
+    emitFile name (ascii (exampleFile.replace old new))
+
 /-- Writes the cases' files and prints the cases. -/
 def cases : IO Unit := do
   IO.FS.createDirAll dir
@@ -121,5 +189,6 @@ def cases : IO Unit := do
     emit name ws.toArray
   for (seed, n, k, N, skewed) in randoms do
     emit s!"random-{seed}" ((randomContest n k N skewed).run' seed).run
+  tabulateCases
 
 end TestSupport.Rcv.Cases

@@ -185,14 +185,14 @@ theorem parseBallot_line {k n : Nat} (hn : n ≤ 63) {b : Ballot}
     simp only [Option.toList_none, List.nil_append] at hsplit
     rw [parseBallot, hsplit, List.map_cons]
     simp only []
-    rw [if_pos (by simpa using hk), ← List.map_cons, hpos]
+    rw [ite_eq_left (by simpa using hk), ← List.map_cons, hpos]
     rfl
   | some id =>
     simp only [Option.toList_some, List.singleton_append] at hsplit
     have hid' : identOk id = true := by simpa using hid
     rw [parseBallot, hsplit]
     simp only []
-    rw [if_neg (by simp [hk]), if_pos ⟨by simp [hk], hid'⟩, hpos]
+    rw [ite_eq_right (by simp [hk]), ite_eq_left ⟨by simp [hk], hid'⟩, hpos]
     rfl
 
 /-- The line of a candidate with its index, as `headerLines` writes it. -/

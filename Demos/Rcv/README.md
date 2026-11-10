@@ -12,12 +12,13 @@ The specification states the requirements' count over lists, natural numbers, an
 |---|---|
 | [`Contest.lean`](Contest.lean) | The contest structure: the contest identifier and the candidates' names as bytes, the kinds, the tie-break order, and each ballot's optional identifier and position words.  `Contest.WellFormed` states the constraints of a structure |
 | [`Spec.lean`](Spec.lean) | The interpretation, the rounds, the canonical file, the report, and the word forms |
+| [`Read.lean`](Read.lean) | The reader of the canonical file, the error rule by line number, and the report of a file |
 | [`Cases.lean`](Cases.lean) | `#guard` checks of the worked example, byte for byte, and of the requirements' edge cases |
 | [`Native.lean`](Native.lean) | The executable `rcv-spec`, which runs the specification and the program on canonical files and word arrays |
 
 `interpret` examines a ballot's positions from the first against the continuing set.  `examine` applies the four rules of the interpretation and returns no outcome when it passes the last position, and `passedReason` then gives `blank`, `exhausted`, or `uncounted` from the ballot and the kinds alone.  `tally` interprets every ballot against the continuing set and counts the votes of each continuing candidate and the inactive ballots by reason.  `rule` applies the four rules of a round in order: the majority test `2 vᵣ(i) > Tᵣ`, the end with no winner when `Tᵣ = 0`, the batch of `batch`, which is the largest qualifying `L(X)` of two or more candidates under the strict test, and the elimination of the single candidate with the fewest votes or of the tied candidate latest in the order, which `latest` finds.  `count` runs rounds from the counted set until a rule ends the count, allowing one more round than there are counted candidates, while T3(d) of the requirements bounds the rounds by the larger of 1 and the number of counted candidates.
 
-`write` prints a contest structure as its canonical file, and `report` gives the report's bytes, whose header lines are lines 2 to `6 + n` of the file.  `countWords` reads a word array, returns `[0]` unless `Words.Valid` holds, and otherwise returns the result words of the count, and `contestWords` gives the contest words of a structure.  The specification holds no reader of canonical files and no error report of malformed files, which the requirements' plan places in the second increment.
+`write` prints a contest structure as its canonical file, and `report` gives the report's bytes, whose header lines are lines 2 to `6 + n` of the file.  `countWords` reads a word array, returns `[0]` unless `Words.Valid` holds, and otherwise returns the result words of the count, and `contestWords` gives the contest words of a structure.  `Read.lean` states the reader of canonical files and the error report of malformed files, which [the reader](#the-reader) describes.
 
 `Cases.lean` checks that `write` prints the worked example's structure as the requirements' ballot file and that `report` gives the requirements' report of it byte for byte, with the example's contest and result words.  Its other checks cover the edge cases that the requirements list under "Tests", apart from the malformed files: overvotes at each position, every pattern of empty positions up to four positions, duplicate and uncounted rankings, ties at the lowest place and in the final round, batches at both sides of the strict test and with tied members, nested qualifying sets, a batch inside which the single count ends, contests with no continuing ballot, no ballots, one candidate, or no counted candidate, 63 candidates and 63 positions, identifiers of 1 and 64 bytes, the contests of T15, the constraints of the structure, and invalid word arrays.  Each expected value comes from the rules by hand.
 
@@ -188,4 +189,111 @@ verified: passed 54 failed 0
 rcvCount: 23 of 23 functions, 23 of 23 exports
 rcvCount: the clightgen program matches the translation
 native verified: passed 54 failed 0
+```
+
+## The reader
+
+[`Read.lean`](Read.lean) states the reader of the canonical file beside `write`.  `read` splits the file at LF with `List.splitOn`, so that line `j` is piece `j - 1` and ends with LF exactly when another piece follows it.  It takes the lines in order, each with the role that the header gives it: the format line, the contest identifier, `k`, `n`, the `n` candidate lines, the order, `N`, and the `N` ballot lines.  A parser for each role states the form of the grammar and the constraints of the requirements' tables, and the first line that is absent, lacks its LF, or fails its role ends the reading with its number and role.  After the last ballot line the rest of the file must be the empty piece after the final LF, so a further line or a final run of bytes without LF gives the error of role `end`.  `reportFile` gives the report of a file, which the requirements' T1 calls `report b`: the error report `errorReport` of a malformed file and `report` of the structure of a well-formed one.  `lineOf`, `roleAt`, `meets`, and `faulty` state the requirements' error rule by line number, independently of the order in which `read` takes the lines.
+
+Two fresh agents reviewed `Read.lean` against the requirements, each with models of its own, and [the review](review.md#review-of-the-reader) records their findings and the responses.
+
+[`TabulateNative.lean`](TabulateNative.lean) is the executable `rcv-tabulate`, which runs the reader, the programs, and the statements of T2 natively.  Its mode `report` writes `reportFile` of a file, `compare` compares it with the reference's report beside each file, `summary` prints the reader's result for each file, and `programs` compares the reader program's words with `readResult` and the report that the reader program, the count over words, and the printer program give with the reference's.  The modes `t2` and `t2-random` tested the statements of T2 before their proofs: a file that `read` accepts must print as itself through `write` and its structure must meet the constraints and read back as itself, and for a file that `read` rejects the reported line must be the first faulty line with the role that `roleAt` gives it.  [`tests/rcv/reader_edges.py`](../../tests/rcv/reader_edges.py) adds to the edge cases an absent line and a final run without LF in each role from `contest` to `ballot`, numbers of up to 21 digits next to `2 ^ 32` and `2 ^ 64` in each place that holds a number, and names of spaces alone.  On the 632 files of `edges.py`, the 93 of `reader_edges.py`, and the 19 of the corpus, the reports of `reportFile` and of the programs equal the reference's byte for byte, and the statements of T2 hold, as they do for 20,000 random structures and 200,000 files mutated from their files, of which `read` accepts 19,980.
+
+```sh
+uv run tests/rcv/edges.py
+uv run tests/rcv/reader_edges.py
+uv run tests/rcv/check.py
+tools/leanrun --timeout 20m lake build rcv-tabulate
+.lake/build/bin/rcv-tabulate compare tmp/rcv-edges/*.rcv
+.lake/build/bin/rcv-tabulate compare tmp/rcv-reader/*.rcv
+.lake/build/bin/rcv-tabulate compare tmp/rcv-data/canonical/*.rcv
+.lake/build/bin/rcv-tabulate t2 tmp/rcv-edges/*.rcv
+.lake/build/bin/rcv-tabulate t2-random 1 20000
+```
+
+```
+632 files, 283 well formed, 349 malformed, 0 differ
+93 files, 2 well formed, 91 malformed, 0 differ
+19 files, 19 well formed, 0 malformed, 0 differ
+632 files, 283 accepted, 349 rejected, 0 failed
+20000 structures read back, 200000 mutated files, 19980 accepted, 180020 rejected, 0 failed
+```
+
+## Theorems of the reader
+
+The theorems of T2 hold for every byte string and every structure, and each depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.
+
+| Theorem | File | Statement |
+|---|---|---|
+| T2(a) `Demos.Rcv.Spec.read_write` | [`ReadProof.lean`](ReadProof.lean) | `read (write c) = .ok c` for every structure `c` that meets `Contest.WellFormed` |
+| T2(b) `Demos.Rcv.Spec.write_of_read` | [`ReadProof.lean`](ReadProof.lean) | `read b = .ok c` implies `write c = b` and `c.WellFormed`, so a file that reads is the canonical file of its structure |
+| T2(c) `Demos.Rcv.Spec.read_error_first` | [`ReadError.lean`](ReadError.lean) | If `b` is the file of no structure that meets the constraints, `read b` returns the error of a line `j ≥ 1` with the role `roleAt b j`, line `j` is faulty, and no line from 1 to `j - 1` is.  `reportFile_error_first` adds that `reportFile b` is the error report of line `j` |
+| T2(d) `Demos.Rcv.ReadProgram.readNumber_whole` | [`ReadProgramProof.lean`](ReadProgramProof.lean) | The program's number reader over a whole buffer of fewer than `2 ^ 64` bytes returns `(true, v)` exactly when the buffer holds `decimal v.toNat`, the digits that the printer's `pushNumber` appends for `v` (`pushNumber_toList`) |
+
+`read_write` splits the written file into its lines and the empty piece after the last LF (`write_splitOn`), and each line reads back as the field that `write` printed in it: the decimal forms through `number_decimal`, the position fields through `parsePosition_field`, and the lines of several parts through the spaces and commas that `write` places between parts that hold none.  `write_of_read` runs the other way: each parser that succeeds gives the field whose printing is its line (`eq_of_parseCandidate`, `eq_of_parseBallot`, and the others), and `List.intercalate_splitOn` joins the pieces back into the file.  `read_error_first` reads the pieces that `read` passes to line `j` as the pieces of the file from piece `j - 1` on (`readLine_drop`), so every line before the reported one meets its role.  T2(b) excludes the other result, since a file that reads is the file of a structure that meets the constraints.
+
+## The reader and the printer as programs
+
+[`ReadProgram.lean`](ReadProgram.lean) states the reader in the verified compiler's dialect.  `readContest` takes a buffer of bytes and returns the contest's words of the requirements' section "Word forms of the count" for a well-formed file, and `[0, j, code]` for a malformed file whose first faulty line is `j`, with the code of its role from 0 for `format` to 8 for `end`.  `findByte` finds the next LF, space, comma, or `|`, and the texts of the format are words of eight bytes that `matchWord` compares with the buffer.  `readNumber` reads at most 20 digits and tests before each digit that ten times the value read plus the digit stays below `2 ^ 64`.  The loops over the numbers of an order line, the indices of a field, and the fields of a ballot line recurse on a count of the parts left, and those over the candidate lines and the ballot lines on the number of lines left.
+
+[`PrintProgram.lean`](PrintProgram.lean) states the printers.  `printReport b n res` collects the report's bytes in an array of words: the first two lines, lines 2 to `6 + n` of the file copied from `b`, the lines of each round from the count's result words, and the winner line.  `toBytes` then copies the array into a buffer.  `pushNumber` appends the decimal digits of a word with `digitCount` and `digitByte` of [the decimal text of `Int64`](../../Library/Numerics/Decimal/Int64Text/README.md), and the members of a mask print in increasing index.  `printError j code` prints the error report.
+
+| Theorem | File | Statement |
+|---|---|---|
+| `Demos.Rcv.ReadProgram.readContest_eq` | [`ReadProgramMain.lean`](ReadProgramMain.lean) | `(readContest b).toList = readResult (bytesOf b)` for every buffer of fewer than `2 ^ 64` bytes, where `readResult` of [`ReadWords.lean`](ReadWords.lean) gives the contest's words of a well-formed file and `[0, j, code]` of a malformed one |
+| `Demos.Rcv.PrintProgram.printReport_eq` | [`PrintProof.lean`](PrintProof.lean) | For a structure `c` that meets the constraints and a buffer that holds `write c`, `printReport` on the buffer, `n`, and the result words of the count of `c` prints `report c`, when the report has fewer than `2 ^ 64` bytes |
+| `Demos.Rcv.TabulateProgram.printError_eq` | [`TabulateProof.lean`](TabulateProof.lean) | `printError` on a line `j < 2 ^ 64` and the code of a role `r` prints `errorReport j r` |
+
+[`ReadProgramProof.lean`](ReadProgramProof.lean) reads the bytes from position `s` to position `e` as `slice b s e` and ties each loop of the program to the specification's split at the same separator through `findByte_split`: the position that `findByte` finds splits the slice as `List.splitOn` does.  [`ReadProgramMain.lean`](ReadProgramMain.lean) follows `readLines` line by line, through `readLines_split`, which separates the header lines from the rest.  [`PrintProof.lean`](PrintProof.lean) uses the theorems of [`Rounds.lean`](Rounds.lean): each round's continuing set is an increasing list of candidates from 1 to `n`, and each elimination names members of it, so the masks of the result words print the round's lines.
+
+## The module's export returns the report of a file
+
+`tabulate` of [`TabulateProgram.lean`](TabulateProgram.lean) composes the reader program, the count program `Demos.Rcv.Program.count`, and the printers: it prints the error report when the reader's first word is 0, and otherwise the report from the file, `n`, and the count of the reader's words.  [`Tabulate.lean`](Tabulate.lean) compiles the functions of the count, of the reader, and of the printers into one module, and [`TabulateCall.lean`](TabulateCall.lean) states the call theorems.  Each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone, as `#print axioms` at the end of `TabulateCall.lean` reports.
+
+| Theorem | File | Statement |
+|---|---|---|
+| `Demos.Rcv.TabulateProgram.tabulate_eq` | [`TabulateProof.lean`](TabulateProof.lean) | `bytesOf (tabulate b) = reportFile (bytesOf b)` for every buffer of fewer than `2 ^ 32` bytes |
+| T1 `Demos.Rcv.TabulateProgram.tabulate_callSpec` | [`TabulateCall.lean`](TabulateCall.lean) | `Verified.CallSpec compiled.module compiled.tables 63 tabulateSpec compiled.tabulate.bound`, where `tabulateSpec b` is the buffer of `reportFile (bytesOf b)`: function 63, called with a borrowed buffer from a ready store in which `top` can rise by the generated bound, returns without a trap an owned buffer of the report, leaves a ready store, and raises `top` by at most the bound |
+| `readContest_callSpec`, `printReport_callSpec`, `printError_callSpec` | [`TabulateCall.lean`](TabulateCall.lean) | Functions 47, 60, and 62 compute `readResult` of the buffer's bytes, `printReport`, and `printError` |
+| `Demos.Rcv.TabulateProgram.exports` | [`Tabulate.lean`](Tabulate.lean) | The exports `count`, `readContest`, `printReport`, `printError`, and `tabulate` are functions 22, 47, 60, 62, and 63 |
+
+`tabulate_eq` follows the two results of the reader.  For a malformed file `read_error_lt` bounds the line number below `2 ^ 64`, and `printError_eq` gives the error report.  For a well-formed file, T2(b) gives the structure `c` whose writing is the file, `countWords_contestWords` equates the count of the reader's words with the result words of `countContest c`, `Demos.Rcv.Refine.count_eq` equates the program's count with the specification's, and `printReport_eq` prints `report c`, whose length `report_length_lt` bounds below `2 ^ 64` for a file of fewer than `2 ^ 32` bytes.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), so the call theorem covers every buffer.  The bound `compiled.tabulate.bound` is the generated one, and no theorem gives it a closed form.
+
+## Testing the tabulator
+
+[`tests/rcv/tabulate.py`](../../tests/rcv/tabulate.py) compares the module, native Lean, and the reference on canonical files.  For each file it computes the reference's report and requires the module's export `tabulate` in the Wasmtime host, `rcv-tabulate report`, and the report that `edges.py`, `reader_edges.py`, or `check.py` wrote to give the same bytes.  On the 632 edge files, the 93 files of the reader's edge cases, and the 19 contests of the corpus, all three equal the reference's report.  The verified compiler compiles `Tabulate.lean` in 841 s with a peak of 5.9 GB on edgexpert-18ff under `tools/leanrun --cpus 18 --threads 18 --memory-high 24G`, and the module has 32,293 bytes.
+
+```sh
+tools/leanrun --timeout 60m lake build Demos.Rcv.TabulateCall rcv-tabulate
+mkdir -p build/verified
+tools/leanrun --timeout 20m lake env lean --run tools/Emit.lean \
+  Demos.Rcv.Tabulate Demos.Rcv.TabulateProgram.compiled.module build/verified/rcvTabulate.wasm
+uv run tests/rcv/edges.py
+uv run tests/rcv/reader_edges.py
+uv run tests/rcv/check.py
+uv run tests/rcv/tabulate.py tmp/rcv-edges tmp/rcv-reader tmp/rcv-data/canonical
+```
+
+```
+tmp/rcv-edges: 632 files, 283 well-formed, 349 malformed
+tmp/rcv-reader: 93 files, 2 well-formed, 91 malformed
+tmp/rcv-data/canonical: 19 files, 19 well-formed, 0 malformed
+0 files with a disagreement
+```
+
+In the verified compiler's tests the module is `rcvTabulate`: [the module registry](../../tests/verified/modules.txt) lists its compilation, and [the case generator](../../tests/TestSupport/Rcv/Cases.lean) gives its cases beside those of `rcvCount`, which the executable `verified-cases-rcv` prints for either name.  `tests/verified/run.sh --cases rcvTabulate` writes `build/verified/rcvTabulate.wasm`, validates it with `wasm-tools`, and compares 86 cases between the Wasmtime host and `Demos.Rcv.Spec.reportFile` in native Lean.  The cases are the canonical files of the contests of `Cases.lean`, of contests with ballot identifiers, contest identifiers of 1 and 64 bytes, and names of bytes outside ASCII, and of the 18 random contests of the count's cases, the worked example's file cut after each of its lines, that file without its final LF and with a further line or further bytes, and 16 edits of it that each break one line.  Each case writes its file under `build/verified/rcvTabulate/` and requires two retained blocks, the host's buffer, which the host allocates for an empty file as well, and the report.  [`TabulateFile.lean`](TabulateFile.lean) states that the written file holds `encode compiled.module` and decodes to `compiled.module`, and each of its two theorems depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  `tests/native/verified.sh --module rcvTabulate` translates the module's 64 functions to C, compares the Clight that `clightgen` reads back from the printed C with the translation, compiles the C with CompCert's `ccomp`, and runs the same 86 cases.
+
+```sh
+tests/verified/run.sh --cases rcvTabulate
+tools/leanrun --timeout 10m lake env lean Demos/Rcv/TabulateFile.lean
+tests/native/verified.sh --module rcvTabulate
+```
+
+```
+verified: passed 86 failed 0
+'Demos.Rcv.TabulateFile.rcvTabulate_file' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Demos.Rcv.TabulateFile.rcvTabulate_file_decode' depends on axioms: [propext, Classical.choice, Quot.sound]
+rcvTabulate: 64 of 64 functions, 64 of 64 exports
+rcvTabulate: the clightgen program matches the translation
+native verified: passed 86 failed 0
 ```
