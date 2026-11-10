@@ -9,7 +9,10 @@
     "Verified.foldCost xs init step (fun _ _ _ => c)",
     "min unpaid paid for a fold whose state pushes onto an array",
     "Verified.loopCost (fun _ => 0) C BA F k i s ≤ m * Verified.loopCost (fun _ => 0) C' BB F' k i s",
-    "compiled.f.bound x ≤ a closed form in a count of loop passes"
+    "compiled.f.bound x ≤ a closed form in a count of loop passes",
+    "a bound lemma over the generated cost_eq and bound_eq equations of any compilation",
+    "compiled.f.bound x ≤ c at fixed arguments, evaluated in the kernel",
+    "@ite Nat c d₁ A A' + k ≤ m * (@ite _ c d₂ B B').2.size"
   ],
   "modules": [
     "Verified.BoundFacts",
@@ -28,7 +31,10 @@
     "Examples.Lookup.Compiled",
     "Verified.Examples.Forms",
     "Examples.RunningMax.Compiled",
-    "Demos.Euler.VerifiedCall"
+    "Demos.Euler.VerifiedCall",
+    "Demos.OrderBook.Bound",
+    "Demos.OrderBook.ProcessCharges",
+    "TestSupport.A64.GptLayer32Runs"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -52,7 +58,9 @@
     "Examples.RunningMax.foldCost_const",
     "Examples.RunningMax.fold_charge_const",
     "Demos.Euler.Verified.loopCost_le_mul",
-    "Demos.Euler.Verified.stepTries"
+    "Demos.Euler.Verified.stepTries",
+    "Demos.OrderBook.Bound.Equations",
+    "Demos.OrderBook.Bound.ite_bound"
   ],
   "examples": [
     "Demos.Slew.Bound.plan_bound",
@@ -74,6 +82,11 @@
     "Examples.RunningMax.compute_bound",
     "Demos.Euler.Verified.advanceStep_bound",
     "Demos.Euler.Verified.solve_bound",
-    "Demos.Euler.Verified.reconstructedSolve_bound"
+    "Demos.Euler.Verified.reconstructedSolve_bound",
+    "Demos.OrderBook.Bound.run_bound_le",
+    "Demos.OrderBook.Bound.compiled_equations",
+    "Demos.OrderBook.Bound.step_le",
+    "Demos.OrderBook.Process.runBound_74",
+    "TestSupport.A64.Gpt32.heap_room"
   ]
 }

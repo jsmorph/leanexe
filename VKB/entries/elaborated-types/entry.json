@@ -1,0 +1,25 @@
+{
+  "id": "elaborated-types",
+  "goals": [
+    "failed to synthesize HSub Int64 ℕ",
+    "an untyped binder or literal in a specification or a proof-side definition",
+    "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block",
+    "a coercion of Int to Nat in a trusted translation that maps negative values to 0"
+  ],
+  "modules": [
+    "Library.Numerics.Float64.Log10.Log10Bits",
+    "Library.Numerics.Decimal.Int64Text.Inverse"
+  ],
+  "declarations": [
+    "Library.Numerics.Float64.Log10.Log10Bits.kWord10",
+    "Library.Numerics.Float64.Log10.log10",
+    "Library.Numerics.Decimal.Int64Text.denote_minus",
+    "Library.Numerics.Decimal.Int64Text.denote_plain",
+    "Option.map_some"
+  ],
+  "examples": [
+    "Library.Numerics.Float64.Log10.Log10Bits.normal_bits",
+    "Library.Numerics.Float64.Log10.Log10Bits.subnormal_bits",
+    "Library.Numerics.Decimal.Int64Text.expectedRead_print"
+  ]
+}
