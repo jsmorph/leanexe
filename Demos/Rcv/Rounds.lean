@@ -5,14 +5,16 @@ The theorems of the rounds of [the requirements](requirements.md), section "Theo
 Elimination, T5 Conservation, T6 Locality, T7 Invariance, and T9 Order, over the count of
 `Demos.Rcv.Spec`, with the general lemmas about `tally`, `rule`, and `run` that they rest on.
 
-`Trace` describes the rounds of a count from a continuing set on: each round holds the counts of its
-own continuing set, a round that `rule` ends is the last, and a round that eliminates is followed by
-the rounds of its continuing set minus the eliminated candidates.  Every elimination removes at
-least one member of the continuing set, and a set of at most one candidate ends the count, so
-`run_trace` gives a `Trace` of `run` whenever the fuel is at least the larger of 1 and the size of
-the set, and `Trace.run_eq` shows that every such fuel gives the same count.  The `K.length + 1`
-rounds of `count` therefore suffice, as `count_trace` states.  The lemmas about `tally`, `rule`, and
-`run` hold for every interpretation, which T10 needs.
+`Trace` describes the rounds of a count under a decision function from a continuing set on: each
+round holds the counts of its own continuing set, a round that the decision ends is the last, and a
+round that eliminates is followed by the rounds of its continuing set minus the eliminated
+candidates.  For a decision that meets `Ends`, every elimination removes at least one member of the
+continuing set and a set of at most one candidate ends the count, so `run_trace` gives a `Trace` of
+`run` whenever the fuel is at least the larger of 1 and the size of the set, and `Trace.run_eq`
+shows that every such fuel gives the same count.  `rule_ends` states `Ends` of `rule`, so the
+`K.length + 1` rounds of `count` suffice, as `count_trace` states.  The lemmas about `tally` and
+`run` hold for every interpretation and every decision that meets `Ends`, which the single count of
+T10 and the county count of T11 use.
 -/
 
 namespace Demos.Rcv.Rounds
@@ -567,16 +569,6 @@ theorem rule_eliminated {order : List Nat} {t : Tally} {e : Elimination}
     rw [ruleTied_eq_fewest] at this ⊢
     exact fewest_sub this
 
-/-- Each round that eliminates removes at least one member of its continuing set. -/
-theorem rule_eliminate_removes {interp : List Nat → List UInt64 → Outcome} {order C : List Nat}
-    {ballots : List (List UInt64)} {e : Elimination}
-    (h : rule order (tally interp C ballots) = .eliminate e) :
-    (C.filter fun i : Nat => decide (i ∉ e.eliminated)).length < C.length := by
-  obtain ⟨hne, hsub⟩ := rule_eliminated h
-  rw [tally_votes_fst] at hsub
-  obtain ⟨i, hi⟩ := List.exists_mem_of_ne_nil _ hne
-  exact List.length_filter_lt_length_iff_exists.2 ⟨i, hsub i hi, by simp [hi]⟩
-
 /-- A round whose continuing set has at most one member ends the count, by rule 1 or rule 2. -/
 theorem rule_winner_of_length_le_one (order : List Nat) (t : Tally) (h : t.votes.length ≤ 1) :
     ∃ w, rule order t = .winner w := by
@@ -653,67 +645,86 @@ theorem rule_order {π π' : List Nat} {t : Tally}
 
 /-! ## Rounds -/
 
-/-- The rounds `rds` and the winner `w` of a count under the interpretation `interp`, the tie-break
-order `order`, and the ballots `ballots`, from the continuing set `C` on.  Each round holds the
-counts of its continuing set; a round that `rule` ends is the last, with no elimination, and a round
+/-- The properties of a decision that bound the rounds of a count: an elimination names at least one
+candidate and only candidates of the round's continuing set, and a round with at most one
+continuing candidate ends the count. -/
+def Ends (decision : Tally → Decision) : Prop :=
+  (∀ t e, decision t = .eliminate e →
+      e.eliminated ≠ [] ∧ ∀ i ∈ e.eliminated, i ∈ t.votes.map fun x : Nat × Nat => x.1) ∧
+    ∀ t : Tally, t.votes.length ≤ 1 → ∃ w, decision t = .winner w
+
+theorem rule_ends (order : List Nat) : Ends (rule order) :=
+  ⟨fun _ _ h => rule_eliminated h, rule_winner_of_length_le_one order⟩
+
+/-- The rounds `rds` and the winner `w` of a count under the interpretation `interp`, the decision
+`decision`, and the ballots `ballots`, from the continuing set `C` on.  Each round holds the counts
+of its continuing set; a round that the decision ends is the last, with no elimination, and a round
 that eliminates is followed by the rounds from its continuing set minus the eliminated
 candidates. -/
-inductive Trace (interp : List Nat → List UInt64 → Outcome) (order : List Nat)
+inductive Trace (interp : List Nat → List UInt64 → Outcome) (decision : Tally → Decision)
     (ballots : List (List UInt64)) : List Nat → List Round → Option Nat → Prop
   | last {C : List Nat} {w : Option Nat} :
-    rule order (tally interp C ballots) = .winner w →
-      Trace interp order ballots C [⟨tally interp C ballots, none⟩] w
+    decision (tally interp C ballots) = .winner w →
+      Trace interp decision ballots C [⟨tally interp C ballots, none⟩] w
   | step {C : List Nat} {e : Elimination} {rds : List Round} {w : Option Nat} :
-    rule order (tally interp C ballots) = .eliminate e →
-      Trace interp order ballots (C.filter fun i : Nat => decide (i ∉ e.eliminated)) rds w →
-        Trace interp order ballots C (⟨tally interp C ballots, some e⟩ :: rds) w
+    decision (tally interp C ballots) = .eliminate e →
+      Trace interp decision ballots (C.filter fun i : Nat => decide (i ∉ e.eliminated)) rds w →
+        Trace interp decision ballots C (⟨tally interp C ballots, some e⟩ :: rds) w
 
-variable {interp : List Nat → List UInt64 → Outcome} {order : List Nat}
+variable {interp : List Nat → List UInt64 → Outcome} {decision : Tally → Decision}
   {ballots : List (List UInt64)}
 
+/-- Each round that eliminates removes at least one member of its continuing set. -/
+theorem eliminate_removes (hd : Ends decision) {C : List Nat} {e : Elimination}
+    (h : decision (tally interp C ballots) = .eliminate e) :
+    (C.filter fun i : Nat => decide (i ∉ e.eliminated)).length < C.length := by
+  obtain ⟨hne, hsub⟩ := hd.1 _ _ h
+  rw [tally_votes_fst] at hsub
+  obtain ⟨i, hi⟩ := List.exists_mem_of_ne_nil _ hne
+  exact List.length_filter_lt_length_iff_exists.2 ⟨i, hsub i hi, by simp [hi]⟩
+
 /-- A round that eliminates has two or more continuing candidates. -/
-theorem two_le_of_eliminate {C : List Nat} {e : Elimination}
-    (hr : rule order (tally interp C ballots) = .eliminate e) : 2 ≤ C.length := by
+theorem two_le_of_eliminate (hd : Ends decision) {C : List Nat} {e : Elimination}
+    (h : decision (tally interp C ballots) = .eliminate e) : 2 ≤ C.length := by
   apply Nat.le_of_not_lt
   intro hc
-  obtain ⟨w', hw'⟩ := rule_winner_of_length_le_one order (tally interp C ballots)
-    (by simp [tally]; omega)
-  rw [hr] at hw'
+  obtain ⟨w', hw'⟩ := hd.2 (tally interp C ballots) (by simp [tally]; omega)
+  rw [h] at hw'
   cases hw'
 
 /-- A count has at most the larger of 1 and the size of its first continuing set rounds. -/
-theorem Trace.length_le {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) : rds.length ≤ max 1 C.length := by
+theorem Trace.length_le (hd : Ends decision) {C : List Nat} {rds : List Round} {w : Option Nat}
+    (h : Trace interp decision ballots C rds w) : rds.length ≤ max 1 C.length := by
   induction h with
   | last => exact Nat.le_max_left 1 _
   | @step C e rds w hr _ ih =>
-    have hlt := rule_eliminate_removes hr
-    have h2 := two_le_of_eliminate hr
+    have hlt := eliminate_removes hd hr
+    have h2 := two_le_of_eliminate hd hr
     simp only [List.length_cons]
     omega
 
 /-- `run` gives the trace of the count whenever the fuel is at least the larger of 1 and the size
 of the continuing set. -/
-theorem run_trace :
+theorem run_trace (hd : Ends decision) :
     ∀ (fuel : Nat) (C : List Nat), 1 ≤ fuel → C.length ≤ fuel →
-      Trace interp order ballots C (run interp order ballots fuel C).rounds
-        (run interp order ballots fuel C).winner
+      Trace interp decision ballots C (run interp decision ballots fuel C).rounds
+        (run interp decision ballots fuel C).winner
   | 0, _, h1, _ => absurd h1 (by decide)
   | fuel + 1, C, _, hC => by
-    cases hr : rule order (tally interp C ballots) with
+    cases hr : decision (tally interp C ballots) with
     | winner w =>
       simp only [run, hr]
       exact Trace.last hr
     | eliminate e =>
       simp only [run, hr]
-      have hlt := rule_eliminate_removes hr
-      have h2 := two_le_of_eliminate hr
-      exact Trace.step hr (run_trace fuel _ (by omega) (by omega))
+      have hlt := eliminate_removes hd hr
+      have h2 := two_le_of_eliminate hd hr
+      exact Trace.step hr (run_trace hd fuel _ (by omega) (by omega))
 
 /-- Every fuel at least the length of a trace gives the trace's count. -/
 theorem Trace.run_eq {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) :
-    ∀ fuel, rds.length ≤ fuel → run interp order ballots fuel C = ⟨rds, w⟩ := by
+    (h : Trace interp decision ballots C rds w) :
+    ∀ fuel, rds.length ≤ fuel → run interp decision ballots fuel C = ⟨rds, w⟩ := by
   induction h with
   | @last C w hr =>
     intro fuel hf
@@ -729,27 +740,26 @@ theorem Trace.run_eq {C : List Nat} {rds : List Round} {w : Option Nat}
 
 /-- The fuel does not change the count once it is at least the larger of 1 and the size of the
 continuing set. -/
-theorem run_fuel {C : List Nat} {fuel fuel' : Nat} (h : max 1 C.length ≤ fuel)
-    (h' : max 1 C.length ≤ fuel') :
-    run interp order ballots fuel C = run interp order ballots fuel' C := by
-  have ht := run_trace (interp := interp) (order := order) (ballots := ballots) fuel C
-    (by omega) (by omega)
-  have hl := ht.length_le
+theorem run_fuel (hd : Ends decision) {C : List Nat} {fuel fuel' : Nat}
+    (h : max 1 C.length ≤ fuel) (h' : max 1 C.length ≤ fuel') :
+    run interp decision ballots fuel C = run interp decision ballots fuel' C := by
+  have ht := run_trace (interp := interp) (ballots := ballots) hd fuel C (by omega) (by omega)
+  have hl := ht.length_le hd
   rw [ht.run_eq fuel (by omega), ht.run_eq fuel' (by omega)]
 
 /-- The rounds of `count` form a trace from the counted set: the `K.length + 1` rounds that `run`
 allows suffice. -/
 theorem count_trace (kinds : List Kind) (order : List Nat) (ballots : List (List UInt64)) :
-    Trace (interpret kinds) order ballots (countedSet kinds) (count kinds order ballots).rounds
-      (count kinds order ballots).winner :=
-  run_trace _ _ (by omega) (by omega)
+    Trace (interpret kinds) (rule order) ballots (countedSet kinds)
+      (count kinds order ballots).rounds (count kinds order ballots).winner :=
+  run_trace (rule_ends order) _ _ (by omega) (by omega)
 
 /-- Each round of a trace holds the counts of its continuing set, a subset of the first one, and
-its elimination is the decision of `rule`. -/
+its elimination is the decision's. -/
 theorem Trace.mem {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) :
+    (h : Trace interp decision ballots C rds w) :
     ∀ rd ∈ rds, rd.tally = tally interp (continuingSet rd) ballots ∧ continuingSet rd <+ C ∧
-      ∀ e, rd.elimination = some e → rule order rd.tally = .eliminate e := by
+      ∀ e, rd.elimination = some e → decision rd.tally = .eliminate e := by
   induction h with
   | @last C w hr =>
     intro rd hrd
@@ -768,7 +778,7 @@ theorem Trace.mem {C : List Nat} {rds : List Round} {w : Option Nat}
 
 /-- The first round of a trace from `C` has the continuing set `C`. -/
 theorem Trace.head {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) :
+    (h : Trace interp decision ballots C rds w) :
     ∃ hr : 0 < rds.length, continuingSet rds[0] = C := by
   cases h with
   | last => exact ⟨by simp, by simp⟩
@@ -777,7 +787,7 @@ theorem Trace.head {C : List Nat} {rds : List Round} {w : Option Nat}
 /-- Each round of a trace but the last eliminates, and the next round's continuing set is its own
 minus the eliminated candidates. -/
 theorem Trace.next {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) :
+    (h : Trace interp decision ballots C rds w) :
     ∀ (r : Nat) (hr : r + 1 < rds.length), ∃ e, rds[r].elimination = some e ∧
       continuingSet rds[r + 1] =
         (continuingSet rds[r]).filter fun i : Nat => decide (i ∉ e.eliminated) := by
@@ -795,10 +805,12 @@ theorem Trace.next {C : List Nat} {rds : List Round} {w : Option Nat}
       simp only [List.getElem_cons_succ]
       exact ih r (by simp only [List.length_cons] at hr'; omega)
 
-/-- The last round of a trace eliminates no one, and `rule` ends the count with its winner. -/
+/-- The last round of a trace eliminates no one, and the decision ends the count with its
+winner. -/
 theorem Trace.last_round {C : List Nat} {rds : List Round} {w : Option Nat}
-    (h : Trace interp order ballots C rds w) :
-    ∃ last, rds.getLast? = some last ∧ last.elimination = none ∧ rule order last.tally = .winner w := by
+    (h : Trace interp decision ballots C rds w) :
+    ∃ last, rds.getLast? = some last ∧ last.elimination = none ∧
+      decision last.tally = .winner w := by
   induction h with
   | @last C w hr => exact ⟨_, rfl, rfl, hr⟩
   | @step C e rds w hr ht ih =>
@@ -814,35 +826,61 @@ theorem tally_perm {C : List Nat} {ballots' : List (List UInt64)} (h : ballots'.
 
 theorem run_perm {ballots' : List (List UInt64)} (h : ballots'.Perm ballots) :
     ∀ (fuel : Nat) (C : List Nat),
-      run interp order ballots' fuel C = run interp order ballots fuel C
+      run interp decision ballots' fuel C = run interp decision ballots fuel C
   | 0, _ => rfl
   | fuel + 1, C => by
     simp only [run, tally_perm h, run_perm h fuel]
 
-/-- The count under the order `π'` equals the count under `π` when `π'` chooses, at each round of
-the count under `π` that eliminates by order, the same member of the tied set. -/
-theorem run_order {π π' : List Nat} :
+/-- Each round of `run` records the elimination that the decision gives. -/
+theorem run_elimination :
+    ∀ (fuel : Nat) (C : List Nat), ∀ rd ∈ (run interp decision ballots fuel C).rounds,
+      ∀ e, decision rd.tally = .eliminate e → rd.elimination = some e
+  | 0, _ => by simp [run]
+  | fuel + 1, C => by
+    intro rd hrd e he
+    cases hr : decision (tally interp C ballots) with
+    | winner w =>
+      simp only [run, hr, List.mem_singleton] at hrd
+      subst hrd
+      rw [hr] at he
+      cases he
+    | eliminate e' =>
+      simp only [run, hr, List.mem_cons] at hrd
+      rcases hrd with rfl | hrd
+      · rw [hr] at he
+        exact congrArg some (Decision.eliminate.inj he)
+      · exact run_elimination fuel _ rd hrd e he
+
+/-- Two decisions give the same count when they agree on the counts of every round of the count
+under one of them. -/
+theorem run_congr {decision' : Tally → Decision} :
     ∀ (fuel : Nat) (C : List Nat),
-      (∀ rd ∈ (run interp π ballots fuel C).rounds, ∀ Z i,
-        rd.elimination = some (.order Z i) → latest π' Z = i) →
-      run interp π' ballots fuel C = run interp π ballots fuel C
+      (∀ rd ∈ (run interp decision ballots fuel C).rounds, decision' rd.tally = decision rd.tally) →
+      run interp decision' ballots fuel C = run interp decision ballots fuel C
   | 0, _, _ => rfl
   | fuel + 1, C, h => by
-    have hrule : rule π' (tally interp C ballots) = rule π (tally interp C ballots) := by
-      apply rule_order
-      intro Z i hr
-      have := h ⟨tally interp C ballots, some (.order Z i)⟩ (by simp [run, hr])
-      exact this Z i rfl
-    cases hr : rule π (tally interp C ballots) with
-    | winner w => simp [run, hr, hrule]
+    cases hr : decision (tally interp C ballots) with
+    | winner w =>
+      have hd := h ⟨tally interp C ballots, none⟩ (by simp [run, hr])
+      simp only [run, hr, hd]
     | eliminate e =>
-      have hrest := run_order (π := π) (π' := π') fuel
+      have hd := h ⟨tally interp C ballots, some e⟩ (by simp [run, hr])
+      have hrest := run_congr fuel
         (C.filter fun i : Nat => decide (i ∉ e.eliminated)) (by
           intro rd hrd
           apply h rd
           simp only [run, hr, List.mem_cons]
           exact Or.inr hrd)
-      simp only [run, hr, hrule, hrest]
+      simp only [run, hr, hd, hrest]
+
+/-- The count under the order `π'` equals the count under `π` when `π'` chooses, at each round of
+the count under `π` that eliminates by order, the same member of the tied set. -/
+theorem run_order {π π' : List Nat} (fuel : Nat) (C : List Nat)
+    (h : ∀ rd ∈ (run interp (rule π) ballots fuel C).rounds, ∀ Z i,
+      rd.elimination = some (.order Z i) → latest π' Z = i) :
+    run interp (rule π') ballots fuel C = run interp (rule π) ballots fuel C :=
+  run_congr fuel C fun rd hrd =>
+    rule_order fun Z i hr => h rd hrd Z i (run_elimination fuel C rd hrd _ hr)
 
 /-! ## The theorems -/
 
@@ -920,8 +958,8 @@ theorem locality (c : Contest) :
         continuingSet k.rounds[r + 1] =
           (continuingSet k.rounds[r]).filter fun i : Nat => decide (i ∉ e.eliminated) := by
   intro k ballots
-  have ht : Trace (interpret (kindsOf c)) c.order ballots (countedSet (kindsOf c)) k.rounds
-      k.winner := count_trace (kindsOf c) c.order ballots
+  have ht : Trace (interpret (kindsOf c)) (rule c.order) ballots (countedSet (kindsOf c))
+      k.rounds k.winner := count_trace (kindsOf c) c.order ballots
   refine ⟨ht.head, ?_, ht.next⟩
   intro r hr C
   obtain ⟨htally, -, -⟩ := ht.mem k.rounds[r] (List.getElem_mem hr)

@@ -6,7 +6,9 @@ over lists, natural numbers, and the 64-bit position words, with no reference to
 `interpret` is the interpretation of a ballot against a continuing set, `tally` the counts of a
 round, `rule` the four rules that end a round, in their order, and `count` the run of rounds to the
 winner or to no winner.  `tally` and `run` take the interpretation as an argument, which T10 states
-for every interpretation and a module of another statute supplies.  `write` prints a contest structure as its canonical ballot file, `report`
+for every interpretation and a module of another statute supplies, and `run` takes the decision of a
+round as an argument, which `count` sets to `rule` and the single count of T10 and the county count
+of T11 replace.  `write` prints a contest structure as its canonical ballot file, `report`
 gives the bytes of the report, whose header lines are the file's, and `countWords` is the word form
 of the first increment's export.  Every definition computes, so native Lean runs the specification
 on canonical files.
@@ -218,18 +220,19 @@ structure Count where
   winner : Option Nat
   deriving DecidableEq, Repr
 
-/-- The rounds under the interpretation `interp` from the continuing set `C` on, with at most
-`fuel` rounds.  The next round's continuing set is `C` minus the eliminated candidates. -/
-def run (interp : List Nat → List UInt64 → Outcome) (order : List Nat)
+/-- The rounds under the interpretation `interp` and the decision `decision`, which ends a round's
+count or names its elimination from the round's counts, from the continuing set `C` on, with at
+most `fuel` rounds.  The next round's continuing set is `C` minus the eliminated candidates. -/
+def run (interp : List Nat → List UInt64 → Outcome) (decision : Tally → Decision)
     (ballots : List (List UInt64)) : Nat → List Nat → Count
   | 0, _ => ⟨[], none⟩
   | fuel + 1, C =>
     let t : Tally := tally interp C ballots
-    match rule order t with
+    match decision t with
     | .winner w => ⟨[⟨t, none⟩], w⟩
     | .eliminate e =>
       let rest : Count :=
-        run interp order ballots fuel (C.filter fun i : Nat => decide (i ∉ e.eliminated))
+        run interp decision ballots fuel (C.filter fun i : Nat => decide (i ∉ e.eliminated))
       ⟨⟨t, some e⟩ :: rest.rounds, rest.winner⟩
 
 /-- The count of a contest with the kinds `kinds`, the tie-break order `order`, and the ballots'
@@ -239,7 +242,7 @@ rule 4 is a member of the set with the fewest votes, which is not empty since `T
 whose continuing set has one member ends the count by rule 1 or rule 2.  The `K.length + 1` rounds
 that `run` allows therefore always suffice, and its case of no round left is never reached. -/
 def count (kinds : List Kind) (order : List Nat) (ballots : List (List UInt64)) : Count :=
-  run (interpret kinds) order ballots ((countedSet kinds).length + 1) (countedSet kinds)
+  run (interpret kinds) (rule order) ballots ((countedSet kinds).length + 1) (countedSet kinds)
 
 /-- The kinds of a contest's candidates, in index order. -/
 def kindsOf (c : Contest) : List Kind := c.candidates.map fun x : Candidate => x.kind
