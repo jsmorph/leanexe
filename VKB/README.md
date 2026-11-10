@@ -13,6 +13,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Closed computations](entries/closed-computations/README.md) | Proves constants, table entries, exports, and other closed facts by kernel evaluation. |
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
 | [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
+| [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
 | [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
@@ -78,6 +79,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
 | [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
+| [Definitions that the kernel evaluates](entries/kernel-evaluated-definitions/README.md) | Gives an evaluated definition a form that computes each value once, or evaluates it natively and has the kernel check the literal. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |
 | [Sorting and selection](entries/sorted-permutation/README.md) | Proves a sort or a selection through the unique sorted permutation. |
 | [Array heaps](entries/heap-sift-invariant/README.md) | Proves sift-down, sift-up, heapify, and removal through a heap order from a node on. |

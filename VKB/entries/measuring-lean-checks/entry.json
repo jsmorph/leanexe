@@ -5,13 +5,16 @@
     "a module or a kernel check that stops at the runner's memory limit or timeout",
     "the declaration of a module that costs its time or memory",
     "the heartbeats of a declaration",
-    "a comparison of a change's cost with its baseline"
+    "a comparison of a change's cost with its baseline",
+    "a probe that its timeout stops without output",
+    "the declarations that the kernel unfolds most often"
   ],
   "modules": [
     "Init.System.IO"
   ],
   "declarations": [
-    "IO.getNumHeartbeats"
+    "IO.getNumHeartbeats",
+    "IO.FS.withFile"
   ],
   "examples": []
 }

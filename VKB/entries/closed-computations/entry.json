@@ -11,7 +11,8 @@
     "memory exhaustion in the kernel's check of one declaration",
     "a bound on a quantity that a definition by well-founded recursion computes for every run",
     "memory exhaustion in decide +kernel on the equality of two compiled modules",
-    "push_cast or field_simp evaluates a literal power such as 2^1074"
+    "push_cast or field_simp evaluates a literal power such as 2^1074",
+    "rfl or simp on a goal that holds a power above exponentiation.threshold reaches the maximum recursion depth"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",
