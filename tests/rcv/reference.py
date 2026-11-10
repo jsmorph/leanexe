@@ -7,18 +7,22 @@
 
 The script transcribes `Demos/Rcv/requirements.md`: the reader of the canonical ballot file and its
 error report, the writer, the interpretation of a ballot, the rounds, the report, and the count's
-word forms.  Two further counts serve the comparisons with Alameda County's reports and belong to no
-module.  The county count interprets ballots in the same way, has no majority stop, no rule 2, and
-no batch, eliminates by rule 4 while three or more candidates continue, and ends at the first round
-with at most two.  The faulty setting is the county count in which round 1 suspends each ballot
-whose first position is empty or holds one uncounted candidate and whose interpretation counts for
-a candidate or is `overvote`.  Their reports have the report's form with the rule lines
-`rule alameda-county-count` and `rule alameda-county-count first-round-suspension`, and the faulty
-setting adds `inactive suspended x` after the other inactive lines of each round.
+word forms.  Three further counts serve comparisons and belong to no module: the single count and
+the county count, with which the requirements' T10 and T11 compare the charter's count, and the
+faulty setting of the comparisons with Alameda County's reports.  The single count is the charter's
+count without rule 3.  The county count interprets ballots in the same way, has no majority stop, no
+rule 2, and no batch, eliminates by rule 4 while three or more candidates continue, and ends at the
+first round with at most two.  The faulty setting is the county count in which round 1 suspends each
+ballot whose first position is empty or holds one uncounted candidate and whose interpretation
+counts for a candidate or is `overvote`.  Their reports have the report's form with the rule lines
+`rule single-count`, `rule alameda-county-count`, and `rule alameda-county-count
+first-round-suspension`, and the faulty setting adds `inactive suspended x` after the other inactive
+lines of each round.
 
 Commands, where FILE `-` reads standard input:
 
   reference.py FILE                  the report of the charter's count
+  reference.py --single FILE         the report of the single count
   reference.py --county FILE         the report of the county count
   reference.py --suspend FILE        the report of the faulty setting
   reference.py --contest-words FILE  the contest's words, little-endian 64-bit, on standard output
@@ -38,7 +42,7 @@ from dataclasses import dataclass, field
 RULE = (b"oakland-1105 revision 1, Oakland City Charter sections 1103 and 1105 (February 2007), "
         b"Cal. Elec. Code sections 15341 (updated 1999-01-01) and 15342(d) (updated 2012-01-01), "
         b"texts read 2026-11-09")
-RULES = {"charter": RULE, "county": b"alameda-county-count",
+RULES = {"charter": RULE, "single": b"single-count", "county": b"alameda-county-count",
          "suspend": b"alameda-county-count first-round-suspension"}
 MAX_POSITIONS = 63
 MAX_CANDIDATES = 63
@@ -283,8 +287,9 @@ def setup(contest):
     return counted, rank, Counter(words for _, words in contest.ballots)
 
 
-def charter(contest):
-    """The rounds of the charter's count and the winner, or None for no winner."""
+def charter(contest, batches=True):
+    """The rounds of the charter's count, or of the single count without `batches`, and the winner,
+    or None for no winner."""
     counted, rank, ballots = setup(contest)
     continuing = set(counted)
     rounds = []
@@ -296,7 +301,7 @@ def charter(contest):
             return rounds, majority[0]
         if rnd.continuing == 0:
             return rounds, None
-        group = batch(rnd.votes)
+        group = batch(rnd.votes) if batches else []
         if group:
             rnd.elimination, rnd.eliminated = "batch", group
         else:
@@ -322,8 +327,8 @@ def county(contest, suspend=False):
 
 
 def count(contest, mode="charter"):
-    if mode == "charter":
-        return charter(contest)
+    if mode in ("charter", "single"):
+        return charter(contest, batches=mode == "charter")
     return county(contest, suspend=mode == "suspend")
 
 
@@ -416,6 +421,7 @@ def unpack(data):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--single", action="store_true", help="the charter's count without rule 3")
     mode.add_argument("--county", action="store_true", help="the county count")
     mode.add_argument("--suspend", action="store_true", help="the county count with the first-round suspension")
     mode.add_argument("--contest-words", action="store_true", help="write the contest's words")
@@ -439,7 +445,8 @@ def main():
             return 1
         sys.stdout.buffer.write(pack(contest_words(contest)))
     else:
-        mode = "county" if args.county else "suspend" if args.suspend else "charter"
+        mode = ("single" if args.single else "county" if args.county else
+                "suspend" if args.suspend else "charter")
         sys.stdout.buffer.write(report(data, mode))
     return 0
 

@@ -205,6 +205,10 @@ lean_exe «verified-cases-orderbook» where
   srcDir := "tests"
   root := `TestSupport.OrderBook.CasesMain
 
+lean_exe «verified-cases-rcv» where
+  srcDir := "tests"
+  root := `TestSupport.Rcv.CasesMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where
@@ -231,8 +235,14 @@ lean_exe «rcv-spec» where
 lean_exe «rcv-tabulate» where
   root := `Demos.Rcv.TabulateNative
 
+lean_exe «rcv-rounds» where
+  root := `Demos.Rcv.RoundsNative
+
 lean_exe «rcv-stability» where
   root := `Demos.Rcv.StabilityNative
+
+lean_exe «rcv-properties» where
+  root := `Demos.Rcv.PropertiesNative
 
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.

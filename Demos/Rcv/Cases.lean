@@ -34,7 +34,8 @@ def contestOf (kinds : List Kind) (order : List Nat) (k : Nat) (ballots : List (
 def copies (m : Nat) (ps : List UInt64) : List (List UInt64) := List.replicate m ps
 
 /-- Lines of ASCII text, each followed by LF. -/
-def lines (ls : List String) : List UInt8 := ascii (String.join (ls.map fun l : String => l ++ "\n"))
+def lines (ls : List String) : List UInt8 :=
+  ascii (String.join (ls.map fun l : String => l ++ "\n"))
 
 /-- The report of `c` after its header lines. -/
 def body (c : Contest) : List UInt8 := text ((reportLines c).drop (7 + c.candidates.length))
@@ -73,7 +74,9 @@ id-01,1,2,
 "
 
 def ruleLine : String :=
-  "rule oakland-1105 revision 1, Oakland City Charter sections 1103 and 1105 (February 2007), Cal. Elec. Code sections 15341 (updated 1999-01-01) and 15342(d) (updated 2012-01-01), texts read 2026-11-09"
+  "rule oakland-1105 revision 1, Oakland City Charter sections 1103 and 1105 (February 2007), \
+    Cal. Elec. Code sections 15341 (updated 1999-01-01) and 15342(d) (updated 2012-01-01), \
+    texts read 2026-11-09"
 
 /-- The report of the example after its first two lines, as the requirements give it. -/
 def exampleBody : String :=
@@ -336,9 +339,9 @@ def batchMajority : Contest :=
     "inactive overvote 0", "inactive exhausted 0", "winner none"]
 
 /-! No counted candidate. -/
-#guard body (contestOf [.aggregateWritein, .excluded] [2, 1] 1 [bl [[1]], bl [[2]], bl [[]]]) == lines
-  ["round 1", "continuing 0", "inactive blank 1", "inactive uncounted 2", "inactive overvote 0",
-    "inactive exhausted 0", "winner none"]
+#guard body (contestOf [.aggregateWritein, .excluded] [2, 1] 1 [bl [[1]], bl [[2]], bl [[]]]) ==
+  lines ["round 1", "continuing 0", "inactive blank 1", "inactive uncounted 2",
+    "inactive overvote 0", "inactive exhausted 0", "winner none"]
 
 /-! The contests of T15. -/
 def t15 (last : List (List Nat)) : Contest :=
@@ -362,7 +365,8 @@ round 1 eliminates the batch of 2 to 62, which hold no votes, round 2 breaks the
 the order, and round 3 gives candidate 1 both ballots. -/
 def wide : Contest :=
   contestOf (listed 63) (List.range' 1 63) 63
-    [(List.range' 1 63).map fun p : Nat => pw [64 - p], (List.range' 1 63).map fun p : Nat => pw [p]]
+    [(List.range' 1 63).map fun p : Nat => pw [64 - p],
+      (List.range' 1 63).map fun p : Nat => pw [p]]
 
 #guard wide.WellFormed
 #guard body wide == lines
