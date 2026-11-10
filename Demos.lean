@@ -77,6 +77,7 @@ import Demos.Rcv.Cases
 import Demos.Rcv.Contest
 import Demos.Rcv.Holder
 import Demos.Rcv.Program
+import Demos.Rcv.Properties
 import Demos.Rcv.Refinement
 import Demos.Rcv.Rounds
 import Demos.Rcv.Spec

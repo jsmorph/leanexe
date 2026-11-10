@@ -229,6 +229,9 @@ lean_exe «rcv-spec» where
 lean_exe «rcv-stability» where
   root := `Demos.Rcv.StabilityNative
 
+lean_exe «rcv-properties» where
+  root := `Demos.Rcv.PropertiesNative
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
