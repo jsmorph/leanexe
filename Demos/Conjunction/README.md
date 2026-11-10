@@ -8,10 +8,11 @@ inputs.  `assess` compares the interval with a threshold, so its verdict of "bel
 a statement about the model's value.  The program is written in the verified compiler's dialect
 on [the interval layer](../../Library/Numerics/Interval/README.md) and takes scalar arguments.
 
-`verified_compile` compiles the program, with the library's `exp` and `erf`, into a module of
-13,717 bytes.  In Wasmtime, the module's `pc` and `assess` exports agree with native Lean,
-bit for bit, on 780 generated calls.  [The containment test](#tests) finds a reference
-value of the integral, computed at 50 digits, inside the interval of each of 39 runs.
+[`verified_compile`](Verified.lean) compiles the program, with the library's `exp` and `erf` and
+[the flat encodings](Flat.lean) of its records, into a module of 13,717 bytes.  In Wasmtime,
+the module's `pc` and `assess` exports agree with native Lean, bit for bit, on 780 generated
+calls.  [The containment test](#tests) finds a reference value of the integral, computed at 50
+digits, inside the interval of each of 39 runs.
 [The theorems](#theorems) state the enclosure, the meaning of each verdict, the reduction of the
 integral to one dimension, and the compilation, and [the limits](#limits-of-the-theorems) state
 what they leave out.
@@ -55,6 +56,12 @@ rejects an input when a value is not finite, when `c11` or `r` is not positive, 
 outside its range, when an interval operation overflows, and when the outward-rounded arithmetic
 does not show a positive conditional variance `c22 - c12²/c11`.  The last condition rejects every
 covariance that is not positive definite and also one too close to singular.
+
+For the mean `(300, 0)`, the covariance `(10000, 0, 1000000)`, the radius 20, and 4,096 panels,
+`pc` returns status 0 with `lo = 2.3100006908943638e-5` and `hi = 2.3122011285882181e-5`.  The
+reference value of the integral is `2.3111112e-5`.  `assess` with the threshold `1e-4` returns
+the same interval with verdict 1, and `assess_sound` then states that the model's probability is
+below `1e-4`.
 
 ## Method
 
@@ -105,7 +112,7 @@ defines the terms of the generated theorems.
 | `Model.integral_eq_width_mul` | [Model](Model.lean) | `a ≤ b`, `f` integrable on `[a, b]` with values between `L` and `U` there | The integral of `f` from `a` to `b` is `(b - a) y` for some `y` between `L` and `U`. |
 | `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values. |
 | `assess_sound` | [Soundness](Soundness.lean) | `assess` returns status 0 | `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`, for the real value of `t`. |
-| `compiled.pc.implements`, `compiled.assess.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, and a store that holds the table of `exp` | The module's entries return words that represent `pc` and `assess` of the arguments, or trap at `unreachable`. |
+| `compiled.pc.implements`, `compiled.assess.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 54 and 55, the `pc` and `assess` exports, return words that represent `pc` and `assess` of the arguments, without a trap. |
 | `compiled.bytes` | [Compilation](Verified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`. |
 | `conjunction_file`, `conjunction_file_decode` | [File theorems](File.lean) | `build/verified/conjunction.wasm` as written | The file holds `encode compiled.module` and decodes to `compiled.module`. |
 
@@ -133,6 +140,8 @@ covariances, correlations of ±0.999, radii from `1e-5` to 1,000 standard deviat
 vector, and miss distances of 12 and 50 standard deviations.  All 39 runs, 13 inputs at 16, 256,
 and 4,096 panels, contain the reference.
 
+In the table, `σ = (σ1, σ2)` stands for the covariance `(σ1², 0, σ2²)`.
+
 | Input | Reference | Width at 16 panels | At 256 | At 4,096 |
 |---|---|---|---|---|
 | `m = (0, 0)`, `σ = (100, 100)`, `r = 10` | `4.9875e-3` | `7.9e-4` | `5.0e-5` | `3.1e-6` |
@@ -152,17 +161,17 @@ the probability, and the upper endpoint exceeds 1.
 
 ## Limits of the theorems
 
-The theorems concern the integral of the model.  No theorem concerns the four assumptions of the
-model, which fail for slow encounters and for relative motion that curves within the encounter.
-The realism of the covariance, the
+The theorems concern the integral of the model, and no theorem concerns the model's four
+assumptions.  Hall reports that the two-dimensional value underestimates the probability for
+some conjunctions, which indicates a violated assumption.  The realism of the covariance, the
 choice of the radius, the agreement of the frames of the mean and the covariance, and the choice
 of a threshold are the caller's.
 
 The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The result's
 upper endpoint can exceed 1, since no theorem here states that the density integrates to 1 over
-the plane.  The program uses `erf` for both error-function values, so the upper endpoint cannot
-fall below about `1e-16` times the constant factor and the width of `[-r, r]` when the values
-cancel.  A verdict against a threshold such as `1e-4` does not depend on that.
+the plane.  The program uses `erf` for both error-function values, so when the two values
+cancel, the upper endpoint stays near `7e-16` times the constant factor times `2r`, as the fifth
+row of the table shows.  A verdict against a threshold such as `1e-4` is unaffected.
 
 The program takes the encounter-plane quantities.  The projection of two states and two
 covariances from a conjunction message onto the encounter plane, the parsing of the message, and
@@ -172,11 +181,9 @@ trusted base, which [the trusted-base document](../../docs/trusted-base.md) desc
 
 ## References
 
-- [Requirements](requirements.md) and [decisions and review](review.md).
-- CCSDS 508.0-B-1, Conjunction Data Message, Recommended Standard, June 2013.
-- NASA Spacecraft Conjunction Assessment and Collision Avoidance Best Practices Handbook,
-  NASA/SP-20205011318.
-- R. Serra, D. Arzelier, M. Joldes, J.-B. Lasserre, A. Rondepierre, and B. Salvy, Fast and
-  accurate computation of orbital collision probability for short-term encounters, Journal of
-  Guidance, Control, and Dynamics 39(5), 2016, 1009-1021.
-- NIST Digital Library of Mathematical Functions, section 7.2, for the error function.
+- [Conjunction probability requirements](requirements.md)
+- D. T. Hall, Implementation Recommendations and Usage Boundaries for the Two-Dimensional
+  Probability of Collision Calculation, AAS 19-632, AAS/AIAA Astrodynamics Specialist Conference,
+  2019.  https://ntrs.nasa.gov/citations/20190028900
+- NIST Digital Library of Mathematical Functions, section 7.2, Definitions of the error
+  functions.  https://dlmf.nist.gov/7.2
