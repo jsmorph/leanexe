@@ -179,7 +179,7 @@ uv run tests/rcv/maine/tabulate.py tmp/rcv-maine-edges tmp/rcv-maine-data/canoni
 ```
 
 ```
-tmp/rcv-maine-edges: 668 files, 319 well-formed, 349 malformed, 336 word arrays
+tmp/rcv-maine-edges: 669 files, 320 well-formed, 349 malformed, 337 word arrays
 tmp/rcv-maine-data/canonical: 6 files, 6 well-formed, 0 malformed, 6 word arrays
 0 files or arrays with a disagreement
 ```
