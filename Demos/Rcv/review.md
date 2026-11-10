@@ -50,6 +50,7 @@ The readings below are mine, stated as readings of the texts and not as legal op
 | Detail | Choice | Reason |
 |---|---|---|
 | Format lines | `rcv-ballots 1` and `rcv-report 1` | A reader and a script can tell the two files apart and their versions |
+| Writer | The specification's `write`, with no program over `LeanExe.Bytes` | No export writes a canonical file: the converters are unverified scripts, and T2 states the reader against the specification's writer |
 | Indices | From 1, in the order of the candidate lines, with bit `i` − 1 for candidate `i` | The report and the file read naturally for a person, and the shift is a single step in the program |
 | Separators and symbols | `,` between fields, `|` within an overvote, `*` for an unnamed overvote | Every field then has one form, and no name or identifier appears on a ballot line |
 | Identifier | Optional on each line, recognized by the field count `k` + 1, with 1 to 64 bytes of letters, digits, `-`, `_`, `.`, and `:` | The count of fields decides without inspecting the field, and the alphabet holds the identifiers of D. Otis's Alameda files and ES&S's record numbers, into which a converter can map any other identifier.  An empty identifier is excluded so that each line has one form |
