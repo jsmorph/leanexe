@@ -1,10 +1,125 @@
 # Ranked-choice tabulation
 
-This demo is a tabulator for single-winner ranked-choice contests under Oakland City Charter §1105, the rule that Alameda County misconfigured in the November 2022 count of the Oakland Unified School District 4 board race.  The module fixes the charter's rule at compile time, so no setting can be chosen wrong at run time, and its theorems connect the module's bytes to a Lean transcription of the charter.  [The requirements](requirements.md) state the canonical ballot file, the interpretation of a ballot, the rounds, the report, and the theorems, and [the review](review.md) records each reading of the governing texts and the reviews' findings.
+This demo is a tabulator for single-winner ranked-choice contests under Section 1105 of the Oakland City Charter.  Its module reads a canonical ballot file, counts the contest in rounds under the charter's rules, and writes a report of every round, and its theorems connect the module's bytes to a Lean specification of [the requirements](requirements.md).  The module fixes the charter's rule at compile time, so no one can choose a wrong setting at run time, and the second line of every report names the governing texts and the date on which they were read.  The module runs as an export in a WebAssembly host and on a browser page, a WASI process compiled from its functions runs the tabulator over standard input and output, the module's translation to C compiles with CompCert, and native Lean runs the specification.
 
-[The test corpus](../../tests/rcv/README.md) fetches Alameda County's official round-by-round reports for Oakland's ranked-choice contests from 2022 to 2026 and the cast vote records published for them, and recounts the records under the county's settings.
+The requirements state the canonical ballot file, the interpretation of a ballot, the rounds, the report, and the theorems, and [the review](review.md) records each reading of the governing texts, the departures of Alameda County's practice from them, and the reviews' findings.  [The test corpus](../../tests/rcv/README.md) gives the URL, size, and SHA-256 of each of the County's round-by-round reports of Oakland's ranked-choice contests from 2022 to 2026 and of the cast vote records published for them, and its scripts fetch the files, convert the records to canonical files, and compare the counts with the County's reports.  [The case study](#case-study-school-director-district-4-2022) recounts the 2022 contest for School Director, District 4, which the County first certified under a faulty setting for a candidate whom the charter's count does not elect.
 
-## Specification
+## Guarantees
+
+T1 is the module's guarantee: the export `tabulate` returns the specification's report of every byte string, and the WASI process and the C translation give the same report within their memory bounds.  The other theorems state properties of the specification's reader and count, and of the program's decimal reader, for every input, so the properties of the count hold of every report that the module returns.  Every theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone, and the sections below give each statement in full.
+
+| Requirement | Lean names | Guarantee | Section |
+|---|---|---|---|
+| T1 Bytes | `tabulate_callSpec`, `initial_terminates`, `initial_terminates_50000000`, `tabulate_native`, `tabulate_native_12000000` | From a ready store with room for the generated bound, the export returns without a trap `reportFile` of the file's bytes: the error report of a malformed file and the report of the count otherwise.  Under StreamFold's host assumptions and a host that accepts the exit status 0, the WASI process writes exactly that report and exits with status 0, for every input of up to 50,000,000 bytes, and the C function returns it without a trap, for every file of up to 12,000,000 bytes from a heap whose `top` is at most 16,777,216 bytes | [The module's export returns the report of a file](#the-modules-export-returns-the-report-of-a-file), [the WASI process](#the-wasi-process), [the C translation](#the-c-translation) |
+| T2 Reader | `read_write`, `write_of_read`, `read_error_first`, `readNumber_whole` | The reader inverts the writer, each contest has exactly one canonical file, the error report names the first faulty line and its role, and the decimal reader inverts the printer | [Theorems of the reader](#theorems-of-the-reader) |
+| T3 Winner | `winner_iff`, `winner_majority`, `tied_final`, `rounds_le` | The count names a winner exactly when round 1 has a continuing ballot, the winner holds more than half of the last round's continuing ballots, a last round of one candidate after round 1 follows a round of two tied candidates, and the number of rounds is at most the larger of 1 and the number of counted candidates | [Stability, batches, and the county count](#stability-batches-and-the-county-count) |
+| T4 to T7, T9 | `elimination`, `conservation`, `locality`, `invariance`, `order_choice` | Each round eliminates by the charter's rules, the votes and the inactive counts sum to the ballots, each count depends on the round's continuing set alone, the order of the ballots and their identifiers change nothing, and two tie-break orders that make the same choice at each tie that the report marks give the same rounds | [Theorems of the rounds](#theorems-of-the-rounds) |
+| T8 Stability | `stability_counts`, `stability_inactive`, `stability_rounds` | A ballot keeps its candidate while the candidate continues, an inactive ballot stays inactive with its reason, and no inactive count decreases from round to round | [Stability, batches, and the county count](#stability-batches-and-the-county-count) |
+| T10 Batch | `batch_winner`, `batch_rounds`, `batch_members` | The single count, the count without rule 3, names the same winner, and where the count eliminates a batch, the single count eliminates its members one per round until the batch is gone or the single count ends | [Stability, batches, and the county count](#stability-batches-and-the-county-count) |
+| T11 Majority holder | `holder_subset`, `county_majority`, `county_winner`, `county_tied`, `county_rounds_sublist` | Each round of the count with two or more continuing candidates is a round of the county count, which states Alameda County's practice, and when the count's last round is round 1 or holds two or more candidates, the county count names the count's winner | [Stability, batches, and the county count](#stability-batches-and-the-county-count) |
+| T12 to T15 | `majority_criterion`, `condorcet_loser`, `later_no_harm`, `monotonicity_fails` | The count meets the majority criterion, never elects a Condorcet loser, and meets later-no-harm, and two contests show that it is not monotonic | [Properties of instant runoff](#properties-of-instant-runoff) |
+
+## Trusted base
+
+The theorems about the module rest on the items that [the trusted base](../../docs/trusted-base.md) lists for WebAssembly modules, among them Lean's kernel, Talos's execution semantics and store definitions, the binary decoder, the agreement of Wasmtime or the browser's engine with Talos, and the host's placement of the argument bytes.  The WASI process adds the items for WASI Preview 1 modules, among them the host specification, Wasmtime's Preview 1, and StreamFold's host assumptions.  The C executable rests instead on the items for C files, among them Talos's store and memory definitions, the Lean copy of Clight, CompCert's proofs and its unverified parts, and the calling code of `tabulate.c` and `tools/native-host.c`.  No theorem checks that the specification states the requirements, and two fresh agents reviewed it against them, as [the review](review.md#review-of-the-specification) records.
+
+The theorems concern the count of a canonical file, and [the requirements' list](requirements.md#what-lies-outside-the-theorems) gives what lies outside them.  The converters write canonical files from vendor exports without proof, the kinds of the candidates rest on filings outside the records, and the origin of the tie-break order is a fact outside the file.  Whether the records agree with the paper ballots is the question of a risk-limiting audit.  The page's JavaScript, the Python reference, and the scripts that compare counts with the County's reports are code without proof, which the tests exercise.
+
+## Running the tabulator
+
+The converters of the table write a canonical ballot file `FILE` from a vendor's records, and each other form reads `FILE` and writes its report.  [Testing the tabulator](#testing-the-tabulator) gives the commands that build the module, the WASI process, the C executable, and native Lean's executables, and `uv run tests/rcv/check.py` writes the canonical files of the corpus under `tmp/rcv-data/canonical`.  [The corpus's scripts](../../tests/rcv/README.md#scripts) fetch the records, convert them, and compare the counts with the County's reports.  `tests/rcv/tabulate.py` requires the module, the WASI process, the C executable, and native Lean to give the reference's report of each file, and `tests/rcv/page.mjs` requires the same of the page's code.
+
+| Form | Command | Output |
+|---|---|---|
+| Converter of D. Otis's records | `uv run tests/rcv/convert.py CVR --report XML --out FILE` | The canonical file, with the candidates of the County's report |
+| Converter of a Dominion export | `uv run tests/rcv/dominion.py EXPORT CONTEST --out FILE` | The canonical file of one contest |
+| WASI process | `build/tools/leanexe-wasmtime-host run build/rcv/process.wasm < FILE` | The report on standard output |
+| Module's export | `build/tools/leanexe-wasmtime-host call build/verified/rcvTabulate.wasm tabulate bytes bytes-file:FILE` | The report's bytes in hexadecimal |
+| C | `build/rcv/native/rcv-tabulate-c FILE` | The report on standard output |
+| Browser page | `uv run tests/web/serve.py`, then http://127.0.0.1:8000/rcv/ | The report as text, with a link that saves its bytes |
+| Native Lean | `.lake/build/bin/rcv-tabulate report FILE` | The specification's `reportFile` on standard output |
+| Native Lean process | `.lake/build/bin/rcv-process < FILE` | The report on standard output |
+| Reference | `uv run tests/rcv/reference.py FILE`, or with `--single`, `--county`, or `--suspend` | The report of the charter's count, or of the single count, the county count, or the faulty setting |
+
+## Case study: School Director, District 4, 2022
+
+The 2022 contest for School Director, District 4, of the Oakland Unified School District had three candidates, Mike Hutchinson, Pecolia Manigo, and Nick Resnick, and a write-in line.  Alameda County first certified a count that eliminated Hutchinson in round 1 and gave Resnick the most votes in round 2, and its corrected report, time-stamped 2023-03-10, eliminates Manigo and elects Hutchinson.  The case study recounts D. Otis's records of the contest with the module under the charter and with the reference under the County's faulty setting, and it compares the first count with the corrected report and the second with the first certified figures.
+
+### The charter's count
+
+`tests/rcv/check.py` converts D. Otis's records, 30,983 ballots of five rankings each, to a canonical file.  The candidates are those of the County's report in its order, with the write-ins as candidate 4 of kind `aggregate-writein`, the tie-break order is `1 2 3 4`, and each ballot carries its record's `ballotID` as its identifier.  The module's export `tabulate`, run in the Wasmtime host on that file, returns a report of 766 bytes, and the WASI process, the C executable, and the reference write the same bytes.  The table gives the report's figures beside those of the County's corrected report, whose settings have `useFirstRoundSuspension="False"`, and beside the two counts of [the faulty setting](#the-faulty-setting).  An empty cell is a figure that its source does not give: the reports of the module and the reference list only continuing candidates, and Table A gives only the candidates' votes, the suspended ballots, and the action of each round.
+
+| Figure | Module, under the charter | County's corrected report | Reference, faulty setting | Table A, first certified count |
+|---|---|---|---|---|
+| Round 1, Hutchinson | 8,227 | 8,227 | 8,112 | 8,112 |
+| Round 1, Manigo | 8,190 | 8,190 | 8,153 | 8,153 |
+| Round 1, Resnick | 10,015 | 10,015 | 9,954 | 9,954 |
+| Round 1, continuing ballots | 26,432 | 26,432 | 26,219 | |
+| Round 1, suspended | | | 235 | 235 |
+| Round 1, `blank` and `uncounted`, or Blanks | 4,269 and 134 | 4,403 | 4,269 and 134 | |
+| Round 1, `overvote`, or Overvotes | 148 | 148 | 126 | |
+| Round 1, `exhausted`, or Exhausted | 0 | 0 | 0 | |
+| Round 1, eliminated | Manigo | Manigo | Hutchinson | Hutchinson |
+| Round 2, Hutchinson | 12,421 | 12,421 | | 0 |
+| Round 2, Manigo | | 0 | 11,753 | 11,753 |
+| Round 2, Resnick | 12,165 | 12,165 | 12,352 | 12,352 |
+| Round 2, continuing ballots | 24,586 | 24,586 | 24,105 | |
+| Round 2, `blank` and `uncounted`, or Blanks | 4,269 and 134 | 4,403 | 4,269 and 134 | |
+| Round 2, `overvote`, or Overvotes | 173 | 173 | 173 | |
+| Round 2, `exhausted`, or Exhausted | 1,821 | 1,821 | 2,302 | |
+| Winner | Hutchinson | Hutchinson | Resnick | Resnick |
+
+Round 1 of the charter's count has no majority, since Resnick's 10,015 votes are fewer than half of the 26,432 continuing ballots.  No qualifying set of rule 3 holds two or more candidates: Resnick's votes fall short of the 16,417 of Hutchinson and Manigo together, and the set below Hutchinson holds Manigo alone.  Rule 4 therefore eliminates Manigo, who has 37 fewer votes than Hutchinson.  In round 2 Manigo's 8,190 ballots count 4,194 for Hutchinson and 2,150 for Resnick, 1,821 are exhausted, and 25 are overvotes, so Hutchinson, 1,788 votes behind Resnick in round 1, finishes 256 votes ahead.  His 12,421 votes are more than half of the 24,586 continuing ballots, and rule 1 ends the count with Hutchinson as the winner.  The report marks no tie, so by T9 every tie-break order gives the same rounds.
+
+### The theorems behind the comparison
+
+Apart from the 2022 suspension, the County's practice departs from the charter in two ways that change the rounds of a report: it eliminates one candidate per round where §1105(f) eliminates a batch, and it counts past a majority until two candidates remain.  T10 (`batch_winner`, `batch_rounds`, `batch_members`) covers the first departure: the single count, which applies the charter's rules without the batch of rule 3, names the charter's winner, and where the charter's count eliminates a batch, the single count eliminates its members one per round.  [The comparison rule](requirements.md#comparison-with-alameda-countys-reports) offsets the County's round numbers by `m` − 1 after a batch of `m`, since the County, like the single count, eliminates the batch's members one per round.  District 4's count has no batch, so the offset is zero, and the module's round `r` is the County's round `r`.
+
+T11 compares the charter's count with the county count, the requirements' statement of the County's practice, which eliminates one candidate per round while three or more continue and ends at the first round with two or fewer.  By T11(d) (`county_rounds_sublist`), each round of the charter's count with two or more continuing candidates is a round of the county count with the same continuing set, votes, and inactive counts.  Both rounds of District 4 hold two or more candidates, and the county count, by its definition, has two rounds for three counted candidates, so its rounds are the module's, and T11(c) (`county_winner`) gives Hutchinson as its winner.  The charter's majority stop and the County's stop at two candidates fall in the same round, so the corrected report has no round beyond the charter's count.
+
+The theorems relate the module's count to the county count, a Lean definition, and they say nothing about the County's report.  `check.py` compares the report's figures with the reference's counts, and `district4.py` with its own recount of D. Otis's records, both through the requirements' mapping of the categories: Blanks is `blank` plus `uncounted`, Overvotes is `overvote`, and Exhausted is `exhausted`.  Every figure of both rounds agrees, and the 4,403 Blanks include the 134 ballots that rank only write-ins, which the count passes over under Cal. Elec. Code §15341.
+
+### The faulty setting
+
+Each 2022 Oakland report of the corpus other than District 4's sets `useFirstRoundSuspension="True"`, which suspended ballots in round 1.  The requirements state its rule as the faulty setting: the county count, except that round 1 counts as suspended each ballot whose first position is empty or holds one uncounted candidate and whose interpretation in round 1 counts for a candidate or is `overvote`.  From round 2 on, every ballot counts as the requirements state.  `reference.py --suspend` applies the rule to the canonical file, and `district4.py` and `recount.py --suspend` apply it again to D. Otis's records.  The rule reproduces every round, Suspended rows included, of the six other 2022 reports with that setting whose contests have cast vote records in the corpus.
+
+In District 4 the rule suspends 235 ballots, 100 whose first ranking is empty and 135 that rank a write-in first.  Under the charter, 115 of them count for Hutchinson in round 1, 37 for Manigo, and 61 for Resnick, and 22 are overvotes, as slide 5 of the Registrar's presentation shows.  The suspension takes 78 more votes from Hutchinson than from Manigo, so Hutchinson's lead of 37 votes becomes a deficit of 41, and round 1 eliminates him.  In round 2 his 8,112 ballots count 3,492 for Manigo and 2,327 for Resnick, and the suspended ballots return, 108 of them for Manigo and 71 for Resnick.  Resnick finishes with 12,352 votes against Manigo's 11,753, and the faulty setting names him.  Table A on slide 6, under the caption "Table A shows the certified results using the incorrect RCV configuration", gives the same votes in both rounds and the same 235 suspended ballots.
+
+No module implements the faulty setting, since it departs from §1105(d)(1), which counts every ballot in round 1 for its first choice, and from §1105(g), which advances a ballot past a ranking with no candidate "in the first or any round".  A module counts under the governing texts that its rule identifier names.  The reference's report under the faulty setting carries the rule line `rule alameda-county-count first-round-suspension`, so that no one can take it for the charter's report.
+
+### What is proved and what is tested
+
+The theorems cover the charter's count from the bytes of the canonical file to the bytes of the report.  T1 (`tabulate_callSpec`) states that the module's export returns the specification's report of every file, so the module's report of District 4's file is the specification's report of it, and `initial_terminates` and `tabulate_native` carry the statement to the WASI process and the C function.  T9, T10, and T11 are theorems about the specification's count of every contest, this one included, and the theorems rest on [the trusted base](#trusted-base).
+
+Python scripts without proof produce or check everything else.  The converter writes the canonical file from D. Otis's records, and `check.py` tests it by reading the identifiers and rankings back from the file.  `reference.py --suspend`, `recount.py --suspend`, and `district4.py` compute the faulty setting, and `district4.py` compares its figures with those of slides 5 and 6, which it holds as constants because the slides are images.  The scripts test D. Otis's records against the County's counts alone, and whether the records agree with the paper ballots lies outside the theorems and the scripts.
+
+### Reproducing the case study
+
+The commands below assume the Wasmtime host and `build/rcv/process.wasm`, which [Testing the tabulator](#testing-the-tabulator) builds.  They fetch the corpus, write the canonical files, run the WASI process on District 4 and print the SHA-256 of its report, print the reference's report under the faulty setting, and recount D. Otis's records with `district4.py`, which compares its counts with the corrected report and with slides 5 and 6.  The module `build/verified/rcvTabulate.wasm` has the SHA-256 `769a3ba4114421d701f57d3fa31ffe9d8661d7fcf6c159e0fb206063e7c90dbc`, the canonical file has 803,011 bytes and the SHA-256 `0a1019fb5a51dcf497c686765a98002a6e0791720a57665ea8a2cd7c0df2a817`, and its report has 766 bytes and the SHA-256 `86efd87691d0e6dd8732e4778f6e53556e7fedfb7c59f59e942ac865076dc465`.  `district4.py` prints the output below and exits with status 0, and its line on the write-in gives round 1 with the aggregate write-in counted as a fourth candidate, figures that match neither of the County's counts.
+
+```sh
+uv run tests/rcv/fetch.py
+uv run tests/rcv/check.py
+build/tools/leanexe-wasmtime-host run build/rcv/process.wasm \
+  < tmp/rcv-data/canonical/Oakland_20221108_SchoolBoardD4.rcv | sha256sum
+uv run tests/rcv/reference.py --suspend tmp/rcv-data/canonical/Oakland_20221108_SchoolBoardD4.rcv
+uv run tests/rcv/district4.py
+```
+
+```
+248/Oakland/007-SchoolDirector_District_4: 30,983 ballots in the CVR, report timestamp 2023-03-10T10:00:31.077, useFirstRoundSuspension False
+corrected round 1: Hutchinson 8,227, Manigo 8,190, Resnick 10,015; blanks 4,403, overvotes 148: agrees
+corrected round 2: Hutchinson 12,421, Resnick 12,165; blanks 4,403, overvotes 173, exhausted 1,821: agrees
+suspension round 1: Hutchinson 8,112, Manigo 8,153, Resnick 9,954; blanks 4,403, overvotes 126, suspended 235: agrees
+suspension round 2: Manigo 11,753, Resnick 12,352; blanks 4,403, overvotes 173, exhausted 2,302: agrees
+suspended ballots under the correct configuration: MIKE HUTCHINSON 115, PECOLIA MANIGO 37, NICK RESNICK 61, overvotes 22: agrees
+write-in as a candidate, round 1: MIKE HUTCHINSON 8,147, PECOLIA MANIGO 8,176, NICK RESNICK 9,977, Write-in 269
+District 4 checks pass
+```
+
+## The count
+
+### Specification
 
 The specification states the requirements' count over lists, natural numbers, and 64-bit position words, with no reference to a program, and every definition computes, so native Lean runs it on canonical files.  Two fresh agents reviewed it against the requirements, each with a model of its own, and [the review](review.md#review-of-the-specification) records their findings and the responses.  The count reads the kinds, the tie-break order, and the position words, while the names enter only the file and the report, and the ballots' identifiers only the file.
 
@@ -22,7 +137,7 @@ The specification states the requirements' count over lists, natural numbers, an
 
 `Cases.lean` checks that `write` prints the worked example's structure as the requirements' ballot file and that `report` gives the requirements' report of it byte for byte, with the example's contest and result words.  Its other checks cover the edge cases that the requirements list under "Tests", apart from the malformed files: overvotes at each position, every pattern of empty positions up to four positions, duplicate and uncounted rankings, ties at the lowest place and in the final round, batches at both sides of the strict test and with tied members, nested qualifying sets, a batch inside which the single count ends, contests with no continuing ballot, no ballots, one candidate, or no counted candidate, 63 candidates and 63 positions, identifiers of 1 and 64 bytes, the contests of T15, the constraints of the structure, and invalid word arrays.  Each expected value comes from the rules by hand.
 
-`rcv-spec` accepts a canonical file only when its own parser's result prints, through `write`, as the file's exact bytes and meets `Contest.WellFormed`.  It reads and writes word arrays as the reference does, packed as little-endian 64-bit words.  Its modes are `report FILE`, which writes the report, `contest-words FILE`, which writes the file's contest words, `words FILE`, which writes the result words of the file's contest words, `array FILE`, which reads a word array and writes the result words of `countArray`, `program FILE`, which writes those of the program `Demos.Rcv.Program.count` run natively, and `district4 FILE`, which compares the report's round lines with the District 4 report of the requirements.  `tests/rcv/check.py` writes the canonical file of the 2022 District 4 contest, with the candidates in the county's order, the aggregate write-in as candidate 4, the order `1 2 3 4`, and each ballot's `ballotID` as its identifier, and the specification's report of it holds every round line of the requirements' report.
+`rcv-spec` accepts a canonical file only when its own parser's result prints, through `write`, as the file's exact bytes and meets `Contest.WellFormed`.  It reads and writes word arrays as the reference does, packed as little-endian 64-bit words.  Its modes are `report FILE`, which writes the report, `contest-words FILE`, which writes the file's contest words, `words FILE`, which writes the result words of the file's contest words, `array FILE`, which reads a word array and writes the result words of `countArray`, `program FILE`, which writes those of the program `Demos.Rcv.Program.count` run natively, and `district4 FILE`, which compares the report's round lines with the District 4 report of the requirements.  `tests/rcv/check.py` writes the canonical file of the 2022 District 4 contest, with the candidates in the County's order, the aggregate write-in as candidate 4, the order `1 2 3 4`, and each ballot's `ballotID` as its identifier, and the specification's report of it holds every round line of the requirements' report.
 
 ```sh
 uv run tests/rcv/check.py
@@ -37,7 +152,7 @@ tools/leanrun --timeout 10m .lake/build/bin/rcv-spec district4 \
 
 The Python reference of `tests/rcv/` and the specification agree byte for byte on every file that `tests/rcv/edges.py` and `tests/rcv/check.py` write.  On the 284 edge-case files that the reference reads and the 19 contests of the corpus, `rcv-spec report` gives the reference's report, and on their contest words and the 17 arrays of the word forms alone, `rcv-spec array` gives the reference's result words.  `rcv-spec` rejects each of the 349 files for which the reference gives an error report.
 
-## Theorems of the rounds
+### Theorems of the rounds
 
 [`Rounds.lean`](Rounds.lean) proves T4, T5, T6, T7, and T9 of the requirements over `countContest`, `reportLines`, and `report`, and each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  T4 assumes `Contest.WellFormed`, whose tie-break order is a permutation of the candidates, and T9 assumes that the new order is such a permutation.  T5, T6, and T7 hold for every contest structure.  T7 states the requirement over contest structures, and the requirement over files follows from it with T2, since the reader returns the structure whose writing is each well-formed file.
 
@@ -62,7 +177,7 @@ tools/leanrun --timeout 20m .lake/build/bin/rcv-rounds random 2 4000 6 4 30
 tools/leanrun --timeout 20m .lake/build/bin/rcv-rounds random 3 2000 8 5 60
 ```
 
-## Stability, batches, and the county count
+### Stability, batches, and the county count
 
 [`Variants.lean`](Variants.lean) defines the single count and the county count of the requirements' theorems as `run` from `K`, with the count's interpretation and fuel and a decision of their own.  `ruleSingle` applies rules 1, 2, and 4, and `ruleCounty` applies rule 4 while three or more candidates continue and otherwise ends the count, where `countyWinner` names the candidate with more votes, the candidate alone, or none.  Both take rule 4 from `lowestDecision` and `ruleTied`, as `rule` does, and `ruleSingle_ends` and `ruleCounty_ends` prove `Ends` for them, so the lemmas about `Trace` apply to the three counts.  [`Stability.lean`](Stability.lean), [`Batch.lean`](Batch.lean), [`Holder.lean`](Holder.lean), and [`Winner.lean`](Winner.lean) prove T8, T10, T11, and T3, and each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.
 
@@ -94,7 +209,7 @@ uv run tests/rcv/variants.py tmp/rcv-edges tmp/rcv-data/canonical
 .lake/build/bin/rcv-stability planted 3 100000
 ```
 
-## Properties of instant runoff
+### Properties of instant runoff
 
 [`Properties.lean`](Properties.lean) proves T12, T13, T14, and T15 of the requirements over `countContest`, `singleCount`, and `countyCount`, and each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  T12, T13, and T14 hold for every contest structure, so for every structure that meets `Contest.WellFormed`, and T15 proves that its two contests meet it.  `Beats` states the requirements' term "beats": more ballots count for one candidate than for the other against the continuing set of the two.  `Raises` states "raising": a position that marks only the candidate moves to an earlier position, and the other positions keep their order.  T14 lets the new ballot hold any number of positions after `p`, and its premise that the count names `w` makes `w` a counted candidate.
 
@@ -120,7 +235,9 @@ tools/leanrun --timeout 20m .lake/build/bin/rcv-properties random 3 20000 3 3 12
 tools/leanrun --timeout 20m .lake/build/bin/rcv-properties exhaustive 5
 ```
 
-## Program
+## The count over words
+
+### Program
 
 [`Program.lean`](Program.lean) states the count over words in the verified compiler's dialect: `count` takes a contest array in the word form of the requirements and returns the result words of `Demos.Rcv.Spec.countArray`.  A set of candidates is a word with bit `i - 1` for candidate `i`, the form of the result words' masks, so the continuing set of a round is one word and a test of membership is a shift and a mask.  `validArray` checks the header, the length `3 + 2n + Nk`, the kinds, the order, and every position word in one pass over the array.  `countValid` runs the rounds in a `LeanExe.repeatWhile` whose fuel is one more than the number of counted candidates, the fuel of `Demos.Rcv.Spec.count`, and whose state holds the continuing set, whether the count has ended, the winner, the number of rounds, and the result words.
 
@@ -141,7 +258,7 @@ The refinement proves that the program computes the specification.  [`RefineBits
 | [`VerifiedCall.lean`](VerifiedCall.lean) | The call theorem of the export `count` and the closed form of its bound |
 | [`File.lean`](File.lean) | The file theorems of `build/verified/rcvCount.wasm` |
 
-## The module's export returns the count over words
+### The module's export returns the count over words
 
 `count_callSpec` composes the generated `compiled.count.trapFree` with `count_eq`, as the verified-request skill composes its call theorems.  The bound in its statement is the generated one, so the theorem holds for arrays of every length, and `count_bound` gives its closed form.  Each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone, as `#print axioms` at the end of `VerifiedCall.lean` reports.
 
@@ -152,7 +269,7 @@ The refinement proves that the program computes the specification.  [`RefineBits
 | `Demos.Rcv.Program.count_bound` | [`VerifiedCall.lean`](VerifiedCall.lean) | `compiled.count.bound ws ≤ 481128` for every array `ws` of fewer than `2^64` words |
 | `Demos.Rcv.Program.count_export` | [`VerifiedCall.lean`](VerifiedCall.lean) | The export `count` is function 22 |
 
-## Testing the count over words
+### Testing the count over words
 
 [`tests/rcv/compare.py`](../../tests/rcv/compare.py) compares the module, native Lean, and the reference on word arrays.  For each array it computes the reference's result words and requires the module's export `count` in the Wasmtime host, `rcv-spec array`, `rcv-spec program`, and the result file that `edges.py` or `check.py` wrote to give the same bytes.  The commands below build the call theorem and `rcv-spec`, emit the module, write the edge cases and the corpus's canonical files, and compare them.
 
@@ -191,7 +308,9 @@ rcvCount: the clightgen program matches the translation
 native verified: passed 54 failed 0
 ```
 
-## The reader
+## The tabulator over bytes
+
+### The reader
 
 [`Read.lean`](Read.lean) states the reader of the canonical file beside `write`.  `read` splits the file at LF with `List.splitOn`, so that line `j` is piece `j - 1` and ends with LF exactly when another piece follows it.  It takes the lines in order, each with the role that the header gives it: the format line, the contest identifier, `k`, `n`, the `n` candidate lines, the order, `N`, and the `N` ballot lines.  A parser for each role states the form of the grammar and the constraints of the requirements' tables, and the first line that is absent, lacks its LF, or fails its role ends the reading with its number and role.  After the last ballot line the rest of the file must be the empty piece after the final LF, so a further line or a final run of bytes without LF gives the error of role `end`.  `reportFile` gives the report of a file, which the requirements' T1 calls `report b`: the error report `errorReport` of a malformed file and `report` of the structure of a well-formed one.  `lineOf`, `roleAt`, `meets`, and `faulty` state the requirements' error rule by line number, independently of the order in which `read` takes the lines.
 
@@ -219,7 +338,7 @@ tools/leanrun --timeout 20m lake build rcv-tabulate
 20000 structures read back, 200000 mutated files, 19980 accepted, 180020 rejected, 0 failed
 ```
 
-## Theorems of the reader
+### Theorems of the reader
 
 The theorems of T2 hold for every byte string and every structure, and each depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.
 
@@ -232,7 +351,7 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 
 `read_write` splits the written file into its lines and the empty piece after the last LF (`write_splitOn`), and each line reads back as the field that `write` printed in it: the decimal forms through `number_decimal`, the position fields through `parsePosition_field`, and the lines of several parts through the spaces and commas that `write` places between parts that hold none.  `write_of_read` runs the other way: each parser that succeeds gives the field whose printing is its line (`eq_of_parseCandidate`, `eq_of_parseBallot`, and the others), and `List.intercalate_splitOn` joins the pieces back into the file.  `read_error_first` reads the pieces that `read` passes to line `j` as the pieces of the file from piece `j - 1` on (`readLine_drop`), so every line before the reported one meets its role.  T2(b) excludes the other result, since a file that reads is the file of a structure that meets the constraints.
 
-## The reader and the printer as programs
+### The reader and the printer as programs
 
 [`ReadProgram.lean`](ReadProgram.lean) states the reader in the verified compiler's dialect.  `readContest` takes a buffer of bytes and returns the contest's words of the requirements' section "Word forms of the count" for a well-formed file, and `[0, j, code]` for a malformed file whose first faulty line is `j`, with the code of its role from 0 for `format` to 8 for `end`.  `findByte` finds the next LF, space, comma, or `|`, and the texts of the format are words of eight bytes that `matchWord` compares with the buffer.  `readNumber` reads at most 20 digits and tests before each digit that ten times the value read plus the digit stays below `2 ^ 64`.  The loops over the numbers of an order line, the indices of a field, and the fields of a ballot line recurse on a count of the parts left, and those over the candidate lines and the ballot lines on the number of lines left.
 
@@ -246,7 +365,7 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 
 [`ReadProgramProof.lean`](ReadProgramProof.lean) reads the bytes from position `s` to position `e` as `slice b s e` and ties each loop of the program to the specification's split at the same separator through `findByte_split`: the position that `findByte` finds splits the slice as `List.splitOn` does.  [`ReadProgramMain.lean`](ReadProgramMain.lean) follows `readLines` line by line, through `readLines_split`, which separates the header lines from the rest.  [`PrintProof.lean`](PrintProof.lean) uses the theorems of [`Rounds.lean`](Rounds.lean): each round's continuing set is an increasing list of candidates from 1 to `n`, and each elimination names members of it, so the masks of the result words print the round's lines.
 
-## The module's export returns the report of a file
+### The module's export returns the report of a file
 
 `tabulate` of [`TabulateProgram.lean`](TabulateProgram.lean) composes the reader program, the count program `Demos.Rcv.Program.count`, and the printers: it prints the error report when the reader's first word is 0, and otherwise the report from the file, `n`, and the count of the reader's words.  [`Tabulate.lean`](Tabulate.lean) compiles the functions of the count, of the reader, and of the printers into one module, and [`TabulateCall.lean`](TabulateCall.lean) states the call theorems.  Each theorem depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone, as `#print axioms` at the end of `TabulateCall.lean` reports.
 
@@ -259,7 +378,7 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 
 `tabulate_eq` follows the two results of the reader.  For a malformed file `read_error_lt` bounds the line number below `2 ^ 64`, and `printError_eq` gives the error report.  For a well-formed file, T2(b) gives the structure `c` whose writing is the file, `countWords_contestWords` equates the count of the reader's words with the result words of `countContest c`, `Demos.Rcv.Refine.count_eq` equates the program's count with the specification's, and `printReport_eq` prints `report c`, whose length `report_length_lt` bounds below `2 ^ 64` for a file of fewer than `2 ^ 32` bytes.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`), so the call theorem covers every buffer.  The bound `compiled.tabulate.bound` is the generated one, and `tabulate_bound` of [`TabulateBound.lean`](TabulateBound.lean) closes it at `80 L + 33,702,909` bytes for a file of `L < 2 ^ 32` bytes.
 
-## The closed form of the bound
+### The closed form of the bound
 
 [`TabulateBound.lean`](TabulateBound.lean) closes the generated bound of `tabulate` in the size of the file, and each of its theorems depends on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  A push onto a paid array costs 80 bytes.  The reader pushes one word for each candidate line, each index of the order line, and each position field of a ballot line, whose fields end at distinct commas and LFs, so its bound grows by 80 bytes for each byte of the file.  The printers push the report's bytes, of which the header lines are at most 20,777 and the rounds at most 64 of at most 63 candidates each, and copy the report into the buffer that they return.
 
@@ -274,7 +393,7 @@ The theorems of T2 hold for every byte string and every structure, and each depe
 
 The proofs bound each tail loop of the reader by induction on its count, with `Verified.Tail.costAt_rank_eq` and the generated step's value at each branch, and the printers' costs by `grw` with the bounds of their callees.  `report_length_le` of [`TabulateProof.lean`](TabulateProof.lean) bounds a report by its header lines and 1,280,253 bytes, and `report_length_lt` follows from it.  The page's executable `rcv-bound`, which [the browser page](#the-browser-page) describes, evaluates the generated bound in native Lean, and on the 725 edge files the bound of `tabulate_bound` is at least the generated one.
 
-## Testing the tabulator
+### Testing the tabulator
 
 [`tests/rcv/tabulate.py`](../../tests/rcv/tabulate.py) compares the module, the WASI process, C, native Lean, and the reference on canonical files.  For each file it computes the reference's report and requires the module's export `tabulate` in the Wasmtime host, `rcv-tabulate report`, and the report that `edges.py`, `reader_edges.py`, or `check.py` wrote to give the same bytes.  Its options add to these outputs the standard output of [the WASI process](#the-wasi-process) in the Wasmtime host, whose control record must be `wasi-exit 0`, that of the native process `rcv-process`, and that of [the C executable](#the-c-translation) `rcv-tabulate-c`.  On the 633 edge files, the 93 files of the reader's edge cases, and the 19 contests of the corpus, all of them equal the reference's report.  The run with `/bin/cat` in place of the C executable reports all 93 of the reader's edge files as disagreements, so the comparison detects an executable that prints something else.  The verified compiler compiles `Tabulate.lean` in 841 s with a peak of 5.9 GB on edgexpert-18ff under `tools/leanrun --cpus 18 --threads 18 --memory-high 24G`, and in 862 s with a peak of 6.4 GB under `--cpus 8 --threads 8`, and the module has 32,293 bytes.
 
@@ -319,7 +438,9 @@ rcvTabulate: the clightgen program matches the translation
 native verified: passed 86 failed 0
 ```
 
-## The WASI process
+## The process, C, and the page
+
+### The WASI process
 
 [`Process.lean`](Process.lean) runs the tabulator over stdin and stdout.  It reads its standard input in reads of at most 4,096 bytes and appends each read to the input that it holds.  At EOF it replaces the input with `tabulate` of it, writes the report, continuing after short writes, and stops with status 0, and a read or a write that returns an errno stops it with that errno.  [`ProcessWasi.lean`](ProcessWasi.lean) compiles the functions of `Tabulate.lean` and the process's own with `verified_compile_wasi`, which [the WASI guide](../../docs/wasi.md) describes, and [`ProcessModule.lean`](ProcessModule.lean) composes the command module, of 36,483 bytes.  Under `tools/leanrun --cpus 8 --threads 8 --memory-high 24G` on edgexpert-18ff, `ProcessWasi.lean` takes 617 s and `ProcessModule.lean` 318 s, with a peak of 10.0 GB.  [The native executable](ProcessNative.lean) `rcv-process` runs the process on the operating system's stdin and stdout.
 
@@ -337,7 +458,7 @@ The invariant `Future` of [`ProcessFuture.lean`](ProcessFuture.lean) relates a r
 
 The process holds the input in its state, and the process loop copies the state after every step, so the time that a file of `L` bytes takes, over its `L / 4,096` reads, grows with the square of `L`.  On the corpus's largest file, of 4,696,262 bytes, the process's module takes 3.4 s in Wasmtime, where the export `tabulate` takes 0.09 s and the native process `rcv-process` 49 s.  StreamFold's host assumptions fix the read capacity at 4,096 bytes, so a process with larger reads needs host assumptions of its own.
 
-## The C translation
+### The C translation
 
 [`tests/rcv/native.sh`](../../tests/rcv/native.sh) builds `build/rcv/native/rcv-tabulate-c`, the module translated to C and compiled with CompCert, which reads a canonical file and writes its report.  `native-verified build` writes the C text of the translation of `compiled.module` with the 16,384 pages of `lx_mem` that `compiled.translation_eq` states, has `clightgen` read it back, compares that Clight with the translation, and compiles the text with `ccomp` only when they match.  `ccomp` links the object with the export tables, [`tabulate.c`](tabulate.c), and `tools/native-host.c`.  `tabulate.c` places the file's bytes in a block that the module's `alloc` returns, calls the export `tabulate`, tests `lx_status`, and writes the bytes of the returned buffer.  `tests/native/verified.sh --module rcvTabulate` runs the 86 cases of the verified compiler's tests on the same translation.
 
@@ -350,7 +471,7 @@ The process holds the input in its state, and the process loop copies the state 
 
 `tabulate_native` rests on the items that [the trusted base](../../docs/trusted-base.md#c-c-files-and-native-executables) lists for C files, among them the Lean copy of Clight, CompCert's proofs and its unverified parts, and the host calling code, which for this executable is `tabulate.c` with `tools/native-host.c`.  The option `(cap := 16384)` of `Tabulate.lean` gives the translation 16,384 pages of `lx_mem`, 1,073,741,824 bytes, and leaves the module's bytes as they were.  With `tabulate_bound` the theorem's premise holds for files of up to about 12.8 MB, after the host's block for the file, which covers the corpus's largest file, of 4,696,262 bytes.  `tabulate_native_size` takes the relation of the C memory to the store, whose cap is then 16,384 pages, in place of the cap in the premise.  On the largest file of the corpus, the executable takes 0.07 s.
 
-## The browser page
+### The browser page
 
 [The recount page](../../tests/web/rcv/index.html), which `uv run tests/web/serve.py` serves at http://127.0.0.1:8000/rcv/, recounts a canonical file that the reader chooses on their computer.  The browser reads the file with the File API and sends nothing to the server, and the page shows the report's bytes as text, with a link that saves them, beside the SHA-256 of the module that it loaded.  [`tabulate.js`](../../tests/web/rcv/tabulate.js) calls the export `tabulate` as `tabulate_callSpec` requires.  For each file it creates a fresh instance of the module, whose store the generated `compiled.initial` and `Verified.Ready.initial` prove ready.  It calls `alloc` with the file's length, writes the file's bytes into the block, passes the block's root and the length to `tabulate`, and copies the bytes at the root and the length that the call returns.
 
@@ -378,3 +499,7 @@ tmp/rcv-reader: 93 files, 2 well-formed, 91 malformed, largest bound 33734909 by
 tmp/rcv-data/canonical: 19 files, 19 well-formed, 0 malformed, largest bound 409403869 bytes
 0 files refused or with a disagreement
 ```
+
+## The Maine count
+
+[The Maine count](Maine/README.md), increment 4 of the requirements' plan, counts single-winner contests under 21-A M.R.S. §723-A and the rules of 29-250 C.M.R. ch. 535, with the Oakland module's file format, reader, tally of a round, and report.  Its specification agrees byte for byte with the reference's Maine mode on its edge cases and on the Secretary of State's records, and its theorems T4 to T9 hold, with Oakland's T10 applied to its interpretation.  It has no compiled form: increments M2 and M3 of [its requirements' plan](Maine/requirements.md#plan) add the program over arrays, the module with T1, the WASI process, the C translation, and its place on the page.
