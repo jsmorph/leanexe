@@ -186,6 +186,8 @@ uv run tests/rcv/dominion.py tmp/rcv-dominion-data/alaska/22GENR/CVR_Export.zip 
 
 `--single` gives the single count, the charter's count without rule 3, with which the requirements' T10 compares the charter's count.  `--county` gives the county count, with which T11 compares it, and `--suspend` the faulty setting of the 2022 case study, both of which the requirements also define for comparisons with the County's reports.  No module carries any of the three.  Their reports have the report's form with the rule lines `rule single-count`, `rule alameda-county-count`, and `rule alameda-county-count first-round-suspension`, so that none can be taken for the charter's report.  The faulty setting adds the line `inactive suspended x` after the other inactive lines of each round.
 
+`--maine` gives the report of [the Maine module](../../Demos/Rcv/Maine/requirements.md), and with `--result-words` its words, transcribed from the Maine requirements alone with the same reader, writer, tally, and printer.  `--contest-words` gives the same words with or without it, and it cannot be combined with `--single`, `--county`, or `--suspend`.  [The Maine corpus](maine/README.md) describes the Maine edge cases, the converter of the Secretary of State's spreadsheets, and the checks of the Maine count against the summary reports.
+
 ## Edge cases
 
 `edges.py` writes the edge cases of the requirements' Tests section into a directory.  A well-formed case `NAME` gives `NAME.rcv`, the reference's report `NAME.report`, and the contest's and the count's words `NAME.words` and `NAME.result`.  A malformed case gives `NAME.rcv` and its error report, and a case of the word forms alone gives `NAME.words` and `NAME.result`.  Running the script again writes the same bytes.

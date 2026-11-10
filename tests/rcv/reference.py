@@ -3,11 +3,20 @@
 # dependencies = []
 # ///
 
-"""Reads a canonical ballot file, counts its contest under Oakland City Charter §1105, and prints the report.
+"""Reads a canonical ballot file, counts its contest under Oakland City Charter §1105 or 21-A M.R.S. §723-A, and prints the report.
 
 The script transcribes `Demos/Rcv/requirements.md`: the reader of the canonical ballot file and its
 error report, the writer, the interpretation of a ballot, the rounds, the report, and the count's
-word forms.  Three further counts serve comparisons and belong to no module: the single count and
+word forms.  The Maine mode transcribes `Demos/Rcv/Maine/requirements.md` with the same reader,
+writer, tally, and printer.  Its interpretation adds a rule: an empty position ends the examination
+with the reason `exhausted` when the next position is also empty and some later position is marked.
+Its initial test elects a counted candidate ranked first alone on more than half of the ballots.
+Otherwise each round eliminates the candidate with the fewest votes or, on a tie, the tied candidate
+latest in the order, until one candidate continues, two continue with unequal votes, or none
+continues.  Its report has the Maine rule line and a line `first i f(i)` for each counted candidate
+before round 1, and its result words hold f(1) to f(n) after the number of rounds.
+
+Three further counts serve comparisons and belong to no module: the single count and
 the county count, with which the requirements' T10 and T11 compare the charter's count, and the
 faulty setting of the comparisons with Alameda County's reports.  The single count is the charter's
 count without rule 3.  The county count interprets ballots in the same way, has no majority stop, no
@@ -25,12 +34,16 @@ Commands, where FILE `-` reads standard input:
   reference.py --single FILE         the report of the single count
   reference.py --county FILE         the report of the county count
   reference.py --suspend FILE        the report of the faulty setting
+  reference.py --maine FILE          the report of the Maine count
   reference.py --contest-words FILE  the contest's words, little-endian 64-bit, on standard output
   reference.py --result-words FILE   the count's words, little-endian 64-bit, for the contest words in FILE
+  reference.py --maine --result-words FILE
+                                     the Maine count's words for the contest words in FILE
 
-A malformed ballot file gives the error report with exit status 0, as the module returns it.  The
-exit status is 1 when --contest-words reads a malformed file, and 2 when FILE cannot be read or a
-word file's length is not a multiple of 8 bytes.
+--maine leaves the words of --contest-words unchanged, and together with --single, --county, or
+--suspend it is a usage error.  A malformed ballot file gives the error report with exit status 0, as
+the module returns it.  The exit status is 1 when --contest-words reads a malformed file, and 2 on a
+usage error, when FILE cannot be read, or when a word file's length is not a multiple of 8 bytes.
 """
 
 import argparse
@@ -42,8 +55,11 @@ from dataclasses import dataclass, field
 RULE = (b"oakland-1105 revision 1, Oakland City Charter sections 1103 and 1105 (February 2007), "
         b"Cal. Elec. Code sections 15341 (updated 1999-01-01) and 15342(d) (updated 2012-01-01), "
         b"texts read 2026-11-09")
+MAINE_RULE = (b"maine-723a revision 1, 21-A M.R.S. sections 1, 371, 374-A, 696, 722-A, 723-A, and 732 as "
+              b"current through 2026-10-01 (section 723-A as amended by PL 2025 c. 363, effective 2025-09-24), "
+              b"29-250 C.M.R. ch. 535 (effective 2018-11-07), texts read 2026-11-10")
 RULES = {"charter": RULE, "single": b"single-count", "county": b"alameda-county-count",
-         "suspend": b"alameda-county-count first-round-suspension"}
+         "suspend": b"alameda-county-count first-round-suspension", "maine": MAINE_RULE}
 MAX_POSITIONS = 63
 MAX_CANDIDATES = 63
 MAX_BALLOTS = (1 << 32) - 1
@@ -222,10 +238,13 @@ def write(contest):
     return b"".join(line + b"\n" for line in lines)
 
 
-def interpret(ballot, counted, continuing):
-    """The continuing candidate the ballot counts for, or the reason it is inactive."""
-    for word in ballot:
+def interpret(ballot, counted, continuing, maine=False):
+    """The continuing candidate the ballot counts for, or the reason it is inactive.  With `maine`, an
+    empty position ends the examination when the next position is also empty and a later one is marked."""
+    for p, word in enumerate(ballot):
         if word == 0:
+            if maine and p + 1 < len(ballot) and ballot[p + 1] == 0 and any(ballot[p + 2:]):
+                return "exhausted"
             continue
         if word == UNNAMED or word & (word - 1):
             return "overvote"
@@ -246,12 +265,12 @@ def suspended(ballot, counted, where):
     return passed and (isinstance(where, int) or where == "overvote")
 
 
-def tally(ballots, counted, continuing, number, suspend=False):
+def tally(ballots, counted, continuing, number, suspend=False, maine=False):
     rnd = Round(number, dict.fromkeys(sorted(continuing), 0), dict.fromkeys(REASONS, 0))
     if suspend:
         rnd.inactive["suspended"] = 0
     for ballot, multiplicity in ballots.items():
-        where = interpret(ballot, counted, continuing)
+        where = interpret(ballot, counted, continuing, maine)
         if suspend and number == 1 and suspended(ballot, counted, where):
             rnd.inactive["suspended"] += multiplicity
         elif isinstance(where, int):
@@ -272,7 +291,8 @@ def batch(votes):
 
 
 def lowest(rnd, rank):
-    """Rule 4: eliminate the candidate with the fewest votes, a tie going to the latest in the order."""
+    """Eliminate the candidate with the fewest votes, a tie going to the latest in the order: the
+    charter's rule 4, and Maine's rule "Last place" and tied pair."""
     least = min(rnd.votes.values())
     tied = [i for i, v in rnd.votes.items() if v == least]
     if len(tied) == 1:
@@ -326,6 +346,30 @@ def county(contest, suspend=False):
         continuing -= set(rnd.eliminated)
 
 
+def maine_count(contest):
+    """The first rankings f(i) of the counted candidates, the rounds of the Maine count, and the winner,
+    or None."""
+    counted, rank, ballots = setup(contest)
+    first = dict.fromkeys(sorted(counted), 0)
+    for ballot, multiplicity in ballots.items():
+        word = ballot[0]
+        if word and word != UNNAMED and not word & (word - 1) and word.bit_length() in counted:
+            first[word.bit_length()] += multiplicity
+    elected = [i for i, f in first.items() if 2 * f > len(contest.ballots)]
+    if elected:
+        return first, [], elected[0]
+    continuing = set(counted)
+    rounds = []
+    while True:
+        rnd = tally(ballots, counted, continuing, len(rounds) + 1, maine=True)
+        rounds.append(rnd)
+        tied_pair = len(rnd.votes) == 2 and len(set(rnd.votes.values())) == 1
+        if len(rnd.votes) <= 2 and not tied_pair:
+            return first, rounds, max(rnd.votes, key=rnd.votes.get, default=None)
+        lowest(rnd, rank)
+        continuing -= set(rnd.eliminated)
+
+
 def count(contest, mode="charter"):
     if mode in ("charter", "single"):
         return charter(contest, batches=mode == "charter")
@@ -357,7 +401,12 @@ def report(data, mode="charter"):
         lines.append(b"error %d %s" % (contest.line, contest.role.encode()))
     else:
         lines += data.split(b"\n")[1:6 + len(contest.candidates)]
-        lines += round_lines(*count(contest, mode))
+        if mode == "maine":
+            first, rounds, winner = maine_count(contest)
+            lines += [b"first %d %d" % iv for iv in first.items()]
+        else:
+            rounds, winner = count(contest, mode)
+        lines += round_lines(rounds, winner)
     return b"".join(line + b"\n" for line in lines)
 
 
@@ -393,14 +442,19 @@ def mask(indices):
     return sum(1 << (i - 1) for i in indices)
 
 
-def result_words(words):
-    """The count's words for a contest's words, or [0] for an invalid array."""
+def result_words(words, maine=False):
+    """The count's words for a contest's words, or [0] for an invalid array.  With `maine`, the words of
+    the Maine count, which hold f(1) to f(n), 0 for an uncounted candidate, after the number of rounds."""
     contest = from_words(words)
     if contest is None:
         return [0]
     n = len(contest.candidates)
-    rounds, winner = charter(contest)
-    out = [1, len(rounds)]
+    if maine:
+        first, rounds, winner = maine_count(contest)
+        out = [1, len(rounds)] + [first.get(i, 0) for i in range(1, n + 1)]
+    else:
+        rounds, winner = charter(contest)
+        out = [1, len(rounds)]
     for rnd in rounds:
         out += [mask(rnd.votes), rnd.continuing]
         out += [rnd.votes.get(i, 0) for i in range(1, n + 1)]
@@ -426,8 +480,11 @@ def main():
     mode.add_argument("--suspend", action="store_true", help="the county count with the first-round suspension")
     mode.add_argument("--contest-words", action="store_true", help="write the contest's words")
     mode.add_argument("--result-words", action="store_true", help="read contest words and write the count's words")
+    ap.add_argument("--maine", action="store_true", help="the Maine count of 21-A M.R.S. §723-A")
     ap.add_argument("file", help="input file, or - for standard input")
     args = ap.parse_args()
+    if args.maine and (args.single or args.county or args.suspend):
+        ap.error("--maine cannot be combined with --single, --county, or --suspend")
     try:
         data = sys.stdin.buffer.read() if args.file == "-" else open(args.file, "rb").read()
     except OSError as e:
@@ -437,7 +494,7 @@ def main():
         if len(data) % 8:
             print(f"{args.file}: length {len(data)} bytes is not a multiple of 8", file=sys.stderr)
             return 2
-        sys.stdout.buffer.write(pack(result_words(unpack(data))))
+        sys.stdout.buffer.write(pack(result_words(unpack(data), args.maine)))
     elif args.contest_words:
         contest = read(data)
         if isinstance(contest, Malformed):
@@ -445,7 +502,7 @@ def main():
             return 1
         sys.stdout.buffer.write(pack(contest_words(contest)))
     else:
-        mode = ("single" if args.single else "county" if args.county else
+        mode = ("maine" if args.maine else "single" if args.single else "county" if args.county else
                 "suspend" if args.suspend else "charter")
         sys.stdout.buffer.write(report(data, mode))
     return 0

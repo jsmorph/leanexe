@@ -76,6 +76,10 @@ import Demos.Rcv.Batch
 import Demos.Rcv.Cases
 import Demos.Rcv.Contest
 import Demos.Rcv.Holder
+import Demos.Rcv.Maine.Cases
+import Demos.Rcv.Maine.Rounds
+import Demos.Rcv.Maine.Spec
+import Demos.Rcv.Maine.Stability
 import Demos.Rcv.PrintProgram
 import Demos.Rcv.PrintProof
 import Demos.Rcv.Program
