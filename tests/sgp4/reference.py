@@ -15,8 +15,14 @@ Demos.Sgp4.sgp4 must lie within BOX_POSITION km or BOX_VELOCITY km/s of its inte
 intervals contain the model's values with the exact root of Kepler's equation, and the reference
 code and Demos.Sgp4.sgp4 stop their iteration at a correction below 1e-12, so their values may
 lie outside an interval by that correction times the semimajor axis.  For each later time of an
-element set, for which the verification file holds no state, neither status may be 0.  The check
-prints the largest differences and the largest widths of the intervals.
+element set, for which the verification file holds no state, neither status may be 0.
+
+Demos.Sgp4.Tle.propagate reads the two lines of each element set.  Its status must equal that of
+Demos.Sgp4.sgp4BoxAround at every time, and each reference coordinate must lie within the same
+distances of its interval.  It must return status 9 for an element set with one digit changed,
+which breaks the checksum, and the status of the unchanged lines for an element set whose catalog
+fields begin with a letter, the Alpha-5 form.  The check prints the largest differences and the
+largest widths of the intervals.
 Usage: uv run tests/sgp4/reference.py STATES_EXECUTABLE BOXES_EXECUTABLE"""
 import pathlib
 import struct
@@ -54,9 +60,11 @@ def main() -> int:
     here = pathlib.Path(__file__).parent
     lines = (here / "near-earth.tle").read_text().splitlines()
     sets = {}
+    texts = {}
     for line1, line2 in zip(lines[0::2], lines[1::2]):
         start, stop, step = (float(x) for x in line2[69:].split())
         sets[str(int(line2[2:7]))] = (elements(line1, line2), start, stop, step)
+        texts[str(int(line2[2:7]))] = (line1[:69], line2[:69])
     queries = []
     name = None
     last = {}
@@ -85,8 +93,16 @@ def main() -> int:
             raise SystemExit(f"{mode}: expected {len(queries)} lines, read {len(lines)}")
         return lines
 
+    def read_lines(pairs: list[tuple[str, str, float]]) -> list[list[str]]:
+        text = "".join(f"{a}\n{b}\n{bits(t)}\n" for a, b, t in pairs)
+        run = subprocess.run(
+            [sys.argv[2], "--lines"], input=text, capture_output=True, text=True, check=True
+        )
+        return [line.split() for line in run.stdout.splitlines()]
+
     states = call(sys.argv[1], "--states")
     boxes = call(sys.argv[2], "--boxes")
+    from_lines = read_lines([(*texts[name], t) for name, t, _ in queries])
     failures = 0
     worst_r = worst_v = 0.0
     width_r = width_v = 0.0
@@ -135,6 +151,45 @@ def main() -> int:
                 failures += 1
                 print(f"fail {name} t={t} coordinate {i}: reference {gap:.3e} outside, "
                       f"program {away:.3e} outside, width {width:.3e}")
+    line_width = 0.0
+    for (name, t, expected), box_line, words in zip(queries, boxes, from_lines):
+        if int(words[0]) != int(box_line.split()[0]):
+            failures += 1
+            print(f"fail {name} t={t}: status {words[0]} from the lines, "
+                  f"{box_line.split()[0]} from the values")
+            continue
+        if expected is None:
+            continue
+        for i in range(6):
+            low = double(words[2 + 3 * i])
+            high = double(words[3 + 3 * i])
+            tolerance = BOX_POSITION if i < 3 else BOX_VELOCITY
+            gap = max(low - expected[i], expected[i] - high, 0.0)
+            if i < 3:
+                line_width = max(line_width, high - low)
+            if int(words[1 + 3 * i]) != 0 or not gap <= tolerance:
+                failures += 1
+                print(f"fail {name} t={t} coordinate {i} from the lines: {gap:.3e} outside")
+
+    def checksum(line: str) -> str:
+        total = sum(int(c) if c.isdigit() else (1 if c == "-" else 0) for c in line[:68])
+        return line[:68] + str(total % 10)
+
+    name, t, _ = queries[0]
+    line1, line2 = texts[name]
+    digit = "1" if line2[30] != "1" else "2"
+    changed = read_lines([
+        (line1, line2[:30] + digit + line2[31:], t),
+        (line1[:56] + digit + line1[57:], line2, t),
+        (line1, line2[:68], t),
+        (checksum(line1[:2] + "A" + line1[3:]), checksum(line2[:2] + "A" + line2[3:]), t),
+        (checksum(line1[:2] + "A" + line1[3:]), line2, t),
+    ])
+    expected_statuses = [9, 9, 9, int(from_lines[0][0]), 9]
+    for words, wanted in zip(changed, expected_statuses):
+        if int(words[0]) != wanted:
+            failures += 1
+            print(f"fail changed lines: status {words[0]}, expected {wanted}")
     print(f"states {len(queries)}")
     print(f"program: largest position difference {worst_r:.3e} km, "
           f"largest velocity difference {worst_v:.3e} km/s")
@@ -143,6 +198,7 @@ def main() -> int:
           f"and {outside_v:.3e} km/s")
     print(f"largest distance of a program value from its interval {away_r:.3e} km "
           f"and {away_v:.3e} km/s")
+    print(f"intervals from the lines: largest width {line_width:.3e} km")
     print(f"{failures} failures")
     return 1 if failures else 0
 

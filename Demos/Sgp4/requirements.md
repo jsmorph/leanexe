@@ -90,7 +90,7 @@ The element set takes the deep-space path when `2π / no ≥ 225`.  The function
 | `t4cof` | `0.25 (3 d3 + cc1 (12 d2 + 10 cc1sq))` |
 | `t5cof` | `0.2 (3 d4 + 12 cc1 d3 + 6 d2² + 15 cc1sq (2 d2 + cc1sq))` |
 
-The propagation uses `d2`, `d3`, `d4`, `t3cof`, `t4cof`, and `t5cof` only when `isimp` is false.
+When `isimp` holds, the reference code omits the terms of the propagation that contain `omgcof`, `xmcof`, `cc5`, `d2`, `d3`, `d4`, `t3cof`, `t4cof`, and `t5cof`.  These requirements state the omission in the constants: each of the nine is 0 when `isimp` holds, and the propagation has one form.
 
 ## Propagation
 
@@ -101,10 +101,10 @@ The function `sgp4` computes the state at `t`.  The secular terms come first.
 | `xmdf`, `argpdf`, `nodedf` | `mo + mdot t`, `argpo + argpdot t`, `nodeo + nodedot t` |
 | `nodem` | `nodedf + nodecf t²` |
 | `delomg`, `delm` | `omgcof t`, `xmcof ((1 + eta cos xmdf)³ − delmo)` |
-| `mm₀`, `argpm` | `xmdf + delomg + delm` and `argpdf − delomg − delm` when `isimp` is false, and `xmdf` and `argpdf` otherwise |
-| `tempa` | `1 − cc1 t − d2 t² − d3 t³ − d4 t⁴` when `isimp` is false, and `1 − cc1 t` otherwise |
-| `tempe` | `bstar cc4 t + bstar cc5 (sin mm₀ − sinmao)` when `isimp` is false, and `bstar cc4 t` otherwise |
-| `templ` | `t2cof t² + t3cof t³ + t⁴ (t4cof + t t5cof)` when `isimp` is false, and `t2cof t²` otherwise |
+| `mm₀`, `argpm` | `xmdf + delomg + delm`, `argpdf − delomg − delm` |
+| `tempa` | `1 − cc1 t − d2 t² − d3 t³ − d4 t⁴` |
+| `tempe` | `bstar cc4 t + bstar cc5 (sin mm₀ − sinmao)` |
+| `templ` | `t2cof t² + t3cof t³ + t⁴ (t4cof + t t5cof)` |
 | `am` | `(xke / no)^(2/3) tempa²` |
 | `nm` | `xke / am^1.5` |
 | `em₀` | `ecco − tempe` |
@@ -149,10 +149,14 @@ Status 4 holds when `pl < 0`.  The short-period terms and the vectors follow.
 
 Status 6 holds when `mrt < 1`.
 
-## Programs
+## Programs and model
+
+[The model](Spec.lean) states each definition of these tables once over the real numbers, with `E` the root that [the theorem on Kepler's equation](Kepler.lean) shows to exist and to be unique when `axnl² + aynl² < 1`.  It computes the sine and the cosine of `su` as `sinu cos δ − cosu sin δ` and `cosu cos δ + sinu sin δ` with `δ = 0.25 temp2 x7thm1 sin2u`, and [the lemmas on the argument of latitude](Latitude.lean) show that these equal the sine and the cosine of `su` as the table defines it.  [The status](Model.lean) follows the order of the reference code's tests: 9, 8, 2, 1, 4, 6, and 0 otherwise.
 
 [The binary64 program](Program.lean) evaluates these definitions in binary64 with the library's `sin`, `cos`, `pow`, and `atan2`.  It finds `E` with the reference code's iteration: Newton's method from `u`, with each correction limited to 0.95 in magnitude, until a correction is below `10⁻¹²` in magnitude or 10 corrections are done, and it takes the sine and the cosine of the iterate before the last correction.
 
+[The enclosing program](Box.lean) evaluates the model's definitions on intervals.  It returns status 7 when its intervals do not decide a test of the model or an operation is rejected, and status 9 when the intervals of `n` and `e` do not show `0 < n` and `0 ≤ e < 1`.
+
 ## Tests
 
-`tests/sgp4/run.sh` compares the binary64 program with the reference states of the verification file of the Vallado code for its near-Earth element sets.  Each position must lie within `10⁻⁸` km of the reference, which is printed to `10⁻⁸` km, and each velocity within `10⁻⁹` km/s.  The verification file holds no state for the last times of three element sets, and the program's status at each of those times must differ from 0.
+`tests/sgp4/run.sh` compares both programs with the reference states of the verification file of the Vallado code for its near-Earth element sets.  Each position of the binary64 program must lie within `10⁻⁸` km of the reference, which is printed to `10⁻⁸` km, and each velocity within `10⁻⁹` km/s.  Each coordinate of the reference and of the binary64 program must lie within `2·10⁻⁸` km or `10⁻⁹` km/s of its interval.  The verification file holds no state for the last times of three element sets, and each program's status at each of those times must differ from 0.

@@ -250,7 +250,7 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
   · simp only [h0, ite_true] at hbox
     obtain ⟨hv, hp, hn⟩ := hinit.1 (beq_iff_eq.mp h0)
     have hs := Spec.wgs72State.encloses (powLog := logTab) (powExp := expTab) ht hc
-    generalize Spec.wgs72State.interval Trig.invPi Trig.halfPi logTab expTab t r.2 = s
+    generalize Spec.wgs72StateI Trig.invPi Trig.halfPi logTab expTab t r.2 = s
       at hs hbox
     obtain ⟨s1, s2, s3, s4, s5, s6, s7, s8, s9⟩ := hs
     have one : Encloses (ofInt 1) (1 : ℝ) :=

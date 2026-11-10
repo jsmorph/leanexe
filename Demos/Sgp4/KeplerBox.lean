@@ -4,7 +4,7 @@ import Library.Numerics.Interval.EncloseAttr
 import Library.Numerics.Interval.FunctionsProof
 
 /-!
-An interval that contains the root of Kepler's equation.  `root.interval` computes an approximate
+An interval that contains the root of Kepler's equation.  `rootI` computes an approximate
 root `e` in binary64 from the midpoints of its operands, encloses the residual of `e` and the
 least slope `1 - √(a² + b²)` with interval operations, and returns `e` widened by the quotient,
 which `Kepler.root_bound` shows to bound the distance of `e` from the root.  The result therefore
@@ -25,7 +25,7 @@ def approximate (inv half : Array UInt64) (a b u : Float) : Float :=
 set_option linter.unusedVariables false in
 /-- An interval that contains the root of `E + b cos E - a sin E = u` for every `a`, `b`, and `u`
 in the operands. -/
-def root.interval (inv half logTab expTab : Array UInt64) (a b u : Interval) : Interval :=
+def rootI (inv half logTab expTab : Array UInt64) (a b u : Interval) : Interval :=
   let e := point (approximate inv half (mid a) (mid b) (mid u))
   let residual := sub (add e (sub (mul b (cosI inv half e)) (mul a (sinI inv half e)))) u
   let slope := sub (ofInt 1) (sqrt (add (sq a) (sq b)))
@@ -36,9 +36,9 @@ def root.interval (inv half logTab expTab : Array UInt64) (a b u : Interval) : I
 
 @[enclose] theorem root.encloses {powLog powExp : Array UInt64} {a b u : Interval} {x y z : ℝ}
     (ha : Encloses a x) (hb : Encloses b y) (hu : Encloses u z) :
-    Encloses (root.interval Trig.invPi Trig.halfPi powLog powExp a b u) (root x y z) := by
+    Encloses (rootI Trig.invPi Trig.halfPi powLog powExp a b u) (root x y z) := by
   intro h
-  simp only [root.interval] at h ⊢
+  simp only [rootI] at h ⊢
   generalize approximate Trig.invPi Trig.halfPi (mid a) (mid b) (mid u) = e at h ⊢
   have he : Encloses (point e) (value e.toBits) := fun h => (point_sound h).2
   have hres := encloses_sub (encloses_add he (encloses_sub (encloses_mul hb (encloses_cosI he))

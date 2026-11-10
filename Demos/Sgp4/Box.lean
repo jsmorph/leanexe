@@ -74,14 +74,14 @@ def stateStatus (e1 e2 pl m6 : Interval) (ok : Bool) : UInt64 :=
 /-- The status and the constants of an element set. -/
 def initBoxWith (inv half logTab expTab : Array UInt64) (n e incl node argp m bstar : Interval) :
     UInt64 × interval_tuple% 35 :=
-  let c := Spec.wgs72.interval inv half logTab expTab n e incl node argp m bstar
+  let c := Spec.wgs72I inv half logTab expTab n e incl node argp m bstar
   (initStatus n e (sub c.1 (ofInt 225)) c.2.1, c)
 
 /-- The status and the intervals at `t` minutes from the epoch. -/
 def propagateBoxWith (inv half logTab expTab : Array UInt64) (c : UInt64 × interval_tuple% 35)
     (t : Interval) : Box :=
   if c.1 == 0 then
-    let s := Spec.wgs72State.interval inv half logTab expTab t c.2
+    let s := Spec.wgs72StateI inv half logTab expTab t c.2
     let x := s.2.2.2.1
     let y := s.2.2.2.2.1
     let z := s.2.2.2.2.2.1

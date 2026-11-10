@@ -5,7 +5,7 @@ import Demos.Sgp4.KeplerBox
 The near-Earth SGP4 model over the real numbers, with an interval program for each part.
 
 Each `enclosure_def` declares a real function, which is the specification of that part of
-`requirements.md`, the interval function `f.interval`, and the theorem `f.encloses`.  `constants`
+`requirements.md`, the interval function `fI`, and the theorem `f.encloses`.  `constants`
 computes the constants of an element set, and `state` computes the quantities that decide the
 status, the position, and the velocity at a time.  The parameters `radius`, `xke`, `j2`, `j3oj2`,
 and `j4` are the Earth's radius and the gravity constants, which `Model.lean` sets to the WGS-72

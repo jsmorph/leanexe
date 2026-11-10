@@ -1,10 +1,12 @@
-import Demos.Sgp4.Box
+import Demos.Sgp4.Tle
 import TestSupport.Sgp4.Cases
 
 /-! Cases of the enclosing SGP4 module.  `cases` prints the module cases of `sgp4BoxAround` for
 `tests/verified/run.sh`.  `boxes` reads lines of the bit patterns `n e incl node argp m bstar t`
 and prints the status and the bit patterns of the twelve endpoints that `sgp4BoxAround` returns,
-for `tests/sgp4/reference.py`. -/
+for `tests/sgp4/reference.py`.  `lines` reads groups of three lines, the two lines of an element
+set and the bit pattern of a time, and prints the result of `Tle.propagate` at the interval
+around that time in the same form. -/
 
 namespace TestSupport.Sgp4.BoxCases
 
@@ -34,6 +36,25 @@ partial def boxes : IO Unit := do
     | [n, e, incl, node, argp, m, bstar, t] =>
       IO.println (boxText (sgp4BoxAround n e incl node argp m bstar t))
     | _ => throw (IO.userError s!"expected eight words: {text}")
+    go
+  go
+
+def bytes (text : String) : Array UInt64 :=
+  (text.toUTF8.toList.map fun b => b.toUInt64).toArray
+
+partial def lines : IO Unit := do
+  let stdin ← IO.getStdin
+  let rec go : IO Unit := do
+    let line1 ← stdin.getLine
+    if line1.isEmpty then return
+    let line2 ← stdin.getLine
+    let time ← stdin.getLine
+    match time.trim.toNat? with
+    | some w =>
+      let t := around (Float.ofBits (UInt64.ofNat w))
+      IO.println (boxText (Tle.propagate (bytes (line1.dropRightWhile (· == '\n')))
+        (bytes (line2.dropRightWhile (· == '\n'))) t))
+    | none => throw (IO.userError s!"expected a time: {time}")
     go
   go
 

@@ -5,16 +5,16 @@ import Library.Numerics.Interval.FunctionsProof
 One source for a real function and its interval program.
 
 `enclosure_def f (x y) := body` reads `body`, a chain of `let` bindings over real expressions,
-and declares three things: the real function `f`, the interval function `f.interval` in the
+and declares three things: the real function `f`, the interval function `fI` in the
 verified compiler's dialect, which takes the tables of `sin`, `cos`, and `pow` before its interval
-parameters, and the theorem `f.encloses`, that the result of `f.interval` encloses the result of
+parameters, and the theorem `f.encloses`, that the result of `fI` encloses the result of
 `f` when each interval argument encloses the real argument.  A body may end in a tuple, and a
 `let` may bind the components of a tuple.  `enclosure_def f (x y) {c : k} := body` adds a last
 parameter `c` that is a tuple of `k` values, and `enclosure_def f (x y) : k := body` states the
 number `k` of components of a result that the body returns from a call.
 
 The interval function evaluates each real operation with the interval operation of the table
-below.  A call of another function `g` becomes a call of `g.interval`, whose theorem
+below.  A call of another function `g` becomes a call of `gI`, whose theorem
 `g.encloses` carries the label `enclose`.
 
 | Real expression | Interval expression |
@@ -129,7 +129,7 @@ partial def intervalBody (stx : Term) : MacroM Term := do
       `(Library.Numerics.Interval.cosI $(tables[0]!) $(tables[1]!) $args'*)
     | `max => `(Library.Numerics.Interval.imax $args'*)
     | name =>
-      let g := mkIdentFrom f (name ++ `interval)
+      let g := mkIdentFrom f (name.appendAfter "I")
       `($g $tables* $args'*)
   | `(π) | `(Real.pi) => `(Library.Numerics.Interval.piI)
   | `($_:ident) => pure stx
@@ -275,7 +275,7 @@ syntax (name := enclosureDef) (docComment)? "enclosure_def " ident "(" ident* ")
 
 macro_rules
   | `($[$doc:docComment]? enclosure_def $name ($ps*) $[{$c : $k}]? $[: $size]? := $body) => do
-    let iname := mkIdentFrom name (name.getId ++ `interval)
+    let iname := mkIdentFrom name (name.getId.appendAfter "I")
     let tname := mkIdentFrom name (name.getId ++ `encloses)
     let qs := ps.map fun p => mkIdentFrom p (p.getId.appendAfter "'")
     let hs := ps.map fun p => mkIdentFrom p (p.getId.appendBefore "h_")
