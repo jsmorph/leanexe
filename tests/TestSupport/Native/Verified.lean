@@ -3,9 +3,11 @@ import LeanExe.Native.ClightCheck
 
 /-!
 The executable `native-verified`, which translates the modules of the `tests/verified` corpus
-to C with `lx_mem` of `nativeCap` pages, the translation that `verified_compile` states
-its theorems about (`tests/native/verified.sh`).  It loads a module's constant from the compiled
-Lean module that defines it, as `tools/Emit.lean` does.
+to C with `lx_mem` of the pages that the module's equation `p.translation_eq` states, `nativeCap`
+or the cap of the option `(cap := C)`, the translation that `verified_compile` states its theorems
+about (`tests/native/verified.sh`).  A module without that equation takes `nativeCap`, and the
+translation without the alignment test takes `nativeCap` as its theorems do.  It loads a module's
+constant from the compiled Lean module that defines it, as `tools/Emit.lean` does.
 
 * `survey MODULE CONSTANT NAME` prints which functions of the module translate and why the
   others do not.
@@ -52,6 +54,31 @@ unsafe def loadEnv (moduleName constName : Name) : IO (Environment × Wasm.Modul
 unsafe def loadModule (moduleName constName : Name) : IO Wasm.Module :=
   return (← loadEnv moduleName constName).2
 
+/-- The number that `e` denotes, a raw literal or an `OfNat.ofNat` of one. -/
+partial def natValue? (e : Expr) : Option Nat :=
+  match e.consumeMData with
+  | .lit (.natVal n) => some n
+  | e => if e.isAppOfArity ``OfNat.ofNat 3 then natValue? (e.getArg! 1) else none
+
+/-- The pages of `lx_mem` in the translation that `verified_compile` states its theorems about for
+the module `constName`, `p.module`: the first argument of `translate` in `p.translation_eq`,
+`nativeCap` or the cap of the option `(cap := C)`.  A module without that equation takes
+`nativeCap`. -/
+def translationCap (env : Environment) (constName : Name) : Except String Nat := do
+  let eqName := constName.getPrefix ++ `translation_eq
+  let some info := env.find? eqName | return nativeCap
+  let some (_, lhs, _) := info.type.consumeMData.eq? | throw s!"{eqName} is not an equation"
+  unless lhs.isAppOf ``translate do throw s!"{eqName} does not state a translation"
+  let cap := lhs.getArg! 0
+  if cap.isConstOf ``nativeCap then return nativeCap
+  match natValue? cap with
+  | some n => return n
+  | none => throw s!"the cap of {eqName} is not a numeral"
+
+unsafe def loadCap (moduleName constName : Name) : IO (Environment × Wasm.Module × Nat) := do
+  let (env, m) ← loadEnv moduleName constName
+  return (env, m, ← IO.ofExcept (translationCap env constName))
+
 def exportName (m : Wasm.Module) (k : Nat) : String :=
   match m.exports.find? (·.funcIdx == k) with
   | some e => e.name
@@ -73,19 +100,20 @@ def reason (cap : Nat) (m : Wasm.Module) (k : Nat) : String :=
               else "an instruction form"
           | some _ => "a call of an omitted function"
 
-def translation (m : Wasm.Module) (name : String) (aligned : Bool) : IO Translation := do
+def translation (m : Wasm.Module) (cap : Nat) (name : String) (aligned : Bool) :
+    IO Translation := do
   if let some v := violation m then
     throw <| IO.userError s!"{name}: outside the subset: {v}"
-  match translate nativeCap m aligned with
+  match translate cap m aligned with
   | none => throw <| IO.userError s!"{name}: does not translate"
   | some t => pure t
 
 unsafe def survey (moduleName constName : Name) (name : String) : IO UInt32 := do
-  let m ← loadModule moduleName constName
+  let (_, m, cap) ← loadCap moduleName constName
   if let some v := violation m then
     IO.println s!"{name}: outside the subset: {v}"
     return 0
-  match translate nativeCap m with
+  match translate cap m with
   | none =>
       IO.println s!"{name}: does not translate"
       return 0
@@ -93,7 +121,7 @@ unsafe def survey (moduleName constName : Name) (name : String) : IO UInt32 := d
       let omitted := (List.range m.funcs.length).filter fun k => !t.funcs.contains k
       IO.println s!"{name}: {t.funcs.length} of {m.funcs.length} functions"
       for k in omitted do
-        IO.println s!"  {exportName m k}: {reason nativeCap m k}"
+        IO.println s!"  {exportName m k}: {reason cap m k}"
       return 0
 
 def LeanExe.Native.VT.cname : VT → String
@@ -182,14 +210,14 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
     s!"const lx_global_export lx_global_exports[] = \{\n{table gentries "  {0, 0}"}};\n" ++
     s!"const int lx_global_export_count = {gentries.length};\n"
 
-/-- Writes the files of `emit` for the module `m`, and returns its translation, or `none` for a
-module outside the subset or one that does not translate. -/
-def emitModule (m : Wasm.Module) (name dir : String) (aligned : Bool) :
+/-- Writes the files of `emit` for the module `m` with `cap` pages of `lx_mem`, and returns its
+translation, or `none` for a module outside the subset or one that does not translate. -/
+def emitModule (m : Wasm.Module) (cap : Nat) (name dir : String) (aligned : Bool) :
     IO (Option Translation) := do
   if let some v := violation m then
     IO.println s!"{name}: outside the subset: {v}"
     return none
-  let some t := translate nativeCap m aligned
+  let some t := translate cap m aligned
     | IO.println s!"{name}: does not translate"
       return none
   let text ← IO.ofExcept <| t.text.mapError fun e => IO.userError s!"{name}: {e}"
@@ -206,8 +234,8 @@ def emitModule (m : Wasm.Module) (name dir : String) (aligned : Bool) :
 
 unsafe def emit (moduleName constName : Name) (name dir : String) (aligned : Bool) :
     IO UInt32 := do
-  let m ← loadModule moduleName constName
-  match ← emitModule m name dir aligned with
+  let (_, m, cap) ← loadCap moduleName constName
+  match ← emitModule m (if aligned then nativeCap else cap) name dir aligned with
   | none => return 3
   | some _ => return 0
 
@@ -227,8 +255,8 @@ def checkTranslation (t : Translation) (name dir : String) : IO UInt32 := do
 
 unsafe def check (moduleName constName : Name) (name dir : String) (aligned : Bool) :
     IO UInt32 := do
-  let m ← loadModule moduleName constName
-  checkTranslation (← translation m name aligned) name dir
+  let (_, m, cap) ← loadCap moduleName constName
+  checkTranslation (← translation m (if aligned then nativeCap else cap) name aligned) name dir
 
 /-- Runs `cmd` with `args` in `cwd`, and fails with its standard error unless it exits with 0. -/
 def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath := none) :
@@ -236,12 +264,6 @@ def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath :
   let out ← IO.Process.output { cmd, args, cwd }
   if out.exitCode != 0 then
     throw <| IO.userError s!"{cmd} exited with status {out.exitCode}:\n{out.stdout}{out.stderr}"
-
-/-- The number that `e` denotes, a raw literal or an `OfNat.ofNat` of one. -/
-partial def natValue? (e : Expr) : Option Nat :=
-  match e.consumeMData with
-  | .lit (.natVal n) => some n
-  | e => if e.isAppOfArity ``OfNat.ofNat 3 then natValue? (e.getArg! 1) else none
 
 /-- The body of `e` under its leading `∀` binders. -/
 def forallBody : Expr → Expr
@@ -328,7 +350,7 @@ def alignedGaps (env : Environment) (constName : Name) (m : Wasm.Module) (t : Tr
 
 unsafe def build (moduleName constName : Name) (name dir : String) (aligned : Bool) :
     IO UInt32 := do
-  let (env, m) ← loadEnv moduleName constName
+  let (env, m, cap) ← loadCap moduleName constName
   if aligned && (violation m).isNone then
     if let some t := translate nativeCap m true then
       let gaps := alignedGaps env constName m t
@@ -336,7 +358,7 @@ unsafe def build (moduleName constName : Name) (name dir : String) (aligned : Bo
         for g in gaps do
           IO.eprintln s!"{name}: refusing the translation without the alignment test: {g}"
         return 4
-  let some t ← emitModule m name dir aligned | return 3
+  let some t ← emitModule m (if aligned then nativeCap else cap) name dir aligned | return 3
   runTool ((← IO.getEnv "CLIGHTGEN").getD "clightgen") #[s!"{name}.c"] (some dir)
   let status ← checkTranslation t name dir
   if status != 0 then return status
