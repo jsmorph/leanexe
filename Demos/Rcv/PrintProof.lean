@@ -344,7 +344,7 @@ theorem pushVotes_toList (o res : Array UInt64) {S : List Nat} {n base : Nat} (h
         ofNat_toNat_small (hf _ hm)]
       have hw : wordBytes 0x207365746f76 6 = (ascii "votes ").map UInt8.toUInt64 := by decide
       rw [show (6 : UInt64).toNat = 6 from rfl, hw, spaced_cons_cons, spaced_two]
-      simp [lf, sp]
+      simp [sp]
       rfl
     · rw [decide_eq_false hm, ite_eq_right (by simp), ite_eq_right hm]
       simp
@@ -640,5 +640,333 @@ open Demos.Rcv.Rounds in
 theorem count_winner (kinds : List Kind) (order : List Nat) (ballots : List (List UInt64))
     (i : Nat) (h : (count kinds order ballots).winner = some i) : 1 ≤ i ∧ i ≤ kinds.length :=
   mem_countedSet (trace_winner (count_trace kinds order ballots) i h)
+
+/-! ## The header lines -/
+
+theorem prefix_unique {c : UInt8} :
+    ∀ {a a' r r' : List UInt8}, c ∉ a → c ∉ a' → a ++ c :: r = a' ++ c :: r' → a = a'
+  | [], [], _, _, _, _, _ => rfl
+  | [], x :: a', _, _, _, h', h => by
+    simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
+    exact absurd (h.1 ▸ List.mem_cons_self) h'
+  | x :: a, [], _, _, h, _, hh => by
+    simp only [List.nil_append, List.cons_append, List.cons.injEq] at hh
+    exact absurd (hh.1 ▸ List.mem_cons_self) h
+  | x :: a, y :: a', r, r', h, h', hh => by
+    simp only [List.cons_append, List.cons.injEq] at hh
+    rw [hh.1, prefix_unique (fun m => h (List.mem_cons_of_mem x m))
+      (fun m => h' (List.mem_cons_of_mem y m)) hh.2]
+
+/-- The position that `findByte` finds when the bytes from `p` are a line and its LF. -/
+theorem findByte_line (b : Bytes) (p e : UInt64) (hpe : p ≤ e) (he : e.toNat ≤ b.data.size)
+    {l rest : List UInt8} (hl : lf ∉ l) (hs : slice b p.toNat e.toNat = l ++ lf :: rest) :
+    (findByte b 10 p e).toNat = p.toNat + l.length := by
+  obtain ⟨q1, q2, hnot, hsplit⟩ := findByte_slice b 10 lf rfl p e hpe he
+  have q1' := UInt64.le_iff_toNat_le.mp q1
+  have q2' := UInt64.le_iff_toNat_le.mp q2
+  rw [hs] at hsplit
+  by_cases hq : findByte b 10 p e < e
+  · rw [ite_eq_left hq] at hsplit
+    have := prefix_unique hl hnot hsplit
+    rw [this, slice_length (q2'.trans he)]
+    omega
+  · rw [ite_eq_right hq, List.append_nil] at hsplit
+    exact absurd (hsplit ▸ List.mem_append_right l List.mem_cons_self) hnot
+
+theorem text_length_take (L : List (List UInt8)) (k : Nat) (hk : k < L.length) :
+    (text (L.take (k + 1))).length = (text (L.take k)).length + L[k].length + 1 := by
+  rw [List.take_succ, text_append, List.getElem?_eq_getElem hk]
+  simp [text]
+  omega
+
+theorem text_drop (L : List (List UInt8)) (k : Nat) :
+    (text L).drop (text (L.take k)).length = text (L.drop k) := by
+  conv_lhs => rw [← List.take_append_drop k L, text_append]
+  simp
+
+/-- After `m` passes, the loop of `printReport` stands after the LF of line `m`. -/
+theorem header_loop (b : Bytes) (hb : b.data.size < 2 ^ 64) (L : List (List UInt8))
+    (hL : ∀ l ∈ L, lf ∉ l) (hw : bytesOf b = text L) (m : UInt64) (hm : m.toNat ≤ L.length) :
+    (LeanExe.loop m (0 : UInt64) fun _ p => findByte b 10 p b.size + 1).toNat =
+      (text (L.take m.toNat)).length := by
+  have hsz := size_toNat b hb
+  have htext : (text L).length = b.data.size := by rw [← hw]; simp
+  have key := LeanExe.Dialect.loop_induction (n := m) (init := (0 : UInt64))
+    (f := fun _ p => findByte b 10 p b.size + 1)
+    (fun k p => p.toNat = (text (L.take k)).length) (by simp [text])
+    (by
+      intro k p hk hp
+      have hkL : k < L.length := by omega
+      have hle : (text (L.take k)).length + L[k].length + 1 ≤ b.data.size := by
+        rw [← text_length_take L k hkL, ← htext]
+        have := text_append (L.take (k + 1)) (L.drop (k + 1))
+        rw [List.take_append_drop] at this
+        rw [this, List.length_append]
+        omega
+      have hp' : p ≤ b.size := UInt64.le_iff_toNat_le.mpr (by rw [hp, hsz]; omega)
+      have hs : slice b p.toNat b.data.size = L[k] ++ lf :: text (L.drop (k + 1)) := by
+        rw [slice_end, hw, hp, text_drop, List.drop_eq_getElem_cons hkL, text_cons]
+        simp
+      have hf := findByte_line b p b.size hp' (by rw [hsz]) (hL _ (List.getElem_mem hkL)) (by
+        rw [hsz]; exact hs)
+      show (findByte b 10 p b.size + 1).toNat = _
+      rw [UInt64.toNat_add, hf, text_length_take L k hkL, hp]
+      simp
+      omega)
+  exact key
+
+/-! ## The result words -/
+
+theorem getElem!_toArray_eq (l : List UInt64) (i : Nat) : l.toArray[i]! = l.getD i 0 := by
+  rw [getElem!_def, List.getD_eq_getElem?_getD]
+  simp only [List.getElem?_toArray]
+  cases l[i]? <;> rfl
+
+theorem getD_flatMap_block {m : Nat} (f : Round → List Nat) (hf : ∀ x, (f x).length = m) :
+    ∀ (rds : List Round) (r j : Nat) (hr : r < rds.length), j < m →
+      (rds.flatMap f).getD (r * m + j) 0 = (f rds[r]).getD j 0
+  | [], r, j, hr, _ => by simp at hr
+  | x :: rds, r, j, hr, hj => by
+    rw [List.flatMap_cons]
+    cases r with
+    | zero =>
+      simp only [Nat.zero_mul, Nat.zero_add, List.getElem_cons_zero, List.getD_eq_getElem?_getD]
+      rw [List.getElem?_append_left (by rw [hf]; exact hj)]
+    | succ r =>
+      simp only [List.getElem_cons_succ, List.getD_eq_getElem?_getD]
+      rw [List.getElem?_append_right (by rw [hf]; rw [Nat.succ_mul]; omega), hf,
+        show (r + 1) * m + j - m = r * m + j by rw [Nat.succ_mul]; omega]
+      have := getD_flatMap_block f hf rds r j (by simp at hr; omega) hj
+      simpa [List.getD_eq_getElem?_getD] using this
+
+theorem resultWords_toList (n : Nat) (k : Count) :
+    resultWords n k = ([1, k.rounds.length] ++ k.rounds.flatMap (roundWords n) ++
+      [k.winner.getD 0]).map Nat.toUInt64 := rfl
+
+theorem resultWords_rounds (n : Nat) (k : Count) :
+    (resultWords n k).toArray[1]! = UInt64.ofNat k.rounds.length := by
+  rw [getElem!_toArray_eq, resultWords_toList]
+  rfl
+
+theorem flatMap_roundWords_length (n : Nat) (rds : List Round) :
+    (rds.flatMap (roundWords n)).length = rds.length * (n + 9) := by
+  induction rds with
+  | nil => simp
+  | cons x rds ih => simp [List.flatMap_cons, roundWords_length, ih]; ring
+
+theorem resultWords_round (n : Nat) (k : Count) (r j : Nat) (hr : r < k.rounds.length)
+    (hj : j < n + 9) :
+    (resultWords n k).toArray[2 + r * (n + 9) + j]! =
+      UInt64.ofNat ((roundWords n k.rounds[r]).getD j 0) := by
+  have hlen := flatMap_roundWords_length n k.rounds
+  have hlt : r * (n + 9) + j < k.rounds.length * (n + 9) := by
+    have : (r + 1) * (n + 9) ≤ k.rounds.length * (n + 9) := Nat.mul_le_mul_right _ (by omega)
+    rw [Nat.succ_mul] at this
+    omega
+  have h2 : [1, k.rounds.length].length ≤ 2 + r * (n + 9) + j := by
+    simp only [List.length_cons, List.length_nil]; omega
+  have h3 : 2 + r * (n + 9) + j - [1, k.rounds.length].length = r * (n + 9) + j := by
+    simp only [List.length_cons, List.length_nil]; omega
+  rw [getElem!_toArray_eq, resultWords_toList, List.getD_eq_getElem?_getD, List.getElem?_map,
+    List.append_assoc, List.getElem?_append_right h2, h3,
+    List.getElem?_append_left (by rw [hlen]; exact hlt)]
+  have := getD_flatMap_block (roundWords n) (roundWords_length n) k.rounds r j hr hj
+  rw [List.getD_eq_getElem?_getD] at this
+  have hlt' : r * (n + 9) + j < (k.rounds.flatMap (roundWords n)).length := by rw [hlen]; omega
+  rw [List.getElem?_eq_getElem hlt'] at this ⊢
+  simp only [Option.getD_some] at this
+  simp only [Option.map_some, Option.getD_some, this]
+
+theorem resultWords_winner (n : Nat) (k : Count) :
+    (resultWords n k).toArray[2 + k.rounds.length * (n + 9)]! = UInt64.ofNat (k.winner.getD 0) := by
+  have hlen := flatMap_roundWords_length n k.rounds
+  have h2 : ([1, k.rounds.length] ++ k.rounds.flatMap (roundWords n)).length =
+      2 + k.rounds.length * (n + 9) := by
+    simp only [List.length_append, List.length_cons, List.length_nil, hlen]
+  rw [getElem!_toArray_eq, resultWords_toList, List.getD_eq_getElem?_getD, List.getElem?_map,
+    List.getElem?_append_right (Nat.le_of_eq h2), h2, Nat.sub_self]
+  rfl
+
+/-! ## The rounds -/
+
+theorem flatMap_range_zipIdx (L : List Round) (d : Round) (G : Nat → Round → List UInt64) :
+    ((List.range L.length).flatMap fun i => G (i + 1) (L.getD i d)) =
+      (L.zipIdx 1).flatMap fun p => G p.2 p.1 := by
+  induction L using List.reverseRecOn with
+  | nil => rfl
+  | append_singleton L x ih =>
+    rw [List.length_append, List.length_singleton, List.range_succ, List.flatMap_append,
+      List.zipIdx_append, List.flatMap_append]
+    congr 1
+    · rw [← ih]
+      apply List.flatMap_congr
+      intro i hi
+      have hi := List.mem_range.mp hi
+      simp only [List.getD_eq_getElem?_getD, List.getElem?_append_left hi]
+    · simp only [List.getD_eq_getElem?_getD, List.getElem?_append_right (le_refl _), Nat.sub_self]
+      simp [Nat.add_comm]
+
+/-! ## The report -/
+
+theorem text_flatMap {α : Type} (l : List α) (g : α → List (List UInt8)) :
+    text (l.flatMap g) = l.flatMap fun a => text (g a) := by
+  simp [text, List.flatMap_assoc]
+
+/-- The default round, which `List.getD` takes past the end. -/
+def noRound : Round := ⟨⟨[], 0, 0, 0, 0⟩, none⟩
+
+/-- The printer prints the report of a structure that meets the constraints from its file and the
+result words of its count, provided the report has fewer than `2 ^ 64` bytes. -/
+theorem printReport_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) (c : Contest) (hc : c.WellFormed)
+    (hw : bytesOf b = write c) (hlen : (report c).length < 2 ^ 64) :
+    bytesOf (printReport b (UInt64.ofNat c.candidates.length)
+      (resultWords c.candidates.length (countContest c)).toArray) = report c := by
+  have hn : c.candidates.length ≤ 63 := hc.2.2.2.1
+  have hN : c.ballots.length ≤ maxBallots := hc.2.2.2.2.1
+  have hNb : c.ballots.length < 2 ^ 64 := by simp [maxBallots] at hN; omega
+  have hrep : report c = text ([ascii "rcv-report 1", spaced [ascii "rule", ascii ruleIdentifier]] ++
+      headerLines c ++ (((countContest c).rounds.zipIdx 1).flatMap fun p : Round × Nat =>
+        roundLines p.2 p.1) ++ [winnerLine (countContest c).winner]) := rfl
+  have hfacts := count_round_facts (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions)
+  have hwin := count_winner (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions)
+  have hRle := Demos.Rcv.Winner.rounds_le (kindsOf c) c.order
+    (c.ballots.map fun b : Ballot => b.positions)
+  have hkl : (kindsOf c).length = c.candidates.length := by simp [kindsOf]
+  have hcs := Demos.Rcv.Rounds.countedSet_sublist (kindsOf c)
+  have hcsl : (countedSet (kindsOf c)).length ≤ c.candidates.length := by
+    have := hcs.length_le; rw [List.length_range', hkl] at this; exact this
+  have hdef : count (kindsOf c) c.order (c.ballots.map fun b : Ballot => b.positions) =
+      countContest c := rfl
+  rw [hdef, hkl] at hfacts hwin
+  rw [hdef] at hRle
+  -- The header lines
+  set L := (ascii "rcv-ballots 1" :: headerLines c) ++ c.ballots.map ballotLine with hL
+  have hwL : bytesOf b = text L := by rw [hw]; rfl
+  have hLn : ∀ l ∈ L, lf ∉ l := lines_no_lf hc
+  have hhl : (headerLines c).length = 5 + c.candidates.length := by
+    simp only [headerLines, List.length_append, List.length_cons, List.length_nil,
+      List.length_map, List.length_zipIdx]
+    omega
+  have hLlen : 6 + c.candidates.length ≤ L.length := by simp [hL, hhl]; omega
+  generalize hnn : c.candidates.length = n at *
+  have hnN : (UInt64.ofNat n).toNat = n := ofNat_toNat_small (by omega)
+  have h6 : (6 + UInt64.ofNat n).toNat = 6 + n := by
+    rw [UInt64.toNat_add, hnN]; simp; omega
+  have hh := header_loop b hb L hLn hwL (6 + UInt64.ofNat n) (by rw [h6]; exact hLlen)
+  rw [h6] at hh
+  have htake : L.take (6 + n) = ascii "rcv-ballots 1" :: headerLines c := by
+    rw [hL, List.cons_append, show 6 + n = (5 + n) + 1 by omega, List.take_succ_cons,
+      List.take_append_of_le_length (by omega), List.take_of_length_le (by omega)]
+  rw [htake] at hh
+  have hsize := size_toNat b hb
+  have htextL : (text L).length = b.data.size := by rw [← hwL]; simp
+  have hl1 : (ascii "rcv-ballots 1" ++ [lf]).length = 14 := rfl
+  have hfile : text L = (ascii "rcv-ballots 1" ++ [lf]) ++
+      (text (headerLines c) ++ text (c.ballots.map ballotLine)) := by
+    rw [hL, List.cons_append, text_cons, text_append, List.append_assoc]
+  have h14 : (text (ascii "rcv-ballots 1" :: headerLines c)).length =
+      14 + (text (headerLines c)).length := by
+    rw [text_cons, List.length_append, hl1]
+  generalize hH : LeanExe.loop (6 + UInt64.ofNat n) (0 : UInt64)
+      (fun _ p => findByte b 10 p b.size + 1) = H at hh
+  have hl1' : (ascii "rcv-ballots 1").length + [lf].length = 14 := rfl
+  have hHle : H.toNat ≤ b.data.size := by
+    rw [hh, h14, ← htextL, hfile, List.length_append, List.length_append, List.length_append]
+    omega
+  have h14le : (14 : UInt64) ≤ H := by
+    rw [UInt64.le_iff_toNat_le, hh, h14]; simp
+  have hslice : slice b 14 H.toNat = text (headerLines c) := by
+    rw [hh, h14, slice, hwL, hfile, List.drop_left' hl1, Nat.add_sub_cancel_left,
+      List.take_left' rfl]
+  -- The program
+  unfold printReport
+  simp only []
+  rw [hH]
+  rw [show ((1 : UInt64).toNat) = 1 from rfl, resultWords_rounds]
+  have ho1 := pushRange_toList (pushHead #[]) b hb 14 H h14le hHle
+  rw [show (14 : UInt64).toNat = 14 from rfl, hslice, pushHead_toList] at ho1
+  generalize pushRange (pushHead #[]) b 14 H = o1 at ho1
+  -- The rounds
+  set R := (countContest c).rounds.length with hR
+  have hR64 : R ≤ 64 := by have := hRle; omega
+  have hRN : (UInt64.ofNat R).toNat = R := ofNat_toNat_small (by omega)
+  have hloop := loop_append' (UInt64.ofNat R) o1
+    (fun r o => pushRoundLines o (resultWords n (countContest c)).toArray (UInt64.ofNat n)
+      (2 + r * (UInt64.ofNat n + 9)) (r + 1))
+    (fun i => (text (roundLines (i + 1) ((countContest c).rounds.getD i noRound))).map
+      UInt8.toUInt64) (by
+      intro i hi o
+      rw [hRN] at hi
+      have hiN : (UInt64.ofNat i).toNat = i := ofNat_toNat_small (by omega)
+      have hprod : i * (n + 9) ≤ 64 * 72 := Nat.mul_le_mul (by omega) (by omega)
+      have hbase : (2 + UInt64.ofNat i * (UInt64.ofNat n + 9) : UInt64) =
+          UInt64.ofNat (2 + i * (n + 9)) := by
+        apply UInt64.toNat_inj.mp
+        rw [ofNat_toNat_small (by omega), UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_add,
+          hiN, hnN]
+        simp only [UInt64.reduceToNat]
+        rw [Nat.mod_eq_of_lt (show n + 9 < 2 ^ 64 by omega),
+          Nat.mod_eq_of_lt (show i * (n + 9) < 2 ^ 64 by omega),
+          Nat.mod_eq_of_lt (show 2 + i * (n + 9) < 2 ^ 64 by omega)]
+      have hr1 : (UInt64.ofNat i + 1 : UInt64) = UInt64.ofNat (i + 1) := by
+        apply UInt64.toNat_inj.mp
+        rw [ofNat_toNat_small (by omega), UInt64.toNat_add, hiN]
+        simp only [UInt64.reduceToNat]
+        omega
+      have hmem : (countContest c).rounds[i] ∈ (countContest c).rounds := List.getElem_mem hi
+      obtain ⟨S, hvotes, hS, helim, hT, hbl, hun, hov, hex⟩ := hfacts _ hmem
+      rw [hbase, hr1, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
+      simp only [List.length_map] at hT hbl hun hov hex
+      exact pushRoundLines_toList o _ hn _ S _ hvotes hS
+        (fun j _ => Nat.lt_of_le_of_lt List.count_le_length (by simp; omega))
+        ⟨by omega, by omega, by omega, by omega, by omega⟩ helim (by omega) (by omega)
+        (fun j hj => resultWords_round n (countContest c) i j hi hj))
+  rw [hRN, flatMap_range_zipIdx _ noRound (fun r rd => (text (roundLines r rd)).map
+    UInt8.toUInt64)] at hloop
+  generalize LeanExe.loop (UInt64.ofNat R) o1 _ = o2 at hloop
+  -- The winner
+  have hidx : (2 + UInt64.ofNat R * (UInt64.ofNat n + 9) : UInt64).toNat = 2 + R * (n + 9) := by
+    have hprod : R * (n + 9) ≤ 64 * 72 := Nat.mul_le_mul (by omega) (by omega)
+    rw [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_add, hRN, hnN]
+    simp only [UInt64.reduceToNat]
+    rw [Nat.mod_eq_of_lt (show n + 9 < 2 ^ 64 by omega),
+      Nat.mod_eq_of_lt (show R * (n + 9) < 2 ^ 64 by omega),
+      Nat.mod_eq_of_lt (show 2 + R * (n + 9) < 2 ^ 64 by omega)]
+  rw [hidx, resultWords_winner]
+  have hfinal : ∀ o : Array UInt64, o.toList = (report c).map UInt8.toUInt64 →
+      bytesOf (toBytes o) = report c := by
+    intro o ho
+    have hs : o.size < 2 ^ 64 := by
+      have := congrArg List.length ho
+      simp at this
+      omega
+    rw [toBytes_toList o hs, ho, map_toUInt8_toUInt64]
+  apply hfinal
+  rw [hrep, text_append, text_append, text_append, text_flatMap]
+  cases hwk : (countContest c).winner with
+  | none =>
+    simp only [Option.getD_none]
+    rw [ite_eq_left (by rfl), pushWord_toList, pushWord_toList, hloop, ho1]
+    have hw0 : wordBytes 0x6e2072656e6e6977 (8 : UInt64).toNat ++
+        wordBytes 0xa656e6f (4 : UInt64).toNat = (text [winnerLine none]).map UInt8.toUInt64 := by
+      decide
+    simp only [List.map_append, List.append_assoc, ← hw0, List.map_flatMap]
+    simp
+  | some i =>
+    simp only [Option.getD_some]
+    obtain ⟨hi1, hin⟩ := hwin i hwk
+    have hiN : (UInt64.ofNat i).toNat = i := ofNat_toNat_small (by omega)
+    rw [ite_eq_right (by
+      intro h
+      have := congrArg UInt64.toNat (beq_iff_eq.mp h)
+      rw [hiN] at this
+      simp at this
+      omega), Array.toList_push, pushNumber_toList, pushWord_toList, hloop, ho1, hiN]
+    have hw7 : wordBytes 0x2072656e6e6977 (7 : UInt64).toNat =
+        (ascii "winner" ++ [sp]).map UInt8.toUInt64 := by
+      decide
+    rw [hw7]
+    simp only [List.map_append, List.append_assoc, winnerLine, text, spaced_two, List.map_flatMap]
+    simp [sp]
 
 end Demos.Rcv.PrintProgram
