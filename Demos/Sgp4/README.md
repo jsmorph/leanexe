@@ -2,6 +2,24 @@
 
 SGP4 computes the position and the velocity of an Earth satellite from an element set of the public catalog.  This demo implements its near-Earth part, for orbits with a period below 225 minutes, after the code of Vallado, Crawford, Hujsak, and Kelso (AIAA 2006-6753) with the WGS-72 constants.  It holds a model over the real numbers, a binary64 program, and an enclosing program that returns an interval for each coordinate with a proof that the interval contains the model's value.  [The requirements](requirements.md) define every quantity, and [the review](review.md) records the decisions and each difference from that code.
 
+## Example
+
+The element set below is the first of the verification file of the Vallado code.  At 360 minutes from its epoch, `Tle.propagate` returns status 0 and the intervals of the table, with the endpoints rounded outward to 12 decimals, and the reference code printed the values of the last column.  Each printed value lies within half a unit of its last digit of its interval.
+
+```
+1 00005U 58002B   00179.78495062  .00000023  00000-0  28098-4 0  4753
+2 00005  34.2682 348.7242 1859667 331.7664  19.3264 10.82419157413667
+```
+
+| Coordinate | Lower endpoint | Upper endpoint | Reference code |
+|---|---|---|---|
+| `x` (km) | −7154.031202016514 | −7154.031202013945 | −7154.03120202 |
+| `y` (km) | −3783.176825038079 | −3783.176825035897 | −3783.17682504 |
+| `z` (km) | −3536.194122943021 | −3536.194122941825 | −3536.19412294 |
+| `vx` (km/s) | 4.741887408995 | 4.741887408998 | 4.741887409 |
+| `vy` (km/s) | −4.151817765375 | −4.151817765372 | −4.151817765 |
+| `vz` (km/s) | −2.093935424908 | −2.093935424906 | −2.093935425 |
+
 ## Parts
 
 | Part | File | Content |
