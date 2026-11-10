@@ -1,0 +1,550 @@
+{
+  "sources": {
+    "maine-sos": {
+      "publisher": "Maine Department of the Secretary of State, Bureau of Corporations, Elections and Commissions",
+      "index": "https://www.maine.gov/sos/elections-voting/election-results-data",
+      "index_2024": "https://www.maine.gov/sos/elections-voting/election-results-data/election-results-2024",
+      "statute": "21-A M.R.S. §723-A(5-C) requires the posting of the complete cast vote record"
+    }
+  },
+  "contests": [
+    {
+      "key": "2026-06-09/DEM-CG2",
+      "date": "2026-06-09",
+      "office": "Representative to Congress, District 2, Democratic primary",
+      "report": {
+        "source": "maine-sos",
+        "path": "2026-06-09/reports/CG2_Democratic_RCV_Summary_Report.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/CG2%20Democratic%20RCV%20Summary%20Report.pdf",
+        "size": 36422,
+        "sha256": "d308d461baf07b2ca4ebaab087eea30ad118710e19a67c3c9c54cb8fcad2ad38"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/Representative_to_Congress_District_2_-_Democratic.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Representative%20to%20Congress%20District%202%20-%20Democratic.xlsx",
+        "size": 42349,
+        "sha256": "6f0df9d41a38bff5180ef9bbee6b048f87092aada34343b6ff474b9ba6b2dea5"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export-1",
+          "title": "Jun26 DEM CG2 Export 1",
+          "path": "2026-06-09/cvr/Jun26_DEM_CG2_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20CG2%2020260618.xlsx",
+          "size": 3033802,
+          "sha256": "ff64b9ac51f163abc624d3643b4be3558877d7246374900041b8fa8a38e2ab1c"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-2",
+          "title": "Jun26 DEM CG2 Export 2",
+          "path": "2026-06-09/cvr/DEM_CG2_Additional_CVR_Export_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/DEM%20CG2%20Additional%20CVR%20Export%2020260618.xlsx",
+          "size": 175461,
+          "sha256": "5b9401efed53cbdc639a037f7c0080c8a0398673d516cf4c7977a3e590f86326"
+        },
+        {
+          "source": "maine-sos",
+          "label": "auburn",
+          "title": "Jun26 DEM CG2 Export Auburn",
+          "path": "2026-06-09/cvr/Jun26_DEM_CG2_Auburn_2060616.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20CG2%20Auburn%202060616.xlsx",
+          "size": 95409,
+          "sha256": "6cb36cb62d093e6b7a52abd9eeb78330a1326daab3ae089ed4fc51e0deb49695"
+        },
+        {
+          "source": "maine-sos",
+          "label": "vienna",
+          "title": "Jun26 DEM CG2 Export Vienna",
+          "path": "2026-06-09/cvr/DEM_CG2_Vienna_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/DEM%20CG2%20Vienna%2020260618.xlsx",
+          "size": 7231,
+          "sha256": "85c160dde4645d3d3fef4e3f539230c9e4cce616722ac57dcb8932437f695d06"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-1",
+          "title": "Jun26 DEM CG2 Manual Auxiliary 1",
+          "path": "2026-06-09/cvr/Jun26_DEM_CG2_AUX_MANUAL1_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20CG2%20AUX%20MANUAL1%2020260617.xlsx",
+          "size": 11493,
+          "sha256": "b3d97c4b7d8090de0c488acfc94e3644baa9c1c6c04d7fdbc96248245dfe4a41"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-2",
+          "title": "Jun26 DEM CG2 Manual Auxiliary 2",
+          "path": "2026-06-09/cvr/Jun26_DEM_CG2_AUX_MANUAL2_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20CG2%20AUX%20MANUAL2%2020260617.xlsx",
+          "size": 12571,
+          "sha256": "31aa5469e0017e4e244088e317abaea44a01e109ef001944f98e99eca079c2bd"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-3",
+          "title": "Jun26 DEM CG2 Manual Auxiliary 3",
+          "path": "2026-06-09/cvr/Jun26_DEM_CG2_AUX_MANUAL3_Updated_20260623.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20CG2%20AUX%20MANUAL3%20Updated%2020260623.xlsx",
+          "size": 11418,
+          "sha256": "4d19f9ac2f9e0480f03fb0dbe3545f7871d98d58fc1aea9476399f4ee742bf4a"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Jun26 UOCAVA",
+          "path": "2026-06-09/cvr/Representative_to_Congress_District_2_(D)_UOCAVA.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Representative%20to%20Congress%20District%202%20%28D%29%20UOCAVA.xlsx",
+          "size": 24973,
+          "sha256": "2d120753752f2ee69bcf2cbe5f79076abb7d81a89455586129c162cb57a57011"
+        }
+      ]
+    },
+    {
+      "key": "2026-06-09/DEM-GOV",
+      "date": "2026-06-09",
+      "office": "Governor, Democratic primary",
+      "report": {
+        "source": "maine-sos",
+        "path": "2026-06-09/reports/GOV_Democratic_RCV_Summary_Report.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/GOV%20Democratic%20RCV%20Summary%20Report.pdf",
+        "size": 37942,
+        "sha256": "128bdcce59ecb176f09262a4c80be40a3860eeb550e9734a897f5df0c75971ac"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/Governor_-_Democratic.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Governor%20-%20Democratic.xlsx",
+        "size": 51645,
+        "sha256": "334a2dbff579f159ffdd44437964e086499d679f061b8ae00cbd750c86552b57"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export-1",
+          "title": "Jun26 DEM Gov Export 1",
+          "path": "2026-06-09/cvr/Jun26_DEM_GOV_20260618_-_1.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20GOV%2020260618%20-%201.xlsx",
+          "size": 3689896,
+          "sha256": "a9083ccc6e6b39ff11c17094d6507336e5ec585da7cc04038b20967a53a27386"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-2",
+          "title": "Jun26 DEM Gov Export 2",
+          "path": "2026-06-09/cvr/Jun26_DEM_GOV_20260618_-_2.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20GOV%2020260618%20-%202.xlsx",
+          "size": 329921,
+          "sha256": "73cde8719c70f01c15391c3549bcbab65ee562da41337370b6cc1eac03945e47"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-3",
+          "title": "Jun26 DEM Gov Export 3",
+          "path": "2026-06-09/cvr/Jun26_DEM_GOV_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20GOV%2020260618.xlsx",
+          "size": 4456641,
+          "sha256": "f07a0488f8fc08e53ff2e1d79ade49078fc3200e70fefb93feba2f04aaf0a16f"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-4",
+          "title": "Jun26 DEM Gov Export 4",
+          "path": "2026-06-09/cvr/DEM_Gov_Additional_CVR_Export_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/DEM%20Gov%20Additional%20CVR%20Export%2020260618.xlsx",
+          "size": 337241,
+          "sha256": "1cf315fd3fde17c231efa553bfd6cb8207c2d88db29bf14e5d3f4479eeb4ad98"
+        },
+        {
+          "source": "maine-sos",
+          "label": "auburn",
+          "title": "Jun26 DEM Gov Export Auburn",
+          "path": "2026-06-09/cvr/Jun26_DEM_Gov_Auburn_20260616.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20Gov%20Auburn%2020260616.xlsx",
+          "size": 106043,
+          "sha256": "6f7fd030123ae0ddd872d9fbc007b2c5c25a7bb583678abf9f67a0b97a264215"
+        },
+        {
+          "source": "maine-sos",
+          "label": "vienna",
+          "title": "Jun26 DEM Gov Export Vienna",
+          "path": "2026-06-09/cvr/DEM_Gov_Vienna_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/DEM%20Gov%20Vienna%2020260618.xlsx",
+          "size": 7683,
+          "sha256": "820203b3d1ca0b73bd24166c8fbd1946d04015b4734f3a1f368342db5422d433"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-1",
+          "title": "Jun26 DEM Gov Manual Auxiliary 1",
+          "path": "2026-06-09/cvr/Jun26_DEM_Gov_AUX_MANUAL1_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20Gov%20AUX%20MANUAL1%2020260617.xlsx",
+          "size": 20460,
+          "sha256": "1a43f49a442b51b18118a011e9afb4fe59c3448538c270b0b6bedb26e91d7780"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-2",
+          "title": "Jun26 DEM Gov Manual Auxiliary 2",
+          "path": "2026-06-09/cvr/Jun26_DEM_Gov_AUX_MANUAL2_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20Gov%20AUX%20MANUAL2%2020260617.xlsx",
+          "size": 18605,
+          "sha256": "817faebbf351a196afb12581bee57ac2772dcdf308f534d7c787d51c326a0406"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-3",
+          "title": "Jun26 DEM Gov Manual Auxiliary 3",
+          "path": "2026-06-09/cvr/Jun26_DEM_Gov_AUX_MANUAL3_Updated_20260623.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20DEM%20Gov%20AUX%20MANUAL3%20Updated%2020260623.xlsx",
+          "size": 11367,
+          "sha256": "cf187f44986090d309d5857a784b56c57dff8417eb3391af6ff56cf45aaf1bec"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Jun26 DEM Gov UOCAVA",
+          "path": "2026-06-09/cvr/Governor_(D)_UOCAVA.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Governor%20%28D%29%20UOCAVA.xlsx",
+          "size": 48492,
+          "sha256": "fa203bd1acc6d16cd078280f8ac4c375f31fdc526939ae89cff1dbca3c16b8e1"
+        }
+      ]
+    },
+    {
+      "key": "2026-06-09/REP-GOV",
+      "date": "2026-06-09",
+      "office": "Governor, Republican primary",
+      "report": {
+        "source": "maine-sos",
+        "path": "2026-06-09/reports/GOV_Republican_RCV_Summary_Reportxlsx.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/GOV%20Republican%20RCV%20Summary%20Reportxlsx.pdf",
+        "size": 79611,
+        "sha256": "386d8c0cc4730accfb15ccd7d22f437ea3ac48819d9fada5aef407782f713283"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/Governor_-_Republican.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Governor%20-%20Republican.xlsx",
+        "size": 59926,
+        "sha256": "20fdc20698a28301b9c14daf78e7073dd566a6d777206294ce1e0c783dbe2df6"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export-1",
+          "title": "Jun26 REP Gov Export 1",
+          "path": "2026-06-09/cvr/Jun26_REP_GOV_20260618_-_1.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20GOV%2020260618%20-%201.xlsx",
+          "size": 1336529,
+          "sha256": "a6f90d39fe33769dbb492e0499f814af8a3fd2deb8824845390458315babfd1e"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-2",
+          "title": "Jun26 REP Gov Export 2",
+          "path": "2026-06-09/cvr/Jun26_REP_GOV_20260618_2.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20GOV%2020260618_2.xlsx",
+          "size": 5205971,
+          "sha256": "0a51e3fd037a6351989abf853db16e7d01e067447df1a8338615c31c46e2b691"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-3",
+          "title": "Jun26 REP Gov Export 3",
+          "path": "2026-06-09/cvr/REP_Gov_Additional_CVR_Export_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20Gov%20Additional%20CVR%20Export%2020260618.xlsx",
+          "size": 268799,
+          "sha256": "d5ebcd6e56e3d4d75d6e07d59cd96e8d09269debfeb3d08998096d3da8f2a1df"
+        },
+        {
+          "source": "maine-sos",
+          "label": "auburn",
+          "title": "Jun26 REP Gov Export Auburn",
+          "path": "2026-06-09/cvr/Jun26_REP_Gov_Auburn_20260616.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20Gov%20Auburn%2020260616.xlsx",
+          "size": 74134,
+          "sha256": "4ab44078c8d5bd85068ef2a45eef7cea3372627e577c4a3acd7f79ca72228cde"
+        },
+        {
+          "source": "maine-sos",
+          "label": "vienna",
+          "title": "Jun26 REP Gov Export Vienna",
+          "path": "2026-06-09/cvr/REP_Gov_Vienna_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20Gov%20Vienna%2020260618.xlsx",
+          "size": 6645,
+          "sha256": "5e89cd536dffa67605270e854d64ab63bb33474736f405e05afa0731fbd215b7"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-1",
+          "title": "Jun26 REP Gov Manual Auxiliary 1",
+          "path": "2026-06-09/cvr/Jun26_REP_Gov_AUX1_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20Gov%20AUX1%2020260617.xlsx",
+          "size": 15667,
+          "sha256": "da92c51e7bff143041a256bf4c8ff23a7badca6fd3008a9f961d5c044c60773c"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-2",
+          "title": "Jun26 REP Gov Manual Auxiliary 2",
+          "path": "2026-06-09/cvr/Jun26_REP_Gov_AUX2_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20Gov%20AUX2%2020260617.xlsx",
+          "size": 15339,
+          "sha256": "0a24cb9bd15a11a03b823d6ce55bd36f4ec29fc102d62b34a755159874bf9fb0"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual-3",
+          "title": "Jun26 REP Gov Manual Auxiliary 3",
+          "path": "2026-06-09/cvr/Jun26_REP_Gov_AUX3_MANUAL_Updated_20260623.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20Gov%20AUX3%20MANUAL%20Updated%2020260623.xlsx",
+          "size": 9552,
+          "sha256": "d04d10ec68b5659915273626935119eb3224e6e10810ba86a5c43943037945fc"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Jun26 REP Gov UOCAVA",
+          "path": "2026-06-09/cvr/Governor_(R)_UOCAVA.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Governor%20%28R%29%20UOCAVA.xlsx",
+          "size": 13283,
+          "sha256": "e04b5aef0f5d26121049e1ace535b3539fcd1a2e0478b25c9d5a05f884d09a6a"
+        }
+      ]
+    },
+    {
+      "key": "2026-06-09/REP-SS4",
+      "date": "2026-06-09",
+      "office": "State Senator, District 4, Republican primary",
+      "report": {
+        "source": "maine-sos",
+        "path": "2026-06-09/reports/REP_SS4_RCV_Summary_Report.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20SS4%20RCV%20Summary%20Report.pdf",
+        "size": 36115,
+        "sha256": "dcb78a36c68754346cd4d0a4c71364ba191cc71d5cd164329bd46246063b25fb"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/Senate_District_4_-_Republican.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Senate%20District%204%20-%20Republican.xlsx",
+        "size": 17655,
+        "sha256": "e05f439b9ddfda12e4ee8ab4113e1b264554a40b612e571b4d00be73384d29cb"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export",
+          "title": "Jun26 REP SS4 Export",
+          "path": "2026-06-09/cvr/Jun26_REP_SS4_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20SS4%2020260618.xlsx",
+          "size": 204849,
+          "sha256": "07ab4da79bed1c47e0b3f90738d9ff1c436558cade309ca46c8bfba2e86cf5f8"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual",
+          "title": "Jun26 REP SS4 Manual Auxiliary",
+          "path": "2026-06-09/cvr/Jun26_REP_SS4_AUX_MANUAL_20260617.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20SS4%20AUX%20MANUAL%2020260617.xlsx",
+          "size": 8652,
+          "sha256": "5346818bc9110fce7d1b0a9736df2adc3a35da452547797e10896b9ba161bb5d"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Jun26 REP SS4 UOCAVA",
+          "path": "2026-06-09/cvr/State_Senator_District_4_(R)_UOCAVA.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/State%20Senator%20District%204%20%28R%29%20UOCAVA.xlsx",
+          "size": 9736,
+          "sha256": "b2232d3a1c4b3befd1ad22f53eadface123e31800207ec0dd0a73c3831ec69c5"
+        }
+      ]
+    },
+    {
+      "key": "2026-06-09/REP-SR58",
+      "date": "2026-06-09",
+      "office": "Representative to the Legislature, District 58, Republican primary",
+      "report": {
+        "source": "maine-sos",
+        "path": "2026-06-09/reports/REP_SR58_RCV_Summary_Report.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20SR58%20RCV%20Summary%20Report.pdf",
+        "size": 185055,
+        "sha256": "20a67b79c84f413f5f925c327ebf36728b3065dc5719abf6496d20fcefa5c26f"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/House_District_58_-_Republican.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/House%20District%2058%20-%20Republican.xlsx",
+        "size": 13329,
+        "sha256": "f8bea9cb22cead400b9c2b5b4a5ec2b5db1b2a6c55e72e01c842ef64c7ab6fbe"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export-1",
+          "title": "Jun26 REP SR58 Export 1",
+          "path": "2026-06-09/cvr/Jun26_REP_SR58_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20SR58%2020260618.xlsx",
+          "size": 32404,
+          "sha256": "f3331eb6215f99121ad1b4d00180d91c7dd3ea44fbc972df0ccd52fc12122e08"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-2",
+          "title": "Jun26 REP SR58 Export 2",
+          "path": "2026-06-09/cvr/REP_SR58_Additional_CVR_Export_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20SR58%20Additional%20CVR%20Export%2020260618.xlsx",
+          "size": 12974,
+          "sha256": "61a01ae227fe59ebb6764d56bc065452454f12d08c75e1d7afcf759717ec809d"
+        },
+        {
+          "source": "maine-sos",
+          "label": "vienna",
+          "title": "Jun26 REP SR58 Vienna",
+          "path": "2026-06-09/cvr/REP_SR58_Vienna_20260618.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/REP%20SR58%20Vienna%2020260618.xlsx",
+          "size": 5631,
+          "sha256": "736375cb5c0a947fec5c276ba452c092cbfc011c959762d7ec09dd7d888fea4f"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual",
+          "title": "Jun26 REP SR58 Manual Auxiliary",
+          "path": "2026-06-09/cvr/Jun26_REP_SR58_AUX1.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Jun26%20REP%20SR58%20AUX1.xlsx",
+          "size": 8181,
+          "sha256": "c6ceefbbe10a5c95077a5c47c5b0ee0359a17932c2feda427177f6b205b25589"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Jun26 REP SR58 UOCAVA",
+          "path": "2026-06-09/cvr/Representative_to_the_Legislature_District_58_(R)_UOCAVA.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Representative%20to%20the%20Legislature%20District%2058%20%28R%29%20UOCAVA.xlsx",
+          "size": 9590,
+          "sha256": "88525bd87e5a743a0de5e284a470268685be64a1dc1c8540d366d931f02c751c"
+        }
+      ]
+    },
+    {
+      "key": "2024-11-05/CG2",
+      "date": "2024-11-05",
+      "office": "Representative to Congress, District 2, general election",
+      "report": {
+        "source": "maine-sos",
+        "scanned": true,
+        "path": "2024-11-05/reports/Nov24-20RCV-20CG2-20Summary-20Report.pdf",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/content/assets/Nov24-20RCV-20CG2-20Summary-20Report.pdf",
+        "size": 27850,
+        "sha256": "2c57aa91d03a1be78f5458a654af482cda670ffbc239d83081529a19bfb0f4e9"
+      },
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2024-11-05/first-choice/Nov24-20CG2-201st-20Choices.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/content/assets/Nov24-20CG2-201st-20Choices.xlsx",
+        "size": 41556,
+        "sha256": "f3d3972d23e4be71b411da3fc9394691c523478dc27df17e85bca0fad9689fa0"
+      },
+      "cvr": [
+        {
+          "source": "maine-sos",
+          "label": "export-1",
+          "title": "Rep. to Congress District 2 (#1)",
+          "path": "2024-11-05/cvr/Nov24_CVR_Export_20241115_-_1.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Nov24%20CVR%20Export%2020241115%20-%201.xlsx",
+          "size": 2847362,
+          "sha256": "62f3e7116f89553db38c54bf353d3b41912f359686f6c2bcd39cb1898c47abdd"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-2",
+          "title": "Rep. to Congress District 2 (#2)",
+          "path": "2024-11-05/cvr/Nov24_CVR_Export_20241115_-_2.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Nov24%20CVR%20Export%2020241115%20-%202.xlsx",
+          "size": 2908787,
+          "sha256": "b4d533ebcb985ddd276ab8a97d69efcf8c4c93e377b479dce7bfc884eac2c1de"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-3",
+          "title": "Rep. to Congress District 2 (#3)",
+          "path": "2024-11-05/cvr/Nov24_CVR_Export_20241115_-_3.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Nov24%20CVR%20Export%2020241115%20-%203.xlsx",
+          "size": 2804994,
+          "sha256": "147b1ca3620e88cb18831a3e9b60b1be156a9cddd2ad0d4ea302e36f43a7e7ae"
+        },
+        {
+          "source": "maine-sos",
+          "label": "export-4",
+          "title": "Rep. to Congress District 2 (#4)",
+          "path": "2024-11-05/cvr/Nov24_CVR_Export_20241115_-_4.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Nov24%20CVR%20Export%2020241115%20-%204.xlsx",
+          "size": 2899154,
+          "sha256": "8cca7708d2afac2a08949380fced080292927de8d7d258ca8064785b99e95203"
+        },
+        {
+          "source": "maine-sos",
+          "label": "uocava",
+          "title": "Rep. to Congress District 2 (#5)",
+          "path": "2024-11-05/cvr/UOCAVA-205-2020241115-20Final.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/content/assets/UOCAVA-205-2020241115-20Final.xlsx",
+          "size": 98664,
+          "sha256": "35e71938df989346df5dd8899c2a31d1f24a56e4304a131ec48925eebe2c5c0c"
+        },
+        {
+          "source": "maine-sos",
+          "label": "manual",
+          "title": "Rep. to Congress District 2 (#6)",
+          "path": "2024-11-05/cvr/CD-202-20Aux-20Master-206-2020242215-20Final.xlsx",
+          "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/content/assets/CD-202-20Aux-20Master-206-2020242215-20Final.xlsx",
+          "size": 60431,
+          "sha256": "6f2cea48e701d4f652f6af3f2b875c7187e6c8729f16a441cceec9ef050d4f0e"
+        }
+      ]
+    },
+    {
+      "key": "2026-06-09/DEM-US",
+      "date": "2026-06-09",
+      "office": "United States Senator, Democratic primary",
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/US_Senate_DEM_-_FINAL.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/US%20Senate%20DEM%20-%20FINAL.xlsx",
+        "size": 44089,
+        "sha256": "4a0589f56c18e9ef8d54aab13d673a4856c713ca81a277ad6412159fa9091a5d"
+      }
+    },
+    {
+      "key": "2026-06-09/DEM-SR23",
+      "date": "2026-06-09",
+      "office": "Representative to the Legislature, District 23, Democratic primary",
+      "first_choice": {
+        "source": "maine-sos",
+        "path": "2026-06-09/first-choice/Rep_to_the_Legislature_DEM_-_FINAL.xlsx",
+        "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/Rep%20to%20the%20Legislature%20DEM%20-%20FINAL.xlsx",
+        "size": 79079,
+        "sha256": "15a70f082083887be64fa8609c3cc03b58a6034418d9c04612562d3d1b9c6916"
+      }
+    }
+  ],
+  "documents": [
+    {
+      "source": "maine-sos",
+      "title": "2026 Primary Candidate List, posted 2026-03-16",
+      "path": "2026-06-09/candidates/2026_Primary_Candidate_List_posting_FINAL_3.16.26.xlsx",
+      "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/2026%20Primary%20Candidate%20List%20posting%20FINAL%203.16.26.xlsx",
+      "size": 47633,
+      "sha256": "67219522bb035d1c5942cf6df64dbd21610420989e39bbf3f7b8529fcece926a"
+    },
+    {
+      "source": "maine-sos",
+      "title": "Candidate Withdrawals and Replacement Candidate Nominations for the June 9, 2026 State Primary Election, as of May 22, 2026",
+      "path": "2026-06-09/candidates/2026_PrePrimary_Withdrawal_List_5_22_2026.pdf",
+      "url": "https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/2026%20PrePrimary%20Withdrawal%20List%205%2022%202026.pdf",
+      "size": 117129,
+      "sha256": "a736aef26fdf81880cc7d37c5745f1dc308b707bedd5f2ae47c7333c8421781a"
+    }
+  ]
+}
