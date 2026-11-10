@@ -190,4 +190,238 @@ theorem readHead_spec (b : Bytes) (hb : b.data.size < 2 ^ 64) :
   have hn := bounded_le hp4
   exact ⟨_, next_le_size hl4, rfl, hk.1, hk.2, hn.1, hn.2, rfl⟩
 
+theorem takeLine_error {j : Nat} {r : Role} {ps : List (List UInt8)} {e : Nat × Role}
+    (h : takeLine j r ps = .error e) : e = (j, r) := by
+  unfold takeLine at h
+  split at h
+  · simp at h
+  · cases h; rfl
+
+theorem readLine_error_role {α : Type} {j : Nat} {r : Role} {parse : List UInt8 → Option α}
+    {ps : List (List UInt8)} {e : Nat × Role} (h : readLine j r parse ps = .error e) : e.2 = r := by
+  unfold readLine at h
+  split at h
+  · split at h
+    · simp at h
+    · cases h; rfl
+  · rename_i e' he'
+    cases h
+    rw [takeLine_error he']
+
+theorem readCandidates_error_role {i count : Nat} {ps : List (List UInt8)} {e : Nat × Role}
+    (h : readCandidates i count ps = .error e) : e.2 = .candidate := by
+  induction count generalizing i ps with
+  | zero => simp [readCandidates] at h
+  | succ count ih =>
+    unfold readCandidates at h
+    split at h
+    · split at h
+      · simp at h
+      · rename_i e' h2
+        cases h
+        exact ih h2
+    · rename_i e' h1
+      cases h
+      exact readLine_error_role h1
+
+theorem readBallots_error_role {k n j count : Nat} {acc : List Ballot} {ps : List (List UInt8)}
+    {e : Nat × Role} (h : readBallots k n j count acc ps = .error e) : e.2 = .ballot := by
+  induction count generalizing j acc ps with
+  | zero => simp [readBallots] at h
+  | succ count ih =>
+    unfold readBallots at h
+    split at h
+    · exact ih h
+    · rename_i e' h1
+      cases h
+      exact readLine_error_role h1
+
+theorem lit_add (a : Nat) (ha : a < 2 ^ 64) (n : Nat) (h : a + n < 2 ^ 64) :
+    (UInt64.ofNat a + UInt64.ofNat n) = UInt64.ofNat (a + n) := by
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_add, ofNat_toNat_small ha, ofNat_toNat_small (by omega), ofNat_toNat_small h,
+    Nat.mod_eq_of_lt h]
+
+theorem word_add_ofNat (a : UInt64) (n : Nat) (h : a.toNat + n < 2 ^ 64) :
+    a + UInt64.ofNat n = UInt64.ofNat (a.toNat + n) := by
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_add, ofNat_toNat_small (by omega), ofNat_toNat_small h, Nat.mod_eq_of_lt h]
+
+theorem array3_toList (a b c : UInt64) : (#[a, b, c] : Array UInt64).toList = [a, b, c] := rfl
+
+/-- The reader program returns the words of the specification's result. -/
+theorem readContest_eq (b : Bytes) (hb : b.data.size < 2 ^ 64) :
+    (readContest b).toList = readResult (bytesOf b) := by
+  have hsz := size_toNat b hb
+  have hbytes : (bytesOf b).splitOn lf = piecesFrom b 0 := by
+    unfold piecesFrom
+    rw [UInt64.toNat_zero, slice_end, List.drop_zero]
+  unfold readResult Spec.read
+  rw [hbytes, readLines_split]
+  have hh := readHead_spec b hb
+  unfold readContest
+  generalize readHead b = h at hh ⊢
+  cases hs : headSpec (piecesFrom b 0) with
+  | error e =>
+    obtain ⟨j, r⟩ := e
+    rw [hs] at hh
+    obtain ⟨h1, hj1, hj4, hcode⟩ := hh
+    simp only [Except.bind]
+    have hne : (h.1 == 0) = false := by
+      rw [h1]; simp only [beq_eq_false_iff_ne, ne_eq]
+      intro he
+      have := congrArg UInt64.toNat he
+      rw [ofNat_toNat_small (by omega)] at this
+      simp at this
+      omega
+    have hsub : UInt64.ofNat j - 1 = UInt64.ofNat (j - 1) := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by
+        rw [ofNat_toNat_small (by omega)]; simp; omega)), ofNat_toNat_small (by omega),
+        ofNat_toNat_small (by omega)]
+      simp
+    rw [ite_eq_right (by rw [hne]; simp), array3_toList, h1, hcode, hsub]
+  | ok v =>
+    obtain ⟨cid, k, n, ps⟩ := v
+    rw [hs] at hh
+    obtain ⟨p, hp, rfl, hk1, hk2, hn1, hn2, rfl⟩ := hh
+    simp only [Except.bind, beq_self_eq_true, ite_true]
+    have hkN : (UInt64.ofNat k).toNat = k := ofNat_toNat_small (by omega)
+    have hnN : (UInt64.ofNat n).toNat = n := ofNat_toNat_small (by omega)
+    unfold restSpec
+    -- Candidate lines
+    have hc := candidatesFrom_spec b hb n p 1 (UInt64.ofNat n)
+      #[UInt64.ofNat n, UInt64.ofNat k, 0] hnN hp (by decide) (by simp; omega)
+    simp only [show (1 : UInt64).toNat = 1 from rfl] at hc
+    generalize candidatesFrom b p 1 (UInt64.ofNat n) #[UInt64.ofNat n, UInt64.ofNat k, 0] = c
+      at hc ⊢
+    cases hrc : readCandidates 1 n (piecesFrom b p) with
+    | error e =>
+      obtain ⟨j, r⟩ := e
+      rw [hrc] at hc
+      obtain ⟨h1, hj5, hj⟩ := hc
+      have hr := readCandidates_error_role hrc
+      simp only [bind, Except.bind] at hr ⊢
+      subst hr
+      have hne : (c.1 == 0) = false := by
+        rw [h1]; simp only [beq_eq_false_iff_ne, ne_eq]
+        intro he
+        have := congrArg UInt64.toNat he
+        rw [ofNat_toNat_small hj] at this
+        simp at this
+        omega
+      rw [ite_eq_right (by rw [hne]; simp), array3_toList, h1]
+      rfl
+    | ok v =>
+      obtain ⟨cs, rest⟩ := v
+      rw [hrc] at hc
+      obtain ⟨p1, hp1, rfl, hc1, hc2, hc3⟩ := hc
+      obtain ⟨hclen, -, -⟩ := readCandidates_ok hrc
+      simp only [bind, Except.bind, hc1, beq_self_eq_true, ite_true, hc2]
+      -- Order line
+      obtain ⟨eo1, eo2⟩ := findByte_le_size b p1 hp1
+      have heo : (findByte b 10 p1 b.size).toNat ≤ b.data.size := by
+        rw [← hsz]; exact UInt64.le_iff_toNat_le.mp eo2
+      obtain ⟨ho1, ho2⟩ := readOrder_spec b hb (UInt64.ofNat n) (by omega) p1 _ eo1 heo c.2.2
+      rw [hnN] at ho1 ho2
+      generalize readOrder b (UInt64.ofNat n) p1 (findByte b 10 p1 b.size) c.2.2 = o at ho1 ho2 ⊢
+      rcases readLine_case b hb (5 + n) .order (parseOrder n) p1 hp1 with
+        ⟨order, hl5, hp5, hr5⟩ | ⟨hn5, hr5⟩
+      swap
+      · rw [hr5]
+        simp only []
+        have hcond : (decide (findByte b 10 p1 b.size < b.size) && o.1) = false :=
+          cond_false (fun h => by rw [ho1, hn5 h]; rfl)
+        rw [ite_eq_right (by rw [hcond]; simp), array3_toList,
+          word_add_ofNat 5 n (by simp; omega)]
+        rfl
+      rw [hr5]
+      simp only []
+      rw [ite_eq_left (by rw [decide_eq_true hl5, ho1, hp5]; rfl)]
+      have ho2' := ho2 order hp5
+      obtain ⟨-, hperm⟩ := eq_of_parseOrder hp5
+      -- Ballots line
+      have hp6le := next_le_size hl5
+      obtain ⟨eb1, eb2⟩ := findByte_le_size b _ hp6le
+      have heb : (findByte b 10 (findByte b 10 p1 b.size + 1) b.size).toNat ≤ b.data.size := by
+        rw [← hsz]; exact UInt64.le_iff_toNat_le.mp eb2
+      have hra := readAfter_eq b hb _ _ 0x2073746f6c6c6162 8 0 0 0 4294967295 (by decide)
+        (by decide) "ballots " (by decide) eb1 heb
+      simp only [show (0 : UInt64).toNat = 0 from rfl,
+        show (4294967295 : UInt64).toNat = maxBallots from rfl] at hra
+      rcases readLine_case b hb (6 + n) .ballots (parseBounded "ballots " 0 maxBallots) _ hp6le with
+        ⟨N, hl6, hp6, hr6⟩ | ⟨hn6, hr6⟩
+      swap
+      · rw [hr6]
+        simp only []
+        rw [ite_eq_right (by rw [cond_false (fun h => by rw [readAfter_none hra (hn6 h)])]; simp),
+          array3_toList, word_add_ofNat 6 n (by simp; omega)]
+        rfl
+      rw [hr6, readAfter_some hra hp6]
+      simp only []
+      rw [ite_eq_left (by rw [decide_eq_true hl6]; rfl)]
+      have hN := bounded_le hp6
+      have hNN : (UInt64.ofNat N).toNat = N := ofNat_toNat_small (by
+        have := hN.2; simp [maxBallots] at this; omega)
+      -- Ballot lines
+      have hNle : N ≤ 4294967295 := by have := hN.2; simp [maxBallots] at this; omega
+      have h7 : (7 + UInt64.ofNat n) = UInt64.ofNat (7 + n) := by
+        rw [word_add_ofNat 7 n (by simp; omega)]
+        rfl
+      have h7N : (7 + UInt64.ofNat n).toNat = 7 + n := by
+        rw [h7, ofNat_toNat_small (by omega)]
+      have hb7 := ballotsFrom_spec b hb (UInt64.ofNat k) (UInt64.ofNat n) ⟨by omega, by omega⟩
+        (by omega) N (findByte b 10 (findByte b 10 p1 b.size + 1) b.size + 1) (7 + UInt64.ofNat n)
+        (UInt64.ofNat N) (o.2.set! (2 : UInt64).toNat (UInt64.ofNat N)) [] hNN
+        (next_le_size hl6) (by rw [h7N]; omega) (by rw [h7N]; omega)
+      rw [hkN, hnN, h7N] at hb7
+      generalize ballotsFrom b (UInt64.ofNat k) (UInt64.ofNat n)
+        (findByte b 10 (findByte b 10 p1 b.size + 1) b.size + 1) (7 + UInt64.ofNat n)
+        (UInt64.ofNat N) (o.2.set! (2 : UInt64).toNat (UInt64.ofNat N)) = r at hb7 ⊢
+      cases hrb : readBallots k n (7 + n) N [] (piecesFrom b
+          (findByte b 10 (findByte b 10 p1 b.size + 1) b.size + 1)) with
+      | error e =>
+        obtain ⟨j, rr⟩ := e
+        rw [hrb] at hb7
+        obtain ⟨h1, hj1, hj⟩ := hb7
+        have hr := readBallots_error_role hrb
+        simp only [] at hr ⊢
+        subst hr
+        have hne : (r.1 == 0) = false := by
+          rw [h1]; simp only [beq_eq_false_iff_ne, ne_eq]
+          intro he
+          have := congrArg UInt64.toNat he
+          rw [ofNat_toNat_small hj] at this
+          simp at this
+          omega
+        rw [ite_eq_right (by rw [hne]; simp), array3_toList, h1]
+        rfl
+      | ok v =>
+        obtain ⟨bs, rest⟩ := v
+        rw [hrb] at hb7
+        obtain ⟨p2, new, hp2, rfl, hbs, h1, h2, h3⟩ := hb7
+        obtain ⟨new2, hbs2, hblen, -, -⟩ := readBallots_ok (by omega) hrb
+        have hbN : bs.length = N := by rw [hbs2]; simp [hblen]
+        simp only [List.reverse_nil, List.nil_append] at hbs
+        rw [← hbs] at h3
+        simp only [h1, beq_self_eq_true, ite_true, h2]
+        by_cases hend : p2 = b.size
+        · rw [ite_eq_left (by rw [hend]; simp), ite_eq_left ((piecesFrom_end b hb p2 hp2).mpr hend),
+            h3]
+          have hset : (o.2.set! (2 : UInt64).toNat (UInt64.ofNat N)).toList =
+              [UInt64.ofNat n, UInt64.ofNat k, UInt64.ofNat N] ++
+                cs.map (fun x => UInt64.ofNat (Spec.kindCode x.kind)) ++
+                order.map UInt64.ofNat := by
+            rw [Array.toList_set!, ho2', hc3]
+            rfl
+          rw [hset]
+          simp only [pure, Except.pure, contestWords, List.map_append, List.map_cons, List.map_nil,
+            List.map_map, hclen, hbN, List.append_assoc]
+          rfl
+        · rw [ite_eq_right (by simpa using hend),
+            ite_eq_right (fun h => hend ((piecesFrom_end b hb p2 hp2).mp h)), array3_toList,
+            h7, word_add_ofNat _ N (by rw [ofNat_toNat_small (by omega)]; omega),
+            ofNat_toNat_small (n := 7 + n) (by omega)]
+          rfl
+
 end Demos.Rcv.ReadProgram
