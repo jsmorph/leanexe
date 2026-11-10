@@ -68,7 +68,7 @@ The real function `longPeriod` is this text.  The interval function `longPeriodI
 | `read_status` | [`TleSound.lean`](TleSound.lean) | `Tle.read` returns status 0 exactly for two lines of the layout `WellFormed`: 69 bytes each, the line numbers, the checksums, the separators and the digits of the fields it reads, and equal catalog fields. |
 | `read_encloses`, `propagate_sound`, `propagate_status` | [`TleSound.lean`](TleSound.lean) | The intervals of accepted lines contain the decimal values of their fields, and the results of `sgp4Box_sound` and `status_sound` hold for `Tle.propagate` with the element set that the digits denote. |
 | `field_encloses`, `field_rejects` | [`OmmSound.lean`](OmmSound.lean) | The interval of `Omm.field` for a text that denotes `(−1)^neg · d · 10^e` in the grammar of the library's `parse64` contains that number, and a text outside the grammar has a rejected interval. |
-| `compiled.sgp4.implements` and its siblings | [`Verified.lean`](Verified.lean), [`BoxVerified.lean`](BoxVerified.lean) | The WebAssembly modules return the values of the Lean functions. |
+| `compiled.sgp4.implements`, `boxCompiled.sgp4Box.implements`, `Omm.compiled.field.implements`, and their siblings | [`Verified.lean`](Verified.lean), [`BoxVerified.lean`](BoxVerified.lean), [`OmmVerified.lean`](OmmVerified.lean) | The WebAssembly modules return the values of the Lean functions. |
 
 The proofs of the enclosing program use no accuracy theorem of `pow` and no enclosure of `atan2`.  The power `x^(2/3)` is accepted by a test of cubes against squares, and the argument of latitude enters only through its sine and cosine.  The sine and the cosine use the one-step accuracy theorems of the library's functions.
 
@@ -85,13 +85,21 @@ The proofs of the enclosing program use no accuracy theorem of `pow` and no encl
 
 The reference code and the binary64 program stop their iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, and the intervals contain the model's value with the exact root.  The test requires the status of the enclosing program to equal that of the binary64 program at every time, including the times after the decay of three objects.  It reads the same element sets through `Tle.propagate`, changes a digit of each line and expects status 9, and writes the catalog fields in the Alpha-5 form and expects the unchanged status.  It expects status 7 for an eccentricity of `10⁻⁴`, whose interval has points on both sides of a threshold of the model.
 
-`tests/verified/run.sh --cases sgp4` and `--cases sgp4box` compare the modules with native Lean and check the axioms and the file theorems.
+`tests/verified/run.sh` with `--cases sgp4`, `--cases sgp4box`, or `--cases sgp4omm` compares a module with native Lean, audits the axioms of its theorems, and checks its file theorems.
+
+| Module | Functions | Size | Calls compared |
+|---|---|---|---|
+| `sgp4` | The binary64 program | 27,852 bytes | 195 |
+| `sgp4box` | The enclosing program and the two-line reader | 61,845 bytes | 91 |
+| `sgp4omm` | `Omm.field` | 10,464 bytes | 23 |
+
+The compilation of `sgp4box` took 7,587 s on one core.
 
 ## Limits
 
 The theorems relate the programs to the model of [`Spec.lean`](Spec.lean).  The agreement of the model with the reference code and with the operational code rests on the test and on the review.  The model's own error is of the order of kilometers and grows with the time from the epoch, so the intervals state nothing about the true orbit.
 
-The demo has no deep-space path.  The reader of an Orbit Mean-Elements Message reads one decimal value: the search for a key in a message and the test of `MEAN_ELEMENT_THEORY` are left to the host.  The two-line reader gives the catalog number, the epoch, and the fields outside the propagation no value.  No test covers the full catalog, the C translation, or the AArch64 image.
+The demo has no deep-space path.  The reader of an Orbit Mean-Elements Message reads one decimal value: the search for a key in a message and the test of `MEAN_ELEMENT_THEORY` are left to the host.  The two-line reader gives the catalog number, the epoch, and the fields outside the propagation no value.  No test covers the full catalog, the C translation, or the AArch64 image, and the repository's full check has not run on this demo.  The compilation of the enclosing program takes about two hours.
 
 ## References
 

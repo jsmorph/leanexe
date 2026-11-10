@@ -7,6 +7,7 @@ namespace Demos.Sgp4
 set_option maxRecDepth 100000 in
 set_option synthInstance.maxSize 4096 in
 set_option synthInstance.maxHeartbeats 2000000 in
+set_option maxHeartbeats 0 in
 open Library.Numerics.Bounds Library.Numerics.Interval Library.Numerics.Float64 Trig Pow Spec in
 verified_compile boxCompiled := [absBits, finite, nextUpBits, nextDownBits, endpoint, outAdd,
   outSub, outMul, outDiv, outSqrt, fmin, fmax, make, point, join, add, sub, neg, extreme, mulEnd,
