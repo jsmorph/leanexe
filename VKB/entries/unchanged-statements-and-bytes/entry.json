@@ -1,0 +1,39 @@
+{
+  "id": "unchanged-statements-and-bytes",
+  "goals": [
+    "a change of a shared definition that existing theorems and images depend on",
+    "a new case of a generator, an initialization list, or a check predicate",
+    "a comparison of emitted modules and images before and after a change",
+    "genImage m k args room cap o (image + d) = .ok (bytes, L.shift d)"
+  ],
+  "modules": [
+    "LeanExe.A64.Proof.Shift",
+    "LeanExe.A64.Proof.ProgramRuns",
+    "LeanExe.M7.Board",
+    "LeanExe.M7.Proof.Board",
+    "LeanExe.A64.Isla.Check",
+    "Verified.Compile",
+    "TestSupport.M7.ShaLoop"
+  ],
+  "declarations": [
+    "LeanExe.A64.genImage",
+    "LeanExe.A64.genImage_shift",
+    "LeanExe.A64.bytesOk_shift",
+    "LeanExe.A64.program_runs",
+    "LeanExe.A64.entryOk",
+    "Verified.compileWith",
+    "LeanExe.M7.Nucleo.init",
+    "LeanExe.M7.Nucleo.initConfig",
+    "LeanExe.M7.Nucleo.initOvrdis",
+    "LeanExe.M7.Nucleo.boardWith_run",
+    "LeanExe.M7.Nucleo.board_run",
+    "LeanExe.M7.Nucleo.areaBoard_run",
+    "LeanExe.M7.Nucleo.areaBoardWith_run",
+    "LeanExe.A64.Isla.Agrees",
+    "LeanExe.A64.Isla.AgreesAll"
+  ],
+  "examples": [
+    "TestSupport.M7.Sha.sha_loop",
+    "TestSupport.M7.Sha.shaOvrdis_loop"
+  ]
+}

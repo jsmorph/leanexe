@@ -47,6 +47,7 @@
     "LeanExe.Native.ctlRuns_of_nativeA",
     "LeanExe.Native.ctl_reads",
     "LClight.LoopReacts",
+    "LClight.LoopEntry",
     "Library.Hashing.Sha256.sha256_bytes"
   ],
   "examples": [
