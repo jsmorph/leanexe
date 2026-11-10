@@ -1,0 +1,50 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "2026-06-09_REP-GOV maine",
+    "outputDirectory": "2026-06-09_REP-GOV-maine",
+    "contestDate": "2026-06-09",
+    "contestJurisdiction": "Maine",
+    "contestOffice": "Governor, Republican primary",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "2026-06-09_REP-GOV.cdf.json",
+      "contestId": "2026-06-09:REP-GOV",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "Charles, Robert B.", "excluded": false},
+    {"name": "Midgley, Benjamin T.", "excluded": false},
+    {"name": "Bush, Jonathan J.", "excluded": false},
+    {"name": "Mason, Garrett Paul", "excluded": false},
+    {"name": "McCarthy, Owen Z.", "excluded": false},
+    {"name": "Jones, David J.", "excluded": false},
+    {"name": "Wessels, Robert J.", "excluded": false},
+    {"name": "Libby, James D.", "excluded": false}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "1",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Maine, 21-A M.R.S. section 723-A and 29-250 C.M.R. ch. 535"
+  }
+}

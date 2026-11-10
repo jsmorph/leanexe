@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Oakland RCV Recount</title>
+<title>RCV Recount</title>
 <style>
 :root { --bg: #fafaf8; --fg: #1d2421; --muted: #5d6762; --line: #d6dbd6; --panel: #ffffff;
   --accent: #2a5d8f; }
@@ -33,25 +33,37 @@ code, pre { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
 pre { margin: 12px 0 0; padding: 8px; background: var(--bg); border: 1px solid var(--line);
   border-radius: 6px; overflow-x: auto; white-space: pre; }
 pre:empty { display: none; }
+label { margin-right: 16px; }
 </style>
 </head>
 <body>
 <main>
-<h1>Oakland RCV Recount</h1>
-<p class="muted">This page recounts a ranked-choice contest under Oakland City Charter §1105 from a
-canonical ballot file on this computer.  The browser reads the file with the File API and sends
-nothing to the server.  The page calls the export <code>tabulate</code> of
-<code>rcvTabulate.wasm</code>, which the verified compiler produced from
-<code>Demos/Rcv/TabulateProgram.lean</code>, and shows the report that the module returns.
-<code>tests/rcv/convert.py</code> writes the canonical file of a contest from D. Otis's CSV cast
-vote record.</p>
+<h1>RCV Recount</h1>
+<p class="muted">This page recounts a ranked-choice contest from a canonical ballot file on this
+computer, under Oakland City Charter §1105 with the Oakland module or under 21-A M.R.S. §723-A and
+29-250 C.M.R. ch. 535 with the Maine module.  The browser reads the file with the File API and
+sends nothing to the server.  The page calls the export <code>tabulate</code> of the chosen module,
+which the verified compiler produced from <code>Demos/Rcv/TabulateProgram.lean</code> or
+<code>Demos/Rcv/Maine/TabulateProgram.lean</code>, and shows the report that the module returns.
+<code>tests/rcv/convert.py</code> writes the canonical file of an Oakland contest from D. Otis's CSV
+cast vote record, and <code>tests/rcv/maine/convert.py</code> that of a Maine contest from the
+Secretary of State's spreadsheets.</p>
 
 <section>
-<h2>Module</h2>
+<h2>Modules</h2>
+<p><label><input type="radio" name="count" value="oakland" checked> Oakland City Charter
+§1105</label>
+<label><input type="radio" name="count" value="maine"> 21-A M.R.S. §723-A (Maine)</label></p>
 <table>
-<tr><th>File</th><td><code>build/verified/rcvTabulate.wasm</code></td></tr>
-<tr><th>SHA-256</th><td><code id="sha">loading</code></td></tr>
-<tr><th>Size</th><td id="size"></td></tr>
+<tr><th></th><th>Oakland</th><th>Maine</th></tr>
+<tr><th>File</th><td><code>build/verified/rcvTabulate.wasm</code></td>
+<td><code>build/verified/rcvMaine.wasm</code></td></tr>
+<tr><th>SHA-256</th><td><code id="sha-oakland">loading</code></td>
+<td><code id="sha-maine">loading</code></td></tr>
+<tr><th>Size</th><td id="size-oakland"></td><td id="size-maine"></td></tr>
+<tr><th>Export</th><td><code>tabulate</code>, function 63</td>
+<td><code>tabulate</code>, function 64</td></tr>
+<tr><th>Bound</th><td><code>80 L + 33,702,909</code></td><td><code>80 L + 33,958,029</code></td></tr>
 </table>
 </section>
 
@@ -65,37 +77,46 @@ vote record.</p>
 </section>
 
 <section>
-<h2>Theorem and trusted code</h2>
-<p>T1, <code>Demos.Rcv.TabulateProgram.tabulate_callSpec</code> of
-<code>Demos/Rcv/TabulateCall.lean</code>, states that function 63 of the module, the export
+<h2>Theorems and trusted code</h2>
+<p>For the Oakland module, T1, <code>Demos.Rcv.TabulateProgram.tabulate_callSpec</code> of
+<code>Demos/Rcv/TabulateCall.lean</code>, states that function 63, the export
 <code>tabulate</code>, called with a borrowed buffer <code>b</code> from a ready store in which the
 allocator's <code>top</code> can rise by <code>compiled.tabulate.bound b</code> bytes within the
-memory cap, returns without a trap an owned buffer that holds <code>reportFile</code> of the bytes
-of <code>b</code>: the error report of a malformed file, and the report of the count of a
-well-formed one.  <code>Demos.Rcv.TabulateFile.rcvTabulate_file</code> states that
-<code>build/verified/rcvTabulate.wasm</code> holds the encoding of the module, and the SHA-256
-above identifies the bytes that this page loaded.  Each theorem depends on the axioms
-<code>propext</code>, <code>Classical.choice</code>, and <code>Quot.sound</code> alone.</p>
-<p>The page's bound for a file of <code>L</code> bytes is <code>80 L + 33,702,909</code> bytes,
-which <code>Demos.Rcv.TabulateProgram.tabulate_bound</code> of
-<code>Demos/Rcv/TabulateBound.lean</code> proves at least <code>compiled.tabulate.bound b</code>
-for every file <code>b</code> of fewer than <code>2^32</code> bytes, with the same three axioms.
-From the fresh instance's 16 pages, the cap admits files of up to 52,594,447 bytes, and a file of
-4.7 MB needs about 414 MB of room.</p>
+memory cap, returns without a trap an owned buffer that holds
+<code>Demos.Rcv.Spec.reportFile</code> of the bytes of <code>b</code>: the error report of a
+malformed file, and the report of the count of the charter of a well-formed one.
+<code>Demos.Rcv.TabulateFile.rcvTabulate_file</code> states that
+<code>build/verified/rcvTabulate.wasm</code> holds the encoding of the module.</p>
+<p>For the Maine module, T1, <code>Demos.Rcv.Maine.TabulateProgram.tabulate_callSpec</code> of
+<code>Demos/Rcv/Maine/TabulateCall.lean</code>, states the same of function 64 and
+<code>Demos.Rcv.Maine.reportFile</code>: the error report, whose second line names the Maine rule,
+of a malformed file, and the report of the count of §723-A, with its <code>first</code> lines, of a
+well-formed one.  <code>Demos.Rcv.Maine.TabulateFile.rcvMaine_file</code> states that
+<code>build/verified/rcvMaine.wasm</code> holds the encoding of that module.  The SHA-256 above
+identifies the bytes of each module that this page loaded, and each theorem of this section
+depends on the axioms <code>propext</code>, <code>Classical.choice</code>, and
+<code>Quot.sound</code> alone.</p>
+<p>The page's bound for a file of <code>L</code> bytes is the module's bound in the table above,
+which <code>tabulate_bound</code> of <code>Demos/Rcv/TabulateBound.lean</code> and of
+<code>Demos/Rcv/Maine/TabulateBound.lean</code> proves at least <code>compiled.tabulate.bound
+b</code> for every file <code>b</code> of fewer than <code>2^32</code> bytes, with the same three
+axioms.  From the fresh instance's 16 pages, the cap admits files of up to 52,594,447 bytes for the
+Oakland module and 52,591,297 bytes for the Maine module.  A file of 4.7 MB needs about 414 MB of
+room, and the largest file of the Maine corpus, of 8.3 MB, needs about 703 MB.</p>
 <p>The page's JavaScript, <code>tabulate.js</code> and <code>app.js</code>, lies outside the
 theorems and is trusted to establish the premises and to read the result.  For each file it
-creates a fresh instance of the module, whose store the generated <code>compiled.initial</code>
-and <code>Verified.Ready.initial</code> prove ready in Talos's semantics.  It checks that the sum
-of the memory's size, 48 bytes, the file's block, and the bound is at most the cap of 65,535
-pages, since <code>top</code> lies inside the memory and <code>alloc</code> raises it by at most 48
-bytes and the block.  Before the call it grows the memory by the 48 bytes, the block, and the
-bound, so that neither <code>alloc</code> nor <code>tabulate</code> grows it, and it refuses the
-file when the check fails or the browser refuses the memory.  It then calls <code>alloc</code> with
-the file's length, writes the file's bytes into the block, passes the root and the length to
-<code>tabulate</code>, and copies the bytes at the returned root and length.
-The browser's WebAssembly engine is trusted to agree with Talos's semantics, and its File API to
-give the file's bytes.  The text above decodes the report as UTF-8, and the download holds its
-bytes unchanged.</p>
+creates a fresh instance of the chosen module, whose store the generated
+<code>compiled.initial</code> and <code>Verified.Ready.initial</code> prove ready in Talos's
+semantics.  It checks that the sum of the memory's size, 48 bytes, the file's block, and the bound
+is at most the cap of 65,535 pages, since <code>top</code> lies inside the memory and
+<code>alloc</code> raises it by at most 48 bytes and the block.  Before the call it grows the memory
+by the 48 bytes, the block, and the bound, so that neither <code>alloc</code> nor
+<code>tabulate</code> grows it, and it refuses the file when the check fails or the browser refuses
+the memory.  It then calls <code>alloc</code> with the file's length, writes the file's bytes into
+the block, passes the root and the length to <code>tabulate</code>, and copies the bytes at the
+returned root and length.  The browser's WebAssembly engine is trusted to agree with Talos's
+semantics, and its File API to give the file's bytes.  The text above decodes the report as UTF-8,
+and the download holds its bytes unchanged.</p>
 </section>
 </main>
 <script type="module" src="app.js"></script>

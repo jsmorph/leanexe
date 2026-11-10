@@ -346,18 +346,31 @@ def county(contest, suspend=False):
         continuing -= set(rnd.eliminated)
 
 
-def maine_count(contest):
-    """The first rankings f(i) of the counted candidates, the rounds of the Maine count, and the winner,
-    or None."""
-    counted, rank, ballots = setup(contest)
+def maine_first(contest):
+    """The first rankings f(i) of the counted candidates."""
+    counted, _, ballots = setup(contest)
     first = dict.fromkeys(sorted(counted), 0)
     for ballot, multiplicity in ballots.items():
         word = ballot[0]
         if word and word != UNNAMED and not word & (word - 1) and word.bit_length() in counted:
             first[word.bit_length()] += multiplicity
+    return first
+
+
+def maine_count(contest):
+    """The first rankings f(i) of the counted candidates, the rounds of the Maine count, and the winner,
+    or None."""
+    first = maine_first(contest)
     elected = [i for i, f in first.items() if 2 * f > len(contest.ballots)]
     if elected:
         return first, [], elected[0]
+    return first, *maine_rounds(contest)
+
+
+def maine_rounds(contest):
+    """The rounds of the Maine count without the initial test, from round 1 with the counted
+    candidates, and the winner, or None."""
+    counted, rank, ballots = setup(contest)
     continuing = set(counted)
     rounds = []
     while True:
@@ -365,7 +378,7 @@ def maine_count(contest):
         rounds.append(rnd)
         tied_pair = len(rnd.votes) == 2 and len(set(rnd.votes.values())) == 1
         if len(rnd.votes) <= 2 and not tied_pair:
-            return first, rounds, max(rnd.votes, key=rnd.votes.get, default=None)
+            return rounds, max(rnd.votes, key=rnd.votes.get, default=None)
         lowest(rnd, rank)
         continuing -= set(rnd.eliminated)
 

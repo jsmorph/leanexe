@@ -1,0 +1,46 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "2026-06-09_DEM-CG2 maine",
+    "outputDirectory": "2026-06-09_DEM-CG2-maine",
+    "contestDate": "2026-06-09",
+    "contestJurisdiction": "Maine",
+    "contestOffice": "Representative to Congress, District 2, Democratic primary",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "2026-06-09_DEM-CG2.cdf.json",
+      "contestId": "2026-06-09:DEM-CG2",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "Baldacci, Joseph M.", "excluded": false},
+    {"name": "Dunlap, Matthew G.", "excluded": false},
+    {"name": "Wood, Jordan", "excluded": false},
+    {"name": "Loud, Paige", "excluded": false}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "1",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Maine, 21-A M.R.S. section 723-A and 29-250 C.M.R. ch. 535"
+  }
+}

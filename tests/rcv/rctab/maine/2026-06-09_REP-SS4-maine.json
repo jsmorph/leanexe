@@ -1,0 +1,46 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "2026-06-09_REP-SS4 maine",
+    "outputDirectory": "2026-06-09_REP-SS4-maine",
+    "contestDate": "2026-06-09",
+    "contestJurisdiction": "Maine",
+    "contestOffice": "State Senator, District 4, Republican primary",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "2026-06-09_REP-SS4.cdf.json",
+      "contestId": "2026-06-09:REP-SS4",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "Perkins, Chad Richard", "excluded": false},
+    {"name": "Guerin, Joseph P.", "excluded": false},
+    {"name": "Wood, Zachary Anders", "excluded": false},
+    {"name": "Pierce, Gregory", "excluded": false}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "1",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Maine, 21-A M.R.S. section 723-A and 29-250 C.M.R. ch. 535"
+  }
+}

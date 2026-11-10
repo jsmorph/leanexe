@@ -179,6 +179,30 @@ A fresh agent reviewed the definitions against the requirements' sections on the
 
 A second fresh agent reviewed the definitions in the same way with the output for 329 files, the four added ones included.  Its model agreed with the output on every file, and its hand checks of the added files and of four edge files agreed as well.  It found no disagreement and no input class without a sample.  It noted three cases that the requirements leave open, none of which needs a sample: the phrase "the count without the initial test", which the comment answers as above; the absence of a report, `first` lines, and word forms for the two counts, which T11 and T12 do not read; and the values of the counts for structures that fail `Contest.WellFormed`, which no theorem concerns.  Both reviewers read the Lean definitions before writing their models, so the models are not independent of them.
 
+## T12 to T15, RCTab, and the page
+
+[`Properties.lean`](Properties.lean) states T12 to T15 of [the theorem table](requirements.md#theorems), and the table gives the details that the requirements leave to it, each decided by its author.  The native tests of [the README](README.md#tests) decided each statement before its proof and rejected the false variants that it names, among them T12's initial test for a candidate outside `K`, the case of finding 1.
+
+| Detail | Choice | Reason |
+|---|---|---|
+| T12's form | One theorem over the contest structure with two implications: the initial test's, whose premise counts the ballots on which `FirstMarks w` holds, and round 1's, whose premise is the tally against `K` | The requirements state the two parts in two sentences.  The statement names round 1 of the count without the initial test by its tally against `K`, since the count has no rounds when the test elects |
+| T13's term "beats" | `Beats` with this module's interpretation against `[a, b]` | The requirements define "beats" through the interpretation, and the Oakland `Beats` uses the Oakland interpretation |
+| T15 | The equality of each Maine count with the Oakland count, the first counts, the winners, and the eliminations, with the constraints and the raised ballots from the Oakland theorem | "With the same rounds and the added first lines" compares the counts with the Oakland module's, and the equality states it directly |
+| Lemmas | The Oakland lemmas `votesFor_congr`, `votesFor_eq_countP`, `eq_of_length_le_one`, `trace_ballots`, `tally_replace`, and `monotonicity_fails`, and the shared lemmas about `Trace`, `majority_unique`, and `lowest_min`; Maine forms of `trace_not_loser`, `examine_prefix`, `interpret_prefix`, and `trace_winner_all` | The Oakland `trace_not_loser` and `trace_winner_all` concern traces of the Oakland rule and `interpret_prefix` the Oakland interpretation.  Their Maine forms need the tied final pair, the initial test, and rule 1 of the interpretation |
+
+[The RCTab section of the Maine corpus](../../../tests/rcv/maine/README.md#rctab) maps each setting of the configuration to the provision that it expresses and states each rule by which RCTab's count differs from the module's, with the lines of RCTab's source at v2.1.0.  The table gives the choices made there.
+
+| Detail | Choice | Reason |
+|---|---|---|
+| Skipped rankings | `maxSkippedRanksAllowed` 1 | RCTab makes a ballot inactive when two or more empty positions precede the ranking that it reaches, which is rule 1 of the interpretation.  Its source keeps the rankings of excluded and repeated candidates as rankings read and tests the skip before the overvote, as rules 1, 3, and 5 of the interpretation do |
+| Uncounted candidates | The kinds `aggregate-writein` and `excluded` as RCTab's excluded candidates | RCTab passes over their rankings as rule 5 does and keeps them as marks.  RCTab's `undeclaredWriteInLabel` would eliminate the aggregate in round 1, which the requirements' reading of §696(2)(E) does not do |
+| Inactive categories | RCTab's skipped rankings against the ballots that rule 1 ends, which `rctab.py` states a second time, and its exhausted choices against the other ballots of the reasons `exhausted` and `uncounted` | The module's reason `exhausted` holds both kinds of ballot, and RCTab separates them, so the comparison tests rule 1 on its own |
+| The initial test | The rule `initial-test`, which compares RCTab's rounds with those of the count without the initial test | RCTab has no initial test.  T11(c) shows that the count without the initial test names the test's winner |
+
+RCTab's rounds agree with the module's on the 320 well-formed edge files and the six contests of the corpus, under the rules of that section where they apply, and no comparison is different, so no difference needs an explanation beyond those rules.  The comparison tests rule 1 of the interpretation on its own: in 128 edge files RCTab reports skipped rankings, and in every round they equal the ballots that rule 1 ends, among them ballots on which a write-in's or an excluded candidate's ranking ends a run of empty positions.  In the corpus no rule applies, and in the 2024 contest RCTab's undervotes, overvotes, skipped rankings, and exhausted choices sum to the summary report's 11,340 inactive ballots, its exhausted choices being the 1,206 ballots of reason `uncounted`.
+
+The page lets the reader choose the Oakland or the Maine module, states each module's SHA-256 and theorems, and takes each module's bound from that module's `tabulate_bound`.  It recounts the chosen file again when the reader changes the choice.  Only the latest recount writes the page, so that a change of the choice or of the file during a recount cannot show the report of an earlier one.
+
 ## Open items
 
 | Item | State |

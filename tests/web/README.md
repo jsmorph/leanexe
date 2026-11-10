@@ -4,10 +4,10 @@
 WebGPU and its verified modules in the browser's WebAssembly engine.  The kernel test page runs the
 cases that [`tests/wgsl/run.sh`](../wgsl/run.sh) writes and compares every output word with native
 Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU, in `gpt32.wasm` on
-the CPU, or on both with their scores compared.  The recount page recounts an Oakland ranked-choice
-contest from a canonical ballot file on the reader's computer with the tabulator's module
-`rcvTabulate.wasm`.  The pages run the verified compiler's kernels and modules.  They use only
-standard WebGPU and WebAssembly.
+the CPU, or on both with their scores compared.  The recount page recounts a ranked-choice contest
+from a canonical ballot file on the reader's computer with the tabulator's Oakland module
+`rcvTabulate.wasm` or its Maine module `rcvMaine.wasm`.  The pages run the verified compiler's
+kernels and modules.  They use only standard WebGPU and WebAssembly.
 The server needs `uv` and this repository's Lean toolchain, and its first start downloads
 `transformers` and the GPT-2 tokenizer.
 
@@ -28,8 +28,9 @@ from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `ca
 [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
 corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
 `build/verified/gpt32.wasm`, the sampler's module `build/verified/gpt.wasm`, and the tabulator's
-module `build/verified/rcvTabulate.wasm`, whose build and emission it runs under `tools/leanrun`
-with 8 GiB of memory and two hours, and it builds the program printer `gpt32-lines`.  The server
+modules `build/verified/rcvTabulate.wasm` and `build/verified/rcvMaine.wasm`, whose builds and
+emissions it runs under `tools/leanrun` with 8 GiB of memory and two hours each, and it builds the
+program printer `gpt32-lines`.  The server
 writes only missing files.  After a change to a kernel, to the cases, or to the GPT-2 programs,
 [`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel directory, and the server writes again
 any file that has been deleted.  The pages serve what the kernel directory holds: after
@@ -99,22 +100,29 @@ address takes the controls as parameters, such as
 `?mode=both&power=high-performance&tokens=32&seed=42&run=1`, where `run=1` loads and generates
 without clicks.
 
-## Oakland RCV recount: `/rcv/`
+## RCV recount: `/rcv/`
 
-The page recounts a ranked-choice contest under Oakland City Charter §1105 from a canonical ballot
-file that the reader chooses on their computer, with the export `tabulate` of
-`build/verified/rcvTabulate.wasm`.  The browser reads the file with the File API and sends nothing
-to the server.  The page shows the module's SHA-256 and size, the file's size and the bound of the
-call, the report as text, and a link that saves the report's bytes.  It needs a secure context, as
-WebGPU does, for `crypto.subtle`, which computes the SHA-256.  [`tabulate.js`](rcv/tabulate.js)
-makes the call, and [`app.js`](rcv/app.js) runs the page.  [The tabulator's
-README](../../Demos/Rcv/README.md#the-browser-page) states the call theorem and its bound, the
-premises that the page establishes, the code that the page trusts, and the tests of the call.
+The page recounts a ranked-choice contest from a canonical ballot file that the reader chooses on
+their computer, under Oakland City Charter §1105 with the export `tabulate` of
+`build/verified/rcvTabulate.wasm` or under 21-A M.R.S. §723-A with that of
+`build/verified/rcvMaine.wasm`.  Two radio buttons choose the module, and a change of the choice
+recounts the chosen file.  The browser reads the file with the File API and sends nothing to the
+server.  The page shows each module's SHA-256, size, export, and bound, the file's size and the
+bound of the call, the report as text, and a link that saves the report's bytes.  It needs a
+secure context, as WebGPU does, for `crypto.subtle`, which computes the SHA-256.
+[`tabulate.js`](rcv/tabulate.js) makes the call, and [`app.js`](rcv/app.js) runs the page.  [The
+tabulator's README](../../Demos/Rcv/README.md#the-browser-page) and [the Maine module's
+README](../../Demos/Rcv/Maine/README.md#the-browser-page) state the call theorems and the bounds,
+the premises that the page establishes, the code that the page trusts, and the tests of the call.
 
-Headless Chromium 145 on an AArch64 machine loaded the page, which showed the module's SHA-256.
-For each of the 19 contests of the corpus, chosen through the file input, the page's text and its
-saved file equal the reference's report.  The largest file, the 2024 at-large council contest of
-4,696,262 bytes, took the page 0.048 s with a bound of 409,403,869 bytes.
+Headless Chromium 145 on an AArch64 machine loaded the page, which showed both modules' SHA-256.
+For each of the 19 contests of the Oakland corpus with the Oakland module and each of the 6
+contests of the Maine corpus with the Maine module, chosen through the file input, and for the
+Oakland worked example under both modules, the page's text and its saved file equal the
+reference's report.  The largest file of each corpus took the page 0.035 s with the Oakland module,
+the 2024 at-large council contest of 4,696,262 bytes with a bound of 409,403,869 bytes, and 0.052 s
+with the Maine module, the 2024 contest for Representative to Congress, District 2, of 8,262,002
+bytes with a bound of 694,918,189 bytes.
 
 ## Theorems and device results of the GPU pages
 
@@ -147,7 +155,7 @@ at every step.
 | [`tests/web/index.html`](index.html) | Page that links to the pages |
 | [`tests/wgsl/browser/`](../wgsl/browser) | Kernel test page |
 | [`tests/gpt32/browser/`](../gpt32/browser) | GPT-2 page: `app.js` for the controls and the generation loop, `hosts.js` for the WebGPU and Wasm hosts and the sampler |
-| [`tests/web/rcv/`](rcv) | Recount page: `tabulate.js` for the call of the tabulator's module, `app.js` for the page |
+| [`tests/web/rcv/`](rcv) | Recount page: `tabulate.js` for the call of the tabulator's modules, `app.js` for the page |
 | [`Demos/Gpt32/Lines.lean`](../../Demos/Gpt32/Lines.lean) | `gpt32-lines`, the native program that prints the setup and step commands |
 
 | Request | Answer |

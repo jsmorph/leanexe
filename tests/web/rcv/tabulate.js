@@ -1,18 +1,27 @@
-// The call of the export `tabulate` of rcvTabulate.wasm that the recount page makes, and that
-// tests/rcv/page.mjs runs under Node.  `tabulate_callSpec` of Demos/Rcv/TabulateCall.lean states
-// T1: function 63, the export `tabulate`, called with a borrowed buffer `b` from a ready store in
-// which the allocator's `top` can rise by `compiled.tabulate.bound b` bytes within the memory cap,
-// returns without a trap an owned buffer that holds `reportFile` of the bytes of `b`.
-// `tabulate_bound` of Demos/Rcv/TabulateBound.lean bounds `compiled.tabulate.bound b` by
-// 80 L + 33,702,909 for a file of L < 2^32 bytes.  A fresh instance's store is ready
-// (`Verified.Ready.initial`).  `top` lies inside the memory (`Heap.At.top`), and `alloc` of `n`
-// bytes raises it by at most 48 + allocSize(n) (`Heap.allocate_top`) and returns the root of a
-// buffer object whose bytes the host then writes.
+// The call of the export `tabulate` of the tabulator's modules that the recount page makes, and
+// that tests/rcv/page.mjs runs under Node.  For the Oakland module rcvTabulate.wasm,
+// `tabulate_callSpec` of Demos/Rcv/TabulateCall.lean states T1: function 63, the export
+// `tabulate`, called with a borrowed buffer `b` from a ready store in which the allocator's `top`
+// can rise by `compiled.tabulate.bound b` bytes within the memory cap, returns without a trap an
+// owned buffer that holds `reportFile` of the bytes of `b`, and `tabulate_bound` of
+// Demos/Rcv/TabulateBound.lean bounds `compiled.tabulate.bound b` by 80 L + 33,702,909 for a file
+// of L < 2^32 bytes.  For the Maine module rcvMaine.wasm, `tabulate_callSpec` of
+// Demos/Rcv/Maine/TabulateCall.lean states the same of function 64 and the Maine `reportFile`, and
+// `tabulate_bound` of Demos/Rcv/Maine/TabulateBound.lean gives 80 L + 33,958,029.  A fresh
+// instance's store is ready (`Verified.Ready.initial`).  `top` lies inside the memory
+// (`Heap.At.top`), and `alloc` of `n` bytes raises it by at most 48 + allocSize(n)
+// (`Heap.allocate_top`) and returns the root of a buffer object whose bytes the host then writes.
 
 const PAGE = 65536n;
 
 /** The memory cap of every module of the verified compiler, 65,535 pages, in bytes. */
 const CAP = 65535n * PAGE;
+
+/** The modules: the file that the page loads and the constant of `tabulate_bound`. */
+export const MODULES = {
+  oakland: { file: "rcvTabulate.wasm", constant: 33702909n },
+  maine: { file: "rcvMaine.wasm", constant: 33958029n },
+};
 
 /** The payload that `alloc` requests for `n` bytes, `allocSize` of
 LeanExe/Pipeline/RuntimeSpec.lean: `n` rounded up to a multiple of 8, and at least 8. */
@@ -25,11 +34,12 @@ function allocSize(n) {
 theorem's premises or the browser would not provide the memory. */
 export class Refusal extends Error {}
 
-/** `80 length + 33,702,909`, which `tabulate_bound` proves at least `compiled.tabulate.bound b`
-for every file `b` of `length` bytes when `length < 2^32`, and null for a longer file. */
-export function boundOf(length) {
+/** `80 length + constant`, which the module's `tabulate_bound` proves at least
+`compiled.tabulate.bound b` for every file `b` of `length` bytes when `length < 2^32`, with the
+module's constant from `MODULES`, and null for a longer file. */
+export function boundOf(length, constant) {
   const L = BigInt(length);
-  return L < 2n ** 32n ? 80n * L + 33702909n : null;
+  return L < 2n ** 32n ? 80n * L + constant : null;
 }
 
 /** The SHA-256 of the module's bytes in hexadecimal, and the compiled module. */

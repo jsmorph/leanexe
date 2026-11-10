@@ -1,0 +1,45 @@
+{
+  "tabulatorVersion": "2.1.0",
+  "outputSettings": {
+    "contestName": "2026-06-09_REP-SR58 maine",
+    "outputDirectory": "2026-06-09_REP-SR58-maine",
+    "contestDate": "2026-06-09",
+    "contestJurisdiction": "Maine",
+    "contestOffice": "Representative to the Legislature, District 58, Republican primary",
+    "tabulateByBatch": false,
+    "tabulateByPrecinct": false,
+    "generateCdfJson": false
+  },
+  "cvrFileSources": [
+    {
+      "filePath": "2026-06-09_REP-SR58.cdf.json",
+      "contestId": "2026-06-09:REP-SR58",
+      "provider": "cdf",
+      "overvoteLabel": "overvote"
+    }
+  ],
+  "candidates": [
+    {"name": "Bridges, Dexter E., Jr.", "excluded": false},
+    {"name": "Bessey, Lawrence E.", "excluded": false},
+    {"name": "Harris, Jeffrey S.", "excluded": false}
+  ],
+  "rules": {
+    "tiebreakMode": "useCandidateOrder",
+    "overvoteRule": "exhaustImmediately",
+    "winnerElectionMode": "singleWinnerMajority",
+    "numberOfWinners": "1",
+    "decimalPlacesForVoteArithmetic": "4",
+    "minimumVoteThreshold": "0",
+    "maxSkippedRanksAllowed": "1",
+    "maxRankingsAllowed": "max",
+    "nonIntegerWinningThreshold": false,
+    "doesFirstRoundDetermineThreshold": false,
+    "hareQuota": false,
+    "batchElimination": false,
+    "cutoffElimination": false,
+    "continueUntilTwoCandidatesRemain": true,
+    "stopTabulationEarlyAfterRound": "",
+    "exhaustOnDuplicateCandidate": false,
+    "rulesDescription": "Maine, 21-A M.R.S. section 723-A and 29-250 C.M.R. ch. 535"
+  }
+}

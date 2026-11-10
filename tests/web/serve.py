@@ -4,15 +4,16 @@
 # ///
 """Serves the browser pages from one server: /kernels/, which runs the WGSL kernel cases on the
 browser's WebGPU, /gpt2/, which runs GPT-2 124M in binary32 with each kernel on WebGPU or in
-gpt32.wasm on the CPU, and /rcv/, which recounts a local canonical ballot file with the Oakland
-tabulator's module rcvTabulate.wasm.
+gpt32.wasm on the CPU, and /rcv/, which recounts a local canonical ballot file with the
+tabulator's Oakland module rcvTabulate.wasm or its Maine module rcvMaine.wasm.
 
 Run with `uv run tests/web/serve.py [--host H] [--port P]` (default 127.0.0.1:8000).  The pages
 use the verified compiler's kernels and modules: the kernel texts and the cases that
 `tests/wgsl/run.sh` writes to build/wgsl, build/verified/gpt32.wasm, the sampler's module
-build/verified/gpt.wasm, and build/verified/rcvTabulate.wasm.  At start the server writes what is
-missing: it runs `tests/wgsl/run.sh --emit-only` if a kernel text or the cases are missing, emits
-each missing Wasm module, and builds the program printer `gpt32-lines`.  The GPT-2 page also needs
+build/verified/gpt.wasm, build/verified/rcvTabulate.wasm, and build/verified/rcvMaine.wasm.  At
+start the server writes what is missing: it runs `tests/wgsl/run.sh --emit-only` if a kernel text
+or the cases are missing, emits each missing Wasm module, and builds the program printer
+`gpt32-lines`.  The GPT-2 page also needs
 the weight files that `uv run tests/gpt32/generate.py --export` writes to build/gpt2-32.
 tests/web/README.md describes the pages.  The GPT-2 page gets each step's host commands from
 `gpt32-lines`, which prints the programs of Demos/Gpt32/HostProgram.lean, and the server tokenizes
@@ -48,15 +49,18 @@ KERNELS = ['scale', 'axpyArray', 'matVec', 'condMix', 'exp', 'embed', 'layerNorm
            'append', 'scores', 'headMax', 'headSum', 'probs', 'mix', 'add', 'gelu', 'logits']
 # The directory where tests/wgsl/run.sh writes the kernels and the cases.
 WGSL = ROOT / 'build/wgsl'
-# gpt32.wasm, the sampler's gpt.wasm, and the tabulator's rcvTabulate.wasm, each with its Lean
-# module, its constant, and the runner's limits for the build and the emission.  The build of the
-# tabulator's module reached 5.9 GB of memory with 18 threads.
+# gpt32.wasm, the sampler's gpt.wasm, and the tabulator's rcvTabulate.wasm and rcvMaine.wasm, each
+# with its Lean module, its constant, and the runner's limits for the build and the emission.  The
+# build of the tabulator's Oakland module reached 5.9 GB of memory with 18 threads.
 MODULES = [(ROOT / 'build/verified/gpt32.wasm', 'Demos.Gpt32.Verified',
             'Demos.Gpt32.Verified.compiled.module', []),
            (ROOT / 'build/verified/gpt.wasm', 'Demos.Gpt.Verified',
             'Demos.Gpt.Verified.compiled.module', []),
            (ROOT / 'build/verified/rcvTabulate.wasm', 'Demos.Rcv.Tabulate',
-            'Demos.Rcv.TabulateProgram.compiled.module', ['--timeout', '2h', '--memory-high', '8G'])]
+            'Demos.Rcv.TabulateProgram.compiled.module', ['--timeout', '2h', '--memory-high', '8G']),
+           (ROOT / 'build/verified/rcvMaine.wasm', 'Demos.Rcv.Maine.Tabulate',
+            'Demos.Rcv.Maine.TabulateProgram.compiled.module',
+            ['--timeout', '2h', '--memory-high', '8G'])]
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
          '.wgsl': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.wasm': 'application/wasm', '.bin': 'application/octet-stream',
@@ -110,7 +114,7 @@ class Lines:
                 lines.append(line)
 
 
-def handler(lines, tokenizer, wgsl, wasm, sampler, tabulator):
+def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators):
     class Handler(http.server.BaseHTTPRequestHandler):
         def send(self, status, body, content_type):
             self.send_response(status)
@@ -182,8 +186,8 @@ def handler(lines, tokenizer, wgsl, wasm, sampler, tabulator):
                 self.send_file(RCV_PAGE / 'index.html')
             elif path in ('app.js', 'tabulate.js'):
                 self.send_file(RCV_PAGE / path)
-            elif path == 'rcvTabulate.wasm':
-                self.send_file(tabulator)
+            elif path in tabulators:
+                self.send_file(tabulators[path])
             else:
                 self.send_error(404)
 
@@ -221,9 +225,10 @@ def main():
     args = parser.parse_args()
     prepare()
     tokenizer = GPT2TokenizerFast.from_pretrained(REPO, revision=REVISION)
-    (wasm, *_), (sampler, *_), (tabulator, *_) = MODULES
+    (wasm, *_), (sampler, *_), *tabulators = MODULES
+    tabulators = {path.name: path for path, *_ in tabulators}
     server = http.server.ThreadingHTTPServer(
-        (args.host, args.port), handler(Lines(), tokenizer, WGSL, wasm, sampler, tabulator))
+        (args.host, args.port), handler(Lines(), tokenizer, WGSL, wasm, sampler, tabulators))
     print(f'Pages: http://{args.host}:{server.server_address[1]}/', flush=True)
     server.serve_forever()
 

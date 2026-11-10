@@ -217,6 +217,10 @@ lean_exe «rcv-bound» where
   srcDir := "tests"
   root := `TestSupport.Rcv.BoundMain
 
+lean_exe «rcv-maine-bound» where
+  srcDir := "tests"
+  root := `TestSupport.Rcv.MaineBoundMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where
@@ -262,6 +266,11 @@ lean_exe «rcv-properties» where
 -- statements (Demos/Rcv/Maine/Native.lean); not a default target.
 lean_exe «rcv-maine» where
   root := `Demos.Rcv.Maine.Native
+
+-- The native tests of the statements of the Maine count's T12 to T15
+-- (Demos/Rcv/Maine/PropertiesNative.lean); not a default target.
+lean_exe «rcv-maine-properties» where
+  root := `Demos.Rcv.Maine.PropertiesNative
 
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.

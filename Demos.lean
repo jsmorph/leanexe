@@ -81,6 +81,7 @@ import Demos.Rcv.Maine.Holder
 import Demos.Rcv.Maine.PrintProgram
 import Demos.Rcv.Maine.PrintProof
 import Demos.Rcv.Maine.Program
+import Demos.Rcv.Maine.Properties
 import Demos.Rcv.Maine.RefineRule
 import Demos.Rcv.Maine.RefineTally
 import Demos.Rcv.Maine.Refinement
