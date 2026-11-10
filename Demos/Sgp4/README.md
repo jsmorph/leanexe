@@ -83,7 +83,7 @@ The proofs of the enclosing program use no accuracy theorem of `pow` and no encl
 | Reference value outside its interval | At most `6.8·10⁻⁹` km and `5.0·10⁻¹⁰` km/s |
 | Binary64 program outside its interval | At most `6.1·10⁻⁹` km and `6.9·10⁻¹²` km/s |
 
-The reference code and the binary64 program stop their iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, and the intervals contain the model's value with the exact root.  The test requires the status of the enclosing program to equal that of the binary64 program at every time, including the times after the decay of three objects.  It reads the same element sets through `Tle.propagate`, changes a digit of each line and expects status 9, and writes the catalog fields in the Alpha-5 form and expects the unchanged status.
+The reference code and the binary64 program stop their iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, and the intervals contain the model's value with the exact root.  The test requires the status of the enclosing program to equal that of the binary64 program at every time, including the times after the decay of three objects.  It reads the same element sets through `Tle.propagate`, changes a digit of each line and expects status 9, and writes the catalog fields in the Alpha-5 form and expects the unchanged status.  It expects status 7 for an eccentricity of `10⁻⁴`, whose interval has points on both sides of a threshold of the model.
 
 `tests/verified/run.sh --cases sgp4` and `--cases sgp4box` compare the modules with native Lean and check the axioms and the file theorems.
 

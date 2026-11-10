@@ -21,8 +21,9 @@ Demos.Sgp4.Tle.propagate reads the two lines of each element set.  Its status mu
 Demos.Sgp4.sgp4BoxAround at every time, and each reference coordinate must lie within the same
 distances of its interval.  It must return status 9 for an element set with one digit changed,
 which breaks the checksum, and the status of the unchanged lines for an element set whose catalog
-fields begin with a letter, the Alpha-5 form.  The check prints the largest differences and the
-largest widths of the intervals.
+fields begin with a letter, the Alpha-5 form.  Demos.Sgp4.sgp4BoxAround must return status 7 for
+an eccentricity of 1e-4, whose interval has points on both sides of a threshold of the model.
+The check prints the largest differences and the largest widths of the intervals.
 Usage: uv run tests/sgp4/reference.py STATES_EXECUTABLE BOXES_EXECUTABLE"""
 import pathlib
 import struct
@@ -193,6 +194,16 @@ def main() -> int:
         if int(words[0]) != wanted:
             failures += 1
             print(f"fail changed lines: status {words[0]}, expected {wanted}")
+    at_threshold = list(sets[name][0])
+    at_threshold[1] = 1e-4
+    run = subprocess.run(
+        [sys.argv[2], "--boxes"], input=" ".join(bits(x) for x in at_threshold + [t]) + "\n",
+        capture_output=True, text=True, check=True,
+    )
+    if int(run.stdout.split()[0]) != 7:
+        failures += 1
+        print(f"fail eccentricity at the threshold 1e-4: status {run.stdout.split()[0]}, "
+              "expected 7")
     print(f"states {len(queries)}")
     print(f"program: largest position difference {worst_r:.3e} km, "
           f"largest velocity difference {worst_v:.3e} km/s")

@@ -166,10 +166,12 @@ if [ -z "$reference" ]; then
     targets+=(Demos.Sgp4.Verified $(imports Demos/Sgp4/File.lean))
   fi
   if [ "$case_module" = "sgp4box" ]; then
-    targets+=(Demos.Sgp4.BoxVerified $(imports Demos/Sgp4/BoxFile.lean))
+    targets+=(Demos.Sgp4.BoxVerified $(imports Demos/Sgp4/BoxFile.lean)
+      $(imports tests/sgp4/BoxAxioms.lean))
   fi
   if [ "$case_module" = "sgp4omm" ]; then
-    targets+=(Demos.Sgp4.OmmVerified $(imports Demos/Sgp4/OmmFile.lean))
+    targets+=(Demos.Sgp4.OmmVerified $(imports Demos/Sgp4/OmmFile.lean)
+      $(imports tests/sgp4/OmmAxioms.lean))
   fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
