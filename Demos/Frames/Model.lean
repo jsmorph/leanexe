@@ -4,8 +4,8 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 /-!
 The model of `requirements.md` over the real numbers: the Greenwich mean sidereal time of 1982 in
 the form of the function `gstime` of the SGP4 code of AIAA 2006-6753, the rotation of a TEME
-position into the Earth-fixed frame, and the position of geodetic coordinates on the WGS 84
-ellipsoid.
+position into the Earth-fixed frame, the position of geodetic coordinates on the WGS 84 ellipsoid,
+and TAI − UTC from a leap-second table.
 -/
 
 open Real
@@ -75,5 +75,27 @@ def IsGeodetic (x y z φ lon h : ℝ) : Prop :=
 center. -/
 def InDomain (x y z : ℝ) : Prop :=
   0 < √(x ^ 2 + y ^ 2) ∧ (a * e2 < √(x ^ 2 + y ^ 2) ∨ a * e2 / (1 - f) < |z|)
+
+/-! ### Time scales -/
+
+/-- The number of entries of a table `E, d₀, Δ₀, d₁, Δ₁, …`. -/
+def count (xs : Array UInt64) : ℕ := (xs.size - 1) / 2
+
+/-- The date of entry `i`. -/
+def date (xs : Array UInt64) (i : ℕ) : UInt64 := xs[2 * i + 1]!
+
+/-- The offset TAI − UTC of entry `i`. -/
+def offset (xs : Array UInt64) (i : ℕ) : UInt64 := xs[2 * i + 2]!
+
+/-- `Δ` is TAI − UTC on the day `d` by the table `xs`: the offset of the last entry whose date is
+at most `d`. -/
+def LeapOffset (xs : Array UInt64) (d Δ : UInt64) : Prop :=
+  ∃ i < count xs, date xs i ≤ d ∧ offset xs i = Δ ∧ ∀ j < count xs, i < j → d < date xs j
+
+/-- A valid table: an odd size of at least 3, every value below `2³²`, strictly increasing dates,
+and an expiry `E = xs[0]` above the last date. -/
+def ValidTable (xs : Array UInt64) : Prop :=
+  3 ≤ xs.size ∧ xs.size % 2 = 1 ∧ (∀ i < xs.size, xs[i]!.toNat < 2 ^ 32) ∧
+    (∀ i j, i < j → j < count xs → date xs i < date xs j) ∧ date xs (count xs - 1) < xs[0]!
 
 end Demos.Frames.Model

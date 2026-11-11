@@ -13,13 +13,16 @@ import Demos.Frames.Call
 #print axioms Demos.Frames.temeToEcef_sound
 #print axioms Demos.Frames.toCartesian_sound
 #print axioms Demos.Frames.toGeodetic_sound
+#print axioms Demos.Frames.timeScales_sound
 #print axioms Demos.Frames.compiled.bytes
 #print axioms Demos.Frames.compiled.gmst.implements
 #print axioms Demos.Frames.compiled.temeToEcef.implements
 #print axioms Demos.Frames.compiled.toGeodetic.implements
 #print axioms Demos.Frames.compiled.toCartesian.implements
+#print axioms Demos.Frames.compiled.timeScales.implements
 #print axioms Demos.Frames.gmst_call
 #print axioms Demos.Frames.temeToEcef_call
 #print axioms Demos.Frames.toGeodetic_call
 #print axioms Demos.Frames.toCartesian_call
+#print axioms Demos.Frames.timeScales_call
 #print axioms Demos.Frames.frames

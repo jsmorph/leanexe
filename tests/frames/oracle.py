@@ -7,15 +7,16 @@
 `inputs` prints the input lines of the containment test, which the case executable's `--serve`
 mode reads; `check OUTPUTS` reads the lines that mode prints, each the input line followed by the
 result, and checks every result.  Before it checks, the oracle reproduces the values of SOFA's test
-suite, as ERFA's `t_erfa_c.c` repeats them, for `iauGmst82`, `iauPom00`, `iauGc2gd`, and
-`iauGd2gc`.
+suite, as ERFA's `t_erfa_c.c` repeats them, for `iauGmst82`, `iauPom00`, `iauGc2gd`, `iauGd2gc`,
+`iauDat`, `iauUtctai`, `iauTaitt`, and `iauUtcut1`.
 
 The oracle evaluates the formulas of `Demos/Frames/requirements.md` from their sources, apart from
 the programs: the sidereal time in the form of the function `gstime` of AIAA 2006-6753, with
 `T = (JD - 2451545)/36525` from the Julian date `2400000.5 + d + s/86400` of UT1; the rotations of
 SOFA's `iauRx`, `iauRy`, and `iauRz`; the position of geodetic coordinates on WGS 84; and the
 geodetic coordinates of a point by the fixed-point iteration `phi = atan2(z + e^2 N sin phi, p)`,
-the longitude by `atan2`, and the height by `p/cos phi - N` or `z/sin phi - N (1 - e^2)`.  A result
+the longitude by `atan2`, and the height by `p/cos phi - N` or `z/sin phi - N (1 - e^2)`; and TAI -
+UTC from the IERS's `leap-seconds.list`, which this directory holds, by a binary search.  A result
 with status 0 must contain the oracle's value at every sampled point of its arguments' intervals,
 an angle up to a whole number of turns, and its width must stay within the bound that each check
 states.  A case with an expected status must return it.
@@ -25,11 +26,15 @@ Lines, each float as the decimal value of its bit pattern:
   teme d slo shi xplo xphi yplo yphi xlo xhi ylo yhi zlo zhi -> status, then status lo hi for x, y, z
   cart latlo lathi lonlo lonhi hlo hhi                  -> status, then status lo hi for x, y, z
   geod xlo xhi ylo yhi zlo zhi                          -> status, then status lo hi for lat, lon, h
+  times m w1 ... wm d s dlo dhi        -> status dat, then status lo hi for tai, tt, ut1
+where w1 ... wm are the words of the table `E, d0, D0, d1, D1, ...`.
 An input line may end with `expect N`, which the output repeats before the result.
 Usage: uv run tests/frames/oracle.py inputs > INPUTS; uv run tests/frames/oracle.py check OUTPUTS
 """
+import bisect
 import itertools
 import math
+import pathlib
 import random
 import struct
 import sys
@@ -39,6 +44,36 @@ from mpmath import mp, mpf
 mp.dps = 40
 
 ARITY = {"gmst": 3, "teme": 13, "cart": 6, "geod": 6}
+
+
+# ### Time scales
+
+
+def leap_table():
+    """The expiry and the entries (MJD, TAI - UTC) of the IERS's leap-seconds.list, whose
+    timestamps count seconds from 1900 January 1, MJD 15020."""
+    path = pathlib.Path(__file__).with_name("leap-seconds.list")
+    entries, expiry = [], None
+    for line in open(path):
+        if line.startswith("#@"):
+            expiry = int(line.split()[1]) // 86400 + 15020
+        elif line.strip() and not line.startswith("#"):
+            stamp, offset = line.split()[:2]
+            entries.append((int(stamp) // 86400 + 15020, int(offset)))
+    return expiry, entries
+
+
+EXPIRY, ENTRIES = leap_table()
+
+
+def dat(d):
+    """TAI - UTC on the day d by the table, or None before its first entry."""
+    i = bisect.bisect_right([e[0] for e in ENTRIES], d) - 1
+    return ENTRIES[i][1] if i >= 0 else None
+
+
+def day_length(d):
+    return 86400 + dat(d + 1) - dat(d)
 
 
 def bits(x: float) -> int:
@@ -172,6 +207,12 @@ def self_test() -> int:
     r = position(-0.5, 3.1, 2.5)
     for i, want in enumerate(["-5599000.5577049947", "233011.67223479203", "-3040909.4706983363"]):
         near(f"gd2gc [{i}]", r[i] * 1000, want, "1e-7")
+    for mjd, want in [(52791, 32), (54482, 33), (57997, 37)]:
+        near(f"dat {mjd}", mpf(dat(mjd)), str(want), "0")
+    s = mpf("0.892100694") * 86400
+    near("utctai", (s + dat(53750)) / 86400, "0.8924826384444444444", "1e-12")
+    near("taitt", mpf("0.892482639") + mpf("32.184") / 86400, "0.892855139", "1e-12")
+    near("utcut1", (s + mpf("0.3341")) / 86400, "0.8921045608981481481", "1e-12")
     print(f"sofa test values: {failures} failures")
     return failures
 
@@ -310,6 +351,43 @@ def inputs() -> None:
             ([1.0, 0.0, 0.0, 0.0, 0.0, 0.0], 1),
             ([1e300, 1e300, 0.0, 0.0, 0.0, 0.0], 2)]:
         out.append("geod " + " ".join(fl(v) for v in args) + f" expect {status}")
+    # Time scales: random UTC times from 1972 to the expiry, the leap seconds, and the review's
+    # cases.
+    table = [EXPIRY] + [w for e in ENTRIES for w in e]
+
+    def times(tab, d, s, lo, hi, expect=None):
+        words = " ".join(str(w) for w in tab)
+        tail = f" expect {expect}" if expect is not None else ""
+        out.append(f"times {len(tab)} {words} {d} {fl(s)} {fl(lo)} {fl(hi)}{tail}")
+
+    for _ in range(200):
+        d = rng.randint(ENTRIES[0][0], EXPIRY - 2)
+        s = rng.uniform(0, day_length(d))
+        lo = rng.uniform(-0.9, 0.9)
+        times(table, d, s, lo, lo + rng.choice([0.0, 1e-4]))
+    for d, _ in ENTRIES[1:]:
+        times(table, d - 1, 86400.5, -0.2, -0.2)
+        times(table, d - 1, 86400.999999, 0.0, 0.0)
+        times(table, d, 0.0, 0.0, 0.0)
+    times(table, 57754, -0.0, 0.0, 0.0)
+    for d, s, status in [(57753, 86401.0, 3), (57752, 86400.0, 3), (57752, 86399.999, None),
+                         (41316, 0.0, 2), (EXPIRY - 1, 0.0, 2), (EXPIRY - 2, 0.0, None),
+                         (2 ** 64 - 1, 0.0, 2), (60000, nan, 3), (60000, -1.0, 3),
+                         (60000, inf, 3)]:
+        times(table, d, s, 0.0, 0.0, status)
+    times(table, 60000, 0.0, 1.0, 0.0, 3)
+    for tab, d, s, status in [
+            ([60000, 50000, 30, 51000, 29], 50999, 86399.5, 3),       # a negative leap second
+            ([60000, 50000, 30, 51000, 29], 50999, 86398.5, 0),
+            ([60000, 50000, 100000, 51000, 0], 50999, 0.0, 3),       # a drop of 100000 s
+            ([60000, 50000, 30, 50000, 31], 50000, 0.0, 1),          # a repeated date
+            ([50000, 50000, 30], 49999, 0.0, 1),                     # E equal to the last date
+            ([2 ** 32, 50000, 30], 50000, 0.0, 1),                   # E of 2^32
+            ([60000, 50000, 2 ** 32], 50000, 0.0, 1),                # an offset of 2^32
+            ([60000, 50000, 30, 49000, 31], 50000, 0.0, 1),          # decreasing dates
+            ([60000, 50000, 30, 51000], 50000, 0.0, 1),              # an even size
+            ([60000], 50000, 0.0, 1)]:
+        times(tab, d, s, 0.0, 0.0, status)
     print("\n".join(out))
 
 
@@ -427,15 +505,59 @@ def check_geod(a, res):
     return None
 
 
+def check_times(a, res):
+    m = int(a[0])
+    tab = [int(w) for w in a[1:1 + m]]
+    d = int(a[1 + m])
+    s, lo, hi = (double(w) for w in a[2 + m:5 + m])
+    status, got = int(res[0]), int(res[1])
+    if status != 0:
+        return f"status {status}, expected 0"
+    if tab != [EXPIRY] + [w for e in ENTRIES for w in e]:
+        return "an accepted case uses another table"
+    if not (ENTRIES[0][0] <= d < EXPIRY - 1 and 0 <= s < day_length(d)):
+        return "accepted a date or seconds outside the table"
+    if got != dat(d):
+        return f"dat {got}, expected {dat(d)}"
+    (s1, tailo, taihi), (s2, ttlo, tthi), (s3, ulo, uhi) = results(res[1:], 3)
+    if s1 or s2 or s3:
+        return "an interval of an accepted result is rejected"
+    tai = mpf(s) + dat(d)
+    tt = tai + mpf("32.184")
+    for name, value, a1, b1 in [("tai", tai, tailo, taihi), ("tt", tt, ttlo, tthi)]:
+        if not contains(a1, b1, value):
+            return f"{name} {mp.nstr(value, 20)} outside [{a1!r}, {b1!r}]"
+        if b1 - a1 > 1e-9:
+            return f"{name} width {b1 - a1} above 1e-9 s"
+    for delta in (lo, hi):
+        if not contains(ulo, uhi, mpf(s) + mpf(delta)):
+            return f"ut1 {mp.nstr(mpf(s) + mpf(delta), 20)} outside [{ulo!r}, {uhi!r}]"
+    return None
+
+
 def check(path: str) -> int:
     failures = self_test()
     counts = {}
-    checks = {"gmst": check_gmst, "teme": check_teme, "cart": check_cart, "geod": check_geod}
+    checks = {"gmst": check_gmst, "teme": check_teme, "cart": check_cart, "geod": check_geod,
+              "times": check_times}
     for line in open(path):
         f = line.split()
         if not f:
             continue
         kind = f[0]
+        if kind == "times":
+            n = 1 + int(f[1]) + 4
+            args, rest = f[1:1 + n], f[1 + n:]
+            if rest and rest[0] == "expect":
+                want, res = int(rest[1]), rest[2:]
+                problem = None if int(res[0]) == want else f"status {res[0]}, expected {want}"
+            else:
+                problem = check_times(args, rest)
+            counts[kind] = counts.get(kind, 0) + 1
+            if problem:
+                failures += 1
+                print(f"FAIL {line.strip()}: {problem}")
+            continue
         if kind not in ARITY:
             failures += 1
             print(f"FAIL unknown line: {line.strip()}")

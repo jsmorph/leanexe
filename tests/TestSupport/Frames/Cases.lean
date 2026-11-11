@@ -1,4 +1,5 @@
 import Demos.Frames.Program
+import Demos.Frames.Time
 import TestSupport.Host
 
 /-! Cases of the frames module.  `cases` prints the module cases for `tests/verified/run.sh`, and
@@ -18,13 +19,20 @@ def vecText (v : Vec) : String := s!"{v.status} {interval v.x} {interval v.y} {i
 def geodText (g : Coords) : String :=
   s!"{g.status} {interval g.lat} {interval g.lon} {interval g.h}"
 
+def timesText (t : Times) : String :=
+  s!"{t.status} {t.dat} {interval t.tai} {interval t.tt} {interval t.ut1}"
+
 def angleKind : String := "list:i64,f64,f64"
 
 def vecKind : String := "list:i64," ++ ",".intercalate (List.replicate 3 "i64,f64,f64")
 
+def timesKind : String := "list:i64,i64," ++ ",".intercalate (List.replicate 3 "i64,f64,f64")
+
 def float (w : Nat) : Float := Float.ofBits (UInt64.ofNat w)
 
-/-- The result of an input line, from its first numbers. -/
+/-- The result of an input line, from its first numbers.  A `times` line holds the size `m` of
+the table, its `m` words, the day, and the bit patterns of the seconds and of the ends of UT1 −
+UTC. -/
 def respond (words : List String) : Option String :=
   let n := (words.drop 1).filterMap String.toNat?
   match words.head?, n with
@@ -37,6 +45,12 @@ def respond (words : List String) : Option String :=
     some (vecText (toCartesian (float a) (float b) (float c) (float e) (float g) (float h)))
   | some "geod", a :: b :: c :: e :: g :: h :: _ =>
     some (geodText (toGeodetic (float a) (float b) (float c) (float e) (float g) (float h)))
+  | some "times", m :: rest =>
+    match rest.drop m with
+    | d :: s :: lo :: hi :: _ =>
+      some (timesText (timeScales ((rest.take m).map UInt64.ofNat).toArray (UInt64.ofNat d)
+        (float s) (float lo) (float hi)))
+    | _ => none
   | _, _ => none
 
 partial def serve : IO Unit := do
@@ -85,6 +99,24 @@ def geodInputs : List (List Float) :=
     [-1, 1, -2, -0.5, -6357, -6356], [30, 30, 0, 0, 10, 10], [0, 0, 0, 0, 6356, 6357],
     [nan, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0], [1e300, 1e300, 0, 0, 0, 0] ]
 
+/-- The IERS table from 1972 to the leap second of 2017, valid to 2027 June 28. -/
+def iers : List UInt64 :=
+  [61584, 41317, 10, 41499, 11, 41683, 12, 42048, 13, 42413, 14, 42778, 15, 43144, 16, 43509, 17,
+    43874, 18, 44239, 19, 44786, 20, 45151, 21, 45516, 22, 46247, 23, 47161, 24, 47892, 25, 48257,
+    26, 48804, 27, 49169, 28, 49534, 29, 50083, 30, 50630, 31, 51179, 32, 53736, 33, 54832, 34,
+    56109, 35, 57204, 36, 57754, 37]
+
+/-- Tables, days, seconds, and intervals of UT1 − UTC: dates inside the table, the leap second at
+the end of 2016, a second past the end of a day without one, a day before the table and the day
+before its expiry, and malformed tables. -/
+def timesInputs : List (List UInt64 × UInt64 × Float × Float × Float) :=
+  [ (iers, 60000, 43200.5, -0.1, -0.09), (iers, 57753, 86400.5, -0.4, -0.4),
+    (iers, 57753, 86401, 0, 0), (iers, 57754, 0, 0.6, 0.6), (iers, 57752, 86400.5, 0, 0),
+    (iers, 41316, 0, 0, 0), (iers, 61583, 0, 0, 0), (iers, 61582, 86399.99, 0, 0),
+    (iers, 60000, nan, 0, 0), (iers, 60000, -1, 0, 0), (iers, 60000, 0, 1, 0),
+    ([61584, 41317, 10, 41317, 11], 50000, 0, 0, 0), ([61584, 41317, 10, 41499], 50000, 0, 0, 0),
+    ([41000, 41317, 10], 41317, 0, 0, 0), ([61584, 41317, 4294967296], 50000, 0, 0, 0) ]
+
 def cases : IO Unit := do
   for (d, lo, hi) in gmstInputs do
     line "frames" "gmst" angleKind [u d, fl lo, fl hi] (angleText (gmst d lo hi))
@@ -104,5 +136,8 @@ def cases : IO Unit := do
     | [a, b, c, e, g, h] =>
       line "frames" "toGeodetic" vecKind (xs.map fl) (geodText (toGeodetic a b c e g h))
     | _ => throw (IO.userError "a case of toGeodetic needs six floats")
+  for (table, d, s, lo, hi) in timesInputs do
+    line "frames" "timeScales" timesKind [arrU table, u d, fl s, fl lo, fl hi]
+      (timesText (timeScales table.toArray d s lo hi))
 
 end TestSupport.Frames.Cases

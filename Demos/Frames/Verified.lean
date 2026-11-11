@@ -1,4 +1,5 @@
 import Demos.Frames.Program
+import Demos.Frames.Time
 import Verified.Reflect.Command
 import Demos.Frames.Flat
 
@@ -15,6 +16,7 @@ verified_compile compiled := [absBits, finite, nextUpBits, nextDownBits, endpoin
   increasing, Atan.atan, arctanI, gmstSecondsI, turnsI, toEarthI, axisI, cartesianI,
   slopeAI, residualAI, coordsAI, slopeBI, residualBI, coordsBI, lonAI, lonBI, floorOf, angleWith,
   gmstWith, noVec, temeToEcefWith, noCoords, newtonA, newtonB, widen, regimeA, regimeB, longitude,
-  toGeodeticWith, toCartesianWith, gmst, temeToEcef, toGeodetic, toCartesian]
+  toGeodeticWith, toCartesianWith, gmst, temeToEcef, toGeodetic, toCartesian, scanStep, noTimes,
+  timeScales]
 
 end Demos.Frames

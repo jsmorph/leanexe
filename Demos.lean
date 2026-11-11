@@ -72,6 +72,8 @@ import Demos.Frames.Geodetic
 import Demos.Frames.Model
 import Demos.Frames.Program
 import Demos.Frames.Soundness
+import Demos.Frames.Time
+import Demos.Frames.TimeSound
 import Demos.Gpt.Causal
 import Demos.Gpt.Exact
 import Demos.Gpt32.Compose
