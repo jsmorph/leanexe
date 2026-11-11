@@ -17,7 +17,9 @@
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
-# reader of decimal values and checks that module's file theorems.  Each audit fails the run
+# reader of decimal values and checks that module's file theorems.  For the passive-safety check,
+# it runs the axiom audit of tests/passivesafety/Axioms.lean, and with --cases passivesafety it
+# checks the check's file theorem module as well.  Each audit fails the run
 # when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
@@ -129,6 +131,8 @@ elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
+elif [ "$case_module" = "passivesafety" ]; then
+  cases_exe=verified-cases-passivesafety
 elif [ "$case_module" = "sgp4box" ]; then
   cases_exe=verified-cases-sgp4box
 elif [ "$case_module" = "sgp4omm" ]; then
@@ -166,6 +170,10 @@ if [ -z "$reference" ]; then
     targets+=(Demos.Conjunction.Verified $(imports Demos/Conjunction/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
+  if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
+  if [ "$case_module" = "passivesafety" ]; then
+    targets+=(Demos.PassiveSafety.Verified $(imports Demos/PassiveSafety/File.lean))
+  fi
   if [ "$case_module" = "sgp4" ]; then
     targets+=(Demos.Sgp4.Verified $(imports Demos/Sgp4/File.lean))
   fi
@@ -322,6 +330,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
   check_axioms tests/sgp4/Axioms.lean
   if [ "$case_module" = "sgp4" ]; then
     check_file sgp4 Demos.Sgp4.Verified Demos/Sgp4/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "passivesafety" ]; then
+  check_axioms tests/passivesafety/Axioms.lean
+  if [ "$case_module" = "passivesafety" ]; then
+    check_file passivesafety Demos.PassiveSafety.Verified Demos/PassiveSafety/File.lean
   fi
 fi
 if [ "$case_module" = "sgp4box" ]; then
