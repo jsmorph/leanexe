@@ -247,6 +247,10 @@ lean_exe «verified-cases-accuracy» where
   srcDir := "tests"
   root := `TestSupport.Conjunction.AccuracyCasesMain
 
+lean_exe «verified-cases-passivesafety» where
+  srcDir := "tests"
+  root := `TestSupport.PassiveSafety.CasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain
