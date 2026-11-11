@@ -1124,14 +1124,19 @@ def byteStore (cap : Nat) (a : Nat) (b : UInt8) : statement :=
   .Sassign (byteAt cap (clong a)) (.Ecast (.Econst_int b.toUInt32 tuint) tuchar)
 
 /-- The stores that write the bytes `bs` from the address `a`: a word store where `a` is a
-multiple of 8 and eight bytes remain, and a byte store otherwise. -/
+multiple of 8 and eight bytes remain, and a byte store otherwise.  The recursion is structural
+on the bytes, so that the kernel evaluates the stores of a module's data, as the checks of
+`clightn/check.sh` require. -/
 def initStores (cap : Nat) : Nat → List UInt8 → List statement
-  | a, b0 :: rest@(b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: rest') =>
+  | a, b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: rest' =>
       if a % 8 = 0 then
         wordStore cap a [b0, b1, b2, b3, b4, b5, b6, b7] :: initStores cap (a + 8) rest'
-      else byteStore cap a b0 :: initStores cap (a + 1) rest
+      else
+        byteStore cap a b0 ::
+          initStores cap (a + 1) (b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: rest')
   | a, b0 :: rest => byteStore cap a b0 :: initStores cap (a + 1) rest
   | _, [] => []
+termination_by structural _ bs => bs
 
 /-- The stores of a data segment, which the subset check requires to be active at a literal
 offset. -/
