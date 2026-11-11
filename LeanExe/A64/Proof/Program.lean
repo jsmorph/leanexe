@@ -8,6 +8,9 @@ stack's limit in X18 a given number of bytes below that frame, loads the argumen
 calls the function, writes the eight bytes of the function's result to the
 UART, the lowest first, sets X0 to 0, restores X30, and returns.  `program_sim` states that the
 machine does so from `main` when Talos's run of the function on the arguments returns a word.
+`programWith_sim` states the run of a program of `genProgramWith` whose `main` has the shape of
+`genMain` around code that sets the arguments, from a premise on what that code does, so that
+`program_sim` and the theorem of `genInProgram` in `LeanExe/A64/Proof/Input.lean` share it.
 -/
 
 namespace LeanExe.A64
@@ -112,6 +115,36 @@ theorem genMain_length {a entry uart room : UInt64} {args : List UInt64} {o : Ou
   simp only [List.length_cons, List.length_nil, mainSize, movImm]
 
 theorem movImm_length (d : Fin 32) (v : UInt64) : (movImm d v).length = 4 := rfl
+
+/-- `main` placed at `a`, with `e` the entry of the function that it calls, has the shape of
+`genMain`'s code around the code `setup`, which sets the arguments, and the code `tail` after the
+return: the frame and X18, `setup`, `BL` to `e`, the output of the result to the UART at `uart`
+as `o` says, the return of 0, and `tail`. -/
+def MainShape (a e : UInt64) (setup tail : List Instr) (uart room : UInt64) (o : Output)
+    (main : List Instr) : Prop :=
+  ∃ g out, bField (after a (8 + setup.length)) e = .ok g ∧
+    genOut (after a (13 + setup.length)) o = .ok out ∧
+    main = [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
+      [.subReg 18 18 16] ++ setup ++ [.bl g] ++ movImm 1 uart ++ out ++ movImm 0 0 ++
+      [.ldr 30 31 0, .addImm 31 31 16, .ret 30] ++ tail
+
+theorem MainShape.length {a e : UInt64} {setup tail : List Instr} {uart room : UInt64}
+    {o : Output} {main : List Instr} (h : MainShape a e setup tail uart room o main) :
+    main.length = 8 + setup.length + 12 + outSize o + tail.length := by
+  obtain ⟨g, out, -, ho, rfl⟩ := h
+  simp only [List.length_append, genOut_length ho, movImm_length, List.length_cons,
+    List.length_nil]
+  omega
+
+/-- `genMain`'s code has the shape of `MainShape` around the loads of its arguments. -/
+theorem genMain_shape {a e uart room : UInt64} {args : List UInt64} {o : Output}
+    {main : List Instr} (hg : genMain a e args uart room o = .ok main) :
+    args.length ≤ 8 ∧ MainShape a e
+      (args.zipIdx.flatMap fun (v, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ v) []
+      uart room o main := by
+  obtain ⟨h8, g, out, hb, ho, rfl⟩ := gen_main hg
+  refine ⟨h8, g, out, by rw [loads_length]; exact hb, by rw [loads_length]; exact ho, ?_⟩
+  simp
 
 theorem CodeAt.split {a : UInt64} {l1 l2 : List Instr} {n : Nat}
     (h : CodeAt code a (l1 ++ l2)) (hn : l1.length = n) :
@@ -264,17 +297,17 @@ theorem stackNeed_of_nil {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]?
 
 /-! ## The generator's program -/
 
-theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
-    {cap : Nat} {o : Output} {is : List Instr}
-    (hg : genProgram m k args uart base room cap o = .ok is) :
+theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)} {m : Module}
+    {k : Nat} {base : UInt64} {cap : Nat} {is : List Instr}
+    (hg : genProgramWith mainLen mainGen m k base cap = .ok is) :
     ∃ gts fs first T main fns e pk rk g1 g2 g3 g4,
       areaOk m cap = true ∧ globalTypesOf m = some gts ∧ gts.length ≤ 511 ∧
       (reachFrom m k).mapM (funcOf m) = .ok fs ∧
-      first = after (after base 1) (mainSize args.length o) ∧
+      first = after (after base 1) mainLen ∧
       T = endOf (sigIn (callTargets m k) fs) first fs ∧
       entryIn (sigIn (callTargets m k) fs) first fs k = some (e, pk, rk) ∧
       pk.all wordType = true ∧
-      genMain (after base 1) e args uart room o = .ok main ∧
+      mainGen e = .ok main ∧
       genFunctions (tableOf (callTargets m k) first fs)
         ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs = .ok fns ∧
       is = main ++ fns ++ (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
@@ -283,7 +316,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       bField (after T 4) base = .ok g1 ∧ bField (after (after T 5) 4) base = .ok g2 ∧
       bField (after (after T 10) 4) base = .ok g3 ∧
       bField (after (after T 15) 4) base = .ok g4 := by
-  simp only [genProgram] at hg
+  simp only [genProgramWith] at hg
   cases hok : areaOk m cap with
   | false => simp [hok, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
   | true =>
@@ -299,7 +332,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
   | error e => simp [hfs, bind, Except.bind] at hg
   | ok fs =>
       simp only [hfs, bind, Except.bind] at hg
-      generalize hfirst : after (after base 1) (mainSize args.length o) = first at hg
+      generalize hfirst : after (after base 1) mainLen = first at hg
       generalize hT : endOf (sigIn (callTargets m k) fs) first fs = T at hg
       cases hen : entryIn (sigIn (callTargets m k) fs) first fs k with
       | none => simp [hen, throw, throwThe, MonadExceptOf.throw] at hg
@@ -310,7 +343,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
             | true => rfl
             | false => simp [hen, h, throw, throwThe, MonadExceptOf.throw] at hg
           simp only [hen, hps, if_true, pure, Except.pure] at hg
-          cases hmn : genMain (after base 1) e args uart room o with
+          cases hmn : mainGen e with
           | error err => simp [hmn] at hg
           | ok main =>
               simp only [hmn] at hg
@@ -337,6 +370,27 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
                   rw [← hg]
                   simp [List.append_assoc]
 
+theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
+    {cap : Nat} {o : Output} {is : List Instr}
+    (hg : genProgram m k args uart base room cap o = .ok is) :
+    ∃ gts fs first T main fns e pk rk g1 g2 g3 g4,
+      areaOk m cap = true ∧ globalTypesOf m = some gts ∧ gts.length ≤ 511 ∧
+      (reachFrom m k).mapM (funcOf m) = .ok fs ∧
+      first = after (after base 1) (mainSize args.length o) ∧
+      T = endOf (sigIn (callTargets m k) fs) first fs ∧
+      entryIn (sigIn (callTargets m k) fs) first fs k = some (e, pk, rk) ∧
+      pk.all wordType = true ∧
+      genMain (after base 1) e args uart room o = .ok main ∧
+      genFunctions (tableOf (callTargets m k) first fs)
+        ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs = .ok fns ∧
+      is = main ++ fns ++ (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
+        (movImm 0 (UInt64.ofNat 2) ++ [.b g2]) ++ (movImm 0 (UInt64.ofNat 3) ++ [.b g3]) ++
+        (movImm 0 (UInt64.ofNat 4) ++ [.b g4])) ∧
+      bField (after T 4) base = .ok g1 ∧ bField (after (after T 5) 4) base = .ok g2 ∧
+      bField (after (after T 10) 4) base = .ok g3 ∧
+      bField (after (after T 15) 4) base = .ok g4 :=
+  gen_programWith hg
+
 theorem genProgram_length {m : Module} {k : Nat} {args : List UInt64}
     {uart base room : UInt64} {cap : Nat} {o : Output} {is : List Instr}
     (hg : genProgram m k args uart base room cap o = .ok is)
@@ -350,6 +404,20 @@ theorem genProgram_length {m : Module} {k : Nat} {args : List UInt64}
   have hl := (genFunctions_length (sigOf_tableOf _ _ _) hfg).1
   simp only [List.length_append, genMain_length hmg, hl, movImm_length, List.length_singleton]
 
+theorem genProgramWith_length {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
+    {m : Module} {k : Nat} {base : UInt64} {cap : Nat} {is : List Instr}
+    (hg : genProgramWith mainLen mainGen m k base cap = .ok is)
+    (hml : ∀ e main, mainGen e = .ok main → main.length = mainLen)
+    {fs : List (Nat × Function)} (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs) :
+    is.length = mainLen +
+      (fs.map fun x => functionSize (sigIn (callTargets m k) fs) x.2).sum + 20 := by
+  obtain ⟨gts, fs', first, T, main, fns, e, pk, rk, g1, g2, g3, g4, -, -, -, hfs', -, -, -, -,
+    hmg, hfg, rfl, -⟩ := gen_programWith hg
+  rw [hfs] at hfs'
+  cases hfs'
+  have hl := (genFunctions_length (sigOf_tableOf _ _ _) hfg).1
+  simp only [List.length_append, hml e main hmg, hl, movImm_length, List.length_singleton]
+
 /-! ## Runs of `main`'s parts -/
 
 /-- The loads of `args` into X0 up. -/
@@ -360,12 +428,12 @@ theorem run_loads {args : List UInt64} (h8 : args.length ≤ 8) {a : UInt64} {s 
     ∃ s', Reach P code s s' ∧ s'.pc = after a (4 * args.length) ∧
       (∀ i (hi : i < args.length), s'.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = args[i]) ∧
       (∀ q : Fin 32, 8 ≤ q.val → s'.x q = s.x q) ∧
-      s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have key : ∀ j ≤ args.length, ∃ s', Reach P code s s' ∧ s'.pc = after a (4 * j) ∧
       (∀ i (hi : i < j) (hi' : i < args.length),
         s'.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = args[i]) ∧
       (∀ q : Fin 32, 8 ≤ q.val → s'.x q = s.x q) ∧
-      s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
     intro j
     induction j with
     | zero =>
@@ -398,10 +466,12 @@ theorem run_loads {args : List UInt64} (h8 : args.length ≤ 8) {a : UInt64} {s 
 theorem run_writes {a : UInt64} {s : State} {r : Fin 32} (hr1 : r ≠ 1) (hr2 : r ≠ 2)
     (hcode : CodeAt code a (writesOf r)) (hpc : s.pc = a) (h1 : s.x 1 = P.uart) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 16 ∧
-      s'.out = s.out ++ (List.range 8).map (fun j => (s.x r >>> UInt64.ofNat (8 * j)).toUInt8) ∧
+      s'.io.out =
+        s.io.out ++ (List.range 8).map (fun j => (s.x r >>> UInt64.ofNat (8 * j)).toUInt8) ∧
       (∀ q, q ≠ 2 → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem := by
   have key : ∀ j ≤ 8, ∃ s', Reach P code s s' ∧ s'.pc = after a (2 * j) ∧
-      s'.out = s.out ++ (List.range j).map (fun j => (s.x r >>> UInt64.ofNat (8 * j)).toUInt8) ∧
+      s'.io.out =
+        s.io.out ++ (List.range j).map (fun j => (s.x r >>> UInt64.ofNat (8 * j)).toUInt8) ∧
       (∀ q, q ≠ 2 → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem := by
     intro j
     induction j with
@@ -422,7 +492,8 @@ theorem run_writes {a : UInt64} {s : State} {r : Fin 32} (hr1 : r ≠ 1) (hr2 : 
         have hx1' : s1.x 1 = P.uart := by
           show (s'.setX 2 w).x 1 = P.uart
           rw [State.x_setX_ne (by decide), hxq 1 (by decide), h1]
-        let s2 : State := { s1 with out := s1.out ++ [(s1.x 2).toUInt8], pc := s1.pc + 4 }
+        let s2 : State :=
+          { s1 with io := { s1.io with out := s1.io.out ++ [(s1.x 2).toUInt8] }, pc := s1.pc + 4 }
         have hxsp : s1.xsp 1 = P.uart := by rw [State.xsp_eq_x (by decide), hx1']
         have e2 : LeanExe.A64.exec P (.strb 2 1 0) s1 = some s2 := by
           simp [exec, hxsp, State.spAligned, s2]
@@ -440,7 +511,7 @@ theorem run_writes {a : UInt64} {s : State} {r : Fin 32} (hr1 : r ≠ 1) (hr2 : 
           ?_⟩
         · show s1.pc + 4 = _
           rw [p1, ← after_succ, after_after, Nat.mul_succ]
-        · show s1.out ++ [(s1.x 2).toUInt8] = _
+        · show s1.io.out ++ [(s1.x 2).toUInt8] = _
           rw [hw, List.range_succ, List.map_append, ← List.append_assoc, ← hout]
           rfl
         · show (s'.setX 2 w).x q = _
@@ -557,7 +628,7 @@ at `base`. -/
 theorem run_stub {a base : UInt64} {c : Nat} {g : Fin 67108864} {s : State}
     (hcode : CodeAt code a (movImm 0 (UInt64.ofNat c) ++ [.b g]))
     (hb : bField (after a 4) base = .ok g) (hpc : s.pc = a) :
-    ∃ s', Reach P code s s' ∧ s'.pc = base ∧ s'.x 0 = UInt64.ofNat c ∧ s'.out = s.out := by
+    ∃ s', Reach P code s s' ∧ s'.pc = base ∧ s'.x 0 = UInt64.ofNat c ∧ s'.io = s.io := by
   have h := CodeAt.split code hcode (movImm_length 0 (UInt64.ofNat c))
   obtain ⟨s1, r1, p1, x1, -, -, -, out1⟩ := run_movImm P code (d := 0) (by decide) h.1 hpc
   have cb : code (after a 4) = some (encode (.b g)) := (CodeAt.cons.mp h.2).1
@@ -593,7 +664,7 @@ theorem run_arrayStep {u : State} {a : UInt64} {cz : Fin 524288} {back : Fin 671
     (hmap : ∀ k < 8, P.normal (u.x 3 + 8 + UInt64.ofNat (8 * 512 + k)) = true) :
     ∃ u', Reach P code u u' ∧ u'.pc = after a 18 ∧ u'.x 3 = u.x 3 + 8 ∧
       u'.x 4 = u.x 4 - UInt64.ofNat 1 ∧
-      u'.out = u.out ++ bytesOf (load64 u.mem (u.x 3 + 8 + UInt64.ofNat (8 * 512))) ∧
+      u'.io.out = u.io.out ++ bytesOf (load64 u.mem (u.x 3 + 8 + UInt64.ofNat (8 * 512))) ∧
       u'.sp = u.sp ∧ u'.mem = u.mem ∧
       (∀ q : Fin 32, q ≠ 2 → q ≠ 3 → q ≠ 4 → q ≠ 6 → u'.x q = u.x q) := by
   have hd3 : (3 : Fin 32).val < 31 := by decide
@@ -653,11 +724,11 @@ theorem run_arrayStep {u : State} {a : UInt64} {cz : Fin 524288} {back : Fin 671
   have hmem3 : u3.mem = u.mem := by
     show (u2.setX 6 (load64 u2.mem (u2.x 3 + UInt64.ofNat (8 * 512)))).mem = _
     rw [State.setX_mem, hmem2]
-  have hout3 : u3.out = u.out := by
-    show (u2.setX 6 (load64 u2.mem (u2.x 3 + UInt64.ofNat (8 * 512)))).out = _
-    rw [State.setX_out]
-    show (u1.setX 3 (u1.x 3 + UInt64.ofNat 8)).out = _
-    rw [State.setX_out]
+  have hout3 : u3.io = u.io := by
+    show (u2.setX 6 (load64 u2.mem (u2.x 3 + UInt64.ofNat (8 * 512)))).io = _
+    rw [State.setX_io]
+    show (u1.setX 3 (u1.x 3 + UInt64.ofNat 8)).io = _
+    rw [State.setX_io]
   refine ⟨u6, reach_exec P code (by rw [hpc]; exact hc18) e1
       (reach_exec P code (by rw [p1]; exact hc19) e2
         (reach_exec P code (by rw [p2]; exact hc20) e3
@@ -672,8 +743,8 @@ theorem run_arrayStep {u : State} {a : UInt64} {cz : Fin 524288} {back : Fin 671
     rw [State.x_setX_ne (by decide), hx23]
   · show (u4.setX 4 (u4.x 4 - UInt64.ofNat 1)).x 4 = _
     rw [State.x_setX_same hd4, hk4 4 (by decide), hk3 4 (by decide) (by decide)]
-  · show (u4.setX 4 (u4.x 4 - UInt64.ofNat 1)).out = _
-    rw [State.setX_out, out4, hout3, hx63]
+  · show (u4.setX 4 (u4.x 4 - UInt64.ofNat 1)).io.out = _
+    rw [State.setX_io, out4, hout3, hx63]
     rfl
   · show (u4.setX 4 (u4.x 4 - UInt64.ofNat 1)).sp = _
     rw [State.setX_sp, sp4, hsp3]
@@ -717,7 +788,7 @@ theorem run_arrayOut {cap : Nat} {gts : List ValueType} {st : Store Unit} {s : S
     (hpc : s.pc = a) (hsr : StoreRel P cap gts st s) (hx0 : s.x 0 = ptr)
     (hx1 : s.x 1 = P.uart) (hat : LeanExe.ProofKit.UInt64Array.At st ptr ws) :
     ∃ t, Reach P code s t ∧ t.pc = after a 39 ∧ t.sp = s.sp ∧ t.mem = s.mem ∧
-      t.out = s.out ++ arrayBytes ws ∧
+      t.io.out = s.io.out ++ arrayBytes ws ∧
       (∀ q : Fin 32, q ≠ 2 → q ≠ 3 → q ≠ 4 → q ≠ 6 → t.x q = s.x q) := by
   have hat' := hat
   obtain ⟨hA1, hA2, hA3, hA4⟩ := hat'
@@ -790,17 +861,18 @@ theorem run_arrayOut {cap : Nat} {gts : List ValueType} {st : Store Unit} {s : S
   have hmem2 : s2.mem = s.mem := by
     show (s1.setX 4 (load64 s1.mem (s1.x 3 + UInt64.ofNat (8 * 512)))).mem = _
     rw [State.setX_mem, hmem1]
-  have hout2 : s2.out = s.out := by
-    show (s1.setX 4 (load64 s1.mem (s1.x 3 + UInt64.ofNat (8 * 512)))).out = _
-    rw [State.setX_out]
-    exact State.setX_out
+  have hout2 : s2.io = s.io := by
+    show (s1.setX 4 (load64 s1.mem (s1.x 3 + UInt64.ofNat (8 * 512)))).io = _
+    rw [State.setX_io]
+    exact State.setX_io
   have loop : ∀ m k, k + m = ws.size → ∀ u : State, Reach P code s u → u.pc = after a 18 →
       u.x 3 = s.x 17 + ptr + UInt64.ofNat (8 * k) → u.x 4 = UInt64.ofNat m →
       u.x 1 = P.uart → u.sp = s.sp → u.mem = s.mem →
-      u.out = s.out ++ bytesOf (UInt64.ofNat ws.size) ++ (ws.toList.take k).flatMap bytesOf →
+      u.io.out =
+        s.io.out ++ bytesOf (UInt64.ofNat ws.size) ++ (ws.toList.take k).flatMap bytesOf →
       (∀ q : Fin 32, q ≠ 2 → q ≠ 3 → q ≠ 4 → q ≠ 6 → u.x q = s.x q) →
       ∃ t, Reach P code s t ∧ t.pc = after a 39 ∧ t.sp = s.sp ∧ t.mem = s.mem ∧
-        t.out = s.out ++ arrayBytes ws ∧
+        t.io.out = s.io.out ++ arrayBytes ws ∧
         (∀ q : Fin 32, q ≠ 2 → q ≠ 3 → q ≠ 4 → q ≠ 6 → t.x q = s.x q) := by
     intro m
     induction m with
@@ -809,7 +881,7 @@ theorem run_arrayOut {cap : Nat} {gts : List ValueType} {st : Store Unit} {s : S
         have h40 : u.x 4 = 0 := by rw [h4]; rfl
         refine ⟨{ u with pc := after a 39 }, hr.trans (reach_exec P code (by rw [hp]; exact c18)
           (by simp [exec, h40, hp, cbField_target hcz]) (.refl _)), rfl, hsp, hmem, ?_, hq⟩
-        show u.out = _
+        show u.io.out = _
         have hkn : k = ws.size := by omega
         rw [hout, hkn, List.take_of_length_le (by simp), List.append_assoc]
         rfl
@@ -872,11 +944,12 @@ X0 and the UART's output as it was. -/
 def ProgramResult (base : UInt64) (o : Output) (res : Result Unit) (ms : State) : Prop :=
   match res, o with
   | .Success [v] _, .word => ∃ w ms', ValRel v w ∧ Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧
-      ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧ ms'.out = ms.out ++ bytesOf w
+      ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧ ms'.io.out = ms.io.out ++ bytesOf w
   | .Success [v] st', .array => ∀ ptr ws, v = .i64 ptr →
       LeanExe.ProofKit.UInt64Array.At st' ptr ws → ∃ ms', Reach P code ms ms' ∧
-        ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧ ms'.out = ms.out ++ arrayBytes ws
-  | .Trap _ msg, _ => ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.out = ms.out ∧
+        ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
+          ms'.io.out = ms.io.out ++ arrayBytes ws
+  | .Trap _ msg, _ => ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.io.out = ms.io.out ∧
       ((msg = "unreachable" ∧ ms'.x 0 = 1) ∨ (msg = "out of bounds memory access" ∧ ms'.x 0 = 2) ∨
         (msg = "integer divide by zero" ∧ ms'.x 0 = 3))
   | _, _ => True
@@ -885,7 +958,8 @@ def ProgramResult (base : UInt64) (o : Output) (res : Result Unit) (ms : State) 
 of an overflow of the stack and the UART's output as it was. -/
 def ProgramOutcome (base : UInt64) (calls : Prop) (o : Output) (res : Result Unit) (ms : State) :
     Prop :=
-  (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
+  (calls ∧
+    ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.io.out = ms.io.out) ∨
     ProgramResult P code base o res ms
 
 theorem ProgramOutcome.mono {base : UInt64} {calls calls' : Prop} {o : Output}
@@ -899,7 +973,7 @@ theorem ProgramResult.success {base : UInt64} {res : Result Unit} {v : Value}
     {st' : Store Unit} {ms : State} (h : ProgramResult P code base .word res ms)
     (hres : res = .Success [v] st') :
     ∃ w ms', ValRel v w ∧ Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
-      ms'.x 0 = 0 ∧ ms'.out = ms.out ++ bytesOf w := by
+      ms'.x 0 = 0 ∧ ms'.io.out = ms.io.out ++ bytesOf w := by
   subst hres
   exact h
 
@@ -908,16 +982,17 @@ theorem ProgramResult.array {base : UInt64} {res : Result Unit} {ptr : UInt64}
     (h : ProgramResult P code base .array res ms) (hres : res = .Success [.i64 ptr] st')
     (hat : LeanExe.ProofKit.UInt64Array.At st' ptr ws) :
     ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
-      ms'.out = ms.out ++ arrayBytes ws := by
+      ms'.io.out = ms.io.out ++ arrayBytes ws := by
   subst hres
   exact h ptr ws rfl hat
 
 theorem ProgramOutcome.success {base : UInt64} {calls : Prop} {res : Result Unit}
     {v : Value} {st' : Store Unit} {ms : State} (h : ProgramOutcome P code base calls .word res ms)
     (hres : res = .Success [v] st') :
-    (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
+    (calls ∧
+      ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.io.out = ms.io.out) ∨
       ∃ w ms', ValRel v w ∧ Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
-        ms'.x 0 = 0 ∧ ms'.out = ms.out ++ bytesOf w := by
+        ms'.x 0 = 0 ∧ ms'.io.out = ms.io.out ++ bytesOf w := by
   subst hres
   exact h
 
@@ -925,9 +1000,10 @@ theorem ProgramOutcome.array {base : UInt64} {calls : Prop} {res : Result Unit}
     {ptr : UInt64} {ws : Array UInt64} {st' : Store Unit} {ms : State}
     (h : ProgramOutcome P code base calls .array res ms) (hres : res = .Success [.i64 ptr] st')
     (hat : LeanExe.ProofKit.UInt64Array.At st' ptr ws) :
-    (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
+    (calls ∧
+      ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.io.out = ms.io.out) ∨
       ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
-        ms'.out = ms.out ++ arrayBytes ws := by
+        ms'.io.out = ms.io.out ++ arrayBytes ws := by
   subst hres
   rcases h with h | h
   · exact .inl h
@@ -936,8 +1012,10 @@ theorem ProgramOutcome.array {base : UInt64} {calls : Prop} {res : Result Unit}
 theorem ProgramOutcome.unreachable {base : UInt64} {calls : Prop} {o : Output} {res : Result Unit}
     {st' : Store Unit} {ms : State} (h : ProgramOutcome P code base calls o res ms)
     (hres : res = .Trap st' "unreachable") :
-    (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
-      ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 1 ∧ ms'.out = ms.out := by
+    (calls ∧
+      ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.io.out = ms.io.out) ∨
+      ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 1 ∧
+        ms'.io.out = ms.io.out := by
   subst hres
   rcases h with h | ⟨ms', hr, hp, ho, ⟨-, hx⟩ | ⟨habs, -⟩ | ⟨habs, -⟩⟩
   · exact .inl h
@@ -945,50 +1023,72 @@ theorem ProgramOutcome.unreachable {base : UInt64} {calls : Prop} {o : Output} {
   · exact absurd habs (by decide)
   · exact absurd habs (by decide)
 
-/-- The run of the program that runs function `k` of `m`, which imports nothing, on the words
-`args`, from `main` at `after base 1`, for Talos's run of the function at any fuel from the
-module's initial store with a memory of `cap` pages on the arguments `argValues f.params args`,
-whose words are `args`.  The machine may reach the exit
-word with the status of an overflow of the stack only when the functions that calls reach from
-function `k` call others and `room` lies below `stackBound m k`.  `main` sets the stack's limit
-`room` bytes below its frame of 16 bytes, and those `room + 16` bytes below SP must be Normal
-memory above address 4096.  X17 must hold the area's address `area`, and the area must hold
-`areaBytes`, lie in Normal memory, and end at or below the stack's limit. -/
-theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UInt64}
+/-- The run of a program of `genProgramWith` whose `main` has the shape `MainShape` around the
+code `setup`, which sets the arguments, and the code `tail` after the return, for the program that
+runs function `k` of `m`, which imports nothing.  From `main` at `after base 1`, the prologue sets
+the frame and X18, and `setup`, run from there with the state's UART as at `main`'s start, either
+reaches the call with words `ws` that satisfy `Q` in X0 upward and the frame, X17, X18, SP,
+memory, and output kept, or reaches the exit word with a status that satisfies `X` and the output
+kept.  In the second case the program ends there.  In the first, the machine does what
+`ProgramOutcome` states for Talos's run of the function at any fuel from the module's initial
+store with a memory of `cap` pages on the arguments `argValues f.params ws`.  The machine may
+reach the exit word with the status of an overflow of the stack only when the functions that
+calls reach from function `k` call others and `room` lies below `stackBound m k`.  `main` sets the
+stack's limit `room` bytes below its frame of 16 bytes, and those `room + 16` bytes below SP must
+be Normal memory above address 4096.  X17 must hold the area's address `area`, and the area must
+hold `areaBytes`, lie in Normal memory, and end at or below the stack's limit. -/
+theorem programWith_sim {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
+    {setup tail : List Instr} {m : Module} {k : Nat} {f : Function}
     {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
-    (hg : genProgram m k args P.uart base room cap o = .ok is)
+    (hg : genProgramWith mainLen mainGen m k base cap = .ok is)
+    (hshape : ∀ e main, mainGen e = .ok main →
+      MainShape (after base 1) e setup tail P.uart room o main)
+    (hlen : mainLen = 8 + setup.length + 12 + outSize o + tail.length)
     (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
-    (hp : args.length = f.params.length) (F : Nat)
-    (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
+    (F : Nat) (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
     (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
     (h17 : ms.x 17 = area)
     (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
-    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
-    ProgramOutcome P code base (callTargets m k ≠ [] ∧ room.toNat < stackBound m k) o
-      (Wasm.run F m k (initStore m cap) (argValues f.params args).reverse) ms := by
+    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat)
+    {Q : List UInt64 → Prop} {X : UInt64 → Prop}
+    (hsetup : CodeAt code (after (after base 1) 8) setup →
+      CodeAt code (after (after base 1) (8 + setup.length + 12 + outSize o)) tail →
+      ∀ s : State, s.pc = after (after base 1) 8 → s.io = ms.io →
+      (∃ ws t, Q ws ∧ ws.length = f.params.length ∧ ws.length ≤ 8 ∧ Reach P code s t ∧
+        t.pc = after (after base 1) (8 + setup.length) ∧
+        (∀ i (hi : i < ws.length), t.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = ws[i]) ∧
+        t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧ t.sp = s.sp ∧ t.mem = s.mem ∧
+        t.io.out = s.io.out) ∨
+      ∃ t, Reach P code s t ∧ t.pc = base ∧ X (t.x 0) ∧ t.io.out = s.io.out) :
+    (∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ X (ms'.x 0) ∧ ms'.io.out = ms.io.out) ∨
+    ∃ ws, Q ws ∧
+      ProgramOutcome P code base (callTargets m k ≠ [] ∧ room.toNat < stackBound m k) o
+        (Wasm.run F m k (initStore m cap) (argValues f.params ws).reverse) ms := by
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hok, hgt, hgl, hfs, hfirst, hT,
-    hen, hps, hmg, hfg, his, hb1, hb2, hb3, hb4⟩ := gen_program hg
+    hen, hps, hmg, hfg, his, hb1, hb2, hb3, hb4⟩ := gen_programWith hg
   subst his
   have hsp : 4096 + room.toNat + 16 ≤ ms.sp.toNat := by unfold areaSize at habove; omega
   have h64 : m.memIs64 = false := memIs64_of_areaOk hok
   have hfm := mapM_funcOf hfs
   have hsig := sigOf_tableOf (callTargets m k) first fs
   have hend := (genFunctions_length hsig hfg).2
-  obtain ⟨h8, g, out, hbl, hgo, hmeq⟩ := gen_main hmg
+  have hml := (hshape e main hmg).length
+  rw [← hlen] at hml
+  obtain ⟨g, out, hbl, hgo, hmeq⟩ := hshape e main hmg
   have hmain : ∀ j < 16, P.normal (ms.sp - 16 + UInt64.ofNat j) = true := fun j hj => by
     rw [stack_main]
     exact hstack _ (by omega)
   -- the code's parts
   have hc := (CodeAt.append (code := code)).mp hcode
-  have hc2 := CodeAt.split code hc.1 (genMain_length hmg)
+  have hc2 := CodeAt.split code hc.1 hml
   have cfns : CodeAt code first fns := by rw [hfirst]; exact hc2.2
   have cst : CodeAt code T (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
       (movImm 0 (UInt64.ofNat 2) ++ [.b g2]) ++ (movImm 0 (UInt64.ofNat 3) ++ [.b g3]) ++
       (movImm 0 (UInt64.ofNat 4) ++ [.b g4])) := by
     have := hc.2
-    rw [List.length_append, genMain_length hmg, ← after_after, ← hfirst, ← hend, ← hT] at this
+    rw [List.length_append, hml, ← after_after, ← hfirst, ← hend, ← hT] at this
     exact this
   have cs4 := CodeAt.split code cst (n := 15) (by simp [movImm])
   have cs3 := CodeAt.split code cs4.1 (n := 10) (by simp [movImm])
@@ -1017,32 +1117,31 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
   have cmain := hc2.1
   rw [hmeq] at cmain
   generalize hA : after base 1 = A at *
-  generalize hn : args.length = n at *
-  have hL := loads_length args
-  rw [hn] at hL
-  have s8 := CodeAt.split code cmain (n := 4 * n + 17 + outSize o) (by
+  generalize hL : setup.length = n at *
+  have s9 := CodeAt.split code cmain (n := n + 20 + outSize o) (by
     simp only [List.length_append, hL, genOut_length hgo, movImm_length, List.length_cons,
       List.length_nil]
     all_goals omega)
-  have s7 := CodeAt.split code s8.1 (n := 4 * n + 13 + outSize o) (by
+  have s8 := CodeAt.split code s9.1 (n := n + 17 + outSize o) (by
     simp only [List.length_append, hL, genOut_length hgo, movImm_length, List.length_cons,
       List.length_nil]
     all_goals omega)
-  have s6 := CodeAt.split code s7.1 (n := 4 * n + 13) (by
+  have s7 := CodeAt.split code s8.1 (n := n + 13 + outSize o) (by
+    simp only [List.length_append, hL, genOut_length hgo, movImm_length, List.length_cons,
+      List.length_nil]
+    all_goals omega)
+  have s6 := CodeAt.split code s7.1 (n := n + 13) (by
     simp only [List.length_append, hL, movImm_length, List.length_cons, List.length_nil]
     all_goals omega)
-  have s5 := CodeAt.split code s6.1 (n := 4 * n + 9) (by
+  have s5 := CodeAt.split code s6.1 (n := n + 9) (by
     simp only [List.length_append, hL, movImm_length, List.length_cons, List.length_nil]
     all_goals omega)
-  have s4 := CodeAt.split code s5.1 (n := 8 + 4 * n) (by
-    simp only [List.length_append, hL, movImm_length, List.length_cons, List.length_nil]
-    all_goals omega)
+  have s4 := CodeAt.split code s5.1 (n := 8 + n) (by
+    simp only [List.length_append, hL, movImm_length, List.length_cons, List.length_nil])
   have s3x := CodeAt.split code s4.1 (n := 8) (by
-    simp only [List.length_append, movImm_length, List.length_cons, List.length_nil]
-    all_goals omega)
+    simp only [List.length_append, movImm_length, List.length_cons, List.length_nil])
   have s2 := CodeAt.split code s3x.1 (n := 7) (by
-    simp only [List.length_append, movImm_length, List.length_cons, List.length_nil]
-    all_goals omega)
+    simp only [List.length_append, movImm_length, List.length_cons, List.length_nil])
   have s1 := CodeAt.split code s2.1 (n := 3) rfl
   -- `main`'s frame and X18
   have c0 := (CodeAt.cons.mp s1.1).1
@@ -1091,12 +1190,23 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
     rw [State.x_withPc, State.x_setX_ne (by decide), hk3a 17 (by decide), State.x_withPc,
       State.x_setX_ne (by decide)]
     rfl
-  -- the loads
-  obtain ⟨t3, r3, p3, hx3, hhi3, sp3, mem3, out3⟩ :=
-    run_loads P code (args := args) (by omega) s3x.2 p3b
-  rw [hn, after_after] at p3
+  have r3b : Reach P code ms t3b :=
+    r2.trans (r3a.trans (reach_exec P code (by rw [p3a, after_after]; exact csub) e3b (.refl _)))
+  have out3b : t3b.io = ms.io := by
+    show (t3a.setX 18 (t3a.x 18 - t3a.x 16)).io = _
+    have ho2 : t2a.io = ms.io := rfl
+    rw [State.setX_io, out3a, ho2]
+  -- the setup of the arguments
+  have ctail : CodeAt code (after A (8 + n + 12 + outSize o)) tail := by
+    rw [show 8 + n + 12 + outSize o = n + 20 + outSize o by omega]
+    exact s9.2
+  rcases hsetup s3x.2 ctail t3b p3b out3b with
+    ⟨ws, t3, hQ, hws, hw8, r3, p3, hx3, h173, h183, sp3, mem3, out3⟩ | ⟨u, ru, pu, xu, outu⟩
+  rotate_left
+  · exact .inl ⟨u, r3b.trans ru, pu, xu, by rw [outu, out3b]⟩
+  refine .inr ⟨ws, hQ, ?_⟩
   -- the call
-  have cbl : code (after A (8 + 4 * n)) = some (encode (.bl g)) := (CodeAt.cons.mp s4.2).1
+  have cbl : code (after A (8 + n)) = some (encode (.bl g)) := (CodeAt.cons.mp s4.2).1
   let t4 : State := { t3.setX 30 (t3.pc + 4) with pc := t3.pc + sext 26 g.val * 4 }
   have e4 : LeanExe.A64.exec P (.bl g) t3 = some t4 := rfl
   have p4 : t4.pc = e := by
@@ -1105,17 +1215,17 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
   have sp4 : t4.sp = ms.sp - 16 := by
     show (t3.setX 30 (t3.pc + 4)).sp = _
     rw [State.setX_sp, sp3, sp3b]
-  have h30 : t4.x 30 = after A (4 * n + 9) := by
+  have h30 : t4.x 30 = after A (n + 9) := by
     show (t3.setX 30 (t3.pc + 4)).x 30 = _
     rw [State.x_setX_same (by decide), p3, ← after_succ]
     congr 1
     omega
   have h184 : t4.x 18 = ms.sp - 16 - room := by
     show (t3.setX 30 (t3.pc + 4)).x 18 = _
-    rw [State.x_setX_ne (by decide), hhi3 18 (by decide), h18b]
+    rw [State.x_setX_ne (by decide), h183, h18b]
   have h174 : t4.x 17 = area := by
     show (t3.setX 30 (t3.pc + 4)).x 17 = _
-    rw [State.x_setX_ne (by decide), hhi3 17 (by decide), h17b, h17]
+    rw [State.x_setX_ne (by decide), h173, h17b, h17]
   have e16 : (ms.sp - 16).toNat = ms.sp.toNat - 16 := toNat_sub_le (by
     show 16 ≤ ms.sp.toNat
     omega)
@@ -1133,15 +1243,11 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
       rw [hd4] at hj
       rw [h184]
       exact hstack j (by omega)
-  have out4 : t4.out = ms.out := by
-    show (t3.setX 30 (t3.pc + 4)).out = _
-    rw [State.setX_out, out3]
-    show (t3a.setX 18 (t3a.x 18 - t3a.x 16)).out = _
-    have ho2 : t2a.out = ms.out := rfl
-    rw [State.setX_out, out3a, ho2]
+  have out4 : t4.io.out = ms.io.out := by
+    show (t3.setX 30 (t3.pc + 4)).io.out = _
+    rw [State.setX_io, out3, out3b]
   have r4 : Reach P code ms t4 :=
-    r2.trans (r3a.trans (reach_exec P code (by rw [p3a, after_after]; exact csub) e3b
-      (r3.trans (reach_exec P code (by rw [p3]; exact cbl) e4 (.refl _)))))
+    r3b.trans (r3.trans (reach_exec P code (by rw [p3]; exact cbl) e4 (.refl _)))
   have mem4 : t4.mem = store64 ms.mem (slotAddr (ms.sp - 16) 0) (ms.x 30) := by
     show (t3.setX 30 (t3.pc + 4)).mem = _
     rw [State.setX_mem, mem3]
@@ -1158,22 +1264,22 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
       unfold areaSize at habove hj
       exact below_slot (Nat.le_refl _) (by rw [e16]; omega) (by decide)
         (by rw [UInt64.toNat_add, UInt64.toNat_ofNat', e16]; simp only [Nat.reducePow] at *; omega)
-  have hvs : ((argValues f.params args).reverse).length = f.params.length := by
+  have hvs : ((argValues f.params ws).reverse).length = f.params.length := by
     rw [List.length_reverse, length_argValues]
     omega
   have hvt : Typed f.params.reverse
-      (((argValues f.params args).reverse).take f.params.length) := by
+      (((argValues f.params ws).reverse).take f.params.length) := by
     rw [List.take_of_length_le (by omega)]
     exact Typed.reverse (typed_words hps (by omega))
   rcases run_outcome P code hm h64 hk hgk cfk hcl (stackNeed_ok hk _) (initStore m cap)
-    (argValues f.params args).reverse t4 (by omega) hvt p4 hstk hsr4 (by
+    (argValues f.params ws).reverse t4 (by omega) hvt p4 hstk hsr4 (by
       rw [List.take_of_length_le (by omega)]
       refine ⟨by rw [List.length_reverse, length_argValues]; omega, fun i hi => ?_⟩
-      have hi' : i < args.length := by
+      have hi' : i < ws.length := by
         rw [List.length_reverse, length_argValues] at hi
         omega
       simp only [List.reverse_reverse, getElem_argValues]
-      have hx : t4.x (regOf i) = args[i] := by
+      have hx : t4.x (regOf i) = ws[i] := by
         rw [regOf_small i (by omega)]
         show (t3.setX 30 (t3.pc + 4)).x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = _
         rw [State.x_setX_ne (fun e => by
@@ -1198,7 +1304,7 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
     exact .inl ⟨⟨hct, hov⟩, u2, r4.trans (ru.trans ru2), pu2, xu2, by rw [outu2, outu, out4]⟩
   refine .inr ?_
   revert hro
-  cases Wasm.run F m k (initStore m cap) (argValues f.params args).reverse with
+  cases Wasm.run F m k (initStore m cap) (argValues f.params ws).reverse with
   | Trap st' msg =>
       intro hro
       obtain ⟨u, ru, outu, hmsg⟩ := hro
@@ -1229,10 +1335,10 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
   -- the UART's address
   obtain ⟨t6, r6, p6, hx6, hk6, sp6, mem6, out6⟩ :=
     run_movImm P code (d := 1) (v := P.uart) (by decide) s5.2 (by rw [p5, h30])
-  have hp6 : t6.pc = after A (13 + 4 * n) := by
-    rw [p6, after_after, show 4 * n + 9 + 4 = 13 + 4 * n by omega]
-  have cO : CodeAt code (after A (13 + 4 * n)) out := by
-    rw [show 13 + 4 * n = 4 * n + 13 by omega]
+  have hp6 : t6.pc = after A (13 + n) := by
+    rw [p6, after_after, show n + 9 + 4 = 13 + n by omega]
+  have cO : CodeAt code (after A (13 + n)) out := by
+    rw [show 13 + n = n + 13 by omega]
     exact s6.2
   -- the return after the output
   have ht4 : t4.sp.toNat < 2 ^ 63 := by
@@ -1243,16 +1349,16 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
     fun k hk => by
       rw [← sp4]
       exact le_slot hk ht4 (by decide) (Nat.le_refl _)
-  have exit : ∀ u : State, Reach P code ms u → u.pc = after A (4 * n + 13 + outSize o) →
+  have exit : ∀ u : State, Reach P code ms u → u.pc = after A (n + 13 + outSize o) →
       u.sp = ms.sp - 16 → u.mem = t5.mem →
       ∃ t9, Reach P code ms t9 ∧ t9.pc = ms.x 30 ∧ t9.sp = ms.sp ∧ t9.x 0 = 0 ∧
-        t9.out = u.out := by
+        t9.io = u.io := by
     intro u hru hpu hspu hmemu
     obtain ⟨t8, r8, p8, hx8, hk8, sp8, mem8, out8⟩ :=
       run_movImm P code (d := 0) (v := 0) (by decide) s7.2 hpu
     have sp8' : t8.sp = ms.sp - 16 := by rw [sp8, hspu]
-    have p8' : t8.pc = after A (4 * n + 17 + outSize o) := by
-      rw [p8, after_after, show 4 * n + 13 + outSize o + 4 = 4 * n + 17 + outSize o by omega]
+    have p8' : t8.pc = after A (n + 17 + outSize o) := by
+      rw [p8, after_after, show n + 13 + outSize o + 4 = n + 17 + outSize o by omega]
     have al8 : t8.sp % 16 = 0 := by rw [sp8']; exact halm
     have mp8 : ∀ j < 8, P.normal (t8.sp + UInt64.ofNat (8 * 0 + j)) = true := fun j hj => by
       rw [sp8']
@@ -1296,6 +1402,44 @@ theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UIn
         (by rw [sp7, sp6, sp5, sp4]) (by rw [mem7, mem6])
       refine ⟨t9, r9, p9, sp9, x9, ?_⟩
       rw [out9, out7, out6, out5, out4]
+
+
+/-- The run of the program that runs function `k` of `m`, which imports nothing, on the words
+`args`, from `main` at `after base 1`, for Talos's run of the function at any fuel from the
+module's initial store with a memory of `cap` pages on the arguments `argValues f.params args`,
+whose words are `args`: `programWith_sim` with the loads of `genMain` as the setup.  The machine
+may reach the exit word with the status of an overflow of the stack only when the functions that
+calls reach from function `k` call others and `room` lies below `stackBound m k`. -/
+theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UInt64}
+    {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
+    (hg : genProgram m k args P.uart base room cap o = .ok is)
+    (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
+    (hp : args.length = f.params.length) (F : Nat)
+    (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
+    (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
+    (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
+    (h17 : ms.x 17 = area)
+    (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
+    (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
+    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
+    ProgramOutcome P code base (callTargets m k ≠ [] ∧ room.toNat < stackBound m k) o
+      (Wasm.run F m k (initStore m cap) (argValues f.params args).reverse) ms := by
+  have h8 : args.length ≤ 8 := by
+    obtain ⟨-, -, -, -, main, -, e, -, -, -, -, -, -, -, -, -, -, -, -, -, -, hmg, -⟩ :=
+      gen_program hg
+    exact (genMain_shape hmg).1
+  rcases programWith_sim P code (Q := fun ws => ws = args) (X := fun _ => False) hg
+    (fun e main hmg => (genMain_shape hmg).2)
+    (by simp only [mainSize, loads_length, List.length_nil]; omega)
+    hcode hm hk F ms hpc hal hroom htop hstack h17 harea hamap habove
+    (fun cs _ s hs _ => by
+      obtain ⟨t, r, pt, hx, hhi, sp, mem, out⟩ := run_loads P code (args := args) h8 cs hs
+      exact .inl ⟨args, t, rfl, hp, h8, r,
+        by rw [pt, after_after (after base 1) 8, loads_length], hx, hhi 17 (by decide),
+        hhi 18 (by decide), sp, mem, by rw [out]⟩) with
+    ⟨-, -, -, hf, -⟩ | ⟨ws, rfl, h⟩
+  · exact hf.elim
+  · exact h
 
 /-- `program_sim_stack` without its condition on `room`: the machine may reach the exit word with
 the status of an overflow of the stack only when the functions that calls reach from function `k`

@@ -52,7 +52,7 @@ theorem boot_addrOf (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : 
     (hend : (after here 2).toNat < 2 ^ 55) :
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after here 2 ∧ c.x d = target ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
-      c.out = b.core.out := by
+      c.io = b.core.io := by
   obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_addrOf noMemory (withoutFP code) hg hd
     (hc.noFP (addrOf_noFP hg)) hpc
   exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
@@ -68,7 +68,7 @@ theorem boot_movImm (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : 
     (hoff : b.mmuOff) (hend : (after a 4).toNat < 2 ^ 55) :
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after a 4 ∧ c.x d = v ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
-      c.out = b.core.out := by
+      c.io = b.core.io := by
   obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_movImm noMemory (withoutFP code) hd
     (hcode.noFP (movImm_noFP d v)) hpc
   exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
@@ -94,7 +94,7 @@ theorem run_checkEL {P : Platform} {s : State} {a : UInt64} {f : Fin 524288}
     (h3 : code (after a 3) = some (encode (.bcond 1 f))) (hpc : s.pc = after a 1)
     (hx : s.x 1 = 4) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧
-      s'.out = s.out := by
+      s'.io = s.io := by
   let s1 : State := { s.setX 1 (s.x 1 >>> UInt64.ofNat (2 : Fin 64).val) with pc := s.pc + 4 }
   let s2 : State :=
     { s1.subs 31 (s1.xsp 1) (UInt64.ofNat (1 : Fin 4096).val) with pc := s1.pc + 4 }
@@ -132,7 +132,7 @@ theorem run_mmfr3 {P : Platform} {s : State} {a : UInt64} {f : Fin 524288}
     (hf : cbField (after a 30) (after a 32) = .ok f) (hpc : s.pc = after a 28) :
     ∃ s', Reach P code s s' ∧
       s'.pc = (if s.x 1 &&& 15 = 0 then after a 32 else after a 31) ∧ s'.sp = s.sp ∧
-      s'.mem = s.mem ∧ s'.out = s.out := by
+      s'.mem = s.mem ∧ s'.io = s.io := by
   let v2 : UInt64 := UInt64.ofNat (15 : Fin 65536).val <<< UInt64.ofNat (16 * (0 : Fin 4).val)
   let s1 : State := { s.setX 2 v2 with pc := s.pc + 4 }
   let s2 : State := { s1.setX 1 (s1.x 1 &&& s1.x 2) with pc := s1.pc + 4 }
@@ -168,14 +168,14 @@ structure OffAt (b0 : Boot) (a : UInt64) (w : Sys) (b : Boot) : Prop where
   written : b.written = w
   mem : b.core.mem = b0.core.mem
   sp : b.core.sp = b0.core.sp
-  out : b.core.out = b0.core.out
+  out : b.core.io = b0.core.io
 
 /-- A run of the boot model that changes only the core of a state of the startup's first part,
 and keeps its memory, SP, and output, ends in such a state. -/
 theorem OffAt.core {b0 b : Boot} {a a' : UInt64} {w : Sys} {c : State}
     (hb : BootReach h R code b0 b) (ho : OffAt b0 a w b)
     (hr : BootReach h R code b { b with core := c }) (hpc : c.pc = a')
-    (hm : c.mem = b.core.mem) (hs : c.sp = b.core.sp) (hout : c.out = b.core.out) :
+    (hm : c.mem = b.core.mem) (hs : c.sp = b.core.sp) (hout : c.io = b.core.io) :
     BootReach h R code b0 { b with core := c } ∧ OffAt b0 a' w { b with core := c } :=
   ⟨hb.trans hr, hpc, ho.spSel, ho.off, ho.written, hm.trans ho.mem, hs.trans ho.sp,
     hout.trans ho.out⟩
@@ -201,8 +201,8 @@ theorem OffAt.mrs {b0 b : Boot} {a : UInt64} {k : Nat} {w : Sys} {t : Fin 32} {r
   · show (({ b.core with pc := b.core.pc + 4 } : State).setX t v).sp = _
     rw [State.setX_sp]
     exact hs
-  · show (({ b.core with pc := b.core.pc + 4 } : State).setX t v).out = _
-    rw [State.setX_out]
+  · show (({ b.core with pc := b.core.pc + 4 } : State).setX t v).io = _
+    rw [State.setX_io]
     exact hout
 
 /-- `MSR` of `r` from `Xt` at instruction `k` from a state of the startup's first part, which
@@ -243,8 +243,8 @@ theorem OffAt.movz {b0 b : Boot} {a : UInt64} {k : Nat} {w : Sys} {d : Fin 32}
   · show (b.core.setX d _).sp = _
     rw [State.setX_sp]
     exact hs
-  · show (b.core.setX d _).out = _
-    rw [State.setX_out]
+  · show (b.core.setX d _).io = _
+    rw [State.setX_io]
     exact hout
 
 /-- The startup's instructions 32 to 42 from a state of its first part whose written registers
@@ -271,7 +271,7 @@ theorem OffAt.mmuOn (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b0 b
     ∃ b', BootReach h R code b0 b' ∧ b'.core.pc = after a 43 ∧ b'.spSel = true ∧
       b'.written = b'.eff ∧ b'.tlb = .clean ∧
       b'.eff = { w with sctlr := sctlrOn, fpcr := fpcrValue } ∧
-      b'.core.mem = b0.core.mem ∧ b'.core.sp = b0.core.sp ∧ b'.core.out = b0.core.out ∧
+      b'.core.mem = b0.core.mem ∧ b'.core.sp = b0.core.sp ∧ b'.core.io = b0.core.io ∧
       b'.uartDone = true := by
   obtain ⟨hpc, hsp, hoff, hwb, hm, hs, hout⟩ := ho
   subst hwb
@@ -365,9 +365,9 @@ theorem OffAt.mmuOn (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b0 b
   · show c.sp = _
     rw [sc]
     exact (State.setX_sp (s := b35.core) (r := 1) (v := v)).trans hs
-  · show c.out = _
+  · show c.io = _
     rw [oc]
-    exact (State.setX_out (s := b35.core) (r := 1) (v := v)).trans hout
+    exact (State.setX_io (s := b35.core) (r := 1) (v := v)).trans hout
 
 /-- The run of an image's entry and of the startup's instructions 0 to 42 in the boot model, for
 an image at a multiple of 4096 in the RAM GiB.  From the entry with the MMU off and the image's
@@ -389,7 +389,7 @@ theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {
     ∃ b', BootReach h R code b b' ∧ b'.core.pc = after (image + 64) 43 ∧ b'.spSel = true ∧
       b'.written = b'.eff ∧ b'.tlb = .clean ∧ b'.eff.covered h = true ∧
       b'.eff.ttbr0 = (layoutOf image n m cap room).table ∧ b'.core.mem = b.core.mem ∧
-      b'.core.sp = b.core.sp ∧ b'.core.out = b.core.out ∧ b'.uartDone = true := by
+      b'.core.sp = b.core.sp ∧ b'.core.io = b.core.io ∧ b'.uartDone = true := by
   have hao := areaOff_ge n
   have hdv : 2048 ∣ vecOff n := roundUp_dvd _ _
   rw [(layoutOf_fields image n m cap room).2.2.2.2.2.2.2.2] at hhi

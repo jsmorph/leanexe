@@ -2,8 +2,8 @@ import LeanExe.A64.Isla.Check
 import LeanExe.A64.Isla.Profile
 
 /-!
-The walk of the traces of the load and store forms, which the theorems of `LDR`, `STR`, and
-`STRB` in `tests/TestSupport/A64/Isla` share.  A trace of a memory form holds hundreds of events.
+The walk of the traces of the load and store forms, which the theorems of `LDR`, `LDR Wt`, `STR`,
+and `STRB` in `tests/TestSupport/A64/Isla` share.  A trace of a memory form holds hundreds of events.
 On a hypothesis or goal that holds the trace's literal, a step of `isla_fwd` or `isla_walk` costs
 the size of the remaining trace, since `rw` and `simp` traverse it.  `isla_nodes F` gives each node
 of the trace of `F` a definition that names the nodes below it, so that a path's hypothesis or goal
@@ -11,7 +11,7 @@ holds one event and the name of the rest, and a step costs the size of an event.
 evaluates the premise of `Agrees` on the registers outside the model once for each footprint.
 `mem_fwd` takes a path's hypothesis through the trace, and `mem_bwd` builds the path to `exec`'s
 state, giving each declared variable, through `mem_wit`, the value that the first event reading it
-reads.
+reads.  `dev_bwd` builds the path of a load at the UART for a given 32-bit value of the device.
 
 `run_congr` and `runSome_congr` keep `simp` out of the trace of a path and its variables, which a
 walk extends with values that `simp` already evaluated.  A module that walks a trace declares them
@@ -603,6 +603,30 @@ syntax "mem_bwd " "using " tacticSeq " with " "[" Lean.Parser.Tactic.simpLemma,*
 macro_rules
   | `(tactic| mem_bwd using $d with [$xs,*]) => `(tactic| repeat (first
       | (mem_unfold; rw [Trace.Run]; mem_simp [$xs,*])
+      | (guard_target = Exists _; mem_wit)
+      | (guard_target = Or _ _
+         first
+           | (apply Or.inl
+              mem_unfold
+              rw [Trace.Run]
+              mem_simp [$xs,*]
+              fail_if_success guard_target = False
+              first
+                | (guard_target = And _ _; refine ⟨by $d, ?_⟩)
+                | guard_target = Trace.Run _ _ _ _ _ _ _)
+           | apply Or.inr)
+      | (guard_target = And _ _; apply And.intro; rotate_left)
+      | focus (rw [ite_eq_left]; rotate_left; ($d))))
+
+/-- Builds a path of the trace of a device load as `mem_bwd` does, giving the variable of 32 bits
+that the trace declares for the device's value the value of the 32-bit word `v`, and every other
+declared variable the value of `mem_wit`. -/
+syntax "dev_bwd " term:max " using " tacticSeq " with " "[" Lean.Parser.Tactic.simpLemma,* "]" :
+  tactic
+macro_rules
+  | `(tactic| dev_bwd $v using $d with [$xs,*]) => `(tactic| repeat (first
+      | (mem_unfold; rw [Trace.Run]; mem_simp [$xs,*])
+      | (guard_target = Exists _; refine ⟨UInt32.toNat $v, UInt32.toNat_lt $v, ?_⟩)
       | (guard_target = Exists _; mem_wit)
       | (guard_target = Or _ _
          first

@@ -66,7 +66,7 @@ theorem run_branchTo {t : Ctl} {σ : List ValueType} {a : UInt64} {is : List Ins
     (hpc : ms.pc = a) (hst : StackRel ms vs) (hh : vs.length = σ.length) (hty : Typed σ vs) :
     ∃ ms', Reach P code ms ms' ∧ ms'.pc = t.target ∧ Kept t vs ms' ∧ Frame t.base ms ms' ∧
       ms'.x 18 = ms.x 18 ∧ ms'.x 17 = ms.x 17 ∧ ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧
-      ms'.out = ms.out := by
+      ms'.io = ms.io := by
   obtain ⟨hle, ha1, htake, hregs, f, hf, rfl⟩ := gen_branchTo hg
   have hkt : Typed t.types (vs.take t.arity) := by rw [← htake]; exact hty.take t.arity
   generalize hσl : σ.length = h at hle hregs hh hcode ⊢
@@ -106,7 +106,7 @@ theorem run_branchTo {t : Ctl} {σ : List ValueType} {a : UInt64} {is : List Ins
       exact State.x_setX_ne (regOf_ne_17 _ hb)
     · show (ms.setX (regOf t.base) _).sp = ms.sp; exact State.setX_sp
     · show (ms.setX (regOf t.base) _).mem = ms.mem; exact State.setX_mem
-    · show (ms.setX (regOf t.base) _).out = ms.out; exact State.setX_out
+    · show (ms.setX (regOf t.base) _).io = ms.io; exact State.setX_io
   · have h0 : t.arity = 0 := by omega
     simp only [h1, ite_false, List.nil_append] at hcode
     have c0 := (CodeAt.cons.mp hcode).1
@@ -128,7 +128,7 @@ theorem break_outcome {E : Env} {ctl : List Ctl} {D : Nat} {fin : Option (List V
     (hl : sl'.params ++ sl'.locals = sl.params ++ sl.locals) (hr : Reach P code ms ms')
     (hpc : ms'.pc = t.target) (hk : Kept t sl'.values ms') (hf : Frame t.base ms ms')
     (h18 : ms'.x 18 = ms.x 18) (h17 : ms'.x 17 = ms.x 17) (hsp : ms'.sp = ms.sp)
-    (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    (hmem : ms'.mem = ms.mem) (hout : ms'.io = ms.io) :
     Outcome P code E ctl D fin endA (.Break k st sl') ms :=
   .inr ⟨t, ht, ms', hr, hpc, hsp, hout, h18, fun _ _ => by rw [hmem],
     by rw [hl]; exact hinv.locals.congr hmem hsp, by rw [hl]; exact hinv.ltypes, hk, hf,

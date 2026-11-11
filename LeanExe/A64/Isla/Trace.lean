@@ -33,11 +33,12 @@ outcome, as does a false `assert`, while a false `assume` and every ill-formed e
 `fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and
 `branch-address` and the result of a write have no effect.  The model's `State` holds the
 registers `R0` to `R30`, `SP_EL1`, `_PC`, the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the low
-64 bits of each element of `_Z`, the bytes of memory, and the UART's output.  `σ` holds every
-other register by name, the upper bits of `_Z`, and `PSTATE`'s other fields in a struct.  The
-outcome of a path that ends holds the model's state and `σ`, so that a theorem can state the whole
-effect of the instruction's decode and execution.  An `ite` evaluates both branches, which differs
-from Islaris only where a branch cannot be evaluated.
+64 bits of each element of `_Z`, the bytes of memory, and the UART's output and the counts of its
+reads, which no trace changes.  `σ` holds every other register by name, the upper bits of `_Z`,
+and `PSTATE`'s other fields in a struct.  The outcome of a path that ends holds the model's state
+and `σ`, so that a theorem can state the whole effect of the instruction's decode and execution.
+An `ite` evaluates both branches, which differs from Islaris only where a branch cannot be
+evaluated.
 
 The rules below read Isla or the Sail model instead of Islaris, which binds no field, steps over
 an `abstract-primop` without effect (`opsem.v` 427-429), leaves the program counter to the trace,
@@ -101,6 +102,10 @@ e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
    partial function of the arguments' values.  The event ends the path in `fail` where `A` gives no
    result, and without an outcome where the variable differs from the result, as a read does.  A
    theorem states the meaning that it assumes as a hypothesis on `A`.
+12. A read of 4 bytes at `P.uart` or `P.uart + 0x18`, the UART's data and flag registers, takes
+   its value from the device, beside reading 5 for a byte written at `P.uart`: the read leaves
+   the value of its variable free, so that the variable takes every value of its width.  The rule
+   compares the read's 64-bit address with the two registers' addresses as natural numbers.
 -/
 
 namespace LeanExe.A64.Isla
@@ -575,7 +580,7 @@ def writeBytes (m : UInt64 → UInt8) (a : UInt64) (x : Nat) : Nat → UInt64 �
 /-- The state after a write of `x` as `k` bytes from `a`: a byte at the UART goes to the output,
 and every other write to memory. -/
 def store (P : Platform) (s : State) (a : UInt64) (x k : Nat) : State :=
-  if a = P.uart ∧ k = 1 then { s with out := s.out ++ [.ofNat x] }
+  if a = P.uart ∧ k = 1 then { s with io := { s.io with out := s.io.out ++ [.ofNat x] } }
   else { s with mem := writeBytes s.mem a x k }
 
 /-- How a path of a trace ends: in a state of the model and the registers outside it, or in
@@ -636,7 +641,11 @@ def Trace.Run (P : Platform) (A : Abstract) : Trace → Vars → State → Sys �
   | .event (.readMem d a k) t, ρ, s, σ, o =>
     match d.eval ρ, a.eval ρ with
     | some (.bits w x), some (.bits 64 y) =>
-      if w = 8 * k then x = bytes s.mem (.ofNat y) k ∧ t.Run P A ρ s σ o else o = .fail
+      if w = 8 * k then
+        if k = 4 ∧ (y = P.uart.toNat ∨ y = (P.uart + 0x18).toNat) then
+          t.Run P A ρ s σ o
+        else x = bytes s.mem (.ofNat y) k ∧ t.Run P A ρ s σ o
+      else o = .fail
     | _, _ => o = .fail
   | .event (.writeMem a d k) t, ρ, s, σ, o =>
     match a.eval ρ, d.eval ρ with

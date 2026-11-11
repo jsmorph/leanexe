@@ -104,6 +104,27 @@ theorem Ready.reach {h : Hw} {R : UInt64 → Bool} {code c' : UInt64 → Option 
     rw [classify_congr hkeep]
     exact hr.exe a w hw
 
+/-- The rest of an image's run from the program's exit word: the boot model reaches the `HVC #0`
+with X0 holding `SYSTEM_OFF`, every UART store complete, and the status's byte after the program's
+output. -/
+theorem boot_after_exit {L : Layout} {is : List Instr} (hs : startupCode L = .ok is)
+    {code pcode : UInt64 → Option UInt32} (hc : CodeAt code (L.image + 64) is)
+    (hbase : L.base = after (L.image + 64) 70) (hmono : ∀ a w, pcode a = some w → code a = some w)
+    {h : Hw} {R : UInt64 → Bool} {b : Boot} (hr : Ready h R code b) {ms : State}
+    (hrun : Reach (b.platform h R) pcode b.core ms) (hp : ms.pc = L.base) :
+    ∃ b', BootReach h R code b b' ∧ code b'.core.pc = some (encode .hvc0) ∧
+      b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
+      b'.core.io.out = ms.io.out ++ [(ms.x 0).toUInt8] := by
+  have hu := classify_uart hr.cov hr.tab
+  have hrun' := Reach.mono_code hmono hrun
+  have hw := run_exitWord (P := b.platform h R) hs hc hbase hp
+  have hboth := hrun'.trans hw
+  have r1 := bootReach_of_reach hr.sp hr.sync hr.cov hr.tlb hu hr.prot hr.exe hboth
+  have hr1 := hr.reach hboth (b.uartDone && ms.out == b.core.out)
+  obtain ⟨b', r2, -, hcb, hx', ho', hu'⟩ := boot_exit hs hc hr1.sp hr1.sync hr1.cov hr1.tlb
+    hr1.tab hr1.prot hr1.exe rfl
+  exact ⟨b', r1.trans r2, hcb, hx', hu', ho'⟩
+
 /-- The rest of an image's run once the program starts: when the program, in the program model
 with a code map that the image's extends, either returns to the exit with X0 = 0 after writing
 `out`, or reaches the exit word with a status that satisfies `T` and writes nothing, the boot
@@ -115,13 +136,13 @@ theorem boot_after_main {L : Layout} {is : List Instr} (hs : startupCode L = .ok
     {h : Hw} {R : UInt64 → Bool} {b : Boot} (hr : Ready h R code b) {out : List UInt8}
     {T : UInt64 → Prop}
     (hout : (∃ ms', Reach (b.platform h R) pcode b.core ms' ∧
-        ms'.pc = after (L.image + 64) 58 ∧ ms'.x 0 = 0 ∧ ms'.out = b.core.out ++ out) ∨
+        ms'.pc = after (L.image + 64) 58 ∧ ms'.x 0 = 0 ∧ ms'.io.out = b.core.io.out ++ out) ∨
       ∃ ms', Reach (b.platform h R) pcode b.core ms' ∧ ms'.pc = L.base ∧ T (ms'.x 0) ∧
-        ms'.out = b.core.out) :
+        ms'.io.out = b.core.io.out) :
     ∃ b', BootReach h R code b b' ∧ code b'.core.pc = some (encode .hvc0) ∧
       b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
-      (b'.core.out = b.core.out ++ out ++ [0] ∨
-        ∃ c, T c ∧ b'.core.out = b.core.out ++ [c.toUInt8]) := by
+      (b'.core.io.out = b.core.io.out ++ out ++ [0] ∨
+        ∃ c, T c ∧ b'.core.io.out = b.core.io.out ++ [c.toUInt8]) := by
   have hu := classify_uart hr.cov hr.tab
   rcases hout with ⟨ms, hrun, hp, hx, ho⟩ | ⟨ms, hrun, hp, ht, ho⟩
   · have hrun' := Reach.mono_code hmono hrun
@@ -131,20 +152,11 @@ theorem boot_after_main {L : Layout} {is : List Instr} (hs : startupCode L = .ok
       hr1.tab hr1.prot hr1.exe hp
     refine ⟨b', r1.trans r2, hcb, hx', hu', .inl ?_⟩
     rw [ho']
-    show ms.out ++ [(ms.x 0).toUInt8] = _
+    show ms.io.out ++ [(ms.x 0).toUInt8] = _
     rw [ho, hx]
     rfl
-  · have hrun' := Reach.mono_code hmono hrun
-    have hw := run_exitWord (P := b.platform h R) hs hc hbase hp
-    have hboth := hrun'.trans hw
-    have r1 := bootReach_of_reach hr.sp hr.sync hr.cov hr.tlb hu hr.prot hr.exe hboth
-    have hr1 := hr.reach hboth (b.uartDone && ms.out == b.core.out)
-    obtain ⟨b', r2, -, hcb, hx', ho', hu'⟩ := boot_exit hs hc hr1.sp hr1.sync hr1.cov hr1.tlb
-      hr1.tab hr1.prot hr1.exe rfl
-    refine ⟨b', r1.trans r2, hcb, hx', hu', .inr ⟨ms.x 0, ht, ?_⟩⟩
-    rw [ho']
-    show ms.out ++ [(ms.x 0).toUInt8] = _
-    rw [ho]
+  · obtain ⟨b', r, hcb, hx', hu', ho'⟩ := boot_after_exit hs hc hbase hmono hr hrun hp
+    exact ⟨b', r, hcb, hx', hu', .inr ⟨ms.x 0, ht, by rw [ho', ho]⟩⟩
 
 /-- A code map of `n` words from `a'`, word `o` of a code map of `N` words from `a`, whose memory
 agrees with the larger map's memory on its bytes, is part of the larger map. -/

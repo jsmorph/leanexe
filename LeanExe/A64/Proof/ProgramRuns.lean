@@ -21,16 +21,21 @@ namespace LeanExe.A64
 
 open Wasm LeanExe.Pipeline
 
-/-- The facts about function `k` of `m` that `program_sim` needs and `genProgram` does not check,
-for `n` arguments and the output `o`: `m` imports no function, function `k` takes `n` parameters
-of the types `ts`, and the program's instructions, those of `main`, of the functions that calls
-reach from function `k`, and of the trap stubs, number fewer than 2^62. -/
-def entryOk (m : Module) (k : Nat) (ts : List ValueType) (n : Nat) (o : Output) : Bool :=
+/-- The facts about function `k` of `m` that a program's simulation needs and the generator does
+not check, for `n` arguments and a `main` of `mainLen` instructions: `m` imports no function,
+function `k` takes `n` parameters of the types `ts`, and the program's instructions, those of
+`main`, of the functions that calls reach from function `k`, and of the trap stubs, number fewer
+than 2^62. -/
+def entryOkWith (mainLen : Nat) (m : Module) (k : Nat) (ts : List ValueType) (n : Nat) : Bool :=
   m.imports.isEmpty && decide ((m.funcs[k]?).map (·.params) = some ts) &&
     decide (ts.length = n) && match (reachFrom m k).mapM (funcOf m) with
-    | .ok fs => decide (4 * (mainSize n o +
+    | .ok fs => decide (4 * (mainLen +
         (fs.map fun x => functionSize (sigIn (callTargets m k) fs) x.2).sum + 20) < 2 ^ 64)
     | .error _ => false
+
+/-- `entryOkWith` for the `main` of `genProgram`, with `n` arguments and the output `o`. -/
+def entryOk (m : Module) (k : Nat) (ts : List ValueType) (n : Nat) (o : Output) : Bool :=
+  entryOkWith (mainSize n o) m k ts n
 
 /-- The number of pages with which the memory of `m` starts, or 0 when `m` has no memory. -/
 def initialPages (m : Module) : Nat := (m.memory.map (·.pagesMin.toNat)).getD 0
@@ -81,6 +86,64 @@ theorem ProgramRuns.mono {m : Module} {k : Nat} {args : List UInt64} {room : UIn
   exact (h P base area hg ms himage hpc hal hroom htop hstack h17 harea hamap habove).imp id
     fun ⟨ms', hr, hp, ht, ho⟩ => ⟨ms', hr, hp, hT _ ht, ho⟩
 
+/-- The outcome of a program's run from the compiler's theorem `h` that function `k` of `m`
+computes `f`, for the argument `x`, whose values are `vs`, and a heap at the module's initial store
+with a memory of `cap` pages that satisfies the theorem's precondition, when the program does what
+`ProgramOutcome` states for Talos's run of the function on `vs` at every fuel.  `hout` gives the
+bytes `enc y` that the program writes in the form `o` for an owned result `y`.  The program writes
+`enc (f x)` and returns 0, or reaches the exit word with the output kept and the status 1 of
+`unreachable` when `aborts` holds, or the status 4 of an overflow of the stack when `calls`
+holds. -/
+theorem outcome_runs {α β : Type} [Scalar α] [Represent β] {aborts : Bool} {m : Module}
+    {k : Nat} {f : α → β} {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop} {cap : Nat} {o : Output}
+    {enc : β → List UInt8} {P : Platform} {code : UInt64 → Option UInt32} {base : UInt64}
+    {calls : Prop} {ms : State}
+    (h : ImplementsA aborts m k f Pre Post) (x : α) {heap : Heap}
+    (hheap : heap.At (m.initialStore : Store Unit)) (hpre : Pre x heap (initStore m cap))
+    (hcap : cap ≤ 65535)
+    (hout : ∀ heap st vs y, Represent.owned heap st vs y → Writes o st vs (enc y))
+    {vs : List Value} (hargs : vs = Scalar.values x)
+    (hs : ∀ F, ProgramOutcome P code base calls o (Wasm.run F m k (initStore m cap) vs.reverse)
+      ms) :
+    (∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.x 0 = 0 ∧
+      ms'.out = ms.out ++ enc (f x)) ∨
+    ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧
+      ((aborts = true ∧ ms'.x 0 = 1) ∨ (calls ∧ ms'.x 0 = 4)) ∧ ms'.out = ms.out := by
+  obtain ⟨N, hN⟩ := h {} (initStore m cap) heap vs x (heapAt_initStore hheap cap) hpre hargs
+    Separate.nil hcap
+  have hs := hs N
+  rcases hN N (Nat.le_refl _) with ⟨vs', st', hrun, heap', -, hown, -⟩ | hab
+  · have hw := hout heap' st' vs'.reverse (f x) hown
+    cases o with
+    | word =>
+        obtain ⟨v, w, hv, hvw, he⟩ := hw
+        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
+        subst hv
+        rw [he]
+        rcases ProgramOutcome.success P _ hs hrun with ⟨hc, ms', hr, hpc', hx, ho⟩ |
+          ⟨w', ms', hw', hr, hpc', -, hx, ho⟩
+        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc, hx⟩, ho⟩
+        · rw [ValRel.unique hvw hw']
+          exact .inl ⟨ms', hr, hpc', hx, ho⟩
+    | array =>
+        obtain ⟨ptr, ws, hv, hat, he⟩ := hw
+        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
+        subst hv
+        rw [he]
+        rcases ProgramOutcome.array P _ hs hrun hat with ⟨hc, ms', hr, hpc', hx, ho⟩ |
+          ⟨ms', hr, hpc', -, hx, ho⟩
+        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc, hx⟩, ho⟩
+        · exact .inl ⟨ms', hr, hpc', hx, ho⟩
+  · cases aborts with
+    | false => exact hab.elim
+    | true =>
+        obtain ⟨st', hrun⟩ := hab
+        rcases ProgramOutcome.unreachable P _ hs hrun with ⟨hc, ms', hr, hpc', hx, ho⟩ |
+          ⟨ms', hr, hpc', hx, ho⟩
+        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc, hx⟩, ho⟩
+        · exact .inr ⟨ms', hr, hpc', .inl ⟨rfl, hx⟩, ho⟩
+
 /-- `ProgramRuns` from the compiler's theorem `h` that function `k` of `m` computes `f`.  The
 argument `x` has the words `args`, and the heap `heap` lies at the module's initial store and
 satisfies `Pre` with the store of a memory of `cap` pages when `cap` covers the memory's initial
@@ -105,7 +168,7 @@ theorem program_runs {α β : Type} [Scalar α] [Represent β] {aborts : Bool} {
   intro P base area is hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hao, -, -, hfs, -⟩ := gen_program hg
   have hcap := cap_lt_of_areaOk hao
-  unfold entryOk at hok
+  unfold entryOk entryOkWith at hok
   rw [hfs] at hok
   simp only [Bool.and_eq_true, List.isEmpty_iff, decide_eq_true_eq] at hok
   obtain ⟨⟨⟨himp, hpar⟩, hlen⟩, hsize⟩ := hok
@@ -116,42 +179,14 @@ theorem program_runs {α β : Type} [Scalar α] [Represent β] {aborts : Bool} {
     cases hk : m.funcs[k]? with
     | none => rw [hk] at hpar; cases hpar
     | some g => rw [hk] at hpar; exact ⟨g, rfl, Option.some.inj hpar⟩
-  obtain ⟨N, hN⟩ := h {} (initStore m cap) heap (argValues ts args) x
-    (heapAt_initStore hheap cap) (hpre (pages_le_of_areaOk hao)) hargs Separate.nil
-    (show cap ≤ 65535 by omega)
-  have hs := program_sim_stack P _ hg (codeAt_fetchFrom hn himage) himp hk
-    (by rw [hp, hlen]) N ms hpc hal hroom htop hstack h17 harea hamap habove
-  rw [hp] at hs
-  rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | hab
-  · have hw := hout heap' st' vs.reverse (f x) hown
-    cases o with
-    | word =>
-        obtain ⟨v, w, hv, hvw, he⟩ := hw
-        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
-        subst hv
-        rw [he]
-        rcases ProgramOutcome.success P _ hs hrun with ⟨hc, ms', hr, hpc', hx, ho⟩ |
-          ⟨w', ms', hw', hr, hpc', -, hx, ho⟩
-        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc.1, hc.2, hx⟩, ho⟩
-        · rw [ValRel.unique hvw hw']
-          exact .inl ⟨ms', hr, hpc', hx, ho⟩
-    | array =>
-        obtain ⟨ptr, ws, hv, hat, he⟩ := hw
-        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
-        subst hv
-        rw [he]
-        rcases ProgramOutcome.array P _ hs hrun hat with ⟨hc, ms', hr, hpc', hx, ho⟩ |
-          ⟨ms', hr, hpc', -, hx, ho⟩
-        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc.1, hc.2, hx⟩, ho⟩
-        · exact .inl ⟨ms', hr, hpc', hx, ho⟩
-  · cases aborts with
-    | false => exact hab.elim
-    | true =>
-        obtain ⟨st', hrun⟩ := hab
-        rcases ProgramOutcome.unreachable P _ hs hrun with ⟨hc, ms', hr, hpc', hx, ho⟩ |
-          ⟨ms', hr, hpc', hx, ho⟩
-        · exact .inr ⟨ms', hr, hpc', .inr ⟨hc.1, hc.2, hx⟩, ho⟩
-        · exact .inr ⟨ms', hr, hpc', .inl ⟨rfl, hx⟩, ho⟩
+  rcases outcome_runs h x hheap (hpre (pages_le_of_areaOk hao)) (by omega) hout hargs
+      (fun F => by
+        have hs := program_sim_stack P _ hg (codeAt_fetchFrom hn himage) himp hk
+          (by rw [hp, hlen]) F ms hpc hal hroom htop hstack h17 harea hamap habove
+        rw [hp] at hs
+        exact hs) with hr | ⟨ms', hr, hpc', hc, ho⟩
+  · exact .inl hr
+  · exact .inr ⟨ms', hr, hpc', hc.imp id fun ⟨⟨h1, h2⟩, h3⟩ => ⟨h1, h2, h3⟩, ho⟩
 
 /-- `program_runs` with the statuses 1 and 4. -/
 theorem program_runs_implements {α β : Type} [Scalar α] [Represent β] {aborts : Bool}

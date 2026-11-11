@@ -140,7 +140,7 @@ theorem run_strs {o d : Nat} {src : Nat → Fin 32} {stores : List Instr}
     (hpc : ms.pc = a) (hal : ms.sp % 16 = 0)
     (hmap : ∀ j < 8 * (o + d), P.normal (ms.sp + UInt64.ofNat j) = true) :
     ∃ s, Reach P code ms s ∧ s.pc = after a d ∧ s.sp = ms.sp ∧ (∀ q, s.x q = ms.x q) ∧
-      s.out = ms.out ∧ (∀ j < d, load64 s.mem (slotAddr ms.sp (o + j)) = ms.x (src j)) ∧
+      s.io = ms.io ∧ (∀ j < d, load64 s.mem (slotAddr ms.sp (o + j)) = ms.x (src j)) ∧
       (∀ b, (∀ j < d, ¬ b - slotAddr ms.sp (o + j) < 8) → s.mem b = ms.mem b) := by
   have key : ∀ k ≤ d, ∃ M, Reach P code ms { ms with mem := M, pc := after a k } ∧
       (∀ j < k, load64 M (slotAddr ms.sp (o + j)) = ms.x (src j)) ∧
@@ -186,10 +186,10 @@ theorem run_ldrs {o d : Nat} {dst : Nat → Fin 32} {loads : List Instr}
     (hpc : ms.pc = a) (hal : ms.sp % 16 = 0)
     (hmap : ∀ j < 8 * (o + d), P.normal (ms.sp + UInt64.ofNat j) = true) :
     ∃ s, Reach P code ms s ∧ s.pc = after a d ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧
-      s.out = ms.out ∧ (∀ j < d, s.x (dst j) = load64 ms.mem (slotAddr ms.sp (o + j))) ∧
+      s.io = ms.io ∧ (∀ j < d, s.x (dst j) = load64 ms.mem (slotAddr ms.sp (o + j))) ∧
       (∀ q, (∀ j < d, q ≠ dst j) → s.x q = ms.x q) := by
   have key : ∀ k ≤ d, ∃ s, Reach P code ms s ∧ s.pc = after a k ∧ s.sp = ms.sp ∧
-      s.mem = ms.mem ∧ s.out = ms.out ∧
+      s.mem = ms.mem ∧ s.io = ms.io ∧
       (∀ j < k, s.x (dst j) = load64 ms.mem (slotAddr ms.sp (o + j))) ∧
       (∀ q, (∀ j < k, q ≠ dst j) → s.x q = ms.x q) := by
     intro k
@@ -217,8 +217,8 @@ theorem run_ldrs {o d : Nat} {dst : Nat → Fin 32} {loads : List Instr}
           rw [State.setX_sp, hsp]
         · show (s.setX (dst k) w).mem = _
           rw [State.setX_mem, hmem]
-        · show (s.setX (dst k) w).out = _
-          rw [State.setX_out, hout]
+        · show (s.setX (dst k) w).io = _
+          rw [State.setX_io, hout]
         · intro j hj
           rw [State.x_withPc]
           by_cases hjk : j = k
@@ -242,10 +242,10 @@ theorem run_movs {n : Nat} {dst src : Nat → Fin 32} {moves : List Instr} (hlen
     (hsafe : ∀ i < n, ∀ j < i, src i ≠ dst j)
     {a : UInt64} {ms : State} (hcode : CodeAt code a moves) (hpc : ms.pc = a) :
     ∃ s, Reach P code ms s ∧ s.pc = after a n ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧
-      s.out = ms.out ∧ (∀ i (hi : i < n), s.x (dst i) = ms.x (src i)) ∧
+      s.io = ms.io ∧ (∀ i (hi : i < n), s.x (dst i) = ms.x (src i)) ∧
       (∀ q : Fin 32, (∀ i < n, q ≠ dst i) → s.x q = ms.x q) := by
   have key : ∀ k ≤ n, ∃ s, Reach P code ms s ∧ s.pc = after a k ∧ s.sp = ms.sp ∧
-      s.mem = ms.mem ∧ s.out = ms.out ∧ (∀ i (hi : i < k), s.x (dst i) = ms.x (src i)) ∧
+      s.mem = ms.mem ∧ s.io = ms.io ∧ (∀ i (hi : i < k), s.x (dst i) = ms.x (src i)) ∧
       (∀ q : Fin 32, (∀ i < k, q ≠ dst i) → s.x q = ms.x q) := by
     intro k
     induction k with
@@ -274,8 +274,8 @@ theorem run_movs {n : Nat} {dst src : Nat → Fin 32} {moves : List Instr} (hlen
           rw [State.setX_sp, hsp]
         · show (s.setX _ w).mem = _
           rw [State.setX_mem, hmem]
-        · show (s.setX _ w).out = _
-          rw [State.setX_out, hout]
+        · show (s.setX _ w).io = _
+          rw [State.setX_io, hout]
         · intro i hi
           rw [State.x_withPc]
           by_cases hik : i = k
@@ -384,9 +384,9 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
   have tmem : t.mem = s1.mem := by
     show (s2.setX 30 (s2.pc + 4)).mem = _
     rw [State.setX_mem, mem2]
-  have tout : t.out = ms.out := by
-    show (s2.setX 30 (s2.pc + 4)).out = _
-    rw [State.setX_out, out2, out1]
+  have tout : t.io = ms.io := by
+    show (s2.setX 30 (s2.pc + 4)).io = _
+    rw [State.setX_io, out2, out1]
   have t18 : t.x 18 = ms.x 18 := by
     rw [tx 18 (by decide), x2b 18 (fun i hi => (regOf_ne_18 i (by omega)).symm), x1]
   have t17 : t.x 17 = ms.x 17 := by

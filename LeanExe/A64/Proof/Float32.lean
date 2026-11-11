@@ -35,7 +35,7 @@ theorem run_fBin32 {op : Fin 32 → Fin 32 → Fin 32 → Instr} (g : UInt32 →
     (hcode : CodeAt code a (fBin32 op x y)) (hpc : s.pc = a) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧
       s'.x x = (g (s.x x).toUInt32 (s.x y).toUInt32).toUInt64 ∧
-      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have c0 := hcode 0 (by simp [fBin32])
   have c1 := hcode 1 (by simp [fBin32])
   have c2 := hcode 2 (by simp [fBin32])
@@ -78,8 +78,8 @@ theorem run_fBin32 {op : Fin 32 → Fin 32 → Fin 32 → Instr} (g : UInt32 →
     exact State.setX_sp
   · show (s3.setX x (s3.dregs 0).toUInt32.toUInt64).mem = s3.mem
     exact State.setX_mem
-  · show (s3.setX x (s3.dregs 0).toUInt32.toUInt64).out = s3.out
-    exact State.setX_out
+  · show (s3.setX x (s3.dregs 0).toUInt32.toUInt64).io = s3.io
+    exact State.setX_io
 
 /-- The code `FMOV S0, Wr`, `op S0, S0`, `FMOV Wr, S0`, for an `op` that sets its destination D
 register to `g` of the low 32 bits of its operand D register, zero-extended, computes `g` on the
@@ -121,8 +121,8 @@ theorem run_viaS {op : Fin 32 → Fin 32 → Instr} (g : UInt32 → UInt32)
     exact State.setX_sp
   · show (s2.setX r (s2.dregs 0).toUInt32.toUInt64).mem = s2.mem
     exact State.setX_mem
-  · show (s2.setX r (s2.dregs 0).toUInt32.toUInt64).out = s2.out
-    exact State.setX_out
+  · show (s2.setX r (s2.dregs 0).toUInt32.toUInt64).io = s2.io
+    exact State.setX_io
 
 /-- The code `op S0, Xr`, `FMOV Wr, S0`, for an `op` that sets its destination D register to `g` of
 the word of its operand general register, zero-extended, computes `g` on the word of `r`. -/
@@ -155,8 +155,8 @@ theorem run_toS {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt32)
     exact State.setX_sp
   · show (s1.setX r (s1.dregs 0).toUInt32.toUInt64).mem = s1.mem
     exact State.setX_mem
-  · show (s1.setX r (s1.dregs 0).toUInt32.toUInt64).out = s1.out
-    exact State.setX_out
+  · show (s1.setX r (s1.dregs 0).toUInt32.toUInt64).io = s1.io
+    exact State.setX_io
 
 /-- The code `FMOV S0, Wr`, `op Xr, S0`, for an `op` that sets its destination general register to
 `g` of the low 32 bits of its operand D register, computes `g` on the low 32 bits of `r`. -/
@@ -189,8 +189,8 @@ theorem run_ofS {op : Fin 32 → Fin 32 → Instr} (g : UInt32 → UInt64)
     exact State.setX_sp
   · show (s1.setX r (g (s1.dregs 0).toUInt32)).mem = s1.mem
     exact State.setX_mem
-  · show (s1.setX r (g (s1.dregs 0).toUInt32)).out = s1.out
-    exact State.setX_out
+  · show (s1.setX r (g (s1.dregs 0).toUInt32)).io = s1.io
+    exact State.setX_io
 
 theorem runs_sqrt32 : UnRuns P code (unCode32 .fsqrtS) fun w => (Wasm.f32Sqrt w.toUInt32).toUInt64 :=
   run_viaS P code Wasm.f32Sqrt (op := Instr.fsqrtS) fun _ _ _ => rfl
@@ -274,12 +274,12 @@ theorem runs_abs32 : UnRuns P code absCode32 fun w => (Wasm.f32Abs w.toUInt32).t
     rw [State.setX_mem]
     show (s.setX r (s.x r + s.x r)).mem = _
     rw [State.setX_mem]
-  · show (s2.setX r (s2.x r >>> UInt64.ofNat 1)).out = _
-    rw [State.setX_out]
-    show (s1.setX r (s1.x 31 ||| s1.x r).toUInt32.toUInt64).out = _
-    rw [State.setX_out]
-    show (s.setX r (s.x r + s.x r)).out = _
-    rw [State.setX_out]
+  · show (s2.setX r (s2.x r >>> UInt64.ofNat 1)).io = _
+    rw [State.setX_io]
+    show (s1.setX r (s1.x 31 ||| s1.x r).toUInt32.toUInt64).io = _
+    rw [State.setX_io]
+    show (s.setX r (s.x r + s.x r)).io = _
+    rw [State.setX_io]
 
 /-- The code `fCmp32 c x y` sets `x`, below 31, to 0 when the condition `c` holds of the flags of
 `FCMP` of the low 32 bits of `x` and `y`, and to 1 otherwise, and keeps the other general
@@ -288,7 +288,7 @@ theorem run_fCmp32 {s : State} {a : UInt64} {c : Fin 16} {x y : Fin 32} (hx : x.
     (hcode : CodeAt code a (fCmp32 c x y)) (hpc : s.pc = a) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧
       s'.x x = (if (s.fcmpS (s.x x).toUInt32 (s.x y).toUInt32).condHolds c then 0 else 1) ∧
-      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have c0 := hcode 0 (by simp [fCmp32])
   have c1 := hcode 1 (by simp [fCmp32])
   have c2 := hcode 2 (by simp [fCmp32])
@@ -338,8 +338,8 @@ theorem run_fCmp32 {s : State} {a : UInt64} {c : Fin 16} {x y : Fin 32} (hx : x.
     exact State.setX_sp
   · show (s3.setX x _).mem = s3.mem
     exact State.setX_mem
-  · show (s3.setX x _).out = s3.out
-    exact State.setX_out
+  · show (s3.setX x _).io = s3.io
+    exact State.setX_io
 
 /-- Talos's `le` of singles holds exactly when `lt` or `eq` does. -/
 theorem le_eq_lt_or_eq32 (a b : UInt32) :

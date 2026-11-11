@@ -35,7 +35,7 @@ structure Kept (t : Ctl) (vs : List Value) (s : State) : Prop where
 /-- The machine reaches the stub `tS` of a stack that a frame would overflow from `ms`, with the
 UART's output as it was. -/
 def Overflows (tS : UInt64) (ms : State) : Prop :=
-  ∃ ms', Reach P code ms ms' ∧ ms'.pc = tS ∧ ms'.out = ms.out
+  ∃ ms', Reach P code ms ms' ∧ ms'.pc = tS ∧ ms'.io = ms.io
 
 /-- The trap with the message `msg` reaches its stub at `pc`: `unreachable`, an access outside the
 memory, or a division by zero. -/
@@ -54,20 +54,20 @@ def Outcome (E : Env) (ctl : List Ctl) (D : Nat) (fin : Option (List ValueType))
   ((ms.sp - ms.x 18).toNat < D ∧ Overflows P code E.trapStack ms) ∨
   match r with
   | .Fallthrough st' sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = endA ∧
-      ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
+      ms'.sp = ms.sp ∧ ms'.io = ms.io ∧ ms'.x 18 = ms.x 18 ∧
       MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧
       Inv P E.localTypes σ' sl' ms' ∧ Frame (curBase ctl) ms ms' ∧
       StoreRel P E.cap E.globalTypes st' ms'
   | .Break k st' sl' => ∃ t, ctl[k]? = some t ∧ ∃ ms', Reach P code ms ms' ∧
-      ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
+      ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.io = ms.io ∧ ms'.x 18 = ms.x 18 ∧
       MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧
       LocalsRel ms' (sl'.params ++ sl'.locals) ∧ Typed E.localTypes (sl'.params ++ sl'.locals) ∧
       Kept t sl'.values ms' ∧ Frame t.base ms ms' ∧ StoreRel P E.cap E.globalTypes st' ms'
   | .Return st' vs => ∃ t, ctl.getLast? = some t ∧ ∃ ms', Reach P code ms ms' ∧
-      ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
+      ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.io = ms.io ∧ ms'.x 18 = ms.x 18 ∧
       MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧ Kept t vs ms' ∧
       StoreRel P E.cap E.globalTypes st' ms'
-  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
+  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.io = ms.io ∧
       TrapAt E.trapUnreachable E.trapBounds E.trapDiv msg ms'.pc
   | .Invalid _ => True
   | .OutOfFuel => True
@@ -89,12 +89,12 @@ def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Typ
     (res : Result α) (ms : State) : Prop :=
   match res with
   | .Success vs' st' => ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
-      ms'.x 18 = ms.x 18 ∧ ms'.out = ms.out ∧ MemFrame ms.sp 0 ms ms' ∧
+      ms'.x 18 = ms.x 18 ∧ ms'.io = ms.io ∧ MemFrame ms.sp 0 ms ms' ∧
       vs'.length = rs.length + (vs.length - ps.length) ∧
       vs'.drop rs.length = vs.drop ps.length ∧
       StackRel ms' (vs'.take rs.length) ∧ Typed rs.reverse (vs'.take rs.length) ∧
       StoreRel P S.cap S.globalTypes st' ms'
-  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
+  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.io = ms.io ∧
       TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg ms'.pc
   | .Invalid _ => True
   | .OutOfFuel => True

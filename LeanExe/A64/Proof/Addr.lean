@@ -48,7 +48,7 @@ theorem run_addrOf (P : Platform) (code : UInt64 → Option UInt32) {d : Fin 32}
     {here target : UInt64} {is : List Instr} (hg : addrOf d here target = .ok is) (hd : d.val < 31)
     (hc : CodeAt code here is) {s : State} (hpc : s.pc = here) :
     ∃ s', Reach P code s s' ∧ s'.pc = after here 2 ∧ s'.x d = target ∧
-      (∀ q, q ≠ d → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ d → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   obtain ⟨pages, hlo, hhi, hp, rfl⟩ := addrOf_ok hg
   have c0 := hc 0 (by simp)
   have c1 := hc 1 (by simp)
@@ -85,8 +85,8 @@ theorem run_addrOf (P : Platform) (code : UInt64 → Option UInt32) {d : Fin 32}
   · show (s1.setX d _).mem = _
     rw [State.setX_mem]
     exact State.setX_mem
-  · show (s1.setX d _).out = _
-    rw [State.setX_out]
-    exact State.setX_out
+  · show (s1.setX d _).io = _
+    rw [State.setX_io]
+    exact State.setX_io
 
 end LeanExe.A64

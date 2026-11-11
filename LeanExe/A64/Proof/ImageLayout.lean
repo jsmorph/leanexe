@@ -54,13 +54,12 @@ theorem startupCode_length {L : Layout} {is : List Instr} (h : startupCode L = .
     addrOf_length h3, addrOf_length h4, addrOf_length h5, addrOf_length h6, addrOf_length h7,
     movImm, clearLoop, startupLength]
 
-/-- `genImage` unpacked: the program, the layout, the range of the image, the startup, and the
-bytes. -/
-theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
-    {o : Output} {image : UInt64} {bytes : List UInt8} {L : Layout}
-    (hg : genImage m k args room cap o image = .ok (bytes, L)) :
-    ∃ prog start, genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength))
-        room cap o = .ok prog ∧
+/-- `genImageWith` unpacked: the program, the layout, the range of the image, the startup, and
+the bytes. -/
+theorem gen_imageWith {gp : UInt64 → GenM (List Instr)} {m : Module} {room : UInt64} {cap : Nat}
+    {image : UInt64} {bytes : List UInt8} {L : Layout}
+    (hg : genImageWith gp m room cap image = .ok (bytes, L)) :
+    ∃ prog start, gp (image + UInt64.ofNat (64 + 4 * startupLength)) = .ok prog ∧
       L = layoutOf image prog.length m cap room ∧
       0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
       areaPrefix m ≤ areaSize cap ∧ startupCode L = .ok start ∧
@@ -68,9 +67,8 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
         List.replicate ((L.vectors - image).toNat - 64 - (imageBytes (start ++ prog)).length) 0 ++
         vectorBytes ++ tableBytes ++ List.replicate ((L.area - L.table).toNat - 32) 0 ++
         areaPrefixBytes m := by
-  unfold genImage at hg
-  cases hp : genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength)) room cap
-    o with
+  unfold genImageWith at hg
+  cases hp : gp (image + UInt64.ofNat (64 + 4 * startupLength)) with
   | error e => rw [hp] at hg; cases hg
   | ok prog => ?_
   rw [hp] at hg
@@ -91,6 +89,22 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
         simp only [List.append_assoc]
   · simp only [bind, Except.bind, hr, ↓reduceIte, throw, throwThe, MonadExceptOf.throw] at hg
     cases hg
+
+/-- `genImage` unpacked: the program, the layout, the range of the image, the startup, and the
+bytes. -/
+theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
+    {o : Output} {image : UInt64} {bytes : List UInt8} {L : Layout}
+    (hg : genImage m k args room cap o image = .ok (bytes, L)) :
+    ∃ prog start, genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength))
+        room cap o = .ok prog ∧
+      L = layoutOf image prog.length m cap room ∧
+      0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
+      areaPrefix m ≤ areaSize cap ∧ startupCode L = .ok start ∧
+      bytes = imageHeader L.size ++ imageBytes (start ++ prog) ++
+        List.replicate ((L.vectors - image).toNat - 64 - (imageBytes (start ++ prog)).length) 0 ++
+        vectorBytes ++ tableBytes ++ List.replicate ((L.area - L.table).toNat - 32) 0 ++
+        areaPrefixBytes m :=
+  gen_imageWith hg
 
 theorem imageBytes_append (a b : List Instr) :
     imageBytes (a ++ b) = imageBytes a ++ imageBytes b := by
@@ -222,13 +236,12 @@ theorem mem_at {mem : UInt64 → UInt8} {image : UInt64} {n : Nat} {bytes : List
 image's parts: the code map of its first `codeWords` words has the header's instructions at
 `image` and the startup and the program from byte 64, and the memory holds the translation table
 at `L.table` and the area's prefix at `L.area`. -/
-theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
-    {o : Output} {image : UInt64} {n len : Nat} {mem : UInt64 → UInt8}
-    (hk : bytesOk (genImage m k args room cap o image) n len = true)
+theorem image_loaded {gp : UInt64 → GenM (List Instr)} {m : Module} {room : UInt64} {cap : Nat}
+    {image : UInt64} {n len : Nat} {mem : UInt64 → UInt8}
+    (hk : bytesOk (genImageWith gp m room cap image) n len = true)
     (hm : ∀ j < len, mem (image + UInt64.ofNat j) = byteAt n j) :
     ∃ L prog start,
-      genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength)) room cap o =
-        .ok prog ∧
+      gp (image + UInt64.ofNat (64 + 4 * startupLength)) = .ok prog ∧
       L = layoutOf image prog.length m cap room ∧
       0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
       areaPrefix m ≤ areaSize cap ∧ startupCode L = .ok start ∧
@@ -239,7 +252,7 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
       ∀ j (hj : j < (imageBytes prog).length),
         mem (image + UInt64.ofNat (64 + 4 * (startupLength + 1) + j)) = (imageBytes prog)[j] := by
   obtain ⟨bytes, L, hg, hl, hb⟩ := of_bytesOk hk
-  obtain ⟨prog, start, hp, hL, hlo, hhi, hpre, hs, hbytes⟩ := gen_image hg
+  obtain ⟨prog, start, hp, hL, hlo, hhi, hpre, hs, hbytes⟩ := gen_imageWith hg
   obtain ⟨hlen, hhd, hcode, htab, harea⟩ := image_parts hL hs hhi hbytes
   rw [← hl] at hm
   have hm' := fun j (v : UInt8) (h : bytes[j]? = some v) => mem_at hm hb h

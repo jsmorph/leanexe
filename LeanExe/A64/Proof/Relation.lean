@@ -184,6 +184,10 @@ theorem x_setX_ne {s : State} {r q : Fin 32} {v : UInt64} (h : r ≠ q) :
     (s.setX r v).out = s.out := by
   unfold setX; split <;> rfl
 
+@[simp] theorem setX_io {s : State} {r : Fin 32} {v : UInt64} :
+    (s.setX r v).io = s.io := by
+  unfold setX; split <;> rfl
+
 @[simp] theorem setX_pc {s : State} {r : Fin 32} {v : UInt64} : (s.setX r v).pc = s.pc := by
   unfold setX; split <;> rfl
 
@@ -194,6 +198,8 @@ theorem x_setX_ne {s : State} {r q : Fin 32} {v : UInt64} (h : r ≠ q) :
 @[simp] theorem setD_mem {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).mem = s.mem := rfl
 
 @[simp] theorem setD_out {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).out = s.out := rfl
+
+@[simp] theorem setD_io {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).io = s.io := rfl
 
 @[simp] theorem setD_pc {s : State} {r : Fin 32} {v : UInt64} : (s.setD r v).pc = s.pc := rfl
 

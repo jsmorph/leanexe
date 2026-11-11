@@ -61,13 +61,14 @@ theorem boot_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
     (hpc : b.core.pc = after (L.image + 64) 58) :
     ∃ b', BootReach h R code b b' ∧ b'.core.pc = after (L.image + 64) 68 ∧
       code b'.core.pc = some (encode .hvc0) ∧ b'.core.x 0 = 0x84000008 ∧
-      b'.core.out = b.core.out ++ [(b.core.x 0).toUInt8] ∧ b'.uartDone = true := by
+      b'.core.io.out = b.core.io.out ++ [(b.core.x 0).toUInt8] ∧ b'.uartDone = true := by
   obtain ⟨c1, cS, c0, cH, -⟩ := startupCode_exit hg hcode
   have hu := classify_uart hcov hm
   obtain ⟨s1, r1, p1, x1, k1, -, m1, o1⟩ :=
     run_movImm (b.platform h R) code (d := 1) (by decide) c1 hpc
   rw [after_after] at p1
-  let s2 : State := { s1 with out := s1.out ++ [(s1.x 0).toUInt8], pc := s1.pc + 4 }
+  let s2 : State :=
+    { s1 with io := { s1.io with out := s1.io.out ++ [(s1.x 0).toUInt8] }, pc := s1.pc + 4 }
   have e2 : exec (b.platform h R) (.strb 0 1 0) s1 = some s2 := by
     have hb : s1.xsp 1 = (b.platform h R).uart := (State.xsp_eq_x (by decide)).trans x1
     simp [exec, hb, State.spAligned, s2]
@@ -101,11 +102,11 @@ theorem boot_exit {L : Layout} {is : List Instr} (hg : startupCode L = .ok is)
   rw [after_after] at p4
   refine ⟨_, rb2.trans (.next st3 rb4), p4, by show code s4.pc = _; rw [p4]; exact cH,
     x4, ?_, ?_⟩
-  · show s4.out = _
+  · show s4.io.out = _
     rw [o4]
-    show s1.out ++ [(s1.x 0).toUInt8] = _
+    show s1.io.out ++ [(s1.x 0).toUInt8] = _
     rw [o1, k1 0 (by decide)]
-  · show (true && s4.out == b3.core.out) = true
+  · show (true && s4.io.out == b3.core.io.out) = true
     rw [o4, beq_self_eq_true, Bool.and_true]
 
 /-- The exit word, which the trap stubs reach, branches to the exit, instruction 58. -/

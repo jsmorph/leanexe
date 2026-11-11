@@ -61,6 +61,11 @@ The generator places code as it emits it: each function takes the address of its
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
 without addresses, so a construct's end is known before its body is emitted.  Every branch is
 encoded with its offset after a check that the offset fits.
+
+`genProgramWith` lays out a program around a `main` that a parameter gives.  `genProgram` gives it
+`genMain`, which loads constant arguments, and `genInProgram` gives it `genInMain`, which reads up
+to eight words from the UART, eight bytes each with the lowest first, polling the flag register
+before each read of the data register and ending with status 65 at a byte with an error flag.
 -/
 
 namespace LeanExe.A64
@@ -662,6 +667,61 @@ def genMain (a entry : UInt64) (args : List UInt64) (uart room : UInt64) (o : Ou
     [.subReg 18 18 16] ++ loads ++ [call] ++ movImm 1 uart ++ out ++
     movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
 
+/-- The reads of byte `b` of a word into register `r`, placed at `a`, with the address of the
+UART's data register UARTDR in X8, 0x10 in X11, 0xF00 in X12, and 0xFF in X13: `MOVZ` of `8 * b`
+into X14; a 32-bit load of the flag register UARTFR, 0x18 bytes above UARTDR, into X9, its `AND`
+with X11 into X10, and `CBNZ` back to the load while RXFE, bit 4, is set; a 32-bit load of UARTDR
+into X9, its `AND` with X12 into X10, and `CBNZ` to `err` when an error flag of bits 11 to 8 is
+set; and the byte, the `AND` of X9 with X13, shifted left by X14 and ORed into `r`. -/
+def readByte (a err : UInt64) (r : Fin 32) (b : Nat) : GenM (List Instr) := do
+  let back ← cbField (after a 3) (after a 1)
+  let fail ← cbField (after a 6) err
+  return [.movz 14 ⟨8 * b % 65536, Nat.mod_lt _ (by decide)⟩ 0, .ldrW 9 8 6, .andReg 10 9 11,
+    .cbnz 10 back, .ldrW 9 8 0, .andReg 10 9 12, .cbnz 10 fail, .andReg 9 9 13, .lslv 9 9 14,
+    .orrReg r r 9]
+
+/-- The reads of bytes `b` to `b + c - 1` of a word into register `r`, placed at `a`, ten
+instructions each. -/
+def readBytes (err : UInt64) (r : Fin 32) : UInt64 → Nat → Nat → GenM (List Instr)
+  | _, _, 0 => pure []
+  | a, b, c + 1 => do
+      let first ← readByte a err r b
+      return first ++ (← readBytes err r (after a 10) (b + 1) c)
+
+/-- The reads of words `i` to `i + c - 1`, placed at `a`, each into register `i`: `MOVZ` of 0
+into the register and the reads of the word's eight bytes, the lowest first, 81 instructions in
+all. -/
+def readWords (err : UInt64) : UInt64 → Nat → Nat → GenM (List Instr)
+  | _, _, 0 => pure []
+  | a, i, c + 1 => do
+      let r : Fin 32 := ⟨i % 32, Nat.mod_lt _ (by decide)⟩
+      let bytes ← readBytes err r (after a 1) 0 8
+      return (.movz r 0 0 :: bytes) ++ (← readWords err (after a 81) (i + 1) c)
+
+/-- The number of instructions of `genInMain` for `n` words and the output `o`. -/
+def inMainSize (n : Nat) (o : Output) : Nat :=
+  3 + 4 + 1 + (7 + 81 * n) + 1 + 4 + outSize o + 4 + 3 + 5
+
+/-- The entry routine placed at `a` that reads `n` words from the UART whose data register lies
+at `uart`, each as eight bytes with the lowest first, into X0 upward, and runs the function at
+`entry` on them as `genMain` runs it on its arguments.  In place of `genMain`'s loads it sets X8
+to `uart` and X11, X12, and X13 to the masks of `readByte` and reads the words.  The stub that
+follows the return sets X0 to 65 and branches to the exit word at `base`, and a read whose byte
+carries an error flag branches to it. -/
+def genInMain (a entry : UInt64) (n : Nat) (uart room base : UInt64) (o : Output) :
+    GenM (List Instr) := do
+  if n > 8 then throw "more than 8 words"
+  let err := after a (8 + (7 + 81 * n) + 1 + 4 + outSize o + 7)
+  let reads ← readWords err (after a 15) 0 n
+  let call := Instr.bl (← bField (after a (8 + (7 + 81 * n))) entry)
+  let out ← genOut (after a (13 + (7 + 81 * n))) o
+  let exit ← bField (after err 4) base
+  return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
+    [.subReg 18 18 16] ++
+    (movImm 8 uart ++ [.movz 11 0x10 0, .movz 12 0xF00 0, .movz 13 0xFF 0] ++ reads) ++
+    [call] ++ movImm 1 uart ++ out ++ movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30] ++
+    (movImm 0 65 ++ [.b exit])
+
 /-- The entries of the functions of `fs`, laid out one after another from `a`, with the types of
 their parameters and results, by index. -/
 def entriesFrom (sig : Nat → Option (Nat × Nat)) :
@@ -700,16 +760,16 @@ def wordType : ValueType → Bool
   | .i64 | .f64 => true
   | _ => false
 
-/-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
-with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
-a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,
-`k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the
-exit word.  The parameters of function `k` are `i64`s and `f64`s, whose words `args` holds, the
-memory satisfies `areaOk`, and the globals are at most 511 numbers.  The table of the functions'
-calls holds the functions that `callTargets` names.  `main` writes the result as `o` says.  The
-image puts a branch to `lx_exit` at `base` and `areaBytes` at `area`. -/
-def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
-    (cap : Nat) (o : Output) : GenM (List Instr) := do
+/-- The program whose `main`, of `mainLen` instructions, `mainGen` gives from the entry of function
+`k` of `m`, placed after its exit word at `base`, with the module's store in an area with a memory
+of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`, `k` first,
+and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the exit word.  The
+parameters of function `k` are `i64`s and `f64`s, the memory satisfies `areaOk`, and the globals
+are at most 511 numbers.  The table of the functions' calls holds the functions that
+`callTargets` names.  The image puts a branch to `lx_exit` at `base` and `areaBytes` in the
+area. -/
+def genProgramWith (mainLen : Nat) (mainGen : UInt64 → GenM (List Instr)) (m : Module) (k : Nat)
+    (base : UInt64) (cap : Nat) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
   let gts ← match globalTypesOf m with
     | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
@@ -717,15 +777,14 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
   let fs ← (reachFrom m k).mapM (funcOf m)
   let targets := callTargets m k
   let sig := sigIn targets fs
-  let mainA := after base 1
-  let first := after mainA (mainSize args.length o)
+  let first := after (after base 1) mainLen
   let callee := tableOf targets first fs
   let traps := endOf sig first fs
   let entry ← match entryIn sig first fs k with
     | some (e, ps, _) =>
         if ps.all wordType then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
-  let main ← genMain mainA entry args uart room o
+  let main ← mainGen entry
   let S : Shared :=
     { trapUnreachable := traps, trapBounds := after traps 5, trapDiv := after traps 10,
       trapStack := after traps 15, cap, globalTypes := gts }
@@ -734,5 +793,21 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
     return movImm 0 (UInt64.ofNat code) ++ [.b (← bField (after a 4) base)]
   return main ++ fns ++ (← stub traps 1) ++ (← stub (after traps 5) 2) ++
     (← stub (after traps 10) 3) ++ (← stub (after traps 15) 4)
+
+/-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
+with a stack of `room` bytes below `main`'s frame and a memory of `cap` pages, whose `main`,
+`genMain`, writes the result to the UART at `uart` as `o` says. -/
+def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
+    (cap : Nat) (o : Output) : GenM (List Instr) :=
+  genProgramWith (mainSize args.length o) (fun e => genMain (after base 1) e args uart room o) m k
+    base cap
+
+/-- The program that runs function `k` of `m` on `n` words read from the UART at `uart`, placed
+after its exit word at `base`, with a stack of `room` bytes below `main`'s frame and a memory of
+`cap` pages, whose `main`, `genInMain`, writes the result as `o` says. -/
+def genInProgram (m : Module) (k n : Nat) (uart base room : UInt64) (cap : Nat) (o : Output) :
+    GenM (List Instr) :=
+  genProgramWith (inMainSize n o) (fun e => genInMain (after base 1) e n uart room base o) m k
+    base cap
 
 end LeanExe.A64
