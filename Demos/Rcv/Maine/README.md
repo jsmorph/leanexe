@@ -4,7 +4,7 @@ This module counts single-winner ranked-choice contests under 21-A M.R.S. §723-
 
 In the Maine count, a ballot's examination ends with the reason `exhausted` at two consecutive empty positions followed by a marked one, an initial test elects a candidate ranked first alone on more than half of all ballots, and the rounds eliminate one candidate at a time until two remain, with no majority stop and no batch.  When two candidates with equal votes remain, the count eliminates the one later in the tie-break order, and of two with unequal votes it names the one with more.  The module shares with the Oakland module the contest structure, the reader and its program, the tally of a round, `run`, the lines of the report, to which the Maine report adds the lines `first i f(i)` of the initial test, the word forms of a round, the lemmas about `run`, and the functions of the Oakland programs that the two counts share.
 
-The module runs as an export in a WebAssembly host and on [the recount page](../README.md#the-browser-page), a WASI process compiled from the same functions reads a file on standard input and writes its report on standard output, the module's translation to C compiles with CompCert, and native Lean runs the specification.  The module's reports of the corpus's six contests equal the reference's, and they name the winner and the eliminations of each of the Secretary of State's summary reports.  Three of them agree with the summary reports in every figure, the 2024 contest when the converter's option `--practice` writes its declared write-in as the Secretary of State counted it, which [the review's departures](review.md#departures-of-official-practice) record, and in the other three each figure lies within 21 votes of the report's, by differences consistent with the rows of one manual-entry spreadsheet, as [the corpus's checks](../../../tests/rcv/maine/README.md#checks) state.  RCTab's rounds under configurations of the Maine count agree with the module's on its edge cases and corpus, apart from the behaviors of RCTab that [the Maine corpus's RCTab section](../../../tests/rcv/maine/README.md#rctab) states.
+The module runs as an export in a WebAssembly host and on [the recount page](../README.md#the-browser-page), a WASI process compiled from the same functions reads a file on standard input and writes its report on standard output, the module's translation to C compiles with CompCert, an AArch64 image of the module runs without an operating system on QEMU's `virt` machine and reads the file over its UART, and native Lean runs the specification.  The module's reports of the corpus's six contests equal the reference's, and they name the winner and the eliminations of each of the Secretary of State's summary reports.  Three of them agree with the summary reports in every figure, the 2024 contest when the converter's option `--practice` writes its declared write-in as the Secretary of State counted it, which [the review's departures](review.md#departures-of-official-practice) record, and in the other three each figure lies within 21 votes of the report's, by differences consistent with the rows of one manual-entry spreadsheet, as [the corpus's checks](../../../tests/rcv/maine/README.md#checks) state.  RCTab's rounds under configurations of the Maine count agree with the module's on its edge cases and corpus, apart from the behaviors of RCTab that [the Maine corpus's RCTab section](../../../tests/rcv/maine/README.md#rctab) states.
 
 ## Guarantees
 
@@ -21,6 +21,8 @@ The module runs as an export in a WebAssembly host and on [the recount page](../
 | | `Demos.Rcv.Maine.Process.terminates_bytes`, [`ProcessCompiledCorrect.lean`](ProcessCompiledCorrect.lean) | One byte sequence encodes the process's module, decodes to it, and is a valid binary, and the module satisfies both theorems above | None |
 | The C translation | `tabulate_native`, [`TabulateCall.lean`](TabulateCall.lean) | The C function of function 64 returns without a trap the buffer of the Maine `reportFile` of its argument's bytes, as `tabulate_trapFree` states for the module | Every `Archi` and every semantics of external functions, and a C memory `lx_mem`, of the size that [the C translation](#the-c-translation) gives, that corresponds to a store with room for `compiled.tabulate.bound b` |
 | | `tabulate_native_size`, [`TabulateBound.lean`](TabulateBound.lean) | The same | A file of at most `L` bytes and a heap whose `top` and `80 L + 33,958,029` bytes fit in `lx_mem`, which [the C translation](#the-c-translation) states for a fixed size of file |
+| The AArch64 image | `TestSupport.A64.ImageFilesRcvMaine.maine_uart_report`, [the image's theorems](../../../tests/TestSupport/A64/ImageFilesRcvMaine.lean) | From a boot state whose memory holds the bytes of `maine.img` at a base `B`, the machine reaches PSCI's `SYSTEM_OFF` with every store to the UART complete, after writing the Maine `reportFile msg` and the status byte 0 | `B` a multiple of 4096 with the image's memory in the RAM GiB, the MMU off, and a UART receiver that delivers the eight bytes of the length of `msg`, the lowest first, and then `msg`, a file of at most 8,800,000 bytes, with no byte carrying an error flag |
+| | `maine_uart_over` and `maine_uart_flag`, [the image's theorems](../../../tests/TestSupport/A64/ImageFilesRcvMaine.lean) | The machine reaches `SYSTEM_OFF` after writing the status byte 64 alone, or 65 alone | A length above 8,800,000, or a byte that the program reads carrying an error flag after bytes without one |
 | The browser page | `tabulate_callSpec` and `tabulate_bound` | The call that the page makes returns the Maine `reportFile` of the file | The page's code establishes the premises of `tabulate_callSpec`, as [the browser page](#the-browser-page) describes, and lies outside the theorems |
 
 The theorems about the specification's count are in the namespace `Demos.Rcv.Maine`, and T2, the theorems of the shared reader, are the Oakland module's.  The count without the initial test runs the rounds of the count from `K` whatever the first rankings, and the single count runs the Oakland rules 1, 2, and 4 with this module's interpretation, eliminating the candidate with the fewest votes until one holds a majority or no ballot continues.  Two fresh agents reviewed both counts against the requirements, as [the review](review.md#review-of-the-counts-of-t11-and-t12) records.
@@ -45,7 +47,7 @@ Every theorem of both tables depends on no axiom other than `propext`, `Classica
 
 ## Trusted base
 
-The theorems depend on the items of [the trusted base](../../../docs/trusted-base.md) that the Oakland module's theorems depend on, for WebAssembly modules, WASI Preview 1 processes, and C files, with the Oakland module's [`tabulate.c`](../tabulate.c) as the C executable's calling code.  No theorem checks that the specification states the requirements, and two fresh agents reviewed it against them, as [the review](review.md#review-of-the-specification) records.  [The requirements' list](requirements.md#what-lies-outside-the-theorems) gives what lies outside the theorems: the converter, the kinds of the candidates, the origin of the tie-break order, the agreement of the spreadsheets with the paper ballots, the page's code, the reference, and the scripts.
+The theorems depend on the items of [the trusted base](../../../docs/trusted-base.md) that the Oakland module's theorems depend on, for WebAssembly modules, WASI Preview 1 processes, and C files, with the Oakland module's [`tabulate.c`](../tabulate.c) as the C executable's calling code, and the AArch64 image's theorems depend on the items of [the A64 trusted base](../../../docs/a64-bare-metal.md#trusted-base), as those of [the Oakland module's image](../README.md#trusted-base) do.  No theorem checks that the specification states the requirements, and two fresh agents reviewed it against them, as [the review](review.md#review-of-the-specification) records.  [The requirements' list](requirements.md#what-lies-outside-the-theorems) gives what lies outside the theorems: the converter, the kinds of the candidates, the origin of the tie-break order, the agreement of the spreadsheets with the paper ballots, the page's code, the reference, and the scripts.
 
 ## Running the module
 
@@ -144,6 +146,10 @@ Both processes use the Oakland process's proofs.  The Oakland process's invarian
 ### The C translation
 
 `tests/rcv/native.sh maine` builds `build/rcv/maine/native/rcv-maine-c` as `tests/rcv/native.sh` builds the Oakland module's `rcv-tabulate-c`, which [the Oakland module's C section](../README.md#the-c-translation) describes: `native-verified build` writes the C text of the translation of `compiled.module` that `compiled.translation_eq` states, has `clightgen` read it back, compares that Clight with the translation, and compiles the text with `ccomp` only when they match.  `ccomp` links the object with the export tables, the Oakland module's [`tabulate.c`](../tabulate.c), compiled with `PROGRAM` defined as `"rcv-maine-c"`, and `tools/native-host.c`.  The option `(cap := 11520)` of `Tabulate.lean`, the Oakland module's cap, gives the translation 11,520 pages of `lx_mem`, 754,974,720 bytes, and leaves the module's bytes as they are.  `tabulate_native_size` of [`TabulateBound.lean`](TabulateBound.lean) states that the C function returns the Maine report of a file of at most `L` bytes when `top + 80 L + 33,958,029` is at most the size of `lx_mem`, and `tabulate_native_8800000` states it for every file of at most 8,800,000 bytes from a heap whose `top` is at most 16,777,216 bytes, which covers the corpus's largest file, of 8,262,002 bytes.
+
+### The AArch64 image
+
+[The image's program](../../../tests/TestSupport/A64/RcvMaine.lean) runs `tabulate`, function 64 of `compiled.module`, with the entry routine, the limit of 8,800,000 bytes, and the stack's room of [the Oakland module's image](../README.md#the-aarch64-image).  The bound of the Maine `tabulate`, `80 L + 33,958,029` bytes for a file of `L` bytes, exceeds the Oakland module's by 255,120 bytes, so the memory's cap is 11,395 pages, three more than the Oakland image's, and the stack's room of 512 KiB holds the 6,272 bytes that the calls of `tabulate` use.  `maine_runs` of [`RcvMaineRuns.lean`](../../../tests/TestSupport/A64/RcvMaineRuns.lean) joins `tabulate_trapFree` and `tabulate_bound` to the program's theorem, and [the image's theorems](../../../tests/TestSupport/A64/ImageFilesRcvMaine.lean) carry it to the bytes of `maine.img`, 126,976 bytes with a program of 29,014 instructions, whose comparison with the generator's output the kernel checks in 92 s with a peak of 27.7 GiB.
 
 ### The browser page
 
@@ -249,6 +255,24 @@ rcvMaine: 65 of 65 functions, 65 of 65 exports
 rcvMaine: the clightgen program matches the translation
 native verified: passed 143 failed 0
 ```
+
+### The AArch64 image's runs
+
+`MODULE=maine tests/baremetal/a64-rcv.sh` runs the image as [the Oakland module's runs](../README.md#the-aarch64-images-runs) describe, and it requires each report to equal that of `rcv-maine-c`, which must equal the Maine WASI process's.  The runs took a quota of two cores on edgexpert-18ff while other jobs ran there, and every report equals the reference's.
+
+```sh
+MODULE=maine tests/baremetal/a64-rcv.sh --check tmp/rcv-maine-data/canonical tmp/rcv-maine-edges
+MODULE=maine ACCEL=kvm tests/baremetal/a64-rcv.sh tmp/rcv-maine-data/canonical tmp/rcv-maine-edges
+```
+
+| Files | Accelerator | Passed | Startup per run (s) | Input (s) | Computation (s) | Output (s) |
+|---|---|---|---|---|---|---|
+| The corpus, 6 files, 20,080,763 bytes | TCG | 6 | 0.41 to 0.42 | 277.2 | 4.15 | 0.04 |
+| | KVM | 6 | 0.07 to 0.09 | 305.6 | 0.77 | 0.06 |
+| The edge files, 669 files, 1,069,082 bytes | TCG | 669 | 0.41 to 0.44 | 17.5 | 4.95 | 4.61 |
+| | KVM | 669 | 0.06 to 0.10 | 20.0 | 0.14 | 5.61 |
+
+The input takes 13.8 µs per byte over the corpus under TCG and 15.2 under KVM.  The corpus's largest file, the 2024 contest of 8,262,002 bytes, takes 113.7 s of input, 1.39 s of computation, and 0.01 s of output under TCG, and 131.5 s, 0.25 s, and 0.01 s under KVM.
 
 ### Running times and build costs
 
