@@ -4,6 +4,10 @@ import Demos.Bms.Compiled
 import Demos.Bms.Program
 import Demos.Bms.Stream
 import Demos.Bms.Theorems
+import Demos.Conjunction.Accuracy
+import Demos.Conjunction.AccuracyFlat
+import Demos.Conjunction.AccuracyModel
+import Demos.Conjunction.AccuracySoundness
 import Demos.Conjunction.Flat
 import Demos.Conjunction.Model
 import Demos.Conjunction.Program
