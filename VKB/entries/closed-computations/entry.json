@@ -13,7 +13,8 @@
     "memory exhaustion in decide +kernel on the equality of two compiled modules",
     "push_cast or field_simp evaluates a literal power such as 2^1074",
     "rfl or simp on a goal that holds a power above exponentiation.threshold reaches the maximum recursion depth",
-    "a counterexample to a property of a specification, on a concrete input"
+    "a counterexample to a property of a specification, on a concrete input",
+    "heartbeats exhausted by several decide +kernel facts in the haves of one theorem"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",
@@ -34,7 +35,8 @@
     "LeanExe.M7.Proof.Bound",
     "TestSupport.M7.Step",
     "Library.Numerics.Float64.Sinpi.SinpiTinySplit",
-    "Demos.Rcv.Properties"
+    "Demos.Rcv.Properties",
+    "LeanExe.A64.Proof.BytesRuns"
   ],
   "declarations": [
     "Verified.Prog.literals",
@@ -46,7 +48,9 @@
     "LeanExe.M7.costRun_le_staticCost",
     "LeanExe.CallGraph.stackNeedOf",
     "Nat.cast_mul",
-    "Nat.cast_pow"
+    "Nat.cast_pow",
+    "LeanExe.A64.bytesEntryOk",
+    "Wasm.Function"
   ],
   "examples": [
     "Library.Hashing.Crc.crc32c_table",
@@ -66,5 +70,10 @@
     "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_le",
     "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_grid",
     "Demos.Rcv.Properties.monotonicity_fails"
-  ]
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/RcvRuns.lean": [
+      "TestSupport.A64.RcvRuns.rcv_runs"
+    ]
+  }
 }

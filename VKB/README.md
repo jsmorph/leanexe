@@ -16,6 +16,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
 | [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance, and rewrites whose results make later steps fail. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
+| [Lemmas that close goals of structure literals](entries/structure-update-lemmas/README.md) | States a lemma about an updated structure as one update of a variable, so that `exact` unifies its arguments with the flat literal that `simp` leaves. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
 | [Loops and builds](entries/loop-combinators/README.md) | Proves invariants for `LeanExe.loop`, element equations for `LeanExe.build`, and equalities of loops that write into arrays of their state with the loops that build new arrays. |
 | [Array folds by list induction](entries/array-fold-list-induction/README.md) | Proves that `xs.foldl step init` meets a specification stated by positions or lists, by induction on the array's list. |
@@ -23,6 +24,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Programs over `Int64`](entries/signed-int64/README.md) | Proves `Int64` programs against specifications over the integers or WebAssembly's signed conversions, and runs them on the A64 and M7 back ends. |
 | [Signed quantities as `Int64` values](entries/signed-integer-values/README.md) | Writes signed exponents and differences as `Int64` and proves their integers, comparisons, and exact conversions to binary64. |
 | [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
+| [Functions over `LeanExe.Bytes` as functions over lists](entries/bytes-as-lists/README.md) | States the bytes of a buffer as `Array.toList` of its array and proves reads and builds of literal buffers against lists. |
 | [Byte buffers in words](entries/byte-buffer-passes/README.md) | Keeps a buffer of bytes in a step's words and proves straight-line passes over it, which a static cost bounds, against folds over lists. |
 | [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select, and compares each bound with half a byte time. |
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
@@ -71,11 +73,11 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Bare-metal C programs](entries/bare-metal-programs/README.md) | States whole-program theorems for fixed arguments, loaded inputs, request loops, and controllers. |
 | [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations and extends a proved result to every matching execution. |
 | [Proofs of the Clight copy against N](entries/clight-n-proofs/README.md) | Proves the leaf forms of the reference semantics N for the Lean copy of Clight, and carries the copy's theorem of a program to an instance of N. |
-| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments or arguments read from the UART, and joins its output with a specification. |
+| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments, arguments read from the UART, or a message of bytes read from the UART, and joins its output with a specification. |
 | [Image files](entries/image-file-checks/README.md) | Checks a written A64 or M7 image against its generator in the kernel, in parts when it is large. |
 | [Cortex-M7 board theorems](entries/m7-board-theorem/README.md) | Proves a step's run from reset through every window from its compiler theorem. |
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
-| [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification. |
+| [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification, including a load whose value a device gives. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
 | [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, a second implementation such as RCTab, or another reference. |
 | [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |

@@ -10,7 +10,8 @@
     "#print axioms lists p.f.meaning_eq or p.f.fixed",
     "toSpec b or slotsFrom b 4097 s inside a goal closed by rfl or unification",
     "a local definition introduced by set that omega or rw unfolds",
-    "every case of a theorem over a parser that matches the opcode and the operands in one match runs out of heartbeats"
+    "every case of a theorem over a parser that matches the opcode and the operands in one match runs out of heartbeats",
+    "(deterministic) timeout at whnf from a show over a chain of let-bound machine states"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -28,7 +29,10 @@
     "Demos.OrderBook.RefineChains",
     "Library.Numerics.Arithmetic.Fma.FmaParts",
     "Library.Numerics.Arithmetic.Fma.FmaNearestEven",
-    "LeanExe.PTX.RoundTrip"
+    "LeanExe.PTX.RoundTrip",
+    "LeanExe.A64.Proof.Memory",
+    "LeanExe.A64.Proof.Sim",
+    "LeanExe.A64.Proof.Relation"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -44,7 +48,10 @@
     "LeanExe.PTX.parseInstr",
     "LeanExe.PTX.ops2",
     "LeanExe.PTX.ops3",
-    "LeanExe.PTX.ops4"
+    "LeanExe.PTX.ops4",
+    "LeanExe.A64.State.x",
+    "LeanExe.A64.State.x_withPc",
+    "LeanExe.A64.State.x_setX_ne"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -57,6 +64,10 @@
     "Library.Numerics.Arithmetic.Fma.FmaParts.fmaBits_eq",
     "Library.Numerics.Arithmetic.Fma.FmaNearestEven.nearest_even",
     "Library.Numerics.Arithmetic.Fma.FmaNearestEven.positive_reference",
-    "LeanExe.PTX.Instr.parse_tokens"
+    "LeanExe.PTX.Instr.parse_tokens",
+    "LeanExe.A64.run_size",
+    "LeanExe.A64.run_grow_ok",
+    "LeanExe.A64.run_growWide_size",
+    "LeanExe.A64.run_growWide_cmp"
   ]
 }

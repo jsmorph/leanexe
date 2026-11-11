@@ -8,7 +8,11 @@
     "a walk step whose cost grows with the remaining trace",
     "a WebAssembly form that a back end lacks",
     "AgreesAll for a form with an abstract call and one outcome",
-    "a kernel stack overflow in the check of a form's decode"
+    "a kernel stack overflow in the check of a form's decode",
+    "LeanExe.A64.Isla.Agrees P (tcg.sys .memory u) [\"SEE\", \"__BranchTaken\"] devTcg (memFields t n imm) (.ldrW t n imm) s for a load whose value a device gives",
+    "P.devLoad s.io a = some (v, io) in a trace walk",
+    "a new memory form whose trace has the shape of an existing form's",
+    "an empty trace file and Permission denied from tests/isla/traces.sh over tailscale ssh"
   ],
   "modules": [
     "LeanExe.A64.Isla.Trace",
@@ -38,6 +42,13 @@
     "LeanExe.A64.Isla.run_congr",
     "LeanExe.A64.Isla.runSome_congr",
     "LeanExe.A64.Isla.FPAddEq",
+    "LeanExe.A64.Platform.devLoad",
+    "LeanExe.A64.State.devRead",
+    "LeanExe.A64.Isla.exec_ldrW",
+    "LeanExe.A64.Isla.exec_ldrW_devLoad",
+    "LeanExe.A64.Isla.devLoad_ofNat",
+    "LeanExe.A64.Isla.devRead_io_eq",
+    "LeanExe.A64.Isla.devRead_io_31",
     "LeanExe.M7.Isla.sys",
     "LeanExe.M7.Isla.Agrees",
     "LeanExe.M7.Isla.decode_halves",

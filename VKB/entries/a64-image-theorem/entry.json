@@ -11,7 +11,10 @@
     "an A64 Image theorem whose output names Real.exp, Real.sin, or a specification over ℤ",
     "LeanExe.A64.InputRuns m k n room cap o Out T for a program that reads its arguments from the UART",
     "P.rx.Delivers (ws.flatMap bytesOf) or P.rx.Flagged j for the PL011's receiver",
-    "a bare-metal A64 program that polls a device's status register before each read"
+    "a bare-metal A64 program that polls a device's status register before each read",
+    "LeanExe.A64.BytesRuns m k inMax room cap Out T for a program that reads a message of bytes from the UART",
+    "P.normal P.uart = false or P.normal (P.uart + 0x18) = false for the platform of a boot state",
+    "a run with a break on the UART's line, or whose input ends before the program's last read"
   ],
   "modules": [
     "LeanExe.A64.Proof.ProgramRuns",
@@ -40,7 +43,8 @@
     "TestSupport.A64.Floor",
     "LeanExe.A64.Proof.Input",
     "LeanExe.A64.Proof.InputRuns",
-    "TestSupport.A64.Uart"
+    "TestSupport.A64.Uart",
+    "LeanExe.A64.Proof.BytesRuns"
   ],
   "declarations": [
     "LeanExe.A64.ProgramRuns",
@@ -86,7 +90,23 @@
     "LeanExe.A64.programWith_sim",
     "LeanExe.A64.input_runs",
     "LeanExe.A64.input_runs_bounded",
-    "LeanExe.A64.image_input_run"
+    "LeanExe.A64.image_input_run",
+    "LeanExe.A64.Rx.wait",
+    "LeanExe.A64.Platform.devLoad",
+    "LeanExe.A64.exec_ldrW_fr",
+    "LeanExe.A64.exec_ldrW_dr",
+    "LeanExe.A64.BytesRuns",
+    "LeanExe.A64.BytesRuns.congr",
+    "LeanExe.A64.genBytesMain",
+    "LeanExe.A64.bytes_runs",
+    "LeanExe.A64.bytes_runs_bounded",
+    "LeanExe.A64.bytesEntryOk",
+    "LeanExe.A64.image_bytes_run",
+    "LeanExe.A64.image_bytes_run_at",
+    "LeanExe.A64.platform_uart_apart",
+    "LeanExe.A64.platform_uartFr_apart",
+    "LeanExe.A64.classify_uart",
+    "LeanExe.A64.classify_uartFr"
   ],
   "examples": [
     "TestSupport.A64.Gcd.runs",
@@ -121,6 +141,18 @@
     "tests/TestSupport/A64/ImageFilesUart.lean": [
       "TestSupport.A64.ImageFilesUart.gcd_uart",
       "TestSupport.A64.ImageFilesUart.gcd_uart_flag"
+    ],
+    "tests/TestSupport/A64/Flip.lean": [
+      "TestSupport.A64.Flip.flip_runs"
+    ],
+    "tests/TestSupport/A64/RcvRuns.lean": [
+      "TestSupport.A64.RcvRuns.rcv_runs"
+    ],
+    "tests/TestSupport/A64/ImageFilesFlip.lean": [
+      "TestSupport.A64.ImageFilesFlip.flip_uart"
+    ],
+    "tests/TestSupport/A64/ImageFilesRcv.lean": [
+      "TestSupport.A64.ImageFilesRcv.rcv_uart_report"
     ]
   }
 }
