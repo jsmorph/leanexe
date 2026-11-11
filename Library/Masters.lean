@@ -29,7 +29,10 @@ import Library.Numerics.Arithmetic.ModInverse.Master
 import Library.Numerics.Arithmetic.PrimeFactors.Master
 import Library.Numerics.Arithmetic.Sieve.Master
 import Library.Numerics.Arithmetic.Uscale.Master
+import Library.Numerics.Bounds.Master
 import Library.Numerics.Float64.Exp.Master
+import Library.Numerics.Interval.Master
+import Library.Numerics.Limiters.Minmod.Master
 import Library.Numerics.MultiPrecision.Master
 import Library.Queues.BinaryHeap.Master
 import Library.Random.Lcg.Master
@@ -124,7 +127,38 @@ master_registry [
   Library.Numerics.Arithmetic.Uscale.scaledQuot_master,
   Library.Numerics.Arithmetic.Uscale.mulPow10_master,
   Library.Numerics.Arithmetic.Uscale.pow10_master,
+  Library.Numerics.Bounds.absBits_master,
+  Library.Numerics.Bounds.finite_master,
+  Library.Numerics.Bounds.nextUpBits_master,
+  Library.Numerics.Bounds.nextDownBits_master,
+  Library.Numerics.Bounds.endpoint_master,
+  Library.Numerics.Bounds.outAdd_master,
+  Library.Numerics.Bounds.outSub_master,
+  Library.Numerics.Bounds.outMul_master,
+  Library.Numerics.Bounds.outDiv_master,
+  Library.Numerics.Bounds.outSqrt_master,
   Library.Numerics.Float64.Exp.exp_master,
+  Library.Numerics.Interval.fmin_master,
+  Library.Numerics.Interval.fmax_master,
+  Library.Numerics.Interval.make_master,
+  Library.Numerics.Interval.point_master,
+  Library.Numerics.Interval.join_master,
+  Library.Numerics.Interval.add_master,
+  Library.Numerics.Interval.sub_master,
+  Library.Numerics.Interval.neg_master,
+  Library.Numerics.Interval.extreme_master,
+  Library.Numerics.Interval.mulEnd_master,
+  Library.Numerics.Interval.mul_master,
+  Library.Numerics.Interval.divEnd_master,
+  Library.Numerics.Interval.divCore_master,
+  Library.Numerics.Interval.div_master,
+  Library.Numerics.Interval.sqrt_master,
+  Library.Numerics.Interval.abs_master,
+  Library.Numerics.Interval.clamp_master,
+  Library.Numerics.Interval.outward2_master,
+  Library.Numerics.Interval.increasing_master,
+  Library.Numerics.Interval.decreasing_master,
+  Library.Numerics.Limiters.Minmod.minmod_master,
   Library.Numerics.MultiPrecision.add_master,
   Library.Numerics.MultiPrecision.sub_master,
   Library.Numerics.MultiPrecision.mul_master,
