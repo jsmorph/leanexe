@@ -5,8 +5,9 @@ import Demos.Rcv.ProcessFuture
 empty output history, returns the running state of the report of the input, from which some
 execution of the process writes exactly the bytes of the report, the requirements' `report b` for
 the bytes `b` of the input, and returns status 0.  `process_exec_correct` states that every
-finite execution from a state with the invariant returns status 0 after writing that report, and
-`process_terminates` of [the control](ProcessControl.lean) gives an execution that returns. -/
+finite execution from a state with the invariant `Writes expected` returns status 0 after writing
+`expected`, and `process_terminates` of [the control](ProcessControl.lean) gives an execution that
+returns. -/
 
 namespace Demos.Rcv.Process
 
@@ -14,16 +15,16 @@ open LeanExe LeanExe.Wasi
 open Demos.StreamFold (StreamPosition StreamHost)
 
 /-- Every finite execution from a state with the invariant returns status 0, after writing exactly
-the bytes of `expectedOutput`, with the whole input read. -/
+the bytes of `expected`, with the whole input read. -/
 theorem process_exec_correct {World : Type} {host : Host World}
     {rep : StreamPosition → World → Prop} (streams : StreamHost host rep)
-    {input : List UInt64} {s : State} {world final : World} {trace : List Event}
-    {outcome : Outcome UInt64}
+    {expected : List UInt64} {maxOutput : Nat} {s : State} {world final : World}
+    {trace : List Event} {outcome : Outcome UInt64}
     (execution : Process.Exec host process s world trace outcome final)
     {position : StreamPosition} (represented : rep position world)
-    (future : Future input s position) :
+    (future : Writes expected maxOutput s position) :
     ∃ next, rep next final ∧ outcome = .returned 0 ∧
-      next.output = expectedOutput input ∧ next.input = [] := by
+      next.output = expected ∧ next.input = [] := by
   induction execution generalizing position with
   | done execution stopped =>
       obtain ⟨next, nextRep, _, finished⟩ := future_step streams represented future execution
@@ -42,14 +43,15 @@ theorem process_exec_correct {World : Type} {host : Host World}
       cases impossible
 
 /-- From a state with the invariant, some execution returns status 0 after writing exactly the
-bytes of `expectedOutput`, with the whole input read. -/
+bytes of `expected`, with the whole input read. -/
 theorem process_terminates_future {World : Type} {host : Host World}
     {rep : StreamPosition → World → Prop} (streams : StreamHost host rep)
-    {input : List UInt64} {s : State} {position : StreamPosition} {world : World}
-    (represented : rep position world) (future : Future input s position) :
+    {expected : List UInt64} {maxOutput : Nat} {s : State} {position : StreamPosition}
+    {world : World} (represented : rep position world)
+    (future : Writes expected maxOutput s position) :
     ∃ trace final next,
       Process.Exec host process s world trace (.returned 0) final ∧
-      rep next final ∧ next.output = expectedOutput input ∧ next.input = [] := by
+      rep next final ∧ next.output = expected ∧ next.input = [] := by
   obtain ⟨trace, final, _, execution, _⟩ :=
     process_terminates streams.progress represented future.safe
   obtain ⟨next, nextRep, _, output, noInput⟩ :=

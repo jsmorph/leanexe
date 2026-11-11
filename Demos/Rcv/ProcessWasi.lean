@@ -1,21 +1,16 @@
-import Demos.Rcv.Process
+import Demos.Rcv.ProcessFlat
 import Verified.Wasi.ReflectCommand
 
 /-! The tabulator's process compiled by the verified WASI compiler.  The list holds the functions
 of `Demos/Rcv/Tabulate.lean` in the same order, from the count's `bitIndex` to `tabulate`, and the
-process's functions after them. -/
+process's functions after them.  The `Flat` instances of the state are those of
+`Demos/Rcv/ProcessFlat.lean`. -/
 
 namespace Demos.Rcv.Process
 
 open LeanExe LeanExe.Wasi LeanExe.Pipeline Demos.Rcv.ReadProgram Demos.Rcv.PrintProgram
 open Demos.Rcv.Program Demos.Rcv.TabulateProgram
 open Library.Numerics.Decimal.Int64Text (digitCount digitByte)
-
-instance : Flat State (Bytes × UInt64) :=
-  ⟨fun s => (s.output, s.written)⟩
-
-instance : Flat (ProcessStep State) (Bool × UInt64 × State) :=
-  ⟨fun result => (result.running, result.status, result.state)⟩
 
 set_option Elab.async false
 set_option maxHeartbeats 1000000 in

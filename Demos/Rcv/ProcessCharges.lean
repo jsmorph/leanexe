@@ -1,3 +1,4 @@
+import Demos.Rcv.ProcessProof
 import Demos.Rcv.ProcessSizes
 import Verified.Wasi.ResourceRules
 
@@ -17,9 +18,6 @@ open Demos.StreamFold (StreamPosition)
 /-- The two compilations of `tabulate` have the same bound. -/
 theorem tabulate_bound_eq (b : Bytes) :
     io.pureSources.tabulate.bound b = TabulateProgram.compiled.tabulate.bound b := rfl
-
-theorem copyCost_bytes (b : Bytes) : Ty.bytes.copyCost b = Bytes.allocationCost b.data.size := by
-  simp [Ty.copyCost]
 
 theorem remainingOutput_bound_le (s : State) (pending : s.written < s.output.size) :
     io.pureSources.remainingOutput.bound s ≤ Bytes.allocationCost s.output.data.size := by

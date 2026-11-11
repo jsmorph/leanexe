@@ -1,11 +1,13 @@
+import Demos.Rcv.ProcessFlat
 import Demos.Rcv.ProcessFuture
-import Demos.Rcv.ProcessProof
 import Verified.ChargeFacts
 
 /-! The sizes that the charges of the compiled process need.  `Sized` states that a state holds a
 report of at most `outputLimit` bytes, and `copyLimit` bounds the copy of such a state.
-`step_sized` states that a step from a state with the invariant `Future` returns a state with this
-size, and `started_sized` that every state that `begin` returns has it. -/
+`step_output_le` states that a step from a state with the invariant `Writes expected maxOutput`
+returns a state of at most `maxOutput` bytes of output, `step_sized` that a step from a state with
+the invariant `Future` returns a state with the size of `Sized`, and `started_sized` that every
+state that `begin` returns has it. -/
 
 namespace Demos.Rcv.Process
 
@@ -14,6 +16,9 @@ open Demos.StreamFold (StreamPosition StreamHost)
 
 /-- The bytes of a copy of a state. -/
 def copyBytes (s : State) : Nat := Bytes.allocationCost s.output.data.size
+
+theorem copyCost_bytes (b : Bytes) : Ty.bytes.copyCost b = Bytes.allocationCost b.data.size := by
+  simp [Ty.copyCost]
 
 theorem state_copyCost (s : State) : stateTy.copyCost (sourceState s) = copyBytes s := by
   simp only [stateTy, sourceState, Ty.copyCost, copyBytes]
@@ -82,6 +87,23 @@ theorem step_stopped_state {host : Host World} {rep : Ghost → World → Prop}
     cases execution
     rfl
 
+/-- Every state that a step from a state with the invariant `Writes expected maxOutput` returns,
+running or stopped, has at most `maxOutput` bytes of output. -/
+theorem step_output_le {World : Type} {host : Host World} {rep : StreamPosition → World → Prop}
+    (streams : StreamHost host rep) {expected : List UInt64} {maxOutput : Nat}
+    {s : State} {position : StreamPosition}
+    {world final : World} {trace : List Event} {next : ProcessStep State}
+    (represented : rep position world) (future : Writes expected maxOutput s position)
+    (execution : LeanExe.Wasi.Exec host (step s) world trace (.returned next) final) :
+    next.state.output.data.size ≤ maxOutput := by
+  cases running : next.running with
+  | true =>
+      obtain ⟨_, _, continued, _⟩ := future_step streams represented future execution
+      exact (continued running).outputSize
+  | false =>
+      rw [step_stopped_state streams.progress represented future.safe execution running]
+      exact future.outputSize
+
 /-- Every state that a step from a state with the invariant returns, running or stopped, has the
 size of `Sized`. -/
 theorem step_sized {World : Type} {host : Host World} {rep : StreamPosition → World → Prop}
@@ -90,13 +112,7 @@ theorem step_sized {World : Type} {host : Host World} {rep : StreamPosition → 
     {world final : World} {trace : List Event} {next : ProcessStep State}
     (represented : rep position world) (future : Future input s position)
     (execution : LeanExe.Wasi.Exec host (step s) world trace (.returned next) final) :
-    Sized next.state := by
-  cases running : next.running with
-  | true =>
-      obtain ⟨_, _, continued, _⟩ := future_step streams represented future execution
-      exact (continued running).sized
-  | false =>
-      rw [step_stopped_state streams.progress represented future.safe execution running]
-      exact future.sized
+    Sized next.state :=
+  ⟨step_output_le streams represented future execution⟩
 
 end Demos.Rcv.Process

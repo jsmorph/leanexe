@@ -10,7 +10,7 @@ This directory holds the corpus of the tabulator's Maine module and the scripts 
 | [`check.py`](check.py) | `uv run python -I tests/rcv/maine/check.py [--data DIR] [--out DIR]` | Converts every contest, writes the canonical files with the reference's Maine report and words, and checks them against the summary reports ([Checks](#checks)) |
 | [`edges.py`](edges.py) | `uv run tests/rcv/maine/edges.py [OUT]` | Writes the Maine edge cases and the shared ones with the reference's Maine outputs into `OUT`, `tmp/rcv-maine-edges` by default ([Edge cases](#edge-cases)) |
 | [`rctab.py`](rctab.py) | `uv run tests/rcv/maine/rctab.py prepare RUN FILE ...` or `compare FILE CONFIG RESULTS` | Writes RCTab's input and configuration of the Maine count for canonical files, and compares RCTab's rounds with the reference's Maine count ([RCTab](#rctab)) |
-| [`tabulate.py`](tabulate.py) | `uv run tests/rcv/maine/tabulate.py [--module PATH] [--host PATH] [--maine PATH] DIR ...` | Compares the exports `tabulate` and `count` of the Maine module in the Wasmtime host, the specification and the programs in native Lean, and the outputs stored beside each file with the reference's Maine report and result words |
+| [`tabulate.py`](tabulate.py) | `uv run tests/rcv/maine/tabulate.py [--module PATH] [--host PATH] [--maine PATH] [--process PATH] [--lean-process PATH] [--native PATH] DIR ...` | Compares the exports `tabulate` and `count` of the Maine module in the Wasmtime host, the specification and the programs in native Lean, the outputs stored beside each file, and with its options the WASI process, the native process, and the C executable, with the reference's Maine report and result words |
 
 ## The converter
 

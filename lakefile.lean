@@ -272,6 +272,12 @@ lean_exe «rcv-maine» where
 lean_exe «rcv-maine-properties» where
   root := `Demos.Rcv.Maine.PropertiesNative
 
+-- The Maine module's WASI process on stdin and stdout (Demos/Rcv/Maine/ProcessNative.lean); not a
+-- default target.
+lean_exe «rcv-maine-process» where
+  root := `Demos.Rcv.Maine.ProcessNative
+  moreLinkObjs := #[`@/runningSumRead]
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
