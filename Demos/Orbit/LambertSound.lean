@@ -206,8 +206,8 @@ theorem raiseStep_inv {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht 
   split_ifs with hd hf hm ha
   · exact h
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
-    have hm1 : -1 < value (midpoint s).toBits := by linarith [h.2.1]
+    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hm1 : -1 < value (probe s).toBits := by linarith [h.2.1]
     exact ⟨hf, hm1, above_sound ha hl ht hl0 hl1 hf hm1⟩
   · exact h
   · exact h
@@ -221,11 +221,11 @@ theorem lowerStep_inv {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht 
   split_ifs with hd hf hm hb
   · exact h
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
-    have hm1 : -1 < value (midpoint s).toBits := by linarith [h.2.1]
+    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hm1 : -1 < value (probe s).toBits := by linarith [h.2.1]
     exact ⟨h.1, h.2.1, hf, hm1, below_sound hb hl ht hl0 hl1 hf hm1⟩
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
     exact ⟨hf, by linarith [h.2.1], h.2.2⟩
   · exact h
   · exact h

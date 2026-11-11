@@ -143,7 +143,7 @@ The search starts from `a0 = -1 + 2^-52`, where `T` exceeds `3·10²³`, and `b0
 | A plane of the transfer that contains `k` | `(r1 × r2) · k = 0`, the direction of motion does not determine the transfer angle, and the status is 2.  A caller chooses `k` away from the plane. |
 | Boxes that reach either geometry, or the origin | Status 2. |
 | One or more full revolutions | Outside the demo. |
-| Near-parabolic transfers, `x` near 1 | `arccos` and `arcosh` near 1 and the division by `1 - x²` lose relative accuracy, and the interval of `x` widens to about `10⁻⁵` within `10⁻⁵` of 1.  The program does not use Izzo's series near 1. |
+| Near-parabolic transfers, `x` near 1 | `arccos` and `arcosh` near 1 and the division by `1 - x²` lose relative accuracy, and the interval of `x` widens to about `2·10⁻⁵` when `x*` lies within `2·10⁻⁶` of 1, against `10⁻⁹` at `1.5·10⁻³` from 1.  The program does not use Izzo's series near 1. |
 | `λ` near ±1, a chord much shorter than the radii | `y` and `σ` lose precision, and the intervals widen. |
 | `T*` above `T(a0)`, about `3·10²³`, or so small that `4/T*` overflows | Status 3. |
 
@@ -161,6 +161,7 @@ The tests use oracles written apart from the programs, in Python with PEP 723 me
 | Lambert against Izzo's algorithm | A transcription of Izzo's own binary64 implementation for zero revolutions, with its initial guess, Householder iterations, and its Battin, Lagrange, and Lancaster forms | For exact inputs and the axis `z`, each of Izzo's velocity components lies within `10⁻⁸ |v1|` of its interval |
 | Lambert premise | Propagation of `(r1, v1(x*))` for the time `t` at 50 digits | The end lies within `10⁻³⁰` of `r2` and `v2(x*)` relative to their lengths, and `h · k > 0` |
 | Lambert round trip | Random states of every conic, propagated for less than one revolution | Izzo's solution recovers the initial and final velocities within `10⁻³⁰` relative |
+| Lambert near-parabolic transfers | Izzo's equation at 50 digits, with Battin's form near `x = 1`, for `T*` within `10⁻³`, `10⁻⁶`, and `10⁻⁹` of the parabolic time | Status 0, containment of `x*`, `v1`, and `v2`, and the width of the interval of `x` recorded |
 | Lambert statuses | Transfer angle π, a plane that contains `k`, `T* = 4·10²³`, and a negative time | Statuses 2, 2, 3, and 1 |
 | Modules | `tests/verified/run.sh --cases gibbs` and `--cases lambert` | Each export agrees with native Lean bit for bit, the axiom audit passes, and the file theorems check |
 

@@ -569,6 +569,20 @@ def lambert_tests(command):
                     mub = (MU, MU)
                     lines.append(lambert_line(r1b, r2b, tb, mub, k))
                     meta.append(("grid", theta, ratio, Tstar, w, r1b, r2b, tb, mub, k, r1, r2, t))
+    # Near-parabolic transfers: T* within a relative distance d of the parabolic time T(1).
+    for theta in [60, 200]:
+        for d in [1e-3, -1e-3, 1e-6, -1e-6, 1e-9, -1e-9]:
+            r1 = [9000.0, 0.0, 0.0]
+            th = mpf(theta) * pi / 180
+            r2 = [float(13000 * cos(th)), float(13000 * sin(th)), 0.0]
+            r1m, r2m = [mpf(c) for c in r1], [mpf(c) for c in r2]
+            c_ = norm(subv(r2m, r1m))
+            s_ = (norm(r1m) + norm(r2m) + c_) / 2
+            lam_ = (1 if theta < 180 else -1) * sqrt(1 - c_ / s_)
+            Tstar = mpf(2) / 3 * (1 - lam_ ** 3) * (1 + mpf(d))
+            t = float(Tstar / sqrt(2 * mu / s_ ** 3))
+            lines.append(lambert_line([(c, c) for c in r1], [(c, c) for c in r2], (t, t), (MU, MU), z))
+            meta.append(("parabolic", theta, d, r1, r2, t))
     # Excluded geometries and invalid inputs.
     special = [
         ("angle pi", [7000.0, 0, 0], [-7000.0, 0, 0], 2700.0, z, 2),
@@ -586,9 +600,20 @@ def lambert_tests(command):
     statuses = {}
     worst_izzo = 0.0
     worst_prop = mpf(0)
+    near = []
     for m, (status, ivs) in zip(meta, results):
         if m[0] == "special":
             check(status == m[2], f"lambert {m[1]}: status {status}, expected {m[2]}")
+            continue
+        if m[0] == "parabolic":
+            _, theta, d, r1, r2, t = m
+            check(status == 0, f"lambert near-parabolic theta {theta} d {d}: status {status}")
+            if status == 0:
+                lam, T, x, v1, v2 = izzo_model([mpf(c) for c in r1], [mpf(c) for c in r2], mpf(t),
+                                               mu, [mpf(c) for c in z])
+                check(contains(ivs[0], x) and all(contains(iv, v) for iv, v in zip(ivs[1:], v1 + v2)),
+                      f"lambert near-parabolic theta {theta} d {d}: outside")
+                near.append((theta, d, float(x - 1), float(mpf(ivs[0][2]) - mpf(ivs[0][1]))))
             continue
         _, theta, ratio, Tstar, w, r1b, r2b, tb, mub, k, r1, r2, t = m
         statuses[status] = statuses.get(status, 0) + 1
@@ -631,6 +656,10 @@ def lambert_tests(command):
     print("Lambert: largest relative width of the interval of x")
     for (w, key), vals in sorted(widths.items()):
         print(f"  w = {w:g}, x {key}: {float(max(vals)):.1e} over {len(vals)} results")
+    print("Lambert: near-parabolic transfers (transfer angle, relative distance of T* from T(1), "
+          "x* - 1, width of the interval of x)")
+    for row in near:
+        print(f"  {row[0]}° {row[1]:+.0e}: x* - 1 = {row[2]:+.2e}, width {row[3]:.1e}")
     print(f"Lambert: largest distance of Izzo's binary64 velocities from the boxes, relative: "
           f"{worst_izzo:.1e}")
     print(f"Lambert: largest relative error of the propagated 50-digit solution: "
@@ -647,7 +676,8 @@ def round_trip():
     for kind, r0, v0, rn in orbit_kinds(rng) + orbit_kinds(rng) + orbit_kinds(rng):
         h = cross(r0, v0)
         alpha = 2 / norm(r0) - dot(v0, v0) / mu
-        if alpha > 0:
+        # a parabolic state has alpha zero up to the rounding of 50 digits
+        if alpha * norm(r0) > mpf(10) ** -30:
             period = 2 * pi / sqrt(mu * alpha ** 3)
             t = period * mpf(rng.uniform(0.05, 0.9))
         else:

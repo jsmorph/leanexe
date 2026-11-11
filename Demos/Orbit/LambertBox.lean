@@ -128,11 +128,28 @@ structure Search where
 /-- The midpoint of a search. -/
 def midpoint (s : Search) : Float := s.a + (s.b - s.a) * 0.5
 
+/-- `1 - 2^-20` and `1 + 2^-20`. -/
+def belowOne : Float := Float.ofBits 0x3FEFFFFE00000000
+
+def aboveOne : Float := Float.ofBits 0x3FF0000010000000
+
+/-- The point that a step evaluates: the midpoint, or `1 - 2^-20` or `1 + 2^-20` when the
+midpoint lies within `2^-20` of 1 and that point lies between the two points of the search.
+Near 1 the closed forms of `T` lose their precision, and an evaluation there that decides
+neither side would move the search away from the root. -/
+def probe (s : Search) : Float :=
+  let m := midpoint s
+  if belowOne < m ∧ m < aboveOne then
+    if s.a < belowOne then belowOne
+    else if aboveOne < s.b then aboveOne
+    else m
+  else m
+
 /-- A step of the bisection that raises `a`, the point where `T(a) > T` holds. -/
 def raiseStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search :=
   if s.done then s
   else
-    let m := midpoint s
+    let m := probe s
     if finite m then
       if s.a < m ∧ m < s.b then
         if above tab tab2 l tt m then ⟨m, s.b, false⟩ else ⟨s.a, m, false⟩
@@ -143,7 +160,7 @@ def raiseStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search 
 def lowerStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search :=
   if s.done then s
   else
-    let m := midpoint s
+    let m := probe s
     if finite m then
       if s.a < m ∧ m < s.b then
         if below tab tab2 l tt m then ⟨s.a, m, false⟩ else ⟨m, s.b, false⟩
