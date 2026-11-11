@@ -119,14 +119,18 @@ def FunSim (m : Module) (S : Shared) (need : Nat → Nat) (g k : Nat)
     StoreRel P S.cap S.globalTypes st ms → StackRel ms (vs.take c.2.1.length) →
     CallOutcome P code S (need k) c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
 
-/-- The functions of the table `callee` simulate at every fuel below `F` in module `m`, with what
-the program's functions share `S` and the bounds `need` of the stack that their calls use. -/
+/-- The platform meets what the code of the program's functions assumes of it, and the functions
+of the table `callee` simulate at every fuel below `F` in module `m`, with what the program's
+functions share `S` and the bounds `need` of the stack that their calls use.  Functions that may
+store bytes assume that the UART lies outside Normal memory, so that their stores reach the
+memory. -/
 def CallsOk (F : Nat) (m : Module) (callee : Table) (S : Shared) (need : Nat → Nat) : Prop :=
-  ∀ k c, callee k = some c → ∀ g < F, FunSim P code m S need g k c
+  (S.byteStores = true → P.normal P.uart = false) ∧
+    ∀ k c, callee k = some c → ∀ g < F, FunSim P code m S need g k c
 
 theorem CallsOk.mono {F G : Nat} {m : Module} {callee : Table} {S : Shared} {need : Nat → Nat}
     (h : CallsOk P code F m callee S need) (hle : G ≤ F) : CallsOk P code G m callee S need :=
-  fun k c hk g hg => h k c hk g (by omega)
+  ⟨h.1, fun k c hk g hg => h.2 k c hk g (by omega)⟩
 
 /-- The simulation of `inst` at fuel `F`, in which an overflow of the stack occurs only when
 fewer than `D` bytes lie between the stack's limit and SP, for any `D` at or above `need j` for

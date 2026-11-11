@@ -627,9 +627,11 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt64}
     run_outcome P code hm h64 hk hg hcode hcl hneed st vs ms hp hvt hpc hstk hsr hargs
 
 /-- The functions of a table whose code `genFunction` places at their entries, in a module that
-imports nothing, simulate at every fuel, with bounds `need` of the stack that their calls use. -/
+imports nothing, simulate at every fuel, with bounds `need` of the stack that their calls use, on a
+platform that meets what their code assumes of it. -/
 theorem calls_ok {callee : Table} {S : Shared}
     {m : Module} (hm : m.imports = []) (h64 : m.memIs64 = false)
+    (hU : S.byteStores = true → P.normal P.uart = false)
     (htab : ∀ k c, callee k = some c → ∃ f is, m.funcs[k]? = some f ∧
       c.2 = (f.params, f.results) ∧ genFunction callee S c.1 f = .ok is ∧
       CodeAt code c.1 is) {need : Nat → Nat}
@@ -639,7 +641,7 @@ theorem calls_ok {callee : Table} {S : Shared}
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>
-      intro k c hk g hg
+      refine ⟨hU, fun k c hk g hg => ?_⟩
       obtain ⟨f, is, hf, hc2, hgen, hcode⟩ := htab k c hk
       obtain ⟨e, p, r⟩ := c
       simp only [Prod.mk.injEq] at hc2

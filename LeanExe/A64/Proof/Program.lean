@@ -298,8 +298,8 @@ theorem stackNeed_of_nil {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]?
 /-! ## The generator's program -/
 
 theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)} {m : Module}
-    {k : Nat} {base : UInt64} {cap : Nat} {is : List Instr}
-    (hg : genProgramWith mainLen mainGen m k base cap = .ok is) :
+    {k : Nat} {base : UInt64} {cap : Nat} {bytes : Bool} {is : List Instr}
+    (hg : genProgramWith mainLen mainGen m k base cap bytes = .ok is) :
     ∃ gts fs first T main fns e pk rk g1 g2 g3 g4,
       areaOk m cap = true ∧ globalTypesOf m = some gts ∧ gts.length ≤ 511 ∧
       (reachFrom m k).mapM (funcOf m) = .ok fs ∧
@@ -309,7 +309,7 @@ theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
       pk.all wordType = true ∧
       mainGen e = .ok main ∧
       genFunctions (tableOf (callTargets m k) first fs)
-        ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs = .ok fns ∧
+        ⟨T, after T 5, after T 10, after T 15, cap, gts, bytes⟩ first fs = .ok fns ∧
       is = main ++ fns ++ (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
         (movImm 0 (UInt64.ofNat 2) ++ [.b g2]) ++ (movImm 0 (UInt64.ofNat 3) ++ [.b g3]) ++
         (movImm 0 (UInt64.ofNat 4) ++ [.b g4])) ∧
@@ -348,7 +348,7 @@ theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
           | ok main =>
               simp only [hmn] at hg
               cases hfn : genFunctions (tableOf (callTargets m k) first fs)
-                  ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs with
+                  ⟨T, after T 5, after T 10, after T 15, cap, gts, bytes⟩ first fs with
               | error err => simp [hfn] at hg
               | ok fns =>
                   simp only [hfn] at hg
@@ -382,7 +382,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       pk.all wordType = true ∧
       genMain (after base 1) e args uart room o = .ok main ∧
       genFunctions (tableOf (callTargets m k) first fs)
-        ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ first fs = .ok fns ∧
+        ⟨T, after T 5, after T 10, after T 15, cap, gts, false⟩ first fs = .ok fns ∧
       is = main ++ fns ++ (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
         (movImm 0 (UInt64.ofNat 2) ++ [.b g2]) ++ (movImm 0 (UInt64.ofNat 3) ++ [.b g3]) ++
         (movImm 0 (UInt64.ofNat 4) ++ [.b g4])) ∧
@@ -405,8 +405,8 @@ theorem genProgram_length {m : Module} {k : Nat} {args : List UInt64}
   simp only [List.length_append, genMain_length hmg, hl, movImm_length, List.length_singleton]
 
 theorem genProgramWith_length {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
-    {m : Module} {k : Nat} {base : UInt64} {cap : Nat} {is : List Instr}
-    (hg : genProgramWith mainLen mainGen m k base cap = .ok is)
+    {m : Module} {k : Nat} {base : UInt64} {cap : Nat} {bytes : Bool} {is : List Instr}
+    (hg : genProgramWith mainLen mainGen m k base cap bytes = .ok is)
     (hml : ∀ e main, mainGen e = .ok main → main.length = mainLen)
     {fs : List (Nat × Function)} (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs) :
     is.length = mainLen +
@@ -1040,7 +1040,7 @@ hold `areaBytes`, lie in Normal memory, and end at or below the stack's limit. -
 theorem programWith_sim {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
     {setup tail : List Instr} {m : Module} {k : Nat} {f : Function}
     {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
-    (hg : genProgramWith mainLen mainGen m k base cap = .ok is)
+    (hg : genProgramWith mainLen mainGen m k base cap false = .ok is)
     (hshape : ∀ e main, mainGen e = .ok main →
       MainShape (after base 1) e setup tail P.uart room o main)
     (hlen : mainLen = 8 + setup.length + 12 + outSize o + tail.length)
@@ -1105,14 +1105,16 @@ theorem programWith_sim {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
   have htab : ∀ j c, tableOf (callTargets m k) first fs j = some c → ∃ f is,
       m.funcs[j]? = some f ∧ c.2 = (f.params, f.results) ∧
       genFunction (tableOf (callTargets m k) first fs)
-        ⟨T, after T 5, after T 10, after T 15, cap, gts⟩ c.1 f = .ok is ∧ CodeAt code c.1 is := by
+        ⟨T, after T 5, after T 10, after T 15, cap, gts, false⟩ c.1 f = .ok is ∧
+        CodeAt code c.1 is := by
     intro j c hj
     unfold tableOf at hj
     split at hj
     · obtain ⟨f', fis, hmem, hpr, hgen, hcd⟩ := gen_functions code hsig hfg cfns _ (entryIn_mem hj)
       exact ⟨f', fis, hfm _ hmem, hpr, hgen, hcd⟩
     · cases hj
-  have hcl := calls_ok P code hm h64 htab (need := stackNeed m m.funcs.length)
+  have hcl := calls_ok P code hm h64 (fun h => absurd h Bool.false_ne_true) htab
+    (need := stackNeed m m.funcs.length)
     (fun _ _ hj => stackNeed_ok hj _) F
   have cmain := hc2.1
   rw [hmeq] at cmain

@@ -41,4 +41,11 @@ def genInImage (m : Module) (k n : Nat) (room : UInt64) (cap : Nat) (o : Output)
     (image : UInt64) : GenM (List UInt8 × Layout) :=
   genImageWith (fun base => genInProgram m k n uartAddr base room cap o) m room cap image
 
+/-- The image of the program that runs function `k` of `m`, a function over bytes, on a message of
+at most `inMax` bytes read from the UART and writes the bytes of its result, at `image`, with an
+area of `cap` pages and a stack of `room` bytes. -/
+def genBytesImage (m : Module) (k : Nat) (inMax room : UInt64) (cap : Nat) (image : UInt64) :
+    GenM (List UInt8 × Layout) :=
+  genImageWith (fun base => genBytesProgram m k inMax uartAddr base room cap) m room cap image
+
 end LeanExe.A64

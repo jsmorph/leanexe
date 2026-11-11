@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Memory
+import LeanExe.A64.Proof.ByteMemory
 import LeanExe.A64.Proof.Float32
 import LeanExe.ProofKit.Exec
 import Interpreter.Wasm.Semantics.Lemmas
@@ -298,6 +299,10 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
       obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load64 hg; simp [instrSize]; omega
   | store64 off =>
       obtain ⟨_, _, h1, _, _, _, _, rfl, rfl⟩ := gen_store64 hg; simp [instrSize]
+  | load8U off =>
+      obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load8U hg; simp [instrSize]; omega
+  | store8 off =>
+      obtain ⟨_, _, _, h1, _, _, _, _, rfl, rfl⟩ := gen_store8 hg; simp [instrSize]
   | br n =>
       obtain ⟨t, ht, hb, rfl⟩ := gen_br hg
       simp [instrSize, ht, branchTo_length hb]
@@ -482,6 +487,9 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | memoryGrow => obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_memoryGrow hg; cases he; omega
   | load64 off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load64 hg; cases he; simp; omega
   | store64 off => obtain ⟨_, _, h1, _, _, _, _, _, he⟩ := gen_store64 hg; cases he; simp; omega
+  | load8U off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load8U hg; cases he; simp; omega
+  | store8 off =>
+      obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_store8 hg; cases he; simp; omega
   | br n => obtain ⟨_, _, _, he⟩ := gen_br hg; cases he
   | br_if n => obtain ⟨h1, _, he, _⟩ := gen_br_if hg; cases he; simp; omega
   | ret => obtain ⟨_, _, _, he⟩ := gen_ret hg; cases he
@@ -981,6 +989,8 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case memoryGrow => exact sim_memoryGrow P code F
   case load64 off => exact sim_load64 P code F off
   case store64 off => exact sim_store64 P code F off
+  case load8U off => exact sim_load8U P code F off
+  case store8 off => exact sim_store8 P code F off
   case br n => exact sim_br P code F n
   case br_if n => exact sim_br_if P code F n
   case ret => exact sim_ret P code F

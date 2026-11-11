@@ -15,7 +15,8 @@ the f64 forms that the verified compiler emits: constants, the reinterpretations
 `f32ConvertI64U`, `f32ConvertI32S`, `i64TruncSatF32U`, `i32TruncSatF32S`, `f32Add`, `f32Sub`,
 `f32Mul`, `f32Div`, `f32Sqrt`, `f32Nearest`, `f32Abs`, `f32Eq`, `f32Lt`, and `f32Le`.  It rejects
 every other form with a message.  The function that
-`main` calls takes `i64` and `f64` parameters.
+`main` calls takes `i64` and `f64` parameters.  The loads and stores of linear memory also include
+`i32.load8_u` and `i32.store8`.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
@@ -66,6 +67,16 @@ encoded with its offset after a check that the offset fits.
 `genMain`, which loads constant arguments, and `genInProgram` gives it `genInMain`, which reads up
 to eight words from the UART, eight bytes each with the lowest first, polling the flag register
 before each read of the data register and ending with status 65 at a byte with an error flag.
+`genBytesProgram` gives it `genBytesMain`, which reads a length and a message from the UART into a
+block from the module's allocator, calls a function over bytes, and writes the bytes of the buffer
+that it returns.
+
+`i32.load8_u` and `i32.store8` at offset `off` compare the address with the memory's size less
+8, plus 7 less `off`, branch to the stub of an access outside the memory above it, and access the
+byte `X17 + 4096 + a + off` with `LDRB` or `STRB` 4095 bytes above `X17 + a + off + 1`.  `STRB`
+writes to the UART when its address is the UART's, so the generator emits `i32.store8` only in a
+program whose `Shared.byteStores` holds, the programs of `genBytesProgram`, whose theorem assumes
+that the UART lies outside Normal memory.
 -/
 
 namespace LeanExe.A64
@@ -144,7 +155,9 @@ abbrev Table := Nat → Option (UInt64 × List ValueType × List ValueType)
 
 /-- What the functions of a program share: the addresses of the trap stubs for `unreachable`, for
 an access outside the memory, for a division by zero, and for a stack that a frame would
-overflow, the memory's cap in pages, and the types of the globals. -/
+overflow, the memory's cap in pages, the types of the globals, and whether the functions may
+store bytes, which a program's theorem allows when it assumes that the UART lies outside Normal
+memory, since `STRB` writes to the UART at the UART's address. -/
 structure Shared where
   trapUnreachable : UInt64
   trapBounds : UInt64
@@ -152,6 +165,7 @@ structure Shared where
   trapStack : UInt64
   cap : Nat
   globalTypes : List ValueType
+  byteStores : Bool
 
 /-- What the instructions of one function need: what the program's functions share, the types of
 the function's locals, parameters included, and the table of the functions that its calls may
@@ -330,6 +344,8 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .memoryGrow => (16, some h)
   | .load64 _ => (6, some h)
   | .store64 _ => (6, some (h - 2))
+  | .load8U _ => (7, some h)
+  | .store8 _ => (7, some (h - 2))
   | .unreachable => (1, none)
   | .br n => (ar[n]?.getD 0 + 1, none)
   | .br_if n => (if ar[n]?.getD 0 = 0 then 1 else ar[n]?.getD 0 + 2, some (h - 1))
@@ -356,6 +372,11 @@ def listSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
       | some h' => ((instrSize sig ar h i).1 + (listSize sig ar h' rest).1,
           (listSize sig ar h' rest).2)
 end
+
+/-- The adjustment of the memory's size less 8 in X16 to the largest address of a 1-byte access at
+offset `off`: `ADD X16, X16, #(7 - off)`, or `SUB X16, X16, #(off - 7)` for `off` above 7. -/
+def boundInstr (off : Nat) (h : off < 4095) : Instr :=
+  if h7 : off ≤ 7 then .addImm 16 16 ⟨7 - off, by omega⟩ else .subImm 16 16 ⟨off - 7, by omega⟩
 
 mutual
 /-- The instructions of `ins` placed at `a`, on the operand stack of types `σ`, top first, under
@@ -496,6 +517,29 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
         return ([.ldr 16 17 0, .subImm 16 16 ⟨off.toNat, h.2⟩, .subsReg 31 r 16, .bcond 8 trap,
             .addReg 16 17 r, .str v 16 ⟨512 + off.toNat / 8, by omega⟩], some (σ.drop 2))
       else throw s!"a store at offset {off}"
+  | .load8U off => do
+      if σ.length < curBase ctl + 1 ∨ ¬ (σ.head? = some .i32 ∨ σ.head? = some .i64) then
+        throw s!"a byte load at height {σ.length}"
+      if h : off.toNat < 4095 then
+        let r ← opReg (σ.length - 1)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, boundInstr off.toNat h, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .addImm 16 16 ⟨off.toNat + 1, by omega⟩, .ldrb r 16 4095],
+          some (.i32 :: σ.tail))
+      else throw s!"a byte load at offset {off}"
+  | .store8 off => do
+      if !E.byteStores then throw "a byte store in a program without byte stores"
+      if σ.length < curBase ctl + 2 ∨ σ.head? ≠ some .i32 ∨
+          ¬ (σ[1]? = some .i32 ∨ σ[1]? = some .i64) then
+        throw s!"a byte store at height {σ.length}"
+      if h : off.toNat < 4095 then
+        let v ← opReg (σ.length - 1)
+        let r ← opReg (σ.length - 2)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, boundInstr off.toNat h, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .addImm 16 16 ⟨off.toNat + 1, by omega⟩, .strb v 16 4095],
+          some (σ.drop 2))
+      else throw s!"a byte store at offset {off}"
   | .unreachable => do return ([.b (← bField a E.trapUnreachable)], none)
   | .br n => do
       match ctl[n]? with
@@ -769,7 +813,7 @@ are at most 511 numbers.  The table of the functions' calls holds the functions 
 `callTargets` names.  The image puts a branch to `lx_exit` at `base` and `areaBytes` in the
 area. -/
 def genProgramWith (mainLen : Nat) (mainGen : UInt64 → GenM (List Instr)) (m : Module) (k : Nat)
-    (base : UInt64) (cap : Nat) : GenM (List Instr) := do
+    (base : UInt64) (cap : Nat) (bytes : Bool) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
   let gts ← match globalTypesOf m with
     | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
@@ -787,7 +831,7 @@ def genProgramWith (mainLen : Nat) (mainGen : UInt64 → GenM (List Instr)) (m :
   let main ← mainGen entry
   let S : Shared :=
     { trapUnreachable := traps, trapBounds := after traps 5, trapDiv := after traps 10,
-      trapStack := after traps 15, cap, globalTypes := gts }
+      trapStack := after traps 15, cap, globalTypes := gts, byteStores := bytes }
   let fns ← genFunctions callee S first fs
   let stub (a : UInt64) (code : Nat) : GenM (List Instr) := do
     return movImm 0 (UInt64.ofNat code) ++ [.b (← bField (after a 4) base)]
@@ -800,7 +844,7 @@ with a stack of `room` bytes below `main`'s frame and a memory of `cap` pages, w
 def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
     (cap : Nat) (o : Output) : GenM (List Instr) :=
   genProgramWith (mainSize args.length o) (fun e => genMain (after base 1) e args uart room o) m k
-    base cap
+    base cap false
 
 /-- The program that runs function `k` of `m` on `n` words read from the UART at `uart`, placed
 after its exit word at `base`, with a stack of `room` bytes below `main`'s frame and a memory of
@@ -808,6 +852,73 @@ after its exit word at `base`, with a stack of `room` bytes below `main`'s frame
 def genInProgram (m : Module) (k n : Nat) (uart base room : UInt64) (cap : Nat) (o : Output) :
     GenM (List Instr) :=
   genProgramWith (inMainSize n o) (fun e => genInMain (after base 1) e n uart room base o) m k
-    base cap
+    base cap false
+
+/-- The reads of a message of the length in X7 into the area's bytes from X15 plus 4095, placed at
+`a`, with the address of UARTDR in X8, 0x10 in X11, and 0xF00 in X12: while X7 is not 0, the
+reads of one byte as `readByte` polls and reads, `STRB` of the word's low byte, and the steps of
+X15 and X7.  A word with an error flag branches to `err`. -/
+def readMessage (a err : UInt64) : GenM (List Instr) := do
+  let done ← cbField a (after a 11)
+  let back ← cbField (after a 3) (after a 1)
+  let fail ← cbField (after a 6) err
+  let loop ← bField (after a 10) a
+  return [.cbz 7 done, .ldrW 9 8 6, .andReg 10 9 11, .cbnz 10 back, .ldrW 9 8 0, .andReg 10 9 12,
+    .cbnz 10 fail, .strb 9 15 4095, .addImm 15 15 1, .subImm 7 7 1, .b loop]
+
+/-- The writes to the UART at X8 of the `X1` bytes of the memory from the address in X0, placed at
+`a`: X3 at the area plus the address plus 1, and while X1 is not 0, `LDRB` of the byte 4095 above
+X3, `STRB` of it to UARTDR, and the steps of X3 and X1. -/
+def writeBytes (a : UInt64) : GenM (List Instr) := do
+  let done ← cbField (after a 2) (after a 8)
+  let back ← bField (after a 7) (after a 2)
+  return [.addReg 3 17 0, .addImm 3 3 1, .cbz 1 done, .ldrb 6 3 4095, .strb 6 8 0, .addImm 3 3 1,
+    .subImm 1 1 1, .b back]
+
+/-- The number of instructions of `genBytesMain`. -/
+def bytesMainSize : Nat := 156
+
+/-- The entry routine placed at `a` of a function over bytes, at `entry`, with the module's
+allocator at `alloc`.  It sets the stack's limit as `genMain` does, reads from the UART whose data
+register lies at `uart` a length L of eight bytes, the lowest first, into X7 as `genInMain` reads a
+word, and ends with status 64 when L exceeds `inMax`.  It saves L in its frame, calls the
+allocator with L, and reads L bytes into the block from the root that the allocator returns,
+with X0 holding the root throughout.  It calls the function with the root in X0 and L in X1,
+writes the bytes of the buffer whose root and length the function returns in X0 and X1 to the
+UART, and returns 0.  The stubs after the return set X0 to 65, the status of a byte with an error
+flag, or 64 and branch to the exit word at `base`. -/
+def genBytesMain (a entry alloc inMax uart room base : UInt64) : GenM (List Instr) := do
+  let e65 := after a 146
+  let e64 := after a 151
+  let len ← readBytes e65 7 (after a 16) 0 8
+  let over ← cbField (after a 101) e64
+  let callA := Instr.bl (← bField (after a 104) alloc)
+  let msg ← readMessage (after a 114) e65
+  let callK := Instr.bl (← bField (after a 126) entry)
+  let out ← writeBytes (after a 131)
+  let x65 ← bField (after e65 4) base
+  let x64 ← bField (after e64 4) base
+  return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
+    [.subReg 18 18 16] ++ movImm 8 uart ++
+    [.movz 11 0x10 0, .movz 12 0xF00 0, .movz 13 0xFF 0, .movz 7 0 0] ++ len ++
+    movImm 16 inMax ++ [.subsReg 31 7 16, .bcond 8 over, .str 7 31 1, mov 0 7, callA] ++
+    movImm 8 uart ++ [.movz 11 0x10 0, .movz 12 0xF00 0, .addReg 15 17 0, .addImm 15 15 1,
+      .ldr 7 31 1] ++ msg ++ [.ldr 1 31 1, callK] ++ movImm 8 uart ++ out ++ movImm 0 0 ++
+    [.ldr 30 31 0, .addImm 31 31 16, .ret 30] ++ movImm 0 65 ++ [.b x65] ++ movImm 0 64 ++
+    [.b x64]
+
+/-- The program that runs function `k` of `m`, a function over bytes, on a message read from the
+UART at `uart`, placed after its exit word at `base`, with a stack of `room` bytes below `main`'s
+frame and a memory of `cap` pages, whose `main`, `genBytesMain`, reads a length of at most `inMax`
+and the message.  Function 0 of the functions that calls reach from function `k` is the
+allocator, and the functions may store bytes. -/
+def genBytesProgram (m : Module) (k : Nat) (inMax uart base room : UInt64) (cap : Nat) :
+    GenM (List Instr) :=
+  genProgramWith bytesMainSize (fun e => do
+      let fs ← (reachFrom m k).mapM (funcOf m)
+      match entryIn (sigIn (callTargets m k) fs) (after (after base 1) bytesMainSize) fs 0 with
+      | some (a0, _, _) => genBytesMain (after base 1) e a0 inMax uart room base
+      | none => throw "no allocator among the functions that the function calls")
+    m k base cap true
 
 end LeanExe.A64

@@ -178,6 +178,9 @@ theorem Env.shift_eq (d : UInt64) (E : Env) :
       (E.shift d).callee = shiftTable d E.callee :=
   ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+theorem Env.shift_byteStores (d : UInt64) (E : Env) : (E.shift d).byteStores = E.byteStores :=
+  rfl
+
 theorem shiftTable_apply (d : UInt64) (T : Table) (j : Nat) :
     shiftTable d T j = (T j).map fun c => (c.1 + d, c.2) := rfl
 
@@ -246,6 +249,17 @@ theorem genInstr_shift_of {E : Env} {d : UInt64} {δ : Int}
       obtain ⟨ho, g, -, -, -, -, hf, his, -⟩ := gen_store64 hg
       have hl : is.length = 6 := by rw [his]; rfl
       simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hf,
+        cbField_shift (ha 3 (by omega)) hB hf]
+  | load8U off =>
+      obtain ⟨ho, g, -, -, -, hf, his, -⟩ := gen_load8U hg
+      have hl : is.length = 7 := by rw [his]; rfl
+      simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hf,
+        cbField_shift (ha 3 (by omega)) hB hf]
+  | store8 off =>
+      obtain ⟨ho, g, hbs, -, -, -, -, hf, his, -⟩ := gen_store8 hg
+      have hl : is.length = 7 := by rw [his]; rfl
+      simp only [genInstr, Env.shift_eq, Env.shift_byteStores, hbs, Bool.not_true,
+        Bool.false_eq_true, ↓reduceIte, curBase_shift, after_shift, hf,
         cbField_shift (ha 3 (by omega)) hB hf]
   | br n =>
       obtain ⟨t, ht, hb, -⟩ := gen_br hg
@@ -482,23 +496,32 @@ theorem genMain_shift {a entry uart room d : UInt64} {δ : Int} {args : List UIn
   rw [← hg]
   simp only [genMain, after_shift, hb, bField_shift (ha _ (by omega)) he hb, ho, ho']
 
-/-- The program that `genProgram` places at `base + d` is the one at `base`, when
-`base + 4 * p.length` and `base + d + 4 * p.length`, as numbers, lie below 2^64. -/
-theorem genProgram_shift {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
-    {cap : Nat} {o : Output} {p : List Instr} {d : UInt64}
-    (hg : genProgram m k args uart base room cap o = .ok p)
+/-- The program that `genProgramWith` places at `base + d` with the `main` of `mainGen'` is the
+one at `base` with the `main` of `mainGen`, when `base + 4 * p.length` and
+`base + d + 4 * p.length`, as numbers, lie below 2^64, `mainGen` gives a `main` of `mainLen`
+instructions, and `mainGen'` gives at the shifted entry the `main` that `mainGen` gives, whenever
+the shift moves `base`, the addresses of `main`, the entry, and the entries of the functions by
+the same number. -/
+theorem genProgramWith_shift {mainLen : Nat} {mainGen mainGen' : UInt64 → GenM (List Instr)}
+    {m : Module} {k : Nat} {base : UInt64} {cap : Nat} {bytes : Bool} {p : List Instr}
+    {d : UInt64} (hg : genProgramWith mainLen mainGen m k base cap bytes = .ok p)
+    (hml : ∀ e main, mainGen e = .ok main → main.length = mainLen)
+    (hmain : ∀ (δ : Int) e main, mainGen e = .ok main → MovesFrom d δ base (1 + mainLen) →
+      Moves d δ e → (∀ fs j c, (reachFrom m k).mapM (funcOf m) = .ok fs →
+        entryIn (sigIn (callTargets m k) fs) (after (after base 1) mainLen) fs j = some c →
+        Moves d δ c.1) → mainGen' (e + d) = .ok main)
     (h1 : base.toNat + 4 * p.length < 2 ^ 64) (h2 : (base + d).toNat + 4 * p.length < 2 ^ 64) :
-    genProgram m k args uart (base + d) room cap o = .ok p := by
+    genProgramWith mainLen mainGen' m k (base + d) cap bytes = .ok p := by
   have ha := movesFrom_of h1 h2
   generalize ((base + d).toNat - base.toNat : Int) = δ at ha
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hok, hgt, hgl, hfs, hfirst,
-    hT, hen, hps, hmn, hfn, hp, hb1, hb2, hb3, hb4⟩ := gen_program hg
-  have hml := genMain_length hmn
+    hT, hen, hps, hmn, hfn, hp, hb1, hb2, hb3, hb4⟩ := gen_programWith hg
+  have hml' := hml e main hmn
   obtain ⟨hfl, hend⟩ := genFunctions_length (sigOf_tableOf _ _ _) hfn
-  have hpl : p.length = mainSize args.length o + fns.length + 20 := by
+  have hpl : p.length = mainLen + fns.length + 20 := by
     rw [hp]
-    simp only [List.length_append, List.length_cons, List.length_nil, movImm_length, hml]
-  have hF : MovesFrom d δ first (p.length - (1 + mainSize args.length o)) := by
+    simp only [List.length_append, List.length_cons, List.length_nil, movImm_length, hml']
+  have hF : MovesFrom d δ first (p.length - (1 + mainLen)) := by
     rw [hfirst, after_after]
     exact ha.drop (by omega)
   have hX : MovesFrom d δ T 19 := by
@@ -506,17 +529,21 @@ theorem genProgram_shift {m : Module} {k : Nat} {args : List UInt64} {uart base 
     exact (hF.drop (by omega)).le (by omega)
   have hE : ∀ {j c}, entryIn (sigIn (callTargets m k) fs) first fs j = some c → Moves d δ c.1 :=
     fun h => entryIn_moves (hF.le (by omega)) h
-  have hS : SharedMoves d δ ⟨T, after T 5, after T 10, after T 15, cap, gts⟩
+  have hS : SharedMoves d δ ⟨T, after T 5, after T 10, after T 15, cap, gts, bytes⟩
       (tableOf (callTargets m k) first fs) :=
     ⟨hX.base, hX 5 (by omega), hX 10 (by omega), hX 15 (by omega),
       fun _ _ h => hE (tableOf_some h)⟩
   have hen' : entryIn (sigIn (callTargets m k) fs) (first + d) fs k = some (e + d, pk, rk) := by
     rw [entryIn_shift, hen]
     rfl
-  have hmn' := genMain_shift hmn ((ha.drop (m := 1) (by omega)).le (by omega))
-    (hE hen : Moves d δ e)
+  have hmn' := hmain δ e main hmn (ha.le (by omega)) (hE hen : Moves d δ e)
+    fun fs' j c hfs' hj => by
+      rw [hfs] at hfs'
+      cases hfs'
+      rw [← hfirst] at hj
+      exact hE hj
   have hfn' : genFunctions (shiftTable d (tableOf (callTargets m k) first fs))
-      ⟨T + d, after T 5 + d, after T 10 + d, after T 15 + d, cap, gts⟩ (first + d) fs =
+      ⟨T + d, after T 5 + d, after T 10 + d, after T 15 + d, cap, gts, bytes⟩ (first + d) fs =
       .ok fns := genFunctions_shift hS hfn (hF.le (by omega))
   have h0 := ha.base
   have hb1' := bField_shift (hX 4 (by omega)) h0 hb1
@@ -524,11 +551,25 @@ theorem genProgram_shift {m : Module} {k : Nat} {args : List UInt64} {uart base 
   have hb3' := bField_shift ((hX.drop (m := 10) (by omega)) 4 (by omega)) h0 hb3
   have hb4' := bField_shift ((hX.drop (m := 15) (by omega)) 4 (by omega)) h0 hb4
   rw [← hg]
-  simp only [genProgram, genProgramWith, hok, hgt, hgl, Bool.not_true, Bool.false_eq_true,
+  simp only [genProgramWith, hok, hgt, hgl, Bool.not_true, Bool.false_eq_true,
     ite_false, ite_true,
     hfs, bind, Except.bind, pure, Except.pure, after_shift, ← hfirst, endOf_shift, ← hT,
     tableOf_shift, hen, hen', hps, hmn, hmn', hfn, hfn', hb1, hb2, hb3, hb4, hb1', hb2', hb3',
     hb4']
+
+/-- The program that `genProgram` places at `base + d` is the one at `base`, when
+`base + 4 * p.length` and `base + d + 4 * p.length`, as numbers, lie below 2^64. -/
+theorem genProgram_shift {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
+    {cap : Nat} {o : Output} {p : List Instr} {d : UInt64}
+    (hg : genProgram m k args uart base room cap o = .ok p)
+    (h1 : base.toNat + 4 * p.length < 2 ^ 64) (h2 : (base + d).toNat + 4 * p.length < 2 ^ 64) :
+    genProgram m k args uart (base + d) room cap o = .ok p :=
+  genProgramWith_shift hg (fun _ _ hmg => genMain_length hmg)
+    (fun _ _ _ hmg ha he _ => by
+      rw [after_shift]
+      exact genMain_shift hmg (by
+        rw [genMain_length hmg]
+        exact (ha.drop (m := 1) (by omega)).le (by omega)) he) h1 h2
 
 /-! ## Images -/
 
@@ -618,16 +659,22 @@ theorem startupCode_shift {image d : UInt64} {n : Nat} {m : Module} {cap : Nat}
     addrOf_shift hδ (hW 55 (by omega)) (hF _ (by omega)) c7,
     bField_shift (hW 57 (by omega)) hB1 c8, bField_shift (hF _ (by omega)) (hW 58 (by omega)) c9]
 
-/-- The image that `genImage` writes at `image + d` has the bytes of the image at `image` and its
-layout shifted by `d`, when `d` is a multiple of 4096 and the image at `image + d` also lies in the
-RAM GiB.  The sum `image + d` may wrap around 2^64, which places the second image below the
-first. -/
-theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
-    {o : Output} {image d : UInt64} {bytes : List UInt8} {L : Layout}
-    (hg : genImage m k args room cap o image = .ok (bytes, L)) (hd : d.toNat % 4096 = 0)
+/-- The program generator `gp` places the same program at `base + d` as at `base`, whenever both
+programs lie below 2^64. -/
+def ShiftsBy (gp : UInt64 → GenM (List Instr)) (d : UInt64) : Prop :=
+  ∀ base p, gp base = .ok p → base.toNat + 4 * p.length < 2 ^ 64 →
+    (base + d).toNat + 4 * p.length < 2 ^ 64 → gp (base + d) = .ok p
+
+/-- The image that `genImageWith` writes at `image + d` has the bytes of the image at `image` and
+its layout shifted by `d`, when `d` is a multiple of 4096, the program generator places the same
+program at both bases, and the image at `image + d` also lies in the RAM GiB.  The sum `image + d`
+may wrap around 2^64, which places the second image below the first. -/
+theorem genImageWith_shift {gp : UInt64 → GenM (List Instr)} {m : Module} {room : UInt64}
+    {cap : Nat} {image d : UInt64} {bytes : List UInt8} {L : Layout} (hgp : ShiftsBy gp d)
+    (hg : genImageWith gp m room cap image = .ok (bytes, L)) (hd : d.toNat % 4096 = 0)
     (hlo : 0x40000000 ≤ (image + d).toNat) (hhi : (image + d).toNat + L.size ≤ 0x80000000) :
-    genImage m k args room cap o (image + d) = .ok (bytes, L.shift d) := by
-  obtain ⟨prog, start, hp, rfl, -, hhi0, hpre, hs, rfl⟩ := gen_image hg
+    genImageWith gp m room cap (image + d) = .ok (bytes, L.shift d) := by
+  obtain ⟨prog, start, hp, rfl, -, hhi0, hpre, hs, rfl⟩ := gen_imageWith hg
   have hsz := (layoutOf_fields image prog.length m cap room).2.2.2.2.2.2.2.2
   have hv := vecOff_ge prog.length
   have hao := areaOff_ge prog.length
@@ -640,17 +687,48 @@ theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt6
       (image + d).toNat + 344 := by
     rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
     exact Nat.mod_eq_of_lt (by omega)
-  have hp' := genProgram_shift hp (by rw [e1]; omega) (by rw [← add_right_comm', e2]; omega)
+  have hp' := hgp _ _ hp (by rw [e1]; omega) (by rw [← add_right_comm', e2]; omega)
   rw [← add_right_comm'] at hp'
   have hs' := startupCode_shift hd hpre (by omega) (by omega) hs
   rw [layoutOf_shift] at hs'
   have hr : 0x40000000 ≤ (image + d).toNat ∧
       (image + d).toNat + (layoutOf image prog.length m cap room).size ≤ 0x80000000 ∧
       areaPrefix m ≤ areaSize cap := ⟨hlo, hhi, hpre⟩
-  simp only [genImage, genImageWith]
+  simp only [genImageWith]
   rw [hp']
   simp only [bind, Except.bind, layoutOf_shift, Layout.shift_eq, hr, and_self, ite_true, hs',
     pure, Except.pure, add_sub_add, List.append_assoc, length_imageBytes, List.length_append]
+
+/-- The kernel's check of the image of `genImageWith` at `image` holds for the image at
+`image + d`, under the premises of `genImageWith_shift`. -/
+theorem bytesOkWith_shift {gp : UInt64 → GenM (List Instr)} {m : Module} {room : UInt64}
+    {cap : Nat} {image d : UInt64} {n len : Nat} (hgp : ShiftsBy gp d)
+    (hk : bytesOk (genImageWith gp m room cap image) n len = true) (hd : d.toNat % 4096 = 0)
+    (hlo : 0x40000000 ≤ (image + d).toNat)
+    (hhi : ∀ bytes L, genImageWith gp m room cap image = .ok (bytes, L) →
+      (image + d).toNat + L.size ≤ 0x80000000) :
+    bytesOk (genImageWith gp m room cap (image + d)) n len = true := by
+  obtain ⟨bytes, L, hg, -, -⟩ := of_bytesOk hk
+  rw [genImageWith_shift hgp hg hd hlo (hhi bytes L hg)]
+  rw [hg] at hk
+  exact hk
+
+/-- `genProgram` places the same program at every base where it lies below 2^64. -/
+theorem genProgram_shiftsBy (m : Module) (k : Nat) (args : List UInt64) (room : UInt64)
+    (cap : Nat) (o : Output) (d : UInt64) :
+    ShiftsBy (fun base => genProgram m k args uartAddr base room cap o) d :=
+  fun _ _ hp h1 h2 => genProgram_shift hp h1 h2
+
+/-- The image that `genImage` writes at `image + d` has the bytes of the image at `image` and its
+layout shifted by `d`, when `d` is a multiple of 4096 and the image at `image + d` also lies in the
+RAM GiB.  The sum `image + d` may wrap around 2^64, which places the second image below the
+first. -/
+theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
+    {o : Output} {image d : UInt64} {bytes : List UInt8} {L : Layout}
+    (hg : genImage m k args room cap o image = .ok (bytes, L)) (hd : d.toNat % 4096 = 0)
+    (hlo : 0x40000000 ≤ (image + d).toNat) (hhi : (image + d).toNat + L.size ≤ 0x80000000) :
+    genImage m k args room cap o (image + d) = .ok (bytes, L.shift d) :=
+  genImageWith_shift (genProgram_shiftsBy m k args room cap o d) hg hd hlo hhi
 
 /-- The kernel's check of the image at `image` holds for the image at `image + d`, when `d` is a
 multiple of 4096 and the image at `image + d` lies in the RAM GiB. -/
@@ -660,10 +738,7 @@ theorem bytesOk_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt64
     (hlo : 0x40000000 ≤ (image + d).toNat)
     (hhi : ∀ bytes L, genImage m k args room cap o image = .ok (bytes, L) →
       (image + d).toNat + L.size ≤ 0x80000000) :
-    bytesOk (genImage m k args room cap o (image + d)) n len = true := by
-  obtain ⟨bytes, L, hg, -, -⟩ := of_bytesOk hk
-  rw [genImage_shift hg hd hlo (hhi bytes L hg)]
-  rw [hg] at hk
-  exact hk
+    bytesOk (genImage m k args room cap o (image + d)) n len = true :=
+  bytesOkWith_shift (genProgram_shiftsBy m k args room cap o d) hk hd hlo hhi
 
 end LeanExe.A64
