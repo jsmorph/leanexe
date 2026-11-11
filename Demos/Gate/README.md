@@ -31,7 +31,7 @@ module assignment
   check     c : Array Int64, perm : Array UInt64, u v : Array Int64  ->  status, row, col
 ```
 
-`k` lies from 1 to 1,000, `x` is finite, `p` lies strictly between 0 and 1, and `h`, the number of halvings of each bisection, lies from 0 to 64.  `cdf` and `tail` return status 0 for every such input and status 1 otherwise.  `quantile` returns status 0 with an interval that contains the quantile, status 1 for an input outside the ranges, and status 2 when the enclosure at the bracket's upper end does not reach `p`, which no `p` up to `1 - 2⁻⁵³` gives.
+`k` lies from 1 to 1,000, `x` is finite, `p` lies strictly between 0 and 1, and `h`, the number of halvings of each bisection, lies from 0 to 64.  `cdf` and `tail` return status 0 for every such input and status 1 otherwise.  `quantile` returns status 0 with an interval that contains the quantile, status 1 for an input outside the ranges, and status 2 when the enclosure at the bracket's upper end does not reach `p`, which no tested `p` up to `1 - 2⁻⁵³` gives.
 
 `gate` takes the innovation `nu` of `d` values, `d` from 1 to 64, the covariance `s` of `d·d` values in row-major order, and the threshold `g ≥ 0`.  Status 1 marks an input outside these ranges, a value that is not finite, or an asymmetric `s`, and status 2 a covariance that the elimination does not show positive definite or an interval operation that rejects.  With status 0, `[lo, hi]` contains the squared Mahalanobis distance, and the verdict is 1 when `hi ≤ γ`, so the innovation lies inside the gate, 2 when `γ < lo`, so it lies outside, and 0 otherwise.
 
