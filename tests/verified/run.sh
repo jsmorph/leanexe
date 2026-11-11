@@ -34,9 +34,9 @@
 # tests/screening/Axioms.lean, and with --cases screening it checks the program's file theorem
 # module as well.  For the event-window program, it runs the axiom audit of
 # tests/events/Axioms.lean, and with --cases events it checks the program's file theorem module
-# as well.  Each audit fails the run
-# when a report names an axiom
-# beyond those three.  Last, the
+# as well.  With --cases frames, it runs the axiom audit of tests/frames/Axioms.lean and
+# checks the frames module's file theorems.  Each audit fails the run when a report names an
+# axiom beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -170,6 +170,8 @@ elif [ "$case_module" = "sgp4omm" ]; then
   cases_exe=verified-cases-sgp4omm
 elif [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
   cases_exe=verified-cases-orbit
+elif [ "$case_module" = "frames" ]; then
+  cases_exe=verified-cases-frames
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -259,6 +261,10 @@ if [ -z "$reference" ]; then
   fi
   if [ "$case_module" = "lambert" ]; then
     targets+=(Demos.Orbit.LambertVerified $(imports Demos/Orbit/LambertFile.lean))
+  fi
+  if [ "$case_module" = "frames" ]; then
+    targets+=(Demos.Frames.Verified $(imports Demos/Frames/File.lean)
+      $(imports tests/frames/Axioms.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -474,6 +480,10 @@ if [ -z "$case_module" ] || [ "$case_module" = "gibbs" ] || [ "$case_module" = "
   if [ "$case_module" = "lambert" ]; then
     check_file lambert Demos.Orbit.LambertVerified Demos/Orbit/LambertFile.lean
   fi
+fi
+if [ "$case_module" = "frames" ]; then
+  check_axioms tests/frames/Axioms.lean
+  check_file frames Demos.Frames.Verified Demos/Frames/File.lean
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
 if [ -z "$case_module" ]; then

@@ -71,6 +71,14 @@ import Demos.Euler.Reference.Transport
 import Demos.Euler.Reference.Update
 import Demos.Euler.SpeedCounterexample
 import Demos.Euler.Words
+import Demos.Frames.Enclose
+import Demos.Frames.Flat
+import Demos.Frames.Geodetic
+import Demos.Frames.Model
+import Demos.Frames.Program
+import Demos.Frames.Soundness
+import Demos.Frames.Time
+import Demos.Frames.TimeSound
 import Demos.Gate.Assignment
 import Demos.Gate.AssignmentFlat
 import Demos.Gate.AssignmentSoundness
