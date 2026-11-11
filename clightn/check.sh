@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 # Checks the reference semantics N (clightn/README.md): that the Rocq and the Lean rendering of
-# clightn/N.nsx and of the instances of two programs elaborate to what the specification states,
+# clightn/N.nsx and of the instances of three programs elaborate to what the specification states,
 # that Lean proves every statement and Rocq every statement but the instances', which Rocq
 # theorems take as their premises, and that the proofs assume nothing beyond CompCert's
 # transf_c_program_correct in Rocq and propext, Classical.choice, and Quot.sound in Lean.
 #
-# The instances are the bare-metal program of gcd 1071 462 and the program with input around the
-# export sha256 of the hashing library.  tools/leanrun builds the Lean modules and runs
-# clightn/gcd/emit.lean and clightn/sha/emit.lean, which write the programs' C text and the bytes
+# The instances are the bare-metal program of gcd 1071 462, the program with input around the
+# export sha256 of the hashing library, and the controller program around the step ctlStep, whose
+# main runs forever.  tools/leanrun builds the Lean modules and runs clightn/gcd/emit.lean,
+# clightn/sha/emit.lean, and clightn/ctl/emit.lean, which write the programs' C text and the bytes
 # of the GCD program's output.  The tree's clightgen prints each program as a Coq file, from which
-# clightn/clightgen.py writes the instances Gcd.nsx and Sha.nsx, and clightn/nsx.py renders them.
-# coqc compiles clightn/rocq/*.v, rocq/Clight2Asm.v, the Coq files, the renderings of the
-# instances, and a generated NRead.v against a CompCert 3.18 tree with built proofs, with the
-# load paths of the tree's _CoqProject; NRead.v prints what Rocq elaborated.  Lean compiles the
-# renderings of the instances outside the package and elaborates clightn/gcd/Gcd.lean and
-# clightn/sha/Sha.lean, each of which proves its instance's statement and prints what Lean
-# elaborated.  clightn/nsx.py compares the printouts with the specification, once for each
-# instance.  With --mutations, the script then plants the errors that nsx.py lists in copies of
-# the renderings and the proofs, and requires the comparison to report exactly those errors.  Its
-# work directory is build/clightn.
+# clightn/clightgen.py writes the instances Gcd.nsx, Sha.nsx, and Ctl.nsx, and clightn/nsx.py
+# renders them.  coqc compiles clightn/rocq/*.v, rocq/Clight2Asm.v, the Coq files, the renderings
+# of the instances, and a generated NRead.v against a CompCert 3.18 tree with built proofs, with
+# the load paths of the tree's _CoqProject; NRead.v prints what Rocq elaborated.  Lean compiles
+# the renderings of the instances outside the package and elaborates clightn/gcd/Gcd.lean,
+# clightn/sha/Sha.lean, and clightn/ctl/Ctl.lean, each of which proves its instance's statement
+# and prints what Lean elaborated.  clightn/nsx.py compares the printouts with the specification,
+# once for each instance.  With --mutations, the script then plants the errors that nsx.py lists
+# in copies of the renderings and the proofs, and requires the comparison to report exactly those
+# errors.  Its work directory is build/clightn.
 # Usage: clightn/check.sh [--mutations] COMPCERT_TREE
 set -euo pipefail
 mutations=no
@@ -59,13 +60,14 @@ cd "$root"
 spec=clightn/N.nsx
 work=$root/build/clightn
 rm -rf "$work"
-mkdir -p "$work/rocq" "$work/gcd" "$work/sha" "$work/lean/ClightNGcd" "$work/lean/ClightNSha" \
-  "$work/render"
+mkdir -p "$work/rocq" "$work/gcd" "$work/sha" "$work/ctl" "$work/lean/ClightNGcd" \
+  "$work/lean/ClightNSha" "$work/lean/ClightNCtl" "$work/render"
 gcdspecs=$spec,$work/gcd/Gcd.nsx
 shaspecs=$spec,$work/sha/Sha.nsx
-specs=$spec,$work/gcd/Gcd.nsx,$work/sha/Sha.nsx
+ctlspecs=$spec,$work/ctl/Ctl.nsx
+specs=$spec,$work/gcd/Gcd.nsx,$work/sha/Sha.nsx,$work/ctl/Ctl.nsx
 proofs=(NBase.v NSpec.v NProof.v Clight2Asm.v NExec.v NExport.v gcd.v NGcdSpec.v NGcd.v sha.v
-  NShaSpec.v NSha.v)
+  NShaSpec.v NSha.v ctl.v NCtlSpec.v NCtl.v)
 
 # The Lean proof of the SHA-256 instance reaches about 12 GB, of which the imports take about 4 GB.
 leanrun() {
@@ -75,12 +77,12 @@ leanrun() {
 # The programs: their C text, clightgen's Coq files, and the instances.
 start=$(date +%s)
 leanrun lake build LeanExe.Native.ClightN.Instance LeanExe.Native.ClightN.Read \
-  TestSupport.Bare.Gcd TestSupport.Bare.Input >"$work/build.log" 2>&1 || {
+  TestSupport.Bare.Gcd TestSupport.Bare.Input TestSupport.Bare.Ctl >"$work/build.log" 2>&1 || {
   cat "$work/build.log" >&2
   echo "clightn: the Lean build failed" >&2
   exit 1
 }
-for p in gcd sha; do
+for p in gcd sha ctl; do
   leanrun lake env lean --run "clightn/$p/emit.lean" "$work/$p" >"$work/$p/emit.log" 2>&1 || {
     cat "$work/$p/emit.log" >&2
     exit 1
@@ -90,9 +92,12 @@ done
 uv run clightn/clightgen.py "$work/gcd/gcd.v" "$work/gcd/Gcd.nsx" gcd NGcdSpec NGcd.gcd_asm \
   terminates "$(cat "$work/gcd/gcd.bytes")" 0
 uv run clightn/clightgen.py "$work/sha/sha.v" "$work/sha/Sha.nsx" sha NShaSpec NSha.sha_asm reads
+uv run clightn/clightgen.py "$work/ctl/ctl.v" "$work/ctl/Ctl.nsx" ctl NCtlSpec NCtl.ctl_asm reacts
+leanspecs=$work/render/Spec.lean,$work/lean/ClightNGcd/GcdSpec.lean
+leanspecs+=,$work/lean/ClightNSha/ShaSpec.lean,$work/lean/ClightNCtl/CtlSpec.lean
 uv run clightn/nsx.py render "$specs" \
-  "$work/render/NSpec.v,$work/gcd/NGcdSpec.v,$work/sha/NShaSpec.v" \
-  "$work/render/Spec.lean,$work/lean/ClightNGcd/GcdSpec.lean,$work/lean/ClightNSha/ShaSpec.lean"
+  "$work/render/NSpec.v,$work/gcd/NGcdSpec.v,$work/sha/NShaSpec.v,$work/ctl/NCtlSpec.v" \
+  "$leanspecs"
 echo "clightn: Lean built and the programs' instances were written in $(($(date +%s) - start)) s"
 
 # rocq DIR READER_FLAG FILE...: compiles the Rocq files from DIR (the repository's files unless
@@ -102,7 +107,7 @@ rocq() {
   shift 3
   mkdir -p "$out"
   cp clightn/rocq/*.v rocq/Clight2Asm.v "$work/gcd/gcd.v" "$work/gcd/NGcdSpec.v" \
-    "$work/sha/sha.v" "$work/sha/NShaSpec.v" "$out/"
+    "$work/sha/sha.v" "$work/sha/NShaSpec.v" "$work/ctl/ctl.v" "$work/ctl/NCtlSpec.v" "$out/"
   if [ -n "$dir" ]; then
     cp "$dir"/*.v "$out/"
   fi
@@ -125,7 +130,7 @@ start=$(date +%s)
 rocq "" "" rocq "${proofs[@]}"
 echo "clightn: Rocq compiled the renderings and proofs in $(($(date +%s) - start)) s"
 start=$(date +%s)
-for x in Gcd Sha; do
+for x in Gcd Sha Ctl; do
   leanrun lake env lean -R "$work/lean" -o "$work/lean/ClightN$x/${x}Spec.olean" \
     "$work/lean/ClightN$x/${x}Spec.lean" >"$work/lean/render$x.log" 2>&1 || {
     cat "$work/lean/render$x.log" >&2
@@ -140,8 +145,13 @@ start=$(date +%s)
 lean clightn/sha/Sha.lean "$work/lean-sha.out"
 echo "clightn: Lean proved the SHA-256 instance and printed the renderings and proofs in" \
   "$(($(date +%s) - start)) s"
+start=$(date +%s)
+lean clightn/ctl/Ctl.lean "$work/lean-ctl.out"
+echo "clightn: Lean proved the controller instance and printed the renderings and proofs in" \
+  "$(($(date +%s) - start)) s"
 uv run clightn/nsx.py check "$gcdspecs" "$work/rocq" "$work/lean-gcd.out"
 uv run clightn/nsx.py check "$shaspecs" "$work/rocq" "$work/lean-sha.out"
+uv run clightn/nsx.py check "$ctlspecs" "$work/rocq" "$work/lean-ctl.out"
 
 if [ "$mutations" = yes ]; then
   mkdir -p "$work/planted"
@@ -163,9 +173,11 @@ if [ "$mutations" = yes ]; then
 lean-spec LeanExe/Native/ClightN/Spec.lean $spec renderings
 lean-gcd $work/lean/ClightNGcd/GcdSpec.lean $gcdspecs renderings
 lean-sha $work/lean/ClightNSha/ShaSpec.lean $shaspecs renderings
+lean-ctl $work/lean/ClightNCtl/CtlSpec.lean $ctlspecs renderings
 lean-proof LeanExe/Native/ClightN/Leaf.lean $spec proofs
 lean-gcd-proof clightn/gcd/Gcd.lean $gcdspecs proofs
 lean-sha-proof clightn/sha/Sha.lean $shaspecs proofs
+lean-ctl-proof clightn/ctl/Ctl.lean $ctlspecs proofs
 EOF
   # Each line: the group, the file it plants errors in, the specification files of the check,
   # the Lean printout to compare with, and the files that Rocq compiles before the reader; the
@@ -188,9 +200,11 @@ EOF
 rocq-spec clightn/rocq/NSpec.v $spec $work/lean-n.out NBase.v,NSpec.v
 rocq-gcd $work/gcd/NGcdSpec.v $gcdspecs $work/lean-gcd.out NBase.v,NSpec.v,NGcdSpec.v
 rocq-sha $work/sha/NShaSpec.v $shaspecs $work/lean-sha.out NBase.v,NSpec.v,NShaSpec.v
+rocq-ctl $work/ctl/NCtlSpec.v $ctlspecs $work/lean-ctl.out NBase.v,NSpec.v,NCtlSpec.v
 rocq-proof clightn/rocq/NProof.v $spec $work/lean-n.out proofs
 rocq-gcd-proof clightn/rocq/NGcd.v $gcdspecs $work/lean-gcd.out all
 rocq-sha-proof clightn/rocq/NSha.v $shaspecs $work/lean-sha.out all
+rocq-ctl-proof clightn/rocq/NCtl.v $ctlspecs $work/lean-ctl.out all
 EOF
   echo "clightn: every planted error was reported"
 fi
