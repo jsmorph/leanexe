@@ -6,6 +6,11 @@ import Demos.Frames.Call
 #print axioms Demos.Frames.gmst82_eq
 #print axioms Demos.Frames.turns_eq
 #print axioms Demos.Frames.toEarth_eq
+#print axioms Demos.Frames.toEarth_periodic
+#print axioms Demos.Frames.arctan.encloses
+#print axioms Demos.Frames.Geodetic.growthA
+#print axioms Demos.Frames.Geodetic.growthB
+#print axioms Demos.Frames.Geodetic.bijective_of_growth
 #print axioms Demos.Frames.Geodetic.geodetic_exists
 #print axioms Demos.Frames.Geodetic.geodetic_unique
 #print axioms Demos.Frames.Geodetic.bound_of_growth
