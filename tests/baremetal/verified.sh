@@ -7,7 +7,8 @@
 # tools/baremetal/libc, and tools/baremetal/build.sh links them with the startup code and a stack
 # of STACK_SIZE bytes, 0x400000 by default.  The host reads its command line from a block that
 # QEMU's generic loader places at 0x7F000000, in which an array that a case passes as a file
-# appears as the list of its words.  Each case runs in its own QEMU process, JOBS at a
+# appears as the list of its words and a byte string as its bytes in hexadecimal, since the host
+# cannot open a file there.  Each case runs in its own QEMU process, JOBS at a
 # time (4 by default), under the rules of tests/native/verified.sh for results, traps, and
 # allocation counters, and the module cases of euler and of shapes on sums under the rules of
 # tests/modules/run.sh.  A case also fails when it reports an exception or a stack high-water mark
@@ -181,15 +182,18 @@ run_host() {
   exception=$(grep '^R:exception\|^R:level' "$w/serial.txt" || true)
 }
 
-# Sets inlined to the arguments that follow, with each file-u64:PATH, a file that the host under
-# QEMU cannot open, replaced by array-u64: and the file's words, each from 8 bytes, the lowest
-# first, in decimal.  The host lays out both kinds as the same array.
+# Sets inlined to the arguments that follow, with each file that the host under QEMU cannot open
+# replaced by its contents: file-u64:PATH by array-u64: and the file's words, each from 8 bytes,
+# the lowest first, in decimal, and bytes-file:PATH by bytes: and the file's bytes in hexadecimal.
+# The host lays out each kind and its replacement as the same object.
 inline_files() {
   local a
   inlined=()
   for a in "$@"; do
     if [[ $a == file-u64:* ]]; then
       inlined+=("array-u64:$(od -An -v -t u8 -w8 "${a#file-u64:}" | tr -d ' ' | paste -sd, -)")
+    elif [[ $a == bytes-file:* ]]; then
+      inlined+=("bytes:$(od -An -v -t x1 "${a#bytes-file:}" | tr -d ' \n')")
     else
       inlined+=("$a")
     fi
