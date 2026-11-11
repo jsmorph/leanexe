@@ -27,7 +27,8 @@ an `abstract-call` event as register values, and reads the events `cycle`, `call
 with a unit result, as `skip`.
 
 `Trace.Run P A t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
-section 3, and `theories/opsem.v` of its repository): `declare-const` picks any value of its type,
+section 3, and `theories/opsem.v` of its repository at revision 895426ce32ab, to which the line
+numbers below refer): `declare-const` picks any value of its type,
 a read of a register or of memory whose value differs from the state's ends the path without an
 outcome, as does a false `assert`, while a false `assume` and every ill-formed event end it in
 `fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and

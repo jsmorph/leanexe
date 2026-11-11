@@ -11,7 +11,9 @@ The code lies in a fixed map from addresses to 32-bit words, which the theorem d
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
 the program counter, decodes it, and executes it.  It returns `none` for a word outside the
 forms, for an access to memory that `Platform.normal` does not cover, for a load or store based on
-the stack pointer while the stack pointer is not a multiple of 16, and for every access to the
+the stack pointer while the stack pointer is not a multiple of 16, and for a 32-bit load other than
+one of the UART's data or flag register.  On a platform whose Normal memory excludes the UART's
+registers, as that of `Boot.platform` does, it therefore returns `none` for every access to the
 UART other than a byte store to its data register and a 32-bit load of its data or flag register,
 so a theorem about a run that never stops the model excludes the faults of those accesses.  The
 flags, the stack pointer, and the semantics of register 31 follow the pseudocode of the Arm

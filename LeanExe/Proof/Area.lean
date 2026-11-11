@@ -222,7 +222,7 @@ theorem memIs64_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
       simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
       exact h.1.1.1
 
-theorem cap_lt_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) : cap < 4096 := by
+theorem cap_lt_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) : cap < 65536 := by
   unfold areaOk at h
   cases hd : m.memory with
   | none => rw [hd] at h; cases h

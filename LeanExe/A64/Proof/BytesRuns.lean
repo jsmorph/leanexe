@@ -505,6 +505,16 @@ theorem platform_uart_apart {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Op
   rw [classify_uart hr.cov hr.tab]
   simp [writableNormal]
 
+/-- The platform of a ready boot state maps the UART's flag register as Device memory, outside
+Normal memory, so `exec` stops at every access to it but a 32-bit load. -/
+theorem platform_uartFr_apart {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
+    {b : Boot} (hr : Ready h R code b) :
+    (b.platform h R).normal ((b.platform h R).uart + 0x18) = false := by
+  show (!R (uartAddr + 0x18) &&
+    writableNormal (classify h b.eff b.core.mem (uartAddr + 0x18))) = false
+  rw [classify_uartFr hr.cov hr.tab]
+  simp [writableNormal]
+
 /-- The number of the program's instructions in the image of `genBytesImage` at `image`. -/
 def imageBytesProgLength (m : Module) (k : Nat) (inMax room : UInt64) (cap : Nat)
     (image : UInt64) : Nat :=

@@ -144,11 +144,11 @@ def Frame (b : Nat) (s s' : State) : Prop :=
 /-- The machine holds Talos's store `st` in the area at X17, below the stack's limit in X18: the
 memory's size less 8 at X17, global `i`, of the type `gts[i]`, at `X17 + 8 (i + 1)`, and byte `j`
 of the memory at `X17 + 4096 + j` for every `j` below `cap` pages.  The memory's cap is `cap`
-pages, below 4096, and it holds at least 1 page, and the globals are at most 511. -/
+pages, below 65536, and it holds at least 1 page, and the globals are at most 511. -/
 structure StoreRel (P : Platform) (cap : Nat) (gts : List ValueType) {α : Type} (st : Store α)
     (s : State) : Prop where
   caps : st.memoryCaps = [cap]
-  cap_lt : cap < 4096
+  cap_lt : cap < 65536
   glen : gts.length ≤ 511
   pages : 1 ≤ st.mem.pages ∧ st.mem.pages ≤ cap
   size : load64 s.mem (s.x 17) = UInt64.ofNat (st.mem.pages * 65536 - 8)

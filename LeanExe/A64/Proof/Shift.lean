@@ -235,11 +235,17 @@ theorem genInstr_shift_of {E : Env} {d : UInt64} {δ : Int}
       obtain ⟨-, -, f, hf, -, -⟩ := gen_divrem (.inr ⟨rfl, rfl⟩) hg
       simp only [genInstr, Env.shift_eq, curBase_shift, hf, cbField_shift h0 hD hf]
   | memoryGrow =>
-      obtain ⟨hc, gf, gd, -, -, -, hf, hd, his, -⟩ := gen_memoryGrow hg
-      have hl : is.length = 16 := by rw [his]; rfl
-      simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hf, hd,
-        cbField_shift (ha 5 (by omega)) (ha 12 (by omega)) hf,
-        bField_shift (ha 11 (by omega)) (ha 16 (by omega)) hd]
+      obtain ⟨gd, -, -, -, hd, -, his⟩ := gen_memoryGrow hg
+      rcases his with ⟨hc, gf, hf, his⟩ | ⟨hw, gf, h4, hf, his⟩
+      · have hl : is.length = 16 := by rw [his]; exact growNarrow_length _ _ _ _
+        simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hc, ↓reduceDIte, hf, hd,
+          cbField_shift (ha 5 (by omega)) (ha 12 (by omega)) hf,
+          bField_shift (ha 11 (by omega)) (ha 16 (by omega)) hd]
+      · have hl : is.length = 16 := by rw [his]; exact growWide_length _ _ _ _
+        have hc : ¬ E.cap < 4096 := by omega
+        simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hc, hw, ↓reduceDIte, hf,
+          hd, cbField_shift (ha 7 (by omega)) (ha 12 (by omega)) hf,
+          bField_shift (ha 11 (by omega)) (ha 16 (by omega)) hd]
   | load64 off =>
       obtain ⟨ho, g, -, -, -, hf, his, -⟩ := gen_load64 hg
       have hl : is.length = 6 := by rw [his]; rfl

@@ -92,6 +92,12 @@ lean_exe «a64-uart» where
   srcDir := "tests"
   root := `TestSupport.A64.UartMain
 
+-- The arm64 Image of the Oakland tabulator that reads a canonical file from the UART
+-- (tests/baremetal/a64-rcv.sh); not a default target.
+lean_exe «a64-rcv» where
+  srcDir := "tests"
+  root := `TestSupport.A64.RcvMain
+
 -- The checks of the hashing transcriptions and programs on their vectors
 -- (tests/TestSupport/Hashing); not default targets.
 lean_exe «sha3-vectors» where
