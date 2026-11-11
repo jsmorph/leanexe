@@ -6,7 +6,7 @@
 
 ## Example
 
-A circular orbit of 6,878 km in the equatorial plane at the March equinox of 2026, with minute 0 at 2026-03-20 00:00 UT (`d₀ = 9574.5`), passes through the Earth's shadow once an orbit.  With the penumbral cone `α = 0.269°`, `R = 6378.137` km, `P = 0`, the window `[0, 1440]` minutes, `N = 20`, and `C = 65536`, the module returns status 0, 45 runs, and 5,111 cell tests.  The first eclipse takes three runs:
+An orbit with `a = 6878` km and `e = 0.001` in the equatorial plane at the March equinox of 2026, with minute 0 at 2026-03-20 00:00 UT (`d₀ = 9574.5`), passes through the Earth's shadow once an orbit.  With the penumbral cone `α = 0.269°`, `R = 6378.137` km, `P = 0`, the window `[0, 1440]` minutes, `N = 20`, and `C = 65536`, the module returns status 0, 45 runs, and 5,111 cell tests.  The first eclipse takes three runs:
 
 | Start (min) | End (min) | Label |
 |---|---|---|
