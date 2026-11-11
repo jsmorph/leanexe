@@ -5,6 +5,7 @@ import Demos.Bms.Program
 import Demos.Bms.Stream
 import Demos.Bms.Theorems
 import Demos.Conjunction.Flat
+import Demos.Conjunction.Gaussian
 import Demos.Conjunction.Model
 import Demos.Conjunction.Program
 import Demos.Conjunction.Soundness

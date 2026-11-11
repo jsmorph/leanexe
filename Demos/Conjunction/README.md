@@ -109,6 +109,8 @@ defines the terms of the generated theorems.
 |---|---|---|---|
 | `Model.pc_eq` | [Model](Model.lean) | `c11 > 0`, `det C > 0`, `r ≥ 0` | `Model.pc` equals `(2 √(2π c11))⁻¹` times the integral of `Model.core` from `-r` to `r`. |
 | `Model.pc_nonneg` | [Model](Model.lean) | None | `Model.pc` is not negative. |
+| `Gaussian.pc_eq_multivariateGaussian` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | `Model.pc` equals the measure of the disk under Mathlib's `multivariateGaussian` with mean `(m1, m2)` and covariance `C`. |
+| `Gaussian.integral_density`, `Gaussian.pc_le_one` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | The density integrates to 1 over the plane, and `Model.pc ≤ 1`. |
 | `Model.integral_eq_width_mul` | [Model](Model.lean) | `a ≤ b`, `f` integrable on `[a, b]` with values between `L` and `U` there | The integral of `f` from `a` to `b` is `(b - a) y` for some `y` between `L` and `U`. |
 | `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values. |
 | `assess_sound` | [Soundness](Soundness.lean) | `assess` returns status 0 | `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`, for the real value of `t`. |
@@ -168,8 +170,8 @@ choice of the radius, the agreement of the frames of the mean and the covariance
 of a threshold are the caller's.
 
 The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The result's
-upper endpoint can exceed 1, since no theorem here states that the density integrates to 1 over
-the plane.  The program uses `erf` for both error-function values, so when the two values
+upper endpoint can exceed 1: `Gaussian.pc_le_one` proves `Model.pc ≤ 1`, but the program does not
+clamp the upper endpoint at 1.  The program uses `erf` for both error-function values, so when the two values
 cancel, the upper endpoint stays near `7e-16` times the constant factor times `2r`, as the fifth
 row of the table shows.  A verdict against a threshold such as `1e-4` is unaffected.
 
