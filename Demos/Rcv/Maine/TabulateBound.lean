@@ -179,7 +179,7 @@ theorem pushHead_cost (out : Array UInt64) : compiled.pushHead.cost ⟨out⟩ = 
 theorem pushFirst_cost (out res : Array UInt64) (n counted : UInt64) :
     compiled.pushFirst.cost (⟨out⟩, res, n, counted) ≤ 3840 * n.toNat := by
   rw [compiled.pushFirst.cost_eq]
-  refine (Demos.Rcv.Program.loopCost_const_le (c := 3840) (fun k s => ?_) _ _).trans
+  refine (Verified.loopCost_const_le 3840 (fun k s => ?_) _ _ _).trans
     (by omega)
   try dsimp only
   split
@@ -206,7 +206,7 @@ theorem printReport_bound (b : Bytes) (n counted : UInt64) (res : Array UInt64)
     intro o h
     rw [compiled.toBytes.bound_eq, ← h, toBytes, Bytes.data_size_build]
   rw [compiled.printReport.bound_eq, key _ rfl, pushHead_cost, pushRange_cost]
-  grw [Demos.Rcv.Program.loopCost_const_le (c := 7200 * n.toNat + 18720)
+  grw [Verified.loopCost_const_le (7200 * n.toNat + 18720)
     (fun k s => pushRoundLines_cost s _ _ _ _), pushFirst_cost]
   have hblock : Verified.blockCost (UInt64.toNat 0) = 56 := rfl
   have hcredit : Verified.creditCost (#[] : Array UInt64).size = 16 := rfl
@@ -361,7 +361,7 @@ theorem count_bound (ws : Array UInt64) (hs : ws.size < 2 ^ 64) :
     · next h0 =>
       have hsize := rounds_size ws hs hv (by simpa using h0)
       refine count_arith_rounds rfl hB (hL _ _) ?_ ?_
-      · refine le_trans (Demos.Rcv.Program.loopCost_const_le (c := 6360) (fun k s => ?_) _ _) ?_
+      · refine le_trans (Verified.loopCost_const_le 6360 (fun k s => ?_) _ _ _) ?_
         · simp only [compiled.pushRound.cost_eq, Verified.loopCost_const, Verified.paidGrowCost_eq,
             UInt64.reduceToNat]
           omega

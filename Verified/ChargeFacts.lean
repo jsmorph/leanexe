@@ -5,8 +5,8 @@ import LeanExe.Dialect.RepeatWhile
 import Verified.Bytes.Allocation
 
 /-! Facts for bounding the generated allocation bounds of programs: the allocation cost of byte
-strings, the sizes of arrays that loops extend once per pass, and the result of a loop that counts
-down while its condition holds. -/
+strings, the cost of loops whose passes each cost at most a constant, the sizes of arrays that loops
+extend once per pass, and the result of a loop that counts down while its condition holds. -/
 
 namespace Verified
 
@@ -77,6 +77,13 @@ theorem ite_zero_le (condition : Prop) [Decidable condition] (x : Nat) :
 theorem ite_push_size_le {α : Type} (condition : Prop) [Decidable condition] (xs : Array α)
     (x : α) : (if condition then xs.push x else xs).size ≤ xs.size + 1 := by
   split <;> simp
+
+/-- A bound on the cost of a loop whose condition costs nothing and whose passes each cost at most
+`c`: `n` passes cost at most `n * c`. -/
+theorem loopCost_const_le {α : Type} {C : α → Bool} {BA : UInt64 → α → Nat}
+    {F : UInt64 → α → α} (c : Nat) (h : ∀ i s, BA i s ≤ c) (n : Nat) (i : UInt64) (s : α) :
+    loopCost (fun _ => 0) C BA F n i s ≤ n * c :=
+  loopCost_le_last (fun _ _ => True) c 0 (fun _ i s _ _ => .inl ⟨h i s, trivial⟩) n i s trivial
 
 /-- `loopCost_le` with the cost and the step needed only at the indices of the loop's passes. -/
 theorem loopCost_le_upto {α : Type} {CA : α → Nat} {C : α → Bool} {BA : UInt64 → α → Nat}

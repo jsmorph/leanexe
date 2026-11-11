@@ -76,7 +76,7 @@ theorem pushHead_cost (out : Array UInt64) : compiled.pushHead.cost ⟨out⟩ = 
 theorem pushMembers_cost (out : Array UInt64) (mask n : UInt64) :
     compiled.pushMembers.cost (⟨out⟩, mask, n) ≤ 1680 * n.toNat := by
   rw [compiled.pushMembers.cost_eq]
-  refine (Demos.Rcv.Program.loopCost_const_le (c := 1680) (fun k s => ?_) _ _).trans
+  refine (Verified.loopCost_const_le 1680 (fun k s => ?_) _ _ _).trans
     (by omega)
   try dsimp only
   split
@@ -88,7 +88,7 @@ theorem pushMembers_cost (out : Array UInt64) (mask n : UInt64) :
 theorem pushVotes_cost (out res : Array UInt64) (n base : UInt64) :
     compiled.pushVotes.cost (⟨out⟩, res, n, base) ≤ 3840 * n.toNat := by
   rw [compiled.pushVotes.cost_eq]
-  refine (Demos.Rcv.Program.loopCost_const_le (c := 3840) (fun k s => ?_) _ _).trans
+  refine (Verified.loopCost_const_le 3840 (fun k s => ?_) _ _ _).trans
     (by omega)
   try dsimp only
   split
@@ -147,7 +147,7 @@ theorem printReport_bound (b : Bytes) (n : UInt64) (res : Array UInt64) (hn : n.
     intro o h
     rw [compiled.toBytes.bound_eq, ← h, toBytes, Bytes.data_size_build]
   rw [compiled.printReport.bound_eq, key _ rfl, pushHead_cost, pushRange_cost]
-  grw [Demos.Rcv.Program.loopCost_const_le (c := 7200 * n.toNat + 18720)
+  grw [Verified.loopCost_const_le (7200 * n.toNat + 18720)
     (fun k s => pushRoundLines_cost s _ _ _ _)]
   have hblock : Verified.blockCost (UInt64.toNat 0) = 56 := rfl
   have hcredit : Verified.creditCost (#[] : Array UInt64).size = 16 := rfl

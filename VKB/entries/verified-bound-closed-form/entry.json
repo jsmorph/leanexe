@@ -54,6 +54,7 @@
     "Verified.loopCost_le",
     "Verified.loopCost_le_upto",
     "Verified.loopCost_le_last",
+    "Verified.loopCost_const_le",
     "Verified.loopCost_repeatWhile_le",
     "Verified.repeatWhile_count_le",
     "Verified.loop_push_size",
@@ -73,7 +74,6 @@
     "Verified.Tail.rank_lt",
     "Demos.Rcv.Refine.rounds_size",
     "Demos.Rcv.Program.min_bound",
-    "Demos.Rcv.Program.loopCost_const_le",
     "Demos.Rcv.Maine.TabulateProgram.tail_cost_congr"
   ],
   "examples": [

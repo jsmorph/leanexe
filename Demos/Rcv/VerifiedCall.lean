@@ -1,6 +1,7 @@
 import Demos.Rcv.Compiled
 import Demos.Rcv.Refinement
 import Verified.Call
+import Verified.ChargeFacts
 
 /-!
 The call of the module's export `count`.  `count_callSpec` composes the generated
@@ -31,16 +32,6 @@ theorem count_callSpec :
     (fun _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ ws ⟨_, _, hws⟩ => Demos.Rcv.Refine.count_eq ws hws.values.size_lt
 
-/-- A loop whose passes each cost at most `c` bytes and whose condition costs nothing costs at
-most `c` bytes for each of its `n` passes. -/
-theorem loopCost_const_le {α : Type} {C : α → Bool} {BA : UInt64 → α → Nat}
-    {F : UInt64 → α → α} {c : Nat} (h : ∀ k s, BA k s ≤ c) (n : Nat) (I : α) :
-    Verified.loopCost (fun _ => 0) C BA F n 0 I ≤ n * c := by
-  have := Verified.loopCost_le (P := fun _ _ => True) (cost := fun _ => c) (CA := fun _ => 0)
-    (C := C) (BA := BA) (F := F) (fun k s _ => by split <;> simp [h]) (fun _ _ _ _ => trivial)
-    (n := n) (I := I) trivial
-  rwa [Verified.sumBelow_const] at this
-
 theorem min_bound {U K L G : Nat} (hP : K + L ≤ 407272) (hG : G ≤ 73856) :
     min U (K + L) + G ≤ 481128 := by
   omega
@@ -67,7 +58,7 @@ theorem count_bound (ws : Array UInt64) (hs : ws.size < 2 ^ 64) :
         Nat.mod_eq_of_lt (by omega)]
       omega
     refine min_bound ?_ ?_
-    · refine le_trans (Nat.add_le_add_left (loopCost_const_le (c := 6360) ?_ _ _) _) ?_
+    · refine le_trans (Nat.add_le_add_left (Verified.loopCost_const_le 6360 ?_ _ _ _) _) ?_
       · intro k s
         simp only [compiled.tallyRound.bound_eq, compiled.pushRound.cost_eq,
           Verified.loopCost_const, Verified.blockCost_eq, Verified.paidGrowCost_eq,
