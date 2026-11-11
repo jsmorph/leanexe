@@ -1,49 +1,27 @@
 import Demos.Rcv.ProcessModule
-import Verified.Wasi.ProcessCorrect
-import Verified.Wasi.ProcessNative
+import Demos.Rcv.ProcessRun
 
 /-! The refinement of [the process](Process.lean) by its compiled module.  `step_related` and
 `begin_related` relate the reflected `step` and `begin` to the native ones on the state's tuple,
-`implements` states that every modeled run of the module that completes without exhausting Talos
-fuel matches the native process, including runs that stop at an I/O error, a host trap, or a
-rejected exit, and `run_initial` states the same from the module's initial store.  `bytes` combines
-`implements` with the encoding, exact decoding, and binary validity of the module. -/
+and `compiledProcess` bundles them with the compiled program as the `Compiled` of
+[the runs of a compiled tabulator's process](ProcessRun.lean).  `implements` states that every
+modeled run of the module that completes without exhausting Talos fuel matches the native process,
+including runs that stop at an I/O error, a host trap, or a rejected exit, and `run_initial` states
+the same from the module's initial store.  `bytes` combines `implements` with the encoding, exact
+decoding, and binary validity of the module. -/
 
 namespace Demos.Rcv.Process
 
 open Wasm Verified Verified.Wasi LeanExe.Wasi
-
-def sourceState (s : State) : stateTy.denote := (s.output, s.written)
 
 def sourceProcess : Process stateTy.denote :=
   ⟨sourceState initial, entry.action (io.program.funs io.pure.funs)⟩
 
 def startIndex : Nat := entry.startIndex io.pure.module
 
-theorem compactable : stateTy.compactable = true := by decide
-
-theorem compactForm : Encoding.ProgramForm (processCompaction stateTy) :=
-  Encoding.checkProgramForm_sound (by decide +kernel)
-
 theorem compactClosed :
     Relocation.programClosed io.pure.module.funcs.length (processCompaction stateTy) = true := by
   decide +kernel
-
-private def sourceResult (value : ProcessStep State) : (processResultTy stateTy).denote :=
-  processValue stateTy ⟨value.running, value.status, sourceState value.state⟩
-
-private theorem relatedResult {native : Action (ProcessStep State)}
-    {source : Action (processResultTy stateTy).denote}
-    (reflected : Action.Rel (fun native flat => flat = sourceResult native) native source) :
-    Action.Rel (ProcessStep.Rel (fun native flat => flat = sourceState native)) native
-      (source.bind fun value => .pure (processNative stateTy value)) := by
-  have related := reflected.bind
-    (results := ProcessStep.Rel (fun native flat => flat = sourceState native))
-    (leftNext := Action.pure) (rightNext := fun value => .pure (processNative stateTy value))
-    (fun native flat same => by
-      subst flat
-      exact .pure (by simp only [sourceResult, processNative_value]; exact ⟨rfl, rfl, rfl⟩))
-  simpa only [Action.bind_pure] using related
 
 theorem step_related : Process.Rel (fun native flat => flat = sourceState native)
     process sourceProcess := by
@@ -60,6 +38,24 @@ theorem begin_related : Action.Rel (ProcessStep.Rel (fun native flat => flat = s
       ((io.program.funs io.pure.funs).get entry.begin .nil) := io.begin.related
   exact relatedResult reflected
 
+/-- The compiled process with the facts that `Compiled` bundles. -/
+def compiledProcess : Compiled begin where
+  pureSigs := _
+  effectSigs := _
+  source := io.pure.module
+  pure := Resource.PureContext.ofProg io.pure.program io.pure.funs
+  program := io.program
+  beginVar := io.begin.callee
+  stepVar := io.step.callee
+  pool := io.literalPool
+  calls := calls
+  runtime := compileWith_runtime io.pure.program io.pure.tables io.pure.wrappers io.literalPool
+  profile := io.profile
+  compactClosed := compactClosed
+  poolScratch := io.pool_apart
+  beginRelated := begin_related
+  stepRelated := step_related
+
 def initialStore {World : Type} (world : Observed World) : Store (Observed World) :=
   PureTransport.restore world (module.initialStore : Store Unit)
 
@@ -71,21 +67,6 @@ theorem initialState {World : Type} (world : Observed World) :
     io.program entry world (by decide +kernel) (by decide +kernel)
 
 set_option maxHeartbeats 1000000 in
-theorem source_run {World : Type} (host : Host World) (targetHost : HostEnv (Observed World))
-    (initial : Store (Observed World)) (heap : LeanExe.Pipeline.Heap) (fuel : Nat)
-    (valid : targetHost.Satisfies module (hostSpec host))
-    (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
-    (static : io.literalPool.Static heap (PureTransport.erase initial))
-    (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
-    (completed : run fuel module startIndex initial [] targetHost ≠ .OutOfFuel) :
-    ProcessEntryRunResult (observedHost host) (entry.beginAction (io.program.funs io.pure.funs))
-      sourceProcess initial.host
-      (run fuel module startIndex initial [] targetHost) :=
-  compiled_process_run io.program entry io.literalPool calls
-    (compileWith_runtime io.pure.program io.pure.tables io.pure.wrappers io.literalPool)
-    io.profile compactable compactForm compactClosed (fun _ => rfl)
-    valid at_ free static io.pool_apart cap completed
-
 /-- Every modeled run of the module from a store with an allocator at `heap`, the literal pool,
 and a memory cap of at most 65,535 pages, under a host that satisfies `hostSpec host`, that
 completes without exhausting its fuel, matches a run of the native process from `initial`. -/
@@ -98,8 +79,7 @@ theorem implements {World : Type} (host : Host World) (targetHost : HostEnv (Obs
     (completed : run fuel module startIndex initial [] targetHost ≠ .OutOfFuel) :
     ProcessEntryRunResult (observedHost host) begin process initial.host
       (run fuel module startIndex initial [] targetHost) :=
-  (source_run host targetHost initial heap fuel valid at_ free static cap completed).transport_back
-    step_related begin_related
+  compiledProcess.implements host targetHost initial heap fuel valid at_ free static cap completed
 
 theorem exported : ({ name := "_start", funcIdx := startIndex } : Export) ∈ module.exports :=
   compileProcess_export io.pure.module io.program entry io.literalPool

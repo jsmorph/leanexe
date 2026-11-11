@@ -234,16 +234,20 @@ theorem tabulate_size_lt (b : Bytes) : (TabulateProgram.tabulate b).data.size < 
   · exact toBytes_size_lt _
   · exact toBytes_size_lt _
 
-/-- The state of the report of `b`, with nothing written, has the output bounds. -/
-theorem report_safe (b : Bytes) : Safe ⟨TabulateProgram.tabulate b, 0⟩ := by
-  have output := tabulate_size_lt b
+/-- A state of an output of fewer than 2^64 bytes, with nothing written, has the output
+bounds. -/
+theorem Safe.fresh {out : Bytes} (output : out.data.size < UInt64.size) : Safe ⟨out, 0⟩ := by
   refine ⟨output, ?_⟩
-  by_cases empty : (TabulateProgram.tabulate b).data.size = 0
+  by_cases empty : out.data.size = 0
   · exact Or.inl ⟨empty, rfl⟩
   · refine Or.inr ?_
-    show (0 : UInt64) < (TabulateProgram.tabulate b).size
+    show (0 : UInt64) < out.size
     rw [UInt64.lt_iff_toNat_lt, Bytes.size_toNat _ output, UInt64.toNat_zero]
     omega
+
+/-- The state of the report of `b`, with nothing written, has the output bounds. -/
+theorem report_safe (b : Bytes) : Safe ⟨TabulateProgram.tabulate b, 0⟩ :=
+  Safe.fresh (tabulate_size_lt b)
 
 theorem started_safe (input : ReadResult) : Safe (started input).state := by
   unfold started

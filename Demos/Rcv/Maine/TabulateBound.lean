@@ -23,6 +23,11 @@ bytes for a file of `L < 2 ^ 32` bytes: the reader's `80 L + 10,704`, the count'
 printer, which pushes the first two lines, at most 20,777 bytes of header lines, at most 63 `first`
 lines, and at most 64 rounds, and copies the report, at most 1,304,174 bytes, into the buffer that
 it returns.
+
+`reportFile_length_le` bounds every Maine report at 1,304,174 bytes.  `tabulate_native_size` states
+the C call theorem `tabulate_native` for a file of at most `L` bytes, with room for `top` and
+`80 L + 33,958,029` bytes in the 16,384 pages of `lx_mem`, and `tabulate_native_12000000` for every
+file of at most 12,000,000 bytes.
 -/
 
 namespace Demos.Rcv.Maine.TabulateProgram
@@ -490,7 +495,65 @@ theorem tabulate_bound (b : Bytes) (hb : b.data.size < 2 ^ 32) :
       (resultWords c.candidates.length (firstContest c) (countContest c)).toArray).data.size
     omega
 
+/-! ## The report's length and the C call in the size of the file -/
+
+/-- Every Maine report holds at most 1,304,174 bytes: an error report at most 308, and the report
+of a count its header lines, at most 20,777 bytes, and at most 1,283,397 more. -/
+theorem reportFile_length_le (b : List UInt8) :
+    (Demos.Rcv.Maine.reportFile b).length ≤ 1304174 := by
+  unfold Demos.Rcv.Maine.reportFile
+  split
+  · next c hr =>
+    have hc := (write_of_read hr).2
+    have := report_length_le c hc
+    have := Demos.Rcv.TabulateProgram.headerText_le c hc
+    omega
+  · next j r hr =>
+    have := errorReport_length_le j (Demos.Rcv.TabulateProgram.read_error_lt hr) r
+    omega
+
+/-- `tabulate_native` in the size of the file: the C function of function 64 returns the Maine
+report without a trap for a file of at most `L` bytes, when `top` and `80 L + 33,958,029` bytes
+fit in the 1 GiB of `lx_mem`. -/
+theorem tabulate_native_size (A : LClight.Archi) (X : LClight.ExtSem) (L : Nat) :
+    ∃ fd ps rs,
+      (LeanExe.Native.funId 64, LClight.globdef.Gfun (LClight.fundef.Internal fd)) ∈
+        compiled.translation.cprogram.prog_defs ∧
+      (∀ g, compiled.module.funcs[64]? = some g → LeanExe.Native.signatureOf g = some (ps, rs)) ∧
+      LeanExe.Native.NativeA A X 16384 compiled.module compiled.translation ps rs fd false
+        tabulateSpec
+        (fun b heap _ => b.data.size ≤ L ∧ heap.top.toNat + 80 * L + 33958029 ≤ 65536 * 16384)
+        (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native A X
+  refine ⟨fd, ps, rs, hfd, hsig, Demos.Rcv.TabulateProgram.nativeA_weaken h ?_⟩
+  intro E store heap b m hcap hst hpre
+  obtain ⟨hsize, hroom⟩ := hpre
+  have hb := tabulate_bound b (by omega)
+  show heap.top.toNat + compiled.tabulate.bound b ≤ 65536 * store.memoryCap compiled.module 0
+  rw [LeanExe.Native.memoryCap_eq hst.2 compiled.module, hcap]
+  omega
+
+/-- `tabulate_native` for every file of at most 12,000,000 bytes, from a heap whose `top` is at
+most 16,777,216 bytes, as it is after a host places a file of that size in a block of the module's
+`alloc`. -/
+theorem tabulate_native_12000000 (A : LClight.Archi) (X : LClight.ExtSem) :
+    ∃ fd ps rs,
+      (LeanExe.Native.funId 64, LClight.globdef.Gfun (LClight.fundef.Internal fd)) ∈
+        compiled.translation.cprogram.prog_defs ∧
+      (∀ g, compiled.module.funcs[64]? = some g → LeanExe.Native.signatureOf g = some (ps, rs)) ∧
+      LeanExe.Native.NativeA A X 16384 compiled.module compiled.translation ps rs fd false
+        tabulateSpec
+        (fun b heap _ => b.data.size ≤ 12000000 ∧ heap.top.toNat ≤ 16777216)
+        (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native_size A X 12000000
+  refine ⟨fd, ps, rs, hfd, hsig, Demos.Rcv.TabulateProgram.nativeA_weaken h ?_⟩
+  intro E store heap b m _ _ hpre
+  exact ⟨hpre.1, by omega⟩
+
 #print axioms count_bound
 #print axioms tabulate_bound
+#print axioms reportFile_length_le
+#print axioms tabulate_native_size
+#print axioms tabulate_native_12000000
 
 end Demos.Rcv.Maine.TabulateProgram

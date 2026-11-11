@@ -1,6 +1,7 @@
 import Demos.Rcv.Maine.Tabulate
 import Demos.Rcv.Maine.TabulateProof
 import Verified.Call
+import Verified.Congr
 
 /-!
 The call theorems of the Maine module.  `count_callSpec` is the call theorem over words: from a
@@ -11,7 +12,9 @@ bytes, function 64 returns without a trap an owned buffer of the bytes of
 `Demos.Rcv.Maine.reportFile` of the bytes of `b`.  A buffer that a store holds has fewer than
 `2 ^ 32` bytes (`size_lt_of_borrowed`), which `tabulate_eq` needs.  `readContest_callSpec`,
 `printReport_callSpec`, and `printError_callSpec` state that functions 47, 61, and 63 compute the
-shared reader's result words and the Maine printers.
+shared reader's result words and the Maine printers.  `tabulate_trapFree` states
+`compiled.tabulate.trapFree` for the Maine report of a file, and `tabulate_native` carries it to the
+C translation.
 -/
 
 namespace Demos.Rcv.Maine.TabulateProgram
@@ -96,8 +99,28 @@ theorem printError_callSpec :
   (Verified.ImplementsTables.call (.ofA compiled.printError.trapFree) compiled.tables nofun).spec
     (fun _ _ _ h => h) (fun _ _ _ _ _ h => h) fun _ _ _ _ _ => rfl
 
+/-- `compiled.tabulate.trapFree` for the Maine report of a file: function 64, from a store with
+room for `compiled.tabulate.bound b` bytes, returns without a trap a buffer of the bytes of
+`Demos.Rcv.Maine.reportFile` of the bytes of `b`. -/
+theorem tabulate_trapFree :
+    ImplementsA false compiled.module 64 tabulateSpec
+      (fun b heap store => heap.Within store compiled.module (compiled.tabulate.bound b))
+      (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) :=
+  Verified.implementsA_congr compiled.tabulate.trapFree
+    fun _ _ _ b hb => tabulate_spec b (size_lt_of_borrowed hb)
+
+/-- T1 for the C translation: the C function of function 64, in the translation with 16,384 pages
+of `lx_mem`, computes `tabulateSpec` as `tabulate_trapFree` states for the module, without a trap,
+under every `Archi` and every semantics of external functions. -/
+theorem tabulate_native (A : LClight.Archi) (X : LClight.ExtSem) :
+    LeanExe.Native.NativeImpl tabulate_trapFree A X 16384 compiled.translation := by
+  obtain ⟨fd, ps, rs, hfd, hsig, _⟩ := compiled.tabulate.native A X
+  exact ⟨fd, ps, rs, hfd, hsig,
+    LeanExe.Native.ImplementsA.native tabulate_trapFree compiled.translation_eq hfd hsig⟩
+
 #print axioms count_callSpec
 #print axioms tabulate_callSpec
+#print axioms tabulate_native
 #print axioms readContest_callSpec
 #print axioms printReport_callSpec
 #print axioms printError_callSpec

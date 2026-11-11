@@ -2,10 +2,11 @@ import Demos.Rcv.ProcessCompiledCorrect
 
 /-! The axiom audit of the tabulator's process, native and compiled, and of the closed form of
 `tabulate`'s bound: every theorem in the namespace `Demos.Rcv.Process`, which holds the native
-proofs, the declarations that `verified_compile_wasi` generates under `io`, the module's theorems,
-and the charges, and the theorems of `Demos/Rcv/TabulateBound.lean` and the C call theorem
-`tabulate_native`, use only `propext`, `Classical.choice`, and `Quot.sound`.  The full check's
-build reports the `#print axioms` lines and fails on the audit's error. -/
+proofs, the generic theorems of `Demos/Rcv/ProcessRun.lean`, the declarations that
+`verified_compile_wasi` generates under `io`, the module's theorems, and the charges, and the
+theorems of `Demos/Rcv/TabulateBound.lean` and the C call theorem `tabulate_native`, use only
+`propext`, `Classical.choice`, and `Quot.sound`.  The full check's build reports the
+`#print axioms` lines and fails on the audit's error. -/
 
 open Lean Elab Command in
 run_cmd do
@@ -36,7 +37,9 @@ run_cmd do
 #print axioms Demos.Rcv.Process.implements
 #print axioms Demos.Rcv.Process.run_initial
 #print axioms Demos.Rcv.Process.bytes
-#print axioms Demos.Rcv.Process.target_terminates
+#print axioms Demos.Rcv.Process.Compiled.target_terminates
+#print axioms Demos.Rcv.Process.Compiled.terminates_of_room
+#print axioms Demos.Rcv.Process.Compiled.exits_long_of_room
 #print axioms Demos.Rcv.Process.step_prefix_bound
 #print axioms Demos.Rcv.Process.terminates_of_room
 #print axioms Demos.Rcv.Process.initial_terminates

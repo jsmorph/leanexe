@@ -3,22 +3,29 @@
 # dependencies = []
 # ///
 
-"""Compares the Maine module's exports, native Lean, and the reference's Maine mode.
+"""Compares the Maine module's exports, its process, C, native Lean, and the reference's Maine mode.
 
-  uv run tests/rcv/maine/tabulate.py [--module PATH] [--host PATH] [--maine PATH] DIR ...
+  uv run tests/rcv/maine/tabulate.py [--module PATH] [--host PATH] [--maine PATH]
+      [--process PATH] [--lean-process PATH] [--native PATH] DIR ...
 
 For each canonical file NAME.rcv in each DIR, the script computes the reference's Maine report with
-`report(data, "maine")` of `tests/rcv/reference.py` and requires four outputs to equal it byte for
+`report(data, "maine")` of `tests/rcv/reference.py` and requires these outputs to equal it byte for
 byte: the export `tabulate` of the module, run by the Wasmtime host; `rcv-maine report`, the
 specification's `Demos.Rcv.Maine.reportFile` in native Lean; `rcv-maine program-report`, the
 program `Demos.Rcv.Maine.TabulateProgram.tabulate` in native Lean; and NAME.report, when the
-directory holds it, which `edges.py` and `check.py` write from the reference.  For each word array
+directory holds it, which `edges.py` and `check.py` write from the reference.  With `--process`,
+the standard output of the WASI process `Demos.Rcv.Maine.Process.module`, run by the Wasmtime host
+with the file as its standard input, must equal it too, and its control records must be
+`wasi-exit 0`.  With `--lean-process`, the same holds of `rcv-maine-process`, the native Lean
+process, which must exit with status 0.  With `--native`, the output of `rcv-maine-c`, the module
+translated to C and compiled with CompCert, must equal it.  For each word array
 NAME.words, packed as little-endian 64-bit words, it computes the reference's Maine result words
 and requires the export `count` of the module, `rcv-maine array`, `rcv-maine program-array`, and
 NAME.result, when the directory holds it, to equal them.  The module's word results go to
-`tmp/rcv-maine-compare`.  The script prints each disagreement and, for each directory, the numbers
-of files, of well-formed files, and of word arrays.  The exit status is 1 when any output differs
-and 2 when a tool fails or a path is missing.
+`tmp/rcv-maine-compare`, and the runs of the processes write their standard output and control
+records there.  The script prints each disagreement and, for each directory, the numbers of files,
+of well-formed files, and of word arrays.  The exit status is 1 when any output differs and 2 when
+a tool fails or a path is missing.
 
 The defaults are the paths of a repository build: `build/verified/rcvMaine.wasm`, which
 `tools/Emit.lean` writes from `Demos.Rcv.Maine.TabulateProgram.compiled.module`,
@@ -47,21 +54,44 @@ def load_reference():
     return module
 
 
-def run(cmd):
-    out = subprocess.run(cmd, capture_output=True)
+def run(cmd, stdin=None):
+    if stdin is None:
+        out = subprocess.run(cmd, capture_output=True)
+    else:
+        with open(stdin, "rb") as source:
+            out = subprocess.run(cmd, stdin=source, capture_output=True)
     if out.returncode != 0:
         raise ToolError(f"{' '.join(map(str, cmd))}: exit status {out.returncode}: "
                         f"{out.stderr.decode(errors='replace').strip()[-2000:]}")
     return out.stdout
 
 
-def check_file(args, reference, path):
+def process_report(args, path, work):
+    base = work / f"{path.parent.name}-{path.stem}"
+    stdout, control = base.with_suffix(".stdout"), base.with_suffix(".control")
+    guest_err = base.with_suffix(".stderr")
+    run([args.host, "--stdin-file", path, "--stdout-file", stdout, "--stderr-file", guest_err,
+         "--control-file", control, "run", args.process])
+    if control.read_text() != "wasi-exit 0\n":
+        raise ToolError(f"{path}: the process's control records are {control.read_text()!r}")
+    if guest_err.read_bytes():
+        raise ToolError(f"{path}: the process wrote to its standard error")
+    return stdout.read_bytes()
+
+
+def check_file(args, reference, path, work):
     data = path.read_bytes()
     expected = reference.report(data, "maine")
     text = run([args.host, "call", args.module, "tabulate", "bytes", f"bytes-file:{path}"]).decode()
     outputs = [("the module's export tabulate", bytes.fromhex("".join(text.split()))),
                ("rcv-maine report", run([args.maine, "report", path])),
                ("rcv-maine program-report", run([args.maine, "program-report", path]))]
+    if args.process:
+        outputs.append(("the WASI process", process_report(args, path, work)))
+    if args.lean_process:
+        outputs.append(("rcv-maine-process", run([args.lean_process], stdin=path)))
+    if args.native:
+        outputs.append(("rcv-maine-c", run([args.native, path])))
     saved = path.with_suffix(".report")
     if saved.exists():
         outputs.append((saved.name, saved.read_bytes()))
@@ -93,10 +123,14 @@ def main():
     ap.add_argument("--module", type=Path, default=ROOT / "build/verified/rcvMaine.wasm")
     ap.add_argument("--host", type=Path, default=ROOT / "build/tools/leanexe-wasmtime-host")
     ap.add_argument("--maine", type=Path, default=ROOT / ".lake/build/bin/rcv-maine")
+    ap.add_argument("--process", type=Path)
+    ap.add_argument("--lean-process", type=Path)
+    ap.add_argument("--native", type=Path)
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("dirs", nargs="+", type=Path)
     args = ap.parse_args()
-    for path in [args.module, args.host, args.maine, *args.dirs]:
+    optional = [p for p in (args.process, args.lean_process, args.native) if p is not None]
+    for path in [args.module, args.host, args.maine, *optional, *args.dirs]:
         if not path.exists():
             print(f"tabulate.py: {path} does not exist", file=sys.stderr)
             return 2
@@ -108,7 +142,7 @@ def main():
         with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
             for d in args.dirs:
                 files = sorted(d.glob("*.rcv"))
-                results = list(pool.map(lambda p: check_file(args, reference, p), files))
+                results = list(pool.map(lambda p: check_file(args, reference, p, work), files))
                 good = sum(well_formed for well_formed, _ in results)
                 for _, problems in results:
                     for problem in problems:
