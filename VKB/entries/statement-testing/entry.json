@@ -5,23 +5,34 @@
     "a loop invariant, before its proof",
     "fewest xs.size ≤ (arraysTo f xs ys).card ∧ (arraysTo f xs ys).card ≤ most xs.size",
     "an error figure or a count of the inputs that give each result",
-    "(answerAt x n).permit ≠ 0 → ∃ i j, Permitted x n i j"
+    "(answerAt x n).permit ≠ 0 → ∃ i j, Permitted x n i j",
+    "a statement for every function with stated properties, such as every interpretation with Closed and Stable",
+    "false variants of a statement that its test must reject",
+    "a native test of a statement that evaluates a Boolean restatement of the theorem",
+    "a statement test that evaluates with #eval during elaboration"
   ],
   "modules": [
     "Demos.Bms.Theorems",
     "Demos.Bms.Cases",
     "Library.Graphs.Dijkstra.Proof",
-    "Library.Random.Sampling.Proof"
+    "Library.Random.Sampling.Proof",
+    "Demos.Rcv.Batch",
+    "Demos.Rcv.Maine.Rounds"
   ],
   "declarations": [
     "Demos.Bms.Spec.Permitted",
     "Demos.Bms.Cases.mixed",
     "Library.Graphs.Dijkstra.RelaxInv",
-    "Library.Graphs.Dijkstra.MainInv"
+    "Library.Graphs.Dijkstra.MainInv",
+    "Demos.Rcv.Stability.Closed",
+    "Demos.Rcv.Stability.Stable",
+    "Demos.Rcv.Maine.Eliminates",
+    "Demos.Rcv.Maine.Concludes"
   ],
   "examples": [
     "Demos.Bms.Spec.m1",
     "Library.Graphs.Dijkstra.dijkstra_spec",
-    "Library.Random.Sampling.shuffle_count"
+    "Library.Random.Sampling.shuffle_count",
+    "Demos.Rcv.Batch.run_batch_winner"
   ]
 }

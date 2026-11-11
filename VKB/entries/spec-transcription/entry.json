@@ -7,7 +7,8 @@
     "@[csimp] theorem f_eq_run : @f = @fRun",
     "Spec.crc32 bs = crc32Eval bs for a transcription over polynomials",
     "ref x = spec x for the expected values of test cases",
-    "a reference in another language for a definition without published vectors"
+    "a reference in another language for a definition without published vectors",
+    "a native run of a specification on test files before its reader exists"
   ],
   "modules": [
     "Library.Hashing.Sha256.Proof",
@@ -20,7 +21,8 @@
     "Library.Hashing.SipHash.Proof",
     "Library.Hashing.XxHash64.Proof",
     "Library.Combinatorics.DancingLinks.Count",
-    "TestSupport.Modules.MillerRabin"
+    "TestSupport.Modules.MillerRabin",
+    "Demos.Rcv.Spec"
   ],
   "declarations": [
     "SHS.SHA256.Impl.sha256",
@@ -30,7 +32,9 @@
     "Library.Hashing.Sha3.Spec.keccakP",
     "Library.Hashing.Sha3.Spec.keccakPRun",
     "Library.Hashing.Sha3.Spec.keccakP_eq_run",
-    "Library.Hashing.Sha3.Spec.rhoSteps_table2"
+    "Library.Hashing.Sha3.Spec.rhoSteps_table2",
+    "Demos.Rcv.Spec.write",
+    "Demos.Rcv.Contest.WellFormed"
   ],
   "examples": [
     "Library.Hashing.Sha256.sha256_bytes",

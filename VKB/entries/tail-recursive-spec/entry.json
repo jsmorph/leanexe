@@ -6,7 +6,8 @@
     "P (fall pat pi c k F) given k.toNat ≤ F.toNat",
     "P (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
     "Q (LeanExe.repeatWhile fuel init cond step) from an invariant and a measure below the fuel",
-    "compiled.f.fits 1000 x = true for a recursion that takes the call depth"
+    "compiled.f.fits 1000 x = true for a recursion that takes the call depth",
+    "program examination from position p after a count g = specification on List.replicate g 0 ++ the remaining elements"
   ],
   "modules": [
     "Library.Arrays.BinarySearch.Proof",
@@ -23,7 +24,8 @@
     "Demos.Euler.Spec",
     "Demos.Slew.Search",
     "Demos.OrderBook.RefineChains",
-    "Library.Combinatorics.DancingLinks.Compiled"
+    "Library.Combinatorics.DancingLinks.Compiled",
+    "Demos.Rcv.Maine.RefineTally"
   ],
   "declarations": [
     "Library.Combinatorics.DancingLinks.repeatWhile_inv",
@@ -34,7 +36,10 @@
     "Demos.Slew.Search.repeatWhile_induction",
     "Demos.OrderBook.Refinement.repeatWhile_inv",
     "Library.Combinatorics.DancingLinks.itemLimit",
-    "Library.Combinatorics.DancingLinks.search_fits"
+    "Library.Combinatorics.DancingLinks.search_fits",
+    "Demos.Rcv.Maine.Refine.examine_gap_two",
+    "Demos.Rcv.Maine.Refine.examine_gap_ne",
+    "Demos.Rcv.Maine.Refine.examine_three_zeros"
   ],
   "examples": [
     "Library.Arrays.BinarySearch.search_spec",
@@ -52,6 +57,8 @@
     "Library.Combinatorics.DancingLinks.hideColumn_eq",
     "Library.Combinatorics.DancingLinks.count_eq",
     "Library.Combinatorics.DancingLinks.count_fits",
-    "Library.Combinatorics.DancingLinks.count_call"
+    "Library.Combinatorics.DancingLinks.count_call",
+    "Demos.Rcv.Maine.Refine.examineAt_eq",
+    "Demos.Rcv.Maine.Refine.examineAt_interpret"
   ]
 }

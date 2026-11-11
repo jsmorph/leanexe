@@ -4,7 +4,8 @@
     "a change of a shared definition that existing theorems and images depend on",
     "a new case of a generator, an initialization list, or a check predicate",
     "a comparison of emitted modules and images before and after a change",
-    "genImage m k args room cap o (image + d) = .ok (bytes, L.shift d)"
+    "genImage m k args room cap o (image + d) = .ok (bytes, L.shift d)",
+    "a reformatting of Lean source that must keep every declaration"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",

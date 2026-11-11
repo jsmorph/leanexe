@@ -5,7 +5,8 @@
     "∃ bound, ∀ fuel ≥ bound, run fuel module startIndex store [] targetHost = .Trap final exitTrap",
     "room for a step: heap.top.toNat + copyCost + charge ≤ 65536 * memoryCap",
     "a budget for a whole run of a WASI process",
-    "Verified.Wasi.ReturnOrAcceptedExit host action initial (run fuel module index store [] targetHost)"
+    "Verified.Wasi.ReturnOrAcceptedExit host action initial (run fuel module index store [] targetHost)",
+    "a process that reads its whole input in begin and only writes in its steps"
   ],
   "modules": [
     "Verified.Wasi.ProcessTotalCorrect",
@@ -18,7 +19,8 @@
     "Demos.RunningSumFp.Correct",
     "Verified.Wasi.CostTotal",
     "Verified.Examples.WasiRetainTotal",
-    "Demos.OrderBook.ProcessCompiledCorrect"
+    "Demos.OrderBook.ProcessCompiledCorrect",
+    "Demos.Rcv.ProcessCompiledCorrect"
   ],
   "declarations": [
     "Verified.Wasi.ProcessTotalPremises",
@@ -45,6 +47,10 @@
     "Demos.OrderBook.Process.stepCharge",
     "Demos.OrderBook.Process.initial_room",
     "Demos.OrderBook.Process.terminates_of_room",
-    "Demos.OrderBook.Process.initial_terminates"
+    "Demos.OrderBook.Process.initial_terminates",
+    "Demos.Rcv.Process.processMemory_le",
+    "Demos.Rcv.Process.Compiled.target_terminates",
+    "Demos.Rcv.Process.initial_terminates",
+    "Demos.Rcv.Process.initial_exits_long"
   ]
 }

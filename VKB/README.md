@@ -14,7 +14,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
 | [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
 | [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
-| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance. |
+| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance, and rewrites whose results make later steps fail. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
 | [Loops and builds](entries/loop-combinators/README.md) | Proves invariants for `LeanExe.loop`, element equations for `LeanExe.build`, and equalities of loops that write into arrays of their state with the loops that build new arrays. |
@@ -34,6 +34,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Kernel checks over ℚ](entries/kernel-rational-checks/README.md) | Proves polynomial, series, and table bounds by evaluation in parts. |
 | [Correct rounding](entries/correct-rounding/README.md) | Proves that software arithmetic returns the nearest-even rounding of an exact value. |
 | [Decimal text](entries/decimal-conversions/README.md) | Proves parsers and printers of floating-point values against a grammar, rounding, and round trips, and printers and readers of integers against `toString`. |
+| [Readers of line-oriented files](entries/line-readers/README.md) | Proves a reader over a byte buffer equal to a specification over `List.splitOn`, and its first error equal to a definition by line number. |
 | [Transcriptions of standards](entries/spec-transcription/README.md) | Relates a program to a transcription of a published standard, its vectors, and its test references. |
 | [Testing a statement before its proof](entries/statement-testing/README.md) | Evaluates a new theorem's statement on an executable model before proving it. |
 | [Independent review of specifications and designs](entries/independent-review/README.md) | Reviews a specification against its request with the reviewer's own model and wrong programs, and a design note against the tree. |
@@ -64,6 +65,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [WASI effect charges](entries/wasi-effect-charges/README.md) | Bounds allocation over complete command runs and their prefixes. |
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
 | [Line-oriented processes](entries/stream-fold/README.md) | Instantiates the shared line reader and output proof with an application kernel. |
+| [Programs that read their whole input](entries/wasi-read-all/README.md) | Reads the whole standard input in `begin` with `readAll`, closes its charge, and states the process theorem for inputs within and above the limit. |
 | [GPU kernels](entries/verified-wgsl-kernel/README.md) | Proves WGSL dispatch and PTX launch theorems of verified builds and composes them into a host program. |
 | [Native theorem conclusions](entries/native-conclusion-patterns/README.md) | Extracts result, heap, region, and postcondition facts from a native call theorem. |
 | [Bare-metal C programs](entries/bare-metal-programs/README.md) | States whole-program theorems for fixed arguments, loaded inputs, request loops, and controllers. |
@@ -74,7 +76,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
 | [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
-| [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, or another reference. |
+| [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, a second implementation such as RCTab, or another reference. |
 | [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |
 | [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
 | [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
@@ -88,6 +90,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [A machine over words against its specification](entries/word-machine-refinement/README.md) | Proves that a compiled machine over words in `Flat` structures computes a specification over numbers, check by check and transition by transition. |
 | [Link-reversing tree updates](entries/tree-link-reversal/README.md) | Proves stackless tree updates equal to a structural recursion. |
 | [Tail-recursive and fuel-bounded functions](entries/tail-recursive-spec/README.md) | Proves specifications by recursion on the program's measure, by fuel, or by a `repeatWhile` invariant. |
+| [Traces of fuel-bounded runs](entries/run-traces/README.md) | Relates a run of rounds to an inductive trace and proves facts of every round, of the rounds from a given one, and of runs on changed inputs. |
+| [Counts over nested sets](entries/nested-set-counts/README.md) | Compares counts of items under two classifications, such as the votes against a set and a subset, item by item through one `countP` for each set. |
 
 ## Admission and growth
 

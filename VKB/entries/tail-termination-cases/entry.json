@@ -3,22 +3,26 @@
   "goals": [
     "verified_compile: the tail transition of f has unproved induction cases",
     "Acc (fun next state => step state = Sum.inl next) state",
-    "a functional-induction case whose hypotheses state conditions on a let's local where the step states them on its value"
+    "a functional-induction case whose hypotheses state conditions on a let's local where the step states them on its value",
+    "verified_compile does not finish the termination proof of a tail loop that tests w against an expression of w"
   ],
   "modules": [
     "Verified.Reflect.TailTermination",
     "Verified.Examples.Forms",
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
-    "Library.Sorting.Quicksort.Compiled"
+    "Library.Sorting.Quicksort.Compiled",
+    "Demos.Rcv.Compiled"
   ],
   "declarations": [
     "Verified.Reflect.deriveTailAcc",
-    "Verified.Reflect.unfoldLocalDefinitions"
+    "Verified.Reflect.unfoldLocalDefinitions",
+    "Demos.Rcv.Program.classify"
   ],
   "examples": [
     "Verified.Examples.Forms.compiled.climb.implements",
     "Verified.Examples.Forms.compiled.countDown.implements",
     "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements",
-    "Library.Sorting.Quicksort.compiled.stages.implements"
+    "Library.Sorting.Quicksort.compiled.stages.implements",
+    "Demos.Rcv.Program.compiled.examineAt.implements"
   ]
 }

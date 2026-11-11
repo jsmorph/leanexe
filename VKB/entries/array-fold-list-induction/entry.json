@@ -3,11 +3,13 @@
   "goals": [
     "(xs.foldl step init).2 = expected xs",
     "Array.foldl step init xs = Array.foldl step' init' ys",
-    "(l.foldl step (m, out)).2.toList = out.toList ++ List.map f (List.range l.length)"
+    "(l.foldl step (m, out)).2.toList = out.toList ++ List.map f (List.range l.length)",
+    "l.foldl step init for a step that is an anonymous function with a match"
   ],
   "modules": [
     "Examples.RunningMax.Proof",
-    "Library.Hashing.Sha2.Equiv.SHA256.Pipeline"
+    "Library.Hashing.Sha2.Equiv.SHA256.Pipeline",
+    "Demos.Rcv.Rounds"
   ],
   "declarations": [
     "Array.foldl_toList",
@@ -17,11 +19,16 @@
     "List.foldl_cons",
     "List.range_succ_eq_map",
     "List.take_succ_cons",
-    "List.map_map"
+    "List.map_map",
+    "Demos.Rcv.Rounds.foldl_longest",
+    "Demos.Rcv.Rounds.foldl_some",
+    "Demos.Rcv.Spec.batch"
   ],
   "examples": [
     "Examples.RunningMax.foldl_largest",
     "Examples.RunningMax.compute_eq",
-    "SHS.Equiv.SHA256.Pipeline.foldl_compress_lift_gen"
+    "SHS.Equiv.SHA256.Pipeline.foldl_compress_lift_gen",
+    "Demos.Rcv.Rounds.batch_some",
+    "Demos.Rcv.Rounds.batch_none"
   ]
 }

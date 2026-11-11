@@ -9,7 +9,8 @@
     "a generated bound that grows with the passes of a loop that builds a new array at each pass",
     "(deterministic) timeout at a verified_compile command of a large program",
     "a call's result or an expression that the code computes at each of its occurrences",
-    "the reflector's simp runs out of heartbeats on the condition of a tail loop whose sides compile alone"
+    "the reflector's simp runs out of heartbeats on the condition of a tail loop whose sides compile alone",
+    "a verified_compile module that compiles again after every change to a proof"
   ],
   "modules": [
     "Verified.Reflect.Modes",

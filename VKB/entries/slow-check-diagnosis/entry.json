@@ -8,7 +8,8 @@
     "maximum recursion depth has been reached",
     "a module or a declaration that exhausts its memory",
     "a declaration that passes with set_option debug.skipKernelTC true and fails without it",
-    "the cause of a check that takes much longer than comparable checks"
+    "the cause of a check that takes much longer than comparable checks",
+    "(kernel) deep recursion detected at a generated start or total theorem of a WASI command"
   ],
   "modules": [
     "Lean.AddDecl",
@@ -17,11 +18,13 @@
     "Library.Numerics.Float64.Bessel.BesselYnTheorem",
     "Library.Numerics.Float64.Lgamma.LgammaSign",
     "LeanExe.A64.Isla.Check",
-    "LeanExe.A64.Isla.Walk"
+    "LeanExe.A64.Isla.Walk",
+    "LeanExe.Wasi.ReadAll"
   ],
   "declarations": [
     "Lean.addDecl",
-    "IO.FS.withFile"
+    "IO.FS.withFile",
+    "LeanExe.Wasi.Action.loop"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",

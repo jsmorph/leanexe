@@ -4,11 +4,13 @@
     "@[csimp] theorem f_eq_fLinear : @f = @fLinear for a fold that appends to the end of a list",
     "bs.foldl splitByte ⟨D, c⟩ = ⟨(bs.foldl splitByteRev (D.reverse, c.reverse)).1.reverse, _⟩",
     "segs.foldl (fun p s => (_, p.2 ++ xs)) (m, a.toList) = ((segs.foldl step (m, a)).1, (segs.foldl step (m, a)).2.toList)",
-    "native evaluation of a specification takes time quadratic in the length of its input"
+    "native evaluation of a specification takes time quadratic in the length of its input",
+    "(List.range N).map fun b => (ws.drop (b * k)).take k"
   ],
   "modules": [
     "LeanExe.Requests.Delimited",
-    "Library.Hashing.Sha3.Spec"
+    "Library.Hashing.Sha3.Spec",
+    "Demos.Rcv.Spec"
   ],
   "declarations": [
     "LeanExe.Requests.split",
@@ -20,7 +22,8 @@
     "LeanExe.Requests.foldl_splitByteRev",
     "LeanExe.Requests.foldl_answerStepArray",
     "LeanExe.Requests.split_eq_splitLinear",
-    "LeanExe.Requests.answerRun_eq_answerRunLinear"
+    "LeanExe.Requests.answerRun_eq_answerRunLinear",
+    "Demos.Rcv.Spec.chunks"
   ],
   "examples": [
     "LeanExe.Requests.split_eq_splitLinear",

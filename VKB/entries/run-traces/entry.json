@@ -1,0 +1,43 @@
+{
+  "id": "run-traces",
+  "goals": [
+    "P (run interp decision ballots fuel C).rounds for every fuel at least a bound",
+    "run interp decision ballots fuel C = run interp decision ballots fuel' C",
+    "rds = p ++ rd :: q for the rounds of a fuel-bounded run",
+    "the rounds of a run on a changed input that keeps each round's counts",
+    "Demos.Rcv.Rounds.Trace interp decision ballots C rds w",
+    "dependent elimination failed on cases of an inductive predicate with a term index"
+  ],
+  "modules": [
+    "Demos.Rcv.Properties",
+    "Demos.Rcv.Maine.Rounds"
+  ],
+  "declarations": [
+    "Demos.Rcv.Rounds.Trace",
+    "Demos.Rcv.Rounds.Ends",
+    "Demos.Rcv.Rounds.eliminate_removes",
+    "Demos.Rcv.Rounds.run_trace",
+    "Demos.Rcv.Rounds.Trace.run_eq",
+    "Demos.Rcv.Rounds.run_fuel",
+    "Demos.Rcv.Rounds.Trace.length_le",
+    "Demos.Rcv.Rounds.Trace.mem",
+    "Demos.Rcv.Rounds.Trace.head",
+    "Demos.Rcv.Rounds.Trace.next",
+    "Demos.Rcv.Rounds.Trace.last_round",
+    "Demos.Rcv.Rounds.run_perm",
+    "Demos.Rcv.Stability.trace_unique",
+    "Demos.Rcv.Stability.trace_cons",
+    "Demos.Rcv.Stability.trace_suffix",
+    "Demos.Rcv.Properties.trace_ballots",
+    "Demos.Rcv.Properties.tally_replace"
+  ],
+  "examples": [
+    "Demos.Rcv.Rounds.count_trace",
+    "Demos.Rcv.Rounds.locality",
+    "Demos.Rcv.Rounds.invariance",
+    "Demos.Rcv.Properties.later_no_harm",
+    "Demos.Rcv.Batch.walk",
+    "Demos.Rcv.Maine.count_trace",
+    "Demos.Rcv.Maine.locality"
+  ]
+}
