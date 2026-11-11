@@ -18,7 +18,7 @@ run_cmd do
     ``Demos.Rcv.TabulateProgram.reportFile_length_le,
     ``Demos.Rcv.TabulateProgram.report_length_le, ``Demos.Rcv.TabulateProgram.tabulate_trapFree,
     ``Demos.Rcv.TabulateProgram.tabulate_native, ``Demos.Rcv.TabulateProgram.tabulate_native_size,
-    ``Demos.Rcv.TabulateProgram.tabulate_native_12000000, ``Demos.StreamFold.StreamHost.readAll,
+    ``Demos.Rcv.TabulateProgram.tabulate_native_8800000, ``Demos.StreamFold.StreamHost.readAll,
     ``Demos.StreamFold.StreamHost.readAll_whole, ``Demos.StreamFold.StreamHost.readAll_long]
   let env ← getEnv
   let theorems := env.constants.toList.filterMap fun (name, info) =>
@@ -52,4 +52,4 @@ run_cmd do
 #print axioms Demos.Rcv.TabulateProgram.tabulate_bound
 #print axioms Demos.Rcv.TabulateProgram.tabulate_native
 #print axioms Demos.Rcv.TabulateProgram.tabulate_native_size
-#print axioms Demos.Rcv.TabulateProgram.tabulate_native_12000000
+#print axioms Demos.Rcv.TabulateProgram.tabulate_native_8800000

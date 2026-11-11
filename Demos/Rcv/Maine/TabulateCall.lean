@@ -109,11 +109,11 @@ theorem tabulate_trapFree :
   Verified.implementsA_congr compiled.tabulate.trapFree
     fun _ _ _ b hb => tabulate_spec b (size_lt_of_borrowed hb)
 
-/-- T1 for the C translation: the C function of function 64, in the translation with 16,384 pages
+/-- T1 for the C translation: the C function of function 64, in the translation with 11,520 pages
 of `lx_mem`, computes `tabulateSpec` as `tabulate_trapFree` states for the module, without a trap,
 under every `Archi` and every semantics of external functions. -/
 theorem tabulate_native (A : LClight.Archi) (X : LClight.ExtSem) :
-    LeanExe.Native.NativeImpl tabulate_trapFree A X 16384 compiled.translation := by
+    LeanExe.Native.NativeImpl tabulate_trapFree A X 11520 compiled.translation := by
   obtain ⟨fd, ps, rs, hfd, hsig, _⟩ := compiled.tabulate.native A X
   exact ⟨fd, ps, rs, hfd, hsig,
     LeanExe.Native.ImplementsA.native tabulate_trapFree compiled.translation_eq hfd hsig⟩

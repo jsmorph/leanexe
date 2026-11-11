@@ -18,7 +18,7 @@ run_cmd do
     ``Demos.Rcv.Maine.TabulateProgram.tabulate_trapFree,
     ``Demos.Rcv.Maine.TabulateProgram.tabulate_native,
     ``Demos.Rcv.Maine.TabulateProgram.tabulate_native_size,
-    ``Demos.Rcv.Maine.TabulateProgram.tabulate_native_12000000]
+    ``Demos.Rcv.Maine.TabulateProgram.tabulate_native_8800000]
   let env ← getEnv
   let theorems := env.constants.toList.filterMap fun (name, info) =>
     if (`Demos.Rcv.Maine.Process).isPrefixOf name && info matches .thmInfo _ then some name
@@ -48,4 +48,4 @@ run_cmd do
 #print axioms Demos.Rcv.Maine.TabulateProgram.reportFile_length_le
 #print axioms Demos.Rcv.Maine.TabulateProgram.tabulate_native
 #print axioms Demos.Rcv.Maine.TabulateProgram.tabulate_native_size
-#print axioms Demos.Rcv.Maine.TabulateProgram.tabulate_native_12000000
+#print axioms Demos.Rcv.Maine.TabulateProgram.tabulate_native_8800000
