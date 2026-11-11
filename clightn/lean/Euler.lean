@@ -184,10 +184,9 @@ open LClight LeanExe.Native ClightN.Spec
 
 set_option maxHeartbeats 0 in
 theorem euler_terminates : stmt_euler_terminates := by
-  refine (bare_n ?_ (Demos.Euler.Verified.compiled.solve.program _ _) ?_).imp_right And.right
-  · inst_ok
-  · rw [Euler.solve_four]
-    decide +kernel
+  refine (bare_n ?_ (Demos.Euler.Verified.compiled.solve.program _ _)).imp_right And.right
+  rw [Euler.solve_four]
+  inst_ok
 
 end ClightN.Proof
 

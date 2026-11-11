@@ -18,9 +18,8 @@ open LClight LeanExe.Native ClightN.Spec
 
 set_option maxHeartbeats 4000000 in
 theorem sha256_terminates : stmt_sha256_terminates := by
-  refine (bare_n ?_ (TestSupport.Bare.shaCompiled.shaCheck.program _ _) ?_).imp_right And.right
-  · inst_ok
-  · decide +kernel
+  refine (bare_n ?_ (TestSupport.Bare.shaCompiled.shaCheck.program _ _)).imp_right And.right
+  inst_ok
 
 end ClightN.Proof
 

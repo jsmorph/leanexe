@@ -36,11 +36,9 @@ theorem recursive_id : ∀ (k : Nat) (n : UInt64), n.toNat = k →
 
 set_option maxHeartbeats 4000000 in
 theorem depth_terminates : stmt_depth_terminates := by
-  refine (bare_n ?_ (Verified.Examples.Fold.compiled.recursive.program _ _) ?_).imp_right
-    And.right
-  · inst_ok
-  · rw [recursive_id 1000 1000 rfl]
-    decide +kernel
+  refine (bare_n ?_ (Verified.Examples.Fold.compiled.recursive.program _ _)).imp_right And.right
+  rw [recursive_id 1000 1000 rfl]
+  inst_ok
 
 end ClightN.Proof
 

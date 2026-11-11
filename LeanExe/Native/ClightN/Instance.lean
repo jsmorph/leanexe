@@ -3,7 +3,8 @@ import LeanExe.Native.Proof.Ctl
 
 /-!
 What the instances of `clightn/check.sh` share: decidable equality of the copy's syntax, so that
-the kernel compares a program it computes with the definitions of a Coq file, the renaming from a
+the kernel compares a program it computes with the definitions of a Coq file, the copy's syntax
+as terms (`Lean.ToExpr`), so that a tactic states a program as a literal, the renaming from a
 whole program to the file's program, and the theorems that carry a whole program's theorem in the
 copy to N's statement of an instance.  The renaming reads the file's identifiers off the two lists
 of definitions, which list the same definitions in the same order: a global's identifier at its
@@ -19,10 +20,12 @@ bare-metal program, `lx_in`, `lx_out`, and `main` of a program with input or a c
 checks of an instance: renaming the whole program `wholeOf post T fd` gives the file's program,
 the renaming is injective, CompCert's declarations satisfy `PrefixOk`, and `progOk` accepts the
 file's program with the functions that `main` reaches, `reach fd fm`.  The tactic `inst_ok`
-proves it.  From it, `terminates_n` carries a termination of the whole program to N's `nprog`,
-`bare_n` the theorem of a bare-metal program that `bare_program` states, `reads_n` the
-terminations of a program with input whose traces read every sequence, and `reacts_n` the runs of
-a `main` that runs forever to N's `nreacts` with the reads of every prefix of its windows.
+proves it, with the translation's definitions as literals that the kernel checks in parts
+against `translate` (`defs_of_parts`).  From it, `terminates_n` carries a termination of the
+whole program to N's `nprog`, `bare_n` the theorem of a bare-metal program that `bare_program`
+states, from `BareOk`, which adds the trace of the program's output, `reads_n` the terminations
+of a program with input whose traces read every sequence, and `reacts_n` the runs of a `main`
+that runs forever to N's `nreacts` with the reads of every prefix of its windows.
 -/
 
 namespace ClightN.Proof
@@ -35,6 +38,27 @@ deriving instance DecidableEq for LClight.function
 deriving instance DecidableEq for LClight.fundef
 deriving instance DecidableEq for LClight.globvar
 deriving instance DecidableEq for LClight.globdef
+
+deriving instance Lean.ToExpr for LClight.typ
+deriving instance Lean.ToExpr for LClight.xtype
+deriving instance Lean.ToExpr for LClight.calling_convention
+deriving instance Lean.ToExpr for LClight.signature
+deriving instance Lean.ToExpr for LClight.memory_chunk
+deriving instance Lean.ToExpr for LClight.external_function
+deriving instance Lean.ToExpr for LClight.signedness
+deriving instance Lean.ToExpr for LClight.intsize
+deriving instance Lean.ToExpr for LClight.floatsize
+deriving instance Lean.ToExpr for LClight.attr
+deriving instance Lean.ToExpr for LClight.type
+deriving instance Lean.ToExpr for LClight.unary_operation
+deriving instance Lean.ToExpr for LClight.binary_operation
+deriving instance Lean.ToExpr for LClight.expr
+deriving instance Lean.ToExpr for LClight.statement, LClight.labeled_statements
+deriving instance Lean.ToExpr for LClight.function
+deriving instance Lean.ToExpr for LClight.fundef
+deriving instance Lean.ToExpr for LClight.init_data
+deriving instance Lean.ToExpr for LClight.globvar
+deriving instance Lean.ToExpr for LClight.globdef
 
 /-- CompCert's declarations with the identifiers that the whole program gives them:
 `__builtin_fsqrt` takes `sqrtId`, and the `j`-th of the others `4 j + 5`. -/
@@ -467,13 +491,233 @@ the functions that `main` reaches.  Each condition is decidable, and `inst_ok` p
 def InstOk (post : Defs) (T : Translation) (fd : Defs) (fm : ident) : Prop :=
   RenameOk (wholeOf post T fd) fd fm ∧ PreOk (preIn fd T post) ∧ progOk fd fm (reach fd fm) = true
 
-/-- Proves `InstOk` with one kernel evaluation for each of its conditions, each in a declaration
-of its own, so that the kernel holds the terms of one condition at a time.  The kernel counts
-these evaluations against `maxHeartbeats`, and when one exceeds it, `decide` reports that the
-instance did not reduce, so the instances raise the limit. -/
-macro "inst_ok" : tactic => `(tactic| (
-  unfold ClightN.Proof.InstOk ClightN.Proof.RenameOk ClightN.Proof.PreOk
-  refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_, ?_⟩, ?_⟩ <;> decide +kernel))
+/-- What the kernel checks of a bare-metal instance whose output has the bytes `bs`: `InstOk`,
+and that the renaming of the whole program takes the trace of `bs` to the file's trace `ft`. -/
+def BareOk (main : function) (T : Translation) (fd : Defs) (fm : ident) (bs : List UInt8)
+    (ft : trace) : Prop :=
+  InstOk (bareTail main) T fd fm ∧
+    renTrace (gOfL (wholeOf (bareTail main) T fd).prog_defs fd) (outTrace bs) = ft
+
+/-! ## The translation's definitions in parts
+
+`verified_compile` defines a program's translation `p.translation` as `translate cap m` of the
+module `m`, and the module as `compileWith` of the program, so a condition of `InstOk` on the
+translation's definitions makes the kernel compile the module and translate it, and a condition
+in a declaration of its own repeats that work.  `inst_ok` evaluates the translation by compiled
+code and adds its definitions as literals in parts: `pre`, the definitions before the functions,
+the body of each function, and the body of `lx_init`.  The kernel checks each function's part,
+`trFunOk`, in a declaration of its own, which compiles and translates that function alone, and
+the rest, `trRestOk`, in one more.  `defs_of_parts` joins the parts by `translate_defs`, with the
+theorems `p.translation_eq` and `p.translation_funcs` of `verified_compile`, which give the
+guards of `translate` and its list of functions.  `InstOk.of_defs` then states the conditions of
+`InstOk` on the translation `withDefs T D` with the literal definitions `D`, which the kernel
+reads without computing the translation. -/
+
+/-- The translation `T` with the definitions `D`. -/
+def withDefs (T : Translation) (D : Defs) : Translation :=
+  { T with cprogram := { T.cprogram with prog_defs := D } }
+
+theorem InstOk.of_defs (post : Defs) (T : Translation) (fd : Defs) (fm : ident) (D : Defs)
+    (hD : T.cprogram.prog_defs = D) (h : InstOk post (withDefs T D) fd fm) :
+    InstOk post T fd fm := by
+  subst hD
+  exact h
+
+theorem BareOk.of_defs (main : function) (T : Translation) (fd : Defs) (fm : ident)
+    (bs : List UInt8) (ft : trace) (D : Defs) (hD : T.cprogram.prog_defs = D)
+    (h : BareOk main (withDefs T D) fd fm bs ft) : BareOk main T fd fm bs ft := by
+  subst hD
+  exact h
+
+/-- The function `k` of `m` translates to the function `f`. -/
+def trFunOk (cap : Nat) (m : Wasm.Module) (k : Nat) (f : function) : Bool :=
+  match (fdefsOf cap m)[k]?.join with
+  | some g => globdefEq (.Gfun (.Internal g)) (.Gfun (.Internal f))
+  | none => false
+
+theorem funDef_of_trFunOk {cap : Nat} {m : Wasm.Module} {k : Nat} {f : function}
+    (h : trFunOk cap m k f = true) : funDef cap m k = some (funId k, .Gfun (.Internal f)) := by
+  unfold trFunOk at h
+  split at h
+  · rename_i g hg
+    cases globdefEq_eq h
+    simp [funDef, hg]
+  · cases h
+
+/-- `trFunOk` of each function of `ks` and its body in `fs`. -/
+def TrFunsOk (cap : Nat) (m : Wasm.Module) : List Nat → List function → Prop
+  | [], [] => True
+  | k :: ks, f :: fs => trFunOk cap m k f = true ∧ TrFunsOk cap m ks fs
+  | _, _ => False
+
+theorem TrFunsOk.nil (cap : Nat) (m : Wasm.Module) : TrFunsOk cap m [] [] := trivial
+
+theorem TrFunsOk.cons (cap : Nat) (m : Wasm.Module) (k : Nat) (ks : List Nat) (f : function)
+    (fs : List function) (h : trFunOk cap m k f = true) (hs : TrFunsOk cap m ks fs) :
+    TrFunsOk cap m (k :: ks) (f :: fs) := And.intro h hs
+
+/-- The definitions of the functions `ks` with the bodies `fs`. -/
+def funsOf : List Nat → List function → Defs
+  | k :: ks, f :: fs => (funId k, .Gfun (.Internal f)) :: funsOf ks fs
+  | _, _ => []
+
+theorem mapM_funDef {cap : Nat} {m : Wasm.Module} :
+    ∀ {ks : List Nat} {fs : List function}, TrFunsOk cap m ks fs →
+      ks.mapM (funDef cap m) = some (funsOf ks fs)
+  | [], [], _ => rfl
+  | k :: ks, f :: fs, h => by
+      have h' : trFunOk cap m k f = true ∧ TrFunsOk cap m ks fs := h
+      simp [List.mapM_cons, funDef_of_trFunOk h'.1, mapM_funDef h'.2, funsOf]
+  | [], _ :: _, h => by simp [TrFunsOk] at h
+  | _ :: _, [], h => by simp [TrFunsOk] at h
+
+/-- The definitions of a translation before its functions. -/
+def preDefs (cap : Nat) (decl : Wasm.MemDecl) (gdefs : List (globvar type)) (nres : Nat) : Defs :=
+  (statusId, .Gvar statusVar) ::
+    (gdefs.zipIdx.map (fun x => (globalId x.2, globdef.Gvar x.1)) ++
+      (pagesId, .Gvar (pagesDef decl.pagesMin.toNat)) :: (memId, .Gvar (memDef cap)) ::
+        (punId, .Gvar punDef) :: (sqrtId, sqrtDef) :: resDefs nres)
+
+theorem progDefs_eq (cap : Nat) (decl : Wasm.MemDecl) (gdefs : List (globvar type)) (nres : Nat)
+    (funs : Defs) : progDefs cap decl gdefs nres funs =
+      preDefs cap decl gdefs nres ++
+        (funs ++ [(initId, .Gfun (.Internal (initFunction cap decl.data)))]) := by
+  simp [progDefs, preDefs]
+
+/-- The translation of `m` with the functions `ks` has the definitions `pre` before its functions
+and `lx_init` with the body `init` after them. -/
+def trRestOk (cap : Nat) (m : Wasm.Module) (ks : List Nat) (pre : Defs) (init : function) : Bool :=
+  match m.memory, m.globals.mapM globalDef with
+  | some decl, some gdefs =>
+      defsEq (preDefs cap decl gdefs (maxResults m ks)) pre &&
+        globdefEq (.Gfun (.Internal (initFunction cap decl.data))) (.Gfun (.Internal init))
+  | _, _ => false
+
+theorem funcs_of_translate {cap : Nat} {m : Wasm.Module} {T : Translation}
+    (h : translate cap m = some T) : T.funcs = includedOf cap m := by
+  simp [translate, Option.bind_eq_some_iff] at h
+  obtain ⟨-, decl, -, -, gdefs, -, -, funs, -, rfl⟩ := h
+  rfl
+
+/-- The definitions of the translation `T` of `m` from its parts. -/
+theorem defs_of_parts (cap : Nat) (m : Wasm.Module) (T : Translation) (ks : List Nat) (pre : Defs)
+    (fs : List function) (init : function) (hT : translate cap m = some T)
+    (hks : (translate cap m).map Translation.funcs = some ks)
+    (hr : trRestOk cap m ks pre init = true) (hf : TrFunsOk cap m ks fs) :
+    T.cprogram.prog_defs = pre ++ (funsOf ks fs ++ [(initId, .Gfun (.Internal init))]) := by
+  obtain ⟨decl, gdefs, funs, hd, -, -, -, hg, hfuns, he⟩ := translate_defs hT
+  have hk : T.funcs = ks := translate_funcs_eq hT hks
+  rw [← funcs_of_translate hT, hk, mapM_funDef hf, Option.some.injEq] at hfuns
+  subst hfuns
+  simp only [trRestOk, hd, hg, Bool.and_eq_true] at hr
+  rw [he, translate_nres hT, hk, progDefs_eq, defsEq_eq hr.1]
+  cases globdefEq_eq hr.2
+  rfl
+
+section Tactic
+
+open Lean Meta Elab Tactic
+
+unsafe def evalTranslateUnsafe (e : Expr) : MetaM (Option Translation) :=
+  evalExpr (Option Translation) (mkApp (mkConst ``Option [Level.zero]) (mkConst ``Translation)) e
+    (checkMeta := false)
+
+/-- The value of the term `e` of type `Option Translation`, by compiled code. -/
+@[implemented_by evalTranslateUnsafe]
+opaque evalTranslate (e : Expr) : MetaM (Option Translation)
+
+/-- Adds the definition `name : type := value`, which the kernel checks before `inst_ok` goes
+on. -/
+def addLiteralDef (name : Name) (type value : Expr) : MetaM Unit :=
+  withOptions (Elab.async.set · false) do
+    addDecl (.defnDecl (mkDefinitionValEx name [] type value .abbrev .safe [name]))
+
+/-- Adds the theorem `name : prop`, which the kernel proves by evaluating `decide prop` before
+`inst_ok` goes on, and returns it. -/
+def addByKernel (name : Name) (prop : Expr) : MetaM Expr := do
+  let inst ← synthInstance (mkApp (mkConst ``Decidable) prop)
+  let pf := mkApp3 (mkConst ``of_decide_eq_true) prop inst
+    (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+  withOptions (Elab.async.set · false) do
+    addDecl (.thmDecl { name, levelParams := [], type := prop, value := pf })
+  return mkConst name
+
+/-- Proves `InstOk post T fd fm` or `BareOk main T fd fm bs ft` for the translation
+`T := p.translation` of `verified_compile`.  The tactic evaluates `translate cap m` of
+`p.translation_eq` by compiled code, adds the parts of its definitions as literals under an
+auxiliary name, has the kernel check each part in a declaration of its own, and states the
+conditions of the goal on `withDefs T D` with the joined literal definitions `D`.  The kernel
+proves each condition by evaluation in a declaration of its own, so that it holds the terms of
+one condition at a time.  The kernel counts these evaluations against `maxHeartbeats`, and when
+one exceeds it, `decide` reports that the instance did not reduce, so the instances raise the
+limit. -/
+elab "inst_ok" : tactic => do
+  let goal ← getMainGoal
+  let type ← instantiateMVars (← goal.getType)
+  unless type.isAppOfArity ``InstOk 4 || type.isAppOfArity ``BareOk 6 do
+    throwError "inst_ok: the goal is neither InstOk nor BareOk{indentExpr type}"
+  let T := type.getArg! 1
+  let .const tc [] := T | throwError "inst_ok: the translation {T} is not a constant"
+  let hT := mkConst (tc.getPrefix ++ `translation_eq)
+  let hks := mkConst (tc.getPrefix ++ `translation_funcs)
+  let some (_, lhs, _) := (← inferType hT).eq? | throwError "inst_ok: the type of {hT}"
+  unless lhs.isAppOfArity ``translate 3 && (lhs.getArg! 2).isConstOf ``Bool.false do
+    throwError "inst_ok: {hT} is not about translate with the test of alignment"
+  let cap := lhs.getArg! 0
+  let m := lhs.getArg! 1
+  let some (_, _, rhs) := (← inferType hks).eq? | throwError "inst_ok: the type of {hks}"
+  unless rhs.isAppOfArity ``Option.some 2 do throwError "inst_ok: the type of {hks}"
+  let ks := rhs.getArg! 1
+  let some t ← evalTranslate lhs | throwError "inst_ok: {lhs} is none"
+  let defs := t.cprogram.prog_defs
+  let n := t.funcs.length
+  let nPre := defs.length - n - 1
+  let fs ← ((defs.drop nPre).take n).mapM fun
+    | (_, .Gfun (.Internal f)) => pure f
+    | _ => throwError "inst_ok: the definitions of {lhs} do not end with its functions"
+  let some (_, .Gfun (.Internal init)) := defs.getLast?
+    | throwError "inst_ok: the definitions of {lhs} do not end with lx_init"
+  let base ← mkAuxDeclName `_inst
+  let funTy := mkConst ``LClight.function
+  let preC := mkConst (base ++ `pre)
+  addLiteralDef (base ++ `pre) (mkConst ``Defs) (toExpr (defs.take nPre))
+  let initC := mkConst (base ++ `init)
+  addLiteralDef (base ++ `init) funTy (toExpr init)
+  let hr ← addByKernel (base ++ `rest)
+    (← mkEq (mkApp5 (mkConst ``trRestOk) cap m ks preC initC) (mkConst ``Bool.true))
+  let mut parts : Array (Expr × Expr × Expr) := #[]
+  for (k, f) in t.funcs.zip fs do
+    let fC := mkConst (base ++ Name.mkSimple s!"fun_{k}")
+    addLiteralDef (base ++ Name.mkSimple s!"fun_{k}") funTy (toExpr f)
+    let kE := toExpr k
+    let h ← addByKernel (base ++ Name.mkSimple s!"fun_{k}_ok")
+      (← mkEq (mkApp4 (mkConst ``trFunOk) cap m kE fC) (mkConst ``Bool.true))
+    parts := parts.push (kE, fC, h)
+  let natTy := mkConst ``Nat
+  let (ksE, fsE, hf) := parts.foldr (init :=
+      (mkApp (mkConst ``List.nil [Level.zero]) natTy, mkApp (mkConst ``List.nil [Level.zero]) funTy,
+        mkApp2 (mkConst ``TrFunsOk.nil) cap m))
+    fun (kE, fC, h) (ksE, fsE, hf) =>
+      (mkApp3 (mkConst ``List.cons [Level.zero]) natTy kE ksE,
+        mkApp3 (mkConst ``List.cons [Level.zero]) funTy fC fsE,
+        mkAppN (mkConst ``TrFunsOk.cons) #[cap, m, kE, ksE, fC, fsE, h, hf])
+  unless ← isDefEq ksE ks do
+    throwError "inst_ok: {lhs} gives the functions {ksE}, and {hks} states {ks}"
+  let hD := mkAppN (mkConst ``defs_of_parts) #[cap, m, T, ks, preC, fsE, initC, hT, hks, hr, hf]
+  let some (_, _, D) := (← inferType hD).eq? | throwError "inst_ok: the type of defs_of_parts"
+  let args := type.getAppArgs
+  if type.isAppOfArity ``InstOk 4 then
+    replaceMainGoal (← goal.apply (mkAppN (mkConst ``InstOk.of_defs) (args.push D |>.push hD)))
+    evalTactic (← `(tactic| (
+      unfold ClightN.Proof.InstOk ClightN.Proof.RenameOk ClightN.Proof.PreOk
+      refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_, ?_⟩, ?_⟩ <;> decide +kernel)))
+  else
+    replaceMainGoal (← goal.apply (mkAppN (mkConst ``BareOk.of_defs) (args.push D |>.push hD)))
+    evalTactic (← `(tactic| (
+      unfold ClightN.Proof.BareOk ClightN.Proof.InstOk ClightN.Proof.RenameOk ClightN.Proof.PreOk
+      refine ⟨⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_, ?_⟩, ?_⟩, ?_⟩ <;> decide +kernel)))
+
+end Tactic
 
 section
 
@@ -534,19 +778,18 @@ theorem renTrace_outTrace {g g' : ident → ident} (h : g outId = g' outId) (bs 
 program terminates with the trace `ft` of the file's identifiers for the output bytes `bs` and
 the result 0, or, when the entry may abort, with no event and the code of `unreachable`. -/
 theorem bare_n {T : Translation} {main : function} {fd : Defs} {fm : ident} {bs : List UInt8}
-    {aborts : Bool} {ft : trace} (hok : InstOk (bareTail main) T fd fm)
+    {aborts : Bool} {ft : trace} (hok : BareOk main T fd fm bs ft)
     (h : ∀ pre, PrefixOk pre →
       bigstep_program_terminates Archi.aarch64 ExtSem.none (bareProgram pre T main) (outTrace bs)
           0 ∨
         (aborts = true ∧ bigstep_program_terminates Archi.aarch64 ExtSem.none
-          (bareProgram pre T main) E0 (UInt32.ofNat trapUnreachable)))
-    (ht : renTrace (gOfL (wholeOf (bareTail main) T fd).prog_defs fd) (outTrace bs) = ft) :
+          (bareProgram pre T main) E0 (UInt32.ofNat trapUnreachable))) :
     nprog fd fm ft 0 ∨ (aborts = true ∧ nprog fd fm [] (UInt32.ofNat trapUnreachable)) := by
-  rcases h _ hok.prefix with hp | ⟨ha, hp⟩
-  · obtain ⟨g, hg, hn⟩ := terminates_n hok hp
-    rw [renTrace_outTrace (hg outId (outId_mem ..)), ht] at hn
+  rcases h _ hok.1.prefix with hp | ⟨ha, hp⟩
+  · obtain ⟨g, hg, hn⟩ := terminates_n hok.1 hp
+    rw [renTrace_outTrace (hg outId (outId_mem ..)), hok.2] at hn
     exact .inl hn
-  · obtain ⟨g, -, hn⟩ := terminates_n hok hp
+  · obtain ⟨g, -, hn⟩ := terminates_n hok.1 hp
     exact .inr ⟨ha, hn⟩
 
 /-- The terminations of a program with input whose traces read every sequence `σ` are the file's

@@ -18,9 +18,8 @@ open LClight LeanExe.Native ClightN.Spec
 
 set_option maxHeartbeats 4000000 in
 theorem crc32_terminates : stmt_crc32_terminates := by
-  refine (bare_n ?_ (TestSupport.Bare.crcCompiled.crcCheck.program _ _) ?_).imp_right And.right
-  · inst_ok
-  · decide +kernel
+  refine (bare_n ?_ (TestSupport.Bare.crcCompiled.crcCheck.program _ _)).imp_right And.right
+  inst_ok
 
 end ClightN.Proof
 
