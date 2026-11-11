@@ -6,12 +6,25 @@
     "maximum recursion depth has been reached inside try or first",
     "split or ite_self does not apply to @ite α c d a b with an instance d of its own",
     "a conditional simp lemma that does not rewrite",
-    "repeat' split over a statement with several copies of one term"
+    "repeat' split over a statement with several copies of one term",
+    "tauto exhausts the heartbeats of a declaration whose context holds premises p → q with a decidable p",
+    "Tactic `split` failed: Could not split an `if` or `match` expression, on a match under have bindings",
+    "rw [ite_eq_left h] leaves another if on the same condition",
+    "a by block in a rw argument proves the condition of the first match",
+    "rw [h] at hyp leaves match some l with unreduced",
+    "simp only [] turns a = a into True inside a conjunction",
+    "subst h eliminates the right-hand variable",
+    "obtain ⟨-, h0⟩ clears h0 when h0 depends on the witness"
   ],
   "modules": [
     "Demos.OrderBook.Bound",
     "Demos.OrderBook.ProcessCharges",
-    "LeanExe.Requests.Reads"
+    "LeanExe.Requests.Reads",
+    "Verified.AlignedTailBody",
+    "Demos.Rcv.ReadError",
+    "Demos.Rcv.Properties",
+    "Demos.Rcv.Maine.Rounds",
+    "Demos.Rcv.Refinement"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -20,11 +33,27 @@
     "Lean.Exception.isRuntime",
     "Demos.OrderBook.Bound.ite_bound",
     "Demos.OrderBook.Process.ite_le_zero",
-    "LeanExe.Requests.TickCase"
+    "LeanExe.Requests.TickCase",
+    "Demos.Rcv.Spec.rule",
+    "Demos.Rcv.Rounds.rule_of_majority",
+    "Demos.Rcv.Rounds.rule_of_zero",
+    "Demos.Rcv.Rounds.rule_of_batch",
+    "Demos.Rcv.Rounds.rule_of_lowest",
+    "Demos.Rcv.Rounds.Trace.head",
+    "List.filter_cons_of_pos",
+    "ite_eq_left"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
-    "LeanExe.Requests.frameTick_cases"
+    "LeanExe.Requests.frameTick_cases",
+    "Verified.tail_ite_specX",
+    "Verified.tail_let_specX",
+    "Verified.tail_letPair_specX",
+    "Demos.Rcv.Rounds.rule_order",
+    "Demos.Rcv.Refine.batchOf_spec",
+    "Demos.Rcv.Spec.read_error_first",
+    "Demos.Rcv.Properties.trace_not_loser",
+    "Demos.Rcv.Maine.locality"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

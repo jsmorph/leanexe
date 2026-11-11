@@ -32,6 +32,7 @@ crcBitwise:Library.Hashing.Crc.Bitwise.Compiled:Library/Hashing/Crc/Bitwise/File
 siphash:Library.Hashing.SipHash.Bytes:Library/Hashing/SipHash/File.lean
 xxhash64:Library.Hashing.XxHash64.Bytes:Library/Hashing/XxHash64/File.lean
 slew:Demos.Slew.Verified:Demos/Slew/File.lean
+conjunction:Demos.Conjunction.Verified:Demos/Conjunction/File.lean
 energy:Demos.Energy.Verified:Demos/Energy/File.lean
 rcvCount:Demos.Rcv.Compiled:Demos/Rcv/File.lean
 rcvTabulate:Demos.Rcv.Tabulate:Demos/Rcv/TabulateFile.lean
@@ -117,6 +118,7 @@ liblinalg64:Library.Numerics.LinearAlgebra.Float64.Compiled:Library/Numerics/Lin
 liblinalg32:Library.Numerics.LinearAlgebra.Binary32.Compiled:Library/Numerics/LinearAlgebra/Binary32/File.lean
 libceilsqrt:Library.Numerics.Arithmetic.CeilSqrt.Compiled:Library/Numerics/Arithmetic/CeilSqrt/File.lean
 libbounds:Library.Numerics.Bounds.Compiled:Library/Numerics/Bounds/File.lean
+libinterval:Library.Numerics.Interval.Compiled:Library/Numerics/Interval/File.lean
 libminmod:Library.Numerics.Limiters.Minmod.Compiled:Library/Numerics/Limiters/Minmod/File.lean
 libtrees:Library.Trees.WordTree.Compiled:Library/Trees/WordTree/File.lean
 treeSearch:Library.Trees.Search.Compiled:Library/Trees/Search/File.lean

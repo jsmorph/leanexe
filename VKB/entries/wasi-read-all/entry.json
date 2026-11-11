@@ -1,0 +1,45 @@
+{
+  "id": "wasi-read-all",
+  "goals": [
+    "Exec host (LeanExe.Wasi.readAll limit) world trace outcome final",
+    "Demos.StreamFold.ReadAllReturns rep limit total position outcome final",
+    "Verified.Wasi.Resource.Bounded host pure program depth modes live (Verified.Wasi.Command.readAll limit) env budget",
+    "a WASI program that needs its whole standard input before it computes",
+    "a process whose run time grows with the square of its input",
+    "(kernel) deep recursion detected at a generated start or total theorem of a program that reads by recursion on a fuel"
+  ],
+  "modules": [
+    "Demos.Rcv.ProcessCompiledCorrect",
+    "Verified.Examples.WasiReadAll",
+    "Demos.Rcv.Maine.ProcessCompiledCorrect"
+  ],
+  "declarations": [
+    "LeanExe.Wasi.readAll",
+    "LeanExe.Wasi.readAll_size",
+    "LeanExe.Wasi.Action.loop",
+    "Demos.StreamFold.ReadAllReturns",
+    "Demos.StreamFold.StreamHost.readAll",
+    "Demos.StreamFold.StreamHost.readAll_whole",
+    "Demos.StreamFold.StreamHost.readAll_long",
+    "Verified.Wasi.readAllCost",
+    "Verified.Wasi.Resource.Returns.readAll_size",
+    "Verified.Wasi.Resource.PrefixBound.readAll",
+    "Demos.Rcv.Process.Compiled",
+    "Demos.Rcv.Process.beginWith_report",
+    "Demos.Rcv.Process.beginWith_long"
+  ],
+  "examples": [
+    "Demos.Rcv.Process.begin_report",
+    "Demos.Rcv.Process.begin_long",
+    "Demos.Rcv.Process.begin_bounded",
+    "Demos.Rcv.Process.Compiled.target_terminates",
+    "Demos.Rcv.Process.processMemory_le",
+    "Demos.Rcv.Process.initial_terminates",
+    "Demos.Rcv.Process.initial_exits_long",
+    "Verified.Examples.WasiReadAll.main",
+    "Demos.Rcv.Process.Compiled.terminates_of_room",
+    "Demos.Rcv.Process.Compiled.exits_long_of_room",
+    "Demos.Rcv.Maine.Process.initial_terminates",
+    "Demos.Rcv.Maine.Process.initial_exits_long"
+  ]
+}

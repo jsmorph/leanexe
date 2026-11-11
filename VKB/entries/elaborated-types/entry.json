@@ -4,11 +4,14 @@
     "failed to synthesize HSub Int64 ℕ",
     "an untyped binder or literal in a specification or a proof-side definition",
     "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block",
-    "a coercion of Int to Nat in a trusted translation that maps negative values to 0"
+    "a coercion of Int to Nat in a trusted translation that maps negative values to 0",
+    "failed to synthesize instance of type class HMul Nat UInt64 ?m",
+    "(3 + 2 * ws[0]!).toNat"
   ],
   "modules": [
     "Library.Numerics.Float64.Log10.Log10Bits",
-    "Library.Numerics.Decimal.Int64Text.Inverse"
+    "Library.Numerics.Decimal.Int64Text.Inverse",
+    "Demos.Rcv.Maine.Refinement"
   ],
   "declarations": [
     "Library.Numerics.Float64.Log10.Log10Bits.kWord10",
@@ -20,6 +23,8 @@
   "examples": [
     "Library.Numerics.Float64.Log10.Log10Bits.normal_bits",
     "Library.Numerics.Float64.Log10.Log10Bits.subnormal_bits",
-    "Library.Numerics.Decimal.Int64Text.expectedRead_print"
+    "Library.Numerics.Decimal.Int64Text.expectedRead_print",
+    "Demos.Rcv.Refine.validArray_iff",
+    "Demos.Rcv.Maine.Refine.countValid_eq"
   ]
 }

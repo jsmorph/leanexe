@@ -278,6 +278,7 @@ import Library.Numerics.LinearAlgebra.Float64.Compiled
 import Library.Numerics.LinearAlgebra.Binary32.Compiled
 import Library.Numerics.Arithmetic.CeilSqrt.Compiled
 import Library.Numerics.Bounds.Compiled
+import Library.Numerics.Interval.Compiled
 import Library.Numerics.Limiters.Minmod.Compiled
 import Library.Trees.WordTree.Compiled
 import Library.Trees.Search.Compiled
@@ -293,6 +294,8 @@ import Library.Numerics.Statistics.SumSquares.Compiled
 import Library.Random.SplitMix64.Compiled
 import Library.Numerics.Arithmetic.CeilSqrt.Proof
 import Library.Numerics.Bounds.Proof
+import Library.Numerics.Interval.Proof
+import Library.Numerics.Interval.Enclose
 import Library.Numerics.Limiters.Minmod.Proof
 import Library.Arrays.Search.Proof
 import Library.Hashing.Sha256.Bytes

@@ -11,7 +11,9 @@
     "memory exhaustion in the kernel's check of one declaration",
     "a bound on a quantity that a definition by well-founded recursion computes for every run",
     "memory exhaustion in decide +kernel on the equality of two compiled modules",
-    "push_cast or field_simp evaluates a literal power such as 2^1074"
+    "push_cast or field_simp evaluates a literal power such as 2^1074",
+    "rfl or simp on a goal that holds a power above exponentiation.threshold reaches the maximum recursion depth",
+    "a counterexample to a property of a specification, on a concrete input"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",
@@ -31,7 +33,8 @@
     "LeanExe.Pipeline.FileBytes",
     "LeanExe.M7.Proof.Bound",
     "TestSupport.M7.Step",
-    "Library.Numerics.Float64.Sinpi.SinpiTinySplit"
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit",
+    "Demos.Rcv.Properties"
   ],
   "declarations": [
     "Verified.Prog.literals",
@@ -61,6 +64,7 @@
     "TestSupport.M7.echo_static",
     "Library.Numerics.Float64.Sinpi.SinpiTinySplit.split_spec",
     "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_le",
-    "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_grid"
+    "Library.Numerics.Float64.Sinpi.SinpiTinySplit.tail_grid",
+    "Demos.Rcv.Properties.monotonicity_fails"
   ]
 }

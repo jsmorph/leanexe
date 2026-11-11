@@ -9,7 +9,8 @@
     "(kernel) deep recursion detected at a verified_compile command",
     "#print axioms lists p.f.meaning_eq or p.f.fixed",
     "toSpec b or slotsFrom b 4097 s inside a goal closed by rfl or unification",
-    "a local definition introduced by set that omega or rw unfolds"
+    "a local definition introduced by set that omega or rw unfolds",
+    "every case of a theorem over a parser that matches the opcode and the operands in one match runs out of heartbeats"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -26,7 +27,8 @@
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
     "Demos.OrderBook.RefineChains",
     "Library.Numerics.Arithmetic.Fma.FmaParts",
-    "Library.Numerics.Arithmetic.Fma.FmaNearestEven"
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven",
+    "LeanExe.PTX.RoundTrip"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -38,7 +40,11 @@
     "Verified.Tail.fixed_restate",
     "Verified.Reflect.addBoundDefinition",
     "Demos.OrderBook.Refinement.toSpec_eq",
-    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.strict_top"
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.strict_top",
+    "LeanExe.PTX.parseInstr",
+    "LeanExe.PTX.ops2",
+    "LeanExe.PTX.ops3",
+    "LeanExe.PTX.ops4"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -50,6 +56,7 @@
     "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements",
     "Library.Numerics.Arithmetic.Fma.FmaParts.fmaBits_eq",
     "Library.Numerics.Arithmetic.Fma.FmaNearestEven.nearest_even",
-    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.positive_reference"
+    "Library.Numerics.Arithmetic.Fma.FmaNearestEven.positive_reference",
+    "LeanExe.PTX.Instr.parse_tokens"
   ]
 }

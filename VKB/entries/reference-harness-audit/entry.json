@@ -5,7 +5,9 @@
     "an exception that a reference's harness swallows, so that a failed path looks complete",
     "a value that a fetch loop or a configuration fixes in place of the reference's clause",
     "an edit of a reference or a translation that must change nothing else",
-    "a trusted translation at negative or extreme operands"
+    "a trusted translation at negative or extreme operands",
+    "a comparison of a specification with an independent implementation such as RCTab",
+    "a tool that exits with status 0 when it fails"
   ],
   "modules": [
     "LeanExe.M7.Isla.Check"

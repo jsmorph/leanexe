@@ -12,7 +12,10 @@
     "compiled.f.bound x ≤ a closed form in a count of loop passes",
     "a bound lemma over the generated cost_eq and bound_eq equations of any compilation",
     "compiled.f.bound x ≤ c at fixed arguments, evaluated in the kernel",
-    "@ite Nat c d₁ A A' + k ≤ m * (@ite _ c d₂ B B').2.size"
+    "@ite Nat c d₁ A A' + k ≤ m * (@ite _ c d₂ B B').2.size",
+    "Verified.Tail.costAt step charge (Verified.Tail.rank step wf x + 1) x ≤ _",
+    "compiled.f.bound x = other.f.bound x for two compilations of the same functions",
+    "min U (K + L) + G ≤ c where L bounds the size of an array that a loop builds"
   ],
   "modules": [
     "Verified.BoundFacts",
@@ -34,7 +37,11 @@
     "Demos.Euler.VerifiedCall",
     "Demos.OrderBook.Bound",
     "Demos.OrderBook.ProcessCharges",
-    "TestSupport.A64.GptLayer32Runs"
+    "TestSupport.A64.GptLayer32Runs",
+    "Demos.Rcv.VerifiedCall",
+    "Demos.Rcv.Maine.TabulateBound",
+    "Demos.Rcv.ProcessCharges",
+    "Verified.TailTransport"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -60,7 +67,14 @@
     "Demos.Euler.Verified.loopCost_le_mul",
     "Demos.Euler.Verified.stepTries",
     "Demos.OrderBook.Bound.Equations",
-    "Demos.OrderBook.Bound.ite_bound"
+    "Demos.OrderBook.Bound.ite_bound",
+    "Verified.Tail.costAt",
+    "Verified.Tail.costAt_rank_eq",
+    "Verified.Tail.rank_lt",
+    "Demos.Rcv.Refine.rounds_size",
+    "Demos.Rcv.Program.min_bound",
+    "Demos.Rcv.Program.loopCost_const_le",
+    "Demos.Rcv.Maine.TabulateProgram.tail_cost_congr"
   ],
   "examples": [
     "Demos.Slew.Bound.plan_bound",
@@ -87,6 +101,13 @@
     "Demos.OrderBook.Bound.compiled_equations",
     "Demos.OrderBook.Bound.step_le",
     "Demos.OrderBook.Process.runBound_74",
-    "TestSupport.A64.Gpt32.heap_room"
+    "TestSupport.A64.Gpt32.heap_room",
+    "Demos.Rcv.Program.count_bound",
+    "Demos.Rcv.TabulateProgram.fieldsFrom_cost",
+    "Demos.Rcv.TabulateProgram.pushRoundLines_cost",
+    "Demos.Rcv.TabulateProgram.count_bound_eq",
+    "Demos.Rcv.TabulateProgram.readContest_bound",
+    "Demos.Rcv.Maine.TabulateProgram.tabulate_bound",
+    "Demos.Rcv.Process.tabulate_bound_eq"
   ]
 }

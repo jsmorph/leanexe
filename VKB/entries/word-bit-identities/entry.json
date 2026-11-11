@@ -10,7 +10,9 @@
     "bitStep^[8] (r ^^^ (b &&& 0xFF)) = Library.Hashing.Crc.byteStep crc32Table r b for a bitwise step linear over GF(2)",
     "((x ^^^ y) &&& 1) * c = ((x &&& 1) * c) ^^^ ((y &&& 1) * c)",
     "(kernel) deterministic timeout after simp only [Function.iterate_succ_apply]",
-    "((w <<< 8) + (v >>> 56)).toNat for bit fields joined with + instead of |||"
+    "((w <<< 8) + (v >>> 56)).toNat for bit fields joined with + instead of |||",
+    "(mask s).testBit j = decide (j + 1 ∈ s)",
+    "LeanExe.loop n init f = ((members m n.toNat).filter P).foldl step init"
   ],
   "modules": [
     "Library.Hashing.Words.Proof",
@@ -22,7 +24,8 @@
     "Library.Regex.Bits",
     "Library.Numerics.Arithmetic.Fma.FmaRoundPack",
     "Library.Hashing.Crc.Bitwise.Proof",
-    "LeanExe.Requests.DelimitedWords"
+    "LeanExe.Requests.DelimitedWords",
+    "Demos.Rcv.Refinement"
   ],
   "declarations": [
     "Library.Hashing.Words.rotr",
@@ -58,7 +61,16 @@
     "LeanExe.Requests.toNat_shl8_add",
     "LeanExe.Requests.toNat_shl56_add",
     "LeanExe.Requests.wordBytes8_shl",
-    "LeanExe.Requests.wordBytes8_shr"
+    "LeanExe.Requests.wordBytes8_shr",
+    "Demos.Rcv.Spec.mask",
+    "Demos.Rcv.Refine.testBit_mask",
+    "Demos.Rcv.Refine.members",
+    "Demos.Rcv.Refine.bit_test",
+    "Demos.Rcv.Refine.loop_members",
+    "Demos.Rcv.Refine.loop_members_filter",
+    "Demos.Rcv.Refine.members_remove",
+    "Nat.bitIndices_sum_map_two_pow",
+    "Nat.eq_of_testBit_eq"
   ],
   "examples": [
     "Library.Hashing.SipHash.Proof.rotl_13",
@@ -70,6 +82,8 @@
     "Library.Numerics.Arithmetic.Fma.FmaRoundPack.normal_right",
     "Library.Hashing.Crc.Bitwise.crc32Reg_eq",
     "LeanExe.Requests.push40_bytes",
-    "LeanExe.Requests.unshift40_bytes"
+    "LeanExe.Requests.unshift40_bytes",
+    "Demos.Rcv.Refine.decideRound_eq",
+    "Demos.Rcv.Refine.go_eq"
   ]
 }

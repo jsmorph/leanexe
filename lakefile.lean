@@ -221,6 +221,22 @@ lean_exe «rcv-maine-bound» where
   srcDir := "tests"
   root := `TestSupport.Rcv.MaineBoundMain
 
+lean_exe «verified-cases-conjunction» where
+  srcDir := "tests"
+  root := `TestSupport.Conjunction.CasesMain
+
+lean_exe «verified-cases-sgp4» where
+  srcDir := "tests"
+  root := `TestSupport.Sgp4.CasesMain
+
+lean_exe «verified-cases-sgp4box» where
+  srcDir := "tests"
+  root := `TestSupport.Sgp4.BoxCasesMain
+
+lean_exe «verified-cases-sgp4omm» where
+  srcDir := "tests"
+  root := `TestSupport.Sgp4.OmmCasesMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where

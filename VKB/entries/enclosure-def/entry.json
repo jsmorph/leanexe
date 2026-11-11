@@ -1,0 +1,40 @@
+{
+  "id": "enclosure-def",
+  "goals": [
+    "Library.Numerics.Interval.Encloses (fI a b) (f x y) for an interval program fI that evaluates the formula of a real function f",
+    "Library.Numerics.Interval.prodRel Library.Numerics.Interval.Encloses R (fI a b) (f x y) for a function that returns a tuple",
+    "Library.Numerics.Interval.Contains b.x (g x y) for a dialect program that evaluates a long real formula on intervals"
+  ],
+  "modules": [
+    "Library.Numerics.Interval.Enclose",
+    "Library.Numerics.Interval.FunctionsProof",
+    "Demos.Sgp4.Spec",
+    "Demos.Sgp4.KeplerBox",
+    "Demos.Sgp4.BoxSound"
+  ],
+  "declarations": [
+    "Library.Numerics.Interval.Encloses",
+    "Library.Numerics.Interval.prodRel",
+    "Library.Numerics.Interval.encloses_add",
+    "Library.Numerics.Interval.encloses_div",
+    "Library.Numerics.Interval.encloses_ifLt",
+    "Library.Numerics.Interval.encloses_sinI",
+    "Library.Numerics.Interval.encloses_twoThirds",
+    "Library.Numerics.Interval.encloses_ofInt'",
+    "Library.Numerics.Interval.encloses_ratio'",
+    "Library.Numerics.Interval.Contains.pos_of_lo",
+    "Library.Numerics.Interval.Contains.neg_of_hi"
+  ],
+  "examples": [
+    "Demos.Sgp4.Spec.longPeriod.encloses",
+    "Demos.Sgp4.Spec.constants.encloses",
+    "Demos.Sgp4.Spec.wgs72State.encloses",
+    "Demos.Sgp4.Kepler.root.encloses",
+    "Demos.Sgp4.initStatus_sound",
+    "Demos.Sgp4.box_cases",
+    "Demos.Sgp4.sgp4Box_sound"
+  ],
+  "unimported": {
+    "Demos/Sgp4/BoxVerified.lean": ["Demos.Sgp4.boxCompiled"]
+  }
+}

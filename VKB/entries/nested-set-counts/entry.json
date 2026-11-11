@@ -1,0 +1,33 @@
+{
+  "id": "nested-set-counts",
+  "goals": [
+    "(L.map fun i => os.count (.counts i)).sum = os.countP (countsIn L)",
+    "(tally interp S' ballots).continuing ≤ (tally interp S ballots).continuing for S' ⊆ S",
+    "a sum of counts over the members of a set compared with the sum over a subset",
+    "(xs.map f).countP p ≤ (xs.map g).countP q",
+    "l.countP (fun x => p x || q x) = l.countP p + l.countP q"
+  ],
+  "modules": [
+    "Demos.Rcv.Batch"
+  ],
+  "declarations": [
+    "Demos.Rcv.Stability.countsIn",
+    "Demos.Rcv.Stability.votesFor",
+    "Demos.Rcv.Stability.countP_or_of_disjoint",
+    "Demos.Rcv.Stability.sum_count_eq_countP",
+    "Demos.Rcv.Stability.continuing_eq_countP",
+    "Demos.Rcv.Stability.votesFor_le_countP",
+    "Demos.Rcv.Stability.countP_transfer",
+    "Demos.Rcv.Stability.Closed",
+    "Demos.Rcv.Stability.Stable",
+    "List.countP_map",
+    "List.countP_mono_left"
+  ],
+  "examples": [
+    "Demos.Rcv.Stability.continuing_mono",
+    "Demos.Rcv.Stability.tally_follows",
+    "Demos.Rcv.Stability.two_le_continuing",
+    "Demos.Rcv.Stability.majority_subset",
+    "Demos.Rcv.Batch.BatchAt.batch_lt"
+  ]
+}

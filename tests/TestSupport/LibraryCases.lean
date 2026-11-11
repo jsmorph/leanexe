@@ -1,4 +1,5 @@
 import Library.Numerics.Bounds.Program
+import Library.Numerics.Interval.Program
 import Library.Numerics.Limiters.Minmod.Program
 import Library.Numerics.Reductions.Word.Program
 import Library.Numerics.Statistics.Mean.Program
@@ -44,6 +45,72 @@ open TestSupport.Host Library.Numerics.Bounds
 private def checked (name : String) (args : List String) (result : Checked) : IO Unit :=
   line "libbounds" name "list:i64,f64" args s!"{result.status} {result.value.toBits}"
 
+private abbrev Interval := Library.Numerics.Interval.Interval
+
+private def interval (name : String) (args : List String) (result : Interval) : IO Unit :=
+  line "libinterval" name "list:i64,f64,f64" args
+    s!"{result.status} {result.lo.toBits} {result.hi.toBits}"
+
+private def intervalChecked (name : String) (args : List String) (result : Checked) : IO Unit :=
+  line "libinterval" name "list:i64,f64" args s!"{result.status} {result.value.toBits}"
+
+private def intervalArgs (a : Interval) : List String := [u a.status, fl a.lo, fl a.hi]
+
+private def checkedArgs (c : Checked) : List String := [u c.status, fl c.value]
+
+/-- Accepted intervals of both signs, points, intervals at the ends of the finite range, a
+rejected interval, and records with a nonfinite endpoint or with `lo > hi`, which only a caller
+that skips `make` can build. -/
+private def intervals : List Interval :=
+  [⟨0, 1.0, 2.0⟩, ⟨0, -2.0, -1.0⟩, ⟨0, -1.0, 3.0⟩, ⟨0, 0.0, 0.0⟩, ⟨0, -0.0, 0.5⟩,
+    ⟨0, 1e308, 1e308⟩, ⟨0, -1e308, 1e308⟩, ⟨0, 5e-324, 5e-324⟩, ⟨0, -5e-324, 5e-324⟩,
+    ⟨0, 0.1, 0.1⟩, ⟨0, 1e-200, 1e200⟩, ⟨0, 7.25, 7.25⟩, ⟨1, 0.0, 0.0⟩, ⟨0, 1.0, inf⟩,
+    ⟨0, nan, 1.0⟩, ⟨0, 2.0, 1.0⟩]
+
+private def intervalCases : IO Unit := do
+  for a in specialFloats do
+    interval "point" [fl a] (Library.Numerics.Interval.point a)
+    for up in [false, true] do
+      intervalChecked "outward2" [u (if up then 1 else 0), fl a]
+        (Library.Numerics.Interval.outward2 up a)
+    for b in specialFloats do
+      interval "make" [fl a, fl b] (Library.Numerics.Interval.make a b)
+      line "libinterval" "fmin" "f64" [fl a, fl b]
+        (toString (Library.Numerics.Interval.fmin a b).toBits)
+      line "libinterval" "fmax" "f64" [fl a, fl b]
+        (toString (Library.Numerics.Interval.fmax a b).toBits)
+  for a in intervals do
+    let x := intervalArgs a
+    interval "neg" x (Library.Numerics.Interval.neg a)
+    interval "sqrt" x (Library.Numerics.Interval.sqrt a)
+    interval "abs" x (Library.Numerics.Interval.abs a)
+    interval "clamp" (x ++ [fl (-1.0), fl 1.0]) (Library.Numerics.Interval.clamp a (-1.0) 1.0)
+    interval "clamp" (x ++ [fl 0.0, fl inf]) (Library.Numerics.Interval.clamp a 0.0 inf)
+    interval "increasing" (x ++ [fl a.lo, fl a.hi])
+      (Library.Numerics.Interval.increasing a a.lo a.hi)
+    interval "decreasing" (x ++ [fl a.hi, fl a.lo])
+      (Library.Numerics.Interval.decreasing a a.hi a.lo)
+    for b in intervals do
+      let xy := x ++ intervalArgs b
+      interval "add" xy (Library.Numerics.Interval.add a b)
+      interval "sub" xy (Library.Numerics.Interval.sub a b)
+      interval "mul" xy (Library.Numerics.Interval.mul a b)
+      interval "div" xy (Library.Numerics.Interval.div a b)
+      interval "divCore" xy (Library.Numerics.Interval.divCore a b)
+      for up in [false, true] do
+        let direction := u (if up then 1 else 0)
+        intervalChecked "mulEnd" (direction :: xy) (Library.Numerics.Interval.mulEnd up a b)
+        intervalChecked "divEnd" (direction :: xy) (Library.Numerics.Interval.divEnd up a b)
+        let p : Checked := ⟨a.status, a.lo⟩
+        let q : Checked := ⟨0, a.hi⟩
+        let r : Checked := ⟨b.status, b.lo⟩
+        let s : Checked := ⟨0, b.hi⟩
+        intervalChecked "extreme"
+          (direction :: (checkedArgs p ++ checkedArgs q ++ checkedArgs r ++ checkedArgs s))
+          (Library.Numerics.Interval.extreme up p q r s)
+        interval "join" (direction :: (checkedArgs p ++ checkedArgs s))
+          (Library.Numerics.Interval.join up p s)
+
 /-- The seeds of the SplitMix64 cases: 0, 1, and four words whose advance wraps or reaches zero, 40
 arbitrary words, and 50 successive states from 0. -/
 private def splitMixSeeds : List UInt64 :=
@@ -54,6 +121,7 @@ private def splitMixSeeds : List UInt64 :=
   [0, 1, 9223372036854775808, maxU, gamma, 0 - gamma] ++ (List.range 40).map rw ++ chain.2
 
 def cases : IO Unit := do
+  intervalCases
   for xs in wordArrays do
     let values := xs.toArray
     line "libwordreductions" "productArray" "i64" [arrU xs]

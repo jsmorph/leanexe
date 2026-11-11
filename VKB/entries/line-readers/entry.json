@@ -1,0 +1,38 @@
+{
+  "id": "line-readers",
+  "goals": [
+    "readContest b = words of the specification's read of bytesOf b",
+    "findByte b c p e against List.splitOn",
+    "(slice b s e).splitOn c",
+    "read b = .error j r with j the least line for which faulty b j holds",
+    "∀ j', 1 ≤ j' → j' < j → faulty b j' = false",
+    "List.drop (j - 1) (b.splitOn lf)"
+  ],
+  "modules": [
+    "Demos.Rcv.ReadError"
+  ],
+  "declarations": [
+    "Demos.Rcv.ReadProgram.findByte",
+    "Demos.Rcv.ReadProgram.bytesOf",
+    "Demos.Rcv.ReadProgram.slice",
+    "Demos.Rcv.ReadProgram.findByte_spec",
+    "Demos.Rcv.ReadProgram.findByte_splitOn",
+    "Demos.Rcv.ReadProgram.findByte_split",
+    "Demos.Rcv.ReadProgram.piecesFrom",
+    "Demos.Rcv.ReadProgram.readLine_pieces",
+    "Demos.Rcv.Spec.lineOf",
+    "Demos.Rcv.Spec.faulty",
+    "Demos.Rcv.Spec.piecesAt",
+    "Demos.Rcv.Spec.takeLine_drop",
+    "Demos.Rcv.Spec.readLine_drop",
+    "Demos.Rcv.Spec.readCandidates_drop",
+    "List.splitOn_append_cons_self_of_not_mem",
+    "List.splitOn_eq_singleton",
+    "List.splitOnPPrepend"
+  ],
+  "examples": [
+    "Demos.Rcv.ReadProgram.readContest_eq",
+    "Demos.Rcv.ReadProgram.fieldsFrom_spec",
+    "Demos.Rcv.Spec.read_error_first"
+  ]
+}
