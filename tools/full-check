@@ -13,7 +13,8 @@
 #   4. tests/wasi/run.sh;
 #   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
-#   7. rocq/check.sh and tests/native/clight-rocq.sh on the programs of step 3;
+#   7. rocq/check.sh, tests/native/clight-rocq.sh on the programs of step 3, and
+#      clightn/check.sh --mutations;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
 #      --drivers-only, and tests/gpt32/native.sh;
 #   9. tests/talos/run.sh.
@@ -33,8 +34,9 @@
 # that AGENTS.md sets for the verified and WASI drivers.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
 # for the native and bare-metal drivers, NM and DTC as for tests/baremetal/run.sh, and QEMU and
 # JOBS as for tests/baremetal/verified.sh and tests/native/clight-rocq.sh.  COMPCERT_TREE names the
-# CompCert tree with built proofs for rocq/check.sh and tests/native/clight-rocq.sh, by default the
-# directory of CCOMP when CCOMP is a path.  The script exits with status 1 when a step fails.
+# CompCert tree with built proofs for rocq/check.sh, tests/native/clight-rocq.sh, and
+# clightn/check.sh, by default the directory of CCOMP when CCOMP is a path; clightn/check.sh runs
+# only on a tree configured for AArch64.  The script exits with status 1 when a step fails.
 # Usage: tools/full-check
 set -euo pipefail
 
@@ -547,6 +549,33 @@ step_rocq() {
   fi
 }
 
+# The reference semantics N describes AArch64, so its check runs only on a tree configured for
+# that target.
+step_clightn() {
+  local step='`clightn/check.sh --mutations`' cell="" arch found
+  ready "$step" coqc:coqc uv:uv || return 0
+  if [ -z "$tree" ] || [ ! -f "$tree/_CoqProject" ] || [ ! -f "$tree/driver/Compiler.vo" ]; then
+    record "$step" "not run: no CompCert tree with built proofs" "" ""
+    return 0
+  fi
+  arch=$(sed -n 's/^ARCH=//p' "$tree/Makefile.config")
+  if [ "$arch" != aarch64 ]; then
+    record "$step" "not run: the CompCert tree is configured for ${arch:-no architecture}" "" ""
+    return 0
+  fi
+  run 7-clightn clightn/check.sh --mutations "$tree"
+  found=$(last '^clightn: ([0-9]+) relations with ([0-9]+) constructors and ([0-9]+) statements agree in Rocq and Lean.*$' \
+    '\1 \2 \3' "$log")
+  if [ "$code" -eq 0 ] && [ -n "$found" ]; then
+    set -- $found
+    cell="$(nouns "$1" relation relations) with $(c "$2") constructors and"
+    cell+=" $(nouns "$3" statement statements) agree in Rocq and Lean, each proved in both;"
+    cell+=" $(matches '^clightn: the check found exactly the [0-9]+ planted differences$' "$log")"
+    cell+=" groups of planted errors reported"
+  fi
+  record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
 step_talos() {
   local step='`tests/talos/run.sh`' cell="" pass fail skip
   if ! have wasm-tools; then
@@ -658,7 +687,7 @@ write_status() {
   {
     echo "# Status"
     echo
-    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
+    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB, the Rocq proof, and the reference semantics N.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
     echo
     echo "| Item | Value |"
     echo "|---|---|"
@@ -765,6 +794,7 @@ main() {
   step_baremetal
   step_vkb
   step_rocq
+  step_clightn
   step_gpu
   step_talos
   finished=$(date -u '+%Y-%m-%d %H:%M UTC')
