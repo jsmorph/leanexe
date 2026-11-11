@@ -5,14 +5,17 @@
 """Renders the neutral specification of N into Rocq and Lean, and checks what each prover
 elaborated against it (clightn/README.md).
 
-  uv run clightn/nsx.py render SPEC ROCQ_OUT LEAN_OUT
-      writes the Rocq rendering (NSpec.v) and the Lean rendering (Spec.lean) of SPEC
-  uv run clightn/nsx.py rocq-reader SPEC OUT [--no-proofs]
+  uv run clightn/nsx.py render SPECS ROCQ_OUTS LEAN_OUTS
+      writes the Rocq rendering and the Lean rendering of each file of SPECS
+  uv run clightn/nsx.py rocq-reader SPECS OUT [--no-proofs]
       writes the Rocq file (NRead.v) whose output the check reads
-  uv run clightn/nsx.py check SPEC ROCQ_DIR LEAN_OUT [--no-proofs] [--expect KEY,...]
-      compares the Rocq printouts in ROCQ_DIR and the Lean printout LEAN_OUT with SPEC
+  uv run clightn/nsx.py check SPECS ROCQ_DIR LEAN_OUT [--no-proofs] [--expect KEY,...]
+      compares the Rocq printouts in ROCQ_DIR and the Lean printout LEAN_OUT with SPECS
   uv run clightn/nsx.py mutate GROUP SRC OUT
       writes SRC with the planted errors of GROUP and prints the differences they must cause
+
+SPECS, ROCQ_OUTS, and LEAN_OUTS are lists separated by commas: the specification of N, then the
+files that extend it, such as a program and its statement, each with its two renderings.
 
 The renderer is untrusted: the check reads back the terms that each prover elaborated, maps each
 constant through the symbol table of SPEC, and compares the result with SPEC after the expansion
@@ -22,6 +25,7 @@ fail.  With --expect, the check passes when the differences it finds are exactly
 import os
 import re
 import sys
+import threading
 
 WIDTH = 100
 ROCQ_SPEC, ROCQ_PROOF = "NSpec", "NProof"
@@ -38,7 +42,7 @@ class SpecError(Exception):
 
 
 def parse_all(text):
-    toks = re.findall(r"\(|\)|[^\s()]+", re.sub(r";[^\n]*", "", text))
+    toks = re.findall(r'\(|\)|"[A-Za-z0-9_]*"|[^\s()"]+', re.sub(r";[^\n]*", "", text))
     pos = 0
 
     def one():
@@ -75,47 +79,79 @@ def is_num(t):
     return isinstance(t, str) and re.fullmatch(r"\d+", t) is not None
 
 
+def is_str(t):
+    return isinstance(t, str) and re.fullmatch(r'"[A-Za-z0-9_]*"', t) is not None
+
+
 # ---------------------------------------------------------------------------------------------
 # The specification
 
 BINDERS = ("forall", "exists")
-CONNECTIVES = {"->": 2, "and": 2, "or": 2, "iff": 2, "not": 1, "=": 2, "Some": 1}
+CONNECTIVES = {"->": 2, "and": 2, "or": 2, "iff": 2, "not": 1, "=": 2, "Some": 1, "cons": 2,
+               "pair": 2}
+ATOMS = ("None", "nil")
 
 
 class Spec:
-    def __init__(self, path):
+    """The declarations of one or more files.  The first file renders to NSpec.v and Spec.lean;
+    each further file declares (part (rocq MODULE)) and renders to the Rocq module MODULE and a
+    Lean module of the namespace ClightN.Spec that imports Spec.lean."""
+
+    def __init__(self, paths):
         self.sorts, self.symbols, self.macros = {}, {}, {}
-        self.relations, self.statements = [], []
-        for d in parse_all(open(path).read()):
-            kind = d[0]
-            if kind in ("sort", "data", "base", "interp"):
-                names = {x[0]: x[1] for x in d[2:]}
-                if set(names) != {"rocq", "lean"}:
-                    raise SpecError(f"{d[1]}: needs a rocq and a lean name")
-                if d[1] in self.sorts or d[1] in self.symbols:
-                    raise SpecError(f"{d[1]}: declared twice")
-                (self.sorts if kind == "sort" else self.symbols)[d[1]] = names
-            elif kind == "macro":
-                self.macros[d[1]] = (d[2], d[3])
-            elif kind == "relation":
-                self.relations.append(
-                    (d[1], [(b[0], b[1]) for b in d[2]], d[3], [(c[1], c[2]) for c in d[4:]]))
-            elif kind == "statement":
-                self.statements.append((d[1], d[2]))
-            else:
-                raise SpecError(f"unknown declaration {kind}")
+        self.relations, self.statements, self.constants = [], [], []
+        self.modules = [ROCQ_SPEC]
+        for part, path in enumerate(paths):
+            for d in parse_all(open(path).read()):
+                kind = d[0]
+                if kind == "part":
+                    if part == 0 or len(self.modules) != part:
+                        raise SpecError("part: only the first declaration of a further file")
+                    self.modules.append(dict(x for x in d[1:])["rocq"])
+                    continue
+                if part > 0 and len(self.modules) != part + 1:
+                    raise SpecError(f"{path}: a further file starts with (part (rocq MODULE))")
+                if kind in ("sort", "data", "base", "interp"):
+                    names = {x[0]: x[1] for x in d[2:]}
+                    if set(names) != {"rocq", "lean"}:
+                        raise SpecError(f"{d[1]}: needs a rocq and a lean name")
+                    if d[1] in self.sorts or d[1] in self.symbols:
+                        raise SpecError(f"{d[1]}: declared twice")
+                    (self.sorts if kind == "sort" else self.symbols)[d[1]] = names
+                elif kind == "macro":
+                    self.macros[d[1]] = (d[2], d[3])
+                elif kind == "relation":
+                    if part > 0:
+                        raise SpecError(f"{d[1]}: relations belong in the first file")
+                    self.relations.append(
+                        (d[1], [(b[0], b[1]) for b in d[2]], d[3], [(c[1], c[2]) for c in d[4:]]))
+                elif kind == "statement":
+                    self.statements.append((d[1], d[2], part, None))
+                elif kind == "carried":
+                    self.statements.append((d[1], d[3], part, dict([d[2]])["rocq"]))
+                elif kind == "constant":
+                    if d[1] in self.symbols:
+                        raise SpecError(f"{d[1]}: declared twice")
+                    self.constants.append((d[1], d[2], d[3], part))
+                    self.symbols[d[1]] = {"rocq": f"{self.modules[part]}.cst_{d[1]}",
+                                          "lean": f"{LEAN_SPEC}.cst_{d[1]}", "constant": True}
+                else:
+                    raise SpecError(f"unknown declaration {kind}")
         for prover in ("rocq", "lean"):
             names = [show(n[prover]) for n in [*self.sorts.values(), *self.symbols.values()]]
             for n in names:
                 if names.count(n) > 1:
                     raise SpecError(f"{n}: the {prover} name of two symbols")
         self.rel_names = {r[0] for r in self.relations}
-        names = [c for r in self.relations for c, _ in r[3]] + [s for s, _ in self.statements]
+        names = [c for r in self.relations for c, _ in r[3]] + [s[0] for s in self.statements]
         taken = set(self.sorts) | set(self.symbols) | self.rel_names
         for name in names:
             if name in taken or names.count(name) > 1:
                 raise SpecError(f"{name}: declared twice")
-        self.ctors, self.bodies = {}, {}
+        self.relations = [(name, [(x, self.expand(s)) for x, s in params],
+                           [self.expand(s) for s in indices], ctors)
+                          for name, params, indices, ctors in self.relations]
+        self.ctors, self.bodies, self.values = {}, {}, {}
         for name, params, indices, ctors in self.relations:
             for s in [s for _, s in params] + indices:
                 self.check_sort(s)
@@ -131,7 +167,12 @@ class Spec:
                     raise SpecError(f"{c}: the conclusion must apply {name} to its parameters "
                                     "and indices")
                 self.ctors[c] = body
-        for name, f in self.statements:
+        for name, sort, value, _ in self.constants:
+            sort = self.expand(sort)
+            self.check_sort(sort)
+            self.values[name] = (sort, self.expand(value))
+            self.validate(self.values[name][1], set())
+        for name, f, _, _ in self.statements:
             self.bodies[name] = self.expand(f)
             self.validate(self.bodies[name], set())
 
@@ -157,27 +198,33 @@ class Spec:
         if isinstance(s, str):
             if s not in self.sorts:
                 raise SpecError(f"unknown sort {s}")
-        elif s[0] in ("option", "prod", "->") and len(s) == (2 if s[0] == "option" else 3):
+        elif s[0] in ("option", "list", "prod", "->") and \
+                len(s) == (2 if s[0] in ("option", "list") else 3):
             for x in s[1:]:
                 self.check_sort(x)
         else:
             raise SpecError(f"bad sort {show(s)}")
 
     def validate(self, t, bound):
-        """Every name of t is bound, a numeral, None, a symbol, or a relation in head position."""
+        """Every name of t is bound, a numeral, a string, None, nil, a symbol, or a relation in
+        head position, and (lit ident N) is a numeral of identifiers."""
         if isinstance(t, str):
-            if t in bound or is_num(t) or t == "None" or t in self.symbols:
+            if t in bound or is_num(t) or is_str(t) or t in ATOMS or t in self.symbols:
                 return
             raise SpecError(f"unknown name {t}")
         if not t:
             raise SpecError("empty application")
         h = t[0]
+        if h == "lit":
+            if len(t) != 3 or t[1] != "ident" or not is_num(t[2]) or t[2] == "0":
+                raise SpecError(f"bad numeral {show(t)}")
+            return
         if h in BINDERS:
             inner = set(bound)
             for x, s in t[1]:
                 self.check_sort(s)
                 if x in self.symbols or x in self.sorts or x in self.rel_names or is_num(x) \
-                        or x in CONNECTIVES or x in ("None", "_"):
+                        or x in CONNECTIVES or x in ATOMS or x in ("_", "lit"):
                     raise SpecError(f"bound name {x} is a symbol")
                 inner.add(x)
             return self.validate(t[2], inner)
@@ -211,12 +258,20 @@ def bound_names(t):
 # ---------------------------------------------------------------------------------------------
 # Rendering, with lines of at most WIDTH characters.  A document is a string or a group
 # (open, items, close), whose items go on one line when they fit and on separate lines otherwise.
+# Continuation lines are indented by the depth of their group, up to MAX_INDENT columns, so that
+# deep program literals keep their lines within WIDTH.
+
+MAX_INDENT = 40
+_FLAT = {}
 
 
 def flat(d):
     if isinstance(d, str):
         return d
-    return d[0] + " ".join(flat(x) for x in d[1]) + d[2]
+    k = id(d)
+    if k not in _FLAT:
+        _FLAT[k] = (d, d[0] + " ".join(flat(x) for x in d[1]) + d[2])
+    return _FLAT[k][1]
 
 
 def layout(d, col, indent, trail=0):
@@ -226,7 +281,7 @@ def layout(d, col, indent, trail=0):
     if isinstance(d, str) or col + len(f) + trail <= WIDTH:
         return f
     open_, items, close = d
-    inner = indent + 2
+    inner = min(indent + 2, MAX_INDENT)
     out = open_ + layout(items[0], col + len(open_), inner,
                          len(close) + trail if len(items) == 1 else 0)
     col = len(out.rsplit("\n", 1)[-1]) + (col if "\n" not in out else 0)
@@ -263,13 +318,18 @@ class Renderer:
                                            "(" + self.head(x) + ")" for x in h[1:])
 
     def sort(self, s):
+        """The document of the sort s."""
+        rocq = self.p == "rocq"
         if isinstance(s, str):
-            return self.spec.sorts[s][self.p]
-        if s[0] == "option":
-            return f"({'option' if self.p == 'rocq' else 'Option'} {self.sort(s[1])})"
-        if s[0] == "prod":
-            return f"({self.sort(s[1])} {'*' if self.p == 'rocq' else '×'} {self.sort(s[2])})"
-        return f"({self.sort(s[1])} {'->' if self.p == 'rocq' else '→'} {self.sort(s[2])})"
+            n = self.spec.sorts[s][self.p]
+            return n if isinstance(n, str) else ("(", self.head(n).split(" "), ")")
+        if s[0] in ("option", "list"):
+            return ("(", [s[0] if rocq else s[0].capitalize(), self.sort(s[1])], ")")
+        op = {"prod": ("*", "×"), "->": ("->", "→")}[s[0]][0 if rocq else 1]
+        return ("(", [self.sort(s[1]), (op + " ", [self.sort(s[2])], "")], ")")
+
+    def binding(self, x, s):
+        return ("(", [f"{x} :", self.sort(s)], ")")
 
     def term(self, t, bound):
         rocq = self.p == "rocq"
@@ -278,14 +338,20 @@ class Renderer:
                 return t
             if is_num(t):
                 return f"({t})%Z" if rocq else f"({t} : Int)"
+            if is_str(t):
+                return f"({t}%string)" if rocq else t
             if t == "None":
                 return "(@None _)" if rocq else "(@Option.none _)"
+            if t == "nil":
+                return "(@nil _)" if rocq else "(@List.nil _)"
             return self.name(t, False)
         h = t[0]
+        if h == "lit":
+            return f"({t[2]})%positive" if rocq else f"({t[2]} : LClight.ident)"
         if h in BINDERS:
             inner = bound | {x for x, _ in t[1]}
             q = {"forall": ("forall", "∀"), "exists": ("exists", "∃")}[h][0 if rocq else 1]
-            bs = [f"({x} : {self.sort(s)})" for x, s in t[1]]
+            bs = [self.binding(x, s) for x, s in t[1]]
             return ("(", [(q + " ", bs, ","), self.term(t[2], inner)], ")")
         args = [self.term(a, bound) for a in t[1:]]
         if h in ("->", "and", "or", "iff"):
@@ -294,65 +360,88 @@ class Renderer:
             return ("(", [args[0], (op + " ", [args[1]], "")], ")")
         if h == "not":
             return ("(", [("~ " if rocq else "¬ ", [args[0]], "")], ")")
-        if h == "=":
-            return ("(", ["@eq _" if rocq else "@Eq _"] + args, ")")
-        if h == "Some":
-            return ("(", ["@Some _" if rocq else "@Option.some _"] + args, ")")
+        fixed = {"=": ("@eq _", "@Eq _"), "Some": ("@Some _", "@Option.some _"),
+                 "cons": ("@cons _", "@List.cons _"), "pair": ("@pair _ _", "@Prod.mk _ _")}
+        if h in fixed:
+            return ("(", [fixed[h][0 if rocq else 1]] + args, ")")
         if h in self.spec.rel_names or h in bound:
             return ("(", [h] + args, ")")
         return ("(", [self.name(h, True)] + args, ")")
 
 
-def render(spec, rocq_path, lean_path):
-    out = {"rocq": ["(* Rendered by clightn/nsx.py from clightn/N.nsx.  Do not edit. *)",
-                    "From Coq Require Import ZArith.",
-                    "Require Coqlib Integers Values AST Memory Ctypes Cop Clight.",
-                    "Require NBase.", ""],
-           "lean": ["-- Rendered by clightn/nsx.py from clightn/N.nsx.  Do not edit.",
-                    "import LeanExe.Native.ClightN.Base", "", "set_option autoImplicit false", "",
-                    f"namespace {LEAN_SPEC}", ""]}
-    for p, lines in out.items():
-        r = Renderer(spec, p)
-        rocq = p == "rocq"
-        arrow = " ->" if rocq else " →"
-        for name, params, indices, ctors in spec.relations:
-            ps = "".join(f" ({x} : {r.sort(s)})" for x, s in params)
-            items = [r.sort(s) + arrow for s in indices] + ["Prop :=" if rocq else "Prop where"]
-            head = f"{'Inductive' if rocq else 'inductive'} {name}{ps} :"
-            lines.append(layout(("", [head] + items, ""), 0, 2))
-            for i, (c, _) in enumerate(ctors):
-                pre = f"  | {c} : "
-                end = "." if rocq and i == len(ctors) - 1 else ""
-                lines.append(pre + layout(r.term(spec.ctors[c], {x for x, _ in params}),
-                                          len(pre), 2, len(end)) + end)
-            lines.append("")
-        for name, _ in spec.statements:
+def render(spec, rocq_paths, lean_paths):
+    """Writes the rendering of each file of spec: the first to NSpec.v and Spec.lean, each
+    further one to its Rocq module and to a Lean module that imports Spec.lean."""
+    sys.setrecursionlimit(1000000)
+    for part, (rocq_path, lean_path) in enumerate(zip(rocq_paths, lean_paths)):
+        requires = "Require NBase." if part == 0 else "Require NBase NSpec.\nImport NSpec."
+        imports = "import LeanExe.Native.ClightN." + ("Base" if part == 0 else "Spec")
+        out = {"rocq": ["(* Rendered by clightn/nsx.py from the specification of N.  Do not "
+                        "edit. *)",
+                        "From Coq Require Import ZArith String.",
+                        "Require Coqlib Integers Floats Values AST Memory Events Ctypes Cop "
+                        "Clight ClightBigstep.", requires, ""],
+               "lean": ["-- Rendered by clightn/nsx.py from the specification of N.  Do not edit.",
+                        imports, "", "set_option autoImplicit false",
+                        "set_option maxRecDepth 100000", "", f"namespace {LEAN_SPEC}", ""]}
+        for p, lines in out.items():
+            r = Renderer(spec, p)
+            rocq = p == "rocq"
+            arrow = " ->" if rocq else " →"
+            for name, params, indices, ctors in (spec.relations if part == 0 else []):
+                ps = [r.binding(x, s) for x, s in params]
+                items = [("", [r.sort(s)], arrow) for s in indices] + \
+                    ["Prop :=" if rocq else "Prop where"]
+                head = [f"{'Inductive' if rocq else 'inductive'} {name}"] + ps + [":"]
+                lines.append(layout(("", head + items, ""), 0, 2))
+                for i, (c, _) in enumerate(ctors):
+                    pre = f"  | {c} : "
+                    end = "." if rocq and i == len(ctors) - 1 else ""
+                    lines.append(pre + layout(r.term(spec.ctors[c], {x for x, _ in params}),
+                                              len(pre), 2, len(end)) + end)
+                lines.append("")
             end = "." if rocq else ""
-            body = layout(r.term(spec.bodies[name], set()), 2, 2, len(end))
-            lines.append(f"Definition stmt_{name} : Prop :=" if rocq else f"def stmt_{name} : Prop :=")
-            lines.append("  " + body + end)
-            lines.append("")
-    out["lean"].append(f"end {LEAN_SPEC}")
-    open(rocq_path, "w").write("\n".join(out["rocq"]).rstrip() + "\n")
-    open(lean_path, "w").write("\n".join(out["lean"]).rstrip() + "\n")
+            for name, _, _, cpart in spec.constants:
+                if cpart != part:
+                    continue
+                sort, value = spec.values[name]
+                lines.append(layout(("", [f"{'Definition' if rocq else 'def'} cst_{name} :",
+                                          r.sort(sort), ":="], ""), 0, 2))
+                lines.append("  " + layout(r.term(value, set()), 2, 2, len(end)) + end)
+                lines.append("")
+            for name, _, spart, _ in spec.statements:
+                if spart != part:
+                    continue
+                body = layout(r.term(spec.bodies[name], set()), 2, 2, len(end))
+                lines.append(f"Definition stmt_{name} : Prop :=" if rocq else
+                             f"def stmt_{name} : Prop :=")
+                lines.append("  " + body + end)
+                lines.append("")
+        out["lean"].append(f"end {LEAN_SPEC}")
+        open(rocq_path, "w").write("\n".join(out["rocq"]).rstrip() + "\n")
+        open(lean_path, "w").write("\n".join(out["lean"]).rstrip() + "\n")
 
 
 def rocq_reader(spec, path, proofs=True):
+    carried = sorted({c.rsplit(".", 1)[0] for _, _, _, c in spec.statements if c})
+    requires = " ".join(["NBase"] + spec.modules + (["NProof"] + carried if proofs else []))
     lines = ["(* Generated by clightn/nsx.py: prints, for the check, the terms that Rocq",
              "   elaborated, with every argument explicit, one file for each. *)",
-             "Require NBase NSpec." + (" Require NProof." if proofs else ""),
-             "Require Compiler.", "Set Printing All.", "Set Printing Width 1000000.",
-             "Set Printing Depth 1000000."]
+             f"Require {requires}.", "Require Compiler.", "Set Printing All.",
+             "Set Printing Width 1000000.", "Set Printing Depth 1000000."]
     for name, _, _, ctors in spec.relations:
         lines.append(f'Redirect "rocq.relation.{name}" Print {ROCQ_SPEC}.{name}.')
         lines.append(f'Redirect "rocq.arity.{name}" Check @{ROCQ_SPEC}.{name}.')
         for c, _ in ctors:
             lines.append(f'Redirect "rocq.ctor.{c}" Check @{ROCQ_SPEC}.{c}.')
-    for name, _ in spec.statements:
-        lines.append(f'Redirect "rocq.statement.{name}" Print {ROCQ_SPEC}.stmt_{name}.')
+    for name, _, _, part in spec.constants:
+        lines.append(f'Redirect "rocq.constant.{name}" Print {spec.modules[part]}.cst_{name}.')
+    for name, _, part, thm in spec.statements:
+        lines.append(f'Redirect "rocq.statement.{name}" Print {spec.modules[part]}.stmt_{name}.')
         if proofs:
-            lines.append(f'Redirect "rocq.proof.{name}" Check {ROCQ_PROOF}.{name}.')
-            lines.append(f'Redirect "rocq.assumptions.{name}" Print Assumptions {ROCQ_PROOF}.{name}.')
+            thm = thm or f"{ROCQ_PROOF}.{name}"
+            lines.append(f'Redirect "rocq.proof.{name}" Check {thm}.')
+            lines.append(f'Redirect "rocq.assumptions.{name}" Print Assumptions {thm}.')
     lines.append('Redirect "rocq.reference" Print Assumptions Compiler.transf_c_program_correct.')
     open(path, "w").write("\n".join(lines) + "\n")
 
@@ -404,6 +493,8 @@ def spec_sort(s, scope=None):
 def spec_canon(t, scope):
     if isinstance(t, str):
         return lookup(scope, t) or t
+    if t[0] == "lit":
+        return t[2]
     if t[0] in BINDERS:
         return binder(t[0], t[1], t[2], scope, spec_sort, spec_canon)
     return [spec_canon(a, scope) for a in t]
@@ -421,7 +512,10 @@ def spec_forms(spec):
         for c, _ in ctors:
             body = spec.ctors[c]
             forms[("ctor", c)] = spec_canon(["forall", params, body] if params else body, [])
-    for name, _ in spec.statements:
+    for name, _, _, _ in spec.constants:
+        sort, value = spec.values[name]
+        forms[("constant", name)] = (spec_sort(sort), spec_canon(value, []))
+    for name, _, _, _ in spec.statements:
         forms[("statement", name)] = spec_canon(spec.bodies[name], [])
     return forms
 
@@ -511,15 +605,56 @@ def positive(t):
     raise SpecError(f"not a positive literal: {show(t)}")
 
 
+def is_positive(t):
+    return t == "BinNums.xH" or (isinstance(t, list) and len(t) == 2 and
+                                 t[0] in ("BinNums.xO", "BinNums.xI"))
+
+
+def rocq_string(t):
+    """The characters of a Rocq string, a tree of String.String and Ascii.Ascii."""
+    out = []
+    while t not in ("String.EmptyString", "EmptyString"):
+        if not (isinstance(t, list) and len(t) == 3 and t[0] in ("String.String", "String")):
+            raise SpecError(f"not a string literal: {show(t)}")
+        c = t[1]
+        if not (isinstance(c, list) and len(c) == 9 and c[0] in ("Ascii.Ascii", "Ascii")
+                and all(b in ("true", "false") for b in c[1:])):
+            raise SpecError(f"not a character literal: {show(c)}")
+        out.append(chr(sum(1 << i for i, b in enumerate(c[1:]) if b == "true")))
+        t = t[2]
+    s = '"' + "".join(out) + '"'
+    if not is_str(s):
+        raise SpecError(f"the string {s} has characters outside the language")
+    return s
+
+
+def heads_of(table_items):
+    """The names that are applications, longest first, with their neutral symbols."""
+    heads = [(n, name) for name, n in table_items if not isinstance(n, str)]
+    return sorted(heads, key=lambda h: -len(h[0]))
+
+
+def match_head(t, heads, term):
+    """The neutral form of the application t when its head is a fixed application of heads."""
+    for head, name in heads:
+        if t[:len(head)] == head:
+            return name if len(t) == len(head) else [name] + [term(a) for a in t[len(head):]]
+    return None
+
+
 class RocqNorm:
     def __init__(self, spec):
         self.table = {}
-        for name, names in list(spec.sorts.items()) + list(spec.symbols.items()):
-            self.table[names["rocq"]] = name
+        items = [(name, names["rocq"]) for name, names in
+                 list(spec.sorts.items()) + list(spec.symbols.items())]
+        for name, n in items:
+            if isinstance(n, str):
+                self.table[n] = name
+        self.heads = heads_of(items)
         for name in spec.rel_names:
             self.table[f"{ROCQ_SPEC}.{name}"] = name
-        for name, _ in spec.statements:
-            self.table[f"{ROCQ_SPEC}.stmt_{name}"] = "stmt_" + name
+        for name, _, part, _ in spec.statements:
+            self.table[f"{spec.modules[part]}.stmt_{name}"] = "stmt_" + name
         self.table["Prop"] = "Prop"
 
     def sort(self, s, scope):
@@ -533,6 +668,10 @@ class RocqNorm:
                 return level
             if name == "BinNums.Z0":
                 return "0"
+            if name == "BinNums.xH":
+                return "1"
+            if name in ("nil", "EmptyString", "String.EmptyString"):
+                return {"nil": "?nil"}.get(name, '""')
             return self.table.get(name, "?" + name)
         h = t[0]
         if h in ("forall", "fun"):
@@ -544,19 +683,33 @@ class RocqNorm:
         name = h.lstrip("@") if isinstance(h, str) else None
         if name == "BinNums.Zpos" and len(t) == 2:
             return str(positive(t[1]))
+        if is_positive(t):
+            return str(positive(t))
+        if name in ("String.String", "String"):
+            return rocq_string(t)
         if name == "eq" and len(t) == 4:
             return ["=", self.term(t[2], scope), self.term(t[3], scope)]
         if name == "Some" and len(t) == 3:
             return ["Some", self.term(t[2], scope)]
         if name == "None" and len(t) == 2:
             return "None"
+        if name == "nil" and len(t) == 2:
+            return "nil"
+        if name == "cons" and len(t) == 4:
+            return ["cons", self.term(t[2], scope), self.term(t[3], scope)]
+        if name == "pair" and len(t) == 5:
+            return ["pair", self.term(t[3], scope), self.term(t[4], scope)]
         if name == "ex" and len(t) == 3 and isinstance(t[2], list) and t[2][0] == "fun" \
                 and len(t[2][1]) == 1:
             return binder("exists", t[2][1], t[2][2], scope, self.sort, self.term)
         if name in ("and", "or", "iff", "not"):
             return [name] + [self.term(a, scope) for a in t[1:]]
-        if name in ("option", "prod"):
+        if name in ("option", "prod", "list"):
             return [name] + [self.term(a, scope) for a in t[1:]]
+        stripped = [name] + t[1:] if name else t
+        m = match_head(stripped, self.heads, lambda a: self.term(a, scope))
+        if m is not None:
+            return m
         return [self.term(a, scope) for a in t]
 
 
@@ -573,6 +726,14 @@ def rocq_check_output(text):
     if not m:
         raise SpecError(f"unexpected Check output: {text[:200]}")
     return m.group(1), m.group(2)
+
+
+def rocq_print_output(text):
+    """NAME, VALUE, and TYPE of the output 'NAME = VALUE\\n : TYPE' of Print."""
+    m = re.fullmatch(r"(\S+) =\s+(.*)\n\s+: ([^\n]*?)\s*", text, re.S)
+    if not m:
+        raise SpecError(f"unexpected Print output: {text[:200]}")
+    return m.group(1), m.group(2), m.group(3)
 
 
 def rocq_forms(spec, d, proofs):
@@ -605,19 +766,34 @@ def rocq_forms(spec, d, proofs):
             if text is not None:
                 n, ty = rocq_check_output(text)
                 got[("ctor", c)] = term(ty) if n == f"{ROCQ_SPEC}.{c}" else "?" + n
-    for name, _ in spec.statements:
+    for name, _, _, part in spec.constants:
+        text = rocq_file(d, f"rocq.constant.{name}")
+        if text is not None:
+            n, value, ty = rocq_print_output(text)
+            if n != f"{spec.modules[part]}.cst_{name}":
+                notes[("constant", name)] = f"unexpected Print output: {text[:200]}"
+            else:
+                got[("constant", name)] = (term(ty), term(value))
+    for name, _, part, thm in spec.statements:
         text = rocq_file(d, f"rocq.statement.{name}")
         if text is not None:
-            m = re.fullmatch(r"(\S+) = (.*)\n\s+: (\S+)\s*", text, re.S)
-            if not m or m.group(1) != f"{ROCQ_SPEC}.stmt_{name}" or m.group(3) != "Prop":
+            n, value, ty = rocq_print_output(text)
+            if n != f"{spec.modules[part]}.stmt_{name}" or ty != "Prop":
                 notes[("statement", name)] = f"unexpected Print output: {text[:200]}"
             else:
-                got[("statement", name)] = term(m.group(2))
+                got[("statement", name)] = term(value)
         if proofs:
             text = rocq_file(d, f"rocq.proof.{name}")
             if text is not None:
                 n, ty = rocq_check_output(text)
-                got[("proof", name)] = term(ty) if n == f"{ROCQ_PROOF}.{name}" else "?" + n
+                if n != (thm or f"{ROCQ_PROOF}.{name}"):
+                    got[("proof", name)] = "?" + n
+                elif thm is None:
+                    got[("proof", name)] = term(ty)
+                else:
+                    hyp = f"{spec.modules[part]}.stmt_{name}"
+                    got[("proof", name)] = ("stmt_" + name if first_premise(ty) == hyp
+                                            else "a theorem whose first premise is not " + hyp)
             text = rocq_file(d, f"rocq.assumptions.{name}")
             if text is not None:
                 got[("assumptions", name)] = assumption_names(text)
@@ -625,6 +801,19 @@ def rocq_forms(spec, d, proofs):
         ref = rocq_file(d, "rocq.reference")
         got["reference"] = assumption_names(ref) if ref is not None else None
     return got, notes
+
+
+def first_premise(ty):
+    """The first premise of the Rocq type ty, when it is a product whose first variable the
+    rest does not use."""
+    t = RocqParser(ty).whole()
+    if isinstance(t, list) and t[0] == "->":
+        return t[1]
+    if isinstance(t, list) and t[0] == "forall":
+        (x, s), rest = t[1][0], t[1][1:]
+        if x == "_" or not uses([t[0], rest, t[2]] if rest else t[2], x):
+            return s
+    return None
 
 
 def assumption_names(text):
@@ -635,16 +824,16 @@ def assumption_names(text):
 
 class LeanNorm:
     def __init__(self, spec):
-        self.table, self.heads = {}, []
-        for name, names in list(spec.sorts.items()) + list(spec.symbols.items()):
-            n = names["lean"]
+        self.table = {}
+        items = [(name, names["lean"]) for name, names in
+                 list(spec.sorts.items()) + list(spec.symbols.items())]
+        for name, n in items:
             if isinstance(n, str):
                 self.table[n] = name
-            else:
-                self.heads.append((n, name))
+        self.heads = heads_of(items)
         for name in spec.rel_names:
             self.table[f"{LEAN_SPEC}.{name}"] = name
-        for name, _ in spec.statements:
+        for name, _, _, _ in spec.statements:
             self.table[f"{LEAN_SPEC}.stmt_{name}"] = "stmt_" + name
         self.table["Prop"] = "Prop"
 
@@ -656,6 +845,8 @@ class LeanNorm:
             level = lookup(scope, t)
             if level:
                 return level
+            if is_str(t):
+                return t
             return self.table.get(t, "?" + t)
         h = t[0]
         if h in ("forall", "fun"):
@@ -667,23 +858,32 @@ class LeanNorm:
         if h == "OfNat.ofNat" and len(t) == 4 and t[1] == "Int" and t[2][0] == "lit" \
                 and t[3] == ["instOfNat", t[2]]:
             return t[2][1]
+        if h == "OfNat.ofNat" and len(t) == 4 and t[1] in ("Nat", "LClight.ident") \
+                and t[2][0] == "lit" and t[3] == ["instOfNatNat", t[2]]:
+            return t[2][1]
         if h == "Eq" and len(t) == 4:
             return ["=", self.term(t[2], scope), self.term(t[3], scope)]
         if h == "Option.some" and len(t) == 3:
             return ["Some", self.term(t[2], scope)]
         if h == "Option.none" and len(t) == 2:
             return "None"
+        if h == "List.nil" and len(t) == 2:
+            return "nil"
+        if h == "List.cons" and len(t) == 4:
+            return ["cons", self.term(t[2], scope), self.term(t[3], scope)]
+        if h == "Prod.mk" and len(t) == 5:
+            return ["pair", self.term(t[3], scope), self.term(t[4], scope)]
         if h == "Exists" and len(t) == 3 and isinstance(t[2], list) and t[2][0] == "fun" \
                 and len(t[2][1]) == 1:
             return binder("exists", [tuple(b) for b in t[2][1]], t[2][2], scope, self.sort,
                           self.term)
         conn = {"And": "and", "Or": "or", "Iff": "iff", "Not": "not", "Option": "option",
-                "Prod": "prod"}
+                "Prod": "prod", "List": "list"}
         if h in conn:
             return [conn[h]] + [self.term(a, scope) for a in t[1:]]
-        for head, name in self.heads:
-            if t[:len(head)] == head:
-                return [name] + [self.term(a, scope) for a in t[len(head):]]
+        m = match_head(t, self.heads, lambda a: self.term(a, scope))
+        if m is not None:
+            return m
         return [self.term(a, scope) for a in t]
 
 
@@ -708,12 +908,17 @@ def lean_forms(spec, path, proofs):
                 notes[("relation", name)] = "is unsafe"
         elif kind == "ctor":
             got[("ctor", full.rsplit(".", 1)[1])] = norm.term(d[2], [])
+        elif kind == "constant":
+            name = full.removeprefix(f"{LEAN_SPEC}.cst_")
+            got[("constant", name)] = (norm.term(d[3], []), norm.term(d[2], []))
+            if name not in spec.values:
+                notes[("constant", name)] = "is not in the specification"
         elif kind == "statement":
             name = full.removeprefix(f"{LEAN_SPEC}.stmt_")
             got[("statement", name)] = norm.term(d[2], [])
             if d[3] != "Prop":
                 notes[("statement", name)] = f"has the type {show(d[3])}"
-            if not any(n == name for n, _ in spec.statements):
+            if not any(s[0] == name for s in spec.statements):
                 notes[("statement", name)] = "is not in the specification"
         elif kind == "proof" and proofs:
             name = full.removeprefix(LEAN_PROOF + ".")
@@ -730,6 +935,10 @@ def lean_forms(spec, path, proofs):
 # ---------------------------------------------------------------------------------------------
 # The check
 
+# The assumption that the Rocq theorem of a carried statement may add to those of CompCert's
+# transf_c_program_correct: CompCert's argument about behaviors, as in rocq/check.sh.
+ROCQ_CARRIED_EXTRA = {"ClassicalEpsilon.constructive_indefinite_description"}
+
 
 def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
     want = spec_forms(spec)
@@ -739,6 +948,10 @@ def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
     def differ(prover, kind, name, message):
         found.add(f"{prover}:{kind}:{name}")
         reports.append(f"clightn: {prover}'s {kind} {name} {message}")
+
+    def brief(form):
+        text = show(form) if not isinstance(form, tuple) else " : ".join(map(show, form))
+        return text if len(text) <= 2000 else text[:2000] + " [cut]"
 
     for prover, (got, notes) in (("Rocq", rocq_forms(spec, rocq_dir, proofs)),
                                  ("Lean", lean_forms(spec, lean_out, proofs))):
@@ -750,14 +963,14 @@ def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
                     differ(prover, key[0], key[1], "was not printed")
             elif got[key] != form:
                 differ(prover, key[0], key[1], "differs from the specification\n"
-                       f"  spec: {show(form)}\n  {prover}: {show(got[key])}")
+                       f"  spec: {brief(form)}\n  {prover}: {brief(got[key])}")
         if not proofs:
             continue
         allowed = LEAN_AXIOMS if prover == "Lean" else got.get("reference")
         if allowed is None:
             differ(prover, "reference", "transf_c_program_correct", "was not printed")
             allowed = set()
-        for name, _ in spec.statements:
+        for name, _, _, thm in spec.statements:
             if ("proof", name) in notes:
                 continue
             if ("proof", name) not in got:
@@ -766,16 +979,19 @@ def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
                 differ(prover, "proof", name, f"proves {show(got[('proof', name)])}, "
                        f"not stmt_{name}")
             extra = got.get(("assumptions", name), set()) - allowed
+            if thm and prover == "Rocq":
+                extra -= ROCQ_CARRIED_EXTRA
             if extra:
                 differ(prover, "proof", name, f"assumes {' '.join(sorted(extra))}")
     for r in reports:
         print(r)
     nctors = sum(len(r[3]) for r in spec.relations)
-    counts = (f"{len(spec.relations)} relations with {nctors} constructors and "
-              f"{len(spec.statements)} statements")
+    ncarried = sum(1 for s in spec.statements if s[3])
+    counts = (f"{len(spec.relations)} relations with {nctors} constructors, "
+              f"{len(spec.constants)} constants, and {len(spec.statements)} statements")
     if expect is not None:
         if found == expect:
-            print(f"clightn: the check found exactly the {len(expect)} planted differences")
+            print(f"clightn: the check found exactly the planted differences, {len(expect)}")
             return 0
         print(f"clightn: planted but not found: {' '.join(sorted(expect - found)) or 'none'}")
         print(f"clightn: found but not planted: {' '.join(sorted(found - expect)) or 'none'}")
@@ -783,7 +999,11 @@ def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
     if found:
         print(f"clightn: {counts}; {len(found)} differences")
         return 1
-    if proofs:
+    if proofs and ncarried:
+        print(f"clightn: {counts} agree in Rocq and Lean; Lean proves every statement, Rocq "
+              f"proves every statement but {ncarried}, which a Rocq theorem takes as its premise, "
+              "and each proof has the permitted assumptions")
+    elif proofs:
         print(f"clightn: {counts} agree in Rocq and Lean; each statement is proved in both, with "
               "the permitted assumptions")
     else:
@@ -809,6 +1029,11 @@ MUTATIONS = {
          "(((@ClightN.Base.u64 x).toNat - (@ClightN.Base.u64 y).toNat : Nat) : Int)",
          "Lean:ctor:bo_sub_ul"),
         ("co_ui_vui", "Bool.true", "Bool.false", "Lean:ctor:co_ui_vui"),
+        ("nx_out", "init Bool.false Bool.true", "init Bool.false Bool.false", "Lean:ctor:nx_out"),
+        ("nx_seq1", "(@ClightN.Base.app t1 t2)", "(@ClightN.Base.app t2 t1)", "Lean:ctor:nx_seq1"),
+        ("np_intro", "(@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false)",
+         "(@LClight.calling_convention.mk (@Option.none _) Bool.true Bool.false)",
+         "Lean:ctor:np_intro"),
     ],
     "rocq-spec": [
         ("bo_mul_ul", "BinInt.Z.mul", "BinInt.Z.add", "Rocq:ctor:bo_mul_ul"),
@@ -817,6 +1042,19 @@ MUTATIONS = {
          "  | bv_extra : (forall (x : Integers.Int.int), (bool_ok\n"
          "      (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))\n"
          "      (@Values.Vint x) true))\n  | bv_ui_false :", "Rocq:constructors:bool_ok"),
+        ("nx_if_false", "(bool_ok ta v false)", "(bool_ok ta v true)", "Rocq:ctor:nx_if_false"),
+        ("nx_loop", "(@NBase.app t1 (@NBase.app t2 t3))", "(@NBase.app (@NBase.app t1 t2) t3)",
+         "Rocq:ctor:nx_loop"),
+        ("in_there", "((in_defs rest x g) -> (in_defs (@cons _ d rest) x g))",
+         "(in_defs (@cons _ d rest) x g)", "Rocq:ctor:in_there"),
+    ],
+    "lean-gcd": [
+        ("cst_gcd_trace", "(21 : Int)", "(22 : Int)", "Lean:constant:gcd_trace"),
+        ("cst_gcd_defs", "(1071 : Int)", "(1072 : Int)", "Lean:constant:gcd_defs"),
+    ],
+    "rocq-gcd": [
+        ("cst_gcd_main", "(22880918)%positive", "(22880919)%positive", "Rocq:constant:gcd_main"),
+        ("cst_gcd_defs", "(462)%Z", "(463)%Z", "Rocq:constant:gcd_defs"),
     ],
     "lean-proof": [
         ("lt_ul_ul", "theorem lt_ul_ul : stmt_lt_ul_ul := by",
@@ -838,6 +1076,16 @@ MUTATIONS = {
          "Theorem cast_ul_ui : stmt_cast_ul_ui.\nProof.\nAdmitted.\n\n"
          "Theorem cast_ul_ui_unused : stmt_cast_ul_ui.\nProof.", "Rocq:proof:cast_ul_ui"),
     ],
+    "lean-gcd-proof": [
+        ("gcd_terminates", "theorem gcd_terminates : stmt_gcd_terminates := by",
+         "theorem gcd_terminates : stmt_gcd_terminates := by\n  sorry\n\n"
+         "theorem gcd_terminates_unused : stmt_gcd_terminates := by", "Lean:proof:gcd_terminates"),
+    ],
+    "rocq-gcd-proof": [
+        ("gcd_asm", "  intros H p p1 p2 tp E1 E2 T D M P C.\n"
+         "  eapply Clight2Asm.clight2_bigstep_to_asm; eauto.\n"
+         "  eapply gcd_clight2; eauto.\nQed.", "Admitted.", "Rocq:proof:gcd_terminates"),
+    ],
 }
 
 DECL_START = r"^(\s*\| {name} :|(def|theorem|inductive|Definition|Theorem|Inductive) {name}\b)"
@@ -846,7 +1094,7 @@ DECL_NEXT = r"^(\s*\| \S+ :|(def|theorem|inductive|Definition|Theorem|Lemma|Indu
 
 def mutate(group, src, out):
     """Writes SRC with the planted errors of GROUP to OUT, and prints the differences that the
-    check must report.  A Lean file also imports the reader and calls it."""
+    check must report.  A Lean file also imports the reader and calls it, unless it does."""
     text = open(src).read()
     keys = []
     for decl, old, new, key in MUTATIONS[group]:
@@ -861,7 +1109,7 @@ def mutate(group, src, out):
             raise SpecError(f"{group}: {decl} holds the text to replace {block.count(old)} times")
         text = text[:m.start()] + block.replace(old, new) + text[end:]
         keys.append(key)
-    if group.startswith("lean"):
+    if group.startswith("lean") and "run_cmd ClightN.Read.dump" not in text:
         lines = text.split("\n")
         last = max(i for i, l in enumerate(lines) if l.startswith("import "))
         lines.insert(last + 1, "import LeanExe.Native.ClightN.Read")
@@ -870,7 +1118,11 @@ def mutate(group, src, out):
     print(",".join(keys))
 
 
-def main(argv):
+def specs(arg):
+    return Spec(arg.split(","))
+
+
+def run(argv):
     try:
         cmd, args = argv[1], argv[2:]
         flags = {a for a in args if a == "--no-proofs"}
@@ -881,11 +1133,11 @@ def main(argv):
             args = args[:i] + args[i + 2:]
         args = [a for a in args if a not in flags]
         if cmd == "render" and len(args) == 3:
-            render(Spec(args[0]), args[1], args[2])
+            render(specs(args[0]), args[1].split(","), args[2].split(","))
         elif cmd == "rocq-reader" and len(args) == 2:
-            rocq_reader(Spec(args[0]), args[1], "--no-proofs" not in flags)
+            rocq_reader(specs(args[0]), args[1], "--no-proofs" not in flags)
         elif cmd == "check" and len(args) == 3:
-            return check(Spec(args[0]), args[1], args[2], "--no-proofs" not in flags, expect)
+            return check(specs(args[0]), args[1], args[2], "--no-proofs" not in flags, expect)
         elif cmd == "mutate" and len(args) == 3:
             mutate(*args)
         else:
@@ -895,6 +1147,18 @@ def main(argv):
         print(f"clightn: {e}", file=sys.stderr)
         return 1
     return 0
+
+
+def main(argv):
+    """Runs the command on a thread with a large stack, since the terms of a program literal nest
+    deeply."""
+    sys.setrecursionlimit(1000000)
+    threading.stack_size(1 << 29)
+    result = []
+    t = threading.Thread(target=lambda: result.append(run(argv)))
+    t.start()
+    t.join()
+    return result[0] if result else 1
 
 
 if __name__ == "__main__":

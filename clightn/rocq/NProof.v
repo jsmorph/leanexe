@@ -6,7 +6,7 @@
    AArch64.  Lean proves the same statements of the Lean copy of Clight
    (LeanExe/Native/ClightN/Laws.lean and Leaf.lean). *)
 From Coq Require Import ZArith Lia Znumtheory.
-Require Import Coqlib Integers Values Memory Ctypes Cop Clight.
+Require Import Coqlib Integers Floats Values Memory Ctypes Cop Clight.
 Require Import NBase NSpec.
 
 Local Open Scope Z_scope.
@@ -883,3 +883,37 @@ Proof.
   - intros ->. constructor.
 Qed.
 
+
+(** * Laws of pointer offsets, traces, and floating-point bits *)
+
+Theorem uptr_range : stmt_uptr_range.
+Proof.
+  intros x. pose proof (Ptrofs.unsigned_range x). unfold uptr.
+  change Ptrofs.modulus with 18446744073709551616 in H. lia.
+Qed.
+
+Theorem uptr_rptr : stmt_uptr_rptr.
+Proof.
+  intros z. unfold uptr, rptr, zmod. rewrite Ptrofs.unsigned_repr_eq. reflexivity.
+Qed.
+
+Theorem rptr_uptr : stmt_rptr_uptr.
+Proof. intros x. apply Ptrofs.repr_unsigned. Qed.
+
+Theorem app_nil : stmt_app_nil.
+Proof. intros t. reflexivity. Qed.
+
+Theorem app_cons : stmt_app_cons.
+Proof. intros e t1 t2. reflexivity. Qed.
+
+Theorem f64_bits_of_bits : stmt_f64_bits_of_bits.
+Proof. intros x. apply Float.to_of_bits. Qed.
+
+Theorem f64_of_bits_bits : stmt_f64_of_bits_bits.
+Proof. intros f. apply Float.of_to_bits. Qed.
+
+Theorem f32_bits_of_bits : stmt_f32_bits_of_bits.
+Proof. intros x. apply Float32.to_of_bits. Qed.
+
+Theorem f32_of_bits_bits : stmt_f32_of_bits_bits.
+Proof. intros f. apply Float32.of_to_bits. Qed.

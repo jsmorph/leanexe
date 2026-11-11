@@ -149,4 +149,40 @@ theorem lxor_nonneg : stmt_lxor_nonneg := by
   intro a b _ _
   exact Int.natCast_nonneg _
 
+theorem modulusPtr : LClight.Ptrofs.modulus LClight.Archi.aarch64 = 18446744073709551616 := rfl
+
+theorem uptr_range : stmt_uptr_range := by
+  intro x
+  have := x.toNat_lt
+  simp only [uptr, LClight.Ptrofs.unsigned, Nat.reducePow] at *
+  omega
+
+theorem uptr_rptr : stmt_uptr_rptr := by
+  intro z
+  have h0 : 0 ≤ z % 18446744073709551616 := Int.emod_nonneg _ (by decide)
+  have h1 : z % 18446744073709551616 < 18446744073709551616 := Int.emod_lt_of_pos _ (by decide)
+  simp only [uptr, rptr, zmod, LClight.Ptrofs.unsigned, LClight.Ptrofs.repr, modulusPtr,
+    UInt64.toNat_ofNat', Nat.reducePow]
+  omega
+
+theorem rptr_uptr : stmt_rptr_uptr := by
+  intro x
+  have := x.toNat_lt
+  simp only [Nat.reducePow] at this
+  have h : ((x.toNat : Int) % 18446744073709551616).toNat = x.toNat := by omega
+  simp only [rptr, uptr, LClight.Ptrofs.repr, LClight.Ptrofs.unsigned, modulusPtr, h,
+    UInt64.ofNat_toNat]
+
+theorem app_nil : stmt_app_nil := fun _ => rfl
+
+theorem app_cons : stmt_app_cons := fun _ _ _ => rfl
+
+theorem f64_bits_of_bits : stmt_f64_bits_of_bits := fun _ => rfl
+
+theorem f64_of_bits_bits : stmt_f64_of_bits_bits := fun _ => rfl
+
+theorem f32_bits_of_bits : stmt_f32_bits_of_bits := fun _ => rfl
+
+theorem f32_of_bits_bits : stmt_f32_of_bits_bits := fun _ => rfl
+
 end ClightN.Proof

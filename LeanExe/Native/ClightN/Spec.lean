@@ -1,7 +1,8 @@
--- Rendered by clightn/nsx.py from clightn/N.nsx.  Do not edit.
+-- Rendered by clightn/nsx.py from the specification of N.  Do not edit.
 import LeanExe.Native.ClightN.Base
 
 set_option autoImplicit false
+set_option maxRecDepth 100000
 
 namespace ClightN.Spec
 
@@ -545,6 +546,464 @@ inductive bool_ok : LClight.type → LClight.val → Bool → Prop where
       → (bool_ok
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
             (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vint x) Bool.false)))
+
+inductive in_defs :
+    (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))) →
+    LClight.ident → (@LClight.globdef (@LClight.fundef LClight.function) LClight.type) → Prop where
+  | in_here : (∀ (x : LClight.ident)
+      (g : (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))
+      (rest :
+        (List
+          (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)))),
+    (in_defs (@List.cons _ (@Prod.mk _ _ x g) rest) x g))
+  | in_there : (∀ (d :
+        (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)))
+      (rest :
+        (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))))
+      (x : LClight.ident) (g : (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)),
+    ((in_defs rest x g) → (in_defs (@List.cons _ d rest) x g)))
+
+inductive out_defs : LClight.ident →
+    (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))) →
+    Prop where
+  | od_nil : (∀ (x : LClight.ident), (out_defs x (@List.nil _)))
+  | od_cons : (∀ (x : LClight.ident) (y : LClight.ident)
+      (g : (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))
+      (rest :
+        (List
+          (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)))),
+    ((¬ (@Eq _ x y)) → ((out_defs x rest) → (out_defs x (@List.cons _ (@Prod.mk _ _ y g) rest)))))
+
+inductive norepet_defs :
+    (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))) →
+    Prop where
+  | nd_nil : (norepet_defs (@List.nil _))
+  | nd_cons : (∀ (x : LClight.ident)
+      (g : (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))
+      (rest :
+        (List
+          (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)))),
+    ((out_defs x rest)
+      → ((norepet_defs rest) → (norepet_defs (@List.cons _ (@Prod.mk _ _ x g) rest)))))
+
+inductive out_names : LClight.ident → (List (LClight.ident × LClight.type)) → Prop where
+  | on_nil : (∀ (x : LClight.ident), (out_names x (@List.nil _)))
+  | on_cons : (∀ (x : LClight.ident) (y : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))),
+    ((¬ (@Eq _ x y))
+      → ((out_names x rest) → (out_names x (@List.cons _ (@Prod.mk _ _ y ty) rest)))))
+
+inductive norepet_names : (List (LClight.ident × LClight.type)) → Prop where
+  | nn_nil : (norepet_names (@List.nil _))
+  | nn_cons : (∀ (x : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))),
+    ((out_names x rest)
+      → ((norepet_names rest) → (norepet_names (@List.cons _ (@Prod.mk _ _ x ty) rest)))))
+
+inductive disjoint_names : (List (LClight.ident × LClight.type)) →
+    (List (LClight.ident × LClight.type)) → Prop where
+  | dn_nil : (∀ (l : (List (LClight.ident × LClight.type))), (disjoint_names (@List.nil _) l))
+  | dn_cons : (∀ (x : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))) (l : (List (LClight.ident × LClight.type))),
+    ((out_names x l)
+      → ((disjoint_names rest l) → (disjoint_names (@List.cons _ (@Prod.mk _ _ x ty) rest) l))))
+
+inductive params_types : (List (LClight.ident × LClight.type)) → (List LClight.type) → Prop where
+  | pt_nil : (params_types (@List.nil _) (@List.nil _))
+  | pt_cons : (∀ (x : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))) (tys : (List LClight.type)),
+    ((params_types rest tys)
+      → (params_types (@List.cons _ (@Prod.mk _ _ x ty) rest) (@List.cons _ ty tys))))
+
+inductive undef_temps : (List (LClight.ident × LClight.type)) →
+    (LClight.ident → (Option LClight.val)) → Prop where
+  | ut_nil : (∀ (le : (LClight.ident → (Option LClight.val))),
+    ((∀ (x : LClight.ident), (@Eq _ (le x) (@Option.none _))) → (undef_temps (@List.nil _) le)))
+  | ut_cons : (∀ (x : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))) (le0 : (LClight.ident → (Option LClight.val)))
+      (le : (LClight.ident → (Option LClight.val))),
+    ((undef_temps rest le0)
+      → ((∀ (x_upd : LClight.ident),
+            (((@Eq _ x_upd x) → (@Eq _ (le x_upd) (@Option.some _ LClight.val.Vundef)))
+              ∧ ((¬ (@Eq _ x_upd x)) → (@Eq _ (le x_upd) (le0 x_upd)))))
+          → (undef_temps (@List.cons _ (@Prod.mk _ _ x ty) rest) le))))
+
+inductive bind_params : (List (LClight.ident × LClight.type)) → (List LClight.val) →
+    (LClight.ident → (Option LClight.val)) → (LClight.ident → (Option LClight.val)) → Prop where
+  | bp_nil : (∀ (le : (LClight.ident → (Option LClight.val))),
+    (bind_params (@List.nil _) (@List.nil _) le le))
+  | bp_cons : (∀ (x : LClight.ident) (ty : LClight.type)
+      (rest : (List (LClight.ident × LClight.type))) (v : LClight.val) (vs : (List LClight.val))
+      (le : (LClight.ident → (Option LClight.val))) (le1 : (LClight.ident → (Option LClight.val)))
+      (le2 : (LClight.ident → (Option LClight.val))),
+    ((∀ (x_upd : LClight.ident),
+        (((@Eq _ x_upd x) → (@Eq _ (le1 x_upd) (@Option.some _ v)))
+          ∧ ((¬ (@Eq _ x_upd x)) → (@Eq _ (le1 x_upd) (le x_upd)))))
+      → ((bind_params rest vs le1 le2)
+          → (bind_params (@List.cons _ (@Prod.mk _ _ x ty) rest) (@List.cons _ v vs) le le2))))
+
+inductive set_opt : (Option LClight.ident) → LClight.val → (LClight.ident → (Option LClight.val)) →
+    (LClight.ident → (Option LClight.val)) → Prop where
+  | so_none : (∀ (v : LClight.val) (le : (LClight.ident → (Option LClight.val))),
+    (set_opt (@Option.none _) v le le))
+  | so_some : (∀ (x : LClight.ident) (v : LClight.val) (le : (LClight.ident → (Option LClight.val)))
+      (le2 : (LClight.ident → (Option LClight.val))),
+    ((∀ (x_upd : LClight.ident),
+        (((@Eq _ x_upd x) → (@Eq _ (le2 x_upd) (@Option.some _ v)))
+          ∧ ((¬ (@Eq _ x_upd x)) → (@Eq _ (le2 x_upd) (le x_upd)))))
+      → (set_opt (@Option.some _ x) v le le2)))
+
+inductive has_type : LClight.expr → LClight.type → Prop where
+  | ht_int : (∀ (i : UInt32) (ty : LClight.type), (has_type (@LClight.expr.Econst_int i ty) ty))
+  | ht_long : (∀ (i : UInt64) (ty : LClight.type), (has_type (@LClight.expr.Econst_long i ty) ty))
+  | ht_float : (∀ (f : LClight.float) (ty : LClight.type),
+    (has_type (@LClight.expr.Econst_float f ty) ty))
+  | ht_single : (∀ (f : LClight.float32) (ty : LClight.type),
+    (has_type (@LClight.expr.Econst_single f ty) ty))
+  | ht_temp : (∀ (x : LClight.ident) (ty : LClight.type),
+    (has_type (@LClight.expr.Etempvar x ty) ty))
+  | ht_var : (∀ (x : LClight.ident) (ty : LClight.type), (has_type (@LClight.expr.Evar x ty) ty))
+  | ht_binop : (∀ (op : LClight.binary_operation) (a1 : LClight.expr) (a2 : LClight.expr)
+      (ty : LClight.type), (has_type (@LClight.expr.Ebinop op a1 a2 ty) ty))
+  | ht_cast : (∀ (a : LClight.expr) (ty : LClight.type), (has_type (@LClight.expr.Ecast a ty) ty))
+
+inductive scalar : LClight.type → Prop where
+  | sc_ui : (scalar
+    (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+      (@LClight.attr.mk Bool.false (@Option.none _))))
+  | sc_ul : (scalar
+    (@LClight.type.Tlong LClight.signedness.Unsigned
+      (@LClight.attr.mk Bool.false (@Option.none _))))
+
+inductive gval : LClight.type → LClight.val → Prop where
+  | gv_ui : (∀ (x : UInt32),
+    (gval
+      (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vint x)))
+  | gv_ul : (∀ (x : UInt64),
+    (gval
+      (@LClight.type.Tlong LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vlong x)))
+
+inductive ginit : LClight.type → (List LClight.init_data) → LClight.val → Prop where
+  | gi_ui : (∀ (x : UInt32),
+    (ginit
+      (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@List.cons _ (@LClight.init_data.Init_int32 x) (@List.nil _)) (@LClight.val.Vint x)))
+  | gi_ul : (∀ (x : UInt64),
+    (ginit
+      (@LClight.type.Tlong LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@List.cons _ (@LClight.init_data.Init_int64 x) (@List.nil _)) (@LClight.val.Vlong x)))
+
+inductive init_ok : (List LClight.init_data) → Prop where
+  | io_nil : (init_ok (@List.nil _))
+  | io_int32 : (∀ (x : UInt32),
+    (init_ok (@List.cons _ (@LClight.init_data.Init_int32 x) (@List.nil _))))
+  | io_int64 : (∀ (x : UInt64),
+    (init_ok (@List.cons _ (@LClight.init_data.Init_int64 x) (@List.nil _))))
+  | io_space : (∀ (n : Int),
+    (init_ok (@List.cons _ (@LClight.init_data.Init_space n) (@List.nil _))))
+
+inductive result_ok : LClight.outcome → LClight.type → LClight.val → Prop where
+  | rs_normal : (result_ok LClight.outcome.Out_normal LClight.type.Tvoid LClight.val.Vundef)
+  | rs_none : (result_ok (@LClight.outcome.Out_return (@Option.none _)) LClight.type.Tvoid
+    LClight.val.Vundef)
+  | rs_some : (∀ (v : LClight.val) (t : LClight.type) (ty : LClight.type) (v2 : LClight.val),
+    ((¬ (@Eq _ ty LClight.type.Tvoid))
+      → ((cast_ok t ty v v2)
+          → (result_ok (@LClight.outcome.Out_return (@Option.some _ (@Prod.mk _ _ v t))) ty v2))))
+
+inductive neval
+    (defs :
+      (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))))
+    (le : (LClight.ident → (Option LClight.val))) (gv : (LClight.ident → (Option LClight.val))) :
+    LClight.expr → LClight.val → Prop where
+  | nv_int : (∀ (i : UInt32) (ty : LClight.type),
+    (neval defs le gv (@LClight.expr.Econst_int i ty) (@LClight.val.Vint i)))
+  | nv_long : (∀ (i : UInt64) (ty : LClight.type),
+    (neval defs le gv (@LClight.expr.Econst_long i ty) (@LClight.val.Vlong i)))
+  | nv_float : (∀ (f : LClight.float) (ty : LClight.type),
+    (neval defs le gv (@LClight.expr.Econst_float f ty) (@LClight.val.Vfloat f)))
+  | nv_single : (∀ (f : LClight.float32) (ty : LClight.type),
+    (neval defs le gv (@LClight.expr.Econst_single f ty) (@LClight.val.Vsingle f)))
+  | nv_temp : (∀ (x : LClight.ident) (ty : LClight.type) (v : LClight.val),
+    ((@Eq _ (le x) (@Option.some _ v)) → (neval defs le gv (@LClight.expr.Etempvar x ty) v)))
+  | nv_global : (∀ (x : LClight.ident) (ty : LClight.type) (init : (List LClight.init_data))
+      (v : LClight.val),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type ty init Bool.false Bool.false)))
+      → ((scalar ty)
+          → ((@Eq _ (gv x) (@Option.some _ v)) → (neval defs le gv (@LClight.expr.Evar x ty) v)))))
+  | nv_binop : (∀ (op : LClight.binary_operation) (a1 : LClight.expr) (a2 : LClight.expr)
+      (ty : LClight.type) (t1 : LClight.type) (t2 : LClight.type) (v1 : LClight.val)
+      (v2 : LClight.val) (v : LClight.val),
+    ((neval defs le gv a1 v1)
+      → ((has_type a1 t1)
+          → ((neval defs le gv a2 v2)
+              → ((has_type a2 t2)
+                  → ((binop_ok op t1 t2 v1 v2 v)
+                      → (neval defs le gv (@LClight.expr.Ebinop op a1 a2 ty) v)))))))
+  | nv_cast : (∀ (a : LClight.expr) (ty : LClight.type) (t1 : LClight.type) (v1 : LClight.val)
+      (v : LClight.val),
+    ((neval defs le gv a v1)
+      → ((has_type a t1)
+          → ((cast_ok t1 ty v1 v) → (neval defs le gv (@LClight.expr.Ecast a ty) v)))))
+
+inductive neval_list
+    (defs :
+      (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))))
+    (le : (LClight.ident → (Option LClight.val))) (gv : (LClight.ident → (Option LClight.val))) :
+    (List LClight.expr) → (List LClight.type) → (List LClight.val) → Prop where
+  | nl_nil : (neval_list defs le gv (@List.nil _) (@List.nil _) (@List.nil _))
+  | nl_cons : (∀ (a : LClight.expr) (al : (List LClight.expr)) (ty : LClight.type)
+      (tys : (List LClight.type)) (t1 : LClight.type) (v1 : LClight.val) (v : LClight.val)
+      (vs : (List LClight.val)),
+    ((neval defs le gv a v1)
+      → ((has_type a t1)
+          → ((cast_ok t1 ty v1 v)
+              → ((neval_list defs le gv al tys vs)
+                  → (neval_list defs le gv (@List.cons _ a al) (@List.cons _ ty tys)
+                      (@List.cons _ v vs)))))))
+
+inductive nexec
+    (defs :
+      (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type)))) :
+    (LClight.ident → (Option LClight.val)) → (LClight.ident → (Option LClight.val)) →
+    LClight.statement → (List LClight.event) → (LClight.ident → (Option LClight.val)) →
+    (LClight.ident → (Option LClight.val)) → LClight.outcome → Prop where
+  | nx_skip : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))),
+    (nexec defs le gv LClight.statement.Sskip (@List.nil _) le gv LClight.outcome.Out_normal))
+  | nx_set : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (x : LClight.ident) (a : LClight.expr)
+      (v : LClight.val) (le2 : (LClight.ident → (Option LClight.val))),
+    ((neval defs le gv a v)
+      → ((∀ (x_upd : LClight.ident),
+            (((@Eq _ x_upd x) → (@Eq _ (le2 x_upd) (@Option.some _ v)))
+              ∧ ((¬ (@Eq _ x_upd x)) → (@Eq _ (le2 x_upd) (le x_upd)))))
+          → (nexec defs le gv (@LClight.statement.Sset x a) (@List.nil _) le2 gv
+              LClight.outcome.Out_normal))))
+  | nx_store : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (x : LClight.ident) (ty : LClight.type)
+      (init : (List LClight.init_data)) (a : LClight.expr) (t1 : LClight.type) (v1 : LClight.val)
+      (v : LClight.val) (gv2 : (LClight.ident → (Option LClight.val))),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type ty init Bool.false Bool.false)))
+      → ((scalar ty)
+          → ((neval defs le gv a v1)
+              → ((has_type a t1)
+                  → ((cast_ok t1 ty v1 v)
+                      → ((gval ty v)
+                          → ((∀ (x_upd : LClight.ident),
+                                (((@Eq _ x_upd x) → (@Eq _ (gv2 x_upd) (@Option.some _ v)))
+                                  ∧ ((¬ (@Eq _ x_upd x)) → (@Eq _ (gv2 x_upd) (gv x_upd)))))
+                              → (nexec defs le gv
+                                  (@LClight.statement.Sassign (@LClight.expr.Evar x ty) a)
+                                  (@List.nil _) le gv2 LClight.outcome.Out_normal)))))))))
+  | nx_out : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (x : LClight.ident)
+      (init : (List LClight.init_data)) (a : LClight.expr) (t1 : LClight.type) (v1 : LClight.val)
+      (i : UInt32),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type
+            (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+              (@LClight.attr.mk Bool.true (@Option.none _))) init Bool.false Bool.true)))
+      → ((neval defs le gv a v1)
+          → ((has_type a t1)
+              → ((cast_ok t1
+                    (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+                      (@LClight.attr.mk Bool.true (@Option.none _))) v1 (@LClight.val.Vint i))
+                  → (nexec defs le gv
+                      (@LClight.statement.Sbuiltin (@Option.none _)
+                        (@LClight.external_function.EF_vstore LClight.memory_chunk.Mint32)
+                        (@List.cons _
+                          (@LClight.type.Tpointer
+                            (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+                              (@LClight.attr.mk Bool.true (@Option.none _)))
+                            (@LClight.attr.mk Bool.false (@Option.none _)))
+                          (@List.cons _
+                            (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+                              (@LClight.attr.mk Bool.true (@Option.none _))) (@List.nil _)))
+                        (@List.cons _
+                          (@LClight.expr.Eaddrof
+                            (@LClight.expr.Evar x
+                              (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+                                (@LClight.attr.mk Bool.true (@Option.none _))))
+                            (@LClight.type.Tpointer
+                              (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+                                (@LClight.attr.mk Bool.true (@Option.none _)))
+                              (@LClight.attr.mk Bool.false (@Option.none _))))
+                          (@List.cons _ a (@List.nil _))))
+                      (@List.cons _
+                        (@LClight.event.Event_vstore LClight.memory_chunk.Mint32 x
+                          (@ClightN.Base.rptr (0 : Int)) (@LClight.eventval.EVint i)) (@List.nil _))
+                      le gv LClight.outcome.Out_normal))))))
+  | nx_call : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (optid : (Option LClight.ident))
+      (x : LClight.ident) (tys : (List LClight.type)) (ret : LClight.type)
+      (cc : LClight.calling_convention) (al : (List LClight.expr)) (vs : (List LClight.val))
+      (params : (List (LClight.ident × LClight.type)))
+      (temps : (List (LClight.ident × LClight.type))) (body : LClight.statement)
+      (le0 : (LClight.ident → (Option LClight.val))) (le1 : (LClight.ident → (Option LClight.val)))
+      (t : (List LClight.event)) (le2 : (LClight.ident → (Option LClight.val)))
+      (gv2 : (LClight.ident → (Option LClight.val))) (out : LClight.outcome) (v : LClight.val)
+      (le3 : (LClight.ident → (Option LClight.val))),
+    ((in_defs defs x
+        (@LClight.globdef.Gfun (@LClight.fundef LClight.function) LClight.type
+          (@LClight.fundef.Internal LClight.function
+            (@LClight.function.mk ret cc params (@List.nil _) temps body))))
+      → ((params_types params tys)
+          → ((neval_list defs le gv al tys vs)
+              → ((norepet_names params)
+                  → ((disjoint_names params temps)
+                      → ((undef_temps temps le0)
+                          → ((bind_params params vs le0 le1)
+                              → ((nexec defs le1 gv body t le2 gv2 out)
+                                  → ((result_ok out ret v)
+                                      → ((set_opt optid v le le3)
+                                        → (nexec defs le gv
+                                        (@LClight.statement.Scall optid
+                                        (@LClight.expr.Evar x (@LClight.type.Tfunction tys ret cc))
+                                        al) t le3 gv2 LClight.outcome.Out_normal))))))))))))
+  | nx_seq1 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (s1 : LClight.statement)
+      (s2 : LClight.statement) (t1 : (List LClight.event))
+      (le1 : (LClight.ident → (Option LClight.val))) (gv1 : (LClight.ident → (Option LClight.val)))
+      (t2 : (List LClight.event)) (le2 : (LClight.ident → (Option LClight.val)))
+      (gv2 : (LClight.ident → (Option LClight.val))) (out : LClight.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 LClight.outcome.Out_normal)
+      → ((nexec defs le1 gv1 s2 t2 le2 gv2 out)
+          → (nexec defs le gv (@LClight.statement.Ssequence s1 s2) (@ClightN.Base.app t1 t2) le2 gv2
+              out))))
+  | nx_seq2 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (s1 : LClight.statement)
+      (s2 : LClight.statement) (t1 : (List LClight.event))
+      (le1 : (LClight.ident → (Option LClight.val))) (gv1 : (LClight.ident → (Option LClight.val)))
+      (out : LClight.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out)
+      → ((¬ (@Eq _ out LClight.outcome.Out_normal))
+          → (nexec defs le gv (@LClight.statement.Ssequence s1 s2) t1 le1 gv1 out))))
+  | nx_if_true : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (a : LClight.expr) (s1 : LClight.statement)
+      (s2 : LClight.statement) (v : LClight.val) (ta : LClight.type) (t : (List LClight.event))
+      (le2 : (LClight.ident → (Option LClight.val))) (gv2 : (LClight.ident → (Option LClight.val)))
+      (out : LClight.outcome),
+    ((neval defs le gv a v)
+      → ((has_type a ta)
+          → ((bool_ok ta v Bool.true)
+              → ((nexec defs le gv s1 t le2 gv2 out)
+                  → (nexec defs le gv (@LClight.statement.Sifthenelse a s1 s2) t le2 gv2 out))))))
+  | nx_if_false : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (a : LClight.expr) (s1 : LClight.statement)
+      (s2 : LClight.statement) (v : LClight.val) (ta : LClight.type) (t : (List LClight.event))
+      (le2 : (LClight.ident → (Option LClight.val))) (gv2 : (LClight.ident → (Option LClight.val)))
+      (out : LClight.outcome),
+    ((neval defs le gv a v)
+      → ((has_type a ta)
+          → ((bool_ok ta v Bool.false)
+              → ((nexec defs le gv s2 t le2 gv2 out)
+                  → (nexec defs le gv (@LClight.statement.Sifthenelse a s1 s2) t le2 gv2 out))))))
+  | nx_return_none : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))),
+    (nexec defs le gv (@LClight.statement.Sreturn (@Option.none _)) (@List.nil _) le gv
+      (@LClight.outcome.Out_return (@Option.none _))))
+  | nx_return_some : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (a : LClight.expr) (v : LClight.val)
+      (ta : LClight.type),
+    ((neval defs le gv a v)
+      → ((has_type a ta)
+          → (nexec defs le gv (@LClight.statement.Sreturn (@Option.some _ a)) (@List.nil _) le gv
+              (@LClight.outcome.Out_return (@Option.some _ (@Prod.mk _ _ v ta)))))))
+  | nx_break : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))),
+    (nexec defs le gv LClight.statement.Sbreak (@List.nil _) le gv LClight.outcome.Out_break))
+  | nx_continue : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))),
+    (nexec defs le gv LClight.statement.Scontinue (@List.nil _) le gv LClight.outcome.Out_continue))
+  | nx_loop_stop1 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (s1 : LClight.statement)
+      (s2 : LClight.statement) (t : (List LClight.event))
+      (le1 : (LClight.ident → (Option LClight.val))) (gv1 : (LClight.ident → (Option LClight.val)))
+      (out1 : LClight.outcome) (out : LClight.outcome),
+    ((nexec defs le gv s1 t le1 gv1 out1)
+      → ((((@Eq _ out1 LClight.outcome.Out_break) ∧ (@Eq _ out LClight.outcome.Out_normal))
+            ∨ (∃ (r : (Option (LClight.val × LClight.type))),
+                ((@Eq _ out1 (@LClight.outcome.Out_return r))
+                  ∧ (@Eq _ out (@LClight.outcome.Out_return r)))))
+          → (nexec defs le gv (@LClight.statement.Sloop s1 s2) t le1 gv1 out))))
+  | nx_loop_stop2 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (s1 : LClight.statement)
+      (s2 : LClight.statement) (t1 : (List LClight.event))
+      (le1 : (LClight.ident → (Option LClight.val))) (gv1 : (LClight.ident → (Option LClight.val)))
+      (out1 : LClight.outcome) (t2 : (List LClight.event))
+      (le2 : (LClight.ident → (Option LClight.val))) (gv2 : (LClight.ident → (Option LClight.val)))
+      (out2 : LClight.outcome) (out : LClight.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out1)
+      → (((@Eq _ out1 LClight.outcome.Out_normal) ∨ (@Eq _ out1 LClight.outcome.Out_continue))
+          → ((nexec defs le1 gv1 s2 t2 le2 gv2 out2)
+              → ((((@Eq _ out2 LClight.outcome.Out_break) ∧ (@Eq _ out LClight.outcome.Out_normal))
+                    ∨ (∃ (r : (Option (LClight.val × LClight.type))),
+                        ((@Eq _ out2 (@LClight.outcome.Out_return r))
+                          ∧ (@Eq _ out (@LClight.outcome.Out_return r)))))
+                  → (nexec defs le gv (@LClight.statement.Sloop s1 s2) (@ClightN.Base.app t1 t2) le2
+                      gv2 out))))))
+  | nx_loop : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (s1 : LClight.statement)
+      (s2 : LClight.statement) (t1 : (List LClight.event))
+      (le1 : (LClight.ident → (Option LClight.val))) (gv1 : (LClight.ident → (Option LClight.val)))
+      (out1 : LClight.outcome) (t2 : (List LClight.event))
+      (le2 : (LClight.ident → (Option LClight.val))) (gv2 : (LClight.ident → (Option LClight.val)))
+      (t3 : (List LClight.event)) (le3 : (LClight.ident → (Option LClight.val)))
+      (gv3 : (LClight.ident → (Option LClight.val))) (out : LClight.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out1)
+      → (((@Eq _ out1 LClight.outcome.Out_normal) ∨ (@Eq _ out1 LClight.outcome.Out_continue))
+          → ((nexec defs le1 gv1 s2 t2 le2 gv2 LClight.outcome.Out_normal)
+              → ((nexec defs le2 gv2 (@LClight.statement.Sloop s1 s2) t3 le3 gv3 out)
+                  → (nexec defs le gv (@LClight.statement.Sloop s1 s2)
+                      (@ClightN.Base.app t1 (@ClightN.Base.app t2 t3)) le3 gv3 out))))))
+
+inductive nprog :
+    (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))) →
+    LClight.ident → (List LClight.event) → UInt32 → Prop where
+  | np_intro : (∀ (defs :
+        (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))))
+      (main : LClight.ident) (temps : (List (LClight.ident × LClight.type)))
+      (body : LClight.statement) (gv0 : (LClight.ident → (Option LClight.val)))
+      (le0 : (LClight.ident → (Option LClight.val))) (t : (List LClight.event))
+      (le2 : (LClight.ident → (Option LClight.val))) (gv2 : (LClight.ident → (Option LClight.val)))
+      (out : LClight.outcome) (r : UInt32),
+    ((norepet_defs defs)
+      → ((∀ (x : LClight.ident) (ty : LClight.type) (init : (List LClight.init_data)) (ro : Bool)
+              (vol : Bool),
+            ((in_defs defs x
+                (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+                  (@LClight.globvar.mk LClight.type ty init ro vol))) → (init_ok init)))
+          → ((∀ (x : LClight.ident) (ty : LClight.type) (init : (List LClight.init_data)),
+                ((in_defs defs x
+                    (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+                      (@LClight.globvar.mk LClight.type ty init Bool.false Bool.false)))
+                  → ((scalar ty)
+                      → (∃ (v : LClight.val),
+                          ((ginit ty init v) ∧ (@Eq _ (gv0 x) (@Option.some _ v)))))))
+              → ((in_defs defs main
+                    (@LClight.globdef.Gfun (@LClight.fundef LClight.function) LClight.type
+                      (@LClight.fundef.Internal LClight.function
+                        (@LClight.function.mk
+                          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+                            (@LClight.attr.mk Bool.false (@Option.none _)))
+                          (@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false)
+                          (@List.nil _) (@List.nil _) temps body))))
+                  → ((undef_temps temps le0)
+                      → ((nexec defs le0 gv0 body t le2 gv2 out)
+                          → ((result_ok out
+                                (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+                                  (@LClight.attr.mk Bool.false (@Option.none _)))
+                                (@LClight.val.Vint r)) → (nprog defs main t r)))))))))
 
 def stmt_add_ul_ul : Prop :=
   (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
@@ -1339,5 +1798,37 @@ def stmt_lxor_nonneg : Prop :=
     ((@LE.le Int Int.instLEInt (0 : Int) a)
       → ((@LE.le Int Int.instLEInt (0 : Int) b)
           → (@LE.le Int Int.instLEInt (0 : Int) (@ClightN.Base.lxor a b)))))
+
+def stmt_uptr_range : Prop :=
+  (∀ (x : LClight.ptrofs),
+    ((@LE.le Int Int.instLEInt (0 : Int) (@ClightN.Base.uptr x))
+      ∧ (@LT.lt Int Int.instLTInt (@ClightN.Base.uptr x) (18446744073709551616 : Int))))
+
+def stmt_uptr_rptr : Prop :=
+  (∀ (z : Int),
+    (@Eq _ (@ClightN.Base.uptr (@ClightN.Base.rptr z))
+      (@ClightN.Base.zmod z (18446744073709551616 : Int))))
+
+def stmt_rptr_uptr : Prop :=
+  (∀ (x : LClight.ptrofs), (@Eq _ (@ClightN.Base.rptr (@ClightN.Base.uptr x)) x))
+
+def stmt_app_nil : Prop :=
+  (∀ (t : (List LClight.event)), (@Eq _ (@ClightN.Base.app (@List.nil _) t) t))
+
+def stmt_app_cons : Prop :=
+  (∀ (e : LClight.event) (t1 : (List LClight.event)) (t2 : (List LClight.event)),
+    (@Eq _ (@ClightN.Base.app (@List.cons _ e t1) t2) (@List.cons _ e (@ClightN.Base.app t1 t2))))
+
+def stmt_f64_bits_of_bits : Prop :=
+  (∀ (x : UInt64), (@Eq _ (@ClightN.Base.f64_bits (@ClightN.Base.f64_of_bits x)) x))
+
+def stmt_f64_of_bits_bits : Prop :=
+  (∀ (f : LClight.float), (@Eq _ (@ClightN.Base.f64_of_bits (@ClightN.Base.f64_bits f)) f))
+
+def stmt_f32_bits_of_bits : Prop :=
+  (∀ (x : UInt32), (@Eq _ (@ClightN.Base.f32_bits (@ClightN.Base.f32_of_bits x)) x))
+
+def stmt_f32_of_bits_bits : Prop :=
+  (∀ (f : LClight.float32), (@Eq _ (@ClightN.Base.f32_of_bits (@ClightN.Base.f32_bits f)) f))
 
 end ClightN.Spec

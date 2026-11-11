@@ -1,6 +1,6 @@
-(* Rendered by clightn/nsx.py from clightn/N.nsx.  Do not edit. *)
-From Coq Require Import ZArith.
-Require Coqlib Integers Values AST Memory Ctypes Cop Clight.
+(* Rendered by clightn/nsx.py from the specification of N.  Do not edit. *)
+From Coq Require Import ZArith String.
+Require Coqlib Integers Floats Values AST Memory Events Ctypes Cop Clight ClightBigstep.
 Require NBase.
 
 Inductive binop_ok : Cop.binary_operation -> Ctypes.type -> Ctypes.type -> Values.val ->
@@ -326,6 +326,403 @@ Inductive bool_ok : Ctypes.type -> Values.val -> bool -> Prop :=
     ((@eq _ (@NBase.u32 x) (0)%Z)
       -> (bool_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
           (@Values.Vint x) false))).
+
+Inductive in_defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))) -> AST.ident ->
+    (@AST.globdef Clight.fundef Ctypes.type) -> Prop :=
+  | in_here : (forall (x : AST.ident) (g : (@AST.globdef Clight.fundef Ctypes.type))
+      (rest : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))),
+    (in_defs (@cons _ (@pair _ _ x g) rest) x g))
+  | in_there : (forall (d : (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))
+      (rest : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))) (x : AST.ident)
+      (g : (@AST.globdef Clight.fundef Ctypes.type)),
+    ((in_defs rest x g) -> (in_defs (@cons _ d rest) x g))).
+
+Inductive out_defs : AST.ident -> (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))) ->
+    Prop :=
+  | od_nil : (forall (x : AST.ident), (out_defs x (@nil _)))
+  | od_cons : (forall (x : AST.ident) (y : AST.ident) (g : (@AST.globdef Clight.fundef Ctypes.type))
+      (rest : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))),
+    ((~ (@eq _ x y)) -> ((out_defs x rest) -> (out_defs x (@cons _ (@pair _ _ y g) rest))))).
+
+Inductive norepet_defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))) -> Prop :=
+  | nd_nil : (norepet_defs (@nil _))
+  | nd_cons : (forall (x : AST.ident) (g : (@AST.globdef Clight.fundef Ctypes.type))
+      (rest : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))),
+    ((out_defs x rest) -> ((norepet_defs rest) -> (norepet_defs (@cons _ (@pair _ _ x g) rest))))).
+
+Inductive out_names : AST.ident -> (list (AST.ident * Ctypes.type)) -> Prop :=
+  | on_nil : (forall (x : AST.ident), (out_names x (@nil _)))
+  | on_cons : (forall (x : AST.ident) (y : AST.ident) (ty : Ctypes.type)
+      (rest : (list (AST.ident * Ctypes.type))),
+    ((~ (@eq _ x y)) -> ((out_names x rest) -> (out_names x (@cons _ (@pair _ _ y ty) rest))))).
+
+Inductive norepet_names : (list (AST.ident * Ctypes.type)) -> Prop :=
+  | nn_nil : (norepet_names (@nil _))
+  | nn_cons : (forall (x : AST.ident) (ty : Ctypes.type) (rest : (list (AST.ident * Ctypes.type))),
+    ((out_names x rest)
+      -> ((norepet_names rest) -> (norepet_names (@cons _ (@pair _ _ x ty) rest))))).
+
+Inductive disjoint_names : (list (AST.ident * Ctypes.type)) -> (list (AST.ident * Ctypes.type)) ->
+    Prop :=
+  | dn_nil : (forall (l : (list (AST.ident * Ctypes.type))), (disjoint_names (@nil _) l))
+  | dn_cons : (forall (x : AST.ident) (ty : Ctypes.type) (rest : (list (AST.ident * Ctypes.type)))
+      (l : (list (AST.ident * Ctypes.type))),
+    ((out_names x l)
+      -> ((disjoint_names rest l) -> (disjoint_names (@cons _ (@pair _ _ x ty) rest) l)))).
+
+Inductive params_types : (list (AST.ident * Ctypes.type)) -> (list Ctypes.type) -> Prop :=
+  | pt_nil : (params_types (@nil _) (@nil _))
+  | pt_cons : (forall (x : AST.ident) (ty : Ctypes.type) (rest : (list (AST.ident * Ctypes.type)))
+      (tys : (list Ctypes.type)),
+    ((params_types rest tys) -> (params_types (@cons _ (@pair _ _ x ty) rest) (@cons _ ty tys)))).
+
+Inductive undef_temps : (list (AST.ident * Ctypes.type)) -> (AST.ident -> (option Values.val)) ->
+    Prop :=
+  | ut_nil : (forall (le : (AST.ident -> (option Values.val))),
+    ((forall (x : AST.ident), (@eq _ (le x) (@None _))) -> (undef_temps (@nil _) le)))
+  | ut_cons : (forall (x : AST.ident) (ty : Ctypes.type) (rest : (list (AST.ident * Ctypes.type)))
+      (le0 : (AST.ident -> (option Values.val))) (le : (AST.ident -> (option Values.val))),
+    ((undef_temps rest le0)
+      -> ((forall (x_upd : AST.ident),
+            (((@eq _ x_upd x) -> (@eq _ (le x_upd) (@Some _ Values.Vundef)))
+              /\ ((~ (@eq _ x_upd x)) -> (@eq _ (le x_upd) (le0 x_upd)))))
+          -> (undef_temps (@cons _ (@pair _ _ x ty) rest) le)))).
+
+Inductive bind_params : (list (AST.ident * Ctypes.type)) -> (list Values.val) ->
+    (AST.ident -> (option Values.val)) -> (AST.ident -> (option Values.val)) -> Prop :=
+  | bp_nil : (forall (le : (AST.ident -> (option Values.val))),
+    (bind_params (@nil _) (@nil _) le le))
+  | bp_cons : (forall (x : AST.ident) (ty : Ctypes.type) (rest : (list (AST.ident * Ctypes.type)))
+      (v : Values.val) (vs : (list Values.val)) (le : (AST.ident -> (option Values.val)))
+      (le1 : (AST.ident -> (option Values.val))) (le2 : (AST.ident -> (option Values.val))),
+    ((forall (x_upd : AST.ident),
+        (((@eq _ x_upd x) -> (@eq _ (le1 x_upd) (@Some _ v)))
+          /\ ((~ (@eq _ x_upd x)) -> (@eq _ (le1 x_upd) (le x_upd)))))
+      -> ((bind_params rest vs le1 le2)
+          -> (bind_params (@cons _ (@pair _ _ x ty) rest) (@cons _ v vs) le le2)))).
+
+Inductive set_opt : (option AST.ident) -> Values.val -> (AST.ident -> (option Values.val)) ->
+    (AST.ident -> (option Values.val)) -> Prop :=
+  | so_none : (forall (v : Values.val) (le : (AST.ident -> (option Values.val))),
+    (set_opt (@None _) v le le))
+  | so_some : (forall (x : AST.ident) (v : Values.val) (le : (AST.ident -> (option Values.val)))
+      (le2 : (AST.ident -> (option Values.val))),
+    ((forall (x_upd : AST.ident),
+        (((@eq _ x_upd x) -> (@eq _ (le2 x_upd) (@Some _ v)))
+          /\ ((~ (@eq _ x_upd x)) -> (@eq _ (le2 x_upd) (le x_upd)))))
+      -> (set_opt (@Some _ x) v le le2))).
+
+Inductive has_type : Clight.expr -> Ctypes.type -> Prop :=
+  | ht_int : (forall (i : Integers.Int.int) (ty : Ctypes.type),
+    (has_type (@Clight.Econst_int i ty) ty))
+  | ht_long : (forall (i : Integers.Int64.int) (ty : Ctypes.type),
+    (has_type (@Clight.Econst_long i ty) ty))
+  | ht_float : (forall (f : Floats.float) (ty : Ctypes.type),
+    (has_type (@Clight.Econst_float f ty) ty))
+  | ht_single : (forall (f : Floats.float32) (ty : Ctypes.type),
+    (has_type (@Clight.Econst_single f ty) ty))
+  | ht_temp : (forall (x : AST.ident) (ty : Ctypes.type), (has_type (@Clight.Etempvar x ty) ty))
+  | ht_var : (forall (x : AST.ident) (ty : Ctypes.type), (has_type (@Clight.Evar x ty) ty))
+  | ht_binop : (forall (op : Cop.binary_operation) (a1 : Clight.expr) (a2 : Clight.expr)
+      (ty : Ctypes.type), (has_type (@Clight.Ebinop op a1 a2 ty) ty))
+  | ht_cast : (forall (a : Clight.expr) (ty : Ctypes.type), (has_type (@Clight.Ecast a ty) ty)).
+
+Inductive scalar : Ctypes.type -> Prop :=
+  | sc_ui : (scalar (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))))
+  | sc_ul : (scalar (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))).
+
+Inductive gval : Ctypes.type -> Values.val -> Prop :=
+  | gv_ui : (forall (x : Integers.Int.int),
+    (gval (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@Values.Vint x)))
+  | gv_ul : (forall (x : Integers.Int64.int),
+    (gval (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) (@Values.Vlong x))).
+
+Inductive ginit : Ctypes.type -> (list AST.init_data) -> Values.val -> Prop :=
+  | gi_ui : (forall (x : Integers.Int.int),
+    (ginit (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@cons _ (@AST.Init_int32 x) (@nil _)) (@Values.Vint x)))
+  | gi_ul : (forall (x : Integers.Int64.int),
+    (ginit (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@cons _ (@AST.Init_int64 x) (@nil _)) (@Values.Vlong x))).
+
+Inductive init_ok : (list AST.init_data) -> Prop :=
+  | io_nil : (init_ok (@nil _))
+  | io_int32 : (forall (x : Integers.Int.int), (init_ok (@cons _ (@AST.Init_int32 x) (@nil _))))
+  | io_int64 : (forall (x : Integers.Int64.int), (init_ok (@cons _ (@AST.Init_int64 x) (@nil _))))
+  | io_space : (forall (n : BinNums.Z), (init_ok (@cons _ (@AST.Init_space n) (@nil _)))).
+
+Inductive result_ok : ClightBigstep.outcome -> Ctypes.type -> Values.val -> Prop :=
+  | rs_normal : (result_ok ClightBigstep.Out_normal Ctypes.Tvoid Values.Vundef)
+  | rs_none : (result_ok (@ClightBigstep.Out_return (@None _)) Ctypes.Tvoid Values.Vundef)
+  | rs_some : (forall (v : Values.val) (t : Ctypes.type) (ty : Ctypes.type) (v2 : Values.val),
+    ((~ (@eq _ ty Ctypes.Tvoid))
+      -> ((cast_ok t ty v v2)
+          -> (result_ok (@ClightBigstep.Out_return (@Some _ (@pair _ _ v t))) ty v2)))).
+
+Inductive neval (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))))
+    (le : (AST.ident -> (option Values.val))) (gv : (AST.ident -> (option Values.val))) :
+    Clight.expr -> Values.val -> Prop :=
+  | nv_int : (forall (i : Integers.Int.int) (ty : Ctypes.type),
+    (neval defs le gv (@Clight.Econst_int i ty) (@Values.Vint i)))
+  | nv_long : (forall (i : Integers.Int64.int) (ty : Ctypes.type),
+    (neval defs le gv (@Clight.Econst_long i ty) (@Values.Vlong i)))
+  | nv_float : (forall (f : Floats.float) (ty : Ctypes.type),
+    (neval defs le gv (@Clight.Econst_float f ty) (@Values.Vfloat f)))
+  | nv_single : (forall (f : Floats.float32) (ty : Ctypes.type),
+    (neval defs le gv (@Clight.Econst_single f ty) (@Values.Vsingle f)))
+  | nv_temp : (forall (x : AST.ident) (ty : Ctypes.type) (v : Values.val),
+    ((@eq _ (le x) (@Some _ v)) -> (neval defs le gv (@Clight.Etempvar x ty) v)))
+  | nv_global : (forall (x : AST.ident) (ty : Ctypes.type) (init : (list AST.init_data))
+      (v : Values.val),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type (@AST.mkglobvar Ctypes.type ty init false false)))
+      -> ((scalar ty) -> ((@eq _ (gv x) (@Some _ v)) -> (neval defs le gv (@Clight.Evar x ty) v)))))
+  | nv_binop : (forall (op : Cop.binary_operation) (a1 : Clight.expr) (a2 : Clight.expr)
+      (ty : Ctypes.type) (t1 : Ctypes.type) (t2 : Ctypes.type) (v1 : Values.val) (v2 : Values.val)
+      (v : Values.val),
+    ((neval defs le gv a1 v1)
+      -> ((has_type a1 t1)
+          -> ((neval defs le gv a2 v2)
+              -> ((has_type a2 t2)
+                  -> ((binop_ok op t1 t2 v1 v2 v)
+                      -> (neval defs le gv (@Clight.Ebinop op a1 a2 ty) v)))))))
+  | nv_cast : (forall (a : Clight.expr) (ty : Ctypes.type) (t1 : Ctypes.type) (v1 : Values.val)
+      (v : Values.val),
+    ((neval defs le gv a v1)
+      -> ((has_type a t1) -> ((cast_ok t1 ty v1 v) -> (neval defs le gv (@Clight.Ecast a ty) v))))).
+
+Inductive neval_list (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))))
+    (le : (AST.ident -> (option Values.val))) (gv : (AST.ident -> (option Values.val))) :
+    (list Clight.expr) -> (list Ctypes.type) -> (list Values.val) -> Prop :=
+  | nl_nil : (neval_list defs le gv (@nil _) (@nil _) (@nil _))
+  | nl_cons : (forall (a : Clight.expr) (al : (list Clight.expr)) (ty : Ctypes.type)
+      (tys : (list Ctypes.type)) (t1 : Ctypes.type) (v1 : Values.val) (v : Values.val)
+      (vs : (list Values.val)),
+    ((neval defs le gv a v1)
+      -> ((has_type a t1)
+          -> ((cast_ok t1 ty v1 v)
+              -> ((neval_list defs le gv al tys vs)
+                  -> (neval_list defs le gv (@cons _ a al) (@cons _ ty tys) (@cons _ v vs))))))).
+
+Inductive nexec (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type)))) :
+    (AST.ident -> (option Values.val)) -> (AST.ident -> (option Values.val)) -> Clight.statement ->
+    (list Events.event) -> (AST.ident -> (option Values.val)) ->
+    (AST.ident -> (option Values.val)) -> ClightBigstep.outcome -> Prop :=
+  | nx_skip : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))),
+    (nexec defs le gv Clight.Sskip (@nil _) le gv ClightBigstep.Out_normal))
+  | nx_set : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (x : AST.ident) (a : Clight.expr) (v : Values.val)
+      (le2 : (AST.ident -> (option Values.val))),
+    ((neval defs le gv a v)
+      -> ((forall (x_upd : AST.ident),
+            (((@eq _ x_upd x) -> (@eq _ (le2 x_upd) (@Some _ v)))
+              /\ ((~ (@eq _ x_upd x)) -> (@eq _ (le2 x_upd) (le x_upd)))))
+          -> (nexec defs le gv (@Clight.Sset x a) (@nil _) le2 gv ClightBigstep.Out_normal))))
+  | nx_store : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (x : AST.ident) (ty : Ctypes.type)
+      (init : (list AST.init_data)) (a : Clight.expr) (t1 : Ctypes.type) (v1 : Values.val)
+      (v : Values.val) (gv2 : (AST.ident -> (option Values.val))),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type (@AST.mkglobvar Ctypes.type ty init false false)))
+      -> ((scalar ty)
+          -> ((neval defs le gv a v1)
+              -> ((has_type a t1)
+                  -> ((cast_ok t1 ty v1 v)
+                      -> ((gval ty v)
+                          -> ((forall (x_upd : AST.ident),
+                                (((@eq _ x_upd x) -> (@eq _ (gv2 x_upd) (@Some _ v)))
+                                  /\ ((~ (@eq _ x_upd x)) -> (@eq _ (gv2 x_upd) (gv x_upd)))))
+                              -> (nexec defs le gv (@Clight.Sassign (@Clight.Evar x ty) a) (@nil _)
+                                  le gv2 ClightBigstep.Out_normal)))))))))
+  | nx_out : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (x : AST.ident) (init : (list AST.init_data))
+      (a : Clight.expr) (t1 : Ctypes.type) (v1 : Values.val) (i : Integers.Int.int),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type
+          (@AST.mkglobvar Ctypes.type
+            (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr true (@None _))) init false
+            true)))
+      -> ((neval defs le gv a v1)
+          -> ((has_type a t1)
+              -> ((cast_ok t1
+                    (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr true (@None _))) v1
+                    (@Values.Vint i))
+                  -> (nexec defs le gv
+                      (@Clight.Sbuiltin (@None _) (@AST.EF_vstore AST.Mint32)
+                        (@cons _
+                          (@Ctypes.Tpointer
+                            (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned
+                              (@Ctypes.mk_attr true (@None _))) (@Ctypes.mk_attr false (@None _)))
+                          (@cons _
+                            (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned
+                              (@Ctypes.mk_attr true (@None _))) (@nil _)))
+                        (@cons _
+                          (@Clight.Eaddrof
+                            (@Clight.Evar x
+                              (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned
+                                (@Ctypes.mk_attr true (@None _))))
+                            (@Ctypes.Tpointer
+                              (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned
+                                (@Ctypes.mk_attr true (@None _)))
+                              (@Ctypes.mk_attr false (@None _)))) (@cons _ a (@nil _))))
+                      (@cons _
+                        (@Events.Event_vstore AST.Mint32 x (@NBase.rptr (0)%Z) (@Events.EVint i))
+                        (@nil _)) le gv ClightBigstep.Out_normal))))))
+  | nx_call : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (optid : (option AST.ident)) (x : AST.ident)
+      (tys : (list Ctypes.type)) (ret : Ctypes.type) (cc : AST.calling_convention)
+      (al : (list Clight.expr)) (vs : (list Values.val)) (params : (list (AST.ident * Ctypes.type)))
+      (temps : (list (AST.ident * Ctypes.type))) (body : Clight.statement)
+      (le0 : (AST.ident -> (option Values.val))) (le1 : (AST.ident -> (option Values.val)))
+      (t : (list Events.event)) (le2 : (AST.ident -> (option Values.val)))
+      (gv2 : (AST.ident -> (option Values.val))) (out : ClightBigstep.outcome) (v : Values.val)
+      (le3 : (AST.ident -> (option Values.val))),
+    ((in_defs defs x
+        (@AST.Gfun Clight.fundef Ctypes.type
+          (@Ctypes.Internal Clight.function
+            (@Clight.mkfunction ret cc params (@nil _) temps body))))
+      -> ((params_types params tys)
+          -> ((neval_list defs le gv al tys vs)
+              -> ((norepet_names params)
+                  -> ((disjoint_names params temps)
+                      -> ((undef_temps temps le0)
+                          -> ((bind_params params vs le0 le1)
+                              -> ((nexec defs le1 gv body t le2 gv2 out)
+                                  -> ((result_ok out ret v)
+                                      -> ((set_opt optid v le le3)
+                                        -> (nexec defs le gv
+                                        (@Clight.Scall optid
+                                        (@Clight.Evar x (@Ctypes.Tfunction tys ret cc)) al) t le3
+                                        gv2 ClightBigstep.Out_normal))))))))))))
+  | nx_seq1 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (s1 : Clight.statement) (s2 : Clight.statement)
+      (t1 : (list Events.event)) (le1 : (AST.ident -> (option Values.val)))
+      (gv1 : (AST.ident -> (option Values.val))) (t2 : (list Events.event))
+      (le2 : (AST.ident -> (option Values.val))) (gv2 : (AST.ident -> (option Values.val)))
+      (out : ClightBigstep.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 ClightBigstep.Out_normal)
+      -> ((nexec defs le1 gv1 s2 t2 le2 gv2 out)
+          -> (nexec defs le gv (@Clight.Ssequence s1 s2) (@NBase.app t1 t2) le2 gv2 out))))
+  | nx_seq2 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (s1 : Clight.statement) (s2 : Clight.statement)
+      (t1 : (list Events.event)) (le1 : (AST.ident -> (option Values.val)))
+      (gv1 : (AST.ident -> (option Values.val))) (out : ClightBigstep.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out)
+      -> ((~ (@eq _ out ClightBigstep.Out_normal))
+          -> (nexec defs le gv (@Clight.Ssequence s1 s2) t1 le1 gv1 out))))
+  | nx_if_true : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (a : Clight.expr) (s1 : Clight.statement)
+      (s2 : Clight.statement) (v : Values.val) (ta : Ctypes.type) (t : (list Events.event))
+      (le2 : (AST.ident -> (option Values.val))) (gv2 : (AST.ident -> (option Values.val)))
+      (out : ClightBigstep.outcome),
+    ((neval defs le gv a v)
+      -> ((has_type a ta)
+          -> ((bool_ok ta v true)
+              -> ((nexec defs le gv s1 t le2 gv2 out)
+                  -> (nexec defs le gv (@Clight.Sifthenelse a s1 s2) t le2 gv2 out))))))
+  | nx_if_false : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (a : Clight.expr) (s1 : Clight.statement)
+      (s2 : Clight.statement) (v : Values.val) (ta : Ctypes.type) (t : (list Events.event))
+      (le2 : (AST.ident -> (option Values.val))) (gv2 : (AST.ident -> (option Values.val)))
+      (out : ClightBigstep.outcome),
+    ((neval defs le gv a v)
+      -> ((has_type a ta)
+          -> ((bool_ok ta v false)
+              -> ((nexec defs le gv s2 t le2 gv2 out)
+                  -> (nexec defs le gv (@Clight.Sifthenelse a s1 s2) t le2 gv2 out))))))
+  | nx_return_none : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))),
+    (nexec defs le gv (@Clight.Sreturn (@None _)) (@nil _) le gv
+      (@ClightBigstep.Out_return (@None _))))
+  | nx_return_some : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (a : Clight.expr) (v : Values.val)
+      (ta : Ctypes.type),
+    ((neval defs le gv a v)
+      -> ((has_type a ta)
+          -> (nexec defs le gv (@Clight.Sreturn (@Some _ a)) (@nil _) le gv
+              (@ClightBigstep.Out_return (@Some _ (@pair _ _ v ta)))))))
+  | nx_break : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))),
+    (nexec defs le gv Clight.Sbreak (@nil _) le gv ClightBigstep.Out_break))
+  | nx_continue : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))),
+    (nexec defs le gv Clight.Scontinue (@nil _) le gv ClightBigstep.Out_continue))
+  | nx_loop_stop1 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (s1 : Clight.statement) (s2 : Clight.statement)
+      (t : (list Events.event)) (le1 : (AST.ident -> (option Values.val)))
+      (gv1 : (AST.ident -> (option Values.val))) (out1 : ClightBigstep.outcome)
+      (out : ClightBigstep.outcome),
+    ((nexec defs le gv s1 t le1 gv1 out1)
+      -> ((((@eq _ out1 ClightBigstep.Out_break) /\ (@eq _ out ClightBigstep.Out_normal))
+            \/ (exists (r : (option (Values.val * Ctypes.type))),
+                ((@eq _ out1 (@ClightBigstep.Out_return r))
+                  /\ (@eq _ out (@ClightBigstep.Out_return r)))))
+          -> (nexec defs le gv (@Clight.Sloop s1 s2) t le1 gv1 out))))
+  | nx_loop_stop2 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (s1 : Clight.statement) (s2 : Clight.statement)
+      (t1 : (list Events.event)) (le1 : (AST.ident -> (option Values.val)))
+      (gv1 : (AST.ident -> (option Values.val))) (out1 : ClightBigstep.outcome)
+      (t2 : (list Events.event)) (le2 : (AST.ident -> (option Values.val)))
+      (gv2 : (AST.ident -> (option Values.val))) (out2 : ClightBigstep.outcome)
+      (out : ClightBigstep.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out1)
+      -> (((@eq _ out1 ClightBigstep.Out_normal) \/ (@eq _ out1 ClightBigstep.Out_continue))
+          -> ((nexec defs le1 gv1 s2 t2 le2 gv2 out2)
+              -> ((((@eq _ out2 ClightBigstep.Out_break) /\ (@eq _ out ClightBigstep.Out_normal))
+                    \/ (exists (r : (option (Values.val * Ctypes.type))),
+                        ((@eq _ out2 (@ClightBigstep.Out_return r))
+                          /\ (@eq _ out (@ClightBigstep.Out_return r)))))
+                  -> (nexec defs le gv (@Clight.Sloop s1 s2) (@NBase.app t1 t2) le2 gv2 out))))))
+  | nx_loop : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (s1 : Clight.statement) (s2 : Clight.statement)
+      (t1 : (list Events.event)) (le1 : (AST.ident -> (option Values.val)))
+      (gv1 : (AST.ident -> (option Values.val))) (out1 : ClightBigstep.outcome)
+      (t2 : (list Events.event)) (le2 : (AST.ident -> (option Values.val)))
+      (gv2 : (AST.ident -> (option Values.val))) (t3 : (list Events.event))
+      (le3 : (AST.ident -> (option Values.val))) (gv3 : (AST.ident -> (option Values.val)))
+      (out : ClightBigstep.outcome),
+    ((nexec defs le gv s1 t1 le1 gv1 out1)
+      -> (((@eq _ out1 ClightBigstep.Out_normal) \/ (@eq _ out1 ClightBigstep.Out_continue))
+          -> ((nexec defs le1 gv1 s2 t2 le2 gv2 ClightBigstep.Out_normal)
+              -> ((nexec defs le2 gv2 (@Clight.Sloop s1 s2) t3 le3 gv3 out)
+                  -> (nexec defs le gv (@Clight.Sloop s1 s2) (@NBase.app t1 (@NBase.app t2 t3)) le3
+                      gv3 out)))))).
+
+Inductive nprog : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))) -> AST.ident ->
+    (list Events.event) -> Integers.Int.int -> Prop :=
+  | np_intro : (forall (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))))
+      (main : AST.ident) (temps : (list (AST.ident * Ctypes.type))) (body : Clight.statement)
+      (gv0 : (AST.ident -> (option Values.val))) (le0 : (AST.ident -> (option Values.val)))
+      (t : (list Events.event)) (le2 : (AST.ident -> (option Values.val)))
+      (gv2 : (AST.ident -> (option Values.val))) (out : ClightBigstep.outcome)
+      (r : Integers.Int.int),
+    ((norepet_defs defs)
+      -> ((forall (x : AST.ident) (ty : Ctypes.type) (init : (list AST.init_data)) (ro : bool)
+              (vol : bool),
+            ((in_defs defs x
+                (@AST.Gvar Clight.fundef Ctypes.type (@AST.mkglobvar Ctypes.type ty init ro vol)))
+              -> (init_ok init)))
+          -> ((forall (x : AST.ident) (ty : Ctypes.type) (init : (list AST.init_data)),
+                ((in_defs defs x
+                    (@AST.Gvar Clight.fundef Ctypes.type
+                      (@AST.mkglobvar Ctypes.type ty init false false)))
+                  -> ((scalar ty)
+                      -> (exists (v : Values.val),
+                          ((ginit ty init v) /\ (@eq _ (gv0 x) (@Some _ v)))))))
+              -> ((in_defs defs main
+                    (@AST.Gfun Clight.fundef Ctypes.type
+                      (@Ctypes.Internal Clight.function
+                        (@Clight.mkfunction
+                          (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
+                          (@AST.mkcallconv (@None _) false false) (@nil _) (@nil _) temps body))))
+                  -> ((undef_temps temps le0)
+                      -> ((nexec defs le0 gv0 body t le2 gv2 out)
+                          -> ((result_ok out
+                                (@Ctypes.Tint Ctypes.I32 Ctypes.Signed
+                                  (@Ctypes.mk_attr false (@None _))) (@Values.Vint r))
+                              -> (nprog defs main t r))))))))).
 
 Definition stmt_add_ul_ul : Prop :=
   (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
@@ -903,3 +1300,34 @@ Definition stmt_lxor_bits : Prop :=
 Definition stmt_lxor_nonneg : Prop :=
   (forall (a : BinNums.Z) (b : BinNums.Z),
     ((@BinInt.Z.le (0)%Z a) -> ((@BinInt.Z.le (0)%Z b) -> (@BinInt.Z.le (0)%Z (@NBase.lxor a b))))).
+
+Definition stmt_uptr_range : Prop :=
+  (forall (x : Integers.Ptrofs.int),
+    ((@BinInt.Z.le (0)%Z (@NBase.uptr x))
+      /\ (@BinInt.Z.lt (@NBase.uptr x) (18446744073709551616)%Z))).
+
+Definition stmt_uptr_rptr : Prop :=
+  (forall (z : BinNums.Z),
+    (@eq _ (@NBase.uptr (@NBase.rptr z)) (@NBase.zmod z (18446744073709551616)%Z))).
+
+Definition stmt_rptr_uptr : Prop :=
+  (forall (x : Integers.Ptrofs.int), (@eq _ (@NBase.rptr (@NBase.uptr x)) x)).
+
+Definition stmt_app_nil : Prop :=
+  (forall (t : (list Events.event)), (@eq _ (@NBase.app (@nil _) t) t)).
+
+Definition stmt_app_cons : Prop :=
+  (forall (e : Events.event) (t1 : (list Events.event)) (t2 : (list Events.event)),
+    (@eq _ (@NBase.app (@cons _ e t1) t2) (@cons _ e (@NBase.app t1 t2)))).
+
+Definition stmt_f64_bits_of_bits : Prop :=
+  (forall (x : Integers.Int64.int), (@eq _ (@NBase.f64_bits (@NBase.f64_of_bits x)) x)).
+
+Definition stmt_f64_of_bits_bits : Prop :=
+  (forall (f : Floats.float), (@eq _ (@NBase.f64_of_bits (@NBase.f64_bits f)) f)).
+
+Definition stmt_f32_bits_of_bits : Prop :=
+  (forall (x : Integers.Int.int), (@eq _ (@NBase.f32_bits (@NBase.f32_of_bits x)) x)).
+
+Definition stmt_f32_of_bits_bits : Prop :=
+  (forall (f : Floats.float32), (@eq _ (@NBase.f32_of_bits (@NBase.f32_bits f)) f)).

@@ -8,13 +8,14 @@ constant:
 
 * `(relation R TYPE (ctors C ...) safe)` for each inductive type `R` directly in the namespace
   `ClightN.Spec`, and `(ctor C TYPE)` for each of its constructors;
+* `(constant C VALUE TYPE)` for each definition `C` there whose name starts with `cst_`;
 * `(statement S VALUE TYPE)` for each definition `S` there whose name starts with `stmt_`, and
   `(proof P TYPE (axioms A ...))` for the theorem `P` of the same name without `stmt_` in the
   namespace `ClightN.Proof`, or `(no-proof P)` or `(not-theorem P)`;
 * `(other D)` for each other declaration directly in `ClightN.Spec`.
 
-A bound variable prints as `v<k>`, where `k` is its depth, and a product whose variable the body
-does not use prints as `(-> A B)`.
+A bound variable prints as `v<k>`, where `k` is its depth, a product whose variable the body
+does not use prints as `(-> A B)`, and a string literal prints in double quotes.
 -/
 
 namespace ClightN.Read
@@ -29,6 +30,9 @@ partial def sx (ctx : Array String) (e : Expr) : Except String String :=
   | .sort .zero => pure "Prop"
   | .sort _ => throw "a sort other than Prop"
   | .lit (.natVal k) => pure s!"(lit {k})"
+  | .lit (.strVal s) =>
+      if s.all fun c => c.isAlphanum || c == '_' then pure s!"\"{s}\""
+      else throw s!"a string with characters outside the language: {s}"
   | .mdata _ b => sx ctx b
   | .app .. => do
       let fs ← sx ctx e.getAppFn
@@ -70,7 +74,9 @@ def dump : CommandElabM Unit := do
     | some (.defnInfo di) =>
         match n with
         | .str _ s =>
-            if s.startsWith "stmt_" then
+            if s.startsWith "cst_" then
+              lines := lines.push s!"(constant {n} {← term di.value} {← term di.type})"
+            else if s.startsWith "stmt_" then
               lines := lines.push s!"(statement {n} {← term di.value} {← term di.type})"
               let p := `ClightN.Proof ++ Name.mkSimple (s.drop 5).toString
               match env.find? p with
