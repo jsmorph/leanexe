@@ -11,7 +11,8 @@ The Forms column lists a row's codes in the order of the key below.  When an app
 | Code | Artifact or property |
 |---|---|
 | WASM | WebAssembly module from the verified compiler, with an execution theorem and, for a `verified_compile` program, allocation-bound, trap-free, and bytes theorems. |
-| SPEC | Specification theorem. |
+| MASTER | Master theorem, `Verified.Master`: the export, called from a ready store with room for its bound and on arguments in its domain, returns without a trap a value that meets a specification stated without the program's own definitions.  The row's last column names it first.  Every row of sections 1 to 13 has one, which [the registry](Library/Masters.lean) lists. |
+| SPEC | Specification theorem of an application or an example: a property of its Lean definition or of its module, such as safety, equality with a reference, or an accuracy bound. |
 | WASMF | Emitted `.wasm` file with a file theorem. |
 | C | C file and its native executable, with `p.f.native`, which the native drivers build and run. |
 | CALIGN | C file without the alignment test, with `p.f.nativeAligned`. |
