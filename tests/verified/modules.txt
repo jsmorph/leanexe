@@ -76,6 +76,8 @@ Demos.Sgp4.Verified:Demos.Sgp4.compiled.module:sgp4
 Demos.Sgp4.BoxVerified:Demos.Sgp4.boxCompiled.module:sgp4box
 Demos.PassiveSafety.Verified:Demos.PassiveSafety.compiled.module:passivesafety
 Demos.Sgp4.OmmVerified:Demos.Sgp4.Omm.compiled.module:sgp4omm
+Demos.Orbit.GibbsVerified:Demos.Orbit.gibbsCompiled.module:gibbs
+Demos.Orbit.LambertVerified:Demos.Orbit.lambertCompiled.module:lambert
 Demos.Energy.Verified:Demos.Energy.Verified.compiled.module:energy
 Demos.OrderBook.Verified:Demos.OrderBook.Verified.compiled.module:orderbook
 Demos.Rcv.Compiled:Demos.Rcv.Program.compiled.module:rcvCount

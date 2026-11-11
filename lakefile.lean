@@ -263,6 +263,10 @@ lean_exe «verified-cases-sgp4omm» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.OmmCasesMain
 
+lean_exe «verified-cases-orbit» where
+  srcDir := "tests"
+  root := `TestSupport.Orbit.CasesMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where
