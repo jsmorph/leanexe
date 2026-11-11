@@ -259,6 +259,18 @@ lean_exe «verified-cases-screening» where
   srcDir := "tests"
   root := `TestSupport.Screening.CasesMain
 
+lean_exe «verified-cases-chisquare» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.ChiSquareCasesMain
+
+lean_exe «verified-cases-gate» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.GateCasesMain
+
+lean_exe «verified-cases-assignment» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.AssignmentCasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain

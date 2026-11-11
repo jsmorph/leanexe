@@ -73,6 +73,9 @@ Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Demos.Conjunction.Verified:Demos.Conjunction.compiled.module:conjunction
 Demos.Conjunction.AccuracyVerified:Demos.Conjunction.Accuracy.compiled.module:accuracy
 Demos.Attitude.Verified:Demos.Attitude.compiled.module:attitude
+Demos.Gate.Verified:Demos.Gate.compiled.module:chisquare
+Demos.Gate.GateVerified:Demos.Gate.gateCompiled.module:gate
+Demos.Gate.AssignmentVerified:Demos.Gate.Assignment.compiled.module:assignment
 Demos.Sgp4.Verified:Demos.Sgp4.compiled.module:sgp4
 Demos.Sgp4.BoxVerified:Demos.Sgp4.boxCompiled.module:sgp4box
 Demos.PassiveSafety.Verified:Demos.PassiveSafety.compiled.module:passivesafety

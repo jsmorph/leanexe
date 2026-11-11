@@ -17,7 +17,10 @@
 # tests/conjunction/AccuracyAxioms.lean, and with --cases accuracy it checks the program's file
 # theorem module as well.  For the attitude program, it runs the axiom audit of
 # tests/attitude/Axioms.lean, and with --cases attitude it checks the program's file theorem module
-# as well.  For the SGP4 program, it runs the axiom audit of
+# as well.  For the chi-square programs, the gate, and the assignment check, it runs the axiom
+# audits of tests/gate/ChiSquareAxioms.lean, GateAxioms.lean, and AssignmentAxioms.lean, and with
+# --cases chisquare, gate, or assignment it checks that module's file theorems as well.  For the
+# SGP4 program, it runs the axiom audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
@@ -143,6 +146,12 @@ elif [ "$case_module" = "attitude" ]; then
   cases_exe=verified-cases-attitude
 elif [ "$case_module" = "screening" ]; then
   cases_exe=verified-cases-screening
+elif [ "$case_module" = "chisquare" ]; then
+  cases_exe=verified-cases-chisquare
+elif [ "$case_module" = "gate" ]; then
+  cases_exe=verified-cases-gate
+elif [ "$case_module" = "assignment" ]; then
+  cases_exe=verified-cases-assignment
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "passivesafety" ]; then
@@ -196,6 +205,18 @@ if [ -z "$reference" ]; then
   if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
   if [ "$case_module" = "screening" ]; then
     targets+=(Demos.Screening.Verified $(imports Demos/Screening/File.lean))
+  fi
+  if runs chisquare; then targets+=($(imports tests/gate/ChiSquareAxioms.lean)); fi
+  if [ "$case_module" = "chisquare" ]; then
+    targets+=(Demos.Gate.Verified $(imports Demos/Gate/File.lean))
+  fi
+  if runs gate; then targets+=($(imports tests/gate/GateAxioms.lean)); fi
+  if [ "$case_module" = "gate" ]; then
+    targets+=(Demos.Gate.GateVerified $(imports Demos/Gate/GateFile.lean))
+  fi
+  if runs assignment; then targets+=($(imports tests/gate/AssignmentAxioms.lean)); fi
+  if [ "$case_module" = "assignment" ]; then
+    targets+=(Demos.Gate.AssignmentVerified $(imports Demos/Gate/AssignmentFile.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
@@ -377,6 +398,24 @@ if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then
   check_axioms tests/screening/Axioms.lean
   if [ "$case_module" = "screening" ]; then
     check_file screening Demos.Screening.Verified Demos/Screening/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "chisquare" ]; then
+  check_axioms tests/gate/ChiSquareAxioms.lean
+  if [ "$case_module" = "chisquare" ]; then
+    check_file chisquare Demos.Gate.Verified Demos/Gate/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gate" ]; then
+  check_axioms tests/gate/GateAxioms.lean
+  if [ "$case_module" = "gate" ]; then
+    check_file gate Demos.Gate.GateVerified Demos/Gate/GateFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "assignment" ]; then
+  check_axioms tests/gate/AssignmentAxioms.lean
+  if [ "$case_module" = "assignment" ]; then
+    check_file assignment Demos.Gate.AssignmentVerified Demos/Gate/AssignmentFile.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
