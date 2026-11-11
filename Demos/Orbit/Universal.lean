@@ -8,8 +8,9 @@ import Mathlib.Topology.Order.MonotoneContinuity
 
 /-!
 The motion along a two-body orbit of every conic, in the universal variable.  For a state
-`(r, v)`, let `β = 2μ/|r| - |v|²`, which is `μ/a` for the semimajor axis `a` of an ellipse, 0 for a
-parabola, and negative for a hyperbola.  The universal variable `χ` advances at the rate
+`(r, v)`, let `β = 2μ/|r| - |v|²`, which is `μ/a` for the semimajor axis `a` of an ellipse.  By
+`orbitOf_ecc`, `|e|² = 1 - β |h|²/μ²`, so `β` is positive, zero, or negative as the orbit is an
+ellipse, a parabola, or a hyperbola.  The universal variable `χ` advances at the rate
 `dχ/dt = 1/|r|`.  The universal functions `U0`, `U1`, `U2`, and `U3` of `β` and `χ` are
 `cos(√β χ)`, `sin(√β χ)/√β`, `(1 - cos(√β χ))/β`, and `(χ - sin(√β χ)/√β)/β` for an ellipse, the
 same with `cosh` and `sinh` of `√(-β) χ` for a hyperbola, and `1`, `χ`, `χ²/2`, and `χ³/6` for a
@@ -24,9 +25,10 @@ distance, the time, and Newton's equation use only the derivatives `U0' = -β U1
 `U2' = U1`, and `U3' = U2` and the identities `U0 + β U2 = 1` and `U1² = U2 (1 + U0)`, which
 hold for every conic.
 
-`conicPos_onPath` states that each position lies on the path of the state's orbit at the distance
-`R`, `conicTime_strictMono` that the time increases with `χ`, and `conicPos_inj` that the
-positions at two advances `χ1` and `χ2` are distinct when `β ≤ 0`, or when `√β |χ1 - χ2| < 2π`.
+`conicPos_onPath` and `conicPos_norm` state that each position lies on the path of the state's
+orbit at the distance `R`, `conicTime_strictMono` that the time increases with `χ`, and
+`conicPos_inj` that the positions at two advances `χ1` and `χ2` are distinct when `β ≤ 0`, or
+when `√β |χ1 - χ2| < 2π`.
 `ConicTransfer` states that the motion first reaches a position after a given time.
 `conic_newton` states that the position `conicPos` and the velocity `conicVel`, at the advance
 `conicAdvance τ` that inverts the time, solve Newton's equation and are at `(r, v)` at the time 0.
@@ -209,8 +211,9 @@ theorem dot_sq_le (a b : V3) : dot a b ^ 2 ≤ dot a a * dot b b := by
 
 /-! ### The motion -/
 
-/-- `β = 2μ/|r| - |v|²`: `μ/a` for an ellipse with the semimajor axis `a`, 0 for a parabola, and
-negative for a hyperbola. -/
+/-- `β = 2μ/|r| - |v|²`, which is `μ/a` for the semimajor axis `a` of an ellipse.  By
+`orbitOf_ecc`, `β` is positive, zero, or negative as the state's orbit is an ellipse, a parabola,
+or a hyperbola. -/
 noncomputable def conicBeta (μ : ℝ) (r v : V3) : ℝ := 2 * μ / norm r - dot v v
 
 /-- The position after the universal variable advances by `χ`: `f r + g v` with Lagrange's
@@ -238,8 +241,8 @@ noncomputable def conicVel (μ : ℝ) (r v : V3) (χ : ℝ) : V3 :=
 
 /-- The motion from the state `(r, v)` along its conic first reaches `r'` after the time `t`:
 `r × v ≠ 0`, and the universal variable advances by some `χ > 0` to the position `r'` in the time
-`t`, with no position `r'` at a smaller positive advance.  Since the time increases with the
-advance (`conicTime_strictMono`), `t` is the least positive time at which the motion is at
+`t`, with no position `r'` at a smaller positive advance.  For `μ > 0` the time increases with
+the advance (`conicTime_strictMono`), so `t` is the least positive time at which the motion is at
 `r'`. -/
 def ConicTransfer (μ : ℝ) (r v r' : V3) (t : ℝ) : Prop :=
   0 < dot (cross r v) (cross r v) ∧
@@ -272,6 +275,28 @@ theorem norm_pos_of_cross (hh : 0 < dot (cross r v) (cross r v)) : 0 < norm r :=
 
 theorem conicBeta_dot : dot v v = 2 * μ / norm r - conicBeta μ r v := by
   rw [conicBeta]; ring
+
+/-- **The shape of the orbit.**  The eccentricity vector of the state's orbit is normal to its
+angular momentum `h`, and `|e|² = 1 - β |h|²/μ²`.  So for `r × v ≠ 0` the orbit is an ellipse,
+`|e| < 1`, exactly when `β > 0`, a parabola exactly when `β = 0`, and a hyperbola exactly when
+`β < 0`. -/
+theorem orbitOf_ecc (hμ : 0 < μ) (hn : 0 < norm r) :
+    dot (orbitOf μ r v).e (orbitOf μ r v).h = 0 ∧
+      dot (orbitOf μ r v).e (orbitOf μ r v).e =
+        1 - conicBeta μ r v * dot (orbitOf μ r v).h (orbitOf μ r v).h / μ ^ 2 := by
+  have hn2 := norm_sq r
+  have hn0 := hn.ne'
+  have hμ0 := hμ.ne'
+  simp only [dot] at hn2
+  constructor
+  · simp only [orbitOf, dot, cross_x, cross_y, cross_z, sub_x, sub_y, sub_z, smul_x, smul_y,
+      smul_z]
+    ring
+  · simp only [orbitOf, conicBeta, dot, cross_x, cross_y, cross_z, sub_x, sub_y, sub_z, smul_x,
+      smul_y, smul_z]
+    linear_combination (norm := skip) (-1 / norm r ^ 2) * hn2
+    field_simp
+    ring
 
 theorem conic_zero : conicPos μ r v 0 = r ∧ conicTime μ r v 0 = 0 ∧
     conicRadius μ r v 0 = norm r := by

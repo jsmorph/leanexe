@@ -37,6 +37,7 @@ import Demos.Orbit.LambertTransfer
 #print axioms Demos.Orbit.izzo_orbit
 #print axioms Demos.Orbit.izzo_energy
 #print axioms Demos.Orbit.orbit_izzo
+#print axioms Demos.Orbit.orbitOf_ecc
 #print axioms Demos.Orbit.conicPos_onPath
 #print axioms Demos.Orbit.conicPos_norm
 #print axioms Demos.Orbit.conicPos_inj

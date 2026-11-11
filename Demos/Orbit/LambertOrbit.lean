@@ -480,8 +480,9 @@ theorem xy_of_q {L x y q : ℝ} (hL : L ≠ 0) (hq : y + L * x = q) (hq0 : 0 < q
   field_simp
   ring
 
-/-- **The energy of Izzo's orbit.**  `2/|r1| - |v1|²/μ = 2 (1 - x²)/s`, so the orbit is an
-ellipse for `|x| < 1`, with the semimajor axis `a = s/(2 (1 - x²))`. -/
+/-- **The energy of Izzo's orbit.**  `2/|r1| - |v1|²/μ = 2 (1 - x²)/s`.  By `orbitOf_ecc` the
+orbit is an ellipse for `|x| < 1`, with the semimajor axis `a = s/(2 (1 - x²))`, a parabola for
+`|x| = 1`, and a hyperbola for `|x| > 1`. -/
 theorem izzo_energy {μ : ℝ} (hμ : 0 < μ) {r1 r2 k : V3} (hD : dot (cross r1 r2) k ≠ 0)
     (x : ℝ) :
     2 / norm r1 - dot (izzoV1 μ r1 r2 k x) (izzoV1 μ r1 r2 k x) / μ =

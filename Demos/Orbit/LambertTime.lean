@@ -398,7 +398,8 @@ theorem izzoParams_bounds {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3
 /-- **Lambert's theorem for every conic.**  For `μ > 0`, `t > 0`, and `(r1 × r2) · k ≠ 0`, a
 velocity `v` at `r1` starts a motion along a conic in the direction of `k` that first reaches
 `r2` after the time `t` exactly when `v` is Izzo's velocity at the root `x*` of Izzo's equation.
-The conic is an ellipse, a parabola, or a hyperbola as `x*` lies below, at, or above 1. -/
+By `izzo_target` and `orbitOf_ecc`, the conic is an ellipse, a parabola, or a hyperbola as `x*`
+lies below, at, or above 1. -/
 theorem lambert_transfer {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     (hD : V3.dot (V3.cross r1 r2) k ≠ 0) (v : V3) :
     (ConicTransfer μ r1 v r2 t ∧ 0 < V3.dot (V3.cross r1 v) k) ↔
@@ -434,17 +435,19 @@ theorem lambert_transfer {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     exact mul_right_cancel₀ hT.ne' htime
 
 /-- A two-body transfer from `(r1, v1)` to `(r2, v2)` in the time `t`: a solution of Newton's
-equation that starts at `(r1, v1)`, is at `(r2, v2)` at the time `t`, and is not at `r2` at any
-earlier positive time. -/
+equation on an open interval of times that contains `[0, t]`, which starts at `(r1, v1)`, is at
+`(r2, v2)` at the time `t`, and is not at `r2` at any earlier positive time.  The interval admits
+a transfer that begins with a manoeuvre at `r1`, before which the motion follows another
+orbit. -/
 def NewtonTransfer (μ : ℝ) (r1 v1 r2 v2 : V3) (t : ℝ) : Prop :=
-  ∃ R V : ℝ → V3, Newton μ R V ∧ R 0 = r1 ∧ V 0 = v1 ∧ R t = r2 ∧ V t = v2 ∧
-    ∀ τ, 0 < τ → τ < t → R τ ≠ r2
+  ∃ a b : ℝ, a < 0 ∧ t < b ∧ ∃ R V : ℝ → V3, NewtonOn μ (Set.Ioo a b) R V ∧ R 0 = r1 ∧
+    V 0 = v1 ∧ R t = r2 ∧ V t = v2 ∧ ∀ τ, 0 < τ → τ < t → R τ ≠ r2
 
 /-- **Lambert's theorem for Newton's equation.**  For `μ > 0`, `t > 0`, and `(r1 × r2) · k ≠ 0`,
 a solution of Newton's equation that starts at `r1` with the velocity `v`, with
 `(r1 × v) · k > 0`, first reaches `r2` at the time `t` with the velocity `v'` exactly when
-`v = v1(x*)` and `v' = v2(x*)`.  Every solution through the state `(r1, v)` is the motion of
-`conic_newton` (`newton_unique`), so `lambert_transfer` applies to it. -/
+`v = v1(x*)` and `v' = v2(x*)`.  On its interval such a solution is the motion of `conic_newton`
+(`newton_unique`), so `lambert_transfer` applies to it. -/
 theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     (hD : V3.dot (V3.cross r1 r2) k ≠ 0) (v v' : V3) :
     (NewtonTransfer μ r1 v r2 v' t ∧ 0 < V3.dot (V3.cross r1 v) k) ↔
@@ -465,17 +468,19 @@ theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     rw [hc, hva2] at hs
     exact hs.symm
   constructor
-  · rintro ⟨⟨R, V, hN, hR0, hV0, hRt, hVt, hfirst⟩, hk⟩
+  · rintro ⟨⟨a, b, ha, hb, R, V, hN, hR0, hV0, hRt, hVt, hfirst⟩, hk⟩
     have hh : 0 < V3.dot (V3.cross r1 v) (V3.cross r1 v) := by
       rcases (V3.dot_self_nonneg (V3.cross r1 v)).lt_or_eq with h | h
       · exact h
       · rw [V3.eq_zero_of_dot_self h.symm] at hk; simp [V3.dot] at hk
     obtain ⟨hK, hK0, hKv0⟩ := conic_newton hμ hh
-    obtain ⟨hRe, -⟩ := newton_unique hN hK (t0 := 0) (hR0.trans hK0.symm) (hV0.trans hKv0.symm)
-    have hR : ∀ τ, R τ = conicPos μ r1 v (conicAdvance μ r1 v τ) := fun τ => congrFun hRe τ
+    have hu := newton_unique isOpen_Ioo isPreconnected_Ioo hN (hK.on (Set.Ioo a b))
+      ⟨ha, by linarith⟩ (hR0.trans hK0.symm) (hV0.trans hKv0.symm)
+    have hR : ∀ τ, 0 ≤ τ → τ ≤ t → R τ = conicPos μ r1 v (conicAdvance μ r1 v τ) :=
+      fun τ h0 h1 => (hu τ ⟨by linarith, by linarith⟩).1
+    have hKt : conicPos μ r1 v (conicAdvance μ r1 v t) = r2 := (hR t ht.le le_rfl).symm.trans hRt
     have htr : ConicTransfer μ r1 v r2 t := by
-      refine ⟨hh, conicAdvance μ r1 v t, ?_, (hR t).symm.trans hRt,
-        conicTime_advance hμ hh t, fun χ' h0 h1 heq => ?_⟩
+      refine ⟨hh, conicAdvance μ r1 v t, ?_, hKt, conicTime_advance hμ hh t, fun χ' h0 h1 heq => ?_⟩
       · have := conicAdvance_strictMono hμ hh ht
         rwa [conicAdvance_zero hμ hh] at this
       · have hτ0 : 0 < conicTime μ r1 v χ' := by
@@ -484,10 +489,13 @@ theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
         have hτ1 : conicTime μ r1 v χ' < t := by
           have := conicTime_strictMono hμ hh h1
           rwa [conicTime_advance hμ hh] at this
-        exact hfirst _ hτ0 hτ1 (by rw [hR, conicAdvance_time hμ hh]; exact heq)
+        exact hfirst _ hτ0 hτ1
+          (by rw [hR _ hτ0.le hτ1.le, conicAdvance_time hμ hh]; exact heq)
     have hv := (lambert_transfer hμ ht hD v).mp ⟨htr, hk⟩
     subst hv
-    exact ⟨rfl, hVt.symm.trans (vend R V hN hR0 hV0 hRt)⟩
+    have hVt' : V t = conicVel μ r1 _ (conicAdvance μ r1 _ t) :=
+      (hu t ⟨by linarith, hb⟩).2
+    exact ⟨rfl, hVt.symm.trans (hVt'.trans (vend _ _ hK hK0 hKv0 hKt))⟩
   · rintro ⟨rfl, rfl⟩
     obtain ⟨⟨hh, χ, hχ0, hpos, htime, hfirst⟩, hk⟩ :=
       (lambert_transfer hμ ht hD (izzoV1 μ r1 r2 k (izzoRoot r1 r2 t μ k))).mpr rfl
@@ -497,7 +505,8 @@ theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     have hRt : conicPos μ r1 (izzoV1 μ r1 r2 k (izzoRoot r1 r2 t μ k))
         (conicAdvance μ r1 (izzoV1 μ r1 r2 k (izzoRoot r1 r2 t μ k)) t) = r2 := by
       rw [hadv, hpos]
-    refine ⟨⟨_, _, hN, hR0, hV0, hRt, vend _ _ hN hR0 hV0 hRt, fun τ hτ0 hτt heq => ?_⟩, hk⟩
+    refine ⟨⟨-1, t + 1, by norm_num, by linarith, _, _, hN.on _, hR0, hV0, hRt,
+      vend _ _ hN hR0 hV0 hRt, fun τ hτ0 hτt heq => ?_⟩, hk⟩
     have a0 := conicAdvance_strictMono hμ hh hτ0
     have a1 := conicAdvance_strictMono hμ hh hτt
     rw [conicAdvance_zero hμ hh] at a0
