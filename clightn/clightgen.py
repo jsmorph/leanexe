@@ -5,15 +5,18 @@
 """Writes the program of a Coq file that clightgen printed for a bare-metal program, and the
 statement of its termination, in the neutral language of clightn/N.nsx (clightn/README.md).
 
-  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM BYTES RESULT
+  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM terminates BYTES RESULT
+  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM reads
 
-writes the part MODULE with the constants NAME_defs, NAME_main, and NAME_trace, the definitions
-of the file's program, the identifier of its main, and the trace of one volatile store to lx_out
-of each byte of BYTES, a list separated by commas, and the statement NAME_terminates, which says
-that the program terminates with that trace and the result RESULT.  The Rocq
-theorem THEOREM takes the statement as its premise.  The script is untrusted: Rocq proves that the
-constant is the program of the file, and the check compares what each prover elaborated with the
-output of this script.
+writes the part MODULE with the constants NAME_defs and NAME_main, the definitions of the file's
+program and the identifier of its main, and a statement that the Rocq theorem THEOREM takes as its
+premise.  With terminates, the part also holds the constant NAME_trace, the trace of one volatile
+store to lx_out of each byte of BYTES, a list separated by commas, and the statement
+NAME_terminates says that the program terminates with that trace and the result RESULT.  With
+reads, the statement NAME_reads says that for every sequence sigma of the values of its volatile
+loads the program terminates with a trace whose k-th volatile load reads sigma k.  The script is
+untrusted: Rocq proves that the constant is the program of the file, and the check compares what
+each prover elaborated with the output of this script.
 """
 import re
 import sys
@@ -242,10 +245,11 @@ class Converter:
 
 
 def main(argv):
-    if len(argv) != 8:
+    form = argv[6] if len(argv) > 6 else None
+    if not ((form == "terminates" and len(argv) == 9) or (form == "reads" and len(argv) == 7)):
         print(__doc__, file=sys.stderr)
         return 2
-    src, out, name, module, theorem, bytes_, result = argv[1:]
+    src, out, name, module, theorem = argv[1:6]
     sys.setrecursionlimit(100000)
     try:
         defs = sentences(tokens(open(src).read()))
@@ -258,10 +262,11 @@ def main(argv):
             raise Error("the program is not mkprogram of the file's definitions")
         main_id = c.ident(prog[5])
         program = c.conv(Parser(defs["global_definitions"]).term())
-        out_id = c.ident("_lx_out")
-        trace = "nil"
-        for b in reversed([int(x) for x in bytes_.split(",")]):
-            trace = f"(cons (Event_vstore Mint32 {out_id} (rptr 0) (EVint (r32 {b}))) {trace})"
+        if form == "terminates":
+            out_id = c.ident("_lx_out")
+            trace = "nil"
+            for b in reversed([int(x) for x in argv[7].split(",")]):
+                trace = f"(cons (Event_vstore Mint32 {out_id} (rptr 0) (EVint (r32 {b}))) {trace})"
     except (Error, KeyError) as e:
         print(f"clightgen.py: {e}", file=sys.stderr)
         return 1
@@ -269,11 +274,16 @@ def main(argv):
             f"(part (rocq {module}))",
             f"(constant {name}_defs (dlist)",
             "  " + program + ")",
-            f"(constant {name}_main ident {main_id})",
-            f"(constant {name}_trace (list event)",
-            "  " + trace + ")",
-            f"(carried {name}_terminates (rocq {theorem})",
-            f"  (nprog {name}_defs {name}_main {name}_trace (r32 {result})))"]
+            f"(constant {name}_main ident {main_id})"]
+    if form == "terminates":
+        text += [f"(constant {name}_trace (list event)",
+                 "  " + trace + ")",
+                 f"(carried {name}_terminates (rocq {theorem})",
+                 f"  (nprog {name}_defs {name}_main {name}_trace (r32 {argv[8]})))"]
+    else:
+        text += [f"(carried {name}_reads (rocq {theorem})",
+                 "  (forall ((sigma (-> nat w32))) (exists ((t (list event)) (r w32))",
+                 f"    (and (nprog {name}_defs {name}_main t r) (nreads sigma O t)))))"]
     open(out, "w").write("\n".join(text) + "\n")
     return 0
 

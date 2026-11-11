@@ -1034,6 +1034,16 @@ MUTATIONS = {
         ("np_intro", "(@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false)",
          "(@LClight.calling_convention.mk (@Option.none _) Bool.true Bool.false)",
          "Lean:ctor:np_intro"),
+        ("nv_word", "(18446744073709551616 : Int)) (8 : Int))",
+         "(18446744073709551616 : Int)) (4 : Int))", "Lean:ctor:nv_word"),
+        ("nv_byte", "(@LT.lt Int Int.instLTInt (@ClightN.Base.u64 k)",
+         "(@LE.le Int Int.instLEInt (@ClightN.Base.u64 k)", "Lean:ctor:nv_byte"),
+        ("vl_uchar", "(1 : Int) j", "(4 : Int) j", "Lean:ctor:vl_uchar"),
+        ("nr_load", "(nreads s (@Nat.succ c) t)", "(nreads s c t)", "Lean:ctor:nr_load"),
+        ("li_before", "(@LClight.statement.Ssequence pre init) body", "init body",
+         "Lean:ctor:li_before"),
+        ("nr_intro", "(Inv (@Nat.succ n) le2 gv2 mb2)", "(Inv n le2 gv2 mb2)",
+         "Lean:ctor:nr_intro"),
     ],
     "rocq-spec": [
         ("bo_mul_ul", "BinInt.Z.mul", "BinInt.Z.add", "Rocq:ctor:bo_mul_ul"),
@@ -1047,6 +1057,12 @@ MUTATIONS = {
          "Rocq:ctor:nx_loop"),
         ("in_there", "((in_defs rest x g) -> (in_defs (@cons _ d rest) x g))",
          "(in_defs (@cons _ d rest) x g)", "Rocq:ctor:in_there"),
+        ("vl_uint", "(4)%Z j (@Values.Vint j)", "(8)%Z j (@Values.Vint j)", "Rocq:ctor:vl_uint"),
+        ("ni_intro", "(@eq _ (mb x j) (0)%Z)", "(@eq _ (mb x j) (1)%Z)", "Rocq:ctor:ni_intro"),
+        ("nx_vload", "(@NBase.rptr (@BinInt.Z.mul sz (@NBase.u64 k)))",
+         "(@NBase.rptr (@NBase.u64 k))", "Rocq:ctor:nx_vload"),
+        ("nr_store", "((nreads s c t) ->", "((nreads s (S c) t) ->", "Rocq:ctor:nr_store"),
+        ("nr_intro", "(Inv O le gv mb)", "(Inv (S O) le gv mb)", "Rocq:ctor:nr_intro"),
     ],
     "lean-gcd": [
         ("cst_gcd_trace", "(21 : Int)", "(22 : Int)", "Lean:constant:gcd_trace"),
@@ -1055,6 +1071,15 @@ MUTATIONS = {
     "rocq-gcd": [
         ("cst_gcd_main", "(22880918)%positive", "(22880919)%positive", "Rocq:constant:gcd_main"),
         ("cst_gcd_defs", "(462)%Z", "(463)%Z", "Rocq:constant:gcd_defs"),
+    ],
+    "lean-sha": [
+        ("cst_sha_defs", "(268435456 : Int)", "(268435448 : Int)", "Lean:constant:sha_defs"),
+        ("stmt_sha_reads", "(nreads sigma Nat.zero t)", "(nreads sigma (@Nat.succ Nat.zero) t)",
+         "Lean:statement:sha_reads"),
+    ],
+    "rocq-sha": [
+        ("cst_sha_main", "(22880918)%positive", "(22880919)%positive", "Rocq:constant:sha_main"),
+        ("cst_sha_defs", "(268435456)%Z", "(268435448)%Z", "Rocq:constant:sha_defs"),
     ],
     "lean-proof": [
         ("lt_ul_ul", "theorem lt_ul_ul : stmt_lt_ul_ul := by",
@@ -1085,6 +1110,23 @@ MUTATIONS = {
         ("gcd_asm", "  intros H p p1 p2 tp E1 E2 T D M P C.\n"
          "  eapply Clight2Asm.clight2_bigstep_to_asm; eauto.\n"
          "  eapply gcd_clight2; eauto.\nQed.", "Admitted.", "Rocq:proof:gcd_terminates"),
+    ],
+    "lean-sha-proof": [
+        ("sha_reads", "theorem sha_reads : stmt_sha_reads := by",
+         "theorem sha_reads : stmt_sha_reads := by\n  sorry\n\n"
+         "theorem sha_reads_unused : stmt_sha_reads := by", "Lean:proof:sha_reads"),
+    ],
+    "rocq-sha-proof": [
+        ("sha_asm", "  intros H p p1 p2 tp E1 E2 TR D M P C.\n"
+         "  destruct (Clight2Asm.clight2_bigstep_asm_reads_ptr64 eq_refl p p1 p2 tp "
+         "(fun _ _ _ => True)\n"
+         "              E1 E2 TR) as [A U].\n"
+         "  - intros sigma. destruct (sha_clight2 H p2 D M P C sigma) as (t & r & B & R).\n"
+         "    exists t, r. auto.\n"
+         "  - split.\n"
+         "    + intros sigma. destruct (A sigma) as (t & r & B & R & _). eauto.\n"
+         "    + intros beh B. destruct (U beh B) as (sigma & t & r & E & R & _). eauto.\n"
+         "Qed.", "Admitted.", "Rocq:proof:sha_reads"),
     ],
 }
 
