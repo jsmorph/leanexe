@@ -28,7 +28,7 @@ q = 280.459 + 0.98564736 D          mean longitude
 ŝ = (cos λ, cos ε sin λ, sin ε sin λ)
 ```
 
-and `ŝ` is the geocentric unit vector toward the Sun in the equatorial frame, the ecliptic latitude taken as zero.  The constants are the decimal numbers as written, which the program encloses by exact ratios of integers, so the theorems concern the formula itself and not the binary64 roundings of its constants.  The time of the window is in minutes on one scale with the orbit's epoch, and minute 0 falls `d₀` days from J2000.0, so `D(t) = d₀ + t/1440`.  The program evaluates the formula with no reduction of the angles, which the periodicity of `sin` and `cos` makes unnecessary.
+and `ŝ` is the geocentric unit vector toward the Sun in the equatorial frame, the ecliptic latitude taken as zero.  The constants are the decimal numbers as written, which the program encloses by exact ratios of integers, so the theorems concern the formula with its published constants.  The time of the window is in minutes on one scale with the orbit's epoch, and minute 0 falls `d₀` days from J2000.0, so `D(t) = d₀ + t/1440`.  The program evaluates the formula with no reduction of the angles, which the periodicity of `sin` and `cos` makes unnecessary.
 
 The accuracy of the formula and the frame of the elements are premises outside the theorems.  The USNO states an accuracy of about 1′ within two centuries of 2000, that is for `|D| ≤ 73,050`, against the JPL ephemeris DE405, and takes the Julian date as a form of Universal Time.  The formula gives the apparent longitude with the mean obliquity and no nutation, so its frame is closest to the mean equator and equinox of date, and the elements must refer to that frame.  TEME, the frame of SGP4, differs from it by the nutation of the equator, at most about 10″, and from the true equator and equinox of date by the equation of the equinoxes, at most about 17″.  The J2000 frame differs from it by precession, 0.363° on 2026-01-01 and 0.377° on 2026-12-31, which a caller with J2000 elements applies.  For the shadow, the formula's apparent direction is the direction of the light that casts the shadow, about 20.5″ from the geometric line through the two centers.
 
@@ -123,7 +123,7 @@ Each theorem has a layer over the real numbers about the model and a layer about
 | E6 | Program | For a valid input, the status is 0 or 1, outputs 0 and 3 are the search's status and levels, status 0 comes with all `N` levels, and status 1 with fewer levels and a next level of more than `C` cells. |
 | C1 | Compilation | The module's entry `events`, called with the input array, returns the array of `events` without a trap from a store with room for the generated allocation bound. |
 
-Every theorem depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  E1 to E6 hold for an output that labels every run 0 or returns the whole window as one run; the program's text, which C1 ties to the module, fixes the method, and the tests check that the output follows it.
+Every theorem depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  E1 to E6 also hold for an output that labels every run 0 or returns the whole window as one run.  The program's text, which C1 ties to the module, fixes the method, and the tests check that the output follows it.
 
 ## Tests
 
@@ -146,6 +146,5 @@ The theorems concern the stated model: Kepler motion, the USNO's formula for the
 ## References
 
 - [U.S. Naval Observatory, Approximate solar coordinates](https://aa.usno.navy.mil/faq/sun_approx)
-- [Brief 5.1 of the space operations candidates](/media/psf/Downloads/space-ops-candidates.md)
 - [The conjunction screening demo](../Screening/README.md)
 - [The interval library](../../Library/Numerics/Interval/README.md)

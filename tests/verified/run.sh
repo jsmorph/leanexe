@@ -27,7 +27,9 @@
 # the axiom audit of tests/orbit/Axioms.lean, and with --cases gibbs or --cases lambert it checks
 # that module's file theorems.  For the screening program, it runs the axiom audit of
 # tests/screening/Axioms.lean, and with --cases screening it checks the program's file theorem
-# module as well.  Each audit fails the run
+# module as well.  For the event-window program, it runs the axiom audit of
+# tests/events/Axioms.lean, and with --cases events it checks the program's file theorem module
+# as well.  Each audit fails the run
 # when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
@@ -143,6 +145,8 @@ elif [ "$case_module" = "attitude" ]; then
   cases_exe=verified-cases-attitude
 elif [ "$case_module" = "screening" ]; then
   cases_exe=verified-cases-screening
+elif [ "$case_module" = "events" ]; then
+  cases_exe=verified-cases-events
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "passivesafety" ]; then
@@ -196,6 +200,10 @@ if [ -z "$reference" ]; then
   if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
   if [ "$case_module" = "screening" ]; then
     targets+=(Demos.Screening.Verified $(imports Demos/Screening/File.lean))
+  fi
+  if runs events; then targets+=($(imports tests/events/Axioms.lean)); fi
+  if [ "$case_module" = "events" ]; then
+    targets+=(Demos.Events.Verified $(imports Demos/Events/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
@@ -377,6 +385,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then
   check_axioms tests/screening/Axioms.lean
   if [ "$case_module" = "screening" ]; then
     check_file screening Demos.Screening.Verified Demos/Screening/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "events" ]; then
+  check_axioms tests/events/Axioms.lean
+  if [ "$case_module" = "events" ]; then
+    check_file events Demos.Events.Verified Demos/Events/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then

@@ -259,6 +259,10 @@ lean_exe «verified-cases-screening» where
   srcDir := "tests"
   root := `TestSupport.Screening.CasesMain
 
+lean_exe «verified-cases-events» where
+  srcDir := "tests"
+  root := `TestSupport.Events.CasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain
