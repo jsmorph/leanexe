@@ -305,15 +305,12 @@ theorem kicks_after {n : ℝ} (hn : n ≠ 0) {bs : List Burn} {tL t : ℝ} (hb :
 
 /-! ### The radial and cross-track plane -/
 
-/-- The square of the radial and cross-track distance at phase `φ` of the closed form from `s`. -/
-noncomputable def rcSq (n φ : ℝ) (s : State) : ℝ :=
-  ((4 - 3 * cos φ) * s.x + sin φ / n * s.vx + 2 / n * (1 - cos φ) * s.vy) ^ 2 +
-    (cos φ * s.z + sin φ / n * s.vz) ^ 2
-
 /-- The radial and cross-track components of the closed form depend on the time only through the
-phase, so every time has a phase in `[0, 2π)` with the same distance. -/
-theorem rc_phase (n τ : ℝ) (s : State) :
-    ∃ φ ∈ Set.Ico 0 (2 * π), (flow n τ s).x ^ 2 + (flow n τ s).z ^ 2 = rcSq n φ s := by
+phase `n τ`, so every time `τ` has a time `φ / n` with `φ` in `[0, 2π)` at which they are the
+same.  The along-track component may drift. -/
+theorem flow_phase {n : ℝ} (hn : n ≠ 0) (τ : ℝ) (s : State) :
+    ∃ φ ∈ Set.Ico 0 (2 * π),
+      (flow n τ s).x = (flow n (φ / n) s).x ∧ (flow n τ s).z = (flow n (φ / n) s).z := by
   have hp : (0 : ℝ) < 2 * π := by positivity
   have hm := toIcoMod_mem_Ico hp 0 (n * τ)
   have e := toIcoMod_add_toIcoDiv_zsmul hp 0 (n * τ)
@@ -322,7 +319,9 @@ theorem rc_phase (n τ : ℝ) (s : State) :
   refine ⟨φ, by simpa using hm, ?_⟩
   have hs : sin (n * τ) = sin φ := by rw [← e, sin_add_int_mul_two_pi]
   have hc : cos (n * τ) = cos φ := by rw [← e, cos_add_int_mul_two_pi]
-  simp only [flow, rcSq, hs, hc]
+  have hφ : n * (φ / n) = φ := mul_div_cancel₀ φ hn
+  simp only [flow, hs, hc, hφ]
+  exact ⟨trivial, trivial⟩
 
 /-! ### Scenarios -/
 

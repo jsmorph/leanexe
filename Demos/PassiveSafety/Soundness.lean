@@ -10,10 +10,11 @@ plan's times and velocity changes in the plan's boxes, keeps the separation at o
 threshold and the returned bound over the horizon, and the radial and cross-track distance at or
 above its threshold and bound at every time after the scenario's last burn, in every scenario.
 
-The proof follows the program.  `positionI_encloses` and `stateI_encloses` give the enclosures of
-the position and the state from the loops over the burns, `Model.path_eq` and
-`Model.kicks_selectFrom` equate the enclosed sums with the model's trajectory, `search_covered`
-states what a finished search covers, and `scan_sound` collects the scenarios.
+The proof follows the program.  `positionI_encloses` gives the enclosure of the position from the
+loop over the burns, `Model.path_eq` and `Model.kicks_selectFrom` equate the enclosed sum with the
+model's trajectory, `search_covered` states what a finished search covers, `Model.flow_phase`
+reduces every time after a scenario's last burn to one period, and `scan_sound` collects the
+scenarios.
 -/
 
 namespace Demos.PassiveSafety
@@ -84,18 +85,11 @@ theorem flowPosition_eq (n t : ℝ) (s : State) :
     flowPosition n t s.x s.y s.z s.vx s.vy s.vz = ((flow n t s).x, (flow n t s).y, (flow n t s).z) :=
   rfl
 
-theorem flowState_eq (n t : ℝ) (s : State) :
-    flowState n t s.x s.y s.z s.vx s.vy s.vz =
-      ((flow n t s).x, (flow n t s).y, (flow n t s).z, (flow n t s).vx, (flow n t s).vy,
-        (flow n t s).vz) :=
-  rfl
-
 theorem sepSquare_eq (x y z : ℝ) : sepSquare x y z = x ^ 2 + y ^ 2 + z ^ 2 := by
   simp only [sepSquare, abs_mul_abs_self]; ring
 
-theorem rcSquare_eq (n p : ℝ) (s : State) :
-    rcSquare n p s.x s.z s.vx s.vy s.vz = rcSq n p s := by
-  simp only [rcSquare, rcSq, abs_mul_abs_self]; ring
+theorem rcSquare_eq (x z : ℝ) : rcSquare x z = x ^ 2 + z ^ 2 := by
+  simp only [rcSquare, abs_mul_abs_self]; ring
 
 /-! ### The input and the burns -/
 
@@ -171,12 +165,6 @@ theorem runs_eq {N j k : UInt64} (hN : N.toNat ≤ 16) (hj : j.toNat ≤ 2 * N.t
 noncomputable def posTerm (c : State → ℝ) (n τ : ℝ) (N j : ℕ) (bs : List Burn) (i : ℕ) : ℝ :=
   if Model.runs N j i = true then
     c (flow n (max (τ - (bs.getD i Burn.none).t) 0) (bs.getD i Burn.none).kick)
-  else 0
-
-/-- The component `c` of the term of burn `i` in scenario `j` at a time `tL` after its burns. -/
-noncomputable def stTerm (c : State → ℝ) (n tL : ℝ) (N j : ℕ) (bs : List Burn) (i : ℕ) : ℝ :=
-  if Model.runs N j i = true then
-    c (flow n (tL - (bs.getD i Burn.none).t) (bs.getD i Burn.none).kick)
   else 0
 
 /-- The facts about one burn of the plan that the loops over the burns use. -/
@@ -264,66 +252,6 @@ theorem positionI_encloses {xs : Array Float} {N j : UInt64} {bs : List Burn} {s
       simp only [hf, Bool.false_eq_true, ite_false, posTerm, hrun, add_zero]
       exact ih
 
-/-- The enclosures of the state at `tL` after the first `k` burns of scenario `j`. -/
-def StateInv (xs : Array Float) (s : State) (bs : List Burn) (j : ℕ) (tL : ℝ) (k : ℕ)
-    (acc : Interval × Interval × Interval × Interval × Interval × Interval) : Prop :=
-  let sum (c : State → ℝ) := c (flow (val xs 0) tL s) +
-    ∑ i ∈ Finset.range k, stTerm c (val xs 0) tL bs.length j bs i
-  Encloses acc.1 (sum State.x) ∧ Encloses acc.2.1 (sum State.y) ∧
-    Encloses acc.2.2.1 (sum State.z) ∧ Encloses acc.2.2.2.1 (sum State.vx) ∧
-    Encloses acc.2.2.2.2.1 (sum State.vy) ∧ Encloses acc.2.2.2.2.2 (sum State.vz)
-
-theorem stateI_encloses {xs : Array Float} {N j : UInt64} {bs : List Burn} {s : State}
-    {tL : Float} (hN : N.toNat = bs.length) (h16 : bs.length ≤ 16)
-    (hj : j.toNat ≤ 2 * bs.length) (hplan : Plan xs bs) (hbox : InBox xs s) :
-    StateInv xs s bs j.toNat (value tL.toBits) bs.length
-      (stateI Trig.invPi Trig.halfPi xs N j tL) := by
-  obtain ⟨b0, b1, b2, b3, b4, b5⟩ := box_initial hbox
-  have hn : Encloses (point (rd xs 0)) (val xs 0) := encloses_point _
-  have ht : Encloses (point tL) (value tL.toBits) := encloses_point _
-  have e0 := flowState.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hn ht b0 b1 b2 b3
-    b4 b5
-  rw [flowState_eq] at e0
-  obtain ⟨p0, p1, p2, p3, p4, p5⟩ := e0
-  rw [← hN]
-  unfold stateI
-  refine LeanExe.Dialect.loop_induction (StateInv xs s bs j.toNat (value tL.toBits)) ?_ ?_
-  · simp only [StateInv, Finset.range_zero, Finset.sum_empty, add_zero]
-    exact ⟨p0, p1, p2, p3, p4, p5⟩
-  · intro k acc hk ih
-    simp only [StateInv] at ih ⊢
-    have hkN : (UInt64.ofNat k).toNat = k := by
-      rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
-    have hr := runs_eq (N := N) (j := j) (k := UInt64.ofNat k) (by omega) (by omega)
-      (by rw [hkN]; exact hk)
-    rw [hN, hkN] at hr
-    simp only [Finset.sum_range_succ]
-    by_cases hrun : Model.runs bs.length j.toNat k = true
-    · simp only [hr, hrun, ite_true]
-      obtain ⟨et, ex, ey, ez⟩ := burn_encloses hplan (k := UInt64.ofNat k) (by omega) h16
-      rw [hkN] at et ex ey ez
-      set b := bs.getD k Burn.none
-      have eq := flowState.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi)
-        (x' := b.kick.x) (y' := b.kick.y) (z' := b.kick.z) (vx' := b.kick.vx)
-        (vy' := b.kick.vy) (vz' := b.kick.vz) hn (encloses_sub ht et) encloses_zero
-        encloses_zero encloses_zero ex ey ez
-      rw [flowState_eq] at eq
-      obtain ⟨q0, q1, q2, q3, q4, q5⟩ := eq
-      dsimp only at q0 q1 q2 q3 q4 q5
-      obtain ⟨a0, a1, a2, a3, a4, a5⟩ := ih
-      simp only [stTerm, hrun, ite_true]
-      refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-      · have := encloses_add a0 q0; rwa [add_assoc] at this
-      · have := encloses_add a1 q1; rwa [add_assoc] at this
-      · have := encloses_add a2 q2; rwa [add_assoc] at this
-      · have := encloses_add a3 q3; rwa [add_assoc] at this
-      · have := encloses_add a4 q4; rwa [add_assoc] at this
-      · have := encloses_add a5 q5; rwa [add_assoc] at this
-    · have hf : runs N j (UInt64.ofNat k) = false := by
-        rw [hr]; simpa using hrun
-      simp only [hf, Bool.false_eq_true, ite_false, stTerm, hrun, add_zero]
-      exact ih
-
 /-! ### The model's trajectory as the enclosed sums -/
 
 /-- Burns in nondecreasing order of time. -/
@@ -354,36 +282,6 @@ theorem path_position {n : ℝ} (hn : n ≠ 0) {bs : List Burn} (hs : Sorted bs)
   · simp only [State.add_x]; rw [select, hx]; rfl
   · simp only [State.add_y]; rw [select, hy]; rfl
   · simp only [State.add_z]; rw [select, hz]; rfl
-
-theorem path_state {n : ℝ} (hn : n ≠ 0) {bs : List Burn} (hs : Sorted bs) (N j : ℕ)
-    (s : State) {tL : ℝ}
-    (hb : ∀ i < bs.length, Model.runs N j i = true → (bs.getD i Burn.none).t ≤ tL) :
-    let p := path n 0 s (select N j bs) tL
-    let sum (c : State → ℝ) := c (flow n tL s) +
-      ∑ i ∈ Finset.range bs.length, stTerm c n tL N j bs i
-    p.x = sum State.x ∧ p.y = sum State.y ∧ p.z = sum State.z ∧ p.vx = sum State.vx ∧
-      p.vy = sum State.vy ∧ p.vz = sum State.vz := by
-  intro p sum
-  have e : p = flow n tL s + kicks n tL (select N j bs) := by
-    simp only [p]
-    rw [path_eq hn (hs.select N j), sub_zero]
-  have term (c : State → ℝ) : ∀ i < bs.length, Model.runs N j (0 + i) = true →
-      c (if (bs.getD i Burn.none).t ≤ tL then
-        flow n (tL - (bs.getD i Burn.none).t) (bs.getD i Burn.none).kick else 0) =
-        c (flow n (tL - (bs.getD i Burn.none).t) (bs.getD i Burn.none).kick) := by
-    intro i hi hr
-    rw [Nat.zero_add] at hr
-    rw [if_pos (hb i hi hr)]
-  have hsum (c : State → ℝ) (hadd : ∀ a b, c (a + b) = c a + c b) (hzero : c 0 = 0) :
-      c p = sum c := by
-    rw [e, hadd]
-    have := kicks_selectFrom c hadd hzero n tL N j
-      (fun b => c (flow n (tL - b.t) b.kick)) 0 bs (term c)
-    simp only [Nat.zero_add] at this
-    simp only [sum, select, this, stTerm]
-  exact ⟨hsum State.x (fun _ _ => rfl) rfl, hsum State.y (fun _ _ => rfl) rfl,
-    hsum State.z (fun _ _ => rfl) rfl, hsum State.vx (fun _ _ => rfl) rfl,
-    hsum State.vy (fun _ _ => rfl) rfl, hsum State.vz (fun _ _ => rfl) rfl⟩
 
 /-! ### Searches -/
 
@@ -548,6 +446,14 @@ noncomputable def rcSqAt (xs : Array Float) (s : State) (bs : List Burn) (j : �
   (path (val xs 0) 0 s (select bs.length j bs) t).x ^ 2 +
     (path (val xs 0) 0 s (select bs.length j bs) t).z ^ 2
 
+/-- The checks of burn `k`, counted from 0: its time is at least 0 for the first burn and at
+least the time of the burn before it otherwise, at most `T`, and each velocity interval is
+ordered. -/
+def BurnOk (xs : Array Float) (k : ℕ) : Prop :=
+  (k = 0 → 0 ≤ val xs 16) ∧ (0 < k → val xs (16 + 7 * (k - 1)) ≤ val xs (16 + 7 * k)) ∧
+    val xs (16 + 7 * k) ≤ val xs 1 ∧ val xs (17 + 7 * k) ≤ val xs (18 + 7 * k) ∧
+    val xs (19 + 7 * k) ≤ val xs (20 + 7 * k) ∧ val xs (21 + 7 * k) ≤ val xs (22 + 7 * k)
+
 /-- The facts about a valid input that the scenarios use. -/
 structure Valid (xs : Array Float) (N : UInt64) : Prop where
   size : xs.size = 16 + 7 * N.toNat
@@ -555,11 +461,39 @@ structure Valid (xs : Array Float) (N : UInt64) : Prop where
   finite : ∀ i < xs.size, Finite (xs[i]!).toBits
   n_pos : 0 < val xs 0
   horizon_pos : 0 < val xs 1
-  sorted : ∀ bs, Plan xs bs → Sorted bs
+  box : ∀ i < 6, val xs (4 + 2 * i) ≤ val xs (5 + 2 * i)
+  burns : ∀ k < N.toNat, BurnOk xs k
 
 theorem Valid.length {xs : Array Float} {N : UInt64} (hv : Valid xs N) {bs : List Burn}
     (hp : Plan xs bs) : N.toNat = bs.length := by
   have := hp.1; rw [hv.size] at this; omega
+
+theorem Valid.sorted {xs : Array Float} {N : UInt64} (hv : Valid xs N) (bs : List Burn)
+    (hp : Plan xs bs) : Sorted bs := by
+  have hlen := hv.length hp
+  let _ : Trans (fun a b : Burn => a.t ≤ b.t) (fun a b : Burn => a.t ≤ b.t)
+    (fun a b : Burn => a.t ≤ b.t) := ⟨fun h1 h2 => le_trans h1 h2⟩
+  refine List.isChain_iff_pairwise.mp (List.isChain_iff_getElem.mpr fun i hi => ?_)
+  rw [(hp.2 i (by omega)).1, (hp.2 (i + 1) hi).1]
+  have := (hv.burns (i + 1) (by omega)).2.1 (by omega)
+  simpa using this
+
+/-- Every burn of a valid plan lies in `[0, T]`. -/
+theorem Valid.times {xs : Array Float} {N : UInt64} (hv : Valid xs N) {bs : List Burn}
+    (hp : Plan xs bs) : ∀ b ∈ bs, 0 ≤ b.t ∧ b.t ≤ val xs 1 := by
+  have hlen := hv.length hp
+  intro b hb
+  obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hb
+  have hs := hv.sorted bs hp
+  refine ⟨?_, ?_⟩
+  · have h0 : (0 : ℝ) ≤ bs[0].t := by
+      rw [(hp.2 0 (by omega)).1]
+      simpa using (hv.burns 0 (by omega)).1 rfl
+    rcases Nat.eq_zero_or_pos i with h | h
+    · subst h; exact h0
+    · exact h0.trans (List.pairwise_iff_getElem.mp hs 0 i (by omega) hi h)
+  · rw [(hp.2 i hi).1]
+    exact (hv.burns i (by omega)).2.2.1
 
 /-- A finished separation search of scenario `j` bounds the squared separation on `[0, T]`. -/
 theorem sep_good {xs : Array Float} {N j : UInt64} {d2 : Float} {fuel : UInt64}
@@ -592,11 +526,10 @@ theorem sep_good {xs : Array Float} {N j : UInt64} {d2 : Float} {fuel : UInt64}
 cross-track distance at every time after the scenario's burns. -/
 theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
     (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hd : Finite r2.toBits)
-    (h : searchStatus (rcSearch Trig.invPi Trig.halfPi (point (rd xs 0))
-      (stateI Trig.invPi Trig.halfPi xs N j (lastTime xs N j)) twoPiHi r2 fuel) twoPiHi 4 6 = 0)
+    (h : searchStatus (rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 fuel)
+      twoPiHi 4 6 = 0)
     {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
-    let m := rcSearch Trig.invPi Trig.halfPi (point (rd xs 0))
-      (stateI Trig.invPi Trig.halfPi xs N j (lastTime xs N j)) twoPiHi r2 fuel
+    let m := rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 fuel
     Finite m.low.toBits ∧ ∀ t, 0 ≤ t → (∀ b ∈ select bs.length j.toNat bs, b.t ≤ t) →
       value r2.toBits ≤ rcSqAt xs s bs j.toNat t ∧ value m.low.toBits ≤ rcSqAt xs s bs j.toNat t := by
   intro m
@@ -604,22 +537,24 @@ theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
   have h16 := hv.small
   have hn0 : val xs 0 ≠ 0 := hv.n_pos.ne'
   have hsort := hv.sorted bs hplan
-  obtain ⟨ftL, tL0, tLge, tLle⟩ := lastTime_bounds (j := j) hN (by omega) (by omega) hplan
+  obtain ⟨-, tL0, tLge, tLle⟩ := lastTime_bounds (j := j) hN (by omega) (by omega) hplan
     hv.finite
   set tL := value (lastTime xs N j).toBits
-  set P := path (val xs 0) 0 s (select bs.length j.toNat bs) tL
-  obtain ⟨S0, S1, S2, S3, S4, S5⟩ := stateI_encloses (N := N) (j := j) (tL := lastTime xs N j) hN
-    (by omega) (by omega) hplan hbox
-  obtain ⟨P0, P1, P2, P3, P4, P5⟩ := path_state hn0 hsort bs.length j.toNat s tLge
+  set n := val xs 0
   have hp : ∀ a b : Float, ∀ φ, value a.toBits ≤ φ → φ ≤ value b.toBits →
-      Encloses (rcPanel Trig.invPi Trig.halfPi (point (rd xs 0))
-        (stateI Trig.invPi Trig.halfPi xs N j (lastTime xs N j)) a b) (rcSq (val xs 0) φ P) := by
+      Encloses (rcPanel Trig.invPi Trig.halfPi xs N j (lastTime xs N j) a b)
+        (rcSqAt xs s bs j.toNat (tL + φ / n)) := by
     intro a b φ h1 h2
-    have hs := rcSquare.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi)
-      (encloses_point (rd xs 0)) (encloses_make h1 h2) S0 S2 S3 S4 S5
-    rw [← P0, ← P2, ← P3, ← P4, ← P5, rcSquare_eq] at hs
-    exact encloses_nonneg hs (by unfold rcSq; positivity)
-  have hc : Covered (fun φ => rcSq (val xs 0) φ P) r2 m :=
+    have ht : Encloses (add (point (lastTime xs N j)) (div (make a b) (point (rd xs 0))))
+        (tL + φ / n) := encloses_add (encloses_point _) (encloses_div (encloses_make h1 h2)
+          (encloses_point _))
+    obtain ⟨c0, -, c2⟩ := positionI_encloses (N := N) (j := j) hN (by omega) (by omega) hplan hbox
+      ht
+    obtain ⟨e0, -, e2⟩ := path_position hn0 hsort bs.length j.toNat s (tL + φ / n)
+    have hs := rcSquare.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) c0 c2
+    rw [rcSquare_eq, ← e0, ← e2] at hs
+    exact encloses_nonneg hs (add_nonneg (sq_nonneg _) (sq_nonneg _))
+  have hc : Covered (fun φ => rcSqAt xs s bs j.toNat (tL + φ / n)) r2 m :=
     search_covered (hmin := twoPiHi * minRatio) (fuel := fuel) twoPiHi_bounds.1 hd hp
   obtain ⟨fl, hb⟩ := covered_final hc twoPiHi_bounds.1
     (lt_of_lt_of_le (by positivity) twoPiHi_bounds.2) (Or.inr h)
@@ -633,11 +568,17 @@ theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
     obtain ⟨i, hi, hr, e⟩ := exists_of_mem_selectFrom bs.length j.toNat 0 bs b hb
     rw [← e]
     exact tLge i hi (by simpa using hr)
-  have e := path_after hn0 (hsort.select bs.length j.toNat) s hafter hle
-  obtain ⟨φ, hφ, hφe⟩ := rc_phase (val xs 0) (t - tL) P
+  set P := path n 0 s (select bs.length j.toNat bs) tL
+  obtain ⟨φ, hφ, ex, ez⟩ := flow_phase hn0 (t - tL) P
+  have hφn : 0 ≤ φ / n := div_nonneg hφ.1 hv.n_pos.le
+  have e1 := path_after hn0 (hsort.select bs.length j.toNat) s hafter hle
+  have e2 := path_after hn0 (hsort.select bs.length j.toNat) s hafter
+    (show tL ≤ tL + φ / n by linarith)
   have hb' := hb φ hφ.1 (hφ.2.le.trans twoPiHi_bounds.2)
-  unfold rcSqAt
-  rw [e, hφe]
+  have key : rcSqAt xs s bs j.toNat t = rcSqAt xs s bs j.toNat (tL + φ / n) := by
+    unfold rcSqAt
+    rw [e1, e2, show tL + φ / n - tL = φ / n by ring, ex, ez]
+  rw [key]
   exact hb'
 
 /-! ### The scenarios -/
@@ -682,9 +623,8 @@ theorem scan_sound {xs : Array Float} {N fuel : UInt64} {d2 r2 : Float} (hv : Va
         simp only [h0, ite_true] at hs ⊢
         by_cases h1 : searchStatus (sepSearch Trig.invPi Trig.halfPi xs N (UInt64.ofNat k)
             (rd xs 1) d2 fuel) (rd xs 1) 3 5 = 0
-        · by_cases h2 : searchStatus (rcSearch Trig.invPi Trig.halfPi (point (rd xs 0))
-              (stateI Trig.invPi Trig.halfPi xs N (UInt64.ofNat k)
-                (lastTime xs N (UInt64.ofNat k))) twoPiHi r2 fuel) twoPiHi 4 6 = 0
+        · by_cases h2 : searchStatus (rcSearch Trig.invPi Trig.halfPi xs N (UInt64.ofNat k)
+              (lastTime xs N (UInt64.ofNat k)) twoPiHi r2 fuel) twoPiHi 4 6 = 0
           · simp only [h1, h2, beq_self_eq_true, ite_true]
             obtain ⟨fm, hm⟩ := sep_good hv hj hd h1 hbox hplan
             obtain ⟨fr, hrc⟩ := rc_good hv hj hr h2 hbox hplan
@@ -727,22 +667,38 @@ theorem square_bound {x : Float} (hx : Finite x.toBits) (h0 : 0 ≤ value x.toBi
     exact ⟨c.2.2.1, by simpa using c.2.2.2.2⟩
 
 theorem sqrtDown_le {x : Float} (hx : Finite x.toBits) :
-    value (sqrtDown x).toBits ≤ √(value x.toBits) := by
+    Finite (sqrtDown x).toBits ∧ value (sqrtDown x).toBits ≤ √(value x.toBits) := by
   unfold sqrtDown
   by_cases hs : (sqrt (point x)).status = 0
   · have c := encloses_sqrt (encloses_point x) hs
-    obtain ⟨-, v⟩ := fmax_value lit_zero.1 c.2.1
+    obtain ⟨f, v⟩ := fmax_value lit_zero.1 c.2.1
     rw [v, lit_zero.2]
-    exact max_le (Real.sqrt_nonneg _) c.2.2.2.1
+    exact ⟨f, max_le (Real.sqrt_nonneg _) c.2.2.2.1⟩
   · have e : (sqrt (point x)).lo = rejected.lo := by
       unfold Library.Numerics.Interval.sqrt join at hs ⊢
       split_ifs with hc
       · simp [hc] at hs
       · rfl
     rw [e]
-    obtain ⟨-, v⟩ := fmax_value lit_zero.1 rejected_lo.1
+    obtain ⟨f, v⟩ := fmax_value lit_zero.1 rejected_lo.1
     rw [v, lit_zero.2, rejected_lo.2, max_self]
-    exact Real.sqrt_nonneg _
+    exact ⟨f, Real.sqrt_nonneg _⟩
+
+/-- The returned bound `fmax d (sqrtDown L)` lies between `d` and every quantity whose square is
+at least `d²` and `L`. -/
+theorem bound_between {d L : Float} {q : ℝ} (hd : Finite d.toBits) (hL : Finite L.toBits)
+    (h0 : 0 ≤ value d.toBits) (hq : 0 ≤ q) (h1 : value d.toBits ^ 2 ≤ q ^ 2)
+    (h2 : value L.toBits ≤ q ^ 2) :
+    value d.toBits ≤ value (fmax d (sqrtDown L)).toBits ∧
+      value (fmax d (sqrtDown L)).toBits ≤ q := by
+  obtain ⟨fs, vs⟩ := sqrtDown_le hL
+  obtain ⟨-, v⟩ := fmax_value hd fs
+  rw [v]
+  refine ⟨le_max_left _ _, max_le ?_ ?_⟩
+  · exact (pow_le_pow_iff_left₀ h0 hq two_ne_zero).mp h1
+  · calc value (sqrtDown L).toBits ≤ √(value L.toBits) := vs
+      _ ≤ √(q ^ 2) := Real.sqrt_le_sqrt h2
+      _ = q := Real.sqrt_sq hq
 
 theorem finiteAll_sound {xs : Array Float} (hsize : xs.size < 2 ^ 64)
     (h : finiteAll xs = true) : ∀ i < xs.size, Finite (xs[i]!).toBits := by
@@ -768,6 +724,12 @@ theorem finiteAll_sound {xs : Array Float} (hsize : xs.size < 2 ^ 64)
   exact key h
 
 /-- The facts that `checkWith` establishes before its scenarios. -/
+theorem burn_idx' {k : UInt64} (hk : k.toNat < 16) :
+    (burnAt k + 2).toNat = 18 + 7 * k.toNat ∧ (burnAt k + 4).toNat = 20 + 7 * k.toNat ∧
+      (burnAt k + 6).toNat = 22 + 7 * k.toNat := by
+  simp only [burnAt, UInt64.toNat_add, UInt64.toNat_mul, UInt64.reduceToNat]
+  omega
+
 theorem valid_of {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
     (hg : (16 ≤ xs.size.toUInt64 && (xs.size.toUInt64 - 16) % 7 == 0 &&
       xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576) = true)
@@ -791,14 +753,15 @@ theorem valid_of {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
     rw [UInt64.toNat_div, hsub]; rfl
   set N := (xs.size.toUInt64 - 16) / 7
   simp only [valuesOk, Bool.and_eq_true, decide_eq_true_eq] at hval
-  obtain ⟨⟨⟨⟨⟨⟨hfin, hn⟩, hT⟩, hd⟩, hr⟩, -⟩, hburns⟩ := hval
+  obtain ⟨⟨⟨⟨⟨⟨hfin, hn⟩, hT⟩, hd⟩, hr⟩, hbox⟩, hburns⟩ := hval
   have fin := finiteAll_sound hsize hfin
-  have f (i : ℕ) (hi : i < 16) : Finite (rd xs (UInt64.ofNat i)).toBits := by
-    have e : (UInt64.ofNat i).toNat = i := by
-      rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
-    unfold rd; rw [e]; exact fin i (by omega)
+  have le_of {a b : UInt64} (ha : a.toNat < xs.size) (hb : b.toNat < xs.size)
+      (h : rd xs a ≤ rd xs b) : val xs a.toNat ≤ val xs b.toNat :=
+    (le_iff_value (fin _ ha) (fin _ hb)).mp h
   have idx (i : ℕ) (hi : i < 16) : (UInt64.ofNat i).toNat = i := by
     rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
+  have f (i : ℕ) (hi : i < 16) : Finite (rd xs (UInt64.ofNat i)).toBits := by
+    unfold rd; rw [idx i hi]; exact fin i (by omega)
   have pos (i : ℕ) (hi : i < 16) (h : (0.0 : Float) < rd xs (UInt64.ofNat i)) :
       0 < val xs i := by
     have := (lt_iff_value lit_zero.1 (f i hi)).mp h
@@ -807,71 +770,144 @@ theorem valid_of {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
       0 ≤ val xs i := by
     have := (le_iff_value lit_zero.1 (f i hi)).mp h
     rwa [lit_zero.2, val_rd, idx i hi] at this
-  have hadj : ∀ k, k + 1 < N.toNat → val xs (16 + 7 * k) ≤ val xs (16 + 7 * (k + 1)) := by
+  have hboxes : ∀ i < 6, val xs (4 + 2 * i) ≤ val xs (5 + 2 * i) := by
+    have key := LeanExe.Dialect.loop_induction (n := 6) (init := true)
+      (f := fun i ok => ok && rd xs (4 + 2 * i) ≤ rd xs (5 + 2 * i))
+      (fun k ok => ok = true → ∀ i < k, val xs (4 + 2 * i) ≤ val xs (5 + 2 * i))
+      (fun _ i hi => absurd hi (Nat.not_lt_zero i))
+      (by
+        intro k ok hk ih hok
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at hok
+        intro i hi
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | hi
+        · exact ih hok.1 i hi
+        · subst hi
+          have hk6 : i < 6 := by simpa using hk
+          have e4 : (4 + 2 * UInt64.ofNat i).toNat = 4 + 2 * i := by
+            simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.reduceToNat, idx i (by omega)]
+            omega
+          have e5 : (5 + 2 * UInt64.ofNat i).toNat = 5 + 2 * i := by
+            simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.reduceToNat, idx i (by omega)]
+            omega
+          have := le_of (by rw [e4]; omega) (by rw [e5]; omega) hok.2
+          rwa [e4, e5] at this)
+    simpa using key hbox
+  have hburn : ∀ k < N.toNat, BurnOk xs k := by
     have key := LeanExe.Dialect.loop_induction (n := N) (init := true)
       (f := fun k ok =>
         let i := burnAt k
         let prev := if k == 0 then 0.0 else rd xs (i - 7)
         ok && prev ≤ rd xs i && rd xs i ≤ rd xs 1 && rd xs (i + 1) ≤ rd xs (i + 2) &&
           rd xs (i + 3) ≤ rd xs (i + 4) && rd xs (i + 5) ≤ rd xs (i + 6))
-      (fun k ok => ok = true → ∀ i < k, 0 < i → val xs (16 + 7 * (i - 1)) ≤ val xs (16 + 7 * i))
+      (fun k ok => ok = true → ∀ i < k, BurnOk xs i)
       (fun _ i hi => absurd hi (Nat.not_lt_zero i))
       (by
         intro k ok hk ih hok
         simp only [Bool.and_eq_true, decide_eq_true_eq] at hok
-        obtain ⟨⟨⟨⟨⟨hok', hprev⟩, -⟩, -⟩, -⟩, -⟩ := hok
-        intro i hi hi0
+        obtain ⟨⟨⟨⟨⟨hok', hprev⟩, hlate⟩, hx⟩, hy⟩, hz⟩ := hok
+        intro i hi
         rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | hi
-        · exact ih hok' i hi hi0
+        · exact ih hok' i hi
         · subst hi
-          have hkN : (UInt64.ofNat i).toNat = i := by
-            rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
-          have hne : (UInt64.ofNat i == 0) = false := by
-            simp only [beq_eq_false_iff_ne, ne_eq]
-            intro e; rw [e] at hkN; simp at hkN; omega
-          simp only [hne, Bool.false_eq_true, ite_false] at hprev
-          have i0 : (burnAt (UInt64.ofNat i)).toNat = 16 + 7 * i := by
-            have := (burn_idx (k := UInt64.ofNat i) (by omega)).1; rwa [hkN] at this
-          have i7 : (burnAt (UInt64.ofNat i) - 7).toNat = 16 + 7 * (i - 1) := by
-            rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by
-              rw [i0]; simp only [UInt64.reduceToNat]; omega))]
-            rw [i0]; simp; omega
-          have fa : Finite (rd xs (burnAt (UInt64.ofNat i) - 7)).toBits := by
-            unfold rd; rw [i7]; exact fin _ (by omega)
-          have fb : Finite (rd xs (burnAt (UInt64.ofNat i))).toBits := by
-            unfold rd; rw [i0]; exact fin _ (by omega)
-          have := (le_iff_value fa fb).mp hprev
-          rwa [val_rd, val_rd, i7, i0] at this)
-    intro k hk
-    have := key hburns (k + 1) hk (by omega)
-    simpa using this
-  refine ⟨⟨by omega, by omega, fin, pos 0 (by omega) hn, pos 1 (by omega) hT, ?_⟩,
+          have hkN := idx i (by omega)
+          obtain ⟨i0, i1, -, i3, -, i5, -⟩ := burn_idx (k := UInt64.ofNat i) (by omega)
+          obtain ⟨i2, i4, i6⟩ := burn_idx' (k := UInt64.ofNat i) (by omega)
+          rw [hkN] at i0 i1 i2 i3 i4 i5 i6
+          have h1 : (1 : UInt64).toNat = 1 := rfl
+          have small : 22 + 7 * i < xs.size := by omega
+          refine ⟨fun h0 => ?_, fun h0 => ?_, ?_, ?_, ?_, ?_⟩
+          · subst h0
+            have hz0 : (UInt64.ofNat 0 == 0) = true := rfl
+            simp only [hz0, ite_true] at hprev
+            have := (le_iff_value lit_zero.1 (fin _ (show (burnAt (UInt64.ofNat 0)).toNat <
+              xs.size by rw [i0]; omega))).mp hprev
+            rw [lit_zero.2, i0] at this
+            simpa [val] using this
+          · have hne : (UInt64.ofNat i == 0) = false := by
+              simp only [beq_eq_false_iff_ne, ne_eq]
+              intro e; rw [e] at hkN; simp at hkN; omega
+            simp only [hne, Bool.false_eq_true, ite_false] at hprev
+            have i7 : (burnAt (UInt64.ofNat i) - 7).toNat = 16 + 7 * (i - 1) := by
+              rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by
+                rw [i0]; simp only [UInt64.reduceToNat]; omega))]
+              rw [i0]; simp; omega
+            have := le_of (by rw [i7]; omega) (by rw [i0]; omega) hprev
+            rwa [i7, i0] at this
+          · have := le_of (by rw [i0]; omega) (by rw [h1]; omega) hlate
+            rwa [i0, h1] at this
+          · have := le_of (by rw [i1]; omega) (by rw [i2]; omega) hx
+            rwa [i1, i2] at this
+          · have := le_of (by rw [i3]; omega) (by rw [i4]; omega) hy
+            rwa [i3, i4] at this
+          · have := le_of (by rw [i5]; omega) (by rw [i6]; omega) hz
+            rwa [i5, i6] at this)
+    exact key hburns
+  exact ⟨⟨by omega, by omega, fin, pos 0 (by omega) hn, pos 1 (by omega) hT, hboxes, hburn⟩,
     nonneg 2 (by omega) hd, nonneg 3 (by omega) hr⟩
-  intro bs hp
-  have hlen : bs.length = N.toNat := by have := hp.1; omega
-  let _ : Trans (fun a b : Burn => a.t ≤ b.t) (fun a b : Burn => a.t ≤ b.t)
-    (fun a b : Burn => a.t ≤ b.t) := ⟨fun h1 h2 => le_trans h1 h2⟩
-  refine List.isChain_iff_pairwise.mp (List.isChain_iff_getElem.mpr fun i hi => ?_)
-  rw [(hp.2 i (by omega)).1, (hp.2 (i + 1) hi).1]
-  exact hadj i (by omega)
 
-/-! ### The theorem -/
+/-- A valid input has a state in its box and a plan that matches it. -/
+theorem Valid.exists {xs : Array Float} {N : UInt64} (hv : Valid xs N) :
+    (∃ s, InBox xs s) ∧ ∃ bs, Plan xs bs := by
+  refine ⟨⟨⟨val xs 4, val xs 6, val xs 8, val xs 10, val xs 12, val xs 14⟩, ?_⟩, ?_⟩
+  · have b := hv.box
+    exact ⟨le_rfl, b 0 (by omega), le_rfl, b 1 (by omega), le_rfl, b 2 (by omega), le_rfl,
+      b 3 (by omega), le_rfl, b 4 (by omega), le_rfl, b 5 (by omega)⟩
+  · refine ⟨List.ofFn fun i : Fin N.toNat =>
+      ⟨val xs (16 + 7 * i), val xs (17 + 7 * i), val xs (19 + 7 * i), val xs (21 + 7 * i)⟩,
+      by rw [List.length_ofFn, hv.size], fun i hi => ?_⟩
+    rw [List.length_ofFn] at hi
+    obtain ⟨-, -, -, hx, hy, hz⟩ := hv.burns i hi
+    simpa [List.getElem_ofFn] using ⟨hx, hy, hz⟩
+
+theorem bound_lower {d L : Float} (hd : Finite d.toBits) (hL : Finite L.toBits) :
+    value d.toBits ≤ value (fmax d (sqrtDown L)).toBits := by
+  obtain ⟨fs, -⟩ := sqrtDown_le hL
+  obtain ⟨-, v⟩ := fmax_value hd fs
+  rw [v]
+  exact le_max_left _ _
+
+/-! ### The theorems -/
+
+/-- The input of an accepted check is valid, with thresholds at least 0. -/
+theorem accepted_valid {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel).status = 0) :
+    Valid xs ((xs.size.toUInt64 - 16) / 7) ∧ 0 ≤ val xs 2 ∧ 0 ≤ val xs 3 := by
+  unfold check checkWith at h
+  by_cases hg : (16 ≤ xs.size.toUInt64 && (xs.size.toUInt64 - 16) % 7 == 0 &&
+      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576) = true
+  · simp only [hg, ite_true] at h
+    by_cases hval : valuesOk xs ((xs.size.toUInt64 - 16) / 7) = true
+    · exact valid_of hsize hg hval
+    · simp only [hval, Bool.false_eq_true, ite_false] at h
+      exact absurd h (by decide)
+  · simp only [hg, Bool.false_eq_true, ite_false] at h
+    exact absurd h (by decide)
+
+/-- When `check` accepts, the input holds `16 + 7N` values with `N ≤ 16`, the box of initial
+states and the plan's boxes are not empty, and the burns of every list that matches the plan are
+in nondecreasing order of time and lie in `[0, T]`. -/
+theorem check_input {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel).status = 0) :
+    (∃ N ≤ 16, xs.size = 16 + 7 * N) ∧ (∃ s, InBox xs s) ∧ (∃ bs, Plan xs bs) ∧
+      ∀ bs, Plan xs bs → Sorted bs ∧ ∀ b ∈ bs, 0 ≤ b.t ∧ b.t ≤ val xs 1 := by
+  obtain ⟨hv, -, -⟩ := accepted_valid hsize h
+  exact ⟨⟨_, hv.small, hv.size⟩, hv.exists.1, hv.exists.2,
+    fun bs hp => ⟨hv.sorted bs hp, hv.times hp⟩⟩
 
 /-- When `check` accepts, the real values of the inputs satisfy `n > 0`, `T > 0`, `dmin ≥ 0`, and
-`drc ≥ 0`.  For every initial state in the box, every list of burns at the plan's times with
-velocity changes in the plan's boxes, and every scenario `j ≤ 2N`, the separation at every `t` in
-`[0, T]` is at least `dmin` and at least `sep`, and the radial and cross-track distance at every
-`t ≥ 0` at or after every burn of the scenario is at least `drc` and at least `rc`. -/
+`drc ≥ 0`, and `sep` and `rc` are at least `dmin` and `drc`.  For every initial state in the box,
+every list of burns at the plan's times with velocity changes in the plan's boxes, and every
+scenario `j ≤ 2N`, the separation at every `t` in `[0, T]` is at least `sep`, and the radial and
+cross-track distance at every `t ≥ 0` at or after every burn of the scenario is at least `rc`. -/
 theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
     (h : (check xs fuel).status = 0) :
     0 < val xs 0 ∧ 0 < val xs 1 ∧ 0 ≤ val xs 2 ∧ 0 ≤ val xs 3 ∧
+      val xs 2 ≤ value (check xs fuel).sep.toBits ∧ val xs 3 ≤ value (check xs fuel).rc.toBits ∧
       ∀ s bs, InBox xs s → Plan xs bs → ∀ j ≤ 2 * bs.length,
         (∀ t, 0 ≤ t → t ≤ val xs 1 →
-          val xs 2 ≤ separation (path (val xs 0) 0 s (select bs.length j bs) t) ∧
           value (check xs fuel).sep.toBits ≤
             separation (path (val xs 0) 0 s (select bs.length j bs) t)) ∧
         (∀ t, 0 ≤ t → (∀ b ∈ select bs.length j bs, b.t ≤ t) →
-          val xs 3 ≤ rcDistance (path (val xs 0) 0 s (select bs.length j bs) t) ∧
           value (check xs fuel).rc.toBits ≤
             rcDistance (path (val xs 0) 0 s (select bs.length j bs) t)) := by
   unfold check checkWith at h ⊢
@@ -894,31 +930,25 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
             (square (rd xs 3)).hi j s
         by_cases h0 : (sc.status == 0) = true
         · simp only [h0, ite_true] at h ⊢
-          refine ⟨hv.n_pos, hv.horizon_pos, hd0, hr0, fun s bs hbox hplan j hj => ?_⟩
-          obtain ⟨fL, fR, hb⟩ := scan_sound hv fd fr (beq_iff_eq.mp h0) hbox hplan
+          have d0 : 0 ≤ value (rd xs 2).toBits := hd0
+          have r0 : 0 ≤ value (rd xs 3).toBits := hr0
+          obtain ⟨⟨s0, hs0⟩, ⟨bs0, hb0⟩⟩ := hv.exists
+          obtain ⟨fL, fR, -⟩ := scan_sound hv fd fr (beq_iff_eq.mp h0) hs0 hb0
+          refine ⟨hv.n_pos, hv.horizon_pos, hd0, hr0, bound_lower f2 fL, bound_lower f3 fR,
+            fun s bs hbox hplan j hj => ?_⟩
+          obtain ⟨-, -, hb⟩ := scan_sound hv fd fr (beq_iff_eq.mp h0) hbox hplan
           obtain ⟨hsep, hrc⟩ := hb j (by omega)
-          have sL := sqrtDown_le fL
-          have sR := sqrtDown_le fR
           refine ⟨fun t h1 h2 => ?_, fun t h1 h2 => ?_⟩
           · obtain ⟨a, b⟩ := hsep t h1 h2
-            unfold separation
-            have e : sepSq xs s bs j t = (path (val xs 0) 0 s (select bs.length j bs) t).x ^ 2 +
-                (path (val xs 0) 0 s (select bs.length j bs) t).y ^ 2 +
-                (path (val xs 0) 0 s (select bs.length j bs) t).z ^ 2 := rfl
-            rw [← e]
-            refine ⟨?_, sL.trans (Real.sqrt_le_sqrt b)⟩
-            rw [val_rd] at vd
-            calc val xs 2 = √(val xs 2 ^ 2) := (Real.sqrt_sq hd0).symm
-              _ ≤ √(sepSq xs s bs j t) := Real.sqrt_le_sqrt (vd.trans a)
+            have hq : 0 ≤ sepSq xs s bs j t := by unfold sepSq; positivity
+            have e : √(sepSq xs s bs j t) ^ 2 = sepSq xs s bs j t := Real.sq_sqrt hq
+            exact (bound_between (q := √(sepSq xs s bs j t)) f2 fL d0 (Real.sqrt_nonneg _)
+              (by rw [e]; exact vd.trans a) (by rw [e]; exact b)).2
           · obtain ⟨a, b⟩ := hrc t h1 h2
-            unfold rcDistance
-            have e : rcSqAt xs s bs j t = (path (val xs 0) 0 s (select bs.length j bs) t).x ^ 2 +
-                (path (val xs 0) 0 s (select bs.length j bs) t).z ^ 2 := rfl
-            rw [← e]
-            refine ⟨?_, sR.trans (Real.sqrt_le_sqrt b)⟩
-            rw [val_rd] at vr
-            calc val xs 3 = √(val xs 3 ^ 2) := (Real.sqrt_sq hr0).symm
-              _ ≤ √(rcSqAt xs s bs j t) := Real.sqrt_le_sqrt (vr.trans a)
+            have hq : 0 ≤ rcSqAt xs s bs j t := by unfold rcSqAt; positivity
+            have e : √(rcSqAt xs s bs j t) ^ 2 = rcSqAt xs s bs j t := Real.sq_sqrt hq
+            exact (bound_between (q := √(rcSqAt xs s bs j t)) f3 fR r0 (Real.sqrt_nonneg _)
+              (by rw [e]; exact vr.trans a) (by rw [e]; exact b)).2
         · simp only [h0, Bool.false_eq_true, ite_false] at h
           exact absurd (beq_iff_eq.mpr h) h0
       · simp only [hs, Bool.false_eq_true, ite_false] at h
@@ -927,6 +957,26 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
       exact absurd h (by decide)
   · simp only [hg, Bool.false_eq_true, ite_false] at h
     exact absurd h (by decide)
+
+/-- Passive safety: when `check` accepts, every trajectory of every scenario from the boxes keeps
+a separation of at least `min dmin drc` at every time `t ≥ 0`, since every burn lies in `[0, T]`
+and the radial and cross-track distance is at most the separation. -/
+theorem check_passive {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel).status = 0) :
+    ∀ s bs, InBox xs s → Plan xs bs → ∀ j ≤ 2 * bs.length, ∀ t, 0 ≤ t →
+      min (val xs 2) (val xs 3) ≤ separation (path (val xs 0) 0 s (select bs.length j bs) t) := by
+  obtain ⟨-, -, -, -, hsep, hrc, hall⟩ := check_sound hsize h
+  obtain ⟨-, -, -, hburns⟩ := check_input hsize h
+  intro s bs hbox hplan j hj t ht
+  obtain ⟨hs, hr⟩ := hall s bs hbox hplan j hj
+  by_cases hT : t ≤ val xs 1
+  · exact (min_le_left _ _).trans (hsep.trans (hs t ht hT))
+  · have hb : ∀ b ∈ select bs.length j bs, b.t ≤ t := fun b hb =>
+      ((hburns bs hplan).2 b ((selectFrom_sublist _ _ 0 bs).subset hb)).2.trans (le_of_lt (not_le.mp hT))
+    refine (min_le_right _ _).trans (hrc.trans ((hr t ht hb).trans ?_))
+    unfold rcDistance separation
+    exact Real.sqrt_le_sqrt (by nlinarith [sq_nonneg (path (val xs 0) 0 s
+      (select bs.length j bs) t).y])
 
 #print axioms check_sound
 

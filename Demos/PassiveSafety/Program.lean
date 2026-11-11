@@ -6,10 +6,11 @@ import LeanExe.Dialect.RepeatWhile
 The passive-safety check of `requirements.md`.  `checkWith` validates the input, and for each
 scenario of the plan it runs `sepSearch`, which covers the horizon with panels of time on which
 the interval of the squared separation lies at or above the squared threshold, and `rcSearch`,
-which covers the phases `[0, 2π]` with panels on which the interval of the squared radial and
-cross-track distance after the scenario's last burn does.  Both searches step by `march`.  The
-interval functions of `Closed.lean` take the tables of `pow` as well as those of `sin` and `cos`,
-use no power, and receive the tables of `sin` and `cos` in their place.
+which covers one period after the scenario's last burn, by the phases `[0, 2π]`, with panels on
+which the interval of the squared radial and cross-track distance does.  Both searches step by
+`march` and enclose the position by `positionI`.  The interval functions of `Closed.lean` take the
+tables of `pow` as well as those of `sin` and `cos`, use no power, and receive the tables of `sin`
+and `cos` in their place.
 -/
 
 namespace Demos.PassiveSafety
@@ -119,44 +120,26 @@ def sepSearch (inv half : Array UInt64) (xs : Array Float) (N j : UInt64) (e d2 
 def lastTime (xs : Array Float) (N j : UInt64) : Float :=
   LeanExe.loop N 0.0 fun k m => if runs N j k then fmax m (rd xs (burnAt k)) else m
 
-/-- The state at time `tL` of every trajectory of scenario `j` from the boxes, for `tL` at or
-after the scenario's last burn. -/
-def stateI (inv half : Array UInt64) (xs : Array Float) (N j : UInt64) (tL : Float) :
-    Interval × Interval × Interval × Interval × Interval × Interval :=
-  let n := point (rd xs 0)
-  let z := point 0.0
-  let tI := point tL
-  let s0 := flowStateI inv half inv half n tI (box xs 4) (box xs 6) (box xs 8) (box xs 10)
-    (box xs 12) (box xs 14)
-  LeanExe.loop N s0 fun k acc =>
-    if runs N j k then
-      let i := burnAt k
-      let q := flowStateI inv half inv half n (sub tI (point (rd xs i))) z z z (box xs (i + 1))
-        (box xs (i + 3)) (box xs (i + 5))
-      (add acc.1 q.1, add acc.2.1 q.2.1, add acc.2.2.1 q.2.2.1, add acc.2.2.2.1 q.2.2.2.1,
-        add acc.2.2.2.2.1 q.2.2.2.2.1, add acc.2.2.2.2.2 q.2.2.2.2.2)
-    else acc
-
-/-- The interval of the squared radial and cross-track distance over the phases `[a, b]` of the
-closed form from the box `S`. -/
-def rcPanel (inv half : Array UInt64) (n : Interval)
-    (S : Interval × Interval × Interval × Interval × Interval × Interval) (a b : Float) :
+/-- The interval of the squared radial and cross-track distance of scenario `j` over the times
+`tL + φ/n` for the phases `φ` of `[a, b]`. -/
+def rcPanel (inv half : Array UInt64) (xs : Array Float) (N j : UInt64) (tL a b : Float) :
     Interval :=
-  nonneg (rcSquareI inv half inv half n (make a b) S.1 S.2.2.1 S.2.2.2.1 S.2.2.2.2.1 S.2.2.2.2.2)
+  let tI := add (point tL) (div (make a b) (point (rd xs 0)))
+  let p := positionI inv half xs N j tI
+  nonneg (rcSquareI inv half inv half p.1 p.2.2)
 
-def rcStep (inv half : Array UInt64) (n : Interval)
-    (S : Interval × Interval × Interval × Interval × Interval × Interval) (e d2 hmin : Float)
+def rcStep (inv half : Array UInt64) (xs : Array Float) (N j : UInt64) (tL e d2 hmin : Float)
     (m : March) : March :=
   let b := panelEnd m.t m.h e
-  march e d2 hmin (rcPanel inv half n S m.t b) b m
+  march e d2 hmin (rcPanel inv half xs N j tL m.t b) b m
 
-/-- The radial and cross-track search over the phases `[0, e]` against `d2`. -/
-def rcSearch (inv half : Array UInt64) (n : Interval)
-    (S : Interval × Interval × Interval × Interval × Interval × Interval) (e d2 : Float)
+/-- The radial and cross-track search of scenario `j` over the phases `[0, e]` after the time
+`tL`, against `d2`. -/
+def rcSearch (inv half : Array UInt64) (xs : Array Float) (N j : UInt64) (tL e d2 : Float)
     (fuel : UInt64) : March :=
   let hmin := e * minRatio
   LeanExe.repeatWhile fuel ⟨0, 0.0, e, maxFloat⟩ (fun m => m.status == 0 && m.t < e)
-    (fun m => rcStep inv half n S e d2 hmin m)
+    (fun m => rcStep inv half xs N j tL e d2 hmin m)
 
 /-- The status of a finished search: 0 when it covered `[0, e]`, `notShown` when a panel at the
 smallest step failed, `unfinished` when the fuel ran out, and 7 when an operation rejected. -/
@@ -183,8 +166,7 @@ def scanStep (inv half : Array UInt64) (xs : Array Float) (N fuel : UInt64) (d2 
     let m := sepSearch inv half xs N j e d2 fuel
     let st := searchStatus m e 3 5
     if st == 0 then
-      let S := stateI inv half xs N j (lastTime xs N j)
-      let r := rcSearch inv half (point (rd xs 0)) S twoPiHi r2 fuel
+      let r := rcSearch inv half xs N j (lastTime xs N j) twoPiHi r2 fuel
       let st2 := searchStatus r twoPiHi 4 6
       if st2 == 0 then ⟨0, 0, 0.0, fmin s.sepLow m.low, fmin s.rcLow r.low⟩
       else ⟨st2, j, r.t, 0.0, 0.0⟩
@@ -222,7 +204,8 @@ def checkWith (inv half : Array UInt64) (xs : Array Float) (fuel : UInt64) : Res
       if d2.status == 0 && r2.status == 0 then
         let s := LeanExe.loop (2 * N + 1) ⟨0, 0, 0.0, maxFloat, maxFloat⟩
           fun j s => scanStep inv half xs N fuel d2.hi r2.hi j s
-        if s.status == 0 then ⟨0, 0, 0.0, sqrtDown s.sepLow, sqrtDown s.rcLow⟩
+        if s.status == 0 then
+          ⟨0, 0, 0.0, fmax (rd xs 2) (sqrtDown s.sepLow), fmax (rd xs 3) (sqrtDown s.rcLow)⟩
         else ⟨s.status, s.scenario, s.stop, 0.0, 0.0⟩
       else ⟨7, 0, 0.0, 0.0, 0.0⟩
     else ⟨2, 0, 0.0, 0.0, 0.0⟩
