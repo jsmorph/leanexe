@@ -5,7 +5,7 @@ import Library.Numerics.Interval.Proof
 /-!
 The enclosures of an object's quantities and positions, and the soundness of the two filters.
 `apsidesExclude_sound` states that a pair that the apogee–perigee filter excludes has every point
-of one path farther than the threshold from every point of the other (F1).  `pathFilter_cover`
+of one path farther than the threshold from every point of the other (F1).  `pathFilter_inv`
 states the invariant of the orbit-path filter: every pair of eccentric anomalies in `[0, 2π]`
 whose path points lie within the threshold lies in a cell of the search, and `pathFilter_sound`
 derives from it that verdict 1 excludes the pair, and `pathFilter_close` that verdict 2 finds two
@@ -147,7 +147,8 @@ section Path
 variable {o1 o2 : Obj} {mu : ℝ} {orb1 orb2 : Orbit} {thr : Interval} {T : ℝ}
 
 theorem cellExclude_sound (e1 : Encl o1 mu orb1) (e2 : Encl o2 mu orb2)
-    (ht : Encloses thr T) {c : Cell} (h : cellExclude Trig.invPi Trig.halfPi o1 o2 (mul thr thr) c = true)
+    (ht : Encloses thr T) {c : Cell}
+    (h : cellExclude Trig.invPi Trig.halfPi o1 o2 (mul thr thr) c = true)
     {x y : ℝ} (hm : Mem2 c x y) : T < dist3 (orb1.path x) (orb2.path y) := by
   simp only [cellExclude, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h
   obtain ⟨⟨hs, ht2⟩, hlt⟩ := h

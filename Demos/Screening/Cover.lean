@@ -46,7 +46,8 @@ theorem loop_cover {C D : Type} [Inhabited C] [Inhabited D] (cells : Array C)
         Keep (LeanExe.loop cells.size.toUInt64 #[] fun i acc => step cells[i.toNat]! acc)[j]!) ∧
       ((∃ i < cells.size, In cells[i]!) →
         ∃ j < (LeanExe.loop cells.size.toUInt64 #[] fun i acc => step cells[i.toNat]! acc).size,
-          Out (LeanExe.loop cells.size.toUInt64 #[] fun i acc => step cells[i.toNat]! acc)[j]!) := by
+          Out (LeanExe.loop cells.size.toUInt64 #[] fun i acc =>
+            step cells[i.toNat]! acc)[j]!) := by
   have hn := size_toUInt64 cells h64
   have key := loop_induction (n := cells.size.toUInt64) (init := (#[] : Array D))
     (f := fun i acc => step cells[i.toNat]! acc)

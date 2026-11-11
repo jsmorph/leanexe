@@ -84,7 +84,8 @@ theorem lt_one_of_lt {x : Float} (hx : Finite x.toBits) (h : x < 1.0) : val x < 
 
 theorem valid_facts {xs : Array Float} (h : valid xs = true) : Facts xs := by
   simp only [valid, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨hsz, hfin⟩, -⟩, ho1⟩, ho2⟩, -⟩, -⟩, hd⟩, hp⟩, -⟩, -⟩, hcp⟩, -⟩, hc⟩ := h
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨hsz, hfin⟩, -⟩, ho1⟩, ho2⟩, -⟩, -⟩, -⟩, -⟩, hd⟩, hp⟩, -⟩, -⟩, hcp⟩, -⟩,
+    hc⟩ := h
   have fin := allFinite_spec hfin
   rw [hsz] at fin
   have f : ∀ i < 25, Finite (rd xs (UInt64.ofNat i)).toBits := fun i hi => fin i (by simpa using hi)

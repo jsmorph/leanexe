@@ -180,27 +180,36 @@ def pathFilter (inv half : Array UInt64) (o1 o2 : Obj) (thr2 : Interval) (levels
 /-! ### The isolation -/
 
 /-- The test of a cell of time: 0 when no time of the cell is a close approach, 2 when its
-computed middle is one, and 1 otherwise.  `thr` encloses the threshold and `thr2` its square. -/
+computed middle is one, 3 when its computed middle is one and every time of the cell lies within
+the threshold by the speed bound, and 1 otherwise.  `thr` encloses the threshold and `thr2` its
+square. -/
 def spanTest (inv half : Array UInt64) (o1 o2 : Obj) (thr thr2 : Interval) (s : Span) : UInt64 :=
   let m := middle s.lo s.hi
   let d2 := gapSq inv half (positionAt inv half o1 m) (positionAt inv half o2 m)
   let r := reach ⟨0, s.lo, s.hi⟩ m
-  let bound := add thr (mul (add o1.speed o2.speed) (point r.value))
+  let moved := mul (add o1.speed o2.speed) (point r.value)
+  let bound := add thr moved
   let b2 := mul bound bound
+  let inner := sub thr moved
+  let i2 := mul inner inner
   if d2.status == 0 && r.status == 0 && b2.status == 0 && 0 ≤ bound.lo && b2.hi < d2.lo then 0
   else if d2.status == 0 && thr2.status == 0 && finite m && s.lo ≤ m && m ≤ s.hi &&
-      d2.hi ≤ thr2.lo then 2
+      d2.hi ≤ thr2.lo then
+    if r.status == 0 && i2.status == 0 && 0 ≤ inner.lo && d2.hi ≤ i2.lo then 3 else 2
   else 1
 
-/-- The cells that `spanTest` keeps, each split at its computed middle. -/
+/-- The cells that `spanTest` keeps.  A cell is split at its computed middle when that lies
+strictly inside it and the cell is not wholly within the threshold. -/
 def refineSpans (inv half : Array UInt64) (o1 o2 : Obj) (thr thr2 : Interval)
     (cells : Array Span) : Array Span :=
   LeanExe.loop cells.size.toUInt64 #[] fun i acc =>
     let s := cells[i.toNat]!
-    if spanTest inv half o1 o2 thr thr2 s == 0 then acc
+    let r := spanTest inv half o1 o2 thr thr2 s
+    if r == 0 then acc
     else
       let m := middle s.lo s.hi
-      if finite m then (acc.push ⟨s.lo, m⟩).push ⟨m, s.hi⟩ else acc.push s
+      if r != 3 && finite m && s.lo < m && m < s.hi then (acc.push ⟨s.lo, m⟩).push ⟨m, s.hi⟩
+      else acc.push s
 
 /-- One level of the isolation: refine, or stop at the cap with the cells of the level. -/
 def isolateLevel (inv half : Array UInt64) (o1 o2 : Obj) (thr thr2 : Interval) (cap : UInt64)
@@ -224,7 +233,7 @@ def finalSpans (inv half : Array UInt64) (o1 o2 : Obj) (thr thr2 : Interval)
   LeanExe.loop cells.size.toUInt64 #[] fun i acc =>
     let s := cells[i.toNat]!
     let r := spanTest inv half o1 o2 thr thr2 s
-    if r == 0 then acc else acc.push ⟨s.lo, s.hi, if r == 2 then 1 else 0⟩
+    if r == 0 then acc else acc.push ⟨s.lo, s.hi, if r == 1 then 0 else 1⟩
 
 /-- One step of the merge. -/
 def mergeStep (m : Merge) (x : Found) : Merge :=
@@ -264,7 +273,8 @@ def allFinite (xs : Array Float) : Bool :=
 /-- The input meets the requirements of `requirements.md`. -/
 def valid (xs : Array Float) : Bool :=
   xs.size.toUInt64 == 25 && allFinite xs && rd xs 0 == 1.0 && orbitOk xs 1 && orbitOk xs 8 &&
-    0.0 < rd xs 15 && rd xs 16 ≤ rd xs 17 && 0.0 ≤ rd xs 18 && 0.0 ≤ rd xs 19 &&
+    0.0 < rd xs 15 && -1.0e9 ≤ rd xs 16 && rd xs 16 ≤ rd xs 17 && rd xs 17 ≤ 1.0e9 &&
+    0.0 ≤ rd xs 18 && 0.0 ≤ rd xs 19 &&
     (rd xs 20 == 0.0 || rd xs 20 == 1.0) && isWhole (rd xs 21) 0 40 &&
     isWhole (rd xs 22) 1 1048576 && isWhole (rd xs 23) 0 60 && isWhole (rd xs 24) 1 1048576
 

@@ -3,10 +3,10 @@ import Demos.Screening.Filters
 /-!
 Soundness of the isolation.  `spanTest_zero` states that a cell that the test excludes holds no
 time at which the trajectories lie within the threshold `T`, by the speed bound M3, and
-`spanTest_two` that a cell marked certain holds such a time.  `isolate_inv` keeps the invariant of
-the levels: at most `2²⁰` cells, each with finite ends, and every close approach of the window in a
-cell.  `finalSpans_spec`, `merge_spec`, and `triples_spec` carry the close approaches and the
-certainty to the intervals of the output (I1 and I2).
+`spanTest_certain` that a cell marked certain holds such a time.  `isolate_inv` keeps the
+invariant of the levels: at most `2²⁰` cells, each with finite ends, and every close approach of
+the window in a cell.  `finalSpans_spec`, `merge_spec`, and `triples_spec` carry the close
+approaches and the certainty to the intervals of the output (I1 and I2).
 -/
 
 namespace Demos.Screening
@@ -40,7 +40,8 @@ theorem spanTest_zero (v1 : orb1.Valid) (v2 : orb2.Valid) (e1 : Encl o1 mu orb1)
     (hm : Mem1 s t) : T < sepAt mu orb1 orb2 t := by
   simp only [spanTest] at h
   generalize middle s.lo s.hi = m at h
-  split_ifs at h with hA hB
+  split_ifs at h with hA
+  all_goals try simp at h
   · simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hA
     obtain ⟨⟨⟨⟨hd, hr⟩, hb⟩, hpos⟩, hlt⟩ := hA
     obtain ⟨fm, -, hreach⟩ := reach_sound hr
@@ -72,26 +73,26 @@ theorem spanTest_zero (v1 : orb1.Valid) (v2 : orb2.Valid) (e1 : Encl o1 mu orb1)
     rw [dist3_comm (orb1.position mu (val m)) (orb1.position mu t)] at tri1
     unfold sepAt
     nlinarith
-  · simp at h
-  · simp at h
 
-/-- **I2, the certainty of a cell.**  A cell with finite ends that the test marks certain holds a
-time at which the trajectories lie within `T`. -/
-theorem spanTest_two (e1 : Encl o1 mu orb1) (e2 : Encl o2 mu orb2) (ht : Encloses thr T)
+/-- **I2, the certainty of a cell.**  A cell with finite ends that the test neither excludes nor
+merely keeps holds a time at which the trajectories lie within `T`. -/
+theorem spanTest_certain (e1 : Encl o1 mu orb1) (e2 : Encl o2 mu orb2) (ht : Encloses thr T)
     (hT : 0 ≤ T) {s : Span} (hf : FiniteSpan s)
-    (h : spanTest Trig.invPi Trig.halfPi o1 o2 thr (mul thr thr) s = 2) :
+    (h0 : spanTest Trig.invPi Trig.halfPi o1 o2 thr (mul thr thr) s ≠ 0)
+    (h1 : spanTest Trig.invPi Trig.halfPi o1 o2 thr (mul thr thr) s ≠ 1) :
     ∃ t, Mem1 s t ∧ sepAt mu orb1 orb2 t ≤ T := by
-  simp only [spanTest] at h
-  generalize middle s.lo s.hi = m at h
-  split_ifs at h with hA hB
-  · simp at h
-  · simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hB
+  simp only [spanTest] at h0 h1
+  generalize middle s.lo s.hi = m at h0 h1
+  split_ifs at h0 h1 with hA hB
+  all_goals try simp at h0
+  all_goals try simp at h1
+  all_goals
+    simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hB
     obtain ⟨⟨⟨⟨⟨hd, ht2⟩, hfm⟩, hlo⟩, hhi⟩, hle⟩ := hB
     have fm : Finite m.toBits := (finite_iff m).mp (decide_eq_true hfm)
     have cd := gapSq_encl (positionAt_encl e1 m) (positionAt_encl e2 m) hd
     refine ⟨val m, ⟨(le_iff_value hf.1 fm).mp hlo, (le_iff_value fm hf.2).mp hhi⟩, ?_⟩
     exact le_of_sq_le hT (le_of_hi_le_lo cd (encloses_mul ht ht ht2) hle)
-  · simp at h
 
 /-! ### The levels -/
 
@@ -99,13 +100,15 @@ theorem spanTest_two (e1 : Encl o1 mu orb1) (e2 : Encl o2 mu orb2) (ht : Enclose
 def spanStep (o1 o2 : Obj) (thr thr2 : Interval) (s : Span) (acc : Array Span) : Array Span :=
   if spanTest Trig.invPi Trig.halfPi o1 o2 thr thr2 s == 0 then acc
   else
-    if finite (middle s.lo s.hi) then
+    if (spanTest Trig.invPi Trig.halfPi o1 o2 thr thr2 s != 3 && finite (middle s.lo s.hi) &&
+        s.lo < middle s.lo s.hi && middle s.lo s.hi < s.hi) = true then
       (acc.push ⟨s.lo, middle s.lo s.hi⟩).push ⟨middle s.lo s.hi, s.hi⟩
     else acc.push s
 
 theorem refineSpans_eq (thr thr2 : Interval) (cells : Array Span) :
     refineSpans Trig.invPi Trig.halfPi o1 o2 thr thr2 cells =
-      LeanExe.loop cells.size.toUInt64 #[] fun i acc => spanStep o1 o2 thr thr2 cells[i.toNat]! acc :=
+      LeanExe.loop cells.size.toUInt64 #[] fun i acc =>
+        spanStep o1 o2 thr thr2 cells[i.toNat]! acc :=
   rfl
 
 theorem spanStep_extends (thr thr2 : Interval) (s : Span) :
@@ -127,7 +130,8 @@ theorem spanStep_finite (thr thr2 : Interval) {s : Span} (hs : FiniteSpan s) (ac
   unfold spanStep at hj ⊢
   split_ifs at hj ⊢ with h0 h1
   · omega
-  · have fm := (finite_iff _).mp h1
+  · simp only [Bool.and_eq_true] at h1
+    have fm := (finite_iff _).mp h1.1.1.2
     simp only [Array.size_push] at hj
     by_cases hj1 : j = acc.size
     · subst hj1
@@ -234,11 +238,12 @@ structure KeepF (mu : ℝ) (orb1 orb2 : Orbit) (T : ℝ) (f : Found) : Prop wher
 def finalStep (o1 o2 : Obj) (thr thr2 : Interval) (s : Span) (acc : Array Found) : Array Found :=
   if spanTest Trig.invPi Trig.halfPi o1 o2 thr thr2 s == 0 then acc
   else acc.push ⟨s.lo, s.hi,
-    if spanTest Trig.invPi Trig.halfPi o1 o2 thr thr2 s == 2 then 1 else 0⟩
+    if spanTest Trig.invPi Trig.halfPi o1 o2 thr thr2 s == 1 then 0 else 1⟩
 
 theorem finalSpans_eq (thr thr2 : Interval) (cells : Array Span) :
     finalSpans Trig.invPi Trig.halfPi o1 o2 thr thr2 cells =
-      LeanExe.loop cells.size.toUInt64 #[] fun i acc => finalStep o1 o2 thr thr2 cells[i.toNat]! acc :=
+      LeanExe.loop cells.size.toUInt64 #[] fun i acc =>
+        finalStep o1 o2 thr thr2 cells[i.toNat]! acc :=
   rfl
 
 theorem finalSpans_spec (v1 : orb1.Valid) (v2 : orb2.Valid) (e1 : Encl o1 mu orb1)
@@ -271,9 +276,8 @@ theorem finalSpans_spec (v1 : orb1.Valid) (v2 : orb2.Valid) (e1 : Encl o1 mu orb
           split_ifs <;> simp
         · dsimp only at hc
           split_ifs at hc with h2
-          · obtain ⟨t, hm, hs⟩ := spanTest_two e1 e2 ht hT (hfin i hi) h2
-            exact ⟨t, hm, hs⟩
-          · simp at hc)
+          · simp at hc
+          · exact spanTest_certain e1 e2 ht hT (hfin i hi) h0 h2)
     (fun c => Mem1 c t ∧ sepAt mu orb1 orb2 t ≤ T) (fun f => MemF f t)
     (fun i _ hin acc => by
       unfold finalStep
