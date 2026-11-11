@@ -15,6 +15,9 @@ def angleText (a : Angle) : String := s!"{a.status} {a.lo.toBits} {a.hi.toBits}"
 
 def vecText (v : Vec) : String := s!"{v.status} {interval v.x} {interval v.y} {interval v.z}"
 
+def geodText (g : Coords) : String :=
+  s!"{g.status} {interval g.lat} {interval g.lon} {interval g.h}"
+
 def angleKind : String := "list:i64,f64,f64"
 
 def vecKind : String := "list:i64," ++ ",".intercalate (List.replicate 3 "i64,f64,f64")
@@ -30,6 +33,10 @@ def respond (words : List String) : Option String :=
   | some "teme", d :: a :: b :: c :: e :: g :: h :: i :: j :: k :: l :: m :: o :: _ =>
     some (vecText (temeToEcef (UInt64.ofNat d) (float a) (float b) (float c) (float e) (float g)
       (float h) (float i) (float j) (float k) (float l) (float m) (float o)))
+  | some "cart", a :: b :: c :: e :: g :: h :: _ =>
+    some (vecText (toCartesian (float a) (float b) (float c) (float e) (float g) (float h)))
+  | some "geod", a :: b :: c :: e :: g :: h :: _ =>
+    some (geodText (toGeodetic (float a) (float b) (float c) (float e) (float g) (float h)))
   | _, _ => none
 
 partial def serve : IO Unit := do
@@ -61,6 +68,23 @@ def temeInputs : List (UInt64 × List Float) :=
     (4294967296, [0, 0, 0.1, 0.1, 0.3, 0.3, 7000, 7000, 0, 0, 0, 0]),
     (60000, [0, 0, 0.1, 0.1, 0.3, 0.3, -1e308, 1e308, 0, 0, 0, 0]) ]
 
+/-- Latitudes, longitudes, and heights: a point at mid-latitude, the poles, a box, and inputs
+that the program rejects. -/
+def cartInputs : List (List Float) :=
+  [ [0.7, 0.7, -1.2, -1.2, 0.35, 0.35], [1.5707963267948966, 1.5707963267948966, 0, 0, 0, 0],
+    [-1.5707963267948966, -1.5707963267948966, 2, 2, 1, 1], [0.1, 0.1001, 3, 3.0001, 400, 401],
+    [nan, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1.7976931348623157e308, 1.7976931348623157e308] ]
+
+/-- Earth-fixed positions: SOFA's test point, an equatorial box across `z = 0`, a box across the
+negative x-axis, a point near the north pole, a box below the equator near the south pole, and
+inputs that the program rejects or that lie outside the domain. -/
+def geodInputs : List (List Float) :=
+  [ [2000, 2000, 3000, 3000, 5244, 5244], [6378, 6379, -1, 1, -1, 1],
+    [-6379, -6378, -1, 1, 10, 11], [0.05, 0.05, 0.1, 0.1, 6356.75, 6356.75],
+    [-1, 1, -2, -0.5, -6357, -6356], [30, 30, 0, 0, 10, 10], [0, 0, 0, 0, 6356, 6357],
+    [nan, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0], [1e300, 1e300, 0, 0, 0, 0] ]
+
 def cases : IO Unit := do
   for (d, lo, hi) in gmstInputs do
     line "frames" "gmst" angleKind [u d, fl lo, fl hi] (angleText (gmst d lo hi))
@@ -70,5 +94,15 @@ def cases : IO Unit := do
       line "frames" "temeToEcef" vecKind (u d :: xs.map fl)
         (vecText (temeToEcef d a b c e g h i j k l m o))
     | _ => throw (IO.userError "a TEME case needs twelve floats")
+  for xs in cartInputs do
+    match xs with
+    | [a, b, c, e, g, h] =>
+      line "frames" "toCartesian" vecKind (xs.map fl) (vecText (toCartesian a b c e g h))
+    | _ => throw (IO.userError "a case of toCartesian needs six floats")
+  for xs in geodInputs do
+    match xs with
+    | [a, b, c, e, g, h] =>
+      line "frames" "toGeodetic" vecKind (xs.map fl) (geodText (toGeodetic a b c e g h))
+    | _ => throw (IO.userError "a case of toGeodetic needs six floats")
 
 end TestSupport.Frames.Cases

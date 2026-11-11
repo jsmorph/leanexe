@@ -12,7 +12,9 @@ verified_compile compiled := [absBits, finite, nextUpBits, nextDownBits, endpoin
   mul, divEnd, divCore, div, Library.Numerics.Interval.sqrt, Library.Numerics.Interval.abs, clamp,
   outward2, kernelSin, kernelCos, remSmall, remMedium, mul64, clz64, window, mulTop, shiftTop,
   remLarge, remPio2, sinWith, cosWith, ofInt, ratio, mid, reach, lipschitz, sinI, cosI,
-  gmstSecondsI, turnsI, toEarthI, floorOf, angleWith, gmstWith, noVec, temeToEcefWith, gmst,
-  temeToEcef]
+  increasing, Atan.atan, arctanI, gmstSecondsI, turnsI, toEarthI, axisI, cartesianI,
+  slopeAI, residualAI, coordsAI, slopeBI, residualBI, coordsBI, lonAI, lonBI, floorOf, angleWith,
+  gmstWith, noVec, temeToEcefWith, noCoords, newtonA, newtonB, widen, regimeA, regimeB, longitude,
+  toGeodeticWith, toCartesianWith, gmst, temeToEcef, toGeodetic, toCartesian]
 
 end Demos.Frames

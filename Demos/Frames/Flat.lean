@@ -9,4 +9,7 @@ instance : Flat Angle (UInt64 × Float × Float) := ⟨fun a => (a.status, a.lo,
 
 instance : Flat Vec (UInt64 × Interval × Interval × Interval) := ⟨fun v => (v.status, v.x, v.y, v.z)⟩
 
+instance : Flat Coords (UInt64 × Interval × Interval × Interval) :=
+  ⟨fun c => (c.status, c.lat, c.lon, c.h)⟩
+
 end Demos.Frames

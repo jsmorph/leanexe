@@ -68,6 +68,7 @@ import Demos.Euler.SpeedCounterexample
 import Demos.Euler.Words
 import Demos.Frames.Enclose
 import Demos.Frames.Flat
+import Demos.Frames.Geodetic
 import Demos.Frames.Model
 import Demos.Frames.Program
 import Demos.Frames.Soundness
