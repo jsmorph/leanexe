@@ -552,7 +552,7 @@ step_rocq() {
 # The reference semantics N describes AArch64, so its check runs only on a tree configured for
 # that target.
 step_clightn() {
-  local step='`clightn/check.sh --mutations`' cell="" arch found
+  local step='`clightn/check.sh --mutations`' cell="" arch found equations
   ready "$step" coqc:coqc uv:uv || return 0
   if [ -z "$tree" ] || [ ! -f "$tree/_CoqProject" ] || [ ! -f "$tree/driver/Compiler.vo" ]; then
     record "$step" "not run: no CompCert tree with built proofs" "" ""
@@ -566,10 +566,13 @@ step_clightn() {
   run 7-clightn clightn/check.sh --mutations "$tree"
   found=$(last '^clightn: ([0-9]+) relations with ([0-9]+) constructors, ([0-9]+) constants?, and ([0-9]+) statements agree in Rocq and Lean.*$' \
     '\1 \2 \3 \4' "$log")
+  equations=$(last '^clightn: ([0-9]+) equations agree in Rocq and Lean.*$' '\1' "$log")
   if [ "$code" -eq 0 ] && [ -n "$found" ]; then
     set -- $found
     cell="$(nouns "$1" relation relations) with $(c "$2") constructors, $(nouns "$3" constant constants),"
     cell+=" and $(nouns "$4" statement statements) agree in Rocq and Lean, each proved in both;"
+    cell+=" the step between the provers assumes"
+    cell+=" $(nouns "${equations:-0}" "floating-point equation" "floating-point equations");"
     cell+=" $(matches '^clightn: the check found exactly the planted differences, [0-9]+$' "$log")"
     cell+=" groups of planted errors reported"
   fi

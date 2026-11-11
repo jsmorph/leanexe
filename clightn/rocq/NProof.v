@@ -833,6 +833,481 @@ Proof.
   - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
 Qed.
 
+(** * Floating-point numbers *)
+
+Notation tdbl := (Tfloat F64 (mk_attr false None)).
+Notation tflt := (Tfloat F32 (mk_attr false None)).
+
+Definition on_floats (f: float -> float -> option val) (v1 v2: val) : option val :=
+  match v1, v2 with Vfloat x, Vfloat y => f x y | _, _ => None end.
+
+Definition on_singles (f: float32 -> float32 -> option val) (v1 v2: val) : option val :=
+  match v1, v2 with Vsingle x, Vsingle y => f x y | _, _ => None end.
+
+Definition on_float (f: float -> option val) (v: val) : option val :=
+  match v with Vfloat x => f x | _ => None end.
+
+Definition on_single (f: float32 -> option val) (v: val) : option val :=
+  match v with Vsingle x => f x | _ => None end.
+
+Lemma on_floats_some : forall f v1 v2 v,
+  on_floats f v1 v2 = Some v <-> exists x y, v1 = Vfloat x /\ v2 = Vfloat y /\ f x y = Some v.
+Proof.
+  intros. destruct v1, v2; simpl; split; intros H;
+  try discriminate; try (destruct H as (x & y & A & B & C); discriminate); eauto.
+  destruct H as (x & y & A & B & C). inv A. inv B. auto.
+Qed.
+
+Lemma on_singles_some : forall f v1 v2 v,
+  on_singles f v1 v2 = Some v <->
+  exists x y, v1 = Vsingle x /\ v2 = Vsingle y /\ f x y = Some v.
+Proof.
+  intros. destruct v1, v2; simpl; split; intros H;
+  try discriminate; try (destruct H as (x & y & A & B & C); discriminate); eauto.
+  destruct H as (x & y & A & B & C). inv A. inv B. auto.
+Qed.
+
+Lemma on_float_some : forall f v r,
+  on_float f v = Some r <-> exists x, v = Vfloat x /\ f x = Some r.
+Proof.
+  intros. destruct v; simpl; split; intros H;
+  try discriminate; try (destruct H as (x & B & C); discriminate); eauto.
+  destruct H as (x & B & C). inv B. auto.
+Qed.
+
+Lemma on_single_some : forall f v r,
+  on_single f v = Some r <-> exists x, v = Vsingle x /\ f x = Some r.
+Proof.
+  intros. destruct v; simpl; split; intros H;
+  try discriminate; try (destruct H as (x & B & C); discriminate); eauto.
+  destruct H as (x & B & C). inv B. auto.
+Qed.
+
+(** A partial conversion's value, as [sem_cast] gives it. *)
+Lemma conv_some : forall A (o: option A) (mk: A -> val) v,
+  match o with Some i => Some (mk i) | None => None end = Some v <->
+  exists y, o = Some y /\ v = mk y.
+Proof.
+  intros. destruct o; split; intros H.
+  - inv H. eauto.
+  - destruct H as (y & E & ->). inv E. reflexivity.
+  - discriminate.
+  - destruct H as (y & E & _). discriminate.
+Qed.
+
+(** ** Operators on double *)
+
+Lemma eq_add_d_d : forall ce v1 v2 m,
+  sem_binop ce Oadd v1 tdbl v2 tdbl m = on_floats (fun x y => Some (Vfloat (Float.add x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem add_d_d : stmt_add_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_add_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_add_d.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_sub_d_d : forall ce v1 v2 m,
+  sem_binop ce Osub v1 tdbl v2 tdbl m = on_floats (fun x y => Some (Vfloat (Float.sub x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem sub_d_d : stmt_sub_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_sub_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_sub_d.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_mul_d_d : forall ce v1 v2 m,
+  sem_binop ce Omul v1 tdbl v2 tdbl m = on_floats (fun x y => Some (Vfloat (Float.mul x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem mul_d_d : stmt_mul_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_mul_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_mul_d.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_div_d_d : forall ce v1 v2 m,
+  sem_binop ce Odiv v1 tdbl v2 tdbl m = on_floats (fun x y => Some (Vfloat (Float.div x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem div_d_d : stmt_div_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_div_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_div_d.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_eq_d_d : forall ce v1 v2 m,
+  sem_binop ce Oeq v1 tdbl v2 tdbl m =
+  on_floats (fun x y => Some (Val.of_bool (Float.cmp Ceq x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem eq_d_d : stmt_eq_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_eq_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float.cmp Ceq x y) eqn:E; [exact (bo_eq_d_1 x y E) | exact (bo_eq_d_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_ne_d_d : forall ce v1 v2 m,
+  sem_binop ce One v1 tdbl v2 tdbl m =
+  on_floats (fun x y => Some (Val.of_bool (Float.cmp Cne x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem ne_d_d : stmt_ne_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_ne_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float.cmp Cne x y) eqn:E; [exact (bo_ne_d_1 x y E) | exact (bo_ne_d_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_lt_d_d : forall ce v1 v2 m,
+  sem_binop ce Olt v1 tdbl v2 tdbl m =
+  on_floats (fun x y => Some (Val.of_bool (Float.cmp Clt x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem lt_d_d : stmt_lt_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_lt_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float.cmp Clt x y) eqn:E; [exact (bo_lt_d_1 x y E) | exact (bo_lt_d_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_le_d_d : forall ce v1 v2 m,
+  sem_binop ce Ole v1 tdbl v2 tdbl m =
+  on_floats (fun x y => Some (Val.of_bool (Float.cmp Cle x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem le_d_d : stmt_le_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_le_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float.cmp Cle x y) eqn:E; [exact (bo_le_d_1 x y E) | exact (bo_le_d_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_ge_d_d : forall ce v1 v2 m,
+  sem_binop ce Oge v1 tdbl v2 tdbl m =
+  on_floats (fun x y => Some (Val.of_bool (Float.cmp Cge x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem ge_d_d : stmt_ge_d_d.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_ge_d_d, on_floats_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float.cmp Cge x y) eqn:E; [exact (bo_ge_d_1 x y E) | exact (bo_ge_d_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+(** ** Operators on float *)
+
+Lemma eq_add_f_f : forall ce v1 v2 m,
+  sem_binop ce Oadd v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Vsingle (Float32.add x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem add_f_f : stmt_add_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_add_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_add_f.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_sub_f_f : forall ce v1 v2 m,
+  sem_binop ce Osub v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Vsingle (Float32.sub x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem sub_f_f : stmt_sub_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_sub_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_sub_f.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_mul_f_f : forall ce v1 v2 m,
+  sem_binop ce Omul v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Vsingle (Float32.mul x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem mul_f_f : stmt_mul_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_mul_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_mul_f.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_div_f_f : forall ce v1 v2 m,
+  sem_binop ce Odiv v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Vsingle (Float32.div x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem div_f_f : stmt_div_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_div_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H. apply bo_div_f.
+  - intros H. inv H. do 2 eexists. split; [reflexivity|]. split; reflexivity.
+Qed.
+
+Lemma eq_eq_f_f : forall ce v1 v2 m,
+  sem_binop ce Oeq v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Val.of_bool (Float32.cmp Ceq x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem eq_f_f : stmt_eq_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_eq_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float32.cmp Ceq x y) eqn:E;
+      [exact (bo_eq_f_1 x y E) | exact (bo_eq_f_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float32.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_ne_f_f : forall ce v1 v2 m,
+  sem_binop ce One v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Val.of_bool (Float32.cmp Cne x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem ne_f_f : stmt_ne_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_ne_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float32.cmp Cne x y) eqn:E;
+      [exact (bo_ne_f_1 x y E) | exact (bo_ne_f_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float32.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_lt_f_f : forall ce v1 v2 m,
+  sem_binop ce Olt v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Val.of_bool (Float32.cmp Clt x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem lt_f_f : stmt_lt_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_lt_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float32.cmp Clt x y) eqn:E;
+      [exact (bo_lt_f_1 x y E) | exact (bo_lt_f_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float32.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_le_f_f : forall ce v1 v2 m,
+  sem_binop ce Ole v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Val.of_bool (Float32.cmp Cle x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem le_f_f : stmt_le_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_le_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float32.cmp Cle x y) eqn:E;
+      [exact (bo_le_f_1 x y E) | exact (bo_le_f_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float32.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+Lemma eq_ge_f_f : forall ce v1 v2 m,
+  sem_binop ce Oge v1 tflt v2 tflt m =
+  on_singles (fun x y => Some (Val.of_bool (Float32.cmp Cge x y))) v1 v2.
+Proof. intros. destruct v1, v2; reflexivity. Qed.
+
+Theorem ge_f_f : stmt_ge_f_f.
+Proof.
+  intros ce v1 v2 v m. rewrite eq_ge_f_f, on_singles_some. split.
+  - intros (x & y & -> & -> & H). inv H.
+    destruct (Float32.cmp Cge x y) eqn:E;
+      [exact (bo_ge_f_1 x y E) | exact (bo_ge_f_0 x y E)].
+  - intros H. inv H; do 2 eexists; split; try reflexivity; split; try reflexivity;
+    match goal with E: Float32.cmp _ _ _ = _ |- _ => rewrite E end; reflexivity.
+Qed.
+
+(** ** Casts of floating-point numbers *)
+
+Lemma eq_cast_d_d : forall v1 m,
+  sem_cast v1 tdbl tdbl m =
+  on_float (fun x => Some (Vfloat x)) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_d_d : stmt_cast_d_d.
+Proof.
+  intros v1 v m. rewrite eq_cast_d_d, on_float_some. split.
+  - intros (x & -> & H). inv H. apply co_d_d.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_f_f : forall v1 m,
+  sem_cast v1 tflt tflt m =
+  on_single (fun x => Some (Vsingle x)) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_f_f : stmt_cast_f_f.
+Proof.
+  intros v1 v m. rewrite eq_cast_f_f, on_single_some. split.
+  - intros (x & -> & H). inv H. apply co_f_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_ul_d : forall v1 m,
+  sem_cast v1 tulong tdbl m =
+  on_long (fun x => Some (Vfloat (Float.of_longu x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_ul_d : stmt_cast_ul_d.
+Proof.
+  intros v1 v m. rewrite eq_cast_ul_d, on_long_some. split.
+  - intros (x & -> & H). inv H. apply co_ul_d.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_f_d : forall v1 m,
+  sem_cast v1 tflt tdbl m =
+  on_single (fun x => Some (Vfloat (Float.of_single x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_f_d : stmt_cast_f_d.
+Proof.
+  intros v1 v m. rewrite eq_cast_f_d, on_single_some. split.
+  - intros (x & -> & H). inv H. apply co_f_d.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_d_f : forall v1 m,
+  sem_cast v1 tdbl tflt m =
+  on_float (fun x => Some (Vsingle (Float.to_single x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_d_f : stmt_cast_d_f.
+Proof.
+  intros v1 v m. rewrite eq_cast_d_f, on_float_some. split.
+  - intros (x & -> & H). inv H. apply co_d_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_si_f : forall v1 m,
+  sem_cast v1 tint tflt m =
+  on_int (fun x => Some (Vsingle (Float32.of_int x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_si_f : stmt_cast_si_f.
+Proof.
+  intros v1 v m. rewrite eq_cast_si_f, on_int_some. split.
+  - intros (x & -> & H). inv H. apply co_si_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_ui_f : forall v1 m,
+  sem_cast v1 tuint tflt m =
+  on_int (fun x => Some (Vsingle (Float32.of_intu x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_ui_f : stmt_cast_ui_f.
+Proof.
+  intros v1 v m. rewrite eq_cast_ui_f, on_int_some. split.
+  - intros (x & -> & H). inv H. apply co_ui_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_ul_f : forall v1 m,
+  sem_cast v1 tulong tflt m =
+  on_long (fun x => Some (Vsingle (Float32.of_longu x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_ul_f : stmt_cast_ul_f.
+Proof.
+  intros v1 v m. rewrite eq_cast_ul_f, on_long_some. split.
+  - intros (x & -> & H). inv H. apply co_ul_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_cast_d_ul : forall v1 m,
+  sem_cast v1 tdbl tulong m =
+  on_float (fun x => match Float.to_longu x with Some i => Some (Vlong i) | None => None end) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_d_ul : stmt_cast_d_ul.
+Proof.
+  intros v1 v m. rewrite eq_cast_d_ul, on_float_some. split.
+  - intros (x & -> & H). apply conv_some in H. destruct H as (y & E & ->).
+    apply co_d_ul; auto.
+  - intros H. inv H. eexists. split; [reflexivity|]. apply conv_some. eauto.
+Qed.
+
+Lemma eq_cast_f_si : forall v1 m,
+  sem_cast v1 tflt tint m =
+  on_single (fun x => match Float32.to_int x with Some i => Some (Vint i) | None => None end) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_f_si : stmt_cast_f_si.
+Proof.
+  intros v1 v m. rewrite eq_cast_f_si, on_single_some. split.
+  - intros (x & -> & H). apply conv_some in H. destruct H as (y & E & ->).
+    apply co_f_si; auto.
+  - intros H. inv H. eexists. split; [reflexivity|]. apply conv_some. eauto.
+Qed.
+
+Lemma eq_cast_f_ul : forall v1 m,
+  sem_cast v1 tflt tulong m =
+  on_single (fun x => match Float32.to_longu x with Some i => Some (Vlong i) | None => None end) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem cast_f_ul : stmt_cast_f_ul.
+Proof.
+  intros v1 v m. rewrite eq_cast_f_ul, on_single_some. split.
+  - intros (x & -> & H). apply conv_some in H. destruct H as (y & E & ->).
+    apply co_f_ul; auto.
+  - intros H. inv H. eexists. split; [reflexivity|]. apply conv_some. eauto.
+Qed.
+
+(** ** Unary operators *)
+
+Lemma eq_neg_d : forall v1 m,
+  sem_unop Oneg v1 tdbl m = on_float (fun x => Some (Vfloat (Float.neg x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem neg_d : stmt_neg_d.
+Proof.
+  intros v1 v m. rewrite eq_neg_d, on_float_some. split.
+  - intros (x & -> & H). inv H. apply uo_neg_d.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_abs_d : forall v1 m,
+  sem_unop Oabsfloat v1 tdbl m = on_float (fun x => Some (Vfloat (Float.abs x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem abs_d : stmt_abs_d.
+Proof.
+  intros v1 v m. rewrite eq_abs_d, on_float_some. split.
+  - intros (x & -> & H). inv H. apply uo_abs_d.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
+Lemma eq_neg_f : forall v1 m,
+  sem_unop Oneg v1 tflt m = on_single (fun x => Some (Vsingle (Float32.neg x))) v1.
+Proof. intros. destruct v1; reflexivity. Qed.
+
+Theorem neg_f : stmt_neg_f.
+Proof.
+  intros v1 v m. rewrite eq_neg_f, on_single_some. split.
+  - intros (x & -> & H). inv H. apply uo_neg_f.
+  - intros H. inv H. eexists. split; [reflexivity|]. reflexivity.
+Qed.
+
 (** * Conditions *)
 
 Lemma eq_bool_si : forall v m,

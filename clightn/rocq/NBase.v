@@ -4,7 +4,8 @@
    powers of two, bitwise operations on numbers that are not negative, the concatenation of
    traces, and the conversions between floating-point numbers and their bits; the laws that
    NProof.v proves fix their meaning where the specification uses them.  The interpreted symbols
-   name CompCert 3.18's definitions under test. *)
+   name CompCert 3.18's definitions under test.  The floating-point equations of the
+   specification name CompCert's operations directly. *)
 From Coq Require Import ZArith.
 Require Import Integers Floats Values Memory Events Ctypes Cop Clight.
 
@@ -31,3 +32,4 @@ Definition sem_binop (ce: composite_env) := Cop.sem_binary_operation ce.
 Definition sem_cast := Cop.sem_cast.
 Definition bool_val := Cop.bool_val.
 Definition eval_expr := Clight.eval_expr.
+Definition sem_unop := Cop.sem_unary_operation.

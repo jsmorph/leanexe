@@ -1171,6 +1171,615 @@ theorem bool_ui : stmt_bool_ui := by
         rw [(int_eq_zero x).2 hx]
         rfl
 
+/-! ## Floating-point numbers -/
+
+abbrev tdbl : type := .Tfloat .F64 (attr.mk false none)
+abbrev tflt : type := .Tfloat .F32 (attr.mk false none)
+
+/-- `f` of two binary64 numbers, and nothing for other values. -/
+def onFloats (f : float → float → Option val) : val → val → Option val
+  | .Vfloat x, .Vfloat y => f x y
+  | _, _ => none
+
+/-- `f` of two binary32 numbers, and nothing for other values. -/
+def onSingles (f : float32 → float32 → Option val) : val → val → Option val
+  | .Vsingle x, .Vsingle y => f x y
+  | _, _ => none
+
+/-- `f` of a binary64 number, and nothing for other values. -/
+def onFloat (f : float → Option val) : val → Option val
+  | .Vfloat x => f x
+  | _ => none
+
+/-- `f` of a binary32 number, and nothing for other values. -/
+def onSingle (f : float32 → Option val) : val → Option val
+  | .Vsingle x => f x
+  | _ => none
+
+theorem onFloats_some {f : float → float → Option val} {v1 v2 v : val} :
+    onFloats f v1 v2 = some v ↔
+      ∃ x y, v1 = .Vfloat x ∧ v2 = .Vfloat y ∧ f x y = some v := by
+  cases v1 <;> cases v2 <;> simp [onFloats]
+
+theorem onSingles_some {f : float32 → float32 → Option val} {v1 v2 v : val} :
+    onSingles f v1 v2 = some v ↔
+      ∃ x y, v1 = .Vsingle x ∧ v2 = .Vsingle y ∧ f x y = some v := by
+  cases v1 <;> cases v2 <;> simp [onSingles]
+
+theorem onFloat_some {f : float → Option val} {v1 v : val} :
+    onFloat f v1 = some v ↔ ∃ x, v1 = .Vfloat x ∧ f x = some v := by
+  cases v1 <;> simp [onFloat]
+
+theorem onSingle_some {f : float32 → Option val} {v1 v : val} :
+    onSingle f v1 = some v ↔ ∃ x, v1 = .Vsingle x ∧ f x = some v := by
+  cases v1 <;> simp [onSingle]
+
+theorem of_bool_some {b r : Bool} {n : _root_.Int} (hb : b = r)
+    (hn : Val.of_bool r = .Vint (r32 n)) : some (Val.of_bool b) = some (.Vint (r32 n)) := by
+  rw [hb, hn]
+
+/-- The value of a partial conversion, as `sem_cast` gives it. -/
+def convOpt {α : Type} (mk : α → val) : Option α → Option val
+  | some i => some (mk i)
+  | none => none
+
+theorem conv_some {α : Type} {o : Option α} {mk : α → val} {v : val} :
+    convOpt mk o = some v ↔ ∃ y, o = some y ∧ v = mk y := by
+  cases o <;> simp [convOpt, eq_comm]
+
+/-! ### Operators on double -/
+
+theorem eq_add_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oadd v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (.Vfloat (LClight.Float.add Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem add_d_d : stmt_add_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_add_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_add_d x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_sub_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Osub v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (.Vfloat (LClight.Float.sub Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem sub_d_d : stmt_sub_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_sub_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_sub_d x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_mul_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Omul v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (.Vfloat (LClight.Float.mul Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem mul_d_d : stmt_mul_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_mul_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_mul_d x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_div_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Odiv v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (.Vfloat (LClight.Float.div Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem div_d_d : stmt_div_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_div_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_div_d x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_eq_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oeq v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (Val.of_bool (LClight.Float.cmp .Ceq x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem eq_d_d : stmt_eq_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_eq_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float.cmp .Ceq x y
+    · exact .bo_eq_d_0 x y hc
+    · exact .bo_eq_d_1 x y hc
+  · intro h
+    cases h with
+    | bo_eq_d_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_eq_d_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_ne_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .One v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (Val.of_bool (LClight.Float.cmp .Cne x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem ne_d_d : stmt_ne_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_ne_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float.cmp .Cne x y
+    · exact .bo_ne_d_0 x y hc
+    · exact .bo_ne_d_1 x y hc
+  · intro h
+    cases h with
+    | bo_ne_d_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_ne_d_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_lt_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Olt v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (Val.of_bool (LClight.Float.cmp .Clt x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem lt_d_d : stmt_lt_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_lt_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float.cmp .Clt x y
+    · exact .bo_lt_d_0 x y hc
+    · exact .bo_lt_d_1 x y hc
+  · intro h
+    cases h with
+    | bo_lt_d_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_lt_d_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_le_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Ole v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (Val.of_bool (LClight.Float.cmp .Cle x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem le_d_d : stmt_le_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_le_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float.cmp .Cle x y
+    · exact .bo_le_d_0 x y hc
+    · exact .bo_le_d_1 x y hc
+  · intro h
+    cases h with
+    | bo_le_d_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_le_d_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_ge_d_d (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oge v1 tdbl v2 tdbl m =
+      onFloats (fun x y => some (Val.of_bool (LClight.Float.cmp .Cge x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem ge_d_d : stmt_ge_d_d := by
+  intro ce v1 v2 v m
+  rw [eq_ge_d_d, onFloats_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float.cmp .Cge x y
+    · exact .bo_ge_d_0 x y hc
+    · exact .bo_ge_d_1 x y hc
+  · intro h
+    cases h with
+    | bo_ge_d_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_ge_d_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+/-! ### Operators on float -/
+
+theorem eq_add_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oadd v1 tflt v2 tflt m =
+      onSingles (fun x y => some (.Vsingle (LClight.Float32.add Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem add_f_f : stmt_add_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_add_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_add_f x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_sub_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Osub v1 tflt v2 tflt m =
+      onSingles (fun x y => some (.Vsingle (LClight.Float32.sub Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem sub_f_f : stmt_sub_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_sub_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_sub_f x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_mul_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Omul v1 tflt v2 tflt m =
+      onSingles (fun x y => some (.Vsingle (LClight.Float32.mul Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem mul_f_f : stmt_mul_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_mul_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_mul_f x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_div_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Odiv v1 tflt v2 tflt m =
+      onSingles (fun x y => some (.Vsingle (LClight.Float32.div Archi.aarch64 x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem div_f_f : stmt_div_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_div_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .bo_div_f x y
+  · intro h
+    cases h
+    exact ⟨_, _, rfl, rfl, rfl⟩
+
+theorem eq_eq_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oeq v1 tflt v2 tflt m =
+      onSingles (fun x y => some (Val.of_bool (LClight.Float32.cmp .Ceq x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem eq_f_f : stmt_eq_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_eq_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float32.cmp .Ceq x y
+    · exact .bo_eq_f_0 x y hc
+    · exact .bo_eq_f_1 x y hc
+  · intro h
+    cases h with
+    | bo_eq_f_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_eq_f_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_ne_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .One v1 tflt v2 tflt m =
+      onSingles (fun x y => some (Val.of_bool (LClight.Float32.cmp .Cne x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem ne_f_f : stmt_ne_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_ne_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float32.cmp .Cne x y
+    · exact .bo_ne_f_0 x y hc
+    · exact .bo_ne_f_1 x y hc
+  · intro h
+    cases h with
+    | bo_ne_f_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_ne_f_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_lt_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Olt v1 tflt v2 tflt m =
+      onSingles (fun x y => some (Val.of_bool (LClight.Float32.cmp .Clt x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem lt_f_f : stmt_lt_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_lt_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float32.cmp .Clt x y
+    · exact .bo_lt_f_0 x y hc
+    · exact .bo_lt_f_1 x y hc
+  · intro h
+    cases h with
+    | bo_lt_f_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_lt_f_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_le_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Ole v1 tflt v2 tflt m =
+      onSingles (fun x y => some (Val.of_bool (LClight.Float32.cmp .Cle x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem le_f_f : stmt_le_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_le_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float32.cmp .Cle x y
+    · exact .bo_le_f_0 x y hc
+    · exact .bo_le_f_1 x y hc
+  · intro h
+    cases h with
+    | bo_le_f_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_le_f_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+theorem eq_ge_f_f (ce : Unit) (v1 v2 : val) (m : mem) :
+    sem_binop ce .Oge v1 tflt v2 tflt m =
+      onSingles (fun x y => some (Val.of_bool (LClight.Float32.cmp .Cge x y))) v1 v2 := by
+  cases v1 <;> cases v2 <;> rfl
+
+theorem ge_f_f : stmt_ge_f_f := by
+  intro ce v1 v2 v m
+  rw [eq_ge_f_f, onSingles_some]
+  constructor
+  · rintro ⟨x, y, rfl, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    cases hc : LClight.Float32.cmp .Cge x y
+    · exact .bo_ge_f_0 x y hc
+    · exact .bo_ge_f_1 x y hc
+  · intro h
+    cases h with
+    | bo_ge_f_1 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+    | bo_ge_f_0 x y hc => exact ⟨x, y, rfl, rfl, of_bool_some hc rfl⟩
+
+/-! ### Casts of floating-point numbers -/
+
+theorem eq_cast_d_d (v1 : val) (m : mem) :
+    sem_cast v1 tdbl tdbl m = onFloat (fun x => some (.Vfloat x)) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_d_d : stmt_cast_d_d := by
+  intro v1 v m
+  rw [eq_cast_d_d, onFloat_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_d_d x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_f_f (v1 : val) (m : mem) :
+    sem_cast v1 tflt tflt m = onSingle (fun x => some (.Vsingle x)) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_f_f : stmt_cast_f_f := by
+  intro v1 v m
+  rw [eq_cast_f_f, onSingle_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_f_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_ul_d (v1 : val) (m : mem) :
+    sem_cast v1 tul tdbl m = onLong (fun x => some (.Vfloat (LClight.Float.of_longu x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_ul_d : stmt_cast_ul_d := by
+  intro v1 v m
+  rw [eq_cast_ul_d, onLong_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_ul_d x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_f_d (v1 : val) (m : mem) :
+    sem_cast v1 tflt tdbl m =
+      onSingle (fun x => some (.Vfloat (LClight.Float.of_single x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_f_d : stmt_cast_f_d := by
+  intro v1 v m
+  rw [eq_cast_f_d, onSingle_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_f_d x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_d_f (v1 : val) (m : mem) :
+    sem_cast v1 tdbl tflt m =
+      onFloat (fun x => some (.Vsingle (LClight.Float.to_single x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_d_f : stmt_cast_d_f := by
+  intro v1 v m
+  rw [eq_cast_d_f, onFloat_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_d_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_si_f (v1 : val) (m : mem) :
+    sem_cast v1 tsi tflt m = onInt (fun x => some (.Vsingle (LClight.Float32.of_int x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_si_f : stmt_cast_si_f := by
+  intro v1 v m
+  rw [eq_cast_si_f, onInt_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_si_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_ui_f (v1 : val) (m : mem) :
+    sem_cast v1 tui tflt m = onInt (fun x => some (.Vsingle (LClight.Float32.of_intu x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_ui_f : stmt_cast_ui_f := by
+  intro v1 v m
+  rw [eq_cast_ui_f, onInt_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_ui_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_ul_f (v1 : val) (m : mem) :
+    sem_cast v1 tul tflt m = onLong (fun x => some (.Vsingle (LClight.Float32.of_longu x))) v1 := by
+  cases v1 <;> rfl
+
+theorem cast_ul_f : stmt_cast_ul_f := by
+  intro v1 v m
+  rw [eq_cast_ul_f, onLong_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .co_ul_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_cast_d_ul (v1 : val) (m : mem) :
+    sem_cast v1 tdbl tul m =
+      onFloat (fun x => convOpt .Vlong (LClight.Float.to_longu x)) v1 := by
+  cases v1 <;> try rfl
+  rename_i x
+  simp only [onFloat]
+  cases h : LClight.Float.to_longu x <;>
+    simp [LClight.sem_cast, LClight.classify_cast, LClight.cast_float_long, convOpt, h]
+
+theorem cast_d_ul : stmt_cast_d_ul := by
+  intro v1 v m
+  rw [eq_cast_d_ul, onFloat_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain ⟨y, hy, rfl⟩ := conv_some.mp h
+    exact .co_d_ul x y hy
+  · intro h
+    cases h with
+    | co_d_ul x y hy => exact ⟨x, rfl, conv_some.mpr ⟨y, hy, rfl⟩⟩
+
+theorem eq_cast_f_si (v1 : val) (m : mem) :
+    sem_cast v1 tflt tsi m =
+      onSingle (fun x => convOpt .Vint (LClight.Float32.to_int x)) v1 := by
+  cases v1 <;> try rfl
+  rename_i x
+  simp only [onSingle]
+  cases h : LClight.Float32.to_int x <;>
+    simp [LClight.sem_cast, LClight.classify_cast, LClight.cast_single_int, LClight.cast_int_int, convOpt, h]
+
+theorem cast_f_si : stmt_cast_f_si := by
+  intro v1 v m
+  rw [eq_cast_f_si, onSingle_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain ⟨y, hy, rfl⟩ := conv_some.mp h
+    exact .co_f_si x y hy
+  · intro h
+    cases h with
+    | co_f_si x y hy => exact ⟨x, rfl, conv_some.mpr ⟨y, hy, rfl⟩⟩
+
+theorem eq_cast_f_ul (v1 : val) (m : mem) :
+    sem_cast v1 tflt tul m =
+      onSingle (fun x => convOpt .Vlong (LClight.Float32.to_longu x)) v1 := by
+  cases v1 <;> try rfl
+  rename_i x
+  simp only [onSingle]
+  cases h : LClight.Float32.to_longu x <;>
+    simp [LClight.sem_cast, LClight.classify_cast, LClight.cast_single_long, convOpt, h]
+
+theorem cast_f_ul : stmt_cast_f_ul := by
+  intro v1 v m
+  rw [eq_cast_f_ul, onSingle_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain ⟨y, hy, rfl⟩ := conv_some.mp h
+    exact .co_f_ul x y hy
+  · intro h
+    cases h with
+    | co_f_ul x y hy => exact ⟨x, rfl, conv_some.mpr ⟨y, hy, rfl⟩⟩
+
+/-! ### Unary operators -/
+
+theorem eq_neg_d (v1 : val) (m : mem) :
+    sem_unop .Oneg v1 tdbl m = onFloat (fun x => some (.Vfloat (LClight.Float.neg x))) v1 := by
+  cases v1 <;> rfl
+
+theorem neg_d : stmt_neg_d := by
+  intro v1 v m
+  rw [eq_neg_d, onFloat_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .uo_neg_d x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_abs_d (v1 : val) (m : mem) :
+    sem_unop .Oabsfloat v1 tdbl m = onFloat (fun x => some (.Vfloat (LClight.Float.abs x))) v1 := by
+  cases v1 <;> rfl
+
+theorem abs_d : stmt_abs_d := by
+  intro v1 v m
+  rw [eq_abs_d, onFloat_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .uo_abs_d x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
+theorem eq_neg_f (v1 : val) (m : mem) :
+    sem_unop .Oneg v1 tflt m = onSingle (fun x => some (.Vsingle (LClight.Float32.neg x))) v1 := by
+  cases v1 <;> rfl
+
+theorem neg_f : stmt_neg_f := by
+  intro v1 v m
+  rw [eq_neg_f, onSingle_some]
+  constructor
+  · rintro ⟨x, rfl, h⟩
+    obtain rfl := Option.some.inj h
+    exact .uo_neg_f x
+  · intro h
+    cases h
+    exact ⟨_, rfl, rfl⟩
+
 /-! ## Constants -/
 
 theorem const_int : stmt_const_int := by

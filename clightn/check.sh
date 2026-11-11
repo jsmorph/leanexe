@@ -4,7 +4,8 @@
 # specification states, that Lean proves every statement and Rocq every statement but the
 # instances', which Rocq theorems take as their premises, and that the proofs assume nothing
 # beyond CompCert's transf_c_program_correct in Rocq and propext, Classical.choice, and
-# Quot.sound in Lean.
+# Quot.sound in Lean.  The step between the provers assumes the floating-point equations of
+# clightn/N.nsx, which the script lists at the end of the comparison.
 #
 # tools/leanrun builds the Lean modules of the table and runs clightn/emit.lean, which writes each
 # program's C text and the bytes of a bare-metal program's output.  The tree's clightgen prints
@@ -64,6 +65,7 @@ cd "$root"
 table='gcd TestSupport.Bare.Gcd terminates 0
 crc32 TestSupport.Bare.Theorems terminates 0 1
 sha256 TestSupport.Bare.Theorems terminates 0 1
+euler TestSupport.Bare.Theorems terminates 0 1
 depth TestSupport.Bare.Theorems terminates 0 1
 sha TestSupport.Bare.Input reads
 ctl TestSupport.Bare.Ctl reacts
@@ -101,10 +103,9 @@ for n in "${names[@]}"; do
   proofs+=("$n.v" "N${c}Spec.v" "N$c.v")
 done
 
-# The Lean proof of the gateway's instance reaches about 15 GB, of which the imports take about
-# 5 GB.
+# The Lean proof of the Euler solver's instance takes about 20 minutes and reaches about 33 GB.
 leanrun() {
-  tools/leanrun --timeout 60m --memory-high 20G "$@"
+  tools/leanrun --timeout 120m --memory-high 38G "$@"
 }
 
 # The programs: their C text, clightgen's Coq files, and the instances.
@@ -185,6 +186,7 @@ done
 for n in "${names[@]}"; do
   uv run clightn/nsx.py check "$spec,$work/$n/${n^}.nsx" "$work/rocq" "$work/lean-$n.out"
 done
+uv run clightn/nsx.py equations "$spec"
 
 if [ "$mutations" = yes ]; then
   # The printout of N alone, without an instance, for the checks against N.nsx alone.

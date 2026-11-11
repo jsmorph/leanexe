@@ -14,6 +14,8 @@ elaborated against it (clightn/README.md).
   uv run clightn/nsx.py mutate GROUP SRC OUT [FORM]
       writes SRC with the planted errors of GROUP and prints the differences they must cause;
       FORM, the form of an instance's statement, selects the planted errors of an instance's group
+  uv run clightn/nsx.py equations SPEC
+      prints the floating-point equations of SPEC, which the proofs assume
 
 SPECS, ROCQ_OUTS, and LEAN_OUTS are lists separated by commas: the specification of N, then the
 files that extend it, such as a program and its statement, each with its two renderings.
@@ -22,6 +24,11 @@ The renderer is untrusted: the check reads back the terms that each prover elabo
 constant through the symbol table of SPEC, and compares the result with SPEC after the expansion
 of macros, up to the names of bound variables.  A constant outside the table makes the comparison
 fail.  With --expect, the check passes when the differences it finds are exactly the given ones.
+
+An equation (equation NAME SORT (rocq R) (lean L)) is a symbol whose two meanings, R in Rocq and L
+in Lean, the specification assumes to agree on every argument.  Each rendering defines eqn_NAME of
+the sort SORT as the symbol, the check confirms both definitions, and it names the equations as
+the assumptions of the proofs.
 """
 import os
 import re
@@ -100,7 +107,7 @@ class Spec:
 
     def __init__(self, paths):
         self.sorts, self.symbols, self.macros = {}, {}, {}
-        self.relations, self.statements, self.constants = [], [], []
+        self.relations, self.statements, self.constants, self.equations = [], [], [], []
         self.modules = [ROCQ_SPEC]
         for part, path in enumerate(paths):
             for d in parse_all(open(path).read()):
@@ -112,7 +119,12 @@ class Spec:
                     continue
                 if part > 0 and len(self.modules) != part + 1:
                     raise SpecError(f"{path}: a further file starts with (part (rocq MODULE))")
-                if kind in ("sort", "data", "base", "interp"):
+                if kind in ("sort", "data", "base", "interp", "equation"):
+                    if kind == "equation":
+                        if part > 0:
+                            raise SpecError(f"{d[1]}: equations belong in the first file")
+                        self.equations.append((d[1], d[2]))
+                        d = [d[0], d[1]] + d[3:]
                     names = {x[0]: x[1] for x in d[2:]}
                     if set(names) != {"rocq", "lean"}:
                         raise SpecError(f"{d[1]}: needs a rocq and a lean name")
@@ -168,6 +180,10 @@ class Spec:
                     raise SpecError(f"{c}: the conclusion must apply {name} to its parameters "
                                     "and indices")
                 self.ctors[c] = body
+        self.eqsorts = {}
+        for name, sort in self.equations:
+            self.eqsorts[name] = self.expand(sort)
+            self.check_sort(self.eqsorts[name])
         for name, sort, value, _ in self.constants:
             sort = self.expand(sort)
             self.check_sort(sort)
@@ -384,11 +400,18 @@ def render(spec, rocq_paths, lean_paths):
                         "Clight ClightBigstep.", requires, ""],
                "lean": ["-- Rendered by clightn/nsx.py from the specification of N.  Do not edit.",
                         imports, "", "set_option autoImplicit false",
-                        "set_option maxRecDepth 100000", "", f"namespace {LEAN_SPEC}", ""]}
+                        "set_option maxRecDepth 100000"] +
+                       (["set_option maxHeartbeats 0"] if part > 0 else []) +
+                       ["", f"namespace {LEAN_SPEC}", ""]}
         for p, lines in out.items():
             r = Renderer(spec, p)
             rocq = p == "rocq"
             arrow = " ->" if rocq else " →"
+            for name, _ in (spec.equations if part == 0 else []):
+                lines.append(layout(("", [f"{'Definition' if rocq else 'def'} eqn_{name} :",
+                                          r.sort(spec.eqsorts[name]), ":="], ""), 0, 2))
+                lines.append("  " + r.name(name, False) + ("." if rocq else ""))
+                lines.append("")
             for name, params, indices, ctors in (spec.relations if part == 0 else []):
                 ps = [r.binding(x, s) for x, s in params]
                 items = [("", [r.sort(s)], arrow) for s in indices] + \
@@ -436,6 +459,8 @@ def rocq_reader(spec, path, proofs=True):
         lines.append(f'Redirect "rocq.arity.{name}" Check @{ROCQ_SPEC}.{name}.')
         for c, _ in ctors:
             lines.append(f'Redirect "rocq.ctor.{c}" Check @{ROCQ_SPEC}.{c}.')
+    for name, _ in spec.equations:
+        lines.append(f'Redirect "rocq.equation.{name}" Print {ROCQ_SPEC}.eqn_{name}.')
     for name, _, _, part in spec.constants:
         lines.append(f'Redirect "rocq.constant.{name}" Print {spec.modules[part]}.cst_{name}.')
     for name, _, part, thm in spec.statements:
@@ -516,6 +541,8 @@ def spec_forms(spec):
         for c, _ in ctors:
             body = spec.ctors[c]
             forms[("ctor", c)] = spec_canon(["forall", params, body] if params else body, [])
+    for name, _ in spec.equations:
+        forms[("equation", name)] = (spec_sort(spec.eqsorts[name]), name)
     for name, _, _, _ in spec.constants:
         sort, value = spec.values[name]
         forms[("constant", name)] = (spec_sort(sort), spec_canon(value, []))
@@ -770,6 +797,14 @@ def rocq_forms(spec, d, proofs):
             if text is not None:
                 n, ty = rocq_check_output(text)
                 got[("ctor", c)] = term(ty) if n == f"{ROCQ_SPEC}.{c}" else "?" + n
+    for name, _ in spec.equations:
+        text = rocq_file(d, f"rocq.equation.{name}")
+        if text is not None:
+            n, value, ty = rocq_print_output(text)
+            if n != f"{ROCQ_SPEC}.eqn_{name}":
+                notes[("equation", name)] = f"unexpected Print output: {text[:200]}"
+            else:
+                got[("equation", name)] = (term(ty), term(value))
     for name, _, _, part in spec.constants:
         text = rocq_file(d, f"rocq.constant.{name}")
         if text is not None:
@@ -912,6 +947,11 @@ def lean_forms(spec, path, proofs):
                 notes[("relation", name)] = "is unsafe"
         elif kind == "ctor":
             got[("ctor", full.rsplit(".", 1)[1])] = norm.term(d[2], [])
+        elif kind == "equation":
+            name = full.removeprefix(f"{LEAN_SPEC}.eqn_")
+            got[("equation", name)] = (norm.term(d[3], []), norm.term(d[2], []))
+            if name not in spec.eqsorts:
+                notes[("equation", name)] = "is not in the specification"
         elif kind == "constant":
             name = full.removeprefix(f"{LEAN_SPEC}.cst_")
             got[("constant", name)] = (norm.term(d[3], []), norm.term(d[2], []))
@@ -1012,7 +1052,19 @@ def check(spec, rocq_dir, lean_out, proofs=True, expect=None):
               "the permitted assumptions")
     else:
         print(f"clightn: {counts} agree in Rocq and Lean")
+    if spec.equations:
+        print(f"clightn: {len(spec.equations)} equations agree in Rocq and Lean in their constants "
+              "and sorts, and the step between the provers assumes each: "
+              + " ".join(name for name, _ in spec.equations))
     return 0
+
+
+def equations(spec):
+    """Prints each equation of spec with its sort and its meaning in each prover."""
+    for name, _ in spec.equations:
+        names = spec.symbols[name]
+        print(f"clightn: assumes {name} : {show(spec_sort(spec.eqsorts[name]))}, "
+              f"{show(names['rocq'])} in Rocq and {show(names['lean'])} in Lean")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1048,6 +1100,14 @@ MUTATIONS = {
          "Lean:ctor:li_before"),
         ("nr_intro", "(Inv (@Nat.succ n) le2 gv2 mb2)", "(Inv n le2 gv2 mb2)",
          "Lean:ctor:nr_intro"),
+        ("bo_add_d", "(@LClight.Float.add LClight.Archi.aarch64 x y)",
+         "(@LClight.Float.sub LClight.Archi.aarch64 x y)", "Lean:ctor:bo_add_d"),
+        ("bo_lt_f_1", "LClight.comparison.Clt", "LClight.comparison.Cle", "Lean:ctor:bo_lt_f_1"),
+        ("gi_d", "(@ClightN.Base.r64 (0 : Int))", "(@ClightN.Base.r64 (1 : Int))",
+         "Lean:ctor:gi_d"),
+        ("nx_store_cellf32", "(@ClightN.Base.f32_bits f)",
+         "(@ClightN.Base.f32_bits (@LClight.Float32.neg f))", "Lean:ctor:nx_store_cellf32"),
+        ("eqn_fadd64", "LClight.Archi.aarch64", "LClight.Archi.x86_64", "Lean:equation:fadd64"),
     ],
     "rocq-spec": [
         ("bo_mul_ul", "BinInt.Z.mul", "BinInt.Z.add", "Rocq:ctor:bo_mul_ul"),
@@ -1067,6 +1127,10 @@ MUTATIONS = {
          "(@NBase.rptr (@NBase.u64 k))", "Rocq:ctor:nx_vload"),
         ("nr_store", "((nreads s c t) ->", "((nreads s (S c) t) ->", "Rocq:ctor:nr_store"),
         ("nr_intro", "(Inv O le gv mb)", "(Inv (S O) le gv mb)", "Rocq:ctor:nr_intro"),
+        ("co_d_ul", "Floats.Float.to_longu", "Floats.Float.to_long", "Rocq:ctor:co_d_ul"),
+        ("uo_abs_d", "(@Floats.Float.abs x)", "(@Floats.Float.neg x)", "Rocq:ctor:uo_abs_d"),
+        ("nx_sqrt", '"__builtin_fsqrt"', '"__builtin_sqrt"', "Rocq:ctor:nx_sqrt"),
+        ("eqn_fmul32", "Floats.Float32.mul", "Floats.Float32.div", "Rocq:equation:fmul32"),
     ],
     "lean-gcd": [
         ("cst_gcd_trace", "(21 : Int)", "(22 : Int)", "Lean:constant:gcd_trace"),
@@ -1104,6 +1168,9 @@ MUTATIONS = {
         ("mul_ul_ul", "theorem mul_ul_ul : stmt_mul_ul_ul := by",
          "theorem mul_ul_ul : stmt_mul_ul_ul := by\n  sorry\n\n"
          "theorem mul_ul_ul_unused : stmt_mul_ul_ul := by", "Lean:proof:mul_ul_ul"),
+        ("div_f_f", "theorem div_f_f : stmt_div_f_f := by",
+         "theorem div_f_f : stmt_div_f_f := by\n  sorry\n\n"
+         "theorem div_f_f_unused : stmt_div_f_f := by", "Lean:proof:div_f_f"),
     ],
     "rocq-proof": [
         ("div_ul_ul", "Theorem div_ul_ul : stmt_div_ul_ul.",
@@ -1114,6 +1181,9 @@ MUTATIONS = {
         ("cast_ul_ui", "Theorem cast_ul_ui : stmt_cast_ul_ui.\nProof.",
          "Theorem cast_ul_ui : stmt_cast_ul_ui.\nProof.\nAdmitted.\n\n"
          "Theorem cast_ul_ui_unused : stmt_cast_ul_ui.\nProof.", "Rocq:proof:cast_ul_ui"),
+        ("ne_d_d", "Theorem ne_d_d : stmt_ne_d_d.\nProof.",
+         "Theorem ne_d_d : stmt_ne_d_d.\nProof.\nAdmitted.\n\n"
+         "Theorem ne_d_d_unused : stmt_ne_d_d.\nProof.", "Rocq:proof:ne_d_d"),
     ],
 }
 
@@ -1217,6 +1287,8 @@ def run(argv):
             return check(specs(args[0]), args[1], args[2], "--no-proofs" not in flags, expect)
         elif cmd == "mutate" and len(args) in (3, 4):
             mutate(*args)
+        elif cmd == "equations" and len(args) == 1:
+            equations(specs(args[0]))
         else:
             print(__doc__, file=sys.stderr)
             return 2

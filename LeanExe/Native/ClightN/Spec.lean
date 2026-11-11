@@ -6,6 +6,75 @@ set_option maxRecDepth 100000
 
 namespace ClightN.Spec
 
+def eqn_fadd64 : (LClight.float → (LClight.float → LClight.float)) :=
+  (@LClight.Float.add LClight.Archi.aarch64)
+
+def eqn_fsub64 : (LClight.float → (LClight.float → LClight.float)) :=
+  (@LClight.Float.sub LClight.Archi.aarch64)
+
+def eqn_fmul64 : (LClight.float → (LClight.float → LClight.float)) :=
+  (@LClight.Float.mul LClight.Archi.aarch64)
+
+def eqn_fdiv64 : (LClight.float → (LClight.float → LClight.float)) :=
+  (@LClight.Float.div LClight.Archi.aarch64)
+
+def eqn_fcmp64 : (LClight.comparison → (LClight.float → (LClight.float → Bool))) :=
+  LClight.Float.cmp
+
+def eqn_fneg64 : (LClight.float → LClight.float) :=
+  LClight.Float.neg
+
+def eqn_fabs64 : (LClight.float → LClight.float) :=
+  LClight.Float.abs
+
+def eqn_fsqrt64 : (LClight.float → LClight.float) :=
+  (@LClight.Float.sqrt LClight.Archi.aarch64)
+
+def eqn_f64_of_longu : (UInt64 → LClight.float) :=
+  LClight.Float.of_longu
+
+def eqn_f64_to_longu : (LClight.float → (Option UInt64)) :=
+  LClight.Float.to_longu
+
+def eqn_f64_of_single : (LClight.float32 → LClight.float) :=
+  LClight.Float.of_single
+
+def eqn_f64_to_single : (LClight.float → LClight.float32) :=
+  LClight.Float.to_single
+
+def eqn_fadd32 : (LClight.float32 → (LClight.float32 → LClight.float32)) :=
+  (@LClight.Float32.add LClight.Archi.aarch64)
+
+def eqn_fsub32 : (LClight.float32 → (LClight.float32 → LClight.float32)) :=
+  (@LClight.Float32.sub LClight.Archi.aarch64)
+
+def eqn_fmul32 : (LClight.float32 → (LClight.float32 → LClight.float32)) :=
+  (@LClight.Float32.mul LClight.Archi.aarch64)
+
+def eqn_fdiv32 : (LClight.float32 → (LClight.float32 → LClight.float32)) :=
+  (@LClight.Float32.div LClight.Archi.aarch64)
+
+def eqn_fcmp32 : (LClight.comparison → (LClight.float32 → (LClight.float32 → Bool))) :=
+  LClight.Float32.cmp
+
+def eqn_fneg32 : (LClight.float32 → LClight.float32) :=
+  LClight.Float32.neg
+
+def eqn_f32_of_int : (UInt32 → LClight.float32) :=
+  LClight.Float32.of_int
+
+def eqn_f32_of_intu : (UInt32 → LClight.float32) :=
+  LClight.Float32.of_intu
+
+def eqn_f32_of_longu : (UInt64 → LClight.float32) :=
+  LClight.Float32.of_longu
+
+def eqn_f32_to_int : (LClight.float32 → (Option UInt32)) :=
+  LClight.Float32.to_int
+
+def eqn_f32_to_longu : (LClight.float32 → (Option UInt64)) :=
+  LClight.Float32.to_longu
+
 inductive binop_ok : LClight.binary_operation → LClight.type → LClight.type → LClight.val →
     LClight.val → LClight.val → Prop where
   | bo_add_ul : (∀ (x : UInt64) (y : UInt64),
@@ -384,6 +453,214 @@ inductive binop_ok : LClight.binary_operation → LClight.type → LClight.type 
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
             (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vint x)
           (@LClight.val.Vint y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_add_d : (∀ (x : LClight.float) (y : LClight.float),
+    (binop_ok LClight.binary_operation.Oadd
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat y)
+      (@LClight.val.Vfloat (@LClight.Float.add LClight.Archi.aarch64 x y))))
+  | bo_sub_d : (∀ (x : LClight.float) (y : LClight.float),
+    (binop_ok LClight.binary_operation.Osub
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat y)
+      (@LClight.val.Vfloat (@LClight.Float.sub LClight.Archi.aarch64 x y))))
+  | bo_mul_d : (∀ (x : LClight.float) (y : LClight.float),
+    (binop_ok LClight.binary_operation.Omul
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat y)
+      (@LClight.val.Vfloat (@LClight.Float.mul LClight.Archi.aarch64 x y))))
+  | bo_div_d : (∀ (x : LClight.float) (y : LClight.float),
+    (binop_ok LClight.binary_operation.Odiv
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat y)
+      (@LClight.val.Vfloat (@LClight.Float.div LClight.Archi.aarch64 x y))))
+  | bo_eq_d_1 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Ceq x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_eq_d_0 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Ceq x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_ne_d_1 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cne x y) Bool.true)
+      → (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_ne_d_0 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cne x y) Bool.false)
+      → (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_lt_d_1 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Clt x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_lt_d_0 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Clt x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_le_d_1 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cle x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_le_d_0 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cle x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_ge_d_1 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cge x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_ge_d_0 : (∀ (x : LClight.float) (y : LClight.float),
+    ((@Eq _ (@LClight.Float.cmp LClight.comparison.Cge x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vfloat y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_add_f : (∀ (x : LClight.float32) (y : LClight.float32),
+    (binop_ok LClight.binary_operation.Oadd
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle y)
+      (@LClight.val.Vsingle (@LClight.Float32.add LClight.Archi.aarch64 x y))))
+  | bo_sub_f : (∀ (x : LClight.float32) (y : LClight.float32),
+    (binop_ok LClight.binary_operation.Osub
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle y)
+      (@LClight.val.Vsingle (@LClight.Float32.sub LClight.Archi.aarch64 x y))))
+  | bo_mul_f : (∀ (x : LClight.float32) (y : LClight.float32),
+    (binop_ok LClight.binary_operation.Omul
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle y)
+      (@LClight.val.Vsingle (@LClight.Float32.mul LClight.Archi.aarch64 x y))))
+  | bo_div_f : (∀ (x : LClight.float32) (y : LClight.float32),
+    (binop_ok LClight.binary_operation.Odiv
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle y)
+      (@LClight.val.Vsingle (@LClight.Float32.div LClight.Archi.aarch64 x y))))
+  | bo_eq_f_1 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Ceq x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_eq_f_0 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Ceq x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_ne_f_1 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cne x y) Bool.true)
+      → (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_ne_f_0 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cne x y) Bool.false)
+      → (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_lt_f_1 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Clt x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_lt_f_0 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Clt x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_le_f_1 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cle x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_le_f_0 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cle x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
+  | bo_ge_f_1 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cge x y) Bool.true)
+      → (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (1 : Int))))))
+  | bo_ge_f_0 : (∀ (x : LClight.float32) (y : LClight.float32),
+    ((@Eq _ (@LClight.Float32.cmp LClight.comparison.Cge x y) Bool.false)
+      → (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vsingle y) (@LClight.val.Vint (@ClightN.Base.r32 (0 : Int))))))
 
 inductive cast_ok : LClight.type → LClight.type → LClight.val → LClight.val → Prop where
   | co_si_ui : (∀ (x : UInt32),
@@ -524,6 +801,74 @@ inductive cast_ok : LClight.type → LClight.type → LClight.val → LClight.va
       (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
         (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vint x)
       (@LClight.val.Vint x)))
+  | co_d_d : (∀ (x : LClight.float),
+    (cast_ok
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat x)))
+  | co_f_f : (∀ (x : LClight.float32),
+    (cast_ok
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle x)))
+  | co_ul_d : (∀ (x : UInt64),
+    (cast_ok
+      (@LClight.type.Tlong LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vlong x) (@LClight.val.Vfloat (@LClight.Float.of_longu x))))
+  | co_d_ul : (∀ (x : LClight.float) (y : UInt64),
+    ((@Eq _ (@LClight.Float.to_longu x) (@Option.some _ y))
+      → (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vfloat x)
+          (@LClight.val.Vlong y))))
+  | co_f_d : (∀ (x : LClight.float32),
+    (cast_ok
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vfloat (@LClight.Float.of_single x))))
+  | co_d_f : (∀ (x : LClight.float),
+    (cast_ok
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vsingle (@LClight.Float.to_single x))))
+  | co_si_f : (∀ (x : UInt32),
+    (cast_ok
+      (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vint x) (@LClight.val.Vsingle (@LClight.Float32.of_int x))))
+  | co_ui_f : (∀ (x : UInt32),
+    (cast_ok
+      (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vint x) (@LClight.val.Vsingle (@LClight.Float32.of_intu x))))
+  | co_ul_f : (∀ (x : UInt64),
+    (cast_ok
+      (@LClight.type.Tlong LClight.signedness.Unsigned
+        (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vlong x) (@LClight.val.Vsingle (@LClight.Float32.of_longu x))))
+  | co_f_si : (∀ (x : LClight.float32) (y : UInt32),
+    ((@Eq _ (@LClight.Float32.to_int x) (@Option.some _ y))
+      → (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vint y))))
+  | co_f_ul : (∀ (x : LClight.float32) (y : UInt64),
+    ((@Eq _ (@LClight.Float32.to_longu x) (@Option.some _ y))
+      → (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vsingle x)
+          (@LClight.val.Vlong y))))
 
 inductive bool_ok : LClight.type → LClight.val → Bool → Prop where
   | bv_si_true : (∀ (x : UInt32),
@@ -546,6 +891,20 @@ inductive bool_ok : LClight.type → LClight.val → Bool → Prop where
       → (bool_ok
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
             (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vint x) Bool.false)))
+
+inductive unop_ok : LClight.unary_operation → LClight.type → LClight.val → LClight.val → Prop where
+  | uo_neg_d : (∀ (x : LClight.float),
+    (unop_ok LClight.unary_operation.Oneg
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat (@LClight.Float.neg x))))
+  | uo_abs_d : (∀ (x : LClight.float),
+    (unop_ok LClight.unary_operation.Oabsfloat
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat x) (@LClight.val.Vfloat (@LClight.Float.abs x))))
+  | uo_neg_f : (∀ (x : LClight.float32),
+    (unop_ok LClight.unary_operation.Oneg
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle x) (@LClight.val.Vsingle (@LClight.Float32.neg x))))
 
 inductive in_defs :
     (List (LClight.ident × (@LClight.globdef (@LClight.fundef LClight.function) LClight.type))) →
@@ -667,6 +1026,8 @@ inductive has_type : LClight.expr → LClight.type → Prop where
   | ht_binop : (∀ (op : LClight.binary_operation) (a1 : LClight.expr) (a2 : LClight.expr)
       (ty : LClight.type), (has_type (@LClight.expr.Ebinop op a1 a2 ty) ty))
   | ht_cast : (∀ (a : LClight.expr) (ty : LClight.type), (has_type (@LClight.expr.Ecast a ty) ty))
+  | ht_unop : (∀ (op : LClight.unary_operation) (a : LClight.expr) (ty : LClight.type),
+    (has_type (@LClight.expr.Eunop op a ty) ty))
 
 inductive scalar : LClight.type → Prop where
   | sc_ui : (scalar
@@ -675,6 +1036,10 @@ inductive scalar : LClight.type → Prop where
   | sc_ul : (scalar
     (@LClight.type.Tlong LClight.signedness.Unsigned
       (@LClight.attr.mk Bool.false (@Option.none _))))
+  | sc_d : (scalar
+    (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _))))
+  | sc_f : (scalar
+    (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _))))
 
 inductive gval : LClight.type → LClight.val → Prop where
   | gv_ui : (∀ (x : UInt32),
@@ -685,6 +1050,14 @@ inductive gval : LClight.type → LClight.val → Prop where
     (gval
       (@LClight.type.Tlong LClight.signedness.Unsigned
         (@LClight.attr.mk Bool.false (@Option.none _))) (@LClight.val.Vlong x)))
+  | gv_d : (∀ (f : LClight.float),
+    (gval
+      (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vfloat f)))
+  | gv_f : (∀ (f : LClight.float32),
+    (gval
+      (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+      (@LClight.val.Vsingle f)))
 
 inductive ginit : LClight.type → (List LClight.init_data) → LClight.val → Prop where
   | gi_ui : (∀ (x : UInt32),
@@ -697,6 +1070,14 @@ inductive ginit : LClight.type → (List LClight.init_data) → LClight.val → 
       (@LClight.type.Tlong LClight.signedness.Unsigned
         (@LClight.attr.mk Bool.false (@Option.none _)))
       (@List.cons _ (@LClight.init_data.Init_int64 x) (@List.nil _)) (@LClight.val.Vlong x)))
+  | gi_d : (ginit
+    (@LClight.type.Tfloat LClight.floatsize.F64 (@LClight.attr.mk Bool.false (@Option.none _)))
+    (@List.cons _ (@LClight.init_data.Init_space (8 : Int)) (@List.nil _))
+    (@LClight.val.Vfloat (@ClightN.Base.f64_of_bits (@ClightN.Base.r64 (0 : Int)))))
+  | gi_f : (ginit
+    (@LClight.type.Tfloat LClight.floatsize.F32 (@LClight.attr.mk Bool.false (@Option.none _)))
+    (@List.cons _ (@LClight.init_data.Init_space (4 : Int)) (@List.nil _))
+    (@LClight.val.Vsingle (@ClightN.Base.f32_of_bits (@ClightN.Base.r32 (0 : Int)))))
 
 inductive init_ok : (List LClight.init_data) → Prop where
   | io_nil : (init_ok (@List.nil _))
@@ -1003,6 +1384,119 @@ inductive neval
                           (mb x
                             (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
                               (3 : Int)))))))))))))
+  | nv_cellf64 : (∀ (x : LClight.ident) (n : Int),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type
+            (@LClight.type.Tarray
+              (@LClight.type.Tlong LClight.signedness.Unsigned
+                (@LClight.attr.mk Bool.false (@Option.none _))) n
+              (@LClight.attr.mk Bool.false (@Option.none _)))
+            (@List.cons _
+              (@LClight.init_data.Init_space
+                (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (8 : Int) n)) (@List.nil _))
+            Bool.false Bool.false)))
+      → ((@LE.le Int Int.instLEInt (1 : Int) n)
+          → (neval defs le gv mb
+              (@LClight.expr.Ederef
+                (@LClight.expr.Ecast
+                  (@LClight.expr.Evar x
+                    (@LClight.type.Tarray
+                      (@LClight.type.Tlong LClight.signedness.Unsigned
+                        (@LClight.attr.mk Bool.false (@Option.none _))) n
+                      (@LClight.attr.mk Bool.false (@Option.none _))))
+                  (@LClight.type.Tpointer
+                    (@LClight.type.Tfloat LClight.floatsize.F64
+                      (@LClight.attr.mk Bool.false (@Option.none _)))
+                    (@LClight.attr.mk Bool.false (@Option.none _))))
+                (@LClight.type.Tfloat LClight.floatsize.F64
+                  (@LClight.attr.mk Bool.false (@Option.none _))))
+              (@LClight.val.Vfloat
+                (@ClightN.Base.f64_of_bits
+                  (@ClightN.Base.r64
+                    (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                      (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (mb x (0 : Int))
+                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                          (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (256 : Int)
+                            (mb x
+                              (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                (1 : Int))))
+                          (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                            (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (65536 : Int)
+                              (mb x
+                                (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                  (2 : Int))))
+                            (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (16777216 : Int)
+                              (mb x
+                                (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                  (3 : Int)))))))
+                      (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (4294967296 : Int)
+                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                          (mb x
+                            (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                              (4 : Int)))
+                          (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                            (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (256 : Int)
+                              (mb x
+                                (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                  (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                    (4 : Int)) (1 : Int))))
+                            (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                              (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (65536 : Int)
+                                (mb x
+                                  (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                    (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                      (4 : Int)) (2 : Int))))
+                              (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (16777216 : Int)
+                                (mb x
+                                  (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                    (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                      (4 : Int)) (3 : Int))))))))))))))))
+  | nv_cellf32 : (∀ (x : LClight.ident) (n : Int),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type
+            (@LClight.type.Tarray
+              (@LClight.type.Tlong LClight.signedness.Unsigned
+                (@LClight.attr.mk Bool.false (@Option.none _))) n
+              (@LClight.attr.mk Bool.false (@Option.none _)))
+            (@List.cons _
+              (@LClight.init_data.Init_space
+                (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (8 : Int) n)) (@List.nil _))
+            Bool.false Bool.false)))
+      → ((@LE.le Int Int.instLEInt (1 : Int) n)
+          → (neval defs le gv mb
+              (@LClight.expr.Ederef
+                (@LClight.expr.Ecast
+                  (@LClight.expr.Evar x
+                    (@LClight.type.Tarray
+                      (@LClight.type.Tlong LClight.signedness.Unsigned
+                        (@LClight.attr.mk Bool.false (@Option.none _))) n
+                      (@LClight.attr.mk Bool.false (@Option.none _))))
+                  (@LClight.type.Tpointer
+                    (@LClight.type.Tfloat LClight.floatsize.F32
+                      (@LClight.attr.mk Bool.false (@Option.none _)))
+                    (@LClight.attr.mk Bool.false (@Option.none _))))
+                (@LClight.type.Tfloat LClight.floatsize.F32
+                  (@LClight.attr.mk Bool.false (@Option.none _))))
+              (@LClight.val.Vsingle
+                (@ClightN.Base.f32_of_bits
+                  (@ClightN.Base.r32
+                    (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (mb x (0 : Int))
+                      (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                        (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (256 : Int)
+                          (mb x
+                            (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                              (1 : Int))))
+                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                          (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (65536 : Int)
+                            (mb x
+                              (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                (2 : Int))))
+                          (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (16777216 : Int)
+                            (mb x
+                              (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd) (0 : Int)
+                                (3 : Int))))))))))))))
   | nv_binop : (∀ (op : LClight.binary_operation) (a1 : LClight.expr) (a2 : LClight.expr)
       (ty : LClight.type) (t1 : LClight.type) (t2 : LClight.type) (v1 : LClight.val)
       (v2 : LClight.val) (v : LClight.val),
@@ -1017,6 +1511,11 @@ inductive neval
     ((neval defs le gv mb a v1)
       → ((has_type a t1)
           → ((cast_ok t1 ty v1 v) → (neval defs le gv mb (@LClight.expr.Ecast a ty) v)))))
+  | nv_unop : (∀ (op : LClight.unary_operation) (a : LClight.expr) (ty : LClight.type)
+      (t1 : LClight.type) (v1 : LClight.val) (v : LClight.val),
+    ((neval defs le gv mb a v1)
+      → ((has_type a t1)
+          → ((unop_ok op t1 v1 v) → (neval defs le gv mb (@LClight.expr.Eunop op a ty) v)))))
 
 inductive neval_list
     (defs :
@@ -1345,6 +1844,124 @@ inductive nexec
                                     LClight.signedness.Unsigned
                                     (@LClight.attr.mk Bool.false (@Option.none _)))) a)
                               (@List.nil _) le gv mb2 LClight.outcome.Out_normal))))))))
+  | nx_store_cellf64 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (mb : (LClight.ident → (Int → Int)))
+      (x : LClight.ident) (n : Int) (a : LClight.expr) (t1 : LClight.type) (v1 : LClight.val)
+      (f : LClight.float) (mb2 : (LClight.ident → (Int → Int))),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type
+            (@LClight.type.Tarray
+              (@LClight.type.Tlong LClight.signedness.Unsigned
+                (@LClight.attr.mk Bool.false (@Option.none _))) n
+              (@LClight.attr.mk Bool.false (@Option.none _)))
+            (@List.cons _
+              (@LClight.init_data.Init_space
+                (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (8 : Int) n)) (@List.nil _))
+            Bool.false Bool.false)))
+      → ((@LE.le Int Int.instLEInt (1 : Int) n)
+          → ((neval defs le gv mb a v1)
+              → ((has_type a t1)
+                  → ((cast_ok t1
+                        (@LClight.type.Tfloat LClight.floatsize.F64
+                          (@LClight.attr.mk Bool.false (@Option.none _))) v1
+                        (@LClight.val.Vfloat f))
+                      → ((∀ (y_sb : LClight.ident) (j_sb : Int),
+                            ((((@Eq _ y_sb x)
+                                  ∧ ((@LE.le Int Int.instLEInt (0 : Int) j_sb)
+                                      ∧ (@LT.lt Int Int.instLTInt j_sb
+                                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                        (0 : Int) (8 : Int)))))
+                                → (@Eq _ (mb2 y_sb j_sb)
+                                    (@ClightN.Base.zmod
+                                      (@ClightN.Base.zdiv
+                                        (@ClightN.Base.u64 (@ClightN.Base.f64_bits f))
+                                        (@ClightN.Base.pow2
+                                        (@HMul.hMul Int Int Int (@instHMul Int Int.instMul)
+                                        (8 : Int)
+                                        (@HSub.hSub Int Int Int (@instHSub Int Int.instSub) j_sb
+                                        (0 : Int))))) (256 : Int))))
+                              ∧ ((¬ ((@Eq _ y_sb x)
+                                        ∧ ((@LE.le Int Int.instLEInt (0 : Int) j_sb)
+                                        ∧ (@LT.lt Int Int.instLTInt j_sb
+                                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                        (0 : Int) (8 : Int))))))
+                                  → (@Eq _ (mb2 y_sb j_sb) (mb y_sb j_sb)))))
+                          → (nexec defs le gv mb
+                              (@LClight.statement.Sassign
+                                (@LClight.expr.Ederef
+                                  (@LClight.expr.Ecast
+                                    (@LClight.expr.Evar x
+                                      (@LClight.type.Tarray
+                                        (@LClight.type.Tlong LClight.signedness.Unsigned
+                                        (@LClight.attr.mk Bool.false (@Option.none _))) n
+                                        (@LClight.attr.mk Bool.false (@Option.none _))))
+                                    (@LClight.type.Tpointer
+                                      (@LClight.type.Tfloat LClight.floatsize.F64
+                                        (@LClight.attr.mk Bool.false (@Option.none _)))
+                                      (@LClight.attr.mk Bool.false (@Option.none _))))
+                                  (@LClight.type.Tfloat LClight.floatsize.F64
+                                    (@LClight.attr.mk Bool.false (@Option.none _)))) a)
+                              (@List.nil _) le gv mb2 LClight.outcome.Out_normal))))))))
+  | nx_store_cellf32 : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (mb : (LClight.ident → (Int → Int)))
+      (x : LClight.ident) (n : Int) (a : LClight.expr) (t1 : LClight.type) (v1 : LClight.val)
+      (f : LClight.float32) (mb2 : (LClight.ident → (Int → Int))),
+    ((in_defs defs x
+        (@LClight.globdef.Gvar (@LClight.fundef LClight.function) LClight.type
+          (@LClight.globvar.mk LClight.type
+            (@LClight.type.Tarray
+              (@LClight.type.Tlong LClight.signedness.Unsigned
+                (@LClight.attr.mk Bool.false (@Option.none _))) n
+              (@LClight.attr.mk Bool.false (@Option.none _)))
+            (@List.cons _
+              (@LClight.init_data.Init_space
+                (@HMul.hMul Int Int Int (@instHMul Int Int.instMul) (8 : Int) n)) (@List.nil _))
+            Bool.false Bool.false)))
+      → ((@LE.le Int Int.instLEInt (1 : Int) n)
+          → ((neval defs le gv mb a v1)
+              → ((has_type a t1)
+                  → ((cast_ok t1
+                        (@LClight.type.Tfloat LClight.floatsize.F32
+                          (@LClight.attr.mk Bool.false (@Option.none _))) v1
+                        (@LClight.val.Vsingle f))
+                      → ((∀ (y_sb : LClight.ident) (j_sb : Int),
+                            ((((@Eq _ y_sb x)
+                                  ∧ ((@LE.le Int Int.instLEInt (0 : Int) j_sb)
+                                      ∧ (@LT.lt Int Int.instLTInt j_sb
+                                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                        (0 : Int) (4 : Int)))))
+                                → (@Eq _ (mb2 y_sb j_sb)
+                                    (@ClightN.Base.zmod
+                                      (@ClightN.Base.zdiv
+                                        (@ClightN.Base.u32 (@ClightN.Base.f32_bits f))
+                                        (@ClightN.Base.pow2
+                                        (@HMul.hMul Int Int Int (@instHMul Int Int.instMul)
+                                        (8 : Int)
+                                        (@HSub.hSub Int Int Int (@instHSub Int Int.instSub) j_sb
+                                        (0 : Int))))) (256 : Int))))
+                              ∧ ((¬ ((@Eq _ y_sb x)
+                                        ∧ ((@LE.le Int Int.instLEInt (0 : Int) j_sb)
+                                        ∧ (@LT.lt Int Int.instLTInt j_sb
+                                        (@HAdd.hAdd Int Int Int (@instHAdd Int Int.instAdd)
+                                        (0 : Int) (4 : Int))))))
+                                  → (@Eq _ (mb2 y_sb j_sb) (mb y_sb j_sb)))))
+                          → (nexec defs le gv mb
+                              (@LClight.statement.Sassign
+                                (@LClight.expr.Ederef
+                                  (@LClight.expr.Ecast
+                                    (@LClight.expr.Evar x
+                                      (@LClight.type.Tarray
+                                        (@LClight.type.Tlong LClight.signedness.Unsigned
+                                        (@LClight.attr.mk Bool.false (@Option.none _))) n
+                                        (@LClight.attr.mk Bool.false (@Option.none _))))
+                                    (@LClight.type.Tpointer
+                                      (@LClight.type.Tfloat LClight.floatsize.F32
+                                        (@LClight.attr.mk Bool.false (@Option.none _)))
+                                      (@LClight.attr.mk Bool.false (@Option.none _))))
+                                  (@LClight.type.Tfloat LClight.floatsize.F32
+                                    (@LClight.attr.mk Bool.false (@Option.none _)))) a)
+                              (@List.nil _) le gv mb2 LClight.outcome.Out_normal))))))))
   | nx_out : (∀ (le : (LClight.ident → (Option LClight.val)))
       (gv : (LClight.ident → (Option LClight.val))) (mb : (LClight.ident → (Int → Int)))
       (x : LClight.ident) (init : (List LClight.init_data)) (a : LClight.expr) (t1 : LClight.type)
@@ -1516,6 +2133,41 @@ inductive nexec
                                         (@LClight.statement.Scall optid
                                         (@LClight.expr.Evar x (@LClight.type.Tfunction tys ret cc))
                                         al) t le3 gv2 mb2 LClight.outcome.Out_normal))))))))))))
+  | nx_sqrt : (∀ (le : (LClight.ident → (Option LClight.val)))
+      (gv : (LClight.ident → (Option LClight.val))) (mb : (LClight.ident → (Int → Int)))
+      (optid : (Option LClight.ident)) (x : LClight.ident) (al : (List LClight.expr))
+      (f : LClight.float) (le2 : (LClight.ident → (Option LClight.val))),
+    ((in_defs defs x
+        (@LClight.globdef.Gfun (@LClight.fundef LClight.function) LClight.type
+          (@LClight.fundef.External LClight.function
+            (@LClight.external_function.EF_builtin "__builtin_fsqrt"
+              (@LClight.signature.mk (@List.cons _ LClight.xtype.Xfloat (@List.nil _))
+                LClight.xtype.Xfloat
+                (@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false)))
+            (@List.cons _
+              (@LClight.type.Tfloat LClight.floatsize.F64
+                (@LClight.attr.mk Bool.false (@Option.none _))) (@List.nil _))
+            (@LClight.type.Tfloat LClight.floatsize.F64
+              (@LClight.attr.mk Bool.false (@Option.none _)))
+            (@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false))))
+      → ((neval_list defs le gv mb al
+            (@List.cons _
+              (@LClight.type.Tfloat LClight.floatsize.F64
+                (@LClight.attr.mk Bool.false (@Option.none _))) (@List.nil _))
+            (@List.cons _ (@LClight.val.Vfloat f) (@List.nil _)))
+          → ((set_opt optid (@LClight.val.Vfloat (@LClight.Float.sqrt LClight.Archi.aarch64 f)) le
+                le2)
+              → (nexec defs le gv mb
+                  (@LClight.statement.Scall optid
+                    (@LClight.expr.Evar x
+                      (@LClight.type.Tfunction
+                        (@List.cons _
+                          (@LClight.type.Tfloat LClight.floatsize.F64
+                            (@LClight.attr.mk Bool.false (@Option.none _))) (@List.nil _))
+                        (@LClight.type.Tfloat LClight.floatsize.F64
+                          (@LClight.attr.mk Bool.false (@Option.none _)))
+                        (@LClight.calling_convention.mk (@Option.none _) Bool.false Bool.false)))
+                    al) (@List.nil _) le2 gv mb LClight.outcome.Out_normal)))))
   | nx_seq1 : (∀ (le : (LClight.ident → (Option LClight.val)))
       (gv : (LClight.ident → (Option LClight.val))) (mb : (LClight.ident → (Int → Int)))
       (s1 : LClight.statement) (s2 : LClight.statement) (t1 : (List LClight.event))
@@ -2158,6 +2810,258 @@ def stmt_ge_ui_ui : Prop :=
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
             (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
 
+def stmt_add_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oadd v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oadd
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_sub_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Osub v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Osub
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_mul_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Omul v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Omul
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_div_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Odiv v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Odiv
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_eq_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oeq v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_ne_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.One v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_lt_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Olt v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_le_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Ole v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_ge_d_d : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oge v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_add_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oadd v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oadd
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_sub_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Osub v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Osub
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_mul_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Omul v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Omul
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_div_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Odiv v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Odiv
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_eq_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oeq v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oeq
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_ne_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.One v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.One
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_lt_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Olt v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Olt
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_le_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Ole v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Ole
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
+def stmt_ge_f_f : Prop :=
+  (∀ (ce : Unit) (v1 : LClight.val) (v2 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_binop ce LClight.binary_operation.Oge v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v2
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (binop_ok LClight.binary_operation.Oge
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v2 v)))
+
 def stmt_cast_si_ui : Prop :=
   (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
     ((@Eq _
@@ -2396,6 +3300,160 @@ def stmt_cast_si_si : Prop :=
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
             (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
 
+def stmt_cast_d_d : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_f_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_ul_d : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_d_ul : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_f_d : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_d_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_si_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_ui_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_ul_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_f_si : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Signed
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_cast_f_ul : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_cast v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (cast_ok
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _)))
+          (@LClight.type.Tlong LClight.signedness.Unsigned
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
 def stmt_bool_si : Prop :=
   (∀ (v : LClight.val) (b : Bool) (m : LClight.mem),
     ((@Eq _
@@ -2415,6 +3473,36 @@ def stmt_bool_ui : Prop :=
       ↔ (bool_ok
           (@LClight.type.Tint LClight.intsize.I32 LClight.signedness.Unsigned
             (@LClight.attr.mk Bool.false (@Option.none _))) v b)))
+
+def stmt_neg_d : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_unop LClight.unary_operation.Oneg v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (unop_ok LClight.unary_operation.Oneg
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_abs_d : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_unop LClight.unary_operation.Oabsfloat v1
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (unop_ok LClight.unary_operation.Oabsfloat
+          (@LClight.type.Tfloat LClight.floatsize.F64
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
+
+def stmt_neg_f : Prop :=
+  (∀ (v1 : LClight.val) (v : LClight.val) (m : LClight.mem),
+    ((@Eq _
+        (@ClightN.Base.sem_unop LClight.unary_operation.Oneg v1
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) m) (@Option.some _ v))
+      ↔ (unop_ok LClight.unary_operation.Oneg
+          (@LClight.type.Tfloat LClight.floatsize.F32
+            (@LClight.attr.mk Bool.false (@Option.none _))) v1 v)))
 
 def stmt_const_int : Prop :=
   (∀ (ge : LClight.genv) (e : LClight.env) (le : LClight.temp_env) (m : LClight.mem) (i : UInt32)
