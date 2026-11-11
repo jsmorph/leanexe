@@ -1,3 +1,6 @@
+import Demos.Attitude.Flat
+import Demos.Attitude.Knowledge
+import Demos.Attitude.Program
 import Demos.Bms.Abs
 import Demos.Bms.Cases
 import Demos.Bms.Compiled

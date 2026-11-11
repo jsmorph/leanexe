@@ -243,6 +243,10 @@ lean_exe «verified-cases-conjunction» where
   srcDir := "tests"
   root := `TestSupport.Conjunction.CasesMain
 
+lean_exe «verified-cases-attitude» where
+  srcDir := "tests"
+  root := `TestSupport.Attitude.CasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain

@@ -71,6 +71,7 @@ Library.Numerics.Decimal.Int64Text.Compiled:Library.Numerics.Decimal.Int64Text.c
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Demos.Conjunction.Verified:Demos.Conjunction.compiled.module:conjunction
+Demos.Attitude.Verified:Demos.Attitude.compiled.module:attitude
 Demos.Sgp4.Verified:Demos.Sgp4.compiled.module:sgp4
 Demos.Sgp4.BoxVerified:Demos.Sgp4.boxCompiled.module:sgp4box
 Demos.Sgp4.OmmVerified:Demos.Sgp4.Omm.compiled.module:sgp4omm

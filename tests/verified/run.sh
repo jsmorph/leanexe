@@ -13,7 +13,9 @@
 # runs the axiom audit of tests/energy/Axioms.lean, and with --cases energy it checks the
 # authorizer's file theorem module as well.  For the conjunction program, it runs the axiom audit
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
-# theorem module as well.  For the SGP4 program, it runs the axiom audit of
+# theorem module as well.  For the attitude program, it runs the axiom audit of
+# tests/attitude/Axioms.lean, and with --cases attitude it checks the program's file theorem module
+# as well.  For the SGP4 program, it runs the axiom audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
@@ -127,6 +129,8 @@ elif [ "$case_module" = "rcvMaine" ]; then
   cases_exe=verified-cases-rcv-maine
 elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
+elif [ "$case_module" = "attitude" ]; then
+  cases_exe=verified-cases-attitude
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "sgp4box" ]; then
@@ -164,6 +168,10 @@ if [ -z "$reference" ]; then
   if runs conjunction; then targets+=($(imports tests/conjunction/Axioms.lean)); fi
   if [ "$case_module" = "conjunction" ]; then
     targets+=(Demos.Conjunction.Verified $(imports Demos/Conjunction/File.lean))
+  fi
+  if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
+  if [ "$case_module" = "attitude" ]; then
+    targets+=(Demos.Attitude.Verified $(imports Demos/Attitude/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if [ "$case_module" = "sgp4" ]; then
@@ -316,6 +324,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "conjunction" ]; then
   check_axioms tests/conjunction/Axioms.lean
   if [ "$case_module" = "conjunction" ]; then
     check_file conjunction Demos.Conjunction.Verified Demos/Conjunction/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then
+  check_axioms tests/attitude/Axioms.lean
+  if [ "$case_module" = "attitude" ]; then
+    check_file attitude Demos.Attitude.Verified Demos/Attitude/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
