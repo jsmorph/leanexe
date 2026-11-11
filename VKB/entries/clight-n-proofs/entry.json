@@ -60,17 +60,23 @@
       "ClightN.Proof.reads_nreads"
     ],
     "LeanExe/Native/ClightN/Instance.lean": [
-      "ClightN.Proof.inj_of_nodup_map"
+      "ClightN.Proof.inj_of_nodup_map",
+      "ClightN.Proof.RenameOk",
+      "ClightN.Proof.bare_n",
+      "ClightN.Proof.reads_n",
+      "ClightN.Proof.reacts_n"
     ],
-    "clightn/gcd/Gcd.lean": [
-      "ClightN.Proof.gcd_defs_eq",
+    "clightn/lean/Gcd.lean": [
       "ClightN.Proof.gcd_terminates"
     ],
-    "clightn/sha/Sha.lean": [
+    "clightn/lean/Sha.lean": [
       "ClightN.Proof.sha_reads"
     ],
-    "clightn/ctl/Ctl.lean": [
+    "clightn/lean/Ctl.lean": [
       "ClightN.Proof.ctl_reacts"
+    ],
+    "clightn/lean/Gateway.lean": [
+      "ClightN.Proof.gateway_reacts"
     ]
   }
 }

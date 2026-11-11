@@ -36,8 +36,8 @@
     "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf"
   ],
   "unimported": {
-    "clightn/sha/Sha.lean": [
-      "ClightN.Proof.sha_defs_eq"
+    "LeanExe/Native/ClightN/Instance.lean": [
+      "ClightN.Proof.RenameOk"
     ]
   }
 }

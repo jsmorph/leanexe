@@ -40,10 +40,8 @@
   ],
   "unimported": {
     "LeanExe/Native/ClightN/Instance.lean": [
-      "ClightN.Proof.inj_of_nodup_map"
-    ],
-    "clightn/gcd/Gcd.lean": [
-      "ClightN.Proof.gcd_inj"
+      "ClightN.Proof.inj_of_nodup_map",
+      "ClightN.Proof.InstOk.inj"
     ]
   }
 }

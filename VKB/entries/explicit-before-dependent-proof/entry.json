@@ -24,8 +24,8 @@
     "LeanExe/Native/ClightN/Exec.lean": [
       "ClightN.Proof.program_to_n"
     ],
-    "clightn/sha/Sha.lean": [
-      "ClightN.Proof.sha_reads"
+    "LeanExe/Native/ClightN/Instance.lean": [
+      "ClightN.Proof.terminates_n"
     ]
   }
 }
