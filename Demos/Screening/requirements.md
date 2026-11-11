@@ -115,6 +115,7 @@ Each theorem has a layer over the real numbers about the model, and a layer abou
 | F2 | Program | When the orbit-path filter's verdict is 1, every point of one path lies farther than `D + P` from every point of the other, so `s(t) > D + P` for every real `t`.  Verdict 2 implies that some point of each path lies within `D + P` of the other. |
 | I1 | Program | For status 0 or 3, every `t` in `[t₀, t₁]` with `s(t) ≤ D + P` lies in a returned interval. |
 | I2 | Program | A returned interval marked certain contains a `t` with `s(t) ≤ D + P`. |
+| I3 | Program | Every returned interval lies in `[t₀, t₁]`. |
 | S1 | Program | For every status other than 4, and for trajectories `ρ₁` and `ρ₂` within `δ₁` and `δ₂` of the Kepler trajectories on the window with `δ₁ + δ₂ ≤ P`, every `t` in `[t₀, t₁]` with `\|ρ₁(t) − ρ₂(t)\| ≤ D` lies in a returned interval, and none exists for status 1 or 2. |
 | C1 | Compilation | The module's entry `screen`, called with the input array, returns the array of `screen` without a trap from a store with room for the generated allocation bound `compiled.screen.bound`. |
 

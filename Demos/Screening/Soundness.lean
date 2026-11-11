@@ -5,7 +5,8 @@ The theorems of `screen` over its input array.  For a valid input, `screen_cover
 every time of the window at which the Kepler trajectories lie within `D + P` lies in a returned
 interval (I1), `screen_sound` states the same for any trajectories within the padding of the
 Kepler trajectories and the threshold `D` (S1), `screen_certain` that a certain interval holds a
-close approach (I2), `screen_apsides` and `screen_path` that statuses 1 and 2 exclude the pair for
+close approach (I2), `screen_within` that every returned interval lies in the window (I3),
+`screen_apsides` and `screen_path` that statuses 1 and 2 exclude the pair for
 all time (F1 and F2), and `screen_path_close` that path verdict 2 finds two path points within
 `D + P`.  `screen_invalid` states that status 4 marks the inputs that `valid` rejects.
 -/
@@ -122,19 +123,22 @@ theorem isolationOutput_spec {xs : Array Float} (F : Facts xs) {o1 o2 : Obj} {th
       out[2]! = p.verdict.toFloat ∧
       (∀ t, val (rd xs 16) ≤ t → t ≤ val (rd xs 17) → separation xs t ≤ threshold xs →
         Returned out t) ∧
-      ∀ j, 7 + 3 * j < out.size → out[7 + 3 * j]! = 1.0 →
+      (∀ j, 7 + 3 * j < out.size → out[7 + 3 * j]! = 1.0 →
         ∃ t, val out[5 + 3 * j]! ≤ t ∧ t ≤ val out[6 + 3 * j]! ∧
-          separation xs t ≤ threshold xs := by
+          separation xs t ≤ threshold xs) ∧
+      ∀ j, 7 + 3 * j < out.size →
+        val (rd xs 16) ≤ val out[5 + 3 * j]! ∧ val out[6 + 3 * j]! ≤ val (rd xs 17) := by
   intro out
   have hT : 0 ≤ threshold xs := add_nonneg F.d F.p
   have I := isolate_inv F.v1 F.v2 e1 e2 ht F.t0 F.t1 (levels := (rd xs 23).toUInt64) F.cap
   simp only [out, isolationOutput]
   generalize isolate Trig.invPi Trig.halfPi o1 o2 thr (mul thr thr) (rd xs 16) (rd xs 17)
     (rd xs 23).toUInt64 (rd xs 24).toUInt64 = s at I ⊢
-  obtain ⟨fsz, fkeep, fcov⟩ := finalSpans_spec F.v1 F.v2 e1 e2 ht hT I.size I.fin
+  obtain ⟨fsz, fkeep, fcov⟩ := finalSpans_spec F.v1 F.v2 e1 e2 ht hT I.size I.fin I.inside
   generalize finalSpans Trig.invPi Trig.halfPi o1 o2 thr (mul thr thr) s.cells = found
     at fsz fkeep fcov ⊢
   obtain ⟨msz, mkeep, mcov⟩ := merge_spec (T := threshold xs) (mu := muIn xs)
+    (t0 := val (rd xs 16)) (t1 := val (rd xs 17))
     (orb1 := orbitIn xs 1) (orb2 := orbitIn xs 8) (by have := I.size; omega) fkeep
   generalize merge found = ivs at msz mkeep mcov ⊢
   obtain ⟨tsz, tget⟩ := triples_spec ivs (by have := I.size; omega)
@@ -153,7 +157,7 @@ theorem isolationOutput_spec {xs : Array Float} (F : Facts xs) {o1 o2 : Obj} {th
     fun j hj => by
       rw [show 7 + 3 * j = head.size + (3 * j + 2) by omega, append_get_right _ _ _ (by omega)]
       exact (tget j hj).2.2
-  refine ⟨?_, ?_, fun t a b c => ?_, fun j hj hf => ?_⟩
+  refine ⟨?_, ?_, fun t a b c => ?_, fun j hj hf => ?_, fun j hj => ?_⟩
   · rw [append_get_left _ _ 0 (by omega), h0]
     rcases I.status with h | h <;> rw [h] <;> simp
   · rw [append_get_left _ _ 2 (by omega), h2]
@@ -170,6 +174,9 @@ theorem isolationOutput_spec {xs : Array Float} (F : Facts xs) {o1 o2 : Obj} {th
       · exact h
     obtain ⟨t, hm, hs'⟩ := K.certain h1
     exact ⟨t, by rw [lo j hj']; exact hm.1, by rw [hi j hj']; exact hm.2, hs'⟩
+  · have hj' : j < ivs.size := by omega
+    have K := mkeep j hj'
+    exact ⟨by rw [lo j hj']; exact K.inside.1, by rw [hi j hj']; exact K.inside.2⟩
 
 /-! ### The theorems of `screen` -/
 
@@ -255,7 +262,27 @@ theorem screen_certain (hv : valid xs = true) {j : Nat} (hj : 7 + 3 * j < (scree
   split_ifs
   · intro hj; rw [lit5_size] at hj; omega
   · intro hj; rw [lit5_size] at hj; omega
-  · exact (isolationOutput_spec F e1 e2 ht _).2.2.2 j
+  · exact (isolationOutput_spec F e1 e2 ht _).2.2.2.1 j
+
+/-- For a valid input, every returned interval lies in the window. -/
+theorem screen_within (hv : valid xs = true) {j : Nat} (hj : 7 + 3 * j < (screen xs).size) :
+    val (rd xs 16) ≤ val (screen xs)[5 + 3 * j]! ∧
+      val (screen xs)[6 + 3 * j]! ≤ val (rd xs 17) := by
+  have F := valid_facts hv
+  have e1 := encl1 (xs := xs)
+  have e2 := encl8 (xs := xs)
+  have ht := encl_thr (xs := xs)
+  revert hj
+  unfold screen screenWith
+  rw [ite_eq_left hv]
+  dsimp only
+  generalize objectAt Trig.invPi Trig.halfPi xs 1 = o1 at e1 ⊢
+  generalize objectAt Trig.invPi Trig.halfPi xs 8 = o2 at e2 ⊢
+  generalize add (point (rd xs 18)) (point (rd xs 19)) = thr at ht ⊢
+  split_ifs
+  · intro hj; rw [lit5_size] at hj; omega
+  · intro hj; rw [lit5_size] at hj; omega
+  · exact (isolationOutput_spec F e1 e2 ht _).2.2.2.2 j
 
 /-- **F1.**  For a valid input with status 1, the Kepler trajectories lie farther than `D + P`
 apart at every time. -/

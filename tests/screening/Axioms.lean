@@ -20,6 +20,7 @@ and `Quot.sound`. -/
 #print axioms Demos.Screening.screen_cover
 #print axioms Demos.Screening.screen_sound
 #print axioms Demos.Screening.screen_certain
+#print axioms Demos.Screening.screen_within
 #print axioms Demos.Screening.screen_apsides
 #print axioms Demos.Screening.screen_path
 #print axioms Demos.Screening.screen_path_close
