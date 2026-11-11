@@ -34,7 +34,11 @@ which drops the sign bit, and shifts it back.  An f64 comparison moves the words
 into D0 and D1, compares them with `FCMP`, and sets the register of the lower operand with `CSINC`
 and the inverse of `EQ`, `MI`, or `LS`, the conditions that hold after `FCMP` exactly when `f64Eq`,
 `f64Lt`, or `f64Le` gives 1.  X16 is the scratch register of `remUI64`, of the prologue, and of the
-memory's instructions, and X29 is a second one of `memory.grow`.  X17 holds the address of the area
+memory's instructions, and X29 is a second one of `memory.grow`.  For a cap below 4096 pages,
+`memory.grow` compares the new number of pages with the cap, the 12-bit immediate of `SUBS`
+(`growNarrow`).  For a larger cap it compares the new size less 8, the word that it stores, with
+the cap's size less 8, which `MOVZ` and `SUB` build in the delta's register (`growWide`).  Both
+take 16 instructions, so `instrSize` does not depend on the cap.  X17 holds the address of the area
 of the module's store: the memory's size less 8, the globals, and the memory's bytes, which a load
 or store reaches after a check of its bounds.  A function keeps its parameters and locals in a frame
 at `SP` of 8 bytes each, followed by 26 spill slots and the slot of the return address, a multiple
@@ -373,6 +377,29 @@ def listSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
           (listSize sig ar h' rest).2)
 end
 
+/-- `memory.grow` for a cap of `cap` pages, below 4096, with the delta in register `r`.  X16 takes
+the number of pages and X29 the new number, which `SUBS` compares with `cap`.  Above the cap the
+branch of the field `fail` reaches the code that sets `r` to the 32-bit word of -1.  Otherwise X29
+becomes the new size less 8, which the code stores at X17, `r` takes the old number of pages, and
+the branch of the field `done` skips the code of -1. -/
+def growNarrow (r : Fin 32) (cap : Fin 4096) (fail : Fin 524288) (done : Fin 67108864) :
+    List Instr :=
+  [.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16, .addReg 29 16 r, .subsImm 31 29 cap,
+    .bcond 8 fail, .movz r 16 0, .lslv 29 29 r, .subImm 29 29 8, .str 29 17 0, mov r 16,
+    .b done] ++ movImm r 0xFFFFFFFF
+
+/-- `memory.grow` for a cap of `cap` pages, with the delta in register `r`.  X16 takes the size
+less 8, X29 the new size less 8, which is X16 plus the delta shifted left by 16, and `r` the cap's
+size less 8, with which `SUBS` compares X29.  Above it the branch of the field `fail` reaches the
+code that sets `r` to the 32-bit word of -1.  Otherwise the code stores X29 at X17, `r` takes the
+old number of pages, and the branch of the field `done` skips the code of -1.  It has as many
+instructions as `growNarrow`. -/
+def growWide (r : Fin 32) (cap : Fin 65536) (fail : Fin 524288) (done : Fin 67108864) :
+    List Instr :=
+  [.ldr 16 17 0, .movz 29 16 0, .lslv 29 r 29, .addReg 29 16 29, .movz r cap 1, .subImm r r 8,
+    .subsReg 31 29 r, .bcond 8 fail, .str 29 17 0, .addImm 16 16 8, .lsrImm r 16 16,
+    .b done] ++ movImm r 0xFFFFFFFF
+
 /-- The adjustment of the memory's size less 8 in X16 to the largest address of a 1-byte access at
 offset `off`: `ADD X16, X16, #(7 - off)`, or `SUB X16, X16, #(off - 7)` for `off` above 7. -/
 def boundInstr (off : Nat) (h : off < 4095) : Instr :=
@@ -493,9 +520,12 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
         let r ← opReg (σ.length - 1)
         let fail ← cbField (after a 5) (after a 12)
         let done ← bField (after a 11) (after a 16)
-        return ([.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16, .addReg 29 16 r,
-            .subsImm 31 29 ⟨E.cap, hc⟩, .bcond 8 fail, .movz r 16 0, .lslv 29 29 r,
-            .subImm 29 29 8, .str 29 17 0, mov r 16, .b done] ++ movImm r 0xFFFFFFFF, some σ)
+        return (growNarrow r ⟨E.cap, hc⟩ fail done, some σ)
+      else if hw : E.cap < 65536 then
+        let r ← opReg (σ.length - 1)
+        let fail ← cbField (after a 7) (after a 12)
+        let done ← bField (after a 11) (after a 16)
+        return (growWide r ⟨E.cap, hw⟩ fail done, some σ)
       else throw s!"a cap of {E.cap} pages"
   | .load64 off => do
       if σ.length < curBase ctl + 1 ∨ ¬ (σ.head? = some .i32 ∨ σ.head? = some .i64) then

@@ -5,10 +5,12 @@ The simulation of the instructions that read and write the module's store in the
 `globalGet` and `globalSet`, an `LDR` or `STR` at `X17 + 8 (i + 1)`; `memorySize`, which loads
 the memory's size less 8 from X17 and computes the page count; `load64` and `store64`, which
 compare the address with the size less `off + 8`, branch to the stub of an access outside the
-memory above it, and access the byte `X17 + 4096 + a + off`; and `memoryGrow`, which computes the
-old and the new page counts in X16 and X29, stores the new size less 8 when the new count lies
-within the cap, and leaves the old count or `0xFFFFFFFF` in the result's register.  Every store
-lies below the stack's limit, so the frames keep their bytes.
+memory above it, and access the byte `X17 + 4096 + a + off`; and `memoryGrow`, which compares
+the new page count with the cap, through the page counts in X16 and X29 for a cap below 4096
+(`growNarrow`) and through the sizes less 8 for a larger one (`growWide`), stores the new size less
+8 when the new count lies within the cap, and leaves the old count or `0xFFFFFFFF` in the result's
+register.  `run_grow` gives the run of either code.  Every store lies below the stack's limit, so
+the frames keep their bytes.
 -/
 
 namespace LeanExe.A64
@@ -282,7 +284,7 @@ theorem gen_memorySize {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UIn
     simp [he, bind, Except.bind] at hg
 
 /-- The page count from the memory's size less 8. -/
-theorem pages_of_size {pages : Nat} (h1 : 1 ≤ pages) (h2 : pages < 4096) :
+theorem pages_of_size {pages : Nat} (h1 : 1 ≤ pages) (h2 : pages < 65536) :
     (UInt64.ofNat (pages * 65536 - 8) + UInt64.ofNat 8) >>> UInt64.ofNat 16 =
       UInt64.ofNat pages := by
   apply UInt64.toNat_inj.mp
@@ -992,14 +994,13 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) 
 theorem gen_memoryGrow {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
     {is : List Instr} {fin : Option (List ValueType)}
     (hg : genInstr E ctl σ a .memoryGrow = .ok (is, fin)) :
-    ∃ (hc : E.cap < 4096) (gf : Fin 524288) (gd : Fin 67108864), curBase ctl + 1 ≤ σ.length ∧
-      σ.head? = some .i32 ∧ σ.length - 1 < 26 ∧ cbField (after a 5) (after a 12) = .ok gf ∧
-      bField (after a 11) (after a 16) = .ok gd ∧
-      is = [.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16,
-        .addReg 29 16 (regOf (σ.length - 1)), .subsImm 31 29 ⟨E.cap, hc⟩, .bcond 8 gf,
-        .movz (regOf (σ.length - 1)) 16 0, .lslv 29 29 (regOf (σ.length - 1)), .subImm 29 29 8,
-        .str 29 17 0, mov (regOf (σ.length - 1)) 16, .b gd] ++
-        movImm (regOf (σ.length - 1)) 0xFFFFFFFF ∧ fin = some σ := by
+    ∃ gd : Fin 67108864, curBase ctl + 1 ≤ σ.length ∧ σ.head? = some .i32 ∧ σ.length - 1 < 26 ∧
+      bField (after a 11) (after a 16) = .ok gd ∧ fin = some σ ∧
+      ((∃ (hc : E.cap < 4096) (gf : Fin 524288), cbField (after a 5) (after a 12) = .ok gf ∧
+          is = growNarrow (regOf (σ.length - 1)) ⟨E.cap, hc⟩ gf gd) ∨
+        (∃ (hw : E.cap < 65536) (gf : Fin 524288), 4096 ≤ E.cap ∧
+          cbField (after a 7) (after a 12) = .ok gf ∧
+          is = growWide (regOf (σ.length - 1)) ⟨E.cap, hw⟩ gf gd)) := by
   unfold genInstr at hg
   by_cases hc0 : σ.length < curBase ctl + 1 ∨ σ.head? ≠ some .i32
   · simp only [hc0, ite_true] at hg
@@ -1008,8 +1009,8 @@ theorem gen_memoryGrow {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UIn
   have hc' := hc0
   simp only [not_or, Ne, Decidable.not_not] at hc'
   obtain ⟨hc1, hc2⟩ := hc'
-  by_cases hc : E.cap < 4096
-  · by_cases hlt : σ.length - 1 < 26
+  by_cases hlt : σ.length - 1 < 26
+  · by_cases hc : E.cap < 4096
     · cases hf : cbField (after a 5) (after a 12) with
       | error e => simp [hc, opReg_ok hlt, hf, bind, Except.bind] at hg
       | ok gf =>
@@ -1017,10 +1018,32 @@ theorem gen_memoryGrow {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UIn
           | error e => simp [hc, opReg_ok hlt, hf, hd, bind, Except.bind] at hg
           | ok gd =>
               simp [hc, opReg_ok hlt, hf, hd, bind, Except.bind, pure, Except.pure] at hg
-              exact ⟨hc, gf, gd, by omega, hc2, hlt, rfl, rfl, hg.1.symm, hg.2.symm⟩
-    · obtain ⟨e, he⟩ := opReg_error hlt
-      simp [hc, he, bind, Except.bind] at hg
-  · simp [hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+              exact ⟨gd, by omega, hc2, hlt, rfl, hg.2.symm, .inl ⟨hc, gf, rfl, hg.1.symm⟩⟩
+    · by_cases hw : E.cap < 65536
+      · cases hf : cbField (after a 7) (after a 12) with
+        | error e => simp [hc, hw, opReg_ok hlt, hf, bind, Except.bind] at hg
+        | ok gf =>
+            cases hd : bField (after a 11) (after a 16) with
+            | error e => simp [hc, hw, opReg_ok hlt, hf, hd, bind, Except.bind] at hg
+            | ok gd =>
+                simp [hc, hw, opReg_ok hlt, hf, hd, bind, Except.bind, pure, Except.pure] at hg
+                exact ⟨gd, by omega, hc2, hlt, rfl, hg.2.symm,
+                  .inr ⟨hw, gf, by omega, rfl, hg.1.symm⟩⟩
+      · simp [hc, hw, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  · obtain ⟨e, he⟩ := opReg_error hlt
+    by_cases hc : E.cap < 4096
+    · simp [hc, he, bind, Except.bind] at hg
+    · by_cases hw : E.cap < 65536
+      · simp [hc, hw, he, bind, Except.bind] at hg
+      · simp [hc, hw, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+
+theorem growNarrow_length (r : Fin 32) (cap : Fin 4096) (gf : Fin 524288)
+    (gd : Fin 67108864) : (growNarrow r cap gf gd).length = 16 := by
+  simp [growNarrow, movImm]
+
+theorem growWide_length (r : Fin 32) (cap : Fin 65536) (gf : Fin 524288)
+    (gd : Fin 67108864) : (growWide r cap gf gd).length = 16 := by
+  simp [growWide, movImm]
 
 theorem CodeAt.drop_take {a : UInt64} {l : List Instr} (h : CodeAt code a l) (k n : Nat)
     (hk : k + n ≤ l.length) : CodeAt code (after a k) ((l.drop k).take n) := by
@@ -1300,9 +1323,387 @@ theorem run_grow_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store �
     show store64 s9.mem (s9.x 17) (s9.x 29) = _
     rw [hmem9, hk9 17 (by decide) (Ne.symm hr17), hx29_9]
 
+theorem State.x_subs31 (s : State) (a b : UInt64) (q : Fin 32) :
+    (s.subs 31 a b).x q = s.x q := by
+  unfold State.subs State.setX
+  rfl
+
+theorem State.subs31_sp (s : State) (a b : UInt64) : (s.subs 31 a b).sp = s.sp := rfl
+
+theorem State.subs31_mem (s : State) (a b : UInt64) : (s.subs 31 a b).mem = s.mem := rfl
+
+theorem State.subs31_io (s : State) (a b : UInt64) : (s.subs 31 a b).io = s.io := rfl
+
+/-- The run of `growWide`'s first four instructions from `ms` at `a`, for a delta in register `r`:
+the size less 8 in X16 and the new size less 8 in X29. -/
+theorem run_growWide_size {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α}
+    {ms : State} {a : UInt64} {r : Fin 32} {delta : UInt32} (hr16 : r ≠ 16) (hr29 : r ≠ 29)
+    (hcode : CodeAt code a [.ldr 16 17 0, .movz 29 16 0, .lslv 29 r 29, .addReg 29 16 29])
+    (hpc : ms.pc = a) (hsr : StoreRel P cap gts st ms) (hdel : ms.x r = delta.toUInt64) :
+    ∃ s, Reach P code ms s ∧ s.pc = after a 4 ∧
+      s.x 29 = UInt64.ofNat ((st.mem.pages + delta.toNat) * 65536 - 8) ∧
+      s.x 16 = UInt64.ofNat (st.mem.pages * 65536 - 8) ∧
+      (∀ q, q ≠ 29 → q ≠ 16 → s.x q = ms.x q) ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧
+      s.io = ms.io := by
+  have hpg := hsr.pages
+  have hcap := hsr.cap_lt
+  have hdl : delta.toNat < 4294967296 := delta.toNat_lt
+  have h16l : (16 : Fin 32).val < 31 := by decide
+  have h29l : (29 : Fin 32).val < 31 := by decide
+  have c0 := hcode 0 (by simp)
+  have c1 := hcode 1 (by simp)
+  have c2 := hcode 2 (by simp)
+  have c3 := hcode 3 (by simp)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1 c2 c3
+  have hex1 := exec_ldr_base P (s := ms) (t := 16) (i := 0) (by decide) (n := 17) (by decide)
+    (fun k hk => hsr.mapped _ (by unfold areaSize; omega))
+  simp only [Nat.mul_zero, add_ofNat_zero] at hex1
+  obtain ⟨s1, hs1⟩ : ∃ t : State,
+      t = { ms.setX 16 (load64 ms.mem (ms.x 17)) with pc := ms.pc + 4 } := ⟨_, rfl⟩
+  have e1 : LeanExe.A64.exec P (.ldr 16 17 0) ms = some s1 := by rw [hs1]; exact hex1
+  obtain ⟨s2, hs2⟩ : ∃ t : State,
+      t = { s1.setX 29 (UInt64.ofNat 16 <<< UInt64.ofNat 0) with pc := s1.pc + 4 } := ⟨_, rfl⟩
+  have e2 : LeanExe.A64.exec P (.movz 29 16 0) s1 = some s2 := by rw [hs2]; rfl
+  obtain ⟨s3, hs3⟩ : ∃ t : State,
+      t = { s2.setX 29 (s2.x r <<< (s2.x 29 % 64)) with pc := s2.pc + 4 } := ⟨_, rfl⟩
+  have e3 : LeanExe.A64.exec P (.lslv 29 r 29) s2 = some s3 := by rw [hs3]; rfl
+  obtain ⟨s4, hs4⟩ : ∃ t : State,
+      t = { s3.setX 29 (s3.x 16 + s3.x 29) with pc := s3.pc + 4 } := ⟨_, rfl⟩
+  have e4 : LeanExe.A64.exec P (.addReg 29 16 29) s3 = some s4 := by rw [hs4]; rfl
+  have p1 : s1.pc = after a 1 := by rw [hs1]; simp [hpc, after]
+  have p2 : s2.pc = after a 2 := by
+    rw [hs2]
+    show s1.pc + 4 = _
+    rw [p1, ← after_succ]
+  have p3 : s3.pc = after a 3 := by
+    rw [hs3]
+    show s2.pc + 4 = _
+    rw [p2, ← after_succ]
+  have k1 : ∀ q, q ≠ 16 → s1.x q = ms.x q := fun q hq => by
+    simp only [hs1, State.x_withPc, State.x_setX_ne (Ne.symm hq)]
+  have h16 : s1.x 16 = UInt64.ofNat (st.mem.pages * 65536 - 8) := by
+    simp only [hs1, State.x_withPc, State.x_setX_same h16l]
+    exact hsr.size
+  have h29_2 : s2.x 29 = 16 := by
+    simp only [hs2, State.x_withPc, State.x_setX_same h29l] <;> decide
+  have hr2 : s2.x r = delta.toUInt64 := by
+    simp only [hs2, State.x_withPc, State.x_setX_ne (Ne.symm hr29), k1 r hr16, hdel]
+  have h29_3 : s3.x 29 = UInt64.ofNat (delta.toNat * 65536) := by
+    simp only [hs3, State.x_withPc, State.x_setX_same h29l, h29_2, hr2]
+    apply UInt64.toNat_inj.mp
+    simp only [UInt64.toNat_shiftLeft, UInt32.toNat_toUInt64, UInt64.toNat_ofNat',
+      Nat.shiftLeft_eq, UInt64.reduceToNat, UInt64.reduceMod, Nat.reduceMod,
+      Nat.reducePow] <;> omega
+  have h16_3 : s3.x 16 = UInt64.ofNat (st.mem.pages * 65536 - 8) := by
+    simp only [hs3, hs2, State.x_withPc, State.x_setX_ne (show (29 : Fin 32) ≠ 16 by decide), h16]
+  refine ⟨s4, reach_exec P code (by rw [hpc]; exact c0) e1
+      (reach_exec P code (by rw [p1]; exact c1) e2
+        (reach_exec P code (by rw [p2]; exact c2) e3
+          (reach_exec P code (by rw [p3]; exact c3) e4 (.refl _)))), ?_, ?_, ?_,
+    fun q hq hq16 => ?_, ?_, ?_, ?_⟩
+  · rw [hs4]
+    show s3.pc + 4 = _
+    rw [p3, ← after_succ]
+  · simp only [hs4, State.x_withPc, State.x_setX_same h29l, h16_3, h29_3]
+    apply UInt64.toNat_inj.mp
+    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow] <;> omega
+  · simp only [hs4, State.x_withPc, State.x_setX_ne (show (29 : Fin 32) ≠ 16 by decide), h16_3]
+  · simp only [hs4, hs3, hs2, State.x_withPc, State.x_setX_ne (Ne.symm hq), k1 q hq16]
+  · simp only [hs4, hs3, hs2, hs1, State.setX_sp]
+  · simp only [hs4, hs3, hs2, hs1, State.setX_mem]
+  · simp only [hs4, hs3, hs2, hs1, State.setX_io]
+
+/-- The run of `growWide`'s next four instructions from `s` at `after a 4`, with the new size less
+8 of `N` pages in X29: the cap's size less 8 in register `r`, the comparison, and a branch to
+`after a 12` when `N` exceeds the cap, or else on to `after a 8`. -/
+theorem run_growWide_cmp {s : State} {a : UInt64} {r : Fin 32} {cap N : Nat} {gf : Fin 524288}
+    (hw : cap < 65536) (hc1 : 1 ≤ cap) (hN1 : 1 ≤ N) (hN : N < 2 ^ 33) (hr : r.val < 31)
+    (hr29 : r ≠ 29)
+    (hcode : CodeAt code (after a 4)
+      [.movz r ⟨cap, hw⟩ 1, .subImm r r 8, .subsReg 31 29 r, .bcond 8 gf])
+    (hgf : cbField (after a 7) (after a 12) = .ok gf) (hpc : s.pc = after a 4)
+    (h29 : s.x 29 = UInt64.ofNat (N * 65536 - 8)) :
+    ∃ t, Reach P code s t ∧ t.pc = (if N ≤ cap then after a 8 else after a 12) ∧
+      (∀ q, q ≠ r → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
+  have c0 := hcode 0 (by simp)
+  have c1 := hcode 1 (by simp)
+  have c2 := hcode 2 (by simp)
+  have c3 := hcode 3 (by simp)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c0 c1 c2 c3
+  obtain ⟨s5, hs5⟩ : ∃ t : State,
+      t = { s.setX r (UInt64.ofNat cap <<< UInt64.ofNat 16) with pc := s.pc + 4 } := ⟨_, rfl⟩
+  have e5 : LeanExe.A64.exec P (.movz r ⟨cap, hw⟩ 1) s = some s5 := by rw [hs5]; rfl
+  obtain ⟨s6, hs6⟩ : ∃ t : State,
+      t = { s5.setX r (s5.x r - UInt64.ofNat 8) with pc := s5.pc + 4 } := ⟨_, rfl⟩
+  have e6 : LeanExe.A64.exec P (.subImm r r 8) s5 = some s6 := by
+    rw [hs6]
+    simp only [exec, State.xsp_eq_x hr, State.setXsp_eq_setX hr]
+    rfl
+  obtain ⟨s7, hs7⟩ : ∃ t : State,
+      t = { s6.subs 31 (s6.x 29) (s6.x r) with pc := s6.pc + 4 } := ⟨_, rfl⟩
+  have e7 : LeanExe.A64.exec P (.subsReg 31 29 r) s6 = some s7 := by rw [hs7]; rfl
+  obtain ⟨s8, hs8⟩ : ∃ t : State,
+      t = { s7 with pc := if s7.condHolds 8 then s7.pc + sext 19 gf.val * 4 else s7.pc + 4 } :=
+    ⟨_, rfl⟩
+  have e8 : LeanExe.A64.exec P (.bcond 8 gf) s7 = some s8 := by rw [hs8]; rfl
+  have p5 : s5.pc = after a 5 := by
+    rw [hs5]
+    show s.pc + 4 = _
+    rw [hpc, ← after_succ]
+  have p6 : s6.pc = after a 6 := by
+    rw [hs6]
+    show s5.pc + 4 = _
+    rw [p5, ← after_succ]
+  have p7 : s7.pc = after a 7 := by
+    rw [hs7]
+    show s6.pc + 4 = _
+    rw [p6, ← after_succ]
+  have k6 : ∀ q, q ≠ r → s6.x q = s.x q := fun q hq => by
+    simp only [hs6, hs5, State.x_withPc, State.x_setX_ne (Ne.symm hq)]
+  have hr6 : s6.x r = UInt64.ofNat (cap * 65536 - 8) := by
+    simp only [hs6, hs5, State.x_withPc, State.x_setX_same hr]
+    apply UInt64.toNat_inj.mp
+    simp only [UInt64.toNat_sub, UInt64.toNat_shiftLeft, UInt64.toNat_ofNat', Nat.shiftLeft_eq,
+      Nat.reduceMod, Nat.reducePow] <;> omega
+  have hcond : s7.condHolds 8 = decide (cap < N) := by
+    rw [hs7, condHolds_8]
+    show (decide (s6.x r ≤ s6.x 29) && !(s6.x 29 - s6.x r == 0)) = _
+    rw [cond_hi, hr6, k6 29 (Ne.symm hr29), h29]
+    apply decide_eq_decide.mpr
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat', UInt64.toNat_ofNat']
+    simp only [Nat.reducePow] at *
+    omega
+  refine ⟨s8, reach_exec P code (by rw [hpc]; exact c0) e5
+      (reach_exec P code (by rw [p5]; exact c1) e6
+        (reach_exec P code (by rw [p6]; exact c2) e7
+          (reach_exec P code (by rw [p7]; exact c3) e8 (.refl _)))), ?_,
+    fun q hq => ?_, ?_, ?_, ?_⟩
+  · rw [hs8]
+    show (if s7.condHolds 8 then s7.pc + sext 19 gf.val * 4 else s7.pc + 4) = _
+    rw [hcond, p7]
+    by_cases hNc : N ≤ cap
+    · rw [ite_eq_left hNc, decide_eq_false (by omega)]
+      exact (after_succ a 7).symm
+    · rw [ite_eq_right hNc, decide_eq_true (by omega)]
+      exact cbField_target hgf
+  · simp only [hs8, hs7, State.x_withPc, State.x_subs31, k6 q hq]
+  · simp only [hs8, hs7, hs6, hs5, State.subs31_sp, State.setX_sp]
+  · simp only [hs8, hs7, hs6, hs5, State.subs31_mem, State.setX_mem]
+  · simp only [hs8, hs7, hs6, hs5, State.subs31_io, State.setX_io]
+
+/-- The run of a successful wide growth from `s` at `after a 8`, with the size less 8 in X16 and
+the new size less 8 in X29: X29 stored at X17, the old page count in register `r`, and a branch
+to `after a 16`. -/
+theorem run_growWide_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} {s : State}
+    {a : UInt64} {r : Fin 32} {gd : Fin 67108864} (hr : r.val < 31) (hr16 : r ≠ 16)
+    (hcode : ∀ i (hi : i < 4), code (after a (8 + i)) = some (encode
+      ([.str 29 17 0, .addImm 16 16 8, .lsrImm r 16 16, .b gd] : List Instr)[i]))
+    (hgd : bField (after a 11) (after a 16) = .ok gd) (hpc : s.pc = after a 8)
+    (hsr : StoreRel P cap gts st s) (h16 : s.x 16 = UInt64.ofNat (st.mem.pages * 65536 - 8)) :
+    ∃ t, Reach P code s t ∧ t.pc = after a 16 ∧ t.x r = UInt64.ofNat st.mem.pages ∧
+      (∀ q, q ≠ 16 → q ≠ r → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.io = s.io ∧
+      t.mem = store64 s.mem (s.x 17) (s.x 29) := by
+  have hex9 := exec_str_base P (s := s) (t := 29) (i := 0) (by decide) (n := 17) (by decide)
+    (fun k hk => hsr.mapped _ (by unfold areaSize; omega))
+  simp only [Nat.mul_zero, add_ofNat_zero] at hex9
+  let s9 : State := { s with mem := store64 s.mem (s.x 17) (s.x 29), pc := s.pc + 4 }
+  let s10 : State := { s9.setX 16 (s9.x 16 + UInt64.ofNat 8) with pc := s9.pc + 4 }
+  have e10 : LeanExe.A64.exec P (.addImm 16 16 8) s9 = some s10 := by
+    simp only [exec, State.xsp_eq_x (show (16 : Fin 32).val < 31 by decide),
+      State.setXsp_eq_setX (show (16 : Fin 32).val < 31 by decide)]
+    rfl
+  let s11 : State := { s10.setX r (s10.x 16 >>> UInt64.ofNat 16) with pc := s10.pc + 4 }
+  have e11 : LeanExe.A64.exec P (.lsrImm r 16 16) s10 = some s11 := rfl
+  let s12 : State := { s11 with pc := s11.pc + sext 26 gd.val * 4 }
+  have e12 : LeanExe.A64.exec P (.b gd) s11 = some s12 := rfl
+  have p9 : s9.pc = after a 9 := by
+    show s.pc + 4 = _
+    rw [hpc, ← after_succ]
+  have p10 : s10.pc = after a 10 := by
+    show s9.pc + 4 = _
+    rw [p9, ← after_succ]
+  have p11 : s11.pc = after a 11 := by
+    show s10.pc + 4 = _
+    rw [p10, ← after_succ]
+  have hpg := hsr.pages
+  have hcap := hsr.cap_lt
+  refine ⟨s12, reach_exec P code (by rw [hpc]; exact hcode 0 (by decide)) hex9
+      (reach_exec P code (by rw [p9]; exact hcode 1 (by decide)) e10
+        (reach_exec P code (by rw [p10]; exact hcode 2 (by decide)) e11
+          (reach_exec P code (by rw [p11]; exact hcode 3 (by decide)) e12 (.refl _)))),
+    ?_, ?_, fun q hq16 hqr => ?_, ?_, ?_, ?_⟩
+  · show s11.pc + sext 26 gd.val * 4 = _
+    rw [p11, bField_target hgd]
+  · show (s10.setX r (s10.x 16 >>> UInt64.ofNat 16)).x r = _
+    rw [State.x_setX_same hr]
+    show (s9.setX 16 (s9.x 16 + UInt64.ofNat 8)).x 16 >>> UInt64.ofNat 16 = _
+    rw [State.x_setX_same (by decide)]
+    show (s.x 16 + UInt64.ofNat 8) >>> UInt64.ofNat 16 = _
+    rw [h16]
+    exact pages_of_size hpg.1 (by omega)
+  · show (s10.setX r (s10.x 16 >>> UInt64.ofNat 16)).x q = _
+    rw [State.x_setX_ne (Ne.symm hqr)]
+    show (s9.setX 16 (s9.x 16 + UInt64.ofNat 8)).x q = _
+    rw [State.x_setX_ne (Ne.symm hq16)]
+    rfl
+  · show (s10.setX r (s10.x 16 >>> UInt64.ofNat 16)).sp = _
+    rw [State.setX_sp]
+    show (s9.setX 16 (s9.x 16 + UInt64.ofNat 8)).sp = _
+    rw [State.setX_sp]
+  · show (s10.setX r (s10.x 16 >>> UInt64.ofNat 16)).io = _
+    rw [State.setX_io]
+    show (s9.setX 16 (s9.x 16 + UInt64.ofNat 8)).io = _
+    rw [State.setX_io]
+  · show (s10.setX r (s10.x 16 >>> UInt64.ofNat 16)).mem = _
+    rw [State.setX_mem]
+    show (s9.setX 16 (s9.x 16 + UInt64.ofNat 8)).mem = _
+    rw [State.setX_mem]
+
+/-- The run of either code of `memory.grow` from `ms` at `a`, for a delta in register `r` and a
+store `st` that the machine holds with a cap of `cap` pages: it reaches `after a 16` and changes
+no register but X16, X29, and `r`.  When the new page count lies within the cap, `r` holds the
+old page count and the size word the new size less 8, and otherwise `r` holds the 32-bit word of
+-1 and the memory keeps its bytes. -/
+theorem run_grow {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} {ms : State}
+    {a : UInt64} {r : Fin 32} {delta : UInt32} {is : List Instr} {gd : Fin 67108864}
+    (hr : r.val < 31) (hr16 : r ≠ 16) (hr17 : r ≠ 17) (hr18 : r ≠ 18) (hr29 : r ≠ 29)
+    (hgd : bField (after a 11) (after a 16) = .ok gd)
+    (his : (∃ (hc : cap < 4096) (gf : Fin 524288), cbField (after a 5) (after a 12) = .ok gf ∧
+          is = growNarrow r ⟨cap, hc⟩ gf gd) ∨
+        (∃ (hw : cap < 65536) (gf : Fin 524288), 4096 ≤ cap ∧
+          cbField (after a 7) (after a 12) = .ok gf ∧ is = growWide r ⟨cap, hw⟩ gf gd))
+    (hcode : CodeAt code a is) (hpc : ms.pc = a) (hsr : StoreRel P cap gts st ms)
+    (hdel : ms.x r = delta.toUInt64) :
+    ∃ t, Reach P code ms t ∧ t.pc = after a 16 ∧
+      (∀ q, q ≠ 29 → q ≠ 16 → q ≠ r → t.x q = ms.x q) ∧ t.sp = ms.sp ∧ t.io = ms.io ∧
+      (if st.mem.pages + delta.toNat ≤ cap then
+        t.x r = UInt64.ofNat st.mem.pages ∧
+          t.mem = store64 ms.mem (ms.x 17)
+            (UInt64.ofNat ((st.mem.pages + delta.toNat) * 65536 - 8))
+      else t.x r = 0xFFFFFFFF ∧ t.mem = ms.mem) := by
+  have hpg := hsr.pages
+  have hdl := delta.toNat_lt
+  have hcap := hsr.cap_lt
+  have cM : CodeAt code (after a 12) (movImm r 0xFFFFFFFF) := by
+    rcases his with ⟨_, _, _, rfl⟩ | ⟨_, _, _, _, rfl⟩
+    · simpa [growNarrow, movImm] using
+        CodeAt.drop_take code hcode 12 4 (by simp [growNarrow, movImm])
+    · simpa [growWide, movImm] using
+        CodeAt.drop_take code hcode 12 4 (by simp [growWide, movImm])
+  have hfail : ∀ {s : State}, Reach P code ms s → s.pc = after a 12 →
+      (∀ q, q ≠ 29 → q ≠ 16 → q ≠ r → s.x q = ms.x q) → s.sp = ms.sp → s.mem = ms.mem →
+      s.io = ms.io → ¬ st.mem.pages + delta.toNat ≤ cap →
+      ∃ t, Reach P code ms t ∧ t.pc = after a 16 ∧
+        (∀ q, q ≠ 29 → q ≠ 16 → q ≠ r → t.x q = ms.x q) ∧ t.sp = ms.sp ∧ t.io = ms.io ∧
+        (if st.mem.pages + delta.toNat ≤ cap then
+          t.x r = UInt64.ofNat st.mem.pages ∧
+            t.mem = store64 ms.mem (ms.x 17)
+              (UInt64.ofNat ((st.mem.pages + delta.toNat) * 65536 - 8))
+        else t.x r = 0xFFFFFFFF ∧ t.mem = ms.mem) := by
+    intro s hrs hps hks hsps hmems hios hN
+    obtain ⟨t, hrt, hpt, hxt, hkt, hspt, hmemt, hiot⟩ :=
+      run_movImm P code (d := r) (v := 0xFFFFFFFF) hr cM hps
+    refine ⟨t, hrs.trans hrt, hpt.trans (after_after a 12 4), fun q hq hq16 hqr => ?_,
+      by rw [hspt, hsps], by rw [hiot, hios], ?_⟩
+    · rw [hkt q hqr, hks q hq hq16 hqr]
+    · rw [if_neg hN]
+      exact ⟨hxt, by rw [hmemt, hmems]⟩
+  rcases his with ⟨hc, gf, hgf, rfl⟩ | ⟨hw, gf, h4, hgf, rfl⟩
+  · simp only [growNarrow] at hcode
+    have cfg : ∀ i (hi : i < 12), code (after a i) = some (encode
+        ([.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16, .addReg 29 16 r,
+          .subsImm 31 29 ⟨cap, hc⟩, .bcond 8 gf, .movz r 16 0, .lslv 29 29 r,
+          .subImm 29 29 8, .str 29 17 0, mov r 16, .b gd] : List Instr)[i]) := by
+      intro i hi
+      have := hcode i (by simp [movImm]; omega)
+      rwa [List.getElem_append_left (by simpa using hi)] at this
+    obtain ⟨s6, hr6, hp6, hx29, hx16, hk6, hsp6, hmem6, hout6⟩ :=
+      run_grow_head P code (r := r) (delta := delta) hc hr hr16 hr29
+        (fun i hi => by
+          have := cfg i (by omega)
+          rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 by omega) with
+            rfl | rfl | rfl | rfl | rfl | rfl <;> exact this)
+        hgf hpc hsr hdel
+    by_cases hN : st.mem.pages + delta.toNat ≤ cap
+    · rw [ite_eq_left hN] at hp6
+      have hsr6 : StoreRel P cap gts st s6 :=
+        hsr.regs (hk6 17 (by decide) (by decide)) (hk6 18 (by decide) (by decide)) hmem6
+      obtain ⟨s12, hr12, hp12, hx12, hk12, hsp12, hout12, hmem12⟩ :=
+        run_grow_ok P code (r := r) (gd := gd) (N := st.mem.pages + delta.toNat) hr hr16 hr17
+          hr29 (fun i hi => by
+            have := cfg (6 + i) (by omega)
+            rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 by omega) with
+              rfl | rfl | rfl | rfl | rfl | rfl <;> exact this)
+          hgd hp6 hsr6 (by omega) (by omega) hx29
+      refine ⟨s12, hr6.trans hr12, hp12, fun q hq hq16 hqr => ?_, by rw [hsp12, hsp6],
+        by rw [hout12, hout6], ?_⟩
+      · rw [hk12 q hq hqr, hk6 q hq hq16]
+      · rw [if_pos hN]
+        exact ⟨by rw [hx12, hx16], by rw [hmem12, hmem6, hk6 17 (by decide) (by decide)]⟩
+    · rw [ite_eq_right hN] at hp6
+      exact hfail hr6 hp6 (fun q hq hq16 _ => hk6 q hq hq16) hsp6 hmem6 hout6 hN
+  · simp only [growWide] at hcode
+    have cfg : ∀ i (hi : i < 12), code (after a i) = some (encode
+        ([.ldr 16 17 0, .movz 29 16 0, .lslv 29 r 29, .addReg 29 16 29, .movz r ⟨cap, hw⟩ 1,
+          .subImm r r 8, .subsReg 31 29 r, .bcond 8 gf, .str 29 17 0, .addImm 16 16 8,
+          .lsrImm r 16 16, .b gd] : List Instr)[i]) := by
+      intro i hi
+      have := hcode i (by simp [movImm]; omega)
+      rwa [List.getElem_append_left (by simpa using hi)] at this
+    obtain ⟨s4, hr4, hp4, hx29', hx16', hk4, hsp4, hmem4, hout4⟩ :=
+      run_growWide_size P code (r := r) (delta := delta) hr16 hr29
+        (fun i hi => by
+          have := cfg i (by simp at hi; omega)
+          simp only [List.length_cons, List.length_nil] at hi
+          rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 by omega) with
+            rfl | rfl | rfl | rfl <;> exact this)
+        hpc hsr hdel
+    obtain ⟨s8, hr8', hp8, hk8', hsp8, hmem8, hout8⟩ :=
+      run_growWide_cmp P code (r := r) (N := st.mem.pages + delta.toNat) hw (by omega)
+        (by omega) (by omega) hr hr29
+        (fun i hi => by
+          have := cfg (4 + i) (by simp at hi; omega)
+          rw [after_after]
+          simp only [List.length_cons, List.length_nil] at hi
+          rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 by omega) with
+            rfl | rfl | rfl | rfl <;> exact this)
+        hgf hp4 hx29'
+    have hr8 := hr4.trans hr8'
+    have hk8 : ∀ q, q ≠ 29 → q ≠ 16 → q ≠ r → s8.x q = ms.x q := fun q hq hq16 hqr => by
+      rw [hk8' q hqr, hk4 q hq hq16]
+    have hx16 : s8.x 16 = UInt64.ofNat (st.mem.pages * 65536 - 8) := by
+      rw [hk8' 16 (Ne.symm hr16), hx16']
+    have hx29 : s8.x 29 = UInt64.ofNat ((st.mem.pages + delta.toNat) * 65536 - 8) := by
+      rw [hk8' 29 (Ne.symm hr29), hx29']
+    rw [hsp4] at hsp8
+    rw [hmem4] at hmem8
+    rw [hout4] at hout8
+    by_cases hN : st.mem.pages + delta.toNat ≤ cap
+    · rw [ite_eq_left hN] at hp8
+      have h17 : s8.x 17 = ms.x 17 := hk8 17 (by decide) (by decide) (Ne.symm hr17)
+      have hsr8 : StoreRel P cap gts st s8 :=
+        hsr.regs h17 (hk8 18 (by decide) (by decide) (Ne.symm hr18)) hmem8
+      obtain ⟨t, hrt, hpt, hxt, hkt, hspt, hiot, hmemt⟩ :=
+        run_growWide_ok P code (r := r) (gd := gd) hr hr16 (fun i hi => by
+            have := cfg (8 + i) (by omega)
+            rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 by omega) with
+              rfl | rfl | rfl | rfl <;> exact this)
+          hgd hp8 hsr8 hx16
+      refine ⟨t, hr8.trans hrt, hpt, fun q hq hq16 hqr => ?_, by rw [hspt, hsp8],
+        by rw [hiot, hout8], ?_⟩
+      · rw [hkt q hq16 hqr, hk8 q hq hq16 hqr]
+      · rw [if_pos hN]
+        exact ⟨hxt, by rw [hmemt, hmem8, h17, hx29]⟩
+    · rw [ite_eq_right hN] at hp8
+      exact hfail hr8 hp8 hk8 hsp8 hmem8 hout8 hN
+
 theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
   intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
-  obtain ⟨hc, gf, gd, hc1, hhead, hlt, hgf, hgd, rfl, rfl⟩ := gen_memoryGrow hgen
+  obtain ⟨gd, hc1, hhead, hlt, hgd, rfl, his⟩ := gen_memoryGrow hgen
+  have hlen : is.length = 16 := by
+    rcases his with ⟨_, _, _, rfl⟩ | ⟨_, _, _, _, rfl⟩
+    · exact growNarrow_length _ _ _ _
+    · exact growWide_length _ _ _ _
   have hh := hinv.len
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -1311,7 +1712,7 @@ theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
         cases σ with
         | nil => simp at hc1
         | cons t σ0 => exact ⟨t, σ0, rfl⟩
-      simp only [List.length_cons, Nat.add_sub_cancel] at hlt hcode hc1 ⊢
+      simp only [List.length_cons, Nat.add_sub_cancel] at hlt hc1 his ⊢
       simp only [List.head?_cons, Option.some.injEq] at hhead
       subst hhead
       obtain ⟨v, vs, hvs⟩ : ∃ v vs, sl.values = v :: vs := by
@@ -1341,56 +1742,23 @@ theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
       have hr17 : (regOf σ0.length) ≠ 17 := regOf_ne_17 _ hlt
       have hr18 : (regOf σ0.length) ≠ 18 := regOf_ne_18 _ hlt
       have hr29 : (regOf σ0.length) ≠ 29 := regOf_ne_29 _ hlt
-      have cfg : ∀ i (hi : i < 12), code (after a i) = some (encode
-          ([.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16, .addReg 29 16 (regOf σ0.length),
-            .subsImm 31 29 ⟨E.cap, hc⟩, .bcond 8 gf, .movz (regOf σ0.length) 16 0,
-            .lslv 29 29 (regOf σ0.length),
-            .subImm 29 29 8, .str 29 17 0, mov (regOf σ0.length) 16, .b gd] : List Instr)[i]) := by
-        intro i hi
-        have := hcode i (by simp [movImm]; omega)
-        rwa [List.getElem_append_left (by simpa using hi)] at this
-      obtain ⟨s6, hr6, hp6, hx29, hx16, hk6, hsp6, hmem6, hout6⟩ :=
-        run_grow_head P code (r := (regOf σ0.length)) (delta := delta) hc hr hr16 hr29
-          (fun i hi => by
-            have := cfg i (by omega)
-            rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 by omega) with
-              rfl | rfl | rfl | rfl | rfl | rfl <;> exact this)
-          hgf hpc hsr hdel
-      have hkk : ∀ (u : State), (∀ q, q ≠ 29 → q ≠ 16 → q ≠ (regOf σ0.length) → u.x q = ms.x q) →
-          ∀ k < vs.length, u.x (regOf k) = ms.x (regOf k) := fun u hu k hk =>
-        hu _ (regOf_ne_29 k (by omega)) (regOf_ne_scratch k (by omega))
+      obtain ⟨s, hrs, hps, hks, hsps, hios, hres⟩ :=
+        run_grow P code hr hr16 hr17 hr18 hr29 hgd his hcode hpc hsr hdel
+      have hkk : ∀ k < vs.length, s.x (regOf k) = ms.x (regOf k) := fun k hk =>
+        hks _ (regOf_ne_29 k (by omega)) (regOf_ne_scratch k (by omega))
           (fun e => absurd (regOf_inj k (by omega) _ hlt e) (by omega))
+      have h18 : s.x 18 = ms.x 18 := hks 18 (by decide) (by decide) (Ne.symm hr18)
+      have h17 : s.x 17 = ms.x 17 := hks 17 (by decide) (by decide) (Ne.symm hr17)
       by_cases hN : st.mem.pages + delta.toNat ≤ E.cap
       · rw [ite_eq_left hN]
-        rw [ite_eq_left hN] at hp6
-        have hsr6 : StoreRel P E.cap E.globalTypes st s6 :=
-          hsr.regs (hk6 17 (by decide) (by decide)) (hk6 18 (by decide) (by decide)) hmem6
-        obtain ⟨s12, hr12, hp12, hx12, hk12, hsp12, hout12, hmem12⟩ :=
-          run_grow_ok P code (r := (regOf σ0.length)) (gd := gd)
-            (N := st.mem.pages + delta.toNat) hr hr16
-            hr17 hr29 (fun i hi => by
-              have := cfg (6 + i) (by omega)
-              rcases (show i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 ∨ i = 4 ∨ i = 5 by omega) with
-                rfl | rfl | rfl | rfl | rfl | rfl <;> exact this)
-            hgd hp6 hsr6 (by omega) (by have := delta.toNat_lt; omega) hx29
-        have hk : ∀ q, q ≠ 29 → q ≠ 16 → q ≠ (regOf σ0.length) → s12.x q = ms.x q :=
-          fun q hq hq16 hqr => by
-            rw [hk12 q hq hqr, hk6 q hq hq16]
-        have h1812 : s12.x 18 = ms.x 18 := hk 18 (by decide) (by decide) (Ne.symm hr18)
-        have h1712 : s12.x 17 = ms.x 17 := hk 17 (by decide) (by decide) (Ne.symm hr17)
-        have hsp : s12.sp = ms.sp := by rw [hsp12, hsp6]
-        have hmem : s12.mem = store64 ms.mem (ms.x 17)
-            (UInt64.ofNat ((st.mem.pages + delta.toNat) * 65536 - 8)) := by
-          rw [hmem12, hmem6, hk6 17 (by decide) (by decide)]
+        rw [if_pos hN] at hres
+        obtain ⟨hxr, hmem⟩ := hres
         have hb8 : (ms.x 17).toNat + 8 ≤ (ms.x 18).toNat := by
           have := hsr.below
           unfold areaSize at this
           omega
-        refine .inr ⟨_, rfl, s12, hr6.trans hr12, ?_, hsp, by rw [hout12, hout6], h1812,
-          fun c hc => ?_, ?_, fun k hk' => hkk s12 hk k (by omega),
-          hsr.grow P (by omega) hN h1712 h1812 hmem⟩
-        · rw [hp12]
-          simp [movImm]
+        refine .inr ⟨_, rfl, s, hrs, by rw [hps, hlen], hsps, hios, h18, fun c hc => ?_, ?_,
+          fun k hk' => hkk k (by omega), hsr.grow P (by omega) hN h17 h18 hmem⟩
         · rw [hmem]
           refine store64_other _ _ _ _ ?_
           rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub]
@@ -1400,27 +1768,15 @@ theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
           have := hinv.frame.limit.2.1
           simp only [Nat.reducePow] at *
           omega
-        · refine ⟨StackRel.push hstack.pop (by omega) ?_ (hkk s12 hk),
-            LocalsRel.store_below P (sl := sl) hinv hb8 hmem hsp, hinv.count,
-            hinv.frame.congr hsp h1812, Typed.cons trivial hty.2, hinv.ltypes⟩
-          rw [hvl, hx12, hx16]
+        · refine ⟨StackRel.push hstack.pop (by omega) ?_ hkk,
+            LocalsRel.store_below P (sl := sl) hinv hb8 hmem hsps, hinv.count,
+            hinv.frame.congr hsps h18, Typed.cons trivial hty.2, hinv.ltypes⟩
+          rw [hvl, hxr]
           exact (toUInt64_ofNat_small (by omega)).symm
       · rw [ite_eq_right hN]
-        rw [ite_eq_right hN] at hp6
-        have cM : CodeAt code (after a 12) (movImm (regOf σ0.length) 0xFFFFFFFF) := by
-          simpa [movImm] using CodeAt.drop_take code hcode 12 4 (by simp [movImm])
-        obtain ⟨s7, hr7, hp7, hx7, hk7, hsp7, hmem7, hout7⟩ :=
-          run_movImm P code (d := (regOf σ0.length)) (v := 0xFFFFFFFF) hr cM hp6
-        have hk : ∀ q, q ≠ 29 → q ≠ 16 → q ≠ (regOf σ0.length) → s7.x q = ms.x q :=
-          fun q hq hq16 hqr => by
-            rw [hk7 q hqr, hk6 q hq hq16]
+        rw [if_neg hN] at hres
         refine res_outcome P code (v := .i32 0xFFFFFFFF) (t := .i32) (vs := vs)
           (w := 0xFFFFFFFF) rfl trivial hty.2 hinv hsr (by omega) (by omega) hstack.pop
-          (hr6.trans hr7) ?_ (by rw [hvl]; exact hx7) (hkk s7 hk)
-          (hk 18 (by decide) (by decide) (Ne.symm hr18))
-          (hk 17 (by decide) (by decide) (Ne.symm hr17)) (by rw [hsp7, hsp6])
-          (by rw [hmem7, hmem6]) (by rw [hout7, hout6])
-        rw [hp7, after_after]
-        simp [movImm]
+          hrs (by rw [hps, hlen]) (by rw [hvl]; exact hres.1) hkk h18 h17 hsps hres.2 hios
 
 end LeanExe.A64

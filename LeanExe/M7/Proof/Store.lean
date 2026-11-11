@@ -22,12 +22,12 @@ open Wasm LeanExe.ProofKit
 /-- The machine holds Talos's store `st` in the area at `area`, below the stack's limit `lim`: the
 memory's size less 8 in the word at `area`, global `i`, of the type `gts[i]`, in the slot at
 `area + 8 (i + 1)`, and byte `j` of the memory at `area + 4096 + j` for every `j` below `cap` pages.
-The memory's cap is `cap` pages, below 4096, and it holds at least 1 page, and the globals are at
+The memory's cap is `cap` pages, below 65536, and it holds at least 1 page, and the globals are at
 most 511. -/
 structure StoreRel (P : Platform) (area lim : UInt32) (cap : Nat) (gts : List ValueType)
     {α : Type} (st : Store α) (s : State) : Prop where
   caps : st.memoryCaps = [cap]
-  cap_lt : cap < 4096
+  cap_lt : cap < 65536
   glen : gts.length ≤ 511
   pages : 1 ≤ st.mem.pages ∧ st.mem.pages ≤ cap
   size : load32 s.mem area = UInt32.ofNat (st.mem.pages * 65536 - 8)
@@ -442,7 +442,7 @@ theorem StoreRel.setGlobal {P : Platform} {area lim : UInt32} {cap : Nat} {gts :
         hfar _ (by omega) (by omega)]
       exact h.globals j hj
   · show t.mem (area + UInt32.ofNat (4096 + j)) = st.mem.bytes j
-    have hcap : cap < 4096 := h.cap_lt
+    have hcap : cap < 65536 := h.cap_lt
     rw [hmem, store32_off_far (by omega) (by omega) (by omega),
       store32_off_far (by omega) (by omega) (by omega)]
     exact h.bytes j hj

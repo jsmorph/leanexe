@@ -294,7 +294,10 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
       obtain ⟨_, h1, _, _, rfl, rfl⟩ := gen_globalSet hg; simp [instrSize]
   | memorySize => obtain ⟨_, rfl, rfl⟩ := gen_memorySize hg; simp [instrSize]
   | memoryGrow =>
-      obtain ⟨_, _, _, _, _, _, _, _, rfl, rfl⟩ := gen_memoryGrow hg; simp [instrSize, movImm]
+      obtain ⟨_, _, _, _, _, rfl, his⟩ := gen_memoryGrow hg
+      rcases his with ⟨_, _, _, rfl⟩ | ⟨_, _, _, _, rfl⟩
+      · simp [instrSize, growNarrow, movImm]
+      · simp [instrSize, growWide, movImm]
   | load64 off =>
       obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load64 hg; simp [instrSize]; omega
   | store64 off =>
@@ -484,7 +487,7 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | globalGet i => obtain ⟨_, _, _, _, he⟩ := gen_globalGet hg; cases he; simp; omega
   | globalSet i => obtain ⟨_, h1, _, _, _, he⟩ := gen_globalSet hg; cases he; simp; omega
   | memorySize => obtain ⟨_, _, he⟩ := gen_memorySize hg; cases he; simp; omega
-  | memoryGrow => obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_memoryGrow hg; cases he; omega
+  | memoryGrow => obtain ⟨_, h1, _, _, _, he, -⟩ := gen_memoryGrow hg; cases he; omega
   | load64 off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load64 hg; cases he; simp; omega
   | store64 off => obtain ⟨_, _, h1, _, _, _, _, _, he⟩ := gen_store64 hg; cases he; simp; omega
   | load8U off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load8U hg; cases he; simp; omega

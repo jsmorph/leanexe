@@ -31,10 +31,11 @@ def globalTypesOf (m : Module) : Option (List ValueType) :=
   m.globals.mapM fun g => valueType g.init
 
 /-- The memory of `m` fits an area of `cap` pages: it has 32-bit addresses and between 1 and
-`cap` pages, and `cap` lies below 4096. -/
+`cap` pages, and `cap` lies below 65536, so that the area's memory has fewer than `2 ^ 32` bytes and
+the cap fits the 16-bit immediate of `MOVZ`. -/
 def areaOk (m : Module) (cap : Nat) : Bool :=
   match m.memory with
-  | some d => !d.is64 && 1 ≤ d.pagesMin.toNat && d.pagesMin.toNat ≤ cap && cap < 4096
+  | some d => !d.is64 && 1 ≤ d.pagesMin.toNat && d.pagesMin.toNat ≤ cap && cap < 65536
   | none => false
 
 /-- The number of bytes of the area of a memory of `cap` pages. -/

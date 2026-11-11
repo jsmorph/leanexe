@@ -265,7 +265,7 @@ theorem run_msgPass {H err : UInt64} {done back fail : Fin 524288} {loop : Fin 6
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c6 c7 c8 c9 c10
   have hpg := hsr.pages
   have hcap := hsr.cap_lt
-  have hpp : st.mem.pages * 65536 ≤ 4096 * 65536 := Nat.mul_le_mul_right _ (by omega)
+  have hpp : st.mem.pages * 65536 ≤ 65536 * 65536 := Nat.mul_le_mul_right _ (by omega)
   have hc64 : c + 1 < 2 ^ 64 := by simp only [Nat.reducePow]; omega
   -- the CBZ falls through
   let s1 : State := { s with pc := s.pc + 4 }
@@ -507,7 +507,7 @@ theorem run_writeLoop {a : UInt64} {done : Fin 524288} {back : Fin 67108864}
     intro s p hpc h1 h8 h3 hsr hp
     have hpg := hsr.pages
     have hcap := hsr.cap_lt
-    have hpp : st.mem.pages * 65536 ≤ 4096 * 65536 := Nat.mul_le_mul_right _ (by omega)
+    have hpp : st.mem.pages * 65536 ≤ 65536 * 65536 := Nat.mul_le_mul_right _ (by omega)
     have hc64 : c + 1 < 2 ^ 64 := by simp only [Nat.reducePow]; omega
     let s1 : State := { s with pc := s.pc + 4 }
     have r1 : Reach P code s s1 :=
