@@ -412,7 +412,7 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     rw [← htk]; exact hty.take ps.length
   have hfs : CallOutcome P code E.toShared (need k) ps rs sl.values
       (Wasm.run f m k st sl.values) t :=
-    hcl k (target, ps, rs) hk f (by omega) st sl.values t
+    hcl.2 k (target, ps, rs) hk f (by omega) st sl.values t
       (show ps.length ≤ sl.values.length by omega) htargs pt
       (hinv.frame.stack.congr tsp t18) hsrt hargs
   simp only [execOne.eq_def]

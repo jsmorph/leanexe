@@ -15,6 +15,10 @@ import LeanExe.A64.Proof.Addr
 import LeanExe.A64.Proof.Arith
 import LeanExe.A64.Proof.Bits
 import LeanExe.A64.Proof.Boot
+import LeanExe.A64.Proof.ByteMemory
+import LeanExe.A64.Proof.BytesMain
+import LeanExe.A64.Proof.BytesProgram
+import LeanExe.A64.Proof.BytesRuns
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Clear
 import LeanExe.A64.Proof.Constructs

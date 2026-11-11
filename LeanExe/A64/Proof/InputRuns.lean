@@ -8,7 +8,10 @@ the receiver at its first read and no poll done, when the receiver delivers the 
 with a status that `T ws` allows; and when a byte among those it reads carries an error flag after
 bytes without one, it reaches the exit word with status 65 and writes nothing.  `input_runs` gives
 `InputRuns` from the compiler's theorem of the function that the program calls, and
-`image_input_run` joins it to the startup, as `image_run` joins `ProgramRuns`.
+`image_input_run` joins it to the startup, as `image_run` joins `ProgramRuns`.  `genInProgram`
+places the same program at every base (`genInProgram_shift`), so `image_input_run_at` states the
+run of an image at every base that is a multiple of 4096 from the kernel's check of the image at
+one base.
 -/
 
 namespace LeanExe.A64
@@ -55,6 +58,120 @@ theorem genInProgram_length {m : Module} {k n : Nat} {uart base room : UInt64} {
     simp only [inMainSize, List.length_append, movImm_length, List.length_cons, List.length_nil,
       readWords_length n 0 hr]
     omega) hfs
+
+/-! ## The programs and images at every base -/
+
+theorem readByte_shift {a err d : UInt64} {δ : Int} {r : Fin 32} {b : Nat} {is : List Instr}
+    (hg : readByte a err r b = .ok is) (ha : MovesFrom d δ a 10) (he : Moves d δ err) :
+    readByte (a + d) (err + d) r b = .ok is := by
+  unfold readByte at hg ⊢
+  cases hb1 : cbField (after a 3) (after a 1) with
+  | error e => simp [hb1, bind, Except.bind] at hg
+  | ok back =>
+  cases hb2 : cbField (after a 6) err with
+  | error e => simp [hb1, hb2, bind, Except.bind] at hg
+  | ok fail =>
+  simp only [hb1, hb2, bind, Except.bind, pure, Except.pure, Except.ok.injEq] at hg
+  subst hg
+  simp only [after_shift, cbField_shift (ha 3 (by omega)) (ha 1 (by omega)) hb1,
+    cbField_shift (ha 6 (by omega)) he hb2, bind, Except.bind, pure, Except.pure]
+
+theorem readBytes_shift {err d : UInt64} {δ : Int} {r : Fin 32} (he : Moves d δ err) :
+    ∀ c b {a : UInt64} {is : List Instr}, readBytes err r a b c = .ok is →
+      MovesFrom d δ a (10 * c) → readBytes (err + d) r (a + d) b c = .ok is
+  | 0, b, a, is, hg, _ => hg
+  | c + 1, b, a, is, hg, ha => by
+      simp only [readBytes] at hg ⊢
+      cases h1 : readByte a err r b with
+      | error e => simp [h1, bind, Except.bind] at hg
+      | ok first =>
+      cases h2 : readBytes err r (after a 10) (b + 1) c with
+      | error e => simp [h1, h2, bind, Except.bind] at hg
+      | ok rest =>
+      simp only [h1, h2, bind, Except.bind, pure, Except.pure] at hg
+      have h1' := readByte_shift h1 (ha.le (by omega)) he
+      have h2' := readBytes_shift he c (b + 1) h2
+        ((ha.drop (m := 10) (by omega)).le (by omega))
+      simp only [after_shift, h1', h2', bind, Except.bind, pure, Except.pure]
+      exact hg
+
+theorem readWords_shift {err d : UInt64} {δ : Int} (he : Moves d δ err) :
+    ∀ c i {a : UInt64} {is : List Instr}, readWords err a i c = .ok is →
+      MovesFrom d δ a (81 * c) → readWords (err + d) (a + d) i c = .ok is
+  | 0, i, a, is, hg, _ => hg
+  | c + 1, i, a, is, hg, ha => by
+      simp only [readWords] at hg ⊢
+      cases h1 : readBytes err ⟨i % 32, Nat.mod_lt _ (by decide)⟩ (after a 1) 0 8 with
+      | error e => simp [h1, bind, Except.bind] at hg
+      | ok bytes =>
+      cases h2 : readWords err (after a 81) (i + 1) c with
+      | error e => simp [h1, h2, bind, Except.bind] at hg
+      | ok rest =>
+      simp only [h1, h2, bind, Except.bind, pure, Except.pure] at hg
+      have h1' := readBytes_shift he 8 0 h1 ((ha.drop (m := 1) (by omega)).le (by omega))
+      have h2' := readWords_shift he c (i + 1) h2 ((ha.drop (m := 81) (by omega)).le (by omega))
+      simp only [after_shift, h1', h2', bind, Except.bind, pure, Except.pure]
+      exact hg
+
+theorem genInMain_length {a e uart room base : UInt64} {n : Nat} {o : Output}
+    {main : List Instr} (hg : genInMain a e n uart room base o = .ok main) :
+    main.length = inMainSize n o := by
+  obtain ⟨-, reads, exit, hr, -, hs⟩ := gen_inMain hg
+  rw [hs.length]
+  simp only [inMainSize, List.length_append, movImm_length, List.length_cons, List.length_nil,
+    readWords_length n 0 hr]
+  omega
+
+/-- The entry routine of `genInMain` at `a + d`, with its function's entry and its exit word
+shifted by `d`, is the one at `a`, when the shift moves its addresses, the entry, and the exit
+word by the same number. -/
+theorem genInMain_shift {a e uart room base d : UInt64} {δ : Int} {n : Nat} {o : Output}
+    {main : List Instr} (hg : genInMain a e n uart room base o = .ok main)
+    (ha : MovesFrom d δ a main.length) (he : Moves d δ e) (hb : Moves d δ base) :
+    genInMain (a + d) (e + d) n uart room (base + d) o = .ok main := by
+  have hl := genInMain_length hg
+  unfold inMainSize at hl
+  rw [hl] at ha
+  unfold genInMain at hg ⊢
+  by_cases hc : n > 8
+  · simp [hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  cases hr : readWords (after a (8 + (7 + 81 * n) + 1 + 4 + outSize o + 7)) (after a 15) 0 n with
+  | error err => simp [hc, hr, bind, Except.bind] at hg
+  | ok reads =>
+  cases hbl : bField (after a (8 + (7 + 81 * n))) e with
+  | error err => simp [hc, hr, hbl, bind, Except.bind] at hg
+  | ok g =>
+  cases hgo : genOut (after a (13 + (7 + 81 * n))) o with
+  | error err => simp [hc, hr, hbl, hgo, bind, Except.bind] at hg
+  | ok out =>
+  cases hx : bField (after (after a (8 + (7 + 81 * n) + 1 + 4 + outSize o + 7)) 4) base with
+  | error err => simp [hc, hr, hbl, hgo, hx, bind, Except.bind] at hg
+  | ok exit =>
+  have hr' := readWords_shift (ha _ (by omega)) n 0 hr
+    ((ha.drop (m := 15) (by omega)).le (by omega))
+  have hbl' := bField_shift (ha _ (by omega)) he hbl
+  have hgo' := genOut_shift hgo ((ha.drop (m := 13 + (7 + 81 * n)) (by omega)).le (by omega))
+  have hx' := bField_shift (by rw [after_after]; exact ha _ (by omega)) hb hx
+  rw [← hg]
+  simp only [hc, ite_false, after_shift, hr, hr', hbl, hbl', hgo, hgo', hx, hx', bind,
+    Except.bind, pure, Except.pure]
+
+/-- `genInProgram` places the same program at every base where it lies below 2^64. -/
+theorem genInProgram_shift {m : Module} {k n : Nat} {uart base room : UInt64} {cap : Nat}
+    {o : Output} {p : List Instr} {d : UInt64}
+    (hg : genInProgram m k n uart base room cap o = .ok p)
+    (h1 : base.toNat + 4 * p.length < 2 ^ 64) (h2 : (base + d).toNat + 4 * p.length < 2 ^ 64) :
+    genInProgram m k n uart (base + d) room cap o = .ok p :=
+  genProgramWith_shift hg (fun _ _ hmg => genInMain_length hmg)
+    (fun _ _ _ hmg ha he _ => by
+      rw [after_shift]
+      exact genInMain_shift hmg (by
+        rw [genInMain_length hmg]
+        exact (ha.drop (m := 1) (by omega)).le (by omega)) he ha.base) h1 h2
+
+theorem genInProgram_shiftsBy (m : Module) (k n : Nat) (room : UInt64) (cap : Nat) (o : Output)
+    (d : UInt64) : ShiftsBy (fun base => genInProgram m k n uartAddr base room cap o) d :=
+  fun _ _ hp h1 h2 => genInProgram_shift hp h1 h2
 
 /-- A receiver that delivers the bytes of words `ws` gives each word's bytes to the reads. -/
 theorem delivers_rxSum {rx : Rx} {ws : List UInt64} (hd : rx.Delivers (ws.flatMap bytesOf))
@@ -208,5 +325,85 @@ theorem image_input_run {m : Module} {k n : Nat} {room : UInt64} {cap : Nat} {o 
     show b'.core.io.out = b.core.io.out ++ [65]
     rw [ho', show ms.io.out = b.core.io.out from ho.trans (congrArg Io.out hout1), hx]
     rfl
+
+/-- The bytes of memory that the image of `genInImage` at `image` uses from its start: the size in
+its header, which covers the area and the stack. -/
+def imageInSize (m : Module) (k n : Nat) (room : UInt64) (cap : Nat) (o : Output)
+    (image : UInt64) : Nat :=
+  match genInImage m k n room cap o image with
+  | .ok (_, L) => L.size
+  | .error _ => 0
+
+/-- The image of `genInImage` at `image + d` has as many program instructions as the image at
+`image`, under the premises of `genImageWith_shift`. -/
+theorem imageInProgLength_shift {m : Module} {k n : Nat} {room : UInt64} {cap : Nat}
+    {o : Output} {image d : UInt64} {bytes : List UInt8} {L : Layout}
+    (hg : genInImage m k n room cap o image = .ok (bytes, L))
+    (hlo : 0x40000000 ≤ (image + d).toNat) (hhi : (image + d).toNat + L.size ≤ 0x80000000) :
+    imageInProgLength m k n room cap o (image + d) = imageInProgLength m k n room cap o image := by
+  obtain ⟨prog, start, hp, rfl, -, hhi0, -, -, -⟩ := gen_imageWith hg
+  have hsz := (layoutOf_fields image prog.length m cap room).2.2.2.2.2.2.2.2
+  have hv := vecOff_ge prog.length
+  have hao := areaOff_ge prog.length
+  unfold tabOff at hao
+  have h70 : startupLength = 70 := rfl
+  have e1 : (image + UInt64.ofNat (64 + 4 * startupLength)).toNat = image.toNat + 344 := by
+    rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
+    exact Nat.mod_eq_of_lt (by omega)
+  have e2 : (image + d + UInt64.ofNat (64 + 4 * startupLength)).toNat =
+      (image + d).toNat + 344 := by
+    rw [UInt64.toNat_add, toNat_ofNat_lt (by omega)]
+    exact Nat.mod_eq_of_lt (by omega)
+  have hp' := genInProgram_shift hp (by rw [e1]; omega) (by rw [← add_right_comm', e2]; omega)
+  rw [← add_right_comm'] at hp'
+  simp only [imageInProgLength, hp, hp']
+
+/-- `image_input_run` at every base `B` that is a multiple of 4096 and whose image lies in the RAM
+GiB, given the kernel's check of the image at one base `image`: the image's bytes are the same at
+both bases, and so are its program's instructions. -/
+theorem image_input_run_at {m : Module} {k n : Nat} {room : UInt64} {cap : Nat} {o : Output}
+    {image : UInt64} {nb len : Nat} (h : Hw) {B : UInt64} {b : Boot}
+    (hk : bytesOk (genInImage m k n room cap o image) nb len = true)
+    (hroom : room.toNat % 16 = 0) (hroom' : 4096 ≤ room.toNat) (himg : image.toNat % 4096 = 0)
+    (hB : B.toNat % 4096 = 0) (hlo : 0x40000000 ≤ B.toNat)
+    (hhi : B.toNat + imageInSize m k n room cap o image ≤ 0x80000000)
+    (hm : ∀ j < len, b.core.mem (B + UInt64.ofNat j) = byteAt nb j)
+    (hpc : b.core.pc = B) (hoff : b.mmuOff)
+    (hio : b.core.io.rxNext = 0 ∧ b.core.io.rxPolls = 0)
+    {Out : List UInt64 → List UInt8} {T : List UInt64 → UInt64 → Prop}
+    (hprog : InputRuns m k n room cap o Out T) :
+    (∀ ws : List UInt64, ws.length = n → h.rx.Delivers (ws.flatMap bytesOf) →
+      ∃ b', BootReach h (protectedBytes B (imageInProgLength m k n room cap o image))
+          (fetchFrom b.core.mem B (codeWords (imageInProgLength m k n room cap o image))) b b' ∧
+        fetchFrom b.core.mem B (codeWords (imageInProgLength m k n room cap o image))
+          b'.core.pc = some (encode .hvc0) ∧
+        b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
+        (b'.core.out = b.core.out ++ Out ws ++ [0] ∨
+          ∃ c, T ws c ∧ b'.core.out = b.core.out ++ [c.toUInt8])) ∧
+    (∀ j < 8 * n, (∀ i < j, ¬ h.rx.Flagged i) → h.rx.Flagged j →
+      ∃ b', BootReach h (protectedBytes B (imageInProgLength m k n room cap o image))
+          (fetchFrom b.core.mem B (codeWords (imageInProgLength m k n room cap o image))) b b' ∧
+        fetchFrom b.core.mem B (codeWords (imageInProgLength m k n room cap o image))
+          b'.core.pc = some (encode .hvc0) ∧
+        b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧ b'.core.out = b.core.out ++ [65]) := by
+  obtain ⟨bytes, L, hg, -, -⟩ := of_bytesOk hk
+  have hBd : image + (B - image) = B := by rw [UInt64.add_comm, UInt64.sub_add_cancel]
+  have hd : (B - image).toNat % 4096 = 0 := by
+    have := image.toNat_lt
+    have := B.toNat_lt
+    rw [UInt64.toNat_sub]
+    omega
+  have hsize : imageInSize m k n room cap o image = L.size := by simp only [imageInSize, hg]
+  have hhi' : (image + (B - image)).toNat + L.size ≤ 0x80000000 := by
+    rw [hBd, ← hsize]; exact hhi
+  have hlo' : 0x40000000 ≤ (image + (B - image)).toNat := by rw [hBd]; exact hlo
+  have hk' := bytesOkWith_shift (genInProgram_shiftsBy m k n room cap o _) hk hd hlo'
+    (fun bytes' L' hg' => by
+      cases hg.symm.trans hg'
+      exact hhi')
+  have hN := imageInProgLength_shift hg hlo' hhi'
+  rw [hBd] at hk' hN
+  rw [← hN]
+  exact image_input_run h hk' hB hroom hroom' hm hpc hoff hio hprog
 
 end LeanExe.A64

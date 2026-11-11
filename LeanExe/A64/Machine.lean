@@ -24,11 +24,13 @@ The UART's receiver is the PL011's of QEMU's virt machine, whose flag register U
 bytes above its data register UARTDR (PrimeCell UART (PL011) Technical Reference Manual, ARM DDI
 0183G, Table 3-1).  A record `Rx` of the platform gives the values that reads of the two registers
 return, and the state counts the bytes read and the reads of UARTFR since the last read of UARTDR.
-A 32-bit load of UARTFR for byte `j` returns `Rx.fr`, whose bit 4, RXFE, is set while the byte has
-not arrived, and a load of UARTDR after a read of UARTFR that found RXFE clear returns the byte's
-word, with the byte in bits 7 to 0 and its error flags in bits 11 to 8 (Table 3-2), and moves to
-the next byte.  The model runs a 32-bit load at no other address, and it stops at a load of UARTDR
-before a read of UARTFR has found RXFE clear.
+`Platform.devLoad` gives the value and the counts after a 32-bit load of either register, and
+`exec` and the semantics of Isla's traces in `LeanExe/A64/Isla/Trace.lean` both take a device
+load's effect from it.  A 32-bit load of UARTFR for byte `j` returns `Rx.fr`, whose bit 4, RXFE, is
+set while the byte has not arrived, and a load of UARTDR after a read of UARTFR that found RXFE
+clear returns the byte's word, with the byte in bits 7 to 0 and its error flags in bits 11 to 8
+(Table 3-2), and moves to the next byte.  The model runs a 32-bit load at no other address, and it
+stops at a load of UARTDR before a read of UARTFR has found RXFE clear.
 
 The state holds the low 64 bits of the SIMD and floating-point registers V0 to V31, the registers
 D0 to D31, since the double-precision forms read and write only those bits.  A single-precision
@@ -103,9 +105,22 @@ structure State where
 /-- The bytes written to the UART. -/
 def State.out (s : State) : List UInt8 := s.io.out
 
-/-- The instruction forms of the model, all with 64-bit or double-precision registers but `orrW`
-and the single-precision forms.  A register field is the 5-bit number of the encoding, and an
-immediate field is the encoding's unsigned field. -/
+/-- A 32-bit load of the UART's register at `a` from the UART's state `io`: the value that the
+receiver returns and the UART's state after the read, or `none` when the model stops.  A load of
+UARTFR, 0x18 bytes above UARTDR, returns `Rx.fr` of the next byte and the polls so far and counts
+the poll.  A load of UARTDR after a poll that found RXFE clear returns the next byte's word and
+moves to the byte after it.  Every other load, a load of UARTDR before RXFE has been seen clear
+among them, stops the model. -/
+def Platform.devLoad (P : Platform) (io : Io) (a : UInt64) : Option (UInt32 × Io) :=
+  if a = P.uart + 0x18 then
+    some (P.rx.fr io.rxNext io.rxPolls, { io with rxPolls := io.rxPolls + 1 })
+  else if a = P.uart ∧ P.rx.wait io.rxNext < io.rxPolls then
+    some (P.rx.word io.rxNext, { io with rxNext := io.rxNext + 1, rxPolls := 0 })
+  else none
+
+/-- The instruction forms of the model, all with 64-bit or double-precision registers but `orrW`,
+`ldrW`, `ldrb`, and the single-precision forms.  A register field is the 5-bit number of the
+encoding, and an immediate field is the encoding's unsigned field. -/
 inductive Instr where
   /-- `MOVZ Xd, #imm, LSL #(16 * hw)`. -/
   | movz (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
@@ -135,6 +150,8 @@ inductive Instr where
   /-- `LDR Wt, [Xn|SP, #(4 * imm)]`, a 32-bit load, which the model runs only at the UART's data
   and flag registers. -/
   | ldrW (t n : Fin 32) (imm : Fin 4096)
+  /-- `LDRB Wt, [Xn|SP, #imm]`, which loads a byte zero-extended into `Xt`. -/
+  | ldrb (t n : Fin 32) (imm : Fin 4096)
   /-- `B` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
   | b (imm : Fin 67108864)
   /-- `BL` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
@@ -327,6 +344,7 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 1024 = 0x78E00 then some (.fcvtzsWS d n)
   else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmpS n m)
   else if v / 4194304 = 0x2E5 then some (.ldrW d n imm12)
+  else if v / 4194304 = 0xE5 then some (.ldrb d n imm12)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -468,14 +486,12 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
       else if P.normal a then some { s with mem := store8 s.mem a v, pc := next }
       else none
   | .ldrW t n imm =>
-      let a := s.xsp n + UInt64.ofNat (4 * imm.val)
-      let j := s.io.rxNext
-      let i := s.io.rxPolls
       if !s.spAligned n then none
-      else if a = P.uart + 0x18 then
-        some { s.devRead t (P.rx.fr j i) with io := { s.io with rxPolls := i + 1 } }
-      else if a = P.uart ∧ P.rx.wait j < i then
-        some { s.devRead t (P.rx.word j) with io := { s.io with rxNext := j + 1, rxPolls := 0 } }
+      else (P.devLoad s.io (s.xsp n + UInt64.ofNat (4 * imm.val))).map fun r =>
+        { s.devRead t r.1 with io := r.2 }
+  | .ldrb t n imm =>
+      let a := s.xsp n + UInt64.ofNat imm.val
+      if s.spAligned n && P.normal a then some { s.setX t (s.mem a).toUInt64 with pc := next }
       else none
   | .b imm => some { s with pc := s.pc + sext 26 imm.val * 4 }
   | .bl imm => some { s.setX 30 next with pc := s.pc + sext 26 imm.val * 4 }

@@ -74,6 +74,12 @@ lean_exe «m7-windows» where
   srcDir := "tests"
   root := `TestSupport.M7.WindowsMain
 
+-- The comparison of the AArch64 encoder with the GNU assembler (tests/baremetal/a64-encode.sh);
+-- not a default target.
+lean_exe «a64-encode» where
+  srcDir := "tests"
+  root := `TestSupport.A64.EncodeMain
+
 -- The arm64 Images of the AArch64 back end's bare-metal programs (tests/baremetal/a64-images.sh);
 -- not a default target.
 lean_exe «a64-programs» where

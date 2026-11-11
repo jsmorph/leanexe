@@ -33,8 +33,9 @@ outcome, as does a false `assert`, while a false `assume` and every ill-formed e
 `fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and
 `branch-address` and the result of a write have no effect.  The model's `State` holds the
 registers `R0` to `R30`, `SP_EL1`, `_PC`, the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the low
-64 bits of each element of `_Z`, the bytes of memory, and the UART's output and the counts of its
-reads, which no trace changes.  `σ` holds every other register by name, the upper bits of `_Z`,
+64 bits of each element of `_Z`, the bytes of memory, the UART's output, which a byte written at
+the UART extends by reading 5, and the counts of the UART's reads, which a read of the UART's
+registers advances by reading 12.  `σ` holds every other register by name, the upper bits of `_Z`,
 and `PSTATE`'s other fields in a struct.  The outcome of a path that ends holds the model's state
 and `σ`, so that a theorem can state the whole effect of the instruction's decode and execution.
 An `ite` evaluates both branches, which differs from Islaris only where a branch cannot be
@@ -102,10 +103,19 @@ e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
    partial function of the arguments' values.  The event ends the path in `fail` where `A` gives no
    result, and without an outcome where the variable differs from the result, as a read does.  A
    theorem states the meaning that it assumes as a hypothesis on `A`.
-12. A read of 4 bytes at `P.uart` or `P.uart + 0x18`, the UART's data and flag registers, takes
-   its value from the device, beside reading 5 for a byte written at `P.uart`: the read leaves
-   the value of its variable free, so that the variable takes every value of its width.  The rule
-   compares the read's 64-bit address with the two registers' addresses as natural numbers.
+12. A read of 4 bytes at `P.uart` or `P.uart + 0x18`, the UART's data and flag registers, is a
+   device read, beside reading 5 for a byte written at `P.uart`.  `Platform.devLoad` of the
+   model, which `exec` also uses for `LDR Wt`, gives from the state's counts the value that the
+   read returns and the counts after it.  The read's variable must hold that value, as a read of
+   memory must hold the bytes, and the path continues with the counts that it gives; where
+   `devLoad` gives nothing, the path ends without an outcome.  Isla's `read_symbolic` declares a
+   fresh variable for every value that a read of memory returns and records the read
+   (`isla-lib/src/memory.rs` 613-669), and Islaris takes a read outside the memory that its state
+   holds as a device's, which emits an event with the read's value (`theories/opsem.v` 517-523).
+   The event's address is the physical address that the translation gives, and the traces of
+   `tests/isla` reach the UART through the identity block of the first GiB, under which the
+   physical address equals the virtual one.  The rule compares the read's 64-bit address with the
+   two registers' addresses as natural numbers.
 -/
 
 namespace LeanExe.A64.Isla
@@ -643,7 +653,9 @@ def Trace.Run (P : Platform) (A : Abstract) : Trace → Vars → State → Sys �
     | some (.bits w x), some (.bits 64 y) =>
       if w = 8 * k then
         if k = 4 ∧ (y = P.uart.toNat ∨ y = (P.uart + 0x18).toNat) then
-          t.Run P A ρ s σ o
+          match P.devLoad s.io (.ofNat y) with
+          | some (v, io) => x = v.toNat ∧ t.Run P A ρ { s with io } σ o
+          | none => False
         else x = bytes s.mem (.ofNat y) k ∧ t.Run P A ρ s σ o
       else o = .fail
     | _, _ => o = .fail

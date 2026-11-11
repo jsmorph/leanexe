@@ -15,6 +15,9 @@ first and no byte with an error flag, the machine reaches `HVC #0` with X0 holdi
 `SYSTEM_OFF`, every store to the UART complete, and the UART's output extended by the eight bytes
 of `gcd x y` and the status 0.  `gcd_uart_flag` states that when byte `j` of the first sixteen
 carries an error flag and no byte before it does, the output is extended by the status 65 alone.
+`gcd_uart_at` and `gcd_uart_flag_at` state the same of the file's bytes at every base `B` that is
+a multiple of 4096, with the image's memory, `gcdUartMemSize` bytes from `B`, in the RAM GiB, from
+`image_input_run_at`.
 -/
 
 namespace TestSupport.A64.ImageFilesUart
@@ -62,8 +65,44 @@ theorem gcd_uart_flag (h : Hw) (b : Boot)
   (image_input_run h gcduart_file (by decide) (by decide) (by decide) hm hpc hoff hio
     (Uart.uart_runs room cap)).2 j hj hpre hf
 
+/-- The bytes of memory that the image uses from its start, the size in its header. -/
+def gcdUartMemSize : Nat := imageInSize loopCompiled.module 2 2 room cap .word imageBase
+
+theorem gcd_uart_at (h : Hw) (b : Boot) (B : UInt64) (hB : B.toNat % 4096 = 0)
+    (hlo : 0x40000000 ≤ B.toNat) (hhi : B.toNat + gcdUartMemSize ≤ 0x80000000)
+    (hm : ∀ j < gcdUartSize, b.core.mem (B + UInt64.ofNat j) = byteAt gcdUartBytes j)
+    (hpc : b.core.pc = B) (hoff : b.mmuOff)
+    (hio : b.core.io.rxNext = 0 ∧ b.core.io.rxPolls = 0) (x y : UInt64)
+    (hd : h.rx.Delivers (bytesOf x ++ bytesOf y)) :
+    ∃ b', BootReach h (protectedBytes B gcdUartLength)
+        (fetchFrom b.core.mem B (codeWords gcdUartLength)) b b' ∧
+      fetchFrom b.core.mem B (codeWords gcdUartLength) b'.core.pc = some (encode .hvc0) ∧
+      b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
+      b'.core.out = b.core.out ++ LeanExe.Native.encodeWord (gcd x y) ++ [0] := by
+  obtain ⟨b', r, hc, hx, hu, ho⟩ := (image_input_run_at h gcduart_file (by decide) (by decide)
+    (by decide) hB hlo hhi hm hpc hoff hio (Uart.uart_runs room cap)).1 [x, y] rfl
+    (by show h.rx.Delivers (bytesOf x ++ (bytesOf y ++ [])); rw [List.append_nil]; exact hd)
+  rcases ho with ho | ⟨_, hf, -⟩
+  · exact ⟨b', r, hc, hx, hu, ho⟩
+  · exact hf.elim
+
+theorem gcd_uart_flag_at (h : Hw) (b : Boot) (B : UInt64) (hB : B.toNat % 4096 = 0)
+    (hlo : 0x40000000 ≤ B.toNat) (hhi : B.toNat + gcdUartMemSize ≤ 0x80000000)
+    (hm : ∀ j < gcdUartSize, b.core.mem (B + UInt64.ofNat j) = byteAt gcdUartBytes j)
+    (hpc : b.core.pc = B) (hoff : b.mmuOff)
+    (hio : b.core.io.rxNext = 0 ∧ b.core.io.rxPolls = 0) (j : Nat) (hj : j < 16)
+    (hpre : ∀ i < j, ¬ h.rx.Flagged i) (hf : h.rx.Flagged j) :
+    ∃ b', BootReach h (protectedBytes B gcdUartLength)
+        (fetchFrom b.core.mem B (codeWords gcdUartLength)) b b' ∧
+      fetchFrom b.core.mem B (codeWords gcdUartLength) b'.core.pc = some (encode .hvc0) ∧
+      b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧ b'.core.out = b.core.out ++ [65] :=
+  (image_input_run_at h gcduart_file (by decide) (by decide) (by decide) hB hlo hhi hm hpc hoff
+    hio (Uart.uart_runs room cap)).2 j hj hpre hf
+
 #print axioms gcduart_file
 #print axioms gcd_uart
 #print axioms gcd_uart_flag
+#print axioms gcd_uart_at
+#print axioms gcd_uart_flag_at
 
 end TestSupport.A64.ImageFilesUart
