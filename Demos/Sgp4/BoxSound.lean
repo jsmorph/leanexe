@@ -338,6 +338,42 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
     · rcases vals with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
     · rcases vals with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
 
+/-- The statuses that the enclosing program returns. -/
+theorem box_status_values (logTab expTab : Array UInt64) (n e incl node argp m bstar t : Interval) :
+    let s := (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t).status
+    s = 0 ∨ s = 1 ∨ s = 2 ∨ s = 4 ∨ s = 6 ∨ s = 7 ∨ s = 8 ∨ s = 9 := by
+  intro s
+  have hr : (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 0 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 2 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 7 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 8 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 9 :=
+    initStatus_values _ _ _ _
+  simp only [s, sgp4BoxWith, propagateBoxWith]
+  generalize initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar = r at hr ⊢
+  by_cases h0 : (r.1 == 0) = true
+  · simp only [h0, ite_true]
+    generalize Spec.wgs72StateI Trig.invPi Trig.halfPi logTab expTab t r.2 = q
+    generalize hst : stateStatus _ _ _ _ _ = st
+    have hv := stateStatus_values (sub q.1 (ofInt 1)) (add q.1 (ratio 1 1000)) q.2.1
+      (sub q.2.2.1 (ofInt 1)) (q.2.2.2.1.status == 0 && q.2.2.2.2.1.status == 0 &&
+        q.2.2.2.2.2.1.status == 0 && q.2.2.2.2.2.2.1.status == 0 &&
+        q.2.2.2.2.2.2.2.1.status == 0 && q.2.2.2.2.2.2.2.2.status == 0)
+    rw [hst] at hv
+    by_cases h6 : (st == 0 || st == 6) = true
+    · simp only [h6, ite_true]
+      rcases hv with v | v | v | v | v <;> simp [v]
+    · simp only [h6, Bool.false_eq_true, ite_false, noBox]
+      rcases hv with v | v | v | v | v <;> simp [v]
+  · simp only [h0, Bool.false_eq_true, ite_false, noBox]
+    rcases hr with v | v | v | v | v <;> simp [v]
+
+/-- What the enclosing program states of a result for an element set and a time that its input
+intervals contain: the intervals of a result with status 0 or 6 contain the model's position and
+velocity, and a status other than 7 is the model's status. -/
+def BoxMeets (b : Box) (el : Model.Elements) (t' : ℝ) : Prop :=
+  ((b.status = 0 ∨ b.status = 6) → Inside b el t') ∧ (b.status ≠ 7 → Model.status el t' = b.status)
+
 /-- **`sgp4Box_sound`.**  For intervals that contain an element set and a time, the intervals of
 a result with status 0 or 6 contain the model's position and velocity. -/
 theorem sgp4Box_sound (hi : Input n e incl node argp m bstar el) (ht : Encloses t t')
@@ -374,5 +410,20 @@ theorem status_sound (hi : Input n e incl node argp m bstar el) (ht : Encloses t
   · obtain ⟨a1, a2⟩ := c8 v
     rw [v]; exact Model.status_deep a1 a2
   · rw [v]; exact Model.status_invalid (c9 v)
+
+theorem box_meets (hi : Input n e incl node argp m bstar el) (ht : Encloses t t') :
+    BoxMeets (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t) el
+      t' := by
+  refine ⟨sgp4Box_sound hi ht, fun h7 => status_sound hi ht rfl ?_⟩
+  rcases box_status_values logTab expTab n e incl node argp m bstar t with
+    v | v | v | v | v | v | v | v
+  · exact .inl v
+  · exact .inr (.inl v)
+  · exact .inr (.inr (.inl v))
+  · exact .inr (.inr (.inr (.inl v)))
+  · exact .inr (.inr (.inr (.inr (.inl v))))
+  · exact absurd v h7
+  · exact .inr (.inr (.inr (.inr (.inr (.inl v)))))
+  · exact .inr (.inr (.inr (.inr (.inr (.inr v)))))
 
 end Demos.Sgp4
