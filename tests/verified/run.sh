@@ -15,7 +15,9 @@
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
 # theorem module as well.  For the CE and LE program, it runs the axiom audit of
 # tests/conjunction/AccuracyAxioms.lean, and with --cases accuracy it checks the program's file
-# theorem module as well.  For the SGP4 program, it runs the axiom audit of
+# theorem module as well.  For the chi-square programs, it runs the axiom audit of
+# tests/gate/ChiSquareAxioms.lean, and with --cases chisquare it checks the module's file theorems
+# as well.  For the SGP4 program, it runs the axiom audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
@@ -131,6 +133,8 @@ elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
 elif [ "$case_module" = "accuracy" ]; then
   cases_exe=verified-cases-accuracy
+elif [ "$case_module" = "chisquare" ]; then
+  cases_exe=verified-cases-chisquare
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "sgp4box" ]; then
@@ -172,6 +176,10 @@ if [ -z "$reference" ]; then
   if runs accuracy; then targets+=($(imports tests/conjunction/AccuracyAxioms.lean)); fi
   if [ "$case_module" = "accuracy" ]; then
     targets+=(Demos.Conjunction.AccuracyVerified $(imports Demos/Conjunction/AccuracyFile.lean))
+  fi
+  if runs chisquare; then targets+=($(imports tests/gate/ChiSquareAxioms.lean)); fi
+  if [ "$case_module" = "chisquare" ]; then
+    targets+=(Demos.Gate.Verified $(imports Demos/Gate/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if [ "$case_module" = "sgp4" ]; then
@@ -330,6 +338,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "accuracy" ]; then
   check_axioms tests/conjunction/AccuracyAxioms.lean
   if [ "$case_module" = "accuracy" ]; then
     check_file accuracy Demos.Conjunction.AccuracyVerified Demos/Conjunction/AccuracyFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "chisquare" ]; then
+  check_axioms tests/gate/ChiSquareAxioms.lean
+  if [ "$case_module" = "chisquare" ]; then
+    check_file chisquare Demos.Gate.Verified Demos/Gate/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then

@@ -66,6 +66,10 @@ import Demos.Euler.Reference.Transport
 import Demos.Euler.Reference.Update
 import Demos.Euler.SpeedCounterexample
 import Demos.Euler.Words
+import Demos.Gate.Flat
+import Demos.Gate.Model
+import Demos.Gate.Program
+import Demos.Gate.Soundness
 import Demos.Gpt.Causal
 import Demos.Gpt.Exact
 import Demos.Gpt32.Compose
