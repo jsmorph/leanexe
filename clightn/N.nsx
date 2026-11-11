@@ -2,8 +2,9 @@
 ; language that clightn/nsx.py renders into Rocq and Lean and checks (clightn/README.md).  This
 ; file holds the symbol table, the leaf relations of the integer operator, cast, and condition
 ; forms, the per-form statements, the relations of expressions, statements, calls, and whole
-; programs over temporaries and scalar globals, and the laws of the base symbols.  N describes
-; AArch64, where Archi.ptr64 is true.
+; programs over temporaries, scalar globals, and the bytes of arrays, the volatile accesses of the
+; bare-metal main, the loop of a main that runs forever, and the laws of the base symbols.  N
+; describes AArch64, where Archi.ptr64 is true.
 
 ; ---------------------------------------------------------------------------------------------
 ; Symbol table.  A sort, data constructor, base symbol, or interpreted symbol has one name in each
@@ -47,6 +48,8 @@
 (sort chunk (rocq AST.memory_chunk) (lean LClight.memory_chunk))
 (sort event (rocq Events.event) (lean LClight.event))
 (sort eventval (rocq Events.eventval) (lean LClight.eventval))
+(sort nat (rocq nat) (lean Nat))
+(sort Prop (rocq Prop) (lean Prop))
 
 (data true (rocq true) (lean Bool.true))
 (data false (rocq false) (lean Bool.false))
@@ -167,6 +170,9 @@
 (data Many32 (rocq AST.Many32) (lean LClight.memory_chunk.Many32))
 (data Many64 (rocq AST.Many64) (lean LClight.memory_chunk.Many64))
 (data Event_vstore (rocq Events.Event_vstore) (lean LClight.event.Event_vstore))
+(data Event_vload (rocq Events.Event_vload) (lean LClight.event.Event_vload))
+(data O (rocq O) (lean Nat.zero))
+(data S (rocq S) (lean Nat.succ))
 (data EVint (rocq Events.EVint) (lean LClight.eventval.EVint))
 
 ; Integer arithmetic and order, whose meaning the check trusts.
@@ -226,9 +232,10 @@
 (macro cc_default () (mkcallconv None false false))
 
 ; Sorts of N's states and of the program's lists: temporaries and scalar globals as partial maps
-; from identifiers to values, the program's definitions, and the bindings of parameters and
-; temporaries.
+; from identifiers to values, the bytes of each array as a map from identifiers and offsets to
+; numbers, the program's definitions, and the bindings of parameters and temporaries.
 (macro tmap () (-> ident (option val)))
+(macro amap () (-> ident (-> Z Z)))
 (macro dlist () (list (prod ident globdef)))
 (macro binds () (list (prod ident type)))
 
@@ -239,6 +246,38 @@
 
 ; Bit k of a.
 (macro bit (a k) (zmod (zdiv a (pow2 k)) 2))
+
+; Arrays.  An array of the program is a writable, non-volatile variable of n words of type
+; unsigned long long whose initialization data is one Init_space of its 8 n bytes, such as lx_mem
+; and lx_pun.  The translator reaches its bytes through three shapes of expression: the word at
+; the index i, *(x + i); the byte at the index i, ((unsigned char *) x)[i]; and the cell of type
+; ty at offset 0, *(ty *) x.
+(macro tarr (n) (Tarray (tulong) n (noattr)))
+(macro tpul () (Tpointer (tulong) (noattr)))
+(macro tpuc () (Tpointer (tuchar) (noattr)))
+(macro arr (defs x n)
+  (in_defs defs x (Gvar (mkglobvar (tarr n) (cons (Init_space (* 8 n)) nil) false false))))
+(macro word_e (x n i) (Ederef (Ebinop Oadd (Evar x (tarr n)) i (tpul)) (tulong)))
+(macro byte_e (x n i) (Ederef (Ebinop Oadd (Ecast (Evar x (tarr n)) (tpuc)) i (tpuc)) (tuchar)))
+(macro cell_e (x n ty) (Ederef (Ecast (Evar x (tarr n)) (Tpointer ty (noattr))) ty))
+
+; The offset of the word at the index k, as CompCert's pointer arithmetic computes it, and the
+; numbers that the four and the eight bytes of the array x of mb from offset o give in
+; little-endian order.
+(macro woff (k) (zmod (* 8 (u64 k)) 18446744073709551616))
+(macro le4 (mb x o)
+  (+ (mb x o) (+ (* 256 (mb x (+ o 1))) (+ (* 65536 (mb x (+ o 2))) (* 16777216 (mb x (+ o 3)))))))
+(macro le8 (mb x o)
+  (+ (le4 mb x o) (* 4294967296 (le4 mb x (+ o 4)))))
+
+; mb2 is mb with the c bytes of the array x from offset o set to the bytes of the number w that
+; is not negative, from the lowest.
+(macro setbytes (mb2 mb x o c w)
+  (forall ((y_sb ident) (j_sb Z))
+    (and (-> (and (= y_sb x) (and (<= o j_sb) (< j_sb (+ o c))))
+           (= (mb2 y_sb j_sb) (zmod (zdiv w (pow2 (* 8 (- j_sb o)))) 256)))
+         (-> (not (and (= y_sb x) (and (<= o j_sb) (< j_sb (+ o c)))))
+           (= (mb2 y_sb j_sb) (mb y_sb j_sb))))))
 
 ; The statement of a leaf form: the prover's operator, cast, or truth value at the form gives
 ; exactly the leaf relation.
@@ -448,16 +487,17 @@
   (iff (eval_expr ge e le m (Econst_long i ty) v) (= v (Vlong i)))))
 
 ; ---------------------------------------------------------------------------------------------
-; Statements, calls, and programs.  N runs a program over temporaries and scalar globals, each a
-; map from identifiers to values.  Its relations take the program's definitions as a parameter:
-; a call finds its function among them, and an access to a global its variable.  The scalar
-; globals are the writable, non-volatile variables of type unsigned int or unsigned long long,
-; and a volatile variable of type volatile unsigned int receives the stores of the bare-metal
-; main, each an event of the trace.  Clight's relations exec_stmt and eval_funcall of
-; ClightBigstep.v, with function_entry2, are the model of nexec, whose rule for a call executes
-; the callee's body.  NExec.v proves in Rocq that each derivation of N is one of CompCert's, and
-; Exec.lean proves in Lean that each execution of the Lean copy of a program that the
-; translator's forms make up is one of N's.
+; Statements, calls, and programs.  N runs a program over the temporaries and the scalar globals,
+; each a map from identifiers to values, and over the bytes of the arrays.  Its relations take the
+; program's definitions as a parameter: a call finds its function among them, and an access to a
+; global its variable.  The scalar globals are the writable, non-volatile variables of type
+; unsigned int or unsigned long long.  A volatile variable of type volatile unsigned int receives
+; the stores of the bare-metal main, and a volatile array of unsigned char or unsigned int the
+; loads and stores of its elements, each an event of the trace.  Clight's relations exec_stmt and
+; eval_funcall of ClightBigstep.v, with function_entry2, are the model of nexec, whose rule for a
+; call executes the callee's body.  NExec.v proves in Rocq that each derivation of N is one of
+; CompCert's, and Exec.lean proves in Lean that each execution of the Lean copy of a program that
+; the translator's forms make up is one of N's.
 
 ; Lists of definitions and of bindings.
 (relation in_defs () ((dlist) ident globdef)
@@ -518,6 +558,7 @@
   (ctor ht_single (forall ((f float32) (ty type)) (has_type (Econst_single f ty) ty)))
   (ctor ht_temp (forall ((x ident) (ty type)) (has_type (Etempvar x ty) ty)))
   (ctor ht_var (forall ((x ident) (ty type)) (has_type (Evar x ty) ty)))
+  (ctor ht_deref (forall ((a expr) (ty type)) (has_type (Ederef a ty) ty)))
   (ctor ht_binop (forall ((op binary_operation) (a1 expr) (a2 expr) (ty type))
     (has_type (Ebinop op a1 a2 ty) ty)))
   (ctor ht_cast (forall ((a expr) (ty type)) (has_type (Ecast a ty) ty))))
@@ -539,6 +580,13 @@
   (ctor io_int64 (forall ((x w64)) (init_ok (cons (Init_int64 x) nil))))
   (ctor io_space (forall ((n Z)) (init_ok (cons (Init_space n) nil)))))
 
+; The value of a volatile load of the chunk ch from an element of the type ty and the size sz,
+; whose event holds j.
+(relation vload_ok () (chunk type Z w32 val)
+  (ctor vl_uchar (forall ((j w32))
+    (vload_ok Mint8unsigned (tvuchar) 1 j (Vint (r32 (zmod (u32 j) 256))))))
+  (ctor vl_uint (forall ((j w32)) (vload_ok Mint32 (tvuint) 4 j (Vint j)))))
+
 ; The value of a function's result after the outcome of its body.
 (relation result_ok () (outcome type val)
   (ctor rs_normal (result_ok Out_normal Tvoid Vundef))
@@ -547,141 +595,281 @@
     (-> (not (= ty Tvoid))
       (-> (cast_ok t ty v v2) (result_ok (Out_return (Some (pair v t))) ty v2))))))
 
-; neval defs le gv a v: the expression a evaluates to v.
-(relation neval ((defs (dlist)) (le (tmap)) (gv (tmap))) (expr val)
-  (ctor nv_int (forall ((i w32) (ty type)) (neval defs le gv (Econst_int i ty) (Vint i))))
-  (ctor nv_long (forall ((i w64) (ty type)) (neval defs le gv (Econst_long i ty) (Vlong i))))
-  (ctor nv_float (forall ((f float) (ty type)) (neval defs le gv (Econst_float f ty) (Vfloat f))))
+; neval defs le gv mb a v: the expression a evaluates to v.  A word, byte, or cell of an array is
+; read from the bytes mb of the array within its 8 n bytes.
+(relation neval ((defs (dlist)) (le (tmap)) (gv (tmap)) (mb (amap))) (expr val)
+  (ctor nv_int (forall ((i w32) (ty type)) (neval defs le gv mb (Econst_int i ty) (Vint i))))
+  (ctor nv_long (forall ((i w64) (ty type)) (neval defs le gv mb (Econst_long i ty) (Vlong i))))
+  (ctor nv_float (forall ((f float) (ty type))
+    (neval defs le gv mb (Econst_float f ty) (Vfloat f))))
   (ctor nv_single (forall ((f float32) (ty type))
-    (neval defs le gv (Econst_single f ty) (Vsingle f))))
+    (neval defs le gv mb (Econst_single f ty) (Vsingle f))))
   (ctor nv_temp (forall ((x ident) (ty type) (v val))
-    (-> (= (le x) (Some v)) (neval defs le gv (Etempvar x ty) v))))
+    (-> (= (le x) (Some v)) (neval defs le gv mb (Etempvar x ty) v))))
   (ctor nv_global (forall ((x ident) (ty type) (init (list init_data)) (v val))
     (-> (in_defs defs x (Gvar (mkglobvar ty init false false))) (-> (scalar ty)
-      (-> (= (gv x) (Some v)) (neval defs le gv (Evar x ty) v))))))
+      (-> (= (gv x) (Some v)) (neval defs le gv mb (Evar x ty) v))))))
+  (ctor nv_word (forall ((x ident) (n Z) (i expr) (k w64))
+    (-> (arr defs x n) (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+      (-> (<= (+ (woff k) 8) (* 8 n))
+        (neval defs le gv mb (word_e x n i) (Vlong (r64 (le8 mb x (woff k)))))))))))
+  (ctor nv_byte (forall ((x ident) (n Z) (i expr) (k w64))
+    (-> (arr defs x n) (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+      (-> (< (u64 k) (* 8 n))
+        (neval defs le gv mb (byte_e x n i) (Vint (r32 (mb x (u64 k)))))))))))
+  (ctor nv_cell64 (forall ((x ident) (n Z))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (neval defs le gv mb (cell_e x n (tulong)) (Vlong (r64 (le8 mb x 0))))))))
+  (ctor nv_cell32 (forall ((x ident) (n Z))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (neval defs le gv mb (cell_e x n (tuint)) (Vint (r32 (le4 mb x 0))))))))
   (ctor nv_binop (forall ((op binary_operation) (a1 expr) (a2 expr) (ty type) (t1 type) (t2 type)
                           (v1 val) (v2 val) (v val))
-    (-> (neval defs le gv a1 v1) (-> (has_type a1 t1) (-> (neval defs le gv a2 v2)
+    (-> (neval defs le gv mb a1 v1) (-> (has_type a1 t1) (-> (neval defs le gv mb a2 v2)
       (-> (has_type a2 t2) (-> (binop_ok op t1 t2 v1 v2 v)
-        (neval defs le gv (Ebinop op a1 a2 ty) v))))))))
+        (neval defs le gv mb (Ebinop op a1 a2 ty) v))))))))
   (ctor nv_cast (forall ((a expr) (ty type) (t1 type) (v1 val) (v val))
-    (-> (neval defs le gv a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v)
-      (neval defs le gv (Ecast a ty) v)))))))
+    (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v)
+      (neval defs le gv mb (Ecast a ty) v)))))))
 
 ; The arguments of a call, each cast to its parameter's type.
-(relation neval_list ((defs (dlist)) (le (tmap)) (gv (tmap))) ((list expr) (list type) (list val))
-  (ctor nl_nil (neval_list defs le gv nil nil nil))
+(relation neval_list ((defs (dlist)) (le (tmap)) (gv (tmap)) (mb (amap)))
+    ((list expr) (list type) (list val))
+  (ctor nl_nil (neval_list defs le gv mb nil nil nil))
   (ctor nl_cons (forall ((a expr) (al (list expr)) (ty type) (tys (list type)) (t1 type) (v1 val)
                          (v val) (vs (list val)))
-    (-> (neval defs le gv a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v)
-      (-> (neval_list defs le gv al tys vs)
-        (neval_list defs le gv (cons a al) (cons ty tys) (cons v vs)))))))))
+    (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v)
+      (-> (neval_list defs le gv mb al tys vs)
+        (neval_list defs le gv mb (cons a al) (cons ty tys) (cons v vs)))))))))
 
-; nexec defs le gv s t le2 gv2 out: the statement s runs from the temporaries le and the scalar
-; globals gv to le2 and gv2 with the trace t and the outcome out.
-(relation nexec ((defs (dlist))) ((tmap) (tmap) statement (list event) (tmap) (tmap) outcome)
-  (ctor nx_skip (forall ((le (tmap)) (gv (tmap))) (nexec defs le gv Sskip nil le gv Out_normal)))
-  (ctor nx_set (forall ((le (tmap)) (gv (tmap)) (x ident) (a expr) (v val) (le2 (tmap)))
-    (-> (neval defs le gv a v) (-> (upd le2 le x v)
-      (nexec defs le gv (Sset x a) nil le2 gv Out_normal)))))
-  (ctor nx_store (forall ((le (tmap)) (gv (tmap)) (x ident) (ty type) (init (list init_data))
-                          (a expr) (t1 type) (v1 val) (v val) (gv2 (tmap)))
+; nexec defs le gv mb s t le2 gv2 mb2 out: the statement s runs from the temporaries le, the
+; scalar globals gv, and the bytes mb of the arrays to le2, gv2, and mb2 with the trace t and the
+; outcome out.
+(relation nexec ((defs (dlist)))
+    ((tmap) (tmap) (amap) statement (list event) (tmap) (tmap) (amap) outcome)
+  (ctor nx_skip (forall ((le (tmap)) (gv (tmap)) (mb (amap)))
+    (nexec defs le gv mb Sskip nil le gv mb Out_normal)))
+  (ctor nx_set (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (a expr) (v val)
+                        (le2 (tmap)))
+    (-> (neval defs le gv mb a v) (-> (upd le2 le x v)
+      (nexec defs le gv mb (Sset x a) nil le2 gv mb Out_normal)))))
+  (ctor nx_store (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (ty type)
+                          (init (list init_data)) (a expr) (t1 type) (v1 val) (v val)
+                          (gv2 (tmap)))
     (-> (in_defs defs x (Gvar (mkglobvar ty init false false))) (-> (scalar ty)
-      (-> (neval defs le gv a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v) (-> (gval ty v)
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v) (-> (gval ty v)
         (-> (upd gv2 gv x v)
-          (nexec defs le gv (Sassign (Evar x ty) a) nil le gv2 Out_normal))))))))))
-  (ctor nx_out (forall ((le (tmap)) (gv (tmap)) (x ident) (init (list init_data)) (a expr)
-                        (t1 type) (v1 val) (i w32))
+          (nexec defs le gv mb (Sassign (Evar x ty) a) nil le gv2 mb Out_normal))))))))))
+  (ctor nx_store_word (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (i expr)
+                               (k w64) (a expr) (t1 type) (v1 val) (w w64) (mb2 (amap)))
+    (-> (arr defs x n) (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+      (-> (<= (+ (woff k) 8) (* 8 n))
+        (-> (neval defs le gv mb a v1) (-> (has_type a t1)
+          (-> (cast_ok t1 (tulong) v1 (Vlong w)) (-> (setbytes mb2 mb x (woff k) 8 (u64 w))
+            (nexec defs le gv mb (Sassign (word_e x n i) a) nil le gv mb2 Out_normal)))))))))))
+  (ctor nx_store_byte (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (i expr)
+                               (k w64) (a expr) (t1 type) (v1 val) (c w32) (mb2 (amap)))
+    (-> (arr defs x n) (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+      (-> (< (u64 k) (* 8 n))
+        (-> (neval defs le gv mb a v1) (-> (has_type a t1)
+          (-> (cast_ok t1 (tuchar) v1 (Vint c)) (-> (setbytes mb2 mb x (u64 k) 1 (u32 c))
+            (nexec defs le gv mb (Sassign (byte_e x n i) a) nil le gv mb2 Out_normal)))))))))))
+  (ctor nx_store_cell64 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (a expr)
+                                 (t1 type) (v1 val) (w w64) (mb2 (amap)))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tulong) v1 (Vlong w))
+        (-> (setbytes mb2 mb x 0 8 (u64 w))
+          (nexec defs le gv mb (Sassign (cell_e x n (tulong)) a) nil le gv mb2 Out_normal)))))))))
+  (ctor nx_store_cell32 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (a expr)
+                                 (t1 type) (v1 val) (c w32) (mb2 (amap)))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tuint) v1 (Vint c))
+        (-> (setbytes mb2 mb x 0 4 (u32 c))
+          (nexec defs le gv mb (Sassign (cell_e x n (tuint)) a) nil le gv mb2 Out_normal)))))))))
+  (ctor nx_out (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (init (list init_data))
+                        (a expr) (t1 type) (v1 val) (i w32))
     (-> (in_defs defs x (Gvar (mkglobvar (tvuint) init false true)))
-      (-> (neval defs le gv a v1) (-> (has_type a t1) (-> (cast_ok t1 (tvuint) v1 (Vint i))
-        (nexec defs le gv
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tvuint) v1 (Vint i))
+        (nexec defs le gv mb
           (Sbuiltin None (EF_vstore Mint32)
             (cons (Tpointer (tvuint) (noattr)) (cons (tvuint) nil))
             (cons (Eaddrof (Evar x (tvuint)) (Tpointer (tvuint) (noattr))) (cons a nil)))
-          (cons (Event_vstore Mint32 x (rptr 0) (EVint i)) nil) le gv Out_normal)))))))
-  (ctor nx_call (forall ((le (tmap)) (gv (tmap)) (optid (option ident)) (x ident) (tys (list type))
-                         (ret type) (cc cconv) (al (list expr)) (vs (list val)) (params (binds))
-                         (temps (binds)) (body statement) (le0 (tmap)) (le1 (tmap)) (t (list event))
-                         (le2 (tmap)) (gv2 (tmap)) (out outcome) (v val) (le3 (tmap)))
+          (cons (Event_vstore Mint32 x (rptr 0) (EVint i)) nil) le gv mb Out_normal)))))))
+  (ctor nx_vload (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (t ident) (x ident) (ty type) (n Z)
+                          (init (list init_data)) (ch chunk) (sz Z) (i expr) (k w64) (j w32)
+                          (v val) (le2 (tmap)))
+    (-> (in_defs defs x (Gvar (mkglobvar (Tarray ty n (noattr)) init false true)))
+      (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+        (-> (vload_ok ch ty sz j v) (-> (upd le2 le t v)
+          (nexec defs le gv mb
+            (Sbuiltin (Some t) (EF_vload ch) (cons (Tpointer ty (noattr)) nil)
+              (cons (Eaddrof (Ederef (Ebinop Oadd (Evar x (Tarray ty n (noattr))) i
+                                       (Tpointer ty (noattr))) ty)
+                      (Tpointer ty (noattr))) nil))
+            (cons (Event_vload ch x (rptr (* sz (u64 k))) (EVint j)) nil) le2 gv mb
+            Out_normal))))))))
+  (ctor nx_vstore (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z)
+                           (init (list init_data)) (i expr) (k w64) (a expr) (t1 type) (v1 val)
+                           (c w32))
+    (-> (in_defs defs x (Gvar (mkglobvar (Tarray (tvuint) n (noattr)) init false true)))
+      (-> (neval defs le gv mb i (Vlong k)) (-> (has_type i (tulong))
+        (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tvuint) v1 (Vint c))
+          (nexec defs le gv mb
+            (Sbuiltin None (EF_vstore Mint32)
+              (cons (Tpointer (tvuint) (noattr)) (cons (tvuint) nil))
+              (cons (Eaddrof (Ederef (Ebinop Oadd (Evar x (Tarray (tvuint) n (noattr))) i
+                                       (Tpointer (tvuint) (noattr))) (tvuint))
+                      (Tpointer (tvuint) (noattr)))
+                (cons a nil)))
+            (cons (Event_vstore Mint32 x (rptr (* 4 (u64 k))) (EVint c)) nil) le gv mb
+            Out_normal)))))))))
+  (ctor nx_call (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (optid (option ident)) (x ident)
+                         (tys (list type)) (ret type) (cc cconv) (al (list expr)) (vs (list val))
+                         (params (binds)) (temps (binds)) (body statement) (le0 (tmap))
+                         (le1 (tmap)) (t (list event)) (le2 (tmap)) (gv2 (tmap)) (mb2 (amap))
+                         (out outcome) (v val) (le3 (tmap)))
     (-> (in_defs defs x (Gfun (Internal (mkfunction ret cc params nil temps body))))
-      (-> (params_types params tys) (-> (neval_list defs le gv al tys vs)
+      (-> (params_types params tys) (-> (neval_list defs le gv mb al tys vs)
         (-> (norepet_names params) (-> (disjoint_names params temps) (-> (undef_temps temps le0)
-          (-> (bind_params params vs le0 le1) (-> (nexec defs le1 gv body t le2 gv2 out)
+          (-> (bind_params params vs le0 le1) (-> (nexec defs le1 gv mb body t le2 gv2 mb2 out)
             (-> (result_ok out ret v) (-> (set_opt optid v le le3)
-              (nexec defs le gv (Scall optid (Evar x (Tfunction tys ret cc)) al) t le3 gv2
+              (nexec defs le gv mb (Scall optid (Evar x (Tfunction tys ret cc)) al) t le3 gv2 mb2
                 Out_normal)))))))))))))
-  (ctor nx_seq1 (forall ((le (tmap)) (gv (tmap)) (s1 statement) (s2 statement) (t1 (list event))
-                         (le1 (tmap)) (gv1 (tmap)) (t2 (list event)) (le2 (tmap)) (gv2 (tmap))
-                         (out outcome))
-    (-> (nexec defs le gv s1 t1 le1 gv1 Out_normal) (-> (nexec defs le1 gv1 s2 t2 le2 gv2 out)
-      (nexec defs le gv (Ssequence s1 s2) (app t1 t2) le2 gv2 out)))))
-  (ctor nx_seq2 (forall ((le (tmap)) (gv (tmap)) (s1 statement) (s2 statement) (t1 (list event))
-                         (le1 (tmap)) (gv1 (tmap)) (out outcome))
-    (-> (nexec defs le gv s1 t1 le1 gv1 out) (-> (not (= out Out_normal))
-      (nexec defs le gv (Ssequence s1 s2) t1 le1 gv1 out)))))
-  (ctor nx_if_true (forall ((le (tmap)) (gv (tmap)) (a expr) (s1 statement) (s2 statement) (v val)
-                            (ta type) (t (list event)) (le2 (tmap)) (gv2 (tmap)) (out outcome))
-    (-> (neval defs le gv a v) (-> (has_type a ta) (-> (bool_ok ta v true)
-      (-> (nexec defs le gv s1 t le2 gv2 out)
-        (nexec defs le gv (Sifthenelse a s1 s2) t le2 gv2 out)))))))
-  (ctor nx_if_false (forall ((le (tmap)) (gv (tmap)) (a expr) (s1 statement) (s2 statement) (v val)
-                             (ta type) (t (list event)) (le2 (tmap)) (gv2 (tmap)) (out outcome))
-    (-> (neval defs le gv a v) (-> (has_type a ta) (-> (bool_ok ta v false)
-      (-> (nexec defs le gv s2 t le2 gv2 out)
-        (nexec defs le gv (Sifthenelse a s1 s2) t le2 gv2 out)))))))
-  (ctor nx_return_none (forall ((le (tmap)) (gv (tmap)))
-    (nexec defs le gv (Sreturn None) nil le gv (Out_return None))))
-  (ctor nx_return_some (forall ((le (tmap)) (gv (tmap)) (a expr) (v val) (ta type))
-    (-> (neval defs le gv a v) (-> (has_type a ta)
-      (nexec defs le gv (Sreturn (Some a)) nil le gv (Out_return (Some (pair v ta))))))))
-  (ctor nx_break (forall ((le (tmap)) (gv (tmap))) (nexec defs le gv Sbreak nil le gv Out_break)))
-  (ctor nx_continue (forall ((le (tmap)) (gv (tmap)))
-    (nexec defs le gv Scontinue nil le gv Out_continue)))
-  (ctor nx_loop_stop1 (forall ((le (tmap)) (gv (tmap)) (s1 statement) (s2 statement)
-                               (t (list event)) (le1 (tmap)) (gv1 (tmap)) (out1 outcome)
-                               (out outcome))
-    (-> (nexec defs le gv s1 t le1 gv1 out1)
+  (ctor nx_seq1 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
+                         (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap))
+                         (t2 (list event)) (le2 (tmap)) (gv2 (tmap)) (mb2 (amap)) (out outcome))
+    (-> (nexec defs le gv mb s1 t1 le1 gv1 mb1 Out_normal)
+      (-> (nexec defs le1 gv1 mb1 s2 t2 le2 gv2 mb2 out)
+        (nexec defs le gv mb (Ssequence s1 s2) (app t1 t2) le2 gv2 mb2 out)))))
+  (ctor nx_seq2 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
+                         (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap)) (out outcome))
+    (-> (nexec defs le gv mb s1 t1 le1 gv1 mb1 out) (-> (not (= out Out_normal))
+      (nexec defs le gv mb (Ssequence s1 s2) t1 le1 gv1 mb1 out)))))
+  (ctor nx_if_true (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (a expr) (s1 statement)
+                            (s2 statement) (v val) (ta type) (t (list event)) (le2 (tmap))
+                            (gv2 (tmap)) (mb2 (amap)) (out outcome))
+    (-> (neval defs le gv mb a v) (-> (has_type a ta) (-> (bool_ok ta v true)
+      (-> (nexec defs le gv mb s1 t le2 gv2 mb2 out)
+        (nexec defs le gv mb (Sifthenelse a s1 s2) t le2 gv2 mb2 out)))))))
+  (ctor nx_if_false (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (a expr) (s1 statement)
+                             (s2 statement) (v val) (ta type) (t (list event)) (le2 (tmap))
+                             (gv2 (tmap)) (mb2 (amap)) (out outcome))
+    (-> (neval defs le gv mb a v) (-> (has_type a ta) (-> (bool_ok ta v false)
+      (-> (nexec defs le gv mb s2 t le2 gv2 mb2 out)
+        (nexec defs le gv mb (Sifthenelse a s1 s2) t le2 gv2 mb2 out)))))))
+  (ctor nx_return_none (forall ((le (tmap)) (gv (tmap)) (mb (amap)))
+    (nexec defs le gv mb (Sreturn None) nil le gv mb (Out_return None))))
+  (ctor nx_return_some (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (a expr) (v val) (ta type))
+    (-> (neval defs le gv mb a v) (-> (has_type a ta)
+      (nexec defs le gv mb (Sreturn (Some a)) nil le gv mb (Out_return (Some (pair v ta))))))))
+  (ctor nx_break (forall ((le (tmap)) (gv (tmap)) (mb (amap)))
+    (nexec defs le gv mb Sbreak nil le gv mb Out_break)))
+  (ctor nx_continue (forall ((le (tmap)) (gv (tmap)) (mb (amap)))
+    (nexec defs le gv mb Scontinue nil le gv mb Out_continue)))
+  (ctor nx_loop_stop1 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
+                               (t (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap))
+                               (out1 outcome) (out outcome))
+    (-> (nexec defs le gv mb s1 t le1 gv1 mb1 out1)
       (-> (or (and (= out1 Out_break) (= out Out_normal))
               (exists ((r (option (prod val type))))
                 (and (= out1 (Out_return r)) (= out (Out_return r)))))
-        (nexec defs le gv (Sloop s1 s2) t le1 gv1 out)))))
-  (ctor nx_loop_stop2 (forall ((le (tmap)) (gv (tmap)) (s1 statement) (s2 statement)
-                               (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (out1 outcome)
-                               (t2 (list event)) (le2 (tmap)) (gv2 (tmap)) (out2 outcome)
-                               (out outcome))
-    (-> (nexec defs le gv s1 t1 le1 gv1 out1)
+        (nexec defs le gv mb (Sloop s1 s2) t le1 gv1 mb1 out)))))
+  (ctor nx_loop_stop2 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
+                               (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap))
+                               (out1 outcome) (t2 (list event)) (le2 (tmap)) (gv2 (tmap))
+                               (mb2 (amap)) (out2 outcome) (out outcome))
+    (-> (nexec defs le gv mb s1 t1 le1 gv1 mb1 out1)
       (-> (or (= out1 Out_normal) (= out1 Out_continue))
-        (-> (nexec defs le1 gv1 s2 t2 le2 gv2 out2)
+        (-> (nexec defs le1 gv1 mb1 s2 t2 le2 gv2 mb2 out2)
           (-> (or (and (= out2 Out_break) (= out Out_normal))
                   (exists ((r (option (prod val type))))
                     (and (= out2 (Out_return r)) (= out (Out_return r)))))
-            (nexec defs le gv (Sloop s1 s2) (app t1 t2) le2 gv2 out)))))))
-  (ctor nx_loop (forall ((le (tmap)) (gv (tmap)) (s1 statement) (s2 statement) (t1 (list event))
-                         (le1 (tmap)) (gv1 (tmap)) (out1 outcome) (t2 (list event)) (le2 (tmap))
-                         (gv2 (tmap)) (t3 (list event)) (le3 (tmap)) (gv3 (tmap)) (out outcome))
-    (-> (nexec defs le gv s1 t1 le1 gv1 out1)
+            (nexec defs le gv mb (Sloop s1 s2) (app t1 t2) le2 gv2 mb2 out)))))))
+  (ctor nx_loop (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
+                         (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap)) (out1 outcome)
+                         (t2 (list event)) (le2 (tmap)) (gv2 (tmap)) (mb2 (amap))
+                         (t3 (list event)) (le3 (tmap)) (gv3 (tmap)) (mb3 (amap)) (out outcome))
+    (-> (nexec defs le gv mb s1 t1 le1 gv1 mb1 out1)
       (-> (or (= out1 Out_normal) (= out1 Out_continue))
-        (-> (nexec defs le1 gv1 s2 t2 le2 gv2 Out_normal)
-          (-> (nexec defs le2 gv2 (Sloop s1 s2) t3 le3 gv3 out)
-            (nexec defs le gv (Sloop s1 s2) (app t1 (app t2 t3)) le3 gv3 out))))))))
+        (-> (nexec defs le1 gv1 mb1 s2 t2 le2 gv2 mb2 Out_normal)
+          (-> (nexec defs le2 gv2 mb2 (Sloop s1 s2) t3 le3 gv3 mb3 out)
+            (nexec defs le gv mb (Sloop s1 s2) (app t1 (app t2 t3)) le3 gv3 mb3 out))))))))
 
-; nprog defs main t r: the program of the definitions defs, whose identifiers are distinct and
-; whose variables' initialization data N accepts, terminates with the trace t and the result r
-; when its function main, of type int (void), runs from the initial values of the scalar globals.
-(relation nprog () ((dlist) ident (list event) w32)
-  (ctor np_intro (forall ((defs (dlist)) (main ident) (temps (binds)) (body statement) (gv0 (tmap))
-                          (le0 (tmap)) (t (list event)) (le2 (tmap)) (gv2 (tmap)) (out outcome)
-                          (r w32))
+; ninit defs gv mb: the definitions defs have distinct identifiers and initialization data that N
+; accepts, gv holds the initial value of each scalar global, and mb holds zero in each byte of
+; each array.
+(relation ninit () ((dlist) (tmap) (amap))
+  (ctor ni_intro (forall ((defs (dlist)) (gv (tmap)) (mb (amap)))
     (-> (norepet_defs defs)
       (-> (forall ((x ident) (ty type) (init (list init_data)) (ro bool) (vol bool))
             (-> (in_defs defs x (Gvar (mkglobvar ty init ro vol))) (init_ok init)))
         (-> (forall ((x ident) (ty type) (init (list init_data)))
               (-> (in_defs defs x (Gvar (mkglobvar ty init false false))) (-> (scalar ty)
-                (exists ((v val)) (and (ginit ty init v) (= (gv0 x) (Some v)))))))
-          (-> (in_defs defs main
-                (Gfun (Internal (mkfunction (tint) (cc_default) nil nil temps body))))
-            (-> (undef_temps temps le0) (-> (nexec defs le0 gv0 body t le2 gv2 out)
-              (-> (result_ok out (tint) (Vint r)) (nprog defs main t r)))))))))))
+                (exists ((v val)) (and (ginit ty init v) (= (gv x) (Some v)))))))
+          (-> (forall ((x ident) (n Z) (j Z))
+                (-> (arr defs x n) (-> (<= 0 j) (-> (< j (* 8 n)) (= (mb x j) 0)))))
+            (ninit defs gv mb))))))))
+
+; nprog defs main t r: the program of the definitions defs terminates with the trace t and the
+; result r when its function main, of type int (void), runs from the initial state.
+(relation nprog () ((dlist) ident (list event) w32)
+  (ctor np_intro (forall ((defs (dlist)) (main ident) (temps (binds)) (body statement) (gv0 (tmap))
+                          (mb0 (amap)) (le0 (tmap)) (t (list event)) (le2 (tmap)) (gv2 (tmap))
+                          (mb2 (amap)) (out outcome) (r w32))
+    (-> (ninit defs gv0 mb0)
+      (-> (in_defs defs main
+            (Gfun (Internal (mkfunction (tint) (cc_default) nil nil temps body))))
+        (-> (undef_temps temps le0) (-> (nexec defs le0 gv0 mb0 body t le2 gv2 mb2 out)
+          (-> (result_ok out (tint) (Vint r)) (nprog defs main t r)))))))))
+
+; loop_in s init body post: the statement s runs init and then the loop Sloop body post, through
+; sequences that precede or follow the loop.
+(relation loop_in () (statement statement statement statement)
+  (ctor li_loop (forall ((body statement) (post statement))
+    (loop_in (Sloop body post) Sskip body post)))
+  (ctor li_after (forall ((s statement) (init statement) (body statement) (post statement)
+                          (rest statement))
+    (-> (loop_in s init body post) (loop_in (Ssequence s rest) init body post))))
+  (ctor li_before (forall ((s statement) (init statement) (body statement) (post statement)
+                           (pre statement))
+    (-> (loop_in s init body post)
+      (loop_in (Ssequence pre s) (Ssequence pre init) body post)))))
+
+; nreacts defs main t0 W: the function main of the program of the definitions defs, of type
+; int (void), runs from the initial state the statements init before its loop with the trace t0,
+; and then the loop, whose iteration n runs with the nonempty trace W n.  An invariant Inv over
+; N's states, indexed by the iteration, holds after init, and every iteration preserves it.
+(relation nreacts () ((dlist) ident (list event) (-> nat (list event)))
+  (ctor nr_intro (forall ((defs (dlist)) (main ident) (temps (binds)) (body statement)
+                          (gv0 (tmap)) (mb0 (amap)) (le0 (tmap)) (init statement)
+                          (lbody statement) (lpost statement) (t0 (list event))
+                          (W (-> nat (list event)))
+                          (Inv (-> nat (-> (tmap) (-> (tmap) (-> (amap) Prop))))))
+    (-> (forall ((n nat)) (not (= (W n) nil)))
+      (-> (ninit defs gv0 mb0)
+        (-> (in_defs defs main
+              (Gfun (Internal (mkfunction (tint) (cc_default) nil nil temps body))))
+          (-> (undef_temps temps le0) (-> (loop_in body init lbody lpost)
+            (-> (exists ((le (tmap)) (gv (tmap)) (mb (amap)))
+                  (and (nexec defs le0 gv0 mb0 init t0 le gv mb Out_normal) (Inv O le gv mb)))
+              (-> (forall ((n nat) (le (tmap)) (gv (tmap)) (mb (amap)))
+                    (-> (Inv n le gv mb)
+                      (exists ((le2 (tmap)) (gv2 (tmap)) (mb2 (amap)))
+                        (and (nexec defs le gv mb (Ssequence lbody lpost) (W n) le2 gv2 mb2
+                               Out_normal)
+                          (Inv (S n) le2 gv2 mb2)))))
+                (nreacts defs main t0 W)))))))))))
+
+; nreads s c t: the trace t holds only volatile loads and stores, and its k-th volatile load reads
+; EVint (s (c + k)).
+(relation nreads () ((-> nat w32) nat (list event))
+  (ctor nr_nil (forall ((s (-> nat w32)) (c nat)) (nreads s c nil)))
+  (ctor nr_load (forall ((s (-> nat w32)) (c nat) (ch chunk) (x ident) (o ptrofs)
+                         (t (list event)))
+    (-> (nreads s (S c) t) (nreads s c (cons (Event_vload ch x o (EVint (s c))) t)))))
+  (ctor nr_store (forall ((s (-> nat w32)) (c nat) (ch chunk) (x ident) (o ptrofs)
+                          (ev eventval) (t (list event)))
+    (-> (nreads s c t) (nreads s c (cons (Event_vstore ch x o ev) t))))))
 
 ; ---------------------------------------------------------------------------------------------
 ; Laws of the base symbols.  They fix each symbol's meaning on the arguments with which the
