@@ -20,7 +20,9 @@
 # as well.  For the chi-square programs, the gate, and the assignment check, it runs the axiom
 # audits of tests/gate/ChiSquareAxioms.lean, GateAxioms.lean, and AssignmentAxioms.lean, and with
 # --cases chisquare, gate, or assignment it checks that module's file theorems as well.  For the
-# SGP4 program, it runs the axiom audit of
+# q-method, it runs the axiom audit of tests/attitude/QAxioms.lean, and with --cases qmethod it
+# checks the q-method's file theorem module as well.  For the SGP4 program, it runs the axiom
+# audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
@@ -144,6 +146,8 @@ elif [ "$case_module" = "accuracy" ]; then
   cases_exe=verified-cases-accuracy
 elif [ "$case_module" = "attitude" ]; then
   cases_exe=verified-cases-attitude
+elif [ "$case_module" = "qmethod" ]; then
+  cases_exe=verified-cases-qmethod
 elif [ "$case_module" = "screening" ]; then
   cases_exe=verified-cases-screening
 elif [ "$case_module" = "chisquare" ]; then
@@ -201,6 +205,10 @@ if [ -z "$reference" ]; then
   if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
   if [ "$case_module" = "attitude" ]; then
     targets+=(Demos.Attitude.Verified $(imports Demos/Attitude/File.lean))
+  fi
+  if runs qmethod; then targets+=($(imports tests/attitude/QAxioms.lean)); fi
+  if [ "$case_module" = "qmethod" ]; then
+    targets+=(Demos.Attitude.QVerified $(imports Demos/Attitude/QFile.lean))
   fi
   if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
   if [ "$case_module" = "screening" ]; then
@@ -392,6 +400,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then
   check_axioms tests/attitude/Axioms.lean
   if [ "$case_module" = "attitude" ]; then
     check_file attitude Demos.Attitude.Verified Demos/Attitude/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "qmethod" ]; then
+  check_axioms tests/attitude/QAxioms.lean
+  if [ "$case_module" = "qmethod" ]; then
+    check_file qmethod Demos.Attitude.QVerified Demos/Attitude/QFile.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then

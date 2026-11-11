@@ -1,10 +1,13 @@
 import Demos.Attitude.Soundness
+import Demos.Attitude.QSoundness
 
 /-! The knowledge-error share of the slew planner's `ε`.  `plan_premise` takes a flown map `A`
 with `vangle (A b) (C b) ≤ ε` for every unit `b`, where `C` is the commanded attitude.  When the
-controller keeps TRIAD's estimate `M`, any matrix in the intervals of a result of status 0, within
-`εc` of `C`, the true attitude lies within `εc + err` of `C` by the triangle inequality for angles,
-so `ε = εc + err` meets that hypothesis with the true attitude as the flown map. -/
+controller keeps an estimate within `εc` of `C`, the true attitude lies within `εc + err` of `C`
+by the triangle inequality for angles, so `ε = εc + err` meets that hypothesis with the true
+attitude as the flown map.  `knowledge_share` states this for TRIAD's estimate `M`, any matrix in
+the intervals of a result of status 0, and `qmethod_knowledge` for the q-method's estimate, the
+attitude of the output quaternion `q̂`. -/
 
 namespace Demos.Attitude
 
@@ -27,5 +30,24 @@ theorem knowledge_share {b1x b1y b1z b2x b2y b2z r1x r1y r1z r2x r2y r2z e1 e2 :
   have t := vangle_triangle (attitude q v) (M.apply v) (C v)
   rw [vangle_comm] at hk
   linarith [hC v hv]
+
+namespace QMethod
+
+/-- **Q6, the knowledge-error share of the q-method.**  For a result of status 0, a map `C` within
+`εc` of the attitude of the output quaternion `q̂`, and a true attitude `R(q)` that meets the
+error bounds, `R(q)` lies within `εc + err` of `C`. -/
+theorem qmethod_knowledge {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) {C : Vec → Vec}
+    {εc : ℝ} (hC : Within (attitude (quatAt (qmethod xs) 1)) C εc) {q : Quat}
+    (hq : 0 < Quat.norm2 q)
+    (hb : ∀ i < count xs, vangle (attitude q (unit (obsAt xs i).b)) (unit (obsAt xs i).r) ≤
+      (obsAt xs i).ε) :
+    ∀ v : Vec, dot v v = 1 → vangle (attitude q v) (C v) ≤ εc + val (qmethod xs)[6]! := by
+  intro v hv
+  have hk := (qmethod_sound h).2.2.2.2.2.2.2.2.2.2.2.2.2.2.2 q hq hb v hv
+  have t := vangle_triangle (attitude q v) (attitude (quatAt (qmethod xs) 1) v) (C v)
+  rw [vangle_comm] at hk
+  linarith [hC v hv]
+
+end QMethod
 
 end Demos.Attitude
