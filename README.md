@@ -345,6 +345,7 @@ ACCEL=kvm tests/baremetal/programs.sh # the same programs under KVM
 tests/baremetal/a64-images.sh         # the AArch64 Images and their theorems
 ACCEL=kvm tests/baremetal/a64-images.sh # the Images under KVM
 tests/baremetal/a64-uart.sh           # the Image that reads its arguments from the UART
+tests/baremetal/a64-encode.sh         # LDR Wt and LDRB against the GNU assembler
 tests/isla/theorems.sh                # the model's forms against Isla's traces
 tests/baremetal/m7-image.sh           # the Cortex-M7 code images and their checks
 tests/baremetal/m7-qemu.sh gateway    # a Cortex-M7 image and its theorem under QEMU

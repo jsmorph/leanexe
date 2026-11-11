@@ -231,7 +231,7 @@ def Instr.isFP : Instr → Bool
 
 /-- A load or a store. -/
 def Instr.accessesMemory : Instr → Bool
-  | .ldr _ _ _ | .str _ _ _ | .strb _ _ _ | .ldrW _ _ _ => true
+  | .ldr _ _ _ | .str _ _ _ | .strb _ _ _ | .ldrW _ _ _ | .ldrb _ _ _ => true
   | _ => false
 
 /-- `MSR` of `r` traps at EL1 under `b`: `MSR FPCR` while `CPACR_EL1.FPEN` traps EL1's accesses

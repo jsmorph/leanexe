@@ -26,6 +26,7 @@ def encodeNat : Instr → Nat
   | .str t n imm => 0xF9000000 + imm.val * 1024 + n.val * 32 + t.val
   | .strb t n imm => 0x39000000 + imm.val * 1024 + n.val * 32 + t.val
   | .ldrW t n imm => 0xB9400000 + imm.val * 1024 + n.val * 32 + t.val
+  | .ldrb t n imm => 0x39400000 + imm.val * 1024 + n.val * 32 + t.val
   | .b imm => 0x14000000 + imm.val
   | .bl imm => 0x94000000 + imm.val
   | .cbz t imm => 0xB4000000 + imm.val * 32 + t.val
@@ -102,8 +103,8 @@ macro_rules
       all_goals simp only [Option.some.injEq, Instr.movz.injEq, Instr.movk.injEq, Instr.addImm.injEq,
         Instr.subImm.injEq, Instr.subsImm.injEq, Instr.subsReg.injEq, Instr.csinc.injEq,
         Instr.orrReg.injEq, Instr.lsrImm.injEq,
-        Instr.ldr.injEq, Instr.str.injEq, Instr.strb.injEq, Instr.ldrW.injEq, Instr.b.injEq,
-        Instr.bl.injEq,
+        Instr.ldr.injEq, Instr.str.injEq, Instr.strb.injEq, Instr.ldrW.injEq,
+        Instr.ldrb.injEq, Instr.b.injEq, Instr.bl.injEq,
         Instr.cbz.injEq, Instr.cbnz.injEq, Instr.ret.injEq, Instr.udiv.injEq, Instr.msub.injEq,
         Instr.addReg.injEq, Instr.subReg.injEq, Instr.andReg.injEq, Instr.eorReg.injEq,
         Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,

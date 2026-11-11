@@ -125,6 +125,12 @@ theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = so
   case ldrW r n imm =>
     obtain ⟨v, io, -, rfl⟩ := exec_ldrW_some h
     simp [State.devRead]
+  case ldrb r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      simp
+    · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simp [State.setXsp_mem, State.subs, State.fcmp, State.fcmpS]
@@ -163,6 +169,12 @@ theorem exec_io {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some 
     refine ⟨by show s.io.out <+: io.out; rw [ho]; exact List.prefix_rfl, ?_⟩
     show s.io.rxNext < io.rxNext ∨ (s.io.rxNext = io.rxNext ∧ s.io.rxPolls ≤ io.rxPolls)
     omega
+  case ldrb r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      simpa using Io.Le.refl s.io
+    · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simpa [State.setXsp_io, State.subs, State.fcmp, State.fcmpS] using Io.Le.refl s.io
@@ -237,6 +249,7 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
   cases i
   case ldr r n imm => simp [exec, hm] at h
   case str r n imm => simp [exec, hm] at h
+  case ldrb r n imm => simp [exec, noMemory] at h
   case strb r n imm =>
     simp only [exec] at h
     split at h

@@ -119,7 +119,7 @@ def Platform.devLoad (P : Platform) (io : Io) (a : UInt64) : Option (UInt32 × I
   else none
 
 /-- The instruction forms of the model, all with 64-bit or double-precision registers but `orrW`,
-`ldrW`, and the single-precision forms.  A register field is the 5-bit number of the
+`ldrW`, `ldrb`, and the single-precision forms.  A register field is the 5-bit number of the
 encoding, and an immediate field is the encoding's unsigned field. -/
 inductive Instr where
   /-- `MOVZ Xd, #imm, LSL #(16 * hw)`. -/
@@ -150,6 +150,8 @@ inductive Instr where
   /-- `LDR Wt, [Xn|SP, #(4 * imm)]`, a 32-bit load, which the model runs only at the UART's data
   and flag registers. -/
   | ldrW (t n : Fin 32) (imm : Fin 4096)
+  /-- `LDRB Wt, [Xn|SP, #imm]`, which loads a byte zero-extended into `Xt`. -/
+  | ldrb (t n : Fin 32) (imm : Fin 4096)
   /-- `B` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
   | b (imm : Fin 67108864)
   /-- `BL` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
@@ -342,6 +344,7 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 1024 = 0x78E00 then some (.fcvtzsWS d n)
   else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmpS n m)
   else if v / 4194304 = 0x2E5 then some (.ldrW d n imm12)
+  else if v / 4194304 = 0xE5 then some (.ldrb d n imm12)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -486,6 +489,10 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
       if !s.spAligned n then none
       else (P.devLoad s.io (s.xsp n + UInt64.ofNat (4 * imm.val))).map fun r =>
         { s.devRead t r.1 with io := r.2 }
+  | .ldrb t n imm =>
+      let a := s.xsp n + UInt64.ofNat imm.val
+      if s.spAligned n && P.normal a then some { s.setX t (s.mem a).toUInt64 with pc := next }
+      else none
   | .b imm => some { s with pc := s.pc + sext 26 imm.val * 4 }
   | .bl imm => some { s.setX 30 next with pc := s.pc + sext 26 imm.val * 4 }
   | .cbz t imm =>

@@ -123,10 +123,10 @@ structure Case where
   relWin : List Nat := []
   relPad : Option (Nat × Int) := none
 
-/-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
-in the order of `Instr`, and five kinds of cases of the code of the signed comparisons and of the
-arithmetic shift. -/
-def formCount : Nat := 58
+/-- The kinds of cases of the co-simulation: the forms of `Instr` in its order, but the system
+instructions, `LDR Wt`, which runs only at the UART's registers, and `LDRB`, followed by five kinds
+of cases of the code of the signed comparisons and of the arithmetic shift and by `LDRB`. -/
+def formCount : Nat := 59
 
 /-- A pair of words for a comparison: equal, adjacent, or of different signs, the largest
 positive and the least negative `Int64` among them. -/
@@ -168,7 +168,8 @@ and saturation at both ends occur.  The D registers of a single-precision form's
 of `fpLow32`.  Cases 53 to 57 run the forms of the signed comparisons and of the arithmetic shift
 on the values that their code meets: `SUBS XZR` of a pair of `cmpPair`, `CSINC` with GE or GT on
 the flags that `SUBS` sets for such a pair, `LSRV` of a word with its sign bit set or clear by 0,
-1, 63, 64, or 65, `LSR` by 63 of such a word, and `SUB` of 0 or 1 from `XZR`. -/
+1, 63, 64, or 65, `LSR` by 63 of such a word, and `SUB` of 0 or 1 from `XZR`.  Case 58 runs
+`LDRB` with its byte in the window, as case 11 runs `STRB`. -/
 def genCase (form : Nat) : Gen Case := do
   let mut regs := #[]
   for _ in [0:31] do
@@ -325,6 +326,17 @@ def genCase (form : Nat) : Gen Case := do
       let n ← fin 31
       let v := UInt64.ofNat (← below 2)
       return { c with instr := .subReg d 31 n.castSucc, regs := c.regs.set! n.val v }
+  | 58 =>
+      let t ← fin 32
+      let n ← fin 32
+      let imm ← fin 4096
+      if n.val = 31 then
+        let o := imm.val % 16 + 16 * (← below 3)
+        return { c with instr := .ldrb t n imm, sp := rel o imm.val, relWin := [31] }
+      else
+        let o ← below windowSize
+        return { c with
+          instr := .ldrb t n imm, regs := c.regs.set! n.val (rel o imm.val), relWin := [n.val] }
   | _ =>
       let n ← fin 32
       let m ← fin 32
