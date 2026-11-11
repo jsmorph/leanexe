@@ -138,7 +138,7 @@ A reviewer who had read neither the reference nor the demo's Lean files worked o
 
 ## Review of the specification
 
-[The specification](README.md#specification) states the count of these requirements in `Contest.lean` and `Spec.lean`.  The table gives the details that the requirements leave to it, each decided by its author.
+[The specification](README.md#the-specification-and-the-reader) states the count of these requirements in `Contest.lean` and `Spec.lean`.  The table gives the details that the requirements leave to it, each decided by its author.
 
 | Detail | Choice | Reason |
 |---|---|---|
@@ -184,7 +184,7 @@ Neither reviewer could run the `#guard`s, which need a build, and both checked b
 
 ## Review of the reader
 
-[The reader](README.md#the-reader) states the canonical file's grammar in `Read.lean`.  The table gives the details that the requirements leave to it.
+[The reader](README.md#the-specification-and-the-reader) states the canonical file's grammar in `Read.lean`.  The table gives the details that the requirements leave to it.
 
 | Detail | Choice | Reason |
 |---|---|---|

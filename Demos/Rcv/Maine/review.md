@@ -145,7 +145,7 @@ The same agent checked the second revision and found the remaining disagreement 
 
 ## Review of the specification
 
-[The specification](README.md#specification) states the count of these requirements in `Spec.lean` over the shared definitions of the Oakland module.  The table gives the details that the requirements leave to it, each decided by its author.
+[The specification](README.md#the-specification) states the count of these requirements in `Spec.lean` over the shared definitions of the Oakland module.  The table gives the details that the requirements leave to it, each decided by its author.
 
 | Detail | Choice | Reason |
 |---|---|---|
