@@ -5,7 +5,9 @@
     "LeanExe.Wasi.LoopExec host remaining index state test step next world trace outcome final → P",
     "LClight.exec_stmt A X ge e le m s t le' m' out → P",
     "structural recursion over a mutual inductive predicate fails",
-    "theorem by structural recursion on a derivation of exec_stmt and eval_funcall"
+    "theorem by structural recursion on a derivation of exec_stmt and eval_funcall",
+    "LClight.eval_expr A ge e le m a v → P by structural recursion on the expression a",
+    "nexec defs ln gv mb s t ln' gv' mb' out from exec_stmt of the Clight copy"
   ],
   "modules": [
     "LeanExe.Wasi.Semantics",
@@ -15,11 +17,14 @@
     "LeanExe.Native.Clight.Determinism",
     "LeanExe.Native.Proof.Rename",
     "LeanExe.Native.Proof.Export",
-    "LeanExe.Native.Proof.Quiet"
+    "LeanExe.Native.Proof.Quiet",
+    "LeanExe.Native.Clight.Clight"
   ],
   "declarations": [
     "LeanExe.Wasi.Exec",
-    "LeanExe.Wasi.LoopExec"
+    "LeanExe.Wasi.LoopExec",
+    "LClight.eval_expr",
+    "LClight.eval_lvalue"
   ],
   "examples": [
     "LeanExe.Wasi.Exec.not_trapped",
@@ -33,5 +38,14 @@
     "LClight.exec_export_core",
     "LeanExe.Native.exec_quiet",
     "LeanExe.Native.funcall_quiet"
-  ]
+  ],
+  "unimported": {
+    "LeanExe/Native/ClightN/Exec.lean": [
+      "ClightN.Proof.exec_to_n",
+      "ClightN.Proof.call_to_n",
+      "ClightN.Proof.eval_to_n",
+      "ClightN.Proof.eval_elem_addr",
+      "ClightN.Proof.baseOk_spec"
+    ]
+  }
 }

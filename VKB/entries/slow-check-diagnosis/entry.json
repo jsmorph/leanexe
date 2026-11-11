@@ -9,7 +9,9 @@
     "a module or a declaration that exhausts its memory",
     "a declaration that passes with set_option debug.skipKernelTC true and fails without it",
     "the cause of a check that takes much longer than comparable checks",
-    "(kernel) deep recursion detected at a generated start or total theorem of a WASI command"
+    "(kernel) deep recursion detected at a generated start or total theorem of a WASI command",
+    "decide +kernel fails on the equality of two long lists",
+    "decide +kernel fails as an application type mismatch although the statement holds"
   ],
   "modules": [
     "Lean.AddDecl",
@@ -19,16 +21,23 @@
     "Library.Numerics.Float64.Lgamma.LgammaSign",
     "LeanExe.A64.Isla.Check",
     "LeanExe.A64.Isla.Walk",
-    "LeanExe.Wasi.ReadAll"
+    "LeanExe.Wasi.ReadAll",
+    "LeanExe.Native.Translate"
   ],
   "declarations": [
     "Lean.addDecl",
     "IO.FS.withFile",
-    "LeanExe.Wasi.Action.loop"
+    "LeanExe.Wasi.Action.loop",
+    "LeanExe.Native.initStores"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",
     "Library.Numerics.Float64.Bessel.BesselYnTheorem.yn_eq",
     "Library.Numerics.Float64.Lgamma.LgammaSign.sgnOf"
-  ]
+  ],
+  "unimported": {
+    "clightn/sha/Sha.lean": [
+      "ClightN.Proof.sha_defs_eq"
+    ]
+  }
 }

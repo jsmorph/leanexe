@@ -2,7 +2,8 @@
   "id": "explicit-before-dependent-proof",
   "goals": [
     "Application type mismatch … expected to have type x ∈ [(tableAddr ?m 0, ?m[0])]",
-    "∀ t ∈ ts, ∃ i, ∃ hi : i < tables.length, t = (tableAddr tables i, tables[i])"
+    "∀ t ∈ ts, ∃ i, ∃ hi : i < tables.length, t = (tableAddr tables i, tables[i])",
+    "maximum recursion depth in the unification of ?p.prog_defs with the definitions of a program literal"
   ],
   "modules": [
     "Verified.Call",
@@ -18,5 +19,13 @@
     "Library.Hashing.Sha256.sha256_call",
     "Library.Hashing.Crc.crc32c_table",
     "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call"
-  ]
+  ],
+  "unimported": {
+    "LeanExe/Native/ClightN/Exec.lean": [
+      "ClightN.Proof.program_to_n"
+    ],
+    "clightn/sha/Sha.lean": [
+      "ClightN.Proof.sha_reads"
+    ]
+  }
 }

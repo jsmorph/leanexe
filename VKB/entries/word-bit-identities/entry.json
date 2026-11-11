@@ -12,7 +12,9 @@
     "(kernel) deterministic timeout after simp only [Function.iterate_succ_apply]",
     "((w <<< 8) + (v >>> 56)).toNat for bit fields joined with + instead of |||",
     "(mask s).testBit j = decide (j + 1 ∈ s)",
-    "LeanExe.loop n init f = ((members m n.toNat).filter P).foldl step init"
+    "LeanExe.loop n init f = ((members m n.toNat).filter P).foldl step init",
+    "zmod (zdiv (land a b) (pow2 k)) 2 = zmod (zdiv a (pow2 k)) 2 * zmod (zdiv b (pow2 k)) 2",
+    "(A &&& B) / 2 ^ j % 2 = A / 2 ^ j % 2 * (B / 2 ^ j % 2) for natural numbers at a variable position"
   ],
   "modules": [
     "Library.Hashing.Words.Proof",
@@ -25,7 +27,8 @@
     "Library.Numerics.Arithmetic.Fma.FmaRoundPack",
     "Library.Hashing.Crc.Bitwise.Proof",
     "LeanExe.Requests.DelimitedWords",
-    "Demos.Rcv.Refinement"
+    "Demos.Rcv.Refinement",
+    "LeanExe.Native.ClightN.Laws"
   ],
   "declarations": [
     "Library.Hashing.Words.rotr",
@@ -70,7 +73,11 @@
     "Demos.Rcv.Refine.loop_members_filter",
     "Demos.Rcv.Refine.members_remove",
     "Nat.bitIndices_sum_map_two_pow",
-    "Nat.eq_of_testBit_eq"
+    "Nat.eq_of_testBit_eq",
+    "ClightN.Proof.bit_cases",
+    "Nat.testBit_and",
+    "Nat.testBit_or",
+    "Nat.testBit_xor"
   ],
   "examples": [
     "Library.Hashing.SipHash.Proof.rotl_13",
@@ -84,6 +91,9 @@
     "LeanExe.Requests.push40_bytes",
     "LeanExe.Requests.unshift40_bytes",
     "Demos.Rcv.Refine.decideRound_eq",
-    "Demos.Rcv.Refine.go_eq"
+    "Demos.Rcv.Refine.go_eq",
+    "ClightN.Proof.land_bits",
+    "ClightN.Proof.lor_bits",
+    "ClightN.Proof.lxor_bits"
   ]
 }

@@ -8,7 +8,10 @@
     "(Verified.initialHeap compiled.tables).top.toNat + compiled.f.bound x ≤ 65536 * LeanExe.A64.initialPages compiled.module",
     "LeanExe.A64.entryOk m k [.f64] 1 .word = true",
     "w.toInt64.toInt = spec a b in an Image theorem",
-    "an A64 Image theorem whose output names Real.exp, Real.sin, or a specification over ℤ"
+    "an A64 Image theorem whose output names Real.exp, Real.sin, or a specification over ℤ",
+    "LeanExe.A64.InputRuns m k n room cap o Out T for a program that reads its arguments from the UART",
+    "P.rx.Delivers (ws.flatMap bytesOf) or P.rx.Flagged j for the PL011's receiver",
+    "a bare-metal A64 program that polls a device's status register before each read"
   ],
   "modules": [
     "LeanExe.A64.Proof.ProgramRuns",
@@ -34,7 +37,10 @@
     "TestSupport.A64.Sin",
     "TestSupport.A64.GptLayer32Runs",
     "TestSupport.A64.Conv32Runs",
-    "TestSupport.A64.Floor"
+    "TestSupport.A64.Floor",
+    "LeanExe.A64.Proof.Input",
+    "LeanExe.A64.Proof.InputRuns",
+    "TestSupport.A64.Uart"
   ],
   "declarations": [
     "LeanExe.A64.ProgramRuns",
@@ -65,7 +71,22 @@
     "Library.Numerics.Filters.Cic.toInt_cascade_of_width",
     "Library.Numerics.Float64.Exp.ExpTheorem.exp_one_step",
     "Library.Numerics.Float64.Trig.TrigSinCos.sin_within",
-    "LeanExe.ProofKit.F64Bits.toBits_ofBits"
+    "LeanExe.ProofKit.F64Bits.toBits_ofBits",
+    "LeanExe.A64.InputRuns",
+    "LeanExe.A64.Rx",
+    "LeanExe.A64.Rx.fr",
+    "LeanExe.A64.Rx.Delivers",
+    "LeanExe.A64.Rx.Flagged",
+    "LeanExe.A64.Io",
+    "LeanExe.A64.run_poll",
+    "LeanExe.A64.run_readByte",
+    "LeanExe.A64.genProgramWith",
+    "LeanExe.A64.genProgram",
+    "LeanExe.A64.genInProgram",
+    "LeanExe.A64.programWith_sim",
+    "LeanExe.A64.input_runs",
+    "LeanExe.A64.input_runs_bounded",
+    "LeanExe.A64.image_input_run"
   ],
   "examples": [
     "TestSupport.A64.Gcd.runs",
@@ -93,6 +114,13 @@
     "TestSupport.A64.Floor.floorDiv_runs",
     "TestSupport.A64.Floor.writes_int64",
     "Examples.Floor.floorDiv_spec",
-    "Demos.Euler.Verified.solve_bound"
-  ]
+    "Demos.Euler.Verified.solve_bound",
+    "TestSupport.A64.Uart.uart_runs"
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/ImageFilesUart.lean": [
+      "TestSupport.A64.ImageFilesUart.gcd_uart",
+      "TestSupport.A64.ImageFilesUart.gcd_uart_flag"
+    ]
+  }
 }
