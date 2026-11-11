@@ -255,6 +255,10 @@ lean_exe «verified-cases-attitude» where
   srcDir := "tests"
   root := `TestSupport.Attitude.CasesMain
 
+lean_exe «verified-cases-qmethod» where
+  srcDir := "tests"
+  root := `TestSupport.Attitude.QCasesMain
+
 lean_exe «verified-cases-screening» where
   srcDir := "tests"
   root := `TestSupport.Screening.CasesMain
