@@ -155,7 +155,7 @@ theorem sim_globalGet (F i : Nat) : InstrSim P code F (.globalGet i) := by
       · rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ hlt)]
       · exact State.setX_sp
       · exact State.setX_mem
-      · exact State.setX_out
+      · exact State.setX_io
 
 theorem gen_globalSet {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i : Nat}
     {is : List Instr} {fin : Option (List ValueType)}
@@ -305,7 +305,7 @@ theorem run_size {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} 
     (hcode : CodeAt code a [.ldr d 17 0, .addImm d d 8, .lsrImm d d 16]) (hpc : ms.pc = a)
     (hsr : StoreRel P cap gts st ms) :
     ∃ s, Reach P code ms s ∧ s.pc = after a 3 ∧ s.x d = UInt64.ofNat st.mem.pages ∧
-      (∀ q, q ≠ d → s.x q = ms.x q) ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.out = ms.out := by
+      (∀ q, q ≠ d → s.x q = ms.x q) ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.io = ms.io := by
   have c0 := hcode 0 (by simp)
   have c1 := hcode 1 (by simp)
   have c2 := hcode 2 (by simp)
@@ -357,12 +357,12 @@ theorem run_size {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} 
     rw [State.setX_mem]
     show (ms.setX d (load64 ms.mem (ms.x 17))).mem = _
     rw [State.setX_mem]
-  · show (s2.setX d (s2.x d >>> UInt64.ofNat 16)).out = _
-    rw [State.setX_out]
-    show (s1.setX d (s1.x d + UInt64.ofNat 8)).out = _
-    rw [State.setX_out]
-    show (ms.setX d (load64 ms.mem (ms.x 17))).out = _
-    rw [State.setX_out]
+  · show (s2.setX d (s2.x d >>> UInt64.ofNat 16)).io = _
+    rw [State.setX_io]
+    show (s1.setX d (s1.x d + UInt64.ofNat 8)).io = _
+    rw [State.setX_io]
+    show (ms.setX d (load64 ms.mem (ms.x 17))).io = _
+    rw [State.setX_io]
 
 theorem sim_memorySize (F : Nat) : InstrSim P code F .memorySize := by
   intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
@@ -398,7 +398,7 @@ theorem run_bounds {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α
       .bcond 8 g])
     (hg : cbField (after a 3) tB = .ok g) (hpc : ms.pc = a)
     (hsr : StoreRel P cap gts st ms) :
-    ∃ s, Reach P code ms s ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.out = ms.out ∧
+    ∃ s, Reach P code ms s ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.io = ms.io ∧
       (∀ q, q ≠ 16 → s.x q = ms.x q) ∧
       s.pc = if (ms.x r).toNat + off + 8 ≤ st.mem.pages * 65536 then after a 4 else tB := by
   have c0 := hcode 0 (by simp)
@@ -502,12 +502,12 @@ theorem run_bounds {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α
     rw [State.setX_mem]
     show (ms.setX 16 S).mem = _
     exact State.setX_mem
-  · show (s2.setX 31 (s2.x r - s2.x 16)).out = _
-    rw [State.setX_out]
-    show (s1.setX 16 (s1.x 16 - UInt64.ofNat off)).out = _
-    rw [State.setX_out]
-    show (ms.setX 16 S).out = _
-    exact State.setX_out
+  · show (s2.setX 31 (s2.x r - s2.x 16)).io = _
+    rw [State.setX_io]
+    show (s1.setX 16 (s1.x 16 - UInt64.ofNat off)).io = _
+    rw [State.setX_io]
+    show (ms.setX 16 S).io = _
+    exact State.setX_io
   · show s3.x q = _
     rw [hx3, hx2 q hq]
   · show (if s3.condHolds 8 then s3.pc + sext 19 g.val * 4 else s3.pc + 4) = _
@@ -720,10 +720,10 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P code F (.load64 off) :=
             (load64 s5.mem (s5.x 16 + UInt64.ofNat (8 * (512 + off.toNat / 8))))).mem = _
           rw [State.setX_mem, hmem5]
         · show (s5.setX (regOf σ0.length)
-            (load64 s5.mem (s5.x 16 + UInt64.ofNat (8 * (512 + off.toNat / 8))))).out = _
-          rw [State.setX_out]
-          show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).out = _
-          rw [State.setX_out, houts]
+            (load64 s5.mem (s5.x 16 + UInt64.ofNat (8 * (512 + off.toNat / 8))))).io = _
+          rw [State.setX_io]
+          show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).io = _
+          rw [State.setX_io, houts]
       · rw [ite_eq_left (by omega)]
         rw [ite_eq_right hin] at hpcs
         exact .inr ⟨s, hrs, houts, .inr (.inl ⟨rfl, hpcs⟩)⟩
@@ -968,8 +968,8 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) 
           fun k hk => ?_, hsr.write P (hy := by rw [hy hin]; exact hin) h176 h186 hmem6⟩
         · show s5.pc + 4 = after a 6
           rw [p5, ← after_succ]
-        · show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).out = _
-          rw [State.setX_out, houts]
+        · show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).io = _
+          rw [State.setX_io, houts]
         · rw [hmem6]
           refine store64_other _ _ _ _ ?_
           rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub]
@@ -1106,7 +1106,7 @@ theorem run_grow_head {cap : Nat} {gts : List ValueType} {α : Type} {st : Store
       s.pc = (if st.mem.pages + delta.toNat ≤ cap then after a 6 else after a 12) ∧
       s.x 29 = UInt64.ofNat (st.mem.pages + delta.toNat) ∧
       s.x 16 = UInt64.ofNat st.mem.pages ∧ (∀ q, q ≠ 29 → q ≠ 16 → s.x q = ms.x q) ∧
-      s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.out = ms.out := by
+      s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.io = ms.io := by
   have hS : CodeAt code a [.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16] := by
     intro i hi
     have := hcode i (by simp at hi; omega)
@@ -1178,10 +1178,10 @@ theorem run_grow_head {cap : Nat} {gts : List ValueType} {α : Type} {st : Store
     rw [State.setX_mem]
     show (s3.setX 29 (s3.x 16 + s3.x r)).mem = _
     rw [State.setX_mem, hmem3]
-  · show (s4.setX 31 (s4.xsp 29 - UInt64.ofNat cap)).out = _
-    rw [State.setX_out]
-    show (s3.setX 29 (s3.x 16 + s3.x r)).out = _
-    rw [State.setX_out, hout3]
+  · show (s4.setX 31 (s4.xsp 29 - UInt64.ofNat cap)).io = _
+    rw [State.setX_io]
+    show (s3.setX 29 (s3.x 16 + s3.x r)).io = _
+    rw [State.setX_io, hout3]
 
 set_option maxHeartbeats 400000 in
 /-- The run of a successful growth from `s` at `after a 6`, with the new page count `N` in X29
@@ -1198,7 +1198,7 @@ theorem run_grow_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store �
     (hsr : StoreRel P cap gts st s) (hN1 : 1 ≤ N) (hN2 : N < 2 ^ 33)
     (h29 : s.x 29 = UInt64.ofNat N) :
     ∃ t, Reach P code s t ∧ t.pc = after a 16 ∧ t.x r = s.x 16 ∧
-      (∀ q, q ≠ 29 → q ≠ r → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.out = s.out ∧
+      (∀ q, q ≠ 29 → q ≠ r → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.io = s.io ∧
       t.mem = store64 s.mem (s.x 17) (UInt64.ofNat (N * 65536 - 8)) := by
   let s7 : State := { s.setX r (UInt64.ofNat 16 <<< UInt64.ofNat 0) with pc := s.pc + 4 }
   have e7 : LeanExe.A64.exec P (.movz r 16 0) s = some s7 := rfl
@@ -1287,14 +1287,14 @@ theorem run_grow_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store �
     rw [State.setX_sp]
     show (s.setX r (UInt64.ofNat 16 <<< UInt64.ofNat 0)).sp = _
     rw [State.setX_sp]
-  · show (s10.setX r (s10.x 31 ||| s10.x 16)).out = _
-    rw [State.setX_out]
-    show (s8.setX 29 (s8.x 29 - UInt64.ofNat 8)).out = _
-    rw [State.setX_out]
-    show (s7.setX 29 (s7.x 29 <<< (s7.x r % 64))).out = _
-    rw [State.setX_out]
-    show (s.setX r (UInt64.ofNat 16 <<< UInt64.ofNat 0)).out = _
-    rw [State.setX_out]
+  · show (s10.setX r (s10.x 31 ||| s10.x 16)).io = _
+    rw [State.setX_io]
+    show (s8.setX 29 (s8.x 29 - UInt64.ofNat 8)).io = _
+    rw [State.setX_io]
+    show (s7.setX 29 (s7.x 29 <<< (s7.x r % 64))).io = _
+    rw [State.setX_io]
+    show (s.setX r (UInt64.ofNat 16 <<< UInt64.ofNat 0)).io = _
+    rw [State.setX_io]
   · show (s10.setX r (s10.x 31 ||| s10.x 16)).mem = _
     rw [State.setX_mem]
     show store64 s9.mem (s9.x 17) (s9.x 29) = _

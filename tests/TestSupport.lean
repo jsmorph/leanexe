@@ -53,3 +53,4 @@ import TestSupport.M7.BmsImages
 import TestSupport.M7.BmsLoop
 import TestSupport.A64.CicSigned
 import TestSupport.A64.Int64Text
+import TestSupport.A64.Uart

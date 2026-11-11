@@ -88,7 +88,7 @@ theorem run_check {fs : Nat} (hf : fs < 4096) {g : Fin 524288} {entry tS : UInt6
     (hcode : CodeAt code entry [.subImm 16 31 ⟨fs, hf⟩, .subsReg 31 16 18, .bcond 3 g])
     {ms : State} (hpc : ms.pc = entry) (hl : fs ≤ (ms.x 18).toNat)
     (hsp : (ms.x 18).toNat ≤ ms.sp.toNat) :
-    ∃ s, Reach P code ms s ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.out = ms.out ∧
+    ∃ s, Reach P code ms s ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧ s.io = ms.io ∧
       (∀ q, q ≠ 16 → s.x q = ms.x q) ∧
       s.pc = if fs ≤ (ms.sp - ms.x 18).toNat then after entry 3 else tS := by
   have c0 := (CodeAt.cons.mp hcode).1
@@ -153,7 +153,7 @@ theorem run_frame {n j fs : Nat} (hj : n ≤ j) (hfs : 8 * (j + 1) ≤ fs) (hfs1
     (hpc : ms.pc = entry) (hal : ms.sp % 16 = 0)
     (hmap : ∀ j < fs, P.normal (ms.sp - UInt64.ofNat fs + UInt64.ofNat j) = true) :
     ∃ s, Reach P code ms s ∧ s.pc = after entry (2 + n) ∧ s.sp = ms.sp - UInt64.ofNat fs ∧
-      (∀ q, s.x q = ms.x q) ∧ s.out = ms.out ∧ load64 s.mem (slotAddr s.sp j) = ms.x 30 ∧
+      (∀ q, s.x q = ms.x q) ∧ s.io = ms.io ∧ load64 s.mem (slotAddr s.sp j) = ms.x 30 ∧
       (∀ i < n, load64 s.mem (slotAddr s.sp i) = ms.x (src i)) ∧
       (∀ a, ¬ a - s.sp < UInt64.ofNat fs → s.mem a = ms.mem a) := by
   have hal' := sub_aligned hal hfs16
@@ -236,7 +236,7 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
     (hpc : s.pc = a) (hal : s.sp % 16 = 0)
     (hmap : ∀ j < 8, P.normal (s.sp + UInt64.ofNat (8 * n + j)) = true) :
     ∃ s', Reach P code s s' ∧ s'.pc = load64 s.mem (slotAddr s.sp n) ∧
-      s'.sp = s.sp + UInt64.ofNat fs ∧ s'.out = s.out ∧ s'.mem = s.mem ∧
+      s'.sp = s.sp + UInt64.ofNat fs ∧ s'.io = s.io ∧ s'.mem = s.mem ∧
       ∀ q, q ≠ 30 → s'.x q = s.x q := by
   have c0 := (CodeAt.cons.mp hcode).1
   have c1 := (CodeAt.cons.mp (CodeAt.cons.mp hcode).2).1
@@ -258,8 +258,8 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
       (reach_exec P code (by rw [p2]; exact c2) e3 (.refl _))), ?_, rfl, ?_, ?_, ?_⟩
   · show (s.setX 30 w).x 30 = w
     exact State.x_setX_same (by decide)
-  · show (s.setX 30 w).out = s.out
-    exact State.setX_out
+  · show (s.setX 30 w).io = s.io
+    exact State.setX_io
   · show (s.setX 30 w).mem = s.mem
     exact State.setX_mem
   · intro q hq
@@ -287,7 +287,7 @@ structure Returned (rs : List ValueType) (vs : List Value) (ms ms' : State) : Pr
   pc : ms'.pc = ms.x 30
   sp : ms'.sp = ms.sp
   x18 : ms'.x 18 = ms.x 18
-  out : ms'.out = ms.out
+  out : ms'.io = ms.io
   mem : MemFrame ms.sp 0 ms ms'
   len : rs.length ≤ vs.length
   res : StackRel ms' (vs.take rs.length)
@@ -308,7 +308,7 @@ def FunOutcome (S : Shared) (n : Nat) (rs : List ValueType)
       StoreRel P S.cap S.globalTypes st' ms'
   | .Return st' vs => ∃ ms', Reach P code ms ms' ∧ Returned rs vs ms ms' ∧
       StoreRel P S.cap S.globalTypes st' ms'
-  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
+  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.io = ms.io ∧
       TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg ms'.pc
   | .Break (_ + 1) _ _ => True
   | .Invalid _ => True
@@ -456,7 +456,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     (f.toLocals args) s hinv hsrs h64 hps' need (callNeed need f.body) hcl
     fun j hj => le_callNeed hj
   have ret : ∀ (st' : Store α) (vs : List Value) (ms' : State), Reach P code s ms' →
-      ms'.pc = after (after entry (5 + n)) body.length → ms'.sp = s.sp → ms'.out = s.out →
+      ms'.pc = after (after entry (5 + n)) body.length → ms'.sp = s.sp → ms'.io = s.io →
       ms'.x 18 = s.x 18 →
       MemFrame s.sp ((f.params ++ f.locals).length + spillSlots) s ms' → Kept fn vs ms' →
       StoreRel P S.cap S.globalTypes st' ms' →
@@ -572,7 +572,7 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
   have hout : ∀ (st' : Store α) (vals : List Value) (ms' : State), Reach P code ms ms' →
       Returned f.results vals ms ms' → StoreRel P S.cap S.globalTypes st' ms' →
       ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 18 = ms.x 18 ∧
-        ms'.out = ms.out ∧ MemFrame ms.sp 0 ms ms' ∧
+        ms'.io = ms.io ∧ MemFrame ms.sp 0 ms ms' ∧
         (vals.take f.results.length ++ vs.drop f.params.length).length =
           f.results.length + (vs.length - f.params.length) ∧
         (vals.take f.results.length ++ vs.drop f.params.length).drop f.results.length =

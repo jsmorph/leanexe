@@ -31,7 +31,7 @@ theorem run_csetc {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt
     (he : LeanExe.A64.exec P i0 s = some { s.subs 31 x y with pc := s.pc + 4 }) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 2 ∧
       s'.x r = (if (s.subs 31 x y).condHolds c then 0 else 1) ∧
-      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   let s1 : State := { s.subs 31 x y with pc := s.pc + 4 }
   have hx1 : ∀ q, s1.x q = s.x q := by
     intro q
@@ -53,8 +53,8 @@ theorem run_csetc {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt
     rw [State.setX_sp]; exact State.setX_sp
   · show (s1.setX r _).mem = s.mem
     rw [State.setX_mem]; exact State.setX_mem
-  · show (s1.setX r _).out = s.out
-    rw [State.setX_out]; exact State.setX_out
+  · show (s1.setX r _).io = s.io
+    rw [State.setX_io]; exact State.setX_io
 
 theorem subs_z (s : State) (x y : UInt64) : (s.subs 31 x y).zFlag = decide (x = y) := by
   show (x - y == 0) = decide (x = y)
@@ -291,7 +291,7 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
         · rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ (by omega))]
         · exact State.setX_sp
         · exact State.setX_mem
-        · exact State.setX_out
+        · exact State.setX_io
       · rw [hex]; exact .inr trivial
 
 /-! ## The forms -/
@@ -475,7 +475,7 @@ theorem run_sar {ms : State} {a : UInt64} {x y : Fin 32} (hx : x.val < 31) (hxs 
     ∃ ms', Reach P code ms ms' ∧ ms'.pc = after a 5 ∧
       ms'.x x = ProofKit.Signed64.sar (ms.x x) (ms.x y) ∧
       (∀ q, q ≠ x → q ≠ scratch → ms'.x q = ms.x q) ∧
-      ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧ ms'.out = ms.out := by
+      ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧ ms'.io = ms.io := by
   have c0 := hcode 0 (by simp [sarCode])
   have c1 := hcode 1 (by simp [sarCode])
   have c2 := hcode 2 (by simp [sarCode])
@@ -534,7 +534,7 @@ theorem run_sar {ms : State} {a : UInt64} {x y : Fin 32} (hx : x.val < 31) (hxs 
     simp [s4, s3, s2, s1]
   · show (s4.setX x _).mem = ms.mem
     simp [s4, s3, s2, s1]
-  · show (s4.setX x _).out = ms.out
+  · show (s4.setX x _).io = ms.io
     simp [s4, s3, s2, s1]
 
 theorem sim_shrSI64 (F : Nat) : InstrSim P code F .shrSI64 := by
@@ -659,7 +659,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
         · rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ hlt)]
         · exact State.setX_sp
         · exact State.setX_mem
-        · exact State.setX_out
+        · exact State.setX_io
       · exact .inr trivial
 
 end LeanExe.A64

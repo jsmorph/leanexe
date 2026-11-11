@@ -5,7 +5,8 @@ import LeanExe.A64.Proof.Shift
 
 /-!
 The run of an image from the boot state to `main`.  `image_main` takes a memory that holds the
-bytes of a file that the kernel found to be an image at `image` and a boot state at the image's
+bytes of a file that the kernel found to be an image at `image`, for any generator of the program
+that `genImageWith` places, and a boot state at the image's
 first word with the MMU off, and gives a run of the boot model, with the code map of the image's
 code and the image's protected bytes, to `main` in a ready state that satisfies every premise of
 a program's theorem: SP at the stack's top, a multiple of 16, the stack's room and the area in the
@@ -54,14 +55,14 @@ theorem sub_offsets_toNat (image : UInt64) {x c : Nat} (hx : image.toNat + x < 2
   omega
 
 /-- The run from an image's first word to `main`, with every premise of a program's theorem. -/
-theorem image_main {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
-    {o : Output} {image : UInt64} {n len : Nat} (h : Hw) {b : Boot}
-    (hk : bytesOk (genImage m k args room cap o image) n len = true)
+theorem image_main {gp : UInt64 → GenM (List Instr)} {m : Module} {room : UInt64} {cap : Nat}
+    {image : UInt64} {n len : Nat} (h : Hw) {b : Boot}
+    (hk : bytesOk (genImageWith gp m room cap image) n len = true)
     (himg : image.toNat % 4096 = 0) (hroom : room.toNat % 16 = 0)
     (hm : ∀ j < len, b.core.mem (image + UInt64.ofNat j) = byteAt n j)
     (hpc : b.core.pc = image) (hoff : b.mmuOff) :
-    ∃ prog start L, genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength))
-        room cap o = .ok prog ∧ L = layoutOf image prog.length m cap room ∧
+    ∃ prog start L, gp (image + UInt64.ofNat (64 + 4 * startupLength)) = .ok prog ∧
+      L = layoutOf image prog.length m cap room ∧
       startupCode L = .ok start ∧
       CodeAt (fetchFrom b.core.mem image (codeWords prog.length)) (image + 64) start ∧
       ∃ b1, BootReach h (protectedBytes image prog.length)
@@ -81,7 +82,7 @@ theorem image_main {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {
           b1.core.mem (after L.base 1 + UInt64.ofNat j) = (imageBytes prog)[j]) ∧
         (∀ a w, fetchFrom b1.core.mem (after L.base 1) prog.length a = some w →
           fetchFrom b.core.mem image (codeWords prog.length) a = some w) ∧
-        b1.core.out = b.core.out ∧ b1.uartDone = true := by
+        b1.core.io = b.core.io ∧ b1.uartDone = true := by
   obtain ⟨L, prog, start, hp, hL, hlo, hhi, hpre, hs, hhead, hcode, htab, harea, hprog⟩ :=
     image_loaded hk hm
   have hcs := (CodeAt.append (code := fetchFrom b.core.mem image (codeWords prog.length))).mp hcode
@@ -207,9 +208,9 @@ theorem image_main {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {
     · omega
     · intro j hj
       rw [hbase, hmain, ofNat_add_add, hkept _ (by omega)]
-  · show s1.out = b.core.out
+  · show s1.io = b.core.io
     rw [out1, out0]
-  · show (b0.uartDone && s1.out == b0.core.out) = true
+  · show (b0.uartDone && s1.io.out == b0.core.io.out) = true
     rw [ud0, out1]
     simp
 
@@ -261,7 +262,9 @@ theorem image_run {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
       (b'.core.out = b.core.out ++ out ++ [0] ∨
         ∃ c, T c ∧ b'.core.out = b.core.out ++ [c.toUInt8]) := by
   obtain ⟨prog, start, L, hp, hL, hs, cstart, b1, r1, hr1, p1, x30, x17, hal, htop, hstack,
-    harea, hamap, habove, himage, hmono, hout1, hud1⟩ := image_main h hk himg hroom hm hpc hoff
+    harea, hamap, habove, himage, hmono, hout1, hud1⟩ :=
+    image_main (gp := fun base => genProgram m k args uartAddr base room cap o) h hk himg hroom hm
+      hpc hoff
   have hN : imageProgLength m k args room cap o image = prog.length := by
     simp only [imageProgLength, hp]
   rw [hN]

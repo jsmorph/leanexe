@@ -85,7 +85,7 @@ theorem res_outcome {E : Env} {ctl : List Ctl} {D : Nat} {endA : UInt64} {α : T
     (hpc : ms'.pc = endA) (hx : ms'.x (regOf vs.length) = w)
     (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (h18 : ms'.x 18 = ms.x 18)
     (h17 : ms'.x 17 = ms.x 17) (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem)
-    (hout : ms'.out = ms.out) :
+    (hout : ms'.io = ms.io) :
     Outcome P code E ctl D (some (t :: σr)) endA
       (.Fallthrough st { sl with values := v :: vs }) ms := by
   refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
@@ -188,7 +188,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
       y ≠ scratch → x ≠ y → CodeAt code a' (rest x y) → ms.pc = a' →
       ∃ ms', Reach P code ms ms' ∧ ms'.pc = after a' (rest x y).length ∧
         ms'.x x = op (ms.x x) (ms.x y) ∧ (∀ q, q ≠ x → q ≠ scratch → ms'.x q = ms.x q) ∧
-        ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧ ms'.out = ms.out)
+        ms'.sp = ms.sp ∧ ms'.mem = ms.mem ∧ ms'.io = ms.io)
     (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       (∃ b a vs, sl.values = .i64 b :: .i64 a :: vs ∧
         execOne (f + 1) m st sl inst = if b = 0 then .Trap st "integer divide by zero"
@@ -265,7 +265,7 @@ theorem sim_remUI64 (F : Nat) : InstrSim P code F .remUI64 := by
       exact State.x_setX_ne (s := ms) (Ne.symm hqs)
     · show (s1.setX x _).sp = ms.sp; rw [State.setX_sp]; exact State.setX_sp
     · show (s1.setX x _).mem = ms.mem; rw [State.setX_mem]; exact State.setX_mem
-    · show (s1.setX x _).out = ms.out; rw [State.setX_out]; exact State.setX_out
+    · show (s1.setX x _).io = ms.io; rw [State.setX_io]; exact State.setX_io
   · intro f α m st sl
     cases hv : sl.values with
     | nil => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
@@ -293,7 +293,7 @@ theorem sim_divUI64 (F : Nat) : InstrSim P code F .divUI64 := by
       rw [State.x_withPc, State.x_setX_ne (Ne.symm hq)]
     · exact State.setX_sp
     · exact State.setX_mem
-    · exact State.setX_out
+    · exact State.setX_io
   · intro f α m st sl
     cases hv : sl.values with
     | nil => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩

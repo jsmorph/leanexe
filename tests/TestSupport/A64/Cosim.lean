@@ -296,7 +296,7 @@ def genCase (form : Nat) : Gen Case := do
       let (a, b) ← cmpPair
       let s : State :=
         { regs := fun _ => 0, dregs := fun _ => 0, sp := 0, pc := 0, nFlag := false,
-          zFlag := false, cFlag := false, vFlag := false, mem := fun _ => 0, out := [] }
+          zFlag := false, cFlag := false, vFlag := false, mem := fun _ => 0, io := ⟨[], 0, 0⟩ }
       let f := s.subs 31 a b
       let bit (b : Bool) (k : Nat) : UInt64 := if b then UInt64.ofNat (2 ^ k) else 0
       let nzcv := bit f.nFlag 31 ||| bit f.zFlag 30 ||| bit f.cFlag 29 ||| bit f.vFlag 28
@@ -472,9 +472,10 @@ def checkLine (line : String) : Except String (List String) := do
       cFlag := (nzcv >>> 29) &&& 1 == 1, vFlag := (nzcv >>> 28) &&& 1 == 1,
       mem := fun a => if a - winAddr < UInt64.ofNat windowSize then inWin[(a - winAddr).toNat]!
         else 0,
-      out := [] }
+      io := ⟨[], 0, 0⟩ }
   let plat : Platform :=
-    { normal := fun a => a - winAddr < UInt64.ofNat windowSize, uart := 0x09000000 }
+    { normal := fun a => a - winAddr < UInt64.ofNat windowSize, uart := 0x09000000,
+      rx := ⟨fun _ => 0, fun _ => 0, fun _ _ => 0⟩ }
   match exec plat instr s with
   | none => return [s!"the model stops on {repr instr}"]
   | some t =>

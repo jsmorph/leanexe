@@ -60,7 +60,7 @@ theorem run_startup_tail (P : Platform) {L : Layout} {is : List Instr}
     (hnorm : ∀ j < L.areaEnd.toNat - L.clear.toNat,
       P.normal (L.clear + UInt64.ofNat j) = true) :
     ∃ s', Reach P code s s' ∧ s'.pc = after L.base 1 ∧ s'.x 30 = after (L.image + 64) 58 ∧
-      s'.x 17 = L.area ∧ s'.sp = L.stackTop ∧ s'.out = s.out ∧
+      s'.x 17 = L.area ∧ s'.sp = L.stackTop ∧ s'.io = s.io ∧
       (∀ a, (a - L.clear).toNat < (L.areaEnd - L.clear).toNat → s'.mem a = 0) ∧
       (∀ a, ¬ (a - L.clear).toNat < (L.areaEnd - L.clear).toNat → s'.mem a = s.mem a) := by
   obtain ⟨clr, fin, stk, ar, call, hclr, cclr, hfin, cfin, cloop, hstk, cstk, cadd, har, car,
@@ -97,9 +97,9 @@ theorem run_startup_tail (P : Platform) {L : Layout} {is : List Instr}
     rw [State.setX_sp, sp6]
     show s4.x 1 + UInt64.ofNat 0 = _
     rw [x4, add_ofNat_zero]
-  · show (s6.setX 30 (s6.pc + 4)).out = _
-    rw [State.setX_out, o6]
-    show s4.out = _
+  · show (s6.setX 30 (s6.pc + 4)).io = _
+    rw [State.setX_io, o6]
+    show s4.io = _
     rw [o4, o3, o2, o1]
   · show (s6.setX 30 (s6.pc + 4)).mem a = _
     rw [State.setX_mem, m6]

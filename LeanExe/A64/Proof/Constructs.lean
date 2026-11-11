@@ -502,7 +502,7 @@ from `ms`. -/
 theorem Outcome.trans {E : Env} {ctl : List Ctl} {D : Nat} {fin : Option (List ValueType)}
     {endA : UInt64} {α : Type}
     {r : Continuation α} {ms ms1 : State} (hctl : CtlOk ctl) (hr : Reach P code ms ms1)
-    (hsp : ms1.sp = ms.sp) (hout : ms1.out = ms.out) (h18 : ms1.x 18 = ms.x 18)
+    (hsp : ms1.sp = ms.sp) (hout : ms1.io = ms.io) (h18 : ms1.x 18 = ms.x 18)
     (hmf : MemFrame ms.sp (E.locals + spillSlots) ms ms1)
     (hfr : Frame (curBase ctl) ms ms1) (ho : Outcome P code E ctl D fin endA r ms1) :
     Outcome P code E ctl D fin endA r ms := by
@@ -653,7 +653,7 @@ theorem construct_outcome {E : Env} {ctl : List Ctl} {D : Nat} {α : Type} {r : 
     (hctl : CtlOk ctl) (hb : curBase ctl ≤ t.base) (hinv : Inv P E.localTypes σ0 sl0 ms)
     (hbelow : StackRel ms below) (hbt : Typed σb below) (hlen : below.length = t.base)
     (hr1 : Reach P code ms ms1)
-    (hsp1 : ms1.sp = ms.sp) (hout1 : ms1.out = ms.out) (hmem1 : ms1.mem = ms.mem)
+    (hsp1 : ms1.sp = ms.sp) (hout1 : ms1.io = ms.io) (hmem1 : ms1.mem = ms.mem)
     (hfr1 : ∀ q, ms1.x q = ms.x q) (hfb : ∀ x, fb = some x → x = t.types ++ σb)
     (hjump : ∀ s : State, s.pc = endB → Reach P code s { s with pc := t.target })
     (ho : Outcome P code E (t :: ctl) D fb endB r ms1) :
@@ -684,7 +684,7 @@ theorem construct_outcome {E : Env} {ctl : List Ctl} {D : Nat} {α : Type} {r : 
         show t.types.length + t.base = t.base + t.types.length
         omega
       refine ⟨_, rfl, { ms' with pc := t.target }, hr1.trans (hr'.trans (hjump ms' hp)), rfl,
-        by show ms'.sp = ms.sp; rw [hsp', hsp1], by show ms'.out = ms.out; rw [hout', hout1],
+        by show ms'.sp = ms.sp; rw [hsp', hsp1], by show ms'.io = ms.io; rw [hout', hout1],
         by show ms'.x 18 = ms.x 18; rw [h18', hfr1], hmf2 _ hmf', ?_,
         fun k hk => hfr2 k (Nat.lt_of_lt_of_le hk hb), hsr'.regs rfl rfl rfl⟩
       exact ⟨StackRel.of_kept (StackRel.kept (hinv'.stack.congr fun _ _ => rfl) hl' htk)

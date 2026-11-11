@@ -80,6 +80,12 @@ lean_exe «a64-programs» where
   srcDir := "tests"
   root := `TestSupport.A64.ProgramsMain
 
+-- The arm64 Image of the AArch64 back end that reads its arguments from the UART
+-- (tests/baremetal/a64-uart.sh); not a default target.
+lean_exe «a64-uart» where
+  srcDir := "tests"
+  root := `TestSupport.A64.UartMain
+
 -- The checks of the hashing transcriptions and programs on their vectors
 -- (tests/TestSupport/Hashing); not default targets.
 lean_exe «sha3-vectors» where

@@ -30,7 +30,7 @@ the registers, SP, the memory, and the output. -/
 theorem run_clearCheck {a : UInt64} {u : State} (hcode : CodeAt code a clearLoop)
     (hpc : u.pc = a) :
     ∃ u', Reach P code u u' ∧ u'.pc = (if u.x 1 ≤ u.x 0 then after a 5 else after a 2) ∧
-      (∀ q, u'.x q = u.x q) ∧ u'.sp = u.sp ∧ u'.mem = u.mem ∧ u'.out = u.out := by
+      (∀ q, u'.x q = u.x q) ∧ u'.sp = u.sp ∧ u'.mem = u.mem ∧ u'.io = u.io := by
   have c0 : code (after a 0) = some (encode (.subsReg 31 0 1)) := hcode 0 (by decide)
   have c1 : code (after a 1) = some (encode (.bcond 2 4)) := hcode 1 (by decide)
   rw [after_zero] at c0
@@ -67,7 +67,7 @@ theorem run_clearPass {a : UInt64} {u : State} (hcode : CodeAt code a clearLoop)
     (hmap : ∀ k < 8, P.normal (u.x 0 + UInt64.ofNat k) = true) :
     ∃ u', Reach P code u u' ∧ u'.pc = a ∧ u'.x 0 = u.x 0 + 8 ∧
       (∀ q, q ≠ 0 → u'.x q = u.x q) ∧ u'.sp = u.sp ∧ u'.mem = store64 u.mem (u.x 0) 0 ∧
-      u'.out = u.out := by
+      u'.io = u.io := by
   obtain ⟨u2, r2, p2, x2, sp2, mem2, out2⟩ := run_clearCheck P code hcode hpc
   rw [ite_eq_right hlt] at p2
   have c2 : code (after a 2) = some (encode (.str 31 0 0)) := hcode 2 (by decide)
@@ -114,8 +114,8 @@ theorem run_clearPass {a : UInt64} {u : State} (hcode : CodeAt code a clearLoop)
     show store64 u2.mem (u2.x 0 + UInt64.ofNat (8 * 0)) (u2.x 31) = _
     rw [mem2, x2, x2, Nat.mul_zero, add_ofNat_zero]
     rfl
-  · show (u3.setX 0 (u3.x 0 + UInt64.ofNat 8)).out = _
-    rw [State.setX_out]
+  · show (u3.setX 0 (u3.x 0 + UInt64.ofNat 8)).io = _
+    rw [State.setX_io]
     exact out2
 
 /-- The run of `clearLoop` at `a` from `s` at `a` with `lo` in X0 and `hi` in X1, where `lo` is
@@ -129,7 +129,7 @@ theorem run_clearLoop {a lo hi : UInt64} {s : State} (hcode : CodeAt code a clea
     ∃ s', Reach P code s s' ∧ s'.pc = after a 5 ∧
       (∀ b, (b - lo).toNat < (hi - lo).toNat → s'.mem b = 0) ∧
       (∀ b, ¬ (b - lo).toNat < (hi - lo).toNat → s'.mem b = s.mem b) ∧
-      s'.x 0 = hi ∧ (∀ q, q ≠ 0 → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.out = s.out := by
+      s'.x 0 = hi ∧ (∀ q, q ≠ 0 → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.io = s.io := by
   obtain ⟨m, hm⟩ : ∃ m, hi.toNat = lo.toNat + 8 * m :=
     ⟨(hi.toNat - lo.toNat) / 8, by omega⟩
   clear hle h8

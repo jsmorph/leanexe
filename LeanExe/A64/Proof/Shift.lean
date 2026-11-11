@@ -524,7 +524,8 @@ theorem genProgram_shift {m : Module} {k : Nat} {args : List UInt64} {uart base 
   have hb3' := bField_shift ((hX.drop (m := 10) (by omega)) 4 (by omega)) h0 hb3
   have hb4' := bField_shift ((hX.drop (m := 15) (by omega)) 4 (by omega)) h0 hb4
   rw [← hg]
-  simp only [genProgram, hok, hgt, hgl, Bool.not_true, Bool.false_eq_true, ite_false, ite_true,
+  simp only [genProgram, genProgramWith, hok, hgt, hgl, Bool.not_true, Bool.false_eq_true,
+    ite_false, ite_true,
     hfs, bind, Except.bind, pure, Except.pure, after_shift, ← hfirst, endOf_shift, ← hT,
     tableOf_shift, hen, hen', hps, hmn, hmn', hfn, hfn', hb1, hb2, hb3, hb4, hb1', hb2', hb3',
     hb4']
@@ -646,7 +647,7 @@ theorem genImage_shift {m : Module} {k : Nat} {args : List UInt64} {room : UInt6
   have hr : 0x40000000 ≤ (image + d).toNat ∧
       (image + d).toNat + (layoutOf image prog.length m cap room).size ≤ 0x80000000 ∧
       areaPrefix m ≤ areaSize cap := ⟨hlo, hhi, hpre⟩
-  unfold genImage
+  simp only [genImage, genImageWith]
   rw [hp']
   simp only [bind, Except.bind, layoutOf_shift, Layout.shift_eq, hr, and_self, ite_true, hs',
     pure, Except.pure, add_sub_add, List.append_assoc, length_imageBytes, List.length_append]

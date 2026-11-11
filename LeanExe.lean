@@ -26,6 +26,8 @@ import LeanExe.A64.Proof.Function
 import LeanExe.A64.Proof.ImageLayout
 import LeanExe.A64.Proof.ImageRun
 import LeanExe.A64.Proof.ImageTheorem
+import LeanExe.A64.Proof.Input
+import LeanExe.A64.Proof.InputRuns
 import LeanExe.A64.Proof.Lift
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Memory

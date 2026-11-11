@@ -12,12 +12,23 @@ image's bytes, so a store never changes what the processor fetches.  `step` fetc
 the program counter, decodes it, and executes it.  It returns `none` for a word outside the
 forms, for an access to memory that `Platform.normal` does not cover, for a load or store based on
 the stack pointer while the stack pointer is not a multiple of 16, and for every access to the
-UART other than a byte store to its data register, so a theorem about a run that never stops the
-model excludes the faults of those accesses.  The flags, the stack pointer, and the semantics of
-register 31 follow the pseudocode of the Arm Architecture Reference Manual (DDI 0487): register 31
-is the stack pointer as the base of a load or store and as an operand or destination of `ADD` and
-`SUB` with an immediate, and the zero register elsewhere.  Unaligned accesses to Normal memory
-succeed, as they do while `SCTLR_EL1.A` is clear.
+UART other than a byte store to its data register and a 32-bit load of its data or flag register,
+so a theorem about a run that never stops the model excludes the faults of those accesses.  The
+flags, the stack pointer, and the semantics of register 31 follow the pseudocode of the Arm
+Architecture Reference Manual (DDI 0487): register 31 is the stack pointer as the base of a load
+or store and as an operand or destination of `ADD` and `SUB` with an immediate, and the zero
+register elsewhere.  Unaligned accesses to Normal memory succeed, as they do while `SCTLR_EL1.A`
+is clear.
+
+The UART's receiver is the PL011's of QEMU's virt machine, whose flag register UARTFR lies 0x18
+bytes above its data register UARTDR (PrimeCell UART (PL011) Technical Reference Manual, ARM DDI
+0183G, Table 3-1).  A record `Rx` of the platform gives the values that reads of the two registers
+return, and the state counts the bytes read and the reads of UARTFR since the last read of UARTDR.
+A 32-bit load of UARTFR for byte `j` returns `Rx.fr`, whose bit 4, RXFE, is set while the byte has
+not arrived, and a load of UARTDR after a read of UARTFR that found RXFE clear returns the byte's
+word, with the byte in bits 7 to 0 and its error flags in bits 11 to 8 (Table 3-2), and moves to
+the next byte.  The model runs a 32-bit load at no other address, and it stops at a load of UARTDR
+before a read of UARTFR has found RXFE clear.
 
 The state holds the low 64 bits of the SIMD and floating-point registers V0 to V31, the registers
 D0 to D31, since the double-precision forms read and write only those bits.  A single-precision
@@ -35,16 +46,48 @@ the startup's `FPCR`, `0x02000000`: DN set and every other field clear.
 
 namespace LeanExe.A64
 
+/-- What the PL011's receiver returns: `word j`, the word that the read of UARTDR for byte `j`
+returns, with the byte in bits 7 to 0 and its error flags in bits 11 to 8; `wait j`, the number of
+reads of UARTFR that find RXFE set before byte `j` can be read; and `flags j i`, the other bits of
+the `i`-th read of UARTFR for byte `j`. -/
+structure Rx where
+  word : Nat → UInt32
+  wait : Nat → Nat
+  flags : Nat → Nat → UInt32
+
+/-- The value of the `i`-th read of UARTFR for byte `j`: `flags j i` with bit 4, RXFE, set exactly
+when `i < wait j`. -/
+def Rx.fr (rx : Rx) (j i : Nat) : UInt32 :=
+  if i < rx.wait j then rx.flags j i ||| 0x10 else rx.flags j i &&& 0xFFFFFFEF
+
+/-- The receiver delivers the bytes `bs`, each without an error flag: the word of byte `j` holds
+`bs[j]` in bits 7 to 0 and zeros in bits 11 to 8. -/
+def Rx.Delivers (rx : Rx) (bs : List UInt8) : Prop :=
+  ∀ j (h : j < bs.length), (rx.word j).toNat % 4096 = bs[j].toNat
+
+/-- The word of byte `j` carries an error flag: bits 11 to 8 are not all 0. -/
+def Rx.Flagged (rx : Rx) (j : Nat) : Prop :=
+  (rx.word j).toNat / 256 % 16 ≠ 0
+
 /-- Where loads and stores may go.  `normal a` holds when the byte at `a` is mapped as Normal
-memory, and `uart` is the address of the UART's data register, where a byte store appends the
-byte to the output. -/
+memory, `uart` is the address of the UART's data register, where a byte store appends the byte to
+the output, and `rx` gives the values of the reads of the UART's data and flag registers. -/
 structure Platform where
   normal : UInt64 → Bool
   uart : UInt64
+  rx : Rx
+
+/-- The UART as the program sees it: the bytes written to its data register, the number of bytes
+read from it, and the number of reads of its flag register since the last read of its data
+register. -/
+structure Io where
+  out : List UInt8
+  rxNext : Nat
+  rxPolls : Nat
 
 /-- The state that the emitted code uses: the general registers X0 to X30, the floating-point
 registers D0 to D31, the stack pointer, the program counter, the condition flags, the memory as
-bytes, and the bytes written to the UART. -/
+bytes, and the UART's output and reads. -/
 structure State where
   regs : Fin 31 → UInt64
   dregs : Fin 32 → UInt64
@@ -55,7 +98,10 @@ structure State where
   cFlag : Bool
   vFlag : Bool
   mem : UInt64 → UInt8
-  out : List UInt8
+  io : Io
+
+/-- The bytes written to the UART. -/
+def State.out (s : State) : List UInt8 := s.io.out
 
 /-- The instruction forms of the model, all with 64-bit or double-precision registers but `orrW`
 and the single-precision forms.  A register field is the 5-bit number of the encoding, and an
@@ -86,6 +132,9 @@ inductive Instr where
   | str (t n : Fin 32) (imm : Fin 4096)
   /-- `STRB Wt, [Xn|SP, #imm]`. -/
   | strb (t n : Fin 32) (imm : Fin 4096)
+  /-- `LDR Wt, [Xn|SP, #(4 * imm)]`, a 32-bit load, which the model runs only at the UART's data
+  and flag registers. -/
+  | ldrW (t n : Fin 32) (imm : Fin 4096)
   /-- `B` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
   | b (imm : Fin 67108864)
   /-- `BL` to the program counter plus 4 times `imm` read as a signed 26-bit number. -/
@@ -277,6 +326,7 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 1024 = 0x278E40 then some (.fcvtzuXS d n)
   else if v / 1024 = 0x78E00 then some (.fcvtzsWS d n)
   else if v / 2097152 = 0xF1 ∧ v / 1024 % 64 = 8 ∧ v % 32 = 0 then some (.fcmpS n m)
+  else if v / 4194304 = 0x2E5 then some (.ldrW d n imm12)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -349,6 +399,11 @@ is not the stack pointer, or the stack pointer is a multiple of 16. -/
 def spAligned (s : State) (n : Fin 32) : Bool :=
   n.val != 31 || s.sp % 16 == 0
 
+/-- The state after a 32-bit load into register `t` that returned `v`, zero-extended, before the
+model's count of the UART's reads. -/
+def devRead (s : State) (t : Fin 32) (v : UInt32) : State :=
+  { s.setX t v.toUInt64 with pc := s.pc + 4 }
+
 end State
 
 /-- The field `v` of `bits` bits read as a two's complement number, as a 64-bit word. -/
@@ -408,8 +463,19 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
       let a := s.xsp n + UInt64.ofNat imm.val
       let v := (s.x t).toUInt8
       if !s.spAligned n then none
-      else if a = P.uart then some { s with out := s.out ++ [v], pc := next }
+      else if a = P.uart then
+        some { s with io := { s.io with out := s.io.out ++ [v] }, pc := next }
       else if P.normal a then some { s with mem := store8 s.mem a v, pc := next }
+      else none
+  | .ldrW t n imm =>
+      let a := s.xsp n + UInt64.ofNat (4 * imm.val)
+      let j := s.io.rxNext
+      let i := s.io.rxPolls
+      if !s.spAligned n then none
+      else if a = P.uart + 0x18 then
+        some { s.devRead t (P.rx.fr j i) with io := { s.io with rxPolls := i + 1 } }
+      else if a = P.uart ∧ P.rx.wait j < i then
+        some { s.devRead t (P.rx.word j) with io := { s.io with rxNext := j + 1, rxPolls := 0 } }
       else none
   | .b imm => some { s with pc := s.pc + sext 26 imm.val * 4 }
   | .bl imm => some { s.setX 30 next with pc := s.pc + sext 26 imm.val * 4 }

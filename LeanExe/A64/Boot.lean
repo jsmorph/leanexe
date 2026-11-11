@@ -31,7 +31,8 @@ Every instruction other than a system instruction steps by `exec` with the platf
 once translation is on in the covered configuration with valid TLBs: its Normal memory is the
 writable Normal memory of the table outside the protected bytes `R`, the image's code, vectors, and
 table, which no store may change, so the fixed map of code words stays the memory's, and its UART is
-QEMU's at `uartAddr`, which the table must map as writable Device memory.  `HVC` has no step: a run
+QEMU's at `uartAddr`, which the table must map as writable Device memory, with the receiver that
+`Hw` leaves open.  `HVC` has no step: a run
 that reaches it with `X0` holding PSCI's `SYSTEM_OFF` has finished, and the platform's firmware
 turns the machine off.
 -/
@@ -82,9 +83,11 @@ inductive Tlb where
   | clean
   deriving DecidableEq
 
-/-- What the model leaves open about the processor: the value of `ID_AA64MMFR3_EL1`. -/
+/-- What the model leaves open about the machine: the value of `ID_AA64MMFR3_EL1` and what the
+reads of the UART's receiver return. -/
 structure Hw where
   mmfr3 : UInt64
+  rx : Rx
 
 /-- The processor implements `TCR2_EL1` (FEAT_TCR2): `ID_AA64MMFR3_EL1.TCRX` is not 0. -/
 def Hw.tcrx (h : Hw) : Bool := h.mmfr3 &&& 0xF != 0
@@ -202,12 +205,15 @@ def writableNormal : Option MemType → Bool
   | _ => false
 
 /-- The platform of the program under `b`: writable Normal memory outside the protected bytes
-`R`, and the UART at `uartAddr`. -/
+`R`, and the UART at `uartAddr` with the receiver `h.rx`. -/
 def Boot.platform (h : Hw) (R : UInt64 → Bool) (b : Boot) : Platform :=
-  { normal := fun a => !R a && writableNormal (classify h b.eff b.core.mem a), uart := uartAddr }
+  { normal := fun a => !R a && writableNormal (classify h b.eff b.core.mem a), uart := uartAddr,
+    rx := h.rx }
 
-/-- The platform with no memory, for the instructions that touch none. -/
-def noMemory : Platform := { normal := fun _ => false, uart := uartAddr }
+/-- The platform with no memory, for the instructions that touch none.  Its receiver, which no
+such instruction reads, returns zeros. -/
+def noMemory : Platform :=
+  { normal := fun _ => false, uart := uartAddr, rx := ⟨fun _ => 0, fun _ => 0, fun _ _ => 0⟩ }
 
 /-- A system instruction. -/
 def Instr.isSys : Instr → Bool
@@ -225,7 +231,7 @@ def Instr.isFP : Instr → Bool
 
 /-- A load or a store. -/
 def Instr.accessesMemory : Instr → Bool
-  | .ldr _ _ _ | .str _ _ _ | .strb _ _ _ => true
+  | .ldr _ _ _ | .str _ _ _ | .strb _ _ _ | .ldrW _ _ _ => true
   | _ => false
 
 /-- `MSR` of `r` traps at EL1 under `b`: `MSR FPCR` while `CPACR_EL1.FPEN` traps EL1's accesses

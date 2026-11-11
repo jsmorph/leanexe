@@ -12,10 +12,12 @@ boot state at the start, and each step of the run is a step of `BootStep` by its
 step keeps the UART's output or appends to it, so `uartDone` holds after the run exactly when it
 held before and the run wrote no byte to the UART.
 
-While the MMU is off, a run of the program model with the platform `noMemory` that keeps the
-UART's output lifts by the rule `plain`: such a run executes no system instruction, on which `exec`
-stops, and no load or store, since `noMemory` maps no byte and its only store, to the UART,
-appends to the output.  The rule requires a floating-point instruction to run with floating point
+A step keeps the state's `io` or advances it in the order `Io.Le`: it appends to the output, or
+it reads the UART's flag or data register, which counts the read.  While the MMU is off, a run of
+the program model with the platform `noMemory` that keeps `io` lifts by the rule `plain`: such a
+run executes no system instruction, on which `exec` stops, and no load or store, since `noMemory`
+maps no byte, its only store, to the UART, appends to the output, and its only loads, of the UART,
+count a read.  The rule requires a floating-point instruction to run with floating point
 enabled, which firmware need not have done, so the run fetches from `withoutFP code`, the words of
 the code map that decode to no floating-point instruction.
 -/
@@ -27,6 +29,31 @@ theorem State.setXsp_mem {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).
 
 theorem State.setXsp_out {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).out = s.out := by
   unfold State.setXsp; split <;> rfl
+
+theorem State.setXsp_io {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).io = s.io := by
+  unfold State.setXsp; split <;> rfl
+
+/-- The UART's state `a` comes no later than `b`: `b`'s output extends `a`'s, and `b` has read more
+bytes, or as many bytes and at least as many polls of the flag register. -/
+def Io.Le (a b : Io) : Prop :=
+  a.out <+: b.out ∧ (a.rxNext < b.rxNext ∨ (a.rxNext = b.rxNext ∧ a.rxPolls ≤ b.rxPolls))
+
+theorem Io.Le.refl (a : Io) : a.Le a := ⟨List.prefix_rfl, .inr ⟨rfl, Nat.le_refl _⟩⟩
+
+theorem Io.Le.trans {a b c : Io} (h1 : a.Le b) (h2 : b.Le c) : a.Le c := by
+  refine ⟨h1.1.trans h2.1, ?_⟩
+  have := h1.2
+  have := h2.2
+  omega
+
+theorem Io.Le.antisymm {a b : Io} (h1 : a.Le b) (h2 : b.Le a) : a = b := by
+  obtain ⟨o1, n1, p1⟩ := a
+  obtain ⟨o2, n2, p2⟩ := b
+  obtain ⟨ho1, hn1⟩ := h1
+  obtain ⟨ho2, hn2⟩ := h2
+  dsimp only at ho1 hn1 ho2 hn2
+  rw [Io.mk.injEq]
+  exact ⟨ho1.eq_of_length (Nat.le_antisymm ho1.length_le ho2.length_le), by omega, by omega⟩
 
 /-- A byte less than 8 bytes above `a` is Normal memory when the 8 bytes from `a` are. -/
 theorem normal_of_mapped {P : Platform} {a b : UInt64} (hm : P.mapped a 8 = true)
@@ -68,25 +95,37 @@ theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = so
       simp only [store8]
       exact ite_eq_right fun e => by subst e; simp [hn] at ha
     · cases h
+  case ldrW r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      simp [State.devRead]
+    split at h
+    · obtain rfl := Option.some.inj h
+      simp [State.devRead]
+    · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simp [State.setXsp_mem, State.subs, State.fcmp, State.fcmpS]
 
-/-- An instruction keeps the UART's output or appends to it. -/
-theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t) :
-    s.out <+: t.out := by
+/-- An instruction keeps the UART's state or advances it: it appends to the output, or it counts a
+read of the UART's flag or data register. -/
+theorem exec_io {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t) :
+    s.io.Le t.io := by
   cases i
   case ldr r n imm =>
     simp only [exec] at h
     split at h
     · obtain rfl := Option.some.inj h
-      simp
+      simpa using Io.Le.refl s.io
     · cases h
   case str r n imm =>
     simp only [exec] at h
     split at h
     · obtain rfl := Option.some.inj h
-      exact List.prefix_rfl
+      exact Io.Le.refl s.io
     · cases h
   case strb r n imm =>
     simp only [exec] at h
@@ -94,14 +133,30 @@ theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some
     · cases h
     split at h
     · obtain rfl := Option.some.inj h
-      exact List.prefix_append _ _
+      exact ⟨List.prefix_append _ _, .inr ⟨rfl, Nat.le_refl _⟩⟩
     split at h
     · obtain rfl := Option.some.inj h
-      exact List.prefix_rfl
+      exact Io.Le.refl s.io
+    · cases h
+  case ldrW r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact ⟨List.prefix_rfl, .inr ⟨rfl, Nat.le_succ _⟩⟩
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact ⟨List.prefix_rfl, .inl (Nat.lt_succ_self _)⟩
     · cases h
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
-      simp [State.setXsp_out, State.subs, State.fcmp, State.fcmpS]
+      simpa [State.setXsp_io, State.subs, State.fcmp, State.fcmpS] using Io.Le.refl s.io
+
+/-- An instruction keeps the UART's output or appends to it. -/
+theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t) :
+    s.out <+: t.out :=
+  (exec_io h).1
 
 /-- The fetch, the decoding, and the execution of a step. -/
 theorem step_some {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
@@ -117,14 +172,19 @@ theorem step_frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State
   obtain ⟨_, _, _, _, he⟩ := step_some h
   exact exec_frame he ha
 
-/-- A run keeps the UART's output or appends to it. -/
-theorem Reach.out {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
-    (h : Reach P code s t) : s.out <+: t.out := by
+/-- A run keeps the UART's state or advances it. -/
+theorem Reach.io {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : Reach P code s t) : s.io.Le t.io := by
   induction h with
-  | refl => exact List.prefix_rfl
+  | refl => exact Io.Le.refl _
   | next hs _ ih =>
     obtain ⟨_, _, _, _, he⟩ := step_some hs
-    exact (exec_out he).trans ih
+    exact (exec_io he).trans ih
+
+/-- A run keeps the UART's output or appends to it. -/
+theorem Reach.out {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : Reach P code s t) : s.out <+: t.out :=
+  h.io.1
 
 /-- The code map `code` without the words that decode to a floating-point instruction. -/
 def withoutFP (code : UInt64 → Option UInt32) (a : UInt64) : Option UInt32 :=
@@ -155,10 +215,10 @@ theorem CodeAt.noFP {code : UInt64 → Option UInt32} {a : UInt64} {is : List In
     CodeAt (withoutFP code) a is :=
   fun k hk => withoutFP_of (h k hk) (hfp _ (List.getElem_mem hk))
 
-/-- An instruction that executes with the platform `noMemory` and keeps the UART's output is
+/-- An instruction that executes with the platform `noMemory` and keeps the UART's state is
 neither a system instruction nor a load or store. -/
 theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s = some t)
-    (ho : t.out = s.out) : i.isSys = false ∧ i.accessesMemory = false := by
+    (ho : t.io = s.io) : i.isSys = false ∧ i.accessesMemory = false := by
   have hm : ∀ a, noMemory.mapped a 8 = false := fun _ => rfl
   cases i
   case ldr r n imm => simp [exec, hm] at h
@@ -169,12 +229,27 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
     · cases h
     split at h
     · obtain rfl := Option.some.inj h
-      have := congrArg List.length ho
+      have := congrArg (fun io => io.out.length) ho
       simp only [List.length_append, List.length_singleton] at this
       omega
     split at h
     · rename_i hn
       simp [noMemory] at hn
+    · cases h
+  case ldrW r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      have := congrArg Io.rxPolls ho
+      simp only at this
+      omega
+    split at h
+    · obtain rfl := Option.some.inj h
+      have := congrArg Io.rxNext ho
+      simp only at this
+      omega
     · cases h
   all_goals first
     | exact ⟨rfl, rfl⟩
@@ -182,15 +257,16 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
 
 /-- While SP_EL1 is the stack pointer and the MMU is off in both copies of `SCTLR_EL1`, a run of
 the program model with the platform `noMemory` and the code map `withoutFP code` that keeps the
-UART's output is a run of the boot model by its rule `plain`, which changes only the core, when the
+UART's state is a run of the boot model by its rule `plain`, which changes only the core, when the
 code map's addresses and the run's last program counter lie below 2^55. -/
 theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     {b : Boot} (hsp : b.spSel = true) (hoff : b.mmuOff) {c : State}
-    (hr : Reach noMemory (withoutFP code) b.core c) (ho : c.out = b.core.out)
+    (hr : Reach noMemory (withoutFP code) b.core c) (ho : c.io = b.core.io)
     (hend : c.pc.toNat < 2 ^ 55) :
     BootReach h R code b { b with core := c } := by
-  suffices H : ∀ s, Reach noMemory (withoutFP code) s c → c.pc.toNat < 2 ^ 55 → c.out = s.out →
+  suffices H : ∀ s, Reach noMemory (withoutFP code) s c → c.pc.toNat < 2 ^ 55 →
+      c.io = s.io →
       ∀ b' : Boot, b'.core = s → b'.spSel = true → b'.mmuOff →
       BootReach h R code b' { b' with core := c } from
     H _ hr hend ho b rfl hsp hoff
@@ -206,12 +282,7 @@ theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 →
     subst hb
     obtain ⟨w, i, hcw, hd, he⟩ := step_some hs
     obtain ⟨hc, hfp⟩ := withoutFP_some hcw
-    have hst := exec_out he
-    have ht : t.out = b'.core.out := (hst.eq_of_length (by
-      have h1 := hst.length_le
-      have h2 := hr.out.length_le
-      rw [ho] at h2
-      omega)).symm
+    have ht : t.io = b'.core.io := Io.Le.antisymm (by rw [← ho]; exact hr.io) (exec_io he)
     obtain ⟨hn, hm⟩ := plain_of_exec_noMemory he ht
     have hpc : t.pc.toNat < 2 ^ 55 := by
       cases hr with

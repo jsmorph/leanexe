@@ -23,7 +23,8 @@
 # the address that the walk computed.  A reset constraint, which the patch lets name the opcode's
 # fields, keeps every byte of the access in the RAM GiB, X[Rn] being SP_EL1 for Rn = 31; the
 # byte store's second trace, strb-uart, puts the access at the UART's data register 0x09000000,
-# which descriptor 0 maps as Device memory.
+# which descriptor 0 maps as Device memory, and the 32-bit load ldr-w-uart puts it at that register
+# or at the UART's flag register 0x09000018.
 #
 # Each profile's directory holds its feature settings, `features`, derived from the guest's ID
 # registers with Arm's feature constraints (AARCHMRS 2026-09), and
@@ -86,12 +87,13 @@
 # that, KVM traps the guest's first floating-point instruction, loads the guest's registers, and
 # resumes the guest at the instruction (kvm_hyp_handle_fpsimd).
 #
-# A third profile, sme, traces only the floating-point forms, with kvm's settings on a processor that
-# also implements FEAT_SME and FEAT_SME_FA64, a check that their results do not depend on
-# PSTATE.SM or SMCR_ELx.FA64, which Linux's boot protocol leaves free.  The traces leave PSTATE.SM,
-# SMCR_EL1, and SMCR_EL2 unknown, and set what booting.rst requires of such a processor: ESM
-# besides EZ in CPTR_EL3, 0x1100, SMEN 0b11 besides kvm's fields in CPTR_EL2, 0x53330000, and FA64
-# in SMCR_EL3, 0x80000000, whose LEN, which booting.rst leaves to the firmware, is 0.
+# A third profile, sme, traces the floating-point forms and ldr-w-uart, with kvm's settings on a
+# processor that also implements FEAT_SME and FEAT_SME_FA64, a check that their results do not
+# depend on PSTATE.SM or SMCR_ELx.FA64, which Linux's boot protocol leaves free.  The traces leave
+# PSTATE.SM, SMCR_EL1, and SMCR_EL2 unknown, and set what booting.rst requires of such a
+# processor: ESM besides EZ in CPTR_EL3, 0x1100, SMEN 0b11 besides kvm's fields in CPTR_EL2,
+# 0x53330000, and FA64 in SMCR_EL3, 0x80000000, whose LEN, which booting.rst leaves to the
+# firmware, is 0.
 #
 # Usage: tests/isla/traces.sh tcg|kvm|sme [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
@@ -166,6 +168,7 @@ fp=("${tcr[@]}" -R "CPACR_EL1={bits=0x0000000000300000}" -R "CPTR_EL2={bits=$cpt
   -R "CPTR_EL3={bits=$cptr3}" -R "FPCR={bits=0x0000000002000000}" "${smcr3[@]}")
 dword="bvadd ($x) ((_ zero_extend 49) (concat imm12 #b000))"
 byte="bvadd ($x) ((_ zero_extend 52) imm12)"
+word="bvadd ($x) ((_ zero_extend 50) (concat imm12 #b00))"
 
 # run FORM OPCODE ARG...: OPCODE is the pattern that Isla's -i takes with --partial.
 run() {
@@ -174,7 +177,8 @@ run() {
   if [ ${#only[@]} -gt 0 ] && ! printf '%s\n' "${only[@]}" | grep -qx "$name"; then
     return
   fi
-  if [ -n "$fp_only" ] && [ "$ir" != "$irdir/armv9p4-checked-fp.ir" ]; then
+  if [ -n "$fp_only" ] && [ "$ir" != "$irdir/armv9p4-checked-fp.ir" ] && [ "$name" != ldr-w-uart ]
+  then
     return
   fi
   local args=(-A "$ir" "${base[@]}" "$@" --partial -i "$opcode")
@@ -206,6 +210,8 @@ run strb "0011100100 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "and (bvuge ($byte) 0x0000000040000000) (bvule ($byte) 0x000000007fffffff)"
 run strb-uart "0011100100 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
   --reset-constraint "= ($byte) 0x0000000009000000"
+run ldr-w-uart "1011100101 imm12:12 Rn:5 Rt:5" "${memory[@]}" \
+  --reset-constraint "or (= ($word) 0x0000000009000000) (= ($word) 0x0000000009000018)"
 run b "000101 imm26:26" "${branch[@]}"
 run bl "100101 imm26:26" "${branch[@]}"
 run cbz "10110100 imm19:19 Rt:5" "${branch[@]}"

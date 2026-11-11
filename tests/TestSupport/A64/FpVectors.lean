@@ -68,8 +68,8 @@ def Form.model (f : Form) (a b : UInt64) : Option UInt64 := do
   let s : State :=
     { regs := fun r => if r.val = 2 then a else if r.val = 3 then b else 0, dregs := fun _ => 0,
       sp := 0, pc := 0, nFlag := false, zFlag := false, cFlag := false, vFlag := false,
-      mem := fun _ => 0, out := [] }
-  let P : Platform := { normal := fun _ => false, uart := uartAddr }
+      mem := fun _ => 0, io := ⟨[], 0, 0⟩ }
+  let P : Platform := noMemory
   let t ← f.code.foldlM (fun s i => exec P i s) s
   return t.regs 2
 

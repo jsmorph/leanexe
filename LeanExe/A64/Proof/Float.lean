@@ -34,7 +34,7 @@ theorem run_fBin {op : Fin 32 → Fin 32 → Fin 32 → Instr} (g : UInt64 → U
     {s : State} {a : UInt64} {x y : Fin 32} (hx : x.val < 31)
     (hcode : CodeAt code a (fBin op x y)) (hpc : s.pc = a) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧ s'.x x = g (s.x x) (s.x y) ∧
-      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have c0 := hcode 0 (by simp [fBin])
   have c1 := hcode 1 (by simp [fBin])
   have c2 := hcode 2 (by simp [fBin])
@@ -74,8 +74,8 @@ theorem run_fBin {op : Fin 32 → Fin 32 → Fin 32 → Instr} (g : UInt64 → U
     exact State.setX_sp
   · show (s3.setX x (s3.dregs 0)).mem = s3.mem
     exact State.setX_mem
-  · show (s3.setX x (s3.dregs 0)).out = s3.out
-    exact State.setX_out
+  · show (s3.setX x (s3.dregs 0)).io = s3.io
+    exact State.setX_io
 
 /-- What the code `ops r` of a unary operation does: from every state at its start, with `r` below
 31, it reaches its end with `g` of `r`'s word in `r` and the other general registers, SP, the
@@ -83,7 +83,7 @@ memory, and the output unchanged. -/
 def UnRuns (ops : Fin 32 → List Instr) (g : UInt64 → UInt64) : Prop :=
   ∀ (s : State) (a : UInt64) (r : Fin 32), r.val < 31 → CodeAt code a (ops r) → s.pc = a →
     ∃ s', Reach P code s s' ∧ s'.pc = after a (ops r).length ∧ s'.x r = g (s.x r) ∧
-      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out
+      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io
 
 theorem runs_none : UnRuns P code (fun _ => []) fun w => w :=
   fun s a _ _ _ hpc => ⟨s, .refl _, by rw [hpc]; exact (after_zero a).symm, rfl,
@@ -127,8 +127,8 @@ theorem run_viaD {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt64)
     exact State.setX_sp
   · show (s2.setX r (s2.dregs 0)).mem = s2.mem
     exact State.setX_mem
-  · show (s2.setX r (s2.dregs 0)).out = s2.out
-    exact State.setX_out
+  · show (s2.setX r (s2.dregs 0)).io = s2.io
+    exact State.setX_io
 
 /-- The code `op D0, Xr`, `FMOV Xr, D0`, for an `op` that sets its destination D register to `g` of
 the word of its operand general register, computes `g` on the word of `r`. -/
@@ -160,8 +160,8 @@ theorem run_viaX {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt64)
     exact State.setX_sp
   · show (s1.setX r (s1.dregs 0)).mem = s1.mem
     exact State.setX_mem
-  · show (s1.setX r (s1.dregs 0)).out = s1.out
-    exact State.setX_out
+  · show (s1.setX r (s1.dregs 0)).io = s1.io
+    exact State.setX_io
 
 /-- The code `FMOV D0, Xr`, `op Xr, D0`, for an `op` that sets its destination general register to
 `g` of the word of its operand D register, computes `g` on the word of `r`. -/
@@ -193,8 +193,8 @@ theorem run_toX {op : Fin 32 → Fin 32 → Instr} (g : UInt64 → UInt64)
     exact State.setX_sp
   · show (s1.setX r (g (s1.dregs 0))).mem = s1.mem
     exact State.setX_mem
-  · show (s1.setX r (g (s1.dregs 0))).out = s1.out
-    exact State.setX_out
+  · show (s1.setX r (g (s1.dregs 0))).io = s1.io
+    exact State.setX_io
 
 theorem runs_sqrt : UnRuns P code sqrtCode Wasm.f64Sqrt :=
   run_viaD P code Wasm.f64Sqrt (op := Instr.fsqrt) fun _ _ _ => rfl
@@ -247,10 +247,10 @@ theorem runs_abs : UnRuns P code absCode Wasm.f64Abs := by
     rw [State.setX_mem]
     show (s.setX r (s.x r + s.x r)).mem = _
     rw [State.setX_mem]
-  · show (s1.setX r (s1.x r >>> UInt64.ofNat 1)).out = _
-    rw [State.setX_out]
-    show (s.setX r (s.x r + s.x r)).out = _
-    rw [State.setX_out]
+  · show (s1.setX r (s1.x r >>> UInt64.ofNat 1)).io = _
+    rw [State.setX_io]
+    show (s.setX r (s.x r + s.x r)).io = _
+    rw [State.setX_io]
 
 /-- The code `fCmp c x y` sets `x`, below 31, to 0 when the condition `c` holds of the flags of
 `FCMP` of the words of `x` and `y`, and to 1 otherwise, and keeps the other general registers, SP,
@@ -259,7 +259,7 @@ theorem run_fCmp {s : State} {a : UInt64} {c : Fin 16} {x y : Fin 32} (hx : x.va
     (hcode : CodeAt code a (fCmp c x y)) (hpc : s.pc = a) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧
       s'.x x = (if (s.fcmp (s.x x) (s.x y)).condHolds c then 0 else 1) ∧
-      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ x → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have c0 := hcode 0 (by simp [fCmp])
   have c1 := hcode 1 (by simp [fCmp])
   have c2 := hcode 2 (by simp [fCmp])
@@ -309,8 +309,8 @@ theorem run_fCmp {s : State} {a : UInt64} {c : Fin 16} {x y : Fin 32} (hx : x.va
     exact State.setX_sp
   · show (s3.setX x _).mem = s3.mem
     exact State.setX_mem
-  · show (s3.setX x _).out = s3.out
-    exact State.setX_out
+  · show (s3.setX x _).io = s3.io
+    exact State.setX_io
 
 /-- Talos's `le` holds exactly when `lt` or `eq` does. -/
 theorem le_eq_lt_or_eq (a b : UInt64) :

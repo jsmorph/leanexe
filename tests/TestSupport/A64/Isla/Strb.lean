@@ -48,7 +48,7 @@ the output at the UART and stores it elsewhere. -/
 theorem exec_strb {P : Platform} {t n : Fin 32} {imm : Fin 4096} {s s' : State}
     (hs : exec P (.strb t n imm) s = some s') : s.spAligned n = true ∧
       s' = if s.xsp n + .ofNat imm.val = P.uart then
-          { s with out := s.out ++ [(s.x t).toUInt8], pc := s.pc + 4 }
+          { s with io := { s.io with out := s.io.out ++ [(s.x t).toUInt8] }, pc := s.pc + 4 }
         else
           { s with mem := store8 s.mem (s.xsp n + .ofNat imm.val) (s.x t).toUInt8,
                    pc := s.pc + 4 } := by
@@ -80,7 +80,8 @@ macro_rules
       simp (disch := omega) only [xsp_lt, xsp_31] at hu
       simp (disch := omega) only [store, writeBytes_one, ofNat_mod64, UInt64.ofNat_add,
         UInt64.ofNat_toNat, xsp_lt, xsp_31, x_lt, x_31, toUInt8_eq, Nat.mod_mod, State.mk.injEq,
-        List.append_cancel_left_eq, List.cons.injEq, and_true, true_and, and_self, ↓reduceIte,
+        Io.mk.injEq, List.append_cancel_left_eq, List.cons.injEq, and_true, true_and, and_self,
+        ↓reduceIte,
         Nat.reducePow, UInt64.reduceToNat, Nat.zero_mod, hu]))
 
 /-! The byte in the RAM GiB. -/

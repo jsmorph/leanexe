@@ -254,7 +254,7 @@ other registers, `SP`, the memory, and the UART's output. -/
 theorem run_movImm {s : State} {a : UInt64} {d : Fin 32} {v : UInt64} (hd : d.val < 31)
     (hcode : CodeAt code a (movImm d v)) (hpc : s.pc = a) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 4 ∧ s'.x d = v ∧
-      (∀ r, r ≠ d → s'.x r = s.x r) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ r, r ≠ d → s'.x r = s.x r) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   have c0 := hcode 0 (by simp [movImm])
   have c1 := hcode 1 (by simp [movImm])
   have c2 := hcode 2 (by simp [movImm])
@@ -394,7 +394,7 @@ theorem run_cset {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt6
     (hc1 : code (after a 1) = some (encode (.csinc r 31 31 1))) (hpc : s.pc = a)
     (he : LeanExe.A64.exec P i0 s = some { s.subs 31 x y with pc := s.pc + 4 }) :
     ∃ s', Reach P code s s' ∧ s'.pc = after a 2 ∧ s'.x r = (if x = y then 1 else 0) ∧
-      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.io = s.io := by
   let s1 : State := { s.subs 31 x y with pc := s.pc + 4 }
   have hx1 : ∀ q, s1.x q = s.x q := by
     intro q
@@ -422,8 +422,8 @@ theorem run_cset {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt6
     rw [State.setX_sp]; exact State.setX_sp
   · show (s1.setX r _).mem = s.mem
     rw [State.setX_mem]; exact State.setX_mem
-  · show (s1.setX r _).out = s.out
-    rw [State.setX_out]; exact State.setX_out
+  · show (s1.setX r _).io = s.io
+    rw [State.setX_io]; exact State.setX_io
 
 theorem genCmp_ok {ctl : List Ctl} {σ : List ValueType} {c : Fin 16} {is : List Instr}
     {fin : Option (List ValueType)} (hg : genCmp ctl σ c = .ok (is, fin)) :
@@ -488,7 +488,7 @@ theorem cmp_outcome {E : Env} {ctl : List Ctl} {D : Nat} {a : UInt64} {α : Type
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = after a 2) (hx : ms'.x (regOf vs.length) = c.toUInt64)
     (hkeep : ∀ q, q ≠ regOf vs.length → ms'.x q = ms.x q) (hsp : ms'.sp = ms.sp)
-    (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    (hmem : ms'.mem = ms.mem) (hout : ms'.io = ms.io) :
     Outcome P code E ctl D (some (.i32 :: σr)) (after a 2)
       (.Fallthrough st { sl with values := .i32 c :: vs }) ms := by
   have hk : ∀ j < vs.length, ms'.x (regOf j) = ms.x (regOf j) := fun j hj =>
