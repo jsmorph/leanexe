@@ -90,7 +90,6 @@ import Demos.Orbit.Flat
 import Demos.Orbit.Gibbs
 import Demos.Orbit.GibbsBox
 import Demos.Orbit.GibbsSound
-import Demos.Orbit.Kepler
 import Demos.Orbit.Lambert
 import Demos.Orbit.LambertBox
 import Demos.Orbit.LambertFlat
@@ -100,7 +99,9 @@ import Demos.Orbit.LambertSound
 import Demos.Orbit.LambertTime
 import Demos.Orbit.LambertTransfer
 import Demos.Orbit.Newton
+import Demos.Orbit.NewtonUnique
 import Demos.Orbit.TwoBody
+import Demos.Orbit.Universal
 import Demos.Orbit.Vector
 import Demos.OrderBook.Abstract
 import Demos.OrderBook.Flat

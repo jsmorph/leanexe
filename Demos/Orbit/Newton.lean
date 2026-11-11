@@ -8,7 +8,8 @@ import Mathlib.Analysis.Calculus.MeanValue
 Newton's two-body equation `r'' = -μ r/|r|³` conserves the angular momentum `r × r'` and the
 eccentricity vector `r' × (r × r')/μ - r/|r|` (`newton_conserves`), so the positions of a solution
 lie on the path of one orbit and its velocity at each of them is that orbit's velocity.
-`gibbs_newton` states Gibbs' theorem for three positions of a solution.
+`gibbs_newton` states Gibbs' theorem for three positions of a solution.  `Newton` states the
+equation at every time, and `NewtonOn` at the times of a given set.
 -/
 
 namespace Demos.Orbit
@@ -25,6 +26,22 @@ structure Newton (μ : ℝ) (r v : ℝ → V3) : Prop where
   ax : ∀ t, HasDerivAt (fun s => (v s).x) (-μ * (r t).x / norm (r t) ^ 3) t
   ay : ∀ t, HasDerivAt (fun s => (v s).y) (-μ * (r t).y / norm (r t) ^ 3) t
   az : ∀ t, HasDerivAt (fun s => (v s).z) (-μ * (r t).z / norm (r t) ^ 3) t
+
+/-- `r` and `v` solve Newton's two-body equation at the times of the set `I`: at each of them
+`r' = v`, `v' = -μ r/|r|³`, and `r` is away from the origin. -/
+structure NewtonOn (μ : ℝ) (I : Set ℝ) (r v : ℝ → V3) : Prop where
+  pos : ∀ t ∈ I, 0 < norm (r t)
+  dx : ∀ t ∈ I, HasDerivAt (fun s => (r s).x) (v t).x t
+  dy : ∀ t ∈ I, HasDerivAt (fun s => (r s).y) (v t).y t
+  dz : ∀ t ∈ I, HasDerivAt (fun s => (r s).z) (v t).z t
+  ax : ∀ t ∈ I, HasDerivAt (fun s => (v s).x) (-μ * (r t).x / norm (r t) ^ 3) t
+  ay : ∀ t ∈ I, HasDerivAt (fun s => (v s).y) (-μ * (r t).y / norm (r t) ^ 3) t
+  az : ∀ t ∈ I, HasDerivAt (fun s => (v s).z) (-μ * (r t).z / norm (r t) ^ 3) t
+
+/-- A solution on the whole line solves Newton's equation on every set of times. -/
+theorem Newton.on {μ : ℝ} {r v : ℝ → V3} (hN : Newton μ r v) (I : Set ℝ) : NewtonOn μ I r v :=
+  ⟨fun t _ => hN.pos t, fun t _ => hN.dx t, fun t _ => hN.dy t, fun t _ => hN.dz t,
+    fun t _ => hN.ax t, fun t _ => hN.ay t, fun t _ => hN.az t⟩
 
 theorem const_of_hasDerivAt_zero {f : ℝ → ℝ} (h : ∀ t, HasDerivAt f 0 t) (t s : ℝ) :
     f t = f s :=
