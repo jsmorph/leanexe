@@ -2,7 +2,7 @@
 
 The programs enclose quantities of reference frames and time scales that other space programs need: the Greenwich mean sidereal time of 1982, which defines the TEME frame of [SGP4](../Sgp4/README.md), the rotation of a TEME position into the Earth-fixed frame with polar motion, the conversion between Earth-fixed Cartesian and geodetic coordinates on the WGS 84 ellipsoid in both directions, and TAI, TT, and UT1 from UTC with a leap-second table.  Each returns intervals with binary64 endpoints and a status, and a theorem states that the intervals of an accepted result contain the value of a model over the real numbers.  Earth orientation parameters and the leap-second table are inputs, and the theorems take them as premises.  [The requirements](requirements.md) define every quantity, and [the review](review.md) records the decisions and an independent review of the requirements.
 
-[`verified_compile`](Verified.lean) compiles the five programs, with the library's `sin`, `cos`, and `atan` and [the interval layer](../../Library/Numerics/Interval/README.md), into one module, `frames`, of 24,180 bytes.  The module agrees with native Lean bit for bit on 55 cases, and an oracle in mpmath, which first reproduces the values of SOFA's test suite, finds its value in every accepted interval of 1,117 cases.
+[`verified_compile`](Verified.lean) compiles the five programs, with the library's `sin`, `cos`, and `atan` and [the interval layer](../../Library/Numerics/Interval/README.md), into one module, `frames`, of 24,180 bytes.  The module agrees with native Lean bit for bit on 55 cases.  On 1,117 cases, every accepted interval contains the value of a model in mpmath, and the values of SOFA's routines, through ERFA, lie in the intervals within ERFA's own rounding error.
 
 ## Example
 
@@ -87,6 +87,23 @@ Every theorem in the table depends only on the axioms `propext`, `Classical.choi
 
 [`tests/frames/run.sh`](../../tests/frames/run.sh) runs the containment test.  [The oracle](../../tests/frames/oracle.py) evaluates the model in mpmath at 40 digits, apart from the programs: the sidereal time from `gstime`'s polynomial, the rotations from SOFA's matrices, the geodetic coordinates of a point by the fixed-point iteration `φ = atan2(z + e² N sin φ, p)`, and TAI − UTC by a binary search of the IERS's [`leap-seconds.list`](../../tests/frames/leap-seconds.list).  It first reproduces the values of SOFA's test suite for `iauGmst82`, `iauPom00`, `iauGc2gd`, `iauGd2gc`, `iauDat`, `iauUtctai`, `iauTaitt`, and `iauUtcut1`, from ERFA's copy of the suite, and requires its geodetic coordinates to satisfy `|φ| < π/2`, `N + h > 0`, and the position formula.  For each accepted result it samples the corners and 16 random points of the arguments' intervals and requires the oracle's value in the result, comparing angles modulo 2π, the sidereal angle's midpoint in `[0, 2π]`, and each longitude in the range of its formula.  For each case of the review's list it requires the stated status.
 
+The oracle also compares every accepted result with ERFA's routines through `pyerfa`, a test-only dependency of the oracle: `gmst82`; `rz`, `pom00`, `rxr`, and `rxp`; `gd2gc` and `gc2gd` with WGS 84; and `jd2cal`, `dat`, `utctai`, `taitt`, and `utcut1`.  ERFA computes in binary64, so its value must lie in the interval widened by a bound on ERFA's own error, which the largest difference between ERFA and the mpmath model must stay below.
+
+| ERFA routines | Values | Inside the interval | Largest distance outside | Largest difference from the model | Bound |
+|---|---|---|---|---|---|
+| `gmst82` | 418 | 418 | 0 | 6.7·10⁻¹⁴ rad | 10⁻¹² rad |
+| `rz`, `pom00` | 36,240 | 36,240 | 0 | 5.8·10⁻¹⁴ `\|r\|` | 10⁻¹³ `\|r\|` |
+| `gd2gc` | 11,088 | 11,088 | 0 | 1.2·10⁻¹¹ km | 5·10⁻¹¹ km |
+| `gc2gd`, latitude | 6,432 | 5,233 | 0.83 of the bound | 0.84 of the bound | `(2δ + 10⁻⁸ km)/\|r\|` |
+| `gc2gd`, longitude | 6,432 | 6,432 | 0 | 2.8·10⁻¹⁶ rad | 10⁻¹⁵ rad |
+| `gc2gd`, height | 6,432 | 6,432 | 0 | 1.3·10⁻¹¹ km | 10⁻¹⁰ km |
+| `dat` | 284 | 284 | 0 | 0 | 0 |
+| `utctai` | 284 | 269 | 6.0·10⁻¹² s | 2.1·10⁻¹¹ s | 5·10⁻¹¹ s |
+| `taitt` | 284 | 284 | 0 | 1.3·10⁻¹¹ s | 5·10⁻¹¹ s |
+| `utcut1` | 568 | 528 | 1.1·10⁻¹¹ s | 2.2·10⁻¹¹ s | 5·10⁻¹¹ s |
+
+The bound of `gmst82` grows with the size of the polynomial for dates far from 2000.  `gc2gd` loses accuracy far from the ellipsoid: at the distances of navigation and geostationary satellites its latitude differs from the model by up to 2.3·10⁻¹¹ rad, about 1 mm, and its own round trip through `gd2gc` misses the point by up to 0.7 mm.  Its latitude therefore counts as contained within `(2δ + 10⁻⁸ km)/|r|` of the interval, with `δ` the distance of that round trip.  At the four points (0, −30, 50), (1, 0, −42.845), (20, 20, −45), and (42.75, 0, 5) km, within 65 km of the center, ERFA's coordinates miss the point by between 0.23 m and 4.4 km, and the comparison leaves them out; the program's intervals contain the model's coordinates there.
+
 | Program | Cases | Largest width for point arguments |
 |---|---|---|
 | `gmst` | 215 | 2.4·10⁻¹² rad, MJD 15020 to 88069 |
@@ -101,7 +118,7 @@ The cases cover dates from 1900 to 2100, polar motion up to 10″, positions of 
 
 The theorems relate the programs to the formulas of [the requirements](requirements.md), and the formulas' agreement with their sources rests on the oracle and the review.  GMST 1982 and the pseudo Earth-fixed frame are those of SGP4's TEME frame: the true orientation of the Earth differs from them by nutation and the other terms of the IAU 2006/2000A model, which the programs leave out.  The function `teme2ecef` of the SGP4 code multiplies the polar-motion rotations in the other order and can add the kinematic terms of the equation of the equinoxes, so its positions differ from `temeToEcef`'s by about `|xp yp| |r|` and by those terms.  The Earth orientation parameters, the leap-second table, and their error bounds are the caller's, and the converters that produce them lie outside the theorems.
 
-`gmst` fixes the whole turns of its angle up to one: `[−1, 7]` holds the angle and possibly the angle plus or minus 2π.  The theorems bound no width.  `toGeodetic` rejects boxes on the polar axis and within the cylinder about the center, and also points of `D` with `a e² < p < a e²/(1 − f)` and `p < |z| ≤ a e²/(1 − f)`, within 61 km of the center, since it does not try the other equation.  `timeScales` rejects the last day before the table's expiry and UTC before 1972, and the programs transform no velocity.  The oracle reproduces SOFA's test values but is not SOFA itself, since `pyerfa`, which would run SOFA's algorithms, is not a dependency of the repository.  The C translation has its theorem but no native driver that builds and runs it.  `verified_compile` of the module takes 25 minutes at two threads and a peak of 5.8 GB.  The theorems rest on the verified compiler's trusted base, described in [the trusted-base document](../../docs/trusted-base.md).
+`gmst` fixes the whole turns of its angle up to one: `[−1, 7]` holds the angle and possibly the angle plus or minus 2π.  The theorems bound no width.  `toGeodetic` rejects boxes on the polar axis and within the cylinder about the center, and also points of `D` with `a e² < p < a e²/(1 − f)` and `p < |z| ≤ a e²/(1 − f)`, within 61 km of the center, since it does not try the other equation.  `timeScales` rejects the last day before the table's expiry and UTC before 1972, and the programs transform no velocity.  The C translation has its theorem but no native driver that builds and runs it.  `verified_compile` of the module takes 25 minutes at two threads and a peak of 5.8 GB.  The theorems rest on the verified compiler's trusted base, described in [the trusted-base document](../../docs/trusted-base.md).
 
 ## References
 

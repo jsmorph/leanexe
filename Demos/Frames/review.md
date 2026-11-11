@@ -15,7 +15,7 @@
 | Inverse conversion | A closed form, such as Vermeille's or Heikkinen's; an iteration with an a posteriori bound | Newton steps on `k` or `ℓ`, widened by the residual over the slope bound | The slope bounds and the uniqueness follow from algebraic monotonicity lemmas.  A closed form needs a cube root, which the interval library lacks, and a proof of its algebra. |
 | Longitude | An enclosure of `atan2` on a box; half-angle formulas with `atan` | The half-angle formulas | `atan` is monotone with a one-step theorem.  `atan2` is not monotone on a box. |
 | Leap seconds | A table inside the program; a table as input | An input array with its expiry | The plan names the table as input, and the expiry keeps the program from extrapolating past the IERS's announcement. |
-| Oracle | SOFA through `pyerfa`; mpmath code checked against SOFA's test values | mpmath | `pyerfa` is not a dependency of any repository script, and the instructions require approval for a new one.  The mpmath oracle reproduces SOFA's test values for every function the programs model. |
+| Oracle | SOFA through `pyerfa`; mpmath code checked against SOFA's test values | Both | The mpmath model reproduces SOFA's test values and gives the exact values at every sampled point.  The user approved `pyerfa` as a test-only dependency of the oracle, which compares every accepted result with ERFA's routines within a bound on their binary64 error. |
 | Target | Ground (WebAssembly, C); an AArch64 image | Ground | The programs are infrastructure for ground programs of the other candidates. |
 
 ## Review

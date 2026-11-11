@@ -1,8 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["mpmath==1.3.0"]
+# dependencies = ["mpmath==1.3.0", "pyerfa==2.0.1.5"]
 # ///
-"""The independent oracle of the frames programs, in mpmath at 40 digits.
+"""The independent oracle of the frames programs: ERFA's routines and a model in mpmath at 40 digits.
 
 `inputs` prints the input lines of the containment test, which the case executable's `--serve`
 mode reads; `check OUTPUTS` reads the lines that mode prints, each the input line followed by the
@@ -21,6 +21,19 @@ with status 0 must contain the oracle's value at every sampled point of its argu
 an angle up to a whole number of turns, and its width must stay within the bound that each check
 states.  A case with an expected status must return it.
 
+Every accepted result is also compared with ERFA's routines, through pyerfa, the BSD-licensed copy
+of SOFA: `gmst82` for the sidereal angle; `rz`, `pom00`, `rxr`, and `rxp` for the Earth-fixed
+position; `gd2gc` and `gc2gd` with WGS 84 for the geodetic conversions; and `jd2cal`, `dat`,
+`utctai`, `taitt`, and `utcut1` for the time scales.  ERFA computes in binary64, so each of its
+values must lie in the result's interval widened by a tolerance that bounds ERFA's own rounding
+error, and the report gives, for each routine, the number of values that lie in the interval
+itself, the largest distance of a value outside it, and the largest difference between ERFA and the
+mpmath model, which the tolerance must exceed.  ERFA's gc2gd loses accuracy far from the
+ellipsoid and fails near the Earth's center, so its latitude counts as contained within the angle
+that its own round trip through gd2gc allows, and the report names the points where that round trip
+misses by more than 1 mm, which the comparison leaves out.  The mpmath model checks what ERFA has no
+routine for: the containment of the exact values at every sampled point, and the widths.
+
 Lines, each float as the decimal value of its bit pattern:
   gmst d lo hi                                          -> status lo hi
   teme d slo shi xplo xphi yplo yphi xlo xhi ylo yhi zlo zhi -> status, then status lo hi for x, y, z
@@ -38,7 +51,9 @@ import pathlib
 import random
 import struct
 import sys
+import warnings
 
+import erfa
 from mpmath import mp, mpf
 
 mp.dps = 40
@@ -398,6 +413,63 @@ def contains(lo, hi, x) -> bool:
     return mpf(lo) <= x <= mpf(hi)
 
 
+# ### Comparison with ERFA
+
+# Bounds of ERFA's errors, in the unit of each comparison: rad for gmst82 at dates near 2000,
+# growing with the size of the polynomial at other dates; a fraction of |r| for the rotation; km for
+# gd2gc and the height; rad for the longitude; and s for the time scales.  ERFA's gc2gd loses
+# accuracy far from the ellipsoid, up to about 1 mm at geostationary distance, so its latitude is
+# compared in units of the angle `(2 delta + 1e-8 km)/|r|`, with `delta` the distance by which
+# ERFA's own gd2gc misses the point from ERFA's coordinates.  The report shows that ERFA's largest
+# difference from the mpmath model stays below each bound.
+TOLERANCE = {"gmst82": mpf("1e-12"), "rz pom00": mpf("1e-13"), "gd2gc": mpf("5e-11"),
+             "gc2gd latitude": mpf(1), "gc2gd longitude": mpf("1e-15"),
+             "gc2gd height": mpf("1e-10"), "dat": mpf(0), "utctai": mpf("5e-11"),
+             "taitt": mpf("5e-11"), "utcut1": mpf("5e-11")}
+# For each routine: comparisons, values inside the interval, the largest distance outside it,
+# and the largest difference from the model.
+ERFA = {name: [0, 0, mpf(0), mpf(0)] for name in TOLERANCE}
+# Points whose result of gc2gd ERFA's gd2gc does not take back to within 1 mm of the point.
+GC2GD_INVALID = []
+
+
+def erfa_in(name, lo, hi, value, model, scale=1):
+    """Records ERFA's value against the interval [lo, hi] and the model, and returns a problem when
+    the value lies further outside than the tolerance times scale."""
+    value = mpf(value)
+    outside = max(mpf(lo) - value, value - mpf(hi), mpf(0))
+    record = ERFA[name]
+    record[0] += 1
+    record[1] += outside == 0
+    record[2] = max(record[2], outside / scale)
+    record[3] = max(record[3], abs(value - model) / scale)
+    if outside > TOLERANCE[name] * scale:
+        return f"ERFA's {name} {mp.nstr(value, 20)} lies {mp.nstr(outside, 3)} outside [{lo!r}, {hi!r}]"
+    return None
+
+
+def erfa_theta(d, s):
+    return float(erfa.gmst82(2400000.5 + d, s / 86400))
+
+
+def erfa_earth_fixed(d, s, xp, yp, r):
+    c = erfa.rz(erfa_theta(d, s), erfa.ir())
+    w = erfa.pom00(xp * math.pi / 648000, yp * math.pi / 648000, 0.0)
+    return [float(v) for v in erfa.rxp(erfa.rxr(w, c), list(r))]
+
+
+def erfa_dat(d):
+    iy, im, iday, _ = erfa.jd2cal(2400000.5, d)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", erfa.ErfaWarning)
+        return int(erfa.dat(int(iy), int(im), int(iday), 0.0))
+
+
+def seconds(base, pair):
+    """The seconds after the Julian date base of the two-part Julian date pair."""
+    return ((mpf(float(pair[0])) - base) + mpf(float(pair[1]))) * 86400
+
+
 def turns(lo, hi, x):
     """x less the whole number of turns that brings it nearest the middle of [lo, hi]."""
     mid = (mpf(lo) + mpf(hi)) / 2
@@ -429,6 +501,13 @@ def check_gmst(a, res):
         return f"width {mpf(rhi) - mpf(rlo)} above {t1 - t0} + 1e-11 for a date of 1900 to 2100"
     if not (-1e-9 <= (rlo + rhi) / 2 <= 2 * math.pi + 1e-9 and -1 <= rlo and rhi <= 7):
         return f"[{rlo!r}, {rhi!r}] outside [-1, 7] or its midpoint outside [0, 2 pi]"
+    t = abs(d - 51544.5) / 36525
+    scale = max(1.0, (8640184.812866 * t + 0.093104 * t * t + 6.2e-6 * t ** 3 + 110510) / 2.5e6)
+    for s, t in ((lo, t0), (hi, t1)):
+        value = turns(rlo, rhi, erfa_theta(d, s))
+        problem = erfa_in("gmst82", rlo, rhi, value, turns(rlo, rhi, t), scale)
+        if problem:
+            return problem
     return None
 
 
@@ -441,10 +520,15 @@ def check_teme(a, res):
     pairs = [(v[2 * i], v[2 * i + 1]) for i in range(6)]
     for s, xp, yp, x, y, z in sample(pairs, d):
         e = earth_fixed(theta(d, s), xp, yp, (x, y, z))
+        f = erfa_earth_fixed(d, s, xp, yp, (x, y, z))
+        norm = math.sqrt(x * x + y * y + z * z)
         for i in range(3):
             st, lo, hi = boxes[i]
             if st != 0 or not contains(lo, hi, e[i]):
                 return f"coordinate {i} {mp.nstr(e[i], 20)} outside [{lo!r}, {hi!r}] status {st}"
+            problem = erfa_in("rz pom00", lo, hi, f[i], e[i], norm)
+            if problem:
+                return problem
     if all(lo == hi for lo, hi in pairs):
         bound = 3e-12 * math.sqrt(sum(v[2 * i + 6] ** 2 for i in range(3))) + 1e-9
         for i in range(3):
@@ -461,10 +545,14 @@ def check_cart(a, res):
     pairs = [(v[2 * i], v[2 * i + 1]) for i in range(3)]
     for lat, lon, h in sample(pairs, bits(v[0])):
         e = position(lat, lon, h)
+        f = erfa.gd2gc(1, lon, lat, h * 1000)
         for i in range(3):
             st, lo, hi = boxes[i]
             if st != 0 or not contains(lo, hi, e[i]):
                 return f"coordinate {i} {mp.nstr(e[i], 20)} outside [{lo!r}, {hi!r}] status {st}"
+            problem = erfa_in("gd2gc", lo, hi, mpf(float(f[i])) / 1000, e[i])
+            if problem:
+                return problem
     if all(lo == hi for lo, hi in pairs):
         for i in range(3):
             if boxes[i][2] - boxes[i][1] > 1e-9:
@@ -496,6 +584,21 @@ def check_geod(a, res):
             return f"longitude {mp.nstr(lon, 20)} outside [{lonlo!r}, {lonhi!r}] modulo 2 pi"
         if not contains(hlo, hhi, h):
             return f"height {mp.nstr(h, 20)} outside [{hlo!r}, {hhi!r}]"
+        elong, phi, height = erfa.gc2gd(1, [x * 1000, y * 1000, z * 1000])
+        back = erfa.gd2gc(1, elong, phi, height)
+        miss = max(abs(float(back[i]) / 1000 - c) for i, c in enumerate((x, y, z)))
+        if miss > 1e-6:
+            GC2GD_INVALID.append((x, y, z))
+            continue
+        norm = math.sqrt(x * x + y * y + z * z)
+        for problem in (
+                erfa_in("gc2gd latitude", latlo, lathi, float(phi), lat,
+                        (2 * miss + 1e-8) / norm),
+                erfa_in("gc2gd longitude", lonlo, lonhi, turns(lonlo, lonhi, mpf(float(elong))),
+                        turns(lonlo, lonhi, lon)),
+                erfa_in("gc2gd height", hlo, hhi, mpf(float(height)) / 1000, h)):
+            if problem:
+                return problem
     if all(lo == hi for lo, hi in pairs) and max(math.hypot(v[0], v[2]), abs(v[4])) >= 1000:
         for key, width, bound in [("lat", lathi - latlo, 1e-13), ("lon", lonhi - lonlo, 1e-13),
                                   ("h", hhi - hlo, 1e-9)]:
@@ -532,6 +635,22 @@ def check_times(a, res):
     for delta in (lo, hi):
         if not contains(ulo, uhi, mpf(s) + mpf(delta)):
             return f"ut1 {mp.nstr(mpf(s) + mpf(delta), 20)} outside [{ulo!r}, {uhi!r}]"
+    if erfa_dat(d) != got:
+        return f"ERFA's dat {erfa_dat(d)}, the program's {got}"
+    erfa_in("dat", got, got, erfa_dat(d), dat(d))
+    base = 2400000.5 + d
+    utc = (base, s / (86400 + erfa_dat(d + 1) - erfa_dat(d)))
+    taip = erfa.utctai(*utc)
+    ttp = erfa.taitt(*taip)
+    for problem in (erfa_in("utctai", tailo, taihi, seconds(mpf(base), taip), tai),
+                    erfa_in("taitt", ttlo, tthi, seconds(mpf(base), ttp), tt)):
+        if problem:
+            return problem
+    for delta in (lo, hi):
+        ut1p = erfa.utcut1(*utc, delta)
+        problem = erfa_in("utcut1", ulo, uhi, seconds(mpf(base), ut1p), mpf(s) + mpf(delta))
+        if problem:
+            return problem
     return None
 
 
@@ -576,6 +695,18 @@ def check(path: str) -> int:
     print(" ".join(f"{k}: {n} cases" for k, n in sorted(counts.items())))
     print("widest geodetic intervals of points: " +
           ", ".join(f"{k} {w:.3g}" for k, w in WIDEST.items()))
+    print("ERFA: routine, comparisons, inside the interval, largest distance outside, largest "
+          "difference from the model, tolerance")
+    for name, (n, inside, outside, difference) in ERFA.items():
+        print(f"  {name}: {n}, {inside}, {mp.nstr(outside, 3)}, {mp.nstr(difference, 3)}, "
+              f"{mp.nstr(TOLERANCE[name], 3)}")
+        if difference > TOLERANCE[name]:
+            failures += 1
+            print(f"FAIL ERFA's {name} differs from the model by more than its tolerance")
+    invalid = sorted(set(GC2GD_INVALID))
+    print(f"ERFA's gc2gd misses its own round trip through gd2gc by more than 1 mm at "
+          f"{len(invalid)} distinct points, which the comparison leaves out: " +
+          ", ".join(f"({x:.6g}, {y:.6g}, {z:.6g})" for x, y, z in invalid))
     print(f"{failures} failures")
     return 1 if failures else 0
 
