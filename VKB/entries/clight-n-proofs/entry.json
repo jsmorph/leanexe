@@ -9,13 +9,16 @@
     "the carried statement of an instance of N, such as stmt_gcd_terminates or stmt_sha_reads",
     "decide +kernel on the equality of a renamed translation with the definitions of clightgen's file",
     "Application type mismatch between UInt64 and Int64 at Int64.xor under open LClight",
-    "u64 y < LClight.Int64.unsigned LClight.Int64.iwordsize ↔ u64 y < 64 left open by simp"
+    "u64 y < LClight.Int64.unsigned LClight.Int64.iwordsize ↔ u64 y < 64 left open by simp",
+    "a carried statement of N that needs a quantity defined by recursion, such as the trace of the first n windows",
+    "exists W P, forall sigma, ... in place of forall sigma, exists w, ..."
   ],
   "modules": [
     "LeanExe.Native.ClightN.Leaf",
     "LeanExe.Native.ClightN.Laws",
     "LeanExe.Native.Proof.Rename",
-    "LeanExe.Native.Translate"
+    "LeanExe.Native.Translate",
+    "LeanExe.Requests.Windows"
   ],
   "declarations": [
     "ClightN.Proof.onLongs",
@@ -37,7 +40,9 @@
     "LClight.Int.repr",
     "LClight.Int64.unsigned",
     "LClight.Int64.iwordsize",
-    "decide_eq_true_iff"
+    "decide_eq_true_iff",
+    "LeanExe.Requests.windows",
+    "LClight.exists_injective_renaming"
   ],
   "examples": [
     "ClightN.Proof.eq_add_ul_ul",
@@ -63,6 +68,9 @@
     ],
     "clightn/sha/Sha.lean": [
       "ClightN.Proof.sha_reads"
+    ],
+    "clightn/ctl/Ctl.lean": [
+      "ClightN.Proof.ctl_reacts"
     ]
   }
 }

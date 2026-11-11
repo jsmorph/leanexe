@@ -1,0 +1,23 @@
+{
+  "id": "structure-update-lemmas",
+  "goals": [
+    "exact of a lemma whose side is { { s with f := a } with g := b } against a flat structure literal",
+    "Type mismatch with have __src := { ?s with io := ?io } in the type of the lemma",
+    "{ s with pc := s.pc + 4, io } = { s.devRead t v with io }",
+    "a lemma that closes the goals of a walk without naming its arguments"
+  ],
+  "modules": [
+    "LeanExe.A64.Isla.Check"
+  ],
+  "declarations": [
+    "LeanExe.A64.Isla.devRead_io_31",
+    "LeanExe.A64.Isla.devRead_io_eq",
+    "LeanExe.A64.Isla.setRegAt"
+  ],
+  "examples": [],
+  "unimported": {
+    "tests/TestSupport/A64/Isla/LdrW.lean": [
+      "TestSupport.A64.Isla.dev_tcg"
+    ]
+  }
+}

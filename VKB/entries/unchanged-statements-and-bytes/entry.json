@@ -7,7 +7,9 @@
     "genImage m k args room cap o (image + d) = .ok (bytes, L.shift d)",
     "a reformatting of Lean source that must keep every declaration",
     "a structure field moved into a substructure while existing statements name it",
-    "a generator with a new entry routine beside the old one"
+    "a generator with a new entry routine beside the old one",
+    "a form whose encoding admits only some values of a parameter, such as the immediate of SUBS",
+    "hashes of the declarations of a module before and after a change"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -18,7 +20,8 @@
     "Verified.Compile",
     "TestSupport.M7.ShaLoop",
     "LeanExe.A64.BootImage",
-    "LeanExe.A64.Gen"
+    "LeanExe.A64.Gen",
+    "LeanExe.A64.Proof.Memory"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -43,7 +46,13 @@
     "LeanExe.A64.genInProgram",
     "LeanExe.A64.genInImage",
     "LeanExe.A64.State.out",
-    "LeanExe.A64.Io"
+    "LeanExe.A64.Io",
+    "LeanExe.A64.growNarrow",
+    "LeanExe.A64.growWide",
+    "LeanExe.A64.instrSize",
+    "LeanExe.A64.gen_memoryGrow",
+    "LeanExe.A64.run_grow",
+    "LeanExe.A64.sim_memoryGrow"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",

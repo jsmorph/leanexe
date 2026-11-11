@@ -1,0 +1,51 @@
+{
+  "id": "bytes-as-lists",
+  "goals": [
+    "(f ⟨⟨msg.toArray⟩⟩).data.data.toList = spec msg",
+    "LeanExe.Bytes.get ⟨⟨l.toArray⟩⟩ (UInt64.ofNat i) = l[i].toUInt64",
+    "heap.Buffer store root ⟨⟨bs.toArray⟩⟩",
+    "{ toList := b.data.toList }.size left by rw [Array.length_toList]",
+    "Possibly looping simp theorem with ByteArray.size and ByteArray.size_data",
+    "Type mismatch: After simplification, i < { data := l.toArray }.size"
+  ],
+  "modules": [
+    "LeanExe.A64.Proof.BytesRuns",
+    "Demos.Rcv.ReadProgramProof",
+    "Demos.StreamFold.Bytes",
+    "Demos.Rcv.Read"
+  ],
+  "declarations": [
+    "LeanExe.Bytes.get",
+    "LeanExe.Bytes.build",
+    "LeanExe.Bytes.size",
+    "LeanExe.A64.BytesRuns",
+    "LeanExe.A64.BytesRuns.congr",
+    "LeanExe.A64.bytes_runs",
+    "LeanExe.A64.bytes_runs_bounded",
+    "LeanExe.A64.buffer_of_alloc",
+    "Array.length_toList",
+    "Array.getElem_toList",
+    "ByteArray.toList",
+    "ByteArray.size",
+    "ByteArray.size_data",
+    "ByteArray.getElem_eq_getElem_data",
+    "dite_eq_left"
+  ],
+  "examples": [
+    "Demos.Rcv.ReadProgram.bytesOf",
+    "Demos.Rcv.ReadProgram.bytesOf_length",
+    "Demos.Rcv.ReadProgram.get_eq",
+    "Demos.StreamFold.byteWords",
+    "Demos.StreamFold.byteWords_get",
+    "Demos.Rcv.Spec.reportFile"
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/Flip.lean": [
+      "TestSupport.A64.Flip.flip_toList",
+      "TestSupport.A64.Flip.flip_runs"
+    ],
+    "tests/TestSupport/A64/RcvRuns.lean": [
+      "TestSupport.A64.RcvRuns.rcv_runs"
+    ]
+  }
+}
