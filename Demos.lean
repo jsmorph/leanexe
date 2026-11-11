@@ -67,6 +67,10 @@ import Demos.Euler.Reference.Update
 import Demos.Euler.SpeedCounterexample
 import Demos.Euler.Words
 import Demos.Gate.Flat
+import Demos.Gate.GateFlat
+import Demos.Gate.GateProgram
+import Demos.Gate.GateSoundness
+import Demos.Gate.Mahalanobis
 import Demos.Gate.Model
 import Demos.Gate.Program
 import Demos.Gate.Soundness
