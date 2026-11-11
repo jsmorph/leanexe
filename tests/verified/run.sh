@@ -17,7 +17,9 @@
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
-# reader of decimal values and checks that module's file theorems.  Each audit fails the run
+# reader of decimal values and checks that module's file theorems.  For the screening program, it
+# runs the axiom audit of tests/screening/Axioms.lean, and with --cases screening it checks the
+# program's file theorem module as well.  Each audit fails the run
 # when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
@@ -127,6 +129,8 @@ elif [ "$case_module" = "rcvMaine" ]; then
   cases_exe=verified-cases-rcv-maine
 elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
+elif [ "$case_module" = "screening" ]; then
+  cases_exe=verified-cases-screening
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "sgp4box" ]; then
@@ -164,6 +168,10 @@ if [ -z "$reference" ]; then
   if runs conjunction; then targets+=($(imports tests/conjunction/Axioms.lean)); fi
   if [ "$case_module" = "conjunction" ]; then
     targets+=(Demos.Conjunction.Verified $(imports Demos/Conjunction/File.lean))
+  fi
+  if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
+  if [ "$case_module" = "screening" ]; then
+    targets+=(Demos.Screening.Verified $(imports Demos/Screening/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if [ "$case_module" = "sgp4" ]; then
@@ -316,6 +324,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "conjunction" ]; then
   check_axioms tests/conjunction/Axioms.lean
   if [ "$case_module" = "conjunction" ]; then
     check_file conjunction Demos.Conjunction.Verified Demos/Conjunction/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then
+  check_axioms tests/screening/Axioms.lean
+  if [ "$case_module" = "screening" ]; then
+    check_file screening Demos.Screening.Verified Demos/Screening/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
