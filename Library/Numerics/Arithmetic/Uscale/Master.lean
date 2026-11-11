@@ -70,7 +70,7 @@ theorem mulSmall_master :
           Nat.ofDigits (2 ^ 32) (x.1.toList.map UInt64.toNat) * x.2.1.toNat + x.2.2.toNat ∧
         y.size = x.1.size + 1) :=
   .of_trapFree (.ofA compiled.mulSmall.trapFree) nofun mulSmall_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ ⟨ha, hm, hc⟩ => by
       obtain ⟨h1, h2, h3⟩ :=
         UscaleTheorem.mulSmall_spec x.1 x.2.1 x.2.2 ha hxs.values.size_lt hm hc
@@ -91,7 +91,7 @@ theorem shl_master :
           Nat.ofDigits (2 ^ 32) (x.1.toList.map UInt64.toNat) * 2 ^ x.2.toNat ∧
         y.size = x.1.size + 1 + x.2.toNat / 32) :=
   .of_trapFree (.ofA compiled.shl.trapFree) nofun shl_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨ha, hs⟩ => by
       obtain ⟨h1, h2, h3⟩ := UscaleTheorem.shl_spec x.1 x.2 ha hs
       simp only [val_eq] at h2
@@ -109,7 +109,7 @@ theorem le_master :
       (fun x (y : Bool) => y = decide (Nat.ofDigits (2 ^ 32) (x.1.toList.map UInt64.toNat) ≤
         Nat.ofDigits (2 ^ 32) (x.2.toList.map UInt64.toNat))) :=
   .of_trapFree (.ofA compiled.le.trapFree) nofun le_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨ha, hb, hsa, hsb⟩ => by
       rw [← val_eq, ← val_eq]
       exact UscaleTheorem.le_spec x.1 x.2 ha hb hsa hsb
@@ -132,7 +132,7 @@ theorem sub_master :
             Nat.ofDigits (2 ^ 32) (x.2.toList.map UInt64.toNat) ∧
         y.size = x.1.size) :=
   .of_trapFree (.ofA compiled.sub.trapFree) nofun sub_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, _, ⟨_, _, hbs⟩⟩ ⟨ha, hb, hs, hle⟩ => by
       rw [← val_eq, ← val_eq] at hle
       obtain ⟨h1, h2, h3⟩ :=
@@ -147,7 +147,7 @@ theorem wordBits_master :
     Verified.Master compiled.module compiled.tables "wordBits" compiled.wordBits.bound
       (fun _ => True) (fun (x : UInt64) (y : UInt64) => y.toNat = Nat.size x.toNat) :=
   .of_trapFree (.ofA compiled.wordBits.trapFree) nofun wordBits_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => UscaleTheorem.wordBits_spec x
 
 #print axioms wordBits_master
@@ -160,7 +160,7 @@ theorem bitLen_master :
       (fun a (y : UInt64) =>
         y.toNat = Nat.size (Nat.ofDigits (2 ^ 32) (a.toList.map UInt64.toNat))) :=
   .of_trapFree (.ofA compiled.bitLen.trapFree) nofun bitLen_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ a _ ⟨ha, hs⟩ => by
       rw [← val_eq]
       exact UscaleTheorem.bitLen_spec a ha hs
@@ -187,7 +187,7 @@ theorem divBits_master :
             Nat.ofDigits (2 ^ 32) (x.2.1.toList.map UInt64.toNat) ∧
         y.2.size = x.1.val.size) :=
   .of_trapFree (.ofA compiled.divBits.trapFree) nofun divBits_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨hn, hd, hsn, hsd, hb, hpos, hlt⟩ => by
       rw [← val_eq] at hpos
       rw [← val_eq, ← val_eq] at hlt
@@ -218,7 +218,7 @@ theorem scaledQuot_master :
         y.2 = decide (Nat.ofDigits (2 ^ 32) (x.1.toList.map UInt64.toNat) * 2 ^ x.2.2.1.toNat %
           (Nat.ofDigits (2 ^ 32) (x.2.1.toList.map UInt64.toNat) * 2 ^ x.2.2.2.1.toNat) ≠ 0)) :=
   .of_trapFree (.ofA compiled.scaledQuot.trapFree) nofun scaledQuot_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨hn, hd, hsn, hsd, hsn', hsd', hb, hpos, hlt⟩ => by
       rw [← val_eq] at hpos
       rw [← val_eq, ← val_eq] at hlt
@@ -240,7 +240,7 @@ theorem mulPow10_master :
           Nat.ofDigits (2 ^ 32) (x.1.val.toList.map UInt64.toNat) * 10 ^ x.2.toNat ∧
         y.size = x.1.val.size + x.2.toNat / 9 + 1) :=
   .of_trapFree (.ofA compiled.mulPow10.trapFree) nofun mulPow10_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨ha, hs, hk⟩ => by
       obtain ⟨h1, h2, h3⟩ := UscaleTheorem.mulPow10_spec x.1.val x.2 ha hs hk
       simp only [val_eq] at h2
@@ -257,7 +257,7 @@ theorem pow10_master :
         Nat.ofDigits (2 ^ 32) (y.toList.map UInt64.toNat) = 10 ^ k.toNat ∧
         y.size = k.toNat / 9 + 2) :=
   .of_trapFree (.ofA compiled.pow10.trapFree) nofun pow10_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ k _ hk => by
       obtain ⟨h1, h2, h3⟩ := UscaleTheorem.pow10_spec k hk
       simp only [val_eq] at h2

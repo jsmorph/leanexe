@@ -14,7 +14,7 @@ theorem dijkstra_master :
       (fun x (y : Array UInt64) =>
         Distances x.1.toNat x.2.1.toNat x.2.2.1 x.2.2.2.1 x.2.2.2.2 y) :=
   .of_trapFree (.ofA compiled.dijkstra.trapFree) nofun dijkstra_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ hwf => dijkstra_spec x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2 hwf
 
 #print axioms dijkstra_master

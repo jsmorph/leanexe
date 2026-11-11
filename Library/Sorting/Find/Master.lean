@@ -16,7 +16,7 @@ theorem select_master :
       (fun (x : Moved (Array UInt64) × UInt64) y =>
         y = (x.1.val.toList.mergeSort (· ≤ ·)).getD x.2.toNat 0) :=
   .of_trapFree (.ofA compiled.select.trapFree) nofun select_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ =>
       (select_eq x.1.val x.2 hxs.values.size_lt).trans (getElem!_toArray_eq_getD _ _)
 

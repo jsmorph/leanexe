@@ -12,7 +12,7 @@ theorem topoSort_master :
       (fun xs (y : Array UInt64) => IsTopologicalOrder xs y ∨
         (y = #[] ∧ ∀ order, ¬ IsTopologicalOrder xs order)) :=
   .of_trapFree (.ofA compiled.topoSort.trapFree) nofun topoSort_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ hv => topoSort_spec xs hv hxs.values.size_lt
 
 #print axioms topoSort_master

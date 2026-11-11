@@ -23,7 +23,7 @@ theorem valid_master :
     Verified.Master compiled.module compiled.tables "valid" compiled.valid.bound (fun _ => True)
       (fun (x : Array UInt64) (y : UInt64) => y = if Valid x then 1 else 0) :=
   .of_trapFree (.ofA compiled.valid.trapFree) nofun valid_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, hxs⟩ _ =>
       valid_eq x (by have := hxs.values.size_lt_memory32; omega)
 

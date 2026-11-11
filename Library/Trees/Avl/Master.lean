@@ -11,7 +11,7 @@ theorem search_master :
     Verified.Master compiled.module compiled.tables "search" compiled.search.bound (fun _ => True)
       (fun (x : UInt64 × AvlTree) y => y = searchA x.1 x.2) :=
   .of_trapFree (.ofA compiled.search.trapFree) nofun search_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => search_eq x.1 x.2
 
 #print axioms search_master
@@ -22,7 +22,7 @@ theorem insert_master :
     Verified.Master compiled.module compiled.tables "insert" compiled.insert.bound (fun _ => True)
       (fun (x : UInt64 × Moved AvlTree) y => y = (algorithmA x.1 x.2.val).2) :=
   .of_trapFree (.ofA compiled.insert.trapFree) nofun insert_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => insert_eq x.1 x.2.val
 
 #print axioms insert_master

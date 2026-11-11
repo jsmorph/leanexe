@@ -29,7 +29,7 @@ theorem evens_master :
     Verified.Master compiled.module compiled.tables "evens" compiled.evens.bound (fun _ => True)
       (fun (n : UInt64) y => y = ((List.range n.toNat).map fun i => 2 * UInt64.ofNat i).toArray) :=
   .of_trapFree (.ofA compiled.evens.trapFree) nofun evens_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ n _ _ => evens_eq n
 
 #print axioms evens_master

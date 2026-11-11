@@ -86,7 +86,7 @@ theorem listSum_master :
     Verified.Master compiled.module compiled.tables "listSum" compiled.listSum.bound
       (fun _ => True) (fun (xs : List UInt64) y => y = xs.sum) :=
   .of_trapFree (.ofA compiled.listSum.trapFree) nofun listSum_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs _ _ => listSum_eq xs
 
 #print axioms listSum_master
@@ -97,7 +97,7 @@ theorem range_master :
     Verified.Master compiled.module compiled.tables "range" compiled.range.bound (fun _ => True)
       (fun (n : UInt64) ys => ys = (List.range n.toNat).map UInt64.ofNat) :=
   .of_trapFree (.ofA compiled.range.trapFree) nofun range_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ n _ _ => range_eq n
 
 #print axioms range_master
@@ -108,7 +108,7 @@ theorem sum_master :
     Verified.Master compiled.module compiled.tables "sum" compiled.sum.bound (fun _ => True)
       (fun (x : List UInt64 × UInt64) y => y = x.2 + x.1.sum) :=
   .of_trapFree (.ofA compiled.sum.trapFree) nofun sum_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => sum_eq x.1 x.2
 
 #print axioms sum_master
@@ -121,7 +121,7 @@ theorem reverse_master :
       (fun (x : Moved (List UInt64) × Moved (List UInt64)) ys =>
         ys = x.1.val.reverse ++ x.2.val) :=
   .of_trapFree (.ofA compiled.reverse.trapFree) nofun reverse_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => reverse_eq x.1.val x.2.val
 
 #print axioms reverse_master

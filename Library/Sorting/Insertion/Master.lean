@@ -10,7 +10,7 @@ theorem sortInsert_master :
       (fun _ => True)
       (fun (xs : Array UInt64) ys => ys = (xs.toList.mergeSort (· ≤ ·)).toArray) :=
   .of_trapFree (.ofA compiled.sortInsert.trapFree) nofun sortInsert_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, hxs⟩ _ => sortInsert_eq x (show _ < 2 ^ 64 from hxs.values.size_lt)
 
 #print axioms sortInsert_master

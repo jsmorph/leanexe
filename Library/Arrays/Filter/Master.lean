@@ -242,7 +242,7 @@ theorem removeAll_master :
       (fun _ => True)
       (fun (x : Moved (Array UInt64) × UInt64) y => y = x.1.val.filter (· != x.2)) :=
   .of_trapFree (.ofA compiled.removeAll.trapFree) nofun removeAll_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => removeAll_eq x.1.val x.2 hxs.values.size_lt
 
 #print axioms removeAll_master
@@ -254,7 +254,7 @@ theorem below_master :
       (fun (x : Array UInt64 × UInt64 × UInt64) y =>
         y = ((x.1.toList.filter (· < x.2.1)).take x.2.2.toNat).toArray) :=
   .of_trapFree (.ofA compiled.below.trapFree) nofun below_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => below_eq x.1 x.2.1 x.2.2 hxs.values.size_lt
 
 #print axioms below_master
@@ -269,7 +269,7 @@ theorem clearUntil_master :
         let i := x.1.val.toList.findIdx (· == x.2)
         y.toList = List.replicate i 0 ++ x.1.val.toList.drop i) :=
   .of_trapFree (.ofA compiled.clearUntil.trapFree) nofun clearUntil_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => clearUntil_eq x.1.val x.2 hxs.values.size_lt
 
 #print axioms clearUntil_master

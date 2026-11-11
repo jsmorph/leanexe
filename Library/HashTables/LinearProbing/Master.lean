@@ -15,7 +15,7 @@ theorem hashTable_master :
         ((List.range ((xs.size - 1) / 2)).map fun i => (xs[2 * i + 1]!, xs[2 * i + 2]!))
         [] []).toArray) :=
   .of_trapFree (.ofA compiled.hashTable.trapFree) nofun hashTable_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ hm => hashTable_eq xs hxs.values.size_lt hm
 
 #print axioms hashTable_master

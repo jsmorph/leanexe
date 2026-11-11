@@ -13,7 +13,7 @@ theorem modInverse_master :
           UInt64.ofNat ((x.1.toNat : ZMod x.2.toNat)⁻¹).val
         else 0) :=
   .of_trapFree (.ofA compiled.modInverse.trapFree) nofun modInverse_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => modInverse_eq x.1 x.2
 
 #print axioms modInverse_master

@@ -33,7 +33,7 @@ theorem scaled_master :
     Verified.Master compiled.module compiled.tables "scaled" compiled.scaled.bound (fun _ => True)
       (fun (x : Array UInt64 × UInt64) y => y = x.1.map (· * x.2)) :=
   .of_trapFree (.ofA compiled.scaled.trapFree) nofun scaled_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => scaled_eq x.1 x.2 hxs.values.size_lt
 
 #print axioms scaled_master

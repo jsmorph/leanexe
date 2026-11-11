@@ -16,7 +16,7 @@ theorem add_master :
       (fun x (y : Array UInt64) =>
         y = digits (max x.1.size x.2.size + 1) (value x.1 + value x.2)) :=
   .of_trapFree (.ofA compiled.add.trapFree) nofun add_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, h1⟩, ⟨_, _, h2⟩⟩ ⟨hu, hv⟩ =>
       add_eq x.1 x.2 hu hv h1.values.size_lt h2.values.size_lt
 
@@ -31,7 +31,7 @@ theorem sub_master :
         y = digits (max x.1.size x.2.size)
           (value x.1 + (2 ^ 32) ^ max x.1.size x.2.size - value x.2)) :=
   .of_trapFree (.ofA compiled.sub.trapFree) nofun sub_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, h1⟩, ⟨_, _, h2⟩⟩ ⟨hu, hv⟩ =>
       sub_eq x.1 x.2 hu hv h1.values.size_lt h2.values.size_lt
 
@@ -45,7 +45,7 @@ theorem mul_master :
         Digits x.1 ∧ Digits x.2 ∧ x.1.size + x.2.size < 2 ^ 64)
       (fun x (y : Array UInt64) => y = digits (x.1.size + x.2.size) (value x.1 * value x.2)) :=
   .of_trapFree (.ofA compiled.mul.trapFree) nofun mul_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨hu, hv, hs⟩ => mul_eq x.1 x.2 hu hv hs
 
 #print axioms mul_master
@@ -60,7 +60,7 @@ theorem divide_master :
       (fun x (y : Array UInt64) => y =
         digits x.1.size (value x.1 / value x.2) ++ digits x.2.size (value x.1 % value x.2)) :=
   .of_trapFree (.ofA compiled.divide.trapFree) nofun divide_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ ⟨hu, hv, hs⟩ => divide_eq x.1 x.2 hu hv hs
 
 #print axioms divide_master

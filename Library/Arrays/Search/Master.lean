@@ -70,7 +70,7 @@ theorem count_master :
     Verified.Master compiled.module compiled.tables "count" compiled.count.bound (fun _ => True)
       (fun (x : Array UInt64 × UInt64) y => y = UInt64.ofNat (x.1.toList.count x.2)) :=
   .of_trapFree (.ofA compiled.count.trapFree) nofun count_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => count_eq x.1 x.2 hxs.values.size_lt
 
 #print axioms count_master
@@ -84,7 +84,7 @@ theorem firstAbove_master :
         | some i => (UInt64.ofNat i, true)
         | none => (0, false)) :=
   .of_trapFree (.ofA compiled.firstAbove.trapFree) nofun firstAbove_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ _ => firstAbove_eq x.1 x.2 hxs.values.size_lt
 
 #print axioms firstAbove_master
@@ -99,7 +99,7 @@ theorem firstZero_master :
         (y = x.2 ∧ ∀ j < x.2.toNat, x.1[j]! ≠ 0) ∨
           ∃ j < x.2.toNat, y = UInt64.ofNat j ∧ x.1[j]! = 0 ∧ ∀ i < j, x.1[i]! ≠ 0) :=
   .of_trapFree (.ofA compiled.firstZero.trapFree) nofun firstZero_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => firstZero_cases x.1 x.2
 
 #print axioms firstZero_master

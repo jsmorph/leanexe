@@ -13,7 +13,7 @@ theorem classes_master :
         y.size = x.1.toNat ∧
           ∀ i < x.1.toNat, IsLeast {j | Equivalent x.1.toNat x.2.1 x.2.2 i j} y[i]!.toNat) :=
   .of_trapFree (.ofA compiled.classes.trapFree) nofun classes_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, _, _, _, _, ⟨_, _, hjs⟩, ⟨_, _, hks⟩⟩ _ =>
       classes_spec x.1 x.2.1 x.2.2 hjs.values.size_lt hks.values.size_lt
 

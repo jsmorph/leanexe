@@ -12,7 +12,7 @@ theorem nextPerm_master :
     Verified.Master compiled.module compiled.tables "nextPerm" compiled.nextPerm.bound
       (fun _ => True) (fun (x : Moved (Array UInt64)) y => IsNext x.val y) :=
   .of_trapFree (.ofA compiled.nextPerm.trapFree) nofun nextPerm_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, hxs⟩ _ => nextPerm_isNext x.val hxs.values.size_lt
 
 #print axioms nextPerm_master

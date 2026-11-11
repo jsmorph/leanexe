@@ -14,7 +14,7 @@ theorem matchWith_master :
       (fun x (y : UInt64) => y = Spec.answer ((List.range x.2.1.toNat).map fun j => x.1[j]!)
         ((List.range x.2.2.2.toNat).map (Library.Bytes.byteAt x.2.2.1))) :=
   .of_trapFree (.ofA compiled.matchWith.trapFree) nofun matchWith_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ hpn => Proof.matchWith_eq x.1 x.2.2.1 x.2.1 x.2.2.2 hpn
 
 #print axioms matchWith_master

@@ -11,7 +11,7 @@ theorem primes_master :
       (fun (N : UInt64) (y : Array UInt64) =>
         y = (((List.range N.toNat).filter fun p => decide (Nat.Prime p)).map UInt64.ofNat).toArray) :=
   .of_trapFree (.ofA compiled.primes.trapFree) nofun primes_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ N _ _ => primes_eq N
 
 #print axioms primes_master

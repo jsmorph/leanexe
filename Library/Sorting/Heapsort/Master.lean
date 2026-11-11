@@ -12,7 +12,7 @@ theorem heapsort_master :
       (fun _ => True)
       (fun (xs : Moved (Array UInt64)) ys => ys = (xs.val.toList.mergeSort (· ≤ ·)).toArray) :=
   .of_trapFree (.ofA compiled.heapsort.trapFree) nofun heapsort_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ _ => heapsort_eq xs.val hxs.values.size_lt
 
 #print axioms heapsort_master

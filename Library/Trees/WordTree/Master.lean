@@ -178,7 +178,7 @@ theorem setKey_master :
         | .leaf => .leaf
         | .node l _ r => .node l x.1 r) :=
   .of_trapFree (.ofA compiled.setKey.trapFree) nofun setKey_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ ⟨_, ⟨t⟩⟩ _ _ => by cases t <;> rfl
 
 #print axioms setKey_master
@@ -203,7 +203,7 @@ theorem leftChild_master :
       (fun _ => True)
       (fun (t : Moved KeyTree) (y : KeyTree) => y.toBinaryTree = t.val.toBinaryTree.left) :=
   .of_trapFree (.ofA compiled.leftChild.trapFree) nofun leftChild_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ ⟨t⟩ _ _ => by cases t <;> rfl
 
 #print axioms leftChild_master
@@ -217,7 +217,7 @@ theorem splitRoot_master :
         y.1.toBinaryTree = t.val.toBinaryTree.left ∧
           y.2.toBinaryTree = t.val.toBinaryTree.right) :=
   .of_trapFree (.ofA compiled.splitRoot.trapFree) nofun splitRoot_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ ⟨t⟩ _ _ => by cases t <;> exact ⟨rfl, rfl⟩
 
 #print axioms splitRoot_master

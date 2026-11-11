@@ -12,7 +12,7 @@ theorem delete_master :
     Verified.Master compiled.module compiled.tables "delete" compiled.delete.bound (fun _ => True)
       (fun (x : UInt64 × Moved AvlTree) y => y = (deleteA x.1 x.2.val).2) :=
   .of_trapFree (.ofA compiled.delete.trapFree) nofun delete_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => delete_eq x.1 x.2.val
 
 #print axioms delete_master

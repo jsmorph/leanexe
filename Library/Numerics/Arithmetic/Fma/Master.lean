@@ -16,7 +16,7 @@ theorem fma_master :
       (fun (x : Float × Float × Float) (y : Float) =>
         y.toBits = FmaTheorem.fmaReference x.1.toBits x.2.1.toBits x.2.2.toBits) :=
   .of_trapFree (.ofA compiled.fma.trapFree) nofun fma_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => FmaTheorem.fma_toBits x.1 x.2.1 x.2.2
 
 #print axioms fma_master

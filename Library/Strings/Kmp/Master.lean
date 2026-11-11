@@ -13,7 +13,7 @@ theorem occurrences_master :
         y = (((List.range (x.2.2.2.toNat + 1)).filter fun i =>
           decide (OccursAt x.1 x.2.1.toNat x.2.2.1 x.2.2.2.toNat i)).map UInt64.ofNat).toArray) :=
   .of_trapFree (.ofA compiled.occurrences.trapFree) nofun occurrences_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => occurrences_eq x.1 x.2.1 x.2.2.1 x.2.2.2
 
 #print axioms occurrences_master

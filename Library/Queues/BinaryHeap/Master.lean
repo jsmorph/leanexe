@@ -13,7 +13,7 @@ theorem heapQueue_master :
       (fun (xs : Array UInt64) ys => ys = (runOps
         ((List.range (xs.size / 2)).map fun i => (xs[2 * i]!, xs[2 * i + 1]!)) [] []).toArray) :=
   .of_trapFree (.ofA compiled.heapQueue.trapFree) nofun heapQueue_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ _ => heapQueue_eq xs hxs.values.size_lt
 
 #print axioms heapQueue_master

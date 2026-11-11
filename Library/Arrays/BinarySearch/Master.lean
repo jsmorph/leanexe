@@ -11,7 +11,7 @@ theorem lowerBound_master :
       (fun x : Array UInt64 × UInt64 => ∀ i j, i ≤ j → j < x.1.size → x.1[i]! ≤ x.1[j]!)
       (fun x y => y = UInt64.ofNat (x.1.toList.countP (· < x.2))) :=
   .of_trapFree (.ofA compiled.lowerBound.trapFree) nofun lowerBound_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x ⟨_, _, _, ⟨_, _, hxs⟩, _⟩ hs => lowerBound_eq x.1 x.2 hs hxs.values.size_lt
 
 #print axioms lowerBound_master

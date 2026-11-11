@@ -11,7 +11,7 @@ theorem powMod_master :
       (fun (x : UInt64 × UInt64 × UInt64) y => y =
         if x.2.2 = 0 then 0 else UInt64.ofNat (x.1.toNat ^ x.2.1.toNat % x.2.2.toNat)) :=
   .of_trapFree (.ofA compiled.powMod.trapFree) nofun powMod_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => powMod_eq x.1 x.2.1 x.2.2
 
 #print axioms powMod_master
@@ -24,7 +24,7 @@ theorem test_master :
         if x.1.toNat % 2 = 1 ∧ 3 ≤ x.1.toNat ∧ StrongProbablePrime x.1.toNat x.2.toNat then 1
         else 0) :=
   .of_trapFree (.ofA compiled.test.trapFree) nofun test_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => test_eq x.1 x.2
 
 #print axioms test_master

@@ -30,7 +30,7 @@ theorem repeated_master :
       (fun (x : Array UInt64 × UInt64) y =>
         y = (List.replicate x.2.toNat x.1.toList).flatten.toArray) :=
   .of_trapFree (.ofA compiled.repeated.trapFree) nofun repeated_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => repeated_eq x.1 x.2
 
 #print axioms repeated_master

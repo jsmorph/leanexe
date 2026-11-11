@@ -10,7 +10,7 @@ theorem binaryGcd_master :
       (fun _ => True)
       (fun (x : UInt64 × UInt64) y => y = UInt64.ofNat (Nat.gcd x.1.toNat x.2.toNat)) :=
   .of_trapFree (.ofA compiled.binaryGcd.trapFree) nofun binaryGcd_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ x _ _ => binaryGcd_eq x.1 x.2
 
 #print axioms binaryGcd_master

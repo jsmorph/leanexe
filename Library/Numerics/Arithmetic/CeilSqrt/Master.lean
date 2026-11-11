@@ -16,7 +16,7 @@ theorem ceilSqrt_master :
       (fun n (r : UInt64) => r.toNat ≤ 2 ^ 16 ∧ n.toNat ≤ r.toNat * r.toNat ∧
         ∀ j, j < r.toNat → j * j < n.toNat) :=
   .of_trapFree (.ofA compiled.ceilSqrt.trapFree) nofun ceilSqrt_export
-    (fun _ _ _ _ h => by first | exact h | trivial) (fun _ _ _ _ _ h => h)
+    (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ n _ hn => Sqrt.ceilSqrt_correct n hn
 
 #print axioms ceilSqrt_master
