@@ -60,7 +60,7 @@ The check needs `coqc`, a CompCert 3.18 tree configured for `aarch64-linux` with
 clightn/check.sh --mutations /path/to/CompCert
 ```
 
-The proofs need `Archi.ptr64 = true`: on AArch64 a cast between two `long` types passes a pointer unchanged, as the constructors of `cast_ok` say, so the Rocq proofs fail against the ARMv7-M tree.  The x86-64 path has no CompCert tree with built proofs, so AArch64 is the only target that the check covers.  [`tools/full-check`](../tools/full-check) does not run this check.
+The proofs need `Archi.ptr64 = true`: on AArch64 a cast between two `long` types passes a pointer unchanged, as the constructors of `cast_ok` say, so the Rocq proofs fail against the ARMv7-M tree.  The x86-64 path has no CompCert tree with built proofs, so AArch64 is the only target that the check covers.  [`tools/full-check`](../tools/full-check) runs `clightn/check.sh --mutations` in step 7, after `rocq/check.sh`, when the CompCert tree with built proofs is configured for AArch64.
 
 ## References
 
