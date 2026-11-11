@@ -1,3 +1,4 @@
+import Demos.Attitude.Eigen
 import Demos.Attitude.Flat
 import Demos.Attitude.Knowledge
 import Demos.Attitude.Program
