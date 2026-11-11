@@ -23,7 +23,7 @@
 | Dimension | Up to 6; up to 64 | Up to 64, with the measured acceptance region stated | The theorem holds for every accepted result, and the table of the requirements tells a caller which covariances the elimination resolves. |
 | Assignment's form | Rectangular with one-sided duals; square with forbidden pairs | Square, with the mark `2⁶³ - 1` | Rectangular problems with dummy rows and columns reduce to it, and the theorem concerns the admissible permutations directly. |
 | Integer range | Check each sum for overflow; bound the duals | `|u|, |v| < 2⁶²` | Every sum `u[i] + v[j]` is then exact in `Int64` and below the mark, and the program computes no total. |
-| Gaussian link | Include; leave as an open item | The last increment, after the rest | The review raised the estimate to 600 to 900 lines with the density of the standard Gaussian, which Mathlib does not supply. |
+| Gaussian link | Include; leave as an open item | An open item | The review raised the estimate to 600 to 900 lines with the density of the standard Gaussian, which Mathlib does not supply.  That is an increment of its own, larger than any other part of this iteration. |
 
 ## Review
 
@@ -78,7 +78,7 @@ No case detects these classes:
 
 ## Open items
 
-1. `Model.gaussian_tail`, unless the last increment proves it.
+1. `Model.gaussian_tail`, estimated at 600 to 900 lines.
 2. The quantile of the tail at a level `α`, for levels near or below `2⁻⁵³`, and a direct series for the distribution function at small `p`.
 3. A tighter enclosure of the Mahalanobis distance for larger `d`.
 4. A move of the conjunction demo's `expI`, its soundness, and the literal lemmas to the interval library, where both demos would import them.
