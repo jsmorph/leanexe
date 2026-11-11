@@ -15,7 +15,9 @@
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
 # theorem module as well.  For the CE and LE program, it runs the axiom audit of
 # tests/conjunction/AccuracyAxioms.lean, and with --cases accuracy it checks the program's file
-# theorem module as well.  For the SGP4 program, it runs the axiom audit of
+# theorem module as well.  For the attitude program, it runs the axiom audit of
+# tests/attitude/Axioms.lean, and with --cases attitude it checks the program's file theorem module
+# as well.  For the SGP4 program, it runs the axiom audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
@@ -135,6 +137,8 @@ elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
 elif [ "$case_module" = "accuracy" ]; then
   cases_exe=verified-cases-accuracy
+elif [ "$case_module" = "attitude" ]; then
+  cases_exe=verified-cases-attitude
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "passivesafety" ]; then
@@ -180,6 +184,10 @@ if [ -z "$reference" ]; then
   if runs accuracy; then targets+=($(imports tests/conjunction/AccuracyAxioms.lean)); fi
   if [ "$case_module" = "accuracy" ]; then
     targets+=(Demos.Conjunction.AccuracyVerified $(imports Demos/Conjunction/AccuracyFile.lean))
+  fi
+  if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
+  if [ "$case_module" = "attitude" ]; then
+    targets+=(Demos.Attitude.Verified $(imports Demos/Attitude/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
@@ -349,6 +357,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "accuracy" ]; then
   check_axioms tests/conjunction/AccuracyAxioms.lean
   if [ "$case_module" = "accuracy" ]; then
     check_file accuracy Demos.Conjunction.AccuracyVerified Demos/Conjunction/AccuracyFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then
+  check_axioms tests/attitude/Axioms.lean
+  if [ "$case_module" = "attitude" ]; then
+    check_file attitude Demos.Attitude.Verified Demos/Attitude/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
