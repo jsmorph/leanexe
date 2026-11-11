@@ -16,8 +16,9 @@ events and fixed reads check.  The mask constraint of `traces.sh` puts `u.ttbr0`
 address, register `Rn`, the stack pointer for 31, plus the immediate, lies where the reset
 constraint puts it, in the RAM GiB.  On a misaligned stack pointer `exec` fails, so the paths to
 the alignment fault's exception entry need no counterpart, and every other path writes `SEE` and
-no other register outside the model.  The trace reads the byte from the state's memory by reading
-4 of `Trace.lean`, and register `t` receives it zero-extended.  The proofs walk the traces with the
+no other register outside the model.  The trace reads the byte from the state's memory by the
+rule of `Trace.Run` for a read of memory, which reading 12 of `Trace.lean` leaves to memory for a
+read of 1 byte, and register `t` receives it zero-extended.  The proofs walk the traces with the
 tactics of `LeanExe/A64/Isla/Walk.lean`, and each theorem rests on lemmas for the four cases of
 register 31 among `Rn` and `Rt`, one for each direction.
 -/

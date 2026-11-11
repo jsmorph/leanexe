@@ -23,11 +23,13 @@ dropped leaves the states that would take it without an outcome, which makes `Ag
 them whenever `exec` succeeds there.
 
 The same statement serves every form.  A form whose `exec` never fails, such as `ADD`, gets the
-equivalence for every state.  For a load or a store, `exec` fails outside Normal memory, at the
-UART other than by a byte store or a 32-bit load, and on a misaligned stack pointer, and the
-trace's paths of those states, such as the exception entry of the alignment fault, need no
-counterpart.  A 32-bit load at the UART takes its value and the UART's counts after it from
-`Platform.devLoad`, in `exec` and, by reading 12 of `Trace.lean`, in the trace, so its theorem
+equivalence for every state.  For a load or a store, `exec` fails outside Normal memory, for a
+32-bit load other than one of the UART's data or flag register, and on a misaligned stack
+pointer, and so, on a platform whose Normal memory excludes the UART's registers, at the UART
+other than by a byte store or a 32-bit load.  The trace's paths of those states, such as the
+exception entry of the alignment fault, need no counterpart.  A 32-bit load at the UART takes its
+value and the UART's counts after it from `Platform.devLoad`, in `exec` and, by reading 12 of
+`Trace.lean`, in the trace, so its theorem
 states that the trace's outcomes are exactly `exec`'s state: one read of 4 bytes at the register's
 address, whose value reaches register `t` zero-extended.  A branch writes `_PC` and sets
 `__BranchTaken`, and the program-counter rule of `finish` keeps the written value,

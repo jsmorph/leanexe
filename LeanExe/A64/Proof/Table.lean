@@ -100,6 +100,13 @@ theorem classify_uart {h : Hw} {s : Sys} {mem : UInt64 → UInt8} (hc : s.covere
     classify h s mem uartAddr = some (.device true) :=
   classify_device hc hm (by decide)
 
+/-- The table maps the UART's flag register, 0x18 bytes above its data register, as Device memory
+that EL1 may write. -/
+theorem classify_uartFr {h : Hw} {s : Sys} {mem : UInt64 → UInt8} (hc : s.covered h = true)
+    (hm : ∀ j (hj : j < 32), mem (s.ttbr0 + UInt64.ofNat j) = tableBytes[j]) :
+    classify h s mem (uartAddr + 0x18) = some (.device true) :=
+  classify_device hc hm (by decide)
+
 /-- The table maps the GiB from `0x40000000` as Normal memory that EL1 may write and execute. -/
 theorem classify_normal {h : Hw} {s : Sys} {mem : UInt64 → UInt8} {a : UInt64}
     (hc : s.covered h = true)

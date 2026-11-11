@@ -16,7 +16,7 @@
 # the rest at once.  QEMU must exit with status 0, and the UART must show the case's bytes: the
 # GCD's eight bytes and the status 0, the flipped message and the status 0, or the status 64 for a
 # length above the flip's limit.  A last run of each Image starts QEMU stopped, sends a break on
-# the UART through QEMU's monitor, which puts a word with the break flag in the receiver, and
+# the UART through QEMU's monitor, which puts a word with the break flag in the empty receiver, and
 # continues: the UART must show the status 65 alone.  ACCEL selects the accelerator, as qemu.sh
 # describes.  The products lie in OUT, build/baremetal/a64-uart unless set.
 # Usage: tests/baremetal/a64-uart.sh
