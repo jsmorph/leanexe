@@ -19,9 +19,10 @@ element set, for which the verification file holds no state, neither status may 
 
 Demos.Sgp4.Tle.propagate reads the two lines of each element set.  Its status must equal that of
 Demos.Sgp4.sgp4BoxAround at every time, and each reference coordinate must lie within the same
-distances of its interval.  It must return status 9 for an element set with one digit changed,
+distances of its interval.  It must return status 10 for an element set with one digit changed,
 which breaks the checksum, and the status of the unchanged lines for an element set whose catalog
-fields begin with a letter, the Alpha-5 form.  Demos.Sgp4.sgp4BoxAround must return status 7 for
+fields begin with a letter, the Alpha-5 form.  It must return status 0 for the first element set
+with the eccentricity 0, a circular orbit, read from its lines.  Demos.Sgp4.sgp4BoxAround must return status 7 for
 an eccentricity of 1e-4, whose interval has points on both sides of a threshold of the model.
 The check prints the largest differences and the largest widths of the intervals.
 Usage: uv run tests/sgp4/reference.py STATES_EXECUTABLE BOXES_EXECUTABLE"""
@@ -188,8 +189,9 @@ def main() -> int:
         (line1, line2[:68], t),
         (checksum(line1[:2] + "A" + line1[3:]), checksum(line2[:2] + "A" + line2[3:]), t),
         (checksum(line1[:2] + "A" + line1[3:]), line2, t),
+        (line1, checksum(line2[:26] + "0000000" + line2[33:]), t),
     ])
-    expected_statuses = [9, 9, 9, int(from_lines[0][0]), 9]
+    expected_statuses = [10, 10, 10, int(from_lines[0][0]), 10, 0]
     for words, wanted in zip(changed, expected_statuses):
         if int(words[0]) != wanted:
             failures += 1

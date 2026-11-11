@@ -1,0 +1,3 @@
+gpt tests/gpt/run.sh runs the module against its own cases
+euler tests/modules/run.sh runs the module's cases from tests/TestSupport/Native/ModuleCases.lean
+sums tests/modules/run.sh runs the module's cases from tests/TestSupport/Native/ModuleCases.lean

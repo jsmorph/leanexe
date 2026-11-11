@@ -4,16 +4,16 @@ import Demos.Sgp4.Spec
 The enclosing SGP4 program.  `initBox` computes intervals for the constants of an element set
 given as intervals, and `propagateBox` computes a status and an interval for each coordinate of
 the position and the velocity at a time.  `BoxSound.lean` proves that the intervals contain the
-values of `Model.lean` and that a status other than 7 and 9 is the model's status.
+values of `Model.lean` and that a status other than 7 is the model's status.
 
 | Status | Meaning |
 |---|---|
 | 0 | The intervals contain the model's position and velocity. |
 | 1, 2, 4 | The model has that status. |
 | 6 | The model has status 6, and the intervals contain its position and velocity. |
-| 7 | The intervals do not decide a test of the model, or an operation was rejected. |
+| 7 | The intervals do not decide a test of the model, an input interval was rejected, or an operation was rejected. |
 | 8 | The model has status 8, the deep-space path. |
-| 9 | The intervals of the mean motion and the eccentricity do not show `0 < n` and `0 ≤ e < 1`. |
+| 9 | The model has status 9: the intervals of the mean motion and the eccentricity lie outside `0 < n` and `0 ≤ e < 1`. |
 -/
 
 namespace Demos.Sgp4
@@ -48,8 +48,9 @@ def initStatus (n e deep no : Interval) : UInt64 :=
           else 7
         else 7
       else 7
-    else 9
-  else 9
+    else if n.hi ≤ 0 ∨ e.hi < 0 ∨ 1.0 ≤ e.lo then 9
+    else 7
+  else 7
 
 /-- The status at a time from the intervals of the mean eccentricity less 1, the mean
 eccentricity plus 0.001, the semilatus rectum, and the radius less 1.  `ok` states that the

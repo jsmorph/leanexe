@@ -32,6 +32,7 @@ import Library.Numerics.Arithmetic.PrimeFactors.Program
 import Library.Numerics.Arithmetic.Sieve.Program
 import Library.Numerics.Arithmetic.Uscale.Program
 import Library.Numerics.Bounds.Program
+import Library.Numerics.Interval.Program
 import Library.Numerics.Decimal.ParseFloat.Program
 import Library.Numerics.Decimal.PrintFloat.Program
 import Library.Numerics.Decimal.Int64Text.Program

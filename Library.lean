@@ -296,6 +296,7 @@ import Library.Numerics.Arithmetic.CeilSqrt.Proof
 import Library.Numerics.Bounds.Proof
 import Library.Numerics.Interval.Proof
 import Library.Numerics.Interval.Enclose
+import Library.Masters
 import Library.Numerics.Limiters.Minmod.Proof
 import Library.Arrays.Search.Proof
 import Library.Hashing.Sha256.Bytes

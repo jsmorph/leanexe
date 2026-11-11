@@ -36,9 +36,10 @@ An element set holds the mean motion in revolutions per day, the eccentricity, f
 | 0 | The result holds the model's position and velocity. |
 | 1, 2, 4 | The error of that number in the reference code: a mean eccentricity outside `[−0.001, 1)`, a mean motion that is not positive, or a negative semilatus rectum. |
 | 6 | The radius is below one Earth radius.  The result still holds the model's position and velocity. |
-| 7 | Enclosing program only: the intervals do not decide a test of the model, or an operation was rejected. |
+| 7 | Enclosing program only: the intervals do not decide a test of the model, an input interval was rejected, or an operation was rejected. |
 | 8 | The element set takes the deep-space path, which this demo does not compute. |
-| 9 | The element set is outside `0 < n` and `0 ≤ e < 1`, a value is not finite, or the lines of a two-line element set do not have the layout. |
+| 9 | The element set is outside `0 < n` and `0 ≤ e < 1`, or, for the binary64 program, a value is not finite. |
+| 10 | The two-line reader only: the lines do not have the layout. |
 
 ## One source for the model and the enclosing program
 
@@ -64,10 +65,10 @@ The real function `longPeriod` is this text.  The interval function `longPeriodI
 | `two_body` | [`TwoBody.lean`](TwoBody.lean) | With `J2`, `J3/J2`, `J4`, and the drag term set to zero and an eccentricity of at least `10⁻⁶`, the model's position and velocity are those of the Kepler orbit with the semimajor axis `(xke / n)^(2/3)` and the eccentric anomaly `E` with `E − e sin E = M + n t`. |
 | `anomaly_unit`, `sin_latitude`, `cos_latitude` | [`Latitude.lean`](Latitude.lean) | `(cosu, sinu)` is a unit vector, so the model's sine and cosine of the argument of latitude equal those of the reference code's angle. |
 | `sgp4Box_sound` | [`BoxSound.lean`](BoxSound.lean) | For intervals that contain an element set and a time, the six intervals of a result with status 0 or 6 contain the model's position and velocity. |
-| `status_sound` | [`BoxSound.lean`](BoxSound.lean) | For such intervals, a status of 0, 1, 2, 4, 6, or 8 is the model's status. |
-| `read_status` | [`TleSound.lean`](TleSound.lean) | `Tle.read` returns status 0 exactly for two lines of the layout `WellFormed`: 69 bytes each, the line numbers, the checksums, the separators and the digits of the fields it reads, and equal catalog fields. |
+| `status_sound` | [`BoxSound.lean`](BoxSound.lean) | For such intervals, a status other than 7 is the model's status. |
+| `read_status` | [`TleSound.lean`](TleSound.lean) | `Tle.read` returns status 0 exactly for two lines of the layout `WellFormed`: 69 bytes each, the line numbers, the checksums, the separators and the digits of the fields it reads, and equal catalog fields.  The other columns, the epoch among them, may hold any words whose checksum weights fit. |
 | `read_encloses`, `propagate_sound`, `propagate_status` | [`TleSound.lean`](TleSound.lean) | The intervals of accepted lines contain the decimal values of their fields, and the results of `sgp4Box_sound` and `status_sound` hold for `Tle.propagate` with the element set that the digits denote. |
-| `field_encloses`, `field_rejects` | [`OmmSound.lean`](OmmSound.lean) | The interval of `Omm.field` for a text that denotes `(−1)^neg · d · 10^e` in the grammar of the library's `parse64` contains that number, and a text outside the grammar has a rejected interval. |
+| `field_sound`, `fieldNonneg_encloses`, `field_rejects` | [`OmmSound.lean`](OmmSound.lean) | The interval of `Omm.field` for a decimal or hexadecimal text of the general grammar of the library's `parse64` contains the number that the text denotes, the interval of an infinity or a NaN is rejected, and so is the interval of a text outside the grammar.  `Omm.fieldNonneg` clamps the interval of a text without a leading `-` at 0. |
 | `compiled.sgp4.implements`, `boxCompiled.sgp4Box.implements`, `Omm.compiled.field.implements`, and their siblings | [`Verified.lean`](Verified.lean), [`BoxVerified.lean`](BoxVerified.lean), [`OmmVerified.lean`](OmmVerified.lean) | The WebAssembly modules return the values of the Lean functions. |
 
 The proofs of the enclosing program use no accuracy theorem of `pow` and no enclosure of `atan2`.  The power `x^(2/3)` is accepted by a test of cubes against squares, and the argument of latitude enters only through its sine and cosine.  The sine and the cosine use the one-step accuracy theorems of the library's functions.
@@ -83,7 +84,7 @@ The proofs of the enclosing program use no accuracy theorem of `pow` and no encl
 | Reference value outside its interval | At most `6.8·10⁻⁹` km and `5.0·10⁻¹⁰` km/s |
 | Binary64 program outside its interval | At most `6.1·10⁻⁹` km and `6.9·10⁻¹²` km/s |
 
-The reference code and the binary64 program stop their iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, and the intervals contain the model's value with the exact root.  The test requires the status of the enclosing program to equal that of the binary64 program at every time, including the times after the decay of three objects.  It reads the same element sets through `Tle.propagate`, changes a digit of each line and expects status 9, and writes the catalog fields in the Alpha-5 form and expects the unchanged status.  It expects status 7 for an eccentricity of `10⁻⁴`, whose interval has points on both sides of a threshold of the model.
+The reference code and the binary64 program stop their iteration for Kepler's equation at a correction below `10⁻¹²`, which moves the position by up to that times the semimajor axis, and the intervals contain the model's value with the exact root.  The test requires the status of the enclosing program to equal that of the binary64 program at every time, including the times after the decay of three objects.  It reads the same element sets through `Tle.propagate`, changes a digit of each line and expects status 10, writes the catalog fields in the Alpha-5 form and expects the unchanged status, and writes the eccentricity 0 and expects status 0.  It expects status 7 for an eccentricity of `10⁻⁴`, whose interval has points on both sides of a threshold of the model.
 
 `tests/verified/run.sh` with `--cases sgp4`, `--cases sgp4box`, or `--cases sgp4omm` compares a module with native Lean, audits the axioms of its theorems, and checks its file theorems.
 
@@ -97,9 +98,9 @@ The compilation of `sgp4box` took 7,587 s on one core.
 
 ## Limits
 
-The theorems relate the programs to the model of [`Spec.lean`](Spec.lean).  The agreement of the model with the reference code and with the operational code rests on the test and on the review.  The model's own error is of the order of kilometers and grows with the time from the epoch, so the intervals state nothing about the true orbit.
+The theorems relate the enclosing program and the readers to the model of [`Spec.lean`](Spec.lean).  No theorem relates the binary64 program to the model: their agreement rests on the reference test, in which both programs meet the reference states.  The agreement of the model with the reference code and with the operational code rests on the test and on the review.  The model's own error is of the order of kilometers and grows with the time from the epoch, so the intervals state nothing about the true orbit.
 
-The demo has no deep-space path.  The reader of an Orbit Mean-Elements Message reads one decimal value: the search for a key in a message and the test of `MEAN_ELEMENT_THEORY` are left to the host.  The two-line reader gives the catalog number, the epoch, and the fields outside the propagation no value.  No test covers the full catalog, the C translation, or the AArch64 image, and the repository's full check has not run on this demo.  The compilation of the enclosing program takes about two hours.
+The demo has no deep-space path.  The reader of an Orbit Mean-Elements Message reads one value: the search for a key in a message and the test of `MEAN_ELEMENT_THEORY` are left to the host.  The two-line reader gives the catalog number, the epoch, and the fields outside the propagation no value.  No test covers the full catalog, the C translation, or the AArch64 image, and the repository's full check has not run on this demo.  The compilation of the enclosing program takes about two hours.
 
 ## References
 

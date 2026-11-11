@@ -18,5 +18,8 @@ def cases : IO Unit := do
     let words := (text.toUTF8.toList.map fun b => b.toUInt64)
     let i := Omm.field words.toArray
     line "sgp4omm" "field" "list:i64,f64,f64" [arrU words] s!"{i.status} {i.lo.toBits} {i.hi.toBits}"
+    let j := Omm.fieldNonneg words.toArray
+    line "sgp4omm" "fieldNonneg" "list:i64,f64,f64" [arrU words]
+      s!"{j.status} {j.lo.toBits} {j.hi.toBits}"
 
 end TestSupport.Sgp4.OmmCases
