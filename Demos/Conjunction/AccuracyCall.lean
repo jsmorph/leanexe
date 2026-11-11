@@ -65,7 +65,7 @@ theorem circularError_call (env : HostEnv Unit) (heap : Heap) (store : Store Uni
     fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
       ⟨by
           have hw := congrArg List.reverse hv
-          simp only [Scalar.values, List.reverse_reverse, List.append_nil, List.cons_append,
+          simp only [Scalar.values, List.reverse_reverse, List.cons_append,
             List.nil_append, List.reverse_cons, List.reverse_nil] at hw
           exact hw, ⟨heap', hR, hkeep⟩,
         fun hs => circularError_sound hs⟩
@@ -96,7 +96,7 @@ theorem linearError_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
     fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
       ⟨by
           have hw := congrArg List.reverse hv
-          simp only [Scalar.values, List.reverse_reverse, List.append_nil, List.cons_append,
+          simp only [Scalar.values, List.reverse_reverse, List.cons_append,
             List.nil_append, List.reverse_cons, List.reverse_nil] at hw
           exact hw, ⟨heap', hR, hkeep⟩,
         fun hs => linearError_sound hs⟩
