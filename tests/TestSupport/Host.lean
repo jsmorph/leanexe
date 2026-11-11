@@ -17,15 +17,18 @@ instance [HostArgs α] [HostArgs β] : HostArgs (α × β) :=
   ⟨fun x => HostArgs.args x.1 ++ HostArgs.args x.2⟩
 
 /-- The host's result kind, and a result as the test runner compares it: a word in decimal, an
-array as its words separated by commas. -/
+array as the host prints it. -/
 class HostResult (β : Type) where
   kind : String
   render : β → String
 
 instance : HostResult UInt64 := ⟨"i64", toString⟩
 
-instance : HostResult (Array UInt64) :=
-  ⟨"array-u64", fun xs => ",".intercalate (xs.toList.map toString)⟩
+/-- An array result as the host prints it: its words in brackets, separated by a comma and a
+space. -/
+def arrOut (xs : List UInt64) : String := s!"[{", ".intercalate (xs.map toString)}]"
+
+instance : HostResult (Array UInt64) := ⟨"array-u64", fun xs => arrOut xs.toList⟩
 
 /-- For each sample, the module, the export, the result kind, the arguments, and `f` of the
 sample. -/

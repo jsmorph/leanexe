@@ -1,6 +1,6 @@
 # The CIC decimation filter
 
-A cascaded integrator–comb (CIC) filter of order N, decimation R, and differential delay M lowers a signal's sample rate by R with N integrators at the input rate and N combs at the output rate, using additions and subtractions alone [1].  This directory holds the filter's specification over the integers, a block form of the cascade that serves the integers and 64-bit words, a proof that the cascade computes the specification, and a proof that its outputs in 64-bit words are exact under Hogenauer's bound.  A program in the verified compiler's dialect computes the filter of order 3, decimation 8, and delay 1.  Its AArch64 bare-metal Image has a theorem that the Image's UART output is the specification's outputs on a fixed table of 64 samples, and the Image's runs under QEMU, with TCG and with KVM, write the outputs of an independent Python reference.
+A cascaded integrator–comb (CIC) filter of order N, decimation R, and differential delay M lowers a signal's sample rate by R with N integrators at the input rate and N combs at the output rate, using additions and subtractions alone [1].  This directory holds the filter's specification over the integers, a block form of the cascade that serves the integers and 64-bit words, a proof that the cascade computes the specification, and a proof that its outputs in 64-bit words are exact under Hogenauer's bound.  A program in the verified compiler's dialect computes the filter of order 3, decimation 8, and delay 1.  The master theorem of its WebAssembly module covers every input array.  Its AArch64 bare-metal Image has a theorem that the Image's UART output is the specification's outputs on a fixed table of 64 samples, and the Image's runs under QEMU, with TCG and with KVM, write the outputs of an independent Python reference.
 
 ## Specification
 
@@ -21,6 +21,8 @@ At `UInt64` the cascade's operations wrap modulo `2^64`.  In [the exactness modu
 ## Program
 
 [The program](Program.lean) writes the filter of order 3, decimation 8, and delay 1 in the verified compiler's dialect, on `Array UInt64`.  `integratePass`, `decimatePass`, and `combPass` are folds whose state holds one word and the result so far: the running sum, the position in a block of 8, and the previous element.  `cic` composes three integrator passes, the decimation, and three comb passes.  `cic_toList` in [the proof module](Proof.lean) proves `(cic xs).toList = cascade 3 8 1 xs.toList` for every input array.  The proof takes the integrator's and the comb's folds by induction from the left, and the decimation's fold by induction from the right, with the invariant that its counter is the length read so far modulo 8.
+
+[The compiled module](Compiled.lean) compiles the passes and `cic` into the WebAssembly module `libcic`.  [The master theorem](Master.lean) `cic_master` states that the export `cic`, called on any array of words with room for its bound, returns without a trap an array whose words, read as signed integers, are `outputs 3 8 1` of the input words read as signed integers, each reduced into `[−2^63, 2^63)`.  It follows from the compiler's trap-free theorem, `cic_toList`, and `toInt_cascade`, and under the condition of `toInt_cascade_of_width` the reduction leaves each output unchanged.
 
 ## The AArch64 Image
 

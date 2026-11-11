@@ -273,6 +273,7 @@ import Library.Arrays.Range.Compiled
 import Library.Arrays.Word.Compiled
 import Library.Lists.Word.Compiled
 import Library.Numerics.Reductions.Word.Compiled
+import Library.Numerics.Filters.Cic.Compiled
 import Library.Numerics.Reductions.Float64.Compiled
 import Library.Numerics.LinearAlgebra.Float64.Compiled
 import Library.Numerics.LinearAlgebra.Binary32.Compiled

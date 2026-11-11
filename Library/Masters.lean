@@ -30,10 +30,18 @@ import Library.Numerics.Arithmetic.PrimeFactors.Master
 import Library.Numerics.Arithmetic.Sieve.Master
 import Library.Numerics.Arithmetic.Uscale.Master
 import Library.Numerics.Bounds.Master
+import Library.Numerics.Filters.Cic.Master
 import Library.Numerics.Float64.Exp.Master
+import Library.Numerics.Fourier.Master
 import Library.Numerics.Interval.Master
 import Library.Numerics.Limiters.Minmod.Master
+import Library.Numerics.LinearAlgebra.Binary32.Master
+import Library.Numerics.LinearAlgebra.Float64.Master
 import Library.Numerics.MultiPrecision.Master
+import Library.Numerics.Reductions.Float64.Master
+import Library.Numerics.Reductions.Word.Master
+import Library.Numerics.Statistics.Mean.Master
+import Library.Numerics.Statistics.SumSquares.Master
 import Library.Queues.BinaryHeap.Master
 import Library.Random.Lcg.Master
 import Library.Random.ParkMiller.Master
@@ -137,7 +145,12 @@ master_registry [
   Library.Numerics.Bounds.outMul_master,
   Library.Numerics.Bounds.outDiv_master,
   Library.Numerics.Bounds.outSqrt_master,
+  Library.Numerics.Filters.Cic.cic_master,
   Library.Numerics.Float64.Exp.exp_master,
+  Library.Numerics.Fourier.twiddle_master,
+  Library.Numerics.Fourier.dft_master,
+  Library.Numerics.Fourier.inverse_master,
+  Library.Numerics.Fourier.powerSpectrum_master,
   Library.Numerics.Interval.fmin_master,
   Library.Numerics.Interval.fmax_master,
   Library.Numerics.Interval.make_master,
@@ -159,10 +172,31 @@ master_registry [
   Library.Numerics.Interval.increasing_master,
   Library.Numerics.Interval.decreasing_master,
   Library.Numerics.Limiters.Minmod.minmod_master,
+  Library.Numerics.LinearAlgebra.Binary32.scale32_master,
+  Library.Numerics.LinearAlgebra.Binary32.axpyArray32_master,
+  Library.Numerics.LinearAlgebra.Binary32.add32_master,
+  Library.Numerics.LinearAlgebra.Binary32.matVec32_master,
+  Library.Numerics.LinearAlgebra.Binary32.linear32_master,
+  Library.Numerics.LinearAlgebra.Float64.dot_master,
+  Library.Numerics.LinearAlgebra.Float64.axpy_master,
+  Library.Numerics.LinearAlgebra.Float64.grid_master,
+  Library.Numerics.LinearAlgebra.Float64.matVec_master,
+  Library.Numerics.LinearAlgebra.Float64.matMul_master,
+  Library.Numerics.LinearAlgebra.Float64.matMulT_master,
+  Library.Numerics.LinearAlgebra.Float64.add_master,
   Library.Numerics.MultiPrecision.add_master,
   Library.Numerics.MultiPrecision.sub_master,
   Library.Numerics.MultiPrecision.mul_master,
   Library.Numerics.MultiPrecision.divide_master,
+  Library.Numerics.Reductions.Float64.total_master,
+  Library.Numerics.Reductions.Float64.select_master,
+  Library.Numerics.Reductions.Float64.largest_master,
+  Library.Numerics.Reductions.Float64.sumRange_master,
+  Library.Numerics.Reductions.Word.sumArray_master,
+  Library.Numerics.Reductions.Word.productArray_master,
+  Library.Numerics.Reductions.Word.xorArray_master,
+  Library.Numerics.Statistics.Mean.mean_master,
+  Library.Numerics.Statistics.SumSquares.sumSquares_master,
   Library.Queues.BinaryHeap.heapQueue_master,
   Library.Random.Lcg.step_master,
   Library.Random.Lcg.advance_master,

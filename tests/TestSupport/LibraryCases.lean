@@ -2,6 +2,7 @@ import Library.Numerics.Bounds.Program
 import Library.Numerics.Interval.Program
 import Library.Numerics.Limiters.Minmod.Program
 import Library.Numerics.Reductions.Word.Program
+import Library.Numerics.Filters.Cic.Program
 import Library.Numerics.Statistics.Mean.Program
 import Library.Numerics.Statistics.SumSquares.Program
 import Library.Random.SplitMix64.Program
@@ -122,12 +123,17 @@ private def splitMixSeeds : List UInt64 :=
 
 def cases : IO Unit := do
   intervalCases
+  for xs in (List.range 6).map fun i => (List.range (8 * i + 3)).map fun k => rw (31 * i + k) do
+    line "libcic" "cic" "array-u64" [arrU xs]
+      (arrOut (Library.Numerics.Filters.Cic.cic xs.toArray).toList)
   for xs in wordArrays do
     let values := xs.toArray
     line "libwordreductions" "productArray" "i64" [arrU xs]
       (toString (Library.Numerics.Reductions.Word.productArray values))
     line "libwordreductions" "xorArray" "i64" [arrU xs]
       (toString (Library.Numerics.Reductions.Word.xorArray values))
+    line "libcic" "cic" "array-u64" [arrU xs]
+      (arrOut (Library.Numerics.Filters.Cic.cic values).toList)
     for count in [0, xs.length.toUInt64, xs.length.toUInt64 + 1] do
       line "libsearch" "firstZero" "i64" [arrU xs, u count]
         (toString (Library.Arrays.Search.firstZero values count))

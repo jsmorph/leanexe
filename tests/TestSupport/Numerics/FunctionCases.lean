@@ -105,10 +105,10 @@ def cases : IO Unit := do
       line "parsefloat" "parse32" "list:i64,i64" [g, a] s!"{if r.1 then 1 else 0} {r.2}"
   for x in specials ++ [0.1, 1e21, 1e-7, 123456789.0, 5e-324] do
     for (name, f) in [("print64", PrintFloat.print64), ("print64Ecma", PrintFloat.print64Ecma)] do
-      line "printfloat" name "array-u64" [u x.toBits] (words (f x.toBits).toList)
+      line "printfloat" name "array-u64" [u x.toBits] (arrOut (f x.toBits).toList)
   for w in ([0, 0x80000000, 1, 0x3dcccccd, 0x3f800000, 0x7f7fffff, 0x7f800000, 0xff800000,
       0x7fc00000] : List UInt64) do
     for (name, f) in [("print32", PrintFloat.print32), ("print32Ecma", PrintFloat.print32Ecma)] do
-      line "printfloat" name "array-u64" [u w] (words (f w).toList)
+      line "printfloat" name "array-u64" [u w] (arrOut (f w).toList)
 
 end TestSupport.Numerics.FunctionCases
