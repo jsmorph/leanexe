@@ -255,6 +255,10 @@ lean_exe «verified-cases-gate» where
   srcDir := "tests"
   root := `TestSupport.Gate.GateCasesMain
 
+lean_exe «verified-cases-assignment» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.AssignmentCasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain

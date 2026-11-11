@@ -66,6 +66,9 @@ import Demos.Euler.Reference.Transport
 import Demos.Euler.Reference.Update
 import Demos.Euler.SpeedCounterexample
 import Demos.Euler.Words
+import Demos.Gate.Assignment
+import Demos.Gate.AssignmentFlat
+import Demos.Gate.AssignmentSoundness
 import Demos.Gate.Flat
 import Demos.Gate.GateFlat
 import Demos.Gate.GateProgram
