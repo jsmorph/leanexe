@@ -82,7 +82,8 @@ theorem encloses_nonneg {v : Interval} {x : ℝ} (hv : Encloses v x) (hx : 0 ≤
 /-! ### The real functions of the closed form -/
 
 theorem flowPosition_eq (n t : ℝ) (s : State) :
-    flowPosition n t s.x s.y s.z s.vx s.vy s.vz = ((flow n t s).x, (flow n t s).y, (flow n t s).z) :=
+    flowPosition n t s.x s.y s.z s.vx s.vy s.vz =
+      ((flow n t s).x, (flow n t s).y, (flow n t s).z) :=
   rfl
 
 theorem sepSquare_eq (x y z : ℝ) : sepSquare x y z = x ^ 2 + y ^ 2 + z ^ 2 := by
@@ -353,7 +354,8 @@ theorem march_covered {g : ℝ → ℝ} {e d2 hmin b : Float} {v : Interval} {m 
 interval encloses `g` on the panel. -/
 theorem search_covered {g : ℝ → ℝ} {e d2 hmin : Float} {fuel : UInt64}
     {panel : Float → Float → Interval} (he : Finite e.toBits) (hd : Finite d2.toBits)
-    (hp : ∀ a b : Float, ∀ τ, value a.toBits ≤ τ → τ ≤ value b.toBits → Encloses (panel a b) (g τ)) :
+    (hp : ∀ a b : Float, ∀ τ, value a.toBits ≤ τ → τ ≤ value b.toBits →
+      Encloses (panel a b) (g τ)) :
     Covered g d2 (LeanExe.repeatWhile fuel ⟨0, 0.0, e, maxFloat⟩
       (fun m => m.status == 0 && m.t < e)
       (fun m => march e d2 hmin (panel m.t (panelEnd m.t m.h e)) (panelEnd m.t m.h e) m)) := by
@@ -531,7 +533,8 @@ theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
     {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
     let m := rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 fuel
     Finite m.low.toBits ∧ ∀ t, 0 ≤ t → (∀ b ∈ select bs.length j.toNat bs, b.t ≤ t) →
-      value r2.toBits ≤ rcSqAt xs s bs j.toNat t ∧ value m.low.toBits ≤ rcSqAt xs s bs j.toNat t := by
+      value r2.toBits ≤ rcSqAt xs s bs j.toNat t ∧
+        value m.low.toBits ≤ rcSqAt xs s bs j.toNat t := by
   intro m
   have hN := hv.length hplan
   have h16 := hv.small
@@ -686,7 +689,8 @@ theorem sqrtDown_le (x : Float) :
 
 /-- The returned bound `fmax d (sqrtDown L)` lies between `d` and every quantity whose square is
 at least `d²` and `L`. -/
-theorem bound_between {d L : Float} {q : ℝ} (hd : Finite d.toBits) (h0 : 0 ≤ value d.toBits) (hq : 0 ≤ q) (h1 : value d.toBits ^ 2 ≤ q ^ 2)
+theorem bound_between {d L : Float} {q : ℝ} (hd : Finite d.toBits) (h0 : 0 ≤ value d.toBits)
+    (hq : 0 ≤ q) (h1 : value d.toBits ^ 2 ≤ q ^ 2)
     (h2 : value L.toBits ≤ q ^ 2) :
     value d.toBits ≤ value (fmax d (sqrtDown L)).toBits ∧
       value (fmax d (sqrtDown L)).toBits ≤ q := by
@@ -969,7 +973,8 @@ theorem check_passive {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 
   by_cases hT : t ≤ val xs 1
   · exact (min_le_left _ _).trans (hsep.trans (hs t ht hT))
   · have hb : ∀ b ∈ select bs.length j bs, b.t ≤ t := fun b hb =>
-      ((hburns bs hplan).2 b ((selectFrom_sublist _ _ 0 bs).subset hb)).2.trans (le_of_lt (not_le.mp hT))
+      ((hburns bs hplan).2 b ((selectFrom_sublist _ _ 0 bs).subset hb)).2.trans
+        (le_of_lt (not_le.mp hT))
     refine (min_le_right _ _).trans (hrc.trans ((hr t ht hb).trans ?_))
     unfold rcDistance separation
     exact Real.sqrt_le_sqrt (by nlinarith [sq_nonneg (path (val xs 0) 0 s
