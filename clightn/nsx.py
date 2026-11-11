@@ -1081,6 +1081,16 @@ MUTATIONS = {
         ("cst_sha_main", "(22880918)%positive", "(22880919)%positive", "Rocq:constant:sha_main"),
         ("cst_sha_defs", "(268435456)%Z", "(268435448)%Z", "Rocq:constant:sha_defs"),
     ],
+    "lean-ctl": [
+        ("cst_ctl_defs", "(4096 : Int)", "(4097 : Int)", "Lean:constant:ctl_defs"),
+        ("stmt_ctl_reacts", "(@ClightN.Base.app (P sigma n) (W sigma n))",
+         "(@ClightN.Base.app (W sigma n) (P sigma n))", "Lean:statement:ctl_reacts"),
+    ],
+    "rocq-ctl": [
+        ("cst_ctl_main", "(22880918)%positive", "(22880919)%positive", "Rocq:constant:ctl_main"),
+        ("stmt_ctl_reacts", "(@eq _ (P sigma O) (@nil _))", "(@eq _ (P sigma (@S O)) (@nil _))",
+         "Rocq:statement:ctl_reacts"),
+    ],
     "lean-proof": [
         ("lt_ul_ul", "theorem lt_ul_ul : stmt_lt_ul_ul := by",
          "theorem lt_ul_ul : ∀ (ce : Unit) (v1 v2 v : val) (m : mem),\n"
@@ -1127,6 +1137,24 @@ MUTATIONS = {
          "    + intros sigma. destruct (A sigma) as (t & r & B & R & _). eauto.\n"
          "    + intros beh B. destruct (U beh B) as (sigma & t & r & E & R & _). eauto.\n"
          "Qed.", "Admitted.", "Rocq:proof:sha_reads"),
+    ],
+    "lean-ctl-proof": [
+        ("ctl_reacts", "theorem ctl_reacts : stmt_ctl_reacts := by",
+         "theorem ctl_reacts : stmt_ctl_reacts := by\n  sorry\n\n"
+         "theorem ctl_reacts_unused : stmt_ctl_reacts := by", "Lean:proof:ctl_reacts"),
+    ],
+    "rocq-ctl-proof": [
+        ("ctl_asm", "  intros H p p1 p2 tp E1 E2 TR D M P C.\n"
+         "  destruct (ctl_clight2 H p2 D M P C) as (W & LR & R).\n"
+         "  pose (NE := fun sigma => proj1 (LR sigma)).\n"
+         "  destruct (Clight2Asm.clight2_loop_to_asm_ptr64 eq_refl p p1 p2 tp E0 W NE E1 E2 TR LR "
+         "R)\n"
+         "    as [A U].\n"
+         "  exists W, NE. split; [| split].\n"
+         "  - intros sigma n. exact (R sigma n).\n"
+         "  - intros sigma. exact (A sigma).\n"
+         "  - intros beh B. exact (U beh B).\n"
+         "Qed.", "Admitted.", "Rocq:proof:ctl_reacts"),
     ],
 }
 
