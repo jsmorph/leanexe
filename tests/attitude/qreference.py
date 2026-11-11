@@ -9,15 +9,16 @@ of the inputs, written apart from the program.
 Each input line, which `verified-cases-qmethod --bits` prints, holds a class, the number of input
 values, the bits of the input and of a true attitude's quaternion, and the bits of the eight
 result values: status, `w`, `x`, `y`, `z`, `errOpt`, `err`, and the cut `c`.  The check requires
-status 0 for the classes `good`, `bias`, and `edge`, 1 for `bad1`, and 2 for `bad2`, and zeros
-after the status of a result of status 1 or 2.  For status 0 it computes `K` and its eigenvalues
-`λ1 ≥ λ2 ≥ λ3 ≥ λ4` and a unit eigenvector `e` of `λ1`, and requires `λ2 < c < λ1`, the angle
-`2 arccos |q̄ · e|` between the attitudes of `q̂` and `e` at most `errOpt`, `errOpt` at or above
-`2 arcsin (ρ / (μ - c))` and less than `1e-12` above it, where `μ` is the Rayleigh quotient of
-`q̄` and `ρ` its residual, and `err` at or above `2 (arcsin (ρ / (μ - c)) + arcsin (ρt / (μt - c)))`
-and less than `1e-12` above it, with `ρt = Σ a sin ε` and `μt = Σ a cos ε`.  For the classes
-`good` and `bias`, it checks that the true attitude meets the error bounds and that the angle
-between its attitude and that of `q̂` is at most `err`.
+status 0 for the classes `good`, `bias`, `edge`, and `turned`, 1 for `bad1`, and 2 for `bad2`,
+and zeros after the status of a result of status 1 or 2.  For status 0 it requires `q̂` of unit
+length within `1e-15` and with `w ≥ 0`, computes `K` and its eigenvalues `λ1 ≥ λ2 ≥ λ3 ≥ λ4` and a
+unit eigenvector `e` of `λ1`, and requires `λ2 < c < λ1`, the angle `2 arccos |q̄ · e|` between the
+attitudes of `q̂` and `e` at most `errOpt`, `μ > c` and `μt > c`, the sines `s = ρ / (μ - c)` and
+`t = ρt / (μt - c)` at most 1, where `μ` is the Rayleigh quotient of `q̄`, `ρ` its residual,
+`ρt = Σ a sin ε`, and `μt = Σ a cos ε`, `errOpt` at or above `2 arcsin s` and less than `1e-12`
+above it, and `err` at or above `2 (arcsin s + arcsin t)` and less than `1e-12` above it.  It
+checks that the true attitude meets the error bounds and that the angle between its attitude and
+that of `q̂` is at most `err`.
 Usage: uv run tests/attitude/qreference.py CASES"""
 import struct
 import sys
@@ -77,11 +78,12 @@ def davenport(obs):
 
 
 def main():
-    expect = {"good": 0, "bias": 0, "edge": 0, "bad1": 1, "bad2": 2}
+    expect = {"good": 0, "bias": 0, "edge": 0, "turned": 0, "bad1": 1, "bad2": 2}
     counts = {}
     failures = []
     worst = {}
     above = mpf(0)
+    turned = []
     for line in open(sys.argv[1]):
         f = line.split()
         cls, m = f[0], int(f[1])
@@ -108,6 +110,8 @@ def main():
         order = sorted(range(4), key=lambda i: E[i], reverse=True)
         l1, l2 = E[order[0]], E[order[1]]
         e = [Q[r, order[0]] for r in range(4)]
+        if abs(sqrt(dot(out[1:5], out[1:5])) - 1) > mpf("1e-15") or out[1] < 0:
+            failures.append(f"{tag}: q̂ not of unit length with w ≥ 0")
         q = unit(out[1:5])
         errOpt, err, c = out[5], out[6], out[7]
         if not (l2 < c < l1):
@@ -119,10 +123,16 @@ def main():
         Kq = [sum(K[i, j] * q[j] for j in range(4)) for i in range(4)]
         mu = dot(q, Kq)
         rho = sqrt(sum((Kq[i] - mu * q[i]) ** 2 for i in range(4)))
-        s = rho / (mu - c)
         rt = sum(a * sin(eps) for _, _, a, eps in obs)
         mt = sum(a * cos(eps) for _, _, a, eps in obs)
+        if not (mu > c and mt > c):
+            failures.append(f"{tag}: a gap to the cut is not positive")
+            continue
+        s = rho / (mu - c)
         t = rt / (mt - c)
+        if not (s <= 1 and t <= 1):
+            failures.append(f"{tag}: a sine above 1, s = {s}, t = {t}")
+            continue
         fopt = 2 * asin(s)
         ferr = 2 * (asin(s) + asin(t))
         if not (fopt <= errOpt < fopt + mpf("1e-12")):
@@ -130,19 +140,24 @@ def main():
         if not (ferr <= err < ferr + mpf("1e-12")):
             failures.append(f"{tag}: err {err} against its formula {ferr}")
         above = max(above, errOpt - fopt, err - ferr)
-        if cls in ("good", "bias"):
-            qn = unit(qt)
-            for b, r, a, eps in obs:
-                if angle(rotate(qn, b), r) > eps:
-                    failures.append(f"{tag}: the true attitude violates an error bound")
-            true = 2 * acos(min(1, abs(dot(q, qn))))
-            if true > err:
-                failures.append(f"{tag}: true error {true} above err {err}")
+        if cls == "turned":
+            turned.append(errOpt / opt)
+        qn = unit(qt)
+        for b, r, a, eps in obs:
+            if angle(rotate(qn, b), r) > eps:
+                failures.append(f"{tag}: the true attitude violates an error bound")
+        true = 2 * acos(min(1, abs(dot(q, qn))))
+        if true > err:
+            failures.append(f"{tag}: true error {true} above err {err}")
+        if err > 0:
             worst[cls] = max(worst.get(cls, mpf(0)), true / err)
     print("class   status  count")
     for (cls, status), k in sorted(counts.items()):
         print(f"{cls:7s} {status:6d}  {k:5d}")
     print(f"largest excess of errOpt or err over its formula: {mp.nstr(above, 3)}")
+    if turned:
+        print("errOpt over the angle to the optimum, class turned: "
+              f"{mp.nstr(min(turned), 4)} to {mp.nstr(max(turned), 4)}")
     for cls, r in sorted(worst.items()):
         print(f"largest true error over err, class {cls}: {mp.nstr(r, 3)}")
     for msg in failures:

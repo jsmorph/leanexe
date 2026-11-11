@@ -23,7 +23,9 @@ import Demos.Attitude.QCall
 #print axioms Demos.Attitude.QMethod.accumulate_enc
 #print axioms Demos.Attitude.QMethod.pivots_enc
 #print axioms Demos.Attitude.QMethod.certify_sound
+#print axioms Demos.Attitude.QMethod.valid_cases
 #print axioms Demos.Attitude.QMethod.qmethod_sound
+#print axioms Demos.Attitude.QMethod.qmethod_status_two
 #print axioms Demos.Attitude.QMethod.qmethod_knowledge
 #print axioms Demos.Attitude.QMethod.qmethod_bound
 #print axioms Demos.Attitude.QMethod.qmethod_call

@@ -2,6 +2,9 @@ import Demos.Attitude.QProgram
 import Demos.Attitude.Eigen
 import Demos.Attitude.Soundness
 import LeanExe.Dialect.Lemmas
+import LeanExe.ProofKit.F64Convert
+import LeanExe.ProofKit.F64GridExact
+import LeanExe.ProofKit.F64UpperWord
 
 /-!
 Soundness of the q-method program.  `qmethod_sound` (Q4) states what a result of status 0
@@ -95,13 +98,34 @@ theorem loop_and {n : UInt64} {f : UInt64 → Bool}
       · subst hj; exact hs.2)
   exact hl h
 
-/-- The conditions of a valid input. -/
-theorem valid_cases {xs : Array Float} (h : valid xs = true) :
-    2 ≤ count xs ∧ count xs ≤ 16 ∧
-    ∀ i < count xs, 0 < val xs[7 + 8 * i]! ∧ 0 ≤ val xs[8 + 8 * i]! ∧
-      val xs[8 + 8 * i]! ≤ 3 / 2 := by
+/-- The value of a word of at most `2 ^ 53` converted to binary64. -/
+theorem toFloat_value (n : UInt64) (h : n.toNat ≤ 2 ^ 53) :
+    Finite n.toFloat.toBits ∧ value n.toFloat.toBits = (n.toNat : ℝ) := by
+  have e : n.toFloat.toBits = Wasm.IEEE64.fromInt (n.toNat : ℤ) := by
+    change (Float.Model.ofInt (n.toNat : Int)).toBits = _
+    exact F64Convert.ofInt_eq _
+  rw [e]
+  have hg := F64GridExact.signed_grid_packing_exact (n.toNat : ℤ) 1074 (by simpa using h)
+    (by norm_num)
+  refine ⟨hg.1, ?_⟩
+  have h2 : (2 : ℝ) ^ 1074 ≠ 0 := by positivity
+  rw [value, Wasm.IEEE64.fromInt, hg.2, Int.cast_mul, Int.cast_pow, Int.cast_ofNat,
+    mul_div_assoc, div_self h2, mul_one]
+  simp
+
+/-- The conditions of a valid input over the reals: the first value is the whole number `n` of
+observations, from 2 to 16, the input has `1 + 8 n` values, read as a word count, the values of
+the observations are finite, and each observation has a positive weight and an error bound in
+`[0, 1.5]`. -/
+def InputOk (xs : Array Float) : Prop :=
+  val xs[0]! = count xs ∧ 2 ≤ count xs ∧ count xs ≤ 16 ∧
+  xs.size.toUInt64.toNat = 1 + 8 * count xs ∧ (∀ i < 1 + 8 * count xs, Finite xs[i]!.toBits) ∧
+  ∀ i < count xs, 0 < (obsAt xs i).a ∧ 0 ≤ (obsAt xs i).ε ∧ (obsAt xs i).ε ≤ 3 / 2
+
+/-- A valid input meets the conditions over the reals. -/
+theorem valid_cases {xs : Array Float} (h : valid xs = true) : InputOk xs := by
   simp only [valid, isWhole, allFinite, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨_, h2⟩, h16⟩, hsz⟩, hfin⟩, hrec⟩ := h
+  obtain ⟨⟨⟨⟨⟨hw, h2⟩, h16⟩, hsz⟩, hfin⟩, hrec⟩ := h
   have hlo : 2 ≤ count xs := by
     simp only [count]; simpa using (UInt64.le_iff_toNat_le).mp h2
   have hhi : count xs ≤ 16 := by
@@ -118,7 +142,13 @@ theorem valid_cases {xs : Array Float} (h : valid xs = true) :
     have h1 := loop_and hfin i (by rw [hN]; exact hi)
     rw [rd, UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 2 ^ 64 from rfl]; exact hs)] at h1
     exact (finite_iff _).mp h1
-  refine ⟨hlo, hhi, fun i hi => ?_⟩
+  have hval : val xs[0]! = count xs := by
+    have f0 : Finite (rd xs 0).toBits := hf 0 (by omega)
+    have hc := toFloat_value (rd xs 0).toUInt64 (by simp only [count] at hhi; omega)
+    have e := (F64UpperWord.float_beq_iff _ _ hc.1 f0).mp hw
+    show value (rd xs 0).toBits = ((rd xs 0).toUInt64.toNat : ℝ)
+    rw [← e, hc.2]
+  refine ⟨hval, hlo, hhi, by rw [hsz, hN], hf, fun i hi => ?_⟩
   have hr := loop_and hrec i hi
   simp only [recordOk, Bool.and_eq_true, decide_eq_true_eq] at hr
   obtain ⟨⟨ha, he0⟩, he1⟩ := hr
@@ -128,9 +158,12 @@ theorem valid_cases {xs : Array Float} (h : valid xs = true) :
   have fa := hf (7 + 8 * i) (by omega)
   have fe := hf (8 + 8 * i) (by omega)
   refine ⟨?_, ?_, ?_⟩
-  · have := (lt_iff_value zero_value.1 fa).mp ha; rwa [zero_value.2] at this
-  · have := (le_iff_value zero_value.1 fe).mp he0; rwa [zero_value.2] at this
-  · have := (le_iff_value fe lit_three_halves.1).mp he1; rwa [lit_three_halves.2] at this
+  · show 0 < val xs[7 + 8 * i]!
+    have := (lt_iff_value zero_value.1 fa).mp ha; rwa [zero_value.2] at this
+  · show 0 ≤ val xs[8 + 8 * i]!
+    have := (le_iff_value zero_value.1 fe).mp he0; rwa [zero_value.2] at this
+  · show val xs[8 + 8 * i]! ≤ 3 / 2
+    have := (le_iff_value fe lit_three_halves.1).mp he1; rwa [lit_three_halves.2] at this
 
 /-! ### Matrices of intervals -/
 
@@ -409,18 +442,37 @@ theorem encloses_clamp0 {a : Interval} {x : ℝ} (ha : Encloses a x) (h0 : 0 ≤
 theorem two_enc : Encloses (ofInt 2) (2 : ℝ) :=
   encloses_ofInt' (m := 2) (by decide +kernel) (by decide +kernel) (by norm_num)
 
+/-- An accepted squared length of the quaternion of four point intervals has finite components. -/
+theorem residOf_points {t1 t2 t3 t4 : Array UInt64} {u0 u1 u2 u3 : Interval} {w x y z : Float}
+    (h : (Spec.residOfI t1 t2 t3 t4 u0 u1 u2 u3 (point w) (point x) (point y) (point z)).1.status
+      = 0) :
+    Finite w.toBits ∧ Finite x.toBits ∧ Finite y.toBits ∧ Finite z.toBits := by
+  simp only [Spec.residOfI] at h
+  obtain ⟨h1, hz, -⟩ := add_sound h
+  obtain ⟨h2, hy, -⟩ := add_sound h1
+  obtain ⟨hw, hx, -⟩ := add_sound h2
+  exact ⟨(point_sound (mul_sound hw).1).1, (point_sound (mul_sound hx).1).1,
+    (point_sound (mul_sound hy).1).1, (point_sound (mul_sound hz).1).1⟩
+
+/-- An accepted gap to the point interval of the cut has a finite cut. -/
+theorem boundsOf_point {t1 t2 t3 t4 : Array UInt64} {mu rho rt mt : Interval} {c : Float}
+    (h : (Spec.boundsOfI t1 t2 t3 t4 mu rho rt mt (point c)).1.status = 0) : Finite c.toBits := by
+  simp only [Spec.boundsOfI] at h
+  exact (point_sound (sub_sound h).2.1).1
+
 /-- **The certificate.**  For intervals that enclose a symmetric matrix `R` and the reals `ρt` and
 `μt`, a result of status 0 of `certify` holds the quaternion `q`, two finite bounds, and the cut
-`c`; the inertia certificate of `R - c I` holds; `q` is not zero and its Rayleigh quotient `μ`
-lies above `c`; `c < μt`; and the sines `s = |R q - μ q| / (|q| (μ - c))` and
-`t = ρt / (μt - c)` lie at most 1, with `2 arcsin s` at most the first bound and
-`2 (arcsin s + arcsin t)` at most the second. -/
+`c`; the components of `q` and the cut are finite; the inertia certificate of `R - c I` holds;
+`q` is not zero and its Rayleigh quotient `μ` lies above `c`; `c < μt`; and the sines
+`s = |R q - μ q| / (|q| (μ - c))` and `t = ρt / (μt - c)` lie at most 1, with `2 arcsin s` at
+most the first bound and `2 (arcsin s + arcsin t)` at most the second. -/
 theorem certify_sound {K : M4} {R : Sym4} (hK : EncM4 K R) {rt mt : Interval} {ρt μt : ℝ}
     (hrt : Encloses rt ρt) (hmt : Encloses mt μt) {c : Float} {q : Q4}
     (h : (certify Trig.invPi Trig.halfPi K rt mt c q)[0]! = 0.0) :
     ∃ eo e : Float, certify Trig.invPi Trig.halfPi K rt mt c q =
       #[0.0, q.w, q.x, q.y, q.z, eo, e, c] ∧ Finite eo.toBits ∧ Finite e.toBits ∧
-      (R.shift (val c)).OnePos ∧ 0 < Quat.norm2 (quatOf q) ∧
+      Finite q.w.toBits ∧ Finite q.x.toBits ∧ Finite q.y.toBits ∧ Finite q.z.toBits ∧
+      Finite c.toBits ∧ (R.shift (val c)).OnePos ∧ 0 < Quat.norm2 (quatOf q) ∧
       val c < R.form (quatOf q) / Quat.norm2 (quatOf q) ∧ val c < μt ∧
       √(Quat.norm2 (qsub (R.apply (quatOf q))
           (Quat.smul (R.form (quatOf q) / Quat.norm2 (quatOf q)) (quatOf q))) /
@@ -452,8 +504,11 @@ theorem certify_sound {K : M4} {R : Sym4} (hK : EncM4 K R) {rt mt : Interval} {�
   generalize Spec.applyKI Trig.invPi Trig.halfPi Trig.invPi Trig.invPi K.a00 K.a01 K.a02 K.a03
     K.a11 K.a12 K.a13 K.a22 K.a23 K.a33 (point q.w) (point q.x) (point q.y) (point q.z) = u
     at hu hr h ⊢
+  have fq := residOf_points (t1 := Trig.invPi) (t2 := Trig.halfPi) (t3 := Trig.invPi)
+    (t4 := Trig.invPi) (u0 := u.1) (u1 := u.2.1) (u2 := u.2.2.1) (u3 := u.2.2.2) (w := q.w)
+    (x := q.x) (y := q.y) (z := q.z)
   generalize Spec.residOfI Trig.invPi Trig.halfPi Trig.invPi Trig.invPi u.1 u.2.1 u.2.2.1 u.2.2.2
-    (point q.w) (point q.x) (point q.y) (point q.z) = r at hr h ⊢
+    (point q.w) (point q.x) (point q.y) (point q.z) = r at hr h fq ⊢
   -- the real quantities
   set p := quatOf q with hp
   set N := Quat.norm2 p with hNdef
@@ -466,8 +521,11 @@ theorem certify_sound {K : M4} {R : Sym4} (hK : EncM4 K R) {rt mt : Interval} {�
   have hrho := encloses_sqrt (encloses_clamp0 hrR hR2)
   have hb := Spec.boundsOf.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) hrμ hrho hrt
     hmt (encloses_point c)
+  have fc := boundsOf_point (t1 := Trig.invPi) (t2 := Trig.halfPi) (t3 := Trig.invPi)
+    (t4 := Trig.invPi) (mu := r.2.1) (rho := sqrt (clamp r.2.2 0 r.2.2.hi)) (rt := rt) (mt := mt)
+    (c := c)
   generalize Spec.boundsOfI Trig.invPi Trig.halfPi Trig.invPi Trig.invPi r.2.1
-    (sqrt (clamp r.2.2 0 r.2.2.hi)) rt mt (point c) = b at hb h ⊢
+    (sqrt (clamp r.2.2 0 r.2.2.hi)) rt mt (point c) = b at hb h fc ⊢
   have hb1 : Encloses b.1 (μ - val c) := hb.1
   have hb2 : Encloses b.2.1 (μt - val c) := hb.2.1
   have hb3 : Encloses b.2.2.1 (√(R2 / N) / (μ - val c)) := hb.2.2.1
@@ -490,8 +548,10 @@ theorem certify_sound {K : M4} {R : Sym4} (hK : EncM4 K R) {rt mt : Interval} {�
     have rT := asinI_range hb4 sT
     have ceo := heo eos
     have ce := he es
-    refine ⟨_, _, rfl, ceo.2.2.1, ce.2.2.1, onePos_of_pivots (oneSign_of d1 d2 d3 d4 hs), hN,
-      by linarith, by linarith, rS.2, rT.2, ceo.2.2.2.2, ce.2.2.2.2⟩
+    obtain ⟨fw, fx, fy, fz⟩ := fq rs
+    refine ⟨_, _, rfl, ceo.2.2.1, ce.2.2.1, fw, fx, fy, fz, fc bs,
+      onePos_of_pivots (oneSign_of d1 d2 d3 d4 hs), hN, by linarith, by linarith, rS.2, rT.2,
+      ceo.2.2.2.2, ce.2.2.2.2⟩
   · exact absurd h (reject_ne 2.0 (by rw [two_bits]; decide))
 
 /-! ### The program -/
@@ -519,19 +579,21 @@ theorem qmethod_cases {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) :
 theorem within_mono {F G : Vec → Vec} {a b : ℝ} (h : Within F G a) (hab : a ≤ b) :
     Within F G b := fun v hv => (h v hv).trans hab
 
-/-- **Q4, the soundness of the q-method.**  If `qmethod` returns status 0, the input holds from 2
-to 16 observations with nonzero vectors, positive weights, and error bounds in `[0, 1.5]`;
-`errOpt` and `err` are finite; the inertia certificate of `K - c I` holds for the output cut `c`;
-a maximizer `e` of `qᵀ K q` on the unit sphere exists and is unique up to sign; every maximizer
+/-- **Q4, the soundness of the q-method.**  If `qmethod` returns status 0, the input meets its
+conditions (`InputOk`), and its observations have nonzero vectors; the outputs `q̂`, `errOpt`,
+`err`, and `c` are finite; the inertia certificate of `K - c I` holds for the output cut `c`; a
+maximizer `e` of `qᵀ K q` on the unit sphere exists and is unique up to sign; every maximizer
 satisfies `c < eᵀ K e` and `qᵀ K q < c` for every unit `q ⊥ e`; the output quaternion `q̂` is not
 zero; its attitude lies within `errOpt` of the attitude of every maximizer; and it lies within
 `err` of the attitude of every nonzero `q` that carries each normalized measurement within its
 error bound of the normalized reference. -/
 theorem qmethod_sound {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) :
-    2 ≤ count xs ∧ count xs ≤ 16 ∧
-    (∀ i < count xs, 0 < norm (obsAt xs i).b ∧ 0 < norm (obsAt xs i).r ∧ 0 < (obsAt xs i).a ∧
-      0 ≤ (obsAt xs i).ε ∧ (obsAt xs i).ε ≤ 3 / 2) ∧
+    InputOk xs ∧
+    (∀ i < count xs, 0 < norm (obsAt xs i).b ∧ 0 < norm (obsAt xs i).r) ∧
+    Finite (qmethod xs)[1]!.toBits ∧ Finite (qmethod xs)[2]!.toBits ∧
+    Finite (qmethod xs)[3]!.toBits ∧ Finite (qmethod xs)[4]!.toBits ∧
     Finite (qmethod xs)[5]!.toBits ∧ Finite (qmethod xs)[6]!.toBits ∧
+    Finite (qmethod xs)[7]!.toBits ∧
     ((kOf xs).shift (val (qmethod xs)[7]!)).OnePos ∧
     (∃ e, IsMax (kOf xs) e) ∧
     (∀ e e', IsMax (kOf xs) e → IsMax (kOf xs) e' → e' = e ∨ e' = qneg e) ∧
@@ -545,27 +607,33 @@ theorem qmethod_sound {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) :
         (obsAt xs i).ε) →
       Within (attitude (quatAt (qmethod xs) 1)) (attitude q) (val (qmethod xs)[6]!) := by
   obtain ⟨hv, hacc, c, q, hq⟩ := qmethod_cases h
-  obtain ⟨hlo, hhi, hrec⟩ := valid_cases hv
-  rw [show count xs = (rd xs 0).toUInt64.toNat from rfl] at hlo hhi hrec ⊢
+  have hin := valid_cases hv
+  obtain ⟨-, -, hhi, -, -, hrec⟩ := valid_cases hv
+  rw [show count xs = (rd xs 0).toUInt64.toNat from rfl] at hhi hrec ⊢
   rw [show kOf xs = davK (obsAt xs) (rd xs 0).toUInt64.toNat from rfl]
   obtain ⟨hK, hρ, hμ, hok⟩ := accumulate_enc xs hhi
   obtain ⟨aok, -⟩ := accepted_cases hacc
   have hvec := hok aok
   rw [hq] at h ⊢
-  obtain ⟨eo, e, he, feo, fe, hpos, hN, hμc, hμt, hs1, ht1, heo, herr⟩ :=
+  obtain ⟨eo, e, he, feo, fe, fw, fx, fy, fz, fc, hpos, hN, hμc, hμt, hs1, ht1, heo, herr⟩ :=
     certify_sound hK hρ hμ h
   rw [he]
+  have e5 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[1]! = q.w := rfl
+  have e6 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[2]! = q.x := rfl
+  have e7 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[3]! = q.y := rfl
+  have e8 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[4]! = q.z := rfl
   have e1 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[5]! = eo := rfl
   have e2 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[6]! = e := rfl
   have e3 : (#[0.0, q.w, q.x, q.y, q.z, eo, e, c] : Array Float)[7]! = c := rfl
   have e4 : quatAt #[0.0, q.w, q.x, q.y, q.z, eo, e, c] 1 = quatOf q := rfl
-  rw [e1, e2, e3, e4]
+  rw [e1, e2, e3, e4, e5, e6, e7, e8]
   set n := (rd xs 0).toUInt64.toNat
   set K := davK (obsAt xs) n
   -- the input
   have hobs : ∀ i < n, 0 < norm (obsAt xs i).b ∧ 0 < norm (obsAt xs i).r ∧ 0 < (obsAt xs i).a ∧
       0 ≤ (obsAt xs i).ε ∧ (obsAt xs i).ε ≤ 3 / 2 := fun i hi =>
     ⟨(hvec i hi).1, (hvec i hi).2, (hrec i hi).1, (hrec i hi).2.1, (hrec i hi).2.2⟩
+  have hnz : ∀ i < n, 0 < norm (obsAt xs i).b ∧ 0 < norm (obsAt xs i).r := hvec
   have hπ : (3 : ℝ) / 2 ≤ π / 2 := by linarith [pi_gt_three]
   obtain ⟨emax, hemax⟩ := exists_isMax K
   have hcut := fun e (he : IsMax K e) => inertia_cut hpos he
@@ -585,7 +653,7 @@ theorem qmethod_sound {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) :
     intro e he
     refine sin_sq_le_of_resid he (hcut e he).2 hμc hN ?_
     rw [Real.sq_sqrt (div_nonneg (norm2_nonneg _) hN.le), div_mul_cancel₀ _ hN.ne']
-  refine ⟨hlo, hhi, hobs, feo, fe, hpos, ⟨emax, hemax⟩,
+  refine ⟨hin, hnz, fw, fx, fy, fz, feo, fe, fc, hpos, ⟨emax, hemax⟩,
     fun e e' he he' => isMax_unique hpos he he', hcut, hN, fun e he => ?_, fun qt hqt hb => ?_⟩
   · have hw := within_of_sin hN (by rw [he.1]; norm_num) he.1 hs0 hs1 le_rfl zero_le_one
       (hps e he) (by rw [unit_of_norm2_one he.1, qdot_self, he.1]; norm_num)
@@ -597,5 +665,18 @@ theorem qmethod_sound {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) :
       (hcut emax hemax).2 hμt hqt hb
     have hw := within_of_sin hN hqt hemax.1 hs0 hs1 ht0 ht1 (hps emax hemax) htn
     exact within_mono hw herr
+
+/-- **The meaning of status 2.**  If `qmethod` returns status 2, the input meets its conditions,
+and the certificate failed. -/
+theorem qmethod_status_two {xs : Array Float} (h : (qmethod xs)[0]! = 2.0) : InputOk xs := by
+  apply valid_cases
+  by_contra hv
+  unfold qmethod qmethodWith at h
+  rw [ite_eq_right_of_eq_false _ _ (eq_false hv)] at h
+  have e : (rejectWith 1.0)[0]! = 1.0 := rfl
+  rw [e] at h
+  have hb := congrArg Float.toBits h
+  rw [one_bits, two_bits] at hb
+  exact absurd hb (by decide)
 
 end Demos.Attitude.QMethod

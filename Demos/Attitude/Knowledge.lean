@@ -43,7 +43,7 @@ theorem qmethod_knowledge {xs : Array Float} (h : (qmethod xs)[0]! = 0.0) {C : V
       (obsAt xs i).ε) :
     ∀ v : Vec, dot v v = 1 → vangle (attitude q v) (C v) ≤ εc + val (qmethod xs)[6]! := by
   intro v hv
-  have hk := (qmethod_sound h).2.2.2.2.2.2.2.2.2.2.2 q hq hb v hv
+  have hk := (qmethod_sound h).2.2.2.2.2.2.2.2.2.2.2.2.2.2.2 q hq hb v hv
   have t := vangle_triangle (attitude q v) (attitude (quatAt (qmethod xs) 1) v) (C v)
   rw [vangle_comm] at hk
   linarith [hC v hv]

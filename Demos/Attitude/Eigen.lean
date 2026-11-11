@@ -328,10 +328,11 @@ theorem sin_sq_le_of_resid {K : Sym4} {e : Quat} {c μ ρ : ℝ} (he : IsMax K e
   rw [div_le_div_iff₀ hp (by positivity)]
   nlinarith
 
-/-- **Q3b.**  Under the cut of Q2 for `c < Σ a_i cos ε_i`, every nonzero `q` whose attitude meets
-the error bounds has `p̄ = q / |q|` with `1 - (q̄ · e)² ≤ (ρ_t / (μ_t - c))²`, where
-`ρ_t = Σ a_i sin ε_i` and `μ_t = Σ a_i cos ε_i`: the line of `q̄` lies within the angle
-`arcsin (ρ_t / (μ_t - c))` of the line of `e`. -/
+/-- **Q3b.**  For observations with nonzero vectors, weights at least zero, and error bounds in
+`[0, π/2]`, under the cut of Q2 for `c < μ_t`, every nonzero `q` whose attitude meets the error
+bounds has `1 - (q̄ · e)² ≤ (ρ_t / (μ_t - c))²` for `q̄ = q / |q|`, where `ρ_t = Σ a_i sin ε_i` and
+`μ_t = Σ a_i cos ε_i`: the line of `q̄` lies within the angle `arcsin (ρ_t / (μ_t - c))` of the
+line of `e`. -/
 theorem true_near {o : ℕ → Obs} {n : ℕ} (hb : ∀ i < n, 0 < norm (o i).b)
     (hr : ∀ i < n, 0 < norm (o i).r) (ha : ∀ i < n, 0 ≤ (o i).a) (hε0 : ∀ i < n, 0 ≤ (o i).ε)
     (hε : ∀ i < n, (o i).ε ≤ π / 2) {e : Quat} {c : ℝ} (he : IsMax (davK o n) e)
