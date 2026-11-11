@@ -48,11 +48,11 @@ theorem lambertBox_accepts {x1 y1 z1 x2 y2 z2 t mu : Interval} {kx ky kz : Float
 
 /-- **An accepted result states the transfer.**  For a result of `lambertBox` with status 0
 and every input in the boxes, the intervals contain the root `x*` of Izzo's equation and the
-components of Izzo's velocities `v1` at `r1` and `v2` at `r2` at `x*` (L4); the states
+components of Izzo's velocities `v1` at `r1` and `v2` at `r2` at `x*` (L4).  The states
 `(r1, v1)` and `(r2, v2)` have one orbit, whose angular momentum `r1 × v1` has a positive
-component along `k`; a velocity `v` at `r1` starts a motion in the direction of `k` that first
-reaches `r2` along an ellipse after the time `t` exactly when `x* < 1` and `v = v1`; and when
-`x* < 1`, a solution of Newton's equation goes from `(r1, v1)` to `(r2, v2)` in the time `t`. -/
+component along `k`.  A velocity `v` at `r1` starts a motion in the direction of `k` that first
+reaches `r2` along an ellipse after the time `t` exactly when `x* < 1` and `v = v1`, and when
+`x* < 1` a solution of Newton's equation goes from `(r1, v1)` to `(r2, v2)` in the time `t`. -/
 theorem lambertBox_transfer {x1 y1 z1 x2 y2 z2 t mu : Interval} {kx ky kz : Float}
     (hs : (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).status = 0) {r1 r2 : V3} {t' μ : ℝ}
     (b1 : InBox x1 y1 z1 r1) (b2 : InBox x2 y2 z2 r2) (ht : Contains t t')

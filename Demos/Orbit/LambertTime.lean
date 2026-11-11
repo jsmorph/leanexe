@@ -10,11 +10,11 @@ an equivalence: the motion is an elliptic transfer to `r2` in the time `t` exact
 `T(x) = T*`.  With the converse of the geometry, `orbit_izzo`, and the uniqueness of the root,
 `lambert_elliptic` states that the elliptic transfers from `r1` to `r2` in the time `t` in the
 direction of `k` are exactly one, Izzo's at the root `x*`, when `x* < 1`, and none otherwise.
-`lambert_newton` states the existence for Newton's equation: when `x* < 1`, a solution starts at
-`(r1, v1(x*))`, is at `(r2, v2(x*))` at the time `t`, and is not at `r2` before
+`lambert_newton` states the existence for Newton's equation: when `x* < 1`, some solution starts
+at `(r1, v1(x*))`, is at `(r2, v2(x*))` at the time `t`, and is not at `r2` before
 (`NewtonTransfer`).
 
-The proof follows Lagrange's form of the time.  With `u = √(1 - x²)`, `sin(α/2) = u`,
+The proof follows Lagrange's time equation.  With `u = √(1 - x²)`, `sin(α/2) = u`,
 `cos(α/2) = x`, `sin(β/2) = λ u`, and `cos(β/2) = y`, the orbit's semimajor axis is
 `a = s/(2 u²)` (`izzo_energy`), the eccentric anomaly advances by `α - β = 2ψ`, and
 `n t = (α - sin α) - (β - sin β)`.  The positions follow from Lagrange's coefficients `f` and
@@ -251,14 +251,15 @@ theorem lambert_time {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     have : 0 < 1 - x ^ 2 := by nlinarith
     positivity
   constructor
-  · rintro ⟨-, φ, hφ0, hφ2, hφpos, hφt⟩
+  · rintro ⟨-, -, φ, hφ0, hφ2, hφpos, hφt⟩
     have hφ : φ = 2 * izzoPsi (izzoParams r1 r2 t μ k).1 x := by
       refine keplerPos_inj hμ hp1.2.1 he hp1.1 ?_ (hφpos.trans hpos.symm)
       rw [abs_lt]; constructor <;> linarith
     rw [← hφ, hφt] at htime
     exact (mul_left_cancel₀ ht.ne' htime).symm
   · intro h
-    refine ⟨he, 2 * izzoPsi (izzoParams r1 r2 t μ k).1 x, by positivity, by linarith, hpos, ?_⟩
+    refine ⟨he, hp1.1, 2 * izzoPsi (izzoParams r1 r2 t μ k).1 x, by positivity, by linarith, hpos,
+      ?_⟩
     rw [h] at htime
     exact mul_right_cancel₀ hT.ne' htime
 
@@ -275,7 +276,7 @@ theorem lambert_elliptic {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
   obtain ⟨hL0, hL1, hT⟩ := izzoParams_bounds hμ ht hD
   obtain ⟨hr0, hrT⟩ := Lambert.root_spec hL0 hL1 hT
   constructor
-  · rintro ⟨⟨he, φ, hφ0, hφ2, hφpos, hφt⟩, hk⟩
+  · rintro ⟨⟨he, -, φ, hφ0, hφ2, hφpos, hφt⟩, hk⟩
     obtain ⟨s, L, ρ, -, -, hs, -, -, -, -, hs0, -, -, hρ2, -, -, -, -, -, -, -, -, hn1, -⟩ :=
       izzo_basis hμ hD 0
     have hn1p : 0 < V3.norm r1 := by
@@ -299,7 +300,7 @@ theorem lambert_elliptic {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     have htr : EllipticTransfer μ r1 (izzoV1 μ r1 r2 k x) r2 t := by
       rw [← hvx]
       have : 0 < 2 / V3.norm r1 - V3.dot v v / μ := by rw [hE]; exact he
-      exact ⟨this, φ, hφ0, hφ2, hφpos, hφt⟩
+      exact ⟨this, hh, φ, hφ0, hφ2, hφpos, hφt⟩
     have hTx := (lambert_time hμ ht hD hxb.1 hxb.2).mp htr
     have hxr : x = Lambert.root (izzoParams r1 r2 t μ k).1 (izzoParams r1 r2 t μ k).2 :=
       (Lambert.tof_strictAntiOn hL0 hL1).injOn hxb.1 hr0 (hTx.trans hrT.symm)
@@ -316,8 +317,9 @@ def NewtonTransfer (μ : ℝ) (r1 v1 r2 v2 : V3) (t : ℝ) : Prop :=
     ∀ τ, 0 < τ → τ < t → R τ ≠ r2
 
 /-- **Lambert's theorem for elliptic transfers, with Newton's equation.**  When the root `x*`
-of Izzo's equation lies below 1, the motion along the ellipse of `(r1, v1(x*))` by Kepler's
-equation is a two-body transfer from `(r1, v1(x*))` to `(r2, v2(x*))` in the time `t`. -/
+of Izzo's equation lies below 1, a two-body transfer from `(r1, v1(x*))` to `(r2, v2(x*))` in
+the time `t` exists.  The proof takes the motion of `kepler_newton` along the ellipse of
+`(r1, v1(x*))`. -/
 theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
     (hD : V3.dot (V3.cross r1 r2) k ≠ 0) (hx : izzoRoot r1 r2 t μ k < 1) :
     NewtonTransfer μ r1 (izzoV1 μ r1 r2 k (izzoRoot r1 r2 t μ k)) r2
@@ -329,14 +331,10 @@ theorem lambert_newton {μ t : ℝ} (hμ : 0 < μ) (ht : 0 < t) {r1 r2 k : V3}
   unfold izzoRoot at hx horb hp1 hp2 hva2 ⊢
   set x := Lambert.root (izzoParams r1 r2 t μ k).1 (izzoParams r1 r2 t μ k).2 with hxdef
   set v1 := izzoV1 μ r1 r2 k x
-  obtain ⟨he, φ, hφ0, hφ2, hφpos, hφt⟩ := htr
+  obtain ⟨he, -, φ, hφ0, hφ2, hφpos, hφt⟩ := htr
   have hn1 := hp1.2.1
   have hh : 0 < V3.dot (V3.cross r1 v1) (V3.cross r1 v1) := hp1.1
-  have hN := kepler_newton hμ hn1 he hh
-  have hR0 : keplerPos μ r1 v1 (keplerAdvance μ r1 v1 0) = r1 := by
-    rw [keplerAdvance_zero hμ hn1 he hh, keplerPos_zero]
-  have hV0 : keplerVel μ r1 v1 (keplerAdvance μ r1 v1 0) = v1 := by
-    rw [keplerAdvance_zero hμ hn1 he hh, keplerVel_zero hμ hn1 he hh]
+  obtain ⟨hN, hR0, hV0⟩ := kepler_newton hμ hn1 he hh
   have hRt : keplerPos μ r1 v1 (keplerAdvance μ r1 v1 t) = r2 := by
     rw [← hφt, keplerAdvance_time hμ hn1 he hh, hφpos]
   refine ⟨_, _, hN, hR0, hV0, hRt, ?_, ?_⟩

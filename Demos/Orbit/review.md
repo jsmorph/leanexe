@@ -1,13 +1,13 @@
 # Initial orbit determination: decisions and review
 
-[The requirements](requirements.md) specify Gibbs' method over position boxes and Lambert's problem for zero revolutions in Izzo's formulation.  This record gives each decision with its reason, the findings of the independent review of the requirements with the response to each, and the open items.
+[The requirements](requirements.md) specify Gibbs' method over position boxes and Lambert's problem for zero revolutions in Izzo's formulation.  This record gives each decision with its reason, the findings of the independent reviews of the requirements and of the transfer theorems with the response to each, and the open items.
 
 ## Decisions
 
 | Question | Choice | Reason |
 |---|---|---|
 | Model of a two-body orbit | The pair `(h, e)` with the polar equation of its path, a lemma that a state lies on its own orbit, and a lemma that Newton's equation conserves `h` and `e` | It covers ellipses, parabolas, and hyperbolas, needs no orbital elements, and connects to Newton's equation through `newton_conserves`.  The SGP4 demo's Kepler orbit covers ellipses only and is parametrized by elements, which are undefined for circular and equatorial orbits. |
-| Time along an orbit | Kepler's equation in Lagrange's form relative to the state (`keplerPos`, `keplerTime`), written with the SGP4 demo's `Kepler.lhs`, and `kepler_newton` | The form needs no perifocal axes, so it covers circular orbits, and `kepler_newton` makes the motion a solution of Newton's equation, the model's two-body problem.  `EllipticTransfer` takes an advance of the eccentric anomaly in `(0, 2π)`, which `keplerPos_inj` and `keplerTime_strictMono` make the first arrival. |
+| Time along an orbit | Kepler's equation in the difference of eccentric anomalies relative to the state, with Lagrange's coefficients `f` and `g` (`keplerPos`, `keplerTime`), written with the SGP4 demo's `Kepler.lhs`, and `kepler_newton` | The form needs no perifocal axes, so it covers circular orbits, and `kepler_newton` makes the motion a solution of Newton's equation, the model's two-body problem.  `EllipticTransfer` takes an advance of the eccentric anomaly in `(0, 2π)`, which `keplerPos_inj` and `keplerTime_strictMono` make the first arrival. |
 | Statement of Lambert's theorem for ellipses | `lambert_elliptic`, an equivalence between an elliptic transfer in the direction of `k` and `x* < 1` with `v = v1(x*)`, and `lambert_newton` for Newton's equation | One equivalence states existence when `x* < 1`, uniqueness, and absence when `x* ≥ 1`.  The converse `orbit_izzo` of the geometry carries the uniqueness: every orbit through both positions in the direction of `k` is Izzo's for some `x`. |
 | Proofs of the scalar identities | The basis `r1`, `r2` of `izzo_basis` and the substitution `x = (q² - (1 - λ²))/(2 λ q)`, `y = (q² + 1 - λ²)/(2 q)` with `q = y + λ x` | The substitution removes the relation `y² = 1 - λ² + λ² x²`, so each identity is one of rational functions that `field_simp` and `ring` prove without coefficients written by hand. |
 | Place of `motionSign`, `izzoParams`, and `sqrt_max_zero` | `LambertOrbit.lean`, which `LambertSound.lean` imports | The real-number theorems do not import the program's proofs.  No statement changes, and `LambertBox.lean`, and so the compiled module, is unchanged. |
@@ -73,6 +73,41 @@ A second fresh agent reviewed the revised requirements, this record, and the ref
 | N8. The test accepted any status other than 0 where the table said 2, skipped Izzo's comparison near 180° and allowed other statuses for some boxes without saying so, and repeated one failure through a running maximum. | The test now requires status 2, the table states the exceptions, and the comparison checks each case. |
 | N9. The limit of `10⁻¹¹` holds for the grid, whose `|λ|` reaches about 0.96, and fails near `|λ| = 0.99`. | The table states the range of `λ`. |
 | N10. The round trip's parabolic states needed the threshold on `α`. | Already resolved. |
+
+## Review of the transfer theorems
+
+A third fresh agent reviewed the statements and definitions of K1 and L6 to L9 against the request and the requirements, without the author's reasoning, following [the method of independent review](../../VKB/entries/independent-review/README.md).  It transcribed the definitions into Python with Lean's arithmetic, where `x/0 = 0` and the square root of a negative number is 0, and compared them at 50 digits with its own universal-variable propagator, its own transcription of Izzo's Algorithm 1 with `k` in place of `z`, the areal time by quadrature, and an enumeration of the conics through both positions.  It ran no Lean code.  It reported one breach of the rules given to it: two inline `python3` commands without PEP 723 metadata, outside `uv run`, edited its own scratch files, and no result depends on them.
+
+| Finding | Verification | Response |
+|---|---|---|
+| 1. `semimajor`, `meanMotion`, `eCos`, `eSin`, `keplerTime`, `keplerPos`, and `keplerVel` say what their names say, including circular orbits and `r · v = 0`. | 200 elliptic states, generic, circular, at an apsis, near-parabolic, and near-radial, with advances in `(-2π, 6π)`: positions and velocities within `2.2·10⁻⁴⁸` for generic states and `1.6·10⁻³⁹` near the parabola.  One period of `keplerTime` is `2π/n` within `8·10⁻⁵¹`.  Flipping the sign of `ε sin E₀` gives errors up to 7.0. | Confirmed. |
+| 2. `EllipticTransfer` omits `r × v ≠ 0`, so for a rectilinear state it can name a second arrival, while its docstring and the documents say "first reaches". | `μ = 1`, `r = (1, 0, 0)`, `v = (0.5, 0, 0)`: `keplerPos` reaches `(1.1, 0, 0)` at `φ = 0.333` and again at `φ = 1.112`.  L7 and L8 hold, since they supply `r × v ≠ 0`. | Adopted: `EllipticTransfer` requires `0 < (r × v) · (r × v)`, and the requirements and the README state it. |
+| 3. The energy conjunct of `EllipticTransfer` is redundant for `μ > 0` and `t > 0`, since `meanMotion` and `keplerTime` are 0 for parabolic and hyperbolic states in Lean's arithmetic. | Three hyperbolic states. | Kept: the conjunct states that the orbit is an ellipse without relying on division by zero. |
+| 4. `kepler_newton` does not state the initial state that its docstring and K1 claim, and the README's K1 row omits `kepler_radius`. | Reading. | Adopted: `kepler_newton` also states that the motion is at `(r, v)` at the time 0, and the README's row lists `kepler_radius`. |
+| 5. `izzoV1`, `izzoV2`, `izzoParams`, `motionSign`, `axisOf`, and `izzoRoot` match Izzo's algorithm and L4. | 60 inputs with axes of both signs and transfer angles from 2° to 358°, 15 values of `x` from -50 to 40 each: differences at most `7.5·10⁻⁵¹`.  Curtis's Example 5.2 propagates to `r2` and `v2` within `1.8·10⁻⁵⁰`. | Confirmed. |
+| 6. L6 holds, and its quantification over every real `x` is needed: a version with `x > -1` would be false. | 900 pairs of input and `x`: orbits agree within `5.7·10⁻⁴⁷`, normalized `h · k` at least 0.058.  4,860 conics through both positions with `h · k > 0` match Izzo's velocities within `3.6·10⁻⁴⁷`, 2,217 of them at `x ≤ -1`. | Confirmed. |
+| 7. L7 holds, and its form, `keplerTime(2ψ) · T* = t T(x)` for every `t`, states the time. | For `-1 < x < 1`: `keplerPos(2ψ) = r2` within `1.8·10⁻⁴³`, the time within `1.8·10⁻³⁷`, and the areal time by quadrature agrees within `1.8·10⁻³⁷`. | Confirmed. |
+| 8. L8 states the existence and uniqueness that the request asks for.  `lambert_newton`'s docstring and L8 said that the Kepler motion is the solution, while the statement asserts that some solution exists. | 36 inputs with 7 times each: exactly one elliptic first arrival when `x* < 1` and none otherwise, with velocity `v1(x*)` within `4.0·10⁻⁴⁰`. | Adopted: the docstring and L8 state the existence and say that the proof takes the motion of K1. |
+| 9. The documents tied the unproved time to `x* ≥ 1`, but for `x* < 1` nothing proves the absence of a parabolic or hyperbolic transfer in the same time. | The enumeration found none in 252 cases. | Adopted: the requirements and the README state that for `x* < 1` the absence of a parabolic or hyperbolic transfer rests on Lambert's theorem as an assumption, which the tests check. |
+| 10. L9 holds.  The README's row omitted `lambertBox_accepts`. | Reading, without a Lean run. | Adopted: the row names `lambertBox_accepts` and its conclusions. |
+| 11. The README's rows and the requirements' L7 omitted hypotheses, and "`1 - x² = s/(2a)`" fails at `|x| = 1`. | Reading. | Adopted: each row states `μ > 0`, `t > 0`, `(r1 × r2) · k ≠ 0`, or the state's conditions as its theorem has them, and the README states the energy identity, with `1 - x² = s/(2a)` exactly when `|x| < 1`. |
+| 12. "Lagrange's form" named both Kepler's equation in the difference of eccentric anomalies and Lagrange's time equation. | Reading. | Adopted: the first is "Kepler's equation in the difference of eccentric anomalies, with Lagrange's coefficients `f` and `g`", the second "Lagrange's time equation". |
+
+The reviewer tried wrong definitions and statements in its model.  The table gives those that the theorems exclude and how.
+
+| Wrong definition or statement | Excluded by |
+|---|---|
+| `EllipticTransfer` with `φ` in `(0, 4π)`, or without `keplerTime φ = t` | L8 would be false: 72 of 252 inputs have a second elliptic arrival with `φ` in `(2π, 4π)` |
+| `keplerTime` with the sign of `ε sin E₀` flipped | `kepler_newton` and `izzo_kepler`; `keplerTime_strictMono`, `keplerPos_inj`, and `keplerPos_onPath` hold for it |
+| `g` with the sign of `ε sin E₀` flipped | `keplerPos_onPath` and `izzo_kepler` |
+| `keplerVel` without the division by the rate of time | `kepler_newton` |
+| L8 with the direction `(r1 × r2) · k > 0`, or without a direction | False on 95, or 142, of 252 inputs |
+| L8 with `x* ≤ 1` | False at `T* = T(1)` |
+| `orbit_izzo` without `h · k > 0`, or for `x > -1` only | False |
+| `λ` or `ĥ` without its sign, `vt2` divided by `|r1|` | `izzo_orbit` |
+| An advance of `ψ` in place of `2ψ` | `izzo_kepler` |
+
+Four classes stay unexcluded.  `EllipticTransfer` without its energy conjunct is equivalent for `μ > 0` and `t > 0`, by finding 3.  `EllipticTransfer` with `φ` in `(0, 2π]` or `[0, 2π)` differs only when `r' = r`, which Lambert's problem excludes.  `motionSign` with `0 ≤` in place of `0 <` differs only when `(r1 × r2) · k = 0`, which every theorem excludes.  `NewtonTransfer` without its first-arrival clause, or with Newton's equation on `[0, t]` only, would leave `lambert_newton` provable, so only the definition's text, which the reviewer read, fixes those clauses.
 
 ## Open items
 

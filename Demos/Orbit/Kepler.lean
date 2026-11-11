@@ -18,8 +18,8 @@ than `2π` apart are distinct, so that `EllipticTransfer` names the first arriva
 
 `keplerAdvance` inverts Kepler's equation, and `kepler_newton` states that the position
 `keplerPos` and the velocity `keplerVel` at the advance `keplerAdvance τ` solve Newton's
-equation `r'' = -μ r/|r|³`: the motion that Kepler's equation describes is the two-body motion of
-`Newton.lean` through the state `(r, v)`.
+equation `r'' = -μ r/|r|³` and are at `(r, v)` at the time 0: the motion that Kepler's equation
+describes is a two-body motion of `Newton.lean` through the state `(r, v)`.
 -/
 
 namespace Demos.Orbit
@@ -54,12 +54,12 @@ noncomputable def keplerPos (μ : ℝ) (r v : V3) (φ : ℝ) : V3 :=
     ((norm r / semimajor μ r v * sin φ + eSin μ r v * (1 - cos φ)) / meanMotion μ r v) • v
 
 /-- The motion from the state `(r, v)` along its elliptic orbit first reaches `r'` after the
-time `t`: the orbit is an ellipse, and the eccentric anomaly advances by some `φ` with
-`0 < φ < 2π` to the position `r'` in the time `t` of Kepler's equation.  `keplerPos_inj` makes
-`φ` the only advance in `[0, 2π)` that reaches `r'`, and `keplerTime_strictMono` makes `t` the
-least positive time at which the motion is at `r'`. -/
+time `t`: the orbit is an ellipse, `r × v ≠ 0`, and the eccentric anomaly advances by some `φ`
+with `0 < φ < 2π` to the position `r'` in the time `t` of Kepler's equation.  `keplerPos_inj`
+makes `φ` the only advance in `[0, 2π)` that reaches `r'`, and `keplerTime_strictMono` makes `t`
+the least positive time at which the motion is at `r'`. -/
 def EllipticTransfer (μ : ℝ) (r v r' : V3) (t : ℝ) : Prop :=
-  0 < 2 / norm r - dot v v / μ ∧
+  0 < 2 / norm r - dot v v / μ ∧ 0 < dot (cross r v) (cross r v) ∧
     ∃ φ, 0 < φ ∧ φ < 2 * π ∧ keplerPos μ r v φ = r' ∧ keplerTime μ r v φ = t
 
 /-! ### The orbit's constants -/
@@ -381,10 +381,13 @@ theorem keplerVel_zero : keplerVel μ r v 0 = v := by
 
 /-- **The motion along an elliptic orbit solves Newton's equation.**  The position
 `keplerPos` and the velocity `keplerVel` at the advance of the eccentric anomaly that Kepler's
-equation gives for each time are a solution of `r'' = -μ r/|r|³` through the state `(r, v)`. -/
+equation gives for each time are a solution of `r'' = -μ r/|r|³` that is at the state `(r, v)`
+at the time 0. -/
 theorem kepler_newton :
     Newton μ (fun τ => keplerPos μ r v (keplerAdvance μ r v τ))
-      (fun τ => keplerVel μ r v (keplerAdvance μ r v τ)) := by
+      (fun τ => keplerVel μ r v (keplerAdvance μ r v τ)) ∧
+      keplerPos μ r v (keplerAdvance μ r v 0) = r ∧
+      keplerVel μ r v (keplerAdvance μ r v 0) = v := by
   obtain ⟨ha, hn, hn2, -, -, -, -, hε⟩ := kepler_basics hμ hr he hh
   have hA : eCos μ r v = 1 - norm r / semimajor μ r v := rfl
   have hD : ∀ φ, 0 < 1 - eCos μ r v * cos φ + eSin μ r v * sin φ := fun φ => by
@@ -426,8 +429,10 @@ theorem kepler_newton :
     generalize meanMotion μ r v = n at hn hn2 ⊢
     subst hn2
     field_simp
-  exact ⟨pos, dpos r.x v.x, dpos r.y v.y, dpos r.z v.z, dvel r.x v.x, dvel r.y v.y,
-    dvel r.z v.z⟩
+  refine ⟨⟨pos, dpos r.x v.x, dpos r.y v.y, dpos r.z v.z, dvel r.x v.x, dvel r.y v.y,
+    dvel r.z v.z⟩, ?_, ?_⟩
+  · rw [keplerAdvance_zero hμ hr he hh, keplerPos_zero]
+  · rw [keplerAdvance_zero hμ hr he hh, keplerVel_zero hμ hr he hh]
 
 end Motion
 
