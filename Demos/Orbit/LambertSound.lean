@@ -125,7 +125,9 @@ theorem tofI_encloses {l : Interval} {lam : ℝ} {m : Float} (hl : Encloses l la
   · have hlt : x < 1 := by rw [← v1]; exact (lt_iff_value hm f1).mp c1
     simp only [c1, ↓reduceIte]
     have hw := encloses_mul (encloses_sub one hx) (encloses_add one hx)
-    have hy := encloses_sqrt (encloses_sub one (encloses_mul (encloses_sq hl) hw))
+    have hy := encloses_sqrt (encloses_imax (encloses_sub one (encloses_mul (encloses_sq hl) hw))
+      zeroI_encloses)
+    rw [sqrt_max_zero] at hy
     have hg := encloses_add (encloses_mul hx hy) (encloses_mul hl hw)
     have ew : (1 - x) * (1 + x) = 1 - x ^ 2 := by ring
     have ey : √(1 - lam * lam * ((1 - x) * (1 + x))) = Lambert.yOf lam x := by
@@ -445,7 +447,7 @@ theorem lambertBounds_sound {x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z
   have hin : (make x1lo x1hi).status = 0 ∧ (make y1lo y1hi).status = 0 ∧
       (make z1lo z1hi).status = 0 ∧ (make x2lo x2hi).status = 0 ∧ (make y2lo y2hi).status = 0 ∧
       (make z2lo z2hi).status = 0 ∧ (make tlo thi).status = 0 ∧ (make mulo muhi).status = 0 := by
-    unfold lambertBounds lambertBox lambertBoxWith at hs
+    unfold lambertBounds lambertBoundsWith lambertBoxWith at hs
     dsimp only at hs
     split_ifs at hs with hv
     all_goals first
@@ -455,7 +457,7 @@ theorem lambertBounds_sound {x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z
            valid_status v5, valid_status v6, valid_status v7, valid_status v8⟩)
       | simp [noTransfer] at hs
   obtain ⟨a1, a2, a3, a4, a5, a6, a7, a8⟩ := hin
-  unfold lambertBounds at hs ⊢
+  unfold lambertBounds lambertBoundsWith at hs ⊢
   exact lambertBox_sound hs
     ⟨contains_make a1 c1.1, contains_make a2 c1.2.1, contains_make a3 c1.2.2⟩
     ⟨contains_make a4 c2.1, contains_make a5 c2.2.1, contains_make a6 c2.2.2⟩

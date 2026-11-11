@@ -44,10 +44,10 @@ enclosure_def geometry (x1 y1 z1 x2 y2 z2 t mu sg) :=
 the sign `sg`, and `x`. -/
 enclosure_def components (n1 n2 c s mu sg xx) :=
   let lam := sg * √(max (1 - c / s) 0)
-  let y := √(1 - sqr lam * (1 - sqr xx))
+  let y := √(max (1 - sqr lam * (1 - sqr xx)) 0)
   let gamma := √(mu * s / 2)
   let rho := (n1 - n2) / c
-  let sigma := √(1 - sqr rho)
+  let sigma := √(max (1 - sqr rho) 0)
   (gamma * ((lam * y - xx) - rho * (lam * y + xx)) / n1,
     -(gamma * ((lam * y - xx) + rho * (lam * y + xx))) / n2,
     gamma * sigma * (y + lam * xx))
@@ -96,7 +96,7 @@ def tofI (tab tab2 : Array UInt64) (l : Interval) (m : Float) : Interval :=
   let x := point m
   if m < 1.0 then
     let w := mul (sub oneI x) (add oneI x)
-    let y := sqrt (sub oneI (mul (sq l) w))
+    let y := sqrt (imax (sub oneI (mul (sq l) w)) (ofInt 0))
     let psi := acosI (add (mul x y) (mul l w))
     div (add (sub (div psi (sqrt w)) x) (mul l y)) w
   else if 1.0 < m then
@@ -226,10 +226,15 @@ def lambertBoxWith (tab tab2 : Array UInt64) (x1 y1 z1 x2 y2 z2 t mu : Interval)
 def lambertBox (x1 y1 z1 x2 y2 z2 t mu : Interval) (kx ky kz : Float) : Transfer :=
   lambertBoxWith Log.logTable Log.logTable2 x1 y1 z1 x2 y2 z2 t mu kx ky kz
 
+def lambertBoundsWith (tab tab2 : Array UInt64) (x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo
+    y2hi z2lo z2hi tlo thi mulo muhi kx ky kz : Float) : Transfer :=
+  lambertBoxWith tab tab2 (make x1lo x1hi) (make y1lo y1hi) (make z1lo z1hi) (make x2lo x2hi)
+    (make y2lo y2hi) (make z2lo z2hi) (make tlo thi) (make mulo muhi) kx ky kz
+
 /-- `lambertBox` on the intervals between the given endpoints. -/
 def lambertBounds (x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi mulo muhi
     kx ky kz : Float) : Transfer :=
-  lambertBox (make x1lo x1hi) (make y1lo y1hi) (make z1lo z1hi) (make x2lo x2hi)
-    (make y2lo y2hi) (make z2lo z2hi) (make tlo thi) (make mulo muhi) kx ky kz
+  lambertBoundsWith Log.logTable Log.logTable2 x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi
+    z2lo z2hi tlo thi mulo muhi kx ky kz
 
 end Demos.Orbit

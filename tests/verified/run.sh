@@ -17,7 +17,9 @@
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
-# reader of decimal values and checks that module's file theorems.  Each audit fails the run
+# reader of decimal values and checks that module's file theorems.  For the orbit-determination
+# programs, it runs the axiom audit of tests/orbit/Axioms.lean, and with --cases gibbs or
+# --cases lambert it checks that module's file theorems.  Each audit fails the run
 # when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
@@ -133,6 +135,8 @@ elif [ "$case_module" = "sgp4box" ]; then
   cases_exe=verified-cases-sgp4box
 elif [ "$case_module" = "sgp4omm" ]; then
   cases_exe=verified-cases-sgp4omm
+elif [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
+  cases_exe=verified-cases-orbit
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -179,6 +183,13 @@ if [ -z "$reference" ]; then
   fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
+  fi
+  if runs gibbs || runs lambert; then targets+=($(imports tests/orbit/Axioms.lean)); fi
+  if [ "$case_module" = "gibbs" ]; then
+    targets+=(Demos.Orbit.GibbsVerified $(imports Demos/Orbit/GibbsFile.lean))
+  fi
+  if [ "$case_module" = "lambert" ]; then
+    targets+=(Demos.Orbit.LambertVerified $(imports Demos/Orbit/LambertFile.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -331,6 +342,15 @@ fi
 if [ "$case_module" = "sgp4omm" ]; then
   check_axioms tests/sgp4/OmmAxioms.lean
   check_file sgp4omm Demos.Sgp4.OmmVerified Demos/Sgp4/OmmFile.lean
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
+  check_axioms tests/orbit/Axioms.lean
+  if [ "$case_module" = "gibbs" ]; then
+    check_file gibbs Demos.Orbit.GibbsVerified Demos/Orbit/GibbsFile.lean
+  fi
+  if [ "$case_module" = "lambert" ]; then
+    check_file lambert Demos.Orbit.LambertVerified Demos/Orbit/LambertFile.lean
+  fi
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
 if [ -z "$case_module" ]; then

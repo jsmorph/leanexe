@@ -2,6 +2,7 @@ import Demos.Orbit.Newton
 import Demos.Orbit.GibbsSound
 import Demos.Orbit.GibbsVerified
 import Demos.Orbit.LambertSound
+import Demos.Orbit.LambertVerified
 
 /-! The axioms of the theorems of the orbit-determination demo, which must be `propext`,
 `Classical.choice`, and `Quot.sound`. -/
@@ -25,3 +26,6 @@ import Demos.Orbit.LambertSound
 #print axioms Demos.Orbit.tofI_encloses
 #print axioms Demos.Orbit.lambertBox_sound
 #print axioms Demos.Orbit.lambertBounds_sound
+#print axioms Demos.Orbit.lambertCompiled.bytes
+#print axioms Demos.Orbit.lambertCompiled.lambertBox.implements
+#print axioms Demos.Orbit.lambertCompiled.lambertBounds.implements
