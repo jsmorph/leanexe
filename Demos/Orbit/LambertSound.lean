@@ -206,8 +206,8 @@ theorem raiseStep_inv {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht 
   split_ifs with hd hf hm ha
   · exact h
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
-    have hm1 : -1 < value (probe s).toBits := by linarith [h.2.1]
+    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hm1 : -1 < value (midpoint s).toBits := by linarith [h.2.1]
     exact ⟨hf, hm1, above_sound ha hl ht hl0 hl1 hf hm1⟩
   · exact h
   · exact h
@@ -221,14 +221,30 @@ theorem lowerStep_inv {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht 
   split_ifs with hd hf hm hb
   · exact h
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
-    have hm1 : -1 < value (probe s).toBits := by linarith [h.2.1]
+    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hm1 : -1 < value (midpoint s).toBits := by linarith [h.2.1]
     exact ⟨h.1, h.2.1, hf, hm1, below_sound hb hl ht hl0 hl1 hf hm1⟩
   · rw [finite_iff] at hf
-    have hlt : value s.a.toBits < value (probe s).toBits := (lt_iff_value h.1 hf).mp hm.1
+    have hlt : value s.a.toBits < value (midpoint s).toBits := (lt_iff_value h.1 hf).mp hm.1
     exact ⟨hf, by linarith [h.2.1], h.2.2⟩
   · exact h
   · exact h
+
+/-- The starting bracket keeps the invariants of both searches. -/
+theorem bracket_spec {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht : Contains tt T)
+    (hl0 : -1 < lam) (hl1 : lam < 1) {a0 b0 : Float} (ha : RaiseInv lam T ⟨a0, b0, false⟩)
+    (hb : LowerInv lam T ⟨a0, b0, false⟩) :
+    RaiseInv lam T ⟨(bracket Log.logTable Log.logTable2 l tt a0 b0).a,
+        (bracket Log.logTable Log.logTable2 l tt a0 b0).b, false⟩ ∧
+      LowerInv lam T ⟨(bracket Log.logTable Log.logTable2 l tt a0 b0).a,
+        (bracket Log.logTable Log.logTable2 l tt a0 b0).b, false⟩ := by
+  obtain ⟨f1, v1⟩ := one_value
+  have g1 : -1 < value (1.0 : Float).toBits := by rw [v1]; norm_num
+  unfold bracket
+  split_ifs with h1 h2
+  · exact ⟨⟨f1, g1, above_sound h1 hl ht hl0 hl1 f1 g1⟩, ⟨f1, g1, hb.2.2⟩⟩
+  · exact ⟨ha, ⟨ha.1, ha.2.1, f1, g1, below_sound h2 hl ht hl0 hl1 f1 g1⟩⟩
+  · exact ⟨ha, hb⟩
 
 theorem raise_spec {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht : Contains tt T)
     (hl0 : -1 < lam) (hl1 : lam < 1) {a b : Float} (h : RaiseInv lam T ⟨a, b, false⟩) :
@@ -346,8 +362,9 @@ theorem solve_sound {x1 y1 z1 x2 y2 z2 mu sg l tt : Interval} {r1 r2 : V3} {μ s
       ⟨fa, ga, above_sound hab.1 hl ht hl0 hl1 fa ga⟩
     have ib : LowerInv lam T ⟨startLow, 1.0 + 4.0 / tt.lo, false⟩ :=
       ⟨fa, ga, fb, gb, below_sound hab.2 hl ht hl0 hl1 fb gb⟩
-    have ra := raise_spec hl ht hl0 hl1 ia
-    have lb := lower_spec hl ht hl0 hl1 ib
+    obtain ⟨ja, jb⟩ := bracket_spec hl ht hl0 hl1 ia ib
+    have ra := raise_spec hl ht hl0 hl1 ja
+    have lb := lower_spec hl ht hl0 hl1 jb
     obtain ⟨h1, h2⟩ := Lambert.root_between hl0 hl1 hT ra.2.1 lb.2.2.2.1 ra.2.2 lb.2.2.2.2
     have hxx := (make_sound hst.1.1.1.1.1.1).2.2.2 _ h1.le h2.le
     have hv := velocities.encloses (powLog := noTable) (powExp := noTable)

@@ -37,7 +37,7 @@ For Lambert's problem the model is Izzo's time-of-flight equation `T(x) = T*`, w
 | 3 | Invalid input. | The interval evaluation of `T` does not show the brackets `T(-1 + 2^-52) > T*` and `T(1 + 4/T*) < T*`. |
 | 4 | | A bisection reached 256 steps without finishing. |
 
-Gibbs' program evaluates the formula of Curtis and Vallado, `√(μ/(N · D)) (D × r2/|r2| + S)`, in interval arithmetic, after a test of the triple product `r1 · (r2 × r3)`, which is zero for the positions of any orbit.  Lambert's program computes intervals of `λ` and `T*`, encloses `T` at binary64 points from the library's `acos` and `log`, and runs two bisections: one raises a point where the enclosure shows `T > T*`, and one lowers a point where it shows `T < T*`.  Since `T` is strictly decreasing, the root lies between the two points, and the program evaluates Izzo's velocity formulas with `x` in that interval.
+Gibbs' program evaluates the formula of Curtis and Vallado, `√(μ/(N · D)) (D × r2/|r2| + S)`, in interval arithmetic, after a test of the triple product `r1 · (r2 × r3)`, which is zero for the positions of any orbit.  Lambert's program computes intervals of `λ` and `T*`, encloses `T` at binary64 points from the library's `acos` and `log`, and runs two bisections: one raises a point where the enclosure shows `T > T*`, and one lowers a point where it shows `T < T*`.  Both start from `[a0, 1]` or `[1, b0]` when the enclosure at exactly 1, where `T = (2/3)(1 - λ³)` is accurate, decides the side of 1, since near 1 the closed forms lose their precision over a region up to about `3·10⁻⁵` wide.  Since `T` is strictly decreasing, the root lies between the two points, and the program evaluates Izzo's velocity formulas with `x` in that interval.
 
 ## Theorems
 
@@ -80,18 +80,19 @@ For Lambert's problem, the test covers transfer angles from 5° to 355°, ratios
 |---|---|
 | Width of the interval of `x` for exact inputs, `x*` at least 0.01 from 1, relative to `max(1, \|x*\|)` | At most `2.1·10⁻¹²` |
 | The same for boxes of relative half-width `10⁻⁹` | At most `3.3·10⁻⁶` |
-| The same for boxes of relative half-width `10⁻⁶` | Up to 0.63 |
-| Width for `x*` about `1.5·10⁻³` from 1 | `1.9·10⁻¹⁰` to `1.3·10⁻⁹` |
-| Width for `x*` within `2·10⁻⁶` of 1 | `1.4·10⁻⁵` to `2.0·10⁻⁵` |
+| The same for boxes of relative half-width `10⁻⁶` | At most `2.5·10⁻³`, at a transfer angle of 5° where `∂x/∂λ` is near 38 |
+| Width for `x*` about `1.5·10⁻³` from 1 | `2.1·10⁻¹⁰` to `1.4·10⁻⁹` |
+| Width for `x*` within `2·10⁻⁶` of 1 | `6.2·10⁻⁶` to `1.2·10⁻⁵` |
+| Width for a transfer of 1.15° with `λ` near 0.99 and a first midpoint within `10⁻⁷` of 1 | At most `4.1·10⁻¹⁵` |
 
-The first run of the test found intervals of `x` up to 0.63 wide for exact inputs at `T* = 1.2`: a bisection probed a point within one unit in the last place of 1, where the closed forms of `T` decide nothing, and moved its other point past the root.  The search now probes `1 ± 2⁻²⁰` in place of a midpoint that close to 1, which changes no proof.
+The first run of the test found intervals of `x` up to 0.63 wide for exact inputs at `T* = 1.2`: a bisection probed a point within one unit in the last place of 1, where the closed forms of `T` decide nothing, and moved its other point past the root.  The starting bracket at 1 removes the cause, with no change to the invariants of the searches.
 
 `tests/verified/run.sh --cases gibbs` and `--cases lambert` compare each module with native Lean bit for bit on the cases of [the case file](../../tests/TestSupport/Orbit/Cases.lean), run [the axiom audit](../../tests/orbit/Axioms.lean), and check the file theorems.
 
 | Module | Size | Calls compared | Compilation |
 |---|---|---|---|
 | `gibbs` | 10,013 bytes | 9 | 239 s |
-| `lambert` | 24,786 bytes | 8 | 930 s |
+| `lambert` | 24,911 bytes | 8 | 915 s |
 
 ## Limits
 

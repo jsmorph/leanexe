@@ -9,8 +9,8 @@ The interval program of Lambert's problem in Izzo's formulation.  `geometry` sta
 nondimensional time `T`, and `velocities` states Izzo's velocity formulas, each with
 `enclosure_def`.  `tofI` encloses `tof lam m` at a binary64 point `m > -1` for every `λ` in an
 interval, from the library's `acos` and `log`.  `lambertBox` checks the inputs, the direction of
-motion, and the brackets `a0 = -1 + 2^-52` and `b0 = 1 + 4/T`, runs two bisections of at most
-256 steps, one that raises a point where `tofI` shows `T(a) > T` and one that lowers a point where
+motion, and the brackets `a0 = -1 + 2^-52` and `b0 = 1 + 4/T`, splits them at 1 when `tofI`
+decides the side of 1, runs two bisections of at most 256 steps, one that raises a point where `tofI` shows `T(a) > T` and one that lowers a point where
 it shows `T(b) < T`, and evaluates the velocities with `x` in `[a, b]`.
 
 | Status | Meaning |
@@ -128,28 +128,11 @@ structure Search where
 /-- The midpoint of a search. -/
 def midpoint (s : Search) : Float := s.a + (s.b - s.a) * 0.5
 
-/-- `1 - 2^-20` and `1 + 2^-20`. -/
-def belowOne : Float := Float.ofBits 0x3FEFFFFE00000000
-
-def aboveOne : Float := Float.ofBits 0x3FF0000010000000
-
-/-- The point that a step evaluates: the midpoint, or `1 - 2^-20` or `1 + 2^-20` when the
-midpoint lies within `2^-20` of 1 and that point lies between the two points of the search.
-Near 1 the closed forms of `T` lose their precision, and an evaluation there that decides
-neither side would move the search away from the root. -/
-def probe (s : Search) : Float :=
-  let m := midpoint s
-  if belowOne < m ∧ m < aboveOne then
-    if s.a < belowOne then belowOne
-    else if aboveOne < s.b then aboveOne
-    else m
-  else m
-
 /-- A step of the bisection that raises `a`, the point where `T(a) > T` holds. -/
 def raiseStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search :=
   if s.done then s
   else
-    let m := probe s
+    let m := midpoint s
     if finite m then
       if s.a < m ∧ m < s.b then
         if above tab tab2 l tt m then ⟨m, s.b, false⟩ else ⟨s.a, m, false⟩
@@ -160,12 +143,21 @@ def raiseStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search 
 def lowerStep (tab tab2 : Array UInt64) (l tt : Interval) (s : Search) : Search :=
   if s.done then s
   else
-    let m := probe s
+    let m := midpoint s
     if finite m then
       if s.a < m ∧ m < s.b then
         if below tab tab2 l tt m then ⟨s.a, m, false⟩ else ⟨m, s.b, false⟩
       else ⟨s.a, s.b, true⟩
     else ⟨s.a, s.b, true⟩
+
+/-- The starting bracket: `[1, b0]` when `tofI` shows `T(1) > T`, `[a0, 1]` when it shows
+`T(1) < T`, and `[a0, b0]` otherwise.  At exactly 1 the branch `(2/3)(1 - λ³)` of `tofI` is
+accurate, while the closed forms lose their precision near 1, and a probe there that decides
+neither side would move a search past the root. -/
+def bracket (tab tab2 : Array UInt64) (l tt : Interval) (a0 b0 : Float) : Search :=
+  if above tab tab2 l tt 1.0 then ⟨1.0, b0, false⟩
+  else if below tab tab2 l tt 1.0 then ⟨a0, 1.0, false⟩
+  else ⟨a0, b0, false⟩
 
 def raise (tab tab2 : Array UInt64) (l tt : Interval) (a b : Float) : Search :=
   LeanExe.loop 256 ⟨a, b, false⟩ fun _ s => raiseStep tab tab2 l tt s
@@ -205,8 +197,9 @@ def solve (tab tab2 : Array UInt64) (x1 y1 z1 x2 y2 z2 mu sg l tt : Interval) : 
   if finite a0 && finite b0 then
     if -1.0 < a0 ∧ -1.0 < b0 then
       if above tab tab2 l tt a0 && below tab tab2 l tt b0 then
-        let ra := raise tab tab2 l tt a0 b0
-        let lb := lower tab tab2 l tt a0 b0
+        let st := bracket tab tab2 l tt a0 b0
+        let ra := raise tab tab2 l tt st.a st.b
+        let lb := lower tab tab2 l tt st.a st.b
         if ra.done && lb.done then
           let xx := make ra.a lb.b
           let v := velocitiesI noTable noTable noTable noTable x1 y1 z1 x2 y2 z2 mu sg xx

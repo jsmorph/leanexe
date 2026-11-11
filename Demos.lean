@@ -75,6 +75,7 @@ import Demos.Orbit.GibbsSound
 import Demos.Orbit.Lambert
 import Demos.Orbit.LambertBox
 import Demos.Orbit.LambertFlat
+import Demos.Orbit.LambertOrbit
 import Demos.Orbit.LambertRoot
 import Demos.Orbit.LambertSound
 import Demos.Orbit.Newton

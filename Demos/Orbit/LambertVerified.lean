@@ -12,7 +12,7 @@ verified_compile lambertCompiled := [asinRatio, acos, logNear1, logCore, logWith
   Library.Numerics.Interval.sqrt, Library.Numerics.Interval.abs, clamp, outward2, increasing,
   decreasing, ofInt, ratio, Library.Numerics.Interval.sq, imax, sqrI, lengthOfI, crossOfI,
   directionI, geometryI, componentsI, velocitiesI, oneI, acosI, logI, arcoshI, tofI, above,
-  below, midpoint, belowOne, aboveOne, probe, raiseStep, lowerStep, raise, lower, noTable, valid, noTransfer, startLow,
+  below, midpoint, raiseStep, lowerStep, bracket, raise, lower, noTable, valid, noTransfer, startLow,
   signOf, solve, lambertBoxWith, lambertBox, lambertBoundsWith, lambertBounds]
 
 end Demos.Orbit

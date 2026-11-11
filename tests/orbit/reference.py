@@ -479,7 +479,7 @@ def gibbs_tests(command):
                           f"gibbs binary64 formula {kind} sep {sep}")
             else:
                 table.setdefault((sep, w), []).append(None)
-                check(w >= 1e-6 or (w >= 1e-9 and sep == 1),
+                check(status == 2 and (w >= 1e-6 or (w >= 1e-9 and sep == 1)),
                       f"gibbs {kind} sep {sep} w {w}: status {status}")
         elif label == "reverse":
             check(status == 0 and all(contains(iv, -v) for iv, v in zip(ivs, states[1][1])),
@@ -583,6 +583,17 @@ def lambert_tests(command):
             t = float(Tstar / sqrt(2 * mu / s_ ** 3))
             lines.append(lambert_line([(c, c) for c in r1], [(c, c) for c in r2], (t, t), (MU, MU), z))
             meta.append(("parabolic", theta, d, r1, r2, t))
+    # A first midpoint near 1: an equal-radius transfer of 1.15°, where λ is about 0.99, with
+    # T* near 2, so that the bracket [a0, 1 + 4/T*] has its midpoint within 1e-7 of 1.
+    for Tstar in [1.99999984, 2.0, 1.2]:
+        th = mpf("1.15") * pi / 180
+        r1 = [9000.0, 0.0, 0.0]
+        r2 = [float(9000 * cos(th)), float(9000 * sin(th)), 0.0]
+        r1m, r2m = [mpf(c) for c in r1], [mpf(c) for c in r2]
+        s_ = (norm(r1m) + norm(r2m) + norm(subv(r2m, r1m))) / 2
+        t = float(mpf(Tstar) / sqrt(2 * mu / s_ ** 3))
+        lines.append(lambert_line([(c, c) for c in r1], [(c, c) for c in r2], (t, t), (MU, MU), z))
+        meta.append(("midpoint", Tstar, r1, r2, t))
     # Excluded geometries and invalid inputs.
     special = [
         ("angle pi", [7000.0, 0, 0], [-7000.0, 0, 0], 2700.0, z, 2),
@@ -605,6 +616,18 @@ def lambert_tests(command):
         if m[0] == "special":
             check(status == m[2], f"lambert {m[1]}: status {status}, expected {m[2]}")
             continue
+        if m[0] == "midpoint":
+            _, Tstar, r1, r2, t = m
+            check(status == 0, f"lambert first midpoint near 1, T {Tstar}: status {status}")
+            if status == 0:
+                lam, T, x, v1, v2 = izzo_model([mpf(c) for c in r1], [mpf(c) for c in r2], mpf(t),
+                                               mu, [mpf(c) for c in z])
+                check(contains(ivs[0], x) and all(contains(iv, v) for iv, v in zip(ivs[1:], v1 + v2)),
+                      f"lambert first midpoint near 1, T {Tstar}: outside")
+                width = mpf(ivs[0][2]) - mpf(ivs[0][1])
+                check(width <= 1e-10, f"lambert first midpoint near 1, T {Tstar}: width {float(width):.1e}")
+                near.append(("1.15", f"T* {Tstar}", float(x - 1), float(width)))
+            continue
         if m[0] == "parabolic":
             _, theta, d, r1, r2, t = m
             check(status == 0, f"lambert near-parabolic theta {theta} d {d}: status {status}")
@@ -613,7 +636,10 @@ def lambert_tests(command):
                                                mu, [mpf(c) for c in z])
                 check(contains(ivs[0], x) and all(contains(iv, v) for iv, v in zip(ivs[1:], v1 + v2)),
                       f"lambert near-parabolic theta {theta} d {d}: outside")
-                near.append((theta, d, float(x - 1), float(mpf(ivs[0][2]) - mpf(ivs[0][1]))))
+                width = mpf(ivs[0][2]) - mpf(ivs[0][1])
+                check(width <= (1e-6 if abs(d) >= 1e-3 else 1e-4),
+                      f"lambert near-parabolic theta {theta} d {d}: width {float(width):.1e}")
+                near.append((theta, f"{d:+.0e}", float(x - 1), float(width)))
             continue
         _, theta, ratio, Tstar, w, r1b, r2b, tb, mub, k, r1, r2, t = m
         statuses[status] = statuses.get(status, 0) + 1
@@ -643,15 +669,18 @@ def lambert_tests(command):
         rel = (hi - lo) / max(1, abs(x))
         key = "near 1" if abs(x - 1) < mpf("0.01") else "other"
         widths.setdefault((w, key), []).append(rel)
-        if w == 0 and key == "other":
-            check(rel <= 1e-11, f"lambert theta {theta} T {Tstar}: x width {float(rel):.2e} "
+        limit = {0.0: 1e-11, 1e-9: 1e-5, 1e-6: 1e-2}[w]
+        if key == "other":
+            check(rel <= limit, f"lambert theta {theta} T {Tstar}: x width {float(rel):.2e} "
                   f"r1 {r1} r2 {r2} t {t!r} k {k} x {float(x)} lambda {float(lam)}")
         if w == 0 and k == z and abs(theta - 180) > 5:
             xf, v1f, v2f = izzo_float(r1, r2, t, MU)
+            d_case = 0.0
             for iv, v in zip(ivs[1:4] + ivs[4:7], v1f + v2f):
                 d = max(mpf(0), mpf(iv[1]) - mpf(v), mpf(v) - mpf(iv[2])) / norm(v1)
-                worst_izzo = max(worst_izzo, float(d))
-            check(worst_izzo < 1e-8, f"lambert Izzo float theta {theta} T {Tstar}: {worst_izzo:.2e}")
+                d_case = max(d_case, float(d))
+            worst_izzo = max(worst_izzo, d_case)
+            check(d_case < 1e-8, f"lambert Izzo float theta {theta} T {Tstar}: {d_case:.2e}")
     print("Lambert: statuses of the grid", statuses)
     print("Lambert: largest relative width of the interval of x")
     for (w, key), vals in sorted(widths.items()):
@@ -659,7 +688,7 @@ def lambert_tests(command):
     print("Lambert: near-parabolic transfers (transfer angle, relative distance of T* from T(1), "
           "x* - 1, width of the interval of x)")
     for row in near:
-        print(f"  {row[0]}° {row[1]:+.0e}: x* - 1 = {row[2]:+.2e}, width {row[3]:.1e}")
+        print(f"  {row[0]}° {row[1]}: x* - 1 = {row[2]:+.2e}, width {row[3]:.1e}")
     print(f"Lambert: largest distance of Izzo's binary64 velocities from the boxes, relative: "
           f"{worst_izzo:.1e}")
     print(f"Lambert: largest relative error of the propagated 50-digit solution: "
