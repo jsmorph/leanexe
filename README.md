@@ -357,6 +357,10 @@ tests/isla/m7-theorems.sh             # the Cortex-M7 forms against Isla's trace
 
 `uv run tests/web/serve.py` serves, on http://127.0.0.1:8000/, a page that runs the WGSL kernel tests on a browser's WebGPU and a page that runs GPT-2 with its kernels on WebGPU, in WebAssembly, or on both and compares the scores.  The GPT-2 page needs the binary32 weights that `uv run tests/gpt32/generate.py --export` writes.  [The browser test guide](tests/web/README.md) covers setup and proof scope.
 
+## License
+
+Copyright 2026 Morphism LLC.  LeanExe is licensed under the [Apache License, Version 2.0](LICENSE).  The parts that come from other projects keep their own licenses, which [the notice](NOTICE) lists with the notices beside each part.
+
 ## References
 
 - Richard A. Kelsey, [Pre-Scheme: A Scheme Dialect for Systems Programming](https://dustycloud.org/misc/prescheme.pdf)
