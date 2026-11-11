@@ -345,4 +345,220 @@ theorem authorize_sound {xs : Array Float} {n : UInt64} (h : (authorize xs n)[0]
 
 #print axioms authorize_sound
 
+theorem pair_append_get {a b : Float} {arr : Array Float} {k : Nat} (hk : k < arr.size) :
+    (#[a, b] ++ arr)[2 + k]! = arr[k]! :=
+  append_get_right #[a, b] arr k hk
+
+theorem tri_idx {j c : Nat} (hj : j < 64) (hc : c < 3) :
+    (UInt64.ofNat (3 * j + c) / 3).toNat = j ∧ (UInt64.ofNat (3 * j + c) % 3).toNat = c := by
+  have h : (UInt64.ofNat (3 * j + c)).toNat = 3 * j + c := by
+    rw [UInt64.toNat_ofNat']
+    exact Nat.mod_eq_of_lt (by omega)
+  constructor
+  · rw [UInt64.toNat_div, h]
+    simp only [UInt64.reduceToNat]
+    omega
+  · rw [UInt64.toNat_mod, h]
+    simp only [UInt64.reduceToNat]
+    omega
+
+/-- Entry `2 + 3j + c` of the output of a valid input: the verdict of conjunction `j` for
+`c = 0`, and the ends of its enclosure for `c = 1` and `c = 2` when it is accepted. -/
+theorem output_get {xs : Array Float} {n : UInt64} (hv : valid xs n = true) {j c : Nat}
+    (hj : j < (count xs).toNat) (hc : c < 3) :
+    (authorize xs n)[2 + 3 * j + c]! =
+      if c = 0 then verdict (assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j))
+        (rd xs 14)
+      else if (assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j)).status = 0 then
+        (if c = 1 then (assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j)).lo
+          else (assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j)).hi)
+      else 0.0 := by
+  have F := valid_facts hv
+  have hk := F.hcount
+  have hs := F.size
+  unfold authorize authorizeWith
+  simp only [hv, ite_true]
+  generalize hrs : (LeanExe.build (count xs) fun j =>
+    assessOne Exp.expTable Trig.invPi Trig.halfPi xs n j) = rs
+  have hsz : rs.size = (count xs).toNat := by rw [← hrs, build_size]
+  have hsz' : rs.size.toUInt64.toNat = (count xs).toNat := by
+    rw [hsz]
+    simp only [Nat.toUInt64_eq, UInt64.toNat_ofNat']
+    exact Nat.mod_eq_of_lt (by omega)
+  have h3 : 3 * j + c < (3 * rs.size.toUInt64).toNat := by
+    rw [UInt64.toNat_mul, hsz']
+    simp only [UInt64.reduceToNat]
+    omega
+  have hj64 : j < 64 := by omega
+  obtain ⟨i1, i2⟩ := tri_idx hj64 hc
+  have hr : rs[j]! = assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j) := by
+    rw [← hrs]
+    exact build_get hj
+  rw [show 2 + 3 * j + c = 2 + (3 * j + c) by omega,
+    pair_append_get (by unfold triples; rw [build_size]; exact h3)]
+  unfold triples
+  rw [build_get h3]
+  dsimp only
+  rw [i1, hr]
+  have e0 : (UInt64.ofNat (3 * j + c) % 3 == 0) = decide (c = 0) := by
+    by_cases h0 : c = 0
+    · subst h0
+      simp only [decide_true, beq_iff_eq]
+      exact UInt64.toNat_inj.mp (by rw [i2]; rfl)
+    · simp only [h0, decide_false, beq_eq_false_iff_ne, ne_eq]
+      intro he
+      apply h0
+      rw [← i2, he]
+      rfl
+  have e1 : (UInt64.ofNat (3 * j + c) % 3 == 1) = decide (c = 1) := by
+    by_cases h1 : c = 1
+    · subst h1
+      simp only [decide_true, beq_iff_eq]
+      exact UInt64.toNat_inj.mp (by rw [i2]; rfl)
+    · simp only [h1, decide_false, beq_eq_false_iff_ne, ne_eq]
+      intro he
+      apply h1
+      rw [← i2, he]
+      rfl
+  rw [e0, e1]
+  by_cases h0 : c = 0
+  · simp only [h0, decide_true, ite_true]
+  · simp only [h0, decide_false, Bool.false_eq_true, ite_false, beq_iff_eq]
+    by_cases h1 : c = 1
+    · simp only [h1, decide_true, ite_true]
+    · simp only [h1, decide_false, Bool.false_eq_true, ite_false]
+
+/-- **A2.**  For a valid input, a conjunction whose verdict is not 2 has an enclosure that
+contains the model's probability for every velocity change of the box and every displacement
+within the padding, and verdict 0 places the probability below the threshold. -/
+theorem authorize_enclosure {xs : Array Float} {n : UInt64} (hv : valid xs n = true) {j : Nat}
+    (hj : j < (count xs).toNat) (hs : (authorize xs n)[2 + 3 * j]! ≠ 2.0) {dv d : V3}
+    (hb : InBox xs dv) (hd : InPad xs d) :
+    Good xs j dv d ∧ value ((authorize xs n)[3 + 3 * j]!).toBits ≤ pcAfter xs j dv d ∧
+      pcAfter xs j dv d ≤ value ((authorize xs n)[4 + 3 * j]!).toBits ∧
+      ((authorize xs n)[2 + 3 * j]! = 0.0 → pcAfter xs j dv d < val xs 14) := by
+  have F := valid_facts hv
+  have hk := F.hcount
+  have hsz := F.size
+  have v0 := output_get hv hj (c := 0) (by norm_num)
+  have v1 := output_get hv hj (c := 1) (by norm_num)
+  have v2 := output_get hv hj (c := 2) (by norm_num)
+  rw [show 2 + 3 * j + 0 = 2 + 3 * j by omega] at v0
+  rw [show 2 + 3 * j + 1 = 3 + 3 * j by omega] at v1
+  rw [show 2 + 3 * j + 2 = 4 + 3 * j by omega] at v2
+  simp only [ite_true, one_ne_zero, OfNat.ofNat_ne_zero, ite_false,
+    show (2 : Nat) ≠ 1 by decide] at v0 v1 v2
+  rw [v0, v1, v2]
+  rw [v0] at hs
+  generalize hr : assessOne Exp.expTable Trig.invPi Trig.halfPi xs n (UInt64.ofNat j) = r at hs ⊢
+  have hst : r.status = 0 := by
+    by_contra hne
+    apply hs
+    unfold verdict
+    simp only [beq_iff_eq, hne, ite_false]
+  have hj64 : (UInt64.ofNat j).toNat < 64 := by
+    rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega)]
+    omega
+  have hjn : (UInt64.ofNat j).toNat = j := by
+    rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega)]
+  have hP : Finite (rd xs 13).toBits := F.fin 13 (by omega)
+  have ht : Finite (rd xs 14).toBits := F.fin 14 (by omega)
+  obtain ⟨G, C⟩ := assessOne_sound hj64 hP (hr ▸ hst) hb hd
+  rw [hjn] at G C
+  rw [hr] at C
+  simp only [hst, ite_true]
+  refine ⟨G, C.2.2.2.1, C.2.2.2.2, fun h0 => ?_⟩
+  have hlt : r.hi < rd xs 14 := by
+    by_contra hge
+    unfold verdict at h0
+    simp only [hst, beq_self_eq_true, ite_true, hge, ite_false] at h0
+    exact absurd (congrArg Float.toBits h0) (by decide +kernel)
+  exact lt_of_le_of_lt C.2.2.2.2 ((lt_iff_value C.2.2.1 ht).mp hlt)
+
+/-- Status 1 marks exactly the inputs that `valid` rejects. -/
+theorem authorize_invalid {xs : Array Float} {n : UInt64} :
+    (authorize xs n)[0]! = 1.0 ↔ valid xs n = false := by
+  constructor
+  · intro h
+    by_contra hv
+    have hv' : valid xs n = true := by simpa using hv
+    unfold authorize authorizeWith at h
+    simp only [hv', ite_true] at h
+    rw [append_get_left _ _ 0 (by simp),
+      show ∀ x y : Float, (#[x, y] : Array Float)[0]! = x from fun _ _ => rfl] at h
+    split_ifs at h <;> exact absurd (congrArg Float.toBits h) (by decide +kernel)
+  · intro h
+    unfold authorize authorizeWith
+    rw [if_neg (by simp [h])]
+    rfl
+
+/-! ### The model behind an accepted burn -/
+
+set_option maxHeartbeats 4000000 in
+/-- The fields of the model's encounter: the miss vector and the projected covariance in the axes
+of the encounter plane, for the relative state `ρ`, `ν` of `relative` and the primary's nominal
+position `r₁`, and `α` and `e²` of the state after the burn and of the nominal state. -/
+theorem encounter_eq (xs : Array Float) (j : Nat) (dv d : V3) :
+    let b := 15 + 20 * j
+    let rb : V3 := ⟨val xs 1, val xs 2, val xs 3⟩
+    let vb : V3 := ⟨val xs 4, val xs 5, val xs 6⟩
+    let r1 : V3 := ⟨val xs (b + 1), val xs (b + 2), val xs (b + 3)⟩
+    let rel := relative (val xs 0) rb.x rb.y rb.z vb.x vb.y vb.z dv.x dv.y dv.z (val xs b) r1.x
+      r1.y r1.z (val xs (b + 4)) (val xs (b + 5)) (val xs (b + 6)) (val xs (b + 7))
+      (val xs (b + 8)) (val xs (b + 9)) (val xs (b + 10)) (val xs (b + 11)) (val xs (b + 12)) d.x
+      d.y d.z
+    let ρ : V3 := ⟨rel.1, rel.2.1, rel.2.2.1⟩
+    let ν : V3 := ⟨rel.2.2.2.1, rel.2.2.2.2.1, rel.2.2.2.2.2⟩
+    let C := covMul (val xs (b + 13)) (val xs (b + 14)) (val xs (b + 15)) (val xs (b + 16))
+      (val xs (b + 17)) (val xs (b + 18))
+    encounter xs j dv d =
+      ⟨V3.dot ρ (axisX ν r1), V3.dot ρ (axisY ν r1), V3.dot (axisX ν r1) (C (axisX ν r1)),
+        V3.dot (axisX ν r1) (C (axisY ν r1)), V3.dot (axisY ν r1) (C (axisY ν r1)),
+        (shape (val xs 0) rb.x rb.y rb.z (vb + dv).x (vb + dv).y (vb + dv).z).1,
+        (shape (val xs 0) rb.x rb.y rb.z (vb + dv).x (vb + dv).y (vb + dv).z).2,
+        (shape (val xs 0) rb.x rb.y rb.z vb.x vb.y vb.z).1,
+        (shape (val xs 0) rb.x rb.y rb.z vb.x vb.y vb.z).2,
+        V3.dot (V3.cross r1 ν) (V3.cross r1 ν), V3.dot ν ν⟩ := rfl
+
+/-- **A1 with the model's theorems.**  When `authorize` returns status 0, for every conjunction,
+every velocity change `dv` of the box, and every displacement `d` within the padding: the
+two-body trajectories from the primary's state at the burn, with and without `dv`, solve Newton's
+equation, the miss vector is the point of the line `ρ + τ ν` nearest the origin, and the
+probability of collision lies below the threshold. -/
+theorem authorize_model {xs : Array Float} {n : UInt64} (h : (authorize xs n)[0]! = 0.0) :
+    ∀ j < (count xs).toNat, ∀ dv d : V3, InBox xs dv → InPad xs d →
+      let b := 15 + 20 * j
+      let rb : V3 := ⟨val xs 1, val xs 2, val xs 3⟩
+      let vb : V3 := ⟨val xs 4, val xs 5, val xs 6⟩
+      let r1 : V3 := ⟨val xs (b + 1), val xs (b + 2), val xs (b + 3)⟩
+      let rel := relative (val xs 0) rb.x rb.y rb.z vb.x vb.y vb.z dv.x dv.y dv.z (val xs b) r1.x
+        r1.y r1.z (val xs (b + 4)) (val xs (b + 5)) (val xs (b + 6)) (val xs (b + 7))
+        (val xs (b + 8)) (val xs (b + 9)) (val xs (b + 10)) (val xs (b + 11)) (val xs (b + 12))
+        d.x d.y d.z
+      let ρ : V3 := ⟨rel.1, rel.2.1, rel.2.2.1⟩
+      let ν : V3 := ⟨rel.2.2.2.1, rel.2.2.2.2.1, rel.2.2.2.2.2⟩
+      Newton (val xs 0) (fun t => (stateAt (val xs 0) rb (vb + dv) t).1)
+          (fun t => (stateAt (val xs 0) rb (vb + dv) t).2) ∧
+        Newton (val xs 0) (fun t => (stateAt (val xs 0) rb vb t).1)
+          (fun t => (stateAt (val xs 0) rb vb t).2) ∧
+        (∀ τ : ℝ, V3.dot ρ (axisX ν r1) ^ 2 + V3.dot ρ (axisY ν r1) ^ 2 ≤ V3.dot (ρ + τ • ν) (ρ + τ • ν)) ∧
+        pcAfter xs j dv d < val xs 14 := by
+  obtain ⟨hv, hA⟩ := authorize_sound h
+  have F := valid_facts hv
+  intro j hj dv d hb hd
+  obtain ⟨G, hlt⟩ := hA j hj dv d hb hd
+  have E := encounter_eq xs j dv d
+  refine ⟨propagate_newton F.mu ?_ ?_, propagate_newton F.mu ?_ ?_,
+    (miss_closest ?_ ?_).1, hlt⟩
+  · have := G.alpha1; rw [E] at this; exact this
+  · have := G.e1; rw [E] at this; exact this
+  · have := G.alpha0; rw [E] at this; exact this
+  · have := G.e0; rw [E] at this; exact this
+  · have := G.xn2; rw [E] at this; exact this
+  · have := G.zn2; rw [E] at this; exact this
+
+#print axioms authorize_enclosure
+#print axioms authorize_invalid
+#print axioms authorize_model
+
 end Demos.Avoidance

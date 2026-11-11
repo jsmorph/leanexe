@@ -4,7 +4,8 @@ import Demos.Conjunction.Program
 The probability of collision for a mean and a covariance known only within intervals.
 `pcBoxWith` is the panel method of `pcWith` with the five scalar inputs replaced by intervals: the
 setup computes its quantities from the intervals, and the panels and the constant factor are those
-of `pcWith`.  `pcBox` takes the ends of the five intervals and passes the table of Arm's `exp`.
+of `pcWith`.  `pcBoxEnds` takes the ends of the five intervals, and `pcBox` passes it the table
+of Arm's `exp`.
 -/
 
 namespace Demos.Conjunction
@@ -36,9 +37,14 @@ def pcBoxWith (tab : Array UInt64) (m1 m2 c11 c12 c22 : Interval) (r : Float) (n
     else rejected
   else rejected
 
+/-- `pcBoxWith` for the intervals between the given ends. -/
+def pcBoxEnds (tab : Array UInt64)
+    (m1lo m1hi m2lo m2hi c11lo c11hi c12lo c12hi c22lo c22hi r : Float) (n : UInt64) : Interval :=
+  pcBoxWith tab (make m1lo m1hi) (make m2lo m2hi) (make c11lo c11hi) (make c12lo c12hi)
+    (make c22lo c22hi) r n
+
 def pcBox (m1lo m1hi m2lo m2hi c11lo c11hi c12lo c12hi c22lo c22hi r : Float) (n : UInt64) :
     Interval :=
-  pcBoxWith Exp.expTable (make m1lo m1hi) (make m2lo m2hi) (make c11lo c11hi) (make c12lo c12hi)
-    (make c22lo c22hi) r n
+  pcBoxEnds Exp.expTable m1lo m1hi m2lo m2hi c11lo c11hi c12lo c12hi c22lo c22hi r n
 
 end Demos.Conjunction

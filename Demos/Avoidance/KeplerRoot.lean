@@ -24,7 +24,7 @@ in the operands. -/
 def keplerRootI (inv half logTab expTab : Array UInt64) (a b u : Interval) : Interval :=
   let e := point (Kepler.approximate inv half (mid a) (mid b) (mid u))
   let residual := sub (add e (sub (mul b (cosI inv half e)) (mul a (sinI inv half e)))) u
-  let s := add (sq a) (sq b)
+  let s := add (mul (abs a) (abs a)) (mul (abs b) (abs b))
   let slope := sub (ofInt 1) (sqrt (clamp s 0 s.hi))
   let bound := div (abs residual) slope
   if bound.status == 0 then
@@ -40,8 +40,10 @@ def keplerRootI (inv half logTab expTab : Array UInt64) (a b u : Interval) : Int
   have he : Encloses (point e) (value e.toBits) := fun h => (point_sound h).2
   have hres := encloses_sub (encloses_add he (encloses_sub (encloses_mul hb (encloses_cosI he))
     (encloses_mul ha (encloses_sinI he)))) hu
-  have hs := encloses_add (encloses_sq ha) (encloses_sq hb)
-  generalize add (sq a) (sq b) = S2 at h hs ⊢
+  have hs := encloses_add (encloses_mul (encloses_abs ha) (encloses_abs ha))
+    (encloses_mul (encloses_abs hb) (encloses_abs hb))
+  rw [abs_mul_abs_self, abs_mul_abs_self] at hs
+  generalize add (mul (abs a) (abs a)) (mul (abs b) (abs b)) = S2 at h hs ⊢
   have hcl : Encloses (clamp S2 0 S2.hi) (x * x + y * y) := by
     intro hc
     obtain ⟨s1, hcs⟩ := clamp_sound hc
