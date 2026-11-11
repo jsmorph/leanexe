@@ -6,7 +6,8 @@
     "room for a step: heap.top.toNat + copyCost + charge ≤ 65536 * memoryCap",
     "a budget for a whole run of a WASI process",
     "Verified.Wasi.ReturnOrAcceptedExit host action initial (run fuel module index store [] targetHost)",
-    "a process that reads its whole input in begin and only writes in its steps"
+    "a process that reads its whole input in begin and only writes in its steps",
+    "the total run of a second compiled process with the same state type and steps"
   ],
   "modules": [
     "Verified.Wasi.ProcessTotalCorrect",
@@ -20,7 +21,8 @@
     "Verified.Wasi.CostTotal",
     "Verified.Examples.WasiRetainTotal",
     "Demos.OrderBook.ProcessCompiledCorrect",
-    "Demos.Rcv.ProcessCompiledCorrect"
+    "Demos.Rcv.ProcessCompiledCorrect",
+    "Demos.Rcv.Maine.ProcessCompiledCorrect"
   ],
   "declarations": [
     "Verified.Wasi.ProcessTotalPremises",
@@ -29,7 +31,15 @@
     "Verified.Wasi.wp_process_compact",
     "Verified.Ty.compactable",
     "Verified.Ty.copyCost_mod",
-    "Verified.Wasi.ReturnOrAcceptedExit"
+    "Verified.Wasi.ReturnOrAcceptedExit",
+    "Demos.Rcv.Process.Compiled",
+    "Demos.Rcv.Process.processEntry",
+    "Demos.Rcv.Process.stateTy",
+    "Demos.Rcv.Process.Compiled.terminates_of_room",
+    "Demos.Rcv.Process.Compiled.exits_long_of_room",
+    "Demos.Rcv.Process.beginWith",
+    "Demos.Rcv.Process.beginWith_report",
+    "Demos.Rcv.Process.beginWith_long"
   ],
   "examples": [
     "Demos.RunningSum.RunCharges",
@@ -51,6 +61,14 @@
     "Demos.Rcv.Process.processMemory_le",
     "Demos.Rcv.Process.Compiled.target_terminates",
     "Demos.Rcv.Process.initial_terminates",
-    "Demos.Rcv.Process.initial_exits_long"
+    "Demos.Rcv.Process.initial_exits_long",
+    "Demos.Rcv.Process.compiledProcess",
+    "Demos.Rcv.Maine.Process.compiledProcess",
+    "Demos.Rcv.Maine.Process.initial_terminates",
+    "Demos.Rcv.Process.writeStep_bounded",
+    "Demos.Rcv.Process.compactClosed",
+    "Demos.Rcv.Process.initialState",
+    "Demos.Rcv.Process.initial_memoryCap",
+    "Demos.Rcv.Process.initial_top"
   ]
 }

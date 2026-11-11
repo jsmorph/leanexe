@@ -1,0 +1,68 @@
+{
+  "id": "clight-n-proofs",
+  "goals": [
+    "ClightN.Spec.stmt_add_ul_ul and the other leaf statements of N for the Lean copy of Clight",
+    "sem_binop ce .Oadd v1 tul v2 tul m = onLongs f v1 v2",
+    "LClight.Int64.cmpu c x y = true ↔ holds c (u64 x) (u64 y)",
+    "Val.of_bool b = .Vint (r32 1) or Val.of_bool b = .Vint (r32 0)",
+    "nprog defs main t r from bigstep_program_terminates of the Clight copy",
+    "the carried statement of an instance of N, such as stmt_gcd_terminates or stmt_sha_reads",
+    "decide +kernel on the equality of a renamed translation with the definitions of clightgen's file",
+    "Application type mismatch between UInt64 and Int64 at Int64.xor under open LClight",
+    "u64 y < LClight.Int64.unsigned LClight.Int64.iwordsize ↔ u64 y < 64 left open by simp"
+  ],
+  "modules": [
+    "LeanExe.Native.ClightN.Leaf",
+    "LeanExe.Native.ClightN.Laws",
+    "LeanExe.Native.Proof.Rename",
+    "LeanExe.Native.Translate"
+  ],
+  "declarations": [
+    "ClightN.Proof.onLongs",
+    "ClightN.Proof.onLongs_some",
+    "ClightN.Proof.onInts_some",
+    "ClightN.Proof.onLong_some",
+    "ClightN.Proof.onInt_some",
+    "ClightN.Proof.cmpu_long",
+    "ClightN.Proof.long_ltu_64",
+    "ClightN.Proof.of_bool_cases",
+    "ClightN.Proof.bit_cases",
+    "LClight.bigstep_program_terminates_rename_on",
+    "LeanExe.Native.initStores",
+    "LClight.Archi.aarch64",
+    "LClight.Val.of_bool",
+    "Int64.xor",
+    "Int.repr",
+    "LClight.Int64.xor",
+    "LClight.Int.repr",
+    "LClight.Int64.unsigned",
+    "LClight.Int64.iwordsize",
+    "decide_eq_true_iff"
+  ],
+  "examples": [
+    "ClightN.Proof.eq_add_ul_ul",
+    "ClightN.Proof.add_ul_ul",
+    "ClightN.Proof.eq_ul_ul"
+  ],
+  "unimported": {
+    "LeanExe/Native/ClightN/Exec.lean": [
+      "ClightN.Proof.program_to_n",
+      "ClightN.Proof.exec_to_n",
+      "ClightN.Proof.call_to_n",
+      "ClightN.Proof.eval_to_n"
+    ],
+    "LeanExe/Native/ClightN/Reads.lean": [
+      "ClightN.Proof.reads_nreads"
+    ],
+    "LeanExe/Native/ClightN/Instance.lean": [
+      "ClightN.Proof.inj_of_nodup_map"
+    ],
+    "clightn/gcd/Gcd.lean": [
+      "ClightN.Proof.gcd_defs_eq",
+      "ClightN.Proof.gcd_terminates"
+    ],
+    "clightn/sha/Sha.lean": [
+      "ClightN.Proof.sha_reads"
+    ]
+  }
+}

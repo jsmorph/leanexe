@@ -5,7 +5,9 @@
     "a new case of a generator, an initialization list, or a check predicate",
     "a comparison of emitted modules and images before and after a change",
     "genImage m k args room cap o (image + d) = .ok (bytes, L.shift d)",
-    "a reformatting of Lean source that must keep every declaration"
+    "a reformatting of Lean source that must keep every declaration",
+    "a structure field moved into a substructure while existing statements name it",
+    "a generator with a new entry routine beside the old one"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -14,7 +16,9 @@
     "LeanExe.M7.Proof.Board",
     "LeanExe.A64.Isla.Check",
     "Verified.Compile",
-    "TestSupport.M7.ShaLoop"
+    "TestSupport.M7.ShaLoop",
+    "LeanExe.A64.BootImage",
+    "LeanExe.A64.Gen"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -31,7 +35,15 @@
     "LeanExe.M7.Nucleo.areaBoard_run",
     "LeanExe.M7.Nucleo.areaBoardWith_run",
     "LeanExe.A64.Isla.Agrees",
-    "LeanExe.A64.Isla.AgreesAll"
+    "LeanExe.A64.Isla.AgreesAll",
+    "LeanExe.A64.genProgram",
+    "LeanExe.A64.genProgramWith",
+    "LeanExe.A64.genImageWith",
+    "LeanExe.A64.genMain",
+    "LeanExe.A64.genInProgram",
+    "LeanExe.A64.genInImage",
+    "LeanExe.A64.State.out",
+    "LeanExe.A64.Io"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",
