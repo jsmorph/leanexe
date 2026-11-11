@@ -1,4 +1,4 @@
-import Demos.Orbit.LambertBox
+import Demos.Orbit.LambertOrbit
 import Demos.Orbit.GibbsSound
 import Library.Numerics.Float64.Asin.AcosTheorem
 import Library.Numerics.Float64.Log.LogTheorem
@@ -18,11 +18,6 @@ open LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 
 /-! ### Real facts -/
-
-theorem sqrt_max_zero (u : ℝ) : √(max u 0) = √u := by
-  rcases le_total 0 u with h | h
-  · rw [max_eq_left h]
-  · rw [max_eq_right h, sqrt_zero, sqrt_eq_zero_of_nonpos h]
 
 /-- The argument of `arccos` in `ψ` lies in `[-1, 1]`. -/
 theorem psi_arg_mem {lam x : ℝ} (hl0 : -1 < lam) (hl1 : lam < 1) (hx0 : -1 < x) (hx1 : x < 1) :
@@ -261,13 +256,6 @@ theorem lower_spec {l tt : Interval} {lam T : ℝ} (hl : Contains l lam) (ht : C
     (fun _ _ _ hs => lowerStep_inv hl ht hl0 hl1 hs)
 
 /-! ### The real model of the program -/
-
-/-- The sign of the direction of motion: 1 when `(r1 × r2) · k > 0` and -1 otherwise. -/
-noncomputable def motionSign (r1 r2 k : V3) : ℝ := if 0 < dot (cross r1 r2) k then 1 else -1
-
-/-- Izzo's `λ` and `T` for the positions, the time of flight, `μ`, and the axis `k`. -/
-noncomputable def izzoParams (r1 r2 : V3) (t μ : ℝ) (k : V3) : ℝ × ℝ :=
-  geometry r1.x r1.y r1.z r2.x r2.y r2.z t μ (motionSign r1 r2 k)
 
 /-- The root of Izzo's equation and Izzo's velocities at it. -/
 noncomputable def solution (r1 r2 : V3) (t μ : ℝ) (k : V3) :
