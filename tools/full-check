@@ -13,7 +13,7 @@
 #   4. tests/wasi/run.sh;
 #   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
-#   7. rocq/check.sh;
+#   7. rocq/check.sh and tests/native/clight-rocq.sh on the programs of step 3;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
 #      --drivers-only, and tests/gpt32/native.sh;
 #   9. tests/talos/run.sh.
@@ -32,9 +32,9 @@
 # LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the latter 10G unless set, the limit
 # that AGENTS.md sets for the verified and WASI drivers.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
 # for the native and bare-metal drivers, NM and DTC as for tests/baremetal/run.sh, and QEMU and
-# JOBS as for tests/baremetal/verified.sh.  COMPCERT_TREE names the CompCert tree with built
-# proofs for rocq/check.sh, by default the directory of CCOMP when CCOMP is a path.  The script
-# exits with status 1 when a step fails.
+# JOBS as for tests/baremetal/verified.sh and tests/native/clight-rocq.sh.  COMPCERT_TREE names the
+# CompCert tree with built proofs for rocq/check.sh and tests/native/clight-rocq.sh, by default the
+# directory of CCOMP when CCOMP is a path.  The script exits with status 1 when a step fails.
 # Usage: tools/full-check
 set -euo pipefail
 
@@ -422,6 +422,7 @@ step_native() {
     record "$step" "not run: no CompCert target for this platform" "" ""
   elif ready "$step" ccomp:"$ccomp"; then
     run 3-native-clight tests/native/clight.sh 7 300 "$archi"
+    [ "$code" -ne 0 ] || clight=yes
     cell=$(last '^clight: ([0-9]+) agree \(([0-9]+) undefined, ([0-9]+) trace programs, ([0-9]+) input programs\), ([0-9]+) differ, ([0-9]+) out of fuel$' \
       '\1 \2 \3 \4 \5 \6' "$log")
     if [ -n "$cell" ]; then
@@ -521,6 +522,26 @@ step_rocq() {
       cell="\`Clight2Asm.v\` checks, with the assumptions of \`transf_c_program_correct\` and \`$cell\`"
     else
       cell=""
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  fi
+  step="\`tests/native/clight-rocq.sh\` on the programs of \`tests/native/clight.sh 7 300 $archi\`"
+  if [ "$clight" != yes ]; then
+    record "$step" "not run: \`tests/native/clight.sh 7 300\` did not pass" "" ""
+  elif ! have coqc; then
+    record "$step" "not run: coqc absent" "" ""
+  elif [ -z "$tree" ] || [ ! -f "$tree/cfrontend/ClightBigstep.vo" ] ||
+    [ ! -f "$tree/export/Clightdefs.vo" ] || [ ! -x "$tree/clightgen" ]; then
+    record "$step" "not run: no CompCert tree with built proofs and clightgen" "" ""
+  else
+    run 7-rocq-clight tests/native/clight-rocq.sh build/native/clight/7 "$tree"
+    cell=$(last '^clight-rocq: ([0-9]+) agree \(([0-9]+) undefined, ([0-9]+) trace programs, ([0-9]+) input programs\), ([0-9]+) differ, ([0-9]+) out of fuel$' \
+      '\1 \2 \3 \4 \5 \6' "$log")
+    if [ -n "$cell" ]; then
+      set -- $cell
+      cell="$(c "$1") programs agree with the Rocq evaluator, $(c "$2") of them undefined,"
+      cell+=" $(c "$3") of them trace programs, and $(c "$4") input programs; $(c "$5") differ;"
+      cell+=" $(c "$6") out of fuel"
     fi
     record "$step" "$(outcome)" "$seconds" "$cell"
   fi
@@ -734,6 +755,7 @@ main() {
   failures=0
   built=no
   verified=no
+  clight=no
   step_build
   step_verified
   step_drone
