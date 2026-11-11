@@ -76,6 +76,11 @@ import Demos.OrderBook.Program
 import Demos.OrderBook.Refinement
 import Demos.OrderBook.Samples
 import Demos.OrderBook.Theorems
+import Demos.PassiveSafety.Closed
+import Demos.PassiveSafety.Flat
+import Demos.PassiveSafety.Model
+import Demos.PassiveSafety.Program
+import Demos.PassiveSafety.Soundness
 import Demos.Rcv.Batch
 import Demos.Rcv.Cases
 import Demos.Rcv.Contest
