@@ -55,6 +55,33 @@ theorem Io.Le.antisymm {a b : Io} (h1 : a.Le b) (h2 : b.Le a) : a = b := by
   rw [Io.mk.injEq]
   exact ⟨ho1.eq_of_length (Nat.le_antisymm ho1.length_le ho2.length_le), by omega, by omega⟩
 
+/-- A device load advances the UART's counts and keeps its output. -/
+theorem devLoad_advances {P : Platform} {io io' : Io} {a : UInt64} {v : UInt32}
+    (h : P.devLoad io a = some (v, io')) :
+    io'.out = io.out ∧
+      (io.rxNext < io'.rxNext ∨ (io.rxNext = io'.rxNext ∧ io.rxPolls < io'.rxPolls)) := by
+  unfold Platform.devLoad at h
+  split at h
+  · obtain ⟨-, rfl⟩ := Prod.mk.inj (Option.some.inj h)
+    exact ⟨rfl, .inr ⟨rfl, Nat.lt_succ_self _⟩⟩
+  split at h
+  · obtain ⟨-, rfl⟩ := Prod.mk.inj (Option.some.inj h)
+    exact ⟨rfl, .inl (Nat.lt_succ_self _)⟩
+  · cases h
+
+/-- A 32-bit load that succeeds is the device load of `Platform.devLoad` at its address. -/
+theorem exec_ldrW_some {P : Platform} {t n : Fin 32} {imm : Fin 4096} {s s' : State}
+    (h : exec P (.ldrW t n imm) s = some s') :
+    ∃ v io, P.devLoad s.io (s.xsp n + UInt64.ofNat (4 * imm.val)) = some (v, io) ∧
+      s' = { s.devRead t v with io } := by
+  simp only [exec] at h
+  split at h
+  · cases h
+  · revert h
+    cases hd : P.devLoad s.io (s.xsp n + UInt64.ofNat (4 * imm.val)) with
+    | none => intro h; cases h
+    | some p => intro h; exact ⟨p.1, p.2, rfl, (Option.some.inj h).symm⟩
+
 /-- A byte less than 8 bytes above `a` is Normal memory when the 8 bytes from `a` are. -/
 theorem normal_of_mapped {P : Platform} {a b : UInt64} (hm : P.mapped a 8 = true)
     (h : b - a < 8) : P.normal b = true := by
@@ -96,16 +123,8 @@ theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = so
       exact ite_eq_right fun e => by subst e; simp [hn] at ha
     · cases h
   case ldrW r n imm =>
-    simp only [exec] at h
-    split at h
-    · cases h
-    split at h
-    · obtain rfl := Option.some.inj h
-      simp [State.devRead]
-    split at h
-    · obtain rfl := Option.some.inj h
-      simp [State.devRead]
-    · cases h
+    obtain ⟨v, io, -, rfl⟩ := exec_ldrW_some h
+    simp [State.devRead]
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simp [State.setXsp_mem, State.subs, State.fcmp, State.fcmpS]
@@ -139,16 +158,11 @@ theorem exec_io {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some 
       exact Io.Le.refl s.io
     · cases h
   case ldrW r n imm =>
-    simp only [exec] at h
-    split at h
-    · cases h
-    split at h
-    · obtain rfl := Option.some.inj h
-      exact ⟨List.prefix_rfl, .inr ⟨rfl, Nat.le_succ _⟩⟩
-    split at h
-    · obtain rfl := Option.some.inj h
-      exact ⟨List.prefix_rfl, .inl (Nat.lt_succ_self _)⟩
-    · cases h
+    obtain ⟨v, io, hd, rfl⟩ := exec_ldrW_some h
+    obtain ⟨ho, hc⟩ := devLoad_advances hd
+    refine ⟨by show s.io.out <+: io.out; rw [ho]; exact List.prefix_rfl, ?_⟩
+    show s.io.rxNext < io.rxNext ∨ (s.io.rxNext = io.rxNext ∧ s.io.rxPolls ≤ io.rxPolls)
+    omega
   all_goals
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simpa [State.setXsp_io, State.subs, State.fcmp, State.fcmpS] using Io.Le.refl s.io
@@ -237,20 +251,11 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
       simp [noMemory] at hn
     · cases h
   case ldrW r n imm =>
-    simp only [exec] at h
-    split at h
-    · cases h
-    split at h
-    · obtain rfl := Option.some.inj h
-      have := congrArg Io.rxPolls ho
-      simp only at this
-      omega
-    split at h
-    · obtain rfl := Option.some.inj h
-      have := congrArg Io.rxNext ho
-      simp only at this
-      omega
-    · cases h
+    obtain ⟨v, io, hd, rfl⟩ := exec_ldrW_some h
+    obtain ⟨-, hc⟩ := devLoad_advances hd
+    have h1 : io.rxNext = s.io.rxNext := congrArg Io.rxNext ho
+    have h2 : io.rxPolls = s.io.rxPolls := congrArg Io.rxPolls ho
+    omega
   all_goals first
     | exact ⟨rfl, rfl⟩
     | simp only [exec, reduceCtorEq] at h

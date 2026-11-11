@@ -22,15 +22,15 @@ false, so the theorem of such a trace carries the constraint as a premise.  A pa
 dropped leaves the states that would take it without an outcome, which makes `Agrees` false for
 them whenever `exec` succeeds there.
 
-The same statement serves every form but the 32-bit load at the UART.  A form whose `exec` never
-fails, such as `ADD`, gets the equivalence for every state.  For a load or a store, `exec` fails
-outside Normal memory, at the UART other than by a byte store or a 32-bit load, and on a
-misaligned stack pointer, and the trace's paths of those states, such as the exception entry of
-the alignment fault, need no counterpart.  The value of a 32-bit load at the UART comes from the
-platform's receiver, which the trace leaves free by reading 12 of `Trace.lean`, so `AgreesDev`
-states that `exec`'s state is the load of some value and that the trace's outcomes are the loads
-of every value.  A branch writes
-`_PC` and sets `__BranchTaken`, and the program-counter rule of `finish` keeps the written value,
+The same statement serves every form.  A form whose `exec` never fails, such as `ADD`, gets the
+equivalence for every state.  For a load or a store, `exec` fails outside Normal memory, at the
+UART other than by a byte store or a 32-bit load, and on a misaligned stack pointer, and the
+trace's paths of those states, such as the exception entry of the alignment fault, need no
+counterpart.  A 32-bit load at the UART takes its value and the UART's counts after it from
+`Platform.devLoad`, in `exec` and, by reading 12 of `Trace.lean`, in the trace, so its theorem
+states that the trace's outcomes are exactly `exec`'s state: one read of 4 bytes at the register's
+address, whose value reaches register `t` zero-extended.  A branch writes `_PC` and sets
+`__BranchTaken`, and the program-counter rule of `finish` keeps the written value,
 so the outcome holds `exec`'s target.  The premise on `σ` names accessor paths, so a theorem fixes
 only the fields of a register that its trace reads, such as `PSTATE.EL`.
 
@@ -99,48 +99,50 @@ theorem AgreesAll.of_reads {P : Platform} {A : Abstract} {π π' : Sys} {W : Lis
     (a : AgreesAll P A π W F f i s) : AgreesAll P A π' W F f i s :=
   ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
 
-/-- `Agrees` for a 32-bit load of the UART's data or flag register, whose value the trace leaves
-free by reading 12 of `Trace.lean`: the header names the fields of `F`'s opcode, the opcode has
-32 bits, its word decodes to `i`, and for every `σ` that agrees with the profile `π` on the
-registers that the trace reads, if `exec` gives `s'`, then `s'` is the state `s.devRead t v` of
-the load of the value `v` that the receiver returns, with the model's counts of the UART's reads,
-and the outcomes of the trace are exactly `s.devRead t v` for every 32-bit value `v`, with
-registers `σ'` that differ from `σ` only at the registers `W`.  The check covers the address, the
-translation, the access's size, the zero extension into `t`, and register 31, and leaves the value
-to the receiver. -/
-def AgreesDev (P : Platform) (π : Sys) (W : List String) (F : Footprint) (f : Fields) (i : Instr)
-    (t : Fin 32) (s : State) : Prop :=
-  F.segments.map (fun g => (g.name, g.width)) = F.opcode.fields ∧
-  F.opcode.width = 32 ∧
-  decode (.ofNat (F.opcode.word f)) = some i ∧
-  ∀ σ : Sys, (∀ q ∈ F.trace.reads, σ.get q.1 q.2 = π.get q.1 q.2) →
-    ∀ s', exec P i s = some s' →
-      (∃ v : UInt32, s' = { s.devRead t v with io := s'.io }) ∧
-      ∃ σ', (∀ o, F.Run P f s σ o ↔ ∃ v : UInt32, o = .done (s.devRead t v) σ') ∧
-        ∀ r, r ∉ W → σ' r = σ r
-
 /-- `exec` of a 32-bit load: the stack pointer's check passes, the address is the UART's flag or
-data register, and the state is that of the load of the value that the receiver returns, with the
-model's counts of the UART's reads. -/
-theorem exec_ldrW {P : Platform} {t n : Fin 32} {imm : Fin 4096} {s s' : State}
-    (hs : exec P (.ldrW t n imm) s = some s') :
+data register, and `Platform.devLoad` gives at the address the value `v` that register `t`
+receives and the UART's state `io` of `exec`'s state. -/
+theorem exec_ldrW {P : Platform} {t n : Fin 32} {imm : Fin 4096} {s s' : State} {v : UInt32}
+    {io : Io} (hs : exec P (.ldrW t n imm) s = some s')
+    (hd : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io)) :
     s.spAligned n = true ∧
       (s.xsp n + .ofNat (4 * imm.val) = P.uart + 0x18 ∨ s.xsp n + .ofNat (4 * imm.val) = P.uart) ∧
-      ∃ v : UInt32, s' = { s.devRead t v with io := s'.io } := by
-  simp only [exec] at hs
+      s' = { s.devRead t v with io } := by
+  simp only [exec, hd, Option.map] at hs
   split at hs
   · cases hs
   rename_i h1
   have hal : s.spAligned n = true := by simpa using h1
-  split at hs
+  refine ⟨hal, ?_, (Option.some.inj hs).symm⟩
+  unfold Platform.devLoad at hd
+  split at hd
   · rename_i ha
-    obtain rfl := Option.some.inj hs
-    exact ⟨hal, .inl ha, _, rfl⟩
-  split at hs
+    exact .inl ha
+  split at hd
   · rename_i ha
-    obtain rfl := Option.some.inj hs
-    exact ⟨hal, .inr ha.1, _, rfl⟩
+    exact .inr ha.1
+  · cases hd
+
+/-- A device read at the UART, as a trace states its address by its number: `Platform.devLoad` at
+the number of the address `a` gives what it gives at `a`. -/
+theorem devLoad_ofNat {P : Platform} {io io' : Io} {a : UInt64} {v : UInt32}
+    (h : P.devLoad io a = some (v, io')) :
+    ∀ y, y = a.toNat → P.devLoad io (UInt64.ofNat y) = some (v, io') := by
+  intro y hy
+  rw [hy, UInt64.ofNat_toNat]
+  exact h
+
+/-- A 32-bit load that `exec` runs is a device load that `Platform.devLoad` gives. -/
+theorem exec_ldrW_devLoad {P : Platform} {t n : Fin 32} {imm : Fin 4096} {s s' : State}
+    (hs : exec P (.ldrW t n imm) s = some s') :
+    (P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val))).isSome = true := by
+  simp only [exec] at hs
+  split at hs
   · cases hs
+  · revert hs
+    cases P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) with
+    | none => intro h; cases h
+    | some _ => intro _; rfl
 
 theorem Vars.set_apply (ρ : Vars) (x : Nat) (v : Val) (y : Nat) :
     ρ.set x v y = if y = x then some v else ρ y := rfl
@@ -377,6 +379,27 @@ theorem devRead_31 (s : State) {t : Fin 32} (ht : t.val = 31) (v : UInt32) :
     ({ s with pc := s.pc + 4 } : State) = s.devRead t v := by
   unfold State.devRead
   rw [setX_eq_setRegAt, setRegAt_31 ht]
+
+theorem setRegAt_io (s : State) (i : Nat) (v : UInt64) (io : Io) :
+    setRegAt { s with io } i v = { setRegAt s i v with io } := by
+  unfold setRegAt
+  split <;> rfl
+
+/-- The state of a 32-bit load of the device's value `v` into register `t`, as a trace writes it
+after the read that leaves the UART's state `io`. -/
+theorem devRead_io_eq (s : State) (t : Fin 32) (v : UInt32) (io : Io) :
+    ({ setRegAt { s with io } t.val (UInt64.ofNat v.toNat) with pc := s.pc + 4 } : State) =
+      { s.devRead t v with io } := by
+  rw [setRegAt_io]
+  have h := devRead_eq s t v.toNat_lt
+  rw [UInt32.ofNat_toNat] at h
+  rw [← h]
+
+/-- The state of a 32-bit load of the device's value into register 31, which discards the value,
+after the read that leaves the UART's state `io`. -/
+theorem devRead_io_31 (s : State) {t : Fin 32} (ht : t.val = 31) (v : UInt32) (io : Io) :
+    ({ s with pc := s.pc + 4, io } : State) = { s.devRead t v with io } := by
+  rw [← devRead_31 s ht v]
 
 theorem x_lt {s : State} {n : Fin 32} (h : n.val < 31) : s.x n = regAt s n.val := by
   unfold State.x regAt

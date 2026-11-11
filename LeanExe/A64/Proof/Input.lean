@@ -95,7 +95,8 @@ theorem exec_ldrW_fr {s : State} {t n : Fin 32} {imm : Fin 4096} (hn : n.val < 3
     exec P (.ldrW t n imm) s = some { s.devRead t (P.rx.fr s.io.rxNext s.io.rxPolls) with
       io := { s.io with rxPolls := s.io.rxPolls + 1 } } := by
   have hsp : s.spAligned n = true := by simp [State.spAligned, show n.val ≠ 31 by omega]
-  simp only [exec, State.xsp_eq_x hn, ha, hsp, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
+  simp only [exec, Platform.devLoad, State.xsp_eq_x hn, ha, hsp, Bool.not_true,
+    Bool.false_eq_true, ↓reduceIte, Option.map]
 
 /-- A 32-bit load of UARTDR after a poll that found RXFE clear returns the byte's word and moves
 to the next byte. -/
@@ -106,8 +107,8 @@ theorem exec_ldrW_dr {s : State} {t n : Fin 32} {imm : Fin 4096} (hn : n.val < 3
       io := { s.io with rxNext := s.io.rxNext + 1, rxPolls := 0 } } := by
   have hsp : s.spAligned n = true := by simp [State.spAligned, show n.val ≠ 31 by omega]
   have hne : ¬ P.uart = P.uart + 0x18 := ne_add_18 _
-  simp only [exec, State.xsp_eq_x hn, ha, hsp, hne, hw, Bool.not_true, Bool.false_eq_true,
-    and_self, ↓reduceIte]
+  simp only [exec, Platform.devLoad, State.xsp_eq_x hn, ha, hsp, hne, hw, Bool.not_true,
+    Bool.false_eq_true, and_self, ↓reduceIte, Option.map]
 
 /-- One pass of the poll loop of `readByte` at `a`, from the load of UARTFR to the `CBNZ`: X10
 holds 0x10 while RXFE is set and 0 once it is clear, and the count of polls rises by 1. -/

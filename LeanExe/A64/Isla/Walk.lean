@@ -3,15 +3,17 @@ import LeanExe.A64.Isla.Profile
 
 /-!
 The walk of the traces of the load and store forms, which the theorems of `LDR`, `LDR Wt`, `STR`,
-and `STRB` in `tests/TestSupport/A64/Isla` share.  A trace of a memory form holds hundreds of events.
-On a hypothesis or goal that holds the trace's literal, a step of `isla_fwd` or `isla_walk` costs
-the size of the remaining trace, since `rw` and `simp` traverse it.  `isla_nodes F` gives each node
-of the trace of `F` a definition that names the nodes below it, so that a path's hypothesis or goal
-holds one event and the name of the rest, and a step costs the size of an event.  `isla_ctx F π`
+and `STRB` in `tests/TestSupport/A64/Isla` share.  A trace of a memory form holds hundreds of
+events.  On a hypothesis or goal that holds the trace's literal, a step of `isla_fwd` or
+`isla_walk` costs the size of the remaining trace, since `rw` and `simp` traverse it.
+`isla_nodes F` gives each node of the trace of `F` a definition that names the nodes below it, so
+that a path's hypothesis or goal holds one event and the name of the rest, and a step costs the
+size of an event.  `isla_ctx F π`
 evaluates the premise of `Agrees` on the registers outside the model once for each footprint.
 `mem_fwd` takes a path's hypothesis through the trace, and `mem_bwd` builds the path to `exec`'s
 state, giving each declared variable, through `mem_wit`, the value that the first event reading it
-reads.  `dev_bwd` builds the path of a load at the UART for a given 32-bit value of the device.
+reads.  `dev_bwd` builds the path of a load at the UART, giving the variable of the device's
+value the value of a given 32-bit word, the one that `Platform.devLoad` gives.
 
 `run_congr` and `runSome_congr` keep `simp` out of the trace of a path and its variables, which a
 walk extends with values that `simp` already evaluated.  A module that walks a trace declares them
@@ -619,8 +621,8 @@ macro_rules
       | focus (rw [ite_eq_left]; rotate_left; ($d))))
 
 /-- Builds a path of the trace of a device load as `mem_bwd` does, giving the variable of 32 bits
-that the trace declares for the device's value the value of the 32-bit word `v`, and every other
-declared variable the value of `mem_wit`. -/
+that the trace declares for the device's value the value of the 32-bit word `v`, which must be the
+value that `Platform.devLoad` gives, and every other declared variable the value of `mem_wit`. -/
 syntax "dev_bwd " term:max " using " tacticSeq " with " "[" Lean.Parser.Tactic.simpLemma,* "]" :
   tactic
 macro_rules
