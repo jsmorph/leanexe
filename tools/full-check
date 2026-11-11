@@ -564,12 +564,12 @@ step_clightn() {
     return 0
   fi
   run 7-clightn clightn/check.sh --mutations "$tree"
-  found=$(last '^clightn: ([0-9]+) relations with ([0-9]+) constructors and ([0-9]+) statements agree in Rocq and Lean.*$' \
-    '\1 \2 \3' "$log")
+  found=$(last '^clightn: ([0-9]+) relations with ([0-9]+) constructors, ([0-9]+) constants?, and ([0-9]+) statements agree in Rocq and Lean.*$' \
+    '\1 \2 \3 \4' "$log")
   if [ "$code" -eq 0 ] && [ -n "$found" ]; then
     set -- $found
-    cell="$(nouns "$1" relation relations) with $(c "$2") constructors and"
-    cell+=" $(nouns "$3" statement statements) agree in Rocq and Lean, each proved in both;"
+    cell="$(nouns "$1" relation relations) with $(c "$2") constructors, $(nouns "$3" constant constants),"
+    cell+=" and $(nouns "$4" statement statements) agree in Rocq and Lean, each proved in both;"
     cell+=" $(matches '^clightn: the check found exactly the [0-9]+ planted differences$' "$log")"
     cell+=" groups of planted errors reported"
   fi
