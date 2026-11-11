@@ -42,6 +42,7 @@ theorem Tle.propagate_meets {logTab expTab s1 s2 : Array UInt64} {t : Interval}
     have hnw : ¬Tle.WellFormed s1 s2 := fun hw => h0 ((Tle.read_status s1 s2 h1 h2).mpr hw)
     exact ⟨⟨fun _ => hnw, fun _ => h10⟩, fun _ _ hw => absurd hw hnw⟩
 
+set_option maxRecDepth 100000 in
 /-- The export `sgp4Box` returns, for every element set and time in its input intervals, a
 result whose intervals of status 0 or 6 contain the model's position and velocity and whose
 status other than 7 is the model's. -/
@@ -53,7 +54,7 @@ theorem sgp4Box_master :
         ∀ el t', Input x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1 el →
           Encloses x.2.2.2.2.2.2.2 t' → BoxMeets b el t') :=
   .of_trapFree boxCompiled.sgp4Box.trapFree (Verified.tables_at [0, 1, 2, 3] (by decide) rfl)
-    (by decide +kernel) (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
+    (by decide +kernel) (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ _ _ _ _ _ hi ht => box_meets hi ht
 
 /-- The element set of binary64 values, as real numbers. -/
@@ -61,6 +62,7 @@ noncomputable def valuesOf (n e incl node argp m bstar : Float) : Model.Elements
   ⟨value n.toBits, value e.toBits, value incl.toBits, value node.toBits, value argp.toBits,
     value m.toBits, value bstar.toBits⟩
 
+set_option maxRecDepth 100000 in
 /-- The export `sgp4BoxAround`, called on binary64 values, returns a result that meets
 `BoxMeets` for the element set and the time of those values. -/
 theorem sgp4BoxAround_master :
@@ -70,11 +72,13 @@ theorem sgp4BoxAround_master :
         BoxMeets b (valuesOf x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1)
           (value x.2.2.2.2.2.2.2.toBits)) :=
   .of_trapFree boxCompiled.sgp4BoxAround.trapFree
-    (Verified.tables_at [0, 1, 2, 3] (by decide) rfl) (by decide +kernel) (fun _ _ _ _ h => h)
+    (Verified.tables_at [0, 1, 2, 3] (by decide) rfl) (by decide +kernel)
+    (fun _ _ _ _ _ => trivial)
     (fun _ _ _ _ _ h => h)
     fun _ _ _ _ _ _ => box_meets ⟨Omm.around_value, Omm.around_value, Omm.around_value, Omm.around_value,
       Omm.around_value, Omm.around_value, Omm.around_value⟩ Omm.around_value
 
+set_option maxRecDepth 100000 in
 /-- The export `Tle.propagate`, called on two lines of words and an interval of time, returns
 status 10 exactly for lines without the layout `WellFormed`, and otherwise a result that meets
 `BoxMeets` for the element set that the digits denote and every time in the interval. -/
@@ -86,7 +90,11 @@ theorem propagate_master :
           ∀ t', Encloses x.2.2 t' → Tle.WellFormed x.1 x.2.1 →
             BoxMeets b (Tle.elements x.1 x.2.1) t') :=
   .of_trapFree boxCompiled.propagate.trapFree (Verified.tables_at [0, 1, 2, 3] (by decide) rfl)
-    (by decide +kernel) (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
+    (by decide +kernel) (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ _ _ ⟨h1, h2⟩ => Tle.propagate_meets h1 h2
+
+#print axioms sgp4Box_master
+#print axioms sgp4BoxAround_master
+#print axioms propagate_master
 
 end Demos.Sgp4

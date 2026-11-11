@@ -1,4 +1,5 @@
 import Demos.Sgp4.BoxVerified
+import Demos.Sgp4.BoxMaster
 import Demos.Sgp4.TleSound
 import Demos.Sgp4.Latitude
 import Demos.Sgp4.TwoBody
@@ -21,6 +22,9 @@ import Demos.Sgp4.TwoBody
 #print axioms Demos.Sgp4.Tle.read_encloses
 #print axioms Demos.Sgp4.Tle.propagate_sound
 #print axioms Demos.Sgp4.Tle.propagate_status
+#print axioms Demos.Sgp4.sgp4Box_master
+#print axioms Demos.Sgp4.sgp4BoxAround_master
+#print axioms Demos.Sgp4.propagate_master
 #print axioms Demos.Sgp4.boxCompiled.bytes
 #print axioms Demos.Sgp4.boxCompiled.sgp4Box.implements
 #print axioms Demos.Sgp4.boxCompiled.sgp4BoxAround.implements
