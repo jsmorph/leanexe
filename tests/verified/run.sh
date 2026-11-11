@@ -25,7 +25,9 @@
 # it runs the axiom audit of tests/passivesafety/Axioms.lean, and with --cases passivesafety it
 # checks the check's file theorem module as well.  For the orbit-determination programs, it runs
 # the axiom audit of tests/orbit/Axioms.lean, and with --cases gibbs or --cases lambert it checks
-# that module's file theorems.  Each audit fails the run
+# that module's file theorems.  For the screening program, it runs the axiom audit of
+# tests/screening/Axioms.lean, and with --cases screening it checks the program's file theorem
+# module as well.  Each audit fails the run
 # when a report names an axiom
 # beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
@@ -139,6 +141,8 @@ elif [ "$case_module" = "accuracy" ]; then
   cases_exe=verified-cases-accuracy
 elif [ "$case_module" = "attitude" ]; then
   cases_exe=verified-cases-attitude
+elif [ "$case_module" = "screening" ]; then
+  cases_exe=verified-cases-screening
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "passivesafety" ]; then
@@ -188,6 +192,10 @@ if [ -z "$reference" ]; then
   if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
   if [ "$case_module" = "attitude" ]; then
     targets+=(Demos.Attitude.Verified $(imports Demos/Attitude/File.lean))
+  fi
+  if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
+  if [ "$case_module" = "screening" ]; then
+    targets+=(Demos.Screening.Verified $(imports Demos/Screening/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
@@ -363,6 +371,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then
   check_axioms tests/attitude/Axioms.lean
   if [ "$case_module" = "attitude" ]; then
     check_file attitude Demos.Attitude.Verified Demos/Attitude/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then
+  check_axioms tests/screening/Axioms.lean
+  if [ "$case_module" = "screening" ]; then
+    check_file screening Demos.Screening.Verified Demos/Screening/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then

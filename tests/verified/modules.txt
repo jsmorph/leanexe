@@ -175,3 +175,4 @@ Examples.Trees.Compiled:Examples.Trees.compiled.module:exampleTrees
 Verified.Examples.Signed:Verified.Examples.Signed.compiled.module:signed
 Examples.Floor.Compiled:Examples.Floor.compiled.module:floor
 Examples.Convert.Compiled:Examples.Convert.compiled.module:convert
+Demos.Screening.Verified:Demos.Screening.compiled.module:screening
