@@ -236,7 +236,7 @@ Each planted error is a copy of the reference or the converter with one change o
 | In the converter, an overvote written as an empty field | The round trip of every contest |
 | In the converter, the candidates' indices reversed | The round trip of every contest |
 
-The batch and tie errors fail no comparison with the County's reports, so only the edge cases detect them.  The expectations stated by hand come from the reference's author, who read the requirements in the same way when writing the reference.  A misreading shared by the reference and those expectations passes both, and the requirements call for a reviewer to check the smallest reports by hand.
+The batch and tie errors fail no comparison with the County's reports, so only the edge cases detect them.  The expectations stated by hand come from the reference's author, who read the requirements in the same way when writing the reference.  A misreading shared by the reference and those expectations passes both, so reviewers who had not read the reference worked out the edge cases again from the requirements, as [the review's hand check](../../Demos/Rcv/review.md#hand-check-of-the-edge-cases) records, and found every expectation and every report they derived equal to the script's.
 
 ## RCTab
 
