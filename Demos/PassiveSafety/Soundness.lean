@@ -150,13 +150,13 @@ theorem runs_eq {N j k : UInt64} (hN : N.toNat ≤ 16) (hj : j.toNat ≤ 2 * N.t
   · have hj0 : (j == 0) = false := by
       rw [beq_eq_false_iff_ne]
       intro h; subst h; simp at h0
-    rw [hj0, if_neg Bool.false_ne_true, if_neg h0]
+    rw [hj0, ite_eq_right Bool.false_ne_true, ite_eq_right h0]
     by_cases hle : j.toNat ≤ N.toNat
-    · rw [if_pos (UInt64.le_iff_toNat_le.mpr hle), if_pos hle, bne, bne, hbeq]
+    · rw [ite_eq_left (UInt64.le_iff_toNat_le.mpr hle), ite_eq_left hle, bne, bne, hbeq]
     · have hgt : ¬ j ≤ N := fun h => hle (UInt64.le_iff_toNat_le.mp h)
       have hsub : (j - N).toNat = j.toNat - N.toNat :=
         UInt64.toNat_sub_of_le j N (UInt64.le_iff_toNat_le.mpr (by omega))
-      rw [if_neg hgt, if_neg hle]
+      rw [ite_eq_right hgt, ite_eq_right hle]
       exact decide_eq_decide.mpr (by rw [UInt64.lt_iff_toNat_lt, hk1, hsub])
 
 /-! ### Enclosures of positions and states -/
@@ -666,7 +666,7 @@ theorem square_bound {x : Float} (hx : Finite x.toBits) (h0 : 0 ≤ value x.toBi
     rw [hz]
     exact ⟨c.2.2.1, by simpa using c.2.2.2.2⟩
 
-theorem sqrtDown_le {x : Float} (hx : Finite x.toBits) :
+theorem sqrtDown_le (x : Float) :
     Finite (sqrtDown x).toBits ∧ value (sqrtDown x).toBits ≤ √(value x.toBits) := by
   unfold sqrtDown
   by_cases hs : (sqrt (point x)).status = 0
@@ -686,12 +686,11 @@ theorem sqrtDown_le {x : Float} (hx : Finite x.toBits) :
 
 /-- The returned bound `fmax d (sqrtDown L)` lies between `d` and every quantity whose square is
 at least `d²` and `L`. -/
-theorem bound_between {d L : Float} {q : ℝ} (hd : Finite d.toBits) (hL : Finite L.toBits)
-    (h0 : 0 ≤ value d.toBits) (hq : 0 ≤ q) (h1 : value d.toBits ^ 2 ≤ q ^ 2)
+theorem bound_between {d L : Float} {q : ℝ} (hd : Finite d.toBits) (h0 : 0 ≤ value d.toBits) (hq : 0 ≤ q) (h1 : value d.toBits ^ 2 ≤ q ^ 2)
     (h2 : value L.toBits ≤ q ^ 2) :
     value d.toBits ≤ value (fmax d (sqrtDown L)).toBits ∧
       value (fmax d (sqrtDown L)).toBits ≤ q := by
-  obtain ⟨fs, vs⟩ := sqrtDown_le hL
+  obtain ⟨fs, vs⟩ := sqrtDown_le L
   obtain ⟨-, v⟩ := fmax_value hd fs
   rw [v]
   refine ⟨le_max_left _ _, max_le ?_ ?_⟩
@@ -859,9 +858,9 @@ theorem Valid.exists {xs : Array Float} {N : UInt64} (hv : Valid xs N) :
     obtain ⟨-, -, -, hx, hy, hz⟩ := hv.burns i hi
     simpa [List.getElem_ofFn] using ⟨hx, hy, hz⟩
 
-theorem bound_lower {d L : Float} (hd : Finite d.toBits) (hL : Finite L.toBits) :
+theorem bound_lower {d L : Float} (hd : Finite d.toBits) :
     value d.toBits ≤ value (fmax d (sqrtDown L)).toBits := by
-  obtain ⟨fs, -⟩ := sqrtDown_le hL
+  obtain ⟨fs, -⟩ := sqrtDown_le L
   obtain ⟨-, v⟩ := fmax_value hd fs
   rw [v]
   exact le_max_left _ _
@@ -932,9 +931,7 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
         · simp only [h0, ite_true] at h ⊢
           have d0 : 0 ≤ value (rd xs 2).toBits := hd0
           have r0 : 0 ≤ value (rd xs 3).toBits := hr0
-          obtain ⟨⟨s0, hs0⟩, ⟨bs0, hb0⟩⟩ := hv.exists
-          obtain ⟨fL, fR, -⟩ := scan_sound hv fd fr (beq_iff_eq.mp h0) hs0 hb0
-          refine ⟨hv.n_pos, hv.horizon_pos, hd0, hr0, bound_lower f2 fL, bound_lower f3 fR,
+          refine ⟨hv.n_pos, hv.horizon_pos, hd0, hr0, bound_lower f2, bound_lower f3,
             fun s bs hbox hplan j hj => ?_⟩
           obtain ⟨-, -, hb⟩ := scan_sound hv fd fr (beq_iff_eq.mp h0) hbox hplan
           obtain ⟨hsep, hrc⟩ := hb j (by omega)
@@ -942,12 +939,12 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
           · obtain ⟨a, b⟩ := hsep t h1 h2
             have hq : 0 ≤ sepSq xs s bs j t := by unfold sepSq; positivity
             have e : √(sepSq xs s bs j t) ^ 2 = sepSq xs s bs j t := Real.sq_sqrt hq
-            exact (bound_between (q := √(sepSq xs s bs j t)) f2 fL d0 (Real.sqrt_nonneg _)
+            exact (bound_between (q := √(sepSq xs s bs j t)) f2 d0 (Real.sqrt_nonneg _)
               (by rw [e]; exact vd.trans a) (by rw [e]; exact b)).2
           · obtain ⟨a, b⟩ := hrc t h1 h2
             have hq : 0 ≤ rcSqAt xs s bs j t := by unfold rcSqAt; positivity
             have e : √(rcSqAt xs s bs j t) ^ 2 = rcSqAt xs s bs j t := Real.sq_sqrt hq
-            exact (bound_between (q := √(rcSqAt xs s bs j t)) f3 fR r0 (Real.sqrt_nonneg _)
+            exact (bound_between (q := √(rcSqAt xs s bs j t)) f3 r0 (Real.sqrt_nonneg _)
               (by rw [e]; exact vr.trans a) (by rw [e]; exact b)).2
         · simp only [h0, Bool.false_eq_true, ite_false] at h
           exact absurd (beq_iff_eq.mpr h) h0
