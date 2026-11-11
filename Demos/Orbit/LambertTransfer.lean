@@ -4,12 +4,9 @@ import Demos.Orbit.LambertTime
 /-!
 The transfer that an accepted result of Lambert's program states.  `lambertBox_accepts` states
 that status 0 shows `t > 0`, `μ > 0`, and `(r1 × r2) · k ≠ 0` for every input in the boxes, and
-`lambertBox_transfer` combines L4 with the theorems on Izzo's orbit: for every input in the
-boxes, the intervals contain the root `x*` and Izzo's velocities `v1` and `v2` at it, the states
-`(r1, v1)` and `(r2, v2)` have one orbit whose angular momentum `h` has `h · k > 0`, a
-velocity at `r1` starts an elliptic transfer to `r2` in the time `t` in the direction of `k`
-exactly when `x* < 1` and it is `v1`, and when `x* < 1` a solution of Newton's equation goes
-from `(r1, v1)` to `(r2, v2)` in the time `t`.
+`lambertBox_transfer` combines L4 with `lambert_newton`: for every input in the boxes, exactly
+one solution of Newton's equation starts at `r1` in the direction of `k` and first reaches `r2`
+at the time `t`, and the six intervals of the result contain its velocities at `r1` and `r2`.
 -/
 
 namespace Demos.Orbit
@@ -46,34 +43,36 @@ theorem lambertBox_accepts {x1 y1 z1 x2 y2 z2 t mu : Interval} {kx ky kz : Float
     · exact (cd.neg_of_hi h).ne
   all_goals simp [noTransfer] at hs
 
-/-- **An accepted result states the transfer.**  For a result of `lambertBox` with status 0
-and every input in the boxes, the intervals contain the root `x*` of Izzo's equation and the
-components of Izzo's velocities `v1` at `r1` and `v2` at `r2` at `x*` (L4).  The states
-`(r1, v1)` and `(r2, v2)` have one orbit, whose angular momentum `r1 × v1` has a positive
-component along `k`.  A velocity `v` at `r1` starts a motion in the direction of `k` that first
-reaches `r2` along an ellipse after the time `t` exactly when `x* < 1` and `v = v1`, and when
-`x* < 1` a solution of Newton's equation goes from `(r1, v1)` to `(r2, v2)` in the time `t`. -/
+/-- **An accepted result states the transfer.**  For a result of `lambertBox` with status 0 and
+every input in the boxes, exactly one pair of velocities `(v, v')` has a solution of Newton's
+equation that starts at `(r1, v)` with `(r1 × v) · k > 0` and first reaches `r2` at the time `t`
+with the velocity `v'`, and the intervals of the result contain the components of `v` and `v'`.
+The pair is Izzo's `(v1(x*), v2(x*))` (`lambert_newton`), and the interval of `x` contains `x*`
+(L4). -/
 theorem lambertBox_transfer {x1 y1 z1 x2 y2 z2 t mu : Interval} {kx ky kz : Float}
     (hs : (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).status = 0) {r1 r2 : V3} {t' μ : ℝ}
     (b1 : InBox x1 y1 z1 r1) (b2 : InBox x2 y2 z2 r2) (ht : Contains t t')
     (hμ : Contains mu μ) :
-    Inside (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz)
-        (solution r1 r2 t' μ (axisOf kx ky kz)) ∧
-      orbitOf μ r2 (izzoV2 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) =
-        orbitOf μ r1 (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) ∧
-      0 < dot (cross r1 (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))))
-        (axisOf kx ky kz) ∧
-      (∀ v : V3, (EllipticTransfer μ r1 v r2 t' ∧ 0 < dot (cross r1 v) (axisOf kx ky kz)) ↔
-        (izzoRoot r1 r2 t' μ (axisOf kx ky kz) < 1 ∧
-          v = izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz)))) ∧
-      (izzoRoot r1 r2 t' μ (axisOf kx ky kz) < 1 →
-        NewtonTransfer μ r1
-          (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) r2
-          (izzoV2 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) t') := by
+    (∃! p : V3 × V3,
+        NewtonTransfer μ r1 p.1 r2 p.2 t' ∧ 0 < dot (cross r1 p.1) (axisOf kx ky kz)) ∧
+      ∀ v v' : V3, NewtonTransfer μ r1 v r2 v' t' ∧ 0 < dot (cross r1 v) (axisOf kx ky kz) →
+        InBox (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v1x
+            (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v1y
+            (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v1z v ∧
+          InBox (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v2x
+            (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v2y
+            (lambertBox x1 y1 z1 x2 y2 z2 t mu kx ky kz).v2z v' := by
   obtain ⟨ht0, hμ0, hD⟩ := lambertBox_accepts hs b1 b2 ht hμ
   obtain ⟨-, -, -, hin⟩ := lambertBox_sound hs b1 b2 ht hμ
-  obtain ⟨horb, -, -, -, -, hk⟩ := izzo_orbit hμ0 hD (izzoRoot r1 r2 t' μ (axisOf kx ky kz))
-  exact ⟨hin, horb, hk, lambert_elliptic hμ0 ht0 hD, lambert_newton hμ0 ht0 hD⟩
+  have hL := lambert_newton hμ0 ht0 hD (k := axisOf kx ky kz)
+  refine ⟨⟨(izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz)),
+      izzoV2 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))),
+      (hL _ _).mpr ⟨rfl, rfl⟩, fun p hp => ?_⟩, fun v v' hv => ?_⟩
+  · obtain ⟨h1, h2⟩ := (hL _ _).mp hp
+    exact Prod.ext h1 h2
+  · obtain ⟨rfl, rfl⟩ := (hL _ _).mp hv
+    obtain ⟨-, c1, c2, c3, c4, c5, c6⟩ := hin
+    exact ⟨⟨c1, c2, c3⟩, ⟨c4, c5, c6⟩⟩
 
 /-- **The transfer on endpoints.** -/
 theorem lambertBounds_transfer {x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo
@@ -83,20 +82,21 @@ theorem lambertBounds_transfer {x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2h
     (c1 : Between x1lo x1hi r1.x ∧ Between y1lo y1hi r1.y ∧ Between z1lo z1hi r1.z)
     (c2 : Between x2lo x2hi r2.x ∧ Between y2lo y2hi r2.y ∧ Between z2lo z2hi r2.z)
     (ct : Between tlo thi t') (cμ : Between mulo muhi μ) :
-    Inside (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
-        mulo muhi kx ky kz)
-        (solution r1 r2 t' μ (axisOf kx ky kz)) ∧
-      orbitOf μ r2 (izzoV2 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) =
-        orbitOf μ r1 (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) ∧
-      0 < dot (cross r1 (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))))
-        (axisOf kx ky kz) ∧
-      (∀ v : V3, (EllipticTransfer μ r1 v r2 t' ∧ 0 < dot (cross r1 v) (axisOf kx ky kz)) ↔
-        (izzoRoot r1 r2 t' μ (axisOf kx ky kz) < 1 ∧
-          v = izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz)))) ∧
-      (izzoRoot r1 r2 t' μ (axisOf kx ky kz) < 1 →
-        NewtonTransfer μ r1
-          (izzoV1 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) r2
-          (izzoV2 μ r1 r2 (axisOf kx ky kz) (izzoRoot r1 r2 t' μ (axisOf kx ky kz))) t') := by
+    (∃! p : V3 × V3,
+        NewtonTransfer μ r1 p.1 r2 p.2 t' ∧ 0 < dot (cross r1 p.1) (axisOf kx ky kz)) ∧
+      ∀ v v' : V3, NewtonTransfer μ r1 v r2 v' t' ∧ 0 < dot (cross r1 v) (axisOf kx ky kz) →
+        InBox (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v1x
+            (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v1y
+            (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v1z v ∧
+          InBox (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v2x
+            (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v2y
+            (lambertBounds x1lo x1hi y1lo y1hi z1lo z1hi x2lo x2hi y2lo y2hi z2lo z2hi tlo thi
+              mulo muhi kx ky kz).v2z v' := by
   have hin : (make x1lo x1hi).status = 0 ∧ (make y1lo y1hi).status = 0 ∧
       (make z1lo z1hi).status = 0 ∧ (make x2lo x2hi).status = 0 ∧ (make y2lo y2hi).status = 0 ∧
       (make z2lo z2hi).status = 0 ∧ (make tlo thi).status = 0 ∧ (make mulo muhi).status = 0 := by
