@@ -570,7 +570,7 @@ step_clightn() {
     set -- $found
     cell="$(nouns "$1" relation relations) with $(c "$2") constructors, $(nouns "$3" constant constants),"
     cell+=" and $(nouns "$4" statement statements) agree in Rocq and Lean, each proved in both;"
-    cell+=" $(matches '^clightn: the check found exactly the [0-9]+ planted differences$' "$log")"
+    cell+=" $(matches '^clightn: the check found exactly the planted differences, [0-9]+$' "$log")"
     cell+=" groups of planted errors reported"
   fi
   record "$step" "$(outcome)" "$seconds" "$cell"
