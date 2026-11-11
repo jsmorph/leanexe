@@ -11,7 +11,14 @@ import Library.Graphs.TopologicalSort.Master
 import Library.Graphs.UnionFind.Master
 import Library.Graphs.WeightedUnionFind.Master
 import Library.HashTables.LinearProbing.Master
+import Library.Hashing.Crc.Bitwise.Master
+import Library.Hashing.Crc.Master
+import Library.Hashing.Hmac.Master
 import Library.Hashing.Sha256.Master
+import Library.Hashing.Sha3.Master
+import Library.Hashing.Sha512.Master
+import Library.Hashing.SipHash.Master
+import Library.Hashing.XxHash64.Master
 import Library.Lists.Word.Master
 import Library.Numerics.Arithmetic.BinaryGcd.Master
 import Library.Numerics.Arithmetic.CeilSqrt.Master
@@ -25,6 +32,11 @@ import Library.Numerics.Arithmetic.Uscale.Master
 import Library.Numerics.Float64.Exp.Master
 import Library.Numerics.MultiPrecision.Master
 import Library.Queues.BinaryHeap.Master
+import Library.Random.Lcg.Master
+import Library.Random.ParkMiller.Master
+import Library.Random.Sampling.Master
+import Library.Random.SplitMix64.Master
+import Library.Random.Xorshift.Master
 import Library.Regex.Master
 import Library.Sorting.Find.Master
 import Library.Sorting.Heapsort.Master
@@ -64,7 +76,30 @@ master_registry [
   Library.Graphs.UnionFind.classes_master,
   Library.Graphs.WeightedUnionFind.classes_master,
   Library.HashTables.LinearProbing.hashTable_master,
+  Library.Hashing.Crc.Bitwise.crc32Reg_master,
+  Library.Hashing.Crc.Bitwise.crc32Byte_master,
+  Library.Hashing.Crc.Bitwise.crc32Word_master,
+  Library.Hashing.Crc.crc32_master,
+  Library.Hashing.Crc.crc32c_master,
+  Library.Hashing.Crc.crc32Update_master,
+  Library.Hashing.Crc.crc32cUpdate_master,
+  Library.Hashing.Hmac.hmacSha256_master,
+  Library.Hashing.Hmac.hmacSha512_master,
   Library.Hashing.Sha256.sha256_master,
+  Library.Hashing.Sha256.sha224_master,
+  Library.Hashing.Sha3.sha3_224_master,
+  Library.Hashing.Sha3.sha3_256_master,
+  Library.Hashing.Sha3.sha3_384_master,
+  Library.Hashing.Sha3.sha3_512_master,
+  Library.Hashing.Sha3.shake128_master,
+  Library.Hashing.Sha3.shake256_master,
+  Library.Hashing.Sha512.sha512_master,
+  Library.Hashing.Sha512.sha384_master,
+  Library.Hashing.Sha512.sha512_256_master,
+  Library.Hashing.Sha512.sha512_224_master,
+  Library.Hashing.SipHash.siphash24_master,
+  Library.Hashing.SipHash.siphash13_master,
+  Library.Hashing.XxHash64.xxh64_master,
   Library.Lists.Word.listSum_master,
   Library.Lists.Word.range_master,
   Library.Lists.Word.sum_master,
@@ -95,6 +130,20 @@ master_registry [
   Library.Numerics.MultiPrecision.mul_master,
   Library.Numerics.MultiPrecision.divide_master,
   Library.Queues.BinaryHeap.heapQueue_master,
+  Library.Random.Lcg.step_master,
+  Library.Random.Lcg.advance_master,
+  Library.Random.Lcg.jump_master,
+  Library.Random.ParkMiller.step_master,
+  Library.Random.ParkMiller.advance_master,
+  Library.Random.ParkMiller.seed_master,
+  Library.Random.Sampling.shuffle_master,
+  Library.Random.Sampling.sample_master,
+  Library.Random.Sampling.reservoir_master,
+  Library.Random.SplitMix64.splitMix_master,
+  Library.Random.SplitMix64.unitFloat_master,
+  Library.Random.Xorshift.step_master,
+  Library.Random.Xorshift.advance_master,
+  Library.Random.Xorshift.jump_master,
   Library.Regex.matchWith_master,
   Library.Sorting.Find.select_master,
   Library.Sorting.Heapsort.heapsort_master,
