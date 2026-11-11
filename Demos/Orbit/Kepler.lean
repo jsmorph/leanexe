@@ -1,4 +1,4 @@
-import Demos.Orbit.TwoBody
+import Demos.Orbit.Newton
 import Demos.Sgp4.Kepler
 
 /-!
@@ -15,6 +15,11 @@ time `(M(E₀ + φ) - M(E₀))/n` with the mean anomaly `M(E) = E - ε sin E` (`
 `kepler_radius` that its length is `a (1 - ε cos(E₀ + φ))`.  `keplerTime_strictMono` states that
 the time increases with `φ`, and `keplerPos_inj` that the positions for two values of `φ` less
 than `2π` apart are distinct, so that `EllipticTransfer` names the first arrival at a position.
+
+`keplerAdvance` inverts Kepler's equation, and `kepler_newton` states that the position
+`keplerPos` and the velocity `keplerVel` at the advance `keplerAdvance τ` solve Newton's
+equation `r'' = -μ r/|r|³`: the motion that Kepler's equation describes is the two-body motion of
+`Newton.lean` through the state `(r, v)`.
 -/
 
 namespace Demos.Orbit
@@ -130,7 +135,8 @@ theorem keplerTime_strictMono {μ : ℝ} (hμ : 0 < μ) {r v : V3} (hr : 0 < nor
     (he : 0 < 2 / norm r - dot v v / μ) (hh : 0 < dot (cross r v) (cross r v)) :
     StrictMono (keplerTime μ r v) := by
   obtain ⟨-, hn, -, -, -, -, -, hε⟩ := kepler_basics hμ hr he hh
-  have hm := Sgp4.Kepler.lhs_strictMono (a := eCos μ r v) (b := -eSin μ r v) (by rw [neg_sq]; exact hε)
+  have hm := Sgp4.Kepler.lhs_strictMono (a := eCos μ r v) (b := -eSin μ r v)
+    (by rw [neg_sq]; exact hε)
   intro φ1 φ2 h
   unfold keplerTime
   exact div_lt_div_of_pos_right (by linarith [hm h]) hn
@@ -256,5 +262,173 @@ theorem keplerPos_inj {μ : ℝ} (hμ : 0 < μ) {r v : V3} (hr : 0 < norm r)
   rw [hm0] at hm
   simp at hm
   linarith
+
+/-! ### The motion in time -/
+
+/-- The velocity after the eccentric anomaly advances by `φ`: the rate of `keplerPos` divided
+by the rate `(1 - ε cos(E₀ + φ))/n` of `keplerTime`. -/
+noncomputable def keplerVel (μ : ℝ) (r v : V3) (φ : ℝ) : V3 :=
+  ((1 - eCos μ r v * cos φ + eSin μ r v * sin φ) / meanMotion μ r v)⁻¹ •
+    ((-(semimajor μ r v / norm r * sin φ)) • r +
+      ((norm r / semimajor μ r v * cos φ + eSin μ r v * sin φ) / meanMotion μ r v) • v)
+
+/-- The advance of the eccentric anomaly at the time `τ`: the inverse of `keplerTime`. -/
+noncomputable def keplerAdvance (μ : ℝ) (r v : V3) (τ : ℝ) : ℝ :=
+  Function.invFun (keplerTime μ r v) τ
+
+/-- The rates along one coordinate.  With `F = f p + g q`, the rate `G = D⁻¹ (f' p + g' q)`,
+and the rate `D = (1 - A cos φ + B sin φ)/n` of Kepler's time, `F' = f' p + g' q` and
+`G' = -F/(n D²)`. -/
+theorem kepler_component {a n n1 A B p q : ℝ} (ha : a ≠ 0) (hn : n ≠ 0) (hn1 : n1 ≠ 0)
+    (hA : A = 1 - n1 / a) {φ : ℝ} (hD : 1 - A * cos φ + B * sin φ ≠ 0) :
+    HasDerivAt (fun φ => (1 - a / n1 * (1 - cos φ)) * p +
+        (n1 / a * sin φ + B * (1 - cos φ)) / n * q)
+      ((-(a / n1 * sin φ)) * p + (n1 / a * cos φ + B * sin φ) / n * q) φ ∧
+    HasDerivAt (fun φ => ((1 - A * cos φ + B * sin φ) / n)⁻¹ *
+        ((-(a / n1 * sin φ)) * p + (n1 / a * cos φ + B * sin φ) / n * q))
+      (-((1 - a / n1 * (1 - cos φ)) * p + (n1 / a * sin φ + B * (1 - cos φ)) / n * q) /
+        (n * ((1 - A * cos φ + B * sin φ) / n) ^ 2)) φ := by
+  have hc := hasDerivAt_cos φ
+  have hs := hasDerivAt_sin φ
+  constructor
+  · have h1 := (((hc.const_sub 1).const_mul (a / n1)).const_sub 1).mul_const p
+    have h2 := ((((hs.const_mul (n1 / a)).fun_add ((hc.const_sub 1).const_mul B)).div_const
+      n)).mul_const q
+    exact (h1.fun_add h2).congr_deriv (by ring)
+  · have hD' : (1 - A * cos φ + B * sin φ) / n ≠ 0 := div_ne_zero hD hn
+    have dD := (((hc.const_mul A).const_sub 1).fun_add (hs.const_mul B)).div_const n
+    have dH := ((hs.const_mul (a / n1)).fun_neg.mul_const p).fun_add
+      ((((hc.const_mul (n1 / a)).fun_add (hs.const_mul B)).div_const n).mul_const q)
+    refine ((dD.fun_inv hD').fun_mul dH).congr_deriv ?_
+    have hsq := sin_sq_add_cos_sq φ
+    set D := (1 - A * cos φ + B * sin φ) / n with hDdef
+    set H := (-(a / n1 * sin φ)) * p + (n1 / a * cos φ + B * sin φ) / n * q with hH
+    set F := (1 - a / n1 * (1 - cos φ)) * p + (n1 / a * sin φ + B * (1 - cos φ)) / n * q with hF
+    have key : (-(a / n1 * cos φ) * p + (n1 / a * -sin φ + B * cos φ) / n * q) * D -
+        H * ((-(A * -sin φ) + B * cos φ) / n) = -F / n := by
+      have h1 : a * a⁻¹ = 1 := mul_inv_cancel₀ ha
+      have h2 : n1 * n1⁻¹ = 1 := mul_inv_cancel₀ hn1
+      rw [hDdef, hH, hF, hA]
+      linear_combination (p * a * (1 - n1 / a) / (n1 * n) - q * B / n ^ 2) * hsq +
+        (-(p * n⁻¹)) * h1 + (-(p * n⁻¹ * a * a⁻¹)) * h2
+    have e : -((-(A * -sin φ) + B * cos φ) / n) / D ^ 2 * H +
+        D⁻¹ * (-(a / n1 * cos φ) * p + (n1 / a * -sin φ + B * cos φ) / n * q) =
+        ((-(a / n1 * cos φ) * p + (n1 / a * -sin φ + B * cos φ) / n * q) * D -
+          H * ((-(A * -sin φ) + B * cos φ) / n)) / D ^ 2 := by
+      field_simp
+      ring
+    rw [e, key]
+    field_simp
+
+theorem keplerTime_hasDerivAt (μ : ℝ) (r v : V3) (φ : ℝ) :
+    HasDerivAt (keplerTime μ r v)
+      ((1 - eCos μ r v * cos φ + eSin μ r v * sin φ) / meanMotion μ r v) φ := by
+  have hc := hasDerivAt_cos φ
+  have hs := hasDerivAt_sin φ
+  have h := ((((hasDerivAt_id φ).fun_add (hc.const_mul (-eSin μ r v))).fun_sub
+    (hs.const_mul (eCos μ r v))).add_const (eSin μ r v)).div_const (meanMotion μ r v)
+  exact h.congr_deriv (by ring)
+
+section Motion
+
+variable {μ : ℝ} {r v : V3} (hμ : 0 < μ) (hr : 0 < norm r) (he : 0 < 2 / norm r - dot v v / μ)
+  (hh : 0 < dot (cross r v) (cross r v))
+include hμ hr he hh
+
+theorem keplerTime_surjective : Function.Surjective (keplerTime μ r v) := by
+  obtain ⟨-, hn, -, -, -, -, -, hε⟩ := kepler_basics hμ hr he hh
+  intro τ
+  obtain ⟨φ, hφ⟩ := Sgp4.Kepler.lhs_surjective (a := eCos μ r v) (b := -eSin μ r v)
+    (by rw [neg_sq]; exact hε) (τ * meanMotion μ r v - eSin μ r v)
+  exact ⟨φ, by rw [keplerTime, hφ]; field_simp; ring⟩
+
+theorem keplerTime_advance (τ : ℝ) : keplerTime μ r v (keplerAdvance μ r v τ) = τ :=
+  Function.invFun_eq (keplerTime_surjective hμ hr he hh τ)
+
+theorem keplerAdvance_time (φ : ℝ) : keplerAdvance μ r v (keplerTime μ r v φ) = φ :=
+  Function.leftInverse_invFun (keplerTime_strictMono hμ hr he hh).injective φ
+
+theorem keplerAdvance_zero : keplerAdvance μ r v 0 = 0 := by
+  have := keplerAdvance_time hμ hr he hh 0
+  rwa [keplerTime_zero] at this
+
+theorem keplerAdvance_strictMono : StrictMono (keplerAdvance μ r v) := by
+  intro τ1 τ2 h
+  have hm := keplerTime_strictMono hμ hr he hh
+  rw [← hm.lt_iff_lt, keplerTime_advance hμ hr he hh, keplerTime_advance hμ hr he hh]
+  exact h
+
+theorem keplerAdvance_hasDerivAt (τ : ℝ) :
+    HasDerivAt (keplerAdvance μ r v)
+      ((1 - eCos μ r v * cos (keplerAdvance μ r v τ) + eSin μ r v * sin (keplerAdvance μ r v τ)) /
+        meanMotion μ r v)⁻¹ τ := by
+  obtain ⟨-, hn, -, -, -, -, -, hε⟩ := kepler_basics hμ hr he hh
+  have hcont : Continuous (keplerAdvance μ r v) :=
+    (keplerAdvance_strictMono hμ hr he hh).monotone.continuous_of_surjective
+      fun φ => ⟨keplerTime μ r v φ, keplerAdvance_time hμ hr he hh φ⟩
+  have hD : 0 < 1 - eCos μ r v * cos (keplerAdvance μ r v τ) +
+      eSin μ r v * sin (keplerAdvance μ r v τ) := by
+    have := combo_lt_one hε (sin_sq_add_cos_sq (keplerAdvance μ r v τ)); linarith
+  exact HasDerivAt.of_local_left_inverse hcont.continuousAt
+    (keplerTime_hasDerivAt μ r v _) (div_pos hD hn).ne'
+    (Filter.Eventually.of_forall (keplerTime_advance hμ hr he hh))
+
+theorem keplerVel_zero : keplerVel μ r v 0 = v := by
+  obtain ⟨ha, hn, -, -, -, -, -, -⟩ := kepler_basics hμ hr he hh
+  have h1 : 1 - eCos μ r v = norm r / semimajor μ r v := by rw [eCos]; ring
+  ext <;> simp only [keplerVel, cos_zero, sin_zero, mul_one, mul_zero, add_zero, neg_zero,
+    smul_x, smul_y, smul_z, add_x, add_y, add_z, zero_mul, h1] <;> field_simp <;> ring
+
+/-- **The motion along an elliptic orbit solves Newton's equation.**  The position
+`keplerPos` and the velocity `keplerVel` at the advance of the eccentric anomaly that Kepler's
+equation gives for each time are a solution of `r'' = -μ r/|r|³` through the state `(r, v)`. -/
+theorem kepler_newton :
+    Newton μ (fun τ => keplerPos μ r v (keplerAdvance μ r v τ))
+      (fun τ => keplerVel μ r v (keplerAdvance μ r v τ)) := by
+  obtain ⟨ha, hn, hn2, -, -, -, -, hε⟩ := kepler_basics hμ hr he hh
+  have hA : eCos μ r v = 1 - norm r / semimajor μ r v := rfl
+  have hD : ∀ φ, 0 < 1 - eCos μ r v * cos φ + eSin μ r v * sin φ := fun φ => by
+    have := combo_lt_one hε (sin_sq_add_cos_sq φ); linarith
+  have hΦ := keplerAdvance_hasDerivAt hμ hr he hh
+  have hrad := kepler_radius hμ hr he hh
+  have pos : ∀ τ, 0 < norm (keplerPos μ r v (keplerAdvance μ r v τ)) := fun τ => by
+    rw [hrad]; exact mul_pos ha (hD _)
+  have dpos : ∀ (p q : ℝ) (τ : ℝ),
+      HasDerivAt (fun s => (1 - semimajor μ r v / norm r * (1 - cos (keplerAdvance μ r v s))) * p +
+          (norm r / semimajor μ r v * sin (keplerAdvance μ r v s) +
+            eSin μ r v * (1 - cos (keplerAdvance μ r v s))) / meanMotion μ r v * q)
+        (((1 - eCos μ r v * cos (keplerAdvance μ r v τ) +
+            eSin μ r v * sin (keplerAdvance μ r v τ)) / meanMotion μ r v)⁻¹ *
+          ((-(semimajor μ r v / norm r * sin (keplerAdvance μ r v τ))) * p +
+            (norm r / semimajor μ r v * cos (keplerAdvance μ r v τ) +
+              eSin μ r v * sin (keplerAdvance μ r v τ)) / meanMotion μ r v * q)) τ :=
+    fun p q τ => (((kepler_component (p := p) (q := q) ha.ne' hn.ne' hr.ne' hA
+      (hD (keplerAdvance μ r v τ)).ne').1).comp τ (hΦ τ)).congr_deriv (by ring)
+  have dvel : ∀ (p q : ℝ) (τ : ℝ),
+      HasDerivAt (fun s => ((1 - eCos μ r v * cos (keplerAdvance μ r v s) +
+            eSin μ r v * sin (keplerAdvance μ r v s)) / meanMotion μ r v)⁻¹ *
+          ((-(semimajor μ r v / norm r * sin (keplerAdvance μ r v s))) * p +
+            (norm r / semimajor μ r v * cos (keplerAdvance μ r v s) +
+              eSin μ r v * sin (keplerAdvance μ r v s)) / meanMotion μ r v * q))
+        (-μ * ((1 - semimajor μ r v / norm r * (1 - cos (keplerAdvance μ r v τ))) * p +
+            (norm r / semimajor μ r v * sin (keplerAdvance μ r v τ) +
+              eSin μ r v * (1 - cos (keplerAdvance μ r v τ))) / meanMotion μ r v * q) /
+          norm (keplerPos μ r v (keplerAdvance μ r v τ)) ^ 3) τ := by
+    intro p q τ
+    refine (((kepler_component (p := p) (q := q) ha.ne' hn.ne' hr.ne' hA
+      (hD (keplerAdvance μ r v τ)).ne').2).comp τ (hΦ τ)).congr_deriv ?_
+    have hDτ := hD (keplerAdvance μ r v τ)
+    rw [hrad]
+    generalize keplerAdvance μ r v τ = φ at hDτ ⊢
+    generalize eCos μ r v = A at hDτ ⊢
+    generalize eSin μ r v = B at hDτ ⊢
+    generalize semimajor μ r v = a at ha hn2 ⊢
+    generalize meanMotion μ r v = n at hn hn2 ⊢
+    subst hn2
+    field_simp
+  exact ⟨pos, dpos r.x v.x, dpos r.y v.y, dpos r.z v.z, dvel r.x v.x, dvel r.y v.y,
+    dvel r.z v.z⟩
+
+end Motion
 
 end Demos.Orbit
