@@ -13,6 +13,13 @@
 # VBAR_ELx are symbolic, so the trace covers every value that the kernel may give them.  The
 # opcode is the word 0xD4000001 of SVC #0, with no symbolic field.
 #
+# The traces are the starting point of a check that is not done.  CPACR_EL1, CPTR_EL3, SCR_EL3,
+# MDSCR_EL1, MDCR_EL2, HFGITR_EL2, ZCR_EL2, and HCR_EL2 hold here Isla's defaults or the profile
+# kvm's values, which Linux and its firmware do not hold, so a theorem over these traces would
+# cover no state of a Linux process.  With Linux's CPACR_EL1, 0x310000 (FPEN 0b11 and ZEN 0b01),
+# and its MDSCR_EL1, Isla exceeds 8 GB within 20 s, as it exceeds 16 GB with the control
+# registers symbolic.
+#
 # Usage: tests/isla/svc-traces.sh el1|vhe [DIR]
 # DIR defaults to tests/isla/linux-PROFILE.  The script writes DIR/svc.opcode and DIR/svc.trace and
 # prints "svc SECONDS KIB", the elapsed time and the peak resident memory.
