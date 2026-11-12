@@ -3,14 +3,29 @@
   "goals": [
     "Library.Numerics.Interval.Encloses (fI a b) (f x y) for an interval program fI that evaluates the formula of a real function f",
     "Library.Numerics.Interval.prodRel Library.Numerics.Interval.Encloses R (fI a b) (f x y) for a function that returns a tuple",
-    "Library.Numerics.Interval.Contains b.x (g x y) for a dialect program that evaluates a long real formula on intervals"
+    "Library.Numerics.Interval.Contains b.x (g x y) for a dialect program that evaluates a long real formula on intervals",
+    "the tables of sin, cos, and pow that fI takes, for a body without powers or without tables",
+    "an application of a real function that enclosure_def does not know, such as arctan u",
+    "(deterministic) timeout at whnf from exact against a projection of a structure literal whose other side is an interval program",
+    "Encloses (setup xs).nb x after rw with an equation that states setup as a structure literal"
   ],
   "modules": [
     "Library.Numerics.Interval.Enclose",
     "Library.Numerics.Interval.FunctionsProof",
+    "Library.Numerics.Float64.Trig.Program",
     "Demos.Sgp4.Spec",
     "Demos.Sgp4.KeplerBox",
-    "Demos.Sgp4.BoxSound"
+    "Demos.Sgp4.BoxSound",
+    "Demos.PassiveSafety.Program",
+    "Demos.PassiveSafety.Soundness",
+    "Demos.Screening.Filters",
+    "Demos.Orbit.GibbsBox",
+    "Demos.Orbit.GibbsSound",
+    "Demos.Frames.Enclose",
+    "Demos.Attitude.Program",
+    "Demos.Attitude.Soundness",
+    "Demos.Gate.Soundness",
+    "Demos.Geolocation.Soundness"
   ],
   "declarations": [
     "Library.Numerics.Interval.Encloses",
@@ -23,7 +38,16 @@
     "Library.Numerics.Interval.encloses_ofInt'",
     "Library.Numerics.Interval.encloses_ratio'",
     "Library.Numerics.Interval.Contains.pos_of_lo",
-    "Library.Numerics.Interval.Contains.neg_of_hi"
+    "Library.Numerics.Interval.Contains.neg_of_hi",
+    "Library.Numerics.Float64.Trig.invPi",
+    "Library.Numerics.Float64.Trig.halfPi",
+    "Demos.PassiveSafety.positionI",
+    "Demos.Orbit.noTable",
+    "Demos.Frames.arctanI",
+    "Demos.PassiveSafety.Model.flow",
+    "Demos.Attitude.asinI",
+    "Demos.Geolocation.temeState",
+    "Demos.Geolocation.stateOf_teme"
   ],
   "examples": [
     "Demos.Sgp4.Spec.longPeriod.encloses",
@@ -32,9 +56,26 @@
     "Demos.Sgp4.Kepler.root.encloses",
     "Demos.Sgp4.initStatus_sound",
     "Demos.Sgp4.box_cases",
-    "Demos.Sgp4.sgp4Box_sound"
+    "Demos.Sgp4.sgp4Box_sound",
+    "Demos.Orbit.gibbsCoordsI_tables",
+    "Demos.Frames.arctan.encloses",
+    "Demos.PassiveSafety.flowPosition_eq",
+    "Demos.Attitude.encloses_asinI",
+    "Demos.Screening.object_encl",
+    "Demos.Attitude.triad_sound",
+    "Demos.Gate.terms_sound"
   ],
   "unimported": {
-    "Demos/Sgp4/BoxVerified.lean": ["Demos.Sgp4.boxCompiled"]
+    "Demos/Sgp4/BoxVerified.lean": ["Demos.Sgp4.boxCompiled"],
+    "Demos/Events/Soundness.lean": [
+      "Demos.Events.setup_eq",
+      "Demos.Events.encl_nb",
+      "Demos.Events.field_nb",
+      "Demos.Events.lengthOf"
+    ],
+    "Demos/Avoidance/Soundness.lean": [
+      "Demos.Avoidance.afterCI_encloses",
+      "Demos.Avoidance.encounter_eq"
+    ]
   }
 }

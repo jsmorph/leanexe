@@ -6,9 +6,15 @@
     "a driver that counts axiom reports or saved cases",
     "the self-test of an independent reference",
     "a host script that judges a run on a board or an emulator",
-    "a native test of a theorem statement that has rejected no false variant"
+    "a native test of a theorem statement that has rejected no false variant",
+    "a tolerance as large as the quantity that the check compares"
   ],
   "modules": [],
   "declarations": [],
-  "examples": []
+  "examples": [],
+  "unimported": {
+    "tests/TestSupport/Attitude/QCases.lean": [
+      "TestSupport.Attitude.QCases.turnedResult"
+    ]
+  }
 }

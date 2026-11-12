@@ -1,0 +1,49 @@
+{
+  "id": "real-identities",
+  "goals": [
+    "a vector identity under unit length and orthogonality hypotheses, closed by linear_combination",
+    "linear_combination after field_simp with a coefficient that depends on field_simp's normal form",
+    "an identity that holds modulo sin φ ^ 2 + cos φ ^ 2 = 1",
+    "an identity modulo y ^ 2 = 1 - λ ^ 2 + λ ^ 2 * x ^ 2",
+    "a symmetric matrix with exactly one positive eigenvalue, from the signs of pivots chosen from interval data"
+  ],
+  "modules": [
+    "Demos.Attitude.Bound",
+    "Demos.Attitude.Model",
+    "Demos.Attitude.Inertia",
+    "Demos.Attitude.QSoundness",
+    "Demos.Orbit.LambertOrbit",
+    "Demos.Orbit.LambertTime"
+  ],
+  "declarations": [
+    "Real.sin_sq_add_cos_sq",
+    "div_left_inj'",
+    "Demos.Orbit.xy_of_q",
+    "Demos.Attitude.Sym4.OnePos",
+    "Demos.Attitude.Sym4.onePos_of_neg",
+    "Demos.Attitude.Sym4.onePos_of_pos",
+    "Demos.Attitude.Sym4.negDef_of",
+    "Demos.Attitude.Sym4.onePos_swap",
+    "Demos.Attitude.Sym3",
+    "Demos.Attitude.Sym2",
+    "Demos.Attitude.pivots"
+  ],
+  "examples": [
+    "Demos.Attitude.cross_perp",
+    "Demos.Attitude.act_turn",
+    "Demos.Attitude.Frame.Good.expand",
+    "Demos.Orbit.time_scalar",
+    "Demos.Orbit.izzo_energy",
+    "Demos.Orbit.key_f",
+    "Demos.Orbit.orbit_izzo",
+    "Demos.Attitude.onePos_of_pivots",
+    "Demos.Attitude.QMethod.pivots_enc"
+  ],
+  "unimported": {
+    "Demos/Avoidance/TwoBody.lean": [
+      "Demos.Avoidance.norm_identity",
+      "Demos.Avoidance.sinw_hasDerivAt",
+      "Demos.Avoidance.versw_hasDerivAt"
+    ]
+  }
+}

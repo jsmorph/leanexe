@@ -11,7 +11,11 @@
     "the cause of a check that takes much longer than comparable checks",
     "(kernel) deep recursion detected at a generated start or total theorem of a WASI command",
     "decide +kernel fails on the equality of two long lists",
-    "decide +kernel fails as an application type mismatch although the statement holds"
+    "decide +kernel fails as an application type mismatch although the statement holds",
+    "Tactic `decide` failed ... did not reduce to `isTrue` or `isFalse`, stuck at an irreducible definition, while #eval decide gives true",
+    "several declarations of one proof each evaluate p.translation of verified_compile",
+    "(kernel) deep recursion detected from decide +kernel of ∀ x ∈ l, p x over a long list",
+    "a kernel check after unfold of a definition that matches on a loop"
   ],
   "modules": [
     "Lean.AddDecl",
