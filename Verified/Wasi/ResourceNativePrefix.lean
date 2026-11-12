@@ -22,6 +22,10 @@ theorem advance_bind_cases {World : Type} {host : Host World} {action : Action �
   | loop count state test step continuation =>
     cases advance
     exact Or.inl ⟨_, .loop, (resumeLoop_bind test step continuation next _ _ state).symm⟩
+  | sys call args continuation =>
+    cases advance with
+    | sys_reject fits => exact Or.inl ⟨_, .sys_reject fits, rfl⟩
+    | sys_return fits reply => exact Or.inl ⟨_, .sys_return fits reply, rfl⟩
 
 theorem exec_of_pure {World : Type} {host : Host World} {action : Action α}
     {value : α} (world : World) (pure : action = .pure value) :

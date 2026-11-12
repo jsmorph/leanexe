@@ -27,6 +27,13 @@ def observedHost (host : Host World) : Host (Observed World) where
   write_exited h := host.write_exited h.1
   exit_recorded h := host.exit_recorded h.1
   exitTrap_exited h := host.exitTrap_exited h.1
+  sys before call args reply after :=
+    host.sys before.world call args reply after.world ∧
+      after.events = before.events ++ [.sys call args reply]
+  reported state call := host.reported state.world call
+  sys_bound h := host.sys_bound h.1
+  sys_exited h := host.sys_exited h.1
+  sys_reports h named := host.sys_reports h.1 named
 
 theorem exec_observed {World : Type} {host : Host World} {action : Action α}
     {initial final : Observed World} {trace : List Event} {outcome : Outcome α}
@@ -41,7 +48,7 @@ theorem exec_observed {World : Type} {host : Host World} {action : Action α}
       initial trace outcome final _ =>
       LoopExec host remaining index state test step next initial.world trace outcome final.world ∧
         final.events = initial.events ++ trace)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
   · intro α world value
     exact ⟨.pure world.world value, (List.append_nil _).symm⟩
   · intro α capacity next world final trace outcome hCapacity _ ih
@@ -64,6 +71,14 @@ theorem exec_observed {World : Type} {host : Host World} {action : Action α}
     exact ⟨.exitTrap hHost.1, hHost.2⟩
   · intro σ α count init test step next world final trace outcome _ ih
     exact ⟨.loop ih.1, ih.2⟩
+  · intro α call args next world final trace outcome hFits _ ih
+    exact ⟨.sys_reject hFits ih.1, ih.2⟩
+  · intro α call args next world after final trace outcome errno committed hFits hHost _ ih
+    refine ⟨.sys_return hFits hHost.1 ih.1, ?_⟩
+    rw [ih.2, hHost.2, List.append_assoc]
+    rfl
+  · intro α call args next world after message committed hFits hHost
+    exact ⟨.sys_trap hFits hHost.1, hHost.2⟩
   · intro σ α index state test step next world final trace outcome _ ih
     exact ⟨.zero ih.1, ih.2⟩
   · intro σ α remaining index state test step next world final trace outcome hTest _ ih

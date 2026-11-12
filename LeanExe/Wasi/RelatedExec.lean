@@ -89,6 +89,16 @@ theorem Action.Rel.exec {World : Type} {host : Host World} {relation : α → β
           obtain ⟨result, execution, values⟩ :=
             LoopExec.transfer tests ihStep ihNext count.toNat initial execution
           exact ⟨result, .loop execution, values⟩
+  | sys call args next ih =>
+      intro world trace outcome final execution
+      cases execution with
+      | sys_reject fits execution =>
+          obtain ⟨result, execution, values⟩ := ih _ _ _ _ _ execution
+          exact ⟨result, .sys_reject fits execution, values⟩
+      | sys_return fits hostReply execution =>
+          obtain ⟨result, execution, values⟩ := ih _ _ _ _ _ execution
+          exact ⟨result, .sys_return fits hostReply execution, values⟩
+      | sys_trap fits hostReply => exact ⟨_, .sys_trap fits hostReply, .trapped _⟩
 
 theorem Action.Rel.exec_back {World : Type} {host : Host World} {relation : α → β → Prop}
     {left : Action α} {right : Action β} (related : Action.Rel relation left right)

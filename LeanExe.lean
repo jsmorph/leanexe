@@ -465,6 +465,7 @@ import LeanExe.WGSL.Syntax
 import LeanExe.WGSL.Translate
 import LeanExe.WGSL.TranslateStmt
 import LeanExe.Wasi
+import LeanExe.Wasi.NativeCalls
 import LeanExe.Native
 import LeanExe.Dialect.Lemmas
 import LeanExe.Dialect.ArrayLemmas

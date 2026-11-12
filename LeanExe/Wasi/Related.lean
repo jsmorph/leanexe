@@ -33,6 +33,10 @@ inductive Action.Rel : {α β : Type} → (α → β → Prop) → Action α →
       (next : ∀ left right, states left right → Rel relation (leftNext left) (rightNext right)) :
       Rel relation (.loop count leftState leftTest leftStep leftNext)
         (.loop count rightState rightTest rightStep rightNext)
+  | sys {relation : α → β → Prop} (call : Call) (args : List Arg)
+      {left : Reply → Action α} {right : Reply → Action β}
+      (next : ∀ reply, Rel relation (left reply) (right reply)) :
+      Rel relation (.sys call args left) (.sys call args right)
 
 namespace Action.Rel
 
@@ -47,6 +51,7 @@ theorem refl (action : Action α) : Rel Eq action action := by
       · intro index left right h; cases h; rfl
       · intro index left right h; cases h; exact hStep index left
       · intro left right h; cases h; exact hNext left
+  | sys call args next ih => exact .sys call args ih
 
 theorem mono {relation other : α → β → Prop} {left : Action α} {right : Action β}
     (h : Rel relation left right) (weaken : ∀ a b, relation a b → other a b) :
@@ -58,6 +63,7 @@ theorem mono {relation other : α → β → Prop} {left : Action α} {right : A
   | exit code => exact .exit code
   | loop count initial test step next _ ih =>
       exact .loop count initial test step (fun a b h => ih a b h weaken)
+  | sys call args next ih => exact .sys call args (fun reply => ih reply weaken)
 
 theorem symm {relation : α → β → Prop} {left : Action α} {right : Action β}
     (h : Rel relation left right) : Rel (fun b a => relation a b) right left := by
@@ -69,6 +75,7 @@ theorem symm {relation : α → β → Prop} {left : Action α} {right : Action 
   | loop count initial test step next hStep hNext =>
       exact .loop count initial (fun i a b h => (test i b a h).symm)
         (fun i a b h => hStep i b a h) (fun a b h => hNext b a h)
+  | sys call args next ih => exact .sys call args ih
 
 theorem bind {relation : α → β → Prop} {results : γ → δ → Prop}
     {left : Action α} {right : Action β} {leftNext : α → Action γ} {rightNext : β → Action δ}
@@ -82,6 +89,7 @@ theorem bind {relation : α → β → Prop} {results : γ → δ → Prop}
   | exit code => exact .exit code
   | loop count initial test step continuation _ ih =>
       exact .loop count initial test step (fun a b h => ih a b h next)
+  | sys call args continuation ih => exact .sys call args (fun reply => ih reply next)
 
 theorem map (flatten : α → β) (action : Action α) :
     Rel (fun native flat => flat = flatten native) action
