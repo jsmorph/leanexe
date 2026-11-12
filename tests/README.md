@@ -4,9 +4,10 @@
 
 | Change or question | Checks and their scope |
 |---|---|
+| The modules and checks that a change reaches | [`tools/affected`](../tools/affected) prints the changed and affected modules, the targets to build, the names for `tests/verified/run.sh --cases`, and the other checks of the changed files, as [the tools guide](../tools/README.md#repository-checks) describes. |
 | Documentation or repository layout | [`tools/check-doc-links.mjs`](../tools/check-doc-links.mjs) checks local links, section anchors, and reachability from the root README.  [`tools/source-layout`](../tools/source-layout) checks source imports and the verified module registry. |
 | Runtime or pipeline | [`tests/verified/run.sh`](verified/run.sh) runs the cases of every registered module, and fails on a module without a case unless [the list of other drivers](verified/no-cases.txt) names it: [`tests/modules/run.sh`](modules/run.sh) runs the module cases of `euler` and of `shapes`, and `tests/gpt/run.sh` those of `gpt`.  [`tests/modules/chunks.py`](modules/chunks.py) runs command streams on a book side through the verified `insert.wasm` whole, in chunks, and one command at a time.  [`tools/full-check`](../tools/full-check) runs `tests/verified/run.sh` and, after it passes, `tests/modules/chunks.py`. |
-| Verified compiler or a pure program it compiles | [`tests/verified/run.sh`](verified/run.sh) builds its targets, emits modules, validates them, and compares their cases with native Lean.  Cases can state retained blocks and allocation limits as well as results.  [The Verified Compiler Manual](../docs/verified-manual.md#module-cases) describes focused runs. |
+| Verified compiler or a pure program it compiles | [`tests/verified/run.sh`](verified/run.sh) builds its targets, emits modules, validates them, and compares their cases with native Lean.  Cases can state retained blocks and allocation limits as well as results.  [The Verified Compiler Manual](../docs/verified-manual.md#module-cases) describes focused runs.  It skips a check whose inputs have not changed since a recorded pass, unless `--no-cache` is given, and `--fast` builds the package without the kernel's checks, as [the manual's section on recorded checks](../docs/verified-manual.md#recorded-checks) explains. |
 | Encoding or decoding | [`tests/decoder/DecodeTest.lean`](decoder/DecodeTest.lean) decodes the official WebAssembly testsuite.  [`tests/decoder/TableProfile.lean`](decoder/TableProfile.lean) covers the narrow table and export forms used by WASI.  [The encoding guide](../LeanExe/Encoding/README.md#tests) gives their setup. |
 | Talos, the WebAssembly semantics of the theorems | [`tests/talos/run.sh`](talos/run.sh) runs the testsuite runner of the pinned CodeLib revision over the official WebAssembly testsuite.  It fails on a failed command, an interpreter error, or exhausted fuel, and on any difference from the report that CodeLib commits.  It needs CodeLib's `vendor/testsuite` submodule and `wasm-tools` 1.251.0, and its outputs are in `build/talos/`. |
 | Numerical algorithms | [`tests/verified/run.sh`](verified/run.sh) checks numerical byte and file theorems and runs the native accuracy checks under [test support](TestSupport/Numerics).  The [algorithm guides](../Library/README.md) state test inputs, reference comparisons, and the scope of the proved results. |
@@ -39,7 +40,10 @@ holds case generators, result formatting, and numerical reference calculations.
 
 Default output directories are under `build/`.  The native execution drivers recreate
 `build/native/run/` and `build/native/verified/`.  The verified driver adds to `build/verified/`
-without clearing it, and its byte check writes `build/byte-check/verified/`.
+without clearing it, records its passing checks in `build/verified-checks/`, and its byte check
+writes `build/byte-check/verified/`.  A fast build writes the package's modules to
+`.lake/build-fast/`, as [the manual's section on fast builds](../docs/verified-manual.md#fast-builds)
+explains.
 
 `tests/verified/run.sh --check-bytes DIR` reads reference modules from `DIR`, writes fresh emissions
 to `build/byte-check/verified/`, and fails at the first module whose bytes differ.  It leaves
