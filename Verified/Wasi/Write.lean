@@ -1,3 +1,4 @@
+import Verified.Wasi.Relocation
 import Verified.Wasi.Scratch
 import Verified.Wasi.GuestFrame
 import Interpreter.Wasm.Wp.Call
@@ -10,12 +11,13 @@ theorem narrow_word (value : UInt64) (h : value.toNat < 4294967296) :
     UInt64.ofNat value.toUInt32.toNat = value := by
   rw [Memory.toUInt32_toNat, Nat.mod_eq_of_lt h, UInt64.ofNat_toNat]
 
-theorem wp_write {World : Type} {m : Module} {host : Host World}
+theorem wp_write_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {m : Module} {host : Host World}
     {env : HostEnv (Observed World)} {store : Store (Observed World)} {s : Locals}
     {root length : UInt64} {bytes : LeanExe.Bytes} {pointerSlot lengthSlot errnoSlot : Nat}
     {rest : Program} {Q : Assertion (Observed World)}
-    (output : Output) (hImports : m.imports = ABI.imports)
-    (hHost : env.Satisfies m (hostSpec host))
+    (output : Output) (hImports : m.imports = ABI.importsWith calls)
+    (hHost : env.Satisfies m (hostSpecWith host calls))
     (hBytes : Bytes.At store.mem root bytes) (hRoot : root.toNat < 4294967296)
     (hLength : length.toNat = bytes.data.size) (hSize : bytes.data.size < 4294967296)
     (hApart : root.toNat + bytes.data.size ≤ 0 ∨ 16 ≤ root.toNat)
@@ -55,11 +57,11 @@ theorem wp_write {World : Type} {m : Module} {host : Host World}
   refine wp_metadata hPointerLocal hLengthLocal hMemory ?_
   simp only [List.cons_append, List.nil_append, wp_const_cons]
   refine wp_call_host_contract (id := 1) (imp := ABI.imports[1]!) (c := writeContract host)
-    (by simp [hImports, ABI.imports]) hHost
-    (by simp [hImports, ABI.imports]) (hostSpec_write host) ?_ ?_ ?_
+    (by rw [hImports]; exact ABI.importsWith_get calls (by decide)) hHost
+    (by rw [hImports, ABI.importsWith_length]; omega) (hostSpecWith_write host calls) ?_ ?_ ?_
   · intro values final hContract
     have hResult := hContract output root.toUInt32 bytes (by
-      simpa [ABI.imports, ABI.transferType] using hRequest)
+      simpa [ABI.importsWith_getElem?, ABI.importsWith_length, ABI.imports, ABI.transferType] using hRequest)
     obtain ⟨errno, committed, rfl, hWrite, hGuest, hCount⟩ := hResult
     have hErrnoBound : errno.toNat ≤ 76 := (host.write_bound hWrite.1).2
     have hCommittedBound : committed.toNat < 4294967296 :=
@@ -99,10 +101,37 @@ theorem wp_write {World : Type} {m : Module} {host : Host World}
         hNext final errno committed hWrite hGuest'
   · intro final message hContract
     obtain ⟨committed, hWrite, hGuest⟩ :=
-      hContract output root.toUInt32 bytes (by simpa [ABI.imports, ABI.transferType] using hRequest)
+      hContract output root.toUInt32 bytes (by simpa [ABI.importsWith_getElem?, ABI.importsWith_length, ABI.imports, ABI.transferType] using hRequest)
     exact hTrap final message committed hWrite (hFrame.trans hGuest)
   · intro final tag arguments hContract
     exact False.elim (hContract output root.toUInt32 bytes (by
-      simpa [ABI.imports, ABI.transferType] using hRequest))
+      simpa [ABI.importsWith_getElem?, ABI.importsWith_length, ABI.imports, ABI.transferType] using hRequest))
+
+theorem wp_write {World : Type} {m : Module} {host : Host World}
+    {env : HostEnv (Observed World)} {store : Store (Observed World)} {s : Locals}
+    {root length : UInt64} {bytes : LeanExe.Bytes} {pointerSlot lengthSlot errnoSlot : Nat}
+    {rest : Program} {Q : Assertion (Observed World)}
+    (output : Output) (hImports : m.imports = ABI.imports)
+    (hHost : env.Satisfies m (hostSpec host))
+    (hBytes : Bytes.At store.mem root bytes) (hRoot : root.toNat < 4294967296)
+    (hLength : length.toNat = bytes.data.size) (hSize : bytes.data.size < 4294967296)
+    (hApart : root.toNat + bytes.data.size ≤ 0 ∨ 16 ≤ root.toNat)
+    (hMemory : 16 ≤ store.mem.pages * 65536)
+    (hPointerLocal : s.get pointerSlot = some (.i64 root))
+    (hLengthLocal : s.get lengthSlot = some (.i64 length))
+    (hErrnoLow : s.params.length ≤ errnoSlot)
+    (hErrnoHigh : errnoSlot < s.params.length + s.locals.length)
+    (hNext : ∀ (final : Store (Observed World)) (errno committed : UInt64),
+      (observedHost host).write store.host output bytes (.returned errno committed) final.host →
+      GuestFrame store final [ABI.scratch] →
+      wp m rest Q final
+        { (setLocal s errnoSlot (.i32 errno.toUInt32)) with
+          values := (Value.i64 (if errno = 0 then committed else 0) ::
+            Value.i64 errno :: s.values) } env)
+    (hTrap : ∀ (final : Store (Observed World)) (message : String) (committed : UInt64),
+      (observedHost host).write store.host output bytes (.trapped message committed) final.host →
+      GuestFrame store final [ABI.scratch] → Q (.Trap final message)) :
+    wp m (writeCode output pointerSlot lengthSlot errnoSlot ++ rest) Q store s env := by
+  layout_instance wp_write_with
 
 end Verified.Wasi

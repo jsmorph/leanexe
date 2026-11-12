@@ -7,15 +7,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem command_ite_spec {source target : Wasm.Module}
+theorem command_ite_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
     {condition : Expr pureSigs context .bool}
     {yes no : Command pureSigs effectSigs context result}
-    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
-    (yesSpec : CommandCodeSpec source target pure effects pool yes)
-    (noSpec : CommandCodeSpec source target pure effects pool no) :
-    CommandCodeSpec source target pure effects pool (.ite condition yes no) := by
+    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
+    (yesSpec : CommandCodeSpecWith calls source target pure effects pool yes)
+    (noSpec : CommandCodeSpecWith calls source target pure effects pool no) :
+    CommandCodeSpecWith calls source target pure effects pool (.ite condition yes no) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place
   let mid := fun i => live i || yes.uses i || no.uses i
@@ -65,7 +66,7 @@ theorem command_ite_spec {source target : Wasm.Module}
     tauto
   have places : condition.placeArgs = true ∧ yes.placeArgs = true ∧ no.placeArgs = true := by
     simpa only [Command.placeArgs, Bool.and_eq_true, and_assoc] using place
-  have pickedSpec : CommandCodeSpec source target pure effects pool picked := by
+  have pickedSpec : CommandCodeSpecWith calls source target pure effects pool picked := by
     dsimp only [picked]
     cases condition.denote pure.funs env <;> assumption
   have pickedReady : picked.Ready source h slots (base + result.width) live pool := by
@@ -97,7 +98,7 @@ theorem command_ite_spec {source target : Wasm.Module}
     (fun _ => depthParam) env slots [] mid
   have noCoerce : coerceCode h .bool (condition.mode (slots.map Slot.mode)) .owned base = [] := by
     simp [coerceCode, Ty.scalar]
-  refine wp_command_ite (sourceHost := sourceHost) facts.runtime facts.layout facts.profile spec
+  refine wp_command_ite_with (sourceHost := sourceHost) facts.runtime facts.layout facts.profile spec
     (by simpa only [noCoerce, List.append_nil] using conditionFragment.1)
     (by simpa only [noCoerce, List.append_nil] using conditionFragment.2)
     cleanupForm cleanupClosed positions rfl vars scratch at_ safe facts.poolApart cap low
@@ -111,5 +112,16 @@ theorem command_ite_spec {source target : Wasm.Module}
     valid below (by rw [first.frame.params]; exact depthParam)
     (first.frame.positions.trans positions) held at_ safe apart cap
     (by rw [first.frame.params]; omega) (by omega) pickedReady pickedCovered pickedPlace
+
+theorem command_ite_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
+    {condition : Expr pureSigs context .bool}
+    {yes no : Command pureSigs effectSigs context result}
+    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (yesSpec : CommandCodeSpec source target pure effects pool yes)
+    (noSpec : CommandCodeSpec source target pure effects pool no) :
+    CommandCodeSpec source target pure effects pool (.ite condition yes no) := by
+  layout_instance command_ite_spec_with
 
 end Verified.Wasi

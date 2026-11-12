@@ -5,14 +5,14 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-def CostCommandCodeSpec (source target : Wasm.Module) (pure : Resource.PureContext pureSigs)
+def CostCommandCodeSpecWith (calls : List LeanExe.Wasi.Call) (source target : Wasm.Module) (pure : Resource.PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) (pool : Bytes.LiteralPool)
     (command : Command pureSigs effectSigs context result) : Prop :=
   ∀ (World : Type) (host : Host World) (targetHost : HostEnv (Observed World))
     (depth : UInt64) (env : Env context) (slots : List Slot) (live : Nat → Bool)
     (h base : Nat) (heap : Heap) (initial : Store (Observed World)) (locals : Locals)
     (budget : Nat) (aborts : Bool),
-    targetHost.Satisfies target (hostSpec host) →
+    targetHost.Satisfies target (hostSpecWith host calls) →
     depth < depthLimit → locals.params.head? = some (.i64 depth) →
     locals.positions = h →
     Holds env slots (fun i => live i || command.uses i) base heap
@@ -29,10 +29,15 @@ def CostCommandCodeSpec (source target : Wasm.Module) (pure : Resource.PureConte
     (aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.PrefixBound (observedHost host) pure program depth (slots.map Slot.mode) live
         command env initial.host budget) →
-    wp target (command.code (pool := pool) source h slots base live)
+    wp target (command.codeWith calls (pool := pool) source h slots base live)
       (CostCommandResult host pure program command depth env slots
         (fun i => live i || command.uses i) live base heap initial locals aborts)
       initial locals targetHost
+
+def CostCommandCodeSpec (source target : Wasm.Module) (pure : Resource.PureContext pureSigs)
+    (program : EffectProg pureSigs effectSigs) (pool : Bytes.LiteralPool)
+    (command : Command pureSigs effectSigs context result) : Prop :=
+  CostCommandCodeSpecWith [] source target pure program pool command
 
 theorem CostCommandCodeSpec.safety {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}

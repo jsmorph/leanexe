@@ -38,75 +38,112 @@ def processCompaction (state : Ty) : Program :=
 step on the state, store its result over the current one, and compact the new state.  The step
 borrows the state, so the old state is garbage once the result is stored, and the compaction
 reclaims it with everything else the step allocated. -/
-def ProcessEntry.iteration (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
+def ProcessEntry.iterationWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
   let positions := processPositions entry.state
   [.localGet 0, .eqzI64, .br_if 1, .constI64 0] ++
     loadCode positions 2 entry.state.types ++
-    [.call (Wrappers.effectIndex source entry.step.index)] ++
+    [.call (Wrappers.effectIndexWith calls source entry.step.index)] ++
     storeCode positions 0 entry.result.types ++
-    Relocation.program (processCompaction entry.state) ++ [.br 0]
+    Relocation.programWith calls (processCompaction entry.state) ++ [.br 0]
 
-def ProcessEntry.function (source : Wasm.Module) (entry : ProcessEntry effectSigs)
+def ProcessEntry.iteration (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
+  ProcessEntry.iterationWith [] source entry
+
+def ProcessEntry.functionWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (entry : ProcessEntry effectSigs)
     (typeIdx : Nat) : Function :=
   let positions := processPositions entry.state
   { params := []
     locals := List.replicate positions .i64 ++ List.replicate positions .f64 ++
       List.replicate positions .f32
     body := [.globalGet 0, .localSet (processAux entry.state), .constI64 0,
-        .call (Wrappers.effectIndex source entry.begin.index)] ++
+        .call (Wrappers.effectIndexWith calls source entry.begin.index)] ++
       storeCode positions 0 entry.result.types ++
-      Relocation.program (processCompaction entry.state) ++
-      [.block 0 0 [.loop 0 0 (entry.iteration source) [] []] [] []] ++
+      Relocation.programWith calls (processCompaction entry.state) ++
+      [.block 0 0 [.loop 0 0 (entry.iterationWith calls source) [] []] [] []] ++
       [.localGet 1, .wrapI64, .call 2, .unreachable]
     results := []
     typeIdx := some typeIdx }
 
-def ProcessEntry.extension (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
+def ProcessEntry.function (source : Wasm.Module) (entry : ProcessEntry effectSigs)
+    (typeIdx : Nat) : Function :=
+  ProcessEntry.functionWith [] source entry typeIdx
+
+def ProcessEntry.extensionWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) : Module.Extension :=
   { types := program.types ++ [startType]
-    funcs := program.functions source pool ++
-      [entry.function source (effectTypeIndex source effectSigs.length)]
+    funcs := program.functionsWith calls source pool ++
+      [entry.functionWith calls source (effectTypeIndex source effectSigs.length)]
     exports := [{ name := "_start", funcIdx := effectSigs.length }] }
+
+def ProcessEntry.extension (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
+    (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) : Module.Extension :=
+  ProcessEntry.extensionWith [] source program entry pool
+
+def compileProcessWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
+    (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) : Wasm.Module :=
+  let assembled := Module.assembleWith calls source (Wrappers.extensionWith calls source (entry.extensionWith calls source program pool))
+  { assembled with
+    exports := [{ name := "_start", funcIdx := Wrappers.effectIndexWith calls source effectSigs.length }]
+    globalExports := []
+    memoryExports := [("memory", 0)] }
 
 def compileProcess (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) : Wasm.Module :=
-  let assembled := Module.assemble source (Wrappers.extension source (entry.extension source program pool))
-  { assembled with
-    exports := [{ name := "_start", funcIdx := Wrappers.effectIndex source effectSigs.length }]
-    globalExports := []
-    memoryExports := [("memory", 0)] }
+  compileProcessWith [] source program entry pool
+
+theorem compileProcess_functionsIn_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
+    (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) :
+    program.FunctionsInWith calls source (compileProcessWith calls source program entry pool) pool := by
+  intro index bound
+  change (Module.assembleWith calls source (Wrappers.extensionWith calls source (entry.extensionWith calls source program pool))).funcs[
+    source.funcs.length + (3 + index)]? = (program.functionsWith calls source pool)[index]?
+  rw [Wrappers.next_function_with]
+  exact List.getElem?_append_left (by rw [program.functions_length_with source pool]; exact bound)
 
 theorem compileProcess_functionsIn (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) :
     program.FunctionsIn source (compileProcess source program entry pool) pool := by
-  intro index bound
-  change (Module.assemble source (Wrappers.extension source (entry.extension source program pool))).funcs[
-    source.funcs.length + (3 + index)]? = (program.functions source pool)[index]?
-  rw [Wrappers.next_function]
-  exact List.getElem?_append_left (by rw [program.functions_length source pool]; exact bound)
+  layout_instance compileProcess_functionsIn_with
+
+theorem compileProcess_layout_with {calls : List LeanExe.Wasi.Call}
+    {source : Wasm.Module} (program : EffectProg pureSigs effectSigs)
+    (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) (imports : source.imports = []) :
+    Relocation.LayoutWith calls source (compileProcessWith calls source program entry pool) := by
+  refine ⟨imports, ?_, ?_, rfl, rfl⟩
+  · exact ABI.importsWith_length calls
+  · intro index function selected
+    exact Module.pure_function_with
+      (Wrappers.extensionWith calls source (entry.extensionWith calls source program pool)) selected
 
 theorem compileProcess_layout {source : Wasm.Module} (program : EffectProg pureSigs effectSigs)
     (entry : ProcessEntry effectSigs) (pool : Bytes.LiteralPool) (imports : source.imports = []) :
     Relocation.Layout source (compileProcess source program entry pool) := by
-  refine ⟨imports, ?_, ?_, rfl, rfl⟩
-  · exact ABI.imports_length
-  · intro index function selected
-    exact Module.pure_function (Wrappers.extension source (entry.extension source program pool)) selected
+  layout_instance compileProcess_layout_with
+
+theorem compileProcess_base_with {calls : List LeanExe.Wasi.Call}
+    {source : Wasm.Module} {pure : Resource.PureContext pureSigs}
+    (program : EffectProg pureSigs effectSigs) (entry : ProcessEntry effectSigs)
+    (pool : Bytes.LiteralPool) (runtime : Runtime source) (profile : Relocation.Profile source)
+    (pureCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
+    (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.scratch) :
+    CompilerBaseWith calls source (compileProcessWith calls source program entry pool) pure pool :=
+  { runtime
+    layout := compileProcess_layout_with program entry pool runtime.imports
+    profile
+    calls := pureCalls
+    imports := rfl
+    read := ⟨_, Wrappers.read_function_with source (entry.extensionWith calls source program pool)⟩
+    stdout := ⟨_, Wrappers.stdout_function_with source (entry.extensionWith calls source program pool)⟩
+    stderr := ⟨_, Wrappers.stderr_function_with source (entry.extensionWith calls source program pool)⟩
+    poolApart }
 
 theorem compileProcess_base {source : Wasm.Module} {pure : Resource.PureContext pureSigs}
     (program : EffectProg pureSigs effectSigs) (entry : ProcessEntry effectSigs)
     (pool : Bytes.LiteralPool) (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
     (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.scratch) :
-    CompilerBase source (compileProcess source program entry pool) pure pool :=
-  { runtime
-    layout := compileProcess_layout program entry pool runtime.imports
-    profile
-    calls
-    imports := rfl
-    read := ⟨_, Wrappers.read_function source (entry.extension source program pool)⟩
-    stdout := ⟨_, Wrappers.stdout_function source (entry.extension source program pool)⟩
-    stderr := ⟨_, Wrappers.stderr_function source (entry.extension source program pool)⟩
-    poolApart }
+    CompilerBase source (compileProcess source program entry pool) pure pool := by
+  layout_instance compileProcess_base_with
 
 end Verified.Wasi

@@ -18,6 +18,41 @@ theorem EffectMain.related_action (main : EffectMain effectSigs) (pure : Funs pu
   subst right
   exact .exit left
 
+theorem compiled_native_start_run_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source : Wasm.Module} {host : Host World}
+    {pure : Resource.PureContext pureSigs} (program : EffectProg pureSigs effectSigs)
+    (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs) (pool : Bytes.LiteralPool)
+    (effectCalls : CostEffectCallsWith calls source (compileCalls calls source program entries (some main) pool) pure program pool)
+    {targetHost : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
+    {args : Env main.signature.params} {budget : Nat} {aborts : Bool}
+    (native : Action UInt64)
+    (related : Action.Rel (fun native flat : UInt64 => flat = native) native
+      ((program.funs pure.funs).get main.callee args))
+    (valid : targetHost.Satisfies (compileCalls calls source program entries (some main) pool) (hostSpecWith host calls))
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep main.signature.mode heap (PureTransport.erase initial) (main.tables.map Value.i64) args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args)
+      (Env.reads (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args))
+    (input : @Bytes.LiteralPool.Input (Env main.signature.params)
+      (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
+      (main.tables.map Value.i64) args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+    (cap : (PureTransport.erase initial).memoryCap (compileCalls calls source program entries (some main) pool) 0 ≤ 65535)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
+    ∃ bound, ∀ fuel ≥ bound,
+      NativeFunctionResult host startSignature
+        (Action.bind native fun status => Action.exit (α := Unit) status)
+        (fun value : Unit => value) .nil [] heap initial aborts
+        (run fuel (compileCalls calls source program entries (some main) pool)
+          (Wrappers.effectIndexWith calls source effectSigs.length) initial [] targetHost) := by
+  obtain ⟨bound, execution⟩ := compiled_start_run_with (calls := calls) (host := host) program entries main pool effectCalls
+    valid at_ rep separate input scratch cap resources
+  have relation := main.related_action pure.funs program args native related
+  exact ⟨bound, fun fuel enough => (execution fuel enough).toNative relation⟩
+
 theorem compiled_native_start_run {World : Type} {source : Wasm.Module} {host : Host World}
     {pure : Resource.PureContext pureSigs} (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs) (pool : Bytes.LiteralPool)
@@ -47,9 +82,6 @@ theorem compiled_native_start_run {World : Type} {source : Wasm.Module} {host : 
         (fun value : Unit => value) .nil [] heap initial aborts
         (run fuel (compile source program entries (some main) pool)
           (Wrappers.effectIndex source effectSigs.length) initial [] targetHost) := by
-  obtain ⟨bound, execution⟩ := compiled_start_run (host := host) program entries main pool calls
-    valid at_ rep separate input scratch cap resources
-  have relation := main.related_action pure.funs program args native related
-  exact ⟨bound, fun fuel enough => (execution fuel enough).toNative relation⟩
+  layout_instance compiled_native_start_run_with
 
 end Verified.Wasi

@@ -8,15 +8,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem command_bind_value_spec {source target : Wasm.Module}
+theorem command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty} {result : ResultTy}
-    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
     (first : Command pureSigs effectSigs context (.value type))
     (next : Command pureSigs effectSigs (type :: context) result)
-    (firstSpec : CommandCodeSpec source target pure effects pool first)
-    (nextSpec : CommandCodeSpec source target pure effects pool next) :
-    CommandCodeSpec source target pure effects pool (.bind first next) := by
+    (firstSpec : CommandCodeSpecWith calls source target pure effects pool first)
+    (nextSpec : CommandCodeSpecWith calls source target pure effects pool next) :
+    CommandCodeSpecWith calls source target pure effects pool (.bind first next) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place
   let mid := fun i => live i || next.uses (i + 1)
@@ -70,13 +71,13 @@ theorem command_bind_value_spec {source target : Wasm.Module}
     at_ safe scratch cap (by omega) firstRoom firstReady firstCovered placement.1
   have firstRun := wp.conseq (fun _ classification =>
     classification.lower vars midSelected (Nat.le_add_right _ _)) firstUpper
-  simp only [Command.code, List.append_assoc]
+  simp only [Command.codeWith, List.append_assoc]
   refine wp_sequence_value (type := type) (result := result)
     (first := first.denote pure.funs effects env)
     (next := fun value => next.denote pure.funs effects (.cons value env))
     (bodyIn := releaseIn)
-    (nextCode := (if next.uses 0 = false then Relocation.program (releaseCode type base) else []) ++
-      next.code (pool := pool) source h (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live))
+    (nextCode := (if next.uses 0 = false then Relocation.programWith calls (releaseCode type base) else []) ++
+      next.codeWith calls (pool := pool) source h (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live))
     vars scratch positions low resultRoom
     (fun i used => by simpa only [congrFun tail i] using used)
     midSelected selected firstRun ?_
@@ -89,8 +90,8 @@ theorem command_bind_value_spec {source target : Wasm.Module}
     have boundScratch := bind_context_scratch after vars scratch frame held midSelected tailSelected
     have boundSafe := bind_context_safe after vars scratch safe facts.poolApart
       frame held midSelected tailSelected
-    refine wp_loopRelease (sourceHost := sourceHost) (targetHost := targetHost)
-      (used := next.uses 0) (rest := next.code (pool := pool) source h
+    refine wp_loopRelease_with (sourceHost := sourceHost) (targetHost := targetHost)
+      (used := next.uses 0) (rest := next.codeWith calls (pool := pool) source h
         (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live))
       facts.runtime facts.layout facts.profile releaseReady.1 releaseReady.2 boundVars after.step.at_
       (by simp only [releaseIn, beq_self_eq_true, Bool.true_or])
@@ -115,5 +116,16 @@ theorem command_bind_value_spec {source target : Wasm.Module}
       boundVars boundScratch firstExecution cleanupAfter rfl
       classification bodySelected outputSelected
     simpa only [Action.bind, List.nil_append] using joined
+
+theorem command_bind_value_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty} {result : ResultTy}
+    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (first : Command pureSigs effectSigs context (.value type))
+    (next : Command pureSigs effectSigs (type :: context) result)
+    (firstSpec : CommandCodeSpec source target pure effects pool first)
+    (nextSpec : CommandCodeSpec source target pure effects pool next) :
+    CommandCodeSpec source target pure effects pool (.bind first next) := by
+  layout_instance command_bind_value_spec_with
 
 end Verified.Wasi

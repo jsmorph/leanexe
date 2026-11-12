@@ -24,13 +24,14 @@ theorem wp_effect_depth {World : Type} {target : Wasm.Module} {targetHost : Host
   simpa only [List.cons_append, List.nil_append, wp_localGet_cons, depthLocal,
     wp_constI64_cons, wp_addI64_cons] using next
 
-theorem command_call_spec {source target : Wasm.Module}
+theorem command_call_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {signature : EffectSig}
-    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
     (callee : EffectVar effectSigs signature)
     (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
-    CommandCodeSpec source target pure effects pool (.call callee args) := by
+    CommandCodeSpecWith calls source target pure effects pool (.call callee args) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place
   let all := fun i => live i || argsAny fun j => (args j).uses i
@@ -67,17 +68,17 @@ theorem command_call_spec {source target : Wasm.Module}
     (Nat.add_le_add_left (le_argsMax (fun i => if signature.mode i = .owned then
       copyWidth (signature.params.get i) else (args i).width) i) base).trans room
   obtain ⟨function, lookup, arity⟩ := facts.effectFunctions callee
-  have noImport : target.imports[Wrappers.effectIndex source callee.index]? = none :=
+  have noImport : target.imports[Wrappers.effectIndexWith calls source callee.index]? = none :=
     List.getElem?_eq_none (by
-      rw [facts.imports, ABI.imports_length]
-      simp only [Wrappers.effectIndex, Module.extraIndex]
+      rw [facts.imports, ABI.importsWith_length]
+      simp only [Wrappers.effectIndexWith, Module.extraIndexWith]
       omega)
   have targetCap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535 := by
     rw [PureTransport.memoryCap_zero_eq facts.layout.memoryCap]
     exact cap
-  simp only [Command.code, Expr.usesFast_eq, List.append_assoc]
+  simp only [Command.codeWith, Expr.usesFast_eq, List.append_assoc]
   refine wp_effect_depth depthParam ?_
-  refine wp_arguments (targetHost := targetHost) (sourceHost := sourceHost)
+  refine wp_arguments_with (targetHost := targetHost) (sourceHost := sourceHost)
     (funs := pure.funs) (flags := pure.flags) (bounds := pure.callBounds depth)
     (fits := pure.callFits depth) (all := all) (kept := kept)
     facts.runtime facts.layout facts.profile specs uses keptAll
@@ -87,11 +88,20 @@ theorem command_call_spec {source target : Wasm.Module}
     (fun _ final sameWorld => CommandResult.resource_refl rfl sameWorld) ?_
   intro argumentHeap arguments argumentLocals words fresh prepared sameWorld
   have prepared := prepared.ofValues
-  have suffix := wp_call_after_arguments (sourceHost := sourceHost) facts.runtime facts.layout
+  have suffix := wp_call_after_arguments_with (calls := calls) (sourceHost := sourceHost) facts.runtime facts.layout
     facts.profile (facts.effectCalls callee) noImport lookup arity valid vars safe scratch uses
     keptAll liveKept prepared sameWorld targetCap cleanupReady.1 cleanupReady.2
     (depth := depth + 1)
   simpa only [List.reverse_cons, List.append_assoc, List.singleton_append,
     Command.denote, all, kept] using suffix
+
+theorem command_call_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {signature : EffectSig}
+    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (callee : EffectVar effectSigs signature)
+    (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
+    CommandCodeSpec source target pure effects pool (.call callee args) := by
+  layout_instance command_call_spec_with
 
 end Verified.Wasi
