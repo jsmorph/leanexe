@@ -23,7 +23,11 @@
 | Dimension | Up to 6; up to 64 | Up to 64, with the measured acceptance region stated | The theorem holds for every accepted result, and the table of the requirements tells a caller which covariances the elimination resolves. |
 | Assignment's form | Rectangular with one-sided duals; square with forbidden pairs | Square, with the mark `2⁶³ - 1` | Rectangular problems with dummy rows and columns reduce to it, and the theorem concerns the admissible permutations directly. |
 | Integer range | Check each sum for overflow; bound the duals | `|u|, |v| < 2⁶²` | Every sum `u[i] + v[j]` is then exact in `Int64` and below the mark, and the program computes no total. |
-| Gaussian link | Include; leave as an open item | An open item | The review raised the estimate to 600 to 900 lines with the density of the standard Gaussian, which Mathlib does not supply.  That is an increment of its own, larger than any other part of this iteration. |
+| Route of the Gaussian link | The density of the standard Gaussian, polar coordinates, and the volume of the ball; induction on `d` with the convolution of Gamma densities; characteristic functions; moment-generating functions below `1/2` with the identity theorem | Moment-generating functions | Mathlib at the pinned revision has no density of the standard Gaussian on a Euclidean space, for which the first route was estimated at 600 to 900 lines.  The convolution route needs the density of a convolution and the Beta integral.  The characteristic function of the Gamma law needs a Gamma integral with a complex rate, and Mathlib's has a real rate.  The integrals of `exp(t x)` for `t < 1/2` are all in Mathlib, and [the Gaussian model](Gaussian.lean) takes 219 lines. |
+| Uniqueness from moment-generating functions | Mathlib's `eqOn_complexMGF_of_mgf`; a lemma on a half-plane | `Model.ext_of_mgf_Iio` | Mathlib's lemma needs the moment-generating functions equal on all of `ℝ`, which for `t ≥ 1/2` would need proofs that both integrands are not integrable.  The lemma needs the values for `t < c` only. |
+| Whitening factor | `CFC.sqrt S`; the factor of the elimination in [the Mahalanobis model](Mahalanobis.lean) | `CFC.sqrt S` | `multivariateGaussian` is defined through `CFC.sqrt S`, so the image is direct, and another factor would need a proof that its image is the same law. |
+| Form of the Gaussian theorem | The tail for `γ ≥ 0`; the equality of laws and the tail for every `γ` | `Model.gaussian_chiSquare` and `Model.gaussian_tail` for every `γ` | The equality of laws gives every event, and `γ ≥ 0` is unnecessary.  `d ≥ 1` stays, since `Model.chiSquare 0` is the zero measure. |
+| The gate's probability | A conclusion of `gate_sound`; separate theorems; separate theorems and a conclusion of `gate_module` | `gate_miss` and `gate_miss_tail` in [the theorems of a missed association](Miss.lean), and a conclusion of `gate_module` | `gate_sound` remains a statement about the program, and `gate_module`, which states the module's results, states the probability.  `gate_miss_tail` joins the gate with the tail of the module `chisquare`. |
 
 ## Review
 
@@ -44,7 +48,7 @@ A fresh agent reviewed the draft against the brief, the plan, the VKB entry on i
 | 11. The mark test in pass 3 is redundant, since `u + v ≤ 2⁶³ - 2` for values in range and no cost exceeds the mark. | A checker without it is detected by no case. | Adopted: pass 3 tests the inequality at every pair.  Pass 2 keeps its mark test, which gives status 3 for a forbidden pair. |
 | 12. The memory cap is not stated, the limit `n ≤ 65,536` cannot be reached because arrays of `2²⁹` words trap, and the gate allocates 6.4 MB at `d = 64`. | The manual's limits and its count of allocations. | Adopted: the requirements state the cap, the gate's allocation, and the limit `n ≤ 16,384`.  An update in place is declined for the reason of the decision on storage. |
 | 13. The description does not fix the grouping of the term update, the first term, the divisors, the clamps, the square, `B`, or the result of a rejection. | Different groupings change the endpoints of 200 of 505 lanes. | Adopted.  The requirements state that the Lean source fixes them and that the module test pins its bits, and they state the divisors `2j + 2` and `2j + 3`, the clamps, `sq`, and the order in `B`. |
-| 14. `Model.gaussian_tail` is correct as stated, but Mathlib gives no density for `stdGaussian`, which the proof must establish, and the statement needs `d ≥ 1` and reads `ν` through `ofLp`. | Mathlib's definitions and a check of the constants for `d` from 1 to 64. | Adopted: the estimate is 600 to 900 lines, and the statement has `d ≥ 1`. |
+| 14. `Model.gaussian_tail` is correct as stated, but Mathlib gives no density for `stdGaussian`, which the proof must establish, and the statement needs `d ≥ 1` and reads `ν` through `ofLp`. | Mathlib's definitions and a check of the constants for `d` from 1 to 64. | Adopted: the statement has `d ≥ 1` and reads `ν` through `ofLp`.  The proof needs no density, as the decision on its route states. |
 | 15. The model and the remaining numbers check out; "one exp" is two calls, the first even term is a tail rather than a difference of tails, and the test names no `h`. | mpmath at 40 digits on 966 pairs, Crossref for the citation. | Adopted: the wording is corrected. |
 
 ### Wrong programs
@@ -78,8 +82,7 @@ No case detects these classes:
 
 ## Open items
 
-1. `Model.gaussian_tail`, estimated at 600 to 900 lines.
-2. The quantile of the tail at a level `α`, for levels near or below `2⁻⁵³`, and a direct series for the distribution function at small `p`.
-3. A tighter enclosure of the Mahalanobis distance for larger `d`.
-4. A move of the conjunction demo's `expI`, its soundness, and the literal lemmas to the interval library, where both demos would import them.
-5. Maneuver detection, once its theorem about false alarms is defined.
+1. The quantile of the tail at a level `α`, for levels near or below `2⁻⁵³`, and a direct series for the distribution function at small `p`.
+2. A tighter enclosure of the Mahalanobis distance for larger `d`.
+3. A move of the conjunction demo's `expI`, its soundness, and the literal lemmas to the interval library, where both demos would import them.
+4. Maneuver detection, once its theorem about false alarms is defined.
