@@ -7,6 +7,7 @@ import Library.Numerics.Statistics.Mean.Program
 import Library.Numerics.Statistics.SumSquares.Program
 import Library.Random.SplitMix64.Program
 import Library.Arrays.Search.Program
+import Library.Arrays.MaxSegmentSum.Program
 import TestSupport.Host
 import Library.Combinatorics.DancingLinks.Count
 import TestSupport.Modules.BinaryGcd
@@ -121,8 +122,22 @@ private def splitMixSeeds : List UInt64 :=
     (next, acc ++ [next])) ((0 : UInt64), ([] : List UInt64))
   [0, 1, 9223372036854775808, maxU, gamma, 0 - gamma] ++ (List.range 40).map rw ++ chain.2
 
+/-- The inputs of `mss`: the word arrays read as `Int64` values, the list
+`[-2, 1, -3, 4, -1, 2, 1, -5, 4]`, negative values, the values `2^62`, `-1`, and `2^62 - 2`, whose
+absolute values sum to `2^63 - 1`, the extreme values, and values in `[-1000, 1000]`. -/
+private def mssInputs : List (List Int64) :=
+  wordArrays.map (·.map UInt64.toInt64) ++
+    [[-2, 1, -3, 4, -1, 2, 1, -5, 4], [-3, -1, -2], [31, -41, 59, 26, -53, 58, 97, -93, -23, 84],
+      [4611686018427387904, -1, 4611686018427387902], [Int64.maxValue], [Int64.minValue],
+      [Int64.minValue + 1, Int64.maxValue], [5, -10, 5, -10, 5]] ++
+    (List.range 10).map fun i =>
+      (List.range (5 * i + 1)).map fun k => (rw (13 * i + k) % 2001).toInt64 - 1000
+
 def cases : IO Unit := do
   intervalCases
+  for xs in mssInputs do
+    line "libmss" "mss" "i64" [arrU (xs.map Int64.toUInt64)]
+      (toString (Library.Arrays.MaxSegmentSum.mss xs.toArray).toUInt64)
   for xs in (List.range 6).map fun i => (List.range (8 * i + 3)).map fun k => rw (31 * i + k) do
     line "libcic" "cic" "array-u64" [arrU xs]
       (arrOut (Library.Numerics.Filters.Cic.cic xs.toArray).toList)

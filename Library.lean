@@ -271,6 +271,7 @@ import Library.Arrays.Filter.Compiled
 import Library.Arrays.Repeat.Compiled
 import Library.Arrays.Range.Compiled
 import Library.Arrays.Word.Compiled
+import Library.Arrays.MaxSegmentSum.Compiled
 import Library.Lists.Word.Compiled
 import Library.Numerics.Reductions.Word.Compiled
 import Library.Numerics.Filters.Cic.Compiled
@@ -300,6 +301,7 @@ import Library.Numerics.Interval.Enclose
 import Library.Masters
 import Library.Numerics.Limiters.Minmod.Proof
 import Library.Arrays.Search.Proof
+import Library.Arrays.MaxSegmentSum.Proof
 import Library.Hashing.Sha256.Bytes
 import Library.Hashing.Sha512.Bytes
 import Library.Hashing.Hmac.Bytes

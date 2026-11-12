@@ -130,6 +130,7 @@ libfilter:Library.Arrays.Filter.Compiled:Library/Arrays/Filter/File.lean
 librepeat:Library.Arrays.Repeat.Compiled:Library/Arrays/Repeat/File.lean
 librange:Library.Arrays.Range.Compiled:Library/Arrays/Range/File.lean
 libwordarray:Library.Arrays.Word.Compiled:Library/Arrays/Word/File.lean
+libmss:Library.Arrays.MaxSegmentSum.Compiled:Library/Arrays/MaxSegmentSum/File.lean
 liblists:Library.Lists.Word.Compiled:Library/Lists/Word/File.lean
 libwordreductions:Library.Numerics.Reductions.Word.Compiled:Library/Numerics/Reductions/Word/File.lean
 libcic:Library.Numerics.Filters.Cic.Compiled:Library/Numerics/Filters/Cic/File.lean

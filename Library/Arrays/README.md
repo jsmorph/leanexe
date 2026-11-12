@@ -1,8 +1,8 @@
 # Word arrays
 
-The functions take `Array UInt64`.  Counts and indices use `UInt64`, and word arithmetic wraps
-modulo `2^64`.  Each linked family has Lean definitions in `Program` and generated execution
-proofs in `Compiled`.
+The functions take `Array UInt64`, except `mss`, which takes `Array Int64`.  Counts and indices
+use `UInt64`, and word arithmetic wraps modulo `2^64`.  Each linked family has Lean definitions in
+`Program` and generated execution proofs in `Compiled`.
 
 | Family | Functions and behavior |
 |---|---|
@@ -12,6 +12,7 @@ proofs in `Compiled`.
 | [Repeat](Repeat/Program.lean) | `repeated` concatenates a specified number of copies. |
 | [Range](Range/Program.lean) | `evens n` constructs the `n` words `2 * i`. |
 | [Word operations](Word/Program.lean) | `scaled` multiplies every word by a scalar. |
+| [Maximum segment sum](MaxSegmentSum/README.md) | `mss` returns the greatest sum of a run of consecutive elements, 0 for the empty run, by Kadane's algorithm.  Its master theorem `mss_master` states the sum over ℤ when the absolute values of the elements sum to less than `2^63`. |
 
 `removeAll` searches and shifts repeatedly, taking quadratic time.  `tests/verified/run.sh` also
 runs cases of the verified compiler's examples on these modules, as

@@ -205,7 +205,7 @@ theorem disk_encl (m1 m2 c11 c12 c22 : Float) (n : UInt64) :
         (value c22.toBits)) := by
   intro r h
   have h' : (pc m1 m2 c11 c12 c22 r n).status = 0 := h
-  obtain ⟨hc, hd, hr, hcont⟩ := pc_enclosure h'
+  obtain ⟨hc, hd, hr, hcont, -⟩ := pc_enclosure h'
   exact ⟨⟨hc, hd⟩, pc_radius_finite h', hr.le, hcont⟩
 
 theorem diskSearch_eq (tab : Array UInt64) (m1 m2 c11 c12 c22 p : Float) (n k : UInt64) :
