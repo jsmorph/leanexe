@@ -15,7 +15,8 @@
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
 # theorem module as well.  For the CE and LE program, it runs the axiom audit of
 # tests/conjunction/AccuracyAxioms.lean, and with --cases accuracy it checks the program's file
-# theorem module as well.  For the attitude program, it runs the axiom audit of
+# theorem module as well, and for the program with adaptive panels it does the same with
+# tests/conjunction/AdaptiveAxioms.lean and --cases adaptive.  For the attitude program, it runs the axiom audit of
 # tests/attitude/Axioms.lean, and with --cases attitude it checks the program's file theorem module
 # as well.  For the chi-square programs, the gate, and the assignment check, it runs the axiom
 # audits of tests/gate/ChiSquareAxioms.lean, GateAxioms.lean, and AssignmentAxioms.lean, and with
@@ -149,6 +150,8 @@ elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
 elif [ "$case_module" = "accuracy" ]; then
   cases_exe=verified-cases-accuracy
+elif [ "$case_module" = "adaptive" ]; then
+  cases_exe=verified-cases-adaptive
 elif [ "$case_module" = "attitude" ]; then
   cases_exe=verified-cases-attitude
 elif [ "$case_module" = "qmethod" ]; then
@@ -224,6 +227,10 @@ if [ -z "$reference" ]; then
   if runs accuracy; then targets+=($(imports tests/conjunction/AccuracyAxioms.lean)); fi
   if [ "$case_module" = "accuracy" ]; then
     targets+=(Demos.Conjunction.AccuracyVerified $(imports Demos/Conjunction/AccuracyFile.lean))
+  fi
+  if runs adaptive; then targets+=($(imports tests/conjunction/AdaptiveAxioms.lean)); fi
+  if [ "$case_module" = "adaptive" ]; then
+    targets+=(Demos.Conjunction.AdaptiveVerified $(imports Demos/Conjunction/AdaptiveFile.lean))
   fi
   if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
   if [ "$case_module" = "attitude" ]; then
@@ -433,6 +440,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "accuracy" ]; then
   check_axioms tests/conjunction/AccuracyAxioms.lean
   if [ "$case_module" = "accuracy" ]; then
     check_file accuracy Demos.Conjunction.AccuracyVerified Demos/Conjunction/AccuracyFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "adaptive" ]; then
+  check_axioms tests/conjunction/AdaptiveAxioms.lean
+  if [ "$case_module" = "adaptive" ]; then
+    check_file adaptive Demos.Conjunction.AdaptiveVerified Demos/Conjunction/AdaptiveFile.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then

@@ -39,6 +39,7 @@ sgp4:Demos.Sgp4.Verified:Demos/Sgp4/File.lean
 sgp4box:Demos.Sgp4.BoxVerified:Demos/Sgp4/BoxFile.lean
 sgp4omm:Demos.Sgp4.OmmVerified:Demos/Sgp4/OmmFile.lean
 accuracy:Demos.Conjunction.AccuracyVerified:Demos/Conjunction/AccuracyFile.lean
+adaptive:Demos.Conjunction.AdaptiveVerified:Demos/Conjunction/AdaptiveFile.lean
 attitude:Demos.Attitude.Verified:Demos/Attitude/File.lean
 qmethod:Demos.Attitude.QVerified:Demos/Attitude/QFile.lean
 chisquare:Demos.Gate.Verified:Demos/Gate/File.lean

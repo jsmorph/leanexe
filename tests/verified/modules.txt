@@ -72,6 +72,7 @@ Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Demos.Conjunction.Verified:Demos.Conjunction.compiled.module:conjunction
 Demos.Conjunction.AccuracyVerified:Demos.Conjunction.Accuracy.compiled.module:accuracy
+Demos.Conjunction.AdaptiveVerified:Demos.Conjunction.Adaptive.compiled.module:adaptive
 Demos.Attitude.Verified:Demos.Attitude.compiled.module:attitude
 Demos.Gate.Verified:Demos.Gate.compiled.module:chisquare
 Demos.Gate.GateVerified:Demos.Gate.gateCompiled.module:gate

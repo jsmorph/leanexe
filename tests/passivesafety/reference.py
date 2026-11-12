@@ -7,7 +7,8 @@ Hill-Clohessy-Wiltshire equations.
 
 Each line of the input, which `verified-cases-passivesafety --bits` prints, holds a case's name,
 its expected status and scenario, the number of input values, the bit patterns of the values, the
-fuel, and the result: status, scenario, and the bit patterns of stop, sep, and rc.  The script
+fuel, the bit pattern of the accuracy, and the result: status, scenario, and the bit patterns of
+stop, sep, and rc.  The script
 
 1. compares the closed form of the requirements with a fourth-order Runge-Kutta integration of the
    equations from random states, and fails when they differ by more than 1e-6 of the state's size;
@@ -17,14 +18,20 @@ fuel, and the result: status, scenario, and the bit patterns of stop, sep, and r
    of the burns' boxes, and fails when the least separation over [0, T] falls below `sep`, or the
    least radial and cross-track distance over one period after the scenario's last burn falls
    below `rc`, by more than 1e-6, or when `sep` or `rc` lies below its threshold;
-4. for each case rejected with status 3 or 4, integrates the scenario that the result names from
+4. for each accepted case, integrates every scenario from the centres of the boxes together with
+   the change of the state from each input's half-width, computes at each sample the distance of
+   the box that holds each component's values over the boxes, the bound that the program's
+   interval at a single time approaches, and fails when the least of these componentwise bounds
+   exceeds `sep` or `rc` by more than the accuracy plus SLACK times the componentwise bound, a gap
+   that a search that stops at its threshold leaves;
+5. for each case rejected with status 3 or 4, integrates the scenario that the result names from
    the same samples and reports whether a sample violates the threshold.
 
 The integration samples each coast every 1/4000 of the orbital period or of the horizon, whichever
 is shorter, and integrates again with a step 100 times smaller over the two steps around each
 state's least sample.  A sampled minimum is at least the trajectory's minimum, so a bound above
-it is wrong.  The script prints, for each case, the bounds, the sampled minima, and their
-differences.
+it is wrong.  The script prints, for each case, the bounds, the sampled minima, the componentwise
+bounds, and their differences.
 Usage: uv run tests/passivesafety/reference.py CASES"""
 import math
 import struct
@@ -33,6 +40,9 @@ import sys
 import numpy as np
 
 TOLERANCE = 1e-6
+SLACK = 1e-6
+SEP = [0, 1, 2]
+RC = [0, 2]
 
 
 def double(bits: str) -> float:
@@ -153,6 +163,63 @@ def scenario_minima(n, horizon, burns, executed, s0, dv, step):
     return least, rc
 
 
+def bound_min(n, cols, duration, step, comps):
+    """The least componentwise bound over a coast of `duration` from the columns `cols`, and the
+    columns at its end.  Row 0 of `cols` is the state from the centres of the boxes, and each other
+    row the change of the state from one input's half-width, so that each component ranges over
+    row 0 plus or minus the sum of the other rows' magnitudes."""
+
+    def bound(c):
+        least = np.maximum(np.abs(c[0, comps]) - np.sum(np.abs(c[1:, comps]), axis=0), 0.0)
+        return math.sqrt(float(np.sum(least**2)))
+
+    best = bound(cols)
+    if duration <= 0:
+        return best, cols
+    steps = max(1, math.ceil(duration / step))
+    h = duration / steps
+    cur, start, first = cols, cols, 0
+    for k in range(1, steps + 1):
+        nxt = rk4(n, cur, h)
+        d = bound(nxt)
+        if d < best:
+            best, start, first = d, cur, k - 1
+        cur = nxt
+    window = min(2 * h, (steps - first) * h)
+    fine = h / 100
+    q = start
+    for i in range(1, 201):
+        q = rk4(n, q, fine)
+        if i * fine <= window * (1 + 1e-12):
+            best = min(best, bound(q))
+    return best, cur
+
+
+def componentwise_minima(n, horizon, burns, executed, box_lo, box_hi, step):
+    """The least componentwise bound of the separation over [0, horizon], and of the radial and
+    cross-track distance over one period after the last executed burn."""
+    cols = np.zeros((7 + 3 * len(burns), 6))
+    cols[0] = (box_lo + box_hi) / 2
+    for i in range(6):
+        cols[1 + i, i] = (box_hi[i] - box_lo[i]) / 2
+    t = 0.0
+    least = math.inf
+    for k, (tb, lo, hi) in enumerate(burns):
+        if not executed[k]:
+            continue
+        m, cols = bound_min(n, cols, tb - t, step, SEP)
+        least = min(least, m)
+        t = tb
+        cols = cols.copy()
+        cols[0, 3:] += (lo + hi) / 2
+        for i in range(3):
+            cols[7 + 3 * k + i, 3 + i] = (hi[i] - lo[i]) / 2
+    m, _ = bound_min(n, cols, horizon - t, step, SEP)
+    least = min(least, m)
+    rc, _ = bound_min(n, cols, 2 * math.pi / n, step, RC)
+    return least, rc
+
+
 def corners(lo, hi):
     dim = len(lo)
     return np.array(
@@ -175,7 +242,7 @@ def sample_boxes(box_lo, box_hi, burns, rng):
     return s0, dv
 
 
-def check_case(name, expected, xs, result, rng):
+def check_case(name, expected, xs, acc, result, rng):
     status, scenario, stop, sep, rc = result
     n, horizon, dmin, drc = xs[0:4]
     box_lo = np.array(xs[4:16:2])
@@ -198,17 +265,26 @@ def check_case(name, expected, xs, result, rng):
     if status == 0:
         least_sep = math.inf
         least_rc = math.inf
+        comp_sep = math.inf
+        comp_rc = math.inf
         for j in range(2 * N + 1):
             executed = [runs(N, j, k) for k in range(N)]
             m, r = scenario_minima(n, horizon, burns, executed, s0, dv, step)
             least_sep = min(least_sep, float(np.min(m)))
             least_rc = min(least_rc, float(np.min(r)))
-        ok = (least_sep >= sep - TOLERANCE and least_rc >= rc - TOLERANCE and
-              sep >= dmin and rc >= drc)
+            cs, cr = componentwise_minima(n, horizon, burns, executed, box_lo, box_hi, step)
+            comp_sep = min(comp_sep, cs)
+            comp_rc = min(comp_rc, cr)
+        sound = (least_sep >= sep - TOLERANCE and least_rc >= rc - TOLERANCE and
+                 sep >= dmin and rc >= drc)
+        close = (comp_sep - sep <= acc + SLACK * max(1.0, comp_sep) and
+                 comp_rc - rc <= acc + SLACK * max(1.0, comp_rc))
+        ok = sound and close
         print(
-            f"{'ok  ' if ok else 'FAIL'} {line} sep {sep:.6g} sampled {least_sep:.6g} "
-            f"gap {least_sep - sep:.3g} rc {rc:.6g} sampled {least_rc:.6g} "
-            f"gap {least_rc - rc:.3g}"
+            f"{'ok  ' if ok else 'FAIL'} {line} acc {acc:.3g} sep {sep:.6g} sampled "
+            f"{least_sep:.6g} componentwise {comp_sep:.6g} rc {rc:.6g} sampled {least_rc:.6g} "
+            f"componentwise {comp_rc:.6g}, excess over acc {comp_sep - sep - acc:.3g} and "
+            f"{comp_rc - rc - acc:.3g}{'' if close else ' (gap above the accuracy)'}"
         )
         return ok
     executed = [runs(N, scenario, k) for k in range(N)]
@@ -235,9 +311,10 @@ def main() -> int:
             continue
         name, expected, count = f[0], (int(f[1]), int(f[2])), int(f[3])
         xs = [double(b) for b in f[4 : 4 + count]]
-        status, scenario = int(f[5 + count]), int(f[6 + count])
-        stop, sep, rc = (double(b) for b in f[7 + count : 10 + count])
-        if not check_case(name, expected, xs, (status, scenario, stop, sep, rc), rng):
+        acc = double(f[5 + count])
+        status, scenario = int(f[6 + count]), int(f[7 + count])
+        stop, sep, rc = (double(b) for b in f[8 + count : 11 + count])
+        if not check_case(name, expected, xs, acc, (status, scenario, stop, sep, rc), rng):
             failures += 1
     print(f"{failures} failures")
     return 1 if failures else 0

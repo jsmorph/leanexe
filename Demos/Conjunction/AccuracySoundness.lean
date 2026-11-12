@@ -9,7 +9,9 @@ and `linearError_sound` that an accepted result of `linearError` holds the half-
 probability `Model.linearProb` is `p`.  The proofs follow the search for any enclosure `E` of a
 probability `P`: the bracketing keeps a lower end whose probability `E` shows below `p` and, once
 it ends, an upper end whose probability `E` shows at least `p`, and each bisection keeps one of
-the two.  `Model.radiusIn_of` turns the two ends into the radius.
+the two.  `Model.radiusIn_of` turns the two ends into the radius.  `guarded_sound` proves the input
+tests and the exchange of axes of the circular error for any search that holds the radius, so that
+`circularError_sound` and `circularErrorAdaptive_sound` of `AdaptiveSoundness.lean` share them.
 -/
 
 namespace Demos.Conjunction.Accuracy
@@ -228,25 +230,53 @@ theorem diskSearch_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64} (hp : Fini
     (fun hH => Model.pc_strictMonoOn _ _ _ _ _ hH.2)
     (fun hH => Model.pc_continuousOn _ _ _ _ _ hH.1 hH.2) k hf
 
-/-- An accepted result of `circularError` holds the radius of the disk about the origin whose
-probability is `p`, for the real values of the inputs, whose covariance is positive definite. -/
-theorem circularError_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
-    (h : (circularError m1 m2 c11 c12 c22 p n k).status = 0) :
+/-- The input tests of `circularErrorWith`, with the least number of panels `nmin`, around a
+search `S` that receives the mean, the covariance, and the probability after the exchange of
+axes. -/
+def guarded (nmin : UInt64) (S : Float → Float → Float → Float → Float → Float → Radius)
+    (m1 m2 c11 c12 c22 p : Float) (n k : UInt64) : Radius :=
+  if finite m1 && finite m2 && finite c11 && finite c12 && finite c22 && finite p then
+    if 0.0 < p ∧ p < 1.0 ∧ 0.0 < c11 ∧ 0.0 < c22 ∧ nmin ≤ n ∧ n ≤ 1048576 ∧ k ≤ 64 then
+      if c22 ≤ c11 then
+        if definite c11 c12 c22 then S m1 m2 c11 c12 c22 p else ⟨1, 0.0, 0.0⟩
+      else if definite c22 c12 c11 then S m2 m1 c22 c12 c11 p
+      else ⟨1, 0.0, 0.0⟩
+    else ⟨1, 0.0, 0.0⟩
+  else ⟨1, 0.0, 0.0⟩
+
+theorem circularErrorWith_eq (tab : Array UInt64) (m1 m2 c11 c12 c22 p : Float) (n k : UInt64) :
+    circularErrorWith tab m1 m2 c11 c12 c22 p n k =
+      guarded 1 (fun a b c d e q => diskSearch tab a b c d e q n k) m1 m2 c11 c12 c22 p n k :=
+  rfl
+
+/-- An accepted result of the input tests around a search `S` holds the radius of the disk about
+the origin whose probability is `p`, when every accepted result of `S` for a probability above 0
+holds that radius for its arguments. -/
+theorem guarded_sound {nmin : UInt64} {S : Float → Float → Float → Float → Float → Float → Radius}
+    (hS : ∀ a b c d e q : Float, Finite q.toBits → 0 < value q.toBits →
+      (S a b c d e q).status = 0 →
+        (0 < value c.toBits ∧ 0 < Model.det (value c.toBits) (value d.toBits) (value e.toBits)) ∧
+        Finite (S a b c d e q).lo.toBits ∧ Finite (S a b c d e q).hi.toBits ∧
+        Model.RadiusIn (Model.pc (value a.toBits) (value b.toBits) (value c.toBits)
+            (value d.toBits) (value e.toBits)) (value q.toBits)
+          (value (S a b c d e q).lo.toBits) (value (S a b c d e q).hi.toBits))
+    {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
+    (h : (guarded nmin S m1 m2 c11 c12 c22 p n k).status = 0) :
     0 < value p.toBits ∧ value p.toBits < 1 ∧ 0 < value c11.toBits ∧
       0 < Model.det (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
-      Finite (circularError m1 m2 c11 c12 c22 p n k).lo.toBits ∧
-      Finite (circularError m1 m2 c11 c12 c22 p n k).hi.toBits ∧
+      Finite (guarded nmin S m1 m2 c11 c12 c22 p n k).lo.toBits ∧
+      Finite (guarded nmin S m1 m2 c11 c12 c22 p n k).hi.toBits ∧
       Model.RadiusIn (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits)
           (value c12.toBits) (value c22.toBits)) (value p.toBits)
-        (value (circularError m1 m2 c11 c12 c22 p n k).lo.toBits)
-        (value (circularError m1 m2 c11 c12 c22 p n k).hi.toBits) := by
-  unfold circularError circularErrorWith at h ⊢
+        (value (guarded nmin S m1 m2 c11 c12 c22 p n k).lo.toBits)
+        (value (guarded nmin S m1 m2 c11 c12 c22 p n k).hi.toBits) := by
+  unfold guarded at h ⊢
   by_cases g1 : (finite m1 && finite m2 && finite c11 && finite c12 && finite c22 && finite p) = true
   · rw [ite_eq_left g1] at h ⊢
     simp only [Bool.and_eq_true, finite_iff] at g1
     obtain ⟨⟨⟨⟨⟨-, -⟩, fc11⟩, -⟩, -⟩, fp⟩ := g1
     by_cases g2 : (0.0 : Float) < p ∧ p < 1.0 ∧ (0.0 : Float) < c11 ∧ (0.0 : Float) < c22 ∧
-        1 ≤ n ∧ n ≤ 1048576 ∧ k ≤ 64
+        nmin ≤ n ∧ n ≤ 1048576 ∧ k ≤ 64
     · rw [ite_eq_left g2] at h ⊢
       have hq : 0 < value p.toBits := by
         have := (lt_iff_value lit_zero.1 fp).mp g2.1
@@ -261,14 +291,14 @@ theorem circularError_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
       · rw [ite_eq_left g3] at h ⊢
         by_cases g4 : definite c11 c12 c22 = true
         · rw [ite_eq_left g4] at h ⊢
-          obtain ⟨⟨-, hd⟩, fl, fh, hR⟩ := diskSearch_sound fp hq h
+          obtain ⟨⟨-, hd⟩, fl, fh, hR⟩ := hS _ _ _ _ _ _ fp hq h
           exact ⟨hq, hq1, hc11, hd, fl, fh, hR⟩
         · rw [ite_eq_right g4] at h
           exact absurd h (by decide)
       · rw [ite_eq_right g3] at h ⊢
         by_cases g4 : definite c22 c12 c11 = true
         · rw [ite_eq_left g4] at h ⊢
-          obtain ⟨⟨-, hd⟩, fl, fh, hR⟩ := diskSearch_sound fp hq h
+          obtain ⟨⟨-, hd⟩, fl, fh, hR⟩ := hS _ _ _ _ _ _ fp hq h
           have hdet : Model.det (value c22.toBits) (value c12.toBits) (value c11.toBits) =
               Model.det (value c11.toBits) (value c12.toBits) (value c22.toBits) := by
             unfold Model.det
@@ -287,6 +317,21 @@ theorem circularError_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
       exact absurd h (by decide)
   · rw [ite_eq_right g1] at h
     exact absurd h (by decide)
+
+/-- An accepted result of `circularError` holds the radius of the disk about the origin whose
+probability is `p`, for the real values of the inputs, whose covariance is positive definite. -/
+theorem circularError_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
+    (h : (circularError m1 m2 c11 c12 c22 p n k).status = 0) :
+    0 < value p.toBits ∧ value p.toBits < 1 ∧ 0 < value c11.toBits ∧
+      0 < Model.det (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
+      Finite (circularError m1 m2 c11 c12 c22 p n k).lo.toBits ∧
+      Finite (circularError m1 m2 c11 c12 c22 p n k).hi.toBits ∧
+      Model.RadiusIn (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits)
+          (value c12.toBits) (value c22.toBits)) (value p.toBits)
+        (value (circularError m1 m2 c11 c12 c22 p n k).lo.toBits)
+        (value (circularError m1 m2 c11 c12 c22 p n k).hi.toBits) := by
+  rw [circularError, circularErrorWith_eq] at h ⊢
+  exact guarded_sound (fun _ _ _ _ _ _ hp hq hs => diskSearch_sound hp hq hs) h
 
 /-! ### The linear error -/
 
