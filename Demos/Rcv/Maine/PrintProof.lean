@@ -78,7 +78,7 @@ theorem result_first (n : Nat) (first : List (Nat × Nat)) (k : Count) (i : Nat)
     List.append_assoc, List.append_assoc, List.getElem?_append_right (by simp),
     List.getElem?_append_left (by simp; omega)]
   simp only [List.length_cons, List.length_nil, Nat.add_sub_cancel_left, List.getElem?_map,
-    List.getElem?_range', hi, ↓reduceIte, Option.map_some, Option.getD_some]
+    List.getElem?_range', hi, Option.map_some, Option.getD_some]
   rw [show 1 + 1 * i = i + 1 by omega]
 
 theorem result_round (n : Nat) (first : List (Nat × Nat)) (k : Count) (r j : Nat)

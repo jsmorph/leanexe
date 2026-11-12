@@ -20,7 +20,7 @@ open scoped List
 theorem pushRole_toList (o : Array UInt64) (r : Role) :
     (pushRole o (UInt64.ofNat r.code)).toList = o.toList ++ (ascii r.word).map UInt8.toUInt64 := by
   cases r <;>
-    simp (config := { decide := true }) only [pushRole, Role.code, Role.word, ↓reduceIte,
+    simp (config := { decide := true }) only [pushRole, Role.word, ↓reduceIte,
       pushWord_toList, List.append_assoc] <;>
     exact congrArg (o.toList ++ ·) (by decide)
 
@@ -122,7 +122,7 @@ theorem countWords_contestWords (c : Contest) (hc : c.WellFormed) :
   set P := c.ballots.flatMap fun b : Ballot => b.positions with hP
   have hws : contestWords c = [UInt64.ofNat n, UInt64.ofNat c.positions,
       UInt64.ofNat c.ballots.length] ++ (K.map UInt64.ofNat ++ (c.order.map UInt64.ofNat ++ P)) := by
-    simp only [contestWords, List.map_append, List.map_cons, List.map_nil, List.append_assoc, hK,
+    simp only [contestWords, List.map_append, List.map_cons, List.append_assoc, hK,
       hP, List.cons_append, List.nil_append]
     rfl
   have hKl : (K.map UInt64.ofNat).length = n := by simp [hK, hn]

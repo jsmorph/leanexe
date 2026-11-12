@@ -14,9 +14,25 @@
     "rw [h] at hyp leaves match some l with unreduced",
     "simp only [] turns a = a into True inside a conjunction",
     "subst h eliminates the right-hand variable",
-    "obtain ⟨-, h0⟩ clears h0 when h0 depends on the witness"
+    "obtain ⟨-, h0⟩ clears h0 when h0 depends on the witness",
+    "rw [e] at h inside a by block closes a goal ?a * w = ?b * w by assigning ?b := ?a",
+    "rw [← h] with h : n ^ 2 * a ^ 3 = μ rewrites μ inside semimajor μ r v",
+    "split_ifs after unfold of a definition with let bindings",
+    "Too many variable names provided at alternative of cases on an inductive family with local indices",
+    "ambiguous pattern, use fully qualified name",
+    "Expected type must not contain free variables, from decide",
+    "absurd h (by decide +kernel) for h : (2.0 : Float) = 1.0",
+    "Unknown identifier after obtain destructures a hypothesis",
+    "type mismatch between LinearOrder.toPartialOrder.toLT and instLTUInt64 from not_le on UInt64",
+    "The environment does not contain HasFDerivAtFilter.cosh",
+    "unexpected identifier at the continuation line of a tactic inside a term"
   ],
   "modules": [
+    "Demos.Orbit.LambertTime",
+    "Demos.Orbit.LambertSound",
+    "Demos.Conjunction.AccuracyModel",
+    "Demos.Screening.Soundness",
+    "Library.Numerics.Bounds.Program",
     "Demos.OrderBook.Bound",
     "Demos.OrderBook.ProcessCharges",
     "LeanExe.Requests.Reads",
@@ -41,7 +57,14 @@
     "Demos.Rcv.Rounds.rule_of_lowest",
     "Demos.Rcv.Rounds.Trace.head",
     "List.filter_cons_of_pos",
-    "ite_eq_left"
+    "ite_eq_left",
+    "Demos.Orbit.signOf",
+    "Demos.Screening.lit5_get0",
+    "UInt64.not_le",
+    "UInt64.lt_iff_toNat_lt",
+    "UInt64.le_iff_toNat_le",
+    "Library.Numerics.Bounds.finite",
+    "Library.Numerics.Bounds.absBits"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -53,7 +76,10 @@
     "Demos.Rcv.Refine.batchOf_spec",
     "Demos.Rcv.Spec.read_error_first",
     "Demos.Rcv.Properties.trace_not_loser",
-    "Demos.Rcv.Maine.locality"
+    "Demos.Rcv.Maine.locality",
+    "Demos.Orbit.lambert_newton",
+    "Demos.Orbit.lambertBox_sound",
+    "Demos.Conjunction.Model.radiusIn_of"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

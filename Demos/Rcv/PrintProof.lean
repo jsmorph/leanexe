@@ -682,7 +682,7 @@ theorem findByte_line (b : Bytes) (p e : UInt64) (hpe : p â‰¤ e) (he : e.toNat â
 
 theorem text_length_take (L : List (List UInt8)) (k : Nat) (hk : k < L.length) :
     (text (L.take (k + 1))).length = (text (L.take k)).length + L[k].length + 1 := by
-  rw [List.take_succ, text_append, List.getElem?_eq_getElem hk]
+  rw [List.take_add_one, text_append, List.getElem?_eq_getElem hk]
   simp [text]
   omega
 
