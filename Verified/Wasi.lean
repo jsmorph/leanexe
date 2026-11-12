@@ -5,6 +5,7 @@ import Verified.Wasi.ProcessNative
 import Verified.Wasi.ProcessTermination
 import Verified.Wasi.ProcessTotalCorrect
 import Verified.Wasi.HostTotal
+import Verified.Wasi.HostTotalWith
 import Verified.Wasi.SysRule
 import Verified.Wasi.ScriptHostContracts
 import Verified.Wasi.CommandBindSpec

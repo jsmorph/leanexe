@@ -1,8 +1,9 @@
 import Verified.Examples.WasiSys
 
 /-! The axiom audit of the flat calls: the marshalling theorems of `Command.sys`, the program
-theorems with imported calls, the reflection equations of the typed calls, and the generated
-theorems of the flat call example use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+theorems with imported calls, the reflection equations of the typed calls, the resource rule of a
+reported call, the host totality theorems for `hostSpecWith`, and the generated theorems of the flat
+call example use only `propext`, `Classical.choice`, and `Quot.sound`. -/
 
 open Lean Elab Command in
 elab "check_wasi_sys_axioms" : command => do
@@ -23,6 +24,10 @@ elab "check_wasi_sys_axioms" : command => do
     ``Verified.Wasi.Reflect.randomGet_eq,
     ``Verified.Wasi.Reflect.argsSizesGet_eq,
     ``Verified.Wasi.Reflect.args_eq,
+    ``Verified.Wasi.Resource.reported_rule_observed,
+    ``Verified.Wasi.OracleSys.sys_contract,
+    ``LeanExe.Wasi.Host.TotalFor.satisfiableWith,
+    ``LeanExe.Wasi.Host.Answers.of_satisfiesWith,
     ``Verified.Examples.WasiSys.command.main.related,
     ``Verified.Examples.WasiSys.command.ready,
     ``Verified.Examples.WasiSys.command.calls,
