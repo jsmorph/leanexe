@@ -9,7 +9,14 @@
     "cells.size.toUInt64.toNat = cells.size and a cap on the cells of a level",
     "an enclosure of the root of g x = 0 from a residual and a lower bound of the slope",
     "a branch-and-prune search over geodetic boxes that splits boxes near a pole",
-    "a theorem of a search for every function within the margins that it tests"
+    "a theorem of a search for every function within the margins that it tests",
+    "an accepted panel lies within an accuracy of the least midpoint bound of the searches of the same kind",
+    "an enclosure of an integral by a march whose panels have about equal widths, without an array",
+    "the tolerance of a march for a budget of panels, from the widths of an earlier march",
+    "a queue of cells in an append-only array under a budget of splits, with intervals inherited from the parent",
+    "a witness of a value at or above a threshold from an interval at a cell center",
+    "the number of panels that a fuel-bounded search evaluates",
+    "a comparison of searches by the least panel count with status 0"
   ],
   "modules": [
     "LeanExe.Dialect.Lemmas",
@@ -25,7 +32,8 @@
     "Demos.Screening.Filters",
     "Demos.Frames.Geodetic",
     "Demos.Frames.Soundness",
-    "Demos.Sgp4.KeplerBox"
+    "Demos.Sgp4.KeplerBox",
+    "LeanExe.Dialect.ArrayLemmas"
   ],
   "declarations": [
     "Demos.Conjunction.Accuracy.Encl",
@@ -50,7 +58,17 @@
     "Demos.Frames.Geodetic.bound_of_growth",
     "Demos.Frames.Geodetic.lag_mono",
     "Demos.Frames.Geodetic.ratio_mono",
-    "Demos.Sgp4.Kepler.root.encloses"
+    "Demos.Sgp4.Kepler.root.encloses",
+    "Demos.PassiveSafety.accepts",
+    "Demos.PassiveSafety.record",
+    "Demos.PassiveSafety.march_covered",
+    "Demos.Conjunction.Accuracy.guarded",
+    "Demos.Conjunction.Accuracy.circularErrorWith_eq",
+    "Demos.Conjunction.Accuracy.guarded_sound",
+    "LeanExe.Dialect.push_get_lt",
+    "LeanExe.Dialect.push_get_size",
+    "LeanExe.repeatWhile",
+    "Demos.Conjunction.Accuracy.circularError_sound"
   ],
   "examples": [
     "Demos.Conjunction.Accuracy.diskSearch_sound",
@@ -69,6 +87,33 @@
     ],
     "Demos/Events/Soundness.lean": [
       "Demos.Events.events_near"
+    ],
+    "Demos/Conjunction/Adaptive.lean": [
+      "Demos.Conjunction.Adaptive.pcAdaptWith"
+    ],
+    "Demos/Conjunction/AdaptiveSoundness.lean": [
+      "Demos.Conjunction.Adaptive.Covers",
+      "Demos.Conjunction.Adaptive.marchStep_covers",
+      "Demos.Conjunction.Adaptive.marches_used",
+      "Demos.Conjunction.Adaptive.meet_sound",
+      "Demos.Conjunction.Adaptive.circularErrorAdaptWith_eq"
+    ],
+    "Demos/Avoidance/Program.lean": [
+      "Demos.Avoidance.search",
+      "Demos.Avoidance.finish"
+    ],
+    "Demos/Avoidance/Soundness.lean": [
+      "Demos.Avoidance.Inv",
+      "Demos.Avoidance.search_inv",
+      "Demos.Avoidance.finish_sound",
+      "Demos.Avoidance.authorize_above"
+    ],
+    "tests/TestSupport/PassiveSafety/Cases.lean": [
+      "TestSupport.PassiveSafety.Cases.used",
+      "TestSupport.PassiveSafety.Cases.panels"
+    ],
+    "tests/TestSupport/Conjunction/AdaptiveCases.lean": [
+      "TestSupport.Conjunction.AdaptiveCases.leastPanels"
     ]
   }
 }

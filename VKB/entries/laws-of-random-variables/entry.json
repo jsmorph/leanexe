@@ -1,0 +1,59 @@
+{
+  "id": "laws-of-random-variables",
+  "goals": [
+    "μ.map X = ν for probability measures on ℝ from moment-generating functions on a half-line",
+    "(ProbabilityTheory.multivariateGaussian 0 S).map f = ... for a quadratic form f",
+    "the law of a sum of squares of independent standard normal variables",
+    "MeasureTheory.Integrable (fun x => Real.exp (t * x)) μ from a closed form of the integral",
+    "∫ x, Real.exp (t * x) ∂(ProbabilityTheory.gammaMeasure a r)",
+    "the chi-square distribution from Mathlib's gammaMeasure",
+    "elaboration function for Mathlib.Tactic.subscriptTerm has not been implemented, at S *ᵥ x",
+    "failed to synthesize PartialOrder (Matrix (Fin d) (Fin d) ℝ) at CFC.sqrt S",
+    "rewrite with integral_withDensity_eq_integral_toReal_smul: did not find an occurrence of the pattern with fun x => ENNReal.ofReal (gammaPDFReal a r x)"
+  ],
+  "modules": [
+    "Demos.Gate.Gaussian",
+    "Demos.Gate.Miss"
+  ],
+  "declarations": [
+    "ProbabilityTheory.gaussianReal",
+    "ProbabilityTheory.multivariateGaussian",
+    "ProbabilityTheory.gammaMeasure",
+    "ProbabilityTheory.gammaPDF",
+    "ProbabilityTheory.eqOn_complexMGF_of_mgf",
+    "ProbabilityTheory.analyticOnNhd_complexMGF",
+    "AnalyticOnNhd.eqOn_of_preconnected_of_frequently_eq",
+    "convex_halfSpace_re_lt",
+    "ProbabilityTheory.complexMGF_ofReal",
+    "ProbabilityTheory.complexMGF_id_mul_I",
+    "MeasureTheory.Measure.ext_of_charFun",
+    "MeasureTheory.integral_undef",
+    "MeasureTheory.Integrable.of_integral_ne_zero",
+    "integral_withDensity_eq_integral_toReal_smul",
+    "Real.integral_rpow_mul_exp_neg_mul_Ioi",
+    "ProbabilityTheory.integral_gaussianReal_eq_integral_smul",
+    "integral_gaussian",
+    "MeasureTheory.integral_fintype_prod_eq_prod",
+    "MeasureTheory.Measure.pi",
+    "ProbabilityTheory.map_pi_eq_stdGaussian",
+    "WithLp.toLp",
+    "MeasureTheory.Measure.map_map",
+    "CFC.sqrt",
+    "CFC.sqrt_mul_sqrt_self",
+    "CFC.sqrt_nonneg",
+    "Matrix.nonneg_iff_posSemidef",
+    "MeasureTheory.map_measureReal_apply",
+    "Demos.Gate.Model.chiSquare",
+    "Demos.Gate.Model.ext_of_mgf_Iio",
+    "Demos.Gate.Model.integral_exp_mul_gamma",
+    "Demos.Gate.Model.integral_exp_mul_sq",
+    "Demos.Gate.Model.mahalanobis_sqrt"
+  ],
+  "examples": [
+    "Demos.Gate.Model.map_sumSq",
+    "Demos.Gate.Model.map_mahalanobis",
+    "Demos.Gate.Model.gaussian_chiSquare",
+    "Demos.Gate.Model.gaussian_tail",
+    "Demos.Gate.gate_miss"
+  ]
+}

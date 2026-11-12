@@ -68,7 +68,23 @@ returns the interval from 0 to the upper end at 1450, which contains the tail be
 `Demos.Avoidance.project` evaluates instead the form centered at a point `g` near `x̂`,
 `gᵀ C g + 2 (x̂ - g)ᵀ C g + (x̂ - g)ᵀ C (x̂ - g)`, which `Demos.Avoidance.project_eq` equates with
 the plain form over the reals (finding 6 of `Demos/Avoidance/review.md`, which compares the two on
-the oracle's inputs).  [The entry on searches over interval enclosures](../interval-searches/README.md)
+the oracle's inputs).  The natural form of a closed form evaluated over an interval of time loses
+the cancellation of terms that vary with the same function of time: for the passive-safety
+check's safety ellipse, `(4 − 3c) x` and `(2/n)(1 − c) vy` of `x(τ)` vary with `c` in opposite
+directions.  A second-order Taylor form about the panel's midpoint `t_m` evaluates the closed form
+only at that time, where each component's interval is its exact range over the boxes up to
+rounding, and puts the variation in time into `g'(t_m)(t − t_m) + g''(ξ)(t − t_m)²/2`, as
+`Demos.PassiveSafety.smoothSep` does.  At an accuracy of 0.1 m the natural form needed 102,007
+panels for the safety ellipse, mean-value forms 3,462, and the Taylor form 1,526 (the decision
+"Enclosure of a panel" of `Demos/PassiveSafety/review.md`).  A form of a sum of squares over a box
+takes the spread of every product `p_i v_i` over the box, and an along-track position that spreads
+by hundreds of meters gives `y·vy` a spread that hides the minimum, so `smoothSep` intersects the
+Taylor form of `x² + y² + z²` with the Taylor form of `x² + z²` plus the square of `y`.
+`Demos.PassiveSafety.meet` intersects two enclosures of one quantity, and
+`Demos.PassiveSafety.encloses_meet` needs only that each encloses it.  [The entry on derivatives,
+inverse functions, and differential equations of real models](../real-model-calculus/README.md)
+gives the real side of the Taylor form, and [the entry on searches over interval
+enclosures](../interval-searches/README.md)
 covers the loops that bisect, march, or subdivide with these enclosures.
 
 `Demos.Conjunction.expI_sound` applies the monotone enclosure to `exp`,

@@ -8,7 +8,10 @@
     "f us xs = algorithmP us xs.size (xs.size - 1) xs",
     "a reviewer's wrong programs for a numerical program, run through the final tests",
     "an oracle that shares the method of the program under test",
-    "samples of every parameter for a test of a cover by boxes"
+    "samples of every parameter for a test of a cover by boxes",
+    "a wrong search that returns the correct status and hull on every case",
+    "a model of a floating-point program that reproduces its results bit for bit",
+    "a claimed optimum of a design measurement"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
