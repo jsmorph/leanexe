@@ -64,7 +64,8 @@ width.  It adds the panels and multiplies the sum by an interval that contains t
 factor.  The exponential and the error function are the library's, each within one step of the
 nearest-even rounding of the real function, and the program widens each computed value by two
 steps.  The exponential factor is clamped to `[0, 1]` and the sum of the two error-function values
-to `[0, 2]`, bounds that hold for the real functions.
+to `[0, 2]`, bounds that hold for the real functions.  The result is clamped to `[0, 1]`, which
+holds the probability.
 
 The partition points are `-r`, `r`, and the points `-r + 2r (i/n)` computed in binary64.  The
 program uses a computed point only when it is finite and lies in `[-r, r]`.  The first point is
@@ -75,7 +76,7 @@ program uses a computed point only when it is finite and lies in `[-r, r]`.  The
 | Theorem | Statement |
 |---|---|
 | `Model.pc_eq` | For `c11 > 0`, `det C > 0`, and `r ≥ 0`, `Model.pc` equals the constant factor times the integral of `Model.core` from `-r` to `r`. |
-| `pc_enclosure` | When `pc` returns status 0, the real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`, the endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values. |
+| `pc_enclosure` | When `pc` returns status 0, the real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`, the endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values, and `hi ≤ 1`. |
 | `assess_sound` | When `assess` returns status 0, `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`. |
 | `compiled.pc.implements`, `compiled.assess.implements` | The module's entries return the words of `pc` and `assess`, or trap at `unreachable`. |
 

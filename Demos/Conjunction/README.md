@@ -91,7 +91,8 @@ constant factor in interval arithmetic, with the panel as the interval of `x`:
 
 `panel` multiplies the result by an interval that contains the panel's width, `panels` adds the
 panels in a loop, and `pcWith` multiplies the sum by an interval that contains the constant
-factor and clamps the lower endpoint at zero.  `expI` and `erfI` call the library's `exp` and
+factor and clamps the result to `[0, 1]`, which holds the model's value by `Model.pc_nonneg` and
+`Gaussian.pc_le_one`.  `expI` and `erfI` call the library's `exp` and
 `erf` at the two ends of an interval and widen each value by two steps, which the functions'
 one-step accuracy theorems support.  `setup` computes once the intervals of `2 c11`, `c12/c11`,
 `k`, and `r²`.  The width of the result falls in proportion to `1/n`, and no theorem depends on
@@ -112,7 +113,7 @@ defines the terms of the generated theorems.
 | `Gaussian.pc_eq_multivariateGaussian` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | `Model.pc` equals the measure of the disk under Mathlib's `multivariateGaussian` with mean `(m1, m2)` and covariance `C`. |
 | `Gaussian.integral_density`, `Gaussian.pc_le_one` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | The density integrates to 1 over the plane, and `Model.pc ≤ 1`. |
 | `Model.integral_eq_width_mul` | [Model](Model.lean) | `a ≤ b`, `f` integrable on `[a, b]` with values between `L` and `U` there | The integral of `f` from `a` to `b` is `(b - a) y` for some `y` between `L` and `U`. |
-| `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values. |
+| `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values, and `hi ≤ 1`. |
 | `assess_sound` | [Soundness](Soundness.lean) | `assess` returns status 0 | `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`, for the real value of `t`. |
 | `compiled.pc.implements`, `compiled.assess.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 54 and 55, the `pc` and `assess` exports, return words that represent `pc` and `assess` of the arguments, without a trap. |
 | `compiled.bytes` | [Compilation](Verified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`. |
@@ -151,7 +152,7 @@ In the table, `σ = (σ1, σ2)` stands for the covariance `(σ1², 0, σ2²)`.
 | `m = (300, 0)`, `σ = (100, 1000)`, `r = 20` | `2.3111e-5` | `5.6e-6` | `3.5e-7` | `2.2e-8` |
 | `m = (1200, 0)`, `σ = (100, 100)`, `r = 10` | `3.1958e-34` | `1.1e-34` | `7.1e-36` | `4.4e-37` |
 | `m = (0, 5000)`, `σ = (100, 100)`, `r = 10` | `6.57e-545` | `2.7e-17` | `2.7e-17` | `2.7e-17` |
-| `m = (3, 4)`, `σ = (10, 10)`, `r = 10000` | `1.0` | `97.5` | `6.1` | `0.39` |
+| `m = (3, 4)`, `σ = (10, 10)`, `r = 10000` | `1.0` | `1.0` | `1.0` | `0.19` |
 
 The width is about 16 times smaller for 16 times as many panels.  The last two rows show the two
 weak cases.  For a miss of 50 standard deviations along the second axis, the two error-function
@@ -159,7 +160,7 @@ values cancel, and the upper endpoint stays near `2.7e-17`, the rounding of `erf
 the constant factor and the width of `[-r, r]`.  A miss along the first axis keeps its relative
 accuracy, as the row before it shows, because the exponential factor carries the small value.
 For a disk of 1,000 standard deviations, uniform panels are far wider than the region that holds
-the probability, and the upper endpoint exceeds 1.
+the probability, and the clamp at 1 sets the upper endpoint.
 
 ## Limits of the theorems
 
@@ -169,9 +170,8 @@ some conjunctions, which indicates a violated assumption.  The realism of the co
 choice of the radius, the agreement of the frames of the mean and the covariance, and the choice
 of a threshold are the caller's.
 
-The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The result's
-upper endpoint can exceed 1: `Gaussian.pc_le_one` proves `Model.pc ≤ 1`, but the program does not
-clamp the upper endpoint at 1.  The program uses `erf` for both error-function values, so when the two values
+The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The program
+clamps the result to `[0, 1]`, so the upper endpoint is at most 1.  The program uses `erf` for both error-function values, so when the two values
 cancel, the upper endpoint stays near `7e-16` times the constant factor times `2r`, as the fifth
 row of the table shows.  A verdict against a threshold such as `1e-4` is unaffected.
 

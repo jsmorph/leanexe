@@ -1,5 +1,6 @@
 import Demos.Conjunction.Program
 import Demos.Conjunction.Model
+import Demos.Conjunction.Gaussian
 import Library.Numerics.Interval.Proof
 import Library.Numerics.Float64.Exp.ExpTheorem
 import Library.Numerics.Float64.Erf.ErfOdd
@@ -7,10 +8,11 @@ import LeanExe.Dialect.Lemmas
 
 /-!
 Soundness of the conjunction program.  `pc_enclosure` states that an accepted result of `pc`
-contains the probability of collision `Model.pc` of the real values of the inputs, and
-`assess_sound` states what each verdict of `assess` implies.  The proof follows the program: each
-interval function contains the real function it computes, each panel contains the integral of
-`Model.core` over it, and the loop adds the panels from `-r` to `r`.
+contains the probability of collision `Model.pc` of the real values of the inputs and has an upper
+endpoint of at most 1, and `assess_sound` states what each verdict of `assess` implies.  The proof
+follows the program: each interval function contains the real function it computes, each panel
+contains the integral of `Model.core` over it, the loop adds the panels from `-r` to `r`, and the
+clamp to `[0, 1]` keeps `Model.pc`, which `Model.pc_nonneg` and `Gaussian.pc_le_one` place there.
 -/
 
 namespace Demos.Conjunction
@@ -402,8 +404,22 @@ theorem panels_sound {m1 m2 c11 c12 c22 r : Float} {n : UInt64} (hc : 0 < value 
 
 /-! ### The interval and the verdict -/
 
+/-- An accepted clamp's upper endpoint is at most the clamp's upper bound. -/
+theorem clamp_hi_le {a : Interval} {lo hi : Float} (h : (clamp a lo hi).status = 0)
+    (fa : Finite a.hi.toBits) (fh : Finite hi.toBits) :
+    value (clamp a lo hi).hi.toBits ≤ value hi.toBits := by
+  unfold clamp at h ⊢
+  by_cases hc : (a.status == 0 && finite lo && finite hi) = true
+  · simp only [hc, ite_true]
+    show value (fmin a.hi hi).toBits ≤ value hi.toBits
+    rw [(fmin_value fa fh).2]
+    exact min_le_right _ _
+  · simp only [hc, Bool.false_eq_true, ite_false] at h
+    exact absurd h (by decide)
+
 /-- An accepted result of `pc` contains the probability of collision of the real values of the
-inputs, whose covariance is positive definite and whose radius is positive. -/
+inputs, whose covariance is positive definite and whose radius is positive, and its upper endpoint
+is at most 1. -/
 theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
     (h : (pc m1 m2 c11 c12 c22 r n).status = 0) :
     0 < value c11.toBits ∧
@@ -411,7 +427,8 @@ theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
       0 < value r.toBits ∧
       Contains (pc m1 m2 c11 c12 c22 r n)
         (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
-          (value c22.toBits) (value r.toBits)) := by
+          (value c22.toBits) (value r.toBits)) ∧
+      value (pc m1 m2 c11 c12 c22 r n).hi.toBits ≤ 1 := by
   unfold pc pcWith at h ⊢
   by_cases g1 : (0.0 : Float) < c11
   · by_cases g2 : (0.0 : Float) < r
@@ -444,8 +461,13 @@ theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
           have c2 := (hd _ _ (point_lit lit_one s3) (hm2 _ _ (point_lit lit_two s5) c1)).2
           have c3 := hm _ _ c2 cp
           rw [one_div, ← Model.pc_eq _ _ _ _ _ _ hc hdet (hr fr).le] at c3
+          have hle := Gaussian.pc_le_one (value m1.toBits) (value m2.toBits) _ _ _
+            (value r.toBits) hc hdet
+          have hhi := clamp_hi_le h c3.2.2.1 lit_one.1
+          rw [lit_one.2] at hhi
           exact ⟨hc, hdet, hr fr,
-            hcl _ c3 (by rw [lit_zero.2]; exact Model.pc_nonneg _ _ _ _ _ _) c3.2.2.2.2⟩
+            hcl _ c3 (by rw [lit_zero.2]; exact Model.pc_nonneg _ _ _ _ _ _)
+              (by rw [lit_one.2]; exact hle), hhi⟩
         · simp only [g1, g2, g3, g4, ite_true, ite_false] at h
           exact absurd h (by decide)
       · simp only [g1, g2, g3, ite_true, ite_false] at h
@@ -474,7 +496,7 @@ theorem assess_sound {m1 m2 c11 c12 c22 r t : Float} {n : UInt64}
   · simp only [g, ite_true] at h ⊢
     simp only [Bool.and_eq_true, beq_iff_eq, finite_iff] at g
     obtain ⟨gs, ft⟩ := g
-    obtain ⟨-, -, -, -, fl, fh, hlo, hhi⟩ := pc_enclosure gs
+    obtain ⟨-, -, -, ⟨-, fl, fh, hlo, hhi⟩, -⟩ := pc_enclosure gs
     by_cases g1 : (pc m1 m2 c11 c12 c22 r n).hi < t
     · simp only [g1, ite_true]
       exact ⟨gs, trivial, trivial, fun _ => lt_of_le_of_lt hhi ((lt_iff_value fh ft).mp g1),
