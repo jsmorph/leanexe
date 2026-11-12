@@ -9,6 +9,8 @@ import Demos.PassiveSafety.Call
 #print axioms Demos.PassiveSafety.Model.flow_add
 #print axioms Demos.PassiveSafety.Model.path_eq
 #print axioms Demos.PassiveSafety.Model.flow_phase
+#print axioms Demos.PassiveSafety.Model.taylor_two
+#print axioms Demos.PassiveSafety.Model.smooth_motion
 #print axioms Demos.PassiveSafety.check_input
 #print axioms Demos.PassiveSafety.check_sound
 #print axioms Demos.PassiveSafety.check_passive
