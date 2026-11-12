@@ -43,7 +43,7 @@ def main : IO UInt32 := do
     | some ci =>
       if let .axiomInfo _ := ci then
         if !permitted.contains n then bad := bad.push n
-      for d in ci.getUsedConstants do
+      for d in ci.getUsedConstantsAsSet.toList do
         if !parent.contains d then
           parent := parent.insert d n
           stack := stack.push d
