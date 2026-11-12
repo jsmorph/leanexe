@@ -30,8 +30,30 @@ import Library.Numerics.Arithmetic.PrimeFactors.Master
 import Library.Numerics.Arithmetic.Sieve.Master
 import Library.Numerics.Arithmetic.Uscale.Master
 import Library.Numerics.Bounds.Master
+import Library.Numerics.Decimal.Int64Text.Master
+import Library.Numerics.Decimal.ParseFloat.Master
+import Library.Numerics.Decimal.PrintFloat.Master
 import Library.Numerics.Filters.Cic.Master
+import Library.Numerics.Float64.Asin.Master
+import Library.Numerics.Float64.Asinh.Master
+import Library.Numerics.Float64.Atan.Master
+import Library.Numerics.Float64.Bessel.Master
+import Library.Numerics.Float64.Erf.Master
+import Library.Numerics.Float64.Erfc.Master
 import Library.Numerics.Float64.Exp.Master
+import Library.Numerics.Float64.Exp2.Master
+import Library.Numerics.Float64.Lgamma.Master
+import Library.Numerics.Float64.Log.Master
+import Library.Numerics.Float64.Log10.Master
+import Library.Numerics.Float64.Log1p.Master
+import Library.Numerics.Float64.Log2.Master
+import Library.Numerics.Float64.Pow.Master
+import Library.Numerics.Float64.Sinh.Master
+import Library.Numerics.Float64.Sinpi.Master
+import Library.Numerics.Float64.Tan.Master
+import Library.Numerics.Float64.Tanh.Master
+import Library.Numerics.Float64.Tgamma.Master
+import Library.Numerics.Float64.Trig.Master
 import Library.Numerics.Fourier.Master
 import Library.Numerics.Interval.Master
 import Library.Numerics.Limiters.Minmod.Master
@@ -145,8 +167,51 @@ master_registry [
   Library.Numerics.Bounds.outMul_master,
   Library.Numerics.Bounds.outDiv_master,
   Library.Numerics.Bounds.outSqrt_master,
+  Library.Numerics.Decimal.Int64Text.printInt64_master,
+  Library.Numerics.Decimal.Int64Text.readInt64_master,
+  Library.Numerics.Decimal.ParseFloat.parse64_master,
+  Library.Numerics.Decimal.ParseFloat.parse32_master,
+  Library.Numerics.Decimal.PrintFloat.print64_master,
+  Library.Numerics.Decimal.PrintFloat.print64Ecma_master,
+  Library.Numerics.Decimal.PrintFloat.print32_master,
+  Library.Numerics.Decimal.PrintFloat.print32Ecma_master,
   Library.Numerics.Filters.Cic.cic_master,
+  Library.Numerics.Float64.Asin.asin_master,
+  Library.Numerics.Float64.Asin.acos_master,
+  Library.Numerics.Float64.Asinh.asinh_master,
+  Library.Numerics.Float64.Asinh.acosh_master,
+  Library.Numerics.Float64.Asinh.atanh_master,
+  Library.Numerics.Float64.Atan.atan_master,
+  Library.Numerics.Float64.Atan.atan2_master,
+  Library.Numerics.Float64.Bessel.j0_master,
+  Library.Numerics.Float64.Bessel.j1_master,
+  Library.Numerics.Float64.Bessel.y0_master,
+  Library.Numerics.Float64.Bessel.y1_master,
+  Library.Numerics.Float64.Bessel.jn_master,
+  Library.Numerics.Float64.Bessel.yn_master,
+  Library.Numerics.Float64.Erf.erf_master,
+  Library.Numerics.Float64.Erfc.erfc_master,
   Library.Numerics.Float64.Exp.exp_master,
+  Library.Numerics.Float64.Exp2.exp2_master,
+  Library.Numerics.Float64.Exp2.exp10_master,
+  Library.Numerics.Float64.Lgamma.lgamma_master,
+  Library.Numerics.Float64.Lgamma.lgammaR_master,
+  Library.Numerics.Float64.Log.log_master,
+  Library.Numerics.Float64.Log10.log10_master,
+  Library.Numerics.Float64.Log1p.log1p_master,
+  Library.Numerics.Float64.Log2.log2_master,
+  Library.Numerics.Float64.Pow.pow_master,
+  Library.Numerics.Float64.Sinh.sinh_master,
+  Library.Numerics.Float64.Sinh.cosh_master,
+  Library.Numerics.Float64.Sinpi.sinpi_master,
+  Library.Numerics.Float64.Sinpi.cospi_master,
+  Library.Numerics.Float64.Sinpi.tanpi_master,
+  Library.Numerics.Float64.Tan.tan_master,
+  Library.Numerics.Float64.Tanh.expm1_master,
+  Library.Numerics.Float64.Tanh.tanh_master,
+  Library.Numerics.Float64.Tgamma.tgamma_master,
+  Library.Numerics.Float64.Trig.sin_master,
+  Library.Numerics.Float64.Trig.cos_master,
   Library.Numerics.Fourier.twiddle_master,
   Library.Numerics.Fourier.dft_master,
   Library.Numerics.Fourier.inverse_master,
