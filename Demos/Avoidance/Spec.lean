@@ -5,12 +5,13 @@ import Demos.Avoidance.KeplerRoot
 The model of the authorizer, stated once for the real numbers and for intervals.  Each
 `enclosure_def` declares a real function, the interval function `fI` that the program runs, and
 the theorem `f.encloses`.  `propagate` is the two-body state `t` seconds after a state, by the
-Lagrange coefficients `f` and `g` in the change of the eccentric anomaly; `shape` gives the
-inverse of the semimajor axis and the square of the eccentricity of a state; `plane` gives the
-miss vector and the projected covariance in the encounter plane; and `after` composes them into
-the encounter after a burn, the model's definition.  The program evaluates `relative`, `shape`,
+Lagrange coefficients `f` and `g` in the change of the eccentric anomaly.  `shape` gives the
+inverse of the semimajor axis and the square of the eccentricity of a state, `plane` the miss
+vector and the projected covariance in the encounter plane, and `after`, the model's definition,
+the encounter after a burn.  The program evaluates `relative`, `shape`,
 `axes`, and `project`, which computes the projected covariance in a form centered at points near
-the axes, and `plane_split` in `Geometry.lean` states that `plane` is `project` on `axes`.
+the axes.  `project_eq` in `Geometry.lean` states that the centered form equals the plain
+projection, and `after_eq_plain` in `Soundness.lean` writes `after` through `axes`.
 -/
 
 open Real
