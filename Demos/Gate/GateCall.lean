@@ -96,9 +96,10 @@ theorem gate_callSpec :
 
 /-- The module's bytes decode to the module, whose export `gate` returns `gate nu s g` without a
 trap from every ready store with room for 6,496,880 bytes, starting with the store in which
-the module starts.  When the gate accepts, the covariance is positive definite, `[lo, hi]`
-contains the squared Mahalanobis distance, the verdict compares it with the threshold, and an
-innovation distributed as `multivariateGaussian 0 S` lies outside the gate with probability
+the module starts.  When the gate accepts, the conclusions of `gate_sound` hold: the sizes and
+the threshold are in range, the covariance is positive definite, the finite interval `[lo, hi]`
+contains the squared Mahalanobis distance, and the verdict compares it with the threshold.  An
+innovation distributed as `multivariateGaussian 0 S` then lies outside the gate with probability
 `Model.tail d γ`. -/
 theorem gate_module :
     (∃ bytes, Wasm.Encoding.encode gateCompiled.module = .ok bytes ∧
@@ -110,7 +111,9 @@ theorem gate_module :
         (fun x : Array Float × Array Float × Float => gate x.1 x.2.1 x.2.2) (fun _ => 6496880) ∧
       ∀ (nu s : Array Float) (g : Float), nu.size < 2 ^ 64 ∧ s.size < 2 ^ 64 →
         (gate nu s g).status = 0 →
-        (covariance s nu.size).PosDef ∧
+        1 ≤ nu.size ∧ nu.size ≤ 64 ∧ s.size = nu.size * nu.size ∧ Finite g.toBits ∧
+          0 ≤ value g.toBits ∧ (covariance s nu.size).PosDef ∧
+          Finite (gate nu s g).lo.toBits ∧ Finite (gate nu s g).hi.toBits ∧
           value (gate nu s g).lo.toBits ≤ Model.mahalanobis (covariance s nu.size) (innovation nu) ∧
           Model.mahalanobis (covariance s nu.size) (innovation nu) ≤ value (gate nu s g).hi.toBits ∧
           ((gate nu s g).verdict = 1 →
@@ -123,8 +126,8 @@ theorem gate_module :
   obtain ⟨bytes, henc, hdec, _⟩ := gateCompiled.bytes
   refine ⟨⟨bytes, henc, hdec⟩, gate_export,
     _root_.Verified.Ready.initial rfl gateCompiled.initial, gate_callSpec, fun nu s g hs h => ?_⟩
-  obtain ⟨-, -, -, -, -, hpd, -, -, hlo, hhi, h1, h2⟩ := gate_sound hs h
-  exact ⟨hpd, hlo, hhi, h1, h2, gate_miss hs h⟩
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12⟩ := gate_sound hs h
+  exact ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, gate_miss hs h⟩
 
 #print axioms gate_bound
 #print axioms gate_trapFree

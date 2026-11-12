@@ -1,6 +1,6 @@
 # Gating and track association requirements: decisions and review
 
-[The requirements](requirements.md) specify the first iteration of the gating demo from brief 6.3 of the space-operations candidates and from the plan that orders them, whose correction for 6.3 asks for the chi-square distribution through Mathlib's Gamma distribution, enclosures of its distribution function and quantile, an assignment theorem for the integer costs that a certificate check reads, and no maneuver detection until a theorem is defined.  This record gives each decision with its reason and the findings of a fresh agent's review of the requirements, with the verification and the response for each.  Each decision followed the standard procedure: the options, a recommendation, a review of the recommendation, and a revision.
+[The requirements](requirements.md) specify the first iteration of the gating demo from brief 6.3 of the space-operations candidates and from the plan that orders them, whose correction for 6.3 asks for the chi-square distribution through Mathlib's Gamma distribution, enclosures of its distribution function and quantile, an assignment theorem for the integer costs that a certificate check reads, and no maneuver detection until a theorem is defined.  This record gives each decision with its reason, the findings of a fresh agent's review of the requirements, and the findings of a second fresh agent's review of the statements of the Gaussian link, with the verification and the response for each.  Each decision followed the standard procedure: the options, a recommendation, a review of the recommendation, and a revision.
 
 ## Decisions
 
@@ -79,6 +79,21 @@ No case detects these classes:
 - A gate that tests `0 < p.hi` in place of `0 < p.lo` is equivalent, since `div` rejects a divisor that holds 0, and so is one that reads row `k` in place of column `k`, whose real values are equal.
 - A gate that uses `mul` in place of `sq`, and different groupings of the term update, change only bits and widths, which the module test pins to the Lean source.
 - A quantile that moves its lower end when an enclosure rejects, or that omits the evaluation at `B`, gives the same results, since no evaluation rejects and the tail at `B` lies below every representable `1 - p`.  The proof excludes the first.
+
+## Review of the Gaussian link
+
+A fresh agent reviewed the statements of `Model.gaussian_chiSquare`, `Model.gaussian_tail`, `gate_miss`, `gate_miss_tail`, and `gate_module` against the requirements and Mathlib's definitions, and it checked its claims with a Lean file of examples on the built modules.  It found the statements correct, their hypotheses necessary, and none of them vacuous.
+
+| Finding | Verification | Response |
+|---|---|---|
+| 1. `multivariateGaussian 0 S` is the normal law with mean 0 and covariance `S` for a positive definite `S`, and the scoped instances of `CFC.sqrt` cannot change the measure in the statements. | Lean: `integral_id_multivariateGaussian`, `covariance_eval_multivariateGaussian`, and the `IsGaussian` instance for the measure; `gaussian_tail` restated and proved in a file that opens neither scoped instance.  The constant's only instance arguments are `Fintype` and `DecidableEq`. | None needed. |
+| 2. The event `γ < Model.mahalanobis S ν` is the complement of the gate, but the probability concerns the real gate, while the verdict 0 occurs on both sides of it, so a tracker that treats the verdict 0 as a rejection has a miss rate that no theorem bounds. | The verdict conclusions of `gate_sound`. | Adopted: [the README's limits](README.md#limits-of-the-theorems) state it. |
+| 3. Each hypothesis is needed: for `d = 0` the identity fails at `γ = -1`, since `Model.chiSquare 0 = 0`, and for `d ≥ 1` and a matrix that is not positive definite it fails at `γ = 0`.  No hypothesis on `γ` is needed. | Lean: `Model.chiSquare 0 = 0`, every matrix of order 0 positive definite, `Model.tail 0 (-1) = 0`, and the case `S = 0` at `d = 1`. | None needed; the requirements state no hypothesis on `γ`. |
+| 4. In `gate_miss` and `gate_module`, the matrix is the one whose positive definiteness `gate_sound` proves, `γ` is the value that the verdict uses, and `d` is the size of `nu`. | The statements and the proof of `gate_miss`. | None needed. |
+| 5. `k.toNat = nu.size` links the calls of `gate_miss_tail` exactly, and `Contains` claims nothing beyond `tail_sound`.  The hypothesis that `tail k g` accepts is needed, since no theorem states that `tail` accepts every finite point. | `tail_sound` and `Contains`. | None needed. |
+| 6. No statement is vacuous: the measure is a probability measure, the event is measurable, and `gate [3, 4] [1, 0, 0, 1] 25` accepts. | Lean: `probReal_univ` for the measure; the module test for the call. | None needed. |
+| 7. `gate_module` kept five of the twelve conclusions of `gate_sound`, dropping `s.size = d·d` and the finiteness of the endpoints, while its docstring and the README stated all of them. | The statement of `gate_module`. | Adopted: `gate_module` states every conclusion of `gate_sound` and then the probability. |
+| 8. The README, the requirements, and this record described the link as unproved. | The documents as the review read them. | Adopted: the documents state the proved theorems and the route of the proof. |
 
 ## Open items
 
