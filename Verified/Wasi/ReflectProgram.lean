@@ -125,9 +125,18 @@ def mainExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
   constructor.assignHint `callee callee
   constructor.finish
 
+/-- Whether the source of a reflected function holds a `sys` command. -/
+def ProgramReflection.usesCalls (program : ProgramReflection) : MetaM Bool :=
+  program.out.anyM fun reflected => do
+    let some value := (← getConstInfo reflected.function).value? | return false
+    return (value.find? (·.isConstOf ``Command.sys)).isSome
+
+/-- `calls` holds when the program has `sys` commands; its module then imports `base.sysCalls`,
+the calls they use. -/
 structure MaterializedProgram where
   base : Name
   pure : Verified.Reflect.MaterializedProgram
+  calls : Bool
 
 def materializeProgram (base : Name) (program : ProgramReflection)
     (selected : List Name) (main? : Option Name := none) : TermElabM MaterializedProgram := do
@@ -156,10 +165,20 @@ def materializeProgram (base : Name) (program : ProgramReflection)
       let value ← mainExpr program name
       pure (mkApp2 (mkConst ``Option.some [Level.zero]) mainType value)
   addDefinition (base ++ `mainEntry) (mkApp (mkConst ``Option [.zero]) mainType) main
-  let compiled ← mkAppM ``Verified.Wasi.compile
-    #[mkConst (materializedPure.base ++ `module), mkConst (base ++ `program),
-      mkConst (base ++ `entries), mkConst (base ++ `mainEntry),
-      mkConst (base ++ `literalPool)]
+  let calls ← program.usesCalls
+  let compiled ← if calls then do
+      addDefinition (base ++ `sysCalls)
+        (mkApp (mkConst ``List [.zero]) (mkConst ``LeanExe.Wasi.Call))
+        (← mkAppM ``EffectProg.callsUsed #[mkConst (base ++ `program)])
+      mkAppM ``Verified.Wasi.compileCalls
+        #[mkConst (base ++ `sysCalls), mkConst (materializedPure.base ++ `module),
+          mkConst (base ++ `program), mkConst (base ++ `entries), mkConst (base ++ `mainEntry),
+          mkConst (base ++ `literalPool)]
+    else
+      mkAppM ``Verified.Wasi.compile
+        #[mkConst (materializedPure.base ++ `module), mkConst (base ++ `program),
+          mkConst (base ++ `entries), mkConst (base ++ `mainEntry),
+          mkConst (base ++ `literalPool)]
   addDefinition (base ++ `module) (mkConst ``Wasm.Module) compiled
   let pureCovered ← mkAppM ``combinedLiteralPool_pure
     #[program.pure.prog, program.prog, ← mkAppM ``tablesEnd #[tableValues program.pure]]
@@ -167,7 +186,7 @@ def materializeProgram (base : Name) (program : ProgramReflection)
     #[program.pure.prog, program.prog, ← mkAppM ``tablesEnd #[tableValues program.pure]]
   addTheorem (base ++ `pure_covered) (← inferType pureCovered) pureCovered
   addTheorem (base ++ `effects_covered) (← inferType effectsCovered) effectsCovered
-  return { base, pure := materializedPure }
+  return { base, pure := materializedPure, calls }
 
 end Reflect
 

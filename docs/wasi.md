@@ -92,7 +92,7 @@ The [typed process entry](../Verified/Wasi/ProcessCode.lean) composes separately
 
 ### Flat Preview 1 calls
 
-`LeanExe.Wasi` also provides typed operations for flat Preview 1 functions, which share one action, `Action.sys call args next`.  A call is a flat description in [the call descriptions](../LeanExe/Wasi/Calls.lean): its import name, the core form of each parameter, and the call whose reply gives the sizes of the regions it writes.  `tools/wasi-calls.py` checks each description against the pinned witx.
+`LeanExe.Wasi` also provides typed operations for flat Preview 1 functions, which share one action, `Action.sys call args next`.  A call is a flat description in [the call descriptions](../LeanExe/Wasi/Calls.lean): its import name, the core form of each parameter, and the call whose reply gives the sizes of the regions it writes.  `tools/wasi-calls.py` checks each description against the witx of WebAssembly/WASI commit `fae981bae14809d91f9bc2d63852d461f331d161`, kept in `tests/wasi/witx/`.
 
 | Operation | Type | Behavior |
 |---|---|---|
@@ -101,7 +101,9 @@ The [typed process entry](../Verified/Wasi/ProcessCode.lean) composes separately
 | `argsSizesGet` | `Action ArgsSizes` | Calls `args_sizes_get`. |
 | `args` | `Action ArgsResult` | Calls `args_sizes_get` and then `args_get` into one buffer.  An errno of the first call ends the operation with that errno, and sizes whose buffer would reach `2^32` bytes give errno 61. |
 
-The native interpreter serves these calls through `NativeHost.withSys`, from the system clock, the system's random bytes, and the given arguments, and the Wasmtime host passes arguments with `--arg`.  In the verified compiler, a module imports the three stream functions and then the calls that its program uses, so every defined function moves by the number of calls; each layout definition and theorem has a form over the list of imported calls, and the forms at the empty list are the definitions and theorems of the stream-only layout.  `Command.sys` compiles a call of the flat form, with word arguments, at most one output buffer, and at most two result words, or of the reported form of `args_get`.  `command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against the host contract `sysContract`, whose frame is the request's output regions.  `verified_compile_wasi` does not yet reflect these operations, so a program that uses them runs natively and has no compiled module.
+The native interpreter serves these calls through `NativeHost.withSys`, from the system clock, the system's random bytes, and the given arguments, and the Wasmtime host passes arguments with `--arg`.  In the verified compiler, a module imports the three stream functions and then the calls that its program uses, so every defined function moves by the number of calls; each layout definition and theorem has a form over the list of imported calls, and the forms at the empty list are the definitions and theorems of the stream-only layout.  `Command.sys` compiles a call of the flat form, with word arguments, at most one output buffer, and at most two result words, or of the reported form of `args_get`.  `command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against the host contract `sysContract`, whose frame is the request's output regions.
+
+`verified_compile_wasi` reflects each of the four operations to one `Command.sys` command, whose result is the `Flat` form of the result structure: `(errno, time)`, `(errno, bytes)`, `(errno, count, size)`, and `(errno, count, size, bytes)`.  An argument that is not a variable is bound first, and an `Action.sys` term written directly is rejected, so a program reaches `args_get` only through `args`.  A program with `sys` commands compiles with `compileCalls p.sysCalls`, and its generated theorems are the general forms at `p.sysCalls`; a program without them keeps the module and the theorems of the stream-only layout.  [The flat call example](../Verified/Examples/WasiSys.lean) writes its arguments, their count and size, a reading of the monotonic clock, and 16 random bytes.
 
 ## Compilation and generated declarations
 
@@ -118,7 +120,7 @@ The compiler collects pure definitions first, preserving their relative order, t
 
 Callable modules export each listed effectful definition under the last component of its Lean name.  They also export `alloc` and `release`, allocation counters `allocCount` and `freeCount`, linear memory `memory`, and the empty table `__indirect_function_table`.  Pure helpers compile internally.  Command modules export `_start : () → ()`, `memory`, and the empty table.  `_start` invokes the selected main, then passes a normally returned status to `proc_exit`.  An explicit exit in main or a helper terminates before that final exit.
 
-The module has exactly three function imports from `wasi_snapshot_preview1`:
+The module imports three functions from `wasi_snapshot_preview1`, followed by the flat calls of `p.sysCalls` when its program uses them:
 
 | Import | WebAssembly signature | Descriptor |
 |---|---|---|
@@ -126,7 +128,7 @@ The module has exactly three function imports from `wasi_snapshot_preview1`:
 | `fd_write` | `(i32, i32, i32, i32) → i32` | 1: stdout, or 2: stderr. |
 | `proc_exit` | `(i32) → ()` | None. |
 
-[The ABI definitions](../Verified/Wasi/ABI.lean) reserve scratch bytes `[0,16)` for one iovec and transfer count.  The read wrapper checks capacity before narrowing it to 32 bits.  Heap and byte-representation premises prove that pointer and write-length narrowing preserves their values.  The module relocates pure calls and types by three positions, uses the shared allocator and release functions at indices 3 and 4, and passes a hidden depth through internal calls.  Public wrappers initialize depth to zero.  Effectful calls increment it, and guarded pure calls use the same depth.  Guarded calls enforce the depth limit of 1,000.
+[The ABI definitions](../Verified/Wasi/ABI.lean) reserve scratch bytes `[0,16)` for one iovec and transfer count.  The read wrapper checks capacity before narrowing it to 32 bits.  Heap and byte-representation premises prove that pointer and write-length narrowing preserves their values.  The module relocates pure calls by the number of imports and pure types by three positions, uses the shared allocator and release functions at the first two defined indices, 3 and 4 for a module without flat calls, and passes a hidden depth through internal calls.  Public wrappers initialize depth to zero.  Effectful calls increment it, and guarded pure calls use the same depth.  Guarded calls enforce the depth limit of 1,000.
 
 Pure functions that take the call depth retain the 32-position frame limit.  Acyclic effectful helpers may use larger frames when `p.stackFits` accepts the estimated whole-call-chain stack use.  [The stack check](../Verified/Wasi/Stack.lean) includes the existing 272,000-byte guarded-call allowance, pure-module frames, the three WASI wrapper frames, effectful helpers' excess over 32 positions, and exported entry frames, within 512 KiB.  It uses the existing estimate of eight bytes per position and sixteen bytes per frame.  The check does not formalize a real engine's native stack layout.  Engine stack behavior remains part of host validation and execution tests.
 
@@ -142,7 +144,9 @@ A callable host configures stdio before invoking an export and may invoke anothe
 | `p.f.related` | Original Lean action corresponds to the typed function's meaning, including its result representation. |
 | `p.literalPool` | Shared raw byte-literal pool. |
 | `p.module` | Complete importing module. |
-| `p.calls` | Universal cost-aware correctness for the compiled effectful callees. |
+| `p.sysCalls` | Program with `sys` commands: the calls they use, each once, in order of first use, which the module imports after the stream functions. |
+| `p.calls` | Universal cost-aware correctness for the compiled effectful callees: `CostEffectCalls`, or `CostEffectCallsWith p.sysCalls` for a program with `sys` commands. |
+| `p.ready` | The program's fragments have the encoder's form, and `p.sysCalls` holds the calls of its `sys` commands. |
 | `p.stackFits` | Estimated call-chain stack use fits the compiler's 512 KiB budget. |
 | `p.initial` | Allocator invariant, memory cap, borrowed constant tables, and static bytes in the modeled initial store. |
 | `p.f.implements` | Callable form: execution of the exported wrapper refines the original Lean function applied to its native parameters. |
@@ -185,7 +189,7 @@ The target host state contains the abstract world and an append-only joint event
 | No guest resource failure | With `aborts = false`, `Heap.Within` holds for a budget and `Resource.CallPrefixBound` bounds every typed source resource prefix by that budget with its size and depth checks satisfied. |
 | No reached host trap | Generated action `.total` theorems require `host.NoTrapsAlong` the native action in its initial world.  Process theorems use application-specific host-progress and final-exit premises. |
 
-The budget is a proof-level natural number.  It accounts for allocation and copying in pure fragments, read-buffer capacity, helper calls, and loop iterations along host-permitted paths.  Executable lengths, loop counts, byte values, and statuses remain `UInt64`.  `p.f.callee`, `p.program`, and the source resource relations provide concrete terms for a resource proof.  The frontend exposes this typed prefix condition.  It does not synthesize a bound solely from the original input for every I/O program.
+The budget is a proof-level natural number.  It accounts for allocation and copying in pure fragments, read-buffer capacity, flat call buffers, helper calls, and loop iterations along host-permitted paths.  The rule of a `sys` command bounds its charge on the runs and prefixes that the host permits.  A flat call charges its output buffer whatever the trace, and a reported call charges the block that its reporter's reply asks for, so `reported_rule_observed` in [the rule premises](../Verified/Wasi/SysRule.lean) derives the rule's premises from a bound on the sizes that the host's reporter replies give.  Executable lengths, loop counts, byte values, and statuses remain `UInt64`.  `p.f.callee`, `p.program`, and the source resource relations provide concrete terms for a resource proof.  The frontend exposes this typed prefix condition.  It does not synthesize a bound solely from the original input for every I/O program.
 
 Each running sum's `RunCharges` states its charges and free-memory conditions on native states and stream positions, independently of compiled stores and locals.  The integer program's `RunCharges` takes an invariant, and its termination theorem uses `LimitInv L D`: the state has a future under `limitSpec L D`, a run of the remaining input that meets the limits `L` and `D`, and its buffers are within their bounds.  The integer charges follow from the generated bounds of the pure functions: a step that consumes input pushes at most 4,096 bytes onto the pending line and completes at most one line.  `InputBounds` gives the kernel's size condition at each line, and `InputLimits` bounds the same sizes by `L` and `D` for the memory premise.  The binary64 program's `RunCharges` takes the invariant `LimitInv L` in the same way, and its charges follow from the generated bounds of the parser, the printer, and the effect bodies.  The printer's search for the shortest decimal stops within 27 steps of its start for every finite nonzero binary64 word (`PrintFloatSteps.search_le`), so it tests at most 28 exponents.  Each tested exponent takes two quotients and the choice of the digits at most six more, at most 953,376 bytes each, so the rendering of a total costs at most 59,112,378 bytes.  A parse costs at most `8 · L + 4,404,576` bytes for a line of `L` bytes.  The mathematical `Nat`/`Int` values and progress ranks are proof-only.
 
@@ -255,6 +259,8 @@ Exit always passes the low 32 bits of the source status.  [Wasmtime 44 accepts s
 tests/wasi/run.sh --foundations-only
 tests/wasi/run.sh
 ```
+
+[The flat call example's driver](../tests/wasi/sys-example-run.sh) audits the axioms of the marshalling theorems, the reflection equations, and the example's generated theorems, runs native cases with the native host's calls and with replies that carry an errno, and runs the module in the Wasmtime host with no arguments, one, four including an empty one, and one of 4,096 bytes.  [The flat call driver](../tests/wasi/sys-run.sh) checks the call descriptions against the witx and runs a frame test with guard bytes around every output region.
 
 [The readAll example](../Verified/Examples/WasiReadAll.lean) copies its standard input to its standard output through `readAll 1000000` and returns 1 when the input exceeds the limit.  [Its driver](../tests/wasi/readall-run.sh) audits the axioms of `readAll`'s proofs and the example's generated theorems, runs native cases against scripted replies, and runs the module in the Wasmtime host on inputs from files and from pipes of 0, 1, 4,095, 4,096, 4,097, 65,536, 1,000,000, 1,000,001, and 3,000,000 bytes, with a read error and a write error.
 

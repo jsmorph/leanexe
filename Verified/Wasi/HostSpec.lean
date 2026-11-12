@@ -115,6 +115,27 @@ structure Region where
 
 def Region.span (region : Region) : Nat × Nat := (region.pointer.toNat, region.size)
 
+/-- Whether an argument has the kind of its parameter and fits the parameter's core type: a word
+below `2^32` for `word32` and `enum32`, a word for `word64`, bytes of fewer than `2^32` bytes for
+`input`, and a capacity below `2^32` for `output`. -/
+def argFits : Param → Arg → Bool
+  | .word32, .word value | .enum32 _, .word value => decide (value.toNat < 2 ^ 32)
+  | .word64, .word _ => true
+  | .input, .bytes value => decide (value.data.size < 2 ^ 32)
+  | .output, .space capacity => decide (capacity.toNat < 2 ^ 32)
+  | _, _ => false
+
+/-- Whether `args` holds one fitting argument for each parameter that takes one, in order, and no
+other.  `lowerArgs` is injective on such requests. -/
+def argsFit : List Param → List Arg → Bool
+  | [], args => args.isEmpty
+  | param :: params, args =>
+    if param.takesArg then
+      match args with
+      | [] => false
+      | arg :: rest => argFits param arg && argsFit params rest
+    else argsFit params args
+
 /-- The core arguments of a request whose pointer parameters take `pointers` in order. -/
 def lowerArgs : List Param → List Arg → List UInt32 → List Value
   | [], _, _ => []
@@ -178,12 +199,13 @@ def ShownAt (mem : Mem) : List Region → List LeanExe.Bytes → Prop
       | output :: rest => Bytes.At mem region.pointer.toUInt64 output ∧ ShownAt mem regions rest
     else ShownAt mem regions outputs
 
-/-- The premise of a flat call's contract: the core arguments lower an accepted request with the
-given pointers, the inputs lie at their pointers, and the output regions, of the sizes the world
+/-- The premise of a flat call's contract: the core arguments lower an accepted request that fits
+the call's parameters with the given pointers, the inputs lie at their pointers, and the output regions, of the sizes the world
 reports for reported regions, lie in memory below `2^32` at aligned pointers, apart from one
 another and from the inputs. -/
 structure SysRequest (before : Store (Observed World)) (args : List Value) (call : Call)
     (request : List Arg) (pointers : List UInt32) (sizes : List Nat) : Prop where
+  fits : argsFit call.params request = true
   accepted : call.reject request = 0
   arguments : args = lowerArgs call.params request pointers
   inputs : ∀ place ∈ inputPlaces call.params request pointers,

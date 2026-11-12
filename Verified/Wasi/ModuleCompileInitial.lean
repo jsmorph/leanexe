@@ -55,6 +55,23 @@ theorem initialStore_scratch (source : Wasm.Module) (extra : Extension) (world :
     16 ≤ (initialStore source extra world).mem.pages * 65536 := by
   layout_instance initialStore_scratch_with
 
+theorem compileWith_initialStaticStore_with {calls : List LeanExe.Wasi.Call} {S : List Sig}
+    (prog : Prog S) (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
+    (pool : Bytes.LiteralPool) (extra : Extension) (world : World)
+    (hPoolBase : pool.base = tablesEnd tables) (hFit : pool.top ≤ 65535 * 65536) :
+    let source := Verified.compileWith prog tables wrappers pool
+    let store := PureTransport.erase (initialStoreWith calls source extra world)
+    (initialStaticHeap pool).At store ∧
+      store.memoryCap (assembleWith calls source extra) 0 ≤ 65535 ∧
+      (∀ k (hk : k < tables.length),
+        (initialStaticHeap pool).Borrowed store (tableAddr tables k) tables[k]) ∧
+      pool.Static (initialStaticHeap pool) store := by
+  obtain ⟨hAt, hCap, hBorrowed, hStatic⟩ :=
+    Verified.compileWith_initialStaticStore prog tables wrappers pool hPoolBase hFit
+  exact ⟨initialStore_at_with _ extra world hAt, hCap,
+    (fun k hk => initialStore_borrowed_with _ extra world (hBorrowed k hk)),
+    initialStore_static_with _ extra world hStatic⟩
+
 theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
     (pool : Bytes.LiteralPool) (extra : Extension) (world : World)

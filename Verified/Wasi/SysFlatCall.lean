@@ -22,6 +22,59 @@ theorem flatCapacity_none : ∀ (params : List Param) (values : List UInt64),
   | param :: params, values, none' => by
     cases param <;> simp_all [flatCapacity, Param.takesArg, flatCapacity_none params]
 
+theorem rejectArgs_cons_zero {param : Param} {params : List Param} {arg : Arg}
+    {rest : List Arg} (takes : param.takesArg = true)
+    (zero : rejectArgs (param :: params) (arg :: rest) = 0) :
+    param.reject arg = 0 ∧ rejectArgs params rest = 0 := by
+  simp only [rejectArgs, takes, ↓reduceIte] at zero
+  by_cases head : param.reject arg = 0
+  · rw [if_pos head] at zero
+    exact ⟨head, zero⟩
+  · rw [if_neg head] at zero
+    exact absurd zero head
+
+/-- A flat request that its parameters accept fits them. -/
+theorem flatArgs_fit : ∀ (params : List Param) (values : List UInt64),
+    params.all Param.flatKind = true → rejectArgs params (flatArgs params values) = 0 →
+    argsFit params (flatArgs params values) = true
+  | [], _, _, _ => rfl
+  | param :: params, values, hKinds, hAccepted => by
+    simp only [List.all_cons, Bool.and_eq_true] at hKinds
+    cases param with
+    | word32 =>
+      obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
+      simp only [Param.reject, Arg.value] at head
+      simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.and_eq_true,
+        decide_eq_true_eq]
+      refine ⟨?_, flatArgs_fit params values.tail hKinds.2 rest⟩
+      simpa using head
+    | enum32 count =>
+      obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
+      simp only [Param.reject, Arg.value] at head
+      simp only [Param.flatKind, decide_eq_true_eq] at hKinds
+      simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.and_eq_true,
+        decide_eq_true_eq]
+      refine ⟨?_, flatArgs_fit params values.tail hKinds.2 rest⟩
+      have low : (values.headD 0).toNat < count := by simpa using head
+      omega
+    | word64 =>
+      obtain ⟨_, rest⟩ := rejectArgs_cons_zero rfl hAccepted
+      simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.true_and]
+      exact flatArgs_fit params values.tail hKinds.2 rest
+    | output =>
+      obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
+      simp only [Param.reject, Arg.capacity] at head
+      simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.and_eq_true,
+        decide_eq_true_eq]
+      refine ⟨?_, flatArgs_fit params values.tail hKinds.2 rest⟩
+      simpa using head
+    | result32 | result64 =>
+      simp only [flatArgs, rejectArgs, Param.takesArg, Bool.false_eq_true, ↓reduceIte]
+        at hAccepted ⊢
+      simp only [argsFit, Param.takesArg, Bool.false_eq_true, ↓reduceIte]
+      exact flatArgs_fit params values hKinds.2 hAccepted
+    | input | reported => simp [Param.flatKind] at hKinds
+
 private theorem slot_toNat {slot : Nat} (h : slot < 4294967296) :
     (UInt32.ofNat slot).toNat = slot :=
   UInt32.toNat_ofNat_of_lt' (by rw [show UInt32.size = 4294967296 from rfl]; exact h)
@@ -208,7 +261,7 @@ theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m
       (lowerArgs call.params (flatArgs call.params values) (flatPointers call.params root.toUInt32 0))
       call (flatArgs call.params values) (flatPointers call.params root.toUInt32 0)
       (host.reported store.host.world call) := by
-    refine ⟨hAccepted, rfl, ?_, ?_, ?_⟩
+    refine ⟨flatArgs_fit call.params values hKinds hAccepted, hAccepted, rfl, ?_, ?_, ?_⟩
     · rw [inputPlaces_flat _ _ _ hKinds]
       intro place member
       cases member
