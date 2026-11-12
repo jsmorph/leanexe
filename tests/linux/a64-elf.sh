@@ -45,7 +45,7 @@ kernel_check() {
     status=1
   fi
 }
-kernel_check ImageFilesFlipElf 5
+kernel_check ImageFilesFlipElf 6
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"

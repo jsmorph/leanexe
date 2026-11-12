@@ -17,6 +17,14 @@ whose calls fails, `flip_elf` states that when standard input holds at most `inM
 process reaches `SVC #0` with X8 at 94, `exit_group`, and X0 at 0, after it wrote to standard
 output the input with bit 5 of each byte flipped, and `flip_elf_over` that for a longer input it
 reaches it with X0 at 64 and nothing written.  Both leave the UART's state as it was.
+
+`flip_elf_any` covers every kernel, the records whose calls fail among them.  The process reaches
+`exit_group` with the UART's state as it was and with one of four statuses in X0: 0 after writing
+the flipped input, which holds at most `inMax` bytes; 64 with nothing written, for a longer input;
+65 with nothing written, when a read failed; and 66 after writing a prefix of the flipped input,
+when a write failed.  The traces of statuses 0 and 64 hold no failure, and those of 65 and 66 end
+with the failed read or write, the only failure that they hold, so the status names the call that
+failed.
 -/
 
 namespace TestSupport.A64.ImageFilesFlipElf
@@ -70,10 +78,39 @@ theorem flip_elf_over (K : Kernel) (p : Proc) (hl : ElfLoaded (byteAt flipElfByt
   (elf_bytes_run flip_elf_file (flip_elf_segments.trans flip_elf_layout.symm) (by decide)
     (by decide) flip_elf_runs K p hl hpc htr hok).2 hlen
 
+theorem flip_elf_any (K : Kernel) (p : Proc) (hl : ElfLoaded (byteAt flipElfBytes) p.core.mem)
+    (hpc : p.core.pc = elfEntry) (htr : p.trace = []) :
+    ∃ p', ProcReach K (elfPlatform flipLayout)
+        (fetchFrom p.core.mem elfEntry (elfWords flipLayout)) p p' ∧
+      fetchFrom p.core.mem elfEntry (elfWords flipLayout) p'.core.pc = some svcWord ∧
+      p'.core.x 8 = 94 ∧ p'.core.io = p.core.io ∧
+      ((p'.core.x 0 = 0 ∧ K.input.length ≤ inMax.toNat ∧
+          stdoutOf p'.trace = K.input.map (· ^^^ 32) ∧
+          ∀ nr e, Event.fail nr e ∉ p'.trace) ∨
+        (p'.core.x 0 = 64 ∧ inMax.toNat < K.input.length ∧ stdoutOf p'.trace = [] ∧
+          ∀ nr e, Event.fail nr e ∉ p'.trace) ∨
+        (p'.core.x 0 = 65 ∧ (∃ k e, K.fail k = some e) ∧
+          ∃ tr e, p'.trace = tr ++ [.fail 63 e] ∧ stdoutOf tr = [] ∧
+            ∀ nr e', Event.fail nr e' ∉ tr) ∨
+        (p'.core.x 0 = 66 ∧ K.input.length ≤ inMax.toNat ∧ (∃ k e, K.fail k = some e) ∧
+          ∃ tr e, p'.trace = tr ++ [.fail 64 e] ∧ stdoutOf tr <+: K.input.map (· ^^^ 32) ∧
+            ∀ nr e', Event.fail nr e' ∉ tr)) := by
+  obtain ⟨p', r, c, x8, io, out⟩ := elf_bytes_run_any flip_elf_file
+    (flip_elf_segments.trans flip_elf_layout.symm) (by decide) (by decide) flip_elf_runs_any K p
+    hl hpc htr
+  refine ⟨p', r, c, x8, io, ?_⟩
+  rcases out with h0 | ⟨-, hf, -⟩ | h64 | h65 | h66
+  · exact .inl h0
+  · exact hf.elim
+  · exact .inr (.inl h64)
+  · exact .inr (.inr (.inl h65))
+  · exact .inr (.inr (.inr h66))
+
 #print axioms flip_elf_file
 #print axioms flip_elf_segments
 #print axioms flip_elf_entry
 #print axioms flip_elf
 #print axioms flip_elf_over
+#print axioms flip_elf_any
 
 end TestSupport.A64.ImageFilesFlipElf

@@ -6,10 +6,12 @@ The run of a program of `genSysProgram`, a Linux executable's program, from `mai
 the allocator with `inMax + 1`, the read loop of `run_readLoop` into the block that it returns,
 the call of the function over bytes on the bytes read, and the write loop of `run_writeLoop'`.
 `sysProgram_run` follows the run at one fuel of Talos's runs of the two calls, as
-`bytesProgram_run` does for the UART's entry routine.  An input longer than `inMax` ends the run
-at the exit word with status 64 and nothing written; otherwise the process does what `SysResult`
-states for Talos's run of the function on the buffer of the input, or reaches the stub of an
-overflow of the stack.  No call fails.
+`bytesProgram_run` does for the UART's entry routine.  A read that fails ends the run at the exit
+word with status 65 and nothing written.  Otherwise an input longer than `inMax` ends the run at
+the exit word with status 64 and nothing written, and a shorter one leads the process to do what
+`SysResult` states for Talos's run of the function on the buffer of the input, where a write that
+fails ends the run with status 66, or to reach the stub of an overflow of the stack.  The trace of
+each run holds at most one failure, its last event.
 -/
 
 namespace LeanExe.A64
@@ -219,17 +221,24 @@ theorem run_sysFront {A room : UInt64} {ms : State}
 
 /-- What the process does from `main` at `p` when Talos's run of the program's function over
 bytes gives `res`: a success with the root and the length of a buffer whose bytes lie in the
-memory writes them to standard output and returns 0 to `p.core.x 30`, and a trap reaches the exit
-word with its code, nothing written. -/
+memory writes them to standard output and returns 0 to `p.core.x 30`, or, when a write fails,
+reaches the exit word with status 66 after writing a prefix of them, with the failure as the
+trace's last event; a trap reaches the exit word with its code, nothing written.  Every trace but
+the last holds no failure. -/
 def SysResult (K : Kernel) (base : UInt64) (res : Result Unit) (p : Proc) : Prop :=
   match res with
   | .Success vs st' => ∀ (root len : UInt64) (bs : List UInt8), vs = [.i64 len, .i64 root] →
       len.toNat = bs.length → root.toNat + bs.length ≤ st'.mem.pages * 65536 →
       (∀ i (h : i < bs.length), st'.mem.bytes (root.toNat + i) = bs[i]) →
-      ∃ p', ProcReach K P code p p' ∧ p'.core.pc = p.core.x 30 ∧ p'.core.x 0 = 0 ∧
-        stdoutOf p'.trace = bs ∧ p'.core.io = p.core.io
+      (∃ p', ProcReach K P code p p' ∧ p'.core.pc = p.core.x 30 ∧ p'.core.x 0 = 0 ∧
+        stdoutOf p'.trace = bs ∧ p'.core.io = p.core.io ∧
+        ∀ nr e, Event.fail nr e ∉ p'.trace) ∨
+      (∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧ p'.core.x 0 = 66 ∧
+        p'.core.io = p.core.io ∧ (∃ k e, K.fail k = some e) ∧
+        ∃ tr e, p'.trace = tr ++ [.fail 64 e] ∧ stdoutOf tr <+: bs ∧
+          ∀ nr e', Event.fail nr e' ∉ tr)
   | .Trap _ msg => ∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧ stdoutOf p'.trace = [] ∧
-      p'.core.io = p.core.io ∧
+      p'.core.io = p.core.io ∧ (∀ nr e, Event.fail nr e ∉ p'.trace) ∧
       ((msg = "unreachable" ∧ p'.core.x 0 = 1) ∨ (msg = "out of bounds memory access" ∧
         p'.core.x 0 = 2) ∨ (msg = "integer divide by zero" ∧ p'.core.x 0 = 3))
   | _ => True
@@ -238,11 +247,13 @@ def SysResult (K : Kernel) (base : UInt64) (res : Result Unit) (p : Proc) : Prop
 words of a buffer and whose function 0 is the allocator, from `main` at `after base 1` with
 `FPCR` at `fpcrValue` and no event in the trace, on a platform whose UART lies outside Normal
 memory, for Talos's runs at fuel `F`, when the allocator's run on `inMax + 1` gives the root
-`root` and the store `st1` and no call fails.  When the input has more than `inMax` bytes, the
-process reaches the exit word with status 64 and nothing written.  Otherwise it reaches the stub
-of an overflow of the stack when `room` lies below `stackBound m k`, or does what `SysResult`
-states for Talos's run of the function on the root and the input's length in the store with the
-input written from the root. -/
+`root` and the store `st1`, for every kernel.  When a read fails, the process reaches the exit word
+with status 65 and nothing written, and the failure is the trace's last event.  Otherwise, when
+the input has more than `inMax` bytes, the process reaches the exit word with status 64 and
+nothing written, and when it has at most `inMax`, it reaches the stub of an overflow of the stack
+when `room` lies below `stackBound m k`, or does what `SysResult` states for Talos's run of the
+function on the root and the input's length in the store with the input written from the root.
+Every trace but those of the failures holds no failure. -/
 theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     {inMax rd wr base room area : UInt64} {cap : Nat} {is : List Instr}
     (hg : genSysProgram m k inMax rd wr base room cap = .ok is)
@@ -262,17 +273,23 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     (harea : ∀ j < areaSize cap, p.core.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ p.core.sp.toNat)
-    (hU : P.normal P.uart = false) (hok : ∀ k, K.fail k = none)
+    (hU : P.normal P.uart = false)
     (hin : inMax.toNat < 2 ^ 32) (root : UInt64) (st1 : Store Unit)
     (hrun : Wasm.run F m 0 (initStore m cap) [.i64 (inMax + 1)] = .Success [.i64 root] st1)
     (hfit : root.toNat + (inMax.toNat + 1) ≤ st1.mem.pages * 65536) :
-    (inMax.toNat < K.input.length → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧
-        p'.core.x 0 = 64 ∧ stdoutOf p'.trace = [] ∧ p'.core.io = p.core.io) ∧
+    (∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧ p'.core.x 0 = 65 ∧
+        p'.core.io = p.core.io ∧ (∃ k e, K.fail k = some e) ∧
+        ∃ tr e, p'.trace = tr ++ [.fail 63 e] ∧ stdoutOf tr = [] ∧
+          ∀ nr e', Event.fail nr e' ∉ tr) ∨
+    ((inMax.toNat < K.input.length → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧
+        p'.core.x 0 = 64 ∧ stdoutOf p'.trace = [] ∧ p'.core.io = p.core.io ∧
+        ∀ nr e, Event.fail nr e ∉ p'.trace) ∧
     (K.input.length ≤ inMax.toNat →
       (∃ p', ProcReach K P code p p' ∧ p'.core.pc = base ∧ p'.core.x 0 = 4 ∧
-          stdoutOf p'.trace = [] ∧ p'.core.io = p.core.io ∧ room.toNat < stackBound m k) ∨
+          stdoutOf p'.trace = [] ∧ p'.core.io = p.core.io ∧ room.toNat < stackBound m k ∧
+          ∀ nr e, Event.fail nr e ∉ p'.trace) ∨
       SysResult P code K base (Wasm.run F m k (storeBytes st1 root.toNat K.input)
-        [.i64 (UInt64.ofNat K.input.length), .i64 root]) p) := by
+        [.i64 (UInt64.ofNat K.input.length), .i64 root]) p)) := by
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, a0, p0, r0, g1, g2, g3, g4, hok', hgt, hgl,
     hfs, hfirst, hT, hen, hen0, hmg, hfg, his, hb1, hb2, hb3, hb4⟩ := gen_sysProgram hg
   subst his
@@ -515,10 +532,15 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     rw [after_after]; exact hgo
   have hread := run_readLoop P code (K := K) (H := after A 21) (e64 := after A 57)
     (e65 := after A 62) cread hgr' hfe' hfl' hfr' hgo' hrd hdom
-    (by rw [after_after]; exact hAi 30 (by decide)) (hAi 57 (by decide)) hok st1 root.toNat
+    (by rw [after_after]; exact hAi 30 (by decide)) (hAi 57 (by decide)) (hAi 62 (by decide))
+    st1 root.toNat
     (inMax.toNat + 1) hfit (inMax.toNat + 1) { p with core := t9 } 0 (by omega) (by omega)
     p9' (by exact hf) (by show t9.x 2 = _; rw [x29, ← hN', UInt64.ofNat_toNat])
-    hx19 (by rw [htr]; rfl) (Nat.zero_le _) (by rw [htr]; rfl) hsr9
+    hx19 (by rw [htr]; rfl) (Nat.zero_le _) (by rw [htr]; rfl)
+    (fun nr e h => by
+      change Event.fail nr e ∈ p.trace at h
+      rw [htr] at h
+      cases h) hsr9
   -- the stubs of statuses 64 and 4 and of a trap
   have stub : ∀ (c : Nat) (a : UInt64) (g : Fin 67108864),
       CodeAt code a (movImm 0 (UInt64.ofNat c) ++ [.b g]) → bField (after a 4) base = .ok g →
@@ -529,12 +551,19 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     obtain ⟨u, ru, pu, xu, iou⟩ := run_stub P code (c := c) hca hga hqa
     exact ⟨{ q with core := u }, hq.trans (ProcReach.of_reach' hdom hqf ru (by rw [pu]; exact
       hbase)), pu, xu, rfl, iou⟩
-  refine ⟨fun hlong => ?_, fun hshort => ?_⟩
-  · obtain ⟨q, rq, pq, outq, fq, ioq⟩ := hread.2 (by omega)
+  rcases hread with ⟨q, rq, pq, fq, ioq, hk, tr, e, htrq, outq, nfq⟩ | ⟨hread1, hread2⟩
+  · -- a failed read: the stub of status 65
+    obtain ⟨q', rq', pq', xq', trq', ioq'⟩ := stub 65 (after A 62) x65 q12.1 hx65 q
+      (qt9.trans rq) pq fq
+    exact .inl ⟨q', rq', pq', xq', by rw [ioq', ioq]; exact hio9, hk, tr, e, by rw [trq', htrq],
+      outq, nfq⟩
+  refine .inr ⟨fun hlong => ?_, fun hshort => ?_⟩
+  · obtain ⟨q, rq, pq, outq, fq, ioq, nfq⟩ := hread2 (by omega)
     obtain ⟨q', rq', pq', xq', trq', ioq'⟩ := stub 64 (after A 57) x64 q11.1 hx64 q
       (qt9.trans rq) pq fq
-    exact ⟨q', rq', pq', xq', by rw [trq', outq], by rw [ioq', ioq]; exact hio9⟩
-  obtain ⟨q, rq, pq, x2q, hsrq, inq, outq, fq, kq, spq, frq, ioq⟩ := hread.1 (by omega)
+    exact ⟨q', rq', pq', xq', by rw [trq', outq], by rw [ioq', ioq]; exact hio9,
+      by rw [trq']; exact nfq⟩
+  obtain ⟨q, rq, pq, x2q, hsrq, inq, outq, fq, kq, spq, frq, ioq, nfq⟩ := hread1 (by omega)
   -- the frame's slots: X30 and the root
   have hslot5 : load64 t5.mem (slotAddr (p.core.sp - 16) 0) = p.core.x 30 ∧
       load64 t5.mem (slotAddr (p.core.sp - 16) 1) = root := by
@@ -686,7 +715,7 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     obtain ⟨v, rv, pv, iov⟩ := hovr
     obtain ⟨v2, rv2, pv2, xv2, iov2⟩ := run_stub P code cs4.2 hb4 pv
     exact .inl ⟨{ q with core := v2 }, lift v2 (rv.trans rv2) (by rw [pv2]; exact hbase), pv2,
-      xv2, outq, by show v2.io = _; rw [iov2, iov, hiou4], by unfold stackBound; omega⟩
+      xv2, outq, by show v2.io = _; rw [iov2, iov, hiou4], by unfold stackBound; omega, nfq⟩
   refine .inr ?_
   revert hro
   cases Wasm.run F m k (storeBytes st1 root.toNat K.input)
@@ -697,13 +726,13 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
       rcases hmsg' with ⟨hm1, pv⟩ | ⟨hm2, pv⟩ | ⟨hm3, pv⟩
       · obtain ⟨v2, rv2, pv2, xv2, iov2⟩ := run_stub P code cs1.1 hb1 pv
         exact ⟨{ q with core := v2 }, lift v2 (rv.trans rv2) (by rw [pv2]; exact hbase), pv2,
-          outq, by show v2.io = _; rw [iov2, iov, hiou4], .inl ⟨hm1, xv2⟩⟩
+          outq, by show v2.io = _; rw [iov2, iov, hiou4], nfq, .inl ⟨hm1, xv2⟩⟩
       · obtain ⟨v2, rv2, pv2, xv2, iov2⟩ := run_stub P code cs1.2 hb2 pv
         exact ⟨{ q with core := v2 }, lift v2 (rv.trans rv2) (by rw [pv2]; exact hbase), pv2,
-          outq, by show v2.io = _; rw [iov2, iov, hiou4], .inr (.inl ⟨hm2, xv2⟩)⟩
+          outq, by show v2.io = _; rw [iov2, iov, hiou4], nfq, .inr (.inl ⟨hm2, xv2⟩)⟩
       · obtain ⟨v2, rv2, pv2, xv2, iov2⟩ := run_stub P code cs3.2 hb3 pv
         exact ⟨{ q with core := v2 }, lift v2 (rv.trans rv2) (by rw [pv2]; exact hbase), pv2,
-          outq, by show v2.io = _; rw [iov2, iov, hiou4], .inr (.inr ⟨hm3, xv2⟩)⟩
+          outq, by show v2.io = _; rw [iov2, iov, hiou4], nfq, .inr (.inr ⟨hm3, xv2⟩)⟩
   | Invalid _ => intro _; trivial
   | OutOfFuel => intro _; trivial
   | Thrown _ _ _ => intro _; trivial
@@ -763,24 +792,40 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     rw [after_after]; exact hfw
   have hgb' : bField (after (after A 41) 8) (after A 41) = .ok gb := by
     rw [after_after]; exact hgb
-  have hbs64 : bs.length < 2 ^ 64 := by
+  have hbs64 : bs.length + 4095 < 2 ^ 64 := by
     have : st3.mem.pages * 65536 ≤ cap * 65536 := Nat.mul_le_mul_right _ hpg3.2
     have := hsrv5.cap_lt
     simp only [Nat.reducePow]
     omega
-  obtain ⟨w, rw', pw, fw', outw, memw, spw, iow, kw⟩ := run_writeLoop' P code (K := K) q8.1
-    hfd' hgw' hfw' hgb' hwr hdom (by rw [after_after]; exact hAi 50 (by decide)) hok
-    bs.length { q with core := v9 } pv9' fq hx2v9 hbs64 (fun i hi => by
+  have hrlbs : readList v9.mem (v9.x 1) bs.length = bs := by
+    have hcp : st3.mem.pages * 65536 ≤ cap * 65536 := Nat.mul_le_mul_right _ hpg3.2
+    have hrl := readList_bytes P hsrv9 bs.length root'.toNat (Nat.le_trans hfitbs hcp)
+    rw [hx1v9, hrl, memBytes_eq st3.mem bs root'.toNat hbytes]
+  rcases run_writeLoop' P code (K := K) q8.1
+    hfd' hgw' hfw' hgb' hwr hdom (by rw [after_after]; exact hAi 50 (by decide))
+    (hAi 67 (by decide)) bs.length { q with core := v9 } pv9' fq hx2v9 hbs64 (fun i hi => by
       show P.normal (v9.x 1 + UInt64.ofNat i) = true
       rw [hx1v9, add_ofNat_add]
       have : st3.mem.pages * 65536 ≤ cap * 65536 := Nat.mul_le_mul_right _ hpg3.2
-      exact hsrv9.mapped _ (by unfold areaSize; omega))
+      exact hsrv9.mapped _ (by unfold areaSize; omega)) nfq with
+    ⟨w, rw', pw, fw', iow, hk, tr, e, htrw, ⟨j, hj, houtj⟩, nfw⟩ |
+    ⟨w, rw', pw, fw', outw, memw, spw, iow, kw, nfw⟩
+  · -- a failed write: the stub of status 66, after a prefix of the result
+    obtain ⟨w', rw'', pw', xw', trw', iow'⟩ := stub 66 (after A 67) x66 q12.2 hx66 w
+      (qv9.trans rw') pw fw'
+    refine .inr ⟨w', rw'', pw', xw', ?_, hk, tr, e, by rw [trw', htrw], ?_, nfw⟩
+    · rw [iow', iow]
+      show v9.io = _
+      rw [iov9, iov8, iov7, iov6, iov5, hiou4]
+    · rw [houtj]
+      show stdoutOf q.trace ++ readList v9.mem (v9.x 1) j <+: bs
+      rw [outq, List.nil_append]
+      refine ⟨readList v9.mem (v9.x 1 + UInt64.ofNat j) (bs.length - j), ?_⟩
+      rw [← readList_add, Nat.add_sub_cancel' hj, hrlbs]
   have houtw : stdoutOf w.trace = bs := by
     rw [outw]
     show stdoutOf q.trace ++ readList v9.mem (v9.x 1) bs.length = bs
-    have hcp : st3.mem.pages * 65536 ≤ cap * 65536 := Nat.mul_le_mul_right _ hpg3.2
-    have hrl := readList_bytes P hsrv9 bs.length root'.toNat (Nat.le_trans hfitbs hcp)
-    rw [outq, hx1v9, hrl, memBytes_eq st3.mem bs root'.toNat hbytes]
+    rw [outq, hrlbs]
     rfl
   -- the return
   have pw' : w.core.pc = after A 50 := by rw [pw, after_after]
@@ -798,10 +843,10 @@ theorem sysProgram_run {K : Kernel} {m : Module} {k : Nat} {fk : Function}
     show load64 v9.mem _ = _
     rw [hmemv9]
     exact (hslots v5 hfrv5).1
-  refine ⟨{ w with core := y2 }, qv9.trans (rw'.trans (ProcReach.of_reach' hdom fw'
+  refine .inl ⟨{ w with core := y2 }, qv9.trans (rw'.trans (ProcReach.of_reach' hdom fw'
     (ry1.trans ry2) (by rw [hy2pc]; exact h30))), hy2pc, by
       show y2.x 0 = 0
-      rw [ky2 0 (by decide), x0y1], houtw, ?_⟩
+      rw [ky2 0 (by decide), x0y1], houtw, ?_, nfw⟩
   show y2.io = _
   rw [ioy2, ioy1, iow]
   show v9.io = _
