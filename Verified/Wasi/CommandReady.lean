@@ -55,11 +55,20 @@ def Command.fragments (h : Nat) (slots : List Slot) (base : Nat) (live : Nat →
       releaseWhere context slots (fun i => used i && !live i)] ++
       step.fragments h (⟨state, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: captured)
         scratch (shift 2 all) pool
+  | _, _, .sys _ _ _ => []
+
+/-- A command is ready for a module that imports `calls` when its fragments have the encoder's
+form and call only source functions, and when `calls` holds the calls of its `sys` commands. -/
+def Command.ReadyWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (h : Nat) (slots : List Slot)
+    (base : Nat) (live : Nat → Bool) (pool : Bytes.LiteralPool)
+    (command : Command pureSigs effectSigs context result) : Prop :=
+  (∀ fragment ∈ command.fragments h slots base live pool,
+    Encoding.ProgramForm fragment ∧ Relocation.programClosed source.funcs.length fragment = true) ∧
+    command.callsReady calls = true
 
 def Command.Ready (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) (pool : Bytes.LiteralPool)
     (command : Command pureSigs effectSigs context result) : Prop :=
-  ∀ fragment ∈ command.fragments h slots base live pool,
-    Encoding.ProgramForm fragment ∧ Relocation.programClosed source.funcs.length fragment = true
+  command.ReadyWith [] source h slots base live pool
 
 end Verified.Wasi

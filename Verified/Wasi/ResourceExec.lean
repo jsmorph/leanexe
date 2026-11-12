@@ -1,4 +1,5 @@
 import Verified.Wasi.ResourceLoopCost
+import Verified.Wasi.SysCost
 import LeanExe.Wasi.Semantics
 
 namespace Verified.Wasi.Resource
@@ -107,6 +108,13 @@ inductive ResourceExec {World : Type} (host : Host World) (pure : PureContext pu
         world trace outcome final
         (pure.loopInitCost depth modes live count initial test step env + spent)
         (pure.loopInitFits depth count initial env && fits)
+  | sys {program : EffectProg pureSigs effectSigs} {operation : LeanExe.Wasi.Call} {form : SysForm}
+      {args : List (Var context .word)} {env : Env context}
+      {outcome : Outcome (ResultTy.value form.ty).denote}
+      (execution : Exec host ((Command.sys operation form args).denote pure.funs
+        (program.funs pure.funs) env) world trace outcome final) :
+      ResourceExec host pure program depth modes live (.sys operation form args) env
+        world trace outcome final (sysCost form operation (args.map env.get) trace) true
 
 inductive ResourceCall {World : Type} (host : Host World) (pure : PureContext pureSigs) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
@@ -278,7 +286,7 @@ theorem ResourceExec.erase {World : Type} {host : Host World} {pure : PureContex
     Exec host (command.denote pure.funs (program.funs pure.funs) env) world trace outcome final := by
   refine ResourceExec.rec (motive_1 := ExecErasure host pure) (motive_2 := CallErasure host pure)
     (motive_3 := LoopErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
   wasi_resource_erasure_steps
 
 theorem ResourceCall.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -288,7 +296,7 @@ theorem ResourceCall.erase {World : Type} {host : Host World} {pure : PureContex
     Exec host ((program.funs pure.funs).get callee env) world trace outcome final := by
   refine ResourceCall.rec (motive_1 := ExecErasure host pure) (motive_2 := CallErasure host pure)
     (motive_3 := LoopErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
   wasi_resource_erasure_steps
 
 theorem ResourceLoopExec.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -304,7 +312,7 @@ theorem ResourceLoopExec.erase {World : Type} {host : Host World} {pure : PureCo
       Action.pure world trace outcome final := by
   refine ResourceLoopExec.rec (motive_1 := ExecErasure host pure) (motive_2 := CallErasure host pure)
     (motive_3 := LoopErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
   wasi_resource_erasure_steps
 
 end Verified.Wasi.Resource

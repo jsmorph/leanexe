@@ -151,11 +151,12 @@ theorem readAll_regions {World : Type} {initial final : Store World} {heap0 heap
       heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) := by
   simpa only [Bytes.regions, ite_eq_right h.nonzero] using hStep
 
-theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
+theorem wp_readAll_loop_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {m : Module} {host : Host World}
     {env : HostEnv (Observed World)} {base : Nat} {limit root : UInt64}
     {initial : Store (Observed World)} {heap0 heap : Heap} {s0 : Locals}
     {rest : Program} {Q : Assertion (Observed World)}
-    (hImports : m.imports = ABI.imports) (hHost : env.Satisfies m (hostSpec host))
+    (hImports : m.imports = ABI.importsWith calls) (hHost : env.Satisfies m (hostSpecWith host calls))
     (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
     (hDone : ∀ (final : Store (Observed World)) (si : Locals) (result : LeanExe.Wasi.ReadResult)
       (trace : List Event),
@@ -224,7 +225,7 @@ theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
     change 16 ≤ (PureTransport.erase st).mem.pages * 65536
     omega
   -- The read.
-  refine wp_read_call (pointer := (root + UInt64.ofNat held.data.size).toUInt32)
+  refine wp_read_call_with (pointer := (root + UInt64.ofNat held.data.size).toUInt32)
     (capacity := 4096) hImports hHost hMemory
     (by
       rw [hPointerNat]
@@ -398,5 +399,35 @@ theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
     have hStep' := readAll_tail_step facts.step facts.buffer hRoomH hFrame
     have hKept := readAll_buffer_keep facts.buffer hHeap hRoomH hFrame
     exact hTrap final message _ (facts.rest.trapped hRead) (readAll_regions hStep' hKept)
+
+theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
+    {env : HostEnv (Observed World)} {base : Nat} {limit root : UInt64}
+    {initial : Store (Observed World)} {heap0 heap : Heap} {s0 : Locals}
+    {rest : Program} {Q : Assertion (Observed World)}
+    (hImports : m.imports = ABI.imports) (hHost : env.Satisfies m (hostSpec host))
+    (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
+    (hDone : ∀ (final : Store (Observed World)) (si : Locals) (result : LeanExe.Wasi.ReadResult)
+      (trace : List Event),
+      Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+        heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
+      Bytes.Rep heap (PureTransport.erase final) root (UInt64.ofNat result.bytes.data.size)
+        result.bytes →
+      ReadAllOutside base s0 si → si.values = s0.values →
+      si.get (base + 1) = some (.i64 result.errno) →
+      si.get (base + 2) = some (.i64 root) →
+      si.get (base + 3) = some (.i64 (UInt64.ofNat result.bytes.data.size)) →
+      wp m rest Q final si env)
+    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
+      Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+        heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
+      Q (.Trap final message))
+    {st : Store (Observed World)} {sb : Locals} {held : LeanExe.Bytes} {prior : List Event}
+    {fuel index : Nat}
+    (facts : ReadAllFacts host base limit root initial heap0 heap s0 held prior fuel index st
+      sb) :
+    wp m (readAllLoopCode base ++ rest) Q st sb env := by
+  layout_instance wp_readAll_loop_with
 
 end Verified.Wasi

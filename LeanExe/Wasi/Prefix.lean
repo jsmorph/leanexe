@@ -39,6 +39,15 @@ inductive Prefix {World : Type} (host : Host World) :
       (hFirst : Prefix host action world first middle after)
       (hRest : Prefix host middle after rest residual final) :
       Prefix host action world (first ++ rest) residual final
+  | sys_reject {call : Call} {args : List Arg} {next : Reply → Action α} {world}
+      (hFits : call.reject args ≠ 0) :
+      Prefix host (.sys call args next) world [] (next ⟨call.reject args, []⟩) world
+  | sys_return {call : Call} {args : List Arg} {next : Reply → Action α}
+      {world after errno committed}
+      (hFits : call.reject args = 0)
+      (hHost : host.sys world call args (.returned errno committed) after) :
+      Prefix host (.sys call args next) world [.sys call args (.returned errno committed)]
+        (next (sysReply errno committed)) after
 
 theorem resumeLoop_bind (test : UInt64 → σ → Bool) (step : UInt64 → σ → Action σ)
     (next : σ → Action α) (continuation : α → Action β) (remaining index : Nat) (state : σ) :
@@ -128,14 +137,19 @@ theorem Prefix.complete {World : Type} {host : Host World} {action residual : Ac
   | trans hFirst hRest ihFirst ihRest =>
     intro rest outcome final hRun
     simpa only [List.append_assoc] using ihFirst (ihRest hRun)
+  | sys_reject hFits => intro rest outcome final hRun; exact .sys_reject hFits hRun
+  | sys_return hFits hHost =>
+    intro rest outcome final hRun
+    exact .sys_return hFits hHost hRun
 
 theorem Prefix.exited_eq {World : Type} {host : Host World} {action residual : Action α}
     {world after trace} (h : Prefix host action world trace residual after) :
     host.exited after = host.exited world := by
   induction h with
-  | refl | read_reject | loop => rfl
+  | refl | read_reject | loop | sys_reject => rfl
   | read_return _ hHost => exact host.read_exited hHost
   | write_return hHost => exact host.write_exited hHost
+  | sys_return _ hHost => exact host.sys_exited hHost
   | bind _ ih => exact ih
   | trans _ _ ihFirst ihRest => exact ihRest.trans ihFirst
 
@@ -190,6 +204,12 @@ theorem Exec.returned_prefix {World : Type} {host : Host World} (action : Action
     | loop hRun =>
       exact Prefix.loop.trans (LoopExec.returned_prefix
         (fun _ _ _ _ _ _ h => hStep _ _ h) (fun _ _ _ _ _ h => hNext _ h) count.toNat hRun)
+  | sys call args next ih =>
+    intro world trace value final hRun
+    cases hRun with
+    | sys_reject hFits hRun => exact (Prefix.sys_reject hFits).trans (ih _ hRun)
+    | sys_return hFits hHost hRun =>
+      exact (Prefix.sys_return hFits hHost).trans (ih _ hRun)
 
 theorem Prefix.bind_after {World : Type} {host : Host World} {action : Action α}
     {next : α → Action β} {world after first value residual rest final}

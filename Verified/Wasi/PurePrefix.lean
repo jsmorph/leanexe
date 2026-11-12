@@ -5,6 +5,20 @@ namespace Verified.Wasi.PureTransport
 
 open Wasm
 
+theorem wp_prefix_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Module}
+    (layout : Relocation.LayoutWith calls source target) (profile : Relocation.Profile source)
+    {code : Program} (hForm : Encoding.ProgramForm code)
+    (hClosed : Relocation.programClosed source.funcs.length code = true)
+    {initial : Store Unit} {locals : Locals} {P : Assertion Unit} {Q : Assertion World}
+    {rest : Program} {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
+    (world : World) (h : wp source code P initial locals sourceHost)
+    (hPost : ∀ continuation, P continuation →
+      Then targetHost target rest Q (liftContinuation world continuation)) :
+    wp target (Relocation.programWith calls code ++ rest) Q
+      (restore world initial) locals targetHost :=
+  wp_append (wp_transport_with layout profile hForm hClosed world h hPost)
+
 theorem wp_prefix {World : Type} {source target : Module}
     (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
     {code : Program} (hForm : Encoding.ProgramForm code)
@@ -15,7 +29,7 @@ theorem wp_prefix {World : Type} {source target : Module}
     (hPost : ∀ continuation, P continuation →
       Then targetHost target rest Q (liftContinuation world continuation)) :
     wp target (Relocation.program code ++ rest) Q
-      (restore world initial) locals targetHost :=
-  wp_append (wp_transport layout profile hForm hClosed world h hPost)
+      (restore world initial) locals targetHost := by
+  layout_instance wp_prefix_with
 
 end Verified.Wasi.PureTransport

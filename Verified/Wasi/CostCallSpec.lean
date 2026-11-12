@@ -8,16 +8,18 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem cost_command_call_spec {source target : Wasm.Module}
+theorem cost_command_call_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {signature : EffectSig}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
-    (calls : CostEffectCalls source target pure program pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool)
+    (effectCalls : CostEffectCallsWith calls source target pure program pool) (sourceHost : HostEnv Unit)
     (callee : EffectVar effectSigs signature)
     (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
-    CostCommandCodeSpec source target pure program pool (.call callee args) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.call callee args) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place resources
+  obtain ⟨ready, callsOk⟩ := ready
   let all := fun i => live i || argsAny fun j => (args j).uses i
   let kept := fun i => all i &&
     !(argsAny fun j => signature.callMoves slots live args j && (args j).uses i)
@@ -60,17 +62,17 @@ theorem cost_command_call_spec {source target : Wasm.Module}
     (Nat.add_le_add_left (le_argsMax (fun i => if signature.mode i = .owned then
       copyWidth (signature.params.get i) else (args i).width) i) base).trans room
   obtain ⟨function, lookup, arity⟩ := facts.effectFunctions callee
-  have noImport : target.imports[Wrappers.effectIndex source callee.index]? = none :=
+  have noImport : target.imports[Wrappers.effectIndexWith calls source callee.index]? = none :=
     List.getElem?_eq_none (by
-      rw [facts.imports, ABI.imports_length]
-      simp only [Wrappers.effectIndex, Module.extraIndex]
+      rw [facts.imports, ABI.importsWith_length]
+      simp only [Wrappers.effectIndexWith, Module.extraIndexWith]
       omega)
   have targetCap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535 := by
     rw [PureTransport.memoryCap_zero_eq facts.layout.memoryCap]
     exact cap
-  simp only [Command.code, Expr.usesFast_eq, List.append_assoc]
+  simp only [Command.codeWith, Expr.usesFast_eq, List.append_assoc]
   refine wp_effect_depth depthParam ?_
-  refine wp_arguments (Q := Q) (targetHost := targetHost) (sourceHost := sourceHost)
+  refine wp_arguments_with (Q := Q) (targetHost := targetHost) (sourceHost := sourceHost)
     (funs := pure.funs) (flags := pure.flags) (bounds := pure.callBounds depth)
     (fits := pure.callFits depth) (all := all) (kept := kept)
     facts.runtime facts.layout facts.profile specs uses keptAll
@@ -88,11 +90,11 @@ theorem cost_command_call_spec {source target : Wasm.Module}
     intro noAbort
     obtain ⟨within, bounded⟩ := resources noAbort
     exact prepared.call_budget chargeEq sameWorld within bounded
-  have suffix : wp target (.call (Wrappers.effectIndex source callee.index) ::
-        Relocation.program (releaseWhere context slots (fun i => kept i && !live i))) Q
+  have suffix : wp target (.call (Wrappers.effectIndexWith calls source callee.index) ::
+        Relocation.programWith calls (releaseWhere context slots (fun i => kept i && !live i))) Q
       arguments { argumentLocals with values := (.i64 (depth + 1) :: params).reverse ++ locals.values }
       targetHost := by
-    refine wp_cost_effect_helper (calls callee) noImport lookup arity valid prepared.step.at_
+    refine wp_cost_effect_helper_with (effectCalls callee) noImport lookup arity valid prepared.step.at_
       prepared.rep prepared.separate (prepared.pool_input uses safe) (prepared.scratch uses scratch)
       (by rw [prepared.step.cap target]; exact targetCap) calleeBudget ?_ ?_
     · intro value finalHeap final words trace spent calleeFits execution step rep top
@@ -102,8 +104,8 @@ theorem cost_command_call_spec {source target : Wasm.Module}
         ⟨callAfter.step, callAfter.frame.trans Frame.ofValues,
           callAfter.holds, callAfter.rep, callAfter.apart⟩
       rw [← List.append_nil
-        (Relocation.program (releaseWhere context slots (fun i => kept i && !live i)))]
-      refine wp_release_context (sourceHost := sourceHost) (targetHost := targetHost)
+        (Relocation.programWith calls (releaseWhere context slots (fun i => kept i && !live i)))]
+      refine wp_release_context_with (sourceHost := sourceHost) (targetHost := targetHost)
         (rest := []) facts.runtime facts.layout facts.profile cleanupReady.1 cleanupReady.2
         updated.holds updated.step.at_
         (fun i selected => by simp only [Bool.and_eq_true] at selected; exact selected.1) ?_
@@ -143,5 +145,15 @@ theorem cost_command_call_spec {source target : Wasm.Module}
             (by rw [← sameWorld]; exact progress))
   simpa only [List.reverse_cons, List.append_assoc, List.singleton_append,
     Command.denote, all, kept] using suffix
+
+theorem cost_command_call_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {signature : EffectSig}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
+    (calls : CostEffectCalls source target pure program pool) (sourceHost : HostEnv Unit)
+    (callee : EffectVar effectSigs signature)
+    (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
+    CostCommandCodeSpec source target pure program pool (.call callee args) := by
+  layout_instance cost_command_call_spec_with
 
 end Verified.Wasi

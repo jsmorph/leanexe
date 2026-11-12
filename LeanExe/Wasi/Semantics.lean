@@ -18,6 +18,7 @@ inductive Event where
   | write (output : Output) (offered : Bytes) (reply : Transfer UInt64)
   | exit (code : UInt64)
   | exitTrap (code : UInt64) (message : String)
+  | sys (call : Call) (args : List Arg) (reply : Transfer (List Bytes))
 
 structure Host (World : Type) where
   exited : World → Option UInt64
@@ -37,6 +38,21 @@ structure Host (World : Type) where
     exited world' = some code
   exitTrap_exited : ∀ {world code message world'}, exitTrap world code message world' →
     exited world' = exited world
+  /-- The replies of flat calls.  The default permits none. -/
+  sys : World → Call → List Arg → Transfer (List Bytes) → World → Prop := fun _ _ _ _ _ => False
+  /-- The sizes of a call's `reported` regions in a world. -/
+  reported : World → Call → List Nat := fun _ _ => []
+  sys_bound : ∀ {world call args reply world'}, sys world call args reply world' →
+      reply.committed.map (·.data.size) = call.outputSizes (reported world call) args ∧
+        reply.validErrno := by
+    intro _ _ _ _ _ h; cases h
+  sys_exited : ∀ {world call args reply world'}, sys world call args reply world' →
+      exited world' = exited world := by
+    intro _ _ _ _ _ h; cases h
+  sys_reports : ∀ {world reporter args outputs world' call},
+      sys world reporter args (.returned 0 outputs) world' → call.reporter = some reporter.name →
+        reported world' call = call.sizesOf outputs := by
+    intro _ _ _ _ _ _ h; cases h
 
 inductive Outcome (α : Type) where
   | returned (value : α)
@@ -53,6 +69,9 @@ def readResult (errno : UInt64) (committed : Bytes) : ReadResult :=
 
 def writeResult (errno committed : UInt64) : WriteResult :=
   ⟨errno, if errno = 0 then committed else 0⟩
+
+def sysReply (errno : UInt64) (committed : List Bytes) : Reply :=
+  ⟨errno, if errno = 0 then committed else []⟩
 
 mutual
 
@@ -100,6 +119,23 @@ inductive Exec {World : Type} (host : Host World) :
       {step : UInt64 → σ → Action σ} {next : σ → Action α} {world final trace outcome}
       (hLoop : LoopExec host count.toNat 0 init test step next world trace outcome final) :
       Exec host (.loop count init test step next) world trace outcome final
+  | sys_reject {call : Call} {args : List Arg} {next : Reply → Action α} {world final trace outcome}
+      (hFits : call.reject args ≠ 0)
+      (hNext : Exec host (next ⟨call.reject args, []⟩) world trace outcome final) :
+      Exec host (.sys call args next) world trace outcome final
+  | sys_return {call : Call} {args : List Arg} {next : Reply → Action α}
+      {world after final trace outcome errno committed}
+      (hFits : call.reject args = 0)
+      (hHost : host.sys world call args (.returned errno committed) after)
+      (hNext : Exec host (next (sysReply errno committed)) after trace outcome final) :
+      Exec host (.sys call args next) world
+        (.sys call args (.returned errno committed) :: trace) outcome final
+  | sys_trap {call : Call} {args : List Arg} {next : Reply → Action α}
+      {world after message committed}
+      (hFits : call.reject args = 0)
+      (hHost : host.sys world call args (.trapped message committed) after) :
+      Exec host (.sys call args next) world
+        [.sys call args (.trapped message committed)] (.trapped message) after
 
 inductive LoopExec {World : Type} (host : Host World) :
     {α σ : Type} → Nat → Nat → σ → (UInt64 → σ → Bool) →
@@ -159,7 +195,7 @@ theorem Exec.bind {World : Type} {host : Host World} {action : Action α}
         LoopExec host remaining index state test step
           (fun value => Action.bind (continuation value) next)
           world (first ++ rest) result final)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ hRun
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ hRun
   · intro α world value β rest result final next hNext
     exact hNext
   · intro α capacity continuation world after trace outcome hCapacity _ ih
@@ -189,6 +225,16 @@ theorem Exec.bind {World : Type} {host : Host World} {action : Action α}
   · intro σ α count init test step continuation world after trace outcome _ ih
     intro β rest result final next hNext
     exact .loop (ih hNext)
+  · intro α call args continuation world after trace outcome hFits _ ih
+    intro β rest result final next hNext
+    exact .sys_reject hFits (ih hNext)
+  · intro α call args continuation world after final trace outcome errno committed hFits hHost _ ih
+    intro β rest result final next hNext
+    exact .sys_return hFits hHost (ih hNext)
+  · intro α call args continuation world after message committed hFits hHost
+    intro β rest result final next hNext
+    rcases hNext with ⟨rfl, rfl, rfl⟩
+    exact .sys_trap hFits hHost
   · intro σ α index state test step continuation world after trace outcome _ ih
     intro β rest result final next hNext
     exact .zero (ih hNext)
@@ -220,7 +266,7 @@ theorem Exec.exited_marker {World : Type} {host : Host World} {action : Action �
     (motive_2 := fun {α σ} remaining index (state : σ) test step next
       world trace outcome final _ =>
       host.exited final = outcome.exitMarker (host.exited world))
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
   · intro α world value; rfl
   · intro α capacity next world final trace outcome hCapacity hNext ih
     exact ih
@@ -240,6 +286,13 @@ theorem Exec.exited_marker {World : Type} {host : Host World} {action : Action �
     exact host.exitTrap_exited hHost
   · intro σ α count init test step next world final trace outcome hLoop ih
     exact ih
+  · intro α call args next world final trace outcome hFits hNext ih
+    exact ih
+  · intro α call args next world after final trace outcome errno committed hFits hHost hNext ih
+    rw [host.sys_exited hHost] at ih
+    exact ih
+  · intro α call args next world after message committed hFits hHost
+    exact host.sys_exited hHost
   · intro σ α index state test step next world final trace outcome hNext ih
     exact ih
   · intro σ α remaining index state test step next world final trace outcome hTest hNext ih

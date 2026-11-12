@@ -9,17 +9,19 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem cost_command_bind_value_spec {source target : Wasm.Module}
+theorem cost_command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty} {result : ResultTy}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
     (first : Command pureSigs effectSigs context (.value type))
     (next : Command pureSigs effectSigs (type :: context) result)
-    (firstSpec : CostCommandCodeSpec source target pure program pool first)
-    (nextSpec : CostCommandCodeSpec source target pure program pool next) :
-    CostCommandCodeSpec source target pure program pool (.bind first next) := by
+    (firstSpec : CostCommandCodeSpecWith calls source target pure program pool first)
+    (nextSpec : CostCommandCodeSpecWith calls source target pure program pool next) :
+    CostCommandCodeSpecWith calls source target pure program pool (.bind first next) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place resource
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || next.uses (i + 1)
   let all := fun i => mid i || first.uses i
   let bodyIn := fun i => shift 1 live i || next.uses i
@@ -56,13 +58,15 @@ theorem cost_command_bind_value_spec {source target : Wasm.Module}
     have := Nat.le_max_right first.width next.width
     omega
   have resultRoom : base + type.width ≤ h := by omega
-  have firstReady : first.Ready source h slots (base + type.width) mid pool := by
+  have firstReady : first.ReadyWith calls source h slots (base + type.width) mid pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_left _ (List.mem_append_left _ member))
   have releaseReady := ready (releaseCode type base)
     (List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _)))
-  have nextReady : next.Ready source h (⟨base, .owned⟩ :: slots)
+  have nextReady : next.ReadyWith calls source h (⟨base, .owned⟩ :: slots)
       (base + type.width) (shift 1 live) pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_right _ member)
   obtain ⟨firstCovered, nextCovered⟩ := (Command.covered_bind first next pool).mp covered
@@ -79,10 +83,10 @@ theorem cost_command_bind_value_spec {source target : Wasm.Module}
     classification.lower vars midSelected (Nat.le_add_right _ _)) firstUpper
   let Q := CostCommandResult host pure program (.bind first next) depth env slots all live base
     heap initial locals aborts
-  let restCode := (if next.uses 0 = false then Relocation.program (releaseCode type base) else []) ++
-    next.code (pool := pool) source h (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live)
-  simp only [Command.code, List.append_assoc]
-  change wp target (first.code (pool := pool) source h slots (base + type.width) mid ++
+  let restCode := (if next.uses 0 = false then Relocation.programWith calls (releaseCode type base) else []) ++
+    next.codeWith calls (pool := pool) source h (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live)
+  simp only [Command.codeWith, List.append_assoc]
+  change wp target (first.codeWith calls (pool := pool) source h slots (base + type.width) mid ++
     (storeCode h base type.types ++ restCode)) Q initial locals targetHost
   apply wp_append
   refine wp.conseq (fun continuation firstResult => ?_) firstRun
@@ -103,8 +107,8 @@ theorem cost_command_bind_value_spec {source target : Wasm.Module}
     have boundScratch := bind_context_scratch firstAfter vars scratch frame' held midSelected tailSelected
     have boundSafe := bind_context_safe firstAfter vars scratch safe facts.poolApart
       frame' held midSelected tailSelected
-    refine wp_loopRelease (sourceHost := sourceHost) (targetHost := targetHost)
-      (used := next.uses 0) (rest := next.code (pool := pool) source h
+    refine wp_loopRelease_with (sourceHost := sourceHost) (targetHost := targetHost)
+      (used := next.uses 0) (rest := next.codeWith calls (pool := pool) source h
         (⟨base, .owned⟩ :: slots) (base + type.width) (shift 1 live))
       facts.runtime facts.layout facts.profile releaseReady.1 releaseReady.2 boundVars firstAfter.step.at_
       (by simp only [releaseIn, beq_self_eq_true, Bool.true_or])
@@ -171,5 +175,16 @@ theorem cost_command_bind_value_spec {source target : Wasm.Module}
     exact CommandResult.bind_trap (intermediate := .value type) (result := result)
       (liveMid := mid) (next := fun value => next.denote pure.funs (program.funs pure.funs) (.cons value env))
       classification id
+
+theorem cost_command_bind_value_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty} {result : ResultTy}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (first : Command pureSigs effectSigs context (.value type))
+    (next : Command pureSigs effectSigs (type :: context) result)
+    (firstSpec : CostCommandCodeSpec source target pure program pool first)
+    (nextSpec : CostCommandCodeSpec source target pure program pool next) :
+    CostCommandCodeSpec source target pure program pool (.bind first next) := by
+  layout_instance cost_command_bind_value_spec_with
 
 end Verified.Wasi

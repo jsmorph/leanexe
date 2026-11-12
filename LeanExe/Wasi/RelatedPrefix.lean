@@ -46,6 +46,10 @@ theorem Action.Rel.advance {World : Type} {host : Host World} {relation : α →
   | loop count initial tests steps next =>
       cases advance
       exact ⟨_, .loop, Action.Rel.resumeLoop tests steps next count.toNat initial⟩
+  | sys call args next =>
+      cases advance with
+      | sys_reject fits => exact ⟨_, .sys_reject fits, next _⟩
+      | sys_return fits reply => exact ⟨_, .sys_return fits reply, next _⟩
 
 theorem PrefixProgress.transfer {World : Type} {host : Host World}
     {relation : α → β → Prop} {left residual : Action α} {world trace after}

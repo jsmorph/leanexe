@@ -139,6 +139,69 @@ theorem function_post_body {World : Type} {host : Host World}
       rw [← sameWorld]
       exact progress
 
+theorem function_body_wp_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World} {source target : Module}
+    {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
+    {sourceHost : HostEnv Unit} {targetHost : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap} {depth : UInt64}
+    {params : List Value} {args : Env function.params} {action : Action function.result.denote}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source)
+    (form : Encoding.ProgramForm (releaseWhere function.params
+      (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)))
+    (closed : Relocation.programClosed source.funcs.length (releaseWhere function.params
+      (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) = true)
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep function.sig.mode heap (PureTransport.erase initial) params args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) function.sig.mode params args)
+      (Env.reads (PureTransport.erase initial) function.sig.mode params args))
+    (input : @Bytes.LiteralPool.Input (Env function.params)
+      (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) params args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) function.sig.mode params args,
+      regionsDisjoint ABI.scratch region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (body : ∀ (middleHeap : Heap) (middle : Store (Observed World)) (middleLocals : Locals),
+      depth < depthLimit → middleLocals.params = .i64 depth :: params →
+      middleLocals.positions = function.positions → middleLocals.values = [] →
+      middleHeap.At (PureTransport.erase middle) →
+      Holds args (paramSlots function.params function.modes 1) function.body.uses
+        (1 + widthSum function.params) middleHeap (PureTransport.erase middle) middleLocals →
+      pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
+        middleHeap (PureTransport.erase middle) middleLocals →
+      Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
+        (PureTransport.erase middle) middleLocals ABI.scratch →
+      (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
+      wp target (function.body.codeWith calls (pool := pool) source function.positions
+          (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))
+        (CommandResult host args (paramSlots function.params function.modes 1) function.body.uses
+          (fun _ => false) (1 + widthSum function.params) function.result action
+          middleHeap middle middleLocals true) middle middleLocals targetHost) :
+    wp target (function.functionWith calls source typeIdx pool).body
+      (FunctionPost host function.sig action args params heap initial true) initial
+      ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: params)) targetHost := by
+  change wp target (guardCode ++
+    paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
+    Relocation.programWith calls (releaseWhere function.params (paramSlots function.params function.modes 1)
+      (fun i => !function.body.uses i)) ++
+    function.body.codeWith calls (pool := pool) source function.positions
+      (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))
+    (FunctionPost host function.sig action args params heap initial true) initial
+    ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: params)) targetHost
+  refine wp_function_entry_with (host := host) (sourceHost := sourceHost)
+    runtime layout profile form closed at_ rep separate input scratch poolApart ?_ ?_
+  · intro _
+    exact FunctionResult.resource initial [] action rfl (Prefix.refl action initial.host)
+  · intro copied middleHeap middle middleLocals below parameters positions values held
+      prologue safe apart empty sameWorld
+    have execution := body middleHeap middle middleLocals below
+      (prologue.frame.params.trans parameters) (prologue.frame.positions.trans positions) empty
+      prologue.step.at_ prologue.holds safe apart (by rw [prologue.step.cap source]; exact cap)
+    exact wp.conseq (fun continuation proof =>
+      function_post_body rep separate scratch held prologue sameWorld empty proof) execution
+
 theorem function_body_wp {World : Type} {host : Host World} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
     {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
@@ -181,25 +244,27 @@ theorem function_body_wp {World : Type} {host : Host World} {source target : Mod
     wp target (function.function source typeIdx pool).body
       (FunctionPost host function.sig action args params heap initial true) initial
       ((function.function source typeIdx pool).toLocals (.i64 depth :: params)) targetHost := by
-  change wp target (guardCode ++
-    paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
-    Relocation.program (releaseWhere function.params (paramSlots function.params function.modes 1)
-      (fun i => !function.body.uses i)) ++
-    function.body.code (pool := pool) source function.positions
-      (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))
-    (FunctionPost host function.sig action args params heap initial true) initial
-    ((function.function source typeIdx pool).toLocals (.i64 depth :: params)) targetHost
-  refine wp_function_entry (host := host) (sourceHost := sourceHost)
-    runtime layout profile form closed at_ rep separate input scratch poolApart ?_ ?_
-  · intro _
-    exact FunctionResult.resource initial [] action rfl (Prefix.refl action initial.host)
-  · intro copied middleHeap middle middleLocals below parameters positions values held
-      prologue safe apart empty sameWorld
-    have execution := body middleHeap middle middleLocals below
-      (prologue.frame.params.trans parameters) (prologue.frame.positions.trans positions) empty
-      prologue.step.at_ prologue.holds safe apart (by rw [prologue.step.cap source]; exact cap)
-    exact wp.conseq (fun continuation proof =>
-      function_post_body rep separate scratch held prologue sameWorld empty proof) execution
+  layout_instance function_body_wp_with
+
+theorem effectFunction_run_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World} {source target : Module}
+    {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {index typeIdx : Nat}
+    {targetHost : HostEnv (Observed World)} {initial : Store (Observed World)}
+    {heap : Heap} {depth : UInt64} {params : List Value} {args : Env function.params}
+    {action : Action function.result.denote} {aborts : Bool}
+    (hImports : target.imports = ABI.importsWith calls)
+    (hFunction : target.funcs[index]? = some (function.functionWith calls source typeIdx pool))
+    (length : params.length = widthSum function.params)
+    (body : wp target (function.functionWith calls source typeIdx pool).body
+      (FunctionPost host function.sig action args params heap initial aborts) initial
+      ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: params)) targetHost) :
+    ∃ bound, ∀ fuel ≥ bound,
+      FunctionResult host function.sig action args params heap initial aborts
+        (run fuel target (3 + calls.length + index) initial (.i64 depth :: params).reverse targetHost) := by
+  refine effectFunction_run_post_with hImports hFunction length ?_
+  refine wp.conseq (fun continuation proof => ?_) body
+  cases continuation <;> exact proof
 
 theorem effectFunction_run {World : Type} {host : Host World} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
@@ -216,8 +281,6 @@ theorem effectFunction_run {World : Type} {host : Host World} {source target : M
     ∃ bound, ∀ fuel ≥ bound,
       FunctionResult host function.sig action args params heap initial aborts
         (run fuel target (3 + index) initial (.i64 depth :: params).reverse targetHost) := by
-  refine effectFunction_run_post hImports hFunction length ?_
-  refine wp.conseq (fun continuation proof => ?_) body
-  cases continuation <;> exact proof
+  layout_instance effectFunction_run_with
 
 end Verified.Wasi

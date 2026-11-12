@@ -29,14 +29,15 @@ theorem wp_get_add {α : Type} {m : Module} {st : Store α} {env : HostEnv α} {
     wp m (.localGet a :: .constI64 y :: .addI64 :: rest) Q st s env := by
   simpa only [wp_localGet_cons, hA, wp_constI64_cons, wp_addI64_cons] using h
 
-theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
+theorem wp_readAll_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Module} {host : Host World}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
     (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
     {initial : Store (Observed World)} {heap : Heap} {limit : UInt64} {s : Locals}
     {base : Nat} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
     {aborts : Bool}
-    (hHost : env.Satisfies target (hostSpec host))
+    (hHost : env.Satisfies target (hostSpecWith host calls))
     (hHeap : heap.At (PureTransport.erase initial))
     (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
@@ -60,7 +61,7 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       heap'.top.toNat ≤ heap.top.toNat + readAllCost limit → Q (.Trap final message)) :
-    wp target (readAllCode base ++ rest) Q initial { s with values := .i64 limit :: values }
+    wp target (readAllCodeWith calls base ++ rest) Q initial { s with values := .i64 limit :: values }
       env := by
   let s0 : Locals := { s with values := values }
   have hLow0 : s0.params.length ≤ base := hLow
@@ -68,7 +69,7 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
   have outside0 : ReadAllOutside base s0 s0 := ReadAllOutside.refl base s0
   have bound := fun i (hi : base ≤ i) (hi' : i < base + 6) =>
     outside0.bounds hLow0 hHigh0 hi hi'
-  simp only [readAllCode, List.cons_append]
+  simp only [readAllCodeWith, List.cons_append]
   refine wp_localSet_local (s := s) (vs := values) (bound base le_rfl (by omega)).1
     (bound base le_rfl (by omega)).2 ?_
   let s1 := setLocal s0 base (.i64 limit)
@@ -137,10 +138,10 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
       omega
     have hCapacity := readAll_capacity_toNat hSmall
     simp (config := { decide := true }) only [ge_iff_le, hLarge, ↓reduceIte]
-    rw [readAllValidCode]
+    rw [readAllValidCodeWith]
     simp only [List.cons_append, List.nil_append]
     refine wp_get_add limit1 ?_
-    refine wp_alloc_frame (s := s1) (values := values) runtime layout profile hImports sourceHost
+    refine wp_alloc_frame_with (s := s1) (values := values) runtime layout profile hImports sourceHost
       hHeap (by omega) hCap (hRoom hSmall)
       (fun allowed final world => hResource allowed final world) ?_
     intro before hFits hStore hWorld
@@ -201,7 +202,7 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
       · rw [get5 _ (by omega)]
         exact Locals.get_setLocal_same hLow4 hHigh4
     rw [← List.append_nil (readAllLoopCode base)]
-    refine wp_readAll_loop hImports hHost hLow0 hHigh0 ?_ ?_ facts
+    refine wp_readAll_loop_with hImports hHost hLow0 hHigh0 ?_ ?_ facts
     · intro final si result trace exec step rep outside stack errnoLocal rootLocal lengthLocal
       rw [wp_nil]
       simp only [List.take_zero, List.drop_zero, List.nil_append]
@@ -213,5 +214,40 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
         hTopCost ((outside.values _).frame hHigh0).values
     · intro final message trace exec step
       exact hTrap heap' final root message trace exec step hTopCost
+
+theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
+    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
+    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap} {limit : UInt64} {s : Locals}
+    {base : Nat} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
+    {aborts : Bool}
+    (hHost : env.Satisfies target (hostSpec host))
+    (hHeap : heap.At (PureTransport.erase initial))
+    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hRoom : limit.toNat < 4294963200 → aborts = false →
+      heap.Room (PureTransport.erase initial) source (allocSize (limit + 4096)))
+    (hResource : aborts = true → ∀ final : Store (Observed World),
+      final.host = initial.host → Q (.Trap final "unreachable"))
+    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
+      (root length : UInt64) (result : LeanExe.Wasi.ReadResult) (trace : List Event),
+      Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
+      Bytes.Rep heap' (PureTransport.erase final) root length result.bytes →
+      heap'.top.toNat ≤ heap.top.toNat + readAllCost limit →
+      Frame base s finalLocals →
+      wp target rest Q final
+        { finalLocals with values := .i64 length :: .i64 root :: .i64 result.errno :: values } env)
+    (hTrap : ∀ (heap' : Heap) (final : Store (Observed World)) (root : UInt64)
+      (message : String) (trace : List Event),
+      Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
+      heap'.top.toNat ≤ heap.top.toNat + readAllCost limit → Q (.Trap final message)) :
+    wp target (readAllCode base ++ rest) Q initial { s with values := .i64 limit :: values }
+      env := by
+  layout_instance wp_readAll_with
 
 end Verified.Wasi

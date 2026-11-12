@@ -8,31 +8,33 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-theorem cost_command_ite_spec {source target : Wasm.Module}
+theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
     {condition : Expr pureSigs context .bool}
     {yes no : Command pureSigs effectSigs context result}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool)
     (sourceHost : HostEnv Unit)
-    (yesSpec : CostCommandCodeSpec source target pure program pool yes)
-    (noSpec : CostCommandCodeSpec source target pure program pool no) :
-    CostCommandCodeSpec source target pure program pool (.ite condition yes no) := by
+    (yesSpec : CostCommandCodeSpecWith calls source target pure program pool yes)
+    (noSpec : CostCommandCodeSpecWith calls source target pure program pool no) :
+    CostCommandCodeSpecWith calls source target pure program pool (.ite condition yes no) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place resources
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || yes.uses i || no.uses i
   let picked := bif condition.denote pure.funs env then yes else no
   let branchLive := fun i => live i || picked.uses i
   let charge := pure.exprCost depth (slots.map Slot.mode) mid condition env
   let Q := CostCommandResult host pure program (.ite condition yes no) depth env slots
     (fun i => mid i || condition.uses i) live base heap initial locals aborts
-  let yesCode := Relocation.program (releaseWhere context slots
+  let yesCode := Relocation.programWith calls (releaseWhere context slots
       (fun i => mid i && !(live i || yes.uses i))) ++
-    yes.code (pool := pool) source h slots (base + result.width) live ++
+    yes.codeWith calls (pool := pool) source h slots (base + result.width) live ++
     storeCode h base result.types
-  let noCode := Relocation.program (releaseWhere context slots
+  let noCode := Relocation.programWith calls (releaseWhere context slots
       (fun i => mid i && !(live i || no.uses i))) ++
-    no.code (pool := pool) source h slots (base + result.width) live ++
+    no.codeWith calls (pool := pool) source h slots (base + result.width) live ++
     storeCode h base result.types
   have allEq : (fun i => live i || (Command.ite condition yes no).uses i) =
       (fun i => mid i || condition.uses i) := by
@@ -60,22 +62,24 @@ theorem cost_command_ite_spec {source target : Wasm.Module}
     apply covered
     simp only [Command.literals, List.mem_append]
     tauto
-  have yesReady : yes.Ready source h slots (base + result.width) live pool := by
+  have yesReady : yes.ReadyWith calls source h slots (base + result.width) live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]
     tauto
-  have noReady : no.Ready source h slots (base + result.width) live pool := by
+  have noReady : no.ReadyWith calls source h slots (base + result.width) live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]
     tauto
   have places : condition.placeArgs = true ∧ yes.placeArgs = true ∧ no.placeArgs = true := by
     simpa only [Command.placeArgs, Bool.and_eq_true, and_assoc] using place
-  have pickedSpec : CostCommandCodeSpec source target pure program pool picked := by
+  have pickedSpec : CostCommandCodeSpecWith calls source target pure program pool picked := by
     dsimp only [picked]
     cases condition.denote pure.funs env <;> assumption
-  have pickedReady : picked.Ready source h slots (base + result.width) live pool := by
+  have pickedReady : picked.ReadyWith calls source h slots (base + result.width) live pool := by
     dsimp only [picked]
     cases condition.denote pure.funs env <;> assumption
   have pickedCovered : picked.Covered pool := by
@@ -116,8 +120,8 @@ theorem cost_command_ite_spec {source target : Wasm.Module}
       picked.denote pure.funs (program.funs pure.funs) env := by
     cases chosen : condition.denote pure.funs env <;> simp [Command.denote, picked, chosen]
   have codeEq : (if condition.denote pure.funs env then yesCode else noCode) =
-      Relocation.program (releaseWhere context slots (fun i => mid i && !branchLive i)) ++
-        picked.code (pool := pool) source h slots (base + result.width) live ++
+      Relocation.programWith calls (releaseWhere context slots (fun i => mid i && !branchLive i)) ++
+        picked.codeWith calls (pool := pool) source h slots (base + result.width) live ++
         storeCode h base result.types := by
     cases chosen : condition.denote pure.funs env <;>
       simp [yesCode, noCode, picked, branchLive, chosen]
@@ -129,7 +133,7 @@ theorem cost_command_ite_spec {source target : Wasm.Module}
     (fun _ => depthParam) env slots [] mid
   have noCoerce : coerceCode h .bool (condition.mode (slots.map Slot.mode)) .owned base = [] := by
     simp [coerceCode, Ty.scalar]
-  have execution := wp_return (targetHost := targetHost) facts.runtime facts.layout facts.profile
+  have execution := wp_return_with (calls := calls) (targetHost := targetHost) facts.runtime facts.layout facts.profile
     spec (by simpa only [noCoerce, List.append_nil] using conditionFragment.1)
     (by simpa only [noCoerce, List.append_nil] using conditionFragment.2)
     positions rfl vars at_ safe cap low
@@ -165,7 +169,7 @@ theorem cost_command_ite_spec {source target : Wasm.Module}
           conditionStore { prefixLocals with values := locals.values } targetHost := by
         rw [codeEq]
         rw [List.append_assoc]
-        refine wp_release_context (sourceHost := sourceHost) (targetHost := targetHost)
+        refine wp_release_context_with (sourceHost := sourceHost) (targetHost := targetHost)
           facts.runtime facts.layout facts.profile
           cleanupFragment.1 cleanupFragment.2 upperVars first'.step.at_
           (fun _ selected => by simp only [Bool.and_eq_true] at selected; exact selected.1) ?_
@@ -253,7 +257,19 @@ theorem cost_command_ite_spec {source target : Wasm.Module}
         (yes := yesCode) (no := noCode) (rest := loadCode h base result.types) (Q := Q) selectedBranch
       simpa only [List.cons_append, List.nil_append, List.reverse_cons, List.reverse_nil]
         using branchExecution)
-  simpa only [Command.code, noCoerce, List.append_nil, List.cons_append, List.nil_append,
+  simpa only [Command.codeWith, noCoerce, List.append_nil, List.cons_append, List.nil_append,
     List.append_assoc, mid, yesCode, noCode, Q] using execution
+
+theorem cost_command_ite_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
+    {condition : Expr pureSigs context .bool}
+    {yes no : Command pureSigs effectSigs context result}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
+    (sourceHost : HostEnv Unit)
+    (yesSpec : CostCommandCodeSpec source target pure program pool yes)
+    (noSpec : CostCommandCodeSpec source target pure program pool no) :
+    CostCommandCodeSpec source target pure program pool (.ite condition yes no) := by
+  layout_instance cost_command_ite_spec_with
 
 end Verified.Wasi

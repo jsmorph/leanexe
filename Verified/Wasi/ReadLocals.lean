@@ -45,7 +45,12 @@ def readLocals (capacity root errno length : UInt64) (values : List Value := [])
     setLocal (readLocals capacity root errno length values) 3 (.i64 value) =
       readLocals capacity root errno value values := rfl
 
+theorem readFunction_locals_with {calls : List LeanExe.Wasi.Call}
+    (typeIdx : Nat) (capacity : UInt64) :
+    (readFunctionWith calls typeIdx).toLocals [.i64 capacity] = readLocals capacity 0 0 0 := rfl
+
 theorem readFunction_locals (typeIdx : Nat) (capacity : UInt64) :
-    (readFunction typeIdx).toLocals [.i64 capacity] = readLocals capacity 0 0 0 := rfl
+    (readFunction typeIdx).toLocals [.i64 capacity] = readLocals capacity 0 0 0 := by
+  layout_instance readFunction_locals_with
 
 end Verified.Wasi

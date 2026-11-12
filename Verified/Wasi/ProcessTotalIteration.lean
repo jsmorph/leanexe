@@ -33,7 +33,8 @@ theorem compaction_room {state : Ty} (compactable : state.compactable = true)
     roundWord top + state.copyCost value ≤ 65536 * cap :=
   roundWord_add_le (by omega) (Ty.copyCost_mod state compactable value) (by omega)
 
-theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Module}
+theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
+    {World Ghost : Type} {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {entry : ProcessEntry effectSigs} {host : Host World}
     {targetHost : HostEnv (Observed World)} {pool : Bytes.LiteralPool} {base : UInt64}
@@ -41,18 +42,18 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
     {current : ProcessStep entry.state.denote} {function : Wasm.Function}
     (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
     (relation : Ghost → Ghost → Prop) (charge : Ghost → ProcessStep entry.state.denote → Nat)
-    (ghost : Ghost) (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (ghost : Ghost) (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
     (profile : Relocation.Profile source) (compactable : entry.state.compactable = true)
     (compactForm : Encoding.ProgramForm (processCompaction entry.state))
     (compactClosed :
       Relocation.programClosed source.funcs.length (processCompaction entry.state) = true)
-    (spec : CostEffectSpec source target pure program entry.step
-      (Wrappers.effectIndex source entry.step.index) pool)
-    (noImport : target.imports[Wrappers.effectIndex source entry.step.index]? = none)
-    (lookup : target.funcs[Wrappers.effectIndex source entry.step.index - target.imports.length]? =
+    (spec : CostEffectSpecWith calls source target pure program entry.step
+      (Wrappers.effectIndexWith calls source entry.step.index) pool)
+    (noImport : target.imports[Wrappers.effectIndexWith calls source entry.step.index]? = none)
+    (lookup : target.funcs[Wrappers.effectIndexWith calls source entry.step.index - target.imports.length]? =
       some function)
     (arity : function.numParams = 1 + widthSum [entry.state])
-    (valid : targetHost.Satisfies target (hostSpec host))
+    (valid : targetHost.Satisfies target (hostSpecWith host calls))
     (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
     (stored : ProcessStored target entry.state pool base current initial locals)
     (held : represented ghost current initial.host)
@@ -68,14 +69,14 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
         relation nextGhost ghost ∧
         base.toNat + entry.state.copyCost current.state + charge ghost current +
           entry.state.copyCost next.state ≤ limit) :
-    wp target (entry.iteration source)
+    wp target (entry.iterationWith calls source)
       (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
         relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values)
       initial locals targetHost := by
   let Q := GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
     relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values
   obtain ⟨heap, stateWords, memory, stateHeld, control, free, baseTop, used⟩ := stored.parts
-  simp only [ProcessEntry.iteration, ProcessEntry.result, List.append_assoc,
+  simp only [ProcessEntry.iterationWith, ProcessEntry.result, List.append_assoc,
     List.cons_append, List.nil_append, wp_localGet_cons, control, wp_eqzI64_cons]
   cases running : current.running with
   | false =>
@@ -126,11 +127,11 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
       have within : heap.Within (PureTransport.erase initial) source (charge ghost current) := by
         unfold Heap.Within
         omega
-      have callExecution := wp_cost_effect_helper (locals := locals) (values := locals.values)
+      have callExecution := wp_cost_effect_helper_with (calls := calls) (locals := locals) (values := locals.values)
         (depth := 0) (params := stateWords) (args := args) (Q := Q) (budget := charge ghost current)
         (aborts := false)
         (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
-          (Relocation.program (processCompaction entry.state) ++ [.br 0]))
+          (Relocation.programWith calls (processCompaction entry.state) ++ [.br 0]))
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun _ => ⟨within, bounded⟩)
         (fun value finalHeap final words trace spent callFits execution callStep representation rise => by
@@ -166,7 +167,7 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
           have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
             simp only [Store.memoryCap, called.caps]
-          refine wp_process_store_compact runtime layout profile compactable compactForm
+          refine wp_process_store_compact_with runtime layout profile compactable compactForm
             compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap)
             (fun noRoom _ _ => absurd (compaction_room compactable topBound (by
@@ -209,5 +210,46 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
         (by simpa only [List.reverse_cons, List.append_assoc, List.cons_append,
           List.nil_append] using callExecution)
       simpa [running, boolWord] using loaded
+
+theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {entry : ProcessEntry effectSigs} {host : Host World}
+    {targetHost : HostEnv (Observed World)} {pool : Bytes.LiteralPool} {base : UInt64}
+    {limit : Nat} {initial : Store (Observed World)} {locals : Locals}
+    {current : ProcessStep entry.state.denote} {function : Wasm.Function}
+    (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
+    (relation : Ghost → Ghost → Prop) (charge : Ghost → ProcessStep entry.state.denote → Nat)
+    (ghost : Ghost) (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source) (compactable : entry.state.compactable = true)
+    (compactForm : Encoding.ProgramForm (processCompaction entry.state))
+    (compactClosed :
+      Relocation.programClosed source.funcs.length (processCompaction entry.state) = true)
+    (spec : CostEffectSpec source target pure program entry.step
+      (Wrappers.effectIndex source entry.step.index) pool)
+    (noImport : target.imports[Wrappers.effectIndex source entry.step.index]? = none)
+    (lookup : target.funcs[Wrappers.effectIndex source entry.step.index - target.imports.length]? =
+      some function)
+    (arity : function.numParams = 1 + widthSum [entry.state])
+    (valid : targetHost.Satisfies target (hostSpec host))
+    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (stored : ProcessStored target entry.state pool base current initial locals)
+    (held : represented ghost current initial.host)
+    (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)
+    (resources : current.running = true →
+      base.toNat + entry.state.copyCost current.state + charge ghost current ≤ limit ∧
+      Resource.CallPrefixBound (observedHost host) pure program entry.step 0
+        (.cons current.state .nil) initial.host (charge ghost current))
+    (replies : current.running = true → ∀ trace outcome final,
+      LeanExe.Wasi.Exec (observedHost host) (entry.action (program.funs pure.funs) current.state)
+        initial.host trace outcome final →
+      ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
+        relation nextGhost ghost ∧
+        base.toNat + entry.state.copyCost current.state + charge ghost current +
+          entry.state.copyCost next.state ≤ limit) :
+    wp target (entry.iteration source)
+      (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
+        relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values)
+      initial locals targetHost := by
+  layout_instance wp_process_iteration_total_with
 
 end Verified.Wasi

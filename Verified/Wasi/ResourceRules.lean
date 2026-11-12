@@ -94,6 +94,8 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
         pure.loopInitFits depth count initial env = true →
         LoopBounded host pure program depth modes live test step env
           (count.denote pure.funs env).toNat 0 (initial.denote pure.funs env) loopBudget → conclusion
+  | .sys operation form args =>
+      (∀ trace, sysCost form operation (args.map env.get) trace ≤ budget) → conclusion
 
 theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -140,6 +142,7 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
     intro loopBudget total initFits bounded
     obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ _ execution
     exact ⟨by omega, by simp only [initFits, valid, Bool.true_and]⟩
+  | sys => exact fun bound => ⟨bound _, rfl⟩
 
 theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -194,6 +197,7 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
   | loop_init =>
     intro loopBudget total initFits _
     exact ⟨by omega, initFits⟩
+  | sys => exact fun bound => ⟨bound _, rfl⟩
 
 theorem bounded_of_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}

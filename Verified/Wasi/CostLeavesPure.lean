@@ -7,10 +7,11 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem cost_command_unit_spec {source target : Wasm.Module}
+theorem cost_command_unit_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} :
-    CostCommandCodeSpec source target pure program pool (.unit (context := context)) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.unit (context := context)) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     _ _ _ _ vars at_ _ _ _ _ _ _ _ _ _
   simp only [Command.uses, Bool.or_false] at vars ⊢
@@ -24,15 +25,22 @@ theorem cost_command_unit_spec {source target : Wasm.Module}
   cases locals
   simpa only [List.reverse_nil, List.nil_append] using result
 
-theorem cost_command_ret_spec {source target : Wasm.Module}
+theorem cost_command_unit_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} :
+    CostCommandCodeSpec source target pure program pool (.unit (context := context)) := by
+  layout_instance cost_command_unit_spec_with
+
+theorem cost_command_ret_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
     (value : Expr pureSigs context type) :
-    CostCommandCodeSpec source target pure program pool (.ret value) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.ret value) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     _ _ depthParam positions vars at_ safe _ cap low room ready covered place resource
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := value.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -48,7 +56,7 @@ theorem cost_command_ret_spec {source target : Wasm.Module}
       obtain ⟨withinValue, fitsValue⟩ := bounded.ret_resources locals within
       simp only [Resource.PureContext.exprFits] at fitsValue
       simp [fitsValue, withinValue] at failure
-  have execution := wp_return facts.runtime facts.layout facts.profile spec fragment.1 fragment.2
+  have execution := wp_return_with (calls := calls) facts.runtime facts.layout facts.profile spec fragment.1 fragment.2
     positions rfl vars at_ safe cap low room place (rest := [])
     (targetHost := targetHost)
     (Q := CostCommandResult host pure program (.ret value) depth env slots
@@ -65,6 +73,14 @@ theorem cost_command_ret_spec {source target : Wasm.Module}
         exact .ret program depth (slots.map Slot.mode) live value env initial.host
       · intro fitsValue
         simpa only [pure.returnCost_nil] using top fitsValue)
-  simpa only [Command.code, Command.uses, List.append_nil] using execution
+  simpa only [Command.codeWith, Command.uses, List.append_nil] using execution
+
+theorem cost_command_ret_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (value : Expr pureSigs context type) :
+    CostCommandCodeSpec source target pure program pool (.ret value) := by
+  layout_instance cost_command_ret_spec_with
 
 end Verified.Wasi

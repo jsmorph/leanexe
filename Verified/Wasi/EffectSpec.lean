@@ -32,13 +32,13 @@ inductive FunctionResult {World : Type} (host : Host World) (signature : EffectS
       (progress : Prefix (observedHost host) action initial.host trace residual final.host) :
       FunctionResult host signature action args params heap initial aborts (.Trap final "unreachable")
 
-def EffectSpec (target : Wasm.Module) (signature : EffectSig) (index : Nat)
+def EffectSpecWith (calls : List LeanExe.Wasi.Call) (target : Wasm.Module) (signature : EffectSig) (index : Nat)
     (meaning : Env signature.params → Action signature.result.denote)
     (pool : Bytes.LiteralPool) : Prop :=
   ∀ (World : Type) (host : Host World) (targetHost : HostEnv (Observed World))
     (depth : UInt64) (heap : Heap) (initial : Store (Observed World))
     (params : List Value) (args : Env signature.params),
-    targetHost.Satisfies target (hostSpec host) →
+    targetHost.Satisfies target (hostSpecWith host calls) →
     heap.At (PureTransport.erase initial) →
     Env.Rep signature.mode heap (PureTransport.erase initial) params args →
     Separate (PureTransport.erase initial)
@@ -54,11 +54,20 @@ def EffectSpec (target : Wasm.Module) (signature : EffectSig) (index : Nat)
       FunctionResult host signature (meaning args) args params heap initial true
         (run fuel target index initial ((.i64 depth :: params).reverse) targetHost)
 
-def EffectCalls (source target : Wasm.Module) (functions : EffectFuns signatures)
+def EffectSpec (target : Wasm.Module) (signature : EffectSig) (index : Nat)
+    (meaning : Env signature.params → Action signature.result.denote)
+    (pool : Bytes.LiteralPool) : Prop :=
+  EffectSpecWith [] target signature index meaning pool
+
+def EffectCallsWith (calls : List LeanExe.Wasi.Call) (source target : Wasm.Module) (functions : EffectFuns signatures)
     (pool : Bytes.LiteralPool) : Prop :=
   ∀ {signature : EffectSig} (callee : EffectVar signatures signature),
-    EffectSpec target signature (Wrappers.effectIndex source callee.index)
+    EffectSpecWith calls target signature (Wrappers.effectIndexWith calls source callee.index)
       (functions.get callee) pool
+
+def EffectCalls (source target : Wasm.Module) (functions : EffectFuns signatures)
+    (pool : Bytes.LiteralPool) : Prop :=
+  EffectCallsWith [] source target functions pool
 
 def CallContinuation (locals : Locals) : Result World → Continuation World
   | .Success values final => .Fallthrough final { locals with values }

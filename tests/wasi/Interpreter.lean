@@ -1,4 +1,5 @@
-import LeanExe.Wasi.Interpreter
+import LeanExe.Wasi.NativeCalls
+import LeanExe.Wasi.Sys
 
 open LeanExe LeanExe.Wasi
 
@@ -149,11 +150,63 @@ private def streams : IO Unit := do
   check ((← output.get).data.data.toList == [0, 255, 65, 17]) "lost output before flush failure"
   check ((← error.get).data.data.toList == [128, 0]) "execution continued after flush failure"
 
+/-- Flat calls through `NativeHost.withSys`: the argument calls report the given arguments,
+the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 and oversized
+capacities errno 61 without a call, replies of
+the wrong shape raise an `IO.Error`, and a trap ends the action. -/
+private def flatCalls : IO Unit := do
+  let calls ← IO.mkRef #[]
+  let host := (recordHost calls).withSys ["prog", "a b", ""]
+  let program : Action (ArgsSizes × ArgsResult) := do
+    let sizes ← argsSizesGet
+    let arguments ← args
+    pure (sizes, arguments)
+  match ← program.run host with
+  | .returned (sizes, arguments) =>
+    check (sizes.errno == 0 && sizes.count == 3 && sizes.size == 10) "args_sizes_get reply"
+    check (arguments.errno == 0 && arguments.count == 3 && arguments.size == 10 &&
+      arguments.bytes.data.data.toList == "prog".toUTF8.data.toList ++ [0] ++
+        "a b".toUTF8.data.toList ++ [0, 0]) "args reply"
+  | _ => throw (IO.userError "argument calls did not return")
+  let clocks : Action (List UInt64) := do
+    let wall ← clockTimeGet 0 1
+    let first ← clockTimeGet 1 1
+    let second ← clockTimeGet 1 1
+    let cpu ← clockTimeGet 2 1
+    let other ← clockTimeGet 4 1
+    let wide ← clockTimeGet 4294967296 1
+    pure [wall.errno, first.errno, if first.time ≤ second.time then 0 else 1, cpu.errno, cpu.time,
+      other.errno, wide.errno, wide.time, if 1700000000000000000 ≤ wall.time then 0 else 1]
+  returned [0, 0, 0, 8, 0, 28, 28, 0, 0] (← clocks.run host)
+  let random : Action (List UInt64) := do
+    let filled ← randomGet 16
+    let zero ← randomGet 0
+    let wide ← randomGet 4294967296
+    pure [filled.errno, filled.bytes.size, zero.errno, zero.bytes.size, wide.errno, wide.bytes.size]
+  returned [0, 16, 0, 0, 61, 0] (← random.run host)
+  let empty := (recordHost calls).withSys []
+  match ← args.run empty with
+  | .returned arguments =>
+    check (arguments.errno == 0 && arguments.count == 0 && arguments.bytes.size == 0) "empty args"
+  | _ => throw (IO.userError "empty argument calls did not return")
+  let wrongShape := { host with sys := fun _ _ => pure (.returned 0 [Bytes.empty]) }
+  let caught ← try
+    let _ ← (clockTimeGet 0 1).run wrongShape
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid clock_time_get reply")
+  check caught "a reply of the wrong size was accepted"
+  let stopped := { host with sys := fun _ _ => pure (.trapped "clock stopped" [bytes![0, 0, 0, 0, 0, 0, 0, 0]]) }
+  trapped "clock stopped" (← (do let _ ← clockTimeGet 0 1; writeStdoutSome bytes![1]).run stopped)
+  trapped "wasi clock_time_get: the native host does not serve it"
+    (← (clockTimeGet 0 1).run (recordHost calls))
+  check ((← calls.get).isEmpty) "a flat call reached the stream host"
+
 def main : IO Unit := do
   primitives
   loops
   terminals
   streams
+  flatCalls
   IO.println "native Action interpreter tests passed"
 
 end NativeInterpreterTest

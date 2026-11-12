@@ -1,4 +1,4 @@
-import LeanExe.Dialect.Bytes
+import LeanExe.Wasi.Calls
 
 namespace LeanExe.Wasi
 
@@ -27,6 +27,7 @@ inductive Action : Type → Type 1 where
   | exit {α : Type} (code : UInt64) : Action α
   | loop {α σ : Type} (count : UInt64) (init : σ) (test : UInt64 → σ → Bool)
       (step : UInt64 → σ → Action σ) (next : σ → Action α) : Action α
+  | sys {α : Type} (call : Call) (args : List Arg) (next : Reply → Action α) : Action α
 
 namespace Action
 
@@ -39,6 +40,7 @@ def bind {α β : Type} (action : Action α) (next : α → Action β) : Action 
   | .exit code => .exit code
   | .loop count init test step continuation =>
     .loop count init test step fun state => bind (continuation state) next
+  | .sys call args continuation => .sys call args fun reply => bind (continuation reply) next
 
 instance : Monad Action where
   pure := Action.pure
@@ -62,6 +64,11 @@ theorem bind_pure : {α : Type} → (action : Action α) → bind action Action.
     congr
     funext state
     exact bind_pure (next state)
+  | _, .sys call args next => by
+    simp only [bind]
+    congr
+    funext reply
+    exact bind_pure (next reply)
 
 theorem bind_assoc {α β γ : Type} (action : Action α) (next : α → Action β)
     (last : β → Action γ) :
@@ -84,6 +91,11 @@ theorem bind_assoc {α β γ : Type} (action : Action α) (next : α → Action 
     congr
     funext state
     exact bind_assoc (continuation state) next last
+  | .sys call args continuation =>
+    simp only [bind]
+    congr
+    funext reply
+    exact bind_assoc (continuation reply) next last
 
 instance : LawfulMonad Action :=
   LawfulMonad.mk' Action
