@@ -92,6 +92,11 @@ lean_exe «a64-uart» where
   srcDir := "tests"
   root := `TestSupport.A64.UartMain
 
+-- The Linux executables of the AArch64 back end (tests/linux/a64-elf.sh); not a default target.
+lean_exe «a64-elf» where
+  srcDir := "tests"
+  root := `TestSupport.A64.ElfMain
+
 -- The arm64 Image of the Oakland tabulator that reads a canonical file from the UART
 -- (tests/baremetal/a64-rcv.sh); not a default target.
 lean_exe «a64-rcv» where
