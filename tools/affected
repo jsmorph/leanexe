@@ -1,0 +1,202 @@
+#!/usr/bin/env node
+// Prints what a change affects: the changed modules of this package, the modules that import them
+// directly or through other modules, the targets that build all of these, the names whose
+// `tests/verified/run.sh --cases` run is affected, the other Lean files that import an affected
+// module, and the other checks that the changed files call for.
+// Usage: tools/affected [BASE [HEAD] | BASE..HEAD]
+// Without arguments the change runs from the merge base of origin/main and HEAD to the working
+// tree, with BASE alone from BASE to the working tree, and with HEAD from BASE to HEAD.
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const usage = 'usage: tools/affected [BASE [HEAD] | BASE..HEAD]';
+let [base, head] = process.argv.slice(2);
+if (process.argv.length > 4 || [base, head].some(r => r?.startsWith('-') || r?.includes('...'))) {
+  console.error(usage);
+  process.exit(2);
+}
+if (base?.includes('..') && head === undefined) [base, head] = base.split('..');
+
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 30 });
+const lines = text => text.split('\n').filter(line => line !== '');
+if (base === undefined) base = git('merge-base', 'origin/main', 'HEAD').trim();
+
+// The files of the changed tree, and their contents.
+let files;
+let read;
+if (head === undefined) {
+  files = lines(git('ls-files', '--cached', '--others', '--exclude-standard'))
+    .filter(f => fs.existsSync(f));
+  read = f => fs.readFileSync(f, 'utf8');
+} else {
+  files = lines(git('ls-tree', '-r', '--name-only', head));
+  const wanted = files.filter(f => /\.(lean|txt|sh|py|mjs)$/.test(f) || /^tools\/[^./]+$/.test(f));
+  const output = execFileSync('git', ['cat-file', '--batch'],
+    { input: wanted.map(f => `${head}:${f}\n`).join(''), maxBuffer: 1 << 30 });
+  const contents = new Map();
+  let offset = 0;
+  for (const f of wanted) {
+    const end = output.indexOf(10, offset);
+    const size = Number(output.toString('utf8', offset, end).split(' ')[2]);
+    contents.set(f, output.toString('utf8', end + 1, end + 1 + size));
+    offset = end + 2 + size;
+  }
+  read = f => contents.get(f) ?? '';
+}
+const present = new Set(files);
+
+// The changed paths, with each rename as a deletion and an addition.
+const changed = new Set();
+const deleted = new Set();
+const diff = head === undefined ? ['diff', '--name-status', '-M', base]
+  : ['diff', '--name-status', '-M', base, head];
+for (const line of lines(git(...diff))) {
+  const [status, ...paths] = line.split('\t');
+  if (status === 'D') deleted.add(paths[0]);
+  else if (/^R/.test(status)) { deleted.add(paths[0]); changed.add(paths[1]); }
+  else changed.add(paths.at(-1));
+}
+if (head === undefined) {
+  for (const f of lines(git('ls-files', '--others', '--exclude-standard'))) changed.add(f);
+}
+
+// The modules of this package, as `source-layout` names them.
+const internal = /^(LeanExe|Verified|Examples|Library|Demos|TestSupport)(\.|$)/;
+const moduleOf = f => {
+  if (!f.endsWith('.lean')) return undefined;
+  const name = f.replace(/^tests\//, '').replace(/\.lean$/, '').replaceAll('/', '.');
+  return internal.test(name) && (f.startsWith('tests/') === name.startsWith('TestSupport'))
+    ? name : undefined;
+};
+const sourceOf = m =>
+  (m.startsWith('TestSupport') ? 'tests/' : '') + m.replaceAll('.', '/') + '.lean';
+
+// The import graph of every Lean file, a node for each module of this package and for each other
+// Lean file, with the edges reversed.
+const node = f => moduleOf(f) ?? f;
+const importers = new Map();
+const leanFiles = files.filter(f => f.endsWith('.lean') && f !== 'lakefile.lean');
+for (const f of leanFiles) {
+  for (const match of read(f).matchAll(/^import ([\w.]+)/gm)) {
+    if (!internal.test(match[1])) continue;
+    if (!importers.has(match[1])) importers.set(match[1], new Set());
+    importers.get(match[1]).add(node(f));
+  }
+}
+
+const configuration = ['lakefile.lean', 'lake-manifest.json', 'lean-toolchain']
+  .filter(f => changed.has(f));
+const changedModules = [...changed].map(moduleOf).filter(m => m !== undefined).sort();
+const deletedModules = [...deleted].map(moduleOf)
+  .filter(m => m !== undefined && !present.has(sourceOf(m))).sort();
+const affected = new Set();
+const pending = configuration.length ? leanFiles.map(node)
+  : [...changedModules, ...deletedModules,
+    ...[...changed].filter(f => f.endsWith('.lean') && moduleOf(f) === undefined)];
+while (pending.length) {
+  const n = pending.pop();
+  if (affected.has(n)) continue;
+  affected.add(n);
+  for (const importer of importers.get(n) ?? []) pending.push(importer);
+}
+const affectedModules = [...affected].filter(n => present.has(sourceOf(n)) && internal.test(n))
+  .sort();
+const affectedFiles = [...affected].filter(n => n.endsWith('.lean') && present.has(n)).sort();
+
+// The executables of lakefile.lean, each with its root module.
+const executables = new Map();
+let executable;
+for (const line of present.has('lakefile.lean') ? read('lakefile.lean').split('\n') : []) {
+  const declaration = line.match(/^lean_exe\s+(?:«([^»]+)»|([\w.]+))/);
+  if (declaration) {
+    executable = declaration[1] ?? declaration[2];
+    executables.set(executable, executable);
+  } else if (/^\S/.test(line)) {
+    executable = undefined;
+  }
+  const root = line.match(/^\s+root\s*:=\s*`([\w.]+)/);
+  if (executable && root) executables.set(executable, root[1]);
+}
+const affectedExecutables = [...executables].filter(([, root]) => affected.has(root))
+  .map(([name]) => name).sort();
+
+// The targets: the affected modules that no affected module imports, and the affected executables.
+const imported = new Set();
+for (const m of affectedModules) {
+  for (const importer of importers.get(m) ?? []) if (affected.has(importer)) imported.add(m);
+}
+const targets = [...affectedModules.filter(m => !imported.has(m)), ...affectedExecutables];
+
+// The names of tests/verified/run.sh whose written module or own case executable is affected.  The
+// other names take their cases from verified-cases, as the run without --cases does, and that
+// executable's import closure holds most case modules.
+const registry = f => (present.has(f) ? lines(read(f)).map(line => line.split(':')) : []);
+const generators = new Map(registry('tests/verified/case-generators.txt'));
+const cases = registry('tests/verified/modules.txt')
+  .filter(([module, , name]) => affected.has(module) ||
+    (generators.has(name) && affected.has(executables.get(generators.get(name)))))
+  .map(([, , name]) => name);
+const shared = affected.has(executables.get('verified-cases'));
+
+// The checks of the changed files and the drivers that name a changed file other than a Markdown
+// file, an affected Lean file, module, or executable.  A driver is a script under tests/, tools/,
+// rocq/, or clightn/ other than this one.
+const checks = new Map();
+const add = (check, reason) => {
+  if (!checks.has(check)) checks.set(check, new Set());
+  checks.get(check).add(reason);
+};
+const layout = /\.lean$|^tests\/verified\/(modules|numerics|library-cases)\.txt$|^index\.md$/;
+for (const f of [...changed, ...deleted]) {
+  if (layout.test(f)) add('tools/source-layout', f);
+  if (/\.md$/i.test(f) || deleted.has(f)) add('tools/check-doc-links.mjs', f);
+  if (f.startsWith('VKB/')) {
+    add('tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries', f);
+  }
+}
+for (const f of configuration) add('a build of every target', f);
+// A module name without a dot, such as Demos, names a directory as often as a module.
+const named = new Set([...changed, ...deleted].filter(f => !/\.md$/i.test(f)));
+for (const name of [...affectedFiles, ...affectedModules.filter(m => m.includes('.')),
+  ...affectedModules.map(sourceOf), ...affectedExecutables]) named.add(name);
+const drivers = files.filter(f => /^(tests|tools|rocq|clightn)\//.test(f) &&
+  f !== 'tools/affected' && (/\.(sh|py|mjs)$/.test(f) || /^tools\/[^./]+$/.test(f)));
+for (const driver of drivers) {
+  const text = read(driver);
+  // Each path in the text, and each of its suffixes after a slash, such as tests/x.sh of
+  // $root/tests/x.sh.
+  const tokens = new Set();
+  for (const token of text.match(/[\w.\-/«»]+/g) ?? []) {
+    for (let i = 0; i !== -1; i = token.indexOf('/', i) + 1 || -1) tokens.add(token.slice(i));
+  }
+  for (const name of named) {
+    const sibling = path.dirname(name) === path.dirname(driver) && tokens.has(path.basename(name));
+    if (name === driver || tokens.has(name) || tokens.has(`«${name}»`) || sibling) {
+      add(driver, name);
+    }
+  }
+}
+
+const section = (title, items) => {
+  console.log(`${title}: ${items.length}`);
+  for (const item of items) console.log(`  ${item}`);
+};
+console.log(`change: ${base} to ${head ?? 'the working tree'}`);
+if (configuration.length) {
+  console.log(`configuration changed: ${configuration.join(', ')}; every module is affected`);
+}
+section('changed modules', changedModules);
+section('deleted modules', deletedModules);
+section('affected modules', affectedModules);
+section('build targets', targets.length ? [targets.join(' ')] : []);
+section('tests/verified/run.sh --cases', cases);
+console.log(`verified-cases, the case executable of the run without --cases and of the names ` +
+  `without their own: ${shared ? 'affected' : 'not affected'}`);
+section('other affected Lean files', affectedFiles);
+section('other checks', [...checks].sort(([a], [b]) => a.localeCompare(b))
+  .map(([check, reasons]) => {
+    const list = [...reasons].sort();
+    const more = list.length > 3 ? `, and ${list.length - 3} more` : '';
+    return `${check}: ${list.slice(0, 3).join(', ')}${more}`;
+  }));
