@@ -96,6 +96,31 @@ specified search none.
 
 1. A theorem that `Model.linearProb` and `Model.pc` are probabilities of Mathlib's normal laws,
    which would give the radius for every `p` below 1.
-2. Adaptive panels for the circular error, whose width grows with the ratio of the radius to the
-   largest standard deviation.
-3. The three-dimensional spherical error, and covariances known within bounds.
+2. The three-dimensional spherical error, and covariances known within bounds.
+
+## Adaptive panels
+
+[The requirements' section on adaptive panels](requirements.md#adaptive-panels) specifies
+`pcAdaptive` and `circularErrorAdaptive`.  The request asked for an adaptive enclosure that makes the radius search finish with fewer panels for large
+biases and for `p` near 1, a decision whether it replaces the equal panels inside the radius search
+or is a new entry beside `pc`, an independent review, and measurements against equal panels.
+
+### Decisions
+
+| Question | Choice | Reason |
+|---|---|---|
+| Replacement or new entry | A new module, `adaptive`, with `pcAdaptive` beside `pc` and `circularErrorAdaptive` beside `circularError` | Replacing the panels of `circularError` changes the bytes and the theorems of `accuracy`, and the request allows that only when needed.  The new entries need no change to either module, and `pcAdaptive` also serves the probability of collision, whose equal panels fail the same way for a disk much larger than the standard deviations. |
+| Refinement | A march over `[-r, r]` that accepts a panel at most a tolerance wide | Splitting the widest panel under a cap needs an array of panels, allocation, and an invariant over the array.  The march needs one record of state and one invariant, and it aims at panels of equal width, the partition that splitting the widest panel approaches. |
+| Tolerance | Three marches: `R/64`, then the tolerances that the sums of square roots of widths predict for `n/16` panels and for 0.8 times the panels left, and the common part of the last two sums | The measurements of the requirements: a single coarse estimate ran out of panels at a bias of 1,000 standard deviations, an estimate from the count of panels left up to 96 percent of the panels unused, the factor 0.9 ran out in most inputs, and the common part bounds the width when the last march runs out. |
+| Next length | `0.9 √(τ/w)` times the last length, within `[1/4, 2]` | The width of a smooth panel's interval falls as the square of its length, so the rule aims each panel at a width just below `τ`.  The measurements did not compare it alone with doubling and halving. |
+| Least `n` | 16 | The first march takes `n/16` steps, so smaller `n` leaves it none. |
+| Input tests of the circular error | `guarded_sound`, proved once in `AccuracySoundness.lean` for any search, and used by `circularError_sound` and `circularErrorAdaptive_sound` | The two programs have the same tests around different searches.  The statement of `circularError_sound` and the bytes of `accuracy` do not change. |
+| `p` near 1 without a bias | A stated limit and an open item | The best single march was at most 4 percent narrower than equal panels there, so a narrower enclosure needs a panel enclosure of higher order. |
+
+### Open items
+
+1. A panel enclosure of higher order, such as the value at the panel's midpoint with an interval
+   bound on the derivative of the integrand away from `±r`, whose width falls as the square of the
+   panel's length and would narrow the radius interval at `p` near 1 without a bias.
+2. `pc_enclosure` and `pcBoxWith_enclosure` repeat the step that `scaled_sound` proves, and could
+   use it.
