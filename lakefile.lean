@@ -4,7 +4,8 @@ open Lake DSL
 
 /-- Whether Lake elaborated this configuration with `-K fast=true`, which builds this package's
 modules without the kernel's checks into `.lake/build-fast` and leaves the dependencies' checked
-builds in use.  Lake keeps the options of the last elaboration until `-R` elaborates the file again
+builds in use.  Lake keeps the options of the last elaboration until `-R` elaborates the file again,
+and `tools/leanrun` adds `-R` when they differ from a command's
 (`docs/verified-manual.md#fast-builds`). -/
 def fast : Bool := get_config? fast == some "true"
 

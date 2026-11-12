@@ -4,7 +4,10 @@
 
 [The Lean runner](leanrun) selects the pinned toolchain, takes the machine-wide lock, and
 applies the resource and timeout settings described in
-[the development procedure](../docs/verified-manual.md#development-practice).  Repository drivers
+[the development procedure](../docs/verified-manual.md#development-practice).  It adds `-R` to a
+lake command whose `-K` options differ from those of the cached Lake configuration, so that the
+command builds in the mode that it names, as [the section on fast
+builds](../docs/verified-manual.md#fast-builds) explains.  Repository drivers
 invoke it themselves.  [The remote runner](leanrun-dev) supports source synchronization and
 checks on the development host.  The runner's resource controls and the rules for local mode
 are stated in [the repository instructions](../AGENTS.md#lean-process-limits).
