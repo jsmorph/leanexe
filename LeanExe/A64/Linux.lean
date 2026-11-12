@@ -99,12 +99,12 @@ def Proc.ret (p : Proc) (v : UInt64) (mem : UInt64 → UInt8) (e : Event) : Proc
   { p with core := { p.core.setX 0 v with mem, pc := p.core.pc + 4 }, trace := p.trace ++ [e] }
 
 /-- The process after the call that `p` makes at `SVC #0`, or `none` where the model has no rule.
-Call `k` is the call made after `k` events.  `read` (X8 = 63) of descriptor 0 into the X2 bytes
-from X1 returns `r`, the least of `size k + 1`, X2, and the number of bytes of input that earlier
-reads did not return, and writes those `r` bytes from X1, which must lie in Normal memory.
-`write` (X8 = 64) of descriptor 1 from the X2 bytes from X1 takes the least of `size k + 1` and X2
-bytes, which must lie in Normal memory, and returns their number.  When `fail k` holds `e`, either
-call returns the negated number `e + 1` and changes nothing else. -/
+Call `k` is the call made after `k` events.  The X2 bytes from X1 must lie in Normal memory, a
+condition that implies Linux's check `access_ok` of the whole buffer.  `read` (X8 = 63) of
+descriptor 0 into them returns `r`, the least of `size k + 1`, X2, and the number of bytes of
+input that earlier reads did not return, and writes those `r` bytes from X1.  `write` (X8 = 64) of
+descriptor 1 from them takes the least of `size k + 1` and X2 bytes and returns their number.  When
+`fail k` holds `e`, either call returns the negated number `e + 1` and changes nothing else. -/
 def Kernel.svc (K : Kernel) (P : Platform) (p : Proc) : Option Proc :=
   let s := p.core
   let k := p.trace.length
@@ -116,13 +116,13 @@ def Kernel.svc (K : Kernel) (P : Platform) (p : Proc) : Option Proc :=
       if s.x 8 = 63 then
         let rest := K.input.drop (stdinOf p.trace).length
         let r := min (K.size k + 1) (min n rest.length)
-        if P.mapped (s.x 1) r then
+        if P.mapped (s.x 1) n then
           some (p.ret (UInt64.ofNat r) (writeList s.mem (s.x 1) (rest.take r))
             (.read (rest.take r)))
         else none
       else
         let r := min (K.size k + 1) n
-        if P.mapped (s.x 1) r then
+        if P.mapped (s.x 1) n then
           some (p.ret (UInt64.ofNat r) s.mem (.write (readList s.mem (s.x 1) r)))
         else none
   else none

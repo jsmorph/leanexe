@@ -241,8 +241,7 @@ def Kernel.rest (K : Kernel) (tr : List Event) : List UInt8 := K.input.drop (std
 `size` gives, and writes them from X1. -/
 theorem svc_read {K : Kernel} {P : Platform} {p : Proc} (h8 : p.core.x 8 = 63)
     (h0 : p.core.x 0 = 0) (hf : K.fail p.trace.length = none)
-    (hmap : P.mapped (p.core.x 1)
-      (min (K.size p.trace.length + 1) (min (p.core.x 2).toNat (K.rest p.trace).length)) = true) :
+    (hmap : P.mapped (p.core.x 1) (p.core.x 2).toNat = true) :
     K.svc P p = some (p.ret
       (UInt64.ofNat (min (K.size p.trace.length + 1) (min (p.core.x 2).toNat
         (K.rest p.trace).length)))
@@ -252,14 +251,14 @@ theorem svc_read {K : Kernel} {P : Platform} {p : Proc} (h8 : p.core.x 8 = 63)
         (min (K.size p.trace.length + 1) (min (p.core.x 2).toNat (K.rest p.trace).length))))) := by
   unfold Kernel.svc
   simp only [h8, h0, true_and, true_or, ↓reduceIte, hf]
-  unfold Kernel.rest at hmap ⊢
+  unfold Kernel.rest
   simp only [hmap, ↓reduceIte]
 
 /-- A `write` of descriptor 1 that does not fail takes the X2 bytes from X1 or fewer, as `size`
 gives. -/
 theorem svc_write {K : Kernel} {P : Platform} {p : Proc} (h8 : p.core.x 8 = 64)
     (h0 : p.core.x 0 = 1) (hf : K.fail p.trace.length = none)
-    (hmap : P.mapped (p.core.x 1) (min (K.size p.trace.length + 1) (p.core.x 2).toNat) = true) :
+    (hmap : P.mapped (p.core.x 1) (p.core.x 2).toNat = true) :
     K.svc P p = some (p.ret
       (UInt64.ofNat (min (K.size p.trace.length + 1) (p.core.x 2).toNat)) p.core.mem
       (.write (readList p.core.mem (p.core.x 1)

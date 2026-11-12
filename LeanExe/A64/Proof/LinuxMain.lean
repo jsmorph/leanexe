@@ -259,7 +259,7 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
     (hok : K.fail p.trace.length = none) {c : Nat} (hc64 : c < 2 ^ 64)
     (h2 : p.core.x 2 = UInt64.ofNat c) {r : Nat}
     (hr : min (K.size p.trace.length + 1) (min c (K.rest p.trace).length) = r)
-    (hmap : P.mapped (p.core.x 1) r = true) :
+    (hmap : P.mapped (p.core.x 1) c = true) :
     ∃ p', ProcReach K P code p p' ∧ p'.fpcr = fpcrValue ∧
       p'.trace = p.trace ++ [.read ((K.rest p.trace).take r)] ∧
       p'.core.mem = writeList p.core.mem (p.core.x 1) ((K.rest p.trace).take r) ∧
@@ -309,7 +309,7 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
       show (t1.setX 30 (t1.pc + 4)).x 0 = 0
       rw [State.x_setX_ne (by decide), x01]
       rfl)
-    hok (by rw [hx2, hx1]; exact hr ▸ hmap)
+    hok (by rw [hx2, hx1]; exact hmap)
   have htr2 : pp.trace = p.trace := rfl
   rw [hx2, hx1, Proc.enter_trace, htr2, hr] at hsvc
   have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hrd hdom p2 hsvc
@@ -445,7 +445,7 @@ theorem run_readLoop {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
   have hrl : r ≤ K.input.length - got := by
     rw [← hr, hrest, List.length_drop]
     omega
-  have hmap : P.mapped (p.core.x 1) r = true := mapped_of_all P fun i hi => by
+  have hmap : P.mapped (p.core.x 1) c = true := mapped_of_all P fun i hi => by
     rw [h1, add_ofNat_add, show 4096 + (root + got) + i = 4096 + (root + got + i) by omega]
     exact hsr.mapped _ (by unfold areaSize; omega)
   obtain ⟨p', q1, hf', htr', hmem', hsp', hio', hx', out⟩ := run_readPass P code hc hgr hfe hfl
@@ -651,9 +651,7 @@ theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
       rfl)
     (hok _) (by
       rw [hx2, hx1]
-      show P.mapped (p.core.x 1) (min (K.size p.trace.length + 1) c) = true
-      rw [hr]
-      exact mapped_of_all P fun i hi => hmapc i (by omega))
+      exact mapped_of_all P fun i hi => hmapc i hi)
   have htr2 : pp.trace = p.trace := rfl
   rw [hx2, hx1, Proc.enter_trace, htr2, hr] at hsvc
   have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hwr hdom p2 hsvc
