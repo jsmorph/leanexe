@@ -12,7 +12,8 @@ verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, Erf.erf
   extreme, mulEnd, mul, divEnd, divCore, div, Library.Numerics.Interval.sqrt,
   Library.Numerics.Interval.abs, clamp, outward2, increasing, sq, expI, erfI, setup, gaussI,
   chordI, meanI, erfSumI, panelCore, panel, panelEnd, stepRatio, accept, marchStep, march,
-  tolerance, meet, pcAdaptWith, growStep, raiseStep, lowerStep, middle, adaptGrow, adaptRaise,
-  adaptLower, adaptSearch, definite, circularErrorAdaptWith, pcAdaptive, circularErrorAdaptive]
+  tolerance, meet, marches, pcAdaptWith, growStep, raiseStep, lowerStep, middle, adaptGrow,
+  adaptRaise, adaptLower, adaptSearch, definite, circularErrorAdaptWith, pcAdaptive,
+  circularErrorAdaptive]
 
 end Demos.Conjunction.Adaptive

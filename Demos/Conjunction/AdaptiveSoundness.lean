@@ -9,7 +9,8 @@ and `circularErrorAdaptive_sound` states for `circularErrorAdaptive` the conclus
 in `[-r, r]`, a finished march has covered `[-r, r]`, and an accepted sum encloses the integral of
 `Model.core` over the covered part.  It holds for every tolerance, length, and number of steps,
 so the tolerances and the lengths that the program computes do not enter the proof.  The radius
-follows from the search over any enclosure of `AccuracySoundness.lean`.
+follows from the search over any enclosure of `AccuracySoundness.lean`.  `marches_used` states that
+the three marches of `pcAdaptWith` evaluate at most `n` panels.
 -/
 
 namespace Demos.Conjunction.Adaptive
@@ -131,19 +132,23 @@ theorem march_covers (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
     · rw [ite_eq_right g]
       exact hm
 
-/-- The sum of a finished march, when accepted, encloses the integral of `Model.core` over
-`[-r, r]`, and the conditional variance is positive. -/
-theorem finished_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
-    (fr : Finite r.toBits) (hr : 0 ≤ value r.toBits) (tau : Float) (fuel : UInt64)
-    (h : (if (march Exp.expTable st r tau fuel).state == 1 then (march Exp.expTable st r tau fuel).sum
-      else rejected).status = 0) :
+/-- The second and third marches of `marches` keep the invariant. -/
+theorem marches_covers (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
+    (fr : Finite r.toBits) (hr : 0 ≤ value r.toBits) (n : UInt64) :
+    Covers r m1 m2 c11 c12 c22 (marches Exp.expTable st r n).b ∧
+      Covers r m1 m2 c11 c12 c22 (marches Exp.expTable st r n).c :=
+  ⟨march_covers S hc fr hr _ _, march_covers S hc fr hr _ _⟩
+
+/-- The sum of a march that keeps the invariant and has covered `[-r, r]`, when accepted, encloses
+the integral of `Model.core` over `[-r, r]`, and the conditional variance is positive. -/
+theorem finished_sound {X : March} (hX : Covers r m1 m2 c11 c12 c22 X)
+    (h : (if X.state == 1 then X.sum else rejected).status = 0) :
     0 < Model.condVar c11 c12 c22 ∧
-      Contains (if (march Exp.expTable st r tau fuel).state == 1 then
-          (march Exp.expTable st r tau fuel).sum else rejected)
+      Contains (if X.state == 1 then X.sum else rejected)
         (∫ x in (-value r.toBits)..(value r.toBits), Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
-  by_cases g : ((march Exp.expTable st r tau fuel).state == 1) = true
+  by_cases g : (X.state == 1) = true
   · rw [ite_eq_left g] at h ⊢
-    obtain ⟨-, -, -, hst, hsum⟩ := march_covers S hc fr hr tau fuel
+    obtain ⟨-, -, -, hst, hsum⟩ := hX
     obtain ⟨ht, hv⟩ := hst (beq_iff_eq.mp g)
     have c := hsum h
     rw [ht] at c
@@ -152,6 +157,60 @@ theorem finished_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
     exact absurd h (by decide)
 
 end March
+
+/-! ### The number of panels -/
+
+theorem marchStep_used (tab : Array UInt64) (st : Setup) (r tau hmin : Float) (fuel : UInt64)
+    (m : March) : (marchStep tab st r tau hmin fuel m).used = m.used + 1 := by
+  unfold marchStep accept
+  dsimp only
+  split_ifs <;> rfl
+
+/-- A march evaluates at most as many panels as it has steps. -/
+theorem march_used_le (tab : Array UInt64) (st : Setup) (r tau : Float) (fuel : UInt64) :
+    (march tab st r tau fuel).used.toNat ≤ fuel.toNat := by
+  unfold march
+  refine LeanExe.Dialect.loop_induction (fun k (m : March) => m.used.toNat ≤ k) (by simp) ?_
+  intro k m hk hm
+  by_cases g : (m.state == 0) = true
+  · rw [ite_eq_left g, marchStep_used, UInt64.toNat_add]
+    have hf := fuel.toNat_lt_size
+    simp only [UInt64.toNat_one]
+    rw [Nat.mod_eq_of_lt (by simp only [UInt64.size] at hf ⊢; omega)]
+    omega
+  · rw [ite_eq_right g]
+    omega
+
+/-- The three marches of `pcAdaptWith` evaluate at most `n` panels together. -/
+theorem marches_used (tab : Array UInt64) (st : Setup) (r : Float) (n : UInt64) :
+    (marches tab st r n).a.used.toNat + (marches tab st r n).b.used.toNat +
+      (marches tab st r n).c.used.toNat ≤ n.toNat := by
+  unfold marches
+  dsimp only
+  have ha := march_used_le tab st r (0.015625 * r) (n / 16)
+  generalize march tab st r (0.015625 * r) (n / 16) = a at ha ⊢
+  have hb := march_used_le tab st r (tolerance a (n / 16).toFloat) (n / 2 - a.used)
+  generalize march tab st r (tolerance a (n / 16).toFloat) (n / 2 - a.used) = b at hb ⊢
+  have hc := march_used_le tab st r (tolerance b (0.8 * (n - a.used - b.used).toFloat))
+    (n - a.used - b.used)
+  generalize march tab st r (tolerance b (0.8 * (n - a.used - b.used).toFloat))
+    (n - a.used - b.used) = c at hc ⊢
+  rw [UInt64.toNat_div] at ha
+  have h16 : (16 : UInt64).toNat = 16 := rfl
+  have h2 : (2 : UInt64).toNat = 2 := rfl
+  rw [h16] at ha
+  have hle1 : a.used ≤ n / 2 := by
+    rw [UInt64.le_iff_toNat_le, UInt64.toNat_div, h2]
+    omega
+  rw [UInt64.toNat_sub_of_le _ _ hle1, UInt64.toNat_div, h2] at hb
+  have hle2 : a.used ≤ n := by
+    rw [UInt64.le_iff_toNat_le]
+    omega
+  have hle3 : b.used ≤ n - a.used := by
+    rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ hle2]
+    omega
+  rw [UInt64.toNat_sub_of_le _ _ hle3, UInt64.toNat_sub_of_le _ _ hle2] at hc
+  omega
 
 /-- The part common to two intervals that each contain `x`, when accepted, contains `x`. -/
 theorem meet_sound {P : Prop} {a b : Interval} {x : ℝ} (ha : a.status = 0 → P ∧ Contains a x)
@@ -243,9 +302,8 @@ theorem pcAdaptive_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
             have hr : 0 < value r.toBits := by
               have := (lt_iff_value lit_zero.1 fr).mp g2
               rwa [lit_zero.2] at this
-            have S := setup_sound m1 m2 c11 c12 c22 r
-            obtain ⟨hv, cs⟩ := meet_sound
-              (finished_sound S hc fr hr.le _ _) (finished_sound S hc fr hr.le _ _)
+            obtain ⟨cb, cc⟩ := marches_covers (setup_sound m1 m2 c11 c12 c22 r) hc fr hr.le n
+            obtain ⟨hv, cs⟩ := meet_sound (finished_sound cb) (finished_sound cc)
               (mul_sound fc).2.1
             obtain ⟨hdet, cp⟩ := scaled_sound hc hv hr.le cs h
             exact ⟨hc, hdet, hr, fr, cp⟩
@@ -320,5 +378,6 @@ theorem circularErrorAdaptive_sound {m1 m2 c11 c12 c22 p : Float} {n k : UInt64}
 
 #print axioms pcAdaptive_enclosure
 #print axioms circularErrorAdaptive_sound
+#print axioms marches_used
 
 end Demos.Conjunction.Adaptive

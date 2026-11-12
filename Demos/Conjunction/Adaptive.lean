@@ -5,11 +5,13 @@ The probability of the disk and the circular error with adaptive panels.  `march
 from the left with panels whose lengths follow the integrand: it accepts a panel whose interval is
 at most a tolerance wide and otherwise shortens the panel, and it predicts the next length from
 the width, which falls as the square of the length where the integrand is smooth.  Its last
-permitted step covers the rest of `[-r, r]` with one panel.  `pcAdaptWith` runs a coarse march, a
+permitted step covers the rest of `[-r, r]` with one panel.  `marches` runs a coarse march, a
 second march at the tolerance that the first's widths predict for about `n/16` panels, and a third
-at the tolerance that the second's widths predict for the remaining panels, and it returns the
-part common to the second and third sums times the constant factor.  `circularErrorAdaptWith` is
-the search of `circularErrorWith` with `pcAdaptWith` in place of `pcWith`.
+at the tolerance that the second's widths predict for 0.8 times the remaining panels.
+`pcAdaptWith` takes the part common to the sums of the second and third marches that covered
+`[-r, r]`, or the one sum when only one did, times the constant factor, with the lower endpoint
+clamped at zero.  `circularErrorAdaptWith` is the search of `circularErrorWith` with `pcAdaptWith`
+in place of `pcWith`.
 -/
 
 namespace Demos.Conjunction.Adaptive
@@ -17,10 +19,12 @@ namespace Demos.Conjunction.Adaptive
 open Library.Numerics.Bounds Library.Numerics.Interval Library.Numerics.Float64
 open Demos.Conjunction Demos.Conjunction.Accuracy
 
-/-- The state of a march over `[-r, r]`.  `state` is 0 while the march runs, 1 once it covers
-`[-r, r]`, and 2 after a rejected panel; `used` counts the panels evaluated; `root` adds the square
-roots of the widths of the accepted panels; `sum` encloses the integral over the covered part
-`[-r, t]`; and `h` is the length of the next panel. -/
+/-- The state of a march over `[-r, r]`.  `state` is 0 while the march runs, 1 once its last
+accepted panel ends at `r`, and 2 after a step before the last met a rejected panel or a panel that
+ends below its start; `used` counts the panels evaluated; `root` adds the square roots of the
+widths of the accepted panels; `sum` encloses the integral over the covered part `[-r, t]` when it
+is accepted, and it is rejected when the last step accepted a rejected panel; and `h` is the length
+of the next panel. -/
 structure March where
   state : UInt64
   used : UInt64
@@ -49,9 +53,11 @@ def accept (r b h : Float) (m : March) (e : Interval) : March :=
   ⟨if b < r then 0 else 1, m.used + 1, m.root + Float.sqrt (e.hi - e.lo), b, h, add m.sum e⟩
 
 /-- One step of a march with the tolerance `tau` and `fuel` steps.  The last step accepts the
-panel from `m.t` to `r`.  Another step evaluates the panel of length `m.h`, accepts it when its
-width is at most `tau` or its length at most `hmin`, shortens the next panel otherwise, and stops
-the march at a rejected panel. -/
+panel from `m.t` to `r`, whatever its interval.  Another step evaluates the panel from `m.t` to
+`panelEnd r m.t m.h` and stops the march when the panel's interval is rejected or the panel ends
+below its start.  It accepts a panel of width `w ≤ tau` and multiplies the length by
+`stepRatio tau w`, accepts a wider panel at most `hmin` long and keeps the length, and otherwise
+keeps the covered part and multiplies the length by `stepRatio tau w`. -/
 def marchStep (tab : Array UInt64) (st : Setup) (r tau hmin : Float) (fuel : UInt64)
     (m : March) : March :=
   if m.used + 1 < fuel then
@@ -84,6 +90,24 @@ def meet (a b : Interval) : Interval :=
     if b.status == 0 then make (fmax a.lo b.lo) (fmin a.hi b.hi) else a
   else b
 
+/-- The three marches of `pcAdaptWith`. -/
+structure Marches where
+  a : March
+  b : March
+  c : March
+  deriving Inhabited
+
+/-- The three marches over `[-r, r]` for at most `n` panels: the first with the tolerance `r/64`
+and `n/16` steps, the second with the tolerance that the first predicts for `n/16` panels and
+`n/2` less the first's panels as steps, and the third with the tolerance that the second predicts
+for 0.8 times the panels left and those panels as steps.  The quotients by 16 and 2 are those of
+`UInt64`. -/
+def marches (tab : Array UInt64) (st : Setup) (r : Float) (n : UInt64) : Marches :=
+  let a := march tab st r (0.015625 * r) (n / 16)
+  let b := march tab st r (tolerance a (n / 16).toFloat) (n / 2 - a.used)
+  let left := n - a.used - b.used
+  ⟨a, b, march tab st r (tolerance b (0.8 * left.toFloat)) left⟩
+
 /-- An interval that contains the probability of the disk of radius `r` for the mean `(m1, m2)`
 and the covariance `[[c11, c12], [c12, c22]]`, from at most `n` panels placed by three marches. -/
 def pcAdaptWith (tab : Array UInt64) (m1 m2 c11 c12 c22 r : Float) (n : UInt64) : Interval :=
@@ -92,13 +116,9 @@ def pcAdaptWith (tab : Array UInt64) (m1 m2 c11 c12 c22 r : Float) (n : UInt64) 
       if finite r then
         if 16 ≤ n then
           if n ≤ 1048576 then
-            let st := setup m1 m2 c11 c12 c22 r
-            let a := march tab st r (0.015625 * r) (n / 16)
-            let b := march tab st r (tolerance a (n / 16).toFloat) (n / 2 - a.used)
-            let left := n - a.used - b.used
-            let c := march tab st r (tolerance b (0.8 * left.toFloat)) left
-            let s := meet (if b.state == 1 then b.sum else rejected)
-              (if c.state == 1 then c.sum else rejected)
+            let ms := marches tab (setup m1 m2 c11 c12 c22 r) r n
+            let s := meet (if ms.b.state == 1 then ms.b.sum else rejected)
+              (if ms.c.state == 1 then ms.c.sum else rejected)
             let p := mul (div (point 1.0) (mul (point 2.0) (sqrt (mul twoPi (point c11))))) s
             clamp p 0.0 p.hi
           else rejected

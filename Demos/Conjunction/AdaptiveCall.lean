@@ -26,11 +26,11 @@ theorem ready_initial :
   Verified.Ready.initial rfl compiled.initial
 
 theorem pcAdaptive_export :
-    ({ name := "pcAdaptive", funcIdx := 67 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "pcAdaptive", funcIdx := 68 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 theorem circularErrorAdaptive_export :
-    ({ name := "circularErrorAdaptive", funcIdx := 68 } : Wasm.Export) ∈
+    ({ name := "circularErrorAdaptive", funcIdx := 69 } : Wasm.Export) ∈
       compiled.module.exports := by
   decide +kernel
 
@@ -41,7 +41,7 @@ bytes, and, when the status is 0, satisfies the conclusions of `pcAdaptive_enclo
 theorem pcAdaptive_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
     (m1 m2 c11 c12 c22 r : Float) (n : UInt64)
     (h : Ready compiled.module compiled.tables heap store) :
-    Runs false env compiled.module 67 store
+    Runs false env compiled.module 68 store
       [.i64 n, .f64 r.toBits, .f64 c22.toBits, .f64 c12.toBits, .f64 c11.toBits,
         .f64 m2.toBits, .f64 m1.toBits]
       fun final values =>
@@ -79,7 +79,7 @@ the call keeps its bytes, and, when the status is 0, satisfies the conclusions o
 theorem circularErrorAdaptive_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
     (m1 m2 c11 c12 c22 p : Float) (n k : UInt64)
     (h : Ready compiled.module compiled.tables heap store) :
-    Runs false env compiled.module 68 store
+    Runs false env compiled.module 69 store
       [.i64 k, .i64 n, .f64 p.toBits, .f64 c22.toBits, .f64 c12.toBits, .f64 c11.toBits,
         .f64 m2.toBits, .f64 m1.toBits]
       fun final values =>

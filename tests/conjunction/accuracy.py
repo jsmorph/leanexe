@@ -28,11 +28,18 @@ wide, an adaptive one at most ADAPTIVE_BOUND/n, the bounds that the measurements
 requirements give, and an accepted linear interval at most 1e-8 of it.  The reference probability
 of a probability line is the polar integral of tests/conjunction/reference.py at 50 digits.
 
-The lines of `verified-cases-adaptive --sweep` hold `sweep method nmin`, the least panel count at
-which the method's search returned status 0, and then the result at that count, as a line
-`circular-at` or `adaptive-at` with the fields of `circular`.  Such a result must have status 0 and
-contain the reference.  The script prints each result, its reference, and its width relative to
-the reference.
+A line tagged `probability-thin` holds a centered input with c12 = 0 and a first variance so small
+that a polar quadrature cannot resolve it.  Its probability lies between the probability of the
+strip |y| <= r, erf(r/sqrt(2 c22)), and that of the rectangle |x| <= e, |y| <= sqrt(r^2 - e^2) with
+e = 100 sqrt(c11), and the result must have status 0 with [lo, hi] containing both bounds.  A line
+tagged `probability-rejected` or `adaptive-rejected` must have status 1, and a line tagged
+`adaptive-small`, for a few panels, may have status 2 and otherwise must contain the reference.
+
+The lines of `verified-cases-adaptive --sweep` hold `sweep method n0 n1`, the least panel count at
+which the method's search returned status 0 and the least at which it also returned an interval at
+most lo/100 wide, and then the results at those counts, as lines `circular-at` or `adaptive-at`
+with the fields of `circular`.  Such a result must have status 0 and contain the reference.  The
+script prints each result, its reference, and its width relative to the reference.
 Usage: uv run tests/conjunction/accuracy.py CASES"""
 import struct
 import sys
@@ -124,8 +131,34 @@ def main() -> int:
             continue
         kind = fields[0]
         if kind == "sweep":
-            print(f"     sweep {fields[1]} {' '.join(fields[3:])}: least n with status 0 is "
-                  f"{fields[2]}")
+            print(f"     sweep {fields[1]} {' '.join(fields[4:])}: least n with status 0 is "
+                  f"{fields[2]}, and with a width at most lo/100 {fields[3]}")
+            continue
+        if kind in ("probability-rejected", "adaptive-rejected"):
+            status = int(fields[8] if kind == "probability-rejected" else fields[9])
+            ok = status == 1
+            failures += 0 if ok else 1
+            values = [f"{double(f):g}" for f in fields[1:7]]
+            print(f"{'ok  ' if ok else 'FAIL'} {kind} {' '.join(values)} "
+                  f"{' '.join(fields[7:-3])} status={status}, expected 1")
+            continue
+        if kind == "probability-thin":
+            values = [double(f) for f in fields[1:7]]
+            n, status = int(fields[7]), int(fields[8])
+            lo, hi = mpf(double(fields[9])), mpf(double(fields[10]))
+            m1, m2, c11, c12, c22, r = [mpf(v) for v in values]
+            if not (m1 == 0 and m2 == 0 and c12 == 0):
+                print(f"FAIL probability-thin needs a centered input with c12 = 0: {values}")
+                failures += 1
+                continue
+            e = 100 * mp.sqrt(c11)
+            upper = mp.erf(r / mp.sqrt(2 * c22))
+            lower = mp.erf(e / mp.sqrt(2 * c11)) * mp.erf(mp.sqrt(r * r - e * e) / mp.sqrt(2 * c22))
+            ok = status == 0 and lo <= lower and upper <= hi
+            failures += 0 if ok else 1
+            print(f"{'ok  ' if ok else 'FAIL'} probability-thin C=({values[2]:g},0,{values[4]:g}) "
+                  f"r={values[5]:g} n={n} status={status} bounds={mp.nstr(lower, 17)}, "
+                  f"{mp.nstr(upper, 17)} lo={mp.nstr(lo, 17)} hi={mp.nstr(hi, 17)}")
             continue
         if kind == "probability":
             values = [double(f) for f in fields[1:7]]
@@ -143,13 +176,16 @@ def main() -> int:
                   f"status={status} ref={mp.nstr(ref, 17)} lo={mp.nstr(lo, 17)} "
                   f"hi={mp.nstr(hi, 17)} width={mp.nstr(hi - lo, 3)}")
             continue
-        if kind in ("circular", "adaptive", "circular-at", "adaptive-at"):
+        if kind in ("circular", "adaptive", "adaptive-small", "circular-at", "adaptive-at"):
             values = [double(f) for f in fields[1:7]]
             n, k, status = int(fields[7]), int(fields[8]), int(fields[9])
             lo, hi = mpf(double(fields[10])), mpf(double(fields[11]))
             m1, m2, c11, c12, c22, p = [mpf(x) for x in values]
             label = (f"{kind} m=({values[0]:g},{values[1]:g}) "
                      f"C=({values[2]:g},{values[3]:g},{values[4]:g}) p={values[5]:g} n={n} k={k}")
+            if kind == "adaptive-small" and status == 2:
+                print(f"ok   {label} status=2")
+                continue
             unfinished = {"circular": UNFINISHED, "adaptive": UNFINISHED_ADAPTIVE}.get(kind, set())
             if (*values, n) in unfinished:
                 ok = status == 2
