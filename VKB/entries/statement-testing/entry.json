@@ -17,7 +17,8 @@
     "Library.Graphs.Dijkstra.Proof",
     "Library.Random.Sampling.Proof",
     "Demos.Rcv.Batch",
-    "Demos.Rcv.Maine.Rounds"
+    "Demos.Rcv.Maine.Rounds",
+    "Demos.Frames.TimeSound"
   ],
   "declarations": [
     "Demos.Bms.Spec.Permitted",
@@ -33,6 +34,7 @@
     "Demos.Bms.Spec.m1",
     "Library.Graphs.Dijkstra.dijkstra_spec",
     "Library.Random.Sampling.shuffle_count",
-    "Demos.Rcv.Batch.run_batch_winner"
+    "Demos.Rcv.Batch.run_batch_winner",
+    "Demos.Frames.timeScales_sound"
   ]
 }

@@ -4,14 +4,28 @@
     "Library.Numerics.Interval.Contains (Library.Numerics.Interval.add a b) (x + y)",
     "value i.lo.toBits ≤ f x ∧ f x ≤ value i.hi.toBits for an interval i computed by a chain of interval operations",
     "y ≤ value w for a word w two steps above a word within one step of the nearest-even rounding of y",
-    "Library.Numerics.Interval.Contains acc (∫ x in a..b, f x) for a sum of panels in LeanExe.loop"
+    "Library.Numerics.Interval.Contains acc (∫ x in a..b, f x) for a sum of panels in LeanExe.loop",
+    "sqrt of mul, div, or sq of an interval that holds 0 is rejected",
+    "a squared distance of 0 against a zero threshold is rejected",
+    "a closed form with a factor that leaves the normal range",
+    "a natural interval form of x̂ᵀ C x̂ that is too wide to decide"
   ],
   "modules": [
+    "Library.Numerics.Bounds.Program",
+    "Library.Numerics.Interval.Functions",
     "Library.Numerics.Interval.Proof",
     "Library.Numerics.Interval.Steps",
     "LeanExe.Dialect.Lemmas",
     "Demos.Conjunction.Model",
-    "Demos.Conjunction.Soundness"
+    "Demos.Conjunction.Soundness",
+    "Demos.PassiveSafety.Program",
+    "Demos.Gate.Program",
+    "Demos.Gate.Soundness",
+    "Demos.Attitude.QProgram",
+    "Demos.Attitude.QSoundness",
+    "Demos.Orbit.LambertOrbit",
+    "Demos.Screening.KeplerBox",
+    "Demos.Sgp4.KeplerBox"
   ],
   "declarations": [
     "Library.Numerics.Interval.Contains",
@@ -32,7 +46,22 @@
     "LeanExe.ProofKit.F64SignedRounding.within_of_nonneg",
     "LeanExe.Dialect.loop_induction",
     "Demos.Conjunction.Model.integral_eq_width_mul",
-    "Demos.Conjunction.Model.pc_nonneg"
+    "Demos.Conjunction.Model.pc_nonneg",
+    "Library.Numerics.Bounds.endpoint",
+    "Library.Numerics.Bounds.outSqrt",
+    "Library.Numerics.Interval.sq",
+    "Demos.PassiveSafety.nonneg",
+    "Demos.PassiveSafety.square",
+    "Demos.Gate.tailCore",
+    "Demos.Gate.tailWith",
+    "Demos.Gate.tail_antitone",
+    "Demos.Attitude.QMethod.certify",
+    "Demos.Attitude.QMethod.encloses_clamp0",
+    "Demos.Orbit.sqrt_max_zero",
+    "Demos.Screening.keplerI",
+    "Demos.Screening.kepler.encloses",
+    "Demos.Sgp4.Kepler.rootI",
+    "Real.sqrt_sq_eq_abs"
   ],
   "examples": [
     "Demos.Conjunction.expI_sound",
@@ -40,5 +69,13 @@
     "Demos.Conjunction.panel_sound",
     "Demos.Conjunction.panels_sound",
     "Demos.Conjunction.pc_enclosure"
-  ]
+  ],
+  "unimported": {
+    "Demos/Avoidance/Spec.lean": [
+      "Demos.Avoidance.project"
+    ],
+    "Demos/Avoidance/Geometry.lean": [
+      "Demos.Avoidance.project_eq"
+    ]
+  }
 }

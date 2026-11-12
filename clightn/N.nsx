@@ -1,10 +1,11 @@
 ; The reference semantics N of the Clight forms that the C translator emits, in the neutral
 ; language that clightn/nsx.py renders into Rocq and Lean and checks (clightn/README.md).  This
-; file holds the symbol table, the leaf relations of the integer operator, cast, and condition
-; forms, the per-form statements, the relations of expressions, statements, calls, and whole
-; programs over temporaries, scalar globals, and the bytes of arrays, the volatile accesses of the
-; bare-metal main, the loop of a main that runs forever, and the laws of the base symbols.  N
-; describes AArch64, where Archi.ptr64 is true.
+; file holds the symbol table with the floating-point equations, the leaf relations of the
+; operator, cast, and condition forms on integers and floating-point numbers, the per-form
+; statements, the relations of expressions, statements, calls, and whole programs over
+; temporaries, scalar globals, and the bytes of arrays, the volatile accesses of the bare-metal
+; main, the loop of a main that runs forever, and the laws of the base symbols.  N describes
+; AArch64, where Archi.ptr64 is true.
 
 ; ---------------------------------------------------------------------------------------------
 ; Symbol table.  A sort, data constructor, base symbol, or interpreted symbol has one name in each
@@ -50,6 +51,7 @@
 (sort eventval (rocq Events.eventval) (lean LClight.eventval))
 (sort nat (rocq nat) (lean Nat))
 (sort Prop (rocq Prop) (lean Prop))
+(sort comparison (rocq Integers.comparison) (lean LClight.comparison))
 
 (data true (rocq true) (lean Bool.true))
 (data false (rocq false) (lean Bool.false))
@@ -174,6 +176,11 @@
 (data O (rocq O) (lean Nat.zero))
 (data S (rocq S) (lean Nat.succ))
 (data EVint (rocq Events.EVint) (lean LClight.eventval.EVint))
+(data Ceq (rocq Integers.Ceq) (lean LClight.comparison.Ceq))
+(data Cne (rocq Integers.Cne) (lean LClight.comparison.Cne))
+(data Clt (rocq Integers.Clt) (lean LClight.comparison.Clt))
+(data Cle (rocq Integers.Cle) (lean LClight.comparison.Cle))
+(data Cge (rocq Integers.Cge) (lean LClight.comparison.Cge))
 
 ; Integer arithmetic and order, whose meaning the check trusts.
 (base + (rocq BinInt.Z.add) (lean (HAdd.hAdd Int Int Int (instHAdd Int Int.instAdd))))
@@ -201,8 +208,8 @@
 
 ; The value of a pointer offset (uptr) and the offset of an integer (rptr), the concatenation of
 ; traces (app), and the floating-point numbers of bit patterns (f64_of_bits, f32_of_bits) with
-; their inverses (f64_bits, f32_bits).  N's rules treat floating-point numbers as opaque values,
-; which arise only from constants.
+; their inverses (f64_bits, f32_bits), which identify a floating-point number with its bit pattern
+; in each prover.
 (base uptr (rocq NBase.uptr) (lean ClightN.Base.uptr))
 (base rptr (rocq NBase.rptr) (lean ClightN.Base.rptr))
 (base app (rocq NBase.app) (lean ClightN.Base.app))
@@ -216,6 +223,56 @@
 (interp sem_cast (rocq NBase.sem_cast) (lean ClightN.Base.sem_cast))
 (interp bool_val (rocq NBase.bool_val) (lean ClightN.Base.bool_val))
 (interp eval_expr (rocq NBase.eval_expr) (lean ClightN.Base.eval_expr))
+(interp sem_unop (rocq NBase.sem_unop) (lean ClightN.Base.sem_unop))
+
+; The floating-point equations: the operations on binary64 (float) and binary32 (float32) numbers
+; that the leaf relations and the square root apply, each CompCert's definition in Rocq and the
+; Lean copy's at Archi.aarch64.  N assumes that the two definitions of an equation agree on every
+; argument, the numbers identified across the provers by their bit patterns through f64_of_bits,
+; f64_bits, f32_of_bits, and f32_bits.  No proof in either prover supports an equation: the
+; differential tests of the Lean copy against CompCert do (clightn/README.md).  The check
+; confirms each equation's names and sort and lists the equations as assumptions.
+(equation fadd64 (-> float (-> float float)) (rocq Floats.Float.add)
+  (lean (LClight.Float.add LClight.Archi.aarch64)))
+(equation fsub64 (-> float (-> float float)) (rocq Floats.Float.sub)
+  (lean (LClight.Float.sub LClight.Archi.aarch64)))
+(equation fmul64 (-> float (-> float float)) (rocq Floats.Float.mul)
+  (lean (LClight.Float.mul LClight.Archi.aarch64)))
+(equation fdiv64 (-> float (-> float float)) (rocq Floats.Float.div)
+  (lean (LClight.Float.div LClight.Archi.aarch64)))
+(equation fcmp64 (-> comparison (-> float (-> float bool))) (rocq Floats.Float.cmp)
+  (lean LClight.Float.cmp))
+(equation fneg64 (-> float float) (rocq Floats.Float.neg) (lean LClight.Float.neg))
+(equation fabs64 (-> float float) (rocq Floats.Float.abs) (lean LClight.Float.abs))
+(equation fsqrt64 (-> float float) (rocq Floats.Float.sqrt)
+  (lean (LClight.Float.sqrt LClight.Archi.aarch64)))
+(equation f64_of_longu (-> w64 float) (rocq Floats.Float.of_longu) (lean LClight.Float.of_longu))
+(equation f64_to_longu (-> float (option w64)) (rocq Floats.Float.to_longu)
+  (lean LClight.Float.to_longu))
+(equation f64_of_single (-> float32 float) (rocq Floats.Float.of_single)
+  (lean LClight.Float.of_single))
+(equation f64_to_single (-> float float32) (rocq Floats.Float.to_single)
+  (lean LClight.Float.to_single))
+(equation fadd32 (-> float32 (-> float32 float32)) (rocq Floats.Float32.add)
+  (lean (LClight.Float32.add LClight.Archi.aarch64)))
+(equation fsub32 (-> float32 (-> float32 float32)) (rocq Floats.Float32.sub)
+  (lean (LClight.Float32.sub LClight.Archi.aarch64)))
+(equation fmul32 (-> float32 (-> float32 float32)) (rocq Floats.Float32.mul)
+  (lean (LClight.Float32.mul LClight.Archi.aarch64)))
+(equation fdiv32 (-> float32 (-> float32 float32)) (rocq Floats.Float32.div)
+  (lean (LClight.Float32.div LClight.Archi.aarch64)))
+(equation fcmp32 (-> comparison (-> float32 (-> float32 bool))) (rocq Floats.Float32.cmp)
+  (lean LClight.Float32.cmp))
+(equation fneg32 (-> float32 float32) (rocq Floats.Float32.neg) (lean LClight.Float32.neg))
+(equation f32_of_int (-> w32 float32) (rocq Floats.Float32.of_int) (lean LClight.Float32.of_int))
+(equation f32_of_intu (-> w32 float32) (rocq Floats.Float32.of_intu)
+  (lean LClight.Float32.of_intu))
+(equation f32_of_longu (-> w64 float32) (rocq Floats.Float32.of_longu)
+  (lean LClight.Float32.of_longu))
+(equation f32_to_int (-> float32 (option w32)) (rocq Floats.Float32.to_int)
+  (lean LClight.Float32.to_int))
+(equation f32_to_longu (-> float32 (option w64)) (rocq Floats.Float32.to_longu)
+  (lean LClight.Float32.to_longu))
 
 ; ---------------------------------------------------------------------------------------------
 ; Macros
@@ -229,7 +286,10 @@
 (macro tuchar () (Tint I8 Unsigned (noattr)))
 (macro tvuint () (Tint I32 Unsigned (vattr)))
 (macro tvuchar () (Tint I8 Unsigned (vattr)))
+(macro tdouble () (Tfloat F64 (noattr)))
+(macro tfloat () (Tfloat F32 (noattr)))
 (macro cc_default () (mkcallconv None false false))
+(macro sqrt_sig () (mksignature (cons Xfloat nil) Xfloat (cc_default)))
 
 ; Sorts of N's states and of the program's lists: temporaries and scalar globals as partial maps
 ; from identifiers to values, the bytes of each array as a map from identifiers and offsets to
@@ -290,6 +350,9 @@
 (macro bool_form (t)
   (forall ((v val) (b bool) (m mem))
     (iff (= (bool_val v t m) (Some b)) (bool_ok t v b))))
+(macro unop_form (op t)
+  (forall ((v1 val) (v val) (m mem))
+    (iff (= (sem_unop op v1 t m) (Some v)) (unop_ok op t v1 v))))
 
 ; ---------------------------------------------------------------------------------------------
 ; Leaf relations.  binop_ok op t1 t2 v1 v2 v: the operator op on v1 of type t1 and v2 of type t2
@@ -386,10 +449,69 @@
   (ctor bo_ge_ui_1 (forall ((x w32) (y w32)) (-> (<= (u32 y) (u32 x))
     (binop_ok Oge (tuint) (tuint) (Vint x) (Vint y) (Vint (r32 1))))))
   (ctor bo_ge_ui_0 (forall ((x w32) (y w32)) (-> (< (u32 x) (u32 y))
-    (binop_ok Oge (tuint) (tuint) (Vint x) (Vint y) (Vint (r32 0)))))))
+    (binop_ok Oge (tuint) (tuint) (Vint x) (Vint y) (Vint (r32 0))))))
+  ; double and double
+  (ctor bo_add_d (forall ((x float) (y float))
+    (binop_ok Oadd (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vfloat (fadd64 x y)))))
+  (ctor bo_sub_d (forall ((x float) (y float))
+    (binop_ok Osub (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vfloat (fsub64 x y)))))
+  (ctor bo_mul_d (forall ((x float) (y float))
+    (binop_ok Omul (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vfloat (fmul64 x y)))))
+  (ctor bo_div_d (forall ((x float) (y float))
+    (binop_ok Odiv (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vfloat (fdiv64 x y)))))
+  (ctor bo_eq_d_1 (forall ((x float) (y float)) (-> (= (fcmp64 Ceq x y) true)
+    (binop_ok Oeq (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 1))))))
+  (ctor bo_eq_d_0 (forall ((x float) (y float)) (-> (= (fcmp64 Ceq x y) false)
+    (binop_ok Oeq (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 0))))))
+  (ctor bo_ne_d_1 (forall ((x float) (y float)) (-> (= (fcmp64 Cne x y) true)
+    (binop_ok One (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 1))))))
+  (ctor bo_ne_d_0 (forall ((x float) (y float)) (-> (= (fcmp64 Cne x y) false)
+    (binop_ok One (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 0))))))
+  (ctor bo_lt_d_1 (forall ((x float) (y float)) (-> (= (fcmp64 Clt x y) true)
+    (binop_ok Olt (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 1))))))
+  (ctor bo_lt_d_0 (forall ((x float) (y float)) (-> (= (fcmp64 Clt x y) false)
+    (binop_ok Olt (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 0))))))
+  (ctor bo_le_d_1 (forall ((x float) (y float)) (-> (= (fcmp64 Cle x y) true)
+    (binop_ok Ole (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 1))))))
+  (ctor bo_le_d_0 (forall ((x float) (y float)) (-> (= (fcmp64 Cle x y) false)
+    (binop_ok Ole (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 0))))))
+  (ctor bo_ge_d_1 (forall ((x float) (y float)) (-> (= (fcmp64 Cge x y) true)
+    (binop_ok Oge (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 1))))))
+  (ctor bo_ge_d_0 (forall ((x float) (y float)) (-> (= (fcmp64 Cge x y) false)
+    (binop_ok Oge (tdouble) (tdouble) (Vfloat x) (Vfloat y) (Vint (r32 0))))))
+  ; float and float
+  (ctor bo_add_f (forall ((x float32) (y float32))
+    (binop_ok Oadd (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vsingle (fadd32 x y)))))
+  (ctor bo_sub_f (forall ((x float32) (y float32))
+    (binop_ok Osub (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vsingle (fsub32 x y)))))
+  (ctor bo_mul_f (forall ((x float32) (y float32))
+    (binop_ok Omul (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vsingle (fmul32 x y)))))
+  (ctor bo_div_f (forall ((x float32) (y float32))
+    (binop_ok Odiv (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vsingle (fdiv32 x y)))))
+  (ctor bo_eq_f_1 (forall ((x float32) (y float32)) (-> (= (fcmp32 Ceq x y) true)
+    (binop_ok Oeq (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 1))))))
+  (ctor bo_eq_f_0 (forall ((x float32) (y float32)) (-> (= (fcmp32 Ceq x y) false)
+    (binop_ok Oeq (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 0))))))
+  (ctor bo_ne_f_1 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cne x y) true)
+    (binop_ok One (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 1))))))
+  (ctor bo_ne_f_0 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cne x y) false)
+    (binop_ok One (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 0))))))
+  (ctor bo_lt_f_1 (forall ((x float32) (y float32)) (-> (= (fcmp32 Clt x y) true)
+    (binop_ok Olt (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 1))))))
+  (ctor bo_lt_f_0 (forall ((x float32) (y float32)) (-> (= (fcmp32 Clt x y) false)
+    (binop_ok Olt (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 0))))))
+  (ctor bo_le_f_1 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cle x y) true)
+    (binop_ok Ole (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 1))))))
+  (ctor bo_le_f_0 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cle x y) false)
+    (binop_ok Ole (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 0))))))
+  (ctor bo_ge_f_1 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cge x y) true)
+    (binop_ok Oge (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 1))))))
+  (ctor bo_ge_f_0 (forall ((x float32) (y float32)) (-> (= (fcmp32 Cge x y) false)
+    (binop_ok Oge (tfloat) (tfloat) (Vsingle x) (Vsingle y) (Vint (r32 0)))))))
 
 ; cast_ok t1 t2 v1 v: the cast from t1 to t2 of v1 gives v.  On AArch64 a cast between two long
-; types passes a pointer unchanged.
+; types passes a pointer unchanged.  A cast from a floating-point type to an integer type is
+; defined when the conversion is.
 (relation cast_ok () (type type val val)
   (ctor co_si_ui (forall ((x w32)) (cast_ok (tint) (tuint) (Vint x) (Vint x))))
   (ctor co_ui_si (forall ((x w32)) (cast_ok (tuint) (tint) (Vint x) (Vint x))))
@@ -416,7 +538,26 @@
   (ctor co_ui_ui (forall ((x w32)) (cast_ok (tuint) (tuint) (Vint x) (Vint x))))
   (ctor co_uc_uc (forall ((x w32))
     (cast_ok (tuchar) (tuchar) (Vint x) (Vint (r32 (zmod (u32 x) 256))))))
-  (ctor co_si_si (forall ((x w32)) (cast_ok (tint) (tint) (Vint x) (Vint x)))))
+  (ctor co_si_si (forall ((x w32)) (cast_ok (tint) (tint) (Vint x) (Vint x))))
+  (ctor co_d_d (forall ((x float)) (cast_ok (tdouble) (tdouble) (Vfloat x) (Vfloat x))))
+  (ctor co_f_f (forall ((x float32)) (cast_ok (tfloat) (tfloat) (Vsingle x) (Vsingle x))))
+  (ctor co_ul_d (forall ((x w64))
+    (cast_ok (tulong) (tdouble) (Vlong x) (Vfloat (f64_of_longu x)))))
+  (ctor co_d_ul (forall ((x float) (y w64)) (-> (= (f64_to_longu x) (Some y))
+    (cast_ok (tdouble) (tulong) (Vfloat x) (Vlong y)))))
+  (ctor co_f_d (forall ((x float32))
+    (cast_ok (tfloat) (tdouble) (Vsingle x) (Vfloat (f64_of_single x)))))
+  (ctor co_d_f (forall ((x float))
+    (cast_ok (tdouble) (tfloat) (Vfloat x) (Vsingle (f64_to_single x)))))
+  (ctor co_si_f (forall ((x w32)) (cast_ok (tint) (tfloat) (Vint x) (Vsingle (f32_of_int x)))))
+  (ctor co_ui_f (forall ((x w32))
+    (cast_ok (tuint) (tfloat) (Vint x) (Vsingle (f32_of_intu x)))))
+  (ctor co_ul_f (forall ((x w64))
+    (cast_ok (tulong) (tfloat) (Vlong x) (Vsingle (f32_of_longu x)))))
+  (ctor co_f_si (forall ((x float32) (y w32)) (-> (= (f32_to_int x) (Some y))
+    (cast_ok (tfloat) (tint) (Vsingle x) (Vint y)))))
+  (ctor co_f_ul (forall ((x float32) (y w64)) (-> (= (f32_to_longu x) (Some y))
+    (cast_ok (tfloat) (tulong) (Vsingle x) (Vlong y))))))
 
 ; bool_ok t v b: the value v of type t, as the condition of an if statement, is b.
 (relation bool_ok () (type val bool)
@@ -425,9 +566,18 @@
   (ctor bv_ui_true (forall ((x w32)) (-> (not (= (u32 x) 0)) (bool_ok (tuint) (Vint x) true))))
   (ctor bv_ui_false (forall ((x w32)) (-> (= (u32 x) 0) (bool_ok (tuint) (Vint x) false)))))
 
+; unop_ok op t v1 v: the unary operator op on v1 of type t gives v.
+(relation unop_ok () (unary_operation type val val)
+  (ctor uo_neg_d (forall ((x float)) (unop_ok Oneg (tdouble) (Vfloat x) (Vfloat (fneg64 x)))))
+  (ctor uo_abs_d (forall ((x float))
+    (unop_ok Oabsfloat (tdouble) (Vfloat x) (Vfloat (fabs64 x)))))
+  (ctor uo_neg_f (forall ((x float32))
+    (unop_ok Oneg (tfloat) (Vsingle x) (Vsingle (fneg32 x))))))
+
 ; ---------------------------------------------------------------------------------------------
 ; Leaf forms.  Each statement is proved in Rocq from CompCert 3.18's definitions (NProof.v) and in
-; Lean from the Lean copy (Laws.lean and Leaf.lean), under the statement's name.
+; Lean from the Lean copy (Laws.lean and Leaf.lean), under the statement's name.  The forms on
+; floating-point numbers give the operations of the floating-point equations.
 
 (statement add_ul_ul (binop_form Oadd (tulong) (tulong)))
 (statement sub_ul_ul (binop_form Osub (tulong) (tulong)))
@@ -458,6 +608,24 @@
 (statement lt_ui_ui (binop_form Olt (tuint) (tuint)))
 (statement gt_ui_ui (binop_form Ogt (tuint) (tuint)))
 (statement ge_ui_ui (binop_form Oge (tuint) (tuint)))
+(statement add_d_d (binop_form Oadd (tdouble) (tdouble)))
+(statement sub_d_d (binop_form Osub (tdouble) (tdouble)))
+(statement mul_d_d (binop_form Omul (tdouble) (tdouble)))
+(statement div_d_d (binop_form Odiv (tdouble) (tdouble)))
+(statement eq_d_d (binop_form Oeq (tdouble) (tdouble)))
+(statement ne_d_d (binop_form One (tdouble) (tdouble)))
+(statement lt_d_d (binop_form Olt (tdouble) (tdouble)))
+(statement le_d_d (binop_form Ole (tdouble) (tdouble)))
+(statement ge_d_d (binop_form Oge (tdouble) (tdouble)))
+(statement add_f_f (binop_form Oadd (tfloat) (tfloat)))
+(statement sub_f_f (binop_form Osub (tfloat) (tfloat)))
+(statement mul_f_f (binop_form Omul (tfloat) (tfloat)))
+(statement div_f_f (binop_form Odiv (tfloat) (tfloat)))
+(statement eq_f_f (binop_form Oeq (tfloat) (tfloat)))
+(statement ne_f_f (binop_form One (tfloat) (tfloat)))
+(statement lt_f_f (binop_form Olt (tfloat) (tfloat)))
+(statement le_f_f (binop_form Ole (tfloat) (tfloat)))
+(statement ge_f_f (binop_form Oge (tfloat) (tfloat)))
 
 (statement cast_si_ui (cast_form (tint) (tuint)))
 (statement cast_ui_si (cast_form (tuint) (tint)))
@@ -476,9 +644,24 @@
 (statement cast_ui_ui (cast_form (tuint) (tuint)))
 (statement cast_uc_uc (cast_form (tuchar) (tuchar)))
 (statement cast_si_si (cast_form (tint) (tint)))
+(statement cast_d_d (cast_form (tdouble) (tdouble)))
+(statement cast_f_f (cast_form (tfloat) (tfloat)))
+(statement cast_ul_d (cast_form (tulong) (tdouble)))
+(statement cast_d_ul (cast_form (tdouble) (tulong)))
+(statement cast_f_d (cast_form (tfloat) (tdouble)))
+(statement cast_d_f (cast_form (tdouble) (tfloat)))
+(statement cast_si_f (cast_form (tint) (tfloat)))
+(statement cast_ui_f (cast_form (tuint) (tfloat)))
+(statement cast_ul_f (cast_form (tulong) (tfloat)))
+(statement cast_f_si (cast_form (tfloat) (tint)))
+(statement cast_f_ul (cast_form (tfloat) (tulong)))
 
 (statement bool_si (bool_form (tint)))
 (statement bool_ui (bool_form (tuint)))
+
+(statement neg_d (unop_form Oneg (tdouble)))
+(statement abs_d (unop_form Oabsfloat (tdouble)))
+(statement neg_f (unop_form Oneg (tfloat)))
 
 ; A constant evaluates to its value, whatever its type.
 (statement const_int (forall ((ge genv) (e env) (le tenv) (m mem) (i w32) (ty type) (v val))
@@ -561,19 +744,27 @@
   (ctor ht_deref (forall ((a expr) (ty type)) (has_type (Ederef a ty) ty)))
   (ctor ht_binop (forall ((op binary_operation) (a1 expr) (a2 expr) (ty type))
     (has_type (Ebinop op a1 a2 ty) ty)))
-  (ctor ht_cast (forall ((a expr) (ty type)) (has_type (Ecast a ty) ty))))
+  (ctor ht_cast (forall ((a expr) (ty type)) (has_type (Ecast a ty) ty)))
+  (ctor ht_unop (forall ((op unary_operation) (a expr) (ty type)) (has_type (Eunop op a ty) ty))))
 
 ; Scalar globals: their types, the values they hold, and the initialization data that the
-; program judgment accepts for them and for the other variables.
+; program judgment accepts for them and for the other variables.  A global of type double or float
+; initialized by the space of its bytes holds the number of the bits 0.
 (relation scalar () (type)
   (ctor sc_ui (scalar (tuint)))
-  (ctor sc_ul (scalar (tulong))))
+  (ctor sc_ul (scalar (tulong)))
+  (ctor sc_d (scalar (tdouble)))
+  (ctor sc_f (scalar (tfloat))))
 (relation gval () (type val)
   (ctor gv_ui (forall ((x w32)) (gval (tuint) (Vint x))))
-  (ctor gv_ul (forall ((x w64)) (gval (tulong) (Vlong x)))))
+  (ctor gv_ul (forall ((x w64)) (gval (tulong) (Vlong x))))
+  (ctor gv_d (forall ((f float)) (gval (tdouble) (Vfloat f))))
+  (ctor gv_f (forall ((f float32)) (gval (tfloat) (Vsingle f)))))
 (relation ginit () (type (list init_data) val)
   (ctor gi_ui (forall ((x w32)) (ginit (tuint) (cons (Init_int32 x) nil) (Vint x))))
-  (ctor gi_ul (forall ((x w64)) (ginit (tulong) (cons (Init_int64 x) nil) (Vlong x)))))
+  (ctor gi_ul (forall ((x w64)) (ginit (tulong) (cons (Init_int64 x) nil) (Vlong x))))
+  (ctor gi_d (ginit (tdouble) (cons (Init_space 8) nil) (Vfloat (f64_of_bits (r64 0)))))
+  (ctor gi_f (ginit (tfloat) (cons (Init_space 4) nil) (Vsingle (f32_of_bits (r32 0))))))
 (relation init_ok () ((list init_data))
   (ctor io_nil (init_ok nil))
   (ctor io_int32 (forall ((x w32)) (init_ok (cons (Init_int32 x) nil))))
@@ -596,7 +787,8 @@
       (-> (cast_ok t ty v v2) (result_ok (Out_return (Some (pair v t))) ty v2))))))
 
 ; neval defs le gv mb a v: the expression a evaluates to v.  A word, byte, or cell of an array is
-; read from the bytes mb of the array within its 8 n bytes.
+; read from the bytes mb of the array within its 8 n bytes, and a cell of type double or float is
+; the number of the bits of its bytes.
 (relation neval ((defs (dlist)) (le (tmap)) (gv (tmap)) (mb (amap))) (expr val)
   (ctor nv_int (forall ((i w32) (ty type)) (neval defs le gv mb (Econst_int i ty) (Vint i))))
   (ctor nv_long (forall ((i w64) (ty type)) (neval defs le gv mb (Econst_long i ty) (Vlong i))))
@@ -623,6 +815,12 @@
   (ctor nv_cell32 (forall ((x ident) (n Z))
     (-> (arr defs x n) (-> (<= 1 n)
       (neval defs le gv mb (cell_e x n (tuint)) (Vint (r32 (le4 mb x 0))))))))
+  (ctor nv_cellf64 (forall ((x ident) (n Z))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (neval defs le gv mb (cell_e x n (tdouble)) (Vfloat (f64_of_bits (r64 (le8 mb x 0)))))))))
+  (ctor nv_cellf32 (forall ((x ident) (n Z))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (neval defs le gv mb (cell_e x n (tfloat)) (Vsingle (f32_of_bits (r32 (le4 mb x 0)))))))))
   (ctor nv_binop (forall ((op binary_operation) (a1 expr) (a2 expr) (ty type) (t1 type) (t2 type)
                           (v1 val) (v2 val) (v val))
     (-> (neval defs le gv mb a1 v1) (-> (has_type a1 t1) (-> (neval defs le gv mb a2 v2)
@@ -630,7 +828,10 @@
         (neval defs le gv mb (Ebinop op a1 a2 ty) v))))))))
   (ctor nv_cast (forall ((a expr) (ty type) (t1 type) (v1 val) (v val))
     (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 ty v1 v)
-      (neval defs le gv mb (Ecast a ty) v)))))))
+      (neval defs le gv mb (Ecast a ty) v))))))
+  (ctor nv_unop (forall ((op unary_operation) (a expr) (ty type) (t1 type) (v1 val) (v val))
+    (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (unop_ok op t1 v1 v)
+      (neval defs le gv mb (Eunop op a ty) v)))))))
 
 ; The arguments of a call, each cast to its parameter's type.
 (relation neval_list ((defs (dlist)) (le (tmap)) (gv (tmap)) (mb (amap)))
@@ -644,7 +845,9 @@
 
 ; nexec defs le gv mb s t le2 gv2 mb2 out: the statement s runs from the temporaries le, the
 ; scalar globals gv, and the bytes mb of the arrays to le2, gv2, and mb2 with the trace t and the
-; outcome out.
+; outcome out.  A store to a cell of type double or float writes the bytes of the number's bits,
+; and a call of the built-in __builtin_fsqrt sets its temporary to the square root of its
+; argument, with no event.
 (relation nexec ((defs (dlist)))
     ((tmap) (tmap) (amap) statement (list event) (tmap) (tmap) (amap) outcome)
   (ctor nx_skip (forall ((le (tmap)) (gv (tmap)) (mb (amap)))
@@ -686,6 +889,18 @@
       (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tuint) v1 (Vint c))
         (-> (setbytes mb2 mb x 0 4 (u32 c))
           (nexec defs le gv mb (Sassign (cell_e x n (tuint)) a) nil le gv mb2 Out_normal)))))))))
+  (ctor nx_store_cellf64 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (a expr)
+                                  (t1 type) (v1 val) (f float) (mb2 (amap)))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tdouble) v1 (Vfloat f))
+        (-> (setbytes mb2 mb x 0 8 (u64 (f64_bits f)))
+          (nexec defs le gv mb (Sassign (cell_e x n (tdouble)) a) nil le gv mb2 Out_normal)))))))))
+  (ctor nx_store_cellf32 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (n Z) (a expr)
+                                  (t1 type) (v1 val) (f float32) (mb2 (amap)))
+    (-> (arr defs x n) (-> (<= 1 n)
+      (-> (neval defs le gv mb a v1) (-> (has_type a t1) (-> (cast_ok t1 (tfloat) v1 (Vsingle f))
+        (-> (setbytes mb2 mb x 0 4 (u32 (f32_bits f)))
+          (nexec defs le gv mb (Sassign (cell_e x n (tfloat)) a) nil le gv mb2 Out_normal)))))))))
   (ctor nx_out (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (x ident) (init (list init_data))
                         (a expr) (t1 type) (v1 val) (i w32))
     (-> (in_defs defs x (Gvar (mkglobvar (tvuint) init false true)))
@@ -735,6 +950,15 @@
             (-> (result_ok out ret v) (-> (set_opt optid v le le3)
               (nexec defs le gv mb (Scall optid (Evar x (Tfunction tys ret cc)) al) t le3 gv2 mb2
                 Out_normal)))))))))))))
+  (ctor nx_sqrt (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (optid (option ident)) (x ident)
+                         (al (list expr)) (f float) (le2 (tmap)))
+    (-> (in_defs defs x (Gfun (External (EF_builtin "__builtin_fsqrt" (sqrt_sig))
+                                 (cons (tdouble) nil) (tdouble) (cc_default))))
+      (-> (neval_list defs le gv mb al (cons (tdouble) nil) (cons (Vfloat f) nil))
+        (-> (set_opt optid (Vfloat (fsqrt64 f)) le le2)
+          (nexec defs le gv mb
+            (Scall optid (Evar x (Tfunction (cons (tdouble) nil) (tdouble) (cc_default))) al) nil
+            le2 gv mb Out_normal))))))
   (ctor nx_seq1 (forall ((le (tmap)) (gv (tmap)) (mb (amap)) (s1 statement) (s2 statement)
                          (t1 (list event)) (le1 (tmap)) (gv1 (tmap)) (mb1 (amap))
                          (t2 (list event)) (le2 (tmap)) (gv2 (tmap)) (mb2 (amap)) (out outcome))

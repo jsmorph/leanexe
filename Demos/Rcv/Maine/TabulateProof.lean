@@ -90,7 +90,7 @@ theorem readWords_contestWords (c : Contest) (hc : c.WellFormed) :
   have hws : contestWords c = [UInt64.ofNat n, UInt64.ofNat c.positions,
       UInt64.ofNat c.ballots.length] ++
         (K.map UInt64.ofNat ++ (c.order.map UInt64.ofNat ++ P)) := by
-    simp only [contestWords, List.map_append, List.map_cons, List.map_nil, List.append_assoc, hK,
+    simp only [contestWords, List.map_append, List.map_cons, List.append_assoc, hK,
       hP, List.cons_append, List.nil_append]
     rfl
   have hKl : (K.map UInt64.ofNat).length = n := by simp [hK, hn]

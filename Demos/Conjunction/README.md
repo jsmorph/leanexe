@@ -17,6 +17,12 @@ digits, inside the interval of each of 39 runs.
 integral to one dimension, and the compilation, and [the limits](#limits-of-the-theorems) state
 what they leave out.
 
+[The radius program](#radius-at-a-probability-ce-and-le) uses the same enclosure to return an
+interval that contains the circular error at a probability, such as CE90, and one that contains
+the linear error, such as LE90, for a normal error with or without a bias.  It compiles into a
+module of its own, with soundness and call theorems that state that an accepted interval contains
+the unique radius at the probability.
+
 ## The model
 
 For a short encounter, the standard model takes the relative motion as rectilinear, the position
@@ -180,6 +186,166 @@ covariances from a conjunction message onto the encounter plane, the parsing of 
 the remediation of a covariance that is not positive definite lie outside this iteration, and
 [the review](review.md) lists them as open items.  The theorems rest on the verified compiler's
 trusted base, which [the trusted-base document](../../docs/trusted-base.md) describes.
+
+## Radius at a probability: CE and LE
+
+[The radius program](Accuracy.lean) returns an interval that contains the circular error at a
+probability `p`: the radius of the disk about the origin that holds, with probability `p`, a
+normal error vector in the plane with mean `(m1, m2)`, the bias, and covariance `C`.  It also
+returns an interval that contains the linear error, the half-width of the interval about the
+origin that holds a normal error on a line with probability `p`.  CE90 and LE90 are the values at
+`p = 0.9`, the horizontal and vertical accuracy figures of imagery and elevation products.
+[The requirements](requirements.md#radius-at-a-probability-ce-and-le) state the model, the
+interface, the method, and the measurements that chose it, and
+[the review](review.md#radius-at-a-probability-ce-and-le) records their independent review.
+[`verified_compile`](AccuracyVerified.lean) compiles both entries, with `pcWith` and the interval
+functions, into a separate module, `accuracy`, of 17,616 bytes, so the module of `pc` and `assess`
+and its theorems do not change.
+
+### Interface of the radius program
+
+```text
+circularError  m1 m2 c11 c12 c22 p : Float, n k : UInt64  ->  status, lo, hi
+linearError    b v p : Float, k : UInt64                     ->  status, lo, hi
+
+m1, m2          mean of the error vector in the plane
+c11, c12, c22   covariance of the error vector
+b, v            mean and variance of the error on a line
+p               probability, strictly between 0 and 1
+n               panels of each enclosure of the disk's probability, from 1 to 1,048,576
+k               halvings of each bisection, from 0 to 64
+
+status   0   accepted: the radius at p lies in [lo, hi]
+         1   rejected input, with zero endpoints
+         2   unfinished search, with zero endpoints
+```
+
+`circularError` rejects an input when a value is not finite, when `p` is not strictly between 0
+and 1, when `c11` or `c22` is not positive, when `n` or `k` lies outside its range, and when the
+outward-rounded lower bound of the conditional variance is not positive.  `linearError` rejects an
+input when a value is not finite, when `p` is not strictly between 0 and 1, when `v` is not
+positive, and when `k` exceeds 64.  Status 2 marks a search that found no radius whose enclosure
+of the probability is at least `p`, as happens when `p` lies closer to 1 than the enclosure's
+width allows or when an operation overflows at every radius tried.
+
+For the mean `(2, -1)`, the covariance `(25, 6, 16)`, `p = 0.9`, 65,536 panels, and 30 halvings,
+`circularError` returns status 0 with `lo = 10.314910589294954` and `hi = 10.316099123899519`.
+The reference radius is `10.315504204502986`, and the call takes 7.3 seconds in Wasmtime on one
+core of an AArch64 host.  `linearError` with `b = 0`, `v = 1`, `p = 0.9`, and 64 halvings
+returns `[1.6448536269514693, 1.6448536269514762]` around the reference `1.6448536269514728`.
+
+### Method of the radius program
+
+For a positive definite covariance, the disk's probability `Model.pc` is zero at radius zero,
+continuous, and strictly increasing in the radius, so at most one radius has probability `p`.
+The search brackets that radius and then narrows the bracket.  The bracketing starts with the
+lower end 0 and the upper end `√(c11 + c22) + √(m1² + m2²)`, and it evaluates `pcWith` at the
+upper end at most 16 times.  An evaluation whose lower endpoint is at least `p` ends it.  After
+any other evaluation, the upper end becomes the lower end when the evaluation's upper endpoint
+lies below `p`, and the upper end then grows by a factor of 1.25.  The radius at any `p` up to
+`1 - 2⁻⁵³` is at most 8.6 times the starting radius, and `1.25¹⁶` is about 35.5.  Doubling would
+move the evaluation to radii where uniform panels are coarse, and with 64 panels it found no
+upper end for a bias of 3 standard deviations.
+
+Two bisections then narrow the bracket from its two sides.  The first evaluates `pcWith` at the
+midpoint and moves the lower end there when the result lies below `p`, and the upper end
+otherwise, so that its lower end always has a probability shown below `p`.  The second moves the
+upper end to a midpoint whose result lies at or above `p`, and the lower end otherwise.  The
+result is the lower end of the first and the upper end of the second.  A single bisection would
+have to stop at the first midpoint whose enclosure contains `p`, while the two reach the limit
+that the enclosure's width sets on each side.  The program integrates over the coordinate of
+larger variance: when `c22 > c11` it exchanges `m1` with `m2` and `c11` with `c22` and keeps
+`c12`, because
+[the measurements](requirements.md#measurements) show the radius interval's relative width then
+between `7/n` and `11/n` at `p = 0.9` for every aspect ratio and orientation tried, while with the
+other coordinate it grows with the ratio of the standard deviations.
+
+`linearError` runs the same search on an interval evaluation of
+`½ [erf((L - b)/κ) + erf((L + b)/κ)]` at the point `L`, with `κ` the interval of `√v · √2`, which
+`Model.linearProb_eq` relates to the integral of the density over `[-L, L]`.  The evaluation
+needs no panels, so for `p` from 0.5 to 0.99 its interval narrows to 4 to 84 units in the last
+place.
+
+### Theorems of the radius program
+
+`Model.RadiusIn P q lo hi` states that `0 ≤ lo ≤ hi`, that exactly one `R ≥ 0` has `P R = q`, and
+that this `R` lies in `[lo, hi]`.  Every theorem in the table depends only on the axioms
+`propext`, `Classical.choice`, and `Quot.sound`, which
+[the axiom audit](../../tests/conjunction/AccuracyAxioms.lean) reports.
+
+| Theorem | File | Hypotheses | Conclusion |
+|---|---|---|---|
+| `Model.pc_zero` | [Model](AccuracyModel.lean) | None | `Model.pc` at radius 0 is 0. |
+| `Model.pc_swap` | [Model](AccuracyModel.lean) | None | `Model.pc m1 m2 c11 c12 c22 R = Model.pc m2 m1 c22 c12 c11 R`. |
+| `Model.pc_strictMonoOn` | [Model](AccuracyModel.lean) | `det C > 0` | `Model.pc` is strictly increasing in `R` on `[0, ∞)`. |
+| `Model.pc_continuousOn` | [Model](AccuracyModel.lean) | `c11 > 0`, `det C > 0` | `Model.pc` is continuous in `R` on `[0, ∞)`. |
+| `Model.linearProb_eq` | [Model](AccuracyModel.lean) | `v > 0`, `L ≥ 0` | `Model.linearProb b v L = ½ [erf((L - b)/(√v √2)) + erf((L + b)/(√v √2))]`. |
+| `Model.linearProb_zero`, `Model.linearProb_strictMonoOn`, `Model.linearProb_continuousOn` | [Model](AccuracyModel.lean) | `v > 0` for the last two | `Model.linearProb` is 0 at 0, and strictly increasing and continuous in `L` on `[0, ∞)`. |
+| `Model.radiusIn_of` | [Model](AccuracyModel.lean) | `P` strictly increasing and continuous on `[0, ∞)`, `0 ≤ a`, `0 ≤ c`, `P a < q ≤ P c` | `Model.RadiusIn P q a c`. |
+| `circularError_sound` | [Soundness](AccuracySoundness.lean) | `circularError` returns status 0 | The real values satisfy `0 < p < 1`, `c11 > 0`, and `det C > 0`, the endpoints are finite, and `Model.RadiusIn (Model.pc m1 m2 c11 c12 c22) p lo hi` for the real values. |
+| `linearError_sound` | [Soundness](AccuracySoundness.lean) | `linearError` returns status 0 | The real values satisfy `0 < p < 1` and `v > 0`, the endpoints are finite, and `Model.RadiusIn (Model.linearProb b v) p lo hi`. |
+| `compiled.circularError.implements`, `compiled.linearError.implements` | [Compilation](AccuracyVerified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 70 and 71 return words that represent the results, without a trap. |
+| `circularError_call`, `linearError_call` | [Call theorems](AccuracyCall.lean) | A ready store | The export returns without a trap the words of the result's `hi`, `lo`, and status, leaves a ready store in which every region of the heap keeps its bytes, and status 0 implies the conclusions of the soundness theorem. |
+| `compiled.bytes` | [Compilation](AccuracyVerified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`. |
+| `accuracy_file`, `accuracy_file_decode` | [File theorems](AccuracyFile.lean) | `build/verified/accuracy.wasm` as written | The file holds `encode compiled.module` and decodes to `compiled.module`. |
+
+The proofs hold for any enclosure `E` of a probability `P` whose accepted results belong to finite
+radii `r ≥ 0` and contain `P r`: `pcWith` is one by `pc_enclosure`, and the linear evaluation is
+one by the interval layer's theorems and `Model.linearProb_eq`.  The bracketing keeps a lower end
+whose probability lies below `p` and, once it ends, an upper end whose probability is at least
+`p`, and each bisection keeps one of the two, by `LeanExe.Dialect.loop_induction`.
+`Model.radiusIn_of` then gives the radius by the intermediate value theorem, with uniqueness from
+strict monotonicity, so no theorem about the density's total mass is needed.  The strict
+monotonicity of `Model.pc` follows from the positive density on a box inside the annulus between
+two radii, and its continuity from `Model.pc_eq` and Mathlib's continuity of parametric integrals.
+`Model.pc_swap` transfers the result of the exchanged axes, by `integral_prod_swap`.
+
+### Tests of the radius program
+
+`tests/verified/run.sh --cases accuracy` writes the module, validates it, compares
+`circularError` and `linearError` with native Lean on [the generated cases](../../tests/TestSupport/Conjunction/AccuracyCases.lean),
+runs the axiom audit, and checks the file theorems.  The 237 cases hold the circular inputs at
+`p` of 0.9 and 0.99 with 16 and 256 panels and 0 and 20 halvings, the linear inputs with 0, 10,
+and 64 halvings, unfinished inputs, and an input for each rejection condition, and the module
+agrees with native Lean on every one, bit for bit.
+
+[`tests/conjunction/accuracy.sh`](../../tests/conjunction/accuracy.sh) runs the containment test.
+[The reference](../../tests/conjunction/accuracy.py) computes each radius with `mpmath` at 40
+digits, independently of the program's method.  The probability of the disk is an integral over
+the angle of the radial integral along each ray, which has a closed form in `exp` and `erf`, by
+the trapezoid rule on the periodic integrand with points doubled until two values agree to
+`1e-24`, and the reference radius is its root.  For a centered isotropic covariance the test also
+compares the root with `σ √(-2 ln(1 - p))`, and for a centered linear error with
+`√(2v) erfinv(p)`.  The inputs hold 18 means and covariances: isotropic, elongated with either
+axis of larger variance, rotated by 10°, 30°, 45°, and 60°, a correlation of 0.99, biases of 1
+and 3 standard deviations, and an input with its exchange of axes.  All 292 checks pass: 252
+accepted circular results at five probabilities and up to three panel counts contain the
+reference, 5 inputs return the required status 2, and 35 linear results contain the
+reference.
+
+The test records each interval's width relative to the reference radius.  For the circular
+error with 30 halvings, the relative width times `n` lies in the following ranges over the 18
+inputs, the same at 256, 4,096, and 65,536 panels to within a few percent, and the test requires
+the value at `p = 0.9` to be at most 12.
+
+| `p` | `1e-6` | 0.5 | 0.9 | 0.95 | 0.99 |
+|---|---|---|---|---|---|
+| Relative width times `n` | 1.3 to 3.0 | 2.1 to 3.8 | 7.2 to 11.0 | 12.9 to 19.7 | 52 to 78 |
+
+The linear intervals are 4 to 84 units in the last place wide for `p` from 0.5 to 0.99 and
+about 260 at `p = 1e-6` without a bias.  At `p = 1e-6` with a bias their relative width is
+about `1e-9`, because the two error-function values nearly cancel.  The test requires at most
+`1e-8`.
+
+### Limits of the radius theorems
+
+The theorems concern the radius of the normal model.  Whether the errors are normal, the realism
+of the covariance and the bias, the agreement of their frames, and the choice of `p` are the
+caller's.  The theorems bound no width: an accepted interval is sound however wide, and status 2
+carries no statement.  The circular error's interval cannot be narrower than about `7/n` to
+`11/n` of the radius at `p = 0.9`, and a call costs at most `16 + 2k` evaluations of `pcWith`
+with `n` panels each.  The three-dimensional spherical error and covariances known only within
+bounds lie outside this iteration.
 
 ## References
 

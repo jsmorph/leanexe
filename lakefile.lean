@@ -243,6 +243,54 @@ lean_exe «verified-cases-conjunction» where
   srcDir := "tests"
   root := `TestSupport.Conjunction.CasesMain
 
+lean_exe «verified-cases-accuracy» where
+  srcDir := "tests"
+  root := `TestSupport.Conjunction.AccuracyCasesMain
+
+lean_exe «verified-cases-passivesafety» where
+  srcDir := "tests"
+  root := `TestSupport.PassiveSafety.CasesMain
+
+lean_exe «verified-cases-attitude» where
+  srcDir := "tests"
+  root := `TestSupport.Attitude.CasesMain
+
+lean_exe «verified-cases-qmethod» where
+  srcDir := "tests"
+  root := `TestSupport.Attitude.QCasesMain
+
+lean_exe «verified-cases-screening» where
+  srcDir := "tests"
+  root := `TestSupport.Screening.CasesMain
+
+lean_exe «verified-cases-chisquare» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.ChiSquareCasesMain
+
+lean_exe «verified-cases-gate» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.GateCasesMain
+
+lean_exe «verified-cases-assignment» where
+  srcDir := "tests"
+  root := `TestSupport.Gate.AssignmentCasesMain
+
+lean_exe «verified-cases-events» where
+  srcDir := "tests"
+  root := `TestSupport.Events.CasesMain
+
+lean_exe «verified-cases-frames» where
+  srcDir := "tests"
+  root := `TestSupport.Frames.CasesMain
+
+lean_exe «verified-cases-avoidance» where
+  srcDir := "tests"
+  root := `TestSupport.Avoidance.CasesMain
+
+lean_exe «verified-cases-geolocation» where
+  srcDir := "tests"
+  root := `TestSupport.Geolocation.CasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain
@@ -254,6 +302,10 @@ lean_exe «verified-cases-sgp4box» where
 lean_exe «verified-cases-sgp4omm» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.OmmCasesMain
+
+lean_exe «verified-cases-orbit» where
+  srcDir := "tests"
+  root := `TestSupport.Orbit.CasesMain
 
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.

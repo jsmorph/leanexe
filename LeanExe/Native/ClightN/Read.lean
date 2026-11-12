@@ -8,6 +8,7 @@ constant:
 
 * `(relation R TYPE (ctors C ...) safe)` for each inductive type `R` directly in the namespace
   `ClightN.Spec`, and `(ctor C TYPE)` for each of its constructors;
+* `(equation E VALUE TYPE)` for each definition `E` there whose name starts with `eqn_`;
 * `(constant C VALUE TYPE)` for each definition `C` there whose name starts with `cst_`;
 * `(statement S VALUE TYPE)` for each definition `S` there whose name starts with `stmt_`, and
   `(proof P TYPE (axioms A ...))` for the theorem `P` of the same name without `stmt_` in the
@@ -74,7 +75,9 @@ def dump : CommandElabM Unit := do
     | some (.defnInfo di) =>
         match n with
         | .str _ s =>
-            if s.startsWith "cst_" then
+            if s.startsWith "eqn_" then
+              lines := lines.push s!"(equation {n} {← term di.value} {← term di.type})"
+            else if s.startsWith "cst_" then
               lines := lines.push s!"(constant {n} {← term di.value} {← term di.type})"
             else if s.startsWith "stmt_" then
               lines := lines.push s!"(statement {n} {← term di.value} {← term di.type})"

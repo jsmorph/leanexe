@@ -2,21 +2,26 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Writes the program of a Coq file that clightgen printed for a bare-metal program, and the
-statement of its termination, in the neutral language of clightn/N.nsx (clightn/README.md).
+"""Writes the program of a Coq file that clightgen printed for a bare-metal program, and a
+statement of its runs, in the neutral language of clightn/N.nsx (clightn/README.md).
 
-  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM terminates BYTES RESULT
+  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM terminates BYTES RESULT [TRAP]
   uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM reads
+  uv run clightn/clightgen.py FILE.v OUT.nsx NAME MODULE THEOREM reacts
 
 writes the part MODULE with the constants NAME_defs and NAME_main, the definitions of the file's
 program and the identifier of its main, and a statement that the Rocq theorem THEOREM takes as its
 premise.  With terminates, the part also holds the constant NAME_trace, the trace of one volatile
 store to lx_out of each byte of BYTES, a list separated by commas, and the statement
-NAME_terminates says that the program terminates with that trace and the result RESULT.  With
-reads, the statement NAME_reads says that for every sequence sigma of the values of its volatile
-loads the program terminates with a trace whose k-th volatile load reads sigma k.  The script is
-untrusted: Rocq proves that the constant is the program of the file, and the check compares what
-each prover elaborated with the output of this script.
+NAME_terminates says that the program terminates with that trace and the result RESULT, or, given
+TRAP, that it terminates either so or with no event and the result TRAP.  With reads, the
+statement NAME_reads says that for every sequence sigma of the values of its volatile loads the
+program terminates with a trace whose k-th volatile load reads sigma k.  With reacts,
+the statement NAME_reacts says that there are functions W and P of the sequence sigma such that,
+for every sigma, main runs forever with no event before its loop and the trace W sigma n in
+iteration n, P sigma n is the trace of the first n iterations, and its k-th volatile load reads
+sigma k.  The script is untrusted: Rocq proves that the constant is the program of the file, and
+the check compares what each prover elaborated with the output of this script.
 """
 import re
 import sys
@@ -246,7 +251,8 @@ class Converter:
 
 def main(argv):
     form = argv[6] if len(argv) > 6 else None
-    if not ((form == "terminates" and len(argv) == 9) or (form == "reads" and len(argv) == 7)):
+    if not ((form == "terminates" and len(argv) in (9, 10)) or
+            (form in ("reads", "reacts") and len(argv) == 7)):
         print(__doc__, file=sys.stderr)
         return 2
     src, out, name, module, theorem = argv[1:6]
@@ -276,14 +282,27 @@ def main(argv):
             "  " + program + ")",
             f"(constant {name}_main ident {main_id})"]
     if form == "terminates":
+        run = f"(nprog {name}_defs {name}_main {name}_trace (r32 {argv[8]}))"
+        if len(argv) == 10:
+            run = f"(or {run}\n    (nprog {name}_defs {name}_main nil (r32 {argv[9]})))"
         text += [f"(constant {name}_trace (list event)",
                  "  " + trace + ")",
                  f"(carried {name}_terminates (rocq {theorem})",
-                 f"  (nprog {name}_defs {name}_main {name}_trace (r32 {argv[8]})))"]
-    else:
+                 f"  {run})"]
+    elif form == "reads":
         text += [f"(carried {name}_reads (rocq {theorem})",
                  "  (forall ((sigma (-> nat w32))) (exists ((t (list event)) (r w32))",
                  f"    (and (nprog {name}_defs {name}_main t r) (nreads sigma O t)))))"]
+    else:
+        text += [f"(carried {name}_reacts (rocq {theorem})",
+                 "  (exists ((W (-> (-> nat w32) (-> nat (list event))))",
+                 "           (P (-> (-> nat w32) (-> nat (list event)))))",
+                 "    (forall ((sigma (-> nat w32)))",
+                 f"      (and (nreacts {name}_defs {name}_main nil (W sigma))",
+                 "        (and (= (P sigma O) nil)",
+                 "          (and (forall ((n nat))",
+                 "                 (= (P sigma (S n)) (app (P sigma n) (W sigma n))))",
+                 "            (forall ((n nat)) (nreads sigma O (P sigma n)))))))))"]
     open(out, "w").write("\n".join(text) + "\n")
     return 0
 

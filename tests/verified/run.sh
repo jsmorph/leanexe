@@ -13,13 +13,33 @@
 # runs the axiom audit of tests/energy/Axioms.lean, and with --cases energy it checks the
 # authorizer's file theorem module as well.  For the conjunction program, it runs the axiom audit
 # of tests/conjunction/Axioms.lean, and with --cases conjunction it checks the program's file
-# theorem module as well.  For the SGP4 program, it runs the axiom audit of
+# theorem module as well.  For the CE and LE program, it runs the axiom audit of
+# tests/conjunction/AccuracyAxioms.lean, and with --cases accuracy it checks the program's file
+# theorem module as well.  For the attitude program, it runs the axiom audit of
+# tests/attitude/Axioms.lean, and with --cases attitude it checks the program's file theorem module
+# as well.  For the chi-square programs, the gate, and the assignment check, it runs the axiom
+# audits of tests/gate/ChiSquareAxioms.lean, GateAxioms.lean, and AssignmentAxioms.lean, and with
+# --cases chisquare, gate, or assignment it checks that module's file theorems as well.  For the
+# q-method, it runs the axiom audit of tests/attitude/QAxioms.lean, and with --cases qmethod it
+# checks the q-method's file theorem module as well.  For the SGP4 program, it runs the axiom
+# audit of
 # tests/sgp4/Axioms.lean, and with --cases sgp4 it checks the program's file theorem module as
 # well.  With --cases sgp4box or --cases sgp4omm, it runs the axiom audit of
 # tests/sgp4/BoxAxioms.lean or tests/sgp4/OmmAxioms.lean for the enclosing SGP4 program or the
-# reader of decimal values and checks that module's file theorems.  Each audit fails the run
-# when a report names an axiom
-# beyond those three.  Last, the
+# reader of decimal values and checks that module's file theorems.  For the passive-safety check,
+# it runs the axiom audit of tests/passivesafety/Axioms.lean, and with --cases passivesafety it
+# checks the check's file theorem module as well.  For the orbit-determination programs, it runs
+# the axiom audit of tests/orbit/Axioms.lean, and with --cases gibbs or --cases lambert it checks
+# that module's file theorems.  For the screening program, it runs the axiom audit of
+# tests/screening/Axioms.lean, and with --cases screening it checks the program's file theorem
+# module as well.  For the event-window program, it runs the axiom audit of
+# tests/events/Axioms.lean, and with --cases events it checks the program's file theorem module
+# as well.  With --cases frames, it runs the axiom audit of tests/frames/Axioms.lean and
+# checks the frames module's file theorems, and with --cases geolocation it does the same with
+# tests/geolocation/Axioms.lean and the geolocation module.  For the avoidance authorizer, it runs
+# the axiom audit of tests/avoidance/Axioms.lean, and with --cases avoidance it checks the
+# authorizer's file theorem module as well.  Each audit fails the run when a report names an
+# axiom beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -127,19 +147,48 @@ elif [ "$case_module" = "rcvMaine" ]; then
   cases_exe=verified-cases-rcv-maine
 elif [ "$case_module" = "conjunction" ]; then
   cases_exe=verified-cases-conjunction
+elif [ "$case_module" = "accuracy" ]; then
+  cases_exe=verified-cases-accuracy
+elif [ "$case_module" = "attitude" ]; then
+  cases_exe=verified-cases-attitude
+elif [ "$case_module" = "qmethod" ]; then
+  cases_exe=verified-cases-qmethod
+elif [ "$case_module" = "screening" ]; then
+  cases_exe=verified-cases-screening
+elif [ "$case_module" = "chisquare" ]; then
+  cases_exe=verified-cases-chisquare
+elif [ "$case_module" = "gate" ]; then
+  cases_exe=verified-cases-gate
+elif [ "$case_module" = "assignment" ]; then
+  cases_exe=verified-cases-assignment
+elif [ "$case_module" = "events" ]; then
+  cases_exe=verified-cases-events
+elif [ "$case_module" = "avoidance" ]; then
+  cases_exe=verified-cases-avoidance
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
+elif [ "$case_module" = "passivesafety" ]; then
+  cases_exe=verified-cases-passivesafety
 elif [ "$case_module" = "sgp4box" ]; then
   cases_exe=verified-cases-sgp4box
 elif [ "$case_module" = "sgp4omm" ]; then
   cases_exe=verified-cases-sgp4omm
+elif [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
+  cases_exe=verified-cases-orbit
+elif [ "$case_module" = "frames" ]; then
+  cases_exe=verified-cases-frames
+elif [ "$case_module" = "geolocation" ]; then
+  cases_exe=verified-cases-geolocation
 fi
 # Without --cases, the cases come from verified-cases and from the executables of the modules
 # whose cases it does not import, which link Mathlib or take long to build.
 case_exes=("$cases_exe")
 if [ -z "$case_module" ]; then
   case_exes+=(verified-cases-arraytrees verified-cases-buffertrees verified-cases-sgp4box
-    verified-cases-sgp4omm)
+    verified-cases-sgp4omm verified-cases-attitude verified-cases-qmethod verified-cases-screening
+    verified-cases-chisquare verified-cases-gate verified-cases-assignment verified-cases-events
+    verified-cases-avoidance verified-cases-passivesafety verified-cases-orbit verified-cases-frames
+    verified-cases-geolocation)
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -172,7 +221,47 @@ if [ -z "$reference" ]; then
   if [ "$case_module" = "conjunction" ]; then
     targets+=(Demos.Conjunction.Verified $(imports Demos/Conjunction/File.lean))
   fi
+  if runs accuracy; then targets+=($(imports tests/conjunction/AccuracyAxioms.lean)); fi
+  if [ "$case_module" = "accuracy" ]; then
+    targets+=(Demos.Conjunction.AccuracyVerified $(imports Demos/Conjunction/AccuracyFile.lean))
+  fi
+  if runs attitude; then targets+=($(imports tests/attitude/Axioms.lean)); fi
+  if [ "$case_module" = "attitude" ]; then
+    targets+=(Demos.Attitude.Verified $(imports Demos/Attitude/File.lean))
+  fi
+  if runs qmethod; then targets+=($(imports tests/attitude/QAxioms.lean)); fi
+  if [ "$case_module" = "qmethod" ]; then
+    targets+=(Demos.Attitude.QVerified $(imports Demos/Attitude/QFile.lean))
+  fi
+  if runs screening; then targets+=($(imports tests/screening/Axioms.lean)); fi
+  if [ "$case_module" = "screening" ]; then
+    targets+=(Demos.Screening.Verified $(imports Demos/Screening/File.lean))
+  fi
+  if runs chisquare; then targets+=($(imports tests/gate/ChiSquareAxioms.lean)); fi
+  if [ "$case_module" = "chisquare" ]; then
+    targets+=(Demos.Gate.Verified $(imports Demos/Gate/File.lean))
+  fi
+  if runs gate; then targets+=($(imports tests/gate/GateAxioms.lean)); fi
+  if [ "$case_module" = "gate" ]; then
+    targets+=(Demos.Gate.GateVerified $(imports Demos/Gate/GateFile.lean))
+  fi
+  if runs assignment; then targets+=($(imports tests/gate/AssignmentAxioms.lean)); fi
+  if [ "$case_module" = "assignment" ]; then
+    targets+=(Demos.Gate.AssignmentVerified $(imports Demos/Gate/AssignmentFile.lean))
+  fi
+  if runs events; then targets+=($(imports tests/events/Axioms.lean)); fi
+  if [ "$case_module" = "events" ]; then
+    targets+=(Demos.Events.Verified $(imports Demos/Events/File.lean))
+  fi
+  if runs avoidance; then targets+=($(imports tests/avoidance/Axioms.lean)); fi
+  if [ "$case_module" = "avoidance" ]; then
+    targets+=(Demos.Avoidance.Verified $(imports Demos/Avoidance/File.lean))
+  fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
+  if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
+  if [ "$case_module" = "passivesafety" ]; then
+    targets+=(Demos.PassiveSafety.Verified $(imports Demos/PassiveSafety/File.lean))
+  fi
   if [ "$case_module" = "sgp4" ]; then
     targets+=(Demos.Sgp4.Verified $(imports Demos/Sgp4/File.lean))
   fi
@@ -186,6 +275,21 @@ if [ -z "$reference" ]; then
   fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
+  fi
+  if runs gibbs || runs lambert; then targets+=($(imports tests/orbit/Axioms.lean)); fi
+  if [ "$case_module" = "gibbs" ]; then
+    targets+=(Demos.Orbit.GibbsVerified $(imports Demos/Orbit/GibbsFile.lean))
+  fi
+  if [ "$case_module" = "lambert" ]; then
+    targets+=(Demos.Orbit.LambertVerified $(imports Demos/Orbit/LambertFile.lean))
+  fi
+  if [ "$case_module" = "frames" ]; then
+    targets+=(Demos.Frames.Verified $(imports Demos/Frames/File.lean)
+      $(imports tests/frames/Axioms.lean))
+  fi
+  if [ "$case_module" = "geolocation" ]; then
+    targets+=(Demos.Geolocation.Verified $(imports Demos/Geolocation/File.lean)
+      $(imports tests/geolocation/Axioms.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -325,10 +429,70 @@ if [ -z "$case_module" ] || [ "$case_module" = "conjunction" ]; then
     check_file conjunction Demos.Conjunction.Verified Demos/Conjunction/File.lean
   fi
 fi
+if [ -z "$case_module" ] || [ "$case_module" = "accuracy" ]; then
+  check_axioms tests/conjunction/AccuracyAxioms.lean
+  if [ "$case_module" = "accuracy" ]; then
+    check_file accuracy Demos.Conjunction.AccuracyVerified Demos/Conjunction/AccuracyFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "attitude" ]; then
+  check_axioms tests/attitude/Axioms.lean
+  if [ "$case_module" = "attitude" ]; then
+    check_file attitude Demos.Attitude.Verified Demos/Attitude/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "qmethod" ]; then
+  check_axioms tests/attitude/QAxioms.lean
+  if [ "$case_module" = "qmethod" ]; then
+    check_file qmethod Demos.Attitude.QVerified Demos/Attitude/QFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "screening" ]; then
+  check_axioms tests/screening/Axioms.lean
+  if [ "$case_module" = "screening" ]; then
+    check_file screening Demos.Screening.Verified Demos/Screening/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "chisquare" ]; then
+  check_axioms tests/gate/ChiSquareAxioms.lean
+  if [ "$case_module" = "chisquare" ]; then
+    check_file chisquare Demos.Gate.Verified Demos/Gate/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gate" ]; then
+  check_axioms tests/gate/GateAxioms.lean
+  if [ "$case_module" = "gate" ]; then
+    check_file gate Demos.Gate.GateVerified Demos/Gate/GateFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "assignment" ]; then
+  check_axioms tests/gate/AssignmentAxioms.lean
+  if [ "$case_module" = "assignment" ]; then
+    check_file assignment Demos.Gate.AssignmentVerified Demos/Gate/AssignmentFile.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "events" ]; then
+  check_axioms tests/events/Axioms.lean
+  if [ "$case_module" = "events" ]; then
+    check_file events Demos.Events.Verified Demos/Events/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "avoidance" ]; then
+  check_axioms tests/avoidance/Axioms.lean
+  if [ "$case_module" = "avoidance" ]; then
+    check_file avoidance Demos.Avoidance.Verified Demos/Avoidance/File.lean
+  fi
+fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
   check_axioms tests/sgp4/Axioms.lean
   if [ "$case_module" = "sgp4" ]; then
     check_file sgp4 Demos.Sgp4.Verified Demos/Sgp4/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "passivesafety" ]; then
+  check_axioms tests/passivesafety/Axioms.lean
+  if [ "$case_module" = "passivesafety" ]; then
+    check_file passivesafety Demos.PassiveSafety.Verified Demos/PassiveSafety/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4box" ]; then
@@ -342,6 +506,23 @@ if [ -z "$case_module" ] || [ "$case_module" = "sgp4omm" ]; then
   if [ "$case_module" = "sgp4omm" ]; then
     check_file sgp4omm Demos.Sgp4.OmmVerified Demos/Sgp4/OmmFile.lean
   fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
+  check_axioms tests/orbit/Axioms.lean
+  if [ "$case_module" = "gibbs" ]; then
+    check_file gibbs Demos.Orbit.GibbsVerified Demos/Orbit/GibbsFile.lean
+  fi
+  if [ "$case_module" = "lambert" ]; then
+    check_file lambert Demos.Orbit.LambertVerified Demos/Orbit/LambertFile.lean
+  fi
+fi
+if [ "$case_module" = "frames" ]; then
+  check_axioms tests/frames/Axioms.lean
+  check_file frames Demos.Frames.Verified Demos/Frames/File.lean
+fi
+if [ "$case_module" = "geolocation" ]; then
+  check_axioms tests/geolocation/Axioms.lean
+  check_file geolocation Demos.Geolocation.Verified Demos/Geolocation/File.lean
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
 if [ -z "$case_module" ]; then

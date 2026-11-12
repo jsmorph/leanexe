@@ -3,14 +3,17 @@
    stmt of export/ExportClight.ml (lines 88 to 136), which drops a Sskip on either side of a
    sequence and prints two forms of loop as Swhile, whose definition (cfrontend/Clight.v,
    line 119) the file reads back.  export_stmt transcribes stmt, its cases on sequences as tests
-   of Sskip, and export_terminates shows that
-   a terminating run of the file's program is a run of the program inside clightgen with the same
-   trace and result.  export_rel relates a printed statement to the statement it was printed
-   from, each step a core relation wrapped in sequences with Sskip.  The model is
-   LeanExe/Native/Proof/Export.lean, which proves the same of the Lean copy of Clight. *)
+   of Sskip.  export_terminates shows that a terminating run of the file's program is a run of the
+   program inside clightgen with the same trace and result, and export_reacts that a main of the
+   file's program that runs forever, in the sense of loop_reacts of rocq/Clight2Asm.v, is one of
+   the program inside clightgen with the same traces.  export_rel relates a printed statement to
+   the statement it was printed from, each step a core relation wrapped in sequences with Sskip.
+   The models are LeanExe/Native/Proof/Export.lean and LeanExe/Native/Proof/Reacts.lean, which
+   prove the same of the Lean copy of Clight. *)
 From Coq Require Import ZArith Lia.
 Require Import Coqlib Maps Integers Values AST Memory Events Globalenvs Linking.
 Require Import Ctypes Cop Clight ClightBigstep.
+Require Clight2Asm.
 
 Definition is_skip (s: statement) : bool :=
   match s with Sskip => true | _ => false end.
@@ -366,4 +369,104 @@ Proof.
   - rewrite <- (Genv.find_symbol_transf M). rewrite <- MAIN. exact H0.
   - rewrite <- export_type. auto.
   - eapply (proj2 (exec_export (globalenv p) (globalenv p') CENV SENV FUNCT)); eauto.
+Qed.
+
+(** * Programs that run forever *)
+
+Lemma wrap_loop_entry : forall c s, wrap c s ->
+  forall init body post, Clight2Asm.loop_entry c init body post ->
+  exists init2, Clight2Asm.loop_entry s init2 body post /\ wrap init init2.
+Proof.
+  induction 1 as [| s W IH | s W IH]; intros init body post L.
+  - exists init. split; [exact L | constructor].
+  - destruct (IH init body post L) as (i & L' & W').
+    exists (Ssequence Sskip i). split.
+    + apply Clight2Asm.loop_entry_seq_before. exact L'.
+    + apply wrap_left. exact W'.
+  - destruct (IH init body post L) as (i & L' & W').
+    exists i. split; [apply Clight2Asm.loop_entry_seq_after; exact L' | exact W'].
+Qed.
+
+Lemma loop_entry_export : forall a s, export_rel a s ->
+  forall init' body' post', Clight2Asm.loop_entry a init' body' post' ->
+  exists init body post, Clight2Asm.loop_entry s init body post /\
+    export_rel init' init /\ export_rel body' body /\ export_rel post' post.
+Proof.
+  induction 1 as [c s AT W | a b s1 s2 s R1 IH1 R2 IH2 W | e a b s1 s2 s R1 IH1 R2 IH2 W
+                 | a b s1 s2 s R1 IH1 R2 IH2 W | e la ls s LR W | l a s1 s R IH W];
+    intros init' body' post' L; inversion L; subst; try (simpl in AT; contradiction).
+  - match goal with L1 : Clight2Asm.loop_entry _ _ _ _ |- _ =>
+      destruct (IH1 _ _ _ L1) as (i1 & b1 & p1 & E & Ri & Rb & Rp) end.
+    destruct (wrap_loop_entry _ _ W i1 b1 p1 (Clight2Asm.loop_entry_seq_after _ _ _ _ s2 E))
+      as (i2 & E2 & W2).
+    exists i2, b1, p1. split; [exact E2 | split; [| split; auto]].
+    eapply export_rel_wrap; eauto.
+  - match goal with L1 : Clight2Asm.loop_entry _ _ _ _ |- _ =>
+      destruct (IH2 _ _ _ L1) as (i1 & b1 & p1 & E & Ri & Rb & Rp) end.
+    destruct (wrap_loop_entry _ _ W (Ssequence s1 i1) b1 p1
+                (Clight2Asm.loop_entry_seq_before _ _ _ _ s1 E)) as (i2 & E2 & W2).
+    exists i2, b1, p1. split; [exact E2 | split; [| split; auto]].
+    eapply export_rel_wrap; [eapply er_seq; [exact R1 | exact Ri | constructor] | exact W2].
+  - destruct (wrap_loop_entry _ _ W Sskip s1 s2 (Clight2Asm.loop_entry_loop s1 s2))
+      as (i2 & E2 & W2).
+    exists i2, s1, s2. split; [exact E2 | split; [| split; auto]].
+    apply er_atom; [exact I | exact W2].
+Qed.
+
+Theorem export_reacts : forall (p p': Clight.program) t0 W,
+  prog_defs p' = export_defs (prog_defs p) ->
+  prog_main p' = prog_main p ->
+  prog_public p' = prog_public p ->
+  prog_types p' = prog_types p ->
+  Clight2Asm.loop_reacts p' t0 W -> Clight2Asm.loop_reacts p t0 W.
+Proof.
+  intros p p' t0 W DEFS MAIN PUB TYPES
+    [NE (b & f' & m0 & m1 & e & le0 & init' & body' & post' & Inv & IM & S & F & TY & L & ENTRY &
+         (le & m & X0 & I0) & STEP)].
+  assert (TP: program_of_program p' = transform_program export_fundef (program_of_program p)).
+  { unfold program_of_program, transform_program; simpl. rewrite DEFS, MAIN, PUB. reflexivity. }
+  assert (M: match_program (fun _ f tf => tf = export_fundef f) eq
+               (program_of_program p) (program_of_program p')).
+  { rewrite TP. apply match_transform_program. }
+  assert (CENV: genv_cenv (globalenv p') = genv_cenv (globalenv p)).
+  { simpl. pose proof (prog_comp_env_eq p) as E. pose proof (prog_comp_env_eq p') as E'.
+    rewrite TYPES in E'. congruence. }
+  assert (SENV: Senv.equiv (globalenv p') (globalenv p)).
+  { pose proof (Genv.senv_transf M) as (A & P & C). split; [|split]; intros;
+    [rewrite A | rewrite P | rewrite C]; reflexivity. }
+  assert (FUNCT: forall v fd', Genv.find_funct (globalenv p') v = Some fd' ->
+            exists fd, Genv.find_funct (globalenv p) v = Some fd /\ fd' = export_fundef fd).
+  { intros v fd' Fv. destruct v as [| | | | | bv ofs]; try discriminate. simpl in *.
+    destruct (Ptrofs.eq_dec ofs Ptrofs.zero); try discriminate.
+    destruct (funct_export p p' M bv fd' Fv) as (fd & F1 & ->). exists fd. split; auto. }
+  destruct (Genv.init_mem_exists p) as [m0' IM'].
+  { intros id v Hin. assert (IN: In (id, Gvar v) (prog_defs p')).
+    { rewrite DEFS. unfold export_defs. change (id, Gvar v) with
+        (transform_program_globdef export_fundef (id, @Gvar fundef type v)).
+      apply in_map; auto. }
+    exploit Genv.init_mem_inversion; [exact IM | exact IN |]. intros (A & Bs). split; auto.
+    intros i o Hi. destruct (Bs i o Hi) as (b' & S'). exists b'.
+    rewrite <- (Genv.find_symbol_transf M). exact S'. }
+  assert (m0' = m0).
+  { pose proof (Genv.init_mem_transf M IM') as X. change (Genv.init_mem p' = Some m0') in X.
+    congruence. }
+  subst m0'.
+  destruct (funct_export p p' M b (Internal f') F) as (fd & F1 & E).
+  destruct fd as [f |]; simpl in E; inv E.
+  destruct (loop_entry_export _ _ (export_stmt_rel (fn_body f)) init' body' post' L)
+    as (init & body & post & L' & Ri & Rb & Rp).
+  pose proof (exec_export (globalenv p) (globalenv p') CENV SENV FUNCT) as [EX _].
+  split; [exact NE |].
+  exists b, f, m0, m1, e, le0, init, body, post, Inv.
+  split; [exact IM' |]. split.
+  { rewrite <- (Genv.find_symbol_transf M). rewrite <- MAIN. exact S. }
+  split; [exact F1 |]. split; [exact TY |]. split; [exact L' |]. split.
+  { destruct ENTRY as [NR1 NR2 DJ AV BP].
+    apply function_entry2_intro; [exact NR1 | exact NR2 | exact DJ | | exact BP].
+    exact (alloc_variables_export (globalenv p) (globalenv p') CENV _ _ _ _ _ AV). }
+  split.
+  { exists le, m. split; [exact (EX _ _ _ _ _ _ _ _ X0 init Ri) | exact I0]. }
+  intros n le1 m2 I1. destruct (STEP n le1 m2 I1) as (le' & m' & X & I').
+  exists le', m'. split; [| exact I'].
+  exact (EX _ _ _ _ _ _ _ _ X _ (er_seq _ _ _ _ _ Rb Rp (wrap_refl _))).
 Qed.

@@ -1,0 +1,29 @@
+LeanExe
+Copyright 2026 Morphism LLC
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use the files of this
+repository except in compliance with the License.  A copy of the License is in LICENSE and at
+http://www.apache.org/licenses/LICENSE-2.0.  Unless required by applicable law or agreed to in
+writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific
+language governing permissions and limitations under the License.
+
+The following parts of the repository come from other projects and remain under their own
+licenses, as the notices beside them state:
+
+- LeanExe/Native/Clight/: transcriptions of definitions of CompCert 3.18, under the GNU Lesser
+  General Public License, version 2.1 or any later version.  See LeanExe/Native/NOTICE and
+  LeanExe/Native/Clight/LICENSE-LGPL-2.1.
+- Library/Hashing/Sha2/: files copied from fips-180-4-lean, under the GNU General Public License,
+  version 3 or any later version.  See Library/Hashing/Sha2/NOTICE and Library/Hashing/Sha2/LICENSE.
+- Library/Numerics/Float64/: programs ported from FreeBSD's libm, which includes fdlibm of Sun
+  Microsystems, and from CORE-MATH.  Each Program.lean reproduces the notices of the files it
+  ports.
+- tests/sgp4/near-earth.tle and tests/sgp4/near-earth.out: from python-sgp4, under the license in
+  tests/sgp4/LICENSE.python-sgp4.
+- tests/isla/isla-e9b5d945.patch, the .diff files of tests/isla/, and tools/sail/lean-sail-v6.diff:
+  changes to Isla, to Arm's Sail model of the architecture, and to Sail, which contain excerpts of
+  those projects' sources under their own licenses.
+
+tests/rcv/NOTICE records the terms of use of the RCV corpus's sources, whose files the repository
+does not hold.

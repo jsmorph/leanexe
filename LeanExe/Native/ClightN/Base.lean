@@ -6,9 +6,10 @@ The Lean meaning of the symbols of the neutral specification `clightn/N.nsx`, th
 copy's `unsigned`, `repr`, and `signed` give, Euclid's division by a positive divisor, powers of
 two, bitwise operations on numbers that are not negative, the concatenation of traces, and the
 conversions between floating-point numbers and their bits; the laws that `Laws.lean` proves fix
-their meaning where the specification uses them.  The interpreted symbols
-name the definitions of the Lean copy of Clight under test, at `Archi.aarch64`, and take a `Unit`
-in place of CompCert's composite environment, which the copy's programs leave empty.
+their meaning where the specification uses them.  The interpreted symbols name the definitions
+of the Lean copy of Clight under test, at `Archi.aarch64`, and take a `Unit` in place of
+CompCert's composite environment, which the copy's programs leave empty.  The floating-point
+equations of the specification name the copy's operations directly.
 -/
 
 namespace ClightN.Base
@@ -42,5 +43,8 @@ abbrev bool_val : LClight.val → LClight.type → LClight.mem → Option Bool :
 abbrev eval_expr : LClight.genv → LClight.env → LClight.temp_env → LClight.mem → LClight.expr →
     LClight.val → Prop :=
   LClight.eval_expr LClight.Archi.aarch64
+abbrev sem_unop : LClight.unary_operation → LClight.val → LClight.type → LClight.mem →
+    Option LClight.val :=
+  LClight.sem_unary_operation LClight.Archi.aarch64
 
 end ClightN.Base

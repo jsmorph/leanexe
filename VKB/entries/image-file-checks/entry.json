@@ -6,7 +6,9 @@
     "LeanExe.M7.fileOk (genProgram m k s0 base limit dev udivmod64) n len = true",
     "LeanExe.M7.functionsPartOk m k s0 base limit ns n off lo hi = true",
     "file_nat% \"NAME.img\"",
-    "memory exhaustion in the kernel's check of an image file"
+    "memory exhaustion in the kernel's check of an image file",
+    "LeanExe.A64.bytesOk (LeanExe.A64.genBytesImage m k inMax room cap imageBase) n len = true",
+    "the memory cap for the kernel check of a large A64 Image"
   ],
   "modules": [
     "LeanExe.FileNat",
@@ -46,7 +48,9 @@
     "LeanExe.M7.frameOf",
     "LeanExe.M7.bitsOf",
     "LeanExe.memPrefix",
-    "LeanExe.memPrefix_agrees"
+    "LeanExe.memPrefix_agrees",
+    "LeanExe.A64.genInImage",
+    "LeanExe.A64.genBytesImage"
   ],
   "examples": [
     "TestSupport.M7.Gw.gwSizes",

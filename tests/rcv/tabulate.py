@@ -5,22 +5,25 @@
 
 """Compares the report of a canonical file from the module, native Lean, and the reference.
 
-  uv run tests/rcv/tabulate.py [--module PATH] [--host PATH] [--tabulate PATH]
+  uv run tests/rcv/tabulate.py [--module PATH] [--host PATH] [--tabulate PATH] [--spec PATH]
       [--process PATH] [--lean-process PATH] [--native PATH] DIR ...
 
 For each file NAME.rcv in each DIR, the script computes the reference's report with `report` of
 `tests/rcv/reference.py` and requires these outputs to equal it byte for byte: the export
 `tabulate` of the module, run by the Wasmtime host; `rcv-tabulate report`, the specification's
 `Demos.Rcv.Spec.reportFile` in native Lean; and NAME.report, when the directory holds it, which
-`edges.py`, `reader_edges.py`, and `check.py` write from the reference.  With `--process`, the
-standard output of the WASI process `Demos.Rcv.Process.module`, run by the Wasmtime host with the
-file as its standard input, must equal it too, and its control records must be `wasi-exit 0`.
-With `--lean-process`, the same holds of `rcv-process`, the native Lean process, which must exit
-with status 0.  With `--native`, the output of `rcv-tabulate-c`, the module translated to C and
-compiled with CompCert, must equal it.  The script prints each disagreement and, for each
-directory, the number of files, of well-formed files among them, and of malformed files.  The exit
-status is 1 when any output differs and 2 when a tool fails or a path is missing.  The runs of the
-processes write their standard output and control records under `tmp/rcv-tabulate`.
+`edges.py`, `reader_edges.py`, and `check.py` write from the reference.  With `--spec`, the
+output of `rcv-spec report`, the specification's `Demos.Rcv.Spec.report` of the structure that
+`rcv-spec` parses, must equal it for a well-formed file, and `rcv-spec` must refuse a malformed
+file with exit status 1 and no output.  With `--process`, the standard output of the WASI process
+`Demos.Rcv.Process.module`, run by the Wasmtime host with the file as its standard input, must
+equal it too, and its control records must be `wasi-exit 0`.  With `--lean-process`, the same
+holds of `rcv-process`, the native Lean process, which must exit with status 0.  With `--native`,
+the output of `rcv-tabulate-c`, the module translated to C and compiled with CompCert, must equal
+it.  The script prints each disagreement and, for each directory, the number of files, of
+well-formed files among them, and of malformed files.  The exit status is 1 when any output
+differs and 2 when a tool fails or a path is missing.  The runs of the processes write their
+standard output and control records under `tmp/rcv-tabulate`.
 
 The defaults are the paths of a repository build: `build/verified/rcvTabulate.wasm`, which
 `tools/Emit.lean` writes from `Demos.Rcv.TabulateProgram.compiled.module`,
@@ -80,11 +83,22 @@ def process_report(args, path):
     return stdout.read_bytes()
 
 
+def spec_refuses(args, path):
+    out = subprocess.run([args.spec, "report", path], capture_output=True)
+    return out.returncode == 1 and not out.stdout
+
+
 def check(args, reference, path):
     data = path.read_bytes()
     expected = reference.report(data)
+    well_formed = not isinstance(reference.read(data), reference.Malformed)
     outputs = [("the module's export tabulate", module_report(args, path)),
                ("rcv-tabulate report", run([args.tabulate, "report", path]))]
+    problems = []
+    if args.spec and well_formed:
+        outputs.append(("rcv-spec report", run([args.spec, "report", path])))
+    elif args.spec and not spec_refuses(args, path):
+        problems.append(f"{path}: rcv-spec report does not refuse a malformed file")
     if args.process:
         outputs.append(("the WASI process", process_report(args, path)))
     if args.lean_process:
@@ -94,9 +108,8 @@ def check(args, reference, path):
     saved = path.with_suffix(".report")
     if saved.exists():
         outputs.append((saved.name, saved.read_bytes()))
-    problems = [f"{path}: {name} differs from the reference's report"
-                for name, got in outputs if got != expected]
-    well_formed = not isinstance(reference.read(data), reference.Malformed)
+    problems += [f"{path}: {name} differs from the reference's report"
+                 for name, got in outputs if got != expected]
     return well_formed, problems
 
 
@@ -105,12 +118,14 @@ def main():
     ap.add_argument("--module", type=Path, default=ROOT / "build/verified/rcvTabulate.wasm")
     ap.add_argument("--host", type=Path, default=ROOT / "build/tools/leanexe-wasmtime-host")
     ap.add_argument("--tabulate", type=Path, default=ROOT / ".lake/build/bin/rcv-tabulate")
+    ap.add_argument("--spec", type=Path)
     ap.add_argument("--process", type=Path)
     ap.add_argument("--lean-process", type=Path)
     ap.add_argument("--native", type=Path)
     ap.add_argument("dirs", nargs="+", type=Path)
     args = ap.parse_args()
-    optional = [p for p in (args.process, args.lean_process, args.native) if p is not None]
+    optional = [p for p in (args.spec, args.process, args.lean_process, args.native)
+                if p is not None]
     for path in [args.module, args.host, args.tabulate, *optional, *args.dirs]:
         if not path.exists():
             print(f"tabulate.py: {path} does not exist", file=sys.stderr)
