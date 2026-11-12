@@ -103,9 +103,9 @@ for n in "${names[@]}"; do
   proofs+=("$n.v" "N${c}Spec.v" "N$c.v")
 done
 
-# The Lean proof of the Euler solver's instance takes about 20 minutes and reaches about 33 GB.
+# The Lean proof of the Euler solver's instance takes about 10 minutes and reaches about 11 GB.
 leanrun() {
-  tools/leanrun --timeout 120m --memory-high 38G "$@"
+  tools/leanrun --timeout 60m --memory-high 16G "$@"
 }
 
 # The programs: their C text, clightgen's Coq files, and the instances.
