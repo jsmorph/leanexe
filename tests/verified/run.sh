@@ -122,7 +122,8 @@ finish() {
     echo "checks: $ran ran, $unchanged unchanged since a recorded pass"
   fi
   if [ "$fast" -eq 1 ]; then
-    echo "$notice: $unchecked file theorem checks did not run"
+    echo "$notice"
+    echo "fast: file theorem checks not run: $unchecked"
     if [ "$configured" -eq 1 ] && ! tools/leanrun --timeout 10m lake -R env true; then
       echo "fail: Lake's checked configuration was not restored; run lake -R" >&2
       status=1
