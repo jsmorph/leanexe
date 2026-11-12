@@ -7,17 +7,19 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem command_loop_spec {source target : Wasm.Module}
+theorem command_loop_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty}
     {count : Expr pureSigs context .word} {initial : Expr pureSigs context type}
     {test : Expr pureSigs (type :: .word :: context) .bool}
     {step : Command pureSigs effectSigs (type :: .word :: context) (.value type)}
-    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
-    (bodySpec : CommandCodeSpec source target pure effects pool step) :
-    CommandCodeSpec source target pure effects pool (.loop count initial test step) := by
+    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
+    (bodySpec : CommandCodeSpecWith calls source target pure effects pool step) :
+    CommandCodeSpecWith calls source target pure effects pool (.loop count initial test step) := by
   intro World host targetHost depth env slots live h base heap store locals
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place
+  obtain ⟨ready, callsOk⟩ := ready
   let used := fun i => test.uses (i + 2) || step.uses (i + 2)
   let all := fun i => live i || used i
   let input := fun i => (all i || initial.uses i) || count.uses i
@@ -47,9 +49,10 @@ theorem command_loop_spec {source target : Wasm.Module}
     (by simp [Command.fragments])
   have finishFragment := ready (releaseWhere context slots (fun i => used i && !live i))
     (by simp [Command.fragments, used])
-  have stepReady : step.Ready source h
+  have stepReady : step.ReadyWith calls source h
       (⟨base + 2, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       (base + 2 + type.width) (shift 2 all) pool := by
+    refine ⟨?_, by simp only [Command.callsReady] at callsOk; exact callsOk⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]
@@ -99,13 +102,13 @@ theorem command_loop_spec {source target : Wasm.Module}
       (fun index state => test.denote pure.funs (.cons state (.cons index env)))
       (fun index state => step.denote pure.funs effects (.cons state (.cons index env))) Action.pure)
     heap store locals true
-  have execution := wp_loopPrepare (targetHost := targetHost)
+  have execution := wp_loopPrepare_with (calls := calls) (targetHost := targetHost)
     facts.runtime facts.layout facts.profile countSpec initialSpec
     countFragment.1 countFragment.2 initialFragment.1 initialFragment.2
     positions rfl vars at_ safe scratch facts.poolApart cap low
     (by simpa only [copyWidth, Ty.scalar, ite_true, Nat.max_zero] using countWidth)
     initialWidth (by omega) places.1 places.2.1
-    (rest := loopPreparedCode source h base slots pool test step live) (Q := Q)
+    (rest := loopPreparedCodeWith calls source h base slots pool test step live) (Q := Q)
     (fun final same => CommandResult.resource_refl rfl same)
     (fun finalHeap final finalLocals words after sameWorld countLocal indexLocal held stack _ => by
       have start : LoopFrame host env slots input all base heap store locals
@@ -118,16 +121,27 @@ theorem command_loop_spec {source target : Wasm.Module}
             rw [sameWorld]
             exact LoopProgress.initial _ _ _ _ _ store.host,
           after, countLocal, indexLocal, held, stack⟩
-      exact wp_loopPrepared facts.runtime facts.layout facts.profile bodySpec testSpec valid below depthParam
+      exact wp_loopPrepared_with facts.runtime facts.layout facts.profile bodySpec testSpec valid below depthParam
         positions vars scratch safe facts.poolApart selected cap low testWidth bodyWidth
         testFragment.1 testFragment.2 releaseFragment.1 releaseFragment.2
         finishFragment.1 finishFragment.2 stepReady stepCovered places.2.2.1 places.2.2.2 start)
-  have codeEq : (Command.loop count initial test step).code (pool := pool) source h slots base live =
-      loopPrepareCode h base slots pool count initial all ++
-        loopPreparedCode source h base slots pool test step live := by
-    simp only [Command.code, loopPrepareCode, loopPreparedCode, loopControlCode, Expr.usesFast_eq,
+  have codeEq : (Command.loop count initial test step).codeWith calls (pool := pool) source h slots base live =
+      loopPrepareCodeWith calls h base slots pool count initial all ++
+        loopPreparedCodeWith calls source h base slots pool test step live := by
+    simp only [Command.codeWith, loopPrepareCodeWith, loopPreparedCodeWith, loopControlCode, Expr.usesFast_eq,
       List.append_assoc, List.cons_append, List.nil_append, loopCaptured, all, used]
   rw [codeEq]
   exact execution
+
+theorem command_loop_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {type : Ty}
+    {count : Expr pureSigs context .word} {initial : Expr pureSigs context type}
+    {test : Expr pureSigs (type :: .word :: context) .bool}
+    {step : Command pureSigs effectSigs (type :: .word :: context) (.value type)}
+    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
+    (bodySpec : CommandCodeSpec source target pure effects pool step) :
+    CommandCodeSpec source target pure effects pool (.loop count initial test step) := by
+  layout_instance command_loop_spec_with
 
 end Verified.Wasi

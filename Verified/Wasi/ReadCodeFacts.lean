@@ -10,11 +10,20 @@ def readOverflowCode : Program :=
 
 def readReturnCode : Program := [.localGet 2, .localGet 1, .localGet 3]
 
-def readValidCode : Program := readAllocateCode ++ readCallCode 1 0 ++ readResultCode
+def readValidCodeWith (calls : List LeanExe.Wasi.Call) : Program :=
+  readAllocateCodeWith calls ++ readCallCode 1 0 ++ readResultCodeWith calls
+
+def readValidCode : Program := readValidCodeWith []
+
+theorem readCode_parts_with {calls : List LeanExe.Wasi.Call}
+    : readCodeWith calls 0 1 2 3 =
+    [.localGet 0, .constI64 4294967296, .geUI64,
+      .iff 0 0 readOverflowCode (readValidCodeWith calls) [] []] ++ readReturnCode := rfl
 
 theorem readCode_parts : readCode 0 1 2 3 =
     [.localGet 0, .constI64 4294967296, .geUI64,
-      .iff 0 0 readOverflowCode readValidCode [] []] ++ readReturnCode := rfl
+      .iff 0 0 readOverflowCode readValidCode [] []] ++ readReturnCode := by
+  layout_instance readCode_parts_with
 
 theorem wp_read_return {World : Type} {m : Module} {env : HostEnv World}
     {store : Store World} {Q : Assertion World} {rest : Program}

@@ -46,7 +46,8 @@ theorem CommandResult.resource_refl {World : Type} {context : List Ty}
       (.Trap final "unreachable") :=
   .resource final [] action allowed (sameWorld.symm ▸ Prefix.refl action initial.host)
 
-theorem wp_command_unit {World : Type} {host : Host World} {context : List Ty}
+theorem wp_command_unit_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World} {context : List Ty}
     {pureSigs : List Sig} {effectSigs : List EffectSig} {env : Env context}
     {slots : List Slot} {live : Nat → Bool} {base h : Nat} {heap : Heap}
     {initial : Store (Observed World)} {locals : Locals} {source target : Wasm.Module}
@@ -54,7 +55,7 @@ theorem wp_command_unit {World : Type} {host : Host World} {context : List Ty}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds env slots live base heap (PureTransport.erase initial) locals) :
     wp target ((Command.unit (pureSigs := pureSigs) (effectSigs := effectSigs)
-        (context := context)).code
+        (context := context)).codeWith calls
         (pool := pool) source h slots base live)
       (CommandResult host env slots live live base .unit (.pure ()) heap initial locals aborts)
       initial locals targetHost := by
@@ -67,5 +68,19 @@ theorem wp_command_unit {World : Type} {host : Host World} {context : List Ty}
       (After.unit at_ vars)
   cases locals
   simpa only [List.reverse_nil, List.nil_append] using result
+
+theorem wp_command_unit {World : Type} {host : Host World} {context : List Ty}
+    {pureSigs : List Sig} {effectSigs : List EffectSig} {env : Env context}
+    {slots : List Slot} {live : Nat → Bool} {base h : Nat} {heap : Heap}
+    {initial : Store (Observed World)} {locals : Locals} {source target : Wasm.Module}
+    {targetHost : HostEnv (Observed World)} {aborts : Bool} {pool : Bytes.LiteralPool}
+    (at_ : heap.At (PureTransport.erase initial))
+    (vars : Holds env slots live base heap (PureTransport.erase initial) locals) :
+    wp target ((Command.unit (pureSigs := pureSigs) (effectSigs := effectSigs)
+        (context := context)).code
+        (pool := pool) source h slots base live)
+      (CommandResult host env slots live live base .unit (.pure ()) heap initial locals aborts)
+      initial locals targetHost := by
+  layout_instance wp_command_unit_with
 
 end Verified.Wasi

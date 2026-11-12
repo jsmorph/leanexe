@@ -41,6 +41,38 @@ theorem CostFunctionResult.return_or_accepted_exit {World : Type} {host : Host W
       | trapped cause => exact False.elim (native.not_trapped_of_prefix safe cause rfl)
     | resource final trace residual allowed progress => exact False.elim (Bool.noConfusion allowed)
 
+theorem CostEffectSpecWith.return_or_accepted_exit {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {callee : EffectVar effectSigs signature} {index : Nat} {pool : Bytes.LiteralPool}
+    (spec : CostEffectSpecWith calls source target pure program callee index pool)
+    {World : Type} (host : Host World) (targetHost : HostEnv (Observed World))
+    (depth : UInt64) (heap : Heap) (initial : Store (Observed World))
+    (params : List Value) (args : Env signature.params) (budget : Nat)
+    (valid : targetHost.Satisfies target (hostSpecWith host calls))
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep signature.mode heap (PureTransport.erase initial) params args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) signature.mode params args)
+      (Env.reads (PureTransport.erase initial) signature.mode params args))
+    (input : @Bytes.LiteralPool.Input (Env signature.params)
+      (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial) params args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
+      regionsDisjoint ABI.scratch region)
+    (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
+    (within : heap.Within (PureTransport.erase initial) source budget)
+    (bounded : Resource.CallPrefixBound (observedHost host) pure program callee depth args initial.host budget)
+    (safe : host.NoTrapsAlong ((program.funs pure.funs).get callee args) initial.host.world) :
+    ∃ bound, ∀ fuel ≥ bound,
+      CostFunctionResult host pure program callee depth args params heap initial false
+        (run fuel target index initial ((.i64 depth :: params).reverse) targetHost) ∧
+      ReturnOrAcceptedExit host ((program.funs pure.funs).get callee args) initial.host
+        (run fuel target index initial ((.i64 depth :: params).reverse) targetHost) := by
+  obtain ⟨bound, proof⟩ := spec World host targetHost depth heap initial params args budget false
+    valid at_ rep separate input scratch cap (fun _ => ⟨within, bounded⟩)
+  exact ⟨bound, fun fuel enough =>
+    ⟨proof fuel enough, (proof fuel enough).return_or_accepted_exit safe⟩⟩
+
 theorem CostEffectSpec.return_or_accepted_exit {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {callee : EffectVar effectSigs signature} {index : Nat} {pool : Bytes.LiteralPool}
@@ -67,9 +99,6 @@ theorem CostEffectSpec.return_or_accepted_exit {source target : Wasm.Module}
         (run fuel target index initial ((.i64 depth :: params).reverse) targetHost) ∧
       ReturnOrAcceptedExit host ((program.funs pure.funs).get callee args) initial.host
         (run fuel target index initial ((.i64 depth :: params).reverse) targetHost) := by
-  obtain ⟨bound, proof⟩ := spec World host targetHost depth heap initial params args budget false
-    valid at_ rep separate input scratch cap (fun _ => ⟨within, bounded⟩)
-  exact ⟨bound, fun fuel enough =>
-    ⟨proof fuel enough, (proof fuel enough).return_or_accepted_exit safe⟩⟩
+  layout_instance CostEffectSpecWith.return_or_accepted_exit
 
 end Verified.Wasi

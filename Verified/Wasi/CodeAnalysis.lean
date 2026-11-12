@@ -32,5 +32,6 @@ def Command.width : {context : List Ty} → {result : ResultTy} →
   | _, _, .loop (type := type) count initial test step =>
     max count.width (max (1 + max initial.width (copyWidth type))
       (2 + type.width + max test.width step.width))
+  | _, _, .sys _ _ _ => 6
 
 end Verified.Wasi

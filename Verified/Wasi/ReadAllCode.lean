@@ -38,16 +38,20 @@ def readAllOverflowCode (base : Nat) : Program :=
 def readAllLoopCode (base : Nat) : Program :=
   [.block 0 0 [.loop 0 0 (readAllBody base) [] []] [] []]
 
-def readAllValidCode (base : Nat) : Program :=
-  [.localGet base, .constI64 4096, .addI64, .call 3, .localSet (base + 2),
+def readAllValidCodeWith (calls : List LeanExe.Wasi.Call) (base : Nat) : Program :=
+  [.localGet base, .constI64 4096, .addI64, .call (3 + calls.length), .localSet (base + 2),
    .constI64 0, .localSet (base + 1), .constI64 0, .localSet (base + 3),
    .constI64 4096, .localSet (base + 5)] ++ readAllLoopCode base
 
+def readAllValidCode (base : Nat) : Program := readAllValidCodeWith [] base
+
 /-- The code after the limit's: it takes the limit from the stack and leaves the errno, the root,
 and the length there. -/
-def readAllCode (base : Nat) : Program :=
+def readAllCodeWith (calls : List LeanExe.Wasi.Call) (base : Nat) : Program :=
   [.localSet base, .localGet base, .constI64 4294963200, .geUI64,
-   .iff 0 0 (readAllOverflowCode base) (readAllValidCode base) [] [],
+   .iff 0 0 (readAllOverflowCode base) (readAllValidCodeWith calls base) [] [],
    .localGet (base + 1), .localGet (base + 2), .localGet (base + 3)]
+
+def readAllCode (base : Nat) : Program := readAllCodeWith [] base
 
 end Verified.Wasi

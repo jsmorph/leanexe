@@ -12,6 +12,10 @@ def Host.NoTrapsAt {World : Type} (host : Host World) : Action α → World → 
       ∀ {message committed final}, host.write world output bytes (.trapped message committed) final → False
   | .exit code, world =>
       ∀ {message final}, host.exitTrap world (exitStatus code) message final → False
+  | .sys call args _, world =>
+      call.reject args = 0 →
+        ∀ {message committed final}, host.sys world call args (.trapped message committed) final →
+          False
 
 def Host.NoTrapsAlong {World : Type} (host : Host World) (action : Action α) (world : World) : Prop :=
   ∀ {trace residual after}, Prefix host action world trace residual after → host.NoTrapsAt residual after
@@ -30,6 +34,9 @@ theorem Host.NoTraps.along {World : Type} {host : Host World} (safe : host.NoTra
   | exit code =>
     intro message final rejected
     exact safe.exitTrap rejected
+  | sys call args next =>
+    intro _ message committed final reply
+    exact safe.sys reply
 
 theorem Host.NoTrapsAlong.congr {World : Type} {host : Host World} {action other : Action α}
     {world : World} (safe : host.NoTrapsAlong action world) (same : action = other) :
@@ -69,7 +76,7 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
     (motive_2 := fun {α σ} remaining index (state : σ) test step next world trace outcome final _ =>
       host.NoTrapsAlong (resumeLoop test step next remaining index state) world →
         ∀ message, outcome ≠ .trapped message)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
   · intro α world value safe message impossible
     cases impossible
   · intro α capacity next world final trace outcome hCapacity run ih safe
@@ -88,6 +95,12 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
     exact False.elim (safe (.refl _ _) rejected)
   · intro σ α count init test step next world final trace outcome run ih safe
     exact ih (safe.after .loop)
+  · intro α call args next world final trace outcome hFits run ih safe
+    exact ih (safe.after (.sys_reject hFits))
+  · intro α call args next world after final trace outcome errno committed hFits reply run ih safe
+    exact ih (safe.after (.sys_return hFits reply))
+  · intro α call args next world after message committed hFits reply safe
+    exact False.elim (safe (.refl _ _) hFits reply)
   · intro σ α index state test step next world final trace outcome run ih safe
     exact ih safe
   · intro σ α remaining index state test step next world final trace outcome chosen run ih safe

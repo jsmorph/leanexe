@@ -35,6 +35,8 @@ typedef struct {
   const char *stdout_file;
   const char *stderr_file;
   const char *control_file;
+  const char **guest_args;
+  size_t guest_arg_count;
 } HostOptions;
 
 static HostOptions options;
@@ -293,6 +295,11 @@ static wasi_config_t *configure_wasi(void) {
     fprintf(stderr, "cannot open WASI stream file: %s\n", failed_path);
     wasi_config_delete(config);
     finish_host(1);
+  }
+  if (options.guest_arg_count > 0 &&
+      !wasi_config_set_argv(config, options.guest_arg_count, options.guest_args)) {
+    wasi_config_delete(config);
+    die("a guest argument is not valid UTF-8");
   }
   return config;
 }
@@ -1689,7 +1696,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static _Noreturn void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host [--wasi] [--stdin-file PATH] [--stdout-file PATH] "
-          "[--stderr-file PATH] [--control-file PATH] <mode> <module.wasm> [arguments]\n"
+          "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... <mode> <module.wasm> "
+          "[arguments]\n"
           "       wasmtime-host [options] run <module.wasm>\n"
           "       wasmtime-host [options] call|call-stats <module.wasm> <function> "
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
@@ -1705,6 +1713,10 @@ static _Noreturn void usage(void) {
 
 static int parse_options(int argc, char **argv) {
   int i = 1;
+  options.guest_args = calloc((size_t)argc, sizeof(const char *));
+  if (options.guest_args == NULL) {
+    die("out of memory");
+  }
   while (i < argc && strncmp(argv[i], "--", 2) == 0) {
     const char *option = argv[i++];
     if (strcmp(option, "--") == 0) {
@@ -1712,6 +1724,14 @@ static int parse_options(int argc, char **argv) {
     }
     if (strcmp(option, "--wasi") == 0) {
       options.wasi = true;
+      continue;
+    }
+    if (strcmp(option, "--arg") == 0) {
+      if (i == argc) {
+        fprintf(stderr, "missing value for --arg\n");
+        usage();
+      }
+      options.guest_args[options.guest_arg_count++] = argv[i++];
       continue;
     }
     const char **path = NULL;
@@ -1743,6 +1763,9 @@ static int parse_options(int argc, char **argv) {
   if (!options.wasi &&
       (options.stdin_file != NULL || options.stdout_file != NULL || options.stderr_file != NULL)) {
     die("guest stream options require --wasi or run");
+  }
+  if (!options.wasi && options.guest_arg_count > 0) {
+    die("--arg requires --wasi or run");
   }
   if (options.wasi && !options.command && options.control_file == NULL &&
       options.stdout_file == NULL) {

@@ -8,15 +8,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem cost_command_exit_spec {source target : Wasm.Module}
+theorem cost_command_exit_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
     (status : Expr pureSigs context .word) :
-    CostCommandCodeSpec source target pure program pool (.exit (result := result) status) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.exit (result := result) status) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe _ cap low room ready covered place resource
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := status.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -34,7 +35,7 @@ theorem cost_command_exit_spec {source target : Wasm.Module}
       obtain ⟨withinStatus, fitsStatus⟩ := bounded.exit_resources locals within
       simp only [Resource.PureContext.exprFits] at fitsStatus
       simp [fitsStatus, withinStatus] at failure
-  have execution := wp_command_exit (effectFuns := program.funs pure.funs) (result := result)
+  have execution := wp_command_exit_with (calls := calls) (effectFuns := program.funs pure.funs) (result := result)
     facts.runtime facts.layout facts.profile facts.imports valid spec
     (by simpa only [noCoerce, List.append_nil] using fragment.1)
     (by simpa only [noCoerce, List.append_nil] using fragment.2)
@@ -46,5 +47,13 @@ theorem cost_command_exit_spec {source target : Wasm.Module}
     exact .trapped final message (.terminal final trace outcome message run terminal)
   | resource final trace residual allowed progress =>
     exact .trapped final "unreachable" (.resource final trace residual allowed progress)
+
+theorem cost_command_exit_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (status : Expr pureSigs context .word) :
+    CostCommandCodeSpec source target pure program pool (.exit (result := result) status) := by
+  layout_instance cost_command_exit_spec_with
 
 end Verified.Wasi

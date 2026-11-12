@@ -92,9 +92,9 @@ theorem execOne_unreachable {World : Type} (source target : Module) (fuel : Nat)
       liftContinuation world (execOne fuel source initial locals .unreachable sourceHost) := by
   cases fuel <;> simp only [execOne.eq_def, liftContinuation]
 
-theorem run_frame_at {World : Type} {source target : Module} {index : Nat}
+theorem run_frame_at_with {World : Type} {source target : Module} {index shift : Nat}
     {sourceFunction targetFunction : Function}
-    (hSourceImports : source.imports = []) (hTargetImports : target.imports.length = 3)
+    (hSourceImports : source.imports = []) (hTargetImports : target.imports.length = shift)
     (hSourceFunction : source.funcs[index]? = some sourceFunction)
     (hTargetFunction : target.funcs[index]? = some targetFunction)
     (hShape : FunctionShape sourceFunction targetFunction)
@@ -105,13 +105,13 @@ theorem run_frame_at {World : Type} {source target : Module} {index : Nat}
         liftContinuation world (exec fuel source initial locals sourceFunction.body sourceHost))
     (hNoTail : ∀ locals,
       NoReturnCall (exec fuel source initial locals sourceFunction.body sourceHost)) :
-    run fuel target (3 + index) (restore world initial) args targetHost =
+    run fuel target (shift + index) (restore world initial) args targetHost =
       liftResult world (run fuel source index initial args sourceHost) := by
   have hSourceNoImport : source.imports[index]? = none := by simp [hSourceImports]
-  have hTargetNoImport : target.imports[3 + index]? = none :=
+  have hTargetNoImport : target.imports[shift + index]? = none :=
     List.getElem?_eq_none (by omega)
   have hSourcePosition : index - source.imports.length = index := by simp [hSourceImports]
-  have hTargetPosition : 3 + index - target.imports.length = index := by omega
+  have hTargetPosition : shift + index - target.imports.length = index := by omega
   rw [run_eq hTargetNoImport, run_eq hSourceNoImport]
   simp only [hSourcePosition, hTargetPosition, hSourceFunction, hTargetFunction]
   rw [hShape.frame args]
@@ -131,6 +131,41 @@ theorem run_frame_at {World : Type} {source target : Module} {index : Nat}
       simp only [hExec, NoReturnCall] at hNo
   | Throwing tag values store locals => rfl
 
+theorem run_frame_with {World : Type} {source target : Module} {index shift : Nat}
+    {sourceFunction targetFunction : Function}
+    (hSourceImports : source.imports = []) (hTargetImports : target.imports.length = shift)
+    (hSourceFunction : source.funcs[index]? = some sourceFunction)
+    (hTargetFunction : target.funcs[index]? = some targetFunction)
+    (hShape : FunctionShape sourceFunction targetFunction)
+    (hBody : CodeTransport World source target sourceFunction.body targetFunction.body)
+    (hNoTail : NoReturnCalls source sourceFunction.body)
+    (fuel : Nat) (initial : Store Unit) (world : World) (args : List Value)
+    (sourceHost : HostEnv Unit) (targetHost : HostEnv World) :
+    run fuel target (shift + index) (restore world initial) args targetHost =
+      liftResult world (run fuel source index initial args sourceHost) :=
+  run_frame_at_with hSourceImports hTargetImports hSourceFunction hTargetFunction hShape
+    fuel initial world args sourceHost targetHost
+    (fun locals => hBody fuel initial world locals sourceHost targetHost)
+    (fun locals => hNoTail fuel initial locals sourceHost)
+
+theorem run_frame_at {World : Type} {source target : Module} {index : Nat}
+    {sourceFunction targetFunction : Function}
+    (hSourceImports : source.imports = []) (hTargetImports : target.imports.length = 3)
+    (hSourceFunction : source.funcs[index]? = some sourceFunction)
+    (hTargetFunction : target.funcs[index]? = some targetFunction)
+    (hShape : FunctionShape sourceFunction targetFunction)
+    (fuel : Nat) (initial : Store Unit) (world : World) (args : List Value)
+    (sourceHost : HostEnv Unit) (targetHost : HostEnv World)
+    (hBody : ∀ locals,
+      exec fuel target (restore world initial) locals targetFunction.body targetHost =
+        liftContinuation world (exec fuel source initial locals sourceFunction.body sourceHost))
+    (hNoTail : ∀ locals,
+      NoReturnCall (exec fuel source initial locals sourceFunction.body sourceHost)) :
+    run fuel target (3 + index) (restore world initial) args targetHost =
+      liftResult world (run fuel source index initial args sourceHost) :=
+  run_frame_at_with hSourceImports hTargetImports hSourceFunction hTargetFunction hShape
+    fuel initial world args sourceHost targetHost hBody hNoTail
+
 theorem run_frame {World : Type} {source target : Module} {index : Nat}
     {sourceFunction targetFunction : Function}
     (hSourceImports : source.imports = []) (hTargetImports : target.imports.length = 3)
@@ -143,10 +178,8 @@ theorem run_frame {World : Type} {source target : Module} {index : Nat}
     (sourceHost : HostEnv Unit) (targetHost : HostEnv World) :
     run fuel target (3 + index) (restore world initial) args targetHost =
       liftResult world (run fuel source index initial args sourceHost) :=
-  run_frame_at hSourceImports hTargetImports hSourceFunction hTargetFunction hShape
+  run_frame_with hSourceImports hTargetImports hSourceFunction hTargetFunction hShape hBody hNoTail
     fuel initial world args sourceHost targetHost
-    (fun locals => hBody fuel initial world locals sourceHost targetHost)
-    (fun locals => hNoTail fuel initial locals sourceHost)
 
 theorem exec_call_cons_of_run {World : Type} {source target : Module}
     {sourceEntry targetEntry fuel : Nat} {initial : Store Unit} {world : World}

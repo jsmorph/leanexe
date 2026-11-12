@@ -67,9 +67,14 @@ theorem atomic_cases {inst : Instruction} (hForm : Encoding.InstructionForm inst
     integerAtomic inst = true ∨ floatAtomic inst = true ∨ stateAtomic inst = true := by
   cases hForm <;> simp_all [atomic, integerAtomic, floatAtomic, stateAtomic]
 
+theorem relocate_atomic_with {calls : List LeanExe.Wasi.Call}
+    {inst : Instruction} (hForm : Encoding.InstructionForm inst)
+    (hAtomic : atomic inst = true) : Relocation.instructionWith calls inst = inst := by
+  cases hForm <;> simp_all only [atomic, Relocation.instructionWith, Bool.false_eq_true]
+
 theorem relocate_atomic {inst : Instruction} (hForm : Encoding.InstructionForm inst)
     (hAtomic : atomic inst = true) : Relocation.instruction inst = inst := by
-  cases hForm <;> simp_all only [atomic, Relocation.instruction, Bool.false_eq_true]
+  layout_instance relocate_atomic_with
 
 @[simp] theorem restore_mem (world : World) (store : Store Unit) :
     (restore world store).mem = store.mem := rfl

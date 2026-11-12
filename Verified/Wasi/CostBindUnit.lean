@@ -8,18 +8,20 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem cost_command_bind_unit_spec {source target : Wasm.Module}
+theorem cost_command_bind_unit_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool)
     (first : Command pureSigs effectSigs context .unit)
     (next : Command pureSigs effectSigs context result)
-    (firstSpec : CostCommandCodeSpec source target pure program pool first)
-    (nextSpec : CostCommandCodeSpec source target pure program pool next) :
-    CostCommandCodeSpec source target pure program pool
+    (firstSpec : CostCommandCodeSpecWith calls source target pure program pool first)
+    (nextSpec : CostCommandCodeSpecWith calls source target pure program pool next) :
+    CostCommandCodeSpecWith calls source target pure program pool
       (.bind (intermediate := .unit) (result := result) first next) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place resource
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || next.uses i
   let all := fun i => mid i || first.uses i
   have shiftZero : shift 0 live = live := by
@@ -42,10 +44,12 @@ theorem cost_command_bind_unit_spec {source target : Wasm.Module}
     (Nat.add_le_add_left (Nat.le_max_left first.width next.width) base).trans room
   have nextRoom : base + next.width ≤ h :=
     (Nat.add_le_add_left (Nat.le_max_right first.width next.width) base).trans room
-  have firstReady : first.Ready source h slots base mid pool := by
+  have firstReady : first.ReadyWith calls source h slots base mid pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_left _ member)
-  have nextReady : next.Ready source h slots base live pool := by
+  have nextReady : next.ReadyWith calls source h slots base live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_right _ member)
   obtain ⟨firstCovered, nextCovered⟩ := (Command.covered_bind first next pool).mp covered
@@ -60,7 +64,7 @@ theorem cost_command_bind_unit_spec {source target : Wasm.Module}
   let Q := CostCommandResult host pure program (.bind first next) depth env slots all live base
     heap initial locals aborts
   change wp target
-    (first.code (pool := pool) source h slots base mid ++ next.code (pool := pool) source h slots base live)
+    (first.codeWith calls (pool := pool) source h slots base mid ++ next.codeWith calls (pool := pool) source h slots base live)
     Q initial locals targetHost
   apply wp_append
   refine wp.conseq (fun continuation firstResult => ?_) firstRun
@@ -115,5 +119,17 @@ theorem cost_command_bind_unit_spec {source target : Wasm.Module}
     exact CommandResult.bind_trap (intermediate := .unit) (result := result)
       (liveMid := mid) (next := fun _ : Unit => next.denote pure.funs (program.funs pure.funs) env)
       classification id
+
+theorem cost_command_bind_unit_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty} {result : ResultTy}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool)
+    (first : Command pureSigs effectSigs context .unit)
+    (next : Command pureSigs effectSigs context result)
+    (firstSpec : CostCommandCodeSpec source target pure program pool first)
+    (nextSpec : CostCommandCodeSpec source target pure program pool next) :
+    CostCommandCodeSpec source target pure program pool
+      (.bind (intermediate := .unit) (result := result) first next) := by
+  layout_instance cost_command_bind_unit_spec_with
 
 end Verified.Wasi

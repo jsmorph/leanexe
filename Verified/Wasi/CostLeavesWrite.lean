@@ -6,15 +6,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-theorem cost_command_write_spec {source target : Wasm.Module}
+theorem cost_command_write_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
     (output : Output) (bytes : Var context .bytes) :
-    CostCommandCodeSpec source target pure program pool (.write output bytes) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.write output bytes) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ _ positions vars at_ _ scratch _ _ _ ready _ _ _
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   let all := fun i => live i || i == bytes.index
   let selected := fun i => i == bytes.index && !live i
@@ -37,22 +38,22 @@ theorem cost_command_write_spec {source target : Wasm.Module}
     dsimp only [all, selected]
     cases live i <;> cases (i == bytes.index) <;> rfl
   suffices execution : wp target (loadCode h (slots.getD bytes.index default).loc Ty.bytes.types ++
-      ([.call (3 + index)] ++ Relocation.program (releaseWhere context slots selected)))
+      ([.call (3 + calls.length + index)] ++ Relocation.programWith calls (releaseWhere context slots selected)))
       (CostCommandResult host pure program (.write output bytes) depth env slots all live base
         heap initial locals aborts) initial locals targetHost by
     cases output <;>
-      simpa only [Command.code, Command.uses, index, selected, Wrappers.stdoutIndex, Wrappers.stderrIndex,
-        Module.extraIndex, List.append_assoc, Nat.add_assoc] using execution
+      simpa only [Command.codeWith, Command.uses, index, selected, Wrappers.stdoutIndexWith, Wrappers.stderrIndexWith,
+        Module.extraIndexWith, List.append_assoc, Nat.add_assoc] using execution
   refine wp_loadCode [.i64 root, .i64 length] rfl positions held ?_
-  refine wp_write_helper_at facts.imports lookup valid at_ rep ?_ ?_
+  refine wp_write_helper_at_with facts.imports lookup valid at_ rep ?_ ?_
   · intro middle result trace execution frame _ _
     have middleVars := frame.scratchHolds at_ vars scratch (Frame.refl base locals)
     let current : Locals :=
       { locals with values := .i64 result.count :: .i64 result.errno :: locals.values }
     have currentVars : Holds env slots all base heap (PureTransport.erase middle) current :=
       middleVars.agree Frame.ofValues
-    rw [← List.append_nil (Relocation.program (releaseWhere context slots selected))]
-    refine wp_release_context (sourceHost := sourceHost) (rest := [])
+    rw [← List.append_nil (Relocation.programWith calls (releaseWhere context slots selected))]
+    refine wp_release_context_with (sourceHost := sourceHost) (rest := [])
       facts.runtime facts.layout facts.profile fragment.1 fragment.2
       currentVars (frame.scratchHeap at_) selectLive ?_
     intro finalHeap final evolution topEq sameWorld
@@ -88,5 +89,13 @@ theorem cost_command_write_spec {source target : Wasm.Module}
           (rest := []) ⟨rfl, rfl, rfl⟩
     exact .trapped final message (.terminal final trace (.trapped message) message
       (actionEq.symm ▸ flat) rfl)
+
+theorem cost_command_write_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (output : Output) (bytes : Var context .bytes) :
+    CostCommandCodeSpec source target pure program pool (.write output bytes) := by
+  layout_instance cost_command_write_spec_with
 
 end Verified.Wasi

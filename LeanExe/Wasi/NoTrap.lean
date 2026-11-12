@@ -8,6 +8,8 @@ structure Host.NoTraps {World : Type} (host : Host World) : Prop where
   write : ∀ {world output bytes message committed final},
     host.write world output bytes (.trapped message committed) final → False
   exitTrap : ∀ {world code message final}, host.exitTrap world code message final → False
+  sys : ∀ {world call args message committed final},
+    host.sys world call args (.trapped message committed) final → False
 
 theorem Exec.not_trapped {World : Type} {host : Host World} {action : Action α}
     {world trace outcome final} (execution : Exec host action world trace outcome final)
@@ -17,7 +19,7 @@ theorem Exec.not_trapped {World : Type} {host : Host World} {action : Action α}
       ∀ message, outcome ≠ .trapped message)
     (motive_2 := fun {α σ} remaining index (state : σ) test step next world trace outcome final _ =>
       ∀ message, outcome ≠ .trapped message)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ execution
   · intro α world value message impossible
     cases impossible
   · intro α capacity next world final trace outcome hCapacity run ih
@@ -36,6 +38,12 @@ theorem Exec.not_trapped {World : Type} {host : Host World} {action : Action α}
     exact False.elim (safe.exitTrap rejected)
   · intro σ α count init test step next world final trace outcome run ih
     exact ih
+  · intro α call args next world final trace outcome hFits run ih
+    exact ih
+  · intro α call args next world after final trace outcome errno committed hFits reply run ih
+    exact ih
+  · intro α call args next world after message committed hFits reply
+    exact False.elim (safe.sys reply)
   · intro σ α index state test step next world final trace outcome run ih
     exact ih
   · intro σ α remaining index state test step next world final trace outcome chosen run ih

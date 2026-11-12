@@ -16,6 +16,7 @@ private inductive EventView where
   | write (fd : UInt64) (bytes : List UInt8) (errno : Option UInt64) (count : UInt64) (message : String)
   | exit (code : UInt64)
   | exitTrap (code : UInt64) (message : String)
+  | sys (name : String)
   deriving BEq, Repr
 
 private def eventView : Event → EventView
@@ -27,6 +28,7 @@ private def eventView : Event → EventView
       .write output.fd bytes.data.data.toList none count message
   | .exit code => .exit code
   | .exitTrap code message => .exitTrap code message
+  | .sys call _ _ => .sys call.name
 
 private def checkEvents (store : Store (Observed World)) (expected : List EventView) : IO Unit :=
   equal "ordered events" (store.host.events.map eventView) expected

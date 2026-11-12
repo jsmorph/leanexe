@@ -76,6 +76,88 @@ theorem wp_store_command_result {World : Type} {host : Host World}
   | resource final trace residual allowed progress =>
       exact resource final trace residual allowed progress
 
+theorem wp_ite_branch_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World} {source target : Module}
+    {context : List Ty} {env : Env context} {slots : List Slot}
+    {all branchLive live : Nat → Bool} {base h : Nat} {result : ResultTy}
+    {action : Action result.denote} {pool : Bytes.LiteralPool}
+    {sourceHost : HostEnv Unit} {targetHost : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap} {locals : Locals} {aborts : Bool}
+    {code : Program} {P : Assertion (Observed World)}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source)
+    (form : Encoding.ProgramForm (releaseWhere context slots (fun i => all i && !branchLive i)))
+    (closed : Relocation.programClosed source.funcs.length
+      (releaseWhere context slots (fun i => all i && !branchLive i)) = true)
+    (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
+    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (safe : pool.Safe env slots all heap (PureTransport.erase initial) locals)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (at_ : heap.At (PureTransport.erase initial))
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (branchSelected : ∀ i, branchLive i = true → all i = true)
+    (liveSelected : ∀ i, live i = true → branchLive i = true)
+    (positions : locals.positions = h) (low : locals.params.length ≤ base)
+    (room : base + result.width ≤ h)
+    (body : ∀ (middleHeap : Heap) (middle : Store (Observed World)),
+      Evolves env slots all branchLive (base + result.width) heap
+        (PureTransport.erase initial) locals middleHeap (PureTransport.erase middle) locals →
+      middleHeap.top = heap.top → middle.host = initial.host →
+      middleHeap.At (PureTransport.erase middle) →
+      Holds env slots branchLive (base + result.width) middleHeap
+        (PureTransport.erase middle) locals →
+      pool.Safe env slots branchLive middleHeap (PureTransport.erase middle) locals →
+      Holds.ApartFrom env slots branchLive (PureTransport.erase middle) locals ABI.scratch →
+      (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
+      wp target code (CommandResult host env slots branchLive live (base + result.width)
+        result action middleHeap middle locals aborts) middle locals targetHost)
+    (next : ∀ (finalHeap : Heap) (final : Store (Observed World)) (stored : Locals)
+      (words : List Value) (value : result.denote) (trace : List Event),
+      Exec (observedHost host) action initial.host trace (.returned value) final.host →
+      After env slots all live base heap initial locals result value finalHeap final stored words →
+      LocalsHold stored base result.types words → P (.Fallthrough final stored))
+    (terminal : ∀ (final : Store (Observed World)) (trace : List Event)
+      (outcome : Outcome result.denote) (message : String),
+      Exec (observedHost host) action initial.host trace outcome final.host →
+      TerminalMessage message outcome → P (.Trap final message))
+    (resource : ∀ (final : Store (Observed World)) (trace : List Event)
+      (residual : Action result.denote), aborts = true →
+      Prefix (observedHost host) action initial.host trace residual final.host →
+      P (.Trap final "unreachable")) :
+    wp target (Relocation.programWith calls (releaseWhere context slots (fun i => all i && !branchLive i)) ++
+      code ++ storeCode h base result.types) P initial locals targetHost := by
+  have liveEq : (fun i => all i && !(all i && !branchLive i)) = branchLive := by
+    funext i
+    exact live_released (all i) (branchLive i) (branchSelected i)
+  have upperVars := vars.mono (Nat.le_add_right base result.width)
+  have sequence : wp target (Relocation.programWith calls
+      (releaseWhere context slots (fun i => all i && !branchLive i)) ++ code)
+      (CommandResult host env slots all live (base + result.width) result action
+        heap initial locals aborts) initial locals targetHost := by
+    refine wp_release_context_with (sourceHost := sourceHost) runtime layout profile form closed
+      upperVars at_ (fun _ selected => by
+        simp only [Bool.and_eq_true] at selected
+        exact selected.1) ?_
+    intro middleHeap middle evolution top sameWorld
+    have evolution' : Evolves env slots all branchLive (base + result.width) heap
+        (PureTransport.erase initial) locals middleHeap (PureTransport.erase middle) locals := by
+      simpa only [liveEq] using evolution
+    have after := cleanup_after evolution'
+    have firstExecution : Exec (observedHost host) (.pure ()) initial.host []
+        (.returned ()) middle.host := by
+      rw [sameWorld]
+      exact .pure initial.host ()
+    refine wp.conseq (fun continuation execution => ?_)
+      (body middleHeap middle evolution' top sameWorld after.step.at_ after.holds
+        (after.pool_safe safe upperVars apart branchSelected poolApart).1
+        (after.scratch upperVars apart branchSelected)
+        (by rw [after.step.cap source]; exact cap))
+    simpa only [Action.bind] using CommandResult.bind_unit (next := fun _ => action)
+      upperVars apart firstExecution after rfl execution branchSelected liveSelected
+  simpa only [List.append_assoc] using
+    wp_store_command_result vars (fun i selected => branchSelected i (liveSelected i selected))
+      positions low room sequence next terminal resource
+
 theorem wp_ite_branch {World : Type} {host : Host World} {source target : Module}
     {context : List Ty} {env : Env context} {slots : List Slot}
     {all branchLive live : Nat → Bool} {base h : Nat} {result : ResultTy}
@@ -125,36 +207,6 @@ theorem wp_ite_branch {World : Type} {host : Host World} {source target : Module
       P (.Trap final "unreachable")) :
     wp target (Relocation.program (releaseWhere context slots (fun i => all i && !branchLive i)) ++
       code ++ storeCode h base result.types) P initial locals targetHost := by
-  have liveEq : (fun i => all i && !(all i && !branchLive i)) = branchLive := by
-    funext i
-    exact live_released (all i) (branchLive i) (branchSelected i)
-  have upperVars := vars.mono (Nat.le_add_right base result.width)
-  have sequence : wp target (Relocation.program
-      (releaseWhere context slots (fun i => all i && !branchLive i)) ++ code)
-      (CommandResult host env slots all live (base + result.width) result action
-        heap initial locals aborts) initial locals targetHost := by
-    refine wp_release_context (sourceHost := sourceHost) runtime layout profile form closed
-      upperVars at_ (fun _ selected => by
-        simp only [Bool.and_eq_true] at selected
-        exact selected.1) ?_
-    intro middleHeap middle evolution top sameWorld
-    have evolution' : Evolves env slots all branchLive (base + result.width) heap
-        (PureTransport.erase initial) locals middleHeap (PureTransport.erase middle) locals := by
-      simpa only [liveEq] using evolution
-    have after := cleanup_after evolution'
-    have firstExecution : Exec (observedHost host) (.pure ()) initial.host []
-        (.returned ()) middle.host := by
-      rw [sameWorld]
-      exact .pure initial.host ()
-    refine wp.conseq (fun continuation execution => ?_)
-      (body middleHeap middle evolution' top sameWorld after.step.at_ after.holds
-        (after.pool_safe safe upperVars apart branchSelected poolApart).1
-        (after.scratch upperVars apart branchSelected)
-        (by rw [after.step.cap source]; exact cap))
-    simpa only [Action.bind] using CommandResult.bind_unit (next := fun _ => action)
-      upperVars apart firstExecution after rfl execution branchSelected liveSelected
-  simpa only [List.append_assoc] using
-    wp_store_command_result vars (fun i selected => branchSelected i (liveSelected i selected))
-      positions low room sequence next terminal resource
+  layout_instance wp_ite_branch_with
 
 end Verified.Wasi
