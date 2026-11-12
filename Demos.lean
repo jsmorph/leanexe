@@ -86,7 +86,9 @@ import Demos.Gate.Flat
 import Demos.Gate.GateFlat
 import Demos.Gate.GateProgram
 import Demos.Gate.GateSoundness
+import Demos.Gate.Gaussian
 import Demos.Gate.Mahalanobis
+import Demos.Gate.Miss
 import Demos.Gate.Model
 import Demos.Gate.Program
 import Demos.Gate.Soundness
