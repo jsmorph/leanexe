@@ -25,8 +25,9 @@ the unique radius at the probability.
 
 [The adaptive program](#adaptive-panels) returns the same two intervals, for the probability and
 the circular error, from panels whose lengths follow the integrand, in a third module with the same
-theorems.  For a mean 1,000 standard deviations from the origin, its radius search returns status
-0 at `p = 0.9` from 128 panels, where the search with equal panels needs 16,384.
+theorems.  For a mean 1,000 standard deviations from the origin, its radius search returns an
+interval at most 1 percent of the radius wide at `p = 0.9` from 128 panels, where the search with
+equal panels needs 16,384.
 
 ## The model
 
@@ -357,11 +358,14 @@ disk, as `pc` does, and one that contains the circular error, as `circularError`
 whose lengths follow the integrand instead of equal panels.  Equal panels spend most of their
 number where the integrand is nearly zero when the mean lies many standard deviations from the
 origin, and the adaptive panels then give a far narrower interval for the same number of panels
-and finish the radius search with far fewer.
+and finish the radius search with far fewer.  For a mean within a few standard deviations of the
+origin, equal panels are close to the best partition, and the adaptive panels, which spend part of
+the budget on choosing the panels' widths, give intervals up to 16 percent wider and can need more
+panels.
 [The requirements](requirements.md#adaptive-panels) state the method and the measurements that
 chose it, and [the review](review.md#adaptive-panels) records their independent review.
 [`verified_compile`](AdaptiveVerified.lean) compiles both entries into a third module, `adaptive`,
-of 18,424 bytes, so the modules `conjunction` and `accuracy` and their theorems do not change.
+of 18,634 bytes, so the modules `conjunction` and `accuracy` and their theorems do not change.
 
 ### Interface of the adaptive program
 
@@ -387,18 +391,18 @@ around `10.315504204502986`, an interval 11 percent wider than that of `circular
 A march covers `[-r, r]` from `-r` with panels whose intervals are the panels of `pc`.  It accepts
 a panel whose interval is at most a tolerance `τ` wide and adds the interval to its sum, and it
 shortens a panel that is too wide.  Where the integrand is smooth, the width of a panel's interval
-falls as the square of the panel's length, so the march sets the next length to `0.9 √(τ/w)` times
-the length of a panel of width `w`, within a factor of 4 below and 2 above, which aims the next
-panel at a width just below `τ`.  A march has a number of steps, and its last step accepts the
-panel from the covered end to `r` whatever its width.  `pcAdaptive` runs three marches.  The first
-has the tolerance `r/64` and `n/16` steps.  A panel of width `w` splits into about `√(w/τ)` panels
-at the tolerance `τ`, so the second march takes the tolerance at which the first march's widths
-predict `n/16` panels, and the third the tolerance at which the second's predict 0.8 times the
-panels left, which it takes as its steps.  The result is the part common to the sums of the second
-and third marches, times the constant factor of `pc`, with the lower endpoint clamped at zero.
-The common part bounds the width when the third march runs out of steps and its last panel is
-wide.  `circularErrorAdaptive` runs the search of `circularError` with `pcAdaptive` in place of
-`pc`.
+falls as the square of the panel's length, so the march multiplies the length of a panel of width
+`w` by `min(2, max(1/4, 0.9 √(τ/w)))`, which aims the next panel at a width just below `τ`.  A
+march has a number of steps, and its last step accepts the panel from the covered end to `r`
+whatever its interval.  `marches` runs three marches, and `pcAdaptive` takes their result.  The
+first has the tolerance `r/64` and `n/16` steps.  A panel of width `w` splits into about `√(w/τ)`
+panels at the tolerance `τ`, so the second march takes the tolerance at which the first march's
+widths predict `n/16` panels, and the third the tolerance at which the second's predict 0.8 times
+the panels left, which it takes as its steps.  The result is the part common to the sums of the
+second and third marches that covered `[-r, r]` with accepted sums, or the one such sum, times the
+constant factor of `pc`, with the lower endpoint clamped at zero.  The common part bounds the width
+when the third march runs out of steps and its last panel is wide.  `circularErrorAdaptive` runs
+the search of `circularError` with `pcAdaptive` in place of `pc`.
 
 ### Theorems of the adaptive program
 
@@ -409,8 +413,9 @@ Every theorem in the table depends only on the axioms `propext`, `Classical.choi
 |---|---|---|---|
 | `pcAdaptive_enclosure` | [Soundness](AdaptiveSoundness.lean) | `pcAdaptive` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`, `r` is finite, the endpoints are finite, and `lo ≤ Model.pc ≤ hi` for those real values. |
 | `circularErrorAdaptive_sound` | [Soundness](AdaptiveSoundness.lean) | `circularErrorAdaptive` returns status 0 | The conclusions of `circularError_sound` for the result of `circularErrorAdaptive`. |
-| `guarded_sound` | [Radius soundness](AccuracySoundness.lean) | Every accepted result of a search `S` holds the radius for its arguments | An accepted result of the input tests of `circularError` around `S` satisfies the conclusions of `circularError_sound`. |
-| `compiled.pcAdaptive.implements`, `compiled.circularErrorAdaptive.implements` | [Compilation](AdaptiveVerified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 67 and 68 return words that represent the results, without a trap. |
+| `guarded_sound` | [Radius soundness](AccuracySoundness.lean) | Every accepted result of a search `S` for a finite probability above 0 holds the radius for its arguments | An accepted result of the input tests of `circularError` around `S` satisfies the conclusions of `circularError_sound`. |
+| `marches_used` | [Soundness](AdaptiveSoundness.lean) | None | The three marches of `marches`, which `pcAdaptWith` runs, evaluate at most `n` panels together. |
+| `compiled.pcAdaptive.implements`, `compiled.circularErrorAdaptive.implements` | [Compilation](AdaptiveVerified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 68 and 69 return words that represent the results, without a trap. |
 | `pcAdaptive_call`, `circularErrorAdaptive_call` | [Call theorems](AdaptiveCall.lean) | A ready store | The export returns without a trap the words of the result's `hi`, `lo`, and status, leaves a ready store in which every region of the heap keeps its bytes, and status 0 implies the conclusions of the soundness theorem. |
 | `compiled.bytes` | [Compilation](AdaptiveVerified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`. |
 | `adaptive_file`, `adaptive_file_decode` | [File theorems](AdaptiveFile.lean) | `build/verified/adaptive.wasm` as written | The file holds `encode compiled.module` and decodes to `compiled.module`. |
@@ -432,23 +437,29 @@ programs.
 `tests/verified/run.sh --cases adaptive` writes the module, validates it, compares `pcAdaptive` and
 `circularErrorAdaptive` with native Lean on
 [the generated cases](../../tests/TestSupport/Conjunction/AdaptiveCases.lean), runs the axiom
-audit, and checks the file theorems.  The 355 cases hold the inputs of the module test of `pc` and
-an infinite radius with 15 to 1,048,577 panels, the inputs of the radius tests and biases of 10,
-100, and 1,000 standard deviations at `p` of 0.9 and 0.99 with 16 and 256 panels, the rejected
-inputs of the radius program, and unfinished inputs, and the module agrees with native Lean on
-every one, bit for bit.
+audit, and checks the file theorems.  The 388 cases hold the inputs of the module test of `pc`, an
+input with a first variance of `1e-28`, and one whose panels overflow, with 15 to 1,048,577
+panels, the inputs of the radius tests and biases of 10, 100, and 1,000 standard deviations at `p`
+of 0.9 and 0.99 with 16 and 256 panels, the rejected inputs of the radius program, and unfinished
+inputs, and the module agrees with native Lean on every one, bit for bit.
 
 [`tests/conjunction/accuracy.sh`](../../tests/conjunction/accuracy.sh) runs the containment test of
 both radius programs, and [the oracle](../../tests/conjunction/accuracy.py) checks each result of
 `pcAdaptive` against the polar integral of the containment test of `pc` and each result of
-`circularErrorAdaptive` against the reference radius.  All 39 results of `pcAdaptive`, the 13
-inputs of the containment test of `pc` with 16, 256, and 4,096 panels, contain the reference.  For
-the disk of 1,000 standard deviations the interval is `1.4e-3` wide at 4,096 panels, against `0.39`
-with equal panels, and without a bias at 4,096 panels it is 12 percent narrower than with equal
-panels.  All 353 results of `circularErrorAdaptive` pass: 350 accepted results, the 18 inputs of
-the radius tests and 7 inputs with biases of 10 to 1,000 standard deviations at the five
-probabilities and up to three panel counts, contain the reference, and 3 unfinished inputs return
-status 2.
+`circularErrorAdaptive` against the reference radius.  All 52 results of `pcAdaptive` on the 13
+inputs of the containment test of `pc`, with 16, 100, 256, and 4,096 panels, contain the
+reference.  For the disk of 1,000 standard deviations the interval is `1.4e-3` wide at 4,096
+panels, against `0.39` with equal panels, and without a bias at 4,096 panels it is 12 percent
+narrower than with equal panels.  For a first variance of `1e-28`, which a polar quadrature cannot
+resolve, the 4 results contain the probabilities of a strip and a rectangle between which the
+probability lies; at 4,096 panels the interval is `[0, 24.8]` around 0.683, a floor that the
+panels accepted for their length set.  The 17 inputs that must be rejected, among them one whose
+panels overflow and 0, 15, and 1,048,577 panels, return status 1.  All 745 results of
+`circularErrorAdaptive` pass: 350 accepted results, the 18 inputs of the radius tests and 7 inputs
+with biases of 10 to 1,000 standard deviations at the five probabilities and up to three panel
+counts, contain the reference; of 375 results with 32, 64, and 128 panels, 216 contain the
+reference and 159 have status 2; 3 unfinished inputs return status 2; and 17 rejected inputs
+return status 1.
 
 The test records each radius interval's width relative to the reference radius.  With 30
 halvings, the relative width times `n` lies in the following ranges, over 256, 4,096, and 65,536
@@ -463,49 +474,59 @@ each axis and of 30 standard deviations of the smaller variance of `σ = (10, 1)
 | `circularErrorAdaptive`, 7 far inputs | 0.0010 to 0.34 | 0.0038 to 0.82 | 0.018 to 3.0 | 0.038 to 6.2 | 0.19 to 29 |
 
 For the same input and panel count, the adaptive interval's width divided by the interval of
-`circularError` has, at 4,096 panels, the median 0.92 and the range 0.56 to 1.16 at `p = 0.9`,
-0.45 and 0.24 to 1.06 at 0.5, and 1.10 and 0.60 to 1.13 at 0.99.  The largest ratios belong to
+`circularError` has, at 4,096 panels, the median 0.93 and the range 0.55 to 1.16 at `p = 0.9`,
+0.45 and 0.25 to 1.06 at 0.5, and 1.09 and 0.60 to 1.14 at 0.99.  The largest ratios belong to
 the centered isotropic input, the elongated covariance `σ = (3, 1)`, and the correlated sample, and
 the smallest to the bias of 3 standard deviations and the elongated covariance `σ = (1, 100)`.
 With 4,096 panels at `p = 0.99`, `circularError` returns status 2 for the biases of 100 and 1,000
 standard deviations, so the sweep below compares the two methods on the far inputs.
 
 `tests/conjunction/accuracy.sh --sweep` finds, for each input and probability, the least panel
-count of `16, 32, …, 1,048,576` at which each search returns status 0 with 30 halvings, and checks
-the result there.  In the table, each cell gives that count for `circularError` and then for
+count of `16, 32, …, 1,048,576` at which each search returns status 0 with 30 halvings, and the
+least at which it also returns an interval at most a hundredth of its lower endpoint wide, and it
+checks the results there.  Each cell gives the two counts for `circularError`, then for
 `circularErrorAdaptive`.
 
 | Input | `p = 1e-6` | 0.5 | 0.9 | 0.95 | 0.99 |
 |---|---|---|---|---|---|
-| `σ = (1, 1)`, `m = 0` | 16, 16 | 16, 16 | 32, 64 | 64, 128 | 512, 512 |
-| `σ = (1, 1)`, `m = (3, 0)` | 16, 16 | 16, 64 | 64, 128 | 128, 128 | 1,024, 512 |
-| `σ = (1, 1)`, `m = (0, 3)` | 16, 16 | 16, 32 | 64, 64 | 128, 128 | 1,024, 512 |
-| `σ = (1, 1)`, `m = (10, 0)` | 16, 16 | 32, 32 | 128, 64 | 256, 128 | 2,048, 512 |
-| `σ = (1, 1)`, `m = (0, 10)` | 16, 16 | 32, 32 | 128, 128 | 256, 128 | 2,048, 512 |
-| `σ = (1, 1)`, `m = (100, 0)` | 32, 32 | 256, 32 | 1,024, 64 | 2,048, 128 | 16,384, 512 |
-| `σ = (1, 1)`, `m = (0, 100)` | 64, 32 | 256, 32 | 1,024, 128 | 2,048, 128 | 16,384, 512 |
-| `σ = (1, 1)`, `m = (1000, 0)` | 512, 32 | 2,048, 64 | 16,384, 128 | 32,768, 128 | 131,072, 512 |
-| `σ = (1, 1)`, `m = (0, 1000)` | 512, 32 | 2,048, 64 | 16,384, 128 | 32,768, 128 | 131,072, 512 |
-| `σ = (10, 1)`, `m = (0, 30)` | 16, 16 | 16, 32 | 64, 64 | 128, 128 | 512, 512 |
-| `C = (25, 6, 16)`, `m = (2, -1)` | 16, 16 | 16, 16 | 32, 64 | 64, 128 | 512, 512 |
+| `σ = (1, 1)`, `m = 0` | 16, 256; 16, 128 | 16, 256; 16, 256 | 32, 1,024; 64, 1,024 | 64, 2,048; 128, 2,048 | 512, 8,192; 512, 8,192 |
+| `σ = (1, 1)`, `m = (3, 0)` | 16, 256; 16, 256 | 16, 512; 64, 256 | 64, 1,024; 128, 1,024 | 128, 2,048; 128, 1,024 | 1,024, 8,192; 512, 4,096 |
+| `σ = (1, 1)`, `m = (0, 3)` | 16, 256; 16, 128 | 16, 256; 32, 256 | 64, 1,024; 64, 1,024 | 128, 2,048; 128, 2,048 | 1,024, 8,192; 512, 4,096 |
+| `σ = (1, 1)`, `m = (10, 0)` | 16, 512; 16, 128 | 32, 512; 32, 256 | 128, 1,024; 64, 256 | 256, 2,048; 128, 512 | 2,048, 8,192; 512, 2,048 |
+| `σ = (1, 1)`, `m = (0, 10)` | 16, 64; 16, 128 | 32, 256; 32, 256 | 128, 1,024; 128, 512 | 256, 2,048; 128, 1,024 | 2,048, 8,192; 512, 2,048 |
+| `σ = (1, 1)`, `m = (100, 0)` | 32, 512; 32, 32 | 256, 512; 32, 128 | 1,024, 2,048; 64, 256 | 2,048, 2,048; 128, 256 | 16,384, 16,384; 512, 512 |
+| `σ = (1, 1)`, `m = (0, 100)` | 64, 128; 32, 32 | 256, 256; 32, 128 | 1,024, 2,048; 128, 256 | 2,048, 2,048; 128, 256 | 16,384, 16,384; 512, 512 |
+| `σ = (1, 1)`, `m = (1000, 0)` | 512, 512; 32, 32 | 2,048, 2,048; 64, 64 | 16,384, 16,384; 128, 128 | 32,768, 32,768; 128, 256 | 131,072, 131,072; 512, 512 |
+| `σ = (1, 1)`, `m = (0, 1000)` | 512, 512; 32, 32 | 2,048, 2,048; 64, 64 | 16,384, 16,384; 128, 128 | 32,768, 32,768; 128, 128 | 131,072, 131,072; 512, 512 |
+| `σ = (10, 1)`, `m = (0, 30)` | 16, 32; 16, 64 | 16, 64; 32, 128 | 64, 512; 64, 512 | 128, 1,024; 128, 1,024 | 512, 4,096; 512, 4,096 |
+| `C = (25, 6, 16)`, `m = (2, -1)` | 16, 256; 16, 256 | 16, 256; 16, 512 | 32, 1,024; 64, 1,024 | 64, 2,048; 128, 2,048 | 512, 8,192; 512, 8,192 |
 
-The adaptive search finishes with at most 128 panels at `p` up to 0.95 and with 512 at 0.99 for
-every bias, while the search with equal panels needs a number that grows with the bias, up to
-131,072 at 1,000 standard deviations and `p = 0.99`.  Without a bias, where equal panels are
-close to the best partition, the adaptive search needs up to twice as many panels at `p` up to
-0.95, because its first two marches spend part of the panels on the estimate of the tolerance, and
-at `p = 0.99` it needs as many.
+At the least count with status 0, the adaptive interval can be several times the radius: with 64
+panels for `m = (100, 0)` at `p = 0.9` it is `[100.9, 572.6]` around 101.3, since the lower
+endpoint of `pcAdaptive` stays below 0.9 out to a radius of about 600.  The second count compares
+useful results.  For a bias of 100 standard deviations or more, the adaptive search reaches a
+width of 1 percent with 2 to 256 times fewer panels: 128 against 16,384 at 1,000 standard
+deviations and `p = 0.9`, and 512 against 131,072 at 0.99.  For a bias of 10 standard deviations
+it needs 2 to 4 times fewer at `p` of 0.9 and above.  Without a bias and for the correlated
+sample, equal panels are close to the best partition, and the two searches need the same count at
+`p` of 0.9 and above, while at `p` of 0.5 and below the adaptive search needs up to twice as many
+for the correlated sample, the elongated input, and the bias of 10 standard deviations along the
+second axis.  For the least count with status 0, the adaptive search needs up to four times as
+many panels for a bias of up to 3 standard deviations, because its first two marches spend part
+of a small budget on the estimate of the tolerance.
 
 ### Limits of the adaptive panels
 
 The theorems concern the probability and the radius of the normal model, as those of `pc` and
-`circularError` do, and they bound no width.  No theorem concerns the tolerances or the number of
-panels, so an input on which the marches place their panels badly gets a wide interval, which is
-sound.  Each panel's interval has a width proportional to the variation of the integrand on the
-panel, and without a bias the integrand varies over most of `[-r, r]`, so at `p` near 1 the
-adaptive panels narrow the radius interval little and the search needs nearly as many panels as
-with equal panels.  A narrower enclosure there needs a panel enclosure of higher order, such as the
-value at the panel's midpoint with a bound on the derivative.
+`circularError` do, and they bound no width.  No theorem concerns the tolerances, so an input on
+which the marches place their panels badly gets a wide interval, which is sound, and a panel
+accepted for a length below `r · 2⁻⁴⁰` sets a floor on the width.  At the least panel count at
+which a search returns status 0, the interval can be wider than the radius.  Without a bias the
+integrand varies over most of `[-r, r]`, equal panels are close to the best partition, and the
+first two marches spend part of the panels, so the adaptive panels do not narrow the radius
+interval at `p` near 1, and at small counts the search can need up to four times as many panels
+as with equal panels.  A narrower enclosure there needs a panel enclosure of higher order, such as
+the value at the panel's midpoint with a bound on the derivative.
 
 ## References
 

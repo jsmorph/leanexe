@@ -115,7 +115,61 @@ or is a new entry beside `pc`, an independent review, and measurements against e
 | Next length | `0.9 √(τ/w)` times the last length, within `[1/4, 2]` | The width of a smooth panel's interval falls as the square of its length, so the rule aims each panel at a width just below `τ`.  The measurements did not compare it alone with doubling and halving. |
 | Least `n` | 16 | The first march takes `n/16` steps, so smaller `n` leaves it none. |
 | Input tests of the circular error | `guarded_sound`, proved once in `AccuracySoundness.lean` for any search, and used by `circularError_sound` and `circularErrorAdaptive_sound` | The two programs have the same tests around different searches.  The statement of `circularError_sound` and the bytes of `accuracy` do not change. |
-| `p` near 1 without a bias | A stated limit and an open item | The best single march was at most 4 percent narrower than equal panels there, so a narrower enclosure needs a panel enclosure of higher order. |
+| `p` near 1 without a bias | A stated limit and an open item | The best single march was 4 to 11 percent narrower than equal panels there, so a much narrower enclosure needs a panel enclosure of higher order. |
+
+### Review
+
+A fresh agent reviewed the section, the program, the theorem statements, the test inputs, and the
+oracle, with the request and without the author's reasoning.  It ported the library's `exp` and
+`erf` into a model of the interval layer that reproduces `pc`'s sample and the results of
+`circularError` bit for bit, modelled the marches from the text before it read the program, and
+then built a model of the program that reproduces all 39 results of `pcAdaptive` and every radius
+result it compared, up to 4,096 panels.  Its `mpmath` oracle, a quadrature in the covariance's
+eigenbasis independent of the program and of the polar integral of the tests, agreed with every
+sample, and every accepted result of the containment run and the sweep contains its reference.
+Its scripts are not part of the tree.
+
+| Finding | Verification | Response |
+|---|---|---|
+| 1. At the least panel count that the sweep reported, an adaptive interval can be several times the radius, so the sweep overstated the gain. | Its decoding of the sweep: `[10.94, 123.0]` for `m = (10, 0)` at `p = 0.9` and 64 panels, `[100.9, 572.6]` for `m = (100, 0)` at 64; every result of `circularError` there was at most 0.30 of the radius wide.  At 64 panels the lower endpoint of `pcAdaptive` for `m = (100, 0)` stays below 0.9 from radius 101.3 to 604. | Adopted.  The sweep also finds the least count at which the interval is at most a hundredth of its lower endpoint wide, and the requirements and the README give both counts and state that status 0 at small counts can carry an interval wider than the radius. |
+| 2. The purpose claims narrower intervals and fewer panels without qualification, while a small bias needs more panels. | The sweep: 16 against 64 panels for `m = (3, 0)` at `p = 0.5`, 32 against 64 without a bias at 0.9; the three marches up to 16 percent wider at 4,096 panels. | Adopted.  The purpose and the README state the gain by bias and give the counts. |
+| 3. The requirements lack measurements that the request names, say nothing of the linear error, and have no target width. | The request; the table had only 0.9 and 0.99. | Adopted.  The measurements give the sweep at the five probabilities, the README gives the widths at all five, the purpose states that `linearError` evaluates no panels, and a paragraph states why the design has no target width. |
+| 4. The column "One march, best tolerance" was not the best march. | Its grid of `log₁₀ τ`: `7.74e-4` against the stated `8.09e-4` without a bias at `p = 0.9`, `1.05e-3` against `1.14e-3` at 0.99, `4.57e-4` against `4.86e-4` for `σ = (100, 1)`; the 1,000σ row differed. | Adopted.  The table now holds the review's values from the ported functions, at the reference radii, with the grid search, and the conclusions follow them: 4 to 11 percent without a bias, up to 29 percent for elongated and correlated covariances.  The decision about `p` near 1 keeps its choice with these figures. |
+| 5. "What lies outside" gave the order of the panel enclosure as the reason for the small gain without a bias, which contradicts `w ≈ L² g`. | Its Cauchy–Schwarz ratio on 65,536 equal panels: 0.95 at `p = 0.9` and 0.89 at 0.99 without a bias. | Adopted.  The requirements and the README give the ratio as the reason. |
+| 6. The text differs from the program: the order of the length rule, the last panel's rejected interval and the fallback to one sum, `max(1, K)`, the setup's rejection, integer or real quotients, "at most" for the second march's steps, and a value that is not finite. | Its text model differs from the program in the last bits on 30 of 39 results of `pcAdaptive`; with `n = 100` the two readings of `n/16` give different intervals. | Adopted.  The method states the program's rules, the integer quotients, and the exact steps, and the interface states every rejection.  The module and containment tests add `n = 100`. |
+| 7. The tests miss a common part that takes a stopped march's sum, a march that drops panels accepted for their length, any rejection, and the bound of `n` panels. | Input A, `m = (-1.3e154, 0)`, `C = (2e307, 0, 2e307)`, `r = 1.3e154`, which the program rejects and the first wrong program accepts with `[0.42867, 0.42917]` around `0.430287`; input B, `m = 0`, `C = (1e-28, 0, 1)`, `r = 1`, where the second gives `hi = 1.7e-308` against `0.6827`. | Adopted.  The containment test requires status 1 on input A, on the rejected inputs of both entries, and on 0, 15, and 1,048,577 panels, and it checks input B against bounds of its probability from a strip and a rectangle, since a polar quadrature cannot resolve it.  `marches` now returns the three marches, which `pcAdaptWith` uses, and `marches_used` proves that they evaluate at most `n` panels.  The requirements state the floor that panels accepted for their length set on the width. |
+| 8. The statement that the Python model reproduces `pc`'s sample implied more than it holds. | The platform `erf` differs from the library's on 10,159 of 200,021 arguments; that model reproduces 9 of 26 results of `pcAdaptive` with at most 256 panels. | Adopted.  The requirements say so and take the table from the ported functions. |
+| 9. The random set of the statistics was unstated. | Its own set gave maxima within 0.01 of the stated ones and somewhat different medians and run-outs. | Adopted.  The requirements state the distributions and the seeds and give the review's figures beside them. |
+| 10. Docstrings of `Adaptive.lean` and `AdaptiveCases.lean` do not match the code, and an infinite radius was listed twice. | The program text. | Adopted for the new files: the header, `March`, and `marchStep` state the program's rules, and the duplicate input gave its place to input A.  Declined for the header of `Accuracy.lean`, which says "doubling" where the factor is 1.25: an edit there rebuilds the module `accuracy` from a changed source, which this work leaves unchanged; it is an open item. |
+| 11. The README's hypothesis of `guarded_sound` omits that the probability is finite and positive, the audit omits `guarded_sound`, and three ratio figures differ slightly. | The statement; its recomputed medians 0.932, 0.448, and 1.090 and maximum 1.137. | Adopted.  The README states the hypothesis and the figures, and the audit lists `guarded_sound` and `marches_used`. |
+
+The review ran each wrong program through the checks of the requirements as they stood:
+`pcAdaptive` at 16, 256, and 4,096 panels (T1), the radius results at 256 panels (T2), the
+unfinished inputs (T3), and the sweep up to 1,024 panels (T4).
+
+| Wrong program | Kind | Detected by |
+|---|---|---|
+| Equal panels | sound | T2, status 2 at the far inputs |
+| No exchange of axes | sound | T2, by the width bound only |
+| An exchange that negates `c12` | unsound | T2, at `m = (-1, 2)` |
+| The raising bisection tested on `lo`, the lowering one on `hi` | unsound | T2, T4 |
+| A rejected panel skipped | unsound | T1, T2, T4 |
+| A rejected panel added | unsound | T1, T2, T3, T4 |
+| The fifth panel skipped | unsound | T1, T2, T4 |
+| The fifth panel added twice | unsound | T4 only, at `m = (2, -1)`, `p = 0.9`, 64 panels |
+| The last panel dropped | unsound | T1, T2, T4 |
+| A last step that ends at `t + h` | unsound | T1, T2, T4 |
+| A common part from `min(hi₂, lo₃)` | unsound | T1, T2, T4 |
+| The second march alone | sound | T2 |
+
+The containment test now holds results at 32, 64, and 128 panels, among them the one that
+detected the doubled panel, and inputs A and B, which detect the common part of a stopped march
+and the dropped panels accepted for their length in the review's model.  The status-1 checks
+detect a program that accepts fewer than 16 panels, and `marches_used` excludes a third march that
+spends more than `n` panels.  No check detects the text's order of the length rule, a growth of 2
+in the bracketing, or the third march alone, which are sound and change only bits, counts, or
+widths within the bound, or a missing test `t ≤ b`, which no input reaches because `b ≥ t` always
+holds and which only the proof uses.
 
 ### Open items
 
@@ -124,3 +178,7 @@ or is a new entry beside `pc`, an independent review, and measurements against e
    panel's length and would narrow the radius interval at `p` near 1 without a bias.
 2. `pc_enclosure` and `pcBoxWith_enclosure` repeat the step that `scaled_sound` proves, and could
    use it.
+3. The header of `Accuracy.lean` describes the bracketing as doubling, while the program grows the
+   upper end by 1.25.
+4. A target width for an evaluation, from the search, which would let evaluations far from the
+   radius stop early.
