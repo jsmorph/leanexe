@@ -1,4 +1,4 @@
-import Demos.Avoidance.Program
+import Demos.Avoidance.Flat
 import Demos.Conjunction.Flat
 import Library.Numerics.Interval.Encoding
 import Verified.Reflect.Command
@@ -27,8 +27,9 @@ verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, Erf.erf
   Demos.Conjunction.chordI, Demos.Conjunction.meanI, Demos.Conjunction.erfSumI,
   Demos.Conjunction.panelCore, Demos.Conjunction.nodeRaw, Demos.Conjunction.node,
   Demos.Conjunction.panel, Demos.Conjunction.panels, Demos.Conjunction.setupBox,
-  Demos.Conjunction.pcBoxWith, Demos.Conjunction.pcBoxEnds, Demos.Conjunction.pcBox, rd, afterAt,
-  assessOne, verdict, allBelow, anyRejected, allFinite, blocksOk, count, valid, triples,
-  authorizeWith, authorize]
+  Demos.Conjunction.pcBoxWith, Demos.Conjunction.pcBoxEnds, Demos.Conjunction.pcBox,
+  Demos.Screening.middle, rd, afterAt, assessCell, evalCell, inside, probe, side, sideLo, sideHi,
+  lowerHalf, upperHalf, splits, shown, action, hullOf, search, finish, searchOne, verdict, allBelow,
+  anyRejected, anyShown, allFinite, blocksOk, count, valid, triples, authorizeWith, authorize]
 
 end Demos.Avoidance
