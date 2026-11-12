@@ -15,6 +15,7 @@ import TestSupport.Rcv.Cases
 import TestSupport.Rcv.MaineCases
 import TestSupport.Conjunction.Cases
 import TestSupport.Conjunction.AccuracyCases
+import TestSupport.Conjunction.AdaptiveCases
 import TestSupport.Sgp4.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
@@ -819,6 +820,7 @@ def main : IO Unit := do
   TestSupport.Rcv.MaineCases.cases
   TestSupport.Conjunction.Cases.cases
   TestSupport.Conjunction.AccuracyCases.cases
+  TestSupport.Conjunction.AdaptiveCases.cases
   TestSupport.Sgp4.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
