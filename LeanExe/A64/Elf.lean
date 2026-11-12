@@ -14,8 +14,8 @@ size covers the rest of the area and the stack, which the kernel fills with zero
 lines 411 to 460).  Both segments have an alignment of 64 KiB, which serves kernels with pages of
 4, 16, or 64 KiB.
 
-The runtime of `sysRuntime` begins at the entry, `elfEntry`.  It sets X17 to the area and SP to
-the stack's top with `ADRP` and `ADD`, writes `FPCR` as `fpcrValue`, and calls `main` with `BL`.
+The runtime of `sysRuntime` begins at the entry, `elfEntry`.  It writes `FPCR` as `fpcrValue`, sets
+X17 to the area and SP to the stack's top with `ADRP` and `ADD`, and calls `main` with `BL`.
 `main` returns to the exit, which calls `exit_group` with the status in X0, and the trap stubs reach
 the exit through the exit word.  The routines `sysRead` and `sysWrite` set X8 to the call's number,
 issue `SVC #0`, and return, so `main` stays a list of `Instr` and calls them with `BL`.
@@ -73,16 +73,17 @@ def elfLayoutOf (n : Nat) (m : Module) (cap : Nat) (room : UInt64) : ElfLayout :
   { codeEnd, dataOff, area := elfBase + UInt64.ofNat dataOff, dataFile := areaPrefix m, dataMem,
     stackTop := elfBase + UInt64.ofNat (dataOff + dataMem) }
 
-/-- The runtime of an executable with layout `L`, from the entry: X17 at the area, SP at the
-stack's top, `FPCR` at `fpcrValue`, the call of `main`, the exit, `sysRead`, `sysWrite`, and the
-exit word. -/
+/-- The runtime of an executable with layout `L`, from the entry: `FPCR` at `fpcrValue`, X17 at the
+area, SP at the stack's top, the call of `main`, the exit, `sysRead`, `sysWrite`, and the exit
+word. -/
 def sysRuntime (L : ElfLayout) : GenM (List Op) := do
-  let ar ← addrOf 17 elfEntry L.area
-  let stk ← addrOf 1 (after elfEntry 2) L.stackTop
+  let ar ← addrOf 17 (after elfEntry 2) L.area
+  let stk ← addrOf 1 (after elfEntry 4) L.stackTop
   let call ← bField (after elfEntry 7) (after elfExitWord 1)
   let back ← bField elfExitWord (after elfEntry 8)
-  return (ar ++ stk ++ [.addImm 31 1 0, .movz 1 0x200 1, msrOf .fpcr 1, .bl call,
-      .movz 8 94 0]).map .ins ++ [.svc, .ins (.b 0)] ++
+  let tail : List Instr := [.addImm 31 1 0, .bl call, .movz 8 94 0]
+  return ([Instr.movz 1 0x200 1, msrOf .fpcr 1] ++ ar ++ stk ++ tail).map .ins ++
+      [.svc, .ins (.b 0)] ++
     [.ins (.movz 8 63 0), .svc, .ins (.ret 30), .ins (.movz 8 64 0), .svc, .ins (.ret 30),
       .ins (.b back)]
 

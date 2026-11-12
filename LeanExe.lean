@@ -35,6 +35,11 @@ import LeanExe.A64.Proof.ImageTheorem
 import LeanExe.A64.Proof.Input
 import LeanExe.A64.Proof.InputRuns
 import LeanExe.A64.Proof.Lift
+import LeanExe.A64.Proof.Linux
+import LeanExe.A64.Proof.LinuxImage
+import LeanExe.A64.Proof.LinuxMain
+import LeanExe.A64.Proof.LinuxProgram
+import LeanExe.A64.Proof.LinuxRuns
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Memory
 import LeanExe.A64.Proof.Program
