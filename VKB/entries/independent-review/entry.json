@@ -5,7 +5,10 @@
     "a design note before an increment's code",
     "a wrong program that passes every case",
     "a specification stated only as properties of the result",
-    "f us xs = algorithmP us xs.size (xs.size - 1) xs"
+    "f us xs = algorithmP us xs.size (xs.size - 1) xs",
+    "a reviewer's wrong programs for a numerical program, run through the final tests",
+    "an oracle that shares the method of the program under test",
+    "samples of every parameter for a test of a cover by boxes"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",

@@ -7,14 +7,24 @@
     "the heartbeats of a declaration",
     "a comparison of a change's cost with its baseline",
     "a probe that its timeout stops without output",
-    "the declarations that the kernel unfolds most often"
+    "the declarations that the kernel unfolds most often",
+    "a command that adds several theorems with Lean.addDecl and runs their kernel checks at once",
+    "an elapsed time from /usr/bin/time around tools/leanrun that counts the wait for its lock",
+    "VmHWM and VmRSS after each declaration of a probe"
   ],
   "modules": [
-    "Init.System.IO"
+    "Init.System.IO",
+    "Lean.AddDecl"
   ],
   "declarations": [
     "IO.getNumHeartbeats",
-    "IO.FS.withFile"
+    "IO.FS.withFile",
+    "Lean.addDecl"
   ],
-  "examples": []
+  "examples": [],
+  "unimported": {
+    "LeanExe/Native/ClightN/Instance.lean": [
+      "ClightN.Proof.addByKernel"
+    ]
+  }
 }

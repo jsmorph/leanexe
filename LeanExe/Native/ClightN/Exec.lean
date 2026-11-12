@@ -5,13 +5,14 @@ import LeanExe.Native.Proof.Reacts
 The executions of the Lean copy of Clight are executions of N (`clightn/N.nsx`), for the
 programs that the translator's forms make up.  `progOk` decides, for a program's definitions, its
 `main`, and a list `S` of functions that contains `main` and the functions they call, that the
-bodies of those functions use only the forms that N's relations cover: the leaf operators and
-casts, temporaries, constants, the scalar globals, the words, bytes, and cells of the arrays,
-calls of functions of `S`, the volatile store to a global of type `volatile unsigned int`, the
-volatile loads from and stores to the elements of volatile arrays, and the statements of the
-translation.  It also decides the conditions that N's judgments of whole programs place on the
-definitions.  `program_to_n` carries the copy's `bigstep_program_terminates` at `Archi.aarch64`
-to `nprog`, and `reacts_to_n` carries `LoopReacts` to `nreacts`.
+bodies of those functions use only the forms that N's relations cover: the leaf operators, unary
+operators, and casts, temporaries, constants, the scalar globals, the words, bytes, and cells of
+the arrays, calls of functions of `S` and of `__builtin_fsqrt`, the volatile store to a global of
+type `volatile unsigned int`, the volatile loads from and stores to the elements of volatile
+arrays, and the statements of the translation.  It also decides the conditions that N's
+judgments of whole programs place on the definitions.  `program_to_n` carries the copy's
+`bigstep_program_terminates` at `Archi.aarch64` to `nprog`, and `reacts_to_n` carries
+`LoopReacts` to `nreacts`.
 
 The proof follows the copy's derivation.  It relates the copy's temporaries to N's by
 `TempsRel`, its memory to N's scalar globals by `GRel` and to the bytes of N's arrays by `MRel`,
@@ -25,6 +26,7 @@ CompCert's.
 namespace ClightN.Proof
 
 open LClight ClightN.Base ClightN.Spec
+open LeanExe.Native (sqrtSig sqrtFun)
 
 /-! ## Leaf forms -/
 
@@ -37,13 +39,23 @@ def binForms : List (binary_operation × type × type) :=
    (.Olt, tsl, tsl), (.Ole, tsl, tsl), (.Oshr, tsl, tul),
    (.Oadd, tui, tui), (.Osub, tui, tui), (.Oand, tui, tui), (.Oshl, tui, tui),
    (.Oshr, tui, tui), (.Oeq, tui, tui), (.One, tui, tui), (.Olt, tui, tui),
-   (.Ogt, tui, tui), (.Oge, tui, tui)]
+   (.Ogt, tui, tui), (.Oge, tui, tui),
+   (.Oadd, tdbl, tdbl), (.Osub, tdbl, tdbl), (.Omul, tdbl, tdbl), (.Odiv, tdbl, tdbl),
+   (.Oeq, tdbl, tdbl), (.One, tdbl, tdbl), (.Olt, tdbl, tdbl), (.Ole, tdbl, tdbl),
+   (.Oge, tdbl, tdbl), (.Oadd, tflt, tflt), (.Osub, tflt, tflt), (.Omul, tflt, tflt),
+   (.Odiv, tflt, tflt), (.Oeq, tflt, tflt), (.One, tflt, tflt), (.Olt, tflt, tflt),
+   (.Ole, tflt, tflt), (.Oge, tflt, tflt)]
 
 /-- The cast forms of `cast_ok`. -/
 def castForms : List (type × type) :=
   [(tsi, tui), (tui, tsi), (tul, tui), (tui, tul), (tul, tsl), (tsl, tul), (tuc, tul),
    (tuc, tui), (tul, tuc), (tui, tuc), (tvuc, tul), (tvui, tul), (tui, tvui), (tul, tul),
-   (tui, tui), (tuc, tuc), (tsi, tsi)]
+   (tui, tui), (tuc, tuc), (tsi, tsi), (tdbl, tdbl), (tflt, tflt), (tul, tdbl), (tdbl, tul),
+   (tflt, tdbl), (tdbl, tflt), (tsi, tflt), (tui, tflt), (tul, tflt), (tflt, tsi), (tflt, tul)]
+
+/-- The unary operator forms of `unop_ok`. -/
+def unopForms : List (unary_operation × type) :=
+  [(.Oneg, tdbl), (.Oabsfloat, tdbl), (.Oneg, tflt)]
 
 theorem binop_leaf {op : binary_operation} {t1 t2 : type} {v1 v2 v : val} {m : mem}
     (hf : (op, t1, t2) ∈ binForms)
@@ -52,10 +64,15 @@ theorem binop_leaf {op : binary_operation} {t1 t2 : type} {v1 v2 v : val} {m : m
   simp only [binForms, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hf
   rcases hf with ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
     ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
+    ⟨rfl, rfl, rfl⟩ |
     ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
     ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
     ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
-    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩
+    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
+    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
+    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
+    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩ |
+    ⟨rfl, rfl, rfl⟩ | ⟨rfl, rfl, rfl⟩
   · exact (add_ul_ul () v1 v2 v m).1 h
   · exact (sub_ul_ul () v1 v2 v m).1 h
   · exact (mul_ul_ul () v1 v2 v m).1 h
@@ -85,13 +102,33 @@ theorem binop_leaf {op : binary_operation} {t1 t2 : type} {v1 v2 v : val} {m : m
   · exact (lt_ui_ui () v1 v2 v m).1 h
   · exact (gt_ui_ui () v1 v2 v m).1 h
   · exact (ge_ui_ui () v1 v2 v m).1 h
+  · exact (add_d_d () v1 v2 v m).1 h
+  · exact (sub_d_d () v1 v2 v m).1 h
+  · exact (mul_d_d () v1 v2 v m).1 h
+  · exact (div_d_d () v1 v2 v m).1 h
+  · exact (eq_d_d () v1 v2 v m).1 h
+  · exact (ne_d_d () v1 v2 v m).1 h
+  · exact (lt_d_d () v1 v2 v m).1 h
+  · exact (le_d_d () v1 v2 v m).1 h
+  · exact (ge_d_d () v1 v2 v m).1 h
+  · exact (add_f_f () v1 v2 v m).1 h
+  · exact (sub_f_f () v1 v2 v m).1 h
+  · exact (mul_f_f () v1 v2 v m).1 h
+  · exact (div_f_f () v1 v2 v m).1 h
+  · exact (eq_f_f () v1 v2 v m).1 h
+  · exact (ne_f_f () v1 v2 v m).1 h
+  · exact (lt_f_f () v1 v2 v m).1 h
+  · exact (le_f_f () v1 v2 v m).1 h
+  · exact (ge_f_f () v1 v2 v m).1 h
 
 theorem cast_leaf {t1 t2 : type} {v1 v : val} {m : mem} (hf : (t1, t2) ∈ castForms)
     (h : sem_cast Archi.aarch64 v1 t1 t2 m = some v) : cast_ok t1 t2 v1 v := by
   simp only [castForms, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hf
   rcases hf with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
+    ⟨rfl, rfl⟩ |
     ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
-    ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
+    ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
   · exact (cast_si_ui v1 v m).1 h
   · exact (cast_ui_si v1 v m).1 h
   · exact (cast_ul_ui v1 v m).1 h
@@ -109,6 +146,26 @@ theorem cast_leaf {t1 t2 : type} {v1 v : val} {m : mem} (hf : (t1, t2) ∈ castF
   · exact (cast_ui_ui v1 v m).1 h
   · exact (cast_uc_uc v1 v m).1 h
   · exact (cast_si_si v1 v m).1 h
+  · exact (cast_d_d v1 v m).1 h
+  · exact (cast_f_f v1 v m).1 h
+  · exact (cast_ul_d v1 v m).1 h
+  · exact (cast_d_ul v1 v m).1 h
+  · exact (cast_f_d v1 v m).1 h
+  · exact (cast_d_f v1 v m).1 h
+  · exact (cast_si_f v1 v m).1 h
+  · exact (cast_ui_f v1 v m).1 h
+  · exact (cast_ul_f v1 v m).1 h
+  · exact (cast_f_si v1 v m).1 h
+  · exact (cast_f_ul v1 v m).1 h
+
+theorem unop_leaf {op : unary_operation} {t : type} {v1 v : val} {m : mem}
+    (hf : (op, t) ∈ unopForms) (h : sem_unary_operation Archi.aarch64 op v1 t m = some v) :
+    unop_ok op t v1 v := by
+  simp only [unopForms, List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at hf
+  rcases hf with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+  · exact (neg_d v1 v m).1 h
+  · exact (abs_d v1 v m).1 h
+  · exact (neg_f v1 v m).1 h
 
 theorem bool_leaf {t : type} {v : val} {b : Bool} {m : mem} (ht : t = tsi ∨ t = tui)
     (h : bool_val Archi.aarch64 v t m = some b) : bool_ok t v b := by
@@ -126,6 +183,12 @@ theorem binop_ok_noptr {op : binary_operation} {t1 t2 : type} {v1 v2 v : val}
   subst e
   cases h
 
+theorem unop_ok_noptr {op : unary_operation} {t : type} {v1 v : val} (h : unop_ok op t v1 v) :
+    NoPtrV v := by
+  intro b o e
+  subst e
+  cases h
+
 theorem cast_ok_noptr {t1 t2 : type} {v1 v : val} (h : cast_ok t1 t2 v1 v) (hp : NoPtrV v1) :
     NoPtrV v := by
   intro b o e
@@ -137,7 +200,7 @@ theorem cast_ok_noptr {t1 t2 : type} {v1 v : val} (h : cast_ok t1 t2 v1 v) (hp :
 
 /-! ## The forms that N covers -/
 
-def scalarTy (t : type) : Bool := t == tui || t == tul
+def scalarTy (t : type) : Bool := t == tui || t == tul || t == tdbl || t == tflt
 
 /-- The definition `d` of `x` is a writable, non-volatile variable of the scalar type `ty`. -/
 def scalarDef (x : ident) (ty : type) (d : ident × globdef (fundef function) type) : Bool :=
@@ -183,11 +246,13 @@ def baseOk (defs : Defs) : expr → type → type → Bool
       t == tul && a == noattrL && ct == ptuc && pt == ptuc && ty == tuc && defs.any (arrDef x n)
   | _, _, _ => false
 
-/-- The array of a cell `*(ty *) x` of type `unsigned long long` or `unsigned int`. -/
+/-- The array of a cell `*(ty *) x` of type `unsigned long long`, `unsigned int`, `double`, or
+`float`. -/
 def cellOk (defs : Defs) : expr → type → type → Bool
   | .Evar x (.Tarray t n a), pt, ty =>
-      t == tul && a == noattrL && pt == .Tpointer ty noattrL && (ty == tul || ty == tui) &&
-        decide (1 ≤ n) && defs.any (arrDef x n)
+      t == tul && a == noattrL && pt == .Tpointer ty noattrL &&
+        (ty == tul || ty == tui || ty == tdbl || ty == tflt) && decide (1 ≤ n) &&
+        defs.any (arrDef x n)
   | _, _, _ => false
 
 def exprOk (defs : Defs) : expr → Bool
@@ -200,6 +265,7 @@ def exprOk (defs : Defs) : expr → Bool
   | .Ederef (.Ebinop op b i pt) ty =>
       op == .Oadd && exprOk defs i && typeof i == tul && baseOk defs b pt ty
   | .Ederef (.Ecast c pt) ty => cellOk defs c pt ty
+  | .Eunop op a _ => exprOk defs a && decide ((op, typeof a) ∈ unopForms)
   | _ => false
 
 def argsOk (defs : Defs) : List expr → List type → Bool
@@ -209,6 +275,14 @@ def argsOk (defs : Defs) : List expr → List type → Bool
   | _, _ => false
 
 def ptrVui : type := .Tpointer tvui (attr.mk false none)
+
+/-- The definition `d` of `x` is the built-in `__builtin_fsqrt` of type `double (double)`. -/
+def sqrtDefOf (x : ident) (d : ident × globdef (fundef function) type) : Bool :=
+  d.1 == x && match d.2 with
+    | .Gfun (.External (.EF_builtin name sg) targs tres cc) =>
+        name == "__builtin_fsqrt" && sg == sqrtSig && targs == [tdbl] && tres == tdbl &&
+          cc == cc_default
+    | _ => false
 
 /-- The left side `lhs` of an assignment of `a`: a scalar global, a word or a byte of an array,
 or a cell. -/
@@ -250,7 +324,9 @@ def stmtOk (defs : Defs) (S : List ident) (ret : type) : statement → Bool
   | .Sskip | .Sbreak | .Scontinue | .Sreturn none => true
   | .Sset _ a => exprOk defs a
   | .Sassign lhs a => assignOk defs lhs a
-  | .Scall _ (.Evar x (.Tfunction tys _ _)) al => S.contains x && argsOk defs al tys
+  | .Scall _ (.Evar x (.Tfunction tys rty cc)) al =>
+      (S.contains x || (tys == [tdbl] && rty == tdbl && cc == cc_default &&
+        defs.any (sqrtDefOf x))) && argsOk defs al tys
   | .Sbuiltin optid ef tys al => builtinOk defs optid ef tys al
   | .Ssequence s1 s2 => stmtOk defs S ret s1 && stmtOk defs S ret s2
   | .Sloop s1 s2 => stmtOk defs S ret s1 && stmtOk defs S ret s2
@@ -261,14 +337,17 @@ def stmtOk (defs : Defs) (S : List ident) (ret : type) : statement → Bool
   | _ => false
 
 /-- The variables whose initialization data N accepts: a scalar global is initialized by one
-datum of its type, and another variable has none or one `Init_space` of a size not negative. -/
+datum of its type, or one `Init_space` of its size for a `double` or a `float`, and another
+variable has none or one `Init_space` of a size not negative. -/
 def varOk (v : globvar type) : Bool :=
   match v.gvar_init with
   | [] => !(scalarTy v.gvar_info && !v.gvar_readonly && !v.gvar_volatile)
   | [.Init_int32 _] => !v.gvar_readonly && !v.gvar_volatile && v.gvar_info == tui
   | [.Init_int64 _] => !v.gvar_readonly && !v.gvar_volatile && v.gvar_info == tul
   | [.Init_space n] =>
-      !v.gvar_readonly && !v.gvar_volatile && decide (0 ≤ n) && !scalarTy v.gvar_info
+      !v.gvar_readonly && !v.gvar_volatile && decide (0 ≤ n) &&
+        (!scalarTy v.gvar_info || (v.gvar_info == tdbl && n == 8) ||
+          (v.gvar_info == tflt && n == 4))
   | _ => false
 
 def defOk : globdef (fundef function) type → Bool
@@ -465,7 +544,9 @@ theorem genvOk_globalenv (p : program function) (hn : (p.prog_defs.map (·.1)).N
     subst this
     rw [← e1, ← e2]
 
-def chunkOf (ty : type) : memory_chunk := if ty = tui then .Mint32 else .Mint64
+def chunkOf (ty : type) : memory_chunk :=
+  if ty = tui then .Mint32 else if ty = tdbl then .Mfloat64 else if ty = tflt then .Mfloat32
+  else .Mint64
 
 /-- The memory `m` holds the values `gv` of the scalar globals. -/
 def GRel (ge : genv) (defs : Defs) (m : mem) (gv : ident → Option val) : Prop :=
@@ -481,9 +562,11 @@ theorem gval_noptr {ty : type} {v : val} (h : gval ty v) : NoPtrV v := by
 
 theorem scalar_of {ty : type} (h : scalarTy ty = true) : scalar ty := by
   simp only [scalarTy, Bool.or_eq_true, beq_iff_eq] at h
-  rcases h with rfl | rfl
+  rcases h with ((rfl | rfl) | rfl) | rfl
   · exact .sc_ui
   · exact .sc_ul
+  · exact .sc_d
+  · exact .sc_f
 
 theorem scalarDef_mem {defs : Defs} {x : ident} {ty : type}
     (h : defs.any (scalarDef x ty) = true) :
@@ -585,13 +668,14 @@ theorem baseOk_spec {defs : Defs} {b : expr} {pt ty : type} (h : baseOk defs b p
 
 theorem cellOk_spec {defs : Defs} {c : expr} {pt ty : type} (h : cellOk defs c pt ty = true) :
     ∃ x n, (x, .Gvar ⟨tarrL n, [.Init_space (8 * n)], false, false⟩) ∈ defs ∧
-      c = .Evar x (tarrL n) ∧ pt = .Tpointer ty noattrL ∧ (ty = tul ∨ ty = tui) ∧ 1 ≤ n := by
+      c = .Evar x (tarrL n) ∧ pt = .Tpointer ty noattrL ∧
+        (ty = tul ∨ ty = tui ∨ ty = tdbl ∨ ty = tflt) ∧ 1 ≤ n := by
   cases c with
   | Evar x t =>
       cases t with
       | Tarray t n a =>
           simp only [cellOk, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true, decide_eq_true_eq,
-            and_assoc] at h
+            and_assoc, or_assoc] at h
           obtain ⟨rfl, rfl, rfl, hty, h1, hd⟩ := h
           exact ⟨x, n, arrDef_mem hd, rfl, rfl, hty, h1⟩
       | _ => simp [cellOk] at h
@@ -616,8 +700,8 @@ theorem has_type_of_ok {defs : Defs} : ∀ {a : expr}, exprOk defs a = true →
   | .Ebinop op a1 a2 ty, _ => .ht_binop op a1 a2 ty
   | .Ecast a ty, _ => .ht_cast a ty
   | .Ederef a ty, _ => .ht_deref a ty
+  | .Eunop op a ty, _ => .ht_unop op a ty
   | .Eaddrof _ _, h => by simp [exprOk] at h
-  | .Eunop _ _ _, h => by simp [exprOk] at h
   | .Efield _ _ _, h => by simp [exprOk] at h
   | .Esizeof _ _, h => by simp [exprOk] at h
   | .Ealignof _ _, h => by simp [exprOk] at h
@@ -717,6 +801,18 @@ theorem decode_cell32 {f : Int → Int} {sz : Int} (hb : 4 ≤ sz)
       .Byte (Byte.repr (f (0 + j)))) = .Vint (r32 (le4L f 0)) :=
   decode_arr4 f 0 fun j h1 h2 => hr _ (by omega) (by omega)
 
+theorem decode_cellf64 {f : Int → Int} {sz : Int} (hb : 8 ≤ sz)
+    (hr : ∀ i, 0 ≤ i → i < sz → 0 ≤ f i ∧ f i < 256) :
+    decode_val Archi.aarch64 .Mfloat64 ((List.range 8).map fun (j : Nat) =>
+      .Byte (Byte.repr (f (0 + j)))) = .Vfloat (f64_of_bits (r64 (le8L f 0))) :=
+  decode_arr8f f 0 fun j h1 h2 => hr _ (by omega) (by omega)
+
+theorem decode_cellf32 {f : Int → Int} {sz : Int} (hb : 4 ≤ sz)
+    (hr : ∀ i, 0 ≤ i → i < sz → 0 ≤ f i ∧ f i < 256) :
+    decode_val Archi.aarch64 .Mfloat32 ((List.range 4).map fun (j : Nat) =>
+      .Byte (Byte.repr (f (0 + j)))) = .Vsingle (f32_of_bits (r32 (le4L f 0))) :=
+  decode_arr4f f 0 fun j h1 h2 => hr _ (by omega) (by omega)
+
 theorem eval_to_n {le : temp_env} {m : mem} {ln gv : ident → Option val}
     {mb : ident → Int → Int} (htr : TempsRel le ln) (hp : NoPtr ln) (hg : GRel ge defs m gv)
     (hm : MRel ge defs m mb) :
@@ -792,6 +888,14 @@ theorem eval_to_n {le : temp_env} {m : mem} {ln gv : ident → Option val}
           have hc' := cast_leaf hok.2 hc
           exact ⟨.nv_cast a ty _ v1 v n1 t1 hc', .ht_cast a ty, cast_ok_noptr hc' p1⟩
       | eval_Elvalue _ _ _ _ _ hl _ => cases hl
+  | .Eunop op a ty, v, hok, h => by
+      simp only [exprOk, Bool.and_eq_true, decide_eq_true_eq] at hok
+      cases h with
+      | eval_Eunop _ _ _ v1 _ h1 hu =>
+          obtain ⟨n1, t1, _⟩ := eval_to_n htr hp hg hm a hok.1 h1
+          have hu' := unop_leaf hok.2 hu
+          exact ⟨.nv_unop op a ty _ v1 v n1 t1 hu', .ht_unop op a ty, unop_ok_noptr hu'⟩
+      | eval_Elvalue _ _ _ _ _ hl _ => cases hl
   | .Ederef (.Ebinop op base i pt) ty, v, hok, h => by
       simp only [exprOk, Bool.and_eq_true, beq_iff_eq, and_assoc] at hok
       obtain ⟨rfl, hiok, hti, hbase⟩ := hok
@@ -850,7 +954,7 @@ theorem eval_to_n {le : temp_env} {m : mem} {ln gv : ident → Option val}
               subst e1 e2
               have harr := hm x n l hd hs
               have hz : Ptrofs.unsigned Ptrofs.zero = 0 := rfl
-              rcases hty with rfl | rfl
+              rcases hty with rfl | rfl | rfl | rfl
               · cases hdr with
                 | deref_loc_value chunk _ hac hlv =>
                     cases hac
@@ -871,6 +975,26 @@ theorem eval_to_n {le : temp_env} {m : mem} {ln gv : ident → Option val}
                       decode_cell32 (by simp only [size_chunk] at hb; omega) harr.range]
                     exact .nv_cell32 x n (in_defs_of_mem hd) h1
                 | deref_loc_reference hac => cases hac
+              · cases hdr with
+                | deref_loc_value chunk _ hac hlv =>
+                    cases hac
+                    obtain ⟨hb, rfl⟩ := loadv_arr harr hlv
+                    rw [hz] at hb ⊢
+                    refine ⟨?_, .ht_deref _ _, fun _ _ e => by cases e⟩
+                    rw [show size_chunk_nat .Mfloat64 = 8 from rfl,
+                      decode_cellf64 (by simp only [size_chunk] at hb; omega) harr.range]
+                    exact .nv_cellf64 x n (in_defs_of_mem hd) h1
+                | deref_loc_reference hac => cases hac
+              · cases hdr with
+                | deref_loc_value chunk _ hac hlv =>
+                    cases hac
+                    obtain ⟨hb, rfl⟩ := loadv_arr harr hlv
+                    rw [hz] at hb ⊢
+                    refine ⟨?_, .ht_deref _ _, fun _ _ e => by cases e⟩
+                    rw [show size_chunk_nat .Mfloat32 = 4 from rfl,
+                      decode_cellf32 (by simp only [size_chunk] at hb; omega) harr.range]
+                    exact .nv_cellf32 x n (in_defs_of_mem hd) h1
+                | deref_loc_reference hac => cases hac
   | .Ederef (.Econst_int _ _) _, _, hok, _ => by simp [exprOk] at hok
   | .Ederef (.Econst_float _ _) _, _, hok, _ => by simp [exprOk] at hok
   | .Ederef (.Econst_single _ _) _, _, hok, _ => by simp [exprOk] at hok
@@ -884,7 +1008,6 @@ theorem eval_to_n {le : temp_env} {m : mem} {ln gv : ident → Option val}
   | .Ederef (.Esizeof _ _) _, _, hok, _ => by simp [exprOk] at hok
   | .Ederef (.Ealignof _ _) _, _, hok, _ => by simp [exprOk] at hok
   | .Eaddrof _ _, _, hok, _ => by simp [exprOk] at hok
-  | .Eunop _ _ _, _, hok, _ => by simp [exprOk] at hok
   | .Efield _ _ _, _, hok, _ => by simp [exprOk] at hok
   | .Esizeof _ _, _, hok, _ => by simp [exprOk] at hok
   | .Ealignof _ _, _, hok, _ => by simp [exprOk] at hok
@@ -951,11 +1074,20 @@ theorem set_opt_of (optid : Option ident) {v : val} {le : temp_env} {ln : ident 
 
 theorem gval_of_cast {t ty : type} {v1 v : val} (hsc : scalar ty) (h : cast_ok t ty v1 v)
     (hp : NoPtrV v1) : gval ty v := by
-  cases hsc <;> cases h <;> first | exact .gv_ui _ | exact .gv_ul _ | exact absurd rfl (hp _ _)
+  cases hsc <;> cases h <;>
+    first | exact .gv_ui _ | exact .gv_ul _ | exact .gv_d _ | exact .gv_f _ |
+      exact absurd rfl (hp _ _)
 
 theorem cast_long {t : type} {v1 v : val} (h : cast_ok t tul v1 v) (hp : NoPtrV v1) :
     ∃ w, v = .Vlong w := by
   cases h <;> first | exact ⟨_, rfl⟩ | exact absurd rfl (hp _ _)
+
+theorem cast_float {t : type} {v1 v : val} (h : cast_ok t tdbl v1 v) : ∃ f, v = .Vfloat f := by
+  cases h <;> exact ⟨_, rfl⟩
+
+theorem cast_single {t : type} {v1 v : val} (h : cast_ok t tflt v1 v) :
+    ∃ f, v = .Vsingle f := by
+  cases h <;> exact ⟨_, rfl⟩
 
 theorem cast_vui {t : type} {v1 v : val} (h : cast_ok t tvui v1 v) : ∃ i, v = .Vint i := by
   cases h
@@ -995,11 +1127,15 @@ inductive SOk (defs : Defs) (S : List ident) (ret : type) : statement → Prop
         (.Sassign (.Ederef (.Ebinop .Oadd (.Ecast (.Evar x (tarrL n)) ptuc) i ptuc) tuc) a)
   | store_cell (x : ident) (n : Int) (ty : type) (a : expr) :
       (x, .Gvar ⟨tarrL n, [.Init_space (8 * n)], false, false⟩) ∈ defs →
-      (ty = tul ∨ ty = tui) → 1 ≤ n → exprOk defs a = true → (typeof a, ty) ∈ castForms →
+      (ty = tul ∨ ty = tui ∨ ty = tdbl ∨ ty = tflt) → 1 ≤ n → exprOk defs a = true →
+      (typeof a, ty) ∈ castForms →
       SOk defs S ret (.Sassign (.Ederef (.Ecast (.Evar x (tarrL n)) (.Tpointer ty noattrL)) ty) a)
   | call (optid : Option ident) (x : ident) (tys : List type) (rty : type)
       (cc : calling_convention) (al : List expr) : S.contains x = true →
       argsOk defs al tys = true → SOk defs S ret (.Scall optid (.Evar x (.Tfunction tys rty cc)) al)
+  | sqrt (optid : Option ident) (x : ident) (al : List expr) : defs.any (sqrtDefOf x) = true →
+      argsOk defs al [tdbl] = true →
+      SOk defs S ret (.Scall optid (.Evar x (.Tfunction [tdbl] tdbl cc_default)) al)
   | out (x : ident) (a : expr) : defs.any (volDef x) = true → exprOk defs a = true →
       (typeof a, tvui) ∈ castForms →
       SOk defs S ret (.Sbuiltin none (.EF_vstore .Mint32) [ptrVui, tvui]
@@ -1083,8 +1219,10 @@ theorem sok_of {defs : Defs} {S : List ident} {ret : type} :
       | Evar x fty =>
           cases fty with
           | Tfunction tys rty cc =>
-              simp only [stmtOk, Bool.and_eq_true] at h
-              exact .call optid x tys rty cc al h.1 h.2
+              simp only [stmtOk, Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at h
+              rcases h with ⟨hx | ⟨⟨⟨rfl, rfl⟩, rfl⟩, hd⟩, ha⟩
+              · exact .call optid x tys rty cc al hx ha
+              · exact .sqrt optid x al hd ha
           | _ => simp [stmtOk] at h
       | _ => simp [stmtOk] at h
   | .Sbuiltin optid ef tys al, h => builtinOk_spec (by simpa [stmtOk] using h)
@@ -1164,6 +1302,8 @@ theorem grel_store (hge : GenvOk ge defs) {m m' : mem} {gv : ident → Option va
     cases hv with
     | gv_ui i => exact Mem.load_stored_int m b 0 i hva
     | gv_ul i => exact Mem.load_stored_long m b 0 i hva
+    | gv_d f => exact Mem.load_stored_float m b 0 f hva
+    | gv_f f => exact Mem.load_stored_single m b 0 f hva
   · obtain ⟨w, hw, hgw, hl, hvw⟩ := hg y ty' init' b' hd' hsc' hs'
     have hb : b ≠ b' := fun e' => e (hge.inj y x b' hs' (e' ▸ hs))
     refine ⟨w, by simp [upd, e, hw], hgw, ?_, (Mem.valid_access_stored _ _ _ _ _ _ _ _ _).mpr hvw⟩
@@ -1362,7 +1502,7 @@ theorem exec_to_n (hge : GenvOk ge defs) (hS : FunsOk defs S) {e : env} {le : te
               injection e with e1 e2
               subst e1 e2
               have hz : Ptrofs.unsigned Ptrofs.zero = 0 := rfl
-              rcases hty with rfl | rfl
+              rcases hty with rfl | rfl | rfl | rfl
               · obtain ⟨w, rfl⟩ := cast_long hco p2
                 cases hasg with
                 | assign_loc_value _ chunk _ hac hst =>
@@ -1386,6 +1526,30 @@ theorem exec_to_n (hge : GenvOk ge defs) (hS : FunsOk defs S) {e : env} {le : te
                     exact ⟨ln, gv, setm mb x 0 4 (u32 c),
                       .nx_store_cell32 ln gv mb x n a2 _ v2 c _ (in_defs_of_mem hd) h1 n2 t2 hco
                         (setm_spec mb x 0 4 (u32 c)),
+                      htr, hp, hg', hm', retOk_normal ret⟩
+              · obtain ⟨f, rfl⟩ := cast_float hco
+                cases hasg with
+                | assign_loc_value _ chunk _ hac hst =>
+                    cases hac
+                    obtain ⟨hb, hse, harr⟩ := storev_arr (w := f.toNat) (hm x n loc hd hs) rfl
+                      (by decide) hst
+                    rw [hz] at hb harr
+                    obtain ⟨hm', hg'⟩ := mrel_store hge hm hg hd hs hse harr
+                    exact ⟨ln, gv, setm mb x 0 8 (u64 (f64_bits f)),
+                      .nx_store_cellf64 ln gv mb x n a2 _ v2 f _ (in_defs_of_mem hd) h1 n2 t2 hco
+                        (setm_spec mb x 0 8 (u64 (f64_bits f))),
+                      htr, hp, hg', hm', retOk_normal ret⟩
+              · obtain ⟨f, rfl⟩ := cast_single hco
+                cases hasg with
+                | assign_loc_value _ chunk _ hac hst =>
+                    cases hac
+                    obtain ⟨hb, hse, harr⟩ := storev_arr (w := f.toNat) (hm x n loc hd hs) rfl
+                      (by decide) hst
+                    rw [hz] at hb harr
+                    obtain ⟨hm', hg'⟩ := mrel_store hge hm hg hd hs hse harr
+                    exact ⟨ln, gv, setm mb x 0 4 (u32 (f32_bits f)),
+                      .nx_store_cellf32 ln gv mb x n a2 _ v2 f _ (in_defs_of_mem hd) h1 n2 t2 hco
+                        (setm_spec mb x 0 4 (u32 (f32_bits f))),
                       htr, hp, hg', hm', retOk_normal ret⟩
   | .exec_Scall _ _ _ optid a al tyargs tyres cconv vf vargs fd t1 m1 vres hcls hvf hargs
       hfind hty hcall =>
@@ -1425,6 +1589,56 @@ theorem exec_to_n (hge : GenvOk ge defs) (hS : FunsOk defs S) {e : env} {le : te
                         vargs f.fn_params f.fn_temps f.fn_body ln0 ln1 t1 ln2 gv2 mb2 out2 vres ln3
                         (in_defs_of_mem hdf) (params_types_of _) nl hnr hdj hu hb hx hres hso,
                         htr3, hp3, hg2, hm2, retOk_normal ret⟩
+      | sqrt _ x _ hd hargsok =>
+          simp only [typeof, classify_fun] at hcls
+          injection hcls with e1 e2 e3
+          subst e1 e2 e3
+          obtain ⟨d, hmem, hdef⟩ := List.any_eq_true.mp hd
+          have hmem : (x, .Gfun sqrtFun) ∈ defs := by
+            obtain ⟨y, g⟩ := d
+            simp only [sqrtDefOf, Bool.and_eq_true, beq_iff_eq] at hdef
+            obtain ⟨rfl, hdef⟩ := hdef
+            match g, hdef with
+            | .Gfun (.External (.EF_builtin name sg) targs tres cc), h =>
+                simp only [Bool.and_eq_true, beq_iff_eq] at h
+                obtain ⟨⟨⟨⟨rfl, rfl⟩, rfl⟩, rfl⟩, rfl⟩ := h
+                exact hmem
+          cases hvf with
+          | eval_Elvalue _ l ofs bf _ hl hdr =>
+              cases hl with
+              | eval_Evar_local _ _ _ hle => simp [empty_env] at hle
+              | eval_Evar_global _ _ _ _ hs =>
+                  cases hdr with
+                  | deref_loc_value _ _ hac _ => cases hac
+                  | deref_loc_reference _ =>
+                      obtain ⟨b', hsb, hdb⟩ := hge.sym_def _ _ hmem
+                      rw [hs] at hsb
+                      cases hsb
+                      have hfd : fd = sqrtFun := by
+                        simp only [Genv.find_funct, Genv.find_funct_ptr, hdb] at hfind
+                        simp at hfind
+                        exact hfind.symm
+                      subst hfd
+                      obtain ⟨nl, _⟩ := evallist_to_n htr hp hg hm hargsok hargs
+                      obtain ⟨f, rfl⟩ : ∃ f, vargs = [.Vfloat f] := by
+                        cases nl with
+                        | nl_cons _ _ _ _ _ _ _ _ _ _ hc nrest =>
+                            cases nrest
+                            obtain ⟨f, rfl⟩ := cast_float hc
+                            exact ⟨f, rfl⟩
+                      cases hcall with
+                      | eval_funcall_external _ _ _ _ _ _ _ _ _ hext =>
+                          have hlk : lookup_builtin_function "__builtin_fsqrt" sqrtSig =
+                              some .BI_fsqrt := rfl
+                          simp only [external_call, hlk, known_builtin_sem] at hext
+                          obtain ⟨hsem, rfl, rfl⟩ := hext
+                          injection hsem with hsem
+                          subst hsem
+                          obtain ⟨ln3, hso, htr3, hp3⟩ :=
+                            set_opt_of (v := .Vfloat (LClight.Float.sqrt Archi.aarch64 f)) optid
+                              htr hp (fun _ _ e => by cases e)
+                          exact ⟨ln3, gv, mb, .nx_sqrt ln gv mb optid x al f ln3
+                            (in_defs_of_mem hmem) nl hso, htr3, hp3, hg, hm, retOk_normal ret⟩
   | .exec_Sbuiltin _ _ _ optid ef al tyargs vargs t1 m1 vres hargs hext =>
       intro ret ln gv mb he hok htr hp hg hm
       subst he
@@ -1718,6 +1932,9 @@ def initVal (defs : Defs) (x : ident) : Option val :=
       match v.gvar_init with
       | [.Init_int32 n] => some (.Vint n)
       | [.Init_int64 n] => some (.Vlong n)
+      | [.Init_space _] =>
+          if v.gvar_info = tdbl then some (.Vfloat (f64_of_bits (r64 0)))
+          else if v.gvar_info = tflt then some (.Vsingle (f32_of_bits (r32 0))) else none
       | _ => none
   | _ => none
 
@@ -1726,7 +1943,8 @@ theorem scalarTy_of {ty : type} (h : scalar ty) : scalarTy ty = true := by
 
 theorem varOk_scalar {ty : type} {init : List init_data}
     (h : varOk ⟨ty, init, false, false⟩ = true) (hsc : scalar ty) :
-    (ty = tui ∧ ∃ n, init = [.Init_int32 n]) ∨ (ty = tul ∧ ∃ n, init = [.Init_int64 n]) := by
+    (ty = tui ∧ ∃ n, init = [.Init_int32 n]) ∨ (ty = tul ∧ ∃ n, init = [.Init_int64 n]) ∨
+      (ty = tdbl ∧ init = [.Init_space 8]) ∨ (ty = tflt ∧ init = [.Init_space 4]) := by
   have hs := scalarTy_of hsc
   unfold varOk at h
   split at h
@@ -1736,8 +1954,13 @@ theorem varOk_scalar {ty : type} {init : List init_data}
     exact .inl ⟨h, n, heq⟩
   · rename_i n heq
     simp only [Bool.not_false, Bool.true_and, beq_iff_eq] at h
-    exact .inr ⟨h, n, heq⟩
-  · simp_all
+    exact .inr (.inl ⟨h, n, heq⟩)
+  · rename_i n heq
+    simp only [Bool.not_false, Bool.true_and, Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq,
+      decide_eq_true_eq, Bool.not_eq_true', hs, Bool.true_eq_false, false_or] at h
+    rcases h.2 with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact .inr (.inr (.inl ⟨rfl, heq⟩))
+    · exact .inr (.inr (.inr ⟨rfl, heq⟩))
   · simp at h
 
 theorem varOk_init {v : globvar type} (h : varOk v = true) : init_ok v.gvar_init := by
@@ -1791,6 +2014,40 @@ theorem funOk_spec {defs : Defs} {S : List ident} {x : ident} (h : funOk defs S 
   | .Gfun (.External ..), _, hs => simp at hs
   | .Gvar _, _, hs => simp at hs
 
+/-- A block whose bytes from offset 0 are zero, with the permission to write them: a load of the
+chunk at offset 0 reads the value of zero bytes. -/
+theorem load_zeros {m : mem} {b : block} {chunk : memory_chunk}
+    (h : ∀ i : Nat, (i : Int) < size_chunk chunk →
+      ZMap.get (i : Int) (Mem.contents_of m b) = .Byte 0 ∧ Mem.perm m b (i : Int) .Cur .Writable)
+    (ha : align_chunk chunk ∣ 0) :
+    Mem.load Archi.aarch64 chunk m b 0 = some (decode_val Archi.aarch64 chunk
+        ((List.range (size_chunk_nat chunk)).map fun _ => .Byte 0)) ∧
+      Mem.valid_access m chunk b 0 .Writable := by
+  have hva : Mem.valid_access m chunk b 0 .Writable := by
+    refine ⟨fun ofs h0 h1 => ?_, ha⟩
+    have := (h ofs.toNat (by omega)).2
+    rwa [Int.toNat_of_nonneg h0] at this
+  refine ⟨?_, hva⟩
+  unfold Mem.load
+  rw [ite_eq_left (Mem.valid_access_readable hva), Mem.getN_map]
+  congr 2
+  apply List.map_congr_left
+  intro j hj
+  simp only [List.mem_range] at hj
+  have := size_chunk_nat_eq chunk
+  have := (h j (by omega)).1
+  simpa using this
+
+theorem decode_zero64 : decode_val Archi.aarch64 .Mfloat64
+    ((List.range (size_chunk_nat .Mfloat64)).map fun _ => .Byte 0) =
+      .Vfloat (f64_of_bits (r64 0)) :=
+  rfl
+
+theorem decode_zero32 : decode_val Archi.aarch64 .Mfloat32
+    ((List.range (size_chunk_nat .Mfloat32)).map fun _ => .Byte 0) =
+      .Vsingle (f32_of_bits (r32 0)) :=
+  rfl
+
 /-- The initial memory of a program whose definitions `progOk` accepts holds the initial values
 of its scalar globals. -/
 theorem grel_init {p : program function} {m0 : mem} (hn : (p.prog_defs.map (·.1)).Nodup)
@@ -1815,11 +2072,19 @@ theorem grel_init {p : program function} {m0 : mem} (hn : (p.prog_defs.map (·.1
   have hok := hdefs _ hd
   simp only [defOk] at hok
   have hlk := lookup_of_mem hn hd
-  rcases varOk_scalar hok hsc with ⟨rfl, n, rfl⟩ | ⟨rfl, n, rfl⟩
+  rcases varOk_scalar hok hsc with ⟨rfl, n, rfl⟩ | ⟨rfl, n, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
   · obtain ⟨hl, hv⟩ := hif.1 n rfl
     exact ⟨.Vint n, by simp [initVal, hlk], .gv_ui n, hl, hv⟩
   · obtain ⟨hl, hv⟩ := hif.2.1 n rfl
     exact ⟨.Vlong n, by simp [initVal, hlk], .gv_ul n, hl, hv⟩
+  · obtain ⟨hl, hv⟩ := load_zeros (chunk := .Mfloat64) (fun i hi => hif.2.2 8 rfl i hi)
+      (Int.dvd_zero _)
+    rw [decode_zero64] at hl
+    exact ⟨_, by simp [initVal, hlk], .gv_d _, hl, hv⟩
+  · obtain ⟨hl, hv⟩ := load_zeros (chunk := .Mfloat32) (fun i hi => hif.2.2 4 rfl i hi)
+      (Int.dvd_zero _)
+    rw [decode_zero32] at hl
+    exact ⟨_, by simp [initVal, hlk], .gv_f _, hl, hv⟩
 
 /-- The initial memory of a program whose definitions `progOk` accepts holds zero in every byte of
 every array, and each array's block has permissions only within its bytes. -/
@@ -1871,9 +2136,12 @@ theorem ninit_of {defs : Defs} (hnd : (defs.map (·.1)).Nodup)
   · intro x ty init hd hsc
     have hd := mem_of_in_defs hd
     have hlk := lookup_of_mem hnd hd
-    rcases varOk_scalar (hdefs _ hd) hsc with ⟨rfl, n, rfl⟩ | ⟨rfl, n, rfl⟩
+    rcases varOk_scalar (hdefs _ hd) hsc with
+      ⟨rfl, n, rfl⟩ | ⟨rfl, n, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
     · exact ⟨.Vint n, .gi_ui n, by simp [initVal, hlk]⟩
     · exact ⟨.Vlong n, .gi_ul n, by simp [initVal, hlk]⟩
+    · exact ⟨_, .gi_d, by simp [initVal, hlk]⟩
+    · exact ⟨_, .gi_f, by simp [initVal, hlk]⟩
 
 /-- The function `main` of a program whose definitions `progOk` accepts, called from
 `init_mem`'s memory, with the facts that N's judgments of whole programs take. -/

@@ -9,7 +9,11 @@
     "the byte theorem of a verified_compile program with large functions",
     "∀ x ∈ l, ∀ y ∈ l, f x = f y → x = y by decide +kernel over a list with many repetitions",
     "decide +kernel fails as an application type mismatch on a term that a definition by well-founded recursion computes",
-    "a recursive definition with an as-pattern that Lean compiles by well-founded recursion"
+    "a recursive definition with an as-pattern that Lean compiles by well-founded recursion",
+    "conditions on p.translation of verified_compile, each of which recomputes the translation",
+    "(kernel) deep recursion detected from decide +kernel of ∀ x ∈ l, p x or of an equality of long lists",
+    "List.lookup of every occurrence of an identifier in a long list of declarations",
+    "the kernel runs a computation after unfold of a definition whose body matches on it"
   ],
   "modules": [
     "Verified.Source",
@@ -19,7 +23,9 @@
     "LeanExe.Pipeline.FileBytes",
     "LeanExe.Encoding.Completeness.Writes",
     "LeanExe.Native.Translate",
-    "LeanExe.Native.Proof.Init"
+    "LeanExe.Native.Proof.Init",
+    "LeanExe.Dialect.RepeatWhile",
+    "Demos.Euler.Buffered"
   ],
   "declarations": [
     "Verified.Expr.uses",
@@ -32,7 +38,13 @@
     "Library.Random.ParkMiller.advance_eq_iterate",
     "LeanExe.Pipeline.encode_eq_of_toList",
     "Wasm.Encoding.encode_of_parts",
-    "LeanExe.Native.initStores"
+    "LeanExe.Native.initStores",
+    "LeanExe.Native.translate_defs",
+    "List.decidableBAll",
+    "List.hasDecEq",
+    "List.all",
+    "LeanExe.repeatWhile",
+    "Demos.Euler.Buffered.runFromInto"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",
@@ -40,10 +52,31 @@
   ],
   "unimported": {
     "LeanExe/Native/ClightN/Instance.lean": [
-      "ClightN.Proof.inj_of_nodup_map"
+      "ClightN.Proof.inj_of_nodup_map",
+      "ClightN.Proof.InstOk.inj",
+      "ClightN.Proof.evalTranslate",
+      "ClightN.Proof.trRestOk",
+      "ClightN.Proof.trFunOk",
+      "ClightN.Proof.defs_of_parts",
+      "ClightN.Proof.BareOk",
+      "ClightN.Proof.bare_n",
+      "ClightN.Proof.stmtEq",
+      "ClightN.Proof.listEq",
+      "ClightN.Proof.defsEq",
+      "ClightN.Proof.stmtEq_eq",
+      "ClightN.Proof.listEq_eq",
+      "ClightN.Proof.defsEq_eq",
+      "ClightN.Proof.gOfL",
+      "ClightN.Proof.tOfL",
+      "ClightN.Proof.Trie",
+      "ClightN.Proof.Trie.ofList",
+      "ClightN.Proof.Trie.find_ofList",
+      "ClightN.Proof.Trie.nodup_of_fresh",
+      "ClightN.Proof.Trie.fresh",
+      "ClightN.Proof.RenameOk"
     ],
-    "clightn/gcd/Gcd.lean": [
-      "ClightN.Proof.gcd_inj"
+    "clightn/lean/Euler.lean": [
+      "ClightN.Proof.Euler.solve_four"
     ]
   }
 }

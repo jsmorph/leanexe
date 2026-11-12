@@ -3,6 +3,75 @@ From Coq Require Import ZArith String.
 Require Coqlib Integers Floats Values AST Memory Events Ctypes Cop Clight ClightBigstep.
 Require NBase.
 
+Definition eqn_fadd64 : (Floats.float -> (Floats.float -> Floats.float)) :=
+  Floats.Float.add.
+
+Definition eqn_fsub64 : (Floats.float -> (Floats.float -> Floats.float)) :=
+  Floats.Float.sub.
+
+Definition eqn_fmul64 : (Floats.float -> (Floats.float -> Floats.float)) :=
+  Floats.Float.mul.
+
+Definition eqn_fdiv64 : (Floats.float -> (Floats.float -> Floats.float)) :=
+  Floats.Float.div.
+
+Definition eqn_fcmp64 : (Integers.comparison -> (Floats.float -> (Floats.float -> bool))) :=
+  Floats.Float.cmp.
+
+Definition eqn_fneg64 : (Floats.float -> Floats.float) :=
+  Floats.Float.neg.
+
+Definition eqn_fabs64 : (Floats.float -> Floats.float) :=
+  Floats.Float.abs.
+
+Definition eqn_fsqrt64 : (Floats.float -> Floats.float) :=
+  Floats.Float.sqrt.
+
+Definition eqn_f64_of_longu : (Integers.Int64.int -> Floats.float) :=
+  Floats.Float.of_longu.
+
+Definition eqn_f64_to_longu : (Floats.float -> (option Integers.Int64.int)) :=
+  Floats.Float.to_longu.
+
+Definition eqn_f64_of_single : (Floats.float32 -> Floats.float) :=
+  Floats.Float.of_single.
+
+Definition eqn_f64_to_single : (Floats.float -> Floats.float32) :=
+  Floats.Float.to_single.
+
+Definition eqn_fadd32 : (Floats.float32 -> (Floats.float32 -> Floats.float32)) :=
+  Floats.Float32.add.
+
+Definition eqn_fsub32 : (Floats.float32 -> (Floats.float32 -> Floats.float32)) :=
+  Floats.Float32.sub.
+
+Definition eqn_fmul32 : (Floats.float32 -> (Floats.float32 -> Floats.float32)) :=
+  Floats.Float32.mul.
+
+Definition eqn_fdiv32 : (Floats.float32 -> (Floats.float32 -> Floats.float32)) :=
+  Floats.Float32.div.
+
+Definition eqn_fcmp32 : (Integers.comparison -> (Floats.float32 -> (Floats.float32 -> bool))) :=
+  Floats.Float32.cmp.
+
+Definition eqn_fneg32 : (Floats.float32 -> Floats.float32) :=
+  Floats.Float32.neg.
+
+Definition eqn_f32_of_int : (Integers.Int.int -> Floats.float32) :=
+  Floats.Float32.of_int.
+
+Definition eqn_f32_of_intu : (Integers.Int.int -> Floats.float32) :=
+  Floats.Float32.of_intu.
+
+Definition eqn_f32_of_longu : (Integers.Int64.int -> Floats.float32) :=
+  Floats.Float32.of_longu.
+
+Definition eqn_f32_to_int : (Floats.float32 -> (option Integers.Int.int)) :=
+  Floats.Float32.to_int.
+
+Definition eqn_f32_to_longu : (Floats.float32 -> (option Integers.Int64.int)) :=
+  Floats.Float32.to_longu.
+
 Inductive binop_ok : Cop.binary_operation -> Ctypes.type -> Ctypes.type -> Values.val ->
     Values.val -> Values.val -> Prop :=
   | bo_add_ul : (forall (x : Integers.Int64.int) (y : Integers.Int64.int),
@@ -225,7 +294,139 @@ Inductive binop_ok : Cop.binary_operation -> Ctypes.type -> Ctypes.type -> Value
       -> (binop_ok Cop.Oge
           (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
           (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
-          (@Values.Vint x) (@Values.Vint y) (@Values.Vint (@NBase.r32 (0)%Z))))).
+          (@Values.Vint x) (@Values.Vint y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_add_d : (forall (x : Floats.float) (y : Floats.float),
+    (binop_ok Cop.Oadd (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vfloat y) (@Values.Vfloat (@Floats.Float.add x y))))
+  | bo_sub_d : (forall (x : Floats.float) (y : Floats.float),
+    (binop_ok Cop.Osub (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vfloat y) (@Values.Vfloat (@Floats.Float.sub x y))))
+  | bo_mul_d : (forall (x : Floats.float) (y : Floats.float),
+    (binop_ok Cop.Omul (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vfloat y) (@Values.Vfloat (@Floats.Float.mul x y))))
+  | bo_div_d : (forall (x : Floats.float) (y : Floats.float),
+    (binop_ok Cop.Odiv (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vfloat y) (@Values.Vfloat (@Floats.Float.div x y))))
+  | bo_eq_d_1 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Ceq x y) true)
+      -> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_eq_d_0 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Ceq x y) false)
+      -> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_ne_d_1 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cne x y) true)
+      -> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_ne_d_0 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cne x y) false)
+      -> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_lt_d_1 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Clt x y) true)
+      -> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_lt_d_0 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Clt x y) false)
+      -> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_le_d_1 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cle x y) true)
+      -> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_le_d_0 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cle x y) false)
+      -> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_ge_d_1 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cge x y) true)
+      -> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_ge_d_0 : (forall (x : Floats.float) (y : Floats.float),
+    ((@eq _ (@Floats.Float.cmp Integers.Cge x y) false)
+      -> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vfloat y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_add_f : (forall (x : Floats.float32) (y : Floats.float32),
+    (binop_ok Cop.Oadd (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vsingle y) (@Values.Vsingle (@Floats.Float32.add x y))))
+  | bo_sub_f : (forall (x : Floats.float32) (y : Floats.float32),
+    (binop_ok Cop.Osub (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vsingle y) (@Values.Vsingle (@Floats.Float32.sub x y))))
+  | bo_mul_f : (forall (x : Floats.float32) (y : Floats.float32),
+    (binop_ok Cop.Omul (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vsingle y) (@Values.Vsingle (@Floats.Float32.mul x y))))
+  | bo_div_f : (forall (x : Floats.float32) (y : Floats.float32),
+    (binop_ok Cop.Odiv (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vsingle y) (@Values.Vsingle (@Floats.Float32.div x y))))
+  | bo_eq_f_1 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Ceq x y) true)
+      -> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_eq_f_0 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Ceq x y) false)
+      -> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_ne_f_1 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cne x y) true)
+      -> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_ne_f_0 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cne x y) false)
+      -> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_lt_f_1 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Clt x y) true)
+      -> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_lt_f_0 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Clt x y) false)
+      -> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_le_f_1 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cle x y) true)
+      -> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_le_f_0 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cle x y) false)
+      -> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (0)%Z)))))
+  | bo_ge_f_1 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cge x y) true)
+      -> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (1)%Z)))))
+  | bo_ge_f_0 : (forall (x : Floats.float32) (y : Floats.float32),
+    ((@eq _ (@Floats.Float32.cmp Integers.Cge x y) false)
+      -> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vsingle y) (@Values.Vint (@NBase.r32 (0)%Z))))).
 
 Inductive cast_ok : Ctypes.type -> Ctypes.type -> Values.val -> Values.val -> Prop :=
   | co_si_ui : (forall (x : Integers.Int.int),
@@ -307,7 +508,54 @@ Inductive cast_ok : Ctypes.type -> Ctypes.type -> Values.val -> Values.val -> Pr
   | co_si_si : (forall (x : Integers.Int.int),
     (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
       (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _))) (@Values.Vint x)
-      (@Values.Vint x))).
+      (@Values.Vint x)))
+  | co_d_d : (forall (x : Floats.float),
+    (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vfloat x)))
+  | co_f_f : (forall (x : Floats.float32),
+    (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vsingle x)))
+  | co_ul_d : (forall (x : Integers.Int64.int),
+    (cast_ok (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vlong x)
+      (@Values.Vfloat (@Floats.Float.of_longu x))))
+  | co_d_ul : (forall (x : Floats.float) (y : Integers.Int64.int),
+    ((@eq _ (@Floats.Float.to_longu x) (@Some _ y))
+      -> (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+          (@Values.Vlong y))))
+  | co_f_d : (forall (x : Floats.float32),
+    (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+      (@Values.Vfloat (@Floats.Float.of_single x))))
+  | co_d_f : (forall (x : Floats.float),
+    (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat x)
+      (@Values.Vsingle (@Floats.Float.to_single x))))
+  | co_si_f : (forall (x : Integers.Int.int),
+    (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vint x)
+      (@Values.Vsingle (@Floats.Float32.of_int x))))
+  | co_ui_f : (forall (x : Integers.Int.int),
+    (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vint x)
+      (@Values.Vsingle (@Floats.Float32.of_intu x))))
+  | co_ul_f : (forall (x : Integers.Int64.int),
+    (cast_ok (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vlong x)
+      (@Values.Vsingle (@Floats.Float32.of_longu x))))
+  | co_f_si : (forall (x : Floats.float32) (y : Integers.Int.int),
+    ((@eq _ (@Floats.Float32.to_int x) (@Some _ y))
+      -> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
+          (@Values.Vsingle x) (@Values.Vint y))))
+  | co_f_ul : (forall (x : Floats.float32) (y : Integers.Int64.int),
+    ((@eq _ (@Floats.Float32.to_longu x) (@Some _ y))
+      -> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle x)
+          (@Values.Vlong y)))).
 
 Inductive bool_ok : Ctypes.type -> Values.val -> bool -> Prop :=
   | bv_si_true : (forall (x : Integers.Int.int),
@@ -326,6 +574,17 @@ Inductive bool_ok : Ctypes.type -> Values.val -> bool -> Prop :=
     ((@eq _ (@NBase.u32 x) (0)%Z)
       -> (bool_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
           (@Values.Vint x) false))).
+
+Inductive unop_ok : Cop.unary_operation -> Ctypes.type -> Values.val -> Values.val -> Prop :=
+  | uo_neg_d : (forall (x : Floats.float),
+    (unop_ok Cop.Oneg (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Values.Vfloat x) (@Values.Vfloat (@Floats.Float.neg x))))
+  | uo_abs_d : (forall (x : Floats.float),
+    (unop_ok Cop.Oabsfloat (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+      (@Values.Vfloat x) (@Values.Vfloat (@Floats.Float.abs x))))
+  | uo_neg_f : (forall (x : Floats.float32),
+    (unop_ok Cop.Oneg (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+      (@Values.Vsingle x) (@Values.Vsingle (@Floats.Float32.neg x)))).
 
 Inductive in_defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))) -> AST.ident ->
     (@AST.globdef Clight.fundef Ctypes.type) -> Prop :=
@@ -426,18 +685,26 @@ Inductive has_type : Clight.expr -> Ctypes.type -> Prop :=
   | ht_deref : (forall (a : Clight.expr) (ty : Ctypes.type), (has_type (@Clight.Ederef a ty) ty))
   | ht_binop : (forall (op : Cop.binary_operation) (a1 : Clight.expr) (a2 : Clight.expr)
       (ty : Ctypes.type), (has_type (@Clight.Ebinop op a1 a2 ty) ty))
-  | ht_cast : (forall (a : Clight.expr) (ty : Ctypes.type), (has_type (@Clight.Ecast a ty) ty)).
+  | ht_cast : (forall (a : Clight.expr) (ty : Ctypes.type), (has_type (@Clight.Ecast a ty) ty))
+  | ht_unop : (forall (op : Cop.unary_operation) (a : Clight.expr) (ty : Ctypes.type),
+    (has_type (@Clight.Eunop op a ty) ty)).
 
 Inductive scalar : Ctypes.type -> Prop :=
   | sc_ui : (scalar (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))))
-  | sc_ul : (scalar (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))).
+  | sc_ul : (scalar (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))))
+  | sc_d : (scalar (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))))
+  | sc_f : (scalar (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))).
 
 Inductive gval : Ctypes.type -> Values.val -> Prop :=
   | gv_ui : (forall (x : Integers.Int.int),
     (gval (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
       (@Values.Vint x)))
   | gv_ul : (forall (x : Integers.Int64.int),
-    (gval (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) (@Values.Vlong x))).
+    (gval (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) (@Values.Vlong x)))
+  | gv_d : (forall (f : Floats.float),
+    (gval (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@Values.Vfloat f)))
+  | gv_f : (forall (f : Floats.float32),
+    (gval (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) (@Values.Vsingle f))).
 
 Inductive ginit : Ctypes.type -> (list AST.init_data) -> Values.val -> Prop :=
   | gi_ui : (forall (x : Integers.Int.int),
@@ -445,7 +712,13 @@ Inductive ginit : Ctypes.type -> (list AST.init_data) -> Values.val -> Prop :=
       (@cons _ (@AST.Init_int32 x) (@nil _)) (@Values.Vint x)))
   | gi_ul : (forall (x : Integers.Int64.int),
     (ginit (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
-      (@cons _ (@AST.Init_int64 x) (@nil _)) (@Values.Vlong x))).
+      (@cons _ (@AST.Init_int64 x) (@nil _)) (@Values.Vlong x)))
+  | gi_d : (ginit (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+    (@cons _ (@AST.Init_space (8)%Z) (@nil _))
+    (@Values.Vfloat (@NBase.f64_of_bits (@NBase.r64 (0)%Z))))
+  | gi_f : (ginit (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+    (@cons _ (@AST.Init_space (4)%Z) (@nil _))
+    (@Values.Vsingle (@NBase.f32_of_bits (@NBase.r32 (0)%Z)))).
 
 Inductive init_ok : (list AST.init_data) -> Prop :=
   | io_nil : (init_ok (@nil _))
@@ -652,6 +925,69 @@ Inductive neval (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.ty
                     (@BinInt.Z.add (@BinInt.Z.mul (256)%Z (mb x (@BinInt.Z.add (0)%Z (1)%Z)))
                       (@BinInt.Z.add (@BinInt.Z.mul (65536)%Z (mb x (@BinInt.Z.add (0)%Z (2)%Z)))
                         (@BinInt.Z.mul (16777216)%Z (mb x (@BinInt.Z.add (0)%Z (3)%Z))))))))))))
+  | nv_cellf64 : (forall (x : AST.ident) (n : BinNums.Z),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type
+          (@AST.mkglobvar Ctypes.type
+            (@Ctypes.Tarray (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+              (@Ctypes.mk_attr false (@None _)))
+            (@cons _ (@AST.Init_space (@BinInt.Z.mul (8)%Z n)) (@nil _)) false false)))
+      -> ((@BinInt.Z.le (1)%Z n)
+          -> (neval defs le gv mb
+              (@Clight.Ederef
+                (@Clight.Ecast
+                  (@Clight.Evar x
+                    (@Ctypes.Tarray
+                      (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+                      (@Ctypes.mk_attr false (@None _))))
+                  (@Ctypes.Tpointer (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+                    (@Ctypes.mk_attr false (@None _))))
+                (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))))
+              (@Values.Vfloat
+                (@NBase.f64_of_bits
+                  (@NBase.r64
+                    (@BinInt.Z.add
+                      (@BinInt.Z.add (mb x (0)%Z)
+                        (@BinInt.Z.add (@BinInt.Z.mul (256)%Z (mb x (@BinInt.Z.add (0)%Z (1)%Z)))
+                          (@BinInt.Z.add
+                            (@BinInt.Z.mul (65536)%Z (mb x (@BinInt.Z.add (0)%Z (2)%Z)))
+                            (@BinInt.Z.mul (16777216)%Z (mb x (@BinInt.Z.add (0)%Z (3)%Z))))))
+                      (@BinInt.Z.mul (4294967296)%Z
+                        (@BinInt.Z.add (mb x (@BinInt.Z.add (0)%Z (4)%Z))
+                          (@BinInt.Z.add
+                            (@BinInt.Z.mul (256)%Z
+                              (mb x (@BinInt.Z.add (@BinInt.Z.add (0)%Z (4)%Z) (1)%Z)))
+                            (@BinInt.Z.add
+                              (@BinInt.Z.mul (65536)%Z
+                                (mb x (@BinInt.Z.add (@BinInt.Z.add (0)%Z (4)%Z) (2)%Z)))
+                              (@BinInt.Z.mul (16777216)%Z
+                                (mb x
+                                  (@BinInt.Z.add (@BinInt.Z.add (0)%Z (4)%Z) (3)%Z)))))))))))))))
+  | nv_cellf32 : (forall (x : AST.ident) (n : BinNums.Z),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type
+          (@AST.mkglobvar Ctypes.type
+            (@Ctypes.Tarray (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+              (@Ctypes.mk_attr false (@None _)))
+            (@cons _ (@AST.Init_space (@BinInt.Z.mul (8)%Z n)) (@nil _)) false false)))
+      -> ((@BinInt.Z.le (1)%Z n)
+          -> (neval defs le gv mb
+              (@Clight.Ederef
+                (@Clight.Ecast
+                  (@Clight.Evar x
+                    (@Ctypes.Tarray
+                      (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+                      (@Ctypes.mk_attr false (@None _))))
+                  (@Ctypes.Tpointer (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+                    (@Ctypes.mk_attr false (@None _))))
+                (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))))
+              (@Values.Vsingle
+                (@NBase.f32_of_bits
+                  (@NBase.r32
+                    (@BinInt.Z.add (mb x (0)%Z)
+                      (@BinInt.Z.add (@BinInt.Z.mul (256)%Z (mb x (@BinInt.Z.add (0)%Z (1)%Z)))
+                        (@BinInt.Z.add (@BinInt.Z.mul (65536)%Z (mb x (@BinInt.Z.add (0)%Z (2)%Z)))
+                          (@BinInt.Z.mul (16777216)%Z (mb x (@BinInt.Z.add (0)%Z (3)%Z)))))))))))))
   | nv_binop : (forall (op : Cop.binary_operation) (a1 : Clight.expr) (a2 : Clight.expr)
       (ty : Ctypes.type) (t1 : Ctypes.type) (t2 : Ctypes.type) (v1 : Values.val) (v2 : Values.val)
       (v : Values.val),
@@ -665,7 +1001,12 @@ Inductive neval (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.ty
       (v : Values.val),
     ((neval defs le gv mb a v1)
       -> ((has_type a t1)
-          -> ((cast_ok t1 ty v1 v) -> (neval defs le gv mb (@Clight.Ecast a ty) v))))).
+          -> ((cast_ok t1 ty v1 v) -> (neval defs le gv mb (@Clight.Ecast a ty) v)))))
+  | nv_unop : (forall (op : Cop.unary_operation) (a : Clight.expr) (ty : Ctypes.type)
+      (t1 : Ctypes.type) (v1 : Values.val) (v : Values.val),
+    ((neval defs le gv mb a v1)
+      -> ((has_type a t1)
+          -> ((unop_ok op t1 v1 v) -> (neval defs le gv mb (@Clight.Eunop op a ty) v))))).
 
 Inductive neval_list (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.type))))
     (le : (AST.ident -> (option Values.val))) (gv : (AST.ident -> (option Values.val)))
@@ -924,6 +1265,92 @@ Inductive nexec (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.ty
                                   (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned
                                     (@Ctypes.mk_attr false (@None _)))) a) (@nil _) le gv mb2
                               ClightBigstep.Out_normal))))))))
+  | nx_store_cellf64 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (mb : (AST.ident -> (BinNums.Z -> BinNums.Z)))
+      (x : AST.ident) (n : BinNums.Z) (a : Clight.expr) (t1 : Ctypes.type) (v1 : Values.val)
+      (f : Floats.float) (mb2 : (AST.ident -> (BinNums.Z -> BinNums.Z))),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type
+          (@AST.mkglobvar Ctypes.type
+            (@Ctypes.Tarray (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+              (@Ctypes.mk_attr false (@None _)))
+            (@cons _ (@AST.Init_space (@BinInt.Z.mul (8)%Z n)) (@nil _)) false false)))
+      -> ((@BinInt.Z.le (1)%Z n)
+          -> ((neval defs le gv mb a v1)
+              -> ((has_type a t1)
+                  -> ((cast_ok t1 (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1
+                        (@Values.Vfloat f))
+                      -> ((forall (y_sb : AST.ident) (j_sb : BinNums.Z),
+                            ((((@eq _ y_sb x)
+                                  /\ ((@BinInt.Z.le (0)%Z j_sb)
+                                      /\ (@BinInt.Z.lt j_sb (@BinInt.Z.add (0)%Z (8)%Z))))
+                                -> (@eq _ (mb2 y_sb j_sb)
+                                    (@NBase.zmod
+                                      (@NBase.zdiv (@NBase.u64 (@NBase.f64_bits f))
+                                        (@NBase.pow2
+                                        (@BinInt.Z.mul (8)%Z (@BinInt.Z.sub j_sb (0)%Z))))
+                                      (256)%Z)))
+                              /\ ((~ ((@eq _ y_sb x)
+                                        /\ ((@BinInt.Z.le (0)%Z j_sb)
+                                        /\ (@BinInt.Z.lt j_sb (@BinInt.Z.add (0)%Z (8)%Z)))))
+                                  -> (@eq _ (mb2 y_sb j_sb) (mb y_sb j_sb)))))
+                          -> (nexec defs le gv mb
+                              (@Clight.Sassign
+                                (@Clight.Ederef
+                                  (@Clight.Ecast
+                                    (@Clight.Evar x
+                                      (@Ctypes.Tarray
+                                        (@Ctypes.Tlong Ctypes.Unsigned
+                                        (@Ctypes.mk_attr false (@None _))) n
+                                        (@Ctypes.mk_attr false (@None _))))
+                                    (@Ctypes.Tpointer
+                                      (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+                                      (@Ctypes.mk_attr false (@None _))))
+                                  (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))) a)
+                              (@nil _) le gv mb2 ClightBigstep.Out_normal))))))))
+  | nx_store_cellf32 : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (mb : (AST.ident -> (BinNums.Z -> BinNums.Z)))
+      (x : AST.ident) (n : BinNums.Z) (a : Clight.expr) (t1 : Ctypes.type) (v1 : Values.val)
+      (f : Floats.float32) (mb2 : (AST.ident -> (BinNums.Z -> BinNums.Z))),
+    ((in_defs defs x
+        (@AST.Gvar Clight.fundef Ctypes.type
+          (@AST.mkglobvar Ctypes.type
+            (@Ctypes.Tarray (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) n
+              (@Ctypes.mk_attr false (@None _)))
+            (@cons _ (@AST.Init_space (@BinInt.Z.mul (8)%Z n)) (@nil _)) false false)))
+      -> ((@BinInt.Z.le (1)%Z n)
+          -> ((neval defs le gv mb a v1)
+              -> ((has_type a t1)
+                  -> ((cast_ok t1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1
+                        (@Values.Vsingle f))
+                      -> ((forall (y_sb : AST.ident) (j_sb : BinNums.Z),
+                            ((((@eq _ y_sb x)
+                                  /\ ((@BinInt.Z.le (0)%Z j_sb)
+                                      /\ (@BinInt.Z.lt j_sb (@BinInt.Z.add (0)%Z (4)%Z))))
+                                -> (@eq _ (mb2 y_sb j_sb)
+                                    (@NBase.zmod
+                                      (@NBase.zdiv (@NBase.u32 (@NBase.f32_bits f))
+                                        (@NBase.pow2
+                                        (@BinInt.Z.mul (8)%Z (@BinInt.Z.sub j_sb (0)%Z))))
+                                      (256)%Z)))
+                              /\ ((~ ((@eq _ y_sb x)
+                                        /\ ((@BinInt.Z.le (0)%Z j_sb)
+                                        /\ (@BinInt.Z.lt j_sb (@BinInt.Z.add (0)%Z (4)%Z)))))
+                                  -> (@eq _ (mb2 y_sb j_sb) (mb y_sb j_sb)))))
+                          -> (nexec defs le gv mb
+                              (@Clight.Sassign
+                                (@Clight.Ederef
+                                  (@Clight.Ecast
+                                    (@Clight.Evar x
+                                      (@Ctypes.Tarray
+                                        (@Ctypes.Tlong Ctypes.Unsigned
+                                        (@Ctypes.mk_attr false (@None _))) n
+                                        (@Ctypes.mk_attr false (@None _))))
+                                    (@Ctypes.Tpointer
+                                      (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+                                      (@Ctypes.mk_attr false (@None _))))
+                                  (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))) a)
+                              (@nil _) le gv mb2 ClightBigstep.Out_normal))))))))
   | nx_out : (forall (le : (AST.ident -> (option Values.val)))
       (gv : (AST.ident -> (option Values.val))) (mb : (AST.ident -> (BinNums.Z -> BinNums.Z)))
       (x : AST.ident) (init : (list AST.init_data)) (a : Clight.expr) (t1 : Ctypes.type)
@@ -1070,6 +1497,31 @@ Inductive nexec (defs : (list (AST.ident * (@AST.globdef Clight.fundef Ctypes.ty
                                         (@Clight.Scall optid
                                         (@Clight.Evar x (@Ctypes.Tfunction tys ret cc)) al) t le3
                                         gv2 mb2 ClightBigstep.Out_normal))))))))))))
+  | nx_sqrt : (forall (le : (AST.ident -> (option Values.val)))
+      (gv : (AST.ident -> (option Values.val))) (mb : (AST.ident -> (BinNums.Z -> BinNums.Z)))
+      (optid : (option AST.ident)) (x : AST.ident) (al : (list Clight.expr)) (f : Floats.float)
+      (le2 : (AST.ident -> (option Values.val))),
+    ((in_defs defs x
+        (@AST.Gfun Clight.fundef Ctypes.type
+          (@Ctypes.External Clight.function
+            (@AST.EF_builtin ("__builtin_fsqrt"%string)
+              (@AST.mksignature (@cons _ AST.Xfloat (@nil _)) AST.Xfloat
+                (@AST.mkcallconv (@None _) false false)))
+            (@cons _ (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@nil _))
+            (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+            (@AST.mkcallconv (@None _) false false))))
+      -> ((neval_list defs le gv mb al
+            (@cons _ (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) (@nil _))
+            (@cons _ (@Values.Vfloat f) (@nil _)))
+          -> ((set_opt optid (@Values.Vfloat (@Floats.Float.sqrt f)) le le2)
+              -> (nexec defs le gv mb
+                  (@Clight.Scall optid
+                    (@Clight.Evar x
+                      (@Ctypes.Tfunction
+                        (@cons _ (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+                          (@nil _)) (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+                        (@AST.mkcallconv (@None _) false false))) al) (@nil _) le2 gv mb
+                  ClightBigstep.Out_normal)))))
   | nx_seq1 : (forall (le : (AST.ident -> (option Values.val)))
       (gv : (AST.ident -> (option Values.val))) (mb : (AST.ident -> (BinNums.Z -> BinNums.Z)))
       (s1 : Clight.statement) (s2 : Clight.statement) (t1 : (list Events.event))
@@ -1597,6 +2049,186 @@ Definition stmt_ge_ui_ui : Prop :=
           (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
           (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
 
+Definition stmt_add_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oadd v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oadd (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_sub_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Osub v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Osub (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_mul_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Omul v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Omul (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_div_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Odiv v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Odiv (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_eq_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oeq v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_ne_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.One v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_lt_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Olt v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_le_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Ole v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_ge_d_d : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oge v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_add_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oadd v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oadd (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_sub_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Osub v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Osub (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_mul_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Omul v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Omul (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_div_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Odiv v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Odiv (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_eq_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oeq v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oeq (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_ne_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.One v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.One (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_lt_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Olt v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Olt (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_le_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Ole v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Ole (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
+Definition stmt_ge_f_f : Prop :=
+  (forall (ce : Ctypes.composite_env) (v1 : Values.val) (v2 : Values.val) (v : Values.val)
+      (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_binop ce Cop.Oge v1
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v2
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (binop_ok Cop.Oge (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v2 v))).
+
 Definition stmt_cast_si_ui : Prop :=
   (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
     ((@eq _
@@ -1749,6 +2381,96 @@ Definition stmt_cast_si_si : Prop :=
       <-> (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
           (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _))) v1 v))).
 
+Definition stmt_cast_d_d : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_f_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_ul_d : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_d_ul : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_f_d : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_d_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_si_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1
+          (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_ui_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1
+          (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_ul_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_f_si : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tint Ctypes.I32 Ctypes.Signed (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_cast_f_ul : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_cast v1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (cast_ok (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          (@Ctypes.Tlong Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) v1 v))).
+
 Definition stmt_bool_si : Prop :=
   (forall (v : Values.val) (b : bool) (m : Memory.Mem.mem),
     ((@eq _
@@ -1764,6 +2486,28 @@ Definition stmt_bool_ui : Prop :=
         (@Some _ b))
       <-> (bool_ok (@Ctypes.Tint Ctypes.I32 Ctypes.Unsigned (@Ctypes.mk_attr false (@None _))) v
           b))).
+
+Definition stmt_neg_d : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_unop Cop.Oneg v1 (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _)))
+          m) (@Some _ v))
+      <-> (unop_ok Cop.Oneg (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1 v))).
+
+Definition stmt_abs_d : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_unop Cop.Oabsfloat v1
+          (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) m) (@Some _ v))
+      <-> (unop_ok Cop.Oabsfloat (@Ctypes.Tfloat Ctypes.F64 (@Ctypes.mk_attr false (@None _))) v1
+          v))).
+
+Definition stmt_neg_f : Prop :=
+  (forall (v1 : Values.val) (v : Values.val) (m : Memory.Mem.mem),
+    ((@eq _
+        (@NBase.sem_unop Cop.Oneg v1 (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _)))
+          m) (@Some _ v))
+      <-> (unop_ok Cop.Oneg (@Ctypes.Tfloat Ctypes.F32 (@Ctypes.mk_attr false (@None _))) v1 v))).
 
 Definition stmt_const_int : Prop :=
   (forall (ge : Clight.genv) (e : Clight.env) (le : Clight.temp_env) (m : Memory.Mem.mem)

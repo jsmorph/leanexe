@@ -9,7 +9,7 @@
 From Coq Require Import ZArith Lia.
 Require Import Coqlib Maps Integers Floats Values AST Memdata Memory Events Globalenvs.
 Require Import Ctypes Cop Clight ClightBigstep.
-Require NBase Clight2Asm.
+Require Builtins0 Builtins NBase Clight2Asm.
 Require Import NSpec NProof.
 
 Local Open Scope Z_scope.
@@ -32,7 +32,16 @@ Ltac binop_leaf H ce m :=
         | exact (proj2 (shl_ui_ui ce _ _ _ m) H) | exact (proj2 (shr_ui_ui ce _ _ _ m) H)
         | exact (proj2 (eq_ui_ui ce _ _ _ m) H) | exact (proj2 (ne_ui_ui ce _ _ _ m) H)
         | exact (proj2 (lt_ui_ui ce _ _ _ m) H) | exact (proj2 (gt_ui_ui ce _ _ _ m) H)
-        | exact (proj2 (ge_ui_ui ce _ _ _ m) H) ].
+        | exact (proj2 (ge_ui_ui ce _ _ _ m) H)
+        | exact (proj2 (add_d_d ce _ _ _ m) H) | exact (proj2 (sub_d_d ce _ _ _ m) H)
+        | exact (proj2 (mul_d_d ce _ _ _ m) H) | exact (proj2 (div_d_d ce _ _ _ m) H)
+        | exact (proj2 (eq_d_d ce _ _ _ m) H) | exact (proj2 (ne_d_d ce _ _ _ m) H)
+        | exact (proj2 (lt_d_d ce _ _ _ m) H) | exact (proj2 (le_d_d ce _ _ _ m) H)
+        | exact (proj2 (ge_d_d ce _ _ _ m) H) | exact (proj2 (add_f_f ce _ _ _ m) H)
+        | exact (proj2 (sub_f_f ce _ _ _ m) H) | exact (proj2 (mul_f_f ce _ _ _ m) H)
+        | exact (proj2 (div_f_f ce _ _ _ m) H) | exact (proj2 (eq_f_f ce _ _ _ m) H)
+        | exact (proj2 (ne_f_f ce _ _ _ m) H) | exact (proj2 (lt_f_f ce _ _ _ m) H)
+        | exact (proj2 (le_f_f ce _ _ _ m) H) | exact (proj2 (ge_f_f ce _ _ _ m) H) ].
 
 Lemma binop_ok_sound : forall op t1 t2 v1 v2 v, binop_ok op t1 t2 v1 v2 v ->
   forall ce m, sem_binary_operation ce op v1 t1 v2 t2 m = Some v.
@@ -50,7 +59,13 @@ Ltac cast_leaf H m :=
         | exact (proj2 (cast_vuc_ul _ _ m) H) | exact (proj2 (cast_vui_ul _ _ m) H)
         | exact (proj2 (cast_ui_vui _ _ m) H) | exact (proj2 (cast_ul_ul _ _ m) H)
         | exact (proj2 (cast_ui_ui _ _ m) H) | exact (proj2 (cast_uc_uc _ _ m) H)
-        | exact (proj2 (cast_si_si _ _ m) H) ].
+        | exact (proj2 (cast_si_si _ _ m) H)
+        | exact (proj2 (cast_d_d _ _ m) H) | exact (proj2 (cast_f_f _ _ m) H)
+        | exact (proj2 (cast_ul_d _ _ m) H) | exact (proj2 (cast_d_ul _ _ m) H)
+        | exact (proj2 (cast_f_d _ _ m) H) | exact (proj2 (cast_d_f _ _ m) H)
+        | exact (proj2 (cast_si_f _ _ m) H) | exact (proj2 (cast_ui_f _ _ m) H)
+        | exact (proj2 (cast_ul_f _ _ m) H) | exact (proj2 (cast_f_si _ _ m) H)
+        | exact (proj2 (cast_f_ul _ _ m) H) ].
 
 Lemma cast_ok_sound : forall t1 t2 v1 v, cast_ok t1 t2 v1 v ->
   forall m, sem_cast v1 t1 t2 m = Some v.
@@ -63,6 +78,15 @@ Proof.
   intros t v b H m. pose proof H as H0. revert H0.
   destruct H; intros H0;
   first [ exact (proj2 (bool_si _ _ m) H0) | exact (proj2 (bool_ui _ _ m) H0) ].
+Qed.
+
+Lemma unop_ok_sound : forall op t v1 v, unop_ok op t v1 v ->
+  forall m, sem_unary_operation op v1 t m = Some v.
+Proof.
+  intros op t v1 v H m. pose proof H as H0. revert H0.
+  destruct H; intros H0;
+  first [ exact (proj2 (neg_d _ _ m) H0) | exact (proj2 (abs_d _ _ m) H0)
+        | exact (proj2 (neg_f _ _ m) H0) ].
 Qed.
 
 Lemma has_type_typeof : forall a t, has_type a t -> typeof a = t.
@@ -288,6 +312,43 @@ Proof.
   ring.
 Qed.
 
+Lemma load_f64 : forall m b f hi ofs o,
+  bytes_at m b f hi -> Ptrofs.unsigned ofs = o -> 0 <= o -> o + 8 <= hi -> (8 | o) ->
+  Mem.loadv Mfloat64 m (Vptr b ofs) = Some (Vfloat (Float.of_bits (Int64.repr (le8 f o)))).
+Proof.
+  intros m b f hi ofs o B U O0 OH [q Q].
+  pose proof (Ptrofs.unsigned_range ofs) as R. rewrite modulus_eq in R.
+  unfold Mem.loadv. rewrite U, zle_true by (simpl; rewrite modulus_eq; lia).
+  unfold Mem.load. rewrite pred_dec_true.
+  2: { apply Mem.valid_access_implies with Writable; [| constructor].
+       eapply valid_bytes; [exact B | exact O0 | simpl; lia | exists q; auto]. }
+  f_equal. change (size_chunk_nat Mfloat64) with 8%nat. cbn [Mem.getN].
+  contents B.
+  unfold le8, le4. do 3 f_equal.
+  replace (o + 1 + 1) with (o + 2) by lia. replace (o + 2 + 1) with (o + 3) by lia.
+  replace (o + 3 + 1) with (o + 4) by lia. replace (o + 4 + 1) with (o + 5) by lia.
+  replace (o + 5 + 1) with (o + 6) by lia. replace (o + 6 + 1) with (o + 7) by lia.
+  replace (o + 4 + 2) with (o + 6) by lia. replace (o + 4 + 3) with (o + 7) by lia.
+  ring.
+Qed.
+
+Lemma load_f32 : forall m b f hi ofs o,
+  bytes_at m b f hi -> Ptrofs.unsigned ofs = o -> 0 <= o -> o + 4 <= hi -> (4 | o) ->
+  Mem.loadv Mfloat32 m (Vptr b ofs) = Some (Vsingle (Float32.of_bits (Int.repr (le4 f o)))).
+Proof.
+  intros m b f hi ofs o B U O0 OH [q Q].
+  pose proof (Ptrofs.unsigned_range ofs) as R. rewrite modulus_eq in R.
+  unfold Mem.loadv. rewrite U, zle_true by (simpl; rewrite modulus_eq; lia).
+  unfold Mem.load. rewrite pred_dec_true.
+  2: { apply Mem.valid_access_implies with Writable; [| constructor].
+       eapply valid_bytes; [exact B | exact O0 | simpl; lia | exists q; auto]. }
+  f_equal. change (size_chunk_nat Mfloat32) with 4%nat. cbn [Mem.getN].
+  contents B.
+  unfold le4. do 3 f_equal.
+  replace (o + 1 + 1) with (o + 2) by lia. replace (o + 2 + 1) with (o + 3) by lia.
+  ring.
+Qed.
+
 Lemma load_byte : forall m b f hi ofs o,
   bytes_at m b f hi -> Ptrofs.unsigned ofs = o -> 0 <= o -> o + 1 <= hi ->
   Mem.loadv Mint8unsigned m (Vptr b ofs) = Some (Vint (Int.repr (f o))).
@@ -509,9 +570,22 @@ Proof.
     + apply eval_Ederef. apply eval_base_cast; exact S.
     + eapply deref_loc_value. reflexivity.
       eapply load_le4; [exact B | apply Ptrofs.unsigned_zero | lia | lia | apply Z.divide_0_r].
+  - (* cell of a double *)
+    destruct (AR x n H) as (b & S & B).
+    eapply eval_Elvalue.
+    + apply eval_Ederef. apply eval_base_cast; exact S.
+    + eapply deref_loc_value. reflexivity.
+      eapply load_f64; [exact B | apply Ptrofs.unsigned_zero | lia | lia | apply Z.divide_0_r].
+  - (* cell of a float *)
+    destruct (AR x n H) as (b & S & B).
+    eapply eval_Elvalue.
+    + apply eval_Ederef. apply eval_base_cast; exact S.
+    + eapply deref_loc_value. reflexivity.
+      eapply load_f32; [exact B | apply Ptrofs.unsigned_zero | lia | lia | apply Z.divide_0_r].
   - eapply eval_Ebinop; eauto.
     rewrite (has_type_typeof _ _ H0), (has_type_typeof _ _ H2). eapply binop_ok_sound; eauto.
   - eapply eval_Ecast; eauto. rewrite (has_type_typeof _ _ H0). eapply cast_ok_sound; eauto.
+  - eapply eval_Eunop; eauto. rewrite (has_type_typeof _ _ H0). eapply unop_ok_sound; eauto.
 Qed.
 
 Lemma neval_list_sound : forall ln gv mb al tys vs,
@@ -660,6 +734,18 @@ Qed.
 Lemma vload_size : forall ch ty sz j v, vload_ok ch ty sz j v -> sizeof ge ty = sz.
 Proof. destruct 1; reflexivity. Qed.
 
+(** The built-in [__builtin_fsqrt] of CompCert's table gives the square root, with no event. *)
+Lemma sqrt_call : forall f m,
+  external_call (EF_builtin "__builtin_fsqrt" (mksignature (Xfloat :: nil) Xfloat cc_default))
+    ge (Vfloat f :: nil) m E0 (Vfloat (Float.sqrt f)) m.
+Proof.
+  intros f m. simpl. unfold builtin_or_external_sem.
+  assert (L: Builtins.lookup_builtin_function "__builtin_fsqrt"
+               (mksignature (Xfloat :: nil) Xfloat cc_default) =
+             Some (Builtins.BI_standard Builtins0.BI_fsqrt)) by reflexivity.
+  rewrite L. constructor. reflexivity.
+Qed.
+
 Lemma internal_funct : forall x f, in_defs (prog_defs p) x (Gfun (Internal f)) ->
   exists b, Genv.find_symbol ge x = Some b /\ Genv.find_funct_ptr ge b = Some (Internal f).
 Proof.
@@ -799,6 +885,31 @@ Proof.
     + eapply neval_sound; eauto.
     + simpl. rewrite (has_type_typeof _ _ H2). eapply cast_ok_sound; eauto.
     + eapply assign_loc_value. reflexivity. exact ST.
+  - (* store to the cell of a double *)
+    destruct (AR x n H) as (b & S & _).
+    destruct (store_array m0 gv mb mb2 x n b 0 Mfloat64 (Vfloat f) (NBase.u64 (NBase.f64_bits f))
+                8 G AR H S eq_refl (Z.le_refl 0) ltac:(lia) (Z.divide_0_r _)
+                ltac:(rewrite modulus_eq; lia) (proj1 (Int64.unsigned_range _)) eq_refl H4)
+      as (m' & ST & G' & AR').
+    exists tle, m'. split; [| auto].
+    eapply exec_Sassign.
+    + apply eval_Ederef. apply eval_base_cast; exact S.
+    + eapply neval_sound; eauto.
+    + simpl. rewrite (has_type_typeof _ _ H2). eapply cast_ok_sound; eauto.
+    + eapply assign_loc_value. reflexivity. exact ST.
+  - (* store to the cell of a float *)
+    destruct (AR x n H) as (b & S & _).
+    destruct (store_array m0 gv mb mb2 x n b 0 Mfloat32 (Vsingle f)
+                (NBase.u32 (NBase.f32_bits f)) 4 G AR H S eq_refl (Z.le_refl 0) ltac:(lia)
+                (Z.divide_0_r _) ltac:(rewrite modulus_eq; lia) (proj1 (Int.unsigned_range _))
+                eq_refl H4)
+      as (m' & ST & G' & AR').
+    exists tle, m'. split; [| auto].
+    eapply exec_Sassign.
+    + apply eval_Ederef. apply eval_base_cast; exact S.
+    + eapply neval_sound; eauto.
+    + simpl. rewrite (has_type_typeof _ _ H2). eapply cast_ok_sound; eauto.
+    + eapply assign_loc_value. reflexivity. exact ST.
   - (* volatile store *)
     destruct (out_store x init i m0 H) as (b & S & EC).
     exists tle, m0. split; [| auto].
@@ -857,6 +968,17 @@ Proof.
       * exact E.
       * apply result_ok_sound; auto.
       * reflexivity.
+  - (* call of __builtin_fsqrt *)
+    destruct (def_of _ _ H) as (b & S & F).
+    exists (set_opttemp optid (Vfloat (Float.sqrt f)) tle), m0.
+    split; [| split; [eapply set_opt_sound; eauto | auto]].
+    eapply exec_Scall with (vf := Vptr b Ptrofs.zero).
+    + reflexivity.
+    + eapply eval_Elvalue. apply global_lvalue; eauto. apply deref_loc_reference; reflexivity.
+    + eapply neval_list_sound; eauto.
+    + simpl. rewrite dec_eq_true. apply Genv.find_funct_ptr_iff. exact F.
+    + reflexivity.
+    + apply eval_funcall_external. apply sqrt_call.
   - (* sequence, normal *)
     destruct (IHnexec1 tle m0 R G AR) as (le1' & m1 & E1 & R1 & G1 & AR1).
     destruct (IHnexec2 le1' m1 R1 G1 AR1) as (le2' & m2 & E2 & R2 & G2 & AR2).
@@ -940,15 +1062,27 @@ Proof.
     destruct (def_of p NOREP _ _ D) as (b & SY & F).
     assert (FV : Genv.find_var_info (Genv.globalenv p) b = Some (mkglobvar ty init false false))
       by (apply Genv.find_var_info_iff; auto).
-    exploit Genv.init_mem_characterization. eexact FV. eexact IM. intros (RP & _ & LS & _).
-    simpl in RP, LS. specialize (LS eq_refl).
-    destruct GI; simpl in RP, LS; destruct LS as [L _].
-    + exists b, Mint32, (Vint x0). do 4 (split; [first [exact SY | reflexivity | exact E |
+    exploit Genv.init_mem_characterization. eexact FV. eexact IM. intros (RP & _ & LS & LB).
+    simpl in RP, LS. specialize (LS eq_refl). specialize (LB eq_refl).
+    destruct GI.
+    + simpl in RP, LS. destruct LS as [L _].
+      exists b, Mint32, (Vint x0). do 4 (split; [first [exact SY | reflexivity | exact E |
         constructor] |]). split; [exact L |]. split; [| apply Z.divide_0_r].
       intros o O. apply RP. simpl in O. lia.
-    + exists b, Mint64, (Vlong x0). do 4 (split; [first [exact SY | reflexivity | exact E |
+    + simpl in RP, LS. destruct LS as [L _].
+      exists b, Mint64, (Vlong x0). do 4 (split; [first [exact SY | reflexivity | exact E |
         constructor] |]). split; [exact L |]. split; [| apply Z.divide_0_r].
       intros o O. apply RP. simpl in O. lia.
+    + exists b, Mfloat64, (Vfloat (NBase.f64_of_bits (NBase.r64 0))).
+      do 4 (split; [first [exact SY | reflexivity | exact E | constructor] |]).
+      split.
+      * rewrite (Mem.loadbytes_load Mfloat64 _ _ _ _ LB (Z.divide_0_r _)). reflexivity.
+      * split; [| apply Z.divide_0_r]. intros o O. apply RP. simpl in O |- *. lia.
+    + exists b, Mfloat32, (Vsingle (NBase.f32_of_bits (NBase.r32 0))).
+      do 4 (split; [first [exact SY | reflexivity | exact E | constructor] |]).
+      split.
+      * rewrite (Mem.loadbytes_load Mfloat32 _ _ _ _ LB (Z.divide_0_r _)). reflexivity.
+      * split; [| apply Z.divide_0_r]. intros o O. apply RP. simpl in O |- *. lia.
   - intros x n D.
     destruct (def_of p NOREP _ _ D) as (b & SY & F).
     assert (FV : Genv.find_var_info (Genv.globalenv p) b =

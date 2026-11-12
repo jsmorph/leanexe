@@ -140,6 +140,28 @@ theorem decode_arr4 {A : Archi} (f : Int → Int) (o : Int)
   congr 2
   omega
 
+theorem decode_arr8f {A : Archi} (f : Int → Int) (o : Int)
+    (hr : ∀ j : Int, 0 ≤ j → j < 8 → 0 ≤ f (o + j) ∧ f (o + j) < 256) :
+    decode_val A .Mfloat64 ((List.range 8).map fun (j : Nat) => .Byte (Byte.repr (f (o + j)))) =
+      .Vfloat (f64_of_bits (r64 (le8L f o))) := by
+  have h := decode_arr8 (A := A) f o hr
+  rw [show List.range 8 = [0, 1, 2, 3, 4, 5, 6, 7] from rfl] at h ⊢
+  simp only [List.map_cons, List.map_nil, decode_val, proj_bytes] at h ⊢
+  injection h with h
+  rw [h]
+  rfl
+
+theorem decode_arr4f {A : Archi} (f : Int → Int) (o : Int)
+    (hr : ∀ j : Int, 0 ≤ j → j < 4 → 0 ≤ f (o + j) ∧ f (o + j) < 256) :
+    decode_val A .Mfloat32 ((List.range 4).map fun (j : Nat) => .Byte (Byte.repr (f (o + j)))) =
+      .Vsingle (f32_of_bits (r32 (le4L f o))) := by
+  have h := decode_arr4 (A := A) f o hr
+  rw [show List.range 4 = [0, 1, 2, 3] from rfl] at h ⊢
+  simp only [List.map_cons, List.map_nil, decode_val, proj_bytes] at h ⊢
+  injection h with h
+  rw [h]
+  rfl
+
 theorem decode_arr1 {A : Archi} (f : Int → Int) (o : Int) (hr : 0 ≤ f o ∧ f o < 256) :
     decode_val A .Mint8unsigned ((List.range 1).map fun (j : Nat) => .Byte (Byte.repr (f (o + j))))
       = .Vint (r32 (f o)) := by

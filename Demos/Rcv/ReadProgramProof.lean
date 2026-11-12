@@ -31,10 +31,10 @@ theorem get_eq (b : Bytes) (x : UInt64) : b.get x = ((bytesOf b).getD x.toNat 0)
   have hlen := bytesOf_length b
   unfold Bytes.get
   by_cases h : x.toNat < b.data.size
-  · rw [dite_cond_eq_true (eq_true h), List.getD_eq_getElem?_getD,
+  · rw [dite_eq_left_of_eq_true (eq_true h), List.getD_eq_getElem?_getD,
       List.getElem?_eq_getElem (by rw [hlen]; exact h), Option.getD_some]
     rfl
-  · rw [dite_cond_eq_false (eq_false h), List.getD_eq_getElem?_getD,
+  · rw [dite_eq_right_of_eq_false (eq_false h), List.getD_eq_getElem?_getD,
       List.getElem?_eq_none (by rw [hlen]; omega)]
     rfl
 

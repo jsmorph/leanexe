@@ -347,26 +347,23 @@ theorem node_last (r : Float) (n : UInt64) (hn : 1 ≤ n) : node r n n = r := by
 
 /-! ### The sum of the panels -/
 
-theorem panels_sound {m1 m2 c11 c12 c22 r : Float} {n : UInt64} (hc : 0 < value c11.toBits)
+/-- The sum of the panels contains the integral of `Model.core` over `[-r, r]` for every setup
+whose fields contain the quantities of the real mean and covariance. -/
+theorem panels_sound_of {st : Setup} {r : Float} {n : UInt64} {m1 m2 c11 c12 c22 : ℝ}
+    (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
     (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
-    (h : (panels Exp.expTable (setup m1 m2 c11 c12 c22 r) r n).status = 0) :
-    Finite r.toBits ∧
-      0 < Model.condVar (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
-      Contains (panels Exp.expTable (setup m1 m2 c11 c12 c22 r) r n)
+    (h : (panels Exp.expTable st r n).status = 0) :
+    Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
+      Contains (panels Exp.expTable st r n)
         (∫ x in (-value r.toBits)..(value r.toBits),
-          Model.core (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
-            (value c22.toBits) (value r.toBits) x) := by
-  have S := setup_sound m1 m2 c11 c12 c22 r
-  set F := Model.core (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
-    (value c22.toBits) (value r.toBits) with hF
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
+  set F := Model.core m1 m2 c11 c12 c22 (value r.toBits) with hF
   have hFi : ∀ a b : ℝ, IntervalIntegrable F MeasureTheory.volume a b := fun a b =>
     (Model.continuous_core _ _ _ _ _ _).intervalIntegrable a b
   have key := LeanExe.Dialect.loop_induction (n := n) (init := point 0.0)
-    (f := fun i acc => add acc
-      (panel Exp.expTable (setup m1 m2 c11 c12 c22 r) (node r n i) (node r n (i + 1))))
+    (f := fun i acc => add acc (panel Exp.expTable st (node r n i) (node r n (i + 1))))
     (fun k acc => acc.status = 0 →
-      (0 < k → Finite r.toBits ∧
-        0 < Model.condVar (value c11.toBits) (value c12.toBits) (value c22.toBits)) ∧
+      (0 < k → Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22) ∧
       Contains acc (∫ x in (value (node r n (UInt64.ofNat 0)).toBits)..
         (value (node r n (UInt64.ofNat k)).toBits), F x))
     (by
@@ -401,6 +398,17 @@ theorem panels_sound {m1 m2 c11 c12 c22 r : Float} {n : UInt64} (hc : 0 < value 
   have hz : node r n (UInt64.ofNat 0) = -r := node_zero r n
   have c := hfin.2
   rwa [hl, hz, (neg_value fr).2] at c
+
+theorem panels_sound {m1 m2 c11 c12 c22 r : Float} {n : UInt64} (hc : 0 < value c11.toBits)
+    (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
+    (h : (panels Exp.expTable (setup m1 m2 c11 c12 c22 r) r n).status = 0) :
+    Finite r.toBits ∧
+      0 < Model.condVar (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
+      Contains (panels Exp.expTable (setup m1 m2 c11 c12 c22 r) r n)
+        (∫ x in (-value r.toBits)..(value r.toBits),
+          Model.core (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
+            (value c22.toBits) (value r.toBits) x) :=
+  panels_sound_of (setup_sound m1 m2 c11 c12 c22 r) hc hr hn h
 
 /-! ### The interval and the verdict -/
 
