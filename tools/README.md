@@ -4,7 +4,10 @@
 
 [The Lean runner](leanrun) selects the pinned toolchain, takes the machine-wide lock, and
 applies the resource and timeout settings described in
-[the development procedure](../docs/verified-manual.md#development-practice).  Repository drivers
+[the development procedure](../docs/verified-manual.md#development-practice).  It adds `-R` to a
+lake command whose `-K` options differ from those of the cached Lake configuration, so that the
+command builds in the mode that it names, as [the section on fast
+builds](../docs/verified-manual.md#fast-builds) explains.  Repository drivers
 invoke it themselves.  [The remote runner](leanrun-dev) supports source synchronization and
 checks on the development host.  The runner's resource controls and the rules for local mode
 are stated in [the repository instructions](../AGENTS.md#lean-process-limits).
@@ -83,6 +86,22 @@ that `Library.Native` imports each library program, that no library program reac
 through its imports, and that each module registry entry names an existing module.
 [The documentation tests](../tests/README.md#documentation-tests) give the commands of the
 documentation checker and its tests.
+
+[The affected-set tool](affected) prints what a change reaches: by default the change from the
+merge base of `origin/main` and `HEAD` to the working tree, with `BASE` the change from `BASE` to
+the working tree, and with `BASE HEAD` or `BASE..HEAD` the change between two revisions.  It reads
+the import lines of every Lean file of the changed tree and prints the changed modules of the
+package, the modules that import them directly or through other modules, the targets for `lake
+build` that cover those modules and the executables whose root they reach, and the names for
+`tests/verified/run.sh --cases` whose written module or own case executable is affected.  It
+reports separately whether `verified-cases` is affected, since that executable supplies the cases
+of the run without `--cases` and of the names without an executable of their own, and its imports
+hold most case modules.  It also lists the other Lean files that import an affected module, such
+as the axiom audits, and the other checks: `tools/source-layout` for a changed Lean file, module
+registry, or `index.md`, `tools/check-doc-links.mjs` for a changed Markdown file or a deleted
+file, the VKB check for a change under `VKB/`, and each script under `tests/`, `tools/`, `rocq/`,
+or `clightn/` that names a changed file or an affected Lean file, module, or executable.  A
+change of `lakefile.lean`, `lake-manifest.json`, or `lean-toolchain` affects every module.
 
 [The request checker](verified-request-check) checks an example that [the verified-request
 skill](../.claude/skills/verified-request/SKILL.md) makes from an English request.  Its `--spec`

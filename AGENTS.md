@@ -19,6 +19,16 @@ The standard command form is:
 tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
+## Builds and Checks
+
+A fast build, a lake command with `-K fast=true` or under `LEANRUN_FAST=1`, and `tests/verified/run.sh --fast` serve development only.  A fast build compiles this package's modules with `debug.skipKernelTC` into `.lake/build-fast` and leaves the dependencies' checked builds in use, which cut the build of `Demos.Conjunction.Verified` from 627 s to 49 s on an 8-CPU host.  The kernel checks none of the package's declarations: a `decide +kernel` goal passes without evaluation, false ones included, the byte theorems of `verified_compile` and the file theorems are unchecked, and an axiom report does not reveal the skipped checks.  A fast build establishes no theorem.  [The manual's section on fast builds](docs/verified-manual.md#fast-builds) lists what it checks.
+
+Lake keeps the configuration that it last elaborated, with that elaboration's `-K` options, until `-R` elaborates it again.  `tools/leanrun` adds `-R` to a lake command when the cached configuration's options differ from the command's, so through the runner a lake command without `-K fast=true` builds checked whatever ran before it.  Run Lake only through the runner, which this guard needs as much as the resource limits.
+
+[`tools/affected`](tools/affected) prints what a change reaches: the changed and affected modules, the targets to build, the names for `tests/verified/run.sh --cases`, and the other checks of the changed files, by default for the change from the merge base with `origin/main` to the working tree.  `tests/verified/run.sh` records each check that passes with the hash of its inputs and skips a check whose inputs have not changed since, and `--no-cache` runs every check, as [the manual's section on recorded checks](docs/verified-manual.md#recorded-checks) explains.  In a full run, the checks after the build took 71 minutes: the native accuracy checks 22, the emission 16, the file theorems 15, the host's cases 10, and the application drivers, axiom audits, and case executables 8.
+
+Before a merge to main, build the targets that `tools/affected` prints, without `-K fast=true`, and run `tests/verified/run.sh --cases NAME` for each name that it prints, the axiom walk `tools/leanrun --timeout 1h lake env lean --run tests/verified/AllAxioms.lean` after `lake build LeanExe Examples Demos Verified Library TestSupport`, whose modules it imports, and `tools/source-layout` and `tools/check-doc-links.mjs`.  When `tools/affected` reports `verified-cases` affected, run the full `tests/verified/run.sh` in place of the runs with `--cases`, since that executable supplies the cases of the names without an executable of their own, and the records skip the checks whose inputs did not change.  Periodically, run the complete build and `tests/verified/run.sh --no-cache`, or `tools/full-check`, which runs both.
+
 ## Python Programs
 
 - Run every Python program in this repository with `uv run PATH`, never with `python3` or a hand-made virtual environment.  Each program declares `requires-python = ">=3.12"` and its pinned dependencies in a PEP 723 `# /// script` block, and a new program must do the same.

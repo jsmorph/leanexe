@@ -7,8 +7,9 @@
 #      level info, so that the log holds the axiom report of every `#print axioms`, and
 #      tests/verified/AllAxioms.lean, which walks the constants of every declaration of those
 #      libraries;
-#   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh and tests/modules/chunks.py on
-#      the drone and insertion modules that it writes;
+#   2. tests/verified/run.sh --no-cache, which runs every check, and, when it passes,
+#      tests/drone/run.sh and tests/modules/chunks.py on the drone and insertion modules that it
+#      writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
@@ -37,15 +38,18 @@
 # writes the file, the script requires that the text name neither this machine nor an absolute or
 # home path nor a host fault; otherwise it prints the offending lines, leaves the text in
 # build/full-check/STATUS.md, and fails.
-# LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the latter 10G unless set, the limit
-# that AGENTS.md sets for the verified and WASI drivers.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
-# for the native and bare-metal drivers, NM and DTC as for tests/baremetal/run.sh, and QEMU and
-# JOBS as for tests/baremetal/verified.sh and tests/native/clight-rocq.sh.  COMPCERT_TREE names the
-# CompCert tree with built proofs for rocq/check.sh, tests/native/clight-rocq.sh, and
-# clightn/check.sh, by default the directory of CCOMP when CCOMP is a path; clightn/check.sh runs
-# only on a tree configured for AArch64.  The script exits with status 1 when a step fails.
+# The script sets LEANRUN_FAST=0, so that tools/leanrun runs every lake command of every step in
+# the checked configuration.  LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the
+# latter 10G unless set, the limit that AGENTS.md sets for the verified and WASI drivers.  CCOMP,
+# CLIGHTGEN, and CCOMP_STDLIB are as for the native and bare-metal drivers, NM and DTC as for
+# tests/baremetal/run.sh, and QEMU and JOBS as for tests/baremetal/verified.sh and
+# tests/native/clight-rocq.sh.  COMPCERT_TREE names the CompCert tree with built proofs for
+# rocq/check.sh, tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of
+# CCOMP when CCOMP is a path; clightn/check.sh runs only on a tree configured for AArch64.  The
+# script exits with status 1 when a step fails.
 # Usage: tools/full-check
 set -euo pipefail
+export LEANRUN_FAST=0
 
 # The replacement REPLACEMENT of the last line of FILE that matches the extended regular
 # expression REGEX.
@@ -295,7 +299,7 @@ step_build() {
 step_verified() {
   local step='`tests/verified/run.sh`' cell groups group p f edges files audited
   wasm_ready "$step" || return 0
-  run 2-verified tests/verified/run.sh
+  run 2-verified tests/verified/run.sh --no-cache
   cell=$(pf "$(last '^verified: passed ([0-9]+) failed ([0-9]+)$' '\1 \2' "$log")" cases)
   groups=$(awk '
     BEGIN { group = "GPT" }
