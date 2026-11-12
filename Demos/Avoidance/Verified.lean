@@ -22,7 +22,7 @@ verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, Erf.erf
   Library.Numerics.Interval.abs, clamp, outward2, kernelSin, kernelCos, remSmall, remMedium, mul64,
   clz64, window, mulTop, shiftTop, remLarge, remPio2, sinWith, cosWith, ofInt, mid, reach,
   lipschitz, sinI, cosI, keplerStep, Kepler.approximate, keplerRootI,
-  propagateI, shapeI, planeI, relativeI, afterI, increasing, Demos.Conjunction.sq,
+  propagateI, shapeI, axesI, projectI, relativeI, increasing, Demos.Conjunction.sq,
   Demos.Conjunction.expI, Demos.Conjunction.erfI, Demos.Conjunction.gaussI,
   Demos.Conjunction.chordI, Demos.Conjunction.meanI, Demos.Conjunction.erfSumI,
   Demos.Conjunction.panelCore, Demos.Conjunction.nodeRaw, Demos.Conjunction.node,

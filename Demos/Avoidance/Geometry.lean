@@ -160,6 +160,20 @@ theorem relative_two_body (mu dt : ℝ) (rb vb dv r2 v2 d : V3) :
   simp only [relative, stateAt, add_x, add_y, add_z, sub_x, sub_y, sub_z, Prod.mk.injEq]
   refine ⟨by ring, by ring, by ring, by ring, by ring, by ring⟩
 
+/-- The centered form of `project` is the plain projection: its value does not depend on the
+centers `g` and `h`. -/
+theorem project_eq (px py pz ex ey ez fx fy fz gx gy gz hx hy hz cxx cxy cxz cyy cyz czz : ℝ) :
+    project px py pz ex ey ez fx fy fz gx gy gz hx hy hz cxx cxy cxz cyy cyz czz =
+      (px * ex + py * ey + pz * ez, px * fx + py * fy + pz * fz,
+        ex * (cxx * ex + cxy * ey + cxz * ez) + ey * (cxy * ex + cyy * ey + cyz * ez) +
+          ez * (cxz * ex + cyz * ey + czz * ez),
+        ex * (cxx * fx + cxy * fy + cxz * fz) + ey * (cxy * fx + cyy * fy + cyz * fz) +
+          ez * (cxz * fx + cyz * fy + czz * fz),
+        fx * (cxx * fx + cxy * fy + cxz * fz) + fy * (cxy * fx + cyy * fy + cyz * fz) +
+          fz * (cxz * fx + cyz * fy + czz * fz)) := by
+  refine Prod.ext rfl (Prod.ext rfl (Prod.ext ?_ (Prod.ext ?_ ?_))) <;> simp only [project] <;>
+    ring
+
 #print axioms axes_orthonormal
 #print axioms miss_closest
 #print axioms relative_two_body

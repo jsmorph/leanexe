@@ -20,21 +20,41 @@ open Library.Numerics.Bounds Library.Numerics.Interval Library.Numerics.Float64
 def rd (xs : Array Float) (i : UInt64) : Float := xs[i.toNat]!
 
 /-- The intervals of the encounter of conjunction `j` for every velocity change of the box and
-every displacement within the padding: the components of `after`. -/
+every displacement within the padding: the miss vector and the projected covariance, `α` and `e²`
+of the state after the burn and of the nominal state, `|r₁ × ν|²`, and `|ν|²`.  The covariance is
+projected in the form centered at the middles of the axes' intervals. -/
 def afterAt (inv half : Array UInt64) (xs : Array Float) (j : UInt64) :
     Interval × Interval × Interval × Interval × Interval × Interval × Interval × Interval ×
       Interval × Interval × Interval :=
   let b := 15 + 20 * j
   let pad := make (-rd xs 13) (rd xs 13)
-  afterI inv half inv inv (point (rd xs 0)) (point (rd xs 1)) (point (rd xs 2))
-    (point (rd xs 3)) (point (rd xs 4)) (point (rd xs 5)) (point (rd xs 6))
-    (make (rd xs 7) (rd xs 8)) (make (rd xs 9) (rd xs 10)) (make (rd xs 11) (rd xs 12))
-    (point (rd xs b)) (point (rd xs (b + 1))) (point (rd xs (b + 2))) (point (rd xs (b + 3)))
-    (point (rd xs (b + 4))) (point (rd xs (b + 5))) (point (rd xs (b + 6)))
+  let mu := point (rd xs 0)
+  let rbx := point (rd xs 1)
+  let rby := point (rd xs 2)
+  let rbz := point (rd xs 3)
+  let vbx := point (rd xs 4)
+  let vby := point (rd xs 5)
+  let vbz := point (rd xs 6)
+  let dvx := make (rd xs 7) (rd xs 8)
+  let dvy := make (rd xs 9) (rd xs 10)
+  let dvz := make (rd xs 11) (rd xs 12)
+  let r1x := point (rd xs (b + 1))
+  let r1y := point (rd xs (b + 2))
+  let r1z := point (rd xs (b + 3))
+  let rel := relativeI inv half inv inv mu rbx rby rbz vbx vby vbz dvx dvy dvz (point (rd xs b))
+    r1x r1y r1z (point (rd xs (b + 4))) (point (rd xs (b + 5))) (point (rd xs (b + 6)))
     (point (rd xs (b + 7))) (point (rd xs (b + 8))) (point (rd xs (b + 9)))
-    (point (rd xs (b + 10))) (point (rd xs (b + 11))) (point (rd xs (b + 12)))
+    (point (rd xs (b + 10))) (point (rd xs (b + 11))) (point (rd xs (b + 12))) pad pad pad
+  let s1 := shapeI inv half inv inv mu rbx rby rbz (add vbx dvx) (add vby dvy) (add vbz dvz)
+  let s0 := shapeI inv half inv inv mu rbx rby rbz vbx vby vbz
+  let ax := axesI inv half inv inv rel.2.2.2.1 rel.2.2.2.2.1 rel.2.2.2.2.2 r1x r1y r1z
+  let pr := projectI inv half inv inv rel.1 rel.2.1 rel.2.2.1 ax.1 ax.2.1 ax.2.2.1 ax.2.2.2.1
+    ax.2.2.2.2.1 ax.2.2.2.2.2.1 (point (mid ax.1)) (point (mid ax.2.1)) (point (mid ax.2.2.1))
+    (point (mid ax.2.2.2.1)) (point (mid ax.2.2.2.2.1)) (point (mid ax.2.2.2.2.2.1))
     (point (rd xs (b + 13))) (point (rd xs (b + 14))) (point (rd xs (b + 15)))
-    (point (rd xs (b + 16))) (point (rd xs (b + 17))) (point (rd xs (b + 18))) pad pad pad
+    (point (rd xs (b + 16))) (point (rd xs (b + 17))) (point (rd xs (b + 18)))
+  (pr.1, pr.2.1, pr.2.2.1, pr.2.2.2.1, pr.2.2.2.2, s1.1, s1.2, s0.1, s0.2, ax.2.2.2.2.2.2.1,
+    ax.2.2.2.2.2.2.2)
 
 /-- The interval of the probability of conjunction `j` for every velocity change of the box and
 every displacement within the padding, or a rejected interval. -/

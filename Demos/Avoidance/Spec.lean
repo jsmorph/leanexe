@@ -8,7 +8,9 @@ the theorem `f.encloses`.  `propagate` is the two-body state `t` seconds after a
 Lagrange coefficients `f` and `g` in the change of the eccentric anomaly; `shape` gives the
 inverse of the semimajor axis and the square of the eccentricity of a state; `plane` gives the
 miss vector and the projected covariance in the encounter plane; and `after` composes them into
-the encounter after a burn.
+the encounter after a burn, the model's definition.  The program evaluates `relative`, `shape`,
+`axes`, and `project`, which computes the projected covariance in a form centered at points near
+the axes, and `plane_split` in `Geometry.lean` states that `plane` is `project` on `axes`.
 -/
 
 open Real
@@ -78,6 +80,56 @@ enclosure_def plane (px py pz ux uy uz wx wy wz cxx cxy cxz cyy cyz czz) :=
   let cfz := cxz * fx + cyz * fy + czz * fz
   (px * ex + py * ey + pz * ez, px * fx + py * fy + pz * fz, ex * cex + ey * cey + ez * cez,
     ex * cfx + ey * cfy + ez * cfz, fx * cfx + fy * cfy + fz * cfz, xn2, zn2)
+
+/-- The axes of the encounter plane for the relative velocity `ν = (ux, uy, uz)` and the primary's
+position `w`: `x̂` along `w × ν`, and `ŷ = ẑ × x̂` with `ẑ` along `ν`, followed by `|w × ν|²` and
+`|ν|²`. -/
+enclosure_def axes (ux uy uz wx wy wz) :=
+  let xx := wy * uz - wz * uy
+  let xy := wz * ux - wx * uz
+  let xz := wx * uy - wy * ux
+  let xn2 := xx * xx + xy * xy + xz * xz
+  let zn2 := ux * ux + uy * uy + uz * uz
+  let xn := √xn2
+  let zn := √zn2
+  let ex := xx / xn
+  let ey := xy / xn
+  let ez := xz / xn
+  let kx := ux / zn
+  let ky := uy / zn
+  let kz := uz / zn
+  (ex, ey, ez, ky * ez - kz * ey, kz * ex - kx * ez, kx * ey - ky * ex, xn2, zn2)
+
+/-- The miss vector `(ρ · e, ρ · f)` and the covariance `C` projected on the axes `e` and `f`, in
+the form centered at the vectors `g` and `h`: `eᵀCe = gᵀCg + 2 (e - g)ᵀCg + (e - g)ᵀC(e - g)`, and
+alike for `eᵀCf` and `fᵀCf`.  The value does not depend on `g` and `h` (`project_eq`), and a `g`
+near `e` keeps the large variances of `C` out of the width of the interval evaluation. -/
+enclosure_def project (px py pz ex ey ez fx fy fz gx gy gz hx hy hz cxx cxy cxz cyy cyz czz) :=
+  let dex := ex - gx
+  let dey := ey - gy
+  let dez := ez - gz
+  let dfx := fx - hx
+  let dfy := fy - hy
+  let dfz := fz - hz
+  let cgx := cxx * gx + cxy * gy + cxz * gz
+  let cgy := cxy * gx + cyy * gy + cyz * gz
+  let cgz := cxz * gx + cyz * gy + czz * gz
+  let chx := cxx * hx + cxy * hy + cxz * hz
+  let chy := cxy * hx + cyy * hy + cyz * hz
+  let chz := cxz * hx + cyz * hy + czz * hz
+  let cex := cxx * dex + cxy * dey + cxz * dez
+  let cey := cxy * dex + cyy * dey + cyz * dez
+  let cez := cxz * dex + cyz * dey + czz * dez
+  let cfx := cxx * dfx + cxy * dfy + cxz * dfz
+  let cfy := cxy * dfx + cyy * dfy + cyz * dfz
+  let cfz := cxz * dfx + cyz * dfy + czz * dfz
+  (px * ex + py * ey + pz * ez, px * fx + py * fy + pz * fz,
+    gx * cgx + gy * cgy + gz * cgz + 2 * (dex * cgx + dey * cgy + dez * cgz) +
+      (dex * cex + dey * cey + dez * cez),
+    gx * chx + gy * chy + gz * chz + (dex * chx + dey * chy + dez * chz) +
+      (dfx * cgx + dfy * cgy + dfz * cgz) + (dex * cfx + dey * cfy + dez * cfz),
+    hx * chx + hy * chy + hz * chz + 2 * (dfx * chx + dfy * chy + dfz * chz) +
+      (dfx * cfx + dfy * cfy + dfz * cfz))
 
 /-- The relative position and velocity at the reference time after the burn `dv`: the nominal
 relative state `r1 - r2`, `v1 - v2`, plus the change that the burn makes to the two-body

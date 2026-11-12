@@ -102,6 +102,138 @@ theorem idx0 {j : UInt64} (hj : j.toNat < 64) : (15 + 20 * j).toNat = 15 + 20 * 
 theorem encloses_point (x : Float) : Encloses (point x) (value x.toBits) :=
   fun h => (point_sound h).2
 
+/-- The centered projection with the middles of the axes' intervals as centers encloses the plain
+projection on the axes. -/
+theorem project_mid {px py pz c1 c2 c3 c4 c5 c6 : Interval}
+    {A : Interval × Interval × Interval × Interval × Interval × Interval × Interval × Interval}
+    {qx qy qz d1 d2 d3 d4 d5 d6 : ℝ} {a : ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ}
+    (hx : Encloses px qx) (hy : Encloses py qy) (hz : Encloses pz qz)
+    (ha : (enclosure_relation% 8) A a) (h1 : Encloses c1 d1) (h2 : Encloses c2 d2)
+    (h3 : Encloses c3 d3) (h4 : Encloses c4 d4) (h5 : Encloses c5 d5) (h6 : Encloses c6 d6) :
+    (enclosure_relation% 5)
+      (projectI Trig.invPi Trig.halfPi Trig.invPi Trig.invPi px py pz A.1 A.2.1 A.2.2.1 A.2.2.2.1
+        A.2.2.2.2.1 A.2.2.2.2.2.1 (point (mid A.1)) (point (mid A.2.1)) (point (mid A.2.2.1))
+        (point (mid A.2.2.2.1)) (point (mid A.2.2.2.2.1)) (point (mid A.2.2.2.2.2.1)) c1 c2 c3 c4
+        c5 c6)
+      (qx * a.1 + qy * a.2.1 + qz * a.2.2.1, qx * a.2.2.2.1 + qy * a.2.2.2.2.1 + qz * a.2.2.2.2.2.1,
+        a.1 * (d1 * a.1 + d2 * a.2.1 + d3 * a.2.2.1) + a.2.1 * (d2 * a.1 + d4 * a.2.1 + d5 * a.2.2.1) +
+          a.2.2.1 * (d3 * a.1 + d5 * a.2.1 + d6 * a.2.2.1),
+        a.1 * (d1 * a.2.2.2.1 + d2 * a.2.2.2.2.1 + d3 * a.2.2.2.2.2.1) +
+          a.2.1 * (d2 * a.2.2.2.1 + d4 * a.2.2.2.2.1 + d5 * a.2.2.2.2.2.1) +
+          a.2.2.1 * (d3 * a.2.2.2.1 + d5 * a.2.2.2.2.1 + d6 * a.2.2.2.2.2.1),
+        a.2.2.2.1 * (d1 * a.2.2.2.1 + d2 * a.2.2.2.2.1 + d3 * a.2.2.2.2.2.1) +
+          a.2.2.2.2.1 * (d2 * a.2.2.2.1 + d4 * a.2.2.2.2.1 + d5 * a.2.2.2.2.2.1) +
+          a.2.2.2.2.2.1 * (d3 * a.2.2.2.1 + d5 * a.2.2.2.2.1 + d6 * a.2.2.2.2.2.1)) := by
+  have h := project.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) hx hy hz ha.1 ha.2.1
+    ha.2.2.1 ha.2.2.2.1 ha.2.2.2.2.1 ha.2.2.2.2.2.1 (encloses_point (mid A.1))
+    (encloses_point (mid A.2.1)) (encloses_point (mid A.2.2.1)) (encloses_point (mid A.2.2.2.1))
+    (encloses_point (mid A.2.2.2.2.1)) (encloses_point (mid A.2.2.2.2.2.1)) h1 h2 h3 h4 h5 h6
+  rw [project_eq] at h
+  exact h
+
+/-- The computation of `afterAt` over interval arguments: the relative state, the shapes of both
+states, the axes, and the projection centered at the middles of the axes' intervals. -/
+def afterCI (inv half : Array UInt64) (mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y
+    v1z r2x r2y r2z v2x v2y v2z cxx cxy cxz cyy cyz czz dx dy dz : Interval) :
+    Interval × Interval × Interval × Interval × Interval × Interval × Interval × Interval ×
+      Interval × Interval × Interval :=
+  let rel := relativeI inv half inv inv mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x
+    v1y v1z r2x r2y r2z v2x v2y v2z dx dy dz
+  let s1 := shapeI inv half inv inv mu rbx rby rbz (add vbx dvx) (add vby dvy) (add vbz dvz)
+  let s0 := shapeI inv half inv inv mu rbx rby rbz vbx vby vbz
+  let ax := axesI inv half inv inv rel.2.2.2.1 rel.2.2.2.2.1 rel.2.2.2.2.2 r1x r1y r1z
+  let pr := projectI inv half inv inv rel.1 rel.2.1 rel.2.2.1 ax.1 ax.2.1 ax.2.2.1 ax.2.2.2.1
+    ax.2.2.2.2.1 ax.2.2.2.2.2.1 (point (mid ax.1)) (point (mid ax.2.1)) (point (mid ax.2.2.1))
+    (point (mid ax.2.2.2.1)) (point (mid ax.2.2.2.2.1)) (point (mid ax.2.2.2.2.2.1)) cxx cxy cxz cyy
+    cyz czz
+  (pr.1, pr.2.1, pr.2.2.1, pr.2.2.2.1, pr.2.2.2.2, s1.1, s1.2, s0.1, s0.2, ax.2.2.2.2.2.2.1,
+    ax.2.2.2.2.2.2.2)
+
+theorem afterAt_eq (xs : Array Float) (j : UInt64) :
+    afterAt Trig.invPi Trig.halfPi xs j =
+      afterCI Trig.invPi Trig.halfPi (point (rd xs 0)) (point (rd xs 1)) (point (rd xs 2))
+        (point (rd xs 3)) (point (rd xs 4)) (point (rd xs 5)) (point (rd xs 6))
+        (make (rd xs 7) (rd xs 8)) (make (rd xs 9) (rd xs 10)) (make (rd xs 11) (rd xs 12))
+        (point (rd xs (15 + 20 * j))) (point (rd xs (15 + 20 * j + 1)))
+        (point (rd xs (15 + 20 * j + 2))) (point (rd xs (15 + 20 * j + 3)))
+        (point (rd xs (15 + 20 * j + 4))) (point (rd xs (15 + 20 * j + 5)))
+        (point (rd xs (15 + 20 * j + 6))) (point (rd xs (15 + 20 * j + 7)))
+        (point (rd xs (15 + 20 * j + 8))) (point (rd xs (15 + 20 * j + 9)))
+        (point (rd xs (15 + 20 * j + 10))) (point (rd xs (15 + 20 * j + 11)))
+        (point (rd xs (15 + 20 * j + 12))) (point (rd xs (15 + 20 * j + 13)))
+        (point (rd xs (15 + 20 * j + 14))) (point (rd xs (15 + 20 * j + 15)))
+        (point (rd xs (15 + 20 * j + 16))) (point (rd xs (15 + 20 * j + 17)))
+        (point (rd xs (15 + 20 * j + 18))) (make (-rd xs 13) (rd xs 13))
+        (make (-rd xs 13) (rd xs 13)) (make (-rd xs 13) (rd xs 13)) := rfl
+
+/-- `after` with the plane written through `axes`: the miss vector and the plain projection of the
+covariance on the axes of `axes`. -/
+noncomputable def afterPlain (mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x
+    r2y r2z v2x v2y v2z cxx cxy cxz cyy cyz czz dx dy dz : ℝ) :
+    ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ × ℝ :=
+  let rel := relative mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x r2y r2z
+    v2x v2y v2z dx dy dz
+  let a := axes rel.2.2.2.1 rel.2.2.2.2.1 rel.2.2.2.2.2 r1x r1y r1z
+  (rel.1 * a.1 + rel.2.1 * a.2.1 + rel.2.2.1 * a.2.2.1,
+    rel.1 * a.2.2.2.1 + rel.2.1 * a.2.2.2.2.1 + rel.2.2.1 * a.2.2.2.2.2.1,
+    a.1 * (cxx * a.1 + cxy * a.2.1 + cxz * a.2.2.1) + a.2.1 * (cxy * a.1 + cyy * a.2.1 + cyz * a.2.2.1) +
+      a.2.2.1 * (cxz * a.1 + cyz * a.2.1 + czz * a.2.2.1),
+    a.1 * (cxx * a.2.2.2.1 + cxy * a.2.2.2.2.1 + cxz * a.2.2.2.2.2.1) +
+      a.2.1 * (cxy * a.2.2.2.1 + cyy * a.2.2.2.2.1 + cyz * a.2.2.2.2.2.1) +
+      a.2.2.1 * (cxz * a.2.2.2.1 + cyz * a.2.2.2.2.1 + czz * a.2.2.2.2.2.1),
+    a.2.2.2.1 * (cxx * a.2.2.2.1 + cxy * a.2.2.2.2.1 + cxz * a.2.2.2.2.2.1) +
+      a.2.2.2.2.1 * (cxy * a.2.2.2.1 + cyy * a.2.2.2.2.1 + cyz * a.2.2.2.2.2.1) +
+      a.2.2.2.2.2.1 * (cxz * a.2.2.2.1 + cyz * a.2.2.2.2.1 + czz * a.2.2.2.2.2.1),
+    (shape mu rbx rby rbz (vbx + dvx) (vby + dvy) (vbz + dvz)).1,
+    (shape mu rbx rby rbz (vbx + dvx) (vby + dvy) (vbz + dvz)).2,
+    (shape mu rbx rby rbz vbx vby vbz).1, (shape mu rbx rby rbz vbx vby vbz).2,
+    a.2.2.2.2.2.2.1, a.2.2.2.2.2.2.2)
+
+theorem after_eq_plain (mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x r2y
+    r2z v2x v2y v2z cxx cxy cxz cyy cyz czz dx dy dz : ℝ) :
+    after mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x r2y r2z v2x v2y v2z
+        cxx cxy cxz cyy cyz czz dx dy dz =
+      afterPlain mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x r2y r2z v2x
+        v2y v2z cxx cxy cxz cyy cyz czz dx dy dz := by
+  simp only [after, afterPlain, plane, axes]
+
+/-- `afterCI` encloses `after` when each interval argument encloses the real argument. -/
+theorem afterCI_encloses {mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y v1z r2x r2y
+    r2z v2x v2y v2z cxx cxy cxz cyy cyz czz dx dy dz : Interval}
+    {mu' rbx' rby' rbz' vbx' vby' vbz' dvx' dvy' dvz' dt' r1x' r1y' r1z' v1x' v1y' v1z' r2x' r2y'
+      r2z' v2x' v2y' v2z' cxx' cxy' cxz' cyy' cyz' czz' dx' dy' dz' : ℝ}
+    (h_mu : Encloses mu mu') (h_rbx : Encloses rbx rbx') (h_rby : Encloses rby rby')
+    (h_rbz : Encloses rbz rbz') (h_vbx : Encloses vbx vbx') (h_vby : Encloses vby vby')
+    (h_vbz : Encloses vbz vbz') (h_dvx : Encloses dvx dvx') (h_dvy : Encloses dvy dvy')
+    (h_dvz : Encloses dvz dvz') (h_dt : Encloses dt dt') (h_r1x : Encloses r1x r1x')
+    (h_r1y : Encloses r1y r1y') (h_r1z : Encloses r1z r1z') (h_v1x : Encloses v1x v1x')
+    (h_v1y : Encloses v1y v1y') (h_v1z : Encloses v1z v1z') (h_r2x : Encloses r2x r2x')
+    (h_r2y : Encloses r2y r2y') (h_r2z : Encloses r2z r2z') (h_v2x : Encloses v2x v2x')
+    (h_v2y : Encloses v2y v2y') (h_v2z : Encloses v2z v2z') (h_cxx : Encloses cxx cxx')
+    (h_cxy : Encloses cxy cxy') (h_cxz : Encloses cxz cxz') (h_cyy : Encloses cyy cyy')
+    (h_cyz : Encloses cyz cyz') (h_czz : Encloses czz czz') (h_dx : Encloses dx dx')
+    (h_dy : Encloses dy dy') (h_dz : Encloses dz dz') :
+    (enclosure_relation% 11)
+      (afterCI Trig.invPi Trig.halfPi mu rbx rby rbz vbx vby vbz dvx dvy dvz dt r1x r1y r1z v1x v1y
+        v1z r2x r2y r2z v2x v2y v2z cxx cxy cxz cyy cyz czz dx dy dz)
+      (after mu' rbx' rby' rbz' vbx' vby' vbz' dvx' dvy' dvz' dt' r1x' r1y' r1z' v1x' v1y' v1z'
+        r2x' r2y' r2z' v2x' v2y' v2z' cxx' cxy' cxz' cyy' cyz' czz' dx' dy' dz') := by
+  have Er := relative.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) h_mu h_rbx h_rby
+    h_rbz h_vbx h_vby h_vbz h_dvx h_dvy h_dvz h_dt h_r1x h_r1y h_r1z h_v1x h_v1y h_v1z h_r2x h_r2y
+    h_r2z h_v2x h_v2y h_v2z h_dx h_dy h_dz
+  have Es1 := shape.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) h_mu h_rbx h_rby h_rbz
+    (encloses_add h_vbx h_dvx) (encloses_add h_vby h_dvy) (encloses_add h_vbz h_dvz)
+  have Es0 := shape.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) h_mu h_rbx h_rby h_rbz
+    h_vbx h_vby h_vbz
+  have Ea := axes.encloses (powLog := Trig.invPi) (powExp := Trig.invPi) Er.2.2.2.1 Er.2.2.2.2.1
+    Er.2.2.2.2.2 h_r1x h_r1y h_r1z
+  have Ep := project_mid Er.1 Er.2.1 Er.2.2.1 Ea h_cxx h_cxy h_cxz h_cyy h_cyz h_czz
+  rw [after_eq_plain]
+  unfold afterPlain afterCI
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> dsimp only
+  exacts [Ep.1, Ep.2.1, Ep.2.2.1, Ep.2.2.2.1, Ep.2.2.2.2, Es1.1, Es1.2, Es0.1, Es0.2,
+    Ea.2.2.2.2.2.2.1, Ea.2.2.2.2.2.2.2]
+
 /-- The intervals of `afterAt` enclose the model's encounter for every velocity change of the box
 and every displacement within the padding. -/
 theorem afterAt_encloses {xs : Array Float} {j : UInt64} (hj : j.toNat < 64)
@@ -114,10 +246,9 @@ theorem afterAt_encloses {xs : Array Float} {j : UInt64} (hj : j.toNat < 64)
     rw [← idx0 hj]; exact encloses_point _
   obtain ⟨fn, vn⟩ := neg_value hP
   have pad : ∀ x : ℝ, |x| ≤ val xs 13 → Encloses (make (-rd xs 13) (rd xs 13)) x := fun x hx =>
-    Demos.Conjunction.encloses_make
-      (by rw [vn]; exact (abs_le.mp hx).1)
-      (abs_le.mp hx).2
-  exact after.encloses (encloses_point _) (encloses_point _) (encloses_point _)
+    Demos.Conjunction.encloses_make (by rw [vn]; exact (abs_le.mp hx).1) (abs_le.mp hx).2
+  rw [afterAt_eq]
+  exact afterCI_encloses (encloses_point _) (encloses_point _) (encloses_point _)
     (encloses_point _) (encloses_point _) (encloses_point _) (encloses_point _)
     (Demos.Conjunction.encloses_make hb.1 hb.2.1)
     (Demos.Conjunction.encloses_make hb.2.2.1 hb.2.2.2.1)
