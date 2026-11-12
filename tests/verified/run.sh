@@ -35,8 +35,10 @@
 # module as well.  For the event-window program, it runs the axiom audit of
 # tests/events/Axioms.lean, and with --cases events it checks the program's file theorem module
 # as well.  With --cases frames, it runs the axiom audit of tests/frames/Axioms.lean and
-# checks the frames module's file theorems.  Each audit fails the run when a report names an
-# axiom beyond those three.  Last, the
+# checks the frames module's file theorems.  For the avoidance authorizer, it runs the axiom audit
+# of tests/avoidance/Axioms.lean, and with --cases avoidance it checks the authorizer's file
+# theorem module as well.  Each audit fails the run when a report names an axiom beyond those
+# three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -160,6 +162,8 @@ elif [ "$case_module" = "assignment" ]; then
   cases_exe=verified-cases-assignment
 elif [ "$case_module" = "events" ]; then
   cases_exe=verified-cases-events
+elif [ "$case_module" = "avoidance" ]; then
+  cases_exe=verified-cases-avoidance
 elif [ "$case_module" = "sgp4" ]; then
   cases_exe=verified-cases-sgp4
 elif [ "$case_module" = "passivesafety" ]; then
@@ -235,6 +239,10 @@ if [ -z "$reference" ]; then
   if runs events; then targets+=($(imports tests/events/Axioms.lean)); fi
   if [ "$case_module" = "events" ]; then
     targets+=(Demos.Events.Verified $(imports Demos/Events/File.lean))
+  fi
+  if runs avoidance; then targets+=($(imports tests/avoidance/Axioms.lean)); fi
+  if [ "$case_module" = "avoidance" ]; then
+    targets+=(Demos.Avoidance.Verified $(imports Demos/Avoidance/File.lean))
   fi
   if runs sgp4; then targets+=($(imports tests/sgp4/Axioms.lean)); fi
   if runs passivesafety; then targets+=($(imports tests/passivesafety/Axioms.lean)); fi
@@ -450,6 +458,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "events" ]; then
   check_axioms tests/events/Axioms.lean
   if [ "$case_module" = "events" ]; then
     check_file events Demos.Events.Verified Demos/Events/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "avoidance" ]; then
+  check_axioms tests/avoidance/Axioms.lean
+  if [ "$case_module" = "avoidance" ]; then
+    check_file avoidance Demos.Avoidance.Verified Demos/Avoidance/File.lean
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sgp4" ]; then
