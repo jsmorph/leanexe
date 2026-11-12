@@ -1,6 +1,7 @@
 import LeanExe.A64.Boot
 import LeanExe.A64.BootImage
 import LeanExe.A64.Clear
+import LeanExe.A64.Elf
 import LeanExe.A64.Encode
 import LeanExe.A64.File
 import LeanExe.A64.Gen
@@ -10,6 +11,7 @@ import LeanExe.A64.Isla.Float
 import LeanExe.A64.Isla.Profile
 import LeanExe.A64.Isla.Trace
 import LeanExe.A64.Isla.Walk
+import LeanExe.A64.Linux
 import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Addr
 import LeanExe.A64.Proof.Arith
@@ -33,6 +35,11 @@ import LeanExe.A64.Proof.ImageTheorem
 import LeanExe.A64.Proof.Input
 import LeanExe.A64.Proof.InputRuns
 import LeanExe.A64.Proof.Lift
+import LeanExe.A64.Proof.Linux
+import LeanExe.A64.Proof.LinuxImage
+import LeanExe.A64.Proof.LinuxMain
+import LeanExe.A64.Proof.LinuxProgram
+import LeanExe.A64.Proof.LinuxRuns
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Memory
 import LeanExe.A64.Proof.Program
