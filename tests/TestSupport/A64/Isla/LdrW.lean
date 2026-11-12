@@ -60,7 +60,7 @@ theorem devTcg_n0 : devTcg.trace = devTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx devTcg (tcg.sys .memory)
+isla_ctx devTcg .el1 (tcg.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -73,7 +73,7 @@ theorem devTcg_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31)
-    (h : devTcg.Run P (memFields t n imm) s σ o) :
+    (h : devTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -122,7 +122,7 @@ theorem devTcg_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31) :
-    devTcg.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devTcg.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -174,7 +174,7 @@ theorem devTcg_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : devTcg.Run P (memFields t n imm) s σ o) :
+    (h : devTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -223,7 +223,7 @@ theorem devTcg_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    devTcg.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devTcg.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -275,7 +275,7 @@ theorem devTcg_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : devTcg.Run P (memFields t n imm) s σ o) :
+    (h : devTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -321,7 +321,7 @@ theorem devTcg_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    devTcg.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devTcg.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -370,7 +370,7 @@ theorem devTcg_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : devTcg.Run P (memFields t n imm) s σ o) :
+    (h : devTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -416,7 +416,7 @@ theorem devTcg_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    devTcg.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devTcg.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -463,7 +463,7 @@ theorem dev_tcg (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000000 ∨
       (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000018) :
-    Agrees P (tcg.sys .memory u) ["SEE", "__BranchTaken"] devTcg (memFields t n imm)
+    Agrees P .el1 (tcg.sys .memory u) ["SEE", "__BranchTaken"] devTcg (memFields t n imm)
       (.ldrW t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show devTcg.opcode = [.bits 10 0b1011100101, .field "imm12" 12, .field "Rn" 5,
@@ -501,7 +501,7 @@ theorem devKvm_n0 : devKvm.trace = devKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx devKvm (kvm.sys .memory)
+isla_ctx devKvm .el1 (kvm.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -514,7 +514,7 @@ theorem devKvm_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31)
-    (h : devKvm.Run P (memFields t n imm) s σ o) :
+    (h : devKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -563,7 +563,7 @@ theorem devKvm_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31) :
-    devKvm.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devKvm.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -615,7 +615,7 @@ theorem devKvm_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : devKvm.Run P (memFields t n imm) s σ o) :
+    (h : devKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -664,7 +664,7 @@ theorem devKvm_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    devKvm.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devKvm.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -716,7 +716,7 @@ theorem devKvm_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : devKvm.Run P (memFields t n imm) s σ o) :
+    (h : devKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -762,7 +762,7 @@ theorem devKvm_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    devKvm.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devKvm.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -811,7 +811,7 @@ theorem devKvm_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : devKvm.Run P (memFields t n imm) s σ o) :
+    (h : devKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -857,7 +857,7 @@ theorem devKvm_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    devKvm.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devKvm.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -904,7 +904,7 @@ theorem dev_kvm (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000000 ∨
       (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000018) :
-    Agrees P (kvm.sys .memory u) ["SEE", "__BranchTaken"] devKvm (memFields t n imm)
+    Agrees P .el1 (kvm.sys .memory u) ["SEE", "__BranchTaken"] devKvm (memFields t n imm)
       (.ldrW t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show devKvm.opcode = [.bits 10 0b1011100101, .field "imm12" 12, .field "Rn" 5,
@@ -942,7 +942,7 @@ theorem devSme_n0 : devSme.trace = devSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx devSme (sme.sys .memory)
+isla_ctx devSme .el1 (sme.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -955,7 +955,7 @@ theorem devSme_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31)
-    (h : devSme.Run P (memFields t n imm) s σ o) :
+    (h : devSme.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -1004,7 +1004,7 @@ theorem devSme_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : t.val = 31) :
-    devSme.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devSme.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -1056,7 +1056,7 @@ theorem devSme_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : devSme.Run P (memFields t n imm) s σ o) :
+    (h : devSme.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -1105,7 +1105,7 @@ theorem devSme_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    devSme.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devSme.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -1157,7 +1157,7 @@ theorem devSme_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : devSme.Run P (memFields t n imm) s σ o) :
+    (h : devSme.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -1203,7 +1203,7 @@ theorem devSme_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    devSme.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devSme.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -1252,7 +1252,7 @@ theorem devSme_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : devSme.Run P (memFields t n imm) s σ o) :
+    (h : devSme.Run P .el1 (memFields t n imm) s σ o) :
     o = .done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
@@ -1298,7 +1298,7 @@ theorem devSme_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (hs : exec P (.ldrW t n imm) s = some { s.devRead t v with io })
     (hl : P.devLoad s.io (s.xsp n + .ofNat (4 * imm.val)) = some (v, io))
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    devSme.Run P (memFields t n imm) s σ (.done { s.devRead t v with io }
+    devSme.Run P .el1 (memFields t n imm) s σ (.done { s.devRead t v with io }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hdev, -⟩ := exec_ldrW hs hl
@@ -1345,7 +1345,7 @@ theorem dev_sme (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000000 ∨
       (s.xsp n + .ofNat (4 * imm.val)).toNat = 0x09000018) :
-    Agrees P (sme.sys .memory u) ["SEE", "__BranchTaken"] devSme (memFields t n imm)
+    Agrees P .el1 (sme.sys .memory u) ["SEE", "__BranchTaken"] devSme (memFields t n imm)
       (.ldrW t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show devSme.opcode = [.bits 10 0b1011100101, .field "imm12" 12, .field "Rn" 5,

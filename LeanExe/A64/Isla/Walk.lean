@@ -8,7 +8,7 @@ events.  On a hypothesis or goal that holds the trace's literal, a step of `isla
 `isla_walk` costs the size of the remaining trace, since `rw` and `simp` traverse it.
 `isla_nodes F` gives each node of the trace of `F` a definition that names the nodes below it, so
 that a path's hypothesis or goal holds one event and the name of the rest, and a step costs the
-size of an event.  `isla_ctx F π`
+size of an event.  `isla_ctx F sp π`
 evaluates the premise of `Agrees` on the registers outside the model once for each footprint.
 `mem_fwd` takes a path's hypothesis through the trace, and `mem_bwd` builds the path to `exec`'s
 state, giving each declared variable, through `mem_wit`, the value that the first event reading it
@@ -30,15 +30,15 @@ namespace LeanExe.A64.Isla
 
 /-- With `attribute [local congr]`, `simp` enters neither the trace of a path nor its variables,
 which a walk extends with values that `simp` already evaluated. -/
-theorem run_congr {P : Platform} {A : Abstract} {t : Trace} {ρ : Vars} {s s' : State}
-    {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
-    Trace.Run P A t ρ s σ o = Trace.Run P A t ρ s' σ' o' := by
+theorem run_congr {P : Platform} {sp : SpReg} {A : Abstract} {t : Trace} {ρ : Vars}
+    {s s' : State} {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
+    Trace.Run P sp A t ρ s σ o = Trace.Run P sp A t ρ s' σ' o' := by
   subst h2 h3 h4
   rfl
 
-theorem runSome_congr {P : Platform} {A : Abstract} {ts : List Trace} {ρ : Vars}
+theorem runSome_congr {P : Platform} {sp : SpReg} {A : Abstract} {ts : List Trace} {ρ : Vars}
     {s s' : State} {σ σ' : Sys} {o o' : Outcome} (h2 : s = s') (h3 : σ = σ') (h4 : o = o') :
-    Trace.RunSome P A ts ρ s σ o = Trace.RunSome P A ts ρ s' σ' o' := by
+    Trace.RunSome P sp A ts ρ s σ o = Trace.RunSome P sp A ts ρ s' σ' o' := by
   subst h2 h3 h4
   rfl
 
@@ -136,20 +136,29 @@ def mkConj : List (Expr × Expr) → Expr × Expr
     let (b, hb) := mkConj ps
     (mkApp2 (mkConst ``And) a b, mkApp4 (mkConst ``And.intro) a b ha hb)
 
+/-- `isla_ctx F sp π` defines `F.ctx σ u`, the premise of `Agrees` with the stack pointer `sp` on
+the registers `σ` outside the model for the footprint `F` and the profile `π u` as `isla_reads`
+evaluates it, each equation once, wrapped in `Opaque`.  It proves `F.ctx_of`, which derives
+`F.ctx σ u` from the premise.  The proofs over `F` then share one evaluation of the trace's reads,
+hold one equation for each register that the trace reads instead of one for each read, and keep
+the equations from `omega`.  The evaluation unfolds the profiles of `Profile.lean` and the
+definitions in the optional brackets, such as those of another profile. -/
+syntax "isla_ctx " ident ppSpace term:max ppSpace term:max
+  (" [" Lean.Parser.Tactic.simpLemma,* "]")? : command
+
 open Lean Elab Command Term Meta in
-/-- `isla_ctx F π` defines `F.ctx σ u`, the premise of `Agrees` on the registers `σ` outside the
-model for the footprint `F` and the profile `π u` as `isla_reads` evaluates it, each equation once,
-wrapped in `Opaque`.  It proves `F.ctx_of`, which derives `F.ctx σ u` from the premise.  The proofs
-over `F` then share one evaluation of the trace's reads, hold one equation for each register that
-the trace reads instead of one for each read, and keep the equations from `omega`. -/
-elab "isla_ctx " F:ident ppSpace π:term : command => do
+elab_rules : command
+  | `(isla_ctx $F:ident $sp $π $[[$ls,*]]?) => do
+  let extra : Array (TSyntax `Lean.Parser.Tactic.simpLemma) := match ls with
+    | some ls => ls.getElems
+    | none => #[]
   let Fn ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo F
   let Fid := mkIdent Fn
   liftTermElabM do
-    let stx ← `(fun (σ : Sys) (u : Unknown)
-        (hσ : ∀ q ∈ ($Fid).trace.reads, σ.get q.1 q.2 = ($π u).get q.1 q.2) =>
+    let stx ← `(fun (σ : Sys) u
+        (hσ : ∀ q ∈ ($Fid).trace.reads $sp, σ.get q.1 q.2 = ($π u).get q.1 q.2) =>
         (show _ by
-          isla_reads [$Fid:ident, Profile.sys_get, Profile.sys, tcg, kvm, sme] at hσ
+          isla_reads [$Fid:ident, Profile.sys_get, Profile.sys, tcg, kvm, sme, $extra,*] at hσ
           exact hσ))
     let e ← instantiateMVars (← elabTermAndSynthesize stx none)
     if e.hasMVar then throwError "isla_ctx: unassigned metavariables"
@@ -267,15 +276,15 @@ partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
   else return none
 
 /-- The value of a declared variable that the event `b` reads from the state `s` and the
-registers `σ`, with the variables `ρ` and the meanings `A` of the abstract functions, or 0 or
-`true` when no event reads it.  A free Boolean
-of the traces selects among the results of `ConstrainUnpredictable`, and the path of an unaligned
-access that splits it into bytes asserts the first, `Constraint_NONE`. -/
-def witness (isBool : Bool) (b : Option Bind) (A ρ s σ : Expr) : MetaM Expr := do
+registers `σ`, with the stack pointer `sp`, the variables `ρ`, and the meanings `A` of the
+abstract functions, or 0 or `true` when no event reads it.  A free Boolean of the traces selects
+among the results of `ConstrainUnpredictable`, and the path of an unaligned access that splits it
+into bytes asserts the first, `Constraint_NONE`. -/
+def witness (isBool : Bool) (b : Option Bind) (sp A ρ s σ : Expr) : MetaM Expr := do
   let some b := b | return if isBool then mkConst ``Bool.true else mkNatLit 0
   let opt ← match b with
     | .reg assume r al path =>
-      let get ← mkAppM ``regGet #[s, σ, r, al]
+      let get ← mkAppM ``regGet #[sp, s, σ, r, al]
       match path with
       | .inl q =>
         let q' ← if assume then pure q else
@@ -294,35 +303,36 @@ def witness (isBool : Bool) (b : Option Bind) (A ρ s σ : Expr) : MetaM Expr :=
   mkAppM (if isBool then ``witBool else ``witBits) #[opt]
 
 /-- Gives the variable that a goal
-`∃ n, n < 2 ^ w ∧ Trace.Run P A t (ρ.set x (.bits w n)) s σ o`, or
-`∃ b, Trace.Run P A t (ρ.set x (.bool b)) s σ o`, declares the value that the first event of `t`
-reading it reads. -/
+`∃ n, n < 2 ^ w ∧ Trace.Run P sp A t (ρ.set x (.bits w n)) s σ o`, or
+`∃ b, Trace.Run P sp A t (ρ.set x (.bool b)) s σ o`, declares the value that the first event of
+`t` reading it reads. -/
 elab "mem_wit" : tactic => withMainContext do
   let g ← getMainGoal
   let tgt ← instantiateMVars (← g.getType)
   let_expr Exists ty p := tgt | throwError "mem_wit: not an existential"
   let .lam _ _ body _ := p | throwError "mem_wit: not a lambda"
   let run := if body.isAppOfArity ``And 2 then body.appArg! else body
-  unless run.isAppOfArity ``Trace.Run 7 do throwError "mem_wit: not a path"
+  unless run.isAppOfArity ``Trace.Run 8 do throwError "mem_wit: not a path"
   let args := run.getAppArgs
-  let ρ' := args[3]!
+  let ρ' := args[4]!
   unless ρ'.isAppOfArity ``Vars.set 3 do throwError "mem_wit: no declaration"
   let ρ := ρ'.appFn!.appFn!.appArg!
   let some x := ρ'.appFn!.appArg!.nat? | throwError "mem_wit: variable not a literal"
-  if ρ.hasLooseBVars || args[4]!.hasLooseBVars || args[5]!.hasLooseBVars then
+  if ρ.hasLooseBVars || args[5]!.hasLooseBVars || args[6]!.hasLooseBVars then
     throwError "mem_wit: the state depends on the witness"
-  let w ← witness (ty.isConstOf ``Bool) (← findBind x args[2]!) args[1]! ρ args[4]! args[5]!
+  let w ← witness (ty.isConstOf ``Bool) (← findBind x args[3]!) args[1]! args[2]!
+    ρ args[5]! args[6]!
   let stx ← Term.exprToSyntax w
   evalTactic (← `(tactic| refine ⟨$stx, ?_⟩))
 
 /-- The path that `e` states, with its node constant replaced by the node's definition. -/
 def unfoldRun (e : Expr) : MetaM Expr := do
   let e := e.consumeMData.headBeta
-  unless e.isAppOfArity ``Trace.Run 7 do throwError "mem_unfold: not a path"
+  unless e.isAppOfArity ``Trace.Run 8 do throwError "mem_unfold: not a path"
   let args := e.getAppArgs
-  let .const c _ := args[2]! | throwError "mem_unfold: not a node"
+  let .const c _ := args[3]! | throwError "mem_unfold: not a node"
   let some v := (← getConstInfo c).value? | throwError "mem_unfold: {c} has no value"
-  return mkAppN e.getAppFn (args.set! 2 v)
+  return mkAppN e.getAppFn (args.set! 3 v)
 
 /-- Replaces the node constant of the path that the goal, or the hypothesis `h`, states by the
 node's definition. -/
@@ -551,8 +561,9 @@ macro_rules
   | `(tactic| mem_simp [$xs,*] $(loc)?) => `(tactic| simp -failIfUnchanged (maxSteps := 4000000)
       (disch := mem_omega) only [
       Exp.eval, Base.eval, RVal.eval, Base.evalAll, Base.evalFields, Unop.apply, Binop.apply,
-      Binop.arith, lshr, regGet, regSet, part, reduceGpr, gprs, partGet, partPut, bit, acc, upd,
-      gprVals, Trace.RunSome, reduceVars, Sys.set_apply, Sys.get_set, List.lookup, Option.bind,
+      Binop.arith, lshr, regGet, regSet, part, SpReg.name, reduceGpr, gprs, partGet, partPut, bit,
+      acc, upd, gprVals, Trace.RunSome, reduceVars, Sys.set_apply, Sys.get_set, List.lookup,
+      Option.bind,
       Option.map, Option.getD, Val.bits.injEq, Val.bool.injEq, Val.enum.injEq, Val.struct.injEq,
       Val.vec.injEq, Option.some.injEq, Prod.mk.injEq, List.cons.injEq, List.map_cons,
       List.map_nil, List.cons_append, List.nil_append, eq_self_iff_true, decide_eq_true_eq,
@@ -615,7 +626,7 @@ macro_rules
               fail_if_success guard_target = False
               first
                 | (guard_target = And _ _; refine ⟨by $d, ?_⟩)
-                | guard_target = Trace.Run _ _ _ _ _ _ _)
+                | guard_target = Trace.Run _ _ _ _ _ _ _ _)
            | apply Or.inr)
       | (guard_target = And _ _; apply And.intro; rotate_left)
       | focus (rw [ite_eq_left]; rotate_left; ($d))))
@@ -639,7 +650,7 @@ macro_rules
               fail_if_success guard_target = False
               first
                 | (guard_target = And _ _; refine ⟨by $d, ?_⟩)
-                | guard_target = Trace.Run _ _ _ _ _ _ _)
+                | guard_target = Trace.Run _ _ _ _ _ _ _ _)
            | apply Or.inr)
       | (guard_target = And _ _; apply And.intro; rotate_left)
       | focus (rw [ite_eq_left]; rotate_left; ($d))))

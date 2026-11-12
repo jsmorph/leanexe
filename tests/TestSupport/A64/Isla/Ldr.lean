@@ -389,7 +389,7 @@ theorem ldrTcg_n0 : ldrTcg.trace = ldrTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx ldrTcg (tcg.sys .memory)
+isla_ctx ldrTcg .el1 (tcg.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -400,7 +400,7 @@ theorem ldrTcg_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31)
-    (h : ldrTcg.Run P (memFields t n imm) s σ o) :
+    (h : ldrTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -440,7 +440,7 @@ theorem ldrTcg_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31) :
-    ldrTcg.Run P (memFields t n imm) s σ
+    ldrTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -484,7 +484,7 @@ theorem ldrTcg_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : ldrTcg.Run P (memFields t n imm) s σ o) :
+    (h : ldrTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -524,7 +524,7 @@ theorem ldrTcg_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    ldrTcg.Run P (memFields t n imm) s σ
+    ldrTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -568,7 +568,7 @@ theorem ldrTcg_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : ldrTcg.Run P (memFields t n imm) s σ o) :
+    (h : ldrTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -605,7 +605,7 @@ theorem ldrTcg_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    ldrTcg.Run P (memFields t n imm) s σ
+    ldrTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -648,7 +648,7 @@ theorem ldrTcg_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : ldrTcg.Run P (memFields t n imm) s σ o) :
+    (h : ldrTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -685,7 +685,7 @@ theorem ldrTcg_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    ldrTcg.Run P (memFields t n imm) s σ
+    ldrTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -727,7 +727,7 @@ theorem ldr_tcg (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat + 8) = 0x0040000040000705)
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8) :
-    Agrees P (tcg.sys .memory u) ["SEE", "__BranchTaken"] ldrTcg (memFields t n imm)
+    Agrees P .el1 (tcg.sys .memory u) ["SEE", "__BranchTaken"] ldrTcg (memFields t n imm)
       (.ldr t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show ldrTcg.opcode = [.bits 10 0b1111100101, .field "imm12" 12, .field "Rn" 5,
@@ -761,7 +761,7 @@ theorem ldrKvm_n0 : ldrKvm.trace = ldrKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx ldrKvm (kvm.sys .memory)
+isla_ctx ldrKvm .el1 (kvm.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -772,7 +772,7 @@ theorem ldrKvm_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31)
-    (h : ldrKvm.Run P (memFields t n imm) s σ o) :
+    (h : ldrKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -812,7 +812,7 @@ theorem ldrKvm_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31) :
-    ldrKvm.Run P (memFields t n imm) s σ
+    ldrKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -856,7 +856,7 @@ theorem ldrKvm_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : ldrKvm.Run P (memFields t n imm) s σ o) :
+    (h : ldrKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -896,7 +896,7 @@ theorem ldrKvm_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    ldrKvm.Run P (memFields t n imm) s σ
+    ldrKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -940,7 +940,7 @@ theorem ldrKvm_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : ldrKvm.Run P (memFields t n imm) s σ o) :
+    (h : ldrKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -977,7 +977,7 @@ theorem ldrKvm_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    ldrKvm.Run P (memFields t n imm) s σ
+    ldrKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -1023,7 +1023,7 @@ theorem ldrKvm_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : ldrKvm.Run P (memFields t n imm) s σ o) :
+    (h : ldrKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -1060,7 +1060,7 @@ theorem ldrKvm_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 40
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8)
     (hs : exec P (.ldr t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    ldrKvm.Run P (memFields t n imm) s σ
+    ldrKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 630))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_ldr hs
@@ -1105,7 +1105,7 @@ theorem ldr_kvm (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat + 8) = 0x0040000040000705)
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat (8 * imm.val)).toNat ∧
       (s.xsp n + .ofNat (8 * imm.val)).toNat ≤ 0x7ffffff8) :
-    Agrees P (kvm.sys .memory u) ["SEE", "__BranchTaken"] ldrKvm (memFields t n imm)
+    Agrees P .el1 (kvm.sys .memory u) ["SEE", "__BranchTaken"] ldrKvm (memFields t n imm)
       (.ldr t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show ldrKvm.opcode = [.bits 10 0b1111100101, .field "imm12" 12, .field "Rn" 5,

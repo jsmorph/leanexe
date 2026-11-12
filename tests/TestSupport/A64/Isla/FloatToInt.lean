@@ -44,14 +44,14 @@ theorem fcvtzuTcg_n0 : fcvtzuTcg.trace = fcvtzuTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcvtzuTcg (tcg.sys .fp)
+isla_ctx fcvtzuTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcvtzuTcg` ends in `exec`'s state. -/
 theorem fcvtzuTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPToFixedEq A) (hσ : fcvtzuTcg.ctx σ u)
-    (h : fcvtzuTcg.Run P (fpFields2 d n) s σ o A) :
+    (h : fcvtzuTcg.Run P .el1 (fpFields2 d n) s σ o A) :
     o = .done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293)) := by
   without_info
@@ -69,7 +69,7 @@ set_option maxHeartbeats 0 in
 /-- `fcvtzuTcg` has a path to `exec`'s state. -/
 theorem fcvtzuTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPToFixedEq A) (hσ : fcvtzuTcg.ctx σ u) :
-    fcvtzuTcg.Run P (fpFields2 d n) s σ
+    fcvtzuTcg.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293))) A := by
   without_info
@@ -94,7 +94,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPToFixedEq`. -/
 theorem fcvtzu_tcg (P : Platform) (A : Abstract) (hA : FPToFixedEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuTcg
       (fpFields2 d n) (.fcvtzu d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -117,14 +117,14 @@ theorem fcvtzuKvm_n0 : fcvtzuKvm.trace = fcvtzuKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcvtzuKvm (kvm.sys .fp)
+isla_ctx fcvtzuKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcvtzuKvm` ends in `exec`'s state. -/
 theorem fcvtzuKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPToFixedEq A) (hσ : fcvtzuKvm.ctx σ u)
-    (h : fcvtzuKvm.Run P (fpFields2 d n) s σ o A) :
+    (h : fcvtzuKvm.Run P .el1 (fpFields2 d n) s σ o A) :
     o = .done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293)) := by
   without_info
@@ -142,7 +142,7 @@ set_option maxHeartbeats 0 in
 /-- `fcvtzuKvm` has a path to `exec`'s state. -/
 theorem fcvtzuKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPToFixedEq A) (hσ : fcvtzuKvm.ctx σ u) :
-    fcvtzuKvm.Run P (fpFields2 d n) s σ
+    fcvtzuKvm.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293))) A := by
   without_info
@@ -167,7 +167,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPToFixedEq`. -/
 theorem fcvtzu_kvm (P : Platform) (A : Abstract) (hA : FPToFixedEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuKvm
       (fpFields2 d n) (.fcvtzu d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -190,14 +190,14 @@ theorem fcvtzuSme_n0 : fcvtzuSme.trace = fcvtzuSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcvtzuSme (sme.sys .fp)
+isla_ctx fcvtzuSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcvtzuSme` ends in `exec`'s state. -/
 theorem fcvtzuSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPToFixedEq A) (hσ : fcvtzuSme.ctx σ u)
-    (h : fcvtzuSme.Run P (fpFields2 d n) s σ o A) :
+    (h : fcvtzuSme.Run P .el1 (fpFields2 d n) s σ o A) :
     o = .done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293)) := by
   without_info
@@ -215,7 +215,7 @@ set_option maxHeartbeats 0 in
 /-- `fcvtzuSme` has a path to `exec`'s state. -/
 theorem fcvtzuSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPToFixedEq A) (hσ : fcvtzuSme.ctx σ u) :
-    fcvtzuSme.Run P (fpFields2 d n) s σ
+    fcvtzuSme.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293))) A := by
   without_info
@@ -252,7 +252,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPToFixedEq`. -/
 theorem fcvtzu_sme (P : Platform) (A : Abstract) (hA : FPToFixedEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuSme
       (fpFields2 d n) (.fcvtzu d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩

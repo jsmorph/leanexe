@@ -223,7 +223,7 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem b_tcg (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bTcg (bFields imm)
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bTcg (bFields imm)
       (.b imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -258,7 +258,7 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem b_kvm (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bKvm (bFields imm)
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bKvm (bFields imm)
       (.b imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -308,8 +308,8 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte: it writes the program counter plus 4 to `R30`. -/
 theorem bl_tcg (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blTcg (bFields imm)
-      (.bl imm) s := by
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blTcg
+      (bFields imm) (.bl imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
   simp only [Untagged, hT, Nat.reducePow] at ht htcr
@@ -343,8 +343,8 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem bl_kvm (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blKvm (bFields imm)
-      (.bl imm) s := by
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blKvm
+      (bFields imm) (.bl imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
   simp only [Untagged, hT, Nat.reducePow] at ht htcr
@@ -412,7 +412,7 @@ set_option maxHeartbeats 8000000 in
 branch is taken.  Isla reads `Xt` from the vector of `R0` to `R30` for a register other than 31. -/
 theorem cbz_tcg (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t = 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzTcg
       (cbFields t imm) (.cbz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -455,7 +455,7 @@ set_option maxHeartbeats 8000000 in
 immediate, and every state whose target keeps its top byte when the branch is taken. -/
 theorem cbz_kvm (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t = 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzKvm
       (cbFields t imm) (.cbz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -499,7 +499,7 @@ set_option maxHeartbeats 8000000 in
 branch is taken. -/
 theorem cbnz_tcg (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t ≠ 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzTcg
       (cbFields t imm) (.cbnz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -542,7 +542,7 @@ set_option maxHeartbeats 8000000 in
 immediate, and every state whose target keeps its top byte when the branch is taken. -/
 theorem cbnz_kvm (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t ≠ 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzKvm
       (cbFields t imm) (.cbnz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -607,7 +607,7 @@ flags and computes the condition from them and the field `cond`, and `cond_dec` 
 `State.condHolds`. -/
 theorem bcond_tcg (P : Platform) (u : Unknown) (cond : Fin 16) (imm : Fin 524288) (s : State)
     (ht : s.condHolds cond = true → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondTcg
       (bcondFields cond imm) (.bcond cond imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -648,7 +648,7 @@ set_option maxHeartbeats 8000000 in
 every state whose target keeps its top byte when the condition holds. -/
 theorem bcond_kvm (P : Platform) (u : Unknown) (cond : Fin 16) (imm : Fin 524288) (s : State)
     (ht : s.condHolds cond = true → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondKvm
       (bcondFields cond imm) (.bcond cond imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -709,8 +709,8 @@ the zero register, and every state whose target `Xn` keeps its top byte.  Every 
 `BTypeNext`. -/
 theorem ret_tcg (P : Platform) (u : Unknown) (n : Fin 32) (s : State)
     (ht : Untagged u.tcr (s.x n)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"] retTcg
-      (retFields n) (.ret n) s := by
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"]
+      retTcg (retFields n) (.ret n) s := by
   have htcr := u.tcr.isLt
   have := n.isLt
   simp only [Untagged, Nat.reducePow] at ht htcr
@@ -749,8 +749,8 @@ set_option maxHeartbeats 8000000 in
 whose target `Xn` keeps its top byte. -/
 theorem ret_kvm (P : Platform) (u : Unknown) (n : Fin 32) (s : State)
     (ht : Untagged u.tcr (s.x n)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"] retKvm
-      (retFields n) (.ret n) s := by
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"]
+      retKvm (retFields n) (.ret n) s := by
   have htcr := u.tcr.isLt
   have := n.isLt
   simp only [Untagged, Nat.reducePow] at ht htcr

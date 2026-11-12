@@ -97,7 +97,7 @@ theorem strbTcg_n0 : strbTcg.trace = strbTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx strbTcg (tcg.sys .memory)
+isla_ctx strbTcg .el1 (tcg.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -108,7 +108,7 @@ theorem strbTcg_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31)
-    (h : strbTcg.Run P (memFields t n imm) s σ o) :
+    (h : strbTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -147,7 +147,7 @@ theorem strbTcg_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31) :
-    strbTcg.Run P (memFields t n imm) s σ
+    strbTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -190,7 +190,7 @@ theorem strbTcg_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : strbTcg.Run P (memFields t n imm) s σ o) :
+    (h : strbTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -229,7 +229,7 @@ theorem strbTcg_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    strbTcg.Run P (memFields t n imm) s σ
+    strbTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -272,7 +272,7 @@ theorem strbTcg_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : strbTcg.Run P (memFields t n imm) s σ o) :
+    (h : strbTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -308,7 +308,7 @@ theorem strbTcg_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    strbTcg.Run P (memFields t n imm) s σ
+    strbTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -348,7 +348,7 @@ theorem strbTcg_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : strbTcg.Run P (memFields t n imm) s σ o) :
+    (h : strbTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -384,7 +384,7 @@ theorem strbTcg_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    strbTcg.Run P (memFields t n imm) s σ
+    strbTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -423,7 +423,7 @@ theorem strb_tcg (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat + 8) = 0x0040000040000705)
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff) :
-    Agrees P (tcg.sys .memory u) ["SEE", "__BranchTaken"] strbTcg (memFields t n imm)
+    Agrees P .el1 (tcg.sys .memory u) ["SEE", "__BranchTaken"] strbTcg (memFields t n imm)
       (.strb t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show strbTcg.opcode = [.bits 10 0b0011100100, .field "imm12" 12, .field "Rn" 5,
@@ -457,7 +457,7 @@ theorem strbKvm_n0 : strbKvm.trace = strbKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx strbKvm (kvm.sys .memory)
+isla_ctx strbKvm .el1 (kvm.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -468,7 +468,7 @@ theorem strbKvm_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31)
-    (h : strbKvm.Run P (memFields t n imm) s σ o) :
+    (h : strbKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -507,7 +507,7 @@ theorem strbKvm_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : t.val = 31) :
-    strbKvm.Run P (memFields t n imm) s σ
+    strbKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -550,7 +550,7 @@ theorem strbKvm_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31)
-    (h : strbKvm.Run P (memFields t n imm) s σ o) :
+    (h : strbKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -589,7 +589,7 @@ theorem strbKvm_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    strbKvm.Run P (memFields t n imm) s σ
+    strbKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -632,7 +632,7 @@ theorem strbKvm_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31)
-    (h : strbKvm.Run P (memFields t n imm) s σ o) :
+    (h : strbKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -668,7 +668,7 @@ theorem strbKvm_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    strbKvm.Run P (memFields t n imm) s σ
+    strbKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -708,7 +708,7 @@ theorem strbKvm_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31)
-    (h : strbKvm.Run P (memFields t n imm) s σ o) :
+    (h : strbKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -744,7 +744,7 @@ theorem strbKvm_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff)
     (hs : exec P (.strb t n imm) s = some s') (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    strbKvm.Run P (memFields t n imm) s σ
+    strbKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -783,7 +783,7 @@ theorem strb_kvm (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat + 8) = 0x0040000040000705)
     (ha : 0x40000000 ≤ (s.xsp n + .ofNat imm.val).toNat ∧
       (s.xsp n + .ofNat imm.val).toNat ≤ 0x7fffffff) :
-    Agrees P (kvm.sys .memory u) ["SEE", "__BranchTaken"] strbKvm (memFields t n imm)
+    Agrees P .el1 (kvm.sys .memory u) ["SEE", "__BranchTaken"] strbKvm (memFields t n imm)
       (.strb t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show strbKvm.opcode = [.bits 10 0b0011100100, .field "imm12" 12, .field "Rn" 5,
@@ -819,7 +819,7 @@ theorem uartTcg_n0 : uartTcg.trace = uartTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx uartTcg (tcg.sys .memory)
+isla_ctx uartTcg .el1 (tcg.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -828,7 +828,7 @@ theorem uartTcg_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartTcg.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : n.val = 31) (ht : t.val = 31) (h : uartTcg.Run P (memFields t n imm) s σ o) :
+    (hn : n.val = 31) (ht : t.val = 31) (h : uartTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -866,7 +866,7 @@ theorem uartTcg_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : n.val = 31) (ht : t.val = 31) :
-    uartTcg.Run P (memFields t n imm) s σ
+    uartTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -907,7 +907,7 @@ theorem uartTcg_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartTcg.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : n.val = 31) (ht : ¬ t.val = 31) (h : uartTcg.Run P (memFields t n imm) s σ o) :
+    (hn : n.val = 31) (ht : ¬ t.val = 31) (h : uartTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -945,7 +945,7 @@ theorem uartTcg_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    uartTcg.Run P (memFields t n imm) s σ
+    uartTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -986,7 +986,7 @@ theorem uartTcg_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartTcg.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : ¬ n.val = 31) (ht : t.val = 31) (h : uartTcg.Run P (memFields t n imm) s σ o) :
+    (hn : ¬ n.val = 31) (ht : t.val = 31) (h : uartTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1021,7 +1021,7 @@ theorem uartTcg_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    uartTcg.Run P (memFields t n imm) s σ
+    uartTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1059,7 +1059,7 @@ theorem uartTcg_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartTcg.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) (h : uartTcg.Run P (memFields t n imm) s σ o) :
+    (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) (h : uartTcg.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1094,7 +1094,7 @@ theorem uartTcg_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    uartTcg.Run P (memFields t n imm) s σ
+    uartTcg.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1132,7 +1132,7 @@ theorem uart_tcg (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) :
-    Agrees P (tcg.sys .memory u) ["SEE", "__BranchTaken"] uartTcg (memFields t n imm)
+    Agrees P .el1 (tcg.sys .memory u) ["SEE", "__BranchTaken"] uartTcg (memFields t n imm)
       (.strb t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show uartTcg.opcode = [.bits 10 0b0011100100, .field "imm12" 12, .field "Rn" 5,
@@ -1166,7 +1166,7 @@ theorem uartKvm_n0 : uartKvm.trace = uartKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx uartKvm (kvm.sys .memory)
+isla_ctx uartKvm .el1 (kvm.sys .memory)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
@@ -1175,7 +1175,7 @@ theorem uartKvm_fwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartKvm.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : n.val = 31) (ht : t.val = 31) (h : uartKvm.Run P (memFields t n imm) s σ o) :
+    (hn : n.val = 31) (ht : t.val = 31) (h : uartKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1213,7 +1213,7 @@ theorem uartKvm_bwd_sp_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : n.val = 31) (ht : t.val = 31) :
-    uartKvm.Run P (memFields t n imm) s σ
+    uartKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1254,7 +1254,7 @@ theorem uartKvm_fwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartKvm.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : n.val = 31) (ht : ¬ t.val = 31) (h : uartKvm.Run P (memFields t n imm) s σ o) :
+    (hn : n.val = 31) (ht : ¬ t.val = 31) (h : uartKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1292,7 +1292,7 @@ theorem uartKvm_bwd_sp_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : n.val = 31) (ht : ¬ t.val = 31) :
-    uartKvm.Run P (memFields t n imm) s σ
+    uartKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1333,7 +1333,7 @@ theorem uartKvm_fwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartKvm.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : ¬ n.val = 31) (ht : t.val = 31) (h : uartKvm.Run P (memFields t n imm) s σ o) :
+    (hn : ¬ n.val = 31) (ht : t.val = 31) (h : uartKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1368,7 +1368,7 @@ theorem uartKvm_bwd_x_zr {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : ¬ n.val = 31) (ht : t.val = 31) :
-    uartKvm.Run P (memFields t n imm) s σ
+    uartKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1406,7 +1406,7 @@ theorem uartKvm_fwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     {s s' : State} {σ : Sys} {o : Outcome} (hσ : uartKvm.ctx σ u)
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
-    (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) (h : uartKvm.Run P (memFields t n imm) s σ o) :
+    (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) (h : uartKvm.Run P .el1 (memFields t n imm) s σ o) :
     o = .done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651)) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1441,7 +1441,7 @@ theorem uartKvm_bwd_x_r {P : Platform} {u : Unknown} {t n : Fin 32} {imm : Fin 4
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) (hs : exec P (.strb t n imm) s = some s')
     (hn : ¬ n.val = 31) (ht : ¬ t.val = 31) :
-    uartKvm.Run P (memFields t n imm) s σ
+    uartKvm.Run P .el1 (memFields t n imm) s σ
       (.done s' ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 651))) := by
   without_info
     obtain ⟨hal, hs'⟩ := exec_strb hs
@@ -1479,7 +1479,7 @@ theorem uart_kvm (P : Platform) (u : Unknown) (t n : Fin 32) (imm : Fin 4096) (s
     (httbr : u.ttbr0 &&& 0xffffffffc000001f#64 = 0x40000000#64)
     (hd : load64 s.mem (.ofNat u.ttbr0.toNat) = 0x0060000000000401)
     (ha : (s.xsp n + .ofNat imm.val).toNat = 0x09000000) :
-    Agrees P (kvm.sys .memory u) ["SEE", "__BranchTaken"] uartKvm (memFields t n imm)
+    Agrees P .el1 (kvm.sys .memory u) ["SEE", "__BranchTaken"] uartKvm (memFields t n imm)
       (.strb t n imm) s := by
   refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
   · rw [show uartKvm.opcode = [.bits 10 0b0011100100, .field "imm12" 12, .field "Rn" 5,

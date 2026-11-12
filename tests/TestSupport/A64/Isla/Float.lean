@@ -50,14 +50,14 @@ theorem fmovXdTcg_n0 : fmovXdTcg.trace = fmovXdTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovXdTcg (tcg.sys .fp)
+isla_ctx fmovXdTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovXdTcg` ends in `exec`'s state. -/
 theorem fmovXdTcg_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovXdTcg.ctx σ u)
-    (h : fmovXdTcg.Run P (fpFields2 d n) s σ o) :
+    (h : fmovXdTcg.Run P .el1 (fpFields2 d n) s σ o) :
     o = .done { s.setX d (s.dregs n) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295)) := by
   without_info
@@ -74,7 +74,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovXdTcg` has a path to an outcome. -/
 theorem fmovXdTcg_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovXdTcg.ctx σ u) :
-    fmovXdTcg.Run P (fpFields2 d n) s σ (.done { s.setX d (s.dregs n) with pc := s.pc + 4 }
+    fmovXdTcg.Run P .el1 (fpFields2 d n) s σ (.done { s.setX d (s.dregs n) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295))) := by
   without_info
     have := d.isLt
@@ -97,7 +97,7 @@ set_option maxHeartbeats 0 in
 every state. -/
 theorem fmovXd_tcg (P : Platform) 
     (u : Unknown) (d n : Fin 32) (s : State) :
-    Agrees P (tcg.sys .fp u) ["SEE", "__BranchTaken"] fmovXdTcg
+    Agrees P .el1 (tcg.sys .fp u) ["SEE", "__BranchTaken"] fmovXdTcg
       (fpFields2 d n) (.fmovXD d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -121,14 +121,14 @@ theorem fmovXdKvm_n0 : fmovXdKvm.trace = fmovXdKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovXdKvm (kvm.sys .fp)
+isla_ctx fmovXdKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovXdKvm` ends in `exec`'s state. -/
 theorem fmovXdKvm_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovXdKvm.ctx σ u)
-    (h : fmovXdKvm.Run P (fpFields2 d n) s σ o) :
+    (h : fmovXdKvm.Run P .el1 (fpFields2 d n) s σ o) :
     o = .done { s.setX d (s.dregs n) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295)) := by
   without_info
@@ -145,7 +145,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovXdKvm` has a path to an outcome. -/
 theorem fmovXdKvm_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovXdKvm.ctx σ u) :
-    fmovXdKvm.Run P (fpFields2 d n) s σ (.done { s.setX d (s.dregs n) with pc := s.pc + 4 }
+    fmovXdKvm.Run P .el1 (fpFields2 d n) s σ (.done { s.setX d (s.dregs n) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295))) := by
   without_info
     have := d.isLt
@@ -168,7 +168,7 @@ set_option maxHeartbeats 0 in
 every state. -/
 theorem fmovXd_kvm (P : Platform) 
     (u : Unknown) (d n : Fin 32) (s : State) :
-    Agrees P (kvm.sys .fp u) ["SEE", "__BranchTaken"] fmovXdKvm
+    Agrees P .el1 (kvm.sys .fp u) ["SEE", "__BranchTaken"] fmovXdKvm
       (fpFields2 d n) (.fmovXD d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -192,14 +192,14 @@ theorem fmovDxTcg_n0 : fmovDxTcg.trace = fmovDxTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovDxTcg (tcg.sys .fp)
+isla_ctx fmovDxTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovDxTcg` ends in `exec`'s state. -/
 theorem fmovDxTcg_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovDxTcg.ctx σ u)
-    (h : fmovDxTcg.Run P (fpFields2 d n) s σ o) :
+    (h : fmovDxTcg.Run P .el1 (fpFields2 d n) s σ o) :
     ∃ σ', o = .done
       { s.setD d (s.x n) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z"] → σ' r = σ r := by
@@ -217,7 +217,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovDxTcg` has a path to an outcome. -/
 theorem fmovDxTcg_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovDxTcg.ctx σ u) :
-    ∃ o, fmovDxTcg.Run P (fpFields2 d n) s σ o := by
+    ∃ o, fmovDxTcg.Run P .el1 (fpFields2 d n) s σ o := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -241,7 +241,7 @@ set_option maxHeartbeats 0 in
 every state. -/
 theorem fmovDx_tcg (P : Platform) 
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P noAbstract (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovDxTcg
+    AgreesAll P .el1 noAbstract (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovDxTcg
       (fpFields2 d n) (.fmovDX d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -266,14 +266,14 @@ theorem fmovDxKvm_n0 : fmovDxKvm.trace = fmovDxKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovDxKvm (kvm.sys .fp)
+isla_ctx fmovDxKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovDxKvm` ends in `exec`'s state. -/
 theorem fmovDxKvm_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovDxKvm.ctx σ u)
-    (h : fmovDxKvm.Run P (fpFields2 d n) s σ o) :
+    (h : fmovDxKvm.Run P .el1 (fpFields2 d n) s σ o) :
     ∃ σ', o = .done
       { s.setD d (s.x n) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z"] → σ' r = σ r := by
@@ -291,7 +291,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovDxKvm` has a path to an outcome. -/
 theorem fmovDxKvm_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovDxKvm.ctx σ u) :
-    ∃ o, fmovDxKvm.Run P (fpFields2 d n) s σ o := by
+    ∃ o, fmovDxKvm.Run P .el1 (fpFields2 d n) s σ o := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -315,7 +315,7 @@ set_option maxHeartbeats 0 in
 every state. -/
 theorem fmovDx_kvm (P : Platform) 
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P noAbstract (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovDxKvm
+    AgreesAll P .el1 noAbstract (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovDxKvm
       (fpFields2 d n) (.fmovDX d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -340,14 +340,14 @@ theorem faddTcg_n0 : faddTcg.trace = faddTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx faddTcg (tcg.sys .fp)
+isla_ctx faddTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `faddTcg` ends in `exec`'s state. -/
 theorem faddTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPAddEq A) (hσ : faddTcg.ctx σ u)
-    (h : faddTcg.Run P (fpFields3 d n m) s σ o A) :
+    (h : faddTcg.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Add (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -368,7 +368,7 @@ set_option maxHeartbeats 0 in
 /-- `faddTcg` has a path to an outcome. -/
 theorem faddTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPAddEq A) (hσ : faddTcg.ctx σ u) :
-    ∃ o, faddTcg.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, faddTcg.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -392,7 +392,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPAddEq`. -/
 theorem fadd_tcg (P : Platform) (A : Abstract) (hA : FPAddEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddTcg
       (fpFields3 d n m) (.fadd d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -417,14 +417,14 @@ theorem faddKvm_n0 : faddKvm.trace = faddKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx faddKvm (kvm.sys .fp)
+isla_ctx faddKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `faddKvm` ends in `exec`'s state. -/
 theorem faddKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPAddEq A) (hσ : faddKvm.ctx σ u)
-    (h : faddKvm.Run P (fpFields3 d n m) s σ o A) :
+    (h : faddKvm.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Add (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -445,7 +445,7 @@ set_option maxHeartbeats 0 in
 /-- `faddKvm` has a path to an outcome. -/
 theorem faddKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPAddEq A) (hσ : faddKvm.ctx σ u) :
-    ∃ o, faddKvm.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, faddKvm.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -469,7 +469,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPAddEq`. -/
 theorem fadd_kvm (P : Platform) (A : Abstract) (hA : FPAddEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddKvm
       (fpFields3 d n m) (.fadd d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -494,14 +494,14 @@ theorem fsubTcg_n0 : fsubTcg.trace = fsubTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsubTcg (tcg.sys .fp)
+isla_ctx fsubTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsubTcg` ends in `exec`'s state. -/
 theorem fsubTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSubEq A) (hσ : fsubTcg.ctx σ u)
-    (h : fsubTcg.Run P (fpFields3 d n m) s σ o A) :
+    (h : fsubTcg.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Sub (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -522,7 +522,7 @@ set_option maxHeartbeats 0 in
 /-- `fsubTcg` has a path to an outcome. -/
 theorem fsubTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPSubEq A) (hσ : fsubTcg.ctx σ u) :
-    ∃ o, fsubTcg.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fsubTcg.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -546,7 +546,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPSubEq`. -/
 theorem fsub_tcg (P : Platform) (A : Abstract) (hA : FPSubEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubTcg
       (fpFields3 d n m) (.fsub d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -571,14 +571,14 @@ theorem fsubKvm_n0 : fsubKvm.trace = fsubKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsubKvm (kvm.sys .fp)
+isla_ctx fsubKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsubKvm` ends in `exec`'s state. -/
 theorem fsubKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSubEq A) (hσ : fsubKvm.ctx σ u)
-    (h : fsubKvm.Run P (fpFields3 d n m) s σ o A) :
+    (h : fsubKvm.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Sub (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -599,7 +599,7 @@ set_option maxHeartbeats 0 in
 /-- `fsubKvm` has a path to an outcome. -/
 theorem fsubKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPSubEq A) (hσ : fsubKvm.ctx σ u) :
-    ∃ o, fsubKvm.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fsubKvm.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -623,7 +623,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPSubEq`. -/
 theorem fsub_kvm (P : Platform) (A : Abstract) (hA : FPSubEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubKvm
       (fpFields3 d n m) (.fsub d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -648,14 +648,14 @@ theorem fmulTcg_n0 : fmulTcg.trace = fmulTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmulTcg (tcg.sys .fp)
+isla_ctx fmulTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmulTcg` ends in `exec`'s state. -/
 theorem fmulTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPMulEq A) (hσ : fmulTcg.ctx σ u)
-    (h : fmulTcg.Run P (fpFields3 d n m) s σ o A) :
+    (h : fmulTcg.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Mul (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -676,7 +676,7 @@ set_option maxHeartbeats 0 in
 /-- `fmulTcg` has a path to an outcome. -/
 theorem fmulTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPMulEq A) (hσ : fmulTcg.ctx σ u) :
-    ∃ o, fmulTcg.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fmulTcg.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -707,7 +707,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPMulEq`. -/
 theorem fmul_tcg (P : Platform) (A : Abstract) (hA : FPMulEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulTcg
       (fpFields3 d n m) (.fmul d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -732,14 +732,14 @@ theorem fmulKvm_n0 : fmulKvm.trace = fmulKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmulKvm (kvm.sys .fp)
+isla_ctx fmulKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmulKvm` ends in `exec`'s state. -/
 theorem fmulKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPMulEq A) (hσ : fmulKvm.ctx σ u)
-    (h : fmulKvm.Run P (fpFields3 d n m) s σ o A) :
+    (h : fmulKvm.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Mul (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -760,7 +760,7 @@ set_option maxHeartbeats 0 in
 /-- `fmulKvm` has a path to an outcome. -/
 theorem fmulKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPMulEq A) (hσ : fmulKvm.ctx σ u) :
-    ∃ o, fmulKvm.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fmulKvm.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -791,7 +791,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPMulEq`. -/
 theorem fmul_kvm (P : Platform) (A : Abstract) (hA : FPMulEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulKvm
       (fpFields3 d n m) (.fmul d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -816,14 +816,14 @@ theorem fdivTcg_n0 : fdivTcg.trace = fdivTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fdivTcg (tcg.sys .fp)
+isla_ctx fdivTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fdivTcg` ends in `exec`'s state. -/
 theorem fdivTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPDivEq A) (hσ : fdivTcg.ctx σ u)
-    (h : fdivTcg.Run P (fpFields3 d n m) s σ o A) :
+    (h : fdivTcg.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -844,7 +844,7 @@ set_option maxHeartbeats 0 in
 /-- `fdivTcg` has a path to an outcome. -/
 theorem fdivTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPDivEq A) (hσ : fdivTcg.ctx σ u) :
-    ∃ o, fdivTcg.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fdivTcg.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -875,7 +875,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPDivEq`. -/
 theorem fdiv_tcg (P : Platform) (A : Abstract) (hA : FPDivEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivTcg
       (fpFields3 d n m) (.fdiv d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -900,14 +900,14 @@ theorem fdivKvm_n0 : fdivKvm.trace = fdivKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fdivKvm (kvm.sys .fp)
+isla_ctx fdivKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fdivKvm` ends in `exec`'s state. -/
 theorem fdivKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPDivEq A) (hσ : fdivKvm.ctx σ u)
-    (h : fdivKvm.Run P (fpFields3 d n m) s σ o A) :
+    (h : fdivKvm.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -928,7 +928,7 @@ set_option maxHeartbeats 0 in
 /-- `fdivKvm` has a path to an outcome. -/
 theorem fdivKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPDivEq A) (hσ : fdivKvm.ctx σ u) :
-    ∃ o, fdivKvm.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fdivKvm.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -959,7 +959,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPDivEq`. -/
 theorem fdiv_kvm (P : Platform) (A : Abstract) (hA : FPDivEq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivKvm
       (fpFields3 d n m) (.fdiv d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -984,14 +984,14 @@ theorem fsqrtTcg_n0 : fsqrtTcg.trace = fsqrtTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsqrtTcg (tcg.sys .fp)
+isla_ctx fsqrtTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsqrtTcg` ends in `exec`'s state. -/
 theorem fsqrtTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSqrtEq A) (hσ : fsqrtTcg.ctx σ u)
-    (h : fsqrtTcg.Run P (fpFields2 d n) s σ o A) :
+    (h : fsqrtTcg.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -1010,7 +1010,7 @@ set_option maxHeartbeats 0 in
 /-- `fsqrtTcg` has a path to an outcome. -/
 theorem fsqrtTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPSqrtEq A) (hσ : fsqrtTcg.ctx σ u) :
-    ∃ o, fsqrtTcg.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, fsqrtTcg.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -1032,7 +1032,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPSqrtEq`. -/
 theorem fsqrt_tcg (P : Platform) (A : Abstract) (hA : FPSqrtEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtTcg
       (fpFields2 d n) (.fsqrt d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -1057,14 +1057,14 @@ theorem fsqrtKvm_n0 : fsqrtKvm.trace = fsqrtKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsqrtKvm (kvm.sys .fp)
+isla_ctx fsqrtKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsqrtKvm` ends in `exec`'s state. -/
 theorem fsqrtKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSqrtEq A) (hσ : fsqrtKvm.ctx σ u)
-    (h : fsqrtKvm.Run P (fpFields2 d n) s σ o A) :
+    (h : fsqrtKvm.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -1083,7 +1083,7 @@ set_option maxHeartbeats 0 in
 /-- `fsqrtKvm` has a path to an outcome. -/
 theorem fsqrtKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPSqrtEq A) (hσ : fsqrtKvm.ctx σ u) :
-    ∃ o, fsqrtKvm.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, fsqrtKvm.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -1105,7 +1105,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FPSqrtEq`. -/
 theorem fsqrt_kvm (P : Platform) (A : Abstract) (hA : FPSqrtEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtKvm
       (fpFields2 d n) (.fsqrt d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -1130,14 +1130,14 @@ theorem ucvtfTcg_n0 : ucvtfTcg.trace = ucvtfTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx ucvtfTcg (tcg.sys .fp)
+isla_ctx ucvtfTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `ucvtfTcg` ends in `exec`'s state. -/
 theorem ucvtfTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FixedToFPEq A) (hσ : ucvtfTcg.ctx σ u)
-    (h : ucvtfTcg.Run P (fpFields2 d n) s σ o A) :
+    (h : ucvtfTcg.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -1158,7 +1158,7 @@ set_option maxHeartbeats 0 in
 /-- `ucvtfTcg` has a path to an outcome. -/
 theorem ucvtfTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FixedToFPEq A) (hσ : ucvtfTcg.ctx σ u) :
-    ∃ o, ucvtfTcg.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, ucvtfTcg.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -1185,7 +1185,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FixedToFPEq`. -/
 theorem ucvtf_tcg (P : Platform) (A : Abstract) (hA : FixedToFPEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfTcg
       (fpFields2 d n) (.ucvtf d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -1210,14 +1210,14 @@ theorem ucvtfKvm_n0 : ucvtfKvm.trace = ucvtfKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx ucvtfKvm (kvm.sys .fp)
+isla_ctx ucvtfKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `ucvtfKvm` ends in `exec`'s state. -/
 theorem ucvtfKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FixedToFPEq A) (hσ : ucvtfKvm.ctx σ u)
-    (h : ucvtfKvm.Run P (fpFields2 d n) s σ o A) :
+    (h : ucvtfKvm.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -1238,7 +1238,7 @@ set_option maxHeartbeats 0 in
 /-- `ucvtfKvm` has a path to an outcome. -/
 theorem ucvtfKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FixedToFPEq A) (hσ : ucvtfKvm.ctx σ u) :
-    ∃ o, ucvtfKvm.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, ucvtfKvm.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -1265,7 +1265,7 @@ set_option maxHeartbeats 0 in
 every state, where `A` satisfies `FixedToFPEq`. -/
 theorem ucvtf_kvm (P : Platform) (A : Abstract) (hA : FixedToFPEq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfKvm
       (fpFields2 d n) (.ucvtf d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩

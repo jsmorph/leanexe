@@ -42,14 +42,14 @@ theorem fcmpTcg_n0 : fcmpTcg.trace = fcmpTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpTcg (tcg.sys .fp)
+isla_ctx fcmpTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpTcg` ends in `exec`'s state. -/
 theorem fcmpTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpTcg.ctx σ u)
-    (h : fcmpTcg.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpTcg.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -67,7 +67,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpTcg` has a path to `exec`'s state. -/
 theorem fcmpTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpTcg.ctx σ u) :
-    fcmpTcg.Run P (fcmpFields n m) s σ
+    fcmpTcg.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -88,7 +88,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_tcg (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpTcg
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -111,14 +111,14 @@ theorem fcmpKvm_n0 : fcmpKvm.trace = fcmpKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpKvm (kvm.sys .fp)
+isla_ctx fcmpKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpKvm` ends in `exec`'s state. -/
 theorem fcmpKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpKvm.ctx σ u)
-    (h : fcmpKvm.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpKvm.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -136,7 +136,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpKvm` has a path to `exec`'s state. -/
 theorem fcmpKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpKvm.ctx σ u) :
-    fcmpKvm.Run P (fcmpFields n m) s σ
+    fcmpKvm.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -157,7 +157,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_kvm (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpKvm
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -180,14 +180,14 @@ theorem fcmpSme_n0 : fcmpSme.trace = fcmpSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpSme (sme.sys .fp)
+isla_ctx fcmpSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpSme` ends in `exec`'s state. -/
 theorem fcmpSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpSme.ctx σ u)
-    (h : fcmpSme.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpSme.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -205,7 +205,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpSme` has a path to `exec`'s state. -/
 theorem fcmpSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpSme.ctx σ u) :
-    fcmpSme.Run P (fcmpFields n m) s σ
+    fcmpSme.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -226,7 +226,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_sme (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSme
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩

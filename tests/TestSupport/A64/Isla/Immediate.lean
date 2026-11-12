@@ -316,7 +316,7 @@ with register 31 the stack pointer, every immediate, and every state.  The backw
 builds the path of each of the 4 cases of register 31 among `d` and `n`, and the events that the
 two directions evaluate take more than the default budget of heartbeats. -/
 theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
       (.addImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -363,7 +363,7 @@ theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) 
 /-- The trace of `ADD Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
 theorem addImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addImmKvm (arithFields d n imm)
       (.addImm d n imm) s := by
   rw [show addImmKvm = addImmTcg from rfl]
   exact (addImm_tcg P u d n imm s).of_reads
@@ -374,7 +374,7 @@ set_option maxHeartbeats 4000000 in
 with register 31 the stack pointer, every immediate, and every state.  Its proof is that of
 `addImm_tcg` with the model's subtraction. -/
 theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
       (.subImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -421,7 +421,7 @@ theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) 
 /-- The trace of `SUB Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
 theorem subImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subImmKvm (arithFields d n imm)
       (.subImm d n imm) s := by
   rw [show subImmKvm = subImmTcg from rfl]
   exact (subImm_tcg P u d n imm s).of_reads
@@ -464,7 +464,7 @@ with register 31 the stack pointer as `n` and the zero register as `d`, every im
 state.  The forward direction takes the cases of `n` before the trace, so that `subs_end` names
 the first operand. -/
 theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
       (.subsImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -516,7 +516,7 @@ theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096)
 /-- The trace of `SUBS Xd, Xn|SP, #imm` under `kvm` agrees with `exec` for every register number,
 every immediate, and every state. -/
 theorem subsImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsImmKvm (arithFields d n imm)
       (.subsImm d n imm) s := by
   rw [show subsImmKvm = subsImmTcg from rfl]
   exact (subsImm_tcg P u d n imm s).of_reads
@@ -546,7 +546,7 @@ number, with register 31 the zero register, every immediate, every shift, and ev
 directions take the 4 values of `hw` in turn. -/
 theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
       (.movz d imm hw) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -584,7 +584,7 @@ theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
 number, every immediate, every shift, and every state. -/
 theorem movz_kvm (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movzKvm (moveFields d imm hw)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movzKvm (moveFields d imm hw)
       (.movz d imm hw) s := by
   rw [show movzKvm = movzTcg from rfl]
   exact (movz_tcg P u d imm hw s).of_reads
@@ -596,7 +596,7 @@ number, with register 31 the zero register, every immediate, every shift, and ev
 directions take the 4 values of `hw` in turn. -/
 theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
       (.movk d imm hw) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -635,7 +635,7 @@ theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
 number, every immediate, every shift, and every state. -/
 theorem movk_kvm (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movkKvm (moveFields d imm hw)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movkKvm (moveFields d imm hw)
       (.movk d imm hw) s := by
   rw [show movkKvm = movkTcg from rfl]
   exact (movk_tcg P u d imm hw s).of_reads
@@ -657,7 +657,7 @@ with `omega` deciding remainders, comparisons, and the conditions of `ite` and `
 backward direction builds the path of each of the 8 cases of a zero shift and of register 31
 among `d` and `n`. -/
 theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -697,7 +697,7 @@ theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s 
 /-- The trace of `LSR Xd, Xn, #sh` under `kvm` agrees with `exec` for every register number, every
 shift, and every state. -/
 theorem lsrImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmKvm (lsrImmFields d n sh)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmKvm (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
   rw [show lsrImmKvm = lsrImmTcg from rfl]
   exact (lsrImm_tcg P u d n sh s).of_reads
@@ -720,7 +720,7 @@ and the register that the condition selects, evaluates both branches of the trac
 condition, takes the branch that `condHolds` selects, and proves the trace's condition with
 `cond_bwd`. -/
 theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
       (.csinc d n m cond) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -778,7 +778,7 @@ theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) 
 /-- The trace of `CSINC Xd, Xn, Xm, cond` under `kvm` agrees with `exec` for every register number,
 every condition, and every state. -/
 theorem csinc_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] csincKvm (csincFields d n m cond)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] csincKvm (csincFields d n m cond)
       (.csinc d n m cond) s := by
   rw [show csincKvm = csincTcg from rfl]
   exact (csinc_tcg P u d n m cond s).of_reads
@@ -789,7 +789,7 @@ set_option maxHeartbeats 4000000 in
 31 the zero register, every immediate, and every state. -/
 theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
       (.adr d lo hi) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -825,7 +825,7 @@ theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin
 immediate, and every state. -/
 theorem adr_kvm (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrKvm (adrFields d lo hi)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrKvm (adrFields d lo hi)
       (.adr d lo hi) s := by
   rw [show adrKvm = adrTcg from rfl]
   exact (adr_tcg P u d lo hi s).of_reads
@@ -836,7 +836,7 @@ set_option maxHeartbeats 4000000 in
 31 the zero register, every immediate, and every state. -/
 theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
       (.adrp d lo hi) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -874,7 +874,7 @@ theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fi
 immediate, and every state. -/
 theorem adrp_kvm (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrpKvm (adrFields d lo hi)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrpKvm (adrFields d lo hi)
       (.adrp d lo hi) s := by
   rw [show adrpKvm = adrpTcg from rfl]
   exact (adrp_tcg P u d lo hi s).of_reads
