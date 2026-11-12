@@ -96,7 +96,7 @@ theorem EffectProg.correctIn_with {calls : List LeanExe.Wasi.Call}
     (base : CompilerBaseWith calls source target pure pool) (sourceHost : HostEnv Unit)
     (program : EffectProg pureSigs effectSigs)
     (present : program.FunctionsInWith calls source target pool)
-    (ready : program.Ready source pool) (covered : program.Covered pool) :
+    (ready : program.ReadyWith calls source pool) (covered : program.Covered pool) :
     CostEffectCallsWith calls source target pure program pool := by
   induction program with
   | nil =>

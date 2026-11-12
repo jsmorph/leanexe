@@ -20,6 +20,7 @@ theorem command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.bind first next) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || next.uses (i + 1)
   let all := fun i => mid i || first.uses i
   let bodyIn := fun i => shift 1 live i || next.uses i
@@ -53,13 +54,15 @@ theorem command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
     have := Nat.le_max_right first.width next.width
     omega
   have resultRoom : base + type.width ≤ h := by omega
-  have firstReady : first.Ready source h slots (base + type.width) mid pool := by
+  have firstReady : first.ReadyWith calls source h slots (base + type.width) mid pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_left _ (List.mem_append_left _ member))
   have releaseReady := ready (releaseCode type base)
     (List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _)))
-  have nextReady : next.Ready source h (⟨base, .owned⟩ :: slots)
+  have nextReady : next.ReadyWith calls source h (⟨base, .owned⟩ :: slots)
       (base + type.width) (shift 1 live) pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_right _ member)
   obtain ⟨firstCovered, nextCovered⟩ := (Command.covered_bind first next pool).mp covered

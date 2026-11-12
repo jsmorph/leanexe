@@ -285,7 +285,7 @@ theorem command_readAll_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.readAll limit) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := limit.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -330,7 +330,7 @@ theorem cost_command_readAll_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.readAll limit) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place resource
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := limit.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live

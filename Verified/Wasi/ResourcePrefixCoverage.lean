@@ -95,7 +95,7 @@ theorem ResourcePrefix.advance {World : Type} {host : Host World} {pure : PureCo
   refine ResourcePrefix.rec (motive_1 := PrefixAdvanceClosed host pure)
     (motive_2 := CallAdvanceClosed host pure) (motive_3 := LoopAdvanceClosed host pure)
     ?commandRefl ?retCharge ?readCharge ?readAll ?exitCharge ?commandReturned ?bindLeft ?bindRight
-    ?iteCharge ?iteYes ?iteNo ?call ?loopCount ?loopInit ?loopBody ?callGuard ?callHere ?callThere
+    ?iteCharge ?iteYes ?iteNo ?call ?loopCount ?loopInit ?loopBody ?sysProgress ?callGuard ?callHere ?callThere
     ?loopRefl ?testCharge ?loopReturned ?loopStep ?loopNext progress
   all_goals intros
   all_goals simp only [PrefixAdvanceClosed, CallAdvanceClosed, LoopAdvanceClosed] at *
@@ -110,6 +110,9 @@ theorem ResourcePrefix.advance {World : Type} {host : Host World} {pure : PureCo
   case readAll =>
     rename_i progress nextTrace nextResidual nextFinal advance
     exact ⟨_, _, .readAll (progress.trans advance.toPrefix)⟩
+  case sysProgress =>
+    rename_i progress nextTrace nextResidual nextFinal advance
+    exact ⟨_, _, .sys (progress.trans advance.toPrefix)⟩
   case exitCharge => rename_i advance; cases advance
   case commandReturned => rename_i advance; cases advance
   case bindLeft =>

@@ -6,20 +6,29 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-def EffectFunc.Ready (source : Wasm.Module) (pool : Bytes.LiteralPool)
+def EffectFunc.ReadyWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (pool : Bytes.LiteralPool)
     (function : EffectFunc pureSigs effectSigs) : Prop :=
   Encoding.ProgramForm (releaseWhere function.params
       (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) ∧
     Relocation.programClosed source.funcs.length (releaseWhere function.params
       (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) = true ∧
-    function.body.Ready source function.positions (paramSlots function.params function.modes 1)
-      (1 + widthSum function.params) (fun _ => false) pool ∧
+    function.body.ReadyWith calls source function.positions
+      (paramSlots function.params function.modes 1) (1 + widthSum function.params)
+      (fun _ => false) pool ∧
     function.body.placeArgs = true
 
-def EffectProg.Ready (source : Wasm.Module) (pool : Bytes.LiteralPool) :
+def EffectFunc.Ready (source : Wasm.Module) (pool : Bytes.LiteralPool)
+    (function : EffectFunc pureSigs effectSigs) : Prop :=
+  function.ReadyWith [] source pool
+
+def EffectProg.ReadyWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (pool : Bytes.LiteralPool) :
     {effectSigs : List EffectSig} → EffectProg pureSigs effectSigs → Prop
   | _, .nil => True
-  | _, .cons function rest => function.Ready source pool ∧ rest.Ready source pool
+  | _, .cons function rest => function.ReadyWith calls source pool ∧ rest.ReadyWith calls source pool
+
+def EffectProg.Ready (source : Wasm.Module) (pool : Bytes.LiteralPool) :
+    {effectSigs : List EffectSig} → EffectProg pureSigs effectSigs → Prop :=
+  fun program => program.ReadyWith [] source pool
 
 theorem compile_prefix_facts_with {calls : List LeanExe.Wasi.Call}
     {source : Wasm.Module} {pure : Resource.PureContext pureSigs}
@@ -80,7 +89,7 @@ theorem EffectProg.cost_calls_with {calls : List LeanExe.Wasi.Call}
         CostCommandCodeSpecWith calls source (compileCalls calls source full entries main pool) pure program pool command) :
     ∀ {signatures : List EffectSig} (program : EffectProg pureSigs signatures),
       program.FunctionsInWith calls source (compileCalls calls source full entries main pool) pool →
-      program.Ready source pool → program.Covered pool →
+      program.ReadyWith calls source pool → program.Covered pool →
       CostEffectCallsWith calls source (compileCalls calls source full entries main pool) pure program pool := by
   intro signatures program
   induction program with
@@ -146,7 +155,7 @@ theorem EffectProg.correctCost_with {calls : List LeanExe.Wasi.Call}
       CostEffectCallsWith calls source (compileCalls calls source program entries main pool) pure part pool →
       ∀ {context : List Ty} {result : ResultTy} (command : Command pureSigs signatures context result),
         CostCommandCodeSpecWith calls source (compileCalls calls source program entries main pool) pure part pool command)
-    (ready : program.Ready source pool) (covered : program.Covered pool) :
+    (ready : program.ReadyWith calls source pool) (covered : program.Covered pool) :
     CostEffectCallsWith calls source (compileCalls calls source program entries main pool) pure program pool :=
   program.cost_calls_with entries main pool runtime profile effectCalls poolApart sourceHost commandRule program
     (compile_functionsIn_with source program entries main pool) ready covered
@@ -178,7 +187,7 @@ theorem EffectProg.correctCostWith_with {calls : List LeanExe.Wasi.Call}
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
     (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
-    (ready : program.Ready (Verified.compileWith pure tables wrappers pool) pool)
+    (ready : program.ReadyWith calls (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (part : EffectProg pureSigs signatures),
       CompilerFactsWith calls (Verified.compileWith pure tables wrappers pool)

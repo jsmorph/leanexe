@@ -75,7 +75,7 @@ theorem wp_loopPrepared_with {calls : List LeanExe.Wasi.Call}
       (fun i => (test.uses (i + 2) || step.uses (i + 2)) && !live i)))
     (finishClosed : Relocation.programClosed source.funcs.length (releaseWhere context slots
       (fun i => (test.uses (i + 2) || step.uses (i + 2)) && !live i)) = true)
-    (ready : step.Ready source h
+    (ready : step.ReadyWith calls source h
       (⟨base + 2, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       (base + 2 + type.width) (shift 2 (fun j => live j || (test.uses (j + 2) || step.uses (j + 2)))) pool)
     (covered : step.Covered pool) (testPlace : test.placeArgs = true) (bodyPlace : step.placeArgs = true)

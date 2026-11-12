@@ -19,6 +19,7 @@ theorem command_bind_unit_spec_with {calls : List LeanExe.Wasi.Call}
       (.bind (intermediate := .unit) (result := result) first next) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || next.uses i
   let all := fun i => mid i || first.uses i
   have allEq : (fun i => live i || (Command.bind first next).uses i) = all := by
@@ -38,10 +39,12 @@ theorem command_bind_unit_spec_with {calls : List LeanExe.Wasi.Call}
     (Nat.add_le_add_left (Nat.le_max_left first.width next.width) base).trans room
   have nextRoom : base + next.width ≤ h :=
     (Nat.add_le_add_left (Nat.le_max_right first.width next.width) base).trans room
-  have firstReady : first.Ready source h slots base mid pool := by
+  have firstReady : first.ReadyWith calls source h slots base mid pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_left _ member)
-  have nextReady : next.Ready source h slots base live pool := by
+  have nextReady : next.ReadyWith calls source h slots base live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     exact ready fragment (List.mem_append_right _ member)
   obtain ⟨firstCovered, nextCovered⟩ := (Command.covered_bind first next pool).mp covered

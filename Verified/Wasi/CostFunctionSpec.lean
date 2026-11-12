@@ -17,7 +17,7 @@ theorem CostEffectSpecWith.here {calls : List LeanExe.Wasi.Call}
       (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)))
     (closed : Relocation.programClosed source.funcs.length (releaseWhere function.params
       (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) = true)
-    (ready : function.body.Ready source function.positions (paramSlots function.params function.modes 1)
+    (ready : function.body.ReadyWith calls source function.positions (paramSlots function.params function.modes 1)
       (1 + widthSum function.params) (fun _ => false) pool)
     (covered : function.body.Covered pool) (place : function.body.placeArgs = true)
     (bodySpec : CostCommandCodeSpecWith calls source target pure rest pool function.body) :

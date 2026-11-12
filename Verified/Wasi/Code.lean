@@ -1,6 +1,7 @@
 import Verified.Wasi.CodeAnalysis
 import Verified.Wasi.Wrappers
 import Verified.Wasi.ReadAllCode
+import Verified.Wasi.SysCode
 
 namespace Verified.Wasi
 
@@ -91,6 +92,8 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
           [] []] ++
       Relocation.programWith calls (releaseWhere context slots (fun i => used i && !live i)) ++
       loadCode h state type.types
+  | _, _, .sys operation form args =>
+    sysCodeWith calls operation form (args.map fun arg => (slots.getD arg.index default).loc) base
 
 /-- Command code of a module without imported calls. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)

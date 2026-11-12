@@ -5,6 +5,7 @@ import Verified.Wasi.CostBindUnit
 import Verified.Wasi.CostBindValue
 import Verified.Wasi.CostConditionalSpec
 import Verified.Wasi.CostLoopSpec
+import Verified.Wasi.SysCommand
 
 namespace Verified.Wasi
 
@@ -33,6 +34,7 @@ theorem Command.cost_code_spec_with {calls : List LeanExe.Wasi.Call}
   | write output bytes => exact cost_command_write_spec_with facts sourceHost output bytes
   | exit status => exact cost_command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec => exact cost_command_loop_spec_with facts sourceHost stepSpec
+  | sys operation form args => exact cost_command_sys_spec_with facts sourceHost operation form args
 
 theorem Command.cost_code_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}

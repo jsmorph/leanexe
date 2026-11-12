@@ -36,7 +36,7 @@ theorem command_ret_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.ret value) := by
   intro World host targetHost depth env slots live h base heap initial locals
     _ _ depthParam positions vars at_ safe _ cap low room ready covered place
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := value.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -60,7 +60,7 @@ theorem command_write_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.write output bytes) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ _ positions vars at_ _ scratch _ _ _ ready _ _
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   exact wp_command_write_with (sourceHost := sourceHost) facts.runtime facts.layout facts.profile
     facts.imports lookup valid at_ positions vars scratch fragment.1 fragment.2
@@ -82,7 +82,7 @@ theorem command_read_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.read capacity) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := capacity.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -113,7 +113,7 @@ theorem command_exit_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool (.exit (result := result) status) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ depthParam positions vars at_ safe _ cap low room ready covered place
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := status.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live

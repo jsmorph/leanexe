@@ -26,6 +26,7 @@ structure ArgsSizes where
 structure ArgsResult where
   errno : UInt64
   count : UInt64
+  size : UInt64
   bytes : Bytes
 
 /-- `clock_time_get id precision`: the time of clock `id` in nanoseconds.  The clocks are 0
@@ -49,10 +50,10 @@ operation with that errno; reported sizes whose buffer, with the argument pointe
 reach `2^32` bytes give errno 61. -/
 def args : Action ArgsResult :=
   .sys .argsSizesGet [] fun sizes =>
-    if sizes.errno != 0 then .pure ⟨sizes.errno, 0, Bytes.empty⟩
-    else if 4294967296 ≤ sizes.word 1 + 4 * sizes.word 0 + 3 then .pure ⟨61, 0, Bytes.empty⟩
+    if sizes.errno != 0 then .pure ⟨sizes.errno, 0, 0, Bytes.empty⟩
+    else if 4294967296 ≤ sizes.word 1 + 4 * sizes.word 0 + 3 then .pure ⟨61, 0, 0, Bytes.empty⟩
     else .sys .argsGet [] fun got =>
-      if got.errno != 0 then .pure ⟨got.errno, 0, Bytes.empty⟩
-      else .pure ⟨0, sizes.word 0, got.bytes 0⟩
+      if got.errno != 0 then .pure ⟨got.errno, 0, 0, Bytes.empty⟩
+      else .pure ⟨0, sizes.word 0, sizes.word 1, got.bytes 0⟩
 
 end LeanExe.Wasi

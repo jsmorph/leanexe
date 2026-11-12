@@ -38,7 +38,7 @@ theorem wp_loopBody_with {calls : List LeanExe.Wasi.Call}
     (room : base + 2 + type.width + step.width ≤ h)
     (releaseForm : Encoding.ProgramForm (releaseCode type (base + 2)))
     (releaseClosed : Relocation.programClosed source.funcs.length (releaseCode type (base + 2)) = true)
-    (ready : step.Ready source h
+    (ready : step.ReadyWith calls source h
       (⟨base + 2, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       (base + 2 + type.width) (shift 2 live) pool)
     (covered : step.Covered pool) (place : step.placeArgs = true)

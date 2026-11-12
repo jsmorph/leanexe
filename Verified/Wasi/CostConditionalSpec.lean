@@ -21,6 +21,7 @@ theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.ite condition yes no) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place resources
+  obtain ⟨ready, callsOk⟩ := ready
   let mid := fun i => live i || yes.uses i || no.uses i
   let picked := bif condition.denote pure.funs env then yes else no
   let branchLive := fun i => live i || picked.uses i
@@ -61,12 +62,14 @@ theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
     apply covered
     simp only [Command.literals, List.mem_append]
     tauto
-  have yesReady : yes.Ready source h slots (base + result.width) live pool := by
+  have yesReady : yes.ReadyWith calls source h slots (base + result.width) live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]
     tauto
-  have noReady : no.Ready source h slots (base + result.width) live pool := by
+  have noReady : no.ReadyWith calls source h slots (base + result.width) live pool := by
+    refine ⟨?_, by simp only [Command.callsReady, Bool.and_eq_true] at callsOk; tauto⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]
@@ -76,7 +79,7 @@ theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
   have pickedSpec : CostCommandCodeSpecWith calls source target pure program pool picked := by
     dsimp only [picked]
     cases condition.denote pure.funs env <;> assumption
-  have pickedReady : picked.Ready source h slots (base + result.width) live pool := by
+  have pickedReady : picked.ReadyWith calls source h slots (base + result.width) live pool := by
     dsimp only [picked]
     cases condition.denote pure.funs env <;> assumption
   have pickedCovered : picked.Covered pool := by

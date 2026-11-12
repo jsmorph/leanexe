@@ -24,7 +24,7 @@ def CostCommandCodeSpecWith (calls : List LeanExe.Wasi.Call) (source target : Wa
       (PureTransport.erase initial) locals ABI.scratch →
     (PureTransport.erase initial).memoryCap source 0 ≤ 65535 →
     locals.params.length ≤ base → base + command.width ≤ h →
-    command.Ready source h slots base live pool →
+    command.ReadyWith calls source h slots base live pool →
     command.Covered pool → command.placeArgs = true →
     (aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.PrefixBound (observedHost host) pure program depth (slots.map Slot.mode) live

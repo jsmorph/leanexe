@@ -15,7 +15,7 @@ theorem cost_command_write_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.write output bytes) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ _ positions vars at_ _ scratch _ _ _ ready _ _ _
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   let all := fun i => live i || i == bytes.index
   let selected := fun i => i == bytes.index && !live i

@@ -17,7 +17,7 @@ theorem cost_command_exit_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.exit (result := result) status) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe _ cap low room ready covered place resource
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := status.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live

@@ -19,6 +19,7 @@ theorem cost_command_loop_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.loop count initial test step) := by
   intro World host targetHost depth env slots live h base heap store locals budget aborts
     valid below depthParam positions vars at_ safe scratch cap low room ready covered place resources
+  obtain ⟨ready, callsOk⟩ := ready
   let used := fun i => test.uses (i + 2) || step.uses (i + 2)
   let all := fun i => live i || used i
   let input := fun i => (all i || initial.uses i) || count.uses i
@@ -48,9 +49,10 @@ theorem cost_command_loop_spec_with {calls : List LeanExe.Wasi.Call}
     (by simp [Command.fragments])
   have finishFragment := ready (releaseWhere context slots (fun i => used i && !live i))
     (by simp [Command.fragments, used])
-  have stepReady : step.Ready source h
+  have stepReady : step.ReadyWith calls source h
       (⟨base + 2, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       (base + 2 + type.width) (shift 2 all) pool := by
+    refine ⟨?_, by simp only [Command.callsReady] at callsOk; exact callsOk⟩
     intro fragment member
     apply ready
     simp only [Command.fragments, List.mem_append]

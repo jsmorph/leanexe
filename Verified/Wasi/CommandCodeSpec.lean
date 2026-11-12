@@ -24,7 +24,7 @@ def CommandCodeSpecWith (calls : List LeanExe.Wasi.Call) (source target : Wasm.M
       (PureTransport.erase initial) locals ABI.scratch →
     (PureTransport.erase initial).memoryCap source 0 ≤ 65535 →
     locals.params.length ≤ base → base + command.width ≤ h →
-    command.Ready source h slots base live pool →
+    command.ReadyWith calls source h slots base live pool →
     command.Covered pool → command.placeArgs = true →
     wp target (command.codeWith calls (pool := pool) source h slots base live)
       (CommandResult host env slots (fun i => live i || command.uses i) live base result

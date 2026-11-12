@@ -13,7 +13,7 @@ theorem EffectProg.correct_with {calls : List LeanExe.Wasi.Call}
     (effectCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
     (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
     (sourceHost : HostEnv Unit)
-    (ready : program.Ready source pool) (covered : program.Covered pool) :
+    (ready : program.ReadyWith calls source pool) (covered : program.Covered pool) :
     CostEffectCallsWith calls source (compileCalls calls source program entries main pool) pure program pool :=
   program.correctCost_with entries main pool runtime profile effectCalls poolApart sourceHost
     (fun {_} _ facts effectCalls {_} {_} command =>
@@ -40,7 +40,7 @@ theorem EffectProg.correctWith_with {calls : List LeanExe.Wasi.Call}
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
     (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
-    (ready : program.Ready (Verified.compileWith pure tables wrappers pool) pool)
+    (ready : program.ReadyWith calls (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit) :
     CostEffectCallsWith calls (Verified.compileWith pure tables wrappers pool)
       (compileCalls calls (Verified.compileWith pure tables wrappers pool) program entries main pool)

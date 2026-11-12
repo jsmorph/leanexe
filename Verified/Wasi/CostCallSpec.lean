@@ -19,6 +19,7 @@ theorem cost_command_call_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool (.call callee args) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place resources
+  obtain ⟨ready, callsOk⟩ := ready
   let all := fun i => live i || argsAny fun j => (args j).uses i
   let kept := fun i => all i &&
     !(argsAny fun j => signature.callMoves slots live args j && (args j).uses i)

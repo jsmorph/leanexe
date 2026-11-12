@@ -111,7 +111,7 @@ def outputSizesOf : List Param → List Nat → List Arg → List Nat
 
 /-- Little-endian value of a byte string of at most eight bytes. -/
 def littleEndian (bytes : Bytes) : UInt64 :=
-  bytes.data.toList.foldr (fun byte value => byte.toUInt64 + value * 256) 0
+  (List.range bytes.data.size).foldr (fun index value => bytes.data[index]!.toUInt64 + value * 256) 0
 
 /-- The sizes of the `reported` regions, from the reporter's outputs in order: each region's scale
 times the little-endian value of the matching output. -/

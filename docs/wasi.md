@@ -90,6 +90,19 @@ The [typed process entry](../Verified/Wasi/ProcessCode.lean) composes separately
 
 [The order book's process](../Demos/OrderBook/Process.lean) runs [the order book](../Demos/OrderBook/README.md) over stdin and stdout with StreamFold's host assumptions and its own framing.  It reads little-endian 64-bit words, passes the whole seven-word records of the carry and each 4,096-byte read to one call of the program's `run`, and writes the event words in the same form.  [Its compiled theorem](../Demos/OrderBook/ProcessCompiledCorrect.lean) proves that `_start` writes exactly the little-endian bytes of the specification's event words on the whole words of the input and exits with status 0 when the input is a whole number of words and 28 otherwise, under host progress, final-exit acceptance, and the requirements' bound of fewer than 2^64 − 1 records.  Its states have constant size bounds, so the memory condition is one closed inequality that the proof decides, 3,456,119,748 bytes above the literal pool for two copies of a state and a step's charge, and the theorem has no memory premise.  The charge of a read step holds for every reply, so it bounds `run` on any batch of 74 records from any book of the program's array sizes, by [the closed form of its bound](../Demos/OrderBook/Bound.lean) and a count of events over the program itself.  The state's 13 fields make the elaborator's conversion of a call's arguments in the effect bodies exponential in their depth, so [its charges](../Demos/OrderBook/ProcessCharges.lean) evaluate the destructured environment with a simproc and read the pure program's flags from a lemma that the kernel decides.
 
+### Flat Preview 1 calls
+
+`LeanExe.Wasi` also provides typed operations for flat Preview 1 functions, which share one action, `Action.sys call args next`.  A call is a flat description in [the call descriptions](../LeanExe/Wasi/Calls.lean): its import name, the core form of each parameter, and the call whose reply gives the sizes of the regions it writes.  `tools/wasi-calls.py` checks each description against the pinned witx.
+
+| Operation | Type | Behavior |
+|---|---|---|
+| `clockTimeGet id precision` | `UInt64 → UInt64 → Action ClockResult` | Calls `clock_time_get`.  An id of 4 or more gives errno 28 without a call, since Wasmtime 44 traps on it. |
+| `randomGet length` | `UInt64 → Action RandomResult` | Calls `random_get` into a fresh buffer of `length` bytes.  A length of `2^32` or more gives errno 61 without a call. |
+| `argsSizesGet` | `Action ArgsSizes` | Calls `args_sizes_get`. |
+| `args` | `Action ArgsResult` | Calls `args_sizes_get` and then `args_get` into one buffer.  An errno of the first call ends the operation with that errno, and sizes whose buffer would reach `2^32` bytes give errno 61. |
+
+The native interpreter serves these calls through `NativeHost.withSys`, from the system clock, the system's random bytes, and the given arguments, and the Wasmtime host passes arguments with `--arg`.  In the verified compiler, a module imports the three stream functions and then the calls that its program uses, so every defined function moves by the number of calls; each layout definition and theorem has a form over the list of imported calls, and the forms at the empty list are the definitions and theorems of the stream-only layout.  `Command.sys` compiles a call of the flat form, with word arguments, at most one output buffer, and at most two result words, or of the reported form of `args_get`.  `command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against the host contract `sysContract`, whose frame is the request's output regions.  `verified_compile_wasi` does not yet reflect these operations, so a program that uses them runs natively and has no compiled module.
+
 ## Compilation and generated declarations
 
 ### Callable and command modules

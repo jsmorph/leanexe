@@ -137,6 +137,14 @@ inductive ResourcePrefix {World : Type} (host : Host World) (pure : PureContext 
         (pure.loopInitCost depth modes live count initial test step env + spent)
         (pure.loopInitFits depth count initial env && fits)
 
+  | sys {program : EffectProg pureSigs effectSigs} {operation : LeanExe.Wasi.Call} {form : SysForm}
+      {args : List (Var context .word)} {env : Env context}
+      {residual : Action (ResultTy.value form.ty).denote}
+      (progress : Prefix host ((Command.sys operation form args).denote pure.funs
+        (program.funs pure.funs) env) world trace residual final) :
+      ResourcePrefix host pure program depth modes live (.sys operation form args) env world trace
+        residual final (sysCost form operation (args.map env.get) trace) true
+
 inductive ResourceCallPrefix {World : Type} (host : Host World) (pure : PureContext pureSigs) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
     {signature : EffectSig} → EffectVar effectSigs signature → UInt64 → Env signature.params →
@@ -335,7 +343,7 @@ theorem ResourcePrefix.erase {World : Type} {host : Host World} {pure : PureCont
     Prefix host (command.denote pure.funs (program.funs pure.funs) env) world trace residual final := by
   refine ResourcePrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -345,7 +353,7 @@ theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : Pure
     Prefix host ((program.funs pure.funs).get callee env) world trace residual final := by
   refine ResourceCallPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -359,7 +367,7 @@ theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : Pure
       world trace residual final := by
   refine ResourceLoopPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 def PrefixBound {World : Type} (host : Host World) (pure : PureContext pureSigs)
@@ -409,5 +417,16 @@ theorem PrefixBound.readAll {World : Type} {host : Host World} {pure : PureConte
     pure.readAllCost depth modes live limit env ≤ budget ∧
       pure.exprFits depth limit env = true :=
   bounded _ _ _ _ _ (.readAll (Prefix.refl _ world))
+
+theorem PrefixBound.sys {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {operation : LeanExe.Wasi.Call} {form : SysForm} {args : List (Var context .word)}
+    {env : Env context} {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.sys operation form args) env world
+      budget) {trace residual final}
+    (progress : Prefix host ((Command.sys operation form args).denote pure.funs
+      (program.funs pure.funs) env) world trace residual final) :
+    sysCost form operation (args.map env.get) trace ≤ budget :=
+  (bounded _ _ _ _ _ (.sys progress)).1
 
 end Verified.Wasi.Resource

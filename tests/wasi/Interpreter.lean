@@ -164,7 +164,7 @@ private def flatCalls : IO Unit := do
   match ← program.run host with
   | .returned (sizes, arguments) =>
     check (sizes.errno == 0 && sizes.count == 3 && sizes.size == 10) "args_sizes_get reply"
-    check (arguments.errno == 0 && arguments.count == 3 &&
+    check (arguments.errno == 0 && arguments.count == 3 && arguments.size == 10 &&
       arguments.bytes.data.data.toList == "prog".toUTF8.data.toList ++ [0] ++
         "a b".toUTF8.data.toList ++ [0, 0]) "args reply"
   | _ => throw (IO.userError "argument calls did not return")
