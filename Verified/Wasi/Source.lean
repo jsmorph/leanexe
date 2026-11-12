@@ -1,5 +1,6 @@
 import Verified.Source
 import LeanExe.Wasi.ReadAll
+import Verified.Wasi.SysForm
 
 namespace Verified.Wasi
 
@@ -71,6 +72,8 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
       (test : Expr pureSigs (type :: .word :: context) .bool)
       (step : Command pureSigs effectSigs (type :: .word :: context) (.value type)) :
       Command pureSigs effectSigs context (.value type)
+  | sys (call : Call) (form : SysForm) (args : List (Var context .word)) :
+      Command pureSigs effectSigs context (.value form.ty)
 
 def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs) :
     {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
@@ -101,6 +104,7 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
       LeanExe.Wasi.loop (count.denote pureFuns env) (initial.denote pureFuns env)
         (fun index state => test.denote pureFuns (.cons state (.cons index env)))
         (fun index state => step.denote pureFuns effectFuns (.cons state (.cons index env)))
+  | _, _, .sys operation form args, env => form.run operation (args.map env.get)
 
 structure EffectFunc (pureSigs : List Sig) (effectSigs : List EffectSig) where
   name : String

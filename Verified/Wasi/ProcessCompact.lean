@@ -173,11 +173,12 @@ theorem ProcessMemory.compacted {state : Ty} {pool : Bytes.LiteralPool} {heap he
 /-- The compaction of the state in the process module.  It traps only at `unreachable`, and only
 when the copy finds no room above the rounded top.  Otherwise it leaves the state stored as
 `ProcessStored` describes, with the host and the operand stack unchanged. -/
-theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state : Ty}
+theorem wp_process_compact_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Wasm.Module} {state : Ty}
     {pool : Bytes.LiteralPool} {base : UInt64} {targetHost : HostEnv (Observed World)}
     {store : Store (Observed World)} {heap : Heap} {locals : Locals} {words : List Value}
     {value : ProcessStep state.denote} {rest : Program} {Q : Assertion (Observed World)}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
     (profile : Relocation.Profile source) (compactable : state.compactable = true)
     (form : Encoding.ProgramForm (processCompaction state))
     (closed : Relocation.programClosed source.funcs.length (processCompaction state) = true)
@@ -196,7 +197,7 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
       (PureTransport.erase final).memoryCaps = (PureTransport.erase store).memoryCaps →
       ProcessStored target state pool base value final after → after.values = locals.values →
       wp target rest Q final after targetHost) :
-    wp target (Relocation.program (processCompaction state) ++ rest) Q store locals targetHost := by
+    wp target (Relocation.programWith calls (processCompaction state) ++ rest) Q store locals targetHost := by
   obtain ⟨stateWords, wordsEq, stateRep⟩ := processValue_rep.mp memory.rep
   have hStateLen := stateRep.length
   have split := (LocalsHold.append (s := locals) (loc := 0)
@@ -241,7 +242,7 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
         exact ⟨heap', ws', at', free', low', high', rep', above', bytes', caps', frame', held',
           base', values'⟩
     simpa only [processCompaction, List.append_nil] using run
-  have transported := PureTransport.wp_prefix layout profile form closed store.host compacted
+  have transported := PureTransport.wp_prefix_with (calls := calls) layout profile form closed store.host compacted
     (targetHost := targetHost) (rest := rest) (Q := Q) (fun continuation result => by
       cases continuation with
       | Fallthrough final after =>
@@ -273,5 +274,31 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
           exact trap noRoom _ (by simp)
       | _ => exact result.elim)
   simpa only [PureTransport.restore_erase] using transported
+
+theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state : Ty}
+    {pool : Bytes.LiteralPool} {base : UInt64} {targetHost : HostEnv (Observed World)}
+    {store : Store (Observed World)} {heap : Heap} {locals : Locals} {words : List Value}
+    {value : ProcessStep state.denote} {rest : Program} {Q : Assertion (Observed World)}
+    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source) (compactable : state.compactable = true)
+    (form : Encoding.ProgramForm (processCompaction state))
+    (closed : Relocation.programClosed source.funcs.length (processCompaction state) = true)
+    (memory : ProcessMemory (processResultTy state) pool heap (PureTransport.erase store) words
+      (processValue state value))
+    (held : LocalsHold locals 0 (processResultTy state).types words)
+    (baseTop : base.toNat ≤ heap.top.toNat)
+    (baseLocal : locals.get (processAux state) = some (.i64 base)) (low : 4096 ≤ base.toNat)
+    (poolBelow : ∀ region ∈ pool.regions, region.1 + region.2 ≤ base.toNat)
+    (params : locals.params = []) (positions : locals.positions = processPositions state)
+    (cap : (PureTransport.erase store).memoryCap target 0 ≤ 65535)
+    (trap : ¬ roundWord heap.top.toNat + state.copyCost value.state ≤
+        65536 * (PureTransport.erase store).memoryCap source 0 →
+      ∀ final : Store (Observed World), final.host = store.host → Q (.Trap final "unreachable"))
+    (next : ∀ final after, final.host = store.host →
+      (PureTransport.erase final).memoryCaps = (PureTransport.erase store).memoryCaps →
+      ProcessStored target state pool base value final after → after.values = locals.values →
+      wp target rest Q final after targetHost) :
+    wp target (Relocation.program (processCompaction state) ++ rest) Q store locals targetHost := by
+  layout_instance wp_process_compact_with
 
 end Verified.Wasi

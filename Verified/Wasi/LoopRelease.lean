@@ -6,12 +6,13 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
-theorem wp_loopRelease {World : Type} {source target : Wasm.Module}
+theorem wp_loopRelease_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Wasm.Module}
     {sourceHost : HostEnv Unit} {targetHost : HostEnv World} {context : List Ty}
     {env : Env context} {slots : List Slot} {type : Ty} {state : type.denote}
     {stateSlot scratch : Nat} {releaseIn bodyIn : Nat → Bool} {used : Bool}
     {heap : Heap} {initial : Store World} {locals : Locals} {rest : Program} {Q : Assertion World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target) (profile : Relocation.Profile source)
     (form : Encoding.ProgramForm (releaseCode type stateSlot))
     (closed : Relocation.programClosed source.funcs.length (releaseCode type stateSlot) = true)
     (vars : Holds (.cons state env) (⟨stateSlot, .owned⟩ :: slots) releaseIn scratch heap
@@ -23,7 +24,7 @@ theorem wp_loopRelease {World : Type} {source target : Wasm.Module}
       Evolves (.cons state env) (⟨stateSlot, .owned⟩ :: slots) releaseIn bodyIn scratch heap
         (PureTransport.erase initial) locals finalHeap (PureTransport.erase final) locals →
       finalHeap.top = heap.top → final.host = initial.host → wp target rest Q final locals targetHost) :
-    wp target ((if used = false then Relocation.program (releaseCode type stateSlot) else []) ++ rest)
+    wp target ((if used = false then Relocation.programWith calls (releaseCode type stateSlot) else []) ++ rest)
       Q initial locals targetHost := by
   let indices : List Nat := if used = false then [0] else []
   let code := indices.flatMap (releaseVar (type :: context) (⟨stateSlot, .owned⟩ :: slots))
@@ -69,7 +70,7 @@ theorem wp_loopRelease {World : Type} {source target : Wasm.Module}
         rw [wp_nil]
         exact ⟨finalHeap, narrowed, rfl, top⟩)
     simpa only [code, List.append_nil] using pureCode
-  have transported := PureTransport.wp_prefix layout profile codeForm codeClosed initial.host execution
+  have transported := PureTransport.wp_prefix_with (calls := calls) layout profile codeForm codeClosed initial.host execution
     (rest := rest) (Q := Q) (targetHost := targetHost) (fun continuation post => by
       cases continuation with
       | Fallthrough final after =>
@@ -81,6 +82,27 @@ theorem wp_loopRelease {World : Type} {source target : Wasm.Module}
       | _ => exact False.elim post)
   cases used <;>
     simpa only [codeEq, Bool.false_eq_true, Bool.true_eq_false, ↓reduceIte,
-      Relocation.program, PureTransport.restore_erase] using transported
+      Relocation.programWith, PureTransport.restore_erase] using transported
+
+theorem wp_loopRelease {World : Type} {source target : Wasm.Module}
+    {sourceHost : HostEnv Unit} {targetHost : HostEnv World} {context : List Ty}
+    {env : Env context} {slots : List Slot} {type : Ty} {state : type.denote}
+    {stateSlot scratch : Nat} {releaseIn bodyIn : Nat → Bool} {used : Bool}
+    {heap : Heap} {initial : Store World} {locals : Locals} {rest : Program} {Q : Assertion World}
+    (runtime : Runtime source) (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
+    (form : Encoding.ProgramForm (releaseCode type stateSlot))
+    (closed : Relocation.programClosed source.funcs.length (releaseCode type stateSlot) = true)
+    (vars : Holds (.cons state env) (⟨stateSlot, .owned⟩ :: slots) releaseIn scratch heap
+      (PureTransport.erase initial) locals)
+    (at_ : heap.At (PureTransport.erase initial))
+    (head : releaseIn 0 = true) (bodyHead : bodyIn 0 = used)
+    (selected : ∀ i, bodyIn i = true → releaseIn i = true)
+    (next : ∀ finalHeap final,
+      Evolves (.cons state env) (⟨stateSlot, .owned⟩ :: slots) releaseIn bodyIn scratch heap
+        (PureTransport.erase initial) locals finalHeap (PureTransport.erase final) locals →
+      finalHeap.top = heap.top → final.host = initial.host → wp target rest Q final locals targetHost) :
+    wp target ((if used = false then Relocation.program (releaseCode type stateSlot) else []) ++ rest)
+      Q initial locals targetHost := by
+  layout_instance wp_loopRelease_with
 
 end Verified.Wasi

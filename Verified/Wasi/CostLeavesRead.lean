@@ -8,15 +8,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-theorem cost_command_read_spec {source target : Wasm.Module}
+theorem cost_command_read_spec_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty}
-    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (facts : CompilerFactsWith calls source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
     (capacity : Expr pureSigs context .word) :
-    CostCommandCodeSpec source target pure program pool (.read capacity) := by
+    CostCommandCodeSpecWith calls source target pure program pool (.read capacity) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ depthParam positions vars at_ safe scratch cap low room ready covered place resource
-  have fragment := ready _ (List.mem_singleton_self _)
+  have fragment := ready.1 _ (List.mem_singleton_self _)
   have spec := capacity.code_spec source pure.funs pure.flags (pure.callBounds depth)
     (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
     (fun _ => depthParam) env slots [] live
@@ -39,12 +40,12 @@ theorem cost_command_read_spec {source target : Wasm.Module}
       simp only [Resource.PureContext.exprFits] at fitsCapacity
       simp [fitsCapacity, withinCapacity] at failure
   obtain ⟨typeIndex, lookup⟩ := facts.read
-  have execution := wp_return facts.runtime facts.layout facts.profile spec
+  have execution := wp_return_with (calls := calls) facts.runtime facts.layout facts.profile spec
     (by simpa only [noCoerce, List.append_nil] using fragment.1)
     (by simpa only [noCoerce, List.append_nil] using fragment.2)
     positions rfl vars at_ safe cap low
     (by simpa only [Command.width, copyWidth, Ty.scalar, ite_true, Nat.max_zero] using room) place
-    (rest := [.call (Wrappers.readIndex source)]) (targetHost := targetHost)
+    (rest := [.call (Wrappers.readIndexWith calls source)]) (targetHost := targetHost)
     (Q := CostCommandResult host pure program (.read capacity) depth env slots
       (fun i => live i || capacity.uses i) live base heap initial locals aborts)
     (fun failure final sameWorld =>
@@ -52,7 +53,7 @@ theorem cost_command_read_spec {source target : Wasm.Module}
     (fun middleHeap middle middleLocals words first sameWorld prefixTop => by
       have wordsEq : words = [.i64 (capacity.denote pure.funs env)] := first.rep
       subst words
-      refine wp_read_helper (aborts := aborts) facts.runtime facts.layout facts.profile facts.imports sourceHost
+      refine wp_read_helper_with (aborts := aborts) facts.runtime facts.layout facts.profile facts.imports sourceHost
         lookup valid first.step.at_ (by rw [first.step.cap source]; exact cap) ?_ ?_ ?_ ?_
       · intro small nonzero noAbort
         obtain ⟨within, bounded⟩ := resource noAbort
@@ -103,6 +104,14 @@ theorem cost_command_read_spec {source target : Wasm.Module}
       · intro allowed final finalWorld
         exact .trapped final "unreachable"
           (CommandResult.resource_refl allowed (finalWorld.trans sameWorld)))
-  simpa only [noCoerce, List.append_nil, Command.code, Command.uses] using execution
+  simpa only [noCoerce, List.append_nil, Command.codeWith, Command.uses] using execution
+
+theorem cost_command_read_spec {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty}
+    (facts : CompilerFacts source target pure (program.funs pure.funs) pool) (sourceHost : HostEnv Unit)
+    (capacity : Expr pureSigs context .word) :
+    CostCommandCodeSpec source target pure program pool (.read capacity) := by
+  layout_instance cost_command_read_spec_with
 
 end Verified.Wasi

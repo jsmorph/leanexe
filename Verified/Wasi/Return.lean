@@ -16,14 +16,15 @@ def returnCost {S : List Sig} {context : List Ty} {type : Ty}
     value.allocs funs flags bounds (slots.map Slot.mode) paid live env +
     coerceCost type (value.mode (slots.map Slot.mode)) .owned (value.denote funs env)
 
-theorem wp_return {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
+theorem wp_return_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
     {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
     {fits : Fits S} {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
     {pool : Bytes.LiteralPool} {value : Expr S context type} {env : Env context}
     {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {params : List Value}
     {heap : Heap} {initial : Store World} {locals : Locals} {h base : Nat}
     {rest : Program} {Q : Assertion World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
     (profile : Relocation.Profile source)
     (spec : CodeSpec source funs flags bounds fits sourceHost params value env slots paid live pool)
     (form : Encoding.ProgramForm (value.code (pool := pool) h slots base live ++
@@ -55,7 +56,7 @@ theorem wp_return {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
           locals) →
       wp target rest Q finalStore { finalLocals with values := words.reverse ++ locals.values }
         targetHost) :
-    wp target (Relocation.program (value.code (pool := pool) h slots base live ++
+    wp target (Relocation.programWith calls (value.code (pool := pool) h slots base live ++
       coerceCode h type (value.mode (slots.map Slot.mode)) .owned base) ++ rest)
       Q initial locals targetHost := by
   let P : Assertion Unit := fun continuation =>
@@ -100,7 +101,7 @@ theorem wp_return {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
         exact ⟨finalHeap, finalLocals, words, after, rfl,
           by simpa only [returnCost, Nat.add_assoc] using top⟩)
     simpa only [List.append_nil] using execution
-  have transported := PureTransport.wp_prefix layout profile form closed initial.host pureCode
+  have transported := PureTransport.wp_prefix_with (calls := calls) layout profile form closed initial.host pureCode
     (rest := rest) (Q := Q) (targetHost := targetHost) (fun continuation post => by
       cases continuation with
       | Fallthrough finalStore resultLocals =>
@@ -117,5 +118,49 @@ theorem wp_return {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
           exact resource failure _ rfl
       | _ => exact False.elim post)
   simpa only [PureTransport.restore_erase] using transported
+
+theorem wp_return {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
+    {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+    {fits : Fits S} {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
+    {pool : Bytes.LiteralPool} {value : Expr S context type} {env : Env context}
+    {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {params : List Value}
+    {heap : Heap} {initial : Store World} {locals : Locals} {h base : Nat}
+    {rest : Program} {Q : Assertion World}
+    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source)
+    (spec : CodeSpec source funs flags bounds fits sourceHost params value env slots paid live pool)
+    (form : Encoding.ProgramForm (value.code (pool := pool) h slots base live ++
+      coerceCode h type (value.mode (slots.map Slot.mode)) .owned base))
+    (closed : Relocation.programClosed source.funcs.length
+      (value.code (pool := pool) h slots base live ++
+        coerceCode h type (value.mode (slots.map Slot.mode)) .owned base) = true)
+    (positions : locals.positions = h) (parameters : locals.params = params)
+    (vars : Holds env slots (fun i => live i || value.uses i) base heap
+      (PureTransport.erase initial) locals)
+    (at_ : heap.At (PureTransport.erase initial))
+    (safe : pool.Safe env slots (fun i => live i || value.uses i) heap
+      (PureTransport.erase initial) locals)
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (low : locals.params.length ≤ base)
+    (room : base + max value.width (copyWidth type) ≤ h)
+    (place : value.placeArgs = true)
+    (resource : (!(value.fits funs fits env) || !decide
+        (heap.Within (PureTransport.erase initial) source
+          (returnCost funs flags bounds value env slots paid live
+            (PureTransport.erase initial) locals))) = true →
+      ∀ final : Store World, final.host = initial.host → Q (.Trap final "unreachable"))
+    (next : ∀ finalHeap finalStore finalLocals words,
+      After env slots (fun i => live i || value.uses i) live base heap initial locals
+        (.value type) (value.denote funs env) finalHeap finalStore finalLocals words →
+      finalStore.host = initial.host →
+      (value.fits funs fits env = true → finalHeap.top.toNat ≤ heap.top.toNat +
+        returnCost funs flags bounds value env slots paid live (PureTransport.erase initial)
+          locals) →
+      wp target rest Q finalStore { finalLocals with values := words.reverse ++ locals.values }
+        targetHost) :
+    wp target (Relocation.program (value.code (pool := pool) h slots base live ++
+      coerceCode h type (value.mode (slots.map Slot.mode)) .owned base) ++ rest)
+      Q initial locals targetHost := by
+  layout_instance wp_return_with
 
 end Verified.Wasi

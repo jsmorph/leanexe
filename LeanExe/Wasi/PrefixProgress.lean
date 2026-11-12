@@ -22,6 +22,15 @@ inductive PrefixAdvance {World : Type} (host : Host World) :
       {step : UInt64 → σ → Action σ} {next : σ → Action α} {world} :
       PrefixAdvance host (.loop count state test step next) world []
         (resumeLoop test step next count.toNat 0 state) world
+  | sys_reject {call : Call} {args : List Arg} {next : Reply → Action α} {world}
+      (fits : call.reject args ≠ 0) :
+      PrefixAdvance host (.sys call args next) world [] (next ⟨call.reject args, []⟩) world
+  | sys_return {call : Call} {args : List Arg} {next : Reply → Action α}
+      {world after errno committed}
+      (fits : call.reject args = 0)
+      (reply : host.sys world call args (.returned errno committed) after) :
+      PrefixAdvance host (.sys call args next) world [.sys call args (.returned errno committed)]
+        (next (sysReply errno committed)) after
 
 namespace PrefixAdvance
 
@@ -33,6 +42,8 @@ theorem toPrefix {World : Type} {host : Host World} {action residual : Action α
   | read_return bound reply => exact .read_return bound reply
   | write_return reply => exact .write_return reply
   | loop => exact .loop
+  | sys_reject fits => exact .sys_reject fits
+  | sys_return fits reply => exact .sys_return fits reply
 
 theorem bind {World : Type} {host : Host World} {action residual : Action α}
     {next : α → Action β} {world trace after}
@@ -46,6 +57,8 @@ theorem bind {World : Type} {host : Host World} {action residual : Action α}
   | loop =>
       rw [resumeLoop_bind]
       exact .loop
+  | sys_reject fits => exact .sys_reject fits
+  | sys_return fits reply => exact .sys_return fits reply
 
 end PrefixAdvance
 
@@ -94,6 +107,8 @@ theorem Prefix.progress {World : Type} {host : Host World} {action residual : Ac
   | loop => exact .advance .loop
   | bind _ ih => exact ih.bind
   | trans _ _ head tail => exact .trans head tail
+  | sys_reject fits => exact .advance (.sys_reject fits)
+  | sys_return fits reply => exact .advance (.sys_return fits reply)
 
 theorem Prefix.progress_iff {World : Type} {host : Host World} {action residual : Action α}
     {world trace after} :

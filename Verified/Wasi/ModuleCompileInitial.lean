@@ -5,29 +5,55 @@ namespace Verified.Wasi.Module
 
 open Wasm LeanExe.Pipeline
 
+theorem initialStore_at_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (extra : Extension) (world : World)
+    {heap : Heap} (h : heap.At (source.initialStore : Store Unit)) :
+    heap.At (PureTransport.erase (initialStoreWith calls source extra world)) :=
+  ⟨h.globals, h.freeList, h.base, h.top, h.pages, h.above, h.below⟩
+
 theorem initialStore_at (source : Wasm.Module) (extra : Extension) (world : World)
     {heap : Heap} (h : heap.At (source.initialStore : Store Unit)) :
-    heap.At (PureTransport.erase (initialStore source extra world)) :=
-  ⟨h.globals, h.freeList, h.base, h.top, h.pages, h.above, h.below⟩
+    heap.At (PureTransport.erase (initialStore source extra world)) := by
+  layout_instance initialStore_at_with
+
+theorem initialStore_borrowed_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (extra : Extension) (world : World)
+    {heap : Heap} {pointer : UInt64} {words : Array UInt64}
+    (h : heap.Borrowed (source.initialStore : Store Unit) pointer words) :
+    heap.Borrowed (PureTransport.erase (initialStoreWith calls source extra world)) pointer words :=
+  ⟨h.values, h.below, h.separate⟩
 
 theorem initialStore_borrowed (source : Wasm.Module) (extra : Extension) (world : World)
     {heap : Heap} {pointer : UInt64} {words : Array UInt64}
     (h : heap.Borrowed (source.initialStore : Store Unit) pointer words) :
-    heap.Borrowed (PureTransport.erase (initialStore source extra world)) pointer words :=
-  ⟨h.values, h.below, h.separate⟩
+    heap.Borrowed (PureTransport.erase (initialStore source extra world)) pointer words := by
+  layout_instance initialStore_borrowed_with
+
+theorem initialStore_static_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (extra : Extension) (world : World)
+    {pool : Bytes.LiteralPool} {heap : Heap}
+    (h : pool.Static heap (source.initialStore : Store Unit)) :
+    pool.Static heap (PureTransport.erase (initialStoreWith calls source extra world)) := h
 
 theorem initialStore_static (source : Wasm.Module) (extra : Extension) (world : World)
     {pool : Bytes.LiteralPool} {heap : Heap}
     (h : pool.Static heap (source.initialStore : Store Unit)) :
-    pool.Static heap (PureTransport.erase (initialStore source extra world)) := h
+    pool.Static heap (PureTransport.erase (initialStore source extra world)) := by
+  layout_instance initialStore_static_with
 
-theorem initialStore_scratch (source : Wasm.Module) (extra : Extension) (world : World)
+theorem initialStore_scratch_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (extra : Extension) (world : World)
     {heap : Heap} (h : heap.At (source.initialStore : Store Unit)) :
-    16 ≤ (initialStore source extra world).mem.pages * 65536 := by
+    16 ≤ (initialStoreWith calls source extra world).mem.pages * 65536 := by
   change 16 ≤ (source.initialStore : Store Unit).mem.pages * 65536
   have hBase := h.base
   have hTop := h.top
   omega
+
+theorem initialStore_scratch (source : Wasm.Module) (extra : Extension) (world : World)
+    {heap : Heap} (h : heap.At (source.initialStore : Store Unit)) :
+    16 ≤ (initialStore source extra world).mem.pages * 65536 := by
+  layout_instance initialStore_scratch_with
 
 theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))

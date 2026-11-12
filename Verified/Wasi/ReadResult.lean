@@ -6,12 +6,14 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit
 
-def readResultCode : Program :=
+def readResultCodeWith (calls : List LeanExe.Wasi.Call) : Program :=
   [.extendUI32, .localSet 2, .localGet 2, .eqzI64,
    .iff 0 0
      [.const 8, .load32 0, .extendUI32, .localSet 3,
-      .localGet 3, .eqzI64, .iff 0 0 (discardReadCode 1) [] [] []]
-     (discardReadCode 1 ++ [.constI64 0, .localSet 3]) [] []]
+      .localGet 3, .eqzI64, .iff 0 0 (discardReadCodeWith calls 1) [] [] []]
+     (discardReadCodeWith calls 1 ++ [.constI64 0, .localSet 3]) [] []]
+
+def readResultCode : Program := readResultCodeWith []
 
 theorem read_bytes_empty {bytes : LeanExe.Bytes} (h : bytes.data.size = 0) :
     bytes = LeanExe.Bytes.empty := by
@@ -22,9 +24,10 @@ theorem read_bytes_empty {bytes : LeanExe.Bytes} (h : bytes.data.size = 0) :
     cases hData
     rfl
 
-theorem wp_read_result {World : Type} {source target : Module}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
+theorem wp_read_result_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Module}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
     (sourceHost : HostEnv Unit) {targetHost : HostEnv World}
     {heap : Heap} {store : Store World} {capacity root errno oldErrno oldLength : UInt64}
     {bytes : LeanExe.Bytes} {values : List Value} {rest : Program} {Q : Assertion World}
@@ -40,13 +43,13 @@ theorem wp_read_result {World : Type} {source target : Module}
       PureTransport.erase final = Bytes.releasedStore heap (PureTransport.erase store) root →
       final.host = store.host →
       wp target rest Q final (readLocals capacity 0 errno 0 values) targetHost) :
-    wp target (readResultCode ++ rest) Q store
+    wp target (readResultCodeWith calls ++ rest) Q store
       (readLocals capacity root oldErrno oldLength (.i32 errno.toUInt32 :: values)) targetHost := by
   have hSize := hBytes.size_lt
   have hSizeCast : UInt64.ofNat (UInt32.ofNat bytes.data.size).toNat = bytes.size := by
     rw [UInt32.toNat_ofNat_of_lt' (by change bytes.data.size < 4294967296; exact hSize)]
     rfl
-  simp only [readResultCode, List.cons_append, List.nil_append,
+  simp only [readResultCodeWith, List.cons_append, List.nil_append,
     readLocals_stack, wp_extendUI32_cons, readLocals_values]
   refine wp_localSet_local (s := readLocals capacity root oldErrno oldLength values)
     (i := 2) (v := .i64 (UInt64.ofNat errno.toUInt32.toNat)) (vs := values)
@@ -79,7 +82,7 @@ theorem wp_read_result {World : Type} {source target : Module}
         have hLength := hBytes.length_eq
         rw [hEmpty] at hLength
         exact hLength.symm
-      refine wp_discard_read (s := readLocals capacity root errno bytes.size values)
+      refine wp_discard_read_with (s := readLocals capacity root errno bytes.size values)
         (rootSlot := 1) runtime layout profile hImports sourceHost hHeap hBytes
         (readLocals_root ..) (by change 1 ≤ 1; omega) (by change 1 < 4; omega) ?_
       intro final hStore hWorld
@@ -92,7 +95,7 @@ theorem wp_read_result {World : Type} {source target : Module}
         readLocals_values, readLocals_stack] using hKeep hZero hEmpty
   · simp only [ite_eq_right hZero]
     rw [ite_eq_right (by decide : ¬((0 : UInt32) ≠ 0))]
-    refine wp_discard_read (s := readLocals capacity root errno oldLength values)
+    refine wp_discard_read_with (s := readLocals capacity root errno oldLength values)
       (rootSlot := 1) runtime layout profile hImports sourceHost hHeap hBytes
       (readLocals_root ..) (by change 1 ≤ 1; omega) (by change 1 < 4; omega) ?_
     intro final hStore hWorld
@@ -103,5 +106,27 @@ theorem wp_read_result {World : Type} {source target : Module}
     simpa only [wp_nil, List.take_zero, List.nil_append, List.drop_zero,
       readLocals_values, readLocals_stack, readLocals_set_root, readLocals_set_length] using
       hDiscard (hError hZero) final hStore hWorld
+
+theorem wp_read_result {World : Type} {source target : Module}
+    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
+    (sourceHost : HostEnv Unit) {targetHost : HostEnv World}
+    {heap : Heap} {store : Store World} {capacity root errno oldErrno oldLength : UInt64}
+    {bytes : LeanExe.Bytes} {values : List Value} {rest : Program} {Q : Assertion World}
+    (hHeap : heap.At (PureTransport.erase store))
+    (hBytes : Bytes.Rep heap (PureTransport.erase store) root bytes.size bytes)
+    (hErrno : errno.toNat < 4294967296)
+    (hMemory : 16 ≤ store.mem.pages * 65536)
+    (hCount : errno = 0 → store.mem.read32 8 = UInt32.ofNat bytes.data.size)
+    (hError : errno ≠ 0 → bytes = LeanExe.Bytes.empty)
+    (hKeep : errno = 0 → bytes.size ≠ 0 →
+      wp target rest Q store (readLocals capacity root errno bytes.size values) targetHost)
+    (hDiscard : bytes = LeanExe.Bytes.empty → ∀ final : Store World,
+      PureTransport.erase final = Bytes.releasedStore heap (PureTransport.erase store) root →
+      final.host = store.host →
+      wp target rest Q final (readLocals capacity 0 errno 0 values) targetHost) :
+    wp target (readResultCode ++ rest) Q store
+      (readLocals capacity root oldErrno oldLength (.i32 errno.toUInt32 :: values)) targetHost := by
+  layout_instance wp_read_result_with
 
 end Verified.Wasi

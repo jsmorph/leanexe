@@ -6,6 +6,9 @@ structure NativeHost where
   read : UInt64 → IO (Transfer Bytes)
   write : Output → Bytes → IO (Transfer UInt64)
   exit : UInt64 → IO (Except String Unit)
+  /-- Flat calls.  The default traps. -/
+  sys : Call → List Arg → IO (Transfer (List Bytes)) :=
+    fun call _ => pure (.trapped s!"wasi {call.name}: the native host does not serve it" [])
 
 namespace NativeHost
 
@@ -94,6 +97,15 @@ def run {α : Type} (action : Action α) (host : NativeHost) : IO (Outcome α) :
     | .returned state => run (next state) host
     | .exited code => Pure.pure (.exited code)
     | .trapped message => Pure.pure (.trapped message)
+  | .sys call args next => do
+    if call.reject args != 0 then
+      return ← run (next ⟨call.reject args, []⟩) host
+    match ← host.sys call args with
+    | .returned errno committed =>
+      if !call.replyFits args committed ∨ errno.toNat > 76 then
+        throw (IO.userError s!"WASI native host returned an invalid {call.name} reply")
+      run (next (sysReply errno committed)) host
+    | .trapped message _ => Pure.pure (.trapped message)
 termination_by structural action
 
 def runStdio (action : Action α) : IO (Outcome α) := do

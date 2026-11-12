@@ -50,10 +50,11 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
   | _, _, .exit code, index => code.uses index
   | _, _, .loop count initial test step, index =>
     count.uses index || initial.uses index || test.uses (index + 2) || step.uses (index + 2)
+  | _, _, .sys _ _ args, index => args.any fun arg => index == arg.index
 
 def Command.literals : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Bytes.Literal
-  | _, _, .unit | _, _, .write _ _ => []
+  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ => []
   | _, _, .ret value => value.literals
   | _, _, .bind first next => first.literals ++ next.literals
   | _, _, .ite condition yes no => condition.literals ++ yes.literals ++ no.literals
@@ -69,7 +70,7 @@ def Command.Covered (command : Command pureSigs effectSigs context result)
 
 def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Bool
-  | _, _, .unit | _, _, .write _ _ => true
+  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ => true
   | _, _, .ret value => value.placeArgs
   | _, _, .bind first next => first.placeArgs && next.placeArgs
   | _, _, .ite condition yes no => condition.placeArgs && yes.placeArgs && no.placeArgs
@@ -79,6 +80,19 @@ def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
   | _, _, .exit code => code.placeArgs
   | _, _, .loop count initial test step =>
     count.placeArgs && initial.placeArgs && test.placeArgs && step.placeArgs
+
+/-- Whether each `sys` command has a call that the compiler supports, in its form, with one
+argument for each argument parameter, and whether `calls` holds the calls that its code uses. -/
+def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} → {result : ResultTy} →
+    Command pureSigs effectSigs context result → Bool
+  | _, _, .bind first next => first.callsReady calls && next.callsReady calls
+  | _, _, .ite _ yes no => yes.callsReady calls && no.callsReady calls
+  | _, _, .loop _ _ _ step => step.callsReady calls
+  | _, _, .sys operation form args =>
+    operation.compiled && operation.form == form && args.length == operation.argCount &&
+      operation.uses.all calls.contains
+  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
+  | _, _, .write _ _ | _, _, .exit _ => true
 
 def EffectProg.literals : {effectSigs : List EffectSig} →
     EffectProg pureSigs effectSigs → List Bytes.Literal

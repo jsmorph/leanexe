@@ -109,6 +109,66 @@ theorem wp_guard_entry {World : Type} {target : Module} {targetHost : HostEnv Wo
     simp only [List.take_zero, List.drop_zero, List.nil_append]
     exact next (UInt64.not_le.mp high)
 
+theorem wp_function_parameters_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Module}
+    {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
+    {targetHost : HostEnv World} {initial : Store World} {heap : Heap}
+    {depth : UInt64} {words : List Value} {args : Env function.params}
+    {rest : Program} {Q : Assertion World}
+    (rep : Env.Rep (paramMode function.params function.modes) heap
+      (PureTransport.erase initial) words args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) (paramMode function.params function.modes) words args)
+      (Env.reads (PureTransport.erase initial) (paramMode function.params function.modes) words args))
+    (input : @Bytes.LiteralPool.Input (Env function.params)
+      (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
+    (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
+    (next : ∀ copied : Locals, depth < depthLimit →
+      copied.params = .i64 depth :: words → copied.positions = function.positions → copied.values = [] →
+      (∀ {type : Ty} (x : Var function.params type),
+        LocalsHold copied (1 + x.offset) type.types ((words.drop x.offset).take type.width)) →
+      Holds args (paramSlots function.params function.modes 1) (fun _ => true)
+        (1 + widthSum function.params) heap (PureTransport.erase initial) copied →
+      pool.Safe args (paramSlots function.params function.modes 1) (fun _ => true)
+        heap (PureTransport.erase initial) copied →
+      Holds.ApartFrom args (paramSlots function.params function.modes 1) (fun _ => true)
+        (PureTransport.erase initial) copied ABI.scratch →
+      wp target rest Q initial copied targetHost) :
+    wp target (guardCode ++
+      paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++ rest) Q initial
+      ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: words)) targetHost := by
+  let initialLocals := (function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: words)
+  have parameters : initialLocals.params = .i64 depth :: words := rfl
+  have values : initialLocals.values = [] := rfl
+  have localLength : initialLocals.locals.length =
+      function.body.width + function.positions + function.positions := by
+    simp only [initialLocals, Function.toLocals, EffectFunc.functionWith, List.length_map,
+      List.length_append, List.length_replicate, Nat.add_assoc]
+  have total : initialLocals.params.length + initialLocals.locals.length =
+      function.positions + function.positions + function.positions := by
+    rw [parameters, localLength, List.length_cons, rep.length]
+    unfold EffectFunc.positions
+    omega
+  have positions : initialLocals.positions = function.positions := by
+    simp only [Locals.positions, total]
+    omega
+  have depthValue : initialLocals.get 0 = some (.i64 depth) := rfl
+  simp only [List.append_assoc]
+  refine wp_guard_entry depthValue resource (fun below => ?_)
+  refine wp_paramCopyCode (function.params.flatMap Ty.types) 1
+    (by rw [flatMap_types_length, parameters, List.length_cons, rep.length]; omega)
+    (by rw [parameters, List.length_cons, rep.length]; unfold EffectFunc.positions; omega)
+    positions (fun copied frame stack copies => ?_)
+  have copiedPositions : copied.positions = function.positions := frame.positions.trans positions
+  have held : ∀ {type : Ty} (x : Var function.params type),
+      LocalsHold copied (1 + x.offset) type.types ((words.drop x.offset).take type.width) :=
+    fun x => copied_params_hold parameters rep.length copiedPositions copies x
+  exact next copied below (frame.params.trans parameters) copiedPositions (stack.trans values)
+    held (params_holds rep separate held) (input.params rep held) (params_scratch rep scratch held)
+
 theorem wp_function_parameters {World : Type} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
     {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
@@ -139,41 +199,15 @@ theorem wp_function_parameters {World : Type} {source target : Module}
     wp target (guardCode ++
       paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++ rest) Q initial
       ((function.function source typeIdx pool).toLocals (.i64 depth :: words)) targetHost := by
-  let initialLocals := (function.function source typeIdx pool).toLocals (.i64 depth :: words)
-  have parameters : initialLocals.params = .i64 depth :: words := rfl
-  have values : initialLocals.values = [] := rfl
-  have localLength : initialLocals.locals.length =
-      function.body.width + function.positions + function.positions := by
-    simp only [initialLocals, Function.toLocals, EffectFunc.function, List.length_map,
-      List.length_append, List.length_replicate, Nat.add_assoc]
-  have total : initialLocals.params.length + initialLocals.locals.length =
-      function.positions + function.positions + function.positions := by
-    rw [parameters, localLength, List.length_cons, rep.length]
-    unfold EffectFunc.positions
-    omega
-  have positions : initialLocals.positions = function.positions := by
-    simp only [Locals.positions, total]
-    omega
-  have depthValue : initialLocals.get 0 = some (.i64 depth) := rfl
-  simp only [List.append_assoc]
-  refine wp_guard_entry depthValue resource (fun below => ?_)
-  refine wp_paramCopyCode (function.params.flatMap Ty.types) 1
-    (by rw [flatMap_types_length, parameters, List.length_cons, rep.length]; omega)
-    (by rw [parameters, List.length_cons, rep.length]; unfold EffectFunc.positions; omega)
-    positions (fun copied frame stack copies => ?_)
-  have copiedPositions : copied.positions = function.positions := frame.positions.trans positions
-  have held : ∀ {type : Ty} (x : Var function.params type),
-      LocalsHold copied (1 + x.offset) type.types ((words.drop x.offset).take type.width) :=
-    fun x => copied_params_hold parameters rep.length copiedPositions copies x
-  exact next copied below (frame.params.trans parameters) copiedPositions (stack.trans values)
-    held (params_holds rep separate held) (input.params rep held) (params_scratch rep scratch held)
+  layout_instance wp_function_parameters_with
 
-theorem wp_parameter_cleanup {World : Type} {host : Host World}
+theorem wp_parameter_cleanup_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World}
     {context : List Ty} {args : Env context} {slots : List Slot} {used : Nat → Bool} {base : Nat}
     {source target : Module} {sourceHost : HostEnv Unit} {targetHost : HostEnv (Observed World)}
     {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {pool : Bytes.LiteralPool}
     {rest : Program} {Q : Assertion (Observed World)}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
     (profile : Relocation.Profile source)
     (form : Encoding.ProgramForm (releaseWhere context slots (fun i => !used i)))
     (closed : Relocation.programClosed source.funcs.length
@@ -190,9 +224,9 @@ theorem wp_parameter_cleanup {World : Type} {host : Host World}
       Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.scratch →
       finalLocals.values = locals.values → final.host = initial.host →
       wp target rest Q final finalLocals targetHost) :
-    wp target (Relocation.program (releaseWhere context slots (fun i => !used i)) ++ rest)
+    wp target (Relocation.programWith calls (releaseWhere context slots (fun i => !used i)) ++ rest)
       Q initial locals targetHost := by
-  have cleanup := wp_cleanup (host := host) (sourceHost := sourceHost) (targetHost := targetHost)
+  have cleanup := wp_cleanup_with (calls := calls) (host := host) (sourceHost := sourceHost) (targetHost := targetHost)
     (aborts := false) runtime layout profile form closed vars at_ (fun _ _ => rfl)
   have liveEq : (fun i => true && !(!used i)) = used := by
     funext i
@@ -222,6 +256,86 @@ theorem wp_parameter_cleanup {World : Type} {host : Host World}
       rw [(exec_pure_shape execution).2.1] at terminal
       exact False.elim terminal
   | resource final trace residual allowed progress => exact Bool.noConfusion allowed
+
+theorem wp_parameter_cleanup {World : Type} {host : Host World}
+    {context : List Ty} {args : Env context} {slots : List Slot} {used : Nat → Bool} {base : Nat}
+    {source target : Module} {sourceHost : HostEnv Unit} {targetHost : HostEnv (Observed World)}
+    {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {pool : Bytes.LiteralPool}
+    {rest : Program} {Q : Assertion (Observed World)}
+    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (profile : Relocation.Profile source)
+    (form : Encoding.ProgramForm (releaseWhere context slots (fun i => !used i)))
+    (closed : Relocation.programClosed source.funcs.length
+      (releaseWhere context slots (fun i => !used i)) = true)
+    (at_ : heap.At (PureTransport.erase initial))
+    (vars : Holds args slots (fun _ => true) base heap (PureTransport.erase initial) locals)
+    (safe : pool.Safe args slots (fun _ => true) heap (PureTransport.erase initial) locals)
+    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (next : ∀ finalHeap final finalLocals,
+      After args slots (fun _ => true) used base heap initial locals .unit ()
+        finalHeap final finalLocals [] →
+      pool.Safe args slots used finalHeap (PureTransport.erase final) finalLocals →
+      Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.scratch →
+      finalLocals.values = locals.values → final.host = initial.host →
+      wp target rest Q final finalLocals targetHost) :
+    wp target (Relocation.program (releaseWhere context slots (fun i => !used i)) ++ rest)
+      Q initial locals targetHost := by
+  layout_instance wp_parameter_cleanup_with
+
+theorem wp_function_entry_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {host : Host World} {source target : Module}
+    {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
+    {sourceHost : HostEnv Unit} {targetHost : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap} {depth : UInt64}
+    {words : List Value} {args : Env function.params} {rest : Program}
+    {Q : Assertion (Observed World)}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source)
+    (form : Encoding.ProgramForm (releaseWhere function.params
+      (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)))
+    (closed : Relocation.programClosed source.funcs.length (releaseWhere function.params
+      (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) = true)
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep (paramMode function.params function.modes) heap
+      (PureTransport.erase initial) words args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) (paramMode function.params function.modes) words args)
+      (Env.reads (PureTransport.erase initial) (paramMode function.params function.modes) words args))
+    (input : @Bytes.LiteralPool.Input (Env function.params)
+      (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
+    (next : ∀ (copied : Locals) (finalHeap : Heap) (final : Store (Observed World))
+      (finalLocals : Locals), depth < depthLimit →
+      copied.params = .i64 depth :: words → copied.positions = function.positions → copied.values = [] →
+      (∀ {type : Ty} (x : Var function.params type),
+        LocalsHold copied (1 + x.offset) type.types ((words.drop x.offset).take type.width)) →
+      After args (paramSlots function.params function.modes 1) (fun _ => true) function.body.uses
+        (1 + widthSum function.params) heap initial copied .unit () finalHeap final finalLocals [] →
+      pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
+        finalHeap (PureTransport.erase final) finalLocals →
+      Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
+        (PureTransport.erase final) finalLocals ABI.scratch →
+      finalLocals.values = [] → final.host = initial.host →
+      wp target rest Q final finalLocals targetHost) :
+    wp target (guardCode ++
+      paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
+      Relocation.programWith calls (releaseWhere function.params
+        (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) ++ rest)
+      Q initial ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: words)) targetHost := by
+  simp only [List.append_assoc]
+  refine wp_function_parameters_with (source := source) (function := function) (typeIdx := typeIdx)
+    (pool := pool) rep separate input scratch resource ?_
+  intro copied below parameters positions values held vars safe apart
+  refine wp_parameter_cleanup_with (host := host) (sourceHost := sourceHost)
+    runtime layout profile form closed at_ vars safe apart poolApart ?_
+  intro finalHeap final finalLocals after finalSafe finalApart finalValues sameWorld
+  exact next copied finalHeap final finalLocals below parameters positions values held
+    after finalSafe finalApart (finalValues.trans values) sameWorld
 
 theorem wp_function_entry {World : Type} {host : Host World} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
@@ -266,14 +380,6 @@ theorem wp_function_entry {World : Type} {host : Host World} {source target : Mo
       Relocation.program (releaseWhere function.params
         (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) ++ rest)
       Q initial ((function.function source typeIdx pool).toLocals (.i64 depth :: words)) targetHost := by
-  simp only [List.append_assoc]
-  refine wp_function_parameters (source := source) (function := function) (typeIdx := typeIdx)
-    (pool := pool) rep separate input scratch resource ?_
-  intro copied below parameters positions values held vars safe apart
-  refine wp_parameter_cleanup (host := host) (sourceHost := sourceHost)
-    runtime layout profile form closed at_ vars safe apart poolApart ?_
-  intro finalHeap final finalLocals after finalSafe finalApart finalValues sameWorld
-  exact next copied finalHeap final finalLocals below parameters positions values held
-    after finalSafe finalApart (finalValues.trans values) sameWorld
+  layout_instance wp_function_entry_with
 
 end Verified.Wasi

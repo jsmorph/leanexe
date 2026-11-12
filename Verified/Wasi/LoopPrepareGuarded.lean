@@ -12,14 +12,15 @@ private theorem prepare_valid {countFits initialFits : Bool} {within : Prop} [De
     countFits = true ∧ initialFits = true ∧ within := by
   cases countFits <;> cases initialFits <;> by_cases within <;> simp_all
 
-theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
+theorem wp_loopPrepareGuarded_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
     {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
     {fits : Fits S} {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
     {pool : Bytes.LiteralPool} {count : Expr S context .word} {initial : Expr S context type}
     {env : Env context} {slots : List Slot} {live : Nat → Bool}
     {params : List Value} {heap : Heap} {store : Store World} {locals : Locals} {h base : Nat}
     {rest : Program} {Q : Assertion World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target) (profile : Relocation.Profile source)
     (countSpec : CodeSpec source funs flags bounds fits sourceHost params count env slots []
       (fun i => live i || initial.uses i) pool)
     (initialSpec : CodeSpec source funs flags bounds fits sourceHost params initial env slots [] live pool)
@@ -69,7 +70,7 @@ theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} 
             (initial.allocs funs flags bounds (slots.map Slot.mode) [] live env +
               coerceCost type (initial.mode (slots.map Slot.mode)) .owned (initial.denote funs env)))) →
       wp target rest Q final finalLocals targetHost) :
-    wp target (loopPrepareCode h base slots pool count initial live ++ rest) Q store locals targetHost := by
+    wp target (loopPrepareCodeWith calls h base slots pool count initial live ++ rest) Q store locals targetHost := by
   let countLive := fun i => live i || initial.uses i
   let countCharge := count.allocs funs flags bounds (slots.map Slot.mode) [] countLive env
   let initialCharge := initial.allocs funs flags bounds (slots.map Slot.mode) [] live env +
@@ -84,16 +85,16 @@ theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} 
   have countCoerce : coerceCode h .word (count.mode (slots.map Slot.mode)) .owned base = [] := by
     simp [coerceCode, Ty.scalar]
   let tail := [.localSet base] ++
-    Relocation.program (initial.code (pool := pool) h slots (base + 1) live ++
+    Relocation.programWith calls (initial.code (pool := pool) h slots (base + 1) live ++
       coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) ++
     storeCode h (base + 2) type.types ++ [.constI64 0, .localSet (base + 1)] ++ rest
   suffices execution : wp target
-      (Relocation.program (count.code (pool := pool) h slots base countLive ++
+      (Relocation.programWith calls (count.code (pool := pool) h slots base countLive ++
         coerceCode h .word (count.mode (slots.map Slot.mode)) .owned base) ++ tail)
       Q store locals targetHost by
-    simpa only [loopPrepareCode, tail, countLive, countCoerce, List.append_nil, List.append_assoc]
+    simpa only [loopPrepareCodeWith, tail, countLive, countCoerce, List.append_nil, List.append_assoc]
       using execution
-  refine wp_return runtime layout profile countSpec
+  refine wp_return_with runtime layout profile countSpec
     (by simpa only [countCoerce, List.append_nil, countLive] using countForm)
     (by simpa only [countCoerce, List.append_nil, countLive] using countClosed)
     positions parameters vars at_ safe cap low countRoom countPlace
@@ -126,7 +127,7 @@ theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} 
     Locals.get_setLocal_same countLow (Locals.lt_total countHigh)
   obtain ⟨countSafe, _⟩ := countAfter'.pool_safe safe vars scratch countSelected poolApart
   have countVars := countAfter'.holds
-  refine wp_return runtime layout profile initialSpec initialForm initialClosed
+  refine wp_return_with runtime layout profile initialSpec initialForm initialClosed
     (countAfter'.frame.positions.trans positions) (countAfter'.frame.params.trans parameters)
     (countVars.mono (Nat.le_succ base)) countAfter'.step.at_ countSafe
     (by rw [countAfter'.step.cap source]; exact cap)
@@ -200,5 +201,65 @@ theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} 
       (by rw [initialAfter.rep.length, statePositions]; exact stateRoom)
   exact next finalHeap final finalLocals words finalAfter (initialWorld.trans countWorld)
     finalCount finalIndex finalHeld rfl growth
+
+theorem wp_loopPrepareGuarded {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
+    {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+    {fits : Fits S} {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
+    {pool : Bytes.LiteralPool} {count : Expr S context .word} {initial : Expr S context type}
+    {env : Env context} {slots : List Slot} {live : Nat → Bool}
+    {params : List Value} {heap : Heap} {store : Store World} {locals : Locals} {h base : Nat}
+    {rest : Program} {Q : Assertion World}
+    (runtime : Runtime source) (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
+    (countSpec : CodeSpec source funs flags bounds fits sourceHost params count env slots []
+      (fun i => live i || initial.uses i) pool)
+    (initialSpec : CodeSpec source funs flags bounds fits sourceHost params initial env slots [] live pool)
+    (countForm : Encoding.ProgramForm
+      (count.code (pool := pool) h slots base (fun i => live i || initial.uses i)))
+    (countClosed : Relocation.programClosed source.funcs.length
+      (count.code (pool := pool) h slots base (fun i => live i || initial.uses i)) = true)
+    (initialForm : Encoding.ProgramForm
+      (initial.code (pool := pool) h slots (base + 1) live ++
+        coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)))
+    (initialClosed : Relocation.programClosed source.funcs.length
+      (initial.code (pool := pool) h slots (base + 1) live ++
+        coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) = true)
+    (positions : locals.positions = h) (parameters : locals.params = params)
+    (vars : Holds env slots (fun i => (live i || initial.uses i) || count.uses i) base heap
+      (PureTransport.erase store) locals)
+    (at_ : heap.At (PureTransport.erase store))
+    (safe : pool.Safe env slots (fun i => (live i || initial.uses i) || count.uses i) heap
+      (PureTransport.erase store) locals)
+    (scratch : Holds.ApartFrom env slots (fun i => (live i || initial.uses i) || count.uses i)
+      (PureTransport.erase store) locals ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (cap : (PureTransport.erase store).memoryCap source 0 ≤ 65535)
+    (low : locals.params.length ≤ base)
+    (countRoom : base + max count.width (copyWidth .word) ≤ h)
+    (initialRoom : base + 1 + max initial.width (copyWidth type) ≤ h)
+    (stateRoom : base + 2 + type.width ≤ h)
+    (countPlace : count.placeArgs = true) (initialPlace : initial.placeArgs = true)
+    (resource : (!(count.fits funs fits env && initial.fits funs fits env) || !decide
+        (heap.Within (PureTransport.erase store) source
+          (count.allocs funs flags bounds (slots.map Slot.mode) []
+              (fun i => live i || initial.uses i) env +
+            (initial.allocs funs flags bounds (slots.map Slot.mode) [] live env +
+              coerceCost type (initial.mode (slots.map Slot.mode)) .owned (initial.denote funs env))))) = true →
+      ∀ final : Store World, final.host = store.host → Q (.Trap final "unreachable"))
+    (next : ∀ finalHeap final finalLocals words,
+      After env slots (fun i => (live i || initial.uses i) || count.uses i) live base
+        heap store locals (.value type) (initial.denote funs env) finalHeap final finalLocals words →
+      final.host = store.host →
+      finalLocals.get base = some (.i64 (count.denote funs env)) →
+      finalLocals.get (base + 1) = some (.i64 0) →
+      LocalsHold finalLocals (base + 2) type.types words → finalLocals.values = locals.values →
+      (count.fits funs fits env = true → initial.fits funs fits env = true →
+        finalHeap.top.toNat ≤ heap.top.toNat +
+          (count.allocs funs flags bounds (slots.map Slot.mode) []
+              (fun i => live i || initial.uses i) env +
+            (initial.allocs funs flags bounds (slots.map Slot.mode) [] live env +
+              coerceCost type (initial.mode (slots.map Slot.mode)) .owned (initial.denote funs env)))) →
+      wp target rest Q final finalLocals targetHost) :
+    wp target (loopPrepareCode h base slots pool count initial live ++ rest) Q store locals targetHost := by
+  layout_instance wp_loopPrepareGuarded_with
 
 end Verified.Wasi

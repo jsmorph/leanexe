@@ -4,18 +4,19 @@ namespace Verified.Wasi
 
 open Wasm
 
-theorem wp_read_overflow {World : Type} {m : Module} {env : HostEnv World}
+theorem wp_read_overflow_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {m : Module} {env : HostEnv World}
     {store : Store World} {Q : Assertion World} {rest : Program}
     {capacity root errno length : UInt64} {values : List Value}
     (hCapacity : 4294967296 ≤ capacity.toNat)
     (hNext : wp m rest Q store
       (readLocals capacity 0 61 0 (.i64 0 :: .i64 0 :: .i64 61 :: values)) env) :
-    wp m (readCode 0 1 2 3 ++ rest) Q store
+    wp m (readCodeWith calls 0 1 2 3 ++ rest) Q store
       (readLocals capacity root errno length values) env := by
   have hLarge : (4294967296 : UInt64) ≤ capacity := by
     rw [UInt64.le_iff_toNat_le]
     exact hCapacity
-  simp only [readCode, List.cons_append, List.nil_append, wp_localGet_cons,
+  simp only [readCodeWith, List.cons_append, List.nil_append, wp_localGet_cons,
     readLocals_capacity, wp_constI64_cons, wp_geUI64_cons, ge_iff_le, hLarge,
     ite_true, wp_iff_control_types]
   refine wp_iff_cons rfl ?_
@@ -32,5 +33,15 @@ theorem wp_read_overflow {World : Type} {m : Module} {env : HostEnv World}
   simpa only [wp_nil, List.take_zero, List.nil_append, List.drop_zero,
     wp_localGet_cons, readLocals_errno, readLocals_root, readLocals_length,
     readLocals_values, readLocals_stack] using hNext
+
+theorem wp_read_overflow {World : Type} {m : Module} {env : HostEnv World}
+    {store : Store World} {Q : Assertion World} {rest : Program}
+    {capacity root errno length : UInt64} {values : List Value}
+    (hCapacity : 4294967296 ≤ capacity.toNat)
+    (hNext : wp m rest Q store
+      (readLocals capacity 0 61 0 (.i64 0 :: .i64 0 :: .i64 61 :: values)) env) :
+    wp m (readCode 0 1 2 3 ++ rest) Q store
+      (readLocals capacity root errno length values) env := by
+  layout_instance wp_read_overflow_with
 
 end Verified.Wasi

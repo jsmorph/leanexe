@@ -92,6 +92,19 @@ theorem Exec.unbind {World : Type} {host : Host World} (action : Action α) :
       obtain ⟨after, first, middle, rest, hFirst, hRest, hTrace⟩ :=
         LoopExec.unbind (fun state _ _ _ _ h => ih state h) count.toNat hRun
       exact ⟨after, first, middle, rest, .loop hFirst, hRest, hTrace⟩
+  | sys call args continuation ih =>
+    intro β next world trace outcome final hRun
+    cases hRun with
+    | sys_reject hFits hRun =>
+      obtain ⟨after, first, middle, rest, hFirst, hRest, hTrace⟩ := ih _ hRun
+      exact ⟨after, first, middle, rest, .sys_reject hFits hFirst, hRest, hTrace⟩
+    | sys_return hFits hHost hRun =>
+      obtain ⟨after, first, middle, rest, hFirst, hRest, hTrace⟩ := ih _ hRun
+      exact ⟨after, _ :: first, middle, rest, .sys_return hFits hHost hFirst, hRest,
+        by rw [hTrace]; rfl⟩
+    | sys_trap hFits hHost =>
+      exact ⟨_, _, .trapped _, [], .sys_trap hFits hHost, ⟨rfl, rfl, rfl⟩,
+        (List.append_nil _).symm⟩
 
 theorem Exec.bind_iff {World : Type} {host : Host World} {action : Action α}
     {next : α → Action β} {world trace outcome final} :

@@ -60,6 +60,73 @@ theorem start_after_main_trap {World : Type} {host : Host World}
       exact .resource final trace (Action.bind residual fun status => Action.exit (α := Unit) status)
         allowed progress.bind
 
+theorem wp_start_body_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Wasm.Module} {host : Host World}
+    {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {main : EffectMain effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
+    {targetHost : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
+    {args : Env main.signature.params} {budget : Nat} {aborts : Bool} {calleeFunction : Wasm.Function}
+    (spec : CostEffectSpecWith calls source target pure program main.callee
+      (Wrappers.effectIndexWith calls source main.callee.index) pool)
+    (imports : target.imports = ABI.importsWith calls)
+    (lookup : target.funcs[Wrappers.effectIndexWith calls source main.callee.index - target.imports.length]? =
+      some calleeFunction)
+    (arity : calleeFunction.numParams = 1 + widthSum main.signature.params)
+    (valid : targetHost.Satisfies target (hostSpecWith host calls))
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep main.signature.mode heap (PureTransport.erase initial) (main.tables.map Value.i64) args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args)
+      (Env.reads (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args))
+    (input : @Bytes.LiteralPool.Input (Env main.signature.params)
+      (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
+      (main.tables.map Value.i64) args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+    (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
+    wp target (main.functionWith calls source typeIdx).body
+      (FunctionRunPost 0 (FunctionResult host startSignature (main.action pure.funs program args)
+        .nil [] heap initial aborts)) initial ((main.functionWith calls source typeIdx).toLocals []) targetHost := by
+  let locals := (main.functionWith calls source typeIdx).toLocals []
+  let Q := FunctionRunPost 0 (FunctionResult host startSignature (main.action pure.funs program args)
+    .nil [] heap initial aborts)
+  have noImport : target.imports[Wrappers.effectIndexWith calls source main.callee.index]? = none :=
+    List.getElem?_eq_none (by
+      rw [imports, ABI.importsWith_length]
+      simp only [Wrappers.effectIndexWith, Module.extraIndexWith]
+      omega)
+  have call := wp_cost_effect_helper_with (calls := calls) (locals := locals) (values := []) (depth := 0)
+    (rest := [.wrapI64, .call 2, .unreachable]) (Q := Q)
+    spec noImport lookup arity valid at_ rep separate input scratch cap resources
+    (fun value finalHeap final words trace spent fits resourceExecution step representation top => by
+      have wordsEq : words = [.i64 value] := representation
+      subst words
+      change wp target (.wrapI64 :: .call 2 :: .unreachable :: []) Q final
+        { locals with values := .i64 value :: [] } targetHost
+      refine wp_exit_stack_with imports valid ?_ ?_
+      · intro ended accepted frame
+        change FunctionResult host startSignature (main.action pure.funs program args) .nil []
+          heap initial aborts (.Trap ended exitTrap)
+        refine .terminal ended (trace ++ [.exit (exitStatus value)]) (.exited (exitStatus value)) exitTrap ?_ rfl
+        exact resourceExecution.erase.bind (β := Unit)
+          (next := fun status => Action.exit (α := Unit) status) (Exec.exit accepted)
+      · intro ended message rejected frame
+        change FunctionResult host startSignature (main.action pure.funs program args) .nil []
+          heap initial aborts (.Trap ended message)
+        refine .terminal ended (trace ++ [.exitTrap (exitStatus value) message]) (.trapped message) message ?_ rfl
+        exact resourceExecution.erase.bind (β := Unit)
+          (next := fun status => Action.exit (α := Unit) status) (Exec.exitTrap rejected))
+    (fun final message classification => by
+      change FunctionResult host startSignature (main.action pure.funs program args) .nil []
+        heap initial aborts (.Trap final message)
+      exact start_after_main_trap classification)
+  have injected := wp_injected_arguments (locals := locals) main.tables ([] : List Value) rfl
+    (by simpa only [locals, Function.toLocals, List.append_nil] using call)
+  simpa only [EffectMain.functionWith, List.length_nil, List.range_zero, List.map_nil,
+    List.nil_append, List.append_nil, locals, Q] using injected
+
 theorem wp_start_body {World : Type} {source target : Wasm.Module} {host : Host World}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {main : EffectMain effectSigs} {pool : Bytes.LiteralPool} {typeIdx : Nat}
@@ -88,50 +155,56 @@ theorem wp_start_body {World : Type} {source target : Wasm.Module} {host : Host 
     wp target (main.function source typeIdx).body
       (FunctionRunPost 0 (FunctionResult host startSignature (main.action pure.funs program args)
         .nil [] heap initial aborts)) initial ((main.function source typeIdx).toLocals []) targetHost := by
-  let locals := (main.function source typeIdx).toLocals []
-  let Q := FunctionRunPost 0 (FunctionResult host startSignature (main.action pure.funs program args)
-    .nil [] heap initial aborts)
-  have noImport : target.imports[Wrappers.effectIndex source main.callee.index]? = none :=
-    List.getElem?_eq_none (by
-      rw [imports, ABI.imports_length]
-      simp only [Wrappers.effectIndex, Module.extraIndex]
-      omega)
-  have call := wp_cost_effect_helper (locals := locals) (values := []) (depth := 0)
-    (rest := [.wrapI64, .call 2, .unreachable]) (Q := Q)
-    spec noImport lookup arity valid at_ rep separate input scratch cap resources
-    (fun value finalHeap final words trace spent fits resourceExecution step representation top => by
-      have wordsEq : words = [.i64 value] := representation
-      subst words
-      change wp target (.wrapI64 :: .call 2 :: .unreachable :: []) Q final
-        { locals with values := .i64 value :: [] } targetHost
-      refine wp_exit_stack imports valid ?_ ?_
-      · intro ended accepted frame
-        change FunctionResult host startSignature (main.action pure.funs program args) .nil []
-          heap initial aborts (.Trap ended exitTrap)
-        refine .terminal ended (trace ++ [.exit (exitStatus value)]) (.exited (exitStatus value)) exitTrap ?_ rfl
-        exact resourceExecution.erase.bind (β := Unit)
-          (next := fun status => Action.exit (α := Unit) status) (Exec.exit accepted)
-      · intro ended message rejected frame
-        change FunctionResult host startSignature (main.action pure.funs program args) .nil []
-          heap initial aborts (.Trap ended message)
-        refine .terminal ended (trace ++ [.exitTrap (exitStatus value) message]) (.trapped message) message ?_ rfl
-        exact resourceExecution.erase.bind (β := Unit)
-          (next := fun status => Action.exit (α := Unit) status) (Exec.exitTrap rejected))
-    (fun final message classification => by
-      change FunctionResult host startSignature (main.action pure.funs program args) .nil []
-        heap initial aborts (.Trap final message)
-      exact start_after_main_trap classification)
-  have injected := wp_injected_arguments (locals := locals) main.tables ([] : List Value) rfl
-    (by simpa only [locals, Function.toLocals, List.append_nil] using call)
-  simpa only [EffectMain.function, List.length_nil, List.range_zero, List.map_nil,
-    List.nil_append, List.append_nil, locals, Q] using injected
+  layout_instance wp_start_body_with
+
+theorem compile_start_export_with {calls : List LeanExe.Wasi.Call}
+    (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
+    (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs) (pool : Bytes.LiteralPool) :
+    ({ name := "_start", funcIdx := Wrappers.effectIndexWith calls source effectSigs.length } : Wasm.Export) ∈
+      (compileCalls calls source program entries (some main) pool).exports := by
+  rw [compile_command_exports_with source program entries main pool]
+  exact List.mem_singleton_self _
 
 theorem compile_start_export (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs) (pool : Bytes.LiteralPool) :
     ({ name := "_start", funcIdx := Wrappers.effectIndex source effectSigs.length } : Wasm.Export) ∈
       (compile source program entries (some main) pool).exports := by
-  rw [compile_command_exports source program entries main pool]
-  exact List.mem_singleton_self _
+  layout_instance compile_start_export_with
+
+theorem compiled_start_run_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source : Wasm.Module} {host : Host World}
+    {pure : Resource.PureContext pureSigs} (program : EffectProg pureSigs effectSigs)
+    (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs) (pool : Bytes.LiteralPool)
+    (effectCalls : CostEffectCallsWith calls source (compileCalls calls source program entries (some main) pool) pure program pool)
+    {targetHost : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
+    {args : Env main.signature.params} {budget : Nat} {aborts : Bool}
+    (valid : targetHost.Satisfies (compileCalls calls source program entries (some main) pool) (hostSpecWith host calls))
+    (at_ : heap.At (PureTransport.erase initial))
+    (rep : Env.Rep main.signature.mode heap (PureTransport.erase initial) (main.tables.map Value.i64) args)
+    (separate : Separate (PureTransport.erase initial)
+      (Env.moves (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args)
+      (Env.reads (PureTransport.erase initial) main.signature.mode (main.tables.map Value.i64) args))
+    (input : @Bytes.LiteralPool.Input (Env main.signature.params)
+      (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
+      (main.tables.map Value.i64) args)
+    (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+    (cap : (PureTransport.erase initial).memoryCap (compileCalls calls source program entries (some main) pool) 0 ≤ 65535)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
+    ∃ bound, ∀ fuel ≥ bound,
+      FunctionResult host startSignature (main.action pure.funs program args) .nil [] heap initial aborts
+        (run fuel (compileCalls calls source program entries (some main) pool)
+          (Wrappers.effectIndexWith calls source effectSigs.length) initial [] targetHost) := by
+  have lookup := compile_start_with (calls := calls) source program entries main pool
+  obtain ⟨calleeFunction, calleeLookup, arity⟩ :=
+    compile_effect_arity_with (calls := calls) source program entries (some main) pool main.callee
+  have body := wp_start_body_with (calls := calls) (typeIdx := effectTypeIndex source effectSigs.length)
+    (effectCalls main.callee) (compile_imports_with source program entries (some main) pool) calleeLookup arity
+    valid at_ rep separate input scratch cap resources
+  have execution := defined_function_run_post_with (calls := calls) (compile_imports_with source program entries (some main) pool)
+    lookup (params := []) (width := 0) rfl rfl body
+  simpa only [Wrappers.effectIndexWith, Module.extraIndexWith, Nat.add_assoc, List.reverse_nil] using execution
 
 theorem compiled_start_run {World : Type} {source : Wasm.Module} {host : Host World}
     {pure : Resource.PureContext pureSigs} (program : EffectProg pureSigs effectSigs)
@@ -157,14 +230,6 @@ theorem compiled_start_run {World : Type} {source : Wasm.Module} {host : Host Wo
       FunctionResult host startSignature (main.action pure.funs program args) .nil [] heap initial aborts
         (run fuel (compile source program entries (some main) pool)
           (Wrappers.effectIndex source effectSigs.length) initial [] targetHost) := by
-  have lookup := compile_start source program entries main pool
-  obtain ⟨calleeFunction, calleeLookup, arity⟩ :=
-    compile_effect_arity source program entries (some main) pool main.callee
-  have body := wp_start_body (typeIdx := effectTypeIndex source effectSigs.length)
-    (calls main.callee) (compile_imports source program entries (some main) pool) calleeLookup arity
-    valid at_ rep separate input scratch cap resources
-  have execution := defined_function_run_post (compile_imports source program entries (some main) pool)
-    lookup (params := []) (width := 0) rfl rfl body
-  simpa only [Wrappers.effectIndex, Module.extraIndex, Nat.add_assoc, List.reverse_nil] using execution
+  layout_instance compiled_start_run_with
 
 end Verified.Wasi
