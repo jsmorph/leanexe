@@ -283,6 +283,10 @@ lean_exe «verified-cases-frames» where
   srcDir := "tests"
   root := `TestSupport.Frames.CasesMain
 
+lean_exe «verified-cases-geolocation» where
+  srcDir := "tests"
+  root := `TestSupport.Geolocation.CasesMain
+
 lean_exe «verified-cases-sgp4» where
   srcDir := "tests"
   root := `TestSupport.Sgp4.CasesMain

@@ -35,8 +35,9 @@
 # module as well.  For the event-window program, it runs the axiom audit of
 # tests/events/Axioms.lean, and with --cases events it checks the program's file theorem module
 # as well.  With --cases frames, it runs the axiom audit of tests/frames/Axioms.lean and
-# checks the frames module's file theorems.  Each audit fails the run when a report names an
-# axiom beyond those three.  Last, the
+# checks the frames module's file theorems, and with --cases geolocation it does the same with
+# tests/geolocation/Axioms.lean and the geolocation module.  Each audit fails the run when a
+# report names an axiom beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -172,6 +173,8 @@ elif [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
   cases_exe=verified-cases-orbit
 elif [ "$case_module" = "frames" ]; then
   cases_exe=verified-cases-frames
+elif [ "$case_module" = "geolocation" ]; then
+  cases_exe=verified-cases-geolocation
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -265,6 +268,10 @@ if [ -z "$reference" ]; then
   if [ "$case_module" = "frames" ]; then
     targets+=(Demos.Frames.Verified $(imports Demos/Frames/File.lean)
       $(imports tests/frames/Axioms.lean))
+  fi
+  if [ "$case_module" = "geolocation" ]; then
+    targets+=(Demos.Geolocation.Verified $(imports Demos/Geolocation/File.lean)
+      $(imports tests/geolocation/Axioms.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -484,6 +491,10 @@ fi
 if [ "$case_module" = "frames" ]; then
   check_axioms tests/frames/Axioms.lean
   check_file frames Demos.Frames.Verified Demos/Frames/File.lean
+fi
+if [ "$case_module" = "geolocation" ]; then
+  check_axioms tests/geolocation/Axioms.lean
+  check_file geolocation Demos.Geolocation.Verified Demos/Geolocation/File.lean
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
 if [ -z "$case_module" ]; then

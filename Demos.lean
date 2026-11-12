@@ -90,6 +90,12 @@ import Demos.Gate.Mahalanobis
 import Demos.Gate.Model
 import Demos.Gate.Program
 import Demos.Gate.Soundness
+import Demos.Geolocation.Flat
+import Demos.Geolocation.Model
+import Demos.Geolocation.Program
+import Demos.Geolocation.Search
+import Demos.Geolocation.Soundness
+import Demos.Geolocation.Spec
 import Demos.Gpt.Causal
 import Demos.Gpt.Exact
 import Demos.Gpt32.Compose
