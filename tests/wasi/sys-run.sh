@@ -38,6 +38,21 @@ fail() {
 
 uv run tools/wasi-calls.py "$witx" > "$out/descriptions.txt" || fail "descriptions" "$(cat "$out/descriptions.txt")"
 
+# reject NAME EXPRESSION: the checker rejects the descriptions altered by the sed EXPRESSION.
+rejected=0
+reject() {
+  sed "$2" LeanExe/Wasi/Calls.lean > "$out/calls-$1.lean"
+  if uv run tools/wasi-calls.py "$witx" "$out/calls-$1.lean" > "$out/calls-$1.txt" 2>&1; then
+    fail "descriptions" "the checker accepted the altered description $1"
+  fi
+  rejected=$((rejected + 1))
+}
+reject enum 's/\.enum32 4/.enum32 5/'
+reject shown 's/\.reported 4 4 false/.reported 4 4 true/'
+reject reporter 's/reporter := some "args_sizes_get"/reporter := some "environ_sizes_get"/'
+reject form 's/^end Call$/def fdClose : Call := ⟨"fd_close", [.word64], none⟩\nend Call/'
+printf 'flat call altered descriptions rejected: %s\n' "$rejected"
+
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
 wasm-tools parse tests/wasi/sys/clock-invalid.wat -o "$out/clock-invalid.wasm"
 wasm-tools validate "$out/frame.wasm"

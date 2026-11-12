@@ -152,7 +152,7 @@ private def streams : IO Unit := do
 
 /-- Flat calls through `NativeHost.withSys`: the argument calls report the given arguments,
 the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 and oversized
-capacities errno 61 without a call, replies of
+capacities errno 61 without a call while the largest accepted capacity reaches the host, replies of
 the wrong shape raise an `IO.Error`, and a trap ends the action. -/
 private def flatCalls : IO Unit := do
   let calls ← IO.mkRef #[]
@@ -173,17 +173,24 @@ private def flatCalls : IO Unit := do
     let first ← clockTimeGet 1 1
     let second ← clockTimeGet 1 1
     let cpu ← clockTimeGet 2 1
+    let thread ← clockTimeGet 3 1
     let other ← clockTimeGet 4 1
     let wide ← clockTimeGet 4294967296 1
     pure [wall.errno, first.errno, if first.time ≤ second.time then 0 else 1, cpu.errno, cpu.time,
-      other.errno, wide.errno, wide.time, if 1700000000000000000 ≤ wall.time then 0 else 1]
-  returned [0, 0, 0, 8, 0, 28, 28, 0, 0] (← clocks.run host)
+      thread.errno, other.errno, wide.errno, wide.time,
+      if 1700000000000000000 ≤ wall.time then 0 else 1]
+  returned [0, 0, 0, 8, 0, 8, 28, 28, 0, 0] (← clocks.run host)
   let random : Action (List UInt64) := do
     let filled ← randomGet 16
     let zero ← randomGet 0
     let wide ← randomGet 4294967296
     pure [filled.errno, filled.bytes.size, zero.errno, zero.bytes.size, wide.errno, wide.bytes.size]
   returned [0, 16, 0, 0, 61, 0] (← random.run host)
+  let capacityMessage := fun (call : LeanExe.Wasi.Call) (args : List LeanExe.Wasi.Arg) =>
+    s!"{call.name} {(args.head?.map Arg.capacity).getD 0}"
+  let reached : NativeHost :=
+    { host with sys := fun call args => pure (.trapped (capacityMessage call args) []) }
+  trapped "random_get 4294967295" (← (randomGet 4294967295).run reached)
   let empty := (recordHost calls).withSys []
   match ← args.run empty with
   | .returned arguments =>

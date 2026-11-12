@@ -12,11 +12,15 @@ CALLS_LEAN (default LeanExe/Wasi/Calls.lean) with the lowering of the function i
 with a 32-bit tag and n values is `enum32 n`; another parameter whose representation is 64 bits wide
 is word64, and other integer, flags, and handle parameters are word32; a string, or a const_pointer
 followed by a $size parameter, is input; a pointer followed by a $size parameter is output; another
-pointer is reported, with scale and alignment 4 when it points to pointers and 1 when it points to
-bytes; each component of an expected result is result32 or result64 by its width.  Whether a
-reported region is shown is a choice of the description, which the witx does not fix.  The script
-prints one line per description and exits with status 1 when a description differs, names no witx
-function, or names a function that is not flat.
+pointer is reported, with scale and alignment 4 and not shown when it points to pointers, whose
+entries are guest addresses, and with scale and alignment 1 and shown when it points to bytes; each
+component of an expected result is result32 or result64 by its width.  A description has a reporter
+exactly when it has reported parameters, and the reporter of a function NAME_get is NAME_sizes_get,
+the Preview 1 convention of args_get and environ_get, whose results are one result32 for each
+reported parameter.  The script prints one line per description and exits with status 1 when a
+description differs, names no witx function, names a function that is not flat, has a wrong
+reporter, or when a definition of type Call is not written as `def NAME : Call := { name := ...,
+params := [...] }` with an optional `reporter := some "..."`.
 """
 import re
 import sys
@@ -102,9 +106,9 @@ def lower(table, function):
                 kinds.append("output")
                 index += 1
             elif is_pointer(pointee):
-                kinds.append("reported 4 4")
+                kinds.append("reported 4 4 false")
             elif pointee == "u8":
-                kinds.append("reported 1 1")
+                kinds.append("reported 1 1 true")
             else:
                 return None, f"parameter {name} points to {pointee}"
         elif isinstance(resolved, list) and resolved[0] == "enum" and width(table, ty) == 32:
@@ -153,7 +157,10 @@ def witx_functions(directory):
     return functions
 
 
-LEAN_DEF = re.compile(r'def (\w+) : Call :=\s*\{\s*name := "([^"]+)",\s*params := \[([^\]]*)\]', re.S)
+LEAN_DEF = re.compile(
+    r'def (\w+) : Call :=\s*\{\s*name := "([^"]+)",\s*params := \[([^\]]*)\]'
+    r'(?:,\s*reporter := some "([^"]+)")?\s*\}', re.S)
+CALL_DEF = re.compile(r'^\s*def (\w+) : Call\b', re.M)
 
 
 def lean_kinds(params):
@@ -162,7 +169,7 @@ def lean_kinds(params):
         item = item.lstrip(".")
         parts = item.split()
         if parts[0] == "reported":
-            kinds.append(f"reported {parts[1]} {parts[2]}")
+            kinds.append(f"reported {parts[1]} {parts[2]} {parts[3]}")
         elif parts[0] == "enum32":
             kinds.append(f"enum32 {parts[1]}")
         else:
@@ -175,12 +182,28 @@ def main():
     calls = Path(sys.argv[2] if len(sys.argv) > 2 else "LeanExe/Wasi/Calls.lean")
     functions = witx_functions(directory)
     failed = False
-    definitions = LEAN_DEF.findall(calls.read_text())
+    text = calls.read_text()
+    definitions = LEAN_DEF.findall(text)
     if not definitions:
         print(f"no descriptions in {calls}")
         sys.exit(1)
-    for lean_name, name, params in definitions:
+    checked = {definition[0] for definition in definitions}
+    for lean_name in CALL_DEF.findall(text):
+        if lean_name not in checked:
+            print(f"{lean_name}: the description is not in the checked form")
+            failed = True
+    for lean_name, name, params, reporter in definitions:
         kinds = lean_kinds(params)
+        reported = sum(1 for kind in kinds if kind.startswith("reported"))
+        if reported and reporter != name.removesuffix("_get") + "_sizes_get":
+            print(f"{lean_name}: {name} has reporter {reporter or 'none'}")
+            failed = True
+            continue
+        if reporter and (not reported or functions.get(reporter, (None, None))[0] !=
+                         ["result32"] * reported):
+            print(f"{lean_name}: {name} has reporter {reporter} without matching results")
+            failed = True
+            continue
         if name not in functions:
             print(f"{lean_name}: {name} is not a witx function")
             failed = True

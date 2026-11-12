@@ -1,8 +1,11 @@
 #!/bin/sh
-# Builds the flat call example, checks its axioms, runs its native cases, and runs its module in
-# the Wasmtime host with several argument lists.  Each run must exit with status 0 and write the
-# arguments with a zero byte after each, the argument count and size as 8 little-endian bytes each,
-# a nonzero clock reading, and 16 random bytes.
+# Builds the flat call example, checks its axioms and the non-vacuity witness of its host premises,
+# runs its native cases, and runs its module in the Wasmtime host with several argument lists.  Each
+# run must exit with status 0 and write the arguments with a zero byte after each, the argument count
+# and size as 8 little-endian bytes each, a realtime reading within a day of the system clock, a
+# monotonic reading below 10^17 ns, and 16 random bytes.  Four runs with the same arguments must
+# give at least two values at each of the 16 random positions, which a correct module fails with
+# probability at most 2^-20.
 set -eu
 set -f
 if ! command -v wasm-tools > /dev/null 2>&1; then
@@ -24,6 +27,7 @@ fi
 
 tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/SysWitness.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysExample.lean
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSys \
   Verified.Examples.WasiSys.command.module "$module"
@@ -34,7 +38,7 @@ fail() {
   exit 1
 }
 
-# word FILE OFFSET: the unsigned little-endian 8-byte word at OFFSET.
+# word FILE OFFSET: the unsigned little-endian 8-byte word at OFFSET, in decimal.
 word() {
   od -An -v -t u1 -j "$2" -N 8 "$1" |
     awk '{ for (i = 1; i <= NF; i++) b[n++] = $i } END {
@@ -50,11 +54,16 @@ check() {
   stdout="$out/$name.stdout"
   size=$(wc -c < "$expected")
   written=$(wc -c < "$stdout")
-  [ "$written" -eq $((size + 40)) ] || fail "$name" "wrote $written bytes"
+  [ "$written" -eq $((size + 48)) ] || fail "$name" "wrote $written bytes"
   head -c "$size" "$stdout" | cmp -s - "$expected" || fail "$name" "wrong argument bytes"
   [ "$(word "$stdout" "$size")" = "$count" ] || fail "$name" "count $(word "$stdout" "$size")"
   [ "$(word "$stdout" $((size + 8)))" = "$size" ] || fail "$name" "size"
-  [ "$(word "$stdout" $((size + 16)))" != 0 ] || fail "$name" "clock reading 0"
+  wall=$(word "$stdout" $((size + 16)))
+  now=$(date +%s)
+  awk -v wall="$wall" -v now="$now" 'BEGIN { d = wall / 1e9 - now; exit !(d < 86400 && d > -86400) }' ||
+    fail "$name" "realtime reading $wall at $now s"
+  mono=$(word "$stdout" $((size + 24)))
+  awk -v mono="$mono" 'BEGIN { exit !(mono < 1e17) }' || fail "$name" "monotonic reading $mono"
   printf 'wasi-exit 0\n' | cmp -s - "$out/$name.control" || fail "$name" "control"
   cases=$((cases + 1))
 }
@@ -74,8 +83,16 @@ run none
 check none 0 "$out/none.expected"
 
 printf 'prog\000' > "$out/one.expected"
-run one --arg prog
-check one 1 "$out/one.expected"
+for repeat in 1 2 3 4; do
+  run "one-$repeat" --arg prog
+  check "one-$repeat" 1 "$out/one.expected"
+done
+for repeat in 1 2 3 4; do
+  od -An -v -t u1 -j 37 -N 16 "$out/one-$repeat.stdout"
+done | awk '{ for (i = 1; i <= NF; i++) seen[i, $i] = 1 }
+  END { for (i = 1; i <= 16; i++) { n = 0; for (k in seen) { split(k, p, SUBSEP); if (p[1] == i) n++ }
+    if (n < 2) exit 1 } }' || fail "random" "a random position kept one value in four runs"
+cases=$((cases + 1))
 
 printf 'prog\000a\000b c\000\000' > "$out/four.expected"
 run four --arg prog --arg a --arg "b c" --arg ""
