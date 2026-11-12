@@ -7,9 +7,15 @@
     "(dataIn B u w).length ≤ (dataOut B u w).length + 1",
     "dataOut B u (windows ...) = (delimAnswers mach maxLen m0 ...).map UInt8.toUInt64",
     "∃ recs, recs.flatMap recordBytes = bs.take (8 * kin * (bs.length / (8 * kin))) ∧ ...",
-    "a premise copied from a tool's configuration"
+    "a premise copied from a tool's configuration",
+    "a conclusion modulo whole turns, or an existential that admits a second triple of coordinates",
+    "a uniqueness theorem over solutions defined at every real time"
   ],
   "modules": [
+    "Demos.Frames.Model",
+    "Demos.Frames.Soundness",
+    "Demos.Orbit.NewtonUnique",
+    "Library.Numerics.Interval.Proof",
     "LeanExe.Requests.Delimited",
     "LeanExe.Requests.Reads",
     "TestSupport.M7.CrcReplies",
@@ -24,13 +30,19 @@
     "LeanExe.Requests.frame_reads",
     "LeanExe.Requests.decode_lengths",
     "LeanExe.Requests.flatMap_recordBytes_inj",
-    "LeanExe.A64.Isla.Profile.sys"
+    "LeanExe.A64.Isla.Profile.sys",
+    "Demos.Frames.Model.IsGeodetic",
+    "LeanExe.ProofKit.Signed64Value.toFloat_exact",
+    "Library.Numerics.Interval.le_iff_value"
   ],
   "examples": [
     "Demos.Energy.Spec.admitted_exists",
     "TestSupport.M7.Sha.sha_digests",
     "TestSupport.M7.Crc.crc_replies",
-    "TestSupport.M7.Gw.board_bytes"
+    "TestSupport.M7.Gw.board_bytes",
+    "Demos.Frames.range_values",
+    "Demos.Frames.gmst_sound",
+    "Demos.Orbit.newton_unique"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

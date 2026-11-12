@@ -1,0 +1,74 @@
+{
+  "id": "interval-searches",
+  "goals": [
+    "Encl H E P for an evaluator E that a search calls, and the search's result for every such E",
+    "RadiusIn P q lo hi: existence, uniqueness, and containment of a root between two certified points",
+    "the result of two bisections from a bracket, with probes that the enclosure cannot decide",
+    "the covered part [0, t] of an adaptive march bounds the function from below",
+    "every element of LeanExe.loop cells.size.toUInt64 #[] fun i acc => step cells[i.toNat]! acc has a property, and a cell that holds a point leaves one that holds it",
+    "cells.size.toUInt64.toNat = cells.size and a cap on the cells of a level",
+    "an enclosure of the root of g x = 0 from a residual and a lower bound of the slope",
+    "a branch-and-prune search over geodetic boxes that splits boxes near a pole",
+    "a theorem of a search for every function within the margins that it tests"
+  ],
+  "modules": [
+    "LeanExe.Dialect.Lemmas",
+    "Library.Numerics.Interval.Proof",
+    "Demos.Conjunction.AccuracyModel",
+    "Demos.Conjunction.AccuracySoundness",
+    "Demos.Orbit.LambertBox",
+    "Demos.Orbit.LambertSound",
+    "Demos.PassiveSafety.Program",
+    "Demos.PassiveSafety.Soundness",
+    "Demos.Screening.Cover",
+    "Demos.Screening.Isolation",
+    "Demos.Screening.Filters",
+    "Demos.Frames.Geodetic",
+    "Demos.Frames.Soundness",
+    "Demos.Sgp4.KeplerBox"
+  ],
+  "declarations": [
+    "Demos.Conjunction.Accuracy.Encl",
+    "Demos.Conjunction.Accuracy.growWith_inv",
+    "Demos.Conjunction.Accuracy.raiseWith_below",
+    "Demos.Conjunction.Accuracy.lowerWith_above",
+    "Demos.Conjunction.Accuracy.search_sound",
+    "Demos.Conjunction.Accuracy.diskSearch_eq",
+    "Demos.Conjunction.Accuracy.lineSearch_eq",
+    "Demos.Conjunction.Model.root_between",
+    "Demos.Conjunction.Model.radiusIn_of",
+    "Demos.Conjunction.Model.RadiusIn",
+    "LeanExe.Dialect.loop_induction",
+    "Library.Numerics.Interval.lt_iff_value",
+    "Demos.Orbit.bracket",
+    "Demos.PassiveSafety.panelEnd",
+    "Demos.PassiveSafety.march",
+    "Demos.Screening.Extends",
+    "Demos.Screening.loop_cover",
+    "Demos.Screening.loop_size_le",
+    "Demos.Frames.Geodetic.bijective_of_growth",
+    "Demos.Frames.Geodetic.bound_of_growth",
+    "Demos.Frames.Geodetic.lag_mono",
+    "Demos.Frames.Geodetic.ratio_mono",
+    "Demos.Sgp4.Kepler.root.encloses"
+  ],
+  "examples": [
+    "Demos.Conjunction.Accuracy.diskSearch_sound",
+    "Demos.Orbit.raise_spec",
+    "Demos.Orbit.lower_spec",
+    "Demos.Orbit.bracket_spec",
+    "Demos.PassiveSafety.search_covered",
+    "Demos.Screening.isolateLevel_inv",
+    "Demos.Screening.pathLevel_inv",
+    "Demos.Frames.widen_encloses"
+  ],
+  "unimported": {
+    "Demos/Events/Isolation.lean": [
+      "Demos.Events.Parts",
+      "Demos.Events.Sound"
+    ],
+    "Demos/Events/Soundness.lean": [
+      "Demos.Events.events_near"
+    ]
+  }
+}

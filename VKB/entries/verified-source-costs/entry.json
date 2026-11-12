@@ -10,9 +10,15 @@
     "(deterministic) timeout at a verified_compile command of a large program",
     "a call's result or an expression that the code computes at each of its occurrences",
     "the reflector's simp runs out of heartbeats on the condition of a tail loop whose sides compile alone",
-    "a verified_compile module that compiles again after every change to a proof"
+    "a verified_compile module that compiles again after every change to a proof",
+    "verified_compile: unsupported term f … for a listed definition that calls a wrapper",
+    "verified_compile: unsupported term T for a table passed with a computed argument",
+    "(kernel) constant has already been declared 'p.f.func' from two listed definitions whose names end alike"
   ],
   "modules": [
+    "Verified.Reflect.Command",
+    "Demos.Orbit.LambertBox",
+    "Demos.Sgp4.Box",
     "Verified.Reflect.Modes",
     "Library.Regex.Bytes",
     "Library.Hashing.Sha3.Program",
@@ -37,7 +43,10 @@
     "Demos.Euler.Buffered.sweepInto",
     "Demos.Euler.Buffered.tryInto",
     "Lean.Elab.Command.liftTermElabM",
-    "Library.HashTables.LinearProbing.gap"
+    "Library.HashTables.LinearProbing.gap",
+    "Verified.Reflect.wrapperShape?",
+    "Demos.Orbit.lambertBoundsWith",
+    "Demos.Sgp4.sgp4BoxAroundWith"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -51,6 +60,15 @@
     "Demos.OrderBook.Program.fillArrays",
     "Demos.OrderBook.Verified.compiled.run.trapFree",
     "Demos.Energy.gwTickWith",
-    "Library.HashTables.LinearProbing.close"
-  ]
+    "Library.HashTables.LinearProbing.close",
+    "Demos.Orbit.lambertBounds",
+    "Demos.Sgp4.sgp4BoxAround"
+  ],
+  "unimported": {
+    "Demos/Conjunction/Box.lean": [
+      "Demos.Conjunction.pcBox",
+      "Demos.Conjunction.pcBoxEnds",
+      "Demos.Conjunction.pcBoxWith"
+    ]
+  }
 }

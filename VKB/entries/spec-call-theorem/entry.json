@@ -15,6 +15,8 @@
     "Verified.Call compiled.module compiled.tables k expected (fun x heap store => P x ∧ Pre x heap store) Post",
     "ImplementsA false compiled.module k (fun x : Moved (Array UInt64) => expected x.val) Pre Post",
     "Spec x (f x) and Spec x r → Spec x r' → r = r'",
+    "the funcIdx of an export, which differs from the position of its definition in the list of verified_compile",
+    "Verified.CallSpec compiled.module compiled.tables k (fun xs : Array Float => (f xs).map Float.toBits) compiled.f.bound",
     "∃ x : Trajectory, x.AdmittedUntil p q c t"
   ],
   "modules": [
@@ -109,5 +111,14 @@
     "Demos.Energy.Spec.operates_exists",
     "Demos.Energy.Spec.run_sound",
     "Demos.Energy.Spec.operation_sound"
-  ]
+  ],
+  "unimported": {
+    "Demos/Screening/Call.lean": [
+      "Demos.Screening.screen_callBits",
+      "Demos.Screening.screen_call"
+    ],
+    "Demos/Conjunction/AccuracyCall.lean": [
+      "Demos.Conjunction.Accuracy.circularError_call"
+    ]
+  }
 }

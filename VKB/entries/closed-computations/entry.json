@@ -14,7 +14,9 @@
     "push_cast or field_simp evaluates a literal power such as 2^1074",
     "rfl or simp on a goal that holds a power above exponentiation.threshold reaches the maximum recursion depth",
     "a counterexample to a property of a specification, on a concrete input",
-    "heartbeats exhausted by several decide +kernel facts in the haves of one theorem"
+    "heartbeats exhausted by several decide +kernel facts in the haves of one theorem",
+    "a conjunction of closed facts whose single decide +kernel exhausts memory",
+    "failed to synthesize Decidable for an equation of products of abbreviations, such as UInt64 × List W6"
   ],
   "modules": [
     "Library.Hashing.Crc.Bytes",

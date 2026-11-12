@@ -62,6 +62,7 @@
     "LeanExe/Native/ClightN/Instance.lean": [
       "ClightN.Proof.inj_of_nodup_map",
       "ClightN.Proof.RenameOk",
+      "ClightN.Proof.defs_of_parts",
       "ClightN.Proof.bare_n",
       "ClightN.Proof.reads_n",
       "ClightN.Proof.reacts_n"
