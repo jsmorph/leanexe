@@ -1,4 +1,12 @@
 #!/bin/sh
+# Runs a Lean or Lake command with the pinned toolchain under the machine-wide lock, in a systemd
+# user scope with the memory, swap, and CPU limits of AGENTS.md, and with a time limit.
+# A lake command runs in the build mode that it names.  Lake keeps the configuration that it last
+# elaborated, with that elaboration's -K options, until -R elaborates it again, so the runner adds
+# -R when the configuration cached in the working directory has other options than the command's,
+# or when the command names another directory or configuration file.  `-K fast=true` selects the
+# fast build of docs/verified-manual.md#fast-builds, LEANRUN_FAST=1 adds that option to every lake
+# command, and a command without it builds checked.
 set -eu
 
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -12,6 +20,7 @@ lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
 lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
+fast_mode="${LEANRUN_FAST:-0}"
 memory_high="${LEANRUN_MEMORY_HIGH:-4G}"
 cpu_count="${LEANRUN_CPUS:-}"
 thread_count="${LEANRUN_THREADS:-}"
@@ -141,6 +150,50 @@ case "$local_mode" in
     exit 2
     ;;
 esac
+
+case "$fast_mode" in
+  0|1)
+    ;;
+  *)
+    echo "leanrun: LEANRUN_FAST must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
+
+if [ "${1##*/}" = "lake" ]; then
+  lake="$1"
+  shift
+  options='{}'
+  elsewhere=0
+  previous=""
+  for argument in "$@"; do
+    if [ "$previous $argument" = "-K fast=true" ] || [ "$argument" = "-Kfast=true" ]; then
+      options='{"fast": "true"}'
+    fi
+    case "$argument" in
+      -d|-d?*|--dir|--dir=*|-f|-f?*|--file|--file=*)
+        elsewhere=1
+        ;;
+    esac
+    previous="$argument"
+  done
+  if [ "$fast_mode" = "1" ] && [ "$options" = '{}' ]; then
+    set -- -K fast=true "$@"
+    options='{"fast": "true"}'
+  fi
+  trace=".lake/config/0/lakefile.olean.trace"
+  if [ "$elsewhere" = "1" ]; then
+    set -- -R "$@"
+  elif [ -f "$trace" ]; then
+    cached="$(sed -n 's/^[{ ]*"options": \({.*}\),$/\1/p' "$trace")"
+    if [ "$cached" != "$options" ]; then
+      echo "leanrun: Lake's cached configuration has the options ${cached:-unknown} and this" \
+        "command $options, so the command runs with -R" >&2
+      set -- -R "$@"
+    fi
+  fi
+  set -- "$lake" "$@"
+fi
 
 if [ "${LEANRUN_LOCAL_IN_SCOPE:-0}" = "1" ]; then
   echo "leanrun: nested tools/leanrun is not supported in LEANRUN_LOCAL mode (LEANRUN_LOCAL=1); invoke the repository driver directly" >&2

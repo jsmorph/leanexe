@@ -50,11 +50,12 @@
 # LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since `lean` and `lean --run` read a module's compiled
 # file without checking it against the source.  Building the numerical proofs that need much
 # memory and `Verified Library` first, with the limits of docs/verified-manual.md, keeps that
-# build within the caller's memory limit.  The build passes `-R` to Lake, which elaborates the Lake
-# configuration again in the mode of this run, whichever mode the checkout had.
-# With --fast, Lake builds this package's modules with debug.skipKernelTC into .lake/build-fast, so
-# the kernel checks none of their proofs, decide +kernel included, the file theorem checks do not
-# run, and the script restores the checked configuration when it exits.
+# build within the caller's memory limit.
+# With --fast, the script sets LEANRUN_FAST=1, so that tools/leanrun passes -K fast=true to every
+# lake command of this script and the scripts it calls, and Lake builds this package's modules with
+# debug.skipKernelTC into .lake/build-fast.  The kernel then checks none of their proofs,
+# decide +kernel included, and the file theorem checks do not run.  Without --fast, it sets
+# LEANRUN_FAST=0, and tools/leanrun runs every lake command in the checked configuration.
 # The script records each check that passes with the hash of its inputs in build/verified-checks/,
 # in a directory for each mode, and skips a check whose inputs still have the recorded hash.
 # --no-cache runs every check.  docs/verified-manual.md#recorded-checks lists the inputs.
@@ -98,23 +99,20 @@ fi
 cd "$root"
 mode=checked
 build=$root/.lake/build
-lake_config=(-R)
+export LEANRUN_FAST=$fast
 if [ "$fast" -eq 1 ]; then
   mode=fast
   build=$root/.lake/build-fast
-  lake_config=(-R -K fast=true)
   notice="fast: the kernel checks no proof of this package's modules, decide +kernel included,"
   notice+=" and the file theorems are not checked"
   echo "$notice"
 fi
 if command -v sha256sum > /dev/null 2>&1; then sum=(sha256sum); else sum=(shasum -a 256); fi
 tmp=$(mktemp -d)
-configured=0
 ran=0
 unchanged=0
 unchecked=0
-# Removes the temporary files, prints the counts of the checks, and, after a fast build, restores
-# the checked configuration.
+# Removes the temporary files and prints the counts of the checks.
 finish() {
   local status=$?
   rm -rf "$tmp"
@@ -124,10 +122,6 @@ finish() {
   if [ "$fast" -eq 1 ]; then
     echo "$notice"
     echo "fast: file theorem checks not run: $unchecked"
-    if [ "$configured" -eq 1 ] && ! tools/leanrun --timeout 10m lake -R env true; then
-      echo "fail: Lake's checked configuration was not restored; run lake -R" >&2
-      status=1
-    fi
   fi
   exit "$status"
 }
@@ -269,8 +263,7 @@ if [ -z "$reference" ]; then
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
   fi
 fi
-configured=1
-tools/leanrun --timeout 12h lake "${lake_config[@]}" --log-level error build "${targets[@]}"
+tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
 # The hash of the file $1.
 digest() {
   "${sum[@]}" <"$1" | cut -d' ' -f1

@@ -2,10 +2,9 @@
 # The full check of the verified compiler and of the translations, hosts, and proofs of its
 # modules, which writes STATUS.md at the root of the repository.  The steps run in order, each with
 # its output in build/full-check/NAME.log:
-#   1. `lake -R build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the
-#      test executables native-verified, native-bare, verified-cases, and native-module-cases, at
-#      log level info, so that the log holds the axiom report of every `#print axioms`, where `-R`
-#      elaborates the Lake configuration again without the options of a fast build, and
+#   1. `lake build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the test
+#      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
+#      level info, so that the log holds the axiom report of every `#print axioms`, and
 #      tests/verified/AllAxioms.lean, which walks the constants of every declaration of those
 #      libraries;
 #   2. tests/verified/run.sh --no-cache, which runs every check, and, when it passes,
@@ -39,15 +38,18 @@
 # writes the file, the script requires that the text name neither this machine nor an absolute or
 # home path nor a host fault; otherwise it prints the offending lines, leaves the text in
 # build/full-check/STATUS.md, and fails.
-# LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the latter 10G unless set, the limit
-# that AGENTS.md sets for the verified and WASI drivers.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
-# for the native and bare-metal drivers, NM and DTC as for tests/baremetal/run.sh, and QEMU and
-# JOBS as for tests/baremetal/verified.sh and tests/native/clight-rocq.sh.  COMPCERT_TREE names the
-# CompCert tree with built proofs for rocq/check.sh, tests/native/clight-rocq.sh, and
-# clightn/check.sh, by default the directory of CCOMP when CCOMP is a path; clightn/check.sh runs
-# only on a tree configured for AArch64.  The script exits with status 1 when a step fails.
+# The script sets LEANRUN_FAST=0, so that tools/leanrun runs every lake command of every step in
+# the checked configuration.  LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the
+# latter 10G unless set, the limit that AGENTS.md sets for the verified and WASI drivers.  CCOMP,
+# CLIGHTGEN, and CCOMP_STDLIB are as for the native and bare-metal drivers, NM and DTC as for
+# tests/baremetal/run.sh, and QEMU and JOBS as for tests/baremetal/verified.sh and
+# tests/native/clight-rocq.sh.  COMPCERT_TREE names the CompCert tree with built proofs for
+# rocq/check.sh, tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of
+# CCOMP when CCOMP is a path; clightn/check.sh runs only on a tree configured for AArch64.  The
+# script exits with status 1 when a step fails.
 # Usage: tools/full-check
 set -euo pipefail
+export LEANRUN_FAST=0
 
 # The replacement REPLACEMENT of the last line of FILE that matches the extended regular
 # expression REGEX.
@@ -253,7 +255,7 @@ axioms() {
 step_build() {
   local step='`lake build` of every library and the test executables'
   local jobs sorries errors report total permitted file name other repo=0 cell status
-  run 1-build tools/leanrun --timeout 12h lake -R --log-level info build LeanExe Examples Demos \
+  run 1-build tools/leanrun --timeout 12h lake --log-level info build LeanExe Examples Demos \
     Verified Library TestSupport native-verified native-bare verified-cases native-module-cases
   if [ "$code" -eq 0 ]; then
     built=yes
