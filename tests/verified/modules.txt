@@ -112,6 +112,7 @@ Library.Arrays.Filter.Compiled:Library.Arrays.Filter.compiled.module:libfilter
 Library.Arrays.Repeat.Compiled:Library.Arrays.Repeat.compiled.module:librepeat
 Library.Arrays.Range.Compiled:Library.Arrays.Range.compiled.module:librange
 Library.Arrays.Word.Compiled:Library.Arrays.Word.compiled.module:libwordarray
+Library.Arrays.MaxSegmentSum.Compiled:Library.Arrays.MaxSegmentSum.compiled.module:libmss
 Library.Lists.Word.Compiled:Library.Lists.Word.compiled.module:liblists
 Library.Numerics.Reductions.Word.Compiled:Library.Numerics.Reductions.Word.compiled.module:libwordreductions
 Library.Numerics.Filters.Cic.Compiled:Library.Numerics.Filters.Cic.compiled.module:libcic

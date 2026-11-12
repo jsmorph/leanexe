@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # The AArch64 images that read their input from the UART under QEMU's virt machine: GCD's loop of
-# tests/TestSupport/A64/Uart.lean, which reads two words, and the flip of bit 5 of each byte of
-# tests/TestSupport/A64/Flip.lean, which reads a length of eight bytes and the message.  a64-uart
-# emit writes the Images, gcduart.img and flip.img, and for each case the bytes that the UART
-# delivers and the bytes that it must show.  Lean then elaborates
-# tests/TestSupport/A64/ImageFilesUart.lean and tests/TestSupport/A64/ImageFilesFlip.lean in the
+# tests/TestSupport/A64/Uart.lean, which reads two words, the flip of bit 5 of each byte of
+# tests/TestSupport/A64/Flip.lean, and the maximum segment sum of the words of a message of
+# tests/TestSupport/A64/Mss.lean, the last two of which read a length of eight bytes and the
+# message.  a64-uart emit writes the Images, gcduart.img, flip.img, and mss.img, and for each case
+# the bytes that the UART delivers and the bytes that it must show, which native Lean computes.
+# Lean then elaborates tests/TestSupport/A64/ImageFilesUart.lean,
+# tests/TestSupport/A64/ImageFilesFlip.lean, and tests/TestSupport/A64/ImageFilesMss.lean in the
 # directory of those files with a MemoryHigh of 8G, so that the kernel checks that each Image file
 # holds the bytes that its generator gives and proves the Images' theorems, with no axiom beyond
 # propext, Classical.choice, and Quot.sound.  The script checks QEMU's loading of each Image with
@@ -14,10 +16,11 @@
 # with the UART on QEMU's standard input and output, a pipe into which the script writes the bytes
 # in pieces of 1, 3, 5, and 7 bytes, each after a pause of PAUSE seconds, 0.2 unless set, and then
 # the rest at once.  QEMU must exit with status 0, and the UART must show the case's bytes: the
-# GCD's eight bytes and the status 0, the flipped message and the status 0, or the status 64 for a
-# length above the flip's limit.  A last run of each Image starts QEMU stopped, sends a break on
-# the UART through QEMU's monitor, which puts a word with the break flag in the empty receiver, and
-# continues: the UART must show the status 65 alone.  ACCEL selects the accelerator, as qemu.sh
+# GCD's eight bytes and the status 0, the flipped message and the status 0, the eight bytes of the
+# maximum segment sum, or none for a length that is not a multiple of 8, and the status 0, or the
+# status 64 for a length above an Image's limit.  A last run of each Image starts QEMU stopped,
+# sends a break on the UART through QEMU's monitor, which puts a word with the break flag in the
+# empty receiver, and continues: the UART must show the status 65 alone.  ACCEL selects the accelerator, as qemu.sh
 # describes.  The products lie in OUT, build/baremetal/a64-uart unless set.
 # Usage: tests/baremetal/a64-uart.sh
 set -euo pipefail
@@ -28,7 +31,7 @@ source tests/baremetal/qemu.sh
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-uart \
-  TestSupport.A64.Uart TestSupport.A64.Flip LeanExe.A64.File
+  TestSupport.A64.Uart TestSupport.A64.Flip TestSupport.A64.Mss LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-uart emit "$out" || status=1
 # Elaborates the module $1 of tests/TestSupport/A64 in the directory of the Images and requires
@@ -46,7 +49,8 @@ kernel_check() {
 }
 kernel_check ImageFilesUart 5
 kernel_check ImageFilesFlip 4
-for img in "$out/gcduart.img" "$out/flip.img"; do
+kernel_check ImageFilesMss 5
+for img in "$out/gcduart.img" "$out/flip.img" "$out/mss.img"; do
   if ! check=$(tests/baremetal/a64-loadcheck.sh "$img"); then
     echo "$check"
     exit 1
@@ -108,9 +112,15 @@ done
 for in in "$out"/flipover-*.in; do
   run_case "$out/flip.img" "${in%.in}"
 done
+for k in $(ls "$out" | sed -n 's/^mss-\([0-9]*\)\.in$/\1/p' | sort -n); do
+  run_case "$out/mss.img" "$out/mss-$k"
+done
+for in in "$out"/mssover-*.in; do
+  run_case "$out/mss.img" "${in%.in}"
+done
 : >"$out/empty.in"
 printf '\x41' >"$out/break.want"
-for img in gcduart flip; do
+for img in gcduart flip mss; do
   qcode=0
   printf 'chardev-send-break u0\ncont\n' | run "$out/$img.img" -S -monitor stdio \
     -chardev "file,id=u0,path=$out/$img-break.file,input-path=$out/empty.in" -serial chardev:u0 \

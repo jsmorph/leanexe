@@ -4,6 +4,7 @@ import Library.Arrays.Range.Program
 import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
+import Library.Arrays.MaxSegmentSum.Program
 import Library.Combinatorics.DancingLinks.Program
 import Library.Combinatorics.NextPermutation.Program
 import Library.Graphs.Dijkstra.Program

@@ -1,5 +1,6 @@
 import Library.Arrays.BinarySearch.Master
 import Library.Arrays.Filter.Master
+import Library.Arrays.MaxSegmentSum.Master
 import Library.Arrays.Range.Master
 import Library.Arrays.Repeat.Master
 import Library.Arrays.Search.Master
@@ -95,6 +96,7 @@ master_registry [
   Library.Arrays.Filter.removeAll_master,
   Library.Arrays.Filter.below_master,
   Library.Arrays.Filter.clearUntil_master,
+  Library.Arrays.MaxSegmentSum.mss_master,
   Library.Arrays.Range.evens_master,
   Library.Arrays.Repeat.repeated_master,
   Library.Arrays.Search.count_master,
