@@ -276,27 +276,37 @@ def bound_names(t):
 # Rendering, with lines of at most WIDTH characters.  A document is a string or a group
 # (open, items, close), whose items go on one line when they fit and on separate lines otherwise.
 # Continuation lines are indented by the depth of their group, up to MAX_INDENT columns, so that
-# deep program literals keep their lines within WIDTH.
+# deep program literals keep their lines within WIDTH.  The length of a group on one line is
+# kept for each group, and its text is formed only when it fits, since the texts of all the
+# nested groups of a deep literal together take memory in proportion to its size times its depth.
 
 MAX_INDENT = 40
-_FLAT = {}
+_FLAT_LEN = {}
 
 
 def flat(d):
     if isinstance(d, str):
         return d
+    return d[0] + " ".join(flat(x) for x in d[1]) + d[2]
+
+
+def flat_len(d):
+    if isinstance(d, str):
+        return len(d)
     k = id(d)
-    if k not in _FLAT:
-        _FLAT[k] = (d, d[0] + " ".join(flat(x) for x in d[1]) + d[2])
-    return _FLAT[k][1]
+    if k not in _FLAT_LEN:
+        _FLAT_LEN[k] = (d, len(d[0]) + sum(flat_len(x) for x in d[1]) +
+                        max(len(d[1]) - 1, 0) + len(d[2]))
+    return _FLAT_LEN[k][1]
 
 
 def layout(d, col, indent, trail=0):
     """The text of d from column col, whose continuation lines start at indent + 2 or further,
     followed on its last line by trail characters."""
-    f = flat(d)
-    if isinstance(d, str) or col + len(f) + trail <= WIDTH:
-        return f
+    if isinstance(d, str):
+        return d
+    if col + flat_len(d) + trail <= WIDTH:
+        return flat(d)
     open_, items, close = d
     inner = min(indent + 2, MAX_INDENT)
     out = open_ + layout(items[0], col + len(open_), inner,
@@ -304,10 +314,10 @@ def layout(d, col, indent, trail=0):
     col = len(out.rsplit("\n", 1)[-1]) + (col if "\n" not in out else 0)
     for i, x in enumerate(items[1:], 1):
         after = len(close) + trail if i == len(items) - 1 else 0
-        fx = flat(x)
-        if col + 1 + len(fx) + after <= WIDTH:
-            out += " " + fx
-            col += 1 + len(fx)
+        nx = flat_len(x)
+        if col + 1 + nx + after <= WIDTH:
+            out += " " + flat(x)
+            col += 1 + nx
         else:
             piece = layout(x, inner, inner, after)
             out += "\n" + " " * inner + piece

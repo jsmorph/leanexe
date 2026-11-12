@@ -22,11 +22,10 @@ theorem gcd_value : TestSupport.Native.Gcd.gcd 1071 462 = 21 := by
 
 set_option maxHeartbeats 4000000 in
 theorem gcd_terminates : stmt_gcd_terminates := by
-  refine (bare_n ?_ (TestSupport.Native.Gcd.loopCompiled.gcd.program _ _) ?_).resolve_right
+  refine (bare_n ?_ (TestSupport.Native.Gcd.loopCompiled.gcd.program _ _)).resolve_right
     fun h => Bool.false_ne_true h.1
-  · inst_ok
-  · rw [gcd_value]
-    decide +kernel
+  rw [gcd_value]
+  inst_ok
 
 end ClightN.Proof
 
