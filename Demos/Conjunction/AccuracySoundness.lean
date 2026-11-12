@@ -9,7 +9,9 @@ and `linearError_sound` that an accepted result of `linearError` holds the half-
 probability `Model.linearProb` is `p`.  The proofs follow the search for any enclosure `E` of a
 probability `P`: the bracketing keeps a lower end whose probability `E` shows below `p` and, once
 it ends, an upper end whose probability `E` shows at least `p`, and each bisection keeps one of
-the two.  `Model.radiusIn_of` turns the two ends into the radius.
+the two.  `Model.radiusIn_of` turns the two ends into the radius.  `guarded_sound` proves the input
+tests and the exchange of axes of the circular error for any search that holds the radius, so that
+`circularError_sound` and `circularErrorAdaptive_sound` of `AdaptiveSoundness.lean` share them.
 -/
 
 namespace Demos.Conjunction.Accuracy
