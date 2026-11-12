@@ -12,8 +12,10 @@ verified_compile compiled := [absBits, finite, nextUpBits, nextDownBits, endpoin
   mul, divEnd, divCore, div, Library.Numerics.Interval.sqrt, Library.Numerics.Interval.abs, clamp,
   outward2, kernelSin, kernelCos, remSmall, remMedium, mul64, clz64, window, mulTop, shiftTop,
   remLarge, remPio2, sinWith, cosWith, ofInt, Library.Numerics.Interval.sq, imax, mid, reach,
-  lipschitz, sinI, cosI, flowPositionI, sepSquareI, rcSquareI, box, runs, panelEnd, nonneg, march,
-  positionI, sepPanel, sepStep, sepSearch, lastTime, rcPanel, rcStep, rcSearch, searchStatus,
-  scanStep, finiteAll, valuesOk, square, sqrtDown, checkWith, check]
+  lipschitz, sinI, cosI, flowPositionI, flowVelocityI, sepSquareI, rcSquareI, sepTaylorI,
+  rcTaylorI, box, runs, panelEnd, nonneg, record, accepts, march, positionI, velocityI, straddles,
+  meet, midpoint, xzBound, smoothRc, smoothSep, sepPanel, sepStep, sepSearch, lastTime, rcPanel,
+  rcStep, rcSearch, searchStatus, scanStep, finiteAll, valuesOk, square, sqrtDown, checkWith,
+  check]
 
 end Demos.PassiveSafety

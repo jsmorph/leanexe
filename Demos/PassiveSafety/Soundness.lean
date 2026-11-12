@@ -1,5 +1,5 @@
 import Demos.PassiveSafety.Program
-import Demos.PassiveSafety.Model
+import Demos.PassiveSafety.Smooth
 import Library.Numerics.Interval.Proof
 import LeanExe.Dialect.Lemmas
 
@@ -12,9 +12,11 @@ above its threshold and bound at every time after the scenario's last burn, in e
 
 The proof follows the program.  `positionI_encloses` gives the enclosure of the position from the
 loop over the burns, `Model.path_eq` and `Model.kicks_selectFrom` equate the enclosed sum with the
-model's trajectory, `search_covered` states what a finished search covers, `Model.flow_phase`
-reduces every time after a scenario's last burn to one period, and `scan_sound` collects the
-scenarios.
+model's trajectory, and `smooth_panel` encloses the squared distances over a panel without a burn
+time in its interior by the Taylor forms, from `Model.taylor_two` and the derivatives of
+`Model.smooth`.  `search_covered` states what a finished search covers, whatever its accuracy,
+`Model.flow_phase` reduces every time after a scenario's last burn to one period, and `scan_sound`
+collects the scenarios.
 -/
 
 namespace Demos.PassiveSafety
@@ -306,7 +308,7 @@ theorem repeatWhile_invariant {α : Type} (fuel : UInt64) (init : α) (cond : α
 /-- The covered part `[0, m.t]` of a search of `g` against `d2`: when it is not empty, `g` is at
 least `d2` and the least lower end `m.low` on it. -/
 def Covered (g : ℝ → ℝ) (d2 : Float) (m : March) : Prop :=
-  Finite m.t.toBits ∧ Finite m.low.toBits ∧
+  Finite m.t.toBits ∧ Finite m.low.toBits ∧ 0 ≤ value m.t.toBits ∧
     (0 < value m.t.toBits → ∀ τ, 0 ≤ τ → τ ≤ value m.t.toBits →
       value d2.toBits ≤ g τ ∧ value m.low.toBits ≤ g τ)
 
@@ -319,51 +321,63 @@ theorem panelEnd_finite {t h e : Float} (he : Finite e.toBits) :
     exact hc.1
   · exact he
 
-theorem march_covered {g : ℝ → ℝ} {e d2 hmin b : Float} {v : Interval} {m : March}
+/-- A step of a search keeps the covered part's bounds, whatever the accuracy and the midpoint
+interval, since a panel extends the covered part only when its lower end is at least `d2`. -/
+theorem march_covered {g : ℝ → ℝ} {e d2 hmin acc b : Float} {v w : Interval} {m : March}
     (hd : Finite d2.toBits) (hb : Finite b.toBits)
-    (hv : ∀ τ, value m.t.toBits ≤ τ → τ ≤ value b.toBits → Encloses v (g τ))
-    (hm : Covered g d2 m) : Covered g d2 (march e d2 hmin v b m) := by
-  obtain ⟨ft, fl, hc⟩ := hm
+    (hv : Finite m.t.toBits → 0 ≤ value m.t.toBits → ∀ τ, value m.t.toBits ≤ τ →
+      τ ≤ value b.toBits → Encloses v (g τ))
+    (hm : Covered g d2 m) : Covered g d2 (march e d2 hmin acc v w b m) := by
+  obtain ⟨ft, fl, t0, hc⟩ := hm
+  have hv' := hv ft t0
   unfold march
   by_cases h1 : (v.status == 0 && m.t ≤ b) = true
-  · simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h1
+  · rw [ite_eq_left h1]
+    simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h1
     obtain ⟨hs, htb⟩ := h1
     have htb' := (le_iff_value ft hb).mp htb
-    have c0 := hv _ le_rfl htb' hs
+    have c0 := hv' _ le_rfl htb' hs
     have hlo : Finite v.lo.toBits := c0.2.1
-    by_cases h2 : d2 ≤ v.lo
-    · have hd2 := (le_iff_value hd hlo).mp h2
+    dsimp only
+    by_cases h2 : accepts d2 hmin acc (record m.best w) v m.h = true
+    · rw [ite_eq_left h2]
+      have hle : d2 ≤ v.lo := by
+        unfold accepts at h2
+        simp only [Bool.and_eq_true, decide_eq_true_eq] at h2
+        exact h2.1
+      have hd2 := (le_iff_value hd hlo).mp hle
       obtain ⟨fm, vm⟩ := fmin_value fl hlo
-      simp only [hs, htb, h2, beq_self_eq_true, Bool.and_self, decide_true, ite_true]
-      refine ⟨hb, fm, fun _ τ h0 hτ => ?_⟩
+      refine ⟨hb, fm, t0.trans htb', fun _ τ h0 hτ => ?_⟩
       rw [vm]
       by_cases hlt : value m.t.toBits ≤ τ
-      · have c := (hv τ hlt hτ hs).2.2.2.1
+      · have c := (hv' τ hlt hτ hs).2.2.2.1
         exact ⟨hd2.trans c, (min_le_right _ _).trans c⟩
       · have hlt' : τ < value m.t.toBits := not_le.mp hlt
         obtain ⟨c1, c2⟩ := hc (by linarith) τ h0 hlt'.le
         exact ⟨c1, (min_le_left _ _).trans c2⟩
-    · simp only [hs, htb, h2, beq_self_eq_true, Bool.and_self, decide_true, ite_true, ite_false]
+    · rw [ite_eq_right h2]
       split_ifs
-      · exact ⟨ft, fl, hc⟩
-      · exact ⟨ft, fl, hc⟩
-  · simp only [h1, Bool.false_eq_true, ite_false]
-    exact ⟨ft, fl, hc⟩
+      · exact ⟨ft, fl, t0, hc⟩
+      · exact ⟨ft, fl, t0, hc⟩
+  · rw [ite_eq_right h1]
+    exact ⟨ft, fl, t0, hc⟩
 
 /-- Every search of `[0, e]` covers its part `[0, m.t]` with bounds of `g`, when each panel's
-interval encloses `g` on the panel. -/
-theorem search_covered {g : ℝ → ℝ} {e d2 hmin : Float} {fuel : UInt64}
-    {panel : Float → Float → Interval} (he : Finite e.toBits) (hd : Finite d2.toBits)
-    (hp : ∀ a b : Float, ∀ τ, value a.toBits ≤ τ → τ ≤ value b.toBits →
-      Encloses (panel a b) (g τ)) :
-    Covered g d2 (LeanExe.repeatWhile fuel ⟨0, 0.0, e, maxFloat⟩
+first interval encloses `g` on the panel, whatever the accuracy and the record. -/
+theorem search_covered {g : ℝ → ℝ} {e d2 hmin acc best : Float} {fuel : UInt64}
+    {panel : Float → Float → Interval × Interval} (he : Finite e.toBits) (hd : Finite d2.toBits)
+    (hp : ∀ a b : Float, Finite a.toBits → Finite b.toBits → 0 ≤ value a.toBits → ∀ τ,
+      value a.toBits ≤ τ → τ ≤ value b.toBits → Encloses (panel a b).1 (g τ)) :
+    Covered g d2 (LeanExe.repeatWhile fuel ⟨0, 0.0, e, maxFloat, best⟩
       (fun m => m.status == 0 && m.t < e)
-      (fun m => march e d2 hmin (panel m.t (panelEnd m.t m.h e)) (panelEnd m.t m.h e) m)) := by
+      (fun m => march e d2 hmin acc (panel m.t (panelEnd m.t m.h e)).1
+        (panel m.t (panelEnd m.t m.h e)).2 (panelEnd m.t m.h e) m)) := by
   apply repeatWhile_invariant
-  · refine ⟨lit_zero.1, maxFloat_finite, fun h => ?_⟩
+  · refine ⟨lit_zero.1, maxFloat_finite, by rw [lit_zero.2], fun h => ?_⟩
     simp only [lit_zero.2, lt_irrefl] at h
   · intro m hm _
-    exact march_covered hd (panelEnd_finite he) (fun τ h1 h2 => hp _ _ τ h1 h2) hm
+    exact march_covered hd (panelEnd_finite he)
+      (fun ft t0 τ h1 h2 => hp _ _ ft (panelEnd_finite he) t0 τ h1 h2) hm
 
 /-- A search that finished with status 0 bounds `g` on `[0, e]`. -/
 theorem covered_final {g : ℝ → ℝ} {d2 e : Float} {m : March} (hc : Covered g d2 m)
@@ -371,7 +385,7 @@ theorem covered_final {g : ℝ → ℝ} {d2 e : Float} {m : March} (hc : Covered
       searchStatus m e 4 6 = 0) :
     Finite m.low.toBits ∧ ∀ τ, 0 ≤ τ → τ ≤ value e.toBits →
       value d2.toBits ≤ g τ ∧ value m.low.toBits ≤ g τ := by
-  obtain ⟨ft, fl, hcov⟩ := hc
+  obtain ⟨ft, fl, -, hcov⟩ := hc
   have h : m.status = 0 ∧ e ≤ m.t := by
     unfold searchStatus at hs
     by_cases h0 : (m.status == 0) = true
@@ -497,41 +511,429 @@ theorem Valid.times {xs : Array Float} {N : UInt64} (hv : Valid xs N) {bs : List
   · rw [(hp.2 i hi).1]
     exact (hv.burns i (by omega)).2.2.1
 
-/-- A finished separation search of scenario `j` bounds the squared separation on `[0, T]`. -/
-theorem sep_good {xs : Array Float} {N j : UInt64} {d2 : Float} {fuel : UInt64}
-    (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hd : Finite d2.toBits)
-    (h : searchStatus (sepSearch Trig.invPi Trig.halfPi xs N j (rd xs 1) d2 fuel) (rd xs 1) 3 5
-      = 0) {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
-    let m := sepSearch Trig.invPi Trig.halfPi xs N j (rd xs 1) d2 fuel
-    Finite m.low.toBits ∧ ∀ t, 0 ≤ t → t ≤ val xs 1 →
-      value d2.toBits ≤ sepSq xs s bs j.toNat t ∧ value m.low.toBits ≤ sepSq xs s bs j.toNat t := by
-  intro m
+/-! ### Panels without a burn time in their interior -/
+
+theorem encloses_rejected (x : ℝ) : Encloses rejected x := fun h => absurd h (by decide)
+
+theorem encloses_of_eq {v : Interval} {x y : ℝ} (h : Encloses v x) (e : x = y) : Encloses v y :=
+  e ▸ h
+
+theorem encloses_meet {u v : Interval} {x : ℝ} (hu : Encloses u x) (hv : Encloses v x) :
+    Encloses (meet u v) x := by
+  unfold meet
+  by_cases h1 : (u.status == 0) = true
+  · rw [ite_eq_left h1]
+    by_cases h2 : (v.status == 0) = true
+    · rw [ite_eq_left h2]
+      intro _
+      obtain ⟨-, l1, u1, a1, b1⟩ := hu (beq_iff_eq.mp h1)
+      obtain ⟨-, l2, u2, a2, b2⟩ := hv (beq_iff_eq.mp h2)
+      obtain ⟨fl, vl⟩ := fmax_value l1 l2
+      obtain ⟨fh, vh⟩ := fmin_value u1 u2
+      exact ⟨rfl, fl, fh, by rw [vl]; exact max_le a1 a2, by rw [vh]; exact le_min b1 b2⟩
+    · rw [ite_eq_right h2]; exact hu
+  · rw [ite_eq_right h1]; exact hv
+
+theorem flowVelocity_eq (n t : ℝ) (s : State) :
+    flowVelocity n t s.x s.z s.vx s.vy s.vz =
+      ((flow n t s).vx, (flow n t s).vy, (flow n t s).vz) :=
+  rfl
+
+/-- The enclosures of the velocity after the first `k` burns of scenario `j` at time `τ`, with the
+terms of the burns at or before `S`. -/
+def VelInv (xs : Array Float) (s : State) (bs : List Burn) (j : ℕ) (S τ : ℝ) (k : ℕ)
+    (acc : Interval × Interval × Interval) : Prop :=
+  Encloses acc.1 ((flow (val xs 0) τ s).vx +
+      ∑ i ∈ Finset.range k, (early (val xs 0) S bs.length j bs i τ).vx) ∧
+    Encloses acc.2.1 ((flow (val xs 0) τ s).vy +
+      ∑ i ∈ Finset.range k, (early (val xs 0) S bs.length j bs i τ).vy) ∧
+    Encloses acc.2.2 ((flow (val xs 0) τ s).vz +
+      ∑ i ∈ Finset.range k, (early (val xs 0) S bs.length j bs i τ).vz)
+
+theorem velocityI_encloses {xs : Array Float} {N j : UInt64} {bs : List Burn} {s : State}
+    {start : Float} {tI : Interval} {τ : ℝ} (hN : N.toNat = bs.length) (h16 : bs.length ≤ 16)
+    (hj : j.toNat ≤ 2 * bs.length) (hplan : Plan xs bs) (hbox : InBox xs s)
+    (hfin : ∀ i < xs.size, Finite (xs[i]!).toBits) (hst : Finite start.toBits)
+    (hτ : Encloses tI τ) :
+    VelInv xs s bs j.toNat (value start.toBits) τ bs.length
+      (velocityI Trig.invPi Trig.halfPi xs N j start tI) := by
+  obtain ⟨b0, -, b2, b3, b4, b5⟩ := box_initial hbox
+  have hn : Encloses (point (rd xs 0)) (val xs 0) := encloses_point _
+  have e0 := flowVelocity.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hn hτ b0 b2 b3
+    b4 b5
+  rw [flowVelocity_eq] at e0
+  obtain ⟨p0, p1, p2⟩ := e0
+  rw [← hN]
+  unfold velocityI
+  refine LeanExe.Dialect.loop_induction (VelInv xs s bs j.toNat (value start.toBits) τ) ?_ ?_
+  · simp only [VelInv, Finset.range_zero, Finset.sum_empty, add_zero]
+    exact ⟨p0, p1, p2⟩
+  · intro k acc hk ih
+    simp only [VelInv] at ih ⊢
+    have hkN : (UInt64.ofNat k).toNat = k := by
+      rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
+    have hr := runs_eq (N := N) (j := j) (k := UInt64.ofNat k) (by omega) (by omega)
+      (by rw [hkN]; exact hk)
+    rw [hN, hkN] at hr
+    simp only [Finset.sum_range_succ]
+    obtain ⟨et, ex, ey, ez⟩ := burn_encloses hplan (k := UInt64.ofNat k) (by omega) h16
+    rw [hkN] at et ex ey ez
+    obtain ⟨i0, -⟩ := burn_idx (k := UInt64.ofNat k) (by omega)
+    rw [hkN] at i0
+    have ft : Finite (rd xs (burnAt (UInt64.ofNat k))).toBits := by
+      unfold rd; rw [i0]; exact hfin _ (by rw [hplan.1]; omega)
+    set b := bs.getD k Burn.none
+    have vt : value (rd xs (burnAt (UInt64.ofNat k))).toBits = b.t := by
+      rw [val_rd, i0, (hplan.getD (by omega)).1]
+    have hcond : (runs N j (UInt64.ofNat k) && rd xs (burnAt (UInt64.ofNat k)) ≤ start) = true ↔
+        (Model.runs bs.length j.toNat k = true ∧ b.t ≤ value start.toBits) := by
+      rw [Bool.and_eq_true, hr, decide_eq_true_iff, le_iff_value ft hst, vt]
+    obtain ⟨a0, a1, a2⟩ := ih
+    by_cases hc : Model.runs bs.length j.toNat k = true ∧ b.t ≤ value start.toBits
+    · rw [ite_eq_left (hcond.mpr hc)]
+      have hd : Encloses (sub tI (point (rd xs (burnAt (UInt64.ofNat k))))) (τ - b.t) :=
+        encloses_sub hτ et
+      have eq := flowVelocity.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi)
+        (x' := b.kick.x) (z' := b.kick.z) (vx' := b.kick.vx) (vy' := b.kick.vy)
+        (vz' := b.kick.vz) hn hd encloses_zero encloses_zero ex ey ez
+      rw [flowVelocity_eq] at eq
+      obtain ⟨q0, q1, q2⟩ := eq
+      have he : early (val xs 0) (value start.toBits) bs.length j.toNat bs k τ =
+          flow (val xs 0) (τ - b.t) b.kick := ite_eq_left hc
+      rw [he]
+      refine ⟨?_, ?_, ?_⟩
+      · have := encloses_add a0 q0; rwa [add_assoc] at this
+      · have := encloses_add a1 q1; rwa [add_assoc] at this
+      · have := encloses_add a2 q2; rwa [add_assoc] at this
+    · rw [ite_eq_right fun h => hc (hcond.mp h)]
+      have he : early (val xs 0) (value start.toBits) bs.length j.toNat bs k τ = 0 :=
+        ite_eq_right hc
+      rw [he]
+      simp only [State.zero_vx, State.zero_vy, State.zero_vz, add_zero]
+      exact ⟨a0, a1, a2⟩
+
+/-- The times `[α, β]` of a panel on which the trajectory of scenario `j` is smooth, with the
+terms of the burns at or before `S`: each burn that the scenario executes lies at or before `α`
+when it lies at or before `S`, and at or after `β` otherwise. -/
+def Window (bs : List Burn) (j : ℕ) (S α β : ℝ) : Prop :=
+  ∀ i < bs.length, Model.runs bs.length j i = true →
+    ((bs.getD i Burn.none).t ≤ S → (bs.getD i Burn.none).t ≤ α) ∧
+    (S < (bs.getD i Burn.none).t → β ≤ (bs.getD i Burn.none).t)
+
+/-- On the times of a window, a burn's position term is its term of `early`. -/
+theorem posTerm_early {c : State → ℝ} (hc0 : c 0 = 0) (hck : ∀ b : Burn, c b.kick = 0)
+    {n τ S α β : ℝ} {j : ℕ} {bs : List Burn} (hw : Window bs j S α β) (h1 : α ≤ τ) (h2 : τ ≤ β)
+    {i : ℕ} (hi : i < bs.length) :
+    posTerm c n τ bs.length j bs i = c (early n S bs.length j bs i τ) := by
+  unfold posTerm early
+  by_cases hr : Model.runs bs.length j i = true
+  · by_cases hS : (bs.getD i Burn.none).t ≤ S
+    · rw [ite_eq_left hr, ite_eq_left ⟨hr, hS⟩,
+        max_eq_left (sub_nonneg.mpr (((hw i hi hr).1 hS).trans h1))]
+    · rw [ite_eq_left hr, ite_eq_right fun h => hS h.2,
+        max_eq_right (sub_nonpos.mpr (h2.trans ((hw i hi hr).2 (not_le.mp hS)))), flow_zero,
+        hck, hc0]
+  · rw [ite_eq_right hr, ite_eq_right fun h => hr h.1, hc0]
+
+/-- On the times of a window, the position of the scenario's trajectory is that of `smooth`. -/
+theorem path_smooth {n : ℝ} (hn : n ≠ 0) {bs : List Burn} (hs : Sorted bs) (j : ℕ) (s : State)
+    {S α β τ : ℝ} (hw : Window bs j S α β) (h1 : α ≤ τ) (h2 : τ ≤ β) :
+    (path n 0 s (select bs.length j bs) τ).x = smooth State.x n S s bs.length j bs τ ∧
+      (path n 0 s (select bs.length j bs) τ).y = smooth State.y n S s bs.length j bs τ ∧
+      (path n 0 s (select bs.length j bs) τ).z = smooth State.z n S s bs.length j bs τ := by
+  obtain ⟨e0, e1, e2⟩ := path_position hn hs bs.length j s τ
+  refine ⟨?_, ?_, ?_⟩
+  · rw [e0, smooth]
+    congr 1
+    exact Finset.sum_congr rfl fun i hi =>
+      posTerm_early State.zero_x (fun _ => rfl) hw h1 h2 (Finset.mem_range.mp hi)
+  · rw [e1, smooth]
+    congr 1
+    exact Finset.sum_congr rfl fun i hi =>
+      posTerm_early State.zero_y (fun _ => rfl) hw h1 h2 (Finset.mem_range.mp hi)
+  · rw [e2, smooth]
+    congr 1
+    exact Finset.sum_congr rfl fun i hi =>
+      posTerm_early State.zero_z (fun _ => rfl) hw h1 h2 (Finset.mem_range.mp hi)
+
+/-- The squared distances of every trajectory of scenario `j` from the boxes, at every time of a
+window `[α, β]` that the interval `tI` encloses, lie in the intervals of `smoothSep` and
+`smoothRc`, for a midpoint time `μ` of the window that `tm` encloses. -/
+theorem smooth_panel {xs : Array Float} {N j : UInt64} {s : State} {bs : List Burn}
+    (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hbox : InBox xs s) (hplan : Plan xs bs)
+    {start : Float} (hst : Finite start.toBits) {α β μ : ℝ} (hαμ : α ≤ μ) (hμβ : μ ≤ β)
+    (hw : Window bs j.toNat (value start.toBits) α β) {tI tm : Interval}
+    (htI : ∀ τ, α ≤ τ → τ ≤ β → Encloses tI τ) (htm : Encloses tm μ) {t : ℝ} (hαt : α ≤ t)
+    (htβ : t ≤ β) :
+    Encloses (smoothSep Trig.invPi Trig.halfPi xs N j start tI tm
+        (positionI Trig.invPi Trig.halfPi xs N j tm)) (sepSq xs s bs j.toNat t) ∧
+      Encloses (smoothRc Trig.invPi Trig.halfPi xs N j start tI tm
+        (positionI Trig.invPi Trig.halfPi xs N j tm)) (rcSqAt xs s bs j.toNat t) := by
   have hN := hv.length hplan
   have h16 := hv.small
-  have he : Finite (rd xs 1).toBits := hv.finite 1 (by rw [hv.size]; omega)
   have hn0 : val xs 0 ≠ 0 := hv.n_pos.ne'
-  have hp : ∀ a b : Float, ∀ τ, value a.toBits ≤ τ → τ ≤ value b.toBits →
-      Encloses (sepPanel Trig.invPi Trig.halfPi xs N j a b) (sepSq xs s bs j.toNat τ) := by
-    intro a b τ h1 h2
+  have hsort := hv.sorted bs hplan
+  have hn : Encloses (point (rd xs 0)) (val xs 0) := encloses_point _
+  set n := val xs 0
+  set S := value start.toBits
+  set L := bs.length
+  have hmo := smooth_motion hn0 S s L j.toNat bs
+  set qx := smooth State.x n S s L j.toNat bs
+  set qy := smooth State.y n S s L j.toNat bs
+  set qz := smooth State.z n S s L j.toNat bs
+  set qvx := smooth State.vx n S s L j.toNat bs
+  set qvy := smooth State.vy n S s L j.toNat bs
+  set qvz := smooth State.vz n S s L j.toNat bs
+  -- The position at the midpoint.
+  obtain ⟨c0, c1, c2⟩ := positionI_encloses (N := N) (j := j) hN (by omega) (by omega) hplan hbox
+    htm
+  obtain ⟨e0, e1, e2⟩ := path_position hn0 hsort L j.toNat s μ
+  obtain ⟨f0, f1, f2⟩ := path_smooth hn0 hsort j.toNat s hw hαμ hμβ
+  set pm := positionI Trig.invPi Trig.halfPi xs N j tm
+  have pm0 : Encloses pm.1 (qx μ) := by rw [← e0, f0] at c0; exact c0
+  have pm1 : Encloses pm.2.1 (qy μ) := by rw [← e1, f1] at c1; exact c1
+  have pm2 : Encloses pm.2.2 (qz μ) := by rw [← e2, f2] at c2; exact c2
+  -- The velocities.
+  set vm := velocityI Trig.invPi Trig.halfPi xs N j start tm
+  set vT := velocityI Trig.invPi Trig.halfPi xs N j start tI
+  have hvm : Encloses vm.1 (qvx μ) ∧ Encloses vm.2.1 (qvy μ) ∧ Encloses vm.2.2 (qvz μ) :=
+    velocityI_encloses (N := N) (j := j) (start := start) hN (by omega) (by omega) hplan hbox
+      hv.finite hst htm
+  obtain ⟨vm0, vm1, vm2⟩ := hvm
+  have hvT : ∀ η, α ≤ η → η ≤ β →
+      Encloses vT.1 (qvx η) ∧ Encloses vT.2.1 (qvy η) ∧ Encloses vT.2.2 (qvz η) := fun η h1 h2 =>
+    velocityI_encloses (N := N) (j := j) (start := start) hN (by omega) (by omega) hplan hbox
+      hv.finite hst (htI η h1 h2)
+  have hd : ∀ τ, α ≤ τ → τ ≤ β → Encloses (sub tI tm) (τ - μ) := fun τ h1 h2 =>
+    encloses_sub (htI τ h1 h2) htm
+  -- The position over the panel, by the mean value theorem.
+  have between : ∀ τ η, α ≤ τ → τ ≤ β → min μ τ ≤ η → η ≤ max μ τ → α ≤ η ∧ η ≤ β :=
+    fun τ η h1 h2 g1 g2 => ⟨(le_min hαμ h1).trans g1, g2.trans (max_le hμβ h2)⟩
+  have hpT : ∀ τ, α ≤ τ → τ ≤ β →
+      Encloses (add pm.1 (mul vT.1 (sub tI tm))) (qx τ) ∧
+        Encloses (add pm.2.1 (mul vT.2.1 (sub tI tm))) (qy τ) ∧
+        Encloses (add pm.2.2 (mul vT.2.2 (sub tI tm))) (qz τ) := by
+    intro τ h1 h2
+    obtain ⟨η0, g0, g0', k0⟩ := mean_value (fun x => (hmo x).1) μ τ
+    obtain ⟨η1, g1, g1', k1⟩ := mean_value (fun x => (hmo x).2.1) μ τ
+    obtain ⟨η2, g2, g2', k2⟩ := mean_value (fun x => (hmo x).2.2.1) μ τ
+    obtain ⟨a0, b0⟩ := between τ η0 h1 h2 g0 g0'
+    obtain ⟨a1, b1⟩ := between τ η1 h1 h2 g1 g1'
+    obtain ⟨a2, b2⟩ := between τ η2 h1 h2 g2 g2'
+    refine ⟨?_, ?_, ?_⟩
+    · rw [k0]; exact encloses_add pm0 (encloses_mul (hvT η0 a0 b0).1 (hd τ h1 h2))
+    · rw [k1]; exact encloses_add pm1 (encloses_mul (hvT η1 a1 b1).2.1 (hd τ h1 h2))
+    · rw [k2]; exact encloses_add pm2 (encloses_mul (hvT η2 a2 b2).2.2 (hd τ h1 h2))
+  -- The positions of the scenario's trajectory at `t`.
+  obtain ⟨t0, t1, t2⟩ := path_smooth hn0 hsort j.toNat s hw hαt htβ
+  have hsep : sepSq xs s bs j.toNat t = qx t ^ 2 + qy t ^ 2 + qz t ^ 2 := by
+    unfold sepSq; rw [t0, t1, t2]
+  have hrc : rcSqAt xs s bs j.toNat t = qx t ^ 2 + qz t ^ 2 := by
+    unfold rcSqAt; rw [t0, t2]
+  obtain ⟨px, py, pz⟩ := hpT t hαt htβ
+  -- The Taylor form of the radial and cross-track distance.
+  obtain ⟨r1, r2⟩ := rc_derivs hmo
+  obtain ⟨ξ, ξ1, ξ2, eξ⟩ := taylor_two r1 r2 μ t
+  obtain ⟨hξ1, hξ2⟩ := between t ξ hαt htβ ξ1 ξ2
+  obtain ⟨u0, u1, u2⟩ := hpT ξ hξ1 hξ2
+  obtain ⟨w0, w1, w2⟩ := hvT ξ hξ1 hξ2
+  have hrT := rcTaylor.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hn pm0 pm2 vm0 vm2
+    u0 u2 w0 w1 w2 (hd t hαt htβ)
+  have eR : rcTaylor n (qx μ) (qz μ) (qvx μ) (qvz μ) (qx ξ) (qz ξ) (qvx ξ) (qvy ξ) (qvz ξ)
+      (t - μ) = qx t ^ 2 + qz t ^ 2 := by
+    simp only [rcTaylor, rcSquare_eq, abs_mul_abs_self]
+    linear_combination -eξ
+  rw [eR] at hrT
+  have hxz : Encloses (xzBound Trig.invPi Trig.halfPi (point (rd xs 0)) pm vm vT (sub tI tm)
+      (add pm.1 (mul vT.1 (sub tI tm))) (add pm.2.2 (mul vT.2.2 (sub tI tm))))
+      (qx t ^ 2 + qz t ^ 2) := by
+    unfold xzBound
+    refine encloses_meet hrT ?_
+    have := rcSquare.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) px pz
+    rwa [rcSquare_eq] at this
+  -- The Taylor form of the separation.
+  obtain ⟨s1, s2⟩ := sep_derivs hmo
+  obtain ⟨ζ, ζ1, ζ2, eζ⟩ := taylor_two s1 s2 μ t
+  obtain ⟨hζ1, hζ2⟩ := between t ζ hαt htβ ζ1 ζ2
+  obtain ⟨u0', u1', u2'⟩ := hpT ζ hζ1 hζ2
+  obtain ⟨w0', w1', w2'⟩ := hvT ζ hζ1 hζ2
+  have hsT := sepTaylor.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hn pm0 pm1 pm2 vm0
+    vm1 vm2 u0' u1' u2' w0' w1' w2' (hd t hαt htβ)
+  have eS : sepTaylor n (qx μ) (qy μ) (qz μ) (qvx μ) (qvy μ) (qvz μ) (qx ζ) (qy ζ) (qz ζ) (qvx ζ)
+      (qvy ζ) (qvz ζ) (t - μ) = qx t ^ 2 + qy t ^ 2 + qz t ^ 2 := by
+    simp only [sepTaylor, sepSquare_eq, abs_mul_abs_self]
+    linear_combination -eζ
+  rw [eS] at hsT
+  refine ⟨?_, ?_⟩
+  · rw [hsep]
+    unfold smoothSep
+    refine encloses_meet hsT ?_
+    exact encloses_of_eq (encloses_add hxz (encloses_sq py)) (by ring)
+  · rw [hrc]
+    exact hxz
+
+/-- When no burn of scenario `j` lies strictly between `a` and `b`, the times `[a, b]` form a
+window with the burns at or before `a`. -/
+theorem straddles_window {xs : Array Float} {N j : UInt64} {bs : List Burn} {a b : Float}
+    (hN : N.toNat = bs.length) (h16 : bs.length ≤ 16) (hj : j.toNat ≤ 2 * bs.length)
+    (hplan : Plan xs bs) (hfin : ∀ i < xs.size, Finite (xs[i]!).toBits) (fa : Finite a.toBits)
+    (fb : Finite b.toBits) (h : straddles xs N j a b = false) :
+    Window bs j.toNat (value a.toBits) (value a.toBits) (value b.toBits) := by
+  have key := LeanExe.Dialect.loop_induction (n := N) (init := false)
+    (f := fun k acc =>
+      let t := rd xs (burnAt k)
+      acc || (runs N j k && a < t && t < b))
+    (fun k acc => acc = false → ∀ i < k, Model.runs bs.length j.toNat i = true →
+      ¬ (value a.toBits < (bs.getD i Burn.none).t ∧ (bs.getD i Burn.none).t < value b.toBits))
+    (fun _ i hi => absurd hi (Nat.not_lt_zero i))
+    (by
+      intro k acc hk ih hacc
+      simp only [Bool.or_eq_false_iff, Bool.and_eq_false_imp, Bool.and_eq_true,
+        decide_eq_true_eq, decide_eq_false_iff_not] at hacc
+      obtain ⟨hacc, hcond⟩ := hacc
+      intro i hi hri
+      rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | hi
+      · exact ih hacc i hi hri
+      · subst hi
+        have hkN : (UInt64.ofNat i).toNat = i := by
+          rw [UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
+        have hr := runs_eq (N := N) (j := j) (k := UInt64.ofNat i) (by omega) (by omega)
+          (by rw [hkN]; omega)
+        rw [hN, hkN] at hr
+        obtain ⟨i0, -⟩ := burn_idx (k := UInt64.ofNat i) (by omega)
+        rw [hkN] at i0
+        have ft : Finite (rd xs (burnAt (UInt64.ofNat i))).toBits := by
+          unfold rd; rw [i0]; exact hfin _ (by rw [hplan.1]; omega)
+        have vt : value (rd xs (burnAt (UInt64.ofNat i))).toBits = (bs.getD i Burn.none).t := by
+          rw [val_rd, i0, (hplan.getD (by omega)).1]
+        rintro ⟨l1, l2⟩
+        have c := hcond ⟨hr.trans hri, (lt_iff_value fa ft).mpr (by rw [vt]; exact l1)⟩
+        exact c ((lt_iff_value ft fb).mpr (by rw [vt]; exact l2)))
+  rw [hN] at key
+  intro i hi hri
+  have hno := key h i hi hri
+  refine ⟨fun h1 => h1, fun h1 => ?_⟩
+  by_contra h2
+  exact hno ⟨h1, not_le.mp h2⟩
+
+/-- A panel's midpoint that passes the program's test is finite and lies between the panel's
+ends. -/
+theorem midpoint_ok {a b : Float} (fa : Finite a.toBits) (fb : Finite b.toBits)
+    (h : (finite (midpoint a b) && a ≤ midpoint a b && midpoint a b ≤ b) = true) :
+    Finite (midpoint a b).toBits ∧ value a.toBits ≤ value (midpoint a b).toBits ∧
+      value (midpoint a b).toBits ≤ value b.toBits := by
+  simp only [Bool.and_eq_true] at h
+  obtain ⟨⟨fm, h1⟩, h2⟩ := h
+  have fm' := (finite_iff _).mp fm
+  exact ⟨fm', (le_iff_value fa fm').mp (of_decide_eq_true h1),
+    (le_iff_value fm' fb).mp (of_decide_eq_true h2)⟩
+
+/-- The first interval of a separation panel `[a, b]` encloses the squared separation of every
+trajectory of scenario `j` at every time of the panel. -/
+theorem sepPanel_encloses {xs : Array Float} {N j : UInt64} {s : State} {bs : List Burn}
+    (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hbox : InBox xs s) (hplan : Plan xs bs)
+    {a b : Float} (fa : Finite a.toBits) (fb : Finite b.toBits) {τ : ℝ}
+    (h1 : value a.toBits ≤ τ) (h2 : τ ≤ value b.toBits) :
+    Encloses (sepPanel Trig.invPi Trig.halfPi xs N j a b).1 (sepSq xs s bs j.toNat τ) := by
+  have hN := hv.length hplan
+  have h16 := hv.small
+  have hn0 : val xs 0 ≠ 0 := hv.n_pos.ne'
+  have hq : 0 ≤ sepSq xs s bs j.toNat τ := by unfold sepSq; positivity
+  unfold sepPanel
+  dsimp only
+  split_ifs with hm hst
+  · dsimp only
     obtain ⟨c0, c1, c2⟩ := positionI_encloses (N := N) (j := j) (tI := make a b) hN
       (by omega) (by omega) hplan hbox (encloses_make h1 h2)
     obtain ⟨e0, e1, e2⟩ := path_position hn0 (hv.sorted bs hplan) bs.length j.toNat s τ
     have hs := sepSquare.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) c0 c1 c2
     rw [sepSquare_eq, ← e0, ← e1, ← e2] at hs
-    exact encloses_nonneg hs (add_nonneg (add_nonneg (sq_nonneg _) (sq_nonneg _)) (sq_nonneg _))
+    exact encloses_nonneg hs hq
+  · dsimp only
+    obtain ⟨-, am, mb⟩ := midpoint_ok fa fb hm
+    have hw := straddles_window (N := N) (j := j) hN (by omega) (by omega) hplan hv.finite fa fb
+      (by simpa using hst)
+    exact encloses_nonneg (smooth_panel hv hj hbox hplan fa am mb hw
+      (fun _ g1 g2 => encloses_make g1 g2) (encloses_point _) h1 h2).1 hq
+  · exact encloses_rejected _
+
+/-- The first interval of a radial and cross-track panel `[a, b]` of phases, with `a ≥ 0`,
+encloses the squared radial and cross-track distance of every trajectory of scenario `j` at the
+time `t_L + φ/n` of every phase `φ` of the panel. -/
+theorem rcPanel_encloses {xs : Array Float} {N j : UInt64} {s : State} {bs : List Burn}
+    (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hbox : InBox xs s) (hplan : Plan xs bs)
+    {a b : Float} (fa : Finite a.toBits) (fb : Finite b.toBits) (a0 : 0 ≤ value a.toBits)
+    {φ : ℝ} (h1 : value a.toBits ≤ φ) (h2 : φ ≤ value b.toBits) :
+    Encloses (rcPanel Trig.invPi Trig.halfPi xs N j (lastTime xs N j) a b).1
+      (rcSqAt xs s bs j.toNat (value (lastTime xs N j).toBits + φ / val xs 0)) := by
+  have hN := hv.length hplan
+  have h16 := hv.small
+  have hn : 0 < val xs 0 := hv.n_pos
+  obtain ⟨fL, -, tLge, -⟩ := lastTime_bounds (j := j) hN (by omega) (by omega) hplan hv.finite
+  set tL := value (lastTime xs N j).toBits
+  set n := val xs 0
+  have hq : 0 ≤ rcSqAt xs s bs j.toNat (tL + φ / n) := by unfold rcSqAt; positivity
+  unfold rcPanel
+  dsimp only
+  split_ifs with hm
+  · dsimp only
+    obtain ⟨-, am, mb⟩ := midpoint_ok fa fb hm
+    have hw : Window bs j.toNat tL (tL + value a.toBits / n) (tL + value b.toBits / n) := by
+      intro i hi hr
+      have hti := tLge i hi hr
+      exact ⟨fun _ => hti.trans (le_add_of_nonneg_right (div_nonneg a0 hn.le)),
+        fun h => absurd hti (not_le.mpr h)⟩
+    have hI : ∀ τ, tL + value a.toBits / n ≤ τ → τ ≤ tL + value b.toBits / n →
+        Encloses (add (point (lastTime xs N j)) (div (make a b) (point (rd xs 0)))) τ := by
+      intro τ g1 g2
+      have e : τ = tL + (τ - tL) * n / n := by rw [mul_div_cancel_right₀ _ hn.ne']; ring
+      rw [e]
+      refine encloses_add (encloses_point _)
+        (encloses_div (encloses_make ?_ ?_) (encloses_point _))
+      · have := (div_le_iff₀ hn).mp (show value a.toBits / n ≤ τ - tL by linarith)
+        linarith
+      · have := (le_div_iff₀ hn).mp (show τ - tL ≤ value b.toBits / n by linarith)
+        linarith
+    have hμ : Encloses (add (point (lastTime xs N j))
+        (div (point (midpoint a b)) (point (rd xs 0))))
+        (tL + value (midpoint a b).toBits / n) :=
+      encloses_add (encloses_point _) (encloses_div (encloses_point _) (encloses_point _))
+    have d1 := (div_le_div_iff_of_pos_right hn).mpr am
+    have d2 := (div_le_div_iff_of_pos_right hn).mpr mb
+    have d3 := (div_le_div_iff_of_pos_right hn).mpr h1
+    have d4 := (div_le_div_iff_of_pos_right hn).mpr h2
+    exact encloses_nonneg (smooth_panel hv hj hbox hplan fL (by linarith) (by linarith) hw hI hμ
+      (by linarith) (by linarith)).2 hq
+  · exact encloses_rejected _
+
+/-- A finished separation search of scenario `j` bounds the squared separation on `[0, T]`. -/
+theorem sep_good {xs : Array Float} {N j : UInt64} {d2 acc best : Float} {fuel : UInt64}
+    (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hd : Finite d2.toBits)
+    (h : searchStatus (sepSearch Trig.invPi Trig.halfPi xs N j (rd xs 1) d2 acc best fuel)
+      (rd xs 1) 3 5 = 0) {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
+    let m := sepSearch Trig.invPi Trig.halfPi xs N j (rd xs 1) d2 acc best fuel
+    Finite m.low.toBits ∧ ∀ t, 0 ≤ t → t ≤ val xs 1 →
+      value d2.toBits ≤ sepSq xs s bs j.toNat t ∧ value m.low.toBits ≤ sepSq xs s bs j.toNat t := by
+  intro m
+  have he : Finite (rd xs 1).toBits := hv.finite 1 (by rw [hv.size]; omega)
+  have hp : ∀ a b : Float, Finite a.toBits → Finite b.toBits → 0 ≤ value a.toBits → ∀ τ,
+      value a.toBits ≤ τ → τ ≤ value b.toBits →
+      Encloses (sepPanel Trig.invPi Trig.halfPi xs N j a b).1 (sepSq xs s bs j.toNat τ) :=
+    fun _ _ fa fb _ _ h1 h2 => sepPanel_encloses hv hj hbox hplan fa fb h1 h2
   have hc : Covered (sepSq xs s bs j.toNat) d2 m :=
-    search_covered (hmin := rd xs 1 * minRatio) (fuel := fuel) he hd hp
+    search_covered (hmin := rd xs 1 * minRatio) (acc := acc) (best := best) (fuel := fuel) he hd
+      hp
   obtain ⟨fl, hb⟩ := covered_final hc he hv.horizon_pos (Or.inl h)
   exact ⟨fl, hb⟩
 
 /-- A finished radial and cross-track search of scenario `j` bounds the squared radial and
 cross-track distance at every time after the scenario's burns. -/
-theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
+theorem rc_good {xs : Array Float} {N j : UInt64} {r2 acc best : Float} {fuel : UInt64}
     (hv : Valid xs N) (hj : j.toNat ≤ 2 * N.toNat) (hd : Finite r2.toBits)
-    (h : searchStatus (rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 fuel)
-      twoPiHi 4 6 = 0)
+    (h : searchStatus (rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 acc
+      best fuel) twoPiHi 4 6 = 0)
     {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
-    let m := rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 fuel
+    let m := rcSearch Trig.invPi Trig.halfPi xs N j (lastTime xs N j) twoPiHi r2 acc best fuel
     Finite m.low.toBits ∧ ∀ t, 0 ≤ t → (∀ b ∈ select bs.length j.toNat bs, b.t ≤ t) →
       value r2.toBits ≤ rcSqAt xs s bs j.toNat t ∧
         value m.low.toBits ≤ rcSqAt xs s bs j.toNat t := by
@@ -544,21 +946,14 @@ theorem rc_good {xs : Array Float} {N j : UInt64} {r2 : Float} {fuel : UInt64}
     hv.finite
   set tL := value (lastTime xs N j).toBits
   set n := val xs 0
-  have hp : ∀ a b : Float, ∀ φ, value a.toBits ≤ φ → φ ≤ value b.toBits →
-      Encloses (rcPanel Trig.invPi Trig.halfPi xs N j (lastTime xs N j) a b)
-        (rcSqAt xs s bs j.toNat (tL + φ / n)) := by
-    intro a b φ h1 h2
-    have ht : Encloses (add (point (lastTime xs N j)) (div (make a b) (point (rd xs 0))))
-        (tL + φ / n) := encloses_add (encloses_point _) (encloses_div (encloses_make h1 h2)
-          (encloses_point _))
-    obtain ⟨c0, -, c2⟩ := positionI_encloses (N := N) (j := j) hN (by omega) (by omega) hplan hbox
-      ht
-    obtain ⟨e0, -, e2⟩ := path_position hn0 hsort bs.length j.toNat s (tL + φ / n)
-    have hs := rcSquare.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) c0 c2
-    rw [rcSquare_eq, ← e0, ← e2] at hs
-    exact encloses_nonneg hs (add_nonneg (sq_nonneg _) (sq_nonneg _))
+  have hp : ∀ a b : Float, Finite a.toBits → Finite b.toBits → 0 ≤ value a.toBits → ∀ φ,
+      value a.toBits ≤ φ → φ ≤ value b.toBits →
+      Encloses (rcPanel Trig.invPi Trig.halfPi xs N j (lastTime xs N j) a b).1
+        (rcSqAt xs s bs j.toNat (tL + φ / n)) :=
+    fun _ _ fa fb a0 _ h1 h2 => rcPanel_encloses hv hj hbox hplan fa fb a0 h1 h2
   have hc : Covered (fun φ => rcSqAt xs s bs j.toNat (tL + φ / n)) r2 m :=
-    search_covered (hmin := twoPiHi * minRatio) (fuel := fuel) twoPiHi_bounds.1 hd hp
+    search_covered (hmin := twoPiHi * minRatio) (acc := acc) (best := best) (fuel := fuel)
+      twoPiHi_bounds.1 hd hp
   obtain ⟨fl, hb⟩ := covered_final hc twoPiHi_bounds.1
     (lt_of_lt_of_le (by positivity) twoPiHi_bounds.2) (Or.inr h)
   refine ⟨fl, fun t ht hall => ?_⟩
@@ -595,13 +990,15 @@ def Bounded (xs : Array Float) (d2 r2 L R : Float) (s : State) (bs : List Burn) 
     (∀ t, 0 ≤ t → (∀ b ∈ select bs.length j bs, b.t ≤ t) →
       value r2.toBits ≤ rcSqAt xs s bs j t ∧ value R.toBits ≤ rcSqAt xs s bs j t)
 
-theorem scan_sound {xs : Array Float} {N fuel : UInt64} {d2 r2 : Float} (hv : Valid xs N)
+theorem scan_sound {xs : Array Float} {N fuel : UInt64} {d2 r2 acc : Float} (hv : Valid xs N)
     (hd : Finite d2.toBits) (hr : Finite r2.toBits)
-    (h : (LeanExe.loop (2 * N + 1) (⟨0, 0, 0.0, maxFloat, maxFloat⟩ : Scan)
-      fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 j s).status = 0)
+    (h : (LeanExe.loop (2 * N + 1)
+      (⟨0, 0, 0.0, maxFloat, maxFloat, maxFloat, maxFloat⟩ : Scan)
+      fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 acc j s).status = 0)
     {s : State} {bs : List Burn} (hbox : InBox xs s) (hplan : Plan xs bs) :
-    let sc := LeanExe.loop (2 * N + 1) (⟨0, 0, 0.0, maxFloat, maxFloat⟩ : Scan)
-      fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 j s
+    let sc := LeanExe.loop (2 * N + 1)
+      (⟨0, 0, 0.0, maxFloat, maxFloat, maxFloat, maxFloat⟩ : Scan)
+      fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 acc j s
     Bounded xs d2 r2 sc.sepLow sc.rcLow s bs (2 * bs.length + 1) := by
   intro sc
   have hN := hv.length hplan
@@ -610,8 +1007,8 @@ theorem scan_sound {xs : Array Float} {N fuel : UInt64} {d2 r2 : Float} (hv : Va
     simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.reduceToNat]
     omega
   have key := LeanExe.Dialect.loop_induction (n := 2 * N + 1)
-    (init := (⟨0, 0, 0.0, maxFloat, maxFloat⟩ : Scan))
-    (f := fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 j s)
+    (init := (⟨0, 0, 0.0, maxFloat, maxFloat, maxFloat, maxFloat⟩ : Scan))
+    (f := fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel d2 r2 acc j s)
     (fun k (sc : Scan) => sc.status = 0 → Bounded xs d2 r2 sc.sepLow sc.rcLow s bs k)
     (fun _ => ⟨maxFloat_finite, maxFloat_finite, fun j hj => absurd hj (Nat.not_lt_zero j)⟩)
     (by
@@ -625,9 +1022,9 @@ theorem scan_sound {xs : Array Float} {N fuel : UInt64} {d2 r2 : Float} (hv : Va
         obtain ⟨fL, fR, hprev⟩ := ih'
         simp only [h0, ite_true] at hs ⊢
         by_cases h1 : searchStatus (sepSearch Trig.invPi Trig.halfPi xs N (UInt64.ofNat k)
-            (rd xs 1) d2 fuel) (rd xs 1) 3 5 = 0
+            (rd xs 1) d2 acc sc.sepBest fuel) (rd xs 1) 3 5 = 0
         · by_cases h2 : searchStatus (rcSearch Trig.invPi Trig.halfPi xs N (UInt64.ofNat k)
-              (lastTime xs N (UInt64.ofNat k)) twoPiHi r2 fuel) twoPiHi 4 6 = 0
+              (lastTime xs N (UInt64.ofNat k)) twoPiHi r2 acc sc.rcBest fuel) twoPiHi 4 6 = 0
           · simp only [h1, h2, beq_self_eq_true, ite_true]
             obtain ⟨fm, hm⟩ := sep_good hv hj hd h1 hbox hplan
             obtain ⟨fr, hrc⟩ := rc_good hv hj hr h2 hbox hplan
@@ -733,15 +1130,16 @@ theorem burn_idx' {k : UInt64} (hk : k.toNat < 16) :
   simp only [burnAt, UInt64.toNat_add, UInt64.toNat_mul, UInt64.reduceToNat]
   omega
 
-theorem valid_of {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
+theorem valid_of {xs : Array Float} {fuel : UInt64} {acc : Float} (hsize : xs.size < 2 ^ 64)
     (hg : (16 ≤ xs.size.toUInt64 && (xs.size.toUInt64 - 16) % 7 == 0 &&
-      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576) = true)
+      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576 &&
+      finite acc && 0.0 ≤ acc) = true)
     (hval : valuesOk xs ((xs.size.toUInt64 - 16) / 7) = true) :
     Valid xs ((xs.size.toUInt64 - 16) / 7) ∧ 0 ≤ val xs 2 ∧ 0 ≤ val xs 3 := by
   have hs : xs.size.toUInt64.toNat = xs.size := by
     simp only [Nat.toUInt64_eq, UInt64.toNat_ofNat']; exact Nat.mod_eq_of_lt hsize
   simp only [Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at hg
-  obtain ⟨⟨⟨⟨g16, g7⟩, g128⟩, -⟩, -⟩ := hg
+  obtain ⟨⟨⟨⟨⟨⟨g16, g7⟩, g128⟩, -⟩, -⟩, -⟩, -⟩ := hg
   have h16 : 16 ≤ xs.size := by
     have := UInt64.le_iff_toNat_le.mp g16; rw [hs] at this; simpa using this
   have h128 : xs.size ≤ 128 := by
@@ -872,12 +1270,14 @@ theorem bound_lower {d L : Float} (hd : Finite d.toBits) :
 /-! ### The theorems -/
 
 /-- The input of an accepted check is valid, with thresholds at least 0. -/
-theorem accepted_valid {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
-    (h : (check xs fuel).status = 0) :
+theorem accepted_valid {xs : Array Float} {fuel : UInt64} {acc : Float}
+    (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel acc).status = 0) :
     Valid xs ((xs.size.toUInt64 - 16) / 7) ∧ 0 ≤ val xs 2 ∧ 0 ≤ val xs 3 := by
   unfold check checkWith at h
   by_cases hg : (16 ≤ xs.size.toUInt64 && (xs.size.toUInt64 - 16) % 7 == 0 &&
-      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576) = true
+      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576 &&
+      finite acc && 0.0 ≤ acc) = true
   · simp only [hg, ite_true] at h
     by_cases hval : valuesOk xs ((xs.size.toUInt64 - 16) / 7) = true
     · exact valid_of hsize hg hval
@@ -889,8 +1289,9 @@ theorem accepted_valid {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^
 /-- When `check` accepts, the input holds `16 + 7N` values with `N ≤ 16`, the box of initial
 states and the plan's boxes are not empty, and the burns of every list that matches the plan are
 in nondecreasing order of time and lie in `[0, T]`. -/
-theorem check_input {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
-    (h : (check xs fuel).status = 0) :
+theorem check_input {xs : Array Float} {fuel : UInt64} {acc : Float}
+    (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel acc).status = 0) :
     (∃ N ≤ 16, xs.size = 16 + 7 * N) ∧ (∃ s, InBox xs s) ∧ (∃ bs, Plan xs bs) ∧
       ∀ bs, Plan xs bs → Sorted bs ∧ ∀ b ∈ bs, 0 ≤ b.t ∧ b.t ≤ val xs 1 := by
   obtain ⟨hv, -, -⟩ := accepted_valid hsize h
@@ -902,20 +1303,23 @@ theorem check_input {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
 every list of burns at the plan's times with velocity changes in the plan's boxes, and every
 scenario `j ≤ 2N`, the separation at every `t` in `[0, T]` is at least `sep`, and the radial and
 cross-track distance at every `t ≥ 0` at or after every burn of the scenario is at least `rc`. -/
-theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
-    (h : (check xs fuel).status = 0) :
+theorem check_sound {xs : Array Float} {fuel : UInt64} {acc : Float}
+    (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel acc).status = 0) :
     0 < val xs 0 ∧ 0 < val xs 1 ∧ 0 ≤ val xs 2 ∧ 0 ≤ val xs 3 ∧
-      val xs 2 ≤ value (check xs fuel).sep.toBits ∧ val xs 3 ≤ value (check xs fuel).rc.toBits ∧
+      val xs 2 ≤ value (check xs fuel acc).sep.toBits ∧
+      val xs 3 ≤ value (check xs fuel acc).rc.toBits ∧
       ∀ s bs, InBox xs s → Plan xs bs → ∀ j ≤ 2 * bs.length,
         (∀ t, 0 ≤ t → t ≤ val xs 1 →
-          value (check xs fuel).sep.toBits ≤
+          value (check xs fuel acc).sep.toBits ≤
             separation (path (val xs 0) 0 s (select bs.length j bs) t)) ∧
         (∀ t, 0 ≤ t → (∀ b ∈ select bs.length j bs, b.t ≤ t) →
-          value (check xs fuel).rc.toBits ≤
+          value (check xs fuel acc).rc.toBits ≤
             rcDistance (path (val xs 0) 0 s (select bs.length j bs) t)) := by
   unfold check checkWith at h ⊢
   by_cases hg : (16 ≤ xs.size.toUInt64 && (xs.size.toUInt64 - 16) % 7 == 0 &&
-      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576) = true
+      xs.size.toUInt64 ≤ 128 && 1 ≤ fuel && fuel ≤ 1048576 &&
+      finite acc && 0.0 ≤ acc) = true
   · simp only [hg, ite_true] at h ⊢
     by_cases hval : valuesOk xs ((xs.size.toUInt64 - 16) / 7) = true
     · simp only [hval, ite_true] at h ⊢
@@ -928,9 +1332,10 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
         simp only [Bool.and_eq_true, beq_iff_eq] at hs
         obtain ⟨fd, vd⟩ := square_bound f2 hd0 hs.1
         obtain ⟨fr, vr⟩ := square_bound f3 hr0 hs.2
-        set sc := LeanExe.loop (2 * N + 1) (⟨0, 0, 0.0, maxFloat, maxFloat⟩ : Scan)
+        set sc := LeanExe.loop (2 * N + 1)
+          (⟨0, 0, 0.0, maxFloat, maxFloat, maxFloat, maxFloat⟩ : Scan)
           fun j s => scanStep Trig.invPi Trig.halfPi xs N fuel (square (rd xs 2)).hi
-            (square (rd xs 3)).hi j s
+            (square (rd xs 3)).hi acc j s
         by_cases h0 : (sc.status == 0) = true
         · simp only [h0, ite_true] at h ⊢
           have d0 : 0 ≤ value (rd xs 2).toBits := hd0
@@ -962,8 +1367,9 @@ theorem check_sound {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64
 /-- Passive safety: when `check` accepts, every trajectory of every scenario from the boxes keeps
 a separation of at least `min dmin drc` at every time `t ≥ 0`, since every burn lies in `[0, T]`
 and the radial and cross-track distance is at most the separation. -/
-theorem check_passive {xs : Array Float} {fuel : UInt64} (hsize : xs.size < 2 ^ 64)
-    (h : (check xs fuel).status = 0) :
+theorem check_passive {xs : Array Float} {fuel : UInt64} {acc : Float}
+    (hsize : xs.size < 2 ^ 64)
+    (h : (check xs fuel acc).status = 0) :
     ∀ s bs, InBox xs s → Plan xs bs → ∀ j ≤ 2 * bs.length, ∀ t, 0 ≤ t →
       min (val xs 2) (val xs 3) ≤ separation (path (val xs 0) 0 s (select bs.length j bs) t) := by
   obtain ⟨-, -, -, -, hsep, hrc, hall⟩ := check_sound hsize h
