@@ -1,23 +1,23 @@
 #!/bin/sh
 # Tests the flat WASI calls: checks the call descriptions against the pinned witx, runs the frame
 # test module in the Wasmtime host with several argument lists, and checks that Wasmtime traps on a
-# clock id outside the clock enum.  Usage: tests/wasi/sys-run.sh WITX_DIR
+# clock id outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
 #
 # WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
-# fae981bae14809d91f9bc2d63852d461f331d161.
+# fae981bae14809d91f9bc2d63852d461f331d161; the default is tests/wasi/witx.
 set -eu
 set -f
-if [ "$#" -ne 1 ]; then
-  printf 'Usage: %s WITX_DIR\n' "$0" >&2
+if [ "$#" -gt 1 ]; then
+  printf 'Usage: %s [WITX_DIR]\n' "$0" >&2
   exit 2
 fi
-witx=$1
 if ! command -v wasm-tools > /dev/null 2>&1; then
   printf 'wasm-tools is not on the search path\n' >&2
   exit 1
 fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+witx=${1:-$root/tests/wasi/witx}
 cd "$root"
 out="$root/build/wasi/sys"
 host="$root/build/tools/leanexe-wasmtime-host"

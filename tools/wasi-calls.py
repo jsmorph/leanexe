@@ -3,19 +3,20 @@
 # ///
 """Check the flat call descriptions of LeanExe/Wasi/Calls.lean against the pinned Preview 1 witx.
 
-Usage: uv run tools/wasi-calls.py WITX_DIR [CALLS_LEAN]
+Usage: uv run tools/wasi-calls.py [WITX_DIR [CALLS_LEAN]]
 
 WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
-fae981bae14809d91f9bc2d63852d461f331d161.  The script lowers each function of the witx to core
-parameter kinds and compares the kinds of every description in CALLS_LEAN (default
-LeanExe/Wasi/Calls.lean) with the lowering of the function it names.  An enum with a 32-bit tag
-and n values is `enum32 n`; another parameter whose representation is 64 bits wide is word64, and
-other integer, flags, and handle parameters are word32; a string, or a const_pointer followed by a $size parameter, is input; a pointer followed by
-a $size parameter is output; another pointer is reported, with scale and alignment 4 when it points
-to pointers and 1 when it points to bytes; each component of an expected result is result32 or
-result64 by its width.  Whether a reported region is shown is a choice of the description, which
-the witx does not fix.  The script prints one line per description and exits with status 1 when a
-description differs, names no witx function, or names a function that is not flat.
+fae981bae14809d91f9bc2d63852d461f331d161, by default tests/wasi/witx.  The script lowers each
+function of the witx to core parameter kinds and compares the kinds of every description in
+CALLS_LEAN (default LeanExe/Wasi/Calls.lean) with the lowering of the function it names.  An enum
+with a 32-bit tag and n values is `enum32 n`; another parameter whose representation is 64 bits wide
+is word64, and other integer, flags, and handle parameters are word32; a string, or a const_pointer
+followed by a $size parameter, is input; a pointer followed by a $size parameter is output; another
+pointer is reported, with scale and alignment 4 when it points to pointers and 1 when it points to
+bytes; each component of an expected result is result32 or result64 by its width.  Whether a
+reported region is shown is a choice of the description, which the witx does not fix.  The script
+prints one line per description and exits with status 1 when a description differs, names no witx
+function, or names a function that is not flat.
 """
 import re
 import sys
@@ -170,7 +171,7 @@ def lean_kinds(params):
 
 
 def main():
-    directory = Path(sys.argv[1])
+    directory = Path(sys.argv[1] if len(sys.argv) > 1 else "tests/wasi/witx")
     calls = Path(sys.argv[2] if len(sys.argv) > 2 else "LeanExe/Wasi/Calls.lean")
     functions = witx_functions(directory)
     failed = False
