@@ -50,26 +50,42 @@
 # LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since `lean` and `lean --run` read a module's compiled
 # file without checking it against the source.  Building the numerical proofs that need much
 # memory and `Verified Library` first, with the limits of docs/verified-manual.md, keeps that
-# build within the caller's memory limit.
-# Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
+# build within the caller's memory limit.  The build passes `-R` to Lake, which elaborates the Lake
+# configuration again in the mode of this run, whichever mode the checkout had.
+# With --fast, Lake builds this package's modules with debug.skipKernelTC into .lake/build-fast, so
+# the kernel checks none of their proofs, decide +kernel included, the file theorem checks do not
+# run, and the script restores the checked configuration when it exits.
+# The script records each check that passes with the hash of its inputs in build/verified-checks/,
+# in a directory for each mode, and skips a check whose inputs still have the recorded hash.
+# --no-cache runs every check.  docs/verified-manual.md#recorded-checks lists the inputs.
+# Usage: tests/verified/run.sh [--fast] [--no-cache] [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
+shopt -s inherit_errexit
+usage() {
+  echo "usage: tests/verified/run.sh [--fast] [--no-cache]" \
+    "[--cases MODULE | --check-bytes DIRECTORY]" >&2
+  exit 2
+}
 if ! command -v wasm-tools > /dev/null 2>&1; then
   echo "fail: wasm-tools is not on the search path" >&2
   exit 1
 fi
 case_module=""
 reference=""
-if [ "$#" -ne 0 ]; then
-  if [ "$#" -ne 2 ] || [ -z "$2" ]; then
-    echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2
-    exit 2
-  fi
+fast=0
+cache=1
+while [ "$#" -ne 0 ]; do
   case "$1" in
-    --cases) case_module=$2 ;;
-    --check-bytes) reference=$(cd "$2" && pwd -P) ;;
-    *) echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2; exit 2 ;;
+    --fast) fast=1; shift ;;
+    --no-cache) cache=0; shift ;;
+    --cases | --check-bytes)
+      if [ "$#" -lt 2 ] || [ -z "$2" ] || [ -n "$case_module$reference" ]; then usage; fi
+      if [ "$1" = "--cases" ]; then case_module=$2; else reference=$(cd "$2" && pwd -P); fi
+      shift 2
+      ;;
+    *) usage ;;
   esac
-fi
+done
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
@@ -80,109 +96,46 @@ if [ "$reference" = "$(cd "$out" && pwd -P)" ]; then
   exit 2
 fi
 cd "$root"
-cases_exe=verified-cases
-if [ "$case_module" = "treecopy" ]; then
-  cases_exe=verified-cases-treecopy
-elif [ "$case_module" = "treecore" ]; then
-  cases_exe=verified-cases-treecore
-elif [ "$case_module" = "lists" ]; then
-  cases_exe=verified-cases-lists
-elif [ "$case_module" = "signed" ] || [ "$case_module" = "floor" ] ||
-  [ "$case_module" = "convert" ]; then
-  cases_exe=verified-cases-signed
-elif [ "$case_module" = "composition" ]; then
-  cases_exe=verified-cases-composition
-elif [ "$case_module" = "scalarcomposition" ]; then
-  cases_exe=verified-cases-scalarcomposition
-elif [ "$case_module" = "relocation" ]; then
-  cases_exe=verified-cases-relocation
-elif [ "$case_module" = "wgsl" ]; then
-  cases_exe=verified-cases-wgsl
-elif [ "$case_module" = "gpt32" ]; then
-  cases_exe=verified-cases-gpt32
-elif [ "$case_module" = "listrecursion" ]; then
-  cases_exe=verified-cases-listrecursion
-elif [ "$case_module" = "listloops" ]; then
-  cases_exe=verified-cases-listloops
-elif [ "$case_module" = "listtail" ]; then
-  cases_exe=verified-cases-listtail
-elif [ "$case_module" = "recursivetypes" ]; then
-  cases_exe=verified-cases-recursivetypes
-elif [ "$case_module" = "sha256" ]; then
-  cases_exe=verified-cases-sha256
-elif [ "$case_module" = "sha512" ]; then
-  cases_exe=verified-cases-sha512
-elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
-  cases_exe=verified-cases-hmac
-elif [ "$case_module" = "taggedtypes" ]; then
-  cases_exe=verified-cases-taggedtypes
-elif [ "$case_module" = "heapsums" ]; then
-  cases_exe=verified-cases-heapsums
-elif [ "$case_module" = "typedtrees" ]; then
-  cases_exe=verified-cases-typedtrees
-elif [ "$case_module" = "arraytrees" ]; then
-  cases_exe=verified-cases-arraytrees
-elif [ "$case_module" = "buffertrees" ]; then
-  cases_exe=verified-cases-buffertrees
-elif [ "$case_module" = "regex" ]; then
-  cases_exe=verified-cases-regex
-elif [ "$case_module" = "sha3" ]; then
-  cases_exe=verified-cases-sha3
-elif [ "$case_module" = "crc" ]; then
-  cases_exe=verified-cases-crc
-elif [ "$case_module" = "crcBitwise" ]; then
-  cases_exe=verified-cases-crcbitwise
-elif [ "$case_module" = "siphash" ]; then
-  cases_exe=verified-cases-siphash
-elif [ "$case_module" = "xxhash64" ]; then
-  cases_exe=verified-cases-xxhash64
-elif [ "$case_module" = "slew" ]; then
-  cases_exe=verified-cases-slew
-elif [ "$case_module" = "energy" ]; then
-  cases_exe=verified-cases-energy
-elif [ "$case_module" = "orderbook" ]; then
-  cases_exe=verified-cases-orderbook
-elif [ "$case_module" = "rcvCount" ] || [ "$case_module" = "rcvTabulate" ]; then
-  cases_exe=verified-cases-rcv
-elif [ "$case_module" = "rcvMaine" ]; then
-  cases_exe=verified-cases-rcv-maine
-elif [ "$case_module" = "conjunction" ]; then
-  cases_exe=verified-cases-conjunction
-elif [ "$case_module" = "accuracy" ]; then
-  cases_exe=verified-cases-accuracy
-elif [ "$case_module" = "adaptive" ]; then
-  cases_exe=verified-cases-adaptive
-elif [ "$case_module" = "attitude" ]; then
-  cases_exe=verified-cases-attitude
-elif [ "$case_module" = "qmethod" ]; then
-  cases_exe=verified-cases-qmethod
-elif [ "$case_module" = "screening" ]; then
-  cases_exe=verified-cases-screening
-elif [ "$case_module" = "chisquare" ]; then
-  cases_exe=verified-cases-chisquare
-elif [ "$case_module" = "gate" ]; then
-  cases_exe=verified-cases-gate
-elif [ "$case_module" = "assignment" ]; then
-  cases_exe=verified-cases-assignment
-elif [ "$case_module" = "events" ]; then
-  cases_exe=verified-cases-events
-elif [ "$case_module" = "avoidance" ]; then
-  cases_exe=verified-cases-avoidance
-elif [ "$case_module" = "sgp4" ]; then
-  cases_exe=verified-cases-sgp4
-elif [ "$case_module" = "passivesafety" ]; then
-  cases_exe=verified-cases-passivesafety
-elif [ "$case_module" = "sgp4box" ]; then
-  cases_exe=verified-cases-sgp4box
-elif [ "$case_module" = "sgp4omm" ]; then
-  cases_exe=verified-cases-sgp4omm
-elif [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
-  cases_exe=verified-cases-orbit
-elif [ "$case_module" = "frames" ]; then
-  cases_exe=verified-cases-frames
-elif [ "$case_module" = "geolocation" ]; then
-  cases_exe=verified-cases-geolocation
+mode=checked
+build=$root/.lake/build
+lake_config=(-R)
+if [ "$fast" -eq 1 ]; then
+  mode=fast
+  build=$root/.lake/build-fast
+  lake_config=(-R -K fast=true)
+  notice="fast: the kernel checks no proof of this package's modules, decide +kernel included,"
+  notice+=" and the file theorems are not checked"
+  echo "$notice"
 fi
+if command -v sha256sum > /dev/null 2>&1; then sum=(sha256sum); else sum=(shasum -a 256); fi
+tmp=$(mktemp -d)
+configured=0
+ran=0
+unchanged=0
+unchecked=0
+# Removes the temporary files, prints the counts of the checks, and, after a fast build, restores
+# the checked configuration.
+finish() {
+  local status=$?
+  rm -rf "$tmp"
+  if [ -z "$reference" ]; then
+    echo "checks: $ran ran, $unchanged unchanged since a recorded pass"
+  fi
+  if [ "$fast" -eq 1 ]; then
+    echo "$notice: $unchecked file theorem checks did not run"
+    if [ "$configured" -eq 1 ] && ! tools/leanrun --timeout 10m lake -R env true; then
+      echo "fail: Lake's checked configuration was not restored; run lake -R" >&2
+      status=1
+    fi
+  fi
+  exit "$status"
+}
+trap finish EXIT
+# The case executable of the module that --cases names: its entry in
+# tests/verified/case-generators.txt, or verified-cases.
+cases_exe=$(awk -F: -v name="$case_module" '$1 == name { print $2 }' \
+  tests/verified/case-generators.txt)
+cases_exe=${cases_exe:-verified-cases}
 # Without --cases, the cases come from verified-cases and from the executables of the modules
 # whose cases it does not import, which link Mathlib or take long to build.
 case_exes=("$cases_exe")
@@ -315,20 +268,126 @@ if [ -z "$reference" ]; then
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
   fi
 fi
-tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
+configured=1
+tools/leanrun --timeout 12h lake "${lake_config[@]}" --log-level error build "${targets[@]}"
+# The hash of the file $1.
+digest() {
+  "${sum[@]}" <"$1" | cut -d' ' -f1
+}
+# The hash of standard input.
+key() {
+  "${sum[@]}" | cut -d' ' -f1
+}
+# The file of the record of check $1.
+record_file() {
+  echo "$records/$(tr ' /' '__' <<<"$1")"
+}
+# Whether the record of check $1 holds $2.  Without the cache no record counts.
+recorded() {
+  local file
+  file=$(record_file "$1")
+  [ "$cache" -eq 1 ] && [ -f "$file" ] && [ "$(cat "$file")" = "$2" ]
+}
+# Runs check $1 with the command that follows $2 unless its record holds $2, and records $2 after
+# the command passes.  The command exits the script when it fails.
+check() {
+  local id=$1 inputs=$2
+  shift 2
+  if recorded "$id" "$inputs"; then
+    echo "unchanged: $id"
+    unchanged=$((unchanged + 1))
+    return 0
+  fi
+  rm -f "$(record_file "$id")"
+  echo "run: $id"
+  "$@"
+  echo "$inputs" >"$(record_file "$id")"
+  ran=$((ran + 1))
+}
+# The names of this package's modules.
+package='^(LeanExe|Library|Demos|Verified|Examples|TestSupport)([.]|$)'
+if [ -z "$reference" ]; then
+  records=$root/build/verified-checks/$mode
+  mkdir -p "$records"
+  # The build hash of each module of this package, from its .olean file.
+  oleans=$tmp/oleans
+  (cd "$build/lib/lean" && find . -name '*.olean' -print0 | xargs -0 "${sum[@]}") |
+    awk '{ m = substr($2, 3); sub(/\.olean$/, "", m); gsub("/", ".", m); print m, $1 }' >"$oleans"
+  # The imports of this package's modules among themselves, a line `MODULE IMPORT` for each.
+  graph=$tmp/graph
+  { find LeanExe Library Demos Verified Examples tests/TestSupport -name '*.lean'
+    printf '%s\n' LeanExe.lean Library.lean Demos.lean Verified.lean Examples.lean
+    echo tests/TestSupport.lean
+  } | xargs awk -v package="$package" '
+    FNR == 1 { m = FILENAME; sub(/^tests\//, "", m); sub(/\.lean$/, "", m); gsub("/", ".", m) }
+    /^import / && $2 ~ package { print m, $2 }
+  ' >"$graph"
+  # The inputs that every check of Lean files shares: this script and the dependencies.
+  common_inputs=$(
+    "${sum[@]}" tests/verified/run.sh lean-toolchain lakefile.lean lake-manifest.json
+    for dependency in .lake/packages/*/; do
+      echo "$dependency $(git -C "$dependency" rev-parse HEAD)"
+      git -C "$dependency" status --porcelain --untracked-files=no
+    done
+  )
+  wasm_tools=$(wasm-tools --version)
+fi
+# The inputs of a check that reads Lean files and modules: the shared inputs, the hash of each
+# file argument, and the build hash of every module of this package that is a module argument or
+# that a file or module argument imports, directly or through other modules of this package.
+lean_inputs() {
+  local roots=() argument
+  echo "$common_inputs"
+  for argument in "$@"; do
+    case "$argument" in
+      *.lean) "${sum[@]}" "$argument"; roots+=($(imports "$argument")) ;;
+      *) roots+=("$argument") ;;
+    esac
+  done
+  awk -v roots="${roots[*]}" -v package="$package" '
+    FILENAME == ARGV[1] { built[$1] = $2; next }
+    { imported[$1] = imported[$1] " " $2 }
+    END {
+      n = split(roots, stack, " ")
+      while (n > 0) {
+        m = stack[n--]
+        if ((m in seen) || m !~ package) continue
+        seen[m] = 1
+        k = split(imported[m], found, " ")
+        for (i = 1; i <= k; i++) stack[++n] = found[i]
+      }
+      for (m in seen) print m, ((m in built) ? built[m] : "unbuilt")
+    }' "$oleans" "$graph" | sort
+}
+emit() {
+  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$1" "$2" "$3"
+  wasm-tools validate "$3"
+}
 emitted=0
 while IFS=: read -r module constant name; do
   if [ -n "$case_module" ]; then
     [ "$name" = "$case_module" ] || continue
   fi
-  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
-    "$out/$name.wasm"
-  wasm-tools validate "$out/$name.wasm"
-  if [ -n "$reference" ]; then
-    cmp "$reference/$name.wasm" "$out/$name.wasm"
-    echo "$name: bytes unchanged"
-  fi
   emitted=$((emitted + 1))
+  wasm=$out/$name.wasm
+  if [ -n "$reference" ]; then
+    emit "$module" "$constant" "$wasm"
+    cmp "$reference/$name.wasm" "$wasm"
+    echo "$name: bytes unchanged"
+    continue
+  fi
+  # The record of an emission holds the hash of its inputs and the hash of the file it wrote.
+  inputs=$({ lean_inputs tools/Emit.lean "$module"; echo "$wasm_tools $module $constant"; } | key)
+  if [ -f "$wasm" ] && recorded "emit $name" "$inputs $(digest "$wasm")"; then
+    echo "unchanged: emit $name"
+    unchanged=$((unchanged + 1))
+    continue
+  fi
+  rm -f "$(record_file "emit $name")"
+  echo "run: emit $name"
+  emit "$module" "$constant" "$wasm"
+  echo "$inputs $(digest "$wasm")" >"$(record_file "emit $name")"
+  ran=$((ran + 1))
 done <"$root/tests/verified/modules.txt"
 if [ "$emitted" -eq 0 ]; then
   echo "fail: unknown module $case_module" >&2
@@ -342,27 +401,65 @@ if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
   echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
   exit 1
 fi
-if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
+# The host and, where ldd resolves it, the Wasmtime library that it loads.
+host_inputs=$(
+  "${sum[@]}" "$host"
+  if command -v ldd > /dev/null 2>&1; then
+    for library in $(ldd "$host" | awk '$1 ~ /^libwasmtime\./ && $3 ~ /^\// { print $3 }'); do
+      "${sum[@]}" "$library"
+    done
+  fi
+)
+# The inputs of a check that runs the host on the written module $1, other than its Lean files.
+host_check_inputs() {
+  echo "$host_inputs"
+  echo "$1.wasm $(digest "$out/$1.wasm")"
+}
+gpt() {
   tests/gpt/run.sh "$out/gpt.wasm"
   tests/gpt/sessions.sh "$out/gpt.wasm"
+}
+if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
+  inputs=$({ host_check_inputs gpt; "${sum[@]}" tests/gpt/run.sh tests/gpt/sessions.sh
+    lean_inputs tests/gpt/Cases.lean; } | key)
+  check gpt "$inputs" gpt
   if [ "$case_module" = "gpt" ]; then
     exit 0
   fi
 fi
+# Checks the cases of tests/TestSupport/Native/ModuleCases.lean named $1 on the written module $2.
+module_cases() {
+  local inputs
+  inputs=$({ host_check_inputs "$2"; "${sum[@]}" tests/modules/run.sh
+    lean_inputs tests/TestSupport/Native/ModuleCases.lean; } | key)
+  check "module cases $1" "$inputs" tests/modules/run.sh --module "$1" "$out/$2.wasm"
+}
 if [ -z "$case_module" ] || [ "$case_module" = "euler" ]; then
-  tests/modules/run.sh --module euler "$out/euler.wasm"
+  module_cases euler euler
   if [ "$case_module" = "euler" ]; then
     exit 0
   fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
-  tests/modules/run.sh --module shapes "$out/sums.wasm"
+  module_cases shapes sums
 fi
+# Checks the file theorem module of a written module, unless the build is fast, and records the
+# pass.
+check_file() {
+  local inputs
+  if [ "$fast" -eq 1 ]; then
+    echo "not checked in fast mode: file $1"
+    unchecked=$((unchecked + 1))
+    return 0
+  fi
+  inputs=$({ lean_inputs "$3"; echo "$1.wasm $(digest "$out/$1.wasm")"; } | key)
+  check "file $1" "$inputs" file_theorems "$@"
+}
 # Checks the file theorem module of a written module: elaborates the file module against the file,
 # after the build above has built the theorem module, and requires both of its axiom reports to
 # name only the three permitted axioms.  The file module's second theorem depends on every byte
 # theorem of the module, so its axiom report covers them all.
-check_file() {
+file_theorems() {
   local name=$1 theorem=$2 file=$3 reports axiom_counts
   reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
     echo "$reports"
@@ -386,9 +483,19 @@ check_file() {
   fi
   echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
 }
+# Checks the axiom audit $1 with the function $2, axiom_reports unless given, and records the pass.
+check_axioms() {
+  local inputs
+  inputs=$(lean_inputs "$1" | key)
+  check "audit $1" "$inputs" "${2:-axiom_reports}" "$1"
+}
+# Elaborates a file.
+elaborates() {
+  tools/leanrun --timeout 10m lake env lean "$1"
+}
 # Elaborates an axiom audit and requires every report in it to name only axioms among the three
 # permitted ones.
-check_axioms() {
+axiom_reports() {
   local file=$1 reports verdict
   reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
     echo "$reports"
@@ -418,8 +525,10 @@ check_axioms() {
   fi
 }
 if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
-  tests/slew/edges.sh "$out/slew.wasm"
-  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
+  inputs=$({ host_check_inputs slew; "${sum[@]}" tests/slew/edges.sh
+    lean_inputs tests/TestSupport/Slew/EdgesMain.lean; } | key)
+  check "slew edges" "$inputs" tests/slew/edges.sh "$out/slew.wasm"
+  check_axioms tests/slew/Axioms.lean elaborates
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
   fi
@@ -544,21 +653,20 @@ while IFS=: read -r name theorem file; do
 done <"$root/tests/verified/numerics.txt"
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
-  tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
+  check_axioms tests/verified/HeapSumsAxioms.lean elaborates
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "typedtrees" ]; then
-  tools/leanrun --timeout 10m lake env lean tests/verified/TypedTreesAxioms.lean
-  tools/leanrun --timeout 10m lake env lean tests/verified/TreeFieldConditions.lean
+  check_axioms tests/verified/TypedTreesAxioms.lean elaborates
+  check_axioms tests/verified/TreeFieldConditions.lean elaborates
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "arraytrees" ]; then
-  tools/leanrun --timeout 10m lake env lean tests/verified/ArrayTreesOrder.lean
+  check_axioms tests/verified/ArrayTreesOrder.lean elaborates
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "buffertrees" ]; then
-  tools/leanrun --timeout 10m lake env lean tests/verified/BufferTreesOrder.lean
+  check_axioms tests/verified/BufferTreesOrder.lean elaborates
 fi
-cases=$(mktemp)
-errors=$(mktemp)
-trap 'rm -f "$cases" "$errors"' EXIT
+cases=$tmp/cases
+errors=$tmp/errors
 # Native Lean panics on the reads and updates past the end of an array that the cases exercise: it
 # writes a message and a backtrace to standard error.  A read returns Lean's default element,
 # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
@@ -566,7 +674,7 @@ trap 'rm -f "$cases" "$errors"' EXIT
 : >"$cases"
 : >"$errors"
 for exe in "${case_exes[@]}"; do
-  if ! tools/leanrun --timeout 10m ".lake/build/bin/$exe" >>"$cases" 2>>"$errors"; then
+  if ! tools/leanrun --timeout 10m "$build/bin/$exe" >>"$cases" 2>>"$errors"; then
     cat "$errors" >&2
     echo "fail: native Lean exited with an error in $exe" >&2
     exit 1
@@ -595,44 +703,69 @@ mv "$cases.library" "$cases"
 echo "native Lean: $reads accesses past the end and $inserts insertIdx! past the end, as the cases expect"
 passed=0
 failed=0
-while IFS='|' read -r name export result args expected live allocsMax; do
+skipped=0
+lines=$tmp/lines
+# The cases of each module run unless its record holds the hash of its case lines, its written
+# module, the host, and this script, which a pass of all of them records.
+for name in $(awk -F'|' '!seen[$1]++ { print $1 }' "$cases"); do
   if [ -n "$case_module" ] && [ "$name" != "$case_module" ]; then
     continue
   fi
-  read -ra argv <<<"$args"
-  if [ "$expected" = "trap" ]; then
-    if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
+  awk -F'|' -v name="$name" '$1 == name' "$cases" >"$lines"
+  inputs=$({ host_check_inputs "$name"; "${sum[@]}" tests/verified/run.sh
+    echo "cases $(digest "$lines")"; } | key)
+  if recorded "cases $name" "$inputs"; then
+    echo "unchanged: cases $name"
+    unchanged=$((unchanged + 1))
+    skipped=$((skipped + $(wc -l <"$lines")))
+    continue
+  fi
+  rm -f "$(record_file "cases $name")"
+  echo "run: cases $name"
+  before=$failed
+  while IFS='|' read -r _ export result args expected live allocsMax; do
+    read -ra argv <<<"$args"
+    if [ "$expected" = "trap" ]; then
+      if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
+        failed=$((failed + 1))
+        echo "fail: $name $export $args: returned, expected a trap at unreachable"
+      elif grep -q 'wasm `unreachable` instruction executed' "$errors"; then
+        passed=$((passed + 1))
+      else
+        failed=$((failed + 1))
+        echo "fail: $name $export $args: $(cat "$errors"), expected a trap at unreachable"
+      fi
+      continue
+    fi
+    if [ -z "$live" ]; then
+      got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
+      held=""
+    else
+      output=$("$host" call-stats "$out/$name.wasm" "$export" "$result" "${argv[@]}")
+      got=$(sed '$d' <<<"$output" | paste -sd' ')
+      read -r _ allocs frees < <(tail -n 1 <<<"$output")
+      held=$((allocs - frees))
+    fi
+    if [ -n "$allocsMax" ] && [ "$allocs" -gt "$allocsMax" ]; then
       failed=$((failed + 1))
-      echo "fail: $name $export $args: returned, expected a trap at unreachable"
-    elif grep -q 'wasm `unreachable` instruction executed' "$errors"; then
+      echo "fail: $name $export $args: $allocs allocations, at most $allocsMax expected"
+    elif [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
       passed=$((passed + 1))
     else
       failed=$((failed + 1))
-      echo "fail: $name $export $args: $(cat "$errors"), expected a trap at unreachable"
+      echo "fail: $name $export $args: $got, expected $expected; live blocks $held, expected $live"
     fi
-    continue
+  done <"$lines"
+  if [ "$failed" -eq "$before" ]; then
+    echo "$inputs" >"$(record_file "cases $name")"
   fi
-  if [ -z "$live" ]; then
-    got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
-    held=""
-  else
-    output=$("$host" call-stats "$out/$name.wasm" "$export" "$result" "${argv[@]}")
-    got=$(sed '$d' <<<"$output" | paste -sd' ')
-    read -r _ allocs frees < <(tail -n 1 <<<"$output")
-    held=$((allocs - frees))
-  fi
-  if [ -n "$allocsMax" ] && [ "$allocs" -gt "$allocsMax" ]; then
-    failed=$((failed + 1))
-    echo "fail: $name $export $args: $allocs allocations, at most $allocsMax expected"
-  elif [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
-    passed=$((passed + 1))
-  else
-    failed=$((failed + 1))
-    echo "fail: $name $export $args: $got, expected $expected; live blocks $held, expected $live"
-  fi
-done <"$cases"
+  ran=$((ran + 1))
+done
 echo "verified: passed $passed failed $failed"
-[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
+if [ "$skipped" -ne 0 ]; then
+  echo "verified: $skipped cases of unchanged modules not run"
+fi
+[ $((passed + skipped)) -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
 # Without --cases, every module of the registry has a case, except the modules of
 # tests/verified/no-cases.txt, which other drivers test.
 if [ -z "$case_module" ]; then
@@ -647,39 +780,47 @@ fi
 if [ -n "$case_module" ]; then
   exit 0
 fi
+# Runs the native check $2 with the time limit $1, with the data files that follow as further
+# inputs, and records the pass.
+accuracy() {
+  local limit=$1 file=$2 inputs
+  shift 2
+  inputs=$({ lean_inputs "$file"; [ "$#" -eq 0 ] || "${sum[@]}" "$@"; } | key)
+  check "accuracy $file" "$inputs" tools/leanrun --timeout "$limit" lake env lean --run "$file"
+}
 # The accuracy of Trig.sin and Trig.cos against a reference computed with Lean's integers, in
 # native Lean.
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TrigAccuracy.lean || exit 1
+accuracy 10m tests/TestSupport/Numerics/TrigAccuracy.lean
 # The behavior of the Fourier transforms, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/FourierAccuracy.lean || exit 1
+accuracy 10m tests/TestSupport/Numerics/FourierAccuracy.lean
 # The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, tan, sinh, cosh, asinh,
 # acosh, atanh, exp2, exp10, log2, log10, pow, sinpi, cospi, tanpi, erf, and erfc against
 # references computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ExpAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TanhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/LogAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log1pAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AtanAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TanAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Exp2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/PowAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinpiAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ErfAccuracy.lean || exit 1
+accuracy 10m tests/TestSupport/Numerics/ExpAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/TanhAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/LogAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/Log1pAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/AtanAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/AsinAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/TanAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/SinhAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/AsinhAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/Exp2Accuracy.lean
+accuracy 10m tests/TestSupport/Numerics/Log2Accuracy.lean
+accuracy 10m tests/TestSupport/Numerics/PowAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/SinpiAccuracy.lean
+accuracy 10m tests/TestSupport/Numerics/ErfAccuracy.lean
 # The accuracy of tgamma, lgamma, the Bessel functions, and CORE-MATH's erfc against references
 # computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/TgammaAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/LgammaAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/BesselAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/ErfcAccuracy.lean || exit 1
+accuracy 30m tests/TestSupport/Numerics/TgammaAccuracy.lean
+accuracy 30m tests/TestSupport/Numerics/LgammaAccuracy.lean
+accuracy 30m tests/TestSupport/Numerics/BesselAccuracy.lean
+accuracy 30m tests/TestSupport/Numerics/ErfcAccuracy.lean
 # The software fused multiply-add against the exact value rounded to the nearest double, in native
 # Lean.
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/FmaAccuracy.lean || exit 1
+accuracy 10m tests/TestSupport/Numerics/FmaAccuracy.lean
 # The limb arithmetic of the string conversions against Lean's natural numbers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean || exit 1
+accuracy 10m Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean
 # The decimal parsers and printers against references computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ParseFloatAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/PrintFloatAccuracy.lean || exit 1
+accuracy 10m tests/TestSupport/Numerics/ParseFloatAccuracy.lean data/strconv/parse-cases.txt
+accuracy 10m tests/TestSupport/Numerics/PrintFloatAccuracy.lean data/strconv/print-cases.txt
