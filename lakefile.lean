@@ -2,8 +2,16 @@ import Lake
 
 open Lake DSL
 
+/-- Whether Lake elaborated this configuration with `-K fast=true`, which builds this package's
+modules without the kernel's checks into `.lake/build-fast` and leaves the dependencies' checked
+builds in use.  Lake keeps the options of the last elaboration until `-R` elaborates the file again
+(`docs/verified-manual.md#fast-builds`). -/
+def fast : Bool := get_config? fast == some "true"
+
 package leanexe where
   version := v!"0.1.0"
+  buildDir := if fast then ".lake/build-fast" else defaultBuildDir
+  leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩] else #[]
 
 require Verifier from ".lake/packages/CodeLib/verifier"
 -- Lake loads requirements in reverse order, so CodeLib must follow Verifier.
