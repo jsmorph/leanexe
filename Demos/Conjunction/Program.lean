@@ -104,7 +104,7 @@ def pcWith (tab : Array UInt64) (m1 m2 c11 c12 c22 r : Float) (n : UInt64) : Int
         if n ≤ 1048576 then
           let p := mul (div (point 1.0) (mul (point 2.0) (sqrt (mul twoPi (point c11)))))
             (panels tab (setup m1 m2 c11 c12 c22 r) r n)
-          clamp p 0.0 p.hi
+          clamp p 0.0 1.0
         else rejected
       else rejected
     else rejected

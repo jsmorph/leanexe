@@ -22,7 +22,7 @@ The user asked for a recommendation, a review of it, and then action on each que
 | Panels (design question 3) | Uniform panels, with `n` an input from 1 to 1,048,576 | The caller chooses the cost.  Adaptive refinement is left out. |
 | Tails (design question 4) | `erf` only | The module then needs one table.  The cost is the loss of relative accuracy for probabilities below about `1e-16`, which the requirements state.  The verdict against a threshold such as `1e-4` is unaffected. |
 | Frames (design question 1) and remediation (design question 5) | Outside this iteration | The conjunction-message form is a later iteration. |
-| Lower bound | Both factors clamped at zero | The result's lower bound is then never negative.  No clamp at 1 applies to the result.  `Gaussian.pc_le_one` now proves `Model.pc ≤ 1`, so a clamp of the upper endpoint at 1 would be sound.  Whether to add it is open. |
+| Bounds of the result | Both factors clamped at zero, and the result clamped to `[0, 1]` | The result's lower endpoint is never negative, and its upper endpoint is at most 1.  `Model.pc_nonneg` and `Gaussian.pc_le_one` make the clamp sound. |
 | Interface | Scalar arguments and a flat record | No allocation and no array layout to specify. |
 
 ## Open items
