@@ -94,6 +94,22 @@ def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} �
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
   | _, _, .write _ _ | _, _, .exit _ => true
 
+/-- The calls that the `sys` commands of a command use, in order, with repetitions. -/
+def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
+    Command pureSigs effectSigs context result → List LeanExe.Wasi.Call
+  | _, _, .bind first next => first.callsUsed ++ next.callsUsed
+  | _, _, .ite _ yes no => yes.callsUsed ++ no.callsUsed
+  | _, _, .loop _ _ _ step => step.callsUsed
+  | _, _, .sys operation _ _ => operation.uses
+  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
+  | _, _, .write _ _ | _, _, .exit _ => []
+
+/-- The calls that the `sys` commands of a program use, each once, in order of first use. -/
+def EffectProg.callsUsed : {effectSigs : List EffectSig} →
+    EffectProg pureSigs effectSigs → List LeanExe.Wasi.Call
+  | _, .nil => []
+  | _, .cons function rest => (rest.callsUsed ++ function.body.callsUsed).eraseDups
+
 def EffectProg.literals : {effectSigs : List EffectSig} →
     EffectProg pureSigs effectSigs → List Bytes.Literal
   | _, .nil => []

@@ -79,6 +79,52 @@ theorem write_value_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effec
     simp only [Command.denote, Action.bind, ResultTy.bindEnv, flattenAction,
       writeStdoutSome, writeStderrSome, hValue] <;> rfl
 
+theorem clockTimeGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (id precision : Var context .word) (idValue precisionValue : UInt64)
+    (hId : env.get id = idValue) (hPrecision : env.get precision = precisionValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.clockTimeGet (.flat 1 false)
+      [id, precision]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : ClockResult → UInt64 × UInt64)
+        (clockTimeGet idValue precisionValue) := by
+  subst hId hPrecision
+  rfl
+
+theorem randomGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (length : Var context .word) (value : UInt64)
+    (hValue : env.get length = value) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.randomGet (.flat 0 true)
+      [length]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : RandomResult → UInt64 × LeanExe.Bytes) (randomGet value) := by
+  subst hValue
+  rfl
+
+theorem argsSizesGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) (context := context)
+      Call.argsSizesGet (.flat 2 false) []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : ArgsSizes → UInt64 × UInt64 × UInt64) argsSizesGet := rfl
+
+theorem args_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) (context := context)
+      Call.argsGet .reported []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : ArgsResult → UInt64 × UInt64 × UInt64 × LeanExe.Bytes) args := by
+  refine congrArg (Action.sys Call.argsSizesGet []) (funext fun sizes => ?_)
+  by_cases failed : (sizes.errno != 0) = true
+  · simp only [failed, ↓reduceIte]
+    rfl
+  · simp only [failed, Bool.false_eq_true, ↓reduceIte]
+    by_cases large : 4294967296 ≤ sizes.word 1 + 4 * sizes.word 0 + 3
+    · simp only [large, ↓reduceIte]
+      rfl
+    · simp only [large, ↓reduceIte]
+      refine congrArg (Action.sys Call.argsGet []) (funext fun got => ?_)
+      by_cases gotFailed : (got.errno != 0) = true
+      · simp only [gotFailed, ↓reduceIte]
+        rfl
+      · simp only [gotFailed, Bool.false_eq_true, ↓reduceIte]
+        rfl
+
 theorem exit_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (code : Expr pureSigs context .word) (value : UInt64)
     (flatten : α → result.denote) (hValue : code.denote pureFuns env = value) :

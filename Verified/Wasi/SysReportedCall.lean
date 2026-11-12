@@ -41,7 +41,8 @@ theorem reported_request {World : Type} {before : Store (Observed World)} {call 
     (hMemory : hidden.toNat + 4 * count ≤ before.mem.pages * 65536)
     (hAddress : hidden.toNat + 4 * count ≤ 2 ^ 32) :
     SysRequest before [.i32 hidden, .i32 root] call [] [hidden, root] [4 * count, size] := by
-  refine ⟨by simp [Call.reject, hParams, rejectArgs, Param.takesArg],
+  refine ⟨by simp [hParams, argsFit, Param.takesArg],
+    by simp [Call.reject, hParams, rejectArgs, Param.takesArg],
     by simp [hParams, lowerArgs], by simp [hParams, inputPlaces], ?_, ?_⟩
   · intro region member
     simp only [hParams, outputRegions, List.headD_cons, List.tail_cons, List.mem_cons,

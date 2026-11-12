@@ -7,6 +7,31 @@ open Lean Meta
 open Verified.Reflect
 open LeanExe.Wasi
 
+/-- A typed flat call that `reflect` maps to one `sys` command: the call, its form, the number of
+its arguments, and the equation that relates the command to the typed function. -/
+structure SysOperation where
+  call : Name
+  form : Lean.Expr
+  arity : Nat
+  equation : Name
+
+def sysOperation? (function : Name) : Option SysOperation :=
+  if function == ``LeanExe.Wasi.clockTimeGet then
+    some ⟨``LeanExe.Wasi.Call.clockTimeGet, flatForm 1 false, 2,
+      ``Verified.Wasi.Reflect.clockTimeGet_eq⟩
+  else if function == ``LeanExe.Wasi.randomGet then
+    some ⟨``LeanExe.Wasi.Call.randomGet, flatForm 0 true, 1, ``Verified.Wasi.Reflect.randomGet_eq⟩
+  else if function == ``LeanExe.Wasi.argsSizesGet then
+    some ⟨``LeanExe.Wasi.Call.argsSizesGet, flatForm 2 false, 0,
+      ``Verified.Wasi.Reflect.argsSizesGet_eq⟩
+  else if function == ``LeanExe.Wasi.args then
+    some ⟨``LeanExe.Wasi.Call.argsGet, mkConst ``Verified.Wasi.SysForm.reported, 0,
+      ``Verified.Wasi.Reflect.args_eq⟩
+  else none
+where
+  flatForm (words : Nat) (bytes : Bool) : Lean.Expr :=
+    mkApp2 (mkConst ``Verified.Wasi.SysForm.flat) (mkNatLit words) (toExpr bytes)
+
 partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection := do
   let expression ← projReduce expression
   let nativeType ← actionResultType (← inferType expression)
@@ -89,6 +114,8 @@ partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection 
       #[context.pure.funs, context.funs, context.pure.env, reflected.src, code,
         ← result.fn nativeType, ← userProof context.pure reflected]
     return ← fromEquation context result expression source equation
+  if let some operation := sysOperation? function then
+    return ← reflectSys operation expression
   match function, args with
   | ``cond, #[_, condition, yes, no] =>
     return ← reflectBranch condition yes no none expression
@@ -133,6 +160,26 @@ where
           firstNative, nextNative, ← first.result.fn firstType, ← next.result.fn resultType,
           first.proof, nextProof]
       checkedReflection context next.result original source proof
+
+  reflectSys (operation : SysOperation) (original : Lean.Expr) : MetaM Reflection := do
+    let nativeArgs := original.getAppArgs
+    unless nativeArgs.size == operation.arity do
+      throwError "verified_compile_wasi: {original.getAppFn} requires all {operation.arity} arguments"
+    let reflected ← nativeArgs.toList.mapM (pureOperand context)
+    let bind := reflected.map fun argument => !argument.src.isAppOf ``Expr.var
+    if bind.any id then
+      return ← reflectAs (← bindArgs original.getAppFn nativeArgs.toList bind #[] #[]) original
+    let places := reflected.map fun argument => argument.src.getAppArgs.back!
+    let variableType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .word)
+    let source ← mkAppOptM ``Command.sys
+      #[some context.pure.sigs, some context.sigs, some context.pure.ctx,
+        some (mkConst operation.call), some operation.form, some (listExpr variableType places)]
+    let proofs ← reflected.mapM (userProof context.pure)
+    let equation ← mkAppM operation.equation
+      (#[context.pure.funs, context.funs, context.pure.env] ++ places.toArray ++ nativeArgs ++
+        proofs.toArray)
+    let nativeType ← actionResultType (← inferType original)
+    fromEquation context (← resultShapeOf nativeType) original source equation
 
   reflectBranch (condition yesNative noNative : Lean.Expr)
       (proposition : Option (Lean.Expr × Lean.Expr)) (original : Lean.Expr) : MetaM Reflection := do

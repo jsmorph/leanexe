@@ -25,5 +25,10 @@ licenses, as the notices beside them state:
   changes to Isla, to Arm's Sail model of the architecture, and to Sail, which contain excerpts of
   those projects' sources under their own licenses.
 
+- tests/wasi/witx/wasi_snapshot_preview1.witx and tests/wasi/witx/typenames.witx: the WASI
+  Preview 1 specification, wasi_snapshot_preview1, at WebAssembly/WASI commit
+  fae981bae14809d91f9bc2d63852d461f331d161, under the W3C Community Contributor License Agreement
+  (https://www.w3.org/community/about/agreements/cla/).
+
 tests/rcv/NOTICE records the terms of use of the RCV corpus's sources, whose files the repository
 does not hold.

@@ -45,7 +45,8 @@ private def specializeTheorem (name : Name) (assigned : List (Name × Lean.Expr)
   let lemmaTerm ← mkConstWithFreshMVarLevels name
   specializeTheoremAux lemmaTerm assigned (← inferType lemmaTerm) #[] #[]
 
-private def emitCompilerProofs (target : Name) (base : Name) : CommandElabM Unit := do
+private def emitCompilerProofs (target : Name) (base : Name) (calls : Bool) :
+    CommandElabM Unit := do
   let pureProgram := mkIdent (base ++ `pure ++ `program)
   let pureFuns := mkIdent (base ++ `pure ++ `funs)
   let meaning := mkIdent (base ++ `pure ++ `meaning)
@@ -63,23 +64,43 @@ private def emitCompilerProofs (target : Name) (base : Name) : CommandElabM Unit
   let pureCovered := mkIdent (base ++ `pure_covered)
   let covered := mkIdent (base ++ `effects_covered)
   let stack := mkIdent (target ++ `stackFits)
+  let sysCalls := mkIdent (base ++ `sysCalls)
   elabCommand (← `(theorem $stack : Verified.Wasi.StackFits $source $program
       (Verified.Wasi.entryFrameBytes $source $entries $main) := by decide +kernel))
   elabCommand (← `(theorem $profile : Verified.Wasi.Relocation.Profile $source :=
     Verified.Wasi.Relocation.checkProfile_sound (by decide +kernel)))
-  elabCommand (← `(theorem $ready : Verified.Wasi.EffectProg.Ready $source $pool $program :=
-    Verified.Wasi.EffectProg.checkReady_sound $program (by decide +kernel)))
+  if calls then
+    elabCommand (← `(theorem $ready : Verified.Wasi.EffectProg.ReadyWith $sysCalls $source $pool
+        $program :=
+      Verified.Wasi.EffectProg.checkReadyWith_sound $program (by decide +kernel)))
+  else
+    elabCommand (← `(theorem $ready : Verified.Wasi.EffectProg.Ready $source $pool $program :=
+      Verified.Wasi.EffectProg.checkReady_sound $program (by decide +kernel)))
   elabCommand (← `(theorem $apart :
       ∀ region ∈ ($pool).regions, LeanExe.Runtime.regionsDisjoint region Verified.Wasi.ABI.scratch := by
     exact Verified.Wasi.pool_regions_apart_scratch $pool (by decide +kernel)))
-  let calls ← `(Verified.Wasi.EffectProg.correctWith $pureProgram $pureFuns $meaning $tables
-    $wrappers $pool $program $entries $main $profile $pureCovered $covered $apart $ready
-    Wasm.HostEnv.empty)
-  elabCommand (← `(theorem $(mkIdent (target ++ `calls)) :
-      Verified.Wasi.CostEffectCalls $source $wasmModule
-        (Verified.Wasi.Resource.PureContext.ofProg $pureProgram $pureFuns) $program $pool := $calls))
-  let initial ← `(Verified.Wasi.compileWith_initialStore $pureProgram $tables $wrappers $pool
-    $program $entries $main world (by decide +kernel) (by decide +kernel))
+  if calls then
+    let correct ← `(Verified.Wasi.EffectProg.correctWith_with (calls := $sysCalls) $pureProgram
+      $pureFuns $meaning $tables $wrappers $pool $program $entries $main $profile $pureCovered
+      $covered $apart $ready Wasm.HostEnv.empty)
+    elabCommand (← `(theorem $(mkIdent (target ++ `calls)) :
+        Verified.Wasi.CostEffectCallsWith $sysCalls $source $wasmModule
+          (Verified.Wasi.Resource.PureContext.ofProg $pureProgram $pureFuns) $program $pool :=
+        $correct))
+  else
+    let correct ← `(Verified.Wasi.EffectProg.correctWith $pureProgram $pureFuns $meaning $tables
+      $wrappers $pool $program $entries $main $profile $pureCovered $covered $apart $ready
+      Wasm.HostEnv.empty)
+    elabCommand (← `(theorem $(mkIdent (target ++ `calls)) :
+        Verified.Wasi.CostEffectCalls $source $wasmModule
+          (Verified.Wasi.Resource.PureContext.ofProg $pureProgram $pureFuns) $program $pool :=
+        $correct))
+  let initial ← if calls then
+      `(Verified.Wasi.compileWith_initialStore_with (calls := $sysCalls) $pureProgram $tables
+        $wrappers $pool $program $entries $main world (by decide +kernel) (by decide +kernel))
+    else
+      `(Verified.Wasi.compileWith_initialStore $pureProgram $tables $wrappers $pool
+        $program $entries $main world (by decide +kernel) (by decide +kernel))
   elabCommand (← `(theorem $(mkIdent (target ++ `initial)) {World : Type} (world : World) :
       type_of% $initial := $initial))
 
@@ -112,7 +133,16 @@ private def totalExecutionProof (resourceSafe : Lean.Expr) (command? : Option Le
     withLocalDeclD `hostReady safeType fun hostReady =>
       mkLambdaFVars (binders.push hostReady) (mkApp application hostReady)
 
-private def emitEntryProofs (base : Name) (state : ProgramReflection) : TermElabM Unit := do
+/-- The assignments of the call list and of the program's correctness theorem: the general
+forms take `calls` and `effectCalls`, and the forms without calls take `calls`. -/
+private def callAssignments (base : Name) (calls : Bool) : List (Name × Lean.Expr) :=
+  if calls then [(`calls, mkConst (base ++ `sysCalls)), (`effectCalls, mkConst (base ++ `calls))]
+  else [(`calls, mkConst (base ++ `calls))]
+
+private def emitEntryProofs (base : Name) (state : ProgramReflection) (calls : Bool) :
+    TermElabM Unit := do
+  let runName := if calls then ``compiled_native_entry_run_with else ``compiled_native_entry_run
+  let exportName := if calls then ``compile_entry_export_with else ``compile_entry_export
   let pureContext ← mkAppM ``Resource.PureContext.ofProg
     #[mkConst (base ++ `pure ++ `program), mkConst (base ++ `pure ++ `funs)]
   for (reflected, index) in state.out.toList.zipIdx do
@@ -130,25 +160,27 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) : TermElab
           (`pure, pureContext), (`program, mkConst (base ++ `program)),
           (`entries, mkConst (base ++ `entries)), (`pool, mkConst (base ++ `literalPool)),
           (`index, mkNatLit index), (`entry, entry), (`selected, ← mkEqRefl someEntry),
-          (`calls, mkConst (base ++ `calls)), (`args, env), (`native, native),
-          (`flatten, flatten), (`related, related)]
-      let execution ← specializeTheorem ``compiled_native_entry_run assignments
-      let resourceSafe ← specializeTheorem ``compiled_native_entry_run
-        ((`aborts, toExpr false) :: assignments)
+          (`args, env), (`native, native), (`flatten, flatten), (`related, related)] ++
+        callAssignments base calls
+      let execution ← specializeTheorem runName assignments
+      let resourceSafe ← specializeTheorem runName ((`aborts, toExpr false) :: assignments)
       let total ← totalExecutionProof resourceSafe
       return (← mkLambdaFVars params execution, ← mkLambdaFVars params total)
     let functionBase := base ++ Name.mkSimple reflected.name.getString!
     addTheorem (functionBase ++ `implements) (← inferType proof) proof
-    let exportProof ← specializeTheorem ``compile_entry_export
-      [(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
+    let exportProof ← specializeTheorem exportName
+      ([(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
         (`source, mkConst (base ++ `pure ++ `module)), (`program, mkConst (base ++ `program)),
         (`entries, mkConst (base ++ `entries)), (`pool, mkConst (base ++ `literalPool)),
-        (`index, mkNatLit index), (`entry, entry), (`selected, ← mkEqRefl someEntry)]
+        (`index, mkNatLit index), (`entry, entry), (`selected, ← mkEqRefl someEntry)] ++
+        callAssignments base calls)
     addTheorem (functionBase ++ `exported) (← inferType exportProof) exportProof
     addTheorem (functionBase ++ `total) (← inferType total) total
 
-private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : Name) :
-    TermElabM Unit := do
+private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : Name)
+    (calls : Bool) : TermElabM Unit := do
+  let runName := if calls then ``compiled_native_start_run_with else ``compiled_native_start_run
+  let exportName := if calls then ``compile_start_export_with else ``compile_start_export
   let some reflected := state.out.find? (·.name == name)
     | throwError "verified_compile_wasi: main {name} was not reflected"
   let pureContext ← mkAppM ``Resource.PureContext.ofProg
@@ -159,14 +191,14 @@ private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : 
   let assignments := [(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
     (`source, mkConst (base ++ `pure ++ `module)), (`pure, pureContext),
     (`program, mkConst (base ++ `program)), (`entries, mkConst (base ++ `entries)),
-    (`main, main), (`pool, mkConst (base ++ `literalPool)), (`calls, mkConst (base ++ `calls)),
-    (`args, env), (`native, native), (`related, mkConst reflected.meaning)]
-  let execution ← specializeTheorem ``compiled_native_start_run assignments
+    (`main, main), (`pool, mkConst (base ++ `literalPool)),
+    (`args, env), (`native, native), (`related, mkConst reflected.meaning)] ++
+    callAssignments base calls
+  let execution ← specializeTheorem runName assignments
   addTheorem (base ++ `start) (← inferType execution) execution
-  let exported ← specializeTheorem ``compile_start_export assignments
+  let exported ← specializeTheorem exportName assignments
   addTheorem (base ++ `exported) (← inferType exported) exported
-  let resourceSafe ← specializeTheorem ``compiled_native_start_run
-    ((`aborts, toExpr false) :: assignments)
+  let resourceSafe ← specializeTheorem runName ((`aborts, toExpr false) :: assignments)
   let total ← totalExecutionProof resourceSafe (some native)
   addTheorem (base ++ `total) (← inferType total) total
 
@@ -206,12 +238,12 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
   let mainName? ← main?.mapM fun main => liftCoreM <| realizeGlobalConstNoOverloadWithInfo main
   let exports := if mainName?.isSome then [] else selected
   trace[verified.wasi] "Materialize: {base}"
-  discard <| liftTermElabM (materializeProgram base state exports mainName?)
+  let materialized ← liftTermElabM (materializeProgram base state exports mainName?)
   trace[verified.wasi] "Compiler proofs: {base}"
-  emitCompilerProofs target.getId base
+  emitCompilerProofs target.getId base materialized.calls
   match mainName? with
-  | none => liftTermElabM (emitEntryProofs base state)
-  | some name => liftTermElabM (emitCommandProofs base state name)
+  | none => liftTermElabM (emitEntryProofs base state materialized.calls)
+  | some name => liftTermElabM (emitCommandProofs base state name materialized.calls)
   trace[verified.wasi] "Validity: {base}"
   emitValidity target.getId (base ++ `module)
   let refinements := match mainName? with
