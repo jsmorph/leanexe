@@ -426,11 +426,21 @@ theorem read_encloses (s1 s2 : Array UInt64) (h : (read s1 s2).status = 0) :
       simp only [UInt64.reduceToNat] at a1 a2
       have q := scaled_encloses (fieldNat s2 26 7) 7 (by rw [a1]; omega) (by decide)
       rw [a1] at q
-      simpa only [UInt64.reduceToNat, elements] using q
+      simp only [UInt64.reduceToNat] at q
+      show Encloses (clamp (scaled (fieldNat s2 26 7) 7) 0.0 1.0) (((value s2 26 7 : ℕ) : ℝ) / 10 ^ 7)
+      intro hc
+      obtain ⟨sa, f⟩ := clamp_sound hc
+      have hlt : ((value s2 26 7 : ℕ) : ℝ) < 10 ^ 7 := by exact_mod_cast a2
+      refine f _ (q sa) ?_ ?_
+      · rw [zero_lit_value.2]; positivity
+      · rw [one_value.2]
+        rw [div_le_one (by positivity)]
+        exact hlt.le
   · simp only [hc, Bool.false_eq_true, ite_false] at h
     exact absurd h (by decide)
 
-theorem read_values (s1 s2 : Array UInt64) : (read s1 s2).status = 0 ∨ (read s1 s2).status = 9 := by
+theorem read_values (s1 s2 : Array UInt64) :
+    (read s1 s2).status = 0 ∨ (read s1 s2).status = 10 := by
   unfold read
   split_ifs <;> simp
 
@@ -451,16 +461,16 @@ theorem propagate_sound (h1 : s1.size < 2 ^ 64) (h2 : s2.size < 2 ^ 64) (ht : En
     exact ⟨(read_status s1 s2 h1 h2).mp h0, sgp4Box_sound (read_encloses s1 s2 h0) ht hs⟩
   · simp only [hf, Bool.false_eq_true, ite_false] at hs
     have h0 : ¬(read s1 s2).status = 0 := fun h => hf (beq_iff_eq.mpr h)
-    have h9 : (read s1 s2).status = 9 := (read_values s1 s2).resolve_left h0
-    have hn : (noBox (read s1 s2).status).status = 9 := h9
+    have h9 : (read s1 s2).status = 10 := (read_values s1 s2).resolve_left h0
+    have hn : (noBox (read s1 s2).status).status = 10 := h9
     rw [hn] at hs
     rcases hs with h | h <;> exact absurd h (by decide)
 
-/-- For lines whose result has status 0, 1, 2, 4, 6, or 8, the lines have the layout, and the
+/-- For lines whose result has a status other than 7 and 10, the lines have the layout, and the
 status is the model's status for their element set. -/
 theorem propagate_status (h1 : s1.size < 2 ^ 64) (h2 : s2.size < 2 ^ 64) (ht : Encloses t t')
     {k : UInt64} (hk : (propagateWith Trig.invPi Trig.halfPi logTab expTab s1 s2 t).status = k)
-    (hs : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 4 ∨ k = 6 ∨ k = 8) :
+    (hs : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 4 ∨ k = 6 ∨ k = 8 ∨ k = 9) :
     WellFormed s1 s2 ∧ Model.status (elements s1 s2) t' = k := by
   simp only [propagateWith] at hk
   by_cases hf : ((read s1 s2).status == 0) = true
@@ -469,10 +479,10 @@ theorem propagate_status (h1 : s1.size < 2 ^ 64) (h2 : s2.size < 2 ^ 64) (ht : E
     exact ⟨(read_status s1 s2 h1 h2).mp h0, status_sound (read_encloses s1 s2 h0) ht hk hs⟩
   · simp only [hf, Bool.false_eq_true, ite_false] at hk
     have h0 : ¬(read s1 s2).status = 0 := fun h => hf (beq_iff_eq.mpr h)
-    have h9 : (read s1 s2).status = 9 := (read_values s1 s2).resolve_left h0
-    have hn : (noBox (read s1 s2).status).status = 9 := h9
+    have h9 : (read s1 s2).status = 10 := (read_values s1 s2).resolve_left h0
+    have hn : (noBox (read s1 s2).status).status = 10 := h9
     rw [hn] at hk
     rw [← hk] at hs
-    rcases hs with h | h | h | h | h | h <;> exact absurd h (by decide)
+    rcases hs with h | h | h | h | h | h | h <;> exact absurd h (by decide)
 
 end Demos.Sgp4.Tle

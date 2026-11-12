@@ -13,7 +13,10 @@ The reader takes the columns of the format: in line 1 the drag term in columns 5
 line 2 the inclination in columns 9 to 16, the right ascension in 18 to 25, the eccentricity in
 27 to 33, the argument of perigee in 35 to 42, the mean anomaly in 44 to 51, and the mean motion
 in 53 to 63.  It compares the catalog fields of the two lines byte by byte and gives them no
-value, so a field in the Alpha-5 form passes.
+value, so a field in the Alpha-5 form passes.  The other columns, among them the epoch, are
+checked only through the checksum, and the reader gives them no value.  The eccentricity's
+interval is clamped to `[0, 1]`, which contains every value of its seven digits, so an
+eccentricity of 0 has an interval that starts at 0.  Lines without the layout give status 10.
 -/
 
 namespace Demos.Sgp4.Tle
@@ -97,7 +100,7 @@ def dragTerm (s : Array UInt64) : Interval :=
     else ofInt (m * pow10 (x - 5)).toInt64
   if byteAt s 53 == 45 then neg magnitude else magnitude
 
-/-- The fields of an element set: a status, 0 for lines of the layout and 9 otherwise, and the
+/-- The fields of an element set: a status, 0 for lines of the layout and 10 otherwise, and the
 intervals of the mean motion in revolutions per day, the eccentricity, the inclination, the right
 ascension of the node, the argument of perigee, and the mean anomaly in degrees, and the drag
 term. -/
@@ -120,13 +123,13 @@ def read (s1 s2 : Array UInt64) : Fields :=
   if layout1 s1 && layout2 s2 && sameObject s1 s2 then
     { status := 0
       n := scaled (fieldNat s2 52 2 * 100000000 + fieldNat s2 55 8) 8
-      e := scaled (fieldNat s2 26 7) 7
+      e := clamp (scaled (fieldNat s2 26 7) 7) 0.0 1.0
       incl := angle s2 8
       node := angle s2 17
       argp := angle s2 34
       m := angle s2 43
       bstar := dragTerm s1 }
-  else ⟨9, rejected, rejected, rejected, rejected, rejected, rejected, rejected⟩
+  else ⟨10, rejected, rejected, rejected, rejected, rejected, rejected, rejected⟩
 
 /-- The status and the intervals of the position and the velocity of the element set of two
 lines at a time `t` in minutes from its epoch. -/

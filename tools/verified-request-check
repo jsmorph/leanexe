@@ -135,7 +135,7 @@ refuse_extensions() {
 build() {
   lean build "$@" >"$work/build.log" 2>&1 ||
     fail "build: $(grep -m5 error "$work/build.log" || tail -n 5 "$work/build.log")"
-  ! grep -q "declaration uses 'sorry'" "$work/build.log" || fail "build: a proof uses sorry"
+  ! grep -q 'declaration uses `sorry`' "$work/build.log" || fail "build: a proof uses sorry"
 }
 
 # The samples with the specification's outputs, one line each in the format of

@@ -87,10 +87,47 @@ for (const line of fs.readFileSync('tests/verified/library-cases.txt', 'utf8').t
   if (!verifiedNames.has(source) || !verifiedNames.has(target) ||
       !sourceExport || !targetExport || extra) errors.push(`Invalid library case mapping: ${line}`);
 }
+const fileTheorems = new Set();
 for (const line of fs.readFileSync('tests/verified/numerics.txt', 'utf8').trim().split('\n')) {
   const [name, theorem, file, extra] = line.split(':');
   if (!verifiedNames.has(name) || !theorem || !fs.existsSync(modulePath(theorem)) ||
       !file || !fs.existsSync(file) || extra) errors.push(`Invalid numerical entry: ${line}`);
+  fileTheorems.add(name);
+}
+// `byhand` is the hand-built module of `Verified.Examples.Modes`, which has no `p.module`.
+for (const name of verifiedNames) {
+  if (name !== 'byhand' && !fileTheorems.has(name)) {
+    errors.push(`tests/verified/numerics.txt: no file theorem module for ${name}`);
+  }
+}
+// Master theorems: every `*_master` theorem of a library `Master.lean` is in the registry
+// `Library/Masters.lean`, and every row of the library sections of the index (1 to 13) has the
+// code MASTER and names a master theorem of the registry.
+const masterRegistry = fs.readFileSync('Library/Masters.lean', 'utf8');
+const registered = new Set([...masterRegistry.matchAll(/^\s+([\w.']+_master)[,\]]/gm)]
+  .map(m => m[1].split('.').pop()));
+for (const file of active.filter(f => /^Library\/.*\/Master\.lean$/.test(f))) {
+  for (const m of fs.readFileSync(file, 'utf8').matchAll(/^theorem ([\w']+_master)\b/gm)) {
+    if (!registered.has(m[1])) errors.push(`${file}: ${m[1]} is missing from Library/Masters.lean`);
+  }
+}
+let section = 0;
+let rowsWithout = [];
+for (const line of fs.readFileSync('index.md', 'utf8').split('\n')) {
+  const heading = line.match(/^## (\d+)\. /);
+  if (heading) { section = Number(heading[1]); continue; }
+  if (/^## /.test(line)) { section = 0; continue; }
+  if (section < 1 || section > 13 || !line.startsWith('| ') || /^\| (Entry|Code) \|/.test(line) ||
+      /^\|---/.test(line)) continue;
+  const cells = line.split(' | ');
+  const names = [...line.matchAll(/`([\w.']+_master)`/g)].map(m => m[1].split('.').pop());
+  if (!/\bMASTER\b/.test(cells[1] ?? '') || !names.some(n => registered.has(n))) {
+    rowsWithout.push(`${section}: ${cells[0].replace(/^\| /, '')}`);
+  }
+}
+if (rowsWithout.length) {
+  errors.push(`index.md: ${rowsWithout.length} library rows without a registered master theorem: ` +
+    rowsWithout.join('; '));
 }
 if (errors.length) {
   for (const error of errors) console.error(error);

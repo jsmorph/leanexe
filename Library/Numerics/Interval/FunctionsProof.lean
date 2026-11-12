@@ -118,6 +118,14 @@ theorem encloses_pi : Encloses piI Real.pi := fun _ => by
     norm_num at h2 ⊢
     linarith
 
+theorem zero_lit_bits : (0.0 : Float).toBits = 0 := by decide +kernel
+
+theorem zero_lit_value : Finite (0.0 : Float).toBits ∧ value (0.0 : Float).toBits = 0 := by
+  have hs : Wasm.IEEE64.scaledValue 0 = 0 := by decide +kernel
+  refine ⟨?_, ?_⟩
+  · rw [zero_lit_bits]; unfold CodeLib.IEEE64.Finite; decide +kernel
+  · simp only [zero_lit_bits, value, hs]; norm_num
+
 theorem one_bits : (1.0 : Float).toBits = 0x3FF0000000000000 := by decide +kernel
 
 theorem one_value : Finite (1.0 : Float).toBits ∧ value (1.0 : Float).toBits = 1 := by
@@ -159,6 +167,12 @@ theorem Contains.lt_one_of_hi {i : Interval} {x : ℝ} (c : Contains i x) (h : i
   have := (lt_iff_value c.2.2.1 one_value.1).mp h
   rw [one_value.2] at this
   exact lt_of_le_of_lt c.2.2.2.2 this
+
+theorem Contains.one_le_of_lo {i : Interval} {x : ℝ} (c : Contains i x) (h : 1.0 ≤ i.lo) :
+    1 ≤ x := by
+  have := (le_iff_value one_value.1 c.2.1).mp h
+  rw [one_value.2] at this
+  exact this.trans c.2.2.2.1
 
 /-! ### Maximum and selection -/
 

@@ -4,7 +4,9 @@
 # its output in build/full-check/NAME.log:
 #   1. `lake build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the test
 #      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
-#      level info, so that the log holds the axiom report of every `#print axioms`;
+#      level info, so that the log holds the axiom report of every `#print axioms`, and
+#      tests/verified/AllAxioms.lean, which walks the constants of every declaration of those
+#      libraries;
 #   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh and tests/modules/chunks.py on
 #      the drone and insertion modules that it writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
@@ -17,7 +19,12 @@
 #      clightn/check.sh --mutations;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
 #      --drivers-only, and tests/gpt32/native.sh;
-#   9. tests/talos/run.sh.
+#   9. tests/talos/run.sh;
+#  10. the checks against independent references: the hashing programs and transcriptions on
+#      their vectors (sha3-vectors, crc-vectors, siphash-vectors, xxhash64-vectors, and
+#      TestSupport/Hashing/Sha2Vectors.lean and HmacVectors.lean), tests/regex/run.sh,
+#      tests/orderbook/run.sh, tests/conjunction/run.sh, and tests/sgp4/run.sh;
+#  11. tools/source-layout and tools/check-doc-links.mjs.
 # A failed build leaves every later step but rocq/check.sh and tests/talos/run.sh unrun, since they
 # load the built modules.  The failure of any other step is recorded, and the next step runs.  A
 # step whose tools are absent is recorded as not run, and so is the driver half of a GPU step whose
@@ -601,6 +608,61 @@ step_talos() {
   fi
 }
 
+step_axioms() {
+  local step='`tests/verified/AllAxioms.lean`' cell=""
+  ready "$step" || return 0
+  run 1-axioms tools/leanrun --timeout 1h lake env lean --run tests/verified/AllAxioms.lean
+  cell=$(last '^axioms: ([0-9]+) declarations of the repository.*$' '\1 declarations' "$log")
+  record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
+step_references() {
+  local step='checks against independent references' cell="" exe name failed=()
+  ready "$step" uv:uv Python:python3 || return 0
+  local start=$SECONDS
+  for exe in sha3-vectors crc-vectors siphash-vectors xxhash64-vectors; do
+    run "10-$exe" tools/leanrun --timeout 2h lake build "$exe"
+    if [ "$code" -eq 0 ]; then
+      run "10-$exe-run" tools/leanrun --timeout 2h ".lake/build/bin/$exe"
+    fi
+    [ "$code" -eq 0 ] || failed+=("$exe")
+  done
+  for name in Sha2Vectors HmacVectors; do
+    run "10-$name" tools/leanrun --timeout 2h lake env lean --run \
+      "tests/TestSupport/Hashing/$name.lean"
+    [ "$code" -eq 0 ] || failed+=("$name")
+  done
+  for name in regex orderbook conjunction sgp4; do
+    run "10-$name" "tests/$name/run.sh"
+    [ "$code" -eq 0 ] || failed+=("tests/$name/run.sh")
+  done
+  seconds=$((SECONDS - start))
+  if [ "${#failed[@]}" -eq 0 ]; then
+    record "$step" passed "$seconds" "12 checks"
+  else
+    record "$step" "failed: $(join "${failed[@]}")" "$seconds" ""
+  fi
+}
+
+step_layout() {
+  local step='`tools/source-layout` and `tools/check-doc-links.mjs`'
+  if ! have node; then
+    record "$step" "not run: Node.js absent" "" ""
+    return 0
+  fi
+  local start=$SECONDS failed=()
+  run 11-layout tools/source-layout
+  [ "$code" -eq 0 ] || failed+=("tools/source-layout")
+  run 11-links node tools/check-doc-links.mjs
+  [ "$code" -eq 0 ] || failed+=("tools/check-doc-links.mjs")
+  seconds=$((SECONDS - start))
+  if [ "${#failed[@]}" -eq 0 ]; then
+    record "$step" passed "$seconds" ""
+  else
+    record "$step" "failed: $(join "${failed[@]}")" "$seconds" ""
+  fi
+}
+
 step_gpu() {
   local flag mode dir step cell drivers=present driver
   # The Vulkan drivers and the host of tests/wgsl/run.sh and tests/gpt32/native.sh.
@@ -789,6 +851,7 @@ main() {
   verified=no
   clight=no
   step_build
+  step_axioms
   step_verified
   step_drone
   step_chunks
@@ -800,6 +863,8 @@ main() {
   step_clightn
   step_gpu
   step_talos
+  step_references
+  step_layout
   finished=$(date -u '+%Y-%m-%d %H:%M UTC')
   write_status
   if [ "$failures" -ne 0 ]; then

@@ -4,8 +4,8 @@ import Demos.Sgp4.Model
 /-!
 Soundness of the enclosing SGP4 program.  For intervals that contain an element set and a time,
 `sgp4Box_sound` states that the intervals of a result with status 0 or 6 contain the model's
-position and velocity, and `status_sound` states that a status of 0, 1, 2, 4, 6, or 8 is the
-model's status.
+position and velocity, and `status_sound` states that a status other than 7 is the model's
+status.
 -/
 
 namespace Demos.Sgp4
@@ -32,7 +32,8 @@ theorem initStatus_sound {n e deep no : Interval} {n' e' d' no' : ℝ}
     (hn : Encloses n n') (he : Encloses e e') (hd : Encloses deep d') (hno : Encloses no no') :
     (initStatus n e deep no = 0 → (0 < n' ∧ 0 ≤ e' ∧ e' < 1) ∧ d' < 0 ∧ 0 < no') ∧
     (initStatus n e deep no = 8 → (0 < n' ∧ 0 ≤ e' ∧ e' < 1) ∧ 0 ≤ d') ∧
-    (initStatus n e deep no = 2 → (0 < n' ∧ 0 ≤ e' ∧ e' < 1) ∧ d' < 0 ∧ no' ≤ 0) := by
+    (initStatus n e deep no = 2 → (0 < n' ∧ 0 ≤ e' ∧ e' < 1) ∧ d' < 0 ∧ no' ≤ 0) ∧
+    (initStatus n e deep no = 9 → ¬(0 < n' ∧ 0 ≤ e' ∧ e' < 1)) := by
   unfold initStatus
   by_cases h1 : (n.status == 0 && e.status == 0) = true
   · simp only [h1, ite_true]
@@ -51,29 +52,39 @@ theorem initStatus_sound {n e deep no : Interval} {n' e' d' no' : ℝ}
         by_cases h4 : 0 ≤ deep.lo
         · simp only [h4, ite_true]
           exact ⟨fun h => absurd h (by decide), fun _ => ⟨v, cd.nonneg_of_lo h4⟩,
-            fun h => absurd h (by decide)⟩
+            fun h => absurd h (by decide), fun h => absurd h (by decide)⟩
         · simp only [h4, ite_false]
           by_cases h5 : deep.hi < 0
           · simp only [h5, ite_true]
             by_cases h6 : 0 < no.lo
             · simp only [h6, ite_true]
               exact ⟨fun _ => ⟨v, cd.neg_of_hi h5, cno.pos_of_lo h6⟩,
-                fun h => absurd h (by decide), fun h => absurd h (by decide)⟩
+                fun h => absurd h (by decide), fun h => absurd h (by decide),
+                fun h => absurd h (by decide)⟩
             · simp only [h6, ite_false]
               by_cases h7 : no.hi ≤ 0
               · simp only [h7, ite_true]
                 exact ⟨fun h => absurd h (by decide), fun h => absurd h (by decide),
-                  fun _ => ⟨v, cd.neg_of_hi h5, cno.nonpos_of_hi h7⟩⟩
+                  fun _ => ⟨v, cd.neg_of_hi h5, cno.nonpos_of_hi h7⟩, fun h => absurd h (by decide)⟩
               · simp only [h7, ite_false]
-                refine ⟨?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
+                refine ⟨?_, ?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
           · simp only [h5, ite_false]
-            refine ⟨?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
+            refine ⟨?_, ?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
       · simp only [h3, Bool.false_eq_true, ite_false]
-        refine ⟨?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
+        refine ⟨?_, ?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
     · simp only [h2, ite_false]
-      refine ⟨?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
+      by_cases h9 : n.hi ≤ 0 ∨ e.hi < 0 ∨ 1.0 ≤ e.lo
+      · simp only [h9, ite_true]
+        refine ⟨fun h => absurd h (by decide), fun h => absurd h (by decide),
+          fun h => absurd h (by decide), fun _ ⟨v1, v2, v3⟩ => ?_⟩
+        rcases h9 with h9 | h9 | h9
+        · exact absurd (cn.nonpos_of_hi h9) (not_le.mpr v1)
+        · exact absurd (ce.neg_of_hi h9) (not_lt.mpr v2)
+        · exact absurd (ce.one_le_of_lo h9) (not_le.mpr v3)
+      · simp only [h9, ite_false]
+        refine ⟨?_, ?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
   · simp only [h1, Bool.false_eq_true, ite_false]
-    refine ⟨?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
+    refine ⟨?_, ?_, ?_, ?_⟩ <;> intro h <;> exact absurd h (by decide)
 
 theorem stateStatus_sound {e1 e2 pl m6 : Interval} {ok : Bool} {em pl' mrt : ℝ}
     (h1 : Encloses e1 (em - 1)) (h2 : Encloses e2 (em + 0.001)) (hp : Encloses pl pl')
@@ -148,6 +159,9 @@ theorem stateStatus_sound {e1 e2 pl m6 : Interval} {ok : Bool} {em pl' mrt : ℝ
 
 namespace Model
 
+theorem status_invalid {el : Elements} {t : ℝ} (hv : ¬Valid el) : status el t = 9 := by
+  simp [status, hv]
+
 theorem status_deep {el : Elements} {t : ℝ} (hv : Valid el) (hp : 225 ≤ period el) :
     status el t = 8 := by
   simp [status, hv, hp]
@@ -207,12 +221,14 @@ theorem init_status (hi : Input n e incl node argp m bstar el) :
     ((initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 8 →
       Model.Valid el ∧ 225 ≤ Model.period el) ∧
     ((initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 2 →
-      Model.Valid el ∧ Model.period el < 225 ∧ Model.meanMotion el ≤ 0) := by
+      Model.Valid el ∧ Model.period el < 225 ∧ Model.meanMotion el ≤ 0) ∧
+    ((initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 9 →
+      ¬Model.Valid el) := by
   have hc := init_constants (logTab := logTab) (expTab := expTab) hi
   have limit : Encloses (ofInt 225) (225 : ℝ) :=
     encloses_ofInt' (m := 225) (by decide +kernel) (by decide +kernel) (by norm_num)
-  obtain ⟨a, b, c⟩ := initStatus_sound hi.1 hi.2.1 (encloses_sub hc.1 limit) hc.2.1
-  refine ⟨fun h => ?_, fun h => ?_, fun h => ?_⟩
+  obtain ⟨a, b, c, d9⟩ := initStatus_sound hi.1 hi.2.1 (encloses_sub hc.1 limit) hc.2.1
+  refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => d9 h⟩
   · obtain ⟨v, d, p⟩ := a h
     exact ⟨v, by unfold Model.period; linarith, p⟩
   · obtain ⟨v, d⟩ := b h
@@ -235,7 +251,8 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
       ¬Model.semilatus el t' < 0 ∧ Model.radius el t' < 1 ∧ Inside b el t') ∧
     (b.status = 0 → Model.Valid el ∧ Model.period el < 225 ∧ 0 < Model.meanMotion el ∧
       ¬(1 ≤ Model.eccentricity el t' ∨ Model.eccentricity el t' < -0.001) ∧
-      ¬Model.semilatus el t' < 0 ∧ ¬Model.radius el t' < 1 ∧ Inside b el t') := by
+      ¬Model.semilatus el t' < 0 ∧ ¬Model.radius el t' < 1 ∧ Inside b el t') ∧
+    (b.status = 9 → ¬Model.Valid el) := by
   have hc := init_constants (logTab := logTab) (expTab := expTab) hi
   have hinit := init_status (logTab := logTab) (expTab := expTab) hi
   have hval : ∀ k : UInt64,
@@ -284,7 +301,8 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
         inside hk (by rw [hbox]) (by rw [hbox]) (by rw [hbox]) (by rw [hbox]) (by rw [hbox])
           (by rw [hbox])
       rw [bs]
-      refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩
+      refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_,
+        fun h => ?_⟩
       · rcases h06 with h' | h' <;> rw [h'] at h <;> exact absurd h (by decide)
       · rcases h06 with h' | h' <;> rw [h'] at h <;> exact absurd h (by decide)
       · rcases h06 with h' | h' <;> rw [h'] at h <;> exact absurd h (by decide)
@@ -293,12 +311,14 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
         exact ⟨hv, hp, hn, f1, f2, f3, ins f4⟩
       · obtain ⟨f1, f2, f3, f4⟩ := facts.2.2.2 h
         exact ⟨hv, hp, hn, f1, f2, f3, ins f4⟩
+      · rcases h06 with h' | h' <;> rw [h'] at h <;> exact absurd h (by decide)
     · simp only [h6, Bool.false_eq_true, ite_false] at hbox
       have bs : b.status = st := by rw [hbox]; rfl
       have n06 : ¬st = 0 ∧ ¬st = 6 := by
         simpa [Bool.or_eq_true, beq_iff_eq, not_or] using h6
       rw [bs]
-      refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩
+      refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_,
+        fun h => ?_⟩
       · rcases sval with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
       · rcases sval with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
       · exact ⟨hv, hp, hn, facts.1 h⟩
@@ -306,15 +326,53 @@ theorem box_cases (hi : Input n e incl node argp m bstar el) (ht : Encloses t t'
         exact ⟨hv, hp, hn, f1, f2⟩
       · exact absurd h n06.2
       · exact absurd h n06.1
+      · rcases sval with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
   · simp only [h0, Bool.false_eq_true, ite_false] at hbox
     have bs : b.status = r.1 := by rw [hbox]; rfl
     have r0 : ¬r.1 = 0 := fun h => h0 (beq_iff_eq.mpr h)
     have vals := hval r.1 rfl
     rw [bs]
-    refine ⟨hinit.2.1, hinit.2.2, fun h => ?_, fun h => ?_, fun h => ?_, fun h => absurd h r0⟩
+    refine ⟨hinit.2.1, hinit.2.2.1, fun h => ?_, fun h => ?_, fun h => ?_, fun h => absurd h r0,
+      hinit.2.2.2⟩
     · rcases vals with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
     · rcases vals with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
     · rcases vals with v | v | v | v | v <;> rw [v] at h <;> exact absurd h (by decide)
+
+/-- The statuses that the enclosing program returns. -/
+theorem box_status_values (logTab expTab : Array UInt64) (n e incl node argp m bstar t : Interval) :
+    let s := (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t).status
+    s = 0 ∨ s = 1 ∨ s = 2 ∨ s = 4 ∨ s = 6 ∨ s = 7 ∨ s = 8 ∨ s = 9 := by
+  intro s
+  have hr : (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 0 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 2 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 7 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 8 ∨
+      (initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar).1 = 9 :=
+    initStatus_values _ _ _ _
+  simp only [s, sgp4BoxWith, propagateBoxWith]
+  generalize initBoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar = r at hr ⊢
+  by_cases h0 : (r.1 == 0) = true
+  · simp only [h0, ite_true]
+    generalize Spec.wgs72StateI Trig.invPi Trig.halfPi logTab expTab t r.2 = q
+    generalize hst : stateStatus _ _ _ _ _ = st
+    have hv := stateStatus_values (sub q.1 (ofInt 1)) (add q.1 (ratio 1 1000)) q.2.1
+      (sub q.2.2.1 (ofInt 1)) (q.2.2.2.1.status == 0 && q.2.2.2.2.1.status == 0 &&
+        q.2.2.2.2.2.1.status == 0 && q.2.2.2.2.2.2.1.status == 0 &&
+        q.2.2.2.2.2.2.2.1.status == 0 && q.2.2.2.2.2.2.2.2.status == 0)
+    rw [hst] at hv
+    by_cases h6 : (st == 0 || st == 6) = true
+    · simp only [h6, ite_true]
+      rcases hv with v | v | v | v | v <;> simp [v]
+    · simp only [h6, Bool.false_eq_true, ite_false, noBox]
+      rcases hv with v | v | v | v | v <;> simp [v]
+  · simp only [h0, Bool.false_eq_true, ite_false, noBox]
+    rcases hr with v | v | v | v | v <;> simp [v]
+
+/-- What the enclosing program states of a result for an element set and a time that its input
+intervals contain: the intervals of a result with status 0 or 6 contain the model's position and
+velocity, and a status other than 7 is the model's status. -/
+def BoxMeets (b : Box) (el : Model.Elements) (t' : ℝ) : Prop :=
+  ((b.status = 0 ∨ b.status = 6) → Inside b el t') ∧ (b.status ≠ 7 → Model.status el t' = b.status)
 
 /-- **`sgp4Box_sound`.**  For intervals that contain an element set and a time, the intervals of
 a result with status 0 or 6 contain the model's position and velocity. -/
@@ -325,20 +383,20 @@ theorem sgp4Box_sound (hi : Input n e incl node argp m bstar el) (ht : Encloses 
         = 6) :
     Inside (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t) el
       t' := by
-  obtain ⟨-, -, -, -, c6, c0⟩ := box_cases hi ht rfl
+  obtain ⟨-, -, -, -, c6, c0, -⟩ := box_cases hi ht rfl
   rcases hs with h | h
   · exact (c0 h).2.2.2.2.2.2
   · exact (c6 h).2.2.2.2.2.2
 
-/-- **`status_sound`.**  For intervals that contain an element set and a time, a status of 0, 1,
-2, 4, 6, or 8 is the status of the model. -/
+/-- **`status_sound`.**  For intervals that contain an element set and a time, a status other
+than 7 is the status of the model. -/
 theorem status_sound (hi : Input n e incl node argp m bstar el) (ht : Encloses t t') {k : UInt64}
     (hk : (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t).status
       = k)
-    (hs : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 4 ∨ k = 6 ∨ k = 8) : Model.status el t' = k := by
-  obtain ⟨c8, c2, c1, c4, c6, c0⟩ := box_cases hi ht rfl
-  rw [hk] at c8 c2 c1 c4 c6 c0
-  rcases hs with v | v | v | v | v | v
+    (hs : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 4 ∨ k = 6 ∨ k = 8 ∨ k = 9) : Model.status el t' = k := by
+  obtain ⟨c8, c2, c1, c4, c6, c0, c9⟩ := box_cases hi ht rfl
+  rw [hk] at c8 c2 c1 c4 c6 c0 c9
+  rcases hs with v | v | v | v | v | v | v
   · obtain ⟨a1, a2, a3, a4, a5, a6, -⟩ := c0 v
     rw [v]; exact Model.status_none a1 a2 a3 a4 a5 a6
   · obtain ⟨a1, a2, a3, a4⟩ := c1 v
@@ -351,5 +409,21 @@ theorem status_sound (hi : Input n e incl node argp m bstar el) (ht : Encloses t
     rw [v]; exact Model.status_radius a1 a2 a3 a4 a5 a6
   · obtain ⟨a1, a2⟩ := c8 v
     rw [v]; exact Model.status_deep a1 a2
+  · rw [v]; exact Model.status_invalid (c9 v)
+
+theorem box_meets (hi : Input n e incl node argp m bstar el) (ht : Encloses t t') :
+    BoxMeets (sgp4BoxWith Trig.invPi Trig.halfPi logTab expTab n e incl node argp m bstar t) el
+      t' := by
+  refine ⟨sgp4Box_sound hi ht, fun h7 => status_sound hi ht rfl ?_⟩
+  rcases box_status_values logTab expTab n e incl node argp m bstar t with
+    v | v | v | v | v | v | v | v
+  · exact .inl v
+  · exact .inr (.inl v)
+  · exact .inr (.inr (.inl v))
+  · exact .inr (.inr (.inr (.inl v)))
+  · exact .inr (.inr (.inr (.inr (.inl v))))
+  · exact absurd v h7
+  · exact .inr (.inr (.inr (.inr (.inr (.inl v)))))
+  · exact .inr (.inr (.inr (.inr (.inr (.inr v)))))
 
 end Demos.Sgp4

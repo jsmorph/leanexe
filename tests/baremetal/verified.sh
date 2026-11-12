@@ -273,11 +273,20 @@ run_shard() {
 }
 
 start=$(date +%s)
+pids=()
 for ((k = 0; k < jobs; k++)); do
   run_shard "$k" &
+  pids+=($!)
 done
-wait
+shard_failures=0
+for pid in "${pids[@]}"; do
+  wait "$pid" || shard_failures=$((shard_failures + 1))
+done
 seconds=$(($(date +%s) - start))
+if [ "$shard_failures" -ne 0 ]; then
+  echo "fail: $shard_failures of $jobs shards exited with an error" >&2
+  exit 1
+fi
 
 cat "$out"/results.* >"$out/results.txt"
 for name in "${!omitted[@]}"; do
@@ -312,4 +321,9 @@ else
 fi
 failed=$(awk -F'|' '$2 == "fail"' "$out/results.txt" | wc -l)
 passed=$(awk -F'|' '$2 == "pass"' "$out/results.txt" | wc -l)
+work=$(wc -l <"$out/work.txt")
+if [ "$((passed + failed))" -ne "$work" ]; then
+  echo "fail: $((passed + failed)) results for $work cases" >&2
+  exit 1
+fi
 [ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] && [ "${#unbuilt[@]}" -eq 0 ]

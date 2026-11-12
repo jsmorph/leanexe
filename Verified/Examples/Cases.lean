@@ -40,6 +40,7 @@ import Verified.Examples.RecursiveTypesCases
 import Verified.Examples.TaggedTypesCases
 import Verified.Examples.HeapSumsCases
 import Verified.Examples.TypedTreesCases
+import TestSupport.Numerics.FunctionCases
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
@@ -822,6 +823,7 @@ def main : IO Unit := do
   TestSupport.Conjunction.AccuracyCases.cases
   TestSupport.Conjunction.AdaptiveCases.cases
   TestSupport.Sgp4.Cases.cases
+  TestSupport.Numerics.FunctionCases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

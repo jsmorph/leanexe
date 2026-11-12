@@ -126,6 +126,7 @@ Library.Arrays.Range.Compiled:Library.Arrays.Range.compiled.module:librange
 Library.Arrays.Word.Compiled:Library.Arrays.Word.compiled.module:libwordarray
 Library.Lists.Word.Compiled:Library.Lists.Word.compiled.module:liblists
 Library.Numerics.Reductions.Word.Compiled:Library.Numerics.Reductions.Word.compiled.module:libwordreductions
+Library.Numerics.Filters.Cic.Compiled:Library.Numerics.Filters.Cic.compiled.module:libcic
 Library.Numerics.Reductions.Float64.Compiled:Library.Numerics.Reductions.Float64.compiled.module:libfloatreductions
 Library.Numerics.LinearAlgebra.Float64.Compiled:Library.Numerics.LinearAlgebra.Float64.compiled.module:liblinalg64
 Library.Numerics.LinearAlgebra.Binary32.Compiled:Library.Numerics.LinearAlgebra.Binary32.compiled.module:liblinalg32

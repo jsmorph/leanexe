@@ -14,6 +14,7 @@ import Demos.Conjunction.AccuracyFlat
 import Demos.Conjunction.AccuracyModel
 import Demos.Conjunction.AccuracySoundness
 import Demos.Conjunction.Flat
+import Demos.Conjunction.Gaussian
 import Demos.Conjunction.Model
 import Demos.Conjunction.Program
 import Demos.Conjunction.Soundness

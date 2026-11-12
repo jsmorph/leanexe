@@ -183,6 +183,16 @@ elif [ "$case_module" = "frames" ]; then
 elif [ "$case_module" = "geolocation" ]; then
   cases_exe=verified-cases-geolocation
 fi
+# Without --cases, the cases come from verified-cases and from the executables of the modules
+# whose cases it does not import, which link Mathlib or take long to build.
+case_exes=("$cases_exe")
+if [ -z "$case_module" ]; then
+  case_exes+=(verified-cases-arraytrees verified-cases-buffertrees verified-cases-sgp4box
+    verified-cases-sgp4omm verified-cases-attitude verified-cases-qmethod verified-cases-screening
+    verified-cases-chisquare verified-cases-gate verified-cases-assignment verified-cases-events
+    verified-cases-avoidance verified-cases-passivesafety verified-cases-orbit verified-cases-frames
+    verified-cases-geolocation)
+fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
 imports() {
@@ -262,13 +272,13 @@ if [ -z "$reference" ]; then
   if [ "$case_module" = "sgp4" ]; then
     targets+=(Demos.Sgp4.Verified $(imports Demos/Sgp4/File.lean))
   fi
+  if runs sgp4box; then targets+=($(imports tests/sgp4/BoxAxioms.lean)); fi
   if [ "$case_module" = "sgp4box" ]; then
-    targets+=(Demos.Sgp4.BoxVerified $(imports Demos/Sgp4/BoxFile.lean)
-      $(imports tests/sgp4/BoxAxioms.lean))
+    targets+=(Demos.Sgp4.BoxVerified $(imports Demos/Sgp4/BoxFile.lean))
   fi
+  if runs sgp4omm; then targets+=($(imports tests/sgp4/OmmAxioms.lean)); fi
   if [ "$case_module" = "sgp4omm" ]; then
-    targets+=(Demos.Sgp4.OmmVerified $(imports Demos/Sgp4/OmmFile.lean)
-      $(imports tests/sgp4/OmmAxioms.lean))
+    targets+=(Demos.Sgp4.OmmVerified $(imports Demos/Sgp4/OmmFile.lean))
   fi
   if [ "$case_module" = "energy" ]; then
     targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
@@ -299,7 +309,7 @@ if [ -z "$reference" ]; then
   fi
   if runs arraytrees; then targets+=($(imports tests/verified/ArrayTreesOrder.lean)); fi
   if runs buffertrees; then targets+=($(imports tests/verified/BufferTreesOrder.lean)); fi
-  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("$cases_exe"); fi
+  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("${case_exes[@]}"); fi
   if [ -z "$case_module" ]; then
     targets+=($(imports tests/TestSupport/Numerics/*Accuracy.lean \
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
@@ -498,13 +508,17 @@ if [ -z "$case_module" ] || [ "$case_module" = "passivesafety" ]; then
     check_file passivesafety Demos.PassiveSafety.Verified Demos/PassiveSafety/File.lean
   fi
 fi
-if [ "$case_module" = "sgp4box" ]; then
+if [ -z "$case_module" ] || [ "$case_module" = "sgp4box" ]; then
   check_axioms tests/sgp4/BoxAxioms.lean
-  check_file sgp4box Demos.Sgp4.BoxVerified Demos/Sgp4/BoxFile.lean
+  if [ "$case_module" = "sgp4box" ]; then
+    check_file sgp4box Demos.Sgp4.BoxVerified Demos/Sgp4/BoxFile.lean
+  fi
 fi
-if [ "$case_module" = "sgp4omm" ]; then
+if [ -z "$case_module" ] || [ "$case_module" = "sgp4omm" ]; then
   check_axioms tests/sgp4/OmmAxioms.lean
-  check_file sgp4omm Demos.Sgp4.OmmVerified Demos/Sgp4/OmmFile.lean
+  if [ "$case_module" = "sgp4omm" ]; then
+    check_file sgp4omm Demos.Sgp4.OmmVerified Demos/Sgp4/OmmFile.lean
+  fi
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "gibbs" ] || [ "$case_module" = "lambert" ]; then
   check_axioms tests/orbit/Axioms.lean
@@ -549,12 +563,15 @@ trap 'rm -f "$cases" "$errors"' EXIT
 # writes a message and a backtrace to standard error.  A read returns Lean's default element,
 # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
 # with an error or writes any other message.
-if ! tools/leanrun --timeout 10m ".lake/build/bin/$cases_exe" \
-    >"$cases" 2>"$errors"; then
-  cat "$errors" >&2
-  echo "fail: native Lean exited with an error" >&2
-  exit 1
-fi
+: >"$cases"
+: >"$errors"
+for exe in "${case_exes[@]}"; do
+  if ! tools/leanrun --timeout 10m ".lake/build/bin/$exe" >>"$cases" 2>>"$errors"; then
+    cat "$errors" >&2
+    echo "fail: native Lean exited with an error in $exe" >&2
+    exit 1
+  fi
+done
 counts=$(awk '
   $0 == "Error: index out of bounds" { reads++; next }
   /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
@@ -616,6 +633,17 @@ while IFS='|' read -r name export result args expected live allocsMax; do
 done <"$cases"
 echo "verified: passed $passed failed $failed"
 [ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
+# Without --cases, every module of the registry has a case, except the modules of
+# tests/verified/no-cases.txt, which other drivers test.
+if [ -z "$case_module" ]; then
+  missing=$(cut -d'|' -f1 "$cases" | sort -u |
+    comm -13 - <(cut -d: -f3 "$root/tests/verified/modules.txt" | sort -u) |
+    comm -23 - <(cut -d' ' -f1 "$root/tests/verified/no-cases.txt" | sort -u))
+  if [ -n "$missing" ]; then
+    echo "fail: modules without cases: $(paste -sd' ' <<<"$missing")" >&2
+    exit 1
+  fi
+fi
 if [ -n "$case_module" ]; then
   exit 0
 fi
