@@ -39,7 +39,7 @@ structure Keep (R : Box) (Good : Box → Prop) (r : Float) (b : Box) : Prop wher
   within : Within R b
   mark : b.mark = 0 ∨ b.mark = 1 ∨ b.mark = 2
   good : b.mark = 2 → Good b
-  unsplit : b.mark = 1 → splits r b = false
+  unsplit : b.mark = 1 → splits Trig.invPi Trig.halfPi r b = false
 
 theorem keep_fresh {R : Box} {Good : Box → Prop} {r : Float} {b : Box} (hf : FiniteBox b)
     (hw : Within R b) (hm : b.mark = 0) : Keep R Good r b :=
@@ -99,11 +99,12 @@ theorem halves {R : Box} {Good : Box → Prop} {r : Float} {b : Box} (hb : Finit
     · exact Or.inr ⟨a1, a2, a3, a4, e, a6⟩
 
 /-- The facts of `splits`: a finite middle strictly inside the longest side. -/
-theorem splits_facts {r : Float} {b : Box} (hb : FiniteBox b) (hs : splits r b = true) :
-    let md := middle (sideLo b (longest b).1) (sideHi b (longest b).1)
-    Finite md.toBits ∧ val (sideLo b (longest b).1) < val md ∧
-      val md < val (sideHi b (longest b).1) := by
-  intro md
+theorem splits_facts {r : Float} {b : Box} (hb : FiniteBox b)
+    (hs : splits Trig.invPi Trig.halfPi r b = true) :
+    let s := (longest Trig.invPi Trig.halfPi b).1
+    let md := middle (sideLo b s) (sideHi b s)
+    Finite md.toBits ∧ val (sideLo b s) < val md ∧ val md < val (sideHi b s) := by
+  intro s md
   simp only [splits, Bool.and_eq_true] at hs
   obtain ⟨⟨⟨-, hf⟩, h1⟩, h2⟩ := hs
   have fm : Finite md.toBits := (finite_iff _).mp hf
@@ -166,7 +167,8 @@ theorem push2_snd {α : Type} [Inhabited α] (acc : Array α) (a b : α) :
   rw [show acc.size + 1 = (acc.push a).size by simp, push_get_size]
 
 theorem splits_mark (r : Float) (b : Box) (k : UInt64) :
-    splits r { b with mark := k } = splits r b := rfl
+    splits Trig.invPi Trig.halfPi r { b with mark := k } =
+      splits Trig.invPi Trig.halfPi r b := rfl
 
 /-- The boxes that a step appends are boxes of the search when the box it reads is one. -/
 theorem boxStep_keep (T : TestSound rx fq xs base m Target Good) {b : Box}
@@ -199,7 +201,7 @@ theorem boxStep_keep (T : TestSound rx fq xs base m Target Good) {b : Box}
     have : j = acc.size := by omega
     subst this
     rw [push_get_size]
-    have hs' : splits r b = false := by simpa using hs
+    have hs' : splits Trig.invPi Trig.halfPi r b = false := by simpa using hs
     exact ⟨hb.fin, hb.within, Or.inr (Or.inl rfl),
       fun h => absurd (show (1 : UInt64) = 2 from h) (by decide),
       fun _ => (splits_mark r b 1).trans hs'⟩
@@ -374,7 +376,7 @@ structure KeepF (R : Box) (Good : Box → Prop) (r : Float) (U : Prop) (b : Box)
   within : Within R b
   mark : b.mark = 1 ∨ b.mark = 2
   good : b.mark = 2 → Good b
-  unsplit : U → b.mark = 1 → splits r b = false
+  unsplit : U → b.mark = 1 → splits Trig.invPi Trig.halfPi r b = false
 
 theorem finalBoxes_eq (boxes : Array Box) :
     finalBoxes Trig.invPi Trig.halfPi rx fq xs base m boxes =

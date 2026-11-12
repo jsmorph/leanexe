@@ -1,4 +1,5 @@
 import Demos.Geolocation.Search
+import Demos.Frames.Soundness
 
 /-!
 The theorems of `locate` over its input array.  An admissible parameter (`Admissible`) is a choice
@@ -32,6 +33,12 @@ def mOf (xs : Array Float) : UInt64 := (rd xs 3).toUInt64
 /-- The index of the first measurement's entries. -/
 def baseOf (xs : Array Float) : UInt64 := 20 + 14 * nOf xs
 
+/-- The intervals of the receivers' Earth-fixed states. -/
+def rxOf (xs : Array Float) : Array Interval := receivers Trig.invPi Trig.halfPi xs (nOf xs)
+
+/-- The day of the TEME frame as a real number. -/
+noncomputable def dayOf (xs : Array Float) : ℝ := ((rd xs 4).toUInt64.toNat : ℝ)
+
 /-- The real number lies in the interval of the input values at `q` and `q + 1`. -/
 def InPair (xs : Array Float) (q : UInt64) (x : ℝ) : Prop :=
   val (rd xs q) ≤ x ∧ x ≤ val (rd xs (q + 1))
@@ -48,11 +55,23 @@ def InState (xs : Array Float) (b : UInt64) (s u : V3) : Prop :=
   InPair xs (b + 2) s.1 ∧ InPair xs (b + 4) s.2.1 ∧ InPair xs (b + 6) s.2.2 ∧
     InPair xs (b + 8) u.1 ∧ InPair xs (b + 10) u.2.1 ∧ InPair xs (b + 12) u.2.2
 
-/-- An admissible parameter of an input with Earth-fixed receivers: the frequency in its interval
-and each receiver's state in its intervals. -/
+/-- The Earth-fixed state `(s, u)` is that of a TEME state in the intervals of the receiver whose
+entries start at `b`, at a time `t` of UT1 in its interval, with the polar motion `xp` and `yp`:
+`s = E(θ(t)) r` and `u = E(θ(t)) (v + ω(t) (r₂, −r₁, 0))`. -/
+def FromTeme (xs : Array Float) (b : UInt64) (xp yp : ℝ) (s u : V3) : Prop :=
+  ∃ t r v, InPair xs b t ∧ InState xs b r v ∧
+    s = Frames.Model.earthFixed (Model.theta (dayOf xs) t) xp yp r ∧
+    u = Model.earthVelocity (Model.theta (dayOf xs) t) (Model.spin (dayOf xs) t) xp yp r v
+
+/-- An admissible parameter: the frequency in its interval, and each receiver's Earth-fixed
+state in its intervals for the Earth-fixed frame, or arising from its TEME intervals with one
+polar motion in its intervals for the TEME frame. -/
 def Admissible (xs : Array Float) (P : Params) : Prop :=
   InPair xs 9 P.f ∧
-    ∀ i < (nOf xs).toNat, InState xs (20 + 14 * UInt64.ofNat i) (P.s i) (P.u i)
+    if rd xs 1 == 0.0 then
+      ∀ i < (nOf xs).toNat, InState xs (20 + 14 * UInt64.ofNat i) (P.s i) (P.u i)
+    else ∃ xp yp, InPair xs 5 xp ∧ InPair xs 7 yp ∧
+      ∀ i < (nOf xs).toNat, FromTeme xs (20 + 14 * UInt64.ofNat i) xp yp (P.s i) (P.u i)
 
 /-- The model of the measurement whose entries start at `q`, at the emitter position `x`. -/
 noncomputable def predicted (xs : Array Float) (P : Params) (q : UInt64) (x : V3) : ℝ :=
@@ -118,11 +137,16 @@ structure Facts (xs : Array Float) : Prop where
   rx : ∀ i < (nOf xs).toNat, receiverOk xs (20 + 14 * UInt64.ofNat i) = true
   meas : ∀ k < (mOf xs).toNat,
     measurementOk xs (nOf xs) (baseOf xs + 5 * UInt64.ofNat k) = true
+  day : (rd xs 4).toUInt64.toNat < 2 ^ 32
 
 theorem valid_facts {xs : Array Float} (h : valid xs = true) : Facts xs := by
   simp only [valid, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at h
-  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨-, hfin⟩, -⟩, -⟩, hn⟩, hm⟩, hsz⟩, -⟩, -⟩, -⟩, -⟩, -⟩, -⟩, -⟩,
-    -⟩, -⟩, -⟩, hc⟩, he⟩ := h
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨-, hfin⟩, -⟩, -⟩, hn⟩, hm⟩, hsz⟩, hday⟩, -⟩, -⟩, -⟩, -⟩, -⟩,
+    -⟩, -⟩, -⟩, -⟩, hc⟩, he⟩ := h
+  have day : (rd xs 4).toUInt64.toNat < 2 ^ 32 := by
+    have := UInt64.le_iff_toNat_le.mp (whole_le hday).2
+    simp only [UInt64.reduceToNat] at this
+    omega
   obtain ⟨n2, n16⟩ := whole_le hn
   obtain ⟨-, m64⟩ := whole_le hm
   obtain ⟨c1, c2⟩ := whole_le hc
@@ -136,7 +160,7 @@ theorem valid_facts {xs : Array Float} (h : valid xs = true) : Facts xs := by
     omega
   exact ⟨n2', n16', m64', by rw [hsz, e]; rfl, allFinite_spec hfin,
     UInt64.le_iff_toNat_le.mp c1, UInt64.le_iff_toNat_le.mp c2,
-    fun i hi => loop_all he.1 i hi, fun k hk => loop_all he.2 k hk⟩
+    fun i hi => loop_all he.1 i hi, fun k hk => loop_all he.2 k hk, day⟩
 
 /-- An entry below the size of a valid input is finite. -/
 theorem Facts.entry {xs : Array Float} (F : Facts xs) {q : UInt64}
@@ -189,8 +213,9 @@ def RxSound (rx : Array Interval) (P : Params) (n : ℕ) : Prop :=
 
 theorem receivers_get {xs : Array Float} {n : UInt64} (hn : n.toNat ≤ 16) {i c : ℕ}
     (hi : i < n.toNat) (hc : c < 6) :
-    (receivers xs n)[6 * i + c]! =
-      component (stateOf xs (20 + 14 * UInt64.ofNat i)) (UInt64.ofNat c) := by
+    (receivers Trig.invPi Trig.halfPi xs n)[6 * i + c]! =
+      component (stateOf Trig.invPi Trig.halfPi xs (20 + 14 * UInt64.ofNat i))
+        (UInt64.ofNat c) := by
   unfold receivers
   have hn6 : (6 * n).toNat = 6 * n.toNat := by
     rw [UInt64.toNat_mul]; simp only [UInt64.reduceToNat]; omega
@@ -211,28 +236,135 @@ theorem receivers_get {xs : Array Float} {n : UInt64} (hn : n.toNat ≤ 16) {i c
     omega
   rw [hd, hm]
 
-theorem component_stateOf (xs : Array Float) (b : UInt64) :
-    component (stateOf xs b) (UInt64.ofNat 0) = pair xs (b + 2) ∧
-      component (stateOf xs b) (UInt64.ofNat 1) = pair xs (b + 4) ∧
-      component (stateOf xs b) (UInt64.ofNat 2) = pair xs (b + 6) ∧
-      component (stateOf xs b) (UInt64.ofNat 3) = pair xs (b + 8) ∧
-      component (stateOf xs b) (UInt64.ofNat 4) = pair xs (b + 10) ∧
-      component (stateOf xs b) (UInt64.ofNat 5) = pair xs (b + 12) :=
+theorem component_stateOf {xs : Array Float} (hf : (rd xs 1 == 0.0) = true) (b : UInt64) :
+    let s := stateOf Trig.invPi Trig.halfPi xs b
+    component s (UInt64.ofNat 0) = pair xs (b + 2) ∧
+      component s (UInt64.ofNat 1) = pair xs (b + 4) ∧
+      component s (UInt64.ofNat 2) = pair xs (b + 6) ∧
+      component s (UInt64.ofNat 3) = pair xs (b + 8) ∧
+      component s (UInt64.ofNat 4) = pair xs (b + 10) ∧
+      component s (UInt64.ofNat 5) = pair xs (b + 12) := by
+  intro s
+  have e : s = ⟨pair xs (b + 2), pair xs (b + 4), pair xs (b + 6), pair xs (b + 8),
+      pair xs (b + 10), pair xs (b + 12)⟩ := by
+    show stateOf Trig.invPi Trig.halfPi xs b = _
+    unfold stateOf
+    rw [if_pos hf]
+  rw [e]
+  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+theorem component_eq (s : State) :
+    component s (UInt64.ofNat 0) = s.x ∧ component s (UInt64.ofNat 1) = s.y ∧
+      component s (UInt64.ofNat 2) = s.z ∧ component s (UInt64.ofNat 3) = s.u ∧
+      component s (UInt64.ofNat 4) = s.v ∧ component s (UInt64.ofNat 5) = s.w :=
   ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- The state of a TEME receiver, as the TEME branch of `stateOf` computes it. -/
+def temeState (xs : Array Float) (b : UInt64) : State :=
+  let d := (rd xs 4).toUInt64
+  let t := pair xs b
+  let th := Frames.angleWith Trig.invPi Trig.halfPi d t
+  let w := spinI Trig.invPi Trig.halfPi Trig.invPi Trig.halfPi (ofInt d.toInt64) t
+  let p := Frames.toEarthI Trig.invPi Trig.halfPi Trig.invPi Trig.halfPi th (pair xs 5)
+    (pair xs 7) (pair xs (b + 2)) (pair xs (b + 4)) (pair xs (b + 6))
+  let v := earthVelI Trig.invPi Trig.halfPi Trig.invPi Trig.halfPi th w (pair xs 5) (pair xs 7)
+    (pair xs (b + 2)) (pair xs (b + 4)) (pair xs (b + 6)) (pair xs (b + 8)) (pair xs (b + 10))
+    (pair xs (b + 12))
+  ⟨p.1, p.2.1, p.2.2, v.1, v.2.1, v.2.2⟩
+
+theorem stateOf_teme {xs : Array Float} (hf : ¬ (rd xs 1 == 0.0) = true) (b : UInt64) :
+    stateOf Trig.invPi Trig.halfPi xs b = temeState xs b := by
+  unfold stateOf
+  exact if_neg hf
+
+theorem make_ok {lo hi : Float} (h1 : Finite lo.toBits) (h2 : Finite hi.toBits) (h : lo ≤ hi) :
+    (make lo hi).status = 0 := by
+  unfold make
+  simp [(finite_iff lo).mpr h1, (finite_iff hi).mpr h2, h]
+
+/-- The index of entry `c` of receiver `i`. -/
+theorem rx_index {xs : Array Float} (F : Facts xs) {i : ℕ} (hi : i < (nOf xs).toNat)
+    {c : UInt64} (hc : c.toNat ≤ 13) :
+    (20 + 14 * UInt64.ofNat i + c).toNat = 20 + 14 * i + c.toNat := by
+  have := F.n16
+  simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
+/-- The interval of entries `c` and `c + 1` of receiver `i` is accepted when they are ordered. -/
+theorem rx_pair {xs : Array Float} (F : Facts xs) {i : ℕ} (hi : i < (nOf xs).toNat)
+    {c : UInt64} (hc : c.toNat ≤ 12)
+    (hle : rd xs (20 + 14 * UInt64.ofNat i + c) ≤ rd xs (20 + 14 * UInt64.ofNat i + c + 1)) :
+    (pair xs (20 + 14 * UInt64.ofNat i + c)).status = 0 := by
+  have s := F.size
+  have h1 : (c + 1).toNat = c.toNat + 1 := by
+    rw [UInt64.toNat_add]
+    exact Nat.mod_eq_of_lt (by have : (1 : UInt64).toNat = 1 := rfl; rw [this]; omega)
+  have f0 := F.entry (q := 20 + 14 * UInt64.ofNat i + c) (by rw [rx_index F hi (by omega)]; omega)
+  have f1 := F.entry (q := 20 + 14 * UInt64.ofNat i + (c + 1))
+    (by rw [rx_index F hi (by omega), h1]; omega)
+  rw [← UInt64.add_assoc] at f1
+  exact make_ok f0 f1 hle
+
 theorem receivers_sound {xs : Array Float} (F : Facts xs) {P : Params} (hP : Admissible xs P) :
-    RxSound (receivers xs (nOf xs)) P (nOf xs).toNat := by
+    RxSound (rxOf xs) P (nOf xs).toNat := by
   intro i hi
-  obtain ⟨a1, a2, a3, a4, a5, a6⟩ := hP.2 i hi
-  obtain ⟨c0, c1, c2, c3, c4, c5⟩ := component_stateOf xs (20 + 14 * UInt64.ofNat i)
   have g := fun c (hc : c < 6) => receivers_get (xs := xs) F.n16 hi hc
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-  · have e := g 0 (by norm_num); rw [Nat.add_zero] at e; rw [e, c0]; exact encloses_make a1.1 a1.2
-  · rw [g 1 (by norm_num), c1]; exact encloses_make a2.1 a2.2
-  · rw [g 2 (by norm_num), c2]; exact encloses_make a3.1 a3.2
-  · rw [g 3 (by norm_num), c3]; exact encloses_make a4.1 a4.2
-  · rw [g 4 (by norm_num), c4]; exact encloses_make a5.1 a5.2
-  · rw [g 5 (by norm_num), c5]; exact encloses_make a6.1 a6.2
+  have g0 := g 0 (by norm_num)
+  rw [Nat.add_zero] at g0
+  have hA := hP.2
+  by_cases hf : (rd xs 1 == 0.0) = true
+  · rw [if_pos hf] at hA
+    obtain ⟨a1, a2, a3, a4, a5, a6⟩ := hA i hi
+    obtain ⟨c0, c1, c2, c3, c4, c5⟩ := component_stateOf hf (20 + 14 * UInt64.ofNat i)
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Encloses (receivers Trig.invPi Trig.halfPi xs (nOf xs))[6 * i]! _
+      rw [g0, c0]; exact encloses_make a1.1 a1.2
+    · rw [rxOf, g 1 (by norm_num), c1]; exact encloses_make a2.1 a2.2
+    · rw [rxOf, g 2 (by norm_num), c2]; exact encloses_make a3.1 a3.2
+    · rw [rxOf, g 3 (by norm_num), c3]; exact encloses_make a4.1 a4.2
+    · rw [rxOf, g 4 (by norm_num), c4]; exact encloses_make a5.1 a5.2
+    · rw [rxOf, g 5 (by norm_num), c5]; exact encloses_make a6.1 a6.2
+  · rw [if_neg hf] at hA
+    obtain ⟨xp, yp, hxp, hyp, hA⟩ := hA
+    obtain ⟨t, r, v, ht, ⟨a1, a2, a3, a4, a5, a6⟩, hs, hu⟩ := hA i hi
+    have ok := F.rx i hi
+    simp only [receiverOk, ordered, Bool.and_eq_true, decide_eq_true_eq] at ok
+    have hpt : (pair xs (20 + 14 * UInt64.ofNat i)).status = 0 := by
+      have := rx_pair F hi (c := 0) (by decide) (by simpa using ok.1.1.1.1.1.1)
+      simpa using this
+    generalize hb : (20 : UInt64) + 14 * UInt64.ofNat i = b at ht a1 a2 a3 a4 a5 a6 g g0 hpt ⊢
+    obtain ⟨c0, c1, c2, c3, c4, c5⟩ :=
+      component_eq (stateOf Trig.invPi Trig.halfPi xs b)
+    have e := stateOf_teme hf b
+    obtain ⟨k, hk⟩ := Frames.angleWith_encloses (s := pair xs b) F.day
+    have hθ := hk t (Frames.contains_make hpt ht)
+    have et : Encloses (pair xs b) t := encloses_make ht.1 ht.2
+    have hw := spin.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi)
+      (Frames.encloses_day F.day) et
+    rw [spin_eq] at hw
+    have ex : Encloses (pair xs 5) xp := encloses_make hxp.1 hxp.2
+    have ey : Encloses (pair xs 7) yp := encloses_make hyp.1 hyp.2
+    have e1 : Encloses (pair xs (b + 2)) r.1 := encloses_make a1.1 a1.2
+    have e2 : Encloses (pair xs (b + 4)) r.2.1 := encloses_make a2.1 a2.2
+    have e3 : Encloses (pair xs (b + 6)) r.2.2 := encloses_make a3.1 a3.2
+    have e4 : Encloses (pair xs (b + 8)) v.1 := encloses_make a4.1 a4.2
+    have e5 : Encloses (pair xs (b + 10)) v.2.1 := encloses_make a5.1 a5.2
+    have e6 : Encloses (pair xs (b + 12)) v.2.2 := encloses_make a6.1 a6.2
+    have hp := Frames.toEarth.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hθ ex ey
+      e1 e2 e3
+    rw [Frames.toEarth_periodic, Frames.toEarth_eq] at hp
+    have hv := earthVel.encloses (powLog := Trig.invPi) (powExp := Trig.halfPi) hθ hw ex ey
+      e1 e2 e3 e4 e5 e6
+    rw [earthVel_eq] at hv
+    rw [hs, hu]
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · show Encloses (receivers Trig.invPi Trig.halfPi xs (nOf xs))[6 * i]! _
+      rw [g0, c0, e]; simp only [temeState]; exact hp.1
+    · rw [rxOf, g 1 (by norm_num), c1, e]; simp only [temeState]; exact hp.2.1
+    · rw [rxOf, g 2 (by norm_num), c2, e]; simp only [temeState]; exact hp.2.2
+    · rw [rxOf, g 3 (by norm_num), c3, e]; simp only [temeState]; exact hv.1
+    · rw [rxOf, g 4 (by norm_num), c4, e]; simp only [temeState]; exact hv.2.1
+    · rw [rxOf, g 5 (by norm_num), c5, e]; simp only [temeState]; exact hv.2.2
 
 /-! ### The box test -/
 
@@ -348,9 +480,9 @@ measurements for an admissible parameter, and every position of a box whose test
 them for every admissible parameter. -/
 theorem boxTest_spec {xs : Array Float} (F : Facts xs) {P : Params} (hP : Admissible xs P)
     {b : Box} {φ lam h : ℝ} (hb : InBox b φ lam h) :
-    (boxTest Trig.invPi Trig.halfPi (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs) (mOf xs)
+    (boxTest Trig.invPi Trig.halfPi (rxOf xs) (pair xs 9) xs (baseOf xs) (mOf xs)
         b = 0 → ¬ Fits xs P (Frames.Model.position φ lam h)) ∧
-      (boxTest Trig.invPi Trig.halfPi (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs)
+      (boxTest Trig.invPi Trig.halfPi (rxOf xs) (pair xs 9) xs (baseOf xs)
         (mOf xs) b = 2 → Fits xs P (Frames.Model.position φ lam h)) := by
   have hrx := receivers_sound F hP
   have hf : Encloses (pair xs 9) P.f := encloses_make hP.1.1 hP.1.2
@@ -362,7 +494,7 @@ theorem boxTest_spec {xs : Array Float} (F : Facts xs) {P : Params} (hP : Admiss
   dsimp only
   generalize Frames.cartesianI Trig.invPi Trig.halfPi Trig.invPi Trig.halfPi (make b.plo b.phi)
     (make b.llo b.lhi) (make b.hlo b.hhi) = p at hp ⊢
-  have V := verdict_spec (rx := receivers xs (nOf xs)) (fq := pair xs 9) (xs := xs)
+  have V := verdict_spec (rx := rxOf xs) (fq := pair xs 9) (xs := xs)
     (base := baseOf xs) (m := mOf xs) (px := p.1) (py := p.2.1) (pz := p.2.2)
     (ρ := fun k => predicted xs P (baseOf xs + 5 * UInt64.ofNat k)
       (Frames.Model.position φ lam h) - val (rd xs (baseOf xs + 5 * UInt64.ofNat k + 3)))
@@ -370,7 +502,7 @@ theorem boxTest_spec {xs : Array Float} (F : Facts xs) {P : Params} (hP : Admiss
       hp.1 hp.2.1 hp.2.2)
     (fun k hk => (meas_facts F hk).2.2)
   generalize LeanExe.loop (mOf xs) (⟨false, true⟩ : Verdict) (fun k v =>
-    verdictStep Trig.invPi Trig.halfPi (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs) p.1
+    verdictStep Trig.invPi Trig.halfPi (rxOf xs) (pair xs 9) xs (baseOf xs) p.1
       p.2.1 p.2.2 k v) = v at V ⊢
   obtain ⟨Vo, Vi⟩ := V
   refine ⟨fun h0 hF => ?_, fun h2 => ?_⟩
@@ -387,7 +519,7 @@ theorem boxTest_spec {xs : Array Float} (F : Facts xs) {P : Params} (hP : Admiss
       · rw [if_neg hi] at h2; exact absurd h2 (by decide)
 
 theorem test_sound {xs : Array Float} (F : Facts xs) :
-    TestSound (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs) (mOf xs) (Consistent xs)
+    TestSound (rxOf xs) (pair xs 9) xs (baseOf xs) (mOf xs) (Consistent xs)
       (Inner xs) where
   zero _ ht _ _ _ hb := fun ⟨_, hP, hF⟩ => (boxTest_spec F hP hb).1 ht hF
   two _ ht _ hP _ _ _ hb := (boxTest_spec F hP hb).2 ht
@@ -397,16 +529,16 @@ theorem test_sound {xs : Array Float} (F : Facts xs) :
 
 /-- The search of an input. -/
 def searchOf (xs : Array Float) : Search :=
-  search Trig.invPi Trig.halfPi (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs) (mOf xs)
+  search Trig.invPi Trig.halfPi (rxOf xs) (pair xs 9) xs (baseOf xs) (mOf xs)
     (rd xs 17) (regionOf xs) (rd xs 18).toUInt64 (rd xs 19).toUInt64
 
 /-- The boxes that the final pass keeps. -/
 def finalOf (xs : Array Float) : Array Box :=
-  finalBoxes Trig.invPi Trig.halfPi (receivers xs (nOf xs)) (pair xs 9) xs (baseOf xs) (mOf xs)
+  finalBoxes Trig.invPi Trig.halfPi (rxOf xs) (pair xs 9) xs (baseOf xs) (mOf xs)
     (searchOf xs).boxes
 
 theorem locate_eq {xs : Array Float} (hv : valid xs = true) :
-    locate xs = if allAccepted (receivers xs (nOf xs)) then outputOf (searchOf xs) (finalOf xs)
+    locate xs = if allAccepted (rxOf xs) then outputOf (searchOf xs) (finalOf xs)
       else #[4.0, 0.0, 0.0, 0.0] := by
   simp only [locate, locateWith, hv, ite_true]
   rfl
@@ -548,11 +680,6 @@ theorem locate_within {xs : Array Float} (hv : valid xs = true) :
 
 /-! ### Statuses -/
 
-theorem make_ok {lo hi : Float} (h1 : Finite lo.toBits) (h2 : Finite hi.toBits) (h : lo ≤ hi) :
-    (make lo hi).status = 0 := by
-  unfold make
-  simp [(finite_iff lo).mpr h1, (finite_iff hi).mpr h2, h]
-
 theorem allAccepted_of {ys : Array Interval} (h64 : ys.size < 2 ^ 64)
     (h : ∀ j < ys.size, ys[j]!.status = 0) : allAccepted ys = true := by
   unfold allAccepted
@@ -568,11 +695,11 @@ theorem allAccepted_of {ys : Array Interval} (h64 : ys.size < 2 ^ 64)
   exact key le_rfl
 
 /-- The receivers' intervals of a valid input with Earth-fixed receivers are accepted. -/
-theorem receivers_accepted {xs : Array Float} (F : Facts xs) :
-    allAccepted (receivers xs (nOf xs)) = true := by
+theorem receivers_accepted {xs : Array Float} (F : Facts xs) (hf : (rd xs 1 == 0.0) = true) :
+    allAccepted (rxOf xs) = true := by
   have n16 := F.n16
-  have hsz : (receivers xs (nOf xs)).size = 6 * (nOf xs).toNat := by
-    unfold receivers
+  have hsz : (rxOf xs).size = 6 * (nOf xs).toNat := by
+    unfold rxOf receivers
     rw [build_size, UInt64.toNat_mul]
     simp only [UInt64.reduceToNat]
     omega
@@ -581,38 +708,18 @@ theorem receivers_accepted {xs : Array Float} (F : Facts xs) :
   have hi : q / 6 < (nOf xs).toNat := by omega
   have hc : q % 6 < 6 := Nat.mod_lt _ (by norm_num)
   have hq' : q = 6 * (q / 6) + q % 6 := (Nat.div_add_mod q 6).symm
-  rw [hq', receivers_get n16 hi hc]
+  rw [hq', rxOf, receivers_get n16 hi hc]
   have ok := F.rx (q / 6) hi
   simp only [receiverOk, ordered, Bool.and_eq_true, decide_eq_true_eq] at ok
   obtain ⟨⟨⟨⟨⟨⟨-, o1⟩, o2⟩, o3⟩, o4⟩, o5⟩, o6⟩ := ok
-  generalize hb : (20 : UInt64) + 14 * UInt64.ofNat (q / 6) = b at o1 o2 o3 o4 o5 o6 ⊢
-  have hbn : b.toNat = 20 + 14 * (q / 6) := by
-    rw [← hb]
-    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
-    omega
-  have add_nat : ∀ a c : UInt64, a.toNat + c.toNat < 2 ^ 64 →
-      (a + c).toNat = a.toNat + c.toNat :=
-    fun a c h => by rw [UInt64.toNat_add]; exact Nat.mod_eq_of_lt h
-  have e : ∀ c : UInt64, c.toNat ≤ 13 → Finite (rd xs (b + c)).toBits := fun c hc' =>
-    F.entry (by rw [add_nat b c (by rw [hbn]; omega), hbn]; omega)
-  obtain ⟨c0, c1, c2, c3, c4, c5⟩ := component_stateOf xs b
-  have m : ∀ c : UInt64, c.toNat ≤ 12 → rd xs (b + c) ≤ rd xs (b + c + 1) →
-      (pair xs (b + c)).status = 0 := fun c hc' hle => by
-    unfold pair
-    refine make_ok (e c (by omega)) ?_ hle
-    have o : (1 : UInt64).toNat = 1 := rfl
-    have h1 : (c + 1).toNat ≤ 13 := by
-      rw [add_nat c 1 (by rw [o]; omega), o]
-      omega
-    have := e (c + 1) h1
-    rwa [← UInt64.add_assoc] at this
+  obtain ⟨c0, c1, c2, c3, c4, c5⟩ := component_stateOf hf (20 + 14 * UInt64.ofNat (q / 6))
   interval_cases h : q % 6
-  · rw [c0]; exact m 2 (by decide) o1
-  · rw [c1]; exact m 4 (by decide) o2
-  · rw [c2]; exact m 6 (by decide) o3
-  · rw [c3]; exact m 8 (by decide) o4
-  · rw [c4]; exact m 10 (by decide) o5
-  · rw [c5]; exact m 12 (by decide) o6
+  · rw [c0]; exact rx_pair F hi (c := 2) (by decide) o1
+  · rw [c1]; exact rx_pair F hi (c := 4) (by decide) o2
+  · rw [c2]; exact rx_pair F hi (c := 6) (by decide) o3
+  · rw [c3]; exact rx_pair F hi (c := 8) (by decide) o4
+  · rw [c4]; exact rx_pair F hi (c := 10) (by decide) o5
+  · rw [c5]; exact rx_pair F hi (c := 12) (by decide) o6
 
 theorem status_bits (a b : UInt64) (ha : a ≤ 4) (hb : b ≤ 4)
     (h : a.toFloat.toBits = b.toFloat.toBits) :
@@ -636,14 +743,26 @@ theorem locate_status {xs : Array Float} (hv : valid xs = true) :
       ((rd xs 1 == 0.0) = true → ¬ HasStatus out 4) ∧
       (HasStatus out 0 → (∃ L ≤ N, out[3]! = L.toFloat) ∧
         ∀ j, 10 + 7 * j < out.size → out[10 + 7 * j]! ≠ 1.0 →
-          splits (rd xs 17) (boxAt out j) = false) ∧
+          splits Trig.invPi Trig.halfPi (rd xs 17) (boxAt out j) = false) ∧
       (HasStatus out 1 → ∃ L < N, out[3]! = L.toFloat) ∧
       (HasStatus out 2 → out[3]! = N.toFloat) := by
   intro out N
   have F := valid_facts hv
+  by_cases ha : allAccepted (rxOf xs) = true
+  swap
+  · have ho : out = #[4.0, 0.0, 0.0, 0.0] := by
+      show locate xs = _
+      rw [locate_eq hv, if_neg ha]
+    have h4 : HasStatus out 4 := by rw [ho]; unfold HasStatus; decide +kernel
+    unfold HasStatus at h4
+    refine ⟨Or.inr (Or.inr (Or.inr h4)), fun hf _ => ha (receivers_accepted F hf),
+      fun h0 => ?_, fun h1 => ?_, fun h2 => ?_⟩
+    · unfold HasStatus at h0; exact absurd (h4.symm.trans h0) (by decide +kernel)
+    · unfold HasStatus at h1; exact absurd (h4.symm.trans h1) (by decide +kernel)
+    · unfold HasStatus at h2; exact absurd (h4.symm.trans h2) (by decide +kernel)
   have ho : out = outputOf (searchOf xs) (finalOf xs) := by
     show locate xs = _
-    rw [locate_eq hv, if_pos (receivers_accepted F)]
+    rw [locate_eq hv, if_pos ha]
   obtain ⟨I, fsz, fkeep, -⟩ := search_facts F
   have hb : (finalOf xs).size ≤ 65536 := by have := I.size; have := F.cap; omega
   obtain ⟨osz, o0, o3, oget⟩ := outputOf_get (searchOf xs) (finalOf xs) hb

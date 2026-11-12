@@ -1,16 +1,22 @@
 import Demos.Geolocation.Soundness
+import Demos.Geolocation.Derivatives
 import Demos.Geolocation.Call
 
 /-! The axioms of the geolocation program's theorems, which must be `propext`,
 `Classical.choice`, and `Quot.sound`. -/
 
 #print axioms Demos.Geolocation.Model.range_hasDerivAt
+#print axioms Demos.Geolocation.Model.gmst_hasDerivAt
+#print axioms Demos.Geolocation.Model.earthFixed_hasDerivAt
 #print axioms Demos.Geolocation.dist.encloses
 #print axioms Demos.Geolocation.rate.encloses
 #print axioms Demos.Geolocation.tdoaRes.encloses
 #print axioms Demos.Geolocation.fdoaRes.encloses
+#print axioms Demos.Geolocation.spin.encloses
+#print axioms Demos.Geolocation.earthVel.encloses
 #print axioms Demos.Geolocation.tdoaRes_eq
 #print axioms Demos.Geolocation.fdoaRes_eq
+#print axioms Demos.Geolocation.earthVel_eq
 #print axioms Demos.Geolocation.halves
 #print axioms Demos.Geolocation.level_inv
 #print axioms Demos.Geolocation.search_inv

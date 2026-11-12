@@ -4,8 +4,9 @@ import TestSupport.Host
 /-! Cases of the geolocation module for `tests/verified/run.sh --cases geolocation`: an emitter on
 the ellipsoid seen by four receivers at medium altitude with time differences, frequency
 differences, and both, receiver intervals, an emitter on an aircraft, the whole Earth as region,
-a region without the emitter, the levels and the cap, invalid inputs, and emitters and receivers
-that a linear congruential generator draws. -/
+a region without the emitter, a region at the pole, the levels and the cap, receivers in the TEME
+frame with and without time intervals and with a time that gives status 4, invalid inputs, and
+emitters and receivers that a linear congruential generator draws. -/
 
 namespace TestSupport.Geolocation.Cases
 
@@ -79,6 +80,31 @@ def input (rs : List ((Float × Float × Float) × (Float × Float × Float))) (
   [1.0, 0.0, rs.length.toFloat, ms.length.toFloat, 0.0, 0.0, 0.0, 0.0, 0.0, 406.0e6, 406.1e6] ++
     region ++ [res, levels, cap] ++ (rs.map fun r => entries r dp dv).flatten ++ ms.flatten
 
+/-- The sidereal angle at 43200 s of UT1 on MJD 61000, from the frames program. -/
+def theta0 : Float := let a := Demos.Frames.gmst 61000 43200.0 43200.0; (a.lo + a.hi) / 2
+
+/-- The rotation `R3(−θ)` of a vector. -/
+def unrotate (θ : Float) (p : Float × Float × Float) : Float × Float × Float :=
+  (θ.cos * p.1 - θ.sin * p.2.1, θ.sin * p.1 + θ.cos * p.2.1, p.2.2)
+
+/-- The TEME entries at the time `43200 ± dt` of an Earth-fixed state at the angle `theta0`. -/
+def entriesT (r : (Float × Float × Float) × (Float × Float × Float)) (dt : Float) : List Float :=
+  let w := 7.2921158553e-5
+  let p := unrotate theta0 r.1
+  let v := unrotate theta0 (r.2.1 - w * r.1.2.1, r.2.2.1 + w * r.1.1, r.2.2.2)
+  [43200.0 - dt, 43200.0 + dt, p.1, p.1, p.2.1, p.2.1, p.2.2, p.2.2, v.1, v.1, v.2.1, v.2.1,
+    v.2.2, v.2.2]
+
+/-- An input of the TEME frame on MJD 61000 with polar motion 0.1″ and 0.3″, for the receivers
+`rs` and measurements as `input` computes them. -/
+def inputT (rs : List ((Float × Float × Float) × (Float × Float × Float))) (φ lam h : Float)
+    (kinds : Nat) (region : List Float) (res levels cap dt : Float) : List Float :=
+  let e := input rs φ lam h kinds region res levels cap 0 0
+  let m := (e.drop (20 + 14 * rs.length)).length / 5
+  [1.0, 1.0, rs.length.toFloat, m.toFloat, 61000.0, 0.09, 0.11, 0.29, 0.31, 406.0e6, 406.1e6] ++
+    region ++ [res, levels, cap] ++ (rs.map fun r => entriesT r dt).flatten ++
+    e.drop (20 + 14 * rs.length)
+
 def meo : List ((Float × Float × Float) × (Float × Float × Float)) :=
   [receiver 10 30 23222 20, receiver 55 10 23222 160, receiver 40 70 23222 300,
     receiver (-15) 50 23222 80]
@@ -102,6 +128,11 @@ def fixed : List (List Float) :=
     input meo 35 40 0 3 (near 35 40 2 0 0) 0.2 10 65536 0 0,
     input meo 35 40 0 3 (near 35 40 2 0 0) 0.2 60 4 0 0,
     input meo 35 40 0 3 (near 35 40 2 0 0) 0.2 60 65536 1e300 0,
+    input meo 89.9 120 0 3 [rad 88, 1.5707963267948968, 0, rad 360, 0, 0] 0.2 60 65536 0 0,
+    inputT meo 35 40 0 3 (near 35 40 2 0 0) 0.2 60 65536 1e-6,
+    inputT meo 35 40 0 1 (near 35 40 2 0 0) 0.2 60 65536 0,
+    inputT meo 35 40 0 2 (near 35 40 2 0 0) 0.2 60 65536 5,
+    (inputT meo 35 40 0 3 (near 35 40 2 0 0) 0.2 60 65536 0).set 20 1e300 |>.set 21 1e300,
     good.set 1 1.0,
     good.set 2 1.0,
     good.set 9 0.0,

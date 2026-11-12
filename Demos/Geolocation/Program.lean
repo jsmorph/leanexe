@@ -58,10 +58,23 @@ structure State where
 /-- The interval of the input values at `q` and `q + 1`. -/
 def pair (xs : Array Float) (q : UInt64) : Interval := make (rd xs q) (rd xs (q + 1))
 
-/-- The Earth-fixed state of the receiver whose entries start at `b`. -/
-def stateOf (xs : Array Float) (b : UInt64) : State :=
-  ⟨pair xs (b + 2), pair xs (b + 4), pair xs (b + 6), pair xs (b + 8), pair xs (b + 10),
-    pair xs (b + 12)⟩
+/-- The Earth-fixed state of the receiver whose entries start at `b`: the input's intervals for
+the Earth-fixed frame, and for the TEME frame the rotation of the position and of the velocity
+less the Earth's rotation, at the sidereal angle and its rate over the receiver's time. -/
+def stateOf (inv half : Array UInt64) (xs : Array Float) (b : UInt64) : State :=
+  if rd xs 1 == 0.0 then
+    ⟨pair xs (b + 2), pair xs (b + 4), pair xs (b + 6), pair xs (b + 8), pair xs (b + 10),
+      pair xs (b + 12)⟩
+  else
+    let d := (rd xs 4).toUInt64
+    let t := pair xs b
+    let th := Demos.Frames.angleWith inv half d t
+    let w := spinI inv half inv half (ofInt d.toInt64) t
+    let p := Demos.Frames.toEarthI inv half inv half th (pair xs 5) (pair xs 7) (pair xs (b + 2))
+      (pair xs (b + 4)) (pair xs (b + 6))
+    let v := earthVelI inv half inv half th w (pair xs 5) (pair xs 7) (pair xs (b + 2))
+      (pair xs (b + 4)) (pair xs (b + 6)) (pair xs (b + 8)) (pair xs (b + 10)) (pair xs (b + 12))
+    ⟨p.1, p.2.1, p.2.2, v.1, v.2.1, v.2.2⟩
 
 /-- Component `c` of a state, in the order of its fields. -/
 def component (s : State) (c : UInt64) : Interval :=
@@ -69,8 +82,8 @@ def component (s : State) (c : UInt64) : Interval :=
   else if c == 3 then s.u else if c == 4 then s.v else s.w
 
 /-- The intervals of the `n` receivers' states, six for each receiver in the order of `State`. -/
-def receivers (xs : Array Float) (n : UInt64) : Array Interval :=
-  LeanExe.build (6 * n) fun q => component (stateOf xs (20 + 14 * (q / 6))) (q % 6)
+def receivers (inv half : Array UInt64) (xs : Array Float) (n : UInt64) : Array Interval :=
+  LeanExe.build (6 * n) fun q => component (stateOf inv half xs (20 + 14 * (q / 6))) (q % 6)
 
 /-- Every interval is accepted. -/
 def allAccepted (ys : Array Interval) : Bool :=
@@ -119,11 +132,18 @@ def boxTest (inv half : Array UInt64) (rx : Array Interval) (fq : Interval) (xs 
 
 /-! ### Splitting -/
 
+/-- The largest `|cos φ|` over the latitudes of a box: 1 when the box holds latitude 0, and
+otherwise the larger of `|cos|` at its ends, from the library's `cos`. -/
+def parallel (inv half : Array UInt64) (b : Box) : Float :=
+  if b.plo ≤ 0.0 && 0.0 ≤ b.phi then 1.0
+  else fmax (Trig.cosWith inv half b.plo).abs (Trig.cosWith inv half b.phi).abs
+
 /-- The longest side of a box, 0 for the latitude, 1 for the longitude, and 2 for the height, and
-its size in km. -/
-def longest (b : Box) : UInt64 × Float :=
+its size in km: `a` times the latitude's extent, `a` times the largest `|cos φ|` times the
+longitude's extent, and the height's extent. -/
+def longest (inv half : Array UInt64) (b : Box) : UInt64 × Float :=
   let sa := 6378.137 * (b.phi - b.plo)
-  let sb := 6378.137 * (b.lhi - b.llo)
+  let sb := 6378.137 * parallel inv half b * (b.lhi - b.llo)
   let sc := b.hhi - b.hlo
   if sb ≤ sa && sc ≤ sa then (0, sa) else if sc ≤ sb then (1, sb) else (2, sc)
 
@@ -147,8 +167,8 @@ def upperHalf (b : Box) (side : UInt64) (m : Float) : Box :=
 
 /-- The box is larger than the resolution `r`, and the middle of its longest side lies strictly
 between the side's ends. -/
-def splits (r : Float) (b : Box) : Bool :=
-  let s := longest b
+def splits (inv half : Array UInt64) (r : Float) (b : Box) : Bool :=
+  let s := longest inv half b
   let md := middle (sideLo b s.1) (sideHi b s.1)
   r < s.2 && finite md && sideLo b s.1 < md && md < sideHi b s.1
 
@@ -162,8 +182,8 @@ def boxStep (inv half : Array UInt64) (rx : Array Interval) (fq : Interval) (xs 
     let t := boxTest inv half rx fq xs base m b
     if t == 0 then acc
     else if t == 2 then acc.push { b with mark := 2 }
-    else if splits r b then
-      let side := (longest b).1
+    else if splits inv half r b then
+      let side := (longest inv half b).1
       let md := middle (sideLo b side) (sideHi b side)
       (acc.push (lowerHalf b side md)).push (upperHalf b side md)
     else acc.push { b with mark := 1 }
@@ -234,7 +254,8 @@ def entriesOk (xs : Array Float) (n m : UInt64) : Bool :=
 
 /-- The input meets the requirements of `requirements.md`. -/
 def valid (xs : Array Float) : Bool :=
-  20 ≤ xs.size.toUInt64 && allFinite xs && rd xs 0 == 1.0 && rd xs 1 == 0.0 &&
+  20 ≤ xs.size.toUInt64 && allFinite xs && rd xs 0 == 1.0 &&
+    (rd xs 1 == 0.0 || rd xs 1 == 1.0) &&
     isWhole (rd xs 2) 2 16 && isWhole (rd xs 3) 1 64 &&
     xs.size.toUInt64 == 20 + 14 * (rd xs 2).toUInt64 + 5 * (rd xs 3).toUInt64 &&
     isWhole (rd xs 4) 0 4294967295 && ordered xs 5 && ordered xs 7 && 0.0 < rd xs 9 &&
@@ -266,7 +287,7 @@ def locateWith (inv half : Array UInt64) (xs : Array Float) : Array Float :=
   if valid xs then
     let n := (rd xs 2).toUInt64
     let m := (rd xs 3).toUInt64
-    let rx := receivers xs n
+    let rx := receivers inv half xs n
     if allAccepted rx then
       let fq := pair xs 9
       let base := 20 + 14 * n
