@@ -1,5 +1,6 @@
 import Demos.Gate.GateVerified
 import Demos.Gate.GateSoundness
+import Demos.Gate.Miss
 import Verified.Call
 import Verified.BoundFacts
 
@@ -8,7 +9,7 @@ and `gate_bound` bounds the generated allocation bound by 6,496,880 bytes, so th
 without a trap from a ready store in which the allocator's `top` can rise by that much, and `top`
 rises by at most that much.
 `gate_module` joins the module's bytes, the export, the readiness of the start store, the call,
-and the conclusions of `gate_sound` for accepted results. -/
+and the conclusions of `gate_sound` and `gate_miss` for accepted results. -/
 
 namespace Demos.Gate
 
@@ -96,7 +97,9 @@ theorem gate_callSpec :
 /-- The module's bytes decode to the module, whose export `gate` returns `gate nu s g` without a
 trap from every ready store with room for 6,496,880 bytes, starting with the store in which
 the module starts.  When the gate accepts, the covariance is positive definite, `[lo, hi]`
-contains the squared Mahalanobis distance, and the verdict compares it with the threshold. -/
+contains the squared Mahalanobis distance, the verdict compares it with the threshold, and an
+innovation distributed as `multivariateGaussian 0 S` lies outside the gate with probability
+`Model.tail d γ`. -/
 theorem gate_module :
     (∃ bytes, Wasm.Encoding.encode gateCompiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok gateCompiled.module) ∧
@@ -113,12 +116,15 @@ theorem gate_module :
           ((gate nu s g).verdict = 1 →
             Model.mahalanobis (covariance s nu.size) (innovation nu) ≤ value g.toBits) ∧
           ((gate nu s g).verdict = 2 →
-            value g.toBits < Model.mahalanobis (covariance s nu.size) (innovation nu)) := by
+            value g.toBits < Model.mahalanobis (covariance s nu.size) (innovation nu)) ∧
+          (ProbabilityTheory.multivariateGaussian 0 (covariance s nu.size)).real
+              {ν | value g.toBits < Model.mahalanobis (covariance s nu.size) (WithLp.ofLp ν)} =
+            Model.tail nu.size (value g.toBits) := by
   obtain ⟨bytes, henc, hdec, _⟩ := gateCompiled.bytes
   refine ⟨⟨bytes, henc, hdec⟩, gate_export,
     _root_.Verified.Ready.initial rfl gateCompiled.initial, gate_callSpec, fun nu s g hs h => ?_⟩
   obtain ⟨-, -, -, -, -, hpd, -, -, hlo, hhi, h1, h2⟩ := gate_sound hs h
-  exact ⟨hpd, hlo, hhi, h1, h2⟩
+  exact ⟨hpd, hlo, hhi, h1, h2, gate_miss hs h⟩
 
 #print axioms gate_bound
 #print axioms gate_trapFree
