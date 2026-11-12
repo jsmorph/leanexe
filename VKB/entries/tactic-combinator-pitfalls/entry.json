@@ -25,7 +25,10 @@
     "Unknown identifier after obtain destructures a hypothesis",
     "type mismatch between LinearOrder.toPartialOrder.toLT and instLTUInt64 from not_le on UInt64",
     "The environment does not contain HasFDerivAtFilter.cosh",
-    "unexpected identifier at the continuation line of a tactic inside a term"
+    "unexpected identifier at the continuation line of a tactic inside a term",
+    "split_ifs after unfold of a function whose result literal holds an if",
+    "Expected type must not contain free variables from absurd (h : T) (by decide)",
+    "Library.Numerics.Interval.finite_iff does not apply after simp with decide_eq_true_eq"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -40,7 +43,8 @@
     "Demos.Rcv.ReadError",
     "Demos.Rcv.Properties",
     "Demos.Rcv.Maine.Rounds",
-    "Demos.Rcv.Refinement"
+    "Demos.Rcv.Refinement",
+    "Demos.PassiveSafety.Soundness"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -64,7 +68,14 @@
     "UInt64.lt_iff_toNat_lt",
     "UInt64.le_iff_toNat_le",
     "Library.Numerics.Bounds.finite",
-    "Library.Numerics.Bounds.absBits"
+    "Library.Numerics.Bounds.absBits",
+    "Demos.PassiveSafety.march",
+    "Demos.PassiveSafety.accepts",
+    "Demos.PassiveSafety.record",
+    "ite_eq_right",
+    "Library.Numerics.Interval.finite_iff",
+    "Bool.and_eq_true",
+    "of_decide_eq_true"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -79,11 +90,16 @@
     "Demos.Rcv.Maine.locality",
     "Demos.Orbit.lambert_newton",
     "Demos.Orbit.lambertBox_sound",
-    "Demos.Conjunction.Model.radiusIn_of"
+    "Demos.Conjunction.Model.radiusIn_of",
+    "Demos.PassiveSafety.march_covered",
+    "Demos.PassiveSafety.midpoint_ok"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [
       "F7.bind_fa"
+    ],
+    "Demos/Conjunction/AdaptiveSoundness.lean": [
+      "Demos.Conjunction.Adaptive.march_covers"
     ]
   }
 }
