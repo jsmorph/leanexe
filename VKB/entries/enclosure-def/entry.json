@@ -63,7 +63,8 @@
     "Demos.Attitude.encloses_asinI",
     "Demos.Screening.object_encl",
     "Demos.Attitude.triad_sound",
-    "Demos.Gate.terms_sound"
+    "Demos.Gate.terms_sound",
+    "Demos.PassiveSafety.sepPanel_encloses"
   ],
   "unimported": {
     "Demos/Sgp4/BoxVerified.lean": ["Demos.Sgp4.boxCompiled"],

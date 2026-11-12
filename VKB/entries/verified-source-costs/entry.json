@@ -13,7 +13,8 @@
     "a verified_compile module that compiles again after every change to a proof",
     "verified_compile: unsupported term f … for a listed definition that calls a wrapper",
     "verified_compile: unsupported term T for a table passed with a computed argument",
-    "(kernel) constant has already been declared 'p.f.func' from two listed definitions whose names end alike"
+    "(kernel) constant has already been declared 'p.f.func' from two listed definitions whose names end alike",
+    "a loop step that chooses among updates of an array field of the loop state"
   ],
   "modules": [
     "Verified.Reflect.Command",
@@ -46,7 +47,8 @@
     "Library.HashTables.LinearProbing.gap",
     "Verified.Reflect.wrapperShape?",
     "Demos.Orbit.lambertBoundsWith",
-    "Demos.Sgp4.sgp4BoxAroundWith"
+    "Demos.Sgp4.sgp4BoxAroundWith",
+    "LeanExe.repeatWhile"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -69,6 +71,13 @@
       "Demos.Conjunction.pcBox",
       "Demos.Conjunction.pcBoxEnds",
       "Demos.Conjunction.pcBoxWith"
+    ],
+    "Demos/Avoidance/Program.lean": [
+      "Demos.Avoidance.search",
+      "Demos.Avoidance.action"
+    ],
+    "Demos/Avoidance/Soundness.lean": [
+      "Demos.Avoidance.search_inv"
     ]
   }
 }

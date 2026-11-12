@@ -8,7 +8,9 @@
     "sqrt of mul, div, or sq of an interval that holds 0 is rejected",
     "a squared distance of 0 against a zero threshold is rejected",
     "a closed form with a factor that leaves the normal range",
-    "a natural interval form of x̂ᵀ C x̂ that is too wide to decide"
+    "a natural interval form of x̂ᵀ C x̂ that is too wide to decide",
+    "a natural interval form of a closed form over an interval of time that is too wide to decide",
+    "Library.Numerics.Interval.Encloses of the intersection of two enclosures of one quantity"
   ],
   "modules": [
     "Library.Numerics.Bounds.Program",
@@ -25,7 +27,8 @@
     "Demos.Attitude.QSoundness",
     "Demos.Orbit.LambertOrbit",
     "Demos.Screening.KeplerBox",
-    "Demos.Sgp4.KeplerBox"
+    "Demos.Sgp4.KeplerBox",
+    "Demos.PassiveSafety.Soundness"
   ],
   "declarations": [
     "Library.Numerics.Interval.Contains",
@@ -61,7 +64,10 @@
     "Demos.Screening.keplerI",
     "Demos.Screening.kepler.encloses",
     "Demos.Sgp4.Kepler.rootI",
-    "Real.sqrt_sq_eq_abs"
+    "Real.sqrt_sq_eq_abs",
+    "Demos.PassiveSafety.smoothSep",
+    "Demos.PassiveSafety.meet",
+    "Demos.PassiveSafety.encloses_meet"
   ],
   "examples": [
     "Demos.Conjunction.expI_sound",

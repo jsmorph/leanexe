@@ -25,7 +25,8 @@
     "Demos.Slew.Search",
     "Demos.OrderBook.RefineChains",
     "Library.Combinatorics.DancingLinks.Compiled",
-    "Demos.Rcv.Maine.RefineTally"
+    "Demos.Rcv.Maine.RefineTally",
+    "Demos.PassiveSafety.Soundness"
   ],
   "declarations": [
     "Library.Combinatorics.DancingLinks.repeatWhile_inv",
@@ -39,7 +40,8 @@
     "Library.Combinatorics.DancingLinks.search_fits",
     "Demos.Rcv.Maine.Refine.examine_gap_two",
     "Demos.Rcv.Maine.Refine.examine_gap_ne",
-    "Demos.Rcv.Maine.Refine.examine_three_zeros"
+    "Demos.Rcv.Maine.Refine.examine_three_zeros",
+    "Demos.PassiveSafety.repeatWhile_invariant"
   ],
   "examples": [
     "Library.Arrays.BinarySearch.search_spec",
@@ -60,5 +62,10 @@
     "Library.Combinatorics.DancingLinks.count_call",
     "Demos.Rcv.Maine.Refine.examineAt_eq",
     "Demos.Rcv.Maine.Refine.examineAt_interpret"
-  ]
+  ],
+  "unimported": {
+    "Demos/Avoidance/Soundness.lean": [
+      "Demos.Avoidance.search_inv"
+    ]
+  }
 }
