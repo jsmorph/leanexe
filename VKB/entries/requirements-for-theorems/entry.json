@@ -4,7 +4,8 @@
     "requirements in English for a safety theorem of a protocol or protection machine",
     "a main safety theorem with numbered items over records and answers",
     "a proved bound compared with the timing requirement it serves",
-    "a trusted base consistent with the theorems' quantifiers"
+    "a trusted base consistent with the theorems' quantifiers",
+    "the route and the cost of a proof that a requirement fixes, against what Mathlib proves"
   ],
   "modules": [
     "Demos.Bms.Theorems",

@@ -10,7 +10,9 @@
     "StrictAntiOn of a function that an integral with a parameter defines",
     "ContinuousAt at a point where closed forms are 0/0",
     "StrictMonoOn of a set integral over a growing set",
-    "identities of universal functions that hold for every sign of β"
+    "identities of universal functions that hold for every sign of β",
+    "f t = f m + f1 m * (t - m) + f2 ξ * ((t - m) * (t - m)) / 2 for some ξ between m and t",
+    "derivatives of a trajectory with impulsive burns between its burns"
   ],
   "modules": [
     "Demos.Orbit.Newton",
@@ -20,7 +22,8 @@
     "Demos.Orbit.LambertRoot",
     "Demos.Gate.Model",
     "Demos.PassiveSafety.Model",
-    "Demos.Conjunction.AccuracyModel"
+    "Demos.Conjunction.AccuracyModel",
+    "Demos.PassiveSafety.Soundness"
   ],
   "declarations": [
     "HasDerivAt.mul",
@@ -66,7 +69,19 @@
     "Demos.Orbit.U3",
     "Demos.Orbit.U0_add_U2",
     "Demos.Orbit.U1_add_U3",
-    "Demos.Orbit.U1_sq"
+    "Demos.Orbit.U1_sq",
+    "exists_hasDerivAt_eq_zero",
+    "Demos.PassiveSafety.Model.rolle_between",
+    "Demos.PassiveSafety.Model.taylor_two",
+    "Demos.PassiveSafety.Model.smooth",
+    "Demos.PassiveSafety.Model.Motion",
+    "Demos.PassiveSafety.Model.smooth_motion",
+    "Demos.PassiveSafety.Model.flow_hasDerivAt",
+    "HasDerivAt.fun_sum",
+    "Demos.PassiveSafety.Model.sep_derivs",
+    "Demos.PassiveSafety.path_smooth",
+    "Demos.PassiveSafety.Window",
+    "Demos.PassiveSafety.straddles_window"
   ],
   "examples": [
     "Demos.Orbit.Newton.e_deriv",
@@ -79,7 +94,8 @@
     "Demos.Orbit.newton_unique",
     "Demos.Orbit.Lambert.tof_strictAntiOn_pos",
     "Demos.Orbit.Lambert.tof_continuousAt_one",
-    "Demos.Conjunction.Model.pc_strictMonoOn"
+    "Demos.Conjunction.Model.pc_strictMonoOn",
+    "Demos.PassiveSafety.smooth_panel"
   ],
   "unimported": {
     "Demos/Avoidance/TwoBody.lean": [

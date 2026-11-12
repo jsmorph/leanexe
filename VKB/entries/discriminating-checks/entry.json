@@ -7,7 +7,8 @@
     "the self-test of an independent reference",
     "a host script that judges a run on a board or an emulator",
     "a native test of a theorem statement that has rejected no false variant",
-    "a tolerance as large as the quantity that the check compares"
+    "a tolerance as large as the quantity that the check compares",
+    "a test of the accuracy of a bound against the true value, with a margin for the limit of the method"
   ],
   "modules": [],
   "declarations": [],
