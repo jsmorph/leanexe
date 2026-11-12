@@ -4,8 +4,9 @@ import Demos.Conjunction.BoxSoundness
 import Verified.Call
 
 /-! The calls of the compiled authorizer (C1).  `authorize_callSpec` states that the export
-`authorize`, function 94, returns `authorize xs n` without a trap from every ready store in which
-the allocator's `top` can rise by `compiled.authorize.bound (xs, n)` bytes within the memory cap,
+`authorize`, function 111, returns `authorize xs n s` without a trap from every ready store in
+which the allocator's `top` can rise by `compiled.authorize.bound (xs, n, s)` bytes within the
+memory cap,
 from the generated `compiled.authorize.trapFree` and the tables of `exp`, `sin`, and `cos`.
 `avoidance` joins the module's bytes, the export, the readiness of the start store, the call, and
 `authorize_model` for status 0.  `pcBox_call` states the call of the export `pcBox` with
@@ -17,11 +18,11 @@ open Wasm LeanExe.Pipeline Demos.Orbit
 open CodeLib.IEEE64 (value Finite)
 
 theorem authorize_export :
-    ({ name := "authorize", funcIdx := 94 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "authorize", funcIdx := 111 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 theorem pcBox_export :
-    ({ name := "pcBox", funcIdx := 93 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "pcBox", funcIdx := 110 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 /-- The store in which the module starts is ready, with the heap that holds the tables. -/
@@ -31,17 +32,18 @@ theorem ready_initial :
   _root_.Verified.Ready.initial rfl compiled.initial
 
 set_option maxRecDepth 100000 in
-/-- **C1.**  Function 94 returns `authorize xs n` from every ready store in which `top` can rise
-by `compiled.authorize.bound (xs, n)` bytes within the memory cap, and `top` rises by at most that
-much. -/
+/-- **C1.**  Function 111 returns `authorize xs n s` from every ready store in which `top` can
+rise by `compiled.authorize.bound (xs, n, s)` bytes within the memory cap, and `top` rises by at
+most that much. -/
 theorem authorize_callSpec :
-    _root_.Verified.CallSpec compiled.module compiled.tables 94
-      (fun x : Array Float × UInt64 => authorize x.1 x.2) compiled.authorize.bound :=
+    _root_.Verified.CallSpec compiled.module compiled.tables 111
+      (fun x : Array Float × UInt64 × UInt64 => authorize x.1 x.2.1 x.2.2)
+      compiled.authorize.bound :=
   _root_.Verified.ImplementsTables.call compiled.authorize.trapFree compiled.tables
     (_root_.Verified.tables_at [0, 1, 2] (by decide) rfl)
 
-/-- The module's bytes decode to the module, whose export `authorize` is function 94, whose
-start store is ready, and whose entry returns `authorize xs n` without a trap from every ready
+/-- The module's bytes decode to the module, whose export `authorize` is function 111, whose
+start store is ready, and whose entry returns `authorize xs n s` without a trap from every ready
 store with room for its allocation bound.  When the result's status is 0, for every conjunction,
 every velocity change of the box, and every displacement within the padding, the two-body
 trajectories from the primary's state at the burn solve Newton's equation, the miss vector is the
@@ -49,17 +51,18 @@ closest approach of the line, and the model's probability lies below the thresho
 theorem avoidance :
     (∃ bytes, Wasm.Encoding.encode compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok compiled.module) ∧
-      ({ name := "authorize", funcIdx := 94 } : Wasm.Export) ∈ compiled.module.exports ∧
+      ({ name := "authorize", funcIdx := 111 } : Wasm.Export) ∈ compiled.module.exports ∧
       _root_.Verified.Ready compiled.module compiled.tables
         (_root_.Verified.initialHeap compiled.tables) compiled.module.initialStore ∧
-      _root_.Verified.CallSpec compiled.module compiled.tables 94
-        (fun x : Array Float × UInt64 => authorize x.1 x.2) compiled.authorize.bound ∧
-      ∀ (xs : Array Float) (n : UInt64), (authorize xs n)[0]! = 0.0 →
-        valid xs n = true ∧ ∀ j < (count xs).toNat, ∀ dv d : V3, InBox xs dv → InPad xs d →
+      _root_.Verified.CallSpec compiled.module compiled.tables 111
+        (fun x : Array Float × UInt64 × UInt64 => authorize x.1 x.2.1 x.2.2)
+        compiled.authorize.bound ∧
+      ∀ (xs : Array Float) (n s : UInt64), (authorize xs n s)[0]! = 0.0 →
+        valid xs n s = true ∧ ∀ j < (count xs).toNat, ∀ dv d : V3, InBox xs dv → InPad xs d →
           Good xs j dv d ∧ pcAfter xs j dv d < val xs 14 := by
   obtain ⟨bytes, henc, hdec, _⟩ := compiled.bytes
   exact ⟨⟨bytes, henc, hdec⟩, authorize_export, ready_initial, authorize_callSpec,
-    fun _ _ h => authorize_sound h⟩
+    fun _ _ _ h => authorize_sound h⟩
 
 /-- A call of the export `pcBox` from a ready store, with the bits of the floats and the word of
 the panel count as arguments, returns without a trap the words of the status, `lo`, and `hi` of
@@ -69,7 +72,7 @@ every mean and covariance between the given ends. -/
 theorem pcBox_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
     (m1lo m1hi m2lo m2hi c11lo c11hi c12lo c12hi c22lo c22hi r : Float) (n : UInt64)
     (h : _root_.Verified.Ready compiled.module compiled.tables heap store) :
-    Runs false env compiled.module 93 store
+    Runs false env compiled.module 110 store
       [.i64 n, .f64 r.toBits, .f64 c22hi.toBits, .f64 c22lo.toBits, .f64 c12hi.toBits,
         .f64 c12lo.toBits, .f64 c11hi.toBits, .f64 c11lo.toBits, .f64 m2hi.toBits,
         .f64 m2lo.toBits, .f64 m1hi.toBits, .f64 m1lo.toBits]

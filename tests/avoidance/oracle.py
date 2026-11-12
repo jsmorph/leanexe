@@ -21,21 +21,31 @@ two-dimensional quadrature on three inputs.
 
 For each conjunction it samples velocity changes and displacements: the eight corners of the box,
 each with a corner of the padding, the center, and six random points, and it climbs from the
-largest sample by a compass search inside the box and the padding.  It checks:
+largest sample by a compass search inside the box and the padding.  Each case gives the panel
+count N and the split budget S.  It checks:
   - status 1 exactly for the invalid inputs, with the output 1, 0;
   - an output of 2 + 3K values, with K in its second entry;
-  - status 0 exactly when every verdict is 0, status 3 exactly when some verdict is 2;
-  - verdict 0 exactly when hi < T among the accepted enclosures;
-  - for every conjunction with verdict 0 or 1, every sampled probability in [lo, hi];
+  - status 0 exactly when every verdict is 0, status 3 exactly when some verdict is 2, status 2
+    exactly when some verdict is 1 and none is 2, and status 4 otherwise;
+  - verdict 0 exactly when hi < T among the accepted hulls, and zero ends for verdict 2;
+  - for every conjunction with verdict 0, 1, or 3, every sampled probability in [lo, hi];
   - for status 0, every sampled probability below the threshold;
   - a verdict other than 0 for a conjunction with a sampled probability above 10 T;
+  - for verdict 1, a sampled probability at or above the threshold;
   - the status and the verdicts that each case fixes in advance.
-It records the ratio of hi to the largest sampled probability.  After the first run it builds
-cases whose threshold equals an upper end hi, the next double above it, and a value between lo
-and hi, and requires verdicts 1, 0, and 1.  For `pcBox` it samples the 32 corners and the center
-of the five intervals and requires each probability in [lo, hi].  With --mutate it also alters
-correct outputs and requires the checks to fail on each.  It prints one line per case and exits
-with status 1 on any failure.
+For every valid case it replays the search of the requirements with the module's own
+evaluations of cells and probes, each a call with S = 0 and the cell as the box, requires the
+output to equal the replay's bit for bit, and requires the probability with no displacement at
+the replay's witness of each verdict 1 to lie at or above T.  It records the ratio of hi to the
+largest sampled probability.  After the first run it calls each
+valid case with S = 0, checks the output as above without the fixed status and verdicts, and
+builds, from an accepted conjunction, cases with S = 0 whose threshold equals hi, the next double
+above it, a value between lo and hi, lo, and the next double above lo, and requires the verdict
+of a single evaluation: 0 when hi < T, 1 when lo >= T, and 3 otherwise.  It also builds, from
+each such conjunction, a case with S = 1 whose threshold equals hi, which the replay checks.
+For `pcBox` it samples the 32 corners and the center of the five intervals and requires each
+probability in [lo, hi].  With --mutate it also alters correct outputs and requires the checks to
+fail on each.  It prints one line per case and exits with status 1 on any failure.
 
 Usage: uv run tests/avoidance/oracle.py MODULE [--mutate]"""
 import json
@@ -52,6 +62,7 @@ from mpmath import mp, mpf
 mp.dps = 40
 MU = 398600.4418
 PANELS = 4096
+BUDGET_MAX = 2 ** 16
 
 
 def bits(x: float) -> str:
@@ -262,6 +273,7 @@ class Case:
     verdicts: list | None = None
     invalid: bool = False
     derived: bool = False
+    s: int = 64
 
 
 def block_of(xs, j):
@@ -332,9 +344,19 @@ def climb(xs, j, start, value):
     return value
 
 
+PROBABILITIES = {}
+
+
 def probabilities(xs, j):
     """The sampled probabilities of conjunction j, None where the oracle cannot evaluate one, and
-    the largest probability that the compass search reaches."""
+    the largest probability that the compass search reaches.  The threshold does not enter."""
+    key = (tuple(xs[:14] + xs[15:]), j)
+    if key not in PROBABILITIES:
+        PROBABILITIES[key] = probabilities_of(xs, j)
+    return PROBABILITIES[key]
+
+
+def probabilities_of(xs, j):
     pcs = []
     for dv, d in samples(xs, 1000 * j + 7):
         try:
@@ -432,11 +454,11 @@ def cases():
     near = conjunction(rb, vb, 2700.0, (0.03, 0.0), 90.0)
     far = conjunction(rb, vb, 5000.0, (1.0, 0.5), 60.0)
 
-    def case(name, rb, vb, box, blocks, expect=None, verdicts=None, P=0.0, T=T, n=PANELS):
+    def case(name, rb, vb, box, blocks, expect=None, verdicts=None, P=0.0, T=T, n=PANELS, s=64):
         xs = header(rb, vb, box, P, T)
         for b in blocks:
             xs += b.values()
-        out.append(Case(name, xs, n, expect, verdicts))
+        out.append(Case(name, xs, n, expect, verdicts, s=s))
 
     case("avoid 10 cm/s, box 1 mm/s", rb, vb, along_box(vb, 1e-4, 1e-6), [near], 0.0, [0])
     case("zero burn, high probability", rb, vb, [0.0] * 6, [near], 2.0, [1])
@@ -462,13 +484,20 @@ def cases():
          [conjunction(rb, vb, 86400.0, (0.03, 0.0), 90.0)], 0.0, [0])
     case("8,000 s after the burn, 10 km cross-track deviation", rb, vb, along_box(vb, 1e-4, 1e-6),
          [conjunction(rb, vb, 8000.0, (0.03, 0.0), 90.0, sig=(0.05, 0.2, 10.0))], 0.0, [0])
+    day10 = conjunction(rb, vb, 86400.0, (0.03, 0.0), 90.0, sig=(0.05, 0.2, 10.0))
     case("a day after the burn, 10 km cross-track deviation", rb, vb, along_box(vb, 1e-4, 1e-6),
-         [conjunction(rb, vb, 86400.0, (0.03, 0.0), 90.0, sig=(0.05, 0.2, 10.0))])
-    case("box 1e-3 km/s", rb, vb, along_box(vb, 1e-4, 1e-3), [near])
-    case("box 1e-5 km/s", rb, vb, along_box(vb, 1e-4, 1e-5), [near])
+         [day10], 0.0, [0], s=256)
+    case("a day after the burn, 10 km cross-track deviation, S = 0", rb, vb,
+         along_box(vb, 1e-4, 1e-6), [day10], 4.0, [3], s=0)
+    case("box 1e-3 km/s", rb, vb, along_box(vb, 1e-4, 1e-3), [near], 2.0, [1])
+    case("box 1e-5 km/s", rb, vb, along_box(vb, 1e-4, 1e-5), [near], 0.0, [0], s=256)
+    case("box 1e-5 km/s, S = 0", rb, vb, along_box(vb, 1e-4, 1e-5), [near], 4.0, [3], s=0)
+    case("box 1e-5 km/s, S = 2", rb, vb, along_box(vb, 1e-4, 1e-5), [near], 4.0, [3], s=2)
     case("padding 50 m", rb, vb, along_box(vb, 1e-4, 1e-6), [near], 0.0, [0], P=0.05)
-    case("elongated covariance 100:1", rb, vb, along_box(vb, 1e-4, 1e-6),
-         [conjunction(rb, vb, 2700.0, (0.03, 0.0), 90.0, sig=(0.02, 2.0, 0.02), rho_rt=0.5)])
+    elongated = conjunction(rb, vb, 2700.0, (0.03, 0.0), 90.0, sig=(0.02, 2.0, 0.02), rho_rt=0.5)
+    case("elongated covariance 100:1", rb, vb, along_box(vb, 1e-4, 1e-6), [elongated])
+    case("elongated covariance 100:1, box 1e-3 km/s, T = 0.02", rb, vb,
+         along_box(vb, 1e-4, 1e-3), [elongated], 0.0, [0], T=0.02)
     case("nominal moved 1 km along track", rb, vb, along_box(vb, 1e-4, 1e-6),
          [conjunction(rb, vb, 2700.0, (0.03, 0.0), 90.0, along=1.0)], 0.0, [0])
     case("16 panels", rb, vb, along_box(vb, 1e-4, 1e-6), [near], n=16)
@@ -519,7 +548,38 @@ def cases():
     par[10:13] = [par[4] - par[1] / 700.0, par[5] - par[2] / 700.0, par[6] - par[3] / 700.0]
     parb = Block(par[0], par[1:4], par[4:7], par[7:10], par[10:13], par[13:19], par[19])
     case("relative velocity along r1", rb, vb, along_box(vb, 1e-4, 1e-6), [parb], 3.0, [2])
+    case("relative velocity along r1, zero burn", rb, vb, [0.0] * 6, [parb], 3.0, [2])
+    case("relative velocity along r1, T = 0.1", rb, vb, along_box(vb, 1e-4, 1e-6), [parb], 0.0,
+         [0], T=0.1)
     case("unbound after the burn", rb, vb, along_box(vb, 4.0, 1e-6), [near], 3.0, [2])
+    # The search: the least budgets and the budgets below them, the precedence of the statuses,
+    # unequal sides, probes at the center with and without padding, and a box across the escape
+    # speed whose cells are accepted below it and rejected above it.
+    for s, want in [(13, (0.0, [0])), (12, (4.0, [3]))]:
+        case(f"box 1e-5 km/s, S = {s}", rb, vb, along_box(vb, 1e-4, 1e-5), [near], *want, s=s)
+    for s, want in [(5, (0.0, [0])), (4, (4.0, [3]))]:
+        case(f"a day after the burn, 10 km cross-track deviation, S = {s}", rb, vb,
+             along_box(vb, 1e-4, 1e-6), [day10], *want, s=s)
+    for s, want in [(10, (2.0, [1])), (9, (4.0, [3]))]:
+        case(f"box 1e-3 km/s, S = {s}", rb, vb, along_box(vb, 1e-4, 1e-3), [near], *want, s=s)
+    third = conjunction(rb, vb, 2700.0, (-0.6, 0.0), 90.0)
+    case("box 1e-5 km/s and a miss of 600 m, S = 1", rb, vb, along_box(vb, 1e-4, 1e-5),
+         [near, third], 2.0, [3, 1], s=1)
+    case("box 1e-5 km/s and a miss of 600 m, S = 0", rb, vb, along_box(vb, 1e-4, 1e-5),
+         [near, third], 4.0, [3, 3], s=0)
+    cb = along(vb, 1e-4)
+    case("sides 8e-5, 2e-5, and 2e-5 km/s", rb, vb,
+         [cb[0] - 4e-5, cb[0] + 4e-5, cb[1] - 1e-5, cb[1] + 1e-5, cb[2] - 1e-5, cb[2] + 1e-5],
+         [near], s=256)
+    case("box about a burn that cancels the miss, padding 100 m, T = 0.02", rbm, vbm, ibox,
+         [conjunction(rbm, vbm, 2700.0, (0.0, 0.0), 90.0, burn=burn, sig=(0.03, 0.3, 0.03))],
+         P=0.1, T=0.02)
+    case("zero burn, padding 100 m", rb, vb, [0.0] * 6, [near], 2.0, [1], P=0.1)
+    case("zero burn, the largest budget", rb, vb, [0.0] * 6, [near], 2.0, [1], s=BUDGET_MAX)
+    ce = along(vb, 3.0)
+    case("box across the escape speed, 60 s", rb, vb,
+         [ce[0], ce[0], ce[1] - 0.02, ce[1] + 0.3, ce[2], ce[2]],
+         [conjunction(rb, vb, 60.0, (0.03, 0.0), 90.0)], 3.0, [2], s=256)
     good = header(rb, vb, along_box(vb, 1e-4, 1e-6), 0.0, T) + near.values()
 
     def invalid(name, xs, n=PANELS):
@@ -536,9 +596,24 @@ def cases():
     invalid("radius zero", good[:34] + [0.0])
     invalid("panels zero", good, 0)
     invalid("panels above 2^20", good, 2 ** 20 + 1)
+    out.append(Case("budget above the largest", good, PANELS, 1.0, invalid=True,
+                    s=BUDGET_MAX + 1))
     invalid("65 conjunctions", header(rb, vb, along_box(vb, 1e-4, 1e-6), 0.0, T)
             + near.values() * 65)
+    for name in TIGHT:
+        c = next(c for c in out if c.name == name)
+        top = probabilities(c.xs, 0)[1]
+        for f in (2.0, 1.2):
+            xs = list(c.xs)
+            xs[14] = float(f * top)
+            out.append(Case(f"{name}, T = {f:g} times the largest", xs, c.n, s=4096))
     return out
+
+
+# The cases accepted with the threshold 1e-4 that the tests repeat with tighter thresholds.
+TIGHT = ["avoid 10 cm/s, box 1 mm/s", "equatorial primary", "polar primary", "a day after the burn",
+         "8,000 s after the burn, 10 km cross-track deviation",
+         "a day after the burn, 10 km cross-track deviation", "box 1e-5 km/s"]
 
 
 def box_cases():
@@ -559,6 +634,156 @@ def run(module, queries):
                           input="\n".join(json.dumps(q) for q in queries) + "\n",
                           capture_output=True, text=True, check=True)
     return [json.loads(line) for line in proc.stdout.splitlines() if line]
+
+
+# ### The replay of the search
+
+
+REJECTED = (1, 0.0, 0.0)
+
+
+class Cells:
+    """The intervals of cells and probes of conjunction j of an input, each from a call of the
+    module with S = 0, the cell's box, the padding or 0, and the conjunction alone."""
+
+    def __init__(self, module, xs, n, j):
+        self.module, self.n = module, n
+        self.head = list(xs[:15])
+        self.head[14] = 1.0
+        self.block = xs[15 + 20 * j:35 + 20 * j]
+        self.cache = {}
+
+    def intervals(self, boxes):
+        """The intervals of the boxes, each a pair of the box and the padding."""
+        todo = [b for b in boxes if b not in self.cache]
+        queries = []
+        for box, pad in todo:
+            ys = self.head[:7] + list(box) + [pad, 1.0] + self.block
+            queries.append({"xs": [bits(x) for x in ys], "n": self.n, "s": 0})
+        for b, o in zip(todo, run(self.module, queries) if queries else []):
+            ys = [unbits(h) for h in o["out"]]
+            self.cache[b] = REJECTED if ys[2] == 2.0 else (0, ys[3], ys[4])
+        return [self.cache[b] for b in boxes]
+
+
+def middle(lo, hi):
+    return lo + (hi - lo) * 0.5
+
+
+def fmin(a, b):
+    return a if a <= b else b
+
+
+def fmax(a, b):
+    return b if a <= b else a
+
+
+def side(c):
+    a, b, d = c[1] - c[0], c[3] - c[2], c[5] - c[4]
+    return 0 if b <= a and d <= a else 1 if d <= b else 2
+
+
+def replay_one(cells, box, T, P, s):
+    """The search of the requirements over one conjunction: the hull, whether an interval showed
+    the probability at or above T, and the velocity change at which it did."""
+    queue = [(tuple(box), REJECTED, 0)]
+    nxt, hull, seen, budget, above, witness = 0, REJECTED, False, s, False, None
+
+    def fold(r):
+        nonlocal hull, seen
+        if seen:
+            hull = ((0, fmin(hull[1], r[1]), fmax(hull[2], r[2]))
+                    if hull[0] == 0 and r[0] == 0 else REJECTED)
+        else:
+            hull = r
+        seen = True
+
+    def center(c):
+        ms = [middle(c[2 * i], c[2 * i + 1]) for i in range(3)]
+        if all(math.isfinite(m) and c[2 * i] <= m <= c[2 * i + 1] for i, m in enumerate(ms)):
+            return ms
+        return None
+
+    for _ in range(2 * s + 1):
+        if not (nxt < len(queue) and not above):
+            break
+        if (queue[nxt][0], P) not in cells.cache:
+            pending = queue[nxt:]
+            rs = cells.intervals([(q[0], P) for q in pending])
+            probes = []
+            for (cb, _, d), r in zip(pending, rs):
+                ms = center(cb)
+                if d % 3 == 0 and ms and not (r[0] == 0 and (r[2] < T or T <= r[1])):
+                    probes.append(((ms[0], ms[0], ms[1], ms[1], ms[2], ms[2]), 0.0))
+            cells.intervals(probes)
+        c, _, depth = queue[nxt]
+        r = cells.intervals([(c, P)])[0]
+        nxt += 1
+        if r[0] == 0 and r[2] < T:
+            fold(r)
+            continue
+        if r[0] == 0 and T <= r[1]:
+            fold(r)
+            above, witness = True, [c[0], c[2], c[4]]
+            continue
+        if budget != 0:
+            if depth % 3 == 0:
+                ms = center(c)
+                if ms:
+                    p = cells.intervals([((ms[0], ms[0], ms[1], ms[1], ms[2], ms[2]), 0.0)])[0]
+                    if p[0] == 0 and T <= p[1]:
+                        fold(r)
+                        above, witness = True, ms
+                        continue
+            k = side(c)
+            m = middle(c[2 * k], c[2 * k + 1])
+            if math.isfinite(m) and c[2 * k] < m < c[2 * k + 1]:
+                lower, upper = list(c), list(c)
+                lower[2 * k + 1] = m
+                upper[2 * k] = m
+                queue += [(tuple(lower), r, depth + 1), (tuple(upper), r, depth + 1)]
+                budget -= 1
+                continue
+        fold(r)
+    for _, r, _ in queue[nxt:]:
+        fold(r)
+    return (hull if seen else REJECTED), above, witness
+
+
+def replay(module, c):
+    """The output that the requirements give for the case, with the module's evaluations of
+    cells and probes, and the witness of each conjunction shown at or above T."""
+    xs, T = c.xs, c.xs[14]
+    K = (len(xs) - 15) // 20
+    out, witnesses = [], {}
+    for j in range(K):
+        hull, above, witness = replay_one(Cells(module, xs, c.n, j), xs[7:13], T, xs[13], c.s)
+        if hull[0] == 0:
+            v = 0.0 if hull[2] < T else 1.0 if above else 3.0
+            out.append((v, hull[1], hull[2]))
+        else:
+            out.append((2.0, 0.0, 0.0))
+        if out[-1][0] == 1.0:
+            witnesses[j] = witness
+    vs = [o[0] for o in out]
+    status = (0.0 if all(v == 0.0 for v in vs) else 3.0 if 2.0 in vs else 2.0 if 1.0 in vs
+              else 4.0)
+    return [bits(x) for x in [status, float(K)] + [y for o in out for y in o]], witnesses
+
+
+def check_replay(c, out, expected, witnesses):
+    """The output must equal the replay's, and each witness must give a probability at or above
+    T with no displacement."""
+    fails = []
+    if out != expected:
+        fails.append(f"output {[unbits(h) for h in out]} differs from the replay's "
+                     f"{[unbits(h) for h in expected]}")
+    T = mpf(c.xs[14])
+    for j, dv in witnesses.items():
+        p = sample_pc(c.xs, j, dv, [0.0, 0.0, 0.0])
+        if p < T * (1 - mpf(10) ** -20):
+            fails.append(f"conjunction {j}: witness {dv} gives {mp.nstr(p, 8)} below T")
+    return fails
 
 
 @dataclass
@@ -595,18 +820,21 @@ def check_case(c, out, ev, tol=mpf(10) ** -20):
     status = ys[0]
     T = mpf(c.xs[14])
     verdicts = [ys[2 + 3 * j] for j in range(K)]
-    want = 0.0 if all(v == 0.0 for v in verdicts) else 3.0 if 2.0 in verdicts else 2.0
+    want = (0.0 if all(v == 0.0 for v in verdicts) else 3.0 if 2.0 in verdicts
+            else 2.0 if 1.0 in verdicts else 4.0)
     if status != want:
         fails.append(f"status {status} with verdicts {verdicts}")
     ratios = []
     for j in range(K):
         verdict, lo, hi = verdicts[j], mpf(ys[3 + 3 * j]), mpf(ys[4 + 3 * j])
         pcs = [p for p in ev.pcs[j] + [ev.tops[j]] if p is not None]
-        if verdict not in (0.0, 1.0, 2.0):
+        if verdict not in (0.0, 1.0, 2.0, 3.0):
             fails.append(f"conjunction {j}: verdict {verdict}")
         if verdict == 2.0 and (lo != 0 or hi != 0):
             fails.append(f"conjunction {j}: verdict 2 with ends {lo}, {hi}")
-        if verdict in (0.0, 1.0):
+        if verdict == 1.0 and not any(p >= T for p in pcs):
+            fails.append(f"conjunction {j}: verdict 1, but no sample reaches T")
+        if verdict in (0.0, 1.0, 3.0):
             if (verdict == 0.0) != (hi < T):
                 fails.append(f"conjunction {j}: verdict {verdict} with hi {mp.nstr(hi, 8)}")
             if len(pcs) < len(ev.pcs[j]) + 1:
@@ -637,6 +865,7 @@ def mutations(c, out, ev):
         return alts
     alts.append(("status 1", [bits(1.0)] + out[1:]))
     K = (len(ys) - 2) // 3
+    T = c.xs[14]
     for j in range(K):
         pcs = [p for p in ev.pcs[j] + [ev.tops[j]] if p is not None]
         top = max(pcs) if pcs else None
@@ -654,31 +883,45 @@ def mutations(c, out, ev):
         elif top is not None and top > 0:
             alt = list(out)
             alt[2 + 3 * j] = bits(0.0)
-            alts.append((f"verdict 0 for the rejected enclosure {j}", alt))
+            alts.append((f"verdict 0 for the rejected hull {j}", alt))
+        if ys[2 + 3 * j] == 3.0:
+            alt = list(out)
+            alt[2 + 3 * j] = bits(0.0)
+            alts.append((f"verdict 0 for the unfinished search {j}", alt))
+        if ys[2 + 3 * j] in (0.0, 3.0) and top is not None and top < T:
+            alt = list(out)
+            alt[2 + 3 * j] = bits(1.0)
+            if ys[4 + 3 * j] < T:
+                alt[4 + 3 * j] = bits(T)
+            alts.append((f"verdict 1 for {j} with every sample below T", alt))
     if ys[0] == 3.0:
         alts.append(("status 2 for a rejection", [bits(2.0)] + out[1:]))
+    if ys[0] == 2.0:
+        alts.append(("status 4 for a conjunction at or above T", [bits(4.0)] + out[1:]))
+    if ys[0] == 4.0:
+        alts.append(("status 2 for an unfinished search", [bits(2.0)] + out[1:]))
     return alts
 
 
 def threshold_cases(c, out):
-    """Cases whose threshold is an upper end hi, the next double above it, and a value between
-    lo and hi, with the verdicts they fix."""
+    """Cases with S = 0, from the output of the case with S = 0, whose threshold is an upper end
+    hi, the next double above it, a value between lo and hi, lo, and the next double above lo,
+    with the verdicts of a single evaluation."""
     ys = [unbits(h) for h in out]
     derived = []
     for j in range((len(ys) - 2) // 3):
         lo, hi = ys[3 + 3 * j], ys[4 + 3 * j]
         if ys[2 + 3 * j] == 2.0 or hi <= 0:
             continue
-        others = [None] * ((len(ys) - 2) // 3)
-        for t, v, label in [(hi, 1, "T = hi"), (math.nextafter(hi, math.inf), 0, "T above hi"),
-                            ((lo + hi) / 2, 1, "T between lo and hi")]:
+        for t, label in [(hi, "T = hi"), (math.nextafter(hi, math.inf), "T above hi"),
+                         ((lo + hi) / 2, "T between lo and hi"), (lo, "T = lo"),
+                         (math.nextafter(lo, math.inf), "T above lo")]:
             if label == "T between lo and hi" and not lo < (lo + hi) / 2 < hi:
                 continue
+            v = 0 if hi < t else 1 if lo >= t else 3
             xs = list(c.xs)
             xs[14] = t
-            want = list(others)
-            want[j] = v
-            derived.append((Case(f"{c.name}, {label} of {j}", xs, c.n, derived=True), j, v))
+            derived.append((Case(f"{c.name}, {label} of {j}", xs, c.n, derived=True, s=0), j, v))
         break
     return derived
 
@@ -720,13 +963,17 @@ def main() -> int:
           f"{mp.nstr(wq, 3)}", flush=True)
     failures += 0 if wq < 1e-15 else 1
     cs = cases()
-    outs = run(module, [{"xs": [bits(x) for x in c.xs], "n": c.n} for c in cs])
+    outs = run(module, [{"xs": [bits(x) for x in c.xs], "n": c.n, "s": c.s} for c in cs])
     rejected = total = 0
     all_ratios = []
     derived = []
+    replays = 0
     for c, o in zip(cs, outs):
         ev = evidence(c)
         fails, ratios = check_case(c, o["out"], ev)
+        if not c.invalid:
+            fails += check_replay(c, o["out"], *replay(module, c))
+            replays += 1
         all_ratios += ratios
         ys = [unbits(h) for h in o["out"]]
         failures += 1 if fails else 0
@@ -735,8 +982,8 @@ def main() -> int:
                           f" max {float(ev.tops[j]) if ev.tops[j] is not None else 0:.4g}"
                           for j in range(K))
         ratio = f" ratio {float(max(ratios)):.3g}" if ratios else ""
-        print(f"{'ok  ' if not fails else 'FAIL'} {c.name}: status {int(ys[0])} {detail}"
-              f"{ratio} {o['ms']:.1f} ms", flush=True)
+        print(f"{'ok  ' if not fails else 'FAIL'} {c.name}: S {c.s} status {int(ys[0])} {detail}"
+              f"{ratio} {o['ms']:.1f} ms {o['memory'] / 2 ** 20:.1f} MiB", flush=True)
         for f in fails:
             print(f"      {f}")
         if mutate:
@@ -747,10 +994,33 @@ def main() -> int:
                 else:
                     failures += 1
                     print(f"      mutation not detected: {label}")
-        if not c.invalid and ys[0] != 1.0:
+    bases = [(c, evidence(c)) for c in cs if not c.invalid and "times the largest" not in c.name]
+    ones = []
+    bouts = run(module, [{"xs": [bits(x) for x in c.xs], "n": c.n, "s": 0} for c, _ in bases])
+    for (c, ev), o in zip(bases, bouts):
+        base = replace(c, s=0, expect=None, verdicts=None)
+        fails, ratios = check_case(base, o["out"], ev)
+        failures += 1 if fails else 0
+        ys = [unbits(h) for h in o["out"]]
+        detail = " ".join(f"[{ys[3 + 3 * j]:.4g}, {ys[4 + 3 * j]:.4g}] v{int(ys[2 + 3 * j])}"
+                          for j in range((len(ys) - 2) // 3))
+        ratio = f" ratio {float(max(ratios)):.3g}" if ratios else ""
+        print(f"{'ok  ' if not fails else 'FAIL'} {c.name}, S 0: status {int(ys[0])} {detail}"
+              f"{ratio} {o['ms']:.1f} ms", flush=True)
+        for f in fails:
+            print(f"      {f}")
+        if ys[0] != 1.0:
             for dc, j, v in threshold_cases(c, o["out"]):
                 derived.append((dc, j, v, ev))
-    douts = run(module, [{"xs": [bits(x) for x in dc.xs], "n": dc.n} for dc, _, _, _ in derived])
+            for j in range((len(ys) - 2) // 3):
+                if ys[2 + 3 * j] != 2.0 and ys[4 + 3 * j] > 0:
+                    xs = list(c.xs)
+                    xs[14] = ys[4 + 3 * j]
+                    ones.append((Case(f"{c.name}, T = hi of {j}, S = 1", xs, c.n, derived=True,
+                                      s=1), ev))
+                    break
+    douts = run(module, [{"xs": [bits(x) for x in dc.xs], "n": dc.n, "s": 0}
+                         for dc, _, _, _ in derived])
     for (dc, j, v, ev), o in zip(derived, douts):
         fails, _ = check_case(dc, o["out"], ev)
         ys = [unbits(h) for h in o["out"]]
@@ -758,6 +1028,16 @@ def main() -> int:
             fails.append(f"verdict {ys[2 + 3 * j]}, expected {v}")
         failures += 1 if fails else 0
         print(f"{'ok  ' if not fails else 'FAIL'} {dc.name}: verdict {int(ys[2 + 3 * j])}")
+        for f in fails:
+            print(f"      {f}")
+    oouts = run(module, [{"xs": [bits(x) for x in dc.xs], "n": dc.n, "s": 1} for dc, _ in ones])
+    for (dc, ev), o in zip(ones, oouts):
+        fails, _ = check_case(dc, o["out"], ev)
+        fails += check_replay(dc, o["out"], *replay(module, dc))
+        replays += 1
+        ys = [unbits(h) for h in o["out"]]
+        failures += 1 if fails else 0
+        print(f"{'ok  ' if not fails else 'FAIL'} {dc.name}: status {int(ys[0])}")
         for f in fails:
             print(f"      {f}")
     queries = [{"box": [bits(x) for x in ends + [r]], "n": PANELS} for ends, r in box_cases()]
@@ -783,6 +1063,7 @@ def main() -> int:
     if all_ratios:
         print(f"hi over the largest sample: {float(min(all_ratios)):.3g} to "
               f"{float(max(all_ratios)):.3g}")
+    print(f"replays: {replays}")
     if mutate:
         print(f"mutations: {rejected} of {total} rejected")
     print(f"{failures} failures")
