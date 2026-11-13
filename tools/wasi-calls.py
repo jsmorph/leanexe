@@ -4,7 +4,7 @@
 """Generate the flat call descriptions, typed functions, reflection equations, and frame test from
 the pinned witx.
 
-Usage: uv run tools/wasi-calls.py [--write | --frame-faults DIR] [WITX_DIR]
+Usage: uv run tools/wasi-calls.py [--write | --frame-faults DIR | --reject-sweep DIR] [WITX_DIR]
 
 WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
 fae981bae14809d91f9bc2d63852d461f331d161, by default tests/wasi/witx.  The script lowers every
@@ -15,8 +15,12 @@ the committed file, printing a unified diff and exiting with status 1 when one d
 --write it writes the files instead.  With --frame-faults DIR it writes to DIR one frame test for
 each seeded fault of FAULTS and prints the fault's name and the exit status that the test must
 give: 1, the host's status for a trap, when the fault moves a record, and else the status of the
-frame check of the altered step.  It also fails when a Lean file of LeanExe/Wasi other than the
-generated one defines a value of type Call.
+frame check of the altered step.  With --reject-sweep DIR it writes to DIR one module for each
+value of the rejection sweep, the last value of each enum parameter and the next one and each
+single bit of each flags parameter, and prints the module's name and "trap" when Param.reject
+rejects the value, which Wasmtime 44 must then trap on, or "errno" when the call must return.  It
+also fails when a Lean file of LeanExe/Wasi other than the generated one defines a value of type
+Call.
 
 The lowering: an enum of n values is enum32 n whatever its tag width, a flags type is flags32 or,
 with a 64-bit representation, flags64, with the mask of its flags, and another parameter whose
@@ -740,6 +744,62 @@ def render_frame(flat, fault=None):
     ])
 
 
+def sweep_values(kind):
+    """The values of an enum or flags parameter that the rejection sweep passes, each with whether
+    `Param.reject` rejects it: the last value of an enum and the next one, and each single bit of a
+    flags type."""
+    match kind[0]:
+        case "enum32":
+            return [(kind[1] - 1, False), (kind[1], True)]
+        case "flags32" | "flags64":
+            bits = range(32 if kind[0] == "flags32" else 64)
+            return [(1 << bit, not kind[1] >> bit & 1) for bit in bits]
+    return []
+
+
+def sweep_module(function, position, value):
+    """A module that calls `function` once with `value` at parameter `position` and exits with its
+    errno.  The other parameters take descriptor 3, zero, the input `x`, a 16-byte output, and
+    regions 64 bytes apart at multiples of 8."""
+    pushes, regions = [], 0
+    for index, kind in enumerate(function.kinds):
+        match kind[0]:
+            case "word32" | "enum32" | "flags32":
+                default = 3 if kind[0] == "word32" else 0
+                pushes.append(f"(i32.const {value if index == position else default})")
+            case "word64" | "flags64":
+                pushes.append(f"(i64.const {value if index == position else 0})")
+            case "input":
+                pushes += ["(i32.const 1024)", "(i32.const 1)"]
+            case "output":
+                pushes += ["(i32.const 2048)", "(i32.const 16)"]
+            case _:
+                pushes.append(f"(i32.const {4096 + 64 * regions})")
+                regions += 1
+    params = " ".join(t for kind in function.kinds for t in core_types(kind))
+    signature = f"(param {params}) (result i32)" if params else "(result i32)"
+    return "\n".join([
+        "(module",
+        f'  (import "wasi_snapshot_preview1" "{function.name}" (func $call {signature}))',
+        '  (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))',
+        '  (memory (export "memory") 1)',
+        '  (data (i32.const 1024) "x")',
+        '  (func (export "_start")',
+        *wrap("    (call $exit (call $call ", pushes, ")))", 6, ""),
+        ")",
+        "",
+    ])
+
+
+def reject_sweep(flat):
+    """The modules of the rejection sweep: a name, the module, and whether Wasmtime must trap."""
+    for function in flat:
+        for position, kind in enumerate(function.kinds):
+            for value, rejected in sweep_values(kind):
+                yield (f"{function.name}-{position}-{value:#x}",
+                       sweep_module(function, position, value), rejected)
+
+
 GENERATED = {
     "LeanExe/Wasi/CallTable.lean": render_calls,
     "LeanExe/Wasi/SysCalls.lean": render_typed,
@@ -748,16 +808,28 @@ GENERATED = {
 }
 
 
+def option(rest, name):
+    """Remove `name DIR` from the arguments `rest` and return DIR, or None without `name`."""
+    if name not in rest:
+        return None
+    at = rest.index(name)
+    value = Path(rest[at + 1])
+    del rest[at:at + 2]
+    return value
+
+
 def main():
     write = "--write" in sys.argv
-    faults = None
     rest = [a for a in sys.argv[1:] if a != "--write"]
-    if "--frame-faults" in rest:
-        at = rest.index("--frame-faults")
-        faults = Path(rest[at + 1])
-        rest = rest[:at] + rest[at + 2:]
+    faults, sweep = option(rest, "--frame-faults"), option(rest, "--reject-sweep")
     directory = Path(rest[0] if rest else "tests/wasi/witx")
     flat = [function for function in functions(directory) if function.kinds is not None]
+    if sweep is not None:
+        sweep.mkdir(parents=True, exist_ok=True)
+        for name, text, rejected in reject_sweep(flat):
+            (sweep / f"{name}.wat").write_text(text)
+            print(name, "trap" if rejected else "errno")
+        return
     if faults is not None:
         faults.mkdir(parents=True, exist_ok=True)
         for name, fault in FAULTS.items():

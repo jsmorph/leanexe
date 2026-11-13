@@ -1,8 +1,9 @@
 #!/bin/sh
 # Tests the flat WASI calls: checks the call descriptions against the pinned witx, runs the frame
 # test module in the Wasmtime host with several argument lists, runs the frame test of every flat
-# function with a fresh preopened directory and the frame tests with seeded faults, and checks that
-# Wasmtime traps on a clock id outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
+# function with a fresh preopened directory and the frame tests with seeded faults, runs the
+# rejection sweep of the enum and flags parameters, and checks that Wasmtime traps on a clock id
+# outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
 #
 # WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
 # fae981bae14809d91f9bc2d63852d461f331d161; the default is tests/wasi/witx.
@@ -140,6 +141,34 @@ while read -r name expected; do
 done < "$out/frame-faults.txt"
 [ "$seeded" -gt 0 ] || fail "seeded frame faults" "the generator wrote none"
 printf 'frame test seeded faults detected: %s\n' "$seeded"
+
+# The rejection sweep passes each enum parameter its last value and the next one and each flags
+# parameter each single bit.  Wasmtime must trap converting a value that Param.reject rejects and
+# return an errno for the others.
+sweep="$out/reject-sweep"
+rm -rf "$sweep" "$dir"
+mkdir "$dir"
+uv run tools/wasi-calls.py --reject-sweep "$sweep" "$witx" > "$out/reject-sweep.txt"
+trapped=0
+returned=0
+while read -r name expected; do
+  wasm-tools parse "$sweep/$name.wat" -o "$sweep/$name.wasm"
+  status=0
+  timeout 60s "$host" --dir "$dir" --stdout-file "$sweep/$name.stdout" \
+    --control-file "$sweep/$name.control" run "$sweep/$name.wasm" \
+    < /dev/null 2> "$sweep/$name.stderr" || status=$?
+  if [ "$expected" = trap ]; then
+    grep -q 'at convert' "$sweep/$name.stderr" ||
+      fail "rejection sweep $name" "no conversion trap, status $status"
+    trapped=$((trapped + 1))
+  else
+    grep -q '^wasi-exit ' "$sweep/$name.control" ||
+      fail "rejection sweep $name" "no exit, status $status"
+    returned=$((returned + 1))
+  fi
+done < "$out/reject-sweep.txt"
+[ "$trapped" -gt 0 ] && [ "$returned" -gt 0 ] || fail "rejection sweep" "an outcome is missing"
+printf 'rejection sweep cases passed: %s traps, %s errnos\n' "$trapped" "$returned"
 
 status=0
 timeout 60s "$host" run "$out/clock-invalid.wasm" 2> "$out/clock-invalid.stderr" || status=$?
