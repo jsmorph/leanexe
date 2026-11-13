@@ -24,6 +24,7 @@ regions.  A record of alignment 0 has no layout: the end of a request with one l
 def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | [], _, _, start => start
   | .word32 :: params, sizes, args, start
+  | .handle :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
@@ -44,6 +45,7 @@ def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
 def layoutPointers : List Param → List Nat → List Arg → Nat → List UInt32
   | [], _, _, _ => []
   | .word32 :: params, sizes, args, start
+  | .handle :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
@@ -96,7 +98,8 @@ theorem layoutEnd_ge (params : List Param) :
   | cons param params ih =>
       intro sizes args start
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail start
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
+          exact ih sizes args.tail start
       | record size align fields =>
           simp only [layoutEnd]
           split
@@ -219,7 +222,7 @@ theorem laid (params : List Param) :
           ∀ scale align shown, Param.reported scale align shown ∈ params → 0 < align :=
         fun scale align shown member => aligned scale align shown (List.mem_cons_of_mem _ member)
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
           exact ih sizes args.tail start alignedRest fits
       | record size align fields =>
           by_cases positive : 0 < align

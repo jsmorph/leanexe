@@ -38,6 +38,11 @@ instance : Flat ArgsResult (UInt64 × UInt64 × UInt64 × Bytes) :=
 @[simp] theorem ArgsResult.flat (result : ArgsResult) :
     Flat.flat result = (result.errno, result.count, result.size, result.bytes) := rfl
 
+/-- A handle is its descriptor's word in a source program. -/
+instance : Flat Handle UInt64 := ⟨Handle.fd⟩
+
+@[simp] theorem Handle.flat (handle : Handle) : Flat.flat handle = handle.fd := rfl
+
 instance : Flat WordResult (UInt64 × UInt64) := ⟨fun result => (result.errno, result.value)⟩
 
 instance : Flat BytesResult (UInt64 × Bytes) := ⟨fun result => (result.errno, result.bytes)⟩

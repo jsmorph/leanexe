@@ -116,7 +116,7 @@ theorem lowerArgs_record (size align : Nat) (fields : List (Nat × Nat)) (pointe
         simp only [List.cons_append, lowerArgs, List.headD_cons, List.tail_cons,
           lowerArgs_record size align fields pointer params args.tail pointers kinds.2
             (by simpa [List.count_cons] using count)]
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [List.cons_append, lowerArgs,
         lowerArgs_record size align fields pointer params args.tail pointers kinds.2
           (by simpa [List.count_cons] using count)]
@@ -141,7 +141,7 @@ theorem inputPlaces_record (size align : Nat) (fields : List (Nat × Nat)) (poin
         simp only [List.cons_append, inputPlaces, List.headD_cons, List.tail_cons,
           inputPlaces_record size align fields pointer params args.tail pointers kinds.2
             (by simpa [List.count_cons] using count)]
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [List.cons_append, inputPlaces,
         inputPlaces_record size align fields pointer params args.tail pointers kinds.2
           (by simpa [List.count_cons] using count)]
@@ -166,7 +166,7 @@ theorem outputRegions_record (size align : Nat) (fields : List (Nat × Nat)) (po
         simp only [List.cons_append, outputRegions, List.tail_cons]
         exact outputRegions_record size align fields pointer params sizes args.tail pointers
           kinds.2 (by simpa [List.count_cons] using count)
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [List.cons_append, outputRegions]
       exact outputRegions_record size align fields pointer params sizes args.tail pointers kinds.2
         (by simpa [List.count_cons] using count)
@@ -180,7 +180,7 @@ theorem outputSizesOf_record (size align : Nat) (fields : List (Nat × Nat)) :
   | param :: params, sizes, args, kinds => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | word32 | word64 | enum32 | flags32 | flags64 | input =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 | input =>
       simp only [List.cons_append, outputSizesOf]
       exact outputSizesOf_record size align fields params sizes args.tail kinds.2
     | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
@@ -202,7 +202,7 @@ theorem flatPointersWith_args {root : UInt32} {slot : Nat} :
       | cons input inputs =>
         simp only [flatPointersWith]
         rw [flatPointersWith_args params inputs kinds.2 (by simpa [List.count_cons] using count)]
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [flatPointersWith]
       exact flatPointersWith_args params inputs kinds.2 (by simpa [List.count_cons] using count)
     | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds

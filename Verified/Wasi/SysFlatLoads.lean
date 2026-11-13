@@ -124,7 +124,7 @@ theorem wp_sys_loads_inputs {α : Type} {m : Module} {st : Store α} {env : Host
         intro s' outside held
         exact h s' (by simpa [Param.isResult, List.countP_cons] using outside)
           (by simpa [resultWords, Param.isResult, List.countP_cons] using held)
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [sysLoadCode]
       simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
         List.tail_cons] at shown outputSizes

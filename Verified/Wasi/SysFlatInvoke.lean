@@ -75,7 +75,7 @@ theorem resultBytes_none_inputs :
       | cons input inputs =>
         exact resultBytes_none_inputs params values inputs reply index kinds.2
           (by simpa [List.count_cons] using count) (by simpa [flatCapacityWith] using none')
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       exact resultBytes_none_inputs params values.tail inputs reply index kinds.2
         (by simpa [List.count_cons] using count)
         (by simpa [flatCapacityWith, Param.takesArg] using none')

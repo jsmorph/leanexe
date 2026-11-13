@@ -116,10 +116,11 @@ structure Region where
 def Region.span (region : Region) : Nat × Nat := (region.pointer.toNat, region.size)
 
 /-- Whether an argument has the kind of its parameter and fits the parameter's core type: a word
-below `2^32` for `word32`, `enum32`, and `flags32`, a word for `word64` and `flags64`, bytes of
-fewer than `2^32` bytes for `input`, and a capacity below `2^32` for `output`. -/
+below `2^32` for `word32`, `handle`, `enum32`, and `flags32`, a word for `word64` and `flags64`,
+bytes of fewer than `2^32` bytes for `input`, and a capacity below `2^32` for `output`. -/
 def argFits : Param → Arg → Bool
-  | .word32, .word value | .enum32 _, .word value | .flags32 _, .word value =>
+  | .word32, .word value | .handle, .word value | .enum32 _, .word value
+  | .flags32 _, .word value =>
     decide (value.toNat < 2 ^ 32)
   | .word64, .word _ | .flags64 _, .word _ => true
   | .input, .bytes value => decide (value.data.size < 2 ^ 32)
@@ -141,6 +142,7 @@ def argsFit : List Param → List Arg → Bool
 def lowerArgs : List Param → List Arg → List UInt32 → List Value
   | [], _, _ => []
   | .word32 :: params, args, pointers
+  | .handle :: params, args, pointers
   | .enum32 _ :: params, args, pointers
   | .flags32 _ :: params, args, pointers =>
     .i32 ((args.head?.map Arg.value).getD 0).toUInt32 :: lowerArgs params args.tail pointers
@@ -163,6 +165,7 @@ def lowerArgs : List Param → List Arg → List UInt32 → List Value
 def inputPlaces : List Param → List Arg → List UInt32 → List (UInt32 × LeanExe.Bytes)
   | [], _, _ => []
   | .word32 :: params, args, pointers
+  | .handle :: params, args, pointers
   | .enum32 _ :: params, args, pointers
   | .flags32 _ :: params, args, pointers
   | .flags64 _ :: params, args, pointers
@@ -182,6 +185,7 @@ regions. -/
 def outputRegions : List Param → List Nat → List Arg → List UInt32 → List Region
   | [], _, _, _ => []
   | .word32 :: params, sizes, args, pointers
+  | .handle :: params, sizes, args, pointers
   | .enum32 _ :: params, sizes, args, pointers
   | .flags32 _ :: params, sizes, args, pointers
   | .flags64 _ :: params, sizes, args, pointers

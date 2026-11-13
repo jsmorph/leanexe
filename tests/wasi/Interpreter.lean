@@ -235,20 +235,20 @@ private def generatedCalls : IO Unit := do
   let reached : NativeHost :=
     { (recordHost calls) with sys := fun call _ => pure (.trapped call.name []) }
   let rejected : Action (List UInt64) := do
-    let whence ← fdSeek 3 0 3
-    let flags ← fdFdstatSetFlags 3 32
-    let wide ← fdFdstatSetFlags 3 4294967296
-    let rights ← fdFdstatSetRights 3 1073741824 0
+    let whence ← fdSeek .preopened 0 3
+    let flags ← fdFdstatSetFlags .preopened 32
+    let wide ← fdFdstatSetFlags .preopened 4294967296
+    let rights ← fdFdstatSetRights .preopened 1073741824 0
     let signal ← procRaise 31
     pure [whence.errno, flags, wide, rights, signal]
   returned [28, 28, 61, 28, 28] (← rejected.run reached)
-  trapped "fd_seek" (← (fdSeek 3 0 2).run reached)
-  trapped "fd_fdstat_set_rights" (← (fdFdstatSetRights 3 536870912 0).run reached)
+  trapped "fd_seek" (← (fdSeek .preopened 0 2).run reached)
+  trapped "fd_fdstat_set_rights" (← (fdFdstatSetRights .preopened 536870912 0).run reached)
   let pathSys : LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
     fun _ args => pure (.returned (match args with
       | [.word fd, .bytes path] => if fd == 3 && path.data.data.toList == [100] then 0 else 1
       | _ => 2) [])
-  returned 0 (← (pathCreateDirectory 3 bytes![100]).run { reached with sys := pathSys })
+  returned 0 (← (pathCreateDirectory .preopened bytes![100]).run { reached with sys := pathSys })
   let variables := bytes![65, 61, 49, 0, 66, 61, 50, 0]
   let environSys (shown : Bytes) :
       LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
@@ -270,6 +270,53 @@ private def generatedCalls : IO Unit := do
   check shortCaught "an environ_get reply shorter than the reported size was accepted"
   check ((← calls.get).isEmpty) "a generated call reached the stream host"
 
+/-- The word arguments of a request. -/
+private def words (args : List LeanExe.Wasi.Arg) : List UInt64 :=
+  args.filterMap fun
+    | .word value => some value
+    | _ => none
+
+/-- `withOpen` through scripted hosts whose `path_open` returns `errno` and descriptor 7 and whose
+other flat calls return errno 0: on success the body runs with handle 7 and `fd_close` of 7
+follows it, on an errno only the error continuation runs, a body that exits ends the run before
+the close, and a directory of `2^32` gives errno 61 without a host request. -/
+private def brackets : IO Unit := do
+  let calls ← IO.mkRef (#[] : Array (String × List UInt64))
+  let exits ← IO.mkRef (#[] : Array UInt64)
+  let host (errno : UInt64) : NativeHost :=
+    { read := fun _ => pure (.returned 0 Bytes.empty)
+      write := fun _ bytes => pure (.returned 0 bytes.size)
+      exit := fun code => do
+        exits.modify (·.push code)
+        pure (.ok ())
+      sys := fun call args => do
+        calls.modify (·.push (call.name, words args))
+        if call.name == "path_open" then
+          pure (.returned errno [NativeHost.littleEndianBytes 4 7])
+        else pure (.returned 0 []) }
+  let program (dir : Handle) : Action UInt64 :=
+    withOpen dir 0 bytes![102] 1 0 0 0 (fun errno => pure (errno + 100)) fun file => do
+      let synced ← fdSync file
+      pure (synced + file.fd)
+  returned 7 (← (program .preopened).run (host 0))
+  check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0]), ("fd_sync", [7]),
+    ("fd_close", [7])]) "the calls of a bracket whose open succeeds"
+  calls.set #[]
+  returned 144 (← (program .preopened).run (host 44))
+  check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0])])
+    "the calls of a bracket whose open fails"
+  calls.set #[]
+  returned 161 (← (program ⟨4294967296⟩).run (host 0))
+  check ((← calls.get).isEmpty) "a directory of 2^32 reached the host"
+  let exiting : Action UInt64 :=
+    withOpen .preopened 0 bytes![102] 1 0 0 0 (fun errno => pure errno) fun _ => exit 5
+  match ← exiting.run (host 0) with
+  | .exited code => check (code == 5) "the exit status of a bracket's body"
+  | _ => throw (IO.userError "expected the body's exit")
+  check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0])])
+    "the calls of a bracket whose body exits"
+  check ((← exits.get) == #[5]) "the exits of a bracket whose body exits"
+
 def main : IO Unit := do
   primitives
   loops
@@ -277,6 +324,7 @@ def main : IO Unit := do
   streams
   flatCalls
   generatedCalls
+  brackets
   IO.println "native Action interpreter tests passed"
 
 end NativeInterpreterTest

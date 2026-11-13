@@ -53,15 +53,16 @@ private def filestatFields : List UInt64 :=
 
 def main : IO Unit := do
   let calls ← IO.mkRef (#[] : Array (String × List Arg))
-  let fdstatFields ← fields (fdFdstatGet 3) (scripted calls 0 (counting 24)) fdstat
+  let fdstatFields ← fields (fdFdstatGet .preopened) (scripted calls 0 (counting 24)) fdstat
   check (fdstatFields == [0, 0x01, 0x0403, 0x100f0e0d0c0b0a09, 0x1817161514131211])
     s!"fd_fdstat_get fields {fdstatFields}"
-  let fdFilestatFields ← fields (fdFilestatGet 3) (scripted calls 0 (counting 64)) filestat
+  let fdFilestatFields ←
+    fields (fdFilestatGet .preopened) (scripted calls 0 (counting 64)) filestat
   check (fdFilestatFields == filestatFields) s!"fd_filestat_get fields {fdFilestatFields}"
-  let pathFilestatFields ← fields (pathFilestatGet 3 1 bytes![102])
+  let pathFilestatFields ← fields (pathFilestatGet .preopened 1 bytes![102])
     (scripted calls 0 (counting 64)) filestat
   check (pathFilestatFields == filestatFields) s!"path_filestat_get fields {pathFilestatFields}"
-  let prestatFields ← fields (fdPrestatGet 3) (scripted calls 0 (counting 8)) prestat
+  let prestatFields ← fields (fdPrestatGet .preopened) (scripted calls 0 (counting 8)) prestat
   check (prestatFields == [0, 0x01, 0x08070605]) s!"fd_prestat_get fields {prestatFields}"
   let recorded ← calls.get
   check (recorded.map (·.1) ==
@@ -71,10 +72,10 @@ def main : IO Unit := do
   | some (_, [Arg.word fd, Arg.word flags, Arg.bytes path]) =>
     check (fd == 3 && flags == 1 && path.data.data.toList == [102]) "path_filestat_get arguments"
   | _ => throw (IO.userError "path_filestat_get argument kinds")
-  let failed ← fields (fdFilestatGet 3) (scripted calls 8 (counting 64)) filestat
+  let failed ← fields (fdFilestatGet .preopened) (scripted calls 8 (counting 64)) filestat
   check (failed == [8, 0, 0, 0, 0, 0, 0, 0, 0]) s!"fd_filestat_get after an errno {failed}"
   let shortCaught ← try
-    let _ ← (fdFdstatGet 3).run (scripted calls 0 (counting 23))
+    let _ ← (fdFdstatGet .preopened).run (scripted calls 0 (counting 23))
     pure false
   catch _ => pure true
   check shortCaught "a record one byte short was accepted"

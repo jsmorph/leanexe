@@ -35,6 +35,7 @@ def flagsRejectCode (mask place : Nat) (accepted : Program) : Program :=
 def sysRejectCode : List Param → List Nat → Program
   | [], _ => [.constI64 0]
   | .word32 :: params, place :: locals
+  | .handle :: params, place :: locals
   | .output :: params, place :: locals =>
     [.localGet place, .constI64 4294967296, .geUI64,
      .iff 0 1 [.constI64 61] (sysRejectCode params locals) [] [.i64]]
@@ -55,6 +56,7 @@ turn. -/
 def sysLowerCode : List Param → List Nat → Nat → Nat → Program
   | [], _, _, _ => []
   | .word32 :: params, place :: locals, root, slot
+  | .handle :: params, place :: locals, root, slot
   | .enum32 _ :: params, place :: locals, root, slot
   | .flags32 _ :: params, place :: locals, root, slot =>
     [.localGet place, .wrapI64] ++ sysLowerCode params locals root slot
@@ -198,6 +200,7 @@ def sysRejectInputsCode : List Param → List Nat → List Nat → Program
     [.localGet (place + 1), .constI64 4294967296, .geUI64,
      .iff 0 1 [.constI64 61] (sysRejectInputsCode params words inputs) [] [.i64]]
   | .word32 :: params, place :: words, inputs
+  | .handle :: params, place :: words, inputs
   | .output :: params, place :: words, inputs =>
     [.localGet place, .constI64 4294967296, .geUI64,
      .iff 0 1 [.constI64 61] (sysRejectInputsCode params words inputs) [] [.i64]]
@@ -222,6 +225,7 @@ def sysLowerInputsCode : List Param → List Nat → List Nat → Nat → Nat �
     [.localGet place, .wrapI64, .localGet (place + 1), .wrapI64] ++
       sysLowerInputsCode params words inputs root slot
   | .word32 :: params, place :: words, inputs, root, slot
+  | .handle :: params, place :: words, inputs, root, slot
   | .enum32 _ :: params, place :: words, inputs, root, slot
   | .flags32 _ :: params, place :: words, inputs, root, slot =>
     [.localGet place, .wrapI64] ++ sysLowerInputsCode params words inputs root slot

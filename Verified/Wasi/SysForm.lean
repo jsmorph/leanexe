@@ -63,6 +63,7 @@ def SysForm.width : SysForm → Nat
 def flatArgs : List Param → List UInt64 → List Arg
   | [], _ => []
   | .word32 :: params, values
+  | .handle :: params, values
   | .word64 :: params, values
   | .enum32 _ :: params, values
   | .flags32 _ :: params, values
@@ -78,6 +79,7 @@ def flatArgsWith : List Param → List UInt64 → List LeanExe.Bytes → List Ar
   | [], _, _ => []
   | .input :: params, values, input :: inputs => .bytes input :: flatArgsWith params values inputs
   | .word32 :: params, values, inputs
+  | .handle :: params, values, inputs
   | .word64 :: params, values, inputs
   | .enum32 _ :: params, values, inputs
   | .flags32 _ :: params, values, inputs
@@ -134,7 +136,8 @@ def Param.isResult : Param → Bool
 
 /-- The parameters that a flat call without inputs may have. -/
 def Param.flatKind : Param → Bool
-  | .word32 | .word64 | .flags32 _ | .flags64 _ | .output | .result32 | .result64 => true
+  | .word32 | .handle | .word64 | .flags32 _ | .flags64 _ | .output | .result32 | .result64 =>
+    true
   | .enum32 count => decide (count < 4294967296)
   | .input | .reported .. | .record .. => false
 
@@ -143,9 +146,9 @@ def Param.inputKind : Param → Bool
   | .input => true
   | param => param.flatKind
 
-/-- The parameters that may precede a call's record: words, enums, flags, and inputs. -/
+/-- The parameters that may precede a call's record: words, handles, enums, flags, and inputs. -/
 def Param.argKind : Param → Bool
-  | .word32 | .word64 | .flags32 _ | .flags64 _ | .input => true
+  | .word32 | .handle | .word64 | .flags32 _ | .flags64 _ | .input => true
   | .enum32 count => decide (count < 4294967296)
   | _ => false
 

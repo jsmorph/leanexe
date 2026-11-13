@@ -9,10 +9,11 @@ Usage: uv run tests/wasi/witx-lowering.py [WITX_DIR [CALL_TABLE]]
 The lowering below was written from the witx for the design review of increment 2 of the flat
 calls, without the generator `tools/wasi-calls.py`, and names the kinds w32, w64, e N, f32 M,
 f64 M, in, out, r32, r64, rep SCALE ALIGN SHOWN, and rec SIZE ALIGN [(offset, width)].  A
-function with reported regions, NAME_get, has the reporter NAME_sizes_get, a function of two r32
-results.  The check lowers every function, reads every description of CALL_TABLE (by default
-LeanExe/Wasi/CallTable.lean), and exits with status 1 when a flat function has no description, a
-description names no flat function, or the kinds or the reporters differ.
+parameter of a handle type, such as $fd, is h.  A function with reported regions, NAME_get, has the
+reporter NAME_sizes_get, a function of two r32 results.  The check lowers every function, reads
+every description of CALL_TABLE (by default LeanExe/Wasi/CallTable.lean), and exits with status 1
+when a flat function has no description, a description names no flat function, or the kinds or the
+reporters differ.
 """
 import re
 import sys
@@ -170,7 +171,7 @@ def scalar_kind(types, t):
         w = INT_WIDTH[annotation(r, "repr")]
         return f"f{64 if w == 8 else 32} {mask:#x}"
     if r[0] == "handle":
-        return "w32"
+        return "h"
     return None
 
 
@@ -236,7 +237,7 @@ def lower(types, func):
 
 
 
-LEAN_KINDS = {"word32": "w32", "word64": "w64", "input": "in", "output": "out",
+LEAN_KINDS = {"word32": "w32", "handle": "h", "word64": "w64", "input": "in", "output": "out",
               "result32": "r32", "result64": "r64"}
 DESCRIPTION = re.compile(r'name := "([^"]+)",\s*params := \[(.*?)\](?:,|\s*\})', re.S)
 REPORTER = re.compile(r'reporter := some "([^"]+)"')

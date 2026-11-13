@@ -78,7 +78,7 @@ theorem flatArgsWith_fit : ∀ (params : List Param) (values : List UInt64)
         by_contra large
         simp only [Nat.reducePow] at large
         simp [large] at head
-    | word32 =>
+    | word32 | handle =>
       obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
       simp only [Param.reject, Arg.value] at head
       simp only [flatArgsWith, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.and_eq_true,
@@ -157,7 +157,7 @@ theorem flat_region_mem_inputs {root : UInt32} {sizes : List Nat} :
           (by simpa [Param.isResult, List.countP_cons] using room)
           (by simpa [List.count_cons] using count) member
         simpa [List.map_cons, flatCapacityWith, Param.isResult, List.countP_cons] using tail
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [flatArgsWith, flatPointersWith, outputRegions, List.tail_cons] at member
       have tail := flat_region_mem_inputs params values.tail inputs slot region kinds.2
         (by simpa [List.count_cons] using outputs)
@@ -226,7 +226,7 @@ theorem flat_regions_apart_inputs {root : UInt32} {sizes : List Nat} :
           (by simpa [Param.isResult, List.countP_cons] using room)
           (by simpa [List.count_cons] using count)
           (by simpa [List.map_cons, flatCapacityWith] using separate)
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [flatArgsWith, flatPointersWith, outputRegions, List.tail_cons]
       rw [← List.pairwise_map]
       exact flat_regions_apart_inputs params values.tail inputs slot kinds'.2

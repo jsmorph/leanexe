@@ -49,6 +49,47 @@ structure BytesCountResult where
   bytes : Bytes
   count : UInt64
 
+/-- A descriptor that a program holds: the preopened directory, `Handle.preopened`, or the
+descriptor of a file that `withOpen` opens.  A typed function takes a `Handle` for each
+descriptor parameter. -/
+structure Handle where
+  fd : UInt64
+
+/-- The directory that the host preopens at descriptor 3. -/
+def Handle.preopened : Handle := ⟨3⟩
+
+/-- `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` calls
+`path_open` for `path` under `dir`.  On a nonzero errno, which is 61 without a call when `dir` is
+`2^32` or more, it runs `onError errno`.  Otherwise it runs `body` with the new descriptor, and
+when `body` returns, it calls `fd_close` on the descriptor, drops the errno of `fd_close`, and
+returns `body`'s result.  A body that exits or traps ends the process with the descriptor open,
+and Wasmtime closes it at exit.  Programs open and close descriptors only through `withOpen`.
+
+`verified_compile_wasi` reflects `withOpen` as one shape of the existing commands, which
+`Verified.Wasi.Command.HandleCheck` recognizes.  With the argument variables `d`, `f`, `o`, `b`,
+`i`, and `g` and the path variable `p`, the shape is
+
+```
+bind (sys Call.pathOpen (.flat 1 false) [d, f, o, b, i, g] [p])
+  (ite (cmp .ne (proj (var 0) (fst here)) (word 0))
+    onError'
+    (bind (ret (proj (var 0) (snd here)))
+      (bind body' (bind (sys Call.fdClose (.flat 0 false) [var 1] []) (ret (var 1))))))
+```
+
+where `onError'` is the reflection of `onError` applied to the errno, the first component of the
+open's result in variable 0, and `body'` the reflection of `body` applied to the handle in
+variable 0.  When the result type is `Unit`, the close takes `var 0`, since `body'` binds no
+result, and `unit` takes the place of `ret (var 1)`. -/
+def withOpen {α : Type} (dir : Handle) (dirflags : UInt64) (path : Bytes)
+    (oflags rightsBase rightsInheriting fdflags : UInt64) (onError : UInt64 → Action α)
+    (body : Handle → Action α) : Action α :=
+  .sys .pathOpen [.word dir.fd, .word dirflags, .bytes path, .word oflags, .word rightsBase,
+      .word rightsInheriting, .word fdflags] fun opened =>
+    if opened.errno != 0 then onError opened.errno
+    else Action.bind (body ⟨opened.word 0⟩) fun result =>
+      .sys .fdClose [.word (opened.word 0)] fun _ => .pure result
+
 /-- `clock_time_get id precision`: the time of clock `id` in nanoseconds.  The clocks are 0
 (realtime), 1 (monotonic), 2 (process CPU time), and 3 (thread CPU time); an id of 4 or more gives
 errno 28 without a call. -/

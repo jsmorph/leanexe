@@ -24,17 +24,21 @@ also fails when a Lean file of LeanExe/Wasi other than the generated one has a d
 `def NAME : Call`.
 
 The lowering: an enum of n values is enum32 n whatever its tag width, a flags type is flags32 or,
-with a 64-bit representation, flags64, with the mask of its flags, and another parameter whose
-representation is 64 bits wide is word64 and else word32; a string, or a const_pointer followed by
-a $size parameter, is input; a pointer to bytes followed by a $size parameter is output; another
-pointer is reported, with scale and alignment 4 and not shown when it points to pointers, whose
-entries are guest addresses, and with scale and alignment 1 and shown when it points to bytes; each
-component of an expected result is result32 or result64 by its width, or a record of its size,
-alignment, and fields when it is a record or a union.  A record's fields lie at the next multiple of
-their alignment, a union's payload after its tag at the payload's alignment, and the size is rounded
-up to the largest alignment.  A function with reported regions NAME_get has the reporter
-NAME_sizes_get.  A function that takes a list or a pointer to records, or does not return, is not
-flat.
+with a 64-bit representation, flags64, with the mask of its flags, a handle type such as $fd is
+handle, and another parameter whose representation is 64 bits wide is word64 and else word32; a
+string, or a const_pointer followed by a $size parameter, is input; a pointer to bytes followed by
+a $size parameter is output; another pointer is reported, with scale and alignment 4 and not shown
+when it points to pointers, whose entries are guest addresses, and with scale and alignment 1 and
+shown when it points to bytes; each component of an expected result is result32 or result64 by its
+width, or a record of its size, alignment, and fields when it is a record or a union.  A record's
+fields lie at the next multiple of their alignment, a union's payload after its tag at the
+payload's alignment, and the size is rounded up to the largest alignment.  A function with reported
+regions NAME_get has the reporter NAME_sizes_get.  A function that takes a list or a pointer to
+records, or does not return, is not flat.
+
+A typed function takes a Handle for each handle parameter.  path_open, fd_close, and fd_renumber
+have descriptions and no typed function: only LeanExe.Wasi.withOpen opens and closes descriptors,
+and no program renumbers one.
 """
 import difflib
 import re
@@ -129,6 +133,8 @@ def layout(table, ty):
 
 def word_kind(table, ty):
     resolved = resolve(table, ty)
+    if isinstance(resolved, list) and resolved[0] == "handle":
+        return ("handle",)
     if isinstance(resolved, list) and resolved[0] == "enum":
         return ("enum32", len(cases(resolved)))
     if isinstance(resolved, list) and resolved[0] == "flags":
@@ -312,6 +318,8 @@ def render_calls(flat):
 
 
 HAND_WRITTEN = {"clock_time_get", "random_get", "args_sizes_get", "args_get", "environ_get"}
+# The functions with a description and no typed function: only `withOpen` opens and closes.
+UNTYPED = {"path_open", "fd_close", "fd_renumber"}
 RESULT_TYPES = {
     (): "UInt64",
     ("result32",): "WordResult",
@@ -346,14 +354,18 @@ def result_value(function):
     return "⟨reply.errno, " + ", ".join(parts) + "⟩"
 
 
+ARGUMENT_TYPES = {"input": "Bytes", "handle": "Handle"}
+
+
 def typed_function(function):
     takes = [kind for kind in function.kinds
              if kind[0] not in ("result32", "result64", "record", "reported")]
     names = [camel(name) for name in function.arguments]
-    binders = [f"({name} : {'Bytes' if kind[0] == 'input' else 'UInt64'})"
+    binders = [f"({name} : {ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
                for name, kind in zip(names, takes)]
     args = [f".bytes {name}" if kind[0] == "input" else
-            f".space {name}" if kind[0] == "output" else f".word {name}"
+            f".space {name}" if kind[0] == "output" else
+            f".word {name}.fd" if kind[0] == "handle" else f".word {name}"
             for name, kind in zip(names, takes)]
     head = f"def {function.lean}" + "".join(" " + b for b in binders) + \
         f" : Action {result_type(function)} :="
@@ -390,14 +402,17 @@ def render_typed(flat):
         "from the",
         "pinned witx with the descriptions of `LeanExe/Wasi/CallTable.lean`.  A record result "
         "holds the",
-        "errno and the record's fields as words.  Its check fails when this file differs from its "
-        "output.",
+        "errno and the record's fields as words.  A descriptor parameter takes a `Handle`.  "
+        "`path_open`,",
+        "`fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes "
+        "descriptors.",
+        "Its check fails when this file differs from its output.",
         "-/",
         "",
         "namespace LeanExe.Wasi",
         "",
         "\n".join(record_structure(kind) for kind in records.values()),
-        "\n".join(typed_function(f) for f in flat if f.name not in HAND_WRITTEN),
+        "\n".join(typed_function(f) for f in flat if f.name not in HAND_WRITTEN | UNTYPED),
         "end LeanExe.Wasi",
         "",
     ])
@@ -414,7 +429,7 @@ FLATTEN = {
 
 def reflected(function):
     """Whether `reflect` maps the generated typed function to one `sys` command."""
-    return function.name not in HAND_WRITTEN
+    return function.name not in HAND_WRITTEN | UNTYPED
 
 
 def record_kind(function):
@@ -468,11 +483,14 @@ def reflection_equation(function):
              if kind[0] not in ("result32", "result64", "record", "reported")]
     names = [camel(name) for name in function.arguments]
     inputs = [kind[0] == "input" for kind in takes]
+    handles = [name for name, kind in zip(names, takes) if kind[0] == "handle"]
     variables = [f"({variable(name)} : Var context .{'bytes' if input else 'word'})"
                  for name, input in zip(names, inputs)]
-    values = [f"({name}Value : {'LeanExe.Bytes' if input else 'UInt64'})"
-              for name, input in zip(names, inputs)]
-    hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value)"
+    values = [f"({name}Value : "
+              f"{'LeanExe.Bytes' if kind[0] == 'input' else ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
+              for name, kind in zip(names, takes)]
+    hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value"
+                  f"{'.fd' if name in handles else ''})"
                   for name in names]
     term, _ = form(function)
     lines = [f"theorem {function.lean}_eq (pureFuns : Funs pureSigs) "
@@ -495,6 +513,10 @@ def reflection_equation(function):
         call = [function.lean]
     tokens = ["flattenAction", *flatten(function), *call, ":= by" if names else ":= rfl"]
     lines += wrap("      ", tokens, "", 8, separator="")
+    for name in handles:
+        lines.append(f"  obtain ⟨{name}Value⟩ := {name}Value")
+        lines.append(f"  change env.get {variable(name)} = {name}Value at "
+                     f"h{name[0].upper() + name[1:]}")
     if names:
         lines.append("  subst " + " ".join(f"h{name[0].upper() + name[1:]}" for name in names))
         lines.append("  rfl")
@@ -664,7 +686,7 @@ def frame_step(index, step, function, constants, fault=None):
     results = {"result32": 0, "result64": 0}
     for kind in function.kinds:
         match kind[0]:
-            case "word32" | "enum32" | "flags32" | "word64" | "flags64":
+            case "word32" | "handle" | "enum32" | "flags32" | "word64" | "flags64":
                 value = args.pop(0)
                 width = "i64" if kind[0] in ("word64", "flags64") else "i32"
                 pushes.append(f"(local.get ${value})" if isinstance(value, str)
@@ -832,8 +854,8 @@ def sweep_module(function, position, value):
     pushes, regions, args = [], 0, []
     for index, kind in enumerate(function.kinds):
         match kind[0]:
-            case "word32" | "enum32" | "flags32" | "word64" | "flags64":
-                default = 3 if kind[0] == "word32" else 0
+            case "word32" | "handle" | "enum32" | "flags32" | "word64" | "flags64":
+                default = 3 if kind[0] in ("word32", "handle") else 0
                 word = value if index == position else default
                 width = "i64" if kind[0] in ("word64", "flags64") else "i32"
                 pushes.append(f"({width}.const {word})")

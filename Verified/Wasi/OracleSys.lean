@@ -95,6 +95,7 @@ input read from `mem`, or `none` when the arguments do not have the parameters' 
 def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × List UInt32)
   | [], [] => some ([], [])
   | .word32 :: params, .i32 value :: values
+  | .handle :: params, .i32 value :: values
   | .enum32 _ :: params, .i32 value :: values
   | .flags32 _ :: params, .i32 value :: values =>
     (decodeArgs mem params values).map fun decoded =>
@@ -182,7 +183,7 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
   | cons param params ih =>
       intro request pointers fits inputs
       cases param with
-      | word32 | enum32 _ | flags32 _ =>
+      | word32 | handle | enum32 _ | flags32 _ =>
           match request, fits, inputs with
           | .word value :: request, fits, inputs =>
               simp [argsFit, Param.takesArg, argFits] at fits
@@ -251,7 +252,7 @@ theorem shownPlaces_sizes (params : List Param) :
   | cons param params ih =>
       intro sizes sizes' args pointers outputs
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
           exact ih sizes sizes' args.tail pointers outputs
       | input => exact ih sizes sizes' args.tail pointers.tail outputs
       | output =>
@@ -287,7 +288,8 @@ theorem outputSizes_regions (params : List Param) :
   | cons param params ih =>
       intro sizes args pointers
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail pointers
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
+          exact ih sizes args.tail pointers
       | input => exact ih sizes args.tail pointers.tail
       | output =>
           simp only [outputSizesOf, outputRegions]

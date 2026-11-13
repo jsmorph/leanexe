@@ -17,7 +17,8 @@ or 8 bytes of a result word; `reported scale align shown` points to a region of 
 size that the call's reporter returns, aligned to `align`, whose content the reply carries when
 `shown` holds; `flags32 mask` and `flags64 mask` are 32-bit and 64-bit flags whose defined bits are
 those of `mask`; `record size align fields` points to a record of `size` bytes, aligned to
-`align`, that the host writes, with the offset and width in bytes of each field. -/
+`align`, that the host writes, with the offset and width in bytes of each field; `handle` is a
+descriptor, which lowers, is rejected, and takes its place in a request as `word32` does. -/
 inductive Param where
   | word32
   | word64
@@ -30,6 +31,7 @@ inductive Param where
   | flags32 (mask : Nat)
   | flags64 (mask : Nat)
   | record (size align : Nat) (fields : List (Nat × Nat))
+  | handle
   deriving Repr, DecidableEq
 
 /-- A flat function: its import name, its parameters, and the name of the call whose result words
@@ -40,9 +42,9 @@ structure Call where
   reporter : Option String := none
   deriving Repr, DecidableEq
 
-/-- An argument of a call: a word for `word32`, `word64`, `enum32`, `flags32`, and `flags64`, bytes
-for `input`, and a capacity for `output`.  Result, reported, and record parameters take no
-argument. -/
+/-- An argument of a call: a word for `word32`, `word64`, `enum32`, `flags32`, `flags64`, and
+`handle`, bytes for `input`, and a capacity for `output`.  Result, reported, and record parameters
+take no argument. -/
 inductive Arg where
   | word (value : UInt64)
   | bytes (value : Bytes)
@@ -74,15 +76,15 @@ namespace Param
 
 /-- Whether the parameter takes an argument. -/
 def takesArg : Param → Bool
-  | .word32 | .word64 | .enum32 _ | .input | .output | .flags32 _ | .flags64 _ => true
+  | .word32 | .word64 | .enum32 _ | .input | .output | .flags32 _ | .flags64 _ | .handle => true
   | .result32 | .result64 | .reported .. | .record .. => false
 
 /-- The errno that rejects an argument of the parameter before the call, or 0: 28 (`inval`) for an
 `enum32` value of at least the enum's size and for a flags value with a bit outside the mask, and
-61 (`overflow`) for a `word32` or `flags32` value, an input length, or a capacity of `2^32` or
-more. -/
+61 (`overflow`) for a `word32`, `handle`, or `flags32` value, an input length, or a capacity of
+`2^32` or more. -/
 def reject : Param → Arg → UInt64
-  | .word32, arg => if arg.value.toNat < 2 ^ 32 then 0 else 61
+  | .word32, arg | .handle, arg => if arg.value.toNat < 2 ^ 32 then 0 else 61
   | .enum32 count, arg => if arg.value.toNat < count then 0 else 28
   | .input, arg => if arg.length < 2 ^ 32 then 0 else 61
   | .output, arg => if arg.capacity < 2 ^ 32 then 0 else 61
@@ -111,6 +113,7 @@ for a shown `reported` region.  `sizes` holds one entry for each `reported` para
 def outputSizesOf : List Param → List Nat → List Arg → List Nat
   | [], _, _ => []
   | .word32 :: params, sizes, args
+  | .handle :: params, sizes, args
   | .word64 :: params, sizes, args
   | .enum32 _ :: params, sizes, args
   | .flags32 _ :: params, sizes, args
@@ -143,6 +146,7 @@ and `record` region. -/
 def replyFitsOf : List Param → List Arg → List Bytes → Bool
   | [], _, outputs => outputs.isEmpty
   | .word32 :: params, args, outputs
+  | .handle :: params, args, outputs
   | .word64 :: params, args, outputs
   | .enum32 _ :: params, args, outputs
   | .flags32 _ :: params, args, outputs
