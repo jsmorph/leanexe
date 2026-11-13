@@ -146,8 +146,8 @@ page and draws.
 
 `compiled.assess.implements` of
 [the conjunction program's compilation](../../Demos/Conjunction/Verified.lean) states that the
-export, called from a store with the allocator's invariant that holds the table of `exp`, returns
-without a trap the words of `Demos.Conjunction.assess`, and the generated `compiled.initial` states
+export, called from a store with the allocator's invariant that holds the tables of `exp` and
+`erfc`, returns without a trap the words of `Demos.Conjunction.assess`, and the generated `compiled.initial` states
 that a fresh instance's store is such a store.  `assess_sound` and `pc_enclosure` of
 [the soundness proofs](../../Demos/Conjunction/Soundness.lean) give the meaning of the result,
 and [the conjunction README](../../Demos/Conjunction/README.md#theorems) states them.  The page's
@@ -156,12 +156,14 @@ a hidden section for the conjunction-message form, which will take two states an
 in each object's RTN frame.
 
 `node tests/conjunction/page.mjs CASES` runs `assess.js` under Node on the lines of the export
-`assess` among the module cases that `verified-cases-conjunction` prints, 650 calls, and requires
-each status, endpoint, and verdict to equal native Lean's bit for bit.  Node 20 on an x86-64 host
-passed all 650 calls.  Headless Chromium 156 on the same host loaded the page with each example of
-the menu.  The page showed the module's SHA-256, each interval equaled that of native Lean's `pc`
-at 4,096 panels for the same input, and the verdicts were "below" for the README's example and
-Chan's case 8 and "above" for the others.
+`assess` among the module cases that `verified-cases-conjunction` prints, 725 calls for the module
+of 64,046 bytes, and requires each status, endpoint, and verdict to equal native Lean's bit for
+bit.  The runs below used the earlier module of 13,724 bytes, before `pc` evaluated the tails with
+`erfc` and the module exported the message form, and its 650 calls.  Node 20 on an x86-64 host
+passed all 650.  Headless Chromium 156 on the same host loaded the page with each example of the
+menu.  The page showed the module's SHA-256, each interval equaled that of native Lean's `pc` at
+4,096 panels for the same input, and the verdicts were "below" for the README's example and Chan's
+case 8 and "above" for the others.
 
 ## Theorems and device results of the GPU pages
 

@@ -65,7 +65,7 @@ the covariance ellipses at one, two, and three standard deviations and the disk.
 <tr><th>File</th><td><code>build/verified/conjunction.wasm</code></td></tr>
 <tr><th>SHA-256</th><td><code id="sha">loading</code></td></tr>
 <tr><th>Size</th><td id="size"></td></tr>
-<tr><th>Export</th><td><code>assess</code>, entry 55</td></tr>
+<tr><th>Export</th><td><code>assess</code>, entry 117</td></tr>
 </table>
 </section>
 
@@ -107,9 +107,9 @@ and the covariance.</p>
 <section>
 <h2>Theorems and trusted code</h2>
 <p><code>compiled.assess.implements</code> of <code>Demos/Conjunction/Verified.lean</code> states
-that entry 55 of the module, the export <code>assess</code>, called with the words of its
-arguments from a store with the allocator's invariant that holds the table of <code>exp</code>,
-returns without a trap the words of <code>Demos.Conjunction.assess</code>: the status,
+that entry 117 of the module, the export <code>assess</code>, called with the words of its
+arguments from a store with the allocator's invariant that holds the tables of <code>exp</code>
+and <code>erfc</code>, returns without a trap the words of <code>Demos.Conjunction.assess</code>: the status,
 <code>lo</code>, <code>hi</code>, and the verdict.  The generated <code>compiled.initial</code>
 states that a fresh instance's store is such a store, and the page calls <code>assess</code> on a
 fresh instance.

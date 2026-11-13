@@ -685,8 +685,9 @@ second with Patera's recommendation of 360 divisions, and its value with 360 lie
 of the reference.  For case 4, whose covariance has axes of 105.6 m and 0.30 m, the paper prints no
 value with 360 divisions.  In a separate computation, a trapezoid rule for Patera's integral over
 the disk's boundary, with equal steps of the angle about the disk's center, was 4.5 percent off
-with 100 steps and agreed with the reference to 12 figures with 360.  Every interval of these two cases excludes the published value with its
-tolerance, so the proved enclosure alone shows the disagreement for the projected inputs.  Chan's
+with 100 steps and agreed with the reference to 12 figures with 360.  Every interval of these two
+cases excludes the published value with its tolerance, so the proved enclosure alone shows the
+disagreement for the projected inputs.  Chan's
 values are the reference rounded to four figures.  The intervals of 1,048,576 panels are narrower
 than the differences between Alfano's printed values and the reference: Alfano's series value lies
 outside such an interval for cases 4, 5, 7, 9, 10, and 11, by `2.9e-6` to `1.1e-4` of the value,
@@ -698,16 +699,71 @@ and Patera's for cases 7, 9, and 10.
 | 65,536 | `3.1e-5` to `4.9e-4` | `1.9e-6` to `2.3e-4` |
 | 1,048,576 | `1.9e-6` to `3.1e-5` | |
 
-The table leaves out Chan's cases 8 and 10, a miss of 10 standard deviations along the second
-axis, with probabilities of `3.2e-27` and `9.7e-28`.  Their intervals, `[0, 8.9e-19]` and
-`[0, 2.7e-19]` at every panel count, contain the values, and their upper endpoints are the floor
-that the cancellation of the two error-function values sets, as for the fifth row of
-[the containment test's table](#tests).  In the table, the narrowest intervals belong to Alfano's
-case 11 and the widest to Alfano's case 2.  CARA's functions place the mean at the full length of
-the relative position instead of its part in the plane, which changes the probability of these
-cases by at most `9e-8` of its value, in case 4.
-On a 2-core x86-64 host with four threads, the test took 18.5 minutes, of which the evaluations
-took 94 s, most of it at 1,048,576 panels, and the reference integrals nearly all the rest.
+Chan's cases 8 and 10 have a miss of 10 standard deviations along the second axis and
+probabilities of `3.2e-27` and `9.7e-28`.  `pc` evaluates them with `erfc` on the panels where
+every point of the error function's argument is at least 1/2, so their relative widths, `6.2e-4`,
+`3.9e-5`, and `2.4e-6` at the three panel counts, lie inside the ranges of the table.
+`pcAdaptive`, which keeps `erf`, returns `[0, 8.9e-19]` and `[0, 2.7e-19]` for them at both panel
+counts: the intervals contain the values, and their upper endpoints are the floor that the
+cancellation of the two values of `erf` sets.  Its column leaves the two cases out.  In the table,
+the narrowest intervals belong to Alfano's case 11 and the widest to Alfano's case 2.  CARA's
+functions place the mean at the full length of the relative position instead of its part in the
+plane, which changes the probability of these cases by at most `9e-8` of its value, in case 4.  On
+an 8-CPU x86-64 host, the test took 13.7 minutes, of which the evaluations took about 4.8
+minutes, most of it at 1,048,576 panels, and the reference integrals nearly all the rest.
+
+### Unit tests of NASA's CARA Analysis Tools
+
+[`tests/conjunction/cara.sh`](../../tests/conjunction/cara.sh) compares `pc` and `pcAdaptive` with
+the two-dimensional unit tests of NASA's CARA Analysis Tools,
+https://github.com/nasa/CARA_Analysis_Tools, at commit
+`43f0160f94d76a91805d86521c3e8fa0d09ecd68`.  The tools are under the NASA Open Source Agreement
+1.3, whose section 3A requires any redistributed part of the software to remain under that
+agreement with a copy of it, so the repository holds none of their numbers.
+[The script](../../tests/conjunction/cara.py) holds the commit and the path, size, and SHA-256 of
+each file it reads.  It downloads the files into `build/conjunction/cara`, fails on a file whose
+size or digest differs, and reads the inputs and CARA's expected values from them.
+
+| File | Contents used |
+|---|---|
+| `DistributedMatlab/ProbabilityOfCollision/UnitTests/Pc2D_Foster_UnitTest.m` | The circle test of an Omitron case and the test of a message with a covariance that is not positive definite |
+| `DistributedMatlab/ProbabilityOfCollision/UnitTests/PcElrod_UnitTest.m` | Two Omitron cases, a case with position and velocity covariances, and two cases with covariances that are not positive definite |
+| `DistributedMatlab/ProbabilityOfCollision/UnitTests/PcCircle_UnitTest.m` | Two Omitron cases, a sweep of radii from 0 to infinity, a case with a covariance that is not positive definite, and the tests of zero miss distance and zero relative velocity |
+| `DistributedMatlab/ProbabilityOfCollision/UnitTests/PcCircleWithConjData_UnitTest.m` | The sweep's encounter at a radius of 10 m, with its covariance and with one that is not positive definite in the plane |
+| `DataFiles/SampleCDMs/AlfanoTestCase01.cdm` to `AlfanoTestCase06.cdm`, `OmitronTestCase_Test07_NonPDCovariance.cdm` | The messages that those tests read |
+
+A case's inputs are MATLAB matrices of the test's source or a message's states in EME2000 and
+covariances in RTN, which the script rotates into the inertial frame as CARA's `RIC2ECI.m` does.
+The script follows the test's own changes, such as a second position set equal to the first, and
+the shift that `PcCircle.m` gives a relative position shorter than `1e-6` of the radius.  The tests
+of zero miss distance pass the messages' positions in km with their covariances in m², as
+`Pc_TestSetup.m` returns them, and the script keeps those numbers.  The projection places the mean
+at the full length of the relative position, as CARA's functions do, since their expected values
+belong to that plane.  For Omitron case 2 the mean in the plane would change the probability by
+`1.7e-4`, and for the other cases by at most `3.1e-8`.  The reference and the checks are those of
+the published cases, with the tolerance with which each unit test compares its function: a
+relative `1e-3` for `Pc2D_Foster` and `PcElrod`, `1e-10` for `PcCircle`, and `1e-9` for
+`PcCircleWithConjData`.  The tests of Alfano's cases take their inputs from spreadsheets, which the
+script does not parse.  Their expected values and tolerance are the paper's Alfano values at
+`1e-3`, which the published cases check on the paper's inputs, and the spreadsheets' inputs differ
+from the paper's by at most `5e-11`.
+
+The cases give 120 results.  The 85 results of the 17 cases with a positive definite plane
+covariance and a positive finite radius have status 0 and contain the reference.  The 35 results
+of the other 7 cases have status 1: CARA clips the eigenvalues of a covariance that is not positive
+definite and returns 0, or NaN without that remediation, and it defines the probability of a radius
+of 0 as 0 and of an infinite radius as 1, where the program rejects the input.  Two cases of zero
+relative velocity have no encounter plane, and CARA returns NaN for them.  Of CARA's values, 11
+agree with the reference within their tolerances, among them `PcCircle`'s values for the Omitron
+cases within `1.1e-12` and for the messages of zero miss distance within `2.2e-11`.  Seven disagree,
+and the test checks the cause of each by computation:
+
+| Values | Relative difference | Cause |
+|---|---|---|
+| `PcCircle`, sweep radii of 1,000 m to 30,000 m | `-1.8e-4` to `2.8e-4` | `PcCircle`'s 64-point Gauss-Chebyshev rule.  The same rule at 50 digits lies within `4.4e-13` of CARA's values.  The radii span 54 to 1,609 standard deviations of the covariance's minor axis. |
+| `PcCircle`, sweep radii of 10 m and 100 m, and `PcCircleWithConjData` | `2.1e-8`, `2.0e-9`, and `-2.7e-8` | Rounding.  The 64-point rule at 50 digits agrees with the reference to `1.4e-42`.  `PcCircle` computes the smaller eigenvalue of the projected covariance, 348 m², as `(T - sqrt(T² - 4D))/2` in binary64 with the trace `T = 1.5e10` m², and moving that eigenvalue by `2⁻⁵³ T` moves the probability by `1.0e-7`, `9.6e-9`, and `1.0e-7` of it, more than each difference. |
+
+On the 8-CPU host the comparison took 22 minutes, nearly all of it in the reference integrals.
 
 ## Browser page
 

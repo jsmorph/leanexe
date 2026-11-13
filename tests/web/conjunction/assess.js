@@ -1,8 +1,8 @@
 // The call of the export `assess` of build/verified/conjunction.wasm that the conjunction page
 // makes, and that tests/conjunction/page.mjs runs under Node.  `compiled.assess.implements` of
-// Demos/Conjunction/Verified.lean states that the module's entry 55, the export `assess`, called
+// Demos/Conjunction/Verified.lean states that the module's entry 117, the export `assess`, called
 // with the words of `m1 m2 c11 c12 c22 r t : Float` and `n : UInt64` from a store with the
-// allocator's invariant that holds the table of `exp` at address 4,096, returns without a trap the
+// allocator's invariant that holds the tables of `exp` and `erfc`, returns without a trap the
 // words of `Demos.Conjunction.assess` of the arguments: the status, `lo`, `hi`, and the verdict.
 // The generated `compiled.initial` states that a fresh instance's store is such a store.
 // `assess_sound` of Demos/Conjunction/Soundness.lean gives the meaning of an accepted result.
