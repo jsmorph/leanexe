@@ -295,14 +295,23 @@ theorem outputLocalInputs_nil : ∀ (params : List Param) (words : List Nat),
     cases param <;> cases words <;>
       simp only [outputLocalInputs, outputLocal, outputLocalInputs_nil params]
 
+theorem sysFlatCallInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words : List Nat) (base : Nat) (buffer : Option Nat) :
+    sysFlatCallInputsCodeWith calls call words [] base buffer =
+      sysFlatCallCodeWith calls call words base buffer := by
+  simp only [sysFlatCallInputsCodeWith, sysFlatCallCodeWith, sysLowerInputsCode_nil]
+
+theorem sysFlatInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words : List Nat) (base : Nat) :
+    sysFlatInputsCodeWith calls call words [] base = sysFlatCodeWith calls call words base := by
+  simp only [sysFlatInputsCodeWith, sysFlatCodeWith, sysFlatCallInputsCodeWith_nil,
+    sysRejectInputsCode_nil, outputLocalInputs_nil]
+
 theorem sysInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (form : SysForm) (words : List Nat) (base : Nat) :
     sysInputsCodeWith calls call form words [] base = sysCodeWith calls call form words base := by
   cases form with
-  | flat =>
-    simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith, sysFlatCodeWith,
-      sysFlatCallInputsCodeWith, sysFlatCallCodeWith, sysRejectInputsCode_nil,
-      sysLowerInputsCode_nil, outputLocalInputs_nil]
+  | flat => simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith_nil]
   | reported => rfl
 
 end Verified.Wasi

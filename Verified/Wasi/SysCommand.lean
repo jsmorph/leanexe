@@ -68,96 +68,6 @@ theorem flat_run_bind (call : LeanExe.Wasi.Call) (words : Nat) (bytes : Bool)
         .pure (SysForm.value (.flat words bytes) (reply.errno :: resultWords call.params reply 0)
           (resultBytes call.params reply 0)) := rfl
 
-/-- The code of a flat `sys` command gives a `SysResult`. -/
-theorem wp_sys_flat_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {targetHost : HostEnv (Observed World)} {context : List Ty}
-    {env : Env context} {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
-    {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {aborts : Bool}
-    {budget : Nat} {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
-    (hHost : targetHost.Satisfies target (hostSpecWith host calls))
-    (hCall : calls[calls.idxOf operation]? = some operation)
-    (hKinds : operation.params.all Param.flatKind = true)
-    (hOutputs : operation.params.count .output ≤ 1)
-    (hResults : operation.params.countP Param.isResult ≤ 2)
-    (hCount : args.length = operation.argCount)
-    (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
-    (selected : ∀ i, live i = true → liveIn i = true)
-    (used : ∀ arg ∈ args, liveIn arg.index = true)
-    (at_ : heap.At (PureTransport.erase initial))
-    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (low : locals.params.length ≤ base) (room : base + 6 ≤ locals.positions)
-    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
-      ∀ trace residual final, Prefix (observedHost host)
-        ((SysForm.flat (operation.params.countP Param.isResult)
-          (operation.params.contains .output)).run operation (args.map env.get))
-        initial.host trace residual final →
-        sysCost (.flat (operation.params.countP Param.isResult)
-          (operation.params.contains .output)) operation (args.map env.get) trace ≤ budget) :
-    wp target (sysFlatCodeWith calls operation
-        (args.map fun arg => (slots.getD arg.index default).loc) base)
-      (SysResult host env slots liveIn live base
-        (.flat (operation.params.countP Param.isResult) (operation.params.contains .output))
-        ((SysForm.flat (operation.params.countP Param.isResult)
-          (operation.params.contains .output)).run operation (args.map env.get))
-        (sysCost (.flat (operation.params.countP Param.isResult)
-          (operation.params.contains .output)) operation (args.map env.get))
-        heap initial locals aborts)
-      initial locals targetHost := by
-  obtain ⟨held, below⟩ := sys_args_held vars args used
-  rw [← List.append_nil (sysFlatCodeWith calls operation _ base)]
-  refine wp_sys_flat_with (aborts := aborts) runtime layout profile hImports sourceHost hHost hCall hKinds hOutputs
-    hResults held (by simpa using hCount) (fun place member => Or.inl (below place member)) at_
-    cap low room ?_ ?_ ?_ ?_
-  · intro hAbort capacity found small nonzero
-    obtain ⟨within, bound⟩ := resources hAbort
-    have hCost := bound [] _ _ (Prefix.refl _ initial.host)
-    simp only [sysCost, found, readCost_positive small nonzero] at hCost
-    exact (within.mono hCost).room cap
-  · intro hAbort final sameWorld
-    exact .trapped final _ (CommandResult.resource_refl hAbort sameWorld)
-  · intro heap' final finalLocals root length trace reply execution step rep top outside
-    rw [wp_nil]
-    have hLength := resultWords_length reply operation.params 0
-    have exec := execution.bind (rest := []) (next := fun reply =>
-      Action.pure (SysForm.value (.flat (operation.params.countP Param.isResult)
-        (operation.params.contains .output)) (reply.errno :: resultWords operation.params reply 0)
-        (resultBytes operation.params reply 0))) (Exec.pure final.host _)
-    rw [List.append_nil, ← flat_run_bind] at exec
-    have frame := outside.frame room
-    rcases outputLocal_spec operation.params _ _ hKinds held (by simpa [Call.argCount] using hCount) with
-      ⟨none', capacity, contains⟩ | ⟨place, capacity, some', found, get, member, contains⟩
-    · rw [none'] at *
-      have hStep : Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch) heap' (PureTransport.erase final)
-          [] := step.mono (fun _ kept => kept) (fun _ member => nomatch member)
-      refine .returned _ heap' final finalLocals
-        ((reply.errno :: resultWords operation.params reply 0).map Value.i64 ++
-          pushedBytes none root length) trace exec ?_ top
-      rw [contains]
-      refine sys_after vars apart selected hStep frame ?_ rfl
-      simp only [pushedBytes, List.append_nil, SysForm.ty, Ty.Rep]
-      exact (wordsElem_values _ _ (by simp [hLength])).symm
-    · rw [some'] at *
-      refine .returned _ heap' final finalLocals
-        ((reply.errno :: resultWords operation.params reply 0).map Value.i64 ++
-          pushedBytes (some place) root length) trace exec ?_ top
-      rw [contains]
-      exact sys_after vars apart selected step frame
-        (wordsBytes_rep rep _ _ (by simp [hLength]))
-        (wordsBytes_blocks _ root length _ _ _ (by simp [hLength]))
-  · intro final message trace execution
-    have exec := execution.bind (rest := []) (next := fun reply =>
-      Action.pure (SysForm.value (.flat (operation.params.countP Param.isResult)
-        (operation.params.contains .output)) (reply.errno :: resultWords operation.params reply 0)
-        (resultBytes operation.params reply 0))) ⟨rfl, rfl, rfl⟩
-    rw [List.append_nil, ← flat_run_bind] at exec
-    exact .trapped final message (.terminal final trace (.trapped message) message exec rfl)
-
-
 /-- The code of a reported `sys` command gives a `SysResult`. -/
 theorem wp_sys_reported_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
@@ -632,5 +542,55 @@ theorem cost_command_sys_spec_with {calls : List LeanExe.Wasi.Call}
   | trapped final message result =>
     simp only [Then]
     exact CostCommandResult.trapped final message (CommandResult.trap_live result)
+
+/-! ## Calls without inputs -/
+
+/-- The code of a flat `sys` command gives a `SysResult`. -/
+theorem wp_sys_flat_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
+    {source target : Module} {host : Host World}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
+    (sourceHost : HostEnv Unit) {targetHost : HostEnv (Observed World)} {context : List Ty}
+    {env : Env context} {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
+    {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {aborts : Bool}
+    {budget : Nat} {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
+    (hHost : targetHost.Satisfies target (hostSpecWith host calls))
+    (hCall : calls[calls.idxOf operation]? = some operation)
+    (hKinds : operation.params.all Param.flatKind = true)
+    (hOutputs : operation.params.count .output ≤ 1)
+    (hResults : operation.params.countP Param.isResult ≤ 2)
+    (hCount : args.length = operation.argCount)
+    (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (selected : ∀ i, live i = true → liveIn i = true)
+    (used : ∀ arg ∈ args, liveIn arg.index = true)
+    (at_ : heap.At (PureTransport.erase initial))
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (low : locals.params.length ≤ base) (room : base + 6 ≤ locals.positions)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      ∀ trace residual final, Prefix (observedHost host)
+        ((SysForm.flat (operation.params.countP Param.isResult)
+          (operation.params.contains .output)).run operation (args.map env.get))
+        initial.host trace residual final →
+        sysCost (.flat (operation.params.countP Param.isResult)
+          (operation.params.contains .output)) operation (args.map env.get) trace ≤ budget) :
+    wp target (sysFlatCodeWith calls operation
+        (args.map fun arg => (slots.getD arg.index default).loc) base)
+      (SysResult host env slots liveIn live base
+        (.flat (operation.params.countP Param.isResult) (operation.params.contains .output))
+        ((SysForm.flat (operation.params.countP Param.isResult)
+          (operation.params.contains .output)).run operation (args.map env.get))
+        (sysCost (.flat (operation.params.countP Param.isResult)
+          (operation.params.contains .output)) operation (args.map env.get))
+        heap initial locals aborts)
+      initial locals targetHost := by
+  have hResult := wp_sys_flat_result_inputs_with (inputs := []) runtime layout profile hImports
+    sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs hResults
+    (by rw [LeanExe.Wasi.Call.wordCount, countP_takesWord_of_flat hKinds]; exact hCount)
+    (by rw [LeanExe.Wasi.Call.inputCount, count_input_of_flat hKinds]; rfl) vars apart selected
+    used (fun _ member => nomatch member) at_ cap low room
+    (by simpa only [List.map_nil, SysForm.runWith_nil, sysCostWith_nil] using resources)
+  simpa only [List.map_nil, sysFlatInputsCodeWith_nil, SysForm.runWith_nil, sysCostWith_nil]
+    using hResult
 
 end Verified.Wasi
