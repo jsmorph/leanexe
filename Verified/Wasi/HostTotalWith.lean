@@ -18,10 +18,9 @@ open Wasm LeanExe.Wasi
 def alignUp (address align : Nat) : Nat := address + (align - address % align) % align
 
 /-- The address after the inputs and output regions of a request laid out from `start` in
-parameter order: an input or an output buffer at the address reached, and a result word or a
-reported region at the next multiple of its alignment.  `sizes` holds the sizes of the reported
-regions.  A record has no layout here: the end of a request with a record lies past `2^32`, so
-`Host.AnswersFor` asks nothing of a call with a record. -/
+parameter order: an input or an output buffer at the address reached, and a result word, a record,
+or a reported region at the next multiple of its alignment.  `sizes` holds the sizes of the reported
+regions.  A record of alignment 0 has no layout: the end of a request with one lies past `2^32`. -/
 def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | [], _, _, start => start
   | .word32 :: params, sizes, args, start
@@ -29,7 +28,9 @@ def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
   | .word64 :: params, sizes, args, start => layoutEnd params sizes args.tail start
-  | .record .. :: _, _, _, start => start + 2 ^ 32 + 1
+  | .record size align _ :: params, sizes, args, start =>
+    if 0 < align then layoutEnd params sizes args (alignUp start align + size)
+    else start + 2 ^ 32 + 1
   | .input :: params, sizes, args, start =>
     layoutEnd params sizes args.tail (start + (args.head?.map Arg.length).getD 0)
   | .output :: params, sizes, args, start =>
@@ -47,7 +48,9 @@ def layoutPointers : List Param → List Nat → List Arg → Nat → List UInt3
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
   | .word64 :: params, sizes, args, start => layoutPointers params sizes args.tail start
-  | .record .. :: _, _, _, _ => []
+  | .record size align _ :: params, sizes, args, start =>
+    UInt32.ofNat (alignUp start align) ::
+      layoutPointers params sizes args (alignUp start align + size)
   | .input :: params, sizes, args, start =>
     UInt32.ofNat start ::
       layoutPointers params sizes args.tail (start + (args.head?.map Arg.length).getD 0)
@@ -94,7 +97,12 @@ theorem layoutEnd_ge (params : List Param) :
       intro sizes args start
       cases param with
       | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail start
-      | record => simp only [layoutEnd]; omega
+      | record size align fields =>
+          simp only [layoutEnd]
+          split
+          · exact Nat.le_trans (Nat.le_trans (le_alignUp start align) (Nat.le_add_right _ _))
+              (ih sizes args _)
+          · omega
       | input | output => exact Nat.le_trans (Nat.le_add_right _ _) (ih sizes args.tail _)
       | result32 =>
           exact Nat.le_trans (Nat.le_trans (le_alignUp start 4) (Nat.le_add_right _ _))
@@ -213,7 +221,14 @@ theorem laid (params : List Param) :
       cases param with
       | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
           exact ih sizes args.tail start alignedRest fits
-      | record => simp only [layoutEnd] at fits; omega
+      | record size align fields =>
+          by_cases positive : 0 < align
+          · simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, positive,
+              ↓reduceIte, List.tail_cons, List.headD_cons] at fits ⊢
+            exact Laid.cons_region (le_alignUp _ _) (alignUp_mod _ positive)
+              (layoutEnd_ge _ _ _ _) fits (ih _ _ _ alignedRest fits)
+          · simp only [layoutEnd, positive, ↓reduceIte] at fits
+            omega
       | input =>
           simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
             List.headD_cons] at fits ⊢
@@ -255,8 +270,7 @@ structure Host.TotalFor {World : Type} (host : Host World) (calls : List Call) :
 
 /-- `Host.Answers`, and a permitted reply to every request of each call in `calls` that fits, that
 the call does not reject, and whose regions and inputs fit below `2^32` when laid out one after
-another from address 16, for a call whose reported regions have positive alignments.  The layout of
-a call with a record ends past `2^32`, so this asks nothing of such a call. -/
+another from address 16, for a call whose reported regions have positive alignments. -/
 structure Host.AnswersFor {World : Type} (host : Host World) (calls : List Call) : Prop
     extends host.Answers where
   sys : ∀ call ∈ calls,
