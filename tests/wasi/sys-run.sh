@@ -118,13 +118,17 @@ timeout 60s "$host" --arg prog --arg "$long" run "$out/frame.wasm" 2> "$out/fram
 [ "$status" -eq 0 ] || fail "frame with a 4096-byte argument" "status $status"
 cases=$((cases + 1))
 
-# The frame test of every flat function runs with a fresh directory preopened at descriptor 3.  Each
-# seeded fault's frame test must exit with the status that tools/wasi-calls.py prints for it.
+# The frame test of every flat function runs with a fresh directory preopened at descriptor 3, the
+# arguments prog and a, and the environment variable that its steps expect (ENVIRONMENT in the
+# generator).  Each seeded fault's frame test must exit with the status that tools/wasi-calls.py
+# prints for it.
 dir="$out/frame-dir"
+frame="--arg prog --arg a --env LEANEXE_FRAME=1"
 rm -rf "$dir"
 mkdir "$dir"
 status=0
-timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$out/frame-all.wasm" \
+# shellcheck disable=SC2086
+timeout 60s "$host" --dir "$dir" $frame run "$out/frame-all.wasm" \
   2> "$out/frame-all.stderr" || status=$?
 [ "$status" -eq 0 ] || fail "frame of every function" "status $status"
 cases=$((cases + 1))
@@ -137,7 +141,8 @@ while read -r name expected; do
   rm -rf "$dir"
   mkdir "$dir"
   status=0
-  timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$faults/$name.wasm" \
+  # shellcheck disable=SC2086
+  timeout 60s "$host" --dir "$dir" $frame run "$faults/$name.wasm" \
     < /dev/null 2> "$faults/$name.stderr" || status=$?
   [ "$status" -eq "$expected" ] ||
     fail "seeded frame fault $name" "status $status, expected $expected"

@@ -141,6 +141,11 @@
     (call $errno (i32.const 2) (call $args_get (i32.const 8196) (i32.const 12288)) (i32.const 0))
     (call $check (i32.const 2) (i32.const 8196) (i32.mul (local.get $count) (i32.const 4))
       (i32.const 12288) (local.get $size))
+    (call $value (i32.const 2) (i64.load32_u (i32.const 8196)) (i64.const 12288))
+    (call $value (i32.const 2) (i64.load32_u (i32.const 8200)) (i64.const 12293))
+    (call $value (i32.const 2) (i64.load32_u (i32.const 12288)) (i64.const 1735357040))
+    (call $value (i32.const 2) (i64.load16_u (i32.const 12292)) (i64.const 24832))
+    (call $value (i32.const 2) (i64.load8_u (i32.const 12294)) (i64.const 0))
     ;; 3: environ_sizes_get
     (call $prepare)
     (call $snapshot)
@@ -148,8 +153,8 @@
       (i32.const 28)) (i32.const 0))
     (call $check (i32.const 3) (i32.const 20) (i32.const 4)
       (i32.const 28) (i32.const 4))
-    (call $value (i32.const 3) (i64.load32_u (i32.const 20)) (i64.const 0))
-    (call $value (i32.const 3) (i64.load32_u (i32.const 28)) (i64.const 0))
+    (call $value (i32.const 3) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 3) (i64.load32_u (i32.const 28)) (i64.const 16))
     (local.set $count (i32.load (i32.const 20)))
     (local.set $size (i32.load (i32.const 28)))
     ;; 4: environ_get
@@ -158,6 +163,9 @@
     (call $errno (i32.const 4) (call $environ_get (i32.const 8196) (i32.const 12288)) (i32.const 0))
     (call $check (i32.const 4) (i32.const 8196) (i32.mul (local.get $count) (i32.const 4))
       (i32.const 12288) (local.get $size))
+    (call $value (i32.const 4) (i64.load32_u (i32.const 8196)) (i64.const 12288))
+    (call $value (i32.const 4) (i64.load (i32.const 12288)) (i64.const 6864990261685077324))
+    (call $value (i32.const 4) (i64.load (i32.const 12296)) (i64.const 13859641716986438))
     ;; 5: clock_res_get
     (call $prepare)
     (call $snapshot)

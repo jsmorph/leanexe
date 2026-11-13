@@ -565,21 +565,34 @@ def render_reflect(flat):
 
 
 RIGHTS = (1 << 30) - 1
-# The frame test's steps, run with a directory preopened at descriptor 3 and the arguments `prog`
-# and `a`.  Each step names a function and gives the arguments of the parameters that take one, in
-# order: an integer, the name of a local that an earlier step set, a string for an input, or a
-# capacity for an output.  `errno` is Wasmtime 44's errno for the step, `keep` names the locals that
-# take its result words, and `values` lists what the call must write: (region, offset, width, value)
-# for a byte, half-word, word, or double word at `offset` of its output buffer or its result word
-# `result N`, and ("field", name, value) for the field `name` of its record, read at the offset and
-# with the width that the description gives.
+WORKING, SHADOW, CONSTANTS = 0, 65536, 2 * 65536
+# Each result word and record lies at a multiple of its alignment that is not a multiple of twice
+# it, so that Wasmtime traps when a description gives it a smaller alignment.
+INPUTS, OUTPUT, STRINGS = 1024, 4096, 12288
+RESULT32, RESULT64, RECORDS, POINTERS = (20, 28), (24, 40), 64, 8196
+# The frame test's steps, run with a directory preopened at descriptor 3, the arguments `prog`
+# and `a`, and the environment variable ENVIRONMENT.  Each step names a function and gives the
+# arguments of the parameters that take one, in order: an integer, the name of a local that an
+# earlier step set, a string for an input, or a capacity for an output.  `errno` is Wasmtime 44's
+# errno for the step, `keep` names the locals that take its result words, and `values` lists what
+# the call must write: (region, offset, width, value) for a byte, half-word, word, or double word
+# at `offset` of its output buffer, its result word `result N`, or its reported regions `pointers`
+# and `strings`, and ("field", name, value) for the field `name` of its record, read at the offset
+# and with the width that the description gives.
+ENVIRONMENT = "LEANEXE_FRAME=1"
 STEPS = [
     {"call": "args_sizes_get", "keep": ["count", "size"],
      "values": [("result 0", 0, 4, 2), ("result 1", 0, 4, 7)]},
-    {"call": "args_get"},
+    {"call": "args_get",
+     "values": [("pointers", 0, 4, STRINGS), ("pointers", 4, 4, STRINGS + 5),
+                ("strings", 0, 4, int.from_bytes(b"prog", "little")),
+                ("strings", 4, 2, int.from_bytes(b"\0a", "little")), ("strings", 6, 1, 0)]},
     {"call": "environ_sizes_get", "keep": ["count", "size"],
-     "values": [("result 0", 0, 4, 0), ("result 1", 0, 4, 0)]},
-    {"call": "environ_get"},
+     "values": [("result 0", 0, 4, 1), ("result 1", 0, 4, len(ENVIRONMENT) + 1)]},
+    {"call": "environ_get",
+     "values": [("pointers", 0, 4, STRINGS),
+                ("strings", 0, 8, int.from_bytes(ENVIRONMENT[:8].encode(), "little")),
+                ("strings", 8, 8, int.from_bytes(ENVIRONMENT[8:].encode() + b"\0", "little"))]},
     {"call": "clock_res_get", "args": [1]},
     {"call": "clock_time_get", "args": [0, 1]},
     {"call": "random_get", "args": [32]},
@@ -621,11 +634,6 @@ STEPS = [
     {"call": "sock_accept", "args": [3, 0], "errno": 57},
     {"call": "sock_shutdown", "args": [3, 1], "errno": 57},
 ]
-WORKING, SHADOW, CONSTANTS = 0, 65536, 2 * 65536
-# Each result word and record lies at a multiple of its alignment that is not a multiple of twice
-# it, so that Wasmtime traps when a description gives it a smaller alignment.
-INPUTS, OUTPUT, STRINGS = 1024, 4096, 12288
-RESULT32, RESULT64, RECORDS, POINTERS = (20, 28), (24, 40), 64, 8196
 # The seeded faults of --frame-faults: a step, the region whose declaration changes, and how.
 FAULTS = {
     "record-short": ("fd_fdstat_get", "record", "size", -1),
@@ -633,6 +641,7 @@ FAULTS = {
     "output-short": ("path_readlink", "output", "size", -1),
     "output-late": ("fd_prestat_dir_name", "output", "start", 1),
     "record-half-aligned": ("fd_filestat_get", "record", "address", -4),
+    "environ-short": ("environ_get", "strings", "size", -1),
 }
 
 
@@ -694,6 +703,7 @@ def frame_step(index, step, function, constants, fault=None):
                     else "(local.get $size)"
                 pushes.append(f"(i32.const {address})")
                 regions.append((address, size))
+                places["pointers" if reported == 0 else "strings"] = address
                 reported += 1
     assert not args, (function.name, args)
     if fault and fault[1] in ("size", "start"):
