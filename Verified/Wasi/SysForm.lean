@@ -51,7 +51,9 @@ def flatArgs : List Param → List UInt64 → List Arg
   | [], _ => []
   | .word32 :: params, values
   | .word64 :: params, values
-  | .enum32 _ :: params, values => .word (values.headD 0) :: flatArgs params values.tail
+  | .enum32 _ :: params, values
+  | .flags32 _ :: params, values
+  | .flags64 _ :: params, values => .word (values.headD 0) :: flatArgs params values.tail
   | .output :: params, values => .space (values.headD 0) :: flatArgs params values.tail
   | _ :: params, values => flatArgs params values
 
@@ -61,6 +63,7 @@ def resultWords : List Param → Reply → Nat → List UInt64
   | .output :: params, reply, index => resultWords params reply (index + 1)
   | .result32 :: params, reply, index
   | .result64 :: params, reply, index => reply.word index :: resultWords params reply (index + 1)
+  | .record .. :: params, reply, index => resultWords params reply (index + 1)
   | _ :: params, reply, index => resultWords params reply index
 
 /-- The buffer of a reply whose outputs follow `params` from position `index`. -/
@@ -68,7 +71,8 @@ def resultBytes : List Param → Reply → Nat → LeanExe.Bytes
   | [], _, _ => LeanExe.Bytes.empty
   | .output :: _, reply, index => reply.bytes index
   | .result32 :: params, reply, index
-  | .result64 :: params, reply, index => resultBytes params reply (index + 1)
+  | .result64 :: params, reply, index
+  | .record .. :: params, reply, index => resultBytes params reply (index + 1)
   | _ :: params, reply, index => resultBytes params reply index
 
 end Verified.Wasi
@@ -81,9 +85,9 @@ def Param.isResult : Param → Bool
 
 /-- The parameters that a flat call may have. -/
 def Param.flatKind : Param → Bool
-  | .word32 | .word64 | .output | .result32 | .result64 => true
+  | .word32 | .word64 | .flags32 _ | .flags64 _ | .output | .result32 | .result64 => true
   | .enum32 count => decide (count < 4294967296)
-  | .input | .reported .. => false
+  | .input | .reported .. | .record .. => false
 
 namespace Call
 

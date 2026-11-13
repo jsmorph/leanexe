@@ -109,8 +109,8 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
     | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
-    | word32 | word64 | enum32 =>
+    | reported | record => simp [Param.flatKind] at kinds
+    | word32 | word64 | enum32 | flags32 | flags64 =>
       simp only [sysLoadCode]
       simp only [flatArgs, flatPointers, outputRegions, outputSizesOf,
         List.tail_cons] at shown outputSizes

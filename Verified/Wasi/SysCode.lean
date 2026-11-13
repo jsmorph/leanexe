@@ -18,6 +18,12 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi
 
+/-- Pushes 28 when the flags word in `place` has a bit outside `mask`, and otherwise runs
+`accepted`. -/
+def flagsRejectCode (mask place : Nat) (accepted : Program) : Program :=
+  [.localGet place, .constI64 (~~~(UInt64.ofNat mask)), .andI64, .eqzI64,
+   .iff 0 1 accepted [.constI64 28] [] [.i64]]
+
 /-- Pushes the errno that rejects the argument words in `locals`, or 0. -/
 def sysRejectCode : List Param → List Nat → Program
   | [], _ => [.constI64 0]
@@ -28,6 +34,11 @@ def sysRejectCode : List Param → List Nat → Program
   | .enum32 count :: params, place :: locals =>
     [.localGet place, .constI64 (UInt64.ofNat count), .geUI64,
      .iff 0 1 [.constI64 28] (sysRejectCode params locals) [] [.i64]]
+  | .flags32 mask :: params, place :: locals =>
+    [.localGet place, .constI64 4294967296, .geUI64,
+     .iff 0 1 [.constI64 61] (flagsRejectCode mask place (sysRejectCode params locals)) [] [.i64]]
+  | .flags64 mask :: params, place :: locals =>
+    flagsRejectCode mask place (sysRejectCode params locals)
   | .word64 :: params, _ :: locals => sysRejectCode params locals
   | _ :: params, locals => sysRejectCode params locals
 
@@ -37,9 +48,11 @@ turn. -/
 def sysLowerCode : List Param → List Nat → Nat → Nat → Program
   | [], _, _, _ => []
   | .word32 :: params, place :: locals, root, slot
-  | .enum32 _ :: params, place :: locals, root, slot =>
+  | .enum32 _ :: params, place :: locals, root, slot
+  | .flags32 _ :: params, place :: locals, root, slot =>
     [.localGet place, .wrapI64] ++ sysLowerCode params locals root slot
-  | .word64 :: params, place :: locals, root, slot =>
+  | .word64 :: params, place :: locals, root, slot
+  | .flags64 _ :: params, place :: locals, root, slot =>
     [.localGet place] ++ sysLowerCode params locals root slot
   | .output :: params, place :: locals, root, slot =>
     [.localGet root, .wrapI64, .localGet place, .wrapI64] ++ sysLowerCode params locals root slot

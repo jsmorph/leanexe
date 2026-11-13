@@ -43,15 +43,16 @@ theorem reported_request {World : Type} {before : Store (Observed World)} {call 
     SysRequest before [.i32 hidden, .i32 root] call [] [hidden, root] [4 * count, size] := by
   refine ⟨by simp [hParams, argsFit, Param.takesArg],
     by simp [Call.reject, hParams, rejectArgs, Param.takesArg],
-    by simp [hParams, lowerArgs], by simp [hParams, inputPlaces], ?_, ?_⟩
+    by simp [hParams, lowerArgs], by simp [hParams, inputPlaces], ?_, ?_,
+    by simp [hParams, inputPlaces]⟩
   · intro region member
     simp only [hParams, outputRegions, List.headD_cons, List.tail_cons, List.mem_cons,
       List.not_mem_nil, or_false] at member
     rcases member with rfl | rfl
     · exact ⟨by simpa using hMemory, by simpa using hAddress, by simpa using hHidden⟩
     · exact ⟨by simp only; omega, by simp only; omega, Nat.mod_one _⟩
-  · simp only [hParams, outputRegions, inputPlaces, List.headD_cons, List.tail_cons,
-      List.map_cons, List.map_nil, List.append_nil, List.pairwise_cons, List.mem_singleton,
+  · simp only [hParams, outputRegions, List.headD_cons, List.tail_cons,
+      List.map_cons, List.map_nil, List.pairwise_cons, List.mem_singleton,
       forall_eq, List.not_mem_nil, IsEmpty.forall_iff, implies_true, List.Pairwise.nil,
       and_true, Region.span, regionsDisjoint]
     omega

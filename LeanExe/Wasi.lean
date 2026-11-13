@@ -3,3 +3,4 @@ import LeanExe.Wasi.Interpreter
 import LeanExe.Wasi.Process
 import LeanExe.Wasi.ReadAll
 import LeanExe.Wasi.Sys
+import LeanExe.Wasi.SysCalls

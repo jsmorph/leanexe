@@ -20,12 +20,16 @@ def alignUp (address align : Nat) : Nat := address + (align - address % align) %
 /-- The address after the inputs and output regions of a request laid out from `start` in
 parameter order: an input or an output buffer at the address reached, and a result word or a
 reported region at the next multiple of its alignment.  `sizes` holds the sizes of the reported
-regions. -/
+regions.  A record has no layout here: the end of a request with a record lies past `2^32`, so
+`Host.AnswersFor` asks nothing of a call with a record. -/
 def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | [], _, _, start => start
   | .word32 :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
+  | .flags32 _ :: params, sizes, args, start
+  | .flags64 _ :: params, sizes, args, start
   | .word64 :: params, sizes, args, start => layoutEnd params sizes args.tail start
+  | .record .. :: _, _, _, start => start + 2 ^ 32 + 1
   | .input :: params, sizes, args, start =>
     layoutEnd params sizes args.tail (start + (args.head?.map Arg.length).getD 0)
   | .output :: params, sizes, args, start =>
@@ -40,7 +44,10 @@ def layoutPointers : List Param → List Nat → List Arg → Nat → List UInt3
   | [], _, _, _ => []
   | .word32 :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
+  | .flags32 _ :: params, sizes, args, start
+  | .flags64 _ :: params, sizes, args, start
   | .word64 :: params, sizes, args, start => layoutPointers params sizes args.tail start
+  | .record .. :: _, _, _, _ => []
   | .input :: params, sizes, args, start =>
     UInt32.ofNat start ::
       layoutPointers params sizes args.tail (start + (args.head?.map Arg.length).getD 0)
@@ -86,7 +93,8 @@ theorem layoutEnd_ge (params : List Param) :
   | cons param params ih =>
       intro sizes args start
       cases param with
-      | word32 | word64 | enum32 _ => exact ih sizes args.tail start
+      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail start
+      | record => simp only [layoutEnd]; omega
       | input | output => exact Nat.le_trans (Nat.le_add_right _ _) (ih sizes args.tail _)
       | result32 =>
           exact Nat.le_trans (Nat.le_trans (le_alignUp start 4) (Nat.le_add_right _ _))
@@ -203,7 +211,9 @@ theorem laid (params : List Param) :
           ∀ scale align shown, Param.reported scale align shown ∈ params → 0 < align :=
         fun scale align shown member => aligned scale align shown (List.mem_cons_of_mem _ member)
       cases param with
-      | word32 | word64 | enum32 _ => exact ih sizes args.tail start alignedRest fits
+      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+          exact ih sizes args.tail start alignedRest fits
+      | record => simp only [layoutEnd] at fits; omega
       | input =>
           simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
             List.headD_cons] at fits ⊢
@@ -305,7 +315,10 @@ theorem layoutRequest (world : World) (call : Call) (request : List Arg) (sizes 
       (lowerArgs call.params request (layoutPointers call.params sizes request 16)) call request
       (layoutPointers call.params sizes request 16) sizes := by
   have laid := Layout.laid call.params sizes request 16 aligned bound
-  refine ⟨fits, accepted, rfl, ?_, ?_, laid.apart⟩
+  have apart := List.pairwise_append.mp laid.apart
+  refine ⟨fits, accepted, rfl, ?_, ?_, apart.1, fun region regionMember place placeMember =>
+    apart.2.2 _ (List.mem_map.mpr ⟨region, regionMember, rfl⟩) _
+      (List.mem_map.mpr ⟨place, placeMember, rfl⟩)⟩
   · apply placeAll_at
     · exact (List.pairwise_append.mp laid.apart).2.1
     · intro place member

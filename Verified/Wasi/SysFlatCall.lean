@@ -57,10 +57,19 @@ theorem flatArgs_fit : ∀ (params : List Param) (values : List UInt64),
       refine ⟨?_, flatArgs_fit params values.tail hKinds.2 rest⟩
       have low : (values.headD 0).toNat < count := by simpa using head
       omega
-    | word64 =>
+    | word64 | flags64 =>
       obtain ⟨_, rest⟩ := rejectArgs_cons_zero rfl hAccepted
       simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.true_and]
       exact flatArgs_fit params values.tail hKinds.2 rest
+    | flags32 mask =>
+      obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
+      simp only [flatArgs, argsFit, Param.takesArg, ↓reduceIte, argFits, Bool.and_eq_true,
+        decide_eq_true_eq]
+      refine ⟨?_, flatArgs_fit params values.tail hKinds.2 rest⟩
+      simp only [Param.reject, Arg.value] at head
+      by_contra large
+      simp only [List.headD_eq_head?_getD, Nat.reducePow] at large
+      simp [large] at head
     | output =>
       obtain ⟨head, rest⟩ := rejectArgs_cons_zero rfl hAccepted
       simp only [Param.reject, Arg.capacity] at head
@@ -73,7 +82,7 @@ theorem flatArgs_fit : ∀ (params : List Param) (values : List UInt64),
         at hAccepted ⊢
       simp only [argsFit, Param.takesArg, Bool.false_eq_true, ↓reduceIte]
       exact flatArgs_fit params values hKinds.2 hAccepted
-    | input | reported => simp [Param.flatKind] at hKinds
+    | input | reported | record => simp [Param.flatKind] at hKinds
 
 private theorem slot_toNat {slot : Nat} (h : slot < 4294967296) :
     (UInt32.ofNat slot).toNat = slot :=
@@ -95,8 +104,8 @@ theorem flat_region_mem {root : UInt32} {sizes : List Nat} :
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
     | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
-    | word32 | word64 | enum32 =>
+    | reported | record => simp [Param.flatKind] at kinds
+    | word32 | word64 | enum32 | flags32 | flags64 =>
       simp only [flatArgs, flatPointers, outputRegions, List.tail_cons] at member
       have tail := flat_region_mem params values.tail slot region kinds.2
         (by simpa [List.count_cons] using outputs)
@@ -149,8 +158,8 @@ theorem flat_regions_apart {root : UInt32} {sizes : List Nat} :
     rw [List.pairwise_map]
     cases param with
     | input => simp [Param.flatKind] at kinds'
-    | reported => simp [Param.flatKind] at kinds'
-    | word32 | word64 | enum32 =>
+    | reported | record => simp [Param.flatKind] at kinds'
+    | word32 | word64 | enum32 | flags32 | flags64 =>
       simp only [flatArgs, flatPointers, outputRegions, List.tail_cons]
       rw [← List.pairwise_map]
       exact flat_regions_apart params values.tail slot kinds'.2
@@ -261,7 +270,8 @@ theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m
       (lowerArgs call.params (flatArgs call.params values) (flatPointers call.params root.toUInt32 0))
       call (flatArgs call.params values) (flatPointers call.params root.toUInt32 0)
       (host.reported store.host.world call) := by
-    refine ⟨flatArgs_fit call.params values hKinds hAccepted, hAccepted, rfl, ?_, ?_, ?_⟩
+    refine ⟨flatArgs_fit call.params values hKinds hAccepted, hAccepted, rfl, ?_, ?_,
+      flat_regions_apart call.params values 0 hKinds hOutputs hRoom hSeparate, ?_⟩
     · rw [inputPlaces_flat _ _ _ hKinds]
       intro place member
       cases member
@@ -277,8 +287,9 @@ theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m
         rw [pointer]
         rcases size with ⟨size, align⟩ | ⟨size, align⟩ <;> rw [size, align] <;>
           refine ⟨by omega, by omega, by omega⟩
-    · rw [inputPlaces_flat _ _ _ hKinds, List.map_nil, List.append_nil]
-      exact flat_regions_apart call.params values 0 hKinds hOutputs hRoom hSeparate
+    · rw [inputPlaces_flat _ _ _ hKinds]
+      intro _ _ place member
+      cases member
   have hLength := lowerArgs_length call.params (flatArgs call.params values)
     (flatPointers call.params root.toUInt32 0)
   have hTake : ((lowerArgs call.params (flatArgs call.params values)

@@ -33,9 +33,8 @@ theorem inputPlaces_flat : ∀ (params : List Param) (args : List Arg) (pointers
   | param :: params, args, pointers, kinds => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
-    | word32 | word64 | enum32 | output | result32 | result64 =>
+    | input | reported | record => simp [Param.flatKind] at kinds
+    | word32 | word64 | enum32 | output | result32 | result64 | flags32 | flags64 =>
       simp only [inputPlaces]
       exact inputPlaces_flat _ _ _ kinds.2
 
@@ -61,6 +60,34 @@ private theorem held_values {s : Locals} {locs : List Nat} {values : List UInt64
       ({ s with values := stack } : Locals).get place = some (.i64 value)) locs values := by
   simpa only [Locals.get_values] using held
 
+/-- The flags test leaves 28 when the word in `place` has a bit outside `mask`, and otherwise the
+errno that the code after it leaves. -/
+theorem wp_flags_reject {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
+    {mask place : Nat} {value accepted : UInt64} {code rest : Program} {s : Locals}
+    {Q : Assertion α}
+    (hPlace : s.get place = some (.i64 value))
+    (hCode : value &&& ~~~(UInt64.ofNat mask) = 0 → ∀ (rest' : Program) (Q' : Assertion α),
+      wp m rest' Q' st { s with values := .i64 accepted :: s.values } env →
+      wp m (code ++ rest') Q' st s env)
+    (h : wp m rest Q st
+      { s with values := .i64 (if value &&& ~~~(UInt64.ofNat mask) = 0 then accepted else 28) ::
+        s.values } env) :
+    wp m (flagsRejectCode mask place code ++ rest) Q st s env := by
+  simp only [flagsRejectCode, List.cons_append, wp_localGet_cons, hPlace, wp_constI64_cons,
+    wp_andI64_cons, wp_eqzI64_cons, wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  by_cases ok : value &&& ~~~(UInt64.ofNat mask) = 0
+  · rw [ite_eq_left (by simp [ok])]
+    rw [← List.append_nil code]
+    refine hCode ok [] _ ?_
+    simp only [wp_nil, List.take_succ_cons, List.take_zero, List.cons_append, List.nil_append,
+      List.drop_zero]
+    simpa only [ok, ite_true] using h
+  · rw [ite_eq_right (by simp [ok])]
+    simp only [wp_constI64_cons, wp_nil, List.take_succ_cons, List.take_zero,
+      List.cons_append, List.nil_append, List.drop_zero]
+    simpa only [ok, ite_false] using h
+
 /-- The test of the arguments leaves the errno that rejects them, or 0. -/
 theorem wp_sys_reject {α : Type} {m : Module} {st : Store α} {env : HostEnv α} :
     ∀ (params : List Param) (locs : List Nat) (values : List UInt64) (s : Locals)
@@ -77,8 +104,46 @@ theorem wp_sys_reject {α : Type} {m : Module} {st : Store α} {env : HostEnv α
   | param :: params, locs, values, s, rest, Q, kinds, held, count, h => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
+    | input | reported | record => simp [Param.flatKind] at kinds
+    | flags64 mask =>
+      obtain ⟨place, value, locs', values', hPlace, held', rfl, rfl⟩ :=
+        held_head held (count := params.countP Param.takesArg)
+          (by simpa [Param.takesArg, List.countP_cons] using count)
+      simp only [sysRejectCode]
+      refine wp_flags_reject hPlace (fun _ rest' Q' next => wp_sys_reject params locs' values' s
+        rest' Q' kinds.2 held' (by simpa [Param.takesArg, List.countP_cons] using count) next) ?_
+      by_cases ok : value &&& ~~~(UInt64.ofNat mask) = 0 <;>
+        simpa [rejectArgs, flatArgs, Param.takesArg, Param.reject, Arg.value, ok] using h
+    | flags32 mask =>
+      obtain ⟨place, value, locs', values', hPlace, held', rfl, rfl⟩ :=
+        held_head held (count := params.countP Param.takesArg)
+          (by simpa [Param.takesArg, List.countP_cons] using count)
+      simp only [sysRejectCode, List.cons_append, wp_localGet_cons, hPlace, wp_constI64_cons,
+        wp_geUI64_cons, wp_iff_control_types]
+      refine wp_iff_cons rfl ?_
+      by_cases large : (4294967296 : UInt64) ≤ value
+      · rw [ite_eq_left (by simp [large])]
+        simp only [wp_constI64_cons, wp_nil, List.take_succ_cons, List.take_zero,
+          List.cons_append, List.nil_append, List.drop_zero]
+        have large' : ¬value.toNat < 4294967296 := by
+          rw [UInt64.le_iff_toNat_le] at large
+          simp only [UInt64.reduceToNat] at large
+          omega
+        simpa [rejectArgs, flatArgs, Param.takesArg, Param.reject, Arg.value, large'] using h
+      · rw [ite_eq_right (by simp [large])]
+        have small : value.toNat < 4294967296 := by
+          rw [UInt64.le_iff_toNat_le] at large
+          simp only [UInt64.reduceToNat] at large
+          omega
+        rw [← List.append_nil (flagsRejectCode mask place (sysRejectCode params locs'))]
+        refine wp_flags_reject (by simpa only [Locals.get_values] using hPlace)
+          (fun _ rest' Q' next => wp_sys_reject params locs' values' _ rest' Q' kinds.2
+            (held_values held' _) (by simpa [Param.takesArg, List.countP_cons] using count)
+            next) ?_
+        simp only [wp_nil, List.take_succ_cons, List.take_zero, List.cons_append,
+          List.nil_append, List.drop_zero]
+        by_cases ok : value &&& ~~~(UInt64.ofNat mask) = 0 <;>
+          simpa [rejectArgs, flatArgs, Param.takesArg, Param.reject, Arg.value, small, ok] using h
     | result32 | result64 =>
       simp only [sysRejectCode]
       refine wp_sys_reject params locs values s rest Q kinds.2 held
@@ -168,15 +233,14 @@ theorem wp_sys_lower {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
   | param :: params, locs, values, slot, s, rest, Q, kinds, held, count, hRoot, h => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
+    | input | reported | record => simp [Param.flatKind] at kinds
     | result32 | result64 =>
       simp only [sysLowerCode, List.cons_append, List.nil_append, wp_const_cons]
       refine wp_sys_lower params locs values (slot + 8) _ rest Q kinds.2 (held_values held _)
         (by simpa [Param.takesArg, List.countP_cons] using count) (by simpa only [Locals.get_values] using hRoot) ?_
       simpa only [lowerArgs, flatArgs, flatPointers, List.reverse_cons, List.append_assoc,
         List.headD_cons, List.tail_cons, List.cons_append, List.nil_append] using h
-    | word64 =>
+    | word64 | flags64 =>
       obtain ⟨place, value, locs', values', hPlace, held', rfl, rfl⟩ :=
         held_head held (count := params.countP Param.takesArg) (by simpa [Param.takesArg, List.countP_cons] using count)
       simp only [sysLowerCode, List.cons_append, List.nil_append, wp_localGet_cons, hPlace]
@@ -185,7 +249,7 @@ theorem wp_sys_lower {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
       simpa only [lowerArgs, flatArgs, flatPointers, List.reverse_cons, List.append_assoc,
         List.head?_cons, Option.map_some, Option.getD_some, Arg.value, List.tail_cons,
         List.headD_cons, List.cons_append, List.nil_append] using h
-    | word32 | enum32 =>
+    | word32 | enum32 | flags32 =>
       obtain ⟨place, value, locs', values', hPlace, held', rfl, rfl⟩ :=
         held_head held (count := params.countP Param.takesArg) (by simpa [Param.takesArg, List.countP_cons] using count)
       simp only [sysLowerCode, List.cons_append, List.nil_append, wp_localGet_cons, hPlace,

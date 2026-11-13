@@ -54,9 +54,9 @@ theorem resultBytes_none :
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
     | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
+    | reported | record => simp [Param.flatKind] at kinds
     | output => simp [flatCapacity] at none'
-    | word32 | word64 | enum32 =>
+    | word32 | word64 | enum32 | flags32 | flags64 =>
       exact resultBytes_none params values.tail reply index kinds.2
         (by simpa [flatCapacity, Param.takesArg] using none')
     | result32 | result64 =>
