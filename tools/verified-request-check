@@ -271,14 +271,14 @@ emit() {
 }
 
 # Runs every sample with the command "$@" followed by the export, the result kind, and the
-# arguments, and compares each result with the specification's.  $1 names the run in the report.
+# arguments, and compares each result, as the host prints it, with the specification's, which
+# TestSupport.Host renders in the same form.  $1 names the run in the report.
 run_samples() {
   local label=$1 passed=0 failed=0 fn kind args expected got argv
   shift
   while IFS='|' read -r _ fn kind args expected; do
     read -ra argv <<<"$args"
-    if got=$("$@" "$fn" "$kind" "${argv[@]}" </dev/null 2>"$work/call.err" | tr -d '[] ' |
-        paste -sd, -); then
+    if got=$("$@" "$fn" "$kind" "${argv[@]}" </dev/null 2>"$work/call.err"); then
       if [ "$got" = "$expected" ]; then
         passed=$((passed + 1))
         continue
