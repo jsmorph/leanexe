@@ -42,14 +42,14 @@ theorem fmovSwSme_n0 : fmovSwSme.trace = fmovSwSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovSwSme (sme.sys .fp)
+isla_ctx fmovSwSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovSwSme` ends in `exec`'s state. -/
 theorem fmovSwSme_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovSwSme.ctx σ u)
-    (h : fmovSwSme.Run P (fpFields2 d n) s σ o) :
+    (h : fmovSwSme.Run P .el1 (fpFields2 d n) s σ o) :
     ∃ σ', o = .done
       { s.setD d (s.x n).toUInt32.toUInt64 with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z"] → σ' r = σ r := by
@@ -67,7 +67,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovSwSme` has a path to an outcome. -/
 theorem fmovSwSme_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovSwSme.ctx σ u) :
-    ∃ o, fmovSwSme.Run P (fpFields2 d n) s σ o := by
+    ∃ o, fmovSwSme.Run P .el1 (fpFields2 d n) s σ o := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -103,7 +103,7 @@ set_option maxHeartbeats 0 in
 state. -/
 theorem fmovSw_sme (P : Platform)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P noAbstract (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovSwSme
+    AgreesAll P .el1 noAbstract (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z"] fmovSwSme
       (fpFields2 d n) (.fmovSW d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -128,14 +128,14 @@ theorem fmovWsSme_n0 : fmovWsSme.trace = fmovWsSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmovWsSme (sme.sys .fp)
+isla_ctx fmovWsSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmovWsSme` ends in `exec`'s state. -/
 theorem fmovWsSme_fwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hσ : fmovWsSme.ctx σ u)
-    (h : fmovWsSme.Run P (fpFields2 d n) s σ o) :
+    (h : fmovWsSme.Run P .el1 (fpFields2 d n) s σ o) :
     o = .done { s.setX d (s.dregs n).toUInt32.toUInt64 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295)) := by
   without_info
@@ -152,7 +152,7 @@ set_option maxHeartbeats 0 in
 /-- `fmovWsSme` has a path to `exec`'s state. -/
 theorem fmovWsSme_bwd {P : Platform} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hσ : fmovWsSme.ctx σ u) :
-    fmovWsSme.Run P (fpFields2 d n) s σ
+    fmovWsSme.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (s.dregs n).toUInt32.toUInt64 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295))) := by
   without_info
@@ -187,7 +187,8 @@ set_option maxHeartbeats 0 in
 /-- The trace of `FMOV Wd, Sn` under `sme` agrees with `exec` for every register number and every
 state. -/
 theorem fmovWs_sme (P : Platform) (u : Unknown) (d n : Fin 32) (s : State) :
-    Agrees P (sme.sys .fp u) ["SEE", "__BranchTaken"] fmovWsSme (fpFields2 d n) (.fmovWS d n) s := by
+    Agrees P .el1 (sme.sys .fp u) ["SEE", "__BranchTaken"] fmovWsSme (fpFields2 d n) (.fmovWS d n)
+      s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
     · simp only [Opcode.word, Opcode.wordFrom, fmovWsSme, fpFields2, encodeNat, List.lookup,
@@ -209,14 +210,14 @@ theorem faddSSme_n0 : faddSSme.trace = faddSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx faddSSme (sme.sys .fp)
+isla_ctx faddSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `faddSSme` ends in `exec`'s state. -/
 theorem faddSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPAdd32Eq A) (hσ : faddSSme.ctx σ u)
-    (h : faddSSme.Run P (fpFields3 d n m) s σ o A) :
+    (h : faddSSme.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Add (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
         pc := s.pc + 4 } σ' ∧
@@ -238,7 +239,7 @@ set_option maxHeartbeats 0 in
 /-- `faddSSme` has a path to an outcome. -/
 theorem faddSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPAdd32Eq A) (hσ : faddSSme.ctx σ u) :
-    ∃ o, faddSSme.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, faddSSme.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -269,7 +270,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPAdd32Eq`. -/
 theorem faddS_sme (P : Platform) (A : Abstract) (hA : FPAdd32Eq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddSSme
       (fpFields3 d n m) (.faddS d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -294,14 +295,14 @@ theorem fsubSSme_n0 : fsubSSme.trace = fsubSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsubSSme (sme.sys .fp)
+isla_ctx fsubSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsubSSme` ends in `exec`'s state. -/
 theorem fsubSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSub32Eq A) (hσ : fsubSSme.ctx σ u)
-    (h : fsubSSme.Run P (fpFields3 d n m) s σ o A) :
+    (h : fsubSSme.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Sub (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
         pc := s.pc + 4 } σ' ∧
@@ -323,7 +324,7 @@ set_option maxHeartbeats 0 in
 /-- `fsubSSme` has a path to an outcome. -/
 theorem fsubSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPSub32Eq A) (hσ : fsubSSme.ctx σ u) :
-    ∃ o, fsubSSme.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fsubSSme.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -354,7 +355,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPSub32Eq`. -/
 theorem fsubS_sme (P : Platform) (A : Abstract) (hA : FPSub32Eq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubSSme
       (fpFields3 d n m) (.fsubS d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -379,14 +380,14 @@ theorem fmulSSme_n0 : fmulSSme.trace = fmulSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fmulSSme (sme.sys .fp)
+isla_ctx fmulSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fmulSSme` ends in `exec`'s state. -/
 theorem fmulSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPMul32Eq A) (hσ : fmulSSme.ctx σ u)
-    (h : fmulSSme.Run P (fpFields3 d n m) s σ o A) :
+    (h : fmulSSme.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Mul (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
         pc := s.pc + 4 } σ' ∧
@@ -408,7 +409,7 @@ set_option maxHeartbeats 0 in
 /-- `fmulSSme` has a path to an outcome. -/
 theorem fmulSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPMul32Eq A) (hσ : fmulSSme.ctx σ u) :
-    ∃ o, fmulSSme.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fmulSSme.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -463,7 +464,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPMul32Eq`. -/
 theorem fmulS_sme (P : Platform) (A : Abstract) (hA : FPMul32Eq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulSSme
       (fpFields3 d n m) (.fmulS d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -488,14 +489,14 @@ theorem fdivSSme_n0 : fdivSSme.trace = fdivSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fdivSSme (sme.sys .fp)
+isla_ctx fdivSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fdivSSme` ends in `exec`'s state. -/
 theorem fdivSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPDiv32Eq A) (hσ : fdivSSme.ctx σ u)
-    (h : fdivSSme.Run P (fpFields3 d n m) s σ o A) :
+    (h : fdivSSme.Run P .el1 (fpFields3 d n m) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Div (s.dregs n).toUInt32 (s.dregs m).toUInt32).toUInt64 with
         pc := s.pc + 4 } σ' ∧
@@ -517,7 +518,7 @@ set_option maxHeartbeats 0 in
 /-- `fdivSSme` has a path to an outcome. -/
 theorem fdivSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPDiv32Eq A) (hσ : fdivSSme.ctx σ u) :
-    ∃ o, fdivSSme.Run P (fpFields3 d n m) s σ o A := by
+    ∃ o, fdivSSme.Run P .el1 (fpFields3 d n m) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -572,7 +573,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPDiv32Eq`. -/
 theorem fdivS_sme (P : Platform) (A : Abstract) (hA : FPDiv32Eq A)
     (u : Unknown) (d n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivSSme
       (fpFields3 d n m) (.fdivS d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -597,14 +598,14 @@ theorem fsqrtSSme_n0 : fsqrtSSme.trace = fsqrtSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fsqrtSSme (sme.sys .fp)
+isla_ctx fsqrtSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fsqrtSSme` ends in `exec`'s state. -/
 theorem fsqrtSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPSqrt32Eq A) (hσ : fsqrtSSme.ctx σ u)
-    (h : fsqrtSSme.Run P (fpFields2 d n) s σ o A) :
+    (h : fsqrtSSme.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Sqrt (s.dregs n).toUInt32).toUInt64 with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -623,7 +624,7 @@ set_option maxHeartbeats 0 in
 /-- `fsqrtSSme` has a path to an outcome. -/
 theorem fsqrtSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPSqrt32Eq A) (hσ : fsqrtSSme.ctx σ u) :
-    ∃ o, fsqrtSSme.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, fsqrtSSme.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -652,7 +653,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPSqrt32Eq`. -/
 theorem fsqrtS_sme (P : Platform) (A : Abstract) (hA : FPSqrt32Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtSSme
       (fpFields2 d n) (.fsqrtS d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -677,14 +678,14 @@ theorem frintnSSme_n0 : frintnSSme.trace = frintnSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx frintnSSme (sme.sys .fp)
+isla_ctx frintnSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `frintnSSme` ends in `exec`'s state. -/
 theorem frintnSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPRoundInt32Eq A) (hσ : frintnSSme.ctx σ u)
-    (h : frintnSSme.Run P (fpFields2 d n) s σ o A) :
+    (h : frintnSSme.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32Nearest (s.dregs n).toUInt32).toUInt64 with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -703,7 +704,7 @@ set_option maxHeartbeats 0 in
 /-- `frintnSSme` has a path to an outcome. -/
 theorem frintnSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPRoundInt32Eq A) (hσ : frintnSSme.ctx σ u) :
-    ∃ o, frintnSSme.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, frintnSSme.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -732,7 +733,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPRoundInt32Eq`. -/
 theorem frintnS_sme (P : Platform) (A : Abstract) (hA : FPRoundInt32Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] frintnSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] frintnSSme
       (fpFields2 d n) (.frintnS d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -757,14 +758,14 @@ theorem ucvtfSxSme_n0 : ucvtfSxSme.trace = ucvtfSxSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx ucvtfSxSme (sme.sys .fp)
+isla_ctx ucvtfSxSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `ucvtfSxSme` ends in `exec`'s state. -/
 theorem ucvtfSxSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FixedToFP64_32Eq A) (hσ : ucvtfSxSme.ctx σ u)
-    (h : ucvtfSxSme.Run P (fpFields2 d n) s σ o A) :
+    (h : ucvtfSxSme.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32ConvertI64U (s.x n)).toUInt64 with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -785,7 +786,7 @@ set_option maxHeartbeats 0 in
 /-- `ucvtfSxSme` has a path to an outcome. -/
 theorem ucvtfSxSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FixedToFP64_32Eq A) (hσ : ucvtfSxSme.ctx σ u) :
-    ∃ o, ucvtfSxSme.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, ucvtfSxSme.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -824,7 +825,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FixedToFP64_32Eq`. -/
 theorem ucvtfSx_sme (P : Platform) (A : Abstract) (hA : FixedToFP64_32Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfSxSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfSxSme
       (fpFields2 d n) (.ucvtfSX d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -849,14 +850,14 @@ theorem scvtfSwSme_n0 : scvtfSwSme.trace = scvtfSwSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx scvtfSwSme (sme.sys .fp)
+isla_ctx scvtfSwSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `scvtfSwSme` ends in `exec`'s state. -/
 theorem scvtfSwSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FixedToFP32_32Eq A) (hσ : scvtfSwSme.ctx σ u)
-    (h : scvtfSwSme.Run P (fpFields2 d n) s σ o A) :
+    (h : scvtfSwSme.Run P .el1 (fpFields2 d n) s σ o A) :
     ∃ σ', o = .done
       { s.setD d (Wasm.f32ConvertI32S (s.x n).toUInt32).toUInt64 with pc := s.pc + 4 } σ' ∧
       ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
@@ -877,7 +878,7 @@ set_option maxHeartbeats 0 in
 /-- `scvtfSwSme` has a path to an outcome. -/
 theorem scvtfSwSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FixedToFP32_32Eq A) (hσ : scvtfSwSme.ctx σ u) :
-    ∃ o, scvtfSwSme.Run P (fpFields2 d n) s σ o A := by
+    ∃ o, scvtfSwSme.Run P .el1 (fpFields2 d n) s σ o A := by
   without_info
     have := d.isLt
     have := n.isLt
@@ -916,7 +917,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FixedToFP32_32Eq`. -/
 theorem scvtfSw_sme (P : Platform) (A : Abstract) (hA : FixedToFP32_32Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] scvtfSwSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "_Z", "FPSR"] scvtfSwSme
       (fpFields2 d n) (.scvtfSW d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -941,14 +942,14 @@ theorem fcvtzuXsSme_n0 : fcvtzuXsSme.trace = fcvtzuXsSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcvtzuXsSme (sme.sys .fp)
+isla_ctx fcvtzuXsSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcvtzuXsSme` ends in `exec`'s state. -/
 theorem fcvtzuXsSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPToFixed32_64Eq A) (hσ : fcvtzuXsSme.ctx σ u)
-    (h : fcvtzuXsSme.Run P (fpFields2 d n) s σ o A) :
+    (h : fcvtzuXsSme.Run P .el1 (fpFields2 d n) s σ o A) :
     o = .done { s.setX d (Wasm.i64TruncSatF32U (s.dregs n).toUInt32) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293)) := by
   without_info
@@ -966,7 +967,7 @@ set_option maxHeartbeats 0 in
 /-- `fcvtzuXsSme` has a path to `exec`'s state. -/
 theorem fcvtzuXsSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPToFixed32_64Eq A) (hσ : fcvtzuXsSme.ctx σ u) :
-    fcvtzuXsSme.Run P (fpFields2 d n) s σ
+    fcvtzuXsSme.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (Wasm.i64TruncSatF32U (s.dregs n).toUInt32) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293))) A := by
   without_info
@@ -1003,7 +1004,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPToFixed32_64Eq`. -/
 theorem fcvtzuXs_sme (P : Platform) (A : Abstract) (hA : FPToFixed32_64Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuXsSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuXsSme
       (fpFields2 d n) (.fcvtzuXS d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -1026,14 +1027,14 @@ theorem fcvtzsWsSme_n0 : fcvtzsWsSme.trace = fcvtzsWsSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcvtzsWsSme (sme.sys .fp)
+isla_ctx fcvtzsWsSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcvtzsWsSme` ends in `exec`'s state. -/
 theorem fcvtzsWsSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPToFixed32_32Eq A) (hσ : fcvtzsWsSme.ctx σ u)
-    (h : fcvtzsWsSme.Run P (fpFields2 d n) s σ o A) :
+    (h : fcvtzsWsSme.Run P .el1 (fpFields2 d n) s σ o A) :
     o = .done { s.setX d (Wasm.i32TruncSatF32S (s.dregs n).toUInt32).toUInt64 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 292)) := by
   without_info
@@ -1051,7 +1052,7 @@ set_option maxHeartbeats 0 in
 /-- `fcvtzsWsSme` has a path to `exec`'s state. -/
 theorem fcvtzsWsSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {d n : Fin 32} {s : State}
     {σ : Sys} (hA : FPToFixed32_32Eq A) (hσ : fcvtzsWsSme.ctx σ u) :
-    fcvtzsWsSme.Run P (fpFields2 d n) s σ
+    fcvtzsWsSme.Run P .el1 (fpFields2 d n) s σ
       (.done { s.setX d (Wasm.i32TruncSatF32S (s.dregs n).toUInt32).toUInt64 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 292))) A := by
   without_info
@@ -1088,7 +1089,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPToFixed32_32Eq`. -/
 theorem fcvtzsWs_sme (P : Platform) (A : Abstract) (hA : FPToFixed32_32Eq A)
     (u : Unknown) (d n : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzsWsSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcvtzsWsSme
       (fpFields2 d n) (.fcvtzsWS d n) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -1111,14 +1112,14 @@ theorem fcmpSSme_n0 : fcmpSSme.trace = fcmpSSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpSSme (sme.sys .fp)
+isla_ctx fcmpSSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpSSme` ends in `exec`'s state. -/
 theorem fcmpSSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompare32Eq A) (hσ : fcmpSSme.ctx σ u)
-    (h : fcmpSSme.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpSSme.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmpS (s.dregs n).toUInt32 (s.dregs m).toUInt32 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -1136,7 +1137,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpSSme` has a path to `exec`'s state. -/
 theorem fcmpSSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompare32Eq A) (hσ : fcmpSSme.ctx σ u) :
-    fcmpSSme.Run P (fcmpFields n m) s σ
+    fcmpSSme.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmpS (s.dregs n).toUInt32 (s.dregs m).toUInt32 with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -1158,7 +1159,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompare32Eq`. -/
 theorem fcmpS_sme (P : Platform) (A : Abstract) (hA : FPCompare32Eq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSSme
       (fcmpFields n m) (.fcmpS n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩

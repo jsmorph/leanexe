@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Check
+import LeanExe.A64.Isla.Linux
 import LeanExe.A64.Isla.Profile
 
 /-!
@@ -35,6 +36,15 @@ values of `R0` to `R30`, which `isla_gprs` gives.  Each path ends in an equation
 the premise.  Every trace compares `FeatureImpl`, a vector of 259 Booleans, which recurses deeper
 than the default limit, and the evaluation of each trace takes more than the default budget of
 heartbeats.
+
+The theorems whose names end in `_vhe` state `Agrees` with the stack pointer `.el0` for the
+traces of `tests/isla/linux-vhe`, those of a Linux process at EL0 under the host's kernel, and
+the profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`,
+Linux's values of the bits that the reset constraints fix.  Under `HCR_EL2.{E2H, TGE}`
+`{1, 1}`, `TCR_EL2` governs EL0 with the layout of `TCR_EL1`, so `Untagged` takes `u.tcr2`, and
+its TBI0 and TBI1 lie at bits 37 and 38 as in `TCR_EL1`.  The proofs follow those under `kvm`: the premise's bits of `HCR_EL2`
+and `SCR_EL3` join the facts of the walk, and the two registers' values join those that
+`isla_bwd` gives the declared variables.
 -/
 
 namespace TestSupport.A64.Isla
@@ -223,7 +233,7 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem b_tcg (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bTcg (bFields imm)
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bTcg (bFields imm)
       (.b imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -258,7 +268,7 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem b_kvm (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bKvm (bFields imm)
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bKvm (bFields imm)
       (.b imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -308,8 +318,8 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte: it writes the program counter plus 4 to `R30`. -/
 theorem bl_tcg (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blTcg (bFields imm)
-      (.bl imm) s := by
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blTcg
+      (bFields imm) (.bl imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
   simp only [Untagged, hT, Nat.reducePow] at ht htcr
@@ -343,8 +353,8 @@ set_option maxHeartbeats 4000000 in
 target keeps its top byte. -/
 theorem bl_kvm (P : Platform) (u : Unknown) (imm : Fin 67108864) (s : State)
     (ht : Untagged u.tcr (s.pc + sext 26 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blKvm (bFields imm)
-      (.bl imm) s := by
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] blKvm
+      (bFields imm) (.bl imm) s := by
   have hT := target26 s.pc imm.isLt
   have htcr := u.tcr.isLt
   simp only [Untagged, hT, Nat.reducePow] at ht htcr
@@ -412,7 +422,7 @@ set_option maxHeartbeats 8000000 in
 branch is taken.  Isla reads `Xt` from the vector of `R0` to `R30` for a register other than 31. -/
 theorem cbz_tcg (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t = 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzTcg
       (cbFields t imm) (.cbz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -455,7 +465,7 @@ set_option maxHeartbeats 8000000 in
 immediate, and every state whose target keeps its top byte when the branch is taken. -/
 theorem cbz_kvm (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t = 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzKvm
       (cbFields t imm) (.cbz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -499,7 +509,7 @@ set_option maxHeartbeats 8000000 in
 branch is taken. -/
 theorem cbnz_tcg (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t ≠ 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzTcg
       (cbFields t imm) (.cbnz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -542,7 +552,7 @@ set_option maxHeartbeats 8000000 in
 immediate, and every state whose target keeps its top byte when the branch is taken. -/
 theorem cbnz_kvm (P : Platform) (u : Unknown) (t : Fin 32) (imm : Fin 524288) (s : State)
     (ht : s.x t ≠ 0 → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzKvm
       (cbFields t imm) (.cbnz t imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -607,7 +617,7 @@ flags and computes the condition from them and the field `cond`, and `cond_dec` 
 `State.condHolds`. -/
 theorem bcond_tcg (P : Platform) (u : Unknown) (cond : Fin 16) (imm : Fin 524288) (s : State)
     (ht : s.condHolds cond = true → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondTcg
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondTcg
       (bcondFields cond imm) (.bcond cond imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -648,7 +658,7 @@ set_option maxHeartbeats 8000000 in
 every state whose target keeps its top byte when the condition holds. -/
 theorem bcond_kvm (P : Platform) (u : Unknown) (cond : Fin 16) (imm : Fin 524288) (s : State)
     (ht : s.condHolds cond = true → Untagged u.tcr (s.pc + sext 19 imm.val * 4)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondKvm
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondKvm
       (bcondFields cond imm) (.bcond cond imm) s := by
   have hT := target19 s.pc imm.isLt
   have htcr := u.tcr.isLt
@@ -709,8 +719,8 @@ the zero register, and every state whose target `Xn` keeps its top byte.  Every 
 `BTypeNext`. -/
 theorem ret_tcg (P : Platform) (u : Unknown) (n : Fin 32) (s : State)
     (ht : Untagged u.tcr (s.x n)) :
-    Agrees P (tcg.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"] retTcg
-      (retFields n) (.ret n) s := by
+    Agrees P .el1 (tcg.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"]
+      retTcg (retFields n) (.ret n) s := by
   have htcr := u.tcr.isLt
   have := n.isLt
   simp only [Untagged, Nat.reducePow] at ht htcr
@@ -749,8 +759,8 @@ set_option maxHeartbeats 8000000 in
 whose target `Xn` keeps its top byte. -/
 theorem ret_kvm (P : Platform) (u : Unknown) (n : Fin 32) (s : State)
     (ht : Untagged u.tcr (s.x n)) :
-    Agrees P (kvm.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"] retKvm
-      (retFields n) (.ret n) s := by
+    Agrees P .el1 (kvm.sys .branch u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"]
+      retKvm (retFields n) (.ret n) s := by
   have htcr := u.tcr.isLt
   have := n.isLt
   simp only [Untagged, Nat.reducePow] at ht htcr
@@ -783,6 +793,284 @@ theorem ret_kvm (P : Platform) (u : Unknown) (n : Fin 32) (s : State)
       | (simp only [sint]; omega)
       | omega
 
+/-- The footprint of `B` of a Linux process at EL0 under the host's kernel. -/
+def bVhe : Footprint := isla_trace% "tests/isla/linux-vhe/b"
+
+/-- The footprint of `BL` of a Linux process at EL0 under the host's kernel. -/
+def blVhe : Footprint := isla_trace% "tests/isla/linux-vhe/bl"
+
+/-- The footprint of `CBZ` of a Linux process at EL0 under the host's kernel. -/
+def cbzVhe : Footprint := isla_trace% "tests/isla/linux-vhe/cbz"
+
+/-- The footprint of `CBNZ` of a Linux process at EL0 under the host's kernel. -/
+def cbnzVhe : Footprint := isla_trace% "tests/isla/linux-vhe/cbnz"
+
+/-- The footprint of `B.cond` of a Linux process at EL0 under the host's kernel. -/
+def bcondVhe : Footprint := isla_trace% "tests/isla/linux-vhe/b-cond"
+
+/-- The footprint of `RET` of a Linux process at EL0 under the host's kernel. -/
+def retVhe : Footprint := isla_trace% "tests/isla/linux-vhe/ret"
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 4000000 in
+/-- The trace of `B` at EL0 under the host's kernel agrees with `exec` for every immediate and
+every state whose target keeps its top byte. -/
+theorem b_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (imm : Fin 67108864)
+    (s : State) (ht : Untagged u.tcr2 (s.pc + sext 26 imm.val * 4)) :
+    Agrees P .el0 (linux u) ["SEE", "Branchtypetaken", "__BranchTaken"] bVhe (bFields imm)
+      (.b imm) s := by
+  have hT := target26 s.pc imm.isLt
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  simp only [Untagged, hT, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (b_word imm), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [bVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨(((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 67)).set
+    "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken" (.bool true),
+    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+  · unfold Footprint.Run at h
+    simp only [bVhe, Footprint.vars, bFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals jump_end [hT]
+  · subst h
+    unfold Footprint.Run
+    simp only [bVhe, Footprint.vars, bFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, u.hcr.toNat, u.scr.toNat, u.tcr2.toNat, s.pc.toNat] using omega with
+      [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm; jump_end [hT])
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | omega
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 4000000 in
+/-- The trace of `BL` at EL0 under the host's kernel agrees with `exec` for every immediate and
+every state whose target keeps its top byte. -/
+theorem bl_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (imm : Fin 67108864)
+    (s : State) (ht : Untagged u.tcr2 (s.pc + sext 26 imm.val * 4)) :
+    Agrees P .el0 (linux u) ["SEE", "Branchtypetaken", "__BranchTaken"] blVhe
+      (bFields imm) (.bl imm) s := by
+  have hT := target26 s.pc imm.isLt
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  simp only [Untagged, hT, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (bl_word imm), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [blVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨(((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 68)).set
+    "Branchtypetaken" (.enum "BranchType_DIRCALL")).set "__BranchTaken" (.bool true),
+    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+  · unfold Footprint.Run at h
+    simp only [blVhe, Footprint.vars, bFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals link_end [hT]
+  · subst h
+    unfold Footprint.Run
+    simp only [blVhe, Footprint.vars, bFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, u.hcr.toNat, u.scr.toNat, u.tcr2.toNat, s.pc.toNat] using omega with
+      [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm; link_end [hT])
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | omega
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 8000000 in
+/-- The trace of `CBZ` at EL0 under the host's kernel agrees with `exec` for every register
+number, every immediate, and every state whose target keeps its top byte when the branch is
+taken. -/
+theorem cbz_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (t : Fin 32)
+    (imm : Fin 524288) (s : State)
+    (ht : s.x t = 0 → Untagged u.tcr2 (s.pc + sext 19 imm.val * 4)) :
+    Agrees P .el0 (linux u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbzVhe
+      (cbFields t imm) (.cbz t imm) s := by
+  have hT := target19 s.pc imm.isLt
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  have := t.isLt
+  simp only [Untagged, hT, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (cbz_word t imm), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [cbzVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨if s.x t = 0 then
+      (((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 118)).set
+        "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken" (.bool true)
+    else (σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 118),
+    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_if⟩
+  · unfold Footprint.Run at h
+    simp only [cbzVhe, Footprint.vars, cbFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals cond_end hk : s.x t = 0 ; ht using cb_contra hk with [hT]
+  · subst h
+    unfold Footprint.Run
+    simp only [cbzVhe, Footprint.vars, cbFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, u.hcr.toNat, u.scr.toNat, u.tcr2.toNat, s.pc.toNat] using omega with
+      [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals try (guard_target = Exists _
+                   isla_gprs s using omega with [hσ, h1, h2, h3, h4]
+                   all_goals try isla_simp [hσ, h1, h2, h3, h4])
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm; cond_end hk : s.x t = 0 ; ht using cb_contra hk with [hT])
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | (simp only [sint]; omega)
+      | omega
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 8000000 in
+/-- The trace of `CBNZ` at EL0 under the host's kernel agrees with `exec` for every register
+number, every immediate, and every state whose target keeps its top byte when the branch is
+taken. -/
+theorem cbnz_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (t : Fin 32)
+    (imm : Fin 524288) (s : State)
+    (ht : s.x t ≠ 0 → Untagged u.tcr2 (s.pc + sext 19 imm.val * 4)) :
+    Agrees P .el0 (linux u) ["SEE", "Branchtypetaken", "__BranchTaken"] cbnzVhe
+      (cbFields t imm) (.cbnz t imm) s := by
+  have hT := target19 s.pc imm.isLt
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  have := t.isLt
+  simp only [Untagged, hT, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (cbnz_word t imm), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [cbnzVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨if s.x t ≠ 0 then
+      (((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 117)).set
+        "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken" (.bool true)
+    else (σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 117),
+    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_if⟩
+  · unfold Footprint.Run at h
+    simp only [cbnzVhe, Footprint.vars, cbFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals cond_end hk : s.x t ≠ 0 ; ht using cb_contra hk with [hT]
+  · subst h
+    unfold Footprint.Run
+    simp only [cbnzVhe, Footprint.vars, cbFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, u.hcr.toNat, u.scr.toNat, u.tcr2.toNat, s.pc.toNat] using omega with
+      [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals try (guard_target = Exists _
+                   isla_gprs s using omega with [hσ, h1, h2, h3, h4]
+                   all_goals try isla_simp [hσ, h1, h2, h3, h4])
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm; cond_end hk : s.x t ≠ 0 ; ht using cb_contra hk with [hT])
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | (simp only [sint]; omega)
+      | omega
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 8000000 in
+/-- The trace of `B.cond` at EL0 under the host's kernel agrees with `exec` for every condition,
+every immediate, and every state whose target keeps its top byte when the condition holds. -/
+theorem bcond_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (cond : Fin 16)
+    (imm : Fin 524288) (s : State)
+    (ht : s.condHolds cond = true → Untagged u.tcr2 (s.pc + sext 19 imm.val * 4)) :
+    Agrees P .el0 (linux u) ["SEE", "Branchtypetaken", "__BranchTaken"] bcondVhe
+      (bcondFields cond imm) (.bcond cond imm) s := by
+  have hT := target19 s.pc imm.isLt
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  simp only [Untagged, hT, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (bcond_word cond imm), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [bcondVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨if s.condHolds cond = true then
+      (((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 69)).set
+        "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken" (.bool true)
+    else (σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 69),
+    fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_if⟩
+  · unfold Footprint.Run at h
+    simp only [bcondVhe, Footprint.vars, bcondFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals cond_end hk : s.condHolds cond = true ; ht using cond_dec s cond hk with [hT]
+  · subst h
+    unfold Footprint.Run
+    simp only [bcondVhe, Footprint.vars, bcondFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, (if s.zFlag then 1 else 0), (if s.cFlag then 1 else 0),
+      (if s.nFlag then 1 else 0), (if s.vFlag then 1 else 0), u.hcr.toNat, u.scr.toNat,
+      u.tcr2.toNat, s.pc.toNat]
+      using omega with [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm
+         cond_end hk : s.condHolds cond = true ; ht using cond_dec s cond hk with [hT])
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | (split <;> omega)
+      | omega
+
+set_option maxRecDepth 8192 in
+set_option maxHeartbeats 8000000 in
+/-- The trace of `RET` at EL0 under the host's kernel agrees with `exec` for every register number
+and every state whose target `Xn` keeps its top byte. -/
+theorem ret_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (n : Fin 32) (s : State)
+    (ht : Untagged u.tcr2 (s.x n)) :
+    Agrees P .el0 (linux u) ["SEE", "BTypeNext", "Branchtypetaken", "__BranchTaken"]
+      retVhe (retFields n) (.ret n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  have htcr := u.tcr2.isLt
+  have := n.isLt
+  simp only [Untagged, Nat.reducePow] at ht htcr
+  refine ⟨by decide, by decide, decode_word (ret_word n), fun σ hσ s' hs => ?_⟩
+  simp only [exec, Option.some.injEq] at hs
+  subst hs
+  isla_reads [retVhe, linux_get, linux, kvm, sysreg, bv, eq_self_iff_true,
+    List.map_cons, List.map_nil] at hσ
+  refine ⟨((((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 94)).set
+    "BTypeNext" (.bits 2 0)).set "Branchtypetaken" (.enum "BranchType_RET")).set "__BranchTaken"
+    (.bool true), fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+  · unfold Footprint.Run at h
+    simp only [retVhe, Footprint.vars, retFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD] at h
+    isla_fwd h using omega with [hσ, h1, h2, h3, h4]
+    all_goals ret_end ht
+  · subst h
+    unfold Footprint.Run
+    simp only [retVhe, Footprint.vars, retFields, List.foldl, List.lookup, String.reduceBEq,
+      Option.getD]
+    isla_bwd [u.feature, u.hcr.toNat, u.scr.toNat, u.tcr2.toNat, s.pc.toNat] using omega with
+      [hσ, h1, h2, h3, h4]
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals try (guard_target = Exists _
+                   isla_gprs s using omega with [hσ, h1, h2, h3, h4]
+                   all_goals try isla_simp [hσ, h1, h2, h3, h4])
+    br_tree using omega with [hσ, h1, h2, h3, h4]
+    all_goals first
+      | (apply Eq.symm; ret_end ht)
+      | exact toNat_lt _
+      | exact BitVec.isLt _
+      | (simp only [sint]; omega)
+      | omega
+
 end TestSupport.A64.Isla
 
 #print axioms TestSupport.A64.Isla.b_tcg
@@ -797,3 +1085,9 @@ end TestSupport.A64.Isla
 #print axioms TestSupport.A64.Isla.bcond_kvm
 #print axioms TestSupport.A64.Isla.ret_tcg
 #print axioms TestSupport.A64.Isla.ret_kvm
+#print axioms TestSupport.A64.Isla.b_vhe
+#print axioms TestSupport.A64.Isla.bl_vhe
+#print axioms TestSupport.A64.Isla.cbz_vhe
+#print axioms TestSupport.A64.Isla.cbnz_vhe
+#print axioms TestSupport.A64.Isla.bcond_vhe
+#print axioms TestSupport.A64.Isla.ret_vhe

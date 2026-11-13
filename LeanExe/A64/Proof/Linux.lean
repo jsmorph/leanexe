@@ -268,6 +268,19 @@ theorem svc_write {K : Kernel} {P : Platform} {p : Proc} (h8 : p.core.x 8 = 64)
   simp only [h8, h0, true_and, or_true, ↓reduceIte, hf]
   simp only [show ¬ (64 : UInt64) = 63 by decide, ↓reduceIte, hmap]
 
+/-- A `read` of descriptor 0 or a `write` of descriptor 1 that fails with `e` returns the negated
+error number `e + 1`, changes nothing else, and appends the failure. -/
+theorem svc_fail {K : Kernel} {P : Platform} {p : Proc}
+    (hc : (p.core.x 8 = 63 ∧ p.core.x 0 = 0) ∨ (p.core.x 8 = 64 ∧ p.core.x 0 = 1))
+    {e : Fin 4095}
+    (hf : K.fail p.trace.length = some e) :
+    K.svc P p = some (p.ret (0 - UInt64.ofNat (e.val + 1)) p.core.mem
+      (.fail (p.core.x 8) (e.val + 1))) := by
+  unfold Kernel.svc
+  dsimp only
+  rw [if_pos hc]
+  simp only [hf]
+
 /-! ## Bytes that a call writes or reads -/
 
 theorem writeList_other (m : UInt64 → UInt8) :

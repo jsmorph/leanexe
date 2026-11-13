@@ -1,0 +1,297 @@
+(segments
+  (|Rm| 5 v0)
+  (|Rn| 5 v1)
+  (|Rd| 5 v2))
+(trace
+  (declare-const v0 (_ BitVec 5)) ; 0:0 - 0:0
+  (declare-const v1 (_ BitVec 5)) ; 0:0 - 0:0
+  (declare-const v2 (_ BitVec 5)) ; 0:0 - 0:0
+  (assume-reg |__max_implemented_smeveclen| nil (_ bv512 128))
+  (define-enum |Feature| 258 (|FEAT_AA32EL0| |FEAT_AA32EL1| |FEAT_AA32EL2| |FEAT_AA32EL3| |FEAT_AA64EL0| |FEAT_AA64EL1| |FEAT_AA64EL2| |FEAT_AA64EL3| |FEAT_EL0| |FEAT_EL1| |FEAT_EL2| |FEAT_EL3| |FEAT_AES| |FEAT_AdvSIMD| |FEAT_CSV2_1p1| |FEAT_CSV2_1p2| |FEAT_CSV2_2| |FEAT_CSV2_3| |FEAT_DoubleLock| |FEAT_ETMv4| |FEAT_ETMv4p1| |FEAT_ETMv4p2| |FEAT_ETMv4p3| |FEAT_ETMv4p4| |FEAT_ETMv4p5| |FEAT_ETMv4p6| |FEAT_ETS2| |FEAT_FP| |FEAT_GICv3| |FEAT_GICv3_LEGACY| |FEAT_GICv3_TDIR| |FEAT_GICv3p1| |FEAT_GICv4| |FEAT_GICv4p1| |FEAT_IVIPT| |FEAT_PCSRv8| |FEAT_PMULL| |FEAT_PMUv3| |FEAT_PMUv3_EXT| |FEAT_PMUv3_EXT32| |FEAT_SHA1| |FEAT_SHA256| |FEAT_TRC_EXT| |FEAT_TRC_SR| |FEAT_nTLBPA| |FEAT_CRC32| |FEAT_Debugv8p1| |FEAT_HAFDBS| |FEAT_HPDS| |FEAT_LOR| |FEAT_LSE| |FEAT_PAN| |FEAT_PMUv3p1| |FEAT_RDM| |FEAT_VHE| |FEAT_VMID16| |FEAT_AA32BF16| |FEAT_AA32HPD| |FEAT_AA32I8MM| |FEAT_ASMv8p2| |FEAT_DPB| |FEAT_Debugv8p2| |FEAT_EDHSR| |FEAT_F32MM| |FEAT_F64MM| |FEAT_FP16| |FEAT_HPDS2| |FEAT_I8MM| |FEAT_IESB| |FEAT_LPA| |FEAT_LSMAOC| |FEAT_LVA| |FEAT_MPAM| |FEAT_PAN2| |FEAT_PCSRv8p2| |FEAT_RAS| |FEAT_SHA3| |FEAT_SHA512| |FEAT_SM3| |FEAT_SM4| |FEAT_SPE| |FEAT_SVE| |FEAT_TTCNP| |FEAT_UAO| |FEAT_VPIPT| |FEAT_XNX| |FEAT_CCIDX| |FEAT_CONSTPACFIELD| |FEAT_EPAC| |FEAT_FCMA| |FEAT_FPAC| |FEAT_FPACCOMBINE| |FEAT_JSCVT| |FEAT_LRCPC| |FEAT_NV| |FEAT_PACIMP| |FEAT_PACQARMA3| |FEAT_PACQARMA5| |FEAT_PAuth| |FEAT_SPEv1p1| |FEAT_AMUv1| |FEAT_BBM| |FEAT_CNTSC| |FEAT_DIT| |FEAT_Debugv8p4| |FEAT_DotProd| |FEAT_DoubleFault| |FEAT_FHM| |FEAT_FlagM| |FEAT_IDST| |FEAT_LRCPC2| |FEAT_LSE2| |FEAT_NV2| |FEAT_PMUv3p4| |FEAT_RASSAv1p1| |FEAT_RASv1p1| |FEAT_S2FWB| |FEAT_SEL2| |FEAT_TLBIOS| |FEAT_TLBIRANGE| |FEAT_TRF| |FEAT_TTL| |FEAT_TTST| |FEAT_BTI| |FEAT_CSV2| |FEAT_CSV3| |FEAT_DPB2| |FEAT_E0PD| |FEAT_EVT| |FEAT_ExS| |FEAT_FRINTTS| |FEAT_FlagM2| |FEAT_GTG| |FEAT_MTE| |FEAT_MTE2| |FEAT_PMUv3p5| |FEAT_RNG| |FEAT_RNG_TRAP| |FEAT_SB| |FEAT_SPECRES| |FEAT_SSBS| |FEAT_SSBS2| |FEAT_AMUv1p1| |FEAT_BF16| |FEAT_DGH| |FEAT_ECV| |FEAT_FGT| |FEAT_HPMN0| |FEAT_MPAMv0p1| |FEAT_MPAMv1p1| |FEAT_MTPMU| |FEAT_PAuth2| |FEAT_TWED| |FEAT_AFP| |FEAT_EBF16| |FEAT_HCX| |FEAT_LPA2| |FEAT_LS64| |FEAT_LS64_ACCDATA| |FEAT_LS64_V| |FEAT_MTE3| |FEAT_PAN3| |FEAT_PMUv3p7| |FEAT_RPRES| |FEAT_SPEv1p2| |FEAT_WFxT| |FEAT_XS| |FEAT_CMOW| |FEAT_Debugv8p8| |FEAT_GICv3_NMI| |FEAT_HBC| |FEAT_MOPS| |FEAT_NMI| |FEAT_PMUv3_EXT64| |FEAT_PMUv3_TH| |FEAT_PMUv3p8| |FEAT_SCTLR2| |FEAT_SPEv1p3| |FEAT_TCR2| |FEAT_TIDCP1| |FEAT_ADERR| |FEAT_AIE| |FEAT_ANERR| |FEAT_CLRBHB| |FEAT_CSSC| |FEAT_Debugv8p9| |FEAT_DoubleFault2| |FEAT_ECBHB| |FEAT_FGT2| |FEAT_HAFT| |FEAT_LRCPC3| |FEAT_MTE4| |FEAT_MTE_ASYM_FAULT| |FEAT_MTE_ASYNC| |FEAT_MTE_CANONICAL_TAGS| |FEAT_MTE_NO_ADDRESS_TAGS| |FEAT_MTE_PERM| |FEAT_MTE_STORE_ONLY| |FEAT_MTE_TAGGED_FAR| |FEAT_PCSRv8p9| |FEAT_PFAR| |FEAT_PMUv3_EDGE| |FEAT_PMUv3_ICNTR| |FEAT_PMUv3_SS| |FEAT_PMUv3p9| |FEAT_PRFMSLC| |FEAT_RASSAv2| |FEAT_RASv2| |FEAT_RPRFM| |FEAT_S1PIE| |FEAT_S1POE| |FEAT_S2PIE| |FEAT_S2POE| |FEAT_SPECRES2| |FEAT_SPE_CRR| |FEAT_SPE_FDS| |FEAT_SPEv1p4| |FEAT_SPMU| |FEAT_THE| |FEAT_DoPD| |FEAT_ETE| |FEAT_SVE2| |FEAT_SVE_AES| |FEAT_SVE_BitPerm| |FEAT_SVE_PMULL128| |FEAT_SVE_SHA3| |FEAT_SVE_SM4| |FEAT_TME| |FEAT_TRBE| |FEAT_ETEv1p1| |FEAT_BRBE| |FEAT_ETEv1p2| |FEAT_RME| |FEAT_SME| |FEAT_SME_F64F64| |FEAT_SME_FA64| |FEAT_SME_I16I64| |FEAT_BRBEv1p1| |FEAT_MEC| |FEAT_SME2| |FEAT_ABLE| |FEAT_CHK| |FEAT_D128| |FEAT_EBEP| |FEAT_ETEv1p3| |FEAT_GCS| |FEAT_ITE| |FEAT_LSE128| |FEAT_LVA3| |FEAT_SEBEP| |FEAT_SME2p1| |FEAT_SME_F16F16| |FEAT_SVE2p1| |FEAT_SVE_B16B16| |FEAT_SYSINSTR128| |FEAT_SYSREG128| |FEAT_TRBE_EXT| |FEAT_TRBE_MPAM|)) ; 0:0 - 0:0
+  (declare-const v261 Bool) ; src/v8_base.sail 902:4 - 902:45
+  (define-enum |Signal| 2 (|Signal_Low| |Signal_High|)) ; 0:0 - 0:0
+  (assume-reg |PSTATE| ((_ field |nRW|)) #b0)
+  (assume-reg |PSTATE| ((_ field |EL|)) #b00)
+  (declare-const v294 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |HCR_EL2| nil (_ struct (|bits| v294)))
+  (declare-const v295 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |SCR_EL3| nil (_ struct (|bits| v295)))
+  (declare-const v296 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |CPTR_EL2| nil (_ struct (|bits| v296)))
+  (declare-const v297 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |CPTR_EL3| nil (_ struct (|bits| v297)))
+  (declare-const v298 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |ZCR_EL2| nil (_ struct (|bits| v298)))
+  (declare-const v299 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |ZCR_EL3| nil (_ struct (|bits| v299)))
+  (declare-const v300 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |SMCR_EL2| nil (_ struct (|bits| v300)))
+  (declare-const v301 (_ BitVec 64)) ; 0:0 - 0:0
+  (assume-reg |SMCR_EL3| nil (_ struct (|bits| v301)))
+  (assume-reg |FPCR| nil (_ struct (|bits| #x0000000002000000)))
+  (assume (= ((_ extract 34 34) (|HCR_EL2| ((_ field |bits|) ))) #b1))
+  (assert (= ((_ extract 34 34) v294) #b1)) ; 0:0 - 0:0
+  (assume (= ((_ extract 27 27) (|HCR_EL2| ((_ field |bits|) ))) #b1))
+  (assert (= ((_ extract 27 27) v294) #b1)) ; 0:0 - 0:0
+  (assume (= ((_ extract 0 0) (|SCR_EL3| ((_ field |bits|) ))) #b1))
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assume (= ((_ extract 10 10) (|SCR_EL3| ((_ field |bits|) ))) #b1))
+  (assert (= ((_ extract 10 10) v295) #b1)) ; 0:0 - 0:0
+  (assume (= ((_ extract 21 20) (|CPTR_EL2| ((_ field |bits|) ))) #b11))
+  (assert (= ((_ extract 21 20) v296) #b11)) ; 0:0 - 0:0
+  (assume (= ((_ extract 17 16) (|CPTR_EL2| ((_ field |bits|) ))) #b01))
+  (assert (= ((_ extract 17 16) v296) #b01)) ; 0:0 - 0:0
+  (assume (= ((_ extract 10 10) (|CPTR_EL3| ((_ field |bits|) ))) #b0))
+  (assert (= ((_ extract 10 10) v297) #b0)) ; 0:0 - 0:0
+  (assume (= ((_ extract 3 0) (|ZCR_EL2| ((_ field |bits|) ))) #x0))
+  (assert (= ((_ extract 3 0) v298) #x0)) ; 0:0 - 0:0
+  (assume (= ((_ extract 3 0) (|SMCR_EL3| ((_ field |bits|) ))) #x0))
+  (assert (= ((_ extract 3 0) v301) #x0)) ; 0:0 - 0:0
+  (define-enum |__InstrEnc| 4 (|__A64| |__A32| |__T16| |__T32|)) ; 0:0 - 0:0
+  (cycle)
+  (declare-const v302 (_ BitVec 64)) ; src/isla_main.sail 62:16 - 62:25
+  (read-reg |_PC| nil v302)
+  (assert (not (= (concat (concat #b00011110011 v0) #b001010) #b0100111000101000010110))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b00011110011 v0) #b001010) #b0100111000101000010010))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b00011110011 v0) #b001010) #b0100111000101000011110))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b00011110011 v0) #b001010) #b0100111000101000011010))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b00011110011 v0) #b001010) #b0001111001100011010000))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b011110011 v0) #b001010) #x3a85a))) ; 0:0 - 0:0
+  (assert (not (= (concat #b011110011 ((_ extract 4 3) v0)) #b10111100000))) ; 0:0 - 0:0
+  (assert (not (= (concat #xf3 ((_ extract 4 3) v0)) #b0111100000))) ; 0:0 - 0:0
+  (assert (not (= (concat #b011110011 ((_ extract 4 3) v0)) #b10111100000))) ; 0:0 - 0:0
+  (assert (not (= (concat #b011110011 ((_ extract 4 3) v0)) #b00111100000))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b1 v0) #b001010) #x830))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b1 v0) #b001010) #x810))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b1 v0) #b001010) #x850))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b1 v0) #b001010) #x870))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b011110011 v0) #b001010) #x3be3e))) ; 0:0 - 0:0
+  (assert (not (= (concat (concat #b011110011 v0) #b001010) #xbbe3e))) ; 0:0 - 0:0
+  (read-reg |SEE| nil (_ bv-1 128))
+  (write-reg |SEE| nil (_ bv243 128))
+  (read-reg |PSTATE| ((_ field |EL|)) (_ struct (|EL| #b00)))
+  (read-reg |FeatureImpl| nil (_ vec false false false false true true true true true true true true true true false false false false false false false false false false false false false true true false false false false false true false true true false false true true false false false true true true true true true true true true true true false false false true true true false false false true true true true false false false false true false true true true true true false true true true false true false false false true true true true true false false true false true false false true false true true true true true true true true true false true false true true true true true false true true true true true true true true false true true true false false true false false true true true true false true true true true false false false false true false true false true false false false false false true false false false true true false false false false false false false false false false false false false false false false false false false false true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false true true true true true true false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false false v261))
+  (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| v295)))
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (read-reg |HCR_EL2| nil (_ struct (|bits| v294)))
+  (assert (not (not (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)))) ; 0:0 - 0:0
+  (read-reg |CPTR_EL3| nil (_ struct (|bits| v297)))
+  (assert (not (= ((_ extract 10 10) v297) #b1))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (= ((_ extract 34 34) v294) #b1)) ; 0:0 - 0:0
+  (read-reg |CPTR_EL2| nil (_ struct (|bits| v296)))
+  (define-const v369 ((_ extract 21 20) v296)) ; 17189:0 - 0:0
+  (assert (not (= ((_ extract 0 0) v369) #b0))) ; 0:0 - 0:0
+  (assert (not (= v369 #b01))) ; 0:0 - 0:0
+  (assert (not (= ((_ extract 10 10) v297) #b1))) ; 0:0 - 0:0
+  (define-const v377 ((_ sign_extend 64) ((_ extract 63 0) ((_ zero_extend 123) v1)))) ; src/instrs64.sail 12528:34 - 12528:50
+  (assert (bvsge v377 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (bvsle v377 #x0000000000000000000000000000001f)) ; 0:0 - 0:0
+  (declare-const v380 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v381 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v382 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v383 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v384 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v385 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v386 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v387 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v388 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v389 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v390 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v391 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v392 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v393 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v394 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v395 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v396 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v397 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v398 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v399 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v400 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v401 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v402 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v403 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v404 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v405 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v406 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v407 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v408 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v409 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v410 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (declare-const v411 (_ BitVec 2048)) ; src/v8_base.sail 22339:11 - 22339:16
+  (read-reg |_Z| nil (_ vec v380 v381 v382 v383 v384 v385 v386 v387 v388 v389 v390 v391 v392 v393 v394 v395 v396 v397 v398 v399 v400 v401 v402 v403 v404 v405 v406 v407 v408 v409 v410 v411))
+  (define-const v413 ((_ extract 63 0) (ite (= v377 #x00000000000000000000000000000000) v380 (ite (= v377 #x00000000000000000000000000000001) v381 (ite (= v377 #x00000000000000000000000000000002) v382 (ite (= v377 #x00000000000000000000000000000003) v383 (ite (= v377 #x00000000000000000000000000000004) v384 (ite (= v377 #x00000000000000000000000000000005) v385 (ite (= v377 #x00000000000000000000000000000006) v386 (ite (= v377 #x00000000000000000000000000000007) v387 (ite (= v377 #x00000000000000000000000000000008) v388 (ite (= v377 #x00000000000000000000000000000009) v389 (ite (= v377 #x0000000000000000000000000000000a) v390 (ite (= v377 #x0000000000000000000000000000000b) v391 (ite (= v377 #x0000000000000000000000000000000c) v392 (ite (= v377 #x0000000000000000000000000000000d) v393 (ite (= v377 #x0000000000000000000000000000000e) v394 (ite (= v377 #x0000000000000000000000000000000f) v395 (ite (= v377 #x00000000000000000000000000000010) v396 (ite (= v377 #x00000000000000000000000000000011) v397 (ite (= v377 #x00000000000000000000000000000012) v398 (ite (= v377 #x00000000000000000000000000000013) v399 (ite (= v377 #x00000000000000000000000000000014) v400 (ite (= v377 #x00000000000000000000000000000015) v401 (ite (= v377 #x00000000000000000000000000000016) v402 (ite (= v377 #x00000000000000000000000000000017) v403 (ite (= v377 #x00000000000000000000000000000018) v404 (ite (= v377 #x00000000000000000000000000000019) v405 (ite (= v377 #x0000000000000000000000000000001a) v406 (ite (= v377 #x0000000000000000000000000000001b) v407 (ite (= v377 #x0000000000000000000000000000001c) v408 (ite (= v377 #x0000000000000000000000000000001d) v409 (ite (= v377 #x0000000000000000000000000000001e) v410 v411))))))))))))))))))))))))))))))))) ; src/v8_base.sail 22339:11 - 22339:32
+  (define-const v414 ((_ sign_extend 64) ((_ extract 63 0) ((_ zero_extend 123) v0)))) ; src/instrs64.sail 12529:34 - 12529:50
+  (assert (bvsge v414 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (bvsle v414 #x0000000000000000000000000000001f)) ; 0:0 - 0:0
+  (define-const v418 ((_ extract 63 0) (ite (= v414 #x00000000000000000000000000000000) v380 (ite (= v414 #x00000000000000000000000000000001) v381 (ite (= v414 #x00000000000000000000000000000002) v382 (ite (= v414 #x00000000000000000000000000000003) v383 (ite (= v414 #x00000000000000000000000000000004) v384 (ite (= v414 #x00000000000000000000000000000005) v385 (ite (= v414 #x00000000000000000000000000000006) v386 (ite (= v414 #x00000000000000000000000000000007) v387 (ite (= v414 #x00000000000000000000000000000008) v388 (ite (= v414 #x00000000000000000000000000000009) v389 (ite (= v414 #x0000000000000000000000000000000a) v390 (ite (= v414 #x0000000000000000000000000000000b) v391 (ite (= v414 #x0000000000000000000000000000000c) v392 (ite (= v414 #x0000000000000000000000000000000d) v393 (ite (= v414 #x0000000000000000000000000000000e) v394 (ite (= v414 #x0000000000000000000000000000000f) v395 (ite (= v414 #x00000000000000000000000000000010) v396 (ite (= v414 #x00000000000000000000000000000011) v397 (ite (= v414 #x00000000000000000000000000000012) v398 (ite (= v414 #x00000000000000000000000000000013) v399 (ite (= v414 #x00000000000000000000000000000014) v400 (ite (= v414 #x00000000000000000000000000000015) v401 (ite (= v414 #x00000000000000000000000000000016) v402 (ite (= v414 #x00000000000000000000000000000017) v403 (ite (= v414 #x00000000000000000000000000000018) v404 (ite (= v414 #x00000000000000000000000000000019) v405 (ite (= v414 #x0000000000000000000000000000001a) v406 (ite (= v414 #x0000000000000000000000000000001b) v407 (ite (= v414 #x0000000000000000000000000000001c) v408 (ite (= v414 #x0000000000000000000000000000001d) v409 (ite (= v414 #x0000000000000000000000000000001e) v410 v411))))))))))))))))))))))))))))))))) ; src/v8_base.sail 22339:11 - 22339:32
+  (read-reg |FPCR| nil (_ struct (|bits| #x0000000002000000)))
+  (read-reg |PSTATE| ((_ field |nRW|)) (_ struct (|nRW| #b0)))
+  (declare-const v419 (_ BitVec 64)) ; 0:0 - 0:0
+  (abstract-call |FPAdd64| v419 v413 v418 (_ struct (|bits| #x0000000002000000)))
+  (define-const v420 ((_ zero_extend 64) v419)) ; 0:0 - 0:0
+  (define-const v421 ((_ sign_extend 64) ((_ extract 63 0) ((_ zero_extend 123) v2)))) ; src/instrs64.sail 12538:4 - 12538:26
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (not (not (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)) ; 0:0 - 0:0
+  (read-reg |SMCR_EL2| nil (_ struct (|bits| v300)))
+  (define-const v449 ((_ zero_extend 124) ((_ extract 3 0) v300))) ; src/v8_base.sail 6961:13 - 6961:32
+  (read-reg |SMCR_EL3| nil (_ struct (|bits| v301)))
+  (define-const v453 ((_ sign_extend 64) ((_ extract 63 0) ((_ zero_extend 124) ((_ extract 3 0) v301))))) ; src/v8_base.sail 6968:13 - 6968:41
+  (define-const v456 (bvmul (bvadd (ite (bvslt v449 v453) v449 v453) #x00000000000000000000000000000001) #x00000000000000000000000000000080)) ; src/v8_base.sail 6970:15 - 6970:29
+  (read-reg |__max_implemented_smeveclen| nil (_ bv512 128))
+  (define-const v457 (ite (bvslt v456 #x00000000000000000000000000000200) v456 #x00000000000000000000000000000200)) ; 0:0 - 0:0
+  (assert (bvsle #x00000000000000000000000000000080 v457)) ; 0:0 - 0:0
+  (assert (bvsle v457 #x00000000000000000000000000000800)) ; 0:0 - 0:0
+  (assert (not (bvslt v457 #x00000000000000000000000000000000))) ; 0:0 - 0:0
+  (assert (bvsgt v457 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (= (bvmul (bvsdiv v457 #x00000000000000000000000000000080) #x00000000000000000000000000000080) v457)) ; 0:0 - 0:0
+  (assert (not (bvsgt v457 #x00000000000000000000000000000080))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (not (not (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)) ; 0:0 - 0:0
+  (read-reg |ZCR_EL2| nil (_ struct (|bits| v298)))
+  (define-const v494 ((_ zero_extend 124) ((_ extract 3 0) v298))) ; src/v8_base.sail 6895:13 - 6895:31
+  (read-reg |ZCR_EL3| nil (_ struct (|bits| v299)))
+  (define-const v498 ((_ sign_extend 64) ((_ extract 63 0) ((_ zero_extend 124) ((_ extract 3 0) v299))))) ; src/v8_base.sail 6902:13 - 6902:40
+  (define-const v501 (bvmul (bvadd (ite (bvslt v494 v498) v494 v498) #x00000000000000000000000000000001) #x00000000000000000000000000000080)) ; src/v8_base.sail 6904:15 - 6904:29
+  (define-const v502 (ite (bvslt v501 #x00000000000000000000000000000800) v501 #x00000000000000000000000000000800)) ; 0:0 - 0:0
+  (assert (bvsle #x00000000000000000000000000000080 v502)) ; 0:0 - 0:0
+  (assert (bvsle v502 #x00000000000000000000000000000800)) ; 0:0 - 0:0
+  (assert (not (bvslt v502 #x00000000000000000000000000000000))) ; 0:0 - 0:0
+  (assert (bvsgt v502 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (= (bvmul (bvsdiv v502 #x00000000000000000000000000000080) #x00000000000000000000000000000080) v502)) ; 0:0 - 0:0
+  (assert (not (bvsgt v502 #x00000000000000000000000000000080))) ; 0:0 - 0:0
+  (assert (= v502 #x00000000000000000000000000000080)) ; 0:0 - 0:0
+  (assert (bvsge v421 #x00000000000000000000000000000000)) ; 0:0 - 0:0
+  (assert (bvsle v421 #x0000000000000000000000000000001f)) ; 0:0 - 0:0
+  (define-const v519 (= ((_ extract 0 0) v295) #b0)) ; src/v8_base.sail 3536:15 - 3536:40
+  (assert (not v519)) ; 0:0 - 0:0
+  (assert (not v519)) ; 0:0 - 0:0
+  (read-reg |SCR_EL3| nil (_ struct (|bits| v295)))
+  (assert (not (= ((_ extract 10 10) v295) #b0))) ; 0:0 - 0:0
+  (assert (not v519)) ; 0:0 - 0:0
+  (assert (not (not (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)))) ; 0:0 - 0:0
+  (read-reg |SCR_EL3| ((_ field |bits|)) (_ struct (|bits| v295)))
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (not (not (= (concat ((_ extract 34 34) v294) ((_ extract 27 27) v294)) #b11)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 0 0) v295) #b1)) ; 0:0 - 0:0
+  (assert (= ((_ extract 34 34) v294) #b1)) ; 0:0 - 0:0
+  (define-const v550 ((_ extract 17 16) v296)) ; 17251:0 - 0:0
+  (assert (not (= ((_ extract 0 0) v550) #b0))) ; 0:0 - 0:0
+  (assert (not (not (= v550 #b01)))) ; 0:0 - 0:0
+  (assert (= ((_ extract 27 27) v294) #b1)) ; 0:0 - 0:0
+  (define-enum |Unpredictable| 79 (|Unpredictable_VMSR| |Unpredictable_WBOVERLAPLD| |Unpredictable_WBOVERLAPST| |Unpredictable_LDPOVERLAP| |Unpredictable_BASEOVERLAP| |Unpredictable_DATAOVERLAP| |Unpredictable_DEVPAGE2| |Unpredictable_INSTRDEVICE| |Unpredictable_RESCPACR| |Unpredictable_RESMAIR| |Unpredictable_S1CTAGGED| |Unpredictable_S2RESMEMATTR| |Unpredictable_RESTEXCB| |Unpredictable_RESPRRR| |Unpredictable_RESDACR| |Unpredictable_RESVTCRS| |Unpredictable_RESTnSZ| |Unpredictable_RESTCF| |Unpredictable_DEVICETAGSTORE| |Unpredictable_OORTnSZ| |Unpredictable_LARGEIPA| |Unpredictable_ESRCONDPASS| |Unpredictable_ILZEROIT| |Unpredictable_ILZEROT| |Unpredictable_BPVECTORCATCHPRI| |Unpredictable_VCMATCHHALF| |Unpredictable_VCMATCHDAPA| |Unpredictable_WPMASKANDBAS| |Unpredictable_WPBASCONTIGUOUS| |Unpredictable_RESWPMASK| |Unpredictable_WPMASKEDBITS| |Unpredictable_RESBPWPCTRL| |Unpredictable_BPNOTIMPL| |Unpredictable_RESBPTYPE| |Unpredictable_RESMDSELR| |Unpredictable_BPNOTCTXCMP| |Unpredictable_BPMATCHHALF| |Unpredictable_BPMISMATCHHALF| |Unpredictable_BPLINKINGDISABLED| |Unpredictable_RESBPMASK| |Unpredictable_BPMASK| |Unpredictable_BPMASKEDBITS| |Unpredictable_BPLINKEDADDRMATCH| |Unpredictable_RESTARTALIGNPC| |Unpredictable_RESTARTZEROUPPERPC| |Unpredictable_ZEROUPPER| |Unpredictable_ERETZEROUPPERPC| |Unpredictable_A32FORCEALIGNPC| |Unpredictable_SMD| |Unpredictable_NONFAULT| |Unpredictable_SVEZEROUPPER| |Unpredictable_SVELDNFDATA| |Unpredictable_SVELDNFZERO| |Unpredictable_CHECKSPNONEACTIVE| |Unpredictable_SMEZEROUPPER| |Unpredictable_NVNV1| |Unpredictable_Shareability| |Unpredictable_AFUPDATE| |Unpredictable_DBUPDATE| |Unpredictable_IESBinDebug| |Unpredictable_BADPMSFCR| |Unpredictable_ZEROBTYPE| |Unpredictable_EL2TIMESTAMP| |Unpredictable_EL1TIMESTAMP| |Unpredictable_RESERVEDNSxB| |Unpredictable_WFxTDEBUG| |Unpredictable_LS64UNSUPPORTED| |Unpredictable_MISALIGNEDATOMIC| |Unpredictable_CLEARERRITEZERO| |Unpredictable_ALUEXCEPTIONRETURN| |Unpredictable_IGNORETRAPINDEBUG| |Unpredictable_DBGxVR_RESS| |Unpredictable_PMUEVENTCOUNTER| |Unpredictable_PMSCR_PCT| |Unpredictable_CounterReservedForEL2| |Unpredictable_BRBFILTRATE| |Unpredictable_MOPSOVERLAP31| |Unpredictable_STOREONLYTAGCHECKEDCAS| |Unpredictable_RESTC|)) ; 0:0 - 0:0
+  (declare-const v558 Bool) ; src/prelude.sail 334:46 - 334:55
+
+  (cases "src/v8_base.sail 7409:4 - 7413:5"
+    (trace
+      (assert v558) ; 0:0 - 0:0
+      (define-const v559 ((_ zero_extend 1920) v420)) ; src/v8_base.sail 7410:16 - 7410:46
+      (define-const v560 (ite (= v421 #x00000000000000000000000000000000) v559 v380)) ; 0:0 - 0:0
+      (define-const v561 (ite (= v421 #x00000000000000000000000000000001) v559 v381)) ; 0:0 - 0:0
+      (define-const v562 (ite (= v421 #x00000000000000000000000000000002) v559 v382)) ; 0:0 - 0:0
+      (define-const v563 (ite (= v421 #x00000000000000000000000000000003) v559 v383)) ; 0:0 - 0:0
+      (define-const v564 (ite (= v421 #x00000000000000000000000000000004) v559 v384)) ; 0:0 - 0:0
+      (define-const v565 (ite (= v421 #x00000000000000000000000000000005) v559 v385)) ; 0:0 - 0:0
+      (define-const v566 (ite (= v421 #x00000000000000000000000000000006) v559 v386)) ; 0:0 - 0:0
+      (define-const v567 (ite (= v421 #x00000000000000000000000000000007) v559 v387)) ; 0:0 - 0:0
+      (define-const v568 (ite (= v421 #x00000000000000000000000000000008) v559 v388)) ; 0:0 - 0:0
+      (define-const v569 (ite (= v421 #x00000000000000000000000000000009) v559 v389)) ; 0:0 - 0:0
+      (define-const v570 (ite (= v421 #x0000000000000000000000000000000a) v559 v390)) ; 0:0 - 0:0
+      (define-const v571 (ite (= v421 #x0000000000000000000000000000000b) v559 v391)) ; 0:0 - 0:0
+      (define-const v572 (ite (= v421 #x0000000000000000000000000000000c) v559 v392)) ; 0:0 - 0:0
+      (define-const v573 (ite (= v421 #x0000000000000000000000000000000d) v559 v393)) ; 0:0 - 0:0
+      (define-const v574 (ite (= v421 #x0000000000000000000000000000000e) v559 v394)) ; 0:0 - 0:0
+      (define-const v575 (ite (= v421 #x0000000000000000000000000000000f) v559 v395)) ; 0:0 - 0:0
+      (define-const v576 (ite (= v421 #x00000000000000000000000000000010) v559 v396)) ; 0:0 - 0:0
+      (define-const v577 (ite (= v421 #x00000000000000000000000000000011) v559 v397)) ; 0:0 - 0:0
+      (define-const v578 (ite (= v421 #x00000000000000000000000000000012) v559 v398)) ; 0:0 - 0:0
+      (define-const v579 (ite (= v421 #x00000000000000000000000000000013) v559 v399)) ; 0:0 - 0:0
+      (define-const v580 (ite (= v421 #x00000000000000000000000000000014) v559 v400)) ; 0:0 - 0:0
+      (define-const v581 (ite (= v421 #x00000000000000000000000000000015) v559 v401)) ; 0:0 - 0:0
+      (define-const v582 (ite (= v421 #x00000000000000000000000000000016) v559 v402)) ; 0:0 - 0:0
+      (define-const v583 (ite (= v421 #x00000000000000000000000000000017) v559 v403)) ; 0:0 - 0:0
+      (define-const v584 (ite (= v421 #x00000000000000000000000000000018) v559 v404)) ; 0:0 - 0:0
+      (define-const v585 (ite (= v421 #x00000000000000000000000000000019) v559 v405)) ; 0:0 - 0:0
+      (define-const v586 (ite (= v421 #x0000000000000000000000000000001a) v559 v406)) ; 0:0 - 0:0
+      (define-const v587 (ite (= v421 #x0000000000000000000000000000001b) v559 v407)) ; 0:0 - 0:0
+      (define-const v588 (ite (= v421 #x0000000000000000000000000000001c) v559 v408)) ; 0:0 - 0:0
+      (define-const v589 (ite (= v421 #x0000000000000000000000000000001d) v559 v409)) ; 0:0 - 0:0
+      (define-const v590 (ite (= v421 #x0000000000000000000000000000001e) v559 v410)) ; 0:0 - 0:0
+      (define-const v591 (ite (= v421 #x0000000000000000000000000000001f) v559 v411)) ; 0:0 - 0:0
+      (write-reg |_Z| nil (_ vec v560 v561 v562 v563 v564 v565 v566 v567 v568 v569 v570 v571 v572 v573 v574 v575 v576 v577 v578 v579 v580 v581 v582 v583 v584 v585 v586 v587 v588 v589 v590 v591)))
+    (trace
+      (assert (not v558)) ; 0:0 - 0:0
+      (define-const v593 #x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/vector.sail 143:76 - 143:100
+      (define-const v597 (bvand (ite (= v421 #x00000000000000000000000000000000) v380 (ite (= v421 #x00000000000000000000000000000001) v381 (ite (= v421 #x00000000000000000000000000000002) v382 (ite (= v421 #x00000000000000000000000000000003) v383 (ite (= v421 #x00000000000000000000000000000004) v384 (ite (= v421 #x00000000000000000000000000000005) v385 (ite (= v421 #x00000000000000000000000000000006) v386 (ite (= v421 #x00000000000000000000000000000007) v387 (ite (= v421 #x00000000000000000000000000000008) v388 (ite (= v421 #x00000000000000000000000000000009) v389 (ite (= v421 #x0000000000000000000000000000000a) v390 (ite (= v421 #x0000000000000000000000000000000b) v391 (ite (= v421 #x0000000000000000000000000000000c) v392 (ite (= v421 #x0000000000000000000000000000000d) v393 (ite (= v421 #x0000000000000000000000000000000e) v394 (ite (= v421 #x0000000000000000000000000000000f) v395 (ite (= v421 #x00000000000000000000000000000010) v396 (ite (= v421 #x00000000000000000000000000000011) v397 (ite (= v421 #x00000000000000000000000000000012) v398 (ite (= v421 #x00000000000000000000000000000013) v399 (ite (= v421 #x00000000000000000000000000000014) v400 (ite (= v421 #x00000000000000000000000000000015) v401 (ite (= v421 #x00000000000000000000000000000016) v402 (ite (= v421 #x00000000000000000000000000000017) v403 (ite (= v421 #x00000000000000000000000000000018) v404 (ite (= v421 #x00000000000000000000000000000019) v405 (ite (= v421 #x0000000000000000000000000000001a) v406 (ite (= v421 #x0000000000000000000000000000001b) v407 (ite (= v421 #x0000000000000000000000000000001c) v408 (ite (= v421 #x0000000000000000000000000000001d) v409 (ite (= v421 #x0000000000000000000000000000001e) v410 v411))))))))))))))))))))))))))))))) (bvnot (bvshl (bvsub v593 v593) #x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080)))) ; /home/bcampbe2/.opam/4.14.2/share/sail/lib/mono_rewrites.sail 171:2 - 171:18
+      (define-const v598 (ite (= v421 #x00000000000000000000000000000000) v597 v380)) ; 0:0 - 0:0
+      (define-const v599 (ite (= v421 #x00000000000000000000000000000001) v597 v381)) ; 0:0 - 0:0
+      (define-const v600 (ite (= v421 #x00000000000000000000000000000002) v597 v382)) ; 0:0 - 0:0
+      (define-const v601 (ite (= v421 #x00000000000000000000000000000003) v597 v383)) ; 0:0 - 0:0
+      (define-const v602 (ite (= v421 #x00000000000000000000000000000004) v597 v384)) ; 0:0 - 0:0
+      (define-const v603 (ite (= v421 #x00000000000000000000000000000005) v597 v385)) ; 0:0 - 0:0
+      (define-const v604 (ite (= v421 #x00000000000000000000000000000006) v597 v386)) ; 0:0 - 0:0
+      (define-const v605 (ite (= v421 #x00000000000000000000000000000007) v597 v387)) ; 0:0 - 0:0
+      (define-const v606 (ite (= v421 #x00000000000000000000000000000008) v597 v388)) ; 0:0 - 0:0
+      (define-const v607 (ite (= v421 #x00000000000000000000000000000009) v597 v389)) ; 0:0 - 0:0
+      (define-const v608 (ite (= v421 #x0000000000000000000000000000000a) v597 v390)) ; 0:0 - 0:0
+      (define-const v609 (ite (= v421 #x0000000000000000000000000000000b) v597 v391)) ; 0:0 - 0:0
+      (define-const v610 (ite (= v421 #x0000000000000000000000000000000c) v597 v392)) ; 0:0 - 0:0
+      (define-const v611 (ite (= v421 #x0000000000000000000000000000000d) v597 v393)) ; 0:0 - 0:0
+      (define-const v612 (ite (= v421 #x0000000000000000000000000000000e) v597 v394)) ; 0:0 - 0:0
+      (define-const v613 (ite (= v421 #x0000000000000000000000000000000f) v597 v395)) ; 0:0 - 0:0
+      (define-const v614 (ite (= v421 #x00000000000000000000000000000010) v597 v396)) ; 0:0 - 0:0
+      (define-const v615 (ite (= v421 #x00000000000000000000000000000011) v597 v397)) ; 0:0 - 0:0
+      (define-const v616 (ite (= v421 #x00000000000000000000000000000012) v597 v398)) ; 0:0 - 0:0
+      (define-const v617 (ite (= v421 #x00000000000000000000000000000013) v597 v399)) ; 0:0 - 0:0
+      (define-const v618 (ite (= v421 #x00000000000000000000000000000014) v597 v400)) ; 0:0 - 0:0
+      (define-const v619 (ite (= v421 #x00000000000000000000000000000015) v597 v401)) ; 0:0 - 0:0
+      (define-const v620 (ite (= v421 #x00000000000000000000000000000016) v597 v402)) ; 0:0 - 0:0
+      (define-const v621 (ite (= v421 #x00000000000000000000000000000017) v597 v403)) ; 0:0 - 0:0
+      (define-const v622 (ite (= v421 #x00000000000000000000000000000018) v597 v404)) ; 0:0 - 0:0
+      (define-const v623 (ite (= v421 #x00000000000000000000000000000019) v597 v405)) ; 0:0 - 0:0
+      (define-const v624 (ite (= v421 #x0000000000000000000000000000001a) v597 v406)) ; 0:0 - 0:0
+      (define-const v625 (ite (= v421 #x0000000000000000000000000000001b) v597 v407)) ; 0:0 - 0:0
+      (define-const v626 (ite (= v421 #x0000000000000000000000000000001c) v597 v408)) ; 0:0 - 0:0
+      (define-const v627 (ite (= v421 #x0000000000000000000000000000001d) v597 v409)) ; 0:0 - 0:0
+      (define-const v628 (ite (= v421 #x0000000000000000000000000000001e) v597 v410)) ; 0:0 - 0:0
+      (define-const v629 (ite (= v421 #x0000000000000000000000000000001f) v597 v411)) ; 0:0 - 0:0
+      (write-reg |_Z| nil (_ vec v598 v599 v600 v601 v602 v603 v604 v605 v606 v607 v608 v609 v610 v611 v612 v613 v614 v615 v616 v617 v618 v619 v620 v621 v622 v623 v624 v625 v626 v627 v628 v629))
+      (read-reg |_Z| nil (_ vec v598 v599 v600 v601 v602 v603 v604 v605 v606 v607 v608 v609 v610 v611 v612 v613 v614 v615 v616 v617 v618 v619 v620 v621 v622 v623 v624 v625 v626 v627 v628 v629))
+      (define-const v631 (bvor (bvand (ite (= v421 #x00000000000000000000000000000000) v598 (ite (= v421 #x00000000000000000000000000000001) v599 (ite (= v421 #x00000000000000000000000000000002) v600 (ite (= v421 #x00000000000000000000000000000003) v601 (ite (= v421 #x00000000000000000000000000000004) v602 (ite (= v421 #x00000000000000000000000000000005) v603 (ite (= v421 #x00000000000000000000000000000006) v604 (ite (= v421 #x00000000000000000000000000000007) v605 (ite (= v421 #x00000000000000000000000000000008) v606 (ite (= v421 #x00000000000000000000000000000009) v607 (ite (= v421 #x0000000000000000000000000000000a) v608 (ite (= v421 #x0000000000000000000000000000000b) v609 (ite (= v421 #x0000000000000000000000000000000c) v610 (ite (= v421 #x0000000000000000000000000000000d) v611 (ite (= v421 #x0000000000000000000000000000000e) v612 (ite (= v421 #x0000000000000000000000000000000f) v613 (ite (= v421 #x00000000000000000000000000000010) v614 (ite (= v421 #x00000000000000000000000000000011) v615 (ite (= v421 #x00000000000000000000000000000012) v616 (ite (= v421 #x00000000000000000000000000000013) v617 (ite (= v421 #x00000000000000000000000000000014) v618 (ite (= v421 #x00000000000000000000000000000015) v619 (ite (= v421 #x00000000000000000000000000000016) v620 (ite (= v421 #x00000000000000000000000000000017) v621 (ite (= v421 #x00000000000000000000000000000018) v622 (ite (= v421 #x00000000000000000000000000000019) v623 (ite (= v421 #x0000000000000000000000000000001a) v624 (ite (= v421 #x0000000000000000000000000000001b) v625 (ite (= v421 #x0000000000000000000000000000001c) v626 (ite (= v421 #x0000000000000000000000000000001d) v627 (ite (= v421 #x0000000000000000000000000000001e) v628 v629))))))))))))))))))))))))))))))) #xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000) ((_ zero_extend 1920) v420))) ; 0:0 - 0:0
+      (define-const v632 (ite (= v421 #x00000000000000000000000000000000) v631 v598)) ; 0:0 - 0:0
+      (define-const v633 (ite (= v421 #x00000000000000000000000000000001) v631 v599)) ; 0:0 - 0:0
+      (define-const v634 (ite (= v421 #x00000000000000000000000000000002) v631 v600)) ; 0:0 - 0:0
+      (define-const v635 (ite (= v421 #x00000000000000000000000000000003) v631 v601)) ; 0:0 - 0:0
+      (define-const v636 (ite (= v421 #x00000000000000000000000000000004) v631 v602)) ; 0:0 - 0:0
+      (define-const v637 (ite (= v421 #x00000000000000000000000000000005) v631 v603)) ; 0:0 - 0:0
+      (define-const v638 (ite (= v421 #x00000000000000000000000000000006) v631 v604)) ; 0:0 - 0:0
+      (define-const v639 (ite (= v421 #x00000000000000000000000000000007) v631 v605)) ; 0:0 - 0:0
+      (define-const v640 (ite (= v421 #x00000000000000000000000000000008) v631 v606)) ; 0:0 - 0:0
+      (define-const v641 (ite (= v421 #x00000000000000000000000000000009) v631 v607)) ; 0:0 - 0:0
+      (define-const v642 (ite (= v421 #x0000000000000000000000000000000a) v631 v608)) ; 0:0 - 0:0
+      (define-const v643 (ite (= v421 #x0000000000000000000000000000000b) v631 v609)) ; 0:0 - 0:0
+      (define-const v644 (ite (= v421 #x0000000000000000000000000000000c) v631 v610)) ; 0:0 - 0:0
+      (define-const v645 (ite (= v421 #x0000000000000000000000000000000d) v631 v611)) ; 0:0 - 0:0
+      (define-const v646 (ite (= v421 #x0000000000000000000000000000000e) v631 v612)) ; 0:0 - 0:0
+      (define-const v647 (ite (= v421 #x0000000000000000000000000000000f) v631 v613)) ; 0:0 - 0:0
+      (define-const v648 (ite (= v421 #x00000000000000000000000000000010) v631 v614)) ; 0:0 - 0:0
+      (define-const v649 (ite (= v421 #x00000000000000000000000000000011) v631 v615)) ; 0:0 - 0:0
+      (define-const v650 (ite (= v421 #x00000000000000000000000000000012) v631 v616)) ; 0:0 - 0:0
+      (define-const v651 (ite (= v421 #x00000000000000000000000000000013) v631 v617)) ; 0:0 - 0:0
+      (define-const v652 (ite (= v421 #x00000000000000000000000000000014) v631 v618)) ; 0:0 - 0:0
+      (define-const v653 (ite (= v421 #x00000000000000000000000000000015) v631 v619)) ; 0:0 - 0:0
+      (define-const v654 (ite (= v421 #x00000000000000000000000000000016) v631 v620)) ; 0:0 - 0:0
+      (define-const v655 (ite (= v421 #x00000000000000000000000000000017) v631 v621)) ; 0:0 - 0:0
+      (define-const v656 (ite (= v421 #x00000000000000000000000000000018) v631 v622)) ; 0:0 - 0:0
+      (define-const v657 (ite (= v421 #x00000000000000000000000000000019) v631 v623)) ; 0:0 - 0:0
+      (define-const v658 (ite (= v421 #x0000000000000000000000000000001a) v631 v624)) ; 0:0 - 0:0
+      (define-const v659 (ite (= v421 #x0000000000000000000000000000001b) v631 v625)) ; 0:0 - 0:0
+      (define-const v660 (ite (= v421 #x0000000000000000000000000000001c) v631 v626)) ; 0:0 - 0:0
+      (define-const v661 (ite (= v421 #x0000000000000000000000000000001d) v631 v627)) ; 0:0 - 0:0
+      (define-const v662 (ite (= v421 #x0000000000000000000000000000001e) v631 v628)) ; 0:0 - 0:0
+      (define-const v663 (ite (= v421 #x0000000000000000000000000000001f) v631 v629)) ; 0:0 - 0:0
+      (write-reg |_Z| nil (_ vec v632 v633 v634 v635 v636 v637 v638 v639 v640 v641 v642 v643 v644 v645 v646 v647 v648 v649 v650 v651 v652 v653 v654 v655 v656 v657 v658 v659 v660 v661 v662 v663)))))

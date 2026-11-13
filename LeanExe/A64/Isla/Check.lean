@@ -36,11 +36,14 @@ address, whose value reaches register `t` zero-extended.  A branch writes `_PC` 
 so the outcome holds `exec`'s target.  The premise on `σ` names accessor paths, so a theorem fixes
 only the fields of a register that its trace reads, such as `PSTATE.EL`.
 
-The profiles `tcg` and `kvm` of `Profile.lean` hold the registers outside the model of the traces
-of `tests/isla/traces.sh`.  `Agrees.of_reads` carries a theorem to any profile that agrees with
-its profile on the registers that the trace reads, so a form whose two traces are equal needs one
-proof of the trace's paths.  `isla_reads` evaluates the registers that a trace reads under the
-profiles, for the premise of `Agrees` and for the condition of `Agrees.of_reads`.
+Both statements take the stack pointer `sp` of the semantics, `.el1` for the traces of the
+bare-metal programs at EL1 and `.el0` for the traces of a Linux process at EL0, and the registers
+that the trace reads exclude that one, which the model holds.  The profiles `tcg` and `kvm` of
+`Profile.lean` hold the registers outside the model of the traces of `tests/isla/traces.sh`.
+`Agrees.of_reads` carries a theorem to any profile that agrees with its profile on the registers
+that the trace reads, so a form whose two traces are equal needs one proof of the trace's paths.
+`isla_reads` evaluates the registers that a trace reads under the profiles, for the premise of
+`Agrees` and for the condition of `Agrees.of_reads`.
 
 `isla_fwd` takes a hypothesis that a path ends in an outcome through the trace, and `isla_bwd`
 builds one path from the values of the declared variables.  Both evaluate each event with
@@ -53,52 +56,52 @@ over the state's registers into the indexed register in the backward direction.
 
 namespace LeanExe.A64.Isla
 
-/-- The footprint `F` describes the instruction `i` for the fields `f` from the state `s`: the
-header names the fields of `F`'s opcode, the opcode has 32 bits, its word decodes to `i`, and for
-every `σ` that agrees with the profile `π` on the registers that the trace reads, if `exec` gives
-`s'`, the outcomes of the trace are exactly `s'` with registers `σ'` that differ from `σ` only at
-the registers `W`. -/
-def Agrees (P : Platform) (π : Sys) (W : List String) (F : Footprint) (f : Fields) (i : Instr)
-    (s : State) : Prop :=
+/-- The footprint `F` describes the instruction `i` for the fields `f` from the state `s` with the
+stack pointer `sp`: the header names the fields of `F`'s opcode, the opcode has 32 bits, its word
+decodes to `i`, and for every `σ` that agrees with the profile `π` on the registers that the trace
+reads, if `exec` gives `s'`, the outcomes of the trace are exactly `s'` with registers `σ'` that
+differ from `σ` only at the registers `W`. -/
+def Agrees (P : Platform) (sp : SpReg) (π : Sys) (W : List String) (F : Footprint) (f : Fields)
+    (i : Instr) (s : State) : Prop :=
   F.segments.map (fun g => (g.name, g.width)) = F.opcode.fields ∧
   F.opcode.width = 32 ∧
   decode (.ofNat (F.opcode.word f)) = some i ∧
-  ∀ σ : Sys, (∀ q ∈ F.trace.reads, σ.get q.1 q.2 = π.get q.1 q.2) →
+  ∀ σ : Sys, (∀ q ∈ F.trace.reads sp, σ.get q.1 q.2 = π.get q.1 q.2) →
     ∀ s', exec P i s = some s' →
-      ∃ σ', (∀ o, F.Run P f s σ o ↔ o = .done s' σ') ∧ ∀ r, r ∉ W → σ' r = σ r
+      ∃ σ', (∀ o, F.Run P sp f s σ o ↔ o = .done s' σ') ∧ ∀ r, r ∉ W → σ' r = σ r
 
 /-- `Agrees` under the profile `π` holds under a profile `π'` that agrees with `π` on the registers
 that the trace reads. -/
-theorem Agrees.of_reads {P : Platform} {π π' : Sys} {W : List String} {F : Footprint}
-    {f : Fields} {i : Instr} {s : State}
-    (h : ∀ q ∈ F.trace.reads, π'.get q.1 q.2 = π.get q.1 q.2) (a : Agrees P π W F f i s) :
-    Agrees P π' W F f i s :=
+theorem Agrees.of_reads {P : Platform} {sp : SpReg} {π π' : Sys} {W : List String}
+    {F : Footprint} {f : Fields} {i : Instr} {s : State}
+    (h : ∀ q ∈ F.trace.reads sp, π'.get q.1 q.2 = π.get q.1 q.2)
+    (a : Agrees P sp π W F f i s) : Agrees P sp π' W F f i s :=
   ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
 
 /-- `Agrees` for a trace whose abstract functions mean `A` and whose paths may end with different
 registers outside the model: the header names the fields of `F`'s opcode, the opcode has 32 bits,
 its word decodes to `i`, and for every `σ` that agrees with the profile `π` on the registers that
-the trace reads, if `exec` gives `s'`, some outcome of the trace is `s'` with some registers, and
-every outcome is `s'` with registers that differ from `σ` only at the registers `W`.  A write of a
-D register leaves such a choice: `V_set` zeroes the bits of the register's element of `_Z` above
-bit 127 or keeps them, a CONSTRAINED UNPREDICTABLE choice of which the trace takes both
-branches. -/
-def AgreesAll (P : Platform) (A : Abstract) (π : Sys) (W : List String) (F : Footprint)
-    (f : Fields) (i : Instr) (s : State) : Prop :=
+the trace reads with the stack pointer `sp`, if `exec` gives `s'`, some outcome of the trace is
+`s'` with some registers, and every outcome is `s'` with registers that differ from `σ` only at the
+registers `W`.  A write of a D register leaves such a choice: `V_set` zeroes the bits of the
+register's element of `_Z` above bit 127 or keeps them, a CONSTRAINED UNPREDICTABLE choice of
+which the trace takes both branches. -/
+def AgreesAll (P : Platform) (sp : SpReg) (A : Abstract) (π : Sys) (W : List String)
+    (F : Footprint) (f : Fields) (i : Instr) (s : State) : Prop :=
   F.segments.map (fun g => (g.name, g.width)) = F.opcode.fields ∧
   F.opcode.width = 32 ∧
   decode (.ofNat (F.opcode.word f)) = some i ∧
-  ∀ σ : Sys, (∀ q ∈ F.trace.reads, σ.get q.1 q.2 = π.get q.1 q.2) →
+  ∀ σ : Sys, (∀ q ∈ F.trace.reads sp, σ.get q.1 q.2 = π.get q.1 q.2) →
     ∀ s', exec P i s = some s' →
-      (∃ σ', F.Run P f s σ (.done s' σ') A) ∧
-      ∀ o, F.Run P f s σ o A → ∃ σ', o = .done s' σ' ∧ ∀ r, r ∉ W → σ' r = σ r
+      (∃ σ', F.Run P sp f s σ (.done s' σ') A) ∧
+      ∀ o, F.Run P sp f s σ o A → ∃ σ', o = .done s' σ' ∧ ∀ r, r ∉ W → σ' r = σ r
 
 /-- `AgreesAll` under the profile `π` holds under a profile `π'` that agrees with `π` on the
 registers that the trace reads. -/
-theorem AgreesAll.of_reads {P : Platform} {A : Abstract} {π π' : Sys} {W : List String}
-    {F : Footprint} {f : Fields} {i : Instr} {s : State}
-    (h : ∀ q ∈ F.trace.reads, π'.get q.1 q.2 = π.get q.1 q.2)
-    (a : AgreesAll P A π W F f i s) : AgreesAll P A π' W F f i s :=
+theorem AgreesAll.of_reads {P : Platform} {sp : SpReg} {A : Abstract} {π π' : Sys}
+    {W : List String} {F : Footprint} {f : Fields} {i : Instr} {s : State}
+    (h : ∀ q ∈ F.trace.reads sp, π'.get q.1 q.2 = π.get q.1 q.2)
+    (a : AgreesAll P sp A π W F f i s) : AgreesAll P sp A π' W F f i s :=
   ⟨a.1, a.2.1, a.2.2.1, fun σ hσ => a.2.2.2 σ fun q hq => (hσ q hq).trans (h q hq)⟩
 
 /-- `exec` of a 32-bit load: the stack pointer's check passes, the address is the UART's flag or
@@ -250,9 +253,10 @@ syntax "isla_simp " "[" Lean.Parser.Tactic.simpLemma,* "]" (Lean.Parser.Tactic.l
 macro_rules
   | `(tactic| isla_simp [$xs,*] $(loc)?) => `(tactic| simp -failIfUnchanged (disch := omega) only [
       Exp.eval, Base.eval, RVal.eval, Base.evalAll, Base.evalFields, Unop.apply, Binop.apply,
-      Binop.arith, lshr, regGet, regSet, part, gpr, gprs, partGet, partPut, bit, acc, upd, gprVals,
-      Trace.RunSome, Vars.set_apply, Sys.set_apply, Sys.get_set, List.lookup, Option.bind,
-      Option.map, Option.getD, Val.bits.injEq, Val.bool.injEq, Val.enum.injEq, Val.struct.injEq,
+      Binop.arith, lshr, regGet, regSet, part, SpReg.name, gpr, gprs, partGet, partPut, bit, acc,
+      upd, gprVals, Trace.RunSome, Vars.set_apply, Sys.set_apply, Sys.get_set, List.lookup,
+      Option.bind, Option.map, Option.getD, Val.bits.injEq, Val.bool.injEq, Val.enum.injEq,
+      Val.struct.injEq,
       Val.vec.injEq, Option.some.injEq, Prod.mk.injEq, List.cons.injEq, List.map_cons,
       List.map_nil, List.cons_append, List.nil_append, eq_self_iff_true, decide_eq_true_eq,
       decide_eq_false_iff_not, Bool.not_eq_true', Bool.not_not, Bool.not_true, Bool.not_false,
@@ -273,7 +277,7 @@ syntax "isla_reads " "[" Lean.Parser.Tactic.simpLemma,* "]" (Lean.Parser.Tactic.
   tactic
 macro_rules
   | `(tactic| isla_reads [$xs,*] $(loc)?) => `(tactic| simp only [Footprint.trace, Trace.reads,
-      Trace.readsAll, Event.reads, Exp.regs, List.filter, part, gpr, gprs, List.lookup,
+      Trace.readsAll, Event.reads, Exp.regs, List.filter, part, SpReg.name, gpr, gprs, List.lookup,
       Option.map, Option.isNone, Option.bind, acc, String.reduceEq, String.reduceBEq,
       ↓reduceIte, Bool.false_eq_true, reduceCtorEq, List.nil_append, List.cons_append,
       List.append_nil, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,

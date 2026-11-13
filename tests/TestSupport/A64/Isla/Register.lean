@@ -370,7 +370,7 @@ register 31 the zero register, and every state.  The backward direction builds t
 the 8 cases of register 31 among `d`, `n`, and `m`, and the 706 events that the two directions
 evaluate take more than the default budget of heartbeats. -/
 theorem addReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addRegTcg (regFields d n m)
       (.addReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -404,7 +404,7 @@ theorem addReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `ADD Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem addReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addRegKvm (regFields d n m)
       (.addReg d n m) s := by
   rw [show addRegKvm = addRegTcg from rfl]
   exact (addReg_tcg P u d n m s).of_reads
@@ -414,7 +414,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `SUB Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem subReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subRegTcg (regFields d n m)
       (.subReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -450,7 +450,7 @@ theorem subReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `SUB Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem subReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subRegKvm (regFields d n m)
       (.subReg d n m) s := by
   rw [show subRegKvm = subRegTcg from rfl]
   exact (subReg_tcg P u d n m s).of_reads
@@ -460,7 +460,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `AND Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem andReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] andRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] andRegTcg (regFields d n m)
       (.andReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -494,7 +494,7 @@ theorem andReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `AND Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem andReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] andRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] andRegKvm (regFields d n m)
       (.andReg d n m) s := by
   rw [show andRegKvm = andRegTcg from rfl]
   exact (andReg_tcg P u d n m s).of_reads
@@ -504,7 +504,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `EOR Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem eorReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] eorRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] eorRegTcg (regFields d n m)
       (.eorReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -538,7 +538,7 @@ theorem eorReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `EOR Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem eorReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] eorRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] eorRegKvm (regFields d n m)
       (.eorReg d n m) s := by
   rw [show eorRegKvm = eorRegTcg from rfl]
   exact (eorReg_tcg P u d n m s).of_reads
@@ -548,7 +548,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `ORR Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem orrReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrRegTcg (regFields d n m)
       (.orrReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -582,7 +582,7 @@ theorem orrReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `ORR Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem orrReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] orrRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] orrRegKvm (regFields d n m)
       (.orrReg d n m) s := by
   rw [show orrRegKvm = orrRegTcg from rfl]
   exact (orrReg_tcg P u d n m s).of_reads
@@ -593,7 +593,7 @@ set_option maxHeartbeats 4000000 in
 register 31 the zero register, and every state. The model writes the OR of the low 32 bits
 zero-extended, as the trace does. -/
 theorem orrW_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrWTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] orrWTcg (regFields d n m)
       (.orrW d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -627,7 +627,7 @@ theorem orrW_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `ORR Wd, Wn, Wm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem orrW_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] orrWKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] orrWKvm (regFields d n m)
       (.orrW d n m) s := by
   rw [show orrWKvm = orrWTcg from rfl]
   exact (orrW_tcg P u d n m s).of_reads
@@ -638,7 +638,7 @@ set_option maxHeartbeats 8000000 in
 register 31 the zero register, and every state. The trace sets the flags of `AddWithCarry`, which
 `-L AddWithCarry` linearizes, and writes no register for `d` = 31, `CMP Xn, Xm`. -/
 theorem subsReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsRegTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsRegTcg (regFields d n m)
       (.subsReg d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -674,7 +674,7 @@ theorem subsReg_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `SUBS Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem subsReg_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsRegKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsRegKvm (regFields d n m)
       (.subsReg d n m) s := by
   rw [show subsRegKvm = subsRegTcg from rfl]
   exact (subsReg_tcg P u d n m s).of_reads
@@ -685,7 +685,7 @@ set_option maxHeartbeats 8000000 in
 with register 31 the zero register, and every state. The backward direction builds the path of each
 of the 16 cases of register 31 among `d`, `n`, `m`, and `a`. -/
 theorem madd_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] maddTcg (regFields4 d n m a)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] maddTcg (regFields4 d n m a)
       (.madd d n m a) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -720,7 +720,7 @@ theorem madd_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
 /-- The trace of `MADD Xd, Xn, Xm, Xa` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem madd_kvm (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] maddKvm (regFields4 d n m a)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] maddKvm (regFields4 d n m a)
       (.madd d n m a) s := by
   rw [show maddKvm = maddTcg from rfl]
   exact (madd_tcg P u d n m a s).of_reads
@@ -731,7 +731,7 @@ set_option maxHeartbeats 8000000 in
 with register 31 the zero register, and every state. The backward direction builds the path of each
 of the 16 cases of register 31 among `d`, `n`, `m`, and `a`. -/
 theorem msub_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] msubTcg (regFields4 d n m a)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] msubTcg (regFields4 d n m a)
       (.msub d n m a) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -766,7 +766,7 @@ theorem msub_tcg (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
 /-- The trace of `MSUB Xd, Xn, Xm, Xa` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem msub_kvm (P : Platform) (u : Unknown) (d n m a : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] msubKvm (regFields4 d n m a)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] msubKvm (regFields4 d n m a)
       (.msub d n m a) s := by
   rw [show msubKvm = msubTcg from rfl]
   exact (msub_tcg P u d n m a s).of_reads
@@ -776,7 +776,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `LSLV Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem lslv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lslvTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lslvTcg (regFields d n m)
       (.lslv d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -812,7 +812,7 @@ theorem lslv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `LSLV Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem lslv_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lslvKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lslvKvm (regFields d n m)
       (.lslv d n m) s := by
   rw [show lslvKvm = lslvTcg from rfl]
   exact (lslv_tcg P u d n m s).of_reads
@@ -822,7 +822,7 @@ set_option maxHeartbeats 4000000 in
 /-- The trace of `LSRV Xd, Xn, Xm` under `tcg` agrees with `exec` for every register number, with
 register 31 the zero register, and every state. -/
 theorem lsrv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrvTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrvTcg (regFields d n m)
       (.lsrv d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -858,7 +858,7 @@ theorem lsrv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `LSRV Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem lsrv_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrvKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrvKvm (regFields d n m)
       (.lsrv d n m) s := by
   rw [show lsrvKvm = lsrvTcg from rfl]
   exact (lsrv_tcg P u d n m s).of_reads
@@ -870,7 +870,7 @@ register 31 the zero register, and every state. The backward direction also spli
 register `m` holds zero, which the trace tests when `m` is not 31, and both the model and the trace
 write zero for a divisor of zero. -/
 theorem udiv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] udivTcg (regFields d n m)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] udivTcg (regFields d n m)
       (.udiv d n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -905,7 +905,7 @@ theorem udiv_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
 /-- The trace of `UDIV Xd, Xn, Xm` under `kvm` agrees with `exec` for every register number and
 every state. -/
 theorem udiv_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] udivKvm (regFields d n m)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] udivKvm (regFields d n m)
       (.udiv d n m) s := by
   rw [show udivKvm = udivTcg from rfl]
   exact (udiv_tcg P u d n m s).of_reads

@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Float
+import LeanExe.A64.Isla.Linux
 
 /-!
 Theorems of `AgreesAll` for `FCMP Dn, Dm` of `LeanExe/A64/Machine.lean`, the comparison of two
@@ -17,6 +18,13 @@ The proofs walk the traces with the tactics of `LeanExe/A64/Isla/Walk.lean` and
 `LeanExe/A64/Isla/Float.lean`.  The forward lemma takes the path to `exec`'s state, and the backward
 lemma builds it, with the decoder's tests of `Rm`, which hold for every value of the field.
 `tests/isla/theorems.sh` elaborates the module and prints the axioms of its theorems.
+
+The theorems whose names end in `_vhe` state the same for the traces of `tests/isla/linux-vhe`,
+those of a Linux process at EL0 under the host's kernel, with the stack pointer `.el0` and the
+profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`, Linux's
+values of the bits that the reset constraints fix: among them `FPEN` 0b11 and `ZEN` 0b01 of
+`CPTR_EL2`, `TFP` of `CPTR_EL3` clear, and the LEN field of `ZCR_EL2` 0.  Their lemmas follow
+those under `kvm`, with the premise's bits among the facts of the walk.
 -/
 
 namespace TestSupport.A64.Isla
@@ -42,14 +50,14 @@ theorem fcmpTcg_n0 : fcmpTcg.trace = fcmpTcg.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpTcg (tcg.sys .fp)
+isla_ctx fcmpTcg .el1 (tcg.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpTcg` ends in `exec`'s state. -/
 theorem fcmpTcg_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpTcg.ctx σ u)
-    (h : fcmpTcg.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpTcg.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -67,7 +75,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpTcg` has a path to `exec`'s state. -/
 theorem fcmpTcg_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpTcg.ctx σ u) :
-    fcmpTcg.Run P (fcmpFields n m) s σ
+    fcmpTcg.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -88,7 +96,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_tcg (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpTcg
+    AgreesAll P .el1 A (tcg.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpTcg
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -111,14 +119,14 @@ theorem fcmpKvm_n0 : fcmpKvm.trace = fcmpKvm.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpKvm (kvm.sys .fp)
+isla_ctx fcmpKvm .el1 (kvm.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpKvm` ends in `exec`'s state. -/
 theorem fcmpKvm_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpKvm.ctx σ u)
-    (h : fcmpKvm.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpKvm.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -136,7 +144,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpKvm` has a path to `exec`'s state. -/
 theorem fcmpKvm_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpKvm.ctx σ u) :
-    fcmpKvm.Run P (fcmpFields n m) s σ
+    fcmpKvm.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -157,7 +165,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_kvm (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpKvm
+    AgreesAll P .el1 A (kvm.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpKvm
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -180,14 +188,14 @@ theorem fcmpSme_n0 : fcmpSme.trace = fcmpSme.n0 := rfl
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-isla_ctx fcmpSme (sme.sys .fp)
+isla_ctx fcmpSme .el1 (sme.sys .fp)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 /-- Every path of `fcmpSme` ends in `exec`'s state. -/
 theorem fcmpSme_fwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpSme.ctx σ u)
-    (h : fcmpSme.Run P (fcmpFields n m) s σ o A) :
+    (h : fcmpSme.Run P .el1 (fcmpFields n m) s σ o A) :
     o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
       ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
   without_info
@@ -205,7 +213,7 @@ set_option maxHeartbeats 0 in
 /-- `fcmpSme` has a path to `exec`'s state. -/
 theorem fcmpSme_bwd {P : Platform} {A : Abstract} {u : Unknown} {n m : Fin 32} {s : State}
     {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpSme.ctx σ u) :
-    fcmpSme.Run P (fcmpFields n m) s σ
+    fcmpSme.Run P .el1 (fcmpFields n m) s σ
       (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
         ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
   without_info
@@ -226,7 +234,7 @@ set_option maxHeartbeats 0 in
 state, where `A` satisfies `FPCompareEq`. -/
 theorem fcmp_sme (P : Platform) (A : Abstract) (hA : FPCompareEq A)
     (u : Unknown) (n m : Fin 32) (s : State) :
-    AgreesAll P A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSme
+    AgreesAll P .el1 A (sme.sys .fp u) ["SEE", "__BranchTaken", "FPSR"] fcmpSme
       (fcmpFields n m) (.fcmp n m) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -238,8 +246,84 @@ theorem fcmp_sme (P : Platform) (A : Abstract) (hA : FPCompareEq A)
       have hc := fcmpSme.ctx_of σ u hσ
       exact ⟨⟨_, fcmpSme_bwd hA hc⟩, fun o h => ⟨_, fcmpSme_fwd hA hc h, by frame_end⟩⟩
 
+set_option maxRecDepth 100000 in
+/-- The footprint of `FCMP Dn, Dm` of a Linux process at EL0 under the host's kernel. -/
+def fcmpVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fcmp"
+
+isla_nodes fcmpVhe
+
+set_option maxRecDepth 100000 in
+theorem fcmpVhe_n0 : fcmpVhe.trace = fcmpVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fcmpVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fcmpVhe` ends in `exec`'s state. -/
+theorem fcmpVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {n m : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPCompareEq A) (hσ : fcmpVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fcmpVhe.Run P .el0 (fcmpFields n m) s σ o A) :
+    o = .done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
+      ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272)) := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := n.isLt
+    have := m.isLt
+    unfold FPCompareEq at hA
+    unfold Footprint.Run at h
+    rw [fcmpVhe_n0, show fcmpVhe.vars (fcmpFields n m) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals flags_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fcmpVhe` has a path to `exec`'s state. -/
+theorem fcmpVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {n m : Fin 32} {s : State}
+    {σ : Sys} (hA : FPCompareEq A) (hσ : fcmpVhe.ctx σ u) (hu : u.Holds .vhe) :
+    fcmpVhe.Run P .el0 (fcmpFields n m) s σ
+      (.done { s.fcmp (s.dregs n) (s.dregs m) with pc := s.pc + 4 }
+        ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 272))) A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := n.isLt
+    have := m.isLt
+    unfold FPCompareEq at hA
+    unfold Footprint.Run
+    rw [fcmpVhe_n0, show fcmpVhe.vars (fcmpFields n m) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val) from rfl]
+    fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | (apply Eq.symm; flags_end; done)
+      | fp_side hσ [hA, fcmpNZCV_lt, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FCMP Dn, Dm` at EL0 under the host's kernel agrees with `exec` for every register
+number and every state, where `A` satisfies `FPCompareEq`. -/
+theorem fcmp_vhe (P : Platform) (A : Abstract) (hA : FPCompareEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (n m : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "FPSR"] fcmpVhe
+      (fcmpFields n m) (.fcmp n m) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fcmpVhe, fcmpFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fcmpVhe.ctx_of σ u hσ
+      exact ⟨⟨_, fcmpVhe_bwd hA hc hu⟩, fun o h => ⟨_, fcmpVhe_fwd hA hc hu h, by frame_end⟩⟩
+
 end TestSupport.A64.Isla
 
 #print axioms TestSupport.A64.Isla.fcmp_tcg
 #print axioms TestSupport.A64.Isla.fcmp_kvm
 #print axioms TestSupport.A64.Isla.fcmp_sme
+#print axioms TestSupport.A64.Isla.fcmp_vhe
