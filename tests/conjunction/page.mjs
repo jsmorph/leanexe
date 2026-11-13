@@ -3,7 +3,8 @@
 //
 //   node tests/conjunction/page.mjs [--module PATH] CASES
 //
-// CASES holds the lines that `verified-cases-conjunction` prints, `module|export|kind|args|expected`.
+// CASES holds the lines that `verified-cases-conjunction` prints,
+// `module|export|kind|args|expected`.
 // For each line of the export `assess`, the script calls `assess` of assess.js, which calls the
 // export on a fresh instance of the module with the arguments as the page passes them, numbers for
 // the floats and a BigInt for the panel count, and requires the status, the bits of `lo` and `hi`,

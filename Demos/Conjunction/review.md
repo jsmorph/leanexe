@@ -201,7 +201,7 @@ the page draws the plane, the interval, and the verdict.
 | Projection of the inertial cases | The mean is the length of the part of the relative position perpendicular to the relative velocity | This is the encounter plane of the conjunction-message form.  CARA places the mean at the full length of the relative position, which changes these cases' probabilities by at most `9e-8` of their values. |
 | Tolerance of Alfano's values | Relative `1e-3` | The paper states no precision, and CARA's unit tests compare with these values at `1e-3`.  The report also states each value's relative difference. |
 | Known disagreements | Recorded with their causes beside the values, and the test fails on an unrecorded disagreement or a stale cause | The test then checks the published values as well as the program. |
-| Evaluation | A native executable, `conjunction-evaluate`, that reads inputs from a file | The inputs come from the projection at 50 digits in Python, and the module test establishes the module's agreement with native Lean bit for bit. |
+| Evaluation | `verified-cases-adaptive --evaluate FILE`, which evaluates `pc` and `pcAdaptive` in native Lean on the inputs of a file | The inputs come from the projection at 50 digits in Python, and the module tests establish the modules' agreement with native Lean bit for bit.  A mode of an existing executable leaves `lakefile.lean`, whose change affects every module, unchanged. |
 | Page's module | `assess` of `conjunction.wasm`, on a fresh instance for each call | `assess` returns the verdict that `assess_sound` covers, and `compiled.initial` covers the fresh instance's store.  The module has no call theorem like `pcAdaptive_call`. |
 
 ### Open items

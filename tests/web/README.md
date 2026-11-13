@@ -133,7 +133,8 @@ The page computes the two-dimensional probability of collision from the quantiti
 encounter plane that the reader enters: the mean miss vector `m1 m2`, its covariance
 `c11 c12 c22`, the combined radius `r`, the threshold `t`, and the number of panels `n`.  A menu
 fills the fields with an example: the README's, Chan's cases 1, 8, and 11, and Alfano's case 4 as
-[the differential test](../../Demos/Conjunction/README.md#published-cases) projects it.  The page
+[the differential test](../../Demos/Conjunction/README.md#published-cases) projects it, and the
+address `?example=K` chooses the menu's example `K`, from 0.  The page
 converts each decimal entry to the nearest double, refuses an empty or malformed entry and a panel
 count of 2^64 or more, and calls the export `assess` of `build/verified/conjunction.wasm` on a
 fresh instance.  It shows the arguments, the status, `lo`, `hi`, the width, and the verdict, draws

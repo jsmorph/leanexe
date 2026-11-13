@@ -30,8 +30,8 @@ th, td { text-align: left; vertical-align: top; padding: 3px 12px 3px 0;
   border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 th { font-weight: 600; color: var(--muted); font-size: 13px; white-space: nowrap; }
 code { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px;
-  margin: 0 0 12px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px; margin: 0 0 12px; }
 .fields label { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
 .fields input { color: var(--fg); background: var(--bg); border: 1px solid var(--line);
   border-radius: 4px; padding: 4px 6px; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -107,11 +107,12 @@ and the covariance.</p>
 <section>
 <h2>Theorems and trusted code</h2>
 <p><code>compiled.assess.implements</code> of <code>Demos/Conjunction/Verified.lean</code> states
-that entry 55 of the module, the export <code>assess</code>, called with the words of its arguments
-from a store with the allocator's invariant that holds the table of <code>exp</code>, returns without
-a trap the words of <code>Demos.Conjunction.assess</code>: the status, <code>lo</code>,
-<code>hi</code>, and the verdict.  The generated <code>compiled.initial</code> states that a fresh
-instance's store is such a store, and the page calls <code>assess</code> on a fresh instance.
+that entry 55 of the module, the export <code>assess</code>, called with the words of its
+arguments from a store with the allocator's invariant that holds the table of <code>exp</code>,
+returns without a trap the words of <code>Demos.Conjunction.assess</code>: the status,
+<code>lo</code>, <code>hi</code>, and the verdict.  The generated <code>compiled.initial</code>
+states that a fresh instance's store is such a store, and the page calls <code>assess</code> on a
+fresh instance.
 <code>assess_sound</code> of <code>Demos/Conjunction/Soundness.lean</code> states that status 0
 gives the result of <code>pc</code>, whose <code>pc_enclosure</code> places the model's probability
 for the real values of the arguments between <code>lo</code> and <code>hi</code>, that verdict 1

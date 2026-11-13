@@ -79,7 +79,7 @@ function round(x) {
   return [5, 2, 1].map(k => k * p).find(v => v <= x) ?? p;
 }
 
-/** Draws the encounter plane: the ellipses of one, two, and three standard deviations about the
+/** Draws the encounter plane: the ellipses one, two, and three standard deviations from the
 mean, the mean and the miss vector, the disk of radius r about the origin, and a scale bar.  A
 disk smaller than two pixels gets a dashed ring around its place, which the caption states. */
 function drawPlane({ m1, m2, c11, c12, c22, r }) {
@@ -119,8 +119,9 @@ function drawPlane({ m1, m2, c11, c12, c22, r }) {
   node(svg, "line", { class: "axis", x1: pad, y1: H - 12, x2: pad + bar * scale, y2: H - 12 });
   node(svg, "text", { x: pad, y: H - 18 }, `${bar}`);
   const sd = `${Math.sqrt(a.big).toPrecision(4)} and ${Math.sqrt(a.small).toPrecision(4)}`;
-  $("caption").textContent = `The ellipses hold one, two, and three standard deviations about the ` +
-    `mean; the principal standard deviations are ${sd}.  The dashed line is the miss vector, and ` +
+  $("caption").textContent = `The ellipses lie one, two, and three standard deviations from ` +
+    `the mean, and the principal standard deviations are ${sd}.  The dashed line is the miss ` +
+    `vector, and ` +
     `the disk of radius ${r} lies about the origin` +
     (tiny ? `, smaller than two pixels at this scale, inside the dashed ring.` : `.`) +
     `  The bar at the lower left has length ${bar}.`;
@@ -211,7 +212,11 @@ async function start() {
     option.value = option.textContent = name;
     $("preset").append(option);
   }
-  fill(Object.keys(PRESETS)[0]);
+  const names = Object.keys(PRESETS);
+  const index = Number(new URLSearchParams(location.search).get("example") ?? 0);
+  const chosen = names[index] ?? names[0];
+  $("preset").value = chosen;
+  fill(chosen);
   $("preset").addEventListener("change", () => { fill($("preset").value); run(); });
   $("run").addEventListener("click", run);
   if (!globalThis.isSecureContext) {

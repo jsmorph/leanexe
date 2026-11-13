@@ -12,9 +12,9 @@ second's, z = v/|v| is the plane's normal, x is the unit vector along the part o
 to z, y = z cross x, the mean is (r.x, r.y) = (|r - (r.z) z|, 0), and the plane covariance is the
 sum of the two covariances projected on (x, y).  Each input is then rounded to the nearest double.
 
-`inputs` prints, for each case, the lines that `conjunction-evaluate` reads: the method, `pc` or
-`adaptive`, the case's name, the bit patterns of the doubles, and the panel count, for each count
-of PANELS.  `check RESULTS` reads the lines that `conjunction-evaluate` prints and checks each case.
+`inputs` prints, for each case, the lines that `verified-cases-adaptive --evaluate` reads: the
+method, `pc` or `adaptive`, the case's name, the bit patterns of the doubles, and the panel count,
+for each count of PANELS.  `check RESULTS` reads the lines that it prints and checks each case.
 The reference value of a case is that of tests/conjunction/reference.py for its doubles, which
 integrates the density over the disk in polar coordinates at 50 digits.  The script also integrates
 the one-dimensional form of the README at 50 digits and requires the two to agree to a relative
