@@ -123,7 +123,7 @@ theorem command_coverage {World : Type} {host : Host World} {pure : PureContext 
     | loop execution =>
       obtain ⟨_, _, execution⟩ := loop_coverage (stepCovered depth) _ _ _ _ _ _ _ execution
       exact ⟨_, _, .loop execution⟩
-  | sys operation form args =>
+  | sys operation form args inputs =>
     intro depth modes live env world trace outcome final execution
     exact ⟨_, _, .sys execution⟩
 

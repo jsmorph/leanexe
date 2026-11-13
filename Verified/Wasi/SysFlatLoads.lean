@@ -83,18 +83,18 @@ structure LocalsOutside (s s' : Locals) (target count : Nat) : Prop where
   length : s'.locals.length = s.locals.length
   others : ∀ j, j < target ∨ target + count ≤ j → s'.get j = s.get j
 
-/-- The loads of the result words: each result word that the host left at its scratch address
-loads into its local as the little-endian value of the reply's output. -/
-theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α} {root : UInt32}
-    {sizes : List Nat} {errno : UInt64} (hMemory : 16 ≤ st.mem.pages * 65536) :
-    ∀ (params : List Param) (values : List UInt64) (slot target : Nat)
-      (outputs : List LeanExe.Bytes) (s : Locals) (rest : Program) (Q : Assertion α),
-    params.all Param.flatKind = true → params.count .output ≤ 1 →
-    slot + 8 * params.countP Param.isResult ≤ 16 →
-    ShownAt st.mem (outputRegions params sizes (flatArgs params values)
-      (flatPointers params root slot)) outputs →
+/-- The loads of the result words of a flat call with inputs. -/
+theorem wp_sys_loads_inputs {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
+    {root : UInt32} {sizes : List Nat} {errno : UInt64} (hMemory : 16 ≤ st.mem.pages * 65536) :
+    ∀ (params : List Param) (values : List UInt64) (inputs : List (UInt64 × LeanExe.Bytes))
+      (slot target : Nat) (outputs : List LeanExe.Bytes) (s : Locals) (rest : Program)
+      (Q : Assertion α),
+    params.all Param.inputKind = true → params.count .output ≤ 1 →
+    slot + 8 * params.countP Param.isResult ≤ 16 → inputs.length = params.count .input →
+    ShownAt st.mem (outputRegions params sizes (flatArgsWith params values (inputs.map Prod.snd))
+      (flatPointersWith params root slot (inputs.map fun input => input.1.toUInt32))) outputs →
     outputs.map (fun output => output.data.size) =
-      outputSizesOf params sizes (flatArgs params values) →
+      outputSizesOf params sizes (flatArgsWith params values (inputs.map Prod.snd)) →
     s.params.length ≤ target →
     target + params.countP Param.isResult ≤ s.params.length + s.locals.length →
     (∀ s' : Locals, LocalsOutside s s' target (params.countP Param.isResult) →
@@ -102,37 +102,53 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
         s'.get (target + i) = some (.i64 ((resultWords params ⟨errno, outputs⟩ 0).getD i 0))) →
       wp m rest Q st { s' with values := s.values } env) →
     wp m (sysLoadCode params slot target ++ rest) Q st s env
-  | [], _, _, target, outputs, s, rest, Q, _, _, _, _, _, _, _, h => by
+  | [], _, _, _, target, outputs, s, rest, Q, _, _, _, _, _, _, _, _, h => by
     simpa [sysLoadCode] using h s ⟨rfl, rfl, fun _ _ => rfl⟩ (fun i hi => by simp at hi)
-  | param :: params, values, slot, target, outputs, s, rest, Q, kinds, outputCount, room, shown,
-      outputSizes, low, high, h => by
+  | param :: params, values, inputs, slot, target, outputs, s, rest, Q, kinds, outputCount, room,
+      count, shown, outputSizes, low, high, h => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | input => simp [Param.flatKind] at kinds
-    | reported => simp [Param.flatKind] at kinds
-    | word32 | word64 | enum32 =>
+    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | input =>
+      cases inputs with
+      | nil => simp at count
+      | cons input inputs =>
+        simp only [sysLoadCode]
+        simp only [List.map_cons, flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
+          List.tail_cons] at shown outputSizes
+        refine wp_sys_loads_inputs (errno := errno) hMemory params values inputs slot target
+          outputs s rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+          (by simpa [Param.isResult, List.countP_cons] using room)
+          (by simpa [List.count_cons] using count) shown outputSizes low
+          (by simpa [Param.isResult, List.countP_cons] using high) ?_
+        intro s' outside held
+        exact h s' (by simpa [Param.isResult, List.countP_cons] using outside)
+          (by simpa [resultWords, Param.isResult, List.countP_cons] using held)
+    | word32 | word64 | enum32 | flags32 | flags64 =>
       simp only [sysLoadCode]
-      simp only [flatArgs, flatPointers, outputRegions, outputSizesOf,
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
         List.tail_cons] at shown outputSizes
-      refine wp_sys_loads (errno := errno) hMemory params values.tail slot target outputs s rest Q kinds.2
-        (by simpa [List.count_cons] using outputCount)
-        (by simpa [Param.isResult, List.countP_cons] using room) shown outputSizes low
+      refine wp_sys_loads_inputs (errno := errno) hMemory params values.tail inputs slot target
+        outputs s rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+        (by simpa [Param.isResult, List.countP_cons] using room)
+        (by simpa [List.count_cons] using count) shown outputSizes low
         (by simpa [Param.isResult, List.countP_cons] using high) ?_
       intro s' outside held
       exact h s' (by simpa [Param.isResult, List.countP_cons] using outside)
         (by simpa [resultWords, Param.isResult, List.countP_cons] using held)
     | output =>
       simp only [sysLoadCode]
-      simp only [flatArgs, flatPointers, outputRegions, outputSizesOf,
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
         List.tail_cons] at shown outputSizes
       cases outputs with
       | nil => simp [ShownAt] at shown
       | cons output outputs =>
         simp only [ShownAt, ite_true] at shown
         simp only [List.map_cons, List.cons.injEq] at outputSizes
-        refine wp_sys_loads (errno := errno) hMemory params values.tail slot target outputs s rest Q kinds.2
-          (by simp [List.count_cons] at outputCount; omega)
-          (by simpa [Param.isResult, List.countP_cons] using room) shown.2 outputSizes.2 low
+        refine wp_sys_loads_inputs (errno := errno) hMemory params values.tail inputs slot target
+          outputs s rest Q kinds.2 (by simp [List.count_cons] at outputCount; omega)
+          (by simpa [Param.isResult, List.countP_cons] using room)
+          (by simpa [List.count_cons] using count) shown.2 outputSizes.2 low
           (by simpa [Param.isResult, List.countP_cons] using high) ?_
         intro s' outside held
         refine h s' (by simpa [Param.isResult, List.countP_cons] using outside) ?_
@@ -149,7 +165,7 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
       have targetLow : s.params.length ≤ target := low
       have targetHigh : target < s.params.length + s.locals.length := by
         simp [Param.isResult, List.countP_cons] at high; omega
-      simp only [flatArgs, flatPointers, outputRegions, outputSizesOf] at shown outputSizes
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf] at shown outputSizes
       cases outputs with
       | nil => simp [ShownAt] at shown
       | cons output outputs =>
@@ -170,10 +186,10 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
             simp only [setLocal, List.length_set]
             simp [Param.isResult, List.countP_cons] at high
             omega
-          refine wp_sys_loads (errno := errno) hMemory params values (slot + 8) (target + 1)
-            outputs _ rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
-            (by simp [Param.isResult, List.countP_cons] at room; omega) shown outputSizes.2
-            nextLow nextHigh ?_
+          refine wp_sys_loads_inputs (errno := errno) hMemory params values inputs (slot + 8)
+            (target + 1) outputs _ rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+            (by simp [Param.isResult, List.countP_cons] at room; omega)
+            (by simpa [List.count_cons] using count) shown outputSizes.2 nextLow nextHigh ?_
           intro s' outside held
           refine h s' ⟨outside.params, ?_, ?_⟩ ?_
           · rw [outside.length]
@@ -207,5 +223,34 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
              refine wp_localSet_local targetLow targetHigh ?_
              exact continue_ _ (by
                rw [← littleEndian_read64 at_ outputSizes.1, pointer]))
+
+/-! ## Calls without inputs -/
+
+/-- The loads of the result words: each result word that the host left at its scratch address
+loads into its local as the little-endian value of the reply's output. -/
+theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α} {root : UInt32}
+    {sizes : List Nat} {errno : UInt64} (hMemory : 16 ≤ st.mem.pages * 65536) :
+    ∀ (params : List Param) (values : List UInt64) (slot target : Nat)
+      (outputs : List LeanExe.Bytes) (s : Locals) (rest : Program) (Q : Assertion α),
+    params.all Param.flatKind = true → params.count .output ≤ 1 →
+    slot + 8 * params.countP Param.isResult ≤ 16 →
+    ShownAt st.mem (outputRegions params sizes (flatArgs params values)
+      (flatPointers params root slot)) outputs →
+    outputs.map (fun output => output.data.size) =
+      outputSizesOf params sizes (flatArgs params values) →
+    s.params.length ≤ target →
+    target + params.countP Param.isResult ≤ s.params.length + s.locals.length →
+    (∀ s' : Locals, LocalsOutside s s' target (params.countP Param.isResult) →
+      (∀ i, i < params.countP Param.isResult →
+        s'.get (target + i) = some (.i64 ((resultWords params ⟨errno, outputs⟩ 0).getD i 0))) →
+      wp m rest Q st { s' with values := s.values } env) →
+    wp m (sysLoadCode params slot target ++ rest) Q st s env := by
+  intro params values slot target outputs s rest Q kinds outputCount room shown outputSizes
+    low high h
+  exact wp_sys_loads_inputs (root := root) (sizes := sizes) (errno := errno) hMemory params values
+    [] slot target outputs s rest Q (inputKind_of_flat kinds) outputCount room
+    (by rw [count_input_of_flat kinds]; rfl)
+    (by simpa only [List.map_nil, flatArgsWith_nil, flatPointersWith_nil] using shown)
+    (by simpa only [List.map_nil, flatArgsWith_nil] using outputSizes) low high h
 
 end Verified.Wasi

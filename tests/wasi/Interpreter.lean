@@ -1,5 +1,5 @@
 import LeanExe.Wasi.NativeCalls
-import LeanExe.Wasi.Sys
+import LeanExe.Wasi.SysCalls
 
 open LeanExe LeanExe.Wasi
 
@@ -153,7 +153,8 @@ private def streams : IO Unit := do
 /-- Flat calls through `NativeHost.withSys`: the argument calls report the given arguments,
 the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 and oversized
 capacities errno 61 without a call while the largest accepted capacity reaches the host, replies of
-the wrong shape raise an `IO.Error`, and a trap ends the action. -/
+the wrong shape raise an `IO.Error`, among them a shown reported region whose size differs from the
+reporter's last reply or that no reporter reply precedes, and a trap ends the action. -/
 private def flatCalls : IO Unit := do
   let calls ← IO.mkRef #[]
   let host := (recordHost calls).withSys ["prog", "a b", ""]
@@ -202,11 +203,72 @@ private def flatCalls : IO Unit := do
     pure false
   catch error => pure (error.toString == "WASI native host returned an invalid clock_time_get reply")
   check caught "a reply of the wrong size was accepted"
+  let shortSys : LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
+    fun call args =>
+      if call == .argsGet then pure (.returned 0 [bytes![112, 0, 0]])
+      else NativeHost.serve ["prog"] call args
+  let shortArgs : NativeHost := { host with sys := shortSys }
+  let shortCaught ← try
+    let _ ← args.run shortArgs
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid args_get reply")
+  check shortCaught "an args_get reply shorter than the reported size was accepted"
+  let unreported ← try
+    let _ ← (Action.sys .argsGet [] fun reply => .pure reply.errno).run
+      ((recordHost calls).withSys ["prog"])
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid args_get reply")
+  check unreported "an args_get reply without a reporter reply was accepted"
   let stopped := { host with sys := fun _ _ => pure (.trapped "clock stopped" [bytes![0, 0, 0, 0, 0, 0, 0, 0]]) }
   trapped "clock stopped" (← (do let _ ← clockTimeGet 0 1; writeStdoutSome bytes![1]).run stopped)
   trapped "wasi clock_time_get: the native host does not serve it"
     (← (clockTimeGet 0 1).run (recordHost calls))
   check ((← calls.get).isEmpty) "a flat call reached the stream host"
+
+/-- Generated typed functions through scripted hosts: an enum or flags argument outside its rule
+gives its errno without a host request, while the last enum value and a flags bit inside the mask
+reach the host; an input reaches the host as its bytes; and `environ` returns the variables that
+`environ_sizes_get` reports and raises an `IO.Error` when `environ_get`'s reply differs from the
+reported size. -/
+private def generatedCalls : IO Unit := do
+  let calls ← IO.mkRef #[]
+  let reached : NativeHost :=
+    { (recordHost calls) with sys := fun call _ => pure (.trapped call.name []) }
+  let rejected : Action (List UInt64) := do
+    let whence ← fdSeek 3 0 3
+    let flags ← fdFdstatSetFlags 3 32
+    let wide ← fdFdstatSetFlags 3 4294967296
+    let rights ← fdFdstatSetRights 3 1073741824 0
+    let signal ← procRaise 31
+    pure [whence.errno, flags, wide, rights, signal]
+  returned [28, 28, 61, 28, 28] (← rejected.run reached)
+  trapped "fd_seek" (← (fdSeek 3 0 2).run reached)
+  trapped "fd_fdstat_set_rights" (← (fdFdstatSetRights 3 536870912 0).run reached)
+  let pathSys : LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
+    fun _ args => pure (.returned (match args with
+      | [.word fd, .bytes path] => if fd == 3 && path.data.data.toList == [100] then 0 else 1
+      | _ => 2) [])
+  returned 0 (← (pathCreateDirectory 3 bytes![100]).run { reached with sys := pathSys })
+  let variables := bytes![65, 61, 49, 0, 66, 61, 50, 0]
+  let environSys (shown : Bytes) :
+      LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
+    fun call _ =>
+      if call == .environSizesGet then
+        pure (.returned 0 [NativeHost.littleEndianBytes 4 2, NativeHost.littleEndianBytes 4 8])
+      else if call == .environGet then pure (.returned 0 [shown])
+      else pure (.trapped call.name [])
+  let environHost (shown : Bytes) : NativeHost := { reached with sys := environSys shown }
+  match ← environ.run (environHost variables) with
+  | .returned result =>
+    check (result.errno == 0 && result.count == 2 && result.size == 8 &&
+      result.bytes.data.data.toList == variables.data.data.toList) "environ reply"
+  | _ => throw (IO.userError "environ did not return")
+  let shortCaught ← try
+    let _ ← environ.run (environHost bytes![65, 61, 49, 0])
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid environ_get reply")
+  check shortCaught "an environ_get reply shorter than the reported size was accepted"
+  check ((← calls.get).isEmpty) "a generated call reached the stream host"
 
 def main : IO Unit := do
   primitives
@@ -214,6 +276,7 @@ def main : IO Unit := do
   terminals
   streams
   flatCalls
+  generatedCalls
   IO.println "native Action interpreter tests passed"
 
 end NativeInterpreterTest

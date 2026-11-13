@@ -38,6 +38,22 @@ instance : Flat ArgsResult (UInt64 × UInt64 × UInt64 × Bytes) :=
 @[simp] theorem ArgsResult.flat (result : ArgsResult) :
     Flat.flat result = (result.errno, result.count, result.size, result.bytes) := rfl
 
+instance : Flat WordResult (UInt64 × UInt64) := ⟨fun result => (result.errno, result.value)⟩
+
+instance : Flat BytesResult (UInt64 × Bytes) := ⟨fun result => (result.errno, result.bytes)⟩
+
+instance : Flat BytesCountResult (UInt64 × UInt64 × Bytes) :=
+  ⟨fun result => (result.errno, result.count, result.bytes)⟩
+
+@[simp] theorem WordResult.flat (result : WordResult) :
+    Flat.flat result = (result.errno, result.value) := rfl
+
+@[simp] theorem BytesResult.flat (result : BytesResult) :
+    Flat.flat result = (result.errno, result.bytes) := rfl
+
+@[simp] theorem BytesCountResult.flat (result : BytesCountResult) :
+    Flat.flat result = (result.errno, result.count, result.bytes) := rfl
+
 theorem ReadResult.agree :
     Verified.Agree (inferInstance : Represent ReadResult)
       (Verified.Ty.leanInst (.pair .word .bytes))

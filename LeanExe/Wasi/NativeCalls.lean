@@ -1,4 +1,5 @@
 import LeanExe.Wasi.Interpreter
+import LeanExe.Wasi.CallTable
 import Std.Time
 
 /-!

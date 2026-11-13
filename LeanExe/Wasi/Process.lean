@@ -65,14 +65,18 @@ theorem Exec.exited_marker {World σ : Type} {host : Host World} {process : Proc
   | exit execution => exact execution.exited_marker
   | trap execution => exact execution.exited_marker
 
-partial def runFrom (process : Process σ) (host : NativeHost) (state : σ) :
-    IO (Outcome UInt64) := do
-  match ← (process.step state).run host with
+/-- Runs the steps from `state`, keeping the reporter outputs of `Action.runWith` across steps. -/
+partial def runFromWith (reports : IO.Ref (List (String × List Bytes))) (process : Process σ)
+    (host : NativeHost) (state : σ) : IO (Outcome UInt64) := do
+  match ← (process.step state).runWith reports host with
   | .returned result =>
-      if result.running then runFrom process host result.state
+      if result.running then runFromWith reports process host result.state
       else pure (.returned result.status)
   | .exited status => pure (.exited status)
   | .trapped message => pure (.trapped message)
+
+def runFrom (process : Process σ) (host : NativeHost) (state : σ) : IO (Outcome UInt64) := do
+  runFromWith (← IO.mkRef []) process host state
 
 def runStdio (process : Process σ) : IO (Outcome UInt64) := do
   process.runFrom (← NativeHost.stdio) process.initial

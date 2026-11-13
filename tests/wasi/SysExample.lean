@@ -53,14 +53,16 @@ private def expect (arguments : List String) : IO Unit := do
   check (word output (size + 24) < 100000000000000000)
     s!"{arguments}: monotonic reading {word output (size + 24)}"
 
-/-- Runs the example with flat calls that reply with `errno` to `failing` and as the native host
-does otherwise, and checks the status and the bytes written. -/
+/-- Runs the example with flat calls that reply with `errno` to `failing`, with zero bytes of the
+sizes of the native host's outputs, and as the native host does otherwise, and checks the status
+and the bytes written. -/
 private def expectErrno (failing : String) (errno : UInt64) (size : Nat) : IO Unit := do
   let written ← IO.mkRef ByteArray.empty
   let sys := fun (call : Call) (args : List Arg) => do
+    let reply ← NativeHost.serve ["prog"] call args
     if call.name == failing then
-      pure (.returned errno ((Call.outputSizes call [0, 0] args).map NativeHost.zeros))
-    else NativeHost.serve ["prog"] call args
+      pure (.returned errno (reply.committed.map fun output => NativeHost.zeros output.data.size))
+    else pure reply
   match ← Verified.Examples.WasiSys.main.run (recording written sys) with
   | .returned status => check (status == errno) s!"{failing}: status {status}"
   | _ => throw (IO.userError s!"{failing}: expected a return")
