@@ -561,9 +561,9 @@ Every published value agrees with the reference within its tolerance except Pate
 100 divisions for cases 4 and 5, which lie 1.0 and 0.36 percent above it.  The paper marks the
 second with Patera's recommendation of 360 divisions, and its value with 360 lies within `1.2e-8`
 of the reference.  For case 4, whose covariance has axes of 105.6 m and 0.30 m, the paper prints no
-value with 360 divisions, and a trapezoid rule over the disk's boundary with equal steps of the
-angle about the disk's center is 4.5 percent off with 100 steps and agrees with the reference to
-12 figures with 360.  Every interval of these two cases excludes the published value with its
+value with 360 divisions.  In a separate computation, a trapezoid rule for Patera's integral over
+the disk's boundary, with equal steps of the angle about the disk's center, was 4.5 percent off
+with 100 steps and agreed with the reference to 12 figures with 360.  Every interval of these two cases excludes the published value with its
 tolerance, so the proved enclosure alone shows the disagreement for the projected inputs.  Chan's
 values are the reference rounded to four figures.  The intervals of 1,048,576 panels are narrower
 than the differences between Alfano's printed values and the reference: Alfano's series value lies
@@ -581,9 +581,9 @@ axis, with probabilities of `3.2e-27` and `9.7e-28`.  Their intervals, `[0, 8.9e
 `[0, 2.7e-19]` at every panel count, contain the values, and their upper endpoints are the floor
 that the cancellation of the two error-function values sets, as for the fifth row of
 [the containment test's table](#tests).  In the table, the narrowest intervals belong to Alfano's
-case 11 and the widest to Alfano's case 2.  CARA's
-functions place the mean at the full length of the relative position instead of its part in the
-plane, which changes the probability of these cases by at most `9e-8` of its value, in case 4.
+case 11 and the widest to Alfano's case 2.  CARA's functions place the mean at the full length of
+the relative position instead of its part in the plane, which changes the probability of these
+cases by at most `9e-8` of its value, in case 4.
 On debtop1, a 4-CPU AArch64 host, the evaluations took 94 s, most of it at 1,048,576 panels, and
 the reference integrals took about 5 minutes on another AArch64 host.
 
