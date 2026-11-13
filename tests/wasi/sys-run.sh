@@ -18,6 +18,7 @@ fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 witx=${1:-$root/tests/wasi/witx}
+witx=$(CDPATH= cd -- "$witx" && pwd)
 cd "$root"
 out="$root/build/wasi/sys"
 host="$root/build/tools/leanexe-wasmtime-host"
@@ -37,21 +38,43 @@ fail() {
 }
 
 uv run tools/wasi-calls.py "$witx" > "$out/descriptions.txt" || fail "descriptions" "$(cat "$out/descriptions.txt")"
+uv run tests/wasi/witx-lowering.py "$witx" > "$out/lowering.txt" ||
+  fail "independent lowering" "$(cat "$out/lowering.txt")"
 
-# reject NAME EXPRESSION: the checker rejects the descriptions altered by the sed EXPRESSION.
+# Seeded faults.  The generator's check runs in a copy of the generated files' directories, and
+# alter NAME FILE EXPRESSION changes FILE of the copy with the sed EXPRESSION, expects the check to
+# fail, and restores FILE.
+copy="$out/generator"
+rm -rf "$copy"
+mkdir -p "$copy/LeanExe" "$copy/Verified" "$copy/tests/wasi"
+cp -R LeanExe/Wasi "$copy/LeanExe/Wasi"
+cp -R Verified/Wasi "$copy/Verified/Wasi"
+cp -R tests/wasi/sys "$copy/tests/wasi/sys"
 rejected=0
-reject() {
-  sed "$2" LeanExe/Wasi/Calls.lean > "$out/calls-$1.lean"
-  if uv run tools/wasi-calls.py "$witx" "$out/calls-$1.lean" > "$out/calls-$1.txt" 2>&1; then
-    fail "descriptions" "the checker accepted the altered description $1"
+alter() {
+  cp "$copy/$2" "$copy/$2.saved"
+  sed -i "$3" "$copy/$2"
+  cmp -s "$copy/$2" "$copy/$2.saved" && fail "seeded fault $1" "the expression changed nothing"
+  if (cd "$copy" && uv run "$root/tools/wasi-calls.py" "$witx" > "$out/fault-$1.txt" 2>&1); then
+    fail "seeded fault $1" "the generator's check passed"
   fi
+  mv "$copy/$2.saved" "$copy/$2"
   rejected=$((rejected + 1))
 }
-reject enum 's/\.enum32 4/.enum32 5/'
-reject shown 's/\.reported 4 4 false/.reported 4 4 true/'
-reject reporter 's/reporter := some "args_sizes_get"/reporter := some "environ_sizes_get"/'
-reject form 's/^end Call$/def fdClose : Call := ⟨"fd_close", [.word64], none⟩\nend Call/'
-printf 'flat call altered descriptions rejected: %s\n' "$rejected"
+(cd "$copy" && uv run "$root/tools/wasi-calls.py" "$witx" > "$out/fault-none.txt" 2>&1) ||
+  fail "seeded faults" "the unaltered copy fails the generator's check"
+alter enum LeanExe/Wasi/CallTable.lean '0,/\.enum32 4/s//.enum32 5/'
+alter field LeanExe/Wasi/SysCalls.lean '0,/reply\.field 0 16 8/s//reply.field 0 12 8/'
+alter frame tests/wasi/sys/frame-all.wat '0,/(i32\.const 0xA5)/s//(i32.const 0xA4)/'
+alter stray LeanExe/Wasi/Sys.lean '$a def strayClose : Call := { name := "fd_close", params := [.word64] }'
+sed '0,/(2, 2), (8, 8), (16, 8)/s//(2, 2), (8, 8), (12, 8)/' LeanExe/Wasi/CallTable.lean \
+  > "$out/layout-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/layout-fault.lean" > "$out/fault-layout.txt" 2>&1
+then
+  fail "seeded fault layout" "the independent lowering accepted an altered record layout"
+fi
+rejected=$((rejected + 1))
+printf 'flat call seeded faults detected: %s\n' "$rejected"
 
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
 wasm-tools parse tests/wasi/sys/clock-invalid.wat -o "$out/clock-invalid.wasm"
