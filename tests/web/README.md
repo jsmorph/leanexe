@@ -157,7 +157,11 @@ in each object's RTN frame.
 
 `node tests/conjunction/page.mjs CASES` runs `assess.js` under Node on the lines of the export
 `assess` among the module cases that `verified-cases-conjunction` prints, 650 calls, and requires
-each status, endpoint, and verdict to equal native Lean's bit for bit.
+each status, endpoint, and verdict to equal native Lean's bit for bit.  Node 20 on an x86-64 host
+passed all 650 calls.  Headless Chromium 156 on the same host loaded the page with each example of
+the menu.  The page showed the module's SHA-256, each interval equaled that of native Lean's `pc`
+at 4,096 panels for the same input, and the verdicts were "below" for the README's example and
+Chan's case 8 and "above" for the others.
 
 ## Theorems and device results of the GPU pages
 
