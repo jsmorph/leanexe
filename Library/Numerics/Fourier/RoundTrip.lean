@@ -14,7 +14,6 @@ within `(n + 512) M / 2 ^ 51 + 2 ^ -1040` of the float of `xs` at its index.
 namespace Library.Numerics.Fourier
 
 open CodeLib.IEEE64 (value Finite)
-open LeanExe.ProofKit.F64Approx
 
 set_option exponentiation.threshold 4096
 
