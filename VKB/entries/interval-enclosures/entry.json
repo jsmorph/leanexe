@@ -67,14 +67,18 @@
     "Real.sqrt_sq_eq_abs",
     "Demos.PassiveSafety.smoothSep",
     "Demos.PassiveSafety.meet",
-    "Demos.PassiveSafety.encloses_meet"
+    "Demos.PassiveSafety.encloses_meet",
+    "Demos.Conjunction.panel_of_core",
+    "Demos.Conjunction.panels_of_panel"
   ],
   "examples": [
     "Demos.Conjunction.expI_sound",
     "Demos.Conjunction.erfSumI_sound",
     "Demos.Conjunction.panel_sound",
     "Demos.Conjunction.panels_sound",
-    "Demos.Conjunction.pc_enclosure"
+    "Demos.Conjunction.pc_enclosure",
+    "Demos.Conjunction.panelsTail_sound",
+    "Demos.Conjunction.erfSumTailI_sound"
   ],
   "unimported": {
     "Demos/Avoidance/Spec.lean": [
