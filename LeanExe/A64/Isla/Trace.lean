@@ -22,25 +22,31 @@ in order of their first appearance.  It folds the operators of many arguments to
 the access kind of a memory read and the kind and the result of a memory write, which the
 semantics does not use, reads a name of the header in an expression as the field's variable,
 reads a vector primitive only over the references `R0` to `R30` in order, reads the arguments of
-an `abstract-call` event as register values, and reads the events `cycle`, `call`, `return`,
+an `abstract-call` event as register values and its unit result `(_ unit)`, the one value of
+Sail's type `unit`, as the bit vector of width 0, which has one value, reads a register value
+`(|C| (_ unit))`, a constructor of a union whose payload is unit, such as the `None` of an
+`option`, as the member `C` of an enumeration, and reads the events `cycle`, `call`, `return`,
 `define-enum`, and `branch-address`, and the primitives `sail_take_exception` and `sail_barrier`
 with a unit result, as `skip`.
 
-`Trace.Run P A t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI 2022,
-section 3, and `theories/opsem.v` of its repository at revision 895426ce32ab, to which the line
-numbers below refer): `declare-const` picks any value of its type,
+`Trace.Run P sp A t ρ s σ o` follows the operational semantics of Islaris (Sammler et al., PLDI
+2022, section 3, and `theories/opsem.v` of its repository at revision 895426ce32ab, to which the
+line numbers below refer): `declare-const` picks any value of its type,
 a read of a register or of memory whose value differs from the state's ends the path without an
 outcome, as does a false `assert`, while a false `assume` and every ill-formed event end it in
 `fail`, `cases` takes any branch, a write to memory stores its bytes least significant first, and
 `branch-address` and the result of a write have no effect.  The model's `State` holds the
-registers `R0` to `R30`, `SP_EL1`, `_PC`, the fields `N`, `Z`, `C`, and `V` of `PSTATE`, the low
-64 bits of each element of `_Z`, the bytes of memory, the UART's output, which a byte written at
-the UART extends by reading 5, and the counts of the UART's reads, which a read of the UART's
-registers advances by reading 12.  `σ` holds every other register by name, the upper bits of `_Z`,
-and `PSTATE`'s other fields in a struct.  The outcome of a path that ends holds the model's state
-and `σ`, so that a theorem can state the whole effect of the instruction's decode and execution.
-An `ite` evaluates both branches, which differs from Islaris only where a branch cannot be
-evaluated.
+registers `R0` to `R30`, the stack pointer that `sp` names, `_PC`, the fields `N`, `Z`, `C`, and
+`V` of `PSTATE`, the low 64 bits of each element of `_Z`, the bytes of memory, the UART's output,
+which a byte written at the UART extends by reading 5, and the counts of the UART's reads, which a
+read of the UART's registers advances by reading 12.  The stack pointer is `SP_EL1` for a trace at
+EL1 with `PSTATE.SP` set, the configuration of the bare-metal programs, and `SP_EL0` for a trace
+at EL0, where a Linux process runs.  The Sail model's `SP[]` reads and writes the register that
+`PSTATE.EL` and `PSTATE.SP` select, and a trace accesses it by name.  `σ` holds every other
+register by name, the upper bits of `_Z`, and `PSTATE`'s other fields in a struct.  The outcome of
+a path that ends holds the model's state and `σ`, so that a theorem can state the whole effect of
+the instruction's decode and execution.  An `ite` evaluates both branches, which differs from
+Islaris only where a branch cannot be evaluated.
 
 The rules below read Isla or the Sail model instead of Islaris, which binds no field, steps over
 an `abstract-primop` without effect (`opsem.v` 427-429), leaves the program counter to the trace,
@@ -100,10 +106,15 @@ e9b5d945, and those of `armv9p4.ir` lines of the IR of isla-snapshots d8b31014.
    the D registers to the low 64 bits of its elements and the vector in `σ` to their upper bits.
 11. Isla runs a function that `--abstract` names by declaring a fresh variable for its result and
    recording an `abstract-call` event with the function's name, the variable, and the arguments'
-   values (`executor.rs` 950-971 of Isla e9b5d945).  `A` gives each such function a meaning, a
+   values (`executor.rs` 927-949 of Isla e9b5d945).  `A` gives each such function a meaning, a
    partial function of the arguments' values.  The event ends the path in `fail` where `A` gives no
    result, and without an outcome where the variable differs from the result, as a read does.  A
-   theorem states the meaning that it assumes as a hypothesis on `A`.
+   theorem states the meaning that it assumes as a hypothesis on `A`.  For a function whose result
+   has Sail's type `unit`, Isla records the result as `(_ unit)` without a variable, the reader
+   gives it the bit vector of width 0, and a meaning that gives that value states only that the
+   call returns.  The trace holds none of the function's reads and writes, so a theorem over it
+   covers the function's effect only through a reading of the function, which the theorem's module
+   states.
 12. A read of 4 bytes at `P.uart` or `P.uart + 0x18`, the UART's data and flag registers, is a
    device read, beside reading 5 for a byte written at `P.uart`.  `Platform.devLoad` of the
    model, which `exec` also uses for `LDR Wt`, gives from the state's counts the value that the
@@ -345,6 +356,18 @@ def upd : List String → Val → Val → Option Val
 /-- The part of register `r` of `σ` at the accessor path `al`. -/
 def Sys.get (σ : Sys) (r : String) (al : List String) : Option Val := (σ r).bind (acc al)
 
+/-- The register of the stack pointer that the model's `sp` holds: `SP_EL0`, which EL0 selects,
+or `SP_EL1`, which EL1 selects while `PSTATE.SP` is set. -/
+inductive SpReg where
+  | el0
+  | el1
+  deriving DecidableEq
+
+/-- The name of the register in the Sail model. -/
+def SpReg.name : SpReg → String
+  | .el0 => "SP_EL0"
+  | .el1 => "SP_EL1"
+
 /-- A part of the model's state that a register access names. -/
 inductive Part where
   | x (i : Fin 31)
@@ -367,10 +390,10 @@ def gprs : List (String × Fin 31) :=
 def gpr (r : String) : Option (Fin 31) := gprs.lookup r
 
 /-- The part of the model's state that the register `r` at the accessor path `al` names: the
-general registers, `SP_EL1`, the program counter `_PC`, and the fields `N`, `Z`, `C`, and `V` of
-`PSTATE`. -/
-def part (r : String) : List String → Option Part
-  | [] => if r = "SP_EL1" then some .sp else if r = "_PC" then some .pc else (gpr r).map .x
+general registers, the stack pointer `sp`, the program counter `_PC`, and the fields `N`, `Z`, `C`,
+and `V` of `PSTATE`. -/
+def part (sp : SpReg) (r : String) : List String → Option Part
+  | [] => if r = sp.name then some .sp else if r = "_PC" then some .pc else (gpr r).map .x
   | [f] =>
     if r = "PSTATE" then
       if f = "N" then some .n else if f = "Z" then some .z else if f = "C" then some .c
@@ -446,8 +469,8 @@ def zPut (s : State) : Val → Option (State × Val)
 value of `_Z` from the D registers and the upper bits that `σ` holds, or else the part at `al` of
 the register outside the model.  `PSTATE` as a whole has no value, since the model holds four of
 its fields. -/
-def regGet (s : State) (σ : Sys) (r : String) (al : List String) : Option Val :=
-  match part r al with
+def regGet (sp : SpReg) (s : State) (σ : Sys) (r : String) (al : List String) : Option Val :=
+  match part sp r al with
   | some p => some (partGet s p)
   | none =>
     if r = "PSTATE" ∧ al = [] then none
@@ -457,9 +480,9 @@ def regGet (s : State) (σ : Sys) (r : String) (al : List String) : Option Val :
 /-- The state and registers after writing `x` to the register `r` at the accessor path `al`.  A
 write of `_Z` sets the D registers to the low 64 bits of its elements and the value of `_Z` in `σ`
 to their upper bits.  A whole register outside the model takes `x` whether or not `σ` holds it. -/
-def regSet (s : State) (σ : Sys) (r : String) (al : List String) (x : Val) :
+def regSet (sp : SpReg) (s : State) (σ : Sys) (r : String) (al : List String) (x : Val) :
     Option (State × Sys) :=
-  match part r al with
+  match part sp r al with
   | some p => (partPut s p x).map (·, σ)
   | none =>
     if r = "PSTATE" ∧ al = [] then none
@@ -561,16 +584,16 @@ def Binop.apply : Binop → Val → Val → Option Val
   | _, _, _ => none
 
 /-- The value of an expression, `none` when an operator does not apply to its arguments. -/
-def Exp.eval (s : State) (σ : Sys) (ρ : Vars) : Exp → Option Val
+def Exp.eval (sp : SpReg) (s : State) (σ : Sys) (ρ : Vars) : Exp → Option Val
   | .base b => b.eval ρ
-  | .reg r al => regGet s σ r al
-  | .un o e => (e.eval s σ ρ).bind o.apply
+  | .reg r al => regGet sp s σ r al
+  | .un o e => (e.eval sp s σ ρ).bind o.apply
   | .bin o a b =>
-    match a.eval s σ ρ, b.eval s σ ρ with
+    match a.eval sp s σ ρ, b.eval sp s σ ρ with
     | some x, some y => o.apply x y
     | _, _ => none
   | .ite c a b =>
-    match c.eval s σ ρ, a.eval s σ ρ, b.eval s σ ρ with
+    match c.eval sp s σ ρ, a.eval sp s σ ρ, b.eval sp s σ ρ with
     | some (.bool k), some (.bits w x), some (.bits w' y) =>
       if w = w' then some (.bits w (cond k x y)) else none
     | some (.bool k), some (.bool x), some (.bool y) => some (.bool (cond k x y))
@@ -612,42 +635,43 @@ mutual
 
 /-- Some path of the trace from the state `s`, the registers `σ`, and the variables `ρ` ends in
 the outcome `o`, where the abstract functions of the trace mean `A`. -/
-def Trace.Run (P : Platform) (A : Abstract) : Trace → Vars → State → Sys → Outcome → Prop
+def Trace.Run (P : Platform) (sp : SpReg) (A : Abstract) :
+    Trace → Vars → State → Sys → Outcome → Prop
   | .done, _, s, σ, o => o = finish s σ
-  | .cases ts, ρ, s, σ, o => Trace.RunSome P A ts ρ s σ o
+  | .cases ts, ρ, s, σ, o => Trace.RunSome P sp A ts ρ s σ o
   | .event (.declare x (.bv w)) t, ρ, s, σ, o =>
     match ρ x with
-    | none => ∃ n, n < 2 ^ w ∧ t.Run P A (ρ.set x (.bits w n)) s σ o
-    | some (.bits w' n) => if w' = w ∧ n < 2 ^ w then t.Run P A ρ s σ o else o = .fail
+    | none => ∃ n, n < 2 ^ w ∧ t.Run P sp A (ρ.set x (.bits w n)) s σ o
+    | some (.bits w' n) => if w' = w ∧ n < 2 ^ w then t.Run P sp A ρ s σ o else o = .fail
     | some _ => o = .fail
   | .event (.declare x .bool) t, ρ, s, σ, o =>
     match ρ x with
-    | none => ∃ b, t.Run P A (ρ.set x (.bool b)) s σ o
-    | some (.bool _) => t.Run P A ρ s σ o
+    | none => ∃ b, t.Run P sp A (ρ.set x (.bool b)) s σ o
+    | some (.bool _) => t.Run P sp A ρ s σ o
     | some _ => o = .fail
   | .event (.define x e) t, ρ, s, σ, o =>
-    match e.eval s σ ρ with
-    | some v => t.Run P A (ρ.set x v) s σ o
+    match e.eval sp s σ ρ with
+    | some v => t.Run P sp A (ρ.set x v) s σ o
     | none => o = .fail
   | .event (.assert e) t, ρ, s, σ, o =>
-    match e.eval s σ ρ with
-    | some (.bool b) => b = true ∧ t.Run P A ρ s σ o
+    match e.eval sp s σ ρ with
+    | some (.bool b) => b = true ∧ t.Run P sp A ρ s σ o
     | _ => o = .fail
   | .event (.assume e) t, ρ, s, σ, o =>
-    match e.eval s σ ρ with
-    | some (.bool b) => if b then t.Run P A ρ s σ o else o = .fail
+    match e.eval sp s σ ρ with
+    | some (.bool b) => if b then t.Run P sp A ρ s σ o else o = .fail
     | _ => o = .fail
   | .event (.assumeReg r al v) t, ρ, s, σ, o =>
-    match regGet s σ r al, v.eval ρ with
-    | some w, some w' => w = w' ∧ t.Run P A ρ s σ o
+    match regGet sp s σ r al, v.eval ρ with
+    | some w, some w' => w = w' ∧ t.Run P sp A ρ s σ o
     | _, _ => o = .fail
   | .event (.readReg r al v) t, ρ, s, σ, o =>
-    match regGet s σ r al, (v.eval ρ).bind (acc al) with
-    | some w, some w' => w = w' ∧ t.Run P A ρ s σ o
+    match regGet sp s σ r al, (v.eval ρ).bind (acc al) with
+    | some w, some w' => w = w' ∧ t.Run P sp A ρ s σ o
     | _, _ => o = .fail
   | .event (.writeReg r al v) t, ρ, s, σ, o =>
-    match ((v.eval ρ).bind (acc al)).bind (regSet s σ r al) with
-    | some (s', σ') => t.Run P A ρ s' σ' o
+    match ((v.eval ρ).bind (acc al)).bind (regSet sp s σ r al) with
+    | some (s', σ') => t.Run P sp A ρ s' σ' o
     | none => o = .fail
   | .event (.readMem d a k) t, ρ, s, σ, o =>
     match d.eval ρ, a.eval ρ with
@@ -655,40 +679,40 @@ def Trace.Run (P : Platform) (A : Abstract) : Trace → Vars → State → Sys �
       if w = 8 * k then
         if k = 4 ∧ (y = P.uart.toNat ∨ y = (P.uart + 0x18).toNat) then
           match P.devLoad s.io (.ofNat y) with
-          | some (v, io) => x = v.toNat ∧ t.Run P A ρ { s with io } σ o
+          | some (v, io) => x = v.toNat ∧ t.Run P sp A ρ { s with io } σ o
           | none => False
-        else x = bytes s.mem (.ofNat y) k ∧ t.Run P A ρ s σ o
+        else x = bytes s.mem (.ofNat y) k ∧ t.Run P sp A ρ s σ o
       else o = .fail
     | _, _ => o = .fail
   | .event (.writeMem a d k) t, ρ, s, σ, o =>
     match a.eval ρ, d.eval ρ with
     | some (.bits 64 y), some (.bits w x) =>
-      if w = 8 * k then t.Run P A ρ (store P s (.ofNat y) x k) σ o else o = .fail
+      if w = 8 * k then t.Run P sp A ρ (store P s (.ofNat y) x k) σ o else o = .fail
     | _, _ => o = .fail
   | .event (.readGprs v i xs) t, ρ, s, σ, o =>
     match v.eval ρ, i.eval ρ, Base.evalAll ρ xs with
     | some (.bits 64 y), some (.bits _ k), some ws =>
-      ws = gprVals s ∧ y = (regAt s (k % 32)).toNat ∧ t.Run P A ρ s σ o
+      ws = gprVals s ∧ y = (regAt s (k % 32)).toNat ∧ t.Run P sp A ρ s σ o
     | _, _, _ => o = .fail
   | .event (.writeGprs i v xs) t, ρ, s, σ, o =>
     match i.eval ρ, v.eval ρ, Base.evalAll ρ xs with
     | some (.bits _ k), some (.bits 64 y), some ws =>
-      ws = gprVals s ∧ t.Run P A ρ (setRegAt s (k % 32) (.ofNat y)) σ o
+      ws = gprVals s ∧ t.Run P sp A ρ (setRegAt s (k % 32) (.ofNat y)) σ o
     | _, _, _ => o = .fail
   | .event (.abstractCall f r args) t, ρ, s, σ, o =>
     match RVal.evalAll ρ args, r.eval ρ with
     | some vs, some v =>
       match A f vs with
-      | some w => w = v ∧ t.Run P A ρ s σ o
+      | some w => w = v ∧ t.Run P sp A ρ s σ o
       | none => o = .fail
     | _, _ => o = .fail
-  | .event .skip t, ρ, s, σ, o => t.Run P A ρ s σ o
+  | .event .skip t, ρ, s, σ, o => t.Run P sp A ρ s σ o
 
 /-- Some path of some trace of `ts` ends in the outcome `o`. -/
-def Trace.RunSome (P : Platform) (A : Abstract) :
+def Trace.RunSome (P : Platform) (sp : SpReg) (A : Abstract) :
     List Trace → Vars → State → Sys → Outcome → Prop
   | [], _, _, _, _ => False
-  | t :: ts, ρ, s, σ, o => t.Run P A ρ s σ o ∨ Trace.RunSome P A ts ρ s σ o
+  | t :: ts, ρ, s, σ, o => t.Run P sp A ρ s σ o ∨ Trace.RunSome P sp A ts ρ s σ o
 
 end
 
@@ -698,11 +722,11 @@ def Footprint.vars (F : Footprint) (f : Fields) : Vars :=
     fun _ => none
 
 /-- Some path of the footprint `F` for the fields `f` ends in the outcome `o`: its trace runs
-with the header's variables bound and `__BranchTaken` false, and with the meanings `A` of its
-abstract functions, none unless given. -/
-def Footprint.Run (P : Platform) (F : Footprint) (f : Fields) (s : State) (σ : Sys)
+with the stack pointer `sp`, the header's variables bound, and `__BranchTaken` false, and with the
+meanings `A` of its abstract functions, none unless given. -/
+def Footprint.Run (P : Platform) (sp : SpReg) (F : Footprint) (f : Fields) (s : State) (σ : Sys)
     (o : Outcome) (A : Abstract := noAbstract) : Prop :=
-  F.trace.Run P A (F.vars f) s (σ.set "__BranchTaken" (.bool false)) o
+  F.trace.Run P sp A (F.vars f) s (σ.set "__BranchTaken" (.bool false)) o
 
 /-- The registers that an expression reads, with their accessor paths. -/
 def Exp.regs : Exp → List (String × List String)
@@ -712,23 +736,25 @@ def Exp.regs : Exp → List (String × List String)
   | .bin _ a b => a.regs ++ b.regs
   | .ite c a b => c.regs ++ a.regs ++ b.regs
 
-/-- The registers outside the model that an event reads, with their accessor paths. -/
-def Event.reads : Event → List (String × List String)
-  | .define _ e | .assert e | .assume e => e.regs.filter fun q => (part q.1 q.2).isNone
-  | .assumeReg r al _ | .readReg r al _ => if (part r al).isNone then [(r, al)] else []
+/-- The registers outside the model with the stack pointer `sp` that an event reads, with their
+accessor paths. -/
+def Event.reads (sp : SpReg) : Event → List (String × List String)
+  | .define _ e | .assert e | .assume e => e.regs.filter fun q => (part sp q.1 q.2).isNone
+  | .assumeReg r al _ | .readReg r al _ => if (part sp r al).isNone then [(r, al)] else []
   | _ => []
 
 mutual
 
-/-- The registers outside the model that a trace reads, with their accessor paths. -/
-def Trace.reads : Trace → List (String × List String)
+/-- The registers outside the model with the stack pointer `sp` that a trace reads, with their
+accessor paths. -/
+def Trace.reads (sp : SpReg) : Trace → List (String × List String)
   | .done => []
-  | .event e t => e.reads ++ t.reads
-  | .cases ts => Trace.readsAll ts
+  | .event e t => e.reads sp ++ t.reads sp
+  | .cases ts => Trace.readsAll sp ts
 
-def Trace.readsAll : List Trace → List (String × List String)
+def Trace.readsAll (sp : SpReg) : List Trace → List (String × List String)
   | [] => []
-  | t :: ts => t.reads ++ Trace.readsAll ts
+  | t :: ts => t.reads sp ++ Trace.readsAll sp ts
 
 end
 
@@ -817,13 +843,15 @@ def toBase : Sx → Except String Base
     | _ => .error s!"unknown literal {v}"
   | _ => .error "bad atom"
 
-/-- A register value: an atom, `(_ struct (|f| atom) ...)`, or `(_ vec atom ...)`. -/
+/-- A register value: an atom, `(_ struct (|f| atom) ...)`, `(_ vec atom ...)`, or `(|C| (_ unit))`,
+the constructor `C` of a union with a unit payload, read as the member `C` of an enumeration. -/
 def toRVal : Sx → Except String RVal
   | .list (.atom "_" :: .atom "struct" :: fs) =>
     .struct <$> fs.mapM fun
       | .list [.name f, b] => (f, ·) <$> toBase b
       | _ => .error "bad struct field"
   | .list (.atom "_" :: .atom "vec" :: bs) => .vec <$> bs.mapM toBase
+  | .list [.name c, .list [.atom "_", .atom "unit"]] => .ok (.base (.enum c))
   | x => .base <$> toBase x
 
 /-- An accessor path: `nil`, or a list of `(_ field |f|)`. -/
@@ -938,6 +966,8 @@ def toEvent (segs : List Segment) : Sx → Except String Event
     if Sx.beq (.list refs) (.list (.atom "_" :: .atom "vec" :: gprRefs)) then
       return .writeGprs (← toBase i) (← toBase v) (← toAtoms xs)
     else .error "write_register_from_vector of registers other than R0 to R30"
+  | .list (.atom "abstract-call" :: .name f :: .list [.atom "_", .atom "unit"] :: args) =>
+    return .abstractCall f (.bits 0 0) (← args.mapM toRVal)
   | .list (.atom "abstract-call" :: .name f :: r :: args) =>
     return .abstractCall f (← toBase r) (← args.mapM toRVal)
   | .list (.atom "abstract-primop" :: .name "sail_take_exception" ::

@@ -337,24 +337,24 @@ theorem wchain_eq {s : State} {k : Nat} (hk : k < 32) :
 
 /-- The chain of the elements of `_Z` at the index `k` after a write of `a` to the element at `k`,
 in the form in which the walk leaves the read that follows a write: the element `j` is `a` when
-`k = j` and otherwise its value from the state's D register and the upper bits of `u`.  `V_set`
-with a width of 32 bits writes the element twice, first clearing bits 32 to 127 and then setting
-bits 0 to 31, and reads it between the writes. -/
+`k = j` and otherwise its value from the state's D register and the upper bits `z j`, which a
+profile's unknowns give.  `V_set` with a width of 32 bits writes the element twice, first clearing
+bits 32 to 127 and then setting bits 0 to 31, and reads it between the writes. -/
 syntax "rwchain% " term:max term:max term:max term:max : term
 macro_rules
-  | `(rwchain% $u $s $k $a) => do
+  | `(rwchain% $z $s $k $a) => do
     let mut t ← `(cond (decide ($k = 31)) $a
-      (BitVec.toNat (Unknown.z $u 31) * 18446744073709551616 + UInt64.toNat (dAt $s 31)))
+      (BitVec.toNat ($z 31) * 18446744073709551616 + UInt64.toNat (dAt $s 31)))
     for j' in [0:31] do
       let lit := Lean.Syntax.mkNumLit (toString (30 - j'))
       t ← `(cond (decide ($k = $lit)) (cond (decide ($k = $lit)) $a
-        (BitVec.toNat (Unknown.z $u $lit) * 18446744073709551616 + UInt64.toNat (dAt $s $lit))) $t)
+        (BitVec.toNat ($z $lit) * 18446744073709551616 + UInt64.toNat (dAt $s $lit))) $t)
     return t
 
-theorem rwchain_eq {u : Unknown} {s : State} {k a : Nat} (hk : k < 32) :
-    rwchain% u s k a = a := by
+theorem rwchain_eq {z : Fin 32 → BitVec 1984} {s : State} {k a : Nat} (hk : k < 32) :
+    rwchain% z s k a = a := by
   have h : upick k (fun j => if h : j < 32 then cond (decide (k = j)) a
-      ((u.z ⟨j, h⟩).toNat * 18446744073709551616 + (dAt s j).toNat) else a) 0 31 = a :=
+      ((z ⟨j, h⟩).toNat * 18446744073709551616 + (dAt s j).toNat) else a) 0 31 = a :=
     (upick_eq k _ 31 0 (Nat.zero_le _) (by omega)).trans (by simp [hk])
   exact h
 
@@ -538,7 +538,7 @@ macro_rules
 
 /-- Proves a goal that `fp_bwd` leaves, the bound of a declared variable's value or the condition
 of a read or an assert, with the premise `hσ` and the lemmas in brackets.  An element of `_Z` has
-the upper bits of `Unknown.z` above its word. -/
+the upper bits that a profile's unknowns give above its word. -/
 syntax "fp_side " term:max " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 macro_rules
   | `(tactic| fp_side $hσ [$xs,*]) => `(tactic| first

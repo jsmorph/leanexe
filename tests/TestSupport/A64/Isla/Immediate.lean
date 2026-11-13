@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Check
+import LeanExe.A64.Isla.Linux
 import LeanExe.A64.Isla.Profile
 
 /-!
@@ -29,6 +30,14 @@ to a Boolean formula in the field `cond` and the flags, which `cond_fwd` and `co
 `State.condHolds`: they abstract the field and the flags, and the kernel decides the formula for
 every condition and every value of the flags.  The backward direction of `CSINC` evaluates both
 branches of the trace's fork on the condition and takes the one that `condHolds` selects.
+
+`addImm_vhe`, `subImm_vhe`, and `subsImm_vhe` state `Agrees` with the stack pointer `.el0` for
+the traces of `tests/isla/linux-vhe`, those of a Linux process at EL0 under the host's kernel,
+and the profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`,
+Linux's values of the bits that the reset constraints fix.  Register 31 is `SP_EL0`, which the
+traces select through `PSTATE.EL` and `PSTATE.SP` and access as the model's stack pointer.  The
+proofs follow those under `tcg` with the premise's bits of `HCR_EL2` and `SCR_EL3`, which the
+traces compare in their reset constraints, among the facts of the walk.
 -/
 
 namespace TestSupport.A64.Isla
@@ -316,7 +325,7 @@ with register 31 the stack pointer, every immediate, and every state.  The backw
 builds the path of each of the 4 cases of register 31 among `d` and `n`, and the events that the
 two directions evaluate take more than the default budget of heartbeats. -/
 theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] addImmTcg (arithFields d n imm)
       (.addImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -363,7 +372,7 @@ theorem addImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) 
 /-- The trace of `ADD Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
 theorem addImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] addImmKvm (arithFields d n imm)
       (.addImm d n imm) s := by
   rw [show addImmKvm = addImmTcg from rfl]
   exact (addImm_tcg P u d n imm s).of_reads
@@ -374,7 +383,7 @@ set_option maxHeartbeats 4000000 in
 with register 31 the stack pointer, every immediate, and every state.  Its proof is that of
 `addImm_tcg` with the model's subtraction. -/
 theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subImmTcg (arithFields d n imm)
       (.subImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -421,7 +430,7 @@ theorem subImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) 
 /-- The trace of `SUB Xd|SP, Xn|SP, #imm` under `kvm` agrees with `exec` for every register
 number, every immediate, and every state. -/
 theorem subImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subImmKvm (arithFields d n imm)
       (.subImm d n imm) s := by
   rw [show subImmKvm = subImmTcg from rfl]
   exact (subImm_tcg P u d n imm s).of_reads
@@ -464,7 +473,7 @@ with register 31 the stack pointer as `n` and the zero register as `d`, every im
 state.  The forward direction takes the cases of `n` before the trace, so that `subs_end` names
 the first operand. -/
 theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] subsImmTcg (arithFields d n imm)
       (.subsImm d n imm) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -516,7 +525,7 @@ theorem subsImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096)
 /-- The trace of `SUBS Xd, Xn|SP, #imm` under `kvm` agrees with `exec` for every register number,
 every immediate, and every state. -/
 theorem subsImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (imm : Fin 4096) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsImmKvm (arithFields d n imm)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] subsImmKvm (arithFields d n imm)
       (.subsImm d n imm) s := by
   rw [show subsImmKvm = subsImmTcg from rfl]
   exact (subsImm_tcg P u d n imm s).of_reads
@@ -546,7 +555,7 @@ number, with register 31 the zero register, every immediate, every shift, and ev
 directions take the 4 values of `hw` in turn. -/
 theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movzTcg (moveFields d imm hw)
       (.movz d imm hw) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -584,7 +593,7 @@ theorem movz_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
 number, every immediate, every shift, and every state. -/
 theorem movz_kvm (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movzKvm (moveFields d imm hw)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movzKvm (moveFields d imm hw)
       (.movz d imm hw) s := by
   rw [show movzKvm = movzTcg from rfl]
   exact (movz_tcg P u d imm hw s).of_reads
@@ -596,7 +605,7 @@ number, with register 31 the zero register, every immediate, every shift, and ev
 directions take the 4 values of `hw` in turn. -/
 theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] movkTcg (moveFields d imm hw)
       (.movk d imm hw) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -635,7 +644,7 @@ theorem movk_tcg (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw
 number, every immediate, every shift, and every state. -/
 theorem movk_kvm (P : Platform) (u : Unknown) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movkKvm (moveFields d imm hw)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] movkKvm (moveFields d imm hw)
       (.movk d imm hw) s := by
   rw [show movkKvm = movkTcg from rfl]
   exact (movk_tcg P u d imm hw s).of_reads
@@ -657,7 +666,7 @@ with `omega` deciding remainders, comparisons, and the conditions of `ite` and `
 backward direction builds the path of each of the 8 cases of a zero shift and of register 31
 among `d` and `n`. -/
 theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmTcg (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -697,7 +706,7 @@ theorem lsrImm_tcg (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s 
 /-- The trace of `LSR Xd, Xn, #sh` under `kvm` agrees with `exec` for every register number, every
 shift, and every state. -/
 theorem lsrImm_kvm (P : Platform) (u : Unknown) (d n : Fin 32) (sh : Fin 64) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmKvm (lsrImmFields d n sh)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] lsrImmKvm (lsrImmFields d n sh)
       (.lsrImm d n sh) s := by
   rw [show lsrImmKvm = lsrImmTcg from rfl]
   exact (lsrImm_tcg P u d n sh s).of_reads
@@ -720,7 +729,7 @@ and the register that the condition selects, evaluates both branches of the trac
 condition, takes the branch that `condHolds` selects, and proves the trace's condition with
 `cond_bwd`. -/
 theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] csincTcg (csincFields d n m cond)
       (.csinc d n m cond) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -778,7 +787,7 @@ theorem csinc_tcg (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) 
 /-- The trace of `CSINC Xd, Xn, Xm, cond` under `kvm` agrees with `exec` for every register number,
 every condition, and every state. -/
 theorem csinc_kvm (P : Platform) (u : Unknown) (d n m : Fin 32) (cond : Fin 16) (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] csincKvm (csincFields d n m cond)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] csincKvm (csincFields d n m cond)
       (.csinc d n m cond) s := by
   rw [show csincKvm = csincTcg from rfl]
   exact (csinc_tcg P u d n m cond s).of_reads
@@ -789,7 +798,7 @@ set_option maxHeartbeats 4000000 in
 31 the zero register, every immediate, and every state. -/
 theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrTcg (adrFields d lo hi)
       (.adr d lo hi) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -825,7 +834,7 @@ theorem adr_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin
 immediate, and every state. -/
 theorem adr_kvm (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrKvm (adrFields d lo hi)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrKvm (adrFields d lo hi)
       (.adr d lo hi) s := by
   rw [show adrKvm = adrTcg from rfl]
   exact (adr_tcg P u d lo hi s).of_reads
@@ -836,7 +845,7 @@ set_option maxHeartbeats 4000000 in
 31 the zero register, every immediate, and every state. -/
 theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
+    Agrees P .el1 (tcg.sys .tcr u) ["SEE", "__BranchTaken"] adrpTcg (adrFields d lo hi)
       (.adrp d lo hi) s := by
   without_info
     refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
@@ -874,11 +883,199 @@ theorem adrp_tcg (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fi
 immediate, and every state. -/
 theorem adrp_kvm (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
     (s : State) :
-    Agrees P (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrpKvm (adrFields d lo hi)
+    Agrees P .el1 (kvm.sys .tcr u) ["SEE", "__BranchTaken"] adrpKvm (adrFields d lo hi)
       (.adrp d lo hi) s := by
   rw [show adrpKvm = adrpTcg from rfl]
   exact (adrp_tcg P u d lo hi s).of_reads
     (by isla_reads [adrpTcg, Profile.sys_get, Profile.sys])
+
+/-- The footprint of `ADD Xd|SP, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def addImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/add-imm"
+
+/-- The footprint of `SUB Xd|SP, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def subImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/sub-imm"
+
+/-- The footprint of `SUBS Xd, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def subsImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/subs-imm"
+
+set_option maxHeartbeats 4000000 in
+/-- The trace of `ADD Xd|SP, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for
+every register number, with register 31 the stack pointer SP_EL0, every immediate, and every
+state. -/
+theorem addImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] addImmVhe (arithFields d n imm)
+      (.addImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, addImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [addImmVhe, linux_get, linux] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 18),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [addImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ, sysreg, h1, h2, h3, h4]
+        all_goals imm_end [UInt64.toNat_add]
+      · subst h
+        unfold Footprint.Run
+        simp only [addImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | imm_end [UInt64.toNat_add]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
+
+set_option maxHeartbeats 4000000 in
+/-- The trace of `SUB Xd|SP, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for
+every register number, with register 31 the stack pointer SP_EL0, every immediate, and every
+state. -/
+theorem subImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] subImmVhe (arithFields d n imm)
+      (.subImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subImmVhe, linux_get, linux] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 20),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ, sysreg, h1, h2, h3, h4]
+        all_goals imm_end [UInt64.toNat_sub]
+      · subst h
+        unfold Footprint.Run
+        simp only [subImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | imm_end [UInt64.toNat_sub]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
+
+set_option maxHeartbeats 8000000 in
+/-- The trace of `SUBS Xd, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for every
+register number, with register 31 the stack pointer SP_EL0 as `n` and the zero register as `d`,
+every immediate, and every state. -/
+theorem subsImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] subsImmVhe (arithFields d n imm)
+      (.subsImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subsImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subsImmVhe, linux_get, linux] at hσ
+      have : s.sp.toNat < 18446744073709551616 := toNat_lt s.sp
+      have : (regAt s n.val).toNat < 18446744073709551616 := toNat_lt _
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 21),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subsImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        by_cases hn : n.val = 31
+        · isla_fwd h using omega with [hσ, sysreg, hn, h1, h2, h3, h4]
+          all_goals subs_end s.sp.toNat imm.val
+        · isla_fwd h using omega with [hσ, sysreg, hn, h1, h2, h3, h4]
+          all_goals subs_end (regAt s n.val).toNat imm.val
+      · subst h
+        unfold Footprint.Run
+        simp only [subsImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | (apply Eq.symm; subs_end (regAt s n.val).toNat imm.val)
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
 
 end TestSupport.A64.Isla
 
@@ -900,3 +1097,6 @@ end TestSupport.A64.Isla
 #print axioms TestSupport.A64.Isla.adr_kvm
 #print axioms TestSupport.A64.Isla.adrp_tcg
 #print axioms TestSupport.A64.Isla.adrp_kvm
+#print axioms TestSupport.A64.Isla.addImm_vhe
+#print axioms TestSupport.A64.Isla.subImm_vhe
+#print axioms TestSupport.A64.Isla.subsImm_vhe

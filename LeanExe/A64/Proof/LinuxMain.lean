@@ -235,16 +235,44 @@ theorem run_readTail {H e64 e65 : UInt64} {fe fl fr : Fin 524288} {go : Fin 6710
       rw [p5]
       exact bField_target hgo⟩)⟩
 
+/-- After a call that failed with the error number `n`, `CBZ X0`, `SUBS XZR, X0, X2`, and `B.HI`
+at `a` reach the target `e` of `B.HI`: X0 holds `0 - n`, which lies above the count `c` in X2. -/
+theorem run_failHi {a e : UInt64} {fz fl : Fin 524288}
+    (hc : CodeAt code a [.cbz 0 fz, .subsReg 31 0 2, .bcond 8 fl])
+    (hfl : cbField (after a 2) e = .ok fl) {s : State} (hpc : s.pc = a) {n c : Nat}
+    (hn0 : 0 < n) (hn : n ≤ 4095) (hc' : c + 4095 < 2 ^ 64)
+    (h0 : s.x 0 = 0 - UInt64.ofNat n) (h2 : s.x 2 = UInt64.ofNat c) :
+    ∃ t, Reach P code s t ∧ t.pc = e ∧ t.io = s.io := by
+  have c0 := hc 0 (by simp)
+  simp only [List.getElem_cons_zero, after_zero] at c0
+  have hx0 : (s.x 0).toNat = 2 ^ 64 - n := by
+    rw [h0, UInt64.toNat_sub, UInt64.toNat_ofNat', UInt64.toNat_zero]
+    simp only [Nat.reducePow] at *
+    omega
+  let s1 : State := { s with pc := s.pc + 4 }
+  have r1 : Reach P code s s1 := reach_exec P code (by rw [hpc]; exact c0)
+    (cbz_next P (fun h => by rw [h] at hx0; simp at hx0; omega)) (.refl _)
+  have p1 : s1.pc = after a 1 := by show s.pc + 4 = _; rw [hpc]; simp [after]
+  obtain ⟨t, rt, pt, -, -, -, iot⟩ := run_hiReg P code (x := 0) (y := 2)
+    (CodeAt.split code (l1 := [.cbz 0 fz]) hc rfl).2 (by rw [after_after]; exact hfl) p1
+  have hlt : s1.x 2 < s1.x 0 := by
+    show s.x 2 < s.x 0
+    rw [UInt64.lt_iff_toNat_lt, hx0, h2, UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega)]
+    omega
+  rw [if_pos hlt] at pt
+  exact ⟨t, r1.trans rt, pt, iot⟩
+
 theorem after_one (a : UInt64) : after a 1 = a + 4 := by simp [after]
 
 theorem add_four_four (a : UInt64) : a + 4 + 4 = a + 8 := by
   rw [UInt64.add_assoc]
   rfl
 
-/-- One pass of the read loop from its head `H`, with `c` bytes of the block left in X2, when the
-call does not fail and the bytes that it returns lie in Normal memory: `MOVZ X0, #0`, the call of
-`sysRead` at `rd`, which returns `r` bytes, at most `c`, and writes them from X1, and the rest of
-the pass that `run_readTail` follows. -/
+/-- One pass of the read loop from its head `H`, with `c` bytes of the block left in X2:
+`MOVZ X0, #0`, the call of `sysRead` at `rd`, and the rest of the pass.  When the call does not
+fail and the block lies in Normal memory, the call returns `r` bytes, at most `c`, and writes them
+from X1, and the rest of the pass is the one that `run_readTail` follows.  When the call fails, the
+pass reaches the stub of status 65 at `e65` with the failure appended to the trace. -/
 theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288}
     {gr go : Fin 67108864}
     (hc : CodeAt code H [.movz 0 0 0, .bl gr, .cbz 0 fe, .subsReg 31 0 2, .bcond 8 fl,
@@ -254,13 +282,13 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
     (hgo : bField (after H 8) e64 = .ok go)
     (hrd : OpsAt code rd [.ins (.movz 8 63 0), .svc, .ins (.ret 30)])
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
-    (h9 : (after H 9).toNat < 2 ^ 55) (h64 : e64.toNat < 2 ^ 55)
+    (h9 : (after H 9).toNat < 2 ^ 55) (h64 : e64.toNat < 2 ^ 55) (h65 : e65.toNat < 2 ^ 55)
     {p : Proc} (hpc : p.core.pc = H) (hf : p.fpcr = fpcrValue)
-    (hok : K.fail p.trace.length = none) {c : Nat} (hc64 : c < 2 ^ 64)
+    {c : Nat} (hc64 : c + 4095 < 2 ^ 64)
     (h2 : p.core.x 2 = UInt64.ofNat c) {r : Nat}
     (hr : min (K.size p.trace.length + 1) (min c (K.rest p.trace).length) = r)
     (hmap : P.mapped (p.core.x 1) c = true) :
-    ∃ p', ProcReach K P code p p' ∧ p'.fpcr = fpcrValue ∧
+    (K.fail p.trace.length = none → ∃ p', ProcReach K P code p p' ∧ p'.fpcr = fpcrValue ∧
       p'.trace = p.trace ++ [.read ((K.rest p.trace).take r)] ∧
       p'.core.mem = writeList p.core.mem (p.core.x 1) ((K.rest p.trace).take r) ∧
       p'.core.sp = p.core.sp ∧ p'.core.io = p.core.io ∧
@@ -268,8 +296,13 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
       ((r = 0 ∧ p'.core.pc = after H 9 ∧ p'.core.x 1 = p.core.x 1 ∧ p'.core.x 2 = p.core.x 2) ∨
         (0 < r ∧ r < c ∧ p'.core.pc = H ∧ p'.core.x 1 = p.core.x 1 + UInt64.ofNat r ∧
           p'.core.x 2 = UInt64.ofNat (c - r)) ∨
-        (0 < r ∧ r = c ∧ p'.core.pc = e64)) := by
+        (0 < r ∧ r = c ∧ p'.core.pc = e64))) ∧
+    (∀ e, K.fail p.trace.length = some e → ∃ p', ProcReach K P code p p' ∧
+      p'.core.pc = e65 ∧
+      p'.fpcr = fpcrValue ∧ p'.trace = p.trace ++ [.fail 63 (e.val + 1)] ∧
+      p'.core.io = p.core.io) := by
   have hrc : r ≤ c := by rw [← hr]; omega
+  have hc64' : c < 2 ^ 64 := by omega
   have c0 := hc 0 (by simp)
   have c1 := hc 1 (by simp)
   have c2 := hc 2 (by simp)
@@ -298,18 +331,54 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
   have hx2 : ((pp.enter (UInt64.ofNat (63 : Fin 65536).val)).core.x 2).toNat = c := by
     rw [Proc.enter_x _ _ (by decide)]
     show (t2.x 2).toNat = c
-    rw [hk2 2 (by decide) (by decide), h2, UInt64.toNat_ofNat', Nat.mod_eq_of_lt hc64]
+    rw [hk2 2 (by decide) (by decide), h2, UInt64.toNat_ofNat', Nat.mod_eq_of_lt hc64']
   have hx1 : (pp.enter (UInt64.ofNat (63 : Fin 65536).val)).core.x 1 = p.core.x 1 := by
     rw [Proc.enter_x _ _ (by decide)]
     exact hk2 1 (by decide) (by decide)
+  have hx0 : (pp.enter (UInt64.ofNat (63 : Fin 65536).val)).core.x 0 = 0 := by
+    rw [Proc.enter_x _ _ (by decide)]
+    show (t1.setX 30 (t1.pc + 4)).x 0 = 0
+    rw [State.x_setX_ne (by decide), x01]
+    rfl
+  have hct : CodeAt code (after H 2) [.cbz 0 fe, .subsReg 31 0 2, .bcond 8 fl, .addReg 1 1 0,
+      .subReg 2 2 0, .cbnz 2 fr, .b go] :=
+    (CodeAt.split code (l1 := [.movz 0 0 0, .bl gr]) hc rfl).2
+  refine ⟨fun hok => ?_, fun e he => ?_⟩
+  rotate_left
+  · -- the call fails: X0 holds the negated error number, and B.HI reaches the stub of 65
+    have hsvc := svc_fail (K := K) (P := P) (p := pp.enter (UInt64.ofNat (63 : Fin 65536).val))
+      (.inl ⟨by rw [Proc.enter_x8]; rfl, hx0⟩) (e := e) he
+    have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hrd hdom p2 hsvc
+      (by rw [Proc.ret_pc, Proc.enter_pc]; exact add_four_four _)
+      (by rw [Proc.ret_x _ _ _ _ (by decide), Proc.enter_x _ _ (by decide)])
+      (by show (t2.x 30).toNat < 2 ^ 55; rw [h302]; exact hdom _ _ c2)
+    generalize hp3 : ((pp.enter (UInt64.ofNat (63 : Fin 65536).val)).ret
+      (0 - UInt64.ofNat (e.val + 1)) (pp.enter (UInt64.ofNat (63 : Fin 65536).val)).core.mem
+      (.fail ((pp.enter (UInt64.ofNat (63 : Fin 65536).val)).core.x 8) (e.val + 1))).goto
+      (pp.core.x 30) = p3 at q3
+    obtain ⟨t, rt, tpc, tio⟩ := run_failHi P code
+      (CodeAt.split code (l1 := [.cbz 0 fe, .subsReg 31 0 2, .bcond 8 fl]) hct rfl).1
+      (by rw [after_after]; exact hfl) (s := p3.core)
+      (by rw [← hp3, Proc.goto_pc]; exact h302) (n := e.val + 1) (by omega) (by omega) hc64
+      (by rw [← hp3, Proc.goto_x, Proc.ret_x0])
+      (by
+        rw [← hp3, Proc.goto_x, Proc.ret_x _ _ _ _ (by decide), Proc.enter_x _ _ (by decide)]
+        show t2.x 2 = _
+        rw [hk2 2 (by decide) (by decide), h2])
+    have p3f : p3.fpcr = fpcrValue := by
+      rw [← hp3, Proc.goto_fpcr, Proc.ret_fpcr, Proc.enter_fpcr]
+      exact hf
+    have q4 := ProcReach.of_reach' (K := K) hdom p3f rt (by rw [tpc]; exact h65)
+    refine ⟨{ p3 with core := t }, q2.trans (q3.trans q4), tpc, p3f, ?_, ?_⟩
+    · show p3.trace = _
+      rw [← hp3, Proc.goto_trace, Proc.ret_trace, Proc.enter_trace, Proc.enter_x8]
+      rfl
+    · show t.io = _
+      rw [tio, ← hp3, Proc.goto_io, Proc.ret_io, Proc.enter_io]
+      show (t1.setX 30 (t1.pc + 4)).io = _
+      rw [State.setX_io, io1]
   have hsvc := svc_read (K := K) (P := P) (p := pp.enter (UInt64.ofNat (63 : Fin 65536).val))
-    (by rw [Proc.enter_x8]; rfl)
-    (by
-      rw [Proc.enter_x _ _ (by decide)]
-      show (t1.setX 30 (t1.pc + 4)).x 0 = 0
-      rw [State.x_setX_ne (by decide), x01]
-      rfl)
-    hok (by rw [hx2, hx1]; exact hmap)
+    (by rw [Proc.enter_x8]; rfl) hx0 hok (by rw [hx2, hx1]; exact hmap)
   have htr2 : pp.trace = p.trace := rfl
   rw [hx2, hx1, Proc.enter_trace, htr2, hr] at hsvc
   have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hrd hdom p2 hsvc
@@ -344,12 +413,8 @@ theorem run_readPass {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
   have p3f : p3.fpcr = fpcrValue := by
     rw [← hp3, Proc.goto_fpcr, Proc.ret_fpcr, Proc.enter_fpcr]
     exact hf
-  have hct : CodeAt code (after H 2) [.cbz 0 fe, .subsReg 31 0 2, .bcond 8 fl, .addReg 1 1 0,
-      .subReg 2 2 0, .cbnz 2 fr, .b go] := by
-    have := (CodeAt.split code (l1 := [.movz 0 0 0, .bl gr]) hc rfl).2
-    exact this
   obtain ⟨t, rt, spt, memt, iot, kt, out⟩ := run_readTail P code hct hfe hfl hfr hgo p3pc hrc
-    hc64 p3x0 p3x2
+    hc64' p3x0 p3x2
   have hend : t.pc.toNat < 2 ^ 55 := by
     rcases out with ⟨-, e, -, -⟩ | ⟨-, -, e, -, -⟩ | ⟨-, -, e⟩ <;> rw [e]
     · exact h9
@@ -395,10 +460,12 @@ theorem area_toNat {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α
   omega
 
 /-- The loop of `run_readPass` at `H`, from its head with `c` bytes of the block left of `N`, the
-`got` bytes before them holding the input's first `got` bytes, which the trace's reads returned.
-When the input has fewer than `N` bytes, the run leaves the loop at the end of input, `after H 9`,
-with the whole input in the block, every read of the trace, and nothing written.  Otherwise it
-reaches the stub of status 64 with nothing written.  No call fails. -/
+`got` bytes before them holding the input's first `got` bytes, which the trace's reads returned,
+and no failure in the trace.  When a read fails, the run reaches the stub of status 65 at `e65`
+with nothing written and a trace that ends with the failure, after reads alone.  Otherwise, when
+the input has fewer than `N` bytes, the run leaves the loop at the end of input, `after H 9`,
+with the whole input in the block, every read of the trace, and nothing written, and when it has
+more, it reaches the stub of status 64 with nothing written; neither trace holds a failure. -/
 theorem run_readLoop {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288}
     {gr go : Fin 67108864}
     (hc : CodeAt code H [.movz 0 0 0, .bl gr, .cbz 0 fe, .subsReg 31 0 2, .bcond 8 fl,
@@ -408,34 +475,41 @@ theorem run_readLoop {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
     (hgo : bField (after H 8) e64 = .ok go)
     (hrd : OpsAt code rd [.ins (.movz 8 63 0), .svc, .ins (.ret 30)])
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
-    (h9 : (after H 9).toNat < 2 ^ 55) (h64 : e64.toNat < 2 ^ 55)
-    (hok : ∀ k, K.fail k = none) {cap : Nat} {gts : List ValueType} (st : Store Unit)
+    (h9 : (after H 9).toNat < 2 ^ 55) (h64 : e64.toNat < 2 ^ 55) (h65 : e65.toNat < 2 ^ 55)
+    {cap : Nat} {gts : List ValueType} (st : Store Unit)
     (root N : Nat) (hN : root + N ≤ st.mem.pages * 65536) :
     ∀ c (p : Proc) (got : Nat), got + c = N → 0 < c → p.core.pc = H → p.fpcr = fpcrValue →
       p.core.x 2 = UInt64.ofNat c →
       p.core.x 1 = p.core.x 17 + UInt64.ofNat (4096 + (root + got)) →
       stdinOf p.trace = K.input.take got → got ≤ K.input.length → stdoutOf p.trace = [] →
+      (∀ nr e, Event.fail nr e ∉ p.trace) →
       StoreRel P cap gts (storeBytes st root (K.input.take got)) p.core →
-      (K.input.length < N → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = after H 9 ∧
+      (∃ p', ProcReach K P code p p' ∧ p'.core.pc = e65 ∧ p'.fpcr = fpcrValue ∧
+          p'.core.io = p.core.io ∧ (∃ k e, K.fail k = some e) ∧
+          ∃ tr e, p'.trace = tr ++ [.fail 63 e] ∧ stdoutOf tr = [] ∧
+            ∀ nr e', Event.fail nr e' ∉ tr) ∨
+      ((K.input.length < N → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = after H 9 ∧
           p'.core.x 2 = UInt64.ofNat (N - K.input.length) ∧
           StoreRel P cap gts (storeBytes st root K.input) p'.core ∧
           stdinOf p'.trace = K.input ∧ stdoutOf p'.trace = [] ∧ p'.fpcr = fpcrValue ∧
           (∀ q : Fin 32, q ≠ 0 → q ≠ 1 → q ≠ 2 → q ≠ 8 → q ≠ 30 → p'.core.x q = p.core.x q) ∧
           p'.core.sp = p.core.sp ∧
           (∀ a : UInt64, (p.core.x 18).toNat ≤ a.toNat → p'.core.mem a = p.core.mem a) ∧
-          p'.core.io = p.core.io) ∧
-      (N ≤ K.input.length → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = e64 ∧
-          stdoutOf p'.trace = [] ∧ p'.fpcr = fpcrValue ∧ p'.core.io = p.core.io) := by
+          p'.core.io = p.core.io ∧ ∀ nr e, Event.fail nr e ∉ p'.trace) ∧
+       (N ≤ K.input.length → ∃ p', ProcReach K P code p p' ∧ p'.core.pc = e64 ∧
+          stdoutOf p'.trace = [] ∧ p'.fpcr = fpcrValue ∧ p'.core.io = p.core.io ∧
+          ∀ nr e, Event.fail nr e ∉ p'.trace)) := by
   intro c
   induction c using Nat.strong_induction_on with
   | _ c ih =>
-  intro p got hgc hc0 hpc hf h2 h1 hin hgot hout hsr
+  intro p got hgc hc0 hpc hf h2 h1 hin hgot hout hnf hsr
   have hpg := hsr.pages
   have hcap := hsr.cap_lt
   rw [(storeBytes_globals st root (K.input.take got)).2.1] at hpg
   have hcapN : root + N ≤ cap * 65536 := Nat.le_trans hN (Nat.mul_le_mul_right _ hpg.2)
-  have hc64 : c < 2 ^ 64 := by
-    have : cap * 65536 < 2 ^ 64 := by simp only [Nat.reducePow]; omega
+  have hc64 : c + 4095 < 2 ^ 64 := by
+    have : cap * 65536 < 2 ^ 32 := by simp only [Nat.reducePow]; omega
+    simp only [Nat.reducePow] at *
     omega
   have hrest : K.rest p.trace = K.input.drop got := by
     unfold Kernel.rest
@@ -448,10 +522,22 @@ theorem run_readLoop {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
   have hmap : P.mapped (p.core.x 1) c = true := mapped_of_all P fun i hi => by
     rw [h1, add_ofNat_add, show 4096 + (root + got) + i = 4096 + (root + got + i) by omega]
     exact hsr.mapped _ (by unfold areaSize; omega)
-  obtain ⟨p', q1, hf', htr', hmem', hsp', hio', hx', out⟩ := run_readPass P code hc hgr hfe hfl
-    hfr hgo hrd hdom h9 h64 hpc hf (hok _) hc64 h2 hr hmap
+  have hpass := run_readPass P code hc hgr hfe hfl hfr hgo hrd hdom h9 h64 h65 hpc hf hc64 h2 hr
+    hmap
+  rcases hfk : K.fail p.trace.length with _ | e
+  rotate_left
+  · -- the read fails
+    obtain ⟨p', q1, hpc', hf', htr', hio'⟩ := hpass.2 e hfk
+    exact .inl ⟨p', q1, hpc', hf', hio', ⟨_, _, hfk⟩, p.trace, e.val + 1, htr', hout, hnf⟩
+  obtain ⟨p', q1, hf', htr', hmem', hsp', hio', hx', out⟩ := hpass.1 hfk
   have hchunk : (K.rest p.trace).take r = (K.input.drop got).take r := by rw [hrest]
   rw [hchunk] at htr' hmem'
+  have hnf' : ∀ nr e, Event.fail nr e ∉ p'.trace := by
+    intro nr e he
+    rw [htr', List.mem_append, List.mem_singleton] at he
+    rcases he with he | he
+    · exact hnf nr e he
+    · cases he
   have h17' : p'.core.x 17 = p.core.x 17 := hx' 17 (by decide) (by decide) (by decide)
     (by decide) (by decide)
   have h18' : p'.core.x 18 = p.core.x 18 := hx' 18 (by decide) (by decide) (by decide)
@@ -491,26 +577,30 @@ theorem run_readLoop {K : Kernel} {H e64 e65 rd : UInt64} {fe fl fr : Fin 524288
       have : (K.rest p.trace).length = 0 := by omega
       rw [hrest, List.length_drop] at this
       omega
-    refine ⟨fun _ => ⟨p', q1, hpc', by rw [hx2', h2]; congr 1; omega, ?_, ?_, hstdout', hf',
-      hx', hsp', hframe, hio'⟩, fun h => absurd h (by omega)⟩
+    refine .inr ⟨fun _ => ⟨p', q1, hpc', by rw [hx2', h2]; congr 1; omega, ?_, ?_, hstdout',
+      hf',
+      hx', hsp', hframe, hio', hnf'⟩, fun h => absurd h (by omega)⟩
     · rw [hr0, Nat.add_zero] at hsr'
       rwa [List.take_of_length_le (by omega)] at hsr'
     · rw [hstdin', hr0, Nat.add_zero, List.take_of_length_le (by omega)]
   · -- a short read: the loop again
-    have hih := ih (c - r) (by omega) p' (got + r) (by omega) (by omega) hpc' hf' hx2'
-      (by rw [hx1', h1, h17', add_ofNat_add]; congr 2; omega) hstdin' (by omega) hstdout'
-      hsr'
     have h18'' : (p.core.x 18).toNat = (p'.core.x 18).toNat := by rw [h18']
-    refine ⟨fun hlt' => ?_, fun hge => ?_⟩
-    · obtain ⟨p'', q2, hpc'', hx2'', hsr'', hin'', hout'', hf'', hx'', hsp'', hfr'', hio''⟩ :=
-        hih.1 hlt'
+    rcases ih (c - r) (by omega) p' (got + r) (by omega) (by omega) hpc' hf' hx2'
+      (by rw [hx1', h1, h17', add_ofNat_add]; congr 2; omega) hstdin' (by omega) hstdout' hnf'
+      hsr' with ⟨p'', q2, hpc'', hf'', hio'', hk, hfl''⟩ | ⟨hih1, hih2⟩
+    · exact .inl ⟨p'', q1.trans q2, hpc'', hf'', hio''.trans hio', hk, hfl''⟩
+    refine .inr ⟨fun hlt' => ?_, fun hge => ?_⟩
+    · obtain ⟨p'', q2, hpc'', hx2'', hsr'', hin'', hout'', hf'', hx'', hsp'', hfr'', hio'',
+        hnf''⟩ := hih1 hlt'
       exact ⟨p'', q1.trans q2, hpc'', hx2'', hsr'', hin'', hout'', hf'',
         fun q a b c' d e => (hx'' q a b c' d e).trans (hx' q a b c' d e), hsp''.trans hsp',
-        fun a ha => (hfr'' a (by rw [← h18'']; exact ha)).trans (hframe a ha), hio''.trans hio'⟩
-    · obtain ⟨p'', q2, hpc'', hout'', hf'', hio''⟩ := hih.2 hge
-      exact ⟨p'', q1.trans q2, hpc'', hout'', hf'', hio''.trans hio'⟩
+        fun a ha => (hfr'' a (by rw [← h18'']; exact ha)).trans (hframe a ha), hio''.trans hio',
+        hnf''⟩
+    · obtain ⟨p'', q2, hpc'', hout'', hf'', hio'', hnf''⟩ := hih2 hge
+      exact ⟨p'', q1.trans q2, hpc'', hout'', hf'', hio''.trans hio', hnf''⟩
   · -- the block is full
-    refine ⟨fun h => absurd h (by omega), fun _ => ⟨p', q1, hpc', hstdout', hf', hio'⟩⟩
+    exact .inr ⟨fun h => absurd h (by omega),
+      fun _ => ⟨p', q1, hpc', hstdout', hf', hio', hnf'⟩⟩
 
 /-! ## The write loop -/
 
@@ -573,10 +663,13 @@ theorem run_writeTail {W e66 : UInt64} {fz fl : Fin 524288} {gb : Fin 67108864}
     show s.x 2 - s.x 0 = _
     rw [h0, h2, ofNat_sub_ofNat hr hc64]
 
+
 /-- The loop of the result's writes at `W`, from its head with `c` bytes from X1 to write, all in
-Normal memory: the run leaves the loop at `after W 9` with the bytes of the memory from X1 added to
-the trace's output, the memory kept, and the stack pointer, the UART's state, and every register
-but X0, X1, X2, X8, and X30 kept.  No call fails. -/
+Normal memory, and no failure in the trace.  When a write fails, the run reaches the stub of status
+66 at `e66` with a trace that ends with the failure, after writes of the first `j` of the bytes
+alone.  Otherwise the run leaves the loop at `after W 9` with the bytes of the memory from X1 added
+to the trace's output and no failure in the trace, the memory kept, and the stack pointer, the
+UART's state, and every register but X0, X1, X2, X8, and X30 kept. -/
 theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
     {gw gb : Fin 67108864}
     (hc : CodeAt code W [.cbz 2 fd, .movz 0 1 0, .bl gw, .cbz 0 fz, .subsReg 31 0 2,
@@ -585,31 +678,41 @@ theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
     (hfl : cbField (after W 5) e66 = .ok fl) (hgb : bField (after W 8) W = .ok gb)
     (hwr : OpsAt code wr [.ins (.movz 8 64 0), .svc, .ins (.ret 30)])
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) (h9 : (after W 9).toNat < 2 ^ 55)
-    (hok : ∀ k, K.fail k = none) :
+    (h66 : e66.toNat < 2 ^ 55) :
     ∀ c (p : Proc), p.core.pc = W → p.fpcr = fpcrValue → p.core.x 2 = UInt64.ofNat c →
-      c < 2 ^ 64 → (∀ i < c, P.normal (p.core.x 1 + UInt64.ofNat i) = true) →
-      ∃ p', ProcReach K P code p p' ∧ p'.core.pc = after W 9 ∧ p'.fpcr = fpcrValue ∧
+      c + 4095 < 2 ^ 64 → (∀ i < c, P.normal (p.core.x 1 + UInt64.ofNat i) = true) →
+      (∀ nr e, Event.fail nr e ∉ p.trace) →
+      (∃ p', ProcReach K P code p p' ∧ p'.core.pc = e66 ∧ p'.fpcr = fpcrValue ∧
+          p'.core.io = p.core.io ∧ (∃ k e, K.fail k = some e) ∧
+          ∃ tr e, p'.trace = tr ++ [.fail 64 e] ∧
+            (∃ j ≤ c, stdoutOf tr = stdoutOf p.trace ++ readList p.core.mem (p.core.x 1) j) ∧
+            ∀ nr e', Event.fail nr e' ∉ tr) ∨
+      (∃ p', ProcReach K P code p p' ∧ p'.core.pc = after W 9 ∧ p'.fpcr = fpcrValue ∧
         stdoutOf p'.trace = stdoutOf p.trace ++ readList p.core.mem (p.core.x 1) c ∧
         p'.core.mem = p.core.mem ∧ p'.core.sp = p.core.sp ∧ p'.core.io = p.core.io ∧
-        (∀ q : Fin 32, q ≠ 0 → q ≠ 1 → q ≠ 2 → q ≠ 8 → q ≠ 30 → p'.core.x q = p.core.x q) := by
+        (∀ q : Fin 32, q ≠ 0 → q ≠ 1 → q ≠ 2 → q ≠ 8 → q ≠ 30 → p'.core.x q = p.core.x q) ∧
+        ∀ nr e, Event.fail nr e ∉ p'.trace) := by
   have c0 := hc 0 (by simp)
   have c1 := hc 1 (by simp)
   have c2 := hc 2 (by simp)
   have c3 := hc 3 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1 c2 c3
+  have hct : CodeAt code (after W 3) [.cbz 0 fz, .subsReg 31 0 2, .bcond 8 fl, .addReg 1 1 0,
+      .subReg 2 2 0, .b gb] := (CodeAt.split code (l1 := [.cbz 2 fd, .movz 0 1 0, .bl gw]) hc rfl).2
   intro c
   induction c using Nat.strong_induction_on with
   | _ c ih =>
-  intro p hpc hf h2 hc64 hmapc
+  intro p hpc hf h2 hc64 hmapc hnf
+  have hc64' : c < 2 ^ 64 := by omega
   rcases Nat.eq_zero_or_pos c with rfl | hc0
   · -- nothing left: the CBZ leaves the loop
     have r0 := cbz_taken P code (by rw [hpc]; exact c0) hpc hfd (by rw [h2]; rfl)
-    refine ⟨p.goto (after W 9), ProcReach.of_reach' hdom hf r0 h9, rfl, hf, by simp [readList],
-      rfl, rfl, rfl, fun _ _ _ _ _ _ => rfl⟩
+    exact .inr ⟨p.goto (after W 9), ProcReach.of_reach' hdom hf r0 h9, rfl, hf,
+      by simp [readList], rfl, rfl, rfl, fun _ _ _ _ _ _ => rfl, hnf⟩
   -- the CBZ, MOVZ X0, #1, and BL sysWrite
   let t0 : State := { p.core with pc := p.core.pc + 4 }
   have r0 : Reach P code p.core t0 := reach_exec P code (by rw [hpc]; exact c0)
-    (cbz_next P (by rw [h2]; exact ofNat_ne_zero hc0 hc64)) (.refl _)
+    (cbz_next P (by rw [h2]; exact ofNat_ne_zero hc0 hc64')) (.refl _)
   have p0 : t0.pc = after W 1 := by show p.core.pc + 4 = _; rw [hpc, after_one]
   obtain ⟨t1, r1, p1, x01, k1, sp1, mem1, io1⟩ :=
     run_movz P code (d := 0) (v := 1) (by decide) (by rw [p0]; exact c1)
@@ -635,24 +738,63 @@ theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
   have hx2 : ((pp.enter (UInt64.ofNat (64 : Fin 65536).val)).core.x 2).toNat = c := by
     rw [Proc.enter_x _ _ (by decide)]
     show (t2.x 2).toNat = c
-    rw [hk2 2 (by decide) (by decide), h2, UInt64.toNat_ofNat', Nat.mod_eq_of_lt hc64]
+    rw [hk2 2 (by decide) (by decide), h2, UInt64.toNat_ofNat', Nat.mod_eq_of_lt hc64']
   have hx1 : (pp.enter (UInt64.ofNat (64 : Fin 65536).val)).core.x 1 = p.core.x 1 := by
     rw [Proc.enter_x _ _ (by decide)]
     exact hk2 1 (by decide) (by decide)
+  have hx0 : (pp.enter (UInt64.ofNat (64 : Fin 65536).val)).core.x 0 = 1 := by
+    rw [Proc.enter_x _ _ (by decide)]
+    show (t1.setX 30 (t1.pc + 4)).x 0 = 1
+    rw [State.x_setX_ne (by decide), x01]
+    rfl
+  have hmem2 : t2.mem = p.core.mem := by
+    show (t1.setX 30 (t1.pc + 4)).mem = _
+    rw [State.setX_mem, mem1]
+  have hio2 : t2.io = p.core.io := by
+    show (t1.setX 30 (t1.pc + 4)).io = _
+    rw [State.setX_io, io1]
+  have htr2 : pp.trace = p.trace := rfl
+  rcases hfk : K.fail p.trace.length with _ | e
+  rotate_left
+  · -- the write fails: X0 holds the negated error number, and B.HI reaches the stub of 66
+    have hsvc := svc_fail (K := K) (P := P) (p := pp.enter (UInt64.ofNat (64 : Fin 65536).val))
+      (.inr ⟨by rw [Proc.enter_x8]; rfl, hx0⟩) (e := e) hfk
+    have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hwr hdom p2 hsvc
+      (by rw [Proc.ret_pc, Proc.enter_pc]; exact add_four_four _)
+      (by rw [Proc.ret_x _ _ _ _ (by decide), Proc.enter_x _ _ (by decide)])
+      (by show (t2.x 30).toNat < 2 ^ 55; rw [h302]; exact hdom _ _ c3)
+    generalize hp3 : ((pp.enter (UInt64.ofNat (64 : Fin 65536).val)).ret
+      (0 - UInt64.ofNat (e.val + 1)) (pp.enter (UInt64.ofNat (64 : Fin 65536).val)).core.mem
+      (.fail ((pp.enter (UInt64.ofNat (64 : Fin 65536).val)).core.x 8) (e.val + 1))).goto
+      (pp.core.x 30) = p3 at q3
+    obtain ⟨t, rt, tpc, tio⟩ := run_failHi P code
+      (CodeAt.split code (l1 := [.cbz 0 fz, .subsReg 31 0 2, .bcond 8 fl]) hct rfl).1
+      (by rw [after_after]; exact hfl) (s := p3.core)
+      (by rw [← hp3, Proc.goto_pc]; exact h302) (n := e.val + 1) (by omega) (by omega) hc64
+      (by rw [← hp3, Proc.goto_x, Proc.ret_x0])
+      (by
+        rw [← hp3, Proc.goto_x, Proc.ret_x _ _ _ _ (by decide), Proc.enter_x _ _ (by decide)]
+        show t2.x 2 = _
+        rw [hk2 2 (by decide) (by decide), h2])
+    have p3f : p3.fpcr = fpcrValue := by
+      rw [← hp3, Proc.goto_fpcr, Proc.ret_fpcr, Proc.enter_fpcr]
+      exact hf
+    have q4 := ProcReach.of_reach' (K := K) hdom p3f rt (by rw [tpc]; exact h66)
+    refine .inl ⟨{ p3 with core := t }, q2.trans (q3.trans q4), tpc, p3f, ?_, ⟨_, _, hfk⟩,
+      p.trace, e.val + 1, ?_, ⟨0, Nat.zero_le _, by simp [readList]⟩, hnf⟩
+    · show t.io = _
+      rw [tio, ← hp3, Proc.goto_io, Proc.ret_io, Proc.enter_io]
+      exact hio2
+    · show p3.trace = _
+      rw [← hp3, Proc.goto_trace, Proc.ret_trace, Proc.enter_trace, Proc.enter_x8]
+      rfl
   generalize hr : min (K.size p.trace.length + 1) c = r
   have hr0 : 0 < r := by rw [← hr]; omega
   have hrc : r ≤ c := by rw [← hr]; omega
   have hsvc := svc_write (K := K) (P := P) (p := pp.enter (UInt64.ofNat (64 : Fin 65536).val))
-    (by rw [Proc.enter_x8]; rfl)
-    (by
-      rw [Proc.enter_x _ _ (by decide)]
-      show (t1.setX 30 (t1.pc + 4)).x 0 = 1
-      rw [State.x_setX_ne (by decide), x01]
-      rfl)
-    (hok _) (by
+    (by rw [Proc.enter_x8]; rfl) hx0 hfk (by
       rw [hx2, hx1]
       exact mapped_of_all P fun i hi => hmapc i hi)
-  have htr2 : pp.trace = p.trace := rfl
   rw [hx2, hx1, Proc.enter_trace, htr2, hr] at hsvc
   have q3 := run_svcCall (K := K) (P := P) (code := code) (p := pp) hwr hdom p2 hsvc
     (by rw [Proc.ret_pc, Proc.enter_pc]; exact add_four_four _)
@@ -664,9 +806,6 @@ theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
       (pp.core.x 30) = p3 at q3
   have p3x : ∀ q : Fin 32, q ≠ 0 → q ≠ 8 → p3.core.x q = t2.x q := fun q h0 h8 => by
     rw [← hp3, Proc.goto_x, Proc.ret_x _ _ _ _ h0, Proc.enter_x _ _ h8]
-  have hmem2 : t2.mem = p.core.mem := by
-    show (t1.setX 30 (t1.pc + 4)).mem = _
-    rw [State.setX_mem, mem1]
   have p3mem : p3.core.mem = p.core.mem := by
     rw [← hp3, Proc.goto_mem, Proc.ret_mem, Proc.enter_mem]
     exact hmem2
@@ -676,33 +815,46 @@ theorem run_writeLoop' {K : Kernel} {W e66 wr : UInt64} {fd fz fl : Fin 524288}
     rw [State.setX_sp, sp1]
   have p3io : p3.core.io = p.core.io := by
     rw [← hp3, Proc.goto_io, Proc.ret_io, Proc.enter_io]
-    show (t1.setX 30 (t1.pc + 4)).io = _
-    rw [State.setX_io, io1]
+    exact hio2
   have p3out : stdoutOf p3.trace = stdoutOf p.trace ++ readList p.core.mem (p.core.x 1) r := by
     rw [← hp3, Proc.goto_trace, Proc.ret_trace, Proc.enter_trace, stdoutOf_append, htr2,
       Proc.enter_mem]
     show stdoutOf p.trace ++ readList t2.mem _ r = _
     rw [hmem2]
+  have p3nf : ∀ nr e, Event.fail nr e ∉ p3.trace := by
+    intro nr e he
+    rw [← hp3, Proc.goto_trace, Proc.ret_trace, Proc.enter_trace, htr2, List.mem_append,
+      List.mem_singleton] at he
+    rcases he with he | he
+    · exact hnf nr e he
+    · cases he
   have p3f : p3.fpcr = fpcrValue := by
     rw [← hp3, Proc.goto_fpcr, Proc.ret_fpcr, Proc.enter_fpcr]
     exact hf
   -- the rest of the pass and the loop
-  have hct : CodeAt code (after W 3) [.cbz 0 fz, .subsReg 31 0 2, .bcond 8 fl, .addReg 1 1 0,
-      .subReg 2 2 0, .b gb] := (CodeAt.split code (l1 := [.cbz 2 fd, .movz 0 1 0, .bl gw]) hc rfl).2
   obtain ⟨t, rt, pt, spt, memt, iot, kt, x1t, x2t⟩ := run_writeTail P code hct hfl hgb
-    (s := p3.core) (by rw [← hp3, Proc.goto_pc]; exact h302) hr0 hrc hc64
+    (s := p3.core) (by rw [← hp3, Proc.goto_pc]; exact h302) hr0 hrc hc64'
     (by rw [← hp3, Proc.goto_x, Proc.ret_x0])
     (by rw [p3x 2 (by decide) (by decide), hk2 2 (by decide) (by decide), h2])
   have q4 := ProcReach.of_reach' (K := K) hdom p3f rt
     (by rw [pt]; exact hdom _ _ (by simpa [after_zero] using c0))
   have hx1t : t.x 1 = p.core.x 1 + UInt64.ofNat r := by
     rw [x1t, p3x 1 (by decide) (by decide), hk2 1 (by decide) (by decide)]
-  obtain ⟨p', q5, hpc', hf', hout', hmem', hsp', hio', hx'⟩ := ih (c - r) (by omega)
-    { p3 with core := t } pt p3f x2t (by omega) (fun i hi => by
+  rcases ih (c - r) (by omega) { p3 with core := t } pt p3f x2t (by omega) (fun i hi => by
       show P.normal (t.x 1 + UInt64.ofNat i) = true
       rw [hx1t, add_ofNat_add]
-      exact hmapc _ (by omega))
-  refine ⟨p', q2.trans (q3.trans (q4.trans q5)), hpc', hf', ?_, ?_, ?_, ?_, ?_⟩
+      exact hmapc _ (by omega)) p3nf with
+    ⟨p', q5, hpc', hf', hio', hk, tr, e', htr', ⟨j, hj, hout'⟩, hnf'⟩ |
+    ⟨p', q5, hpc', hf', hout', hmem', hsp', hio', hx', hnf'⟩
+  · refine .inl ⟨p', q2.trans (q3.trans (q4.trans q5)), hpc', hf', ?_, hk, tr, e', htr',
+      ⟨r + j, by omega, ?_⟩, hnf'⟩
+    · rw [hio']
+      show t.io = _
+      rw [iot, p3io]
+    · rw [hout']
+      show stdoutOf p3.trace ++ readList t.mem (t.x 1) j = _
+      rw [p3out, memt, p3mem, hx1t, List.append_assoc, ← readList_add]
+  refine .inr ⟨p', q2.trans (q3.trans (q4.trans q5)), hpc', hf', ?_, ?_, ?_, ?_, ?_, hnf'⟩
   · rw [hout']
     show stdoutOf p3.trace ++ readList t.mem (t.x 1) (c - r) = _
     rw [p3out, memt, p3mem, hx1t, List.append_assoc, ← readList_add, Nat.add_sub_cancel' hrc]
