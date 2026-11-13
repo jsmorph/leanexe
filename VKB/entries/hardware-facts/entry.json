@@ -5,13 +5,15 @@
     "a register or result that the architecture leaves UNKNOWN or unspecified",
     "an erratum of the processor or the device against the run conditions",
     "USART3 after a receive overrun, with OVRDIS clear or set",
-    "a proof outside the build offered as evidence for a trusted item"
+    "a proof outside the build offered as evidence for a trusted item",
+    "a WebAssembly engine's reply to an argument outside its type, read from the engine's source"
   ],
   "modules": [
     "LeanExe.M7.Board",
     "LeanExe.M7.Proof.Boot",
     "LeanExe.A64.Boot",
-    "LeanExe.ProofKit.F32Canonical"
+    "LeanExe.ProofKit.F32Canonical",
+    "LeanExe.Wasi.Calls"
   ],
   "declarations": [
     "LeanExe.M7.Nucleo.init",
@@ -20,7 +22,9 @@
     "LeanExe.M7.Reset",
     "LeanExe.A64.fpcrValue",
     "LeanExe.canonical32",
-    "LeanExe.canonical_f32_bin"
+    "LeanExe.canonical_f32_bin",
+    "LeanExe.Wasi.Call.clockTimeGet",
+    "LeanExe.Wasi.Call.reject"
   ],
   "examples": []
 }

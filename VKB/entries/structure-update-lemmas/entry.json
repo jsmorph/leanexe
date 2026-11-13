@@ -4,17 +4,28 @@
     "exact of a lemma whose side is { { s with f := a } with g := b } against a flat structure literal",
     "Type mismatch with have __src := { ?s with io := ?io } in the type of the lemma",
     "{ s with pc := s.pc + 4, io } = { s.devRead t v with io }",
-    "a lemma that closes the goals of a walk without naming its arguments"
+    "a lemma that closes the goals of a walk without naming its arguments",
+    "facts about a structure after nested updates of a call, a return, and a branch"
   ],
   "modules": [
-    "LeanExe.A64.Isla.Check"
+    "LeanExe.A64.Isla.Check",
+    "LeanExe.A64.Proof.LinuxMain"
   ],
   "declarations": [
     "LeanExe.A64.Isla.devRead_io_31",
     "LeanExe.A64.Isla.devRead_io_eq",
-    "LeanExe.A64.Isla.setRegAt"
+    "LeanExe.A64.Isla.setRegAt",
+    "LeanExe.A64.Proc.ret",
+    "LeanExe.A64.Proc.enter",
+    "LeanExe.A64.Proc.goto",
+    "LeanExe.A64.Proc.enter_x",
+    "LeanExe.A64.Proc.ret_mem",
+    "LeanExe.A64.Proc.goto_pc"
   ],
-  "examples": [],
+  "examples": [
+    "LeanExe.A64.run_readPass",
+    "LeanExe.A64.run_writeLoop'"
+  ],
   "unimported": {
     "tests/TestSupport/A64/Isla/LdrW.lean": [
       "TestSupport.A64.Isla.dev_tcg"

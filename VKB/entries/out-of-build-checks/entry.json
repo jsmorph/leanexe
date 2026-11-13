@@ -5,7 +5,9 @@
     "a file module, Isla module, or Sail proof after a change to a definition it imports",
     "isla_trace% \"PATH\"",
     "isla_features% \"PATH\"",
-    "an olean that holds theorems about a changed trace or features file"
+    "an olean that holds theorems about a changed trace or features file",
+    "a scratch file that imports a module that no build has compiled",
+    "a built module that Lean no longer finds after a directory is placed first in LEAN_PATH"
   ],
   "modules": [
     "LeanExe.A64.Isla.Trace",
@@ -16,7 +18,8 @@
     "TestSupport.A64.CicSigned"
   ],
   "declarations": [
-    "LeanExe.FileNat.natOfBytes"
+    "LeanExe.FileNat.natOfBytes",
+    "Lean.SearchPath.findWithExt"
   ],
   "examples": [
     "TestSupport.M7.Bms.board_safe"

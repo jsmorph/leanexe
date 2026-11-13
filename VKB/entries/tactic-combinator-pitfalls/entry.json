@@ -28,7 +28,12 @@
     "unexpected identifier at the continuation line of a tactic inside a term",
     "split_ifs after unfold of a function whose result literal holds an if",
     "Expected type must not contain free variables from absurd (h : T) (by decide)",
-    "Library.Numerics.Interval.finite_iff does not apply after simp with decide_eq_true_eq"
+    "Library.Numerics.Interval.finite_iff does not apply after simp with decide_eq_true_eq",
+    "Type mismatch between l.headD 0 = 5 and l.head?.getD 0 = 5 after simp",
+    "a goal c % 4294967296 = c after simp of (UInt32.ofNat c.toNat).toUInt64",
+    "generalize h : e = x at h' also changes the goal",
+    "expected '*' or checkColGt at the line after simp … at",
+    "unexpected token 'variables'"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -44,7 +49,9 @@
     "Demos.Rcv.Properties",
     "Demos.Rcv.Maine.Rounds",
     "Demos.Rcv.Refinement",
-    "Demos.PassiveSafety.Soundness"
+    "Demos.PassiveSafety.Soundness",
+    "Verified.Wasi.OracleSys",
+    "Mathlib.Tactic.Basic"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -75,7 +82,11 @@
     "ite_eq_right",
     "Library.Numerics.Interval.finite_iff",
     "Bool.and_eq_true",
-    "of_decide_eq_true"
+    "of_decide_eq_true",
+    "List.headD",
+    "UInt64.toNat_inj",
+    "UInt64.toNat_mod",
+    "Lean.Parser.Tactic.generalize"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -92,7 +103,8 @@
     "Demos.Orbit.lambertBox_sound",
     "Demos.Conjunction.Model.radiusIn_of",
     "Demos.PassiveSafety.march_covered",
-    "Demos.PassiveSafety.midpoint_ok"
+    "Demos.PassiveSafety.midpoint_ok",
+    "Verified.Wasi.OracleSys.decodeArgs_lower"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

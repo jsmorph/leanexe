@@ -3,21 +3,49 @@
   "goals": [
     "targetHost.Satisfies module (Verified.Wasi.hostSpec host)",
     "∃ targetHost, targetHost.Satisfies target (Verified.Wasi.hostSpec host)",
-    "a WASI theorem that may be vacuous for some host"
+    "targetHost.Satisfies module (Verified.Wasi.hostSpecWith host calls)",
+    "a WASI theorem that may be vacuous for some host",
+    "a host contract that records the request that the core arguments lower",
+    "two requests with the same core arguments, such as [] and [.word 0]",
+    "pairwise separation of output regions and inputs that a layout interleaves",
+    "a region of size 0 at 2^32, whose pointer is 0"
   ],
   "modules": [
     "Verified.Wasi.HostTotal",
     "Verified.Wasi.HostSpec",
-    "Verified.Wasi.OracleHost"
+    "Verified.Wasi.OracleHost",
+    "Verified.Wasi.OracleSys",
+    "Verified.Wasi.HostTotalWith"
   ],
   "declarations": [
     "Verified.Wasi.hostSpec",
+    "Verified.Wasi.hostSpecWith",
     "LeanExe.Wasi.Host.Total",
     "LeanExe.Wasi.Host.Answers",
     "LeanExe.Wasi.Host.Total.satisfiable",
     "LeanExe.Wasi.Host.Total.answers",
     "LeanExe.Wasi.Host.Answers.of_satisfies",
-    "Verified.Wasi.OracleHost.env_satisfies"
+    "Verified.Wasi.OracleHost.env_satisfies",
+    "Verified.Wasi.sysContract",
+    "Verified.Wasi.SysRequest",
+    "Verified.Wasi.argsFit",
+    "Verified.Wasi.lowerArgs",
+    "LeanExe.Wasi.Host.TotalFor",
+    "LeanExe.Wasi.Host.AnswersFor",
+    "LeanExe.Wasi.Host.TotalFor.satisfiableWith",
+    "LeanExe.Wasi.Host.Answers.of_satisfiesWith",
+    "Verified.Wasi.Layout.laid",
+    "Verified.Wasi.Layout.Laid",
+    "Verified.Wasi.Layout.Within",
+    "Verified.Wasi.Layout.disjoint_of_below",
+    "LeanExe.Runtime.regionsDisjoint",
+    "List.Perm.pairwise_iff",
+    "List.perm_middle",
+    "LeanExe.Wasi.Host.Answers.layoutRequest",
+    "Verified.Wasi.layoutPointers",
+    "Verified.Wasi.layoutMemory"
   ],
-  "examples": []
+  "examples": [
+    "Verified.Wasi.OracleSys.decodeArgs_lower"
+  ]
 }

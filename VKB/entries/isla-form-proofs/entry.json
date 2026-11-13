@@ -1,15 +1,15 @@
 {
   "id": "isla-form-proofs",
   "goals": [
-    "LeanExe.A64.Isla.Agrees P (tcg.sys .tcr u) [\"SEE\", \"__BranchTaken\"] F f i s",
-    "LeanExe.A64.Isla.AgreesAll P A (tcg.sys .fp u) [\"SEE\", \"__BranchTaken\", \"_Z\", \"FPSR\"] F f i s",
+    "LeanExe.A64.Isla.Agrees P .el1 (tcg.sys .tcr u) [\"SEE\", \"__BranchTaken\"] F f i s",
+    "LeanExe.A64.Isla.AgreesAll P .el1 A (tcg.sys .fp u) [\"SEE\", \"__BranchTaken\", \"_Z\", \"FPSR\"] F f i s",
     "LeanExe.M7.Isla.Agrees P δ (sys u) W F f i m",
     "memory exhaustion or deep recursion in a trace walk",
     "a walk step whose cost grows with the remaining trace",
     "a WebAssembly form that a back end lacks",
     "AgreesAll for a form with an abstract call and one outcome",
     "a kernel stack overflow in the check of a form's decode",
-    "LeanExe.A64.Isla.Agrees P (tcg.sys .memory u) [\"SEE\", \"__BranchTaken\"] devTcg (memFields t n imm) (.ldrW t n imm) s for a load whose value a device gives",
+    "LeanExe.A64.Isla.Agrees P .el1 (tcg.sys .memory u) [\"SEE\", \"__BranchTaken\"] devTcg (memFields t n imm) (.ldrW t n imm) s for a load whose value a device gives",
     "P.devLoad s.io a = some (v, io) in a trace walk",
     "a new memory form whose trace has the shape of an existing form's",
     "an empty trace file and Permission denied from tests/isla/traces.sh over tailscale ssh"
@@ -32,6 +32,7 @@
     "LeanExe.A64.Isla.Abstract",
     "LeanExe.A64.Isla.Profile.sys",
     "LeanExe.A64.Isla.Agrees",
+    "LeanExe.A64.Isla.SpReg",
     "LeanExe.A64.Isla.AgreesAll",
     "LeanExe.A64.Isla.Agrees.of_reads",
     "LeanExe.A64.Isla.AgreesAll.of_reads",

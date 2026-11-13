@@ -7,7 +7,9 @@
     "PureContext.ownedCost depth modes live value env ≤ budget",
     "Env.get env (Var.ofIndex Γ i h) over a destructured state, unfolded exponentially",
     "@ite Nat c d a b ≤ 0 with an instance d that holds an effect body's environment",
-    "maximum recursion depth in simp +decide on the closed goal of begin"
+    "maximum recursion depth in simp +decide on the closed goal of begin",
+    "a resource bound of a sys command whose charge depends on the host's reply",
+    "the first event of a prefix of LeanExe.Wasi.Action.sys call args next"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -16,7 +18,8 @@
     "Demos.RunningSum.Charges",
     "Demos.RunningSumFp.Charges",
     "Verified.Examples.WasiRetainBudget",
-    "Demos.OrderBook.ProcessCharges"
+    "Demos.OrderBook.ProcessCharges",
+    "Verified.Wasi.SysRule"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -34,7 +37,16 @@
     "Verified.Wasi.Resource.ResourceLoopPrefix",
     "Verified.Wasi.Resource.call_prefix_rule",
     "Demos.OrderBook.Process.ite_le_zero",
-    "Verified.Env.cons"
+    "Verified.Env.cons",
+    "Verified.Wasi.Resource.ResourceExec.sys",
+    "Verified.Wasi.Resource.ResourcePrefix.sys",
+    "LeanExe.Wasi.Call.argsGet",
+    "Verified.Wasi.Resource.reported_rule",
+    "Verified.Wasi.Resource.reported_rule_observed",
+    "Verified.Wasi.Resource.sys_rule_of_bound",
+    "LeanExe.Wasi.PrefixProgress",
+    "LeanExe.Wasi.Prefix.progress",
+    "Verified.Wasi.Resource.prefix_sys_first"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
