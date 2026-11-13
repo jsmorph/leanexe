@@ -9,7 +9,14 @@
     "a structure field moved into a substructure while existing statements name it",
     "a generator with a new entry routine beside the old one",
     "a form whose encoding admits only some values of a parameter, such as the immediate of SUBS",
-    "hashes of the declarations of a module before and after a change"
+    "hashes of the declarations of a module before and after a change",
+    "an effect, such as a system call, that the instruction type, the decoder, and exec lack",
+    "a run of step lifted into a run of a process model with a rule for SVC #0",
+    "an import added to a WebAssembly module, which moves every defined function's index",
+    "an old theorem proved from its general twin at calls := []",
+    "a premise added to a predicate that lemmas take as a hypothesis",
+    "tools/DeclHashes.lean fails to import two modules that declare main",
+    "a changed type hash of a theorem whose text did not change, from a reused matcher"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -21,7 +28,14 @@
     "TestSupport.M7.ShaLoop",
     "LeanExe.A64.BootImage",
     "LeanExe.A64.Gen",
-    "LeanExe.A64.Proof.Memory"
+    "LeanExe.A64.Proof.Memory",
+    "LeanExe.A64.Proof.LinuxProgram",
+    "Verified.Wasi.HostSpec",
+    "Verified.Wasi.EntryCorrect",
+    "Verified.Wasi.CommandCodeSpec",
+    "Verified.Wasi.CompilerFacts",
+    "Verified.Wasi.ReflectCommand",
+    "Verified.Wasi.Wrappers"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -52,10 +66,39 @@
     "LeanExe.A64.instrSize",
     "LeanExe.A64.gen_memoryGrow",
     "LeanExe.A64.run_grow",
-    "LeanExe.A64.sim_memoryGrow"
+    "LeanExe.A64.sim_memoryGrow",
+    "LeanExe.A64.pstep",
+    "LeanExe.A64.Proc",
+    "LeanExe.A64.decode",
+    "LeanExe.A64.decode_svcWord",
+    "LeanExe.A64.Kernel.svc",
+    "LeanExe.A64.exec",
+    "LeanExe.A64.step",
+    "LeanExe.A64.ProcReach.of_reach'",
+    "LeanExe.A64.fpcrValue",
+    "LeanExe.A64.Reach.start",
+    "LeanExe.A64.Instr",
+    "LeanExe.A64.decodeNat",
+    "Verified.Wasi.Relocation.program",
+    "Verified.Wasi.Relocation.programWith",
+    "Verified.Wasi.compile",
+    "Verified.Wasi.compileCalls",
+    "Verified.Wasi.hostSpecWith_nil",
+    "Verified.Wasi.Relocation.Layout.toWith",
+    "Verified.Wasi.CompilerFacts.toWith",
+    "Verified.Wasi.Command.ReadyWith",
+    "Verified.Wasi.Command.Ready",
+    "Verified.Wasi.CommandCodeSpecWith",
+    "Verified.Wasi.Command.sys",
+    "Verified.Wasi.Reflect.ProgramReflection.usesCalls",
+    "Verified.Wasi.Wrappers.outputPosition",
+    "Lean.Meta.Match.mkMatcherAuxDefinition"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",
-    "TestSupport.M7.Sha.shaOvrdis_loop"
+    "TestSupport.M7.Sha.shaOvrdis_loop",
+    "LeanExe.A64.sysProgram_run",
+    "Verified.Wasi.compile_entry_export",
+    "Verified.Wasi.compile_entry_export_with"
   ]
 }

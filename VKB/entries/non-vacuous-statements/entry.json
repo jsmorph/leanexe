@@ -9,7 +9,8 @@
     "∃ recs, recs.flatMap recordBytes = bs.take (8 * kin * (bs.length / (8 * kin))) ∧ ...",
     "a premise copied from a tool's configuration",
     "a conclusion modulo whole turns, or an existential that admits a second triple of coordinates",
-    "a uniqueness theorem over solutions defined at every real time"
+    "a uniqueness theorem over solutions defined at every real time",
+    "a host contract whose premise admits two requests with the same core arguments"
   ],
   "modules": [
     "Demos.Frames.Model",
@@ -22,7 +23,8 @@
     "TestSupport.M7.GwLoop",
     "TestSupport.M7.ShaLoop",
     "Demos.Energy.Window",
-    "LeanExe.A64.Isla.Walk"
+    "LeanExe.A64.Isla.Walk",
+    "Verified.Wasi.HostTotalWith"
   ],
   "declarations": [
     "LeanExe.Requests.delim_prefix",
@@ -33,7 +35,8 @@
     "LeanExe.A64.Isla.Profile.sys",
     "Demos.Frames.Model.IsGeodetic",
     "LeanExe.ProofKit.Signed64Value.toFloat_exact",
-    "Library.Numerics.Interval.le_iff_value"
+    "Library.Numerics.Interval.le_iff_value",
+    "Verified.Wasi.sysContract"
   ],
   "examples": [
     "Demos.Energy.Spec.admitted_exists",

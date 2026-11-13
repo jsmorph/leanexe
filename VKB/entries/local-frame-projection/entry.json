@@ -4,7 +4,8 @@
     "({ frame with values := [] } : Wasm.Locals) = frame",
     "({ frame with values := vs } : Wasm.Locals).get index = frame.get index",
     "frame.locals[localIndex]? = some value from frame.get (parameterCount + localIndex) = some value",
-    "(Verified.setLocal s i v).get j = s.get j"
+    "(Verified.setLocal s i v).get j = s.get j",
+    "wp target (.localGet i :: rest) Q st s env after several stores to locals"
   ],
   "modules": [
     "LeanExe.ProofKit.Frame",
@@ -12,7 +13,8 @@
     "LeanExe.ProofKit.FixedArraySearchNone",
     "LeanExe.ProofKit.AlignedHeaderExec",
     "LeanExe.Pipeline.RuntimeSpec",
-    "Verified.LocalFrame"
+    "Verified.LocalFrame",
+    "Verified.Wasi.SysReported"
   ],
   "declarations": [
     "LeanExe.ProofKit.Frame.ext",
@@ -30,12 +32,17 @@
     "Verified.Locals.get_values",
     "Verified.Locals.set?_local",
     "Verified.Locals.get_setLocal_same",
-    "Verified.Locals.get_setLocal_ne"
+    "Verified.Locals.get_setLocal_ne",
+    "Verified.Wasi.wp_localGet_get",
+    "List.length_set",
+    "List.set"
   ],
   "examples": [
     "LeanExe.ProofKit.MemoryGrowth.ensureProgram_spec_available",
     "LeanExe.ProofKit.FixedArraySearch.guardProgram_spec",
     "LeanExe.ProofKit.FixedArrayHeader.writeLocal_specA",
-    "LeanExe.Pipeline.joinProgram_spec"
+    "LeanExe.Pipeline.joinProgram_spec",
+    "Verified.Wasi.wp_sys_reported_with",
+    "Verified.Wasi.wp_sys_reported_call_with"
   ]
 }

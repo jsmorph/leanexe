@@ -1,0 +1,46 @@
+{
+  "id": "isla-symbolic-configurations",
+  "goals": [
+    "an Isla theorem that must cover every state of a Linux process at EL0",
+    "--reset-constraint \"= ((_ extract 34 34) HCR_EL2.bits) #b1\"",
+    "u.hcr.toNat / 2 ^ 34 % 2 = 1 in the walk of a trace whose control registers are symbolic",
+    "a configuration value that the target system never holds",
+    "Isla exhausts its memory on exception entry with SVE enabled, MaybeZeroSVEUppers",
+    "Isla exhausts its memory on a table walk at EL2 with _TTBR0_EL2 set",
+    "a forward lemma that fails on the paths of a control bit that no constraint fixes",
+    "σ \"PSTATE\" = π \"PSTATE\" for a trace that writes fields of PSTATE",
+    "the program counter after exception entry with VBAR_ELx and TCR_ELx symbolic",
+    "a walk lemma that names Unknown.z and does not apply under another profile"
+  ],
+  "modules": [
+    "LeanExe.A64.Isla.Linux",
+    "LeanExe.A64.Isla.Float",
+    "LeanExe.A64.Isla.Check"
+  ],
+  "declarations": [
+    "LeanExe.A64.Isla.SpReg",
+    "LeanExe.A64.Isla.LinuxUnknown",
+    "LeanExe.A64.Isla.LinuxUnknown.Holds",
+    "LeanExe.A64.Isla.linux",
+    "LeanExe.A64.Isla.holds_vhe",
+    "LeanExe.A64.Isla.holds_el1",
+    "LeanExe.A64.Isla.len_min",
+    "LeanExe.A64.Isla.rwchain_eq",
+    "LeanExe.A64.Isla.Unknown.z",
+    "LeanExe.A64.Isla.Agrees",
+    "LeanExe.A64.Isla.holds_vhe_fp"
+  ],
+  "examples": [],
+  "unimported": {
+    "tests/TestSupport/A64/Isla/Svc.lean": [
+      "TestSupport.A64.Isla.svc_vhe",
+      "TestSupport.A64.Isla.svc_el1",
+      "TestSupport.A64.Isla.svcVhe_bwd",
+      "TestSupport.A64.Isla.SvcAgrees",
+      "TestSupport.A64.Isla.lowerSync"
+    ],
+    "tests/TestSupport/A64/Isla/Branch.lean": [
+      "TestSupport.A64.Isla.b_vhe"
+    ]
+  }
+}

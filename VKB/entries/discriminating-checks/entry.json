@@ -8,7 +8,9 @@
     "a host script that judges a run on a board or an emulator",
     "a native test of a theorem statement that has rejected no false variant",
     "a tolerance as large as the quantity that the check compares",
-    "a test of the accuracy of a bound against the true value, with a margin for the limit of the method"
+    "a test of the accuracy of a bound against the true value, with a margin for the limit of the method",
+    "a run of an emitted module whose checks test outputs by presence or number",
+    "a frame test with guard bytes around the declared regions of a call"
   ],
   "modules": [],
   "declarations": [],

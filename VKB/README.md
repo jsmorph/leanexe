@@ -14,9 +14,9 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
 | [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
 | [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
-| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance, and rewrites whose results make later steps fail. |
+| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance, rewrites and normal forms whose results make later steps fail, and parses that mislead. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
-| [Lemmas that close goals of structure literals](entries/structure-update-lemmas/README.md) | States a lemma about an updated structure as one update of a variable, so that `exact` unifies its arguments with the flat literal that `simp` leaves. |
+| [Lemmas that close goals of structure literals](entries/structure-update-lemmas/README.md) | States a lemma about an updated structure as one update of a variable, so that `exact` unifies its arguments with the flat literal that `simp` leaves, and names the updates of a proof that states many facts about them. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
 | [Loops and builds](entries/loop-combinators/README.md) | Proves invariants for `LeanExe.loop`, element equations for `LeanExe.build`, and equalities of loops that write into arrays of their state with the loops that build new arrays. |
 | [Array folds by list induction](entries/array-fold-list-induction/README.md) | Proves that `xs.foldl step init` meets a specification stated by positions or lists, by induction on the array's list. |
@@ -55,7 +55,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
 | [Checks that can fail](entries/discriminating-checks/README.md) | Shows that a check detects a seeded fault before its passes count as evidence. |
 | [Executable mirrors of a specification](entries/mirror-cross-check/README.md) | Cross-checks a mirror that judges runs against a native replay of the specification. |
-| [Theorems outside the full check](entries/out-of-build-checks/README.md) | Identifies theorems that the full check does not check and the driver that does. |
+| [Theorems outside the full check](entries/out-of-build-checks/README.md) | Identifies theorems that the full check does not check and the driver that does, and elaborates a file against a module that no build has compiled. |
 | [Results that show a check passed](entries/result-validity/README.md) | Takes a verdict from the check's own output on a known tree. |
 | [Changes that keep statements and bytes](entries/unchanged-statements-and-bytes/README.md) | Shapes a change of a shared definition so that existing theorems and artifacts stay as they are, and shows it. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
@@ -66,8 +66,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Mutual execution induction](entries/mutual-relation-induction/README.md) | Proves statements over mutually inductive WASI or Clight executions. |
 | [Partial loop correctness](entries/partial-wasm-loop/README.md) | States the result of a completed Wasm loop while its termination proof remains separate. |
 | [Calls with operands below the arguments](entries/direct-call-stack-tail/README.md) | Extends a callee's theorem on its arguments to a call with more operands on the stack. |
-| [Raw Wasm locals](entries/local-frame-projection/README.md) | Proves equalities of `Wasm.Locals` and reads parameters and locals in proofs of hand-written code. |
-| [WASI host premises](entries/wasi-host-premise/README.md) | Identifies the satisfying-host premise needed to apply an execution theorem. |
+| [Raw Wasm locals](entries/local-frame-projection/README.md) | Proves equalities of `Wasm.Locals`, reads parameters and locals in proofs of hand-written code, and names the states of long proofs over generated code. |
+| [WASI host premises](entries/wasi-host-premise/README.md) | Identifies the satisfying-host premise of an execution theorem, with or without flat calls, and what a new host contract must prove. |
 | [WASI effect charges](entries/wasi-effect-charges/README.md) | Bounds allocation over complete command runs and their prefixes. |
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
 | [Line-oriented processes](entries/stream-fold/README.md) | Instantiates the shared line reader and output proof with an application kernel. |
@@ -77,16 +77,17 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Bare-metal C programs](entries/bare-metal-programs/README.md) | States whole-program theorems for fixed arguments, loaded inputs, request loops, and controllers. |
 | [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations and extends a proved result to every matching execution. |
 | [Proofs of the Clight copy against N](entries/clight-n-proofs/README.md) | Proves the leaf forms of the reference semantics N for the Lean copy of Clight, and carries the copy's theorem of a program to an instance of N. |
-| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments, arguments read from the UART, or a message of bytes read from the UART, and joins its output with a specification. |
+| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments, arguments read from the UART, or a message of bytes read from the UART, proves a Linux executable's run from its entry to `exit_group`, and joins the output with a specification. |
 | [Image files](entries/image-file-checks/README.md) | Checks a written A64 or M7 image against its generator in the kernel, in parts when it is large. |
 | [Cortex-M7 board theorems](entries/m7-board-theorem/README.md) | Proves a step's run from reset through every window from its compiler theorem. |
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
 | [Instruction forms against Isla](entries/isla-form-proofs/README.md) | Proves an A64 or M7 form's agreement with Isla's traces of Arm's specification, including a load whose value a device gives. |
+| [Isla traces with symbolic control registers](entries/isla-symbolic-configurations/README.md) | Traces a form under the control registers that a kernel or firmware sets, with symbolic registers, constrained bits, and the premises that such traces need. |
 | [Floating-point equations from Sail](entries/sail-fp-equations/README.md) | Derives an Isla theorem's floating-point hypothesis from Sail's Lean translation. |
 | [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, a second implementation such as RCTab, or another reference. |
 | [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |
 | [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
-| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each hardware fact and keeps a trusted item's claim apart from its evidence. |
+| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each fact about the hardware or an engine and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
 | [Definitions that the kernel evaluates](entries/kernel-evaluated-definitions/README.md) | Gives an evaluated definition a form that computes each value once, or evaluates it natively and has the kernel check the literal. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |
