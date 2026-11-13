@@ -48,10 +48,10 @@ theorem withOpen_rel (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectS
   refine .sys Call.pathOpen _ fun reply => ?_
   show Action.Rel _ (if reply.errno != 0 then _ else _) (bif reply.errno != 0 then _ else _)
   by_cases failed : (reply.errno != 0) = true
-  · rw [ite_cond_eq_true _ _ (eq_true failed), failed]
+  · rw [ite_eq_left_of_eq_true _ _ (eq_true failed), failed]
     exact hOnError (reply.errno, reply.word 0)
   · have succeeded : (reply.errno != 0) = false := by simpa using failed
-    rw [ite_cond_eq_false _ _ (eq_false failed), succeeded]
+    rw [ite_eq_right_of_eq_false _ _ (eq_false failed), succeeded]
     show Action.Rel _ _ (Action.bind (body'.denote pureFuns effectFuns
       (.cons (reply.word 0) (.cons (reply.errno, reply.word 0) env))) _)
     refine .bind (hBody (reply.errno, reply.word 0) ⟨reply.word 0⟩) fun native flat same => ?_
@@ -92,10 +92,10 @@ theorem withOpen_rel_unit (pureFuns : Funs pureSigs) (effectFuns : EffectFuns ef
   refine .sys Call.pathOpen _ fun reply => ?_
   show Action.Rel _ (if reply.errno != 0 then _ else _) (bif reply.errno != 0 then _ else _)
   by_cases failed : (reply.errno != 0) = true
-  · rw [ite_cond_eq_true _ _ (eq_true failed), failed]
+  · rw [ite_eq_left_of_eq_true _ _ (eq_true failed), failed]
     exact hOnError (reply.errno, reply.word 0)
   · have succeeded : (reply.errno != 0) = false := by simpa using failed
-    rw [ite_cond_eq_false _ _ (eq_false failed), succeeded]
+    rw [ite_eq_right_of_eq_false _ _ (eq_false failed), succeeded]
     show Action.Rel _ _ (Action.bind (body'.denote pureFuns effectFuns
       (.cons (reply.word 0) (.cons (reply.errno, reply.word 0) env))) _)
     refine .bind (hBody (reply.errno, reply.word 0) ⟨reply.word 0⟩) fun native flat same => ?_

@@ -212,7 +212,7 @@ theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack :
           fd = 3 ∨ fd ∈ stack
   | [], _, _, _, _ => by
     intro fd member
-    simp [flatArgsWith, handleArgs] at member
+    simp [handleArgs] at member
   | param :: params, args, inputs, marked, count => by
     intro fd member
     cases param with
@@ -230,7 +230,7 @@ theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack :
             (by simpa [List.count_cons] using count) fd member
     | input =>
       cases inputs with
-      | nil => simp [List.count_cons] at count
+      | nil => simp at count
       | cons input inputs =>
         simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord,
           Bool.false_eq_true] at marked
@@ -526,7 +526,7 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     refine safe callee _ stack fun index marked => ?_
     by_cases bounded : index < signature.params.length
     · have argument := h.2 index bounded
-      rw [dite_cond_eq_true (eq_true bounded)] at argument
+      rw [dite_eq_left_of_eq_true (eq_true bounded)] at argument
       simp only [marked, Bool.not_true, Bool.false_or] at argument
       obtain ⟨x, same, xMarked⟩ := Expr.markedVar_var _ argument
       obtain ⟨word, value, ok⟩ := hEnv x.index xMarked
