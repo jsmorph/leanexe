@@ -1,6 +1,7 @@
 #!/bin/sh
-# Builds the flat call example, checks its axioms and the non-vacuity witness of its host premises,
-# runs its native cases, and runs its module in the Wasmtime host with several argument lists.  Each
+# Builds the flat call example and its total theorem, Verified.Examples.WasiSysTotal, checks their
+# axioms and the witness host, for which tests/wasi/SysWitness.lean applies the total theorem, runs
+# its native cases, and runs its module in the Wasmtime host with several argument lists.  Each
 # run must exit with status 0 and write the arguments with a zero byte after each, the argument
 # count and size as 8 little-endian bytes each, a realtime reading within a day of the system clock,
 # a monotonic reading below 10^17 ns, and 16 random bytes.  Four runs with the same arguments must
@@ -36,7 +37,7 @@ if [ ! -x "$host" ]; then
 fi
 
 tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys \
-  Verified.Examples.WasiSysInputs Verified.Examples.WasiSysRecords
+  Verified.Examples.WasiSysTotal Verified.Examples.WasiSysInputs Verified.Examples.WasiSysRecords
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysWitness.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysInputs.lean

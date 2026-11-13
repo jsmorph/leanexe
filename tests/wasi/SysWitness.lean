@@ -1,4 +1,5 @@
 import Verified.Examples.WasiSys
+import Verified.Examples.WasiSysTotal
 import Verified.Wasi.HostTotalWith
 import Verified.Wasi.SysRule
 import LeanExe.Wasi.NoTrap
@@ -8,9 +9,10 @@ and `Host.NoTraps`, and its reporter replies meet the premise of `reported_rule_
 premises of the flat call theorems can be met.  The world records each call's last outputs by name,
 and a call with a reporter reports the sizes that its reporter's last outputs give.  For the flat
 call example, the host has an environment that satisfies `hostSpecWith` for the example's module
-and call list, and it meets the reached-host premise of the example's `total`.  The heap and
-resource premises of `total` are not discharged here.  The second review of the syscall increment
-wrote the first version of this file. -/
+and call list, and it meets the reached-host premise of the example's `total`.  Its reporter
+replies ask for 3 bytes, so `Verified.Examples.WasiSys.total_of_bound` discharges the heap and
+resource premises, and `example_total` states that `_start` exits with an accepted status from
+every world.  The second review of the syscall increment wrote the first version of this file. -/
 
 open LeanExe LeanExe.Wasi Verified.Wasi
 
@@ -141,13 +143,32 @@ theorem example_noTrapsAlong (world : World) :
       world :=
   witness_noTraps.along _ world
 
+open Verified.Examples.WasiSys in
+/-- Some host environment satisfies `hostSpecWith witness` for the example, and from every world
+`_start` exits with an accepted status. -/
+theorem example_total :
+    ∃ targetHost : Wasm.HostEnv (Observed World),
+      targetHost.Satisfies command.module (hostSpecWith witness command.sysCalls) ∧
+        ∀ world : Observed World, ∃ fuelBound, ∀ fuel ≥ fuelBound,
+          AcceptedExit witness (main.bind fun status => (Action.exit status : Action Unit)) world
+            (Wasm.run fuel command.module
+              (Wrappers.effectIndexWith command.sysCalls command.pure.module 1)
+              (compileInitialStoreWith command.sysCalls command.pure.module command.program
+                command.entries command.mainEntry command.literalPool world)
+              [] targetHost) := by
+  obtain ⟨targetHost, valid⟩ := example_satisfiable
+  exact ⟨targetHost, valid, fun world => total_of_bound witness_reporter_bound (by decide) world
+    targetHost valid (witness_noTraps.along _ _)⟩
+
 end SysWitness
 
 open Lean Elab Command in
 elab "check_wasi_sys_witness_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[``SysWitness.witness_totalFor, ``SysWitness.witness_noTraps,
-    ``SysWitness.witness_rule, ``SysWitness.example_satisfiable, ``SysWitness.example_noTrapsAlong]
+    ``SysWitness.witness_rule, ``SysWitness.example_satisfiable, ``SysWitness.example_noTrapsAlong,
+    ``Verified.Examples.WasiSys.body_bounded, ``Verified.Examples.WasiSys.total_of_bound,
+    ``SysWitness.example_total]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do
