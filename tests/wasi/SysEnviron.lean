@@ -17,6 +17,7 @@ elab "check_sys_environ_axioms" : command => do
     ``Verified.Examples.WasiSysEnviron.command.exported,
     ``Verified.Examples.WasiSysEnviron.command.total,
     ``Verified.Examples.WasiSysEnviron.command.validity,
+    ``Verified.Examples.WasiSysEnviron.command.handles,
     ``Verified.Examples.WasiSysEnviron.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
