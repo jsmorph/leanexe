@@ -1,0 +1,27 @@
+{
+  "id": "composed-accuracy",
+  "goals": [
+    "|value (g (f xs))[i]!.toBits - value xs[i]!.toBits| ≤ B for two numerical functions with master theorems",
+    "Verified.Master m tables name B D R used in a theorem about a composition of exports",
+    "∑ k ∈ Finset.range n, Real.cos (2 * Real.pi * k * ((j : ℝ) - m) / n) = if j = m then n else 0",
+    "the inversion of the discrete Fourier transform over the reals"
+  ],
+  "modules": [
+    "Library.Numerics.Fourier.RoundTrip"
+  ],
+  "declarations": [
+    "Library.Numerics.Fourier.dft_spec",
+    "Library.Numerics.Fourier.inverse_spec",
+    "Library.Numerics.Fourier.dft_mass",
+    "Library.Numerics.Fourier.gamma_le",
+    "Library.Numerics.Fourier.sum_cos_sin",
+    "Library.Numerics.Fourier.inversion",
+    "Library.Numerics.Fourier.abs_sum_trig",
+    "Library.Numerics.Fourier.roundtrip_real"
+  ],
+  "examples": [
+    "Library.Numerics.Fourier.inverse_dft",
+    "Library.Numerics.Fourier.dft_master",
+    "Library.Numerics.Fourier.inverse_master"
+  ]
+}
