@@ -12,28 +12,29 @@ Livermore National Laboratory, October 2021 (https://www.osti.gov/servlets/purl/
 column F(q^2) gives the values of the authors' numerical integration.  That table adapts Table 1 of
 R. Serra, D. Arzelier, M. Joldes, J.-B. Lasserre, A. Rondepierre, and B. Salvy, Fast and Accurate
 Computation of Orbital Collision Probability for Short-Term Encounters, Journal of Guidance,
-Control, and Dynamics 39(5), 2016, and the same twelve values appear in its Alfano, Patera, and
-Chan columns as reproduced by M. Joldes's slides "A new method to compute the probability of
-collision for short-term space encounters".  The stated precision is the printed one: half a unit
-in the fourth significant figure.
+Control, and Dynamics 39(5), 2016.  M. Joldes's slides "A new method to compute the probability of
+collision for short-term space encounters" give the twelve cases with the values of Alfano's,
+Patera's, and Chan's methods, and their Alfano column holds these twelve values.  The stated
+precision is the printed one: half a unit in the fourth significant figure.
 
 ALFANO holds cases 1 to 11 of S. Alfano, Satellite Conjunction Monte Carlo Analysis, AAS 09-233,
 AAS/AIAA Space Flight Mechanics Meeting, 2009, appendix A: each object's position, velocity, and
 the position block of its covariance in the Earth-centered inertial frame at the time of closest
 approach, the combined object radius, and the probabilities of the paper's linear methods, Alfano's
-series and Patera's line integral, each with 100 divisions.  NASA's CARA Analysis Tools
-(https://github.com/nasa/CARA_Analysis_Tools, commit 43f0160f94d76a91805d86521c3e8fa0d09ecd68)
-redistribute the paper in References/ and its data in DataFiles/AlfanoInputData/; the spreadsheets
-there hold the same numbers to more digits, and the paper's rounding to ten decimal places changes
-none of them by more than 5e-11.  The paper states no precision for these values.  CARA's unit
-tests Pc2D_Foster_UnitTest.m and PcCircle_UnitTest.m compare its two-dimensional functions with
-the Alfano values of cases 1 to 11 at a relative tolerance of 1e-3, the tolerance used here.
-Case 12 has equal velocities at the time of closest approach, so it has no encounter plane, and
-CARA's PcCircle returns NaN for it.  Cases 9 and 10 have the same data at the time of closest
-approach and differ only in the time span of the paper's long-encounter methods.
+series and Patera's line integral, each with 100 divisions, and Patera's with 360 for case 5.
+NASA's CARA Analysis Tools (https://github.com/nasa/CARA_Analysis_Tools, commit
+43f0160f94d76a91805d86521c3e8fa0d09ecd68) redistribute the paper in References/ and its data in
+DataFiles/AlfanoInputData/.  The spreadsheets there hold the same numbers to more digits, and the
+paper's rounding to ten decimal places changes none of them by more than 5e-11.  The paper states
+no precision for these values.  CARA's unit tests Pc2D_Foster_UnitTest.m and PcCircle_UnitTest.m
+compare its two-dimensional functions with the Alfano values of cases 1 to 11 at a relative
+tolerance of 1e-3, the tolerance used here.  Case 12 has equal velocities at the time of closest
+approach, so it has no encounter plane, and CARA's PcCircle returns NaN for it.  Cases 9 and 10
+have the same data at the time of closest approach and differ only in the time span of the paper's
+long-encounter methods.
 
 A disagreement is a published value farther from the reference than its tolerance.  `cause`
-records the cause of each known disagreement; benchmark.py fails on a disagreement without one and
+records the cause of each known disagreement.  benchmark.py fails on a disagreement without one and
 on a recorded cause whose disagreement no longer occurs."""
 
 from typing import NamedTuple
