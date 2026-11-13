@@ -72,19 +72,25 @@ def form(u, c, w):
     return sum(u[i] * c[i][j] * w[j] for i in range(3) for j in range(3))
 
 
-def project(case: published.Alfano):
-    """The mean and covariance in the encounter plane of the two states, at 50 digits."""
-    p, s = case.primary, case.secondary
-    r = [mpf(a) - mpf(b) for a, b in zip(p.position, s.position)]
-    v = [mpf(a) - mpf(b) for a, b in zip(p.velocity, s.velocity)]
-    c1, c2 = matrix(p.covariance), matrix(s.covariance)
-    c = [[c1[i][j] + c2[i][j] for j in range(3)] for i in range(3)]
+def encounter(r, v, c, full=False):
+    """The mean and covariance in the encounter plane of the relative position r, the relative
+    velocity v, and the combined covariance c, at 50 digits.  The mean is (|r - (r.z) z|, 0), or
+    (|r|, 0) with `full`, as CARA's functions place it."""
     z = unit(v)
     perpendicular = [a - dot(r, z) * b for a, b in zip(r, z)]
     x = unit(perpendicular)
     y = cross(z, x)
-    m1 = sqrt(dot(perpendicular, perpendicular))
+    m1 = sqrt(dot(r, r) if full else dot(perpendicular, perpendicular))
     return m1, mpf(0), form(x, c, x), form(x, c, y), form(y, c, y)
+
+
+def project(case: published.Alfano):
+    """The mean and covariance in the encounter plane of the two states of a case."""
+    p, s = case.primary, case.secondary
+    r = [mpf(a) - mpf(b) for a, b in zip(p.position, s.position)]
+    v = [mpf(a) - mpf(b) for a, b in zip(p.velocity, s.velocity)]
+    c1, c2 = matrix(p.covariance), matrix(s.covariance)
+    return encounter(r, v, [[c1[i][j] + c2[i][j] for j in range(3)] for i in range(3)])
 
 
 def cases():
