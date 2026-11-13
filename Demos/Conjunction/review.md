@@ -31,8 +31,10 @@ The user asked for a recommendation, a review of it, and then action on each que
    [the section on tails and the message form](#tails-and-the-conjunction-message-form).
 2. Done: `Gaussian.pc_eq_multivariateGaussian`, `Gaussian.integral_density`, and `Gaussian.pc_le_one`.
 3. Done: `erfc` in the tails, for relative accuracy at small probabilities, in the same section.
-4. Reference cases from published benchmarks and from NASA's tools.
-5. A browser page.
+4. Done for published benchmarks: [the published cases](README.md#published-cases).  The cases of
+   NASA's tools wait for the decision recorded in
+   [the section on published cases](#published-cases-and-the-browser-page).
+5. Done: [the browser page](README.md#browser-page), without the conjunction-message form.
 
 ## Radius at a probability: CE and LE
 
@@ -216,3 +218,33 @@ program.
    Gaussian of the relative position along `Δv` (the design's optional P5), and that
    `Model.pc` does not depend on the orthonormal axes chosen in the plane.
 4. Message cases from published conjunction data messages with their probabilities.
+
+## Published cases and the browser page
+
+The request asked for public benchmark cases of the two-dimensional probability with complete
+inputs, a differential test against their published values and the reference integral, and a
+browser page on which the compiled module runs, the reader enters the encounter-plane inputs, and
+the page draws the plane, the interval, and the verdict.
+
+### Decisions
+
+| Question | Choice | Reason |
+|---|---|---|
+| Sources | Chan's twelve encounter-plane cases and Alfano's 2009 cases 1 to 11, quoted with citation in `tests/conjunction/published.py` | Their inputs are complete.  Chan's book is not openly available, so the values come from Table 1 of LLNL-TR-827434, which adapts Serra et al. 2016.  Serra et al. 2016, which gives further cases to more figures, could not be read: HAL and CORE refused the requests. |
+| NASA's CARA Analysis Tools | Not held in the repository | Its unit tests and sample messages are part of software under the NASA Open Source Agreement 1.3, whose section 3A requires a redistributed part to remain under the agreement with a copy of it.  Alfano's values, which CARA's unit tests also use, come from the paper. |
+| Projection of the inertial cases | The mean is the length of the part of the relative position perpendicular to the relative velocity | This is the encounter plane of the conjunction-message form.  CARA places the mean at the full length of the relative position, which changes these cases' probabilities by at most `9e-8` of their values. |
+| Tolerance of Alfano's values | Relative `1e-3` | The paper states no precision, and CARA's unit tests compare with these values at `1e-3`.  The report also states each value's relative difference. |
+| Known disagreements | Recorded with their causes beside the values, and the test fails on an unrecorded disagreement or a stale cause | The test then checks the published values as well as the program. |
+| Evaluation | `verified-cases-adaptive --evaluate FILE`, which evaluates `pc` and `pcAdaptive` in native Lean on the inputs of a file | The inputs come from the projection at 50 digits in Python, and the module tests establish the modules' agreement with native Lean bit for bit.  A mode of an existing executable leaves `lakefile.lean`, whose change affects every module, unchanged. |
+| Page's module | `assess` of `conjunction.wasm`, on a fresh instance for each call | `assess` returns the verdict that `assess_sound` covers, and `compiled.initial` covers the fresh instance's store.  The module has no call theorem like `pcAdaptive_call`. |
+
+### Open items
+
+1. Whether to fetch CARA's test files at a pinned commit at test time, as `tests/rcv` fetches its
+   corpus, or to include them under the NASA Open Source Agreement with a copy of it and a change
+   log, or to leave them out.
+2. Chan's cases 8 and 10 have probabilities near `1e-27`, and their intervals stop at the floor of
+   `erf`'s cancellation, about `1e-18`.
+3. A call theorem for `assess`, like `pcAdaptive_call`, which would state the page's premise in one
+   theorem.
+4. The conjunction-message form on the page, once the module exports it.

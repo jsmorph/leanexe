@@ -6,7 +6,9 @@ cases that [`tests/wgsl/run.sh`](../wgsl/run.sh) writes and compares every outpu
 Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU, in `gpt32.wasm` on
 the CPU, or on both with their scores compared.  The recount page recounts a ranked-choice contest
 from a canonical ballot file on the reader's computer with the tabulator's Oakland module
-`rcvTabulate.wasm` or its Maine module `rcvMaine.wasm`.  The pages run the verified compiler's
+`rcvTabulate.wasm` or its Maine module `rcvMaine.wasm`.  The conjunction page computes an interval
+that contains the probability of collision of an encounter with the module `conjunction.wasm` and
+draws the encounter plane.  The pages run the verified compiler's
 kernels and modules.  They use only standard WebGPU and WebAssembly.
 The server needs `uv` and this repository's Lean toolchain, and its first start downloads
 `transformers` and the GPT-2 tokenizer.
@@ -28,8 +30,9 @@ from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `ca
 [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
 corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
 `build/verified/gpt32.wasm`, the sampler's module `build/verified/gpt.wasm`, and the tabulator's
-modules `build/verified/rcvTabulate.wasm` and `build/verified/rcvMaine.wasm`, whose builds and
-emissions it runs under `tools/leanrun` with 8 GiB of memory and two hours each, and it builds the
+modules `build/verified/rcvTabulate.wasm` and `build/verified/rcvMaine.wasm`, and the conjunction
+program's module `build/verified/conjunction.wasm`, whose builds and emissions it runs under
+`tools/leanrun` with 8 GiB of memory and two hours each, and it builds the
 program printer `gpt32-lines`.  The server
 writes only missing files.  After a change to a kernel, to the cases, or to the GPT-2 programs,
 [`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel directory, and the server writes again
@@ -124,6 +127,42 @@ the 2024 at-large council contest of 4,696,262 bytes with a bound of 409,403,869
 with the Maine module, the 2024 contest for Representative to Congress, District 2, of 8,262,002
 bytes with a bound of 694,918,189 bytes.
 
+## Conjunction: `/conjunction/`
+
+The page computes the two-dimensional probability of collision from the quantities of the
+encounter plane that the reader enters: the mean miss vector `m1 m2`, its covariance
+`c11 c12 c22`, the combined radius `r`, the threshold `t`, and the number of panels `n`.  A menu
+fills the fields with an example: the README's, Chan's cases 1, 8, and 11, and Alfano's case 4 as
+[the differential test](../../Demos/Conjunction/README.md#published-cases) projects it, and the
+address `?example=K` chooses the menu's example `K`, from 0.  The page
+converts each decimal entry to the nearest double, refuses an empty or malformed entry and a panel
+count of 2^64 or more, and calls the export `assess` of `build/verified/conjunction.wasm` on a
+fresh instance.  It shows the arguments, the status, `lo`, `hi`, the width, and the verdict, draws
+`[lo, hi]` and `t` on a logarithmic scale, and draws the plane with the covariance ellipses at
+one, two, and three standard deviations, the mean, the miss vector, and the disk.  A dashed ring
+marks a disk smaller than two pixels at the drawing's scale, and the caption says so.
+[`assess.js`](conjunction/assess.js) makes the call, and [`app.js`](conjunction/app.js) runs the
+page and draws.
+
+`compiled.assess.implements` of
+[the conjunction program's compilation](../../Demos/Conjunction/Verified.lean) states that the
+export, called from a store with the allocator's invariant that holds the table of `exp`, returns
+without a trap the words of `Demos.Conjunction.assess`, and the generated `compiled.initial` states
+that a fresh instance's store is such a store.  `assess_sound` and `pc_enclosure` of
+[the soundness proofs](../../Demos/Conjunction/Soundness.lean) give the meaning of the result,
+and [the conjunction README](../../Demos/Conjunction/README.md#theorems) states them.  The page's
+JavaScript, its conversion of the entries, and its drawing lie outside the theorems.  The page has
+a hidden section for the conjunction-message form, which will take two states and two covariances
+in each object's RTN frame.
+
+`node tests/conjunction/page.mjs CASES` runs `assess.js` under Node on the lines of the export
+`assess` among the module cases that `verified-cases-conjunction` prints, 650 calls, and requires
+each status, endpoint, and verdict to equal native Lean's bit for bit.  Node 20 on an x86-64 host
+passed all 650 calls.  Headless Chromium 156 on the same host loaded the page with each example of
+the menu.  The page showed the module's SHA-256, each interval equaled that of native Lean's `pc`
+at 4,096 panels for the same input, and the verdicts were "below" for the README's example and
+Chan's case 8 and "above" for the others.
+
 ## Theorems and device results of the GPU pages
 
 Under its shape, token, loaded-weight, and device assumptions, `Demos.Gpt32.Verified.generate_host`
@@ -156,6 +195,7 @@ at every step.
 | [`tests/wgsl/browser/`](../wgsl/browser) | Kernel test page |
 | [`tests/gpt32/browser/`](../gpt32/browser) | GPT-2 page: `app.js` for the controls and the generation loop, `hosts.js` for the WebGPU and Wasm hosts and the sampler |
 | [`tests/web/rcv/`](rcv) | Recount page: `tabulate.js` for the call of the tabulator's modules, `app.js` for the page |
+| [`tests/web/conjunction/`](conjunction) | Conjunction page: `assess.js` for the call of the module, `app.js` for the page and the drawing |
 | [`Demos/Gpt32/Lines.lean`](../../Demos/Gpt32/Lines.lean) | `gpt32-lines`, the native program that prints the setup and step commands |
 
 | Request | Answer |

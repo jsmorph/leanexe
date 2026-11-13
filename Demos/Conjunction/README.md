@@ -652,6 +652,73 @@ interval at `p` near 1, and at small counts the search can need up to four times
 as with equal panels.  A narrower enclosure there needs a panel enclosure of higher order, such as
 the value at the panel's midpoint with a bound on the derivative.
 
+## Published cases
+
+[`tests/conjunction/benchmark.sh`](../../tests/conjunction/benchmark.sh) compares `pc` and
+`pcAdaptive` with published values of the probability on public cases whose inputs are complete.
+[The cases](../../tests/conjunction/published.py) hold each input and value as its source prints
+it.  For a case given as two states and two covariances in an inertial frame,
+[the test](../../tests/conjunction/benchmark.py) projects them onto the encounter plane at 50
+digits: the plane's normal is the relative velocity, the first axis follows the part of the
+relative position perpendicular to it, the mean is that part's length along the first axis, and
+the plane covariance is the sum of the two position covariances projected on the plane's axes.
+Each input is then rounded to the nearest double, and native Lean evaluates `pc` at 4,096, 65,536,
+and 1,048,576 panels and `pcAdaptive` at 4,096 and 65,536.  The reference value of each case is
+the polar integral of [the containment test's reference](../../tests/conjunction/reference.py) at
+50 digits for the doubles, which agrees with the one-dimensional form, integrated separately at 50
+digits, to a relative `1.1e-29` or better on every case.
+
+| Source | Terms | Inputs | Published values and tolerance |
+|---|---|---|---|
+| K. F. Chan, *Spacecraft Collision Probability*, 2008, chapter 5, as reproduced in Table 1 of LLNL-TR-827434 (Bernstein, Schlafly, Schneider, and Miller, 2021) | The book is not openly available; the report is a DOE-sponsored report on OSTI.  The test quotes the inputs and values with citation. | 12 cases in the encounter plane: the mean, the principal standard deviations along the plane's axes, and the radius, all round numbers | The probability to four figures.  Tolerance: half a unit in the fourth figure |
+| S. Alfano, *Satellite Conjunction Monte Carlo Analysis*, AAS 09-233, 2009, appendix A | Published paper; the test quotes the inputs and values with citation.  NASA's CARA Analysis Tools redistribute the paper and its data. | Cases 1 to 11: each object's position, velocity, and covariance in the Earth-centered inertial frame at the time of closest approach, and the combined radius | Alfano's series and Patera's line integral with 100 divisions, and Patera's with 360 for case 5, to nine decimals without a stated precision.  Tolerance: a relative `1e-3`, the tolerance with which CARA's unit tests compare their two-dimensional functions with these values |
+
+Case 12 of Alfano has equal velocities at the time of closest approach and so no encounter plane,
+and CARA's `PcCircle` returns NaN for it.  NASA's CARA Analysis Tools hold further cases in their
+unit tests under the NASA Open Source Agreement 1.3, which requires that any redistributed part of
+the software remain under that agreement with a copy of it, and the test holds none of them.
+
+All 115 results, 23 cases with five evaluations each, have status 0 and contain the reference.
+Every published value agrees with the reference within its tolerance except Patera's values with
+100 divisions for cases 4 and 5, which lie 1.0 and 0.36 percent above it.  The paper marks the
+second with Patera's recommendation of 360 divisions, and its value with 360 lies within `1.2e-8`
+of the reference.  For case 4, whose covariance has axes of 105.6 m and 0.30 m, the paper prints no
+value with 360 divisions.  In a separate computation, a trapezoid rule for Patera's integral over
+the disk's boundary, with equal steps of the angle about the disk's center, was 4.5 percent off
+with 100 steps and agreed with the reference to 12 figures with 360.  Every interval of these two cases excludes the published value with its
+tolerance, so the proved enclosure alone shows the disagreement for the projected inputs.  Chan's
+values are the reference rounded to four figures.  The intervals of 1,048,576 panels are narrower
+than the differences between Alfano's printed values and the reference: Alfano's series value lies
+outside such an interval for cases 4, 5, 7, 9, 10, and 11, by `2.9e-6` to `1.1e-4` of the value,
+and Patera's for cases 7, 9, and 10.
+
+| Panels | Relative width of `pc` | Relative width of `pcAdaptive` |
+|---|---|---|
+| 4,096 | `4.9e-4` to `7.9e-3` | `3.2e-5` to `3.8e-3` |
+| 65,536 | `3.1e-5` to `4.9e-4` | `1.9e-6` to `2.3e-4` |
+| 1,048,576 | `1.9e-6` to `3.1e-5` | |
+
+The table leaves out Chan's cases 8 and 10, a miss of 10 standard deviations along the second
+axis, with probabilities of `3.2e-27` and `9.7e-28`.  Their intervals, `[0, 8.9e-19]` and
+`[0, 2.7e-19]` at every panel count, contain the values, and their upper endpoints are the floor
+that the cancellation of the two error-function values sets, as for the fifth row of
+[the containment test's table](#tests).  In the table, the narrowest intervals belong to Alfano's
+case 11 and the widest to Alfano's case 2.  CARA's functions place the mean at the full length of
+the relative position instead of its part in the plane, which changes the probability of these
+cases by at most `9e-8` of its value, in case 4.
+On a 2-core x86-64 host with four threads, the test took 18.5 minutes, of which the evaluations
+took 94 s, most of it at 1,048,576 panels, and the reference integrals nearly all the rest.
+
+## Browser page
+
+The page `/conjunction/` of [the browser pages](../../tests/web/README.md#conjunction-conjunction)
+calls the export `assess` of `build/verified/conjunction.wasm` on the encounter-plane inputs that
+the reader enters, with examples among them from the published cases.  It shows the interval, its
+width, and the verdict, draws the interval and the threshold on a logarithmic scale, and draws the
+plane with the covariance ellipses at one, two, and three standard deviations, the miss vector,
+and the disk.  [The page's test](../../tests/conjunction/page.mjs) runs the page's calling code
+under Node on the module cases of `assess` and compares every result with native Lean's.
+
 ## References
 
 - [Conjunction probability requirements](requirements.md)
