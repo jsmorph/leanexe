@@ -584,8 +584,8 @@ that the cancellation of the two error-function values sets, as for the fifth ro
 case 11 and the widest to Alfano's case 2.  CARA's functions place the mean at the full length of
 the relative position instead of its part in the plane, which changes the probability of these
 cases by at most `9e-8` of its value, in case 4.
-On debtop1, a 4-CPU AArch64 host, the evaluations took 94 s, most of it at 1,048,576 panels, and
-the reference integrals took about 5 minutes on another AArch64 host.
+On a 2-core x86-64 host with four threads, the test took 18.5 minutes, of which the evaluations
+took 94 s, most of it at 1,048,576 panels, and the reference integrals nearly all the rest.
 
 ## Browser page
 
