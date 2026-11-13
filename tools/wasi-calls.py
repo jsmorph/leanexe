@@ -1,14 +1,16 @@
 # /// script
 # requires-python = ">=3.12"
 # ///
-"""Generate the flat call descriptions, typed functions, and frame test from the pinned witx.
+"""Generate the flat call descriptions, typed functions, reflection equations, and frame test from
+the pinned witx.
 
 Usage: uv run tools/wasi-calls.py [--write] [WITX_DIR]
 
 WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
 fae981bae14809d91f9bc2d63852d461f331d161, by default tests/wasi/witx.  The script lowers every
 function of the witx to core parameter kinds, renders the Lean descriptions of the flat functions,
-their typed functions and record result types, and the frame test of tests/wasi/sys, and compares
+their typed functions and record result types, the reflection equations of the typed functions
+without a record result, and the frame test of tests/wasi/sys, and compares
 each rendering with the committed file, printing a unified diff and exiting with status 1 when one
 differs.  With --write it writes the files instead.  It also fails when a Lean file of LeanExe/Wasi
 other than the generated one defines a value of type Call.
@@ -393,6 +395,120 @@ def render_typed(flat):
     ])
 
 
+FLATTEN = {
+    "UInt64": "(fun value : UInt64 => value)",
+    "WordResult": "(Flat.flat : WordResult → UInt64 × UInt64)",
+    "ArgsSizes": "(Flat.flat : ArgsSizes → UInt64 × UInt64 × UInt64)",
+    "BytesResult": "(Flat.flat : BytesResult → UInt64 × LeanExe.Bytes)",
+    "BytesCountResult": "(Flat.flat : BytesCountResult → UInt64 × UInt64 × LeanExe.Bytes)",
+}
+
+
+def reflected(function):
+    """Whether `reflect` maps the generated typed function to one `sys` command."""
+    return function.name not in HAND_WRITTEN and \
+        not any(kind[0] == "record" for kind in function.kinds)
+
+
+def form(function):
+    words = sum(1 for kind in function.kinds if kind[0] in ("result32", "result64"))
+    output = any(kind[0] == "output" for kind in function.kinds)
+    return words, output
+
+
+KEYWORDS = {"at", "by", "do", "else", "end", "for", "from", "fun", "have", "if", "in", "let",
+            "match", "show", "then", "to", "with"}
+
+
+def variable(name):
+    """`name` as a Lean identifier, quoted when it is a keyword."""
+    return f"«{name}»" if name in KEYWORDS else name
+
+
+def reflection_equation(function):
+    takes = [kind for kind in function.kinds
+             if kind[0] not in ("result32", "result64", "record", "reported")]
+    names = [camel(name) for name in function.arguments]
+    inputs = [kind[0] == "input" for kind in takes]
+    variables = [f"({variable(name)} : Var context .{'bytes' if input else 'word'})"
+                 for name, input in zip(names, inputs)]
+    values = [f"({name}Value : {'LeanExe.Bytes' if input else 'UInt64'})"
+              for name, input in zip(names, inputs)]
+    hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value)"
+                  for name in names]
+    words, output = form(function)
+    lines = [f"theorem {function.lean}_eq (pureFuns : Funs pureSigs) "
+             "(effectFuns : EffectFuns effectSigs)"]
+    if names:
+        lines += wrap("    (env : Env context) ", variables + values + hypotheses, " :", 4,
+                      separator="")
+    else:
+        lines.append("    (env : Env context) :")
+    word_list = ", ".join(variable(name) for name, input in zip(names, inputs) if not input)
+    input_list = ", ".join(variable(name) for name, input in zip(names, inputs) if input)
+    tokens = ["(Command.sys", "(pureSigs := pureSigs)", "(effectSigs := effectSigs)"]
+    tokens += [] if names else ["(context := context)"]
+    tokens += [f"Call.{function.lean}", f"(.flat {words} {'true' if output else 'false'})",
+               f"[{word_list}]", f"[{input_list}]).denote", "pureFuns", "effectFuns", "env", "="]
+    lines += wrap("    ", tokens, "", 6, separator="")
+    call = [f"({function.lean}"] + [f"{name}Value" for name in names]
+    call[-1] += ")"
+    if not names:
+        call = [function.lean]
+    tokens = ["flattenAction", FLATTEN[result_type(function)], *call,
+              ":= by" if names else ":= rfl"]
+    lines += wrap("      ", tokens, "", 8, separator="")
+    if names:
+        lines.append("  subst " + " ".join(f"h{name[0].upper() + name[1:]}" for name in names))
+        lines.append("  rfl")
+    return "\n".join(lines) + "\n"
+
+
+def operation_entry(function):
+    takes = [kind for kind in function.kinds
+             if kind[0] not in ("result32", "result64", "record", "reported")]
+    inputs = ", ".join("true" if kind[0] == "input" else "false" for kind in takes)
+    words, output = form(function)
+    return (f"(``LeanExe.Wasi.{function.lean}, ⟨``LeanExe.Wasi.Call.{function.lean},\n"
+            f"    flatForm {words} {'true' if output else 'false'}, [{inputs}], "
+            f"``{function.lean}_eq⟩)")
+
+
+def render_reflect(flat):
+    functions = [function for function in flat if reflected(function)]
+    entries = [operation_entry(function) for function in functions]
+    return "\n".join([
+        "import Verified.Wasi.ReflectLemmas",
+        "import Verified.Wasi.ReflectSysOperation",
+        "import LeanExe.Wasi.SysCalls",
+        "",
+        "/-!",
+        "The reflection equations of the generated typed functions without a record result, and "
+        "the table",
+        "of them that `reflect` reads, which `tools/wasi-calls.py` generates from the pinned "
+        "witx.  Each",
+        "equation states that the `sys` command of the call denotes the typed function followed by "
+        "the",
+        "`Flat` form of its result.  Its check fails when this file differs from its output.",
+        "-/",
+        "",
+        "namespace Verified.Wasi.Reflect",
+        "",
+        "open LeanExe.Wasi LeanExe.Pipeline",
+        "",
+        "variable {pureSigs : List Sig} {effectSigs : List EffectSig} {context : List Ty}",
+        "",
+        "\n".join(reflection_equation(function) for function in functions),
+        "/-- The generated typed functions that `reflect` maps to one `sys` command. -/",
+        "def generatedSysOperations : List (Lean.Name × SysOperation) := [",
+        *[f"  {entry}{',' if index + 1 < len(entries) else ']'}"
+          for index, entry in enumerate(entries)],
+        "",
+        "end Verified.Wasi.Reflect",
+        "",
+    ])
+
+
 RIGHTS = (1 << 30) - 1
 # The frame test's steps, run with a directory preopened at descriptor 3 and the arguments `prog`
 # and `a`.  Each step names a function and gives the arguments of the parameters that take one, in
@@ -594,6 +710,7 @@ def render_frame(flat):
 GENERATED = {
     "LeanExe/Wasi/CallTable.lean": render_calls,
     "LeanExe/Wasi/SysCalls.lean": render_typed,
+    "Verified/Wasi/ReflectSysCalls.lean": render_reflect,
     "tests/wasi/sys/frame-all.wat": render_frame,
 }
 

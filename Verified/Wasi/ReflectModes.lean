@@ -31,7 +31,7 @@ def Command.demands : {context : List Ty} → {result : ResultTy} →
     let all := fun i => live i || test.uses (i + 2) || step.uses (i + 2)
     count.demands (fun i => all i || initial.uses i) false index ||
       initial.demands all true index
-  | _, _, .sys _ _ _, _, _ => false
+  | _, _, .sys _ _ _ _, _, _ => false
 
 def Command.paramChoice {params : List Ty} {result : ResultTy}
     (body : Command pureSigs effectSigs params result) : List Mode :=

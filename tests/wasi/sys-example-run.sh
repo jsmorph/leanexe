@@ -1,6 +1,9 @@
 #!/bin/sh
 # Builds the flat call example, checks its axioms and the non-vacuity witness of its host premises,
-# runs its native cases, and runs its module in the Wasmtime host with several argument lists.  Each
+# runs its native cases, and runs its module in the Wasmtime host with several argument lists.  It
+# then builds the example with input calls, Verified.Examples.WasiSysInputs, checks its axioms with
+# tests/wasi/SysInputs.lean, and runs its module with a fresh preopened directory: the run must exit
+# with status 0 and leave the directory empty.  Each
 # run must exit with status 0 and write the arguments with a zero byte after each, the argument count
 # and size as 8 little-endian bytes each, a realtime reading within a day of the system clock, a
 # monotonic reading below 10^17 ns, and 16 random bytes.  Four runs with the same arguments must
@@ -25,9 +28,11 @@ if [ ! -x "$host" ]; then
   exit 1
 fi
 
-tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys
+tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys \
+  Verified.Examples.WasiSysInputs
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysWitness.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/SysInputs.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysExample.lean
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSys \
   Verified.Examples.WasiSys.command.module "$module"
@@ -102,5 +107,19 @@ long=$(head -c 4096 /dev/zero | tr '\0' x)
 printf 'prog\000%s\000' "$long" > "$out/long.expected"
 run long --arg prog --arg "$long"
 check long 2 "$out/long.expected"
+
+inputs="$out/inputs.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSysInputs \
+  Verified.Examples.WasiSysInputs.command.module "$inputs"
+wasm-tools validate "$inputs"
+rm -rf "$out/inputs-dir"
+mkdir "$out/inputs-dir"
+status=0
+timeout 60s "$host" --dir "$out/inputs-dir" --stdout-file "$out/inputs.stdout" \
+  --control-file "$out/inputs.control" run "$inputs" 2> "$out/inputs.stderr" || status=$?
+[ "$status" -eq 0 ] || fail inputs "status $status"
+printf 'wasi-exit 0\n' | cmp -s - "$out/inputs.control" || fail inputs "control"
+[ -z "$(ls -A "$out/inputs-dir")" ] || fail inputs "the directory is not empty"
+cases=$((cases + 1))
 
 printf 'flat call example Wasmtime cases passed: %s\n' "$cases"

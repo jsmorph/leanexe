@@ -83,7 +83,7 @@ theorem clockTimeGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     (env : Env context) (id precision : Var context .word) (idValue precisionValue : UInt64)
     (hId : env.get id = idValue) (hPrecision : env.get precision = precisionValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.clockTimeGet (.flat 1 false)
-      [id, precision]).denote pureFuns effectFuns env =
+      [id, precision] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : ClockResult → UInt64 × UInt64)
         (clockTimeGet idValue precisionValue) := by
   subst hId hPrecision
@@ -93,7 +93,7 @@ theorem randomGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectS
     (env : Env context) (length : Var context .word) (value : UInt64)
     (hValue : env.get length = value) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.randomGet (.flat 0 true)
-      [length]).denote pureFuns effectFuns env =
+      [length] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : RandomResult → UInt64 × LeanExe.Bytes) (randomGet value) := by
   subst hValue
   rfl
@@ -101,13 +101,13 @@ theorem randomGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectS
 theorem argsSizesGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) (context := context)
-      Call.argsSizesGet (.flat 2 false) []).denote pureFuns effectFuns env =
+      Call.argsSizesGet (.flat 2 false) [] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : ArgsSizes → UInt64 × UInt64 × UInt64) argsSizesGet := rfl
 
 theorem args_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) (context := context)
-      Call.argsGet .reported []).denote pureFuns effectFuns env =
+      Call.argsGet .reported [] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : ArgsResult → UInt64 × UInt64 × UInt64 × LeanExe.Bytes) args := by
   refine congrArg (Action.sys Call.argsSizesGet []) (funext fun sizes => ?_)
   by_cases failed : (sizes.errno != 0) = true
@@ -119,6 +119,28 @@ theorem args_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
       rfl
     · simp only [large, ↓reduceIte]
       refine congrArg (Action.sys Call.argsGet []) (funext fun got => ?_)
+      by_cases gotFailed : (got.errno != 0) = true
+      · simp only [gotFailed, ↓reduceIte]
+        rfl
+      · simp only [gotFailed, Bool.false_eq_true, ↓reduceIte]
+        rfl
+
+theorem environ_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) (context := context)
+      Call.environGet .reported [] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : ArgsResult → UInt64 × UInt64 × UInt64 × LeanExe.Bytes)
+        environ := by
+  refine congrArg (Action.sys Call.environSizesGet []) (funext fun sizes => ?_)
+  by_cases failed : (sizes.errno != 0) = true
+  · simp only [failed, ↓reduceIte]
+    rfl
+  · simp only [failed, Bool.false_eq_true, ↓reduceIte]
+    by_cases large : 4294967296 ≤ sizes.word 1 + 4 * sizes.word 0 + 3
+    · simp only [large, ↓reduceIte]
+      rfl
+    · simp only [large, ↓reduceIte]
+      refine congrArg (Action.sys Call.environGet []) (funext fun got => ?_)
       by_cases gotFailed : (got.errno != 0) = true
       · simp only [gotFailed, ↓reduceIte]
         rfl

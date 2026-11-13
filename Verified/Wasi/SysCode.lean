@@ -2,7 +2,8 @@ import Verified.Wasi.ReadCode
 import Verified.Wasi.SysForm
 
 /-! The code of a `sys` command, which the compiler places in the calling function.  It reads the
-argument words from the locals of the argument variables and uses six i64 locals from `base`.
+argument words from the locals of the argument variables, the root and the length of each input
+from the two locals of its variable, and uses six i64 locals from `base`.
 
 A flat call keeps its errno at `base`, its buffer's root at `base + 1` and length at `base + 2`,
 and its result words at `base + 3` and `base + 4`.  The code tests the arguments, allocates the
@@ -182,5 +183,126 @@ def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (for
   match form with
   | .flat .. => sysFlatCodeWith calls call locals base
   | .reported => sysReportedCodeWith calls call base
+
+/-! ## Calls with inputs
+
+The code of a call with inputs takes the locals of the word arguments and the locals of the input
+roots as two lists.  An `input` parameter with no input local left has no code, as in the code
+above, so that the code with no input locals is that code. -/
+
+/-- Pushes the errno that rejects the arguments, or 0: the words in `words`, and the lengths of the
+inputs, each in the local after its root in `inputs`. -/
+def sysRejectInputsCode : List Param → List Nat → List Nat → Program
+  | [], _, _ => [.constI64 0]
+  | .input :: params, words, place :: inputs =>
+    [.localGet (place + 1), .constI64 4294967296, .geUI64,
+     .iff 0 1 [.constI64 61] (sysRejectInputsCode params words inputs) [] [.i64]]
+  | .word32 :: params, place :: words, inputs
+  | .output :: params, place :: words, inputs =>
+    [.localGet place, .constI64 4294967296, .geUI64,
+     .iff 0 1 [.constI64 61] (sysRejectInputsCode params words inputs) [] [.i64]]
+  | .enum32 count :: params, place :: words, inputs =>
+    [.localGet place, .constI64 (UInt64.ofNat count), .geUI64,
+     .iff 0 1 [.constI64 28] (sysRejectInputsCode params words inputs) [] [.i64]]
+  | .flags32 mask :: params, place :: words, inputs =>
+    [.localGet place, .constI64 4294967296, .geUI64,
+     .iff 0 1 [.constI64 61] (flagsRejectCode mask place (sysRejectInputsCode params words inputs))
+       [] [.i64]]
+  | .flags64 mask :: params, place :: words, inputs =>
+    flagsRejectCode mask place (sysRejectInputsCode params words inputs)
+  | .word64 :: params, _ :: words, inputs => sysRejectInputsCode params words inputs
+  | _ :: params, words, inputs => sysRejectInputsCode params words inputs
+
+/-- Pushes the core arguments of a flat call: each word from its local, each input's root and
+length from its two locals, the buffer's root from `root` and its capacity from its local, and the
+scratch address `slot` of each result word in turn. -/
+def sysLowerInputsCode : List Param → List Nat → List Nat → Nat → Nat → Program
+  | [], _, _, _, _ => []
+  | .input :: params, words, place :: inputs, root, slot =>
+    [.localGet place, .wrapI64, .localGet (place + 1), .wrapI64] ++
+      sysLowerInputsCode params words inputs root slot
+  | .word32 :: params, place :: words, inputs, root, slot
+  | .enum32 _ :: params, place :: words, inputs, root, slot
+  | .flags32 _ :: params, place :: words, inputs, root, slot =>
+    [.localGet place, .wrapI64] ++ sysLowerInputsCode params words inputs root slot
+  | .word64 :: params, place :: words, inputs, root, slot
+  | .flags64 _ :: params, place :: words, inputs, root, slot =>
+    [.localGet place] ++ sysLowerInputsCode params words inputs root slot
+  | .output :: params, place :: words, inputs, root, slot =>
+    [.localGet root, .wrapI64, .localGet place, .wrapI64] ++
+      sysLowerInputsCode params words inputs root slot
+  | .result32 :: params, words, inputs, root, slot
+  | .result64 :: params, words, inputs, root, slot =>
+    [.const (UInt32.ofNat slot)] ++ sysLowerInputsCode params words inputs root (slot + 8)
+  | _ :: params, words, inputs, root, slot => sysLowerInputsCode params words inputs root slot
+
+/-- The local of the word argument that gives the output's capacity. -/
+def outputLocalInputs : List Param → List Nat → List Nat → Option Nat
+  | [], _, _ => none
+  | .output :: _, place :: _, _ => some place
+  | .input :: params, words, _ :: inputs => outputLocalInputs params words inputs
+  | param :: params, words, inputs =>
+    if param.takesArg then outputLocalInputs params words.tail inputs
+    else outputLocalInputs params words inputs
+
+/-- The code of an accepted flat request with inputs. -/
+def sysFlatCallInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words inputs : List Nat) (base : Nat) (buffer : Option Nat) : Program :=
+  sysAllocateBufferWith calls buffer base ++
+    sysLowerInputsCode call.params words inputs (base + 1) 0 ++
+    [.call (3 + calls.idxOf call), .extendUI32, .localSet base,
+     .localGet base, .eqzI64,
+     .iff 0 0 (sysLoadCode call.params 0 (base + 3) ++ sysKeepCode buffer base)
+       (sysDiscardCodeWith calls buffer base) [] []]
+
+def sysFlatInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words inputs : List Nat) (base : Nat) : Program :=
+  sysRejectInputsCode call.params words inputs ++
+    [.localSet base, .constI64 0, .localSet (base + 1), .constI64 0, .localSet (base + 2),
+     .constI64 0, .localSet (base + 3), .constI64 0, .localSet (base + 4),
+     .localGet base, .eqzI64,
+     .iff 0 0 (sysFlatCallInputsCodeWith calls call words inputs base
+       (outputLocalInputs call.params words inputs)) [] [] [],
+     .localGet base] ++
+    (List.range (call.params.countP Param.isResult)).map
+      (fun index => .localGet (base + 3 + index)) ++
+    sysPushBytesCode (outputLocalInputs call.params words inputs) base
+
+def sysInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
+    (words inputs : List Nat) (base : Nat) : Program :=
+  match form with
+  | .flat .. => sysFlatInputsCodeWith calls call words inputs base
+  | .reported => sysReportedCodeWith calls call base
+
+theorem sysRejectInputsCode_nil : ∀ (params : List Param) (words : List Nat),
+    sysRejectInputsCode params words [] = sysRejectCode params words
+  | [], _ => rfl
+  | param :: params, words => by
+    cases param <;> cases words <;>
+      simp only [sysRejectInputsCode, sysRejectCode, sysRejectInputsCode_nil params]
+
+theorem sysLowerInputsCode_nil : ∀ (params : List Param) (words : List Nat) (root slot : Nat),
+    sysLowerInputsCode params words [] root slot = sysLowerCode params words root slot
+  | [], _, _, _ => rfl
+  | param :: params, words, root, slot => by
+    cases param <;> cases words <;>
+      simp only [sysLowerInputsCode, sysLowerCode, sysLowerInputsCode_nil params]
+
+theorem outputLocalInputs_nil : ∀ (params : List Param) (words : List Nat),
+    outputLocalInputs params words [] = outputLocal params words
+  | [], _ => rfl
+  | param :: params, words => by
+    cases param <;> cases words <;>
+      simp only [outputLocalInputs, outputLocal, outputLocalInputs_nil params]
+
+theorem sysInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (form : SysForm) (words : List Nat) (base : Nat) :
+    sysInputsCodeWith calls call form words [] base = sysCodeWith calls call form words base := by
+  cases form with
+  | flat =>
+    simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith, sysFlatCodeWith,
+      sysFlatCallInputsCodeWith, sysFlatCallCodeWith, sysRejectInputsCode_nil,
+      sysLowerInputsCode_nil, outputLocalInputs_nil]
+  | reported => rfl
 
 end Verified.Wasi

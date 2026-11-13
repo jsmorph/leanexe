@@ -208,4 +208,145 @@ theorem wp_sys_loads {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
              exact continue_ _ (by
                rw [← littleEndian_read64 at_ outputSizes.1, pointer]))
 
+/-- The loads of the result words of a flat call with inputs. -/
+theorem wp_sys_loads_inputs {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
+    {root : UInt32} {sizes : List Nat} {errno : UInt64} (hMemory : 16 ≤ st.mem.pages * 65536) :
+    ∀ (params : List Param) (values : List UInt64) (inputs : List (UInt64 × LeanExe.Bytes))
+      (slot target : Nat) (outputs : List LeanExe.Bytes) (s : Locals) (rest : Program)
+      (Q : Assertion α),
+    params.all Param.inputKind = true → params.count .output ≤ 1 →
+    slot + 8 * params.countP Param.isResult ≤ 16 → inputs.length = params.count .input →
+    ShownAt st.mem (outputRegions params sizes (flatArgsWith params values (inputs.map Prod.snd))
+      (flatPointersWith params root slot (inputs.map fun input => input.1.toUInt32))) outputs →
+    outputs.map (fun output => output.data.size) =
+      outputSizesOf params sizes (flatArgsWith params values (inputs.map Prod.snd)) →
+    s.params.length ≤ target →
+    target + params.countP Param.isResult ≤ s.params.length + s.locals.length →
+    (∀ s' : Locals, LocalsOutside s s' target (params.countP Param.isResult) →
+      (∀ i, i < params.countP Param.isResult →
+        s'.get (target + i) = some (.i64 ((resultWords params ⟨errno, outputs⟩ 0).getD i 0))) →
+      wp m rest Q st { s' with values := s.values } env) →
+    wp m (sysLoadCode params slot target ++ rest) Q st s env
+  | [], _, _, _, target, outputs, s, rest, Q, _, _, _, _, _, _, _, _, h => by
+    simpa [sysLoadCode] using h s ⟨rfl, rfl, fun _ _ => rfl⟩ (fun i hi => by simp at hi)
+  | param :: params, values, inputs, slot, target, outputs, s, rest, Q, kinds, outputCount, room,
+      count, shown, outputSizes, low, high, h => by
+    simp only [List.all_cons, Bool.and_eq_true] at kinds
+    cases param with
+    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | input =>
+      cases inputs with
+      | nil => simp at count
+      | cons input inputs =>
+        simp only [sysLoadCode]
+        simp only [List.map_cons, flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
+          List.tail_cons] at shown outputSizes
+        refine wp_sys_loads_inputs (errno := errno) hMemory params values inputs slot target
+          outputs s rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+          (by simpa [Param.isResult, List.countP_cons] using room)
+          (by simpa [List.count_cons] using count) shown outputSizes low
+          (by simpa [Param.isResult, List.countP_cons] using high) ?_
+        intro s' outside held
+        exact h s' (by simpa [Param.isResult, List.countP_cons] using outside)
+          (by simpa [resultWords, Param.isResult, List.countP_cons] using held)
+    | word32 | word64 | enum32 | flags32 | flags64 =>
+      simp only [sysLoadCode]
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
+        List.tail_cons] at shown outputSizes
+      refine wp_sys_loads_inputs (errno := errno) hMemory params values.tail inputs slot target
+        outputs s rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+        (by simpa [Param.isResult, List.countP_cons] using room)
+        (by simpa [List.count_cons] using count) shown outputSizes low
+        (by simpa [Param.isResult, List.countP_cons] using high) ?_
+      intro s' outside held
+      exact h s' (by simpa [Param.isResult, List.countP_cons] using outside)
+        (by simpa [resultWords, Param.isResult, List.countP_cons] using held)
+    | output =>
+      simp only [sysLoadCode]
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
+        List.tail_cons] at shown outputSizes
+      cases outputs with
+      | nil => simp [ShownAt] at shown
+      | cons output outputs =>
+        simp only [ShownAt, ite_true] at shown
+        simp only [List.map_cons, List.cons.injEq] at outputSizes
+        refine wp_sys_loads_inputs (errno := errno) hMemory params values.tail inputs slot target
+          outputs s rest Q kinds.2 (by simp [List.count_cons] at outputCount; omega)
+          (by simpa [Param.isResult, List.countP_cons] using room)
+          (by simpa [List.count_cons] using count) shown.2 outputSizes.2 low
+          (by simpa [Param.isResult, List.countP_cons] using high) ?_
+        intro s' outside held
+        refine h s' (by simpa [Param.isResult, List.countP_cons] using outside) ?_
+        intro i hi
+        rw [resultWords, resultWords_shift]
+        exact held i (by simpa [Param.isResult, List.countP_cons] using hi)
+    | result32 | result64 =>
+      have slotRoom : slot + 8 ≤ 16 := by simp [Param.isResult, List.countP_cons] at room; omega
+      have slotNat : (UInt32.ofNat slot).toNat = slot :=
+        UInt32.toNat_ofNat_of_lt' (by rw [show UInt32.size = 4294967296 from rfl]; omega)
+      have pointer : (UInt32.ofNat slot).toUInt64.toUInt32 = UInt32.ofNat slot := by
+        apply UInt32.toNat_inj.mp
+        rw [UInt64.toNat_toUInt32, UInt32.toNat_toUInt64, slotNat, Nat.mod_eq_of_lt (by omega)]
+      have targetLow : s.params.length ≤ target := low
+      have targetHigh : target < s.params.length + s.locals.length := by
+        simp [Param.isResult, List.countP_cons] at high; omega
+      simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf] at shown outputSizes
+      cases outputs with
+      | nil => simp [ShownAt] at shown
+      | cons output outputs =>
+        simp only [ShownAt, ite_true, List.headD_cons] at shown
+        simp only [List.map_cons, List.cons.injEq] at outputSizes
+        obtain ⟨at_, shown⟩ := shown
+        have continue_ : ∀ word : UInt64, word = littleEndian output →
+            wp m (sysLoadCode params (slot + 8) (target + 1) ++ rest) Q st
+              (setLocal { s with values := s.values } target (.i64 word)) env := by
+          intro word wordEq
+          have nextLow : (setLocal { s with values := s.values } target (.i64 word)).params.length ≤
+              target + 1 := by
+            change s.params.length ≤ target + 1
+            omega
+          have nextHigh : target + 1 + params.countP Param.isResult ≤
+              (setLocal { s with values := s.values } target (.i64 word)).params.length +
+                (setLocal { s with values := s.values } target (.i64 word)).locals.length := by
+            simp only [setLocal, List.length_set]
+            simp [Param.isResult, List.countP_cons] at high
+            omega
+          refine wp_sys_loads_inputs (errno := errno) hMemory params values inputs (slot + 8)
+            (target + 1) outputs _ rest Q kinds.2 (by simpa [List.count_cons] using outputCount)
+            (by simp [Param.isResult, List.countP_cons] at room; omega)
+            (by simpa [List.count_cons] using count) shown outputSizes.2 nextLow nextHigh ?_
+          intro s' outside held
+          refine h s' ⟨outside.params, ?_, ?_⟩ ?_
+          · rw [outside.length]
+            simp [setLocal, List.length_set]
+          · intro j hj
+            rw [outside.others j (by simp [Param.isResult, List.countP_cons] at hj ⊢; omega)]
+            rw [Locals.get_setLocal_ne (by simpa using targetLow)
+              (by simp [Param.isResult, List.countP_cons] at hj; omega)]
+          · intro i hi
+            cases i with
+            | zero =>
+              rw [Nat.add_zero, outside.others target (by omega)]
+              simp only [Nat.add_zero, resultWords, Reply.word, List.getElem?_cons_zero,
+                Option.map_some, Option.getD_some, List.getD_cons_zero]
+              rw [Locals.get_setLocal_same (by simpa using targetLow) (by simpa using targetHigh),
+                wordEq]
+            | succ i =>
+              have := held i (by simp [Param.isResult, List.countP_cons] at hi; omega)
+              rw [show target + (i + 1) = target + 1 + i by omega, this]
+              simp only [resultWords, resultWords_shift, List.getD_cons_succ]
+        first
+          | (simp only [sysLoadCode, List.cons_append, wp_const_cons, wp_load32_cons, slotNat,
+              UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero, wp_extendUI32_cons]
+             rw [ite_eq_right (by omega)]
+             refine wp_localSet_local targetLow targetHigh ?_
+             exact continue_ _ (by
+               rw [← littleEndian_read32 at_ outputSizes.1, pointer]))
+          | (simp only [sysLoadCode, List.cons_append, wp_const_cons, wp_load64_cons, slotNat,
+              UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+             rw [ite_eq_right (by omega)]
+             refine wp_localSet_local targetLow targetHigh ?_
+             exact continue_ _ (by
+               rw [← littleEndian_read64 at_ outputSizes.1, pointer]))
+
 end Verified.Wasi

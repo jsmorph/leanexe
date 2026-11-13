@@ -2,9 +2,9 @@ import Verified.Source
 import LeanExe.Wasi.Sys
 
 /-! The forms of flat call that `Command.sys` compiles, with the result type and the action of
-each.  A `flat` call takes word arguments, passes at most one output buffer, and returns at most
-two result words, which the code places in the scratch area; its result holds the errno, the
-result words, and the buffer's bytes when it has a buffer.  A `reported` call writes two regions
+each.  A `flat` call takes word arguments and inputs, passes at most one output buffer, and returns
+at most two result words, which the code places in the scratch area; its result holds the errno,
+the result words, and the buffer's bytes when it has a buffer.  A `reported` call writes two regions
 whose sizes its reporter returns: the code runs the reporter, tests the sizes, and runs the call,
 and the result holds the errno, the reporter's two words, and the bytes of the shown region. -/
 
@@ -57,6 +57,29 @@ def flatArgs : List Param → List UInt64 → List Arg
   | .output :: params, values => .space (values.headD 0) :: flatArgs params values.tail
   | _ :: params, values => flatArgs params values
 
+/-- The arguments of a flat call from the words of its word variables and the bytes of its input
+variables, each in order.  An `input` parameter takes the next input; with no input left it takes
+no argument, as in `flatArgs`, so that `flatArgsWith params values []` is `flatArgs params values`.
+-/
+def flatArgsWith : List Param → List UInt64 → List LeanExe.Bytes → List Arg
+  | [], _, _ => []
+  | .input :: params, values, input :: inputs => .bytes input :: flatArgsWith params values inputs
+  | .word32 :: params, values, inputs
+  | .word64 :: params, values, inputs
+  | .enum32 _ :: params, values, inputs
+  | .flags32 _ :: params, values, inputs
+  | .flags64 _ :: params, values, inputs =>
+    .word (values.headD 0) :: flatArgsWith params values.tail inputs
+  | .output :: params, values, inputs =>
+    .space (values.headD 0) :: flatArgsWith params values.tail inputs
+  | _ :: params, values, inputs => flatArgsWith params values inputs
+
+theorem flatArgsWith_nil : ∀ (params : List Param) (values : List UInt64),
+    flatArgsWith params values [] = flatArgs params values
+  | [], _ => rfl
+  | param :: params, values => by
+    cases param <;> simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
+
 /-- The result words of a reply whose outputs follow `params` from position `index`. -/
 def resultWords : List Param → Reply → Nat → List UInt64
   | [], _, _ => []
@@ -83,11 +106,22 @@ def Param.isResult : Param → Bool
   | .result32 | .result64 => true
   | _ => false
 
-/-- The parameters that a flat call may have. -/
+/-- The parameters that a flat call without inputs may have. -/
 def Param.flatKind : Param → Bool
   | .word32 | .word64 | .flags32 _ | .flags64 _ | .output | .result32 | .result64 => true
   | .enum32 count => decide (count < 4294967296)
   | .input | .reported .. | .record .. => false
+
+/-- The parameters that a flat call may have: the kinds of `flatKind` and inputs. -/
+def Param.inputKind : Param → Bool
+  | .input => true
+  | param => param.flatKind
+
+/-- Whether the parameter takes a word argument: each parameter that takes an argument, except an
+input. -/
+def Param.takesWord : Param → Bool
+  | .input => false
+  | param => param.takesArg
 
 namespace Call
 
@@ -97,18 +131,24 @@ def reporterCall (call : Call) : Call :=
 
 def argCount (call : Call) : Nat := call.params.countP Param.takesArg
 
+/-- The number of word arguments of a call. -/
+def wordCount (call : Call) : Nat := call.params.countP Param.takesWord
+
+/-- The number of inputs of a call. -/
+def inputCount (call : Call) : Nat := call.params.count .input
+
 def form (call : Call) : Verified.Wasi.SysForm :=
   match call.reporter with
   | some _ => .reported
   | none => Verified.Wasi.SysForm.flat (call.params.countP Param.isResult) (call.params.contains .output)
 
-/-- Whether `Command.sys` compiles the call: a flat call has flat parameters, at most one output,
-and at most two result words; a reported call writes the argument pointers and the argument bytes
-that `args_get` and `environ_get` write. -/
+/-- Whether `Command.sys` compiles the call: a flat call has flat parameters or inputs, at most
+one output, and at most two result words; a reported call writes the argument pointers and the
+argument bytes that `args_get` and `environ_get` write. -/
 def compiled (call : Call) : Bool :=
   match call.reporter with
   | some _ => call.params == [.reported 4 4 false, .reported 1 1 true]
-  | none => call.params.all Param.flatKind && decide (call.params.count .output ≤ 1) &&
+  | none => call.params.all Param.inputKind && decide (call.params.count .output ≤ 1) &&
       decide (call.params.countP Param.isResult ≤ 2)
 
 /-- The calls that a module must import for a `sys` command of `call`, in order of use. -/
@@ -139,5 +179,21 @@ def SysForm.run : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → Act
       else .sys call [] fun got =>
         if got.errno != 0 then .pure (SysForm.value .reported [got.errno, 0, 0] .empty)
         else .pure (SysForm.value .reported [0, sizes.word 0, sizes.word 1] (got.bytes 0))
+
+/-- The action of a `sys` command of `call` in `form` on the words of its word variables and the
+bytes of its input variables.  A reported call takes no inputs. -/
+def SysForm.runWith : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → List LeanExe.Bytes →
+    Action form.ty.denote
+  | .flat words bytes, call, values, inputs =>
+    .sys call (flatArgsWith call.params values inputs) fun reply =>
+      .pure (SysForm.value (.flat words bytes) (reply.errno :: resultWords call.params reply 0)
+        (resultBytes call.params reply 0))
+  | .reported, call, values, _ => SysForm.run .reported call values
+
+theorem SysForm.runWith_nil (form : SysForm) (call : LeanExe.Wasi.Call) (values : List UInt64) :
+    form.runWith call values [] = form.run call values := by
+  cases form with
+  | flat words bytes => simp only [SysForm.runWith, SysForm.run, flatArgsWith_nil]
+  | reported => rfl
 
 end Verified.Wasi

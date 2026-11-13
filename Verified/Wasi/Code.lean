@@ -92,8 +92,11 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
           [] []] ++
       Relocation.programWith calls (releaseWhere context slots (fun i => used i && !live i)) ++
       loadCode h state type.types
-  | _, _, .sys operation form args =>
-    sysCodeWith calls operation form (args.map fun arg => (slots.getD arg.index default).loc) base
+  | context, _, .sys operation form args inputs =>
+    sysInputsCodeWith calls operation form (args.map fun arg => (slots.getD arg.index default).loc)
+        (inputs.map fun input => (slots.getD input.index default).loc) base ++
+      Relocation.programWith calls (releaseWhere context slots
+        (fun i => (inputs.any fun input => i == input.index) && !live i))
 
 /-- Command code of a module without imported calls. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)

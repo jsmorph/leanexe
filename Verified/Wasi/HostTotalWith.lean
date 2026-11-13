@@ -7,8 +7,8 @@ Talos host environment satisfying `hostSpecWith host calls`, built from the orac
 and `OracleSys`.  Conversely, every host environment satisfying `hostSpecWith host calls` answers
 each fitting, accepted request whose inputs and output regions fit below `2^32` when laid out one
 after another from address 16, with result words and reported regions at multiples of their
-alignments.  A theorem that assumes such an environment is vacuous for a host without those
-replies. -/
+alignments; a call with a record has no such layout, so the converse says nothing about it.  A
+theorem that assumes such an environment is vacuous for a host without those replies. -/
 
 namespace Verified.Wasi
 
@@ -255,7 +255,8 @@ structure Host.TotalFor {World : Type} (host : Host World) (calls : List Call) :
 
 /-- `Host.Answers`, and a permitted reply to every request of each call in `calls` that fits, that
 the call does not reject, and whose regions and inputs fit below `2^32` when laid out one after
-another from address 16, for a call whose reported regions have positive alignments. -/
+another from address 16, for a call whose reported regions have positive alignments.  The layout of
+a call with a record ends past `2^32`, so this asks nothing of such a call. -/
 structure Host.AnswersFor {World : Type} (host : Host World) (calls : List Call) : Prop
     extends host.Answers where
   sys : ∀ call ∈ calls,
