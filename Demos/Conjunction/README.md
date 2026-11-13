@@ -5,23 +5,29 @@ objects at a conjunction, the number from which operators decide on avoidance ma
 returns an interval `[lo, hi]`, and [the soundness theorem](Soundness.lean) `pc_enclosure` states
 that the interval contains the exact value of the model's integral for the real values of the
 inputs.  `assess` compares the interval with a threshold, so its verdict of "below" or "above" is
-a statement about the model's value.  The program is written in the verified compiler's dialect
-on [the interval layer](../../Library/Numerics/Interval/README.md) and takes scalar arguments.
+a statement about the model's value.  [The message form](Message.lean) takes the two objects'
+states and covariances as a conjunction data message gives them, projects them onto the encounter
+plane in interval arithmetic, and computes the same interval.
+[`projection_sound`](Projection.lean) states that the projection's intervals contain the miss
+vector and covariance that Lean defines from the real inputs, and
+[the message theorems](MessageSoundness.lean) that the result contains their probability.  The
+program is written in the verified compiler's dialect on
+[the interval layer](../../Library/Numerics/Interval/README.md) and takes scalar arguments.
 
-[`verified_compile`](Verified.lean) compiles the program, with the library's `exp` and `erf` and
-[the flat encodings](Flat.lean) of its records, into a module of 13,717 bytes.  In Wasmtime,
-the module's `pc` and `assess` exports agree with native Lean, bit for bit, on 780 generated
-calls.  [The containment test](#tests) finds a reference value of the integral, computed at 50
-digits, inside the interval of each of 39 runs.
-[The theorems](#theorems) state the enclosure, the meaning of each verdict, the reduction of the
-integral to one dimension, and the compilation, and [the limits](#limits-of-the-theorems) state
-what they leave out.
+[`verified_compile`](Verified.lean) compiles the program, with the library's `exp`, `erf`, and
+`erfc` and [the flat encodings](Flat.lean) of its records, into a module of 64,046 bytes.  In
+Wasmtime, the module's exports agree with native Lean, bit for bit, on 1,174 generated calls.
+[The containment test](#tests) finds a reference value of the integral, computed at 50 digits,
+inside the interval of each of 69 runs, and the projection computed at 50 digits inside the
+projection's intervals.  [The theorems](#theorems) state the enclosure, the meaning of each
+verdict, the projection, the reduction of the integral to one dimension, and the compilation, and
+[the limits](#limits-of-the-theorems) state what they leave out.
 
-[The radius program](#radius-at-a-probability-ce-and-le) uses the same enclosure to return an
-interval that contains the circular error at a probability, such as CE90, and one that contains
-the linear error, such as LE90, for a normal error with or without a bias.  It compiles into a
-module of its own, with soundness and call theorems that state that an accepted interval contains
-the unique radius at the probability.
+[The radius program](#radius-at-a-probability-ce-and-le) uses the enclosure `pcWith`, with `erf`
+alone, to return an interval that contains the circular error at a probability, such as CE90, and
+one that contains the linear error, such as LE90, for a normal error with or without a bias.  It
+compiles into a module of its own, with soundness and call theorems that state that an accepted
+interval contains the unique radius at the probability.
 
 [The adaptive program](#adaptive-panels) returns the same two intervals, for the probability and
 the circular error, from panels whose lengths follow the integrand, in a third module with the same
@@ -75,6 +81,49 @@ reference value of the integral is `2.3111112e-5`.  `assess` with the threshold 
 the same interval with verdict 1, and `assess_sound` then states that the model's probability is
 below `1e-4`.
 
+### The message form
+
+```text
+pcMessage      x1 y1 z1 vx1 vy1 vz1 crr1 ctr1 ctt1 cnr1 cnt1 cnn1
+               x2 y2 z2 vx2 vy2 vz2 crr2 ctr2 ctt2 cnr2 cnt2 cnn2 r : Float, n : UInt64
+                                                     ->  status, lo, hi
+assessMessage  the same, then t : Float, n : UInt64  ->  status, lo, hi, verdict
+
+x, y, z         position of the object in km, in one inertial frame for both objects
+vx, vy, vz      velocity of the object in km/s, in the same frame
+crr ... cnn     position covariance in m² in the object's RTN frame, in the message's order
+                CR_R, CT_R, CT_T, CN_R, CN_T, CN_N
+r               combined hard-body radius in m
+```
+
+These are the quantities of a CCSDS conjunction data message (CCSDS 508.0-B-1), which a caller
+reads from the message's text outside the verified program.  [`encounter`](Message.lean) defines
+the encounter plane and its quantities from them.  The RTN frame of a state has the axes
+`R̂ = r/|r|`, `N̂ = (r × v)/|r × v|`, and `T̂ = N̂ × R̂`, and each covariance becomes `Q C Qᵀ` in the
+inertial frame, where the columns of `Q` are the three axes.  The relative position is
+`Δr = 1000 (r₂ - r₁)` in m and the relative velocity `Δv = v₂ - v₁`.  The plane's normal is
+`ẑ = Δv/|Δv|`, its first axis `x̂` lies along the part of `Δr` perpendicular to `ẑ`, and its second
+axis is `ŷ = ẑ × x̂`.  The miss vector is `(Δr · x̂, Δr · ŷ)`, which is `(|Δr⊥|, 0)`, and the plane
+covariance has the entries `x̂ᵀ C x̂`, `x̂ᵀ C ŷ`, and `ŷᵀ C ŷ` of the sum `C` of the two inertial
+covariances.  CARA's `Pc2D_Foster.m` uses the axes `-x̂` and `-ŷ`, so its projected covariance is
+the same, and its miss distance `|Δr|` equals ours when `Δr` is perpendicular to `Δv`.  The
+probability does not depend on the choice of orthonormal axes in the plane.
+
+Besides the rejections of `pc`, the message form rejects an input when the interval of the length
+of a position, of an angular momentum `r × v`, of the relative velocity, or of the part of the
+relative position perpendicular to the relative velocity holds zero, and when the interval of the
+plane's first variance does not lie above zero.
+
+For the first object at `(7000, 0, 0)` km with velocity `(0, 7.546, 0)` km/s and covariance
+entries `(1e4, 0, 1e6, 0, 0, 2500)` m² in the message's order, the second at `(7000.2, 0.1, 0.1)`
+km with velocity `(0, 0, 7.546)` km/s and covariance entries `(2e4, 1e3, 4e6, 0, 0, 1e4)` m², the
+radius 20 m, and 4,096 panels, `pcMessage`
+returns status 0 with `lo = 0.0003730030867921014` and `hi = 0.00037355290564010054`.  The
+encounter has the miss vector `(244.94897, 0)` m and the plane covariance
+`(856045.52, 1167537.8, 1680204.5)` m², and the reference value of its probability is
+`3.7327947e-4`.  `assessMessage` with the threshold `1e-4` returns verdict 2, and
+`assessMessage_sound` then states that the probability of that encounter is at least `1e-4`.
+
 ## Method
 
 The density is the product of the marginal density of the first coordinate and the conditional
@@ -110,6 +159,27 @@ one-step accuracy theorems support.  `setup` computes once the intervals of `2 c
 `k`, and `r²`.  The width of the result falls in proportion to `1/n`, and no theorem depends on
 `n`.
 
+`pc` and the message form call `pcTail`, the same method with `erfSumTailI` in place of `erfSumI`.
+When the miss vector lies many standard deviations from the disk along the second axis, the two
+error-function values are near 1 in magnitude and of opposite signs, and the absolute error of
+`erf`, near `1e-16`, exceeds their sum.  With `v = (μ - h)/k` and `y = (-μ - h)/k`, the sum equals
+`erfc v - erfc((h + μ)/k)` and `erfc y - erfc((h - μ)/k)`.  On a panel where every point of the
+interval of `v` is at least 1/2, `erfSumTailI` computes the first difference with the library's
+`erfc`, through `erfcI`, which evaluates `erfc` at the two ends of an interval and moves each value
+two steps outward, and on a panel where every point of `y` is at least 1/2, the second.  On the
+other panels it computes the sum of `erf`.  When `v ≥ 1/2`, `erf v > 1/2` and `(h + μ)/k ≥ v`, so
+the two values of `erfc` sum to less than 1 and the two values of `erf` to more than 1, and the
+difference has the smaller rounding error.  The values of `erfc` keep their relative accuracy down to the smallest
+normal numbers.  `pcWith`, which the radius and adaptive programs call, and `pcBoxWith`, which the
+avoidance authorizer calls, keep `erf` alone.
+
+`pcMessage` evaluates `encounterI`, the interval program of `encounter`, on point intervals of the
+inputs, and passes the five intervals of the miss vector and the plane covariance to `pcTail`
+through `setupBox`, which computes the setup's intervals from intervals.
+[The command `enclosure_def`](../../Library/Numerics/Interval/README.md#one-source-for-a-real-function-and-its-interval-program)
+turns each operation of `encounter` into the corresponding interval operation, so the projection's
+intervals are a few rounding steps wide.
+
 ## Theorems
 
 Every theorem in the table depends only on the axioms `propext`, `Classical.choice`, and
@@ -125,35 +195,51 @@ defines the terms of the generated theorems.
 | `Gaussian.pc_eq_multivariateGaussian` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | `Model.pc` equals the measure of the disk under Mathlib's `multivariateGaussian` with mean `(m1, m2)` and covariance `C`. |
 | `Gaussian.integral_density`, `Gaussian.pc_le_one` | [Gaussian](Gaussian.lean) | `c11 > 0`, `det C > 0` | The density integrates to 1 over the plane, and `Model.pc ≤ 1`. |
 | `Model.integral_eq_width_mul` | [Model](Model.lean) | `a ≤ b`, `f` integrable on `[a, b]` with values between `L` and `U` there | The integral of `f` from `a` to `b` is `(b - a) y` for some `y` between `L` and `U`. |
+| `pcTail_sound` | [Soundness](Soundness.lean) | `pcTail` returns status 0 for a setup whose accepted fields contain the quantities of a real mean and covariance and for an interval of the first variance that encloses it | The real covariance satisfies `c11 > 0` and `det C > 0`, `r > 0`, the endpoints are finite, `lo ≤ Model.pc ≤ hi`, and `hi ≤ 1`. |
 | `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values, and `hi ≤ 1`. |
 | `assess_sound` | [Soundness](Soundness.lean) | `assess` returns status 0 | `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`, for the real value of `t`. |
-| `compiled.pc.implements`, `compiled.assess.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a store that holds the table of `exp` at address 4,096, and argument words that represent the arguments | Entries 54 and 55, the `pc` and `assess` exports, return words that represent `pc` and `assess` of the arguments, without a trap. |
+| `pcWith_enclosure` | [Soundness](Soundness.lean) | `pcWith` with the table of `exp` returns status 0 | The conclusions of `pc_enclosure` for `pcWith`, which the radius programs use. |
+| `projection_sound` | [Projection](Projection.lean) | None | Each accepted interval of `encounterAt` contains the corresponding component of `encounter` of the real values of the 24 inputs: `m1`, `m2`, `c11`, `c12`, and `c22` of the encounter plane. |
+| `pcMessage_enclosure` | [Message soundness](MessageSoundness.lean) | `pcMessage` returns status 0 | For the encounter `e` of the real inputs, `e.c11 > 0`, `det e.C > 0`, and `r > 0`, the endpoints are finite, `lo ≤ Model.pc e.m1 e.m2 e.c11 e.c12 e.c22 r ≤ hi`, and `hi ≤ 1`. |
+| `assessMessage_sound` | [Message soundness](MessageSoundness.lean) | `assessMessage` returns status 0 | `pcMessage` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies that the probability of `e` is below `t`, and verdict 2 that it is at least `t`. |
+| `compiled.pc.implements`, `compiled.assess.implements`, `compiled.pcMessage.implements`, `compiled.assessMessage.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a store that holds the tables of `exp` and `erfc` at their addresses, and argument words that represent the arguments | Entries 116 to 119 return words that represent the results of the four functions at the arguments, without a trap. |
 | `compiled.bytes` | [Compilation](Verified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`. |
 | `conjunction_file`, `conjunction_file_decode` | [File theorems](File.lean) | `build/verified/conjunction.wasm` as written | The file holds `encode compiled.module` and decodes to `compiled.module`. |
 
-The proof of `pc_enclosure` follows the program.  Each interval function contains the real
-function it computes, by the theorems of the interval layer: `gaussI_sound`, `chordI_sound`,
-`meanI_sound`, and `erfSumI_sound` give `panelCore_sound`, the inclusion of `Model.core x` for
-every `x` of the panel.  `panel_sound` applies `integral_eq_width_mul`, so an accepted panel
-contains the integral of `Model.core` over it.  `panels_sound` is an induction on the loop: the
-sum of the first `k` panels contains the integral from the first partition point to point `k`.
-An accepted division by the interval of `k` gives `k ≠ 0`, hence a positive conditional variance
-and a positive determinant, which `Model.pc_eq` requires.
+The proofs follow the program.  Each interval function contains the real function it computes,
+by the theorems of the interval layer: `gaussI_sound`, `chordI_sound`, `meanI_sound`, and
+`erfSumI_sound` give `panelCore_sound`, the inclusion of `Model.core x` for every `x` of the
+panel.  `panel_of_core` applies `integral_eq_width_mul`, so an accepted panel of any such interval
+function contains the integral of `Model.core` over it.  `panels_of_panel` is an induction on the
+loop: the sum of the first `k` panels contains the integral from the first partition point to
+point `k`.  `panel_sound` and `panels_sound_of` are their cases for `panelCore`, and
+`panelCoreTail_sound` and `panelsTail_sound` for the tail path.  `erfSumTailI_sound` proves the
+inclusion in each branch of `erfSumTailI`: `arguments_sound` encloses the two arguments, and
+`erfc(-a) - erfc b = erf a + erf b` turns the inclusion of a difference of `erfc` into that of the
+sum.  An accepted division by the interval of `k` gives `k ≠ 0`, hence a positive conditional
+variance and a positive determinant, which `Model.pc_eq` requires.  `pc_enclosure` is
+`pcTail_sound` for the setup of `setup_sound` and the point interval of `c11`.
+`projection_sound` is `encounter.encloses`, which `enclosure_def` proves, applied to the point
+intervals of the inputs, and `pcMessage_enclosure` is `pcTail_sound` for the setup of
+`setupBox_sound` from the five inclusions.
 
 ## Tests
 
-`tests/verified/run.sh --cases conjunction` writes the module, validates it, compares `pc` and
-`assess` with native Lean on [the generated cases](../../tests/TestSupport/Conjunction/Cases.lean),
-runs the axiom audit, and checks the file theorems.  The cases hold 13 valid inputs and 13
-rejected ones, each with five panel counts and five thresholds.
+`tests/verified/run.sh --cases conjunction` writes the module, validates it, compares `pc`,
+`assess`, `pcMessage`, and `assessMessage` with native Lean on
+[the generated cases](../../tests/TestSupport/Conjunction/Cases.lean), runs the axiom audit, and
+checks the file theorems.  The cases hold 16 valid inputs and 13 rejected ones of `pc`, each with
+five panel counts and five thresholds, and 7 valid and 12 rejected inputs of the message form,
+each with four panel counts and three thresholds.
 
 [`tests/conjunction/run.sh`](../../tests/conjunction/run.sh) runs the containment test.
 [The reference](../../tests/conjunction/reference.py) integrates the density over the disk in
 polar coordinates with `mpmath` at 50 digits, independently of the reduction to one dimension,
 and requires the value to lie in the interval.  The inputs hold isotropic and elongated
 covariances, correlations of ±0.999, radii from `1e-5` to 1,000 standard deviations, a zero miss
-vector, and miss distances of 12 and 50 standard deviations.  All 39 runs, 13 inputs at 16, 256,
-and 4,096 panels, contain the reference.
+vector, a miss of 12 standard deviations along the first axis and of 12, 30, and 50 along the
+second, and a correlated covariance with a miss of 11.5 standard deviations in the metric of the
+covariance.  All 48 runs, 16 inputs at 16, 256, and 4,096 panels, contain the reference.
 
 In the table, `σ = (σ1, σ2)` stands for the covariance `(σ1², 0, σ2²)`.
 
@@ -163,16 +249,46 @@ In the table, `σ = (σ1, σ2)` stands for the covariance `(σ1², 0, σ2²)`.
 | `m = (200, -100)`, `C = (250000, 120000, 90000)`, `r = 15` | `6.3797e-4` | `1.5e-4` | `9.4e-6` | `5.9e-7` |
 | `m = (300, 0)`, `σ = (100, 1000)`, `r = 20` | `2.3111e-5` | `5.6e-6` | `3.5e-7` | `2.2e-8` |
 | `m = (1200, 0)`, `σ = (100, 100)`, `r = 10` | `3.1958e-34` | `1.1e-34` | `7.1e-36` | `4.4e-37` |
-| `m = (0, 5000)`, `σ = (100, 100)`, `r = 10` | `6.57e-545` | `2.7e-17` | `2.7e-17` | `2.7e-17` |
+| `m = (0, 1200)`, `σ = (100, 100)`, `r = 10` | `3.1958e-34` | `5.4e-35` | `3.4e-36` | `2.1e-37` |
+| `m = (0, 3000)`, `σ = (100, 100)`, `r = 10` | `4.8527e-198` | `9.8e-199` | `6.1e-200` | `3.8e-201` |
+| `m = (0, 5000)`, `σ = (100, 100)`, `r = 10` | `6.57e-545` | `4.9e-324` | `9.9e-324` | `8.4e-323` |
+| `m = (-400, 900)`, `C = (40000, -15000, 10000)`, `r = 8` | `5.0442e-32` | `1.3e-32` | `8.4e-34` | `5.3e-35` |
 | `m = (3, 4)`, `σ = (10, 10)`, `r = 10000` | `1.0` | `1.0` | `1.0` | `0.19` |
 
-The width is about 16 times smaller for 16 times as many panels.  The last two rows show the two
-weak cases.  For a miss of 50 standard deviations along the second axis, the two error-function
-values cancel, and the upper endpoint stays near `2.7e-17`, the rounding of `erf` near ±1 times
-the constant factor and the width of `[-r, r]`.  A miss along the first axis keeps its relative
-accuracy, as the row before it shows, because the exponential factor carries the small value.
-For a disk of 1,000 standard deviations, uniform panels are far wider than the region that holds
-the probability, and the clamp at 1 sets the upper endpoint.
+The width is about 16 times smaller for 16 times as many panels.  A miss along the second axis
+keeps the relative accuracy of a miss along the first: for 12 standard deviations, where the sum
+of `erf` left an upper endpoint near `2.7e-17`, the interval at 4,096 panels is 7 parts in 10,000
+of the reference wide, and for 30 standard deviations 8 parts in 10,000.  For 50 standard
+deviations the probability lies below the smallest subnormal number, the lower endpoint is 0, and
+the upper endpoint is a few subnormal steps, the rounding of the products and the sum.  For a disk
+of 1,000 standard deviations, uniform panels are far wider than the region that holds the
+probability, and the clamp at 1 sets the upper endpoint.  The sample of `pc` above, whose
+conditional mean is 0 on every panel, keeps its interval bit for bit.
+
+The same driver checks the message form.  [The message check](../../tests/conjunction/message.py)
+projects the states and covariances onto the encounter plane with `mpmath` at 50 digits, with
+`3 × 3` matrices for the RTN frames, the rotations, and the projection, and requires each
+quantity to lie in its interval of `encounterAt` and the polar reference of the projected
+encounter to lie in the interval of `pcMessage`.  Its inputs hold a crossing and a head-on
+encounter in low orbit, a slow encounter in geostationary orbit with standard deviations of up to
+6.9 km in the plane, an inclined encounter with correlated covariances, misses of about 12 and 30
+standard deviations, and a probability near 1, and 12 inputs that must be rejected: a position at
+the origin, a velocity along the position, equal velocities, a relative position along the
+relative velocity, equal positions, negative variances, zero covariances, a NaN, an infinite
+variance, and a radius of 0, -1, and infinity.  All 21 runs of the 7 valid inputs contain the
+reference and their projection, and all 36 runs of the rejected inputs return status 1.  The
+projection's intervals are `4e-15` to `1.4e-12` of their values wide, and the interval of `m2`,
+whose value is 0, at most `7e-12` m.
+
+| Message input | `m1` (m) | `c11, c12, c22` (m²) | Reference | Width at 16 panels | At 256 | At 4,096 |
+|---|---|---|---|---|---|---|
+| Crossing in low orbit, `r = 20` | 244.95 | 856046, 1167538, 1680205 | `3.7328e-4` | `1.4e-4` | `8.8e-6` | `5.5e-7` |
+| Head-on in low orbit, `r = 10` | 130.01 | 4673.2, -3157.9, 11227 | `8.3158e-4` | `2.5e-4` | `1.6e-5` | `9.9e-7` |
+| Geostationary, `r = 30` | 1542.6 | 47408339, 9989346, 2157064 | `1.0166e-4` | `1.9e-5` | `1.2e-6` | `7.7e-8` |
+| Inclined, correlated, `r = 15` | 397.65 | 34348.6, -4323.6, 2429.0 | `7.2703e-4` | `1.5e-4` | `9.2e-6` | `5.8e-7` |
+| About 12 standard deviations, `r = 5` | 165.83 | 254.54, 115.71, 445.46 | `4.1466e-28` | `3.8e-28` | `2.5e-29` | `1.6e-30` |
+| About 30 standard deviations, `r = 10` | 244.95 | 75.00, 35.36, 100.00 | `2.9671e-194` | `1.9e-192` | `1.8e-194` | `1.1e-195` |
+| Near 1, `r = 20` | 0.5 | 2, 0, 2 | `1.0` | `0.66` | `0.044` | `2.8e-3` |
 
 ## Limits of the theorems
 
@@ -182,16 +298,22 @@ some conjunctions, which indicates a violated assumption.  The realism of the co
 choice of the radius, the agreement of the frames of the mean and the covariance, and the choice
 of a threshold are the caller's.
 
-The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The program
-clamps the result to `[0, 1]`, so the upper endpoint is at most 1.  The program uses `erf` for both error-function values, so when the two values
-cancel, the upper endpoint stays near `7e-16` times the constant factor times `2r`, as the fifth
-row of the table shows.  A verdict against a threshold such as `1e-4` is unaffected.
+The message form adds the frames and the epoch to the caller's part.  `encounter` assumes the two
+states in one inertial frame at one time: velocities in an Earth-fixed frame give a wrong `N̂`,
+`T̂`, and relative velocity.  The extraction
+of the numbers from a message's text, its units, and the order of the covariance entries lie
+outside the verified program.  The miss vector `(|Δr⊥|, 0)` is the closest approach of the line
+`Δr + τ Δv` for any epoch of the states, while the covariances are those of the given epoch, which
+a message sets at the time of closest approach.
 
-The program takes the encounter-plane quantities.  The projection of two states and two
-covariances from a conjunction message onto the encounter plane, the parsing of the message, and
-the remediation of a covariance that is not positive definite lie outside this iteration, and
-[the review](review.md) lists them as open items.  The theorems rest on the verified compiler's
-trusted base, which [the trusted-base document](../../docs/trusted-base.md) describes.
+The theorems bound no width.  A wide interval is sound, and its verdict is then 0.  The program
+clamps the result to `[0, 1]`, so the upper endpoint is at most 1.  `pcWith`, which the radius and
+adaptive programs use, and `pcBoxWith`, which the avoidance authorizer uses, compute the sum of the
+two error-function values with `erf` alone, so for a miss of many standard deviations along the
+second axis their upper endpoint stays near `7e-16` times the constant factor times `2r`.  The
+parsing of a message and the remediation of a covariance that is not positive definite lie outside
+this iteration.  The theorems rest on the verified compiler's trusted base, which
+[the trusted-base document](../../docs/trusted-base.md) describes.
 
 ## Radius at a probability: CE and LE
 
