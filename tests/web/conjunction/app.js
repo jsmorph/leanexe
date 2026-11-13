@@ -85,7 +85,7 @@ disk smaller than two pixels gets a dashed ring around its place, which the capt
 function drawPlane({ m1, m2, c11, c12, c22, r }) {
   const svg = $("plane");
   svg.replaceChildren();
-  const W = 600, H = 420, pad = 36;
+  const W = 600, pad = 36;
   const a = axes(c11, c12, c22);
   if (a === null || ![m1, m2, r].every(Number.isFinite) || !(r > 0)) {
     $("caption").textContent = "No drawing: the inputs do not give a positive definite " +
@@ -95,7 +95,9 @@ function drawPlane({ m1, m2, c11, c12, c22, r }) {
   const sx = 3 * Math.sqrt(c11), sy = 3 * Math.sqrt(c22);
   const x0 = Math.min(-r, m1 - sx, 0), x1 = Math.max(r, m1 + sx, 0);
   const y0 = Math.min(-r, m2 - sy, 0), y1 = Math.max(r, m2 + sy, 0);
-  const scale = Math.min((W - 2 * pad) / (x1 - x0), (H - 2 * pad) / (y1 - y0));
+  const scale = Math.min((W - 2 * pad) / (x1 - x0), (420 - 2 * pad) / (y1 - y0));
+  const H = Math.max(200, scale * (y1 - y0) + 2 * pad);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const cx = W / 2 - scale * (x0 + x1) / 2, cy = H / 2 + scale * (y0 + y1) / 2;
   const X = x => cx + scale * x, Y = y => cy - scale * y;
   node(svg, "line", { class: "axis", x1: 0, y1: Y(0), x2: W, y2: Y(0) });
@@ -141,15 +143,16 @@ function drawInterval(lo, hi, t) {
   const step = Math.max(1, Math.ceil((e1 - e0) / 8));
   for (let e = e0; e <= e1; e += step) {
     node(svg, "line", { class: "axis", x1: X(10 ** e), y1: 26, x2: X(10 ** e), y2: 34 });
-    node(svg, "text", { x: X(10 ** e), y: 50, "text-anchor": "middle", class: "muted" }, `1e${e}`);
+    node(svg, "text", { x: X(10 ** e), y: 52, "text-anchor": "middle", class: "muted" }, `1e${e}`);
   }
   const left = lo > 0 ? X(lo) : pad;
   node(svg, "line", { class: "interval", x1: left, y1: 30, x2: Math.max(X(hi), left + 2), y2: 30 });
   if (t > 0) {
-    node(svg, "line", { class: "threshold", x1: X(t), y1: 16, x2: X(t), y2: 44 });
+    node(svg, "line", { class: "threshold", x1: X(t), y1: 18, x2: X(t), y2: 38 });
     node(svg, "text", { x: X(t), y: 12, "text-anchor": "middle" }, "t");
   }
-  node(svg, "text", { x: left, y: 66, class: "muted" }, lo > 0 ? "[lo, hi]" : "[0, hi]");
+  node(svg, "text", { x: left, y: 68, class: "muted" },
+    lo > 0 ? "[lo, hi]" : "[0, hi], with 0 off the scale to the left");
 }
 
 /** Shows the result of `assess` on the encounter-plane inputs, which the form gives. */
