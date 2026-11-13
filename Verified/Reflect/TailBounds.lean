@@ -33,7 +33,7 @@ def addTailBounds (base : Name) (sigs funs prog k : Lean.Expr) (callees : List C
   let selfCost := mkConst (base ++ `continueCost)
   let own ← withLocalDeclD `x r.argsType fun x =>
     mkLambdaFVars #[x] (mkApp selfCost (r.envOf x))
-  addBoundDefinition (base ++ `continueBound) (← inferType own) own
+  addDefinition (base ++ `continueBound) (← inferType own) own
   let tuple ← r.tupleOf params
   let selfEq ← rflEq (mkApp (mkConst (base ++ `continueBound)) tuple) (mkNatLit 0)
   addTheorem (base ++ `continueBound_eq)
@@ -117,7 +117,7 @@ def addTailBounds (base : Name) (sigs funs prog k : Lean.Expr) (callees : List C
     let entry ← if r.depth then mkAppM ``TailFunc.boundAt #[f, funs, flags, restB, frames]
       else mkAppM ``TailFunc.bound #[f, funs, flags, bounds]
     mkLambdaFVars (if r.depth then #[frames, x] else #[x]) (mkApp entry (r.envOf x))
-  addBoundDefinition (base ++ cost) (← inferType costValue) costValue
+  addDefinition (base ++ cost) (← inferType costValue) costValue
   let costEq := base ++ Name.mkSimple (cost.toString ++ "_eq")
   let frames := mkApp (mkConst ``Nat.succ) k
   let equationArgs := if r.depth then #[k] ++ params else params
@@ -150,7 +150,7 @@ def addTailBounds (base : Name) (sigs funs prog k : Lean.Expr) (callees : List C
         withLocalDeclD `x r.argsType fun x => do
       mkLambdaFVars #[frames, x]
         (← mkAppM ``TailFunc.fitsAt #[f, funs, restF, frames, r.envOf x])
-    addBoundDefinition (base ++ `fits) (← inferType value) value
+    addDefinition (base ++ `fits) (← inferType value) value
     addEquation base.getPrefix (base ++ `fits_eq) equationArgs
       (mkApp2 (mkConst (base ++ `fits)) frames tuple) root
   if paid then
