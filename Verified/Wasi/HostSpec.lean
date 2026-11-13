@@ -212,9 +212,9 @@ def ShownAt (mem : Mem) : List Region → List LeanExe.Bytes → Prop
 
 /-- The premise of a flat call's contract: the core arguments lower an accepted request that fits
 the call's parameters with the given pointers, the inputs lie at their pointers, and the output
-regions, of the sizes the world reports for reported regions, lie in memory below `2^32` at
-aligned pointers, apart from one another and from the inputs.  Inputs may overlap one another,
-since the host only reads them. -/
+regions, of the sizes the world reports for reported regions, lie in memory, end below `2^32`, and
+have aligned pointers, apart from one another and from the inputs.  Inputs may overlap one
+another, since the host only reads them. -/
 structure SysRequest (before : Store (Observed World)) (args : List Value) (call : Call)
     (request : List Arg) (pointers : List UInt32) (sizes : List Nat) : Prop where
   fits : argsFit call.params request = true
@@ -224,7 +224,7 @@ structure SysRequest (before : Store (Observed World)) (args : List Value) (call
     Bytes.At before.mem place.1.toUInt64 place.2
   bounds : ∀ region ∈ outputRegions call.params sizes request pointers,
     region.pointer.toNat + region.size ≤ before.mem.pages * 65536 ∧
-      region.pointer.toNat + region.size ≤ 2 ^ 32 ∧ region.pointer.toNat % region.align = 0
+      region.pointer.toNat + region.size < 2 ^ 32 ∧ region.pointer.toNat % region.align = 0
   apart : ((outputRegions call.params sizes request pointers).map Region.span).Pairwise
     LeanExe.Runtime.regionsDisjoint
   separate : ∀ region ∈ outputRegions call.params sizes request pointers,

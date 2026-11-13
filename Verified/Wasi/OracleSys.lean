@@ -417,7 +417,7 @@ theorem sys_contract (sound : oracle.Sound host calls) {call : Call} (member : c
         have bounds := valid.bounds region regionMember
         simp only [placeSpan, Region.span, Prod.mk.injEq] at eq
         rw [← eq.1, ← eq.2]
-        exact ⟨bounds.2.1, bounds.1⟩
+        exact ⟨Nat.le_of_lt bounds.2.1, bounds.1⟩
   rw [valid.arguments]
   simp only [sysInvoke, decode]
   cases reply : (oracle.reply before.host.world call request).1 with

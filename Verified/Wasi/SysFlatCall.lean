@@ -513,7 +513,7 @@ theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m
     (hMemory : 16 ≤ store.mem.pages * 65536)
     (hBuffer : ∀ capacity, flatCapacity call.params values = some capacity →
       root.toNat + capacity.toNat ≤ store.mem.pages * 65536 ∧
-        root.toNat + capacity.toNat ≤ 2 ^ 32 ∧
+        root.toNat + capacity.toNat < 2 ^ 32 ∧
         (16 ≤ root.toNat ∨ (capacity.toNat = 0 ∧ root = 0)))
     (hNext : ∀ (final : Store (Observed World)) (errno : UInt64) (outputs : List LeanExe.Bytes),
       (observedHost host).sys store.host call (flatArgs call.params values)

@@ -262,7 +262,7 @@ structure Host.AnswersFor {World : Type} (host : Host World) (calls : List Call)
   sys : ∀ call ∈ calls,
     (∀ scale align shown, Param.reported scale align shown ∈ call.params → 0 < align) →
     ∀ world request, argsFit call.params request = true → call.reject request = 0 →
-      layoutEnd call.params (host.reported world call) request 16 ≤ 2 ^ 32 →
+      layoutEnd call.params (host.reported world call) request 16 < 2 ^ 32 →
       ∃ reply after, host.sys world call request reply after
 
 namespace Host.TotalFor
@@ -309,13 +309,13 @@ theorem layoutRequest (world : World) (call : Call) (request : List Arg) (sizes 
     (fits : argsFit call.params request = true) (accepted : call.reject request = 0)
     (aligned :
       ∀ scale align shown, Param.reported scale align shown ∈ call.params → 0 < align)
-    (bound : layoutEnd call.params sizes request 16 ≤ 2 ^ 32) :
+    (bound : layoutEnd call.params sizes request 16 < 2 ^ 32) :
     SysRequest
       (requestStore world
         (layoutMemory call.params request (layoutPointers call.params sizes request 16)))
       (lowerArgs call.params request (layoutPointers call.params sizes request 16)) call request
       (layoutPointers call.params sizes request 16) sizes := by
-  have laid := Layout.laid call.params sizes request 16 aligned bound
+  have laid := Layout.laid call.params sizes request 16 aligned (Nat.le_of_lt bound)
   have apart := List.pairwise_append.mp laid.apart
   refine ⟨fits, accepted, rfl, ?_, ?_, apart.1, fun region regionMember place placeMember =>
     apart.2.2 _ (List.mem_map.mpr ⟨region, regionMember, rfl⟩) _
