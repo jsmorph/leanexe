@@ -3,17 +3,40 @@ import Verified.Wasi.ReflectSysOperation
 import LeanExe.Wasi.SysCalls
 
 /-!
-The reflection equations of the generated typed functions without a record result, and the table
-of them that `reflect` reads, which `tools/wasi-calls.py` generates from the pinned witx.  Each
-equation states that the `sys` command of the call denotes the typed function followed by the
-`Flat` form of its result.  Its check fails when this file differs from its output.
+The `Flat` instances of the record result types, the reflection equations of the generated typed
+functions, and the table of the equations that `reflect` reads, which `tools/wasi-calls.py`
+generates from the pinned witx.  Each equation states that the `sys` command of the call denotes
+the typed function followed by the `Flat` form of its result.  Its check fails when this file
+differs from its output.
 -/
+
+namespace LeanExe.Wasi
+
+open LeanExe.Pipeline
+
+instance : Flat FdstatResult (UInt64 × UInt64 × UInt64 × UInt64 × UInt64) :=
+  ⟨fun result => (result.errno, result.fsFiletype, result.fsFlags, result.fsRightsBase,
+    result.fsRightsInheriting)⟩
+
+instance : Flat FilestatResult
+    (UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64) :=
+  ⟨fun result => (result.errno, result.dev, result.ino, result.filetype, result.nlink, result.size,
+    result.atim, result.mtim, result.ctim)⟩
+
+instance : Flat PrestatResult (UInt64 × UInt64 × UInt64) :=
+  ⟨fun result => (result.errno, result.tag, result.prNameLen)⟩
+
+end LeanExe.Wasi
 
 namespace Verified.Wasi.Reflect
 
 open LeanExe.Wasi LeanExe.Pipeline
 
 variable {pureSigs : List Sig} {effectSigs : List EffectSig} {context : List Ty}
+
+-- With `Reply.field` folded, `rfl` unfolds the command's side of a record equation to the
+-- typed function's fields instead of unfolding the fields' byte readers.
+attribute [local irreducible] Reply.field
 
 theorem environSizesGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) :
@@ -69,6 +92,15 @@ theorem fdDatasync_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effect
   subst hFd
   rfl
 
+theorem fdFdstatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFdstatGet (.record 4) [fd]
+      []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : FdstatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64)
+        (fdFdstatGet fdValue) := by
+  subst hFd
+  rfl
+
 theorem fdFdstatSetFlags_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (flags : Var context .word) (fdValue : UInt64)
     (flagsValue : UInt64) (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue) :
@@ -91,6 +123,15 @@ theorem fdFdstatSetRights_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns
   subst hFd hFsRightsBase hFsRightsInheriting
   rfl
 
+theorem fdFilestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFilestatGet (.record 8)
+      [fd] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : FilestatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64 × UInt64 × UInt64 × UInt64) (fdFilestatGet fdValue) := by
+  subst hFd
+  rfl
+
 theorem fdFilestatSetSize_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (size : Var context .word) (fdValue : UInt64)
     (sizeValue : UInt64) (hFd : env.get fd = fdValue) (hSize : env.get size = sizeValue) :
@@ -111,6 +152,15 @@ theorem fdFilestatSetTimes_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFun
       flattenAction (fun value : UInt64 => value) (fdFilestatSetTimes fdValue atimValue mtimValue
         fstFlagsValue) := by
   subst hFd hAtim hMtim hFstFlags
+  rfl
+
+theorem fdPrestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPrestatGet (.record 2)
+      [fd] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PrestatResult → UInt64 × UInt64 × UInt64) (fdPrestatGet fdValue)
+        := by
+  subst hFd
   rfl
 
 theorem fdPrestatDirName_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -180,6 +230,18 @@ theorem pathCreateDirectory_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFu
       (.flat 0 false) [fd] [path]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathCreateDirectory fdValue pathValue) := by
   subst hFd hPath
+  rfl
+
+theorem pathFilestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (flags : Var context .word)
+    (path : Var context .bytes) (fdValue : UInt64) (flagsValue : UInt64) (pathValue : LeanExe.Bytes)
+    (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue)
+    (hPath : env.get path = pathValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathFilestatGet (.record 8)
+      [fd, flags] [path]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : FilestatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64 × UInt64 × UInt64 × UInt64) (pathFilestatGet fdValue flagsValue pathValue) := by
+  subst hFd hFlags hPath
   rfl
 
 theorem pathFilestatSetTimes_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -332,14 +394,20 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false], ``fdClose_eq⟩),
   (``LeanExe.Wasi.fdDatasync, ⟨``LeanExe.Wasi.Call.fdDatasync,
     flatForm 0 false, [false], ``fdDatasync_eq⟩),
+  (``LeanExe.Wasi.fdFdstatGet, ⟨``LeanExe.Wasi.Call.fdFdstatGet,
+    recordForm 4, [false], ``fdFdstatGet_eq⟩),
   (``LeanExe.Wasi.fdFdstatSetFlags, ⟨``LeanExe.Wasi.Call.fdFdstatSetFlags,
     flatForm 0 false, [false, false], ``fdFdstatSetFlags_eq⟩),
   (``LeanExe.Wasi.fdFdstatSetRights, ⟨``LeanExe.Wasi.Call.fdFdstatSetRights,
     flatForm 0 false, [false, false, false], ``fdFdstatSetRights_eq⟩),
+  (``LeanExe.Wasi.fdFilestatGet, ⟨``LeanExe.Wasi.Call.fdFilestatGet,
+    recordForm 8, [false], ``fdFilestatGet_eq⟩),
   (``LeanExe.Wasi.fdFilestatSetSize, ⟨``LeanExe.Wasi.Call.fdFilestatSetSize,
     flatForm 0 false, [false, false], ``fdFilestatSetSize_eq⟩),
   (``LeanExe.Wasi.fdFilestatSetTimes, ⟨``LeanExe.Wasi.Call.fdFilestatSetTimes,
     flatForm 0 false, [false, false, false, false], ``fdFilestatSetTimes_eq⟩),
+  (``LeanExe.Wasi.fdPrestatGet, ⟨``LeanExe.Wasi.Call.fdPrestatGet,
+    recordForm 2, [false], ``fdPrestatGet_eq⟩),
   (``LeanExe.Wasi.fdPrestatDirName, ⟨``LeanExe.Wasi.Call.fdPrestatDirName,
     flatForm 0 true, [false, false], ``fdPrestatDirName_eq⟩),
   (``LeanExe.Wasi.fdReaddir, ⟨``LeanExe.Wasi.Call.fdReaddir,
@@ -354,6 +422,8 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 1 false, [false], ``fdTell_eq⟩),
   (``LeanExe.Wasi.pathCreateDirectory, ⟨``LeanExe.Wasi.Call.pathCreateDirectory,
     flatForm 0 false, [false, true], ``pathCreateDirectory_eq⟩),
+  (``LeanExe.Wasi.pathFilestatGet, ⟨``LeanExe.Wasi.Call.pathFilestatGet,
+    recordForm 8, [false, false, true], ``pathFilestatGet_eq⟩),
   (``LeanExe.Wasi.pathFilestatSetTimes, ⟨``LeanExe.Wasi.Call.pathFilestatSetTimes,
     flatForm 0 false, [false, false, true, false, false, false], ``pathFilestatSetTimes_eq⟩),
   (``LeanExe.Wasi.pathLink, ⟨``LeanExe.Wasi.Call.pathLink,

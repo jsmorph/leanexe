@@ -22,4 +22,8 @@ def SysOperation.arity (operation : SysOperation) : Nat := operation.inputs.leng
 def flatForm (words : Nat) (bytes : Bool) : Lean.Expr :=
   mkApp2 (mkConst ``Verified.Wasi.SysForm.flat) (mkNatLit words) (toExpr bytes)
 
+/-- The form `SysForm.record fields` as a term. -/
+def recordForm (fields : Nat) : Lean.Expr :=
+  mkApp (mkConst ``Verified.Wasi.SysForm.record) (mkNatLit fields)
+
 end Verified.Wasi.Reflect

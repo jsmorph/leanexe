@@ -10,8 +10,8 @@ WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WAS
 fae981bae14809d91f9bc2d63852d461f331d161, by default tests/wasi/witx.  The script lowers every
 function of the witx to core parameter kinds, renders the Lean descriptions of the flat functions,
 their typed functions and record result types, the reflection equations of the typed functions
-without a record result, and the frame test of tests/wasi/sys, and compares each rendering with
-the committed file, printing a unified diff and exiting with status 1 when one differs.  With
+and Flat instances of records, and the frame test of tests/wasi/sys, and compares each rendering
+with the committed file, printing a unified diff and exiting with status 1 when one differs.  With
 --write it writes the files instead.  With --frame-faults DIR it writes to DIR one frame test for
 each seeded fault of FAULTS and prints the fault's name and the exit status that the test must
 give: 1, the host's status for a trap, when the fault moves a record, and else the status of the
@@ -413,14 +413,44 @@ FLATTEN = {
 
 def reflected(function):
     """Whether `reflect` maps the generated typed function to one `sys` command."""
-    return function.name not in HAND_WRITTEN and \
-        not any(kind[0] == "record" for kind in function.kinds)
+    return function.name not in HAND_WRITTEN
+
+
+def record_kind(function):
+    """The function's record kind, or None."""
+    return next((kind for kind in function.kinds if kind[0] == "record"), None)
 
 
 def form(function):
+    """The call's `SysForm` as a term of its equation and as an expression of its table entry."""
+    record = record_kind(function)
+    if record is not None:
+        return f"(.record {len(record[3])})", f"recordForm {len(record[3])}"
     words = sum(1 for kind in function.kinds if kind[0] in ("result32", "result64"))
-    output = any(kind[0] == "output" for kind in function.kinds)
-    return words, output
+    output = "true" if any(kind[0] == "output" for kind in function.kinds) else "false"
+    return f"(.flat {words} {output})", f"flatForm {words} {output}"
+
+
+def flatten(function):
+    """The tokens of the map from the typed function's result to the command's value."""
+    record = record_kind(function)
+    if record is None:
+        return [FLATTEN[result_type(function)]]
+    words = " × ".join(["UInt64"] * (len(record[3]) + 1))
+    return f"(Flat.flat : {result_type(function)} → {words})".split(" ")
+
+
+def flat_instance(kind):
+    """The `Flat` instance of a record result type: the errno and the fields as a tuple."""
+    name = pascal(kind[4]) + "Result"
+    fields = ["errno"] + [camel(field) for field, _, _ in kind[3]]
+    words = " × ".join(["UInt64"] * len(fields))
+    head = f"instance : Flat {name} ({words}) :="
+    lines = [head] if len(head) <= WIDTH else [f"instance : Flat {name}", f"    ({words}) :="]
+    items = [f"result.{field}" for field in fields]
+    items[0], items[-1] = "(" + items[0], items[-1] + ")"
+    lines += wrap("  ⟨fun result => ", items, "⟩", 4)
+    return "\n".join(lines) + "\n"
 
 
 KEYWORDS = {"at", "by", "do", "else", "end", "for", "from", "fun", "have", "if", "in", "let",
@@ -443,7 +473,7 @@ def reflection_equation(function):
               for name, input in zip(names, inputs)]
     hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value)"
                   for name in names]
-    words, output = form(function)
+    term, _ = form(function)
     lines = [f"theorem {function.lean}_eq (pureFuns : Funs pureSigs) "
              "(effectFuns : EffectFuns effectSigs)"]
     if names:
@@ -455,15 +485,14 @@ def reflection_equation(function):
     input_list = ", ".join(variable(name) for name, input in zip(names, inputs) if input)
     tokens = ["(Command.sys", "(pureSigs := pureSigs)", "(effectSigs := effectSigs)"]
     tokens += [] if names else ["(context := context)"]
-    tokens += [f"Call.{function.lean}", f"(.flat {words} {'true' if output else 'false'})",
+    tokens += [f"Call.{function.lean}", term,
                f"[{word_list}]", f"[{input_list}]).denote", "pureFuns", "effectFuns", "env", "="]
     lines += wrap("    ", tokens, "", 6, separator="")
     call = [f"({function.lean}"] + [f"{name}Value" for name in names]
     call[-1] += ")"
     if not names:
         call = [function.lean]
-    tokens = ["flattenAction", FLATTEN[result_type(function)], *call,
-              ":= by" if names else ":= rfl"]
+    tokens = ["flattenAction", *flatten(function), *call, ":= by" if names else ":= rfl"]
     lines += wrap("      ", tokens, "", 8, separator="")
     if names:
         lines.append("  subst " + " ".join(f"h{name[0].upper() + name[1:]}" for name in names))
@@ -475,35 +504,53 @@ def operation_entry(function):
     takes = [kind for kind in function.kinds
              if kind[0] not in ("result32", "result64", "record", "reported")]
     inputs = ", ".join("true" if kind[0] == "input" else "false" for kind in takes)
-    words, output = form(function)
+    _, expression = form(function)
     return (f"(``LeanExe.Wasi.{function.lean}, ⟨``LeanExe.Wasi.Call.{function.lean},\n"
-            f"    flatForm {words} {'true' if output else 'false'}, [{inputs}], "
-            f"``{function.lean}_eq⟩)")
+            f"    {expression}, [{inputs}], ``{function.lean}_eq⟩)")
 
 
 def render_reflect(flat):
     functions = [function for function in flat if reflected(function)]
     entries = [operation_entry(function) for function in functions]
+    records = {}
+    for function in flat:
+        record = record_kind(function)
+        if record is not None:
+            records[record[4]] = record
     return "\n".join([
         "import Verified.Wasi.ReflectLemmas",
         "import Verified.Wasi.ReflectSysOperation",
         "import LeanExe.Wasi.SysCalls",
         "",
         "/-!",
-        "The reflection equations of the generated typed functions without a record result, and "
-        "the table",
-        "of them that `reflect` reads, which `tools/wasi-calls.py` generates from the pinned "
-        "witx.  Each",
-        "equation states that the `sys` command of the call denotes the typed function followed by "
-        "the",
-        "`Flat` form of its result.  Its check fails when this file differs from its output.",
+        "The `Flat` instances of the record result types, the reflection equations of the "
+        "generated typed",
+        "functions, and the table of the equations that `reflect` reads, which "
+        "`tools/wasi-calls.py`",
+        "generates from the pinned witx.  Each equation states that the `sys` command of the call "
+        "denotes",
+        "the typed function followed by the `Flat` form of its result.  Its check fails when this "
+        "file",
+        "differs from its output.",
         "-/",
+        "",
+        "namespace LeanExe.Wasi",
+        "",
+        "open LeanExe.Pipeline",
+        "",
+        "\n".join(flat_instance(kind) for kind in records.values()),
+        "end LeanExe.Wasi",
         "",
         "namespace Verified.Wasi.Reflect",
         "",
         "open LeanExe.Wasi LeanExe.Pipeline",
         "",
         "variable {pureSigs : List Sig} {effectSigs : List EffectSig} {context : List Ty}",
+        "",
+        "-- With `Reply.field` folded, `rfl` unfolds the command's side of a record equation to "
+        "the",
+        "-- typed function's fields instead of unfolding the fields' byte readers.",
+        "attribute [local irreducible] Reply.field",
         "",
         "\n".join(reflection_equation(function) for function in functions),
         "/-- The generated typed functions that `reflect` maps to one `sys` command. -/",

@@ -1,4 +1,5 @@
 import Verified.Wasi.SysFlat
+import Verified.Wasi.SysRecord
 import Verified.Wasi.SysReported
 import Verified.Wasi.SysResult
 import Verified.Wasi.CostCodeSpec
@@ -286,6 +287,104 @@ theorem wp_sys_flat_result_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     rw [List.append_nil, ← flat_run_bind_inputs] at exec
     exact .trapped final message (.terminal final trace (.trapped message) message exec rfl)
 
+theorem record_run_bind (call : LeanExe.Wasi.Call) (fields : Nat) (values : List UInt64)
+    (inputs : List LeanExe.Bytes) :
+    (SysForm.record fields).runWith call values inputs =
+      Action.bind (.sys call (flatArgsWith call.params values inputs) Action.pure) fun reply =>
+        .pure (SysForm.value (.record fields) (reply.errno :: recordWords call.params reply)
+          .empty) := rfl
+
+/-- The code of a record `sys` command gives a `SysResult`. -/
+theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
+    {source target : Module} {host : Host World}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
+    (sourceHost : HostEnv Unit) {targetHost : HostEnv (Observed World)} {context : List Ty}
+    {env : Env context} {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
+    {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {aborts : Bool}
+    {budget : Nat} {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
+    {inputs : List (Var context .bytes)} {params : List Param} {size align : Nat}
+    {fields : List (Nat × Nat)}
+    (hHost : targetHost.Satisfies target (hostSpecWith host calls))
+    (hCall : calls[calls.idxOf operation]? = some operation)
+    (hParams : operation.params = params ++ [.record size align fields])
+    (hKinds : params.all Param.argKind = true) (hFits : recordFits size align fields = true)
+    (hCount : args.length = operation.wordCount)
+    (hInputCount : inputs.length = operation.inputCount)
+    (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (selected : ∀ i, live i = true → liveIn i = true)
+    (used : ∀ arg ∈ args, liveIn arg.index = true)
+    (usedInputs : ∀ input ∈ inputs, liveIn input.index = true)
+    (at_ : heap.At (PureTransport.erase initial))
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (low : locals.params.length ≤ base) (room : base + (fields.length + 3) ≤ locals.positions)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      ∀ trace residual final, Prefix (observedHost host)
+        ((SysForm.record fields.length).runWith operation (args.map env.get) (inputs.map env.get))
+        initial.host trace residual final →
+        sysCostWith (.record fields.length) operation (args.map env.get) (inputs.map env.get)
+          trace ≤ budget) :
+    wp target (sysRecordCodeWith calls operation
+        (args.map fun arg => (slots.getD arg.index default).loc)
+        (inputs.map fun input => (slots.getD input.index default).loc) base)
+      (SysResult host env slots liveIn live base (.record fields.length)
+        ((SysForm.record fields.length).runWith operation (args.map env.get) (inputs.map env.get))
+        (sysCostWith (.record fields.length) operation (args.map env.get) (inputs.map env.get))
+        heap initial locals aborts)
+      initial locals targetHost := by
+  obtain ⟨held, below⟩ := sys_args_held vars args used
+  obtain ⟨items, itemsEq, heldItems, reps, belowInputs⟩ := sys_inputs_held vars apart inputs
+    usedInputs
+  rw [← itemsEq]
+  have hItemCount : items.length = operation.inputCount := by
+    rw [← hInputCount, ← List.length_map (f := Prod.snd), itemsEq, List.length_map]
+  have hRecord : recordOf operation.params = some (size, align, fields) := by
+    rw [hParams]; exact recordOf_record size align fields hKinds
+  have hBlock : recordBlock operation.params = size + align - 1 := by
+    simp [recordBlock, hRecord]
+  obtain ⟨hSize, hAlign, hBlockBound⟩ := recordFits_bounds hFits
+  have hBlockNat : (UInt64.ofNat (size + align - 1)).toNat = size + align - 1 :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  rw [← List.append_nil (sysRecordCodeWith calls operation _ _ base)]
+  refine wp_sys_record_with (aborts := aborts) runtime layout profile hImports sourceHost hHost
+    hCall hParams hKinds hFits held (by simpa using hCount)
+    (fun place member => Or.inl (below place member)) heldItems hItemCount
+    (fun place member => Or.inl (belowInputs place member)) reps at_ cap low (by omega) ?_ ?_ ?_
+    ?_
+  · intro hAbort
+    obtain ⟨within, bound⟩ := resources hAbort
+    have hCost := bound [] _ _ (Prefix.refl _ initial.host)
+    rw [← itemsEq] at hCost
+    simp only [sysCostWith, hBlock] at hCost
+    have hCostEq := Verified.Bytes.allocationCost_eq (count := UInt64.ofNat (size + align - 1))
+      (by rw [hBlockNat]; omega) (by rw [hBlockNat]; omega)
+    rw [hBlockNat] at hCostEq
+    rw [hCostEq] at hCost
+    exact (within.mono hCost).room cap
+  · intro hAbort final sameWorld
+    exact .trapped final _ (CommandResult.resource_refl hAbort sameWorld)
+  · intro heap' final finalLocals trace reply execution step top outside
+    rw [wp_nil]
+    have hLength := recordWords_length hRecord reply
+    have exec := execution.bind (rest := []) (next := fun reply =>
+      Action.pure (SysForm.value (.record fields.length)
+        (reply.errno :: recordWords operation.params reply) .empty)) (Exec.pure final.host _)
+    rw [List.append_nil, ← record_run_bind] at exec
+    refine .returned _ heap' final finalLocals
+      ((reply.errno :: recordWords operation.params reply).map Value.i64) trace exec ?_ ?_
+    · refine sys_after vars apart selected step (outside.frame (by omega)) ?_ rfl
+      simp only [SysForm.ty, SysForm.value, Ty.Rep]
+      exact (wordsElem_values _ _ (by simp [hLength])).symm
+    · simp only [sysCostWith, hBlock]
+      exact top
+  · intro final message trace execution
+    have exec := execution.bind (rest := []) (next := fun reply =>
+      Action.pure (SysForm.value (.record fields.length)
+        (reply.errno :: recordWords operation.params reply) .empty)) ⟨rfl, rfl, rfl⟩
+    rw [List.append_nil, ← record_run_bind] at exec
+    exact .trapped final message (.terminal final trace (.trapped message) message exec rfl)
+
 /-- What readiness gives about a `sys` command. -/
 theorem sys_ready_facts {calls : List LeanExe.Wasi.Call} {operation : LeanExe.Wasi.Call}
     {form : SysForm} {args : List (Var context .word)} {inputs : List (Var context .bytes)}
@@ -323,7 +422,7 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (PureTransport.erase initial) locals ABI.scratch)
     (at_ : heap.At (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (low : locals.params.length ≤ base) (room : base + 6 ≤ locals.positions)
+    (low : locals.params.length ≤ base) (room : base + form.width ≤ locals.positions)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       ∀ trace residual final, Prefix (observedHost host)
         (form.runWith operation (args.map env.get) (inputs.map env.get))
@@ -360,20 +459,34 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     have hAny : (inputs.any fun other => input.index == other.index) = true :=
       List.any_eq_true.mpr ⟨input, member, by simp⟩
     simp [hAny]
+  have hCount : args.length = operation.wordCount := by
+    have := operation.argCount_eq
+    omega
   cases hReporter : operation.reporter with
   | none =>
-    have hForm : form = .flat (operation.params.countP Param.isResult)
-        (operation.params.contains .output) := by
-      rw [← formEq, LeanExe.Wasi.Call.form, hReporter]
-    subst hForm
-    simp only [LeanExe.Wasi.Call.compiled, hReporter, Bool.and_eq_true,
-      decide_eq_true_eq] at compiled
-    have hCount : args.length = operation.wordCount := by
-      have := operation.argCount_eq
-      omega
-    exact wp_sys_flat_result_inputs_with runtime layout profile hImports sourceHost hHost
-      (uses operation (by simp [LeanExe.Wasi.Call.uses, hReporter])) compiled.1.1 compiled.1.2
-      compiled.2 hCount inputCount vars apart selected used usedInputs at_ cap low room resources
+    cases hRecord : recordOf operation.params with
+    | none =>
+      have hForm : form = .flat (operation.params.countP Param.isResult)
+          (operation.params.contains .output) := by
+        rw [← formEq]
+        simp only [LeanExe.Wasi.Call.form, hReporter, hRecord]
+      subst hForm
+      simp only [LeanExe.Wasi.Call.compiled, hReporter, hRecord, Bool.and_eq_true,
+        decide_eq_true_eq] at compiled
+      exact wp_sys_flat_result_inputs_with runtime layout profile hImports sourceHost hHost
+        (uses operation (by simp [LeanExe.Wasi.Call.uses, hReporter])) compiled.1.1 compiled.1.2
+        compiled.2 hCount inputCount vars apart selected used usedInputs at_ cap low room
+        resources
+    | some record =>
+      obtain ⟨size, align, fields⟩ := record
+      have hForm : form = .record fields.length := by
+        rw [← formEq]
+        simp only [LeanExe.Wasi.Call.form, hReporter, hRecord]
+      subst hForm
+      obtain ⟨hParams, hKinds, hFits⟩ := record_params compiled hReporter hRecord
+      exact wp_sys_record_result_with runtime layout profile hImports sourceHost hHost
+        (uses operation (by simp [LeanExe.Wasi.Call.uses, hReporter])) hParams hKinds hFits
+        hCount inputCount vars apart selected used usedInputs at_ cap low room resources
   | some name =>
     have hForm : form = .reported := by
       rw [← formEq, LeanExe.Wasi.Call.form, hReporter]
@@ -415,7 +528,7 @@ theorem command_sys_spec_with {calls : List LeanExe.Wasi.Call}
       (.sys operation form args inputs) := by
   intro World host targetHost depth env slots live h base heap initial locals
     valid _ _ positions vars at_ _ scratch cap low room ready _ _
-  have room' : base + 6 ≤ locals.positions := by
+  have room' : base + form.width ≤ locals.positions := by
     rw [positions]; simpa [Command.width] using room
   have fragment := ready.1 _ (List.mem_singleton_self _)
   have keptSelected : ∀ i, ((inputs.any fun input => i == input.index) || live i) = true →
@@ -485,7 +598,7 @@ theorem cost_command_sys_spec_with {calls : List LeanExe.Wasi.Call}
       (.sys operation form args inputs) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
     valid _ _ positions vars at_ _ scratch cap low room ready _ _ resources
-  have room' : base + 6 ≤ locals.positions := by
+  have room' : base + form.width ≤ locals.positions := by
     rw [positions]; simpa [Command.width] using room
   have fragment := ready.1 _ (List.mem_singleton_self _)
   have keptSelected : ∀ i, ((inputs.any fun input => i == input.index) || live i) = true →

@@ -3,7 +3,8 @@ import Verified.Wasi.SysForm
 
 /-! The code of a `sys` command, which the compiler places in the calling function.  It reads the
 argument words from the locals of the argument variables, the root and the length of each input
-from the two locals of its variable, and uses six i64 locals from `base`.
+from the two locals of its variable, and uses the i64 locals from `base` that `SysForm.width`
+counts.
 
 A flat call keeps its errno at `base`, its buffer's root at `base + 1` and length at `base + 2`,
 and its result words at `base + 3` and `base + 4`.  The code tests the arguments, allocates the
@@ -13,7 +14,12 @@ import, and on errno 0 loads the result words and keeps the buffer, or otherwise
 A reported call keeps its errno at `base`, the reporter's words at `base + 1` and `base + 2`, and
 its buffer's root at `base + 3` and length at `base + 4`.  The code calls the reporter with its
 words at scratch addresses 0 and 8, tests the sizes, allocates one block for the shown region and
-the hidden region after it at the next multiple of 4, and calls the import. -/
+the hidden region after it at the next multiple of 4, and calls the import.
+
+A record call keeps its errno at `base`, its block's root at `base + 1`, the record pointer at
+`base + 2`, and its fields from `base + 3`.  The code tests the arguments, allocates a block of
+`size + align - 1` bytes, passes its root rounded up to a multiple of `align` as the record pointer,
+calls the import, on errno 0 loads each field from the record, and releases the block. -/
 
 namespace Verified.Wasi
 
@@ -178,12 +184,6 @@ def sysReportedCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Ca
      .localGet base, .localGet (base + 1), .localGet (base + 2), .localGet (base + 3),
      .localGet (base + 4)]
 
-def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm) (locals : List Nat)
-    (base : Nat) : Program :=
-  match form with
-  | .flat .. => sysFlatCodeWith calls call locals base
-  | .reported => sysReportedCodeWith calls call base
-
 /-! ## Calls with inputs
 
 The code of a call with inputs takes the locals of the word arguments and the locals of the input
@@ -268,11 +268,75 @@ def sysFlatInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.
       (fun index => .localGet (base + 3 + index)) ++
     sysPushBytesCode (outputLocalInputs call.params words inputs) base
 
+/-- Pushes the field of `width` bytes at `offset` of the record whose pointer is in local
+`pointer`: one byte load for a width of 1, two for a width of 2, a 32-bit load for 4, and a 64-bit
+load otherwise. -/
+def fieldLoadCode (pointer offset width : Nat) : Program :=
+  match width with
+  | 1 => [.localGet pointer, .wrapI64, .load8U (UInt32.ofNat offset), .extendUI32]
+  | 2 =>
+    [.localGet pointer, .wrapI64, .load8U (UInt32.ofNat offset), .extendUI32,
+     .localGet pointer, .wrapI64, .load8U (UInt32.ofNat (offset + 1)), .extendUI32,
+     .constI64 256, .mulI64, .addI64]
+  | 4 => [.localGet pointer, .wrapI64, .load32 (UInt32.ofNat offset), .extendUI32]
+  | _ => [.localGet pointer, .wrapI64, .load64 (UInt32.ofNat offset)]
+
+/-- Loads each field of the record whose pointer is in local `pointer` into the locals from
+`target`. -/
+def recordLoadCode (pointer : Nat) : List (Nat × Nat) → Nat → Program
+  | [], _ => []
+  | field :: fields, target =>
+    fieldLoadCode pointer field.1 field.2 ++
+      .localSet target :: recordLoadCode pointer fields (target + 1)
+
+/-- Sets `count` locals from `first` to 0. -/
+def zeroLocalsCode (first : Nat) : Nat → Program
+  | 0 => []
+  | count + 1 => .constI64 0 :: .localSet first :: zeroLocalsCode (first + 1) count
+
+/-- The record pointer: the block's root in `base + 1` rounded up to a multiple of `align`, from
+the root plus `align - 1`, which the code keeps in `base + 2`. -/
+def recordAddressCode (base align : Nat) : Program :=
+  [.localGet (base + 1), .constI64 (UInt64.ofNat (align - 1)), .addI64, .localSet (base + 2),
+   .localGet (base + 2), .localGet (base + 2), .constI64 (UInt64.ofNat align), .remUI64, .subI64,
+   .localSet (base + 2)]
+
+/-- The code of an accepted record request: the allocation of the block, the record pointer, the
+call, the loads of the fields on errno 0, and the release of the block. -/
+def sysRecordCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words inputs : List Nat) (base size align : Nat) (fields : List (Nat × Nat)) : Program :=
+  [.constI64 (UInt64.ofNat (size + align - 1)), .call (3 + calls.length), .localSet (base + 1)] ++
+    recordAddressCode base align ++
+    sysLowerInputsCode call.params words inputs (base + 1) 0 ++
+    [.localGet (base + 2), .wrapI64, .call (3 + calls.idxOf call), .extendUI32, .localSet base,
+     .localGet base, .eqzI64, .iff 0 0 (recordLoadCode (base + 2) fields (base + 3)) [] [] []] ++
+    discardReadCodeWith calls (base + 1)
+
+def sysRecordCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words inputs : List Nat) (base : Nat) : Program :=
+  match recordOf call.params with
+  | some (size, align, fields) =>
+    sysRejectInputsCode call.params words inputs ++
+      .localSet base :: zeroLocalsCode (base + 3) fields.length ++
+      [.localGet base, .eqzI64,
+       .iff 0 0 (sysRecordCallCodeWith calls call words inputs base size align fields) [] [] [],
+       .localGet base] ++
+      (List.range fields.length).map (fun index => .localGet (base + 3 + index))
+  | none => []
+
+def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm) (locals : List Nat)
+    (base : Nat) : Program :=
+  match form with
+  | .flat .. => sysFlatCodeWith calls call locals base
+  | .reported => sysReportedCodeWith calls call base
+  | .record _ => sysRecordCodeWith calls call locals [] base
+
 def sysInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
     (words inputs : List Nat) (base : Nat) : Program :=
   match form with
   | .flat .. => sysFlatInputsCodeWith calls call words inputs base
   | .reported => sysReportedCodeWith calls call base
+  | .record _ => sysRecordCodeWith calls call words inputs base
 
 theorem sysRejectInputsCode_nil : ∀ (params : List Param) (words : List Nat),
     sysRejectInputsCode params words [] = sysRejectCode params words
@@ -313,5 +377,6 @@ theorem sysInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.W
   cases form with
   | flat => simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith_nil]
   | reported => rfl
+  | record => rfl
 
 end Verified.Wasi
