@@ -7,10 +7,11 @@ that the interval contains the exact value of the model's integral for the real 
 inputs.  `assess` compares the interval with a threshold, so its verdict of "below" or "above" is
 a statement about the model's value.  [The message form](Message.lean) takes the two objects'
 states and covariances as a conjunction data message gives them, projects them onto the encounter
-plane in interval arithmetic, and computes the same interval, and
-[its theorems](MessageSoundness.lean) state that the projection's intervals contain the miss vector
-and covariance that Lean defines from the real inputs and that the result contains their
-probability.  The program is written in the verified compiler's dialect on
+plane in interval arithmetic, and computes the same interval.
+[`projection_sound`](Projection.lean) states that the projection's intervals contain the miss
+vector and covariance that Lean defines from the real inputs, and
+[the message theorems](MessageSoundness.lean) that the result contains their probability.  The
+program is written in the verified compiler's dialect on
 [the interval layer](../../Library/Numerics/Interval/README.md) and takes scalar arguments.
 
 [`verified_compile`](Verified.lean) compiles the program, with the library's `exp`, `erf`, and
@@ -198,7 +199,7 @@ defines the terms of the generated theorems.
 | `pc_enclosure` | [Soundness](Soundness.lean) | `pc` returns status 0 | The real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`.  The endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values, and `hi ≤ 1`. |
 | `assess_sound` | [Soundness](Soundness.lean) | `assess` returns status 0 | `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`, for the real value of `t`. |
 | `pcWith_enclosure` | [Soundness](Soundness.lean) | `pcWith` with the table of `exp` returns status 0 | The conclusions of `pc_enclosure` for `pcWith`, which the radius programs use. |
-| `projection_sound` | [Message soundness](MessageSoundness.lean) | None | Each accepted interval of `encounterAt` contains the corresponding component of `encounter` of the real values of the 24 inputs: `m1`, `m2`, `c11`, `c12`, and `c22` of the encounter plane. |
+| `projection_sound` | [Projection](Projection.lean) | None | Each accepted interval of `encounterAt` contains the corresponding component of `encounter` of the real values of the 24 inputs: `m1`, `m2`, `c11`, `c12`, and `c22` of the encounter plane. |
 | `pcMessage_enclosure` | [Message soundness](MessageSoundness.lean) | `pcMessage` returns status 0 | For the encounter `e` of the real inputs, `e.c11 > 0`, `det e.C > 0`, and `r > 0`, the endpoints are finite, `lo ≤ Model.pc e.m1 e.m2 e.c11 e.c12 e.c22 r ≤ hi`, and `hi ≤ 1`. |
 | `assessMessage_sound` | [Message soundness](MessageSoundness.lean) | `assessMessage` returns status 0 | `pcMessage` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies that the probability of `e` is below `t`, and verdict 2 that it is at least `t`. |
 | `compiled.pc.implements`, `compiled.assess.implements`, `compiled.pcMessage.implements`, `compiled.assessMessage.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a store that holds the tables of `exp` and `erfc` at their addresses, and argument words that represent the arguments | Entries 116 to 119 return words that represent the results of the four functions at the arguments, without a trap. |

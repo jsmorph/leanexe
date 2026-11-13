@@ -1,4 +1,5 @@
 import Demos.Conjunction.Soundness
+import Demos.Conjunction.Projection
 import Demos.Conjunction.MessageSoundness
 import Demos.Conjunction.Verified
 
