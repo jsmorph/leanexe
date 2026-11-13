@@ -37,6 +37,7 @@ typedef struct {
   const char *control_file;
   const char **guest_args;
   size_t guest_arg_count;
+  const char *preopen_dir;
 } HostOptions;
 
 static HostOptions options;
@@ -300,6 +301,14 @@ static wasi_config_t *configure_wasi(void) {
       !wasi_config_set_argv(config, options.guest_arg_count, options.guest_args)) {
     wasi_config_delete(config);
     die("a guest argument is not valid UTF-8");
+  }
+  if (options.preopen_dir != NULL &&
+      !wasi_config_preopen_dir(config, options.preopen_dir, ".",
+                               WASMTIME_WASI_DIR_PERMS_READ | WASMTIME_WASI_DIR_PERMS_WRITE,
+                               WASMTIME_WASI_FILE_PERMS_READ | WASMTIME_WASI_FILE_PERMS_WRITE)) {
+    wasi_config_delete(config);
+    fprintf(stderr, "cannot preopen directory: %s\n", options.preopen_dir);
+    finish_host(1);
   }
   return config;
 }
@@ -1696,7 +1705,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static _Noreturn void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host [--wasi] [--stdin-file PATH] [--stdout-file PATH] "
-          "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... <mode> <module.wasm> "
+          "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... [--dir PATH] <mode> "
+          "<module.wasm> "
           "[arguments]\n"
           "       wasmtime-host [options] run <module.wasm>\n"
           "       wasmtime-host [options] call|call-stats <module.wasm> <function> "
@@ -1735,7 +1745,13 @@ static int parse_options(int argc, char **argv) {
       continue;
     }
     const char **path = NULL;
-    if (strcmp(option, "--stdin-file") == 0) {
+    if (strcmp(option, "--dir") == 0) {
+      if (options.preopen_dir != NULL) {
+        fprintf(stderr, "--dir given twice\n");
+        usage();
+      }
+      path = &options.preopen_dir;
+    } else if (strcmp(option, "--stdin-file") == 0) {
       path = &options.stdin_file;
     } else if (strcmp(option, "--stdout-file") == 0) {
       path = &options.stdout_file;
@@ -1766,6 +1782,9 @@ static int parse_options(int argc, char **argv) {
   }
   if (!options.wasi && options.guest_arg_count > 0) {
     die("--arg requires --wasi or run");
+  }
+  if (!options.wasi && options.preopen_dir != NULL) {
+    die("--dir requires --wasi or run");
   }
   if (options.wasi && !options.command && options.control_file == NULL &&
       options.stdout_file == NULL) {

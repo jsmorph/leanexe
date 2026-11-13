@@ -153,7 +153,8 @@ private def streams : IO Unit := do
 /-- Flat calls through `NativeHost.withSys`: the argument calls report the given arguments,
 the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 and oversized
 capacities errno 61 without a call while the largest accepted capacity reaches the host, replies of
-the wrong shape raise an `IO.Error`, and a trap ends the action. -/
+the wrong shape raise an `IO.Error`, among them a shown reported region whose size differs from the
+reporter's last reply or that no reporter reply precedes, and a trap ends the action. -/
 private def flatCalls : IO Unit := do
   let calls ← IO.mkRef #[]
   let host := (recordHost calls).withSys ["prog", "a b", ""]
@@ -202,6 +203,22 @@ private def flatCalls : IO Unit := do
     pure false
   catch error => pure (error.toString == "WASI native host returned an invalid clock_time_get reply")
   check caught "a reply of the wrong size was accepted"
+  let shortSys : LeanExe.Wasi.Call → List LeanExe.Wasi.Arg → IO (Transfer (List Bytes)) :=
+    fun call args =>
+      if call == .argsGet then pure (.returned 0 [bytes![112, 0, 0]])
+      else NativeHost.serve ["prog"] call args
+  let shortArgs : NativeHost := { host with sys := shortSys }
+  let shortCaught ← try
+    let _ ← args.run shortArgs
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid args_get reply")
+  check shortCaught "an args_get reply shorter than the reported size was accepted"
+  let unreported ← try
+    let _ ← (Action.sys .argsGet [] fun reply => .pure reply.errno).run
+      ((recordHost calls).withSys ["prog"])
+    pure false
+  catch error => pure (error.toString == "WASI native host returned an invalid args_get reply")
+  check unreported "an args_get reply without a reporter reply was accepted"
   let stopped := { host with sys := fun _ _ => pure (.trapped "clock stopped" [bytes![0, 0, 0, 0, 0, 0, 0, 0]]) }
   trapped "clock stopped" (← (do let _ ← clockTimeGet 0 1; writeStdoutSome bytes![1]).run stopped)
   trapped "wasi clock_time_get: the native host does not serve it"
