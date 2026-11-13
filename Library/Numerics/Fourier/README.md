@@ -37,10 +37,11 @@ explains.
 
 For a signal of `n` complex values `x_j = a_j + i b_j`, the bounds use `θ_jk = 2 π j k / n`,
 `M = Σ_j (|a_j| + |b_j|)`, and `γ = (n - 1) / (2^53 - (n - 1))`.  [The master theorems](Master.lean)
-state the accuracy of each export on finite inputs.  For `M ≤ 2^1000`, `dft_master` returns finite
-floats, each within `(γ + 2^-46) M + n / 2^1071` of the corresponding part of
-`X_k = Σ_j x_j e^(-i θ_jk)`, and `inverse_master` returns finite floats, each within
-`(γ + 2^-45) M / n + 2^-1069` of the corresponding part of `(1 / n) Σ_j x_j e^(i θ_jk)`.
+state the accuracy of each export on finite inputs.  For `M ≤ 2^1000`, `dft_master` states that
+the export `dft` returns finite floats, each within `(γ + 2^-46) M + n / 2^1071` of the
+corresponding part of `X_k = Σ_j x_j e^(-i θ_jk)`, and `inverse_master` states that the export
+`inverse` returns finite floats, each within `(γ + 2^-45) M / n + 2^-1069` of the corresponding part
+of `(1 / n) Σ_j x_j e^(i θ_jk)`.
 `twiddle_master` bounds the error of each factor by `2^-48`, and `powerSpectrum_master` places the
 float `k` of the spectrum of real samples `s_j` within `5 S E + 3 E^2 + 5 S^2 / 2^53 + 3 / 2^1075`
 of `|X_k|^2`, where `S = Σ_j |s_j| ≤ 2^500` and `E` is the transform's bound for that signal.
