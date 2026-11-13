@@ -176,7 +176,7 @@ async function show(inputs) {
     }
     row("lo", `${lo}`);
     row("hi", `${hi}`);
-    row("Width", `${hi - lo}` + (lo > 0 ? `, ${((hi - lo) / lo).toPrecision(3)} of lo` : ""));
+    row("hi - lo", `${hi - lo}` + (lo > 0 ? `, ${((hi - lo) / lo).toPrecision(3)} of lo` : ""));
     row("Verdict", `${verdict}, ${VERDICTS[verdict]}`);
     $("outcome").textContent = `The model's probability lies in [${lo}, ${hi}].`;
     drawInterval(lo, hi, inputs.t);
@@ -199,7 +199,8 @@ function run() {
   } catch (e) {
     if (!(e instanceof Refusal)) throw e;
     started++;
-    $("facts").replaceChildren();
+    for (const id of ["facts", "interval", "plane"]) $(id).replaceChildren();
+    $("caption").textContent = "";
     $("outcome").textContent = `Refused: ${e.message}.`;
     return;
   }
