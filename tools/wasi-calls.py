@@ -4,16 +4,19 @@
 """Generate the flat call descriptions, typed functions, reflection equations, and frame test from
 the pinned witx.
 
-Usage: uv run tools/wasi-calls.py [--write] [WITX_DIR]
+Usage: uv run tools/wasi-calls.py [--write | --frame-faults DIR] [WITX_DIR]
 
 WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
 fae981bae14809d91f9bc2d63852d461f331d161, by default tests/wasi/witx.  The script lowers every
 function of the witx to core parameter kinds, renders the Lean descriptions of the flat functions,
 their typed functions and record result types, the reflection equations of the typed functions
-without a record result, and the frame test of tests/wasi/sys, and compares
-each rendering with the committed file, printing a unified diff and exiting with status 1 when one
-differs.  With --write it writes the files instead.  It also fails when a Lean file of LeanExe/Wasi
-other than the generated one defines a value of type Call.
+without a record result, and the frame test of tests/wasi/sys, and compares each rendering with
+the committed file, printing a unified diff and exiting with status 1 when one differs.  With
+--write it writes the files instead.  With --frame-faults DIR it writes to DIR one frame test for
+each seeded fault of FAULTS and prints the fault's name and the exit status that the test must
+give: 1, the host's status for a trap, when the fault moves a record, and else the status of the
+frame check of the altered step.  It also fails when a Lean file of LeanExe/Wasi other than the
+generated one defines a value of type Call.
 
 The lowering: an enum of n values is enum32 n whatever its tag width, a flags type is flags32 or,
 with a 64-bit representation, flags64, with the mask of its flags, and another parameter whose
@@ -536,7 +539,7 @@ STEPS = [
     {"call": "path_create_directory", "args": [3, "d"]},
     {"call": "path_open", "args": [3, 0, "f", 1, RIGHTS, RIGHTS, 0], "keep": ["file"]},
     {"call": "fd_allocate", "args": ["file", 0, 16], "errno": 58},
-    {"call": "fd_filestat_set_size", "args": ["file", 8]},
+    {"call": "fd_filestat_set_size", "args": ["file", 4294967301]},
     {"call": "fd_filestat_set_times", "args": ["file", 0, 0, 0]},
     {"call": "fd_fdstat_set_flags", "args": ["file", 0]},
     {"call": "fd_fdstat_set_rights", "args": ["file", RIGHTS, RIGHTS], "errno": 58},
@@ -546,13 +549,13 @@ STEPS = [
     {"call": "fd_datasync", "args": ["file"]},
     {"call": "fd_sync", "args": ["file"]},
     {"call": "path_filestat_get", "args": [3, 0, "f"],
-     "values": [("record", 16, 1, 4), ("record", 32, 8, 8)]},
+     "values": [("record", 16, 1, 4), ("record", 32, 8, 4294967301)]},
     {"call": "path_filestat_set_times", "args": [3, 0, "f", 0, 0, 0]},
     {"call": "path_link", "args": [3, 0, "f", 3, "g"]},
     {"call": "path_symlink", "args": ["f", 3, "s"]},
-    {"call": "path_readlink", "args": [3, "s", 64],
+    {"call": "path_readlink", "args": [3, "s", 1],
      "values": [("output", 0, 1, ord("f")), ("result 1", 0, 4, 1)]},
-    {"call": "fd_readdir", "args": [3, 256, 0]},
+    {"call": "fd_readdir", "args": [3, 16, 0]},
     {"call": "path_rename", "args": [3, "g", 3, "h"]},
     {"call": "path_open", "args": [3, 0, "h", 0, RIGHTS, RIGHTS, 0], "keep": ["second"]},
     {"call": "fd_renumber", "args": ["file", "second"]},
@@ -565,7 +568,18 @@ STEPS = [
     {"call": "sock_shutdown", "args": [3, 1], "errno": 57},
 ]
 WORKING, SHADOW, CONSTANTS = 0, 65536, 2 * 65536
-INPUTS, RESULTS, RECORD, OUTPUT, POINTERS, STRINGS = 1024, 16, 64, 4096, 8192, 12288
+# Each result word and record lies at a multiple of its alignment that is not a multiple of twice
+# it, so that Wasmtime traps when a description gives it a smaller alignment.
+INPUTS, OUTPUT, STRINGS = 1024, 4096, 12288
+RESULT32, RESULT64, RECORDS, POINTERS = (20, 28), (24, 40), 64, 8196
+# The seeded faults of --frame-faults: a step, the region whose declaration changes, and how.
+FAULTS = {
+    "record-short": ("fd_fdstat_get", "record", "size", -1),
+    "result64-as-32": ("clock_time_get", "result 0", "size", -4),
+    "output-short": ("path_readlink", "output", "size", -1),
+    "output-late": ("fd_prestat_dir_name", "output", "start", 1),
+    "record-half-aligned": ("fd_filestat_get", "record", "address", -4),
+}
 
 
 def core_types(kind):
@@ -576,13 +590,15 @@ def core_types(kind):
     return ["i32"]
 
 
-def frame_step(index, step, function, constants):
+def frame_step(index, step, function, constants, fault=None):
     """The code of one step: the inputs, the snapshot, the call and its errno, the frame check, the
-    value checks, and the result words that later steps use."""
+    value checks, and the result words that later steps use.  `fault` (a region, a field, and a
+    change) moves the region's address or changes its declared start or size."""
     lines = [f"    ;; {index}: {function.name}", "    (call $prepare)"]
     args = list(step.get("args", []))
     pushes, regions, places = [], [], {}
-    inputs = reported = results = 0
+    inputs = reported = 0
+    results = {"result32": 0, "result64": 0}
     for kind in function.kinds:
         match kind[0]:
             case "word32" | "enum32" | "flags32" | "word64" | "flags64":
@@ -604,15 +620,19 @@ def frame_step(index, step, function, constants):
                 regions.append((OUTPUT, f"(i32.const {capacity})"))
                 places["output"] = OUTPUT
             case "result32" | "result64":
-                address = RESULTS + 8 * results
+                slots = RESULT32 if kind[0] == "result32" else RESULT64
+                address = slots[results[kind[0]]]
+                results[kind[0]] += 1
                 pushes.append(f"(i32.const {address})")
                 regions.append((address, f"(i32.const {4 if kind[0] == 'result32' else 8})"))
                 places[f"result {len(regions) - 1}"] = address
-                results += 1
             case "record":
-                pushes.append(f"(i32.const {RECORD})")
-                regions.append((RECORD, f"(i32.const {kind[1]})"))
-                places["record"] = RECORD
+                address = RECORDS + kind[2]
+                if fault and fault[0] == "record" and fault[1] == "address":
+                    address += fault[2]
+                pushes.append(f"(i32.const {address})")
+                regions.append((address, f"(i32.const {kind[1]})"))
+                places["record"] = address
             case "reported":
                 address = POINTERS if reported == 0 else STRINGS
                 size = "(i32.mul (local.get $count) (i32.const 4))" if reported == 0 \
@@ -621,6 +641,13 @@ def frame_step(index, step, function, constants):
                 regions.append((address, size))
                 reported += 1
     assert not args, (function.name, args)
+    if fault and fault[1] in ("size", "start"):
+        position = [a for a, _ in regions].index(places[fault[0]])
+        start, size = regions[position]
+        if fault[1] == "size":
+            regions[position] = (start, f"(i32.add {size} (i32.const {fault[2]}))")
+        else:
+            regions[position] = (start + fault[2], f"(i32.sub {size} (i32.const {fault[2]}))")
     regions += [(0, "(i32.const 0)")] * (2 - len(regions))
     lines.append("    (call $snapshot)")
     lines += wrap(f"    (call $errno (i32.const {index}) (call ${function.name} ", pushes,
@@ -637,14 +664,18 @@ def frame_step(index, step, function, constants):
     return lines
 
 
-def render_frame(flat):
+def render_frame(flat, fault=None):
     functions = {function.name: function for function in flat}
     missing = sorted(set(functions) - {step["call"] for step in STEPS})
     assert not missing, f"no step calls {missing}"
     assert 84 + len(STEPS) < 126, "too many steps for distinct statuses"
     constants, body = {}, []
+    seeded = None
     for index, step in enumerate(STEPS, 1):
-        body += frame_step(index, step, functions[step["call"]], constants)
+        here = fault[1:] if fault and fault[0] == step["call"] and not seeded else None
+        seeded = seeded or here
+        body += frame_step(index, step, functions[step["call"]], constants, here)
+    assert fault is None or seeded, f"no step calls {fault[0]}"
     imports = []
     for function in flat:
         params = " ".join(t for kind in function.kinds for t in core_types(kind))
@@ -657,11 +688,13 @@ def render_frame(flat):
         ";; Frame test of every flat Preview 1 function, which tools/wasi-calls.py generates from",
         ";; the pinned witx and its list of steps.  Each step fills the working memory [0, 65536)",
         ";; with the guard byte 0xA5, writes the call's inputs, copies the working memory to the",
-        ";; shadow copy at 65536, calls the function with its result words, records, and buffers",
-        ";; at fixed aligned addresses, and checks the errno, that every byte outside the call's",
-        ";; declared regions equals the shadow copy, and the values the step lists.  The exit",
-        ";; status names the first failed check: the step's number for the errno, 42 plus it for",
-        ";; a byte outside the regions, and 84 plus it for a value.",
+        ";; shadow copy at 65536, and calls the function.  A result word or record lies at a",
+        ";; multiple of its alignment that is not a multiple of twice it, so that Wasmtime traps",
+        ";; when a description gives it a smaller alignment.  The step then checks the errno,",
+        ";; that every byte outside the call's declared regions equals the shadow copy, and the",
+        ";; values the step lists.  The exit status names the first failed check: the step's",
+        ";; number for the errno, 42 plus it for a byte outside the regions, and 84 plus it for",
+        ";; a value.",
         "(module",
         *imports,
         '  (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))',
@@ -717,9 +750,21 @@ GENERATED = {
 
 def main():
     write = "--write" in sys.argv
+    faults = None
     rest = [a for a in sys.argv[1:] if a != "--write"]
+    if "--frame-faults" in rest:
+        at = rest.index("--frame-faults")
+        faults = Path(rest[at + 1])
+        rest = rest[:at] + rest[at + 2:]
     directory = Path(rest[0] if rest else "tests/wasi/witx")
     flat = [function for function in functions(directory) if function.kinds is not None]
+    if faults is not None:
+        faults.mkdir(parents=True, exist_ok=True)
+        for name, fault in FAULTS.items():
+            (faults / f"{name}.wat").write_text(render_frame(flat, fault))
+            index = next(i for i, step in enumerate(STEPS, 1) if step["call"] == fault[0])
+            print(name, 1 if fault[2] == "address" else 42 + index)
+        return
     failed = False
     for path, render in GENERATED.items():
         text = render(flat)
