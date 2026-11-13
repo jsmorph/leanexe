@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Float
+import LeanExe.A64.Isla.Linux
 
 /-!
 Theorems of `Agrees` and `AgreesAll` for the floating-point forms of `LeanExe/A64/Machine.lean`:
@@ -25,6 +26,13 @@ the trace tests: register 31 as the zero register, the source of `FMOV Dd, Xn` a
 destination of `FMOV Xd, Dn`, and the bits of `Rm` that the decoder tests on its way to FMUL and
 FDIV.  The theorem joins them: the backward lemma gives an outcome, and the forward lemma states
 that it and every other outcome are `exec`'s state.
+
+The theorems whose names end in `_vhe` state the same for the traces of `tests/isla/linux-vhe`,
+those of a Linux process at EL0 under the host's kernel, with the stack pointer `.el0` and the
+profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`, Linux's
+values of the bits that the reset constraints fix: among them `FPEN` 0b11 and `ZEN` 0b01 of
+`CPTR_EL2`, `TFP` of `CPTR_EL3` clear, and the LEN field of `ZCR_EL2` 0.  Their lemmas follow
+those under `kvm`, with the premise's bits among the facts of the walk.
 -/
 
 namespace TestSupport.A64.Isla
@@ -1279,6 +1287,674 @@ theorem ucvtf_kvm (P : Platform) (A : Abstract) (hA : FixedToFPEq A)
       obtain ⟨σ', rfl, -⟩ := ucvtfKvm_fwd hA hc ho
       exact ⟨⟨σ', ho⟩, fun o h => ucvtfKvm_fwd hA hc h⟩
 
+set_option maxRecDepth 100000 in
+/-- The footprint of `FMOV Xd, Dn` of a Linux process at EL0 under the host's kernel. -/
+def fmovXdVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fmov-xd"
+
+isla_nodes fmovXdVhe
+
+set_option maxRecDepth 100000 in
+theorem fmovXdVhe_n0 : fmovXdVhe.trace = fmovXdVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fmovXdVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fmovXdVhe` ends in `exec`'s state. -/
+theorem fmovXdVhe_fwd {P : Platform} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hσ : fmovXdVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fmovXdVhe.Run P .el0 (fpFields2 d n) s σ o) :
+    o = .done { s.setX d (s.dregs n) with pc := s.pc + 4 }
+      ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295)) := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold Footprint.Run at h
+    rw [fmovXdVhe_n0, show fmovXdVhe.vars (fpFields2 d n) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals xreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fmovXdVhe` has a path to an outcome. -/
+theorem fmovXdVhe_bwd {P : Platform} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} (hσ : fmovXdVhe.ctx σ u) (hu : u.Holds .vhe) :
+    fmovXdVhe.Run P .el0 (fpFields2 d n) s σ (.done { s.setX d (s.dregs n) with pc := s.pc + 4 }
+      ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 295))) := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    by_cases h0 : d.val = 31
+    rotate_left
+    rotate_left
+    all_goals
+      unfold Footprint.Run
+      rw [fmovXdVhe_n0, show fmovXdVhe.vars (fpFields2 d n) =
+        Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | (apply Eq.symm; xreg_end; done)
+      | fp_side hσ [h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FMOV Xd, Dn` at EL0 under the host's kernel agrees with `exec` for every register
+number and every state. -/
+theorem fmovXd_vhe (P : Platform) 
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] fmovXdVhe
+      (fpFields2 d n) (.fmovXD d n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fmovXdVhe, fpFields2, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fmovXdVhe.ctx_of σ u hσ
+      exact ⟨_, fun o => ⟨fun h => fmovXdVhe_fwd hc hu h, fun h => h ▸ fmovXdVhe_bwd hc hu⟩,
+        by frame_end⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FMOV Dd, Xn` of a Linux process at EL0 under the host's kernel. -/
+def fmovDxVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fmov-dx"
+
+isla_nodes fmovDxVhe
+
+set_option maxRecDepth 100000 in
+theorem fmovDxVhe_n0 : fmovDxVhe.trace = fmovDxVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fmovDxVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fmovDxVhe` ends in `exec`'s state. -/
+theorem fmovDxVhe_fwd {P : Platform} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hσ : fmovDxVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fmovDxVhe.Run P .el0 (fpFields2 d n) s σ o) :
+    ∃ σ', o = .done
+      { s.setD d (s.x n) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold Footprint.Run at h
+    rw [fmovDxVhe_n0, show fmovDxVhe.vars (fpFields2 d n) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fmovDxVhe` has a path to an outcome. -/
+theorem fmovDxVhe_bwd {P : Platform} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} (hσ : fmovDxVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, fmovDxVhe.Run P .el0 (fpFields2 d n) s σ o := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    by_cases h0 : n.val = 31
+    rotate_left
+    rotate_left
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [fmovDxVhe_n0, show fmovDxVhe.vars (fpFields2 d n) =
+        Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FMOV Dd, Xn` at EL0 under the host's kernel agrees with `exec` for every register
+number and every state. -/
+theorem fmovDx_vhe (P : Platform) 
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32) (s : State) :
+    AgreesAll P .el0 noAbstract (linux u) ["SEE", "__BranchTaken", "_Z"] fmovDxVhe
+      (fpFields2 d n) (.fmovDX d n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fmovDxVhe, fpFields2, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fmovDxVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := fmovDxVhe_bwd (P := P) (d := d) (n := n) (s := s) hc hu
+      obtain ⟨σ', rfl, -⟩ := fmovDxVhe_fwd hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => fmovDxVhe_fwd hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FADD Dd, Dn, Dm` of a Linux process at EL0 under the host's kernel. -/
+def faddVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fadd"
+
+isla_nodes faddVhe
+
+set_option maxRecDepth 100000 in
+theorem faddVhe_n0 : faddVhe.trace = faddVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx faddVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `faddVhe` ends in `exec`'s state. -/
+theorem faddVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPAddEq A) (hσ : faddVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : faddVhe.Run P .el0 (fpFields3 d n m) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64Add (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPAddEq at hA
+    unfold Footprint.Run at h
+    rw [faddVhe_n0, show faddVhe.vars (fpFields3 d n m) =
+      Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+        (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `faddVhe` has a path to an outcome. -/
+theorem faddVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} (hA : FPAddEq A) (hσ : faddVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, faddVhe.Run P .el0 (fpFields3 d n m) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPAddEq at hA
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [faddVhe_n0, show faddVhe.vars (fpFields3 d n m) =
+        Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+          (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FADD Dd, Dn, Dm` at EL0 under the host's kernel agrees with `exec` for every
+register number and every state, where `A` satisfies `FPAddEq`. -/
+theorem fadd_vhe (P : Platform) (A : Abstract) (hA : FPAddEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n m : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] faddVhe
+      (fpFields3 d n m) (.fadd d n m) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, faddVhe, fpFields3, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := faddVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := faddVhe_bwd (P := P) (d := d) (n := n) (m := m) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := faddVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => faddVhe_fwd hA hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FSUB Dd, Dn, Dm` of a Linux process at EL0 under the host's kernel. -/
+def fsubVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fsub"
+
+isla_nodes fsubVhe
+
+set_option maxRecDepth 100000 in
+theorem fsubVhe_n0 : fsubVhe.trace = fsubVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fsubVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fsubVhe` ends in `exec`'s state. -/
+theorem fsubVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPSubEq A) (hσ : fsubVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fsubVhe.Run P .el0 (fpFields3 d n m) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64Sub (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPSubEq at hA
+    unfold Footprint.Run at h
+    rw [fsubVhe_n0, show fsubVhe.vars (fpFields3 d n m) =
+      Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+        (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fsubVhe` has a path to an outcome. -/
+theorem fsubVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} (hA : FPSubEq A) (hσ : fsubVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, fsubVhe.Run P .el0 (fpFields3 d n m) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPSubEq at hA
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [fsubVhe_n0, show fsubVhe.vars (fpFields3 d n m) =
+        Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+          (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FSUB Dd, Dn, Dm` at EL0 under the host's kernel agrees with `exec` for every
+register number and every state, where `A` satisfies `FPSubEq`. -/
+theorem fsub_vhe (P : Platform) (A : Abstract) (hA : FPSubEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n m : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsubVhe
+      (fpFields3 d n m) (.fsub d n m) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fsubVhe, fpFields3, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fsubVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := fsubVhe_bwd (P := P) (d := d) (n := n) (m := m) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := fsubVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => fsubVhe_fwd hA hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FMUL Dd, Dn, Dm` of a Linux process at EL0 under the host's kernel. -/
+def fmulVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fmul"
+
+isla_nodes fmulVhe
+
+set_option maxRecDepth 100000 in
+theorem fmulVhe_n0 : fmulVhe.trace = fmulVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fmulVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fmulVhe` ends in `exec`'s state. -/
+theorem fmulVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPMulEq A) (hσ : fmulVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fmulVhe.Run P .el0 (fpFields3 d n m) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64Mul (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPMulEq at hA
+    unfold Footprint.Run at h
+    rw [fmulVhe_n0, show fmulVhe.vars (fpFields3 d n m) =
+      Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+        (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fmulVhe` has a path to an outcome. -/
+theorem fmulVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} (hA : FPMulEq A) (hσ : fmulVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, fmulVhe.Run P .el0 (fpFields3 d n m) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPMulEq at hA
+    by_cases h0 : m.val / 2 % 16 = 1
+    rotate_left
+    by_cases h1 : m.val / 16 % 2 = 0
+    by_cases h2 : m.val / 2 % 4 = 3
+    rotate_left
+    rotate_left
+    rotate_left
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [fmulVhe_n0, show fmulVhe.vars (fpFields3 d n m) =
+        Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+          (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FMUL Dd, Dn, Dm` at EL0 under the host's kernel agrees with `exec` for every
+register number and every state, where `A` satisfies `FPMulEq`. -/
+theorem fmul_vhe (P : Platform) (A : Abstract) (hA : FPMulEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n m : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fmulVhe
+      (fpFields3 d n m) (.fmul d n m) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fmulVhe, fpFields3, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fmulVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := fmulVhe_bwd (P := P) (d := d) (n := n) (m := m) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := fmulVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => fmulVhe_fwd hA hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FDIV Dd, Dn, Dm` of a Linux process at EL0 under the host's kernel. -/
+def fdivVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fdiv"
+
+isla_nodes fdivVhe
+
+set_option maxRecDepth 100000 in
+theorem fdivVhe_n0 : fdivVhe.trace = fdivVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fdivVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fdivVhe` ends in `exec`'s state. -/
+theorem fdivVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPDivEq A) (hσ : fdivVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fdivVhe.Run P .el0 (fpFields3 d n m) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPDivEq at hA
+    unfold Footprint.Run at h
+    rw [fdivVhe_n0, show fdivVhe.vars (fpFields3 d n m) =
+      Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+        (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fdivVhe` has a path to an outcome. -/
+theorem fdivVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n m : Fin 32} {s : State}
+    {σ : Sys} (hA : FPDivEq A) (hσ : fdivVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, fdivVhe.Run P .el0 (fpFields3 d n m) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    have := m.isLt
+    unfold FPDivEq at hA
+    by_cases h0 : m.val / 2 % 16 = 1
+    rotate_left
+    by_cases h1 : m.val / 16 % 2 = 0
+    by_cases h2 : m.val / 2 % 4 = 3
+    rotate_left
+    rotate_left
+    rotate_left
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [fdivVhe_n0, show fdivVhe.vars (fpFields3 d n m) =
+        Vars.set (Vars.set (Vars.set (fun _ => none) 0 (.bits 5 m.val)) 1 (.bits 5 n.val)) 2
+          (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FDIV Dd, Dn, Dm` at EL0 under the host's kernel agrees with `exec` for every
+register number and every state, where `A` satisfies `FPDivEq`. -/
+theorem fdiv_vhe (P : Platform) (A : Abstract) (hA : FPDivEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n m : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fdivVhe
+      (fpFields3 d n m) (.fdiv d n m) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fdivVhe, fpFields3, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fdivVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := fdivVhe_bwd (P := P) (d := d) (n := n) (m := m) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := fdivVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => fdivVhe_fwd hA hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `FSQRT Dd, Dn` of a Linux process at EL0 under the host's kernel. -/
+def fsqrtVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fsqrt"
+
+isla_nodes fsqrtVhe
+
+set_option maxRecDepth 100000 in
+theorem fsqrtVhe_n0 : fsqrtVhe.trace = fsqrtVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fsqrtVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fsqrtVhe` ends in `exec`'s state. -/
+theorem fsqrtVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPSqrtEq A) (hσ : fsqrtVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fsqrtVhe.Run P .el0 (fpFields2 d n) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FPSqrtEq at hA
+    unfold Footprint.Run at h
+    rw [fsqrtVhe_n0, show fsqrtVhe.vars (fpFields2 d n) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fsqrtVhe` has a path to an outcome. -/
+theorem fsqrtVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} (hA : FPSqrtEq A) (hσ : fsqrtVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, fsqrtVhe.Run P .el0 (fpFields2 d n) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FPSqrtEq at hA
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [fsqrtVhe_n0, show fsqrtVhe.vars (fpFields2 d n) =
+        Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FSQRT Dd, Dn` at EL0 under the host's kernel agrees with `exec` for every register
+number and every state, where `A` satisfies `FPSqrtEq`. -/
+theorem fsqrt_vhe (P : Platform) (A : Abstract) (hA : FPSqrtEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] fsqrtVhe
+      (fpFields2 d n) (.fsqrt d n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fsqrtVhe, fpFields2, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fsqrtVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := fsqrtVhe_bwd (P := P) (d := d) (n := n) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := fsqrtVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => fsqrtVhe_fwd hA hc hu h⟩
+
+set_option maxRecDepth 100000 in
+/-- The footprint of `UCVTF Dd, Xn` of a Linux process at EL0 under the host's kernel. -/
+def ucvtfVhe : Footprint := isla_trace% "tests/isla/linux-vhe/ucvtf"
+
+isla_nodes ucvtfVhe
+
+set_option maxRecDepth 100000 in
+theorem ucvtfVhe_n0 : ucvtfVhe.trace = ucvtfVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx ucvtfVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `ucvtfVhe` ends in `exec`'s state. -/
+theorem ucvtfVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FixedToFPEq A) (hσ : ucvtfVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : ucvtfVhe.Run P .el0 (fpFields2 d n) s σ o A) :
+    ∃ σ', o = .done
+      { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := s.pc + 4 } σ' ∧
+      ∀ r, r ∉ ["SEE", "__BranchTaken", "_Z", "FPSR"] → σ' r = σ r := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FixedToFPEq at hA
+    have hA0 := hA 0
+    simp only [UInt64.toNat_zero] at hA0
+    unfold Footprint.Run at h
+    rw [ucvtfVhe_n0, show ucvtfVhe.vars (fpFields2 d n) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, hA0, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals dreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `ucvtfVhe` has a path to an outcome. -/
+theorem ucvtfVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} (hA : FixedToFPEq A) (hσ : ucvtfVhe.ctx σ u) (hu : u.Holds .vhe) :
+    ∃ o, ucvtfVhe.Run P .el0 (fpFields2 d n) s σ o A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FixedToFPEq at hA
+    have hA0 := hA 0
+    simp only [UInt64.toNat_zero] at hA0
+    by_cases h0 : n.val = 31
+    rotate_left
+    rotate_left
+    all_goals
+      refine ⟨?_, ?_⟩
+      rotate_left
+      unfold Footprint.Run
+      rw [ucvtfVhe_n0, show ucvtfVhe.vars (fpFields2 d n) =
+        Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, hA0, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | rfl
+      | fp_side hσ [hA, hA0, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `UCVTF Dd, Xn` at EL0 under the host's kernel agrees with `exec` for every register
+number and every state, where `A` satisfies `FixedToFPEq`. -/
+theorem ucvtf_vhe (P : Platform) (A : Abstract) (hA : FixedToFPEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "_Z", "FPSR"] ucvtfVhe
+      (fpFields2 d n) (.ucvtf d n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, ucvtfVhe, fpFields2, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := ucvtfVhe.ctx_of σ u hσ
+      obtain ⟨o, ho⟩ := ucvtfVhe_bwd (P := P) (d := d) (n := n) (s := s) hA hc hu
+      obtain ⟨σ', rfl, -⟩ := ucvtfVhe_fwd hA hc hu ho
+      exact ⟨⟨σ', ho⟩, fun o h => ucvtfVhe_fwd hA hc hu h⟩
+
 end TestSupport.A64.Isla
 
 #print axioms TestSupport.A64.Isla.fmovXd_tcg
@@ -1297,3 +1973,11 @@ end TestSupport.A64.Isla
 #print axioms TestSupport.A64.Isla.fsqrt_kvm
 #print axioms TestSupport.A64.Isla.ucvtf_tcg
 #print axioms TestSupport.A64.Isla.ucvtf_kvm
+#print axioms TestSupport.A64.Isla.fmovXd_vhe
+#print axioms TestSupport.A64.Isla.fmovDx_vhe
+#print axioms TestSupport.A64.Isla.fadd_vhe
+#print axioms TestSupport.A64.Isla.fsub_vhe
+#print axioms TestSupport.A64.Isla.fmul_vhe
+#print axioms TestSupport.A64.Isla.fdiv_vhe
+#print axioms TestSupport.A64.Isla.fsqrt_vhe
+#print axioms TestSupport.A64.Isla.ucvtf_vhe

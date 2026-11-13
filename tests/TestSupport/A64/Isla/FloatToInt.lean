@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Float
+import LeanExe.A64.Isla.Linux
 
 /-!
 Theorems of `AgreesAll` for `FCVTZU Xd, Dn` of `LeanExe/A64/Machine.lean`, the conversion of a
@@ -19,6 +20,13 @@ The proofs walk the traces with the tactics of `LeanExe/A64/Isla/Walk.lean` and
 backward lemma builds one, after a case split on the destination register 31, the zero register,
 and under `sme` on those bits.  `tests/isla/theorems.sh` elaborates the module and prints the
 axioms of its theorems.
+
+The theorems whose names end in `_vhe` state the same for the traces of `tests/isla/linux-vhe`,
+those of a Linux process at EL0 under the host's kernel, with the stack pointer `.el0` and the
+profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`, Linux's
+values of the bits that the reset constraints fix: among them `FPEN` 0b11 and `ZEN` 0b01 of
+`CPTR_EL2`, `TFP` of `CPTR_EL3` clear, and the LEN field of `ZCR_EL2` 0.  Their lemmas follow
+those under `kvm`, with the premise's bits among the facts of the walk.
 -/
 
 namespace TestSupport.A64.Isla
@@ -264,8 +272,88 @@ theorem fcvtzu_sme (P : Platform) (A : Abstract) (hA : FPToFixedEq A)
       have hc := fcvtzuSme.ctx_of σ u hσ
       exact ⟨⟨_, fcvtzuSme_bwd hA hc⟩, fun o h => ⟨_, fcvtzuSme_fwd hA hc h, by frame_end⟩⟩
 
+set_option maxRecDepth 100000 in
+/-- The footprint of `FCVTZU Xd, Dn` of a Linux process at EL0 under the host's kernel. -/
+def fcvtzuVhe : Footprint := isla_trace% "tests/isla/linux-vhe/fcvtzu"
+
+isla_nodes fcvtzuVhe
+
+set_option maxRecDepth 100000 in
+theorem fcvtzuVhe_n0 : fcvtzuVhe.trace = fcvtzuVhe.n0 := rfl
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+isla_ctx fcvtzuVhe .el0 linux [linux_get, linux]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- Every path of `fcvtzuVhe` ends in `exec`'s state. -/
+theorem fcvtzuVhe_fwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} {o : Outcome} (hA : FPToFixedEq A) (hσ : fcvtzuVhe.ctx σ u) (hu : u.Holds .vhe)
+    (h : fcvtzuVhe.Run P .el0 (fpFields2 d n) s σ o A) :
+    o = .done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
+      ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293)) := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FPToFixedEq at hA
+    unfold Footprint.Run at h
+    rw [fcvtzuVhe_n0, show fcvtzuVhe.vars (fpFields2 d n) =
+      Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl] at h
+    fp_fwd h using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals xreg_end
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- `fcvtzuVhe` has a path to `exec`'s state. -/
+theorem fcvtzuVhe_bwd {P : Platform} {A : Abstract} {u : LinuxUnknown} {d n : Fin 32} {s : State}
+    {σ : Sys} (hA : FPToFixedEq A) (hσ : fcvtzuVhe.ctx σ u) (hu : u.Holds .vhe) :
+    fcvtzuVhe.Run P .el0 (fpFields2 d n) s σ
+      (.done { s.setX d (Wasm.i64TruncSatF64U (s.dregs n)) with pc := s.pc + 4 }
+        ((σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 293))) A := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    have := d.isLt
+    have := n.isLt
+    unfold FPToFixedEq at hA
+    by_cases h0 : d.val = 31
+    rotate_left
+    rotate_left
+    all_goals
+      unfold Footprint.Run
+      rw [fcvtzuVhe_n0, show fcvtzuVhe.vars (fpFields2 d n) =
+        Vars.set (Vars.set (fun _ => none) 0 (.bits 5 n.val)) 1 (.bits 5 d.val) from rfl]
+      fp_bwd using mem_omega with [Opaque.out hσ, hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+    all_goals first
+      | (apply Eq.symm; xreg_end; done)
+      | fp_side hσ [hA, h1, h2, h3, h4, f1, f2, f3, f4, f5, len_min]
+
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 0 in
+/-- The trace of `FCVTZU Xd, Dn` at EL0 under the host's kernel agrees with `exec` for every
+register number and every state, where `A` satisfies `FPToFixedEq`. -/
+theorem fcvtzu_vhe (P : Platform) (A : Abstract) (hA : FPToFixedEq A)
+    (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32) (s : State) :
+    AgreesAll P .el0 A (linux u) ["SEE", "__BranchTaken", "FPSR"] fcvtzuVhe
+      (fpFields2 d n) (.fcvtzu d n) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  obtain ⟨f1, f2, f3, f4, f5⟩ := holds_vhe_fp hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, fcvtzuVhe, fpFields2, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      have hc := fcvtzuVhe.ctx_of σ u hσ
+      exact ⟨⟨_, fcvtzuVhe_bwd hA hc hu⟩, fun o h => ⟨_, fcvtzuVhe_fwd hA hc hu h, by frame_end⟩⟩
+
 end TestSupport.A64.Isla
 
 #print axioms TestSupport.A64.Isla.fcvtzu_tcg
 #print axioms TestSupport.A64.Isla.fcvtzu_kvm
 #print axioms TestSupport.A64.Isla.fcvtzu_sme
+#print axioms TestSupport.A64.Isla.fcvtzu_vhe

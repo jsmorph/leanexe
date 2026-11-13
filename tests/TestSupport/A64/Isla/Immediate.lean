@@ -1,4 +1,5 @@
 import LeanExe.A64.Isla.Check
+import LeanExe.A64.Isla.Linux
 import LeanExe.A64.Isla.Profile
 
 /-!
@@ -29,6 +30,14 @@ to a Boolean formula in the field `cond` and the flags, which `cond_fwd` and `co
 `State.condHolds`: they abstract the field and the flags, and the kernel decides the formula for
 every condition and every value of the flags.  The backward direction of `CSINC` evaluates both
 branches of the trace's fork on the condition and takes the one that `condHolds` selects.
+
+`addImm_vhe`, `subImm_vhe`, and `subsImm_vhe` state `Agrees` with the stack pointer `.el0` for
+the traces of `tests/isla/linux-vhe`, those of a Linux process at EL0 under the host's kernel,
+and the profile `linux u` of `LeanExe/A64/Isla/Linux.lean`, for every `u` with `u.Holds .vhe`,
+Linux's values of the bits that the reset constraints fix.  Register 31 is `SP_EL0`, which the
+traces select through `PSTATE.EL` and `PSTATE.SP` and access as the model's stack pointer.  The
+proofs follow those under `tcg` with the premise's bits of `HCR_EL2` and `SCR_EL3`, which the
+traces compare in their reset constraints, among the facts of the walk.
 -/
 
 namespace TestSupport.A64.Isla
@@ -880,6 +889,194 @@ theorem adrp_kvm (P : Platform) (u : Unknown) (d : Fin 32) (lo : Fin 4) (hi : Fi
   exact (adrp_tcg P u d lo hi s).of_reads
     (by isla_reads [adrpTcg, Profile.sys_get, Profile.sys])
 
+/-- The footprint of `ADD Xd|SP, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def addImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/add-imm"
+
+/-- The footprint of `SUB Xd|SP, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def subImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/sub-imm"
+
+/-- The footprint of `SUBS Xd, Xn|SP, #imm` of a Linux process at EL0 under the host's
+kernel. -/
+def subsImmVhe : Footprint := isla_trace% "tests/isla/linux-vhe/subs-imm"
+
+set_option maxHeartbeats 4000000 in
+/-- The trace of `ADD Xd|SP, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for
+every register number, with register 31 the stack pointer SP_EL0, every immediate, and every
+state. -/
+theorem addImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] addImmVhe (arithFields d n imm)
+      (.addImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, addImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [addImmVhe, linux_get, linux] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 18),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [addImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ, sysreg, h1, h2, h3, h4]
+        all_goals imm_end [UInt64.toNat_add]
+      · subst h
+        unfold Footprint.Run
+        simp only [addImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_add]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | imm_end [UInt64.toNat_add]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
+
+set_option maxHeartbeats 4000000 in
+/-- The trace of `SUB Xd|SP, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for
+every register number, with register 31 the stack pointer SP_EL0, every immediate, and every
+state. -/
+theorem subImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] subImmVhe (arithFields d n imm)
+      (.subImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subImmVhe, linux_get, linux] at hσ
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 20),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        isla_fwd h using omega with [hσ, sysreg, h1, h2, h3, h4]
+        all_goals imm_end [UInt64.toNat_sub]
+      · subst h
+        unfold Footprint.Run
+        simp only [subImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | imm_end [UInt64.toNat_sub]
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | imm_end [UInt64.toNat_sub]
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
+
+set_option maxHeartbeats 8000000 in
+/-- The trace of `SUBS Xd, Xn|SP, #imm` at EL0 under the host's kernel agrees with `exec` for every
+register number, with register 31 the stack pointer SP_EL0 as `n` and the zero register as `d`,
+every immediate, and every state. -/
+theorem subsImm_vhe (P : Platform) (u : LinuxUnknown) (hu : u.Holds .vhe) (d n : Fin 32)
+    (imm : Fin 4096) (s : State) :
+    Agrees P .el0 (linux u) ["SEE", "__BranchTaken"] subsImmVhe (arithFields d n imm)
+      (.subsImm d n imm) s := by
+  obtain ⟨h1, h2, h3, h4⟩ := holds_vhe hu
+  without_info
+    refine ⟨by decide, by decide, decode_word ?_, fun σ hσ s' hs => ?_⟩
+    · simp only [Opcode.word, Opcode.wordFrom, subsImmVhe, arithFields, encodeNat, List.lookup,
+        String.reduceBEq, Option.getD, Nat.reducePow, Nat.reduceMul, Nat.reduceAdd]
+      omega
+    · simp only [exec, Option.some.injEq] at hs
+      subst hs
+      isla_reads [subsImmVhe, linux_get, linux] at hσ
+      have : s.sp.toNat < 18446744073709551616 := toNat_lt s.sp
+      have : (regAt s n.val).toNat < 18446744073709551616 := toNat_lt _
+      refine ⟨(σ.set "__BranchTaken" (.bool false)).set "SEE" (.bits 128 21),
+        fun o => ⟨fun h => ?_, fun h => ?_⟩, by frame_end⟩
+      · unfold Footprint.Run at h
+        simp only [subsImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD] at h
+        by_cases hn : n.val = 31
+        · isla_fwd h using omega with [hσ, sysreg, hn, h1, h2, h3, h4]
+          all_goals subs_end s.sp.toNat imm.val
+        · isla_fwd h using omega with [hσ, sysreg, hn, h1, h2, h3, h4]
+          all_goals subs_end (regAt s n.val).toNat imm.val
+      · subst h
+        unfold Footprint.Run
+        simp only [subsImmVhe, Footprint.vars, arithFields, List.foldl, List.lookup,
+          String.reduceBEq, Option.getD]
+        by_cases hn : n.val = 31 <;> by_cases hd : d.val = 31
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        · isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat, s.sp.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          all_goals first
+            | exact toNat_lt _
+            | exact BitVec.isLt _
+            | (apply Eq.symm; subs_end s.sp.toNat imm.val)
+            | (simp only [sint, Nat.reducePow]; omega)
+            | omega
+        all_goals
+          isla_bwd [u.hcr.toNat, u.scr.toNat, s.pc.toNat] using omega with
+            [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+          isla_gprs s using omega with [hσ, sysreg, hn, hd, h1, h2, h3, h4]
+        all_goals first
+          | exact toNat_lt _
+          | exact BitVec.isLt _
+          | (apply Eq.symm; subs_end (regAt s n.val).toNat imm.val)
+          | (simp only [sint, Nat.reducePow]; omega)
+          | omega
+
 end TestSupport.A64.Isla
 
 #print axioms TestSupport.A64.Isla.addImm_tcg
@@ -900,3 +1097,6 @@ end TestSupport.A64.Isla
 #print axioms TestSupport.A64.Isla.adr_kvm
 #print axioms TestSupport.A64.Isla.adrp_tcg
 #print axioms TestSupport.A64.Isla.adrp_kvm
+#print axioms TestSupport.A64.Isla.addImm_vhe
+#print axioms TestSupport.A64.Isla.subImm_vhe
+#print axioms TestSupport.A64.Isla.subsImm_vhe
