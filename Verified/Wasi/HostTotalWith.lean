@@ -5,10 +5,10 @@ import Verified.Wasi.OracleSys
 permitted reply to every fitting, accepted request of each call in `calls`, and such a host has a
 Talos host environment satisfying `hostSpecWith host calls`, built from the oracles of `OracleHost`
 and `OracleSys`.  Conversely, every host environment satisfying `hostSpecWith host calls` answers
-each fitting, accepted request whose inputs and output regions fit below `2^32` when laid out one
-after another from address 16, with result words and reported regions at multiples of their
-alignments; a call with a record has no such layout, so the converse says nothing about it.  A
-theorem that assumes such an environment is vacuous for a host without those replies. -/
+each fitting, accepted request whose inputs and output regions end below `2^32` when laid out one
+after another from address 16, with result words, records, and reported regions at multiples of
+their alignments.  A theorem that assumes such an environment is vacuous for a host without those
+replies. -/
 
 namespace Verified.Wasi
 

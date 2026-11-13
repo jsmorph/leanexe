@@ -17,10 +17,11 @@ each seeded fault of FAULTS and prints the fault's name and the exit status that
 give: 1, the host's status for a trap, when the fault moves a record, and else the status of the
 frame check of the altered step.  With --reject-sweep DIR it writes to DIR one module for each
 value of the rejection sweep, the last value of each enum parameter and the next one and each
-single bit of each flags parameter, and prints the module's name and "trap" when Param.reject
-rejects the value, which Wasmtime 44 must then trap on, or "errno" when the call must return.  It
-also fails when a Lean file of LeanExe/Wasi other than the generated one defines a value of type
-Call.
+single bit of each flags parameter, and prints the module's name, "trap" when the description's
+rule rejects the value, which Wasmtime 44 must then trap on, or "errno" when the call must return,
+and the call's name and arguments, from which tests/wasi/SysSweep.lean computes Call.reject.  It
+also fails when a Lean file of LeanExe/Wasi other than the generated one has a definition
+`def NAME : Call`.
 
 The lowering: an enum of n values is enum32 n whatever its tag width, a flags type is flags32 or,
 with a 64-bit representation, flags64, with the mask of its flags, and another parameter whose
@@ -568,9 +569,10 @@ RIGHTS = (1 << 30) - 1
 # and `a`.  Each step names a function and gives the arguments of the parameters that take one, in
 # order: an integer, the name of a local that an earlier step set, a string for an input, or a
 # capacity for an output.  `errno` is Wasmtime 44's errno for the step, `keep` names the locals that
-# take its result words, and `values` lists (region, offset, width, value): a byte, half-word, word,
-# or double word that the call must write at `offset` of its record, its output buffer, or its
-# result word `result N`.
+# take its result words, and `values` lists what the call must write: (region, offset, width, value)
+# for a byte, half-word, word, or double word at `offset` of its output buffer or its result word
+# `result N`, and ("field", name, value) for the field `name` of its record, read at the offset and
+# with the width that the description gives.
 STEPS = [
     {"call": "args_sizes_get", "keep": ["count", "size"],
      "values": [("result 0", 0, 4, 2), ("result 1", 0, 4, 7)]},
@@ -583,10 +585,11 @@ STEPS = [
     {"call": "random_get", "args": [32]},
     {"call": "sched_yield"},
     {"call": "proc_raise", "args": [1], "errno": 58},
-    {"call": "fd_prestat_get", "args": [3], "values": [("record", 0, 1, 0), ("record", 4, 4, 1)]},
+    {"call": "fd_prestat_get", "args": [3],
+     "values": [("field", "tag", 0), ("field", "pr_name_len", 1)]},
     {"call": "fd_prestat_dir_name", "args": [3, 1], "values": [("output", 0, 1, ord("."))]},
-    {"call": "fd_fdstat_get", "args": [3], "values": [("record", 0, 1, 3)]},
-    {"call": "fd_filestat_get", "args": [3], "values": [("record", 16, 1, 3)]},
+    {"call": "fd_fdstat_get", "args": [3], "values": [("field", "fs_filetype", 3)]},
+    {"call": "fd_filestat_get", "args": [3], "values": [("field", "filetype", 3)]},
     {"call": "path_create_directory", "args": [3, "d"]},
     {"call": "path_open", "args": [3, 0, "f", 1, RIGHTS, RIGHTS, 0], "keep": ["file"]},
     {"call": "fd_allocate", "args": ["file", 0, 16], "errno": 58},
@@ -600,7 +603,7 @@ STEPS = [
     {"call": "fd_datasync", "args": ["file"]},
     {"call": "fd_sync", "args": ["file"]},
     {"call": "path_filestat_get", "args": [3, 0, "f"],
-     "values": [("record", 16, 1, 4), ("record", 32, 8, 4294967301)]},
+     "values": [("field", "filetype", 4), ("field", "nlink", 1), ("field", "size", 4294967301)]},
     {"call": "path_filestat_set_times", "args": [3, 0, "f", 0, 0, 0]},
     {"call": "path_link", "args": [3, 0, "f", 3, "g"]},
     {"call": "path_symlink", "args": ["f", 3, "s"]},
@@ -647,7 +650,7 @@ def frame_step(index, step, function, constants, fault=None):
     change) moves the region's address or changes its declared start or size."""
     lines = [f"    ;; {index}: {function.name}", "    (call $prepare)"]
     args = list(step.get("args", []))
-    pushes, regions, places = [], [], {}
+    pushes, regions, places, fields = [], [], {}, {}
     inputs = reported = 0
     results = {"result32": 0, "result64": 0}
     for kind in function.kinds:
@@ -684,6 +687,7 @@ def frame_step(index, step, function, constants, fault=None):
                 pushes.append(f"(i32.const {address})")
                 regions.append((address, f"(i32.const {kind[1]})"))
                 places["record"] = address
+                fields = {name: (offset, width) for name, offset, width in kind[3]}
             case "reported":
                 address = POINTERS if reported == 0 else STRINGS
                 size = "(i32.mul (local.get $count) (i32.const 4))" if reported == 0 \
@@ -707,9 +711,15 @@ def frame_step(index, step, function, constants, fault=None):
                  f"{regions[0][1]}")
     lines.append(f"      (i32.const {regions[1][0]}) {regions[1][1]})")
     loads = {1: "i64.load8_u", 2: "i64.load16_u", 4: "i64.load32_u", 8: "i64.load"}
-    for region, offset, width, value in step.get("values", []):
+    for check in step.get("values", []):
+        if check[0] == "field":
+            offset, width = fields[check[1]]
+            address, value = places["record"] + offset, check[2]
+        else:
+            region, offset, width, value = check
+            address = places[region] + offset
         lines.append(f"    (call $value (i32.const {index}) ({loads[width]} (i32.const "
-                     f"{places[region] + offset})) (i64.const {value}))")
+                     f"{address})) (i64.const {value}))")
     for local, address in zip(step.get("keep", []), [a for a, _ in regions]):
         lines.append(f"    (local.set ${local} (i32.load (i32.const {address})))")
     return lines
@@ -806,26 +816,30 @@ def sweep_values(kind):
 
 def sweep_module(function, position, value):
     """A module that calls `function` once with `value` at parameter `position` and exits with its
-    errno.  The other parameters take descriptor 3, zero, the input `x`, a 16-byte output, and
-    regions 64 bytes apart at multiples of 8."""
-    pushes, regions = [], 0
+    errno, and its arguments in the form that tests/wasi/SysSweep.lean reads: `w:N` for a word,
+    `b:HEX` for an input, and `s:N` for an output's capacity.  The other parameters take descriptor
+    3, zero, the input `x`, a 16-byte output, and regions 64 bytes apart at multiples of 8."""
+    pushes, regions, args = [], 0, []
     for index, kind in enumerate(function.kinds):
         match kind[0]:
-            case "word32" | "enum32" | "flags32":
+            case "word32" | "enum32" | "flags32" | "word64" | "flags64":
                 default = 3 if kind[0] == "word32" else 0
-                pushes.append(f"(i32.const {value if index == position else default})")
-            case "word64" | "flags64":
-                pushes.append(f"(i64.const {value if index == position else 0})")
+                word = value if index == position else default
+                width = "i64" if kind[0] in ("word64", "flags64") else "i32"
+                pushes.append(f"({width}.const {word})")
+                args.append(f"w:{word}")
             case "input":
                 pushes += ["(i32.const 1024)", "(i32.const 1)"]
+                args.append(f"b:{b'x'.hex()}")
             case "output":
                 pushes += ["(i32.const 2048)", "(i32.const 16)"]
+                args.append("s:16")
             case _:
                 pushes.append(f"(i32.const {4096 + 64 * regions})")
                 regions += 1
     params = " ".join(t for kind in function.kinds for t in core_types(kind))
     signature = f"(param {params}) (result i32)" if params else "(result i32)"
-    return "\n".join([
+    return args, "\n".join([
         "(module",
         f'  (import "wasi_snapshot_preview1" "{function.name}" (func $call {signature}))',
         '  (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))',
@@ -839,12 +853,14 @@ def sweep_module(function, position, value):
 
 
 def reject_sweep(flat):
-    """The modules of the rejection sweep: a name, the module, and whether Wasmtime must trap."""
+    """The modules of the rejection sweep: a name, the module, whether Wasmtime must trap, and the
+    call's name and arguments."""
     for function in flat:
         for position, kind in enumerate(function.kinds):
             for value, rejected in sweep_values(kind):
-                yield (f"{function.name}-{position}-{value:#x}",
-                       sweep_module(function, position, value), rejected)
+                args, module = sweep_module(function, position, value)
+                yield (f"{function.name}-{position}-{value:#x}", module, rejected,
+                       " ".join([function.name, *args]))
 
 
 GENERATED = {
@@ -873,9 +889,9 @@ def main():
     flat = [function for function in functions(directory) if function.kinds is not None]
     if sweep is not None:
         sweep.mkdir(parents=True, exist_ok=True)
-        for name, text, rejected in reject_sweep(flat):
+        for name, text, rejected, call in reject_sweep(flat):
             (sweep / f"{name}.wat").write_text(text)
-            print(name, "trap" if rejected else "errno")
+            print(name, "trap" if rejected else "errno", call)
         return
     if faults is not None:
         faults.mkdir(parents=True, exist_ok=True)

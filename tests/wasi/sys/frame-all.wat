@@ -315,6 +315,7 @@
     (call $check (i32.const 26) (i32.const 72) (i32.const 64)
       (i32.const 0) (i32.const 0))
     (call $value (i32.const 26) (i64.load8_u (i32.const 88)) (i64.const 4))
+    (call $value (i32.const 26) (i64.load (i32.const 96)) (i64.const 1))
     (call $value (i32.const 26) (i64.load (i32.const 104)) (i64.const 4294967301))
     ;; 27: path_filestat_set_times
     (call $prepare)

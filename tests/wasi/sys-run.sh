@@ -80,6 +80,14 @@ then
   fail "seeded fault layout" "the independent lowering accepted an altered record layout"
 fi
 rejected=$((rejected + 1))
+sed 's/reporter := some "args_sizes_get"/reporter := some "environ_sizes_get"/' \
+  LeanExe/Wasi/CallTable.lean > "$out/reporter-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/reporter-fault.lean" \
+  > "$out/fault-reporter.txt" 2>&1
+then
+  fail "seeded fault reporter" "the independent lowering accepted an altered reporter"
+fi
+rejected=$((rejected + 1))
 printf 'flat call seeded faults detected: %s\n' "$rejected"
 
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
@@ -143,15 +151,25 @@ done < "$out/frame-faults.txt"
 printf 'frame test seeded faults detected: %s\n' "$seeded"
 
 # The rejection sweep passes each enum parameter its last value and the next one and each flags
-# parameter each single bit.  Wasmtime must trap converting a value that Param.reject rejects and
-# return an errno for the others.
+# parameter each single bit.  tests/wasi/SysSweep.lean requires the expected outcome of each module
+# to be the one that Call.reject gives for its arguments, and Wasmtime must trap converting a value
+# that Call.reject rejects and return an errno for the others.
 sweep="$out/reject-sweep"
 rm -rf "$sweep" "$dir"
 mkdir "$dir"
 uv run tools/wasi-calls.py --reject-sweep "$sweep" "$witx" > "$out/reject-sweep.txt"
+tools/leanrun --timeout 30m lake build LeanExe.Wasi.CallTable
+tools/leanrun --timeout 10m lake env lean --run tests/wasi/SysSweep.lean "$out/reject-sweep.txt"
+sed '1s/ errno / trap /;t;1s/ trap / errno /' "$out/reject-sweep.txt" \
+  > "$out/reject-sweep-fault.txt"
+if tools/leanrun --timeout 10m lake env lean --run tests/wasi/SysSweep.lean \
+  "$out/reject-sweep-fault.txt" > "$out/reject-sweep-fault.out" 2>&1
+then
+  fail "seeded fault sweep" "the sweep check accepted a flipped expectation"
+fi
 trapped=0
 returned=0
-while read -r name expected; do
+while read -r name expected call; do
   wasm-tools parse "$sweep/$name.wat" -o "$sweep/$name.wasm"
   status=0
   timeout 60s "$host" --dir "$dir" --stdout-file "$sweep/$name.stdout" \

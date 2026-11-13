@@ -8,10 +8,11 @@ Usage: uv run tests/wasi/witx-lowering.py [WITX_DIR [CALL_TABLE]]
 
 The lowering below was written from the witx for the design review of increment 2 of the flat
 calls, without the generator `tools/wasi-calls.py`, and names the kinds w32, w64, e N, f32 M,
-f64 M, in, out, r32, r64, rep SCALE ALIGN SHOWN, and rec SIZE ALIGN [(offset, width)].  The check
-lowers every function, reads every description of CALL_TABLE (by default
+f64 M, in, out, r32, r64, rep SCALE ALIGN SHOWN, and rec SIZE ALIGN [(offset, width)].  A
+function with reported regions, NAME_get, has the reporter NAME_sizes_get, a function of two r32
+results.  The check lowers every function, reads every description of CALL_TABLE (by default
 LeanExe/Wasi/CallTable.lean), and exits with status 1 when a flat function has no description, a
-description names no flat function, or the kinds differ.
+description names no flat function, or the kinds or the reporters differ.
 """
 import re
 import sys
@@ -195,11 +196,13 @@ def lower(types, func):
             return name, None, f"{pname} is a list", None
         elif isinstance(r, list) and r[0] == "@witx" and r[1] in ("pointer", "const_pointer"):
             pointee = r[2]
-            if pointee == "u8" and nxt is not None and resolve(types, nxt) == "u32" and nxt == "$size":
+            if (pointee == "u8" and nxt is not None and resolve(types, nxt) == "u32"
+                    and nxt == "$size"):
                 kinds.append("in" if r[1] == "const_pointer" else "out")
                 core += ["i32", "i32"]
                 i += 1
-            elif isinstance(pointee, list) and pointee[:2] == ["@witx", "pointer"] and pointee[2] == "u8":
+            elif (isinstance(pointee, list) and pointee[:2] == ["@witx", "pointer"]
+                  and pointee[2] == "u8"):
                 kinds.append("rep 4 4 false")
                 core.append("i32")
             elif pointee == "u8":
@@ -236,6 +239,7 @@ def lower(types, func):
 LEAN_KINDS = {"word32": "w32", "word64": "w64", "input": "in", "output": "out",
               "result32": "r32", "result64": "r64"}
 DESCRIPTION = re.compile(r'name := "([^"]+)",\s*params := \[(.*?)\](?:,|\s*\})', re.S)
+REPORTER = re.compile(r'reporter := some "([^"]+)"')
 
 
 def lean_kinds(params):
@@ -266,7 +270,14 @@ def main():
         name, kinds, _, _ = lower(types, function)
         if kinds is not None and name != "proc_exit":
             expected[name] = kinds
-    described = {name: lean_kinds(params) for name, params in DESCRIPTION.findall(table.read_text())}
+    described = {name: lean_kinds(params)
+                 for name, params in DESCRIPTION.findall(table.read_text())}
+    reporters = {}
+    for block in table.read_text().split("\ndef ")[1:]:
+        named = DESCRIPTION.search(block)
+        reporter = REPORTER.search(block)
+        if named:
+            reporters[named.group(1)] = reporter.group(1) if reporter else None
     failed = False
     for name in sorted(set(expected) | set(described)):
         if name not in described:
@@ -278,6 +289,15 @@ def main():
         elif described[name] != expected[name]:
             print(f"{name}: described {described[name]}, independent lowering {expected[name]}")
             failed = True
+        else:
+            reported = any(kind.startswith("rep ") for kind in expected[name])
+            reporter = name.removesuffix("_get") + "_sizes_get" if reported else None
+            if reported and expected.get(reporter) != ["r32", "r32"]:
+                print(f"{name}: no reporter {reporter} with two 32-bit results")
+                failed = True
+            if reporters.get(name) != reporter:
+                print(f"{name}: reporter {reporters.get(name)}, independent lowering {reporter}")
+                failed = True
     print(f"{len(described)} descriptions checked against the independent lowering")
     sys.exit(1 if failed else 0)
 
