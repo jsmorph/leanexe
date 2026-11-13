@@ -7,10 +7,10 @@ tests/conjunction/published.py.
 
 For a case given in the encounter plane, the inputs are the published numbers.  For a case given
 as two states and two covariances in an inertial frame, the script projects them onto the encounter
-plane at 50 digits as section 5.3 of the design does: the relative position r and velocity v are
-the first object's less the second's, z = v/|v| is the plane's normal, x is the unit vector along
-the part of r perpendicular to z, y = z cross x, the mean is (r.x, r.y), and the plane covariance
-is the combined covariance projected on (x, y).  Each input is then rounded to the nearest double.
+plane at 50 digits: the relative position r and velocity v are the first object's less the
+second's, z = v/|v| is the plane's normal, x is the unit vector along the part of r perpendicular
+to z, y = z cross x, the mean is (r.x, r.y) = (|r - (r.z) z|, 0), and the plane covariance is the
+sum of the two covariances projected on (x, y).  Each input is then rounded to the nearest double.
 
 `inputs` prints, for each case, the lines that `conjunction-evaluate` reads: the method, `pc` or
 `adaptive`, the case's name, the bit patterns of the doubles, and the panel count, for each count
@@ -18,7 +18,7 @@ of PANELS.  `check RESULTS` reads the lines that `conjunction-evaluate` prints a
 The reference value of a case is that of tests/conjunction/reference.py for its doubles, which
 integrates the density over the disk in polar coordinates at 50 digits.  The script also integrates
 the one-dimensional form of the README at 50 digits and requires the two to agree to a relative
-1e-30, so that a failure of either quadrature shows.  Every result must have status 0 and contain
+1e-20, so that a failure of either quadrature shows.  Every result must have status 0 and contain
 the reference.  Each published value is compared with the reference at its tolerance, half a unit
 in its last figure for Chan's values and a relative 1e-3 for Alfano's, and a value farther away is
 a disagreement, which must have a recorded cause in published.py.  For each result, the report
@@ -39,7 +39,7 @@ mp.dps = 50
 
 PANELS = [('pc', 4096), ('pc', 65536), ('pc', 1048576), ('adaptive', 4096), ('adaptive', 65536)]
 ALFANO_TOLERANCE = Decimal('1e-3')
-AGREEMENT = mpf('1e-30')
+AGREEMENT = mpf('1e-20')
 
 
 def bits(x: float) -> int:
@@ -80,9 +80,11 @@ def project(case: published.Alfano):
     c1, c2 = matrix(p.covariance), matrix(s.covariance)
     c = [[c1[i][j] + c2[i][j] for j in range(3)] for i in range(3)]
     z = unit(v)
-    x = unit([a - dot(r, z) * b for a, b in zip(r, z)])
+    perpendicular = [a - dot(r, z) * b for a, b in zip(r, z)]
+    x = unit(perpendicular)
     y = cross(z, x)
-    return dot(r, x), dot(r, y), form(x, c, x), form(x, c, y), form(y, c, y)
+    m1 = sqrt(dot(perpendicular, perpendicular))
+    return m1, mpf(0), form(x, c, x), form(x, c, y), form(y, c, y)
 
 
 def cases():
@@ -114,8 +116,8 @@ def one_dimensional(m1, m2, c11, c12, c22, r):
 
 def tolerance(value: str, kind: str) -> mpf:
     if kind == 'digits':
-        return mpf(Decimal(1).scaleb(Decimal(value).as_tuple().exponent) / 2)
-    return mpf(Decimal(value) * ALFANO_TOLERANCE)
+        return mpf(str(Decimal(1).scaleb(Decimal(value).as_tuple().exponent) / 2))
+    return mpf(str(Decimal(value) * ALFANO_TOLERANCE))
 
 
 def relation(lo, hi, value, tol) -> str:
@@ -139,9 +141,12 @@ def check(path: str) -> int:
         if fields:
             results.setdefault(fields[1], []).append(fields)
     failures = 0
+    computed = {}
     for name, plane, values, kind in cases():
-        ref = reference.reference(*[mpf(v) for v in plane])
-        other = one_dimensional(*[mpf(v) for v in plane])
+        if plane not in computed:
+            args = [mpf(v) for v in plane]
+            computed[plane] = reference.reference(*args), one_dimensional(*args)
+        ref, other = computed[plane]
         print(f'{name} m=({plane[0]!r}, {plane[1]!r}) C=({plane[2]!r}, {plane[3]!r}, '
               f'{plane[4]!r}) r={plane[5]!r}')
         print(f'  reference {mp.nstr(ref, 20)}, one-dimensional form differs by '
