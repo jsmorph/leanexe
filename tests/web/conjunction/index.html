@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conjunction Probability</title>
+<style>
+:root { --bg: #fafaf8; --fg: #1d2421; --muted: #5d6762; --line: #d6dbd6; --panel: #ffffff;
+  --accent: #2a5d8f; --disk: #b0452f; --grid: #e6e9e6; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #151918; --fg: #e3e8e5; --muted: #98a39d;
+    --line: #333b38; --panel: #1c2120; --accent: #7fb2e5; --disk: #e7856d; --grid: #262c2a; }
+}
+:root[data-theme="dark"] { --bg: #151918; --fg: #e3e8e5; --muted: #98a39d; --line: #333b38;
+  --panel: #1c2120; --accent: #7fb2e5; --disk: #e7856d; --grid: #262c2a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; margin: 0 0 6px; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
+p { margin: 0 0 12px; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin: 16px 0; }
+input, select, button { font: inherit; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: 3px 12px 3px 0;
+  border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+th { font-weight: 600; color: var(--muted); font-size: 13px; white-space: nowrap; }
+code { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px;
+  margin: 0 0 12px; }
+.fields label { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
+.fields input { color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 4px; padding: 4px 6px; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--fg); font: 12px system-ui, sans-serif; }
+svg .muted { fill: var(--muted); }
+svg .grid { stroke: var(--grid); stroke-width: 1; }
+svg .axis { stroke: var(--muted); stroke-width: 1; }
+svg .ellipse { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+svg .mean { fill: var(--accent); }
+svg .miss { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; }
+svg .disk { fill: var(--disk); fill-opacity: 0.35; stroke: var(--disk); stroke-width: 1.5; }
+svg .marker { fill: none; stroke: var(--disk); stroke-width: 1.5; stroke-dasharray: 3 2; }
+svg .interval { stroke: var(--accent); stroke-width: 6; }
+svg .threshold { stroke: var(--disk); stroke-width: 2; }
+</style>
+</head>
+<body>
+<main>
+<h1>Conjunction Probability</h1>
+<p class="muted">This page computes the two-dimensional probability of collision of two space
+objects from the quantities of the encounter plane: the mean miss vector, its covariance, and the
+combined hard-body radius.  It calls the export <code>assess</code> of the module that the verified
+compiler produced from <code>Demos/Conjunction/Program.lean</code>, which returns an interval that
+contains the model's probability and a verdict against the threshold, and it draws the plane with
+the covariance ellipses at one, two, and three standard deviations and the disk.</p>
+
+<section>
+<h2>Module</h2>
+<table>
+<tr><th>File</th><td><code>build/verified/conjunction.wasm</code></td></tr>
+<tr><th>SHA-256</th><td><code id="sha">loading</code></td></tr>
+<tr><th>Size</th><td id="size"></td></tr>
+<tr><th>Export</th><td><code>assess</code>, entry 55</td></tr>
+</table>
+</section>
+
+<!-- The conjunction-message form goes here: two states in one inertial frame, each object's
+position covariance in its RTN frame, the radius, and the threshold, passed to the module's
+message export.  Its result shows below and its plane quantities through `show` of app.js. -->
+<section id="message" hidden>
+<h2>Conjunction message</h2>
+</section>
+
+<section>
+<h2>Encounter plane</h2>
+<p><label>Example <select id="preset"></select></label></p>
+<div class="fields">
+<label>m1, mean along the first axis<input id="m1" inputmode="decimal"></label>
+<label>m2, mean along the second axis<input id="m2" inputmode="decimal"></label>
+<label>c11, variance of the first coordinate<input id="c11" inputmode="decimal"></label>
+<label>c12, covariance<input id="c12" inputmode="decimal"></label>
+<label>c22, variance of the second coordinate<input id="c22" inputmode="decimal"></label>
+<label>r, combined radius<input id="r" inputmode="decimal"></label>
+<label>t, threshold<input id="t" inputmode="decimal"></label>
+<label>n, panels, 1 to 1,048,576<input id="n" inputmode="numeric"></label>
+</div>
+<p><button id="run" disabled>Assess</button></p>
+<p class="muted">Every quantity uses one unit of length, meters in the examples, and the
+covariance its square.  The two axes are any orthonormal pair of the plane, the same for the mean
+and the covariance.</p>
+</section>
+
+<section>
+<h2>Result</h2>
+<table id="facts"></table>
+<p id="outcome"></p>
+<svg id="interval" viewBox="0 0 600 70" role="img" aria-label="Interval and threshold"></svg>
+<svg id="plane" viewBox="0 0 600 420" role="img" aria-label="Encounter plane"></svg>
+<p class="muted" id="caption"></p>
+</section>
+
+<section>
+<h2>Theorems and trusted code</h2>
+<p><code>compiled.assess.implements</code> of <code>Demos/Conjunction/Verified.lean</code> states
+that entry 55 of the module, the export <code>assess</code>, called with the words of its arguments
+from a store with the allocator's invariant that holds the table of <code>exp</code>, returns without
+a trap the words of <code>Demos.Conjunction.assess</code>: the status, <code>lo</code>,
+<code>hi</code>, and the verdict.  The generated <code>compiled.initial</code> states that a fresh
+instance's store is such a store, and the page calls <code>assess</code> on a fresh instance.
+<code>assess_sound</code> of <code>Demos/Conjunction/Soundness.lean</code> states that status 0
+gives the result of <code>pc</code>, whose <code>pc_enclosure</code> places the model's probability
+for the real values of the arguments between <code>lo</code> and <code>hi</code>, that verdict 1
+implies a probability below <code>t</code>, and that verdict 2 implies one at or above it.
+<code>conjunction_file</code> of <code>Demos/Conjunction/File.lean</code> states that
+<code>build/verified/conjunction.wasm</code> holds the encoding of the module, and the SHA-256
+above identifies the bytes that this page loaded.  These theorems depend on the axioms
+<code>propext</code>, <code>Classical.choice</code>, and <code>Quot.sound</code> alone.</p>
+<p>The page's JavaScript, <code>assess.js</code> and <code>app.js</code>, lies outside the
+theorems.  It converts each decimal entry to the nearest double, refuses an empty or malformed
+entry and a panel count outside the 64-bit words, passes the doubles and the count to
+<code>assess</code>, and shows the returned words.  The drawing is unverified: it computes the
+ellipses' axes and the view in JavaScript's binary64 arithmetic.  The browser's WebAssembly engine
+is trusted to agree with the semantics of the theorems.  The theorems concern the integral of the
+model, which assumes rectilinear relative motion, Gaussian position errors constant during the
+encounter, independent errors of the two objects, and spherical objects.  The realism of the
+covariance, the choice of the radius, and the choice of the threshold are the user's.</p>
+</section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
