@@ -124,7 +124,7 @@ for (const line of present.has('lakefile.lean') ? read('lakefile.lean').split('\
   }
   if (library) libraries.push(library[1] ?? library[2]);
   if (/^\s+(roots|globs)\s*:=/.test(line)) {
-    console.error(`tools/affected: lakefile.lean sets ${line.trim()}, which this tool ignores`);
+    console.error(`tools/affected: reads default roots only; lakefile.lean sets ${line.trim()}`);
     process.exit(1);
   }
   const root = line.match(/^\s+root\s*:=\s*`([\w.]+)/);
