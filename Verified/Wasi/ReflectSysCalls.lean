@@ -26,6 +26,10 @@ instance : Flat FilestatResult
 instance : Flat PrestatResult (UInt64 × UInt64 × UInt64) :=
   ⟨fun result => (result.errno, result.tag, result.prNameLen)⟩
 
+instance : Flat PollResult (UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64) :=
+  ⟨fun result => (result.errno, result.count, result.userdata, result.error, result.type,
+    result.nbytes, result.flags)⟩
+
 end LeanExe.Wasi
 
 namespace Verified.Wasi.Reflect
@@ -167,6 +171,20 @@ theorem fdFilestatSetTimes_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFun
   subst hFd hAtim hMtim hFstFlags
   rfl
 
+theorem fdPread_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (capacity : Var context .word)
+    (offset : Var context .word) (fdValue : Handle) (capacityValue : UInt64) (offsetValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hCapacity : env.get capacity = capacityValue)
+    (hOffset : env.get offset = offsetValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPread .iovecRead
+      [fd, capacity, offset] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : BytesResult → UInt64 × LeanExe.Bytes) (fdPread fdValue
+        capacityValue offsetValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hCapacity hOffset
+  rfl
+
 theorem fdPrestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (fdValue : Handle)
     (hFd : env.get fd = fdValue.fd) :
@@ -190,6 +208,33 @@ theorem fdPrestatDirName_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns 
   obtain ⟨fdValue⟩ := fdValue
   change env.get fd = fdValue at hFd
   subst hFd hPathLen
+  rfl
+
+theorem fdPwrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (bytes : Var context .bytes)
+    (offset : Var context .word) (fdValue : Handle) (bytesValue : LeanExe.Bytes)
+    (offsetValue : UInt64) (hFd : env.get fd = fdValue.fd) (hBytes : env.get bytes = bytesValue)
+    (hOffset : env.get offset = offsetValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPwrite .iovecWrite
+      [fd, offset] [bytes]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdPwrite fdValue bytesValue
+        offsetValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hBytes hOffset
+  rfl
+
+theorem fdRead_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (capacity : Var context .word) (fdValue : Handle)
+    (capacityValue : UInt64) (hFd : env.get fd = fdValue.fd)
+    (hCapacity : env.get capacity = capacityValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdRead .iovecRead
+      [fd, capacity] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : BytesResult → UInt64 × LeanExe.Bytes) (fdRead fdValue
+        capacityValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hCapacity
   rfl
 
 theorem fdReaddir_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -240,6 +285,18 @@ theorem fdTell_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs
   obtain ⟨fdValue⟩ := fdValue
   change env.get fd = fdValue at hFd
   subst hFd
+  rfl
+
+theorem fdWrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (bytes : Var context .bytes) (fdValue : Handle)
+    (bytesValue : LeanExe.Bytes) (hFd : env.get fd = fdValue.fd)
+    (hBytes : env.get bytes = bytesValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdWrite .iovecWrite [fd]
+      [bytes]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdWrite fdValue bytesValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hBytes
   rfl
 
 theorem pathCreateDirectory_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -369,6 +426,47 @@ theorem pathUnlinkFile_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns ef
   subst hFd hPath
   rfl
 
+theorem pollClock_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (clock : Var context .word) (timeout : Var context .word)
+    (precision : Var context .word) (flags : Var context .word) (clockValue : UInt64)
+    (timeoutValue : UInt64) (precisionValue : UInt64) (flagsValue : UInt64)
+    (hClock : env.get clock = clockValue) (hTimeout : env.get timeout = timeoutValue)
+    (hPrecision : env.get precision = precisionValue) (hFlags : env.get flags = flagsValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffClock .poll
+      [clock, timeout, precision, flags] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollClock clockValue timeoutValue precisionValue flagsValue) := by
+  subst hClock hTimeout hPrecision hFlags
+  rfl
+
+theorem pollRead_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (clock : Var context .word)
+    (timeout : Var context .word) (fdValue : Handle) (clockValue : UInt64) (timeoutValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hClock : env.get clock = clockValue)
+    (hTimeout : env.get timeout = timeoutValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffRead .poll
+      [fd, clock, timeout] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollRead fdValue clockValue timeoutValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hClock hTimeout
+  rfl
+
+theorem pollWrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (clock : Var context .word)
+    (timeout : Var context .word) (fdValue : Handle) (clockValue : UInt64) (timeoutValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hClock : env.get clock = clockValue)
+    (hTimeout : env.get timeout = timeoutValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffWrite .poll
+      [fd, clock, timeout] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollWrite fdValue clockValue timeoutValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hClock hTimeout
+  rfl
+
 theorem procRaise_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (sig : Var context .word) (sigValue : UInt64)
     (hSig : env.get sig = sigValue) :
@@ -430,10 +528,16 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false, false], ``fdFilestatSetSize_eq⟩),
   (``LeanExe.Wasi.fdFilestatSetTimes, ⟨``LeanExe.Wasi.Call.fdFilestatSetTimes,
     flatForm 0 false, [false, false, false, false], ``fdFilestatSetTimes_eq⟩),
+  (``LeanExe.Wasi.fdPread, ⟨``LeanExe.Wasi.Call.fdPread,
+    iovecReadForm, [false, false, false], ``fdPread_eq⟩),
   (``LeanExe.Wasi.fdPrestatGet, ⟨``LeanExe.Wasi.Call.fdPrestatGet,
     recordForm 2, [false], ``fdPrestatGet_eq⟩),
   (``LeanExe.Wasi.fdPrestatDirName, ⟨``LeanExe.Wasi.Call.fdPrestatDirName,
     flatForm 0 true, [false, false], ``fdPrestatDirName_eq⟩),
+  (``LeanExe.Wasi.fdPwrite, ⟨``LeanExe.Wasi.Call.fdPwrite,
+    iovecWriteForm, [false, true, false], ``fdPwrite_eq⟩),
+  (``LeanExe.Wasi.fdRead, ⟨``LeanExe.Wasi.Call.fdRead,
+    iovecReadForm, [false, false], ``fdRead_eq⟩),
   (``LeanExe.Wasi.fdReaddir, ⟨``LeanExe.Wasi.Call.fdReaddir,
     flatForm 1 true, [false, false, false], ``fdReaddir_eq⟩),
   (``LeanExe.Wasi.fdSeek, ⟨``LeanExe.Wasi.Call.fdSeek,
@@ -442,6 +546,8 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false], ``fdSync_eq⟩),
   (``LeanExe.Wasi.fdTell, ⟨``LeanExe.Wasi.Call.fdTell,
     flatForm 1 false, [false], ``fdTell_eq⟩),
+  (``LeanExe.Wasi.fdWrite, ⟨``LeanExe.Wasi.Call.fdWrite,
+    iovecWriteForm, [false, true], ``fdWrite_eq⟩),
   (``LeanExe.Wasi.pathCreateDirectory, ⟨``LeanExe.Wasi.Call.pathCreateDirectory,
     flatForm 0 false, [false, true], ``pathCreateDirectory_eq⟩),
   (``LeanExe.Wasi.pathFilestatGet, ⟨``LeanExe.Wasi.Call.pathFilestatGet,
@@ -460,6 +566,12 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [true, false, true], ``pathSymlink_eq⟩),
   (``LeanExe.Wasi.pathUnlinkFile, ⟨``LeanExe.Wasi.Call.pathUnlinkFile,
     flatForm 0 false, [false, true], ``pathUnlinkFile_eq⟩),
+  (``LeanExe.Wasi.pollClock, ⟨``LeanExe.Wasi.Call.pollOneoffClock,
+    pollForm, [false, false, false, false], ``pollClock_eq⟩),
+  (``LeanExe.Wasi.pollRead, ⟨``LeanExe.Wasi.Call.pollOneoffRead,
+    pollForm, [false, false, false], ``pollRead_eq⟩),
+  (``LeanExe.Wasi.pollWrite, ⟨``LeanExe.Wasi.Call.pollOneoffWrite,
+    pollForm, [false, false, false], ``pollWrite_eq⟩),
   (``LeanExe.Wasi.procRaise, ⟨``LeanExe.Wasi.Call.procRaise,
     flatForm 0 false, [false], ``procRaise_eq⟩),
   (``LeanExe.Wasi.schedYield, ⟨``LeanExe.Wasi.Call.schedYield,

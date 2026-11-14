@@ -6,7 +6,12 @@ Typed functions of the flat Preview 1 functions, which `tools/wasi-calls.py` gen
 pinned witx with the descriptions of `LeanExe/Wasi/CallTable.lean`.  A record result holds the
 errno and the record's fields as words.  A descriptor parameter takes a `Handle`.  `path_open`,
 `fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes descriptors.
-Its check fails when this file differs from its output.
+`fdRead` and `fdPread` read into a fresh buffer of the capacity and return the bytes read: the
+prefix of the buffer whose length is the count that the host returns, clamped to the capacity.
+`fdWrite` and `fdPwrite` return the count written.  `pollClock`, `pollRead`, and `pollWrite` return
+the errno, the number of events, and the fields of the first event.  The first subscription of each
+carries the userdata 1, and the clock subscription of `pollRead` and `pollWrite` the userdata 2.
+The generator's check fails when this file differs from its output.
 -/
 
 namespace LeanExe.Wasi
@@ -82,6 +87,10 @@ def fdFilestatSetTimes (fd : Handle) (atim : UInt64) (mtim : UInt64)
   .sys .fdFilestatSetTimes [.word fd.fd, .word atim, .word mtim, .word fstFlags] fun reply =>
     .pure reply.errno
 
+def fdPread (fd : Handle) (capacity : UInt64) (offset : UInt64) : Action BytesResult :=
+  .sys .fdPread [.word fd.fd, .space capacity, .word offset] fun reply =>
+    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
+
 def fdPrestatGet (fd : Handle) : Action PrestatResult :=
   .sys .fdPrestatGet [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 1, reply.field 0 4 4⟩
@@ -89,6 +98,14 @@ def fdPrestatGet (fd : Handle) : Action PrestatResult :=
 def fdPrestatDirName (fd : Handle) (pathLen : UInt64) : Action BytesResult :=
   .sys .fdPrestatDirName [.word fd.fd, .space pathLen] fun reply =>
     .pure ⟨reply.errno, reply.bytes 0⟩
+
+def fdPwrite (fd : Handle) (bytes : Bytes) (offset : UInt64) : Action WordResult :=
+  .sys .fdPwrite [.word fd.fd, .bytes bytes, .word offset] fun reply =>
+    .pure ⟨reply.errno, reply.word 0⟩
+
+def fdRead (fd : Handle) (capacity : UInt64) : Action BytesResult :=
+  .sys .fdRead [.word fd.fd, .space capacity] fun reply =>
+    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
 
 def fdReaddir (fd : Handle) (bufLen : UInt64) (cookie : UInt64) : Action BytesCountResult :=
   .sys .fdReaddir [.word fd.fd, .space bufLen, .word cookie] fun reply =>
@@ -104,6 +121,10 @@ def fdSync (fd : Handle) : Action UInt64 :=
 
 def fdTell (fd : Handle) : Action WordResult :=
   .sys .fdTell [.word fd.fd] fun reply =>
+    .pure ⟨reply.errno, reply.word 0⟩
+
+def fdWrite (fd : Handle) (bytes : Bytes) : Action WordResult :=
+  .sys .fdWrite [.word fd.fd, .bytes bytes] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
 def pathCreateDirectory (fd : Handle) (path : Bytes) : Action UInt64 :=
@@ -147,6 +168,22 @@ def pathSymlink (oldPath : Bytes) (fd : Handle) (newPath : Bytes) : Action UInt6
 def pathUnlinkFile (fd : Handle) (path : Bytes) : Action UInt64 :=
   .sys .pathUnlinkFile [.word fd.fd, .bytes path] fun reply =>
     .pure reply.errno
+
+def pollClock (clock : UInt64) (timeout : UInt64) (precision : UInt64)
+    (flags : UInt64) : Action PollResult :=
+  .sys .pollOneoffClock [.word clock, .word timeout, .word precision, .word flags] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
+
+def pollRead (fd : Handle) (clock : UInt64) (timeout : UInt64) : Action PollResult :=
+  .sys .pollOneoffRead [.word fd.fd, .word clock, .word timeout] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
+
+def pollWrite (fd : Handle) (clock : UInt64) (timeout : UInt64) : Action PollResult :=
+  .sys .pollOneoffWrite [.word fd.fd, .word clock, .word timeout] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
 
 def procRaise (sig : UInt64) : Action UInt64 :=
   .sys .procRaise [.word sig] fun reply =>

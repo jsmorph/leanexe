@@ -59,11 +59,20 @@ def fdFilestatSetSize : Call :=
 def fdFilestatSetTimes : Call :=
   { name := "fd_filestat_set_times", params := [.handle, .word64, .word64, .flags32 0xf] }
 
+def fdPread : Call :=
+  { name := "fd_pread", params := [.handle, .iovec false, .word64, .result32] }
+
 def fdPrestatGet : Call :=
   { name := "fd_prestat_get", params := [.handle, .record 8 4 [(0, 1), (4, 4)]] }
 
 def fdPrestatDirName : Call :=
   { name := "fd_prestat_dir_name", params := [.handle, .output] }
+
+def fdPwrite : Call :=
+  { name := "fd_pwrite", params := [.handle, .iovec true, .word64, .result32] }
+
+def fdRead : Call :=
+  { name := "fd_read", params := [.handle, .iovec false, .result32] }
 
 def fdReaddir : Call :=
   { name := "fd_readdir", params := [.handle, .output, .word64, .result32] }
@@ -79,6 +88,9 @@ def fdSync : Call :=
 
 def fdTell : Call :=
   { name := "fd_tell", params := [.handle, .result64] }
+
+def fdWrite : Call :=
+  { name := "fd_write", params := [.handle, .iovec true, .result32] }
 
 def pathCreateDirectory : Call :=
   { name := "path_create_directory", params := [.handle, .input] }
@@ -112,6 +124,29 @@ def pathSymlink : Call :=
 
 def pathUnlinkFile : Call :=
   { name := "path_unlink_file", params := [.handle, .input] }
+
+def pollOneoffClock : Call :=
+  { name := "poll_oneoff",
+    params := [.subscriptions [
+      [⟨0, 8, .const 1⟩, ⟨8, 1, .const 0⟩, ⟨16, 4, .word⟩, ⟨24, 8, .word⟩, ⟨32, 8, .word⟩,
+        ⟨40, 2, .word⟩]],
+      .result32] }
+
+def pollOneoffRead : Call :=
+  { name := "poll_oneoff",
+    params := [.subscriptions [
+      [⟨0, 8, .const 1⟩, ⟨8, 1, .const 1⟩, ⟨16, 4, .handle⟩],
+      [⟨0, 8, .const 2⟩, ⟨8, 1, .const 0⟩, ⟨16, 4, .word⟩, ⟨24, 8, .word⟩, ⟨32, 8, .const 0⟩,
+        ⟨40, 2, .const 0⟩]],
+      .result32] }
+
+def pollOneoffWrite : Call :=
+  { name := "poll_oneoff",
+    params := [.subscriptions [
+      [⟨0, 8, .const 1⟩, ⟨8, 1, .const 2⟩, ⟨16, 4, .handle⟩],
+      [⟨0, 8, .const 2⟩, ⟨8, 1, .const 0⟩, ⟨16, 4, .word⟩, ⟨24, 8, .word⟩, ⟨32, 8, .const 0⟩,
+        ⟨40, 2, .const 0⟩]],
+      .result32] }
 
 def procRaise : Call :=
   { name := "proc_raise", params := [.enum32 31] }

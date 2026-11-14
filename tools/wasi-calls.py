@@ -33,8 +33,14 @@ shown when it points to bytes; each component of an expected result is result32 
 width, or a record of its size, alignment, and fields when it is a record or a union.  A record's
 fields lie at the next multiple of their alignment, a union's payload after its tag at the
 payload's alignment, and the size is rounded up to the largest alignment.  A function with reported
-regions NAME_get has the reporter NAME_sizes_get.  A function that takes a list or a pointer to
-records, or does not return, is not flat.
+regions NAME_get has the reporter NAME_sizes_get.  An array of iovecs is iovec, an array of one
+element whose buffer the host fills, and an array of ciovecs is iovec shown, whose buffer the call
+reads.  The pointer to subscriptions of poll_oneoff, with the pointer to events and the count after
+it, is subscriptions, with one description for each shape of POLL_SHAPES: its records, each the
+witx layout of $subscription for one union case with constant userdata and tag and with each
+field of the case taken from an argument word, an argument handle, or a constant.  sock_recv and
+sock_send, which take iovec arrays, have no description, since Wasmtime 44 implements no Preview 1
+socket function, and a function that does not return is not flat.
 
 A typed function takes a Handle for each handle parameter.  path_open, fd_close, and fd_renumber
 have descriptions and no typed function: only LeanExe.Wasi.withOpen opens and closes descriptors,
@@ -146,21 +152,41 @@ def word_kind(table, ty):
     return ("word64",) if size == 8 else ("word32",)
 
 
+# The functions with an iovec array that have no description, by decision F2 of increment 3:
+# Wasmtime 44 implements no Preview 1 socket function, so no run can test their marshalling.
+EXCLUDED = {"sock_recv", "sock_send"}
+# The element types of the arrays of one element: an iovec's buffer is filled by the host, a
+# ciovec's is read.
+IOVECS = {"$iovec": False, "$ciovec": True}
+
+
 class Function:
     """A witx function: its name, its kinds or the reason it is not flat, and the witx names of
-    the arguments its typed function takes."""
+    the arguments its typed function takes.  `lean` names its description and `typed` its typed
+    function; they differ for the descriptions of poll_oneoff, one for each subscription shape."""
 
     def __init__(self, table, form):
         self.name = form[2][1].strip('"')
+        self.lean = self.typed = camel(self.name)
         self.kinds, self.reason, self.arguments = None, None, []
         try:
             self.kinds = self.lower(table, form)
         except NotFlat as error:
             self.reason = str(error)
 
+    def shape(self, lean, typed, arguments, kinds):
+        """A copy of the function with another description name, typed function, arguments,
+        and kinds."""
+        other = Function.__new__(Function)
+        other.name, other.lean, other.typed = self.name, lean, typed
+        other.kinds, other.reason, other.arguments = kinds, None, arguments
+        return other
+
     def lower(self, table, form):
         if any(isinstance(x, list) and x[:2] == ["@witx", "noreturn"] for x in form):
             raise NotFlat("does not return")
+        if self.name in EXCLUDED:
+            raise NotFlat("a socket function with an iovec array (decision F2)")
         params = [x for x in form if isinstance(x, list) and x[:1] == ["param"]]
         kinds, index = [], 0
         while index < len(params):
@@ -171,6 +197,16 @@ class Function:
             if resolved == "string":
                 kinds.append(("input",))
                 self.arguments.append(name)
+            elif isinstance(resolved, list) and resolved[0] == "list" and resolved[1] in IOVECS:
+                shown = IOVECS[resolved[1]]
+                kinds.append(("iovec", shown))
+                self.arguments.append("bytes" if shown else "capacity")
+            elif is_pointer(resolved) and resolved[2] == "$subscription":
+                rest = params[index + 1:index + 3]
+                if [p[2] for p in rest] != [["@witx", "pointer", "$event"], "$size"]:
+                    raise NotFlat(f"parameter {name} points to subscriptions without events")
+                kinds.append(("subscriptions", None))
+                index += 2
             elif is_pointer(resolved):
                 pointee = resolve(table, resolved[2])
                 if resolved[1] == "const_pointer" and sized:
@@ -211,10 +247,6 @@ class Function:
         return kinds
 
     @property
-    def lean(self):
-        return camel(self.name)
-
-    @property
     def reporter(self):
         if any(kind[0] == "reported" for kind in self.kinds):
             return self.name.removesuffix("_get") + "_sizes_get"
@@ -240,7 +272,57 @@ def functions(directory):
                 walk(x)
 
     walk(parse((directory / "wasi_snapshot_preview1.witx").read_text()))
-    return found
+    events = layout(table, "$event")[2]
+    expanded = []
+    for function in found:
+        if function.kinds is None or ("subscriptions", None) not in function.kinds:
+            expanded.append(function)
+            continue
+        for lean, typed, arguments, records in POLL_SHAPES:
+            laid = [subscription_record(table, *record) for record in records]
+            kinds = [("subscriptions", laid) if kind == ("subscriptions", None) else kind
+                     for kind in function.kinds]
+            shape = function.shape(lean, typed, arguments, kinds)
+            shape.events = events
+            expanded.append(shape)
+    return expanded
+
+
+# The subscription shapes of poll_oneoff that typed functions use: the description's name, the
+# typed function, its arguments, and for each subscription the union case, which is the event
+# type, the userdata constant, which tells the subscriptions apart, and the source of each field
+# of the case: an argument word, an argument handle, or a constant.
+POLL_SHAPES = [
+    ("pollOneoffClock", "pollClock", ["clock", "timeout", "precision", "flags"],
+     [("clock", 1, {"id": "word", "timeout": "word", "precision": "word", "flags": "word"})]),
+    ("pollOneoffRead", "pollRead", ["fd", "clock", "timeout"],
+     [("fd_read", 1, {"file_descriptor": "handle"}),
+      ("clock", 2, {"id": "word", "timeout": "word", "precision": 0, "flags": 0})]),
+    ("pollOneoffWrite", "pollWrite", ["fd", "clock", "timeout"],
+     [("fd_write", 1, {"file_descriptor": "handle"}),
+      ("clock", 2, {"id": "word", "timeout": "word", "precision": 0, "flags": 0})]),
+]
+
+
+def subscription_record(table, case, userdata, sources):
+    """The fields (offset, width, source) of a subscription of the union case `case`: the userdata
+    and the tag as constants, and the case's fields with their sources, at the offsets of the witx
+    layout of $subscription."""
+    union = resolve(table, "$subscription_u")
+    tags = [name.lstrip("$") for name in cases(resolve(table, annotation(union, ("tag",))))]
+    tag = tags.index(case)
+    _, _, fields = layout(table, "$subscription")
+    counts = [len(layout(table, variant)[2]) for variant in cases(union)]
+    start = 2 + sum(counts[:tag])
+    assert [name for name, _, _ in fields[:2]] == ["userdata", "u_tag"], fields
+    record = [(fields[0][1], fields[0][2], ("const", userdata)),
+              (fields[1][1], fields[1][2], ("const", tag))]
+    payload = fields[start:start + counts[tag]]
+    assert sorted(name.removeprefix("u_") for name, _, _ in payload) == sorted(sources), payload
+    for name, offset, width in payload:
+        source = sources[name.removeprefix("u_")]
+        record.append((offset, width, source if isinstance(source, str) else ("const", source)))
+    return record
 
 
 def camel(name):
@@ -271,8 +353,16 @@ def wrap(head, items, tail, indent, separator=","):
     return lines
 
 
+def lean_field(field):
+    offset, width, source = field
+    value = f".const {source[1]}" if isinstance(source, tuple) else f".{source}"
+    return f"⟨{offset}, {width}, {value}⟩"
+
+
 def lean_param(kind):
     match kind:
+        case ("iovec", shown):
+            return f".iovec {'true' if shown else 'false'}"
         case ("enum32", count):
             return f".enum32 {count}"
         case ("flags32" | "flags64" as name, mask):
@@ -286,6 +376,16 @@ def lean_param(kind):
 
 
 def description(function):
+    records = next((kind[1] for kind in function.kinds if kind[0] == "subscriptions"), None)
+    if records is not None:
+        lines = [f"def {function.lean} : Call :=", f'  {{ name := "{function.name}",',
+                 "    params := [.subscriptions ["]
+        for index, record in enumerate(records):
+            tail = "]," if index + 1 < len(records) else "]],"
+            lines += wrap("      [", [lean_field(field) for field in record], tail, 8)
+        rest = [lean_param(kind) for kind in function.kinds if kind[0] != "subscriptions"]
+        lines += wrap("      ", rest, "] }", 6)
+        return "\n".join(lines) + "\n"
     params = [lean_param(kind) for kind in function.kinds]
     reporter = function.reporter
     lines = [f"def {function.lean} : Call :="]
@@ -327,50 +427,98 @@ RESULT_TYPES = {
     ("result32", "result32"): "ArgsSizes",
     ("output",): "BytesResult",
     ("output", "result32"): "BytesCountResult",
+    ("buffer", "result32"): "BytesResult",
+    ("events", "result32"): "PollResult",
 }
 
 
+def output_shape(kind):
+    """The shape of a parameter whose region the reply carries, or None."""
+    match kind:
+        case ("output",) | ("result32",) | ("result64",):
+            return kind[0]
+        case ("record", *_):
+            return "record"
+        case ("iovec", False):
+            return "buffer"
+        case ("subscriptions", _):
+            return "events"
+    return None
+
+
 def outputs(function):
-    return [kind for kind in function.kinds
-            if kind[0] in ("output", "result32", "result64", "record")]
+    return [kind for kind in function.kinds if output_shape(kind) is not None]
 
 
 def result_type(function):
     record = [kind for kind in function.kinds if kind[0] == "record"]
     if record:
         return pascal(record[0][4]) + "Result"
-    return RESULT_TYPES[tuple(kind[0] for kind in outputs(function))]
+    return RESULT_TYPES[tuple(output_shape(kind) for kind in outputs(function))]
 
 
 def result_value(function):
-    shapes = [kind[0] for kind in outputs(function)]
+    shapes = [output_shape(kind) for kind in outputs(function)]
     if not shapes:
         return "reply.errno"
     if shapes == ["record"]:
         fields = [f"reply.field 0 {offset} {width}" for _, offset, width in outputs(function)[0][3]]
         return "⟨reply.errno, " + ", ".join(fields) + "⟩"
+    if shapes == ["buffer", "result32"]:
+        return "⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩"
+    if shapes == ["events", "result32"]:
+        fields = [f"reply.field 0 {offset} {width}" for _, offset, width in function.events]
+        return "⟨reply.errno, reply.word 1, " + ", ".join(fields) + "⟩"
     parts = [f"reply.bytes {i}" if shape == "output" else f"reply.word {i}"
              for i, shape in enumerate(shapes)]
     return "⟨reply.errno, " + ", ".join(parts) + "⟩"
 
 
-ARGUMENT_TYPES = {"input": "Bytes", "handle": "Handle"}
+ARGUMENT_TYPES = {"input": "Bytes", "handle": "Handle", "iovec true": "Bytes"}
+
+
+def argument_kinds(function):
+    """The kind of each argument of the typed function, in order: the kind of its parameter, or
+    ("word",) or ("handle",) for a word or handle field of a subscription."""
+    kinds = []
+    for kind in function.kinds:
+        if kind[0] == "subscriptions":
+            kinds += [(source,) for record in kind[1] for _, _, source in record
+                      if isinstance(source, str)]
+        elif kind[0] not in ("result32", "result64", "record", "reported"):
+            kinds.append(kind)
+    return kinds
+
+
+def argument_type(kind):
+    """The key of ARGUMENT_TYPES of an argument's kind."""
+    return "iovec true" if kind == ("iovec", True) else kind[0]
+
+
+def takes_bytes(kind):
+    return kind == ("input",) or kind == ("iovec", True)
+
+
+def argument_term(name, kind):
+    if takes_bytes(kind):
+        return f".bytes {name}"
+    if kind in (("output",), ("iovec", False)):
+        return f".space {name}"
+    if kind[0] == "handle":
+        return f".word {name}.fd"
+    return f".word {name}"
 
 
 def typed_function(function):
-    takes = [kind for kind in function.kinds
-             if kind[0] not in ("result32", "result64", "record", "reported")]
+    takes = argument_kinds(function)
     names = [camel(name) for name in function.arguments]
-    binders = [f"({name} : {ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
+    binders = [f"({name} : {ARGUMENT_TYPES.get(argument_type(kind), 'UInt64')})"
                for name, kind in zip(names, takes)]
-    args = [f".bytes {name}" if kind[0] == "input" else
-            f".space {name}" if kind[0] == "output" else
-            f".word {name}.fd" if kind[0] == "handle" else f".word {name}"
-            for name, kind in zip(names, takes)]
-    head = f"def {function.lean}" + "".join(" " + b for b in binders) + \
+    args = [argument_term(name, kind) for name, kind in zip(names, takes)]
+    head = f"def {function.typed}" + "".join(" " + b for b in binders) + \
         f" : Action {result_type(function)} :="
     lines = [head] if len(head) <= WIDTH else \
-        wrap(f"def {function.lean} ", binders, f" : Action {result_type(function)} :=", 4)
+        wrap(f"def {function.typed} ", binders, f" : Action {result_type(function)} :=", 4)
     lines = [line.replace(",", "") for line in lines] if len(head) > WIDTH else lines
     lines += wrap(f"  .sys .{function.lean} [", args, f"] fun reply =>", 4)
     value = result_value(function)
@@ -406,7 +554,17 @@ def render_typed(flat):
         "`path_open`,",
         "`fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes "
         "descriptors.",
-        "Its check fails when this file differs from its output.",
+        "`fdRead` and `fdPread` read into a fresh buffer of the capacity and return the bytes "
+        "read: the",
+        "prefix of the buffer whose length is the count that the host returns, clamped to the "
+        "capacity.",
+        "`fdWrite` and `fdPwrite` return the count written.  `pollClock`, `pollRead`, and "
+        "`pollWrite` return",
+        "the errno, the number of events, and the fields of the first event.  The first "
+        "subscription of each",
+        "carries the userdata 1, and the clock subscription of `pollRead` and `pollWrite` the "
+        "userdata 2.",
+        "The generator's check fails when this file differs from its output.",
         "-/",
         "",
         "namespace LeanExe.Wasi",
@@ -419,6 +577,8 @@ def render_typed(flat):
 
 
 FLATTEN = {
+    "PollResult": "(Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × "
+                  "UInt64)",
     "UInt64": "(fun value : UInt64 => value)",
     "WordResult": "(Flat.flat : WordResult → UInt64 × UInt64)",
     "ArgsSizes": "(Flat.flat : ArgsSizes → UInt64 × UInt64 × UInt64)",
@@ -442,6 +602,12 @@ def form(function):
     record = record_kind(function)
     if record is not None:
         return f"(.record {len(record[3])})", f"recordForm {len(record[3])}"
+    if ("iovec", False) in function.kinds:
+        return ".iovecRead", "iovecReadForm"
+    if ("iovec", True) in function.kinds:
+        return ".iovecWrite", "iovecWriteForm"
+    if any(kind[0] == "subscriptions" for kind in function.kinds):
+        return ".poll", "pollForm"
     words = sum(1 for kind in function.kinds if kind[0] in ("result32", "result64"))
     output = "true" if any(kind[0] == "output" for kind in function.kinds) else "false"
     return f"(.flat {words} {output})", f"flatForm {words} {output}"
@@ -451,15 +617,23 @@ def flatten(function):
     """The tokens of the map from the typed function's result to the command's value."""
     record = record_kind(function)
     if record is None:
-        return [FLATTEN[result_type(function)]]
+        return FLATTEN[result_type(function)].split(" ")
     words = " × ".join(["UInt64"] * (len(record[3]) + 1))
     return f"(Flat.flat : {result_type(function)} → {words})".split(" ")
 
 
+# The fields of `PollResult`, the result of the typed functions of poll_oneoff.
+POLL_FIELDS = ["errno", "count", "userdata", "error", "type", "nbytes", "flags"]
+
+
 def flat_instance(kind):
     """The `Flat` instance of a record result type: the errno and the fields as a tuple."""
-    name = pascal(kind[4]) + "Result"
-    fields = ["errno"] + [camel(field) for field, _, _ in kind[3]]
+    return flat_instance_of(pascal(kind[4]) + "Result",
+                            ["errno"] + [camel(field) for field, _, _ in kind[3]])
+
+
+def flat_instance_of(name, fields):
+    """The `Flat` instance of a result structure of words: its fields as a tuple."""
     words = " × ".join(["UInt64"] * len(fields))
     head = f"instance : Flat {name} ({words}) :="
     lines = [head] if len(head) <= WIDTH else [f"instance : Flat {name}", f"    ({words}) :="]
@@ -479,21 +653,20 @@ def variable(name):
 
 
 def reflection_equation(function):
-    takes = [kind for kind in function.kinds
-             if kind[0] not in ("result32", "result64", "record", "reported")]
+    takes = argument_kinds(function)
     names = [camel(name) for name in function.arguments]
-    inputs = [kind[0] == "input" for kind in takes]
+    inputs = [takes_bytes(kind) for kind in takes]
     handles = [name for name, kind in zip(names, takes) if kind[0] == "handle"]
     variables = [f"({variable(name)} : Var context .{'bytes' if input else 'word'})"
                  for name, input in zip(names, inputs)]
     values = [f"({name}Value : "
-              f"{'LeanExe.Bytes' if kind[0] == 'input' else ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
+              f"{'LeanExe.Bytes' if takes_bytes(kind) else ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
               for name, kind in zip(names, takes)]
     hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value"
                   f"{'.fd' if name in handles else ''})"
                   for name in names]
     term, _ = form(function)
-    lines = [f"theorem {function.lean}_eq (pureFuns : Funs pureSigs) "
+    lines = [f"theorem {function.typed}_eq (pureFuns : Funs pureSigs) "
              "(effectFuns : EffectFuns effectSigs)"]
     if names:
         lines += wrap("    (env : Env context) ", variables + values + hypotheses, " :", 4,
@@ -507,10 +680,10 @@ def reflection_equation(function):
     tokens += [f"Call.{function.lean}", term,
                f"[{word_list}]", f"[{input_list}]).denote", "pureFuns", "effectFuns", "env", "="]
     lines += wrap("    ", tokens, "", 6, separator="")
-    call = [f"({function.lean}"] + [f"{name}Value" for name in names]
+    call = [f"({function.typed}"] + [f"{name}Value" for name in names]
     call[-1] += ")"
     if not names:
-        call = [function.lean]
+        call = [function.typed]
     tokens = ["flattenAction", *flatten(function), *call, ":= by" if names else ":= rfl"]
     lines += wrap("      ", tokens, "", 8, separator="")
     for name in handles:
@@ -524,12 +697,11 @@ def reflection_equation(function):
 
 
 def operation_entry(function):
-    takes = [kind for kind in function.kinds
-             if kind[0] not in ("result32", "result64", "record", "reported")]
-    inputs = ", ".join("true" if kind[0] == "input" else "false" for kind in takes)
+    takes = argument_kinds(function)
+    inputs = ", ".join("true" if takes_bytes(kind) else "false" for kind in takes)
     _, expression = form(function)
-    return (f"(``LeanExe.Wasi.{function.lean}, ⟨``LeanExe.Wasi.Call.{function.lean},\n"
-            f"    {expression}, [{inputs}], ``{function.lean}_eq⟩)")
+    return (f"(``LeanExe.Wasi.{function.typed}, ⟨``LeanExe.Wasi.Call.{function.lean},\n"
+            f"    {expression}, [{inputs}], ``{function.typed}_eq⟩)")
 
 
 def render_reflect(flat):
@@ -561,7 +733,10 @@ def render_reflect(flat):
         "",
         "open LeanExe.Pipeline",
         "",
-        "\n".join(flat_instance(kind) for kind in records.values()),
+        "\n".join([flat_instance(kind) for kind in records.values()] +
+                  ([flat_instance_of("PollResult", POLL_FIELDS)]
+                   if any(kind[0] == "subscriptions" for f in flat for kind in f.kinds)
+                   else [])),
         "end LeanExe.Wasi",
         "",
         "namespace Verified.Wasi.Reflect",
@@ -592,15 +767,27 @@ WORKING, SHADOW, CONSTANTS = 0, 65536, 2 * 65536
 # it, so that Wasmtime traps when a description gives it a smaller alignment.
 INPUTS, OUTPUT, STRINGS = 1024, 4096, 12288
 RESULT32, RESULT64, RECORDS, POINTERS = (20, 28), (24, 40), 64, 8196
+# The element of an iovec lies at a multiple of 4, and the subscriptions and the events of
+# poll_oneoff at multiples of 8, none of them at a multiple of twice the alignment.
+ELEMENT, SUBSCRIPTIONS, EVENTS = 516, 2056, 3080
+# The 64 bytes of the file that the steps of the nested functions write and read.
+DATA = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+"
+FILE_RIGHTS = RIGHTS
 # The frame test's steps, run with a directory preopened at descriptor 3, the arguments `prog`
-# and `a`, and the environment variable ENVIRONMENT.  Each step names a function and gives the
-# arguments of the parameters that take one, in order: an integer, the name of a local that an
-# earlier step set, a string for an input, or a capacity for an output.  `errno` is Wasmtime 44's
+# and `a`, and the environment variable ENVIRONMENT.  Each step names a function, and with
+# `description` the description of a function with several, and gives the arguments of the
+# parameters that take one, in order: an integer, the name of a local that an earlier step set, a
+# string for an input or the bytes of an iovec, or a capacity for an output or the buffer of an
+# iovec, and the words of the word and handle fields of subscriptions.  `errno` is Wasmtime 44's
 # errno for the step, `keep` names the locals that take its result words, and `values` lists what
 # the call must write: (region, offset, width, value) for a byte, half-word, word, or double word
-# at `offset` of its output buffer, its result word `result N`, or its reported regions `pointers`
-# and `strings`, and ("field", name, value) for the field `name` of its record, read at the offset
-# and with the width that the description gives.
+# at `offset` of its output buffer or iovec buffer `output`, its result word `result N`, its
+# reported regions `pointers` and `strings`, or its events `events`, and ("field", name, value)
+# for the field `name` of its record, read at the offset and with the width that the description
+# gives.  The steps of the nested functions write the 64 bytes of DATA to a file with fd_write and
+# fd_pwrite, read 16 of them back with fd_read and fd_pread, and poll a clock of timeout 0 and
+# the file's readiness, whose events Wasmtime 44 writes as the review's finding 10 states: a clock
+# event has nbytes 0 in this host, and a read or write event on a file nbytes 1.
 ENVIRONMENT = "LEANEXE_FRAME=1"
 STEPS = [
     {"call": "args_sizes_get", "keep": ["count", "size"],
@@ -653,6 +840,29 @@ STEPS = [
     {"call": "path_unlink_file", "args": [3, "s"]},
     {"call": "path_unlink_file", "args": [3, "f"]},
     {"call": "path_remove_directory", "args": [3, "d"]},
+    {"call": "path_open", "args": [3, 0, "data", 1, FILE_RIGHTS, FILE_RIGHTS, 0],
+     "keep": ["data"]},
+    {"call": "fd_write", "args": ["data", DATA[:48].decode()], "values": [("result 0", 0, 4, 48)]},
+    {"call": "fd_pwrite", "args": ["data", DATA[48:].decode(), 48],
+     "values": [("result 0", 0, 4, 16)]},
+    {"call": "fd_read", "args": ["data", 16],
+     "values": [("result 1", 0, 4, 16), ("output", 0, 8, int.from_bytes(DATA[48:56], "little")),
+                ("output", 8, 8, int.from_bytes(DATA[56:64], "little"))]},
+    {"call": "fd_pread", "args": ["data", 16, 8],
+     "values": [("result 1", 0, 4, 16), ("output", 0, 8, int.from_bytes(DATA[8:16], "little")),
+                ("output", 8, 8, int.from_bytes(DATA[16:24], "little"))]},
+    {"call": "poll_oneoff", "description": "pollOneoffClock", "args": [1, 0, 0, 0],
+     "values": [("result 1", 0, 4, 1), ("events", 0, 8, 1), ("events", 8, 2, 0),
+                ("events", 10, 1, 0), ("events", 16, 8, 0), ("events", 24, 2, 0)]},
+    {"call": "fd_seek", "args": ["data", 0, 0], "values": [("result 0", 0, 8, 0)]},
+    {"call": "poll_oneoff", "description": "pollOneoffRead", "args": ["data", 1, 1000000000],
+     "values": [("result 1", 0, 4, 1), ("events", 0, 8, 1), ("events", 8, 2, 0),
+                ("events", 10, 1, 1), ("events", 16, 8, 1), ("events", 24, 2, 0)]},
+    {"call": "poll_oneoff", "description": "pollOneoffWrite", "args": ["data", 1, 1000000000],
+     "values": [("result 1", 0, 4, 1), ("events", 0, 8, 1), ("events", 8, 2, 0),
+                ("events", 10, 1, 2), ("events", 16, 8, 1), ("events", 24, 2, 0)]},
+    {"call": "fd_close", "args": ["data"]},
+    {"call": "path_unlink_file", "args": [3, "data"]},
     {"call": "sock_accept", "args": [3, 0], "errno": 57},
     {"call": "sock_shutdown", "args": [3, 1], "errno": 57},
 ]
@@ -664,14 +874,20 @@ FAULTS = {
     "output-late": ("fd_prestat_dir_name", "output", "start", 1),
     "record-half-aligned": ("fd_filestat_get", "record", "address", -4),
     "environ-short": ("environ_get", "strings", "size", -1),
+    "read-buffer-short": ("fd_read", "output", "size", -1),
+    "iovec-half-aligned": ("fd_read", "element", "address", 2),
+    "event-short": ("poll_oneoff", "events", "size", -7),
+    "event-late": ("poll_oneoff", "events", "start", 1),
 }
 
 
 def core_types(kind):
     if kind[0] in ("word64", "flags64"):
         return ["i64"]
-    if kind[0] in ("input", "output"):
+    if kind[0] in ("input", "output", "iovec"):
         return ["i32", "i32"]
+    if kind[0] == "subscriptions":
+        return ["i32", "i32", "i32"]
     return ["i32"]
 
 
@@ -719,6 +935,39 @@ def frame_step(index, step, function, constants, fault=None):
                 regions.append((address, f"(i32.const {kind[1]})"))
                 places["record"] = address
                 fields = {name: (offset, width) for name, offset, width in kind[3]}
+            case "iovec":
+                element = ELEMENT
+                if fault and fault[0] == "element" and fault[1] == "address":
+                    element += fault[2]
+                if kind[1]:
+                    text = args.pop(0).encode()
+                    source = constants.setdefault(text, CONSTANTS + 256 * len(constants))
+                    lines.append(f"    (memory.copy (i32.const {INPUTS}) (i32.const {source}) "
+                                 f"(i32.const {len(text)}))")
+                    buffer, length = INPUTS, len(text)
+                else:
+                    buffer, length = OUTPUT, args.pop(0)
+                    regions.append((OUTPUT, f"(i32.const {length})"))
+                    places["output"] = OUTPUT
+                lines.append(f"    (i32.store (i32.const {element}) (i32.const {buffer}))")
+                lines.append(f"    (i32.store (i32.const {element + 4}) (i32.const {length}))")
+                pushes += [f"(i32.const {element})", "(i32.const 1)"]
+            case "subscriptions":
+                records = kind[1]
+                lines.append(f"    (memory.fill (i32.const {SUBSCRIPTIONS}) (i32.const 0) "
+                             f"(i32.const {48 * len(records)}))")
+                stores = {8: "i64.store", 4: "i64.store32", 2: "i64.store16", 1: "i64.store8"}
+                for number, record in enumerate(records):
+                    for offset, width, source in record:
+                        value = source[1] if isinstance(source, tuple) else args.pop(0)
+                        operand = (f"(i64.extend_i32_u (local.get ${value}))"
+                                   if isinstance(value, str) else f"(i64.const {value})")
+                        lines.append(f"    ({stores[width]} (i32.const "
+                                     f"{SUBSCRIPTIONS + 48 * number + offset}) {operand})")
+                pushes += [f"(i32.const {SUBSCRIPTIONS})", f"(i32.const {EVENTS})",
+                           f"(i32.const {len(records)})"]
+                regions.append((EVENTS, f"(i32.const {32 * len(records)})"))
+                places["events"] = EVENTS
             case "reported":
                 address = POINTERS if reported == 0 else STRINGS
                 size = "(i32.mul (local.get $count) (i32.const 4))" if reported == 0 \
@@ -758,19 +1007,24 @@ def frame_step(index, step, function, constants, fault=None):
 
 
 def render_frame(flat, fault=None):
-    functions = {function.name: function for function in flat}
-    missing = sorted(set(functions) - {step["call"] for step in STEPS})
+    descriptions = {function.lean: function for function in flat}
+    missing = sorted({function.name for function in flat} - {step["call"] for step in STEPS})
     assert not missing, f"no step calls {missing}"
-    assert 84 + len(STEPS) < 126, "too many steps for distinct statuses"
+    steps = len(STEPS)
+    assert 3 * steps < 256, "too many steps for distinct statuses"
     constants, body = {}, []
     seeded = None
     for index, step in enumerate(STEPS, 1):
         here = fault[1:] if fault and fault[0] == step["call"] and not seeded else None
         seeded = seeded or here
-        body += frame_step(index, step, functions[step["call"]], constants, here)
+        function = descriptions[step.get("description", camel(step["call"]))]
+        body += frame_step(index, step, function, constants, here)
     assert fault is None or seeded, f"no step calls {fault[0]}"
-    imports = []
+    imports, imported = [], set()
     for function in flat:
+        if function.name in imported:
+            continue
+        imported.add(function.name)
         params = " ".join(t for kind in function.kinds for t in core_types(kind))
         signature = f"(param {params}) (result i32)" if params else "(result i32)"
         imports.append(f'  (import "wasi_snapshot_preview1" "{function.name}"')
@@ -786,8 +1040,9 @@ def render_frame(flat, fault=None):
         ";; when a description gives it a smaller alignment.  The step then checks the errno,",
         ";; that every byte outside the call's declared regions equals the shadow copy, and the",
         ";; values the step lists.  The exit status names the first failed check: the step's",
-        ";; number for the errno, 42 plus it for a byte outside the regions, and 84 plus it for",
-        ";; a value.",
+        f";; number for the errno, {steps} plus it for a byte outside the regions, and {2 * steps} "
+        "plus it",
+        ";; for a value.",
         "(module",
         *imports,
         '  (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))',
@@ -805,7 +1060,7 @@ def render_frame(flat, fault=None):
         "      (then (call $fail (local.get $step)))))",
         "  (func $value (param $step i32) (param $got i64) (param $want i64)",
         "    (if (i64.ne (local.get $got) (local.get $want))",
-        "      (then (call $fail (i32.add (i32.const 84) (local.get $step))))))",
+        f"      (then (call $fail (i32.add (i32.const {2 * steps}) (local.get $step))))))",
         "  (func $inside (param $address i32) (param $start i32) (param $length i32) (result i32)",
         "    (i32.and (i32.ge_u (local.get $address) (local.get $start))",
         "      (i32.lt_u (local.get $address) (i32.add (local.get $start) (local.get $length)))))",
@@ -821,11 +1076,12 @@ def render_frame(flat, fault=None):
         "          (then",
         "            (if (i32.ne (i32.load8_u (local.get $index))",
         f"                  (i32.load8_u (i32.add (local.get $index) (i32.const {SHADOW}))))",
-        "              (then (call $fail (i32.add (i32.const 42) (local.get $step)))))))",
+        f"              (then (call $fail (i32.add (i32.const {steps}) (local.get $step)))))))",
         "        (local.set $index (i32.add (local.get $index) (i32.const 1)))",
         "        (br $next))))",
         '  (func (export "_start")',
         "    (local $count i32) (local $size i32) (local $file i32) (local $second i32)",
+        "    (local $data i32)",
         *body,
         "    (call $proc_exit (i32.const 0)))",
         ")",
@@ -930,7 +1186,7 @@ def main():
         for name, fault in FAULTS.items():
             (faults / f"{name}.wat").write_text(render_frame(flat, fault))
             index = next(i for i, step in enumerate(STEPS, 1) if step["call"] == fault[0])
-            print(name, 1 if fault[2] == "address" else 42 + index)
+            print(name, 1 if fault[2] == "address" else len(STEPS) + index)
         return
     failed = False
     for path, render in GENERATED.items():

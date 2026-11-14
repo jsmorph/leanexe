@@ -6,8 +6,8 @@
 ;; when a description gives it a smaller alignment.  The step then checks the errno,
 ;; that every byte outside the call's declared regions equals the shadow copy, and the
 ;; values the step lists.  The exit status names the first failed check: the step's
-;; number for the errno, 42 plus it for a byte outside the regions, and 84 plus it for
-;; a value.
+;; number for the errno, 52 plus it for a byte outside the regions, and 104 plus it
+;; for a value.
 (module
   (import "wasi_snapshot_preview1" "args_get"
     (func $args_get (param i32 i32) (result i32)))
@@ -41,10 +41,16 @@
     (func $fd_filestat_set_size (param i32 i64) (result i32)))
   (import "wasi_snapshot_preview1" "fd_filestat_set_times"
     (func $fd_filestat_set_times (param i32 i64 i64 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_pread"
+    (func $fd_pread (param i32 i32 i32 i64 i32) (result i32)))
   (import "wasi_snapshot_preview1" "fd_prestat_get"
     (func $fd_prestat_get (param i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "fd_prestat_dir_name"
     (func $fd_prestat_dir_name (param i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_pwrite"
+    (func $fd_pwrite (param i32 i32 i32 i64 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_read"
+    (func $fd_read (param i32 i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "fd_readdir"
     (func $fd_readdir (param i32 i32 i32 i64 i32) (result i32)))
   (import "wasi_snapshot_preview1" "fd_renumber"
@@ -55,6 +61,8 @@
     (func $fd_sync (param i32) (result i32)))
   (import "wasi_snapshot_preview1" "fd_tell"
     (func $fd_tell (param i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "path_create_directory"
     (func $path_create_directory (param i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "path_filestat_get"
@@ -75,6 +83,8 @@
     (func $path_symlink (param i32 i32 i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "path_unlink_file"
     (func $path_unlink_file (param i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "poll_oneoff"
+    (func $poll_oneoff (param i32 i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "proc_raise"
     (func $proc_raise (param i32) (result i32)))
   (import "wasi_snapshot_preview1" "sched_yield"
@@ -92,6 +102,9 @@
   (data (i32.const 131584) "g")
   (data (i32.const 131840) "s")
   (data (i32.const 132096) "h")
+  (data (i32.const 132352) "data")
+  (data (i32.const 132608) "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKL")
+  (data (i32.const 132864) "MNOPQRSTUVWXYZ-+")
   (func $fail (param $status i32)
     (call $proc_exit (local.get $status))
     (unreachable))
@@ -104,7 +117,7 @@
       (then (call $fail (local.get $step)))))
   (func $value (param $step i32) (param $got i64) (param $want i64)
     (if (i64.ne (local.get $got) (local.get $want))
-      (then (call $fail (i32.add (i32.const 84) (local.get $step))))))
+      (then (call $fail (i32.add (i32.const 104) (local.get $step))))))
   (func $inside (param $address i32) (param $start i32) (param $length i32) (result i32)
     (i32.and (i32.ge_u (local.get $address) (local.get $start))
       (i32.lt_u (local.get $address) (i32.add (local.get $start) (local.get $length)))))
@@ -120,11 +133,12 @@
           (then
             (if (i32.ne (i32.load8_u (local.get $index))
                   (i32.load8_u (i32.add (local.get $index) (i32.const 65536))))
-              (then (call $fail (i32.add (i32.const 42) (local.get $step)))))))
+              (then (call $fail (i32.add (i32.const 52) (local.get $step)))))))
         (local.set $index (i32.add (local.get $index) (i32.const 1)))
         (br $next))))
   (func (export "_start")
     (local $count i32) (local $size i32) (local $file i32) (local $second i32)
+    (local $data i32)
     ;; 1: args_sizes_get
     (call $prepare)
     (call $snapshot)
@@ -432,18 +446,162 @@
       (i32.const 1)) (i32.const 0))
     (call $check (i32.const 39) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
-    ;; 40: sock_accept
+    ;; 40: path_open
     (call $prepare)
+    (memory.copy (i32.const 1024) (i32.const 132352) (i32.const 4))
     (call $snapshot)
-    (call $errno (i32.const 40) (call $sock_accept (i32.const 3) (i32.const 0)
-      (i32.const 20)) (i32.const 57))
+    (call $errno (i32.const 40) (call $path_open (i32.const 3) (i32.const 0) (i32.const 1024)
+      (i32.const 4) (i32.const 1) (i64.const 1073741823) (i64.const 1073741823) (i32.const 0)
+      (i32.const 20)) (i32.const 0))
     (call $check (i32.const 40) (i32.const 20) (i32.const 4)
       (i32.const 0) (i32.const 0))
-    ;; 41: sock_shutdown
+    (local.set $data (i32.load (i32.const 20)))
+    ;; 41: fd_write
+    (call $prepare)
+    (memory.copy (i32.const 1024) (i32.const 132608) (i32.const 48))
+    (i32.store (i32.const 516) (i32.const 1024))
+    (i32.store (i32.const 520) (i32.const 48))
+    (call $snapshot)
+    (call $errno (i32.const 41) (call $fd_write (local.get $data) (i32.const 516) (i32.const 1)
+      (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 41) (i32.const 20) (i32.const 4)
+      (i32.const 0) (i32.const 0))
+    (call $value (i32.const 41) (i64.load32_u (i32.const 20)) (i64.const 48))
+    ;; 42: fd_pwrite
+    (call $prepare)
+    (memory.copy (i32.const 1024) (i32.const 132864) (i32.const 16))
+    (i32.store (i32.const 516) (i32.const 1024))
+    (i32.store (i32.const 520) (i32.const 16))
+    (call $snapshot)
+    (call $errno (i32.const 42) (call $fd_pwrite (local.get $data) (i32.const 516) (i32.const 1)
+      (i64.const 48) (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 42) (i32.const 20) (i32.const 4)
+      (i32.const 0) (i32.const 0))
+    (call $value (i32.const 42) (i64.load32_u (i32.const 20)) (i64.const 16))
+    ;; 43: fd_read
+    (call $prepare)
+    (i32.store (i32.const 516) (i32.const 4096))
+    (i32.store (i32.const 520) (i32.const 16))
+    (call $snapshot)
+    (call $errno (i32.const 43) (call $fd_read (local.get $data) (i32.const 516) (i32.const 1)
+      (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 43) (i32.const 4096) (i32.const 16)
+      (i32.const 20) (i32.const 4))
+    (call $value (i32.const 43) (i64.load32_u (i32.const 20)) (i64.const 16))
+    (call $value (i32.const 43) (i64.load (i32.const 4096)) (i64.const 6076290831446134349))
+    (call $value (i32.const 43) (i64.load (i32.const 4104)) (i64.const 3111242257363588693))
+    ;; 44: fd_pread
+    (call $prepare)
+    (i32.store (i32.const 516) (i32.const 4096))
+    (i32.store (i32.const 520) (i32.const 16))
+    (call $snapshot)
+    (call $errno (i32.const 44) (call $fd_pread (local.get $data) (i32.const 516) (i32.const 1)
+      (i64.const 8) (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 44) (i32.const 4096) (i32.const 16)
+      (i32.const 20) (i32.const 4))
+    (call $value (i32.const 44) (i64.load32_u (i32.const 20)) (i64.const 16))
+    (call $value (i32.const 44) (i64.load (i32.const 4096)) (i64.const 7378413942531504440))
+    (call $value (i32.const 44) (i64.load (i32.const 4104)) (i64.const 7957135325236127847))
+    ;; 45: poll_oneoff
+    (call $prepare)
+    (memory.fill (i32.const 2056) (i32.const 0) (i32.const 48))
+    (i64.store (i32.const 2056) (i64.const 1))
+    (i64.store8 (i32.const 2064) (i64.const 0))
+    (i64.store32 (i32.const 2072) (i64.const 1))
+    (i64.store (i32.const 2080) (i64.const 0))
+    (i64.store (i32.const 2088) (i64.const 0))
+    (i64.store16 (i32.const 2096) (i64.const 0))
+    (call $snapshot)
+    (call $errno (i32.const 45) (call $poll_oneoff (i32.const 2056) (i32.const 3080) (i32.const 1)
+      (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 45) (i32.const 3080) (i32.const 32)
+      (i32.const 20) (i32.const 4))
+    (call $value (i32.const 45) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 45) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 45) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 45) (i64.load8_u (i32.const 3090)) (i64.const 0))
+    (call $value (i32.const 45) (i64.load (i32.const 3096)) (i64.const 0))
+    (call $value (i32.const 45) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    ;; 46: fd_seek
     (call $prepare)
     (call $snapshot)
-    (call $errno (i32.const 41) (call $sock_shutdown (i32.const 3) (i32.const 1)) (i32.const 57))
-    (call $check (i32.const 41) (i32.const 0) (i32.const 0)
+    (call $errno (i32.const 46) (call $fd_seek (local.get $data) (i64.const 0) (i32.const 0)
+      (i32.const 24)) (i32.const 0))
+    (call $check (i32.const 46) (i32.const 24) (i32.const 8)
+      (i32.const 0) (i32.const 0))
+    (call $value (i32.const 46) (i64.load (i32.const 24)) (i64.const 0))
+    ;; 47: poll_oneoff
+    (call $prepare)
+    (memory.fill (i32.const 2056) (i32.const 0) (i32.const 96))
+    (i64.store (i32.const 2056) (i64.const 1))
+    (i64.store8 (i32.const 2064) (i64.const 1))
+    (i64.store32 (i32.const 2072) (i64.extend_i32_u (local.get $data)))
+    (i64.store (i32.const 2104) (i64.const 2))
+    (i64.store8 (i32.const 2112) (i64.const 0))
+    (i64.store32 (i32.const 2120) (i64.const 1))
+    (i64.store (i32.const 2128) (i64.const 1000000000))
+    (i64.store (i32.const 2136) (i64.const 0))
+    (i64.store16 (i32.const 2144) (i64.const 0))
+    (call $snapshot)
+    (call $errno (i32.const 47) (call $poll_oneoff (i32.const 2056) (i32.const 3080) (i32.const 2)
+      (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 47) (i32.const 3080) (i32.const 64)
+      (i32.const 20) (i32.const 4))
+    (call $value (i32.const 47) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 47) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 47) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 47) (i64.load8_u (i32.const 3090)) (i64.const 1))
+    (call $value (i32.const 47) (i64.load (i32.const 3096)) (i64.const 1))
+    (call $value (i32.const 47) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    ;; 48: poll_oneoff
+    (call $prepare)
+    (memory.fill (i32.const 2056) (i32.const 0) (i32.const 96))
+    (i64.store (i32.const 2056) (i64.const 1))
+    (i64.store8 (i32.const 2064) (i64.const 2))
+    (i64.store32 (i32.const 2072) (i64.extend_i32_u (local.get $data)))
+    (i64.store (i32.const 2104) (i64.const 2))
+    (i64.store8 (i32.const 2112) (i64.const 0))
+    (i64.store32 (i32.const 2120) (i64.const 1))
+    (i64.store (i32.const 2128) (i64.const 1000000000))
+    (i64.store (i32.const 2136) (i64.const 0))
+    (i64.store16 (i32.const 2144) (i64.const 0))
+    (call $snapshot)
+    (call $errno (i32.const 48) (call $poll_oneoff (i32.const 2056) (i32.const 3080) (i32.const 2)
+      (i32.const 20)) (i32.const 0))
+    (call $check (i32.const 48) (i32.const 3080) (i32.const 64)
+      (i32.const 20) (i32.const 4))
+    (call $value (i32.const 48) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 48) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 48) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 48) (i64.load8_u (i32.const 3090)) (i64.const 2))
+    (call $value (i32.const 48) (i64.load (i32.const 3096)) (i64.const 1))
+    (call $value (i32.const 48) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    ;; 49: fd_close
+    (call $prepare)
+    (call $snapshot)
+    (call $errno (i32.const 49) (call $fd_close (local.get $data)) (i32.const 0))
+    (call $check (i32.const 49) (i32.const 0) (i32.const 0)
+      (i32.const 0) (i32.const 0))
+    ;; 50: path_unlink_file
+    (call $prepare)
+    (memory.copy (i32.const 1024) (i32.const 132352) (i32.const 4))
+    (call $snapshot)
+    (call $errno (i32.const 50) (call $path_unlink_file (i32.const 3) (i32.const 1024)
+      (i32.const 4)) (i32.const 0))
+    (call $check (i32.const 50) (i32.const 0) (i32.const 0)
+      (i32.const 0) (i32.const 0))
+    ;; 51: sock_accept
+    (call $prepare)
+    (call $snapshot)
+    (call $errno (i32.const 51) (call $sock_accept (i32.const 3) (i32.const 0)
+      (i32.const 20)) (i32.const 57))
+    (call $check (i32.const 51) (i32.const 20) (i32.const 4)
+      (i32.const 0) (i32.const 0))
+    ;; 52: sock_shutdown
+    (call $prepare)
+    (call $snapshot)
+    (call $errno (i32.const 52) (call $sock_shutdown (i32.const 3) (i32.const 1)) (i32.const 57))
+    (call $check (i32.const 52) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
     (call $proc_exit (i32.const 0)))
 )

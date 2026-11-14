@@ -88,6 +88,22 @@ then
   fail "seeded fault reporter" "the independent lowering accepted an altered reporter"
 fi
 rejected=$((rejected + 1))
+sed '0,/\.iovec false, \.result32/s//.iovec true, .result32/' LeanExe/Wasi/CallTable.lean \
+  > "$out/iovec-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/iovec-fault.lean" \
+  > "$out/fault-iovec.txt" 2>&1
+then
+  fail "seeded fault iovec" "the independent lowering accepted an iovec read as a write"
+fi
+rejected=$((rejected + 1))
+sed '0,/⟨16, 4, \.handle⟩/s//⟨16, 4, .word⟩/' LeanExe/Wasi/CallTable.lean \
+  > "$out/subscription-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/subscription-fault.lean" \
+  > "$out/fault-subscription.txt" 2>&1
+then
+  fail "seeded fault subscription" "the independent lowering accepted a descriptor as a word"
+fi
+rejected=$((rejected + 1))
 printf 'flat call seeded faults detected: %s\n' "$rejected"
 
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
