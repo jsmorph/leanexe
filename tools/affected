@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Prints what a change affects: the changed modules of this package, the modules that import them
-// directly or through other modules, the targets that build all of these, the names whose
-// `tests/verified/run.sh --cases` run is affected, the other Lean files that import an affected
-// module, and the other checks that the changed files call for.
+// directly or through other modules, the targets that build all of these but the modules that
+// read emitted files, the names whose `tests/verified/run.sh --cases` run is affected, the other
+// affected Lean files, which their scripts elaborate, and the other checks that the changed files
+// call for.
 // Usage: tools/affected [BASE [HEAD] | BASE..HEAD]
 // Without arguments the change runs from the merge base of origin/main and HEAD to the working
 // tree, with BASE alone from BASE to the working tree, and with HEAD from BASE to HEAD.
@@ -76,12 +77,15 @@ const sourceOf = m =>
 // Lean file, with the edges reversed.
 const node = f => moduleOf(f) ?? f;
 const importers = new Map();
+const imports = new Map();
 const leanFiles = files.filter(f => f.endsWith('.lean') && f !== 'lakefile.lean');
 for (const f of leanFiles) {
   for (const match of read(f).matchAll(/^import ([\w.]+)/gm)) {
     if (!internal.test(match[1])) continue;
     if (!importers.has(match[1])) importers.set(match[1], new Set());
     importers.get(match[1]).add(node(f));
+    if (!imports.has(node(f))) imports.set(node(f), new Set());
+    imports.get(node(f)).add(match[1]);
   }
 }
 
@@ -104,16 +108,24 @@ const affectedModules = [...affected].filter(n => present.has(sourceOf(n)) && in
   .sort();
 const affectedFiles = [...affected].filter(n => n.endsWith('.lean') && present.has(n)).sort();
 
-// The executables of lakefile.lean, each with its root module.
+// The executables of lakefile.lean, each with its root module, and the root module of each library,
+// which with its default globs builds the modules that the root imports directly or through others.
 const executables = new Map();
+const libraries = [];
 let executable;
 for (const line of present.has('lakefile.lean') ? read('lakefile.lean').split('\n') : []) {
   const declaration = line.match(/^lean_exe\s+(?:«([^»]+)»|([\w.]+))/);
+  const library = line.match(/^(?:@\[[^\]]*\]\s*)?lean_lib\s+(?:«([^»]+)»|([\w.]+))/);
   if (declaration) {
     executable = declaration[1] ?? declaration[2];
     executables.set(executable, executable);
   } else if (/^\S/.test(line)) {
     executable = undefined;
+  }
+  if (library) libraries.push(library[1] ?? library[2]);
+  if (/^\s+(roots|globs)\s*:=/.test(line)) {
+    console.error(`tools/affected: reads default roots only; lakefile.lean sets ${line.trim()}`);
+    process.exit(1);
   }
   const root = line.match(/^\s+root\s*:=\s*`([\w.]+)/);
   if (executable && root) executables.set(executable, root[1]);
@@ -121,12 +133,32 @@ for (const line of present.has('lakefile.lean') ? read('lakefile.lean').split('\
 const affectedExecutables = [...executables].filter(([, root]) => affected.has(root))
   .map(([name]) => name).sort();
 
-// The targets: the affected modules that no affected module imports, and the affected executables.
-const imported = new Set();
-for (const m of affectedModules) {
-  for (const importer of importers.get(m) ?? []) if (affected.has(importer)) imported.add(m);
+// The modules that the libraries and executables build.  Of the others, a module that reads an
+// emitted file during elaboration, with the elaborators of LeanExe/FileNat.lean and
+// LeanExe/Pipeline/FileBytes.lean, is no build target: its script elaborates it beside the files,
+// as tests/verified/run.sh does the file theorems and tests/baremetal/a64-images.sh the image
+// theorems.  Such a module is listed with the other affected Lean files, and its imports are
+// targets in its place.
+const built = new Set();
+const reach = [...libraries, ...executables.values()];
+while (reach.length) {
+  const m = reach.pop();
+  if (built.has(m) || !present.has(sourceOf(m))) continue;
+  built.add(m);
+  for (const i of imports.get(m) ?? []) reach.push(i);
 }
-const targets = [...affectedModules.filter(m => !imported.has(m)), ...affectedExecutables];
+const readsFiles = /\bfile_nat% |\bfile_size% |\bbinary_file% |^file_theorems /m;
+const scripted = new Set(affectedModules
+  .filter(m => !built.has(m) && readsFiles.test(read(sourceOf(m)))));
+
+// The targets: the affected modules that no other affected module but those imports, and the
+// affected executables.
+const candidates = new Set(affectedModules.filter(m => !scripted.has(m)));
+const imported = new Set();
+for (const m of candidates) {
+  for (const importer of importers.get(m) ?? []) if (candidates.has(importer)) imported.add(m);
+}
+const targets = [...[...candidates].filter(m => !imported.has(m)), ...affectedExecutables];
 
 // The names of tests/verified/run.sh whose written module or own case executable is affected.  The
 // other names take their cases from verified-cases, as the run without --cases does, and that
@@ -193,7 +225,7 @@ section('build targets', targets.length ? [targets.join(' ')] : []);
 section('tests/verified/run.sh --cases', cases);
 console.log(`verified-cases, the case executable of the run without --cases and of the names ` +
   `without their own: ${shared ? 'affected' : 'not affected'}`);
-section('other affected Lean files', affectedFiles);
+section('other affected Lean files', [...affectedFiles, ...[...scripted].map(sourceOf)].sort());
 section('other checks', [...checks].sort(([a], [b]) => a.localeCompare(b))
   .map(([check, reasons]) => {
     const list = [...reasons].sort();
