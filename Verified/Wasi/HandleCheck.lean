@@ -12,8 +12,9 @@ whose body the check reads; every other binding gives an unmarked variable.  The
 
 1. a `sys` command whose call or reporter is `fd_close`, `fd_renumber`, or `path_open`, except the
    open and the close of a bracket;
-2. a `sys` command, the open of a bracket included, whose `.handle` position does not take a
-   marked variable, or whose input variables do not match its `input` parameters;
+2. a `sys` command, the open of a bracket included, whose `.handle` position, the argument of a
+   `handle` parameter or of a handle field of a `subscriptions` parameter, does not take a marked
+   variable, or whose input variables do not match its `input` and `iovec true` parameters;
 3. a call of a helper whose argument for a marked parameter is not a marked variable, or which
    marks more parameters than it has.
 
@@ -89,8 +90,17 @@ inductive Stage where
 /-- The calls that only a bracket makes. -/
 def bracketCallNames : List String := ["fd_close", "fd_renumber", "path_open"]
 
+/-- Whether `indices` holds an index for each field of `fields`, in order, and each handle field
+takes a variable whose index `marks` marks. -/
+def fieldsMarked (marks : List Bool) : List Field → List Nat → Bool
+  | [], _ => true
+  | _ :: _, [] => false
+  | field :: fields, index :: indices =>
+    (field.source != .handle || marks.getD index false) && fieldsMarked marks fields indices
+
 /-- Whether each `.handle` position of `params` takes a variable whose index `marks` marks, among
-the word arguments `indices`, which the parameters that take a word take in order. -/
+the word arguments `indices`, which the parameters that take a word take in order, and the
+`subscriptions` parameters one for each field of `argFields`. -/
 def handlesMarked (marks : List Bool) : List Param → List Nat → Bool
   | [], _ => true
   | param :: params, indices =>
@@ -99,7 +109,12 @@ def handlesMarked (marks : List Bool) : List Param → List Nat → Bool
       | [] => false
       | index :: rest => marks.getD index false && handlesMarked marks params rest
     else if param.takesWord then handlesMarked marks params indices.tail
-    else handlesMarked marks params indices
+    else
+      match param with
+      | .subscriptions records =>
+        fieldsMarked marks (argFields records) indices &&
+          handlesMarked marks params (indices.drop (argFields records).length)
+      | _ => handlesMarked marks params indices
 
 /-- Whether a `sys` command of `call` with the word arguments `args` and `inputs` input variables
 passes the check outside a bracket. -/

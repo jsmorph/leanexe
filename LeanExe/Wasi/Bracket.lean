@@ -7,8 +7,9 @@ from left to right with a stack of descriptor numbers, the descriptors of the op
 the innermost first.  A `path_open` event that returns errno 0 pushes the number it returns, an
 `fd_close` event pops the top of the stack, which must be its argument, an `fd_renumber` event
 breaks the discipline, and every other `sys` event takes, at each `.handle` position, 3 or a number
-on the stack; read, write, and exit events leave the stack alone.  A `path_open` event takes its
-`dir` argument at a `.handle` position whether or not it succeeds.
+on the stack; read, write, and exit events leave the stack alone.  The `.handle` positions are the
+arguments of `handle` parameters and of the handle fields of `subscriptions` parameters.  A
+`path_open` event takes its `dir` argument at a `.handle` position whether or not it succeeds.
 
 `Action.Handles stack action post` states that every run of `action` from `stack` keeps the
 discipline and that a normal return with a value leaves a stack that satisfies `post`.
@@ -25,15 +26,29 @@ it, 3 is open only by this definition. -/
 
 namespace LeanExe.Wasi
 
+/-- The words of the arguments of the handle fields among `fields`, in order: each field takes the
+next argument. -/
+def fieldHandles : List Field → List Arg → List UInt64
+  | field :: fields, arg :: args =>
+    if field.source = .handle then arg.value :: fieldHandles fields args
+    else fieldHandles fields args
+  | _, _ => []
+
+/-- The words of the arguments that a parameter takes at its `.handle` positions: the argument of
+a `handle` parameter, and the arguments of the handle fields of a `subscriptions` parameter. -/
+def Param.handleWords : Param → List Arg → List UInt64
+  | .handle, args => (args.head?.map Arg.value).toList
+  | .subscriptions records, args => fieldHandles (argFields records) args
+  | .word32, _ | .word64, _ | .enum32 _, _ | .input, _ | .output, _ | .result32, _
+  | .result64, _ | .reported .., _ | .flags32 _, _ | .flags64 _, _ | .record .., _
+  | .iovec _, _ => []
+
 /-- The words of the arguments at the `.handle` positions of `params`, in order: each parameter
-that takes an argument takes the next one. -/
+takes the next `argCount` arguments. -/
 def handleArgs : List Param → List Arg → List UInt64
   | [], _ => []
-  | _ :: _, [] => []
-  | param :: params, arg :: args =>
-    if param.takesArg then
-      if param = .handle then arg.value :: handleArgs params args else handleArgs params args
-    else handleArgs params (arg :: args)
+  | param :: params, args =>
+    param.handleWords args ++ handleArgs params (args.drop param.argCount)
 
 /-- Whether a call event keeps the discipline from `stack`: an `fd_close` closes the top of the
 stack, no `fd_renumber` occurs, and every other call takes 3 or a number on the stack at each
@@ -395,8 +410,25 @@ def StackOpen (opened stack : List UInt64) : Prop :=
   stack.Nodup ∧ (∀ fd ∈ stack, fd ∉ initialDescriptors) ∧
     ∀ fd, fd ∈ opened ↔ fd ∈ stack ∨ fd ∈ initialDescriptors
 
+theorem fieldHandles_nil (fields : List Field) : fieldHandles fields [] = [] := by
+  cases fields <;> rfl
+
+theorem Param.handleWords_nil (param : Param) : param.handleWords [] = [] := by
+  cases param <;> simp [Param.handleWords, fieldHandles_nil]
+
 theorem handleArgs_nil (params : List Param) : handleArgs params [] = [] := by
-  cases params <;> rfl
+  induction params with
+  | nil => rfl
+  | cons param params ih => simp [handleArgs, Param.handleWords_nil, ih]
+
+theorem fieldHandles_single (fields : List Field) (arg : Arg) :
+    ∀ fd ∈ fieldHandles fields [arg], fd = arg.value := by
+  intro fd member
+  cases fields with
+  | nil => simp [fieldHandles] at member
+  | cons field fields =>
+    simp only [fieldHandles, fieldHandles_nil] at member
+    split at member <;> simp_all
 
 theorem handleArgs_single (params : List Param) (arg : Arg) :
     ∀ fd ∈ handleArgs params [arg], fd = arg.value := by
@@ -404,13 +436,17 @@ theorem handleArgs_single (params : List Param) (arg : Arg) :
   | nil => intro fd member; simp [handleArgs] at member
   | cons param params ih =>
     intro fd member
-    by_cases takes : param.takesArg = true
-    · by_cases isHandle : param = .handle
-      · subst isHandle
-        simpa [handleArgs, Param.takesArg, handleArgs_nil] using member
-      · simp [handleArgs, takes, isHandle, handleArgs_nil] at member
-    · simp only [handleArgs, takes, Bool.false_eq_true, ite_false] at member
-      exact ih fd member
+    simp only [handleArgs, List.mem_append] at member
+    rcases member with words | rest
+    · cases param <;> simp only [Param.handleWords, List.head?_cons, Option.map_some,
+        Option.toList_some, List.mem_singleton, List.not_mem_nil] at words
+      · exact words
+      · exact fieldHandles_single _ arg fd words
+    · cases count : param.argCount with
+      | zero => rw [count, List.drop_zero] at rest; exact ih fd rest
+      | succ count =>
+        rw [count, List.drop_succ_cons, List.drop_nil, handleArgs_nil] at rest
+        simp at rest
 
 theorem callAllowed_close {stack : List UInt64} {call : Call} {args : List Arg}
     (close : call.name = "fd_close") (allowed : callAllowed stack call args = true) :

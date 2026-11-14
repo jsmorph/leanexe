@@ -196,18 +196,47 @@ theorem unmarked {marks : List Bool} {env : Env context} {stack : List UInt64}
 
 end EnvMarked
 
-theorem handleArgs_skip {param : Param} {params : List Param} {args : List Arg}
-    (skips : param.takesArg = false) :
-    handleArgs (param :: params) args = handleArgs params args := by
-  cases args with
-  | nil => simp [handleArgs, handleArgs_nil]
-  | cons _ _ => simp [handleArgs, skips]
+theorem fieldsMarked_length {marks : List Bool} :
+    ∀ {fields : List Field} {indices : List Nat}, fieldsMarked marks fields indices = true →
+      fields.length ≤ indices.length
+  | [], _, _ => Nat.zero_le _
+  | _ :: _, [], marked => by simp [fieldsMarked] at marked
+  | _ :: _, _ :: _, marked => by
+    simp only [fieldsMarked, Bool.and_eq_true] at marked
+    simpa using fieldsMarked_length marked.2
+
+/-- The handle fields of a `subscriptions` parameter whose marked indices `fieldsMarked` checks
+take 3 or numbers on the stack. -/
+theorem fieldHandles_marked {marks : List Bool} {env : Env context} {stack : List UInt64}
+    (hEnv : EnvMarked marks env stack) :
+    ∀ (fields : List Field) (args : List (Var context .word)) (rest : List Arg),
+      fieldsMarked marks fields (args.map Var.index) = true →
+        ∀ fd ∈ fieldHandles fields
+          (((args.map env.get).take fields.length).map Arg.word ++ rest), fd = 3 ∨ fd ∈ stack
+  | [], _, _, _ => by
+    intro fd member
+    simp [fieldHandles] at member
+  | _ :: _, [], _, marked => by simp [fieldsMarked] at marked
+  | field :: fields, arg :: args, rest, marked => by
+    simp only [List.map_cons, fieldsMarked, Bool.and_eq_true, Bool.or_eq_true, bne_iff_ne,
+      ne_eq] at marked
+    intro fd member
+    simp only [List.length_cons, List.map_cons, List.take_succ_cons, List.cons_append,
+      fieldHandles, Arg.value] at member
+    split at member
+    · rcases List.mem_cons.mp member with same | member
+      · subst same
+        rcases marked.1 with notHandle | isMarked
+        · exact absurd (by assumption) notHandle
+        · exact hEnv.get arg isMarked
+      · exact fieldHandles_marked hEnv fields args rest marked.2 fd member
+    · exact fieldHandles_marked hEnv fields args rest marked.2 fd member
 
 theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack : List UInt64}
     (hEnv : EnvMarked marks env stack) :
     ∀ (params : List Param) (args : List (Var context .word)) (inputs : List LeanExe.Bytes),
       handlesMarked marks params (args.map Var.index) = true →
-        inputs.length = params.count .input →
+        inputs.length = params.countP Param.takesBytes →
         ∀ fd ∈ handleArgs params (flatArgsWith params (args.map env.get) inputs),
           fd = 3 ∨ fd ∈ stack
   | [], _, _, _, _ => by
@@ -221,38 +250,76 @@ theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack :
       | nil => simp [handlesMarked] at marked
       | cons arg args =>
         simp only [handlesMarked, ite_true, List.map_cons, Bool.and_eq_true] at marked
-        simp only [List.map_cons, flatArgsWith, handleArgs, Param.takesArg, ite_true,
-          List.headD_cons, List.tail_cons, Arg.value, List.mem_cons] at member
+        simp only [List.map_cons, flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+          List.head?_cons, Option.map_some, Option.toList_some, List.headD_cons, List.tail_cons,
+          Arg.value, List.drop_succ_cons, List.drop_zero, List.singleton_append,
+          List.mem_cons] at member
         rcases member with same | member
         · subst same
           exact hEnv.get arg marked.1
         · exact handleArgs_flatArgsWith hEnv params args inputs marked.2
-            (by simpa [List.count_cons] using count) fd member
+            (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
     | input =>
       cases inputs with
-      | nil => simp at count
+      | nil => simp [List.countP_cons, Param.takesBytes] at count
       | cons input inputs =>
         simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord,
           Bool.false_eq_true] at marked
-        simp only [flatArgsWith, handleArgs, Param.takesArg, ite_true, reduceCtorEq,
-          ite_false] at member
+        simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+          List.drop_succ_cons, List.drop_zero, List.nil_append] at member
         exact handleArgs_flatArgsWith hEnv params args inputs marked
-          (by simpa [List.count_cons] using count) fd member
+          (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+    | iovec shown =>
+      cases shown with
+      | true =>
+        cases inputs with
+        | nil => simp [List.countP_cons, Param.takesBytes] at count
+        | cons input inputs =>
+          simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord,
+            Bool.false_eq_true] at marked
+          simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+            List.drop_succ_cons, List.drop_zero, List.nil_append] at member
+          exact handleArgs_flatArgsWith hEnv params args inputs marked
+            (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+      | false =>
+        simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
+          ite_true] at marked
+        simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+          List.drop_succ_cons, List.drop_zero, List.nil_append] at member
+        rw [← List.map_tail] at member marked
+        exact handleArgs_flatArgsWith hEnv params args.tail inputs marked
+          (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
     | word32 | word64 | enum32 _ | flags32 _ | flags64 _ | output =>
       simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
         ite_true] at marked
-      simp only [flatArgsWith, handleArgs, Param.takesArg, ite_true, reduceCtorEq,
-        ite_false] at member
+      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+        List.drop_succ_cons, List.drop_zero, List.nil_append] at member
       rw [← List.map_tail] at member marked
       exact handleArgs_flatArgsWith hEnv params args.tail inputs marked
-        (by simpa [List.count_cons] using count) fd member
+        (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
     | result32 | result64 | reported _ _ _ | record _ _ _ =>
       simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
         Bool.false_eq_true] at marked
-      simp only [flatArgsWith] at member
-      rw [handleArgs_skip (by rfl)] at member
+      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount, List.drop_zero,
+        List.nil_append] at member
       exact handleArgs_flatArgsWith hEnv params args inputs marked
-        (by simpa [List.count_cons] using count) fd member
+        (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+    | subscriptions records =>
+      simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
+        Bool.false_eq_true, Bool.and_eq_true] at marked
+      have hLength := fieldsMarked_length marked.1
+      simp only [List.length_map] at hLength
+      have hTake : (((args.map env.get).take (argFields records).length).map Arg.word).length =
+          (argFields records).length := by
+        simp only [List.length_map, List.length_take]
+        omega
+      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
+        List.drop_left' hTake, List.mem_append] at member
+      rcases member with words | rest
+      · exact fieldHandles_marked hEnv (argFields records) args _ marked.1 fd words
+      · rw [← List.map_drop] at rest marked
+        exact handleArgs_flatArgsWith hEnv params (args.drop (argFields records).length) inputs
+          marked.2 (by simpa [List.countP_cons, Param.takesBytes] using count) fd rest
 
 /-- Each helper, called with arguments whose marked parameters hold 3 or numbers on a stack, keeps
 the discipline of `withOpen` and returns to that stack. -/

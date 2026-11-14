@@ -108,7 +108,7 @@ theorem wp_sys_loads_inputs {α : Type} {m : Module} {st : Store α} {env : Host
       count, shown, outputSizes, low, high, h => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count

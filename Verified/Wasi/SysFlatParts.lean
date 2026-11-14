@@ -83,7 +83,7 @@ theorem outputLocalInputs_spec {s : Locals} :
       inputCount => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputLocs with
       | nil => simp at inputLocCount
@@ -143,7 +143,7 @@ theorem flatCapacityWith_small :
   | param :: params, values, inputs, capacity, kinds, count, accepted, found => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count
@@ -196,7 +196,7 @@ theorem flat_output_at_inputs {mem : Mem} {root : UInt32} {sizes : List Nat} {er
       sizes', found => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count

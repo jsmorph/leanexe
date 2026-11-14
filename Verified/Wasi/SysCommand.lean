@@ -127,9 +127,13 @@ theorem _root_.LeanExe.Wasi.Call.argCount_eq (call : LeanExe.Wasi.Call) :
   induction call.params with
   | nil => rfl
   | cons param params ih =>
-    cases param <;>
-      simp only [List.countP_cons, List.count_cons, Param.takesWord, Param.takesArg, ih,
-        beq_iff_eq, reduceCtorEq, ite_true, ite_false, Bool.false_eq_true] <;> omega
+    simp only [List.map_cons, List.sum_cons, List.countP_cons]
+    cases param with
+    | iovec shown =>
+      cases shown <;> simp [Param.argCount, Param.wordCount, Param.takesBytes] <;> omega
+    | _ =>
+      simp [Param.argCount, Param.wordCount, Param.takesBytes]
+      omega
 
 /-- The input variables of a `sys` command hold each input's root and length in their two locals
 below `base`, and represent it with blocks apart from the scratch area. -/
@@ -256,9 +260,9 @@ theorem wp_sys_flat_result_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     have frame := outside.frame room
     rcases outputLocalInputs_spec operation.params _ _
         (inputs.map fun input => (slots.getD input.index default).loc) (items.map Prod.snd)
-        hKinds held (by simpa [LeanExe.Wasi.Call.wordCount] using hCount)
-        (heldItems.length_eq.trans hItemCount)
-        (by simpa [LeanExe.Wasi.Call.inputCount] using hItemCount) with
+        hKinds held (by rw [List.length_map, hCount, Call.wordCount_of_inputKind hKinds])
+        (by rw [heldItems.length_eq, hItemCount, Call.inputCount_of_inputKind hKinds])
+        (by rw [List.length_map, hItemCount, Call.inputCount_of_inputKind hKinds]) with
       ⟨none', capacity, contains⟩ | ⟨place, capacity, some', found, get, member, contains⟩
     · rw [none'] at *
       have hStep : Step heap (PureTransport.erase initial)
@@ -495,7 +499,7 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     have hNoInputs : inputs = [] := by
       apply List.eq_nil_of_length_eq_zero
       rw [inputCount]
-      simp [LeanExe.Wasi.Call.inputCount, compiled]
+      simp [LeanExe.Wasi.Call.inputCount, compiled, Param.takesBytes]
     subst hNoInputs
     exact wp_sys_reported_result_with (values := args.map env.get) runtime layout profile
       hImports sourceHost hHost
@@ -699,8 +703,10 @@ theorem wp_sys_flat_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
       initial locals targetHost := by
   have hResult := wp_sys_flat_result_inputs_with (inputs := []) runtime layout profile hImports
     sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs hResults
-    (by rw [LeanExe.Wasi.Call.wordCount, countP_takesWord_of_flat hKinds]; exact hCount)
-    (by rw [LeanExe.Wasi.Call.inputCount, count_input_of_flat hKinds]; rfl) vars apart selected
+    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
+      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount)
+    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
+        rfl) vars apart selected
     used (fun _ member => nomatch member) at_ cap low room
     (by simpa only [List.map_nil, SysForm.runWith_nil, sysCostWith_nil] using resources)
   simpa only [List.map_nil, sysFlatInputsCodeWith_nil, SysForm.runWith_nil, sysCostWith_nil]

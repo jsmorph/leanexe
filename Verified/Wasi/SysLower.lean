@@ -33,7 +33,7 @@ theorem inputPlaces_flat : ∀ (params : List Param) (args : List Arg) (pointers
   | param :: params, args, pointers, kinds => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | input | reported | record => simp [Param.flatKind] at kinds
+    | input | reported | record | iovec | subscriptions => simp [Param.flatKind] at kinds
     | word32 | handle | word64 | enum32 | output | result32 | result64 | flags32 | flags64 =>
       simp only [inputPlaces]
       exact inputPlaces_flat _ _ _ kinds.2
@@ -157,7 +157,7 @@ theorem inputPlaces_inputs {root : UInt32} :
   | param :: params, values, inputs, slot, kinds, count => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count
@@ -193,7 +193,7 @@ theorem wp_sys_reject_inputs {α : Type} {m : Module} {st : Store α} {env : Hos
       heldInputs, inputCount, h => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       obtain ⟨place, input, inputLocs', inputs', ⟨_, hLength, hSize⟩, heldInputs', rfl, rfl⟩ :=
         forall₂_head heldInputs (count := params.count .input)
@@ -360,7 +360,7 @@ theorem wp_sys_lower_inputs {α : Type} {m : Module} {st : Store α} {env : Host
         ({ s with values := stack } : Locals).get rootLocal = some (.i64 root) :=
       fun _ => by simpa only [Locals.get_values] using hRoot
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       obtain ⟨place, input, inputLocs', inputs', ⟨hInputRoot, hLength, hSize⟩, heldInputs', rfl,
         rfl⟩ := forall₂_head heldInputs (count := params.count .input)

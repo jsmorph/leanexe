@@ -59,7 +59,8 @@ def SysForm.width : SysForm → Nat
   | .record fields => fields + 3
   | _ => 6
 
-/-- The arguments of a flat call from the words of its argument variables, in order. -/
+/-- The arguments of a flat call from the words of its argument variables, in order.  A
+`subscriptions` parameter takes a word for each field of `argFields`. -/
 def flatArgs : List Param → List UInt64 → List Arg
   | [], _ => []
   | .word32 :: params, values
@@ -68,16 +69,22 @@ def flatArgs : List Param → List UInt64 → List Arg
   | .enum32 _ :: params, values
   | .flags32 _ :: params, values
   | .flags64 _ :: params, values => .word (values.headD 0) :: flatArgs params values.tail
-  | .output :: params, values => .space (values.headD 0) :: flatArgs params values.tail
+  | .output :: params, values
+  | .iovec false :: params, values => .space (values.headD 0) :: flatArgs params values.tail
+  | .subscriptions records :: params, values =>
+    (values.take (argFields records).length).map .word ++
+      flatArgs params (values.drop (argFields records).length)
   | _ :: params, values => flatArgs params values
 
 /-- The arguments of a flat call from the words of its word variables and the bytes of its input
-variables, each in order.  An `input` parameter takes the next input; with no input left it takes
-no argument, as in `flatArgs`, so that `flatArgsWith params values []` is `flatArgs params values`.
--/
+variables, each in order.  An `input` or `iovec true` parameter takes the next input; with no input
+left it takes no argument, as in `flatArgs`, so that `flatArgsWith params values []` is
+`flatArgs params values`. -/
 def flatArgsWith : List Param → List UInt64 → List LeanExe.Bytes → List Arg
   | [], _, _ => []
-  | .input :: params, values, input :: inputs => .bytes input :: flatArgsWith params values inputs
+  | .input :: params, values, input :: inputs
+  | .iovec true :: params, values, input :: inputs =>
+    .bytes input :: flatArgsWith params values inputs
   | .word32 :: params, values, inputs
   | .handle :: params, values, inputs
   | .word64 :: params, values, inputs
@@ -85,15 +92,22 @@ def flatArgsWith : List Param → List UInt64 → List LeanExe.Bytes → List Ar
   | .flags32 _ :: params, values, inputs
   | .flags64 _ :: params, values, inputs =>
     .word (values.headD 0) :: flatArgsWith params values.tail inputs
-  | .output :: params, values, inputs =>
+  | .output :: params, values, inputs
+  | .iovec false :: params, values, inputs =>
     .space (values.headD 0) :: flatArgsWith params values.tail inputs
+  | .subscriptions records :: params, values, inputs =>
+    (values.take (argFields records).length).map .word ++
+      flatArgsWith params (values.drop (argFields records).length) inputs
   | _ :: params, values, inputs => flatArgsWith params values inputs
 
 theorem flatArgsWith_nil : ∀ (params : List Param) (values : List UInt64),
     flatArgsWith params values [] = flatArgs params values
   | [], _ => rfl
   | param :: params, values => by
-    cases param <;> simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
+    cases param with
+    | iovec shown =>
+      cases shown <;> simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
+    | _ => simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
 
 /-- The result words of a reply whose outputs follow `params` from position `index`. -/
 def resultWords : List Param → Reply → Nat → List UInt64
@@ -139,7 +153,7 @@ def Param.flatKind : Param → Bool
   | .word32 | .handle | .word64 | .flags32 _ | .flags64 _ | .output | .result32 | .result64 =>
     true
   | .enum32 count => decide (count < 4294967296)
-  | .input | .reported .. | .record .. => false
+  | .input | .reported .. | .record .. | .iovec _ | .subscriptions _ => false
 
 /-- The parameters that a flat call may have: the kinds of `flatKind` and inputs. -/
 def Param.inputKind : Param → Bool
@@ -161,11 +175,19 @@ def recordFits (size align : Nat) (fields : List (Nat × Nat)) : Bool :=
       (field.2 == 1 || field.2 == 2 || field.2 == 4 || field.2 == 8) &&
         decide (field.1 + field.2 ≤ size)
 
-/-- Whether the parameter takes a word argument: each parameter that takes an argument, except an
-input. -/
+/-- Whether the parameter takes one word argument: each parameter that takes one argument, except
+an input and `iovec true`, which take bytes. -/
 def Param.takesWord : Param → Bool
-  | .input => false
+  | .input | .iovec true => false
   | param => param.takesArg
+
+/-- Whether the parameter takes bytes: an input or `iovec true`. -/
+def Param.takesBytes : Param → Bool
+  | .input | .iovec true => true
+  | _ => false
+
+/-- The number of word arguments that the parameter takes. -/
+def Param.wordCount (param : Param) : Nat := if param.takesBytes then 0 else param.argCount
 
 namespace Call
 
@@ -173,13 +195,14 @@ namespace Call
 def reporterCall (call : Call) : Call :=
   { name := call.reporter.getD "", params := [.result32, .result32] }
 
-def argCount (call : Call) : Nat := call.params.countP Param.takesArg
+/-- The number of arguments of a call. -/
+def argCount (call : Call) : Nat := (call.params.map Param.argCount).sum
 
 /-- The number of word arguments of a call. -/
-def wordCount (call : Call) : Nat := call.params.countP Param.takesWord
+def wordCount (call : Call) : Nat := (call.params.map Param.wordCount).sum
 
 /-- The number of inputs of a call. -/
-def inputCount (call : Call) : Nat := call.params.count .input
+def inputCount (call : Call) : Nat := call.params.countP Param.takesBytes
 
 def form (call : Call) : Verified.Wasi.SysForm :=
   match call.reporter with
@@ -213,6 +236,45 @@ def uses (call : Call) : List Call :=
   | none => [call]
 
 end Call
+
+theorem wordCount_of_inputKind : ∀ {params : List Param}, params.all Param.inputKind = true →
+    (params.map Param.wordCount).sum = params.countP Param.takesWord
+  | [], _ => rfl
+  | param :: params, kinds => by
+    simp only [List.all_cons, Bool.and_eq_true] at kinds
+    rw [List.map_cons, List.sum_cons, List.countP_cons, wordCount_of_inputKind kinds.2]
+    cases param <;> simp_all [Param.inputKind, Param.flatKind, Param.wordCount, Param.takesBytes,
+      Param.argCount, Param.takesWord, Param.takesArg] <;> omega
+
+theorem inputCount_of_inputKind : ∀ {params : List Param}, params.all Param.inputKind = true →
+    params.countP Param.takesBytes = params.count .input
+  | [], _ => rfl
+  | param :: params, kinds => by
+    simp only [List.all_cons, Bool.and_eq_true] at kinds
+    rw [List.countP_cons, List.count_cons, inputCount_of_inputKind kinds.2]
+    cases param <;> simp_all [Param.inputKind, Param.flatKind, Param.takesBytes]
+
+theorem argCount_of_inputKind : ∀ {params : List Param}, params.all Param.inputKind = true →
+    (params.map Param.argCount).sum = params.countP Param.takesArg
+  | [], _ => rfl
+  | param :: params, kinds => by
+    simp only [List.all_cons, Bool.and_eq_true] at kinds
+    rw [List.map_cons, List.sum_cons, List.countP_cons, argCount_of_inputKind kinds.2]
+    cases param <;> simp_all [Param.inputKind, Param.flatKind, Param.argCount, Param.takesArg] <;>
+      omega
+
+theorem Call.wordCount_of_inputKind {call : Call} (kinds : call.params.all Param.inputKind = true) :
+    call.wordCount = call.params.countP Param.takesWord :=
+  LeanExe.Wasi.wordCount_of_inputKind kinds
+
+theorem Call.inputCount_of_inputKind {call : Call}
+    (kinds : call.params.all Param.inputKind = true) :
+    call.inputCount = call.params.count .input :=
+  LeanExe.Wasi.inputCount_of_inputKind kinds
+
+theorem Call.argCount_of_inputKind {call : Call} (kinds : call.params.all Param.inputKind = true) :
+    call.argCount = call.params.countP Param.takesArg :=
+  LeanExe.Wasi.argCount_of_inputKind kinds
 
 end LeanExe.Wasi
 

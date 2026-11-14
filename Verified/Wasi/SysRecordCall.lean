@@ -54,14 +54,34 @@ theorem countP_takesWord_record (size align : Nat) (fields : List (Nat × Nat))
       params.countP Param.takesWord := by
   simp [List.countP_append, Param.takesWord, Param.takesArg]
 
+theorem inputCount_record {call : Call} {params : List Param} {size align : Nat}
+    {fields : List (Nat × Nat)} (hParams : call.params = params ++ [.record size align fields])
+    (hKinds : params.all Param.argKind = true) : call.inputCount = params.count .input := by
+  rw [Call.inputCount, hParams, List.countP_append,
+    inputCount_of_inputKind (argKind_inputKind hKinds)]
+  simp [Param.takesBytes]
+
+theorem wordCount_record {call : Call} {params : List Param} {size align : Nat}
+    {fields : List (Nat × Nat)} (hParams : call.params = params ++ [.record size align fields])
+    (hKinds : params.all Param.argKind = true) :
+    call.wordCount = params.countP Param.takesWord := by
+  rw [Call.wordCount, hParams, List.map_append, List.sum_append,
+    wordCount_of_inputKind (argKind_inputKind hKinds)]
+  simp [Param.wordCount, Param.takesBytes, Param.argCount]
+
 theorem flatArgsWith_record (size align : Nat) (fields : List (Nat × Nat)) :
     ∀ (params : List Param) (values : List UInt64) (inputs : List LeanExe.Bytes),
     flatArgsWith (params ++ [.record size align fields]) values inputs =
       flatArgsWith params values inputs
   | [], _, inputs => by cases inputs <;> rfl
   | param :: params, values, inputs => by
-    cases param <;> cases inputs <;>
-      simp only [List.cons_append, flatArgsWith, flatArgsWith_record size align fields params]
+    cases param with
+    | iovec shown =>
+      cases shown <;> cases inputs <;>
+        simp only [List.cons_append, flatArgsWith, flatArgsWith_record size align fields params]
+    | _ =>
+      cases inputs <;>
+        simp only [List.cons_append, flatArgsWith, flatArgsWith_record size align fields params]
 
 theorem rejectArgs_record (size align : Nat) (fields : List (Nat × Nat)) :
     ∀ (params : List Param) (args : List Arg),
@@ -120,7 +140,8 @@ theorem lowerArgs_record (size align : Nat) (fields : List (Nat × Nat)) (pointe
       simp only [List.cons_append, lowerArgs,
         lowerArgs_record size align fields pointer params args.tail pointers kinds.2
           (by simpa [List.count_cons] using count)]
-    | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
+    | output | result32 | result64 | reported | record | iovec | subscriptions =>
+      simp [Param.argKind] at kinds
 
 theorem inputPlaces_record (size align : Nat) (fields : List (Nat × Nat)) (pointer : UInt32) :
     ∀ (params : List Param) (args : List Arg) (pointers : List UInt32),
@@ -145,7 +166,8 @@ theorem inputPlaces_record (size align : Nat) (fields : List (Nat × Nat)) (poin
       simp only [List.cons_append, inputPlaces,
         inputPlaces_record size align fields pointer params args.tail pointers kinds.2
           (by simpa [List.count_cons] using count)]
-    | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
+    | output | result32 | result64 | reported | record | iovec | subscriptions =>
+      simp [Param.argKind] at kinds
 
 theorem outputRegions_record (size align : Nat) (fields : List (Nat × Nat)) (pointer : UInt32) :
     ∀ (params : List Param) (sizes : List Nat) (args : List Arg) (pointers : List UInt32),
@@ -170,7 +192,8 @@ theorem outputRegions_record (size align : Nat) (fields : List (Nat × Nat)) (po
       simp only [List.cons_append, outputRegions]
       exact outputRegions_record size align fields pointer params sizes args.tail pointers kinds.2
         (by simpa [List.count_cons] using count)
-    | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
+    | output | result32 | result64 | reported | record | iovec | subscriptions =>
+      simp [Param.argKind] at kinds
 
 theorem outputSizesOf_record (size align : Nat) (fields : List (Nat × Nat)) :
     ∀ (params : List Param) (sizes : List Nat) (args : List Arg),
@@ -183,7 +206,8 @@ theorem outputSizesOf_record (size align : Nat) (fields : List (Nat × Nat)) :
     | word32 | handle | word64 | enum32 | flags32 | flags64 | input =>
       simp only [List.cons_append, outputSizesOf]
       exact outputSizesOf_record size align fields params sizes args.tail kinds.2
-    | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
+    | output | result32 | result64 | reported | record | iovec | subscriptions =>
+      simp [Param.argKind] at kinds
 
 theorem flatPointersWith_args {root : UInt32} {slot : Nat} :
     ∀ (params : List Param) (inputs : List UInt32),
@@ -205,7 +229,8 @@ theorem flatPointersWith_args {root : UInt32} {slot : Nat} :
     | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [flatPointersWith]
       exact flatPointersWith_args params inputs kinds.2 (by simpa [List.count_cons] using count)
-    | output | result32 | result64 | reported | record => simp [Param.argKind] at kinds
+    | output | result32 | result64 | reported | record | iovec | subscriptions =>
+      simp [Param.argKind] at kinds
 
 /-- The parameters of a call that `compiled` admits with a record. -/
 theorem record_params {call : Call} {size align : Nat} {fields : List (Nat × Nat)}
@@ -374,9 +399,9 @@ theorem wp_sys_record_call_with {calls : List LeanExe.Wasi.Call} {World : Type} 
   have hPointer32 : pointer.toUInt32.toNat = pointer.toNat := by
     rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt (by omega)]
   have hInputCount' : inputs.length = params.count .input := by
-    rw [hInputCount, Call.inputCount, hParams, count_input_record]
+    rw [hInputCount, inputCount_record hParams hKinds]
   have hCount' : values.length = params.countP Param.takesWord := by
-    rw [hCount, Call.wordCount, hParams, countP_takesWord_record]
+    rw [hCount, wordCount_record hParams hKinds]
   have hLength : (inputs.map fun input => input.1.toUInt32).length = params.count .input := by
     rw [List.length_map, hInputCount']
   have hRequest := record_request (sizes := host.reported store.host.world call) hParams hKinds

@@ -1,4 +1,5 @@
 import Verified.Wasi.OracleHost
+import Verified.Wasi.NestedBytes
 
 /-! A Talos host for the flat call imports of `hostSpecWith`, from an oracle that answers each
 request of an abstract host.  The import for a call decodes the request from its core arguments,
@@ -91,7 +92,10 @@ def Oracle.Sound {World : Type} (oracle : Oracle World) (host : Host World) (cal
       (oracle.reply world call request).2
 
 /-- The request and the pointers that core arguments give for the parameters `params`, with each
-input read from `mem`, or `none` when the arguments do not have the parameters' core types. -/
+input read from `mem`, or `none` when the arguments do not have the parameters' core types.  An
+iovec's buffer pointer and length are read from its element, and its count must be 1; the words of
+a `subscriptions` parameter are read from its fields, and its count must be the number of records.
+-/
 def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × List UInt32)
   | [], [] => some ([], [])
   | .word32 :: params, .i32 value :: values
@@ -115,6 +119,21 @@ def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × L
   | .reported .. :: params, .i32 pointer :: values
   | .record .. :: params, .i32 pointer :: values =>
     (decodeArgs mem params values).map fun decoded => (decoded.1, pointer :: decoded.2)
+  | .iovec shown :: params, .i32 element :: .i32 count :: values =>
+    if count = 1 then
+      (decodeArgs mem params values).map fun decoded =>
+        ((if shown then
+            .bytes (bytesOfList (mem.readBytes (mem.read32 element).toNat
+              (mem.read32 (element + 4)).toNat))
+          else .space (mem.read32 (element + 4)).toUInt64) :: decoded.1,
+          element :: mem.read32 element :: decoded.2)
+    else none
+  | .subscriptions records :: params, .i32 subscriptions :: .i32 events :: .i32 count :: values =>
+    if count = UInt32.ofNat records.length then
+      (decodeArgs mem params values).map fun decoded =>
+        (readFields mem subscriptions.toNat (placedFields 0 records) ++ decoded.1,
+          subscriptions :: events :: decoded.2)
+    else none
   | _, _ => none
 
 /-- Each shown region's pointer paired with its output, in order. -/
@@ -241,6 +260,78 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
           refine ⟨pointers.headD 0 :: decoded, ?_, fun sizes => ?_⟩
           · simp [lowerArgs, decodeArgs, decode]
           · simp [outputRegions, same sizes.tail]
+      | iovec shown =>
+          have element := inputs (pointers.headD 0, elementBytes (pointers.tail.headD 0)
+            (match shown with
+              | false => (request.head?.map Arg.capacity).getD 0
+              | true => (request.head?.map Arg.length).getD 0))
+            (by cases shown <;> simp [inputPlaces])
+          obtain ⟨hBuffer, hLength⟩ := element_read element
+          rw [UInt32.toUInt32_toUInt64] at hBuffer hLength
+          cases shown with
+          | false =>
+            match request, fits, inputs, hLength with
+            | .space capacity :: request, fits, inputs, hLength =>
+                simp [argsFit, Param.takesArg, argFits] at fits
+                obtain ⟨decoded, decode, same⟩ := ih request pointers.tail.tail fits.2
+                  fun place member => inputs place (by simp [inputPlaces, member])
+                refine ⟨pointers.headD 0 :: pointers.tail.headD 0 :: decoded, ?_, fun sizes => ?_⟩
+                · have hCapacity : (UInt32.ofNat capacity.toNat).toUInt64 = capacity := by
+                    apply UInt64.toNat_inj.mp
+                    rw [UInt32.toNat_toUInt64, UInt32.toNat_ofNat']
+                    omega
+                  simp only [Option.map_some, Option.getD_some, List.head?_cons,
+                    Arg.capacity] at hLength
+                  simp [lowerArgs, decodeArgs, decode]
+                  simp at hBuffer hLength
+                  simp only [hBuffer, hLength, and_true]
+                  apply UInt64.toNat_inj.mp
+                  rw [UInt32.toNat_toUInt64, UInt64.toNat_toUInt32]
+                  omega
+                · simp [outputRegions, same sizes]
+            | [], fits, _, _ | .word _ :: _, fits, _, _ | .bytes _ :: _, fits, _, _ =>
+                simp [argsFit, Param.takesArg, argFits] at fits
+          | true =>
+            match request, fits, inputs, hLength with
+            | .bytes value :: request, fits, inputs, hLength =>
+                simp [argsFit, Param.takesArg, argFits] at fits
+                have first : Bytes.At mem (pointers.tail.headD 0).toUInt64 value :=
+                  inputs (pointers.tail.headD 0, value) (by simp [inputPlaces])
+                obtain ⟨decoded, decode, same⟩ := ih request pointers.tail.tail fits.2
+                  fun place member => inputs place (by simp [inputPlaces, member])
+                refine ⟨pointers.headD 0 :: pointers.tail.headD 0 :: decoded, ?_, fun sizes => ?_⟩
+                · have read := readBytes_value first
+                  rw [UInt32.toNat_toUInt64] at read
+                  simp only [Option.map_some, Option.getD_some, List.head?_cons,
+                    Arg.length] at hLength
+                  have length : (UInt32.ofNat value.data.size).toNat = value.data.size :=
+                    UInt32.toNat_ofNat_of_lt' fits.1
+                  simp [lowerArgs, decodeArgs, decode]
+                  simp at hBuffer hLength read
+                  simp [hBuffer, hLength, length, read]
+                · simp [outputRegions, same sizes]
+            | [], fits, _, _ | .word _ :: _, fits, _, _ | .space _ :: _, fits, _, _ =>
+                simp [argsFit, Param.takesArg, argFits] at fits
+      | subscriptions records =>
+          simp only [argsFit, Param.takesArg, Bool.false_eq_true, ite_false, Bool.and_eq_true]
+            at fits
+          obtain ⟨⟨recordsFit', fieldsFit'⟩, restFit⟩ := fits
+          have subscriptions : Bytes.At mem (pointers.headD 0).toUInt64
+              (subscriptionBytes records request) :=
+            inputs (pointers.headD 0, subscriptionBytes records request) (by simp [inputPlaces])
+          have read := readFields_args (mem := mem) (base := (pointers.headD 0).toNat)
+            (placedFields 0 records) request
+            (fun field member => ((placedFields_fit recordsFit' 0).1 field member).2.2) fieldsFit'
+            (by simpa only [UInt32.toNat_toUInt64] using
+              subscription_fields_at recordsFit' subscriptions)
+          obtain ⟨decoded, decode, same⟩ := ih (request.drop (argFields records).length)
+            pointers.tail.tail restFit
+            fun place member => inputs place (by simp [inputPlaces, member])
+          refine ⟨pointers.headD 0 :: pointers.tail.headD 0 :: decoded, ?_, fun sizes => ?_⟩
+          · simp only [lowerArgs, decodeArgs, decode, ite_true, Option.map_some]
+            rw [read]
+            simp [argFields]
+          · simp [outputRegions, same sizes]
 
 theorem shownPlaces_sizes (params : List Param) :
     ∀ (sizes sizes' : List Nat) (args : List Arg) (pointers : List UInt32)
@@ -278,6 +369,21 @@ theorem shownPlaces_sizes (params : List Param) :
               | cons output outputs =>
                   simp only [outputRegions, shownPlaces, ↓reduceIte]
                   rw [ih sizes.tail sizes'.tail args pointers.tail outputs]
+      | iovec shown =>
+          cases shown with
+          | true => exact ih sizes sizes' args.tail pointers.tail.tail outputs
+          | false =>
+              cases outputs with
+              | nil => rfl
+              | cons output outputs =>
+                  simp only [outputRegions, shownPlaces, ↓reduceIte]
+                  rw [ih sizes sizes' args.tail pointers.tail.tail outputs]
+      | subscriptions records =>
+          cases outputs with
+          | nil => rfl
+          | cons output outputs =>
+              simp only [outputRegions, shownPlaces, ↓reduceIte]
+              rw [ih sizes sizes' _ pointers.tail.tail outputs]
 
 theorem outputSizes_regions (params : List Param) :
     ∀ (sizes : List Nat) (args : List Arg) (pointers : List UInt32),
@@ -303,6 +409,17 @@ theorem outputSizes_regions (params : List Param) :
           simp only [outputSizesOf, outputRegions]
           rw [ih sizes.tail args pointers.tail]
           cases shown <;> rfl
+      | iovec shown =>
+          cases shown with
+          | true => exact ih sizes args.tail pointers.tail.tail
+          | false =>
+              simp only [outputSizesOf, outputRegions]
+              rw [ih sizes args.tail pointers.tail.tail]
+              rfl
+      | subscriptions records =>
+          simp only [outputSizesOf, outputRegions]
+          rw [ih sizes _ pointers.tail.tail]
+          rfl
 
 theorem shownPlaces_spans (regions : List Region) :
     ∀ outputs : List LeanExe.Bytes,

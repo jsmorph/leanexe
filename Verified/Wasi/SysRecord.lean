@@ -434,9 +434,9 @@ theorem wp_sys_record_with {calls : List LeanExe.Wasi.Call} {World : Type}
     simp only [Locals.positions] at this
     omega
   have hInputCount' : inputs.length = params.count .input := by
-    rw [hInputCount, Call.inputCount, hParams, count_input_record]
+    rw [hInputCount, inputCount_record hParams hKinds]
   have hCount' : values.length = params.countP Param.takesWord := by
-    rw [hCount, Call.wordCount, hParams, countP_takesWord_record]
+    rw [hCount, wordCount_record hParams hKinds]
   have hArgs : flatArgsWith call.params values (inputs.map Prod.snd) =
       flatArgsWith params values (inputs.map Prod.snd) := by
     rw [hParams, flatArgsWith_record]

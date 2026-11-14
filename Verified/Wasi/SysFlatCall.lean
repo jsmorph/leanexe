@@ -125,7 +125,7 @@ theorem flatArgsWith_fit : ∀ (params : List Param) (values : List UInt64)
       simp only [argsFit, Param.takesArg, Bool.false_eq_true, ↓reduceIte]
       exact flatArgsWith_fit params values inputs hKinds.2
         (by simpa [List.count_cons] using hCount) hAccepted
-    | reported | record => simp [Param.inputKind, Param.flatKind] at hKinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at hKinds
 
 /-- Each region of a flat request with inputs is the output buffer at `root` or a result word at
 a scratch address `slot + 8 k` for one of the call's result parameters. -/
@@ -145,7 +145,7 @@ theorem flat_region_mem_inputs {root : UInt32} {sizes : List Nat} :
   | param :: params, values, inputs, slot, region, kinds, outputs, room, count, member => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count
@@ -214,7 +214,7 @@ theorem flat_regions_apart_inputs {root : UInt32} {sizes : List Nat} :
     simp only [List.all_cons, Bool.and_eq_true] at kinds'
     rw [List.pairwise_map]
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds'
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds'
     | input =>
       cases inputs with
       | nil => simp at count
@@ -349,7 +349,8 @@ theorem wp_sys_flat_call_inputs_with {calls : List LeanExe.Wasi.Call} {World : T
   have hRoot32 : root.toUInt32.toNat = root.toNat := by
     rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hRootSmall]
   have hRoom : 0 + 8 * call.params.countP Param.isResult ≤ 16 := by omega
-  have hInputCount' : inputs.length = call.params.count .input := hInputCount
+  have hInputCount' : inputs.length = call.params.count .input := by
+    rw [hInputCount, Call.inputCount_of_inputKind hKinds]
   have hSeparate : ∀ capacity, flatCapacityWith call.params values (inputs.map Prod.snd) =
       some capacity → 16 ≤ root.toUInt32.toNat ∨ (capacity.toNat = 0 ∧ root.toUInt32 = 0) := by
     intro capacity found
@@ -430,7 +431,8 @@ theorem wp_sys_flat_call_inputs_with {calls : List LeanExe.Wasi.Call} {World : T
     apply List.drop_left'
     rw [List.length_reverse, hLength]
     rfl
-  refine wp_sys_lower_inputs call.params locs values inputLocs inputs 0 s _ Q hKinds hHeld hCount
+  refine wp_sys_lower_inputs call.params locs values inputLocs inputs 0 s _ Q hKinds hHeld
+    (by rw [hCount, Call.wordCount_of_inputKind hKinds])
     hInputs hInputCount' hRoot ?_
   refine wp_call_host_contract (id := 3 + calls.idxOf call) (imp := ABI.callImport call)
     (c := sysContract host call) (by rw [hImports]; exact ABI.importsWith_call hCall) hHost
@@ -580,7 +582,8 @@ theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m
     apply List.drop_left'
     rw [List.length_reverse, hLength]
     rfl
-  refine wp_sys_lower call.params locs values 0 s _ Q hKinds hHeld hCount hRoot ?_
+  refine wp_sys_lower call.params locs values 0 s _ Q hKinds hHeld
+    (by rw [hCount, Call.argCount_of_inputKind (inputKind_of_flat hKinds)]) hRoot ?_
   refine wp_call_host_contract (id := 3 + calls.idxOf call) (imp := ABI.callImport call)
     (c := sysContract host call) (by rw [hImports]; exact ABI.importsWith_call hCall) hHost
     (by rw [hImports, ABI.importsWith_length]; omega) (hostSpecWith_sys host hCall) ?_ ?_ ?_
