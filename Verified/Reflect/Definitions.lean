@@ -976,16 +976,25 @@ partial def getChain (funs fv env : Lean.Expr) : MetaM Lean.Expr := do
       (← getChain rest v env)
   | _ => throwError "verified_compile: the function reference {fv}"
 
-def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
-  addAndCompile <| .defnDecl <|
-    mkDefinitionValEx name [] type value (.regular 1) .safe [name]
+/-- Adds the definition `name` with a height above its value's, as the elaborator gives a `def`.
+When the kernel compares two terms headed by different definitions, it unfolds the one of greater
+height first.  A generated constant of height 1, such as `p.module`, `p.program`, or a bound, would
+leave the kernel to unfold the compiler's functions in the other term before the constant: at
+height 1 every `p.f.implements` of `Demos.Conjunction.Verified` evaluated the byte literals of the
+whole program, and unfolding a function defined by well-founded recursion first can exhaust the
+kernel's recursion, as a measure with a factor `2 ^ 64` does. -/
+def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit := do
+  addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
+    (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
 
-/-- A definition for the kernel only, without compiled code, for the literal bytes of a module. -/
-def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit :=
-  addDecl <| .defnDecl <| mkDefinitionValEx name [] type value (.regular 1) .safe [name]
+/-- A definition for the kernel only, without compiled code, for the literal bytes of a module,
+with a height above its value's, as `addDefinition` gives. -/
+def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit := do
+  addDecl <| .defnDecl <| mkDefinitionValEx name [] type value
+    (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
 unsafe def evalModuleUnsafe (env : Environment) (opts : Options) (name : Name) :
     Except String Wasm.Module :=
@@ -4852,15 +4861,6 @@ def finishReflected (base name : Name) (params : Array Lean.Expr) (types : List 
   return ⟨name, types, result, aborts, modes, depth, meaningEq, argsType, resultType, flatArgs,
     flatResult, none, false⟩
 
-/-- Adds the definition `name` of a bound or frames condition on Lean's argument tuple, or of a
-recursive definition's meaning, with a height above its value's, so that the kernel unfolds it, and
-not the compiler's function, when it matches a statement with a proof.  Unfolding a function
-defined by well-founded recursion first can exhaust the kernel's recursion, as a measure with a
-factor `2 ^ 64` does. -/
-def addBoundDefinition (name : Name) (type value : Lean.Expr) : MetaM Unit := do
-  addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
-    (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
-
 /-- The record type, its `Flat` tuple type and instance, and the value `x` of `e = Flat.flat x`,
 when the type is a structure without parameters that holds arrays, which `shapeOf` represents by
 its tuple of fields.  A structure with parameters keeps the flattened form, so that the lemmas of
@@ -5109,7 +5109,7 @@ def addDepthBound (base : Name) (r : Reflected) (B Fi k : Lean.Expr) (params : A
   for (name, entry, ty) in [(cost, B, nat), (`fits, Fi, mkConst ``Bool)] do
     let value ← withLocalDeclD `k nat fun k => withLocalDeclD `x r.argsType fun x => do
       mkLambdaFVars #[k, x] (mkApp2 entry k (r.envOf x))
-    addBoundDefinition (base ++ name) (← mkArrow nat (← mkArrow r.argsType ty)) value
+    addDefinition (base ++ name) (← mkArrow nat (← mkArrow r.argsType ty)) value
   let tuple ← r.tupleOf params
   -- The definition at `k + 1`, the fuel of the lemma's statement, which `boundAt` and `fitsAt`
   -- take before the environment, and the tuple.
@@ -5169,7 +5169,7 @@ def addCreditBound (base : Name) (r : Reflected) (g : Lean.Expr) (pf : List Bool
     let body := mkApp2 natAdd (credit (r.envOf x)) c
     if depth then mkLambdaFVars #[kv, x] body else mkLambdaFVars #[x] body
   let type ← if depth then mkArrow nat (← mkArrow r.argsType nat) else mkArrow r.argsType nat
-  addBoundDefinition (base ++ `bound) type value
+  addDefinition (base ++ `bound) type value
   let tuple ← r.tupleOf params
   let c := if depth then mkApp2 cost k tuple else mkApp cost tuple
   let ce ← envCreditEq base.getPrefix sel env vars
@@ -5264,7 +5264,7 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
     let boundVal ← withLocalDeclD `x reflected.argsType fun x => do
       mkLambdaFVars #[x]
         (mkAppN (mkConst ``Func.bound) #[sigs, f, funs, flags, bounds, reflected.envOf x])
-    addBoundDefinition costName (← mkArrow reflected.argsType (mkConst ``Nat)) boundVal
+    addDefinition costName (← mkArrow reflected.argsType (mkConst ``Nat)) boundVal
     let root ← bodyBoundEq ``func_bound
       [(`func, func), (`funs, funs), (`flags, flags), (`bounds, tables.table false)] reflected
       params env resultShape base.getPrefix (base ++ `denote_eq) r
@@ -5489,7 +5489,7 @@ def withRecursiveInput {α : Type} (base name eqName : Name)
       return resultShape.apply (mkAppN (mkConst name) (← argsAt e).toArray)
     let envType := mkApp (mkConst ``Env) ctx
     let mValue ← withLocalDeclD `env envType fun e => do mkLambdaFVars #[e] (← meaningAt e)
-    addBoundDefinition (base ++ `meaning) (← mkArrow envType (mkApp (mkConst ``Ty.denote)
+    addDefinition (base ++ `meaning) (← mkArrow envType (mkApp (mkConst ``Ty.denote)
       (tyExpr result))) mValue
     let M := Lean.mkConst (base ++ `meaning)
     -- `M` at the flattenings of `params`: by unfolding `M`, then by the left inverse law at each

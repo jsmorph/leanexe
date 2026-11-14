@@ -847,7 +847,7 @@ def elabVerifiedCompile : CommandElab
           let boundVal ← withLocalDeclD `x r.argsType fun x =>
             mkLambdaFVars #[x] (mkApp boundEnv
               (mkAppN (mkConst ``Env.ofArgs) #[ps, ms, (mkApp r.flatArgs x).headBeta])).headBeta
-          addBoundDefinition boundName (← mkArrow r.argsType (mkConst ``Nat)) boundVal
+          addDefinition boundName (← mkArrow r.argsType (mkConst ``Nat)) boundVal
           wrapperBoundEquation (base ++ simple) r.name boundName callee
             (← getConstInfoDefn (base ++ `program)).value funsVal
           let h ← mkAppM ``ImplementsTables.lean #[h0]

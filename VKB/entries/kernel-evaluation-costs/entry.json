@@ -11,7 +11,8 @@
     "simp with a lemma proved by omega leaves n + 0 inside a dependent argument",
     "a closed Nat sum such as 0 + 0 + Verified.loopCost … compared with a sum that differs inside it",
     "Eq.refl of a match alternative whose type omits the match",
-    "(kernel) deep recursion in a comparison of two LeanExe.repeatWhile terms whose steps are compiled matches"
+    "(kernel) deep recursion in a comparison of two LeanExe.repeatWhile terms whose steps are compiled matches",
+    "verified_compile whose kernel time grows faster than its number of functions"
   ],
   "modules": [
     "Verified.Reflect.Definitions",
@@ -42,7 +43,11 @@
     "LeanExe.M7.State.zFlag_setNZCV'",
     "Verified.loopCost",
     "Verified.loopCost_eq_zero",
-    "Verified.Reflect.casesEq"
+    "Verified.Reflect.casesEq",
+    "Verified.Reflect.tableChain",
+    "Verified.Reflect.addDefinition",
+    "Verified.Prog.cons",
+    "Verified.Func.sig"
   ],
   "examples": [
     "Library.Numerics.Float64.Lgamma.LgammaSign.ite_sgn",
