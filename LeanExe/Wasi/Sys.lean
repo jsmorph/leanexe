@@ -49,6 +49,20 @@ structure BytesCountResult where
   bytes : Bytes
   count : UInt64
 
+/-- The result of `poll_oneoff`: the errno, the number of events, and the fields of the first
+event, its userdata, its error, its type (0 for a clock, 1 for a read, 2 for a write), and the
+`nbytes` and flags of its `fd_readwrite`.  Wasmtime 44 writes the events of the subscriptions that
+are ready in the order of the subscriptions, so the first event's userdata tells which subscription
+fired.  The fields are 0 after an errno. -/
+structure PollResult where
+  errno : UInt64
+  count : UInt64
+  userdata : UInt64
+  error : UInt64
+  type : UInt64
+  nbytes : UInt64
+  flags : UInt64
+
 /-- A descriptor that a program holds: the preopened directory, `Handle.preopened`, or the
 descriptor of a file that `withOpen` opens.  A typed function takes a `Handle` for each
 descriptor parameter. -/

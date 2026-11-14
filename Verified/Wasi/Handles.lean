@@ -646,6 +646,8 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
       exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
     | record fields =>
       exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
+    | iovecRead | iovecWrite | poll =>
+      exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
     | reported =>
       refine Action.Handles.sys_other reporterClose reporterRenumber reporterOpen
         (by simp [handleArgs_nil]) fun sizes => ?_

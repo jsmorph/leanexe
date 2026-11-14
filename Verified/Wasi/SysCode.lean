@@ -19,7 +19,23 @@ the hidden region after it at the next multiple of 4, and calls the import.
 A record call keeps its errno at `base`, its block's root at `base + 1`, the record pointer at
 `base + 2`, and its fields from `base + 3`.  The code tests the arguments, allocates a block of
 `size + align - 1` bytes, passes its root rounded up to a multiple of `align` as the record pointer,
-calls the import, on errno 0 loads each field from the record, and releases the block. -/
+calls the import, on errno 0 loads each field from the record, and releases the block.
+
+An iovec call writes its element, the buffer's pointer and length, at scratch addresses 0 and 4
+with the code of the stream calls, `metadataCode`, which also sets the word at 8 to 0, passes the
+element's address 0 and the count 1, and places its result word at scratch address 8.
+A read keeps its errno at `base`, its buffer's root at `base + 1`, the number of bytes read at
+`base + 2`, and the count that the host returns at `base + 3`: it allocates the buffer as a flat
+call does, keeps the count, at most the capacity, as the buffer's length on errno 0, and otherwise
+releases the buffer.  A write keeps its errno at `base` and the count written at `base + 1`.
+
+A `poll` call keeps its errno at `base`, its block's root at `base + 1`, the subscriptions'
+pointer at `base + 2`, the number of events at `base + 3`, and the fields of the first event from
+`base + 4`.  The code allocates a block of `80 n + 7` bytes for `n` subscriptions, rounds its root
+up to a multiple of 8, zeroes the `48 n` bytes of the subscriptions and stores each field, places
+the events after the subscriptions, calls the import, on errno 0 loads the number of events,
+moves the pointer to the events, and loads the fields of the first event, and releases the block.
+-/
 
 namespace Verified.Wasi
 
@@ -328,12 +344,155 @@ def sysRecordCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call
       (List.range fields.length).map (fun index => .localGet (base + 3 + index))
   | none => []
 
-def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm) (locals : List Nat)
-    (base : Nat) : Program :=
+/-! ## Calls with an array of one element -/
+
+/-- Pushes 61 when the word in local `handle` or the word in local `length` is `2^32` or more, and
+otherwise 0: the test of the handle and of the capacity or input length of an iovec call. -/
+def iovecRejectCode (handle length : Nat) : Program :=
+  [.localGet handle, .constI64 4294967296, .geUI64,
+   .iff 0 1 [.constI64 61]
+     [.localGet length, .constI64 4294967296, .geUI64,
+      .iff 0 1 [.constI64 61] [.constI64 0] [] [.i64]] [] [.i64]]
+
+/-- Pushes the core arguments of an iovec call: the handle in local `handle`, the element's address
+0 and the count 1, the word in local `offset` when there is one, and the result word's address 8. -/
+def iovecLowerCode (handle : Nat) (offset : Option Nat) : Program :=
+  [.localGet handle, .wrapI64, .const 0, .const 1] ++
+    (match offset with
+     | some place => [.localGet place]
+     | none => []) ++ [.const 8]
+
+/-- Pushes the word in local `count`, or the word in local `capacity` when the count is at least
+the capacity. -/
+def minCode (count capacity : Nat) : Program :=
+  [.localGet count, .localGet capacity, .geUI64,
+   .iff 0 1 [.localGet capacity] [.localGet count] [] [.i64]]
+
+/-- Loads the count that the host left at scratch address 8 into `base + 3` and sets `base + 2` to
+the count, or to the capacity in local `capacity` when the count is at least the capacity. -/
+def readCountCode (capacity base : Nat) : Program :=
+  [.const 8, .load32 0, .extendUI32, .localSet (base + 3)] ++ minCode (base + 3) capacity ++
+    [.localSet (base + 2)]
+
+/-- The code of an accepted read: the allocation of the buffer, the element, the call, and on
+errno 0 the number of bytes read, or otherwise the release of the buffer.  The words of a read are
+the handle, the capacity, and the offset of `fd_pread`. -/
+def sysIovecReadCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs : List Nat) (base : Nat) : Program :=
+  sysAllocateCodeWith calls (locs.getD 1 0) (base + 1) ++ metadataCode (base + 1) (locs.getD 1 0) ++
+    iovecLowerCode (locs.getD 0 0) locs[2]? ++
+    [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
+     .iff 0 0 (readCountCode (locs.getD 1 0) base) (discardReadCodeWith calls (base + 1)) [] []]
+
+def sysIovecReadCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs : List Nat) (base : Nat) : Program :=
+  iovecRejectCode (locs.getD 0 0) (locs.getD 1 0) ++
+    .localSet base :: zeroLocalsCode (base + 1) 3 ++
+    [.localGet base, .eqzI64, .iff 0 0 (sysIovecReadCallCodeWith calls call locs base) [] [] [],
+     .localGet base, .localGet (base + 1), .localGet (base + 2)]
+
+/-- The code of an accepted write: the element of the input, the call, and on errno 0 the count.
+The words of a write are the handle and the offset of `fd_pwrite`, and its input is the bytes. -/
+def sysIovecWriteCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs inputs : List Nat) (base : Nat) : Program :=
+  metadataCode (inputs.getD 0 0) (inputs.getD 0 0 + 1) ++
+    iovecLowerCode (locs.getD 0 0) locs[1]? ++
+    [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
+     .iff 0 0 [.const 8, .load32 0, .extendUI32, .localSet (base + 1)] [] [] []]
+
+def sysIovecWriteCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs inputs : List Nat) (base : Nat) : Program :=
+  iovecRejectCode (locs.getD 0 0) (inputs.getD 0 0 + 1) ++
+    .localSet base :: zeroLocalsCode (base + 1) 1 ++
+    [.localGet base, .eqzI64,
+     .iff 0 0 (sysIovecWriteCallCodeWith calls call locs inputs base) [] [] [],
+     .localGet base, .localGet (base + 1)]
+
+/-! ## Calls of `poll_oneoff` -/
+
+/-- Pushes the errno that rejects the words of the fields `fields` in the locals `locs`, in order:
+61 for the first value of `2^(8 width)` or more, which only a width below 8 admits, and otherwise
+0. -/
+def fieldsRejectCode : List Field → List Nat → Program
+  | field :: fields, place :: locs =>
+    if field.width < 8 then
+      [.localGet place, .constI64 (UInt64.ofNat (2 ^ (8 * field.width))), .geUI64,
+       .iff 0 1 [.constI64 61] (fieldsRejectCode fields locs) [] [.i64]]
+    else fieldsRejectCode fields locs
+  | _, _ => [.constI64 0]
+
+/-- Stores 0 into `count` words of 8 bytes from `offset` of the block whose pointer is in local
+`pointer`. -/
+def zeroWordsCode (pointer offset : Nat) : Nat → Program
+  | 0 => []
+  | count + 1 => [.localGet pointer, .wrapI64, .constI64 0, .store64 (UInt32.ofNat offset)] ++
+    zeroWordsCode pointer (offset + 8) count
+
+/-- Stores the `width` little-endian bytes of the word that `value` pushes at `offset` of the block
+whose pointer is in local `pointer`: one 64-bit store for a width of 8, one 32-bit store for 4, two
+byte stores for 2, and one byte store otherwise. -/
+def fieldStoreCode (pointer offset width : Nat) (value : Program) : Program :=
+  match width with
+  | 8 => [.localGet pointer, .wrapI64] ++ value ++ [.store64 (UInt32.ofNat offset)]
+  | 4 => [.localGet pointer, .wrapI64] ++ value ++ [.wrapI64, .store32 (UInt32.ofNat offset)]
+  | 2 =>
+    [.localGet pointer, .wrapI64] ++ value ++ [.wrapI64, .store8 (UInt32.ofNat offset)] ++
+      [.localGet pointer, .wrapI64] ++ value ++
+        [.constI64 8, .shrUI64, .wrapI64, .store8 (UInt32.ofNat (offset + 1))]
+  | _ => [.localGet pointer, .wrapI64] ++ value ++ [.wrapI64, .store8 (UInt32.ofNat offset)]
+
+/-- Stores the fields `fields`, in order, into the block whose pointer is in local `pointer`: a
+constant field's value, and the word of the next local of `locs` for a word or a handle field. -/
+def fieldStoresCode (pointer : Nat) : List Field → List Nat → Program
+  | [], _ => []
+  | field :: fields, locs =>
+    match field.source with
+    | .const value =>
+      fieldStoreCode pointer field.offset field.width [.constI64 value] ++
+        fieldStoresCode pointer fields locs
+    | .word | .handle =>
+      fieldStoreCode pointer field.offset field.width [.localGet (locs.headD 0)] ++
+        fieldStoresCode pointer fields locs.tail
+
+/-- The code of an accepted `poll` request: the allocation of the block, the subscriptions'
+pointer, the subscriptions, the call, on errno 0 the loads of the number of events and of the
+fields of the first event, and the release of the block. -/
+def sysPollCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (records : List (List Field)) (locs : List Nat) (base : Nat) : Program :=
+  [.constI64 (UInt64.ofNat (80 * records.length + 7)), .call (3 + calls.length),
+   .localSet (base + 1)] ++
+    recordAddressCode base 8 ++ zeroWordsCode (base + 2) 0 (6 * records.length) ++
+    fieldStoresCode (base + 2) (placedFields 0 records) locs ++
+    [.localGet (base + 2), .wrapI64,
+     .localGet (base + 2), .constI64 (UInt64.ofNat (48 * records.length)), .addI64, .wrapI64,
+     .const (UInt32.ofNat records.length), .const 0,
+     .call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
+     .iff 0 0 ([.const 0, .load32 0, .extendUI32, .localSet (base + 3),
+       .localGet (base + 2), .constI64 (UInt64.ofNat (48 * records.length)), .addI64,
+       .localSet (base + 2)] ++ recordLoadCode (base + 2) eventFields (base + 4)) [] [] []] ++
+    discardReadCodeWith calls (base + 1)
+
+def sysPollCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs : List Nat) (base : Nat) : Program :=
+  match subscriptionsOf call.params with
+  | some records =>
+    fieldsRejectCode (argFields records) locs ++
+      .localSet base :: zeroLocalsCode (base + 3) 6 ++
+      [.localGet base, .eqzI64,
+       .iff 0 0 (sysPollCallCodeWith calls call records locs base) [] [] [],
+       .localGet base] ++
+      (List.range 6).map (fun index => .localGet (base + 3 + index))
+  | none => []
+
+def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
+    (locals : List Nat) (base : Nat) : Program :=
   match form with
   | .flat .. => sysFlatCodeWith calls call locals base
   | .reported => sysReportedCodeWith calls call base
   | .record _ => sysRecordCodeWith calls call locals [] base
+  | .iovecRead => sysIovecReadCodeWith calls call locals base
+  | .iovecWrite => sysIovecWriteCodeWith calls call locals [] base
+  | .poll => sysPollCodeWith calls call locals base
 
 def sysInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
     (words inputs : List Nat) (base : Nat) : Program :=
@@ -341,6 +500,9 @@ def sysInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call
   | .flat .. => sysFlatInputsCodeWith calls call words inputs base
   | .reported => sysReportedCodeWith calls call base
   | .record _ => sysRecordCodeWith calls call words inputs base
+  | .iovecRead => sysIovecReadCodeWith calls call words base
+  | .iovecWrite => sysIovecWriteCodeWith calls call words inputs base
+  | .poll => sysPollCodeWith calls call words base
 
 theorem sysRejectInputsCode_nil : ∀ (params : List Param) (words : List Nat),
     sysRejectInputsCode params words [] = sysRejectCode params words
@@ -382,5 +544,6 @@ theorem sysInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.W
   | flat => simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith_nil]
   | reported => rfl
   | record => rfl
+  | iovecRead | iovecWrite | poll => rfl
 
 end Verified.Wasi
