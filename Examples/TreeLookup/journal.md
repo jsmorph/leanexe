@@ -29,3 +29,5 @@ compiled after one change: `simp [State.Holds, Scalar.values] at hHolds` splits 
 three-component state, where `simp only` with `List.forall₂_cons` left an `append`.  The lookup
 example's proof served as a template that needed only its indices changed, which suggests a
 general rule for a loop with a tuple state followed by an array literal.
+
+`spec.sha256` records the hashes of `Spec.lean` and `Samples.lean` after a change of one comment in `Samples.lean`: the comment above the sample `#[40, 50, 1, 60, …]` says "visit" where the reviewed file said "enter".  The samples, the specification, and every other line are those that the review covered.

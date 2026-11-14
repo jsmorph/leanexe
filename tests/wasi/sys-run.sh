@@ -1,7 +1,9 @@
 #!/bin/sh
 # Tests the flat WASI calls: checks the call descriptions against the pinned witx, runs the frame
-# test module in the Wasmtime host with several argument lists, and checks that Wasmtime traps on a
-# clock id outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
+# test module in the Wasmtime host with several argument lists, runs the frame test of every flat
+# function with a fresh preopened directory and the frame tests with seeded faults, runs the
+# rejection sweep of the enum and flags parameters, and checks that Wasmtime traps on a clock id
+# outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
 #
 # WITX_DIR holds wasi_snapshot_preview1.witx and typenames.witx of WebAssembly/WASI commit
 # fae981bae14809d91f9bc2d63852d461f331d161; the default is tests/wasi/witx.
@@ -18,6 +20,7 @@ fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 witx=${1:-$root/tests/wasi/witx}
+witx=$(CDPATH= cd -- "$witx" && pwd)
 cd "$root"
 out="$root/build/wasi/sys"
 host="$root/build/tools/leanexe-wasmtime-host"
@@ -27,7 +30,8 @@ if [ ! -x "$host" ]; then
   exit 1
 fi
 if [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
-  printf 'Native host is older than tools/wasmtime-host.c; rebuild it with tools/build-wasmtime-host.sh\n' >&2
+  printf 'Native host is older than tools/wasmtime-host.c; rebuild it with %s\n' \
+    tools/build-wasmtime-host.sh >&2
   exit 1
 fi
 
@@ -36,26 +40,61 @@ fail() {
   exit 1
 }
 
-uv run tools/wasi-calls.py "$witx" > "$out/descriptions.txt" || fail "descriptions" "$(cat "$out/descriptions.txt")"
+uv run tools/wasi-calls.py "$witx" > "$out/descriptions.txt" ||
+  fail "descriptions" "$(cat "$out/descriptions.txt")"
+uv run tests/wasi/witx-lowering.py "$witx" > "$out/lowering.txt" ||
+  fail "independent lowering" "$(cat "$out/lowering.txt")"
 
-# reject NAME EXPRESSION: the checker rejects the descriptions altered by the sed EXPRESSION.
+# Seeded faults.  The generator's check runs in a copy of the generated files' directories, and
+# alter NAME FILE EXPRESSION changes FILE of the copy with the sed EXPRESSION, expects the check to
+# fail, and restores FILE.
+copy="$out/generator"
+rm -rf "$copy"
+mkdir -p "$copy/LeanExe" "$copy/Verified" "$copy/tests/wasi"
+cp -R LeanExe/Wasi "$copy/LeanExe/Wasi"
+cp -R Verified/Wasi "$copy/Verified/Wasi"
+cp -R tests/wasi/sys "$copy/tests/wasi/sys"
 rejected=0
-reject() {
-  sed "$2" LeanExe/Wasi/Calls.lean > "$out/calls-$1.lean"
-  if uv run tools/wasi-calls.py "$witx" "$out/calls-$1.lean" > "$out/calls-$1.txt" 2>&1; then
-    fail "descriptions" "the checker accepted the altered description $1"
+alter() {
+  cp "$copy/$2" "$copy/$2.saved"
+  sed -i "$3" "$copy/$2"
+  cmp -s "$copy/$2" "$copy/$2.saved" && fail "seeded fault $1" "the expression changed nothing"
+  if (cd "$copy" && uv run "$root/tools/wasi-calls.py" "$witx" > "$out/fault-$1.txt" 2>&1); then
+    fail "seeded fault $1" "the generator's check passed"
   fi
+  mv "$copy/$2.saved" "$copy/$2"
   rejected=$((rejected + 1))
 }
-reject enum 's/\.enum32 4/.enum32 5/'
-reject shown 's/\.reported 4 4 false/.reported 4 4 true/'
-reject reporter 's/reporter := some "args_sizes_get"/reporter := some "environ_sizes_get"/'
-reject form 's/^end Call$/def fdClose : Call := ⟨"fd_close", [.word64], none⟩\nend Call/'
-printf 'flat call altered descriptions rejected: %s\n' "$rejected"
+(cd "$copy" && uv run "$root/tools/wasi-calls.py" "$witx" > "$out/fault-none.txt" 2>&1) ||
+  fail "seeded faults" "the unaltered copy fails the generator's check"
+alter enum LeanExe/Wasi/CallTable.lean '0,/\.enum32 4/s//.enum32 5/'
+alter field LeanExe/Wasi/SysCalls.lean '0,/reply\.field 0 16 8/s//reply.field 0 12 8/'
+alter frame tests/wasi/sys/frame-all.wat '0,/(i32\.const 0xA5)/s//(i32.const 0xA4)/'
+alter stray LeanExe/Wasi/Sys.lean \
+  '$a def strayClose : Call := { name := "fd_close", params := [.word64] }'
+sed '0,/(2, 2), (8, 8), (16, 8)/s//(2, 2), (8, 8), (12, 8)/' LeanExe/Wasi/CallTable.lean \
+  > "$out/layout-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/layout-fault.lean" \
+  > "$out/fault-layout.txt" 2>&1
+then
+  fail "seeded fault layout" "the independent lowering accepted an altered record layout"
+fi
+rejected=$((rejected + 1))
+sed 's/reporter := some "args_sizes_get"/reporter := some "environ_sizes_get"/' \
+  LeanExe/Wasi/CallTable.lean > "$out/reporter-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/reporter-fault.lean" \
+  > "$out/fault-reporter.txt" 2>&1
+then
+  fail "seeded fault reporter" "the independent lowering accepted an altered reporter"
+fi
+rejected=$((rejected + 1))
+printf 'flat call seeded faults detected: %s\n' "$rejected"
 
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
+wasm-tools parse tests/wasi/sys/frame-all.wat -o "$out/frame-all.wasm"
 wasm-tools parse tests/wasi/sys/clock-invalid.wat -o "$out/clock-invalid.wasm"
 wasm-tools validate "$out/frame.wasm"
+wasm-tools validate "$out/frame-all.wasm"
 wasm-tools validate "$out/clock-invalid.wasm"
 
 long=$(head -c 4096 /dev/zero | tr '\0' x)
@@ -79,10 +118,81 @@ timeout 60s "$host" --arg prog --arg "$long" run "$out/frame.wasm" 2> "$out/fram
 [ "$status" -eq 0 ] || fail "frame with a 4096-byte argument" "status $status"
 cases=$((cases + 1))
 
+# The frame test of every flat function runs with a fresh directory preopened at descriptor 3.  Each
+# seeded fault's frame test must exit with the status that tools/wasi-calls.py prints for it.
+dir="$out/frame-dir"
+rm -rf "$dir"
+mkdir "$dir"
+status=0
+timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$out/frame-all.wasm" \
+  2> "$out/frame-all.stderr" || status=$?
+[ "$status" -eq 0 ] || fail "frame of every function" "status $status"
+cases=$((cases + 1))
+faults="$out/frame-faults"
+rm -rf "$faults"
+uv run tools/wasi-calls.py --frame-faults "$faults" "$witx" > "$out/frame-faults.txt"
+seeded=0
+while read -r name expected; do
+  wasm-tools parse "$faults/$name.wat" -o "$faults/$name.wasm"
+  rm -rf "$dir"
+  mkdir "$dir"
+  status=0
+  timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$faults/$name.wasm" \
+    < /dev/null 2> "$faults/$name.stderr" || status=$?
+  [ "$status" -eq "$expected" ] ||
+    fail "seeded frame fault $name" "status $status, expected $expected"
+  if [ "$expected" -eq 1 ]; then
+    grep -q 'Pointer not aligned' "$faults/$name.stderr" ||
+      fail "seeded frame fault $name" "no alignment trap"
+  fi
+  seeded=$((seeded + 1))
+done < "$out/frame-faults.txt"
+[ "$seeded" -gt 0 ] || fail "seeded frame faults" "the generator wrote none"
+printf 'frame test seeded faults detected: %s\n' "$seeded"
+
+# The rejection sweep passes each enum parameter its last value and the next one and each flags
+# parameter each single bit.  tests/wasi/SysSweep.lean requires the expected outcome of each module
+# to be the one that Call.reject gives for its arguments, and Wasmtime must trap converting a value
+# that Call.reject rejects and return an errno for the others.
+sweep="$out/reject-sweep"
+rm -rf "$sweep" "$dir"
+mkdir "$dir"
+uv run tools/wasi-calls.py --reject-sweep "$sweep" "$witx" > "$out/reject-sweep.txt"
+tools/leanrun --timeout 30m lake build LeanExe.Wasi.CallTable
+tools/leanrun --timeout 10m lake env lean --run tests/wasi/SysSweep.lean "$out/reject-sweep.txt"
+sed '1s/ errno / trap /;t;1s/ trap / errno /' "$out/reject-sweep.txt" \
+  > "$out/reject-sweep-fault.txt"
+if tools/leanrun --timeout 10m lake env lean --run tests/wasi/SysSweep.lean \
+  "$out/reject-sweep-fault.txt" > "$out/reject-sweep-fault.out" 2>&1
+then
+  fail "seeded fault sweep" "the sweep check accepted a flipped expectation"
+fi
+trapped=0
+returned=0
+while read -r name expected call; do
+  wasm-tools parse "$sweep/$name.wat" -o "$sweep/$name.wasm"
+  status=0
+  timeout 60s "$host" --dir "$dir" --stdout-file "$sweep/$name.stdout" \
+    --control-file "$sweep/$name.control" run "$sweep/$name.wasm" \
+    < /dev/null 2> "$sweep/$name.stderr" || status=$?
+  if [ "$expected" = trap ]; then
+    grep -q 'at convert' "$sweep/$name.stderr" ||
+      fail "rejection sweep $name" "no conversion trap, status $status"
+    trapped=$((trapped + 1))
+  else
+    grep -q '^wasi-exit ' "$sweep/$name.control" ||
+      fail "rejection sweep $name" "no exit, status $status"
+    returned=$((returned + 1))
+  fi
+done < "$out/reject-sweep.txt"
+[ "$trapped" -gt 0 ] && [ "$returned" -gt 0 ] || fail "rejection sweep" "an outcome is missing"
+printf 'rejection sweep cases passed: %s traps, %s errnos\n' "$trapped" "$returned"
+
 status=0
 timeout 60s "$host" run "$out/clock-invalid.wasm" 2> "$out/clock-invalid.stderr" || status=$?
 [ "$status" -eq 1 ] || fail "invalid clock" "status $status"
-grep -q 'Invalid enum value Clockid' "$out/clock-invalid.stderr" || fail "invalid clock" "no enum trap"
+grep -q 'Invalid enum value Clockid' "$out/clock-invalid.stderr" ||
+  fail "invalid clock" "no enum trap"
 cases=$((cases + 1))
 
 printf 'flat call Wasmtime cases passed: %s\n' "$cases"

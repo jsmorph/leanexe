@@ -30,12 +30,12 @@ theorem imports_length : imports.length = 3 := rfl
 
 theorem types_length : types.length = 3 := rfl
 
-/-- The core types of a parameter's arguments: one `i32` for a 32-bit value, an enum, a result, or a
-reported region, one `i64` for a 64-bit value, and an `i32` pointer and an `i32` length for an input
-or an output. -/
+/-- The core types of a parameter's arguments: one `i32` for a 32-bit value, an enum, 32-bit flags,
+a result, a reported region, or a record, one `i64` for a 64-bit value or 64-bit flags, and an
+`i32` pointer and an `i32` length for an input or an output. -/
 def paramTypes : Param → List ValueType
-  | .word32 | .enum32 _ | .result32 | .result64 | .reported .. => [.i32]
-  | .word64 => [.i64]
+  | .word32 | .enum32 _ | .flags32 _ | .result32 | .result64 | .reported .. | .record .. => [.i32]
+  | .word64 | .flags64 _ => [.i64]
   | .input | .output => [.i32, .i32]
 
 /-- The core type of a flat call: its parameters' types and the errno. -/

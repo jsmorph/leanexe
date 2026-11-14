@@ -138,12 +138,13 @@ inductive ResourcePrefix {World : Type} (host : Host World) (pure : PureContext 
         (pure.loopInitFits depth count initial env && fits)
 
   | sys {program : EffectProg pureSigs effectSigs} {operation : LeanExe.Wasi.Call} {form : SysForm}
-      {args : List (Var context .word)} {env : Env context}
+      {args : List (Var context .word)} {inputs : List (Var context .bytes)} {env : Env context}
       {residual : Action (ResultTy.value form.ty).denote}
-      (progress : Prefix host ((Command.sys operation form args).denote pure.funs
+      (progress : Prefix host ((Command.sys operation form args inputs).denote pure.funs
         (program.funs pure.funs) env) world trace residual final) :
-      ResourcePrefix host pure program depth modes live (.sys operation form args) env world trace
-        residual final (sysCost form operation (args.map env.get) trace) true
+      ResourcePrefix host pure program depth modes live (.sys operation form args inputs) env world
+        trace residual final
+        (sysCostWith form operation (args.map env.get) (inputs.map env.get) trace) true
 
 inductive ResourceCallPrefix {World : Type} (host : Host World) (pure : PureContext pureSigs) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
@@ -421,12 +422,12 @@ theorem PrefixBound.readAll {World : Type} {host : Host World} {pure : PureConte
 theorem PrefixBound.sys {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
     {live : Nat → Bool} {operation : LeanExe.Wasi.Call} {form : SysForm} {args : List (Var context .word)}
-    {env : Env context} {world : World} {budget : Nat}
-    (bounded : PrefixBound host pure program depth modes live (.sys operation form args) env world
-      budget) {trace residual final}
-    (progress : Prefix host ((Command.sys operation form args).denote pure.funs
+    {inputs : List (Var context .bytes)} {env : Env context} {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.sys operation form args inputs) env
+      world budget) {trace residual final}
+    (progress : Prefix host ((Command.sys operation form args inputs).denote pure.funs
       (program.funs pure.funs) env) world trace residual final) :
-    sysCost form operation (args.map env.get) trace ≤ budget :=
+    sysCostWith form operation (args.map env.get) (inputs.map env.get) trace ≤ budget :=
   (bounded _ _ _ _ _ (.sys progress)).1
 
 end Verified.Wasi.Resource

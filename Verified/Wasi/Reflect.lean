@@ -1,5 +1,6 @@
 import Verified.Wasi.ReflectDefinitions
 import Verified.Wasi.EffectAnalysis
+import Verified.Wasi.ReflectSysCalls
 
 namespace Verified.Wasi.Reflect
 
@@ -7,30 +8,25 @@ open Lean Meta
 open Verified.Reflect
 open LeanExe.Wasi
 
-/-- A typed flat call that `reflect` maps to one `sys` command: the call, its form, the number of
-its arguments, and the equation that relates the command to the typed function. -/
-structure SysOperation where
-  call : Name
-  form : Lean.Expr
-  arity : Nat
-  equation : Name
-
+/-- The typed flat call of `function`: the hand-written ones, and the generated ones of
+`generatedSysOperations`. -/
 def sysOperation? (function : Name) : Option SysOperation :=
   if function == ``LeanExe.Wasi.clockTimeGet then
-    some ⟨``LeanExe.Wasi.Call.clockTimeGet, flatForm 1 false, 2,
+    some ⟨``LeanExe.Wasi.Call.clockTimeGet, flatForm 1 false, [false, false],
       ``Verified.Wasi.Reflect.clockTimeGet_eq⟩
   else if function == ``LeanExe.Wasi.randomGet then
-    some ⟨``LeanExe.Wasi.Call.randomGet, flatForm 0 true, 1, ``Verified.Wasi.Reflect.randomGet_eq⟩
+    some ⟨``LeanExe.Wasi.Call.randomGet, flatForm 0 true, [false],
+      ``Verified.Wasi.Reflect.randomGet_eq⟩
   else if function == ``LeanExe.Wasi.argsSizesGet then
-    some ⟨``LeanExe.Wasi.Call.argsSizesGet, flatForm 2 false, 0,
+    some ⟨``LeanExe.Wasi.Call.argsSizesGet, flatForm 2 false, [],
       ``Verified.Wasi.Reflect.argsSizesGet_eq⟩
   else if function == ``LeanExe.Wasi.args then
-    some ⟨``LeanExe.Wasi.Call.argsGet, mkConst ``Verified.Wasi.SysForm.reported, 0,
+    some ⟨``LeanExe.Wasi.Call.argsGet, mkConst ``Verified.Wasi.SysForm.reported, [],
       ``Verified.Wasi.Reflect.args_eq⟩
-  else none
-where
-  flatForm (words : Nat) (bytes : Bool) : Lean.Expr :=
-    mkApp2 (mkConst ``Verified.Wasi.SysForm.flat) (mkNatLit words) (toExpr bytes)
+  else if function == ``LeanExe.Wasi.environ then
+    some ⟨``LeanExe.Wasi.Call.environGet, mkConst ``Verified.Wasi.SysForm.reported, [],
+      ``Verified.Wasi.Reflect.environ_eq⟩
+  else generatedSysOperations.lookup function
 
 partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection := do
   let expression ← projReduce expression
@@ -170,10 +166,15 @@ where
     if bind.any id then
       return ← reflectAs (← bindArgs original.getAppFn nativeArgs.toList bind #[] #[]) original
     let places := reflected.map fun argument => argument.src.getAppArgs.back!
-    let variableType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .word)
+    let kinds := places.zip operation.inputs
+    let words := kinds.filterMap fun (place, input) => if input then none else some place
+    let inputs := kinds.filterMap fun (place, input) => if input then some place else none
+    let wordType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .word)
+    let bytesType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .bytes)
     let source ← mkAppOptM ``Command.sys
       #[some context.pure.sigs, some context.sigs, some context.pure.ctx,
-        some (mkConst operation.call), some operation.form, some (listExpr variableType places)]
+        some (mkConst operation.call), some operation.form, some (listExpr wordType words),
+        some (listExpr bytesType inputs)]
     let proofs ← reflected.mapM (userProof context.pure)
     let equation ← mkAppM operation.equation
       (#[context.pure.funs, context.funs, context.pure.env] ++ places.toArray ++ nativeArgs ++

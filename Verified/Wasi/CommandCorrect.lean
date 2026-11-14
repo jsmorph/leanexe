@@ -33,7 +33,8 @@ theorem Command.code_spec_with {calls : List LeanExe.Wasi.Call}
   | exit status => exact command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec =>
       exact command_loop_spec_with facts sourceHost stepSpec
-  | sys operation form args => exact command_sys_spec_with facts sourceHost operation form args
+  | sys operation form args inputs =>
+    exact command_sys_spec_with facts sourceHost operation form args inputs
 
 theorem Command.code_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}

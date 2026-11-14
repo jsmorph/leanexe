@@ -95,10 +95,12 @@ input read from `mem`, or `none` when the arguments do not have the parameters' 
 def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × List UInt32)
   | [], [] => some ([], [])
   | .word32 :: params, .i32 value :: values
-  | .enum32 _ :: params, .i32 value :: values =>
+  | .enum32 _ :: params, .i32 value :: values
+  | .flags32 _ :: params, .i32 value :: values =>
     (decodeArgs mem params values).map fun decoded =>
       (.word value.toUInt64 :: decoded.1, decoded.2)
-  | .word64 :: params, .i64 value :: values =>
+  | .word64 :: params, .i64 value :: values
+  | .flags64 _ :: params, .i64 value :: values =>
     (decodeArgs mem params values).map fun decoded => (.word value :: decoded.1, decoded.2)
   | .input :: params, .i32 pointer :: .i32 length :: values =>
     (decodeArgs mem params values).map fun decoded =>
@@ -109,7 +111,8 @@ def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × L
       (.space capacity.toUInt64 :: decoded.1, pointer :: decoded.2)
   | .result32 :: params, .i32 pointer :: values
   | .result64 :: params, .i32 pointer :: values
-  | .reported .. :: params, .i32 pointer :: values =>
+  | .reported .. :: params, .i32 pointer :: values
+  | .record .. :: params, .i32 pointer :: values =>
     (decodeArgs mem params values).map fun decoded => (decoded.1, pointer :: decoded.2)
   | _, _ => none
 
@@ -179,7 +182,7 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
   | cons param params ih =>
       intro request pointers fits inputs
       cases param with
-      | word32 | enum32 _ =>
+      | word32 | enum32 _ | flags32 _ =>
           match request, fits, inputs with
           | .word value :: request, fits, inputs =>
               simp [argsFit, Param.takesArg, argFits] at fits
@@ -188,7 +191,7 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
               simp [lowerArgs, decodeArgs, Arg.value, decode, word_roundtrip fits.1]
           | [], fits, _ | .bytes _ :: _, fits, _ | .space _ :: _, fits, _ =>
               simp [argsFit, Param.takesArg, argFits] at fits
-      | word64 =>
+      | word64 | flags64 _ =>
           match request, fits, inputs with
           | .word value :: request, fits, inputs =>
               simp [argsFit, Param.takesArg, argFits] at fits
@@ -227,7 +230,7 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
               · simp [outputRegions, same sizes]
           | [], fits, _ | .word _ :: _, fits, _ | .bytes _ :: _, fits, _ =>
               simp [argsFit, Param.takesArg, argFits] at fits
-      | result32 | result64 =>
+      | result32 | result64 | record _ _ _ =>
           obtain ⟨decoded, decode, same⟩ := ih request pointers.tail fits inputs
           refine ⟨pointers.headD 0 :: decoded, ?_, fun sizes => ?_⟩
           · simp [lowerArgs, decodeArgs, decode]
@@ -248,7 +251,8 @@ theorem shownPlaces_sizes (params : List Param) :
   | cons param params ih =>
       intro sizes sizes' args pointers outputs
       cases param with
-      | word32 | word64 | enum32 _ => exact ih sizes sizes' args.tail pointers outputs
+      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+          exact ih sizes sizes' args.tail pointers outputs
       | input => exact ih sizes sizes' args.tail pointers.tail outputs
       | output =>
           cases outputs with
@@ -256,7 +260,7 @@ theorem shownPlaces_sizes (params : List Param) :
           | cons output outputs =>
               simp only [outputRegions, shownPlaces, ↓reduceIte]
               rw [ih sizes sizes' args.tail pointers.tail outputs]
-      | result32 | result64 =>
+      | result32 | result64 | record _ _ _ =>
           cases outputs with
           | nil => rfl
           | cons output outputs =>
@@ -283,13 +287,13 @@ theorem outputSizes_regions (params : List Param) :
   | cons param params ih =>
       intro sizes args pointers
       cases param with
-      | word32 | word64 | enum32 _ => exact ih sizes args.tail pointers
+      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail pointers
       | input => exact ih sizes args.tail pointers.tail
       | output =>
           simp only [outputSizesOf, outputRegions]
           rw [ih sizes args.tail pointers.tail]
           rfl
-      | result32 | result64 =>
+      | result32 | result64 | record _ _ _ =>
           simp only [outputSizesOf, outputRegions]
           rw [ih sizes args pointers.tail]
           rfl
@@ -407,13 +411,13 @@ theorem sys_contract (sound : oracle.Sound host calls) {call : Call} (member : c
     · simpa using congrArg List.length sizes
     · apply placeAll_at
       · rw [spans]
-        exact (List.pairwise_append.mp valid.apart).1.sublist (List.filter_sublist.map _)
+        exact valid.apart.sublist (List.filter_sublist.map _)
       · intro place member
         obtain ⟨region, regionMember, eq⟩ := covered place member
         have bounds := valid.bounds region regionMember
         simp only [placeSpan, Region.span, Prod.mk.injEq] at eq
         rw [← eq.1, ← eq.2]
-        exact ⟨bounds.2.1, bounds.1⟩
+        exact ⟨Nat.le_of_lt bounds.2.1, bounds.1⟩
   rw [valid.arguments]
   simp only [sysInvoke, decode]
   cases reply : (oracle.reply before.host.world call request).1 with

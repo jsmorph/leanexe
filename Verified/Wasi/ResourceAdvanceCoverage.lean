@@ -77,7 +77,7 @@ theorem command_advance_coverage {World : Type} {host : Host World} {pure : Pure
     intro depth modes live env world trace residual after advance
     cases advance
     exact ⟨_, _, .loop (.refl world _ _ _)⟩
-  | sys operation form args =>
+  | sys operation form args inputs =>
     intro depth modes live env world trace residual after advance
     exact ⟨_, _, .sys advance.toPrefix⟩
 

@@ -13,7 +13,8 @@
     "LeanExe.M7.Proof.Boot",
     "LeanExe.A64.Boot",
     "LeanExe.ProofKit.F32Canonical",
-    "LeanExe.Wasi.Calls"
+    "LeanExe.Wasi.Calls",
+    "LeanExe.Wasi.CallTable"
   ],
   "declarations": [
     "LeanExe.M7.Nucleo.init",
