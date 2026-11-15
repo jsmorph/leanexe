@@ -2188,16 +2188,25 @@ def argsTuple : List (Lean.Expr × Bool) → MetaM Lean.Expr
     let x ← if owned then mkAppM ``LeanExe.Pipeline.Moved.mk #[x] else pure x
     mkAppM ``Prod.mk #[x, ← argsTuple rest]
 
+/-- The node of a program's chain that `prog` names: the value of the program's constant or of a
+prefix `p.prefix_k`, unfolded until it is an application of a constructor of `Prog`. -/
+partial def progNode (prog : Lean.Expr) : MetaM Lean.Expr := do
+  if let .const n _ := prog then
+    if let some (.defnInfo v) := (← getEnv).find? n then return ← progNode v.value
+  return prog
+
 /-- The proof that the bounds `Prog.boundsAt prog funs k`, or the frames conditions
 `Prog.fitsAt prog funs k` when `fits`, give the function that `fv` names its own entry: for a
 function whose code takes no call depth, `f.bound fs (rest.boundsAt fs 0) env`, and for one whose
 code does, `f.boundAt fs (rest.boundsAt fs) k env` or `f.fitsAt fs (rest.fitsAt fs) k env`.  The
-chains `prog` hold `Prog.cons` and `Prog.consRec`, and `funs` holds `Funs.cons`. -/
+program `prog` is a prefix `p.prefix_k` or the program's constant, whose value is a `Prog.cons`,
+`Prog.consRec`, or `Prog.consTail` of a function and the prefix before it, so each lemma takes the
+rest of the program as a constant, and `funs` holds `Funs.cons`. -/
 partial def tableChain (fits : Bool) (prog funs fv env k : Lean.Expr) : MetaM Lean.Expr := do
   let (``Funs.cons, #[S, _, F, fs]) := funs.getAppFnArgs
     | throwError "verified_compile: the meanings {funs}"
   let pick (b f : Name) : Lean.Expr := mkConst (if fits then f else b)
-  match fv.getAppFnArgs, prog.getAppFnArgs with
+  match fv.getAppFnArgs, (← progNode prog).getAppFnArgs with
   | (``FVar.here, _), (``Prog.cons, #[_, f, rest]) =>
     let d := mkApp2 (mkConst ``Func.depth) S f
     let depth ← evalBool m!"whether the code of {f} takes the call depth" d

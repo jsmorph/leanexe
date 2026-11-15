@@ -345,6 +345,7 @@ These declarations belong to the pure `verified_compile` command.  [The WASI dec
 | Declaration | Content |
 |---|---|
 | `p.program`, `p.funs`, `p.meaning` | Source program, meanings of its functions, and proof of `Prog.Meaning p.program p.funs`. |
+| `p.prefix_k` | The program of the first `k + 1` listed definitions that are not wrappers: `Prog.cons`, `Prog.consRec`, or `Prog.consTail` of the `k`-th one's `p.f.func` and `p.prefix_(k-1)`, typed by the literal list of their signatures.  `p.program` is the last prefix.  The bound definitions, the proof `p.meaning`, and the proofs over the bound tables refer to these constants, so the kernel compares each function's signature with its literal in the prefix's definition, not in every declaration that holds the program. |
 | `p.tables`, `p.wrappers`, `p.module` | Tables, wrappers, and module `compileWith p.program p.tables p.wrappers`. |
 | `p.literalPool` | Deduplicated nonempty byte literals, starting after the constant word-array tables.  The module uses this pool explicitly. |
 | `p.initial` | Store in which the module starts meets the allocator invariant, caps the memory at 65,535 pages, and holds each table at its address.  A nonempty pool adds its static contents and heap region as a fourth conjunct.  An empty pool keeps the three-part result. |
