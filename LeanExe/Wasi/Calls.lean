@@ -36,14 +36,14 @@ those of `mask`; `record size align fields` points to a record of `size` bytes, 
 `align`, that the host writes, with the offset and width in bytes of each field; `handle` is a
 descriptor, which lowers, is rejected, and takes its place in a request as `word32` does.
 
-`iovec shown` is the pointer and the length 1 of an array of one element, the pointer and the
-length of a buffer as two 4-byte words, which is an input of the request.  With `shown` false the
+`iovec input` is the pointer and the length 1 of an array of one element, the pointer and the
+length of a buffer as two 4-byte words, which is an input of the request.  With `input` false the
 buffer is a fresh output buffer of the argument's capacity, whose content the reply carries; with
-`shown` true it holds the argument's bytes, an input.  `subscriptions records` stands for the
-parameters `in`, `out`, and `nsubscriptions` of `poll_oneoff`: `in` points to one record of 48
-bytes for each entry of `records`, an input whose bytes are zero except for the fields, `out`
-points to an event of 32 bytes for each record, aligned to 8, whose content the reply carries, and
-`nsubscriptions` is the number of records. -/
+`input` true it holds the argument's bytes, an input that a write reads.  `subscriptions records`
+stands for the parameters `in`, `out`, and `nsubscriptions` of `poll_oneoff`: `in` points to one
+record of 48 bytes for each entry of `records`, an input whose bytes are zero except for the
+fields, `out` points to an event of 32 bytes for each record, aligned to 8, whose content the
+reply carries, and `nsubscriptions` is the number of records. -/
 inductive Param where
   | word32
   | word64
@@ -57,7 +57,7 @@ inductive Param where
   | flags64 (mask : Nat)
   | record (size align : Nat) (fields : List (Nat × Nat))
   | handle
-  | iovec (shown : Bool)
+  | iovec (input : Bool)
   | subscriptions (records : List (List Field))
   deriving Repr, DecidableEq
 

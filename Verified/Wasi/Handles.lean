@@ -269,8 +269,8 @@ theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack :
           List.drop_succ_cons, List.drop_zero, List.nil_append] at member
         exact handleArgs_flatArgsWith hEnv params args inputs marked
           (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
-    | iovec shown =>
-      cases shown with
+    | iovec isInput =>
+      cases isInput with
       | true =>
         cases inputs with
         | nil => simp [List.countP_cons, Param.takesBytes] at count
@@ -364,6 +364,10 @@ theorem bracketCallNames_not_mem {name : String}
     name ≠ "fd_close" ∧ name ≠ "fd_renumber" ∧ name ≠ "path_open" := by
   refine ⟨?_, ?_, ?_⟩ <;> intro same <;> subst same <;> simp [bracketCallNames] at h
 
+theorem pathOpen_table : Call.table.contains Call.pathOpen = true := by decide +kernel
+
+theorem fdClose_table : Call.table.contains Call.fdClose = true := by decide +kernel
+
 theorem openedDescriptor_lt {call : Call} {args : List Arg} {outputs : List LeanExe.Bytes}
     (pathOpen : call = Call.pathOpen) (fits : ReplyFits call args outputs) :
     (openedDescriptor outputs).toNat < 2 ^ 32 := by
@@ -394,7 +398,7 @@ theorem Command.isOpen_handles (pureFuns : Funs pureSigs) (effectFuns : EffectFu
       handleArgs_flatArgsWith hEnv Call.pathOpen.params args [env.get path] hMarked rfl
     refine And.intro (fun rejected => ⟨Call.pathOpen.reject _, 0, rfl, fun _ => rfl,
       fun zero => absurd zero rejected⟩) (fun _ => And.intro ?_ fun errno outputs fits => ?_)
-    · exact callAllowed_of_handles (by decide) (by decide) handles
+    · exact callAllowed_of_handles pathOpen_table (by decide) (by decide) handles
     · show ∃ errno' word, _ ∧
         (errno' ≠ 0 → callStack stack Call.pathOpen (.returned errno outputs) = stack) ∧
         (errno' = 0 → _ ∧ callStack stack Call.pathOpen (.returned errno outputs) = _)
@@ -444,7 +448,7 @@ theorem Command.isClose_handles (pureFuns : Funs pureSigs) (effectFuns : EffectF
     rw [held]
     refine And.intro (fun rejected => absurd accepted rejected)
       (fun _ => And.intro ?_ fun _ _ _ => ?_)
-    · simp [callAllowed, Call.fdClose]
+    · exact callAllowed_close_top fdClose_table rfl
     · rw [callStack_close rfl]
       rfl
 
@@ -636,27 +640,29 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
     intro env stack hEnv
     simp only [sysMarked, Bool.and_eq_true, beq_iff_eq] at h
-    obtain ⟨⟨⟨named, reporter⟩, marked⟩, count⟩ := h
+    obtain ⟨⟨⟨⟨⟨member, reporterMember⟩, named⟩, reporter⟩, marked⟩, count⟩ := h
     obtain ⟨close, renumber, notOpen⟩ := bracketCallNames_not_mem named
     obtain ⟨reporterClose, reporterRenumber, reporterOpen⟩ := bracketCallNames_not_mem reporter
     have handles := handleArgs_flatArgsWith hEnv operation.params args (inputs.map env.get) marked
       (by simpa [Call.inputCount] using count)
     cases form with
     | flat words bytes =>
-      exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
+      exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
     | record fields =>
-      exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
+      exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
     | iovecRead | iovecWrite | poll =>
-      exact Action.Handles.sys_other close renumber notOpen handles fun _ => rfl
+      exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
     | reported =>
-      refine Action.Handles.sys_other reporterClose reporterRenumber reporterOpen
+      have reporterTable : Call.table.contains operation.reporterCall = true := by
+        simpa using reporterMember
+      refine Action.Handles.sys_other reporterTable reporterClose reporterRenumber reporterOpen
         (by simp [handleArgs_nil]) fun sizes => ?_
       split
       · rfl
       · split
         · rfl
-        · refine Action.Handles.sys_other close renumber notOpen (by simp [handleArgs_nil])
-            fun got => ?_
+        · refine Action.Handles.sys_other member close renumber notOpen
+            (by simp [handleArgs_nil]) fun got => ?_
           split <;> rfl
 
 theorem Command.handles_plain (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -728,5 +734,89 @@ theorem EffectProg.bracketRuns {α : Type} (pureFuns : Funs pureSigs)
     native.BracketRuns :=
   Action.BracketRuns.of_rel related (Action.Handles.bracketRuns
     (program.handlesSafe pureFuns helpers checked callee args [] (EnvMarked.unmarked unmarked)))
+
+/-! ## The events of a bracket -/
+
+/-- Every run of `withOpen` that returns normally ends with the bracket's close of the descriptor
+that its open returned, after the events of its body.
+
+When the open returns errno 0 with descriptor `d`, the trace is the open event, then the events of
+the body, well bracketed from `d :: stack` back to `d :: stack`, and last one `fd_close` event of
+`d`, the bracket's close.  When the open fails, with an errno of the host or one that rejects an
+argument before the call, the trace is the failed open event, if the host was called, followed by
+the events of `onError errno`, well bracketed from `stack` back to `stack`, and the bracket makes no
+close.
+
+The premises state of the two continuations what `Command.handles_exec` states of a command that
+passes the handle check: in a bracket that the check accepts, the body passes it with the handle
+marked and the error continuation with the open's result unmarked.  `Command.handles_exec` and
+`p.handles` state that a whole trace is well bracketed; this theorem states which events belong to
+one bracket that returns normally, which they do not state when the run exits or traps later.
+`WellBracketed` reads descriptor numbers, so the theorem does not exclude an event in the body that
+closes `d` when a nested open received `d` again from the host; `WellBracketed.descriptors`
+excludes such a reply under its host assumption. -/
+theorem withOpen_closes {World : Type} {host : Host World} {stack : List UInt64} {dir : Handle}
+    {dirflags : UInt64} {path : LeanExe.Bytes} {oflags rightsBase rightsInheriting fdflags : UInt64}
+    {onError : UInt64 → Action α} {body : Handle → Action α}
+    (hBody : ∀ (d : UInt64) world trace outcome final,
+      Exec host (body ⟨d⟩) world trace outcome final →
+        ∃ after, WellBracketed (d :: stack) trace after ∧
+          ∀ value, outcome = .returned value → after = d :: stack)
+    (hError : ∀ (errno : UInt64) world trace outcome final,
+      Exec host (onError errno) world trace outcome final →
+        ∃ after, WellBracketed stack trace after ∧
+          ∀ value, outcome = .returned value → after = stack)
+    {world : World} {trace : List Event} {value : α} {final : World}
+    (run : Exec host (withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError
+      body) world trace (.returned value) final) :
+    (∃ outputs middle closeErrno committed,
+      trace = .sys Call.pathOpen [.word dir.fd, .word dirflags, .bytes path, .word oflags,
+          .word rightsBase, .word rightsInheriting, .word fdflags] (.returned 0 outputs) ::
+        (middle ++ [.sys Call.fdClose [.word (openedDescriptor outputs)]
+          (.returned closeErrno committed)]) ∧
+      WellBracketed (openedDescriptor outputs :: stack) middle (openedDescriptor outputs :: stack))
+    ∨
+    (∃ errno rest, errno ≠ 0 ∧
+      (trace = rest ∨ ∃ outputs, trace = .sys Call.pathOpen [.word dir.fd, .word dirflags,
+          .bytes path, .word oflags, .word rightsBase, .word rightsInheriting, .word fdflags]
+          (.returned errno outputs) :: rest) ∧
+      WellBracketed stack rest stack) := by
+  unfold withOpen at run
+  cases run with
+  | sys_reject rejected next =>
+    have off : ((Call.pathOpen.reject _ != 0) = true) = True := eq_true (bne_iff_ne.mpr rejected)
+    simp only [off, ↓reduceIte] at next
+    obtain ⟨after, bracketed, returned⟩ := hError _ _ _ _ _ next
+    exact .inr ⟨_, trace, rejected, .inl rfl, returned value rfl ▸ bracketed⟩
+  | sys_return accepted reply next =>
+    rename_i errno committed
+    by_cases failed : errno = 0
+    · subst failed
+      have small := openedDescriptor_lt rfl ⟨_, (host.sys_bound reply).1⟩
+      have hReply : sysReply 0 committed = ⟨0, committed⟩ := rfl
+      simp only [hReply, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
+      obtain ⟨closing, first, middle, rest, bodyRun, closeRun, same⟩ := Exec.bind_iff.mp next
+      cases middle with
+      | exited code => obtain ⟨_, outcome, _⟩ := closeRun; cases outcome
+      | trapped message => obtain ⟨_, outcome, _⟩ := closeRun; cases outcome
+      | returned result =>
+        obtain ⟨after, bracketed, returned⟩ := hBody _ _ _ _ _ bodyRun
+        rw [returned result rfl] at bracketed
+        have small' : (openedDescriptor committed).toNat < 4294967296 := small
+        have accepted : Call.fdClose.reject [.word (openedDescriptor committed)] = 0 := by
+          simp [Call.reject, rejectArgs, Call.fdClose, Param.takesArg, Param.reject, Arg.value,
+            small']
+        simp only [Continue] at closeRun
+        cases closeRun with
+        | sys_reject rejected _ => exact absurd accepted rejected
+        | sys_return _ _ last =>
+          cases last
+          subst same
+          exact .inl ⟨committed, first, _, _, rfl, bracketed⟩
+    · have hReply : sysReply errno committed = ⟨errno, []⟩ := by simp [sysReply, failed]
+      have off : ((errno != 0) = true) = True := eq_true (bne_iff_ne.mpr failed)
+      simp only [hReply, off, ↓reduceIte] at next
+      obtain ⟨after, bracketed, returned⟩ := hError _ _ _ _ _ next
+      exact .inr ⟨errno, _, failed, .inr ⟨committed, rfl⟩, returned value rfl ▸ bracketed⟩
 
 end Verified.Wasi

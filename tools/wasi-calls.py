@@ -33,14 +33,16 @@ shown when it points to bytes; each component of an expected result is result32 
 width, or a record of its size, alignment, and fields when it is a record or a union.  A record's
 fields lie at the next multiple of their alignment, a union's payload after its tag at the
 payload's alignment, and the size is rounded up to the largest alignment.  A function with reported
-regions NAME_get has the reporter NAME_sizes_get.  An array of iovecs is iovec, an array of one
-element whose buffer the host fills, and an array of ciovecs is iovec shown, whose buffer the call
-reads.  The pointer to subscriptions of poll_oneoff, with the pointer to events and the count after
-it, is subscriptions, with one description for each shape of POLL_SHAPES: its records, each the
-witx layout of $subscription for one union case with constant userdata and tag and with each
-field of the case taken from an argument word, an argument handle, or a constant.  sock_recv and
-sock_send, which take iovec arrays, have no description, since Wasmtime 44 implements no Preview 1
-socket function, and a function that does not return is not flat.
+regions NAME_get has the reporter NAME_sizes_get.  An array of iovecs is iovec false, an array of
+one element whose buffer the host fills, and an array of ciovecs is iovec true, whose buffer is an
+input that the call reads.  The pointer to subscriptions of poll_oneoff, with the pointer to
+events and the count after it, is subscriptions, with one description for each shape of
+POLL_SHAPES: its records, each the witx layout of $subscription for one union case with constant
+userdata and tag and with each field of the case taken from an argument word, an argument handle,
+or a constant.  sock_recv and sock_send, which take iovec arrays, have no description, since
+Wasmtime 44 implements no Preview 1 socket function, and a function that does not return is not
+flat.  The generated call table ends with the list of its descriptions, Call.table, which the
+handle check requires of every sys command.
 
 A typed function takes a Handle for each handle parameter.  path_open, fd_close, and fd_renumber
 have descriptions and no typed function: only LeanExe.Wasi.withOpen opens and closes descriptors,
@@ -198,9 +200,9 @@ class Function:
                 kinds.append(("input",))
                 self.arguments.append(name)
             elif isinstance(resolved, list) and resolved[0] == "list" and resolved[1] in IOVECS:
-                shown = IOVECS[resolved[1]]
-                kinds.append(("iovec", shown))
-                self.arguments.append("bytes" if shown else "capacity")
+                is_input = IOVECS[resolved[1]]
+                kinds.append(("iovec", is_input))
+                self.arguments.append("bytes" if is_input else "capacity")
             elif is_pointer(resolved) and resolved[2] == "$subscription":
                 rest = params[index + 1:index + 3]
                 if [p[2] for p in rest] != [["@witx", "pointer", "$event"], "$size"]:
@@ -361,8 +363,8 @@ def lean_field(field):
 
 def lean_param(kind):
     match kind:
-        case ("iovec", shown):
-            return f".iovec {'true' if shown else 'false'}"
+        case ("iovec", is_input):
+            return f".iovec {'true' if is_input else 'false'}"
         case ("enum32", count):
             return f".enum32 {count}"
         case ("flags32" | "flags64" as name, mask):
@@ -397,6 +399,15 @@ def description(function):
     return "\n".join(lines) + "\n"
 
 
+def render_table(flat):
+    """The list of the descriptions, in the order of the file."""
+    lines = ["/-- The descriptions of this file, in order.  The handle check requires the call of "
+             "each `sys`",
+             "command to be one of them. -/"]
+    lines += wrap("def table : List Call := [", [function.lean for function in flat], "]", 4)
+    return "\n".join(lines) + "\n"
+
+
 def render_calls(flat):
     return "\n".join([
         "import LeanExe.Wasi.Calls",
@@ -412,6 +423,7 @@ def render_calls(flat):
         "namespace LeanExe.Wasi.Call",
         "",
         "\n".join(description(function) for function in flat),
+        render_table(flat),
         "end LeanExe.Wasi.Call",
         "",
     ])

@@ -10,12 +10,14 @@ order of their signatures.  A variable is marked when it is the handle of a brac
 of the literal 3, `Handle.preopened`, binds it, or when it is a marked parameter of the function
 whose body the check reads; every other binding gives an unmarked variable.  The check refuses
 
-1. a `sys` command whose call or reporter is `fd_close`, `fd_renumber`, or `path_open`, except the
-   open and the close of a bracket;
-2. a `sys` command, the open of a bracket included, whose `.handle` position, the argument of a
+1. a `sys` command whose call, or whose reporter in the form `reported`, is not one of the
+   descriptions of `Call.table`, which `tools/wasi-calls.py` generates from the witx;
+2. a `sys` command whose call or reporter is `fd_close`, `fd_renumber`, or `path_open`, except the
+   open and the close of a bracket, which are `Call.pathOpen` and `Call.fdClose` of the table;
+3. a `sys` command, the open of a bracket included, whose `.handle` position, the argument of a
    `handle` parameter or of a handle field of a `subscriptions` parameter, does not take a marked
    variable, or whose input variables do not match its `input` and `iovec true` parameters;
-3. a call of a helper whose argument for a marked parameter is not a marked variable, or which
+4. a call of a helper whose argument for a marked parameter is not a marked variable, or which
    marks more parameters than it has.
 
 A bracket is a `bind` whose first command is the open, `Call.pathOpen` in the form `.flat 1 false`
@@ -116,10 +118,14 @@ def handlesMarked (marks : List Bool) : List Param → List Nat → Bool
           handlesMarked marks params (indices.drop (argFields records).length)
       | _ => handlesMarked marks params indices
 
-/-- Whether a `sys` command of `call` with the word arguments `args` and `inputs` input variables
-passes the check outside a bracket. -/
-def sysMarked (marks : List Bool) (call : Call) (args : List Nat) (inputs : Nat) : Bool :=
-  !bracketCallNames.contains call.name && !bracketCallNames.contains call.reporterCall.name &&
+/-- Whether a `sys` command of `call` in `form` with the word arguments `args` and `inputs` input
+variables passes the check outside a bracket.  The call is one of the generated descriptions of
+`Call.table`, and so is its reporter when the form is `reported`, so that the call's `.handle`
+positions are the descriptor parameters of the witx whatever source produced the command. -/
+def sysMarked (marks : List Bool) (call : Call) (form : SysForm) (args : List Nat)
+    (inputs : Nat) : Bool :=
+  Call.table.contains call && (form != .reported || Call.table.contains call.reporterCall) &&
+    !bracketCallNames.contains call.name && !bracketCallNames.contains call.reporterCall.name &&
     handlesMarked marks call.params args && inputs == call.inputCount
 
 /-- The marks of the context that a `bind` gives its second command: `mark` for the variable that
@@ -199,8 +205,8 @@ def Command.handleCheck (helpers : List (List Bool)) :
         else true
   | _, _, .plain, marks, .loop _ _ _ step =>
     handleCheck helpers .plain (false :: false :: marks) step
-  | _, _, .plain, marks, .sys operation _ args inputs =>
-    sysMarked marks operation (args.map Var.index) inputs.length
+  | _, _, .plain, marks, .sys operation form args inputs =>
+    sysMarked marks operation form (args.map Var.index) inputs.length
   | _, _, .plain, _, .unit | _, _, .plain, _, .ret _ | _, _, .plain, _, .read _
   | _, _, .plain, _, .readAll _ | _, _, .plain, _, .write _ _ | _, _, .plain, _, .exit _ => true
   | _, _, .opened, marks, .ite condition yes no =>

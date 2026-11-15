@@ -163,4 +163,14 @@ def sockAccept : Call :=
 def sockShutdown : Call :=
   { name := "sock_shutdown", params := [.handle, .flags32 0x3] }
 
+/-- The descriptions of this file, in order.  The handle check requires the call of each `sys`
+command to be one of them. -/
+def table : List Call := [argsGet, argsSizesGet, environGet, environSizesGet, clockResGet,
+    clockTimeGet, fdAdvise, fdAllocate, fdClose, fdDatasync, fdFdstatGet, fdFdstatSetFlags,
+    fdFdstatSetRights, fdFilestatGet, fdFilestatSetSize, fdFilestatSetTimes, fdPread, fdPrestatGet,
+    fdPrestatDirName, fdPwrite, fdRead, fdReaddir, fdRenumber, fdSeek, fdSync, fdTell, fdWrite,
+    pathCreateDirectory, pathFilestatGet, pathFilestatSetTimes, pathLink, pathOpen, pathReadlink,
+    pathRemoveDirectory, pathRename, pathSymlink, pathUnlinkFile, pollOneoffClock, pollOneoffRead,
+    pollOneoffWrite, procRaise, schedYield, randomGet, sockAccept, sockShutdown]
+
 end LeanExe.Wasi.Call

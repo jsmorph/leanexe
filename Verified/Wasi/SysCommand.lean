@@ -131,8 +131,8 @@ theorem _root_.LeanExe.Wasi.Call.argCount_eq (call : LeanExe.Wasi.Call) :
   | cons param params ih =>
     simp only [List.map_cons, List.sum_cons, List.countP_cons]
     cases param with
-    | iovec shown =>
-      cases shown <;> simp [Param.argCount, Param.wordCount, Param.takesBytes] <;> omega
+    | iovec isInput =>
+      cases isInput <;> simp [Param.argCount, Param.wordCount, Param.takesBytes] <;> omega
     | _ =>
       simp [Param.argCount, Param.wordCount, Param.takesBytes]
       omega

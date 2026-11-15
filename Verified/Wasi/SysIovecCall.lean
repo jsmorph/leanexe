@@ -13,9 +13,9 @@ open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 /-! ## Parameters -/
 
-theorem iovecParams_cases (shown offset : Bool) :
-    iovecParams shown offset = [.handle, .iovec shown, .result32] ∨
-      iovecParams shown offset = [.handle, .iovec shown, .word64, .result32] := by
+theorem iovecParams_cases (isInput offset : Bool) :
+    iovecParams isInput offset = [.handle, .iovec isInput, .result32] ∨
+      iovecParams isInput offset = [.handle, .iovec isInput, .word64, .result32] := by
   cases offset <;> simp [iovecParams]
 
 theorem iovec_extra {offset : Bool} {extra : List UInt64}
@@ -27,17 +27,17 @@ theorem iovec_extra {offset : Bool} {extra : List UInt64}
     obtain ⟨word, rfl⟩ := List.length_eq_one_iff.mp (by simpa using hExtra)
     exact .inr ⟨word, rfl, rfl⟩
 
-theorem iovec_wordCount {call : Call} {shown offset : Bool}
-    (hParams : call.params = iovecParams shown offset) :
-    call.wordCount = (if shown then 1 else 2) + (if offset then 1 else 0) := by
+theorem iovec_wordCount {call : Call} {isInput offset : Bool}
+    (hParams : call.params = iovecParams isInput offset) :
+    call.wordCount = (if isInput then 1 else 2) + (if offset then 1 else 0) := by
   rw [Call.wordCount, hParams]
-  cases shown <;> cases offset <;> rfl
+  cases isInput <;> cases offset <;> rfl
 
-theorem iovec_inputCount {call : Call} {shown offset : Bool}
-    (hParams : call.params = iovecParams shown offset) :
-    call.inputCount = if shown then 1 else 0 := by
+theorem iovec_inputCount {call : Call} {isInput offset : Bool}
+    (hParams : call.params = iovecParams isInput offset) :
+    call.inputCount = if isInput then 1 else 0 := by
   rw [Call.inputCount, hParams]
-  cases shown <;> cases offset <;> rfl
+  cases isInput <;> cases offset <;> rfl
 
 /-- The arguments of a read: the handle, the capacity, and the offset of `fd_pread`. -/
 theorem iovec_read_args (offset : Bool) (values : List UInt64)
@@ -65,17 +65,17 @@ theorem iovec_write_args (offset : Bool) (values : List UInt64) (bytes : LeanExe
     match values, hLength with
     | [a, b], _ => rfl
 
-theorem iovec_reject (shown offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
+theorem iovec_reject (isInput offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
     (hExtra : extra.length = if offset then 1 else 0) :
-    rejectArgs (iovecParams shown offset) ([.word handle, arg] ++ extra.map .word) =
-      if handle.toNat < 4294967296 then (Param.iovec shown).reject arg else 61 := by
+    rejectArgs (iovecParams isInput offset) ([.word handle, arg] ++ extra.map .word) =
+      if handle.toNat < 4294967296 then (Param.iovec isInput).reject arg else 61 := by
   have hHandleReject : Param.handle.reject (.word handle) =
       if handle.toNat < 4294967296 then 0 else 61 := rfl
   rcases iovec_extra hExtra with ⟨rfl, rfl⟩ | ⟨word, rfl, rfl⟩
   · simp only [iovecParams, List.nil_append, List.cons_append, List.map_nil,
       List.append_nil, rejectArgs, Param.takesArg, ite_true, hHandleReject]
     by_cases hHandle : handle.toNat < 4294967296 <;> simp only [hHandle, ite_true, ite_false]
-    · by_cases hArg : (Param.iovec shown).reject arg = 0
+    · by_cases hArg : (Param.iovec isInput).reject arg = 0
       · simp [hArg, rejectArgs, Param.takesArg]
       · simp [hArg]
     · simp
@@ -83,21 +83,21 @@ theorem iovec_reject (shown offset : Bool) (handle : UInt64) (arg : Arg) {extra 
       List.map_nil, rejectArgs, Param.takesArg, hHandleReject]
     by_cases hHandle : handle.toNat < 4294967296 <;> simp only [hHandle, ite_true, ite_false]
     · have hWord : ∀ value, Param.word64.reject value = 0 := fun _ => rfl
-      by_cases hArg : (Param.iovec shown).reject arg = 0
+      by_cases hArg : (Param.iovec isInput).reject arg = 0
       · simp [hArg, hWord]
       · simp [hArg]
     · simp
 
-theorem iovec_fits (shown offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
+theorem iovec_fits (isInput offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
     (hExtra : extra.length = if offset then 1 else 0) (hHandle : handle.toNat < 2 ^ 32)
-    (hArg : argFits (.iovec shown) arg = true) :
-    argsFit (iovecParams shown offset) ([.word handle, arg] ++ extra.map .word) = true := by
+    (hArg : argFits (.iovec isInput) arg = true) :
+    argsFit (iovecParams isInput offset) ([.word handle, arg] ++ extra.map .word) = true := by
   rcases iovec_extra hExtra with ⟨rfl, rfl⟩ | ⟨word, rfl, rfl⟩ <;>
     simp_all [iovecParams, argsFit, Param.takesArg, argFits]
 
-theorem iovec_lower (shown offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
+theorem iovec_lower (isInput offset : Bool) (handle : UInt64) (arg : Arg) {extra : List UInt64}
     (hExtra : extra.length = if offset then 1 else 0) (element buffer result : UInt32) :
-    lowerArgs (iovecParams shown offset) ([.word handle, arg] ++ extra.map .word)
+    lowerArgs (iovecParams isInput offset) ([.word handle, arg] ++ extra.map .word)
         [element, buffer, result] =
       [.i32 handle.toUInt32, .i32 element, .i32 1] ++ extra.map .i64 ++ [.i32 result] := by
   rcases iovec_extra hExtra with ⟨rfl, rfl⟩ | ⟨word, rfl, rfl⟩ <;>

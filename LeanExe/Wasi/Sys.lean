@@ -73,11 +73,16 @@ structure Handle where
 def Handle.preopened : Handle := ⟨3⟩
 
 /-- `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` calls
-`path_open` for `path` under `dir`.  On a nonzero errno, which is 61 without a call when `dir` is
-`2^32` or more, it runs `onError errno`.  Otherwise it runs `body` with the new descriptor, and
-when `body` returns, it calls `fd_close` on the descriptor, drops the errno of `fd_close`, and
-returns `body`'s result.  A body that exits or traps ends the process with the descriptor open,
-and Wasmtime closes it at exit.  Programs open and close descriptors only through `withOpen`.
+`path_open` for `path` under `dir`.  On a nonzero errno it runs `onError errno`.  The errno is the
+host's, or, without a call, that of the first argument that `Call.pathOpen` rejects, in the order
+of the arguments: 61 (`overflow`) for a `dir`, `dirflags`, `oflags`, or `fdflags` of `2^32` or
+more and for a `path` of `2^32` bytes or more, and 28 (`inval`) for flags with a bit outside
+their masks: `dirflags` outside `0x1`, `oflags` outside `0xf`, `rightsBase` and
+`rightsInheriting` outside `0x3fffffff`, and `fdflags` outside `0x1f`.  Otherwise it runs `body`
+with the new descriptor, and when `body` returns, it calls `fd_close` on the descriptor, drops the
+errno of `fd_close`, and returns `body`'s result.  A body that exits or traps ends the process with
+the descriptor open, and Wasmtime closes it at exit.  Programs open and close descriptors only
+through `withOpen`.
 
 `verified_compile_wasi` reflects `withOpen` as one shape of the existing commands, which
 `Verified.Wasi.Command.HandleCheck` recognizes.  With the argument variables `d`, `f`, `o`, `b`,

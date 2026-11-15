@@ -132,8 +132,8 @@ theorem flatArgsWith_nil : ∀ (params : List Param) (values : List UInt64),
   | [], _ => rfl
   | param :: params, values => by
     cases param with
-    | iovec shown =>
-      cases shown <;> simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
+    | iovec isInput =>
+      cases isInput <;> simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
     | _ => simp only [flatArgsWith, flatArgs, flatArgsWith_nil params]
 
 /-- The result words of a reply whose outputs follow `params` from position `index`. -/
@@ -215,8 +215,8 @@ def subscriptionsOf : List Param → Option (List (List Field))
 
 /-- The parameters of an iovec call that the code compiles: a handle, the iovec, a 64-bit word when
 `offset` holds, and the result word. -/
-def iovecParams (shown offset : Bool) : List Param :=
-  [.handle, .iovec shown] ++ (if offset then [.word64] else []) ++ [.result32]
+def iovecParams (isInput offset : Bool) : List Param :=
+  [.handle, .iovec isInput] ++ (if offset then [.word64] else []) ++ [.result32]
 
 /-- Whether the code compiles a `poll` call of `records`: there is at least one record, the
 records fit, each field has a width of 1, 2, 4, or 8 bytes, and the block of the subscriptions and

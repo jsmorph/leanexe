@@ -119,10 +119,10 @@ def decodeArgs (mem : Mem) : List Param → List Value → Option (List Arg × L
   | .reported .. :: params, .i32 pointer :: values
   | .record .. :: params, .i32 pointer :: values =>
     (decodeArgs mem params values).map fun decoded => (decoded.1, pointer :: decoded.2)
-  | .iovec shown :: params, .i32 element :: .i32 count :: values =>
+  | .iovec isInput :: params, .i32 element :: .i32 count :: values =>
     if count = 1 then
       (decodeArgs mem params values).map fun decoded =>
-        ((if shown then
+        ((if isInput then
             .bytes (bytesOfList (mem.readBytes (mem.read32 element).toNat
               (mem.read32 (element + 4)).toNat))
           else .space (mem.read32 (element + 4)).toUInt64) :: decoded.1,
@@ -260,15 +260,15 @@ theorem decodeArgs_lower (mem : Mem) (params : List Param) :
           refine ⟨pointers.headD 0 :: decoded, ?_, fun sizes => ?_⟩
           · simp [lowerArgs, decodeArgs, decode]
           · simp [outputRegions, same sizes.tail]
-      | iovec shown =>
+      | iovec isInput =>
           have element := inputs (pointers.headD 0, elementBytes (pointers.tail.headD 0)
-            (match shown with
+            (match isInput with
               | false => (request.head?.map Arg.capacity).getD 0
               | true => (request.head?.map Arg.length).getD 0))
-            (by cases shown <;> simp [inputPlaces])
+            (by cases isInput <;> simp [inputPlaces])
           obtain ⟨hBuffer, hLength⟩ := element_read element
           rw [UInt32.toUInt32_toUInt64] at hBuffer hLength
-          cases shown with
+          cases isInput with
           | false =>
             match request, fits, inputs, hLength with
             | .space capacity :: request, fits, inputs, hLength =>
@@ -369,8 +369,8 @@ theorem shownPlaces_sizes (params : List Param) :
               | cons output outputs =>
                   simp only [outputRegions, shownPlaces, ↓reduceIte]
                   rw [ih sizes.tail sizes'.tail args pointers.tail outputs]
-      | iovec shown =>
-          cases shown with
+      | iovec isInput =>
+          cases isInput with
           | true => exact ih sizes sizes' args.tail pointers.tail.tail outputs
           | false =>
               cases outputs with
@@ -409,8 +409,8 @@ theorem outputSizes_regions (params : List Param) :
           simp only [outputSizesOf, outputRegions]
           rw [ih sizes.tail args pointers.tail]
           cases shown <;> rfl
-      | iovec shown =>
-          cases shown with
+      | iovec isInput =>
+          cases isInput with
           | true => exact ih sizes args.tail pointers.tail.tail
           | false =>
               simp only [outputSizesOf, outputRegions]

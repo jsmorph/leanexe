@@ -1,3 +1,4 @@
+import LeanExe.Wasi.CallTable
 import LeanExe.Wasi.ReadAll
 import LeanExe.Wasi.RelatedExec
 import LeanExe.Wasi.RelatedPrefix
@@ -7,9 +8,13 @@ from left to right with a stack of descriptor numbers, the descriptors of the op
 the innermost first.  A `path_open` event that returns errno 0 pushes the number it returns, an
 `fd_close` event pops the top of the stack, which must be its argument, an `fd_renumber` event
 breaks the discipline, and every other `sys` event takes, at each `.handle` position, 3 or a number
-on the stack; read, write, and exit events leave the stack alone.  The `.handle` positions are the
-arguments of `handle` parameters and of the handle fields of `subscriptions` parameters.  A
-`path_open` event takes its `dir` argument at a `.handle` position whether or not it succeeds.
+on the stack; read, write, and exit events leave the stack alone.  The call of every `sys` event
+must be one of the descriptions of `Call.table`, which `tools/wasi-calls.py` generates from the
+witx, so its `.handle` positions are the descriptor parameters of the witx: the arguments of
+`handle` parameters and of the handle fields of `subscriptions` parameters.  A `path_open` event
+takes its `dir` argument at a `.handle` position whether or not it succeeds.  The stack holds
+numbers, so a descriptor that a closed bracket held and a later open returns again counts as open
+in the later bracket.
 
 `Action.Handles stack action post` states that every run of `action` from `stack` keeps the
 discipline and that a normal return with a value leaves a stack that satisfies `post`.
@@ -50,16 +55,22 @@ def handleArgs : List Param → List Arg → List UInt64
   | param :: params, args =>
     param.handleWords args ++ handleArgs params (args.drop param.argCount)
 
-/-- Whether a call event keeps the discipline from `stack`: an `fd_close` closes the top of the
-stack, no `fd_renumber` occurs, and every other call takes 3 or a number on the stack at each
-`.handle` position. -/
-def callAllowed (stack : List UInt64) (call : Call) (args : List Arg) : Bool :=
+/-- Whether a call event of one of the generated descriptions keeps the discipline from `stack`:
+an `fd_close` closes the top of the stack, no `fd_renumber` occurs, and every other call takes 3
+or a number on the stack at each `.handle` position. -/
+def callDiscipline (stack : List UInt64) (call : Call) (args : List Arg) : Bool :=
   if call.name = "fd_close" then
     match stack, args with
     | top :: _, [.word fd] => fd == top
     | _, _ => false
   else if call.name = "fd_renumber" then false
   else (handleArgs call.params args).all fun fd => fd == 3 || stack.contains fd
+
+/-- Whether a call event keeps the discipline from `stack`: its call is one of the descriptions
+of `Call.table`, which `tools/wasi-calls.py` generates from the witx, so that its `.handle`
+positions are the descriptor parameters of the witx, and it meets `callDiscipline`. -/
+def callAllowed (stack : List UInt64) (call : Call) (args : List Arg) : Bool :=
+  Call.table.contains call && callDiscipline stack call args
 
 /-- The stack after a call event: an `fd_close` pops the top, a `path_open` that returns errno 0
 pushes the number it returns, and every other call leaves the stack. -/
@@ -394,12 +405,13 @@ def FreshOpens : List UInt64 → List Event → Prop
 preopened directory. -/
 def initialDescriptors : List UInt64 := [0, 1, 2, 3]
 
-/-- An event that uses only open descriptors other than the standard ones: each `.handle`
-argument is open and none of 0, 1, and 2, and an `fd_close` closes a single open descriptor that
-is none of 0 to 3, so that a `path_open` event opened it. -/
+/-- An event that uses only open descriptors other than the standard ones: its call is one of the
+generated descriptions, each `.handle` argument is open and none of 0, 1, and 2, and an `fd_close`
+closes a single open descriptor that is none of 0 to 3, so that a `path_open` event opened it. -/
 def UsesOpen (opened : List UInt64) : Event → Prop
   | .sys call args _ =>
-    (∀ fd ∈ handleArgs call.params args, fd ∈ opened ∧ fd ∉ [0, 1, 2]) ∧
+    Call.table.contains call = true ∧
+      (∀ fd ∈ handleArgs call.params args, fd ∈ opened ∧ fd ∉ [0, 1, 2]) ∧
       (call.name = "fd_close" →
         ∃ fd, args = [.word fd] ∧ fd ∈ opened ∧ fd ∉ initialDescriptors)
   | _ => True
@@ -451,7 +463,8 @@ theorem handleArgs_single (params : List Param) (arg : Arg) :
 theorem callAllowed_close {stack : List UInt64} {call : Call} {args : List Arg}
     (close : call.name = "fd_close") (allowed : callAllowed stack call args = true) :
     ∃ top rest, stack = top :: rest ∧ args = [.word top] := by
-  simp only [callAllowed, close, ite_true] at allowed
+  simp only [callAllowed, callDiscipline, close, ite_true, Bool.and_eq_true] at allowed
+  replace allowed := allowed.2
   cases stack with
   | nil => simp at allowed
   | cons top rest =>
@@ -473,10 +486,21 @@ theorem callAllowed_handles {stack : List UInt64} {call : Call} {args : List Arg
     call.name ≠ "fd_renumber" ∧
       ∀ fd ∈ handleArgs call.params args, fd = 3 ∨ fd ∈ stack := by
   by_cases renumber : call.name = "fd_renumber"
-  · simp [callAllowed, renumber] at allowed
-  · simp only [callAllowed, close, renumber, ite_false, List.all_eq_true, Bool.or_eq_true,
-      beq_iff_eq, List.contains_iff_mem] at allowed
-    exact ⟨renumber, allowed⟩
+  · simp [callAllowed, callDiscipline, renumber] at allowed
+  · simp only [callAllowed, callDiscipline, close, renumber, ite_false, List.all_eq_true,
+      Bool.or_eq_true, beq_iff_eq, List.contains_iff_mem, Bool.and_eq_true] at allowed
+    exact ⟨renumber, allowed.2⟩
+
+theorem callAllowed_table {stack : List UInt64} {call : Call} {args : List Arg}
+    (allowed : callAllowed stack call args = true) : Call.table.contains call = true := by
+  simp only [callAllowed, Bool.and_eq_true] at allowed
+  exact allowed.1
+
+theorem callAllowed_close_top {stack : List UInt64} {call : Call} {fd : UInt64}
+    (member : Call.table.contains call = true) (close : call.name = "fd_close") :
+    callAllowed (fd :: stack) call [.word fd] = true := by
+  simp only [callAllowed, callDiscipline, member, close, ↓reduceIte, Bool.true_and,
+    beq_self_eq_true]
 
 theorem callStack_close {stack : List UInt64} {call : Call} {reply : Transfer (List Bytes)}
     (close : call.name = "fd_close") : callStack stack call reply = stack.tail := by
@@ -569,13 +593,16 @@ private theorem descriptors_step {opened stack next : List UInt64} {event : Even
       · obtain ⟨top, rest, rfl, rfl⟩ := callAllowed_close close allowed
         have topOutside := hOpen.2.1 top List.mem_cons_self
         have topOpen := (hOpen.2.2 top).mpr (.inl List.mem_cons_self)
-        refine ⟨⟨fun handle member => ?_, fun _ => ⟨top, rfl, topOpen, topOutside⟩⟩, ?_⟩
+        refine ⟨⟨callAllowed_table allowed, fun handle member => ?_,
+          fun _ => ⟨top, rfl, topOpen, topOutside⟩⟩, ?_⟩
         · rw [handleArgs_single _ _ handle member]
           exact ⟨topOpen, fun standard => topOutside (standard_initial standard)⟩
         · rw [openStep_close close, callStack_close close, List.tail_cons]
           exact stackOpen_close hOpen
       · obtain ⟨_, handles⟩ := callAllowed_handles close allowed
-        refine ⟨⟨fun fd member => ?_, fun same => absurd same close⟩, ?_⟩
+        refine ⟨⟨callAllowed_table allowed, fun fd member => ?_,
+          fun same => absurd same close⟩,
+          ?_⟩
         · rcases handles fd member with three | stacked
           · subst three
             exact ⟨(hOpen.2.2 3).mpr (.inr (by decide)), by decide⟩
@@ -682,24 +709,25 @@ theorem Action.BracketRuns.prefix_descriptors {action residual : Action α}
 /-! ## Actions without brackets -/
 
 theorem callAllowed_of_handles {stack : List UInt64} {call : Call} {args : List Arg}
-    (close : call.name ≠ "fd_close") (renumber : call.name ≠ "fd_renumber")
+    (member : Call.table.contains call = true) (close : call.name ≠ "fd_close")
+    (renumber : call.name ≠ "fd_renumber")
     (handles : ∀ fd ∈ handleArgs call.params args, fd = 3 ∨ fd ∈ stack) :
     callAllowed stack call args = true := by
-  simp only [callAllowed, close, renumber, ite_false, List.all_eq_true, Bool.or_eq_true,
-    beq_iff_eq, List.contains_iff_mem]
+  simp only [callAllowed, callDiscipline, member, close, renumber, ite_false, List.all_eq_true,
+    Bool.or_eq_true, beq_iff_eq, List.contains_iff_mem, Bool.true_and]
   exact handles
 
-/-- A call other than `fd_close`, `fd_renumber`, and `path_open` that takes 3 or a number on the
-stack at each `.handle` position keeps the discipline when its continuation does for every reply.
--/
+/-- A call of one of the generated descriptions other than `fd_close`, `fd_renumber`, and
+`path_open` that takes 3 or a number on the stack at each `.handle` position keeps the discipline
+when its continuation does for every reply. -/
 theorem Action.Handles.sys_other {stack : List UInt64} {call : Call} {args : List Arg}
     {next : Reply → Action α} {post : α → List UInt64 → Prop}
-    (close : call.name ≠ "fd_close")
+    (member : Call.table.contains call = true) (close : call.name ≠ "fd_close")
     (renumber : call.name ≠ "fd_renumber") (notOpen : call.name ≠ "path_open")
     (handles : ∀ fd ∈ handleArgs call.params args, fd = 3 ∨ fd ∈ stack)
     (h : ∀ reply, Action.Handles stack (next reply) post) :
     Action.Handles stack (.sys call args next) post :=
-  ⟨fun _ => h _, fun _ => ⟨callAllowed_of_handles close renumber handles,
+  ⟨fun _ => h _, fun _ => ⟨callAllowed_of_handles member close renumber handles,
     fun _ _ _ => by rw [callStack_other close notOpen]; exact h _⟩⟩
 
 /-- `readAll` makes only reads, and returns to the stack it starts from. -/

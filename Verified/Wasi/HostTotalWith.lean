@@ -137,8 +137,8 @@ theorem layoutEnd_ge (params : List Param) :
       | reported scale align shown =>
           exact Nat.le_trans (Nat.le_trans (le_alignUp start align) (Nat.le_add_right _ _))
             (ih sizes.tail args _)
-      | iovec shown =>
-          cases shown <;>
+      | iovec isInput =>
+          cases isInput <;>
             exact Nat.le_trans (Nat.le_trans (le_alignUp start 4) (by omega)) (ih sizes args.tail _)
       | subscriptions records =>
           exact Nat.le_trans (Nat.le_trans (le_alignUp start 8) (Nat.le_add_right _ _))
@@ -288,8 +288,8 @@ theorem laid (params : List Param) :
           exact Laid.cons_region (le_alignUp _ _)
             (alignUp_mod _ (aligned scale align shown List.mem_cons_self))
             (layoutEnd_ge _ _ _ _) fits (ih _ _ _ alignedRest fits)
-      | iovec shown =>
-          cases shown with
+      | iovec isInput =>
+          cases isInput with
           | false =>
             simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
               List.headD_cons] at fits ⊢

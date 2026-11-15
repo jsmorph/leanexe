@@ -76,8 +76,8 @@ theorem flatArgsWith_record (size align : Nat) (fields : List (Nat × Nat)) :
   | [], _, inputs => by cases inputs <;> rfl
   | param :: params, values, inputs => by
     cases param with
-    | iovec shown =>
-      cases shown <;> cases inputs <;>
+    | iovec isInput =>
+      cases isInput <;> cases inputs <;>
         simp only [List.cons_append, flatArgsWith, flatArgsWith_record size align fields params]
     | _ =>
       cases inputs <;>

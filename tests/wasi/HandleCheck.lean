@@ -7,8 +7,13 @@ parameter is not a marked variable, and it accepts a `.handle` argument bound to
 with a marked variable, and a bracket nested in the body of another, whose inner open takes the
 outer handle.  It accepts an `fd_read` and a `poll_oneoff` whose handle argument, the descriptor of
 the iovec call and the handle field of the read subscription, is a marked variable, and refuses
-both with an unmarked one.  The theorems of the check, of `withOpen`'s reflection, and of the
-trace corollary use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+both with an unmarked one.  It refuses the wrong commands of the final review: `fd_renumber`,
+hand-written descriptions of `fd_write`, `fd_close`, and `poll_oneoff` that declare a descriptor
+a word, and brackets without the close, with the close of the directory, with a copied handle,
+with the handle used after the close, with the branches swapped, with a close inside the body, and
+with the failed descriptor used in the error continuation.  The theorems of the check, of
+`withOpen`'s reflection and its runs, and of the trace corollary use only `propext`,
+`Classical.choice`, and `Quot.sound`. -/
 
 namespace HandleCheckTest
 
@@ -96,6 +101,105 @@ example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .
     Command [] [] outer (.value SysForm.poll.ty)).handleCheck
       [] .plain [false, true, false] = false := by decide +kernel
 
+/-! The wrong commands of the final review of increment 3 (`tmp/sys3/review2/Wrong.lean`), each
+refused. -/
+
+/-- The arguments of an open under the preopened directory of `outer`. -/
+def openArgs : List (Var outer .word) := [.there .here, .here, .here, .here, .here, .here]
+
+/-- The error continuation that returns the errno. -/
+def onErrno : Command [] [] (.elem (.prod .word .word) :: outer) (.value .word) :=
+  .ret (.proj .here (.fst .here))
+
+/-- W1: `fd_renumber` of two marked variables. -/
+example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRenumber (.flat 0 false)
+    [.there .here, .there .here] [] : Command [] [] outer (.value .word)).handleCheck [] .plain
+      [false, true, false] = false := by decide +kernel
+
+/-- A hand-written description of `fd_write` whose descriptor is `.word32`. -/
+def fakeWrite : Call := { name := "fd_write", params := [.word32, .iovec true, .result32] }
+
+/-- W2: `fakeWrite` with the word 1, which is not one of the generated descriptions. -/
+example : (Command.bind (Command.ret (Expr.word 1))
+    (Command.sys fakeWrite .iovecWrite [.here] [.there .here]) :
+    Command [] [] [.bytes] (.value SysForm.iovecWrite.ty)).handleCheck [] .plain [false] =
+      false := by decide +kernel
+
+/-- A hand-written description of `fd_close` whose parameter is `.word32`. -/
+def fakeClose : Call := { name := "fd_close", params := [.word32] }
+
+/-- W2b: `fakeClose` with the word 1. -/
+example : (Command.bind (Command.ret (Expr.word 1))
+    (Command.sys fakeClose (.flat 0 false) [.here] []) :
+    Command [] [] [] (.value (SysForm.flat 0 false).ty)).handleCheck [] .plain [] = false := by
+  decide +kernel
+
+/-- A hand-written description of `poll_oneoff` whose descriptor field is a word. -/
+def fakePoll : Call :=
+  { name := "poll_oneoff",
+    params :=
+      [.subscriptions [[⟨0, 8, .const 1⟩, ⟨8, 1, .const 1⟩, ⟨16, 4, .word⟩]],
+        .result32] }
+
+/-- W2c: `fakePoll` with the word 1. -/
+example : (Command.bind (Command.ret (Expr.word 1))
+    (Command.sys fakePoll .poll [.here] []) :
+    Command [] [] [] (.value SysForm.poll.ty)).handleCheck [] .plain [] = false := by
+  decide +kernel
+
+/-- W3: a bracket without the close. -/
+example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
+    (.flat 1 false) openArgs [.there (.there .here)])
+    (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrno
+      (Command.bind (Command.ret (.proj .here (.snd .here)))
+        (Command.bind (sync .here) (Command.ret (Expr.var .here))))) :
+    Command [] [] outer (.value .word)).handleCheck [] .plain [false, true, false] = false := by
+  decide +kernel
+
+/-- W4: a bracket whose close takes the preopened directory. -/
+example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
+    (.flat 1 false) openArgs [.there (.there .here)])
+    (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrno
+      (Command.bind (Command.ret (.proj .here (.snd .here)))
+        (Command.bind (sync .here)
+          (Command.bind (Command.sys Call.fdClose (.flat 0 false)
+              [.there (.there (.there (.there .here)))] [])
+            (Command.ret (Expr.var (.there .here))))))) :
+    Command [] [] outer (.value .word)).handleCheck [] .plain [false, true, false] = false := by
+  decide +kernel
+
+/-- W5: a body that copies the handle and syncs the copy. -/
+example : (bracket openArgs (.there (.there .here)) onErrno
+    (Command.bind (Command.ret (Expr.var .here)) (sync .here))).handleCheck [] .plain
+      [false, true, false] = false := by decide +kernel
+
+/-- W6: a bracket that returns its handle, then a sync of the returned word after the close. -/
+example : (Command.bind (bracket openArgs (.there (.there .here)) onErrno
+    (Command.ret (Expr.var .here))) (sync .here)).handleCheck [] .plain
+      [false, true, false] = false := by decide +kernel
+
+/-- W7: the branches of the errno test swapped. -/
+example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
+    (.flat 1 false) openArgs [.there (.there .here)])
+    (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
+      (Command.bind (Command.ret (.proj .here (.snd .here)))
+        (Command.bind (sync .here)
+          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+            (Command.ret (Expr.var (.there .here))))))
+      onErrno) :
+    Command [] [] outer (.value .word)).handleCheck [] .plain [false, true, false] = false := by
+  decide +kernel
+
+/-- W8: `fd_close` of the handle inside the body. -/
+example : (bracket openArgs (.there (.there .here)) onErrno
+    (Command.sys Call.fdClose (.flat 0 false) [.here] [])).handleCheck [] .plain
+      [false, true, false] = false := by decide +kernel
+
+/-- W9: the error continuation passes the failed open's descriptor word to `fd_sync`. -/
+example : (bracket (effectSigs := []) openArgs (.there (.there .here))
+    (Command.bind (Command.ret (.proj .here (.snd .here))) (sync .here)) (sync .here)).handleCheck
+      [] .plain [false, true, false] = false := by decide +kernel
+
 /-- A helper whose parameter is marked. -/
 abbrev helper : EffectSig := ⟨"helper", [.word], [.borrowed], .value .word⟩
 
@@ -143,6 +247,7 @@ elab "check_handle_axioms" : command => do
     ``Verified.Wasi.Command.handles_prefix,
     ``Verified.Wasi.EffectProg.handlesSafe,
     ``Verified.Wasi.EffectProg.bracketRuns,
+    ``Verified.Wasi.withOpen_closes,
     ``Verified.Wasi.Reflect.withOpen_rel,
     ``Verified.Wasi.Reflect.withOpen_rel_unit]
   for theoremName in theorems do
