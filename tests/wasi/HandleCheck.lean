@@ -5,8 +5,10 @@ check of hand-written commands: it refuses `fd_close` and `path_open` outside a 
 `.handle` argument bound to a word other than 3, and a helper call whose argument for a marked
 parameter is not a marked variable, and it accepts a `.handle` argument bound to 3, a helper call
 with a marked variable, and a bracket nested in the body of another, whose inner open takes the
-outer handle.  The theorems of the check, of `withOpen`'s reflection, and of the trace corollary
-use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+outer handle.  It accepts an `fd_read` and a `poll_oneoff` whose handle argument, the descriptor of
+the iovec call and the handle field of the read subscription, is a marked variable, and refuses
+both with an unmarked one.  The theorems of the check, of `withOpen`'s reflection, and of the
+trace corollary use only `propext`, `Classical.choice`, and `Quot.sound`. -/
 
 namespace HandleCheckTest
 
@@ -72,6 +74,27 @@ example : (Command.bind (Command.ret (Expr.word 5)) (sync .here) :
 /-- A `.handle` argument bound to the word 3, `Handle.preopened`. -/
 example : (Command.bind (Command.ret (Expr.word 3)) (sync .here) :
     Command [] [] [] (.value .word)).handleCheck [] .plain [] = true := by decide +kernel
+
+/-- `fd_read` of the marked directory. -/
+example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRead .iovecRead
+    [.there .here, .here] [] : Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck
+      [] .plain [false, true, false] = true := by decide +kernel
+
+/-- `fd_read` of an unmarked word. -/
+example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRead .iovecRead
+    [.here, .here] [] : Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck
+      [] .plain [false, true, false] = false := by decide +kernel
+
+/-- A read subscription of the marked directory. -/
+example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .poll
+    [.there .here, .here, .here] [] : Command [] [] outer (.value SysForm.poll.ty)).handleCheck
+      [] .plain [false, true, false] = true := by decide +kernel
+
+/-- A read subscription of an unmarked word, whose clock words are the marked directory. -/
+example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .poll
+    [.here, .there .here, .there .here] [] :
+    Command [] [] outer (.value SysForm.poll.ty)).handleCheck
+      [] .plain [false, true, false] = false := by decide +kernel
 
 /-- A helper whose parameter is marked. -/
 abbrev helper : EffectSig := ⟨"helper", [.word], [.borrowed], .value .word⟩
