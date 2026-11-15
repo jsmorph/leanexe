@@ -363,6 +363,17 @@ def check_records(types, name, records):
     return failures
 
 
+# The strides of the arrays of poll_oneoff, (size, alignment) of a subscription and of an event,
+# which the Lean definitions use as constants and the kernel tests of the nested layout state.
+STRIDES = {"$subscription": (48, 8), "$event": (32, 8)}
+
+
+def check_strides(types):
+    """The failures of the strides of poll_oneoff's arrays against the witx layout."""
+    return [f"{name}: stride {stride}, independent layout {layout(types, name)}"
+            for name, stride in STRIDES.items() if layout(types, name) != stride]
+
+
 def check_events(types, form):
     """The failures of `eventFields` of `form`, the text of Verified/Wasi/SysForm.lean."""
     listed = re.search(r"def eventFields : List \(Nat × Nat\) :=\s*\[([^\]]*)\]", form)
@@ -423,6 +434,7 @@ def main():
             failures.append(f"{name}: subscriptions without records")
     if "subs" in expected.get("poll_oneoff", []):
         failures += check_events(types, Path("Verified/Wasi/SysForm.lean").read_text())
+        failures += check_strides(types)
     for failure in failures:
         print(failure)
     failed = bool(failures)
