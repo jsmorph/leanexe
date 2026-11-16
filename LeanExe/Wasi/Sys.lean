@@ -73,16 +73,16 @@ structure Handle where
 def Handle.preopened : Handle := ⟨3⟩
 
 /-- `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` calls
-`path_open` for `path` under `dir`.  On a nonzero errno it runs `onError errno`.  The errno is the
-host's, or, without a call, that of the first argument that `Call.pathOpen` rejects, in the order
-of the arguments: 61 (`overflow`) for a `dir`, `dirflags`, `oflags`, or `fdflags` of `2^32` or
-more and for a `path` of `2^32` bytes or more, and 28 (`inval`) for flags with a bit outside
-their masks: `dirflags` outside `0x1`, `oflags` outside `0xf`, `rightsBase` and
-`rightsInheriting` outside `0x3fffffff`, and `fdflags` outside `0x1f`.  Otherwise it runs `body`
-with the new descriptor, and when `body` returns, it calls `fd_close` on the descriptor, drops the
-errno of `fd_close`, and returns `body`'s result.  A body that exits or traps ends the process with
-the descriptor open, and Wasmtime closes it at exit.  Programs open and close descriptors only
-through `withOpen`.
+`path_open` for `path` under `dir`.  On a nonzero errno it runs `onError errno` and returns its
+result with the word 0.  The errno is the host's, or, without a call, that of the first argument
+that `Call.pathOpen` rejects, in the order of the arguments: 61 (`overflow`) for a `dir`,
+`dirflags`, `oflags`, or `fdflags` of `2^32` or more and for a `path` of `2^32` bytes or more, and
+28 (`inval`) for flags with a bit outside their masks: `dirflags` outside `0x1`, `oflags` outside
+`0xf`, `rightsBase` and `rightsInheriting` outside `0x3fffffff`, and `fdflags` outside `0x1f`.
+Otherwise it runs `body` with the new descriptor, and when `body` returns, it calls `fd_close` on
+the descriptor and returns `body`'s result with the errno of `fd_close`.  A body that exits or
+traps ends the process with the descriptor open, and Wasmtime closes it at exit.  Programs open
+and close descriptors only through `withOpen`.
 
 `verified_compile_wasi` reflects `withOpen` as one shape of the existing commands, which
 `Verified.Wasi.Command.HandleCheck` recognizes.  With the argument variables `d`, `f`, `o`, `b`,
@@ -91,23 +91,25 @@ through `withOpen`.
 ```
 bind (sys Call.pathOpen (.flat 1 false) [d, f, o, b, i, g] [p])
   (ite (cmp .ne (proj (var 0) (fst here)) (word 0))
-    onError'
+    (bind onError' (ret (mk (var 0) (word 0))))
     (bind (ret (proj (var 0) (snd here)))
-      (bind body' (bind (sys Call.fdClose (.flat 0 false) [var 1] []) (ret (var 1))))))
+      (bind body'
+        (bind (sys Call.fdClose (.flat 0 false) [var 1] []) (ret (mk (var 1) (var 0)))))))
 ```
 
 where `onError'` is the reflection of `onError` applied to the errno, the first component of the
 open's result in variable 0, and `body'` the reflection of `body` applied to the handle in
-variable 0.  When the result type is `Unit`, the close takes `var 0`, since `body'` binds no
-result, and `unit` takes the place of `ret (var 1)`. -/
+variable 0.  The pairs are `mk` when `α` is an element of the source language, a word, a `Bool`, a
+float, or a tuple of these, and `pair` otherwise.  `α` must have a source type, so the compiler
+refuses a body that returns `Unit`. -/
 def withOpen {α : Type} (dir : Handle) (dirflags : UInt64) (path : Bytes)
     (oflags rightsBase rightsInheriting fdflags : UInt64) (onError : UInt64 → Action α)
-    (body : Handle → Action α) : Action α :=
+    (body : Handle → Action α) : Action (α × UInt64) :=
   .sys .pathOpen [.word dir.fd, .word dirflags, .bytes path, .word oflags, .word rightsBase,
       .word rightsInheriting, .word fdflags] fun opened =>
-    if opened.errno != 0 then onError opened.errno
+    if opened.errno != 0 then Action.bind (onError opened.errno) fun result => .pure (result, 0)
     else Action.bind (body ⟨opened.word 0⟩) fun result =>
-      .sys .fdClose [.word (opened.word 0)] fun _ => .pure result
+      .sys .fdClose [.word (opened.word 0)] fun closed => .pure (result, closed.errno)
 
 /-- `clock_time_get id precision`: the time of clock `id` in nanoseconds.  The clocks are 0
 (realtime), 1 (monotonic), 2 (process CPU time), and 3 (thread CPU time); an id of 4 or more gives

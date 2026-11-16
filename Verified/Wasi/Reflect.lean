@@ -185,9 +185,11 @@ where
     let nativeType ← actionResultType (← inferType original)
     fromEquation context (← resultShapeOf nativeType) original source equation
 
-  /-- `withOpen` as the expansion that `withOpen_rel` and `withOpen_rel_unit` relate to it: the
+  /-- `withOpen` as the expansion that `withOpen_rel_mk` or `withOpen_rel_pair` relates to it: the
   arguments other than the continuations bound to variables first, then the open, the error
-  continuation applied to the errno of the open's result, and the body applied to the handle. -/
+  continuation applied to the errno of the open's result, and the body applied to the handle,
+  each followed by the pair of its result with a word, `mk` when the result is an element and
+  `pair` otherwise, as `shapeOf` gives the type of the pair. -/
   reflectWithOpen (original : Lean.Expr) : MetaM Reflection := do
     let nativeArgs := original.getAppArgs
     unless nativeArgs.size == 10 do
@@ -202,6 +204,8 @@ where
     let proofs ← reflected.mapM (userProof context.pure)
     let onErrorNative := nativeArgs[8]!
     let bodyNative := nativeArgs[9]!
+    let valueType := nativeArgs[0]!
+    let valueShape ← shapeOf valueType
     let nativeType ← actionResultType (← inferType original)
     let shape ← resultShapeOf nativeType
     let word := mkConst ``UInt64
@@ -218,12 +222,12 @@ where
             throwError "verified_compile_wasi: a withOpen continuation escaped its source context"
         let onErrorProof ← mkLambdaFVars #[opened] onError.proof
         let bodyProof ← mkLambdaFVars #[opened, handle] body.proof
-        let equation := match shape with
-          | .unit => ``withOpen_rel_unit
-          | .value _ => ``withOpen_rel
+        let equation := match valueShape.ty with
+          | .elem _ => ``withOpen_rel_mk
+          | _ => ``withOpen_rel_pair
         let proof ← mkAppM equation (#[context.pure.funs, context.funs, context.pure.env] ++
           places.toArray ++ #[onError.src, body.src] ++ data.toArray ++
-          #[onErrorNative, bodyNative, ← shape.fn nativeType] ++ proofs.toArray ++
+          #[onErrorNative, bodyNative, ← valueShape.fn valueType] ++ proofs.toArray ++
           #[onErrorProof, bodyProof])
         let type ← instantiateMVars (← inferType proof)
         let some denoted := type.find? (·.isAppOfArity ``Command.denote 8)

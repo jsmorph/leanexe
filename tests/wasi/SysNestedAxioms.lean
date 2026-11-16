@@ -50,6 +50,7 @@ elab "check_sys_nested_axioms" : command => do
     ``Verified.Examples.WasiSysNested.command.handlesChecked,
     ``Verified.Examples.WasiSysNested.command.handles,
     ``Verified.Wasi.Reflect.withOpen_rel,
+    ``Verified.Wasi.Reflect.withOpen_rel_mk,
     ``Verified.Examples.WasiSysNested.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

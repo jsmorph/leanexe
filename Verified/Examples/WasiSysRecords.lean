@@ -6,8 +6,9 @@ creates there, each as eight little-endian bytes.  `main` writes the fields of
 opens the file `f` with `withOpen`, created in append mode, and in the bracket's body sets its size
 to `2^32 + 5` with `fdFilestatSetSize`, writes the fields of `fdFdstatGet` and `fdFilestatGet` of
 the file and of `pathFilestatGet .preopened 0 "f"`, and returns 0; the bracket closes the file
-when the body returns.  After the bracket it removes the file.  An errno of the open or of a call
-ends the run with that errno as its status, and the status is 0 otherwise. -/
+when the body returns.  After the bracket it removes the file.  An errno of the open or of a call,
+the bracket's close included, ends the run with that errno as its status, and the status is 0
+otherwise. -/
 
 namespace Verified.Examples.WasiSysRecords
 
@@ -83,8 +84,10 @@ def main : Action UInt64 := do
                     let _ ← writeStdoutSome (wordBytes pathStatus.mtim)
                     let _ ← writeStdoutSome (wordBytes pathStatus.ctim)
                     pure 0
-        if written != 0 then
-          pure written
+        if written.1 != 0 then
+          pure written.1
+        else if written.2 != 0 then
+          pure written.2
         else
           pathUnlinkFile .preopened bytes![102]
 

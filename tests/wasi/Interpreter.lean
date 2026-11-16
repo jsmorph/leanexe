@@ -276,14 +276,16 @@ private def words (args : List LeanExe.Wasi.Arg) : List UInt64 :=
     | .word value => some value
     | _ => none
 
-/-- `withOpen` through scripted hosts whose `path_open` returns `errno` and descriptor 7 and whose
-other flat calls return errno 0: on success the body runs with handle 7 and `fd_close` of 7
-follows it, on an errno only the error continuation runs, a body that exits ends the run before
-the close, and a directory of `2^32` gives errno 61 without a host request. -/
+/-- `withOpen` through scripted hosts whose `path_open` returns `errno` and descriptor 7, whose
+`fd_close` returns `closeErrno`, and whose other flat calls return errno 0.  On success the body
+runs with handle 7, `fd_close` of 7 follows it, and the result pairs the body's result with the
+errno of `fd_close`, 0 or 8.  On an errno only the error continuation runs, and the result pairs
+its result with 0.  A body that exits ends the run before the close, and a directory of `2^32`
+gives errno 61 without a host request. -/
 private def brackets : IO Unit := do
   let calls ← IO.mkRef (#[] : Array (String × List UInt64))
   let exits ← IO.mkRef (#[] : Array UInt64)
-  let host (errno : UInt64) : NativeHost :=
+  let host (errno closeErrno : UInt64) : NativeHost :=
     { read := fun _ => pure (.returned 0 Bytes.empty)
       write := fun _ bytes => pure (.returned 0 bytes.size)
       exit := fun code => do
@@ -293,24 +295,29 @@ private def brackets : IO Unit := do
         calls.modify (·.push (call.name, words args))
         if call.name == "path_open" then
           pure (.returned errno [NativeHost.littleEndianBytes 4 7])
+        else if call.name == "fd_close" then pure (.returned closeErrno [])
         else pure (.returned 0 []) }
-  let program (dir : Handle) : Action UInt64 :=
+  let program (dir : Handle) : Action (UInt64 × UInt64) :=
     withOpen dir 0 bytes![102] 1 0 0 0 (fun errno => pure (errno + 100)) fun file => do
       let synced ← fdSync file
       pure (synced + file.fd)
-  returned 7 (← (program .preopened).run (host 0))
-  check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0]), ("fd_sync", [7]),
-    ("fd_close", [7])]) "the calls of a bracket whose open succeeds"
+  let succeeded : Array (String × List UInt64) :=
+    #[("path_open", [3, 0, 1, 0, 0, 0]), ("fd_sync", [7]), ("fd_close", [7])]
+  returned (7, 0) (← (program .preopened).run (host 0 0))
+  check ((← calls.get) == succeeded) "the calls of a bracket whose open succeeds"
   calls.set #[]
-  returned 144 (← (program .preopened).run (host 44))
+  returned (7, 8) (← (program .preopened).run (host 0 8))
+  check ((← calls.get) == succeeded) "the calls of a bracket whose close fails"
+  calls.set #[]
+  returned (144, 0) (← (program .preopened).run (host 44 8))
   check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0])])
     "the calls of a bracket whose open fails"
   calls.set #[]
-  returned 161 (← (program ⟨4294967296⟩).run (host 0))
+  returned (161, 0) (← (program ⟨4294967296⟩).run (host 0 8))
   check ((← calls.get).isEmpty) "a directory of 2^32 reached the host"
-  let exiting : Action UInt64 :=
+  let exiting : Action (UInt64 × UInt64) :=
     withOpen .preopened 0 bytes![102] 1 0 0 0 (fun errno => pure errno) fun _ => exit 5
-  match ← exiting.run (host 0) with
+  match ← exiting.run (host 0 0) with
   | .exited code => check (code == 5) "the exit status of a bracket's body"
   | _ => throw (IO.userError "expected the body's exit")
   check ((← calls.get) == #[("path_open", [3, 0, 1, 0, 0, 0])])

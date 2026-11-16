@@ -456,7 +456,8 @@ theorem Command.returnsBody_handles (pureFuns : Funs pureSigs)
     (effectFuns : EffectFuns effectSigs) {env : Env context} {stack : List UInt64} {bound : Nat}
     (tail : Command pureSigs effectSigs context result) (h : tail.returnsBody bound = true) :
     Action.Handles stack (tail.denote pureFuns effectFuns env) fun _ after => after = stack := by
-  cases tail <;> simp only [Command.returnsBody, Bool.false_eq_true] at h <;> rfl
+  cases tail <;> simp only [Command.returnsBody, Bool.false_eq_true] at h
+  rfl
 
 theorem ResultTy.pair?_bindEnv {result : ResultTy} {value : result.denote} {env : Env context}
     {pair : UInt64 × UInt64} (h : result.pair? value = some pair) :
@@ -737,15 +738,40 @@ theorem EffectProg.bracketRuns {α : Type} (pureFuns : Funs pureSigs)
 
 /-! ## The events of a bracket -/
 
+/-- A run of the error continuation followed by the pair of its result and 0 that returns
+normally is well bracketed from `stack` back to `stack` and returns 0 as its second component. -/
+private theorem errorPair {World : Type} {host : Host World} {stack : List UInt64}
+    {onError : UInt64 → Action α}
+    (hError : ∀ (errno : UInt64) world trace outcome final,
+      Exec host (onError errno) world trace outcome final →
+        ∃ after, WellBracketed stack trace after ∧
+          ∀ value, outcome = .returned value → after = stack)
+    (errno : UInt64) {world : World} {trace : List Event} {value : α × UInt64} {final : World}
+    (run : Exec host (Action.bind (onError errno) fun result => .pure (result, 0)) world trace
+      (.returned value) final) :
+    WellBracketed stack trace stack ∧ value.2 = 0 := by
+  obtain ⟨after, first, middle, rest, errorRun, pureRun, same⟩ := Exec.bind_iff.mp run
+  cases middle with
+  | exited code => obtain ⟨_, outcome, _⟩ := pureRun; cases outcome
+  | trapped message => obtain ⟨_, outcome, _⟩ := pureRun; cases outcome
+  | returned result =>
+    simp only [Continue] at pureRun
+    cases pureRun
+    obtain ⟨_, bracketed, returned⟩ := hError _ _ _ _ _ errorRun
+    rw [returned result rfl] at bracketed
+    subst same
+    exact ⟨by simpa using bracketed, rfl⟩
+
 /-- Every run of `withOpen` that returns normally ends with the bracket's close of the descriptor
-that its open returned, after the events of its body.
+that its open returned, after the events of its body, and returns the errno of that close.
 
 When the open returns errno 0 with descriptor `d`, the trace is the open event, then the events of
 the body, well bracketed from `d :: stack` back to `d :: stack`, and last one `fd_close` event of
-`d`, the bracket's close.  When the open fails, with an errno of the host or one that rejects an
-argument before the call, the trace is the failed open event, if the host was called, followed by
-the events of `onError errno`, well bracketed from `stack` back to `stack`, and the bracket makes no
-close.
+`d`, the bracket's close, and the second component of the returned value is the errno of that
+event's reply.  When the open fails, with an errno of the host or one that rejects an argument
+before the call, the trace is the failed open event, if the host was called, followed by the
+events of `onError errno`, well bracketed from `stack` back to `stack`, the bracket makes no close,
+and the second component of the returned value is 0.
 
 The premises state of the two continuations what `Command.handles_exec` states of a command that
 passes the handle check: in a bracket that the check accepts, the body passes it with the handle
@@ -766,7 +792,7 @@ theorem withOpen_closes {World : Type} {host : Host World} {stack : List UInt64}
       Exec host (onError errno) world trace outcome final →
         ∃ after, WellBracketed stack trace after ∧
           ∀ value, outcome = .returned value → after = stack)
-    {world : World} {trace : List Event} {value : α} {final : World}
+    {world : World} {trace : List Event} {value : α × UInt64} {final : World}
     (run : Exec host (withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError
       body) world trace (.returned value) final) :
     (∃ outputs middle closeErrno committed,
@@ -774,20 +800,21 @@ theorem withOpen_closes {World : Type} {host : Host World} {stack : List UInt64}
           .word rightsBase, .word rightsInheriting, .word fdflags] (.returned 0 outputs) ::
         (middle ++ [.sys Call.fdClose [.word (openedDescriptor outputs)]
           (.returned closeErrno committed)]) ∧
-      WellBracketed (openedDescriptor outputs :: stack) middle (openedDescriptor outputs :: stack))
+      WellBracketed (openedDescriptor outputs :: stack) middle (openedDescriptor outputs :: stack) ∧
+      value.2 = closeErrno)
     ∨
     (∃ errno rest, errno ≠ 0 ∧
       (trace = rest ∨ ∃ outputs, trace = .sys Call.pathOpen [.word dir.fd, .word dirflags,
           .bytes path, .word oflags, .word rightsBase, .word rightsInheriting, .word fdflags]
           (.returned errno outputs) :: rest) ∧
-      WellBracketed stack rest stack) := by
+      WellBracketed stack rest stack ∧ value.2 = 0) := by
   unfold withOpen at run
   cases run with
   | sys_reject rejected next =>
     have off : ((Call.pathOpen.reject _ != 0) = true) = True := eq_true (bne_iff_ne.mpr rejected)
     simp only [off, ↓reduceIte] at next
-    obtain ⟨after, bracketed, returned⟩ := hError _ _ _ _ _ next
-    exact .inr ⟨_, trace, rejected, .inl rfl, returned value rfl ▸ bracketed⟩
+    obtain ⟨bracketed, second⟩ := errorPair hError _ next
+    exact .inr ⟨_, trace, rejected, .inl rfl, bracketed, second⟩
   | sys_return accepted reply next =>
     rename_i errno committed
     by_cases failed : errno = 0
@@ -812,11 +839,11 @@ theorem withOpen_closes {World : Type} {host : Host World} {stack : List UInt64}
         | sys_return _ _ last =>
           cases last
           subst same
-          exact .inl ⟨committed, first, _, _, rfl, bracketed⟩
+          exact .inl ⟨committed, first, _, _, rfl, bracketed, rfl⟩
     · have hReply : sysReply errno committed = ⟨errno, []⟩ := by simp [sysReply, failed]
       have off : ((errno != 0) = true) = True := eq_true (bne_iff_ne.mpr failed)
       simp only [hReply, off, ↓reduceIte] at next
-      obtain ⟨after, bracketed, returned⟩ := hError _ _ _ _ _ next
-      exact .inr ⟨errno, _, failed, .inr ⟨committed, rfl⟩, returned value rfl ▸ bracketed⟩
+      obtain ⟨bracketed, second⟩ := errorPair hError _ next
+      exact .inr ⟨errno, _, failed, .inr ⟨committed, rfl⟩, bracketed, second⟩
 
 end Verified.Wasi

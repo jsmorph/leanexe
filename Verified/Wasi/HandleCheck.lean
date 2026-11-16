@@ -26,9 +26,10 @@ with one input, and whose second command has the shape that the docstring of
 `opened` is the test of the errno, the first component of variable 0, against the word 0, with
 the error continuation and the success branch; `success` binds the handle, the second component of
 variable 0; `body` reads the body with the handle marked; and `closing` is the close,
-`Call.fdClose` in the form `.flat 0 false` of the handle's variable, followed by `ret` of the
-body's result, or `unit` when the body has none.  A command that differs from a stage's shape fails
-the check. -/
+`Call.fdClose` in the form `.flat 0 false` of the handle's variable, followed by `ret` of the pair,
+`mk` or `pair`, of the body's result and the close's errno.  The error continuation, with the pair
+of its result and 0 after it, passes as a command outside a bracket.  A command that differs from
+a stage's shape fails the check. -/
 
 namespace Verified
 
@@ -65,6 +66,13 @@ def Expr.isVar (index : Nat) : Expr pureSigs context type → Bool
   | .var x => x.index == index
   | _ => false
 
+/-- Whether the expression is the pair of the variables with indices `first` and `second`, built
+with `mk` or `pair`. -/
+def Expr.isVarPair (first second : Nat) : Expr pureSigs context type → Bool
+  | .mk left right => left.isVar first && right.isVar second
+  | .pair left right => left.isVar first && right.isVar second
+  | _ => false
+
 /-- Whether the expression is the bracket's test: the errno of variable 0 differs from 0. -/
 def Expr.isErrnoTest : Expr pureSigs context type → Bool
   | .cmp op left right => op == .ne && left.isOpenedPart true && right.isWord 0
@@ -80,7 +88,7 @@ variable {pureSigs : List Sig} {effectSigs : List EffectSig}
 
 /-- The stage of a bracket at which the check reads a command, or `plain` outside the stages.
 `closing bound` holds the index of the handle's variable, 1 after a body with a result and 0 after
-one without. -/
+one without, which the check refuses. -/
 inductive Stage where
   | plain
   | opened
@@ -170,12 +178,11 @@ def Command.isClose (bound : Nat) : Command pureSigs effectSigs context result �
       args.map Var.index == [bound]
   | _ => false
 
-/-- Whether the last command of a bracket returns the body's result: `ret` of variable 1, which
-holds the result after the close's errno, when the handle's variable had index 1, and `unit` when
-it had index 0. -/
+/-- Whether the last command of a bracket returns the body's result with the close's errno: `ret`
+of the pair of variable 1, the body's result, and variable 0, the errno, when the handle's
+variable had index 1, after a body with a result. -/
 def Command.returnsBody (bound : Nat) : Command pureSigs effectSigs context result → Bool
-  | .ret value => bound == 1 && value.isVar 1
-  | .unit => bound == 0
+  | .ret value => bound == 1 && value.isVarPair 1 0
   | _ => false
 
 /-- The marks of the parameters of the helper `callee`, from the marks of the helpers in the order

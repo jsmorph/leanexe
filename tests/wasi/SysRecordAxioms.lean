@@ -33,6 +33,7 @@ elab "check_sys_record_axioms" : command => do
     ``Verified.Examples.WasiSysRecords.command.handlesChecked,
     ``Verified.Examples.WasiSysRecords.command.handles,
     ``Verified.Wasi.Reflect.withOpen_rel,
+    ``Verified.Wasi.Reflect.withOpen_rel_mk,
     ``Verified.Examples.WasiSysRecords.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

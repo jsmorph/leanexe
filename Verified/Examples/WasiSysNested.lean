@@ -9,8 +9,8 @@ It then polls the monotonic clock with timeout 0 with `pollClock` and, after `fd
 position back to 0, the file's readiness to read with `pollRead`, with a monotonic timeout of one
 second, and writes the count and the first event's userdata, error, type, `nbytes`, and flags of
 each poll as eight little-endian bytes each.  The bracket closes the file when the body returns,
-and `main` then removes the file.  An errno of the open or of a call ends the run with that errno
-as its status, and the status is 0 otherwise. -/
+and `main` then removes the file.  An errno of the open or of a call, the bracket's close
+included, ends the run with that errno as its status, and the status is 0 otherwise. -/
 
 namespace Verified.Examples.WasiSysNested
 
@@ -66,8 +66,10 @@ def main : Action UInt64 := do
                     let _ ← writeStdoutSome (wordBytes ready.nbytes)
                     let _ ← writeStdoutSome (wordBytes ready.flags)
                     pure 0
-  if done != 0 then
-    pure done
+  if done.1 != 0 then
+    pure done.1
+  else if done.2 != 0 then
+    pure done.2
   else
     pathUnlinkFile .preopened bytes![110]
 
