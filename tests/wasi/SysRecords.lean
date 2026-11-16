@@ -1,11 +1,15 @@
 import LeanExe.Wasi.SysCalls
 import LeanExe.Wasi.Interpreter
+import Verified.Examples.WasiSysRecords
 
 /-! Native runs of the typed functions with a record result through a scripted host.  The host
 replies to each call with errno 0 and a record whose byte `i` is `i + 1`, so that every byte of the
 record differs; each field must be the little-endian value of the bytes at its witx offset and
 width, written below as constants.  A reply with an errno leaves every field 0, and a record one
-byte short raises an `IO.Error`. -/
+byte short raises an `IO.Error`.  The `main` of `Verified.Examples.WasiSysRecords`, run against a
+host whose `fd_close` returns errno 8, returns the status 8, and 5 when `fd_filestat_set_size` in
+the bracket's body also returns errno 5, so that the body's errno precedes the close's; neither
+run makes a `path_unlink_file` call. -/
 
 open LeanExe LeanExe.Wasi
 
@@ -28,6 +32,29 @@ private def scripted (calls : IO.Ref (Array (String × List Arg))) (errno : UInt
   sys call args := do
     calls.modify (·.push (call.name, args))
     pure (.returned errno [record])
+
+/-- A host that gives `path_open` descriptor 7 and answers `fd_close` with errno 8, the call named
+`failing` with errno 5, and every other call with errno 0, each with zero outputs of the sizes
+that the call requires, recording each call's name. -/
+private def failingClose (calls : IO.Ref (Array String)) (failing : String) : NativeHost where
+  read _ := pure (.returned 0 Bytes.empty)
+  write _ bytes := pure (.returned 0 bytes.size)
+  exit _ := pure (.ok ())
+  sys call args := do
+    calls.modify (·.push call.name)
+    let errno : UInt64 :=
+      if call.name == "fd_close" then 8 else if call.name == failing then 5 else 0
+    let outputs : List Bytes :=
+      (call.outputSizes [] args).map fun size => ⟨⟨Array.replicate size 0⟩⟩
+    if call.name == "path_open" then pure (.returned 0 [bytes![7, 0, 0, 0]])
+    else pure (.returned errno outputs)
+
+/-- The status and the calls of the example's `main` against `failingClose failing`. -/
+private def runExample (failing : String) : IO (UInt64 × Array String) := do
+  let calls ← IO.mkRef (#[] : Array String)
+  match ← Verified.Examples.WasiSysRecords.main.run (failingClose calls failing) with
+  | .returned status => pure (status, ← calls.get)
+  | _ => throw (IO.userError "the example did not return")
 
 private def fields {α : Type} (action : Action α) (host : NativeHost) (project : α → List UInt64) :
     IO (List UInt64) := do
@@ -79,7 +106,12 @@ def main : IO Unit := do
     pure false
   catch _ => pure true
   check shortCaught "a record one byte short was accepted"
-  IO.println "record call native cases passed: 7"
+  for (failing, expected) in ([("", 8), ("fd_filestat_set_size", 5)] : List (String × UInt64)) do
+    let (status, made) ← runExample failing
+    check (status == expected && made.back? == some "fd_close" &&
+        !made.contains "path_unlink_file")
+      s!"the example after a failed close and {failing}: status {status}, calls {made}"
+  IO.println "record call native cases passed: 9"
 
 end SysRecordsTest
 

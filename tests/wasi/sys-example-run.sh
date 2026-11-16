@@ -11,23 +11,24 @@
 # module with a fresh preopened directory: the run must exit with status 0 and leave the directory
 # empty.  It then builds the example with record calls, Verified.Examples.WasiSysRecords, checks its
 # axioms with tests/wasi/SysRecordAxioms.lean, runs the native cases of the record typed functions
-# in tests/wasi/SysRecords.lean, and runs its module with a fresh preopened directory.  The run must
-# exit with status 0, leave the directory empty, and write the fields of its records as 34 words of
-# 8 little-endian bytes, among them the prestat tag 0 and name length 1, the directory's file type
-# 3 in its fdstat and its filestat, the file type 4 and the append flag 1 in the created file's
-# fdstat, and the file type 4 and the size 2^32 + 5 in its filestat, which must be the same through
-# the descriptor and through the path.  It then builds the environment example,
-# Verified.Examples.WasiSysEnviron, checks its axioms with tests/wasi/SysEnviron.lean, and runs its
-# module with two environment variables and with none: each run must exit with status 0 and write
-# the count and size that environ returns as 8 little-endian bytes each and then the variables,
-# each followed by a zero byte.  Last it builds the example with iovec and poll calls,
-# Verified.Examples.WasiSysNested, checks its axioms with tests/wasi/SysNestedAxioms.lean, runs
-# the native cases of the nested typed functions in tests/wasi/SysNested.lean, and runs its module
-# with a fresh preopened directory.  The run must exit with status 0, leave the directory empty,
-# and write abcdefXY, which fd_pread read, XY, which fd_read read, and then as 8 little-endian
-# bytes each the count, userdata, error, type, nbytes, and flags of the clock poll, 1, 1, 0, 0,
-# 0, and 0, and of the read poll, 1, 1, 0, 1, 1, and 0: Wasmtime 44 reports nbytes 1 for the read
-# event of a file.
+# and of the example's main against a host whose fd_close fails in tests/wasi/SysRecords.lean, and
+# runs its module with a fresh preopened directory.  The run must exit with status 0, leave the
+# directory empty, and write the fields of its records as 34 words of 8 little-endian bytes, among
+# them the prestat tag 0 and name length 1, the directory's file type 3 in its fdstat and its
+# filestat, the file type 4 and the append flag 1 in the created file's fdstat, and the file type 4
+# and the size 2^32 + 5 in its filestat, which must be the same through the descriptor and through
+# the path.  It then builds the environment example, Verified.Examples.WasiSysEnviron, checks its
+# axioms with tests/wasi/SysEnviron.lean, and runs its module with two environment variables and
+# with none: each run must exit with status 0 and write the count and size that environ returns as 8
+# little-endian bytes each and then the variables, each followed by a zero byte.  Last it builds the
+# example with iovec and poll calls, Verified.Examples.WasiSysNested, checks its axioms with
+# tests/wasi/SysNestedAxioms.lean, runs the native cases of the nested typed functions and of the
+# example's main against a host whose fd_close fails in tests/wasi/SysNested.lean, and runs its
+# module with a fresh preopened directory.  The run must exit with status 0, leave the directory
+# empty, and write abcdefXY, which fd_pread read, XY, which fd_read read, and then as 8
+# little-endian bytes each the count, userdata, error, type, nbytes, and flags of the clock poll, 1,
+# 1, 0, 0, 0, and 0, and of the read poll, 1, 1, 0, 1, 1, and 0: Wasmtime 44 reports nbytes 1 for
+# the read event of a file.
 set -eu
 set -f
 if ! command -v wasm-tools > /dev/null 2>&1; then

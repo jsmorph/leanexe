@@ -31,6 +31,7 @@ def sysOperation? (function : Name) : Option SysOperation :=
 
 partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection := do
   let expression ← projReduce expression
+  if expression.isAppOf ``LeanExe.Wasi.withOpen then return ← reflectWithOpen expression
   let nativeType ← actionResultType (← inferType expression)
   let result ← resultShapeOf nativeType
   if let some reflected ← reflectCall? expression then return reflected
@@ -111,8 +112,6 @@ partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection 
       #[context.pure.funs, context.funs, context.pure.env, reflected.src, code,
         ← result.fn nativeType, ← userProof context.pure reflected]
     return ← fromEquation context result expression source equation
-  if function == ``LeanExe.Wasi.withOpen then
-    return ← reflectWithOpen expression
   if let some operation := sysOperation? function then
     return ← reflectSys operation expression
   match function, args with
@@ -189,11 +188,17 @@ where
   arguments other than the continuations bound to variables first, then the open, the error
   continuation applied to the errno of the open's result, and the body applied to the handle,
   each followed by the pair of its result with a word, `mk` when the result is an element and
-  `pair` otherwise, as `shapeOf` gives the type of the pair. -/
+  `pair` otherwise, as `shapeOf` gives the type of the pair.  `Unit × UInt64` has no source type,
+  since `Ty` has no unit, so this function refuses a body that returns `Unit`.  `reflect` calls it
+  before it reads the type of the pair, so that the refusal names `withOpen`. -/
   reflectWithOpen (original : Lean.Expr) : MetaM Reflection := do
     let nativeArgs := original.getAppArgs
     unless nativeArgs.size == 10 do
       throwError "verified_compile_wasi: withOpen requires all its arguments"
+    let valueType := nativeArgs[0]!
+    if ← isDefEq valueType (mkConst ``Unit) then
+      throwError "verified_compile_wasi: the body of withOpen must return a value, and it \
+        returns Unit"
     let data := (nativeArgs.extract 1 8).toList
     let reflected ← data.mapM (pureOperand context)
     let bind := reflected.map fun argument => !argument.src.isAppOf ``Expr.var
@@ -204,7 +209,6 @@ where
     let proofs ← reflected.mapM (userProof context.pure)
     let onErrorNative := nativeArgs[8]!
     let bodyNative := nativeArgs[9]!
-    let valueType := nativeArgs[0]!
     let valueShape ← shapeOf valueType
     let nativeType ← actionResultType (← inferType original)
     let shape ← resultShapeOf nativeType

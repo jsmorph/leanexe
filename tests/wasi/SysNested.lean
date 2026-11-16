@@ -1,5 +1,6 @@
 import LeanExe.Wasi.SysCalls
 import LeanExe.Wasi.Interpreter
+import Verified.Examples.WasiSysNested
 
 /-! Native runs of the typed functions of `fd_read`, `fd_pread`, `fd_write`, `fd_pwrite`, and
 `poll_oneoff` through a scripted host.  The host replies to each call with an errno and the outputs
@@ -8,7 +9,9 @@ buffer of the count that the host returns, all of the buffer when the count exce
 and a poll returns the count and the fields of the first event at their witx offsets and widths,
 written below as constants.  An argument that does not fit its field gives errno 61 without a call,
 a reply with an errno leaves every result 0 or empty, and an event array one byte short raises an
-`IO.Error`. -/
+`IO.Error`.  The `main` of `Verified.Examples.WasiSysNested`, run against a host whose `fd_close`
+returns errno 8, returns the status 8, and 5 when `fd_write` in the bracket's body also returns
+errno 5, so that the body's errno precedes the close's; neither run removes the file. -/
 
 open LeanExe LeanExe.Wasi
 
@@ -35,6 +38,22 @@ private def scripted (calls : IO.Ref (Array (String × List Arg))) (errno : UInt
   sys call args := do
     calls.modify (·.push (call.name, args))
     pure (.returned errno outputs)
+
+/-- A host that gives `path_open` descriptor 7 and answers `fd_close` with errno 8, the call named
+`failing` with errno 5, and every other call with errno 0, each with zero outputs of the sizes
+that the call requires, recording each call's name. -/
+private def failingClose (calls : IO.Ref (Array String)) (failing : String) : NativeHost where
+  read _ := pure (.returned 0 Bytes.empty)
+  write _ bytes := pure (.returned 0 bytes.size)
+  exit _ := pure (.ok ())
+  sys call args := do
+    calls.modify (·.push call.name)
+    let errno : UInt64 :=
+      if call.name == "fd_close" then 8 else if call.name == failing then 5 else 0
+    let outputs : List Bytes :=
+      (call.outputSizes [] args).map fun size => ⟨⟨Array.replicate size 0⟩⟩
+    if call.name == "path_open" then pure (.returned 0 [bytes![7, 0, 0, 0]])
+    else pure (.returned errno outputs)
 
 private def result {α : Type} (action : Action α) (host : NativeHost) : IO α := do
   match ← action.run host with
@@ -117,7 +136,14 @@ def main : IO Unit := do
     pure false
   catch _ => pure true
   check shortCaught "an event array one byte short was accepted"
-  IO.println "nested call native cases passed: 15"
+  for (failing, expected) in ([("", 8), ("fd_write", 5)] : List (String × UInt64)) do
+    let exampleCalls ← IO.mkRef (#[] : Array String)
+    let status ← result Verified.Examples.WasiSysNested.main (failingClose exampleCalls failing)
+    let made ← exampleCalls.get
+    check (status == expected && made.back? == some "fd_close" &&
+        !made.contains "path_unlink_file")
+      s!"the example after a failed close and {failing}: status {status}, calls {made}"
+  IO.println "nested call native cases passed: 17"
 
 end SysNestedTest
 

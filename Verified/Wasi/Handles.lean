@@ -354,8 +354,8 @@ def StageHandles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
         EnvMarked marks env (word :: stack) →
         Action.Handles (word :: stack) (command.denote pureFuns effectFuns env)
           fun _ after => after = stack
-  | .closing bound, command => ∀ (env : Env context) (stack : List UInt64) (word : UInt64),
-      env.at? Ty.word? bound = some word → word.toNat < 2 ^ 32 →
+  | .closing, command => ∀ (env : Env context) (stack : List UInt64) (word : UInt64),
+      env.at? Ty.word? 1 = some word → word.toNat < 2 ^ 32 →
         Action.Handles (word :: stack) (command.denote pureFuns effectFuns env)
           fun _ after => after = stack
 
@@ -427,9 +427,9 @@ theorem Command.isHandleRet_handles (pureFuns : Funs pureSigs)
     (by simpa [ResultTy.word?] using Expr.isOpenedPart_denote pureFuns _ env h pair)
 
 theorem Command.isClose_handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    {env : Env context} {stack : List UInt64} {word : UInt64} {bound : Nat}
-    (first : Command pureSigs effectSigs context intermediate) (h : first.isClose bound = true)
-    (held : env.at? Ty.word? bound = some word) (small : word.toNat < 2 ^ 32) :
+    {env : Env context} {stack : List UInt64} {word : UInt64}
+    (first : Command pureSigs effectSigs context intermediate) (h : first.isClose = true)
+    (held : env.at? Ty.word? 1 = some word) (small : word.toNat < 2 ^ 32) :
     Action.Handles (word :: stack) (first.denote pureFuns effectFuns env)
       fun _ after => after = stack := by
   cases first <;> simp only [Command.isClose, Bool.false_eq_true] at h
@@ -453,8 +453,8 @@ theorem Command.isClose_handles (pureFuns : Funs pureSigs) (effectFuns : EffectF
       rfl
 
 theorem Command.returnsBody_handles (pureFuns : Funs pureSigs)
-    (effectFuns : EffectFuns effectSigs) {env : Env context} {stack : List UInt64} {bound : Nat}
-    (tail : Command pureSigs effectSigs context result) (h : tail.returnsBody bound = true) :
+    (effectFuns : EffectFuns effectSigs) {env : Env context} {stack : List UInt64}
+    (tail : Command pureSigs effectSigs context result) (h : tail.returnsBody = true) :
     Action.Handles stack (tail.denote pureFuns effectFuns env) fun _ after => after = stack := by
   cases tail <;> simp only [Command.returnsBody, Bool.false_eq_true] at h
   rfl
@@ -480,10 +480,6 @@ theorem ResultTy.word?_bindEnv {result : ResultTy} {value : result.denote} {env 
   cases result with
   | unit => simp [ResultTy.word?] at h
   | value _ => exact h
-
-theorem ResultTy.bound_bindEnv (result : ResultTy) (value : result.denote) (env : Env context) :
-    (result.bindEnv value env).at? Ty.word? result.bound = env.at? Ty.word? 0 := by
-  cases result <;> rfl
 
 /-- The meaning of a command that passes the check at a stage satisfies that stage's
 `StageHandles`, given helpers that keep the discipline. -/
@@ -554,12 +550,15 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     | body =>
       intro env stack word held small hEnv
       simp only [Command.handleCheck, Bool.and_eq_true] at h
-      refine Action.Handles.bind_iff.mpr ?_
-      refine (ihFirst .plain marks h.1 env (word :: stack) hEnv).mono ?_
-      rintro value after rfl
-      exact ihNext (.closing intermediate.bound) _ h.2 _ stack word
-        (by rw [ResultTy.bound_bindEnv]; exact held) small
-    | closing bound =>
+      obtain ⟨⟨hasValue, hBody⟩, hRest⟩ := h
+      cases intermediate with
+      | unit => simp [ResultTy.hasValue] at hasValue
+      | value _ =>
+        refine Action.Handles.bind_iff.mpr ?_
+        refine (ihFirst .plain marks hBody env (word :: stack) hEnv).mono ?_
+        rintro value after rfl
+        exact ihNext .closing _ hRest _ stack word held small
+    | closing =>
       intro env stack word held small
       simp only [Command.handleCheck, Bool.and_eq_true] at h
       refine Action.Handles.bind_iff.mpr ?_
@@ -589,7 +588,7 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
         show Action.Handles _ (bif condition.denote pureFuns env then _ else _) _
         rw [test]
         exact ihNo .success marks h.2 env stack word pair small hEnv
-    | success | body | closing _ => simp only [Command.handleCheck, Bool.false_eq_true] at h
+    | success | body | closing => simp only [Command.handleCheck, Bool.false_eq_true] at h
   | @call signature _ callee args =>
     intro stage marks h
     cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
@@ -762,8 +761,9 @@ private theorem errorPair {World : Type} {host : Host World} {stack : List UInt6
     subst same
     exact ⟨by simpa using bracketed, rfl⟩
 
-/-- Every run of `withOpen` that returns normally ends with the bracket's close of the descriptor
-that its open returned, after the events of its body, and returns the errno of that close.
+/-- Every run of `withOpen` that returns normally after a successful open ends with the bracket's
+close of the descriptor that the open returned, after the events of its body, and returns that
+close's errno.
 
 When the open returns errno 0 with descriptor `d`, the trace is the open event, then the events of
 the body, well bracketed from `d :: stack` back to `d :: stack`, and last one `fd_close` event of

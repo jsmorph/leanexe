@@ -11,11 +11,12 @@ both with an unmarked one.  It refuses `fd_renumber`, hand-written descriptions 
 `fd_close`, and `poll_oneoff` that declare a descriptor a word, and brackets without the close,
 with the close of the directory, with a copied handle, with the handle used after the close, with
 the branches swapped, with a close inside the body, with the failed descriptor used in the error
-continuation, and with a last command that returns the body's result without the close's errno.
-It accepts a bracket whose body returns bytes, whose pairs are `pair`, and `verified_compile_wasi`
-compiles a program with such a bracket.  The theorems of the check, of `withOpen`'s reflection and
-its runs, of that program, and of the trace corollary use only `propext`, `Classical.choice`, and
-`Quot.sound`. -/
+continuation, and with a last command that returns the body's result without the close's errno,
+pairs it with 0 or with the handle's word, or swaps the pair's components.  It accepts a bracket
+whose body returns bytes, whose pairs are `pair`, and `verified_compile_wasi` compiles a program
+with such a bracket and refuses one whose body returns `Unit`.  The theorems of the check, of
+`withOpen`'s reflection and its runs, of the compiled program, and of the trace corollary use only
+`propext`, `Classical.choice`, and `Quot.sound`. -/
 
 namespace HandleCheckTest
 
@@ -108,7 +109,7 @@ example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .
     Command [] [] outer (.value SysForm.poll.ty)).handleCheck
       [] .plain [false, true, false] = false := by decide +kernel
 
-/-! Wrong commands, W1 to W9, each refused. -/
+/-! Wrong commands, W1 to W12, each refused. -/
 
 /-- The arguments of an open under the preopened directory of `outer`. -/
 def openArgs : List (Var outer .word) := [.there .here, .here, .here, .here, .here, .here]
@@ -226,6 +227,34 @@ example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pa
     Command [] [] outer (.value .word)).handleCheck [] .plain [false, true, false] = false := by
   decide +kernel
 
+/-- The bracket under the preopened directory with the error branch `onErrnoPair` and a body that
+syncs its handle, with the command `last` after the close. -/
+def closedWith
+    (last : Command [] [] (.word :: .word :: .word :: .elem (.prod .word .word) :: outer)
+      (.value (.elem (.prod .word .word)))) :
+    Command [] [] outer (.value (.elem (.prod .word .word))) :=
+  .bind (.sys Call.pathOpen (.flat 1 false) openArgs [.there (.there .here)])
+    (.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrnoPair
+      (.bind (.ret (.proj .here (.snd .here)))
+        (.bind (sync .here)
+          (.bind (.sys Call.fdClose (.flat 0 false) [.there .here] []) last))))
+
+/-- The last command that `reflect` writes: the body's result with the close's errno. -/
+example : (closedWith (.ret (.mk (.var (.there .here)) (.var .here)))).handleCheck [] .plain
+    [false, true, false] = true := by decide +kernel
+
+/-- W10: the last command pairs the body's result with 0 in place of the close's errno. -/
+example : (closedWith (.ret (.mk (.var (.there .here)) (.word 0)))).handleCheck [] .plain
+    [false, true, false] = false := by decide +kernel
+
+/-- W11: the last command swaps the components. -/
+example : (closedWith (.ret (.mk (.var .here) (.var (.there .here))))).handleCheck [] .plain
+    [false, true, false] = false := by decide +kernel
+
+/-- W12: the last command pairs the body's result with the closed handle's word. -/
+example : (closedWith (.ret (.mk (.var (.there .here)) (.var (.there (.there .here)))))).handleCheck
+    [] .plain [false, true, false] = false := by decide +kernel
+
 /-- A bracket whose body syncs its handle and returns bytes, so that its pairs are `pair`. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
     (.flat 1 false) openArgs [.there (.there .here)])
@@ -279,6 +308,19 @@ def bytesMain : Action UInt64 := do
   pure read.2
 
 verified_compile_wasi bytesCommand (main := bytesMain) := [bytesMain]
+
+open LeanExe in
+/-- A program whose bracket's body returns `Unit`, which `verified_compile_wasi` refuses. -/
+def unitMain : Action UInt64 := do
+  let closed ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0
+    (fun _ => pure ()) fun file => do
+      let _ ← fdSync file
+      pure ()
+  pure closed.2
+
+/-- error: verified_compile_wasi: the body of withOpen must return a value, and it returns Unit -/
+#guard_msgs in
+verified_compile_wasi unitCommand (main := unitMain) := [unitMain]
 
 end HandleCheckTest
 

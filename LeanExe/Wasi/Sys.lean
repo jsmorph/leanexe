@@ -99,9 +99,9 @@ bind (sys Call.pathOpen (.flat 1 false) [d, f, o, b, i, g] [p])
 
 where `onError'` is the reflection of `onError` applied to the errno, the first component of the
 open's result in variable 0, and `body'` the reflection of `body` applied to the handle in
-variable 0.  The pairs are `mk` when `α` is an element of the source language, a word, a `Bool`, a
-float, or a tuple of these, and `pair` otherwise.  `α` must have a source type, so the compiler
-refuses a body that returns `Unit`. -/
+variable 0.  The pairs are `mk` when the source type of `α` is an element (a word, a `Bool`, a
+float, or a tuple of these), as for a structure whose `Flat` tuple holds only these, and `pair`
+otherwise.  `α` must have a source type, so the compiler refuses a body that returns `Unit`. -/
 def withOpen {α : Type} (dir : Handle) (dirflags : UInt64) (path : Bytes)
     (oflags rightsBase rightsInheriting fdflags : UInt64) (onError : UInt64 → Action α)
     (body : Handle → Action α) : Action (α × UInt64) :=

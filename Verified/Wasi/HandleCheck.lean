@@ -25,11 +25,12 @@ with one input, and whose second command has the shape that the docstring of
 `LeanExe.Wasi.withOpen` shows.  The check reads the bracket in stages, one command at a time:
 `opened` is the test of the errno, the first component of variable 0, against the word 0, with
 the error continuation and the success branch; `success` binds the handle, the second component of
-variable 0; `body` reads the body with the handle marked; and `closing` is the close,
-`Call.fdClose` in the form `.flat 0 false` of the handle's variable, followed by `ret` of the pair,
-`mk` or `pair`, of the body's result and the close's errno.  The error continuation, with the pair
-of its result and 0 after it, passes as a command outside a bracket.  A command that differs from
-a stage's shape fails the check. -/
+variable 0; `body` reads the body, which must have a result, with the handle marked; and `closing`
+is the close, `Call.fdClose` in the form `.flat 0 false` of variable 1, the handle, followed by
+`ret` of the pair, `mk` or `pair`, of the body's result and the close's errno, variables 1 and 0
+after the close.  The check reads the error branch, the pair after the error continuation
+included, as a command outside a bracket, so it does not fix the pair's second component.  A
+command that differs from a stage's shape fails the check. -/
 
 namespace Verified
 
@@ -86,15 +87,13 @@ open LeanExe.Wasi
 
 variable {pureSigs : List Sig} {effectSigs : List EffectSig}
 
-/-- The stage of a bracket at which the check reads a command, or `plain` outside the stages.
-`closing bound` holds the index of the handle's variable, 1 after a body with a result and 0 after
-one without, which the check refuses. -/
+/-- The stage of a bracket at which the check reads a command, or `plain` outside the stages. -/
 inductive Stage where
   | plain
   | opened
   | success
   | body
-  | closing (bound : Nat)
+  | closing
   deriving DecidableEq
 
 /-- The calls that only a bracket makes. -/
@@ -142,10 +141,10 @@ def ResultTy.marks : ResultTy → Bool → List Bool → List Bool
   | .unit, _, marks => marks
   | .value _, mark, marks => mark :: marks
 
-/-- The number of variables that a `bind` of a first command with this result binds. -/
-def ResultTy.bound : ResultTy → Nat
-  | .unit => 0
-  | .value _ => 1
+/-- Whether a command with this result has a value, which a `bind` binds to a variable. -/
+def ResultTy.hasValue : ResultTy → Bool
+  | .unit => false
+  | .value _ => true
 
 /-- Whether the command is `ret` of the literal 3, which binds `Handle.preopened`. -/
 def Command.preopened : Command pureSigs effectSigs context result → Bool
@@ -171,18 +170,17 @@ def Command.isHandleRet : Command pureSigs effectSigs context result → Bool
   | _ => false
 
 /-- Whether the command is the close of a bracket: `Call.fdClose` in the form `.flat 0 false` of
-the variable with index `bound`. -/
-def Command.isClose (bound : Nat) : Command pureSigs effectSigs context result → Bool
+variable 1, the handle after the body's result. -/
+def Command.isClose : Command pureSigs effectSigs context result → Bool
   | .sys operation form args inputs =>
     operation == Call.fdClose && form == .flat 0 false && inputs.isEmpty &&
-      args.map Var.index == [bound]
+      args.map Var.index == [1]
   | _ => false
 
 /-- Whether the last command of a bracket returns the body's result with the close's errno: `ret`
-of the pair of variable 1, the body's result, and variable 0, the errno, when the handle's
-variable had index 1, after a body with a result. -/
-def Command.returnsBody (bound : Nat) : Command pureSigs effectSigs context result → Bool
-  | .ret value => bound == 1 && value.isVarPair 1 0
+of the pair of variable 1, the body's result, and variable 0, the errno. -/
+def Command.returnsBody : Command pureSigs effectSigs context result → Bool
+  | .ret value => value.isVarPair 1 0
   | _ => false
 
 /-- The marks of the parameters of the helper `callee`, from the marks of the helpers in the order
@@ -222,9 +220,9 @@ def Command.handleCheck (helpers : List (List Bool)) :
   | _, _, .success, marks, .bind first rest =>
     first.isHandleRet && handleCheck helpers .body (true :: marks) rest
   | _, _, .body, marks, .bind (intermediate := intermediate) body rest =>
-    handleCheck helpers .plain marks body &&
-      handleCheck helpers (.closing intermediate.bound) (intermediate.marks false marks) rest
-  | _, _, .closing bound, _, .bind first tail => first.isClose bound && tail.returnsBody bound
+    intermediate.hasValue && handleCheck helpers .plain marks body &&
+      handleCheck helpers .closing (false :: marks) rest
+  | _, _, .closing, _, .bind first tail => first.isClose && tail.returnsBody
   | _, _, _, _, _ => false
 
 /-- A command passes the handle check. -/
