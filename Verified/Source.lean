@@ -936,6 +936,17 @@ def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.
 def Func.sig (func : Func S) : Sig :=
   ⟨func.params, func.result, func.aborts, func.modes, func.depth⟩
 
+/-- The signature of `func` with the flags `aborts` and `depth` stated.  A program indexes a
+function by it, with the equation `func.sig = func.sigWith aborts depth`, so that a comparison of
+the program's signatures with literal ones compares the stated flags and never evaluates the
+body's `aborts` and `depthCalls`. -/
+def Func.sigWith (func : Func S) (aborts depth : Bool) : Sig :=
+  ⟨func.params, func.result, aborts, func.modes, depth⟩
+
+theorem Func.flags_of_sig_eq {func : Func S} {aborts depth : Bool}
+    (h : func.sig = func.sigWith aborts depth) : func.aborts = aborts ∧ func.depth = depth :=
+  ⟨congrArg Sig.aborts h, congrArg Sig.depth h⟩
+
 /-- A recursive function: its body may call the functions `S` and, as the function before them,
 itself.  Its code takes the call depth and may trap at `unreachable` when the depth reaches the
 limit, so its signature, `sig`, has both flags. -/
@@ -1115,13 +1126,33 @@ def TailFunc.aborts (func : TailFunc S) : Bool :=
 def TailFunc.sig (func : TailFunc S) : Sig :=
   ⟨func.params, func.result, func.aborts, func.modes, func.depth⟩
 
+/-- The signature of `func` with the flags `aborts` and `depth` stated, as `Func.sigWith`. -/
+def TailFunc.sigWith (func : TailFunc S) (aborts depth : Bool) : Sig :=
+  ⟨func.params, func.result, aborts, func.modes, depth⟩
+
+theorem TailFunc.flags_of_sig_eq {func : TailFunc S} {aborts depth : Bool}
+    (h : func.sig = func.sigWith aborts depth) : func.aborts = aborts ∧ func.depth = depth :=
+  ⟨congrArg Sig.aborts h, congrArg Sig.depth h⟩
+
 /-- A program: functions in which each may call the functions after it in the list, which come
-before it in the module, and a recursive function itself. -/
+before it in the module, and a recursive function itself.  A function and a tail loop come with
+their flags `aborts` and `depth` and the equation of their signature with them, and the program's
+signature list holds `sigWith aborts depth`. -/
 inductive Prog : List Sig → Type where
   | nil : Prog []
-  | cons (f : Func S) (rest : Prog S) : Prog (f.sig :: S)
+  | cons (f : Func S) (aborts depth : Bool) (h : f.sig = f.sigWith aborts depth) (rest : Prog S) :
+    Prog (f.sigWith aborts depth :: S)
   | consRec (f : RecFunc S) (rest : Prog S) : Prog (f.sig :: S)
-  | consTail (f : TailFunc S) (rest : Prog S) : Prog (f.sig :: S)
+  | consTail (f : TailFunc S) (aborts depth : Bool) (h : f.sig = f.sigWith aborts depth)
+    (rest : Prog S) : Prog (f.sigWith aborts depth :: S)
+
+/-- The program `rest` with the function `f` and the flags that its signature computes. -/
+abbrev Prog.consSig (f : Func S) (rest : Prog S) : Prog (f.sig :: S) :=
+  .cons f f.aborts f.depth rfl rest
+
+/-- The program `rest` with the tail loop `f` and the flags that its signature computes. -/
+abbrev Prog.consTailSig (f : TailFunc S) (rest : Prog S) : Prog (f.sig :: S) :=
+  .consTail f f.aborts f.depth rfl rest
 
 instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
   | .elem e => e.instInhabited
@@ -1134,18 +1165,18 @@ instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
 /-- Whether a program has no recursive function. -/
 def Prog.recFree : {S : List Sig} → Prog S → Bool
   | _, .nil => true
-  | _, .cons _ rest => rest.recFree
+  | _, .cons _ _ _ _ rest => rest.recFree
   | _, .consRec _ _ => false
-  | _, .consTail _ _ => false
+  | _, .consTail _ _ _ _ _ => false
 
 /-- The Lean functions that a program's functions mean, for a program without recursion.  A
 recursive function has no meaning by its body alone, and gets the default value here; its meaning
 is a solution of its equation, which `Prog.Meaning` states. -/
 def Prog.funs : {S : List Sig} → Prog S → Funs S
   | _, .nil => .nil
-  | _, .cons f rest => .cons (f.denote rest.funs) rest.funs
+  | _, .cons f _ _ _ rest => .cons (f.denote rest.funs) rest.funs
   | _, .consRec f rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
-  | _, .consTail f rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
+  | _, .consTail f _ _ _ rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
 
 /-- `funs` are the Lean functions that a program's functions mean: a function's meaning is its
 body's at the meanings of the functions after it, and a recursive function's meaning is any `M`
@@ -1153,29 +1184,35 @@ whose value is its body's at `M` and those meanings, which the reflector gives a
 definition. -/
 inductive Prog.Meaning : {S : List Sig} → Prog S → Funs S → Prop
   | nil : Prog.Meaning .nil .nil
-  | cons {S : List Sig} {f : Func S} {rest : Prog S} {funs : Funs S} :
-    Prog.Meaning rest funs → Prog.Meaning (Prog.cons f rest) (.cons (f.denote funs) funs)
+  | cons {S : List Sig} {f : Func S} {aborts depth : Bool} {h : f.sig = f.sigWith aborts depth}
+    {rest : Prog S} {funs : Funs S} :
+    Prog.Meaning rest funs →
+      Prog.Meaning (Prog.cons f aborts depth h rest) (.cons (f.denote funs) funs)
   | consRec {S : List Sig} {f : RecFunc S} {rest : Prog S} {funs : Funs S}
     (M : Env f.params → f.result.denote) : Prog.Meaning rest funs →
     (∀ env, M env = f.body.denote (.cons (g := f.sig) M funs) env) →
     Prog.Meaning (Prog.consRec f rest) (.cons M funs)
-  | consTail {S : List Sig} {f : TailFunc S} {rest : Prog S} {funs : Funs S}
+  | consTail {S : List Sig} {f : TailFunc S} {aborts depth : Bool}
+    {h : f.sig = f.sigWith aborts depth} {rest : Prog S} {funs : Funs S}
     (M : Env f.params → f.result.denote) : Prog.Meaning rest funs → f.Decreases funs →
     (∀ env, M env = (f.body.denote funs env).elim M id) →
-    Prog.Meaning (Prog.consTail f rest) (.cons M funs)
+    Prog.Meaning (Prog.consTail f aborts depth h rest) (.cons M funs)
 
 theorem Prog.meaning_funs : {S : List Sig} → (prog : Prog S) → prog.recFree = true →
     prog.Meaning prog.funs
   | _, .nil, _ => .nil
-  | _, .cons _ rest, h => .cons (rest.meaning_funs h)
+  | _, .cons _ _ _ _ rest, h => .cons (rest.meaning_funs h)
   | _, .consRec _ _, h => nomatch h
-  | _, .consTail _ _, h => nomatch h
+  | _, .consTail _ _ _ _ _, h => nomatch h
 
-theorem Prog.get_here {S : List Sig} (f : Func S) (rest : Prog S) (env : Env f.params) :
-    (Prog.cons f rest).funs.get .here env = f.denote rest.funs env := rfl
+theorem Prog.get_here {S : List Sig} (f : Func S) (aborts depth : Bool)
+    (h : f.sig = f.sigWith aborts depth) (rest : Prog S) (env : Env f.params) :
+    (Prog.cons f aborts depth h rest).funs.get .here env = f.denote rest.funs env := rfl
 
-theorem Prog.get_there {S : List Sig} {g : Sig} (f : Func S) (rest : Prog S) (v : FVar S g)
-    (env : Env g.params) : (Prog.cons f rest).funs.get (.there v) env = rest.funs.get v env :=
+theorem Prog.get_there {S : List Sig} {g : Sig} (f : Func S) (aborts depth : Bool)
+    (h : f.sig = f.sigWith aborts depth) (rest : Prog S) (v : FVar S g)
+    (env : Env g.params) :
+    (Prog.cons f aborts depth h rest).funs.get (.there v) env = rest.funs.get v env :=
   rfl
 
 theorem Funs.get_here {S : List Sig} {g : Sig} (F : Env g.params → g.result.denote)

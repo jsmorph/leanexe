@@ -91,9 +91,9 @@ def TailBody.Covered (body : TailBody S params result Γ) (pool : Bytes.LiteralP
 
 def Prog.literals : {S : List Sig} → Prog S → List Bytes.Literal
   | _, .nil => []
-  | _, .cons func rest => rest.literals ++ func.body.literals
+  | _, .cons func _ _ _ rest => rest.literals ++ func.body.literals
   | _, .consRec func rest => rest.literals ++ func.body.literals
-  | _, .consTail func rest => rest.literals ++ func.body.literals
+  | _, .consTail func _ _ _ rest => rest.literals ++ func.body.literals
 
 def Prog.Covered (prog : Prog S) (pool : Bytes.LiteralPool) : Prop :=
   prog.literals ⊆ pool.values

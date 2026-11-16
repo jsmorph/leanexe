@@ -345,7 +345,8 @@ These declarations belong to the pure `verified_compile` command.  [The WASI dec
 | Declaration | Content |
 |---|---|
 | `p.program`, `p.funs`, `p.meaning` | Source program, meanings of its functions, and proof of `Prog.Meaning p.program p.funs`. |
-| `p.prefix_k` | The program of the first `k + 1` listed definitions that are not wrappers: `Prog.cons`, `Prog.consRec`, or `Prog.consTail` of the `k`-th one's `p.f.func` and `p.prefix_(k-1)`, typed by the literal list of their signatures.  `p.program` is the last prefix.  The bound definitions, the proof `p.meaning`, and the proofs over the bound tables refer to these constants, so the kernel compares each function's signature with its literal in the prefix's definition, not in every declaration that holds the program. |
+| `p.prefix_k` | The program of the first `k + 1` listed definitions that are not wrappers: `Prog.cons` or `Prog.consTail` of the `k`-th one's `p.f.func`, its flags, `p.f.sig_eq`, and `p.prefix_(k-1)`, or `Prog.consRec` of a recursive definition's `p.f.func` and `p.prefix_(k-1)`, typed by the literal list of their signatures.  `p.program` is the last prefix.  The bound definitions, the proof `p.meaning`, and the proofs over the bound tables refer to these constants, so the kernel checks the program's chain once, in the prefixes' definitions. |
+| `p.f.sig_eq` | For a definition that is neither recursive nor a wrapper: `p.f.func.sig = p.f.func.sigWith aborts depth`, with the flags `aborts` and `depth` as literals.  `Prog.cons` and `Prog.consTail` take the flags and this equation and index the function by `sigWith aborts depth`, so a comparison of the program's signatures with the literal list compares the stated flags, and only the check of `p.f.sig_eq` evaluates the body's `aborts` and `depthCalls`. |
 | `p.tables`, `p.wrappers`, `p.module` | Tables, wrappers, and module `compileWith p.program p.tables p.wrappers`. |
 | `p.literalPool` | Deduplicated nonempty byte literals, starting after the constant word-array tables.  The module uses this pool explicitly. |
 | `p.initial` | Store in which the module starts meets the allocator invariant, caps the memory at 65,535 pages, and holds each table at its address.  A nonempty pool adds its static contents and heap region as a fourth conjunct.  An empty pool keeps the three-part result. |
@@ -385,6 +386,11 @@ def funs := source.funs.append library.funs
 theorem meaning : program.Meaning funs := source.meaning.append library.meaning
 def module := Verified.compile program
 ```
+
+`Prog.cons` and `Prog.consTail` take a function's flags `aborts` and `depth` with the equation
+`f.sig = f.sigWith aborts depth`.  In a program written by hand, `Prog.consSig f rest` and
+`Prog.consTailSig f rest` supply the flags that the signature computes, as
+[the composition example](../Verified/Examples/Composition.lean) does.
 
 The library's functions keep their indices.  The index of each source function and of each call between source
 functions increases by the library's function count.  `FVar.appendLeft` refers to a relocated source

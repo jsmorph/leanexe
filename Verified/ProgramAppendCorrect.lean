@@ -29,34 +29,20 @@ theorem FVar.callIndex_appendRight {S T : List Sig} {g : Sig} (f : FVar T g) :
   simp only [FVar.callIndex, FVar.index_appendRight, List.length_append]
   omega
 
-theorem Prog.functions_cast {S T : List Sig} (h : S = T) (prog : Prog S)
-    (pool : Bytes.LiteralPool) :
-    (cast (congrArg Prog h) prog).functions (pool := pool) = prog.functions (pool := pool) := by
-  cases h
-  rfl
-
 theorem Prog.functions_prefix_append {S T : List Sig} (source : Prog S) (target : Prog T)
     (pool : Bytes.LiteralPool) :
     target.functions (pool := pool) <+: (source.append target).functions (pool := pool) := by
   induction source with
   | nil => exact ⟨[], List.append_nil _⟩
-  | cons f rest ih =>
-    have hFunctions : (Prog.append (.cons f rest) target).functions (pool := pool) =
-        (Prog.cons (f.renameFuns (fun v => v.appendLeft T))
-          (rest.append target)).functions (pool := pool) :=
-      Prog.functions_cast (pool := pool)
-        (congrArg (fun g => g :: (_ ++ T)) (f.sig_renameFuns (fun v => v.appendLeft T))) _
-    exact hFunctions.symm ▸ ih.trans ⟨[_], rfl⟩
+  | cons f _ _ _ rest ih =>
+    simp only [Prog.append, Prog.functions]
+    exact ih.trans ⟨[_], rfl⟩
   | consRec f rest ih =>
     simp only [Prog.append, Prog.functions]
     exact ih.trans ⟨[_], rfl⟩
-  | consTail f rest ih =>
-    have hFunctions : (Prog.append (.consTail f rest) target).functions (pool := pool) =
-        (Prog.consTail (f.renameFuns (fun v => v.appendLeft T))
-          (rest.append target)).functions (pool := pool) :=
-      Prog.functions_cast (pool := pool)
-        (congrArg (fun g => g :: (_ ++ T)) (f.sig_renameFuns (fun v => v.appendLeft T))) _
-    exact hFunctions.symm ▸ ih.trans ⟨[_], rfl⟩
+  | consTail f _ _ _ rest ih =>
+    simp only [Prog.append, Prog.functions]
+    exact ih.trans ⟨[_], rfl⟩
 
 theorem Prog.calls_append {S T : List Sig} (source : Prog S) (target : Prog T)
     (other : Funs T) (meaning : target.Meaning other)

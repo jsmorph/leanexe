@@ -2206,39 +2206,45 @@ partial def tableChain (fits : Bool) (prog funs fv env k : Lean.Expr) : MetaM Le
   let (``Funs.cons, #[S, _, F, fs]) := funs.getAppFnArgs
     | throwError "verified_compile: the meanings {funs}"
   let pick (b f : Name) : Lean.Expr := mkConst (if fits then f else b)
+  -- The stated flag `d` of a function or a tail loop decides whether its code takes the call
+  -- depth, and `rfl` proves it.
+  let stated (d : Lean.Expr) : MetaM Bool := do
+    if d.isConstOf ``Bool.true then return true
+    if d.isConstOf ``Bool.false then return false
+    throwError "verified_compile: the stated depth flag {d} is not a literal"
   match fv.getAppFnArgs, (← progNode prog).getAppFnArgs with
-  | (``FVar.here, _), (``Prog.cons, #[_, f, rest]) =>
-    let d := mkApp2 (mkConst ``Func.depth) S f
-    let depth ← evalBool m!"whether the code of {f} takes the call depth" d
-    let hd ← evalEq d (boolConst depth)
+  | (``FVar.here, _), (``Prog.cons, #[_, f, a, d, hs, rest]) =>
+    let depth ← stated d
+    let hd ← mkEqRefl d
     if depth then
       return mkAppN (pick ``bounds_get_hereDepth ``fits_get_hereDepth)
-        #[S, f, rest, F, fs, k, hd, env]
+        #[S, f, a, d, hs, rest, F, fs, k, hd, env]
     if fits then
       throwError "verified_compile: the frames condition of {f}, whose code takes no call depth"
-    return mkAppN (mkConst ``bounds_get_here) #[S, f, rest, F, fs, k, hd, env]
+    return mkAppN (mkConst ``bounds_get_here) #[S, f, a, d, hs, rest, F, fs, k, hd, env]
   | (``FVar.here, _), (``Prog.consRec, #[_, f, rest]) =>
     return mkAppN (pick ``bounds_get_hereRec ``fits_get_hereRec) #[S, f, rest, F, fs, k, env]
-  | (``FVar.here, _), (``Prog.consTail, #[_, f, rest]) =>
-    let d := mkApp2 (mkConst ``TailFunc.depth) S f
-    let depth ← evalBool m!"whether the tail function {f} takes the call depth" d
-    let hd ← evalEq d (boolConst depth)
+  | (``FVar.here, _), (``Prog.consTail, #[_, f, a, d, hs, rest]) =>
+    let depth ← stated d
+    let hd ← mkEqRefl d
     if depth then
       return mkAppN (pick ``bounds_get_hereTailDepth ``fits_get_hereTailDepth)
-        #[S, f, rest, F, fs, k, hd, env]
+        #[S, f, a, d, hs, rest, F, fs, k, hd, env]
     if fits then
       throwError "verified_compile: the frames condition of tail function {f}, whose code takes no call depth"
-    return mkAppN (mkConst ``bounds_get_hereTail) #[S, f, rest, F, fs, k, hd, env]
-  | (``FVar.there, #[_, g, _, v]), (``Prog.cons, #[_, f, rest]) =>
-    transHint (mkAppN (pick ``bounds_get_there ``fits_get_there) #[S, g, f, rest, F, fs, k, v, env])
+    return mkAppN (mkConst ``bounds_get_hereTail) #[S, f, a, d, hs, rest, F, fs, k, hd, env]
+  | (``FVar.there, #[_, g, _, v]), (``Prog.cons, #[_, f, a, d, hs, rest]) =>
+    transHint (mkAppN (pick ``bounds_get_there ``fits_get_there)
+        #[S, g, f, a, d, hs, rest, F, fs, k, v, env])
       (← tableChain fits rest fs v env k)
   | (``FVar.there, #[_, g, _, v]), (``Prog.consRec, #[_, f, rest]) =>
     transHint
       (mkAppN (pick ``bounds_get_thereRec ``fits_get_thereRec) #[S, g, f, rest, F, fs, k, v, env])
       (← tableChain fits rest fs v env k)
-  | (``FVar.there, #[_, g, _, v]), (``Prog.consTail, #[_, f, rest]) =>
+  | (``FVar.there, #[_, g, _, v]), (``Prog.consTail, #[_, f, a, d, hs, rest]) =>
     transHint
-      (mkAppN (pick ``bounds_get_thereTail ``fits_get_thereTail) #[S, g, f, rest, F, fs, k, v, env])
+      (mkAppN (pick ``bounds_get_thereTail ``fits_get_thereTail)
+        #[S, g, f, a, d, hs, rest, F, fs, k, v, env])
       (← tableChain fits rest fs v env k)
   | _, _ => throwError "verified_compile: the function reference {fv} in {prog}"
 

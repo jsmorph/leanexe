@@ -25,8 +25,8 @@ theorem Prog.calls_prefix {S : List Sig} (prog : Prog S) (funs : Funs S)
     (fun _ hk => prog.functions_prefix_lookup m hPrefix hk) hCovered
 
 theorem Prog.functions_prefix_cons {S : List Sig} (prog : Prog S) (f : Func S)
-    (pool : Bytes.LiteralPool) :
-    prog.functions (pool := pool) <+: (Prog.cons f prog).functions (pool := pool) :=
+    {aborts depth : Bool} {h : f.sig = f.sigWith aborts depth} (pool : Bytes.LiteralPool) :
+    prog.functions (pool := pool) <+: (Prog.cons f aborts depth h prog).functions (pool := pool) :=
   ⟨[f.function (2 + S.length) pool], rfl⟩
 
 theorem Prog.functions_prefix_consRec {S : List Sig} (prog : Prog S) (f : RecFunc S)
@@ -35,8 +35,9 @@ theorem Prog.functions_prefix_consRec {S : List Sig} (prog : Prog S) (f : RecFun
   ⟨[f.function (2 + S.length) pool], rfl⟩
 
 theorem Prog.functions_prefix_consTail {S : List Sig} (prog : Prog S) (f : TailFunc S)
-    (pool : Bytes.LiteralPool) :
-    prog.functions (pool := pool) <+: (Prog.consTail f prog).functions (pool := pool) :=
+    {aborts depth : Bool} {h : f.sig = f.sigWith aborts depth} (pool : Bytes.LiteralPool) :
+    prog.functions (pool := pool) <+:
+      (Prog.consTail f aborts depth h prog).functions (pool := pool) :=
   ⟨[f.function (2 + S.length) pool], rfl⟩
 
 theorem Prog.functions_prefix_compileWith {minPages : Nat} {S : List Sig} (prog : Prog S)

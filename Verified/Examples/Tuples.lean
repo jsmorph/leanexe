@@ -130,9 +130,9 @@ def flagAtF (S : List Sig) : Func S where
 example (xs : Array ((UInt64 × Bool) × Float)) (i : UInt64) :
     (flagAtF []).denote .nil (.cons xs (.cons i .nil)) = flagAt xs i := rfl
 
-def prog := Prog.cons (pointsF _) <| Prog.cons (sumFirstF _) <| Prog.cons (bumpF _) <|
-  Prog.cons (pushPointF _) <| Prog.cons (joinedF _) <| Prog.cons (countF _) <|
-  Prog.cons (flagsF _) <| Prog.cons (flagAtF _) .nil
+def prog := Prog.consSig (pointsF _) <| Prog.consSig (sumFirstF _) <| Prog.consSig (bumpF _) <|
+  Prog.consSig (pushPointF _) <| Prog.consSig (joinedF _) <| Prog.consSig (countF _) <|
+  Prog.consSig (flagsF _) <| Prog.consSig (flagAtF _) .nil
 
 def module : Wasm.Module := compile prog
 

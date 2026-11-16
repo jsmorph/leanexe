@@ -10,30 +10,14 @@ theorem TailBody.literals_renameFuns {S T : List Sig} (renameFuncs : FunRenaming
     simp_all only [TailBody.renameFuns, TailBody.literals_ret, TailBody.literals_next, TailBody.literals_ite, TailBody.literals_letE, TailBody.literals_letPair, TailBody.literals_treeCase,
       Expr.literals_renameFuns]
 
-theorem Prog.literals_cast {S T : List Sig} (types : S = T) (prog : Prog S) :
-    (cast (congrArg Prog types) prog).literals = prog.literals := by
-  cases types
-  rfl
-
-theorem Prog.literals_cast_eq {S T : List Sig} (types : S = T)
-    (transport : Prog S = Prog T) (prog : Prog S) :
-    (cast transport prog).literals = prog.literals := by
-  cases types
-  rfl
-
 theorem Prog.literals_append {S T : List Sig} (source : Prog S) (target : Prog T) :
     (source.append target).literals = target.literals ++ source.literals := by
   induction source with
   | nil => simp only [Prog.append, Prog.literals, List.append_nil]
-  | @cons S func rest ih =>
+  | @cons S func _ _ _ rest ih =>
     let renameFuncs : FunRenaming S (S ++ T) := fun v => v.appendLeft T
-    have hCast : (Prog.append (.cons func rest) target).literals =
-        (Prog.cons (func.renameFuns renameFuncs) (rest.append target)).literals :=
-      Prog.literals_cast_eq
-        (congrArg (fun g => g :: (S ++ T)) (func.sig_renameFuns renameFuncs)) _ _
     have hBody : (func.renameFuns renameFuncs).body.literals = func.body.literals :=
       func.body.literals_renameFuns renameFuncs
-    rw [hCast]
     change (rest.append target).literals ++ (func.renameFuns renameFuncs).body.literals = _
     rw [ih, hBody]
     exact List.append_assoc _ _ _
@@ -44,15 +28,10 @@ theorem Prog.literals_append {S T : List Sig} (source : Prog S) (target : Prog T
     change (rest.append target).literals ++ (func.renameFuns renameFuncs).body.literals = _
     rw [ih, hBody]
     exact List.append_assoc _ _ _
-  | @consTail S func rest ih =>
+  | @consTail S func _ _ _ rest ih =>
     let renameFuncs : FunRenaming S (S ++ T) := fun v => v.appendLeft T
-    have hCast : (Prog.append (.consTail func rest) target).literals =
-        (Prog.consTail (func.renameFuns renameFuncs) (rest.append target)).literals :=
-      Prog.literals_cast_eq
-        (congrArg (fun g => g :: (S ++ T)) (func.sig_renameFuns renameFuncs)) _ _
     have hBody : (func.renameFuns renameFuncs).body.literals = func.body.literals :=
       func.body.literals_renameFuns renameFuncs
-    rw [hCast]
     change (rest.append target).literals ++ (func.renameFuns renameFuncs).body.literals = _
     rw [ih, hBody]
     exact List.append_assoc _ _ _
