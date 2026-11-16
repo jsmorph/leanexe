@@ -49,7 +49,8 @@
     "Verified.Reflect.reflectProgramFunction",
     "Verified.Reflect.addDefinition",
     "Verified.Prog.cons",
-    "Verified.Func.sig"
+    "Verified.Func.sig",
+    "Verified.Func.sigWith"
   ],
   "examples": [
     "Library.Numerics.Float64.Lgamma.LgammaSign.ite_sgn",
