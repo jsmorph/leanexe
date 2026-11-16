@@ -5,7 +5,9 @@
     "LeanExe.Pipeline.Heap.Keeps heap initial gone heap' store fresh",
     "heap'.Borrowed final p xs after a call, from heap.Borrowed store p xs",
     "NodeBorrowed heap' store' p value after a step",
-    "Verified.Step heap store keep heap' store' fresh"
+    "Verified.Step heap store keep heap' store' fresh",
+    "Bytes.Rep heap' store' root length bytes after an allocation, apart from the fresh buffer",
+    "the release of dying variables after a command whose result owns blocks"
   ],
   "modules": [
     "LeanExe.Pipeline.Implements",
@@ -23,7 +25,9 @@
     "Verified.Heap",
     "Verified.TreeCopyStep",
     "Verified.Call",
-    "Verified.StaticImplements"
+    "Verified.StaticImplements",
+    "Verified.Wasi.SysCommand",
+    "Verified.Wasi.CallCommand"
   ],
   "declarations": [
     "LeanExe.Pipeline.ImplementsA",
@@ -65,11 +69,27 @@
     "Verified.Step.mono",
     "Verified.Step.allocate",
     "Verified.Step.borrowed",
-    "Verified.Step.owned"
+    "Verified.Step.owned",
+    "LeanExe.Pipeline.Bytes.Rep",
+    "LeanExe.Pipeline.Bytes.Rep.step",
+    "LeanExe.Pipeline.Bytes.Rep.toAt",
+    "LeanExe.Pipeline.block",
+    "LeanExe.Pipeline.capacityAt",
+    "Verified.Wasi.inputsHeld_transfer",
+    "Verified.Wasi.wp_sys_flat_inputs_with",
+    "Verified.Wasi.After",
+    "Verified.Wasi.After.release",
+    "Verified.Wasi.wp_release_context_with",
+    "Wasm.wp_append",
+    "Verified.Evolves.mono",
+    "Verified.Wasi.CommandResult.trap_live"
   ],
   "examples": [
     "Verified.releaseStep",
     "Verified.Step.nodeBorrowed",
-    "Verified.ImplementsTables.call"
+    "Verified.ImplementsTables.call",
+    "Verified.Wasi.input_at_call",
+    "Verified.Wasi.command_sys_spec_with",
+    "Verified.Wasi.wp_call_after_arguments_with"
   ]
 }

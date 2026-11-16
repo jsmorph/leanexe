@@ -9,7 +9,12 @@
     "@ite Nat c d a b ≤ 0 with an instance d that holds an effect body's environment",
     "maximum recursion depth in simp +decide on the closed goal of begin",
     "a resource bound of a sys command whose charge depends on the host's reply",
-    "the first event of a prefix of LeanExe.Wasi.Action.sys call args next"
+    "the first event of a prefix of LeanExe.Wasi.Action.sys call args next",
+    "a charge that copies the bytes of a record that a sys command returned",
+    "Returns host pure program depth modes live (.sys call form args inputs) env value",
+    "dependent elimination failed in cases on a ResourceExec of a fixed command",
+    "Env.get env (Var.ofIndex Γ i h) over an environment built by ResultTy.bindEnv",
+    "@ite Nat c d b b in the budget of the ite rule"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -19,7 +24,9 @@
     "Demos.RunningSumFp.Charges",
     "Verified.Examples.WasiRetainBudget",
     "Demos.OrderBook.ProcessCharges",
-    "Verified.Wasi.SysRule"
+    "Verified.Wasi.SysRule",
+    "Verified.Wasi.SysWords",
+    "LeanExe.Wasi.Sys"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -46,7 +53,17 @@
     "Verified.Wasi.Resource.sys_rule_of_bound",
     "LeanExe.Wasi.PrefixProgress",
     "LeanExe.Wasi.Prefix.progress",
-    "Verified.Wasi.Resource.prefix_sys_first"
+    "Verified.Wasi.Resource.prefix_sys_first",
+    "LeanExe.Wasi.ArgsResult",
+    "Verified.Expr.allocs",
+    "Verified.Var.cost",
+    "LeanExe.Wasi.Host.sys_bound",
+    "LeanExe.Wasi.Host.sys_reports",
+    "Verified.Wasi.littleEndian_four_lt",
+    "Verified.Wasi.Resource.ResourceExec",
+    "Verified.Wasi.ResultTy.bindEnv",
+    "Verified.Wasi.SysForm.ty",
+    "Verified.Env.get"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -63,5 +80,16 @@
     "Demos.OrderBook.Process.step_prefix_bound",
     "Demos.OrderBook.Process.initial_entry",
     "Demos.OrderBook.Process.begin_bounded"
-  ]
+  ],
+  "unimported": {
+    "Verified/Examples/WasiSys.lean": [
+      "Verified.Examples.WasiSys.main"
+    ],
+    "Verified/Examples/WasiSysTotal.lean": [
+      "Verified.Examples.WasiSys.budget",
+      "Verified.Examples.WasiSys.args_bytes_le",
+      "Verified.Examples.WasiSys.random_bytes_le",
+      "Verified.Examples.WasiSys.body_bounded"
+    ]
+  }
 }

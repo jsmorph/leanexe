@@ -33,7 +33,15 @@
     "a goal c % 4294967296 = c after simp of (UInt32.ofNat c.toNat).toUInt64",
     "generalize h : e = x at h' also changes the goal",
     "expected '*' or checkColGt at the line after simp … at",
-    "unexpected token 'variables'"
+    "unexpected token 'variables'",
+    "a hypothesis h : ¬x < 2 ^ 32 given to simp does not decide if x < 2 ^ 32",
+    "omega fails on products with 256 % 2 ^ 64 after simp only with UInt64.toNat_ofNat",
+    "omega counterexample that names a let variable and its value as two atoms",
+    "a location list of simp … at continued on the next line",
+    "unexpected token '('; expected '}' in a structure update whose field value continues on the next line",
+    "env.get to fails to parse in a module that imports Mathlib",
+    "Invalid pattern: Not enough arguments, from a pattern variable named like a constructor",
+    "simpa type mismatch between two match terms that print alike"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -51,7 +59,11 @@
     "Demos.Rcv.Refinement",
     "Demos.PassiveSafety.Soundness",
     "Verified.Wasi.OracleSys",
-    "Mathlib.Tactic.Basic"
+    "Mathlib.Tactic.Basic",
+    "Mathlib.Tactic.Lift",
+    "Verified.Wasi.SysCommand",
+    "Verified.Wasi.SysRecord",
+    "Verified.Wasi.SysFlatCall"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -86,7 +98,19 @@
     "List.headD",
     "UInt64.toNat_inj",
     "UInt64.toNat_mod",
-    "Lean.Parser.Tactic.generalize"
+    "Lean.Parser.Tactic.generalize",
+    "UInt64.toNat_ofNat",
+    "UInt64.toNat_ofNat_of_lt'",
+    "UInt64.reduceToNat",
+    "Verified.Wasi.recordAddress",
+    "Verified.Wasi.recordAddress_spec",
+    "Lean.Parser.Tactic.location",
+    "Lean.Parser.Term.structInst",
+    "Lean.Parser.Term.argument",
+    "Verified.Wasi.CommandResult",
+    "Verified.Wasi.CommandResult.terminal",
+    "Verified.Wasi.flatCostWith",
+    "Verified.Wasi.sysCostWith"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -104,7 +128,11 @@
     "Demos.Conjunction.Model.radiusIn_of",
     "Demos.PassiveSafety.march_covered",
     "Demos.PassiveSafety.midpoint_ok",
-    "Verified.Wasi.OracleSys.decodeArgs_lower"
+    "Verified.Wasi.OracleSys.decodeArgs_lower",
+    "Verified.Wasi.flatArgsWith_fit",
+    "Verified.Wasi.littleEndian_read16",
+    "Verified.Wasi.wp_sys_record_accept_with",
+    "Verified.Wasi.wp_sys_flat_result_inputs_with"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [
