@@ -97,6 +97,8 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/NativeAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ReflectionNames.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Validity.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/HandleCheck.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/PollLayout.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
 if "$foundations_only"; then exit 0; fi

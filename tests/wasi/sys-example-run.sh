@@ -9,14 +9,26 @@
 # probability at most 2^-20.  It then builds the example with input calls,
 # Verified.Examples.WasiSysInputs, checks its axioms with tests/wasi/SysInputs.lean, and runs its
 # module with a fresh preopened directory: the run must exit with status 0 and leave the directory
-# empty.  Last it builds the example with record calls, Verified.Examples.WasiSysRecords, checks its
+# empty.  It then builds the example with record calls, Verified.Examples.WasiSysRecords, checks its
 # axioms with tests/wasi/SysRecordAxioms.lean, runs the native cases of the record typed functions
-# in tests/wasi/SysRecords.lean, and runs its module with a fresh preopened directory.  The run must
-# exit with status 0, leave the directory empty, and write the fields of its records as 34 words of
-# 8 little-endian bytes, among them the prestat tag 0 and name length 1, the directory's file type
-# 3 in its fdstat and its filestat, the file type 4 and the append flag 1 in the created file's
-# fdstat, and the file type 4 and the size 2^32 + 5 in its filestat, which must be the same through
-# the descriptor and through the path.
+# and of the example's main against a host whose fd_close fails in tests/wasi/SysRecords.lean, and
+# runs its module with a fresh preopened directory.  The run must exit with status 0, leave the
+# directory empty, and write the fields of its records as 34 words of 8 little-endian bytes, among
+# them the prestat tag 0 and name length 1, the directory's file type 3 in its fdstat and its
+# filestat, the file type 4 and the append flag 1 in the created file's fdstat, and the file type 4
+# and the size 2^32 + 5 in its filestat, which must be the same through the descriptor and through
+# the path.  It then builds the environment example, Verified.Examples.WasiSysEnviron, checks its
+# axioms with tests/wasi/SysEnviron.lean, and runs its module with two environment variables and
+# with none: each run must exit with status 0 and write the count and size that environ returns as 8
+# little-endian bytes each and then the variables, each followed by a zero byte.  Last it builds the
+# example with iovec and poll calls, Verified.Examples.WasiSysNested, checks its axioms with
+# tests/wasi/SysNestedAxioms.lean, runs the native cases of the nested typed functions and of the
+# example's main against a host whose fd_close fails in tests/wasi/SysNested.lean, and runs its
+# module with a fresh preopened directory.  The run must exit with status 0, leave the directory
+# empty, and write abcdefXY, which fd_pread read, XY, which fd_read read, and then as 8
+# little-endian bytes each the count, userdata, error, type, nbytes, and flags of the clock poll, 1,
+# 1, 0, 0, 0, and 0, and of the read poll, 1, 1, 0, 1, 1, and 0: Wasmtime 44 reports nbytes 1 for
+# the read event of a file.
 set -eu
 set -f
 if ! command -v wasm-tools > /dev/null 2>&1; then
@@ -37,13 +49,17 @@ if [ ! -x "$host" ]; then
 fi
 
 tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys \
-  Verified.Examples.WasiSysTotal Verified.Examples.WasiSysInputs Verified.Examples.WasiSysRecords
+  Verified.Examples.WasiSysTotal Verified.Examples.WasiSysInputs Verified.Examples.WasiSysRecords \
+  Verified.Examples.WasiSysEnviron Verified.Examples.WasiSysNested
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysWitness.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysInputs.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/SysEnviron.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysRecordAxioms.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/SysNestedAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysExample.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysRecords.lean
+tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysNested.lean
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSys \
   Verified.Examples.WasiSys.command.module "$module"
 wasm-tools validate "$module"
@@ -163,6 +179,55 @@ od -An -v -t x1 -j 144 -N 64 "$out/records.stdout" > "$out/records.descriptor"
 od -An -v -t x1 -j 208 -N 64 "$out/records.stdout" > "$out/records.path"
 cmp -s "$out/records.descriptor" "$out/records.path" ||
   fail records "the file's filestat differs through the descriptor and through the path"
+cases=$((cases + 1))
+
+environ="$out/environ.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSysEnviron \
+  Verified.Examples.WasiSysEnviron.command.module "$environ"
+wasm-tools validate "$environ"
+# environ_run NAME EXPECTED [OPTION...]: runs the environment example with the host OPTIONs, which
+# must exit with status 0 and write the bytes of the file EXPECTED.
+environ_run() {
+  name=$1
+  expected=$2
+  shift 2
+  status=0
+  timeout 60s "$host" "$@" --stdout-file "$out/$name.stdout" --control-file "$out/$name.control" \
+    run "$environ" 2> "$out/$name.stderr" || status=$?
+  [ "$status" -eq 0 ] || fail "$name" "status $status"
+  printf 'wasi-exit 0\n' | cmp -s - "$out/$name.control" || fail "$name" "control"
+  cmp -s "$expected" "$out/$name.stdout" || fail "$name" "output"
+  cases=$((cases + 1))
+}
+printf '\002\000\000\000\000\000\000\000\020\000\000\000\000\000\000\000A=1\000B=two words\000' \
+  > "$out/environ-two.expected"
+environ_run environ-two "$out/environ-two.expected" --env A=1 --env "B=two words"
+head -c 16 /dev/zero > "$out/environ-none.expected"
+environ_run environ-none "$out/environ-none.expected"
+
+nested="$out/nested.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSysNested \
+  Verified.Examples.WasiSysNested.command.module "$nested"
+wasm-tools validate "$nested"
+rm -rf "$out/nested-dir"
+mkdir "$out/nested-dir"
+status=0
+timeout 60s "$host" --dir "$out/nested-dir" --stdout-file "$out/nested.stdout" \
+  --control-file "$out/nested.control" run "$nested" 2> "$out/nested.stderr" || status=$?
+[ "$status" -eq 0 ] || fail nested "status $status"
+printf 'wasi-exit 0\n' | cmp -s - "$out/nested.control" || fail nested "control"
+[ -z "$(ls -A "$out/nested-dir")" ] || fail nested "the directory is not empty"
+# small VALUE: VALUE, below 8, as 8 little-endian bytes.
+small() {
+  printf "\\00$1\\000\\000\\000\\000\\000\\000\\000"
+}
+{
+  printf 'abcdefXYXY'
+  for value in 1 1 0 0 0 0 1 1 0 1 1 0; do
+    small "$value"
+  done
+} > "$out/nested.expected"
+cmp -s "$out/nested.expected" "$out/nested.stdout" || fail nested "output"
 cases=$((cases + 1))
 
 printf 'flat call example Wasmtime cases passed: %s\n' "$cases"

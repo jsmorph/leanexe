@@ -147,6 +147,9 @@ def materializeProgram (base : Name) (program : ProgramReflection)
   addDefinition (base ++ `program)
     (mkApp2 (mkConst ``EffectProg) (pureSignatures program.pure) signatures) program.prog
   addDefinition (base ++ `funs) (mkApp (mkConst ``EffectFuns) signatures) program.funs
+  let marksType := mkApp (mkConst ``List [.zero]) (mkApp (mkConst ``List [.zero]) (mkConst ``Bool))
+  addDefinition (base ++ `handleMarks) marksType
+    (toExpr (program.out.reverse.toList.map (·.marks)))
   for reflected in program.out do
     let (_, index) ← findFunction program reflected.name
     let callee ← effectVarAt signatures index

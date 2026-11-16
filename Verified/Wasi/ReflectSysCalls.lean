@@ -26,6 +26,10 @@ instance : Flat FilestatResult
 instance : Flat PrestatResult (UInt64 × UInt64 × UInt64) :=
   ⟨fun result => (result.errno, result.tag, result.prNameLen)⟩
 
+instance : Flat PollResult (UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64) :=
+  ⟨fun result => (result.errno, result.count, result.userdata, result.error, result.type,
+    result.nbytes, result.flags)⟩
+
 end LeanExe.Wasi
 
 namespace Verified.Wasi.Reflect
@@ -54,297 +58,413 @@ theorem clockResGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effec
 
 theorem fdAdvise_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (offset : Var context .word)
-    (len : Var context .word) (advice : Var context .word) (fdValue : UInt64) (offsetValue : UInt64)
-    (lenValue : UInt64) (adviceValue : UInt64) (hFd : env.get fd = fdValue)
+    (len : Var context .word) (advice : Var context .word) (fdValue : Handle) (offsetValue : UInt64)
+    (lenValue : UInt64) (adviceValue : UInt64) (hFd : env.get fd = fdValue.fd)
     (hOffset : env.get offset = offsetValue) (hLen : env.get len = lenValue)
     (hAdvice : env.get advice = adviceValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdAdvise (.flat 0 false)
       [fd, offset, len, advice] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdAdvise fdValue offsetValue lenValue
         adviceValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hOffset hLen hAdvice
   rfl
 
 theorem fdAllocate_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (offset : Var context .word)
-    (len : Var context .word) (fdValue : UInt64) (offsetValue : UInt64) (lenValue : UInt64)
-    (hFd : env.get fd = fdValue) (hOffset : env.get offset = offsetValue)
+    (len : Var context .word) (fdValue : Handle) (offsetValue : UInt64) (lenValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hOffset : env.get offset = offsetValue)
     (hLen : env.get len = lenValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdAllocate (.flat 0 false)
       [fd, offset, len] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdAllocate fdValue offsetValue lenValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hOffset hLen
   rfl
 
-theorem fdClose_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
-    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdClose (.flat 0 false) [fd]
-      []).denote pureFuns effectFuns env =
-      flattenAction (fun value : UInt64 => value) (fdClose fdValue) := by
-  subst hFd
-  rfl
-
 theorem fdDatasync_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdDatasync (.flat 0 false)
       [fd] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdDatasync fdValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
 theorem fdFdstatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFdstatGet (.record 4) [fd]
       []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : FdstatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64)
         (fdFdstatGet fdValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
 theorem fdFdstatSetFlags_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (flags : Var context .word) (fdValue : UInt64)
-    (flagsValue : UInt64) (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue) :
+    (env : Env context) (fd : Var context .word) (flags : Var context .word) (fdValue : Handle)
+    (flagsValue : UInt64) (hFd : env.get fd = fdValue.fd) (hFlags : env.get flags = flagsValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFdstatSetFlags
       (.flat 0 false) [fd, flags] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdFdstatSetFlags fdValue flagsValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hFlags
   rfl
 
 theorem fdFdstatSetRights_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (fsRightsBase : Var context .word)
-    (fsRightsInheriting : Var context .word) (fdValue : UInt64) (fsRightsBaseValue : UInt64)
-    (fsRightsInheritingValue : UInt64) (hFd : env.get fd = fdValue)
+    (fsRightsInheriting : Var context .word) (fdValue : Handle) (fsRightsBaseValue : UInt64)
+    (fsRightsInheritingValue : UInt64) (hFd : env.get fd = fdValue.fd)
     (hFsRightsBase : env.get fsRightsBase = fsRightsBaseValue)
     (hFsRightsInheriting : env.get fsRightsInheriting = fsRightsInheritingValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFdstatSetRights
       (.flat 0 false) [fd, fsRightsBase, fsRightsInheriting] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdFdstatSetRights fdValue fsRightsBaseValue
         fsRightsInheritingValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hFsRightsBase hFsRightsInheriting
   rfl
 
 theorem fdFilestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFilestatGet (.record 8)
       [fd] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : FilestatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
         UInt64 × UInt64 × UInt64 × UInt64) (fdFilestatGet fdValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
 theorem fdFilestatSetSize_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (size : Var context .word) (fdValue : UInt64)
-    (sizeValue : UInt64) (hFd : env.get fd = fdValue) (hSize : env.get size = sizeValue) :
+    (env : Env context) (fd : Var context .word) (size : Var context .word) (fdValue : Handle)
+    (sizeValue : UInt64) (hFd : env.get fd = fdValue.fd) (hSize : env.get size = sizeValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFilestatSetSize
       (.flat 0 false) [fd, size] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdFilestatSetSize fdValue sizeValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hSize
   rfl
 
 theorem fdFilestatSetTimes_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (atim : Var context .word)
-    (mtim : Var context .word) (fstFlags : Var context .word) (fdValue : UInt64)
-    (atimValue : UInt64) (mtimValue : UInt64) (fstFlagsValue : UInt64) (hFd : env.get fd = fdValue)
-    (hAtim : env.get atim = atimValue) (hMtim : env.get mtim = mtimValue)
-    (hFstFlags : env.get fstFlags = fstFlagsValue) :
+    (mtim : Var context .word) (fstFlags : Var context .word) (fdValue : Handle)
+    (atimValue : UInt64) (mtimValue : UInt64) (fstFlagsValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hAtim : env.get atim = atimValue)
+    (hMtim : env.get mtim = mtimValue) (hFstFlags : env.get fstFlags = fstFlagsValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdFilestatSetTimes
       (.flat 0 false) [fd, atim, mtim, fstFlags] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdFilestatSetTimes fdValue atimValue mtimValue
         fstFlagsValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hAtim hMtim hFstFlags
   rfl
 
+theorem fdPread_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (capacity : Var context .word)
+    (offset : Var context .word) (fdValue : Handle) (capacityValue : UInt64) (offsetValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hCapacity : env.get capacity = capacityValue)
+    (hOffset : env.get offset = offsetValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPread .iovecRead
+      [fd, capacity, offset] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : BytesResult → UInt64 × LeanExe.Bytes) (fdPread fdValue
+        capacityValue offsetValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hCapacity hOffset
+  rfl
+
 theorem fdPrestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPrestatGet (.record 2)
       [fd] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : PrestatResult → UInt64 × UInt64 × UInt64) (fdPrestatGet fdValue)
         := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
 theorem fdPrestatDirName_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (pathLen : Var context .word) (fdValue : UInt64)
-    (pathLenValue : UInt64) (hFd : env.get fd = fdValue)
+    (env : Env context) (fd : Var context .word) (pathLen : Var context .word) (fdValue : Handle)
+    (pathLenValue : UInt64) (hFd : env.get fd = fdValue.fd)
     (hPathLen : env.get pathLen = pathLenValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPrestatDirName
       (.flat 0 true) [fd, pathLen] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : BytesResult → UInt64 × LeanExe.Bytes) (fdPrestatDirName fdValue
         pathLenValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hPathLen
+  rfl
+
+theorem fdPwrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (bytes : Var context .bytes)
+    (offset : Var context .word) (fdValue : Handle) (bytesValue : LeanExe.Bytes)
+    (offsetValue : UInt64) (hFd : env.get fd = fdValue.fd) (hBytes : env.get bytes = bytesValue)
+    (hOffset : env.get offset = offsetValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdPwrite .iovecWrite
+      [fd, offset] [bytes]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdPwrite fdValue bytesValue
+        offsetValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hBytes hOffset
+  rfl
+
+theorem fdRead_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (capacity : Var context .word) (fdValue : Handle)
+    (capacityValue : UInt64) (hFd : env.get fd = fdValue.fd)
+    (hCapacity : env.get capacity = capacityValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdRead .iovecRead
+      [fd, capacity] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : BytesResult → UInt64 × LeanExe.Bytes) (fdRead fdValue
+        capacityValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hCapacity
   rfl
 
 theorem fdReaddir_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (bufLen : Var context .word)
-    (cookie : Var context .word) (fdValue : UInt64) (bufLenValue : UInt64) (cookieValue : UInt64)
-    (hFd : env.get fd = fdValue) (hBufLen : env.get bufLen = bufLenValue)
+    (cookie : Var context .word) (fdValue : Handle) (bufLenValue : UInt64) (cookieValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hBufLen : env.get bufLen = bufLenValue)
     (hCookie : env.get cookie = cookieValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdReaddir (.flat 1 true)
       [fd, bufLen, cookie] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : BytesCountResult → UInt64 × UInt64 × LeanExe.Bytes) (fdReaddir
         fdValue bufLenValue cookieValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hBufLen hCookie
-  rfl
-
-theorem fdRenumber_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) («to» : Var context .word) (fdValue : UInt64)
-    (toValue : UInt64) (hFd : env.get fd = fdValue) (hTo : env.get «to» = toValue) :
-    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdRenumber (.flat 0 false)
-      [fd, «to»] []).denote pureFuns effectFuns env =
-      flattenAction (fun value : UInt64 => value) (fdRenumber fdValue toValue) := by
-  subst hFd hTo
   rfl
 
 theorem fdSeek_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (offset : Var context .word)
-    (whence : Var context .word) (fdValue : UInt64) (offsetValue : UInt64) (whenceValue : UInt64)
-    (hFd : env.get fd = fdValue) (hOffset : env.get offset = offsetValue)
+    (whence : Var context .word) (fdValue : Handle) (offsetValue : UInt64) (whenceValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hOffset : env.get offset = offsetValue)
     (hWhence : env.get whence = whenceValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdSeek (.flat 1 false)
       [fd, offset, whence] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdSeek fdValue offsetValue
         whenceValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hOffset hWhence
   rfl
 
 theorem fdSync_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdSync (.flat 0 false) [fd]
       []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (fdSync fdValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
 theorem fdTell_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (fdValue : UInt64) (hFd : env.get fd = fdValue) :
+    (env : Env context) (fd : Var context .word) (fdValue : Handle)
+    (hFd : env.get fd = fdValue.fd) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdTell (.flat 1 false) [fd]
       []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdTell fdValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd
   rfl
 
+theorem fdWrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (bytes : Var context .bytes) (fdValue : Handle)
+    (bytesValue : LeanExe.Bytes) (hFd : env.get fd = fdValue.fd)
+    (hBytes : env.get bytes = bytesValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.fdWrite .iovecWrite [fd]
+      [bytes]).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (fdWrite fdValue bytesValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hBytes
+  rfl
+
 theorem pathCreateDirectory_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : UInt64)
-    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue) (hPath : env.get path = pathValue) :
+    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : Handle)
+    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue.fd) (hPath : env.get path = pathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathCreateDirectory
       (.flat 0 false) [fd] [path]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathCreateDirectory fdValue pathValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hPath
   rfl
 
 theorem pathFilestatGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (flags : Var context .word)
-    (path : Var context .bytes) (fdValue : UInt64) (flagsValue : UInt64) (pathValue : LeanExe.Bytes)
-    (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue)
+    (path : Var context .bytes) (fdValue : Handle) (flagsValue : UInt64) (pathValue : LeanExe.Bytes)
+    (hFd : env.get fd = fdValue.fd) (hFlags : env.get flags = flagsValue)
     (hPath : env.get path = pathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathFilestatGet (.record 8)
       [fd, flags] [path]).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : FilestatResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
         UInt64 × UInt64 × UInt64 × UInt64) (pathFilestatGet fdValue flagsValue pathValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hFlags hPath
   rfl
 
 theorem pathFilestatSetTimes_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (flags : Var context .word)
     (path : Var context .bytes) (atim : Var context .word) (mtim : Var context .word)
-    (fstFlags : Var context .word) (fdValue : UInt64) (flagsValue : UInt64)
+    (fstFlags : Var context .word) (fdValue : Handle) (flagsValue : UInt64)
     (pathValue : LeanExe.Bytes) (atimValue : UInt64) (mtimValue : UInt64) (fstFlagsValue : UInt64)
-    (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue)
+    (hFd : env.get fd = fdValue.fd) (hFlags : env.get flags = flagsValue)
     (hPath : env.get path = pathValue) (hAtim : env.get atim = atimValue)
     (hMtim : env.get mtim = mtimValue) (hFstFlags : env.get fstFlags = fstFlagsValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathFilestatSetTimes
       (.flat 0 false) [fd, flags, atim, mtim, fstFlags] [path]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathFilestatSetTimes fdValue flagsValue pathValue
         atimValue mtimValue fstFlagsValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hFlags hPath hAtim hMtim hFstFlags
   rfl
 
 theorem pathLink_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (oldFd : Var context .word) (oldFlags : Var context .word)
     (oldPath : Var context .bytes) (newFd : Var context .word) (newPath : Var context .bytes)
-    (oldFdValue : UInt64) (oldFlagsValue : UInt64) (oldPathValue : LeanExe.Bytes)
-    (newFdValue : UInt64) (newPathValue : LeanExe.Bytes) (hOldFd : env.get oldFd = oldFdValue)
+    (oldFdValue : Handle) (oldFlagsValue : UInt64) (oldPathValue : LeanExe.Bytes)
+    (newFdValue : Handle) (newPathValue : LeanExe.Bytes) (hOldFd : env.get oldFd = oldFdValue.fd)
     (hOldFlags : env.get oldFlags = oldFlagsValue) (hOldPath : env.get oldPath = oldPathValue)
-    (hNewFd : env.get newFd = newFdValue) (hNewPath : env.get newPath = newPathValue) :
+    (hNewFd : env.get newFd = newFdValue.fd) (hNewPath : env.get newPath = newPathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathLink (.flat 0 false)
       [oldFd, oldFlags, newFd] [oldPath, newPath]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathLink oldFdValue oldFlagsValue oldPathValue
         newFdValue newPathValue) := by
+  obtain ⟨oldFdValue⟩ := oldFdValue
+  change env.get oldFd = oldFdValue at hOldFd
+  obtain ⟨newFdValue⟩ := newFdValue
+  change env.get newFd = newFdValue at hNewFd
   subst hOldFd hOldFlags hOldPath hNewFd hNewPath
-  rfl
-
-theorem pathOpen_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (dirflags : Var context .word)
-    (path : Var context .bytes) (oflags : Var context .word) (fsRightsBase : Var context .word)
-    (fsRightsInheriting : Var context .word) (fdflags : Var context .word) (fdValue : UInt64)
-    (dirflagsValue : UInt64) (pathValue : LeanExe.Bytes) (oflagsValue : UInt64)
-    (fsRightsBaseValue : UInt64) (fsRightsInheritingValue : UInt64) (fdflagsValue : UInt64)
-    (hFd : env.get fd = fdValue) (hDirflags : env.get dirflags = dirflagsValue)
-    (hPath : env.get path = pathValue) (hOflags : env.get oflags = oflagsValue)
-    (hFsRightsBase : env.get fsRightsBase = fsRightsBaseValue)
-    (hFsRightsInheriting : env.get fsRightsInheriting = fsRightsInheritingValue)
-    (hFdflags : env.get fdflags = fdflagsValue) :
-    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathOpen (.flat 1 false)
-      [fd, dirflags, oflags, fsRightsBase, fsRightsInheriting, fdflags] [path]).denote pureFuns
-      effectFuns env =
-      flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (pathOpen fdValue dirflagsValue
-        pathValue oflagsValue fsRightsBaseValue fsRightsInheritingValue fdflagsValue) := by
-  subst hFd hDirflags hPath hOflags hFsRightsBase hFsRightsInheriting hFdflags
   rfl
 
 theorem pathReadlink_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (path : Var context .bytes)
-    (bufLen : Var context .word) (fdValue : UInt64) (pathValue : LeanExe.Bytes)
-    (bufLenValue : UInt64) (hFd : env.get fd = fdValue) (hPath : env.get path = pathValue)
+    (bufLen : Var context .word) (fdValue : Handle) (pathValue : LeanExe.Bytes)
+    (bufLenValue : UInt64) (hFd : env.get fd = fdValue.fd) (hPath : env.get path = pathValue)
     (hBufLen : env.get bufLen = bufLenValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathReadlink (.flat 1 true)
       [fd, bufLen] [path]).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : BytesCountResult → UInt64 × UInt64 × LeanExe.Bytes) (pathReadlink
         fdValue pathValue bufLenValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hPath hBufLen
   rfl
 
 theorem pathRemoveDirectory_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : UInt64)
-    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue) (hPath : env.get path = pathValue) :
+    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : Handle)
+    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue.fd) (hPath : env.get path = pathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathRemoveDirectory
       (.flat 0 false) [fd] [path]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathRemoveDirectory fdValue pathValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hPath
   rfl
 
 theorem pathRename_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (fd : Var context .word) (oldPath : Var context .bytes)
-    (newFd : Var context .word) (newPath : Var context .bytes) (fdValue : UInt64)
-    (oldPathValue : LeanExe.Bytes) (newFdValue : UInt64) (newPathValue : LeanExe.Bytes)
-    (hFd : env.get fd = fdValue) (hOldPath : env.get oldPath = oldPathValue)
-    (hNewFd : env.get newFd = newFdValue) (hNewPath : env.get newPath = newPathValue) :
+    (newFd : Var context .word) (newPath : Var context .bytes) (fdValue : Handle)
+    (oldPathValue : LeanExe.Bytes) (newFdValue : Handle) (newPathValue : LeanExe.Bytes)
+    (hFd : env.get fd = fdValue.fd) (hOldPath : env.get oldPath = oldPathValue)
+    (hNewFd : env.get newFd = newFdValue.fd) (hNewPath : env.get newPath = newPathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathRename (.flat 0 false)
       [fd, newFd] [oldPath, newPath]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathRename fdValue oldPathValue newFdValue
         newPathValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  obtain ⟨newFdValue⟩ := newFdValue
+  change env.get newFd = newFdValue at hNewFd
   subst hFd hOldPath hNewFd hNewPath
   rfl
 
 theorem pathSymlink_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (oldPath : Var context .bytes) (fd : Var context .word)
-    (newPath : Var context .bytes) (oldPathValue : LeanExe.Bytes) (fdValue : UInt64)
+    (newPath : Var context .bytes) (oldPathValue : LeanExe.Bytes) (fdValue : Handle)
     (newPathValue : LeanExe.Bytes) (hOldPath : env.get oldPath = oldPathValue)
-    (hFd : env.get fd = fdValue) (hNewPath : env.get newPath = newPathValue) :
+    (hFd : env.get fd = fdValue.fd) (hNewPath : env.get newPath = newPathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathSymlink (.flat 0 false)
       [fd] [oldPath, newPath]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathSymlink oldPathValue fdValue newPathValue)
         := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hOldPath hFd hNewPath
   rfl
 
 theorem pathUnlinkFile_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : UInt64)
-    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue) (hPath : env.get path = pathValue) :
+    (env : Env context) (fd : Var context .word) (path : Var context .bytes) (fdValue : Handle)
+    (pathValue : LeanExe.Bytes) (hFd : env.get fd = fdValue.fd) (hPath : env.get path = pathValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pathUnlinkFile
       (.flat 0 false) [fd] [path]).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (pathUnlinkFile fdValue pathValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hPath
+  rfl
+
+theorem pollClock_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (clock : Var context .word) (timeout : Var context .word)
+    (precision : Var context .word) (flags : Var context .word) (clockValue : UInt64)
+    (timeoutValue : UInt64) (precisionValue : UInt64) (flagsValue : UInt64)
+    (hClock : env.get clock = clockValue) (hTimeout : env.get timeout = timeoutValue)
+    (hPrecision : env.get precision = precisionValue) (hFlags : env.get flags = flagsValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffClock .poll
+      [clock, timeout, precision, flags] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollClock clockValue timeoutValue precisionValue flagsValue) := by
+  subst hClock hTimeout hPrecision hFlags
+  rfl
+
+theorem pollRead_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (clock : Var context .word)
+    (timeout : Var context .word) (fdValue : Handle) (clockValue : UInt64) (timeoutValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hClock : env.get clock = clockValue)
+    (hTimeout : env.get timeout = timeoutValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffRead .poll
+      [fd, clock, timeout] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollRead fdValue clockValue timeoutValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hClock hTimeout
+  rfl
+
+theorem pollWrite_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
+    (env : Env context) (fd : Var context .word) (clock : Var context .word)
+    (timeout : Var context .word) (fdValue : Handle) (clockValue : UInt64) (timeoutValue : UInt64)
+    (hFd : env.get fd = fdValue.fd) (hClock : env.get clock = clockValue)
+    (hTimeout : env.get timeout = timeoutValue) :
+    (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.pollOneoffWrite .poll
+      [fd, clock, timeout] []).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : PollResult → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+        UInt64) (pollWrite fdValue clockValue timeoutValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
+  subst hFd hClock hTimeout
   rfl
 
 theorem procRaise_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
@@ -363,20 +483,24 @@ theorem schedYield_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effect
       flattenAction (fun value : UInt64 => value) schedYield := rfl
 
 theorem sockAccept_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (flags : Var context .word) (fdValue : UInt64)
-    (flagsValue : UInt64) (hFd : env.get fd = fdValue) (hFlags : env.get flags = flagsValue) :
+    (env : Env context) (fd : Var context .word) (flags : Var context .word) (fdValue : Handle)
+    (flagsValue : UInt64) (hFd : env.get fd = fdValue.fd) (hFlags : env.get flags = flagsValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.sockAccept (.flat 1 false)
       [fd, flags] []).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : WordResult → UInt64 × UInt64) (sockAccept fdValue flagsValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hFlags
   rfl
 
 theorem sockShutdown_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (fd : Var context .word) (how : Var context .word) (fdValue : UInt64)
-    (howValue : UInt64) (hFd : env.get fd = fdValue) (hHow : env.get how = howValue) :
+    (env : Env context) (fd : Var context .word) (how : Var context .word) (fdValue : Handle)
+    (howValue : UInt64) (hFd : env.get fd = fdValue.fd) (hHow : env.get how = howValue) :
     (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) Call.sockShutdown (.flat 0 false)
       [fd, how] []).denote pureFuns effectFuns env =
       flattenAction (fun value : UInt64 => value) (sockShutdown fdValue howValue) := by
+  obtain ⟨fdValue⟩ := fdValue
+  change env.get fd = fdValue at hFd
   subst hFd hHow
   rfl
 
@@ -390,8 +514,6 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false, false, false, false], ``fdAdvise_eq⟩),
   (``LeanExe.Wasi.fdAllocate, ⟨``LeanExe.Wasi.Call.fdAllocate,
     flatForm 0 false, [false, false, false], ``fdAllocate_eq⟩),
-  (``LeanExe.Wasi.fdClose, ⟨``LeanExe.Wasi.Call.fdClose,
-    flatForm 0 false, [false], ``fdClose_eq⟩),
   (``LeanExe.Wasi.fdDatasync, ⟨``LeanExe.Wasi.Call.fdDatasync,
     flatForm 0 false, [false], ``fdDatasync_eq⟩),
   (``LeanExe.Wasi.fdFdstatGet, ⟨``LeanExe.Wasi.Call.fdFdstatGet,
@@ -406,20 +528,26 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false, false], ``fdFilestatSetSize_eq⟩),
   (``LeanExe.Wasi.fdFilestatSetTimes, ⟨``LeanExe.Wasi.Call.fdFilestatSetTimes,
     flatForm 0 false, [false, false, false, false], ``fdFilestatSetTimes_eq⟩),
+  (``LeanExe.Wasi.fdPread, ⟨``LeanExe.Wasi.Call.fdPread,
+    iovecReadForm, [false, false, false], ``fdPread_eq⟩),
   (``LeanExe.Wasi.fdPrestatGet, ⟨``LeanExe.Wasi.Call.fdPrestatGet,
     recordForm 2, [false], ``fdPrestatGet_eq⟩),
   (``LeanExe.Wasi.fdPrestatDirName, ⟨``LeanExe.Wasi.Call.fdPrestatDirName,
     flatForm 0 true, [false, false], ``fdPrestatDirName_eq⟩),
+  (``LeanExe.Wasi.fdPwrite, ⟨``LeanExe.Wasi.Call.fdPwrite,
+    iovecWriteForm, [false, true, false], ``fdPwrite_eq⟩),
+  (``LeanExe.Wasi.fdRead, ⟨``LeanExe.Wasi.Call.fdRead,
+    iovecReadForm, [false, false], ``fdRead_eq⟩),
   (``LeanExe.Wasi.fdReaddir, ⟨``LeanExe.Wasi.Call.fdReaddir,
     flatForm 1 true, [false, false, false], ``fdReaddir_eq⟩),
-  (``LeanExe.Wasi.fdRenumber, ⟨``LeanExe.Wasi.Call.fdRenumber,
-    flatForm 0 false, [false, false], ``fdRenumber_eq⟩),
   (``LeanExe.Wasi.fdSeek, ⟨``LeanExe.Wasi.Call.fdSeek,
     flatForm 1 false, [false, false, false], ``fdSeek_eq⟩),
   (``LeanExe.Wasi.fdSync, ⟨``LeanExe.Wasi.Call.fdSync,
     flatForm 0 false, [false], ``fdSync_eq⟩),
   (``LeanExe.Wasi.fdTell, ⟨``LeanExe.Wasi.Call.fdTell,
     flatForm 1 false, [false], ``fdTell_eq⟩),
+  (``LeanExe.Wasi.fdWrite, ⟨``LeanExe.Wasi.Call.fdWrite,
+    iovecWriteForm, [false, true], ``fdWrite_eq⟩),
   (``LeanExe.Wasi.pathCreateDirectory, ⟨``LeanExe.Wasi.Call.pathCreateDirectory,
     flatForm 0 false, [false, true], ``pathCreateDirectory_eq⟩),
   (``LeanExe.Wasi.pathFilestatGet, ⟨``LeanExe.Wasi.Call.pathFilestatGet,
@@ -428,8 +556,6 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [false, false, true, false, false, false], ``pathFilestatSetTimes_eq⟩),
   (``LeanExe.Wasi.pathLink, ⟨``LeanExe.Wasi.Call.pathLink,
     flatForm 0 false, [false, false, true, false, true], ``pathLink_eq⟩),
-  (``LeanExe.Wasi.pathOpen, ⟨``LeanExe.Wasi.Call.pathOpen,
-    flatForm 1 false, [false, false, true, false, false, false, false], ``pathOpen_eq⟩),
   (``LeanExe.Wasi.pathReadlink, ⟨``LeanExe.Wasi.Call.pathReadlink,
     flatForm 1 true, [false, true, false], ``pathReadlink_eq⟩),
   (``LeanExe.Wasi.pathRemoveDirectory, ⟨``LeanExe.Wasi.Call.pathRemoveDirectory,
@@ -440,6 +566,12 @@ def generatedSysOperations : List (Lean.Name × SysOperation) := [
     flatForm 0 false, [true, false, true], ``pathSymlink_eq⟩),
   (``LeanExe.Wasi.pathUnlinkFile, ⟨``LeanExe.Wasi.Call.pathUnlinkFile,
     flatForm 0 false, [false, true], ``pathUnlinkFile_eq⟩),
+  (``LeanExe.Wasi.pollClock, ⟨``LeanExe.Wasi.Call.pollOneoffClock,
+    pollForm, [false, false, false, false], ``pollClock_eq⟩),
+  (``LeanExe.Wasi.pollRead, ⟨``LeanExe.Wasi.Call.pollOneoffRead,
+    pollForm, [false, false, false], ``pollRead_eq⟩),
+  (``LeanExe.Wasi.pollWrite, ⟨``LeanExe.Wasi.Call.pollOneoffWrite,
+    pollForm, [false, false, false], ``pollWrite_eq⟩),
   (``LeanExe.Wasi.procRaise, ⟨``LeanExe.Wasi.Call.procRaise,
     flatForm 0 false, [false], ``procRaise_eq⟩),
   (``LeanExe.Wasi.schedYield, ⟨``LeanExe.Wasi.Call.schedYield,

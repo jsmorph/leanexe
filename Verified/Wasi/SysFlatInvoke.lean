@@ -67,7 +67,7 @@ theorem resultBytes_none_inputs :
   | param :: params, values, inputs, reply, index, kinds, count, none' => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | output => simp [flatCapacityWith] at none'
     | input =>
       cases inputs with
@@ -75,7 +75,7 @@ theorem resultBytes_none_inputs :
       | cons input inputs =>
         exact resultBytes_none_inputs params values inputs reply index kinds.2
           (by simpa [List.count_cons] using count) (by simpa [flatCapacityWith] using none')
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       exact resultBytes_none_inputs params values.tail inputs reply index kinds.2
         (by simpa [List.count_cons] using count)
         (by simpa [flatCapacityWith, Param.takesArg] using none')
@@ -153,7 +153,8 @@ theorem wp_sys_flat_invoke_inputs_with {calls : List LeanExe.Wasi.Call} {World :
          (sysDiscardCodeWith calls buffer base) [] []]) K before s env := by
   have hAddress := hReady.address
   have hRootSmall : root.toNat < 4294967296 := by omega
-  have hInputCount' : inputs.length = call.params.count .input := hInputCount
+  have hInputCount' : inputs.length = call.params.count .input := by
+    rw [hInputCount, Call.inputCount_of_inputKind hKinds]
   have hMemory : 16 ≤ before.mem.pages * 65536 := by
     have hBase := hBefore.at_.base
     have hBound := hBefore.at_.top
@@ -409,8 +410,10 @@ theorem wp_sys_flat_invoke_with {calls : List LeanExe.Wasi.Call} {World : Type}
   have hInvoke := wp_sys_flat_invoke_inputs_with (inputLocs := []) (inputs := []) (s0 := s0)
     runtime layout profile hImports sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs
     hResults (by simpa only [List.map_nil, flatArgsWith_nil] using hAccepted) hHeld
-    (by rw [Call.wordCount, countP_takesWord_of_flat hKinds]; exact hCount) .nil
-    (by rw [Call.inputCount, count_input_of_flat hKinds]; rfl)
+    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
+      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount) .nil
+    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
+        rfl)
     (by simpa only [List.map_nil, flatCapacityWith_nil] using hBuffer) hReady hBefore hWorld hTop
     hLow hHigh hOutside hRootLocal hLengthLocal hThree hFour (fun _ member => nomatch member)
     (fun _ member => nomatch member)

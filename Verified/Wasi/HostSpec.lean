@@ -101,9 +101,11 @@ theorem hostSpec_exit (host : Host World) :
 /-! ## Flat calls
 
 A request of a flat call places each pointer parameter at one of `pointers`, in parameter order:
-an input's bytes, an output buffer, a result word, a reported region, or a record.  The generic
-frame follows from the description: the host changes only the output regions, whose sizes are the
-capacities, 4 or 8 for result words, the world's reported sizes, and the records' sizes. -/
+an input's bytes, an output buffer, a result word, a reported region, or a record, and for an
+`iovec` the element and the buffer, and for `subscriptions` the subscriptions and the events.  The
+generic frame follows from the description: the host changes only the output regions, whose sizes
+are the capacities, 4 or 8 for result words, the world's reported sizes, the records' sizes, and
+32 bytes for each event. -/
 
 /-- One output region of a request: its pointer, size, alignment, and whether the reply carries
 its content. -/
@@ -116,18 +118,30 @@ structure Region where
 def Region.span (region : Region) : Nat × Nat := (region.pointer.toNat, region.size)
 
 /-- Whether an argument has the kind of its parameter and fits the parameter's core type: a word
-below `2^32` for `word32`, `enum32`, and `flags32`, a word for `word64` and `flags64`, bytes of
-fewer than `2^32` bytes for `input`, and a capacity below `2^32` for `output`. -/
+below `2^32` for `word32`, `handle`, `enum32`, and `flags32`, a word for `word64` and `flags64`,
+bytes of fewer than `2^32` bytes for `input` and `iovec true`, and a capacity below `2^32` for
+`output` and `iovec false`. -/
 def argFits : Param → Arg → Bool
-  | .word32, .word value | .enum32 _, .word value | .flags32 _, .word value =>
+  | .word32, .word value | .handle, .word value | .enum32 _, .word value
+  | .flags32 _, .word value =>
     decide (value.toNat < 2 ^ 32)
   | .word64, .word _ | .flags64 _, .word _ => true
-  | .input, .bytes value => decide (value.data.size < 2 ^ 32)
-  | .output, .space capacity => decide (capacity.toNat < 2 ^ 32)
+  | .input, .bytes value | .iovec true, .bytes value => decide (value.data.size < 2 ^ 32)
+  | .output, .space capacity | .iovec false, .space capacity => decide (capacity.toNat < 2 ^ 32)
   | _, _ => false
 
-/-- Whether `args` holds one fitting argument for each parameter that takes one, in order, and no
-other.  `lowerArgs` is injective on such requests. -/
+/-- Whether the arguments of the fields `fields` are words, in order, each below `2^(8 width)`. -/
+def argFieldsFit : List Field → List Arg → Bool
+  | [], _ => true
+  | field :: fields, .word value :: args =>
+    decide (value.toNat < 2 ^ (8 * field.width)) && argFieldsFit fields args
+  | _ :: _, _ => false
+
+/-- Whether `args` holds one fitting argument for each parameter that takes one, and one fitting
+word for each word and handle field of a `subscriptions` parameter whose records fit, in order, and
+no other.  The core arguments of such a request do not determine it alone, since the pointer and
+the length of an iovec's buffer lie in the element in memory: with its input places in memory,
+`OracleSys.decodeArgs` reads the request back from the core arguments (`decodeArgs_lower`). -/
 def argsFit : List Param → List Arg → Bool
   | [], args => args.isEmpty
   | param :: params, args =>
@@ -135,12 +149,52 @@ def argsFit : List Param → List Arg → Bool
       match args with
       | [] => false
       | arg :: rest => argFits param arg && argsFit params rest
-    else argsFit params args
+    else
+      match param with
+      | .subscriptions records =>
+        recordsFit records && argFieldsFit (argFields records) args &&
+          argsFit params (args.drop (argFields records).length)
+      | _ => argsFit params args
 
-/-- The core arguments of a request whose pointer parameters take `pointers` in order. -/
+/-- Byte `index` of the little-endian representation of `value`. -/
+def byteOf (value index : Nat) : UInt8 := UInt8.ofNat (value / 2 ^ (8 * index))
+
+/-- The 8 bytes of an iovec element: the buffer's pointer and its length, each as 4 little-endian
+bytes. -/
+def elementBytes (pointer : UInt32) (length : Nat) : LeanExe.Bytes :=
+  ⟨⟨(Array.range 8).map fun index =>
+    if index < 4 then byteOf pointer.toNat index else byteOf (length % 2 ^ 32) (index - 4)⟩⟩
+
+/-- The value of each field, in order: a constant's value, or the word of the next argument for a
+word or a handle field. -/
+def fieldValues : List Field → List Arg → List UInt64
+  | [], _ => []
+  | field :: fields, args =>
+    match field.source with
+    | .const value => value :: fieldValues fields args
+    | .word | .handle => (args.head?.map Arg.value).getD 0 :: fieldValues fields args.tail
+
+/-- Byte `index` of a block whose bytes are zero and in which each field, in order, is written as
+the `width` little-endian bytes of its value at its offset. -/
+def blockByte (fields : List Field) (values : List UInt64) (index : Nat) : UInt8 :=
+  (fields.zip values).foldl (fun byte placed =>
+    if placed.1.offset ≤ index ∧ index < placed.1.offset + placed.1.width then
+      byteOf placed.2.toNat (index - placed.1.offset)
+    else byte) 0
+
+/-- The bytes of the subscription array of `records` with the arguments `args`: 48 bytes for each
+record, zero except for the fields. -/
+def subscriptionBytes (records : List (List Field)) (args : List Arg) : LeanExe.Bytes :=
+  ⟨⟨(Array.range (48 * records.length)).map
+    (blockByte (placedFields 0 records) (fieldValues (placedFields 0 records) args))⟩⟩
+
+/-- The core arguments of a request whose pointer parameters take `pointers` in order.  An `iovec`
+parameter takes two pointers, the element's and the buffer's, and a `subscriptions` parameter takes
+two, the subscriptions' and the events'. -/
 def lowerArgs : List Param → List Arg → List UInt32 → List Value
   | [], _, _ => []
   | .word32 :: params, args, pointers
+  | .handle :: params, args, pointers
   | .enum32 _ :: params, args, pointers
   | .flags32 _ :: params, args, pointers =>
     .i32 ((args.head?.map Arg.value).getD 0).toUInt32 :: lowerArgs params args.tail pointers
@@ -158,11 +212,18 @@ def lowerArgs : List Param → List Arg → List UInt32 → List Value
   | .reported .. :: params, args, pointers
   | .record .. :: params, args, pointers =>
     .i32 (pointers.headD 0) :: lowerArgs params args pointers.tail
+  | .iovec _ :: params, args, pointers =>
+    .i32 (pointers.headD 0) :: .i32 1 :: lowerArgs params args.tail pointers.tail.tail
+  | .subscriptions records :: params, args, pointers =>
+    .i32 (pointers.headD 0) :: .i32 (pointers.tail.headD 0) :: .i32 (UInt32.ofNat records.length) ::
+      lowerArgs params (args.drop (argFields records).length) pointers.tail.tail
 
-/-- The input bytes of a request, each at its pointer. -/
+/-- The input bytes of a request, each at its pointer: an input's bytes, the element of an `iovec`
+and the bytes of `iovec true`, and the subscriptions of `subscriptions`. -/
 def inputPlaces : List Param → List Arg → List UInt32 → List (UInt32 × LeanExe.Bytes)
   | [], _, _ => []
   | .word32 :: params, args, pointers
+  | .handle :: params, args, pointers
   | .enum32 _ :: params, args, pointers
   | .flags32 _ :: params, args, pointers
   | .flags64 _ :: params, args, pointers
@@ -176,12 +237,25 @@ def inputPlaces : List Param → List Arg → List UInt32 → List (UInt32 × Le
   | .result64 :: params, args, pointers
   | .reported .. :: params, args, pointers
   | .record .. :: params, args, pointers => inputPlaces params args pointers.tail
+  | .iovec false :: params, args, pointers =>
+    (pointers.headD 0,
+      elementBytes (pointers.tail.headD 0) ((args.head?.map Arg.capacity).getD 0)) ::
+      inputPlaces params args.tail pointers.tail.tail
+  | .iovec true :: params, args, pointers =>
+    (pointers.headD 0, elementBytes (pointers.tail.headD 0) ((args.head?.map Arg.length).getD 0)) ::
+      (pointers.tail.headD 0, match args.head? with
+        | some (.bytes value) => value
+        | _ => LeanExe.Bytes.empty) :: inputPlaces params args.tail pointers.tail.tail
+  | .subscriptions records :: params, args, pointers =>
+    (pointers.headD 0, subscriptionBytes records args) ::
+      inputPlaces params (args.drop (argFields records).length) pointers.tail.tail
 
 /-- The output regions of a request, in parameter order, with the sizes `sizes` of the reported
 regions. -/
 def outputRegions : List Param → List Nat → List Arg → List UInt32 → List Region
   | [], _, _, _ => []
   | .word32 :: params, sizes, args, pointers
+  | .handle :: params, sizes, args, pointers
   | .enum32 _ :: params, sizes, args, pointers
   | .flags32 _ :: params, sizes, args, pointers
   | .flags64 _ :: params, sizes, args, pointers
@@ -199,6 +273,14 @@ def outputRegions : List Param → List Nat → List Arg → List UInt32 → Lis
       outputRegions params sizes.tail args pointers.tail
   | .record size align _ :: params, sizes, args, pointers =>
     ⟨pointers.headD 0, size, align, true⟩ :: outputRegions params sizes args pointers.tail
+  | .iovec false :: params, sizes, args, pointers =>
+    ⟨pointers.tail.headD 0, (args.head?.map Arg.capacity).getD 0, 1, true⟩ ::
+      outputRegions params sizes args.tail pointers.tail.tail
+  | .iovec true :: params, sizes, args, pointers =>
+    outputRegions params sizes args.tail pointers.tail.tail
+  | .subscriptions records :: params, sizes, args, pointers =>
+    ⟨pointers.tail.headD 0, 32 * records.length, 8, true⟩ ::
+      outputRegions params sizes (args.drop (argFields records).length) pointers.tail.tail
 
 /-- Each shown region holds its output, in order. -/
 def ShownAt (mem : Mem) : List Region → List LeanExe.Bytes → Prop

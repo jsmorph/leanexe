@@ -4,7 +4,14 @@ import LeanExe.Wasi.Sys
 /-!
 Typed functions of the flat Preview 1 functions, which `tools/wasi-calls.py` generates from the
 pinned witx with the descriptions of `LeanExe/Wasi/CallTable.lean`.  A record result holds the
-errno and the record's fields as words.  Its check fails when this file differs from its output.
+errno and the record's fields as words.  A descriptor parameter takes a `Handle`.  `path_open`,
+`fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes descriptors.
+`fdRead` and `fdPread` read into a fresh buffer of the capacity and return the bytes read: the
+prefix of the buffer whose length is the count that the host returns, clamped to the capacity.
+`fdWrite` and `fdPwrite` return the count written.  `pollClock`, `pollRead`, and `pollWrite` return
+the errno, the number of events, and the fields of the first event.  The first subscription of each
+carries the userdata 1, and the clock subscription of `pollRead` and `pollWrite` the userdata 2.
+The generator's check fails when this file differs from its output.
 -/
 
 namespace LeanExe.Wasi
@@ -40,126 +47,143 @@ def clockResGet (id : UInt64) : Action WordResult :=
   .sys .clockResGet [.word id] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def fdAdvise (fd : UInt64) (offset : UInt64) (len : UInt64) (advice : UInt64) : Action UInt64 :=
-  .sys .fdAdvise [.word fd, .word offset, .word len, .word advice] fun reply =>
+def fdAdvise (fd : Handle) (offset : UInt64) (len : UInt64) (advice : UInt64) : Action UInt64 :=
+  .sys .fdAdvise [.word fd.fd, .word offset, .word len, .word advice] fun reply =>
     .pure reply.errno
 
-def fdAllocate (fd : UInt64) (offset : UInt64) (len : UInt64) : Action UInt64 :=
-  .sys .fdAllocate [.word fd, .word offset, .word len] fun reply =>
+def fdAllocate (fd : Handle) (offset : UInt64) (len : UInt64) : Action UInt64 :=
+  .sys .fdAllocate [.word fd.fd, .word offset, .word len] fun reply =>
     .pure reply.errno
 
-def fdClose (fd : UInt64) : Action UInt64 :=
-  .sys .fdClose [.word fd] fun reply =>
+def fdDatasync (fd : Handle) : Action UInt64 :=
+  .sys .fdDatasync [.word fd.fd] fun reply =>
     .pure reply.errno
 
-def fdDatasync (fd : UInt64) : Action UInt64 :=
-  .sys .fdDatasync [.word fd] fun reply =>
-    .pure reply.errno
-
-def fdFdstatGet (fd : UInt64) : Action FdstatResult :=
-  .sys .fdFdstatGet [.word fd] fun reply =>
+def fdFdstatGet (fd : Handle) : Action FdstatResult :=
+  .sys .fdFdstatGet [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 1, reply.field 0 2 2, reply.field 0 8 8, reply.field 0 16 8⟩
 
-def fdFdstatSetFlags (fd : UInt64) (flags : UInt64) : Action UInt64 :=
-  .sys .fdFdstatSetFlags [.word fd, .word flags] fun reply =>
+def fdFdstatSetFlags (fd : Handle) (flags : UInt64) : Action UInt64 :=
+  .sys .fdFdstatSetFlags [.word fd.fd, .word flags] fun reply =>
     .pure reply.errno
 
-def fdFdstatSetRights (fd : UInt64) (fsRightsBase : UInt64)
+def fdFdstatSetRights (fd : Handle) (fsRightsBase : UInt64)
     (fsRightsInheriting : UInt64) : Action UInt64 :=
-  .sys .fdFdstatSetRights [.word fd, .word fsRightsBase, .word fsRightsInheriting] fun reply =>
+  .sys .fdFdstatSetRights [.word fd.fd, .word fsRightsBase, .word fsRightsInheriting] fun reply =>
     .pure reply.errno
 
-def fdFilestatGet (fd : UInt64) : Action FilestatResult :=
-  .sys .fdFilestatGet [.word fd] fun reply =>
+def fdFilestatGet (fd : Handle) : Action FilestatResult :=
+  .sys .fdFilestatGet [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 8, reply.field 0 8 8, reply.field 0 16 1,
       reply.field 0 24 8, reply.field 0 32 8, reply.field 0 40 8, reply.field 0 48 8,
       reply.field 0 56 8⟩
 
-def fdFilestatSetSize (fd : UInt64) (size : UInt64) : Action UInt64 :=
-  .sys .fdFilestatSetSize [.word fd, .word size] fun reply =>
+def fdFilestatSetSize (fd : Handle) (size : UInt64) : Action UInt64 :=
+  .sys .fdFilestatSetSize [.word fd.fd, .word size] fun reply =>
     .pure reply.errno
 
-def fdFilestatSetTimes (fd : UInt64) (atim : UInt64) (mtim : UInt64)
+def fdFilestatSetTimes (fd : Handle) (atim : UInt64) (mtim : UInt64)
     (fstFlags : UInt64) : Action UInt64 :=
-  .sys .fdFilestatSetTimes [.word fd, .word atim, .word mtim, .word fstFlags] fun reply =>
+  .sys .fdFilestatSetTimes [.word fd.fd, .word atim, .word mtim, .word fstFlags] fun reply =>
     .pure reply.errno
 
-def fdPrestatGet (fd : UInt64) : Action PrestatResult :=
-  .sys .fdPrestatGet [.word fd] fun reply =>
+def fdPread (fd : Handle) (capacity : UInt64) (offset : UInt64) : Action BytesResult :=
+  .sys .fdPread [.word fd.fd, .space capacity, .word offset] fun reply =>
+    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
+
+def fdPrestatGet (fd : Handle) : Action PrestatResult :=
+  .sys .fdPrestatGet [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 1, reply.field 0 4 4⟩
 
-def fdPrestatDirName (fd : UInt64) (pathLen : UInt64) : Action BytesResult :=
-  .sys .fdPrestatDirName [.word fd, .space pathLen] fun reply =>
+def fdPrestatDirName (fd : Handle) (pathLen : UInt64) : Action BytesResult :=
+  .sys .fdPrestatDirName [.word fd.fd, .space pathLen] fun reply =>
     .pure ⟨reply.errno, reply.bytes 0⟩
 
-def fdReaddir (fd : UInt64) (bufLen : UInt64) (cookie : UInt64) : Action BytesCountResult :=
-  .sys .fdReaddir [.word fd, .space bufLen, .word cookie] fun reply =>
+def fdPwrite (fd : Handle) (bytes : Bytes) (offset : UInt64) : Action WordResult :=
+  .sys .fdPwrite [.word fd.fd, .bytes bytes, .word offset] fun reply =>
+    .pure ⟨reply.errno, reply.word 0⟩
+
+def fdRead (fd : Handle) (capacity : UInt64) : Action BytesResult :=
+  .sys .fdRead [.word fd.fd, .space capacity] fun reply =>
+    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
+
+def fdReaddir (fd : Handle) (bufLen : UInt64) (cookie : UInt64) : Action BytesCountResult :=
+  .sys .fdReaddir [.word fd.fd, .space bufLen, .word cookie] fun reply =>
     .pure ⟨reply.errno, reply.bytes 0, reply.word 1⟩
 
-def fdRenumber (fd : UInt64) (to : UInt64) : Action UInt64 :=
-  .sys .fdRenumber [.word fd, .word to] fun reply =>
-    .pure reply.errno
-
-def fdSeek (fd : UInt64) (offset : UInt64) (whence : UInt64) : Action WordResult :=
-  .sys .fdSeek [.word fd, .word offset, .word whence] fun reply =>
+def fdSeek (fd : Handle) (offset : UInt64) (whence : UInt64) : Action WordResult :=
+  .sys .fdSeek [.word fd.fd, .word offset, .word whence] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def fdSync (fd : UInt64) : Action UInt64 :=
-  .sys .fdSync [.word fd] fun reply =>
+def fdSync (fd : Handle) : Action UInt64 :=
+  .sys .fdSync [.word fd.fd] fun reply =>
     .pure reply.errno
 
-def fdTell (fd : UInt64) : Action WordResult :=
-  .sys .fdTell [.word fd] fun reply =>
+def fdTell (fd : Handle) : Action WordResult :=
+  .sys .fdTell [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def pathCreateDirectory (fd : UInt64) (path : Bytes) : Action UInt64 :=
-  .sys .pathCreateDirectory [.word fd, .bytes path] fun reply =>
+def fdWrite (fd : Handle) (bytes : Bytes) : Action WordResult :=
+  .sys .fdWrite [.word fd.fd, .bytes bytes] fun reply =>
+    .pure ⟨reply.errno, reply.word 0⟩
+
+def pathCreateDirectory (fd : Handle) (path : Bytes) : Action UInt64 :=
+  .sys .pathCreateDirectory [.word fd.fd, .bytes path] fun reply =>
     .pure reply.errno
 
-def pathFilestatGet (fd : UInt64) (flags : UInt64) (path : Bytes) : Action FilestatResult :=
-  .sys .pathFilestatGet [.word fd, .word flags, .bytes path] fun reply =>
+def pathFilestatGet (fd : Handle) (flags : UInt64) (path : Bytes) : Action FilestatResult :=
+  .sys .pathFilestatGet [.word fd.fd, .word flags, .bytes path] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 8, reply.field 0 8 8, reply.field 0 16 1,
       reply.field 0 24 8, reply.field 0 32 8, reply.field 0 40 8, reply.field 0 48 8,
       reply.field 0 56 8⟩
 
-def pathFilestatSetTimes (fd : UInt64) (flags : UInt64) (path : Bytes) (atim : UInt64)
+def pathFilestatSetTimes (fd : Handle) (flags : UInt64) (path : Bytes) (atim : UInt64)
     (mtim : UInt64) (fstFlags : UInt64) : Action UInt64 :=
-  .sys .pathFilestatSetTimes [.word fd, .word flags, .bytes path, .word atim, .word mtim,
+  .sys .pathFilestatSetTimes [.word fd.fd, .word flags, .bytes path, .word atim, .word mtim,
     .word fstFlags] fun reply =>
     .pure reply.errno
 
-def pathLink (oldFd : UInt64) (oldFlags : UInt64) (oldPath : Bytes) (newFd : UInt64)
+def pathLink (oldFd : Handle) (oldFlags : UInt64) (oldPath : Bytes) (newFd : Handle)
     (newPath : Bytes) : Action UInt64 :=
-  .sys .pathLink [.word oldFd, .word oldFlags, .bytes oldPath, .word newFd,
+  .sys .pathLink [.word oldFd.fd, .word oldFlags, .bytes oldPath, .word newFd.fd,
     .bytes newPath] fun reply =>
     .pure reply.errno
 
-def pathOpen (fd : UInt64) (dirflags : UInt64) (path : Bytes) (oflags : UInt64)
-    (fsRightsBase : UInt64) (fsRightsInheriting : UInt64)
-    (fdflags : UInt64) : Action WordResult :=
-  .sys .pathOpen [.word fd, .word dirflags, .bytes path, .word oflags, .word fsRightsBase,
-    .word fsRightsInheriting, .word fdflags] fun reply =>
-    .pure ⟨reply.errno, reply.word 0⟩
-
-def pathReadlink (fd : UInt64) (path : Bytes) (bufLen : UInt64) : Action BytesCountResult :=
-  .sys .pathReadlink [.word fd, .bytes path, .space bufLen] fun reply =>
+def pathReadlink (fd : Handle) (path : Bytes) (bufLen : UInt64) : Action BytesCountResult :=
+  .sys .pathReadlink [.word fd.fd, .bytes path, .space bufLen] fun reply =>
     .pure ⟨reply.errno, reply.bytes 0, reply.word 1⟩
 
-def pathRemoveDirectory (fd : UInt64) (path : Bytes) : Action UInt64 :=
-  .sys .pathRemoveDirectory [.word fd, .bytes path] fun reply =>
+def pathRemoveDirectory (fd : Handle) (path : Bytes) : Action UInt64 :=
+  .sys .pathRemoveDirectory [.word fd.fd, .bytes path] fun reply =>
     .pure reply.errno
 
-def pathRename (fd : UInt64) (oldPath : Bytes) (newFd : UInt64) (newPath : Bytes) : Action UInt64 :=
-  .sys .pathRename [.word fd, .bytes oldPath, .word newFd, .bytes newPath] fun reply =>
+def pathRename (fd : Handle) (oldPath : Bytes) (newFd : Handle) (newPath : Bytes) : Action UInt64 :=
+  .sys .pathRename [.word fd.fd, .bytes oldPath, .word newFd.fd, .bytes newPath] fun reply =>
     .pure reply.errno
 
-def pathSymlink (oldPath : Bytes) (fd : UInt64) (newPath : Bytes) : Action UInt64 :=
-  .sys .pathSymlink [.bytes oldPath, .word fd, .bytes newPath] fun reply =>
+def pathSymlink (oldPath : Bytes) (fd : Handle) (newPath : Bytes) : Action UInt64 :=
+  .sys .pathSymlink [.bytes oldPath, .word fd.fd, .bytes newPath] fun reply =>
     .pure reply.errno
 
-def pathUnlinkFile (fd : UInt64) (path : Bytes) : Action UInt64 :=
-  .sys .pathUnlinkFile [.word fd, .bytes path] fun reply =>
+def pathUnlinkFile (fd : Handle) (path : Bytes) : Action UInt64 :=
+  .sys .pathUnlinkFile [.word fd.fd, .bytes path] fun reply =>
     .pure reply.errno
+
+def pollClock (clock : UInt64) (timeout : UInt64) (precision : UInt64)
+    (flags : UInt64) : Action PollResult :=
+  .sys .pollOneoffClock [.word clock, .word timeout, .word precision, .word flags] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
+
+def pollRead (fd : Handle) (clock : UInt64) (timeout : UInt64) : Action PollResult :=
+  .sys .pollOneoffRead [.word fd.fd, .word clock, .word timeout] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
+
+def pollWrite (fd : Handle) (clock : UInt64) (timeout : UInt64) : Action PollResult :=
+  .sys .pollOneoffWrite [.word fd.fd, .word clock, .word timeout] fun reply =>
+    .pure ⟨reply.errno, reply.word 1, reply.field 0 0 8, reply.field 0 8 2, reply.field 0 10 1,
+      reply.field 0 16 8, reply.field 0 24 2⟩
 
 def procRaise (sig : UInt64) : Action UInt64 :=
   .sys .procRaise [.word sig] fun reply =>
@@ -169,12 +193,12 @@ def schedYield : Action UInt64 :=
   .sys .schedYield [] fun reply =>
     .pure reply.errno
 
-def sockAccept (fd : UInt64) (flags : UInt64) : Action WordResult :=
-  .sys .sockAccept [.word fd, .word flags] fun reply =>
+def sockAccept (fd : Handle) (flags : UInt64) : Action WordResult :=
+  .sys .sockAccept [.word fd.fd, .word flags] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def sockShutdown (fd : UInt64) (how : UInt64) : Action UInt64 :=
-  .sys .sockShutdown [.word fd, .word how] fun reply =>
+def sockShutdown (fd : Handle) (how : UInt64) : Action UInt64 :=
+  .sys .sockShutdown [.word fd.fd, .word how] fun reply =>
     .pure reply.errno
 
 end LeanExe.Wasi

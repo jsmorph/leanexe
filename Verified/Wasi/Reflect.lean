@@ -1,6 +1,7 @@
 import Verified.Wasi.ReflectDefinitions
 import Verified.Wasi.EffectAnalysis
 import Verified.Wasi.ReflectSysCalls
+import Verified.Wasi.ReflectBracket
 
 namespace Verified.Wasi.Reflect
 
@@ -30,6 +31,7 @@ def sysOperation? (function : Name) : Option SysOperation :=
 
 partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection := do
   let expression ← projReduce expression
+  if expression.isAppOf ``LeanExe.Wasi.withOpen then return ← reflectWithOpen expression
   let nativeType ← actionResultType (← inferType expression)
   let result ← resultShapeOf nativeType
   if let some reflected ← reflectCall? expression then return reflected
@@ -181,6 +183,60 @@ where
         proofs.toArray)
     let nativeType ← actionResultType (← inferType original)
     fromEquation context (← resultShapeOf nativeType) original source equation
+
+  /-- `withOpen` as the expansion that `withOpen_rel_mk` or `withOpen_rel_pair` relates to it: the
+  arguments other than the continuations bound to variables first, then the open, the error
+  continuation applied to the errno of the open's result, and the body applied to the handle,
+  each followed by the pair of its result with a word, `mk` when the result is an element and
+  `pair` otherwise, as `shapeOf` gives the type of the pair.  `Unit × UInt64` has no source type,
+  since `Ty` has no unit, so this function refuses a body that returns `Unit`.  `reflect` calls it
+  before it reads the type of the pair, so that the refusal names `withOpen`. -/
+  reflectWithOpen (original : Lean.Expr) : MetaM Reflection := do
+    let nativeArgs := original.getAppArgs
+    unless nativeArgs.size == 10 do
+      throwError "verified_compile_wasi: withOpen requires all its arguments"
+    let valueType := nativeArgs[0]!
+    if ← isDefEq valueType (mkConst ``Unit) then
+      throwError "verified_compile_wasi: the body of withOpen must return a value, and it \
+        returns Unit"
+    let data := (nativeArgs.extract 1 8).toList
+    let reflected ← data.mapM (pureOperand context)
+    let bind := reflected.map fun argument => !argument.src.isAppOf ``Expr.var
+    if bind.any id then
+      return ← reflectAs (← bindArgs original.getAppFn nativeArgs.toList
+        (false :: bind ++ [false, false]) #[] #[]) original
+    let places := reflected.map fun argument => argument.src.getAppArgs.back!
+    let proofs ← reflected.mapM (userProof context.pure)
+    let onErrorNative := nativeArgs[8]!
+    let bodyNative := nativeArgs[9]!
+    let valueShape ← shapeOf valueType
+    let nativeType ← actionResultType (← inferType original)
+    let shape ← resultShapeOf nativeType
+    let word := mkConst ``UInt64
+    let openedType ← mkAppM ``Prod #[word, word]
+    let handleType := mkConst ``LeanExe.Wasi.Handle
+    let openedShape ← shapeOf openedType
+    let handleShape ← shapeOf handleType
+    withResultValue context (.value openedShape) openedType fun opened openedContext => do
+      let onError ← reflect openedContext (onErrorNative.beta #[← mkAppM ``Prod.fst #[opened]])
+      withResultValue openedContext (.value handleShape) handleType fun handle handleContext => do
+        let body ← reflect handleContext (bodyNative.beta #[handle])
+        for source in [onError.src, body.src] do
+          if source.containsFVar opened.fvarId! || source.containsFVar handle.fvarId! then
+            throwError "verified_compile_wasi: a withOpen continuation escaped its source context"
+        let onErrorProof ← mkLambdaFVars #[opened] onError.proof
+        let bodyProof ← mkLambdaFVars #[opened, handle] body.proof
+        let equation := match valueShape.ty with
+          | .elem _ => ``withOpen_rel_mk
+          | _ => ``withOpen_rel_pair
+        let proof ← mkAppM equation (#[context.pure.funs, context.funs, context.pure.env] ++
+          places.toArray ++ #[onError.src, body.src] ++ data.toArray ++
+          #[onErrorNative, bodyNative, ← valueShape.fn valueType] ++ proofs.toArray ++
+          #[onErrorProof, bodyProof])
+        let type ← instantiateMVars (← inferType proof)
+        let some denoted := type.find? (·.isAppOfArity ``Command.denote 8)
+          | throwError "verified_compile_wasi: the withOpen equation has no source"
+        checkedReflection context shape original denoted.getAppArgs[6]! proof
 
   reflectBranch (condition yesNative noNative : Lean.Expr)
       (proposition : Option (Lean.Expr × Lean.Expr)) (original : Lean.Expr) : MetaM Reflection := do

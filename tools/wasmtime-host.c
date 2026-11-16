@@ -37,6 +37,9 @@ typedef struct {
   const char *control_file;
   const char **guest_args;
   size_t guest_arg_count;
+  const char **env_names;
+  const char **env_values;
+  size_t env_count;
   const char *preopen_dir;
 } HostOptions;
 
@@ -301,6 +304,11 @@ static wasi_config_t *configure_wasi(void) {
       !wasi_config_set_argv(config, options.guest_arg_count, options.guest_args)) {
     wasi_config_delete(config);
     die("a guest argument is not valid UTF-8");
+  }
+  if (options.env_count > 0 &&
+      !wasi_config_set_env(config, options.env_count, options.env_names, options.env_values)) {
+    wasi_config_delete(config);
+    die("a guest environment variable is not valid UTF-8");
   }
   if (options.preopen_dir != NULL &&
       !wasi_config_preopen_dir(config, options.preopen_dir, ".",
@@ -1705,9 +1713,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static _Noreturn void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host [--wasi] [--stdin-file PATH] [--stdout-file PATH] "
-          "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... [--dir PATH] <mode> "
-          "<module.wasm> "
-          "[arguments]\n"
+          "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... [--env NAME=VALUE]... "
+          "[--dir PATH] <mode> <module.wasm> [arguments]\n"
           "       wasmtime-host [options] run <module.wasm>\n"
           "       wasmtime-host [options] call|call-stats <module.wasm> <function> "
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
@@ -1724,7 +1731,9 @@ static _Noreturn void usage(void) {
 static int parse_options(int argc, char **argv) {
   int i = 1;
   options.guest_args = calloc((size_t)argc, sizeof(const char *));
-  if (options.guest_args == NULL) {
+  options.env_names = calloc((size_t)argc, sizeof(const char *));
+  options.env_values = calloc((size_t)argc, sizeof(const char *));
+  if (options.guest_args == NULL || options.env_names == NULL || options.env_values == NULL) {
     die("out of memory");
   }
   while (i < argc && strncmp(argv[i], "--", 2) == 0) {
@@ -1742,6 +1751,22 @@ static int parse_options(int argc, char **argv) {
         usage();
       }
       options.guest_args[options.guest_arg_count++] = argv[i++];
+      continue;
+    }
+    if (strcmp(option, "--env") == 0) {
+      if (i == argc) {
+        fprintf(stderr, "missing value for --env\n");
+        usage();
+      }
+      char *variable = argv[i++];
+      char *equals = strchr(variable, '=');
+      if (equals == NULL || equals == variable) {
+        fprintf(stderr, "--env needs NAME=VALUE with a nonempty name: %s\n", variable);
+        usage();
+      }
+      *equals = '\0';
+      options.env_names[options.env_count] = variable;
+      options.env_values[options.env_count++] = equals + 1;
       continue;
     }
     const char **path = NULL;
@@ -1785,6 +1810,9 @@ static int parse_options(int argc, char **argv) {
   }
   if (!options.wasi && options.preopen_dir != NULL) {
     die("--dir requires --wasi or run");
+  }
+  if (!options.wasi && options.env_count > 0) {
+    die("--env requires --wasi or run");
   }
   if (options.wasi && !options.command && options.control_file == NULL &&
       options.stdout_file == NULL) {

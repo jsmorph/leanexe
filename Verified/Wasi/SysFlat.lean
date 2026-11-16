@@ -180,7 +180,8 @@ theorem wp_sys_flat_accept_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     have := hHigh
     simp only [Locals.positions] at this
     omega
-  have hInputCount' : inputs.length = call.params.count .input := hInputCount
+  have hInputCount' : inputs.length = call.params.count .input := by
+    rw [hInputCount, Call.inputCount_of_inputKind hKinds]
   have hInputLocCount : inputLocs.length = call.params.count .input := by
     rw [← hInputCount', hInputs.length_eq]
   have bound := fun i (hi : base ≤ i) (hi' : i < base + 6) =>
@@ -222,7 +223,8 @@ theorem wp_sys_flat_accept_inputs_with {calls : List LeanExe.Wasi.Call} {World :
       hTrap
   simp only [sysFlatCallInputsCodeWith, List.append_assoc]
   rcases outputLocalInputs_spec call.params locs values inputLocs (inputs.map Prod.snd) hKinds
-      hHeld hCount hInputLocCount (by simpa using hInputCount') with
+      hHeld (by rw [hCount, Call.wordCount_of_inputKind hKinds]) hInputLocCount
+      (by simpa using hInputCount') with
     ⟨hNone, hCapNone, _⟩ | ⟨place, capacity, hSome, hCapSome, hPlace, hMember, _⟩
   · rw [hNone]
     simp only [sysAllocateBufferWith, List.nil_append]
@@ -352,11 +354,12 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     have := hHigh
     simp only [Locals.positions] at this
     omega
-  have hInputCount' : inputs.length = call.params.count .input := hInputCount
+  have hInputCount' : inputs.length = call.params.count .input := by
+    rw [hInputCount, Call.inputCount_of_inputKind hKinds]
   have hWordsLength := fun reply => resultWords_length reply call.params 0
   simp only [sysFlatInputsCodeWith, List.append_assoc]
-  refine wp_sys_reject_inputs call.params locs values inputLocs inputs s _ Q hKinds hHeld hCount
-    hInputs hInputCount' ?_
+  refine wp_sys_reject_inputs call.params locs values inputLocs inputs s _ Q hKinds hHeld
+    (by rw [hCount, Call.wordCount_of_inputKind hKinds]) hInputs hInputCount' ?_
   generalize hRejectEq : rejectArgs call.params
     (flatArgsWith call.params values (inputs.map Prod.snd)) = reject
   have outside0 := ReadAllOutside.refl base s
@@ -556,8 +559,10 @@ theorem wp_sys_flat_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
   have hAccept := wp_sys_flat_accept_inputs_with (inputLocs := []) (inputs := []) (s0 := s0)
     runtime layout profile hImports sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs
     hResults (by simpa only [List.map_nil, flatArgsWith_nil] using hAccepted) hHeld
-    (by rw [Call.wordCount, countP_takesWord_of_flat hKinds]; exact hCount) hLocs .nil
-    (by rw [Call.inputCount, count_input_of_flat hKinds]; rfl) (fun _ member => nomatch member)
+    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
+      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount) hLocs .nil
+    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
+        rfl) (fun _ member => nomatch member)
     (fun _ member => nomatch member) hHeap hCap hLow hHigh hOutside e1 e2 e3 e4
     (by simpa only [List.map_nil, flatCapacityWith_nil] using hRoom) hResource
     (by simpa only [List.map_nil, flatArgsWith_nil, flatCostWith_nil] using hNext)
@@ -609,8 +614,11 @@ theorem wp_sys_flat_with {calls : List LeanExe.Wasi.Call} {World : Type}
     wp target (sysFlatCodeWith calls call locs base ++ rest) Q initial s env := by
   have hFlat := wp_sys_flat_inputs_with (inputLocs := []) (inputs := []) (aborts := aborts)
     runtime layout profile hImports sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs
-    hResults hHeld (by rw [Call.wordCount, countP_takesWord_of_flat hKinds]; exact hCount) hLocs .nil
-    (by rw [Call.inputCount, count_input_of_flat hKinds]; rfl) (fun _ member => nomatch member)
+    hResults hHeld
+    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
+      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount) hLocs .nil
+    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
+        rfl) (fun _ member => nomatch member)
     (fun _ member => nomatch member) hHeap hCap hLow hHigh
     (by simpa only [List.map_nil, flatCapacityWith_nil] using hRoom) hResource
     (by simpa only [List.map_nil, flatArgsWith_nil, flatCostWith_nil, outputLocalInputs_nil]
