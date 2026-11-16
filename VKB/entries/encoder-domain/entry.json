@@ -1,0 +1,38 @@
+{
+  "id": "encoder-domain",
+  "goals": [
+    "verified_compile_wasi: module … does not encode: instruction is outside LeanExe's emitted WASM",
+    "verified_compile: the module does not encode",
+    "a Talos instruction in emitted code, such as load16U, load8UI64, load16UI64, or load32UI64",
+    "Wasm.Encoding.ProgramForm code as a premise of a proof over pure code in a WASI module",
+    "a two-byte field loaded without i32.load16_u"
+  ],
+  "modules": [
+    "LeanExe.Encoding.Domain",
+    "LeanExe.Encoding.Completeness.Writes",
+    "LeanExe.Encoding.Decode",
+    "Verified.Wasi.ReflectEncoding",
+    "Verified.Wasi.PurePrefix",
+    "Verified.Wasi.SysRecordCall",
+    "Verified.Wasi.Source"
+  ],
+  "declarations": [
+    "Wasm.Instruction",
+    "Wasm.Instruction.load16U",
+    "Wasm.Instruction.load8UI64",
+    "Wasm.Instruction.load16UI64",
+    "Wasm.Instruction.load32UI64",
+    "Wasm.Encoding.InstructionForm",
+    "Wasm.Encoding.ProgramForm",
+    "Wasm.Encoding.encodeParts",
+    "Wasm.Encoding.decode",
+    "Verified.Wasi.Reflect.emitEncoding",
+    "Verified.Wasi.PureTransport.wp_prefix_with",
+    "Verified.Wasi.Command.sys"
+  ],
+  "examples": [
+    "Verified.Wasi.fieldLoadCode",
+    "Verified.Wasi.littleEndian_read16",
+    "Verified.Wasi.wp_field_load"
+  ]
+}

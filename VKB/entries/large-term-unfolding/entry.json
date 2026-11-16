@@ -11,7 +11,8 @@
     "toSpec b or slotsFrom b 4097 s inside a goal closed by rfl or unification",
     "a local definition introduced by set that omega or rw unfolds",
     "every case of a theorem over a parser that matches the opcode and the operands in one match runs out of heartbeats",
-    "(deterministic) timeout at whnf from a show over a chain of let-bound machine states"
+    "(deterministic) timeout at whnf from a show over a chain of let-bound machine states",
+    "(deterministic) timeout at whnf from rfl when both sides reach Reply.field by different paths"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -32,7 +33,8 @@
     "LeanExe.PTX.RoundTrip",
     "LeanExe.A64.Proof.Memory",
     "LeanExe.A64.Proof.Sim",
-    "LeanExe.A64.Proof.Relation"
+    "LeanExe.A64.Proof.Relation",
+    "Verified.Wasi.ReflectSysCalls"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -51,7 +53,11 @@
     "LeanExe.PTX.ops4",
     "LeanExe.A64.State.x",
     "LeanExe.A64.State.x_withPc",
-    "LeanExe.A64.State.x_setX_ne"
+    "LeanExe.A64.State.x_setX_ne",
+    "Verified.Wasi.Command.sys",
+    "LeanExe.Wasi.Reply.field",
+    "LeanExe.Wasi.fdFdstatGet",
+    "Verified.Wasi.recordWords"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -68,6 +74,7 @@
     "LeanExe.A64.run_size",
     "LeanExe.A64.run_grow_ok",
     "LeanExe.A64.run_growWide_size",
-    "LeanExe.A64.run_growWide_cmp"
+    "LeanExe.A64.run_growWide_cmp",
+    "Verified.Wasi.Reflect.fdFdstatGet_eq"
   ]
 }

@@ -6,25 +6,30 @@
     "Option.map (fun n => -(n : Int)) applied to an Option Nat, elaborated as a do block",
     "a coercion of Int to Nat in a trusted translation that maps negative values to 0",
     "failed to synthesize instance of type class HMul Nat UInt64 ?m",
-    "(3 + 2 * ws[0]!).toNat"
+    "(3 + 2 * ws[0]!).toNat",
+    "(params ++ [.record size align fields]).count .input, a dot constructor in an operand of ++"
   ],
   "modules": [
     "Library.Numerics.Float64.Log10.Log10Bits",
     "Library.Numerics.Decimal.Int64Text.Inverse",
-    "Demos.Rcv.Maine.Refinement"
+    "Demos.Rcv.Maine.Refinement",
+    "Verified.Wasi.SysRecordCall"
   ],
   "declarations": [
     "Library.Numerics.Float64.Log10.Log10Bits.kWord10",
     "Library.Numerics.Float64.Log10.log10",
     "Library.Numerics.Decimal.Int64Text.denote_minus",
     "Library.Numerics.Decimal.Int64Text.denote_plain",
-    "Option.map_some"
+    "Option.map_some",
+    "Verified.Wasi.recordOf"
   ],
   "examples": [
     "Library.Numerics.Float64.Log10.Log10Bits.normal_bits",
     "Library.Numerics.Float64.Log10.Log10Bits.subnormal_bits",
     "Library.Numerics.Decimal.Int64Text.expectedRead_print",
     "Demos.Rcv.Refine.validArray_iff",
-    "Demos.Rcv.Maine.Refine.countValid_eq"
+    "Demos.Rcv.Maine.Refine.countValid_eq",
+    "Verified.Wasi.recordOf_record",
+    "Verified.Wasi.count_input_record"
   ]
 }
