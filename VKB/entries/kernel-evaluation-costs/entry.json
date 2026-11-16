@@ -45,6 +45,8 @@
     "Verified.loopCost_eq_zero",
     "Verified.Reflect.casesEq",
     "Verified.Reflect.tableChain",
+    "Verified.Reflect.progNode",
+    "Verified.Reflect.reflectProgramFunction",
     "Verified.Reflect.addDefinition",
     "Verified.Prog.cons",
     "Verified.Func.sig"
