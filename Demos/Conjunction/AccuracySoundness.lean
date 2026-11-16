@@ -171,11 +171,11 @@ theorem search_sound (hE : Encl H E P) (hp : Finite p.toBits) (hq : 0 < value p.
 
 /-! ### The circular error -/
 
-/-- An accepted `pc` belongs to a finite radius. -/
-theorem pc_radius_finite {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
-    (h : (pc m1 m2 c11 c12 c22 r n).status = 0) : Finite r.toBits := by
-  obtain ⟨hc, -, -, -⟩ := pc_enclosure h
-  unfold pc pcWith at h
+/-- An accepted `pcWith` with the table of `exp` belongs to a finite radius. -/
+theorem pcWith_radius_finite {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
+    (h : (pcWith Exp.expTable m1 m2 c11 c12 c22 r n).status = 0) : Finite r.toBits := by
+  obtain ⟨hc, -, -, -⟩ := pcWith_enclosure h
+  unfold pcWith at h
   by_cases g1 : (0.0 : Float) < c11
   · by_cases g2 : (0.0 : Float) < r
     · by_cases g3 : 1 ≤ n
@@ -204,9 +204,8 @@ theorem disk_encl (m1 m2 c11 c12 c22 : Float) (n : UInt64) :
       (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
         (value c22.toBits)) := by
   intro r h
-  have h' : (pc m1 m2 c11 c12 c22 r n).status = 0 := h
-  obtain ⟨hc, hd, hr, hcont, -⟩ := pc_enclosure h'
-  exact ⟨⟨hc, hd⟩, pc_radius_finite h', hr.le, hcont⟩
+  obtain ⟨hc, hd, hr, hcont, -⟩ := pcWith_enclosure h
+  exact ⟨⟨hc, hd⟩, pcWith_radius_finite h, hr.le, hcont⟩
 
 theorem diskSearch_eq (tab : Array UInt64) (m1 m2 c11 c12 c22 p : Float) (n k : UInt64) :
     diskSearch tab m1 m2 c11 c12 c22 p n k =

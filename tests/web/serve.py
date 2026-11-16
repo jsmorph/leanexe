@@ -4,13 +4,15 @@
 # ///
 """Serves the browser pages from one server: /kernels/, which runs the WGSL kernel cases on the
 browser's WebGPU, /gpt2/, which runs GPT-2 124M in binary32 with each kernel on WebGPU or in
-gpt32.wasm on the CPU, and /rcv/, which recounts a local canonical ballot file with the
-tabulator's Oakland module rcvTabulate.wasm or its Maine module rcvMaine.wasm.
+gpt32.wasm on the CPU, /rcv/, which recounts a local canonical ballot file with the
+tabulator's Oakland module rcvTabulate.wasm or its Maine module rcvMaine.wasm, and /conjunction/,
+which computes the probability of collision of an encounter with the module conjunction.wasm.
 
 Run with `uv run tests/web/serve.py [--host H] [--port P]` (default 127.0.0.1:8000).  The pages
 use the verified compiler's kernels and modules: the kernel texts and the cases that
 `tests/wgsl/run.sh` writes to build/wgsl, build/verified/gpt32.wasm, the sampler's module
-build/verified/gpt.wasm, build/verified/rcvTabulate.wasm, and build/verified/rcvMaine.wasm.  At
+build/verified/gpt.wasm, build/verified/rcvTabulate.wasm, build/verified/rcvMaine.wasm, and
+build/verified/conjunction.wasm.  At
 start the server writes what is missing: it runs `tests/wgsl/run.sh --emit-only` if a kernel text
 or the cases are missing, emits each missing Wasm module, and builds the program printer
 `gpt32-lines`.  The GPT-2 page also needs
@@ -39,6 +41,7 @@ INDEX = ROOT / 'tests/web/index.html'
 KERNEL_PAGE = ROOT / 'tests/wgsl/browser'
 GPT_PAGE = ROOT / 'tests/gpt32/browser'
 RCV_PAGE = ROOT / 'tests/web/rcv'
+CONJUNCTION_PAGE = ROOT / 'tests/web/conjunction'
 WEIGHTS = ROOT / 'build/gpt2-32'
 LINES = ROOT / '.lake/build/bin/gpt32-lines'
 REPO = 'openai-community/gpt2'
@@ -49,9 +52,10 @@ KERNELS = ['scale', 'axpyArray', 'matVec', 'condMix', 'exp', 'embed', 'layerNorm
            'append', 'scores', 'headMax', 'headSum', 'probs', 'mix', 'add', 'gelu', 'logits']
 # The directory where tests/wgsl/run.sh writes the kernels and the cases.
 WGSL = ROOT / 'build/wgsl'
-# gpt32.wasm, the sampler's gpt.wasm, and the tabulator's rcvTabulate.wasm and rcvMaine.wasm, each
-# with its Lean module, its constant, and the runner's limits for the build and the emission.  The
-# build of the tabulator's Oakland module reached 5.9 GB of memory with 18 threads.
+# gpt32.wasm, the sampler's gpt.wasm, the tabulator's rcvTabulate.wasm and rcvMaine.wasm, and the
+# conjunction program's conjunction.wasm, each with its Lean module, its constant, and the runner's
+# limits for the build and the emission.  The build of the tabulator's Oakland module reached 5.9 GB
+# of memory with 18 threads.
 MODULES = [(ROOT / 'build/verified/gpt32.wasm', 'Demos.Gpt32.Verified',
             'Demos.Gpt32.Verified.compiled.module', []),
            (ROOT / 'build/verified/gpt.wasm', 'Demos.Gpt.Verified',
@@ -60,7 +64,9 @@ MODULES = [(ROOT / 'build/verified/gpt32.wasm', 'Demos.Gpt32.Verified',
             'Demos.Rcv.TabulateProgram.compiled.module', ['--timeout', '2h', '--memory-high', '8G']),
            (ROOT / 'build/verified/rcvMaine.wasm', 'Demos.Rcv.Maine.Tabulate',
             'Demos.Rcv.Maine.TabulateProgram.compiled.module',
-            ['--timeout', '2h', '--memory-high', '8G'])]
+            ['--timeout', '2h', '--memory-high', '8G']),
+           (ROOT / 'build/verified/conjunction.wasm', 'Demos.Conjunction.Verified',
+            'Demos.Conjunction.compiled.module', ['--timeout', '2h', '--memory-high', '8G'])]
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
          '.wgsl': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.wasm': 'application/wasm', '.bin': 'application/octet-stream',
@@ -114,7 +120,7 @@ class Lines:
                 lines.append(line)
 
 
-def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators):
+def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators, conjunction):
     class Handler(http.server.BaseHTTPRequestHandler):
         def send(self, status, body, content_type):
             self.send_response(status)
@@ -191,6 +197,16 @@ def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators):
             else:
                 self.send_error(404)
 
+        def conjunction(self, path):
+            if path in ('', 'index.html'):
+                self.send_file(CONJUNCTION_PAGE / 'index.html')
+            elif path in ('app.js', 'assess.js'):
+                self.send_file(CONJUNCTION_PAGE / path)
+            elif path == 'conjunction.wasm':
+                self.send_file(conjunction)
+            else:
+                self.send_error(404)
+
         def do_GET(self):
             url = urllib.parse.urlsplit(self.path)
             query = urllib.parse.parse_qs(url.query)
@@ -198,7 +214,7 @@ def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators):
             try:
                 if path in ('/', '/index.html'):
                     self.send_file(INDEX)
-                elif path in ('/kernels', '/gpt2', '/rcv'):
+                elif path in ('/kernels', '/gpt2', '/rcv', '/conjunction'):
                     self.redirect(path + '/')
                 elif path.startswith('/kernels/'):
                     self.kernels(path[len('/kernels/'):])
@@ -206,6 +222,8 @@ def handler(lines, tokenizer, wgsl, wasm, sampler, tabulators):
                     self.gpt2(path[len('/gpt2/'):], query)
                 elif path.startswith('/rcv/'):
                     self.rcv(path[len('/rcv/'):])
+                elif path.startswith('/conjunction/'):
+                    self.conjunction(path[len('/conjunction/'):])
                 else:
                     self.send_error(404)
             except (KeyError, ValueError) as e:
@@ -225,10 +243,11 @@ def main():
     args = parser.parse_args()
     prepare()
     tokenizer = GPT2TokenizerFast.from_pretrained(REPO, revision=REVISION)
-    (wasm, *_), (sampler, *_), *tabulators = MODULES
+    (wasm, *_), (sampler, *_), *tabulators, (conjunction, *_) = MODULES
     tabulators = {path.name: path for path, *_ in tabulators}
     server = http.server.ThreadingHTTPServer(
-        (args.host, args.port), handler(Lines(), tokenizer, WGSL, wasm, sampler, tabulators))
+        (args.host, args.port),
+        handler(Lines(), tokenizer, WGSL, wasm, sampler, tabulators, conjunction))
     print(f'Pages: http://{args.host}:{server.server_address[1]}/', flush=True)
     server.serve_forever()
 

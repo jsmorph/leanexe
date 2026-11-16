@@ -156,6 +156,7 @@ A callable host configures stdio before invoking an export and may invoke anothe
 |---|---|
 | `p.program`, `p.funs` | Typed effect program and its action meanings. |
 | `p.pure.program`, `p.pure.module` | Typed pure helpers and their import-free module. |
+| `p.pureSources.prefix_k` | The pure program of the first `k + 1` pure helpers, as [`p.prefix_k`](verified-manual.md#generated-declarations) describes; `p.pure.program` is the last. |
 | `p.f.func`, `p.f.callee` | Typed effect function and its reference in the complete program. |
 | `p.f.related` | Original Lean action corresponds to the typed function's meaning, including its result representation. |
 | `p.literalPool` | Shared raw byte-literal pool. |

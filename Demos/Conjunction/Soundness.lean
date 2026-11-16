@@ -4,6 +4,8 @@ import Demos.Conjunction.Gaussian
 import Library.Numerics.Interval.Proof
 import Library.Numerics.Float64.Exp.ExpTheorem
 import Library.Numerics.Float64.Erf.ErfOdd
+import Library.Numerics.Float64.Erfc.ErfcTheorem
+import Library.Numerics.Interval.FunctionsProof
 import LeanExe.Dialect.Lemmas
 
 /-!
@@ -13,6 +15,8 @@ endpoint of at most 1, and `assess_sound` states what each verdict of `assess` i
 follows the program: each interval function contains the real function it computes, each panel
 contains the integral of `Model.core` over it, the loop adds the panels from `-r` to `r`, and the
 clamp to `[0, 1]` keeps `Model.pc`, which `Model.pc_nonneg` and `Gaussian.pc_le_one` place there.
+`pcTail_sound` proves this for `pcTail` and any setup whose fields contain the quantities of a real
+mean and covariance, and `pcWith_enclosure` for `pcWith`, which the radius programs use.
 -/
 
 namespace Demos.Conjunction
@@ -276,6 +280,43 @@ theorem panelCore_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11) {
   obtain ⟨hv, ce⟩ := he x hx hx2
   exact ⟨hv, hm _ _ (hg x hx) ce⟩
 
+/-- An accepted product of a panel's width and an interval function `core` of the panel contains
+the integral of `Model.core` over the panel, when every accepted result of `core` contains
+`Model.core` at every point of its argument. -/
+theorem panel_of_core {core : Interval → Interval}
+    (hcore : ∀ {X : Interval}, (core X).status = 0 →
+      X.status = 0 ∧ Finite r.toBits ∧ ∀ x, Contains X x → x ^ 2 ≤ value r.toBits ^ 2 →
+        0 < Model.condVar c11 c12 c22 ∧
+          Contains (core X) (Model.core m1 m2 c11 c12 c22 (value r.toBits) x))
+    {a b : Float}
+    (hab : Finite r.toBits →
+      -value r.toBits ≤ value a.toBits ∧ value b.toBits ≤ value r.toBits)
+    (h : (mul (sub (point b) (point a)) (core (make a b))).status = 0) :
+    Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
+      Contains (mul (sub (point b) (point a)) (core (make a b)))
+        (∫ x in (value a.toBits)..(value b.toBits),
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
+  obtain ⟨s1, s2, hm⟩ := mul_sound h
+  obtain ⟨s3, s4, hs⟩ := sub_sound s1
+  obtain ⟨sX, fr, hp⟩ := hcore s2
+  obtain ⟨fa, fb, hle, hmk⟩ := make_sound sX
+  obtain ⟨ha, hb⟩ := hab fr
+  have hx2 : ∀ x ∈ Set.Icc (value a.toBits) (value b.toBits), x ^ 2 ≤ value r.toBits ^ 2 :=
+    fun x hx => sq_le_sq' (ha.trans hx.1) (hx.2.trans hb)
+  have hin : ∀ x ∈ Set.Icc (value a.toBits) (value b.toBits),
+      Contains (core (make a b)) (Model.core m1 m2 c11 c12 c22 (value r.toBits) x) :=
+    fun x hx => (hp x (hmk x hx.1 hx.2) (hx2 x hx)).2
+  have hv := (hp _ (hmk _ le_rfl hle) (hx2 _ ⟨le_rfl, hle⟩)).1
+  have h0 := hin _ ⟨le_rfl, hle⟩
+  obtain ⟨y, hy1, hy2, hint⟩ := Model.integral_eq_width_mul hle
+    ((Model.continuous_core m1 m2 c11 c12 c22 (value r.toBits)).intervalIntegrable _ _)
+    (fun x hx => ⟨(hin x hx).2.2.2.1, (hin x hx).2.2.2.2⟩)
+  have cy : Contains (core (make a b)) y := ⟨h0.1, h0.2.1, h0.2.2.1, hy1, hy2⟩
+  have cw := hs _ _ (point_sound s3).2 (point_sound s4).2
+  refine ⟨fr, hv, ?_⟩
+  rw [hint]
+  exact hm _ _ cw cy
+
 /-- An accepted panel contains the integral of `Model.core` over it. -/
 theorem panel_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11) {a b : Float}
     (hab : Finite r.toBits →
@@ -284,30 +325,8 @@ theorem panel_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11) {a b 
     Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
       Contains (panel Exp.expTable st a b)
         (∫ x in (value a.toBits)..(value b.toBits),
-          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
-  unfold panel at h ⊢
-  obtain ⟨s1, s2, hm⟩ := mul_sound h
-  obtain ⟨s3, s4, hs⟩ := sub_sound s1
-  obtain ⟨sX, fr, hp⟩ := panelCore_sound S hc s2
-  obtain ⟨fa, fb, hle, hmk⟩ := make_sound sX
-  obtain ⟨ha, hb⟩ := hab fr
-  have hx2 : ∀ x ∈ Set.Icc (value a.toBits) (value b.toBits), x ^ 2 ≤ value r.toBits ^ 2 :=
-    fun x hx => sq_le_sq' (ha.trans hx.1) (hx.2.trans hb)
-  have hin : ∀ x ∈ Set.Icc (value a.toBits) (value b.toBits),
-      Contains (panelCore Exp.expTable st (make a b))
-        (Model.core m1 m2 c11 c12 c22 (value r.toBits) x) :=
-    fun x hx => (hp x (hmk x hx.1 hx.2) (hx2 x hx)).2
-  have hv := (hp _ (hmk _ le_rfl hle) (hx2 _ ⟨le_rfl, hle⟩)).1
-  have h0 := hin _ ⟨le_rfl, hle⟩
-  obtain ⟨y, hy1, hy2, hint⟩ := Model.integral_eq_width_mul hle
-    ((Model.continuous_core m1 m2 c11 c12 c22 (value r.toBits)).intervalIntegrable _ _)
-    (fun x hx => ⟨(hin x hx).2.2.2.1, (hin x hx).2.2.2.2⟩)
-  have cy : Contains (panelCore Exp.expTable st (make a b)) y :=
-    ⟨h0.1, h0.2.1, h0.2.2.1, hy1, hy2⟩
-  have cw := hs _ _ (point_sound s3).2 (point_sound s4).2
-  refine ⟨fr, hv, ?_⟩
-  rw [hint]
-  exact hm _ _ cw cy
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) :=
+  panel_of_core (core := panelCore Exp.expTable st) (panelCore_sound S hc) hab h
 
 end Panel
 
@@ -347,21 +366,29 @@ theorem node_last (r : Float) (n : UInt64) (hn : 1 ≤ n) : node r n n = r := by
 
 /-! ### The sum of the panels -/
 
-/-- The sum of the panels contains the integral of `Model.core` over `[-r, r]` for every setup
-whose fields contain the quantities of the real mean and covariance. -/
-theorem panels_sound_of {st : Setup} {r : Float} {n : UInt64} {m1 m2 c11 c12 c22 : ℝ}
-    (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
+/-- The loop that adds the panels `P` between successive partition points of `[-r, r]` contains
+the integral of `Model.core` over `[-r, r]`, when every accepted panel between two points of
+`[-r, r]` contains the integral over it. -/
+theorem panels_of_panel {P : Float → Float → Interval} {r : Float} {n : UInt64}
+    {m1 m2 c11 c12 c22 : ℝ}
+    (hP : ∀ {a b : Float}, (Finite r.toBits →
+        -value r.toBits ≤ value a.toBits ∧ value b.toBits ≤ value r.toBits) →
+      (P a b).status = 0 → Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
+        Contains (P a b) (∫ x in (value a.toBits)..(value b.toBits),
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x))
     (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
-    (h : (panels Exp.expTable st r n).status = 0) :
+    (h : (LeanExe.loop n (point 0.0) fun i acc =>
+      add acc (P (node r n i) (node r n (i + 1)))).status = 0) :
     Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
-      Contains (panels Exp.expTable st r n)
+      Contains (LeanExe.loop n (point 0.0) fun i acc =>
+          add acc (P (node r n i) (node r n (i + 1))))
         (∫ x in (-value r.toBits)..(value r.toBits),
           Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
   set F := Model.core m1 m2 c11 c12 c22 (value r.toBits) with hF
   have hFi : ∀ a b : ℝ, IntervalIntegrable F MeasureTheory.volume a b := fun a b =>
     (Model.continuous_core _ _ _ _ _ _).intervalIntegrable a b
   have key := LeanExe.Dialect.loop_induction (n := n) (init := point 0.0)
-    (f := fun i acc => add acc (panel Exp.expTable st (node r n i) (node r n (i + 1))))
+    (f := fun i acc => add acc (P (node r n i) (node r n (i + 1))))
     (fun k acc => acc.status = 0 →
       (0 < k → Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22) ∧
       Contains acc (∫ x in (value (node r n (UInt64.ofNat 0)).toBits)..
@@ -379,7 +406,7 @@ theorem panels_sound_of {st : Setup} {r : Float} {n : UInt64} {m1 m2 c11 c12 c22
         rw [UInt64.ofNat_add]
         rfl
       rw [e] at s2 ha ⊢
-      obtain ⟨fr, hv, c2⟩ := panel_sound S hc
+      obtain ⟨fr, hv, c2⟩ := hP
         (fun fr => ⟨(node_bounds r n _ fr (hr fr).le).2.1,
           (node_bounds r n _ fr (hr fr).le).2.2⟩) s2
       refine ⟨fun _ => ⟨fr, hv⟩, ?_⟩
@@ -398,6 +425,18 @@ theorem panels_sound_of {st : Setup} {r : Float} {n : UInt64} {m1 m2 c11 c12 c22
   have hz : node r n (UInt64.ofNat 0) = -r := node_zero r n
   have c := hfin.2
   rwa [hl, hz, (neg_value fr).2] at c
+
+/-- The sum of the panels contains the integral of `Model.core` over `[-r, r]` for every setup
+whose fields contain the quantities of the real mean and covariance. -/
+theorem panels_sound_of {st : Setup} {r : Float} {n : UInt64} {m1 m2 c11 c12 c22 : ℝ}
+    (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
+    (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
+    (h : (panels Exp.expTable st r n).status = 0) :
+    Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
+      Contains (panels Exp.expTable st r n)
+        (∫ x in (-value r.toBits)..(value r.toBits),
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) :=
+  panels_of_panel (P := panel Exp.expTable st) (fun hab hs => panel_sound S hc hab hs) hr hn h
 
 theorem panels_sound {m1 m2 c11 c12 c22 r : Float} {n : UInt64} (hc : 0 < value c11.toBits)
     (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
@@ -425,19 +464,19 @@ theorem clamp_hi_le {a : Interval} {lo hi : Float} (h : (clamp a lo hi).status =
   · simp only [hc, Bool.false_eq_true, ite_false] at h
     exact absurd h (by decide)
 
-/-- An accepted result of `pc` contains the probability of collision of the real values of the
-inputs, whose covariance is positive definite and whose radius is positive, and its upper endpoint
-is at most 1. -/
-theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
-    (h : (pc m1 m2 c11 c12 c22 r n).status = 0) :
+/-- An accepted result of `pcWith` with the table of `exp` contains the probability of collision of
+the real values of the inputs, whose covariance is positive definite and whose radius is positive,
+and its upper endpoint is at most 1. -/
+theorem pcWith_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
+    (h : (pcWith Exp.expTable m1 m2 c11 c12 c22 r n).status = 0) :
     0 < value c11.toBits ∧
       0 < Model.det (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
       0 < value r.toBits ∧
-      Contains (pc m1 m2 c11 c12 c22 r n)
+      Contains (pcWith Exp.expTable m1 m2 c11 c12 c22 r n)
         (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
           (value c22.toBits) (value r.toBits)) ∧
-      value (pc m1 m2 c11 c12 c22 r n).hi.toBits ≤ 1 := by
-  unfold pc pcWith at h ⊢
+      value (pcWith Exp.expTable m1 m2 c11 c12 c22 r n).hi.toBits ≤ 1 := by
+  unfold pcWith at h ⊢
   by_cases g1 : (0.0 : Float) < c11
   · by_cases g2 : (0.0 : Float) < r
     · by_cases g3 : 1 ≤ n
@@ -485,6 +524,267 @@ theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
   · simp only [g1, ite_false] at h
     exact absurd h (by decide)
 
+/-! ### The tails -/
+
+/-- The functions of the tail path with the module's tables. -/
+abbrev erfcT (a : Interval) : Interval :=
+  erfcI Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable Erfc.asymAccTable
+    Erfc.expAccTable Erfc.excTable a
+
+abbrev erfSumT (st : Setup) (x : Interval) : Interval :=
+  erfSumTailI Exp.expTable Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable
+    Erfc.asymAccTable Erfc.expAccTable Erfc.excTable st x
+
+abbrev panelCoreT (st : Setup) (x : Interval) : Interval :=
+  panelCoreTail Exp.expTable Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable
+    Erfc.asymAccTable Erfc.expAccTable Erfc.excTable st x
+
+abbrev panelT (st : Setup) (a b : Float) : Interval :=
+  panelTail Exp.expTable Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable
+    Erfc.asymAccTable Erfc.expAccTable Erfc.excTable st a b
+
+abbrev panelsT (st : Setup) (r : Float) (n : UInt64) : Interval :=
+  panelsTail Exp.expTable Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable
+    Erfc.asymAccTable Erfc.expAccTable Erfc.excTable st r n
+
+abbrev pcT (st : Setup) (c11 : Interval) (r : Float) (n : UInt64) : Interval :=
+  pcTail Exp.expTable Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable
+    Erfc.asymAccTable Erfc.expAccTable Erfc.excTable st c11 r n
+
+theorem erfc_antitone : Antitone RealErf.erfc := fun a b h => by
+  unfold RealErf.erfc
+  linarith [RealErf.erf_strictMono.monotone h]
+
+theorem erfcT_sound {a : Interval} (h : (erfcT a).status = 0) :
+    a.status = 0 ∧ ∀ x, Contains a x → Contains (erfcT a) (RealErf.erfc x) := by
+  unfold erfcT erfcI at h ⊢
+  exact decreasing_sound h (erfc_antitone.antitoneOn _)
+    (fun hf => Erfc.ErfcTheorem.erfc_within_one _ hf)
+    (fun hf => Erfc.ErfcTheorem.erfc_within_one _ hf)
+
+section Tail
+
+variable {st : Setup} {r : Float} {m1 m2 c11 c12 c22 : ℝ}
+
+/-- Accepted intervals of the two error-function arguments `(h - μ)/k` and `(h + μ)/k` contain
+them at every point of the panel inside the disk, and the scale `k` is positive. -/
+theorem arguments_sound (S : SetupSound st r m1 m2 c11 c12 c22) {X : Interval}
+    (hu : (div (sub (chordI st X) (meanI st X)) st.k).status = 0)
+    (hw : (div (add (chordI st X) (meanI st X)) st.k).status = 0) :
+    X.status = 0 ∧ Finite r.toBits ∧ ∀ x, Contains X x → x ^ 2 ≤ value r.toBits ^ 2 →
+      0 < Model.condVar c11 c12 c22 ∧ 0 < Model.scaleK c11 c12 c22 ∧
+      Contains (div (sub (chordI st X) (meanI st X)) st.k)
+        ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) - Model.condMean m1 m2 c11 c12 x) /
+          Model.scaleK c11 c12 c22) ∧
+      Contains (div (add (chordI st X) (meanI st X)) st.k)
+        ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) + Model.condMean m1 m2 c11 c12 x) /
+          Model.scaleK c11 c12 c22) := by
+  obtain ⟨s1, s2, hd1⟩ := div_sound hu
+  obtain ⟨s3, -, hd2⟩ := div_sound hw
+  obtain ⟨s4, s5, hsub⟩ := sub_sound s1
+  obtain ⟨-, -, hadd⟩ := add_sound s3
+  obtain ⟨sX, fr, hch⟩ := chordI_sound S s4
+  have hmu := meanI_sound S s5
+  obtain ⟨hv0, ck⟩ := S.k s2
+  refine ⟨sX, fr, fun x hx hx2 => ?_⟩
+  have ch := hch x hx hx2
+  have cm := hmu x hx
+  obtain ⟨hk0, c1⟩ := hd1 _ _ (hsub _ _ ch cm) ck
+  obtain ⟨-, c2⟩ := hd2 _ _ (hadd _ _ ch cm) ck
+  have hkpos : 0 < Model.scaleK c11 c12 c22 :=
+    lt_of_le_of_ne (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _)) (Ne.symm hk0)
+  have hvpos : 0 < Model.condVar c11 c12 c22 := by
+    rcases hv0.eq_or_lt with hz | hz
+    · exfalso
+      apply hk0
+      unfold Model.scaleK
+      rw [← hz, Real.sqrt_zero, zero_mul]
+    · exact hz
+  exact ⟨hvpos, hkpos, c1, c2⟩
+
+/-- The sum of the tail path contains the sum of the two error-function values at every point of
+the panel inside the disk, whichever form computes it. -/
+theorem erfSumTailI_sound (S : SetupSound st r m1 m2 c11 c12 c22) {X : Interval}
+    (h : (erfSumT st X).status = 0) :
+    X.status = 0 ∧ Finite r.toBits ∧ ∀ x, Contains X x → x ^ 2 ≤ value r.toBits ^ 2 →
+      0 < Model.condVar c11 c12 c22 ∧
+      Contains (erfSumT st X)
+        (RealErf.erf ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) -
+            Model.condMean m1 m2 c11 c12 x) / Model.scaleK c11 c12 c22) +
+          RealErf.erf ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) +
+            Model.condMean m1 m2 c11 c12 x) / Model.scaleK c11 c12 c22)) := by
+  simp only [erfSumT, erfSumTailI] at h ⊢
+  have bounds : ∀ x, 0 < Model.scaleK c11 c12 c22 →
+      0 ≤ RealErf.erf ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) -
+            Model.condMean m1 m2 c11 c12 x) / Model.scaleK c11 c12 c22) +
+          RealErf.erf ((Real.sqrt (value r.toBits ^ 2 - x ^ 2) +
+            Model.condMean m1 m2 c11 c12 x) / Model.scaleK c11 c12 c22) := by
+    intro x hk
+    apply erf_sum_nonneg
+    rw [← add_div]
+    exact div_nonneg (by linarith [Real.sqrt_nonneg (value r.toBits ^ 2 - x ^ 2)]) hk.le
+  split_ifs at h ⊢ with g1 g2
+  · obtain ⟨s1, hcl⟩ := clamp_sound h
+    obtain ⟨s2, s3, hs⟩ := sub_sound s1
+    obtain ⟨s4, he1⟩ := erfcT_sound s2
+    obtain ⟨s5, he2⟩ := erfcT_sound s3
+    obtain ⟨s6, hn⟩ := neg_sound s4
+    obtain ⟨sX, fr, ha⟩ := arguments_sound S s6 s5
+    refine ⟨sX, fr, fun x hx hx2 => ?_⟩
+    obtain ⟨hv, hk, cu, cw⟩ := ha x hx hx2
+    have c := hs _ _ (he1 _ (hn _ cu)) (he2 _ cw)
+    rw [show ∀ a b : ℝ, RealErf.erfc (-a) - RealErf.erfc b = RealErf.erf a + RealErf.erf b by
+      intro a b; unfold RealErf.erfc; rw [RealErf.erf_neg]; ring] at c
+    refine ⟨hv, hcl _ c ?_ ?_⟩
+    · rw [lit_zero.2]; exact bounds x hk
+    · rw [lit_two.2]; exact erf_sum_le_two _ _
+  · obtain ⟨s1, hcl⟩ := clamp_sound h
+    obtain ⟨s2, s3, hs⟩ := sub_sound s1
+    obtain ⟨s4, he1⟩ := erfcT_sound s2
+    obtain ⟨s5, he2⟩ := erfcT_sound s3
+    obtain ⟨s6, hn⟩ := neg_sound s4
+    obtain ⟨sX, fr, ha⟩ := arguments_sound S s5 s6
+    refine ⟨sX, fr, fun x hx hx2 => ?_⟩
+    obtain ⟨hv, hk, cu, cw⟩ := ha x hx hx2
+    have c := hs _ _ (he1 _ (hn _ cw)) (he2 _ cu)
+    rw [show ∀ a b : ℝ, RealErf.erfc (-a) - RealErf.erfc b = RealErf.erf b + RealErf.erf a by
+      intro a b; unfold RealErf.erfc; rw [RealErf.erf_neg]; ring] at c
+    refine ⟨hv, hcl _ c ?_ ?_⟩
+    · rw [lit_zero.2]; exact bounds x hk
+    · rw [lit_two.2]; exact erf_sum_le_two _ _
+  · obtain ⟨s1, hcl⟩ := clamp_sound h
+    obtain ⟨s2, s3, ha⟩ := add_sound s1
+    obtain ⟨s4, he1⟩ := erfI_sound s2
+    obtain ⟨s5, he2⟩ := erfI_sound s3
+    obtain ⟨sX, fr, hargs⟩ := arguments_sound S s4 s5
+    refine ⟨sX, fr, fun x hx hx2 => ?_⟩
+    obtain ⟨hv, hk, cu, cw⟩ := hargs x hx hx2
+    have c := ha _ _ (he1 _ cu) (he2 _ cw)
+    refine ⟨hv, hcl _ c ?_ ?_⟩
+    · rw [lit_zero.2]; exact bounds x hk
+    · rw [lit_two.2]; exact erf_sum_le_two _ _
+
+theorem panelCoreTail_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11)
+    {X : Interval} (h : (panelCoreT st X).status = 0) :
+    X.status = 0 ∧ Finite r.toBits ∧ ∀ x, Contains X x → x ^ 2 ≤ value r.toBits ^ 2 →
+      0 < Model.condVar c11 c12 c22 ∧
+      Contains (panelCoreT st X) (Model.core m1 m2 c11 c12 c22 (value r.toBits) x) := by
+  unfold panelCoreT panelCoreTail at h ⊢
+  obtain ⟨s1, s2, hm⟩ := mul_sound h
+  obtain ⟨sX, hg⟩ := gaussI_sound S hc s1
+  obtain ⟨-, fr, he⟩ := erfSumTailI_sound S s2
+  refine ⟨sX, fr, fun x hx hx2 => ?_⟩
+  obtain ⟨hv, ce⟩ := he x hx hx2
+  exact ⟨hv, hm _ _ (hg x hx) ce⟩
+
+theorem panelsTail_sound (S : SetupSound st r m1 m2 c11 c12 c22) (hc : 0 < c11) {n : UInt64}
+    (hr : Finite r.toBits → 0 < value r.toBits) (hn : 1 ≤ n)
+    (h : (panelsT st r n).status = 0) :
+    Finite r.toBits ∧ 0 < Model.condVar c11 c12 c22 ∧
+      Contains (panelsT st r n)
+        (∫ x in (-value r.toBits)..(value r.toBits),
+          Model.core m1 m2 c11 c12 c22 (value r.toBits) x) :=
+  panels_of_panel (P := panelT st)
+    (fun hab hs => panel_of_core (core := panelCoreT st) (panelCoreTail_sound S hc) hab hs) hr hn h
+
+/-- An accepted result of `pcTail` contains the probability of collision for the real mean and
+covariance whose quantities the setup contains, with `c11` in the interval of the first variance;
+that covariance is positive definite, the radius is positive, and the upper endpoint is at most
+1. -/
+theorem pcTail_sound {C11 : Interval} {n : UInt64} (S : SetupSound st r m1 m2 c11 c12 c22)
+    (hC : Encloses C11 c11) (h : (pcT st C11 r n).status = 0) :
+    0 < c11 ∧ 0 < Model.det c11 c12 c22 ∧ 0 < value r.toBits ∧
+      Contains (pcT st C11 r n) (Model.pc m1 m2 c11 c12 c22 (value r.toBits)) ∧
+      value (pcT st C11 r n).hi.toBits ≤ 1 := by
+  unfold pcT pcTail at h ⊢
+  by_cases g1 : (C11.status == 0 && 0 < C11.lo) = true
+  · by_cases g2 : (0.0 : Float) < r
+    · by_cases g3 : 1 ≤ n
+      · by_cases g4 : n ≤ 1048576
+        · simp only [g1, g2, g3, g4, ite_true] at h ⊢
+          obtain ⟨s0, hcl⟩ := clamp_sound h
+          obtain ⟨s1, s2, hm⟩ := mul_sound s0
+          obtain ⟨s3, s4, hd⟩ := div_sound s1
+          obtain ⟨s5, s6, hm2⟩ := mul_sound s4
+          obtain ⟨s7, hq⟩ := sqrt_sound s6
+          obtain ⟨-, -, hm3⟩ := mul_sound s7
+          simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at g1
+          have cc := hC g1.1
+          have hc : 0 < c11 := cc.pos_of_lo g1.2
+          have hr : Finite r.toBits → 0 < value r.toBits := fun fr => by
+            have := (lt_iff_value lit_zero.1 fr).mp g2
+            rwa [lit_zero.2] at this
+          obtain ⟨fr, hv, cp⟩ := panelsTail_sound S hc hr g3 s2
+          have hdet : 0 < Model.det c11 c12 c22 := by
+            have e : Model.det c11 c12 c22 = c11 * Model.condVar c11 c12 c22 := by
+              unfold Model.det Model.condVar
+              field_simp
+            rw [e]
+            exact mul_pos hc hv
+          have c1 := (hq _ (hm3 _ _ twoPi_sound cc)).2
+          have c2 := (hd _ _ (point_lit lit_one s3) (hm2 _ _ (point_lit lit_two s5) c1)).2
+          have c3 := hm _ _ c2 cp
+          rw [one_div, ← Model.pc_eq _ _ _ _ _ _ hc hdet (hr fr).le] at c3
+          have hle := Gaussian.pc_le_one m1 m2 _ _ _ (value r.toBits) hc hdet
+          have hhi := clamp_hi_le h c3.2.2.1 lit_one.1
+          rw [lit_one.2] at hhi
+          exact ⟨hc, hdet, hr fr,
+            hcl _ c3 (by rw [lit_zero.2]; exact Model.pc_nonneg _ _ _ _ _ _)
+              (by rw [lit_one.2]; exact hle), hhi⟩
+        · simp only [g1, g2, g3, g4, ite_true, ite_false] at h
+          exact absurd h (by decide)
+      · simp only [g1, g2, g3, ite_true, ite_false] at h
+        exact absurd h (by decide)
+    · simp only [g1, g2, ite_true, ite_false] at h
+      exact absurd h (by decide)
+  · simp only [g1, Bool.false_eq_true, ite_false] at h
+    exact absurd h (by decide)
+
+end Tail
+
+/-! ### The program's entries -/
+
+/-- An accepted result of `pc` contains the probability of collision of the real values of the
+inputs, whose covariance is positive definite and whose radius is positive, and its upper endpoint
+is at most 1. -/
+theorem pc_enclosure {m1 m2 c11 c12 c22 r : Float} {n : UInt64}
+    (h : (pc m1 m2 c11 c12 c22 r n).status = 0) :
+    0 < value c11.toBits ∧
+      0 < Model.det (value c11.toBits) (value c12.toBits) (value c22.toBits) ∧
+      0 < value r.toBits ∧
+      Contains (pc m1 m2 c11 c12 c22 r n)
+        (Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits) (value c12.toBits)
+          (value c22.toBits) (value r.toBits)) ∧
+      value (pc m1 m2 c11 c12 c22 r n).hi.toBits ≤ 1 :=
+  pcTail_sound (st := setup m1 m2 c11 c12 c22 r) (C11 := point c11)
+    (setup_sound m1 m2 c11 c12 c22 r) (fun hs => (point_sound hs).2) h
+
+/-- An accepted judgment holds the interval, which is accepted.  Verdict 1 implies that every point
+of the interval lies below the threshold, and verdict 2 that every point lies at or above it. -/
+theorem judge_sound {p : Interval} {t : Float} (h : (judge p t).status = 0) :
+    p.status = 0 ∧ (judge p t).lo = p.lo ∧ (judge p t).hi = p.hi ∧
+      ((judge p t).verdict = 1 → ∀ x, Contains p x → x < value t.toBits) ∧
+      ((judge p t).verdict = 2 → ∀ x, Contains p x → value t.toBits ≤ x) := by
+  unfold judge at h ⊢
+  by_cases g : (p.status == 0 && finite t) = true
+  · simp only [g, ite_true] at h ⊢
+    simp only [Bool.and_eq_true, beq_iff_eq, finite_iff] at g
+    obtain ⟨gs, ft⟩ := g
+    by_cases g1 : p.hi < t
+    · simp only [g1, ite_true]
+      exact ⟨gs, trivial, trivial, fun _ x cx =>
+          lt_of_le_of_lt cx.2.2.2.2 ((lt_iff_value cx.2.2.1 ft).mp g1),
+        fun hv => absurd hv (by decide)⟩
+    · by_cases g2 : t ≤ p.lo
+      · simp only [g1, g2, ite_true, ite_false]
+        exact ⟨gs, trivial, trivial, fun hv => absurd hv (by decide),
+          fun _ x cx => ((le_iff_value ft cx.2.1).mp g2).trans cx.2.2.2.1⟩
+      · simp only [g1, g2, ite_false]
+        exact ⟨gs, trivial, trivial, fun hv => absurd hv (by decide),
+          fun hv => absurd hv (by decide)⟩
+  · simp only [g, ite_false, Bool.false_eq_true] at h
+    exact absurd h (by decide)
+
 /-- An accepted assessment holds the interval of `pc`.  Verdict 1 implies that the probability of
 collision is below the threshold, and verdict 2 that it is at least the threshold. -/
 theorem assess_sound {m1 m2 c11 c12 c22 r t : Float} {n : UInt64}
@@ -498,26 +798,12 @@ theorem assess_sound {m1 m2 c11 c12 c22 r t : Float} {n : UInt64}
       ((assess m1 m2 c11 c12 c22 r t n).verdict = 2 →
         value t.toBits ≤ Model.pc (value m1.toBits) (value m2.toBits) (value c11.toBits)
           (value c12.toBits) (value c22.toBits) (value r.toBits)) := by
-  have hpc : pcWith Exp.expTable m1 m2 c11 c12 c22 r n = pc m1 m2 c11 c12 c22 r n := rfl
-  simp only [assess, assessWith, hpc] at h ⊢
-  by_cases g : ((pc m1 m2 c11 c12 c22 r n).status == 0 && finite t) = true
-  · simp only [g, ite_true] at h ⊢
-    simp only [Bool.and_eq_true, beq_iff_eq, finite_iff] at g
-    obtain ⟨gs, ft⟩ := g
-    obtain ⟨-, -, -, ⟨-, fl, fh, hlo, hhi⟩, -⟩ := pc_enclosure gs
-    by_cases g1 : (pc m1 m2 c11 c12 c22 r n).hi < t
-    · simp only [g1, ite_true]
-      exact ⟨gs, trivial, trivial, fun _ => lt_of_le_of_lt hhi ((lt_iff_value fh ft).mp g1),
-        fun hv => absurd hv (by decide)⟩
-    · by_cases g2 : t ≤ (pc m1 m2 c11 c12 c22 r n).lo
-      · simp only [g1, g2, ite_true, ite_false]
-        exact ⟨gs, trivial, trivial, fun hv => absurd hv (by decide),
-          fun _ => ((le_iff_value ft fl).mp g2).trans hlo⟩
-      · simp only [g1, g2, ite_false]
-        exact ⟨gs, trivial, trivial, fun hv => absurd hv (by decide), fun hv => absurd hv (by decide)⟩
-  · simp only [g, ite_false, Bool.false_eq_true] at h
-    exact absurd h (by decide)
+  obtain ⟨gs, hlo, hhi, h1, h2⟩ := judge_sound (p := pc m1 m2 c11 c12 c22 r n) (t := t) h
+  have cp := (pc_enclosure gs).2.2.2.1
+  exact ⟨gs, hlo, hhi, fun hv => h1 hv _ cp, fun hv => h2 hv _ cp⟩
 
+#print axioms pcWith_enclosure
+#print axioms pcTail_sound
 #print axioms pc_enclosure
 #print axioms assess_sound
 

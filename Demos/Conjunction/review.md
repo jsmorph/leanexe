@@ -27,11 +27,13 @@ The user asked for a recommendation, a review of it, and then action on each que
 
 ## Open items
 
-1. The conjunction-message form with `projection_sound`.
+1. Done: the conjunction-message form with `projection_sound`, in
+   [the section on tails and the message form](#tails-and-the-conjunction-message-form).
 2. Done: `Gaussian.pc_eq_multivariateGaussian`, `Gaussian.integral_density`, and `Gaussian.pc_le_one`.
-3. `erfc` in the tails, for relative accuracy at small probabilities.
-4. Reference cases from published benchmarks and from NASA's tools.
-5. A browser page.
+3. Done: `erfc` in the tails, for relative accuracy at small probabilities, in the same section.
+4. Done: [the published cases](README.md#published-cases) and
+   [the unit tests of NASA's CARA Analysis Tools](README.md#unit-tests-of-nasas-cara-analysis-tools).
+5. Done: [the browser page](README.md#browser-page), without the conjunction-message form.
 
 ## Radius at a probability: CE and LE
 
@@ -182,3 +184,71 @@ holds and which only the proof uses.
    upper end by 1.25.
 4. A target width for an evaluation, from the search, which would let evaluations far from the
    radius stop early.
+
+## Tails and the conjunction-message form
+
+The request asked for `erfc` where both error-function arguments are large and of the same sign
+(design question 4), with the enclosure proved as before and the statement of `pc_enclosure`
+kept, and for the conjunction-message form of design section 5.3 with `projection_sound` and a
+composed theorem for the probability, with the parsing of message text outside the verified
+program.
+
+### Decisions
+
+| Question | Choice | Reason |
+|---|---|---|
+| Programs that use `erfc` | `pc`, `assess`, and the message form, through a separate panel path from `erfSumTailI` to `pcTail`; `pcWith` and `pcBoxWith` keep `erf` alone | `pcWith` and `pcBoxWith` are compiled into the modules `accuracy`, `adaptive`, and `avoidance`.  Putting `erfc` into `erfSumI` would pass the seven tables of `erfc` through every function of those programs, change their bytes, export indices, call theorems, and documents, and add the code of `erfc` to each module.  The radius search works at probabilities far above `1e-16`, and the avoidance threshold is near `1e-4`, so none of them gains.  The proofs share `panel_of_core` and `panels_of_panel`, which state the panel and loop steps for any interval function of the integrand. |
+| Test that selects the `erfc` form | Every point of the interval of `v = (μ - h)/k`, or of `y = (-μ - h)/k`, at least 1/2 | `erf v > 1/2` and `w ≥ v` then give `erfc v + erfc w < 1 < erf v + erf w`, so the difference of `erfc` has the smaller rounding error.  The test affects only the width: `erfSumTailI_sound` holds for every branch. |
+| Statement of `pc_enclosure` | Unchanged; `pc` passes `pcTail` the scalar setup and the point interval of `c11` | `pcWith_enclosure` takes the former statement for `pcWith`, which `AccuracySoundness.lean` uses. |
+| Definition of the plane quantities | `encounter`, an `enclosure_def` whose body follows design section 5.3: RTN axes, rotation `Q C Qᵀ` into the inertial frame, sum, `x̂` along the part of `Δr` perpendicular to `Δv`, `ŷ = ẑ × x̂`, and projection | One body gives the real definition, the interval program, and `encounter.encloses`, so the program computes the definition's formulas and `projection_sound` follows from the generated theorem.  The plane covariance equals the projection `Cp` of CARA's `Pc2D_Foster.m`, whose axes are `-x̂` and `-ŷ`, and the miss vector equals its `(|Δr|, 0)` when `Δr ⊥ Δv`. |
+| Units | Positions in km and velocities in km/s, covariances in m², radius in m, as CCSDS 508.0-B-1 gives them; `Δr` scaled by 1000 inside the definition | The caller passes the message's numbers unchanged.  The scale of the velocities does not enter, since only the directions of `r × v` and `Δv` do. |
+| Inputs | Scalar arguments, 24 values of the two objects in the message's order, then the radius, the threshold, and `n` | No allocation and no array layout to specify, as for `pc`. |
+| Module | The entries `pcMessage` and `assessMessage` in the module `conjunction` | The message form calls `pcTail`, which the module holds for `pc`.  With `erfc`, its seven tables, and the projection, the module grows from 13,717 to 64,046 bytes. |
+| Zero miss | Rejected when the interval of the length of `Δr`'s part perpendicular to `Δv` holds zero | The design's `x̂` is undefined there.  The positions' rounding is about `1e-9` m near 7,000 km, far below the miss distance of a message. |
+
+### Open items
+
+1. `erfc` in `pcWith`, `pcAdaptWith`, and `pcBoxWith`, if a radius, adaptive, or avoidance use
+   needs probabilities below `1e-16`.  It would change the modules `accuracy`, `adaptive`, and
+   `avoidance` and their call theorems.
+2. An Earth-fixed frame for the message form (design question 1), which would convert the
+   velocities before the RTN frames.
+3. A theorem that `encounter`'s plane quantities are the marginal of the three-dimensional
+   Gaussian of the relative position along `Δv` (the design's optional P5), and that
+   `Model.pc` does not depend on the orthonormal axes chosen in the plane.
+4. Message cases from published conjunction data messages with their probabilities.
+
+## Published cases and the browser page
+
+The request asked for public benchmark cases of the two-dimensional probability with complete
+inputs, a differential test against their published values and the reference integral, and a
+browser page on which the compiled module runs, the reader enters the encounter-plane inputs, and
+the page draws the plane, the interval, and the verdict.
+
+### Decisions
+
+| Question | Choice | Reason |
+|---|---|---|
+| Sources | Chan's twelve encounter-plane cases and Alfano's 2009 cases 1 to 11, quoted with citation in `tests/conjunction/published.py` | Their inputs are complete.  Chan's book is not openly available, so the values come from Table 1 of LLNL-TR-827434, which adapts Serra et al. 2016.  Serra et al. 2016, which gives further cases to more figures, could not be read: HAL and CORE refused the requests. |
+| NASA's CARA Analysis Tools | Downloaded at a pinned commit when the test runs, with each file's size and SHA-256 checked, as `tests/rcv` fetches its corpus | Its unit tests and sample messages are part of software under the NASA Open Source Agreement 1.3, whose section 3A requires a redistributed part to remain under the agreement with a copy of it, so the repository holds the commit, the paths, and the digests and none of the numbers.  The user approved this choice.  Alfano's values, which CARA's unit tests also use, come from the paper. |
+| Projection of CARA's cases | The mean at the full length of the relative position | CARA's `Pc2D_Foster`, `PcElrod`, and `PcCircle` place it there, and their expected values belong to that plane.  The test reports, for each case, how much the in-plane mean changes the probability. |
+| Causes of CARA's disagreements | Checked by computation in `cara.py` | The test integrates with PcCircle's 64-point Gauss-Chebyshev rule at 50 digits and bounds the effect of the binary64 cancellation in PcCircle's smaller eigenvalue, and it fails when the computation does not support the recorded cause. |
+| Projection of the inertial cases | The mean is the length of the part of the relative position perpendicular to the relative velocity | This is the encounter plane of the conjunction-message form.  CARA places the mean at the full length of the relative position, which changes these cases' probabilities by at most `9e-8` of their values. |
+| Tolerance of Alfano's values | Relative `1e-3` | The paper states no precision, and CARA's unit tests compare with these values at `1e-3`.  The report also states each value's relative difference. |
+| Known disagreements | Recorded with their causes beside the values, and the test fails on an unrecorded disagreement or a stale cause | The test then checks the published values as well as the program. |
+| Evaluation | `verified-cases-adaptive --evaluate FILE`, which evaluates `pc` and `pcAdaptive` in native Lean on the inputs of a file | The inputs come from the projection at 50 digits in Python, and the module tests establish the modules' agreement with native Lean bit for bit.  A mode of an existing executable leaves `lakefile.lean`, whose change affects every module, unchanged. |
+| Page's module | `assess` of `conjunction.wasm`, on a fresh instance for each call | `assess` returns the verdict that `assess_sound` covers, and `compiled.initial` covers the fresh instance's store.  The module has no call theorem like `pcAdaptive_call`. |
+
+### Open items
+
+1. Done: CARA's test files, downloaded at a pinned commit when `tests/conjunction/cara.sh` runs.
+2. Done for `pc`: `pcTail` evaluates Chan's cases 8 and 10, whose probabilities lie near `1e-27`,
+   with `erfc` and returns intervals as narrow relative to the value as those of the other cases.
+   `pcAdaptive` keeps `erf`, and its intervals for these cases stop at the floor of `erf`'s
+   cancellation, about `1e-18`.
+3. A call theorem for `assess`, like `pcAdaptive_call`, which would state the page's premise in one
+   theorem.
+4. The conjunction-message form on the page, now that the module exports `pcMessage` and
+   `assessMessage`.
+5. `tests/conjunction/page.mjs` needs Node, which the host that ran the tests of the merged module
+   lacks, so the page's calling code has not run against the module of 64,046 bytes.

@@ -42,7 +42,7 @@
     "Verified.Wasi.PureTransport.erase_restore",
     "LeanExe.ProofKit.BorrowedKept.borrowed_kept",
     "Verified.Tail.fixed_restate",
-    "Verified.Reflect.addBoundDefinition",
+    "Verified.Reflect.addDefinition",
     "Demos.OrderBook.Refinement.toSpec_eq",
     "Library.Numerics.Arithmetic.Fma.FmaNearestEven.strict_top",
     "LeanExe.PTX.parseInstr",

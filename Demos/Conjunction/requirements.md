@@ -3,12 +3,14 @@
 ## Purpose and scope
 
 The program computes the two-dimensional probability of collision of two space objects at a
-conjunction and returns an interval that contains it, with a verdict against a threshold.  The
-first iteration takes the encounter-plane quantities: the mean miss vector, the covariance of the
-miss vector, and the combined hard-body radius.  It leaves out the conjunction-message form, which
-would project two states and two covariances onto the encounter plane, together with message
-parsing, three-dimensional and long-encounter methods, remediation of covariances that are not
-positive definite, correlated errors, and non-spherical objects.
+conjunction and returns an interval that contains it, with a verdict against a threshold.  It
+takes either the encounter-plane quantities, the mean miss vector, the covariance of the miss
+vector, and the combined hard-body radius, or the quantities of a conjunction data message (CCSDS
+508.0-B-1): the two objects' states in one inertial frame, their position covariances in their RTN
+frames, and the radius.  For the second form it projects the states and covariances onto the
+encounter plane in interval arithmetic.  It leaves out the parsing of a message's text,
+three-dimensional and long-encounter methods, remediation of covariances that are not positive
+definite, correlated errors, and non-spherical objects.
 
 ## The model
 
@@ -26,13 +28,16 @@ concerns these assumptions.
 
 ## Interface
 
-Every quantity uses one unit of length, such as meters, and the covariance uses its square.  The
-two axes of the encounter plane are any orthonormal pair, the same for the mean and the covariance.
+In the encounter-plane form every quantity uses one unit of length, such as meters, and the
+covariance uses its square.  The two axes of the encounter plane are any orthonormal pair, the same
+for the mean and the covariance.
 
 | Entry | Arguments | Result |
 |---|---|---|
 | `pc` | `m1 m2 c11 c12 c22 r : Float`, `n : UInt64` | `Interval`: status, `lo`, `hi` |
 | `assess` | `m1 m2 c11 c12 c22 r t : Float`, `n : UInt64` | `Assessment`: status, `lo`, `hi`, verdict |
+| `pcMessage` | 24 values of the two objects, `r : Float`, `n : UInt64` | `Interval`: status, `lo`, `hi` |
+| `assessMessage` | 24 values of the two objects, `r t : Float`, `n : UInt64` | `Assessment`: status, `lo`, `hi`, verdict |
 
 `n` is the number of panels, from 1 to 1,048,576.  `t` is the threshold.  Status 0 marks an
 accepted result and status 1 a rejected one, whose other fields are zero.  The verdict is 1 when
@@ -45,6 +50,20 @@ bound that is not positive, when an interval operation overflows, and when two s
 partition points are out of order.  A covariance that is not positive definite is therefore
 rejected, and so is one too close to singular for the outward-rounded arithmetic to show a
 positive conditional variance.
+
+The message form takes, for each object in turn, the position `x y z` in km and the velocity
+`vx vy vz` in km/s in one inertial frame, and the position covariance in m² in the object's RTN
+frame as the message's entries `CR_R CT_R CT_T CN_R CN_T CN_N`, followed by the radius `r` in m.
+The RTN frame of a state with position `r` and velocity `v` has the axes `R̂ = r/|r|`,
+`N̂ = (r × v)/|r × v|`, and `T̂ = N̂ × R̂`.  The encounter plane is perpendicular to the relative
+velocity `Δv = v₂ - v₁`.  Its first axis `x̂` lies along the part of the relative position
+`Δr = 1000 (r₂ - r₁)`, in m, perpendicular to `Δv`, and its second axis is `ŷ = ẑ × x̂` with
+`ẑ = Δv/|Δv|`.  The miss vector is `(Δr · x̂, Δr · ŷ)`, and the covariance in the plane is the
+projection on `x̂` and `ŷ` of the sum of the two covariances rotated into the inertial frame.
+Besides the rejections of the encounter-plane form, the message form rejects an input when the
+interval of the length of a position, of an angular momentum `r × v`, of the relative velocity, or
+of the part of the relative position perpendicular to the relative velocity holds zero, and when
+the interval of the plane's first variance does not lie above zero.
 
 ## Method
 
@@ -71,6 +90,22 @@ The partition points are `-r`, `r`, and the points `-r + 2r (i/n)` computed in b
 program uses a computed point only when it is finite and lies in `[-r, r]`.  The first point is
 `-r` and the last is `r`, as doubles.
 
+When the miss vector lies many standard deviations from the disk along the second axis, the two
+error-function values are near 1 in magnitude and of opposite signs, and their sum is small.  With
+`u = (h - μ)/k`, `w = (h + μ)/k`, `v = -u`, and `y = -w`, the sum `erf u + erf w` equals
+`erfc v - erfc w` and `erfc y - erfc u`.  On a panel where every point of the interval of `v` is at
+least 1/2, the program computes the first difference with the library's `erfc`, which is within one
+step of the nearest-even rounding of the real function, and on a panel where every point of `y` is
+at least 1/2, the second.  On the other panels it computes the sum of `erf`.  In the first case
+`erf v > 1/2` and `w ≥ v`, so `erfc v + erfc w < 1 < erf v + erf w`, and the rounding error of the
+difference is smaller than that of the sum.  The values of `erfc` keep their relative accuracy down
+to the smallest normal numbers, while the sum of `erf` has an absolute error near `1e-16`.
+
+The message form computes the projection of the interface in interval arithmetic from point
+intervals of the inputs, with the operations of each formula in the order of its definition, and
+passes the five intervals of the miss vector and the plane covariance to the panel method, whose
+setup then computes `2 c11`, `c12/c11`, `k`, and `r²` from intervals.
+
 ## Theorems
 
 | Theorem | Statement |
@@ -78,7 +113,10 @@ program uses a computed point only when it is finite and lies in `[-r, r]`.  The
 | `Model.pc_eq` | For `c11 > 0`, `det C > 0`, and `r ≥ 0`, `Model.pc` equals the constant factor times the integral of `Model.core` from `-r` to `r`. |
 | `pc_enclosure` | When `pc` returns status 0, the real values of the inputs satisfy `c11 > 0`, `det C > 0`, and `r > 0`, the endpoints of the result are finite, and `lo ≤ Model.pc ≤ hi` for those real values, and `hi ≤ 1`. |
 | `assess_sound` | When `assess` returns status 0, `pc` returns status 0 with the same `lo` and `hi`.  Verdict 1 implies `Model.pc < t`, and verdict 2 implies `t ≤ Model.pc`. |
-| `compiled.pc.implements`, `compiled.assess.implements` | The module's entries return the words of `pc` and `assess` without a trap. |
+| `projection_sound` | Each accepted interval of the projection contains the corresponding quantity of `encounter`, the miss vector and the plane covariance that Lean defines from the real values of the message's inputs. |
+| `pcMessage_enclosure` | When `pcMessage` returns status 0, the plane covariance of `encounter` of the real inputs is positive definite, `r > 0`, the endpoints are finite, `lo ≤ Model.pc ≤ hi` for that encounter and radius, and `hi ≤ 1`. |
+| `assessMessage_sound` | When `assessMessage` returns status 0, `pcMessage` returns status 0 with the same `lo` and `hi`, and each verdict implies its comparison of that probability with `t`. |
+| `compiled.pc.implements`, `compiled.assess.implements`, `compiled.pcMessage.implements`, `compiled.assessMessage.implements` | The module's entries return the words of the four functions without a trap. |
 
 Every theorem depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
@@ -87,18 +125,24 @@ Every theorem depends only on the axioms `propext`, `Classical.choice`, and `Quo
 A containment test compares the interval with a reference value of the integral, computed in
 high precision, on inputs that include isotropic and elongated covariances, a correlation near
 ±1, a radius far smaller and far larger than the standard deviations, a zero miss vector,
-probabilities near 1, and probabilities below `1e-30`.  A width test records `hi - lo` against
-`n`.  The module test compares the module with native Lean bit for bit on generated inputs.
+probabilities near 1, and probabilities below `1e-30`, with misses of many standard deviations
+along each axis.  A width test records `hi - lo` against `n`.  For the message form, the test
+projects the states and covariances in high precision with its own implementation in matrices,
+requires each projected quantity to lie in its interval and the reference probability of the
+projection in the result, and requires status 1 for each rejected input.  The module test compares
+the module with native Lean bit for bit on generated inputs.
 
 ## What lies outside the theorems
 
 The theorems concern the integral of the model.  The four assumptions of the model, the realism
 of the covariance, the choice of the radius, the agreement of the frames of the mean and the
-covariance, and the choice of a threshold are the caller's.  The theorems bound no width: a
-result with a wide interval is sound, and its verdict is then 0.  The program computes the two
-error-function values with `erf`, whose absolute error near ±1 is about `1e-16`, so for a miss
-distance of many standard deviations the lower bound falls to zero while the upper bound stays
-above the probability by about `1e-16` times the constant factor and the width of `[-r, r]`.
+covariance, and the choice of a threshold are the caller's.  For the message form, the agreement
+of the two states' frames and epochs, the use of an inertial frame, and the extraction of the
+numbers from the message's text are also the caller's.  The theorems bound no width: a result
+with a wide interval is sound, and its verdict is then 0.  `pcWith`, which the radius and adaptive
+programs use, computes the sum of the two error-function values with `erf` on every panel.  For a
+miss distance of many standard deviations along the second axis, its upper bound stays above the
+probability by about `1e-16` times the constant factor and the width of `[-r, r]`.
 
 ## Radius at a probability: CE and LE
 

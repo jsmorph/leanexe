@@ -49,6 +49,57 @@ theorem twiddle_master :
 
 #print axioms twiddle_master
 
+/-- The forward transform of an array `xs` of fewer than `2 ^ 30` finite floats holding
+`n = ⌊xs.size / 2⌋` complex values with `Σ_j (|a_j| + |b_j|) ≤ 2 ^ 1000` has `2 n` floats, the pair
+`2 k`, `2 k + 1` within `(γ_(n-1) + 2 ^ -46) Σ_j (|a_j| + |b_j|) + n / 2 ^ 1071` of the real and
+imaginary parts of `X_k = Σ_j x_j e ^ (-i θ_jk)`, where `γ_k = k / (2 ^ 53 - k)`. -/
+theorem dft_spec (xs : Array Float) (hs : xs.size < 2 ^ 30) (hf : ∀ v ∈ xs, Finite v.toBits)
+    (hM : ∑ j ∈ Finset.range (xs.size / 2),
+      (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) ≤ 2 ^ 1000) :
+    (dft xs).size = 2 * (xs.size / 2) ∧ ∀ k < xs.size / 2,
+      FApprox (dft xs)[2 * k]! (∑ j ∈ Finset.range (xs.size / 2),
+          (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
+            value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))))
+        ((((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) + 1 / 2 ^ 46) *
+          ∑ j ∈ Finset.range (xs.size / 2),
+            (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) +
+          (xs.size / 2 : ℕ) / 2 ^ 1071) ∧
+      FApprox (dft xs)[2 * k + 1]! (∑ j ∈ Finset.range (xs.size / 2),
+          (value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+            value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))))
+        ((((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) + 1 / 2 ^ 46) *
+          ∑ j ∈ Finset.range (xs.size / 2),
+            (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) +
+          (xs.size / 2 : ℕ) / 2 ^ 1071) := by
+  have hdft : dft xs = transformWith Library.Numerics.Float64.Trig.invPi
+      Library.Numerics.Float64.Trig.halfPi (-1.0) xs := rfl
+  rw [hdft]
+  obtain ⟨hsz, hg⟩ := transform_get (-1.0) xs hs
+  refine ⟨hsz, fun k hk => ?_⟩
+  obtain ⟨e0, e1⟩ := hg k hk
+  obtain ⟨h0, h1⟩ := transform_spec (-1.0) (-1) neg_one_approx (by norm_num) xs hs hf hM k hk
+  rw [e0, e1]
+  refine ⟨?_, ?_⟩
+  · have heq : ∑ j ∈ Finset.range (xs.size / 2),
+        (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
+          value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
+        ∑ j ∈ Finset.range (xs.size / 2),
+        (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+          value xs[2 * j + 1]!.toBits *
+            (-1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) :=
+      Finset.sum_congr rfl fun j _ => by ring
+    rw [heq]
+    exact h0
+  · have heq : ∑ j ∈ Finset.range (xs.size / 2),
+        (value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+          value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
+        ∑ j ∈ Finset.range (xs.size / 2),
+        (value xs[2 * j]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) +
+          value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
+      Finset.sum_congr rfl fun j _ => by ring
+    rw [heq]
+    exact h1
+
 /-- The export `dft`, called on an array `xs` of finite floats holding `n = ⌊xs.size / 2⌋`
 complex values with `Σ_j (|a_j| + |b_j|) ≤ 2 ^ 1000`, returns `2 n` floats, the pair `2 k`,
 `2 k + 1` finite and within `(γ_(n-1) + 2 ^ -46) Σ_j (|a_j| + |b_j|) + n / 2 ^ 1071` of the real
@@ -77,36 +128,9 @@ theorem dft_master :
   .of_trapFree compiled.dft.trapFree (Verified.tables_at [0, 1] (by decide) rfl)
     dft_export (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ hD => by
-      have hs : xs.size < 2 ^ 30 := by have := size_lt hxs.values.size_lt_memory32; omega
-      have hdft : dft xs = transformWith Library.Numerics.Float64.Trig.invPi
-          Library.Numerics.Float64.Trig.halfPi (-1.0) xs := rfl
-      rw [hdft]
-      obtain ⟨hsz, hg⟩ := transform_get (-1.0) xs hs
-      refine ⟨hsz, fun k hk => ?_⟩
-      obtain ⟨e0, e1⟩ := hg k hk
-      obtain ⟨h0, h1⟩ := transform_spec (-1.0) (-1) neg_one_approx (by norm_num) xs hs hD.1
-        hD.2 k hk
-      rw [e0, e1]
-      refine ⟨h0.1, h1.1, ?_, ?_⟩
-      · have heq : ∑ j ∈ Finset.range (xs.size / 2),
-            (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
-              value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
-            ∑ j ∈ Finset.range (xs.size / 2),
-            (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
-              value xs[2 * j + 1]!.toBits *
-                (-1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) :=
-          Finset.sum_congr rfl fun j _ => by ring
-        rw [heq]
-        exact h0.2
-      · have heq : ∑ j ∈ Finset.range (xs.size / 2),
-            (value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
-              value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
-            ∑ j ∈ Finset.range (xs.size / 2),
-            (value xs[2 * j]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) +
-              value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
-          Finset.sum_congr rfl fun j _ => by ring
-        rw [heq]
-        exact h1.2
+      obtain ⟨hsz, hg⟩ := dft_spec xs (by have := size_lt hxs.values.size_lt_memory32; omega)
+        hD.1 hD.2
+      exact ⟨hsz, fun k hk => ⟨(hg k hk).1.1, (hg k hk).2.1, (hg k hk).1.2, (hg k hk).2.2⟩⟩
 
 #print axioms dft_master
 
@@ -170,6 +194,84 @@ theorem abs_sum_trig (n : ℕ) (a b C S : ℕ → ℝ) (hC : ∀ j, |C j| ≤ 1)
       _ ≤ |b j| + |a j| := hab _ _ j
       _ = |a j| + |b j| := by ring
 
+/-- The inverse transform of an array `xs` of fewer than `2 ^ 30` finite floats holding
+`n = ⌊xs.size / 2⌋` complex values with `Σ_j (|a_j| + |b_j|) ≤ 2 ^ 1000` has `2 n` floats, the pair
+`2 k`, `2 k + 1` within `(γ_(n-1) + 2 ^ -45) Σ_j (|a_j| + |b_j|) / n + 2 ^ -1069` of the real and
+imaginary parts of `(1 / n) Σ_j x_j e ^ (i θ_jk)`, where `γ_k = k / (2 ^ 53 - k)`. -/
+theorem inverse_spec (xs : Array Float) (hs : xs.size < 2 ^ 30) (hf : ∀ v ∈ xs, Finite v.toBits)
+    (hM : ∑ j ∈ Finset.range (xs.size / 2),
+      (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) ≤ 2 ^ 1000) :
+    (inverse xs).size = 2 * (xs.size / 2) ∧ ∀ k < xs.size / 2,
+      FApprox (inverse xs)[2 * k]! ((∑ j ∈ Finset.range (xs.size / 2),
+          (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+            value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) /
+          (xs.size / 2 : ℕ))
+        ((((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) + 1 / 2 ^ 45) *
+          (∑ j ∈ Finset.range (xs.size / 2),
+            (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|)) / (xs.size / 2 : ℕ) +
+          1 / 2 ^ 1069) ∧
+      FApprox (inverse xs)[2 * k + 1]! ((∑ j ∈ Finset.range (xs.size / 2),
+          (value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
+            value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) /
+          (xs.size / 2 : ℕ))
+        ((((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) + 1 / 2 ^ 45) *
+          (∑ j ∈ Finset.range (xs.size / 2),
+            (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|)) / (xs.size / 2 : ℕ) +
+          1 / 2 ^ 1069) := by
+  set ys := transformWith Library.Numerics.Float64.Trig.invPi
+    Library.Numerics.Float64.Trig.halfPi 1.0 xs with hys
+  have hinv : inverse xs = LeanExe.loop ys.size.toUInt64 ys fun i acc =>
+      acc.set! i.toNat (acc[i.toNat]! / (xs.size.toUInt64 / 2).toFloat) := rfl
+  obtain ⟨hsz, hg⟩ := transform_get 1.0 xs hs
+  obtain ⟨hmsz, hmg⟩ := map_loop ys (fun v => v / (xs.size.toUInt64 / 2).toFloat)
+    (by rw [hsz]; omega)
+  rw [hinv]
+  refine ⟨by rw [hmsz, hsz], fun k hk => ?_⟩
+  rw [hmg (2 * k) (by rw [hsz]; omega), hmg (2 * k + 1) (by rw [hsz]; omega)]
+  obtain ⟨e0, e1⟩ := hg k hk
+  rw [e0, e1]
+  obtain ⟨h0, h1⟩ := transform_spec 1.0 1 one_approx (by norm_num) xs hs hf hM k hk
+  have hN := half_toNat xs (by omega)
+  have hnf : FApprox (xs.size.toUInt64 / 2).toFloat ((xs.size / 2 : ℕ) : ℝ) 0 := by
+    have := toFloat_exact (xs.size.toUInt64 / 2) (by rw [hN]; omega)
+    rwa [hN] at this
+  have hn0 : 0 < xs.size / 2 := by omega
+  have hn52 : ((xs.size / 2 : ℕ) : ℝ) ≤ 2 ^ 52 := by exact_mod_cast (show xs.size / 2 ≤ 2 ^ 52 by omega)
+  have hγ0 : 0 ≤ ((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) :=
+    div_nonneg (Nat.cast_nonneg _) (by
+      have : ((xs.size / 2 - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
+        exact_mod_cast (show xs.size / 2 - 1 ≤ 2 ^ 52 by omega)
+      linarith)
+  have hγ1 : ((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) ≤ 1 := by
+    have : ((xs.size / 2 - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
+      exact_mod_cast (show xs.size / 2 - 1 ≤ 2 ^ 52 by omega)
+    rw [div_le_one (by linarith)]
+    linarith
+  have hsum := abs_sum_trig (xs.size / 2) (fun j => value xs[2 * j]!.toBits)
+    (fun j => value xs[2 * j + 1]!.toBits)
+    (fun j => Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))
+    (fun j => Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))
+    (fun _ => Real.abs_cos_le_one _) (fun _ => Real.abs_sin_le_one _)
+  have heq0 : ∑ j ∈ Finset.range (xs.size / 2),
+      (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+        value xs[2 * j + 1]!.toBits * (1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) =
+      ∑ j ∈ Finset.range (xs.size / 2),
+      (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
+        value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
+    Finset.sum_congr rfl fun j _ => by ring
+  have heq1 : ∑ j ∈ Finset.range (xs.size / 2),
+      (value xs[2 * j]!.toBits * (1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) +
+        value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
+      ∑ j ∈ Finset.range (xs.size / 2),
+      (value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
+        value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
+    Finset.sum_congr rfl fun j _ => by ring
+  rw [heq0] at h0
+  rw [heq1] at h1
+  have d0 := div_bound _ _ _ _ _ _ hn0 hnf h0 hsum.1 hM hγ0 hγ1 hn52
+  have d1 := div_bound _ _ _ _ _ _ hn0 hnf h1 hsum.2 hM hγ0 hγ1 hn52
+  exact ⟨d0, d1⟩
+
 /-- The export `inverse`, called on an array `xs` of finite floats holding `n = ⌊xs.size / 2⌋`
 complex values with `Σ_j (|a_j| + |b_j|) ≤ 2 ^ 1000`, returns `2 n` floats, the pair `2 k`,
 `2 k + 1` finite and within `(γ_(n-1) + 2 ^ -45) Σ_j (|a_j| + |b_j|) / n + 2 ^ -1069` of the real
@@ -200,60 +302,9 @@ theorem inverse_master :
   .of_trapFree compiled.inverse.trapFree (Verified.tables_at [0, 1] (by decide) rfl)
     inverse_export (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ hD => by
-      have hs : xs.size < 2 ^ 30 := by have := size_lt hxs.values.size_lt_memory32; omega
-      set ys := transformWith Library.Numerics.Float64.Trig.invPi
-        Library.Numerics.Float64.Trig.halfPi 1.0 xs with hys
-      have hinv : inverse xs = LeanExe.loop ys.size.toUInt64 ys fun i acc =>
-          acc.set! i.toNat (acc[i.toNat]! / (xs.size.toUInt64 / 2).toFloat) := rfl
-      obtain ⟨hsz, hg⟩ := transform_get 1.0 xs hs
-      obtain ⟨hmsz, hmg⟩ := map_loop ys (fun v => v / (xs.size.toUInt64 / 2).toFloat)
-        (by rw [hsz]; omega)
-      rw [hinv]
-      refine ⟨by rw [hmsz, hsz], fun k hk => ?_⟩
-      rw [hmg (2 * k) (by rw [hsz]; omega), hmg (2 * k + 1) (by rw [hsz]; omega)]
-      obtain ⟨e0, e1⟩ := hg k hk
-      rw [e0, e1]
-      obtain ⟨h0, h1⟩ := transform_spec 1.0 1 one_approx (by norm_num) xs hs hD.1 hD.2 k hk
-      have hN := half_toNat xs (by omega)
-      have hnf : FApprox (xs.size.toUInt64 / 2).toFloat ((xs.size / 2 : ℕ) : ℝ) 0 := by
-        have := toFloat_exact (xs.size.toUInt64 / 2) (by rw [hN]; omega)
-        rwa [hN] at this
-      have hn0 : 0 < xs.size / 2 := by omega
-      have hn52 : ((xs.size / 2 : ℕ) : ℝ) ≤ 2 ^ 52 := by exact_mod_cast (show xs.size / 2 ≤ 2 ^ 52 by omega)
-      have hγ0 : 0 ≤ ((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) :=
-        div_nonneg (Nat.cast_nonneg _) (by
-          have : ((xs.size / 2 - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
-            exact_mod_cast (show xs.size / 2 - 1 ≤ 2 ^ 52 by omega)
-          linarith)
-      have hγ1 : ((xs.size / 2 - 1 : ℕ) : ℝ) / (2 ^ 53 - (xs.size / 2 - 1 : ℕ)) ≤ 1 := by
-        have : ((xs.size / 2 - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
-          exact_mod_cast (show xs.size / 2 - 1 ≤ 2 ^ 52 by omega)
-        rw [div_le_one (by linarith)]
-        linarith
-      have hsum := abs_sum_trig (xs.size / 2) (fun j => value xs[2 * j]!.toBits)
-        (fun j => value xs[2 * j + 1]!.toBits)
-        (fun j => Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))
-        (fun j => Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))
-        (fun _ => Real.abs_cos_le_one _) (fun _ => Real.abs_sin_le_one _)
-      have heq0 : ∑ j ∈ Finset.range (xs.size / 2),
-          (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
-            value xs[2 * j + 1]!.toBits * (1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)))) =
-          ∑ j ∈ Finset.range (xs.size / 2),
-          (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) -
-            value xs[2 * j + 1]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
-        Finset.sum_congr rfl fun j _ => by ring
-      have heq1 : ∑ j ∈ Finset.range (xs.size / 2),
-          (value xs[2 * j]!.toBits * (1 * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) +
-            value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) =
-          ∑ j ∈ Finset.range (xs.size / 2),
-          (value xs[2 * j]!.toBits * Real.sin (2 * Real.pi * j * k / (xs.size / 2 : ℕ)) +
-            value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / (xs.size / 2 : ℕ))) :=
-        Finset.sum_congr rfl fun j _ => by ring
-      rw [heq0] at h0
-      rw [heq1] at h1
-      have d0 := div_bound _ _ _ _ _ _ hn0 hnf h0 hsum.1 hD.2 hγ0 hγ1 hn52
-      have d1 := div_bound _ _ _ _ _ _ hn0 hnf h1 hsum.2 hD.2 hγ0 hγ1 hn52
-      exact ⟨d0.1, d1.1, d0.2, d1.2⟩
+      obtain ⟨hsz, hg⟩ := inverse_spec xs (by have := size_lt hxs.values.size_lt_memory32; omega)
+        hD.1 hD.2
+      exact ⟨hsz, fun k hk => ⟨(hg k hk).1.1, (hg k hk).2.1, (hg k hk).1.2, (hg k hk).2.2⟩⟩
 
 #print axioms inverse_master
 

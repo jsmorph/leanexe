@@ -90,5 +90,13 @@ covers the loops that bisect, march, or subdivide with these enclosures.
 `Demos.Conjunction.expI_sound` applies the monotone enclosure to `exp`,
 `Demos.Conjunction.erfSumI_sound` chains the operations of the sum and derives a positive conditional
 variance from an accepted division, `Demos.Conjunction.panel_sound` bounds one panel,
-`Demos.Conjunction.panels_sound` is the loop induction, and `Demos.Conjunction.pc_enclosure`
-combines them.
+`Demos.Conjunction.panels_sound` is the loop induction, and `Demos.Conjunction.pcWith_enclosure`
+combines them.  `Demos.Conjunction.panel_of_core` and `Demos.Conjunction.panels_of_panel` state
+the panel and the loop for any interval function of the integrand, so a second program that
+replaces one inner function, as `Demos.Conjunction.erfSumTailI` replaces
+`Demos.Conjunction.erfSumI`, needs a proof of that function alone, and
+`Demos.Conjunction.panelsTail_sound` applies both.  The dialect takes no function as an argument,
+so the two programs repeat the loop while their proofs share it.
+`Demos.Conjunction.erfSumTailI_sound` proves a branch that computes `erf a + erf b` as
+`erfc (-a) - erfc b` by rewriting the enclosed difference with that identity before the clamp, and
+`Demos.Conjunction.erfcT_sound` applies the decreasing enclosure to `erfc`.

@@ -299,6 +299,7 @@ import Library.Numerics.Bounds.Proof
 import Library.Numerics.Interval.Proof
 import Library.Numerics.Interval.Enclose
 import Library.Masters
+import Library.Numerics.Fourier.RoundTrip
 import Library.Numerics.Limiters.Minmod.Proof
 import Library.Arrays.Search.Proof
 import Library.Arrays.MaxSegmentSum.Proof

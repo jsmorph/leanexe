@@ -403,6 +403,13 @@ def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
         pure r
   let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
   sigs := sig :: sigs
+  -- The kernel checks a chain of `Prog.cons` against the literal signatures by evaluating each
+  -- function's `sig`, in every declaration that holds the chain, so the chain is named prefix by
+  -- prefix and each later term holds the constant.
+  let prefixName := base ++ Name.mkSimple s!"prefix_{sigs.length - 1}"
+  addDefinition prefixName
+    (mkApp (Lean.mkConst ``Prog) (listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr))) prog
+  prog := Lean.mkConst prefixName
   let some bound := r.bound? | throwError "verified_compile: the bound of {name}"
   callees := { name := name, sig := sig, denoteEq := r.meaningEq, bound } :: callees
   out := out.push r
@@ -847,7 +854,7 @@ def elabVerifiedCompile : CommandElab
           let boundVal ← withLocalDeclD `x r.argsType fun x =>
             mkLambdaFVars #[x] (mkApp boundEnv
               (mkAppN (mkConst ``Env.ofArgs) #[ps, ms, (mkApp r.flatArgs x).headBeta])).headBeta
-          addBoundDefinition boundName (← mkArrow r.argsType (mkConst ``Nat)) boundVal
+          addDefinition boundName (← mkArrow r.argsType (mkConst ``Nat)) boundVal
           wrapperBoundEquation (base ++ simple) r.name boundName callee
             (← getConstInfoDefn (base ++ `program)).value funsVal
           let h ← mkAppM ``ImplementsTables.lean #[h0]
