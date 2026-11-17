@@ -6,12 +6,12 @@ import Verified.Shim
 The footprint theorem at the specification level for the commands of increment 2 of the shim: the
 flat call example, which calls `args_sizes_get`, `args_get`, `clock_time_get`, and `random_get`,
 and the environment example, which calls `environ_sizes_get` and `environ_get`.  The shim
-implements every flat call that each command imports (`calls_supported`).  For every open flags,
-layout, launch, and reply sequence, every Talos run of `_start` from each command's initial store,
-with no layer events, no exit marker, and no recorded outputs, under the shim's environment with
-enough fuel has the footprint of `Footprint`: the layer events are images of the run's WASI trace,
-which ends at an accepted exit, a rejected exit, a trap of the shim, or a trap of the guest after a
-prefix of `main`.
+implements every flat call that each command imports (`calls_supported`).  For every choice of
+open flags, layout, launch, and reply sequence, every Talos run of `_start` from each command's
+initial store, with no layer events, no exit marker, and no recorded outputs, under the shim's
+environment with enough fuel has the footprint of `Footprint`: the layer events are images of the
+run's WASI trace, which ends at an accepted exit, a rejected exit, a trap of the shim, or a trap
+of the guest after a prefix of `main`.
 -/
 
 namespace Verified.Examples.WasiSys

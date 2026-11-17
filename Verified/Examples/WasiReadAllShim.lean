@@ -2,13 +2,13 @@ import Verified.Examples.WasiReadAll
 import Verified.Shim
 
 /-!
-The footprint theorem at the specification level for the readAll command.  For every open flags,
-layout, launch, and reply sequence, every Talos run of `_start` from the command's initial store,
-with no layer events, no exit marker, and no recorded outputs, under the shim's environment with
-enough fuel has the footprint of `Footprint`: the run ends at an accepted exit, a rejected exit, a
-trap of the shim, or a trap of the guest after a prefix of `main`, and the layer events are images
-of its WASI trace.  The reads of descriptor 0 and the writes of descriptor 1 in those events moved
-the bytes that the trace's `fd_read` and `fd_write` events committed.
+The footprint theorem at the specification level for the readAll command.  For every choice of
+open flags, layout, launch, and reply sequence, every Talos run of `_start` from the command's
+initial store, with no layer events, no exit marker, and no recorded outputs, under the shim's
+environment with enough fuel has the footprint of `Footprint`: the run ends at an accepted exit, a
+rejected exit, a trap of the shim, or a trap of the guest after a prefix of `main`, and the layer
+events are images of its WASI trace.  The reads of descriptor 0 and the writes of descriptor 1 in
+those events moved the bytes that the trace's `fd_read` and `fd_write` events committed.
 -/
 
 namespace Verified.Examples.WasiReadAll
