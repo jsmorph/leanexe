@@ -31,6 +31,7 @@ import TestSupport.A64.GptLayer32Runs
 import TestSupport.A64.Conv32Runs
 import TestSupport.A64.Floor
 import TestSupport.A64.Convert
+import TestSupport.A64.ProcMachine
 import TestSupport.M7.Step
 import TestSupport.M7.GwStep
 import TestSupport.M7.CrcStep

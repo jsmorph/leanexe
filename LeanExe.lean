@@ -42,6 +42,7 @@ import LeanExe.A64.Proof.LinuxMain
 import LeanExe.A64.Proof.LinuxProgram
 import LeanExe.A64.Proof.LinuxRuns
 import LeanExe.A64.Proof.Machine
+import LeanExe.A64.Proof.MachineSim
 import LeanExe.A64.Proof.Memory
 import LeanExe.A64.Proof.Program
 import LeanExe.A64.Proof.ProgramRuns
