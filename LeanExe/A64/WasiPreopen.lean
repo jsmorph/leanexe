@@ -1,9 +1,10 @@
-import LeanExe.A64.Gen
+import LeanExe.A64.WasiStrings
 
 /-!
 The preopened directory of a WASI command as a Linux executable for AArch64: the startup's check
 of descriptor 3 and the stubs of `fd_prestat_get` and `fd_prestat_dir_name`.  Each part reaches the
-shim's scratch, `scratch` bytes above the area, as `X17 + scratch` in X16 (`scratchAddr`).  The
+shim's scratch, `scratch` bytes above the area, as `X17 + scratch` in X20 (`scratchAddr` of
+`LeanExe/A64/WasiStrings.lean`).  The
 scratch holds the preopen flag at offset 8, 1 while descriptor 3 is the preopened directory, a byte
 at offset `16 + d` for each descriptor number `d` below 1,024, 1 while the shim holds the number,
 and the path buffer at offset 1,080.
@@ -36,26 +37,22 @@ namespace LeanExe.A64
 
 open Wasm
 
-/-- The scratch's address, `scratch` bytes above the area at X17, in X16. -/
-def scratchAddr (scratch : Nat) : List Instr :=
-  movImm 16 (UInt64.ofNat scratch) ++ [.addReg 16 17 16]
-
 /-- The check that the guest's bytes below the guest address in X12 lie within the memory, placed
 at `a`, with the trap stub at `tr`: the memory's size, 8 plus the area's first word, in X13, and a
 branch to `tr` when X12 exceeds it. -/
 def rangeCheck (a tr : UInt64) : GenM (List Instr) := do
   return [.ldr 13 17 0, .addImm 13 13 8, .subsReg 31 12 13, .bcond 8 (← cbField (after a 3) tr)]
 
-/-- The test of the preopened directory, placed at `a`, with the scratch's address in X16: a branch
+/-- The test of the preopened directory, placed at `a`, with the scratch's address in X20: a branch
 to `out` unless X0 holds 3 and the preopen flag is set. -/
 def preopenTest (a out : UInt64) : GenM (List Instr) := do
-  return [.subsImm 31 0 3, .bcond 1 (← cbField (after a 1) out), .ldrb 9 16 8,
+  return [.subsImm 31 0 3, .bcond 1 (← cbField (after a 1) out), .ldrb 9 20 8,
     .cbz 9 (← cbField (after a 3) out)]
 
 /-- The test whether the shim holds the descriptor in X`r`, placed at `a`, with the scratch's
-address in X16: a branch to `out` when the descriptor is 1,024 or more or its byte is 0. -/
+address in X20: a branch to `out` when the descriptor is 1,024 or more or its byte is 0. -/
 def heldTest (a out : UInt64) (r : Fin 32) : GenM (List Instr) := do
-  return [.subsImm 31 r 1023, .bcond 8 (← cbField (after a 1) out), .addReg 10 16 r,
+  return [.subsImm 31 r 1023, .bcond 8 (← cbField (after a 1) out), .addReg 10 20 r,
     .ldrb 9 10 16, .cbz 9 (← cbField (after a 4) out)]
 
 /-- The number of instructions of `preopenCheck`. -/
@@ -65,7 +62,7 @@ def preopenCheckSize : Nat := 39
 word at `base`, and the scratch `scratch` bytes above the area. -/
 def preopenCheck (a svc base : UInt64) (scratch : Nat) : GenM (List Instr) := do
   return [.orrReg 19 31 30] ++ scratchAddr scratch ++
-    [.movz 9 46 0, .strb 9 16 1080, .strb 31 16 1081, .movz 0 3 0, .addImm 1 16 1080,
+    [.movz 9 46 0, .strb 9 20 1080, .strb 31 20 1081, .movz 0 3 0, .addImm 1 20 1080,
       .movz 2 0x4000 0, .movk 2 8 1, .movz 3 0 0, .movz 8 56 0,
       .bl (← bField (after a 15) svc), .subReg 9 31 0, .subsImm 31 9 9,
       .bcond 1 (← cbField (after a 18) (after a 20)), .ret 19, .subsImm 31 9 20,
@@ -74,7 +71,7 @@ def preopenCheck (a svc base : UInt64) (scratch : Nat) : GenM (List Instr) := do
       .cbnz 9 (← cbField (after a 26) (after a 37)), .movz 8 57 0,
       .bl (← bField (after a 28) svc), .subReg 9 31 0,
       .cbz 0 (← cbField (after a 30) (after a 33)), .subsImm 31 9 4095,
-      .bcond 8 (← cbField (after a 32) (after a 37)), .movz 9 1 0, .strb 9 16 8, .strb 9 16 19,
+      .bcond 8 (← cbField (after a 32) (after a 37)), .movz 9 1 0, .strb 9 20 8, .strb 9 20 19,
       .ret 19, .movz 0 67 0, .b (← bField (after a 38) base)]
 
 /-- The number of instructions of `prestatStub`. -/
@@ -113,7 +110,7 @@ def needsCheck (ds : List ImportDecl) : Bool := ds.any fun d => preopenNames.con
 
 /-- The startup routine placed at `a`: the check of descriptor 3 when `check` holds, and a
 return otherwise. -/
-def startupCode (check : Bool) (a svc base : UInt64) (scratch : Nat) : GenM (List Instr) :=
+def wasiStartupCode (check : Bool) (a svc base : UInt64) (scratch : Nat) : GenM (List Instr) :=
   if check then preopenCheck a svc base scratch else pure [.ret 30]
 
 end LeanExe.A64

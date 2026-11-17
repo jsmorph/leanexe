@@ -371,7 +371,7 @@ def genWasiProgram (m : Module) (k : Nat) (svc base room : UInt64) (cap : Nat) :
   let fs := wasiFuncs m
   let flat := stubEntries (wasiFlatAt a) 3 stubs
   let startAt := stubsEnd (wasiFlatAt a) stubs
-  let startup ← startupCode (needsCheck (m.imports.drop 3)) startAt svc base (areaSize cap)
+  let startup ← wasiStartupCode (needsCheck (m.imports.drop 3)) startAt svc base (areaSize cap)
   let first := after startAt startup.length
   let callee := wasiTable (wasiReadAt a) (wasiWriteAt a) (wasiExitAt a) flat first fs
   let entry ← match entryIn (wasiSig flat fs) first fs k with

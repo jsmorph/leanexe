@@ -695,7 +695,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     exact fun i hi => hWsub _ _ (c6.2 i hi)
   cases hc : needsCheck (m.imports.drop 3)
   · -- no check: the routine is a return
-    rw [startupCode, hc, if_neg (by decide)] at hsu
+    rw [wasiStartupCode, hc, if_neg (by decide)] at hsu
     obtain rfl := Except.ok.inj hsu
     have hsuF : startup (needsCheck (m.imports.drop 3)) G R = ([], some false) := by
       rw [startup, hc, if_neg (by decide)]
@@ -712,7 +712,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     rw [hsuF]
     exact ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩
   · -- the check of descriptor 3
-    rw [startupCode, hc, if_pos rfl] at hsu
+    rw [wasiStartupCode, hc, if_pos rfl] at hsu
     have hGp : p0.core.x 17 + UInt64.ofNat (areaSize cap) = G.base := by rw [h17, hGb]
     have hUw : (wasiPlatform L p.core.sp top).normal (wasiPlatform L p.core.sp top).uart =
         false := by

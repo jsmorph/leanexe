@@ -291,7 +291,7 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
       m.imports = streamImports ++ stubs.map (·.decl) ∧ (∀ s ∈ stubs, s ∈ flatStubs) ∧
       room.toNat < 2 ^ 32 ∧ areaOk m cap = true ∧ globalTypesOf m = some gts ∧
       gts.length ≤ 511 ∧
-      startupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1)) stubs) svc
+      wasiStartupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1)) stubs) svc
         base (areaSize cap) = .ok startup ∧
       entryIn (wasiSig (stubEntries (wasiFlatAt (after base 1)) 3 stubs) (wasiFuncs m))
         (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length) (wasiFuncs m) k =
@@ -345,7 +345,7 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
     refine Classical.byContradiction fun h => ?_
     simp [hgt, h, throw, throwThe, MonadExceptOf.throw] at hg
   simp only [hgt, hgl, ↓reduceIte] at hg
-  cases hsu : startupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1))
+  cases hsu : wasiStartupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1))
       stubs) svc base (areaSize cap) with
   | error err => simp [hsu] at hg
   | ok startup =>
