@@ -879,6 +879,19 @@ theorem run_scanPiece {a ov : UInt64} {is : List Instr} (hg : scanPiece a ov = .
   · rw [kt q h11 h12 h13 h14 h15, k4 q h10, k3 q h13, k2 q h12, k1 q h11]
   · simpa only [Nat.zero_add] using ht
 
+/-- The store relation after two runs of bytes written into the memory, `bs` from its byte `p` and
+then `cs` from its byte `q`, each within its size. -/
+theorem StoreRel.ofWriteList2 {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α}
+    {s s' : State} {p q : Nat} {bs cs : List UInt8} (h : StoreRel P cap gts st s)
+    (hp : p + bs.length ≤ st.mem.pages * 65536) (hq : q + cs.length ≤ st.mem.pages * 65536)
+    (h17 : s'.x 17 = s.x 17) (h18 : s'.x 18 = s.x 18)
+    (hmem : s'.mem = writeList (writeList s.mem (s.x 17 + UInt64.ofNat (4096 + p)) bs)
+      (s.x 17 + UInt64.ofNat (4096 + q)) cs) :
+    StoreRel P cap gts { st with mem := (st.mem.writeBytes p bs).writeBytes q cs } s' :=
+  StoreRel.ofWriteList P cs
+    (s := { s with mem := writeList s.mem (s.x 17 + UInt64.ofNat (4096 + p)) bs })
+    (StoreRel.ofWriteList P bs h hp rfl rfl rfl) hq h17 h18 hmem
+
 /-! ## The stubs' shared parts -/
 
 theorem after_eq {a : UInt64} {m n : Nat} (h : m = n) : after a m = after a n := by rw [h]
