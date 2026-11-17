@@ -20,7 +20,7 @@
 # the path.  It then builds the environment example, Verified.Examples.WasiSysEnviron, checks its
 # axioms with tests/wasi/SysEnviron.lean, and runs its module with two environment variables and
 # with none: each run must exit with status 0 and write the count and size that environ returns as 8
-# little-endian bytes each and then the variables, each followed by a zero byte.  Last it builds the
+# little-endian bytes each and then the variables, each followed by a zero byte.  It then builds the
 # example with iovec and poll calls, Verified.Examples.WasiSysNested, checks its axioms with
 # tests/wasi/SysNestedAxioms.lean, runs the native cases of the nested typed functions and of the
 # example's main against a host whose fd_close fails in tests/wasi/SysNested.lean, and runs its
@@ -28,7 +28,10 @@
 # empty, and write abcdefXY, which fd_pread read, XY, which fd_read read, and then as 8
 # little-endian bytes each the count, userdata, error, type, nbytes, and flags of the clock poll, 1,
 # 1, 0, 0, 0, and 0, and of the read poll, 1, 1, 0, 1, 1, and 0: Wasmtime 44 reports nbytes 1 for
-# the read event of a file.
+# the read event of a file.  Last it builds the prestat example, Verified.Examples.WasiSysPrestat,
+# checks its axioms with tests/wasi/SysPrestatAxioms.lean, and runs its module with a fresh
+# preopened directory.  The run must exit with status 0, leave the directory empty, and write the
+# directory's name, which fd_prestat_dir_name gives as ".", after copying it through a file.
 set -eu
 set -f
 if ! command -v wasm-tools > /dev/null 2>&1; then
@@ -50,13 +53,15 @@ fi
 
 tools/leanrun --timeout 30m --log "$out/build.log" lake build Verified.Examples.WasiSys \
   Verified.Examples.WasiSysTotal Verified.Examples.WasiSysInputs Verified.Examples.WasiSysRecords \
-  Verified.Examples.WasiSysEnviron Verified.Examples.WasiSysNested
+  Verified.Examples.WasiSysEnviron Verified.Examples.WasiSysNested \
+  Verified.Examples.WasiSysPrestat
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/SysWitness.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysInputs.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysEnviron.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysRecordAxioms.lean
 tools/leanrun --timeout 10m lake env lean tests/wasi/SysNestedAxioms.lean
+tools/leanrun --timeout 10m lake env lean tests/wasi/SysPrestatAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysExample.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysRecords.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/SysNested.lean
@@ -228,6 +233,21 @@ small() {
   done
 } > "$out/nested.expected"
 cmp -s "$out/nested.expected" "$out/nested.stdout" || fail nested "output"
+cases=$((cases + 1))
+
+prestat="$out/prestat.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSysPrestat \
+  Verified.Examples.WasiSysPrestat.command.module "$prestat"
+wasm-tools validate "$prestat"
+rm -rf "$out/prestat-dir"
+mkdir "$out/prestat-dir"
+status=0
+timeout 60s "$host" --dir "$out/prestat-dir" --stdout-file "$out/prestat.stdout" \
+  --control-file "$out/prestat.control" run "$prestat" 2> "$out/prestat.stderr" || status=$?
+[ "$status" -eq 0 ] || fail prestat "status $status"
+printf 'wasi-exit 0\n' | cmp -s - "$out/prestat.control" || fail prestat "control"
+[ -z "$(ls -A "$out/prestat-dir")" ] || fail prestat "the directory is not empty"
+printf '.' | cmp -s - "$out/prestat.stdout" || fail prestat "output"
 cases=$((cases + 1))
 
 printf 'flat call example Wasmtime cases passed: %s\n' "$cases"
