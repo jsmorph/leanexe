@@ -13,8 +13,8 @@ decodes, which `svcWord` does not (`decode_svcWord`), executes an instruction ot
 words only below 2^55 and the run ends below it.  `run_svcCall` follows a call routine,
 `MOVZ X8, #nr`, `SVC #0`, and `RET`, from its first word to the return, with the effect of
 `Kernel.svc`.  `svc_read` and `svc_write` evaluate `Kernel.svc` for the calls of `read` and
-`write` that do not fail.  `StoreRel.writeList` gives the store relation after a read writes bytes
-into linear memory, and `readList_bytes` the bytes that a write takes from it.
+`write` that do not fail, and `writeList_other` gives the bytes that a read's writes leave
+outside its buffer.
 -/
 
 namespace LeanExe.A64

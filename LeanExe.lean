@@ -49,7 +49,14 @@ import LeanExe.A64.Proof.ProgramRuns
 import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Shift
 import LeanExe.A64.Proof.Sim
+import LeanExe.A64.Proof.StampCalls
+import LeanExe.A64.Proof.StampCode
 import LeanExe.A64.Proof.StampImage
+import LeanExe.A64.Proof.StampLoops
+import LeanExe.A64.Proof.StampProgram
+import LeanExe.A64.Proof.StampRuns
+import LeanExe.A64.Proof.StampStages
+import LeanExe.A64.Proof.StampTrace
 import LeanExe.A64.Proof.StartupCode
 import LeanExe.A64.Proof.StartupOff
 import LeanExe.A64.Proof.StartupTail
