@@ -12,7 +12,9 @@
     "a local definition introduced by set that omega or rw unfolds",
     "every case of a theorem over a parser that matches the opcode and the operands in one match runs out of heartbeats",
     "(deterministic) timeout at whnf from a show over a chain of let-bound machine states",
-    "(deterministic) timeout at whnf from rfl when both sides reach Reply.field by different paths"
+    "(deterministic) timeout at whnf from rfl when both sides reach Reply.field by different paths",
+    "rw or simp only that does not find UInt64.ofNat 4092 in a step's result holding UInt64.ofNat ↑(4092 : Fin 4096)",
+    "maximum recursion depth from rfl on x + UInt64.ofNat 4092 + 1 = x + UInt64.ofNat 4093"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -34,7 +36,9 @@
     "LeanExe.A64.Proof.Memory",
     "LeanExe.A64.Proof.Sim",
     "LeanExe.A64.Proof.Relation",
-    "Verified.Wasi.ReflectSysCalls"
+    "Verified.Wasi.ReflectSysCalls",
+    "LeanExe.A64.Proof.Memory32",
+    "LeanExe.A64.Proof.WasiStrings"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -57,7 +61,11 @@
     "Verified.Wasi.Command.sys",
     "LeanExe.Wasi.Reply.field",
     "LeanExe.Wasi.fdFdstatGet",
-    "Verified.Wasi.recordWords"
+    "Verified.Wasi.recordWords",
+    "LeanExe.A64.step_strb",
+    "LeanExe.A64.step_lsrImm",
+    "LeanExe.A64.step_addK",
+    "LeanExe.A64.add_ofNat_add"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -75,6 +83,7 @@
     "LeanExe.A64.run_grow_ok",
     "LeanExe.A64.run_growWide_size",
     "LeanExe.A64.run_growWide_cmp",
-    "Verified.Wasi.Reflect.fdFdstatGet_eq"
+    "Verified.Wasi.Reflect.fdFdstatGet_eq",
+    "LeanExe.A64.run_strb4"
   ]
 }

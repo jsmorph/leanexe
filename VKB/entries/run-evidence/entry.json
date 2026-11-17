@@ -7,7 +7,10 @@
     "the virtual COM port passes none of the board's output",
     "a run under QEMU or in Renode offered as evidence of the board's behavior",
     "a run of a Linux executable under qemu-aarch64 offered as evidence of Linux's behavior",
-    "a step that a test skips under an emulator, with a reason that names the emulator's version"
+    "a step that a test skips under an emulator, with a reason that names the emulator's version",
+    "an environment with empty strings, strings without '=', or repeated names under qemu-aarch64",
+    "a run of an executable with an empty argument vector",
+    "a test that expects SIGPIPE, status 141, run inside a systemd service"
   ],
   "modules": [
     "LeanExe.M7.Proof.Board"

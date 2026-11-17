@@ -12,7 +12,8 @@
     "a wrong search that returns the correct status and hull on every case",
     "a model of a floating-point program that reproduces its results bit for bit",
     "a claimed optimum of a design measurement",
-    "a design note that specifies code against a reference engine, such as the order of a host's checks"
+    "a design note that specifies code against a reference engine, such as the order of a host's checks",
+    "a check of the reference that an invariant of the code decides, which no case distinguishes"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -20,7 +21,8 @@
     "Library.Graphs.Dijkstra.Proof",
     "Library.Trees.Avl.Proof",
     "Library.Trees.AvlDelete.Spec",
-    "Verified.Shim.Replies"
+    "Verified.Shim.Replies",
+    "Verified.ShimA64"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -35,7 +37,10 @@
     "Library.Trees.Avl.algorithmA_props",
     "Library.Trees.AvlDelete.Removes",
     "Library.Trees.AvlDelete.deleteA",
-    "Verified.Shim.openCheck"
+    "Verified.Shim.openCheck",
+    "LeanExe.A64.StoreRel",
+    "Verified.ShimA64.sizesInvoke_eq",
+    "Verified.ShimA64.stringsInvoke_eq"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq"
