@@ -66,8 +66,8 @@ import LeanExe.A64.Proof.StartupTail
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
-import LeanExe.A64.Proof.WasiPreopen
 import LeanExe.A64.Proof.WasiLaunch
+import LeanExe.A64.Proof.WasiPreopen
 import LeanExe.A64.Proof.WasiProgram
 import LeanExe.A64.Proof.WasiStubs
 import LeanExe.A64.Proof.WithMachine
