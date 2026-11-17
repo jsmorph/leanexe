@@ -326,6 +326,7 @@ The shim follows the repository's Wasmtime host in its errnos and in the order o
 | Arguments and environment | `--arg` and `--env` values, each UTF-8 | The launch's byte strings |
 | `args_get` and `environ_get` whose pointer array and string buffer overlap, or whose regions leave memory | Each pointer, then its string, in turn, so a later write can overwrite an earlier one and the writes before a region that leaves memory remain | Every pointer, then every string, as `stringsInvoke` states, and a trap before any write when a region leaves memory |
 | The preopened directory | `--dir PATH`, none without it | Descriptor 3 when the launcher grants it |
+| The record of `fd_prestat_get` | The tag and the name's length, with the three bytes of padding left as they were | All eight bytes, the padding as zeros |
 | A descriptor number that neither a granted 3 nor an `openat2` gave, inherited ones among them | Errno 8 (`badf`), except that `fd_close` of 0 to 2 closes the stream, `fd_read` of 0 reads standard input, and `fd_write` of 1 or 2 writes the stream | Errno 8 (`badf`) for every such number |
 | `path_open` under a file handle | Errno 54 (`notdir`), after the UTF-8 check and before the others | The checks of `openCheck`, then `openat2`, which tests an empty or absolute path before the descriptor: errno 58, 28, 37, 44, or 63 |
 | `path_open` with `directory` of a symlink not followed | Errno 32 (`loop`) | Errno 54 (`notdir`), from `O_DIRECTORY` |
