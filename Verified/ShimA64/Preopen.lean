@@ -265,10 +265,12 @@ theorem prestatStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
         exact store64_other _ _ _ _ (not_within8 (.inr (by omega)) (by omega)))
       (fun b hb => by
         rw [hmt]
-        exact store64_outside (fun k hk => by
-          rw [add_ofNat_add]
-          exact hst.mapped _ (by unfold areaSize; have := Nat.mul_le_mul_right 65536 hpg.2;
-            omega)) hb)
+        refine store64_outside (fun k hk => ?_) hb
+        rw [add_ofNat_add]
+        refine hst.mapped _ ?_
+        unfold areaSize
+        have := Nat.mul_le_mul_right 65536 hpg.2
+        omega)
       (hst.write (modulePlatform L G) (y := a1) (v := 2 ^ 32) hin.1 x17t x18t hmt) _
   · have hc : ¬ (q.core.x 0 = 3 ∧
         q.core.mem (q.core.x 17 + UInt64.ofNat (areaSize S.cap) + 8) ≠ 0) := by

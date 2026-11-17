@@ -406,7 +406,8 @@ theorem run_prestatStub {a tr : UInt64} {sc : Nat} {is : List Instr}
     have hex := exec_str_base P (s := u6) (t := 9) (n := 10) (i := 512) (by decide) (by decide)
       (fun k hk => by rw [hx10]; exact hrec htr k hk)
     let u7 : State :=
-      { u6 with mem := store64 u6.mem (u6.x 10 + UInt64.ofNat (8 * 512)) (u6.x 9),
+      { u6 with
+        mem := store64 u6.mem (u6.x 10 + UInt64.ofNat (8 * 512)) (u6.x 9)
         pc := u6.pc + 4 }
     have r7 : Reach P code u6 u7 :=
       reach_exec P code (by rw [p6, p5, p4, ← after_succ, ← after_succ]; exact t2) hex (.refl _)
@@ -574,12 +575,15 @@ theorem run_dirNameStub {a tr : UInt64} {sc : Nat} {is : List Instr}
           rw [k9 q, k8 q h9, k7 q h10, k6 q h10, kk5 q h9 h10 h12 h13 h16]
       obtain ⟨u10, r10, p10, x10, k10, sp10, m10, io10⟩ := run_movzRet P code t56 (s := u9)
         (by rw [p9, p8, p7, p6, p5, ← after_succ, ← after_succ, ← after_succ, ← after_succ])
+      have h17 : u10.x 17 = s.x 17 := by
+        rw [k10 17 (by decide)]
+        exact kk9 17 (by decide) (by decide) (by decide) (by decide) (by decide)
+      have h18 : u10.x 18 = s.x 18 := by
+        rw [k10 18 (by decide)]
+        exact kk9 18 (by decide) (by decide) (by decide) (by decide) (by decide)
       refine ⟨u10, r14.trans (r5.trans (r6.trans (r7.trans (r8.trans (r9.trans r10))))),
         by rw [sp10, sp9, sp8, sp7, sp6, sp5, hsp4], by rw [io10, io9, io8, io7, io6, io5, hio4],
-        by rw [k10 17 (by decide)]; exact kk9 17 (by decide) (by decide) (by decide) (by decide)
-          (by decide),
-        by rw [k10 18 (by decide)]; exact kk9 18 (by decide) (by decide) (by decide) (by decide)
-          (by decide), ?_⟩
+        h17, h18, ?_⟩
       rw [if_neg htr, if_pos hgr, if_neg h2]
       refine ⟨by rw [p10]; exact kk9 30 (by decide) (by decide) (by decide) (by decide)
         (by decide), by rw [x10]; rfl, ?_⟩
@@ -757,9 +761,10 @@ theorem run_preopenFront {a svc base : UInt64} {sc : Nat} {is : List Instr}
     (by decide) (by rw [hpc]; exact c0)
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := run_scratchAddr P code cS (s := u0)
     (by rw [p0, hpc, ← after_one])
+  rw [after_after] at p1
   have hG : u1.x 20 = s.x 17 + UInt64.ofNat sc := by rw [x1, k0 17 (by decide)]
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := run_movz P code (s := u1) (d := 9) (v := 46)
-    (by decide) (by rw [p1, after_after]; exact c6)
+    (by decide) (by rw [p1]; exact c6)
   obtain ⟨u3, r3, p3, k3, sp3, io3, m3⟩ := step_strb P code (s := u2) (t := 9) (n := 20)
     (imm := 1080) (k := 1080) (addr := s.x 17 + UInt64.ofNat sc + 1080) (by decide)
     (by rw [p2, p1, ← after_succ]; exact c7) rfl
@@ -859,8 +864,7 @@ theorem run_preopenOpened {a svc base : UInt64} {sc : Nat} {is : List Instr}
   obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_neImm P code (tB := after a 20) (r := 9)
     (by decide) c17 (by rw [after_after]; exact cbField_target h18) (s := u1)
     (by rw [p1, hpc, ← after_succ])
-  rw [hx9, show UInt64.ofNat (9 : Fin 4096).val = UInt64.ofNat 9 from rfl,
-    neg_eq_ofNat (by decide), after_after] at p2
+  rw [hx9, show UInt64.ofNat (9 : Fin 4096).val = UInt64.ofNat 9 from rfl, after_after] at p2
   have kk2 : ∀ q : Fin 32, q ≠ 9 → u2.x q = s.x q := fun q h9 => by rw [k2, k1 q h9]
   have ret19 : ∀ {b : Nat} {u : State}, code (after a b) = some (encode (.ret 19)) →
       u.pc = after a b → Reach P code s u → u.sp = s.sp → u.io = s.io → u.mem = s.mem →
@@ -873,22 +877,22 @@ theorem run_preopenOpened {a svc base : UInt64} {sc : Nat} {is : List Instr}
     exact ⟨t, ru.trans rt, by rw [spt, hsp], by rw [iot, hio], by rw [mt, hm],
       fun q _ h9 => by rw [kt, hk q h9], by rw [pt, hk 19 (by decide)]⟩
   by_cases hb : s.x 0 = 0 - UInt64.ofNat 9
-  · rw [if_pos hb] at p2
+  · rw [if_pos ((neg_eq_ofNat (by decide)).mpr hb)] at p2
     obtain ⟨t, rt, spt, iot, mt, kt, pt⟩ := ret19 c19 p2 (r1.trans r2) (by rw [sp2, sp1])
       (by rw [io2, io1]) (by rw [m2, m1]) kk2
     exact ⟨t, rt, spt, iot, mt, kt, by rw [if_pos (Or.inl hb)]; exact pt⟩
-  rw [if_neg hb] at p2
+  rw [if_neg (fun h => hb ((neg_eq_ofNat (by decide)).mp h))] at p2
   obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := run_neImm P code (tB := after a 23) (r := 9)
     (by decide) c20 (by rw [after_after]; exact cbField_target h21) (s := u2) p2
   rw [k2, hx9, show UInt64.ofNat (20 : Fin 4096).val = UInt64.ofNat 20 from rfl,
-    neg_eq_ofNat (by decide), after_after] at p3
+    after_after] at p3
   have kk3 : ∀ q : Fin 32, q ≠ 9 → u3.x q = s.x q := fun q h9 => by rw [k3, kk2 q h9]
   by_cases he : s.x 0 = 0 - UInt64.ofNat 20
-  · rw [if_pos he] at p3
+  · rw [if_pos ((neg_eq_ofNat (by decide)).mpr he)] at p3
     obtain ⟨t, rt, spt, iot, mt, kt, pt⟩ := ret19 c22 p3 (r1.trans (r2.trans r3))
       (by rw [sp3, sp2, sp1]) (by rw [io3, io2, io1]) (by rw [m3, m2, m1]) kk3
     exact ⟨t, rt, spt, iot, mt, kt, by rw [if_pos (Or.inr he)]; exact pt⟩
-  rw [if_neg he] at p3
+  rw [if_neg (fun h => he ((neg_eq_ofNat (by decide)).mp h))] at p3
   have hnot : ¬ (s.x 0 = 0 - 9 ∨ s.x 0 = 0 - 20) := fun h => h.elim hb he
   obtain ⟨u4, r4, p4, k4, sp4, m4, io4⟩ := run_loImm P code (tB := after a 37) (r := 0)
     (by decide) c23 (by rw [after_after]; exact cbField_target h24) (s := u3) p3
