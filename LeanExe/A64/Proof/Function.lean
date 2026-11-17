@@ -8,6 +8,13 @@ locals and their spill slots, and stores the parameters from X0 up and zeros for
 into their slots, so that Talos's locals on entry and the machine's state after the prologue
 satisfy `Inv`.  The body's outcome under the function's construct leads to the epilogue, which
 reloads X30 from its slot, which the body's code leaves unchanged, frees the frame, and returns.
+
+The proofs hold over every `Machine`, for modules with imports: a function's index lies at or
+above the number of imports and its position in `m.funcs` is the index less that number.  A call
+of an import's index runs a stub, whose behavior `Machine.StubSim` states as a premise:
+`Machine.fun_sim_import` derives the call's simulation under the machine's host environment from
+it, and `Machine.calls_ok` gives `CallsOk` at every fuel for a table of stubs and generated
+functions.  The theorems for modules without imports follow at `bare P code α`.
 -/
 
 namespace LeanExe.A64
@@ -346,16 +353,44 @@ theorem outside_frame {a sp : UInt64} {fs k : Nat} (hk : k ≤ fs) (hfs : fs < 4
     Nat.mul_zero] at *
   constructor <;> omega
 
+/-! ## The simulation over a machine -/
+
+namespace Machine
+
+section General
+
+variable {P code}
+variable {α : Type} (M : Machine P code α)
+
+/-- `FunOutcome` over the machine `M`. -/
+def FunOutcome (S : Shared) (n : Nat) (rs : List ValueType) (r : Continuation α) (q : M.Q) :
+    Prop :=
+  (((M.core q).sp - (M.core q).x 18).toNat < n ∧ M.Overflows S.trapStack q) ∨
+  match r with
+  | .Fallthrough st' sl' => ∃ q', M.Rch q q' ∧ Returned rs sl'.values (M.core q) (M.core q') ∧
+      M.SR S.cap S.globalTypes st' q'
+  | .Break 0 st' sl' => ∃ q', M.Rch q q' ∧ Returned rs sl'.values (M.core q) (M.core q') ∧
+      M.SR S.cap S.globalTypes st' q'
+  | .Return st' vs => ∃ q', M.Rch q q' ∧ Returned rs vs (M.core q) (M.core q') ∧
+      M.SR S.cap S.globalTypes st' q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped S st' msg q'
+  | .Break (_ + 1) _ _ => True
+  | .Invalid _ => True
+  | .OutOfFuel => True
+  | .ReturnCall _ _ _ => False
+  | .Throwing _ _ _ _ => False
+
 theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     {f : Function} {is : List Instr} (hg : genFunction callee S entry f = .ok is)
-    (hcode : CodeAt code entry is) (F : Nat) {α : Type} (m : Module) (st : Store α)
+    (hcode : CodeAt code entry is) (F : Nat) (m : Module) (st : Store α)
     (args : List Value) (hargs : args.length = f.params.length) (hargt : Typed f.params args)
-    (ms : State) (hpc : ms.pc = entry) (hstk : StackOk P ms)
-    (hsr : StoreRel P S.cap S.globalTypes st ms) (h64 : m.memIs64 = false)
-    (hregs : ∀ i (hi : i < args.length), ValRel args[i] (ms.x (regOf i)))
-    {need : Nat → Nat} (hcl : CallsOk P code F m callee S need) {n0 : Nat}
+    (q : M.Q) (hpc : (M.core q).pc = entry) (hstk : StackOk P (M.core q))
+    (hsr : M.SR S.cap S.globalTypes st q) (h64 : m.memIs64 = false)
+    (hregs : ∀ i (hi : i < args.length), ValRel args[i] ((M.core q).x (regOf i)))
+    {need : Nat → Nat} (hcl : M.CallsOk F m callee S need) {n0 : Nat}
     (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body n0) :
-    FunOutcome P code S n0 f.results (Wasm.exec F m st (f.toLocals args) f.body) ms := by
+    M.FunOutcome S n0 f.results (Wasm.exec F m st (f.toLocals args) f.body M.env) q := by
   obtain ⟨hp8, hr1, hnum, hf, hn, stores, body, fin, g, hsl, hsti, hl, hfin, hgc, his⟩ :=
     gen_function hg
   have hloc : ∀ t ∈ f.locals, ValRel t.zero 0 := fun t ht => ValRel_zero (hnum t ht)
@@ -380,18 +415,21 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     have := hca.2
     rw [List.length_append, List.length_append, hsl, ← after_after] at this
     exact this
-  have hd : (ms.sp - ms.x 18).toNat = ms.sp.toNat - (ms.x 18).toNat := by
+  have hd : ((M.core q).sp - (M.core q).x 18).toNat =
+      (M.core q).sp.toNat - ((M.core q).x 18).toNat := by
     rw [UInt64.toNat_sub]
     simp only [Nat.reducePow] at *
     omega
   obtain ⟨c, hrc, hspc, hmemc, houtc, hxc, hpcc⟩ :=
     run_check P code hf hgc hpro.1 hpc (by omega) hl2
-  have hd64 := (ms.sp - ms.x 18).toNat_lt
-  rcases Nat.lt_or_ge (ms.sp - ms.x 18).toNat fs with hfit | hfit
+  have hd64 := ((M.core q).sp - (M.core q).x 18).toNat_lt
+  rcases Nat.lt_or_ge ((M.core q).sp - (M.core q).x 18).toNat fs with hfit | hfit
   · rw [ite_eq_right (by omega)] at hpcc
-    exact .inl ⟨hneed.lt hd64 (by omega), c, hrc, hpcc, houtc⟩
+    obtain ⟨qc, hqc, hcc, -⟩ := M.lift hsr hrc
+    subst hcc
+    exact .inl ⟨hneed.lt hd64 (by omega), qc, hqc, hpcc, houtc⟩
   rw [ite_eq_left hfit] at hpcc
-  have hmap : ∀ j < fs, P.normal (ms.sp - UInt64.ofNat fs + UInt64.ofNat j) = true := by
+  have hmap : ∀ j < fs, P.normal ((M.core q).sp - UInt64.ofNat fs + UInt64.ofNat j) = true := by
     intro j hj
     rw [below_sp hl2 hfit]
     exact hstk.below _ (by omega)
@@ -400,9 +438,9 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
       (src := fun i => if i < p then regOf i else 31)
       (by omega) hfs hfs16 hf hn hn512 hsl (fun i hi => hsti i (by omega)) hpro.2 hpcc
       (by rw [hspc]; exact hstk.aligned) (by rw [hspc]; exact hmap)
-  have hsp' : s.sp = ms.sp - UInt64.ofNat fs := by rw [hsps, hspc]
-  have h18 : s.x 18 = ms.x 18 := by rw [hxs, hxc 18 (by decide)]
-  have hsn : (ms.sp - UInt64.ofNat fs).toNat = ms.sp.toNat - fs := by
+  have hsp' : s.sp = (M.core q).sp - UInt64.ofNat fs := by rw [hsps, hspc]
+  have h18 : s.x 18 = (M.core q).x 18 := by rw [hxs, hxc 18 (by decide)]
+  have hsn : ((M.core q).sp - UInt64.ofNat fs).toNat = (M.core q).sp.toNat - fs := by
     rw [UInt64.toNat_sub, UInt64.toNat_ofNat']
     simp only [Nat.reducePow] at *
     omega
@@ -418,7 +456,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
       exact hstk.below j (by omega)
   have hlts : (f.params ++ f.locals).length = n := by rw [List.length_append, hpd, hnd]
   have hsrs : StoreRel P S.cap S.globalTypes st s := by
-    refine hsr.congr (by rw [hxs, hxc 17 (by decide)]) h18 fun a ha => ?_
+    refine (M.storeRel hsr).congr (by rw [hxs, hxc 17 (by decide)]) h18 fun a ha => ?_
     rw [hmems a ?_, hmemc]
     rw [hsp', UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, hsn, UInt64.toNat_ofNat']
     have := a.toNat_lt
@@ -444,26 +482,31 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     congr 1
     simp only [List.length_cons, List.length_nil]
     omega
+  obtain ⟨qs, hqs, hcs, hsts, -⟩ := M.lift hsr (hrc.trans hrs)
+  have hsrqs := hsts st hsrs rfl
+  subst hcs
   let fn : Ctl :=
     ⟨after (after entry (5 + n)) (listSize (sigOf callee) [r] 0 f.body).1, f.results.reverse, 0⟩
   have hfa : fn.arity = r := by simp [fn, Ctl.arity, hrd]
   have hsize := (genList_size _ _ _ f.body body fin hl).1
   simp only [List.map_cons, List.map_nil, List.length_nil, Ctl.arity_mk, List.length_reverse,
     hrd] at hsize
-  have ho := list_sim P code F { toShared := S, localTypes := f.params ++ f.locals, callee }
+  have ho := list_sim M F { toShared := S, localTypes := f.params ++ f.locals, callee }
     [fn] [] _ f.body body fin hl cbody (Nat.le_refl _)
     ⟨List.cons_ne_nil _ _, fun t ht => by simp at ht; subst ht; exact Nat.le_refl _⟩ m st
-    (f.toLocals args) s hinv hsrs h64 hps' need (callNeed need f.body) hcl
+    (f.toLocals args) qs hinv hsrqs h64 hps' need (callNeed need f.body) hcl
     fun j hj => le_callNeed hj
-  have ret : ∀ (st' : Store α) (vs : List Value) (ms' : State), Reach P code s ms' →
-      ms'.pc = after (after entry (5 + n)) body.length → ms'.sp = s.sp → ms'.io = s.io →
-      ms'.x 18 = s.x 18 →
-      MemFrame s.sp ((f.params ++ f.locals).length + spillSlots) s ms' → Kept fn vs ms' →
-      StoreRel P S.cap S.globalTypes st' ms' →
-      ∃ ms'', Reach P code ms ms'' ∧ Returned f.results vs ms ms'' ∧
-        StoreRel P S.cap S.globalTypes st' ms'' := by
-    intro st' vs ms' hr hp hsp hout h18' hmf0 hk hsr'
-    have hmf : MemFrame s.sp (n + spillSlots) s ms' := by rw [← hlts]; exact hmf0
+  have ret : ∀ (st' : Store α) (vs : List Value) (q' : M.Q), M.Rch qs q' →
+      (M.core q').pc = after (after entry (5 + n)) body.length →
+      (M.core q').sp = (M.core qs).sp → (M.core q').io = (M.core qs).io →
+      (M.core q').x 18 = (M.core qs).x 18 →
+      MemFrame (M.core qs).sp ((f.params ++ f.locals).length + spillSlots) (M.core qs)
+        (M.core q') → Kept fn vs (M.core q') → M.SR S.cap S.globalTypes st' q' →
+      ∃ q'', M.Rch q q'' ∧ Returned f.results vs (M.core q) (M.core q'') ∧
+        M.SR S.cap S.globalTypes st' q'' := by
+    intro st' vs q' hr hp hsp hout h18' hmf0 hk hsr'
+    have hmf : MemFrame (M.core qs).sp (n + spillSlots) (M.core qs) (M.core q') := by
+      rw [← hlts]; exact hmf0
     obtain ⟨ms'', hr', hp', hsp'', hout', hmem', hx'⟩ := run_epilogue P code hf hn cepi hp
       (by rw [hsp]; exact hframe.aligned)
       (fun j hj => by rw [hsp]; exact hframe.mapped (8 * (n + spillSlots) + j) (by omega))
@@ -472,10 +515,13 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     rw [hfa] at hkl
     have hkt := hk.types
     simp only [fn, Ctl.arity_mk, List.length_reverse] at hkt
-    refine ⟨ms'', hrc.trans (hrs.trans (hr.trans hr')),
-      ⟨?_, ?_, ?_, ?_, ?_, by rw [hrd]; exact hkl, ?_, hkt⟩,
-      hsr'.regs (hx' 17 (by decide)) (hx' 18 (by decide)) hmem'⟩
-    · rw [hp', hsp, load64_congr (m' := s.mem) fun k hk' =>
+    obtain ⟨q'', hq'', hc'', hst'', -⟩ := M.lift hsr' hr'
+    have hsr'' := hst'' st'
+      ((M.storeRel hsr').regs (hx' 17 (by decide)) (hx' 18 (by decide)) hmem') rfl
+    subst hc''
+    refine ⟨q'', M.trans hqs (M.trans hr hq''),
+      ⟨?_, ?_, ?_, ?_, ?_, by rw [hrd]; exact hkl, ?_, hkt⟩, hsr''⟩
+    · rw [hp', hsp, load64_congr (m' := (M.core qs).mem) fun k hk' =>
         hmf _ (le_slot hk' hlim.2.2 (by omega) (Nat.le_refl _)), h30, hxc 30 (by decide)]
     · rw [hsp'', hsp, hsps, hspc, UInt64.sub_add_cancel]
     · rw [hx' 18 (by decide), h18', h18]
@@ -486,27 +532,28 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
       rw [hmem', hmf a (by rw [hsps, hspc]; exact o2), hmems a (by rw [hsps, hspc]; exact o1),
         hmemc]
     · rw [hrd, ← hfa]
-      have := StackRel.of_kept (s := ms') (below := []) hk
+      have := StackRel.of_kept (s := M.core q') (below := []) hk
         ⟨by simp, fun k hk => absurd hk (by simp)⟩ rfl
         (fun k hk => absurd hk (by simp [fn]))
       rw [List.append_nil] at this
       exact this.congr fun k hk => hx' _ (regOf_ne_30 k (by have := this.1; omega))
-  generalize Wasm.exec F m st (f.toLocals args) f.body = res at ho ⊢
-  rcases ho with ⟨hc, ms', hr, hp, hout⟩ | ho
-  · have hds : (s.sp - s.x 18).toNat + fs = (ms.sp - ms.x 18).toNat := by
-      rw [hsp', h18, UInt64.toNat_sub_of_le (ms.sp - UInt64.ofNat fs) (ms.x 18)
+  generalize Wasm.exec F m st (f.toLocals args) f.body M.env = res at ho ⊢
+  rcases ho with ⟨hc, q', hr, hp, hout⟩ | ho
+  · have hds : ((M.core qs).sp - (M.core qs).x 18).toNat + fs =
+        ((M.core q).sp - (M.core q).x 18).toNat := by
+      rw [hsp', h18, UInt64.toNat_sub_of_le ((M.core q).sp - UInt64.ofNat fs) ((M.core q).x 18)
         (UInt64.le_iff_toNat_le.mpr (by omega)), hsn]
       omega
-    exact .inl ⟨hneed.lt hd64 (by omega), ms', hrc.trans (hrs.trans hr), hp,
+    exact .inl ⟨hneed.lt hd64 (by omega), q', M.trans hqs hr, hp,
       by rw [hout, hos, houtc]⟩
   refine .inr ?_
   cases res with
   | Fallthrough st' sl' =>
-      obtain ⟨σ', hf', ms', hr, hp, hsp, hout, h18', hmf, hinv', -, hsr'⟩ := ho
+      obtain ⟨σ', hf', q', hr, hp, hsp, hout, h18', hmf, hinv', -, hsr'⟩ := ho
       have e := hfin σ' hf'
       have hty' := hinv'.types
       rw [e] at hty'
-      exact ret st' _ ms' hr hp hsp hout h18' hmf
+      exact ret st' _ q' hr hp hsp hout h18' hmf
         (StackRel.kept hinv'.stack (by rw [← hty'.length]; simp [fn, Ctl.arity])
           (by
             rw [List.take_of_length_le (by rw [← hty'.length]; simp [fn, Ctl.arity])]
@@ -514,25 +561,237 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
   | Break k st' sl' =>
       cases k with
       | zero =>
-          obtain ⟨t, ht, ms', hr, hp, hsp, hout, h18', hmf, -, -, hk, -, hsr'⟩ := ho
+          obtain ⟨t, ht, q', hr, hp, hsp, hout, h18', hmf, -, -, hk, -, hsr'⟩ := ho
           have e : t = fn := by simpa using ht.symm
           subst e
-          exact ret st' _ ms' hr (by rw [hp, hsize]) hsp hout h18' hmf hk hsr'
+          exact ret st' _ q' hr (by rw [hp, hsize]) hsp hout h18' hmf hk hsr'
       | succ k => trivial
   | Return st' vs =>
-      obtain ⟨t, ht, ms', hr, hp, hsp, hout, h18', hmf, hk, hsr'⟩ := ho
+      obtain ⟨t, ht, q', hr, hp, hsp, hout, h18', hmf, hk, hsr'⟩ := ho
       have e : t = fn := by simpa using ht.symm
       subst e
-      exact ret st' _ ms' hr (by rw [hp, hsize]) hsp hout h18' hmf hk hsr'
+      exact ret st' _ q' hr (by rw [hp, hsize]) hsp hout h18' hmf hk hsr'
   | Trap st' msg =>
-      obtain ⟨ms', hr, hout, hpc'⟩ := ho
-      exact ⟨ms', hrc.trans (hrs.trans hr), by rw [hout, hos, houtc], hpc'⟩
+      obtain ⟨q', hr, hout, hpc'⟩ := ho
+      exact ⟨q', M.trans hqs hr, by rw [hout, hos, houtc], hpc'⟩
   | Invalid _ => trivial
   | OutOfFuel => trivial
   | ReturnCall _ _ _ => exact ho.elim
   | Throwing _ _ _ _ => exact ho.elim
 
+/-- A return to the caller with the results `vals` of the types `rs`, from a call on the stack
+`vs` whose arguments have the types `ps`, gives `CallResult`'s success for the results that
+Talos's `run` passes back. -/
+theorem callResult_success {S : Shared} {ps rs : List ValueType} {vs vals : List Value}
+    {st' : Store α} {q q' : M.Q} (hr : M.Rch q q')
+    (hret : Returned rs vals (M.core q) (M.core q')) (hsr' : M.SR S.cap S.globalTypes st' q') :
+    M.CallResult S ps rs vs (.Success (vals.take rs.length ++ vs.drop ps.length) st') q := by
+  have hl : (vals.take rs.length).length = rs.length := by
+    have := hret.len
+    simp
+    omega
+  refine ⟨q', hr, hret.pc, hret.sp, hret.x18, hret.out, hret.mem, by simp [hl], ?_, ?_⟩
+  · exact List.drop_left' hl
+  · rw [List.take_left' hl]
+    exact ⟨hret.res, hret.types, hsr'⟩
+
 /-! ## Calls -/
+
+/-- What the machine does from the entry of function `k` of `m`, whose code `genFunction` places
+at `entry`, when Talos runs a call of it at fuel `g` on the operand stack `vs` under `M.env`, the
+top `f.params.length` values in X0 upward, the deepest first, and the functions of its table
+simulate below `g` with the bounds `need`: `CallOutcome` with the bound `n` of the stack that the
+call uses.  The function is defined: its index lies at or above the number of imports. -/
+theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
+    {m : Module} {k : Nat} {f : Function} {is : List Instr}
+    (himp : m.imports.length ≤ k) (h64 : m.memIs64 = false)
+    (hk : m.funcs[k - m.imports.length]? = some f)
+    (hg : genFunction callee S entry f = .ok is) (hcode : CodeAt code entry is)
+    {g : Nat} {need : Nat → Nat} (hcl : M.CallsOk g m callee S need) {n : Nat}
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body n)
+    (st : Store α) (vs : List Value) (q : M.Q) (hp : f.params.length ≤ vs.length)
+    (hvt : Typed f.params.reverse (vs.take f.params.length)) (hpc : (M.core q).pc = entry)
+    (hstk : StackOk P (M.core q)) (hsr : M.SR S.cap S.globalTypes st q)
+    (hargs : StackRel (M.core q) (vs.take f.params.length)) :
+    M.CallOutcome S n f.params f.results vs (Wasm.run g m k st vs M.env) q := by
+  have hargs' : ((vs.take f.params.length).reverse).length = f.params.length := by
+    simp
+    omega
+  have hregs : ∀ i (hi : i < ((vs.take f.params.length).reverse).length),
+      ValRel ((vs.take f.params.length).reverse)[i] ((M.core q).x (regOf i)) := fun i hi =>
+    hargs.2 i (by simpa using hi)
+  have hargt : Typed f.params (vs.take f.params.length).reverse := by
+    have := Typed.reverse hvt
+    rwa [List.reverse_reverse] at this
+  have ho := function_sim M hg hcode g m st _ hargs' hargt q hpc hstk hsr h64 hregs hcl hneed
+  simp only [Wasm.run, List.getElem?_eq_none himp, hk, Function.numParams]
+  rcases ho with hov | ho
+  · exact .inl hov
+  refine .inr ?_
+  revert ho
+  generalize Wasm.exec g m st (f.toLocals (vs.take f.params.length).reverse) f.body M.env = res
+  cases res with
+  | Fallthrough st' sl' =>
+      intro ho
+      obtain ⟨q', hr, hret, hsr'⟩ := ho
+      exact callResult_success M hr hret hsr'
+  | Break n st' sl' =>
+      cases n with
+      | zero =>
+          intro ho
+          obtain ⟨q', hr, hret, hsr'⟩ := ho
+          exact callResult_success M hr hret hsr'
+      | succ n => intro _; trivial
+  | Return st' vals =>
+      intro ho
+      obtain ⟨q', hr, hret, hsr'⟩ := ho
+      exact callResult_success M hr hret hsr'
+  | Trap st' msg => intro ho; exact ho
+  | Invalid _ => intro _; trivial
+  | OutOfFuel => intro _; trivial
+  | ReturnCall _ _ _ => intro ho; exact ho.elim
+  | Throwing _ _ _ _ => intro ho; exact ho.elim
+
+/-- The simulation of a call of the defined function `k` of `m`, whose code `genFunction` places
+at `entry`, at fuel `g`, when the functions of its table simulate below `g` and `need k` bounds
+the stack that the call uses. -/
+theorem fun_sim {callee : Table} {S : Shared} {entry : UInt64}
+    {m : Module} {k : Nat} {f : Function} {is : List Instr}
+    (himp : m.imports.length ≤ k) (h64 : m.memIs64 = false)
+    (hk : m.funcs[k - m.imports.length]? = some f)
+    (hg : genFunction callee S entry f = .ok is) (hcode : CodeAt code entry is)
+    {g : Nat} {need : Nat → Nat} (hcl : M.CallsOk g m callee S need)
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
+    M.FunSim m S need g k (entry, f.params, f.results) :=
+  fun st vs q hp hvt hpc hstk hsr hargs =>
+    run_outcome M himp h64 hk hg hcode hcl hneed st vs q hp hvt hpc hstk hsr hargs
+
+/-! ## Imports -/
+
+/-- What the machine does from `q` at the entry of a stub of an import with results of the types
+`rs`, when the host function gives `r`: a return reaches the return address in X30 as a function
+returns, with the results in the registers of the heights from 0, the deepest first, and the
+host's store held, and a trap ends at a state that `M.Trapped` admits for the trap's message and
+store.  When fewer than `n` bytes lie between the
+stack's limit and SP, the machine may instead reach the stub of an overflow of the stack. -/
+def StubResult (S : Shared) (n : Nat) (rs : List ValueType) (r : HostResult α) (q : M.Q) :
+    Prop :=
+  (((M.core q).sp - (M.core q).x 18).toNat < n ∧ M.Overflows S.trapStack q) ∨
+  match r with
+  | .Return vs st' => ∃ q', M.Rch q q' ∧ Returned rs vs (M.core q) (M.core q') ∧
+      M.SR S.cap S.globalTypes st' q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped S st' msg q'
+  | .Throw _ _ _ => False
+
+/-- What a stub at `entry` must satisfy to stand for the host function `hf` of an import with
+parameters of the types `ps` and results of the types `rs`: from the entry, with the stack's
+limit in X18, the store held, and the arguments `args`, first parameter first, in the registers
+of the heights from 0, the machine does what `StubResult` states of `hf.invoke st args`. -/
+def StubSim (S : Shared) (n : Nat) (ps rs : List ValueType) (hf : HostFn α) (entry : UInt64) :
+    Prop :=
+  ∀ (st : Store α) (args : List Value) (q : M.Q), args.length = ps.length → Typed ps args →
+    (M.core q).pc = entry → StackOk P (M.core q) → M.SR S.cap S.globalTypes st q →
+    (∀ i (hi : i < args.length), ValRel args[i] ((M.core q).x (regOf i))) →
+    M.StubResult S n rs (hf.invoke st args) q
+
+/-- The simulation of a call of import `k` of `m`, whose host function in `M.env` is `hf`, by a
+stub at `entry` that meets `StubSim`, at every fuel. -/
+theorem fun_sim_import {m : Module} {S : Shared} {need : Nat → Nat} {k : Nat}
+    {imp : ImportDecl} {hf : HostFn α} {entry : UInt64} (himp : m.imports[k]? = some imp)
+    (hhf : M.env.funcs[k]? = some hf)
+    (hstub : M.StubSim S (need k) imp.params imp.results hf entry) (g : Nat) :
+    M.FunSim m S need g k (entry, imp.params, imp.results) := by
+  intro st vs q hp hvt hpc hstk hsr hargs
+  have hargs' : ((vs.take imp.params.length).reverse).length = imp.params.length := by
+    simp only [List.length_reverse, List.length_take]
+    exact Nat.min_eq_left hp
+  have hregs : ∀ i (hi : i < ((vs.take imp.params.length).reverse).length),
+      ValRel ((vs.take imp.params.length).reverse)[i] ((M.core q).x (regOf i)) := fun i hi =>
+    hargs.2 i (by simpa using hi)
+  have hargt : Typed imp.params (vs.take imp.params.length).reverse := by
+    have := Typed.reverse hvt
+    rwa [List.reverse_reverse] at this
+  have ho := hstub st _ q hargs' hargt hpc hstk hsr hregs
+  simp only [Wasm.run, himp, hhf]
+  rcases ho with hov | ho
+  · exact .inl hov
+  refine .inr ?_
+  revert ho
+  cases hf.invoke st (vs.take imp.params.length).reverse with
+  | Return vals st' =>
+      intro ho
+      obtain ⟨q', hr, hret, hsr'⟩ := ho
+      exact callResult_success M hr hret hsr'
+  | Trap st' msg => intro ho; exact ho
+  | Throw _ _ _ => intro ho; exact ho.elim
+
+/-- The functions of a table simulate at every fuel, with bounds `need` of the stack that their
+calls use, on a platform that meets what their code assumes of it, when each entry of the table
+is an import whose host function in `M.env` a stub at the entry stands for, or a defined function
+whose code `genFunction` places at the entry. -/
+theorem calls_ok {callee : Table} {S : Shared} {m : Module} (h64 : m.memIs64 = false)
+    (hU : S.byteStores = true → P.normal P.uart = false) {need : Nat → Nat}
+    (htab : ∀ k c, callee k = some c →
+      (∃ imp hf, m.imports[k]? = some imp ∧ M.env.funcs[k]? = some hf ∧
+        c.2 = (imp.params, imp.results) ∧ M.StubSim S (need k) imp.params imp.results hf c.1) ∨
+      ∃ f is, m.imports.length ≤ k ∧ m.funcs[k - m.imports.length]? = some f ∧
+        c.2 = (f.params, f.results) ∧ genFunction callee S c.1 f = .ok is ∧ CodeAt code c.1 is)
+    (hneed : ∀ k f, m.imports.length ≤ k → m.funcs[k - m.imports.length]? = some f →
+      NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
+    ∀ F, M.CallsOk F m callee S need := by
+  intro F
+  induction F using Nat.strongRecOn with
+  | _ F ih =>
+      refine ⟨hU, fun k c hk g hg => ?_⟩
+      rcases htab k c hk with ⟨imp, hf, himp, hhf, hc2, hstub⟩ |
+        ⟨f, is, himp, hf, hc2, hgen, hcode⟩
+      · obtain ⟨e, p, r⟩ := c
+        simp only [Prod.mk.injEq] at hc2
+        obtain ⟨rfl, rfl⟩ := hc2
+        exact fun_sim_import M himp hhf hstub g
+      · obtain ⟨e, p, r⟩ := c
+        simp only [Prod.mk.injEq] at hc2
+        obtain ⟨rfl, rfl⟩ := hc2
+        exact fun_sim M himp h64 hf hgen hcode (ih g hg) (hneed k f himp hf)
+
+/-- The simulation of Talos's run of each function of the table under `M.env`, defined or
+imported, at every fuel, under the premises of `calls_ok`. -/
+theorem callee_sim {callee : Table} {S : Shared} {m : Module} (h64 : m.memIs64 = false)
+    (hU : S.byteStores = true → P.normal P.uart = false) {need : Nat → Nat}
+    (htab : ∀ k c, callee k = some c →
+      (∃ imp hf, m.imports[k]? = some imp ∧ M.env.funcs[k]? = some hf ∧
+        c.2 = (imp.params, imp.results) ∧ M.StubSim S (need k) imp.params imp.results hf c.1) ∨
+      ∃ f is, m.imports.length ≤ k ∧ m.funcs[k - m.imports.length]? = some f ∧
+        c.2 = (f.params, f.results) ∧ genFunction callee S c.1 f = .ok is ∧ CodeAt code c.1 is)
+    (hneed : ∀ k f, m.imports.length ≤ k → m.funcs[k - m.imports.length]? = some f →
+      NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k))
+    {k : Nat} {c : UInt64 × List ValueType × List ValueType} (hk : callee k = some c)
+    (g : Nat) : M.FunSim m S need g k c :=
+  (calls_ok M h64 hU htab hneed (g + 1)).2 k c hk g (Nat.lt_succ_self g)
+
+end General
+
+end Machine
+
+/-! ## At the bare machine -/
+
+theorem FunOutcome.eq_bare (S : Shared) (n : Nat) (rs : List ValueType) {α : Type}
+    (r : Continuation α) (ms : State) :
+    FunOutcome P code S n rs r ms = (bare P code α).FunOutcome S n rs r ms := rfl
+
+theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
+    {f : Function} {is : List Instr} (hg : genFunction callee S entry f = .ok is)
+    (hcode : CodeAt code entry is) (F : Nat) {α : Type} (m : Module) (st : Store α)
+    (args : List Value) (hargs : args.length = f.params.length) (hargt : Typed f.params args)
+    (ms : State) (hpc : ms.pc = entry) (hstk : StackOk P ms)
+    (hsr : StoreRel P S.cap S.globalTypes st ms) (h64 : m.memIs64 = false)
+    (hregs : ∀ i (hi : i < args.length), ValRel args[i] (ms.x (regOf i)))
+    {need : Nat → Nat} (hcl : CallsOk P code F m callee S need) {n0 : Nat}
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body n0) :
+    FunOutcome P code S n0 f.results (Wasm.exec F m st (f.toLocals args) f.body) ms :=
+  Machine.function_sim (bare P code α) hg hcode F m st args hargs hargt ms hpc hstk hsr h64 hregs
+    ((CallsOk.iff_bare P code _ _ _ _ _).mp hcl α) hneed
 
 /-- What the machine does from the entry of function `k` of `m`, which imports nothing, whose
 code `genFunction` places at `entry`, when Talos runs a call of it at fuel `g` on the operand stack
@@ -550,68 +809,9 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
     (hvt : Typed f.params.reverse (vs.take f.params.length)) (hpc : ms.pc = entry)
     (hstk : StackOk P ms) (hsr : StoreRel P S.cap S.globalTypes st ms)
     (hargs : StackRel ms (vs.take f.params.length)) :
-    CallOutcome P code S n f.params f.results vs (Wasm.run g m k st vs) ms := by
-  have hargs' : ((vs.take f.params.length).reverse).length = f.params.length := by
-    simp
-    omega
-  have hregs : ∀ i (hi : i < ((vs.take f.params.length).reverse).length),
-      ValRel ((vs.take f.params.length).reverse)[i] (ms.x (regOf i)) := fun i hi =>
-    hargs.2 i (by simpa using hi)
-  have hargt : Typed f.params (vs.take f.params.length).reverse := by
-    have := Typed.reverse hvt
-    rwa [List.reverse_reverse] at this
-  have ho := function_sim P code hg hcode g m st _ hargs' hargt ms hpc hstk hsr h64 hregs hcl
-    hneed
-  simp only [Wasm.run, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk,
-    Function.numParams]
-  rcases ho with hov | ho
-  · exact .inl hov
-  refine .inr ?_
-  revert ho
-  generalize Wasm.exec g m st (f.toLocals (vs.take f.params.length).reverse) f.body = res
-  have hout : ∀ (st' : Store α) (vals : List Value) (ms' : State), Reach P code ms ms' →
-      Returned f.results vals ms ms' → StoreRel P S.cap S.globalTypes st' ms' →
-      ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 18 = ms.x 18 ∧
-        ms'.io = ms.io ∧ MemFrame ms.sp 0 ms ms' ∧
-        (vals.take f.results.length ++ vs.drop f.params.length).length =
-          f.results.length + (vs.length - f.params.length) ∧
-        (vals.take f.results.length ++ vs.drop f.params.length).drop f.results.length =
-          vs.drop f.params.length ∧
-        StackRel ms' ((vals.take f.results.length ++ vs.drop f.params.length).take
-          f.results.length) ∧
-        Typed f.results.reverse
-          ((vals.take f.results.length ++ vs.drop f.params.length).take f.results.length) ∧
-        StoreRel P S.cap S.globalTypes st' ms' := by
-    intro st' vals ms' hr hret hsr'
-    have hl : (vals.take f.results.length).length = f.results.length := by
-      have := hret.len
-      simp
-      omega
-    refine ⟨ms', hr, hret.pc, hret.sp, hret.x18, hret.out, hret.mem, by simp [hl], ?_, ?_⟩
-    · exact List.drop_left' hl
-    · rw [List.take_left' hl]
-      exact ⟨hret.res, hret.types, hsr'⟩
-  cases res with
-  | Fallthrough st' sl' =>
-      intro ho
-      obtain ⟨ms', hr, hret, hsr'⟩ := ho
-      exact hout st' _ ms' hr hret hsr'
-  | Break n st' sl' =>
-      cases n with
-      | zero =>
-          intro ho
-          obtain ⟨ms', hr, hret, hsr'⟩ := ho
-          exact hout st' _ ms' hr hret hsr'
-      | succ n => intro _; trivial
-  | Return st' vals =>
-      intro ho
-      obtain ⟨ms', hr, hret, hsr'⟩ := ho
-      exact hout st' _ ms' hr hret hsr'
-  | Trap st' msg => intro ho; exact ho
-  | Invalid _ => intro _; trivial
-  | OutOfFuel => intro _; trivial
-  | ReturnCall _ _ _ => intro ho; exact ho.elim
-  | Throwing _ _ _ _ => intro ho; exact ho.elim
+    CallOutcome P code S n f.params f.results vs (Wasm.run g m k st vs) ms :=
+  Machine.run_outcome (bare P code α) (by simp [hm]) h64 (by simp [hm, hk]) hg hcode
+    ((CallsOk.iff_bare P code _ _ _ _ _).mp hcl α) hneed st vs ms hp hvt hpc hstk hsr hargs
 
 /-- The simulation of a call of function `k` of `m`, which imports nothing, whose code
 `genFunction` places at `entry`, at fuel `g`, when the functions of its table simulate below
@@ -623,8 +823,9 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt64}
     {g : Nat} {need : Nat → Nat} (hcl : CallsOk P code g m callee S need)
     (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
     FunSim P code m S need g k (entry, f.params, f.results) :=
-  fun st vs ms hp hvt hpc hstk hsr hargs =>
-    run_outcome P code hm h64 hk hg hcode hcl hneed st vs ms hp hvt hpc hstk hsr hargs
+  (FunSim.iff_bare P code _ _ _ _ _ _).mpr fun α =>
+    Machine.fun_sim (bare P code α) (by simp [hm]) h64 (by simp [hm, hk]) hg hcode
+      ((CallsOk.iff_bare P code _ _ _ _ _).mp hcl α) hneed
 
 /-- The functions of a table whose code `genFunction` places at their entries, in a module that
 imports nothing, simulate at every fuel, with bounds `need` of the stack that their calls use, on a
@@ -637,15 +838,12 @@ theorem calls_ok {callee : Table} {S : Shared}
       CodeAt code c.1 is) {need : Nat → Nat}
     (hneed : ∀ k f, m.funcs[k]? = some f →
       NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
-    ∀ F, CallsOk P code F m callee S need := by
-  intro F
-  induction F using Nat.strongRecOn with
-  | _ F ih =>
-      refine ⟨hU, fun k c hk g hg => ?_⟩
-      obtain ⟨f, is, hf, hc2, hgen, hcode⟩ := htab k c hk
-      obtain ⟨e, p, r⟩ := c
-      simp only [Prod.mk.injEq] at hc2
-      obtain ⟨rfl, rfl⟩ := hc2
-      exact fun_sim P code hm h64 hf hgen hcode (ih g hg) (hneed k f hf)
+    ∀ F, CallsOk P code F m callee S need :=
+  fun F => (CallsOk.iff_bare P code _ _ _ _ _).mpr fun α =>
+    Machine.calls_ok (bare P code α) h64 hU
+      (fun k c hk => by
+        obtain ⟨f, is, hf, h2, hgen, hcode⟩ := htab k c hk
+        exact .inr ⟨f, is, by simp [hm], by simp [hm, hf], h2, hgen, hcode⟩)
+      (fun k f _ hf => hneed k f (by simpa [hm] using hf)) F
 
 end LeanExe.A64
