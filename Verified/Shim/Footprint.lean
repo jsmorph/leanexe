@@ -39,9 +39,9 @@ theorem Carried.append {replies : Linux.Replies} :
       simp only [List.length_cons] at rest
       rwa [show k + 1 + l.length = k + (l.length + 1) by omega])⟩
 
-/-- The world `w'` extends the layer events of `w` by images of the WASI events `trace`, which
-hold their replies of `replies`, counted from the events of `w`, and write within the guest's
-address space or into the timespec. -/
+/-- The world `w'` extends the layer events of `w` by images of the WASI events `trace`, each after
+the events before it, which hold their replies of `replies`, counted from the events of `w`, and
+write within the guest's address space or into the timespec. -/
 def Appended (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (w w' : LinuxWorld) (trace : List Wasi.Event) : Prop :=
   ∃ ls, w'.events = w.events ++ ls ∧ Images F L I w.events trace ls ∧
@@ -334,11 +334,11 @@ theorem prefix_observed {α World : Type} {host : Host World} {action residual :
 
 /-- The footprint of a result of a run of `_start`, whose action is `action`, from the observed
 world `initial` under the shim: the run trapped, with a final world whose layer events extend
-those of `initial` by images `ls` of a WASI trace `trace`, which hold the replies from the reply to
-call `initial.world.events.length` on and write within the guest's address space or into the
-timespec, and with `trace` appended to the observed events.  The trace is that of an accepted exit,
-of a rejected exit, or of a trap of the shim, or, when `aborts` holds, a prefix of the action
-after which the guest trapped at `unreachable`. -/
+those of `initial` by images `ls` of a WASI trace `trace`, each after the events before it, which
+hold the replies from the reply to call `initial.world.events.length` on and write within the
+guest's address space or into the timespec, and with `trace` appended to the observed events.
+The trace is that of an accepted exit, of a rejected exit, or of a trap of the shim, or, when
+`aborts` holds, a prefix of the action after which the guest trapped at `unreachable`. -/
 def Footprint (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (action : Action Unit) (initial : Observed LinuxWorld) (aborts : Bool) :
     Result (Observed LinuxWorld) → Prop

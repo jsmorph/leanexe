@@ -213,8 +213,9 @@ The shim traps on an `openat2` that returns a number of the bound or more. -/
 def descriptorLimit : Nat := 1024
 
 /-- The descriptor numbers that the shim holds open after the layer events `events`: 3 when the
-launcher grants it, and each number below `descriptorLimit` that an `openat2` returned, until a
-`close` of the number.  The shim refuses every other number as a directory or file descriptor. -/
+launcher grants it and each number below `descriptorLimit` that a call that opens a descriptor,
+`openat2` for the shim, returned, each until a `close` of the number.  The shim refuses every
+other number as a directory or file descriptor. -/
 def openNumbers (I : Launch) (events : List Linux.Event) : List UInt64 :=
   (Linux.openAfter (if I.preopen then [3] else []) events).filter (·.toNat < descriptorLimit)
 

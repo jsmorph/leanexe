@@ -2,16 +2,16 @@ import Verified.Shim.SysEnv
 
 /-!
 The shim's file functions: `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle,
-`fd_prestat_get`, and `fd_prestat_dir_name`.  Each takes the descriptor numbers that it accepts,
-`openNumbers I events`, from the world's layer events, and refuses every other number with errno 8
-(`badf`) and no call.  `openInvoke` makes the checks of `openCheck` and then the `openat2` calls of
-`openLoop` with the path and the `open_how` record in the scratch, whose events `step_openat2`
-gives, and stores the descriptor on success.  `closeInvoke` makes one `close`.
-`handleReadInvoke` and `handleWriteInvoke` read the iovec element at the request's pointer and
-make one `read` or `write` of the handle's descriptor through the layer's rule, and store the
-count on success.  The prestat functions make no call: descriptor 3 is the directory `.` while
-`preopened I events` holds.  Each `*_contract` proves the contract of `linuxHost F L I replies`
-for its call.
+`fd_prestat_get`, and `fd_prestat_dir_name`.  `path_open`, `fd_close`, and the handle forms take
+the descriptor numbers that they accept, `openNumbers I events`, from the world's layer events,
+and refuse every other number with errno 8 (`badf`) and no call.  `openInvoke` makes the checks
+of `openCheck` and then the `openat2` calls of `openLoop` with the path and the `open_how` record
+in the scratch, whose events `step_openat2` gives, and stores the descriptor on success.
+`closeInvoke` makes one `close`.  `handleReadInvoke` and `handleWriteInvoke` read the iovec
+element at the request's pointer and make one `read` or `write` of the handle's descriptor
+through the layer's rule, and store the count on success.  The prestat functions make no call:
+descriptor 3 is the directory `.` while `preopened I events` holds.  Each `*_contract` proves the
+contract of `linuxHost F L I replies` for its call.
 -/
 
 namespace Verified.Shim

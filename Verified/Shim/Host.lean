@@ -9,17 +9,17 @@ The WASI host that the shim implements with the Linux call layer, for the stream
 
 `Image F L I events e l` states which layer events `l` the shim makes for the WASI event `e` after
 the layer events `events`, with the open flags `F`, the layout `L`, and the launch `I`: one `read`
-of descriptor 0 with the request's
-count and no input for an `fd_read`, one `write` of the stream's descriptor with the offered
-bytes, fewer than `2^32`, and no prior output for an `fd_write`, none for an exit, and for a flat
-call whose arguments its description accepts, the events of `SysImage`, one image for each call
-of `shimCalls`.  A file function refuses a descriptor number outside `openNumbers I events`
-with errno 8 (`badf`) and no call, and the prestat functions answer for descriptor 3 while
-`preopened I events` holds.  The WASI reply follows from the events' results: a result in the
-range that Linux gives for the request gives its count, descriptor, or time, a negated error
-number gives `errnoOf` of the number, and any other result gives a trap of the shim.  An address
-in linear memory and the bytes of an output region before a call depend on the store, which the
-WASI event does not carry, so `Image` leaves them free.  `Images events es ls` states that `ls`
+of descriptor 0 with the request's count and no input for an `fd_read`, one `write` of the
+stream's descriptor with the offered bytes, fewer than `2^32`, and no prior output for an
+`fd_write`, none for an exit, and for a flat call whose arguments its description accepts, the
+events of `SysImage`, one image for each call of `shimCalls`.  `path_open`, `fd_close`, and the
+handle forms refuse a descriptor number outside `openNumbers I events` with errno 8 (`badf`) and
+no call, and the prestat functions answer for descriptor 3 while `preopened I events` holds.
+The WASI reply follows from the events' results: a result in the range that Linux gives for the
+request gives its count, descriptor, or time, a negated error number gives `errnoOf` of the
+number, and any other result gives a trap of the shim.  An address in linear memory and the
+bytes of an output region before a call depend on the store, which the WASI event does not
+carry, so `Image` leaves them free.  `Images events es ls` states that `ls`
 concatenates an image of each event of `es` in order, each after `events` and the images before
 it, and `WritesWithin L size e` that each output region of `e` lies in the `size` bytes from the
 guest's byte 0 or is the scratch's timespec.
