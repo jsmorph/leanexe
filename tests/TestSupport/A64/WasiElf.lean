@@ -52,8 +52,8 @@ def argsElf : Except String (List UInt8 × ElfLayout) :=
   genWasiElf command.module argsStart wasiRoom wasiCap
 
 open Verified.Examples.WasiPrestat in
-/-- The index of `_start` in the prestat command's module. -/
-def prestatStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
+/-- The index of `_start` in the prestat command's module, after its three effect functions. -/
+def prestatStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 3
 
 open Verified.Examples.WasiPrestat in
 /-- The executable of the prestat command. -/

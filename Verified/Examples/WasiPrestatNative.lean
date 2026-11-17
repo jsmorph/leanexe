@@ -21,7 +21,7 @@ theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (replies : Linux.Replies) {cap : Nat} (hcap : cap ≤ 65535) :
     ∃ bound, ∀ fuel ≥ bound,
       Footprint F L I replies (main.bind fun status => Action.exit status) nativeWorld true
-        (run fuel command.module (Wrappers.effectIndexWith command.sysCalls command.pure.module 1)
+        (run fuel command.module (Wrappers.effectIndexWith command.sysCalls command.pure.module 3)
           (nativeStore command.module cap nativeWorld) []
           (linuxEnv F L I replies command.sysCalls)) := by
   have initialized := command.initial nativeWorld
