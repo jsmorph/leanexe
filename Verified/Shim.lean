@@ -9,4 +9,4 @@ import Verified.Shim.Files
 import Verified.Shim.Satisfies
 import Verified.Shim.Footprint
 import Verified.Shim.Trace
-import Verified.Shim.Bracket
+import Verified.Shim.Descriptors

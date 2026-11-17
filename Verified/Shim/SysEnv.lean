@@ -125,7 +125,7 @@ theorem sys_contract_of {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies :
 
 /-- A step that makes no layer call. -/
 theorem shimStep_none {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : Linux.Replies}
-    {w : LinuxWorld} {e : Wasi.Event} (image : Image F L I e []) :
+    {w : LinuxWorld} {e : Wasi.Event} (image : Image F L I w.events e []) :
     ShimStep F L I replies w e (w.answer [] e) :=
   by
   refine ⟨[], image, ?_, ?_, rfl⟩
@@ -135,7 +135,7 @@ theorem shimStep_none {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : L
 
 /-- A step that makes one layer call. -/
 theorem shimStep_one {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : Linux.Replies}
-    {w : LinuxWorld} {e : Wasi.Event} {x : Linux.Event} (image : Image F L I e [x])
+    {w : LinuxWorld} {e : Wasi.Event} {x : Linux.Event} (image : Image F L I w.events e [x])
     (carries : Carries (replies w.events.length) x) (within : WritesWithin L (2 ^ 32) x) :
     ShimStep F L I replies w e (w.answer [x] e) := by
   refine ⟨[x], image, ⟨carries, trivial⟩, fun y member => ?_, rfl⟩

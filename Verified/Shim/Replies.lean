@@ -11,10 +11,13 @@ gives for the request traps with `shimTrap`.
 
 `OpenFlags` holds the two open flags whose values differ between arm64 and x86-64, and `Launch`
 what the launcher gives the process: its arguments, its environment, and whether descriptor 3 is
-a directory that it grants.  The `path_open` functions follow Wasmtime 44: `openCheck` makes its
-checks before any call in its order, and `openHowBytes` gives the `open_how` record of the
-`openat2` call, with the access mode and the flags that Wasmtime's `open_at` chooses and the
-resolution flags `RESOLVE_BENEATH` and `RESOLVE_NO_MAGICLINKS` of cap-std 3.4.5.
+a directory that it grants.  `openNumbers I events` gives the descriptor numbers that the shim
+holds open after the layer events `events`, and `preopened I events` whether descriptor 3 is still
+the preopened directory.  `openCheck` makes Wasmtime 44's checks of `path_open` before any call in
+Wasmtime's order, except for a file handle as the directory, and `openHowBytes` gives the
+`open_how` record of the `openat2` call, with the access mode and the creation flags that
+Wasmtime's `open_at` and cap-std 3.4.5 choose, the shim's own `O_DIRECTORY`, `O_APPEND`, and
+`O_NONBLOCK`, and cap-std's resolution flags `RESOLVE_BENEATH` and `RESOLVE_NO_MAGICLINKS`.
 -/
 
 namespace Verified.Shim
@@ -204,35 +207,54 @@ def stringsReply (strings : List (List UInt8)) : Transfer (List Bytes) :=
 
 /-! ## Files -/
 
+/-- The descriptor numbers that the shim holds open after the layer events `events`: 3 when the
+launcher grants it, and each number below `2^31` that an `openat2` returned, until a `close` of
+the number.  The shim refuses every other number as a directory or file descriptor. -/
+def openNumbers (I : Launch) (events : List Linux.Event) : List UInt64 :=
+  Linux.openAfter (if I.preopen then [3] else []) events
+
+/-- Whether descriptor 3 is still the preopened directory after the layer events `events`: the
+launcher granted it and no `close` of 3 is among them. -/
+def preopened (I : Launch) (events : List Linux.Event) : Bool :=
+  I.preopen && events.all fun e =>
+    !(decide (e.call = Linux.closeCall) && Linux.descriptor (Linux.arg e.args 0) == 3)
+
 /-- The errno of the checks that the shim makes of a `path_open` request before any call, in
-Wasmtime 44's order, or 0: a path that is not UTF-8 (25, `ilseq`); a directory descriptor of 0 to
-2, of `2^31` or more, or 3 without a granted directory (8, `badf`); the flags `dsync`, `rsync`, or
-`sync` (58, `notsup`); `directory` with `creat`, `excl`, or `trunc` (28, `inval`); a zero byte in
-the path (28); and a path of 4,096 bytes or more (37, `nametoolong`). -/
-def openCheck (preopen : Bool) (dir oflags : UInt64) (path : Bytes) (fdflags : UInt64) : UInt64 :=
+Wasmtime 44's order, or 0: a path that is not UTF-8 (25, `ilseq`); a directory descriptor outside
+`opened`, the numbers that the shim holds open (8, `badf`); the flags `dsync`, `rsync`, or `sync`
+(58, `notsup`); `directory` with `creat`, `excl`, or `trunc` (28, `inval`); a zero byte in the path
+(28); and a path of 4,096 bytes or more (37, `nametoolong`).  The shim does not know whether an
+open number is a file, so for a file handle it makes the later checks and the call, where
+Wasmtime answers 54 (`notdir`) first. -/
+def openCheck (opened : List UInt64) (dir oflags : UInt64) (path : Bytes) (fdflags : UInt64) :
+    UInt64 :=
   if ¬path.data.IsValidUTF8 then 25
-  else if dir.toNat < 3 ∨ 2 ^ 31 ≤ dir.toNat ∨ (dir = 3 ∧ preopen = false) then 8
+  else if dir ∉ opened then 8
   else if fdflags &&& 0x1A ≠ 0 then 58
   else if oflags &&& 2 ≠ 0 ∧ oflags &&& 0xD ≠ 0 then 28
   else if (0 : UInt8) ∈ path.data.data.toList then 28
   else if 4096 ≤ path.data.size then 37
   else 0
 
-/-- The `flags` word of `open_how` for a `path_open` request, as Wasmtime 44's `open_at` and
-cap-std choose them.  The file is written when the rights hold `fd_write` (64) or `oflags` hold
-`creat` (1) or `trunc` (8), and read when the rights hold `fd_read` (2) or lack `fd_write`, which
-gives `O_RDONLY`, `O_WRONLY`, or `O_RDWR`.  `creat`, `directory` (2), `excl` (4), and `trunc` give
-`O_CREAT`, `O_DIRECTORY`, `O_EXCL`, and `O_TRUNC`, the `fdflags` `append` (1) and `nonblock` (4)
-give `O_APPEND` and `O_NONBLOCK`, a lookup without `symlink_follow` (1) gives `O_NOFOLLOW`, and
-every open takes `O_CLOEXEC`.  The values are those of `include/uapi/asm-generic/fcntl.h`, except
-`O_DIRECTORY` and `O_NOFOLLOW`, which `F` gives. -/
+/-- The `flags` word of `open_how` for a `path_open` request.  The access mode and the creation
+flags are those that Wasmtime 44's `open_at` and cap-std 3.4.5 choose.  The file is written when
+the rights hold `fd_write` (64) or `oflags` hold `creat` (1) or `trunc` (8), and read when the
+rights hold `fd_read` (2) or lack `fd_write`, which gives `O_RDONLY`, `O_WRONLY`, or `O_RDWR`.
+`creat` gives `O_CREAT`, `excl` (4) with `creat` gives `O_EXCL`, and `trunc` gives `O_TRUNC`
+except with `creat` and `excl`, which cap-std opens as `create_new` without it.  The shim departs
+from Wasmtime in three flags: `directory` (2) gives `O_DIRECTORY`, where Wasmtime tests the kind
+after the open, and the `fdflags` `append` (1) and `nonblock` (4) give `O_APPEND` and
+`O_NONBLOCK`, which Wasmtime keeps in user space.  A lookup without `symlink_follow` (1) gives
+`O_NOFOLLOW`, and every open takes `O_CLOEXEC`.  The values are those of
+`include/uapi/asm-generic/fcntl.h`, except `O_DIRECTORY` and `O_NOFOLLOW`, which `F` gives. -/
 def openFlagsWord (F : OpenFlags) (dirflags oflags rights fdflags : UInt64) : UInt64 :=
   let creat := oflags &&& 1 != 0
+  let excl := creat && oflags &&& 4 != 0
   let write := rights &&& 64 != 0 || creat || oflags &&& 8 != 0
   let read := rights &&& 2 != 0 || rights &&& 64 == 0
   (if read && write then 2 else if write then 1 else 0) |||
     (if creat then 0x40 else 0) ||| (if oflags &&& 2 != 0 then F.directory else 0) |||
-    (if oflags &&& 4 != 0 then 0x80 else 0) ||| (if oflags &&& 8 != 0 then 0x200 else 0) |||
+    (if excl then 0x80 else 0) ||| (if oflags &&& 8 != 0 && !excl then 0x200 else 0) |||
     (if fdflags &&& 1 != 0 then 0x400 else 0) ||| (if fdflags &&& 4 != 0 then 0x800 else 0) |||
     (if dirflags &&& 1 == 0 then F.nofollow else 0) ||| 0x80000
 
@@ -272,23 +294,26 @@ def handleWriteReply (count ret : UInt64) : Transfer (List Bytes) :=
   else .trapped shimTrap [zeros 4]
 
 /-- The reply to `fd_prestat_get` of `fd`: a directory whose name has one byte for descriptor 3
-when the launcher granted it, and errno 8 (`badf`) otherwise, as Wasmtime 44 answers. -/
-def prestatReply (preopen : Bool) (fd : UInt64) : Transfer (List Bytes) :=
-  if fd = 3 ∧ preopen = true then .returned 0 [bytesOfList [0, 0, 0, 0, 1, 0, 0, 0]]
+while it is the preopened directory, and errno 8 (`badf`) otherwise, as Wasmtime 44 answers. -/
+def prestatReply (preopened : Bool) (fd : UInt64) : Transfer (List Bytes) :=
+  if fd = 3 ∧ preopened = true then .returned 0 [bytesOfList [0, 0, 0, 0, 1, 0, 0, 0]]
   else .returned 8 [zeros 8]
 
 /-- `reply` is the reply to `fd_prestat_dir_name` of `fd` into a buffer of `capacity` bytes: for
-descriptor 3 when the launcher granted it, the name `.` followed by the bytes that the buffer
-held, which the shim leaves, when the buffer has room, and errno 37 (`nametoolong`) otherwise;
-errno 54 (`notdir`) for descriptors 0 to 2; and errno 8 (`badf`) for every other descriptor, as
-Wasmtime 44 answers for a closed one. -/
-def DirNameReply (preopen : Bool) (fd capacity : UInt64) (reply : Transfer (List Bytes)) : Prop :=
-  if fd = 3 ∧ preopen = true then
+descriptor 3 while it is the preopened directory, the name `.` followed by `capacity - 1` bytes
+that the relation leaves free, when the buffer has room, and errno 37 (`nametoolong`) otherwise.
+The shim writes only the name, as Wasmtime 44 does, so the free bytes are those that the buffer
+held, which the host, seeing no store, cannot fix.  The other replies are errno 54 (`notdir`) for
+descriptors 0 to 2 and the other numbers of `opened` and errno 8 (`badf`) for every other number,
+as Wasmtime 44 answers for a descriptor that is not open. -/
+def DirNameReply (preopened : Bool) (opened : List UInt64) (fd capacity : UInt64)
+    (reply : Transfer (List Bytes)) : Prop :=
+  if fd = 3 ∧ preopened = true then
     if 1 ≤ capacity.toNat then
       ∃ rest : List UInt8, rest.length = capacity.toNat - 1 ∧
         reply = .returned 0 [bytesOfList (46 :: rest)]
     else reply = .returned 37 [zeros capacity.toNat]
-  else if fd.toNat < 3 then reply = .returned 54 [zeros capacity.toNat]
+  else if fd.toNat < 3 ∨ fd ∈ opened then reply = .returned 54 [zeros capacity.toNat]
   else reply = .returned 8 [zeros capacity.toNat]
 
 end Verified.Shim

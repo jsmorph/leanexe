@@ -69,7 +69,7 @@ theorem stringPointers_length (base : Nat) (strings : List (List UInt8)) :
 
 theorem sizes_contract {call : Call} {strings : List (List UInt8)}
     (params : call.params = [.result32, .result32])
-    (image : SysImage F L I call [] (sizesReply strings) [])
+    (image : ∀ events, SysImage F L I events call [] (sizesReply strings) [])
     (before : Store (Observed LinuxWorld)) (args : List Value) :
     sysContract (linuxHost F L I replies) call before args (sizesInvoke strings call before args) := by
   apply sys_contract_of
@@ -120,7 +120,7 @@ theorem sizes_contract {call : Call} {strings : List (List UInt8)}
     · exact ⟨second.1, second.2.1⟩
   have answer := placed (regions := [⟨pointers.headD 0, 4, 4, true⟩,
     ⟨pointers.tail.headD 0, 4, 4, true⟩]) (sizesReply_shape strings) agree inside apart
-  refine ⟨_, [], sizesReply strings, ?_, shimStep_none ⟨valid.accepted, image⟩, answer.1,
+  refine ⟨_, [], sizesReply strings, ?_, shimStep_none ⟨valid.accepted, image _⟩, answer.1,
     answer.2⟩
   simp only [sizesInvoke, check, and_self, ↓reduceIte]
 
@@ -136,7 +136,7 @@ theorem strings_at {mem : Mem} {argv buf : UInt32} {strings : List (List UInt8)}
 theorem strings_contract {call : Call} {strings : List (List UInt8)}
     (params : call.params = [.reported 4 4 false, .reported 1 1 true])
     (reported : ∀ reports, shimReported I reports call = call.sizesOf (sizesOutputs strings))
-    (image : SysImage F L I call [] (stringsReply strings) [])
+    (image : ∀ events, SysImage F L I events call [] (stringsReply strings) [])
     (before : Store (Observed LinuxWorld)) (args : List Value) :
     sysContract (linuxHost F L I replies) call before args
       (stringsInvoke strings call before args) := by
@@ -179,7 +179,7 @@ theorem strings_contract {call : Call} {strings : List (List UInt8)}
     refine ⟨(before.mem.writeBytes (pointers.headD 0).toNat
         (stringPointers (pointers.tail.headD 0).toNat strings)).writeBytes
         (pointers.tail.headD 0).toNat (stringsBytes strings), [], stringsReply strings, ?_,
-      shimStep_none ⟨valid.accepted, image⟩, ?_, ?_⟩
+      shimStep_none ⟨valid.accepted, image _⟩, ?_, ?_⟩
     · simp only [stringsInvoke, fits, ↓reduceIte, check, and_self]
     · refine (MemFrame.writeBytes _ _ _ ?_).trans (MemFrame.writeBytes _ _ _ ?_)
       · refine ⟨_, List.mem_cons_self, Nat.le_refl _, ?_⟩
@@ -191,7 +191,7 @@ theorem strings_contract {call : Call} {strings : List (List UInt8)}
       obtain ⟨_, rfl⟩ := Transfer.returned.inj same
       simp only [ShownAt, Bool.false_eq_true, ↓reduceIte]
       exact ⟨strings_at second.2.1 second.1, trivial⟩
-  · refine ⟨before.mem, [], stringsReply strings, ?_, shimStep_none ⟨valid.accepted, image⟩,
+  · refine ⟨before.mem, [], stringsReply strings, ?_, shimStep_none ⟨valid.accepted, image _⟩,
       MemFrame.refl _ _, fun outputs same => ?_⟩
     · simp only [stringsInvoke, fits, Bool.false_eq_true, ↓reduceIte]
     · simp only [stringsReply, fits, Bool.false_eq_true, ↓reduceIte] at same

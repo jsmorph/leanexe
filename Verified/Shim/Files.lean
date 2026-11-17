@@ -2,14 +2,16 @@ import Verified.Shim.SysEnv
 
 /-!
 The shim's file functions: `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle,
-`fd_prestat_get`, and `fd_prestat_dir_name`.  `openInvoke` makes the checks of `openCheck` and
-then the `openat2` calls of `openLoop` with the path and the `open_how` record in the scratch,
-whose events `step_openat2` gives, and stores the descriptor on success.  `closeInvoke` makes one
-`close`.  `handleReadInvoke` and `handleWriteInvoke` read the iovec element at the request's
-pointer and make one `read` or `write` of the handle's descriptor through the layer's rule, and
-store the count on success.  The prestat functions make no call: descriptor 3 is the directory
-`.` when the launcher granted it.  Each `*_contract` proves the contract of
-`linuxHost F L I replies` for its call.
+`fd_prestat_get`, and `fd_prestat_dir_name`.  Each takes the descriptor numbers that it accepts,
+`openNumbers I events`, from the world's layer events, and refuses every other number with errno 8
+(`badf`) and no call.  `openInvoke` makes the checks of `openCheck` and then the `openat2` calls of
+`openLoop` with the path and the `open_how` record in the scratch, whose events `step_openat2`
+gives, and stores the descriptor on success.  `closeInvoke` makes one `close`.
+`handleReadInvoke` and `handleWriteInvoke` read the iovec element at the request's pointer and
+make one `read` or `write` of the handle's descriptor through the layer's rule, and store the
+count on success.  The prestat functions make no call: descriptor 3 is the directory `.` while
+`preopened I events` holds.  Each `*_contract` proves the contract of `linuxHost F L I replies`
+for its call.
 -/
 
 namespace Verified.Shim
@@ -44,7 +46,8 @@ def openInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
       let path := bytesOfList (before.mem.readBytes pathPointer.toNat pathLength.toNat)
       let request := [Arg.word dir.toUInt64, .word dirflags.toUInt64, .bytes path,
         .word oflags.toUInt64, .word rights, .word inheriting, .word fdflags.toUInt64]
-      if openCheck I.preopen dir.toUInt64 oflags.toUInt64 path fdflags.toUInt64 = 0 then
+      if openCheck (openNumbers I before.host.world.events) dir.toUInt64 oflags.toUInt64 path
+          fdflags.toUInt64 = 0 then
         let calls := openLoop L replies dir.toUInt64 path.data.data.toList
           (openHowBytes F dirflags.toUInt64 oflags.toUInt64 rights fdflags.toUInt64) 0
           before.host.world.events.length
@@ -53,8 +56,8 @@ def openInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
           calls.1 calls.2
       else
         sysAnswer before Call.pathOpen request before.mem []
-          (.returned (openCheck I.preopen dir.toUInt64 oflags.toUInt64 path fdflags.toUInt64)
-            [zeros 4])
+          (.returned (openCheck (openNumbers I before.host.world.events) dir.toUInt64
+            oflags.toUInt64 path fdflags.toUInt64) [zeros 4])
     else .Trap before shimTrap
   | _ => .Trap before shimTrap
 
@@ -148,7 +151,7 @@ theorem open_contract (before : Store (Observed LinuxWorld)) (args : List Value)
     exact ⟨memory, address, bounds.1, bounds.2.1⟩
   dsimp only
   rw [regions]
-  by_cases passed : openCheck I.preopen dir oflags path fdflags = 0
+  by_cases passed : openCheck (openNumbers I before.host.world.events) dir oflags path fdflags = 0
   · have spec := openLoop_spec L replies dir path.data.data.toList
       (openHowBytes F dirflags oflags rights fdflags) _ 0 before.host.world.events.length rfl
     obtain ⟨opens, carried, writes⟩ := spec
@@ -161,7 +164,9 @@ theorem open_contract (before : Store (Observed LinuxWorld)) (args : List Value)
     · rw [sysImage_open]
       simp only [OpenImage, passed, ↓reduceIte]
       exact opens
-  · refine ⟨before.mem, [], .returned (openCheck I.preopen dir oflags path fdflags) [zeros 4], ?_,
+  · refine ⟨before.mem, [],
+      .returned (openCheck (openNumbers I before.host.world.events) dir oflags path fdflags)
+        [zeros 4], ?_,
       shimStep_none ⟨valid.accepted, ?_⟩, MemFrame.refl _ _, ?_⟩
     · simp only [openInvoke, length, check, and_self, ↓reduceIte, read,
         OracleSys.word_roundtrip sDir, OracleSys.word_roundtrip sFlags,
@@ -178,13 +183,15 @@ def closeInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
     HostResult (Observed LinuxWorld) :=
   match args with
   | [.i32 fd] =>
-    let e := closeEvent fd.toUInt64 (replies before.host.world.events.length)
-    sysAnswer before Call.fdClose [.word fd.toUInt64] before.mem [e] (closeReply e.ret)
+    if fd.toUInt64 ∈ openNumbers I before.host.world.events then
+      let e := closeEvent fd.toUInt64 (replies before.host.world.events.length)
+      sysAnswer before Call.fdClose [.word fd.toUInt64] before.mem [e] (closeReply e.ret)
+    else sysAnswer before Call.fdClose [.word fd.toUInt64] before.mem [] (.returned 8 [])
   | _ => .Trap before shimTrap
 
 theorem close_contract (before : Store (Observed LinuxWorld)) (args : List Value) :
     sysContract (linuxHost F L I replies) Call.fdClose before args
-      (closeInvoke replies before args) := by
+      (closeInvoke I replies before args) := by
   apply sys_contract_of
   intro request pointers valid
   obtain ⟨a, r, rfl, h0, h⟩ := argsFit_takes valid.fits rfl
@@ -198,14 +205,22 @@ theorem close_contract (before : Store (Observed LinuxWorld)) (args : List Value
   have regions : outputRegions Call.fdClose.params
       (shimReported I before.host.world.reports Call.fdClose) [.word fd] pointers = [] := rfl
   rw [regions]
-  have image : SysImage F L I Call.fdClose [.word fd]
+  by_cases refused : fd ∉ openNumbers I before.host.world.events
+  · refine ⟨before.mem, [], .returned 8 [], ?_, shimStep_none ⟨valid.accepted, ?_⟩,
+      MemFrame.refl _ _, fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
+    · simp only [closeInvoke, OracleSys.word_roundtrip h0, refused, ↓reduceIte]
+    · rw [sysImage_close]
+      simp [CloseImage, refused]
+  have isOpen : fd ∈ openNumbers I before.host.world.events := Decidable.of_not_not refused
+  have image : SysImage F L I before.host.world.events Call.fdClose [.word fd]
       (closeReply (closeEvent fd (replies before.host.world.events.length)).ret)
       [closeEvent fd (replies before.host.world.events.length)] := by
     rw [sysImage_close]
+    simp only [CloseImage, isOpen, ↓reduceIte]
     exact ⟨_, rfl, rfl⟩
   refine ⟨_, _, _, ?_, shimStep_one ⟨valid.accepted, image⟩ ⟨rfl, rfl⟩ (writesWithin_none rfl),
     MemFrame.refl _ _, ?_⟩
-  · simp only [closeInvoke, OracleSys.word_roundtrip h0]
+  · simp only [closeInvoke, OracleSys.word_roundtrip h0, isOpen, ↓reduceIte]
   · intro outputs same
     simp only [closeReply, closeEvent] at same
     by_cases zero : (replies before.host.world.events.length).ret = 0
@@ -233,15 +248,20 @@ def handleReadInvoke (before : Store (Observed LinuxWorld)) (args : List Value) 
         buffer.toNat + capacity.toNat ≤ before.mem.pages * 65536 ∧
         buffer.toNat + capacity.toNat ≤ 2 ^ 32 ∧
         result.toNat + 4 ≤ before.mem.pages * 65536 ∧ result.toNat + 4 < 2 ^ 32 then
-      let e := readEvent L before.mem fd.toUInt64 buffer capacity
-        (replies before.host.world.events.length)
-      let reply := handleReadReply capacity.toUInt64 e.ret e.output
-      match Linux.step (shimMemory L) before.mem (readRequest L fd.toUInt64 buffer capacity)
-          (replies before.host.world.events.length) with
-      | some (mem, _) =>
-        sysAnswer before Call.fdRead [.word fd.toUInt64, .space capacity.toUInt64]
-          (placeReply mem (fun outputs => [(result, outputs.getD 1 Bytes.empty)]) reply) [e] reply
-      | none => .Trap before shimTrap
+      if fd.toUInt64 ∈ openNumbers I before.host.world.events then
+        let e := readEvent L before.mem fd.toUInt64 buffer capacity
+          (replies before.host.world.events.length)
+        let reply := handleReadReply capacity.toUInt64 e.ret e.output
+        match Linux.step (shimMemory L) before.mem (readRequest L fd.toUInt64 buffer capacity)
+            (replies before.host.world.events.length) with
+        | some (mem, _) =>
+          sysAnswer before Call.fdRead [.word fd.toUInt64, .space capacity.toUInt64]
+            (placeReply mem (fun outputs => [(result, outputs.getD 1 Bytes.empty)]) reply) [e]
+            reply
+        | none => .Trap before shimTrap
+      else
+        sysAnswer before Call.fdRead [.word fd.toUInt64, .space capacity.toUInt64] before.mem []
+          (.returned 8 [zeros capacity.toNat, zeros 4])
     else .Trap before shimTrap
   | _ => .Trap before shimTrap
 
@@ -257,13 +277,16 @@ def handleWriteInvoke (before : Store (Observed LinuxWorld)) (args : List Value)
         buffer.toNat + length.toNat ≤ before.mem.pages * 65536 ∧
         buffer.toNat + length.toNat ≤ 2 ^ 32 ∧
         result.toNat + 4 ≤ before.mem.pages * 65536 ∧ result.toNat + 4 < 2 ^ 32 then
-      let e := writeEvent L before.mem fd.toUInt64 buffer length
-        (replies before.host.world.events.length)
-      let reply := handleWriteReply length.toUInt64 e.ret
-      sysAnswer before Call.fdWrite
-        [.word fd.toUInt64, .bytes (bytesOfList (before.mem.readBytes buffer.toNat length.toNat))]
-        (placeReply before.mem (fun outputs => [(result, outputs.headD Bytes.empty)]) reply)
-        [e] reply
+      let request := [Arg.word fd.toUInt64,
+        .bytes (bytesOfList (before.mem.readBytes buffer.toNat length.toNat))]
+      if fd.toUInt64 ∈ openNumbers I before.host.world.events then
+        let e := writeEvent L before.mem fd.toUInt64 buffer length
+          (replies before.host.world.events.length)
+        let reply := handleWriteReply length.toUInt64 e.ret
+        sysAnswer before Call.fdWrite request
+          (placeReply before.mem (fun outputs => [(result, outputs.headD Bytes.empty)]) reply)
+          [e] reply
+      else sysAnswer before Call.fdWrite request before.mem [] (.returned 8 [zeros 4])
     else .Trap before shimTrap
   | _ => .Trap before shimTrap
 
@@ -302,7 +325,7 @@ theorem getD_one (first second : Bytes) (rest : List Bytes) :
 
 theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List Value) :
     sysContract (linuxHost F L I replies) Call.fdRead before args
-      (handleReadInvoke L replies before args) := by
+      (handleReadInvoke L I replies before args) := by
   apply sys_contract_of
   intro request pointers valid
   obtain ⟨fd, capacity, rfl, sFd, sCapacity⟩ := handleRead_shape valid.fits
@@ -351,6 +374,15 @@ theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List 
       p2.toNat + 4 ≤ before.mem.pages * 65536 ∧ p2.toNat + 4 < 2 ^ 32 := by
     rw [narrow]
     exact ⟨element.2.2.1, element.2.2.2, first.1, Nat.le_of_lt first.2, second.1, second.2⟩
+  by_cases refused : fd ∉ openNumbers I before.host.world.events
+  · refine ⟨before.mem, [], .returned 8 [zeros (UInt32.ofNat capacity.toNat).toNat, zeros 4], ?_,
+      shimStep_none ⟨valid.accepted, ?_⟩, MemFrame.refl _ _,
+      fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
+    · simp only [handleReadInvoke, element.1, capacityRead, check, and_self, ↓reduceIte,
+        OracleSys.word_roundtrip sFd, wide, refused]
+    · rw [sysImage_read]
+      simp only [HandleReadImage, refused, narrow, ↓reduceIte, and_self]
+  have isOpen : fd ∈ openNumbers I before.host.world.events := Decidable.of_not_not refused
   have stepped := step_read L before.mem fd p1 (UInt32.ofNat capacity.toNat)
     (replies before.host.world.events.length) check.2.2.1
   have shape := handleReadReply_shape capacity
@@ -359,7 +391,7 @@ theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List 
     (readEvent L before.mem fd p1 (UInt32.ofNat capacity.toNat)
       (replies before.host.world.events.length)).output
     (by simp only [readEvent, List.length_map, List.length_range, narrow])
-  have image : SysImage F L I Call.fdRead [.word fd, .space capacity]
+  have image : SysImage F L I before.host.world.events Call.fdRead [.word fd, .space capacity]
       (handleReadReply capacity
         (readEvent L before.mem fd p1 (UInt32.ofNat capacity.toNat)
           (replies before.host.world.events.length)).ret
@@ -368,6 +400,7 @@ theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List 
       [readEvent L before.mem fd p1 (UInt32.ofNat capacity.toNat)
         (replies before.host.world.events.length)] := by
     rw [sysImage_read]
+    simp only [HandleReadImage, isOpen, ↓reduceIte]
     refine ⟨L.base + p1.toUInt64,
       before.mem.readBytes p1.toNat (UInt32.ofNat capacity.toNat).toNat, _, _, ?_, rfl⟩
     simp only [readEvent, wide]
@@ -383,7 +416,7 @@ theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List 
     _, _, ?_, shimStep_one ⟨valid.accepted, image⟩ ⟨rfl, rfl⟩
       (readEvent_writesWithin L before.mem fd _ _ _ check.2.2.2.1), ?_, ?_⟩
   · simp only [handleReadInvoke, element.1, capacityRead, check, and_self, ↓reduceIte,
-      OracleSys.word_roundtrip sFd, wide, stepped]
+      OracleSys.word_roundtrip sFd, wide, isOpen, stepped]
   · refine (MemFrame.writeBytes _ _ _ ⟨_, List.mem_cons_self, Nat.le_refl _, ?_⟩).trans
       (MemFrame.placeReply _ _ _ fun outputs same placed member => ?_)
     · simp only [List.length_map, List.length_range, narrow, Region.span]
@@ -438,7 +471,7 @@ theorem handleRead_contract (before : Store (Observed LinuxWorld)) (args : List 
 
 theorem handleWrite_contract (before : Store (Observed LinuxWorld)) (args : List Value) :
     sysContract (linuxHost F L I replies) Call.fdWrite before args
-      (handleWriteInvoke L replies before args) := by
+      (handleWriteInvoke L I replies before args) := by
   apply sys_contract_of
   intro request pointers valid
   obtain ⟨fd, data, rfl, sFd, sData⟩ := handleWrite_shape valid.fits
@@ -484,13 +517,22 @@ theorem handleWrite_contract (before : Store (Observed LinuxWorld)) (args : List
       p1.toNat + data.data.size ≤ 2 ^ 32 ∧
       p2.toNat + 4 ≤ before.mem.pages * 65536 ∧ p2.toNat + 4 < 2 ^ 32 :=
     ⟨element.2.2.1, element.2.2.2, memory, address, result.1, result.2⟩
-  have image : SysImage F L I Call.fdWrite [.word fd, .bytes data]
+  by_cases refused : fd ∉ openNumbers I before.host.world.events
+  · refine ⟨before.mem, [], .returned 8 [zeros 4], ?_, shimStep_none ⟨valid.accepted, ?_⟩,
+      MemFrame.refl _ _, fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
+    · simp only [handleWriteInvoke, element.1, lengthRead, length, check, and_self, ↓reduceIte,
+        OracleSys.word_roundtrip sFd, read, refused]
+    · rw [sysImage_write]
+      simp [HandleWriteImage, refused]
+  have isOpen : fd ∈ openNumbers I before.host.world.events := Decidable.of_not_not refused
+  have image : SysImage F L I before.host.world.events Call.fdWrite [.word fd, .bytes data]
       (handleWriteReply (UInt64.ofNat data.data.size)
         (writeEvent L before.mem fd p1 (UInt32.ofNat data.data.size)
           (replies before.host.world.events.length)).ret)
       [writeEvent L before.mem fd p1 (UInt32.ofNat data.data.size)
         (replies before.host.world.events.length)] := by
     rw [sysImage_write]
+    simp only [HandleWriteImage, isOpen, ↓reduceIte]
     refine ⟨L.base + p1.toUInt64, _, ?_, rfl⟩
     simp only [writeEvent, wide, length, listed]
   have answer := placed_one (pointer := p2) (size := 4) (align := 4)
@@ -500,7 +542,7 @@ theorem handleWrite_contract (before : Store (Observed LinuxWorld)) (args : List
   refine ⟨_, _, _, ?_, shimStep_one ⟨valid.accepted, image⟩ ⟨rfl, rfl⟩
     (writeEvent_writesWithin L _ _ _ _ _ _), answer.1, answer.2⟩
   simp only [handleWriteInvoke, element.1, lengthRead, length, check, and_self, ↓reduceIte,
-    OracleSys.word_roundtrip sFd, wide, read]
+    OracleSys.word_roundtrip sFd, wide, read, isOpen]
 
 /-! ## The preopened directory -/
 
@@ -512,8 +554,8 @@ def prestatInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
     if record.toNat + 8 ≤ before.mem.pages * 65536 ∧ record.toNat + 8 < 2 ^ 32 then
       sysAnswer before Call.fdPrestatGet [.word fd.toUInt64]
         (placeReply before.mem (fun outputs => [(record, outputs.headD Bytes.empty)])
-          (prestatReply I.preopen fd.toUInt64))
-        [] (prestatReply I.preopen fd.toUInt64)
+          (prestatReply (preopened I before.host.world.events) fd.toUInt64))
+        [] (prestatReply (preopened I before.host.world.events) fd.toUInt64)
     else .Trap before shimTrap
   | _ => .Trap before shimTrap
 
@@ -539,8 +581,9 @@ theorem prestat_contract (before : Store (Observed LinuxWorld)) (args : List Val
   dsimp only
   rw [regions]
   have answer := placed_one (pointer := pointers.headD 0) (size := 8) (align := 4)
-    (prestatReply_shape I.preopen fd) bounds.1 bounds.2.1
-  have image : SysImage F L I Call.fdPrestatGet [.word fd] (prestatReply I.preopen fd) [] := by
+    (prestatReply_shape (preopened I before.host.world.events) fd) bounds.1 bounds.2.1
+  have image : SysImage F L I before.host.world.events Call.fdPrestatGet [.word fd]
+      (prestatReply (preopened I before.host.world.events) fd) [] := by
     rw [sysImage_prestat]
     exact ⟨rfl, rfl⟩
   refine ⟨_, [], _, ?_, shimStep_none ⟨valid.accepted, image⟩, answer.1, answer.2⟩
@@ -554,14 +597,14 @@ def dirNameInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
     if buffer.toNat + capacity.toNat ≤ before.mem.pages * 65536 ∧
         buffer.toNat + capacity.toNat < 2 ^ 32 then
       let request := [Arg.word fd.toUInt64, .space capacity.toUInt64]
-      if fd.toUInt64 = 3 ∧ I.preopen = true then
+      if fd.toUInt64 = 3 ∧ preopened I before.host.world.events = true then
         if 1 ≤ capacity.toNat then
           sysAnswer before Call.fdPrestatDirName request (before.mem.writeBytes buffer.toNat [46])
             [] (.returned 0
               [bytesOfList (46 :: before.mem.readBytes (buffer.toNat + 1) (capacity.toNat - 1))])
         else sysAnswer before Call.fdPrestatDirName request before.mem []
           (.returned 37 [zeros capacity.toNat])
-      else if fd.toNat < 3 then
+      else if fd.toNat < 3 ∨ fd.toUInt64 ∈ openNumbers I before.host.world.events then
         sysAnswer before Call.fdPrestatDirName request before.mem []
           (.returned 54 [zeros capacity.toNat])
       else
@@ -601,14 +644,17 @@ theorem dirName_contract (before : Store (Observed LinuxWorld)) (args : List Val
       (pointers.headD 0).toNat + capacity.toNat < 2 ^ 32 := ⟨bounds.1, bounds.2.1⟩
   dsimp only
   rw [regions]
-  have image : ∀ reply, DirNameReply I.preopen fd capacity reply →
-      SysImage F L I Call.fdPrestatDirName [.word fd, .space capacity] reply [] := by
+  have image : ∀ reply,
+      DirNameReply (preopened I before.host.world.events) (openNumbers I before.host.world.events)
+        fd capacity reply →
+      SysImage F L I before.host.world.events Call.fdPrestatDirName [.word fd, .space capacity]
+        reply [] := by
     intro reply named
     rw [sysImage_dirName]
     exact ⟨rfl, named⟩
   simp only [dirNameInvoke, narrow, check, and_self, ↓reduceIte, OracleSys.word_roundtrip ha,
     wide, fdNarrow]
-  by_cases granted : fd = 3 ∧ I.preopen = true
+  by_cases granted : fd = 3 ∧ preopened I before.host.world.events = true
   · by_cases room : 1 ≤ capacity.toNat
     · simp only [eq_true granted, eq_true room, ↓reduceIte]
       refine ⟨_, [], _, rfl, shimStep_none ⟨valid.accepted, image _ ?_⟩, ?_, ?_⟩
@@ -640,7 +686,7 @@ theorem dirName_contract (before : Store (Observed LinuxWorld)) (args : List Val
         fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
       simp only [DirNameReply, eq_true granted, eq_false room, ↓reduceIte]
   · simp only [eq_false granted, ↓reduceIte]
-    by_cases standard : fd.toNat < 3
+    by_cases standard : fd.toNat < 3 ∨ fd ∈ openNumbers I before.host.world.events
     · simp only [eq_true standard, ↓reduceIte]
       refine ⟨_, [], _, rfl, shimStep_none ⟨valid.accepted, image _ ?_⟩, MemFrame.refl _ _,
         fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩

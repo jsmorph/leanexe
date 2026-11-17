@@ -17,14 +17,18 @@ namespace Verified.Shim
 
 open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline Verified.Wasi
 
-theorem Images.append {F : OpenFlags} {L : ShimLayout} {I : Launch} {es ls es' ls'}
-    (first : Images F L I es ls) (second : Images F L I es' ls') :
-    Images F L I (es ++ es') (ls ++ ls') := by
+theorem Images.append {F : OpenFlags} {L : ShimLayout} {I : Launch} {events es ls es' ls'}
+    (first : Images F L I events es ls) (second : Images F L I (events ++ ls) es' ls') :
+    Images F L I events (es ++ es') (ls ++ ls') := by
+  revert second
   induction first with
-  | nil => simpa using second
+  | nil =>
+    intro second
+    simpa using second
   | cons image _ rest =>
+    intro second
     rw [List.cons_append, List.append_assoc]
-    exact .cons image rest
+    exact .cons image (rest (by simpa only [List.append_assoc] using second))
 
 theorem Carried.append {replies : Linux.Replies} :
     ∀ {k : Nat} {l l' : List Linux.Event}, Carried replies k l →
@@ -40,7 +44,8 @@ hold their replies of `replies`, counted from the events of `w`, and write withi
 address space or into the timespec. -/
 def Appended (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (w w' : LinuxWorld) (trace : List Wasi.Event) : Prop :=
-  ∃ ls, w'.events = w.events ++ ls ∧ Images F L I trace ls ∧ Carried replies w.events.length ls ∧
+  ∃ ls, w'.events = w.events ++ ls ∧ Images F L I w.events trace ls ∧
+    Carried replies w.events.length ls ∧
     ∀ e ∈ ls, WritesWithin L (2 ^ 32) e
 
 section Appended
@@ -55,7 +60,8 @@ theorem Appended.trans {w w' w'' : LinuxWorld} {first rest : List Wasi.Event}
     Appended F L I replies w w'' (first ++ rest) := by
   obtain ⟨ls, grown, images, carried, within⟩ := h
   obtain ⟨ls', grown', images', carried', within'⟩ := h'
-  refine ⟨ls ++ ls', by rw [grown', grown, List.append_assoc], images.append images',
+  refine ⟨ls ++ ls', by rw [grown', grown, List.append_assoc],
+    images.append (by rwa [grown] at images'),
     carried.append (by rwa [grown, List.length_append] at carried'), ?_⟩
   intro e member
   rcases List.mem_append.mp member with left | right
@@ -67,7 +73,8 @@ theorem ShimStep.appended {w w' : LinuxWorld} {e : Wasi.Event}
   obtain ⟨l, image, carried, within, rfl⟩ := h
   exact ⟨l, rfl, by simpa using Images.cons image .nil, carried, within⟩
 
-theorem Appended.unchanged {w w' : LinuxWorld} {e : Wasi.Event} (image : Image F L I e [])
+theorem Appended.unchanged {w w' : LinuxWorld} {e : Wasi.Event}
+    (image : Image F L I w.events e [])
     (same : w'.events = w.events) : Appended F L I replies w w' [e] :=
   ⟨[], by simp [same], by simpa using Images.cons image .nil, trivial, by simp⟩
 
@@ -123,9 +130,11 @@ theorem openCalls_trapped {L : ShimLayout} {dir : UInt64} {path how : List UInt8
       rfl
 
 /-- The shim traps a flat call only with `shimTrap`. -/
-theorem sysImage_trapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {call : Call}
-    {args : List Arg} {message : String} {outputs : List Bytes} {l : List Linux.Event}
-    (image : SysImage F L I call args (.trapped message outputs) l) : message = shimTrap := by
+theorem sysImage_trapped {F : OpenFlags} {L : ShimLayout} {I : Launch}
+    {events : List Linux.Event} {call : Call} {args : List Arg} {message : String}
+    {outputs : List Bytes} {l : List Linux.Event}
+    (image : SysImage F L I events call args (.trapped message outputs) l) :
+    message = shimTrap := by
   have member := sysImage_mem image
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
   rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
@@ -176,29 +185,38 @@ theorem sysImage_trapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {call : C
   · rw [sysImage_close] at image
     unfold CloseImage at image
     split at image
-    · obtain ⟨_, _, same⟩ := image
-      unfold closeReply at same
-      split_ifs at same
-      cases same
-      rfl
+    · split at image
+      · obtain ⟨_, _, same⟩ := image
+        unfold closeReply at same
+        split_ifs at same
+        cases same
+        rfl
+      · obtain ⟨_, same⟩ := image
+        cases same
     · exact image.elim
   · rw [sysImage_read] at image
     unfold HandleReadImage at image
     split at image
-    · obtain ⟨_, _, _, _, _, same⟩ := image
-      unfold handleReadReply at same
-      split_ifs at same
-      cases same
-      rfl
+    · split at image
+      · obtain ⟨_, _, _, _, _, same⟩ := image
+        unfold handleReadReply at same
+        split_ifs at same
+        cases same
+        rfl
+      · obtain ⟨_, same⟩ := image
+        cases same
     · exact image.elim
   · rw [sysImage_write] at image
     unfold HandleWriteImage at image
     split at image
-    · obtain ⟨_, _, _, same⟩ := image
-      unfold handleWriteReply at same
-      split_ifs at same
-      cases same
-      rfl
+    · split at image
+      · obtain ⟨_, _, _, same⟩ := image
+        unfold handleWriteReply at same
+        split_ifs at same
+        cases same
+        rfl
+      · obtain ⟨_, same⟩ := image
+        cases same
     · exact image.elim
   · rw [sysImage_prestat] at image
     unfold PrestatImage at image
@@ -325,7 +343,8 @@ def Footprint (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Rep
     (action : Action Unit) (initial : Observed LinuxWorld) (aborts : Bool) :
     Result (Observed LinuxWorld) → Prop
   | .Trap final message => ∃ trace ls,
-      final.host.world.events = initial.world.events ++ ls ∧ Images F L I trace ls ∧
+      final.host.world.events = initial.world.events ++ ls ∧
+      Images F L I initial.world.events trace ls ∧
       Carried replies initial.world.events.length ls ∧
       (∀ e ∈ ls, WritesWithin L (2 ^ 32) e) ∧
       final.host.events = initial.events ++ trace ∧

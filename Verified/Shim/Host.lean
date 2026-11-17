@@ -7,27 +7,32 @@ The WASI host that the shim implements with the Linux call layer, for the stream
 `fd_read` (descriptor 0), `fd_write` (descriptors 1 and 2), and `proc_exit`, and the flat calls of
 `shimCalls`.
 
-`Image F L I e l` states which layer events `l` the shim makes for the WASI event `e`, with the
-open flags `F`, the layout `L`, and the launch `I`: one `read` of descriptor 0 with the request's
+`Image F L I events e l` states which layer events `l` the shim makes for the WASI event `e` after
+the layer events `events`, with the open flags `F`, the layout `L`, and the launch `I`: one `read`
+of descriptor 0 with the request's
 count and no input for an `fd_read`, one `write` of the stream's descriptor with the offered
 bytes, fewer than `2^32`, and no prior output for an `fd_write`, none for an exit, and for a flat
 call whose arguments its description accepts, the events of `SysImage`, one image for each call
-of `shimCalls`.  The WASI reply follows from the events' results: a result in the range that Linux
-gives for the request gives its count, descriptor, or time, a negated error number gives
-`errnoOf` of the number, and any other result gives a trap of the shim.  An address in linear
-memory and the bytes of an output region before a call depend on the store, which the WASI event
-does not carry, so `Image` leaves them free.  `Images es ls` states that `ls` concatenates an
-image of each event of `es` in order, and `WritesWithin L size e` that each output region of `e`
-lies in the `size` bytes from the guest's byte 0 or is the scratch's timespec.
+of `shimCalls`.  A file function refuses a descriptor number outside `openNumbers I events`
+with errno 8 (`badf`) and no call, and the prestat functions answer for descriptor 3 while
+`preopened I events` holds.  The WASI reply follows from the events' results: a result in the
+range that Linux gives for the request gives its count, descriptor, or time, a negated error
+number gives `errnoOf` of the number, and any other result gives a trap of the shim.  An address
+in linear memory and the bytes of an output region before a call depend on the store, which the
+WASI event does not carry, so `Image` leaves them free.  `Images events es ls` states that `ls`
+concatenates an image of each event of `es` in order, each after `events` and the images before
+it, and `WritesWithin L size e` that each output region of `e` lies in the `size` bytes from the
+guest's byte 0 or is the scratch's timespec.
 
 `linuxHost F L I replies` relates a world and a WASI request to a reply and a world exactly when
-the layer events that it appends are an image of the WASI event, each holds its reply of
-`replies`, counted from the number of events so far, and each writes within the `2^32` bytes from
-the guest's byte 0, the guest's address space, or into the timespec.  The host accepts an exit
-status below 126, which sets the exit marker, and rejects a status of 126 or more, as the
-repository's Wasmtime host does.  The sizes of the regions of `args_get` and `environ_get` come
-from `I`.  The world records the outputs of every successful flat call by its name, from which a
-call that names another reporter takes its sizes, as `Host.sys_reports` requires of every call.
+the layer events that it appends are an image of the WASI event after the world's events, each
+holds its reply of `replies`, counted from the number of events so far, and each writes within
+the `2^32` bytes from the guest's byte 0, the guest's address space, or into the timespec.  The
+host accepts an exit status below 126, which sets the exit marker, and rejects a status of 126 or
+more, as the repository's Wasmtime host does.  The sizes of the regions of `args_get` and
+`environ_get` come from `I`.  The world records the outputs of every successful flat call by its
+name, from which a call that names another reporter takes its sizes, as `Host.sys_reports`
+requires of every call.
 -/
 
 namespace Verified.Shim
@@ -92,73 +97,87 @@ def OpenCalls (L : ShimLayout) (dir : UInt64) (path how : List UInt8) :
       if ret = 0 - 11 ∧ calls < 3 then OpenCalls L dir path how (calls + 1) l reply
       else l = [] ∧ reply = openReply ret
 
-/-- `path_open` makes no call when `openCheck` gives an errno, and otherwise the `openat2` events
-of `OpenCalls` with the path and the `open_how` record of the request. -/
-def OpenImage (F : OpenFlags) (L : ShimLayout) (preopen : Bool) (args : List Arg)
+/-- `path_open` makes no call when `openCheck` gives an errno for the open numbers `opened`, and
+otherwise the `openat2` events of `OpenCalls` with the path and the `open_how` record of the
+request. -/
+def OpenImage (F : OpenFlags) (L : ShimLayout) (opened : List UInt64) (args : List Arg)
     (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
   match args with
   | [.word dir, .word dirflags, .bytes path, .word oflags, .word rights, .word _, .word fdflags] =>
-    if openCheck preopen dir oflags path fdflags = 0 then
+    if openCheck opened dir oflags path fdflags = 0 then
       OpenCalls L dir path.data.data.toList (openHowBytes F dirflags oflags rights fdflags) 0 l reply
-    else l = [] ∧ reply = .returned (openCheck preopen dir oflags path fdflags) [zeros 4]
+    else l = [] ∧ reply = .returned (openCheck opened dir oflags path fdflags) [zeros 4]
   | _ => False
 
-/-- `fd_close` makes one `close` of its descriptor. -/
-def CloseImage (args : List Arg) (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
+/-- `fd_close` makes one `close` of its descriptor when `opened` holds it, and refuses it with
+errno 8 (`badf`) otherwise. -/
+def CloseImage (opened : List UInt64) (args : List Arg) (reply : Transfer (List Bytes))
+    (l : List Linux.Event) : Prop :=
   match args with
-  | [.word fd] => ∃ ret, l = [⟨Linux.closeCall, [fd], [], [], ret, []⟩] ∧ reply = closeReply ret
+  | [.word fd] =>
+    if fd ∈ opened then
+      ∃ ret, l = [⟨Linux.closeCall, [fd], [], [], ret, []⟩] ∧ reply = closeReply ret
+    else l = [] ∧ reply = .returned 8 []
   | _ => False
 
 /-- `fd_read` on a handle makes one `read` of its descriptor into a buffer of its capacity whose
-address the image leaves free. -/
-def HandleReadImage (args : List Arg) (reply : Transfer (List Bytes)) (l : List Linux.Event) :
-    Prop :=
+address the image leaves free when `opened` holds the descriptor, and refuses it with errno 8
+(`badf`) otherwise. -/
+def HandleReadImage (opened : List UInt64) (args : List Arg) (reply : Transfer (List Bytes))
+    (l : List Linux.Event) : Prop :=
   match args with
-  | [.word fd, .space capacity] => ∃ a prior ret output,
-    l = [⟨Linux.readCall, [fd, a, capacity], [], prior, ret, output⟩] ∧
-      reply = handleReadReply capacity ret output
+  | [.word fd, .space capacity] =>
+    if fd ∈ opened then ∃ a prior ret output,
+      l = [⟨Linux.readCall, [fd, a, capacity], [], prior, ret, output⟩] ∧
+        reply = handleReadReply capacity ret output
+    else l = [] ∧ reply = .returned 8 [zeros capacity.toNat, zeros 4]
   | _ => False
 
 /-- `fd_write` on a handle makes one `write` of its descriptor with the offered bytes from an
-address that the image leaves free. -/
-def HandleWriteImage (args : List Arg) (reply : Transfer (List Bytes)) (l : List Linux.Event) :
-    Prop :=
+address that the image leaves free when `opened` holds the descriptor, and refuses it with errno
+8 (`badf`) otherwise. -/
+def HandleWriteImage (opened : List UInt64) (args : List Arg) (reply : Transfer (List Bytes))
+    (l : List Linux.Event) : Prop :=
   match args with
-  | [.word fd, .bytes data] => ∃ a ret,
-    l = [⟨Linux.writeCall, [fd, a, UInt64.ofNat data.data.size], [data.data.data.toList], [], ret,
-      []⟩] ∧ reply = handleWriteReply (UInt64.ofNat data.data.size) ret
+  | [.word fd, .bytes data] =>
+    if fd ∈ opened then ∃ a ret,
+      l = [⟨Linux.writeCall, [fd, a, UInt64.ofNat data.data.size], [data.data.data.toList], [],
+        ret, []⟩] ∧ reply = handleWriteReply (UInt64.ofNat data.data.size) ret
+    else l = [] ∧ reply = .returned 8 [zeros 4]
   | _ => False
 
 /-- `fd_prestat_get` makes no call. -/
-def PrestatImage (preopen : Bool) (args : List Arg) (reply : Transfer (List Bytes))
+def PrestatImage (preopened : Bool) (args : List Arg) (reply : Transfer (List Bytes))
     (l : List Linux.Event) : Prop :=
   match args with
-  | [.word fd] => l = [] ∧ reply = prestatReply preopen fd
+  | [.word fd] => l = [] ∧ reply = prestatReply preopened fd
   | _ => False
 
 /-- `fd_prestat_dir_name` makes no call. -/
-def DirNameImage (preopen : Bool) (args : List Arg) (reply : Transfer (List Bytes))
-    (l : List Linux.Event) : Prop :=
+def DirNameImage (preopened : Bool) (opened : List UInt64) (args : List Arg)
+    (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
   match args with
-  | [.word fd, .space capacity] => l = [] ∧ DirNameReply preopen fd capacity reply
+  | [.word fd, .space capacity] => l = [] ∧ DirNameReply preopened opened fd capacity reply
   | _ => False
 
 /-- The layer events `l` that the shim makes for the flat call `call` with the arguments `args`
-and the reply `reply`: the image of the call among `shimCalls`, and none for any other call. -/
-def SysImage (F : OpenFlags) (L : ShimLayout) (I : Launch) (call : Call) (args : List Arg)
-    (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
+and the reply `reply` after the layer events `events`: the image of the call among `shimCalls`,
+and none for any other call. -/
+def SysImage (F : OpenFlags) (L : ShimLayout) (I : Launch) (events : List Linux.Event) (call : Call)
+    (args : List Arg) (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
   if call = Call.clockTimeGet then ClockImage L args reply l
   else if call = Call.randomGet then RandomImage args reply l
   else if call = Call.argsSizesGet then SizesImage I.args args reply l
   else if call = Call.argsGet then StringsImage I.args args reply l
   else if call = Call.environSizesGet then SizesImage I.environ args reply l
   else if call = Call.environGet then StringsImage I.environ args reply l
-  else if call = Call.pathOpen then OpenImage F L I.preopen args reply l
-  else if call = Call.fdClose then CloseImage args reply l
-  else if call = Call.fdRead then HandleReadImage args reply l
-  else if call = Call.fdWrite then HandleWriteImage args reply l
-  else if call = Call.fdPrestatGet then PrestatImage I.preopen args reply l
-  else if call = Call.fdPrestatDirName then DirNameImage I.preopen args reply l
+  else if call = Call.pathOpen then OpenImage F L (openNumbers I events) args reply l
+  else if call = Call.fdClose then CloseImage (openNumbers I events) args reply l
+  else if call = Call.fdRead then HandleReadImage (openNumbers I events) args reply l
+  else if call = Call.fdWrite then HandleWriteImage (openNumbers I events) args reply l
+  else if call = Call.fdPrestatGet then PrestatImage (preopened I events) args reply l
+  else if call = Call.fdPrestatDirName then
+    DirNameImage (preopened I events) (openNumbers I events) args reply l
   else False
 
 /-- The flat calls that the shim implements. -/
@@ -167,9 +186,10 @@ def shimCalls : List Call :=
     Call.environGet, Call.pathOpen, Call.fdClose, Call.fdRead, Call.fdWrite, Call.fdPrestatGet,
     Call.fdPrestatDirName]
 
-/-- The layer events `l` that the shim makes for the WASI event `e`, with the buffer's address `a`
-and a read's prior bytes free. -/
-def Image (F : OpenFlags) (L : ShimLayout) (I : Launch) : Wasi.Event → List Linux.Event → Prop
+/-- The layer events `l` that the shim makes for the WASI event `e` after the layer events
+`events`, with the buffer's address `a` and a read's prior bytes free. -/
+def Image (F : OpenFlags) (L : ShimLayout) (I : Launch) (events : List Linux.Event) :
+    Wasi.Event → List Linux.Event → Prop
   | .read count reply, l => ∃ e a, l = [e] ∧ e.call = Linux.readCall ∧
       e.args = [0, a, count] ∧ e.inputs = [] ∧ reply = readReply count e.ret e.output
   | .write output bytes reply, l => ∃ e a, l = [e] ∧ e.call = Linux.writeCall ∧
@@ -177,14 +197,17 @@ def Image (F : OpenFlags) (L : ShimLayout) (I : Launch) : Wasi.Event → List Li
       e.inputs = [bytes.data.data.toList] ∧ e.prior = [] ∧ bytes.data.size < 2 ^ 32 ∧
       reply = writeReply (UInt64.ofNat bytes.data.size) e.ret
   | .exit _, l | .exitTrap _ _, l => l = []
-  | .sys call args reply, l => call.reject args = 0 ∧ SysImage F L I call args reply l
+  | .sys call args reply, l => call.reject args = 0 ∧ SysImage F L I events call args reply l
 
-/-- `ls` concatenates an image of each event of `es`, in order. -/
+/-- `ls` concatenates an image of each event of `es`, in order, each after `events` and the images
+before it. -/
 inductive Images (F : OpenFlags) (L : ShimLayout) (I : Launch) :
-    List Wasi.Event → List Linux.Event → Prop
-  | nil : Images F L I [] []
-  | cons {e : Wasi.Event} {l : List Linux.Event} {es : List Wasi.Event} {ls : List Linux.Event} :
-      Image F L I e l → Images F L I es ls → Images F L I (e :: es) (l ++ ls)
+    List Linux.Event → List Wasi.Event → List Linux.Event → Prop
+  | nil {events : List Linux.Event} : Images F L I events [] []
+  | cons {events : List Linux.Event} {e : Wasi.Event} {l : List Linux.Event}
+      {es : List Wasi.Event} {ls : List Linux.Event} :
+      Image F L I events e l → Images F L I (events ++ l) es ls →
+        Images F L I events (e :: es) (l ++ ls)
 
 /-- Each output region of the event `e` lies in the `size` bytes from the guest's byte 0, counted
 modulo `2^64`, or is the scratch's timespec. -/
@@ -227,7 +250,7 @@ image of `e` whose events hold the replies from call `w.events.length` on and wr
 guest's address space or into the timespec. -/
 def ShimStep (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (w : LinuxWorld) (e : Wasi.Event) (w' : LinuxWorld) : Prop :=
-  ∃ l, Image F L I e l ∧ Carried replies w.events.length l ∧
+  ∃ l, Image F L I w.events e l ∧ Carried replies w.events.length l ∧
     (∀ x ∈ l, WritesWithin L (2 ^ 32) x) ∧ w' = w.answer l e
 
 /-- The outputs from which a call with the reporter `name` takes its sizes: those of `I` for
@@ -247,54 +270,66 @@ def shimReported (I : Launch) (reports : String → List Bytes) (call : Call) : 
 
 section Calls
 
-variable {F : OpenFlags} {L : ShimLayout} {I : Launch} {args : List Arg}
-  {reply : Transfer (List Bytes)} {l : List Linux.Event}
+variable {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
+  {args : List Arg} {reply : Transfer (List Bytes)} {l : List Linux.Event}
 
-theorem sysImage_clock : SysImage F L I Call.clockTimeGet args reply l = ClockImage L args reply l := by
+theorem sysImage_clock :
+    SysImage F L I events Call.clockTimeGet args reply l = ClockImage L args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
-theorem sysImage_random : SysImage F L I Call.randomGet args reply l = RandomImage args reply l := by
+theorem sysImage_random :
+    SysImage F L I events Call.randomGet args reply l = RandomImage args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_argsSizes :
-    SysImage F L I Call.argsSizesGet args reply l = SizesImage I.args args reply l := by
+    SysImage F L I events Call.argsSizesGet args reply l = SizesImage I.args args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
-theorem sysImage_args : SysImage F L I Call.argsGet args reply l = StringsImage I.args args reply l := by
+theorem sysImage_args :
+    SysImage F L I events Call.argsGet args reply l = StringsImage I.args args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_environSizes :
-    SysImage F L I Call.environSizesGet args reply l = SizesImage I.environ args reply l := by
+    SysImage F L I events Call.environSizesGet args reply l = SizesImage I.environ args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_environ :
-    SysImage F L I Call.environGet args reply l = StringsImage I.environ args reply l := by
+    SysImage F L I events Call.environGet args reply l = StringsImage I.environ args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_open :
-    SysImage F L I Call.pathOpen args reply l = OpenImage F L I.preopen args reply l := by
+    SysImage F L I events Call.pathOpen args reply l =
+      OpenImage F L (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
-theorem sysImage_close : SysImage F L I Call.fdClose args reply l = CloseImage args reply l := by
+theorem sysImage_close :
+    SysImage F L I events Call.fdClose args reply l =
+      CloseImage (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
-theorem sysImage_read : SysImage F L I Call.fdRead args reply l = HandleReadImage args reply l := by
+theorem sysImage_read :
+    SysImage F L I events Call.fdRead args reply l =
+      HandleReadImage (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_write :
-    SysImage F L I Call.fdWrite args reply l = HandleWriteImage args reply l := by
+    SysImage F L I events Call.fdWrite args reply l =
+      HandleWriteImage (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_prestat :
-    SysImage F L I Call.fdPrestatGet args reply l = PrestatImage I.preopen args reply l := by
+    SysImage F L I events Call.fdPrestatGet args reply l =
+      PrestatImage (preopened I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 theorem sysImage_dirName :
-    SysImage F L I Call.fdPrestatDirName args reply l = DirNameImage I.preopen args reply l := by
+    SysImage F L I events Call.fdPrestatDirName args reply l =
+      DirNameImage (preopened I events) (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
 /-- Only the calls of `shimCalls` have images. -/
-theorem sysImage_mem {call : Call} (h : SysImage F L I call args reply l) : call ∈ shimCalls := by
+theorem sysImage_mem {call : Call} (h : SysImage F L I events call args reply l) :
+    call ∈ shimCalls := by
   by_contra outside
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false, not_or] at outside
   obtain ⟨c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12⟩ := outside
@@ -390,8 +425,8 @@ theorem stringsReply_shape (strings : List (List UInt8)) :
       UInt64.toNat_ofNat_of_lt' (show stringsSize strings < 2 ^ 64 by omega)]
   · simp [Transfer.committed, Transfer.validErrno]
 
-theorem openCheck_le (preopen : Bool) (dir oflags : UInt64) (path : Bytes) (fdflags : UInt64) :
-    (openCheck preopen dir oflags path fdflags).toNat ≤ 76 := by
+theorem openCheck_le (opened : List UInt64) (dir oflags : UInt64) (path : Bytes)
+    (fdflags : UInt64) : (openCheck opened dir oflags path fdflags).toNat ≤ 76 := by
   unfold openCheck
   split_ifs <;> decide
 
@@ -424,13 +459,14 @@ theorem handleWriteReply_shape (count ret : UInt64) :
   unfold handleWriteReply ReplyShape
   split_ifs <;> simp [Transfer.committed, Transfer.validErrno]
 
-theorem prestatReply_shape (preopen : Bool) (fd : UInt64) :
-    ReplyShape [8] (prestatReply preopen fd) := by
+theorem prestatReply_shape (preopened : Bool) (fd : UInt64) :
+    ReplyShape [8] (prestatReply preopened fd) := by
   unfold prestatReply ReplyShape
   split_ifs <;> simp [Transfer.committed, Transfer.validErrno]
 
-theorem dirNameReply_shape {preopen : Bool} {fd capacity : UInt64} {reply : Transfer (List Bytes)}
-    (h : DirNameReply preopen fd capacity reply) : ReplyShape [capacity.toNat] reply := by
+theorem dirNameReply_shape {preopened : Bool} {opened : List UInt64} {fd capacity : UInt64}
+    {reply : Transfer (List Bytes)} (h : DirNameReply preopened opened fd capacity reply) :
+    ReplyShape [capacity.toNat] reply := by
   unfold DirNameReply at h
   unfold ReplyShape
   split_ifs at h with h1 h2 h3
@@ -442,8 +478,9 @@ theorem dirNameReply_shape {preopen : Bool} {fd capacity : UInt64} {reply : Tran
 /-- A flat call's reply in an image carries outputs of the sizes of the call's description, with
 the sizes of the reported regions that `I` gives, and an errno of at most 76. -/
 theorem sysImage_shape {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : Linux.Replies}
-    {call : Call} {args : List Arg} {reply : Transfer (List Bytes)} {l : List Linux.Event} {k : Nat}
-    (image : SysImage F L I call args reply l) (carried : Carried replies k l)
+    {events : List Linux.Event} {call : Call} {args : List Arg} {reply : Transfer (List Bytes)}
+    {l : List Linux.Event} {k : Nat}
+    (image : SysImage F L I events call args reply l) (carried : Carried replies k l)
     (reports : String → List Bytes) :
     ReplyShape (call.outputSizes (shimReported I reports call) args) reply := by
   have member := sysImage_mem image
@@ -492,23 +529,35 @@ theorem sysImage_shape {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : 
   · rw [sysImage_close] at image
     unfold CloseImage at image
     split at image
-    · obtain ⟨ret, rfl, rfl⟩ := image
-      exact closeReply_shape ret
+    · change ReplyShape [] reply
+      split at image
+      · obtain ⟨ret, rfl, rfl⟩ := image
+        exact closeReply_shape ret
+      · obtain ⟨rfl, rfl⟩ := image
+        simp [ReplyShape, Transfer.committed, Transfer.validErrno]
     · exact image.elim
   · rw [sysImage_read] at image
     unfold HandleReadImage at image
     split at image
     · rename_i fd capacity
-      obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
-      have out := carried.1.2
-      simp only [outputs_read] at out
-      exact handleReadReply_shape capacity ret output (by simp [out])
+      change ReplyShape [capacity.toNat, 4] reply
+      split at image
+      · obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
+        have out := carried.1.2
+        simp only [outputs_read] at out
+        exact handleReadReply_shape capacity ret output (by simp [out])
+      · obtain ⟨rfl, rfl⟩ := image
+        simp [ReplyShape, Transfer.committed, Transfer.validErrno]
     · exact image.elim
   · rw [sysImage_write] at image
     unfold HandleWriteImage at image
     split at image
-    · obtain ⟨a, ret, rfl, rfl⟩ := image
-      exact handleWriteReply_shape _ ret
+    · change ReplyShape [4] reply
+      split at image
+      · obtain ⟨a, ret, rfl, rfl⟩ := image
+        exact handleWriteReply_shape _ ret
+      · obtain ⟨rfl, rfl⟩ := image
+        simp [ReplyShape, Transfer.committed, Transfer.validErrno]
     · exact image.elim
   · rw [sysImage_prestat] at image
     unfold PrestatImage at image
@@ -525,9 +574,9 @@ theorem sysImage_shape {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : 
 
 /-- The outputs of a successful `args_sizes_get` or `environ_sizes_get` in an image are those of
 `I`. -/
-theorem sysImage_reporter {F : OpenFlags} {L : ShimLayout} {I : Launch} {call : Call}
-    {args : List Arg} {outputs : List Bytes} {l : List Linux.Event}
-    (image : SysImage F L I call args (.returned 0 outputs) l) :
+theorem sysImage_reporter {F : OpenFlags} {L : ShimLayout} {I : Launch}
+    {events : List Linux.Event} {call : Call} {args : List Arg} {outputs : List Bytes}
+    {l : List Linux.Event} (image : SysImage F L I events call args (.returned 0 outputs) l) :
     (call.name = "args_sizes_get" → outputs = sizesOutputs I.args) ∧
       (call.name = "environ_sizes_get" → outputs = sizesOutputs I.environ) := by
   have member := sysImage_mem image

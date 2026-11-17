@@ -93,9 +93,10 @@ theorem openCalls_calls {L : ShimLayout} {dir : UInt64} {path how : List UInt8}
 
 /-- The calls of an image of a flat call other than the handle forms of `fd_read` and
 `fd_write`: `clock_gettime`, `getrandom`, `openat2`, and `close`. -/
-theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch} {call : Call}
-    {args : List Arg} {reply : Transfer (List Bytes)} {l : List Linux.Event}
-    (image : SysImage F L I call args reply l) (notRead : call ≠ Call.fdRead)
+theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch}
+    {events : List Linux.Event} {call : Call} {args : List Arg} {reply : Transfer (List Bytes)}
+    {l : List Linux.Event} (image : SysImage F L I events call args reply l)
+    (notRead : call ≠ Call.fdRead)
     (notWrite : call ≠ Call.fdWrite) :
     ∀ x ∈ l, x.call ≠ Linux.readCall ∧ x.call ≠ Linux.writeCall := by
   have member := sysImage_mem image
@@ -154,10 +155,14 @@ theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch} {call : Cal
   · rw [sysImage_close] at image
     unfold CloseImage at image
     split at image
-    · obtain ⟨_, rfl, _⟩ := image
-      intro x member
-      obtain rfl := List.mem_singleton.mp member
-      exact distinct _ (by simp)
+    · split at image
+      · obtain ⟨_, rfl, _⟩ := image
+        intro x member
+        obtain rfl := List.mem_singleton.mp member
+        exact distinct _ (by simp)
+      · obtain ⟨rfl, _⟩ := image
+        intro x member
+        cases member
     · exact image.elim
   · exact absurd rfl notRead
   · exact absurd rfl notWrite
@@ -208,7 +213,8 @@ theorem littleEndian_count {ret : UInt64} (small : ret.toNat < 2 ^ 32) :
     UInt64.toNat_ofNat_of_lt' (show ret.toNat < 2 ^ 64 by omega)]
 
 theorem image_readData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Launch}
-    {e : Wasi.Event} {l : List Linux.Event} (image : Image F L I e l) :
+    {events : List Linux.Event} {e : Wasi.Event} {l : List Linux.Event}
+    (image : Image F L I events e l) :
     Linux.readData fd l = eventReads fd e := by
   cases e with
   | read count reply =>
@@ -241,35 +247,42 @@ theorem image_readData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Launc
       unfold HandleReadImage at image
       split at image
       · rename_i handle capacity
-        obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
-        have small := read_small accepted
-        unfold handleReadReply
-        by_cases within : ret.toNat ≤ capacity.toNat
-        · simp only [within, ↓reduceIte]
-          by_cases same : handle = fd
-          · subst same
-            simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, Arg.value, within,
-              littleEndian_count (show ret.toNat < 2 ^ 32 by omega), bytesOfList]
-          · simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, Arg.value, same]
-        · simp only [within, ↓reduceIte]
-          split <;> simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, within,
-            errnoOf_valid]
+        split at image
+        · obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
+          have small := read_small accepted
+          unfold handleReadReply
+          by_cases within : ret.toNat ≤ capacity.toNat
+          · simp only [within, ↓reduceIte]
+            by_cases same : handle = fd
+            · subst same
+              simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, Arg.value,
+                within, littleEndian_count (show ret.toNat < 2 ^ 32 by omega), bytesOfList]
+            · simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, Arg.value, same]
+          · simp only [within, ↓reduceIte]
+            split <;> simp [Linux.readData, eventReads, Linux.Event.readBytes, Linux.arg, within,
+              errnoOf_valid]
+        · obtain ⟨rfl, rfl⟩ := image
+          simp [Linux.readData, eventReads]
       · exact image.elim
     · by_cases isWrite : call = Call.fdWrite
       · subst isWrite
         rw [sysImage_write] at image
         unfold HandleWriteImage at image
         split at image
-        · obtain ⟨a, ret, rfl, rfl⟩ := image
-          cases handleWriteReply (UInt64.ofNat _) ret <;>
-            simp [Linux.readData, eventReads, Linux.Event.readBytes, readCall_ne_writeCall.symm,
-              fdWrite_ne_fdRead]
+        · split at image
+          · obtain ⟨a, ret, rfl, rfl⟩ := image
+            cases handleWriteReply (UInt64.ofNat _) ret <;>
+              simp [Linux.readData, eventReads, Linux.Event.readBytes, readCall_ne_writeCall.symm,
+                fdWrite_ne_fdRead]
+          · obtain ⟨rfl, rfl⟩ := image
+            simp [Linux.readData, eventReads, fdWrite_ne_fdRead]
         · exact image.elim
       · rw [readData_none fun x member => (sysImage_calls image isRead isWrite x member).1]
         cases reply <;> simp [eventReads, isRead]
 
 theorem image_writeData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Launch}
-    {e : Wasi.Event} {l : List Linux.Event} (image : Image F L I e l) :
+    {events : List Linux.Event} {e : Wasi.Event} {l : List Linux.Event}
+    (image : Image F L I events e l) :
     Linux.writeData fd l = eventWrites fd e := by
   cases e with
   | read count reply =>
@@ -302,32 +315,39 @@ theorem image_writeData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Laun
       unfold HandleWriteImage at image
       split at image
       · rename_i handle data
-        obtain ⟨a, ret, rfl, rfl⟩ := image
-        have small := write_small accepted
-        have wide : (UInt64.ofNat data.data.size).toNat = data.data.size :=
-          UInt64.toNat_ofNat_of_lt' (show data.data.size < 2 ^ 64 by omega)
-        unfold handleWriteReply
-        rw [wide]
-        by_cases within : ret.toNat ≤ data.data.size
-        · simp only [within, ↓reduceIte]
-          by_cases same : handle = fd
-          · subst same
-            simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg, Arg.value,
-              within, wide, littleEndian_count (show ret.toNat < 2 ^ 32 by omega)]
-          · simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg, Arg.value, same]
-        · simp only [within, ↓reduceIte]
-          split <;> simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg, within,
-            wide, errnoOf_valid]
+        split at image
+        · obtain ⟨a, ret, rfl, rfl⟩ := image
+          have small := write_small accepted
+          have wide : (UInt64.ofNat data.data.size).toNat = data.data.size :=
+            UInt64.toNat_ofNat_of_lt' (show data.data.size < 2 ^ 64 by omega)
+          unfold handleWriteReply
+          rw [wide]
+          by_cases within : ret.toNat ≤ data.data.size
+          · simp only [within, ↓reduceIte]
+            by_cases same : handle = fd
+            · subst same
+              simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg, Arg.value,
+                within, wide, littleEndian_count (show ret.toNat < 2 ^ 32 by omega)]
+            · simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg, Arg.value,
+                same]
+          · simp only [within, ↓reduceIte]
+            split <;> simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, Linux.arg,
+              within, wide, errnoOf_valid]
+        · obtain ⟨rfl, rfl⟩ := image
+          simp [Linux.writeData, eventWrites]
       · exact image.elim
     · by_cases isRead : call = Call.fdRead
       · subst isRead
         rw [sysImage_read] at image
         unfold HandleReadImage at image
         split at image
-        · obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
-          cases handleReadReply _ ret output <;>
-            simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, readCall_ne_writeCall,
-              fdRead_ne_fdWrite]
+        · split at image
+          · obtain ⟨a, prior, ret, output, rfl, rfl⟩ := image
+            cases handleReadReply _ ret output <;>
+              simp [Linux.writeData, eventWrites, Linux.Event.writeBytes, readCall_ne_writeCall,
+                fdRead_ne_fdWrite]
+          · obtain ⟨rfl, rfl⟩ := image
+            simp [Linux.writeData, eventWrites, fdRead_ne_fdWrite]
         · exact image.elim
       · rw [writeData_none fun x member => (sysImage_calls image isRead isWrite x member).2]
         cases reply <;> simp [eventWrites, isWrite]
@@ -335,11 +355,11 @@ theorem image_writeData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Laun
 /-- The bytes that the reads of `fd` returned in images of a WASI trace are those that its events
 read from `fd`. -/
 theorem Images.readData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Launch}
-    {trace : List Wasi.Event} {ls : List Linux.Event} (h : Images F L I trace ls) :
-    Linux.readData fd ls = committedReads fd trace := by
+    {events : List Linux.Event} {trace : List Wasi.Event} {ls : List Linux.Event}
+    (h : Images F L I events trace ls) : Linux.readData fd ls = committedReads fd trace := by
   induction h with
   | nil => rfl
-  | @cons e l es ls image _ ih =>
+  | @cons _ e l es ls image _ ih =>
     rw [committedReads, List.flatMap_cons, ← committedReads, ← ih, Linux.readData,
       List.flatMap_append, ← Linux.readData, image_readData fd image]
     rfl
@@ -347,11 +367,11 @@ theorem Images.readData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Laun
 /-- The bytes that the writes of `fd` took in images of a WASI trace are those that its events
 wrote to `fd`. -/
 theorem Images.writeData (fd : UInt64) {F : OpenFlags} {L : ShimLayout} {I : Launch}
-    {trace : List Wasi.Event} {ls : List Linux.Event} (h : Images F L I trace ls) :
-    Linux.writeData fd ls = committedWrites fd trace := by
+    {events : List Linux.Event} {trace : List Wasi.Event} {ls : List Linux.Event}
+    (h : Images F L I events trace ls) : Linux.writeData fd ls = committedWrites fd trace := by
   induction h with
   | nil => rfl
-  | @cons e l es ls image _ ih =>
+  | @cons _ e l es ls image _ ih =>
     rw [committedWrites, List.flatMap_cons, ← committedWrites, ← ih, Linux.writeData,
       List.flatMap_append, ← Linux.writeData, image_writeData fd image]
     rfl

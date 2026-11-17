@@ -8,10 +8,8 @@ preopened directory's record and name.  The shim implements every flat call that
 imports (`calls_supported`).  For every open flags, layout, launch, and reply sequence, every
 Talos run of `_start` from the command's initial store, with no layer events, no exit marker, and
 no recorded outputs, under the shim's environment with enough fuel has the footprint of
-`Footprint` (`linux_footprint`).  The command passes the handle check, so its runs keep the
-discipline of `withOpen` (`bracketed`), and when the kernel's `openat2` returns only descriptors
-that are not open, the layer events of every such run name only open descriptors
-(`linux_names`).
+`Footprint` (`linux_footprint`), and the layer events of every such run name only standard
+streams and the descriptor numbers that the shim holds open (`linux_names`).
 -/
 
 namespace Verified.Examples.WasiFiles
@@ -42,26 +40,17 @@ theorem linux_footprint (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies :
     (fun _ membership => nomatch membership) initialized.2.1 (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
-/-- The runs of `main` and its exit keep the discipline of `withOpen`. -/
-theorem bracketed : (main.bind fun status => Action.exit (α := Unit) status).BracketRuns :=
-  bracketRuns_command command.pure.funs command.program command.handleMarks command.handlesChecked
-    { name := "main", callee := id Verified.Wasi.EffectVar.here } Verified.Env.nil rfl main
-    command.main.related
-
-/-- In every run of `linux_footprint`, when the kernel's `openat2` returns only descriptors that
-are not open, the layer events name only open descriptors: each `read`, `write`, `openat2`, and
-`close` names descriptor 0, 1, 2, or 3 or one that an earlier `openat2` returned and no `close` has
-released, and no `close` closes 0 to 3. -/
+/-- In every run of `linux_footprint`, the layer events name only standard streams and the
+descriptor numbers that the shim holds open: each `read` and `write` names descriptor 0, 1, or 2 or
+a number of `openNumbers I` after the events before it, and each `openat2` and `close` a number of
+`openNumbers I`. -/
 theorem linux_names {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : Linux.Replies}
     {result : Result (Observed LinuxWorld)}
     (footprint : Footprint F L I replies (main.bind fun status => Action.exit status) linuxStart
       true result) :
-    ∃ final message, result = .Trap final message ∧
-      (Linux.FreshOpens [0, 1, 2, 3] final.host.world.events →
-        NamesOpen final.host.world.events) := by
+    ∃ final message, result = .Trap final message ∧ NamesHeld I [] final.host.world.events := by
   cases result with
-  | Trap final message =>
-    exact ⟨final, message, rfl, fun fresh => footprint_namesOpen bracketed footprint rfl fresh⟩
+  | Trap final message => exact ⟨final, message, rfl, footprint_namesHeld footprint rfl⟩
   | _ => exact footprint.elim
 
 end Verified.Examples.WasiFiles

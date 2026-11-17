@@ -27,9 +27,9 @@ def sysInvoke (call : Call) :
   else if call = Call.environSizesGet then sizesInvoke I.environ Call.environSizesGet
   else if call = Call.environGet then stringsInvoke I.environ Call.environGet
   else if call = Call.pathOpen then openInvoke F L I replies
-  else if call = Call.fdClose then closeInvoke replies
-  else if call = Call.fdRead then handleReadInvoke L replies
-  else if call = Call.fdWrite then handleWriteInvoke L replies
+  else if call = Call.fdClose then closeInvoke I replies
+  else if call = Call.fdRead then handleReadInvoke L I replies
+  else if call = Call.fdWrite then handleWriteInvoke L I replies
   else if call = Call.fdPrestatGet then prestatInvoke I
   else if call = Call.fdPrestatDirName then dirNameInvoke I
   else fun before _ => .Trap before shimTrap
@@ -53,14 +53,14 @@ theorem sys_contract {call : Call} (member : call ∈ shimCalls) (before : Store
     simp (config := { decide := true }) only [sysInvoke, ↓reduceIte]
   · exact clock_contract F L I replies before args
   · exact random_contract F L I replies before args
-  · exact sizes_contract F L I replies rfl (by rw [sysImage_argsSizes]; exact ⟨rfl, rfl, rfl⟩)
-      before args
+  · exact sizes_contract F L I replies rfl
+      (fun _ => by rw [sysImage_argsSizes]; exact ⟨rfl, rfl, rfl⟩) before args
   · exact strings_contract F L I replies rfl (shimReported_args I)
-      (by rw [sysImage_args]; exact ⟨rfl, rfl, rfl⟩) before args
-  · exact sizes_contract F L I replies rfl (by rw [sysImage_environSizes]; exact ⟨rfl, rfl, rfl⟩)
-      before args
+      (fun _ => by rw [sysImage_args]; exact ⟨rfl, rfl, rfl⟩) before args
+  · exact sizes_contract F L I replies rfl
+      (fun _ => by rw [sysImage_environSizes]; exact ⟨rfl, rfl, rfl⟩) before args
   · exact strings_contract F L I replies rfl (shimReported_environ I)
-      (by rw [sysImage_environ]; exact ⟨rfl, rfl, rfl⟩) before args
+      (fun _ => by rw [sysImage_environ]; exact ⟨rfl, rfl, rfl⟩) before args
   · exact open_contract F L I replies before args
   · exact close_contract F L I replies before args
   · exact handleRead_contract F L I replies before args

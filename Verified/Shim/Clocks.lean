@@ -69,7 +69,8 @@ theorem clock_contract (before : Store (Observed LinuxWorld)) (args : List Value
   dsimp only
   rw [regions]
   by_cases low : id.toNat < 2
-  · have image : SysImage F L I Call.clockTimeGet [.word id, .word precision]
+  · have image : SysImage F L I before.host.world.events Call.clockTimeGet
+        [.word id, .word precision]
         (clockReply (clockEvent L id (replies before.host.world.events.length)).ret
           (clockEvent L id (replies before.host.world.events.length)).output)
         [clockEvent L id (replies before.host.world.events.length)] := by
@@ -160,9 +161,9 @@ theorem at_append {mem : Mem} {pointer : Nat} {filled bytes : List UInt8} (n : N
       congr 1
       omega
 
-theorem randomEvent_writesWithin (mem : Mem) {pointer n : Nat} (r : Linux.Reply)
-    (address : pointer + n ≤ 2 ^ 32) :
-    WritesWithin L (2 ^ 32) (randomEvent L mem (UInt64.ofNat pointer) n r) := by
+theorem randomEvent_writesWithin (mem : Mem) {pointer n size : Nat} (r : Linux.Reply)
+    (small : pointer + n < 2 ^ 64) (address : pointer + n ≤ size) :
+    WritesWithin L size (randomEvent L mem (UInt64.ofNat pointer) n r) := by
   intro g member
   simp only [randomEvent, outputs_getrandom, List.mem_singleton] at member
   subst member
@@ -207,7 +208,7 @@ theorem randomLoop_spec (pointer length : Nat) (small : pointer + length < 2 ^ 3
       refine ⟨rfl, ?_⟩
       simp only [randomEvent, outputs_getrandom, UInt64.toNat_ofNat_of_lt'
         (show length - done < 2 ^ 64 by omega)]
-    have within := randomEvent_writesWithin L mem (replies k)
+    have within := randomEvent_writesWithin L mem (replies k) (by omega)
       (show pointer + done + (length - done) ≤ 2 ^ 32 by omega)
     have event : randomEvent L mem (UInt64.ofNat (pointer + done)) (length - done) (replies k) =
         ⟨Linux.getrandomCall, [L.base + UInt64.ofNat pointer + UInt64.ofNat done,
