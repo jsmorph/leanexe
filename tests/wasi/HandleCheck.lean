@@ -1,22 +1,23 @@
 import Verified.Wasi
 
 /-! Kernel tests of the handle check and the axiom audit of its theorems.  The kernel decides the
-check of hand-written commands: it refuses `fd_close` and `path_open` outside a bracket, a
-`.handle` argument bound to a word other than 3, and a helper call whose argument for a marked
-parameter is not a marked variable, and it accepts a `.handle` argument bound to 3, a helper call
-with a marked variable, and a bracket nested in the body of another, whose inner open takes the
-outer handle.  It accepts an `fd_read` and a `poll_oneoff` whose handle argument, the descriptor of
-the iovec call and the handle field of the read subscription, is a marked variable, and refuses
-both with an unmarked one.  It refuses `fd_renumber`, hand-written descriptions of `fd_write`,
-`fd_close`, and `poll_oneoff` that declare a descriptor a word, and brackets without the close,
-with the close of the directory, with a copied handle, with the handle used after the close, with
-the branches swapped, with a close inside the body, with the failed descriptor used in the error
-continuation, and with a last command that returns the body's result without the close's errno,
-pairs it with 0 or with the handle's word, or swaps the pair's components.  It accepts a bracket
-whose body returns bytes, whose pairs are `pair`, and `verified_compile_wasi` compiles a program
-with such a bracket and refuses one whose body returns `Unit`.  The theorems of the check, of
-`withOpen`'s reflection and its runs, of the compiled program, and of the trace corollary use only
-`propext`, `Classical.choice`, and `Quot.sound`. -/
+check of hand-written commands: it refuses `fd_close` and `path_open` outside a bracket, a `.handle`
+argument bound to a word other than 3 or to a pair's component under its `letPair`, and a helper
+call whose argument for a marked parameter is not a marked variable, and it accepts a `.handle`
+argument bound to 3, alone or under one or two `letPair`s, a helper call with a marked variable, and
+a bracket nested in the body of another, whose inner open takes the outer handle.  It accepts an
+`fd_read` and a `poll_oneoff` whose handle argument, the descriptor of the iovec call and the handle
+field of the read subscription, is a marked variable, and refuses both with an unmarked one.  It
+refuses `fd_renumber`, hand-written descriptions of `fd_write`, `fd_close`, and `poll_oneoff` that
+declare a descriptor a word, and brackets without the close, with the close of the directory, with a
+copied handle, with the handle used after the close, with the branches swapped, with a close inside
+the body, with the failed descriptor used in the error continuation, and with a last command that
+returns the body's result without the close's errno, pairs it with 0 or with the handle's word, or
+swaps the pair's components.  It accepts a bracket whose body returns bytes, whose pairs are `pair`,
+and `verified_compile_wasi` compiles a program with such a bracket and a program that opens a file
+under the preopened directory after `args`, and refuses one whose body returns `Unit`.  The theorems
+of the check, of `withOpen`'s reflection and its runs, of the compiled program, and of the trace
+corollary use only `propext`, `Classical.choice`, and `Quot.sound`. -/
 
 namespace HandleCheckTest
 
@@ -87,6 +88,30 @@ example : (Command.bind (Command.ret (Expr.word 5)) (sync .here) :
 /-- A `.handle` argument bound to the word 3, `Handle.preopened`. -/
 example : (Command.bind (Command.ret (Expr.word 3)) (sync .here) :
     Command [] [] [] (.value .word)).handleCheck [] .plain [] = true := by decide +kernel
+
+/-- A `.handle` argument bound to the word 3 under a `letPair` of a pair of a word and bytes,
+as the reflector writes an operand in the scope of a `BytesResult`. -/
+example : (Command.bind (Command.ret (Expr.letPair (.var .here) (Expr.word 3))) (sync .here) :
+    Command [] [] [.pair .word .bytes] (.value .word)).handleCheck [] .plain [false] = true := by
+  decide +kernel
+
+/-- A `.handle` argument bound to the word 3 under two `letPair`s, in the scope of two pairs. -/
+example : (Command.bind (Command.ret (Expr.letPair (.var .here)
+      (Expr.letPair (.var (.there (.there (.there .here)))) (Expr.word 3)))) (sync .here) :
+    Command [] [] [.pair .word .bytes, .pair .word .bytes] (.value .word)).handleCheck [] .plain
+      [false, false] = true := by
+  decide +kernel
+
+/-- A `.handle` argument bound to the word 5 under a `letPair`. -/
+example : (Command.bind (Command.ret (Expr.letPair (.var .here) (Expr.word 5))) (sync .here) :
+    Command [] [] [.pair .word .bytes] (.value .word)).handleCheck [] .plain [false] = false := by
+  decide +kernel
+
+/-- A `.handle` argument bound to the first component of a pair under its `letPair`. -/
+example : (Command.bind (Command.ret (Expr.letPair (.var .here) (.var (.there .here))))
+    (sync .here) : Command [] [] [.pair .word .bytes] (.value .word)).handleCheck [] .plain
+      [false] = false := by
+  decide +kernel
 
 /-- `fd_read` of the marked directory. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRead .iovecRead
@@ -310,6 +335,25 @@ def bytesMain : Action UInt64 := do
 verified_compile_wasi bytesCommand (main := bytesMain) := [bytesMain]
 
 open LeanExe in
+/-- A program that opens a file under the preopened directory after `args`, whose `ArgsResult`
+stays in scope.  The reflector binds the directory to the literal 3 under three `letPair`s, one
+for the result and one for each component that is itself a pair. -/
+def argsMain : Action UInt64 := do
+  let arguments ← args
+  let read ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0
+    (fun errno => pure errno) fun file => do
+      let got ← fdRead file 16
+      pure got.errno
+  if arguments.errno != 0 then
+    pure arguments.errno
+  else if read.1 != 0 then
+    pure read.1
+  else
+    pure read.2
+
+verified_compile_wasi argsCommand (main := argsMain) := [argsMain]
+
+open LeanExe in
 /-- A program whose bracket's body returns `Unit`, which `verified_compile_wasi` refuses. -/
 def unitMain : Action UInt64 := do
   let closed ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0
@@ -335,6 +379,8 @@ elab "check_handle_axioms" : command => do
     ``LeanExe.Wasi.WellBracketed.descriptors,
     ``LeanExe.Wasi.Action.BracketRuns.exec_descriptors,
     ``LeanExe.Wasi.Action.BracketRuns.prefix_descriptors,
+    ``Verified.Expr.isPreopened_denote,
+    ``Verified.Wasi.Command.preopened_handles,
     ``Verified.Wasi.Command.handles,
     ``Verified.Wasi.Command.handles_exec,
     ``Verified.Wasi.Command.handles_prefix,
@@ -345,7 +391,8 @@ elab "check_handle_axioms" : command => do
     ``Verified.Wasi.Reflect.withOpen_rel_mk,
     ``Verified.Wasi.Reflect.withOpen_rel_pair,
     ``HandleCheckTest.bytesCommand.bytesMain.related,
-    ``HandleCheckTest.bytesCommand.handles]
+    ``HandleCheckTest.bytesCommand.handles,
+    ``HandleCheckTest.argsCommand.handles]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do
