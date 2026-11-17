@@ -896,15 +896,15 @@ theorem CodeAt.get {a : UInt64} {l : List Instr} (h : CodeAt code a l) (k : Nat)
   subst hb
   exact h k hk
 
-/-- The scratch's address from `a`: X20 at `X17 + areaSize cap`. -/
-theorem run_scratchAddr {a : UInt64} {cap : Nat} (hcode : CodeAt code a (scratchAddr cap))
+/-- The scratch's address from `a`: X20 at `X17 + scratch`. -/
+theorem run_scratchAddr {a : UInt64} {scratch : Nat} (hcode : CodeAt code a (scratchAddr scratch))
     {s : State} (hpc : s.pc = a) :
     ∃ t, Reach P code s t ∧ t.pc = after a 5 ∧
-      t.x 20 = s.x 17 + UInt64.ofNat (areaSize cap) ∧ (∀ q : Fin 32, q ≠ 20 → t.x q = s.x q) ∧
+      t.x 20 = s.x 17 + UInt64.ofNat scratch ∧ (∀ q : Fin 32, q ≠ 20 → t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
   have cs := CodeAt.split code hcode (n := 4) (by simp [movImm])
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := run_movImm P code (s := s) (d := 20)
-    (v := UInt64.ofNat (areaSize cap)) (by decide) cs.1 hpc
+    (v := UInt64.ofNat scratch) (by decide) cs.1 hpc
   have c4 := cs.2 0 (by simp)
   simp only [List.getElem_cons_zero, after_after] at c4
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addReg P code (s := u1) (d := 20) (n := 20)
@@ -1028,22 +1028,22 @@ theorem keptReg_17 : KeptReg 17 := Or.inr (Or.inl rfl)
 theorem keptReg_18 : KeptReg 18 := Or.inr (Or.inr (Or.inl rfl))
 theorem keptReg_30 : KeptReg 30 := Or.inr (Or.inr (Or.inr rfl))
 
-/-- What the stubs of the vector `v` read at their entry `s`, for a memory of `M` bytes and an area
-of `cap` pages: the memory's size at the area's first word, the area's first word and the guest's
-bytes in Normal memory and below `2^32`, the initial SP at the scratch's first word in Normal
-memory, the initial stack's first word for the environment, the vector of the strings `strs`, and
-32-bit values in X0 and X1. -/
-structure StubEntry (P : Platform) (cap M : Nat) (v : StringVector) (strs : List (List UInt8))
+/-- What the stubs of the vector `v` read at their entry `s`, for a memory of `M` bytes and the
+scratch `scratch` bytes above the area: the memory's size at the area's first word, the area's
+first word and the guest's bytes in Normal memory and below `2^32`, the initial SP at the scratch's
+first word in Normal memory, the initial stack's first word for the environment, the vector of the
+strings `strs`, and 32-bit values in X0 and X1. -/
+structure StubEntry (P : Platform) (scratch M : Nat) (v : StringVector) (strs : List (List UInt8))
     (s : State) : Prop where
   size : load64 s.mem (s.x 17) + 8 = UInt64.ofNat M
   area : ∀ k < 8, P.normal (s.x 17 + UInt64.ofNat k) = true
   below : (s.x 17).toNat + 4096 + M ≤ 2 ^ 32
   guest : ∀ j < M, P.normal (s.x 17 + UInt64.ofNat (4096 + j)) = true
-  scratch : ∀ k < 8, P.normal (s.x 17 + UInt64.ofNat (areaSize cap) + UInt64.ofNat k) = true
+  saved : ∀ k < 8, P.normal (s.x 17 + UInt64.ofNat scratch + UInt64.ofNat k) = true
   argc : v = .environ → ∀ k < 8,
-    P.normal (load64 s.mem (s.x 17 + UInt64.ofNat (areaSize cap)) + UInt64.ofNat k) = true
+    P.normal (load64 s.mem (s.x 17 + UInt64.ofNat scratch) + UInt64.ofNat k) = true
   vector : VectorAt P s.mem
-    (vectorAddr s.mem (load64 s.mem (s.x 17 + UInt64.ofNat (areaSize cap))) v) strs
+    (vectorAddr s.mem (load64 s.mem (s.x 17 + UInt64.ofNat scratch)) v) strs
   arg0 : (s.x 0).toNat < 2 ^ 32
   arg1 : (s.x 1).toNat < 2 ^ 32
 
@@ -1095,13 +1095,14 @@ theorem run_word4Check {a tr : UInt64} {r : Fin 32} {g : Fin 524288}
   · rw [ite_eq_right (fun e => (hlt.mp e) h), ite_eq_left h]
   · rw [ite_eq_left (hlt.mpr h), ite_eq_right h]
 
-theorem sizesStub_ok {v : StringVector} {a tr : UInt64} {cap : Nat} {is : List Instr}
-    (hg : sizesStub v a tr cap = .ok is) :
+theorem sizesStub_ok {v : StringVector} {a tr : UInt64} {scratch : Nat} {is : List Instr}
+    (hg : sizesStub v a tr scratch = .ok is) :
     ∃ g4 g7 scan, cbField (after a 4) tr = .ok g4 ∧ cbField (after a 7) tr = .ok g7 ∧
       scanPiece (after a (13 + (vectorStart v).length)) (after a (48 + (vectorStart v).length)) =
         .ok scan ∧
       is = [.ldr 9 17 0, .addImm 9 9 8] ++ ([.addImm 10 0 4, .subsReg 31 10 9, .bcond 8 g4] ++
-        ([.addImm 10 1 4, .subsReg 31 10 9, .bcond 8 g7] ++ (scratchAddr cap ++ (vectorStart v ++
+        ([.addImm 10 1 4, .subsReg 31 10 9, .bcond 8 g7] ++ (scratchAddr scratch ++
+        (vectorStart v ++
         (scan ++ (([.addReg 16 17 0, .addImm 16 16 4] ++ store32 12 15) ++
         (([.addReg 16 17 1, .addImm 16 16 4] ++ store32 13 15) ++
         [.movz 0 0 0, .ret 30, .movz 0 61 0, .ret 30]))))))) := by
@@ -1131,10 +1132,10 @@ entry `a`, with the count's pointer in X0 and the size's in X1: the trap stub `t
 unchanged when either's four bytes leave the memory of `M` bytes, and otherwise the return to X30
 with errno 0 and the count and the size of `strs` stored at the pointers when the size lies below
 `2^32`, and with errno 61 and the memory unchanged otherwise. -/
-theorem run_sizesStub {v : StringVector} {a tr : UInt64} {cap M : Nat} {is : List Instr}
-    {strs : List (List UInt8)} (hg : sizesStub v a tr cap = .ok is) (hcode : CodeAt code a is)
+theorem run_sizesStub {v : StringVector} {a tr : UInt64} {scratch M : Nat} {is : List Instr}
+    {strs : List (List UInt8)} (hg : sizesStub v a tr scratch = .ok is) (hcode : CodeAt code a is)
     (hU : P.normal P.uart = false) {s : State} (hpc : s.pc = a)
-    (he : StubEntry P cap M v strs s) :
+    (he : StubEntry P scratch M v strs s) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
       if (s.x 0).toNat + 4 ≤ M ∧ (s.x 1).toNat + 4 ≤ M then
         t.pc = s.x 30 ∧
@@ -1207,10 +1208,10 @@ theorem run_sizesStub {v : StringVector} {a tr : UInt64} {cap M : Nat} {is : Lis
   have hK4 : ∀ q : Fin 32, KeptReg q → u4.x q = s.x q := fun q hq => by
     rw [k4 q (hq.ne (by decide)), hK3 q hq]
   have hm4 : u4.mem = s.mem := by rw [m4, hm3]
-  have u4x20 : u4.x 20 = s.x 17 + UInt64.ofNat (areaSize cap) := by rw [x4, hK3 17 keptReg_17]
+  have u4x20 : u4.x 20 = s.x 17 + UInt64.ofNat scratch := by rw [x4, hK3 17 keptReg_17]
   obtain ⟨u5, r5, p5, x5, k5, sp5, m5, io5⟩ := run_vectorStart P code v cVec
     (by rw [p4, after_after])
-    (fun k hk => by rw [u4x20]; exact he.scratch k hk)
+    (fun k hk => by rw [u4x20]; exact he.saved k hk)
     (fun hv k hk => by rw [u4x20, hm4]; exact he.argc hv k hk)
   rw [u4x20, hm4] at x5
   have hK5 : ∀ q : Fin 32, KeptReg q → u5.x q = s.x q := fun q hq => by
@@ -1495,8 +1496,8 @@ theorem run_copyStrings {b : UInt64} {e1 e7 : Fin 524288} {e8 : Fin 67108864}
     by rw [sp6, sp5, sp4, sp3, sp2, sp1], by rw [io6, io5, io4, io3, io2, io1], ?_⟩
   rw [m6, m5, m4, u3x16, hm3]
 
-theorem stringsStub_ok {v : StringVector} {a tr : UInt64} {cap : Nat} {is : List Instr}
-    (hg : stringsStub v a tr cap = .ok is) :
+theorem stringsStub_ok {v : StringVector} {a tr : UInt64} {scratch : Nat} {is : List Instr}
+    (hg : stringsStub v a tr scratch = .ok is) :
     ∃ scan g6 g9 f1 f14 f15 e1 e7 e8,
       scanPiece (after a (5 + (vectorStart v).length)) tr = .ok scan ∧
       cbField (after a (20 + (vectorStart v).length + 6)) tr = .ok g6 ∧
@@ -1513,7 +1514,7 @@ theorem stringsStub_ok {v : StringVector} {a tr : UInt64} {cap : Nat} {is : List
         (after a (50 + (vectorStart v).length + 6)) = .ok e7 ∧
       bField (after a (50 + (vectorStart v).length + 11))
         (after a (50 + (vectorStart v).length + 3)) = .ok e8 ∧
-      is = scratchAddr cap ++ (vectorStart v ++ (scan ++
+      is = scratchAddr scratch ++ (vectorStart v ++ (scan ++
         ([.ldr 15 17 0, .addImm 15 15 8, .addReg 14 12 12, .addReg 14 14 14, .addReg 14 14 0,
           .subsReg 31 14 15, .bcond 8 g6, .addReg 14 1 13, .subsReg 31 14 15, .bcond 8 g9] ++
         (([.orrReg 11 31 9, .addReg 16 17 0, .addImm 16 16 4, .orrReg 13 31 1] ++
@@ -1569,10 +1570,10 @@ the array's pointer in X0 and the buffer's in X1: the return to X30 with errno 0
 addresses written into the array and then the strings into the buffer when their size lies below
 `2^32` and both regions lie within the memory of `M` bytes, and the trap stub `tr` with the memory
 unchanged otherwise. -/
-theorem run_stringsStub {v : StringVector} {a tr : UInt64} {cap M : Nat} {is : List Instr}
-    {strs : List (List UInt8)} (hg : stringsStub v a tr cap = .ok is) (hcode : CodeAt code a is)
+theorem run_stringsStub {v : StringVector} {a tr : UInt64} {scratch M : Nat} {is : List Instr}
+    {strs : List (List UInt8)} (hg : stringsStub v a tr scratch = .ok is) (hcode : CodeAt code a is)
     (hU : P.normal P.uart = false) {s : State} (hpc : s.pc = a)
-    (he : StubEntry P cap M v strs s) :
+    (he : StubEntry P scratch M v strs s) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
       if vectorSize strs < 2 ^ 32 ∧ (s.x 0).toNat + 4 * strs.length ≤ M ∧
           (s.x 1).toNat + vectorSize strs ≤ M then
@@ -1597,7 +1598,7 @@ theorem run_stringsStub {v : StringVector} {a tr : UInt64} {cap M : Nat} {is : L
   -- the scratch's address and the vector's
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := run_scratchAddr P code cScr hpc
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := run_vectorStart P code v cVec p1
-    (fun k hk => by rw [x1]; exact he.scratch k hk)
+    (fun k hk => by rw [x1]; exact he.saved k hk)
     (fun hv k hk => by rw [x1, m1]; exact he.argc hv k hk)
   rw [x1, m1] at x2
   have hK2 : ∀ q : Fin 32, KeptReg q → u2.x q = s.x q := fun q hq => by
@@ -1642,7 +1643,7 @@ theorem run_stringsStub {v : StringVector} {a tr : UInt64} {cap M : Nat} {is : L
     rw [ite_eq_right (fun h => hreg h.2)]
     exact ⟨p4, hm4⟩
   rw [ite_eq_left hreg, after_after] at p4
-  have u4x9 : u4.x 9 = vectorAddr s.mem (load64 s.mem (s.x 17 + UInt64.ofNat (areaSize cap))) v :=
+  have u4x9 : u4.x 9 = vectorAddr s.mem (load64 s.mem (s.x 17 + UInt64.ofNat scratch)) v :=
     by rw [k4 9 (by decide) (by decide), u3x9, x2]
   -- the passes
   obtain ⟨u5, r5, p5, k5, sp5, io5, m5⟩ := run_pointerPass P code cPtr

@@ -4,11 +4,12 @@ import LeanExe.A64.Gen
 The stubs of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get` of a WASI command
 as a static Linux executable for AArch64.  They make no call: they read the arguments and the
 environment from the process's initial stack, whose address the executable's `main` saves in the
-first word of the shim's scratch, at `X17 + areaSize cap`.  Linux enters the process with SP at
-`argc`, followed by the pointers to the arguments, 0, and the pointers to the environment's
-strings, 0, each string ending with a zero byte (`fs/binfmt_elf.c` of Linux 7.0, lines 301 to
-358), so the arguments' vector lies at the initial SP plus 8 and the environment's at the initial
-SP plus `16 + 8 · argc`.  `vectorStart` sets X9 to one of them, and `StringVector` names which.
+first word of the shim's scratch, `scratch` bytes above the area at X17, which the executable
+places at `areaSize cap`.  Linux enters the process with SP at `argc`, followed by the pointers to
+the arguments, 0, and the pointers to the environment's strings, 0, each string ending with a zero
+byte (`fs/binfmt_elf.c` of Linux 7.0, lines 301 to 358), so the arguments' vector lies at the
+initial SP plus 8 and the environment's at the initial SP plus `16 + 8 · argc`.  `vectorStart`
+sets X9 to one of them, and `StringVector` names which.
 
 The scan piece counts the strings of the vector at X9 in X12 and sums their sizes, each string's
 length plus one, in X13, until it reaches the vector's terminating 0.  It stops and branches to its
@@ -45,9 +46,9 @@ def vectorStart : StringVector → List Instr
   | .args => [.ldr 9 20 0, .addImm 9 9 8]
   | .environ => [.ldr 9 20 0, .ldr 10 9 0, .movz 11 8 0, .madd 9 10 11 9, .addImm 9 9 16]
 
-/-- The scratch's address, `X17 + areaSize cap`, in X20. -/
-def scratchAddr (cap : Nat) : List Instr :=
-  movImm 20 (UInt64.ofNat (areaSize cap)) ++ [.addReg 20 20 17]
+/-- The address of the scratch `scratch` bytes above the area, `X17 + scratch`, in X20. -/
+def scratchAddr (scratch : Nat) : List Instr :=
+  movImm 20 (UInt64.ofNat scratch) ++ [.addReg 20 20 17]
 
 /-- The four `STRB` of the low 32 bits of X`v` at X16 plus 4,092 to 4,095, the lowest first, with
 X`t` for the shifted values. -/
@@ -66,24 +67,24 @@ def scanPiece (a ov : UInt64) : GenM (List Instr) := do
     .bcond 2 (← cbField (after a 13) ov), .b (← bField (after a 14) (after a 4))]
 
 /-- The stub of `args_sizes_get` or `environ_sizes_get` for the vector `v`, placed at `a`, with the
-trap stub at `tr` and a memory of `cap` pages: the checks of the count's pointer in X0 and the
-size's in X1, the scratch's address, the vector's address, the scan, the stores of the count and
-the size, and errno 61 after an overflow. -/
-def sizesStub (v : StringVector) (a tr : UInt64) (cap : Nat) : GenM (List Instr) := do
+trap stub at `tr` and the scratch `scratch` bytes above the area: the checks of the count's pointer
+in X0 and the size's in X1, the scratch's address, the vector's address, the scan, the stores of
+the count and the size, and errno 61 after an overflow. -/
+def sizesStub (v : StringVector) (a tr : UInt64) (scratch : Nat) : GenM (List Instr) := do
   let n := (vectorStart v).length
   let checks := [.ldr 9 17 0, .addImm 9 9 8, .addImm 10 0 4, .subsReg 31 10 9,
     .bcond 8 (← cbField (after a 4) tr), .addImm 10 1 4, .subsReg 31 10 9,
     .bcond 8 (← cbField (after a 7) tr)]
   let scan ← scanPiece (after a (13 + n)) (after a (48 + n))
-  return checks ++ scratchAddr cap ++ vectorStart v ++ scan ++
+  return checks ++ scratchAddr scratch ++ vectorStart v ++ scan ++
     [.addReg 16 17 0, .addImm 16 16 4] ++ store32 12 15 ++ [.addReg 16 17 1, .addImm 16 16 4] ++
     store32 13 15 ++ [.movz 0 0 0, .ret 30, .movz 0 61 0, .ret 30]
 
 /-- The stub of `args_get` or `environ_get` for the vector `v`, placed at `a`, with the trap stub at
-`tr` and a memory of `cap` pages: the scratch's address, the vector's address, the scan, the checks
-of the array at X0 and the buffer at X1, the pass that writes the strings' addresses, which X13
-holds, and the pass that copies the strings. -/
-def stringsStub (v : StringVector) (a tr : UInt64) (cap : Nat) : GenM (List Instr) := do
+`tr` and the scratch `scratch` bytes above the area: the scratch's address, the vector's address,
+the scan, the checks of the array at X0 and the buffer at X1, the pass that writes the strings'
+addresses, which X13 holds, and the pass that copies the strings. -/
+def stringsStub (v : StringVector) (a tr : UInt64) (scratch : Nat) : GenM (List Instr) := do
   let n := (vectorStart v).length
   let scan ← scanPiece (after a (5 + n)) tr
   let c := 20 + n
@@ -102,7 +103,7 @@ def stringsStub (v : StringVector) (a tr : UInt64) (cap : Nat) : GenM (List Inst
     .strb 15 16 4092, .addImm 14 14 1, .addImm 16 16 1,
     .cbnz 15 (← cbField (after a (s + 10)) (after a (s + 6))),
     .b (← bField (after a (s + 11)) (after a (s + 3))), .movz 0 0 0, .ret 30]
-  return scratchAddr cap ++ vectorStart v ++ scan ++ checks ++ pointers ++ copy
+  return scratchAddr scratch ++ vectorStart v ++ scan ++ checks ++ pointers ++ copy
 
 /-- The number of instructions of `sizesStub v`. -/
 def sizesStubSize (v : StringVector) : Nat := 50 + (vectorStart v).length
