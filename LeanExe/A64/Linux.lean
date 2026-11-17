@@ -222,6 +222,12 @@ def pstepWith (T : List LeanExe.Linux.Call) (R : LeanExe.Linux.Replies) (P : Pla
     | none => none
   else istep P code p
 
+/-- The events of the Linux call layer in the trace `tr`, in order. -/
+def sysEvents (tr : List Event) : List LeanExe.Linux.Event :=
+  tr.filterMap fun
+    | .sys e => some e
+    | _ => none
+
 /-- The processes that zero or more steps of `pstepWith` reach from a process. -/
 inductive ProcReachWith (T : List LeanExe.Linux.Call) (R : LeanExe.Linux.Replies) (P : Platform)
     (code : UInt64 → Option UInt32) : Proc → Proc → Prop

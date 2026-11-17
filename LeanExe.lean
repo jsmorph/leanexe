@@ -55,6 +55,7 @@ import LeanExe.A64.Proof.StartupTail
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
+import LeanExe.A64.Stamp
 import LeanExe.A64.Startup
 import LeanExe.A64.Table
 import LeanExe.Area
@@ -93,6 +94,7 @@ import LeanExe.FileNat
 import LeanExe.Linux.Call
 import LeanExe.Linux.CallTable
 import LeanExe.Linux.Replies
+import LeanExe.Linux.Trace
 import LeanExe.M7.Board
 import LeanExe.M7.Boot
 import LeanExe.M7.Bound
