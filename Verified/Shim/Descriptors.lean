@@ -47,7 +47,8 @@ theorem eagain_large : ¬(0 - 11 : UInt64).toNat < 2 ^ 31 := by decide
 
 theorem openat2_ne_close : Linux.openat2Call ≠ Linux.closeCall := by decide
 
-/-- An `openat2` whose result is not a descriptor below `2^31` keeps the open descriptors. -/
+/-- An `openat2` whose result is not a descriptor below `2^31` keeps the layer's open
+descriptors. -/
 theorem openAfter_unopened {opened : List UInt64} {e : Linux.Event}
     (call : e.call = Linux.openat2Call) (large : ¬e.ret.toNat < 2 ^ 31) (l : List Linux.Event) :
     Linux.openAfter opened (e :: l) = Linux.openAfter opened l := by
@@ -178,10 +179,10 @@ theorem image_namesHeld {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
       unfold OpenImage at image
       split at image
       · split at image
-        · obtain ⟨keep, call, named⟩ :=
-            openCalls_split (openNumbers I events) image pre x post same
+        · obtain ⟨keep, call, named⟩ := openCalls_split
+            (Linux.openAfter (if I.preopen then [3] else []) events) image pre x post same
           have held : Linux.arg x.args 0 ∈ openNumbers I (events ++ pre) := by
-            rw [openNumbers, openAfter_append, ← openNumbers, keep, named]
+            rw [openNumbers, openAfter_append, keep, ← openNumbers, named]
             exact openCheck_held (by assumption)
           refine ⟨fun inside => ?_, fun _ => held⟩
           rw [call] at inside

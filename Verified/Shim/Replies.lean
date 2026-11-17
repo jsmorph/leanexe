@@ -207,11 +207,16 @@ def stringsReply (strings : List (List UInt8)) : Transfer (List Bytes) :=
 
 /-! ## Files -/
 
+/-- The bound on the descriptor numbers that the shim holds open: 1,024, Linux's default soft
+`RLIMIT_NOFILE`, below which Linux numbers every descriptor of a process that keeps that limit.
+The shim traps on an `openat2` that returns a number of the bound or more. -/
+def descriptorLimit : Nat := 1024
+
 /-- The descriptor numbers that the shim holds open after the layer events `events`: 3 when the
-launcher grants it, and each number below `2^31` that an `openat2` returned, until a `close` of
-the number.  The shim refuses every other number as a directory or file descriptor. -/
+launcher grants it, and each number below `descriptorLimit` that an `openat2` returned, until a
+`close` of the number.  The shim refuses every other number as a directory or file descriptor. -/
 def openNumbers (I : Launch) (events : List Linux.Event) : List UInt64 :=
-  Linux.openAfter (if I.preopen then [3] else []) events
+  (Linux.openAfter (if I.preopen then [3] else []) events).filter (·.toNat < descriptorLimit)
 
 /-- Whether descriptor 3 is still the preopened directory after the layer events `events`: the
 launcher granted it and no `close` of 3 is among them. -/
@@ -267,9 +272,10 @@ def openHowBytes (F : OpenFlags) (dirflags oflags rights fdflags : UInt64) : Lis
     (List.range 8).map (byteOf 10)
 
 /-- The reply to `path_open` whose last `openat2` returned `ret`: the descriptor when it lies below
-`2^31`, the errno of a negated error number, and a trap of the shim for any other result. -/
+`descriptorLimit`, the errno of a negated error number, and a trap of the shim for any other
+result, a descriptor of `descriptorLimit` or more among them. -/
 def openReply (ret : UInt64) : Transfer (List Bytes) :=
-  if ret.toNat < 2 ^ 31 then .returned 0 [leBytes 4 ret.toNat]
+  if ret.toNat < descriptorLimit then .returned 0 [leBytes 4 ret.toNat]
   else if Linux.isError ret then .returned (errnoOf (0 - ret)) [zeros 4]
   else .trapped shimTrap [zeros 4]
 
