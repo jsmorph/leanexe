@@ -51,10 +51,12 @@ set_option maxRecDepth 100000
 theorem prestat_elf_file : bytesOk (genWasiElf command.module prestatStart wasiRoom wasiCap)
     prestatElfBytes prestatElfSize = true := by decide +kernel
 
-theorem prestat_elf_segments : elfSegments (byteAt prestatElfBytes) = SEGMENTS := by
+theorem prestat_elf_segments : elfSegments (byteAt prestatElfBytes) =
+    [⟨1, 5, 0, 0x400000, 11888, 11888⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
-theorem prestat_elf_layout : elfSegmentsOf prestatLayout = SEGMENTS := by
+theorem prestat_elf_layout : elfSegmentsOf prestatLayout =
+    [⟨1, 5, 0, 0x400000, 11888, 11888⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem prestat_elf_entry : elfEntryOf (byteAt prestatElfBytes) = wasiEntry.toNat := by
