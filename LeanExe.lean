@@ -70,6 +70,7 @@ import LeanExe.A64.Proof.WasiFiles
 import LeanExe.A64.Proof.WasiLaunch
 import LeanExe.A64.Proof.WasiPath
 import LeanExe.A64.Proof.WasiProgram
+import LeanExe.A64.Proof.WasiStrings
 import LeanExe.A64.Proof.WasiStubs
 import LeanExe.A64.Proof.WasiUtf8
 import LeanExe.A64.Proof.WithMachine
@@ -78,6 +79,7 @@ import LeanExe.A64.Startup
 import LeanExe.A64.Table
 import LeanExe.A64.Wasi
 import LeanExe.A64.WasiFiles
+import LeanExe.A64.WasiStrings
 import LeanExe.Area
 import LeanExe.Attr
 import LeanExe.CallGraph

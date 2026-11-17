@@ -1,11 +1,12 @@
-import Verified.ShimA64.Stubs
+import Verified.ShimA64.Strings
 
 /-!
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each
 stub of `flatStubs` at its address meets `Machine.StubSim` on `shimMachine` for the function of
 `linuxEnv` of every call of `shimCalls` whose import is the stub's.  `wasiElf_run` takes the
-simulation of every flat import of a module from it.  `flatStubs` lists no stub, so the lemma
-holds vacuously; each increment that adds a stub to `flatStubs` adds its case here.
+simulation of every flat import of a module from it.  `flatStubs` lists the stubs of the arguments
+and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.lean` proves; each
+increment that adds a stub to `flatStubs` adds its case here.
 -/
 
 namespace Verified.ShimA64
@@ -36,6 +37,7 @@ theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Cal
     (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
       s.decl.params s.decl.results
       (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
-  simp [flatStubs] at hs
+  simp only [flatStubs] at hs
+  exact stringStub_sim hs hc hd S n hg hcode hGb hdata hU
 
 end Verified.ShimA64
