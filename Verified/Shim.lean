@@ -1,5 +1,12 @@
 import Verified.Shim.Memory
+import Verified.Shim.Replies
 import Verified.Shim.Host
 import Verified.Shim.Env
+import Verified.Shim.SysEnv
+import Verified.Shim.Clocks
+import Verified.Shim.Strings
+import Verified.Shim.Files
+import Verified.Shim.Satisfies
 import Verified.Shim.Footprint
 import Verified.Shim.Trace
+import Verified.Shim.Descriptors

@@ -27,7 +27,7 @@ def wasiLayout (m : Module) (k : Nat) (room : UInt64) (cap : Nat) : ElfLayout :=
   | .error _ => ⟨0, 0, 0, 0, 0, 0⟩
 
 /-- The world in which a native run starts: no layer event, no exit, and no WASI event. -/
-def nativeWorld : Observed LinuxWorld := ⟨⟨[], none⟩, []⟩
+def nativeWorld : Observed LinuxWorld := ⟨⟨[], none, fun _ => []⟩, []⟩
 
 /-- The store in which `_start` starts natively: the module's initial store with the memory's cap
 at `cap` pages and the world `w`. -/
@@ -93,14 +93,14 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     (hpc : p.core.pc = elfEntry) (htr : p.trace = [])
     {fuel : Nat} {final : Store (Observed LinuxWorld)} {msg : String}
     (hres : Wasm.run fuel m k (nativeStore m cap nativeWorld) []
-      (linuxEnv (layoutAt (wasiLayout m k room cap).area) R) = .Trap final msg) :
+      (streamEnv (layoutAt (wasiLayout m k room cap).area) R) = .Trap final msg) :
     ∃ q, ProcReachWith Linux.table R (elfPlatform (wasiLayout m k room cap))
         (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
         some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
       q.trace = final.host.world.events.map A64.Event.sys ∧
       (∀ e ∈ final.host.world.events,
-        WritesWithin (layoutAt (wasiLayout m k room cap).area) (cap * 65536) e) ∧
+        WritesLinear (layoutAt (wasiLayout m k room cap).area) (cap * 65536) e) ∧
       ((msg = exitTrap ∧ ∃ c, final.host.world.exited = some c ∧ q.core.x 0 = c) ∨
         (msg = exitRejected ∧ q.core.x 0 = 1) ∨
         ((msg = shimTrap ∨ msg = "unreachable" ∨ msg = "out of bounds memory access" ∨
@@ -296,43 +296,50 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
       .inr (.inr ⟨.inl hm, x0z⟩)⟩
 
-/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`,
-when Talos's runs of `_start` from `nativeStore` under the shim's environment have the
-footprint of the action `action` with enough fuel.  The process's trace holds the layer events
-`ls`, the images of the WASI events `T` of a run of `action` under `linuxHost` from a world with no
-events: each event holds its reply of `R`, and the output region of each lies within the `cap`
-pages of linear memory.  The run is an accepted exit whose status X0 holds, an exit whose status
-the shim rejects, with X0 at 1, a trap of the shim at a result outside Linux's range, with X0 at
-2, or, when `aborts` is true, a guest trap after a prefix of `action`, with X0 at 2. -/
+/-- The shim's layout of the executable of `genWasiElf`. -/
+def wasiShimLayout (m : Module) (k : Nat) (room : UInt64) (cap : Nat) : ShimLayout :=
+  layoutAt (wasiLayout m k room cap).area
+
+/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
+Talos's runs of `_start` from `nativeStore` under the shim's stream functions have the footprint
+of the action `action` with enough fuel, for the open flags `F` and the launch `I`.  The process's
+trace holds the layer events `ls`, the images of the WASI events `T` of a run of `action` under
+`linuxHost` from a world with no events: each event holds its reply of `R`, and the output region
+of each lies within the `cap` pages of linear memory.  The run is an accepted exit whose status
+X0 holds, an exit whose status the shim rejects, with X0 at 1, a trap of the shim at a result
+outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix of
+`action`, with X0 at 2. -/
 theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
+    {F : OpenFlags} {I : Launch}
     (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
     (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
     {action : Action Unit} {aborts : Bool}
     (hfoot : ∀ R, ∃ bound, ∀ fuel ≥ bound,
-      Footprint (layoutAt (wasiLayout m k room cap).area) R action nativeWorld aborts
+      Footprint F (wasiShimLayout m k room cap) I R action nativeWorld aborts
         (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
-          (linuxEnv (layoutAt (wasiLayout m k room cap).area) R)))
+          (linuxEnv F (wasiShimLayout m k room cap) I R [])))
     (R : Linux.Replies) (p : Proc) (hl : ElfLoaded (byteAt nb) p.core.mem)
     (hpc : p.core.pc = elfEntry) (htr : p.trace = []) :
     ∃ q, ProcReachWith Linux.table R (elfPlatform (wasiLayout m k room cap))
         (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
         some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧ Images T ls ∧ Carried R 0 ls ∧
-        (∀ e ∈ ls, WritesWithin (layoutAt (wasiLayout m k room cap).area) (cap * 65536) e) ∧
-        ((∃ c, Exec (linuxHost (layoutAt (wasiLayout m k room cap).area) R) action
-            nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
-          (Exec (linuxHost (layoutAt (wasiLayout m k room cap).area) R) action nativeWorld.world T
+      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧
+        Images F (wasiShimLayout m k room cap) I [] T ls ∧ Carried R 0 ls ∧
+        (∀ e ∈ ls, WritesLinear (wasiShimLayout m k room cap) (cap * 65536) e) ∧
+        ((∃ c, Exec (linuxHost F (wasiShimLayout m k room cap) I R) action nativeWorld.world T
+            (.exited c) w ∧ q.core.x 0 = c) ∨
+          (Exec (linuxHost F (wasiShimLayout m k room cap) I R) action nativeWorld.world T
             (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
-          (Exec (linuxHost (layoutAt (wasiLayout m k room cap).area) R) action nativeWorld.world T
+          (Exec (linuxHost F (wasiShimLayout m k room cap) I R) action nativeWorld.world T
             (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
-          (aborts = true ∧ (∃ residual, Prefix (linuxHost (layoutAt (wasiLayout m k room cap).area)
-            R) action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) := by
+          (aborts = true ∧ (∃ residual, Prefix (linuxHost F (wasiShimLayout m k room cap) I R)
+            action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) := by
   obtain ⟨bound, hb⟩ := hfoot R
   have hf := hb bound (Nat.le_refl _)
   cases hr : Wasm.run bound m k (nativeStore m cap nativeWorld) []
-      (linuxEnv (layoutAt (wasiLayout m k room cap).area) R) with
+      (linuxEnv F (wasiShimLayout m k room cap) I R []) with
   | Trap final msg =>
     rw [hr] at hf
     obtain ⟨T, ls, hev, himg, hcar, -, -, hcls⟩ := hf

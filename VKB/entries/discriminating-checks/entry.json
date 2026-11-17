@@ -14,14 +14,17 @@
     "a seeded fault that passes when an unrelated check fails, or when random bytes equal the guard",
     "a check decided in the kernel whose soundness proof reads data that the checked term supplies",
     "an analysis reused for a kind of value that it was not written for",
-    "an exit status that names a step and a check of a test run under Wasmtime 44"
+    "an exit status that names a step and a check of a test run under Wasmtime 44",
+    "a frame test of system-call descriptions against guard pages",
+    "a wrong call number whose call writes the same shape as the described call"
   ],
   "modules": [
     "Verified.Wasi.HandleCheck",
     "LeanExe.Wasi.Bracket",
     "Verified.Wasi.ReflectModes",
     "Verified.Compile",
-    "Verified.Wasi.CodeAnalysis"
+    "Verified.Wasi.CodeAnalysis",
+    "LeanExe.Linux.CallTable"
   ],
   "declarations": [
     "Verified.Wasi.Command.HandleCheck",
@@ -29,7 +32,8 @@
     "LeanExe.Wasi.Call.table",
     "Verified.Wasi.Command.paramChoice",
     "Verified.callMoves",
-    "Verified.Wasi.EffectSig.callMoves"
+    "Verified.Wasi.EffectSig.callMoves",
+    "LeanExe.Linux.regions_read"
   ],
   "examples": [],
   "unimported": {

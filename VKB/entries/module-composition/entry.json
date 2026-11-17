@@ -29,6 +29,7 @@
     "Verified.FVar.appendRight",
     "Verified.FVar.callIndex",
     "Verified.Prog.functions_prefix_cons",
+    "Verified.Prog.consSig",
     "Verified.Prog.functions_prefix_append",
     "Verified.Prog.calls_prefix",
     "Verified.Prog.calls_extension",

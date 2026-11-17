@@ -15,21 +15,23 @@ namespace Verified.Examples.WasiReadAll
 
 open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline Verified.Wasi Verified.Shim Verified.ShimA64
 
-theorem linux_footprint_native (L : ShimLayout) (replies : Linux.Replies) {cap : Nat}
-    (hcap : cap ≤ 65535) :
+theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
+    (replies : Linux.Replies) {cap : Nat} (hcap : cap ≤ 65535) :
     ∃ bound, ∀ fuel ≥ bound,
-      Footprint L replies (main.bind fun status => Action.exit status) nativeWorld true
+      Footprint F L I replies (main.bind fun status => Action.exit status) nativeWorld true
         (run fuel command.module (Wrappers.effectIndex command.pure.module 2)
-          (nativeStore command.module cap nativeWorld) [] (linuxEnv L replies)) := by
+          (nativeStore command.module cap nativeWorld) [] (linuxEnv F L I replies [])) := by
   have initialized := command.initial nativeWorld
   have hat := initialized.1
-  obtain ⟨bound, results⟩ := command.start (host := linuxHost L replies) (aborts := true)
+  obtain ⟨bound, results⟩ := command.start (host := linuxHost F L I replies) (aborts := true)
     (initial := nativeStore command.module cap nativeWorld) (budget := 0)
-    (linuxEnv_satisfies L replies _ (by rw [compile_imports, ABI.imports_length]))
+    (linuxEnv_satisfies F L I replies [] (fun _ member => nomatch member) _
+      (by simp [compile_imports, ABI.imports_length]))
     ⟨hat.globals, hat.freeList, hat.base, hat.top, hat.pages, hat.above, hat.below⟩ rfl
     Separate.nil ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩
     (fun _ membership => nomatch membership) hcap (fun impossible => nomatch impossible)
-  exact ⟨bound, fun fuel enough => footprint_of_result L replies (results fuel enough)⟩
+  exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
+
 
 end Verified.Examples.WasiReadAll
 

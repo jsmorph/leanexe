@@ -44,7 +44,13 @@
     "env.get to fails to parse in a module that imports Mathlib",
     "Invalid pattern: Not enough arguments, from a pattern variable named like a constructor",
     "simpa type mismatch between two match terms that print alike",
-    "rw: Did not find an occurrence of the pattern Command.denote … (Env.cons …) in an environment that ResultTy.bindEnv builds"
+    "rw: Did not find an occurrence of the pattern Command.denote … (Env.cons …) in an environment that ResultTy.bindEnv builds",
+    "revert h1 h2 followed by intro h1 h2 that gives each name the other's type",
+    "don't know how to synthesize implicit argument, from obtain ⟨a, h⟩ := lemma x",
+    "Did not find an occurrence of the pattern dite ..., after unfold of a do block and bind_ok, under have __do_jp := fun ...",
+    "CodeAt code (after a (33 + 5 * w + 8)) is where CodeAt code (after a (41 + 5 * w)) is is expected, or a whnf timeout there",
+    "Dependent elimination failed: Failed to solve equation, from cases on returned (f x) b = returned 0 c",
+    "split on a goal whose outer match holds the if that the proof must decide"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -68,7 +74,9 @@
     "Verified.Wasi.SysRecord",
     "Verified.Wasi.SysFlatCall",
     "Verified.Wasi.HandleCheck",
-    "Verified.Wasi.ReflectBracket"
+    "Verified.Wasi.ReflectBracket",
+    "LeanExe.A64.Proof.StampProgram",
+    "Verified.Shim"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -123,7 +131,14 @@
     "Verified.Wasi.ResultTy.extend",
     "Verified.Env.cons",
     "Verified.Wasi.Command.handleCheck",
-    "Verified.Wasi.Command.call"
+    "Verified.Wasi.Command.call",
+    "Nat.add",
+    "LeanExe.A64.after",
+    "LeanExe.A64.after_congr",
+    "LeanExe.A64.after_after",
+    "LeanExe.A64.bind_ok",
+    "LeanExe.A64.CodeAt",
+    "LeanExe.Wasi.Transfer.returned"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -146,7 +161,14 @@
     "Verified.Wasi.littleEndian_read16",
     "Verified.Wasi.wp_sys_record_accept_with",
     "Verified.Wasi.wp_sys_flat_result_inputs_with",
-    "Verified.Wasi.Reflect.withOpen_rel"
+    "Verified.Wasi.Reflect.withOpen_rel",
+    "LeanExe.A64.stampProgram_run",
+    "LeanExe.A64.stamp_stub",
+    "LeanExe.A64.gen_stampMain",
+    "Verified.Shim.writeReply_success",
+    "Verified.Shim.read_contract",
+    "Verified.Shim.write_contract",
+    "Verified.Shim.exit_contract"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

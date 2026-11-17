@@ -47,40 +47,40 @@ theorem TailFunc.fits_native {α β : Type} (func : TailFunc S)
 
 namespace Reflect
 
-theorem bounds_get_hereTail (f : TailFunc S) (rest : Prog S)
-    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = false)
+theorem bounds_get_hereTail (f : TailFunc S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = false)
     (env : Env f.params) :
-    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get .here env =
+    (Prog.boundsAt (.consTail f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.bound fs rest.flags (rest.boundsAt fs 0) env := by
-  rw [Prog.boundsAt_consTail_here, hd]
+  rw [Prog.boundsAt_consTail_here, (TailFunc.flags_of_sig_eq hs).2.trans hd]
   rfl
 
-theorem bounds_get_hereTailDepth (f : TailFunc S) (rest : Prog S)
-    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = true)
+theorem bounds_get_hereTailDepth (f : TailFunc S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = true)
     (env : Env f.params) :
-    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get .here env =
+    (Prog.boundsAt (.consTail f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.boundAt fs rest.flags (rest.boundsAt fs) k env := by
-  rw [Prog.boundsAt_consTail_here, hd]
+  rw [Prog.boundsAt_consTail_here, (TailFunc.flags_of_sig_eq hs).2.trans hd]
   rfl
 
-theorem bounds_get_thereTail {g : Sig} (f : TailFunc S) (rest : Prog S)
+theorem bounds_get_thereTail {g : Sig} (f : TailFunc S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
     (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
     (env : Env g.params) :
-    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get (.there v) env =
+    (Prog.boundsAt (.consTail f aborts depth hs rest) (.cons F fs) k).get (.there v) env =
       (rest.boundsAt fs k).get v env := rfl
 
-theorem fits_get_hereTailDepth (f : TailFunc S) (rest : Prog S)
-    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = true)
+theorem fits_get_hereTailDepth (f : TailFunc S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = true)
     (env : Env f.params) :
-    (Prog.fitsAt (.consTail f rest) (.cons F fs) k).get .here env =
+    (Prog.fitsAt (.consTail f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.fitsAt fs (rest.fitsAt fs) k env := by
-  rw [Prog.fitsAt_consTail_here, hd]
+  rw [Prog.fitsAt_consTail_here, (TailFunc.flags_of_sig_eq hs).2.trans hd]
   rfl
 
-theorem fits_get_thereTail {g : Sig} (f : TailFunc S) (rest : Prog S)
+theorem fits_get_thereTail {g : Sig} (f : TailFunc S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
     (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
     (env : Env g.params) :
-    (Prog.fitsAt (.consTail f rest) (.cons F fs) k).get (.there v) env =
+    (Prog.fitsAt (.consTail f aborts depth hs rest) (.cons F fs) k).get (.there v) env =
       (rest.fitsAt fs k).get v env := rfl
 
 end Reflect

@@ -29,14 +29,14 @@ def floatFunc : Func (wordFunc.sig :: [CompositionBase.compiled.scale.func.sig,
     (.float 4598175219545276416)
   placeArgs := rfl
 
-def program := Prog.cons floatFunc (Prog.cons wordFunc CompositionBase.compiled.program)
+def program := Prog.consSig floatFunc (Prog.consSig wordFunc CompositionBase.compiled.program)
 
 def module := compile program
 
 theorem base_prefix : CompositionBase.compiled.program.functions Bytes.LiteralPool.empty <+:
     program.functions Bytes.LiteralPool.empty :=
   (CompositionBase.compiled.program.functions_prefix_cons wordFunc _).trans
-    ((Prog.cons wordFunc CompositionBase.compiled.program).functions_prefix_cons floatFunc _)
+    ((Prog.consSig wordFunc CompositionBase.compiled.program).functions_prefix_cons floatFunc _)
 
 theorem base_calls : Calls module CompositionBase.compiled.funs
     CompositionBase.compiled.program.flags

@@ -75,15 +75,15 @@ def foldBuild (mode : Mode) : Func S :=
     placeArgs := rfl }
 
 def prog :=
-  Prog.cons (foldBuild .owned) <| .cons (foldBuild .borrowed) <|
-  .cons (foldLookup .owned) <| .cons (foldLookup .borrowed) <|
-  .cons (foldWord .owned) <| .cons (foldWord .borrowed) <|
-  .cons (change .owned) <| .cons (change .borrowed) <|
-  .cons (duplicate .owned) <| .cons (duplicate .borrowed) <|
-  .cons (rebuild .owned) <| .cons (rebuild .borrowed) <|
-  .cons (rest .owned) <| .cons (rest .borrowed) <|
-  .cons (first .owned) <| .cons (first .borrowed) <|
-  .cons (cons .owned) <| .cons (cons .borrowed) .nil
+  Prog.consSig (foldBuild .owned) <| .consSig (foldBuild .borrowed) <|
+  .consSig (foldLookup .owned) <| .consSig (foldLookup .borrowed) <|
+  .consSig (foldWord .owned) <| .consSig (foldWord .borrowed) <|
+  .consSig (change .owned) <| .consSig (change .borrowed) <|
+  .consSig (duplicate .owned) <| .consSig (duplicate .borrowed) <|
+  .consSig (rebuild .owned) <| .consSig (rebuild .borrowed) <|
+  .consSig (rest .owned) <| .consSig (rest .borrowed) <|
+  .consSig (first .owned) <| .consSig (first .borrowed) <|
+  .consSig (cons .owned) <| .consSig (cons .borrowed) .nil
 
 def module : Wasm.Module := compile prog
 

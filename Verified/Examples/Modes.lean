@@ -66,7 +66,7 @@ def sizeOwned (S : List Sig) : Func S where
   placeArgs := rfl
   modes := [.owned]
 
-def byHand := Prog.cons (sizeOwned _) (Prog.cons (dropArg []) .nil)
+def byHand := Prog.consSig (sizeOwned _) (Prog.consSig (dropArg []) .nil)
 
 def byHandModule : Wasm.Module := compile byHand
 

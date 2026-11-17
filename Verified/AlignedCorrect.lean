@@ -155,7 +155,8 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
   have h0 : framesAt (999 + 1) = 0 := rfl
   induction hMeaning with
   | nil => intro g fv; cases fv
-  | @cons S' f rest funs' _ ih =>
+  | @cons S' f aborts depth hSig rest funs' _ ih =>
+    obtain ⟨rfl, hd⟩ := Func.flags_of_sig_eq hSig
     have hBody : f.body.Covered pool := fun _ hb =>
       hCovered (List.mem_append_right _ hb)
     have hRest : CallsX strict m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
@@ -176,9 +177,11 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
     cases fv with
     | here =>
       rw [FVar.callIndex_here]
-      refine ⟨⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos,
-        bodyFunction_numParams (pool := pool) f.modes f.body f.depth _⟩, fun hs => ?_⟩
-      · have hdep' : f.depth = false := hdep
+      refine ⟨⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, by
+        show _ = (if depth = true then 1 else 0) + widthSum f.params
+        rw [← hd]
+        exact bodyFunction_numParams (pool := pool) f.modes f.body f.depth _⟩, fun hs => ?_⟩
+      · have hdep' : f.depth = false := hd.trans hdep
         rw [hdep'] at hpos
         have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
           fun f => (CallsX.at (@hRest) 999 f).1
@@ -186,7 +189,7 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
         simp only [hdep', Bool.false_eq_true, ↓reduceIte]
         exact bodyFunction_implements f.modes f.body f.placeArgs funs' rest.flags
           (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm hpos hBody hC hdep' f.aborts id
-      · have hdep' : f.depth = true := hdep
+      · have hdep' : f.depth = true := hd.trans hdep
         rw [hdep'] at hpos
         subst hd'
         refine bodyFunction_depth f.modes f.body f.placeArgs funs' rest.flags
@@ -203,18 +206,24 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
           simp only [hdep', ↓reduceIte]
           rfl
       · subst hs
-        cases hdep : f.depth
-        · have hCX : CallsAtX true m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
+        cases depth
+        · have hdep : f.depth = false := hd
+          have hCX : CallsAtX true m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
               999 pool := CallsX.at (@hRest) 999
           rw [Prog.boundsAt_cons_here]
           simp only [hdep, Bool.false_eq_true, ↓reduceIte]
-          exact bodyFunction_aligned f.modes f.body f.placeArgs funs' rest.flags
+          have hA := bodyFunction_aligned f.modes f.body f.placeArgs funs' rest.flags
             (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm (hRA rfl) (hRt rfl) hCopy
-            f.depth hdep hpos hBody hCX hdep f.aborts id _ _
-        · refine bodyFunction_depthAligned f.modes f.body f.placeArgs funs' rest.flags
+            f.depth hdep hpos hBody hCX hdep f.aborts id
+          rw [hdep] at hA
+          exact hA _ _
+        · have hdep : f.depth = true := hd
+          have hA := bodyFunction_depthAligned f.modes f.body f.placeArgs funs' rest.flags
             (rest.boundsAt funs' (framesAt (d + 1))) (rest.fitsAt funs' (framesAt (d + 1))) _ _ hrf
             m _ hm (hRA rfl) (hRt rfl) hCopy f.depth hdep hpos hBody d
-            (fun _ => CallsX.at (@hRest) d) f.aborts _ _ (fun args => ?_) (fun hlt args => ?_)
+            (fun _ => CallsX.at (@hRest) d) f.aborts
+          rw [hdep] at hA
+          refine hA _ _ (fun args => ?_) (fun hlt args => ?_)
           · by_cases hlt : d < depthLimit
             · rw [framesAt_succ hlt, Prog.fitsAt_cons_here]
               simp only [hdep, ↓reduceIte, hlt, decide_true, Bool.true_and]
@@ -228,7 +237,8 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
     | there g' =>
       rw [FVar.callIndex_there]
       exact hRest g' d
-  | @consTail S' f rest funs' M _ hDecreases hM ih =>
+  | @consTail S' f aborts depth hSig rest funs' M _ hDecreases hM ih =>
+    obtain ⟨rfl, hd⟩ := TailFunc.flags_of_sig_eq hSig
     have hBody : f.body.Covered pool := fun _ hb =>
       hCovered (List.mem_append_right _ hb)
     have hRest : CallsX strict m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
@@ -244,16 +254,18 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
     cases fv with
     | here =>
       rw [FVar.callIndex_here]
-      refine ⟨⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos,
-        f.function_numParams (pool := pool) _⟩, fun hs => ?_⟩
-      · have hdep' : f.depth = false := hdep
+      refine ⟨⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, by
+        show _ = (if depth = true then 1 else 0) + widthSum f.params
+        rw [← hd]
+        exact f.function_numParams (pool := pool) _⟩, fun hs => ?_⟩
+      · have hdep' : f.depth = false := hd.trans hdep
         have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
           fun f => (CallsX.at (@hRest) 999 f).1
         rw [Prog.boundsAt_consTail_here]
         simp only [hdep', Bool.false_eq_true, ↓reduceIte]
         exact f.function_implements funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
           hDecreases M hM m _ hm hpos hBody hC hdep'
-      · have hdep' : f.depth = true := hdep
+      · have hdep' : f.depth = true := hd.trans hdep
         subst hd'
         refine f.function_depth funs' rest.flags (rest.boundsAt funs' (framesAt (d' + 1)))
           (rest.fitsAt funs' (framesAt (d' + 1))) hDecreases M hM m _ hm hpos hBody hdep' d'
@@ -269,17 +281,24 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
           simp only [hdep', ↓reduceIte]
           rfl
       · subst hs
-        cases hdep : f.depth
-        · have hCX : CallsAtX true m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
+        cases depth
+        · have hdep : f.depth = false := hd
+          have hCX : CallsAtX true m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
               999 pool := CallsX.at (@hRest) 999
           rw [Prog.boundsAt_consTail_here]
           simp only [hdep, Bool.false_eq_true, ↓reduceIte]
-          exact f.function_aligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags (rest.boundsAt funs' 0)
-            (rest.fitsAt funs' 0) hDecreases M hM _ hm hpos hBody hCX hdep _ _
-        · refine f.function_depthAligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags
+          have hA := f.function_aligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags
+            (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) hDecreases M hM _ hm hpos hBody hCX hdep
+          unfold TailFunc.sig at hA
+          rw [hdep] at hA
+          exact hA _ _
+        · have hdep : f.depth = true := hd
+          have hA := f.function_depthAligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags
             (rest.boundsAt funs' (framesAt (d + 1))) (rest.fitsAt funs' (framesAt (d + 1)))
-            hDecreases M hM _ hm hpos hBody hdep d (fun _ => CallsX.at (@hRest) d) _ _
-            (fun args => ?_) (fun hlt args => ?_)
+            hDecreases M hM _ hm hpos hBody hdep d (fun _ => CallsX.at (@hRest) d)
+          unfold TailFunc.sig at hA
+          rw [hdep] at hA
+          refine hA _ _ (fun args => ?_) (fun hlt args => ?_)
           · by_cases hlt : d < depthLimit
             · rw [framesAt_succ hlt, Prog.fitsAt_consTail_here]
               simp only [hdep, ↓reduceIte, hlt, decide_true, Bool.true_and]

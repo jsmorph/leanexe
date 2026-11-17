@@ -275,7 +275,7 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
       memBytes_readBytes]
   have hev : (⟨Linux.readCall, [u4.x 0, u4.x 1, u4.x 2], [], readList u4.mem (u4.x 1)
       (u4.x 2).toNat, rk.ret, (List.range (u4.x 2).toNat).map rk.bytes⟩ : Linux.Event) =
-      readEvent (layoutAt area) st.mem ptr len rk := by
+      readEvent (layoutAt area) st.mem 0 ptr len rk := by
     rw [hout, hrl, u4x0, u4x1, u4x2]
     rfl
   change q5.trace = q.trace ++ [A64.Event.sys ⟨Linux.readCall, [u4.x 0, u4.x 1, u4.x 2], [],
@@ -285,7 +285,7 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
   change q5.core.mem = writeList u4.mem (u4.x 1) ((List.range (u4.x 2).toNat).map rk.bytes)
     at m5
   rw [hout, u4x1, guest_addr, u4mem, ← h17] at m5
-  rw [step_read (layoutAt area) st.mem ptr len rk hb.1]
+  rw [step_read (layoutAt area) st.mem 0 ptr len rk hb.1]
   dsimp only [readEvent]
   -- the result
   have hq5pc : q5.core.pc = after rd 28 := by rw [p5, after_after]
@@ -335,15 +335,15 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
     hst.ofWriteList P ((List.range len.toNat).map rk.bytes)
       (by simpa only [List.length_map, List.length_range] using hb.1)
       (by rw [q5x17, h17]) q5x18 m5
-  have hwithin : ∀ e ∈ st.host.world.events ++ [readEvent (layoutAt area) st.mem ptr len rk],
-      WritesWithin (layoutAt area) size e := by
+  have hwithin : ∀ e ∈ st.host.world.events ++ [readEvent (layoutAt area) st.mem 0 ptr len rk],
+      WritesLinear (layoutAt area) size e := by
     intro e he
     rcases List.mem_append.mp he with he | he
     · exact htr.2 e he
     · obtain rfl := List.mem_singleton.mp he
-      exact readEvent_writesWithin (layoutAt area) st.mem ptr len rk (by omega)
+      exact readEvent_writesLinear (layoutAt area) st.mem 0 ptr len rk (by omega)
   have htrace : ({ q5 with core := u6 } : Proc).trace =
-      (st.host.world.events ++ [readEvent (layoutAt area) st.mem ptr len rk]).map
+      (st.host.world.events ++ [readEvent (layoutAt area) st.mem 0 ptr len rk]).map
         A64.Event.sys := by
     show q5.trace = _
     rw [tr5, htr.1, List.map_append]
@@ -654,12 +654,12 @@ theorem writeStub_sim (S : Shared) (n : Nat) {wr svc en : UInt64} {is : List Ins
     hst.regs (by rw [q5x17, h17]) q5x18 m5
   have hwithin : ∀ e ∈ st.host.world.events ++
       [writeEvent (layoutAt area) st.mem out.fd ptr len rk],
-      WritesWithin (layoutAt area) size e := by
+      WritesLinear (layoutAt area) size e := by
     intro e he
     rcases List.mem_append.mp he with he | he
     · exact htr.2 e he
     · obtain rfl := List.mem_singleton.mp he
-      exact writeEvent_writesWithin (layoutAt area) st.mem out.fd ptr len rk size
+      exact writeEvent_writesLinear (layoutAt area) st.mem out.fd ptr len rk size
   have htrace : ({ q5 with core := u6 } : Proc).trace =
       (st.host.world.events ++ [writeEvent (layoutAt area) st.mem out.fd ptr len rk]).map
         A64.Event.sys := by

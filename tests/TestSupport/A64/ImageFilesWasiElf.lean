@@ -13,7 +13,8 @@ reads from the file, the premise of `ElfLoaded`, and `readall_elf_layout` that t
 the generator's layout.  `readall_elf_entry` states that the file's entry is `elfEntry`, and
 `readall_elf_room` that the stack's room holds the module's stack bound.
 
-`readall_elf` holds for every reply sequence.  From a process whose memory holds the file as
+`readall_elf` holds for every open flags `F`, launch `I`, and reply sequence, since the command
+calls only the stream functions, which depend on neither `F` nor `I`.  From a process whose memory holds the file as
 Linux's loader places it, with the program counter at the entry and no event in the trace, the
 process reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace
 holds the layer events `ls`, the images of the WASI events `T` of a run of the command's action
@@ -56,41 +57,43 @@ theorem readall_elf_entry : elfEntryOf (byteAt readAllElfBytes) = elfEntry.toNat
 theorem readall_elf_room : wasiStackBound command.module readAllStart ≤ wasiRoom.toNat := by
   decide +kernel
 
-theorem readall_elf (R : Linux.Replies) (p : Proc)
+theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
     (hl : ElfLoaded (byteAt readAllElfBytes) p.core.mem) (hpc : p.core.pc = elfEntry)
     (htr : p.trace = []) :
     ∃ q, ProcReachWith Linux.table R (elfPlatform readAllLayout)
         (fetchFrom p.core.mem elfEntry (elfWords readAllLayout)) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords readAllLayout) q.core.pc = some svcWord ∧
       q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧ Images T ls ∧ Carried R 0 ls ∧
-        (∀ e ∈ ls, WritesWithin (layoutAt readAllLayout.area) (wasiCap * 65536) e) ∧
-        Linux.readData 0 ls = committedReads T ∧
-        Linux.writeData 1 ls = committedWrites .stdout T ∧
-        ((∃ c, Exec (linuxHost (layoutAt readAllLayout.area) R)
+      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧
+        Images F (layoutAt readAllLayout.area) I [] T ls ∧ Carried R 0 ls ∧
+        (∀ e ∈ ls, WritesLinear (layoutAt readAllLayout.area) (wasiCap * 65536) e) ∧
+        Linux.readData 0 ls = committedReads 0 T ∧
+        Linux.writeData 1 ls = committedWrites 1 T ∧
+        ((∃ c, Exec (linuxHost F (layoutAt readAllLayout.area) I R)
             (main.bind fun status => Action.exit (α := Unit) status) nativeWorld.world T
             (.exited c) w ∧ q.core.x 0 = c) ∨
-          (Exec (linuxHost (layoutAt readAllLayout.area) R)
+          (Exec (linuxHost F (layoutAt readAllLayout.area) I R)
             (main.bind fun status => Action.exit (α := Unit) status) nativeWorld.world T
             (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
-          (Exec (linuxHost (layoutAt readAllLayout.area) R)
+          (Exec (linuxHost F (layoutAt readAllLayout.area) I R)
             (main.bind fun status => Action.exit (α := Unit) status) nativeWorld.world T
             (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
-          ((∃ residual, Prefix (linuxHost (layoutAt readAllLayout.area) R)
+          ((∃ residual, Prefix (linuxHost F (layoutAt readAllLayout.area) I R)
             (main.bind fun status => Action.exit (α := Unit) status) nativeWorld.world T
             residual w) ∧ q.core.x 0 = 2)) := by
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hwq, hend⟩ :=
     wasiElf_footprint readall_elf_file (readall_elf_segments.trans readall_elf_layout.symm)
       (by decide) readall_elf_room
-      (fun R => linux_footprint_native (layoutAt readAllLayout.area) R (by decide)) R p hl hpc
-      htr
-  refine ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hwq, himg.readData,
-    himg.writeData .stdout, ?_⟩
+      (fun R => linux_footprint_native F (layoutAt readAllLayout.area) I R (by decide)) R p hl
+      hpc htr
+  refine ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hwq, himg.readData 0,
+    himg.writeData 1, ?_⟩
   rcases hend with h | h | h | ⟨-, h⟩
   · exact .inl h
   · exact .inr (.inl h)
   · exact .inr (.inr (.inl h))
   · exact .inr (.inr (.inr h))
+
 
 #print axioms readall_elf_file
 #print axioms readall_elf_segments
