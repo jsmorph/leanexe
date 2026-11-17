@@ -18,7 +18,10 @@
     "a theorem of a static Linux executable for AArch64 from its entry to exit_group",
     "LeanExe.A64.ElfLoaded (byteAt n) p.core.mem",
     "LeanExe.A64.elfSegments (byteAt n) = LeanExe.A64.elfSegmentsOf (LeanExe.A64.elfLayout m k inMax room cap)",
-    "LeanExe.A64.SysBytesRuns m k inMax room cap Out T"
+    "LeanExe.A64.SysBytesRuns m k inMax room cap Out T",
+    "LeanExe.A64.StampRunsAny m k inMax room cap pin pout Out Tr",
+    "an address that a routine computes from X17 after a call of a compiled function",
+    "an allocation of inMax + 33 bytes against the bound of alloc_spec_runs"
   ],
   "modules": [
     "LeanExe.A64.Proof.ProgramRuns",
@@ -49,7 +52,8 @@
     "LeanExe.A64.Proof.InputRuns",
     "TestSupport.A64.Uart",
     "LeanExe.A64.Proof.BytesRuns",
-    "LeanExe.A64.Proof.LinuxImage"
+    "LeanExe.A64.Proof.LinuxImage",
+    "LeanExe.A64.Proof.StampImage"
   ],
   "declarations": [
     "LeanExe.A64.ProgramRuns",
@@ -124,7 +128,25 @@
     "LeanExe.A64.elf_bytes_run_any",
     "LeanExe.A64.ElfLoaded",
     "LeanExe.A64.elfSegments",
-    "LeanExe.A64.elfSegmentsOf"
+    "LeanExe.A64.elfSegmentsOf",
+    "LeanExe.A64.genStampElf",
+    "LeanExe.A64.genStampMain",
+    "LeanExe.A64.ProcReachWith",
+    "LeanExe.Linux.table",
+    "LeanExe.A64.StampRunsAny",
+    "LeanExe.A64.StampEvents",
+    "LeanExe.A64.stamp_runs_any",
+    "LeanExe.A64.stamp_runs_bounded_any",
+    "LeanExe.A64.stamp_bytes_run_any",
+    "LeanExe.Pipeline.alloc_spec_runs",
+    "LeanExe.Pipeline.Heap.Room",
+    "LeanExe.Pipeline.Heap.At.allocate_block",
+    "LeanExe.Pipeline.allocated_capacity",
+    "LeanExe.Pipeline.allocSize",
+    "LeanExe.A64.le_allocSize_of_lt",
+    "LeanExe.A64.CallResult",
+    "LeanExe.A64.Returned",
+    "LeanExe.A64.StoreRel"
   ],
   "examples": [
     "TestSupport.A64.Gcd.runs",
@@ -181,6 +203,12 @@
     "tests/TestSupport/A64/FlipElf.lean": [
       "TestSupport.A64.FlipElf.flip_elf_runs",
       "TestSupport.A64.FlipElf.flip_elf_runs_any"
+    ],
+    "tests/TestSupport/A64/ImageFilesStampElf.lean": [
+      "TestSupport.A64.ImageFilesStampElf.stamp_elf_any"
+    ],
+    "tests/TestSupport/A64/StampElf.lean": [
+      "TestSupport.A64.StampElf.stamp_elf_runs_any"
     ]
   }
 }

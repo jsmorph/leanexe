@@ -5,7 +5,9 @@
     "a run after the reset of st-flash, with C_DEBUGEN set",
     "ORE in USART_ISR or OVRDIS in USART_CR3 read over SWD after a run",
     "the virtual COM port passes none of the board's output",
-    "a run under QEMU or in Renode offered as evidence of the board's behavior"
+    "a run under QEMU or in Renode offered as evidence of the board's behavior",
+    "a run of a Linux executable under qemu-aarch64 offered as evidence of Linux's behavior",
+    "a step that a test skips under an emulator, with a reason that names the emulator's version"
   ],
   "modules": [
     "LeanExe.M7.Proof.Board"

@@ -19,7 +19,9 @@
     "a changed type hash of a theorem whose text did not change, from a reused matcher",
     "a definition that gains an argument list and must equal the old one at the empty list",
     "sysCostWith form call values [] = sysCost form call values, an equation of functions",
-    "(inputs.any f || args.any g) at inputs := [] against a hypothesis about args.any g"
+    "(inputs.any f || args.any g) at inputs := [] against a hypothesis about args.any g",
+    "a second rule for an instruction that an existing step relation already runs, such as SVC #0 through the Linux call layer",
+    "a constructor added to an inductive type that existing statements name"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -39,7 +41,8 @@
     "Verified.Wasi.CompilerFacts",
     "Verified.Wasi.ReflectCommand",
     "Verified.Wasi.Wrappers",
-    "Verified.Wasi.SysCommand"
+    "Verified.Wasi.SysCommand",
+    "LeanExe.A64.Proof.StampImage"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -108,7 +111,20 @@
     "Verified.Wasi.sysInputsCodeWith_nil",
     "Verified.Wasi.sysFlatInputsCodeWith_nil",
     "Verified.Wasi.Command.uses",
-    "Verified.Wasi.wp_sys_result_with"
+    "Verified.Wasi.wp_sys_result_with",
+    "LeanExe.A64.pstepWith",
+    "LeanExe.A64.ProcReachWith",
+    "LeanExe.A64.ProcReach",
+    "LeanExe.A64.istep",
+    "LeanExe.A64.pstep_eq_istep",
+    "LeanExe.A64.pstepWith_istep",
+    "LeanExe.A64.IReach.toProcReach",
+    "LeanExe.A64.IReach.toWith",
+    "LeanExe.A64.Event.sys",
+    "LeanExe.A64.Event.inBytes",
+    "LeanExe.A64.Event.outBytes",
+    "LeanExe.A64.ProcReachWith.trace_sys",
+    "LeanExe.A64.Event"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",
@@ -117,6 +133,7 @@
     "Verified.Wasi.compile_entry_export",
     "Verified.Wasi.compile_entry_export_with",
     "Verified.Wasi.wp_sys_flat_result_with",
-    "Verified.Wasi.wp_sys_flat_result_inputs_with"
+    "Verified.Wasi.wp_sys_flat_result_inputs_with",
+    "LeanExe.A64.stamp_bytes_run_any"
   ]
 }

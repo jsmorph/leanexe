@@ -9,7 +9,10 @@
     "a WebAssembly engine's reply to an argument outside its type, read from the engine's source",
     "a rejection rule of an enum or flags parameter tested on both sides against the engine",
     "an engine's behavior on an array of records, probed with one element",
-    "an invalid enum or flags value in a record that a function reads from memory"
+    "an invalid enum or flags value in a record that a function reads from memory",
+    "a Linux call's behavior when its buffer runs into an unmapped page",
+    "the low 32 bits of X8 and of an int argument that Linux reads",
+    "the order of a system call's checks, such as access_ok before or after the clamp to MAX_RW_COUNT"
   ],
   "modules": [
     "LeanExe.M7.Board",
@@ -17,7 +20,8 @@
     "LeanExe.A64.Boot",
     "LeanExe.ProofKit.F32Canonical",
     "LeanExe.Wasi.Calls",
-    "LeanExe.Wasi.CallTable"
+    "LeanExe.Wasi.CallTable",
+    "LeanExe.A64.Proof.LinuxCalls"
   ],
   "declarations": [
     "LeanExe.M7.Nucleo.init",
@@ -32,7 +36,9 @@
     "LeanExe.Wasi.Param.reject",
     "LeanExe.Wasi.Param.subscriptions",
     "LeanExe.Wasi.Param.iovec",
-    "LeanExe.Wasi.rejectFields"
+    "LeanExe.Wasi.rejectFields",
+    "LeanExe.Linux.step",
+    "LeanExe.A64.pstepWith"
   ],
   "examples": []
 }

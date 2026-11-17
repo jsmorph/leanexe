@@ -70,6 +70,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Calls with operands below the arguments](entries/direct-call-stack-tail/README.md) | Extends a callee's theorem on its arguments to a call with more operands on the stack. |
 | [Raw Wasm locals](entries/local-frame-projection/README.md) | Proves equalities of `Wasm.Locals`, reads parameters and locals in proofs of hand-written code, and names the states of long proofs over generated code. |
 | [WASI host premises](entries/wasi-host-premise/README.md) | Identifies the satisfying-host premise of an execution theorem, with or without flat calls, and what a new host contract must prove. |
+| [WASI hosts built on a lower layer](entries/wasi-host-from-layer/README.md) | Defines a WASI host from the events of a lower layer such as the Linux call layer, implements its environment with the layer's rule, and lifts the command theorem's runs to statements about the layer's events. |
 | [WASI effect charges](entries/wasi-effect-charges/README.md) | Bounds allocation over complete command runs and their prefixes. |
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
 | [Line-oriented processes](entries/stream-fold/README.md) | Instantiates the shared line reader and output proof with an application kernel. |
@@ -78,9 +79,10 @@ An entry names existing declarations instead of restating them.  When several pr
 | [GPU kernels](entries/verified-wgsl-kernel/README.md) | Proves WGSL dispatch and PTX launch theorems of verified builds and composes them into a host program. |
 | [Native theorem conclusions](entries/native-conclusion-patterns/README.md) | Extracts result, heap, region, and postcondition facts from a native call theorem. |
 | [Bare-metal C programs](entries/bare-metal-programs/README.md) | States whole-program theorems for fixed arguments, loaded inputs, request loops, and controllers. |
-| [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations and extends a proved result to every matching execution. |
+| [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations, extends a proved result to every matching execution, and states which semantics of external calls CompCert's theorem admits. |
 | [Proofs of the Clight copy against N](entries/clight-n-proofs/README.md) | Proves the leaf forms of the reference semantics N for the Lean copy of Clight, and carries the copy's theorem of a program to an instance of N. |
-| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments, arguments read from the UART, or a message of bytes read from the UART, proves a Linux executable's run from its entry to `exit_group`, and joins the output with a specification. |
+| [AArch64 Image theorems](entries/a64-image-theorem/README.md) | Proves an A64 Image's run from boot from the compiler's theorems, for fixed arguments, arguments read from the UART, or a message of bytes read from the UART, proves a Linux executable's run from its entry to `exit_group`, with calls through `Kernel.svc` or through the Linux call layer, and joins the output with a specification. |
+| [Linux calls through the call layer](entries/linux-call-layer/README.md) | Describes what the Linux call layer's frame rule states and leaves to programs, the memory laws and the set of calls that the frame needs, the evaluation of a call in the A64 binding, and the buffers that replies write. |
 | [Image files](entries/image-file-checks/README.md) | Checks a written A64 or M7 image against its generator in the kernel, in parts when it is large. |
 | [Cortex-M7 board theorems](entries/m7-board-theorem/README.md) | Proves a step's run from reset through every window from its compiler theorem. |
 | [Output of request programs](entries/request-output-prefix/README.md) | States the bytes written to the UART as a prefix of a specification's output for the bytes read. |
@@ -90,7 +92,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Code around an executable reference](entries/reference-harness-audit/README.md) | Audits the harnesses, configurations, patches, and edits around Isla, Sail's translation, a second implementation such as RCTab, or another reference. |
 | [Encodings and co-simulation of machine forms](entries/machine-form-validation/README.md) | Validates a machine form's encoding against the assembler and its execution against processors and emulators. |
 | [Runs on boards and emulators](entries/run-evidence/README.md) | States what a board or emulator run shows and the conditions under which it supports a theorem. |
-| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each fact about the hardware or an engine and keeps a trusted item's claim apart from its evidence. |
+| [Hardware facts and trusted assumptions](entries/hardware-facts/README.md) | Cites a primary source for each fact about the hardware, an engine, or the Linux kernel and keeps a trusted item's claim apart from its evidence. |
 | [Kernel evaluation costs](entries/kernel-evaluation-costs/README.md) | Finds the comparison that makes the kernel evaluate a large literal or a projected term. |
 | [Definitions that the kernel evaluates](entries/kernel-evaluated-definitions/README.md) | Gives an evaluated definition a form that computes each value once, or evaluates it natively and has the kernel check the literal. |
 | [Generator orbits](entries/generator-orbits/README.md) | Proves periods, equidistribution, and jump-ahead of word generators. |

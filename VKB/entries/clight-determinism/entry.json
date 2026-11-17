@@ -4,7 +4,9 @@
     "exec_stmt A X ge e le m s t le₁ m₁ out₁ → exec_stmt A X ge e le m s t le₂ m₂ out₂ → le₁ = le₂ ∧ m₁ = m₂ ∧ out₁ = out₂",
     "eval_funcall A X ge m f vargs t m₁ v₁ → eval_funcall A X ge m f vargs t m₂ v₂ → m₁ = m₂ ∧ v₁ = v₂",
     "eval_expr A ge e le m a v₁ → eval_expr A ge e le m a v₂ → v₁ = v₂",
-    "bigstep_program_terminates A X p t r₁ → bigstep_program_terminates A X p t r₂ → r₁ = r₂"
+    "bigstep_program_terminates A X p t r₁ → bigstep_program_terminates A X p t r₂ → r₁ = r₂",
+    "an external call whose reply holds several values that the environment chooses, such as a read's bytes",
+    "a C binding of system calls whose theorem must reach the compiled program through CompCert"
   ],
   "modules": [
     "LeanExe.Native.Clight.Determinism",
@@ -21,7 +23,8 @@
     "LClight.eval_funcall_determ_prefix",
     "LClight.exec_stmt_determ",
     "LClight.eval_funcall_determ",
-    "LClight.bigstep_program_terminates_determ"
+    "LClight.bigstep_program_terminates_determ",
+    "LClight.ExtSem"
   ],
   "examples": [
     "LeanExe.Native.NativeA.unique",

@@ -15,7 +15,8 @@
     "Verified.Wasi.HostSpec",
     "Verified.Wasi.OracleHost",
     "Verified.Wasi.OracleSys",
-    "Verified.Wasi.HostTotalWith"
+    "Verified.Wasi.HostTotalWith",
+    "Verified.Shim"
   ],
   "declarations": [
     "Verified.Wasi.hostSpec",
@@ -43,7 +44,9 @@
     "List.perm_middle",
     "LeanExe.Wasi.Host.Answers.layoutRequest",
     "Verified.Wasi.layoutPointers",
-    "Verified.Wasi.layoutMemory"
+    "Verified.Wasi.layoutMemory",
+    "Verified.Shim.linuxEnv_satisfies",
+    "Verified.Shim.linuxHost"
   ],
   "examples": [
     "Verified.Wasi.OracleSys.decodeArgs_lower"
