@@ -465,4 +465,55 @@ theorem stringsStub_sim (S : Shared) (n : Nat) (v : StringVector) {a : UInt64} {
     · rw [add_ofNat_add]
       exact hst.mapped _ (by rw [hlen] at hi; unfold areaSize; omega)
 
+/-- The data segment's UART lies outside its Normal memory when it lies outside that of the
+module's platform and the scratch lies above address 0. -/
+theorem elfPlatform_uart (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false)
+    (hG0 : 0 < G.base.toNat) : (elfPlatform L).normal (elfPlatform L).uart = false := by
+  have hne : ¬ G.base ≤ (elfPlatform L).uart := by
+    rw [UInt64.le_iff_toNat_le]
+    show ¬ G.base.toNat ≤ (0 : UInt64).toNat
+    simp only [UInt64.reduceToNat]
+    omega
+  simpa [modulePlatform, hne] using hU
+
+/-- The flat call of `shimCalls` whose name is `name`. -/
+theorem shimCall_named {c : Call} (hc : c ∈ shimCalls) :
+    (c.name = "args_sizes_get" → c = Call.argsSizesGet) ∧
+      (c.name = "args_get" → c = Call.argsGet) ∧
+      (c.name = "environ_sizes_get" → c = Call.environSizesGet) ∧
+      (c.name = "environ_get" → c = Call.environGet) := by
+  revert c
+  decide
+
+/-- The code of a stub of `stringStubs` at `a`, generated with the trap stub and the scratch
+`areaSize S.cap` bytes above the area, stands for the shim's function of the call `c` of
+`shimCalls` whose import is the stub's, when the scratch lies at the area's end and in the data
+segment.  `flatStub_sim` takes its cases for these stubs from here. -/
+theorem stringStub_sim {s : FlatStub} (hs : s ∈ stringStubs) {c : Call} (hc : c ∈ shimCalls)
+    (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat) {a svc en : UInt64}
+    {is : List Instr} (hg : s.gen a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
+    (hcode : CodeAt code a is) (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
+    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem)
+    (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false) :
+    (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
+      s.decl.params s.decl.results
+      (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
+  have hG0 : 0 < G.base.toNat := by
+    rw [hGb, UInt64.toNat_add, UInt64.toNat_ofNat']
+    unfold areaSize at hdata ⊢
+    omega
+  have hUe := elfPlatform_uart hU hG0
+  have hn : c.name = s.decl.name := congrArg ImportDecl.name hd
+  obtain ⟨n1, n2, n3, n4⟩ := shimCall_named hc
+  simp only [stringStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
+  rcases hs with rfl | rfl | rfl | rfl
+  · obtain rfl := n1 hn
+    exact sizesStub_sim S n .args hg hcode hGb hdata hUe
+  · obtain rfl := n2 hn
+    exact stringsStub_sim S n .args hg hcode hGb hdata hUe
+  · obtain rfl := n3 hn
+    exact sizesStub_sim S n .environ hg hcode hGb hdata hUe
+  · obtain rfl := n4 hn
+    exact stringsStub_sim S n .environ hg hcode hGb hdata hUe
+
 end Verified.ShimA64
