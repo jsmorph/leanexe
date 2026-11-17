@@ -1,4 +1,4 @@
-import Verified.ShimA64.Stubs
+import Verified.ShimA64.Flat
 import LeanExe.A64.Proof.WasiProgram
 
 /-!
@@ -21,9 +21,9 @@ which sets status 2 and branches to the exit word.  From there the runtime makes
 traps: the process's trace holds the layer events of the final world, each of which writes within
 the native cap's linear memory or is a `clock_gettime` into the timespec, and X0 holds the status.
 `wasiElf_footprint` takes the trap from a footprint premise, which excludes a return of `_start`
-and every run that does not finish.  The generator implements no flat stub, so the module's
-imports are the stream imports, and the startup routine makes no check of descriptor 3, so the
-launch grants no preopened directory.
+and every run that does not finish.  The module's flat imports are those of calls of `shimCalls`
+whose stubs `flatStubs` lists, and `flatStub_sim` gives the simulation of each.  The startup
+routine makes no check of descriptor 3, so the launch grants no preopened directory.
 -/
 
 namespace Verified.ShimA64
@@ -129,14 +129,15 @@ with the store `final` and the message `msg`: the run of `ProcReachWith` over
 with X8 at 94, its trace holds the layer events of the final world, each of which writes within
 the `cap` pages of linear memory or is a `clock_gettime` into the timespec, and X0 holds the
 accepted exit's status, 1 for a rejected exit, or 2 for a trap of the shim or of the guest.  The
-premises are the kernel's check of the file, its program headers, the module's imports, a stack's
-room that is a multiple of 16 and holds `wasiStackBound`, the loader's placement of the file,
-Linux's initial stack of the arguments `args` and the environment `environ` at SP, the program
-counter at the entry, and an empty trace. -/
+premises are the kernel's check of the file, its program headers, the module's imports, whose flat
+calls `calls` lie in `shimCalls`, a stack's room that is a multiple of 16 and holds
+`wasiStackBound`, the loader's placement of the file, Linux's initial stack of the arguments
+`args` and the environment `environ` at SP, the program counter at the entry, and an empty
+trace. -/
 theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
-    (himp : m.imports = ABI.importsWith calls)
+    (himp : m.imports = ABI.importsWith calls) (hsup : ∀ c ∈ calls, c ∈ shimCalls)
     (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
     (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)} {top : UInt64}
     (hl : ElfLoaded (byteAt nb) p.core.mem)
@@ -169,21 +170,13 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   obtain ⟨stubs, gts, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem, hroom32, hok, hgt, hgl,
     hen, hmg, hpg, hrdg, hwrg, hexg, htrg, hstsg, hfg, his, hall18, hall⟩ :=
     gen_wasiProgram hprog
-  -- the generator implements no flat stub
-  have hstubs : stubs = [] := by
-    cases stubs with
-    | nil => rfl
-    | cons s _ => exact absurd (hmem s (List.mem_cons_self ..)) (by simp [flatStubs])
-  subst hstubs
-  have hcalls : calls = [] := by
-    have := congrArg List.length (himp.symm.trans himp')
-    simp only [ABI.importsWith_length, List.length_append, List.map_nil, List.length_nil,
-      streamImports, List.length_cons] at this
-    exact List.eq_nil_of_length_eq_zero (by omega)
-  subst hcalls
-  simp only [genStubs, pure, Except.pure, Except.ok.injEq] at hstsg
-  subst hstsg
-  simp only [stubEntries, stubsEnd, List.append_nil] at hen hmg hfg his hall18
+  -- the flat imports: one stub of `flatStubs` for each call of `calls`
+  have hcallsEq : calls.map ABI.callImport = stubs.map (·.decl) := by
+    have h := himp.symm.trans himp'
+    rw [ABI.importsWith_eq] at h
+    exact List.append_cancel_left h
+  have hlenCS : calls.length = stubs.length := by
+    simpa using congrArg List.length hcallsEq
   -- the layout
   have hroomS : (room + UInt64.ofNat scratchSize).toNat = room.toNat + 5184 := by
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', scratchSize, Nat.reducePow]
@@ -246,14 +239,15 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   have lm := wasiMain_length hmg
   rw [his] at hprogC hall
   have cm := CodeAt.split _ hprogC (n := 20) (by simp [lm])
-  have hall17 : (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ wasiStartup ++ fns).all
+  have hall17 : (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns).all
       Instr.keepsX17 = true := by
     rw [List.all_append, Bool.and_eq_true] at hall
     exact hall.2
-  have hplen : prog.length =
-      20 + (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ wasiStartup ++ fns).length := by
+  have hplen : prog.length = 20 +
+      (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns).length := by
     rw [his, List.length_append, lm]
-  generalize hb : pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ wasiStartup ++ fns = body
+  generalize hb :
+    pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns = body
     at cm hall17 hall18 hplen
   have hA : (after (after elfExitWord 1) 20).toNat + 4 * body.length < 2 ^ 55 := by
     have : (after (after elfExitWord 1) 20).toNat = elfBase.toNat + 176 + 72 + 80 := by decide
@@ -284,18 +278,26 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   obtain ⟨fx1, gx3, hfx1, hgx3, rfl⟩ := exitStub_ok hexg
   obtain ⟨gt, hgt1, rfl⟩ := trapStub_ok htrg
   rw [← hb] at cAll
-  have c7 := CodeAt.split W cAll (n := 205)
-    (by simp [lr, lw, errnoRoutine, errnoTable, wasiStartup])
-  have c6 := CodeAt.split W c7.1 (n := 204) (by simp [lr, lw, errnoRoutine, errnoTable])
-  have c5 := CodeAt.split W c6.1 (n := 98) (by simp [lr, lw])
+  have c7 := CodeAt.split W cAll (n := 205 + sts.length)
+    (by simp [lr, lw, errnoRoutine, errnoTable, wasiStartup] <;> omega)
+  have c6 := CodeAt.split W c7.1 (n := 204 + sts.length)
+    (by simp [lr, lw, errnoRoutine, errnoTable] <;> omega)
+  have c6s := CodeAt.split W c6.1 (n := 204) (by simp [lr, lw, errnoRoutine, errnoTable])
+  have c5 := CodeAt.split W c6s.1 (n := 98) (by simp [lr, lw])
   have c4 := CodeAt.split W c5.1 (n := 96) (by simp [lr, lw])
   have c3 := CodeAt.split W c4.1 (n := 92) (by simp [lr, lw])
   have c2 := CodeAt.split W c3.1 (n := 48) (by simp [lr])
   have c1' := CodeAt.split W c2.1 (n := 2) rfl
-  simp only [after_after] at c7 c6 c5 c4 c3 c2 c1'
-  have cfns : CodeAt W (after (wasiFlatAt A) wasiStartup.length) fns := by
-    rw [show after (wasiFlatAt A) wasiStartup.length = after A (20 + 205) by
-      simp [wasiFlatAt, wasiStartup, after_after]]
+  simp only [after_after] at c7 c6 c6s c5 c4 c3 c2 c1'
+  have csts : CodeAt W (wasiFlatAt A) sts := by
+    rw [wasiFlatAt, show 224 = 20 + 204 from rfl]
+    exact c6s.2
+  have lsts := (genStubs_code (j := 3) hstsg csts).1
+  have hsend : stubsEnd (wasiFlatAt A) stubs = after A (20 + (204 + sts.length)) := by
+    rw [stubsEnd_eq, wasiFlatAt, after_after, lsts, ← Nat.add_assoc]
+  have cfns : CodeAt W (after (stubsEnd (wasiFlatAt A) stubs) wasiStartup.length) fns := by
+    rw [hsend, after_after, show 20 + (204 + sts.length) + wasiStartup.length =
+      20 + (205 + sts.length) by simp [wasiStartup] <;> omega]
     exact c7.2
   -- the run of the prefix
   have cpre0 := hWsub _ _ (CodeAt.cons.mp c1'.1).1
@@ -326,27 +328,54 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   have hRl : (fun j => R (([] : List Linux.Event).length + j)) = R :=
     funext fun j => by simp
   rw [← hRl] at hres
-  let M := shimMachine R L G I p.core.sp top [] [] W hdomW hkW hk18W hLL hGG elfExitWord
+  let M := shimMachine R L G I p.core.sp top [] calls W hdomW hkW hk18W hLL hGG elfExitWord
     (cap * 65536)
   let need := wasiStackNeed m (m.funcs.length + 1)
   have h64 : m.memIs64 = false := memIs64_of_areaOk hok
   have hUm : (modulePlatform L G).normal (modulePlatform L G).uart = false := by
     simp only [modulePlatform, Bool.and_eq_false_iff]
     exact .inl hU
-  have hcalls := wasi_calls_ok M (need := need) (flat := []) (by rw [himp']; rfl) h64
+  have hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap) := by rw [← hG]
+  have hdataW : areaSize S.cap + scratchSize ≤ L.dataMem := by
+    show areaSize cap + 5184 ≤ L.dataMem
+    rw [hdm]
+    omega
+  have hflat : ∀ c ∈ stubEntries (wasiFlatAt A) 3 stubs, ∃ imp hf,
+      m.imports[c.1]? = some imp ∧ M.env.funcs[c.1]? = some hf ∧
+      c.2.2 = (imp.params, imp.results) ∧
+      M.StubSim S (need c.1) imp.params imp.results hf c.2.1 := by
+    intro c hc
+    obtain ⟨i, hi, is', b, rfl, hgi, hci⟩ := (genStubs_code hstsg csts).2 c hc
+    have hic : i < calls.length := by omega
+    have himpi : m.imports[3 + i]? = some stubs[i].decl := by
+      rw [himp', List.getElem?_append_right (by simp [streamImports])]
+      simp [streamImports, hi]
+    have henvi : M.env.funcs[3 + i]? = some (sysFn arm64Flags (shimLayout L.area G) I
+        (fun j => R (([] : List Linux.Event).length + j)) calls[i]) := by
+      show (linuxEnv arm64Flags (shimLayout L.area G) I
+        (fun j => R (([] : List Linux.Event).length + j)) calls).funcs[3 + i]? = _
+      simp [linuxEnv, hic, Nat.add_comm]
+    have hdi : ABI.callImport calls[i] = stubs[i].decl := by
+      have := congrArg (fun l => l[i]?) hcallsEq
+      simpa [hic, hi] using this
+    refine ⟨stubs[i].decl, _, himpi, henvi, rfl, ?_⟩
+    exact flatStub_sim (hmem _ (List.getElem_mem hi)) (hsup _ (List.getElem_mem hic)) hdi S
+      (need (3 + i)) hgi hci hsvcW c5.2 hGb hdataW hUm (Nat.le_refl _)
+  have hcalls := wasi_calls_ok M (need := need) (flat := stubEntries (wasiFlatAt A) 3 stubs)
+    (by rw [himp']; rfl) h64
     (fun _ => hUm) rfl
     (readStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := []) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
+      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
       (base := elfExitWord) (size := cap * 65536) S (need 0) hrdg c1'.2 hsvcW c5.2 hUm
       (Nat.le_refl _))
     (writeStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := []) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
+      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
       (base := elfExitWord) (size := cap * 65536) S (need 1) hwrg c2.2 hsvcW c5.2 hUm)
     (exitStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := []) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
+      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
       (base := elfExitWord) (size := cap * 65536) S (need 2)
       (is := [.subsImm 31 0 126, .bcond 3 fx1, .movz 0 1 0, .b gx3]) hexg c3.2)
-    (fun _ h => nomatch h) hfg cfns
+    hflat hfg cfns
     (fun k f hle hf => wasiStackNeed_ok (definedFunc_of hle hf) _)
   -- the end of a run: the exit word, or the trap stub and then the exit word
   have hp0w : ProcReachWith Linux.table R (wasiPlatform L p.core.sp top)
@@ -418,7 +447,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   have cst := hWsub _ _ (CodeAt.cons.mp c6.2).1
   obtain ⟨t1, rt1, pt1, kt1, spt1, memt1, iot1⟩ :=
     step_ret (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) (s := t0) (n := 30)
-    (by rw [pt0]; exact cst)
+    (by rw [pt0, hsend]; exact cst)
   rw [x30t0] at pt1
   obtain ⟨t, rt, pt, x30t, kt, spt, memt, iot⟩ :=
     run_wasiStart (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) hmg cm.1 pt1
@@ -562,8 +591,8 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
 
 /-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
 Talos's runs of `_start` from `nativeStore` under the shim's environment with the module's flat
-calls `calls` have the footprint of the action `action` with enough fuel, for arm64's open flags
-and every launch.  Linux starts the process with the arguments `args` and the environment
+calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
+fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments `args` and the environment
 `environ` on its initial stack, and the launch `⟨args, environ, false⟩` grants no preopened
 directory.  The process's trace holds the layer events `ls`, the images of the WASI events `T` of
 a run of `action` under `linuxHost` from a world with no events: each event holds its reply of
@@ -575,7 +604,7 @@ at 2. -/
 theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
-    (himp : m.imports = ABI.importsWith calls)
+    (himp : m.imports = ABI.importsWith calls) (hsup : ∀ c ∈ calls, c ∈ shimCalls)
     (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
     {action : Action Unit} {aborts : Bool}
     (hfoot : ∀ I R, ∃ bound, ∀ fuel ≥ bound,
@@ -611,7 +640,7 @@ theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb
     rw [hr] at hf
     obtain ⟨T, ls, hev, himg, hcar, -, -, hcls⟩ := hf
     have hev' : final.host.world.events = ls := hev
-    obtain ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩ := wasiElf_run hk hseg himp hroom16 hroom R p
+    obtain ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩ := wasiElf_run hk hseg himp hsup hroom16 hroom R p
       hl hstack hpc htr hr
     rw [hev'] at trq hwq
     refine ⟨q, rq, cq, x8q, ioq, T, ls, final.host.world, trq, himg, hcar, hwq, ?_⟩
