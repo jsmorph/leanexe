@@ -401,7 +401,7 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
       · rename_i hall
         obtain rfl := Except.ok.inj hg
         exact ⟨stubs, gts, startup, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem,
-          Nat.lt_of_not_le hroom, rfl, rfl, hgl, rfl, hen, hmn, rfl, rfl, rfl, rfl, rfl, hsts, hfn,
+          Nat.lt_of_not_le hroom, rfl, rfl, hgl, hsu, hen, hmn, rfl, rfl, rfl, rfl, rfl, hsts, hfn,
           rfl, hall18, hall⟩
       · simp [throw, throwThe, MonadExceptOf.throw] at hg
     · simp [throw, throwThe, MonadExceptOf.throw] at hg

@@ -211,7 +211,8 @@ theorem run_rangeCheck {a tr : UInt64} {g : Fin 524288}
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 13) (n := 13)
     (imm := 8) (by decide) (by decide) (by rw [p1, hpc, ← after_one]; exact c1)
   obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := run_hiReg P code c23
-    (by rw [after_after]; exact hg) (s := u2) (by rw [p2, p1, hpc, ← after_one, ← after_succ])
+    (by rw [after_after]; exact hg) (s := u2)
+    (by rw [p2, p1, hpc, ← after_one, ← after_one, after_after])
   refine ⟨u3, r1.trans (r2.trans r3), ?_, fun q hq => by rw [k3, k2 q hq, k1 q hq],
     by rw [sp3, sp2, sp1], by rw [m3, m2, m1], by rw [io3, io2, io1]⟩
   rw [p3, x2, x1, k2 12 (by decide), k1 12 (by decide), after_after]
@@ -228,7 +229,7 @@ theorem run_preopenTest {a out : UInt64} {g1 g3 : Fin 524288}
       (t.pc = if s.x 0 = 3 ∧ s.mem (s.x 20 + 8) ≠ 0 then after a 4 else out) ∧
       (∀ q : Fin 32, q ≠ 9 → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
   have c01 : CodeAt code a [.subsImm 31 0 3, .bcond 1 g1] := by
-    simpa using CodeAt.drop_take code hcode 0 2 (by simp)
+    simpa [after_zero] using CodeAt.drop_take code hcode 0 2 (by simp)
   have c2 := hcode 2 (by simp)
   have c3 := hcode 3 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ] at c2 c3
@@ -274,7 +275,7 @@ theorem run_heldTest {a out : UInt64} {r : Fin 32} {g1 g4 : Fin 524288} (hr : r.
       (∀ q : Fin 32, q ≠ 9 → q ≠ 10 → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧
       t.io = s.io := by
   have c01 : CodeAt code a [.subsImm 31 r 1023, .bcond 8 g1] := by
-    simpa using CodeAt.drop_take code hcode 0 2 (by simp)
+    simpa [after_zero] using CodeAt.drop_take code hcode 0 2 (by simp)
   have c2 := hcode 2 (by simp)
   have c3 := hcode 3 (by simp)
   have c4 := hcode 4 (by simp)
@@ -404,12 +405,12 @@ theorem run_prestatStub {a tr : UInt64} {sc : Nat} {is : List Instr}
         kk 1 (by decide) (by decide) (by decide) (by decide)]
     have hex := exec_str_base P (s := u6) (t := 9) (n := 10) (i := 512) (by decide) (by decide)
       (fun k hk => by rw [hx10]; exact hrec htr k hk)
-    have r7 : Reach P code u6 { u6 with
-        mem := store64 u6.mem (u6.x 10 + UInt64.ofNat (8 * 512)) (u6.x 9), pc := u6.pc + 4 } :=
+    let u7 : State :=
+      { u6 with mem := store64 u6.mem (u6.x 10 + UInt64.ofNat (8 * 512)) (u6.x 9),
+        pc := u6.pc + 4 }
+    have r7 : Reach P code u6 u7 :=
       reach_exec P code (by rw [p6, p5, p4, ← after_succ, ← after_succ]; exact t2) hex (.refl _)
-    obtain ⟨u8, r8, p8, x8, k8, sp8, m8, io8⟩ := run_movzRet P code t34
-      (s := { u6 with mem := store64 u6.mem (u6.x 10 + UInt64.ofNat (8 * 512)) (u6.x 9),
-        pc := u6.pc + 4 })
+    obtain ⟨u8, r8, p8, x8, k8, sp8, m8, io8⟩ := run_movzRet P code t34 (s := u7)
       (by show u6.pc + 4 = _; rw [p6, p5, p4, ← after_succ, ← after_succ, ← after_succ])
     have kk6 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → q ≠ 20 → u6.x q = s.x q :=
       fun q h9 h10 h12 h13 h16 => by rw [k6 q h9, k5 q h10, kk q h9 h12 h13 h16]
@@ -516,12 +517,16 @@ theorem run_dirNameStub {a tr : UInt64} {sc : Nat} {is : List Instr}
         t.x 18 = s.x 18 ∧ t.pc = s.x 30 ∧ t.x 0 = UInt64.ofNat v.val ∧ t.mem = s.mem := by
     intro b v u hc hu ru hsp hio hm hk
     obtain ⟨t, rt, pt, xt, kt, spt, mt, iot⟩ := run_movzRet P code hc (s := u) hu
-    exact ⟨t, ru.trans rt, by rw [spt, hsp], by rw [iot, hio],
-      by rw [kt 17 (by decide)]; exact hk 17 (by decide) (by decide) (by decide) (by decide)
-        (by decide),
-      by rw [kt 18 (by decide)]; exact hk 18 (by decide) (by decide) (by decide) (by decide)
-        (by decide),
-      by rw [pt]; exact hk 30 (by decide) (by decide) (by decide) (by decide) (by decide), xt,
+    have h17 : t.x 17 = s.x 17 := by
+      rw [kt 17 (by decide)]
+      exact hk 17 (by decide) (by decide) (by decide) (by decide) (by decide)
+    have h18 : t.x 18 = s.x 18 := by
+      rw [kt 18 (by decide)]
+      exact hk 18 (by decide) (by decide) (by decide) (by decide) (by decide)
+    have h30 : t.pc = s.x 30 := by
+      rw [pt]
+      exact hk 30 (by decide) (by decide) (by decide) (by decide) (by decide)
+    exact ⟨t, ru.trans rt, by rw [spt, hsp], by rw [iot, hio], h17, h18, h30, xt,
       by rw [mt, hm]⟩
   have kk4 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → q ≠ 20 → u4.x q = s.x q :=
     fun q h9 _ h12 h13 h16 => kk q h9 h12 h13 h16
@@ -715,6 +720,13 @@ theorem preopenCheck_code {a svc base : UInt64} {sc : Nat} {is : List Instr}
   exact ⟨b15, g18, g21, g24, g26, b28, g30, g32, b38, h15, h18, h21, h24, h26, h28, h30, h32,
     h38, (CodeAt.cons.mp cs1.1).1, cs1.2, cs.2⟩
 
+theorem exec_movk (P : Platform) (s : State) (d : Fin 32) (imm : Fin 65536) (hw : Fin 4) :
+    LeanExe.A64.exec P (.movk d imm hw) s =
+      some { s.setX d
+            ((s.x d &&& ~~~((0xFFFF : UInt64) <<< UInt64.ofNat (16 * hw.val))) |||
+              UInt64.ofNat imm.val <<< UInt64.ofNat (16 * hw.val))
+          with pc := s.pc + 4 } := rfl
+
 /-- The words of the check of descriptor 3 from its entry to its `BL` of `openat`: X19 at X30, X20
 at the scratch's address `G`, `.` and its terminating zero at the path buffer, and the arguments
 of `openat` in X0 to X3 with its number 56 in X8. -/
@@ -740,7 +752,7 @@ theorem run_preopenFront {a svc base : UInt64} {sc : Nat} {is : List Instr}
   have c13 := cT 7 (by simp)
   have c14 := cT 8 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c6 c7 c8 c9 c10
-    c11 c12 c13 c14
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c11 c12 c13 c14
   obtain ⟨u0, r0, p0, x0, k0, sp0, m0, io0⟩ := step_mov P code (s := s) (d := 19) (m := 30)
     (by decide) (by rw [hpc]; exact c0)
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := run_scratchAddr P code cS (s := u0)
@@ -771,10 +783,7 @@ theorem run_preopenFront {a svc base : UInt64} {sc : Nat} {is : List Instr}
     (by decide) (by rw [p6']; exact c11)
   have e8 : LeanExe.A64.exec P (.movk 2 8 1) u7 =
       some { u7.setX 2 0x84000 with pc := u7.pc + 4 } := by
-    show some { u7.setX 2 ((u7.x 2 &&& ~~~((0xFFFF : UInt64) <<<
-      UInt64.ofNat (16 * (1 : Fin 4).val))) ||| UInt64.ofNat (8 : Fin 65536).val <<<
-        UInt64.ofNat (16 * (1 : Fin 4).val)) with pc := u7.pc + 4 } = _
-    rw [x7]
+    rw [exec_movk, x7]
     rfl
   obtain ⟨u8, r8, p8, x8, k8, sp8, m8, io8⟩ := step_setX P code (s := u7) (d := 2) (by decide)
     (by rw [p7, p6', ← after_succ]; exact c12) e8
@@ -837,7 +846,7 @@ theorem run_preopenOpened {a svc base : UInt64} {sc : Nat} {is : List Instr}
   have c26 := cT 20 (by simp)
   have c27 := cT 21 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c16 c19 c22 c25
-    c26 c27
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c26 c27
   have c17 : CodeAt code (after a 17) [.subsImm 31 9 9, .bcond 1 g18] := by
     simpa [after_after] using CodeAt.drop_take code cT 11 2 (by simp)
   have c20 : CodeAt code (after a 20) [.subsImm 31 9 20, .bcond 1 g21] := by
@@ -948,7 +957,7 @@ theorem run_preopenClosed {a svc base : UInt64} {sc : Nat} {is : List Instr}
   have c35 := cT 29 (by simp)
   have c36 := cT 30 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c29 c30 c33 c34
-    c35 c36
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_after] at c35 c36
   have c31 : CodeAt code (after a 31) [.subsImm 31 9 4095, .bcond 8 g32] := by
     simpa [after_after] using CodeAt.drop_take code cT 25 2 (by simp)
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_subReg P code (s := s) (d := 9) (n := 31)
@@ -1113,16 +1122,18 @@ theorem run_preopenCheck {a svc base : UInt64} {sc : Nat} {is : List Instr}
   -- the `openat`
   have hpb := preopenPath_bytes p.core.mem G
   have h1081 : G + 1080 + 1 = G + 1081 := by rw [UInt64.add_assoc]; rfl
-  have hlen : (a64Memory P).pathLength u.mem (u.x 1) = 2 := by
-    apply LeanExe.Linux.Memory.pathLength_eq (n := 1) (by decide)
-    · show u.mem (u.x 1 + UInt64.ofNat 1) = 0
-      rw [mu, x1u, show UInt64.ofNat 1 = 1 from rfl, h1081]
-      exact hpb.2
-    · intro i hi
-      obtain rfl : i = 0 := by omega
-      show u.mem (u.x 1 + UInt64.ofNat 0) ≠ 0
-      rw [mu, x1u, show UInt64.ofNat 0 = 0 from rfl, UInt64.add_zero, hpb.1]
-      decide
+  have hz : (a64Memory P).read u.mem (u.x 1 + UInt64.ofNat 1) = 0 := by
+    show u.mem (u.x 1 + UInt64.ofNat 1) = 0
+    rw [mu, x1u, show UInt64.ofNat 1 = 1 from rfl, h1081]
+    exact hpb.2
+  have hnz : ∀ i < 1, (a64Memory P).read u.mem (u.x 1 + UInt64.ofNat i) ≠ 0 := by
+    intro i hi
+    obtain rfl : i = 0 := by omega
+    show u.mem (u.x 1 + UInt64.ofNat 0) ≠ 0
+    rw [mu, x1u, show UInt64.ofNat 0 = 0 from rfl, UInt64.add_zero, hpb.1]
+    decide
+  have hlen : (a64Memory P).pathLength u.mem (u.x 1) = 2 :=
+    LeanExe.Linux.Memory.pathLength_eq (a64Memory P) u.mem (u.x 1) (n := 1) (by decide) hz hnz
   have hread : readList u.mem (u.x 1) 2 = [46, 0] := by
     simp only [readList, x1u, mu, h1081, hpb.1, hpb.2]
   have hmapO : P.mapped (u.x 1) 2 = true := by
