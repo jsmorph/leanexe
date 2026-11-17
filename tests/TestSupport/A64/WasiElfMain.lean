@@ -4,9 +4,10 @@ import LeanExe.Encoding.Decode
 
 /-!
 The command `a64-wasi emit DIR` writes the AArch64 back end's WASI executables, which
-`tests/linux/a64-wasi.sh` and `tests/linux/a64-wasi-preopen.sh` run: DIR/readall.elf,
-DIR/environ.elf, DIR/args.elf, and DIR/prestat.elf, the files of `readAllElf`, `environElf`,
-`argsElf`, and `prestatElf` of `TestSupport.A64.WasiElf`, and for each case of
+`tests/linux/a64-wasi.sh`, `tests/linux/a64-wasi-preopen.sh`, and
+`tests/linux/a64-wasi-files.sh` run: DIR/readall.elf, DIR/environ.elf, DIR/args.elf,
+DIR/prestat.elf, and DIR/files.elf, the files of `readAllElf`, `environElf`, `argsElf`,
+`prestatElf`, and `filesElf` of `TestSupport.A64.WasiElf`, and for each case of
 `TestSupport.A64.WasiStringEdges.edgeCases` DIR/NAME.elf, with DIR/edges.txt, which lists each case
 as its name, `sizes` or `strings`, and its two pointers and its window in decimal.  The command
 `a64-wasi wasm IN OUT` writes to OUT the executable of the module whose binary IN holds, with
@@ -32,7 +33,7 @@ def main (args : List String) : IO UInt32 := do
   | ["emit", dir] =>
       let mut status : UInt32 := 0
       let mut files := [("readall", readAllElf), ("environ", environElf), ("args", argsElf),
-        ("prestat", prestatElf)]
+        ("prestat", prestatElf), ("files", filesElf)]
       let mut lines : List String := []
       for (name, sizes, p, q, w) in edgeCases do
         files := files ++ [(name, edgeElf sizes p q w)]

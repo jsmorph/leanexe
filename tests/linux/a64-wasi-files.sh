@@ -17,7 +17,8 @@
 # path cases, the flags, the closes, and the handles, every case's output must equal the Wasmtime
 # host's but for the cases that tests/linux/wasi/files-expected.txt lists with the specification's
 # reason, and the directories afterwards must agree.  The scenario of magic links runs with
-# /proc/self as descriptor 3 and as the host's directory.
+# /proc/self as descriptor 3 and as the host's directory, and the scenario of closes runs once
+# more with descriptor 3 closed and no directory in the host.
 #
 # QEMU 8.2.2 answers openat2 with ENOSYS, so each run under qemu-aarch64 must equal the native run
 # with strace injecting ENOSYS into every openat2.  With 1,024 descriptors the opens without closes
@@ -161,6 +162,17 @@ limited "$host" --dir /proc/self --stdin-file "$runs/in-m" --stdout-file "$runs/
 want_status "scenario m in the Wasmtime host" "$code" 0
 uv run "$out/files-compare.py" "$out/cases.txt" "$out/files-expected.txt" m \
   "scenario m native against the Wasmtime host" "$runs/n-m.out" "$runs/w-m.out" || status=1
+# Scenario c with descriptor 3 closed natively and no preopened directory in the Wasmtime host.
+code=0
+limited "$out/cases.elf" <"$runs/in-c" >"$runs/n-c0.out" 3<&- || code=$?
+want_status "scenario c without descriptor 3 native" "$code" 0
+code=0
+limited "$host" --stdin-file "$runs/in-c" --stdout-file "$runs/w-c0.out" run "$out/cases.wasm" \
+  2>"$runs/w-c0.err" || code=$?
+want_status "scenario c without a preopened directory in the Wasmtime host" "$code" 0
+uv run "$out/files-compare.py" "$out/cases.txt" "$out/files-expected.txt" c \
+  "scenario c without descriptor 3 against the Wasmtime host" "$runs/n-c0.out" "$runs/w-c0.out" ||
+  status=1
 # Under QEMU against the native run with ENOSYS injected into every openat2.
 for s in p f c h 1 2 3 4 5 6; do
   printf %s "$s" >"$runs/in-$s"

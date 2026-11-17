@@ -1,6 +1,7 @@
 import Verified.Examples.WasiReadAll
 import Verified.Examples.WasiSysEnviron
 import Verified.Examples.WasiPrestat
+import Verified.Examples.WasiFiles
 import TestSupport.A64.WasiArgs
 import LeanExe.A64.Wasi
 
@@ -10,8 +11,10 @@ its module, with `_start` at the index that the compiler gives it, a memory's ca
 pages, and a stack of `wasiRoom` bytes: `readAllElf` of the readAll command of
 `Verified.Examples.WasiReadAll`, `environElf` of the environment command of
 `Verified.Examples.WasiSysEnviron`, which writes its environment, `argsElf` of the command of
-`TestSupport.A64.WasiArgs`, which writes its arguments, and `prestatElf` of the prestat command of
-`Verified.Examples.WasiPrestat`, which writes what the host answers about the preopened directory.
+`TestSupport.A64.WasiArgs`, which writes its arguments, `prestatElf` of the prestat command of
+`Verified.Examples.WasiPrestat`, which writes what the host answers about the preopened directory,
+and `filesElf` of the files command of `Verified.Examples.WasiFiles`, which writes a file under
+the preopened directory and reads it back.
 -/
 
 namespace TestSupport.A64.WasiElf
@@ -59,5 +62,14 @@ open Verified.Examples.WasiPrestat in
 /-- The executable of the prestat command. -/
 def prestatElf : Except String (List UInt8 × ElfLayout) :=
   genWasiElf command.module prestatStart wasiRoom wasiCap
+
+open Verified.Examples.WasiFiles in
+/-- The index of `_start` in the files command's module. -/
+def filesStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
+
+open Verified.Examples.WasiFiles in
+/-- The executable of the files command. -/
+def filesElf : Except String (List UInt8 × ElfLayout) :=
+  genWasiElf command.module filesStart wasiRoom wasiCap
 
 end TestSupport.A64.WasiElf
