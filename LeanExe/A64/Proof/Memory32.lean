@@ -6,7 +6,7 @@ The simulation of `i32.load` and `i32.store`.  Each compares the address with th
 less 8, plus 4 less the offset `off`, and branches to the stub of an access outside the memory
 above it.  `i32.load` loads the word of the eight bytes from `X17 + 4092 + a + off`, 4088 bytes
 above `X17 + a + off + 4`, and shifts it right by 32, which leaves the memory's four bytes from
-`a + off`; the four bytes below them lie in the area, in its header when `a + off` lies below 4.
+`a + off`.  The four bytes below them lie in the area, in its header when `a + off` lies below 4.
 `i32.store` writes the value's four bytes with `STRB` from 4092 to 4095 bytes above
 `X17 + a + off + 4`, the higher three shifted down into a scratch register, the run of
 `run_strb4`.  `StoreRel.ofWriteList` gives the store relation after bytes written into the memory
@@ -823,8 +823,8 @@ theorem sim_store32 (F : Nat) (off : UInt32) : InstrSim P code F (.store32 off) 
           rw [State.setX_io]
           show (s.setX 16 (s.x 17 + s.x (regOf σ0.length))).io = _
           rw [State.setX_io, houts]
-        obtain ⟨s', hr', hp', hsp', hio', hk', hmem'⟩ := run_strb4 P code (v := regOf (σ0.length + 1))
-          (t := 29) (s := s6) (by decide) (regOf_ne_29 _ hlt) (by decide) cstr p6
+        obtain ⟨s', hr', hp', hsp', hio', hk', hmem'⟩ := run_strb4 P code
+          (v := regOf (σ0.length + 1)) (t := 29) (s := s6) (by decide) (regOf_ne_29 _ hlt) (by decide) cstr p6
           (fun k hk => by
             rw [hB k]
             exact hsr.mapped _ (by unfold areaSize; omega)) hU

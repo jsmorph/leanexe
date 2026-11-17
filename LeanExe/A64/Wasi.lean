@@ -11,8 +11,9 @@ above the three imports lies at position `j - 3` of `m.funcs`.  `genWasiProgram`
 the three stubs, the trap stub, the routine of errnos, and every function of the module, and its
 table of calls gives the stubs' entries for the imports' indices and the functions' entries for
 the others.  `main` saves X30, sets the stack's limit in X18 `room` bytes below its frame, and
-calls `_start`, function `k`, which takes and returns nothing; should it return, `main` returns 0.
-The memory's cap of `cap` pages is the program's, below the module's declared maximum.
+calls `_start`, function `k`, which takes and returns nothing.  Should it return, `main` returns 0.
+The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
+module's minimum below 65,536 pages.
 
 A stub follows the shim's environment of `Verified/Shim/Env.lean`.  The stubs of `fd_read` and
 `fd_write` require the arguments that that environment requires: descriptor 0 for a read and 1 or 2
@@ -20,10 +21,11 @@ for a write, the iovec at guest address 0, one iovec, and the count at guest add
 the iovec's pointer and length from the guest's bytes 0 to 7, require the buffer to lie within the
 memory and below `2^32`, and for a read of a nonempty buffer above the scratch's 16 bytes, and make
 the call with the buffer's address `X17 + 4096 + pointer`.  A result at most the length is a count,
-which the stub stores at guest address 8 with `STRB` before it returns 0; a result of `2^64 - x`
-for `x` from 1 to 4095 is an error, whose errno the routine `errnoRoutine` gives; every other
+which the stub stores at guest address 8 with `STRB` before it returns 0.  A result of `2^64 - x`
+for `x` from 1 to 4095 is an error, whose errno the routine `errnoRoutine` gives.  Every other
 result, and every request that fails a check, branches to the trap stub.  The stub keeps its
-return address in X19 across the call, so it stays a list of `Instr`.  The stub of `proc_exit`
+return address in X19 across the call, so it needs no stack frame, and `wasiStackNeed` counts no
+stack for a stub.  The stub of `proc_exit`
 moves a status of 126 or more to 1 and branches to the exit word, whose `exit_group` ends the
 process.  The trap stub sets X0 to 2, the status of every trap, and branches to the exit word.
 -/
@@ -41,8 +43,8 @@ def streamImports : List ImportDecl :=
       params := [.i32, .i32, .i32, .i32], results := [.i32] },
    { «module» := "wasi_snapshot_preview1", name := "proc_exit", params := [.i32], results := [] }]
 
-/-- Linux's error numbers and their WASI errnos, by Wasmtime 44's table with `EXDEV` as `perm`;
-every other number gives `io`, 29. -/
+/-- Linux's error numbers and their WASI errnos, by Wasmtime 44's table with `EXDEV` as `perm`.
+Every other number gives `io`, 29. -/
 def errnoTable : List (Fin 4096 × Fin 65536) :=
   [(1, 63), (2, 44), (4, 27), (5, 29), (9, 8), (12, 48), (13, 2), (16, 10), (17, 20), (18, 63),
     (20, 54), (21, 31), (22, 28), (27, 22), (28, 51), (29, 70), (31, 34), (32, 64), (36, 37),

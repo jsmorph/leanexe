@@ -10,9 +10,9 @@ premises of `Machine.StubSim` and the module's functions by `Machine.calls_ok`, 
 `wasiStackNeed` of the stack that a call uses, which count no stack for a stub.  `run_wasiFront`
 runs `main` to the entry of `_start`.
 
-A machine's runs read the code map `opsCode`, the words of a list of `Op` from an address, which
-holds only the routine `SVC #0; RET` and the program, so every one of its instructions keeps X17;
-`opsCode_sub` places it within the executable's code map.
+A machine's runs read the code map `wasiCode`, built with `opsCode` from the words of lists of
+`Op`, which holds only the routine `SVC #0; RET` and the program, so every one of its instructions
+keeps X17.  `wasiCode_sub` places it within the executable's code map.
 -/
 
 namespace LeanExe.A64

@@ -5,9 +5,9 @@ import LeanExe.A64.Wasi
 /-!
 The runs of the parts of the stubs of `LeanExe/A64/Wasi.lean` in the program's model.
 `run_bufferChecks` loads the iovec's pointer and length from the guest's bytes 0 to 7 of a store
-that the area holds and reaches the trap stub when the buffer exceeds the memory or `2^32`;
-`run_bufferCall` sets the arguments of the call; `run_resultTail` stores a count, returns an errno
-through `run_errnoRoutine`, or reaches the trap stub; and `run_neImm`, `run_loImm`, and
+that the area holds and reaches the trap stub when the buffer exceeds the memory or `2^32`.
+`run_bufferCall` sets the arguments of the call, and `run_resultTail` stores a count, returns an
+errno through `run_errnoRoutine`, or reaches the trap stub.  `run_neImm`, `run_loImm`, and
 `run_hiImm` are the comparisons of a register with an immediate that the stubs' checks make.
 The call itself, `BL` to the routine `SVC #0; RET` and back, is `run_callSvc`.
 -/
@@ -316,7 +316,8 @@ theorem errnoRoutine_eq : errnoRoutine = errnoCode errnoTable := rfl
 
 theorem sext_three : sext 19 3 * 4 = 12 := by decide
 
-theorem after_add (a : UInt64) (m k : Nat) : after a m + UInt64.ofNat (4 * k) = after a (m + k) := by
+theorem after_add (a : UInt64) (m k : Nat) :
+    after a m + UInt64.ofNat (4 * k) = after a (m + k) := by
   simp only [after, UInt64.ofNat_add, UInt64.mul_add, UInt64.add_assoc]
   congr 2
   apply UInt64.toNat_inj.mp
@@ -614,11 +615,11 @@ theorem run_bufferCall {a : UInt64} {nr : Fin 65536} {g : Fin 67108864}
 /-! ## The result -/
 
 /-- The handling of a call's result in X0, from `a`, with the length in X11, the return address in
-X19, the trap stub at `tr`, and the routine of errnos at `en`: a result at most the length is
-stored at guest address 8, the bytes 4104 to 4107 above X17, and errno 0 returned; the negation of
-a result above the length that is at most 4095 is an error number, whose errno is returned; any
-other result reaches the trap stub.  X17, X18, SP, and the UART's state keep their values, and only
-the store of a count changes the memory. -/
+X19, the trap stub at `tr`, and the routine of errnos at `en`.  A result at most the length is
+stored at guest address 8, the bytes 4104 to 4107 above X17, and errno 0 returned.  When the
+negation of a result above the length is at most 4095, it is an error number, whose errno is
+returned.  Any other result reaches the trap stub.  X17, X18, SP, and the UART's state keep their
+values, and only the store of a count changes the memory. -/
 theorem run_resultTail {a tr en : UInt64} {g1 g2 : Fin 524288} {g3 : Fin 67108864}
     (hcode : CodeAt code a [.subsReg 31 0 11, .bcond 8 g1, .addImm 16 17 12, .strb 0 16 4092,
       .lsrImm 12 0 8, .strb 12 16 4093, .lsrImm 12 0 16, .strb 12 16 4094, .lsrImm 12 0 24,

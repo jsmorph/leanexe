@@ -21,11 +21,11 @@ open Wasm LeanExe LeanExe.A64 LeanExe.Wasi Verified.Wasi Verified.Shim
 /-- The shim's layout in an executable whose area lies at `area`. -/
 def layoutAt (area : UInt64) : ShimLayout := ⟨area + UInt64.ofNat 4096⟩
 
-/-- The trace `tr` holds the layer events of the world of `h`, each of which writes within the
-`size` bytes from the guest's byte 0. -/
+/-- The trace `tr` holds the layer events of the world of `h`, the output regions of each of which
+lie within the `size` bytes from the guest's byte 0. -/
 def TraceRel (L : ShimLayout) (size : Nat) (h : Observed LinuxWorld) (tr : List A64.Event) :
     Prop :=
-  tr =h.world.events.map A64.Event.sys ∧ ∀ e ∈ h.world.events, WritesWithin L size e
+  tr = h.world.events.map A64.Event.sys ∧ ∀ e ∈ h.world.events, WritesWithin L size e
 
 /-- Where a trap of the shim or an exit ends: an accepted exit at the exit word `base` with the
 world's exit status in X0, a rejected exit there with status 1, and a trap of the shim at the trap

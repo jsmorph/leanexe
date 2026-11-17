@@ -6,17 +6,18 @@
 # the file, so that the kernel checks that readall.elf holds the bytes that its generator gives and
 # proves its theorems, each with no axiom beyond propext, Classical.choice, and Quot.sound.  The
 # script also writes the command's module, readall.wasm, and runs it in the repository's Wasmtime
-# host, build/tools/leanexe-wasmtime-host, on the same inputs.  It runs the executable on the
-# host's processor and under qemu-aarch64, QEMU's user-mode emulator, each run within TIMEOUT
-# seconds, 120 unless set, in a scope of one core and 2G of memory.  Inputs of 0, 1, 4095, 4096,
-# 4097, 65536, 1,000,000, 1,000,001, and 3,000,000 random bytes run from a file, where the
+# host, build/tools/leanexe-wasmtime-host, on the inputs from files.  It runs the executable on
+# the host's processor and under qemu-aarch64, QEMU's user-mode emulator, each run within TIMEOUT
+# seconds, 120 unless set, in a scope of one core and 2G of memory.  Inputs of 0, 1, 4,095, 4,096,
+# 4,097, 65,536, 1,000,000, 1,000,001, and 3,000,000 random bytes run from a file, where the
 # executable's status and output must equal the Wasmtime host's, and from a pipe into which the
 # script writes the input in pieces of 1, 3, 5, and 7 bytes, each after a pause of PAUSE seconds,
 # 0.2 unless set, and then the rest.  An input of at most 1,000,000 bytes must give the input and
 # status 0, and a longer one a prefix of more than 1,000,000 bytes and at most 4,096 more, with
 # status 1.  Standard input a directory must give status 31, `isdir`, with nothing written, as in
-# the Wasmtime host, and standard output /dev/full status 51, `nospc`.  Standard input or output
-# closed gives status 8, `badf`.  The products lie in OUT, build/linux/a64-wasi unless set.
+# the Wasmtime host, and standard output /dev/full status 51, `nospc`, as in the Wasmtime host.
+# Standard input closed gives status 8, `badf`, with nothing written, and standard output closed
+# status 8.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -113,7 +114,8 @@ for size in 0 1 4095 4096 4097 65536 $limit $((limit + 1)) $((3 * limit)); do
   check "$size bytes in the Wasmtime host from a file" "$in" "$code" "$out/wasmtime-$size.out"
   want=$code
   for how in native qemu; do
-    if [ "$how" = native ]; then set -- "$out/readall.elf"; else set -- "$qemu" "$out/readall.elf"; fi
+    if [ "$how" = native ]; then set -- "$out/readall.elf"
+    else set -- "$qemu" "$out/readall.elf"; fi
     code=0
     scoped "$@" <"$in" >"$out/$how-$size.file" || code=$?
     check "$size bytes $how from a file" "$in" "$code" "$out/$how-$size.file"
@@ -124,14 +126,13 @@ for size in 0 1 4095 4096 4097 65536 $limit $((limit + 1)) $((3 * limit)); do
     check "$size bytes $how from a pipe in pieces" "$in" "$code" "$out/$how-$size.pipe"
   done
 done
-: >"$out/empty"
-# Checks the run named $1 that ended with status $2 and wrote the file $3: the status $4 and
-# nothing written.
+# Checks the run named $1 that ended with status $2 against the status $3, and when $4 names the
+# file of the run's standard output, that the run wrote nothing to it.
 fails() {
-  if [ "$2" -eq "$4" ] && [ ! -s "$3" ]; then
-    echo "pass: $1: status $2, nothing written"
+  if [ "$2" -eq "$3" ] && { [ -z "${4:-}" ] || [ ! -s "$4" ]; }; then
+    echo "pass: $1: status $2${4:+, nothing written}"
   else
-    echo "fail: $1: status $2 where $4 is due, $(stat -c %s "$3") bytes written"
+    echo "fail: $1: status $2 where $3 is due${4:+, $(stat -c %s "$4") bytes written}"
     status=1
   fi
 }
@@ -139,25 +140,26 @@ code=0
 timeout "${TIMEOUT:-120}" "$host" --stdin-file / --stdout-file "$out/wasmtime-dir.out" \
   --control-file "$out/wasmtime-dir.control" run "$out/readall.wasm" \
   2>"$out/wasmtime-dir.err" || code=$?
-fails "standard input a directory in the Wasmtime host" "$code" "$out/wasmtime-dir.out" 31
+fails "standard input a directory in the Wasmtime host" "$code" 31 "$out/wasmtime-dir.out"
 code=0
 timeout "${TIMEOUT:-120}" "$host" --stdin-file "$out/input-4097" --stdout-file /dev/full \
   --control-file "$out/wasmtime-full.control" run "$out/readall.wasm" \
   2>"$out/wasmtime-full.err" || code=$?
-fails "standard output /dev/full in the Wasmtime host" "$code" "$out/empty" 51
+fails "standard output /dev/full in the Wasmtime host" "$code" 51
 for how in native qemu; do
-  if [ "$how" = native ]; then set -- "$out/readall.elf"; else set -- "$qemu" "$out/readall.elf"; fi
+  if [ "$how" = native ]; then set -- "$out/readall.elf"
+  else set -- "$qemu" "$out/readall.elf"; fi
   code=0
   scoped "$@" <"$out" >"$out/$how-dir.out" || code=$?
-  fails "standard input a directory $how" "$code" "$out/$how-dir.out" 31
+  fails "standard input a directory $how" "$code" 31 "$out/$how-dir.out"
   code=0
   scoped "$@" <"$out/input-4097" >/dev/full || code=$?
-  fails "standard output /dev/full $how" "$code" "$out/empty" 51
+  fails "standard output /dev/full $how" "$code" 51
   code=0
   scoped "$@" <&- >"$out/$how-closed-in.out" || code=$?
-  fails "standard input closed $how" "$code" "$out/$how-closed-in.out" 8
+  fails "standard input closed $how" "$code" 8 "$out/$how-closed-in.out"
   code=0
   scoped "$@" <"$out/input-4097" >&- || code=$?
-  fails "standard output closed $how" "$code" "$out/empty" 8
+  fails "standard output closed $how" "$code" 8
 done
 exit "$status"

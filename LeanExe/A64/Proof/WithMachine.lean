@@ -241,8 +241,8 @@ theorem ProcRunWith.mono {c1 c2 : UInt64 → Option UInt32}
 
 /-- The process as a machine for the calls `T` and the replies `R`: a state holds a store by
 `StoreRel`, FPCR at `fpcrValue`, X17 at `area`, and the relation `H` between the store's host
-state and the trace; a trap ends at a stub of `TrapAt` or at a state that `Ex` admits, with `H`
-between the trap's store and the trace; the host environment is `env`. -/
+state and the trace.  A trap ends at a stub of `TrapAt` or at a state that `Ex` admits, with `H`
+between the trap's store and the trace, and the host environment is `env`. -/
 def withMachine (T : List Call) (R : Replies) (P : Platform) (code : UInt64 → Option UInt32)
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     (hk : ∀ a w i, code a = some w → decode w = some i → i.keepsX17 = true) (area : UInt64)

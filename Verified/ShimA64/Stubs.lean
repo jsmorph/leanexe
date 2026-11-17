@@ -1,13 +1,14 @@
 import Verified.ShimA64.Machine
 
 /-!
-The stubs of the stream functions against the shim's host environment, F3 of the design: each
+The stubs of the stream functions against the shim's host environment: each
 stub of `LeanExe/A64/Wasi.lean` meets `Machine.StubSim` for its host function of `linuxEnv` on
 `shimMachine`.  A request that `readInvoke` or `writeInvoke` refuses reaches the trap stub with
-the store unchanged; an accepted one reaches `SVC #0` with the call of `LeanExe.Linux.table`
+the store unchanged.  An accepted one reaches `SVC #0` with the call of `LeanExe.Linux.table`
 whose event is the shim's `readEvent` or `writeEvent`, the kernel's writes land in the store's
 memory as `Linux.step` on `shimMemory` places them, and the result reaches the return with the
-WASI reply and the count stored at guest address 8, or the trap stub with the shim's trap.  The
+WASI reply, with the count stored at guest address 8 when the errno is 0, or the trap stub with
+the shim's trap.  The
 stub of `proc_exit` reaches the exit word with the accepted status or with 1.
 -/
 
@@ -20,7 +21,7 @@ variable {R : Linux.Replies} {P : Platform} {code : UInt64 → Option UInt32}
   {hk : ∀ a w i, code a = some w → decode w = some i → i.keepsX17 = true}
   {area base : UInt64} {size : Nat}
 
-/-- A run of the program's model to the trap stub from a state that holds the store `st` ends a
+/-- A run of the program's model to the trap stub from a state that holds the store `st` ends in a
 trap of the shim with that store. -/
 theorem trapped_shim {S : Shared} {cap : Nat} {gts : List ValueType}
     {st : Store (Observed LinuxWorld)} {q : Proc}
@@ -342,7 +343,8 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
     · obtain rfl := List.mem_singleton.mp he
       exact readEvent_writesWithin (layoutAt area) st.mem ptr len rk (by omega)
   have htrace : ({ q5 with core := u6 } : Proc).trace =
-      (st.host.world.events ++ [readEvent (layoutAt area) st.mem ptr len rk]).map A64.Event.sys := by
+      (st.host.world.events ++ [readEvent (layoutAt area) st.mem ptr len rk]).map
+        A64.Event.sys := by
     show q5.trace = _
     rw [tr5, htr.1, List.map_append]
     rfl
@@ -650,7 +652,8 @@ theorem writeStub_sim (S : Shared) (n : Nat) {wr svc en : UInt64} {is : List Ins
   have hstk2 := hstk.limit
   have hst5 : StoreRel P S.cap S.globalTypes st q5.core :=
     hst.regs (by rw [q5x17, h17]) q5x18 m5
-  have hwithin : ∀ e ∈ st.host.world.events ++ [writeEvent (layoutAt area) st.mem out.fd ptr len rk],
+  have hwithin : ∀ e ∈ st.host.world.events ++
+      [writeEvent (layoutAt area) st.mem out.fd ptr len rk],
       WritesWithin (layoutAt area) size e := by
     intro e he
     rcases List.mem_append.mp he with he | he

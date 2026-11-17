@@ -4,7 +4,7 @@ import LeanExe.A64.Wasi
 /-!
 The readAll command of `Verified.Examples.WasiReadAll` as a native executable for AArch64 Linux:
 `readAllElf` is the file that `genWasiElf` writes for its module, with `_start` at the index that
-the compiler gives it, a memory of `wasiCap` pages, and a stack of `wasiRoom` bytes.
+the compiler gives it, a memory's cap of `wasiCap` pages, and a stack of `wasiRoom` bytes.
 -/
 
 namespace TestSupport.A64.WasiElf

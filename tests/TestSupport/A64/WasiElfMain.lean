@@ -1,9 +1,9 @@
 import TestSupport.A64.WasiElf
 
 /-!
-The command `a64-wasi emit DIR` of the AArch64 back end's WASI executables.  It writes
-DIR/readall.elf, the file of `TestSupport.A64.WasiElf.readAllElf`, which
-`tests/linux/a64-wasi.sh` runs.
+The command `a64-wasi emit DIR` writes the AArch64 back end's WASI executables: DIR/readall.elf,
+the file of `TestSupport.A64.WasiElf.readAllElf`, which `tests/linux/a64-wasi.sh` runs.  It
+prints the generator's error and exits with status 1 when the generator rejects the module.
 -/
 
 open TestSupport.A64.WasiElf
