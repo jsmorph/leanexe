@@ -5,16 +5,17 @@ import LeanExe.A64.Proof.WasiStubs
 /-!
 The A64 binding of the shim: the process of the Linux call layer's binding as the machine of the
 A64 simulation under the shim's stream functions.  The binding covers the stream imports alone, so
-its host environment, `streamEnv`, is `linuxEnv F L I replies []` for every open flags `F` and
-every launch `I`.  `layoutAt area` places the guest's byte 0 4096 bytes above the area at `area`,
-where the A64 back end keeps the memory's bytes, and the scratch's addresses at 0, since the
-stream functions use no scratch.  `shimMachine` holds a store as `withMachine` does, with the
-relation `TraceRel` between the shim's world and the process's trace: the trace holds the world's
-layer events, and each event's output regions lie within the `size` bytes of linear memory from
-the guest's byte 0, `WritesLinear`, which excludes the scratch's timespec that `WritesWithin`
-admits.  A trap of the shim ends at the trap stub, and an exit, accepted or rejected, at the exit
-word `base` with its status in X0, `ShimEnd`.  `errnoOf_lookup` states the shim's `errnoOf` as
-the table that the stubs' routine of errnos reads.
+its host environment, `streamEnv`, is `linuxEnv F L I replies []` for every choice of open flags
+`F` and launch `I`.  `layoutAt area` places the guest's byte 0 4096 bytes above the area at
+`area`, where the A64 back end keeps the memory's bytes, and the addresses of the shim's scratch,
+its timespec, `open_how` record, and path buffer, at 0, since the stream functions use none of
+them.  `shimMachine` holds a store as `withMachine` does, with the relation `TraceRel` between
+the shim's world and the process's trace: the trace holds the world's layer events, and each
+event's output regions lie within the `size` bytes of linear memory from the guest's byte 0,
+`WritesLinear`, which omits the disjunct of `WritesWithin` that admits the scratch's timespec.  A
+trap of the shim ends at the trap stub, and an exit, accepted or rejected, at the exit word `base`
+with its status in X0, `ShimEnd`.  `errnoOf_lookup` states the shim's `errnoOf` as the table that
+the stubs' routine of errnos reads.
 -/
 
 namespace Verified.ShimA64

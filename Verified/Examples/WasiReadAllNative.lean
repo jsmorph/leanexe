@@ -32,7 +32,6 @@ theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (fun _ membership => nomatch membership) hcap (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
-
 end Verified.Examples.WasiReadAll
 
 #print axioms Verified.Examples.WasiReadAll.linux_footprint_native

@@ -2,7 +2,7 @@ import Verified.ShimA64.Machine
 
 /-!
 The stubs of the stream functions against the shim's host environment: each
-stub of `LeanExe/A64/Wasi.lean` meets `Machine.StubSim` for its host function of `linuxEnv` on
+stub of `LeanExe/A64/Wasi.lean` meets `Machine.StubSim` for its stream function of `linuxEnv` on
 `shimMachine`.  A request that `readInvoke` or `writeInvoke` refuses reaches the trap stub with
 the store unchanged.  An accepted one reaches `SVC #0` with the call of `LeanExe.Linux.table`
 whose event is the shim's `readEvent` or `writeEvent`, the kernel's writes land in the store's

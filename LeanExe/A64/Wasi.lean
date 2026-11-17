@@ -15,7 +15,7 @@ calls `_start`, function `k`, which takes and returns nothing.  Should it return
 The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 
-A stub follows the shim's environment of `Verified/Shim/Env.lean`.  The stubs of `fd_read` and
+A stub follows the shim's stream functions of `Verified/Shim/Env.lean`.  The stubs of `fd_read` and
 `fd_write` require the arguments that that environment requires: descriptor 0 for a read and 1 or 2
 for a write, the iovec at guest address 0, one iovec, and the count at guest address 8.  They load
 the iovec's pointer and length from the guest's bytes 0 to 7, require the buffer to lie within the

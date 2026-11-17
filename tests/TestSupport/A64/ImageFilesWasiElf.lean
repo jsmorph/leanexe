@@ -13,18 +13,17 @@ reads from the file, the premise of `ElfLoaded`, and `readall_elf_layout` that t
 the generator's layout.  `readall_elf_entry` states that the file's entry is `elfEntry`, and
 `readall_elf_room` that the stack's room holds the module's stack bound.
 
-`readall_elf` holds for every open flags `F`, launch `I`, and reply sequence, since the command
-calls only the stream functions, which depend on neither `F` nor `I`.  From a process whose memory holds the file as
-Linux's loader places it, with the program counter at the entry and no event in the trace, the
-process reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace
-holds the layer events `ls`, the images of the WASI events `T` of a run of the command's action
-under `linuxHost`, each of which holds its reply and has its output region within the cap's linear
-memory.  The
-reads of descriptor 0 in `ls` returned the bytes that the `fd_read` events of `T` committed, and
-its writes of descriptor 1 took the bytes that the `fd_write` events of `T` to standard output
-committed.  The run is an accepted exit, whose status X0 holds, an exit that the shim rejects,
-with X0 at 1, a trap of the shim, with X0 at 2, or a trap of the guest after a prefix of the
-action, with X0 at 2.
+`readall_elf` holds for every choice of open flags `F`, launch `I`, and reply sequence, since the
+command calls only the stream functions, which depend on neither `F` nor `I`.  From a process
+whose memory holds the file as Linux's loader places it, with the program counter at the entry and
+no event in the trace, the process reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's
+state as it was.  Its trace holds the layer events `ls`, the images of the WASI events `T` of a
+run of the command's action under `linuxHost`, each of which holds its reply and has its output
+region within the cap's linear memory.  The reads of descriptor 0 in `ls` returned the bytes that
+the `fd_read` events of `T` committed, and its writes of descriptor 1 took the bytes that the
+`fd_write` events of `T` to standard output committed.  The run is an accepted exit, whose status
+X0 holds, an exit that the shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap
+of the guest after a prefix of the action, with X0 at 2.
 -/
 
 namespace TestSupport.A64.ImageFilesWasiElf
@@ -93,7 +92,6 @@ theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
   · exact .inr (.inl h)
   · exact .inr (.inr (.inl h))
   · exact .inr (.inr (.inr h))
-
 
 #print axioms readall_elf_file
 #print axioms readall_elf_segments

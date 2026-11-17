@@ -2,14 +2,14 @@ import Verified.ShimA64.Stubs
 import LeanExe.A64.Proof.WasiProgram
 
 /-!
-The executable of `genWasiElf` from its entry to `exit_group`.  The
-runtime of `genElfWith` reaches `main` (`elfWith_main`), `main` calls `_start` (`run_wasiFront`)
-with the module's initial store at the native cap in the area, `nativeStore`, and the simulation
-of `_start` over `shimMachine`, whose code map `wasiCode` holds the routine `SVC #0; RET` and the
-program, follows Talos's run of `_start` under the shim's environment.  When that run traps at an
-accepted exit or a rejected one, the process stands at the exit word with the status in X0, and
-when it traps in the shim or the guest, the process stands at the trap stub, which sets status 2
-and branches to the exit word.  From there the runtime makes `exit_group`.  `wasiElf_run` states
+The executable of `genWasiElf` from its entry to `exit_group`.  The runtime of `genElfWith`
+reaches `main` (`elfWith_main`), `main` calls `_start` (`run_wasiFront`) with the module's initial
+store at the native cap in the area, `nativeStore`, and the simulation of `_start` over
+`shimMachine`, whose code map `wasiCode` holds the routine `SVC #0; RET` and the program, follows
+Talos's run of `_start` under the shim's stream functions.  When that run traps at an accepted
+exit or a rejected one, the process stands at the exit word with the status in X0, and when it
+traps in the shim or the guest, the process stands at the trap stub, which sets status 2 and
+branches to the exit word.  From there the runtime makes `exit_group`.  `wasiElf_run` states
 this for every reply sequence and every fuel at which Talos's run traps: the process's trace holds
 the layer events of the final world, each of whose output regions lies within the native cap's
 linear memory, and X0 holds the status.  `wasiElf_footprint` takes the trap from a footprint
@@ -26,7 +26,8 @@ def wasiLayout (m : Module) (k : Nat) (room : UInt64) (cap : Nat) : ElfLayout :=
   | .ok (_, L) => L
   | .error _ => ⟨0, 0, 0, 0, 0, 0⟩
 
-/-- The world in which a native run starts: no layer event, no exit, and no WASI event. -/
+/-- The world in which a native run starts: no layer event, no exit, no recorded outputs, and no
+WASI event. -/
 def nativeWorld : Observed LinuxWorld := ⟨⟨[], none, fun _ => []⟩, []⟩
 
 /-- The store in which `_start` starts natively: the module's initial store with the memory's cap
@@ -77,8 +78,8 @@ theorem wasiMain_length {a e room : UInt64} {is : List Instr} (hg : wasiMain a e
   rfl
 
 /-- The executable of `genWasiElf` from its entry to `exit_group`, for every reply sequence `R` and
-every fuel at which Talos's run of `_start` from `nativeStore` under the shim's environment traps
-with the store `final` and the message `msg`: the run of `ProcReachWith` over
+every fuel at which Talos's run of `_start` from `nativeStore` under the shim's stream functions
+traps with the store `final` and the message `msg`: the run of `ProcReachWith` over
 `LeanExe.Linux.table` reaches `SVC #0` with X8 at 94, its trace holds the layer events of the
 final world, each of whose output regions lies within the `cap` pages of linear memory, and X0
 holds the accepted exit's status, 1 for a rejected exit, or 2 for a trap of the shim or of the
