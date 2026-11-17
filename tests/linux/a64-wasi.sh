@@ -27,8 +27,9 @@
 # tests/linux/a64-wasi-clocks.py accepts: errnos 0, 0, 8, 0, and 0, readings of realtime within a
 # day of the clock and of the first run, monotonic readings below 10^17, 5,000 random bytes with
 # few zeros, and 16 random bytes that differ between runs.  A native run under strace must make
-# four calls, two of `clock_gettime` with the shim's timespec and two of `getrandom` with flags 0
-# into linear memory.  The products lie in OUT, build/linux/a64-wasi unless set.
+# `clock_gettime` of clocks 0 and 1 into the shim's timespec and then `getrandom` of 16 and of
+# 5,000 bytes of linear memory with flags 0, and no other call of either.  The products lie in OUT,
+# build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -213,8 +214,8 @@ got=
 scoped strace -X raw -e trace=clock_gettime,getrandom -e raw=clock_gettime,getrandom \
   -o "$out/clockrandom.strace" "$out/clockrandom.elf" >/dev/null || code=$?
 if [ "$code" -eq 0 ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls "$out/clockrandom.elf" \
-    "$out/clockrandom.strace" 4096) && [ "$got" = "calls 4" ]; then
-  echo "pass: clockrandom's calls under strace"
+    "$out/clockrandom.strace" 4096 clock 0 clock 1 random - 16 random - 5000); then
+  echo "pass: clockrandom's calls under strace: $got"
 else
   echo "fail: clockrandom's calls under strace: status $code, $got"
   status=1

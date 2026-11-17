@@ -10,9 +10,10 @@
 # memory, 5G for the case of 2 GiB.  Each run must end with the outcome of the case's table:
 # status 0 with the errno of the table, the shim's trap with status 2, or, in the Wasmtime host, a
 # host function's error with status 1, and the checker must accept each output of status 0.  Each
-# executable that makes a call runs once more natively under strace, and the checker requires each
-# `clock_gettime` to name the clock and the shim's timespec and each `getrandom` to ask for the
-# case's buffer with flags 0 and, after a short count, for the rest of it.
+# executable runs once more natively under strace, with the status of its other runs, and the
+# checker requires the calls of the case and no other: for clocks 0 and 1, one `clock_gettime` of
+# the clock into the shim's timespec; for a random buffer of at least one byte, a `getrandom` of the
+# buffer with flags 0 and, after each short count, of the rest; and none for a trap or another case.
 #
 # The table states the Wasmtime host's outcomes as Wasmtime 44 gives them.  They differ from the
 # executable's only for requests outside the WASI contract, where the shim's specification chose
@@ -22,9 +23,9 @@
 # Wasmtime; a time's pointer that is not a multiple of 8 gets the time from the shim and an error
 # from Wasmtime; random_get of no byte past the memory's end is the shim's trap and errno 0 in
 # Wasmtime; and random_get of more than 2^26 bytes fills the buffer in the shim and is an error in
-# Wasmtime, whose get-random-bytes takes at most 67,108,864 bytes.  The case of 2 GiB must make at least two calls of getrandom,
-# since Linux returns fewer bytes than the first asks for.  The products lie in OUT,
-# build/linux/a64-wasi-clocks unless set.
+# Wasmtime, whose get-random-bytes takes at most 67,108,864 bytes.  The case of 2 GiB must make at
+# least two calls of getrandom, since Linux returns fewer bytes than the first asks for.  The
+# products lie in OUT, build/linux/a64-wasi-clocks unless set.
 # Usage: tests/linux/a64-wasi-clocks.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -82,7 +83,8 @@ wat() {
   cat <<EOF
 (module
   (import "wasi_snapshot_preview1" "fd_read" (func \$fd_read (param i32 i32 i32 i32) (result i32)))
-  (import "wasi_snapshot_preview1" "fd_write" (func \$fd_write (param i32 i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func \$fd_write (param i32 i32 i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "proc_exit" (func \$proc_exit (param i32)))
   (import "wasi_snapshot_preview1" "clock_time_get" (func \$clock (param i32 i64 i32) (result i32)))
   (import "wasi_snapshot_preview1" "random_get" (func \$random (param i32 i32) (result i32)))
@@ -183,22 +185,23 @@ while read -r name kind pages a b want wantw; do
     scoped "$mem" "$@" > "$out/$name.$how" 2> "$out/$name.$how.err" || code=$?
     outcome "$name" "$how" "$code" "$want" "$kind" "$pages" "$a" "$b"
   done
-  if [ "$want" != trap ] &&
-      { { [ "$kind" = clock ] && [ "$a" -lt 2 ]; } || { [ "$kind" = random ] && [ "$b" -gt 0 ]; }; }
+  wantc=0
+  if [ "$want" = trap ]; then wantc=2; set --
+  elif [ "$kind" = clock ] && [ "$a" -lt 2 ]; then set -- clock "$a"
+  elif [ "$kind" = random ] && [ "$b" -gt 0 ]; then set -- random "$a" "$b"
+  else set --; fi
+  got=
+  code=0
+  scoped "$mem" strace -X raw -e trace=clock_gettime,getrandom -e raw=clock_gettime,getrandom \
+    -o "$out/$name.strace" "$out/$name.elf" > /dev/null || code=$?
+  if [ "$code" -eq "$wantc" ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls \
+      "$out/$name.elf" "$out/$name.strace" "$pages" "$@") &&
+      { [ "$name" != r2g ] || [ "${got%% *}" -ge 2 ]; }
   then
-    if [ "$kind" = clock ]; then set --; else set -- "$a" "$b"; fi
-    got=
-    code=0
-    scoped "$mem" strace -X raw -e trace=clock_gettime,getrandom -e raw=clock_gettime,getrandom \
-      -o "$out/$name.strace" "$out/$name.elf" > /dev/null || code=$?
-    if [ "$code" -eq 0 ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls "$out/$name.elf" \
-        "$out/$name.strace" "$pages" "$@") && { [ "$name" != r2g ] || [ "${got#calls }" -ge 2 ]; }
-    then
-      echo "pass: $name under strace: $got"
-    else
-      echo "fail: $name under strace: status $code, $got"
-      status=1
-    fi
+    echo "pass: $name under strace: $got"
+  else
+    echo "fail: $name under strace: status $code, $got"
+    status=1
   fi
 done <<< "$cases"
 exit "$status"

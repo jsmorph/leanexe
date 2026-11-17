@@ -6,15 +6,16 @@ runs of the clock and random example of Verified/Examples/WasiClockRandom.lean.
 
 Usage: uv run tests/linux/a64-wasi-clocks.py KIND PAGES A B FILE NOW
        uv run tests/linux/a64-wasi-clocks.py example NOW FILE...
-       uv run tests/linux/a64-wasi-clocks.py calls ELF TRACE CAP [PTR N]
+       uv run tests/linux/a64-wasi-clocks.py calls ELF TRACE CAP [clock ID | random PTR N]...
 
-For calls, TRACE holds the output of `strace -e raw=clock_gettime,getrandom` for a run of the
-executable ELF, whose memory's cap is CAP pages.  Each `clock_gettime` must name clock 0 or 1 and
-the timespec, 1,040 bytes into the scratch that follows the area, and each `getrandom` must have
-flags 0 and a buffer within the memory, which starts 4,096 bytes into the area that the second
-program header maps.  With PTR and N, the calls of `getrandom` must ask for the N bytes at guest
-address PTR and then, after each count below the bytes asked for, for the rest.  At least one call
-must be checked.
+For calls, TRACE holds the output of `strace -X raw -e raw=clock_gettime,getrandom` for a run of
+the executable ELF, whose memory's cap is CAP pages, and the run's calls of `clock_gettime` and
+`getrandom` must be those that the expectations after CAP give, in their order.  `clock ID` is one
+`clock_gettime` of clock ID into the timespec, 1,040 bytes into the scratch that follows the area.
+`random PTR N` is a `getrandom` with flags 0 of the N bytes at guest address PTR, or at any address
+for a PTR of `-`, within the memory, which starts 4,096 bytes into the area that the second program
+header maps, and after each count from 1 to the bytes asked for, exclusive, a `getrandom` of the
+rest.  The program prints the number of calls and each call's clock or count and result.
 
 For the example, each FILE must hold 5,072 bytes: the errno and time of clock 0, the errno and
 time of clock 1, the errno of clock 2, the errno and 16 bytes of the first `randomGet`, and the
@@ -34,6 +35,7 @@ must keep 0x11, a realtime reading must lie within a day of NOW, in seconds, a m
 must lie below 10^17, and each buffer of at least 4,096 random bytes must hold at most 64 zero
 bytes.  The program prints the errno and exits with status 1 on a failure.
 """
+import re
 import sys
 
 
@@ -110,50 +112,77 @@ def area_of(elf):
     return loads[1]
 
 
-def calls(elf, trace, cap, ptr=None, n=None):
-    """Checks the calls of a run that `strace -e raw=clock_gettime,getrandom` wrote to `trace`
-    against the layout of the executable `elf` with a memory's cap of `cap` pages; returns the
-    failures and the number of calls checked."""
+def shown(name, args):
+    """A call as strace writes it, with each argument in hexadecimal."""
+    return f"{name}({', '.join(hex(a) for a in args)})"
+
+
+CALL = re.compile(r"(clock_gettime|getrandom)\(([^)]*)\)\s+=\s+(-?(?:0x[0-9a-f]+|[0-9]+))")
+
+
+def calls(elf, trace, cap, expect):
+    """Checks the calls of a run that `strace -X raw -e raw=clock_gettime,getrandom` wrote to
+    `trace` against `expect`, a list of ("clock", ID) and ("random", PTR, N) with PTR None for any
+    address, for the executable `elf` with a memory's cap of `cap` pages; returns the failures and
+    the calls, each its name, arguments, and result."""
     area = area_of(elf)
     base = area + 4096
-    timespec = area + 4096 + cap * 65536 + 1040
-    fails = []
-    checked = 0
-    expect = None if ptr is None else (base + ptr, n)
+    size = cap * 65536
+    timespec = base + size + 1040
+    seen = []
     for line in open(trace):
-        name = line.split("(")[0]
-        if name not in ("clock_gettime", "getrandom"):
-            continue
-        args = [int(x, 0) for x in line[line.index("(") + 1: line.rindex(")")].split(",")]
-        result = int(line.rsplit("=", 1)[1].split()[0], 0)
-        checked += 1
-        if name == "clock_gettime":
-            if args[0] not in (0, 1) or args[1] != timespec:
-                fails.append(
-                    f"clock_gettime({args[0]:#x}, {args[1]:#x}), timespec at {timespec:#x}")
-        else:
-            buf, length, flags = args
-            if flags != 0 or buf < base or buf + length > base + cap * 65536:
-                fails.append(
-                    f"getrandom({buf:#x}, {length}, {flags}), the memory from {base:#x}")
-            if expect is not None:
-                if (buf, length) != expect:
-                    fails.append(
-                        f"getrandom({buf:#x}, {length}) where ({expect[0]:#x}, {expect[1]}) is due")
-                expect = (buf + result, length - result) if 0 < result < length else None
-    return fails, checked
+        if line.startswith(("clock_gettime(", "getrandom(")):
+            m = CALL.match(line)
+            if m is None:
+                return [f"unread line {line.strip()}"], seen
+            seen.append((m[1], [int(x, 0) for x in m[2].split(",")], int(m[3], 0)))
+    pending = list(expect)
+    rest = None
+    for name, args, result in seen:
+        if rest is None:
+            if not pending:
+                return [f"{shown(name, args)} after the expected calls"], seen
+            item = pending.pop(0)
+            if item[0] == "clock":
+                if name != "clock_gettime" or args != [item[1], timespec]:
+                    return [f"{shown(name, args)} where"
+                            f" {shown('clock_gettime', [item[1], timespec])} is due"], seen
+                continue
+            rest = (None if item[1] is None else base + item[1], item[2])
+        if name != "getrandom":
+            return [f"{shown(name, args)} where getrandom is due"], seen
+        buf, length, flags = args
+        if (flags != 0 or buf < base or buf + length > base + size or length != rest[1]
+                or rest[0] is not None and buf != rest[0]):
+            due = "any address" if rest[0] is None else f"{rest[0]:#x}"
+            return [f"{shown(name, args)} where the {rest[1]} bytes at {due} within the memory"
+                    f" from {base:#x} are due"], seen
+        rest = (buf + result, length - result) if 0 < result < length else None
+    if rest is not None or pending:
+        return ["the run ends before the expected calls"], seen
+    return [], seen
 
 
 def main():
     if sys.argv[1] == "calls":
         elf, trace, cap = sys.argv[2], sys.argv[3], int(sys.argv[4])
-        ptr = int(sys.argv[5]) if len(sys.argv) > 5 else None
-        n = int(sys.argv[6]) if len(sys.argv) > 6 else None
-        fails, checked = calls(elf, trace, cap, ptr, n)
+        words = sys.argv[5:]
+        expect = []
+        while words:
+            if words[0] == "clock":
+                expect.append(("clock", int(words[1])))
+                words = words[2:]
+            else:
+                expect.append(("random", None if words[1] == "-" else int(words[1]),
+                               int(words[2])))
+                words = words[3:]
+        fails, seen = calls(elf, trace, cap, expect)
         for f in fails:
             print("fail:", f)
-        print(f"calls {checked}")
-        sys.exit(1 if fails or checked == 0 else 0)
+        print(f"{len(seen)} call{'' if len(seen) == 1 else 's'}" + "".join(
+            f", clock_gettime {args[0]} = {result}" if name == "clock_gettime"
+            else f", getrandom {args[1]} = {result}" for name, args, result in seen))
+        sys.exit(1 if fails else 0)
     if sys.argv[1] == "example":
         fails = example(int(sys.argv[2]), sys.argv[3:])
         for f in fails:
