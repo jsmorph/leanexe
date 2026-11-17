@@ -21,9 +21,10 @@ as it was.  Its trace holds the layer events `ls`, the images of the WASI events
 the command's action under `linuxHost`, each of which holds its reply and has its output region
 within the cap's linear memory.  The reads of descriptor 0 in `ls` returned the bytes that the
 `fd_read` events of `T` committed, and its writes of descriptor 1 took the bytes that the
-`fd_write` events of `T` to standard output committed.  The run is an accepted exit, whose status
-X0 holds, an exit that the shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap
-of the guest after a prefix of the action, with X0 at 2.  `wasiElf_footprint` gives these facts
+`fd_write` events of `T` to standard output committed.  `T` is the trace of an `Exec` run that
+ends at an accepted exit, whose status X0 holds, at an exit that the shim rejects, with X0 at 1,
+or at a trap of the shim, with X0 at 2, or of a `Prefix` run of the action, with X0 at 2.
+`wasiElf_footprint` gives these facts
 for arm64's open flags and the launch `⟨args, environ, false⟩`.  The command's action makes no
 flat call (`main_streams`), so its trace holds none, its layer events are reads and writes, whose
 output regions lie in linear memory, and its images and its runs under `linuxHost` hold for every

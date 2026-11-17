@@ -20,9 +20,10 @@ initial stack at SP, the program counter at the entry, and no event in the trace
 reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the
 layer events `ls`, the images of the WASI events `T` of a run of the command's action under
 `linuxHost` at arm64's open flags and the launch `⟨args, environ, false⟩`, each of which holds its
-reply and writes within the cap's linear memory or is a `clock_gettime` into the timespec.  The
-run is an accepted exit, whose status X0 holds, an exit that the shim rejects, with X0 at 1, a
-trap of the shim, with X0 at 2, or a trap of the guest after a prefix of the action, with X0 at 2.
+reply and writes within the cap's linear memory or is a `clock_gettime` into the timespec.  `T` is
+the trace of an `Exec` run that ends at an accepted exit, whose status X0 holds, at an exit that
+the shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a `Prefix` run of
+the action, with X0 at 2.
 The command imports `clock_time_get` and `random_get`, whose stubs `flatStub_sim` covers, and
 `wasiElf_footprint` gives these facts.
 -/
