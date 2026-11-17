@@ -4,7 +4,9 @@
     "first | (tac; done) | tac' where tac makes progress without closing the goal",
     "a discharger whose last alternative fails and closes the goal with sorry",
     "maximum recursion depth has been reached inside try or first",
-    "split or ite_self does not apply to @ite α c d a b with an instance d of its own",
+    "ite_self does not apply to @ite α c d b b after a definitional rewrite of c, and simp made no progress",
+    "Tactic `split` failed: Could not split an `if` or `match` expression, on an if whose condition a definitional rewrite changed",
+    "Note: The target expression is not type-correct under the `implicit` transparency level",
     "a conditional simp lemma that does not rewrite",
     "repeat' split over a statement with several copies of one term",
     "tauto exhausts the heartbeats of a declaration whose context holds premises p → q with a decidable p",
@@ -41,7 +43,8 @@
     "unexpected token '('; expected '}' in a structure update whose field value continues on the next line",
     "env.get to fails to parse in a module that imports Mathlib",
     "Invalid pattern: Not enough arguments, from a pattern variable named like a constructor",
-    "simpa type mismatch between two match terms that print alike"
+    "simpa type mismatch between two match terms that print alike",
+    "rw: Did not find an occurrence of the pattern Command.denote … (Env.cons …) in an environment that ResultTy.bindEnv builds"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -63,7 +66,9 @@
     "Mathlib.Tactic.Lift",
     "Verified.Wasi.SysCommand",
     "Verified.Wasi.SysRecord",
-    "Verified.Wasi.SysFlatCall"
+    "Verified.Wasi.SysFlatCall",
+    "Verified.Wasi.HandleCheck",
+    "Verified.Wasi.ReflectBracket"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -110,7 +115,15 @@
     "Verified.Wasi.CommandResult",
     "Verified.Wasi.CommandResult.terminal",
     "Verified.Wasi.flatCostWith",
-    "Verified.Wasi.sysCostWith"
+    "Verified.Wasi.sysCostWith",
+    "ite_self",
+    "Lean.Meta.TransparencyMode",
+    "Verified.Expr.denote",
+    "Verified.Wasi.ResultTy.bindEnv",
+    "Verified.Wasi.ResultTy.extend",
+    "Verified.Env.cons",
+    "Verified.Wasi.Command.handleCheck",
+    "Verified.Wasi.Command.call"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -132,7 +145,8 @@
     "Verified.Wasi.flatArgsWith_fit",
     "Verified.Wasi.littleEndian_read16",
     "Verified.Wasi.wp_sys_record_accept_with",
-    "Verified.Wasi.wp_sys_flat_result_inputs_with"
+    "Verified.Wasi.wp_sys_flat_result_inputs_with",
+    "Verified.Wasi.Reflect.withOpen_rel"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [
