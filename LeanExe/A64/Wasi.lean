@@ -1,5 +1,6 @@
 import LeanExe.A64.Elf
-import LeanExe.Wasi.Calls
+import LeanExe.A64.WasiClocks
+import LeanExe.Wasi.CallTable
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose
@@ -223,8 +224,27 @@ structure FlatStub where
   size : Nat
   gen : UInt64 → UInt64 → UInt64 → UInt64 → Nat → GenM (List Instr)
 
-/-- The flat calls whose stubs the generator implements: none. -/
-def flatStubs : List FlatStub := []
+/-- The import of `clock_time_get`. -/
+def clockImport : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name := "clock_time_get",
+    params := [.i32, .i64, .i32], results := [.i32] }
+
+/-- The import of `random_get`. -/
+def randomImport : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name := "random_get", params := [.i32, .i32],
+    results := [.i32] }
+
+/-- The stub of `clock_time_get` as the generator places it. -/
+def clockFlat : FlatStub :=
+  ⟨LeanExe.Wasi.Call.clockTimeGet, clockImport, clockStubSize, clockStub⟩
+
+/-- The stub of `random_get` as the generator places it. -/
+def randomFlat : FlatStub :=
+  ⟨LeanExe.Wasi.Call.randomGet, randomImport, randomStubSize,
+    fun a svc tr en _ => randomStub a svc tr en⟩
+
+/-- The flat calls whose stubs the generator implements: `clock_time_get` and `random_get`. -/
+def flatStubs : List FlatStub := [clockFlat, randomFlat]
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=

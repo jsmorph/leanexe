@@ -1,11 +1,13 @@
-import Verified.ShimA64.Stubs
+import Verified.ShimA64.Clocks
 
 /-!
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each
 stub of `flatStubs` at its address meets `Machine.StubSim` on `shimMachine` for the function of
 `linuxEnv` of every call of `shimCalls` whose import is the stub's.  `wasiElf_run` takes the
-simulation of every flat import of a module from it.  `flatStubs` lists no stub, so the lemma
-holds vacuously; each increment that adds a stub to `flatStubs` adds its case here.
+simulation of every flat import of a module from it.  `flatStub_call` states that the call of
+`shimCalls` whose import is a stub's is the stub's call, so the lemma takes one case for each stub.
+`flatStubs` lists the stubs of `clock_time_get` and `random_get`, whose cases `clockStub_sim` and
+`randomStub_sim` give, and each increment that adds a stub to `flatStubs` adds its case here.
 -/
 
 namespace Verified.ShimA64
@@ -19,6 +21,11 @@ variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ t
   {hk18 : ∀ a w i, code a = some w → decode w = some i → i.keepsX18 = true}
   {hL : L.area.toNat + L.dataMem ≤ 2 ^ 32} {hG : G.base.toNat + scratchSize < 2 ^ 64}
   {base : UInt64} {size : Nat}
+
+/-- The call of `shimCalls` whose import is a flat stub's is the stub's call. -/
+theorem flatStub_call :
+    ∀ s ∈ flatStubs, ∀ c ∈ shimCalls, ABI.callImport c = s.decl → c = s.call := by
+  decide
 
 /-- The code of a stub of `flatStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
 the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
@@ -36,6 +43,10 @@ theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Cal
     (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
       s.decl.params s.decl.results
       (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
-  simp [flatStubs] at hs
+  obtain rfl := flatStub_call s hs c hc hd
+  simp only [flatStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
+  rcases hs with rfl | rfl
+  · exact clockStub_sim S n hg hcode hsvc hen hGb hdata
+  · exact randomStub_sim S n hg hcode hsvc hen hGb hdata hsize
 
 end Verified.ShimA64

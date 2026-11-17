@@ -17,7 +17,18 @@
 # status 1.  Standard input a directory must give status 31, `isdir`, with nothing written, as in
 # the Wasmtime host, and standard output /dev/full status 51, `nospc`, as in the Wasmtime host.
 # Standard input closed gives status 8, `badf`, with nothing written, and standard output closed
-# status 8.  The products lie in OUT, build/linux/a64-wasi unless set.
+# status 8.
+#
+# The second command, of Verified/Examples/WasiClockRandom.lean, reads three clocks and two buffers
+# of random bytes with the stubs of clock_time_get and random_get, and a64-wasi emit writes its
+# executable, clockrandom.elf, whose theorems Lean checks in
+# tests/TestSupport/A64/ImageFilesWasiClockElf.lean.  Four runs each in the Wasmtime host, on the
+# host's processor, and under qemu-aarch64 must exit with status 0 and write what
+# tests/linux/a64-wasi-clocks.py accepts: errnos 0, 0, 8, 0, and 0, readings of realtime within a
+# day of the clock and of the first run, monotonic readings below 10^17, 5,000 random bytes with
+# few zeros, and 16 random bytes that differ between runs.  A native run under strace must make
+# four calls, two of `clock_gettime` with the shim's timespec and two of `getrandom` with flags 0
+# into linear memory.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -30,22 +41,31 @@ if [ ! -x "$host" ]; then
   echo "fail: the Wasmtime host $host is missing"
   exit 1
 fi
+for tool in strace uv; do
+  command -v "$tool" > /dev/null || { echo "fail: $tool is not on the search path"; exit 1; }
+done
 rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-wasi \
-  TestSupport.A64.WasiElf Verified.Examples.WasiReadAllNative LeanExe.A64.File
+  TestSupport.A64.WasiElf Verified.Examples.WasiReadAllNative \
+  Verified.Examples.WasiClockRandomNative LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-wasi emit "$out" || status=1
-chmod +x "$out/readall.elf"
+chmod +x "$out/readall.elf" "$out/clockrandom.elf"
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiReadAll \
   Verified.Examples.WasiReadAll.command.module "$out/readall.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiClockRandom \
+  Verified.Examples.WasiClockRandom.command.module "$out/clockrandom.wasm"
 # Elaborates the module $1 of tests/TestSupport/A64 in the directory of the files and requires $2
-# lines of axioms, each a subset of the standard three.
+# reports of axioms, each a subset of the standard three.  Lean breaks a report longer than its
+# format's width of 120 columns into lines, which the check joins.
 kernel_check() {
   if tools/leanrun --timeout 60m --memory-high 12G lake env sh -c 'cd "$1" && lean "$2"' sh \
       "$out" "$root/tests/TestSupport/A64/$1.lean" >"$out/$1.check" 2>&1 &&
-      [ "$(grep -c "depends on axioms\|does not depend on any axioms" "$out/$1.check")" = "$2" ] &&
-      ! grep "depends on axioms" "$out/$1.check" |
+      sed -e ':a' -e '/depends on axioms: \[[^]]*$/{N;s/\n//;ba' -e '}' "$out/$1.check" \
+        >"$out/$1.axioms" &&
+      [ "$(grep -c "depends on axioms\|does not depend on any axioms" "$out/$1.axioms")" = "$2" ] &&
+      ! grep "depends on axioms" "$out/$1.axioms" |
         sed 's/.*depends on axioms: \[\(.*\)\]/\1/' | tr ',' '\n' | tr -d ' ' |
         grep -qvx 'propext\|Classical.choice\|Quot.sound'; then
     echo "pass: the kernel's check of $1.lean"
@@ -55,6 +75,7 @@ kernel_check() {
   fi
 }
 kernel_check ImageFilesWasiElf 6
+kernel_check ImageFilesWasiClockElf 6
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"
@@ -162,4 +183,40 @@ for how in native qemu; do
   scoped "$@" <"$out/input-4097" >&- || code=$?
   fails "standard output closed $how" "$code" 8
 done
+# The clock and random command.
+now=$(date +%s)
+for i in 1 2 3 4; do
+  code=0
+  timeout "${TIMEOUT:-120}" "$host" --stdout-file "$out/wasmtime-clock-$i.out" \
+    --control-file "$out/wasmtime-clock-$i.control" run "$out/clockrandom.wasm" \
+    2>"$out/wasmtime-clock-$i.err" || code=$?
+  fails "clockrandom run $i in the Wasmtime host" "$code" 0
+  for how in native qemu; do
+    if [ "$how" = native ]; then set -- "$out/clockrandom.elf"
+    else set -- "$qemu" "$out/clockrandom.elf"; fi
+    code=0
+    scoped "$@" >"$out/$how-clock-$i.out" || code=$?
+    fails "clockrandom run $i $how" "$code" 0
+  done
+done
+for how in wasmtime native qemu; do
+  if got=$(uv run tests/linux/a64-wasi-clocks.py example "$now" "$out/$how-clock-1.out" \
+      "$out/$how-clock-2.out" "$out/$how-clock-3.out" "$out/$how-clock-4.out"); then
+    echo "pass: clockrandom's output $how"
+  else
+    echo "fail: clockrandom's output $how: $got"
+    status=1
+  fi
+done
+code=0
+got=
+scoped strace -X raw -e trace=clock_gettime,getrandom -e raw=clock_gettime,getrandom \
+  -o "$out/clockrandom.strace" "$out/clockrandom.elf" >/dev/null || code=$?
+if [ "$code" -eq 0 ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls "$out/clockrandom.elf" \
+    "$out/clockrandom.strace" 4096) && [ "$got" = "calls 4" ]; then
+  echo "pass: clockrandom's calls under strace"
+else
+  echo "fail: clockrandom's calls under strace: status $code, $got"
+  status=1
+fi
 exit "$status"
