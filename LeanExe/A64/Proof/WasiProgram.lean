@@ -139,6 +139,38 @@ theorem wasiCode_dom {svc a : UInt64} {is : List Instr} (hsvc : svc.toNat + 8 < 
       simp only [Nat.reducePow] at *
       omega
 
+theorem wasiCode_svc {svc a : UInt64} {is : List Instr} :
+    OpsAt (wasiCode svc a is) svc [.svc, .ins (.ret 30)] := by
+  intro j hj
+  have := opsCode_after (a := svc) (ops := [.svc, .ins (.ret 30)]) (by decide) j hj
+  unfold wasiCode
+  rw [this]
+  rfl
+
+theorem wasiCode_prog {svc a : UInt64} {is : List Instr} (hsep : svc.toNat + 8 ≤ a.toNat)
+    (hlen : a.toNat + 4 * is.length < 2 ^ 64) : CodeAt (wasiCode svc a is) a is := by
+  intro j hj
+  have h1 : opsCode svc [.svc, .ins (.ret 30)] (after a j) = none := by
+    unfold opsCode
+    rw [dif_neg]
+    rintro ⟨h, -⟩
+    simp only [List.length_cons, List.length_nil] at h
+    rw [UInt64.toNat_sub_of_le _ _ (by
+      rw [UInt64.le_iff_toNat_le, after, UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat']
+      have e4 : (4 : UInt64).toNat = 4 := rfl
+      rw [e4]
+      simp only [Nat.reducePow] at *
+      omega)] at h
+    rw [after, UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat'] at h
+    have e4 : (4 : UInt64).toNat = 4 := rfl
+    rw [e4] at h
+    simp only [Nat.reducePow] at *
+    omega
+  have h2 := opsCode_after (a := a) (ops := is.map .ins) (by simp; omega) j (by simpa using hj)
+  unfold wasiCode
+  rw [h1, h2]
+  simp [Op.word]
+
 /-! ## The generator's program -/
 
 theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : Nat}

@@ -117,6 +117,8 @@ import Verified.Examples.WasiStdio
 import Verified.Examples.WasiReadAll
 import Verified.Shim
 import Verified.Examples.WasiReadAllShim
+import Verified.ShimA64
+import Verified.Examples.WasiReadAllNative
 import Verified.AlignedAccess
 import Verified.AlignedArrayCopy
 import Verified.AlignedSpec

@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.LinuxCalls
 import LeanExe.A64.Proof.MachineSim
 import LeanExe.A64.Proof.Lift
+import LeanExe.A64.Proof.ImageRun
 import LeanExe.A64.Wasi
 
 /-!
@@ -177,6 +178,64 @@ theorem ProcRunWith.ofWith {p q : Proc} (h : ProcReachWith T R P code p q)
 theorem ProcRunWith.ofReach {p : Proc} (hf : p.fpcr = fpcrValue) {s : State}
     (h : Reach P code p.core s) : ProcRunWith T R P code p { p with core := s } :=
   .inr ⟨p, .refl _, hf, h, rfl, rfl⟩
+
+/-- A run of `ProcRunWith` that ends below 2^55, followed by a run of `ProcReachWith`. -/
+theorem ProcRunWith.thenWith (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {p q z : Proc}
+    (h : ProcRunWith T R P code p q) (hq : q.core.pc.toNat < 2 ^ 55)
+    (h2 : ProcReachWith T R P code q z) : ProcReachWith T R P code p z := by
+  rcases h with rfl | ⟨r, hp, hf, hm, hq', ht⟩
+  · exact h2
+  · exact hp.trans ((procReachWith_of_run hdom hf hm hq hq' ht).trans h2)
+
+/-! ## Larger code maps -/
+
+theorem istep_mono {c1 c2 : UInt64 → Option UInt32}
+    (hc : ∀ a w, c1 a = some w → c2 a = some w) {p q : Proc} (h : istep P c1 p = some q) :
+    istep P c2 p = some q := by
+  unfold istep at h ⊢
+  cases h1 : c1 p.core.pc with
+  | none => rw [h1] at h; cases h
+  | some w =>
+      rw [h1] at h
+      rw [hc _ _ h1]
+      exact h
+
+theorem pstepWith_mono {c1 c2 : UInt64 → Option UInt32}
+    (hc : ∀ a w, c1 a = some w → c2 a = some w) {p q : Proc}
+    (h : pstepWith T R P c1 p = some q) : pstepWith T R P c2 p = some q := by
+  unfold pstepWith at h ⊢
+  by_cases hs : c1 p.core.pc = some svcWord
+  · rw [if_pos hs] at h
+    rw [if_pos (hc _ _ hs)]
+    exact h
+  · rw [if_neg hs] at h
+    cases h1 : c1 p.core.pc with
+    | none =>
+        unfold istep at h
+        rw [h1] at h
+        cases h
+    | some w =>
+        have hn : c2 p.core.pc ≠ some svcWord := by
+          rw [hc _ _ h1]
+          intro e
+          exact hs (by rw [h1, e])
+        rw [if_neg hn]
+        exact istep_mono hc h
+
+/-- A run over a code map is a run over every larger one. -/
+theorem ProcReachWith.mono {c1 c2 : UInt64 → Option UInt32}
+    (hc : ∀ a w, c1 a = some w → c2 a = some w) {p q : Proc}
+    (h : ProcReachWith T R P c1 p q) : ProcReachWith T R P c2 p q := by
+  induction h with
+  | refl => exact .refl _
+  | next hs _ ih => exact .next (pstepWith_mono hc hs) ih
+
+theorem ProcRunWith.mono {c1 c2 : UInt64 → Option UInt32}
+    (hc : ∀ a w, c1 a = some w → c2 a = some w) {p q : Proc}
+    (h : ProcRunWith T R P c1 p q) : ProcRunWith T R P c2 p q := by
+  rcases h with rfl | ⟨r, hp, hf, hm, hq, ht⟩
+  · exact .inl rfl
+  · exact .inr ⟨r, hp.mono hc, hf, hm.mono_code hc, hq, ht⟩
 
 /-! ## The machine -/
 
