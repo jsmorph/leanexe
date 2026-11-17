@@ -3,7 +3,9 @@
   "goals": [
     "LeanExe.ProofKit.Memory.WritesRange store store' start stop",
     "final.mem.read64 a = initial.mem.read64 a for a word outside the written interval",
-    "a loop invariant stating that every write of the loop lies inside one object"
+    "a loop invariant stating that every write of the loop lies inside one object",
+    "Verified.Wasi.BlockAt before mem pointer size byte after a zeroing and stores of mixed widths",
+    "Bytes.At mem pointer (subscriptionBytes records args) after the stores of the fields"
   ],
   "modules": [
     "LeanExe.ProofKit.MemoryFrame",
@@ -12,7 +14,9 @@
     "Verified.Heap",
     "Verified.TreeStorage",
     "Verified.AlignedArrayCopy",
-    "Verified.Wasi.CompactMove"
+    "Verified.Wasi.CompactMove",
+    "Verified.Wasi.SysPoll",
+    "Verified.Wasi.OracleSys"
   ],
   "declarations": [
     "LeanExe.ProofKit.Memory.WritesRange",
@@ -25,10 +29,32 @@
     "LeanExe.ProofKit.UInt64Array.At.writesRange",
     "Verified.Bytes.At.writesRange",
     "Verified.writeLength_frame",
-    "Verified.RecordStorage.writeHeader_range"
+    "Verified.RecordStorage.writeHeader_range",
+    "Verified.Wasi.BlockAt",
+    "Verified.Wasi.BlockAt.write64",
+    "Verified.Wasi.BlockAt.write32",
+    "Verified.Wasi.BlockAt.write8",
+    "Verified.Wasi.writeByte",
+    "Verified.Wasi.writeByte_two",
+    "Verified.Wasi.fieldStoreCode",
+    "Verified.Wasi.wp_zero_words",
+    "Verified.Wasi.wp_field_stores",
+    "Verified.Wasi.blockFold",
+    "Verified.Wasi.BlockAt.congr",
+    "Verified.Wasi.subscriptionBytes",
+    "Verified.Wasi.blockByte",
+    "Verified.Wasi.BlockAt.at_",
+    "Verified.Wasi.subscriptionBytes_get",
+    "Verified.Bytes.At",
+    "Verified.Wasi.BlockAt.frame",
+    "Verified.Wasi.GuestFrame",
+    "Verified.Wasi.fieldsApart_pairwise",
+    "Verified.Wasi.subscription_fields_at"
   ],
   "examples": [
     "Verified.wpX_copyInto",
-    "Verified.Wasi.wp_moveCode"
+    "Verified.Wasi.wp_moveCode",
+    "Verified.Wasi.wp_sys_poll_accept_with",
+    "Verified.Wasi.OracleSys.decodeArgs_lower"
   ]
 }

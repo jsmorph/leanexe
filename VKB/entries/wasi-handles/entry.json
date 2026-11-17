@@ -1,0 +1,62 @@
+{
+  "id": "wasi-handles",
+  "goals": [
+    "LeanExe.Wasi.WellBracketed stack trace stack'",
+    "LeanExe.Wasi.Action.Handles stack action post",
+    "LeanExe.Wasi.Action.BracketRuns action",
+    "Verified.Wasi.Command.HandleCheck helpers marks command",
+    "a new typed function on LeanExe.Wasi.Handle or a new call that opens, closes, or renumbers a descriptor",
+    "a check over Command whose nested pattern mixes the constructors of Command, Expr, Path, and Var",
+    "failed to generate equality theorems for match expression, from eq_1 or induct of a check over an indexed family",
+    "env.at? Ty.pair? 0 = some (errno, word) for a variable whose type the context does not fix",
+    "Dependent elimination failed: Failed to solve equation Ty.elem Elem.bool = g✝.2, from cases on an Expr of a fixed type",
+    "a statement over descriptor numbers in a trace when the host reuses numbers",
+    "the close of a bracket that returns normally inside a run that later exits"
+  ],
+  "modules": [
+    "Verified.Wasi.Handles",
+    "Verified.Wasi.ReflectBracket"
+  ],
+  "declarations": [
+    "LeanExe.Wasi.Handle",
+    "LeanExe.Wasi.Handle.preopened",
+    "LeanExe.Wasi.withOpen",
+    "LeanExe.Wasi.WellBracketed",
+    "LeanExe.Wasi.Action.Handles",
+    "LeanExe.Wasi.Action.Handles.exec_run",
+    "LeanExe.Wasi.Action.Handles.prefix_run",
+    "LeanExe.Wasi.Action.BracketRuns",
+    "LeanExe.Wasi.FreshOpens",
+    "LeanExe.Wasi.callAllowed",
+    "LeanExe.Wasi.Call.table",
+    "Verified.Wasi.Command",
+    "Verified.Wasi.Command.HandleCheck",
+    "Verified.Wasi.Command.handleCheck",
+    "Verified.Wasi.Stage",
+    "Verified.Wasi.StageHandles",
+    "Verified.Wasi.EffectFuns.HandlesSafe",
+    "Verified.Wasi.EnvMarked",
+    "Verified.Wasi.Command.isOpen",
+    "Verified.Wasi.Command.isOpen_handles",
+    "Verified.Expr",
+    "Verified.Expr.isErrnoTest",
+    "Verified.Path",
+    "Verified.Var",
+    "Verified.Ty.word?",
+    "Verified.Ty.pair?",
+    "Verified.Ty.bool?",
+    "Verified.Env.at?",
+    "Verified.Env.at?_get",
+    "Verified.Env.get",
+    "Verified.Wasi.Command.handles_exec",
+    "Verified.Wasi.Command.handles_prefix",
+    "Verified.Wasi.EffectProg.bracketRuns"
+  ],
+  "examples": [
+    "Verified.Wasi.Command.handles",
+    "Verified.Expr.isErrnoTest_denote",
+    "Verified.Wasi.withOpen_closes",
+    "LeanExe.Wasi.Action.BracketRuns.exec_descriptors",
+    "Verified.Wasi.Reflect.withOpen_rel"
+  ]
+}

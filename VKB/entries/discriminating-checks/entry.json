@@ -11,10 +11,26 @@
     "a test of the accuracy of a bound against the true value, with a margin for the limit of the method",
     "a run of an emitted module whose checks test outputs by presence or number",
     "a frame test with guard bytes around the declared regions of a call",
-    "a seeded fault that passes when an unrelated check fails, or when random bytes equal the guard"
+    "a seeded fault that passes when an unrelated check fails, or when random bytes equal the guard",
+    "a check decided in the kernel whose soundness proof reads data that the checked term supplies",
+    "an analysis reused for a kind of value that it was not written for",
+    "an exit status that names a step and a check of a test run under Wasmtime 44"
   ],
-  "modules": [],
-  "declarations": [],
+  "modules": [
+    "Verified.Wasi.HandleCheck",
+    "LeanExe.Wasi.Bracket",
+    "Verified.Wasi.ReflectModes",
+    "Verified.Compile",
+    "Verified.Wasi.CodeAnalysis"
+  ],
+  "declarations": [
+    "Verified.Wasi.Command.HandleCheck",
+    "LeanExe.Wasi.WellBracketed",
+    "LeanExe.Wasi.Call.table",
+    "Verified.Wasi.Command.paramChoice",
+    "Verified.callMoves",
+    "Verified.Wasi.EffectSig.callMoves"
+  ],
   "examples": [],
   "unimported": {
     "tests/TestSupport/Attitude/QCases.lean": [
