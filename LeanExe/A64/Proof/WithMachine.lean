@@ -2,6 +2,7 @@ import LeanExe.A64.Proof.LinuxCalls
 import LeanExe.A64.Proof.MachineSim
 import LeanExe.A64.Proof.Lift
 import LeanExe.A64.Proof.ImageRun
+import LeanExe.A64.Proof.PlatformLe
 import LeanExe.A64.Wasi
 
 /-!
@@ -12,12 +13,20 @@ program's model, as `Machine.lift` requires, and its last step may leave the cod
 lies below 2^55, two such runs compose, and a run that ends at a word of the code is one of
 `ProcReachWith`.
 
-`withMachine` holds a store by `StoreRel`, FPCR at `fpcrValue`, X17 at the area's address `area`,
-and a relation `H` between the store's host state and the trace, and a trap ends at a stub of
-`TrapAt` or at a state that `Ex` admits for the trap's message, with `H` between the trap's store
-and the trace.  A model run keeps X17 when the code's instructions keep it, `Reach.x17`, which
-holds for the code of `genWasiProgram`, whose generator checks `Instr.keepsX17` of each
-instruction, so the area that the stubs pass to Linux is the one that the store relation names.
+`withMachine` runs the module's code on a platform `P` and the process on a platform `Pp` that
+maps every byte that `P` maps.  It holds a store by `StoreRel` on `P`, FPCR at `fpcrValue`, X17 at
+the area's address `area`, a relation `H` between the store's host state and the trace, and a
+relation `K` between the store's host state and the memory, which two memories that agree outside
+`P`'s Normal memory meet together.  A trap ends at a stub of `TrapAt` or at a state that `Ex`
+admits for the trap's message, with `H` between the trap's store and the trace.  The store
+relation also places the stack's limit in X18 at least `gap` bytes above the area's end, so that
+a run that writes those bytes, such as a stub's write of the scratch, changes no byte from SP up.
+A run of the program's model on `P` is one on `Pp` (`Reach.le`) and keeps every byte that `P` does
+not map (`Reach.frame`), so `lift` keeps `K`.  A model run keeps X17 and X18 when the code's
+instructions keep them, `Reach.x17` and `Reach.x18`, which hold for the code of `genWasiProgram`
+after `main`, whose generator checks `Instr.keepsX17` of each instruction and `Instr.keepsX18` of
+each instruction after `main`, so the area that the stubs pass to Linux is the one that the store
+relation names, and the stack's limit stays where `main` set it.
 -/
 
 namespace LeanExe.A64
@@ -107,6 +116,89 @@ theorem Reach.x17 {P : Platform} {code : UInt64 → Option UInt32}
   | next hs _ ih =>
       obtain ⟨w, i, hc, hd, he⟩ := step_some hs
       rw [ih, exec_x17 he (hk _ _ _ hc hd)]
+
+/-! ## Instructions that keep X18 -/
+
+theorem x18_setX {s : State} {d : Fin 32} {v : UInt64} (hd : (d.val != 18) = true) :
+    (s.setX d v).x 18 = s.x 18 := by
+  have hd' : d ≠ 18 := fun e => by subst e; exact absurd hd (by decide)
+  exact State.x_setX_ne hd'
+
+theorem x18_setXsp {s : State} {d : Fin 32} {v : UInt64} (hd : (d.val != 18) = true) :
+    (s.setXsp d v).x 18 = s.x 18 := by
+  by_cases h31 : d.val < 31
+  · rw [State.setXsp_eq_setX h31]
+    exact x18_setX hd
+  · unfold State.setXsp
+    rw [if_neg h31]
+    rfl
+
+/-- An instruction that `Instr.keepsX18` accepts keeps X18. -/
+theorem exec_x18 {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t)
+    (hk : i.keepsX18 = true) : t.x 18 = s.x 18 := by
+  cases i
+  case ldr r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact x18_setX hk
+    · cases h
+  case ldrb r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact x18_setX hk
+    · cases h
+  case ldrW r n imm =>
+    obtain ⟨v, io, -, rfl⟩ := exec_ldrW_some h
+    exact x18_setX hk
+  case str r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      rfl
+    · cases h
+  case strb r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      rfl
+    split at h
+    · obtain rfl := Option.some.inj h
+      rfl
+    · cases h
+  case addImm d n imm =>
+    obtain rfl := Option.some.inj h
+    exact x18_setXsp hk
+  case subImm d n imm =>
+    obtain rfl := Option.some.inj h
+    exact x18_setXsp hk
+  case subsImm d n imm =>
+    obtain rfl := Option.some.inj h
+    exact x18_setX hk
+  case subsReg d n m =>
+    obtain rfl := Option.some.inj h
+    exact x18_setX hk
+  case bl imm =>
+    obtain rfl := Option.some.inj h
+    exact x18_setX (d := 30) (v := s.pc + 4) rfl
+  all_goals
+    simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
+      first
+        | exact x18_setX hk
+        | rfl
+
+/-- A run of the program's model keeps X18 when every instruction of the code keeps it. -/
+theorem Reach.x18 {P : Platform} {code : UInt64 → Option UInt32}
+    (hk : ∀ a w i, code a = some w → decode w = some i → i.keepsX18 = true) {s t : State}
+    (h : Reach P code s t) : t.x 18 = s.x 18 := by
+  induction h with
+  | refl => rfl
+  | next hs _ ih =>
+      obtain ⟨w, i, hc, hd, he⟩ := step_some hs
+      rw [ih, exec_x18 he (hk _ _ _ hc hd)]
 
 /-! ## Runs of the process with the call layer -/
 
@@ -239,20 +331,27 @@ theorem ProcRunWith.mono {c1 c2 : UInt64 → Option UInt32}
 
 /-! ## The machine -/
 
-/-- The process as a machine for the calls `T` and the replies `R`: a state holds a store by
-`StoreRel`, FPCR at `fpcrValue`, X17 at `area`, and the relation `H` between the store's host
-state and the trace.  A trap ends at a stub of `TrapAt` or at a state that `Ex` admits, with `H`
-between the trap's store and the trace, and the host environment is `env`. -/
-def withMachine (T : List Call) (R : Replies) (P : Platform) (code : UInt64 → Option UInt32)
-    (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
-    (hk : ∀ a w i, code a = some w → decode w = some i → i.keepsX17 = true) (area : UInt64)
-    {α : Type} (H : α → List Event → Prop) (Ex : Shared → String → α → State → Prop)
-    (env : HostEnv α) : Machine P code α where
+/-- The process as a machine for the calls `T` and the replies `R`, whose module code runs on `P`
+and whose process runs on `Pp`: a state holds a store by `StoreRel` on `P`, FPCR at `fpcrValue`,
+X17 at `area`, the stack's limit in X18 at least `gap` bytes above the area's end, the relation
+`H` between the store's host state and the trace, and the relation `K` between the store's host
+state and the memory, which depends only on bytes outside `P`'s Normal memory.  A trap ends at a
+stub of `TrapAt` or at a state that `Ex` admits, with `H` between the trap's store and the trace,
+and the host environment is `env`. -/
+def withMachine (T : List Call) (R : Replies) (P Pp : Platform) (hP : P.Le Pp)
+    (code : UInt64 → Option UInt32) (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
+    (hk : ∀ a w i, code a = some w → decode w = some i → i.keepsX17 = true)
+    (hk18 : ∀ a w i, code a = some w → decode w = some i → i.keepsX18 = true) (area : UInt64)
+    (gap : Nat) {α : Type} (H : α → List Event → Prop) (K : α → (UInt64 → UInt8) → Prop)
+    (hK : ∀ h m m', K h m → (∀ a, P.normal a = false → m' a = m a) → K h m')
+    (Ex : Shared → String → α → State → Prop) (env : HostEnv α) : Machine P code α where
   Q := Proc
   core p := p.core
-  Rch := ProcRunWith T R P code
+  Rch := ProcRunWith T R Pp code
   SR cap gts st p :=
-    StoreRel P cap gts st p.core ∧ p.fpcr = fpcrValue ∧ p.core.x 17 = area ∧ H st.host p.trace
+    StoreRel P cap gts st p.core ∧ p.fpcr = fpcrValue ∧ p.core.x 17 = area ∧
+      area.toNat + areaSize cap + gap ≤ (p.core.x 18).toNat ∧ H st.host p.trace ∧
+      K st.host p.core.mem
   Trapped S st msg p :=
     (TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg p.core.pc ∨ Ex S msg st.host p.core) ∧
       p.fpcr = fpcrValue ∧ H st.host p.trace
@@ -261,11 +360,15 @@ def withMachine (T : List Call) (R : Replies) (P : Platform) (code : UInt64 → 
   trans := ProcRunWith.trans hdom
   storeRel h := h.1
   lift {_ _ st p s} h hr :=
-    ⟨{ p with core := s }, ProcRunWith.ofReach h.2.1 hr, rfl,
+    ⟨{ p with core := s }, ProcRunWith.ofReach h.2.1 (Reach.le hP hr), rfl,
       fun st' h' hh => ⟨h', h.2.1, by
         show s.x 17 = area
         rw [Reach.x17 hk hr]
-        exact h.2.2.1, by rw [hh]; exact h.2.2.2⟩,
-      fun _ st' _ ht hh => ⟨.inl ht, h.2.1, by rw [hh]; exact h.2.2.2⟩⟩
+        exact h.2.2.1, by
+        show _ ≤ (s.x 18).toNat
+        rw [Reach.x18 hk18 hr]
+        exact h.2.2.2.1, by rw [hh]; exact h.2.2.2.2.1,
+        by rw [hh]; exact hK _ _ _ h.2.2.2.2.2 fun a ha => Reach.frame hr ha⟩,
+      fun _ st' _ ht hh => ⟨.inl ht, h.2.1, by rw [hh]; exact h.2.2.2.2.1⟩⟩
 
 end LeanExe.A64
