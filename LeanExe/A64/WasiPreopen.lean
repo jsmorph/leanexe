@@ -4,8 +4,7 @@ import LeanExe.A64.WasiStrings
 The preopened directory of a WASI command as a Linux executable for AArch64: the startup's check
 of descriptor 3 and the stubs of `fd_prestat_get` and `fd_prestat_dir_name`.  Each part reaches the
 shim's scratch, `scratch` bytes above the area, as `X17 + scratch` in X20 (`scratchAddr` of
-`LeanExe/A64/WasiStrings.lean`).  The
-scratch holds the preopen flag at offset 8, 1 while descriptor 3 is the preopened directory, a byte
+`LeanExe/A64/WasiStrings.lean`).  The scratch holds the preopen flag at offset 8, 1 while descriptor 3 is the preopened directory, a byte
 at offset `16 + d` for each descriptor number `d` below 1,024, 1 while the shim holds the number,
 and the path buffer at offset 1,080.
 
@@ -23,14 +22,15 @@ and branches to the trap stub otherwise (`rangeCheck`).  `preopenTest` branches 
 descriptor in X0 is 3 and the preopen flag is set, and `heldTest` unless the shim holds the
 descriptor in a register.  `prestatStub` stores the record `[0, 0, 0, 0, 1, 0, 0, 0]`, a directory
 whose name has one byte, as the word `2^32` for descriptor 3 while the preopen flag is set, and
-returns errno 0, and returns errno 8 (`badf`) for every other descriptor.  `dirNameStub` stores `.`
-at the buffer and returns 0 for descriptor 3 while the flag is set and the buffer is nonempty, and
-returns errno 37 (`nametoolong`) for an empty buffer.  For any other descriptor it returns errno 54
-(`notdir`) for descriptors 0 to 2 and for a number that the shim holds, and errno 8 otherwise.
+returns errno 0.  It returns errno 8 (`badf`) for every other descriptor and for descriptor 3
+while the flag is clear.  `dirNameStub` stores `.` at the buffer and returns 0 for descriptor 3
+while the flag is set and the buffer is nonempty, and returns errno 37 (`nametoolong`) for an empty
+buffer.  For every other descriptor, and for descriptor 3 while the flag is clear, it returns errno
+54 (`notdir`) for descriptors 0 to 2 and for a number that the shim holds, and errno 8 otherwise.
 
 A module whose flat imports include a function that reads the shim's descriptor state, one of
 `preopenNames`, starts with the check (`needsCheck`), and every other module's startup routine is
-a return (`startupCode`).
+a return (`wasiStartupCode`).
 -/
 
 namespace LeanExe.A64

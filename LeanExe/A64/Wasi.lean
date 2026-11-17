@@ -22,7 +22,9 @@ X18 `room` bytes below its frame, stores X2 at the start of the shim's scratch, 
 routine and then `_start`, function `k`, which takes and returns nothing, and returns 0.  The
 startup routine is the check of descriptor 3 of `LeanExe/A64/WasiPreopen.lean` for a module whose
 flat imports read the shim's descriptor state (`needsCheck`), and a return for every other
-module.  The flat stubs of `flatStubs` are those of `fd_prestat_get` and `fd_prestat_dir_name`.
+module.  The flat stubs of `flatStubs` are the string stubs of `LeanExe/A64/WasiStrings.lean`,
+those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, and the stubs of
+`fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`.
 The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 

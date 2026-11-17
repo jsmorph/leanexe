@@ -4,7 +4,11 @@ import Verified.ShimA64.Preopen
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each
 stub of `flatStubs` at its address meets `Machine.StubSim` on `shimMachine` for the function of
 `linuxEnv` of every call of `shimCalls` whose import is the stub's.  `wasiElf_run` takes the
-import Verified.ShimA64.Preopen
+simulation of every flat import of a module from it.  `flatStubs` lists the stubs of the arguments
+and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.lean` proves, and
+the stubs of the preopened directory, whose cases `preopenStub_sim` of
+`Verified/ShimA64/Preopen.lean` proves.  Each increment that adds a stub to `flatStubs` adds its
+case here.
 -/
 
 namespace Verified.ShimA64

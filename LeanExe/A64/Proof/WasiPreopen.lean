@@ -340,7 +340,8 @@ theorem byte_ne_zero {b : UInt8} : b.toUInt64 ≠ 0 ↔ b ≠ 0 := by
 /-- The stub of `fd_prestat_get` from its entry: the trap stub when the record's 8 bytes from the
 guest address in X1 exceed the memory, and otherwise the return to X30, with errno 0 and the word
 `2^32` stored at the guest address for descriptor 3 while the preopen flag is nonzero, and with
-errno 8 and the memory kept for every other descriptor. -/
+errno 8 and the memory kept for every other descriptor and for descriptor 3 while the flag is
+zero. -/
 theorem run_prestatStub {a tr : UInt64} {sc : Nat} {is : List Instr}
     (hg : prestatStub a tr sc = .ok is) (hcode : CodeAt code a is) {s : State} (hpc : s.pc = a)
     (hsize : ∀ k < 8, P.normal (s.x 17 + UInt64.ofNat k) = true)
@@ -448,9 +449,9 @@ theorem run_prestatStub {a tr : UInt64} {sc : Nat} {is : List Instr}
 /-- The stub of `fd_prestat_dir_name` from its entry: the trap stub when the buffer of X2 bytes
 from the guest address in X1 exceeds the memory, and otherwise the return to X30.  For descriptor
 3 while the preopen flag is nonzero it returns errno 37 for an empty buffer and otherwise errno 0
-with `.` stored at the buffer.  For any other descriptor it returns errno 54 for a descriptor below
-3 and for one of at most 1,023 whose byte is nonzero, and errno 8 otherwise, with the memory
-kept. -/
+with `.` stored at the buffer.  For every other descriptor, and for descriptor 3 while the flag is
+zero, it returns errno 54 for a descriptor below 3 and for one of at most 1,023 whose byte is
+nonzero, and errno 8 otherwise, with the memory kept. -/
 theorem run_dirNameStub {a tr : UInt64} {sc : Nat} {is : List Instr}
     (hg : dirNameStub a tr sc = .ok is) (hcode : CodeAt code a is) {s : State} (hpc : s.pc = a)
     (hsize : ∀ k < 8, P.normal (s.x 17 + UInt64.ofNat k) = true)
