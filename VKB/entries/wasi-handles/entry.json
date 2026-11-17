@@ -12,11 +12,13 @@
     "Dependent elimination failed: Failed to solve equation Ty.elem Elem.bool = g✝.2, from cases on an Expr of a fixed type",
     "a statement over descriptor numbers in a trace when the host reuses numbers",
     "the close of a bracket that returns normally inside a run that later exits",
-    "the errno that withOpen returns after a rejected, failed, or successful open"
+    "the errno that withOpen returns after a rejected, failed, or successful open",
+    "Verified.Wasi.EffectProg.handleCheck handleMarks program = true is false for a bracket after a call whose result holds bytes"
   ],
   "modules": [
     "Verified.Wasi.Handles",
-    "Verified.Wasi.ReflectBracket"
+    "Verified.Wasi.ReflectBracket",
+    "Verified.Wasi.ReflectSysCalls"
   ],
   "declarations": [
     "LeanExe.Wasi.Handle",
@@ -51,7 +53,14 @@
     "Verified.Env.get",
     "Verified.Wasi.Command.handles_exec",
     "Verified.Wasi.Command.handles_prefix",
-    "Verified.Wasi.EffectProg.bracketRuns"
+    "Verified.Wasi.EffectProg.bracketRuns",
+    "Verified.Wasi.Command.preopened",
+    "Verified.Expr.letPair",
+    "LeanExe.Wasi.fdPrestatDirName",
+    "LeanExe.Wasi.randomGet",
+    "Verified.Wasi.EffectProg.handleCheck",
+    "LeanExe.Wasi.BytesResult",
+    "LeanExe.Wasi.RandomResult"
   ],
   "examples": [
     "Verified.Wasi.Command.handles",

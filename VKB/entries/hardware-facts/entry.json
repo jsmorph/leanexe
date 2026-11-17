@@ -12,7 +12,11 @@
     "an invalid enum or flags value in a record that a function reads from memory",
     "a Linux call's behavior when its buffer runs into an unmapped page",
     "the low 32 bits of X8 and of an int argument that Linux reads",
-    "the order of a system call's checks, such as access_ok before or after the clamp to MAX_RW_COUNT"
+    "the order of a system call's checks, such as access_ok before or after the clamp to MAX_RW_COUNT",
+    "the order of an engine's checks, which a probe with one fault in each case does not reveal",
+    "openat against openat2 with RESOLVE_BENEATH for a host that must keep paths inside a directory",
+    "a constant whose value differs between architectures, such as O_DIRECTORY on arm64 and x86-64",
+    "a call that may return fewer bytes than asked, such as getrandom with a signal pending"
   ],
   "modules": [
     "LeanExe.M7.Board",
@@ -21,7 +25,8 @@
     "LeanExe.ProofKit.F32Canonical",
     "LeanExe.Wasi.Calls",
     "LeanExe.Wasi.CallTable",
-    "LeanExe.A64.Proof.LinuxCalls"
+    "LeanExe.A64.Proof.LinuxCalls",
+    "Verified.Shim"
   ],
   "declarations": [
     "LeanExe.M7.Nucleo.init",
@@ -38,7 +43,14 @@
     "LeanExe.Wasi.Param.iovec",
     "LeanExe.Wasi.rejectFields",
     "LeanExe.Linux.step",
-    "LeanExe.A64.pstepWith"
+    "LeanExe.A64.pstepWith",
+    "Verified.Shim.openCheck",
+    "Verified.Shim.openHowBytes",
+    "Verified.Shim.OpenCalls",
+    "Verified.Shim.openNumbers",
+    "Verified.Shim.OpenFlags",
+    "Verified.Shim.arm64Flags",
+    "Verified.Shim.RandomCalls"
   ],
   "examples": []
 }

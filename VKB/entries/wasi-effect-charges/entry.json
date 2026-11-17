@@ -26,7 +26,8 @@
     "Demos.OrderBook.ProcessCharges",
     "Verified.Wasi.SysRule",
     "Verified.Wasi.SysWords",
-    "LeanExe.Wasi.Sys"
+    "LeanExe.Wasi.Sys",
+    "Verified.Examples.WasiSys"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -79,12 +80,10 @@
     "Demos.OrderBook.Process.stepBudget_le",
     "Demos.OrderBook.Process.step_prefix_bound",
     "Demos.OrderBook.Process.initial_entry",
-    "Demos.OrderBook.Process.begin_bounded"
+    "Demos.OrderBook.Process.begin_bounded",
+    "Verified.Examples.WasiSys.main"
   ],
   "unimported": {
-    "Verified/Examples/WasiSys.lean": [
-      "Verified.Examples.WasiSys.main"
-    ],
     "Verified/Examples/WasiSysTotal.lean": [
       "Verified.Examples.WasiSys.budget",
       "Verified.Examples.WasiSys.args_bytes_le",
