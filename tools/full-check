@@ -13,7 +13,8 @@
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
-#   4. tests/wasi/run.sh and tests/wasi/sys-run.sh;
+#   4. tests/wasi/run.sh, tests/wasi/sys-run.sh, and, on an AArch64 Linux host,
+#      tests/linux/sys-run.sh;
 #   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh, tests/native/clight-rocq.sh on the programs of step 3, and
@@ -26,12 +27,13 @@
 #      TestSupport/Hashing/Sha2Vectors.lean and HmacVectors.lean), tests/regex/run.sh,
 #      tests/orderbook/run.sh, tests/conjunction/run.sh, and tests/sgp4/run.sh;
 #  11. tools/source-layout and tools/check-doc-links.mjs.
-# A failed build leaves every later step but rocq/check.sh and tests/talos/run.sh unrun, since they
-# load the built modules.  The failure of any other step is recorded, and the next step runs.  A
-# step whose tools are absent is recorded as not run, and so is the driver half of a GPU step whose
-# emission failed.  The build fails on a `sorry` warning and on an axiom report of a file of this
-# repository that names an axiom other than propext, Classical.choice, and Quot.sound.  STATUS.md
-# lists the reports of the dependencies' files that do.
+# A failed build leaves every later step but tests/linux/sys-run.sh, rocq/check.sh, and
+# tests/talos/run.sh unrun, since they load the built modules.  The failure of any other step is
+# recorded, and the next step runs.  A step whose tools are absent is recorded as not run, and so
+# is the driver half of a GPU step whose emission failed.  The build fails on a `sorry` warning
+# and on an axiom report of a file of this repository that names an axiom other than propext,
+# Classical.choice, and Quot.sound.  STATUS.md lists the reports of the dependencies' files that
+# do.
 # STATUS.md holds the commit, the paths that differ from it, the dates of the commit and of the
 # run, the toolchain, the platform, and a table of the steps with each step's status, duration,
 # and the counts that its driver prints, and it ends with what did not run and why.  Before it
@@ -42,11 +44,12 @@
 # the checked configuration.  LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the
 # latter 10G unless set, the limit that AGENTS.md sets for the verified and WASI drivers.  CCOMP,
 # CLIGHTGEN, and CCOMP_STDLIB are as for the native and bare-metal drivers, NM and DTC as for
-# tests/baremetal/run.sh, and QEMU and JOBS as for tests/baremetal/verified.sh and
-# tests/native/clight-rocq.sh.  COMPCERT_TREE names the CompCert tree with built proofs for
-# rocq/check.sh, tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of
-# CCOMP when CCOMP is a path; clightn/check.sh runs only on a tree configured for AArch64.  The
-# script exits with status 1 when a step fails.
+# tests/baremetal/run.sh, QEMU and JOBS as for tests/baremetal/verified.sh and
+# tests/native/clight-rocq.sh, and CC and QEMU_USER as for tests/linux/sys-run.sh.
+# COMPCERT_TREE names the CompCert tree with built proofs for rocq/check.sh,
+# tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of CCOMP when CCOMP
+# is a path; clightn/check.sh runs only on a tree configured for AArch64.  The script exits with
+# status 1 when a step fails.
 # Usage: tools/full-check
 set -euo pipefail
 export LEANRUN_FAST=0
@@ -477,6 +480,28 @@ step_wasi() {
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
+# The descriptions of the Linux call layer, which need no built module.
+step_linux_sys() {
+  local step='`tests/linux/sys-run.sh`' cell="" tool absent=()
+  if [ "$platform" != "Linux on AArch64" ]; then
+    record "$step" "not run: not an AArch64 Linux host" "" ""
+    return 0
+  fi
+  for tool in cc:"${CC:-cc}" qemu-aarch64:"${QEMU_USER:-qemu-aarch64}" uv:uv \
+      systemd-run:systemd-run; do
+    have "${tool#*:}" || absent+=("${tool%%:*}")
+  done
+  if [ "${#absent[@]}" -ne 0 ]; then
+    record "$step" "not run: $(join "${absent[@]}") absent" "" ""
+    return 0
+  fi
+  run 4-linux-sys tests/linux/sys-run.sh
+  if [ "$code" -eq 0 ]; then
+    cell=$(last '^linux frame cases passed: ([0-9]+)$' '\1 frame test runs passed' "$log")
+  fi
+  record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
 step_baremetal() {
   local step name cell total modules list unbuilt_count
   step='`tests/baremetal/run.sh`'
@@ -868,6 +893,7 @@ main() {
   step_chunks
   step_native
   step_wasi
+  step_linux_sys
   step_baremetal
   step_vkb
   step_rocq

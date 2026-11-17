@@ -1,16 +1,20 @@
 import LeanExe.A64.Linux
+import LeanExe.A64.Startup
 import LeanExe.A64.Proof.ByteMemory
 
 /-!
-Facts about the process model of `LeanExe/A64/Linux.lean`.  `ProcReach.of_reach` lifts a run of
-the program's model into the process's: a step of `step` fetches a word that decodes, which
-`svcWord` does not (`decode_svcWord`), executes an instruction other than `MSR FPCR`, whose `exec`
-fails, and reaches a program counter below 2^55 when the code map holds words only below 2^55 and
-the run ends below it.  `run_svcCall` follows a call routine, `MOVZ X8, #nr`, `SVC #0`, and
-`RET`, from its first word to the return, with the effect of `Kernel.svc`.  `svc_read` and
-`svc_write` evaluate `Kernel.svc` for the calls of `read` and `write` that do not fail.
-`StoreRel.writeList` gives the store relation after a read writes bytes into linear memory, and
-`readList_bytes` the bytes that a write takes from it.
+Facts about the process model of `LeanExe/A64/Linux.lean`.  `istep` stops at `SVC #0`, and
+`pstep` and `pstepWith` take every other word as `istep` does, so `IReach.toProcReach` and
+`IReach.toWith` lift a run of `istep` into a run of `pstep` for every kernel and of `pstepWith`
+for every table and set of replies.  `IReach.of_reach` lifts a run of the program's model into a
+run of `istep`, and `ProcReach.of_reach` into the process's: a step of `step` fetches a word that
+decodes, which `svcWord` does not (`decode_svcWord`), executes an instruction other than
+`MSR FPCR`, whose `exec` fails, and reaches a program counter below 2^55 when the code map holds
+words only below 2^55 and the run ends below it.  `run_svcCall` follows a call routine,
+`MOVZ X8, #nr`, `SVC #0`, and `RET`, from its first word to the return, with the effect of
+`Kernel.svc`.  `svc_read` and `svc_write` evaluate `Kernel.svc` for the calls of `read` and
+`write` that do not fail, and `writeList_other` gives the bytes that a read's writes leave
+outside its buffer.
 -/
 
 namespace LeanExe.A64
@@ -51,20 +55,72 @@ theorem fpcrSource_of_exec {P : Platform} {i : Instr} {s t : State} (h : exec P 
     i.fpcrSource = none := by
   cases i <;> first | rfl | simp [exec] at h
 
-/-- A step of the process at a word that decodes to an instruction that `exec` runs. -/
-theorem pstep_exec {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
+/-! ## Steps that make no call -/
+
+/-- `istep` takes no step at `SVC #0`. -/
+theorem istep_ne_svc {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc}
+    (h : istep P code p = some q) : code p.core.pc ≠ some svcWord := fun hc => by
+  unfold istep at h
+  simp [hc] at h
+
+/-- `pstep` takes a word other than `SVC #0` as `istep` does, whatever the kernel. -/
+theorem pstep_eq_istep {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
+    (h : code p.core.pc ≠ some svcWord) : pstep K P code p = istep P code p := by
+  unfold pstep istep
+  cases hc : code p.core.pc with
+  | none => rfl
+  | some w =>
+    have hw : w ≠ svcWord := fun e => h (by rw [hc, e])
+    simp only [hw, ↓reduceIte]
+
+theorem pstepWith_istep {T : List LeanExe.Linux.Call} {R : LeanExe.Linux.Replies} {P : Platform}
+    {code : UInt64 → Option UInt32} {p : Proc} (h : code p.core.pc ≠ some svcWord) :
+    pstepWith T R P code p = istep P code p := by
+  unfold pstepWith
+  rw [if_neg h]
+
+/-- A step of `istep` is a step of `pstep` for every kernel. -/
+theorem pstep_of_istep {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc}
+    (h : istep P code p = some q) : pstep K P code p = some q := by
+  rw [pstep_eq_istep (istep_ne_svc h)]
+  exact h
+
+/-- A step of `istep` is a step of `pstepWith` for every table and every set of replies. -/
+theorem pstepWith_of_istep {T : List LeanExe.Linux.Call} {R : LeanExe.Linux.Replies}
+    {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc} (h : istep P code p = some q) :
+    pstepWith T R P code p = some q := by
+  rw [pstepWith_istep (istep_ne_svc h)]
+  exact h
+
+/-- A step of `istep` at a word that decodes to an instruction that `exec` runs. -/
+theorem istep_exec {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
     {w : UInt32} {i : Instr} {c : State} (hc : code p.core.pc = some w)
     (hd : decode w = some i) (hfp : i.isFP = false ∨ p.fpcr = fpcrValue)
     (he : exec P i p.core = some c) (ht : c.pc.toNat < 2 ^ 55) :
-    pstep K P code p = some { p with core := c } := by
+    istep P code p = some { p with core := c } := by
   have hw : w ≠ svcWord := fun e => by rw [e, decode_svcWord] at hd; cases hd
   have hs := fpcrSource_of_exec he
   have hn : ¬ (i.isFP = true ∧ p.fpcr ≠ fpcrValue) := fun ⟨h1, h2⟩ => by
     rcases hfp with h | h
     · rw [h] at h1; cases h1
     · exact h2 h
-  unfold pstep
+  unfold istep
   simp only [hc, hw, ↓reduceIte, hd, hs, hn, he, ht]
+
+/-- A step of `istep` at a placed instruction that `exec` runs. -/
+theorem istep_at {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
+    {i : Instr} {c : State} (hc : code p.core.pc = some (encode i))
+    (hfp : i.isFP = false ∨ p.fpcr = fpcrValue) (he : exec P i p.core = some c)
+    (ht : c.pc.toNat < 2 ^ 55) : istep P code p = some { p with core := c } :=
+  istep_exec hc (decode_encode i) hfp he ht
+
+/-- A step of the process at a word that decodes to an instruction that `exec` runs. -/
+theorem pstep_exec {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
+    {w : UInt32} {i : Instr} {c : State} (hc : code p.core.pc = some w)
+    (hd : decode w = some i) (hfp : i.isFP = false ∨ p.fpcr = fpcrValue)
+    (he : exec P i p.core = some c) (ht : c.pc.toNat < 2 ^ 55) :
+    pstep K P code p = some { p with core := c } :=
+  pstep_of_istep (istep_exec hc hd hfp he ht)
 
 /-- A step of the process at a placed instruction that `exec` runs. -/
 theorem pstep_at {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
@@ -72,6 +128,31 @@ theorem pstep_at {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {
     (hfp : i.isFP = false ∨ p.fpcr = fpcrValue) (he : exec P i p.core = some c)
     (ht : c.pc.toNat < 2 ^ 55) : pstep K P code p = some { p with core := c } :=
   pstep_exec hc (decode_encode i) hfp he ht
+
+theorem IReach.trans {P : Platform} {code : UInt64 → Option UInt32} {p q r : Proc}
+    (h1 : IReach P code p q) (h2 : IReach P code q r) : IReach P code p r := by
+  induction h1 with
+  | refl => exact h2
+  | next hs _ ih => exact .next hs (ih h2)
+
+theorem IReach.single {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc}
+    (h : istep P code p = some q) : IReach P code p q :=
+  .next h (.refl q)
+
+/-- A run of `istep` is a run of the process for every kernel. -/
+theorem IReach.toProcReach {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc}
+    (h : IReach P code p q) (K : Kernel) : ProcReach K P code p q := by
+  induction h with
+  | refl => exact .refl _
+  | next hs _ ih => exact .next (pstep_of_istep hs) ih
+
+/-- A run of `istep` is a run of `pstepWith` for every table and every set of replies. -/
+theorem IReach.toWith {P : Platform} {code : UInt64 → Option UInt32} {p q : Proc}
+    (h : IReach P code p q) (T : List LeanExe.Linux.Call) (R : LeanExe.Linux.Replies) :
+    ProcReachWith T R P code p q := by
+  induction h with
+  | refl => exact .refl _
+  | next hs _ ih => exact .next (pstepWith_of_istep hs) ih
 
 theorem ProcReach.trans {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32}
     {p q r : Proc} (h1 : ProcReach K P code p q) (h2 : ProcReach K P code q r) :
@@ -93,12 +174,12 @@ theorem Reach.start {P : Platform} {code : UInt64 → Option UInt32} {s t : Stat
     obtain ⟨w, -, hc, -, -⟩ := step_parts hs
     exact .inr ⟨w, hc⟩
 
-/-- A run of the program's model is a run of the process with `FPCR` at `fpcrValue`, its trace
+/-- A run of the program's model is a run of `istep` with `FPCR` at `fpcrValue`, its trace
 unchanged, when the code holds words only below 2^55 and the run ends below 2^55. -/
-theorem ProcReach.of_reach {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32}
+theorem IReach.of_reach {P : Platform} {code : UInt64 → Option UInt32}
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {s t : State} (h : Reach P code s t)
     (ht : t.pc.toNat < 2 ^ 55) (tr : List Event) :
-    ProcReach K P code ⟨s, fpcrValue, tr⟩ ⟨t, fpcrValue, tr⟩ := by
+    IReach P code ⟨s, fpcrValue, tr⟩ ⟨t, fpcrValue, tr⟩ := by
   induction h with
   | refl => exact .refl _
   | next hs hr ih =>
@@ -108,17 +189,32 @@ theorem ProcReach.of_reach {K : Kernel} {P : Platform} {code : UInt64 → Option
       rcases Reach.start hr with e | ⟨w2, hc2⟩
       · rw [e]; exact ht
       · exact hdom _ _ hc2
-    exact .next (pstep_exec (p := ⟨s1, fpcrValue, tr⟩) hc hd (.inr rfl) he h2) (ih ht)
+    exact .next (istep_exec (p := ⟨s1, fpcrValue, tr⟩) hc hd (.inr rfl) he h2) (ih ht)
+
+/-- A run of the program's model from a process whose `FPCR` holds `fpcrValue`. -/
+theorem IReach.of_reach' {P : Platform} {code : UInt64 → Option UInt32}
+    (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {p : Proc} (hf : p.fpcr = fpcrValue)
+    {t : State} (h : Reach P code p.core t) (ht : t.pc.toNat < 2 ^ 55) :
+    IReach P code p { p with core := t } := by
+  obtain ⟨s, f, tr⟩ := p
+  simp only at hf
+  subst hf
+  exact IReach.of_reach hdom h ht tr
+
+/-- A run of the program's model is a run of the process with `FPCR` at `fpcrValue`, its trace
+unchanged, when the code holds words only below 2^55 and the run ends below 2^55. -/
+theorem ProcReach.of_reach {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32}
+    (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {s t : State} (h : Reach P code s t)
+    (ht : t.pc.toNat < 2 ^ 55) (tr : List Event) :
+    ProcReach K P code ⟨s, fpcrValue, tr⟩ ⟨t, fpcrValue, tr⟩ :=
+  (IReach.of_reach hdom h ht tr).toProcReach K
 
 /-- A run of the program's model from a process whose `FPCR` holds `fpcrValue`. -/
 theorem ProcReach.of_reach' {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32}
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {p : Proc} (hf : p.fpcr = fpcrValue)
     {t : State} (h : Reach P code p.core t) (ht : t.pc.toNat < 2 ^ 55) :
-    ProcReach K P code p { p with core := t } := by
-  obtain ⟨s, f, tr⟩ := p
-  simp only at hf
-  subst hf
-  exact ProcReach.of_reach hdom h ht tr
+    ProcReach K P code p { p with core := t } :=
+  (IReach.of_reach' hdom hf h ht).toProcReach K
 
 /-! ## Call routines -/
 
@@ -194,6 +290,15 @@ theorem Proc.ret_x (p : Proc) (v : UInt64) (m : UInt64 → UInt8) (e : Event) {q
 @[simp] theorem Proc.goto_trace (p : Proc) (a : UInt64) : (p.goto a).trace = p.trace := rfl
 
 @[simp] theorem Proc.goto_fpcr (p : Proc) (a : UInt64) : (p.goto a).fpcr = p.fpcr := rfl
+
+/-- A step of `MSR FPCR, Xt` sets the process's `FPCR`. -/
+theorem istep_fpcr {P : Platform} {code : UInt64 → Option UInt32} {p : Proc} {t : Fin 32}
+    (hc : code p.core.pc = some (encode (msrOf .fpcr t))) :
+    istep P code p = some { p.goto (p.core.pc + 4) with fpcr := p.core.x t } := by
+  unfold istep
+  rw [hc]
+  simp only [encode_ne_svcWord, ↓reduceIte, decode_encode]
+  rfl
 
 /-- The run of a call routine at `a`, `MOVZ X8, #nr`, `SVC #0`, and `RET`, from its first word to
 the return: the call's effect, `Kernel.svc` from the process with X8 at `nr`, and a return to the
