@@ -211,6 +211,12 @@ def istep (P : Platform) (code : UInt64 → Option UInt32) (p : Proc) : Option P
             | some c => if c.pc.toNat < 2 ^ 55 then some { p with core := c } else none
             | none => none
 
+/-- The processes that zero or more steps of `istep` reach from a process: runs that make no
+call, which both `ProcReach` and `ProcReachWith` contain. -/
+inductive IReach (P : Platform) (code : UInt64 → Option UInt32) : Proc → Proc → Prop
+  | refl (p : Proc) : IReach P code p p
+  | next {p q r : Proc} : istep P code p = some q → IReach P code q r → IReach P code p r
+
 /-- One step of the process `p` with the calls `T` and the replies `R`: `SVC #0` by the Linux call
 layer's rule for a call of `T` that does not end the process, and `none` for any other call; every
 other word by `istep`. -/

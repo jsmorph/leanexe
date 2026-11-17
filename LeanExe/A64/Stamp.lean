@@ -159,10 +159,14 @@ def genStampProgram (m : Module) (k : Nat) (inMax svc base room : UInt64) (cap :
       | none => throw "no allocator among the functions that the function calls")
     m k base cap true
 
-/-- The stamp executable of function `k` of `m`. -/
+/-- The stamp executable of function `k` of `m`.  The layout of `genElfWith` reserves 16 bytes for
+`main`'s frame below the stack's top and `room` bytes below them; the stamp program's frame takes
+`stampFrame pin pout` bytes, so the layout receives the room `room + (stampFrame pin pout - 16)`,
+and the stack holds `room` bytes below the frame. -/
 def genStampElf (m : Module) (k : Nat) (inMax room : UInt64) (cap : Nat) (pin pout : List UInt8) :
-    GenM (List UInt8 × ElfLayout) :=
+    GenM (List UInt8 × ElfLayout) := do
+  unless room.toNat + stampFrame pin pout < 2 ^ 32 do throw "a stack of 2^32 bytes or more"
   genElfWith (fun rd _ base => genStampProgram m k inMax (after rd 1) base room cap pin pout) m
-    room cap
+    (room + UInt64.ofNat (stampFrame pin pout - 16)) cap
 
 end LeanExe.A64

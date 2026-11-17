@@ -6,8 +6,8 @@ import LeanExe.Linux.Replies
 Facts about the binding of the Linux call layer in `LeanExe/A64/Linux.lean`.  `a64Memory_lawful`
 gives the layer's laws for the process's memory, and `writeBytes_a64` and `readBytes_a64` state
 the layer's byte functions there as `writeList` and `readList`, so the lemmas over those two apply
-to a call's effect.  `pstep_eq_istep` and `pstepWith_istep` state that both steps take a word other
-than `SVC #0` as `istep` does, and `ProcReachWith.of_reach'` lifts a run of the program's model into
+to a call's effect.  `pstepWith_of_pstep` takes a step of `pstep` at a word other than `SVC #0` to
+`pstepWith`, and `ProcReachWith.of_reach'` lifts a run of the program's model into
 `ProcReachWith`.  `pstepWith_svc` takes `SVC #0` to `sysCall` for a call of the table, and the
 `sysCall_` lemmas evaluate `sysCall` for each described call.  `run_svcRet` follows the runtime's
 routine `SVC #0; RET` from its first word to the return.
@@ -68,22 +68,6 @@ theorem argWords_four {s : State} {c : Call} (hc : c.words = 4) :
 
 /-! ## Steps other than calls -/
 
-/-- `pstep` takes a word other than `SVC #0` as `istep` does, whatever the kernel. -/
-theorem pstep_eq_istep {K : Kernel} {P : Platform} {code : UInt64 → Option UInt32} {p : Proc}
-    (h : code p.core.pc ≠ some svcWord) : pstep K P code p = istep P code p := by
-  unfold pstep istep
-  cases hc : code p.core.pc with
-  | none => rfl
-  | some w =>
-    have hw : w ≠ svcWord := fun e => h (by rw [hc, e])
-    simp only [hw, ↓reduceIte]
-
-theorem pstepWith_istep {T : List Call} {R : Replies} {P : Platform}
-    {code : UInt64 → Option UInt32} {p : Proc} (h : code p.core.pc ≠ some svcWord) :
-    pstepWith T R P code p = istep P code p := by
-  unfold pstepWith
-  rw [if_neg h]
-
 /-- A step of `pstep` at a word other than `SVC #0` is a step of `pstepWith`. -/
 theorem pstepWith_of_pstep {T : List Call} {R : Replies} {K : Kernel} {P : Platform}
     {code : UInt64 → Option UInt32} {p q : Proc} (h : pstep K P code p = some q)
@@ -91,18 +75,12 @@ theorem pstepWith_of_pstep {T : List Call} {R : Replies} {K : Kernel} {P : Platf
   rw [pstepWith_istep hc, ← pstep_eq_istep hc]
   exact h
 
-/-- A record of the stream rule's kernel, which the lifts use to name a step of `pstep` at a word
-that is not a call, where the kernel plays no part. -/
-def someKernel : Kernel := ⟨[], fun _ => 0, fun _ => Option.none⟩
-
 theorem pstepWith_exec {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} {p : Proc} {w : UInt32} {i : Instr} {c : State}
     (hc : code p.core.pc = some w) (hd : decode w = some i)
     (hfp : i.isFP = false ∨ p.fpcr = fpcrValue) (he : exec P i p.core = some c)
-    (ht : c.pc.toNat < 2 ^ 55) : pstepWith T R P code p = some { p with core := c } := by
-  have hw : w ≠ svcWord := fun e => by rw [e, decode_svcWord] at hd; cases hd
-  exact pstepWith_of_pstep (K := someKernel) (pstep_exec hc hd hfp he ht)
-    (by rw [hc]; exact fun e => hw (Option.some.inj e))
+    (ht : c.pc.toNat < 2 ^ 55) : pstepWith T R P code p = some { p with core := c } :=
+  pstepWith_of_istep (istep_exec hc hd hfp he ht)
 
 theorem pstepWith_at {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} {p : Proc} {i : Instr} {c : State}
@@ -115,13 +93,8 @@ theorem pstepWith_at {T : List Call} {R : Replies} {P : Platform}
 theorem pstepWith_fpcr {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} {p : Proc} {t : Fin 32}
     (hc : code p.core.pc = some (encode (msrOf .fpcr t))) :
-    pstepWith T R P code p = some { p.goto (p.core.pc + 4) with fpcr := p.core.x t } := by
-  have hw : encode (msrOf .fpcr t) ≠ svcWord := encode_ne_svcWord _
-  rw [pstepWith_istep (by rw [hc]; exact fun e => hw (Option.some.inj e))]
-  unfold istep
-  rw [hc]
-  simp only [encode_ne_svcWord, ↓reduceIte, decode_encode]
-  rfl
+    pstepWith T R P code p = some { p.goto (p.core.pc + 4) with fpcr := p.core.x t } :=
+  pstepWith_of_istep (istep_fpcr hc)
 
 theorem ProcReachWith.trans {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} {p q r : Proc} (h1 : ProcReachWith T R P code p q)
@@ -140,27 +113,15 @@ unchanged, when the code holds words only below 2^55 and the run ends below 2^55
 theorem ProcReachWith.of_reach {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     {s t : State} (h : Reach P code s t) (ht : t.pc.toNat < 2 ^ 55) (tr : List Event) :
-    ProcReachWith T R P code ⟨s, fpcrValue, tr⟩ ⟨t, fpcrValue, tr⟩ := by
-  induction h with
-  | refl => exact .refl _
-  | next hs hr ih =>
-    rename_i s1 s2 s3
-    obtain ⟨w, i, hc, hd, he⟩ := step_parts hs
-    have h2 : s2.pc.toNat < 2 ^ 55 := by
-      rcases Reach.start hr with e | ⟨w2, hc2⟩
-      · rw [e]; exact ht
-      · exact hdom _ _ hc2
-    exact .next (pstepWith_exec (p := ⟨s1, fpcrValue, tr⟩) hc hd (.inr rfl) he h2) (ih ht)
+    ProcReachWith T R P code ⟨s, fpcrValue, tr⟩ ⟨t, fpcrValue, tr⟩ :=
+  (IReach.of_reach hdom h ht tr).toWith T R
 
 /-- A run of the program's model from a process whose `FPCR` holds `fpcrValue`. -/
 theorem ProcReachWith.of_reach' {T : List Call} {R : Replies} {P : Platform}
     {code : UInt64 → Option UInt32} (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     {p : Proc} (hf : p.fpcr = fpcrValue) {t : State} (h : Reach P code p.core t)
-    (ht : t.pc.toNat < 2 ^ 55) : ProcReachWith T R P code p { p with core := t } := by
-  obtain ⟨s, f, tr⟩ := p
-  simp only at hf
-  subst hf
-  exact ProcReachWith.of_reach hdom h ht tr
+    (ht : t.pc.toNat < 2 ^ 55) : ProcReachWith T R P code p { p with core := t } :=
+  (IReach.of_reach' hdom hf h ht).toWith T R
 
 /-! ## Calls -/
 

@@ -49,6 +49,7 @@ import LeanExe.A64.Proof.ProgramRuns
 import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Shift
 import LeanExe.A64.Proof.Sim
+import LeanExe.A64.Proof.StampImage
 import LeanExe.A64.Proof.StartupCode
 import LeanExe.A64.Proof.StartupOff
 import LeanExe.A64.Proof.StartupTail
