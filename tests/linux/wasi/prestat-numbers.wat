@@ -1,13 +1,14 @@
 ;; The prestat functions of WASI Preview 1 on a list of descriptor numbers, for the AArch64 Linux
 ;; executable of tests/linux/a64-wasi-preopen.sh and the Wasmtime host.
 ;;
-;; For each number `$probe` writes to standard output, with `fd_write` of one iovec at address 0
-;; and the count at address 8 as the stream stub of the executable requires: the errno of
-;; `fd_prestat_get` as 4 bytes and the 8 bytes of its record at address 64, which holds zeros before
-;; the call, since Wasmtime 44 writes the record's tag and name length and leaves its three bytes of
-;; padding while the shim's specification writes all 8 bytes; and for buffers of 0, 1, and 4 bytes at address 128, which holds 0xBB bytes
-;; before each call, the errno of `fd_prestat_dir_name` as 4 bytes and the 8 bytes from 128.  The
-;; numbers are 0 to 5, 1023, 1024, 2^31 - 1, 2^31, and 2^32 - 1.  The status is 0.
+;; For each number, `$probe` writes to standard output, with `fd_write` of one iovec at address 0
+;; and the count at address 8 as the stream stub of the executable requires, the errno of
+;; `fd_prestat_get` as 4 bytes and the 8 bytes of its record at address 64.  The record holds zeros
+;; before the call, since Wasmtime 44 writes the record's tag and name length and leaves its three
+;; bytes of padding, while the shim's specification writes all 8 bytes.  For buffers of 0, 1, and 4
+;; bytes at address 128, which holds 0xBB bytes before each call, it then writes the errno of
+;; `fd_prestat_dir_name` as 4 bytes and the 8 bytes from 128.  The numbers are 0 to 5, 1023, 1024,
+;; 2^31 - 1, 2^31, and 2^32 - 1.  The status is 0.
 (module
   (import "wasi_snapshot_preview1" "fd_read"
     (func $fd_read (param i32 i32 i32 i32) (result i32)))
