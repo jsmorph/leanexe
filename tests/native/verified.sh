@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # The cases of tests/verified, run on the modules translated to C and compiled with CompCert.
-# For each module of tests/verified/modules.txt, native-verified build (tests/TestSupport/Native/
-# Verified.lean) writes the C text of its translation, the export tables of tools/native-host.h, and
-# the exports that the translation contains, has clightgen read the C text back, compares that
-# Clight with the translation, and compiles the text with ccomp only when they match.  ccomp then
+# For each module of tests/verified/modules.txt, native-verified build
+# (tests/TestSupport/Native/Verified.lean) writes the C text of its translation, the export tables
+# of tools/native-host.h, and the exports that the translation contains, has clightgen read the C
+# text back, compares that Clight with the translation, and compiles the text with ccomp only when
+# they match.  ccomp then
 # links the object with the export tables and tools/native-host.c, which takes the commands of the
 # Wasmtime host.  The cases are the lines of the compiled generator verified-cases
 # (Verified/Examples/Cases.lean), with the library entries of tests/verified/library-cases.txt,
