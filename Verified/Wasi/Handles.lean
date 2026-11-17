@@ -763,7 +763,7 @@ private theorem errorPair {World : Type} {host : Host World} {stack : List UInt6
 
 /-- The events and the result of every run of `withOpen` that returns normally.
 
-When `Call.reject` rejects the arguments of `path_open`, the bracket calls no host: the trace is
+When `Call.reject` rejects the arguments of `path_open`, the open makes no event, and the trace is
 that of a run of `onError` on the rejection's errno that returns the first component of the
 result, well bracketed from `stack` back to `stack`, and the second component is 0.  Otherwise the
 trace starts with the open event, with errno `errno` and outputs `outputs`.  When `errno` is 0, the
@@ -771,7 +771,7 @@ rest of the trace is that of a run of the body on the descriptor `d = openedDesc
 that returns the first component, well bracketed from `d :: stack` back to `d :: stack`, followed
 by one `fd_close` event of `d`, the bracket's close, and the second component is the errno of that
 event's reply.  When `errno` is not 0, the rest is that of a run of `onError errno` that returns
-the first component, well bracketed from `stack` back to `stack`, the bracket makes no close, and
+the first component, well bracketed from `stack` back to `stack`, the bracket adds no close, and
 the second component is 0.
 
 The premises state of the two continuations what `Command.handles_exec` states of a command that
@@ -779,9 +779,11 @@ passes the handle check: in a bracket that the check accepts, the body passes it
 marked and the error continuation with the open's result unmarked.  `Command.handles_exec` and
 `p.handles` state that a whole trace is well bracketed; this theorem states which events belong to
 one bracket that returns normally, which they do not state when the run exits or traps later.
-`WellBracketed` reads descriptor numbers, so the theorem does not exclude an event in the body that
-closes `d` when a nested open received `d` again from the host; `WellBracketed.descriptors`
-excludes such a reply under its host assumption. -/
+`WellBracketed` reads descriptor numbers, so the theorem does not exclude other `fd_close` events
+of `d` in the body's events.  A nested bracket whose open received `d` again from the host makes
+one, which `WellBracketed.descriptors` excludes under its host assumption, and so does a body that
+closes `d` and then opens a descriptor that the host numbers `d`, which the handle check refuses
+with every close outside a bracket's expansion. -/
 theorem withOpen_closes {World : Type} {host : Host World} {stack : List UInt64} {dir : Handle}
     {dirflags : UInt64} {path : LeanExe.Bytes} {oflags rightsBase rightsInheriting fdflags : UInt64}
     {onError : UInt64 → Action α} {body : Handle → Action α}

@@ -14,9 +14,9 @@ and Flat instances of records, and the frame test of tests/wasi/sys, and compare
 with the committed file, printing a unified diff and exiting with status 1 when one differs.  With
 --write it writes the files instead.  With --frame-faults DIR it writes to DIR one frame test for
 each seeded fault of FAULTS and prints the fault's name and the exit status that the test must
-give: 1, the host's status for a trap, when the fault moves a record, the status of the value
-checks of the altered step when the fault changes an expected value, and else the status of the
-frame check of the altered step.  With --reject-sweep DIR it writes to DIR one module for each
+give: 1, the host's status for an error of Wasmtime, when the fault moves a record, the status of
+the value checks of the altered step when the fault changes an expected value, and else the status
+of the frame check of the altered step.  With --reject-sweep DIR it writes to DIR one module for each
 value of the rejection sweep, the last value of each enum parameter and the next one and each
 single bit of each flags parameter, and prints the module's name, "trap" when the description's
 rule rejects the value, which Wasmtime 44 must then trap on, or "errno" when the call must return,
@@ -919,6 +919,8 @@ def frame_step(index, step, function, constants, value_status, fault=None):
     `fault` (a region, a field, and a change) moves the region's address or changes its declared
     start or size, or ("value", a position, and a change) changes the value that the value check at
     that position expects."""
+    if fault and fault[0] == "value":
+        assert fault[1] < len(step.get("values", [])), f"step {index} has no value check {fault[1]}"
     title = f"    ;; {index}: {function.name}"
     if value_status is not None:
         title += f", value status {value_status}"
@@ -1041,8 +1043,9 @@ def render_frame(flat, fault=None):
     assert not missing, f"no step calls {missing}"
     steps = len(STEPS)
     statuses = value_statuses()
-    assert 2 * steps + len(statuses) < 126, \
-        "too many checks for distinct statuses below 126, the least that proc_exit refuses"
+    if 2 * steps + len(statuses) >= 126:
+        sys.exit(f"{2 * steps + len(statuses)} checks of the frame test need statuses up to "
+                 "126 or more, which Wasmtime 44's proc_exit refuses")
     constants, body = {}, []
     seeded = None
     for index, step in enumerate(STEPS, 1):
@@ -1070,12 +1073,13 @@ def render_frame(flat, fault=None):
         ";; multiple of its alignment that is not a multiple of twice it, so that Wasmtime traps",
         ";; when a description gives it a smaller alignment.  The step then checks the errno,",
         ";; that every byte outside the call's declared regions equals the shadow copy, and the",
-        ";; values the step lists.  The exit status names the first failed check: the step's",
-        f";; number for the errno, {steps} plus it for a byte outside the regions, and for a "
-        f"value {2 * steps}",
-        ";; plus the step's position among the steps that check values, which the step's",
-        ";; comment gives.  Every status lies below 126, the least status that Wasmtime 44's",
-        ";; proc_exit refuses.",
+        ";; values the step lists.  The exit status names the step and the kind of the first",
+        f";; failed check: the step's number for the errno, {steps} plus it for a byte outside",
+        f";; the regions, and for one of the step's values {2 * steps} plus the step's position",
+        ";; among the steps that check values, which the step's comment gives.  Every status lies",
+        ";; below 126, the least status that Wasmtime 44's proc_exit refuses.  The errno",
+        ";; statuses 1 and 2 of the first two steps are also the host's statuses for an error",
+        ";; and a trap, which the host reports on standard error.",
         "(module",
         *imports,
         '  (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))',

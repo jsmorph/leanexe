@@ -5,11 +5,13 @@
 ;; multiple of its alignment that is not a multiple of twice it, so that Wasmtime traps
 ;; when a description gives it a smaller alignment.  The step then checks the errno,
 ;; that every byte outside the call's declared regions equals the shadow copy, and the
-;; values the step lists.  The exit status names the first failed check: the step's
-;; number for the errno, 52 plus it for a byte outside the regions, and for a value 104
-;; plus the step's position among the steps that check values, which the step's
-;; comment gives.  Every status lies below 126, the least status that Wasmtime 44's
-;; proc_exit refuses.
+;; values the step lists.  The exit status names the step and the kind of the first
+;; failed check: the step's number for the errno, 52 plus it for a byte outside
+;; the regions, and for one of the step's values 104 plus the step's position
+;; among the steps that check values, which the step's comment gives.  Every status lies
+;; below 126, the least status that Wasmtime 44's proc_exit refuses.  The errno
+;; statuses 1 and 2 of the first two steps are also the host's statuses for an error
+;; and a trap, which the host reports on standard error.
 (module
   (import "wasi_snapshot_preview1" "args_get"
     (func $args_get (param i32 i32) (result i32)))
