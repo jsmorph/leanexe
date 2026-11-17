@@ -631,7 +631,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
                 simp only [UInt64.toNat_ofNat', UInt64.reduceToNat, Nat.reducePow] at this
                 omega
               · exact List.not_mem_nil hm
-            rw [if_neg hnin]
+            rw [ite_eq_right hnin]
             have hb : G.base + UInt64.ofNat (16 + d) ≠ G.base + 8 :=
               hne 8 (by decide) (16 + d) (by unfold scratchSize; omega) (by omega)
             have hb19 : G.base + UInt64.ofNat (16 + d) ≠ G.base + 19 :=
@@ -696,10 +696,10 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     exact fun i hi => hWsub _ _ (c6.2 i hi)
   cases hc : needsCheck (m.imports.drop 3)
   · -- no check: the routine is a return
-    rw [wasiStartupCode, hc, if_neg (by decide)] at hsu
+    rw [wasiStartupCode, hc, ite_eq_right (by decide)] at hsu
     obtain rfl := Except.ok.inj hsu
     have hsuF : startup (needsCheck (m.imports.drop 3)) G R = ([], some false) := by
-      rw [startup, hc, if_neg (by decide)]
+      rw [startup, hc, ite_eq_right (by decide)]
     obtain ⟨t1, rt1, pt1, kt1, spt1, memt1, iot1⟩ :=
       step_ret (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) (s := t0) (n := 30)
       (by rw [pt0]; exact (CodeAt.cons.mp cst).1)
@@ -714,7 +714,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     rw [show startup false G R = ([], some false) from rfl]
     exact ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩
   · -- the check of descriptor 3
-    rw [wasiStartupCode, hc, if_pos rfl] at hsu
+    rw [wasiStartupCode, hc, ite_eq_left rfl] at hsu
     have hGp : p0.core.x 17 + UInt64.ofNat (areaSize cap) = G.base := by rw [h17, hGb]
     have hUw : (wasiPlatform L p.core.sp top).normal (wasiPlatform L p.core.sp top).uart =
         false := by
@@ -742,7 +742,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
       (fun j hj => hscrW _ (by unfold scratchSize; omega)) (hscrW 8 (by decide))
       (hscrW 19 (by decide))
     have hsuT : startup (needsCheck (m.imports.drop 3)) G R = preopenRun (G.base + 1080) R 0 := by
-      rw [startup, hc, if_pos rfl]
+      rw [startup, hc, ite_eq_left rfl]
       rfl
     have hrunq : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
         (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q :=
