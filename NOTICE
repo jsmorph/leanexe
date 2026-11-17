@@ -29,6 +29,10 @@ licenses, as the notices beside them state:
   Preview 1 specification, wasi_snapshot_preview1, at WebAssembly/WASI commit
   fae981bae14809d91f9bc2d63852d461f331d161, under the W3C Community Contributor License Agreement
   (https://www.w3.org/community/about/agreements/cla/).
+- tests/linux/syzlang/sys.txt and tests/linux/syzlang/sys.txt.const: syzkaller's descriptions of
+  Linux system calls, sys/linux/sys.txt and sys/linux/sys.txt.const, at google/syzkaller commit
+  a3e64cfc0d091fba81397847a5ab9790a4a944ca, under the Apache License, Version 2.0.  See
+  tests/linux/syzlang/LICENSE, syzkaller's copy of the License.
 
 tests/rcv/NOTICE records the terms of use of the RCV corpus's sources, whose files the repository
 does not hold.
