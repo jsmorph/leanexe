@@ -27,8 +27,8 @@
 # a clock reading within a second of the run, 16 bytes, and the input.  An input of 8,799,969
 # bytes must give status 64 with stamp.out unchanged, a missing stamp.in status 67, stamp.in a
 # directory status 68, and a directory without write permission status 70.  Runs under umask 0
-# check the mode 0644, a run with standard input closed checks a descriptor of 0, and three runs
-# on one input must differ at each random byte.  On the host's processor, a file size limit gives
+# check the mode 0644, a run with standard input closed, in which each openat returns descriptor
+# 0, checks the status and stamp.out, and three runs on one input must differ at each random byte.  On the host's processor, a file size limit gives
 # status 74 after a prefix, and the executable run as stamp.out status 70 from ETXTBSY, which
 # QEMU 8.2.2 does not return.  The products lie in OUT, build/linux/a64-elf unless set.
 # Usage: tests/linux/a64-elf.sh

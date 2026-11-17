@@ -6,9 +6,8 @@ syzlang descriptions.
 
 Usage: uv run python -I tests/linux/syzlang-lowering.py [SYZLANG_DIR [CALL_TABLE]]
 
-The lowering below was written from sys.txt, sys.txt.const, and syzkaller's pkg/compiler/gen.go
-and const_file.go for the first review of the design of step 5, without the generator
-`tools/linux-calls.py`, and extended for openat2, exit_group, and the x86-64 numbers.  It reads
+The lowering below follows sys.txt, sys.txt.const, and syzkaller's pkg/compiler/gen.go and
+const_file.go and shares no code with the generator `tools/linux-calls.py`.  It reads
 sys.txt and sys.txt.const of SYZLANG_DIR (by default tests/linux/syzlang), lowers the calls of
 CALLS, and compares them with CALL_TABLE (by default LeanExe/Linux/CallTable.lean): the names and
 order of `table`, each description's numbers on arm64 and amd64, its kinds, whether it returns a

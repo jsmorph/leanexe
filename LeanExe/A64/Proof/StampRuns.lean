@@ -21,11 +21,12 @@ open LeanExe.Linux (Replies)
 /-- The form of the theorems of programs of `genStampProgram`, which read the file `pin`, run
 function `k` of `m` on the clock's 16 bytes, 16 random bytes, and the file's bytes, and write the
 result to the file `pout`: for every platform `P` whose UART lies outside Normal memory, replies
-`R`, code map `code` that holds the program after its exit word `base` and the routine
-`SVC #0; RET` at `svc`, and words only below 2^55, and area `area`, from `main` with `FPCR` at
-`fpcrValue`, no event in the trace, a stack of `room` bytes below the routine's frame, and the
-area's premises, the process returns 0 or reaches the exit word, with the UART's state as it was
-and the layer's events of `StampEvents`. -/
+`R`, code map `code` that holds the program after its exit word `base` below 2^55 and the
+routine `SVC #0; RET` at `svc`, and words only below 2^55, and area `area`, from `main` with
+`FPCR` at `fpcrValue`, no event in the trace, X30 below 2^55, SP a multiple of 16 and at most
+2^63, a stack of `room` bytes in Normal memory below the routine's frame, and the area's
+premises, the process returns 0 or reaches the exit word, with the UART's state as it was and
+the layer's events of `StampEvents`. -/
 def StampRunsAny (m : Module) (k : Nat) (inMax room : UInt64) (cap : Nat) (pin pout : List UInt8)
     (Out : List UInt8 → List UInt8) (Tr : List UInt8 → UInt64 → Prop) : Prop :=
   ∀ (P : Platform) (R : Replies) (code : UInt64 → Option UInt32) (svc base area : UInt64)
@@ -76,10 +77,11 @@ theorem le_allocSize_of_lt {bytes : UInt64} (h : bytes.toNat + 7 < 2 ^ 64) :
 bytes, for a module whose function 0 is the allocator.  The heap `heap` lies at the module's
 initial store, the allocator has room for a block of `inMax + 33` bytes, and the heap after that
 block's allocation, at every store with the memory's cap, satisfies the theorem's precondition for
-every input of at most `inMax + 32` bytes.  The function's result is `Out` of its input, which
-agrees with `f` on such inputs, and its traps are the status 1 of `unreachable` when `aborts`
-holds and the status 4 of an overflow of the stack when `room` lies below `stackBound m k`.  The
-allocator's stack must fit the room. -/
+every input of at most `inMax + 32` bytes, where `inMax` lies below 2^32.  The function's result
+is `Out` of its input, which agrees with `f` on such inputs, and its traps are the status 1 of
+`unreachable` when `aborts` holds and the status 4 of an overflow of the stack when `room` lies
+below `stackBound m k`.  The allocator's stack must fit the room, and `stampEntryOk` must hold of
+the function, which `decide +kernel` checks. -/
 theorem stamp_runs_any {aborts : Bool} {m : Module} {k : Nat}
     {f : LeanExe.Bytes → LeanExe.Bytes}
     {Pre : LeanExe.Bytes → Heap → Store Unit → Prop}

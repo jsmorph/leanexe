@@ -11,7 +11,8 @@ the address and count that the ones before it leave.  `StampEvents` follows the 
 calls in order: each stage names its event with the arguments that the program fixes, and either
 ends the run with its status or continues.  Lemmas compute `readData` and `writeData` of the
 events of other calls and of appended traces.  `StampOpened` and `StampInput` name the events of
-the stages that succeed, and a lemma for each end of `StampEvents` builds it from them.
+the stages that succeed, and a lemma for each end of `StampEvents` builds it from the events of
+the stages before that end.
 -/
 
 namespace LeanExe.A64
@@ -42,9 +43,9 @@ def WriteLoop (fd : UInt64) (fails : Bool) : UInt64 → Nat → List LeanExe.Lin
 
 /-- The events `tr` of a run of the stamp program from `main` with SP at `sp`, the limit `inMax`
 of the input file, and the paths `pin` and `pout`, that returned when `s` is `none` and reached the
-exit word with status `x` when `s` is `some x`.  The allocator's block lies at `B`, and the block
-with every byte that the reads may write lies below `main`'s frame of `stampFrame pin pout` bytes;
-the input path lies 32 bytes above the frame's base and the output path
+exit word with status `x` when `s` is `some x`.  The address `B` is existential, with the block
+of `inMax + 33` bytes from `B` below `main`'s frame of `stampFrame pin pout` bytes, where the
+program places the allocator's block; the input path lies 32 bytes above the frame's base and the output path
 `32 + 8 * (pathWords pin).length` bytes above it.  In order: `clock_gettime` of the realtime clock
 into the 16 bytes at `B`, which ends the run with status 72 unless it returns 0; `getrandom` of 16
 bytes at `B + 16` without flags (73 unless 16); `openat` of the input path, read-only and closed
@@ -53,8 +54,8 @@ on `exec` (67 unless the result `d` lies below 2^31); the reads of `d` from `B +
 block (64), or with a result of 0; `close` of `d` (69 unless 0); the function on the clock's 16
 bytes, the random bytes, and the bytes read, whose statuses `Tr` gives; `openat` of the output
 path, write-only, created, truncated, and closed on `exec`, with mode 0644 (70 unless the result
-`e` lies below 2^31); the writes to `e` of the function's result `Out` of those bytes from the
-address `R` that the function returned, which end with a result of 0 or above its count (74, after
+`e` lies below 2^31); the writes to `e` of the function's result `Out` of those bytes from an
+existential address `R`, where the program places the result, which end with a result of 0 or above its count (74, after
 writing a prefix of the result) or after the whole result; and `close` of `e` (71 unless 0), after
 which the run returns. -/
 def StampEvents (sp inMax : UInt64) (pin pout : List UInt8)

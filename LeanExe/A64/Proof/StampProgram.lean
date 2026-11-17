@@ -146,11 +146,13 @@ theorem stamp_stub {a base sp0 inMax B : UInt64} {c : Nat} {g : Fin 67108864}
 /-- The run of a program of `genStampProgram`, whose function `k` of `m` takes and returns the
 two words of a buffer and whose function 0 is the allocator, from `main` at `after base 1` with
 `FPCR` at `fpcrValue` and no event in the trace, on a platform whose UART lies outside Normal
-memory, for every replies `R`, when the allocator's run at fuel `F0` on `inMax + 33` gives the root
-`root` and the store `st1`, and when Talos's runs of the function do what `hfun` and `hov` state:
-for every store written only within the block, with bytes `D` at its start, some fuel at which the
-run returns a buffer of `Out D` or traps with a status that `Tr` allows, and an overflow of the
-stack only when `Tr` allows status 4.  The process returns 0 or reaches the exit word, with the
+memory, for every replies `R` and `inMax` below 2^32, when the allocator's run at fuel `F0` on
+`inMax + 33` gives the root `root` and the store `st1`, whose memory holds the block of
+`inMax + 33` bytes from `root` (`hfit`), and when Talos's runs of the function do what `hfun` and
+`hov` state: for every store with the memory's cap written only within the block, with bytes `D`
+of at most `inMax + 32` at its start, some fuel at which the run returns a buffer of `Out D` or
+traps with a status that `Tr` allows, and an overflow of the stack only when `Tr` allows
+status 4.  The process returns 0 or reaches the exit word, with the
 events of `StampEvents`. -/
 theorem stampProgram_run {R : Replies} {m : Module} {k : Nat} {fk : Function}
     {inMax svc base room area : UInt64} {cap : Nat} {pin pout : List UInt8} {is : List Instr}

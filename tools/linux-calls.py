@@ -620,7 +620,7 @@ DATA = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+"
 # region that a step makes the call write to differ from the fill in one of the runs, so a correct
 # kernel fails it only where a byte that varies equals the fill of every run, which for a uniformly
 # random byte has probability 256^-k for k fills.  The bytes that vary are getrandom's 8 and the low
-# 4 bytes of tv_sec and of tv_nsec: 16 at each of the 2 placements of each of the two steps, 32 in
+# 4 bytes of tv_sec and of tv_nsec: 8 at each of the 2 placements of each of the two steps, 32 in
 # a run of the frame test that reaches both.  tests/linux/sys-run.sh makes 2 such runs, natively
 # and under QEMU, and 3 runs of seeded faults pass the coverage check of clock_gettime before they
 # fail (getrandom-short natively and under QEMU, openat2-record-short natively), 112 bytes in all.

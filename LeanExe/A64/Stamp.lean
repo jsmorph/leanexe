@@ -5,7 +5,7 @@ import LeanExe.Linux.CallTable
 The stamp program, a static Linux executable for AArch64 that makes its calls through the Linux
 call layer: it reads the file whose path `pin` names in the working directory, runs a function over
 bytes on the realtime clock's 16 bytes, 16 random bytes, and the file's bytes, and writes the
-function's result to the file that `pout` names, which it creates or truncates with mode 0644.
+function's result to the file that `pout` names, which it creates with mode 0644 or truncates.
 The paths are fixed when the program is generated, have from 1 to 63 bytes, and hold no zero byte.
 
 Every call loads its arguments into X0 to X3, sets X8 to the call's arm64 number, and branches with
@@ -47,7 +47,8 @@ def stampInFlags : UInt64 := 0x80000
 /-- `O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC` on arm64. -/
 def stampOutFlags : UInt64 := 0x80241
 
-/-- The mode of the output file, 0644. -/
+/-- The mode argument of the output's `openat`, 0644, which Linux applies less the umask when the
+call creates the file. -/
 def stampOutMode : Fin 65536 := 420
 
 /-- The instructions that store the words `ws` from the frame's word slot `slot`, each a

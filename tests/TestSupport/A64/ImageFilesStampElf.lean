@@ -21,7 +21,9 @@ trace, a run in which every `SVC #0` takes the Linux call layer's rule for a cal
 was and only the layer's events in its trace.  Those events are the ones of `StampEvents` for the
 flip function and no trap: X0 holds 0 and the bytes written to `stamp.out` are the clock's 16
 bytes, the 16 random bytes, and the bytes read from `stamp.in`, each with bit 5 flipped, or X0
-holds the status of the call that failed, after the events up to that call.
+holds the status of the stage at which the run ended, 64 for a full block or the status of the
+call that failed, with the events up to that stage.  The addresses of the block, of the result,
+and of `main`'s frame are existential, so the events' addresses are fixed relative to them.
 -/
 
 namespace TestSupport.A64.ImageFilesStampElf
