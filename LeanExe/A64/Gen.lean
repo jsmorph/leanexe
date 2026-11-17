@@ -16,7 +16,7 @@ the f64 forms that the verified compiler emits: constants, the reinterpretations
 `f32Mul`, `f32Div`, `f32Sqrt`, `f32Nearest`, `f32Abs`, `f32Eq`, `f32Lt`, and `f32Le`.  It rejects
 every other form with a message.  The function that
 `main` calls takes `i64` and `f64` parameters.  The loads and stores of linear memory also include
-`i32.load8_u` and `i32.store8`.
+`i32.load8_u`, `i32.store8`, `i32.load`, and `i32.store`.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
@@ -81,6 +81,13 @@ byte `X17 + 4096 + a + off` with `LDRB` or `STRB` 4095 bytes above `X17 + a + of
 writes to the UART when its address is the UART's, so the generator emits `i32.store8` only in a
 program whose `Shared.byteStores` holds, the programs of `genBytesProgram`, whose theorem assumes
 that the UART lies outside Normal memory.
+
+`i32.load` and `i32.store` at offset `off` compare the address with the memory's size less 8,
+plus 4 less `off`, and branch to the same stub above it.  `i32.load` reads the eight bytes from
+`X17 + 4092 + a + off` with `LDR` and keeps their upper half with `LSR #32`: the four bytes below
+the accessed ones lie in the area, in the memory or the header, so the load stays within it.
+`i32.store` writes the value's four bytes with `STRB`, the lowest first, the upper ones shifted
+down into X29 with `LSR`, and needs `Shared.byteStores` as `i32.store8` does.
 -/
 
 namespace LeanExe.A64
@@ -350,6 +357,8 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .store64 _ => (6, some (h - 2))
   | .load8U _ => (7, some h)
   | .store8 _ => (7, some (h - 2))
+  | .load32 _ => (8, some h)
+  | .store32 _ => (13, some (h - 2))
   | .unreachable => (1, none)
   | .br n => (ar[n]?.getD 0 + 1, none)
   | .br_if n => (if ar[n]?.getD 0 = 0 then 1 else ar[n]?.getD 0 + 2, some (h - 1))
@@ -404,6 +413,11 @@ def growWide (r : Fin 32) (cap : Fin 65536) (fail : Fin 524288) (done : Fin 6710
 offset `off`: `ADD X16, X16, #(7 - off)`, or `SUB X16, X16, #(off - 7)` for `off` above 7. -/
 def boundInstr (off : Nat) (h : off < 4095) : Instr :=
   if h7 : off ≤ 7 then .addImm 16 16 ⟨7 - off, by omega⟩ else .subImm 16 16 ⟨off - 7, by omega⟩
+
+/-- The adjustment of the memory's size less 8 in X16 to the largest address of a 4-byte access at
+offset `off`: `ADD X16, X16, #(4 - off)`, or `SUB X16, X16, #(off - 4)` for `off` above 4. -/
+def bound32Instr (off : Nat) (h : off < 4092) : Instr :=
+  if h4 : off ≤ 4 then .addImm 16 16 ⟨4 - off, by omega⟩ else .subImm 16 16 ⟨off - 4, by omega⟩
 
 mutual
 /-- The instructions of `ins` placed at `a`, on the operand stack of types `σ`, top first, under
@@ -570,6 +584,30 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
             .addReg 16 17 r, .addImm 16 16 ⟨off.toNat + 1, by omega⟩, .strb v 16 4095],
           some (σ.drop 2))
       else throw s!"a byte store at offset {off}"
+  | .load32 off => do
+      if σ.length < curBase ctl + 1 ∨ ¬ (σ.head? = some .i32 ∨ σ.head? = some .i64) then
+        throw s!"a 32-bit load at height {σ.length}"
+      if h : off.toNat < 4092 then
+        let r ← opReg (σ.length - 1)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, bound32Instr off.toNat h, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .addImm 16 16 ⟨off.toNat + 4, by omega⟩, .ldr r 16 511,
+            .lsrImm r r 32], some (.i32 :: σ.tail))
+      else throw s!"a 32-bit load at offset {off}"
+  | .store32 off => do
+      if !E.byteStores then throw "a 32-bit store in a program without byte stores"
+      if σ.length < curBase ctl + 2 ∨ σ.head? ≠ some .i32 ∨
+          ¬ (σ[1]? = some .i32 ∨ σ[1]? = some .i64) then
+        throw s!"a 32-bit store at height {σ.length}"
+      if h : off.toNat < 4092 then
+        let v ← opReg (σ.length - 1)
+        let r ← opReg (σ.length - 2)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, bound32Instr off.toNat h, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .addImm 16 16 ⟨off.toNat + 4, by omega⟩, .strb v 16 4092,
+            .lsrImm 29 v 8, .strb 29 16 4093, .lsrImm 29 v 16, .strb 29 16 4094,
+            .lsrImm 29 v 24, .strb 29 16 4095], some (σ.drop 2))
+      else throw s!"a 32-bit store at offset {off}"
   | .unreachable => do return ([.b (← bField a E.trapUnreachable)], none)
   | .br n => do
       match ctl[n]? with

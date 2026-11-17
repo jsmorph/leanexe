@@ -2,6 +2,7 @@ import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Memory
 import LeanExe.A64.Proof.ByteMemory
+import LeanExe.A64.Proof.Memory32
 import LeanExe.A64.Proof.Float32
 import LeanExe.ProofKit.Exec
 import Interpreter.Wasm.Semantics.Lemmas
@@ -311,6 +312,10 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
       obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load8U hg; simp [instrSize]; omega
   | store8 off =>
       obtain ⟨_, _, _, h1, _, _, _, _, rfl, rfl⟩ := gen_store8 hg; simp [instrSize]
+  | load32 off =>
+      obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load32 hg; simp [instrSize]; omega
+  | store32 off =>
+      obtain ⟨_, _, _, h1, _, _, _, _, rfl, rfl⟩ := gen_store32 hg; simp [instrSize]
   | br n =>
       obtain ⟨t, ht, hb, rfl⟩ := gen_br hg
       simp [instrSize, ht, branchTo_length hb]
@@ -498,6 +503,9 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | load8U off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load8U hg; cases he; simp; omega
   | store8 off =>
       obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_store8 hg; cases he; simp; omega
+  | load32 off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load32 hg; cases he; simp; omega
+  | store32 off =>
+      obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_store32 hg; cases he; simp; omega
   | br n => obtain ⟨_, _, _, he⟩ := gen_br hg; cases he
   | br_if n => obtain ⟨h1, _, he, _⟩ := gen_br_if hg; cases he; simp; omega
   | ret => obtain ⟨_, _, _, he⟩ := gen_ret hg; cases he
@@ -1014,6 +1022,8 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, M.ListSim g) (inst : Instruction) :
   case store64 off => exact InstrSim.of_leaf M (sim_store64 P code F off) (by leaf_tac)
   case load8U off => exact InstrSim.of_leaf M (sim_load8U P code F off) (by leaf_tac)
   case store8 off => exact InstrSim.of_leaf M (sim_store8 P code F off) (by leaf_tac)
+  case load32 off => exact InstrSim.of_leaf M (sim_load32 P code F off) (by leaf_tac)
+  case store32 off => exact InstrSim.of_leaf M (sim_store32 P code F off) (by leaf_tac)
   case br n => exact InstrSim.of_leaf M (sim_br P code F n) (by leaf_tac)
   case br_if n => exact InstrSim.of_leaf M (sim_br_if P code F n) (by leaf_tac)
   case ret => exact InstrSim.of_leaf M (sim_ret P code F) (by leaf_tac)

@@ -267,6 +267,17 @@ theorem genInstr_shift_of {E : Env} {d : UInt64} {δ : Int}
       simp only [genInstr, Env.shift_eq, Env.shift_byteStores, hbs, Bool.not_true,
         Bool.false_eq_true, ↓reduceIte, curBase_shift, after_shift, hf,
         cbField_shift (ha 3 (by omega)) hB hf]
+  | load32 off =>
+      obtain ⟨ho, g, -, -, -, hf, his, -⟩ := gen_load32 hg
+      have hl : is.length = 8 := by rw [his]; rfl
+      simp only [genInstr, Env.shift_eq, curBase_shift, after_shift, hf,
+        cbField_shift (ha 3 (by omega)) hB hf]
+  | store32 off =>
+      obtain ⟨ho, g, hbs, -, -, -, -, hf, his, -⟩ := gen_store32 hg
+      have hl : is.length = 13 := by rw [his]; rfl
+      simp only [genInstr, Env.shift_eq, Env.shift_byteStores, hbs, Bool.not_true,
+        Bool.false_eq_true, ↓reduceIte, curBase_shift, after_shift, hf,
+        cbField_shift (ha 3 (by omega)) hB hf]
   | br n =>
       obtain ⟨t, ht, hb, -⟩ := gen_br hg
       have hb' := branchTo_shift hb (hctl t (List.mem_of_getElem? ht))

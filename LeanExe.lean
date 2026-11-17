@@ -45,6 +45,7 @@ import LeanExe.A64.Proof.LinuxRuns
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.MachineSim
 import LeanExe.A64.Proof.Memory
+import LeanExe.A64.Proof.Memory32
 import LeanExe.A64.Proof.Program
 import LeanExe.A64.Proof.ProgramRuns
 import LeanExe.A64.Proof.Relation
@@ -64,9 +65,12 @@ import LeanExe.A64.Proof.StartupTail
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
+import LeanExe.A64.Proof.WasiStubs
+import LeanExe.A64.Proof.WithMachine
 import LeanExe.A64.Stamp
 import LeanExe.A64.Startup
 import LeanExe.A64.Table
+import LeanExe.A64.Wasi
 import LeanExe.Area
 import LeanExe.Attr
 import LeanExe.CallGraph

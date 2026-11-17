@@ -106,6 +106,12 @@ lean_exe «a64-elf» where
   srcDir := "tests"
   root := `TestSupport.A64.ElfMain
 
+-- The Linux executables of WASI commands of the AArch64 back end (tests/linux/a64-wasi.sh); not a
+-- default target.
+lean_exe «a64-wasi» where
+  srcDir := "tests"
+  root := `TestSupport.A64.WasiElfMain
+
 -- The arm64 Image of the Oakland tabulator that reads a canonical file from the UART
 -- (tests/baremetal/a64-rcv.sh); not a default target.
 lean_exe «a64-rcv» where
