@@ -97,7 +97,7 @@ tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples
 # reports of axioms, each a subset of the standard three.  Lean breaks a report longer than its
 # format's width of 120 columns into lines, which the check joins.
 kernel_check() {
-  if tools/leanrun --timeout 60m --memory-high 12G lake env sh -c 'cd "$1" && lean "$2"' sh \
+  if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh \
       "$out" "$root/tests/TestSupport/A64/$1.lean" >"$out/$1.check" 2>&1 &&
       sed -e ':a' -e '/depends on axioms: \[[^]]*$/{N;s/\n//;ba' -e '}' "$out/$1.check" \
         >"$out/$1.axioms" &&
