@@ -117,7 +117,7 @@ variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ t
 with the errno `errno` in X0, SP, X17, X18, and the UART's state kept, and a memory that differs
 from the state's only in the area and below SP, is a return of a stub that answered without a call
 with the memory `mem` and the WASI event `e`. -/
-theorem stub_returned {S : Shared} {n : Nat} {st : Store (Observed LinuxWorld)} {q : Proc}
+theorem stub_returned {S : Shared} {st : Store (Observed LinuxWorld)} {q : Proc}
     (hsr : (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).SR S.cap
       S.globalTypes st q)
     {t : State} (rt : Reach (wasiPlatform L sp₀ top) code q.core t) (pt : t.pc = q.core.x 30)

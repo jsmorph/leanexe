@@ -19,11 +19,13 @@
     (func $prestat_dir_name (param i32 i32 i32) (result i32)))
   (memory (export "memory") 1)
 
-  ;; Writes the `$length` bytes at `$pointer` to standard output.
+  ;; Writes the `$length` bytes at `$pointer` to standard output and keeps the errno at address
+  ;; 12, since the AArch64 generator has no `drop`.
   (func $out (param $pointer i32) (param $length i32)
     (i32.store (i32.const 0) (local.get $pointer))
     (i32.store (i32.const 4) (local.get $length))
-    (drop (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8))))
+    (i32.store (i32.const 12)
+      (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8))))
 
   ;; `fd_prestat_dir_name` of `$fd` into `$capacity` bytes at 128.
   (func $name (param $fd i32) (param $capacity i32)
