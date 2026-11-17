@@ -237,6 +237,54 @@ theorem mapM_flatStubFor :
     · exact hs
     · exact hss x hx
 
+/-- The number of instructions of the stubs `stubs`. -/
+def stubsSize (stubs : List FlatStub) : Nat := (stubs.map (·.size)).sum
+
+theorem stubsEnd_eq : ∀ (a : UInt64) (stubs : List FlatStub),
+    stubsEnd a stubs = after a (stubsSize stubs)
+  | a, [] => by simp [stubsEnd, stubsSize, after_zero]
+  | a, s :: rest => by
+    rw [stubsEnd, stubsEnd_eq, after_after]
+    simp [stubsSize]
+
+/-- The code of the stubs `stubs` from `a` and its parts: its length is `stubsSize stubs`, and
+each table entry of `stubEntries a j stubs` is that of a stub of `stubs`, whose generator gives
+the code at the entry's address. -/
+theorem genStubs_code {code : UInt64 → Option UInt32} {svc tr en : UInt64} {sc : Nat} :
+    ∀ {a : UInt64} {j : Nat} {stubs : List FlatStub} {is : List Instr},
+      genStubs svc tr en sc a stubs = .ok is → CodeAt code a is →
+      is.length = stubsSize stubs ∧
+      ∀ c ∈ stubEntries a j stubs, ∃ i, ∃ hi : i < stubs.length, ∃ is' b,
+        c = (j + i, b, stubs[i].decl.params, stubs[i].decl.results) ∧
+        stubs[i].gen b svc tr en sc = .ok is' ∧ CodeAt code b is'
+  | a, j, [], is, hg, _ => by
+    simp only [genStubs, pure, Except.pure, Except.ok.injEq] at hg
+    subst hg
+    exact ⟨rfl, fun c hc => by simp [stubEntries] at hc⟩
+  | a, j, s :: rest, is, hg, hcode => by
+    simp only [genStubs, bind, Except.bind] at hg
+    cases h1 : s.gen a svc tr en sc with
+    | error err => simp [h1] at hg
+    | ok is₀ =>
+    simp only [h1] at hg
+    by_cases hl : is₀.length = s.size
+    · cases h2 : genStubs svc tr en sc (after a s.size) rest with
+      | error err => simp [hl, h2] at hg
+      | ok is₁ =>
+      simp only [hl, h2, pure, Except.pure, Except.ok.injEq, ↓reduceIte] at hg
+      subst hg
+      have hc := CodeAt.split code hcode hl
+      obtain ⟨hlen, hent⟩ := genStubs_code (j := j + 1) h2 hc.2
+      refine ⟨by simp [stubsSize, hl, hlen, Nat.add_comm], fun c hc' => ?_⟩
+      rcases List.mem_cons.mp hc' with rfl | hc'
+      · exact ⟨0, by simp, is₀, a, by simp, h1, hc.1⟩
+      · obtain ⟨i, hi, is', b, hce, hgi, hci⟩ := hent c hc'
+        refine ⟨i + 1, by simpa using hi, is', b, ?_, by simpa using hgi, hci⟩
+        rw [hce]
+        simp only [List.getElem_cons_succ, Prod.mk.injEq, and_true]
+        omega
+    · simp [hl, throw, throwThe, MonadExceptOf.throw] at hg
+
 theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : Nat}
     {is : List Instr} (hg : genWasiProgram m k svc base room cap = .ok is) :
     ∃ stubs gts e main pre rd wr ex tr sts fns,
