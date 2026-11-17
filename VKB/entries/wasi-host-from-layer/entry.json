@@ -14,13 +14,18 @@
     "a host whose image of a call depends on the lower events before it",
     "a loop of lower calls inside one WASI call, such as getrandom until the buffer is full",
     "a lower event that records the bytes of its output region before the call",
-    "a trace of images names only the descriptors that the host holds open"
+    "a trace of images names only the descriptors that the host holds open",
+    "Exec (linuxHost F' L' I' R) action world trace outcome final from a run under linuxHost F L I R without flat calls",
+    "Verified.Shim.StreamAction action for an action that makes no flat call",
+    "a binding's own bound on the output regions of the layer's events, narrower than WritesWithin"
   ],
   "modules": [
     "Verified.Shim",
     "Verified.Examples.WasiReadAllShim",
     "Verified.Examples.WasiSysShim",
-    "Verified.Examples.WasiFilesShim"
+    "Verified.Examples.WasiFilesShim",
+    "Verified.Examples.WasiReadAllNative",
+    "Verified.ShimA64"
   ],
   "declarations": [
     "Verified.Shim.shimCalls",
@@ -114,13 +119,33 @@
     "Verified.Wasi.exec_observed",
     "Verified.Wasi.compiled_native_start_run_with",
     "Verified.Wasi.bind_exit_not_returned",
-    "List.append_eq_append_iff"
+    "List.append_eq_append_iff",
+    "Verified.Shim.StreamAction",
+    "Verified.Shim.StreamTrace",
+    "Verified.Shim.Exec.streamTrace",
+    "Verified.Shim.Prefix.streamTrace",
+    "Verified.Shim.Prefix.streamTrace_bind",
+    "Verified.Shim.Exec.streams",
+    "Verified.Shim.Prefix.streams",
+    "Verified.Shim.Images.streams",
+    "Verified.Shim.Images.streamCalls",
+    "LeanExe.Wasi.Prefix.bind",
+    "LeanExe.Wasi.Action.bind_pure",
+    "Verified.ShimA64.WritesNative",
+    "Verified.ShimA64.WritesLinear",
+    "Verified.ShimA64.WritesNative.writesWithin",
+    "Verified.ShimA64.WritesLinear.writesWithin",
+    "Verified.ShimA64.WritesNative.linear"
   ],
   "examples": [
     "Verified.Shim.open_contract",
     "Verified.Examples.WasiReadAll.linux_footprint",
     "Verified.Examples.WasiReadAll.linux_bytes",
     "Verified.Examples.WasiSys.linux_footprint",
-    "Verified.Examples.WasiFiles.linux_names"
-  ]
+    "Verified.Examples.WasiFiles.linux_names",
+    "Verified.Examples.WasiReadAll.main_streams"
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/ImageFilesWasiElf.lean": ["TestSupport.A64.ImageFilesWasiElf.readall_elf"]
+  }
 }
