@@ -1,6 +1,7 @@
 import LeanExe.A64.Elf
-import LeanExe.Wasi.Calls
+import LeanExe.Wasi.CallTable
 import LeanExe.A64.WasiPreopen
+import LeanExe.A64.WasiStrings
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose
@@ -33,7 +34,8 @@ number below 1,024 that the shim holds, and buffers for the calls of the flat st
 `modulePlatform` is the platform of the data segment without the scratch, on which the module's
 code runs, and `wasiPlatform` the platform of the data segment and the initial stack, on which
 the process runs.  `InitialStack` states the layout of the arguments and the environment that
-Linux places at the initial SP.
+Linux places at the initial SP, which the stubs of `stringStubs`, of `LeanExe/A64/WasiStrings.lean`,
+read through the scratch's first word.
 
 A stub follows the shim's stream functions of `Verified/Shim/Env.lean`.  The stubs of `fd_read` and
 `fd_write` require the arguments that that environment requires: descriptor 0 for a read and 1 or 2
@@ -224,16 +226,37 @@ structure FlatStub where
   size : Nat
   gen : UInt64 → UInt64 → UInt64 → UInt64 → Nat → GenM (List Instr)
 
-/-- The flat calls whose stubs the generator implements: `fd_prestat_get` and
-`fd_prestat_dir_name`. -/
-def flatStubs : List FlatStub :=
-  [⟨LeanExe.Wasi.Call.fdPrestatGet,
-      { «module» := "wasi_snapshot_preview1", name := "fd_prestat_get", params := [.i32, .i32],
-        results := [.i32] }, prestatStubSize, fun a _ tr _ sc => prestatStub a tr sc⟩,
-   ⟨LeanExe.Wasi.Call.fdPrestatDirName,
-      { «module» := "wasi_snapshot_preview1", name := "fd_prestat_dir_name",
-        params := [.i32, .i32, .i32], results := [.i32] }, dirNameStubSize,
-      fun a _ tr _ sc => dirNameStub a tr sc⟩]
+/-- The import of the flat call `name` of Preview 1 with two pointers as `i32` and an errno. -/
+def pointerPairImport (name : String) : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name, params := [.i32, .i32], results := [.i32] }
+
+/-- The stubs of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get` of
+`LeanExe/A64/WasiStrings.lean`, which read the initial stack through the scratch's first word. -/
+def stringStubs : List FlatStub :=
+  [{ call := .argsSizesGet, decl := pointerPairImport "args_sizes_get",
+      size := sizesStubSize .args, gen := fun a _ tr _ scratch => sizesStub .args a tr scratch },
+    { call := .argsGet, decl := pointerPairImport "args_get", size := stringsStubSize .args,
+      gen := fun a _ tr _ scratch => stringsStub .args a tr scratch },
+    { call := .environSizesGet, decl := pointerPairImport "environ_sizes_get",
+      size := sizesStubSize .environ,
+      gen := fun a _ tr _ scratch => sizesStub .environ a tr scratch },
+    { call := .environGet, decl := pointerPairImport "environ_get",
+      size := stringsStubSize .environ,
+      gen := fun a _ tr _ scratch => stringsStub .environ a tr scratch }]
+
+/-- The stubs of `fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`,
+which read the preopen flag and the held bytes of the scratch. -/
+def preopenStubs : List FlatStub :=
+  [{ call := .fdPrestatGet, decl := pointerPairImport "fd_prestat_get", size := prestatStubSize,
+      gen := fun a _ tr _ scratch => prestatStub a tr scratch },
+    { call := .fdPrestatDirName,
+      decl := { «module» := "wasi_snapshot_preview1", name := "fd_prestat_dir_name",
+        params := [.i32, .i32, .i32], results := [.i32] },
+      size := dirNameStubSize, gen := fun a _ tr _ scratch => dirNameStub a tr scratch }]
+
+/-- The flat calls whose stubs the generator implements: those of the arguments and the
+environment, and those of the preopened directory. -/
+def flatStubs : List FlatStub := stringStubs ++ preopenStubs
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=

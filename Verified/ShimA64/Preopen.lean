@@ -1,4 +1,4 @@
-import Verified.ShimA64.Stubs
+import Verified.ShimA64.Strings
 import LeanExe.A64.Proof.WasiPreopen
 
 /-!
@@ -47,17 +47,6 @@ theorem prestat_placed (m : Mem) (p : UInt32) :
   rw [write64_writeBytes]
   simp only [prestatReply, and_self, ↓reduceIte, placeReply, placeAll, List.headD_cons]
   rfl
-
-/-- Two values of type `i32` from their typing. -/
-theorem typed_i32x2 {args : List Value} (hlen : args.length = 2)
-    (hty : Typed [.i32, .i32] args) : ∃ a0 a1 : UInt32, args = [.i32 a0, .i32 a1] := by
-  match args, hlen, hty with
-  | [v0, v1], _, ⟨t0, t1, _⟩ =>
-    obtain ⟨a0, rfl⟩ : ∃ a, v0 = .i32 a := by
-      cases v0 <;> first | exact ⟨_, rfl⟩ | exact t0.elim
-    obtain ⟨a1, rfl⟩ : ∃ a, v1 = .i32 a := by
-      cases v1 <;> first | exact ⟨_, rfl⟩ | exact t1.elim
-    exact ⟨a0, a1, rfl⟩
 
 /-- Three values of type `i32` from their typing. -/
 theorem typed_i32x3 {args : List Value} (hlen : args.length = 3)
@@ -549,5 +538,34 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
       simp only [sysAnswer, sysResult]
       exact stub_returned hsr' rt pt spt iot x17t x18t xt0 (by decide)
         (fun b _ => by rw [mt]) (fun b _ => by rw [mt]) (StoreRel.regs hst x17t x18t mt) _
+
+/-- The flat call of `shimCalls` whose name is that of a prestat function. -/
+theorem shimCall_preopen {c : Call} (hc : c ∈ shimCalls) :
+    (c.name = "fd_prestat_get" → c = Call.fdPrestatGet) ∧
+      (c.name = "fd_prestat_dir_name" → c = Call.fdPrestatDirName) := by
+  revert c
+  decide
+
+/-- The code of a stub of `preopenStubs` at `a`, generated with the trap stub and the scratch
+`areaSize S.cap` bytes above the area, stands for the shim's function of the call `c` of
+`shimCalls` whose import is the stub's, when the scratch lies at the area's end and in the data
+segment.  `flatStub_sim` takes its cases for these stubs from here. -/
+theorem preopenStub_sim {s : FlatStub} (hs : s ∈ preopenStubs) {c : Call} (hc : c ∈ shimCalls)
+    (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat) {a svc en : UInt64}
+    {is : List Instr} (hg : s.gen a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
+    (hcode : CodeAt code a is) (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
+    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem) :
+    (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
+      s.decl.params s.decl.results
+      (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
+  have hn : c.name = s.decl.name := congrArg ImportDecl.name hd
+  have hscr := scratch_wasi (sp := sp₀) (top := top) hL hGb hdata
+  obtain ⟨n1, n2⟩ := shimCall_preopen hc
+  simp only [preopenStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
+  rcases hs with rfl | rfl
+  · obtain rfl := n1 hn
+    exact prestatStub_sim S n hg hcode hGb hscr
+  · obtain rfl := n2 hn
+    exact dirNameStub_sim S n hg hcode hGb hscr
 
 end Verified.ShimA64
