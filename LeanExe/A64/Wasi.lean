@@ -1,5 +1,6 @@
 import LeanExe.A64.Elf
 import LeanExe.Wasi.Calls
+import LeanExe.A64.WasiPreopen
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose
@@ -17,8 +18,11 @@ functions' entries for the others.  The header's entry, `wasiEntry`, is the pref
 #0; B elfEntry`, which keeps the initial SP that Linux gives the process, the address of `argc`,
 in X2 while the runtime sets SP to the stack's top.  `main` saves X30, sets the stack's limit in
 X18 `room` bytes below its frame, stores X2 at the start of the shim's scratch, calls the startup
-routine, a return, and then `_start`, function `k`, which takes and returns nothing, and returns
-0.  The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
+routine and then `_start`, function `k`, which takes and returns nothing, and returns 0.  The
+startup routine is the check of descriptor 3 of `LeanExe/A64/WasiPreopen.lean` for a module whose
+flat imports read the shim's descriptor state (`needsCheck`), and a return for every other
+module.  The flat stubs of `flatStubs` are those of `fd_prestat_get` and `fd_prestat_dir_name`.
+The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 
 The shim's scratch occupies the `scratchSize` bytes from the area's end, at `X17 + areaSize cap`,
@@ -210,9 +214,6 @@ runtime's entry. -/
 def wasiPrefix (a : UInt64) : GenM (List Instr) := do
   return [.addImm 2 31 0, .b (← bField (after a 1) elfEntry)]
 
-/-- The startup routine: a return. -/
-def wasiStartup : List Instr := [.ret 30]
-
 /-- The stub of a flat call as the generator places it: the call, the import that the stub
 implements, its number of instructions, and its generator, which takes the stub's address, the
 routine `SVC #0; RET`, the trap stub, the routine of errnos, and the scratch's offset from the
@@ -223,8 +224,16 @@ structure FlatStub where
   size : Nat
   gen : UInt64 → UInt64 → UInt64 → UInt64 → Nat → GenM (List Instr)
 
-/-- The flat calls whose stubs the generator implements: none. -/
-def flatStubs : List FlatStub := []
+/-- The flat calls whose stubs the generator implements: `fd_prestat_get` and
+`fd_prestat_dir_name`. -/
+def flatStubs : List FlatStub :=
+  [⟨LeanExe.Wasi.Call.fdPrestatGet,
+      { «module» := "wasi_snapshot_preview1", name := "fd_prestat_get", params := [.i32, .i32],
+        results := [.i32] }, prestatStubSize, fun a _ tr _ sc => prestatStub a tr sc⟩,
+   ⟨LeanExe.Wasi.Call.fdPrestatDirName,
+      { «module» := "wasi_snapshot_preview1", name := "fd_prestat_dir_name",
+        params := [.i32, .i32, .i32], results := [.i32] }, dirNameStubSize,
+      fun a _ tr _ sc => dirNameStub a tr sc⟩]
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=
@@ -339,7 +348,8 @@ def genWasiProgram (m : Module) (k : Nat) (svc base room : UInt64) (cap : Nat) :
   let fs := wasiFuncs m
   let flat := stubEntries (wasiFlatAt a) 3 stubs
   let startAt := stubsEnd (wasiFlatAt a) stubs
-  let first := after startAt wasiStartup.length
+  let startup ← startupCode (needsCheck (m.imports.drop 3)) startAt svc base (areaSize cap)
+  let first := after startAt startup.length
   let callee := wasiTable (wasiReadAt a) (wasiWriteAt a) (wasiExitAt a) flat first fs
   let entry ← match entryIn (wasiSig flat fs) first fs k with
     | some (e, [], []) => pure e
@@ -355,7 +365,7 @@ def genWasiProgram (m : Module) (k : Nat) (svc base room : UInt64) (cap : Nat) :
   let tr ← trapStub (wasiTrapAt a) base
   let sts ← genStubs svc (wasiTrapAt a) (wasiErrnoAt a) (areaSize cap) (wasiFlatAt a) stubs
   let fns ← genFunctions callee S first fs
-  let body := pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns
+  let body := pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ startup ++ fns
   unless body.all Instr.keepsX18 do throw "an instruction after main that writes X18"
   let prog := main ++ body
   unless prog.all Instr.keepsX17 do throw "an instruction that writes X17"

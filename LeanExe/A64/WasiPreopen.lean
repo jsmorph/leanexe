@@ -26,9 +26,15 @@ returns errno 0, and returns errno 8 (`badf`) for every other descriptor.  `dirN
 at the buffer and returns 0 for descriptor 3 while the flag is set and the buffer is nonempty, and
 returns errno 37 (`nametoolong`) for an empty buffer.  For any other descriptor it returns errno 54
 (`notdir`) for descriptors 0 to 2 and for a number that the shim holds, and errno 8 otherwise.
+
+A module whose flat imports include a function that reads the shim's descriptor state, one of
+`preopenNames`, starts with the check (`needsCheck`), and every other module's startup routine is
+a return (`startupCode`).
 -/
 
 namespace LeanExe.A64
+
+open Wasm
 
 /-- The scratch's address, `scratch` bytes above the area at X17, in X16. -/
 def scratchAddr (scratch : Nat) : List Instr :=
@@ -97,5 +103,17 @@ def dirNameStub (a tr : UInt64) (scratch : Nat) : GenM (List Instr) := do
       .movz 9 46 0, .strb 9 10 4095, .movz 0 0 0, .ret 30, .movz 0 37 0, .ret 30,
       .subsImm 31 0 3, .bcond 3 (← cbField (after a 24) (after a 30))] ++ held ++
     [.movz 0 54 0, .ret 30, .movz 0 8 0, .ret 30]
+
+/-- The names of the flat imports whose stubs read the shim's descriptor state. -/
+def preopenNames : List String :=
+  ["path_open", "fd_close", "fd_read", "fd_write", "fd_prestat_get", "fd_prestat_dir_name"]
+
+/-- Whether the flat imports `ds` call for the check of descriptor 3. -/
+def needsCheck (ds : List ImportDecl) : Bool := ds.any fun d => preopenNames.contains d.name
+
+/-- The startup routine placed at `a`: the check of descriptor 3 when `check` holds, and a
+return otherwise. -/
+def startupCode (check : Bool) (a svc base : UInt64) (scratch : Nat) : GenM (List Instr) :=
+  if check then preopenCheck a svc base scratch else pure [.ret 30]
 
 end LeanExe.A64

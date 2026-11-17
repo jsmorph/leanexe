@@ -287,12 +287,14 @@ theorem genStubs_code {code : UInt64 → Option UInt32} {svc tr en : UInt64} {sc
 
 theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : Nat}
     {is : List Instr} (hg : genWasiProgram m k svc base room cap = .ok is) :
-    ∃ stubs gts e main pre rd wr ex tr sts fns,
+    ∃ stubs gts startup e main pre rd wr ex tr sts fns,
       m.imports = streamImports ++ stubs.map (·.decl) ∧ (∀ s ∈ stubs, s ∈ flatStubs) ∧
       room.toNat < 2 ^ 32 ∧ areaOk m cap = true ∧ globalTypesOf m = some gts ∧
       gts.length ≤ 511 ∧
+      startupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1)) stubs) svc
+        base (areaSize cap) = .ok startup ∧
       entryIn (wasiSig (stubEntries (wasiFlatAt (after base 1)) 3 stubs) (wasiFuncs m))
-        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) wasiStartup.length) (wasiFuncs m) k =
+        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length) (wasiFuncs m) k =
         some (e, [], []) ∧
       wasiMain (after base 1) (stubsEnd (wasiFlatAt (after base 1)) stubs) e room cap =
         .ok main ∧
@@ -307,14 +309,14 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
         (wasiFlatAt (after base 1)) stubs = .ok sts ∧
       genFunctions (wasiTable (wasiReadAt (after base 1)) (wasiWriteAt (after base 1))
           (wasiExitAt (after base 1)) (stubEntries (wasiFlatAt (after base 1)) 3 stubs)
-          (after (stubsEnd (wasiFlatAt (after base 1)) stubs) wasiStartup.length) (wasiFuncs m))
+          (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length) (wasiFuncs m))
         { trapUnreachable := wasiTrapAt (after base 1), trapBounds := wasiTrapAt (after base 1),
           trapDiv := wasiTrapAt (after base 1), trapStack := wasiTrapAt (after base 1), cap,
           globalTypes := gts, byteStores := true }
-        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) wasiStartup.length) (wasiFuncs m) =
+        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length) (wasiFuncs m) =
         .ok fns ∧
-      is = main ++ (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns) ∧
-      (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns).all
+      is = main ++ (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ startup ++ fns) ∧
+      (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ startup ++ fns).all
         Instr.keepsX18 = true ∧
       is.all Instr.keepsX17 = true := by
   unfold genWasiProgram at hg
@@ -343,6 +345,11 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
     refine Classical.byContradiction fun h => ?_
     simp [hgt, h, throw, throwThe, MonadExceptOf.throw] at hg
   simp only [hgt, hgl, ↓reduceIte] at hg
+  cases hsu : startupCode (needsCheck (m.imports.drop 3)) (stubsEnd (wasiFlatAt (after base 1))
+      stubs) svc base (areaSize cap) with
+  | error err => simp [hsu] at hg
+  | ok startup =>
+  simp only [hsu] at hg
   split at hg
   · rename_i e hen
     cases hmn : wasiMain (after base 1) (stubsEnd (wasiFlatAt (after base 1)) stubs) e room cap
@@ -379,11 +386,11 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
     simp only [hsts] at hg
     cases hfn : genFunctions (wasiTable (wasiReadAt (after base 1)) (wasiWriteAt (after base 1))
           (wasiExitAt (after base 1)) (stubEntries (wasiFlatAt (after base 1)) 3 stubs)
-          (after (stubsEnd (wasiFlatAt (after base 1)) stubs) wasiStartup.length) (wasiFuncs m))
+          (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length) (wasiFuncs m))
         { trapUnreachable := wasiTrapAt (after base 1), trapBounds := wasiTrapAt (after base 1),
           trapDiv := wasiTrapAt (after base 1), trapStack := wasiTrapAt (after base 1), cap,
           globalTypes := gts, byteStores := true }
-        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) wasiStartup.length)
+        (after (stubsEnd (wasiFlatAt (after base 1)) stubs) startup.length)
         (wasiFuncs m) with
     | error err => simp [hfn] at hg
     | ok fns =>
@@ -393,9 +400,9 @@ theorem gen_wasiProgram {m : Module} {k : Nat} {svc base room : UInt64} {cap : N
       split at hg
       · rename_i hall
         obtain rfl := Except.ok.inj hg
-        exact ⟨stubs, gts, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem,
-          Nat.lt_of_not_le hroom, rfl, rfl, hgl, hen, hmn, rfl, rfl, rfl, rfl, rfl, hsts, hfn, rfl,
-          hall18, hall⟩
+        exact ⟨stubs, gts, startup, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem,
+          Nat.lt_of_not_le hroom, rfl, rfl, hgl, rfl, hen, hmn, rfl, rfl, rfl, rfl, rfl, hsts, hfn,
+          rfl, hall18, hall⟩
       · simp [throw, throwThe, MonadExceptOf.throw] at hg
     · simp [throw, throwThe, MonadExceptOf.throw] at hg
   · simp [throw, throwThe, MonadExceptOf.throw] at hg

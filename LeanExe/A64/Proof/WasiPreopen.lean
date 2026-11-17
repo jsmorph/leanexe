@@ -325,6 +325,21 @@ theorem run_heldTest {a out : UInt64} {r : Fin 32} {g1 g4 : Fin 524288} (hr : r.
   · rw [if_pos (UInt64.not_le.mp hlo)] at p1
     exact ⟨u1, r1, by rw [p1, if_neg (fun h => hlo h.1)], fun q _ _ => k1 q, sp1, m1, io1⟩
 
+/-- A step of `STRB` with a base other than SP to the byte `addr` of Normal memory, other than the
+UART's. -/
+theorem step_strbAt {s : State} {t n : Fin 32} {imm : Fin 4096} {k : Nat} {addr : UInt64}
+    (hn : n.val < 31) (hc : code s.pc = some (encode (.strb t n imm))) (hk : imm.val = k)
+    (haddr : s.x n + UInt64.ofNat k = addr) (hmap : P.normal addr = true) (hne : addr ≠ P.uart) :
+    ∃ s', Reach P code s s' ∧ s'.pc = s.pc + 4 ∧ (∀ q : Fin 32, s'.x q = s.x q) ∧
+      s'.sp = s.sp ∧ s'.io = s.io ∧ s'.mem = store8 s.mem addr (s.x t).toUInt8 := by
+  subst hk haddr
+  have h31 : (n.val != 31) = true := by simp; omega
+  have he : LeanExe.A64.exec P (.strb t n imm) s = some { s with
+      mem := store8 s.mem (s.x n + UInt64.ofNat imm.val) (s.x t).toUInt8, pc := s.pc + 4 } := by
+    simp only [exec, State.xsp_eq_x hn, State.spAligned, h31, Bool.true_or, Bool.not_true,
+      Bool.false_eq_true, ↓reduceIte, hne, hmap]
+  exact ⟨_, reach_exec P code hc he (.refl _), rfl, fun _ => rfl, rfl, rfl, rfl⟩
+
 theorem byte_ne_zero {b : UInt8} : b.toUInt64 ≠ 0 ↔ b ≠ 0 := by
   constructor
   · intro h hb
@@ -455,7 +470,8 @@ theorem run_dirNameStub {a tr : UInt64} {sc : Nat} {is : List Instr}
     (hheld : s.x 0 ≤ 1023 → P.normal (s.x 17 + UInt64.ofNat sc + s.x 0 + 16) = true)
     (hbuf : ¬ load64 s.mem (s.x 17) + 8 < s.x 1 + s.x 2 → s.x 2 ≠ 0 →
       P.normal (s.x 17 + s.x 1 + 1 + 4095) = true)
-    (hU : P.normal P.uart = false) :
+    (hbufU : ¬ load64 s.mem (s.x 17) + 8 < s.x 1 + s.x 2 → s.x 2 ≠ 0 →
+      s.x 17 + s.x 1 + 1 + 4095 ≠ P.uart) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
       if load64 s.mem (s.x 17) + 8 < s.x 1 + s.x 2 then t.pc = tr
       else t.pc = s.x 30 ∧
@@ -558,10 +574,10 @@ theorem run_dirNameStub {a tr : UInt64} {sc : Nat} {is : List Instr}
         rw [k8 10 (by decide), x7, x6, kk5 17 (by decide) (by decide) (by decide) (by decide)
           (by decide), kk5 1 (by decide) (by decide) (by decide) (by decide) (by decide)]
         rfl
-      obtain ⟨u9, r9, p9, k9, sp9, io9, m9⟩ := step_strb P code (s := u8) (t := 9) (n := 10)
+      obtain ⟨u9, r9, p9, k9, sp9, io9, m9⟩ := step_strbAt P code (s := u8) (t := 9) (n := 10)
         (imm := 4095) (k := 4095) (addr := s.x 17 + s.x 1 + 1 + 4095) (by decide)
         (by rw [p8, p7, p6, p5, ← after_succ, ← after_succ, ← after_succ]; exact t4) rfl
-        (by rw [hx10]; rfl) (hbuf htr h2) hU
+        (by rw [hx10]; rfl) (hbuf htr h2) (hbufU htr h2)
       have kk9 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → q ≠ 16 → u9.x q = s.x q :=
         fun q h9 h10 h12 h13 h16 => by
           rw [k9 q, k8 q h9, k7 q h10, k6 q h10, kk5 q h9 h10 h12 h13 h16]
@@ -650,6 +666,12 @@ def preopenRun (path : UInt64) (R : Replies) (k : Nat) :
       ([preopenOpenEvent path (R k), preopenCloseEvent (R k).ret (R (k + 1))], some true)
     else ([preopenOpenEvent path (R k), preopenCloseEvent (R k).ret (R (k + 1))], none)
   else ([preopenOpenEvent path (R k)], none)
+
+/-- The layer events and the outcome of the startup routine of an executable with the scratch `G`
+and the replies `R`: those of `preopenRun` for the path buffer when `check` holds, and no event
+and no grant otherwise. -/
+def startup (check : Bool) (G : Scratch) (R : Replies) : List LeanExe.Linux.Event × Option Bool :=
+  if check then preopenRun G.path R 0 else ([], some false)
 
 /-- The memory after the check of descriptor 3 with the scratch at `G`: `.` and its terminating
 zero at the path buffer, and after a grant the preopen flag and the byte of descriptor 3 at 1. -/
@@ -1078,18 +1100,18 @@ theorem run_preopenCheck {a svc base : UInt64} {sc : Nat} {is : List Instr}
     (hT57 : T.find? (fun c => c.arm64 == 57) = some LeanExe.Linux.closeCall)
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) (hbase : base.toNat < 2 ^ 55)
     (hU : P.normal P.uart = false) {p : Proc} (hpc : p.core.pc = a) (hfp : p.fpcr = fpcrValue)
-    (hret : (p.core.x 30).toNat < 2 ^ 55)
-    (hpath : ∀ j < 2, P.normal (p.core.x 17 + UInt64.ofNat sc + UInt64.ofNat (1080 + j)) = true)
-    (hflag : P.normal (p.core.x 17 + UInt64.ofNat sc + 8) = true)
-    (hheld : P.normal (p.core.x 17 + UInt64.ofNat sc + 19) = true) :
+    (hret : (p.core.x 30).toNat < 2 ^ 55) {G : UInt64} (hGx : p.core.x 17 + UInt64.ofNat sc = G)
+    {k : Nat} (hk : p.trace.length = k)
+    (hpath : ∀ j < 2, P.normal (G + UInt64.ofNat (1080 + j)) = true)
+    (hflag : P.normal (G + 8) = true) (hheld : P.normal (G + 19) = true) :
     ∃ q, ProcReachWith T R P code p q ∧ q.fpcr = fpcrValue ∧ q.core.io = p.core.io ∧
-      q.trace = p.trace ++ (preopenRun (p.core.x 17 + UInt64.ofNat sc + 1080) R
-        p.trace.length).1.map Event.sys ∧
-      match (preopenRun (p.core.x 17 + UInt64.ofNat sc + 1080) R p.trace.length).2 with
+      q.trace = p.trace ++ (preopenRun (G + 1080) R k).1.map Event.sys ∧
+      match (preopenRun (G + 1080) R k).2 with
       | some granted => q.core.pc = p.core.x 30 ∧ q.core.sp = p.core.sp ∧
           q.core.x 17 = p.core.x 17 ∧ q.core.x 18 = p.core.x 18 ∧
-          q.core.mem = preopenMem p.core.mem (p.core.x 17 + UInt64.ofNat sc) granted
+          q.core.mem = preopenMem p.core.mem G granted
       | none => q.core.pc = base ∧ q.core.x 0 = 67 := by
+  subst hGx hk
   obtain ⟨u, ru, pu, x0u, x1u, x2u, x3u, x8u, x16u, x19u, x17u, x18u, -, spu, iou, mu⟩ :=
     run_preopenFront (P := P) hg hcode (s := p.core) hpc hU hpath
   obtain ⟨b15, g18, g21, g24, g26, b28, g30, g32, b38, h15, -, -, -, -, h28, -, -, -, -, -,

@@ -95,6 +95,21 @@ theorem store8_outside {P : Platform} {m : UInt64 → UInt8} {a : UInt64} {v : U
   have hne : b ≠ a := fun e => by rw [e, h] at hb; cases hb
   simp only [store8, hne, ↓reduceIte]
 
+/-- The scratch's bytes are Normal memory of the process's platform when the scratch lies in the
+data segment, which ends below `2^32`. -/
+theorem scratch_wasi {L : ElfLayout} {G : Scratch} {cap : Nat} {sp top : UInt64}
+    (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32) (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
+    (hdata : areaSize cap + scratchSize ≤ L.dataMem) :
+    ∀ j < scratchSize, (wasiPlatform L sp top).normal (G.base + UInt64.ofNat j) = true := by
+  intro j hj
+  have e : (G.base + UInt64.ofNat j).toNat = L.area.toNat + areaSize cap + j := by
+    rw [hGb, add_ofNat_add, UInt64.toNat_add, UInt64.toNat_ofNat']
+    simp only [Nat.reducePow] at *
+    omega
+  refine (elfPlatform_le_wasi L sp top).normal _ ?_
+  simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le, e]
+  omega
+
 variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ top : UInt64}
   {l₀ : List Linux.Event} {calls : List LeanExe.Wasi.Call} {code : UInt64 → Option UInt32}
   {hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55}
@@ -300,8 +315,7 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
     (hg : dirNameStub a S.trapUnreachable (areaSize S.cap) = .ok is) (hcode : CodeAt code a is)
     (hGa : G.base = L.area + UInt64.ofNat (areaSize S.cap))
     (hscr : ∀ j < scratchSize,
-      (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) = true)
-    (hU : (wasiPlatform L sp₀ top).normal (wasiPlatform L sp₀ top).uart = false) :
+      (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) = true) :
     (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
       [.i32, .i32, .i32] [.i32]
       (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j))
@@ -399,8 +413,21 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
         rfl)
       omega
     omega
+  have hbufU : ¬ load64 q.core.mem (q.core.x 17) + 8 < q.core.x 1 + q.core.x 2 →
+      q.core.x 2 ≠ 0 → q.core.x 17 + q.core.x 1 + 1 + 4095 ≠ (wasiPlatform L sp₀ top).uart :=
+    fun h _ e => by
+      rw [hbufA] at e
+      have := congrArg UInt64.toNat e
+      rw [hst.toNat_addr (j := 4096 + a1.toNat) (by
+        rw [htrapIff] at h
+        unfold areaSize
+        omega)] at this
+      have hu : (wasiPlatform L sp₀ top).uart = 0 := rfl
+      rw [hu] at this
+      simp only [UInt64.toNat_zero] at this
+      omega
   obtain ⟨t, rt, spt, iot, x17t, x18t, ht⟩ := run_dirNameStub (wasiPlatform L sp₀ top) code hg
-    hcode hpc hsize8 hflagN hheldN hbufN hU
+    hcode hpc hsize8 hflagN hheldN hbufN hbufU
   simp only [dirNameInvoke]
   by_cases htrap : load64 q.core.mem (q.core.x 17) + 8 < q.core.x 1 + q.core.x 2
   · rw [if_pos htrap] at ht
