@@ -14,7 +14,8 @@ and Flat instances of records, and the frame test of tests/wasi/sys, and compare
 with the committed file, printing a unified diff and exiting with status 1 when one differs.  With
 --write it writes the files instead.  With --frame-faults DIR it writes to DIR one frame test for
 each seeded fault of FAULTS and prints the fault's name and the exit status that the test must
-give: 1, the host's status for a trap, when the fault moves a record, and else the status of the
+give: 1, the host's status for a trap, when the fault moves a record, the status of the value
+checks of the altered step when the fault changes an expected value, and else the status of the
 frame check of the altered step.  With --reject-sweep DIR it writes to DIR one module for each
 value of the rejection sweep, the last value of each enum parameter and the next one and each
 single bit of each flags parameter, and prints the module's name, "trap" when the description's
@@ -878,7 +879,8 @@ STEPS = [
     {"call": "sock_accept", "args": [3, 0], "errno": 57},
     {"call": "sock_shutdown", "args": [3, 1], "errno": 57},
 ]
-# The seeded faults of --frame-faults: a step, the region whose declaration changes, and how.
+# The seeded faults of --frame-faults: a step, the region whose declaration changes, and how, or
+# a step, "value", the position of one of its value checks, and the change of the expected value.
 FAULTS = {
     "record-short": ("fd_fdstat_get", "record", "size", -1),
     "result64-as-32": ("clock_time_get", "result 0", "size", -4),
@@ -890,6 +892,7 @@ FAULTS = {
     "iovec-half-aligned": ("fd_read", "element", "address", 2),
     "event-short": ("poll_oneoff", "events", "size", -7),
     "event-late": ("poll_oneoff", "events", "start", 1),
+    "pread-count": ("fd_pread", "value", 0, 1),
 }
 
 
@@ -903,11 +906,23 @@ def core_types(kind):
     return ["i32"]
 
 
-def frame_step(index, step, function, constants, fault=None):
+def value_statuses():
+    """The exit status of the value checks of each step that has them, by the step's number: twice
+    the number of steps plus the step's position among the steps that have value checks."""
+    valued = [index for index, step in enumerate(STEPS, 1) if step.get("values")]
+    return {index: 2 * len(STEPS) + rank for rank, index in enumerate(valued, 1)}
+
+
+def frame_step(index, step, function, constants, value_status, fault=None):
     """The code of one step: the inputs, the snapshot, the call and its errno, the frame check, the
-    value checks, and the result words that later steps use.  `fault` (a region, a field, and a
-    change) moves the region's address or changes its declared start or size."""
-    lines = [f"    ;; {index}: {function.name}", "    (call $prepare)"]
+    value checks, which exit with `value_status`, and the result words that later steps use.
+    `fault` (a region, a field, and a change) moves the region's address or changes its declared
+    start or size, or ("value", a position, and a change) changes the value that the value check at
+    that position expects."""
+    title = f"    ;; {index}: {function.name}"
+    if value_status is not None:
+        title += f", value status {value_status}"
+    lines = [title, "    (call $prepare)"]
     args = list(step.get("args", []))
     pushes, regions, places, fields = [], [], {}, {}
     inputs = reported = 0
@@ -1004,14 +1019,16 @@ def frame_step(index, step, function, constants, fault=None):
                  f"{regions[0][1]}")
     lines.append(f"      (i32.const {regions[1][0]}) {regions[1][1]})")
     loads = {1: "i64.load8_u", 2: "i64.load16_u", 4: "i64.load32_u", 8: "i64.load"}
-    for check in step.get("values", []):
+    for position, check in enumerate(step.get("values", [])):
         if check[0] == "field":
             offset, width = fields[check[1]]
             address, value = places["record"] + offset, check[2]
         else:
             region, offset, width, value = check
             address = places[region] + offset
-        lines.append(f"    (call $value (i32.const {index}) ({loads[width]} (i32.const "
+        if fault and fault[0] == "value" and fault[1] == position:
+            value += fault[2]
+        lines.append(f"    (call $value (i32.const {value_status}) ({loads[width]} (i32.const "
                      f"{address})) (i64.const {value}))")
     for local, address in zip(step.get("keep", []), [a for a, _ in regions]):
         lines.append(f"    (local.set ${local} (i32.load (i32.const {address})))")
@@ -1023,14 +1040,16 @@ def render_frame(flat, fault=None):
     missing = sorted({function.name for function in flat} - {step["call"] for step in STEPS})
     assert not missing, f"no step calls {missing}"
     steps = len(STEPS)
-    assert 3 * steps < 256, "too many steps for distinct statuses"
+    statuses = value_statuses()
+    assert 2 * steps + len(statuses) < 126, \
+        "too many checks for distinct statuses below 126, the least that proc_exit refuses"
     constants, body = {}, []
     seeded = None
     for index, step in enumerate(STEPS, 1):
         here = fault[1:] if fault and fault[0] == step["call"] and not seeded else None
         seeded = seeded or here
         function = descriptions[step.get("description", camel(step["call"]))]
-        body += frame_step(index, step, function, constants, here)
+        body += frame_step(index, step, function, constants, statuses.get(index), here)
     assert fault is None or seeded, f"no step calls {fault[0]}"
     imports, imported = [], set()
     for function in flat:
@@ -1052,9 +1071,11 @@ def render_frame(flat, fault=None):
         ";; when a description gives it a smaller alignment.  The step then checks the errno,",
         ";; that every byte outside the call's declared regions equals the shadow copy, and the",
         ";; values the step lists.  The exit status names the first failed check: the step's",
-        f";; number for the errno, {steps} plus it for a byte outside the regions, and {2 * steps} "
-        "plus it",
-        ";; for a value.",
+        f";; number for the errno, {steps} plus it for a byte outside the regions, and for a "
+        f"value {2 * steps}",
+        ";; plus the step's position among the steps that check values, which the step's",
+        ";; comment gives.  Every status lies below 126, the least status that Wasmtime 44's",
+        ";; proc_exit refuses.",
         "(module",
         *imports,
         '  (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))',
@@ -1070,9 +1091,9 @@ def render_frame(flat, fault=None):
         "  (func $errno (param $step i32) (param $got i32) (param $want i32)",
         "    (if (i32.ne (local.get $got) (local.get $want))",
         "      (then (call $fail (local.get $step)))))",
-        "  (func $value (param $step i32) (param $got i64) (param $want i64)",
+        "  (func $value (param $status i32) (param $got i64) (param $want i64)",
         "    (if (i64.ne (local.get $got) (local.get $want))",
-        f"      (then (call $fail (i32.add (i32.const {2 * steps}) (local.get $step))))))",
+        "      (then (call $fail (local.get $status)))))",
         "  (func $inside (param $address i32) (param $start i32) (param $length i32) (result i32)",
         "    (i32.and (i32.ge_u (local.get $address) (local.get $start))",
         "      (i32.lt_u (local.get $address) (i32.add (local.get $start) (local.get $length)))))",
@@ -1195,10 +1216,14 @@ def main():
         return
     if faults is not None:
         faults.mkdir(parents=True, exist_ok=True)
+        statuses = value_statuses()
         for name, fault in FAULTS.items():
             (faults / f"{name}.wat").write_text(render_frame(flat, fault))
             index = next(i for i, step in enumerate(STEPS, 1) if step["call"] == fault[0])
-            print(name, 1 if fault[2] == "address" else len(STEPS) + index)
+            if fault[1] == "value":
+                print(name, statuses[index])
+            else:
+                print(name, 1 if fault[2] == "address" else len(STEPS) + index)
         return
     failed = False
     for path, render in GENERATED.items():
