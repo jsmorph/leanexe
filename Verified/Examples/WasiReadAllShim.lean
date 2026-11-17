@@ -48,7 +48,7 @@ theorem linux_bytes {L : ShimLayout} {replies : Linux.Replies}
       final.host.events = trace := by
   cases result with
   | Trap final message =>
-    obtain ⟨trace, ls, grown, images, _, events, _⟩ := footprint
+    obtain ⟨trace, ls, grown, images, _, _, events, _⟩ := footprint
     refine ⟨final, message, trace, rfl, ?_, ?_, ?_⟩
     · rw [grown]
       exact images.readData

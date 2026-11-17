@@ -3,14 +3,13 @@ import Verified.Wasi.CommandTotal
 
 /-!
 The footprint theorem at the specification level.  A run of `Exec` or `Prefix` under
-`linuxHost L replies` extends the world's layer events by images of its WASI events, each of
-which writes within the guest's address space, and a trapped `Exec` run traps with `shimTrap` or
-`exitRejected` (part F1 of the design, with the host's laws in `Verified/Shim/Host.lean`).
-`footprint_of_result` carries the WASI command theorem's classification of a run of `_start` to
-`Footprint`, and `shim_footprint` composes `compiled_native_start_run`, unchanged, with
-`linuxEnv_satisfies`: for every reply sequence, every Talos run of `_start` under
-`linuxEnv L replies` with enough fuel traps with a final world whose events extend the initial
-ones by images of a WASI trace of the command's action.
+`linuxHost L replies` extends the world's layer events by images of its WASI events, which hold
+their replies and write within the guest's address space, and a trapped `Exec` run traps with
+`shimTrap` or `exitRejected`.  `footprint_of_result` carries the WASI command theorem's
+classification of a run of `_start` to `Footprint`, and `shim_footprint` composes
+`compiled_native_start_run`, unchanged, with `linuxEnv_satisfies`: for every reply sequence, every
+Talos run of `_start` under `linuxEnv L replies` with enough fuel traps with a final world whose
+events extend the initial ones by images of a WASI trace of the command's action.
 -/
 
 namespace Verified.Shim
@@ -25,33 +24,48 @@ theorem Images.append {es ls es' ls'} (first : Images es ls) (second : Images es
     rw [List.cons_append, List.append_assoc]
     exact .cons image rest
 
-/-- The world `w'` extends the layer events of `w` by images of the WASI events `trace`, each of
-which writes within the guest's address space. -/
-def Appended (L : ShimLayout) (w w' : LinuxWorld) (trace : List Wasi.Event) : Prop :=
-  ∃ ls, w'.events = w.events ++ ls ∧ Images trace ls ∧ ∀ e ∈ ls, WritesWithin L e
+theorem Carried.append {replies : Linux.Replies} :
+    ∀ {k : Nat} {l l' : List Linux.Event}, Carried replies k l →
+      Carried replies (k + l.length) l' → Carried replies k (l ++ l')
+  | _, [], _, _, rest => by simpa using rest
+  | k, e :: l, l', ⟨carries, first⟩, rest =>
+    ⟨carries, Carried.append first (by
+      simp only [List.length_cons] at rest
+      rwa [show k + 1 + l.length = k + (l.length + 1) by omega])⟩
 
-theorem Appended.refl (L : ShimLayout) (w : LinuxWorld) : Appended L w w [] :=
-  ⟨[], by simp, .nil, by simp⟩
+/-- The world `w'` extends the layer events of `w` by images of the WASI events `trace`, which
+hold their replies of `replies`, counted from the events of `w`, and write within the guest's
+address space. -/
+def Appended (L : ShimLayout) (replies : Linux.Replies) (w w' : LinuxWorld)
+    (trace : List Wasi.Event) : Prop :=
+  ∃ ls, w'.events = w.events ++ ls ∧ Images trace ls ∧ Carried replies w.events.length ls ∧
+    ∀ e ∈ ls, WritesWithin L (2 ^ 32) e
 
-theorem Appended.trans {L : ShimLayout} {w w' w'' : LinuxWorld} {first rest : List Wasi.Event}
-    (h : Appended L w w' first) (h' : Appended L w' w'' rest) :
-    Appended L w w'' (first ++ rest) := by
-  obtain ⟨ls, grown, images, within⟩ := h
-  obtain ⟨ls', grown', images', within'⟩ := h'
-  refine ⟨ls ++ ls', by rw [grown', grown, List.append_assoc], images.append images', ?_⟩
+theorem Appended.refl (L : ShimLayout) (replies : Linux.Replies) (w : LinuxWorld) :
+    Appended L replies w w [] :=
+  ⟨[], by simp, .nil, trivial, by simp⟩
+
+theorem Appended.trans {L : ShimLayout} {replies : Linux.Replies} {w w' w'' : LinuxWorld}
+    {first rest : List Wasi.Event} (h : Appended L replies w w' first)
+    (h' : Appended L replies w' w'' rest) : Appended L replies w w'' (first ++ rest) := by
+  obtain ⟨ls, grown, images, carried, within⟩ := h
+  obtain ⟨ls', grown', images', carried', within'⟩ := h'
+  refine ⟨ls ++ ls', by rw [grown', grown, List.append_assoc], images.append images',
+    carried.append (by rwa [grown, List.length_append] at carried'), ?_⟩
   intro e member
   rcases List.mem_append.mp member with left | right
   · exact within e left
   · exact within' e right
 
 theorem ShimStep.appended {L : ShimLayout} {replies : Linux.Replies} {w w' : LinuxWorld}
-    {e : Wasi.Event} (h : ShimStep L replies w e w') : Appended L w w' [e] := by
-  obtain ⟨l, image, _, within, rfl⟩ := h
-  exact ⟨l, rfl, by simpa using Images.cons image .nil, within⟩
+    {e : Wasi.Event} (h : ShimStep L replies w e w') : Appended L replies w w' [e] := by
+  obtain ⟨l, image, carried, within, rfl⟩ := h
+  exact ⟨l, rfl, by simpa using Images.cons image .nil, carried, within⟩
 
-theorem Appended.unchanged {L : ShimLayout} {w w' : LinuxWorld} {e : Wasi.Event}
-    (image : Image e []) (same : w'.events = w.events) : Appended L w w' [e] :=
-  ⟨[], by simp [same], by simpa using Images.cons image .nil, by simp⟩
+theorem Appended.unchanged {L : ShimLayout} {replies : Linux.Replies} {w w' : LinuxWorld}
+    {e : Wasi.Event} (image : Image e []) (same : w'.events = w.events) :
+    Appended L replies w w' [e] :=
+  ⟨[], by simp [same], by simpa using Images.cons image .nil, trivial, by simp⟩
 
 theorem readReply_trapped {count ret : UInt64} {output : List UInt8} {message : String}
     {committed : Bytes} (h : readReply count ret output = .trapped message committed) :
@@ -79,19 +93,19 @@ traps with `shimTrap` or `exitRejected`. -/
 theorem exec_appended {α : Type} {L : ShimLayout} {replies : Linux.Replies} {action : Action α}
     {w w' : LinuxWorld} {trace : List Wasi.Event} {outcome : Outcome α}
     (h : Exec (linuxHost L replies) action w trace outcome w') :
-    Appended L w w' trace ∧
+    Appended L replies w w' trace ∧
       ∀ message, outcome = .trapped message →
         message = shimTrap ∨ message = exitRejected := by
   refine Exec.rec
     (motive_1 := fun {α} _ w trace outcome w' _ =>
-      Appended L w w' trace ∧
+      Appended L replies w w' trace ∧
         ∀ message, outcome = .trapped message → message = shimTrap ∨ message = exitRejected)
     (motive_2 := fun {α σ} _ _ _ _ _ _ w trace outcome w' _ =>
-      Appended L w w' trace ∧
+      Appended L replies w w' trace ∧
         ∀ message, outcome = .trapped message → message = shimTrap ∨ message = exitRejected)
     ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
   · intro α w value
-    exact ⟨Appended.refl L w, fun _ impossible => by cases impossible⟩
+    exact ⟨Appended.refl L replies w, fun _ impossible => by cases impossible⟩
   · intro α capacity next w final trace outcome _ _ ih
     exact ih
   · intro α capacity next w after final trace outcome errno committed _ host _ ih
@@ -99,14 +113,14 @@ theorem exec_appended {α : Type} {L : ShimLayout} {replies : Linux.Replies} {ac
   · intro α capacity next w after message committed _ host
     refine ⟨ShimStep.appended host, fun cause same => ?_⟩
     cases same
-    obtain ⟨_, ⟨e, a, rfl, _, _, reply⟩, _⟩ := host
+    obtain ⟨_, ⟨e, a, rfl, _, _, _, reply⟩, _⟩ := host
     exact Or.inl (readReply_trapped reply.symm)
   · intro α output bytes next w after final trace outcome errno committed host _ ih
     exact ⟨(ShimStep.appended host).trans ih.1, ih.2⟩
   · intro α output bytes next w after message committed host
     refine ⟨ShimStep.appended host, fun cause same => ?_⟩
     cases same
-    obtain ⟨_, ⟨e, a, rfl, _, _, _, reply⟩, _⟩ := host
+    obtain ⟨_, ⟨e, a, rfl, _, _, _, _, _, reply⟩, _⟩ := host
     exact Or.inl (writeReply_trapped reply.symm)
   · intro α code w final host
     obtain ⟨_, rfl⟩ := host
@@ -138,16 +152,17 @@ theorem exec_appended {α : Type} {L : ShimLayout} {replies : Linux.Replies} {ac
 theorem prefix_appended {α : Type} {L : ShimLayout} {replies : Linux.Replies}
     {action residual : Action α}
     {w w' : LinuxWorld} {trace : List Wasi.Event}
-    (h : Prefix (linuxHost L replies) action w trace residual w') : Appended L w w' trace := by
+    (h : Prefix (linuxHost L replies) action w trace residual w') :
+    Appended L replies w w' trace := by
   induction h with
-  | refl => exact Appended.refl L _
-  | read_reject => exact Appended.refl L _
+  | refl => exact Appended.refl L replies _
+  | read_reject => exact Appended.refl L replies _
   | read_return _ host => exact ShimStep.appended host
   | write_return host => exact ShimStep.appended host
-  | loop => exact Appended.refl L _
+  | loop => exact Appended.refl L replies _
   | bind _ ih => exact ih
   | trans _ _ first rest => exact first.trans rest
-  | sys_reject => exact Appended.refl L _
+  | sys_reject => exact Appended.refl L replies _
   | sys_return _ host => exact host.elim
 
 theorem prefix_observed {α World : Type} {host : Host World} {action residual : Action α}
@@ -169,15 +184,18 @@ theorem prefix_observed {α World : Type} {host : Host World} {action residual :
 
 /-- The footprint of a result of a run of `_start`, whose action is `action`, from the observed
 world `initial` under the shim: the run trapped, with a final world whose layer events extend
-those of `initial` by images `ls` of a WASI trace `trace`, each writing within the guest's address
-space, and with `trace` appended to the observed events.  The trace is that of an accepted exit,
-of a rejected exit, or of a trap of the shim, or, when `aborts` holds, a prefix of the action
-after which the guest trapped at `unreachable`. -/
+those of `initial` by images `ls` of a WASI trace `trace`, which hold the replies from the reply to
+call `initial.world.events.length` on and write within the guest's address space, and with
+`trace` appended to the observed events.  The trace is that of an accepted exit, of a rejected
+exit, or of a trap of the shim, or, when `aborts` holds, a prefix of the action after which the
+guest trapped at `unreachable`. -/
 def Footprint (L : ShimLayout) (replies : Linux.Replies) (action : Action Unit)
     (initial : Observed LinuxWorld) (aborts : Bool) : Result (Observed LinuxWorld) → Prop
   | .Trap final message => ∃ trace ls,
       final.host.world.events = initial.world.events ++ ls ∧ Images trace ls ∧
-      (∀ e ∈ ls, WritesWithin L e) ∧ final.host.events = initial.events ++ trace ∧
+      Carried replies initial.world.events.length ls ∧
+      (∀ e ∈ ls, WritesWithin L (2 ^ 32) e) ∧
+      final.host.events = initial.events ++ trace ∧
       ((∃ code, message = exitTrap ∧
           Exec (linuxHost L replies) action initial.world trace (.exited code) final.host.world) ∨
         (message = exitRejected ∧ Exec (linuxHost L replies) action initial.world trace
@@ -203,8 +221,8 @@ theorem footprint_of_result (L : ShimLayout) (replies : Linux.Replies) {native :
     exact (bind_exit_not_returned (exec_observed execution).1).elim
   | terminal final trace outcome message execution terminal =>
     obtain ⟨run, events⟩ := exec_observed execution
-    obtain ⟨⟨ls, grown, images, within⟩, trapped⟩ := exec_appended run
-    refine ⟨trace, ls, grown, images, within, events, ?_⟩
+    obtain ⟨⟨ls, grown, images, carried, within⟩, trapped⟩ := exec_appended run
+    refine ⟨trace, ls, grown, images, carried, within, events, ?_⟩
     cases outcome with
     | returned value => exact terminal.elim
     | exited code => exact Or.inl ⟨code, terminal, run⟩
@@ -216,8 +234,8 @@ theorem footprint_of_result (L : ShimLayout) (replies : Linux.Replies) {native :
       · exact Or.inr (Or.inl ⟨rfl, run⟩)
   | resource final trace residual allowed progress =>
     obtain ⟨run, events⟩ := prefix_observed progress
-    obtain ⟨ls, grown, images, within⟩ := prefix_appended run
-    exact ⟨trace, ls, grown, images, within, events,
+    obtain ⟨ls, grown, images, carried, within⟩ := prefix_appended run
+    exact ⟨trace, ls, grown, images, carried, within, events,
       Or.inr (Or.inr (Or.inr ⟨allowed, rfl, residual, run⟩))⟩
 
 /-- The footprint theorem at the specification level: for every reply sequence, every Talos run

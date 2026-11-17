@@ -5,29 +5,34 @@ import Verified.Shim.Memory
 The WASI host that the shim implements with the Linux call layer, for the stream functions
 `fd_read` (descriptor 0), `fd_write` (descriptors 1 and 2), and `proc_exit`.
 
-`Image e l` states that the layer events `l` are what the shim makes for the WASI event `e`: one
-`read` of descriptor 0 with the request's count for an `fd_read`, one `write` of the stream's
-descriptor with the offered bytes for an `fd_write`, and none for an exit.  The WASI reply follows
-from the event's result.  A result at most the request's count is a count of bytes, a negated
-error number gives `errnoOf` of the number, and any other result, which Linux never gives for the
-request, gives a trap of the shim.  `Images es ls` states that `ls` concatenates an image of each
-event of `es` in order, and `WritesWithin L e` that the output region of `e` lies in the `2^32`
-bytes from the guest's byte 0.
+`Image e l` states which layer events `l` the shim makes for the WASI event `e`: one `read` of
+descriptor 0 with the request's count and no input for an `fd_read`, one `write` of the stream's
+descriptor with the offered bytes, fewer than `2^32`, and no prior output for an `fd_write`, and
+none for an exit.  The WASI reply follows from the event's result.  A result at most the request's
+count is a count of bytes, a negated error number gives `errnoOf` of the number, and any other
+result, which Linux never gives for the request, gives a trap of the shim.  The address of the
+buffer and a read's prior bytes depend on the store, which the WASI event does not carry, so
+`Image` leaves them free.  `Images es ls` states that `ls` concatenates an image of each event of
+`es` in order, and `WritesWithin L size e` that the output region of `e` lies in the `size` bytes
+from the guest's byte 0.
 
 `linuxHost L replies` relates a world and a WASI request to a reply and a world exactly when the
 layer events that it appends are an image of the WASI event, each holds its reply of `replies`,
-counted from the number of events so far, and each writes within the guest's address space.  An
-exit status below 126 is accepted and sets the exit marker, and a status of 126 or more is
-rejected, as the repository's Wasmtime host rejects it.
+counted from the number of events so far, and each writes within the `2^32` bytes from the
+guest's byte 0, the guest's address space.  The host accepts an exit status below 126, which sets
+the exit marker, and rejects a status of 126 or more, as the repository's Wasmtime host does.
 -/
 
 namespace Verified.Shim
 
 open LeanExe LeanExe.Wasi Verified.Wasi
 
-/-- The WASI errno of the Linux error number `x`, by Wasmtime 44's table (`from_raw_os_error` in
-`crates/wasi/src/filesystem.rs` and the conversion of its codes in `crates/wasi/src/p1.rs`), with
-`EXDEV` as `perm`, the errno that cap-std gives an escape, and `io` for every other number. -/
+/-- The WASI errno of the Linux error number `x`, by Wasmtime 44's table, with `EXDEV` as `perm`,
+the errno that cap-std gives an escape, and `io` for every other number.  Wasmtime converts a
+stream's error with `from_raw_os_error` of `crates/wasi/src/p2/host/filesystem.rs` and the
+conversion of its codes in `crates/wasi/src/p1.rs`, and a descriptor's error with the table of
+the same arms in `crates/wasi/src/filesystem.rs`; a number outside the arms falls back to the
+error's kind, which gives a code other than `io` only for numbers that the arms name. -/
 def errnoOf (x : UInt64) : UInt64 :=
   match x.toNat with
   | 1 => 63 -- EPERM: perm
@@ -85,13 +90,14 @@ def writeReply (count ret : UInt64) : Transfer UInt64 :=
   else if Linux.isError ret then .returned (errnoOf (0 - ret)) 0
   else .trapped shimTrap 0
 
-/-- The layer events `l` are what the shim makes for the WASI event `e`. -/
+/-- The layer events `l` that the shim makes for the WASI event `e`, with the buffer's address `a`
+and a read's prior bytes free. -/
 def Image : Wasi.Event → List Linux.Event → Prop
   | .read count reply, l => ∃ e a, l = [e] ∧ e.call = Linux.readCall ∧
-      e.args = [0, a, count] ∧ reply = readReply count e.ret e.output
+      e.args = [0, a, count] ∧ e.inputs = [] ∧ reply = readReply count e.ret e.output
   | .write output bytes reply, l => ∃ e a, l = [e] ∧ e.call = Linux.writeCall ∧
       e.args = [output.fd, a, UInt64.ofNat bytes.data.size] ∧
-      e.inputs = [bytes.data.data.toList] ∧
+      e.inputs = [bytes.data.data.toList] ∧ e.prior = [] ∧ bytes.data.size < 2 ^ 32 ∧
       reply = writeReply (UInt64.ofNat bytes.data.size) e.ret
   | .exit _, l | .exitTrap _ _, l => l = []
   | .sys .., _ => False
@@ -102,9 +108,10 @@ inductive Images : List Wasi.Event → List Linux.Event → Prop
   | cons {e : Wasi.Event} {l : List Linux.Event} {es : List Wasi.Event} {ls : List Linux.Event} :
       Image e l → Images es ls → Images (e :: es) (l ++ ls)
 
-/-- The output region of the event `e` lies in the `2^32` bytes from the guest's byte 0. -/
-def WritesWithin (L : ShimLayout) (e : Linux.Event) : Prop :=
-  ∀ g ∈ Linux.outputRegions e.args 0 e.call.params, L.offset g.1 + g.2 ≤ 2 ^ 32
+/-- The output region of the event `e` lies in the `size` bytes from the guest's byte 0, counted
+modulo `2^64`. -/
+def WritesWithin (L : ShimLayout) (size : Nat) (e : Linux.Event) : Prop :=
+  ∀ g ∈ Linux.outputRegions e.args 0 e.call.params, L.offset g.1 + g.2 ≤ size
 
 /-- The event `e` holds the reply `r`: its result, and the reply's bytes over its output region,
 as `Linux.step` records them. -/
@@ -128,7 +135,8 @@ image of `e` whose events hold the replies from call `w.events.length` on and wr
 guest's address space. -/
 def ShimStep (L : ShimLayout) (replies : Linux.Replies) (w : LinuxWorld) (e : Wasi.Event)
     (w' : LinuxWorld) : Prop :=
-  ∃ l, Image e l ∧ Carried replies w.events.length l ∧ (∀ x ∈ l, WritesWithin L x) ∧
+  ∃ l, Image e l ∧ Carried replies w.events.length l ∧
+    (∀ x ∈ l, WritesWithin L (2 ^ 32) x) ∧
     w' = ⟨w.events ++ l, w.exited⟩
 
 theorem readReply_valid (count ret : UInt64) (output : List UInt8) :
@@ -165,10 +173,10 @@ def linuxHost (L : ShimLayout) (replies : Linux.Replies) : Host LinuxWorld where
   exit w code w' := code.toNat < 126 ∧ w' = { w with exited := some code }
   exitTrap w code message w' := 126 ≤ code.toNat ∧ message = exitRejected ∧ w' = w
   read_bound h := by
-    obtain ⟨_, ⟨e, a, rfl, _, _, rfl⟩, _⟩ := h
+    obtain ⟨_, ⟨e, a, rfl, _, _, _, rfl⟩, _⟩ := h
     exact readReply_valid _ _ _
   write_bound h := by
-    obtain ⟨_, ⟨e, a, rfl, _, _, _, rfl⟩, _⟩ := h
+    obtain ⟨_, ⟨e, a, rfl, _, _, _, _, _, rfl⟩, _⟩ := h
     exact writeReply_valid _ _
   read_exited h := by
     obtain ⟨_, _, _, _, rfl⟩ := h

@@ -37,7 +37,7 @@ theorem image_readData {e : Wasi.Event} {l : List Linux.Event} (image : Image e 
     Linux.readData 0 l = committedReads [e] := by
   cases e with
   | read count reply =>
-    obtain ⟨x, a, rfl, call, args, rfl⟩ := image
+    obtain ⟨x, a, rfl, call, args, _, rfl⟩ := image
     by_cases within : x.ret.toNat ≤ count.toNat
     · simp [Linux.readData, committedReads, Linux.Event.readBytes, call, args, Linux.arg,
         readReply, within, Transfer.committed, bytesOfList]
@@ -46,7 +46,7 @@ theorem image_readData {e : Wasi.Event} {l : List Linux.Event} (image : Image e 
         List.getD_cons_succ, within, and_false, ↓reduceIte, readReply]
       split <;> rfl
   | write output bytes reply =>
-    obtain ⟨x, a, rfl, call, _, _, _⟩ := image
+    obtain ⟨x, a, rfl, call, _, _, _, _, _⟩ := image
     simp [Linux.readData, committedReads, Linux.Event.readBytes, call,
       readCall_ne_writeCall.symm]
   | exit code =>
@@ -61,10 +61,10 @@ theorem image_writeData (output : Output) {e : Wasi.Event} {l : List Linux.Event
     (image : Image e l) : Linux.writeData output.fd l = committedWrites output [e] := by
   cases e with
   | read count reply =>
-    obtain ⟨x, a, rfl, call, _, _⟩ := image
+    obtain ⟨x, a, rfl, call, _, _, _⟩ := image
     simp [Linux.writeData, committedWrites, Linux.Event.writeBytes, call, readCall_ne_writeCall]
   | write target bytes reply =>
-    obtain ⟨x, a, rfl, call, args, inputs, rfl⟩ := image
+    obtain ⟨x, a, rfl, call, args, inputs, _, _, rfl⟩ := image
     by_cases same : target = output
     · subst same
       simp only [Linux.writeData, committedWrites, List.flatMap_cons, List.flatMap_nil,

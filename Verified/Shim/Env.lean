@@ -1,14 +1,16 @@
 import Verified.Shim.Host
 
 /-!
-The shim as a Talos host environment, and its proof against the WASI contracts (part F2 of the
-design).  `linuxEnv L replies` implements `fd_read`, `fd_write`, and `proc_exit` as the shim
-does: it checks a request as the contract's premise states it, makes the request's `read` or
-`write` through the layer's rule `Linux.step` on `shimMemory L` with the reply to the call that
-the world's events count, appends the layer event to the world and the WASI event to the
-observed events, and gives the WASI reply of the event.  A request that fails a check traps with
-`shimTrap` and changes nothing.  `linuxEnv_satisfies` proves that the environment satisfies
-`hostSpec (linuxHost L replies)` for every module with at most the three stream imports.
+The shim as a Talos host environment, and its proof against the WASI contracts.
+`linuxEnv L replies` implements `fd_read`, `fd_write`, and `proc_exit` as the shim does: it checks
+a request as the contract's premise states it, makes the request's `read` or `write` through the
+layer's rule `Linux.step` on `shimMemory L` with the reply to the call that the world's events
+count, appends the layer event to the world and the WASI event to the observed events, and gives
+the WASI reply of the event, storing the count at guest address 8 only on success.  A request
+that fails a check traps with `shimTrap` and changes nothing.  `linuxEnv_satisfies` proves that
+the environment satisfies `hostSpec (linuxHost L replies)` for every module with at most three
+imports.  `readEvent_writesWithin` bounds a read's output region by the memory's size at the call,
+the bound that a binding whose store stays within a native cap carries to the run.
 -/
 
 namespace Verified.Shim
@@ -161,16 +163,12 @@ theorem writeReply_success {count ret committed : UInt64}
       exact absurd zero (errnoOf_valid _).2
     · cases h
 
-/-- The shim's `read` answers an `fd_read` in the host's relation. -/
-theorem read_step (w : LinuxWorld) (mem : Mem) (pointer capacity : UInt32)
-    (address : pointer.toNat + capacity.toNat ≤ 2 ^ 32) :
-    let e := readEvent L mem pointer capacity (replies w.events.length)
-    ShimStep L replies w (.read capacity.toUInt64 (readReply capacity.toUInt64 e.ret e.output))
-      ⟨w.events ++ [e], w.exited⟩ := by
-  intro e
-  refine ⟨[e], ⟨e, _, rfl, rfl, rfl, rfl⟩, ⟨⟨rfl, rfl⟩, trivial⟩, ?_, rfl⟩
-  intro x hx g hg
-  obtain rfl := List.mem_singleton.mp hx
+/-- A read's output region lies within every size that holds its buffer, the memory's size at the
+call among them. -/
+theorem readEvent_writesWithin (mem : Mem) (pointer capacity : UInt32) (r : Linux.Reply)
+    {size : Nat} (fits : pointer.toNat + capacity.toNat ≤ size) :
+    WritesWithin L size (readEvent L mem pointer capacity r) := by
+  intro g hg
   have regions := (Linux.regions_read (shimMemory L) mem 0 (L.base + pointer.toUInt64)
     capacity.toUInt64).2
   change g ∈ Linux.outputRegions [0, L.base + pointer.toUInt64, capacity.toUInt64] 0
@@ -178,11 +176,36 @@ theorem read_step (w : LinuxWorld) (mem : Mem) (pointer capacity : UInt32)
   rw [regions, List.mem_singleton] at hg
   subst hg
   simp only [offset_base, UInt32.toNat_toUInt64]
-  exact address
+  exact fits
+
+/-- A write has no output region. -/
+theorem writeEvent_writesWithin (mem : Mem) (fd : UInt64) (pointer length : UInt32)
+    (r : Linux.Reply) (size : Nat) :
+    WritesWithin L size (writeEvent L mem fd pointer length r) := by
+  intro g hg
+  have regions := (Linux.regions_write (shimMemory L) mem fd (L.base + pointer.toUInt64)
+    length.toUInt64).2
+  change g ∈ Linux.outputRegions [fd, L.base + pointer.toUInt64, length.toUInt64] 0
+    Linux.writeCall.params at hg
+  rw [regions] at hg
+  cases hg
+
+/-- The shim's `read` answers an `fd_read` in the host's relation. -/
+theorem read_step (w : LinuxWorld) (mem : Mem) (pointer capacity : UInt32)
+    (address : pointer.toNat + capacity.toNat ≤ 2 ^ 32) :
+    let e := readEvent L mem pointer capacity (replies w.events.length)
+    ShimStep L replies w (.read capacity.toUInt64 (readReply capacity.toUInt64 e.ret e.output))
+      ⟨w.events ++ [e], w.exited⟩ := by
+  intro e
+  refine ⟨[e], ⟨e, _, rfl, rfl, rfl, rfl, rfl⟩, ⟨⟨rfl, rfl⟩, trivial⟩, ?_, rfl⟩
+  intro x hx
+  obtain rfl := List.mem_singleton.mp hx
+  exact readEvent_writesWithin L mem pointer capacity _ address
 
 /-- The shim's `write` answers an `fd_write` in the host's relation. -/
 theorem write_step (w : LinuxWorld) (mem : Mem) (output : Output) (pointer : UInt32)
     (bytes : Bytes) (listed : mem.readBytes pointer.toNat bytes.data.size = bytes.data.data.toList)
+    (size : bytes.data.size < 2 ^ 32)
     (wide : (UInt32.ofNat bytes.data.size).toUInt64 = UInt64.ofNat bytes.data.size)
     (length : (UInt32.ofNat bytes.data.size).toNat = bytes.data.size) :
     let e := writeEvent L mem output.fd pointer (UInt32.ofNat bytes.data.size)
@@ -191,20 +214,15 @@ theorem write_step (w : LinuxWorld) (mem : Mem) (output : Output) (pointer : UIn
       (.write output bytes (writeReply (UInt32.ofNat bytes.data.size).toUInt64 e.ret))
       ⟨w.events ++ [e], w.exited⟩ := by
   intro e
-  refine ⟨[e], ⟨e, L.base + pointer.toUInt64, rfl, rfl, ?_, ?_, by rw [wide]⟩,
+  refine ⟨[e], ⟨e, L.base + pointer.toUInt64, rfl, rfl, ?_, ?_, rfl, size, by rw [wide]⟩,
     ⟨⟨rfl, rfl⟩, trivial⟩, ?_, rfl⟩
   · change [output.fd, L.base + pointer.toUInt64, (UInt32.ofNat bytes.data.size).toUInt64] = _
     rw [wide]
   · change [mem.readBytes pointer.toNat (UInt32.ofNat bytes.data.size).toNat] = _
     rw [length, listed]
-  · intro x hx g hg
+  · intro x hx
     obtain rfl := List.mem_singleton.mp hx
-    have regions := (Linux.regions_write (shimMemory L) mem output.fd
-      (L.base + pointer.toUInt64) (UInt32.ofNat bytes.data.size).toUInt64).2
-    change g ∈ Linux.outputRegions [output.fd, L.base + pointer.toUInt64,
-      (UInt32.ofNat bytes.data.size).toUInt64] 0 Linux.writeCall.params at hg
-    rw [regions] at hg
-    cases hg
+    exact writeEvent_writesWithin L mem _ _ _ _ _
 
 theorem read_contract (before : Store (Observed LinuxWorld)) (args : List Value) :
     readContract (linuxHost L replies) before args (readInvoke L replies before args) := by
@@ -282,7 +300,7 @@ theorem write_contract (before : Store (Observed LinuxWorld)) (args : List Value
     step_write L before.mem output.fd pointer _ _ fits]
   dsimp only
   rw [decoded]
-  have shim := write_step L replies before.host.world before.mem output pointer bytes listed
+  have shim := write_step L replies before.host.world before.mem output pointer bytes listed size
     wide length
   dsimp only at shim
   generalize hreply : writeReply (UInt32.ofNat bytes.data.size).toUInt64
