@@ -723,4 +723,264 @@ theorem run_resultTail {a tr en : UInt64} {g1 g2 : Fin 524288} {g3 : Fin 6710886
       decide
     · rw [m5, m4, m3, hB0, k2 0 (by decide), k1, m2, m1]
 
+/-! ## The requests' checks -/
+
+/-- The checks of an `fd_read` request, from `a`: descriptor 0, the iovec at 0, one iovec, and the
+count at 8, or the trap stub. -/
+theorem run_readHead {a tr : UInt64} {f0 f1 f3 f5 : Fin 524288}
+    (hcode : CodeAt code a [.cbnz 0 f0, .cbnz 1 f1, .subsImm 31 2 1, .bcond 1 f3,
+      .subsImm 31 3 8, .bcond 1 f5])
+    (hf0 : cbField a tr = .ok f0) (hf1 : cbField (after a 1) tr = .ok f1)
+    (hf3 : cbField (after a 3) tr = .ok f3) (hf5 : cbField (after a 5) tr = .ok f5)
+    {s : State} (hpc : s.pc = a) :
+    ∃ t, Reach P code s t ∧ (∀ q : Fin 32, t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧
+      t.io = s.io ∧
+      t.pc = if s.x 0 = 0 ∧ s.x 1 = 0 ∧ s.x 2 = 1 ∧ s.x 3 = 8 then after a 6 else tr := by
+  have c := fun k (hk : k < 6) => hcode k (by simpa using hk)
+  have c0 := c 0 (by omega)
+  have c1 := c 1 (by omega)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1
+  have c23 : CodeAt code (after a 2) [.subsImm 31 2 1, .bcond 1 f3] := by
+    simpa using CodeAt.drop_take code hcode 2 2 (by simp)
+  have c45 : CodeAt code (after a 4) [.subsImm 31 3 8, .bcond 1 f5] := by
+    simpa using CodeAt.drop_take code hcode 4 2 (by simp)
+  have e1 : UInt64.ofNat (1 : Fin 4096).val = 1 := by decide
+  have e8 : UInt64.ofNat (8 : Fin 4096).val = 8 := by decide
+  obtain ⟨u1, r1, p1, k1, sp1, m1, io1⟩ := step_cbnz P code (s := s) (target := tr)
+    (by rw [hpc]; exact c0) (by rw [hpc]; exact cbField_target hf0)
+  by_cases h0 : s.x 0 = 0
+  · rw [if_neg (by simpa using h0), hpc, ← after_one] at p1
+    obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := step_cbnz P code (s := u1) (target := tr)
+      (by rw [p1]; exact c1) (by rw [p1]; exact cbField_target hf1)
+    by_cases h1 : s.x 1 = 0
+    · rw [k1, if_neg (by simpa using h1), p1, ← after_succ] at p2
+      obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := run_neImm P code (tB := tr) (by decide) c23
+        (by rw [after_after]; exact cbField_target hf3) p2
+      rw [e1, k2, k1] at p3
+      by_cases h2 : s.x 2 = 1
+      · rw [if_pos h2, after_after] at p3
+        obtain ⟨u4, r4, p4, k4, sp4, m4, io4⟩ := run_neImm P code (tB := tr) (by decide) c45
+          (by rw [after_after]; exact cbField_target hf5) p3
+        rw [e8, k3, k2, k1, after_after] at p4
+        refine ⟨u4, r1.trans (r2.trans (r3.trans r4)), fun q => by rw [k4, k3, k2, k1],
+          by rw [sp4, sp3, sp2, sp1], by rw [m4, m3, m2, m1], by rw [io4, io3, io2, io1], ?_⟩
+        rw [p4]
+        by_cases h3 : s.x 3 = 8
+        · rw [if_pos h3, if_pos ⟨h0, h1, h2, h3⟩]
+        · rw [if_neg h3, if_neg (fun h => h3 h.2.2.2)]
+      · rw [if_neg h2] at p3
+        exact ⟨u3, r1.trans (r2.trans r3), fun q => by rw [k3, k2, k1],
+          by rw [sp3, sp2, sp1], by rw [m3, m2, m1], by rw [io3, io2, io1],
+          by rw [p3, if_neg (fun h => h2 h.2.2.1)]⟩
+    · rw [k1, if_pos h1] at p2
+      exact ⟨u2, r1.trans r2, fun q => by rw [k2, k1], by rw [sp2, sp1], by rw [m2, m1],
+        by rw [io2, io1], by rw [p2, if_neg (fun h => h1 h.2.1)]⟩
+  · rw [if_pos h0] at p1
+    exact ⟨u1, r1, k1, sp1, m1, io1, by rw [p1, if_neg (fun h => h0 h.1)]⟩
+
+/-- The checks of an `fd_write` request, from `a`: descriptor 1 or 2, the iovec at 0, one iovec,
+and the count at 8, or the trap stub.  X9 and the flags change. -/
+theorem run_writeHead {a tr : UInt64} {f2 f3 f5 f7 : Fin 524288}
+    (hcode : CodeAt code a [.subImm 9 0 1, .subsImm 31 9 1, .bcond 8 f2, .cbnz 1 f3,
+      .subsImm 31 2 1, .bcond 1 f5, .subsImm 31 3 8, .bcond 1 f7])
+    (hf2 : cbField (after a 2) tr = .ok f2) (hf3 : cbField (after a 3) tr = .ok f3)
+    (hf5 : cbField (after a 5) tr = .ok f5) (hf7 : cbField (after a 7) tr = .ok f7)
+    {s : State} (hpc : s.pc = a) :
+    ∃ t, Reach P code s t ∧ (∀ q : Fin 32, q ≠ 9 → t.x q = s.x q) ∧ t.sp = s.sp ∧
+      t.mem = s.mem ∧ t.io = s.io ∧
+      t.pc = if (s.x 0 = 1 ∨ s.x 0 = 2) ∧ s.x 1 = 0 ∧ s.x 2 = 1 ∧ s.x 3 = 8 then after a 8
+        else tr := by
+  have c := fun k (hk : k < 8) => hcode k (by simpa using hk)
+  have c0 := c 0 (by omega)
+  have c3 := c 3 (by omega)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c3
+  have c12 : CodeAt code (after a 1) [.subsImm 31 9 1, .bcond 8 f2] := by
+    simpa using CodeAt.drop_take code hcode 1 2 (by simp)
+  have c45 : CodeAt code (after a 4) [.subsImm 31 2 1, .bcond 1 f5] := by
+    simpa using CodeAt.drop_take code hcode 4 2 (by simp)
+  have c67 : CodeAt code (after a 6) [.subsImm 31 3 8, .bcond 1 f7] := by
+    simpa using CodeAt.drop_take code hcode 6 2 (by simp)
+  have e1 : UInt64.ofNat (1 : Fin 4096).val = 1 := by decide
+  have e8 : UInt64.ofNat (8 : Fin 4096).val = 8 := by decide
+  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_setX P code (s := s) (i := .subImm 9 0 1)
+    (d := 9) (v := s.x 0 - 1) (by decide) (by rw [hpc]; exact c0)
+    (exec_subImm_x P (by decide) (by decide))
+  have q1 : u1.pc = after a 1 := by rw [p1, hpc, after_one]
+  obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_hiImm P code (tB := tr) (by decide) c12
+    (by rw [after_after]; exact cbField_target hf2) q1
+  rw [e1, x1] at p2
+  have hfd : (1 < s.x 0 - 1) ↔ ¬ (s.x 0 = 1 ∨ s.x 0 = 2) := by
+    constructor
+    · intro h h'
+      rcases h' with h' | h' <;> rw [h'] at h <;> exact absurd h (by decide)
+    · intro h
+      simp only [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, UInt64.reduceToNat]
+      have := (s.x 0).toNat_lt
+      have h1 : (s.x 0).toNat ≠ 1 := fun e => h (.inl (UInt64.toNat_inj.mp e))
+      have h2 : (s.x 0).toNat ≠ 2 := fun e => h (.inr (UInt64.toNat_inj.mp e))
+      simp only [Nat.reducePow] at *
+      omega
+  have hk2 : ∀ q : Fin 32, q ≠ 9 → u2.x q = s.x q := fun q hq => by rw [k2, k1 q hq]
+  by_cases hd : s.x 0 = 1 ∨ s.x 0 = 2
+  · rw [if_neg (fun h => hfd.mp h hd), after_after] at p2
+    obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := step_cbnz P code (s := u2) (target := tr)
+      (by rw [p2]; exact c3) (by rw [p2]; exact cbField_target hf3)
+    rw [hk2 1 (by decide)] at p3
+    by_cases h1 : s.x 1 = 0
+    · rw [if_neg (by simpa using h1), p2, ← after_succ] at p3
+      obtain ⟨u4, r4, p4, k4, sp4, m4, io4⟩ := run_neImm P code (tB := tr) (by decide) c45
+        (by rw [after_after]; exact cbField_target hf5) p3
+      rw [e1, k3, hk2 2 (by decide)] at p4
+      by_cases h2 : s.x 2 = 1
+      · rw [if_pos h2, after_after] at p4
+        obtain ⟨u5, r5, p5, k5, sp5, m5, io5⟩ := run_neImm P code (tB := tr) (by decide) c67
+          (by rw [after_after]; exact cbField_target hf7) p4
+        rw [e8, k4, k3, hk2 3 (by decide), after_after] at p5
+        refine ⟨u5, r1.trans (r2.trans (r3.trans (r4.trans r5))),
+          fun q hq => by rw [k5, k4, k3, hk2 q hq], by rw [sp5, sp4, sp3, sp2, sp1],
+          by rw [m5, m4, m3, m2, m1], by rw [io5, io4, io3, io2, io1], ?_⟩
+        rw [p5]
+        by_cases h3 : s.x 3 = 8
+        · rw [if_pos h3, if_pos ⟨hd, h1, h2, h3⟩]
+        · rw [if_neg h3, if_neg (fun h => h3 h.2.2.2)]
+      · rw [if_neg h2] at p4
+        exact ⟨u4, r1.trans (r2.trans (r3.trans r4)), fun q hq => by rw [k4, k3, hk2 q hq],
+          by rw [sp4, sp3, sp2, sp1], by rw [m4, m3, m2, m1], by rw [io4, io3, io2, io1],
+          by rw [p4, if_neg (fun h => h2 h.2.2.1)]⟩
+    · rw [if_pos h1] at p3
+      exact ⟨u3, r1.trans (r2.trans r3), fun q hq => by rw [k3, hk2 q hq],
+        by rw [sp3, sp2, sp1], by rw [m3, m2, m1], by rw [io3, io2, io1],
+        by rw [p3, if_neg (fun h => h1 h.2.1)]⟩
+  · rw [if_pos (hfd.mpr hd)] at p2
+    exact ⟨u2, r1.trans r2, hk2, by rw [sp2, sp1], by rw [m2, m1], by rw [io2, io1],
+      by rw [p2, if_neg (fun h => hd h.1)]⟩
+
+/-- The check of a read's buffer above the guest's first 16 bytes, from `a`: a buffer of no byte
+or a pointer of at least 16 reaches `after a 4` with X0 at 0, and any other the trap stub. -/
+theorem run_readLow {a tr : UInt64} {f0 f2 : Fin 524288}
+    (hcode : CodeAt code a [.cbz 11 f0, .subsImm 31 10 16, .bcond 3 f2, .movz 0 0 0])
+    (hf0 : cbField a (after a 3) = .ok f0) (hf2 : cbField (after a 2) tr = .ok f2)
+    {s : State} (hpc : s.pc = a) :
+    ∃ t, Reach P code s t ∧ (∀ q : Fin 32, q ≠ 0 → t.x q = s.x q) ∧ t.sp = s.sp ∧
+      t.mem = s.mem ∧ t.io = s.io ∧
+      if s.x 11 = 0 ∨ 16 ≤ s.x 10 then t.pc = after a 4 ∧ t.x 0 = 0 else t.pc = tr := by
+  have c := fun k (hk : k < 4) => hcode k (by simpa using hk)
+  have c0 := c 0 (by omega)
+  have c3 := c 3 (by omega)
+  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c3
+  have c12 : CodeAt code (after a 1) [.subsImm 31 10 16, .bcond 3 f2] := by
+    simpa using CodeAt.drop_take code hcode 1 2 (by simp)
+  have e16 : UInt64.ofNat (16 : Fin 4096).val = 16 := by decide
+  obtain ⟨u1, r1, p1, k1, sp1, m1, io1⟩ := step_cbz P code (s := s) (target := after a 3)
+    (by rw [hpc]; exact c0) (by rw [hpc]; exact cbField_target hf0)
+  have hz : ∀ u : State, Reach P code s u → (∀ q : Fin 32, u.x q = s.x q) → u.sp = s.sp →
+      u.mem = s.mem → u.io = s.io → u.pc = after a 3 →
+      ∃ t, Reach P code s t ∧ (∀ q : Fin 32, q ≠ 0 → t.x q = s.x q) ∧ t.sp = s.sp ∧
+        t.mem = s.mem ∧ t.io = s.io ∧ t.pc = after a 4 ∧ t.x 0 = 0 := by
+    intro u ru ku spu mu iou pu
+    obtain ⟨t, rt, pt, xt, kt, spt, mt, iot⟩ := step_movz P code (s := u) (d := 0) (imm := 0)
+      (hw := 0) (by decide) (by rw [pu]; exact c3)
+    exact ⟨t, ru.trans rt, fun q hq => by rw [kt q hq, ku], by rw [spt, spu],
+      by rw [mt, mu], by rw [iot, iou], by rw [pt, pu, ← after_succ],
+      by rw [xt, movz0_val]; decide⟩
+  by_cases h0 : s.x 11 = 0
+  · rw [if_pos h0] at p1
+    obtain ⟨t, rt, kt, spt, mt, iot, pt, xt⟩ := hz u1 r1 k1 sp1 m1 io1 p1
+    exact ⟨t, rt, kt, spt, mt, iot, by rw [if_pos (.inl h0)]; exact ⟨pt, xt⟩⟩
+  · rw [if_neg h0, hpc, ← after_one] at p1
+    obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_loImm P code (tB := tr) (by decide) c12
+      (by rw [after_after]; exact cbField_target hf2) p1
+    rw [e16, k1] at p2
+    by_cases h16 : s.x 10 < 16
+    · rw [if_pos h16] at p2
+      exact ⟨u2, r1.trans r2, fun q _ => by rw [k2, k1], by rw [sp2, sp1], by rw [m2, m1],
+        by rw [io2, io1], by
+          rw [if_neg (fun h => h.elim h0 (fun h' => absurd h16 (UInt64.not_lt.mpr h')))]
+          exact p2⟩
+    · rw [if_neg h16, after_after] at p2
+      obtain ⟨t, rt, kt, spt, mt, iot, pt, xt⟩ := hz u2 (r1.trans r2)
+        (fun q => by rw [k2, k1]) (by rw [sp2, sp1]) (by rw [m2, m1]) (by rw [io2, io1]) p2
+      exact ⟨t, rt, kt, spt, mt, iot, by
+        rw [if_pos (.inr (UInt64.not_lt.mp h16))]
+        exact ⟨pt, xt⟩⟩
+
+/-- `readStub` unpacked. -/
+theorem readStub_ok {a svc tr en : UInt64} {is : List Instr} (hg : readStub a svc tr en = .ok is) :
+    ∃ f0 f1 f3 f5 f17 f19 checks call tail,
+      cbField a tr = .ok f0 ∧ cbField (after a 1) tr = .ok f1 ∧
+      cbField (after a 3) tr = .ok f3 ∧ cbField (after a 5) tr = .ok f5 ∧
+      bufferChecks (after a 6) tr = .ok checks ∧ cbField (after a 17) (after a 20) = .ok f17 ∧
+      cbField (after a 19) tr = .ok f19 ∧ bufferCall (after a 21) svc 63 = .ok call ∧
+      resultTail (after a 28) tr en = .ok tail ∧
+      is = [.cbnz 0 f0, .cbnz 1 f1, .subsImm 31 2 1, .bcond 1 f3, .subsImm 31 3 8, .bcond 1 f5] ++
+        checks ++ [.cbz 11 f17, .subsImm 31 10 16, .bcond 3 f19, .movz 0 0 0] ++ call ++ tail := by
+  unfold readStub at hg
+  cases h0 : cbField a tr with
+  | error err => simp [h0, bind, Except.bind] at hg
+  | ok f0 =>
+  cases h1 : cbField (after a 1) tr with
+  | error err => simp [h0, h1, bind, Except.bind] at hg
+  | ok f1 =>
+  cases h3 : cbField (after a 3) tr with
+  | error err => simp [h0, h1, h3, bind, Except.bind] at hg
+  | ok f3 =>
+  cases h5 : cbField (after a 5) tr with
+  | error err => simp [h0, h1, h3, h5, bind, Except.bind] at hg
+  | ok f5 =>
+  cases hc : bufferChecks (after a 6) tr with
+  | error err => simp [h0, h1, h3, h5, hc, bind, Except.bind] at hg
+  | ok checks =>
+  cases h17 : cbField (after a 17) (after a 20) with
+  | error err => simp [h0, h1, h3, h5, hc, h17, bind, Except.bind] at hg
+  | ok f17 =>
+  cases h19 : cbField (after a 19) tr with
+  | error err => simp [h0, h1, h3, h5, hc, h17, h19, bind, Except.bind] at hg
+  | ok f19 =>
+  cases hcall : bufferCall (after a 21) svc 63 with
+  | error err => simp [h0, h1, h3, h5, hc, h17, h19, hcall, bind, Except.bind] at hg
+  | ok call =>
+  cases ht : resultTail (after a 28) tr en with
+  | error err => simp [h0, h1, h3, h5, hc, h17, h19, hcall, ht, bind, Except.bind] at hg
+  | ok tail =>
+  simp only [h0, h1, h3, h5, hc, h17, h19, hcall, ht, bind, Except.bind, pure, Except.pure,
+    Except.ok.injEq] at hg
+  exact ⟨f0, f1, f3, f5, f17, f19, checks, call, tail, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
+    rfl, hg.symm⟩
+
+/-- `writeStub` unpacked. -/
+theorem writeStub_ok {a svc tr en : UInt64} {is : List Instr}
+    (hg : writeStub a svc tr en = .ok is) :
+    ∃ f2 f3 f5 f7 checks call tail,
+      cbField (after a 2) tr = .ok f2 ∧ cbField (after a 3) tr = .ok f3 ∧
+      cbField (after a 5) tr = .ok f5 ∧ cbField (after a 7) tr = .ok f7 ∧
+      bufferChecks (after a 8) tr = .ok checks ∧ bufferCall (after a 19) svc 64 = .ok call ∧
+      resultTail (after a 26) tr en = .ok tail ∧
+      is = [.subImm 9 0 1, .subsImm 31 9 1, .bcond 8 f2, .cbnz 1 f3, .subsImm 31 2 1, .bcond 1 f5,
+        .subsImm 31 3 8, .bcond 1 f7] ++ checks ++ call ++ tail := by
+  unfold writeStub at hg
+  cases h2 : cbField (after a 2) tr with
+  | error err => simp [h2, bind, Except.bind] at hg
+  | ok f2 =>
+  cases h3 : cbField (after a 3) tr with
+  | error err => simp [h2, h3, bind, Except.bind] at hg
+  | ok f3 =>
+  cases h5 : cbField (after a 5) tr with
+  | error err => simp [h2, h3, h5, bind, Except.bind] at hg
+  | ok f5 =>
+  cases h7 : cbField (after a 7) tr with
+  | error err => simp [h2, h3, h5, h7, bind, Except.bind] at hg
+  | ok f7 =>
+  cases hc : bufferChecks (after a 8) tr with
+  | error err => simp [h2, h3, h5, h7, hc, bind, Except.bind] at hg
+  | ok checks =>
+  cases hcall : bufferCall (after a 19) svc 64 with
+  | error err => simp [h2, h3, h5, h7, hc, hcall, bind, Except.bind] at hg
+  | ok call =>
+  cases ht : resultTail (after a 26) tr en with
+  | error err => simp [h2, h3, h5, h7, hc, hcall, ht, bind, Except.bind] at hg
+  | ok tail =>
+  simp only [h2, h3, h5, h7, hc, hcall, ht, bind, Except.bind, pure, Except.pure,
+    Except.ok.injEq] at hg
+  exact ⟨f2, f3, f5, f7, checks, call, tail, rfl, rfl, rfl, rfl, rfl, rfl, rfl, hg.symm⟩
+
 end LeanExe.A64
