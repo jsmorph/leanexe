@@ -17,8 +17,9 @@ premise `CallsOk` assumes the functions' simulation for stores of every host sta
 general form at `bare P code α` assumes it for stores of host state `α` alone.
 
 `Leaf inst` states that Talos runs `inst` without its host environment or the module's functions
-and imports and keeps the store's host state, and `Machine.InstrSim.of_leaf` carries the
-simulation of such a form from the program's model to every machine.
+and imports and ends a fall-through, a branch, a return, or a trap with a store of the same host
+state, and `Machine.InstrSim.of_leaf` carries the simulation of such a form from the program's
+model to every machine.
 -/
 
 namespace LeanExe.A64
