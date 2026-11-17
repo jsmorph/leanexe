@@ -67,6 +67,19 @@ theorem Expr.isWord_denote (funs : Funs pureSigs) {word : UInt64} :
   subst h
   rfl
 
+/-- An expression that `Expr.isPreopened` accepts has the word 3 as its value in every
+environment. -/
+theorem Expr.isPreopened_denote (funs : Funs pureSigs) {context : List Ty} {type : Ty}
+    (e : Expr pureSigs context type) :
+    ∀ {env : Env context}, e.isPreopened = true →
+      Ty.word? type (e.denote funs env) = some 3 := by
+  induction e <;> intro env h <;>
+    simp only [Expr.isPreopened, Bool.false_eq_true, beq_iff_eq] at h
+  case word value =>
+    subst h
+    rfl
+  case letPair e body _ bodyIh => exact bodyIh h
+
 theorem Path.isPart_get {first : Bool} {errno word : UInt64} :
     ∀ {e e' : Elem} (path : Path e e') (value : e.denote), path.isPart first = true →
       Ty.pair? (.elem e) value = some (errno, word) →
@@ -414,7 +427,7 @@ theorem Command.preopened_handles (pureFuns : Funs pureSigs) (effectFuns : Effec
     Action.Handles stack (first.denote pureFuns effectFuns env) fun value after =>
       after = stack ∧ intermediate.word? value = some 3 := by
   cases first <;> simp only [Command.preopened, Bool.false_eq_true] at h
-  exact And.intro rfl (Expr.isWord_denote pureFuns _ env h)
+  exact And.intro rfl (Expr.isPreopened_denote pureFuns _ h)
 
 theorem Command.isHandleRet_handles (pureFuns : Funs pureSigs)
     (effectFuns : EffectFuns effectSigs) {env : Env context} {stack : List UInt64}

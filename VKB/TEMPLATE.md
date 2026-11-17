@@ -41,7 +41,7 @@ The check reads every inline code span of the README, outside fenced blocks, tha
 
 Cite tracked files, declarations by their full names, and documents by their section headings.  Give no line numbers, no lines of the untracked journal `devnotes.md`, no commit hashes, and no counts of files, theorems, declarations, or copies.  A measurement appears only when a tracked file records it, with the configuration that the file gives, or as the ratio that a fix gave.  A failure that only a journal records appears as its cause, its symptom, such as the error message, a timeout, or memory exhaustion, and its remedy, with the remedy's declaration or file.
 
-Name targets by the codes of [the index](../index.md): WASM, SPEC, WASMF, WASI, C, CALIGN, METAL, A64, M7, WGSL, and PTX.  Refer to another entry by a link to its README, `../ID/README.md`, whose text names the entry's subject, such as "the entry on image files", so that the link check fails when the entry is renamed or merged.  A proposal in a journal or a report has the content of the two files, so that a reviewer can admit it without rewriting it.
+Name targets by the codes of [the index](../index.md): WASM, MASTER, SPEC, WASMF, C, CALIGN, METAL, A64, M7, WASI, WGSL, and PTX.  Refer to another entry by a link to its README, `../ID/README.md`, whose text names the entry's subject, such as "the entry on image files", so that the link check fails when the entry is renamed or merged.  A proposal in a journal or a report has the content of the two files, so that a reviewer can admit it without rewriting it.
 
 ## Internal references
 

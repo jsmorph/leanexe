@@ -7,8 +7,7 @@ opens `f` again with the right to read, reads up to 16 bytes with `fdRead`, and 
 stdout.  Each bracket closes the file when its body returns.  Last it reads the record of the
 preopened directory with `fdPrestatGet` and its name with `fdPrestatDirName` and writes the name
 to stdout.  An errno of the opens or of a call, the brackets' closes included, ends the run with
-that errno as its status, and the status is 0 otherwise.  The handle check refuses this program
-with the prestat calls before the brackets: a bracket after a `fdPrestatDirName` fails it. -/
+that errno as its status, and the status is 0 otherwise. -/
 
 namespace Verified.Examples.WasiFiles
 
