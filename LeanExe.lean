@@ -37,6 +37,7 @@ import LeanExe.A64.Proof.Input
 import LeanExe.A64.Proof.InputRuns
 import LeanExe.A64.Proof.Lift
 import LeanExe.A64.Proof.Linux
+import LeanExe.A64.Proof.LinuxCalls
 import LeanExe.A64.Proof.LinuxImage
 import LeanExe.A64.Proof.LinuxMain
 import LeanExe.A64.Proof.LinuxProgram
@@ -89,6 +90,9 @@ import LeanExe.Encoding.Spec.Values
 import LeanExe.Encoding.Types
 import LeanExe.Encoding.Values
 import LeanExe.FileNat
+import LeanExe.Linux.Call
+import LeanExe.Linux.CallTable
+import LeanExe.Linux.Replies
 import LeanExe.M7.Board
 import LeanExe.M7.Boot
 import LeanExe.M7.Bound

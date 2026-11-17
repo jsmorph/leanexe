@@ -1,5 +1,6 @@
 import LeanExe.A64.Boot
 import LeanExe.A64.Image
+import LeanExe.Linux.CallTable
 
 /-!
 A model of a Linux process at EL0 that runs the code of the AArch64 back end and makes system
@@ -46,12 +47,14 @@ def Op.word : Op → UInt32
 /-- The bytes of the words of `ops`, each word's lowest byte first. -/
 def opBytes (ops : List Op) : List UInt8 := ops.flatMap fun o => wordBytes o.word
 
-/-- An event of a process's trace: a `read` that returned `bytes`, a `write` that took `bytes`, or
-a call of number `nr` that failed with the error number `errno`. -/
+/-- An event of a process's trace: a `read` that returned `bytes`, a `write` that took `bytes`, a
+call of number `nr` that failed with the error number `errno`, or an event of the Linux call
+layer. -/
 inductive Event where
   | read (bytes : List UInt8)
   | write (bytes : List UInt8)
   | fail (nr : UInt64) (errno : Nat)
+  | sys (e : LeanExe.Linux.Event)
 
 /-- The bytes that a `read` event returned. -/
 def Event.inBytes : Event → List UInt8
@@ -160,5 +163,70 @@ inductive ProcReach (K : Kernel) (P : Platform) (code : UInt64 → Option UInt32
   | refl (p : Proc) : ProcReach K P code p p
   | next {p q r : Proc} : pstep K P code p = some q → ProcReach K P code q r →
       ProcReach K P code p r
+
+/-! ## The binding of the Linux call layer
+
+`pstepWith T R` is a second step of the process, in which every `SVC #0` takes the Linux call
+layer's rule: the call whose arm64 number X8 holds is looked up in the table `T`, a terminal call
+or a call outside `T` ends the run, and every other call takes `LeanExe.Linux.step` with the
+argument registers from X0, the process's memory as `a64Memory`, and the reply `R k` for call `k`,
+the call made after `k` events.  The call sets X0 to the reply's result, moves the program counter
+to the next word, keeps every other register, and appends the layer's event.  Every other word
+steps as `pstep` steps it, which `istep` states without a kernel. -/
+
+/-- The process's memory as the Linux call layer reads and writes it: bytes of `mem`, written by
+`store8`, accessible where the platform has Normal memory. -/
+def a64Memory (P : Platform) : LeanExe.Linux.Memory (UInt64 → UInt8) :=
+  ⟨fun m a => m a, store8, fun _ a n => P.mapped a n⟩
+
+/-- Register `r` of `s`, and 0 past X31. -/
+def reg (s : State) (r : Nat) : UInt64 := if h : r < 32 then s.x ⟨r, h⟩ else 0
+
+/-- The argument words of the call `c` in X0 upward. -/
+def argWords (s : State) (c : LeanExe.Linux.Call) : List UInt64 := (List.range c.words).map (reg s)
+
+/-- The process after the described call `c` that `p` makes with the replies `R`, or `none` when
+a region of the call lies outside Normal memory. -/
+def sysCall (R : LeanExe.Linux.Replies) (P : Platform) (c : LeanExe.Linux.Call) (p : Proc) :
+    Option Proc :=
+  match LeanExe.Linux.step (a64Memory P) p.core.mem ⟨c, argWords p.core c⟩ (R p.trace.length) with
+  | some (m, e) => some (p.ret e.ret m (.sys e))
+  | none => none
+
+/-- One step of the process `p` at a word other than `SVC #0`, as `pstep` takes it, or `none`. -/
+def istep (P : Platform) (code : UInt64 → Option UInt32) (p : Proc) : Option Proc :=
+  match code p.core.pc with
+  | none => none
+  | some w =>
+    if w = svcWord then none
+    else match decode w with
+      | none => none
+      | some i =>
+        match i.fpcrSource with
+        | some t =>
+            some { p with core := { p.core with pc := p.core.pc + 4 }, fpcr := p.core.x t }
+        | none =>
+          if i.isFP = true ∧ p.fpcr ≠ fpcrValue then none
+          else match exec P i p.core with
+            | some c => if c.pc.toNat < 2 ^ 55 then some { p with core := c } else none
+            | none => none
+
+/-- One step of the process `p` with the calls `T` and the replies `R`: `SVC #0` by the Linux call
+layer's rule for a call of `T` that does not end the process, and `none` for any other call; every
+other word by `istep`. -/
+def pstepWith (T : List LeanExe.Linux.Call) (R : LeanExe.Linux.Replies) (P : Platform)
+    (code : UInt64 → Option UInt32) (p : Proc) : Option Proc :=
+  if code p.core.pc = some svcWord then
+    match T.find? (fun c => c.arm64 == p.core.x 8) with
+    | some c => if c.terminal then none else sysCall R P c p
+    | none => none
+  else istep P code p
+
+/-- The processes that zero or more steps of `pstepWith` reach from a process. -/
+inductive ProcReachWith (T : List LeanExe.Linux.Call) (R : LeanExe.Linux.Replies) (P : Platform)
+    (code : UInt64 → Option UInt32) : Proc → Proc → Prop
+  | refl (p : Proc) : ProcReachWith T R P code p p
+  | next {p q r : Proc} : pstepWith T R P code p = some q → ProcReachWith T R P code q r →
+      ProcReachWith T R P code p r
 
 end LeanExe.A64
