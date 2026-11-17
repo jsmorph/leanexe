@@ -5,11 +5,11 @@ The stubs of `fd_close`, of `fd_read` and `fd_write` on a handle, and of `path_o
 `closeInvoke`, `handleReadInvoke`, `handleWriteInvoke`, and `openInvoke` of
 `Verified/Shim/Files.lean`.  A stub receives its arguments in X0 to X8, keeps its return address
 in X19 across its calls, which it makes through the runtime's routine `SVC #0; RET` at `svc`, and
-uses no stack.  It reaches the shim's scratch at `X17 + scratch` in X16 (`scratchAddr`), where the
-byte at offset `16 + d` is 1 while the shim holds descriptor `d` below 1,024 and the byte at
-offset 8 is 1 while descriptor 3 is the preopened directory.  A stub writes guest memory only
-where the specification's function writes, and the scratch's bytes from offset 8 to 1,039 only
-where the shim's descriptors change.
+uses no stack.  It reaches the shim's scratch at `X17 + scratch` in X20 (`scratchAddr` of
+`LeanExe/A64/WasiStrings.lean`), where the byte at offset `16 + d` is 1 while the shim holds
+descriptor `d` below 1,024 and the byte at offset 8 is 1 while descriptor 3 is the preopened
+directory.  A stub writes guest memory only where the specification's function writes, and the
+scratch's bytes from offset 8 to 1,039 only where the shim's descriptors change.
 
 The stub of `fd_close` returns errno 8 (`badf`) for a descriptor that the shim does not hold
 (`heldTest`).  Otherwise it calls `close`, clears the descriptor's byte, and clears the preopen
@@ -59,8 +59,7 @@ def errnoTail (a tr en : UInt64) : GenM (List Instr) := do
 /-- The four bytes of the low 32 bits of X0 stored at the guest's address in X`p`, through X16 and
 X12. -/
 def wordStore (p : Fin 32) : List Instr :=
-  [.addReg 16 17 p, .addImm 16 16 4, .strb 0 16 4092, .lsrImm 12 0 8, .strb 12 16 4093,
-    .lsrImm 12 0 16, .strb 12 16 4094, .lsrImm 12 0 24, .strb 12 16 4095]
+  [.addReg 16 17 p, .addImm 16 16 4] ++ store32 0 12
 
 /-! ## `fd_close` -/
 
@@ -75,8 +74,8 @@ def closeStub (a svc tr en : UInt64) (scratch : Nat) : GenM (List Instr) := do
   let tail ← errnoTail (after a 20) tr en
   return scratchAddr scratch ++ held ++
     [.orrReg 19 31 30, .orrReg 21 31 0, .movz 8 57 0, .bl (← bField (after a 13) svc),
-      .addReg 10 16 21, .strb 31 10 16, .subsImm 31 21 3,
-      .bcond 1 (← cbField (after a 17) (after a 19)), .strb 31 16 8,
+      .addReg 10 20 21, .strb 31 10 16, .subsImm 31 21 3,
+      .bcond 1 (← cbField (after a 17) (after a 19)), .strb 31 20 8,
       .cbz 0 (← cbField (after a 19) (after a 26))] ++ tail ++
     [.movz 0 0 0, .ret 19, .movz 0 8 0, .ret 30]
 
@@ -185,15 +184,15 @@ def zeroScan (a bad : UInt64) : GenM (List Instr) := do
     .b (← bField (after a 9) (after a 4))]
 
 /-- The copy of the `n` bytes from the guest's address `p`, with `p` in X2 and `n` in X3, and a
-terminating zero to the scratch's path buffer, 1,080 bytes above the scratch's address in X16,
+terminating zero to the scratch's path buffer, 1,080 bytes above the scratch's address in X20,
 placed at `a`, with X9, X10, X12, and X13 changed. -/
 def pathCopy (a : UInt64) : GenM (List Instr) := do
-  return guestAddr 9 2 ++ [.addImm 10 16 1080, .orrReg 12 31 3,
+  return guestAddr 9 2 ++ [.addImm 10 20 1080, .orrReg 12 31 3,
     .cbz 12 (← cbField (after a 5) (after a 12)), .ldrb 13 9 0, .strb 13 10 0, .addImm 9 9 1,
     .addImm 10 10 1, .subImm 12 12 1, .b (← bField (after a 11) (after a 5)), .strb 31 10 0]
 
 /-- The `open_how` record of a `path_open` request with the `dirflags` in X1, the `oflags` in X4,
-the rights in X5, and the `fdflags` in X7, written 1,056 bytes above the scratch's address in X16,
+the rights in X5, and the `fdflags` in X7, written 1,056 bytes above the scratch's address in X20,
 placed at `a`: the flags word of `openFlagsWord arm64Flags`, computed in X24 from `O_CLOEXEC` with
 `creat` in X25, `excl` in X26, `trunc` in X27, and the write access in X28, then the mode 438 for
 `creat` and 0 otherwise, and the resolution 10, with X9 and X10 changed. -/
@@ -218,8 +217,8 @@ def openHow (a : UInt64) : GenM (List Instr) := do
     .movz 9 0x800 0, .orrReg 24 24 9,
     .movz 9 1 0, .andReg 9 1 9, .cbnz 9 (← cbField (after a 50) (after a 53)),
     .movz 9 0x8000 0, .orrReg 24 24 9,
-    .str 24 16 132, .movz 9 0 0, .cbz 25 (← cbField (after a 55) (after a 57)), .movz 9 438 0,
-    .str 9 16 133, .movz 9 10 0, .str 9 16 134]
+    .str 24 20 132, .movz 9 0 0, .cbz 25 (← cbField (after a 55) (after a 57)), .movz 9 438 0,
+    .str 9 20 133, .movz 9 10 0, .str 9 20 134]
 
 /-- The `openat2` calls of `path_open` under the directory in X0, placed at `a`, with the routine
 `SVC #0; RET` at `svc`: X22 keeps the directory and X23 counts the calls before the last, and a
@@ -227,18 +226,18 @@ call that returns `-EAGAIN` is made again while fewer than four calls were made.
 result is in X0 at `after a 14`. -/
 def openCalls (a svc : UInt64) : GenM (List Instr) := do
   return [.orrReg 22 31 0, .movz 23 0 0,
-    .orrReg 0 31 22, .addImm 1 16 1080, .addImm 2 16 1056, .movz 3 24 0, .movz 8 437 0,
+    .orrReg 0 31 22, .addImm 1 20 1080, .addImm 2 20 1056, .movz 3 24 0, .movz 8 437 0,
     .bl (← bField (after a 7) svc), .addImm 9 0 11, .cbnz 9 (← cbField (after a 9) (after a 14)),
     .subsImm 31 23 2, .bcond 8 (← cbField (after a 11) (after a 14)), .addImm 23 23 1,
     .b (← bField (after a 13) (after a 2))]
 
 /-- The handling of the last `openat2`'s result in X0, placed at `a`, with the result's pointer in
-X21, the scratch's address in X16, the trap stub at `tr`, and the routine of errnos at `en`: a
+X21, the scratch's address in X20, the trap stub at `tr`, and the routine of errnos at `en`: a
 descriptor below 1,024 sets its byte in the scratch, is stored at the result's pointer, and
 returns errno 0 to X19, and `errnoTail` handles every other result. -/
 def openResult (a tr en : UInt64) : GenM (List Instr) := do
   let tail ← errnoTail (after a 16) tr en
-  return [.subsImm 31 0 1023, .bcond 8 (← cbField (after a 1) (after a 16)), .addReg 10 16 0,
+  return [.subsImm 31 0 1023, .bcond 8 (← cbField (after a 1) (after a 16)), .addReg 10 20 0,
     .movz 9 1 0, .strb 9 10 16] ++ wordStore 21 ++ [.movz 0 0 0, .ret 19] ++ tail
 
 /-- The number of instructions of `openStub`. -/

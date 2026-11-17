@@ -319,7 +319,7 @@ theorem pc_ok {L : List UInt8} {ok bad pc : UInt64} (hL : utf8Scan L = true) (h 
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-- A step of `LDRB Wt, [Xn, #imm]` of Normal memory, with a base other than SP. -/
-theorem step_ldrb {s : State} {t n : Fin 32} {imm : Fin 4096} (ht : t.val < 31)
+theorem step_ldrbAt {s : State} {t n : Fin 32} {imm : Fin 4096} (ht : t.val < 31)
     (hn : n.val < 31) (hc : code s.pc = some (encode (.ldrb t n imm)))
     (hmap : P.normal (s.x n + UInt64.ofNat imm.val) = true) :
     ∃ u, Reach P code s u ∧ u.pc = s.pc + 4 ∧
@@ -488,7 +488,7 @@ theorem run_cont {a tB : UInt64} {d : Fin 32} {k : Fin 4096} {j : Nat} {g : Fin 
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1
   have c23 : CodeAt code (after a 2) [.subsImm 31 13 0x40, .bcond 2 g] := by
     simpa using CodeAt.drop_take code hcode 2 2 (by simp)
-  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_ldrb P code (s := s) (t := d) (n := 9)
+  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_ldrbAt P code (s := s) (t := d) (n := 9)
     (imm := k) hd (by decide) (by rw [hpc]; exact c0) hmap
   have q1 : u1.pc = after a 1 := by rw [p1, hpc, after_one]
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_subImm P code (s := u1) (d := 13) (n := d)
@@ -890,7 +890,7 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
     rw [ite_eq_left (show s.x 10 = 0 from hr)] at p1
     exact ⟨u1, r1, F1, Or.inl (pc_ok (by rw [readList, utf8Scan]) p1)⟩
   rw [ite_eq_right (by rw [hr]; exact ofNat_ne_zero (by omega) hr64), hpc] at p1
-  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_ldrb P code (s := u1) (t := 11) (n := 9)
+  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_ldrbAt P code (s := u1) (t := 11) (n := 9)
     (imm := 0) (by decide) (by decide) (by rw [p1, ← after_succ]; exact i5)
     (by rw [k1]; exact hmap 0 (by omega))
   have q2 : u2.pc = after a 6 := by rw [p2, p1, ← after_succ, ← after_succ]

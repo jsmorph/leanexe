@@ -180,7 +180,7 @@ theorem run_handleChecked {nr : Fin 65536} {S : Shared} {a svc en : UInt64} {is 
     (hg : handleStub nr a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
     (hcode : CodeAt code a is)
     (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
-    (hscr : ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true)
+    (hscr : ∀ j < scratchSize, (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) = true)
     {α : Type} {st : Store α} {events : List Linux.Event} {s : State}
     (hst : StoreRel (modulePlatform L G) S.cap S.globalTypes st s) (h17 : s.x 17 = L.area)
     (hK : ScratchHolds G I sp₀ top events s.mem) (hpc : s.pc = a)
@@ -201,7 +201,6 @@ theorem run_handleChecked {nr : Fin 65536} {S : Shared} {a svc en : UInt64} {is 
         else t.pc = s.x 30 ∧ t.x 0 = 8
       else t.pc = S.trapUnreachable := by
   have hMP := modulePlatform_le_wasi L G sp₀ top
-  have hPP := elfPlatform_le_wasi L sp₀ top
   have hpg := hst.pages
   have hW := StoreRel.sizeWord hst
   have hbase : s.x 17 + UInt64.ofNat (areaSize S.cap) = G.base := by rw [h17, hGb]
@@ -217,7 +216,7 @@ theorem run_handleChecked {nr : Fin 65536} {S : Shared} {a svc en : UInt64} {is 
     (fun hle => by
       rw [x0] at hle
       rw [hbase, x0, ← held_addr G fd.toUInt64]
-      refine hPP.normal _ (hscr _ ?_)
+      refine hscr _ ?_
       rw [UInt64.le_iff_toNat_le] at hle
       simp only [UInt64.reduceToNat] at hle
       unfold scratchSize
@@ -309,12 +308,13 @@ theorem handleReadStub_sim (S : Shared) (n : Nat) {hr svc en : UInt64} {is : Lis
   have hsr' := hsr
   obtain ⟨hst, hf, h17, hgap, htr, hK⟩ := hsr
   have hMP := modulePlatform_le_wasi L G sp₀ top
-  have hUw := wasiPlatform_uart (sp₀ := sp₀) (top := top) hU hGb hK.stack.above
+  have hUw := wasiPlatform_uart (top := top)
+    (elfPlatform_uart hU (scratch_pos hL hGb hdata)) hK.stack.above
   have hpg := hst.pages
   have hlim := hst.below
   have hstk2 := hstk.limit
   obtain ⟨u1, r1, sp1, m1, io1, x17_1, x18_1, hc1⟩ := run_handleChecked hg hcode hGb
-    (scratch_normal hL hGb hdata) hst h17 hK hpc x0 x1 x2 x3
+    (scratch_wasi hL hGb hdata) hst h17 hK hpc x0 x1 x2 x3
   rw [sysFn_read]
   simp only [handleReadInvoke]
   split
@@ -614,12 +614,13 @@ theorem handleWriteStub_sim (S : Shared) (n : Nat) {hw svc en : UInt64} {is : Li
   have hsr' := hsr
   obtain ⟨hst, hf, h17, hgap, htr, hK⟩ := hsr
   have hMP := modulePlatform_le_wasi L G sp₀ top
-  have hUw := wasiPlatform_uart (sp₀ := sp₀) (top := top) hU hGb hK.stack.above
+  have hUw := wasiPlatform_uart (top := top)
+    (elfPlatform_uart hU (scratch_pos hL hGb hdata)) hK.stack.above
   have hpg := hst.pages
   have hlim := hst.below
   have hstk2 := hstk.limit
   obtain ⟨u1, r1, sp1, m1, io1, x17_1, x18_1, hc1⟩ := run_handleChecked hg hcode hGb
-    (scratch_normal hL hGb hdata) hst h17 hK hpc x0 x1 x2 x3
+    (scratch_wasi hL hGb hdata) hst h17 hK hpc x0 x1 x2 x3
   rw [sysFn_write]
   simp only [handleWriteInvoke]
   split

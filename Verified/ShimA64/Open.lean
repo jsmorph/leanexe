@@ -258,7 +258,7 @@ section Runs
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-- The stub of `path_open` from the check of UTF-8 at `after a 17`, with the scratch's address in
-X16, the path's guest address and length in X2 and X3, and the directory, the `oflags`, and the
+X20, the path's guest address and length in X2 and X3, and the directory, the `oflags`, and the
 `fdflags` in X0, X4, and X7.  The memory holds the path's bytes `path`, and the directory lies in
 `opened` exactly when its byte in the scratch is set.  When `openCheck` fails, the run returns to
 X30 with its errno and keeps the memory.  Otherwise it reaches the first `openat2` call's
@@ -270,20 +270,20 @@ theorem run_openBody {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     (hpc : s.pc = after a 17) {opened : List UInt64} {path : Bytes}
     (hpath : readList s.mem (s.x 17 + UInt64.ofNat 4096 + s.x 2) (s.x 3).toNat =
       path.data.data.toList)
-    (hheld : (s.x 0 ≤ 1023 ∧ s.mem (s.x 16 + s.x 0 + 16) ≠ 0) ↔ s.x 0 ∈ opened)
+    (hheld : (s.x 0 ≤ 1023 ∧ s.mem (s.x 20 + s.x 0 + 16) ≠ 0) ↔ s.x 0 ∈ opened)
     (hsrc : ∀ k < (s.x 3).toNat,
       P.normal (s.x 17 + UInt64.ofNat 4096 + s.x 2 + UInt64.ofNat k) = true)
-    (hbyte : s.x 0 ≤ 1023 → P.normal (s.x 16 + s.x 0 + 16) = true)
-    (hscr : ∀ k < 4120, P.normal (s.x 16 + UInt64.ofNat (1056 + k)) = true)
-    (hsep : (s.x 17 + UInt64.ofNat 4096 + s.x 2).toNat + (s.x 3).toNat ≤ (s.x 16).toNat)
-    (hwrap : (s.x 16).toNat + 5176 ≤ 2 ^ 64) (hU : P.normal P.uart = false) :
+    (hbyte : s.x 0 ≤ 1023 → P.normal (s.x 20 + s.x 0 + 16) = true)
+    (hscr : ∀ k < 4120, P.normal (s.x 20 + UInt64.ofNat (1056 + k)) = true)
+    (hsep : (s.x 17 + UInt64.ofNat 4096 + s.x 2).toNat + (s.x 3).toNat ≤ (s.x 20).toNat)
+    (hwrap : (s.x 20).toNat + 5176 ≤ 2 ^ 64) (hU : P.normal P.uart = false) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
       if openCheck opened (s.x 0) (s.x 4) path (s.x 7) = 0 then
-        t.pc = after a 192 ∧ t.x 16 = s.x 16 ∧ t.x 19 = s.x 19 ∧ t.x 21 = s.x 21 ∧
+        t.pc = after a 192 ∧ t.x 20 = s.x 20 ∧ t.x 19 = s.x 19 ∧ t.x 21 = s.x 21 ∧
           t.x 22 = s.x 0 ∧ t.x 23 = 0 ∧
           t.mem = LeanExe.A64.writeList (LeanExe.A64.writeList s.mem
-            (s.x 16 + UInt64.ofNat 1080) (path.data.data.toList ++ [0]))
-            (s.x 16 + UInt64.ofNat 1056)
+            (s.x 20 + UInt64.ofNat 1080) (path.data.data.toList ++ [0]))
+            (s.x 20 + UInt64.ofNat 1056)
             (openHowBytes arm64Flags (s.x 1) (s.x 4) (s.x 5) (s.x 7))
       else t.pc = s.x 30 ∧ t.x 0 = openCheck opened (s.x 0) (s.x 4) path (s.x 7) ∧
         t.mem = s.mem := by
@@ -414,24 +414,24 @@ theorem run_openBody {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   -- the copy of the path
   have e2 : u5.x 2 = s.x 2 := by simp (disch := decide) only [k5, k4, k3, k2, k1]
   have e3 : u5.x 3 = s.x 3 := by simp (disch := decide) only [k5, k4, k3, k2, k1]
-  have e16 : u5.x 16 = s.x 16 := by simp (disch := decide) only [k5, k4, k3, k2, k1]
+  have e20 : u5.x 20 = s.x 20 := by simp (disch := decide) only [k5, k4, k3, k2, k1]
   have e17 : u5.x 17 = s.x 17 := by simp (disch := decide) only [k5, k4, k3, k2, k1]
-  have e1080 : (s.x 16 + UInt64.ofNat 1080).toNat = (s.x 16).toNat + 1080 := by
+  have e1080 : (s.x 20 + UInt64.ofNat 1080).toNat = (s.x 20).toNat + 1080 := by
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow]
     omega
   obtain ⟨u6, r6, p6, k6, sp6, io6, m6⟩ := run_pathCopy P code hc cC p5
     (by rw [e3]; exact h3)
     (fun k hk => by rw [e17, e2]; rw [e3] at hk; exact hsrc k hk)
     (fun k hk => by
-      rw [e16]
+      rw [e20]
       rw [e3] at hk
       have := hscr (24 + k) (by omega)
       rwa [show 1056 + (24 + k) = 1080 + k by omega] at this)
-    hU (by rw [e17, e2, e3, e16, e1080]; omega) (by rw [e16, e1080]; omega)
+    hU (by rw [e17, e2, e3, e20, e1080]; omega) (by rw [e20, e1080]; omega)
   -- the record
   obtain ⟨u7, r7, p7, k7, sp7, io7, m7⟩ := run_openHow P code hw cW (by rw [p6, after_after])
     (fun k hk => by
-      rw [k6 16 (by decide) (by decide) (by decide) (by decide), e16]
+      rw [k6 20 (by decide) (by decide) (by decide) (by decide), e20]
       exact hscr k (by omega))
   -- the first call's setup
   obtain ⟨u8, r8, p8, x22_8, x23_8, k8, sp8, m8, io8⟩ := run_openStart P code hl cL
@@ -489,7 +489,7 @@ theorem openLoop_stop {L : ShimLayout} {rs : Linux.Replies} {dir : UInt64}
 
 /-- One `openat2` call, from the call's arguments at `after a 2` of `openCalls` at `a` to the test
 of its result at `after a 8`, with the path buffer and the `open_how` record of the layout `L`
-1,080 and 1,056 bytes above X16.  The call leaves the reply's result in X0, appends `openEvent` of
+1,080 and 1,056 bytes above X20.  The call leaves the reply's result in X0, appends `openEvent` of
 the directory in X22 to the trace, and keeps the memory. -/
 theorem run_openCall {R : Linux.Replies} {P : Platform} {code : UInt64 → Option UInt32}
     (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {a svc : UInt64} {is : List Instr}
@@ -498,8 +498,8 @@ theorem run_openCall {R : Linux.Replies} {P : Platform} {code : UInt64 → Optio
     (short : path.length < 4096) (nonzero : 0 ∉ path)
     (mappedPath : P.mapped L.path (path.length + 1) = true)
     (mappedHow : P.mapped L.openHow 24 = true) {p : Proc} (hpc : p.core.pc = after a 2)
-    (hpath : p.core.x 16 + UInt64.ofNat 1080 = L.path)
-    (hhow : p.core.x 16 + UInt64.ofNat 1056 = L.openHow)
+    (hpath : p.core.x 20 + UInt64.ofNat 1080 = L.path)
+    (hhow : p.core.x 20 + UInt64.ofNat 1056 = L.openHow)
     (named : readList p.core.mem L.path (path.length + 1) = path ++ [0])
     (record : readList p.core.mem L.openHow 24 = how) (hf : p.fpcr = fpcrValue) :
     ∃ q, ProcRunWith Linux.table R P code p q ∧ q.core.pc = after a 8 ∧
@@ -554,8 +554,8 @@ theorem run_openStep {R : Linux.Replies} {P : Platform} {code : UInt64 → Optio
     (mappedPath : P.mapped L.path (path.length + 1) = true)
     (mappedHow : P.mapped L.openHow 24 = true) {p : Proc} {c : Nat} (hpc : p.core.pc = after a 2)
     (h23 : p.core.x 23 = UInt64.ofNat c) (hc : c ≤ 3)
-    (hpath : p.core.x 16 + UInt64.ofNat 1080 = L.path)
-    (hhow : p.core.x 16 + UInt64.ofNat 1056 = L.openHow)
+    (hpath : p.core.x 20 + UInt64.ofNat 1080 = L.path)
+    (hhow : p.core.x 20 + UInt64.ofNat 1056 = L.openHow)
     (named : readList p.core.mem L.path (path.length + 1) = path ++ [0])
     (record : readList p.core.mem L.openHow 24 = how) (hf : p.fpcr = fpcrValue) :
     ∃ q, ProcRunWith Linux.table R P code p q ∧
@@ -606,7 +606,7 @@ theorem run_openLoop {R : Linux.Replies} {P : Platform} {code : UInt64 → Optio
     (mappedHow : P.mapped L.openHow 24 = true) :
     ∀ (m c k : Nat) (p : Proc), 3 - c = m → c ≤ 3 → p.core.pc = after a 2 →
       p.core.x 22 = dir → p.core.x 23 = UInt64.ofNat c →
-      p.core.x 16 + UInt64.ofNat 1080 = L.path → p.core.x 16 + UInt64.ofNat 1056 = L.openHow →
+      p.core.x 20 + UInt64.ofNat 1080 = L.path → p.core.x 20 + UInt64.ofNat 1056 = L.openHow →
       readList p.core.mem L.path (path.length + 1) = path ++ [0] →
       readList p.core.mem L.openHow 24 = how → p.fpcr = fpcrValue → p.trace.length = n + k →
       ∃ q, ProcRunWith Linux.table R P code p q ∧ q.core.pc = after a 14 ∧
@@ -639,11 +639,11 @@ theorem run_openLoop {R : Linux.Replies} {P : Platform} {code : UInt64 → Optio
             (by decide) (by decide), h22])
         hc1.2
         (by
-          rw [k1 16 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+          rw [k1 20 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
             (by decide) (by decide)]
           exact h1080)
         (by
-          rw [k1 16 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+          rw [k1 20 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
             (by decide) (by decide)]
           exact h1056)
         (by rw [m1]; exact named) (by rw [m1]; exact record) (by rw [f1]; exact hf)
@@ -708,14 +708,11 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
   simp only [openInvoke]
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, -, -, -, -, -, -, -, hl, hr, -, -, -, -, -, -,
     -, -, -, -, -, -, -, -, -, -, -, cL, cR, -⟩ := openStub_code code hg hcode
-  have hscr := scratch_normal hL hGb hdata
   have hGnat := scratch_toNat hL hGb hdata
   have hlow : G.base.toNat + scratchSize ≤ 2 ^ 32 := by rw [hGnat]; omega
-  have hU := wasiPlatform_uart (sp₀ := sp₀) (top := top) hU' hGb hK.stack.above
-  have hPP := elfPlatform_le_wasi L sp₀ top
-  have hscrP : ∀ j < scratchSize,
-      (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) = true :=
-    fun j hj => hPP.normal _ (hscr j hj)
+  have hU := wasiPlatform_uart (top := top)
+    (elfPlatform_uart hU' (scratch_pos hL hGb hdata)) hK.stack.above
+  have hscrP := scratch_wasi (sp := sp₀) (top := top) hL hGb hdata
   have hbase : q.core.x 17 + UInt64.ofNat (areaSize S.cap) = G.base := by rw [h17, hGb]
   have hmapP : ∀ j < areaSize S.cap,
       (wasiPlatform L sp₀ top).normal (q.core.x 17 + UInt64.ofNat j) = true :=
@@ -733,7 +730,7 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     unfold scratchSize at hk hG
     omega
   -- the head
-  obtain ⟨u1, r1, p1, x16_1, x19_1, x21_1, k1, sp1, m1, io1⟩ :=
+  obtain ⟨u1, r1, p1, x20_1, x19_1, x21_1, k1, sp1, m1, io1⟩ :=
     run_openHead (wasiPlatform L sp₀ top) code hg hcode hpc
       (fun k hk => hmapP k (by unfold areaSize; omega))
   have e12 : (ptr.toUInt64 + len.toUInt64).toNat = ptr.toNat + len.toNat := by
@@ -773,10 +770,10 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     simp (disch := decide) only [k1, m1, x2, x3, UInt32.toNat_toUInt64]
     rw [guest_addr, readList_bytes (modulePlatform L G) hst len.toNat ptr.toNat hlenle,
       memBytes_readBytes, hdata]
-  have hheld : (u1.x 0 ≤ 1023 ∧ u1.mem (u1.x 16 + u1.x 0 + 16) ≠ 0) ↔
+  have hheld : (u1.x 0 ≤ 1023 ∧ u1.mem (u1.x 20 + u1.x 0 + 16) ≠ 0) ↔
       u1.x 0 ∈ openNumbers I st.host.world.events := by
     simp (disch := decide) only [k1, m1, x0]
-    rw [x16_1, hbase]
+    rw [x20_1, hbase]
     exact held_byte hK _
   have hsrc : ∀ k < (u1.x 3).toNat, (wasiPlatform L sp₀ top).normal
       (u1.x 17 + UInt64.ofNat 4096 + u1.x 2 + UInt64.ofNat k) = true := by
@@ -785,36 +782,36 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     rw [guest_addr, add_ofNat_add]
     exact hmapP _ (by unfold areaSize; omega)
   have hbyte : u1.x 0 ≤ 1023 →
-      (wasiPlatform L sp₀ top).normal (u1.x 16 + u1.x 0 + 16) = true := by
+      (wasiPlatform L sp₀ top).normal (u1.x 20 + u1.x 0 + 16) = true := by
     intro hle
     simp (disch := decide) only [k1, x0] at hle ⊢
-    rw [x16_1, hbase, ← held_addr G dir.toUInt64]
+    rw [x20_1, hbase, ← held_addr G dir.toUInt64]
     refine hscrP _ ?_
     rw [UInt64.le_iff_toNat_le] at hle
     simp only [UInt64.reduceToNat] at hle
     unfold scratchSize
     omega
   have hscr' : ∀ k < 4120,
-      (wasiPlatform L sp₀ top).normal (u1.x 16 + UInt64.ofNat (1056 + k)) = true := by
+      (wasiPlatform L sp₀ top).normal (u1.x 20 + UInt64.ofNat (1056 + k)) = true := by
     intro k hk
-    rw [x16_1, hbase]
+    rw [x20_1, hbase]
     exact hscrP _ (by unfold scratchSize; omega)
   have hsep : (u1.x 17 + UInt64.ofNat 4096 + u1.x 2).toNat + (u1.x 3).toNat ≤
-      (u1.x 16).toNat := by
+      (u1.x 20).toNat := by
     simp (disch := decide) only [k1, x2, x3, UInt32.toNat_toUInt64]
-    rw [guest_addr, x16_1, hbase, hst.toNat_addr (j := 4096 + ptr.toNat)
+    rw [guest_addr, x20_1, hbase, hst.toNat_addr (j := 4096 + ptr.toNat)
       (by unfold areaSize; omega), hGnat]
     unfold areaSize
     omega
-  have hwrap : (u1.x 16).toNat + 5176 ≤ 2 ^ 64 := by
-    rw [x16_1, hbase]
+  have hwrap : (u1.x 20).toNat + 5176 ≤ 2 ^ 64 := by
+    rw [x20_1, hbase]
     unfold scratchSize at hG
     omega
   obtain ⟨t2, r2, sp2, io2, x17_2, x18_2, hc2⟩ :=
     run_openBody (wasiPlatform L sp₀ top) code hg hcode p1
       (opened := openNumbers I st.host.world.events) hpath hheld hsrc hbyte hscr' hsep hwrap hU
   simp (disch := decide) only [k1, x0, x1, x4, x5, x7, m1] at hc2
-  rw [x16_1, hbase, x19_1, x21_1, x8] at hc2
+  rw [x20_1, hbase, x19_1, x21_1, x8] at hc2
   have u1x17 : u1.x 17 = q.core.x 17 :=
     k1 17 (by decide) (by decide) (by decide) (by decide) (by decide)
   have u1x18 : u1.x 18 = q.core.x 18 :=
@@ -827,7 +824,7 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     exact shim_errno ⟨hst, hf, h17, hgap, htr, hK⟩ (r1.trans r2) p2 (sp2.trans sp1) m2
       (io2.trans io1) (x17_2.trans u1x17) (x18_2.trans u1x18) x02 (openCheck_lt _ _ _ _ _)
   rw [ite_eq_left hc0] at hc2 ⊢
-  obtain ⟨p2, x16_2, x19_2, x21_2, x22_2, x23_2, m2⟩ := hc2
+  obtain ⟨p2, x20_2, x19_2, x21_2, x22_2, x23_2, m2⟩ := hc2
   obtain ⟨hz0, hshort⟩ := openCheck_zero hc0
   have hhl : (openHowBytes arm64Flags dirflags.toUInt64 oflags.toUInt64 rights
       fdflags.toUInt64).length = 24 := by
@@ -885,14 +882,14 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
       (fun j => R (l₀.length + j)) l₀.length (fun _ => rfl) dir.toUInt64 path.data.data.toList
       how hshortL hz0 mappedPath mappedHow 3 0 st.host.world.events.length
       { q with core := t2 } rfl (by decide) (by show t2.pc = _; rw [p2, after_after])
-      x22_2 x23_2 (by show t2.x 16 + _ = _; rw [x16_2]; rfl)
-      (by show t2.x 16 + _ = _; rw [x16_2]; rfl) named record hf hlen0
+      x22_2 x23_2 (by show t2.x 20 + _ = _; rw [x20_2]; rfl)
+      (by show t2.x 20 + _ = _; rw [x20_2]; rfl) named record hf hlen0
   generalize openLoop (shimLayout L.area G) (fun j => R (l₀.length + j)) dir.toUInt64
     path.data.data.toList how 0 st.host.world.events.length = lp at tr3 hpre hrep ⊢
   have q3x : ∀ r : Fin 32, r ≠ 0 → r ≠ 1 → r ≠ 2 → r ≠ 3 → r ≠ 8 → r ≠ 9 → r ≠ 23 → r ≠ 30 →
       q3.core.x r = t2.x r := k3
-  have q3x16 : q3.core.x 16 = G.base := (q3x 16 (by decide) (by decide) (by decide) (by decide)
-    (by decide) (by decide) (by decide) (by decide)).trans x16_2
+  have q3x20 : q3.core.x 20 = G.base := (q3x 20 (by decide) (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide) (by decide)).trans x20_2
   have q3x17 : q3.core.x 17 = q.core.x 17 := (q3x 17 (by decide) (by decide) (by decide)
     (by decide) (by decide) (by decide) (by decide) (by decide)).trans (x17_2.trans u1x17)
   have q3x18 : q3.core.x 18 = q.core.x 18 := (q3x 18 (by decide) (by decide) (by decide)
@@ -908,7 +905,7 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     run_openResult (wasiPlatform L sp₀ top) code hr cR hen (s := q3.core)
       (by rw [p3, after_after])
       (fun hle => by
-        rw [q3x16, ← held_addr G]
+        rw [q3x20, ← held_addr G]
         refine hscrP _ ?_
         rw [UInt64.le_iff_toNat_le] at hle
         simp only [UInt64.reduceToNat] at hle
@@ -917,7 +914,7 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
       (fun _ k hk => by
         rw [q3x17, q3x21, guest_addr, add_ofNat_add]
         exact hmapP _ (by unfold areaSize; omega)) hU
-  rw [q3x16, q3x17, q3x19, q3x21, q3mem, x03] at hc4
+  rw [q3x20, q3x17, q3x19, q3x21, q3mem, x03] at hc4
   have hrch : (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).Rch q
       { q3 with core := t4 } :=
     ProcRunWith.trans hdom (ProcRunWith.ofReach hf (r1.trans r2))
@@ -1072,5 +1069,42 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     rw [hrep, openReply_trap hgt hbig]
     simp only [sysAnswer, sysResult]
     exact shim_trap hrch hio4 p4 hf3 ⟨htrace, hwithin⟩
+
+/-! ## The file stubs of `flatStubs` -/
+
+theorem shimCall_files {c : Call} (hc : c ∈ shimCalls) :
+    (c.name = "path_open" → c = Call.pathOpen) ∧ (c.name = "fd_close" → c = Call.fdClose) ∧
+      (c.name = "fd_read" → c = Call.fdRead) ∧ (c.name = "fd_write" → c = Call.fdWrite) := by
+  revert c
+  decide
+
+/-- The code of a stub of `fileStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
+the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
+area, stands for the shim's function of the call `c` of `shimCalls` whose import is the stub's,
+when the area and the scratch lie in the data segment.  `flatStub_sim` takes its cases for these
+stubs from here. -/
+theorem fileStub_sim {s : FlatStub} (hs : s ∈ fileStubs) {c : Call} (hc : c ∈ shimCalls)
+    (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat) {a svc en : UInt64}
+    {is : List Instr} (hg : s.gen a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
+    (hcode : CodeAt code a is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
+    (hen : CodeAt code en errnoRoutine) (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
+    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem)
+    (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false)
+    (hsize : S.cap * 65536 ≤ size) :
+    (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
+      s.decl.params s.decl.results
+      (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
+  have hn : c.name = s.decl.name := congrArg ImportDecl.name hd
+  obtain ⟨n1, n2, n3, n4⟩ := shimCall_files hc
+  simp only [fileStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
+  rcases hs with rfl | rfl | rfl | rfl
+  · obtain rfl := n1 hn
+    exact openStub_sim S n hg hcode hsvc hen hGb hdata hU
+  · obtain rfl := n2 hn
+    exact closeStub_sim S n hg hcode hsvc hen hGb hdata hU
+  · obtain rfl := n3 hn
+    exact handleReadStub_sim S n hg hcode hsvc hen hGb hdata hU hsize
+  · obtain rfl := n4 hn
+    exact handleWriteStub_sim S n hg hcode hsvc hen hGb hdata hU
 
 end Verified.ShimA64

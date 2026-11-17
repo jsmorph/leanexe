@@ -1,12 +1,13 @@
 import Verified.Shim
 import LeanExe.A64.Proof.WasiStubs
+import LeanExe.A64.Proof.WasiStrings
 import LeanExe.A64.WasiFiles
 
 /-!
 The run of `openHow` of `LeanExe/A64/WasiFiles.lean` in the program's model.  `run_openHow`
 follows the generator's words from the first to the word after them: they write the 24 bytes of
 `openHowBytes arm64Flags`, the `open_how` record of the `openat2` call of `path_open`, 1,056 bytes
-above the scratch's address in X16, and change no register but X9, X10, and X24 to X28.  The
+above the scratch's address in X20, and change no register but X9, X10, and X24 to X28.  The
 proof splits the words at their forward branches: `run_openHowAccess` computes `O_CLOEXEC` and the
 access mode, `run_openHowCreate` the creation flags and `O_DIRECTORY`, and `run_openHowTail`
 `O_APPEND`, `O_NONBLOCK`, and `O_NOFOLLOW`, through runs such as `run_andCbzOrr` of a test
@@ -20,23 +21,6 @@ namespace Verified.ShimA64
 open LeanExe LeanExe.A64 Verified.Shim
 
 /-! ## Bytes of words -/
-
-theorem add_one_ofNat (a : UInt64) (n : Nat) :
-    a + 1 + UInt64.ofNat n = a + UInt64.ofNat (n + 1) := by
-  apply UInt64.toNat_inj.mp
-  simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat, Nat.reducePow]
-  omega
-
-/-- The bytes `l1 ++ l2` written from `a` are `l1` written from `a` and then `l2` after them. -/
-theorem writeList_append : ∀ (m : UInt64 → UInt8) (a : UInt64) (l1 l2 : List UInt8),
-    writeList m a (l1 ++ l2) = writeList (writeList m a l1) (a + UInt64.ofNat l1.length) l2
-  | m, a, [], l2 => by
-    show writeList m a l2 = writeList m (a + UInt64.ofNat 0) l2
-    rw [add_ofNat_zero]
-  | m, a, v :: l1, l2 => by
-    show writeList (store8 m a v) (a + 1) (l1 ++ l2) =
-      writeList (writeList (store8 m a v) (a + 1) l1) (a + UInt64.ofNat (l1.length + 1)) l2
-    rw [writeList_append (store8 m a v) (a + 1) l1 l2, add_one_ofNat a l1.length]
 
 /-- Byte `k` of fewer than `2 ^ 64` bytes written from `a` lies at `a + k`. -/
 theorem writeList_at : ∀ (m : UInt64 → UInt8) (a : UInt64) (bs : List UInt8) (k : Nat)
@@ -53,7 +37,7 @@ theorem writeList_at : ∀ (m : UInt64 → UInt8) (a : UInt64) (bs : List UInt8)
   | m, a, v :: bs, k + 1, hk, hl => by
     have hk' : k < bs.length := by simpa using hk
     show writeList (store8 m a v) (a + 1) bs (a + UInt64.ofNat (k + 1)) = bs[k]
-    rw [← add_one_ofNat a k]
+    rw [← LeanExe.Linux.succ_ofNat a k]
     exact writeList_at (store8 m a v) (a + 1) bs k hk' (Nat.lt_of_succ_lt hl)
 
 /-- Byte `k` of a word, below 8, in the machine's form and in the specification's form. -/
@@ -160,8 +144,8 @@ theorem openHow_ok {a : UInt64} {is : List Instr} (hg : openHow a = .ok is) :
           .movz 9 4 0, .andReg 9 7 9, .cbz 9 g11, .movz 9 0x800 0, .orrReg 24 24 9,
           .movz 9 1 0, .andReg 9 1 9, .cbnz 9 g12, .movz 9 0x8000 0, .orrReg 24 24 9] :
           List Instr) ++
-        ([.str 24 16 132, .movz 9 0 0, .cbz 25 g13, .movz 9 438 0, .str 9 16 133, .movz 9 10 0,
-          .str 9 16 134] : List Instr) := by
+        ([.str 24 20 132, .movz 9 0 0, .cbz 25 g13, .movz 9 438 0, .str 9 20 133, .movz 9 10 0,
+          .str 9 20 134] : List Instr) := by
   unfold openHow at hg
   cases h1 : cbField (after a 9) (after a 19) with
   | error err => simp [h1, bind, Except.bind] at hg
@@ -703,15 +687,15 @@ theorem run_openHowTail {a : UInt64} {g10 g11 g12 : Fin 524288}
   simp (disch := decide) only [x3, x2, x1, k2, k1]
 
 /-- The stores of `openHow`, from its fifty-fourth word: the flags word in X24, the mode 438
-when X25 is nonzero and 0 otherwise, and the resolution 10, as 24 bytes 1,056 bytes above X16. -/
+when X25 is nonzero and 0 otherwise, and the resolution 10, as 24 bytes 1,056 bytes above X20. -/
 theorem run_openHowStores {a : UInt64} {g : Fin 524288}
-    (hcode : CodeAt code a [.str 24 16 132, .movz 9 0 0, .cbz 25 g, .movz 9 438 0,
-      .str 9 16 133, .movz 9 10 0, .str 9 16 134])
+    (hcode : CodeAt code a [.str 24 20 132, .movz 9 0 0, .cbz 25 g, .movz 9 438 0,
+      .str 9 20 133, .movz 9 10 0, .str 9 20 134])
     (hg : cbField (after a 2) (after a 4) = .ok g) {s : State} (hpc : s.pc = a)
-    (hmap : ∀ k < 24, P.normal (s.x 16 + UInt64.ofNat (1056 + k)) = true) :
+    (hmap : ∀ k < 24, P.normal (s.x 20 + UInt64.ofNat (1056 + k)) = true) :
     ∃ u, Reach P code s u ∧ u.pc = after a 7 ∧ (∀ q : Fin 32, q ≠ 9 → u.x q = s.x q) ∧
       u.sp = s.sp ∧ u.io = s.io ∧
-      u.mem = writeList s.mem (s.x 16 + UInt64.ofNat 1056)
+      u.mem = writeList s.mem (s.x 20 + UInt64.ofNat 1056)
         ((List.range 8).map (Verified.Wasi.byteOf (s.x 24).toNat) ++
           (List.range 8).map
             (Verified.Wasi.byteOf (if s.x 25 = 0 then (0 : UInt64) else 438).toNat) ++
@@ -723,7 +707,7 @@ theorem run_openHowStores {a : UInt64} {g : Fin 524288}
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c4 c5 c6
   have cs : CodeAt code (after a 1) [.movz 9 0 0, .cbz 25 g, .movz 9 438 0] := by
     simpa using CodeAt.drop_take code hcode 1 3 (by simp)
-  obtain ⟨u1, r1, p1, k1, sp1, io1, m1⟩ := step_str P code (s := s) (t := 24) (n := 16)
+  obtain ⟨u1, r1, p1, k1, sp1, io1, m1⟩ := step_str P code (s := s) (t := 24) (n := 20)
     (i := 132) (by decide) (by decide) (by rw [hpc]; exact c0)
     (fun k hk => by rw [show 8 * 132 + k = 1056 + k by omega]; exact hmap k (by omega))
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := run_movzCbz P code (t := 9) (r := 25) (v0 := 0)
@@ -732,24 +716,24 @@ theorem run_openHowStores {a : UInt64} {g : Fin 524288}
   rw [show UInt64.ofNat (0 : Fin 65536).val = 0 from rfl,
     show UInt64.ofNat (438 : Fin 65536).val = 438 from rfl, k1 25] at x2
   have q2 : u2.pc = after a 4 := by rw [p2, after_after]
-  have h16 : u2.x 16 = s.x 16 := by rw [k2 16 (by decide), k1]
-  obtain ⟨u3, r3, p3, k3, sp3, io3, m3⟩ := step_str P code (s := u2) (t := 9) (n := 16)
+  have h20 : u2.x 20 = s.x 20 := by rw [k2 20 (by decide), k1]
+  obtain ⟨u3, r3, p3, k3, sp3, io3, m3⟩ := step_str P code (s := u2) (t := 9) (n := 20)
     (i := 133) (by decide) (by decide) (by rw [q2]; exact c4)
     (fun k hk => by
-      rw [h16, show 8 * 133 + k = 1056 + (8 + k) by omega]; exact hmap (8 + k) (by omega))
+      rw [h20, show 8 * 133 + k = 1056 + (8 + k) by omega]; exact hmap (8 + k) (by omega))
   obtain ⟨u4, r4, p4, x4, k4, sp4, m4, io4⟩ := step_movz P code (s := u3) (d := 9) (imm := 10)
     (hw := 0) (by decide) (by rw [p3, q2, ← after_succ]; exact c5)
   rw [movz0_val, show UInt64.ofNat (10 : Fin 65536).val = 10 from rfl] at x4
-  obtain ⟨u5, r5, p5, k5, sp5, io5, m5⟩ := step_str P code (s := u4) (t := 9) (n := 16)
+  obtain ⟨u5, r5, p5, k5, sp5, io5, m5⟩ := step_str P code (s := u4) (t := 9) (n := 20)
     (i := 134) (by decide) (by decide) (by rw [p4, p3, q2, ← after_succ, ← after_succ]; exact c6)
     (fun k hk => by
-      rw [k4 16 (by decide), k3, h16, show 8 * 134 + k = 1056 + (16 + k) by omega]
+      rw [k4 20 (by decide), k3, h20, show 8 * 134 + k = 1056 + (16 + k) by omega]
       exact hmap (16 + k) (by omega))
-  have a1 : s.x 16 + UInt64.ofNat (8 * 133) = s.x 16 + UInt64.ofNat 1056 + UInt64.ofNat 8 := by
+  have a1 : s.x 20 + UInt64.ofNat (8 * 133) = s.x 20 + UInt64.ofNat 1056 + UInt64.ofNat 8 := by
     apply UInt64.toNat_inj.mp
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow, Nat.reduceMul]
     omega
-  have a2 : s.x 16 + UInt64.ofNat (8 * 134) = s.x 16 + UInt64.ofNat 1056 + UInt64.ofNat 16 := by
+  have a2 : s.x 20 + UInt64.ofNat (8 * 134) = s.x 20 + UInt64.ofNat 1056 + UInt64.ofNat 16 := by
     apply UInt64.toNat_inj.mp
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow, Nat.reduceMul]
     omega
@@ -757,22 +741,22 @@ theorem run_openHowStores {a : UInt64} {g : Fin 524288}
     by rw [p5, p4, p3, q2, ← after_succ, ← after_succ, ← after_succ],
     fun q h9 => by rw [k5, k4 q h9, k3, k2 q h9, k1], by rw [sp5, sp4, sp3, sp2, sp1],
     by rw [io5, io4, io3, io2, io1], ?_⟩
-  rw [m5, x4, m4, k4 16 (by decide), k3, m3, x2, h16, m2, m1, a1, a2]
-  exact store64_three s.mem (s.x 16 + UInt64.ofNat 1056) (s.x 24) _ _
+  rw [m5, x4, m4, k4 20 (by decide), k3, m3, x2, h20, m2, m1, a1, a2]
+  exact store64_three s.mem (s.x 20 + UInt64.ofNat 1056) (s.x 24) _ _
 
 /-! ## The run of `openHow` -/
 
 /-- The run of `openHow` from its first word: the next word after its 60, X9, X10, and X24 to
 X28 changed, and the 24 bytes of `openHowBytes arm64Flags` for the `dirflags` in X1, the
-`oflags` in X4, the rights in X5, and the `fdflags` in X7 written 1,056 bytes above X16. -/
+`oflags` in X4, the rights in X5, and the `fdflags` in X7 written 1,056 bytes above X20. -/
 theorem run_openHow {a : UInt64} {is : List Instr} (hg : openHow a = .ok is)
     (hcode : CodeAt code a is) {s : State} (hpc : s.pc = a)
-    (hmap : ∀ k < 24, P.normal (s.x 16 + UInt64.ofNat (1056 + k)) = true) :
+    (hmap : ∀ k < 24, P.normal (s.x 20 + UInt64.ofNat (1056 + k)) = true) :
     ∃ t, Reach P code s t ∧ t.pc = after a 60 ∧
       (∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 24 → q ≠ 25 → q ≠ 26 → q ≠ 27 → q ≠ 28 →
         t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.io = s.io ∧
-      t.mem = writeList s.mem (s.x 16 + UInt64.ofNat 1056)
+      t.mem = writeList s.mem (s.x 20 + UInt64.ofNat 1056)
         (openHowBytes arm64Flags (s.x 1) (s.x 4) (s.x 5) (s.x 7)) := by
   obtain ⟨g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, h1, h2, h3, h4, h5, h6, h7,
     h8, h9, h10, h11, h12, h13, rfl⟩ := openHow_ok hg
@@ -788,14 +772,14 @@ theorem run_openHow {a : UInt64} {is : List Instr} (hg : openHow a = .ok is)
   obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := run_openHowTail P code cB.2
     (by simp only [after_after]; exact h10) (by simp only [after_after]; exact h11)
     (by simp only [after_after]; exact h12) (by rw [p2, after_after])
-  have e16 : u3.x 16 = s.x 16 := by simp (disch := decide) only [k3, k2, k1]
+  have e20 : u3.x 20 = s.x 20 := by simp (disch := decide) only [k3, k2, k1]
   have e25 : u3.x 25 = s.x 4 &&& 1 := by simp (disch := decide) only [k3, k2, y1]
   have e24 : u3.x 24 = openFlagsWord arm64Flags (s.x 1) (s.x 4) (s.x 5) (s.x 7) := by
     simp (disch := decide) only [x3, x2, x1, y1, z1, k2, k1]
     exact openHow_flags (s.x 1) (s.x 4) (s.x 5) (s.x 7)
   obtain ⟨u4, r4, p4, k4, sp4, io4, m4⟩ := run_openHowStores P code cA.2
     (by simp only [after_after]; exact h13) (by rw [p3, after_after])
-    (fun k hk => by rw [e16]; exact hmap k hk)
+    (fun k hk => by rw [e20]; exact hmap k hk)
   have e438 : (if s.x 4 &&& 1 = 0 then (0 : UInt64) else 438).toNat =
       if s.x 4 &&& 1 ≠ 0 then 438 else 0 := by
     by_cases h : s.x 4 &&& 1 = 0 <;> simp [h]
@@ -803,7 +787,7 @@ theorem run_openHow {a : UInt64} {is : List Instr} (hg : openHow a = .ok is)
     fun q h9 h10 h24 h25 h26 h27 h28 => by
       rw [k4 q h9, k3 q h9 h24, k2 q h9 h24 h26, k1 q h9 h10 h24 h25 h27 h28],
     by rw [sp4, sp3, sp2, sp1], by rw [io4, io3, io2, io1], ?_⟩
-  rw [m4, m3, m2, m1, e16, e24, e25, e438]
+  rw [m4, m3, m2, m1, e20, e24, e25, e438]
   rfl
 
 end Runs

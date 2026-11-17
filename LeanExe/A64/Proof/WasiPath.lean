@@ -7,11 +7,11 @@ import LeanExe.A64.WasiFiles
 `LeanExe/A64/WasiFiles.lean`.  Each generator starts with `guestAddr`, which `run_guestAddr`
 follows to the guest's address `X17 + 4096 + X2` in X9, and each loop's lemma holds by induction
 on the number of bytes that remain, with X9 at the next byte.  `run_zeroLoop` counts the bytes
-that remain in X10 and reaches `bad` at the first zero byte, and `run_copyLoop` counts them in X12
+that remain in X10 and reaches `bad` at the first zero byte, and `run_pathLoop` counts them in X12
 and stores each byte at the destination in X10.
 
 The copy reads each byte of the source after it has stored the bytes before it, so
-`run_copyLoop` requires that no byte that it reads lies at a destination byte that an earlier pass
+`run_pathLoop` requires that no byte that it reads lies at a destination byte that an earlier pass
 wrote.  `run_pathCopy` derives that requirement from a source that ends at or below the start of
 the scratch's path buffer at offset 1,080 and a buffer whose 4,096 bytes lie below `2^64`.  The
 memory after the copy is `writeList` of the bytes that `readList` reads from the memory before it,
@@ -42,7 +42,7 @@ theorem zeroScan_ok {a bad : UInt64} {is : List Instr} (hg : zeroScan a bad = .o
 
 theorem pathCopy_ok {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is) :
     ∃ g1 g2, cbField (after a 5) (after a 12) = .ok g1 ∧ bField (after a 11) (after a 5) = .ok g2 ∧
-      is = [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .addImm 10 16 1080, .orrReg 12 31 3,
+      is = [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .addImm 10 20 1080, .orrReg 12 31 3,
         .cbz 12 g1, .ldrb 13 9 0, .strb 13 10 0, .addImm 9 9 1, .addImm 10 10 1, .subImm 12 12 1,
         .b g2, .strb 31 10 0] := by
   unfold pathCopy at hg
@@ -259,7 +259,7 @@ destination byte, and the `c` bytes that remain in X12: the `c` bytes from X9 wr
 X10 moved past them, and the next word after the loop, `after h 7`, with X9, X10, X12, and X13
 changed.  The last hypothesis requires that no source byte that the loop reads lies at a
 destination byte that it wrote before. -/
-theorem run_copyLoop {h : UInt64} {g1 : Fin 524288} {g2 : Fin 67108864}
+theorem run_pathLoop {h : UInt64} {g1 : Fin 524288} {g2 : Fin 67108864}
     (hc : CodeAt code h [.cbz 12 g1, .ldrb 13 9 0, .strb 13 10 0, .addImm 9 9 1,
       .addImm 10 10 1, .subImm 12 12 1, .b g2])
     (hg1 : cbField h (after h 7) = .ok g1) (hg2 : bField (after h 6) h = .ok g2)
@@ -359,7 +359,7 @@ theorem run_copyLoop {h : UInt64} {g1 : Fin 524288} {g2 : Fin 67108864}
 
 /-- The run of `pathCopy` from its first word: the `n` bytes from the guest's address
 `X17 + 4096 + X2`, `n` in X3, and a zero written to the scratch's path buffer 1,080 bytes above
-X16, and the next word after it, with X9, X10, X12, and X13 changed.  `hsep` places the source at
+X20, and the next word after it, with X9, X10, X12, and X13 changed.  `hsep` places the source at
 or below the start of the buffer and `hwrap` the buffer's 4,096 bytes below `2^64`, so the copy
 reads the bytes that the memory held before it. -/
 theorem run_pathCopy {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is)
@@ -367,15 +367,15 @@ theorem run_pathCopy {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is)
     (hn : (s.x 3).toNat < 4096)
     (hsrc : ∀ k < (s.x 3).toNat,
       P.normal (s.x 17 + UInt64.ofNat 4096 + s.x 2 + UInt64.ofNat k) = true)
-    (hdst : ∀ k ≤ (s.x 3).toNat, P.normal (s.x 16 + UInt64.ofNat (1080 + k)) = true)
+    (hdst : ∀ k ≤ (s.x 3).toNat, P.normal (s.x 20 + UInt64.ofNat (1080 + k)) = true)
     (hU : P.normal P.uart = false)
     (hsep : (s.x 17 + UInt64.ofNat 4096 + s.x 2).toNat + (s.x 3).toNat ≤
-      (s.x 16 + UInt64.ofNat 1080).toNat)
-    (hwrap : (s.x 16 + UInt64.ofNat 1080).toNat + 4096 ≤ 2 ^ 64) :
+      (s.x 20 + UInt64.ofNat 1080).toNat)
+    (hwrap : (s.x 20 + UInt64.ofNat 1080).toNat + 4096 ≤ 2 ^ 64) :
     ∃ t, Reach P code s t ∧ t.pc = after a 13 ∧
       (∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.io = s.io ∧
-      t.mem = writeList s.mem (s.x 16 + UInt64.ofNat 1080)
+      t.mem = writeList s.mem (s.x 20 + UInt64.ofNat 1080)
         (readList s.mem (s.x 17 + UInt64.ofNat 4096 + s.x 2) (s.x 3).toNat ++ [0]) := by
   obtain ⟨g1, g2, hg1, hg2, rfl⟩ := pathCopy_ok hg
   have c3 := hcode 3 (by simp)
@@ -383,17 +383,17 @@ theorem run_pathCopy {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is)
   have c12 := hcode 12 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ] at c3 c4 c12
   have cs := CodeAt.split code (n := 5)
-    (l1 := [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .addImm 10 16 1080, .orrReg 12 31 3])
+    (l1 := [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .addImm 10 20 1080, .orrReg 12 31 3])
     (l2 := [.cbz 12 g1, .ldrb 13 9 0, .strb 13 10 0, .addImm 9 9 1, .addImm 10 10 1,
       .subImm 12 12 1, .b g2, .strb 31 10 0]) hcode rfl
   have cl := CodeAt.split code (n := 7)
     (l1 := [.cbz 12 g1, .ldrb 13 9 0, .strb 13 10 0, .addImm 9 9 1, .addImm 10 10 1,
       .subImm 12 12 1, .b g2]) (l2 := [.strb 31 10 0]) cs.2 rfl
   have cg := CodeAt.split code (n := 3) (l1 := guestAddr 9 2)
-    (l2 := [.addImm 10 16 1080, .orrReg 12 31 3]) cs.1 rfl
+    (l2 := [.addImm 10 20 1080, .orrReg 12 31 3]) cs.1 rfl
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := run_guestAddr P code (d := 9) (p := 2)
     (by decide) cg.1 hpc
-  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 10) (n := 16)
+  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 10) (n := 20)
     (imm := 1080) (by decide) (by decide) (by rw [p1]; exact c3)
   have q2 : u2.pc = after a 4 := by rw [p2, p1, ← after_succ]
   obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := step_mov P code (s := u2) (d := 12) (m := 3)
@@ -401,10 +401,10 @@ theorem run_pathCopy {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is)
   have q3 : u3.pc = after a 5 := by rw [p3, q2, ← after_succ]
   have hS : u3.x 9 = s.x 17 + UInt64.ofNat 4096 + s.x 2 := by
     rw [k3 9 (by decide), k2 9 (by decide), x1]
-  have x2' : u2.x 10 = u1.x 16 + UInt64.ofNat 1080 := x2
-  have hD : u3.x 10 = s.x 16 + UInt64.ofNat 1080 := by
-    rw [k3 10 (by decide), x2', k1 16 (by decide)]
-  obtain ⟨w, rl, pw, xw, kw, spw, iow, mw⟩ := run_copyLoop P code cl.1
+  have x2' : u2.x 10 = u1.x 20 + UInt64.ofNat 1080 := x2
+  have hD : u3.x 10 = s.x 20 + UInt64.ofNat 1080 := by
+    rw [k3 10 (by decide), x2', k1 20 (by decide)]
+  obtain ⟨w, rl, pw, xw, kw, spw, iow, mw⟩ := run_pathLoop P code cl.1
     (by rw [after_after]; exact hg1) (by rw [after_after]; exact hg2) hU (s.x 3).toNat u3
     (s.x 3).toNat_lt q3 (by rw [x3, k2 3 (by decide), k1 3 (by decide), UInt64.ofNat_toNat])
     (fun k hk => by rw [hS]; exact hsrc k hk)
@@ -414,7 +414,7 @@ theorem run_pathCopy {a : UInt64} {is : List Instr} (hg : pathCopy a = .ok is)
       exact add_ofNat_ne_add_ofNat hj (by omega) hsep hwrap)
   have hz : (w.x 31).toUInt8 = 0 := (congrArg UInt64.toUInt8 (x31 w)).trans rfl
   obtain ⟨u, ru, pu, ku, spu, iou, mu⟩ := step_strb P code (s := w) (t := 31) (n := 10)
-    (imm := 0) (k := 0) (addr := s.x 16 + UInt64.ofNat 1080 + UInt64.ofNat (s.x 3).toNat)
+    (imm := 0) (k := 0) (addr := s.x 20 + UInt64.ofNat 1080 + UInt64.ofNat (s.x 3).toNat)
     (by decide) (by rw [pw, after_after]; exact c12) rfl (by rw [xw, hD, add_ofNat_zero])
     (by rw [add_ofNat_add]; exact hdst _ (Nat.le_refl _)) hU
   refine ⟨u, r1.trans (r2.trans (r3.trans (rl.trans ru))),

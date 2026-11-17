@@ -6,7 +6,7 @@ The stub of `path_open` of `LeanExe/A64/WasiFiles.lean` in the program's model: 
 their offsets and the runs of the instructions between them.  `openStub_code` places each piece
 of `openStub` at its offset, with the lengths of `utf8Check` and `openHow` from
 `utf8Check_length` and `openHow_length`.  `run_openHead` follows the stub from its entry, which
-keeps the result's pointer in X21 and the return address in X19 and sets X16 to the scratch,
+keeps the result's pointer in X21 and the return address in X19 and sets X20 to the scratch,
 through the range checks of the path and of the result's four bytes to the trap stub or to the
 check of UTF-8 at offset 17.
 
@@ -116,7 +116,7 @@ theorem openStub_length {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := openCalls_ok hl
   obtain ⟨_, _, _, ht, rfl⟩ := openResult_ok hr
   obtain ⟨_, _, _, _, rfl⟩ := errnoTail_ok ht
-  simp [utf8Check_length hu, openHow_length hw, scratchAddr, movImm, wordStore, openStubSize]
+  simp [utf8Check_length hu, openHow_length hw, scratchAddr, movImm, wordStore, store32, openStubSize]
 
 section Runs
 
@@ -215,7 +215,7 @@ theorem run_mask9 {a : UInt64} {r : Fin 32} {m : Fin 65536} (hr : r ≠ 9)
     fun q hq => by rw [k2 q hq, k1 q hq], by rw [sp2, sp1], by rw [m2, m1], by rw [io2, io1]⟩
 
 /-- The head of the stub of `path_open`, from its entry: X21 at the result's pointer in X8, X19 at
-the return address, and X16 at the scratch, `sc` bytes above the area, and then the trap stub `tr`
+the return address, and X20 at the scratch, `sc` bytes above the area, and then the trap stub `tr`
 when the path's end, X2 plus X3, or the result's end, X8 plus 4, exceeds the memory's size, 8 plus
 the area's first word, and the check of UTF-8 at `after a 17` otherwise.  X12 and X13 change too,
 and the memory, SP, and the UART's state keep their values. -/
@@ -225,8 +225,8 @@ theorem run_openHead {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     ∃ t, Reach P code s t ∧
       (t.pc = if load64 s.mem (s.x 17) + 8 < s.x 2 + s.x 3 ∨
           load64 s.mem (s.x 17) + 8 < s.x 8 + 4 then tr else after a 17) ∧
-      t.x 16 = s.x 17 + UInt64.ofNat sc ∧ t.x 19 = s.x 30 ∧ t.x 21 = s.x 8 ∧
-      (∀ q : Fin 32, q ≠ 12 → q ≠ 13 → q ≠ 16 → q ≠ 19 → q ≠ 21 → t.x q = s.x q) ∧
+      t.x 20 = s.x 17 + UInt64.ofNat sc ∧ t.x 19 = s.x 30 ∧ t.x 21 = s.x 8 ∧
+      (∀ q : Fin 32, q ≠ 12 → q ≠ 13 → q ≠ 20 → q ≠ 19 → q ≠ 21 → t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
   obtain ⟨r1, r2, _, _, _, _, _, _, _, _, _, _, _, h1, h2, -, -, -, -, -, -, -, -, -, -, -, c0,
     cS, c7, cR1, c12, cR2, -⟩ := openStub_code code hg hcode
@@ -255,10 +255,10 @@ theorem run_openHead {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   obtain ⟨u5, r5, p5, k5, sp5, m5, io5⟩ := run_rangeCheck P code cR1 hf1 q4
     (fun k hk => by rw [e17]; exact hsize k hk)
   rw [m4, m3, m2, m1, e17, e12] at p5
-  have k15 : ∀ q : Fin 32, q ≠ 12 → q ≠ 13 → q ≠ 16 → q ≠ 19 → q ≠ 21 → u5.x q = s.x q :=
+  have k15 : ∀ q : Fin 32, q ≠ 12 → q ≠ 13 → q ≠ 20 → q ≠ 19 → q ≠ 21 → u5.x q = s.x q :=
     fun q h12 h13 h16 h19 h21 => by rw [k5 q h13, k4 q h12, k3 q h16, k2 q h19, k1 q h21]
-  have x16_5 : u5.x 16 = s.x 17 + UInt64.ofNat sc := by
-    rw [k5 16 (by decide), k4 16 (by decide), x3, k2 17 (by decide), k1 17 (by decide)]
+  have x20_5 : u5.x 20 = s.x 17 + UInt64.ofNat sc := by
+    rw [k5 20 (by decide), k4 20 (by decide), x3, k2 17 (by decide), k1 17 (by decide)]
   have x19_5 : u5.x 19 = s.x 30 := by
     rw [k5 19 (by decide), k4 19 (by decide), k3 19 (by decide), x2, k1 30 (by decide)]
   have x21_5 : u5.x 21 = s.x 8 := by
@@ -269,7 +269,7 @@ theorem run_openHead {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   have io15 : u5.io = s.io := by rw [io5, io4, io3, io2, io1]
   by_cases hb1 : load64 s.mem (s.x 17) + 8 < s.x 2 + s.x 3
   · rw [ite_eq_left hb1] at p5
-    exact ⟨u5, r15, by rw [p5, ite_eq_left (Or.inl hb1)], x16_5, x19_5, x21_5, k15, sp15, m15,
+    exact ⟨u5, r15, by rw [p5, ite_eq_left (Or.inl hb1)], x20_5, x19_5, x21_5, k15, sp15, m15,
       io15⟩
   rw [ite_eq_right hb1, after_after] at p5
   obtain ⟨u6, r6, p6, x6, k6, sp6, m6, io6⟩ := step_addImm P code (s := u5) (d := 12) (n := 21)
@@ -290,7 +290,7 @@ theorem run_openHead {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     by_cases hb2 : load64 s.mem (s.x 17) + 8 < s.x 8 + 4
     · rw [ite_eq_left hb2, ite_eq_left (Or.inr hb2)]
     · rw [ite_eq_right hb2, ite_eq_right (fun h => h.elim hb1 hb2), after_after]
-  · rw [k7 16 (by decide), k6 16 (by decide), x16_5]
+  · rw [k7 20 (by decide), k6 20 (by decide), x20_5]
   · rw [k7 19 (by decide), k6 19 (by decide), x19_5]
   · rw [k7 21 (by decide), k6 21 (by decide), x21_5]
 

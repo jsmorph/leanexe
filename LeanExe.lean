@@ -68,6 +68,7 @@ import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
 import LeanExe.A64.Proof.WasiFiles
 import LeanExe.A64.Proof.WasiLaunch
+import LeanExe.A64.Proof.WasiOpen
 import LeanExe.A64.Proof.WasiPath
 import LeanExe.A64.Proof.WasiPreopen
 import LeanExe.A64.Proof.WasiProgram

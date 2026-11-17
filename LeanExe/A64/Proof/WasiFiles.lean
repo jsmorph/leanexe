@@ -53,8 +53,8 @@ theorem closeStub_ok {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
       errnoTail (after a 20) tr en = .ok tail ∧ bField (after a 13) svc = .ok g13 ∧
       cbField (after a 17) (after a 19) = .ok g17 ∧ cbField (after a 19) (after a 26) = .ok g19 ∧
       is = scratchAddr sc ++ held ++
-        [.orrReg 19 31 30, .orrReg 21 31 0, .movz 8 57 0, .bl g13, .addReg 10 16 21,
-          .strb 31 10 16, .subsImm 31 21 3, .bcond 1 g17, .strb 31 16 8, .cbz 0 g19] ++ tail ++
+        [.orrReg 19 31 30, .orrReg 21 31 0, .movz 8 57 0, .bl g13, .addReg 10 20 21,
+          .strb 31 10 16, .subsImm 31 21 3, .bcond 1 g17, .strb 31 20 8, .cbz 0 g19] ++ tail ++
         [.movz 0 0 0, .ret 19, .movz 0 8 0, .ret 30] := by
   unfold closeStub at hg
   cases hh : heldTest (after a 5) (after a 28) 0 with
@@ -199,12 +199,12 @@ theorem run_wordStore {a : UInt64} {p : Fin 32} (hcode : CodeAt code a (wordStor
       t.mem = writeList s.mem (s.x 17 + UInt64.ofNat 4096 + s.x p)
         [(s.x 0).toUInt8, (s.x 0 >>> UInt64.ofNat 8).toUInt8,
           (s.x 0 >>> UInt64.ofNat 16).toUInt8, (s.x 0 >>> UInt64.ofNat 24).toUInt8] := by
-  have c0 := hcode 0 (by simp [wordStore])
-  have c1 := hcode 1 (by simp [wordStore])
-  simp only [wordStore, List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1
+  have c0 := hcode 0 (by simp [wordStore, store32])
+  have c1 := hcode 1 (by simp [wordStore, store32])
+  simp only [wordStore, store32, List.cons_append, List.nil_append, List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c1
   have cstr : CodeAt code (after a 2) [.strb 0 16 4092, .lsrImm 12 0 8, .strb 12 16 4093,
       .lsrImm 12 0 16, .strb 12 16 4094, .lsrImm 12 0 24, .strb 12 16 4095] := by
-    simpa [wordStore] using CodeAt.drop_take code hcode 2 7 (by simp [wordStore])
+    simpa [wordStore, store32] using CodeAt.drop_take code hcode 2 7 (by simp [wordStore, store32])
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_addReg P code (s := s) (d := 16) (n := 17)
     (m := p) (by decide) (by rw [hpc]; exact c0)
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 16) (n := 16)
@@ -294,7 +294,7 @@ theorem run_countTail {a tr en : UInt64} {is : List Instr} (hg : countTail a tr 
 
 /-- The stub of `fd_close` from its entry to the call: for a descriptor in X0 of at most 1,023
 whose byte in the scratch, `sc` bytes above the area, is nonzero, the `BL` of the call, at
-`after a 13`, with X0, X8 at 57, `close`, X16 at the scratch, X19 at the return address, and X21
+`after a 13`, with X0, X8 at 57, `close`, X20 at the scratch, X19 at the return address, and X21
 at the descriptor.  For every other descriptor, the return to X30 with errno 8.  The memory, SP,
 the UART's state, X17, and X18 keep their values. -/
 theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
@@ -304,7 +304,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧
       t.x 18 = s.x 18 ∧
       if s.x 0 ≤ 1023 ∧ s.mem (s.x 17 + UInt64.ofNat sc + s.x 0 + 16) ≠ 0 then
-        t.pc = after a 13 ∧ t.x 0 = s.x 0 ∧ t.x 8 = 57 ∧ t.x 16 = s.x 17 + UInt64.ofNat sc ∧
+        t.pc = after a 13 ∧ t.x 0 = s.x 0 ∧ t.x 8 = 57 ∧ t.x 20 = s.x 17 + UInt64.ofNat sc ∧
           t.x 19 = s.x 30 ∧ t.x 21 = s.x 0 ∧ t.x 30 = s.x 30
       else t.pc = s.x 30 ∧ t.x 0 = 8 := by
   obtain ⟨held, tail, g13, g17, g19, hh, ht, h13, h17, h19, rfl⟩ := closeStub_ok hg
@@ -313,7 +313,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   have cS : CodeAt code a (scratchAddr sc) := by
     simpa [after_zero, scratchAddr, movImm] using CodeAt.drop_take code hcode 0 5
       (by simp [scratchAddr, movImm])
-  have cH : CodeAt code (after a 5) [.subsImm 31 0 1023, .bcond 8 g1, .addReg 10 16 0,
+  have cH : CodeAt code (after a 5) [.subsImm 31 0 1023, .bcond 8 g1, .addReg 10 20 0,
       .ldrb 9 10 16, .cbz 9 g4] := by
     simpa [scratchAddr, movImm] using CodeAt.drop_take code hcode 5 5 (by simp [scratchAddr,
       movImm])
@@ -332,7 +332,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     (fun h => by rw [x1, k10]; exact hmap (by rwa [k10] at h))
   rw [x1, k10, m1] at p2
   simp only [after_after] at p2
-  have kk2 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 16 → u2.x q = s.x q :=
+  have kk2 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 20 → u2.x q = s.x q :=
     fun q h9 h10 h16 => by rw [k2 q h9 h10, k1 q h16]
   by_cases hheld : s.x 0 ≤ 1023 ∧ s.mem (s.x 17 + UInt64.ofNat sc + s.x 0 + 16) ≠ 0
   · rw [ite_eq_left hheld] at p2
@@ -342,7 +342,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
       (by decide) (by rw [p3, p2, ← after_succ]; exact c11)
     obtain ⟨u5, r5, p5, x5, k5, sp5, m5, io5⟩ := step_movz P code (s := u4) (d := 8) (imm := 57)
       (hw := 0) (by decide) (by rw [p4, p3, p2, ← after_succ, ← after_succ]; exact c12)
-    have kk : ∀ q : Fin 32, q ≠ 8 → q ≠ 9 → q ≠ 10 → q ≠ 16 → q ≠ 19 → q ≠ 21 →
+    have kk : ∀ q : Fin 32, q ≠ 8 → q ≠ 9 → q ≠ 10 → q ≠ 20 → q ≠ 19 → q ≠ 21 →
         u5.x q = s.x q := fun q h8 h9 h10 h16 h19 h21 => by
       rw [k5 q h8, k4 q h21, k3 q h19, kk2 q h9 h10 h16]
     refine ⟨u5, r1.trans (r2.trans (r3.trans (r4.trans r5))),
@@ -355,7 +355,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
       kk 0 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide),
       by rw [x5, movz0_val]; rfl, ?_, ?_, ?_,
       kk 30 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)⟩
-    · rw [k5 16 (by decide), k4 16 (by decide), k3 16 (by decide), k2 16 (by decide)
+    · rw [k5 20 (by decide), k4 20 (by decide), k3 20 (by decide), k2 20 (by decide)
         (by decide), x1]
     · rw [k5 19 (by decide), k4 19 (by decide), x3, kk2 30 (by decide) (by decide) (by decide)]
     · rw [k5 21 (by decide), x4, k3 0 (by decide), kk2 0 (by decide) (by decide) (by decide)]
@@ -368,18 +368,18 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     exact ⟨by rw [p3, kk2 30 (by decide) (by decide) (by decide)], by rw [x3]; rfl⟩
 
 /-- The stub of `fd_close` from the call's result in X0, at `after a 14`, with the scratch's
-address in X16, the descriptor in X21, and the return address in X19: the descriptor's byte and,
+address in X20, the descriptor in X21, and the return address in X19: the descriptor's byte and,
 for descriptor 3, the preopen flag cleared, and then the return of errno 0 for a result of 0, the
 return of the errno of a negated error number, or the trap stub `tr`.  SP, the UART's state, X17,
 and X18 keep their values. -/
 theorem run_closeBack {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     (hg : closeStub a svc tr en sc = .ok is) (hcode : CodeAt code a is)
     (hen : CodeAt code en errnoRoutine) {s : State} (hpc : s.pc = after a 14)
-    (hbyte : P.normal (s.x 16 + s.x 21 + 16) = true) (hflag : P.normal (s.x 16 + 8) = true)
+    (hbyte : P.normal (s.x 20 + s.x 21 + 16) = true) (hflag : P.normal (s.x 20 + 8) = true)
     (hU : P.normal P.uart = false) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
-      t.mem = (if s.x 21 = 3 then store8 (store8 s.mem (s.x 16 + s.x 21 + 16) 0) (s.x 16 + 8) 0
-        else store8 s.mem (s.x 16 + s.x 21 + 16) 0) ∧
+      t.mem = (if s.x 21 = 3 then store8 (store8 s.mem (s.x 20 + s.x 21 + 16) 0) (s.x 20 + 8) 0
+        else store8 s.mem (s.x 20 + s.x 21 + 16) 0) ∧
       ((s.x 0 = 0 ∧ t.pc = s.x 19 ∧ t.x 0 = 0) ∨
         (s.x 0 ≠ 0 ∧ 0 - s.x 0 ≤ 4095 ∧ t.pc = s.x 19 ∧
           t.x 0 = errnoLookup errnoTable (0 - s.x 0)) ∨
@@ -403,30 +403,30 @@ theorem run_closeBack {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   have cOk : CodeAt code (after a 26) [.movz 0 0 0, .ret 19] := by
     simpa [scratchAddr, movImm] using CodeAt.drop_take code hcode 26 2 (by simp [scratchAddr,
       movImm])
-  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_addReg P code (s := s) (d := 10) (n := 16)
+  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_addReg P code (s := s) (d := 10) (n := 20)
     (m := 21) (by decide) (by rw [hpc]; exact c14)
   obtain ⟨u2, r2, p2, k2, sp2, io2, m2⟩ := step_strb P code (s := u1) (t := 31) (n := 10)
-    (imm := 16) (k := 16) (addr := s.x 16 + s.x 21 + 16) (by decide)
+    (imm := 16) (k := 16) (addr := s.x 20 + s.x 21 + 16) (by decide)
     (by rw [p1, hpc, ← after_succ]; exact c15) rfl (by rw [x1]; rfl) hbyte hU
   have q2 : u2.pc = after a 16 := by rw [p2, p1, hpc, ← after_succ, ← after_succ]
   obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := run_neImm P code (r := 21) (imm := 3)
     (tB := after a 19) (by decide) c1617 (by rw [after_after]; exact cbField_target h17) q2
   rw [show UInt64.ofNat (3 : Fin 4096).val = 3 from rfl, k2, k1 21 (by decide),
     after_after] at p3
-  have hm2 : u2.mem = store8 s.mem (s.x 16 + s.x 21 + 16) 0 := by
+  have hm2 : u2.mem = store8 s.mem (s.x 20 + s.x 21 + 16) 0 := by
     rw [m2, m1]
     rfl
   have kk3 : ∀ q : Fin 32, q ≠ 10 → u3.x q = s.x q := fun q h10 => by rw [k3, k2, k1 q h10]
   -- the preopen flag, cleared for descriptor 3
   obtain ⟨u4, r4, p4, k4, sp4, m4, io4⟩ : ∃ u4, Reach P code u3 u4 ∧ u4.pc = after a 19 ∧
       (∀ q : Fin 32, u4.x q = u3.x q) ∧ u4.sp = u3.sp ∧
-      u4.mem = (if s.x 21 = 3 then store8 (store8 s.mem (s.x 16 + s.x 21 + 16) 0) (s.x 16 + 8) 0
-        else store8 s.mem (s.x 16 + s.x 21 + 16) 0) ∧ u4.io = u3.io := by
+      u4.mem = (if s.x 21 = 3 then store8 (store8 s.mem (s.x 20 + s.x 21 + 16) 0) (s.x 20 + 8) 0
+        else store8 s.mem (s.x 20 + s.x 21 + 16) 0) ∧ u4.io = u3.io := by
     by_cases h3 : s.x 21 = 3
     · rw [ite_eq_left h3] at p3
-      obtain ⟨u4, r4, p4, k4, sp4, io4, m4⟩ := step_strb P code (s := u3) (t := 31) (n := 16)
-        (imm := 8) (k := 8) (addr := s.x 16 + 8) (by decide) (by rw [p3]; exact c18) rfl
-        (by rw [kk3 16 (by decide)]; rfl) hflag hU
+      obtain ⟨u4, r4, p4, k4, sp4, io4, m4⟩ := step_strb P code (s := u3) (t := 31) (n := 20)
+        (imm := 8) (k := 8) (addr := s.x 20 + 8) (by decide) (by rw [p3]; exact c18) rfl
+        (by rw [kk3 20 (by decide)]; rfl) hflag hU
       refine ⟨u4, r4, by rw [p4, p3, ← after_succ], k4, sp4, ?_, io4⟩
       rw [ite_eq_left h3, m4, m3, hm2]
       rfl
@@ -506,44 +506,44 @@ theorem run_handleFront {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is :
   obtain ⟨d1, tail', hd1, ht', rfl⟩ := countTail_ok ht
   obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errnoTail_ok ht'
   have c01 : CodeAt code a [.subsImm 31 2 1, .bcond 1 g1] := by
-    simpa [after_zero, scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 0 2 (by simp [scratchAddr, movImm, wordStore])
+    simpa [after_zero, scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 0 2 (by simp [scratchAddr, movImm, wordStore, store32])
   have cR1 : CodeAt code (after a 3)
       [.ldr 13 17 0, .addImm 13 13 8, .subsReg 31 12 13, .bcond 8 f1] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 3 4 (by simp [scratchAddr, movImm, wordStore])
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 3 4 (by simp [scratchAddr, movImm, wordStore, store32])
   have cR2 : CodeAt code (after a 12)
       [.ldr 13 17 0, .addImm 13 13 8, .subsReg 31 12 13, .bcond 8 f2] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 12 4 (by simp [scratchAddr, movImm, wordStore])
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 12 4 (by simp [scratchAddr, movImm, wordStore, store32])
   have cR3 : CodeAt code (after a 17)
       [.ldr 13 17 0, .addImm 13 13 8, .subsReg 31 12 13, .bcond 8 f3] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 17 4 (by simp [scratchAddr, movImm, wordStore])
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 17 4 (by simp [scratchAddr, movImm, wordStore, store32])
   have cS : CodeAt code (after a 21) (scratchAddr sc) := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 21 5 (by simp [scratchAddr, movImm, wordStore])
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 21 5 (by simp [scratchAddr, movImm, wordStore, store32])
   have cH : CodeAt code (after a 26)
-      [.subsImm 31 0 1023, .bcond 8 e1, .addReg 10 16 0, .ldrb 9 10 16, .cbz 9 e4] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 26 5 (by simp [scratchAddr, movImm, wordStore])
+      [.subsImm 31 0 1023, .bcond 8 e1, .addReg 10 20 0, .ldrb 9 10 16, .cbz 9 e4] := by
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 26 5 (by simp [scratchAddr, movImm, wordStore, store32])
   have cC : CodeAt code (after a 33) [.addReg 1 17 10, .addImm 1 1 4095, .addImm 1 1 1,
       .orrReg 2 31 11, .movz 8 nr 0, .orrReg 19 31 30, .bl g39] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 33 7 (by simp [scratchAddr, movImm, wordStore])
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 33 7 (by simp [scratchAddr, movImm, wordStore, store32])
   have cE : CodeAt code (after a 59) [.movz 0 8 0, .ret 30] := by
-    simpa [scratchAddr, movImm, wordStore] using
-      CodeAt.drop_take code hcode 59 2 (by simp [scratchAddr, movImm, wordStore])
-  have c2 := hcode 2 (by simp [scratchAddr, movImm, wordStore])
-  have c7 := hcode 7 (by simp [scratchAddr, movImm, wordStore])
-  have c8 := hcode 8 (by simp [scratchAddr, movImm, wordStore])
-  have c9 := hcode 9 (by simp [scratchAddr, movImm, wordStore])
-  have c10 := hcode 10 (by simp [scratchAddr, movImm, wordStore])
-  have c11 := hcode 11 (by simp [scratchAddr, movImm, wordStore])
-  have c16 := hcode 16 (by simp [scratchAddr, movImm, wordStore])
-  have c31 := hcode 31 (by simp [scratchAddr, movImm, wordStore])
-  have c32 := hcode 32 (by simp [scratchAddr, movImm, wordStore])
-  simp only [scratchAddr, movImm, wordStore, List.cons_append, List.nil_append,
+    simpa [scratchAddr, movImm, wordStore, store32] using
+      CodeAt.drop_take code hcode 59 2 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c2 := hcode 2 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c7 := hcode 7 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c8 := hcode 8 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c9 := hcode 9 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c10 := hcode 10 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c11 := hcode 11 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c16 := hcode 16 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c31 := hcode 31 (by simp [scratchAddr, movImm, wordStore, store32])
+  have c32 := hcode 32 (by simp [scratchAddr, movImm, wordStore, store32])
+  simp only [scratchAddr, movImm, wordStore, store32, List.cons_append, List.nil_append,
     List.getElem_cons_zero, List.getElem_cons_succ] at c2 c7 c8 c9 c10 c11 c16 c31 c32
   -- the iovec count
   obtain ⟨u1, r1, p1, k1, sp1, m1, io1⟩ := run_neImm P code (r := 2) (imm := 1) (tB := tr)
@@ -662,7 +662,7 @@ theorem run_handleFront {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is :
     (by rw [p12, after_after])
     (fun h => by rw [x12, k120]; exact hbyte (by rwa [k120] at h))
   rw [x12, k120, m12, m111, after_after] at p13
-  have k131 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → q ≠ 14 → q ≠ 16 →
+  have k131 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 12 → q ≠ 13 → q ≠ 14 → q ≠ 20 →
       u13.x q = s.x q := fun q h9 h10 h12 h13 h14 h16 => by
     rw [k13 q h9 h10, k12 q h16, k111 q h9 h12 h13 h14]
   have r113 : Reach P code s u13 := r111.trans (r12.trans r13)
@@ -721,8 +721,8 @@ theorem run_handleFront {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is :
 theorem openCalls_ok {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = .ok is) :
     ∃ g7 g9 g11 g13, bField (after a 7) svc = .ok g7 ∧ cbField (after a 9) (after a 14) = .ok g9 ∧
       cbField (after a 11) (after a 14) = .ok g11 ∧ bField (after a 13) (after a 2) = .ok g13 ∧
-      is = [.orrReg 22 31 0, .movz 23 0 0, .orrReg 0 31 22, .addImm 1 16 1080,
-        .addImm 2 16 1056, .movz 3 24 0, .movz 8 437 0, .bl g7, .addImm 9 0 11, .cbnz 9 g9,
+      is = [.orrReg 22 31 0, .movz 23 0 0, .orrReg 0 31 22, .addImm 1 20 1080,
+        .addImm 2 20 1056, .movz 3 24 0, .movz 8 437 0, .bl g7, .addImm 9 0 11, .cbnz 9 g9,
         .subsImm 31 23 2, .bcond 8 g11, .addImm 23 23 1, .b g13] := by
   unfold openCalls at hg
   cases h7 : bField (after a 7) svc with
@@ -743,7 +743,7 @@ theorem openCalls_ok {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = 
 theorem openResult_ok {a tr en : UInt64} {is : List Instr} (hg : openResult a tr en = .ok is) :
     ∃ g1 tail, cbField (after a 1) (after a 16) = .ok g1 ∧
       errnoTail (after a 16) tr en = .ok tail ∧
-      is = [.subsImm 31 0 1023, .bcond 8 g1, .addReg 10 16 0, .movz 9 1 0, .strb 9 10 16] ++
+      is = [.subsImm 31 0 1023, .bcond 8 g1, .addReg 10 20 0, .movz 9 1 0, .strb 9 10 16] ++
         wordStore 21 ++ [.movz 0 0 0, .ret 19] ++ tail := by
   unfold openResult at hg
   cases ht : errnoTail (after a 16) tr en with
@@ -779,12 +779,12 @@ theorem run_openStart {a svc : UInt64} {is : List Instr} (hg : openCalls a svc =
 
 /-- The arguments of an `openat2` call, from `after a 2` of `openCalls` at `a` to its `BL` at
 `after a 7`: X0 at the directory in X22, X1 and X2 at the path buffer and the `open_how` record,
-1,080 and 1,056 bytes above the scratch's address in X16, X3 at the record's size 24, and X8 at
+1,080 and 1,056 bytes above the scratch's address in X20, X3 at the record's size 24, and X8 at
 437, `openat2`. -/
 theorem run_openArgs {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = .ok is)
     (hcode : CodeAt code a is) {s : State} (hpc : s.pc = after a 2) :
     ∃ t, Reach P code s t ∧ t.pc = after a 7 ∧ t.x 0 = s.x 22 ∧
-      t.x 1 = s.x 16 + UInt64.ofNat 1080 ∧ t.x 2 = s.x 16 + UInt64.ofNat 1056 ∧ t.x 3 = 24 ∧
+      t.x 1 = s.x 20 + UInt64.ofNat 1080 ∧ t.x 2 = s.x 20 + UInt64.ofNat 1056 ∧ t.x 3 = 24 ∧
       t.x 8 = 437 ∧ (∀ q : Fin 32, q ≠ 0 → q ≠ 1 → q ≠ 2 → q ≠ 3 → q ≠ 8 → t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
   obtain ⟨g7, g9, g11, g13, -, -, -, -, rfl⟩ := openCalls_ok hg
@@ -797,10 +797,10 @@ theorem run_openArgs {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = 
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_mov P code (s := s) (d := 0) (m := 22)
     (by decide) (by rw [hpc]; exact c2)
   have q1 : u1.pc = after a 3 := by rw [p1, hpc, ← after_succ]
-  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 1) (n := 16)
+  obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addImm P code (s := u1) (d := 1) (n := 20)
     (imm := 1080) (by decide) (by decide) (by rw [q1]; exact c3)
   have q2 : u2.pc = after a 4 := by rw [p2, q1, ← after_succ]
-  obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := step_addImm P code (s := u2) (d := 2) (n := 16)
+  obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := step_addImm P code (s := u2) (d := 2) (n := 20)
     (imm := 1056) (by decide) (by decide) (by rw [q2]; exact c4)
   have q3 : u3.pc = after a 5 := by rw [p3, q2, ← after_succ]
   obtain ⟨u4, r4, p4, x4, k4, sp4, m4, io4⟩ := step_movz P code (s := u3) (d := 3) (imm := 24)
@@ -812,8 +812,8 @@ theorem run_openArgs {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = 
     ?_, ?_, ?_, fun q h0 h1 h2 h3 h8 => by rw [k5 q h8, k4 q h3, k3 q h2, k2 q h1, k1 q h0],
     by rw [sp5, sp4, sp3, sp2, sp1], by rw [m5, m4, m3, m2, m1], by rw [io5, io4, io3, io2, io1]⟩
   · rw [k5 0 (by decide), k4 0 (by decide), k3 0 (by decide), k2 0 (by decide), x1]
-  · rw [k5 1 (by decide), k4 1 (by decide), k3 1 (by decide), x2, k1 16 (by decide)]; rfl
-  · rw [k5 2 (by decide), k4 2 (by decide), x3, k2 16 (by decide), k1 16 (by decide)]; rfl
+  · rw [k5 1 (by decide), k4 1 (by decide), k3 1 (by decide), x2, k1 20 (by decide)]; rfl
+  · rw [k5 2 (by decide), k4 2 (by decide), x3, k2 20 (by decide), k1 20 (by decide)]; rfl
   · rw [k5 3 (by decide), x4, movz0_val]; rfl
   · rw [x5, movz0_val]; rfl
 
@@ -882,18 +882,18 @@ theorem run_openRetry {a svc : UInt64} {is : List Instr} (hg : openCalls a svc =
     exact ⟨p2, kk2 23 (by decide)⟩
 
 /-- The handling of the last `openat2`'s result in X0, from `a`: a descriptor of at most 1,023 sets
-its byte 16 bytes above the scratch's address in X16 to 1, is stored at the guest's address in X21,
+its byte 16 bytes above the scratch's address in X20 to 1, is stored at the guest's address in X21,
 and returns errno 0 to X19, a negated error number returns its errno, and any other result reaches
 the trap stub `tr`.  SP, the UART's state, X17, and X18 keep their values. -/
 theorem run_openResult {a tr en : UInt64} {is : List Instr} (hg : openResult a tr en = .ok is)
     (hcode : CodeAt code a is) (hen : CodeAt code en errnoRoutine) {s : State} (hpc : s.pc = a)
-    (hbyte : s.x 0 ≤ 1023 → P.normal (s.x 16 + s.x 0 + 16) = true)
+    (hbyte : s.x 0 ≤ 1023 → P.normal (s.x 20 + s.x 0 + 16) = true)
     (hmap : s.x 0 ≤ 1023 →
       ∀ k < 4, P.normal (s.x 17 + UInt64.ofNat 4096 + s.x 21 + UInt64.ofNat k) = true)
     (hU : P.normal P.uart = false) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.io = s.io ∧ t.x 17 = s.x 17 ∧ t.x 18 = s.x 18 ∧
       ((s.x 0 ≤ 1023 ∧ t.pc = s.x 19 ∧ t.x 0 = 0 ∧
-          t.mem = writeList (store8 s.mem (s.x 16 + s.x 0 + 16) 1)
+          t.mem = writeList (store8 s.mem (s.x 20 + s.x 0 + 16) 1)
             (s.x 17 + UInt64.ofNat 4096 + s.x 21)
             [(s.x 0).toUInt8, (s.x 0 >>> UInt64.ofNat 8).toUInt8,
               (s.x 0 >>> UInt64.ofNat 16).toUInt8, (s.x 0 >>> UInt64.ofNat 24).toUInt8]) ∨
@@ -928,12 +928,12 @@ theorem run_openResult {a tr en : UInt64} {is : List Instr} (hg : openResult a t
     · exact .inr (.inr ⟨hbig, hbig', p2, by rw [m2, m1]⟩)
   · rw [ite_eq_right hbig] at p1
     have hle : s.x 0 ≤ 1023 := UInt64.not_lt.mp hbig
-    obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addReg P code (s := u1) (d := 10) (n := 16)
+    obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_addReg P code (s := u1) (d := 10) (n := 20)
       (m := 0) (by decide) (by rw [p1]; exact c2)
     obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := step_movz P code (s := u2) (d := 9) (imm := 1)
       (hw := 0) (by decide) (by rw [p2, p1, ← after_succ]; exact c3)
     obtain ⟨u4, r4, p4, k4, sp4, io4, m4⟩ := step_strb P code (s := u3) (t := 9) (n := 10)
-      (imm := 16) (k := 16) (addr := s.x 16 + s.x 0 + 16) (by decide)
+      (imm := 16) (k := 16) (addr := s.x 20 + s.x 0 + 16) (by decide)
       (by rw [p3, p2, p1, ← after_succ, ← after_succ]; exact c4) rfl
       (by rw [k3 10 (by decide), x2, k1, k1]; rfl) (hbyte hle) hU
     have q4 : u4.pc = after a 5 := by rw [p4, p3, p2, p1, ← after_succ, ← after_succ, ← after_succ]

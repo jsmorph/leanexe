@@ -1,4 +1,5 @@
 import Verified.ShimA64.Preopen
+import Verified.ShimA64.Open
 
 /-!
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each
@@ -7,7 +8,8 @@ stub of `flatStubs` at its address meets `Machine.StubSim` on `shimMachine` for 
 simulation of every flat import of a module from it.  `flatStubs` lists the stubs of the arguments
 and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.lean` proves, and
 the stubs of the preopened directory, whose cases `preopenStub_sim` of
-`Verified/ShimA64/Preopen.lean` proves.  Each increment that adds a stub to `flatStubs` adds its
+`Verified/ShimA64/Preopen.lean` proves, and the stubs of the files under it, whose cases
+`fileStub_sim` of `Verified/ShimA64/Open.lean` proves.  Each increment that adds a stub to `flatStubs` adds its
 case here.
 -/
 
@@ -40,8 +42,9 @@ theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Cal
       s.decl.params s.decl.results
       (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
   simp only [flatStubs, List.mem_append] at hs
-  rcases hs with hs | hs
+  rcases hs with (hs | hs) | hs
   · exact stringStub_sim hs hc hd S n hg hcode hGb hdata hU
   · exact preopenStub_sim hs hc hd S n hg hcode hGb hdata
+  · exact fileStub_sim hs hc hd S n hg hcode hsvc hen hGb hdata hU hsize
 
 end Verified.ShimA64

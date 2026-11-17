@@ -2,6 +2,7 @@ import LeanExe.A64.Elf
 import LeanExe.Wasi.CallTable
 import LeanExe.A64.WasiPreopen
 import LeanExe.A64.WasiStrings
+import LeanExe.A64.WasiFiles
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose
@@ -23,8 +24,9 @@ routine and then `_start`, function `k`, which takes and returns nothing, and re
 startup routine is the check of descriptor 3 of `LeanExe/A64/WasiPreopen.lean` for a module whose
 flat imports read the shim's descriptor state (`needsCheck`), and a return for every other
 module.  The flat stubs of `flatStubs` are the string stubs of `LeanExe/A64/WasiStrings.lean`,
-those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, and the stubs of
-`fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`.
+those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, the stubs of
+`fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`, and the stubs of
+`path_open`, `fd_close`, and `fd_read` and `fd_write` on a handle of `LeanExe/A64/WasiFiles.lean`.
 The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 
@@ -259,9 +261,33 @@ def preopenStubs : List FlatStub :=
     { call := .fdPrestatDirName, decl := pointerLengthImport "fd_prestat_dir_name",
       size := dirNameStubSize, gen := fun a _ tr _ scratch => dirNameStub a tr scratch }]
 
+/-- The stubs of `path_open`, `fd_close`, and `fd_read` and `fd_write` on a handle of
+`LeanExe/A64/WasiFiles.lean`, which follow the shim's descriptors through the scratch's bytes. -/
+def fileStubs : List FlatStub :=
+  [{ call := .pathOpen,
+      decl :=
+        { «module» := "wasi_snapshot_preview1", name := "path_open",
+          params := [.i32, .i32, .i32, .i32, .i32, .i64, .i64, .i32, .i32], results := [.i32] },
+      size := openStubSize, gen := openStub },
+    { call := .fdClose,
+      decl :=
+        { «module» := "wasi_snapshot_preview1", name := "fd_close", params := [.i32],
+          results := [.i32] },
+      size := closeStubSize, gen := closeStub },
+    { call := .fdRead,
+      decl :=
+        { «module» := "wasi_snapshot_preview1", name := "fd_read",
+          params := [.i32, .i32, .i32, .i32], results := [.i32] },
+      size := handleStubSize, gen := handleStub 63 },
+    { call := .fdWrite,
+      decl :=
+        { «module» := "wasi_snapshot_preview1", name := "fd_write",
+          params := [.i32, .i32, .i32, .i32], results := [.i32] },
+      size := handleStubSize, gen := handleStub 64 }]
+
 /-- The flat calls whose stubs the generator implements: those of the arguments and the
-environment, and those of the preopened directory. -/
-def flatStubs : List FlatStub := stringStubs ++ preopenStubs
+environment, those of the preopened directory, and those of the files under it. -/
+def flatStubs : List FlatStub := stringStubs ++ preopenStubs ++ fileStubs
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=

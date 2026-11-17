@@ -1,4 +1,4 @@
-import Verified.ShimA64.Stubs
+import Verified.ShimA64.Preopen
 import LeanExe.A64.Proof.WasiFiles
 
 /-!
@@ -23,11 +23,6 @@ namespace Verified.ShimA64
 open Wasm LeanExe LeanExe.A64 LeanExe.Wasi Verified.Wasi Verified.Shim
 
 /-! ## The scratch's bytes -/
-
-theorem mem_openNumbers_lt {I : Launch} {events : List Linux.Event} {x : UInt64}
-    (h : x ∈ openNumbers I events) : x.toNat < descriptorLimit := by
-  unfold openNumbers at h
-  simpa using (List.mem_filter.mp h).2
 
 /-- The address of the byte of descriptor number `d`. -/
 theorem held_addr (G : Scratch) (d : UInt64) :
@@ -55,7 +50,7 @@ theorem held_byte {G : Scratch} {I : Launch} {sp₀ top : UInt64} {events : List
     · simp [hm, hlo]
     · simp [hm]
   · refine ⟨fun h' => absurd h'.1 hlo, fun hm => absurd ?_ hlo⟩
-    have := mem_openNumbers_lt hm
+    have := openNumbers_lt hm
     unfold descriptorLimit at this
     rw [UInt64.le_iff_toNat_le]
     simp only [UInt64.reduceToNat]
@@ -270,51 +265,12 @@ theorem scratch_toNat {G : Scratch} {cap : Nat} (hL : L.area.toNat + L.dataMem �
   unfold scratchSize at hdata
   omega
 
-/-- The scratch's bytes are Normal memory of the data segment, which ends below `2^32`. -/
-theorem scratch_normal {G : Scratch} {cap : Nat} (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32)
+/-- The scratch lies above address 0. -/
+theorem scratch_pos {G : Scratch} {cap : Nat} (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32)
     (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
-    (hdata : areaSize cap + scratchSize ≤ L.dataMem) :
-    ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true := by
-  intro j hj
-  have e := scratch_toNat hL hGb hdata
-  have e' : (G.base + UInt64.ofNat j).toNat = G.base.toNat + j := by
-    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow]
-    unfold scratchSize at hj hdata
-    omega
-  simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le, e']
-  unfold scratchSize at hj hdata
-  omega
-
-/-- The UART of the process's platform is no Normal memory when the module's is not, the scratch
-follows the area, and the initial stack lies from `2^32` up. -/
-theorem wasiPlatform_uart {G : Scratch} {cap : Nat}
-    (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false)
-    (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
-    (hsp : 2 ^ 32 ≤ sp₀.toNat) :
-    (wasiPlatform L sp₀ top).normal (wasiPlatform L sp₀ top).uart = false := by
-  have hm : (modulePlatform L G).normal 0 = false := hU
-  have he : (elfPlatform L).normal 0 = false := by
-    cases hE : (elfPlatform L).normal 0 with
-    | false => rfl
-    | true =>
-      exfalso
-      have hin : decide (G.base ≤ 0 ∧ (0 : UInt64).toNat < G.base.toNat + scratchSize) =
-          true := by
-        simp only [modulePlatform, hE, Bool.true_and, Bool.not_eq_false'] at hm
-        exact hm
-      simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le] at hE
-      simp only [decide_eq_true_eq, UInt64.le_iff_toNat_le] at hin
-      have hb := congrArg UInt64.toNat hGb
-      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow] at hb
-      unfold areaSize at hb
-      simp only [UInt64.reduceToNat] at hE hin
-      omega
-  show ((elfPlatform L).normal 0 || decide (sp₀ ≤ 0 ∧ (0 : UInt64) < top)) = false
-  rw [he, Bool.false_or, decide_eq_false_iff_not]
-  intro h
-  have := h.1
-  rw [UInt64.le_iff_toNat_le] at this
-  simp only [UInt64.reduceToNat] at this
+    (hdata : areaSize cap + scratchSize ≤ L.dataMem) : 0 < G.base.toNat := by
+  rw [scratch_toNat hL hGb hdata]
+  unfold areaSize
   omega
 
 /-! ## `fd_close` -/
@@ -346,14 +302,12 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
   have hsr' := hsr
   obtain ⟨hst, hf, h17, hgap, htr, hK⟩ := hsr
   rw [sysFn_close]
-  have hscr := scratch_normal hL hGb hdata
   have hlow : G.base.toNat + scratchSize ≤ 2 ^ 32 := by
     rw [scratch_toNat hL hGb hdata]
     omega
-  have hU := wasiPlatform_uart (sp₀ := sp₀) (top := top) hU' hGb hK.stack.above
-  have hPP := elfPlatform_le_wasi L sp₀ top
-  have hscrP : ∀ j < scratchSize, (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) =
-      true := fun j hj => hPP.normal _ (hscr j hj)
+  have hU := wasiPlatform_uart (top := top)
+    (elfPlatform_uart hU' (scratch_pos hL hGb hdata)) hK.stack.above
+  have hscrP := scratch_wasi (sp := sp₀) (top := top) hL hGb hdata
   have hbase : q.core.x 17 + UInt64.ofNat (areaSize S.cap) = G.base := by rw [h17, hGb]
   obtain ⟨u1, r1, sp1, m1, io1, x17_1, x18_1, hc1⟩ :=
     run_closeFront (wasiPlatform L sp₀ top) code hg hcode hpc (fun hle => by
@@ -392,8 +346,8 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
       exact hK
   rw [ite_eq_left ((held_byte hK _).mpr hheld)] at hc1
   rw [ite_eq_left hheld]
-  obtain ⟨p1, x01, x81, x161, x191, x211, x301⟩ := hc1
-  have hd : fd.toUInt64.toNat < descriptorLimit := mem_openNumbers_lt hheld
+  obtain ⟨p1, x01, x81, x201, x191, x211, x301⟩ := hc1
+  have hd : fd.toUInt64.toNat < descriptorLimit := openNumbers_lt hheld
   -- the call
   obtain ⟨held, tail, g13, g17, g19, hh, ht, h13, h17', h19, his⟩ := closeStub_ok hg
   obtain ⟨e1, e4, he1, he4, rfl⟩ := heldTest_ok hh
@@ -429,20 +383,20 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
   rw [hev] at tr5
   have hf5 : q5.fpcr = fpcrValue := by rw [f5]; exact hf
   -- the result
-  have q5x16 : q5.core.x 16 = G.base := by rw [k5 16 (by decide) (by decide)]; exact x161
+  have q5x20 : q5.core.x 20 = G.base := by rw [k5 20 (by decide) (by decide)]; exact x201
   have q5x21 : q5.core.x 21 = fd.toUInt64 := by rw [k5 21 (by decide) (by decide)]; exact x211
   have q5x19 : q5.core.x 19 = q.core.x 30 := by rw [k5 19 (by decide) (by decide)]; exact x191
-  have hbyteP : (wasiPlatform L sp₀ top).normal (q5.core.x 16 + q5.core.x 21 + 16) = true := by
-    rw [q5x16, q5x21, ← held_addr G fd.toUInt64]
+  have hbyteP : (wasiPlatform L sp₀ top).normal (q5.core.x 20 + q5.core.x 21 + 16) = true := by
+    rw [q5x20, q5x21, ← held_addr G fd.toUInt64]
     exact hscrP _ (by unfold scratchSize; unfold descriptorLimit at hd; omega)
-  have hflagP : (wasiPlatform L sp₀ top).normal (q5.core.x 16 + 8) = true := by
-    rw [q5x16]
+  have hflagP : (wasiPlatform L sp₀ top).normal (q5.core.x 20 + 8) = true := by
+    rw [q5x20]
     exact hscrP 8 (by unfold scratchSize; decide)
   obtain ⟨u6, r6, sp6, io6, x176, x186, m6, hc6⟩ :=
     run_closeBack (wasiPlatform L sp₀ top) code hg hcode hen (s := q5.core)
       (by rw [p5, after_after]) hbyteP hflagP hU
   rw [q5x19, x05] at hc6
-  rw [q5x16, q5x21, m5] at m6
+  rw [q5x20, q5x21, m5] at m6
   change u6.mem = if fd.toUInt64 = 3 then store8 (store8 u1.mem (G.base + fd.toUInt64 + 16) 0)
     (G.base + 8) 0 else store8 u1.mem (G.base + fd.toUInt64 + 16) 0 at m6
   rw [m1] at m6
