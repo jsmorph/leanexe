@@ -66,6 +66,7 @@ import LeanExe.A64.Proof.StartupTail
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
+import LeanExe.A64.Proof.WasiClocks
 import LeanExe.A64.Proof.WasiLaunch
 import LeanExe.A64.Proof.WasiProgram
 import LeanExe.A64.Proof.WasiStrings
@@ -75,6 +76,7 @@ import LeanExe.A64.Stamp
 import LeanExe.A64.Startup
 import LeanExe.A64.Table
 import LeanExe.A64.Wasi
+import LeanExe.A64.WasiClocks
 import LeanExe.A64.WasiStrings
 import LeanExe.Area
 import LeanExe.Attr

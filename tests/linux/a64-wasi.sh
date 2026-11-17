@@ -44,7 +44,20 @@
 # 10^17, 5,000 random bytes with few zeros, and 16 random bytes that differ between runs.  A native
 # run under strace must make `clock_gettime` of clocks 0 and 1 into the shim's timespec and then
 # `getrandom` of 16 and of 5,000 bytes of linear memory with flags 0, and no other call but write
-# and exit_group.  The products lie in OUT, build/linux/a64-wasi unless set.
+# and exit_group.
+#
+# Last it emits sys.elf, the flat call example of Verified/Examples/WasiSys.lean, which writes its
+# arguments, each followed by a zero byte, their count and size, as args_sizes_get reports them, the
+# readings of clocks 0 and 1, and 16 random bytes, and Lean elaborates
+# tests/TestSupport/A64/ImageFilesWasiSys.lean beside it.  The example runs with argv[0] alone,
+# empty arguments among others, and an empty argv[0], each once, and with argv[0] and two arguments
+# four times, in the Wasmtime host with --arg, natively with exec -a, and under QEMU with -0.  Each
+# run must exit with status 0 and write the arguments, count, and size that the script computes and
+# then what the checker accepts: a realtime reading within a day of the clock, a monotonic reading
+# below 10^17, and 16 random bytes, of which the four runs of each host must give at least two
+# values at each position.  A native run under strace must make `clock_gettime` of clocks 0 and 1
+# into the shim's timespec and `getrandom` of 16 bytes of linear memory with flags 0, and no other
+# call but write and exit_group.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -64,10 +77,12 @@ rm -rf "${out:?}"
 mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-wasi \
   TestSupport.A64.WasiElf Verified.Examples.WasiReadAllNative \
-  Verified.Examples.WasiSysEnvironNative Verified.Examples.WasiClockRandomNative LeanExe.A64.File
+  Verified.Examples.WasiSysEnvironNative Verified.Examples.WasiClockRandomNative \
+  Verified.Examples.WasiSysNative LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-wasi emit "$out" || status=1
-chmod +x "$out/readall.elf" "$out/environ.elf" "$out/args.elf" "$out/clockrandom.elf"
+chmod +x "$out/readall.elf" "$out/environ.elf" "$out/args.elf" "$out/clockrandom.elf" \
+  "$out/sys.elf"
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiReadAll \
   Verified.Examples.WasiReadAll.command.module "$out/readall.wasm"
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSysEnviron \
@@ -76,6 +91,8 @@ tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean TestSupport.A64.W
   TestSupport.A64.WasiArgs.command.module "$out/args.wasm"
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiClockRandom \
   Verified.Examples.WasiClockRandom.command.module "$out/clockrandom.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiSys \
+  Verified.Examples.WasiSys.command.module "$out/sys.wasm"
 # Elaborates the module $1 of tests/TestSupport/A64 in the directory of the files and requires $2
 # reports of axioms, each a subset of the standard three.  Lean breaks a report longer than its
 # format's width of 120 columns into lines, which the check joins.
@@ -97,6 +114,7 @@ kernel_check() {
 kernel_check ImageFilesWasiElf 6
 kernel_check ImageFilesWasiEnviron 6
 kernel_check ImageFilesWasiClockElf 6
+kernel_check ImageFilesWasiSys 6
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"
@@ -362,4 +380,68 @@ else
   status=1
 fi
 only_calls clockrandom.elf "$out/clockrandom.strace" "clock_gettime exit_group getrandom write"
+# The flat call example.  Writes to the file $1 the bytes that the example writes before its
+# clocks for the arguments $2 and after: each argument with a zero byte, and then their count and
+# their size, each as 8 little-endian bytes.
+sys_expect() {
+  local f=$1 size=0 s
+  shift
+  for s in "$@"; do size=$((size + $(printf '%s' "$s" | wc -c) + 1)); done
+  { for s in "$@"; do printf '%s\0' "$s"; done; le64 "$#"; le64 "$size"; } >"$f"
+}
+# Runs the example in the host $1, wasmtime, native, or qemu, with argv[0] $3 and the arguments $4
+# and after, and writes its output to the file $2.
+sys_run() {
+  local how=$1 file=$2 v
+  shift 2
+  local hostargs=()
+  case $how in
+    wasmtime)
+      for v in "$@"; do hostargs+=(--arg "$v"); done
+      timeout "${TIMEOUT:-120}" "$host" "${hostargs[@]}" --stdout-file "$file" \
+        --control-file "$file.control" run "$out/sys.wasm" 2>"$file.err" ;;
+    native)
+      scoped bash -c 'a0=$1; shift; exec -a "$a0" "$@"' bash "$1" "$out/sys.elf" "${@:2}" \
+        >"$file" ;;
+    qemu) scoped "$qemu" -0 "$1" "$out/sys.elf" "${@:2}" >"$file" ;;
+  esac
+}
+# Runs the case $1 $2 times in each host with argv[0] $3 and the arguments $4 and after, and checks
+# each run's status and the outputs of each host together.
+sys_case() {
+  local name=$1 runs=$2 how i code files got
+  shift 2
+  sys_expect "$out/sys-$name.want" "$@"
+  for how in wasmtime native qemu; do
+    files=()
+    code=0
+    for i in $(seq 1 "$runs"); do
+      sys_run "$how" "$out/sys-$name-$i.$how" "$@" || code=$?
+      files+=("$out/sys-$name-$i.$how")
+    done
+    if [ "$code" -eq 0 ] && got=$(uv run tests/linux/a64-wasi-clocks.py sys "$now" \
+        "$out/sys-$name.want" "${files[@]}"); then
+      echo "pass: sys.elf arguments $name $how: $runs runs with status 0"
+    else
+      echo "fail: sys.elf arguments $name $how: status $code, $got"
+      status=1
+    fi
+  done
+}
+sys_case argv0 1 sys
+sys_case blanks 1 prog '' a '' ''
+sys_case empty 1 ''
+sys_case random 4 sys alpha 'beta gamma'
+code=0
+got=
+scoped strace -X raw -e raw=clock_gettime,getrandom -o "$out/sys.strace" "$out/sys.elf" a b \
+  >/dev/null || code=$?
+if [ "$code" -eq 0 ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls "$out/sys.elf" \
+    "$out/sys.strace" 4096 clock 0 clock 1 random - 16); then
+  echo "pass: sys.elf's calls under strace: $got"
+else
+  echo "fail: sys.elf's calls under strace: status $code, $got"
+  status=1
+fi
+only_calls sys.elf "$out/sys.strace" "clock_gettime exit_group getrandom write"
 exit "$status"

@@ -122,6 +122,8 @@ import Verified.Examples.WasiFilesShim
 import Verified.ShimA64
 import Verified.Examples.WasiReadAllNative
 import Verified.Examples.WasiSysEnvironNative
+import Verified.Examples.WasiSysNative
+import Verified.Examples.WasiClockRandomNative
 import Verified.AlignedAccess
 import Verified.AlignedArrayCopy
 import Verified.AlignedSpec

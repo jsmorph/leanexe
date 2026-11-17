@@ -1,11 +1,13 @@
 # /// script
 # requires-python = ">=3.12"
 # ///
-"""Checks the standard output of a run of a case module of tests/linux/a64-wasi-clocks.sh, or of
-runs of the clock and random example of Verified/Examples/WasiClockRandom.lean.
+"""Checks the standard output of a run of a case module of tests/linux/a64-wasi-clocks.sh, of runs
+of the clock and random example of Verified/Examples/WasiClockRandom.lean or of the flat call
+example of Verified/Examples/WasiSys.lean, or the calls of a run under strace.
 
 Usage: uv run tests/linux/a64-wasi-clocks.py KIND PAGES A B FILE NOW
        uv run tests/linux/a64-wasi-clocks.py example NOW FILE...
+       uv run tests/linux/a64-wasi-clocks.py sys NOW WANT FILE...
        uv run tests/linux/a64-wasi-clocks.py calls ELF TRACE CAP [clock ID | random PTR N]...
 
 For calls, TRACE holds the output of `strace -X raw -e raw=clock_gettime,getrandom` for a run of
@@ -23,6 +25,12 @@ errno and 5,000 bytes of the second, each errno and time as 8 little-endian byte
 must be 0, 0, 8, 0, and 0, each realtime reading must lie within a day of NOW and within 600
 seconds of the first file's, each monotonic reading must lie below 10^17, the 5,000 random bytes
 must hold at most 64 zero bytes, and the 16 random bytes of two files must differ.
+
+For the flat call example, each FILE must hold the bytes of the file WANT, the arguments, each
+followed by a zero byte, and their count and size as 8 little-endian bytes each, and then 32 bytes:
+a realtime reading within a day of NOW, a monotonic reading below 10^17, each as 8 little-endian
+bytes, and 16 random bytes.  With two files or more, each of the 16 random positions must take at
+least two values, which four runs of a correct program fail with probability at most 2^-20.
 
 For a case, KIND is clock, with A the clock and B the time's pointer, or random, with A the buffer's
 pointer and B its length, in a memory of PAGES pages.  FILE holds the run's output: the errno as 8
@@ -96,6 +104,29 @@ def example(now, paths):
             fails.append(f"{path}: {data[72:].count(0)} zero bytes in 5000 random bytes")
     if len(smalls) >= 2 and len(set(smalls)) < 2:
         fails.append("the 16 random bytes are the same in every run")
+    return fails
+
+
+def sys_runs(now, want, paths):
+    """Checks the runs of the flat call example against the arguments' bytes `want`; returns the
+    failures."""
+    head = open(want, "rb").read()
+    fails = []
+    randoms = []
+    for path in paths:
+        data = open(path, "rb").read()
+        if len(data) != len(head) + 32 or not data.startswith(head):
+            fails.append(f"{path}: {len(data)} bytes, or the arguments, count, or size differ")
+            continue
+        wall = int.from_bytes(data[len(head):len(head) + 8], "little")
+        mono = int.from_bytes(data[len(head) + 8:len(head) + 16], "little")
+        if abs(wall / 1e9 - now) > 86400:
+            fails.append(f"{path}: realtime reading {wall}")
+        if not 0 < mono < 10**17:
+            fails.append(f"{path}: monotonic reading {mono}")
+        randoms.append(data[len(head) + 16:])
+    if len(randoms) >= 2 and any(len({r[i] for r in randoms}) < 2 for i in range(16)):
+        fails.append("a random position holds the same byte in every run")
     return fails
 
 
@@ -182,6 +213,11 @@ def main():
         print(f"{len(seen)} call{'' if len(seen) == 1 else 's'}" + "".join(
             f", clock_gettime {args[0]} = {result}" if name == "clock_gettime"
             else f", getrandom {args[1]} = {result}" for name, args, result in seen))
+        sys.exit(1 if fails else 0)
+    if sys.argv[1] == "sys":
+        fails = sys_runs(int(sys.argv[2]), sys.argv[3], sys.argv[4:])
+        for f in fails:
+            print("fail:", f)
         sys.exit(1 if fails else 0)
     if sys.argv[1] == "example":
         fails = example(int(sys.argv[2]), sys.argv[3:])
