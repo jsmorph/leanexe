@@ -244,14 +244,17 @@ def stringStubs : List FlatStub :=
       size := stringsStubSize .environ,
       gen := fun a _ tr _ scratch => stringsStub .environ a tr scratch }]
 
+/-- The import of the flat call `name` of Preview 1 with a descriptor, a pointer, and a length as
+`i32` and an errno. -/
+def pointerLengthImport (name : String) : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name, params := [.i32, .i32, .i32], results := [.i32] }
+
 /-- The stubs of `fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`,
 which read the preopen flag and the held bytes of the scratch. -/
 def preopenStubs : List FlatStub :=
   [{ call := .fdPrestatGet, decl := pointerPairImport "fd_prestat_get", size := prestatStubSize,
       gen := fun a _ tr _ scratch => prestatStub a tr scratch },
-    { call := .fdPrestatDirName,
-      decl := { «module» := "wasi_snapshot_preview1", name := "fd_prestat_dir_name",
-        params := [.i32, .i32, .i32], results := [.i32] },
+    { call := .fdPrestatDirName, decl := pointerLengthImport "fd_prestat_dir_name",
       size := dirNameStubSize, gen := fun a _ tr _ scratch => dirNameStub a tr scratch }]
 
 /-- The flat calls whose stubs the generator implements: those of the arguments and the
