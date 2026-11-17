@@ -196,11 +196,18 @@ const drivers = files.filter(f => /^(tests|tools|rocq|clightn)\//.test(f) &&
   f !== 'tools/affected' && (/\.(sh|py|mjs)$/.test(f) || /^tools\/[^./]+$/.test(f)));
 for (const driver of drivers) {
   const text = read(driver);
-  // Each path in the text, and each of its suffixes after a slash, such as tests/x.sh of
-  // $root/tests/x.sh.
+  // Each path in the text, and, for a path that starts at a variable, a slash, or a dot, each of
+  // its suffixes after a slash, such as tests/x.sh of $root/tests/x.sh.  A path relative to the
+  // repository, such as Demos/Gpt32/Verified.lean, names only itself.
   const tokens = new Set();
-  for (const token of text.match(/[\w.\-/«»]+/g) ?? []) {
-    for (let i = 0; i !== -1; i = token.indexOf('/', i) + 1 || -1) tokens.add(token.slice(i));
+  for (const m of text.matchAll(/[\w.\-/«»]+/g)) {
+    const token = m[0];
+    tokens.add(token);
+    if (/^[/.]/.test(token) || text[m.index - 1] === '$') {
+      for (let i = token.indexOf('/') + 1; i > 0; i = token.indexOf('/', i) + 1) {
+        tokens.add(token.slice(i));
+      }
+    }
   }
   for (const name of named) {
     const sibling = path.dirname(name) === path.dirname(driver) && tokens.has(path.basename(name));

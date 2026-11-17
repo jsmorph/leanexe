@@ -8,7 +8,8 @@ memory, whose page count becomes the store's cap: `nativeStore` holds the module
 with the cap `cap` and the world `nativeWorld`.  The command's facts about its initial store, the
 allocator's heap, the literal pool, and the cap, read only the store's globals and memory and the
 cap, so they hold at every cap up to 65,535, and `linux_footprint_native` states the footprint of
-`linux_footprint` for runs from that store.
+`linux_footprint` for runs from that store.  `main_streams` states that the command's action makes
+no flat call, so the trace of no run of it holds one.
 -/
 
 namespace Verified.Examples.WasiReadAll
@@ -32,7 +33,23 @@ theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (fun _ membership => nomatch membership) hcap (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
+/-- The command's action reads, writes, and exits, and makes no flat call. -/
+theorem main_streams : StreamAction (main.bind fun status => Action.exit (α := Unit) status) := by
+  refine StreamAction.bind _ ?_ fun _ => trivial
+  unfold main
+  refine StreamAction.bind _ ?_ fun input => ?_
+  · unfold readAll
+    split
+    · exact ⟨fun _ _ => StreamAction.bind _ (fun _ => trivial) fun _ => trivial, fun _ => trivial⟩
+    · trivial
+  · split
+    · trivial
+    · refine StreamAction.bind _ ?_ fun _ => ?_
+      · exact ⟨fun _ _ => StreamAction.bind _ (fun _ => trivial) fun _ => by split <;> trivial,
+          fun _ => trivial⟩
+      · split <;> trivial
 
 end Verified.Examples.WasiReadAll
 
 #print axioms Verified.Examples.WasiReadAll.linux_footprint_native
+#print axioms Verified.Examples.WasiReadAll.main_streams

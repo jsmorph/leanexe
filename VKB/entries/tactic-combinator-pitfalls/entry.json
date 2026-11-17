@@ -50,7 +50,10 @@
     "Did not find an occurrence of the pattern dite ..., after unfold of a do block and bind_ok, under have __do_jp := fun ...",
     "CodeAt code (after a (33 + 5 * w + 8)) is where CodeAt code (after a (41 + 5 * w)) is is expected, or a whnf timeout there",
     "Dependent elimination failed: Failed to solve equation, from cases on returned (f x) b = returned 0 c",
-    "split on a goal whose outer match holds the if that the proof must decide"
+    "split on a goal whose outer match holds the if that the proof must decide",
+    "(M.core q').x r = (M.core q).x r after rw with a structure update, left open by rw's rfl",
+    "l[1]?.getD d after simp, where a hypothesis states l.tail.headD d",
+    "decreasing_by omega after let rep := replies k, with a counterexample that names rep.ret.toNat and (replies k).ret.toNat"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -76,7 +79,8 @@
     "Verified.Wasi.HandleCheck",
     "Verified.Wasi.ReflectBracket",
     "LeanExe.A64.Proof.StampProgram",
-    "Verified.Shim"
+    "Verified.Shim",
+    "LeanExe.A64.Proof.Constructs"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -138,7 +142,11 @@
     "LeanExe.A64.after_after",
     "LeanExe.A64.bind_ok",
     "LeanExe.A64.CodeAt",
-    "LeanExe.Wasi.Transfer.returned"
+    "LeanExe.Wasi.Transfer.returned",
+    "LeanExe.A64.State.x",
+    "LeanExe.A64.Machine.sim_iff",
+    "Verified.Shim.handleRead_contract",
+    "Verified.Shim.randomLoop"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
