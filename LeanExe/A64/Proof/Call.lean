@@ -1,4 +1,5 @@
 import LeanExe.A64.Proof.Arith
+import LeanExe.A64.Proof.MachineSim
 
 /-!
 The simulation of a call.  The caller stores the operand registers below the arguments into its
@@ -6,7 +7,9 @@ frame's spill slots, moves the arguments into X0 upward, and branches with `BL` 
 entry.  `CallsOk` supplies the callee's outcome at one less fuel, as Talos runs the callee's body:
 the callee returns with SP and X18 unchanged and changes no memory from its caller's SP upward,
 so the caller's locals and spill slots keep their words.  The caller moves the result from X0
-into the register of its height and reloads the spilled registers.
+into the register of its height and reloads the spilled registers.  The proof holds over every
+`Machine`, whose `CallsOk` supplies the callee's outcome under the machine's host environment, so
+the callee may be an import whose stub `Function.lean`'s `Machine.StubSim` describes.
 -/
 
 namespace LeanExe.A64
@@ -319,8 +322,18 @@ theorem getElem_reverse_call {vs vs' : List Value} {p r d kk : Nat} (hlen : vs.l
 
 /-! ## The call -/
 
-theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
+namespace Machine
+
+section General
+
+variable {P code}
+variable {α : Type} (M : Machine P code α)
+
+/-- The simulation of a call over the machine `M`: the call's own code runs in the program's
+model, and `M.CallsOk` supplies the callee's outcome. -/
+theorem sim_call (f k : Nat) : M.InstrSim (f + 1) (.call k) := by
+  intro E ctl σ a is fin hgen hcode hb hctl m st sl q hinv hsr h64 hpc need D hcl hD
+  have hsr0 := M.storeRel hsr
   obtain ⟨target, ps, rs, hk, htk, hfin, h, p, r, hσl, hpl, hrl0, hpb, hh26, hhr, hlocs,
     spills, moves, res, reloads, g, his, hsl, hsv, hml, hmv, hresl, hresv, hrl, hrv, hbf⟩ :=
     gen_call hgen
@@ -378,28 +391,29 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
   have t30 : t.x 30 = after a (d + p + 1) := by
     show (s2.setX 30 (s2.pc + 4)).x 30 = _
     rw [State.x_setX_same (by decide), pB, ← after_succ]
-  have tsp : t.sp = ms.sp := by
+  have tsp : t.sp = (M.core q).sp := by
     show (s2.setX 30 (s2.pc + 4)).sp = _
     rw [State.setX_sp, sp2, sp1]
   have tmem : t.mem = s1.mem := by
     show (s2.setX 30 (s2.pc + 4)).mem = _
     rw [State.setX_mem, mem2]
-  have tout : t.io = ms.io := by
+  have tout : t.io = (M.core q).io := by
     show (s2.setX 30 (s2.pc + 4)).io = _
     rw [State.setX_io, out2, out1]
-  have t18 : t.x 18 = ms.x 18 := by
+  have t18 : t.x 18 = (M.core q).x 18 := by
     rw [tx 18 (by decide), x2b 18 (fun i hi => (regOf_ne_18 i (by omega)).symm), x1]
-  have t17 : t.x 17 = ms.x 17 := by
+  have t17 : t.x 17 = (M.core q).x 17 := by
     rw [tx 17 (by decide), x2b 17 (fun i hi => (regOf_ne_17 i (by omega)).symm), x1]
-  have hsrt : StoreRel P E.cap E.globalTypes st t := hsr.congr t17 t18 fun b hb => by
+  have hsrt : StoreRel P E.cap E.globalTypes st t := hsr0.congr t17 t18 fun b hb => by
     rw [tmem]
     exact mem1 b fun j hj => below_slot hl2 hl3 (by omega) hb
-  have rt : Reach P code ms t :=
+  have rt : Reach P code (M.core q) t :=
     r1.trans (r2.trans (reach_exec P code (by rw [pB]; exact cB) et (.refl _)))
+  obtain ⟨qt, hqt, hct, hsrt', -⟩ := M.lift hsr rt
   -- the callee
   have hvl : sl.values.length = d + p := by omega
-  have hargs : StackRel t (sl.values.take ps.length) := by
-    rw [hpl]
+  have hargs : StackRel (M.core qt) (sl.values.take ps.length) := by
+    rw [hct, hpl]
     refine ⟨by simp; omega, fun i hi => ?_⟩
     simp only [List.length_take] at hi
     have hi' : i < p := by omega
@@ -410,25 +424,28 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     exact this
   have htargs : Typed ps.reverse (sl.values.take ps.length) := by
     rw [← htk]; exact hty.take ps.length
-  have hfs : CallOutcome P code E.toShared (need k) ps rs sl.values
-      (Wasm.run f m k st sl.values) t :=
-    hcl.2 k (target, ps, rs) hk f (by omega) st sl.values t
-      (show ps.length ≤ sl.values.length by omega) htargs pt
-      (hinv.frame.stack.congr tsp t18) hsrt hargs
+  have hfs : M.CallOutcome E.toShared (need k) ps rs sl.values
+      (Wasm.run f m k st sl.values M.env) qt :=
+    hcl.2 k (target, ps, rs) hk f (by omega) st sl.values qt
+      (show ps.length ≤ sl.values.length by omega) htargs (by rw [hct]; exact pt)
+      (by rw [hct]; exact hinv.frame.stack.congr tsp t18) (hsrt' st hsrt rfl) hargs
   simp only [execOne.eq_def]
   rcases hfs with hov | hfs
-  · obtain ⟨hn, ms', hr', hp', hout'⟩ := hov
-    have hnD : (ms.sp - ms.x 18).toNat < D := by
+  · obtain ⟨hn, q', hr', hp', hout'⟩ := hov
+    rw [hct] at hn hout'
+    have hnD : ((M.core q).sp - (M.core q).x 18).toNat < D := by
       rw [← tsp, ← t18]
       exact Nat.lt_of_lt_of_le hn (hD k (by simp [callsOf]))
-    exact .inl ⟨hnD, ms', rt.trans hr', hp', by rw [hout', tout]⟩
+    exact .inl ⟨hnD, q', M.trans hqt hr', hp', by rw [hout', tout]⟩
   refine .inr ?_
   revert hfs
-  cases Wasm.run f m k st sl.values with
+  cases Wasm.run f m k st sl.values M.env with
   | Success vs' st' =>
       intro hfs
-      obtain ⟨ms', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres', htres', hsr'⟩ :=
+      obtain ⟨q', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres', htres', hsr'⟩ :=
         hfs
+      rw [hct] at hp' hsp' h18' hout' hmf'
+      have hsr1 := M.storeRel hsr'
       have htres : Typed (rs.reverse ++ σ.drop ps.length) vs' := by
         rw [← List.take_append_drop rs.length vs', hdrop']
         exact htres'.append (hty.drop ps.length)
@@ -452,29 +469,29 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
         (by rw [p3, after_after])
         (by rw [sp3, hsp']; exact hinv.aligned)
         (fun j hj => by rw [sp3, hsp']; exact hinv.frame.mapped j (by omega))
-      have hcal : ∀ i < 512, load64 ms'.mem (slotAddr ms.sp i) =
-          load64 s1.mem (slotAddr ms.sp i) := by
+      have hcal : ∀ i < 512, load64 (M.core q').mem (slotAddr (M.core q).sp i) =
+          load64 s1.mem (slotAddr (M.core q).sp i) := by
         intro i hi
         apply load64_congr
         intro kk hkk
         rw [hmf' _ (by rw [tsp]; exact le_slot hkk hl3 hi (Nat.zero_le _)), tmem]
-      have hrest : ∀ j < d, s4.x (regOf j) = ms.x (regOf j) := by
+      have hrest : ∀ j < d, s4.x (regOf j) = (M.core q).x (regOf j) := by
         intro j hj
         rw [x4a j hj, mem3, sp3, hsp', hcal _ (by omega), ld1 j hj]
       have hloc' : LocalsRel s4 (sl.params ++ sl.locals) := by
         intro i hi
         have hi' : i < E.locals := by rw [hEl, ← hinv.count]; exact hi
         rw [sp4, sp3, hsp', mem4, mem3, hcal _ (by omega)]
-        rw [load64_congr (m' := ms.mem) fun kk hkk =>
+        rw [load64_congr (m' := (M.core q).mem) fun kk hkk =>
           mem1 _ fun j hj => slot_apart (by omega) (by omega) (by omega) kk hkk]
         exact hinv.locals i hi
-      have hmf4 : MemFrame ms.sp (E.locals + spillSlots) ms s4 := by
+      have hmf4 : MemFrame (M.core q).sp (E.locals + spillSlots) (M.core q) s4 := by
         intro b hb'
         rw [mem4, mem3, hmf' b (by rw [tsp]; omega), tmem]
         exact mem1 b fun j hj => slot_inside (n := E.locals + spillSlots) (by omega) (by omega)
           (hinv.frame.outside (m := E.locals + spillSlots) (Nat.le_refl _) hb')
       have hvl' : vs'.length = d + r := by rw [hlen', hvl]; omega
-      have h184 : s4.x 18 = ms.x 18 := by
+      have h184 : s4.x 18 = (M.core q).x 18 := by
         rw [x4b 18 (fun j hj => (regOf_ne_18 j (by omega)).symm),
           x3b 18 (fun k hk => (regOf_ne_18 _ (by omega)).symm), h18']
       have hstack' : StackRel s4 vs' := by
@@ -482,7 +499,7 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
         by_cases hkd : kk < d
         · rw [getElem_reverse_call hvl (by omega) hdrop' hkd, hrest kk hkd]
           exact hinv.stack.2 kk (by omega)
-        · have hx : s4.x (regOf kk) = ms'.x (regOf (kk - d)) := by
+        · have hx : s4.x (regOf kk) = (M.core q').x (regOf (kk - d)) := by
             rw [x4b _ (fun j hj e => absurd (regOf_inj kk (by omega) j (by omega) e) (by omega))]
             have := x3a (r - 1 - (kk - d)) (by omega)
             rwa [show d + (r - 1 - (r - 1 - (kk - d))) = kk by omega,
@@ -495,22 +512,32 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
             omega
           rw [hx, e]
           exact hres'.2 (kk - d) (by simp; omega)
-      have h174 : s4.x 17 = ms'.x 17 := by
+      have h174 : s4.x 17 = (M.core q').x 17 := by
         rw [x4b 17 (fun j hj => (regOf_ne_17 j (by omega)).symm),
           x3b 17 (fun k hk => (regOf_ne_17 _ (by omega)).symm)]
-      refine ⟨_, rfl, s4, rt.trans (hr'.trans (r3.trans r4)), ?_, ?_, ?_, h184, hmf4,
+      obtain ⟨q4, hq4, hc4, hsr4, -⟩ := M.lift hsr' (r3.trans r4)
+      have hsr4' := hsr4 st' (hsr1.regs h174 (by rw [h184, h18']) (by rw [mem4, mem3])) rfl
+      subst hc4
+      refine ⟨_, rfl, q4, M.trans hqt (M.trans hr' hq4), ?_, ?_, ?_, h184, hmf4,
         ⟨hstack', hloc', hinv.count, hinv.frame.congr (by rw [sp4, sp3, hsp']) h184, htres,
-          hinv.ltypes⟩, fun kk hk => hrest kk (by omega),
-        hsr'.regs h174 (by rw [h184, h18']) (by rw [mem4, mem3])⟩
+          hinv.ltypes⟩, fun kk hk => hrest kk (by omega), hsr4'⟩
       · rw [p4, after_after, hlenis]
       · rw [sp4, sp3, hsp']
       · rw [out4, out3, hout']
   | Trap st' msg =>
       intro hfs
-      obtain ⟨ms', hr', hout', hpc'⟩ := hfs
-      exact ⟨ms', rt.trans hr', by rw [hout', tout], hpc'⟩
+      obtain ⟨q', hr', hout', hpc'⟩ := hfs
+      rw [hct] at hout'
+      exact ⟨q', M.trans hqt hr', by rw [hout', tout], hpc'⟩
   | Invalid _ => intro _; trivial
   | OutOfFuel => intro _; trivial
   | Thrown _ _ _ => intro hfs; exact (hfs : False).elim
+
+end General
+
+end Machine
+
+theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) :=
+  InstrSim.of_bare P code fun α => (bare P code α).sim_call f k
 
 end LeanExe.A64
