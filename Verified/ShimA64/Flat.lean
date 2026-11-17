@@ -27,7 +27,8 @@ variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ t
 /-- The code of a stub of `flatStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
 the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
 area, stands for the shim's function of the call `c` of `shimCalls` whose import is the stub's,
-when the area and the scratch lie in the data segment. -/
+when the area and the scratch lie in the data segment, the UART lies outside the module's Normal
+memory, and the cap's linear memory lies within the machine's `size` bytes. -/
 theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Call}
     (hc : c ∈ shimCalls) (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat)
     {a svc en : UInt64} {is : List Instr}
