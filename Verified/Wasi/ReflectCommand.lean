@@ -8,6 +8,7 @@ import Verified.Wasi.StaticPool
 import Verified.Wasi.NativeTotal
 import Verified.Wasi.CommandTotal
 import Verified.Wasi.Stack
+import Verified.Wasi.Handles
 
 namespace Verified.Wasi.Reflect
 
@@ -167,6 +168,15 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) (calls : B
       let total ← totalExecutionProof resourceSafe
       return (← mkLambdaFVars params execution, ← mkLambdaFVars params total)
     let functionBase := base ++ Name.mkSimple reflected.name.getString!
+    let handles ← lambdaTelescope info.value fun params _ => do
+      let callee ← mkAppM ``EffectEntry.callee #[entry]
+      let handles ← mkAppM ``EffectProg.bracketRuns
+        #[mkConst (base ++ `pure ++ `funs), mkConst (base ++ `program),
+          mkConst (base ++ `handleMarks), mkConst (base ++ `handlesChecked), callee,
+          ← nativeEnvironment reflected params, ← mkEqRefl (mkConst ``Bool.true),
+          mkAppN (mkConst reflected.name) params, mkAppN (mkConst reflected.meaning) params]
+      mkLambdaFVars params handles
+    addTheorem (functionBase ++ `handles) (← inferType handles) handles
     addTheorem (functionBase ++ `implements) (← inferType proof) proof
     let exportProof ← specializeTheorem exportName
       ([(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
@@ -201,6 +211,11 @@ private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : 
   let resourceSafe ← specializeTheorem runName ((`aborts, toExpr false) :: assignments)
   let total ← totalExecutionProof resourceSafe (some native)
   addTheorem (base ++ `total) (← inferType total) total
+  let handles ← mkAppM ``EffectProg.bracketRuns
+    #[mkConst (base ++ `pure ++ `funs), mkConst (base ++ `program), mkConst (base ++ `handleMarks),
+      mkConst (base ++ `handlesChecked), ← mkAppM ``EffectMain.callee #[main], env,
+      ← mkEqRefl (mkConst ``Bool.true), native, mkConst reflected.meaning]
+  addTheorem (base ++ `handles) (← inferType handles) handles
 
 private def compileProgram (target : Ident) (sources : Array Ident) (main? : Option Ident) :
     CommandElabM Unit := do
@@ -237,8 +252,15 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
     throwError "verified_compile_wasi: the definition list has no Action definition"
   let mainName? ← main?.mapM fun main => liftCoreM <| realizeGlobalConstNoOverloadWithInfo main
   let exports := if mainName?.isSome then [] else selected
+  for reflected in state.out do
+    if exports.contains reflected.name && (reflected.marks.any id || reflected.returnsHandle) then
+      throwError "verified_compile_wasi: {reflected.name} is exported and takes or returns a Handle"
   trace[verified.wasi] "Materialize: {base}"
   let materialized ← liftTermElabM (materializeProgram base state exports mainName?)
+  trace[verified.wasi] "Handle check: {base}"
+  elabCommand (← `(theorem $(mkIdent (target.getId ++ `handlesChecked)) :
+      Verified.Wasi.EffectProg.handleCheck $(mkIdent (base ++ `handleMarks))
+        $(mkIdent (base ++ `program)) = true := by decide +kernel))
   trace[verified.wasi] "Compiler proofs: {base}"
   emitCompilerProofs target.getId base materialized.calls
   match mainName? with

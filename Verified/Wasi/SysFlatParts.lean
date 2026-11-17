@@ -83,7 +83,7 @@ theorem outputLocalInputs_spec {s : Locals} :
       inputCount => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputLocs with
       | nil => simp at inputLocCount
@@ -117,7 +117,7 @@ theorem outputLocalInputs_spec {s : Locals} :
       | @cons place value locs' values' get held' =>
         exact Or.inr ⟨place, value, rfl, by simp [flatCapacityWith], get, List.mem_cons_self ..,
           by simp⟩
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       cases held with
       | nil => simp [Param.takesWord, Param.takesArg, List.countP_cons] at count
       | @cons place value locs' values' get held' =>
@@ -143,7 +143,7 @@ theorem flatCapacityWith_small :
   | param :: params, values, inputs, capacity, kinds, count, accepted, found => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count
@@ -168,7 +168,7 @@ theorem flatCapacityWith_small :
       by_contra large
       simp only [List.headD_eq_head?_getD] at large
       simp [large] at accepted
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [rejectArgs, flatArgsWith, Param.takesArg, ite_true] at accepted
       refine flatCapacityWith_small params values.tail inputs capacity kinds.2
         (by simpa [List.count_cons] using count) ?_
@@ -196,7 +196,7 @@ theorem flat_output_at_inputs {mem : Mem} {root : UInt32} {sizes : List Nat} {er
       sizes', found => by
     simp only [List.all_cons, Bool.and_eq_true] at kinds
     cases param with
-    | reported | record => simp [Param.inputKind, Param.flatKind] at kinds
+    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
     | input =>
       cases inputs with
       | nil => simp at count
@@ -207,7 +207,7 @@ theorem flat_output_at_inputs {mem : Mem} {root : UInt32} {sizes : List Nat} {er
           kinds.2 (by simpa [List.count_cons] using outputCount)
           (by simpa [List.count_cons] using count) shown sizes'
           (by simpa [List.map_cons, flatCapacityWith] using found)
-    | word32 | word64 | enum32 | flags32 | flags64 =>
+    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
       simp only [flatArgsWith, flatPointersWith, outputRegions, outputSizesOf,
         List.tail_cons] at shown sizes'
       simpa [resultBytes] using flat_output_at_inputs params values.tail inputs outputs slot

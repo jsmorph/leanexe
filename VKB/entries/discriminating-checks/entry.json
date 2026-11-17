@@ -10,7 +10,8 @@
     "a tolerance as large as the quantity that the check compares",
     "a test of the accuracy of a bound against the true value, with a margin for the limit of the method",
     "a run of an emitted module whose checks test outputs by presence or number",
-    "a frame test with guard bytes around the declared regions of a call"
+    "a frame test with guard bytes around the declared regions of a call",
+    "a seeded fault that passes when an unrelated check fails, or when random bytes equal the guard"
   ],
   "modules": [],
   "declarations": [],

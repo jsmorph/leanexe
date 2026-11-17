@@ -88,6 +88,22 @@ then
   fail "seeded fault reporter" "the independent lowering accepted an altered reporter"
 fi
 rejected=$((rejected + 1))
+sed '0,/\.iovec false, \.result32/s//.iovec true, .result32/' LeanExe/Wasi/CallTable.lean \
+  > "$out/iovec-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/iovec-fault.lean" \
+  > "$out/fault-iovec.txt" 2>&1
+then
+  fail "seeded fault iovec" "the independent lowering accepted an iovec read as a write"
+fi
+rejected=$((rejected + 1))
+sed '0,/⟨16, 4, \.handle⟩/s//⟨16, 4, .word⟩/' LeanExe/Wasi/CallTable.lean \
+  > "$out/subscription-fault.lean"
+if uv run tests/wasi/witx-lowering.py "$witx" "$out/subscription-fault.lean" \
+  > "$out/fault-subscription.txt" 2>&1
+then
+  fail "seeded fault subscription" "the independent lowering accepted a descriptor as a word"
+fi
+rejected=$((rejected + 1))
 printf 'flat call seeded faults detected: %s\n' "$rejected"
 
 wasm-tools parse tests/wasi/sys/frame.wat -o "$out/frame.wasm"
@@ -118,13 +134,17 @@ timeout 60s "$host" --arg prog --arg "$long" run "$out/frame.wasm" 2> "$out/fram
 [ "$status" -eq 0 ] || fail "frame with a 4096-byte argument" "status $status"
 cases=$((cases + 1))
 
-# The frame test of every flat function runs with a fresh directory preopened at descriptor 3.  Each
-# seeded fault's frame test must exit with the status that tools/wasi-calls.py prints for it.
+# The frame test of every flat function runs with a fresh directory preopened at descriptor 3, the
+# arguments prog and a, and the environment variable that its steps expect (ENVIRONMENT in the
+# generator).  Each seeded fault's frame test must exit with the status that tools/wasi-calls.py
+# prints for it.
 dir="$out/frame-dir"
+frame="--arg prog --arg a --env LEANEXE_FRAME=1"
 rm -rf "$dir"
 mkdir "$dir"
 status=0
-timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$out/frame-all.wasm" \
+# shellcheck disable=SC2086
+timeout 60s "$host" --dir "$dir" $frame run "$out/frame-all.wasm" \
   2> "$out/frame-all.stderr" || status=$?
 [ "$status" -eq 0 ] || fail "frame of every function" "status $status"
 cases=$((cases + 1))
@@ -137,7 +157,8 @@ while read -r name expected; do
   rm -rf "$dir"
   mkdir "$dir"
   status=0
-  timeout 60s "$host" --dir "$dir" --arg prog --arg a run "$faults/$name.wasm" \
+  # shellcheck disable=SC2086
+  timeout 60s "$host" --dir "$dir" $frame run "$faults/$name.wasm" \
     < /dev/null 2> "$faults/$name.stderr" || status=$?
   [ "$status" -eq "$expected" ] ||
     fail "seeded frame fault $name" "status $status, expected $expected"

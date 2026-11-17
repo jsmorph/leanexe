@@ -36,6 +36,7 @@ elab "check_wasi_sys_axioms" : command => do
     ``Verified.Examples.WasiSys.command.exported,
     ``Verified.Examples.WasiSys.command.total,
     ``Verified.Examples.WasiSys.command.validity,
+    ``Verified.Examples.WasiSys.command.handles,
     ``Verified.Examples.WasiSys.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

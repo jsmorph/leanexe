@@ -51,7 +51,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Compiled forms of list specifications](entries/linear-compiled-folds/README.md) | Makes native evaluation of a fold that appends to the end of a list linear by a `csimp` theorem, while the proofs keep the definition. |
 | [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
 | [Composed and appended programs](entries/module-composition/README.md) | Proves the theorems of functions added to or appended with a compiled program. |
-| [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays and trees across a call through the region clause, and composes the frames of steps. |
+| [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays, buffers, and trees across a call through the region clause, composes the frames of steps, among them a WASI command and the release of the variables that die after it. |
 | [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
 | [Checks that can fail](entries/discriminating-checks/README.md) | Shows that a check detects a seeded fault before its passes count as evidence. |
@@ -59,6 +59,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Theorems outside the full check](entries/out-of-build-checks/README.md) | Identifies theorems that the full check does not check and the driver that does, and elaborates a file against a module that no build has compiled. |
 | [Results that show a check passed](entries/result-validity/README.md) | Takes a verdict from the check's own output on a known tree. |
 | [Changes that keep statements and bytes](entries/unchanged-statements-and-bytes/README.md) | Shapes a change of a shared definition so that existing theorems and artifacts stay as they are, and shows it. |
+| [Instructions that the encoder accepts](entries/encoder-domain/README.md) | Keeps emitted code within the verified encoder's instruction forms and builds missing loads from accepted ones. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
 | [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices, such as arrays kept in a loop's state, to allocation, generated bounds, and compilation cost. |
 | [Array literals, proposition tests, and structure patterns](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms, and the structure patterns that the reflector reads and those it rejects. |

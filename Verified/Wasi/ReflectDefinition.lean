@@ -16,6 +16,11 @@ structure Reflected where
   nativeResult : Lean.Expr
   result : ResultShape
   tables : List StaticTable
+  /-- Whether each source parameter, the hidden tables first, is a `Handle`, which the handle
+  check marks. -/
+  marks : List Bool
+  /-- Whether the result is a `Handle`. -/
+  returnsHandle : Bool
 
 /-- Native parameters vary in the correspondence theorem.  Hidden source parameters denote
 the declared table constants, introduced as local definitions during reflection. -/
@@ -61,6 +66,8 @@ def reflectDefinition (base name : Name) (context : Ctx) (tables : List StaticTa
         (← mkForallFVars params (← meaningType bodyContext checked.result native sourceBody))
       let proof ← mkLetFVars tableLocals (← mkLambdaFVars params checked.proof)
       Verified.Reflect.addTheorem meaningName proposition proof
+      let isHandle (type : Lean.Expr) : MetaM Bool :=
+        return (← whnfR type).isConstOf ``LeanExe.Wasi.Handle
       return {
         name := name
         function := functionName
@@ -69,7 +76,9 @@ def reflectDefinition (base name : Name) (context : Ctx) (tables : List StaticTa
         nativeParams := nativeTypes
         nativeResult := nativeResult
         result := reflected.result
-        tables := tables }
+        tables := tables
+        marks := List.replicate tables.length false ++ (← nativeTypes.mapM isHandle)
+        returnsHandle := ← isHandle nativeResult }
 
 def Reflected.callee (reflected : Reflected) : Callee :=
   { name := reflected.name

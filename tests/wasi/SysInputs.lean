@@ -2,7 +2,8 @@ import Verified.Examples.WasiSysInputs
 
 /-! The axiom audit of the flat calls with inputs: the marshalling and command theorems with
 inputs, the reflection equations of the calls of `Verified.Examples.WasiSysInputs`, and the
-generated theorems of that example use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+generated theorems of that example, its handle check and `handles` among them, use only `propext`,
+`Classical.choice`, and `Quot.sound`. -/
 
 open Lean Elab Command in
 elab "check_sys_inputs_axioms" : command => do
@@ -23,6 +24,8 @@ elab "check_sys_inputs_axioms" : command => do
     ``Verified.Examples.WasiSysInputs.command.exported,
     ``Verified.Examples.WasiSysInputs.command.total,
     ``Verified.Examples.WasiSysInputs.command.validity,
+    ``Verified.Examples.WasiSysInputs.command.handlesChecked,
+    ``Verified.Examples.WasiSysInputs.command.handles,
     ``Verified.Examples.WasiSysInputs.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

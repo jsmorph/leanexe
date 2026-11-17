@@ -16,7 +16,10 @@
     "an old theorem proved from its general twin at calls := []",
     "a premise added to a predicate that lemmas take as a hypothesis",
     "tools/DeclHashes.lean fails to import two modules that declare main",
-    "a changed type hash of a theorem whose text did not change, from a reused matcher"
+    "a changed type hash of a theorem whose text did not change, from a reused matcher",
+    "a definition that gains an argument list and must equal the old one at the empty list",
+    "sysCostWith form call values [] = sysCost form call values, an equation of functions",
+    "(inputs.any f || args.any g) at inputs := [] against a hypothesis about args.any g"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -35,7 +38,8 @@
     "Verified.Wasi.CommandCodeSpec",
     "Verified.Wasi.CompilerFacts",
     "Verified.Wasi.ReflectCommand",
-    "Verified.Wasi.Wrappers"
+    "Verified.Wasi.Wrappers",
+    "Verified.Wasi.SysCommand"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -92,13 +96,27 @@
     "Verified.Wasi.Command.sys",
     "Verified.Wasi.Reflect.ProgramReflection.usesCalls",
     "Verified.Wasi.Wrappers.outputPosition",
-    "Lean.Meta.Match.mkMatcherAuxDefinition"
+    "Lean.Meta.Match.mkMatcherAuxDefinition",
+    "Verified.Wasi.flatArgs",
+    "Verified.Wasi.flatArgsWith",
+    "Verified.Wasi.flatCapacity",
+    "Verified.Wasi.flatCapacityWith",
+    "Verified.Wasi.flatArgsWith_nil",
+    "Verified.Wasi.flatCapacityWith_nil",
+    "Verified.Wasi.SysForm.runWith_nil",
+    "Verified.Wasi.sysCostWith_nil",
+    "Verified.Wasi.sysInputsCodeWith_nil",
+    "Verified.Wasi.sysFlatInputsCodeWith_nil",
+    "Verified.Wasi.Command.uses",
+    "Verified.Wasi.wp_sys_result_with"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",
     "TestSupport.M7.Sha.shaOvrdis_loop",
     "LeanExe.A64.sysProgram_run",
     "Verified.Wasi.compile_entry_export",
-    "Verified.Wasi.compile_entry_export_with"
+    "Verified.Wasi.compile_entry_export_with",
+    "Verified.Wasi.wp_sys_flat_result_with",
+    "Verified.Wasi.wp_sys_flat_result_inputs_with"
   ]
 }

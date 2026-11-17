@@ -1,8 +1,9 @@
 import Verified.Examples.WasiSysRecords
 
 /-! The axiom audit of the record calls: the marshalling and command theorems of the record form,
-the reflection equations of the four record calls, and the generated theorems of
-`Verified.Examples.WasiSysRecords` use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+the reflection equations of the four record calls and of `withOpen`, and the generated theorems of
+`Verified.Examples.WasiSysRecords`, its handle check and `handles` among them, use only `propext`,
+`Classical.choice`, and `Quot.sound`. -/
 
 open Lean Elab Command in
 elab "check_sys_record_axioms" : command => do
@@ -29,6 +30,10 @@ elab "check_sys_record_axioms" : command => do
     ``Verified.Examples.WasiSysRecords.command.exported,
     ``Verified.Examples.WasiSysRecords.command.total,
     ``Verified.Examples.WasiSysRecords.command.validity,
+    ``Verified.Examples.WasiSysRecords.command.handlesChecked,
+    ``Verified.Examples.WasiSysRecords.command.handles,
+    ``Verified.Wasi.Reflect.withOpen_rel,
+    ``Verified.Wasi.Reflect.withOpen_rel_mk,
     ``Verified.Examples.WasiSysRecords.command.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

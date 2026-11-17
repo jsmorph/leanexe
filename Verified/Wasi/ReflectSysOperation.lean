@@ -26,4 +26,13 @@ def flatForm (words : Nat) (bytes : Bool) : Lean.Expr :=
 def recordForm (fields : Nat) : Lean.Expr :=
   mkApp (mkConst ``Verified.Wasi.SysForm.record) (mkNatLit fields)
 
+/-- The form `SysForm.iovecRead` as a term. -/
+def iovecReadForm : Lean.Expr := mkConst ``Verified.Wasi.SysForm.iovecRead
+
+/-- The form `SysForm.iovecWrite` as a term. -/
+def iovecWriteForm : Lean.Expr := mkConst ``Verified.Wasi.SysForm.iovecWrite
+
+/-- The form `SysForm.poll` as a term. -/
+def pollForm : Lean.Expr := mkConst ``Verified.Wasi.SysForm.poll
+
 end Verified.Wasi.Reflect

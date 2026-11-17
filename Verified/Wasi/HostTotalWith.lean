@@ -18,12 +18,15 @@ open Wasm LeanExe.Wasi
 def alignUp (address align : Nat) : Nat := address + (align - address % align) % align
 
 /-- The address after the inputs and output regions of a request laid out from `start` in
-parameter order: an input or an output buffer at the address reached, and a result word, a record,
-or a reported region at the next multiple of its alignment.  `sizes` holds the sizes of the reported
-regions.  A record of alignment 0 has no layout: the end of a request with one lies past `2^32`. -/
+parameter order: an input or an output buffer at the address reached, a result word, a record, or
+a reported region at the next multiple of its alignment, an iovec's element at the next multiple
+of 4 with its buffer after it, and the subscriptions at the next multiple of 8 with the events
+after them.  `sizes` holds the sizes of the reported regions.  A record of alignment 0 has no
+layout: the end of a request with one lies past `2^32`. -/
 def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | [], _, _, start => start
   | .word32 :: params, sizes, args, start
+  | .handle :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
@@ -39,11 +42,19 @@ def layoutEnd : List Param → List Nat → List Arg → Nat → Nat
   | .result64 :: params, sizes, args, start => layoutEnd params sizes args (alignUp start 8 + 8)
   | .reported _ align _ :: params, sizes, args, start =>
     layoutEnd params sizes.tail args (alignUp start align + sizes.headD 0)
+  | .iovec false :: params, sizes, args, start =>
+    layoutEnd params sizes args.tail (alignUp start 4 + 8 + (args.head?.map Arg.capacity).getD 0)
+  | .iovec true :: params, sizes, args, start =>
+    layoutEnd params sizes args.tail (alignUp start 4 + 8 + (args.head?.map Arg.length).getD 0)
+  | .subscriptions records :: params, sizes, args, start =>
+    layoutEnd params sizes (args.drop (argFields records).length)
+      (alignUp start 8 + 80 * records.length)
 
 /-- The pointers of the layout that `layoutEnd` describes, in parameter order. -/
 def layoutPointers : List Param → List Nat → List Arg → Nat → List UInt32
   | [], _, _, _ => []
   | .word32 :: params, sizes, args, start
+  | .handle :: params, sizes, args, start
   | .enum32 _ :: params, sizes, args, start
   | .flags32 _ :: params, sizes, args, start
   | .flags64 _ :: params, sizes, args, start
@@ -64,6 +75,18 @@ def layoutPointers : List Param → List Nat → List Arg → Nat → List UInt3
   | .reported _ align _ :: params, sizes, args, start =>
     UInt32.ofNat (alignUp start align) ::
       layoutPointers params sizes.tail args (alignUp start align + sizes.headD 0)
+  | .iovec false :: params, sizes, args, start =>
+    UInt32.ofNat (alignUp start 4) :: UInt32.ofNat (alignUp start 4 + 8) ::
+      layoutPointers params sizes args.tail
+        (alignUp start 4 + 8 + (args.head?.map Arg.capacity).getD 0)
+  | .iovec true :: params, sizes, args, start =>
+    UInt32.ofNat (alignUp start 4) :: UInt32.ofNat (alignUp start 4 + 8) ::
+      layoutPointers params sizes args.tail
+        (alignUp start 4 + 8 + (args.head?.map Arg.length).getD 0)
+  | .subscriptions records :: params, sizes, args, start =>
+    UInt32.ofNat (alignUp start 8) :: UInt32.ofNat (alignUp start 8 + 48 * records.length) ::
+      layoutPointers params sizes (args.drop (argFields records).length)
+        (alignUp start 8 + 80 * records.length)
 
 /-- A 4 GiB memory holding each input of a request at its pointer. -/
 def layoutMemory (params : List Param) (args : List Arg) (pointers : List UInt32) : Mem :=
@@ -96,7 +119,8 @@ theorem layoutEnd_ge (params : List Param) :
   | cons param params ih =>
       intro sizes args start
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ => exact ih sizes args.tail start
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
+          exact ih sizes args.tail start
       | record size align fields =>
           simp only [layoutEnd]
           split
@@ -113,6 +137,12 @@ theorem layoutEnd_ge (params : List Param) :
       | reported scale align shown =>
           exact Nat.le_trans (Nat.le_trans (le_alignUp start align) (Nat.le_add_right _ _))
             (ih sizes.tail args _)
+      | iovec isInput =>
+          cases isInput <;>
+            exact Nat.le_trans (Nat.le_trans (le_alignUp start 4) (by omega)) (ih sizes args.tail _)
+      | subscriptions records =>
+          exact Nat.le_trans (Nat.le_trans (le_alignUp start 8) (Nat.le_add_right _ _))
+            (ih sizes _ _)
 
 namespace Layout
 
@@ -155,6 +185,12 @@ structure Laid (start stop : Nat) (regions : List Region)
 
 theorem Laid.nil (start : Nat) : Laid start start [] [] :=
   ⟨nofun, nofun, List.Pairwise.nil⟩
+
+theorem Laid.weaken {start start' stop : Nat} {regions : List Region}
+    {places : List (UInt32 × LeanExe.Bytes)} (h : Laid start' stop regions places)
+    (le : start ≤ start') : Laid start stop regions places :=
+  ⟨fun region member => ⟨(h.region region member).1.weaken le, (h.region region member).2⟩,
+    fun place member => (h.place place member).weaken le, h.apart⟩
 
 theorem Laid.cons_region {start stop address size align : Nat} {shown : Bool}
     {regions : List Region} {places : List (UInt32 × LeanExe.Bytes)} (low : start ≤ address)
@@ -219,7 +255,7 @@ theorem laid (params : List Param) :
           ∀ scale align shown, Param.reported scale align shown ∈ params → 0 < align :=
         fun scale align shown member => aligned scale align shown (List.mem_cons_of_mem _ member)
       cases param with
-      | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+      | word32 | handle | word64 | enum32 _ | flags32 _ | flags64 _ =>
           exact ih sizes args.tail start alignedRest fits
       | record size align fields =>
           by_cases positive : 0 < align
@@ -252,6 +288,36 @@ theorem laid (params : List Param) :
           exact Laid.cons_region (le_alignUp _ _)
             (alignUp_mod _ (aligned scale align shown List.mem_cons_self))
             (layoutEnd_ge _ _ _ _) fits (ih _ _ _ alignedRest fits)
+      | iovec isInput =>
+          cases isInput with
+          | false =>
+            simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
+              List.headD_cons] at fits ⊢
+            refine Laid.weaken (Laid.cons_place (elementBytes_size _ _)
+              (Nat.le_trans (by omega) (layoutEnd_ge _ _ _ _)) fits ?_) (le_alignUp _ _)
+            exact Laid.cons_region (Nat.le_refl _) (Nat.mod_one _) (layoutEnd_ge _ _ _ _) fits
+              (ih _ _ _ alignedRest fits)
+          | true =>
+            simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
+              List.headD_cons] at fits ⊢
+            refine Laid.weaken (Laid.cons_place (elementBytes_size _ _)
+              (Nat.le_trans (by omega) (layoutEnd_ge _ _ _ _)) fits ?_) (le_alignUp _ _)
+            refine Laid.cons_place ?_ (layoutEnd_ge _ _ _ _) fits (ih _ _ _ alignedRest fits)
+            cases args with
+            | nil => rfl
+            | cons arg _ => cases arg <;> rfl
+      | subscriptions records =>
+          simp only [layoutEnd, layoutPointers, outputRegions, inputPlaces, List.tail_cons,
+            List.headD_cons] at fits ⊢
+          have hAligned := alignUp_mod start (show 0 < 8 by decide)
+          refine Laid.weaken (Laid.cons_place (subscriptionBytes_size _ _)
+            (Nat.le_trans (by omega) (layoutEnd_ge _ _ _ _)) fits ?_) (le_alignUp _ _)
+          have hEnd := layoutEnd_ge params sizes (args.drop (argFields records).length)
+            (alignUp start 8 + 80 * records.length)
+          refine Laid.cons_region (Nat.le_refl _) (by omega) (by omega) fits ?_
+          rw [show alignUp start 8 + 48 * records.length + 32 * records.length =
+            alignUp start 8 + 80 * records.length by omega]
+          exact ih _ _ _ alignedRest fits
 
 end Layout
 
