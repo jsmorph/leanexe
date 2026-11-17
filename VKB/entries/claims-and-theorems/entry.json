@@ -5,21 +5,25 @@
     "a property of the Lean function joined with an artifact's theorem",
     "a claim about a running artifact and its trusted base",
     "heap'.top.toNat ≤ heap.top.toNat + compiled.f.bound x",
-    "a document that names a case by a quantity other than the model's definition, such as the shape of an orbit from the sign of β"
+    "a document that names a case by a quantity other than the model's definition, such as the shape of an orbit from the sign of β",
+    "a claim that a scope of a run, such as a bracket that returns, closes what it opened"
   ],
   "modules": [
     "TestSupport.M7.BmsLoop",
     "Demos.Bms.Abs",
     "Library.Sorting.Quicksort.Compiled",
     "Library.Trees.Avl.Compiled",
-    "Demos.Orbit.Universal"
+    "Demos.Orbit.Universal",
+    "Verified.Wasi.Handles"
   ],
   "declarations": [
     "Demos.Bms.Program.m1_prefix",
     "Library.Sorting.Quicksort.quicksort_implements",
     "Library.Sorting.Quicksort.quicksort_bound",
     "Library.Trees.Avl.insert_implements",
-    "Demos.Orbit.orbitOf_ecc"
+    "Demos.Orbit.orbitOf_ecc",
+    "Verified.Wasi.Command.handles_exec",
+    "Verified.Wasi.withOpen_closes"
   ],
   "examples": [
     "TestSupport.M7.Bms.board_safe"

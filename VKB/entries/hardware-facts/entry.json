@@ -7,7 +7,9 @@
     "USART3 after a receive overrun, with OVRDIS clear or set",
     "a proof outside the build offered as evidence for a trusted item",
     "a WebAssembly engine's reply to an argument outside its type, read from the engine's source",
-    "a rejection rule of an enum or flags parameter tested on both sides against the engine"
+    "a rejection rule of an enum or flags parameter tested on both sides against the engine",
+    "an engine's behavior on an array of records, probed with one element",
+    "an invalid enum or flags value in a record that a function reads from memory"
   ],
   "modules": [
     "LeanExe.M7.Board",
@@ -27,7 +29,10 @@
     "LeanExe.canonical_f32_bin",
     "LeanExe.Wasi.Call.clockTimeGet",
     "LeanExe.Wasi.Call.reject",
-    "LeanExe.Wasi.Param.reject"
+    "LeanExe.Wasi.Param.reject",
+    "LeanExe.Wasi.Param.subscriptions",
+    "LeanExe.Wasi.Param.iovec",
+    "LeanExe.Wasi.rejectFields"
   ],
   "examples": []
 }
