@@ -8,14 +8,16 @@ the vector at `v` holds the addresses of the strings `strs` and then 0, every by
 of `P` from `2^32` up and below `2^63`, where Linux places the initial stack.  A write below `2^32`
 keeps both (`StrAt.frame`, `VectorAt.frame`).
 
-`run_lenLoop` follows the loop that walks a string to its zero byte, `run_copyLoop` the loop that
-copies it with its zero byte, and `run_scanLoop`, `run_pointerPass`, and `run_copyPass` the loops
-over a vector, each by induction on the strings that remain.  `run_scanPiece`, `run_sizesStub`, and
-`run_stringsStub` give the runs of the scan piece and of the two stubs from their entries: the
-sizes stub reaches the trap stub, returns errno 61 with the memory unchanged, or returns 0 with the
-count and the size stored at the guest's pointers in X0 and X1; the strings stub reaches the trap
-stub or returns 0 with the strings' addresses written into the array at X0 and then the strings
-into the buffer at X1.
+`run_lenLoop` follows the loop that walks a string to its zero byte and `run_copyLoop` the loop
+that copies it with its zero byte, each by induction on the string's bytes, and `run_scanLoop`,
+`run_pointerLoop`, and `run_copyPass` the loops over a vector, each by induction on the strings
+that remain.  `run_pointerPass` and `run_copyStrings` add to the two passes' loops the
+instructions that set their registers, and the second also the return.  `run_scanPiece`,
+`run_sizesStub`, and `run_stringsStub` give the runs of the scan piece and of the two stubs from
+their entries.  The sizes stub reaches the trap stub, returns errno 61 with the memory unchanged,
+or returns 0 with the count and the size stored at the guest's pointers in X0 and X1.  The strings
+stub reaches the trap stub or returns 0 with the strings' addresses written into the array at X0
+and then the strings into the buffer at X1.
 -/
 
 namespace LeanExe.A64
@@ -373,7 +375,7 @@ theorem toUInt64_ne_zero {c : UInt8} (h : c ≠ 0) : c.toUInt64 ≠ 0 := by
   simpa using this
 
 /-- The loop that walks the string at X14 to its zero byte, from `a`: X14 and X13 advance by the
-string's length plus one, and X15 ends at 0. -/
+string's length plus one, and X15 changes. -/
 theorem run_lenLoop {a : UInt64} {g : Fin 524288}
     (hcode : CodeAt code a [.ldrb 15 14 0, .addImm 14 14 1, .addImm 13 13 1, .cbnz 15 g])
     (hg : cbField (after a 3) a = .ok g) :
@@ -1075,7 +1077,8 @@ theorem run_guestStore32 {a : UInt64} {r v : Fin 32} (hv : v ≠ 15)
   rw [m3, u2x16, m2, m1, k2 v hv16, k1 v hv16]
   rfl
 
-/-- The registers that the stubs keep: the arguments' registers X0 to X8, X17, X18, and X30. -/
+/-- The registers that the stubs keep until they set the errno in X0 at their return: the
+arguments' registers X0 to X8, X17, X18, and X30. -/
 def KeptReg (q : Fin 32) : Prop := q.val < 9 ∨ q.val = 17 ∨ q.val = 18 ∨ q.val = 30
 
 theorem KeptReg.ne {q : Fin 32} (h : KeptReg q) {k : Fin 32}
