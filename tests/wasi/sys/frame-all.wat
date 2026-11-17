@@ -5,9 +5,13 @@
 ;; multiple of its alignment that is not a multiple of twice it, so that Wasmtime traps
 ;; when a description gives it a smaller alignment.  The step then checks the errno,
 ;; that every byte outside the call's declared regions equals the shadow copy, and the
-;; values the step lists.  The exit status names the first failed check: the step's
-;; number for the errno, 52 plus it for a byte outside the regions, and 104 plus it
-;; for a value.
+;; values the step lists.  The exit status names the step and the kind of the first
+;; failed check: the step's number for the errno, 52 plus it for a byte outside
+;; the regions, and for one of the step's values 104 plus the step's position
+;; among the steps that check values, which the step's comment gives.  Every status lies
+;; below 126, the least status that Wasmtime 44's proc_exit refuses.  The errno
+;; statuses 1 and 2 of the first two steps are also the host's statuses for an error
+;; and a trap, which the host reports on standard error.
 (module
   (import "wasi_snapshot_preview1" "args_get"
     (func $args_get (param i32 i32) (result i32)))
@@ -115,9 +119,9 @@
   (func $errno (param $step i32) (param $got i32) (param $want i32)
     (if (i32.ne (local.get $got) (local.get $want))
       (then (call $fail (local.get $step)))))
-  (func $value (param $step i32) (param $got i64) (param $want i64)
+  (func $value (param $status i32) (param $got i64) (param $want i64)
     (if (i64.ne (local.get $got) (local.get $want))
-      (then (call $fail (i32.add (i32.const 104) (local.get $step))))))
+      (then (call $fail (local.get $status)))))
   (func $inside (param $address i32) (param $start i32) (param $length i32) (result i32)
     (i32.and (i32.ge_u (local.get $address) (local.get $start))
       (i32.lt_u (local.get $address) (i32.add (local.get $start) (local.get $length)))))
@@ -139,47 +143,47 @@
   (func (export "_start")
     (local $count i32) (local $size i32) (local $file i32) (local $second i32)
     (local $data i32)
-    ;; 1: args_sizes_get
+    ;; 1: args_sizes_get, value status 105
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 1) (call $args_sizes_get (i32.const 20) (i32.const 28)) (i32.const 0))
     (call $check (i32.const 1) (i32.const 20) (i32.const 4)
       (i32.const 28) (i32.const 4))
-    (call $value (i32.const 1) (i64.load32_u (i32.const 20)) (i64.const 2))
-    (call $value (i32.const 1) (i64.load32_u (i32.const 28)) (i64.const 7))
+    (call $value (i32.const 105) (i64.load32_u (i32.const 20)) (i64.const 2))
+    (call $value (i32.const 105) (i64.load32_u (i32.const 28)) (i64.const 7))
     (local.set $count (i32.load (i32.const 20)))
     (local.set $size (i32.load (i32.const 28)))
-    ;; 2: args_get
+    ;; 2: args_get, value status 106
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 2) (call $args_get (i32.const 8196) (i32.const 12288)) (i32.const 0))
     (call $check (i32.const 2) (i32.const 8196) (i32.mul (local.get $count) (i32.const 4))
       (i32.const 12288) (local.get $size))
-    (call $value (i32.const 2) (i64.load32_u (i32.const 8196)) (i64.const 12288))
-    (call $value (i32.const 2) (i64.load32_u (i32.const 8200)) (i64.const 12293))
-    (call $value (i32.const 2) (i64.load32_u (i32.const 12288)) (i64.const 1735357040))
-    (call $value (i32.const 2) (i64.load16_u (i32.const 12292)) (i64.const 24832))
-    (call $value (i32.const 2) (i64.load8_u (i32.const 12294)) (i64.const 0))
-    ;; 3: environ_sizes_get
+    (call $value (i32.const 106) (i64.load32_u (i32.const 8196)) (i64.const 12288))
+    (call $value (i32.const 106) (i64.load32_u (i32.const 8200)) (i64.const 12293))
+    (call $value (i32.const 106) (i64.load32_u (i32.const 12288)) (i64.const 1735357040))
+    (call $value (i32.const 106) (i64.load16_u (i32.const 12292)) (i64.const 24832))
+    (call $value (i32.const 106) (i64.load8_u (i32.const 12294)) (i64.const 0))
+    ;; 3: environ_sizes_get, value status 107
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 3) (call $environ_sizes_get (i32.const 20)
       (i32.const 28)) (i32.const 0))
     (call $check (i32.const 3) (i32.const 20) (i32.const 4)
       (i32.const 28) (i32.const 4))
-    (call $value (i32.const 3) (i64.load32_u (i32.const 20)) (i64.const 1))
-    (call $value (i32.const 3) (i64.load32_u (i32.const 28)) (i64.const 16))
+    (call $value (i32.const 107) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 107) (i64.load32_u (i32.const 28)) (i64.const 16))
     (local.set $count (i32.load (i32.const 20)))
     (local.set $size (i32.load (i32.const 28)))
-    ;; 4: environ_get
+    ;; 4: environ_get, value status 108
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 4) (call $environ_get (i32.const 8196) (i32.const 12288)) (i32.const 0))
     (call $check (i32.const 4) (i32.const 8196) (i32.mul (local.get $count) (i32.const 4))
       (i32.const 12288) (local.get $size))
-    (call $value (i32.const 4) (i64.load32_u (i32.const 8196)) (i64.const 12288))
-    (call $value (i32.const 4) (i64.load (i32.const 12288)) (i64.const 6864990261685077324))
-    (call $value (i32.const 4) (i64.load (i32.const 12296)) (i64.const 13859641716986438))
+    (call $value (i32.const 108) (i64.load32_u (i32.const 8196)) (i64.const 12288))
+    (call $value (i32.const 108) (i64.load (i32.const 12288)) (i64.const 6864990261685077324))
+    (call $value (i32.const 108) (i64.load (i32.const 12296)) (i64.const 13859641716986438))
     ;; 5: clock_res_get
     (call $prepare)
     (call $snapshot)
@@ -211,36 +215,36 @@
     (call $errno (i32.const 9) (call $proc_raise (i32.const 1)) (i32.const 58))
     (call $check (i32.const 9) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
-    ;; 10: fd_prestat_get
+    ;; 10: fd_prestat_get, value status 109
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 10) (call $fd_prestat_get (i32.const 3) (i32.const 68)) (i32.const 0))
     (call $check (i32.const 10) (i32.const 68) (i32.const 8)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 10) (i64.load8_u (i32.const 68)) (i64.const 0))
-    (call $value (i32.const 10) (i64.load32_u (i32.const 72)) (i64.const 1))
-    ;; 11: fd_prestat_dir_name
+    (call $value (i32.const 109) (i64.load8_u (i32.const 68)) (i64.const 0))
+    (call $value (i32.const 109) (i64.load32_u (i32.const 72)) (i64.const 1))
+    ;; 11: fd_prestat_dir_name, value status 110
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 11) (call $fd_prestat_dir_name (i32.const 3) (i32.const 4096)
       (i32.const 1)) (i32.const 0))
     (call $check (i32.const 11) (i32.const 4096) (i32.const 1)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 11) (i64.load8_u (i32.const 4096)) (i64.const 46))
-    ;; 12: fd_fdstat_get
+    (call $value (i32.const 110) (i64.load8_u (i32.const 4096)) (i64.const 46))
+    ;; 12: fd_fdstat_get, value status 111
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 12) (call $fd_fdstat_get (i32.const 3) (i32.const 72)) (i32.const 0))
     (call $check (i32.const 12) (i32.const 72) (i32.const 24)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 12) (i64.load8_u (i32.const 72)) (i64.const 3))
-    ;; 13: fd_filestat_get
+    (call $value (i32.const 111) (i64.load8_u (i32.const 72)) (i64.const 3))
+    ;; 13: fd_filestat_get, value status 112
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 13) (call $fd_filestat_get (i32.const 3) (i32.const 72)) (i32.const 0))
     (call $check (i32.const 13) (i32.const 72) (i32.const 64)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 13) (i64.load8_u (i32.const 88)) (i64.const 3))
+    (call $value (i32.const 112) (i64.load8_u (i32.const 88)) (i64.const 3))
     ;; 14: path_create_directory
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 131072) (i32.const 1))
@@ -301,21 +305,21 @@
       (i32.const 0)) (i32.const 0))
     (call $check (i32.const 21) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
-    ;; 22: fd_seek
+    ;; 22: fd_seek, value status 113
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 22) (call $fd_seek (local.get $file) (i64.const 5) (i32.const 0)
       (i32.const 24)) (i32.const 0))
     (call $check (i32.const 22) (i32.const 24) (i32.const 8)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 22) (i64.load (i32.const 24)) (i64.const 5))
-    ;; 23: fd_tell
+    (call $value (i32.const 113) (i64.load (i32.const 24)) (i64.const 5))
+    ;; 23: fd_tell, value status 114
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 23) (call $fd_tell (local.get $file) (i32.const 24)) (i32.const 0))
     (call $check (i32.const 23) (i32.const 24) (i32.const 8)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 23) (i64.load (i32.const 24)) (i64.const 5))
+    (call $value (i32.const 114) (i64.load (i32.const 24)) (i64.const 5))
     ;; 24: fd_datasync
     (call $prepare)
     (call $snapshot)
@@ -328,7 +332,7 @@
     (call $errno (i32.const 25) (call $fd_sync (local.get $file)) (i32.const 0))
     (call $check (i32.const 25) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
-    ;; 26: path_filestat_get
+    ;; 26: path_filestat_get, value status 115
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 131328) (i32.const 1))
     (call $snapshot)
@@ -336,9 +340,9 @@
       (i32.const 1024) (i32.const 1) (i32.const 72)) (i32.const 0))
     (call $check (i32.const 26) (i32.const 72) (i32.const 64)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 26) (i64.load8_u (i32.const 88)) (i64.const 4))
-    (call $value (i32.const 26) (i64.load (i32.const 96)) (i64.const 1))
-    (call $value (i32.const 26) (i64.load (i32.const 104)) (i64.const 4294967301))
+    (call $value (i32.const 115) (i64.load8_u (i32.const 88)) (i64.const 4))
+    (call $value (i32.const 115) (i64.load (i32.const 96)) (i64.const 1))
+    (call $value (i32.const 115) (i64.load (i32.const 104)) (i64.const 4294967301))
     ;; 27: path_filestat_set_times
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 131328) (i32.const 1))
@@ -365,7 +369,7 @@
       (i32.const 1280) (i32.const 1)) (i32.const 0))
     (call $check (i32.const 29) (i32.const 0) (i32.const 0)
       (i32.const 0) (i32.const 0))
-    ;; 30: path_readlink
+    ;; 30: path_readlink, value status 116
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 131840) (i32.const 1))
     (call $snapshot)
@@ -373,8 +377,8 @@
       (i32.const 4096) (i32.const 1) (i32.const 20)) (i32.const 0))
     (call $check (i32.const 30) (i32.const 4096) (i32.const 1)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 30) (i64.load8_u (i32.const 4096)) (i64.const 102))
-    (call $value (i32.const 30) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 116) (i64.load8_u (i32.const 4096)) (i64.const 102))
+    (call $value (i32.const 116) (i64.load32_u (i32.const 20)) (i64.const 1))
     ;; 31: fd_readdir
     (call $prepare)
     (call $snapshot)
@@ -456,7 +460,7 @@
     (call $check (i32.const 40) (i32.const 20) (i32.const 4)
       (i32.const 0) (i32.const 0))
     (local.set $data (i32.load (i32.const 20)))
-    ;; 41: fd_write
+    ;; 41: fd_write, value status 117
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 132608) (i32.const 48))
     (i32.store (i32.const 516) (i32.const 1024))
@@ -466,8 +470,8 @@
       (i32.const 20)) (i32.const 0))
     (call $check (i32.const 41) (i32.const 20) (i32.const 4)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 41) (i64.load32_u (i32.const 20)) (i64.const 48))
-    ;; 42: fd_pwrite
+    (call $value (i32.const 117) (i64.load32_u (i32.const 20)) (i64.const 48))
+    ;; 42: fd_pwrite, value status 118
     (call $prepare)
     (memory.copy (i32.const 1024) (i32.const 132864) (i32.const 16))
     (i32.store (i32.const 516) (i32.const 1024))
@@ -477,8 +481,8 @@
       (i64.const 48) (i32.const 20)) (i32.const 0))
     (call $check (i32.const 42) (i32.const 20) (i32.const 4)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 42) (i64.load32_u (i32.const 20)) (i64.const 16))
-    ;; 43: fd_read
+    (call $value (i32.const 118) (i64.load32_u (i32.const 20)) (i64.const 16))
+    ;; 43: fd_read, value status 119
     (call $prepare)
     (i32.store (i32.const 516) (i32.const 4096))
     (i32.store (i32.const 520) (i32.const 16))
@@ -487,10 +491,10 @@
       (i32.const 20)) (i32.const 0))
     (call $check (i32.const 43) (i32.const 4096) (i32.const 16)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 43) (i64.load32_u (i32.const 20)) (i64.const 16))
-    (call $value (i32.const 43) (i64.load (i32.const 4096)) (i64.const 6076290831446134349))
-    (call $value (i32.const 43) (i64.load (i32.const 4104)) (i64.const 3111242257363588693))
-    ;; 44: fd_pread
+    (call $value (i32.const 119) (i64.load32_u (i32.const 20)) (i64.const 16))
+    (call $value (i32.const 119) (i64.load (i32.const 4096)) (i64.const 6076290831446134349))
+    (call $value (i32.const 119) (i64.load (i32.const 4104)) (i64.const 3111242257363588693))
+    ;; 44: fd_pread, value status 120
     (call $prepare)
     (i32.store (i32.const 516) (i32.const 4096))
     (i32.store (i32.const 520) (i32.const 16))
@@ -499,10 +503,10 @@
       (i64.const 8) (i32.const 20)) (i32.const 0))
     (call $check (i32.const 44) (i32.const 4096) (i32.const 16)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 44) (i64.load32_u (i32.const 20)) (i64.const 16))
-    (call $value (i32.const 44) (i64.load (i32.const 4096)) (i64.const 7378413942531504440))
-    (call $value (i32.const 44) (i64.load (i32.const 4104)) (i64.const 7957135325236127847))
-    ;; 45: poll_oneoff
+    (call $value (i32.const 120) (i64.load32_u (i32.const 20)) (i64.const 16))
+    (call $value (i32.const 120) (i64.load (i32.const 4096)) (i64.const 7378413942531504440))
+    (call $value (i32.const 120) (i64.load (i32.const 4104)) (i64.const 7957135325236127847))
+    ;; 45: poll_oneoff, value status 121
     (call $prepare)
     (memory.fill (i32.const 2056) (i32.const 0) (i32.const 48))
     (i64.store (i32.const 2056) (i64.const 1))
@@ -516,21 +520,21 @@
       (i32.const 20)) (i32.const 0))
     (call $check (i32.const 45) (i32.const 3080) (i32.const 32)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 45) (i64.load32_u (i32.const 20)) (i64.const 1))
-    (call $value (i32.const 45) (i64.load (i32.const 3080)) (i64.const 1))
-    (call $value (i32.const 45) (i64.load16_u (i32.const 3088)) (i64.const 0))
-    (call $value (i32.const 45) (i64.load8_u (i32.const 3090)) (i64.const 0))
-    (call $value (i32.const 45) (i64.load (i32.const 3096)) (i64.const 0))
-    (call $value (i32.const 45) (i64.load16_u (i32.const 3104)) (i64.const 0))
-    ;; 46: fd_seek
+    (call $value (i32.const 121) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 121) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 121) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 121) (i64.load8_u (i32.const 3090)) (i64.const 0))
+    (call $value (i32.const 121) (i64.load (i32.const 3096)) (i64.const 0))
+    (call $value (i32.const 121) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    ;; 46: fd_seek, value status 122
     (call $prepare)
     (call $snapshot)
     (call $errno (i32.const 46) (call $fd_seek (local.get $data) (i64.const 0) (i32.const 0)
       (i32.const 24)) (i32.const 0))
     (call $check (i32.const 46) (i32.const 24) (i32.const 8)
       (i32.const 0) (i32.const 0))
-    (call $value (i32.const 46) (i64.load (i32.const 24)) (i64.const 0))
-    ;; 47: poll_oneoff
+    (call $value (i32.const 122) (i64.load (i32.const 24)) (i64.const 0))
+    ;; 47: poll_oneoff, value status 123
     (call $prepare)
     (memory.fill (i32.const 2056) (i32.const 0) (i32.const 96))
     (i64.store (i32.const 2056) (i64.const 1))
@@ -547,13 +551,13 @@
       (i32.const 20)) (i32.const 0))
     (call $check (i32.const 47) (i32.const 3080) (i32.const 64)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 47) (i64.load32_u (i32.const 20)) (i64.const 1))
-    (call $value (i32.const 47) (i64.load (i32.const 3080)) (i64.const 1))
-    (call $value (i32.const 47) (i64.load16_u (i32.const 3088)) (i64.const 0))
-    (call $value (i32.const 47) (i64.load8_u (i32.const 3090)) (i64.const 1))
-    (call $value (i32.const 47) (i64.load (i32.const 3096)) (i64.const 1))
-    (call $value (i32.const 47) (i64.load16_u (i32.const 3104)) (i64.const 0))
-    ;; 48: poll_oneoff
+    (call $value (i32.const 123) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 123) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 123) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 123) (i64.load8_u (i32.const 3090)) (i64.const 1))
+    (call $value (i32.const 123) (i64.load (i32.const 3096)) (i64.const 1))
+    (call $value (i32.const 123) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    ;; 48: poll_oneoff, value status 124
     (call $prepare)
     (memory.fill (i32.const 2056) (i32.const 0) (i32.const 96))
     (i64.store (i32.const 2056) (i64.const 1))
@@ -570,12 +574,12 @@
       (i32.const 20)) (i32.const 0))
     (call $check (i32.const 48) (i32.const 3080) (i32.const 64)
       (i32.const 20) (i32.const 4))
-    (call $value (i32.const 48) (i64.load32_u (i32.const 20)) (i64.const 1))
-    (call $value (i32.const 48) (i64.load (i32.const 3080)) (i64.const 1))
-    (call $value (i32.const 48) (i64.load16_u (i32.const 3088)) (i64.const 0))
-    (call $value (i32.const 48) (i64.load8_u (i32.const 3090)) (i64.const 2))
-    (call $value (i32.const 48) (i64.load (i32.const 3096)) (i64.const 1))
-    (call $value (i32.const 48) (i64.load16_u (i32.const 3104)) (i64.const 0))
+    (call $value (i32.const 124) (i64.load32_u (i32.const 20)) (i64.const 1))
+    (call $value (i32.const 124) (i64.load (i32.const 3080)) (i64.const 1))
+    (call $value (i32.const 124) (i64.load16_u (i32.const 3088)) (i64.const 0))
+    (call $value (i32.const 124) (i64.load8_u (i32.const 3090)) (i64.const 2))
+    (call $value (i32.const 124) (i64.load (i32.const 3096)) (i64.const 1))
+    (call $value (i32.const 124) (i64.load16_u (i32.const 3104)) (i64.const 0))
     ;; 49: fd_close
     (call $prepare)
     (call $snapshot)

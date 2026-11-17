@@ -14,7 +14,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
 | [Measuring Lean checks](entries/measuring-lean-checks/README.md) | Measures the time and peak memory of a check and locates the declaration that costs them. |
 | [Diagnosing slow checks](entries/slow-check-diagnosis/README.md) | Finds the cause of a slow or failing check in order of measurement and links each cause to its remedy. |
-| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on an `if`'s instance, rewrites and normal forms whose results make later steps fail, and parses that mislead. |
+| [Tactics whose failures mislead](entries/tactic-combinator-pitfalls/README.md) | Avoids combinators that report success on progress, miss errors, or fail on a goal that is type-correct only at the default transparency, rewrites and normal forms whose results make later steps fail, and parses that mislead. |
 | [Types that elaboration chooses](entries/elaborated-types/README.md) | Types binders and literals so that statements and translations mean what they state. |
 | [Lemmas that close goals of structure literals](entries/structure-update-lemmas/README.md) | States a lemma about an updated structure as one update of a variable, so that `exact` unifies its arguments with the flat literal that `simp` leaves, and names the updates of a proof that states many facts about them. |
 | [One definition over ℤ and over words](entries/generic-algebra-transfer/README.md) | Defines an algorithm over generic operations, proves it over ℤ, and transfers it to wrapping words. |
@@ -28,7 +28,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Byte buffers in words](entries/byte-buffer-passes/README.md) | Keeps a buffer of bytes in a step's words and proves straight-line passes over it, which a static cost bounds, against folds over lists. |
 | [Bounds for a step's phases](entries/m7-phase-bounds/README.md) | Bounds the Cortex-M7 windows of a step's polling phases apart from its long window, by the cost of the path that the step's tests select, and compares each bound with half a byte time. |
 | [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
-| [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
+| [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory, keeps every other byte and field of the store, and states the bytes of a block whose zeroing and field stores overlap. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
 | [Interval inclusion proofs](entries/interval-enclosures/README.md) | Proves that an accepted result of an interval program contains a real quantity, with enclosures of monotone library functions and of integrals over panels. |
 | [One source for a real formula and its interval program](entries/enclosure-def/README.md) | Declares a real function, its interval program, and the inclusion theorem from one body with `enclosure_def`, and proves what the statuses of the surrounding program imply. |
@@ -74,6 +74,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
 | [Line-oriented processes](entries/stream-fold/README.md) | Instantiates the shared line reader and output proof with an application kernel. |
 | [Programs that read their whole input](entries/wasi-read-all/README.md) | Reads the whole standard input in `begin` with `readAll`, closes its charge, and states the process theorem for inputs within and above the limit. |
+| [Handles and brackets](entries/wasi-handles/README.md) | Proves the discipline of `withOpen` from the handle check, stage by stage, states the close of each bracket that returns, and reads descriptor numbers as open descriptors under the host's assumption. |
 | [GPU kernels](entries/verified-wgsl-kernel/README.md) | Proves WGSL dispatch and PTX launch theorems of verified builds and composes them into a host program. |
 | [Native theorem conclusions](entries/native-conclusion-patterns/README.md) | Extracts result, heap, region, and postcondition facts from a native call theorem. |
 | [Bare-metal C programs](entries/bare-metal-programs/README.md) | States whole-program theorems for fixed arguments, loaded inputs, request loops, and controllers. |

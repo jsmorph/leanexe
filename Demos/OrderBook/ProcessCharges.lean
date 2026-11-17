@@ -215,8 +215,11 @@ local macro "read_state" : tactic =>
     Args.get_cons_succ, Args.denote, envGetOfIndex, sourceState])
 
 /-- An `if` whose branches are at most 0, for any decision procedure.  The cost of the stopping
-branch's status is such an `if`, whose instance still holds the effect body's environment, so
-`ite_self` and `split`, which rebuild the instance, do not apply. -/
+branch's status is such an `if`.  `read_state` rewrites its condition by definitional steps and
+keeps its instance, whose type then matches `Decidable` of the new condition only at the default
+transparency.  `simp` and `rw` check the instance of `ite_self` at the `implicit` transparency, so
+`ite_self` does not apply, and `split` fails on the `if` as well, while `exact` and `refine` apply
+this lemma at the default transparency. -/
 theorem ite_le_zero {c : Prop} {decision : Decidable c} {a b : Nat} (left : a ≤ 0) (right : b ≤ 0) :
     @ite Nat c decision a b ≤ 0 := by
   cases decision

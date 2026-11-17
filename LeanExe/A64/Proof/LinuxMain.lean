@@ -10,7 +10,7 @@ block, and steps the address and the count, until a read returns 0, which leaves
 of the input in the block, or the block is full, which branches to the stub of status 64.
 `run_writeLoop` follows the loop that writes the result's bytes to standard output, by strong
 induction on the bytes that remain, each pass a call of `sysWrite` that takes some of them.  Both
-assume that no call fails.  `StoreRel.writeList` gives the store relation after the kernel writes
+assume that no call fails.  `StoreRel.kernelWrite` gives the store relation after the kernel writes
 bytes into linear memory, and `readList_bytes` the bytes that a write takes from it.
 -/
 
