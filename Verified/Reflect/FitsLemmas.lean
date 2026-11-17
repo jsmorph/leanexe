@@ -327,10 +327,10 @@ theorem bytesBuild_fits {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .
 
 /-! The frames of a function, and the chain of a program's frames. -/
 
-theorem fits_get_there {g : Sig} (f : Func S) (rest : Prog S)
+theorem fits_get_there {g : Sig} (f : Func S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
     (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
     (env : Env g.params) :
-    (Prog.fitsAt (.cons f rest) (.cons F fs) k).get (.there v) env =
+    (Prog.fitsAt (.cons f aborts depth hs rest) (.cons F fs) k).get (.there v) env =
       (rest.fitsAt fs k).get v env :=
   rfl
 
@@ -342,11 +342,12 @@ theorem fits_get_thereRec {g : Sig} (f : RecFunc S) (rest : Prog S)
   rfl
 
 /-- The frames of a function whose code takes the call depth, with `k` frames. -/
-theorem fits_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
-    (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
-    (Prog.fitsAt (.cons f rest) (.cons F fs) k).get .here env =
+theorem fits_get_hereDepth (f : Func S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = true)
+    (env : Env f.params) :
+    (Prog.fitsAt (.cons f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.fitsAt fs (rest.fitsAt fs) k env := by
-  rw [Prog.fitsAt_cons_here, hd]; rfl
+  rw [Prog.fitsAt_cons_here, (Func.flags_of_sig_eq hs).2.trans hd]; rfl
 
 /-- The frames condition of a function whose code takes the call depth, with `k + 1` frames: its
 body's, with its callees at `k`. -/

@@ -57,11 +57,11 @@ theorem Prog.functions_empty_pool (prog : Prog S) (address : Nat) :
     prog.functions (pool := ⟨address, []⟩) = prog.functions (pool := Bytes.LiteralPool.empty) := by
   induction prog with
   | nil => rfl
-  | cons func rest ih =>
+  | cons func _ _ _ rest ih =>
     simp only [Prog.functions, ih, Func.function, bodyFunction_empty_pool]
   | consRec func rest ih =>
     simp only [Prog.functions, ih, RecFunc.function, bodyFunction_empty_pool]
-  | consTail func rest ih =>
+  | consTail func _ _ _ rest ih =>
     simp only [Prog.functions, ih, TailFunc.function, TailBody.code_empty_pool]
 
 theorem compileWith_eq_empty_of_no_literals {minPages : Nat} (prog : Prog S)

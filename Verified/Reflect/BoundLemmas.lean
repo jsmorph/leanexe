@@ -986,16 +986,17 @@ theorem func_bound {func : Func S} {args : Env func.params} {ms : List Mode} {pf
 
 /-- The entry of a function whose code takes no call depth, at any number of frames: its own
 bound, with its callees at 0 frames. -/
-theorem bounds_get_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
-    (fs : Funs S) (k : Nat) (hd : f.depth = false) (env : Env f.params) :
-    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
+theorem bounds_get_here (f : Func S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = false)
+    (env : Env f.params) :
+    (Prog.boundsAt (.cons f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.bound fs rest.flags (rest.boundsAt fs 0) env := by
-  rw [Prog.boundsAt_cons_here, hd]; rfl
+  rw [Prog.boundsAt_cons_here, (Func.flags_of_sig_eq hs).2.trans hd]; rfl
 
-theorem bounds_get_there {g : Sig} (f : Func S) (rest : Prog S)
+theorem bounds_get_there {g : Sig} (f : Func S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
     (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
     (env : Env g.params) :
-    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get (.there v) env =
+    (Prog.boundsAt (.cons f aborts depth hs rest) (.cons F fs) k).get (.there v) env =
       (rest.boundsAt fs k).get v env :=
   rfl
 
@@ -1007,11 +1008,12 @@ theorem bounds_get_thereRec {g : Sig} (f : RecFunc S) (rest : Prog S)
   rfl
 
 /-- The bound of a function whose code takes the call depth, with `k` frames. -/
-theorem bounds_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
-    (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
-    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
+theorem bounds_get_hereDepth (f : Func S) (aborts depth : Bool) (hs : f.sig = f.sigWith aborts depth) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : depth = true)
+    (env : Env f.params) :
+    (Prog.boundsAt (.cons f aborts depth hs rest) (.cons F fs) k).get .here env =
       f.boundAt fs rest.flags (rest.boundsAt fs) k env := by
-  rw [Prog.boundsAt_cons_here, hd]; rfl
+  rw [Prog.boundsAt_cons_here, (Func.flags_of_sig_eq hs).2.trans hd]; rfl
 
 /-- The bound of a function whose code takes the call depth, with `k + 1` frames: its body's, with
 its callees at `k`. -/

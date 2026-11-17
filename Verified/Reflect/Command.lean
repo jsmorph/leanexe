@@ -335,6 +335,18 @@ private def closeReflection (state : ProgramReflection) : MetaM ProgramReflectio
     wraps := ← state.wraps.mapM fun (r, callee, indices) => do
       return (← closeReflected r, callee, indices) }
 
+/-- Adds `fbase.sig_eq : f.sig = f.sigWith aborts depth` for the function or tail loop `f` over the
+signatures `sigs`, with `sig` and `sigWith` its kind's, and returns the flags as literals and the
+theorem.  Its check evaluates the body's flags once; the program's terms hold the stated flags. -/
+def addSigEq (fbase sig sigWith : Name) (sigs f : Lean.Expr) (aborts depth : Bool) :
+    MetaM (Lean.Expr × Lean.Expr × Lean.Expr) := do
+  let a := toExpr aborts
+  let d := toExpr depth
+  let lhs := mkApp2 (mkConst sig) sigs f
+  let stmt ← mkEq lhs (mkApp4 (mkConst sigWith) sigs f a d)
+  addTheorem (fbase ++ `sig_eq) stmt (← mkExpectedTypeHint (← mkEqRefl lhs) stmt)
+  return (a, d, mkConst (fbase ++ `sig_eq))
+
 def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
     TermElabM ProgramReflection := do
   let mut sigs := state.sigs
@@ -369,10 +381,12 @@ def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
       let r ← reflectDefinition fbase name sigsExpr funs prog callees
       if r.depth then checkPositions name (mkApp2 (mkConst ``Func.body) sigsExpr f)
       let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-      meaning := mkAppN (Lean.mkConst ``Prog.Meaning.cons) #[sigsExpr, f, prog, funs, meaning]
+      let (a, d, hs) ← addSigEq fbase ``Func.sig ``Func.sigWith sigsExpr f r.aborts r.depth
+      meaning := mkAppN (Lean.mkConst ``Prog.Meaning.cons)
+        #[sigsExpr, f, a, d, hs, prog, funs, meaning]
       funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig,
         mkAppN (Lean.mkConst ``Func.denote) #[sigsExpr, f, funs], funs]
-      prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, prog]
+      prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, a, d, hs, prog]
       pure r
     | some eqName =>
       if verified.tailLoops.get (← getOptions) && (← isTailDefinition name eqName) then
@@ -384,12 +398,13 @@ def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
           if n > depthPositions then
             throwError "verified_compile: tail function {name} takes call depth and needs {n} positions, more than {depthPositions}"
         let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+        let (a, d, hs) ← addSigEq fbase ``TailFunc.sig ``TailFunc.sigWith sigsExpr f r.aborts r.depth
         let M := Lean.mkConst (fbase ++ `meaning)
         meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consTail)
-          #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `decreases),
+          #[sigsExpr, f, a, d, hs, prog, funs, M, meaning, Lean.mkConst (fbase ++ `decreases),
             Lean.mkConst (fbase ++ `fixed)]
         funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
-        prog := mkAppN (Lean.mkConst ``Prog.consTail) #[sigsExpr, f, prog]
+        prog := mkAppN (Lean.mkConst ``Prog.consTail) #[sigsExpr, f, a, d, hs, prog]
         pure r
       else
         let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
@@ -403,9 +418,9 @@ def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
         pure r
   let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
   sigs := sig :: sigs
-  -- The kernel checks a chain of `Prog.cons` against the literal signatures by evaluating each
-  -- function's `sig`, in every declaration that holds the chain, so the chain is named prefix by
-  -- prefix and each later term holds the constant.
+  -- The kernel checks a chain of `Prog.cons` node by node in every declaration that holds it, so
+  -- the chain is named prefix by prefix and each later term holds a constant, whose type the
+  -- kernel takes as declared.
   let prefixName := base ++ Name.mkSimple s!"prefix_{sigs.length - 1}"
   addDefinition prefixName
     (mkApp (Lean.mkConst ``Prog) (listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr))) prog

@@ -1115,24 +1115,24 @@ def TailFunc.function (func : TailFunc S) (typeIdx : Nat)
 def Prog.functions (pool : Bytes.LiteralPool) :
     {S : List Sig} → Prog S → List Wasm.Function
   | _, .nil => []
-  | _, .cons (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
+  | _, .cons (S := S) f _ _ _ rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
   | _, .consRec (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
-  | _, .consTail (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
+  | _, .consTail (S := S) f _ _ _ rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
 
 def Prog.types : {S : List Sig} → Prog S → List FuncType
   | _, .nil => []
-  | _, .cons f rest => rest.types ++ [f.type]
+  | _, .cons f _ _ _ rest => rest.types ++ [f.type]
   | _, .consRec f rest => rest.types ++ [f.type]
-  | _, .consTail f rest => rest.types ++ [f.type]
+  | _, .consTail f _ _ _ rest => rest.types ++ [f.type]
 
 /-- The functions whose code takes the call depth, in module order: each one's index, parameter
 types, and result type. -/
 def Prog.depthFuns : {S : List Sig} → Prog S → List (Nat × List Ty × Ty)
   | _, .nil => []
-  | _, .cons (S := S) f rest =>
+  | _, .cons (S := S) f _ _ _ rest =>
     rest.depthFuns ++ (if f.depth then [(2 + S.length, f.params, f.result)] else [])
   | _, .consRec (S := S) f rest => rest.depthFuns ++ [(2 + S.length, f.params, f.result)]
-  | _, .consTail (S := S) f rest =>
+  | _, .consTail (S := S) f _ _ _ rest =>
     rest.depthFuns ++ (if f.depth then [(2 + S.length, f.params, f.result)] else [])
 
 /-- The entries of the functions that take the call depth, after the `n` functions of the program,
@@ -1146,11 +1146,11 @@ def Prog.entryTypes (prog : Prog S) : List FuncType :=
 
 def Prog.exports (n : Nat) : {S : List Sig} → Prog S → List Export
   | _, .nil => []
-  | _, .cons (S := S) f rest => rest.exports n ++
+  | _, .cons (S := S) f _ _ _ rest => rest.exports n ++
     [{ name := f.name, funcIdx := if f.depth then 2 + n + rest.depthFuns.length else 2 + S.length }]
   | _, .consRec f rest => rest.exports n ++
     [{ name := f.name, funcIdx := 2 + n + rest.depthFuns.length }]
-  | _, .consTail (S := S) f rest => rest.exports n ++
+  | _, .consTail (S := S) f _ _ _ rest => rest.exports n ++
     [{ name := f.name, funcIdx := if f.depth then 2 + n + rest.depthFuns.length else 2 + S.length }]
 
 /-- The module of a program with constant tables `tables` and the wrappers `wrappers`, each
@@ -1189,9 +1189,9 @@ theorem Prog.functions_length (prog : Prog S)
     (prog.functions (pool := pool)).length = S.length := by
   induction prog with
   | nil => rfl
-  | cons f rest ih => simp [Prog.functions, ih]
+  | cons f _ _ _ rest ih => simp [Prog.functions, ih]
   | consRec f rest ih => simp [Prog.functions, ih]
-  | consTail f rest ih => simp [Prog.functions, ih]
+  | consTail f _ _ _ rest ih => simp [Prog.functions, ih]
 
 theorem compileWith_funcs {minPages : Nat} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length)

@@ -32,7 +32,7 @@ theorem grow_fixed (env : Env growParams) :
         by_cases hn : n = 0 <;> simp only [beq_iff_eq, hn, ↓reduceIte,
           Sum.elim_inl, Sum.elim_inr, id_eq] <;> rfl
 
-def prog : Prog [grow.sig] := .consTail grow .nil
+def prog : Prog [grow.sig] := .consTailSig grow .nil
 
 def funs : Funs [grow.sig] := .cons growMeaning .nil
 

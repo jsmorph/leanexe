@@ -37,7 +37,7 @@ theorem caller_denote (n : UInt64) : caller.denote libraryFuns (.cons n .nil) = 
   exact congrArg₂ (fun x y : UInt64 => x + y)
     (seedLibrary.seed.denote_eq n) (ScalarComposition.compiled.shiftedSum.denote_eq n)
 
-def program := Prog.cons caller libraryProgram
+def program := Prog.consSig caller libraryProgram
 
 def funs := Funs.cons (g := caller.sig) (caller.denote libraryFuns) libraryFuns
 
