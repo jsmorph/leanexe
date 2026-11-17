@@ -4,8 +4,9 @@ import LeanExe.ProofKit.Exec
 /-!
 The simulation over a machine.  A `Machine` runs the generated code: its states hold the
 program's state, which `core` gives, its runs `Rch` contain the runs of the program's model, a
-state holds Talos's store by the relation `SR`, `Trapped` states where a trap ends, and `env` is
-the host environment that Talos's run uses for the module's imports.  `Machine.Outcome`,
+state holds Talos's store by the relation `SR`, `Trapped` states where a trap ends with its
+message and store, and `env` is the host environment that Talos's run uses for the module's
+imports.  `Machine.Outcome`,
 `Machine.CallResult`, `Machine.CallOutcome`, `Machine.FunSim`, `Machine.CallsOk`, and
 `Machine.InstrSim` are the forms of `Sim.lean`'s definitions over a machine.  `bare P code α` is
 the program's model as a machine, with the store relation `StoreRel`, the trap stubs of
@@ -27,17 +28,19 @@ open Wasm
 /-- A machine that runs the generated code, with Talos's stores of host state `α`: states `Q`,
 the program's state `core q` of each, the runs `Rch` between states, the relation `SR cap gts st q`
 by which `q` holds the store `st` of a memory of `cap` pages and globals of the types `gts`, the
-states `Trapped S msg q` at which a trap with the message `msg` ends for the stubs of `S`, and the
-host environment `env` of the module's imports.  The runs compose, a state that holds a store
-holds it in the area as `StoreRel` states, a run of the program's model from a state that holds
-a store is a run of the machine to a state that holds every store that `StoreRel` relates to the
-run's end with the same host state, and a state at the stub of a trap's code has trapped. -/
+states `Trapped S st msg q` at which a trap with the message `msg` and the store `st` ends for the
+stubs of `S`, and the host environment `env` of the module's imports.  The runs compose, a state
+that holds a store holds it in the area as `StoreRel` states, and a run of the program's model
+from a state that holds a store is a run of the machine to a state that holds every store that
+`StoreRel` relates to the run's end with the same host state and at which, when the run ends at
+the stub of a trap's code, every trap with that code and a store of the same host state has
+ended. -/
 structure Machine (P : Platform) (code : UInt64 → Option UInt32) (α : Type) where
   Q : Type
   core : Q → State
   Rch : Q → Q → Prop
   SR : Nat → List ValueType → Store α → Q → Prop
-  Trapped : Shared → String → Q → Prop
+  Trapped : Shared → Store α → String → Q → Prop
   env : HostEnv α
   refl (q : Q) : Rch q q
   trans {q₁ q₂ q₃ : Q} : Rch q₁ q₂ → Rch q₂ q₃ → Rch q₁ q₃
@@ -46,9 +49,10 @@ structure Machine (P : Platform) (code : UInt64 → Option UInt32) (α : Type) w
   lift {cap : Nat} {gts : List ValueType} {st : Store α} {q : Q} {s : State} :
     SR cap gts st q → Reach P code (core q) s →
     ∃ q', Rch q q' ∧ core q' = s ∧
-      ∀ st' : Store α, StoreRel P cap gts st' s → st'.host = st.host → SR cap gts st' q'
-  trapAt {S : Shared} {msg : String} {q : Q} :
-    TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg (core q).pc → Trapped S msg q
+      (∀ st' : Store α, StoreRel P cap gts st' s → st'.host = st.host → SR cap gts st' q') ∧
+      ∀ (S : Shared) (st' : Store α) (msg : String),
+        TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg s.pc → st'.host = st.host →
+        Trapped S st' msg q'
 
 /-- The program's model as a machine: its states and runs, the store relation `StoreRel`, the
 trap stubs of `TrapAt`, and no imports. -/
@@ -57,13 +61,12 @@ def bare (P : Platform) (code : UInt64 → Option UInt32) (α : Type) : Machine 
   core s := s
   Rch := Reach P code
   SR cap gts st s := StoreRel P cap gts st s
-  Trapped S msg s := TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg s.pc
+  Trapped S _ msg s := TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg s.pc
   env := {}
   refl s := .refl s
   trans h₁ h₂ := h₁.trans h₂
   storeRel h := h
-  lift {_ _ _ _ s} _ h := ⟨s, h, rfl, fun _ h' _ => h'⟩
-  trapAt h := h
+  lift {_ _ _ _ s} _ h := ⟨s, h, rfl, fun _ h' _ => h', fun _ _ _ h' _ => h'⟩
 
 namespace Machine
 
@@ -98,8 +101,8 @@ def Outcome (E : Env) (ctl : List Ctl) (D : Nat) (fin : Option (List ValueType))
       (M.core q').io = (M.core q).io ∧ (M.core q').x 18 = (M.core q).x 18 ∧
       MemFrame (M.core q).sp (E.locals + spillSlots) (M.core q) (M.core q') ∧
       Kept t vs (M.core q') ∧ M.SR E.cap E.globalTypes st' q'
-  | .Trap _ msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
-      M.Trapped E.toShared msg q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped E.toShared st' msg q'
   | .Invalid _ => True
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
@@ -116,7 +119,8 @@ def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) (res : Re
       vs'.drop rs.length = vs.drop ps.length ∧
       StackRel (M.core q') (vs'.take rs.length) ∧ Typed rs.reverse (vs'.take rs.length) ∧
       M.SR S.cap S.globalTypes st' q'
-  | .Trap _ msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧ M.Trapped S msg q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped S st' msg q'
   | .Invalid _ => True
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
@@ -209,7 +213,7 @@ end Bare
 /-- The module `m` without its functions and imports. -/
 def withoutFuncs (m : Module) : Module := { m with funcs := [], imports := [] }
 
-/-- Every store of the continuation `r` has the host state `h`. -/
+/-- The store of a fall-through, a branch, a return, or a trap `r` has the host state `h`. -/
 def HostKept {α : Type} (h : α) : Continuation α → Prop
   | .Fallthrough st _ => st.host = h
   | .Break _ st _ => st.host = h
@@ -218,7 +222,8 @@ def HostKept {α : Type} (h : α) : Continuation α → Prop
   | _ => True
 
 /-- Talos runs `inst` in a module `m` under the host environment `env` as it runs it in
-`withoutFuncs m` under the empty one, and that run keeps the store's host state. -/
+`withoutFuncs m` under the empty one, and that run ends, when it falls through, branches,
+returns, or traps, with a store of the given store's host state. -/
 def Leaf (inst : Instruction) : Prop :=
   ∀ {α : Type} (F : Nat) (m : Module) (st : Store α) (sl : Locals) (env : HostEnv α),
     execOne F m st sl inst env = execOne F (withoutFuncs m) st sl inst ∧
@@ -247,7 +252,7 @@ a state that holds the same store. -/
 theorem lift_pc {cap : Nat} {gts : List ValueType} {st : Store α} {q : M.Q} {p : UInt64}
     (hsr : M.SR cap gts st q) (hr : Reach P code (M.core q) { M.core q with pc := p }) :
     ∃ q', M.Rch q q' ∧ M.core q' = { M.core q with pc := p } ∧ M.SR cap gts st q' := by
-  obtain ⟨q', hq, hc, hst⟩ := M.lift hsr hr
+  obtain ⟨q', hq, hc, hst, -⟩ := M.lift hsr hr
   exact ⟨q', hq, hc, hst st ((M.storeRel hsr).regs rfl rfl rfl) rfl⟩
 
 /-- An outcome of the program's model from the core of a state that holds the store `st` is an
@@ -265,24 +270,24 @@ theorem Outcome.of_bare {E : Env} {ctl : List Ctl} {D : Nat} {fin : Option (List
   cases r with
   | Fallthrough st' sl' =>
       obtain ⟨σ', hf, s', hr, hp, hsp, hout, h18, hmf, hinv, hfr, hsr'⟩ := h
-      obtain ⟨q', hq, hc', hst⟩ := M.lift hsr hr
+      obtain ⟨q', hq, hc', hst, -⟩ := M.lift hsr hr
       subst hc'
       exact ⟨σ', hf, q', hq, hp, hsp, hout, h18, hmf, hinv, hfr, hst st' hsr' hk⟩
   | Break k st' sl' =>
       obtain ⟨t, ht, s', hr, hp, hsp, hout, h18, hmf, hloc, hty, hkp, hfr, hsr'⟩ := h
-      obtain ⟨q', hq, hc', hst⟩ := M.lift hsr hr
+      obtain ⟨q', hq, hc', hst, -⟩ := M.lift hsr hr
       subst hc'
       exact ⟨t, ht, q', hq, hp, hsp, hout, h18, hmf, hloc, hty, hkp, hfr, hst st' hsr' hk⟩
   | Return st' vs =>
       obtain ⟨t, ht, s', hr, hp, hsp, hout, h18, hmf, hkp, hsr'⟩ := h
-      obtain ⟨q', hq, hc', hst⟩ := M.lift hsr hr
+      obtain ⟨q', hq, hc', hst, -⟩ := M.lift hsr hr
       subst hc'
       exact ⟨t, ht, q', hq, hp, hsp, hout, h18, hmf, hkp, hst st' hsr' hk⟩
   | Trap st' msg =>
       obtain ⟨s', hr, hout, hpc⟩ := h
-      obtain ⟨q', hq, hc', -⟩ := M.lift hsr hr
+      obtain ⟨q', hq, hc', -, htr⟩ := M.lift hsr hr
       subst hc'
-      exact ⟨q', hq, hout, M.trapAt hpc⟩
+      exact ⟨q', hq, hout, htr _ st' msg hpc hk⟩
   | Invalid _ => trivial
   | OutOfFuel => trivial
   | ReturnCall _ _ _ => exact h.elim

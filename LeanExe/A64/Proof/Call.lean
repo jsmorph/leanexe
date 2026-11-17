@@ -409,7 +409,7 @@ theorem sim_call (f k : Nat) : M.InstrSim (f + 1) (.call k) := by
     exact mem1 b fun j hj => below_slot hl2 hl3 (by omega) hb
   have rt : Reach P code (M.core q) t :=
     r1.trans (r2.trans (reach_exec P code (by rw [pB]; exact cB) et (.refl _)))
-  obtain ⟨qt, hqt, hct, hsrt'⟩ := M.lift hsr rt
+  obtain ⟨qt, hqt, hct, hsrt', -⟩ := M.lift hsr rt
   -- the callee
   have hvl : sl.values.length = d + p := by omega
   have hargs : StackRel (M.core qt) (sl.values.take ps.length) := by
@@ -515,7 +515,7 @@ theorem sim_call (f k : Nat) : M.InstrSim (f + 1) (.call k) := by
       have h174 : s4.x 17 = (M.core q').x 17 := by
         rw [x4b 17 (fun j hj => (regOf_ne_17 j (by omega)).symm),
           x3b 17 (fun k hk => (regOf_ne_17 _ (by omega)).symm)]
-      obtain ⟨q4, hq4, hc4, hsr4⟩ := M.lift hsr' (r3.trans r4)
+      obtain ⟨q4, hq4, hc4, hsr4, -⟩ := M.lift hsr' (r3.trans r4)
       have hsr4' := hsr4 st' (hsr1.regs h174 (by rw [h184, h18']) (by rw [mem4, mem3])) rfl
       subst hc4
       refine ⟨_, rfl, q4, M.trans hqt (M.trans hr' hq4), ?_, ?_, ?_, h184, hmf4,

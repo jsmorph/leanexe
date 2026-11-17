@@ -12,7 +12,9 @@ of the program's model from a process with FPCR at `fpcrValue`, as `Machine.lift
 its last step may leave the code.  When the code lies below 2^55, two such runs compose, and a run
 that ends in the code is a run of the process.  `procMachine` is the machine whose store relation
 adds FPCR at `fpcrValue` and a relation `H` between the store's host state and the trace to
-`StoreRel`, and `procMachine_calls` applies `Machine.calls_ok` to it.
+`StoreRel`, and whose trap states add `H` between the trap's store and the trace to the stubs of
+`TrapAt`, so that a trap's outcome carries the relation of its store to the trace.
+`procMachine_calls` applies `Machine.calls_ok` to it.
 -/
 
 namespace LeanExe.A64.Test
@@ -82,15 +84,29 @@ def procMachine (K : Kernel) (P : Platform) (code : UInt64 → Option UInt32)
   core p := p.core
   Rch := ProcRun K P code
   SR cap gts st p := StoreRel P cap gts st p.core ∧ p.fpcr = fpcrValue ∧ H st.host p.trace
-  Trapped S msg p := TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg p.core.pc
+  Trapped S st msg p :=
+    TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg p.core.pc ∧ H st.host p.trace
   env := env
   refl _ := .inl rfl
   trans := ProcRun.trans hdom
   storeRel h := h.1
   lift {_ _ st p s} h hr :=
     ⟨{ p with core := s }, .inr ⟨p, .refl _, h.2.1, hr, rfl, rfl⟩, rfl,
-      fun st' h' hh => ⟨h', h.2.1, by rw [hh]; exact h.2.2⟩⟩
-  trapAt h := h
+      fun st' h' hh => ⟨h', h.2.1, by rw [hh]; exact h.2.2⟩,
+      fun _ st' _ ht hh => ⟨ht, by rw [hh]; exact h.2.2⟩⟩
+
+/-- A trap's outcome over `procMachine`, unless the stack overflows, reaches a process whose trace
+`H` relates to the host state of the trap's store. -/
+theorem procMachine_trap (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {α : Type}
+    (H : α → List Event → Prop) (env : HostEnv α) {E : Env} {ctl : List Ctl} {D : Nat}
+    {fin : Option (List ValueType)} {endA : UInt64} {st : Store α} {msg : String} {p : Proc}
+    (h : (procMachine K P code hdom H env).Outcome E ctl D fin endA (.Trap st msg) p) :
+    ((p.core.sp - p.core.x 18).toNat < D ∧
+      (procMachine K P code hdom H env).Overflows E.trapStack p) ∨
+    ∃ q, ProcRun K P code p q ∧ H st.host q.trace := by
+  rcases h with h | ⟨q, hr, -, -, hH⟩
+  · exact .inl h
+  · exact .inr ⟨q, hr, hH⟩
 
 /-- `Machine.calls_ok` at the process: the functions of a table of stubs and generated functions
 simulate under `env` at every fuel. -/

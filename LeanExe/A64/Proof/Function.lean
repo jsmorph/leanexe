@@ -373,7 +373,8 @@ def FunOutcome (S : Shared) (n : Nat) (rs : List ValueType) (r : Continuation α
       M.SR S.cap S.globalTypes st' q'
   | .Return st' vs => ∃ q', M.Rch q q' ∧ Returned rs vs (M.core q) (M.core q') ∧
       M.SR S.cap S.globalTypes st' q'
-  | .Trap _ msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧ M.Trapped S msg q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped S st' msg q'
   | .Break (_ + 1) _ _ => True
   | .Invalid _ => True
   | .OutOfFuel => True
@@ -481,7 +482,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     congr 1
     simp only [List.length_cons, List.length_nil]
     omega
-  obtain ⟨qs, hqs, hcs, hsts⟩ := M.lift hsr (hrc.trans hrs)
+  obtain ⟨qs, hqs, hcs, hsts, -⟩ := M.lift hsr (hrc.trans hrs)
   have hsrqs := hsts st hsrs rfl
   subst hcs
   let fn : Ctl :=
@@ -514,7 +515,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     rw [hfa] at hkl
     have hkt := hk.types
     simp only [fn, Ctl.arity_mk, List.length_reverse] at hkt
-    obtain ⟨q'', hq'', hc'', hst''⟩ := M.lift hsr' hr'
+    obtain ⟨q'', hq'', hc'', hst'', -⟩ := M.lift hsr' hr'
     have hsr'' := hst'' st'
       ((M.storeRel hsr').regs (hx' 17 (by decide)) (hx' 18 (by decide)) hmem') rfl
     subst hc''
@@ -669,8 +670,9 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt64}
 
 /-- What the machine does from `q` at the entry of a stub of an import with results of the types
 `rs`, when the host function gives `r`: a return reaches the return address in X30 as a function
-returns, with the results, top first, in the registers of the heights from 0 and the host's
-store held, and a trap ends where `M.Trapped` admits.  When fewer than `n` bytes lie between the
+returns, with the results in the registers of the heights from 0, the deepest first, and the
+host's store held, and a trap ends at a state that `M.Trapped` admits for the trap's message and
+store.  When fewer than `n` bytes lie between the
 stack's limit and SP, the machine may instead reach the stub of an overflow of the stack. -/
 def StubResult (S : Shared) (n : Nat) (rs : List ValueType) (r : HostResult α) (q : M.Q) :
     Prop :=
@@ -678,7 +680,8 @@ def StubResult (S : Shared) (n : Nat) (rs : List ValueType) (r : HostResult α) 
   match r with
   | .Return vs st' => ∃ q', M.Rch q q' ∧ Returned rs vs (M.core q) (M.core q') ∧
       M.SR S.cap S.globalTypes st' q'
-  | .Trap _ msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧ M.Trapped S msg q'
+  | .Trap st' msg => ∃ q', M.Rch q q' ∧ (M.core q').io = (M.core q).io ∧
+      M.Trapped S st' msg q'
   | .Throw _ _ _ => False
 
 /-- What a stub at `entry` must satisfy to stand for the host function `hf` of an import with
