@@ -222,6 +222,55 @@ theorem vectorAt_of {P : Platform} {mem : UInt64 → UInt8} {sp top : UInt64}
       · rw [show j + 1 + rest.length = j + (s :: rest).length by simp; omega]
         exact hz
 
+/-! ## The vectors of the initial stack -/
+
+section Launch
+
+variable {args environ : List (List UInt8)} {sp top : UInt64} {mem : UInt64 → UInt8}
+  {P : Platform}
+
+/-- The arguments' vector of an initial stack, on a platform that maps the stack's bytes as Normal
+memory. -/
+theorem InitialStack.args_vector (h : InitialStack args environ sp top mem)
+    (hP : ∀ a : UInt64, sp.toNat ≤ a.toNat → a.toNat < top.toNat → P.normal a = true) :
+    VectorAt P mem (vectorAddr mem sp .args) args :=
+  vectorAt_of h.above h.below hP args 1 (by have := h.words; omega)
+    (fun i hi => by rw [show 1 + i = i + 1 by omega]; exact h.argv i hi)
+    (by rw [show 1 + args.length = args.length + 1 by omega]; exact h.argvEnd)
+
+/-- The environment's vector of an initial stack, after `argc` and the arguments' vector, on a
+platform that maps the stack's bytes as Normal memory. -/
+theorem InitialStack.environ_vector (h : InitialStack args environ sp top mem)
+    (hP : ∀ a : UInt64, sp.toNat ≤ a.toNat → a.toNat < top.toNat → P.normal a = true) :
+    VectorAt P mem (vectorAddr mem sp .environ) environ := by
+  have hv := vectorAt_of (P := P) (mem := mem) h.above h.below hP environ (args.length + 2)
+    (by have := h.words; omega) h.envp h.envpEnd
+  have e : vectorAddr mem sp .environ = sp + UInt64.ofNat (8 * (args.length + 2)) := by
+    show sp + load64 mem sp * 8 + 16 = _
+    rw [h.argc]
+    apply UInt64.toNat_inj.mp
+    have := h.words
+    have := h.below
+    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat']
+    have h8 : (8 : UInt64).toNat = 8 := rfl
+    have h16 : (16 : UInt64).toNat = 16 := rfl
+    rw [h8, h16]
+    omega
+  rw [e]
+  exact hv
+
+/-- The first word of an initial stack, `argc`, lies in Normal memory of a platform that maps the
+stack's bytes. -/
+theorem InitialStack.argc_word (h : InitialStack args environ sp top mem)
+    (hP : ∀ a : UInt64, sp.toNat ≤ a.toNat → a.toNat < top.toNat → P.normal a = true) :
+    ∀ k < 8, P.normal (sp + UInt64.ofNat k) = true := by
+  intro k hk
+  have := h.below
+  have := h.words
+  apply hP <;> rw [UInt64.toNat_add, UInt64.toNat_ofNat'] <;> omega
+
+end Launch
+
 /-! ## The generators' parts -/
 
 theorem scanPiece_ok {a ov : UInt64} {is : List Instr} (hg : scanPiece a ov = .ok is) :
