@@ -117,6 +117,7 @@ import Verified.Examples.WasiStdio
 import Verified.Examples.WasiReadAll
 import Verified.Shim
 import Verified.Examples.WasiReadAllShim
+import Verified.Examples.WasiReadAllMessage
 import Verified.Examples.WasiSysShim
 import Verified.Examples.WasiFilesShim
 import Verified.AlignedAccess
