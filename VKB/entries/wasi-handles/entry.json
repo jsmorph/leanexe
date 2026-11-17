@@ -11,7 +11,8 @@
     "env.at? Ty.pair? 0 = some (errno, word) for a variable whose type the context does not fix",
     "Dependent elimination failed: Failed to solve equation Ty.elem Elem.bool = g✝.2, from cases on an Expr of a fixed type",
     "a statement over descriptor numbers in a trace when the host reuses numbers",
-    "the close of a bracket that returns normally inside a run that later exits"
+    "the close of a bracket that returns normally inside a run that later exits",
+    "the errno that withOpen returns after a rejected, failed, or successful open"
   ],
   "modules": [
     "Verified.Wasi.Handles",

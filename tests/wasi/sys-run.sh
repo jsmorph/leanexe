@@ -137,14 +137,16 @@ cases=$((cases + 1))
 # The frame test of every flat function runs with a fresh directory preopened at descriptor 3, the
 # arguments prog and a, and the environment variable that its steps expect (ENVIRONMENT in the
 # generator).  Each seeded fault's frame test must exit with the status that tools/wasi-calls.py
-# prints for it.
+# prints for it.  A run that times out ends with status 143, since `timeout --preserve-status`
+# reports the host's termination by SIGTERM, where `timeout` alone gives 124, the status of the
+# value checks of one of the frame test's steps.
 dir="$out/frame-dir"
 frame="--arg prog --arg a --env LEANEXE_FRAME=1"
 rm -rf "$dir"
 mkdir "$dir"
 status=0
 # shellcheck disable=SC2086
-timeout 60s "$host" --dir "$dir" $frame run "$out/frame-all.wasm" \
+timeout --preserve-status 60s "$host" --dir "$dir" $frame run "$out/frame-all.wasm" \
   2> "$out/frame-all.stderr" || status=$?
 [ "$status" -eq 0 ] || fail "frame of every function" "status $status"
 cases=$((cases + 1))
@@ -158,7 +160,7 @@ while read -r name expected; do
   mkdir "$dir"
   status=0
   # shellcheck disable=SC2086
-  timeout 60s "$host" --dir "$dir" $frame run "$faults/$name.wasm" \
+  timeout --preserve-status 60s "$host" --dir "$dir" $frame run "$faults/$name.wasm" \
     < /dev/null 2> "$faults/$name.stderr" || status=$?
   [ "$status" -eq "$expected" ] ||
     fail "seeded frame fault $name" "status $status, expected $expected"
