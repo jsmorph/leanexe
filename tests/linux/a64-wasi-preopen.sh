@@ -136,13 +136,13 @@ for name in prestat numbers; do
   limited strace -f -e trace=openat,close -e raw=openat,close -o "$log" "$elf" </dev/null \
     >"$out/strace-$name.out" 3<"$dir" || code=$?
   first=$(grep -m1 ' openat(' "$log" | sed 's/^[0-9]* *//')
-  fd=$(printf '%s' "$first" | sed -n 's/.*= \([0-9]*\)$/\1/p')
+  fd=$(printf '%s' "$first" | sed -n 's/.*= \(0x[0-9a-f]*\)$/\1/p')
   if [ "$code" -eq 0 ] &&
       [ "${first%% =*}" = "openat(0x3, $(pathAddress "$elf"), 0x84000, 0)" ] &&
-      [ -n "$fd" ] && [ "$fd" -ge 4 ] &&
-      grep -q "^[0-9]* *close($(printf '0x%x' "$fd")) *= 0$" "$log" &&
+      [ -n "$fd" ] && [ "$((fd))" -ge 4 ] &&
+      grep -q "^[0-9]* *close($fd) *= 0$" "$log" &&
       cmp -s "$out/strace-$name.out" "$out/native-$name-granted.out"; then
-    echo "pass: $name: the startup's openat of the scratch's path and close of descriptor $fd"
+    echo "pass: $name: the startup's openat of the scratch's path and close of descriptor $((fd))"
   else
     echo "fail: $name: the startup's calls: $(head -c 400 "$log")"
     status=1
