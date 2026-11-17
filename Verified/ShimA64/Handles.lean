@@ -12,7 +12,7 @@ the iovec's two halves are `read32` of the guest's memory at the iovec and 4 byt
 (`StoreRel.iovec`).
 
 A request that fails a check reaches the trap stub with the store unchanged, and a descriptor that
-the shim does not hold returns errno 8 with no call and the store's memory unchanged (`shim_badf`).
+the shim does not hold returns errno 8 with no call and the store's memory unchanged (`shim_errno`).
 An accepted request reaches `SVC #0` with the `read` or `write` whose event the specification
 records, and a result at most the length is the count, whose four bytes the stub stores as
 `placeAll` stores `leBytes 4` of it (`leBytes_word`).  A result above the length returns the
@@ -243,24 +243,31 @@ theorem run_handleChecked {nr : Fin 65536} {S : Shared} {a svc en : UInt64} {is 
     rw [ite_eq_right hok]
     exact hc
 
-/-- A run of the process from a state that holds the store `st` to the return address with errno 8
-in X0, with the memory, SP, the UART's state, X17, and X18 kept, ends the stub with errno 8 and the
-store with the WASI event of the reply `.returned 8 outputs` and no layer event. -/
-theorem shim_badf {S : Shared} {n : Nat} {st : Store (Observed LinuxWorld)} {q : Proc} {t : State}
+/-- A run of the program's model on the process's platform from a state that holds the store `st`
+to the return address with the errno `v` in X0, with the memory, SP, the UART's state, X17, and
+X18 kept, ends the stub with errno `v` and the store with the WASI event of the reply
+`.returned v outputs` and no layer event. -/
+theorem shim_errno {S : Shared} {n : Nat} {st : Store (Observed LinuxWorld)} {q : Proc} {t : State}
     {call : LeanExe.Wasi.Call} {request : List LeanExe.Wasi.Arg} {outputs : List LeanExe.Bytes}
+    {v : UInt64}
     (hsr : (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).SR S.cap
       S.globalTypes st q)
     (hr : Reach (wasiPlatform L sp₀ top) code q.core t) (hpc : t.pc = q.core.x 30)
     (hsp : t.sp = q.core.sp) (hmem : t.mem = q.core.mem) (hio : t.io = q.core.io)
-    (h17 : t.x 17 = q.core.x 17) (h18 : t.x 18 = q.core.x 18) (hx0 : t.x 0 = 8) :
+    (h17 : t.x 17 = q.core.x 17) (h18 : t.x 18 = q.core.x 18) (hx0 : t.x 0 = v)
+    (hv : v.toNat < 2 ^ 32) :
     (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubResult S n [.i32]
-      (sysAnswer st call request st.mem [] (.returned 8 outputs)) q := by
+      (sysAnswer st call request st.mem [] (.returned v outputs)) q := by
   obtain ⟨hst, hf, h17', hgap, htr, hK⟩ := hsr
   simp only [sysAnswer, sysResult]
   refine shim_return (ProcRunWith.ofReach hf hr) hpc hsp h18 hio (fun a _ => by
       show t.mem a = q.core.mem a
-      rw [hmem]) (by rw [hx0]; rfl) ⟨StoreRel.withHost (hst.regs h17 h18 hmem) _, hf, ?_, ?_,
-        ⟨?_, ?_⟩, ?_⟩
+      rw [hmem]) ?_ ⟨StoreRel.withHost (hst.regs h17 h18 hmem) _, hf, ?_, ?_, ⟨?_, ?_⟩, ?_⟩
+  · show t.x 0 = v.toUInt32.toUInt64
+    rw [hx0]
+    apply UInt64.toNat_inj.mp
+    rw [UInt32.toNat_toUInt64, UInt64.toNat_toUInt32]
+    exact (Nat.mod_eq_of_lt hv).symm
   · show t.x 17 = L.area
     rw [h17, h17']
   · show _ ≤ (t.x 18).toNat
@@ -333,7 +340,7 @@ theorem handleReadStub_sim (S : Shared) (n : Nat) {hr svc en : UInt64} {is : Lis
   swap
   · rename_i hheld
     rw [ite_eq_right hheld] at hc1
-    exact shim_badf hsr' r1 hc1.1 sp1 m1 io1 x17_1 x18_1 hc1.2
+    exact shim_errno hsr' r1 hc1.1 sp1 m1 io1 x17_1 x18_1 hc1.2 (by decide)
   rename_i hheld
   rw [ite_eq_left hheld] at hc1
   obtain ⟨p1, x01, x11, x21, x31, x81, x111, x191, -⟩ := hc1
@@ -638,7 +645,7 @@ theorem handleWriteStub_sim (S : Shared) (n : Nat) {hw svc en : UInt64} {is : Li
   swap
   · rename_i hheld
     rw [ite_eq_right hheld] at hc1
-    exact shim_badf hsr' r1 hc1.1 sp1 m1 io1 x17_1 x18_1 hc1.2
+    exact shim_errno hsr' r1 hc1.1 sp1 m1 io1 x17_1 x18_1 hc1.2 (by decide)
   rename_i hheld
   rw [ite_eq_left hheld] at hc1
   obtain ⟨p1, x01, x11, x21, x31, x81, x111, x191, -⟩ := hc1
