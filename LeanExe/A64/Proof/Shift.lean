@@ -396,14 +396,18 @@ theorem genFunction_shift {callee : Table} {S : Shared} {entry d : UInt64} {δ :
     {f : Function} {is : List Instr} (hS : SharedMoves d δ S callee)
     (hg : genFunction callee S entry f = .ok is) (ha : MovesFrom d δ entry is.length) :
     genFunction (shiftTable d callee) (S.shift d) (entry + d) f = .ok is := by
-  obtain ⟨-, -, -, hf, hn, stores, body, fin, g, hsl, -, hl, -, hcb, his⟩ := gen_function hg
+  obtain ⟨-, -, -, hn, stores, body, fin, g, hsl, -, hl, -, hcb, his⟩ := gen_function hg
   have hbl := (genList_size _ _ _ f.body body fin hl).1
   simp only [List.map_cons, List.map_nil, List.length_nil, Ctl.arity_mk, List.length_reverse]
     at hbl
-  have hlen : is.length = 5 + (f.params.length + f.locals.length) + body.length + 3 := by
+  generalize hfs : frameSize (f.params.length + f.locals.length) = fs at *
+  have hlen : is.length = (stackCmp fs).length + 1 + (frameSteps fs).length + 1 +
+      (f.params.length + f.locals.length) + body.length + 1 + (frameSteps fs).length + 1 := by
     rw [his]
-    simp only [List.length_append, List.length_cons, List.length_nil, hsl]
-  have hx := ha.drop (m := 5 + (f.params.length + f.locals.length)) (by omega)
+    simp only [List.length_append, List.length_cons, List.length_nil, List.length_map, hsl]
+    omega
+  have hx := ha.drop (m := (stackCmp fs).length + 1 + (frameSteps fs).length + 1 +
+    (f.params.length + f.locals.length)) (by omega)
   have hl' := genList_shift hS _ _ _ _ _ _ hl
     (List.forall_mem_cons.mpr ⟨hx _ (by omega), fun _ h => absurd h List.not_mem_nil⟩)
     (hx.le (by omega))
@@ -412,8 +416,8 @@ theorem genFunction_shift {callee : Table} {S : Shared} {entry d : UInt64} {δ :
       { toShared := S.shift d, localTypes := f.params ++ f.locals, callee := shiftTable d callee }
       _ _ _ _ = _ := hl'
   rw [← hg]
-  simp only [genFunction, Shared.shift_eq, sigOf_shift, after_shift, hl, hl'', hcb,
-    cbField_shift (ha 2 (by omega)) hS.2.2.2.1 hcb]
+  simp only [genFunction, Shared.shift_eq, sigOf_shift, after_shift, hfs, hl, hl'', hcb,
+    cbField_shift (ha (stackCmp fs).length (by omega)) hS.2.2.2.1 hcb]
 
 theorem genFunctions_shift {callee : Table} {S : Shared} {d : UInt64} {δ : Int}
     (hS : SharedMoves d δ S callee) :
@@ -533,6 +537,7 @@ theorem genProgramWith_shift {mainLen : Nat} {mainGen mainGen' : UInt64 → GenM
   generalize ((base + d).toNat - base.toNat : Int) = δ at ha
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hok, hgt, hgl, hfs, hfirst,
     hT, hen, hps, hmn, hfn, hp, hb1, hb2, hb3, hb4⟩ := gen_programWith hg
+  have hsm := genProgramWith_frames hg hfs
   have hml' := hml e main hmn
   obtain ⟨hfl, hend⟩ := genFunctions_length (sigOf_tableOf _ _ _) hfn
   have hpl : p.length = mainLen + fns.length + 20 := by
@@ -569,7 +574,7 @@ theorem genProgramWith_shift {mainLen : Nat} {mainGen mainGen' : UInt64 → GenM
   have hb4' := bField_shift ((hX.drop (m := 15) (by omega)) 4 (by omega)) h0 hb4
   rw [← hg]
   simp only [genProgramWith, hok, hgt, hgl, Bool.not_true, Bool.false_eq_true,
-    ite_false, ite_true,
+    ite_false, ite_true, hsm, ↓reduceIte,
     hfs, bind, Except.bind, pure, Except.pure, after_shift, ← hfirst, endOf_shift, ← hT,
     tableOf_shift, hen, hen', hps, hmn, hmn', hfn, hfn', hb1, hb2, hb3, hb4, hb1', hb2', hb3',
     hb4']

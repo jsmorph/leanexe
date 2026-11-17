@@ -44,9 +44,14 @@ or store reaches after a check of its bounds.  A function keeps its parameters a
 at `SP` of 8 bytes each, followed by 26 spill slots and the slot of the return address, a multiple
 of 16 bytes in all.  Its prologue checks that the frame fits above the stack's limit, which X18
 holds, reserves the frame, stores the parameters into it from the registers of the heights 0 upward,
-and clears the other locals.  A call spills the operand registers below its arguments to the spill
-slots, moves the arguments into the registers of the heights 0 upward, branches with `BL`, moves the
-results from those registers into the registers of their heights, and reloads the spilled registers.
+and clears the other locals.  `SUB` and `ADD` of SP take an immediate below 4096, so the prologue
+reserves a frame of 4096 bytes or more with several `SUB`s of at most 4080 bytes and the epilogue
+releases it with as many `ADD`s, and the check compares the bytes from the limit up to SP, divided
+by 16, with the frame's size divided by 16, since SP less the frame's size could wrap.  The
+frame's slots must lie within the 4096 slots that `LDR` and `STR` reach from SP.  A call spills
+the operand registers below its arguments to the spill slots, moves the arguments into the
+registers of the heights 0 upward, branches with `BL`, moves the results from those registers into
+the registers of their heights, and reloads the spilled registers.
 The callee may change every register but SP, X17, and X18, and it changes no memory from its
 caller's SP upward.  A construct carries at most one value, and a branch to one moves the value that
 it carries, if any, into the register of the construct's base height with one `ORR` and branches to
@@ -701,17 +706,39 @@ def numeric : ValueType → Bool
 slot above them, and 8 for the return address above those, rounded up to 16. -/
 def frameSize (n : Nat) : Nat := (8 * (n + spillSlots + 1) + 15) / 16 * 16
 
+/-- The comparison that precedes the prologue's `B.LO` to the stub of an overflow of the stack,
+for a frame of `fs` bytes.  Below 4096 bytes, X16 takes SP less `fs`, which `CMP` compares with
+the stack's limit in X18.  Otherwise X16 takes SP less X18, the bytes from the limit up to SP,
+divided by 16, which `CMP` compares with `fs / 16`: SP less `fs` would wrap for an SP below `fs`,
+while the bytes from the limit up to SP do not, and for a multiple of 16 below 65536 the
+comparison of the quotients is that of the bytes. -/
+def stackCmp (fs : Nat) : List Instr :=
+  if h : fs < 4096 then [.subImm 16 31 ⟨fs, h⟩, .subsReg 31 16 18]
+  else [.addImm 16 31 0, .subReg 16 16 18, .lsrImm 16 16 4,
+    .subsImm 31 16 ⟨fs / 16 % 4096, Nat.mod_lt _ (by decide)⟩]
+
+/-- The immediates of the `SUB`s of SP that reserve a frame of `fs` bytes and of the `ADD`s that
+release it: 4080, a multiple of 16, while more than 4080 bytes remain, and then the rest, so that
+a frame of at most 4080 bytes takes one. -/
+def frameSteps (fs : Nat) : List (Fin 4096) :=
+  List.replicate ((fs - 1) / 4080) ⟨4080, by decide⟩ ++
+    [⟨fs - 4080 * ((fs - 1) / 4080), by omega⟩]
+
 /-- The number of instructions of the function `f`, whose calls name functions whose numbers of
 parameters and results `sig` gives. -/
 def functionSize (sig : Nat → Option (Nat × Nat)) (f : Function) : Nat :=
-  5 + (f.params.length + f.locals.length) + (listSize sig [f.results.length] 0 f.body).1 + 3
+  (stackCmp (frameSize (f.params.length + f.locals.length))).length + 1 +
+    (frameSteps (frameSize (f.params.length + f.locals.length))).length + 1 +
+    (f.params.length + f.locals.length) + (listSize sig [f.results.length] 0 f.body).1 + 1 +
+    (frameSteps (frameSize (f.params.length + f.locals.length))).length + 1
 
-/-- The instructions of the function `f` placed at `entry`.  The prologue sets X16 to SP less
-the frame's size, compares it with the stack's limit in X18, and branches to `trapStack` when it
-lies below; it then allocates the frame, saves the return address in X30 above the spill slots,
-and stores the parameters from X0 up and zeros for the other locals.  The body follows, then the
-epilogue, which restores X30, frees the frame, and returns.  Its calls name the functions of
-`callee`. -/
+/-- The instructions of the function `f` placed at `entry`.  The prologue's `stackCmp` and
+`B.LO` branch to `trapStack` when fewer bytes than the frame's lie from the stack's limit in X18
+up to SP.  The prologue then reserves the frame with the `SUB`s of `frameSteps`, saves the return
+address in X30 above the spill slots, and stores the parameters from X0 up and zeros for the
+other locals.  The body follows, then the epilogue, which restores X30, releases the frame with
+the `ADD`s of `frameSteps`, and returns.  The frame's slots lie within the reach of `LDR` and
+`STR`.  Its calls name the functions of `callee`. -/
 def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
     GenM (List Instr) := do
   let p := f.params.length
@@ -719,9 +746,11 @@ def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
   let r := f.results.length
   if p > 26 ∨ r > 26 then throw "a function with more than 26 parameters or 26 results"
   if !f.locals.all numeric then throw "a local whose zero is not the word 0"
-  if hf : frameSize n < 4096 then
-    have hn : n + spillSlots < 4096 := by unfold frameSize at hf; omega
-    let bodyA := after entry (5 + n)
+  if hn : n + spillSlots < 4096 then
+    let fs := frameSize n
+    let cmp := stackCmp fs
+    let steps := frameSteps fs
+    let bodyA := after entry (cmp.length + 1 + steps.length + 1 + n)
     let E : Env := { toShared := S, localTypes := f.params ++ f.locals, callee }
     let epilogue := after bodyA (listSize (sigOf callee) [r] 0 f.body).1
     let (body, fin) ←
@@ -729,10 +758,10 @@ def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
     if fin.any (· ≠ f.results.reverse) then throw "a function body that ends with other types"
     let stores := List.ofFn fun i : Fin n =>
       Instr.str (if i.val < p then regOf i.val else 31) 31 ⟨i.val, by omega⟩
-    let check := Instr.bcond 3 (← cbField (after entry 2) S.trapStack)
-    return [.subImm 16 31 ⟨frameSize n, hf⟩, .subsReg 31 16 18, check,
-        .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++
-      [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
+    let check := Instr.bcond 3 (← cbField (after entry cmp.length) S.trapStack)
+    return cmp ++ check :: steps.map (Instr.subImm 31 31 ·) ++
+      Instr.str 30 31 ⟨n + spillSlots, hn⟩ :: stores ++ body ++
+      Instr.ldr 30 31 ⟨n + spillSlots, hn⟩ :: steps.map (Instr.addImm 31 31 ·) ++ [.ret 30]
   else throw s!"a frame of {frameSize n} bytes"
 
 /-- What `main` writes to the UART from the result: the eight bytes of its word, or the array of
@@ -866,6 +895,10 @@ functions that `targets` names. -/
 def tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Function)) : Table :=
   fun j => if j ∈ targets then entryIn (sigIn targets fs) a fs j else none
 
+/-- Every function of `fs` has a frame below 4096 bytes. -/
+def framesSmall (fs : List (Nat × Function)) : Bool :=
+  fs.all fun x => frameSize (x.2.params.length + x.2.locals.length) < 4096
+
 /-- A type whose values `main` passes to the function that it calls as words in X0 upward: `i64`
 or `f64`. -/
 def wordType : ValueType → Bool
@@ -878,8 +911,9 @@ of `cap` pages: `main` at `base + 4`, the functions that calls reach from functi
 and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the exit word.  The
 parameters of function `k` are `i64`s and `f64`s, the memory satisfies `areaOk`, and the globals
 are at most 511 numbers.  The table of the functions' calls holds the functions that
-`callTargets` names.  The image puts a branch to `lx_exit` at `base` and `areaBytes` in the
-area. -/
+`callTargets` names.  Every frame lies below 4096 bytes (`framesSmall`), since the theorems of
+these programs state that a function without calls never overflows a stack's room of 4096 bytes.
+The image puts a branch to `lx_exit` at `base` and `areaBytes` in the area. -/
 def genProgramWith (mainLen : Nat) (mainGen : UInt64 → GenM (List Instr)) (m : Module) (k : Nat)
     (base : UInt64) (cap : Nat) (bytes : Bool) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
@@ -887,6 +921,7 @@ def genProgramWith (mainLen : Nat) (mainGen : UInt64 → GenM (List Instr)) (m :
     | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
     | none => throw "a global that is not a number"
   let fs ← (reachFrom m k).mapM (funcOf m)
+  unless framesSmall fs do throw "a frame of 4096 bytes or more"
   let targets := callTargets m k
   let sig := sigIn targets fs
   let first := after (after base 1) mainLen
