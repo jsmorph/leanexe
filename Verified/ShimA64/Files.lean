@@ -199,14 +199,14 @@ theorem ScratchOnly.store8 {G : Scratch} (m : UInt64 → UInt8) {j : Nat} (v : U
 store relation and every byte from the stack's limit up. -/
 theorem ScratchOnly.storeRel {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
     {st : Store α} {s s' : State} {G : Scratch} (h : StoreRel P cap gts st s)
-    (hGa : G.base = s.x 17 + UInt64.ofNat (areaSize cap)) (h17 : s'.x 17 = s.x 17)
+    (hGb : G.base = s.x 17 + UInt64.ofNat (areaSize cap)) (h17 : s'.x 17 = s.x 17)
     (h18 : s'.x 18 = s.x 18) (hm : ScratchOnly G s.mem s'.mem) : StoreRel P cap gts st s' := by
   have hb := h.below
   have h18lt := (s.x 18).toNat_lt
   refine StoreRel.congrArea h h17 h18 fun j hj => hm _ (.inl ?_)
   have e1 := h.toNat_addr (Nat.le_of_lt hj)
   have e2 := h.toNat_addr (j := areaSize cap) (Nat.le_refl _)
-  rw [hGa]
+  rw [hGb]
   omega
 
 theorem ScratchOnly.high {G : Scratch} {m m' : UInt64 → UInt8} (hm : ScratchOnly G m m')
@@ -259,20 +259,62 @@ theorem shim_trap {S : Shared} {n : Nat} {rs : List ValueType} {st' : Store (Obs
       (.Trap st' shimTrap) q :=
   .inr ⟨q', hr, hio, .inr (.inr (.inr ⟨rfl, hpc⟩)), hf, htr⟩
 
-/-- The scratch lies in the data segment: its bytes are Normal memory of the process and it ends
-below `2^32`. -/
-theorem scratch_low {G : Scratch} (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32)
-    (hG : G.base.toNat + scratchSize < 2 ^ 64)
-    (hscr : ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true) :
-    G.base.toNat + scratchSize ≤ 2 ^ 32 := by
-  have h := hscr (scratchSize - 1) (by unfold scratchSize; decide)
-  simp only [elfPlatform, decide_eq_true_eq] at h
-  have e : (G.base + UInt64.ofNat (scratchSize - 1)).toNat = G.base.toNat + (scratchSize - 1) := by
-    unfold scratchSize at hG ⊢
-    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow] at hG ⊢
+/-- The scratch's address as a number, when the data segment holds the area and the scratch and
+ends below `2^32`. -/
+theorem scratch_toNat {G : Scratch} {cap : Nat} (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32)
+    (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
+    (hdata : areaSize cap + scratchSize ≤ L.dataMem) :
+    G.base.toNat = L.area.toNat + areaSize cap := by
+  rw [hGb]
+  simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow]
+  unfold scratchSize at hdata
+  omega
+
+/-- The scratch's bytes are Normal memory of the data segment, which ends below `2^32`. -/
+theorem scratch_normal {G : Scratch} {cap : Nat} (hL : L.area.toNat + L.dataMem ≤ 2 ^ 32)
+    (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
+    (hdata : areaSize cap + scratchSize ≤ L.dataMem) :
+    ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true := by
+  intro j hj
+  have e := scratch_toNat hL hGb hdata
+  have e' : (G.base + UInt64.ofNat j).toNat = G.base.toNat + j := by
+    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow]
+    unfold scratchSize at hj hdata
     omega
-  rw [e] at h
-  unfold scratchSize at h ⊢
+  simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le, e']
+  unfold scratchSize at hj hdata
+  omega
+
+/-- The UART of the process's platform is no Normal memory when the module's is not, the scratch
+follows the area, and the initial stack lies from `2^32` up. -/
+theorem wasiPlatform_uart {G : Scratch} {cap : Nat}
+    (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false)
+    (hGb : G.base = L.area + UInt64.ofNat (areaSize cap))
+    (hsp : 2 ^ 32 ≤ sp₀.toNat) :
+    (wasiPlatform L sp₀ top).normal (wasiPlatform L sp₀ top).uart = false := by
+  have hm : (modulePlatform L G).normal 0 = false := hU
+  have he : (elfPlatform L).normal 0 = false := by
+    cases hE : (elfPlatform L).normal 0 with
+    | false => rfl
+    | true =>
+      exfalso
+      have hin : decide (G.base ≤ 0 ∧ (0 : UInt64).toNat < G.base.toNat + scratchSize) =
+          true := by
+        simp only [modulePlatform, hE, Bool.true_and, Bool.not_eq_false'] at hm
+        exact hm
+      simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le] at hE
+      simp only [decide_eq_true_eq, UInt64.le_iff_toNat_le] at hin
+      have hb := congrArg UInt64.toNat hGb
+      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow] at hb
+      unfold areaSize at hb
+      simp only [UInt64.reduceToNat] at hE hin
+      omega
+  show ((elfPlatform L).normal 0 || decide (sp₀ ≤ 0 ∧ (0 : UInt64) < top)) = false
+  rw [he, Bool.false_or, decide_eq_false_iff_not]
+  intro h
+  have := h.1
+  rw [UInt64.le_iff_toNat_le] at this
+  simp only [UInt64.reduceToNat] at this
   omega
 
 /-! ## `fd_close` -/
@@ -287,9 +329,9 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
     (hg : closeStub cl svc S.trapUnreachable en (areaSize S.cap) = .ok is)
     (hcode : CodeAt code cl is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
     (hen : CodeAt code en errnoRoutine)
-    (hU : (wasiPlatform L sp₀ top).normal (wasiPlatform L sp₀ top).uart = false)
-    (hGa : G.base = L.area + UInt64.ofNat (areaSize S.cap))
-    (hscr : ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true) :
+    (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
+    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem)
+    (hU' : (modulePlatform L G).normal (modulePlatform L G).uart = false) :
     (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n [.i32]
       [.i32] (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) Call.fdClose)
       cl := by
@@ -304,11 +346,15 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
   have hsr' := hsr
   obtain ⟨hst, hf, h17, hgap, htr, hK⟩ := hsr
   rw [sysFn_close]
-  have hlow := scratch_low hL hG hscr
+  have hscr := scratch_normal hL hGb hdata
+  have hlow : G.base.toNat + scratchSize ≤ 2 ^ 32 := by
+    rw [scratch_toNat hL hGb hdata]
+    omega
+  have hU := wasiPlatform_uart (sp₀ := sp₀) (top := top) hU' hGb hK.stack.above
   have hPP := elfPlatform_le_wasi L sp₀ top
   have hscrP : ∀ j < scratchSize, (wasiPlatform L sp₀ top).normal (G.base + UInt64.ofNat j) =
       true := fun j hj => hPP.normal _ (hscr j hj)
-  have hbase : q.core.x 17 + UInt64.ofNat (areaSize S.cap) = G.base := by rw [h17, hGa]
+  have hbase : q.core.x 17 + UInt64.ofNat (areaSize S.cap) = G.base := by rw [h17, hGb]
   obtain ⟨u1, r1, sp1, m1, io1, x17_1, x18_1, hc1⟩ :=
     run_closeFront (wasiPlatform L sp₀ top) code hg hcode hpc (fun hle => by
       rw [x0] at hle

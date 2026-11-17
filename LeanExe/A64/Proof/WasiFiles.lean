@@ -775,7 +775,7 @@ theorem run_openStart {a svc : UInt64} {is : List Instr} (hg : openCalls a svc =
     fun q h22 h23 => by rw [k2 q h23, k1 q h22], by rw [sp2, sp1], by rw [m2, m1],
     by rw [io2, io1]⟩
   · rw [k2 22 (by decide), x1]
-  · rw [x2, movz0_val] <;> rfl
+  · rw [x2, movz0_val]; rfl
 
 /-- The arguments of an `openat2` call, from `after a 2` of `openCalls` at `a` to its `BL` at
 `after a 7`: X0 at the directory in X22, X1 and X2 at the path buffer and the `open_how` record,
@@ -812,10 +812,10 @@ theorem run_openArgs {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = 
     ?_, ?_, ?_, fun q h0 h1 h2 h3 h8 => by rw [k5 q h8, k4 q h3, k3 q h2, k2 q h1, k1 q h0],
     by rw [sp5, sp4, sp3, sp2, sp1], by rw [m5, m4, m3, m2, m1], by rw [io5, io4, io3, io2, io1]⟩
   · rw [k5 0 (by decide), k4 0 (by decide), k3 0 (by decide), k2 0 (by decide), x1]
-  · rw [k5 1 (by decide), k4 1 (by decide), k3 1 (by decide), x2, k1 16 (by decide)] <;> rfl
-  · rw [k5 2 (by decide), k4 2 (by decide), x3, k2 16 (by decide), k1 16 (by decide)] <;> rfl
-  · rw [k5 3 (by decide), x4, movz0_val] <;> rfl
-  · rw [x5, movz0_val] <;> rfl
+  · rw [k5 1 (by decide), k4 1 (by decide), k3 1 (by decide), x2, k1 16 (by decide)]; rfl
+  · rw [k5 2 (by decide), k4 2 (by decide), x3, k2 16 (by decide), k1 16 (by decide)]; rfl
+  · rw [k5 3 (by decide), x4, movz0_val]; rfl
+  · rw [x5, movz0_val]; rfl
 
 /-- The test after an `openat2` call, from `after a 8` of `openCalls` at `a`: a result of `-EAGAIN`
 with at most 2 in X23 returns to the call's arguments at `after a 2` with X23 increased by one, and
@@ -873,7 +873,7 @@ theorem run_openRetry {a svc : UInt64} {is : List Instr} (hg : openCalls a svc =
         fun q h9 h23 => by rw [k5, k4 q h23, k3, kk2 q h9], by rw [sp5, sp4, sp3, sp2, sp1],
         by rw [m5, m4, m3, m2, m1], by rw [io5, io4, io3, io2, io1]⟩
       rw [ite_eq_left ⟨hag, UInt64.not_lt.mp hc⟩]
-      exact ⟨p5, by rw [k5, x4, k3, kk2 23 (by decide)] <;> rfl⟩
+      exact ⟨p5, by rw [k5, x4, k3, kk2 23 (by decide)]; rfl⟩
   · have h9 : u1.x 9 ≠ 0 := by rw [hx9]; exact fun h => hag (eag.mp h)
     rw [ite_eq_left h9] at p2
     refine ⟨u2, hr12, ?_, fun q h9 _ => kk2 q h9, by rw [sp2, sp1], by rw [m2, m1],
@@ -935,7 +935,7 @@ theorem run_openResult {a tr en : UInt64} {is : List Instr} (hg : openResult a t
     obtain ⟨u4, r4, p4, k4, sp4, io4, m4⟩ := step_strb P code (s := u3) (t := 9) (n := 10)
       (imm := 16) (k := 16) (addr := s.x 16 + s.x 0 + 16) (by decide)
       (by rw [p3, p2, p1, ← after_succ, ← after_succ]; exact c4) rfl
-      (by rw [k3 10 (by decide), x2, k1, k1] <;> rfl) (hbyte hle) hU
+      (by rw [k3 10 (by decide), x2, k1, k1]; rfl) (hbyte hle) hU
     have q4 : u4.pc = after a 5 := by rw [p4, p3, p2, p1, ← after_succ, ← after_succ, ← after_succ]
     have kk4 : ∀ q : Fin 32, q ≠ 9 → q ≠ 10 → u4.x q = s.x q := fun q h9 h10 => by
       rw [k4, k3 q h9, k2 q h10, k1]
@@ -955,8 +955,8 @@ theorem run_openResult {a tr en : UInt64} {is : List Instr} (hg : openResult a t
       kk7 18 (by decide) (by decide) (by decide) (by decide) (by decide),
       .inl ⟨hle, ?_, ?_, ?_⟩⟩
     · rw [p7, k6 19 (by decide), k5 19 (by decide) (by decide), kk4 19 (by decide) (by decide)]
-    · rw [k7, x6, movz0_val] <;> rfl
-    · have h91 : (u3.x 9).toUInt8 = 1 := by rw [x3, movz0_val] <;> rfl
+    · rw [k7, x6, movz0_val]; rfl
+    · have h91 : (u3.x 9).toUInt8 = 1 := by rw [x3, movz0_val]; rfl
       rw [m7, m6, m5, m4, m3, m2, m1, kk4 17 (by decide) (by decide),
         kk4 21 (by decide) (by decide), kk4 0 (by decide) (by decide), h91]
 

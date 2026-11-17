@@ -139,7 +139,7 @@ theorem openHow_flags (dirflags oflags rights fdflags : UInt64) :
 /-! ## The generator's words -/
 
 theorem openHow_ok {a : UInt64} {is : List Instr} (hg : openHow a = .ok is) :
-    ∃ g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13,
+    ∃ g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 : Fin 524288,
       cbField (after a 9) (after a 19) = .ok g1 ∧ cbField (after a 13) (after a 17) = .ok g2 ∧
       cbField (after a 16) (after a 18) = .ok g3 ∧ cbField (after a 19) (after a 22) = .ok g4 ∧
       cbField (after a 24) (after a 27) = .ok g5 ∧ cbField (after a 29) (after a 31) = .ok g6 ∧
@@ -147,20 +147,21 @@ theorem openHow_ok {a : UInt64} {is : List Instr} (hg : openHow a = .ok is) :
       cbField (after a 35) (after a 38) = .ok g9 ∧ cbField (after a 40) (after a 43) = .ok g10 ∧
       cbField (after a 45) (after a 48) = .ok g11 ∧ cbField (after a 50) (after a 53) = .ok g12 ∧
       cbField (after a 55) (after a 57) = .ok g13 ∧
-      is = [.movz 24 8 1, .movz 9 1 0, .andReg 25 4 9, .movz 9 8 0, .andReg 27 4 9,
+      is = ([.movz 24 8 1, .movz 9 1 0, .andReg 25 4 9, .movz 9 8 0, .andReg 27 4 9,
           .movz 9 64 0, .andReg 28 5 9, .orrReg 28 28 25, .orrReg 28 28 27, .cbz 28 g1,
           .movz 9 1 0, .movz 10 2 0, .andReg 10 5 10, .cbnz 10 g2, .movz 10 64 0,
-          .andReg 10 5 10, .cbnz 10 g3, .movz 9 2 0, .orrReg 24 24 9] ++
-        [.cbz 25 g4, .movz 9 0x40 0, .orrReg 24 24 9,
+          .andReg 10 5 10, .cbnz 10 g3, .movz 9 2 0, .orrReg 24 24 9] : List Instr) ++
+        ([.cbz 25 g4, .movz 9 0x40 0, .orrReg 24 24 9,
           .movz 9 2 0, .andReg 9 4 9, .cbz 9 g5, .movz 9 0x4000 0, .orrReg 24 24 9,
           .movz 9 4 0, .andReg 26 4 9, .cbnz 25 g6, .movz 26 0 0,
           .cbz 26 g7, .movz 9 0x80 0, .orrReg 24 24 9,
-          .cbz 27 g8, .cbnz 26 g9, .movz 9 0x200 0, .orrReg 24 24 9] ++
-        [.movz 9 1 0, .andReg 9 7 9, .cbz 9 g10, .movz 9 0x400 0, .orrReg 24 24 9,
+          .cbz 27 g8, .cbnz 26 g9, .movz 9 0x200 0, .orrReg 24 24 9] : List Instr) ++
+        ([.movz 9 1 0, .andReg 9 7 9, .cbz 9 g10, .movz 9 0x400 0, .orrReg 24 24 9,
           .movz 9 4 0, .andReg 9 7 9, .cbz 9 g11, .movz 9 0x800 0, .orrReg 24 24 9,
-          .movz 9 1 0, .andReg 9 1 9, .cbnz 9 g12, .movz 9 0x8000 0, .orrReg 24 24 9] ++
-        [.str 24 16 132, .movz 9 0 0, .cbz 25 g13, .movz 9 438 0, .str 9 16 133, .movz 9 10 0,
-          .str 9 16 134] := by
+          .movz 9 1 0, .andReg 9 1 9, .cbnz 9 g12, .movz 9 0x8000 0, .orrReg 24 24 9] :
+          List Instr) ++
+        ([.str 24 16 132, .movz 9 0 0, .cbz 25 g13, .movz 9 438 0, .str 9 16 133, .movz 9 10 0,
+          .str 9 16 134] : List Instr) := by
   unfold openHow at hg
   cases h1 : cbField (after a 9) (after a 19) with
   | error err => simp [h1, bind, Except.bind] at hg

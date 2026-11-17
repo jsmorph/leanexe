@@ -2,12 +2,12 @@ import LeanExe.A64.Proof.WasiStubs
 import LeanExe.A64.WasiFiles
 
 /-!
-The run of `utf8Check` of `LeanExe/A64/WasiFiles.lean` in the program's model.  `run_utf8Check`
-follows the check from its first word over the `n` bytes from the guest's address
-`X17 + 4096 + X2`, with `n` in X3, to the next word after it when `utf8Scan` accepts the bytes and
-to `bad` otherwise, and it changes no register outside X9 to X13 and neither SP, the memory, nor
-the UART's state.  The proof is an induction on the number of bytes that remain at the loop's
-head, where X9 holds the address of the next byte and X10 the count that remains.
+`run_utf8Check` follows `utf8Check` of `LeanExe/A64/WasiFiles.lean` in the program's model, from
+its first word over the `n` bytes from the guest's address `X17 + 4096 + X2`, with `n` in X3, to
+the next word after the check when `utf8Scan` accepts the bytes and to `bad` otherwise.  The run
+changes X9 to X13 and the flags and keeps every other register, SP, the memory, and the UART's
+state.  The proof is an induction on the number of bytes that remain at the loop's head, where X9
+holds the address of the next byte and X10 the count that remains.
 
 `run_utf8Step` follows one pass from the head through the tests of a character's first byte and
 the run of its class, `run_utf8Two`, `run_utf8Three`, or `run_utf8Four`, to the head with X9 and
@@ -77,6 +77,15 @@ theorem utf8Check_ok {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
     h32, h34, h36, h38, h40, h43, h45, h47, h51, h55, h59, h61, h63, h65, h67, h70, h73,
     hg.symm⟩
 
+/-- The first four words of `utf8Check`, which set X9 to the guest's address and X10 to the
+count. -/
+theorem utf8Check_head {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = .ok is) :
+    ∃ rest, is = [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .orrReg 10 31 3] ++ rest := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+    -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, rfl⟩ :=
+    utf8Check_ok hg
+  exact ⟨_, rfl⟩
+
 /-! ## The bytes and their decision -/
 
 theorem readList_one (m : UInt64 → UInt8) (p : UInt64) (n : Nat) :
@@ -131,53 +140,61 @@ theorem bne_or_lt (w x v c : UInt8) :
 
 theorem utf8Scan_one {w : UInt8} (rest : List UInt8) (h : w.toNat < 0x80) :
     utf8Scan (w :: rest) = utf8Scan rest := by
-  rw [utf8Scan, if_pos (u8_lt (c := 0x80) h)]
+  rw [utf8Scan.eq_def]
+  dsimp only
+  rw [ite_eq_left (u8_lt (c := 0x80) h)]
 
 theorem utf8Scan_low {w : UInt8} (rest : List UInt8) (h1 : 0x80 ≤ w.toNat)
     (h2 : w.toNat < 0xC2) : utf8Scan (w :: rest) = false := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) h1), if_pos (u8_lt (c := 0xC2) h2)]
+  rw [utf8Scan.eq_def]
+  dsimp only
+  rw [ite_eq_right (u8_not_lt (c := 0x80) h1), ite_eq_left (u8_lt (c := 0xC2) h2)]
 
 theorem utf8Scan_high {w : UInt8} (rest : List UInt8) (h : 0xF5 ≤ w.toNat) :
     utf8Scan (w :: rest) = false := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xF0) (by show 240 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xF5) h)]
+  rw [utf8Scan.eq_def]
+  dsimp only
+  rw [ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xF0) (by show 240 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xF5) h)]
 
 theorem utf8Scan_two {w x : UInt8} (rest : List UInt8) (h1 : 0xC2 ≤ w.toNat)
     (h2 : w.toNat < 0xE0) : utf8Scan (w :: x :: rest) = (contByte x && utf8Scan rest) := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) h1), if_pos (u8_lt (c := 0xE0) h2)] <;> rfl
+  rw [utf8Scan, ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) h1), ite_eq_left (u8_lt (c := 0xE0) h2)]
 
 theorem utf8Scan_three {w x y : UInt8} (rest : List UInt8) (h1 : 0xE0 ≤ w.toNat)
     (h2 : w.toNat < 0xF0) :
     utf8Scan (w :: x :: y :: rest) = (contByte x && contByte y &&
       decide (¬(w.toNat = 0xE0 ∧ x.toNat < 0xA0)) &&
       decide (¬(w.toNat = 0xED ∧ 0xA0 ≤ x.toNat)) && utf8Scan rest) := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xE0) h1), if_pos (u8_lt (c := 0xF0) h2)]
+  rw [utf8Scan, ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xE0) h1), ite_eq_left (u8_lt (c := 0xF0) h2)]
   dsimp only
-  rw [bne_or_le, bne_or_lt] <;> rfl
+  rw [bne_or_le, bne_or_lt]
+  rfl
 
 theorem utf8Scan_four {w x y z : UInt8} (rest : List UInt8) (h1 : 0xF0 ≤ w.toNat)
     (h2 : w.toNat < 0xF5) :
     utf8Scan (w :: x :: y :: z :: rest) = (contByte x && contByte y && contByte z &&
       decide (¬(w.toNat = 0xF0 ∧ x.toNat < 0x90)) &&
       decide (¬(w.toNat = 0xF4 ∧ 0x90 ≤ x.toNat)) && utf8Scan rest) := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xF0) h1), if_pos (u8_lt (c := 0xF5) h2)]
+  rw [utf8Scan, ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xF0) h1), ite_eq_left (u8_lt (c := 0xF5) h2)]
   dsimp only
-  rw [bne_or_le, bne_or_lt] <;> rfl
+  rw [bne_or_le, bne_or_lt]
+  rfl
 
 /-- A first byte from `0x80` without a byte after it. -/
 theorem utf8Scan_short2 {w : UInt8} {rest : List UInt8} (h : 0x80 ≤ w.toNat)
     (hl : rest.length < 1) : utf8Scan (w :: rest) = false := by
   rcases rest with _ | ⟨x, t⟩
-  · rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) h)]
+  · rw [utf8Scan, ite_eq_right (u8_not_lt (c := 0x80) h)]
     repeat' (first | rfl | split)
   · simp only [List.length_cons] at hl
     omega
@@ -185,9 +202,11 @@ theorem utf8Scan_short2 {w : UInt8} {rest : List UInt8} (h : 0x80 ≤ w.toNat)
 /-- A first byte from `0xE0` with fewer than two bytes after it. -/
 theorem utf8Scan_short3 {w : UInt8} {rest : List UInt8} (h : 0xE0 ≤ w.toNat)
     (hl : rest.length < 2) : utf8Scan (w :: rest) = false := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xE0) h)]
+  rw [utf8Scan.eq_def]
+  dsimp only
+  rw [ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xE0) h)]
   rcases rest with _ | ⟨x, _ | ⟨y, t⟩⟩
   · repeat' (first | rfl | split)
   · repeat' (first | rfl | split)
@@ -197,10 +216,12 @@ theorem utf8Scan_short3 {w : UInt8} {rest : List UInt8} (h : 0xE0 ≤ w.toNat)
 /-- A first byte from `0xF0` with fewer than three bytes after it. -/
 theorem utf8Scan_short4 {w : UInt8} {rest : List UInt8} (h : 0xF0 ≤ w.toNat)
     (hl : rest.length < 3) : utf8Scan (w :: rest) = false := by
-  rw [utf8Scan, if_neg (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
-    if_neg (u8_not_lt (c := 0xF0) h)]
+  rw [utf8Scan.eq_def]
+  dsimp only
+  rw [ite_eq_right (u8_not_lt (c := 0x80) (by show 128 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xC2) (by show 194 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xE0) (by show 224 ≤ w.toNat; omega)),
+    ite_eq_right (u8_not_lt (c := 0xF0) h)]
   rcases rest with _ | ⟨x, _ | ⟨y, _ | ⟨z, t⟩⟩⟩
   · repeat' (first | rfl | split)
   · repeat' (first | rfl | split)
@@ -277,8 +298,8 @@ theorem ScanFrame.of_regs {s t : State} {d e : Fin 32} (hd : 9 ≤ d.val ∧ d.v
 
 /-- The outcome `t` of a pass of the loop of `utf8Check` at `a` over the `r` bytes of `m` from
 `p`: the end of the loop, at `after a 74` when `utf8Scan` accepts the bytes and at `bad`
-otherwise, or the loop's head with X9 and X10 past the `c` bytes of a character that `utf8Scan`
-accepts. -/
+otherwise, or the loop's head with X9 and X10 past the `c` bytes of a character, where `utf8Scan`
+decides the `r'` bytes that remain as it decides all `r`. -/
 def Utf8Pass (a bad p : UInt64) (m : UInt64 → UInt8) (r : Nat) (t : State) : Prop :=
   (t.pc = if utf8Scan (readList m p r) then after a 74 else bad) ∨
     ∃ c r', r = r' + c ∧ 0 < c ∧ t.pc = after a 4 ∧ t.x 9 = p + UInt64.ofNat c ∧
@@ -362,8 +383,8 @@ theorem run_byteLo {a tB : UInt64} {r : Fin 32} {imm : Fin 4096} {g : Fin 524288
   refine ⟨t, h1, ?_, h3⟩
   rw [h2, hb, hk]
   by_cases h : b.toNat < k
-  · rw [if_pos ((byte_lt_ofNat b (imm_lt hk)).mpr h), if_pos h]
-  · rw [if_neg (fun h' => h ((byte_lt_ofNat b (imm_lt hk)).mp h')), if_neg h]
+  · rw [ite_eq_left ((byte_lt_ofNat b (imm_lt hk)).mpr h), ite_eq_left h]
+  · rw [ite_eq_right (fun h' => h ((byte_lt_ofNat b (imm_lt hk)).mp h')), ite_eq_right h]
 
 /-- `SUBS XZR, Xr, #imm` and `B.HS` to `tB` on a register that holds the byte `b`. -/
 theorem run_byteHs {a tB : UInt64} {r : Fin 32} {imm : Fin 4096} {g : Fin 524288} {k : Nat}
@@ -376,8 +397,8 @@ theorem run_byteHs {a tB : UInt64} {r : Fin 32} {imm : Fin 4096} {g : Fin 524288
   refine ⟨t, h1, ?_, h3⟩
   rw [h2, hb, hk]
   by_cases h : k ≤ b.toNat
-  · rw [if_pos ((ofNat_le_byte b (imm_lt hk)).mpr h), if_pos h]
-  · rw [if_neg (fun h' => h ((ofNat_le_byte b (imm_lt hk)).mp h')), if_neg h]
+  · rw [ite_eq_left ((ofNat_le_byte b (imm_lt hk)).mpr h), ite_eq_left h]
+  · rw [ite_eq_right (fun h' => h ((ofNat_le_byte b (imm_lt hk)).mp h')), ite_eq_right h]
 
 /-- `SUBS XZR, Xr, #imm` and `B.LO` to `tB` on a register that holds the count `c`. -/
 theorem run_countLo {a tB : UInt64} {r : Fin 32} {imm : Fin 4096} {g : Fin 524288} {k c : Nat}
@@ -390,11 +411,12 @@ theorem run_countLo {a tB : UInt64} {r : Fin 32} {imm : Fin 4096} {g : Fin 52428
   refine ⟨t, h1, ?_, h3⟩
   rw [h2, hc, hk]
   by_cases h : c < k
-  · rw [if_pos ((ofNat_lt_ofNat hc64 (imm_lt hk)).mpr h), if_pos h]
-  · rw [if_neg (fun h' => h ((ofNat_lt_ofNat hc64 (imm_lt hk)).mp h')), if_neg h]
+  · rw [ite_eq_left ((ofNat_lt_ofNat hc64 (imm_lt hk)).mpr h), ite_eq_left h]
+  · rw [ite_eq_right (fun h' => h ((ofNat_lt_ofNat hc64 (imm_lt hk)).mp h')), ite_eq_right h]
 
-/-- The test of a second byte `x` in X12 after the first byte `w` in X11: `SUBS XZR, X11, #v`,
-`B.NE` past the next test, `SUBS XZR, X12, #c`, and `B.LO` to `tB`. -/
+/-- `SUBS XZR, X11, #imm1`, `B.NE` past the next test, `SUBS XZR, X12, #imm2`, and `B.LO` to
+`tB`, with the first byte `w` in X11 and the second byte `x` in X12: the run reaches `tB` when `w`
+is `imm1` and `x` lies below `imm2`. -/
 theorem run_neLo {a tB : UInt64} {imm1 imm2 : Fin 4096} {g1 g3 : Fin 524288} {n1 n2 : Nat}
     {w x : UInt8}
     (hcode : CodeAt code a [.subsImm 31 11 imm1, .bcond 1 g1, .subsImm 31 12 imm2, .bcond 3 g3])
@@ -408,20 +430,21 @@ theorem run_neLo {a tB : UInt64} {imm1 imm2 : Fin 4096} {g1 g3 : Fin 524288} {n1
     (cbField_target hg1) hpc
   rw [hw, hn1] at p1
   by_cases he : w.toNat = n1
-  · rw [if_pos ((byte_eq_ofNat w (imm_lt hn1)).mpr he)] at p1
+  · rw [ite_eq_left ((byte_eq_ofNat w (imm_lt hn1)).mpr he)] at p1
     obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_byteLo P code (r := 12) (imm := imm2) (b := x)
       (by decide) hc.2 hn2 (by rw [after_after]; exact hg3) p1 (by rw [k1, hx])
     refine ⟨u2, r1.trans r2, ?_, fun q => (k2 q).trans (k1 q), sp2.trans sp1, m2.trans m1,
       io2.trans io1⟩
     rw [p2, after_after]
     by_cases hl : x.toNat < n2
-    · rw [if_pos hl, if_pos ⟨he, hl⟩]
-    · rw [if_neg hl, if_neg (fun h => hl h.2)]
-  · rw [if_neg (fun h => he ((byte_eq_ofNat w (imm_lt hn1)).mp h))] at p1
-    exact ⟨u1, r1, by rw [p1, if_neg (fun h => he h.1)], k1, sp1, m1, io1⟩
+    · rw [ite_eq_left hl, ite_eq_left ⟨he, hl⟩]
+    · rw [ite_eq_right hl, ite_eq_right (fun h => hl h.2)]
+  · rw [ite_eq_right (fun h => he ((byte_eq_ofNat w (imm_lt hn1)).mp h))] at p1
+    exact ⟨u1, r1, by rw [p1, ite_eq_right (fun h => he h.1)], k1, sp1, m1, io1⟩
 
-/-- The test of a second byte `x` in X12 after the first byte `w` in X11: `SUBS XZR, X11, #v`,
-`B.NE` past the next test, `SUBS XZR, X12, #c`, and `B.HS` to `tB`. -/
+/-- `SUBS XZR, X11, #imm1`, `B.NE` past the next test, `SUBS XZR, X12, #imm2`, and `B.HS` to
+`tB`, with the first byte `w` in X11 and the second byte `x` in X12: the run reaches `tB` when `w`
+is `imm1` and `x` lies at or above `imm2`. -/
 theorem run_neHs {a tB : UInt64} {imm1 imm2 : Fin 4096} {g1 g3 : Fin 524288} {n1 n2 : Nat}
     {w x : UInt8}
     (hcode : CodeAt code a [.subsImm 31 11 imm1, .bcond 1 g1, .subsImm 31 12 imm2, .bcond 2 g3])
@@ -435,20 +458,20 @@ theorem run_neHs {a tB : UInt64} {imm1 imm2 : Fin 4096} {g1 g3 : Fin 524288} {n1
     (cbField_target hg1) hpc
   rw [hw, hn1] at p1
   by_cases he : w.toNat = n1
-  · rw [if_pos ((byte_eq_ofNat w (imm_lt hn1)).mpr he)] at p1
+  · rw [ite_eq_left ((byte_eq_ofNat w (imm_lt hn1)).mpr he)] at p1
     obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_byteHs P code (r := 12) (imm := imm2) (b := x)
       (by decide) hc.2 hn2 (by rw [after_after]; exact hg3) p1 (by rw [k1, hx])
     refine ⟨u2, r1.trans r2, ?_, fun q => (k2 q).trans (k1 q), sp2.trans sp1, m2.trans m1,
       io2.trans io1⟩
     rw [p2, after_after]
     by_cases hl : n2 ≤ x.toNat
-    · rw [if_pos hl, if_pos ⟨he, hl⟩]
-    · rw [if_neg hl, if_neg (fun h => hl h.2)]
-  · rw [if_neg (fun h => he ((byte_eq_ofNat w (imm_lt hn1)).mp h))] at p1
-    exact ⟨u1, r1, by rw [p1, if_neg (fun h => he h.1)], k1, sp1, m1, io1⟩
+    · rw [ite_eq_left hl, ite_eq_left ⟨he, hl⟩]
+    · rw [ite_eq_right hl, ite_eq_right (fun h => hl h.2)]
+  · rw [ite_eq_right (fun h => he ((byte_eq_ofNat w (imm_lt hn1)).mp h))] at p1
+    exact ⟨u1, r1, by rw [p1, ite_eq_right (fun h => he h.1)], k1, sp1, m1, io1⟩
 
-/-- `LDRB Wd, [X9, #j]` and the test that the byte is a continuation byte, with `B.HS` to `tB`
-otherwise, through X13. -/
+/-- `LDRB Wd, [X9, #k]` and the test, through X13, that the byte is a continuation byte, with
+`B.HS` to `tB` when it is not. -/
 theorem run_cont {a tB : UInt64} {d : Fin 32} {k : Fin 4096} {j : Nat} {g : Fin 524288}
     (hd : d.val < 31)
     (hcode : CodeAt code a [.ldrb d 9 k, .subImm 13 d 0x80, .subsImm 31 13 0x40, .bcond 2 g])
@@ -478,8 +501,8 @@ theorem run_cont {a tB : UInt64} {d : Fin 32} {k : Fin 4096} {j : Nat} {g : Fin 
     by rw [io3, io2, io1]⟩
   rw [p3, x2, x1, after_after]
   by_cases hb : contByte (s.mem (s.x 9 + UInt64.ofNat k.val)) = true
-  · rw [if_neg (fun h => (cont_test _).mp h hb), if_pos hb]
-  · rw [if_pos ((cont_test _).mpr hb), if_neg hb]
+  · rw [ite_eq_right (fun h => (cont_test _).mp h hb), ite_eq_left hb]
+  · rw [ite_eq_left ((cont_test _).mpr hb), ite_eq_right hb]
 
 /-- `ADD X9, X9, #c`, `SUB X10, X10, #c`, and `B` to `tB`. -/
 theorem run_next {a tB : UInt64} {c : Fin 4096} {k : Nat} {g : Fin 67108864}
@@ -531,12 +554,12 @@ theorem run_utf8Two {a bad : UInt64} {f13 f17 : Fin 524288} {b20 : Fin 67108864}
     (tB := bad) (by decide) c0 rfl (by rw [after_after]; exact h13) hpc h10 hr64
   have F1 := ScanFrame.of_keep k1 sp1 m1 io1
   by_cases c4 : r < 2
-  · rw [if_pos c4] at p1
+  · rw [ite_eq_left c4] at p1
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     refine ⟨u1, r1, F1, Or.inl (pc_bad ?_ p1)⟩
     rw [readList_one, hw]
     exact utf8Scan_short2 (by omega) (by rw [readList_length]; omega)
-  rw [if_neg c4, after_after] at p1
+  rw [ite_eq_right c4, after_after] at p1
   obtain ⟨n, rfl⟩ : ∃ n, r = n + 2 := ⟨r - 2, by omega⟩
   obtain ⟨u2, r2, p2, -, k2, sp2, m2, io2⟩ := run_cont P code (d := 12) (k := 1) (j := 1)
     (tB := bad) (by decide) c2' rfl (by rw [after_after]; exact h17) p1
@@ -545,7 +568,7 @@ theorem run_utf8Two {a bad : UInt64} {f13 f17 : Fin 524288} {b20 : Fin 67108864}
   have F2 := F1.trans (ScanFrame.of_regs (d := 12) (e := 13) (by decide) (by decide) k2 sp2 m2
     io2)
   by_cases cx : contByte (s.mem (p + UInt64.ofNat 1)) = true
-  · rw [if_pos cx, after_after] at p2
+  · rw [ite_eq_left cx, after_after] at p2
     obtain ⟨u3, r3, p3, x93, x103, k3, sp3, m3, io3⟩ := run_next P code (c := 2) (k := 2)
       (tB := after a 4) c6 rfl (by rw [after_after]; exact h20) p2
     refine ⟨u3, r1.trans (r2.trans r3), F2.trans (ScanFrame.of_regs (d := 9) (e := 10)
@@ -554,7 +577,7 @@ theorem run_utf8Two {a bad : UInt64} {f13 f17 : Fin 524288} {b20 : Fin 67108864}
     · rw [x103, k2 10 (by decide) (by decide), k1, h10, ofNat_sub_ofNat (r := 2) (by omega) hr64,
         Nat.add_sub_cancel]
     · rw [readList_two, hw, utf8Scan_two _ c1 c2, cx, Bool.true_and]
-  · rw [if_neg cx] at p2
+  · rw [ite_eq_right cx] at p2
     refine ⟨u2, r1.trans r2, F2, Or.inl (pc_bad ?_ p2)⟩
     rw [readList_two, hw, utf8Scan_two _ c1 c2, Bool.eq_false_iff.mpr cx, Bool.false_and]
 
@@ -597,12 +620,12 @@ theorem run_utf8Three {a bad : UInt64} {f24 f28 f32 f34 f36 f38 f40 : Fin 524288
     (tB := bad) (by decide) c0 rfl (by rw [after_after]; exact h24) hpc h10 hr64
   have F1 := ScanFrame.of_keep k1 sp1 m1 io1
   by_cases c4 : r < 3
-  · rw [if_pos c4] at p1
+  · rw [ite_eq_left c4] at p1
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     refine ⟨u1, r1, F1, Or.inl (pc_bad ?_ p1)⟩
     rw [readList_one, hw]
     exact utf8Scan_short3 c1 (by rw [readList_length]; omega)
-  rw [if_neg c4, after_after] at p1
+  rw [ite_eq_right c4, after_after] at p1
   obtain ⟨n, rfl⟩ : ∃ n, r = n + 3 := ⟨r - 3, by omega⟩
   have hL := readList_three s.mem p n
   rw [hw] at hL
@@ -616,10 +639,10 @@ theorem run_utf8Three {a bad : UInt64} {f24 f28 f32 f34 f36 f38 f40 : Fin 524288
     io2)
   by_cases cx : contByte x = true
   swap
-  · rw [if_neg cx] at p2
+  · rw [ite_eq_right cx] at p2
     refine ⟨u2, r1.trans r2, F2, Or.inl (pc_bad ?_ p2)⟩
     simp only [hL, utf8Scan_three _ c1 c2, Bool.eq_false_iff.mpr cx, Bool.false_and]
-  rw [if_pos cx, after_after] at p2
+  rw [ite_eq_left cx, after_after] at p2
   have e9 : u2.x 9 = p := by rw [k2 9 (by decide) (by decide), k1, h9]
   have em : u2.mem = s.mem := by rw [m2, m1]
   obtain ⟨u3, r3, p3, -, k3, sp3, m3, io3⟩ := run_cont P code (d := 13) (k := 2) (j := 2)
@@ -632,11 +655,11 @@ theorem run_utf8Three {a bad : UInt64} {f24 f28 f32 f34 f36 f38 f40 : Fin 524288
     io3)
   by_cases cy : contByte y = true
   swap
-  · rw [if_neg cy] at p3
+  · rw [ite_eq_right cy] at p3
     refine ⟨u3, r1.trans (r2.trans r3), F3, Or.inl (pc_bad ?_ p3)⟩
     simp only [hL, utf8Scan_three _ c1 c2, cx, Bool.eq_false_iff.mpr cy, Bool.true_and,
       Bool.false_and]
-  rw [if_pos cy, after_after] at p3
+  rw [ite_eq_left cy, after_after] at p3
   have hx11 : u3.x 11 = w.toUInt64 := by
     rw [k3 11 (by decide) (by decide), k2 11 (by decide) (by decide), k1, h11]
   have hx12 : u3.x 12 = x.toUInt64 := by rw [k3 12 (by decide) (by decide), x2 (by decide)]
@@ -645,22 +668,22 @@ theorem run_utf8Three {a bad : UInt64} {f24 f28 f32 f34 f36 f38 f40 : Fin 524288
     (by rw [after_after, after_after]; exact h34) (by rw [after_after]; exact h36) p3 hx11 hx12
   have F4 := F3.trans (ScanFrame.of_keep k4 sp4 m4 io4)
   by_cases cE : w.toNat = 0xE0 ∧ x.toNat < 0xA0
-  · rw [if_pos cE] at p4
+  · rw [ite_eq_left cE] at p4
     refine ⟨u4, r1.trans (r2.trans (r3.trans r4)), F4, Or.inl (pc_bad ?_ p4)⟩
     simp only [hL, utf8Scan_three _ c1 c2, cx, cy, decide_eq_false (not_not_intro cE),
       Bool.true_and, Bool.false_and]
-  rw [if_neg cE, after_after] at p4
+  rw [ite_eq_right cE, after_after] at p4
   obtain ⟨u5, r5, p5, k5, sp5, m5, io5⟩ := run_neHs P code (imm1 := 0xED) (imm2 := 0xA0)
     (n1 := 0xED) (n2 := 0xA0) (tB := bad) c14 rfl rfl
     (by rw [after_after, after_after]; exact h38) (by rw [after_after]; exact h40) p4
     (by rw [k4, hx11]) (by rw [k4, hx12])
   have F5 := F4.trans (ScanFrame.of_keep k5 sp5 m5 io5)
   by_cases cD : w.toNat = 0xED ∧ 0xA0 ≤ x.toNat
-  · rw [if_pos cD] at p5
+  · rw [ite_eq_left cD] at p5
     refine ⟨u5, r1.trans (r2.trans (r3.trans (r4.trans r5))), F5, Or.inl (pc_bad ?_ p5)⟩
     simp only [hL, utf8Scan_three _ c1 c2, cx, cy, decide_eq_true cE,
       decide_eq_false (not_not_intro cD), Bool.true_and, Bool.false_and]
-  rw [if_neg cD, after_after] at p5
+  rw [ite_eq_right cD, after_after] at p5
   obtain ⟨u6, r6, p6, x96, x106, k6, sp6, m6, io6⟩ := run_next P code (c := 3) (k := 3)
     (tB := after a 4) c18 rfl (by rw [after_after]; exact h43) p5
   refine ⟨u6, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans r6)))),
@@ -716,12 +739,12 @@ theorem run_utf8Four {a bad : UInt64} {f47 f51 f55 f59 f61 f63 f65 f67 : Fin 524
     (tB := bad) (by decide) c0 rfl (by rw [after_after]; exact h47) hpc h10 hr64
   have F1 := ScanFrame.of_keep k1 sp1 m1 io1
   by_cases c4 : r < 4
-  · rw [if_pos c4] at p1
+  · rw [ite_eq_left c4] at p1
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     refine ⟨u1, r1, F1, Or.inl (pc_bad ?_ p1)⟩
     rw [readList_one, hw]
     exact utf8Scan_short4 c1 (by rw [readList_length]; omega)
-  rw [if_neg c4, after_after] at p1
+  rw [ite_eq_right c4, after_after] at p1
   obtain ⟨n, rfl⟩ : ∃ n, r = n + 4 := ⟨r - 4, by omega⟩
   have hL := readList_four s.mem p n
   rw [hw] at hL
@@ -735,10 +758,10 @@ theorem run_utf8Four {a bad : UInt64} {f47 f51 f55 f59 f61 f63 f65 f67 : Fin 524
     io2)
   by_cases cx : contByte x = true
   swap
-  · rw [if_neg cx] at p2
+  · rw [ite_eq_right cx] at p2
     refine ⟨u2, r1.trans r2, F2, Or.inl (pc_bad ?_ p2)⟩
     simp only [hL, utf8Scan_four _ c1 c2, Bool.eq_false_iff.mpr cx, Bool.false_and]
-  rw [if_pos cx, after_after] at p2
+  rw [ite_eq_left cx, after_after] at p2
   have e9 : u2.x 9 = p := by rw [k2 9 (by decide) (by decide), k1, h9]
   have em : u2.mem = s.mem := by rw [m2, m1]
   obtain ⟨u3, r3, p3, -, k3, sp3, m3, io3⟩ := run_cont P code (d := 13) (k := 2) (j := 2)
@@ -751,11 +774,11 @@ theorem run_utf8Four {a bad : UInt64} {f47 f51 f55 f59 f61 f63 f65 f67 : Fin 524
     io3)
   by_cases cy : contByte y = true
   swap
-  · rw [if_neg cy] at p3
+  · rw [ite_eq_right cy] at p3
     refine ⟨u3, r1.trans (r2.trans r3), F3, Or.inl (pc_bad ?_ p3)⟩
     simp only [hL, utf8Scan_four _ c1 c2, cx, Bool.eq_false_iff.mpr cy, Bool.true_and,
       Bool.false_and]
-  rw [if_pos cy, after_after] at p3
+  rw [ite_eq_left cy, after_after] at p3
   have e9' : u3.x 9 = p := by rw [k3 9 (by decide) (by decide), e9]
   have em' : u3.mem = s.mem := by rw [m3, em]
   obtain ⟨u4, r4, p4, -, k4, sp4, m4, io4⟩ := run_cont P code (d := 13) (k := 3) (j := 3)
@@ -768,11 +791,11 @@ theorem run_utf8Four {a bad : UInt64} {f47 f51 f55 f59 f61 f63 f65 f67 : Fin 524
     io4)
   by_cases cz : contByte z = true
   swap
-  · rw [if_neg cz] at p4
+  · rw [ite_eq_right cz] at p4
     refine ⟨u4, r1.trans (r2.trans (r3.trans r4)), F4, Or.inl (pc_bad ?_ p4)⟩
     simp only [hL, utf8Scan_four _ c1 c2, cx, cy, Bool.eq_false_iff.mpr cz, Bool.true_and,
       Bool.false_and]
-  rw [if_pos cz, after_after] at p4
+  rw [ite_eq_left cz, after_after] at p4
   have hx11 : u4.x 11 = w.toUInt64 := by
     rw [k4 11 (by decide) (by decide), k3 11 (by decide) (by decide),
       k2 11 (by decide) (by decide), k1, h11]
@@ -783,23 +806,23 @@ theorem run_utf8Four {a bad : UInt64} {f47 f51 f55 f59 f61 f63 f65 f67 : Fin 524
     (by rw [after_after, after_after]; exact h61) (by rw [after_after]; exact h63) p4 hx11 hx12
   have F5 := F4.trans (ScanFrame.of_keep k5 sp5 m5 io5)
   by_cases cF : w.toNat = 0xF0 ∧ x.toNat < 0x90
-  · rw [if_pos cF] at p5
+  · rw [ite_eq_left cF] at p5
     refine ⟨u5, r1.trans (r2.trans (r3.trans (r4.trans r5))), F5, Or.inl (pc_bad ?_ p5)⟩
     simp only [hL, utf8Scan_four _ c1 c2, cx, cy, cz, decide_eq_false (not_not_intro cF),
       Bool.true_and, Bool.false_and]
-  rw [if_neg cF, after_after] at p5
+  rw [ite_eq_right cF, after_after] at p5
   obtain ⟨u6, r6, p6, k6, sp6, m6, io6⟩ := run_neHs P code (imm1 := 0xF4) (imm2 := 0x90)
     (n1 := 0xF4) (n2 := 0x90) (tB := bad) c18 rfl rfl
     (by rw [after_after, after_after]; exact h65) (by rw [after_after]; exact h67) p5
     (by rw [k5, hx11]) (by rw [k5, hx12])
   have F6 := F5.trans (ScanFrame.of_keep k6 sp6 m6 io6)
   by_cases cG : w.toNat = 0xF4 ∧ 0x90 ≤ x.toNat
-  · rw [if_pos cG] at p6
+  · rw [ite_eq_left cG] at p6
     refine ⟨u6, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans r6)))), F6,
       Or.inl (pc_bad ?_ p6)⟩
     simp only [hL, utf8Scan_four _ c1 c2, cx, cy, cz, decide_eq_true cF,
       decide_eq_false (not_not_intro cG), Bool.true_and, Bool.false_and]
-  rw [if_neg cG, after_after] at p6
+  rw [ite_eq_right cG, after_after] at p6
   obtain ⟨u7, r7, p7, x97, x107, k7, sp7, m7, io7⟩ := run_next P code (c := 4) (k := 4)
     (tB := after a 4) c22 rfl (by rw [after_after]; exact h70) p6
   refine ⟨u7, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans (r6.trans r7))))),
@@ -864,9 +887,9 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
   have F1 : ScanFrame s u1 := ScanFrame.of_keep k1 sp1 m1 io1
   by_cases hr0 : r = 0
   · subst hr0
-    rw [if_pos (show s.x 10 = 0 from hr)] at p1
+    rw [ite_eq_left (show s.x 10 = 0 from hr)] at p1
     exact ⟨u1, r1, F1, Or.inl (pc_ok (by rw [readList, utf8Scan]) p1)⟩
-  rw [if_neg (by rw [hr]; exact ofNat_ne_zero (by omega) hr64), hpc] at p1
+  rw [ite_eq_right (by rw [hr]; exact ofNat_ne_zero (by omega) hr64), hpc] at p1
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := step_ldrb P code (s := u1) (t := 11) (n := 9)
     (imm := 0) (by decide) (by decide) (by rw [p1, ← after_succ]; exact i5)
     (by rw [k1]; exact hmap 0 (by omega))
@@ -884,7 +907,7 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
     (b := w) (tB := after a 71) (by decide) c6 rfl (by rw [after_after]; exact h7) q2 hw11
   have F3 := F2.trans (ScanFrame.of_keep k3 sp3 m3 io3)
   by_cases c1 : w.toNat < 0x80
-  · rw [if_pos c1] at p3
+  · rw [ite_eq_left c1] at p3
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     obtain ⟨u4, r4, p4, x94, x104, k4, sp4, m4, io4⟩ := run_next P code (c := 1) (k := 1)
       (tB := after a 4) c71 rfl (by rw [after_after]; exact h73) p3
@@ -894,16 +917,16 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
     · rw [x94, k3, hx9]
     · rw [x104, k3, hx10, ofNat_sub_ofNat (r := 1) (by omega) hr64, Nat.add_sub_cancel]
     · rw [readList_one, hw, utf8Scan_one _ c1]
-  rw [if_neg c1, after_after] at p3
+  rw [ite_eq_right c1, after_after] at p3
   obtain ⟨u4, r4, p4, k4, sp4, m4, io4⟩ := run_byteLo P code (r := 11) (imm := 0xC2) (k := 0xC2)
     (b := w) (tB := bad) (by decide) c8 rfl (by rw [after_after]; exact h9) p3 (by rw [k3, hw11])
   have F4 := F3.trans (ScanFrame.of_keep k4 sp4 m4 io4)
   by_cases c2 : w.toNat < 0xC2
-  · rw [if_pos c2] at p4
+  · rw [ite_eq_left c2] at p4
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     refine ⟨u4, r1.trans (r2.trans (r3.trans r4)), F4, Or.inl (pc_bad ?_ p4)⟩
     rw [readList_one, hw, utf8Scan_low _ (by omega) c2]
-  rw [if_neg c2, after_after] at p4
+  rw [ite_eq_right c2, after_after] at p4
   obtain ⟨u5, r5, p5, k5, sp5, m5, io5⟩ := run_byteHs P code (r := 11) (imm := 0xE0) (k := 0xE0)
     (b := w) (tB := after a 21) (by decide) c10 rfl (by rw [after_after]; exact h11) p4
     (by rw [k4, k3, hw11])
@@ -914,18 +937,18 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
   have em : u5.mem = s.mem := by rw [m5, m4, m3, hm2]
   by_cases c3 : 0xE0 ≤ w.toNat
   swap
-  · rw [if_neg c3, after_after] at p5
+  · rw [ite_eq_right c3, after_after] at p5
     obtain ⟨t, rt, Ft, Pt⟩ := run_utf8Two P code (w := w) (p := s.x 9) c12 h13 h17 h20 p5 e9 e10
       hr64 hmap (by rw [em]; exact hw) (by omega) (by omega) (by omega)
     rw [em] at Pt
     exact ⟨t, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans rt)))), F5.trans Ft, Pt⟩
-  rw [if_pos c3] at p5
+  rw [ite_eq_left c3] at p5
   obtain ⟨u6, r6, p6, k6, sp6, m6, io6⟩ := run_byteHs P code (r := 11) (imm := 0xF0) (k := 0xF0)
     (b := w) (tB := after a 44) (by decide) c21 rfl (by rw [after_after]; exact h22) p5 e11
   have F6 := F5.trans (ScanFrame.of_keep k6 sp6 m6 io6)
   by_cases c4 : 0xF0 ≤ w.toNat
   swap
-  · rw [if_neg c4, after_after] at p6
+  · rw [ite_eq_right c4, after_after] at p6
     obtain ⟨t, rt, Ft, Pt⟩ := run_utf8Three P code (w := w) (p := s.x 9) c23 h24 h28 h32 h34 h36
       h38 h40 h43 p6
       (by rw [k6, e9]) (by rw [k6, e10]) (by rw [k6, e11]) hr64 hmap (by rw [m6, em]; exact hw)
@@ -933,18 +956,18 @@ theorem run_utf8Step {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad = 
     rw [m6, em] at Pt
     exact ⟨t, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans (r6.trans rt))))), F6.trans Ft,
       Pt⟩
-  rw [if_pos c4] at p6
+  rw [ite_eq_left c4] at p6
   obtain ⟨u7, r7, p7, k7, sp7, m7, io7⟩ := run_byteHs P code (r := 11) (imm := 0xF5) (k := 0xF5)
     (b := w) (tB := bad) (by decide) c44 rfl (by rw [after_after]; exact h45) p6
     (by rw [k6, e11])
   have F7 := F6.trans (ScanFrame.of_keep k7 sp7 m7 io7)
   by_cases c5 : 0xF5 ≤ w.toNat
-  · rw [if_pos c5] at p7
+  · rw [ite_eq_left c5] at p7
     obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
     refine ⟨u7, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans (r6.trans r7))))), F7,
       Or.inl (pc_bad ?_ p7)⟩
     rw [readList_one, hw, utf8Scan_high _ c5]
-  rw [if_neg c5, after_after] at p7
+  rw [ite_eq_right c5, after_after] at p7
   obtain ⟨t, rt, Ft, Pt⟩ := run_utf8Four P code (w := w) (p := s.x 9) c46 h47 h51 h55 h59 h61 h63
     h65 h67 h70 p7
     (by rw [k7, k6, e9]) (by rw [k7, k6, e10]) (by rw [k7, k6, e11]) hr64 hmap
@@ -988,13 +1011,14 @@ theorem run_utf8Check {a bad : UInt64} {is : List Instr} (hg : utf8Check a bad =
         then after a 74 else bad) ∧
       (∀ q : Fin 32, q ≠ 9 → q ≠ 10 → q ≠ 11 → q ≠ 12 → q ≠ 13 → t.x q = s.x q) ∧
       t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-    -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, rfl⟩ :=
-    utf8Check_ok hg
-  have i0 := hcode 0 (by simp)
-  have i1 := hcode 1 (by simp)
-  have i2 := hcode 2 (by simp)
-  have i3 := hcode 3 (by simp)
+  obtain ⟨rest, his⟩ := utf8Check_head hg
+  have c0 := (CodeAt.split code (n := 4)
+    (l1 := [.addReg 9 17 2, .addImm 9 9 4095, .addImm 9 9 1, .orrReg 10 31 3])
+    (by rw [← his]; exact hcode) rfl).1
+  have i0 := c0 0 (by simp)
+  have i1 := c0 1 (by simp)
+  have i2 := c0 2 (by simp)
+  have i3 := c0 3 (by simp)
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at i0 i1 i2 i3
   obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_addReg P code (s := s) (d := 9) (n := 17)
     (m := 2) (by decide) (by rw [hpc]; exact i0)
