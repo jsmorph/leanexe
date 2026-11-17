@@ -1191,16 +1191,6 @@ theorem typed_clock {args : List Value} (hlen : args.length = 3)
       cases v2 <;> first | exact ⟨_, rfl⟩ | exact t2.elim
     exact ⟨a0, a1, a2, rfl⟩
 
-theorem typed_i32x2 {args : List Value} (hlen : args.length = 2)
-    (hty : Typed [.i32, .i32] args) : ∃ a0 a1 : UInt32, args = [.i32 a0, .i32 a1] := by
-  match args, hlen, hty with
-  | [v0, v1], _, ⟨t0, t1, _⟩ =>
-    obtain ⟨a0, rfl⟩ : ∃ a, v0 = .i32 a := by
-      cases v0 <;> first | exact ⟨_, rfl⟩ | exact t0.elim
-    obtain ⟨a1, rfl⟩ : ∃ a, v1 = .i32 a := by
-      cases v1 <;> first | exact ⟨_, rfl⟩ | exact t1.elim
-    exact ⟨a0, a1, rfl⟩
-
 variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ top : UInt64}
   {l₀ : List Linux.Event} {calls : List LeanExe.Wasi.Call} {code : UInt64 → Option UInt32}
   {hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55}
@@ -1423,5 +1413,31 @@ theorem randomStub_sim (S : Shared) (n : Nat) {rn svc en : UInt64} {is : List In
     exact kept_scratch hkp (by rw [e, h17]; omega) (.inr (by simp)) hlow (by simp)
   · exact kept_scratch hkp (by rw [h17]; simp only [Nat.reducePow] at hLA ha ⊢; omega)
       (.inr (by simp)) hlow (by simp)
+
+/-- The call of `shimCalls` whose import is the import of a stub of `clockStubs` is the stub's
+call. -/
+theorem clockStubs_call :
+    ∀ s ∈ clockStubs, ∀ c ∈ shimCalls, ABI.callImport c = s.decl → c = s.call := by
+  decide
+
+/-- The code of a stub of `clockStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
+the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
+area, stands for the shim's function of the call `c` of `shimCalls` whose import is the stub's,
+when the area and the scratch lie in the data segment and the cap's linear memory within the
+machine's `size` bytes. -/
+theorem clockStubs_sim {s : FlatStub} (hs : s ∈ clockStubs) {c : Call} (hc : c ∈ shimCalls)
+    (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat) {a svc en : UInt64}
+    {is : List Instr} (hg : s.gen a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
+    (hcode : CodeAt code a is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
+    (hen : CodeAt code en errnoRoutine) (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
+    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem) (hsize : S.cap * 65536 ≤ size) :
+    (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
+      s.decl.params s.decl.results
+      (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
+  obtain rfl := clockStubs_call s hs c hc hd
+  simp only [clockStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
+  rcases hs with rfl | rfl
+  · exact clockStub_sim S n hg hcode hsvc hen hGb hdata
+  · exact randomStub_sim S n hg hcode hsvc hen hGb hdata hsize
 
 end Verified.ShimA64

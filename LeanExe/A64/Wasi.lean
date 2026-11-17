@@ -1,6 +1,7 @@
 import LeanExe.A64.Elf
-import LeanExe.A64.WasiClocks
 import LeanExe.Wasi.CallTable
+import LeanExe.A64.WasiStrings
+import LeanExe.A64.WasiClocks
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose
@@ -30,7 +31,8 @@ number below 1,024 that the shim holds, and buffers for the calls of the flat st
 `modulePlatform` is the platform of the data segment without the scratch, on which the module's
 code runs, and `wasiPlatform` the platform of the data segment and the initial stack, on which
 the process runs.  `InitialStack` states the layout of the arguments and the environment that
-Linux places at the initial SP.
+Linux places at the initial SP, which the stubs of `stringStubs`, of `LeanExe/A64/WasiStrings.lean`,
+read through the scratch's first word.
 
 A stub follows the shim's stream functions of `Verified/Shim/Env.lean`.  The stubs of `fd_read` and
 `fd_write` require the arguments that that environment requires: descriptor 0 for a read and 1 or 2
@@ -224,15 +226,31 @@ structure FlatStub where
   size : Nat
   gen : UInt64 → UInt64 → UInt64 → UInt64 → Nat → GenM (List Instr)
 
+/-- The import of the flat call `name` of Preview 1 with two pointers as `i32` and an errno. -/
+def pointerPairImport (name : String) : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name, params := [.i32, .i32], results := [.i32] }
+
+/-- The stubs of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get` of
+`LeanExe/A64/WasiStrings.lean`, which read the initial stack through the scratch's first word. -/
+def stringStubs : List FlatStub :=
+  [{ call := .argsSizesGet, decl := pointerPairImport "args_sizes_get",
+      size := sizesStubSize .args, gen := fun a _ tr _ scratch => sizesStub .args a tr scratch },
+    { call := .argsGet, decl := pointerPairImport "args_get", size := stringsStubSize .args,
+      gen := fun a _ tr _ scratch => stringsStub .args a tr scratch },
+    { call := .environSizesGet, decl := pointerPairImport "environ_sizes_get",
+      size := sizesStubSize .environ,
+      gen := fun a _ tr _ scratch => sizesStub .environ a tr scratch },
+    { call := .environGet, decl := pointerPairImport "environ_get",
+      size := stringsStubSize .environ,
+      gen := fun a _ tr _ scratch => stringsStub .environ a tr scratch }]
+
 /-- The import of `clock_time_get`. -/
 def clockImport : ImportDecl :=
   { «module» := "wasi_snapshot_preview1", name := "clock_time_get",
     params := [.i32, .i64, .i32], results := [.i32] }
 
 /-- The import of `random_get`. -/
-def randomImport : ImportDecl :=
-  { «module» := "wasi_snapshot_preview1", name := "random_get", params := [.i32, .i32],
-    results := [.i32] }
+def randomImport : ImportDecl := pointerPairImport "random_get"
 
 /-- The stub of `clock_time_get` as the generator places it. -/
 def clockFlat : FlatStub :=
@@ -243,8 +261,12 @@ def randomFlat : FlatStub :=
   ⟨LeanExe.Wasi.Call.randomGet, randomImport, randomStubSize,
     fun a svc tr en _ => randomStub a svc tr en⟩
 
-/-- The flat calls whose stubs the generator implements: `clock_time_get` and `random_get`. -/
-def flatStubs : List FlatStub := [clockFlat, randomFlat]
+/-- The stubs of `clock_time_get` and `random_get` of `LeanExe/A64/WasiClocks.lean`. -/
+def clockStubs : List FlatStub := [clockFlat, randomFlat]
+
+/-- The flat calls whose stubs the generator implements: those of the arguments and the
+environment, of the clocks, and of random bytes. -/
+def flatStubs : List FlatStub := stringStubs ++ clockStubs
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=

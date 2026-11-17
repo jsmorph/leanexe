@@ -2,12 +2,13 @@ import TestSupport.A64.WasiElf
 import LeanExe.Encoding.Decode
 
 /-!
-The command `a64-wasi emit DIR` writes the AArch64 back end's WASI executables: DIR/readall.elf and
-DIR/clockrandom.elf, the files of `TestSupport.A64.WasiElf.readAllElf` and `clockRandomElf`, which
-`tests/linux/a64-wasi.sh` runs.  `a64-wasi module IN OUT CAP ...` writes, for each triple, the
-executable of the module file IN with a memory's cap of CAP pages to OUT, and prints the area's
-address, as `tests/linux/a64-wasi-clocks.sh` uses.  Each prints the generator's error and exits
-with status 1 when the generator rejects a module.
+The command `a64-wasi emit DIR` writes the AArch64 back end's WASI executables, which
+`tests/linux/a64-wasi.sh` runs: DIR/readall.elf, DIR/environ.elf, DIR/args.elf, and
+DIR/clockrandom.elf, the files of `readAllElf`, `environElf`, `argsElf`, and `clockRandomElf` of
+`TestSupport.A64.WasiElf`.  `a64-wasi module IN OUT CAP ...`
+writes, for each triple, the executable of the module file IN with a memory's cap of CAP pages to
+OUT, and prints the area's address, as `tests/linux/a64-wasi-clocks.sh` uses.  Each prints the
+generator's error and exits with status 1 when the generator rejects a module.
 -/
 
 open TestSupport.A64.WasiElf
@@ -43,9 +44,11 @@ def modules : List String → IO UInt32
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["emit", dir] =>
-      unless ← writeElf "readAll" s!"{dir}/readall.elf" readAllElf do return 1
-      unless ← writeElf "clockRandom" s!"{dir}/clockrandom.elf" clockRandomElf do return 1
-      return 0
+      let mut status : UInt32 := 0
+      for (name, elf) in [("readall", readAllElf), ("environ", environElf), ("args", argsElf),
+          ("clockrandom", clockRandomElf)] do
+        unless ← writeElf name s!"{dir}/{name}.elf" elf do status := 1
+      return status
   | "module" :: rest => modules rest
   | _ =>
       IO.eprintln "usage: a64-wasi emit DIR | a64-wasi module (IN OUT CAP)..."

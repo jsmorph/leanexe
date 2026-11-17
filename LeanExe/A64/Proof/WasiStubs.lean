@@ -208,6 +208,13 @@ theorem step_subReg {s : State} {d n m : Fin 32} (hd : d.val < 31)
       (∀ q : Fin 32, q ≠ d → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io :=
   step_setX P code hd hc rfl
 
+/-- A step of `MADD Xd, Xn, Xm, Xa`. -/
+theorem step_madd {s : State} {d n m r : Fin 32} (hd : d.val < 31)
+    (hc : code s.pc = some (encode (.madd d n m r))) :
+    ∃ t, Reach P code s t ∧ t.pc = s.pc + 4 ∧ t.x d = s.x r + s.x n * s.x m ∧
+      (∀ q : Fin 32, q ≠ d → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io :=
+  step_setX P code hd hc rfl
+
 /-- A step of `ORR Xd, XZR, Xm`, a move. -/
 theorem step_mov {s : State} {d m : Fin 32} (hd : d.val < 31)
     (hc : code s.pc = some (encode (.orrReg d 31 m))) :
