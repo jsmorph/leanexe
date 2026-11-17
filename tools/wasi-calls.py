@@ -1044,8 +1044,8 @@ def render_frame(flat, fault=None):
     steps = len(STEPS)
     statuses = value_statuses()
     if 2 * steps + len(statuses) >= 126:
-        sys.exit(f"{2 * steps + len(statuses)} checks of the frame test need statuses up to "
-                 "126 or more, which Wasmtime 44's proc_exit refuses")
+        sys.exit(f"the frame test needs {2 * steps + len(statuses)} statuses, which reach 126, "
+                 "the least status that Wasmtime 44's proc_exit refuses")
     constants, body = {}, []
     seeded = None
     for index, step in enumerate(STEPS, 1):
