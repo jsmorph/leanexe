@@ -3,8 +3,9 @@
 ;;
 ;; For each number `$probe` writes to standard output, with `fd_write` of one iovec at address 0
 ;; and the count at address 8 as the stream stub of the executable requires: the errno of
-;; `fd_prestat_get` as 4 bytes and the 8 bytes of its record at address 64, which holds 0xAA bytes
-;; before the call; and for buffers of 0, 1, and 4 bytes at address 128, which holds 0xBB bytes
+;; `fd_prestat_get` as 4 bytes and the 8 bytes of its record at address 64, which holds zeros before
+;; the call, since Wasmtime 44 writes the record's tag and name length and leaves its three bytes of
+;; padding while the shim's specification writes all 8 bytes; and for buffers of 0, 1, and 4 bytes at address 128, which holds 0xBB bytes
 ;; before each call, the errno of `fd_prestat_dir_name` as 4 bytes and the 8 bytes from 128.  The
 ;; numbers are 0 to 5, 1023, 1024, 2^31 - 1, 2^31, and 2^32 - 1.  The status is 0.
 (module
@@ -36,7 +37,7 @@
     (call $out (i32.const 128) (i32.const 8)))
 
   (func $probe (param $fd i32)
-    (i64.store (i32.const 64) (i64.const 0xaaaaaaaaaaaaaaaa))
+    (i64.store (i32.const 64) (i64.const 0))
     (i32.store (i32.const 16) (call $prestat_get (local.get $fd) (i32.const 64)))
     (call $out (i32.const 16) (i32.const 4))
     (call $out (i32.const 64) (i32.const 8))

@@ -576,7 +576,8 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     have hsr1 : M.SR S.cap S.globalTypes (nativeStore m cap nativeWorld) q1 := by
       refine ⟨StoreRel.mapHost (storeRel_init (modulePlatform L G) hok hgt hgl (fun j hj => ?_)
         (fun j hj => ?_) ?_) _, hfS, tx17,
-        ?_, ⟨by show pS.trace = _; rw [htrS, List.append_nil], fun e he => nomatch he⟩, ?_⟩
+        ?_, ⟨by show pS.trace = (l₀ ++ []).map A64.Event.sys; rw [htrS, List.append_nil],
+          fun e he => nomatch he⟩, ?_⟩
       · show t.mem (t.x 17 + UInt64.ofNat j) = _
         have hlt : (L.area + UInt64.ofNat j).toNat < G.base.toNat := by
           rw [UInt64.toNat_add, UInt64.toNat_ofNat', hareaG]
@@ -704,12 +705,13 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
       (by rw [pt0]; exact (CodeAt.cons.mp cst).1)
     rw [x30t0] at pt1
     obtain ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩ := cont [] false { p0 with core := t1 } hsuF
-      (ProcRunWith.trans hdom' hrun0 (ProcRunWith.ofReach f0 (rt1.le hPe))) f0 pt1 spt1
+      (ProcRunWith.trans hdom' hrun0 (ProcRunWith.ofReach (p := { p0 with core := t0 }) f0
+        (rt1.le hPe))) f0 pt1 spt1
       (kt1 17) (kt1 18) iot1 (by show p0.trace = _; rw [tr0]; rfl)
       (fun a _ _ _ _ => by show t1.mem a = _; rw [memt1])
       (by show t1.mem _ = _; rw [memt1]; exact hzero0 8 (by decide) (by decide))
       (by show t1.mem _ = _; rw [memt1]; exact hzero0 19 (by decide) (by decide))
-    rw [hsuF]
+    rw [show startup false G R = ([], some false) from rfl]
     exact ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩
   · -- the check of descriptor 3
     rw [wasiStartupCode, hc, if_pos rfl] at hsu
@@ -745,7 +747,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     have hrunq : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
         (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q :=
       ProcRunWith.trans hdom' hrun0 (ProcRunWith.ofWith rq fq)
-    rw [hsuT]
+    rw [show startup true G R = preopenRun (G.base + 1080) R 0 from rfl]
     generalize hpr : preopenRun (G.base + 1080) R 0 = pr at trq hq hsuT ⊢
     rcases pr with ⟨l₀, outcome⟩
     have htrq : q.trace = l₀.map A64.Event.sys := by
