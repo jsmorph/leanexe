@@ -159,19 +159,25 @@ def loadHeader (flags : UInt32) (off : Nat) (vaddr : UInt64) (file mem : Nat) : 
     bytes64 (UInt64.ofNat file) ++ bytes64 (UInt64.ofNat mem) ++ bytes64 0x10000
 
 /-- The executable of the program that `gp` gives from `sysRead`, `sysWrite`, and the exit word,
-with an area of `cap` pages for the module `m` and a stack of `room` bytes: its bytes and its
-layout.  The data segment must end below 2^32, and the area's prefix must fit in the area. -/
-def genElfWith (gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)) (m : Module)
-    (room : UInt64) (cap : Nat) : GenM (List UInt8 × ElfLayout) := do
+with an area of `cap` pages for the module `m`, a stack of `room` bytes, and the entry `entry` in
+its header: its bytes and its layout.  The data segment must end below 2^32, and the area's prefix
+must fit in the area. -/
+def genElfEntry (entry : UInt64) (gp : UInt64 → UInt64 → UInt64 → GenM (List Instr))
+    (m : Module) (room : UInt64) (cap : Nat) : GenM (List UInt8 × ElfLayout) := do
   let prog ← gp sysReadAddr sysWriteAddr elfExitWord
   let L := elfLayoutOf prog.length m cap room
   unless elfBase.toNat + L.dataOff + L.dataMem < 2 ^ 32 ∧ areaPrefix m ≤ areaSize cap do
     throw s!"an executable whose data segment ends at or above 2^32, or data past its area"
   let rt ← sysRuntime L
-  let bytes := elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+  let bytes := elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
     (loadHeader 6 L.dataOff L.area L.dataFile L.dataMem ++ (opBytes rt ++ (imageBytes prog ++
       (List.replicate (L.dataOff - L.codeEnd) 0 ++ areaPrefixBytes m)))))
   return (bytes, L)
+
+/-- The executable of `genElfEntry` whose entry is the runtime's, `elfEntry`. -/
+def genElfWith (gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)) (m : Module)
+    (room : UInt64) (cap : Nat) : GenM (List UInt8 × ElfLayout) :=
+  genElfEntry elfEntry gp m room cap
 
 /-- The executable that runs function `k` of `m`, a function over bytes, on standard input of at
 most `inMax` bytes and writes the bytes of its result to standard output, with an area of `cap`

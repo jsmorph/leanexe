@@ -25,18 +25,18 @@ open Wasm
 
 /-! ## The generator's output -/
 
-/-- `genElfWith` unpacked: the program, the layout, the bounds, the runtime, and the bytes. -/
-theorem gen_elfWith {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {m : Module}
-    {room : UInt64} {cap : Nat} {bytes : List UInt8} {L : ElfLayout}
-    (hg : genElfWith gp m room cap = .ok (bytes, L)) :
+/-- `genElfEntry` unpacked: the program, the layout, the bounds, the runtime, and the bytes. -/
+theorem gen_elfEntry {entry : UInt64} {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)}
+    {m : Module} {room : UInt64} {cap : Nat} {bytes : List UInt8} {L : ElfLayout}
+    (hg : genElfEntry entry gp m room cap = .ok (bytes, L)) :
     ∃ prog rt, gp sysReadAddr sysWriteAddr elfExitWord = .ok prog ∧
       L = elfLayoutOf prog.length m cap room ∧
       elfBase.toNat + L.dataOff + L.dataMem < 2 ^ 32 ∧ areaPrefix m ≤ areaSize cap ∧
       sysRuntime L = .ok rt ∧
-      bytes = elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+      bytes = elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
         (loadHeader 6 L.dataOff L.area L.dataFile L.dataMem ++ (opBytes rt ++ (imageBytes prog ++
           (List.replicate (L.dataOff - L.codeEnd) 0 ++ areaPrefixBytes m))))) := by
-  unfold genElfWith at hg
+  unfold genElfEntry at hg
   cases hp : gp sysReadAddr sysWriteAddr elfExitWord with
   | error e => rw [hp] at hg; cases hg
   | ok prog => ?_
@@ -55,6 +55,19 @@ theorem gen_elfWith {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {m
         exact ⟨prog, rt, rfl, rfl, hr.1, hr.2, hs, hb.symm⟩
   · simp only [bind, Except.bind, hr, ↓reduceIte, throw, throwThe, MonadExceptOf.throw] at hg
     cases hg
+
+/-- `genElfWith` unpacked: the program, the layout, the bounds, the runtime, and the bytes. -/
+theorem gen_elfWith {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {m : Module}
+    {room : UInt64} {cap : Nat} {bytes : List UInt8} {L : ElfLayout}
+    (hg : genElfWith gp m room cap = .ok (bytes, L)) :
+    ∃ prog rt, gp sysReadAddr sysWriteAddr elfExitWord = .ok prog ∧
+      L = elfLayoutOf prog.length m cap room ∧
+      elfBase.toNat + L.dataOff + L.dataMem < 2 ^ 32 ∧ areaPrefix m ≤ areaSize cap ∧
+      sysRuntime L = .ok rt ∧
+      bytes = elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+        (loadHeader 6 L.dataOff L.area L.dataFile L.dataMem ++ (opBytes rt ++ (imageBytes prog ++
+          (List.replicate (L.dataOff - L.codeEnd) 0 ++ areaPrefixBytes m))))) :=
+  gen_elfEntry hg
 
 /-- `sysRuntime` unpacked: the instructions of the addresses and the branches' fields. -/
 theorem sysRuntime_ok {L : ElfLayout} {rt : List Op} (h : sysRuntime L = .ok rt) :
@@ -207,19 +220,20 @@ theorem fetchFrom_dom {m : UInt64 → UInt8} {a : UInt64} {N : Nat} (h : a.toNat
     simp only [Nat.reducePow] at *
     omega
   · cases hb
-/-- The runtime of an executable of `genElfWith gp` around its program, given the generator's
-output `hg`, the bytes `hbyte` of the file `nb`, and the file's program headers `hseg`.  From a
-process whose memory holds the file as the loader places it, with the program counter at the entry
-and no event in the trace, a run that makes no call reaches `main` in a process `p0` that meets the
-premises of the program's theorem for the program `is` that `gp` generates, the code map,
-`sysRead`, `sysWrite`, the exit word, and the area, and leaves the UART's state as it was.  From
+/-- The runtime of an executable of `genElfEntry entry gp` around its program, given the
+generator's output `hg`, the bytes `hbyte` of the file `nb`, and the file's program headers
+`hseg`.  From a process whose memory holds the file as the loader places it, with the program
+counter at the runtime's entry `elfEntry` and no event in the trace, a run that makes no call
+reaches `main` in a process `p0` that meets the premises of the program's theorem for the program
+`is` that `gp` generates, the code map, `sysRead`, `sysWrite`, the exit word, and the area, and
+leaves the UART's state, X2, and the memory as they were, with SP at the stack's top.  From
 every process at `main`'s return address or at the exit word, a run that makes no call reaches
 `SVC #0` with X8 at 94, the call of `exit_group`, keeping X0, the trace, and the UART's state.  The
 code map holds the words from the entry through the program's end, and the platform's Normal memory
 is the data segment. -/
-theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {m : Module}
-    {room : UInt64} {cap : Nat} {nb : Nat} {bytes : List UInt8} {L : ElfLayout}
-    (hg : genElfWith gp m room cap = .ok (bytes, L))
+theorem elfEntry_main {entry : UInt64} {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)}
+    {m : Module} {room : UInt64} {cap : Nat} {nb : Nat} {bytes : List UInt8} {L : ElfLayout}
+    (hg : genElfEntry entry gp m room cap = .ok (bytes, L))
     (hbyte : ∀ j (hj : j < bytes.length), byteAt nb j = bytes[j])
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf L) (hroom : room.toNat % 16 = 0) (p : Proc)
     (hl : ElfLoaded (byteAt nb) p.core.mem) (hpc : p.core.pc = elfEntry) (htr : p.trace = [])
@@ -241,12 +255,13 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
       (∀ j < areaSize cap, (elfPlatform L).normal (L.area + UInt64.ofNat j) = true) ∧
       L.area.toNat + areaSize cap + room.toNat + 16 ≤ p0.core.sp.toNat ∧
       (elfPlatform L).normal (elfPlatform L).uart = false ∧ p0.core.io = p.core.io ∧
+      p0.core.x 2 = p.core.x 2 ∧ p0.core.mem = p.core.mem ∧ p0.core.sp = L.stackTop ∧
       ∀ q : Proc, (q.core.pc = p0.core.x 30 ∨ q.core.pc = elfExitWord) →
         ∃ q', IReach (elfPlatform L) code' q q' ∧ code' q'.core.pc = some svcWord ∧
           q'.core.x 8 = 94 ∧ q'.core.x 0 = q.core.x 0 ∧ q'.trace = q.trace ∧
           q'.core.io = q.core.io := by
   subst hcode'
-  obtain ⟨prog, rt, hp, hLeq, hbound, hpre, hrt, hbytes⟩ := gen_elfWith hg
+  obtain ⟨prog, rt, hp, hLeq, hbound, hpre, hrt, hbytes⟩ := gen_elfEntry hg
   obtain ⟨ar, stk, call, back, har, hstk, hcall, hback, hrteq⟩ := sysRuntime_ok hrt
   have har2 := addrOf_length har
   have hstk2 := addrOf_length hstk
@@ -284,10 +299,10 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
   have hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55 := by
     rw [← hcode]
     exact fetchFrom_dom (by rw [hentry]; omega)
-  have hpre' : (elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+  have hpre' : (elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
       loadHeader 6 L.dataOff L.area L.dataFile L.dataMem)).length = 176 := by
     simp [elfHeader, loadHeader, bytes16, bytes64, wordBytes]
-  have hbytes' : bytes = (elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+  have hbytes' : bytes = (elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
       loadHeader 6 L.dataOff L.area L.dataFile L.dataMem)) ++ (opBytes ops ++
       (List.replicate (L.dataOff - L.codeEnd) 0 ++ areaPrefixBytes m)) := by
     rw [hbytes, ← hops, opBytes_append, imageBytes_eq_opBytes]
@@ -335,12 +350,12 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
     rw [e, this]
     by_cases hj' : j < L.dataFile
     · rw [if_pos hj', hbyte _ (by rw [hblen]; rw [hdf] at hj'; omega)]
-      have hbytesD : bytes = ((elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+      have hbytesD : bytes = ((elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
           loadHeader 6 L.dataOff L.area L.dataFile L.dataMem)) ++ (opBytes ops ++
           List.replicate (L.dataOff - L.codeEnd) 0)) ++ areaPrefixBytes m := by
         rw [hbytes']
         simp only [List.append_assoc]
-      have hfirst : ((elfHeader elfEntry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
+      have hfirst : ((elfHeader entry ++ (loadHeader 5 0 elfBase L.codeEnd L.codeEnd ++
           loadHeader 6 L.dataOff L.area L.dataFile L.dataMem)) ++ (opBytes ops ++
           List.replicate (L.dataOff - L.codeEnd) 0)).length = L.dataOff := by
         simp only [List.length_append, List.length_replicate, hopb, elfHeader_length,
@@ -488,6 +503,12 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
     rw [State.setX_mem]
     show u2.mem = _
     rw [memu2, memu1, p2mem]
+  have hx24 : u4.x 2 = p.core.x 2 := by
+    rw [State.x_withPc, State.x_setX_ne (by decide)]
+    show u2.x 2 = _
+    rw [ku2 2 (by decide), ku1 2 (by decide), ← hp2]
+    show s1.x 2 = _
+    rw [State.x_withPc, State.x_setX_ne (by decide)]
   have hio4 : u4.io = p.core.io := by
     show (u3.setX 30 (u3.pc + 4)).io = _
     rw [State.setX_io]
@@ -539,7 +560,7 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
     by rw [hx304]; exact hbnd 8 (by omega), ?_, ?_, fun j hj => ?_, hx174,
     fun j hj => by show u4.mem _ = _; rw [hmem4]; exact hdata j hj, fun j hj => ?_,
     by show L.area.toNat + areaSize cap + room.toNat + 16 ≤ u4.sp.toNat; rw [hsp4, htopv], hU,
-    hio4, fun q hqpc => ?_⟩
+    hio4, hx24, hmem4, hsp4, fun q hqpc => ?_⟩
   · show u4.sp % 16 = 0
     rw [hsp4]
     apply UInt64.toNat_inj.mp
@@ -567,6 +588,49 @@ theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {
     · exact exitRun q (by rw [h]; exact hx304)
     · exact baseRun q h
 
+
+/-- The runtime of an executable of `genElfWith gp` around its program, given the generator's
+output `hg`, the bytes `hbyte` of the file `nb`, and the file's program headers `hseg`.  From a
+process whose memory holds the file as the loader places it, with the program counter at the entry
+and no event in the trace, a run that makes no call reaches `main` in a process `p0` that meets the
+premises of the program's theorem for the program `is` that `gp` generates, the code map,
+`sysRead`, `sysWrite`, the exit word, and the area, and leaves the UART's state as it was.  From
+every process at `main`'s return address or at the exit word, a run that makes no call reaches
+`SVC #0` with X8 at 94, the call of `exit_group`, keeping X0, the trace, and the UART's state.  The
+code map holds the words from the entry through the program's end, and the platform's Normal memory
+is the data segment. -/
+theorem elfWith_main {gp : UInt64 → UInt64 → UInt64 → GenM (List Instr)} {m : Module}
+    {room : UInt64} {cap : Nat} {nb : Nat} {bytes : List UInt8} {L : ElfLayout}
+    (hg : genElfWith gp m room cap = .ok (bytes, L))
+    (hbyte : ∀ j (hj : j < bytes.length), byteAt nb j = bytes[j])
+    (hseg : elfSegments (byteAt nb) = elfSegmentsOf L) (hroom : room.toNat % 16 = 0) (p : Proc)
+    (hl : ElfLoaded (byteAt nb) p.core.mem) (hpc : p.core.pc = elfEntry) (htr : p.trace = [])
+    {code' : UInt64 → Option UInt32}
+    (hcode' : code' = fetchFrom p.core.mem elfEntry (elfWords L)) :
+    ∃ (is : List Instr) (p0 : Proc),
+      gp sysReadAddr sysWriteAddr elfExitWord = .ok is ∧
+      CodeAt code' (after elfExitWord 1) is ∧
+      OpsAt code' sysReadAddr [.ins (.movz 8 63 0), .svc, .ins (.ret 30)] ∧
+      OpsAt code' sysWriteAddr [.ins (.movz 8 64 0), .svc, .ins (.ret 30)] ∧
+      (∀ a w, code' a = some w → a.toNat < 2 ^ 55) ∧ elfExitWord.toNat < 2 ^ 55 ∧
+      IReach (elfPlatform L) code' p p0 ∧ p0.core.pc = after elfExitWord 1 ∧
+      p0.fpcr = fpcrValue ∧ p0.trace = [] ∧ (p0.core.x 30).toNat < 2 ^ 55 ∧
+      p0.core.sp % 16 = 0 ∧ p0.core.sp.toNat ≤ 2 ^ 63 ∧
+      (∀ j < room.toNat + 16,
+        (elfPlatform L).normal (p0.core.sp - 16 - room + UInt64.ofNat j) = true) ∧
+      p0.core.x 17 = L.area ∧
+      (∀ j < areaSize cap, p0.core.mem (L.area + UInt64.ofNat j) = areaByte m.initialStore j) ∧
+      (∀ j < areaSize cap, (elfPlatform L).normal (L.area + UInt64.ofNat j) = true) ∧
+      L.area.toNat + areaSize cap + room.toNat + 16 ≤ p0.core.sp.toNat ∧
+      (elfPlatform L).normal (elfPlatform L).uart = false ∧ p0.core.io = p.core.io ∧
+      ∀ q : Proc, (q.core.pc = p0.core.x 30 ∨ q.core.pc = elfExitWord) →
+        ∃ q', IReach (elfPlatform L) code' q q' ∧ code' q'.core.pc = some svcWord ∧
+          q'.core.x 8 = 94 ∧ q'.core.x 0 = q.core.x 0 ∧ q'.trace = q.trace ∧
+          q'.core.io = q.core.io := by
+  obtain ⟨is, p0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18,
+    h19, h20, -, -, -, h23⟩ := elfEntry_main hg hbyte hseg hroom p hl hpc htr hcode'
+  exact ⟨is, p0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18,
+    h19, h20, h23⟩
 
 /-- The runtime of an executable of `genSysElf` around its program, given the kernel's check `hk`
 of the file `nb` and the file's program headers `hseg`.  From a process whose memory holds the file
