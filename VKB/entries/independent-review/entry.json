@@ -11,14 +11,16 @@
     "samples of every parameter for a test of a cover by boxes",
     "a wrong search that returns the correct status and hull on every case",
     "a model of a floating-point program that reproduces its results bit for bit",
-    "a claimed optimum of a design measurement"
+    "a claimed optimum of a design measurement",
+    "a design note that specifies code against a reference engine, such as the order of a host's checks"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
     "Library.Sorting.Quicksort.Proof",
     "Library.Graphs.Dijkstra.Proof",
     "Library.Trees.Avl.Proof",
-    "Library.Trees.AvlDelete.Spec"
+    "Library.Trees.AvlDelete.Spec",
+    "Verified.Shim.Replies"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -32,7 +34,8 @@
     "Library.Trees.Avl.algorithmA",
     "Library.Trees.Avl.algorithmA_props",
     "Library.Trees.AvlDelete.Removes",
-    "Library.Trees.AvlDelete.deleteA"
+    "Library.Trees.AvlDelete.deleteA",
+    "Verified.Shim.openCheck"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq"

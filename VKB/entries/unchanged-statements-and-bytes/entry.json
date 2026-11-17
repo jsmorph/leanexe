@@ -42,7 +42,8 @@
     "Verified.Wasi.ReflectCommand",
     "Verified.Wasi.Wrappers",
     "Verified.Wasi.SysCommand",
-    "LeanExe.A64.Proof.StampImage"
+    "LeanExe.A64.Proof.StampImage",
+    "LeanExe.A64.Proof.MachineSim"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -124,7 +125,9 @@
     "LeanExe.A64.Event.inBytes",
     "LeanExe.A64.Event.outBytes",
     "LeanExe.A64.ProcReachWith.trace_sys",
-    "LeanExe.A64.Event"
+    "LeanExe.A64.Event",
+    "LeanExe.A64.Machine",
+    "LeanExe.A64.bare"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",
