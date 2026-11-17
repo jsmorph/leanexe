@@ -73,7 +73,13 @@ theorem store64_outside {P : Platform} {m : UInt64 → UInt8} {a v : UInt64}
       rw [UInt64.lt_iff_toNat_lt] at hlt
       exact hlt
     have e : a + UInt64.ofNat (b - a).toNat = b := by
-      rw [UInt64.ofNat_toNat, UInt64.add_sub_cancel_left]
+      rw [UInt64.ofNat_toNat]
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_add, UInt64.toNat_sub]
+      have := a.toNat_lt
+      have := b.toNat_lt
+      simp only [Nat.reducePow] at *
+      omega
     rw [← e, h _ hk] at hb
     cases hb
   simp only [store64, hn, ↓reduceIte]
@@ -131,7 +137,7 @@ theorem stub_returned {S : Shared} {n : Nat} {st : Store (Observed LinuxWorld)} 
   have hev : (st.host.world.answer [] e).events = st.host.world.events := by
     simp [LinuxWorld.answer]
   refine ⟨{ q with core := t }, ProcRunWith.ofReach hf rt,
-    ⟨pt, spt, x18t, iot, fun b hb => hsp b (by simpa using hb), by simp,
+    ⟨pt, spt, x18t, iot, fun b hb => hsp b (by simp only [Nat.mul_zero, Nat.add_zero] at hb; exact hb), by simp,
       ⟨by simp, fun k hk => ?_⟩, by simp [Typed, HasType]⟩,
     StoreRel.withHost hst _, hf, by show t.x 17 = _; rw [x17t]; exact h17,
     by show _ ≤ (t.x 18).toNat; rw [x18t]; exact hgap, ⟨?_, ?_⟩, ?_⟩
@@ -194,11 +200,11 @@ theorem prestatStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow, UInt64.reduceToNat]
     omega
   have hend : q.core.x 1 + 8 = UInt64.ofNat (a1.toNat + 8) := by
+    have h1 : a1.toNat < 4294967296 := a1.toNat_lt
     rw [x1]
     apply UInt64.toNat_inj.mp
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt32.toNat_toUInt64, Nat.reducePow,
-      UInt64.reduceToNat]
-    omega
+      UInt64.reduceToNat] <;> omega
   have htrapIff : load64 q.core.mem (q.core.x 17) + 8 < q.core.x 1 + 8 ↔
       st.mem.pages * 65536 < a1.toNat + 8 := by
     rw [hsz, hend, UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat', UInt64.toNat_ofNat']
@@ -255,10 +261,12 @@ theorem prestatStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
     rw [hrep, prestat_placed,
       show prestatReply true 3 = .returned 0 [bytesOfList [0, 0, 0, 0, 1, 0, 0, 0]] from rfl]
     simp only [sysAnswer, sysResult]
+    have haddr0 : q.core.x 17 + q.core.x 1 + UInt64.ofNat (8 * 512) =
+        q.core.x 17 + UInt64.ofNat (4096 + a1.toNat) := by
+      simpa using haddr 0 (by decide)
     have hmt : t.mem = store64 q.core.mem (q.core.x 17 + UInt64.ofNat (4096 + a1.toNat))
         (2 ^ 32) := by
-      rw [mt, ← haddr 0 (by decide)]
-      rfl
+      rw [mt, haddr0]
     exact stub_returned hsr' rt pt spt iot x17t x18t xt0 (by decide)
       (fun b hb => by
         rw [hmt]
@@ -368,13 +376,12 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow, UInt64.reduceToNat]
     omega
   have hend : q.core.x 1 + q.core.x 2 = UInt64.ofNat (a1.toNat + a2.toNat) := by
+    have h1 : a1.toNat < 4294967296 := a1.toNat_lt
+    have h2 : a2.toNat < 4294967296 := a2.toNat_lt
     rw [x1, x2]
     apply UInt64.toNat_inj.mp
-    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt32.toNat_toUInt64, Nat.reducePow]
-    have := a1.toNat_lt
-    have := a2.toNat_lt
-    simp only [Nat.reducePow] at *
-    omega
+    simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt32.toNat_toUInt64, Nat.reducePow] <;>
+      omega
   have htrapIff : load64 q.core.mem (q.core.x 17) + 8 < q.core.x 1 + q.core.x 2 ↔
       st.mem.pages * 65536 < a1.toNat + a2.toNat := by
     rw [hsz, hend, UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat', UInt64.toNat_ofNat']
@@ -382,13 +389,14 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
     have := a2.toNat_lt
     simp only [Nat.reducePow] at *
     omega
-  have hbufA : q.core.x 17 + q.core.x 1 + 1 + 4095 = q.core.x 17 + UInt64.ofNat (4096 + a1.toNat) := by
-    rw [x1, UInt64.add_assoc, UInt64.add_assoc]
-    congr 1
+  have hbufA : q.core.x 17 + q.core.x 1 + 1 + 4095 =
+      q.core.x 17 + UInt64.ofNat (4096 + a1.toNat) := by
+    have h1 : a1.toNat < 4294967296 := a1.toNat_lt
+    have h17' := (q.core.x 17).toNat_lt
+    rw [x1]
     apply UInt64.toNat_inj.mp
     simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt32.toNat_toUInt64, Nat.reducePow,
-      UInt64.reduceToNat]
-    omega
+      UInt64.reduceToNat] at h17' ⊢ <;> omega
   have hbufN : ¬ load64 q.core.mem (q.core.x 17) + 8 < q.core.x 1 + q.core.x 2 →
       q.core.x 2 ≠ 0 → (wasiPlatform L sp₀ top).normal (q.core.x 17 + q.core.x 1 + 1 + 4095) =
         true := fun h h2 => by
@@ -509,8 +517,10 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
       constructor
       · rintro ⟨hle, hb⟩
         have hd := hle1023.mp hle
-        rw [ha0, hheldA a0.toNat a0.toNat_lt, hK.held a0.toNat (by unfold descriptorLimit; omega)]
-          at hb
+        have hh : q.core.mem (G.base + UInt64.ofNat (16 + a0.toNat)) =
+            if UInt64.ofNat a0.toNat ∈ openNumbers I st.host.world.events then 1 else 0 :=
+          hK.held a0.toNat (by unfold descriptorLimit; omega)
+        rw [ha0, hheldA a0.toNat a0.toNat_lt, hh] at hb
         rw [ha0]
         by_contra hm
         exact hb (by rw [if_neg hm])
@@ -519,7 +529,10 @@ theorem dirNameStub_sim (S : Shared) (n : Nat) {a : UInt64} {is : List Instr}
         rw [UInt32.toNat_toUInt64] at hd
         unfold descriptorLimit at hd
         refine ⟨hle1023.mpr (by omega), ?_⟩
-        rw [ha0, hheldA a0.toNat a0.toNat_lt, hK.held a0.toNat (by unfold descriptorLimit; omega)]
+        have hh : q.core.mem (G.base + UInt64.ofNat (16 + a0.toNat)) =
+            if UInt64.ofNat a0.toNat ∈ openNumbers I st.host.world.events then 1 else 0 :=
+          hK.held a0.toNat (by unfold descriptorLimit; omega)
+        rw [ha0, hheldA a0.toNat a0.toNat_lt, hh]
         rw [ha0] at hm
         rw [if_pos hm]
         decide
