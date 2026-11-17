@@ -44,16 +44,16 @@ or store reaches after a check of its bounds.  A function keeps its parameters a
 at `SP` of 8 bytes each, followed by 26 spill slots and the slot of the return address, a multiple
 of 16 bytes in all.  Its prologue checks that the frame fits above the stack's limit, which X18
 holds, reserves the frame, stores the parameters into it from the registers of the heights 0 upward,
-and clears the other locals.  `SUB` and `ADD` of SP take an immediate below 4096, so the prologue
-reserves a frame of 4096 bytes or more with several `SUB`s of at most 4080 bytes and the epilogue
-releases it with as many `ADD`s, and the check compares the bytes from the limit up to SP, divided
-by 16, with the frame's size divided by 16, since SP less the frame's size could wrap.  The
-frame's slots must lie within the 4096 slots that `LDR` and `STR` reach from SP.  A call spills
-the operand registers below its arguments to the spill slots, moves the arguments into the
-registers of the heights 0 upward, branches with `BL`, moves the results from those registers into
-the registers of their heights, and reloads the spilled registers.
-The callee may change every register but SP, X17, and X18, and it changes no memory from its
-caller's SP upward.  A construct carries at most one value, and a branch to one moves the value that
+and clears the other locals.  The model's `SUB` and `ADD` of SP take an unshifted immediate below
+4096, so the prologue reserves a frame of 4096 bytes or more with several `SUB`s of at most 4080
+bytes, and the epilogue releases it with as many `ADD`s.  For such a frame the check compares the
+bytes from the limit up to SP, divided by 16, with the frame's size divided by 16, since SP less
+the frame's size could wrap.  The frame's slots must lie within the 4096 slots that `LDR` and
+`STR` reach from SP.  A call spills the operand registers below its arguments to the spill slots,
+moves the arguments into the registers of the heights 0 upward, branches with `BL`, moves the
+results from those registers into the registers of their heights, and reloads the spilled
+registers.  The callee may change every register but SP, X17, and X18, and it changes no memory
+from its caller's SP upward.  A construct carries at most one value, and a branch to one moves the value that
 it carries, if any, into the register of the construct's base height with one `ORR` and branches to
 the construct's target: the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for
 the function itself, which also serves `ret`.  The results lie at the heights from 0, in the

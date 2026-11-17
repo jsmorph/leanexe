@@ -2,6 +2,7 @@ import Demos.OrderBook.ProcessModule
 import Demos.RunningSum.Module
 import Demos.RunningSumFp.Module
 import LeanExe.A64.Proof.WasiProgram
+import Verified.Wasi.ProcessFacts
 
 /-!
 The three WASI process modules whose functions have frames of 4,096 bytes or more as native
@@ -28,15 +29,17 @@ def procRoom : UInt64 := 65536
 
 /-- The index of the order book's `_start`. -/
 def orderBookStart : Nat :=
-  Verified.Wasi.Wrappers.effectIndex Demos.OrderBook.Process.io.pure.module 4
+  Verified.Wasi.ProcessEntry.startIndex Demos.OrderBook.Process.io.pure.module
+    Demos.OrderBook.Process.entry
 
 /-- The index of the running sum's `_start`. -/
 def runningSumStart : Nat :=
-  Verified.Wasi.Wrappers.effectIndex Demos.RunningSum.io.pure.module 4
+  Verified.Wasi.ProcessEntry.startIndex Demos.RunningSum.io.pure.module Demos.RunningSum.entry
 
 /-- The index of the floating-point running sum's `_start`. -/
 def runningSumFpStart : Nat :=
-  Verified.Wasi.Wrappers.effectIndex Demos.RunningSumFp.io.pure.module 4
+  Verified.Wasi.ProcessEntry.startIndex Demos.RunningSumFp.io.pure.module
+    Demos.RunningSumFp.entry
 
 set_option maxRecDepth 100000
 

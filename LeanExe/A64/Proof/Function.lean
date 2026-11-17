@@ -31,12 +31,33 @@ variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-! ## The generator's function -/
 
-theorem frameSize_bounds {n : Nat} (h : n + spillSlots < 4096) :
+theorem frameSize_bounds {n : Nat} (h : frameSize n < 4096) :
+    8 * (n + spillSlots + 1) ≤ frameSize n ∧ frameSize n % 16 = 0 ∧
+      n + spillSlots + 1 < 512 := by
+  unfold frameSize at h ⊢
+  omega
+
+/-- The frame of `n` locals whose slots `LDR` and `STR` reach holds the slots, is a multiple of
+16, and has a quotient by 16 below 4096, the immediate of `stackCmp`'s `CMP`. -/
+theorem frameSize_reach {n : Nat} (h : n + spillSlots < 4096) :
     8 * (n + spillSlots + 1) ≤ frameSize n ∧ frameSize n % 16 = 0 ∧
       frameSize n / 16 < 4096 := by
   unfold frameSize
   unfold spillSlots at h ⊢
   omega
+
+/-- Below 4096 bytes, the comparison is `SUB X16, SP, #fs` and `CMP X16, X18`. -/
+theorem stackCmp_small {fs : Nat} (h : fs < 4096) :
+    stackCmp fs = [.subImm 16 31 ⟨fs, h⟩, .subsReg 31 16 18] := by
+  unfold stackCmp
+  rw [dif_pos h]
+
+/-- A frame of 1 to 4080 bytes takes the one step `fs`. -/
+theorem frameSteps_small {fs : Nat} (h0 : 0 < fs) (h : fs ≤ 4080) :
+    frameSteps fs = [⟨fs, by omega⟩] := by
+  have hq : (fs - 1) / 4080 = 0 := by omega
+  simp only [frameSteps, hq, List.replicate_zero, List.nil_append, List.cons.injEq,
+    Fin.mk.injEq, and_true] <;> omega
 
 theorem replicate_steps_sum (q : Nat) (c : Fin 4096) :
     ((List.replicate q c).map Fin.val).sum = q * c.val := by
@@ -103,6 +124,37 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt64}
       hl, any_ne hend, hcb, by simp [List.append_assoc]⟩
   · simp [genFunction, h1, h2, hnum, hn, throw, throwThe, MonadExceptOf.throw] at hg
 
+/-- `gen_function` for a frame below 4096 bytes: `SUB X16, SP, #fs`, `CMP X16, X18`, `B.LO`, one
+`SUB` of SP, the store of X30, and the stores of the locals, then the body, and `LDR X30`, one
+`ADD` of SP, and `RET`. -/
+theorem gen_function_small {callee : Table} {S : Shared} {entry : UInt64}
+    {f : Function} {is : List Instr} (hg : genFunction callee S entry f = .ok is)
+    (hf : frameSize (f.params.length + f.locals.length) < 4096) :
+    let p := f.params.length
+    let n := p + f.locals.length
+    let r := f.results.length
+    let bodyA := after entry (5 + n)
+    ∃ (hn : n + spillSlots < 4096)
+      (stores body : List Instr) (fin : Option (List ValueType)) (g : Fin 524288),
+      stores.length = n ∧
+      (∀ i (hi : i < stores.length), ∃ hs, stores[i] =
+        .str (if i < p then regOf i else 31) 31 ⟨i, hs⟩) ∧
+      genList { toShared := S, localTypes := f.params ++ f.locals, callee }
+        [⟨after bodyA (listSize (sigOf callee) [r] 0 f.body).1, f.results.reverse, 0⟩] []
+        bodyA f.body = .ok (body, fin) ∧ (∀ x, fin = some x → x = f.results.reverse) ∧
+      cbField (after entry 2) S.trapStack = .ok g ∧
+      is = [.subImm 16 31 ⟨frameSize n, hf⟩, .subsReg 31 16 18, .bcond 3 g,
+          .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++
+        [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30] := by
+  dsimp only
+  obtain ⟨-, -, -, hn, stores, body, fin, g, hsl, hst, hl, hfin, hcb, his⟩ := gen_function hg
+  have hb := frameSize_bounds hf
+  rw [stackCmp_small hf] at hl hcb his
+  rw [frameSteps_small (by omega) (by omega)] at hl his
+  refine ⟨hn, stores, body, fin, g, hsl, hst, hl, hfin, hcb, ?_⟩
+  rw [his]
+  simp
+
 /-! ## The prologue -/
 
 /-- The run of the prologue's check of the stack: with at least `fs` bytes from the stack's limit
@@ -166,10 +218,10 @@ theorem run_check {fs : Nat} (hf : fs < 4096) {g : Fin 524288} {entry tS : UInt6
     · simp only [h, decide_false, Bool.not_false, ite_true]
       exact cbField_target hg
 
-/-- The run of the check of the stack for a frame of `fs` bytes, a multiple of 16 of 4096 or
-more: X16 takes SP less X18, the bytes from the stack's limit up to SP, divided by 16, and the
-machine goes on to the reservation of the frame when the quotient reaches `fs / 16` and branches
-to the stub `tS` otherwise. -/
+/-- The run of the check of the stack that `stackCmp` gives for a frame of 4096 bytes or more, for
+a frame of `fs` bytes, a multiple of 16 below 65536: X16 takes SP less X18, the bytes from the
+stack's limit up to SP, divided by 16, and the machine goes on to the reservation of the frame
+when the quotient reaches `fs / 16` and branches to the stub `tS` otherwise. -/
 theorem run_check_wide {fs : Nat} (hfs16 : fs % 16 = 0) (hk : fs / 16 < 4096) {g : Fin 524288}
     {entry tS : UInt64} (hg : cbField (after entry 4) tS = .ok g)
     (hcode : CodeAt code entry [.addImm 16 31 0, .subReg 16 16 18, .lsrImm 16 16 4,
@@ -277,9 +329,7 @@ theorem run_stackCheck {fs : Nat} (hfs16 : fs % 16 = 0) (hk : fs / 16 < 4096)
       s.pc = if fs ≤ (ms.sp - ms.x 18).toNat then after entry ((stackCmp fs).length + 1)
         else tS := by
   by_cases h : fs < 4096
-  · have e : stackCmp fs = [.subImm 16 31 ⟨fs, h⟩, .subsReg 31 16 18] := by
-      unfold stackCmp; rw [dif_pos h]
-    rw [e] at hg hcode ⊢
+  · rw [stackCmp_small h] at hg hcode ⊢
     exact run_check P code h hg hcode hpc (by omega) hsp
   · have e : stackCmp fs = [.addImm 16 31 0, .subReg 16 16 18, .lsrImm 16 16 4,
         .subsImm 31 16 ⟨fs / 16 % 4096, Nat.mod_lt _ (by decide)⟩] := by
@@ -348,8 +398,9 @@ theorem run_sp_up : ∀ {steps : List (Fin 4096)} {a : UInt64} {ms : State},
 /-- The run of the prologue's part after the check of the stack: the frame of `fs` bytes below
 SP, which the `SUB`s of `steps` reserve, X30 in slot `j` at or above the `n` locals, and the word
 of register `src i` in the slot of local `i`. -/
-theorem run_frame {n j fs : Nat} (hj : n ≤ j) (hfs : 8 * (j + 1) ≤ fs) (hfs16 : fs % 16 = 0)
-    (hf : fs < 2 ^ 64) {steps : List (Fin 4096)} (hsum : (steps.map Fin.val).sum = fs)
+theorem run_frame_steps {n j fs : Nat} (hj : n ≤ j) (hfs : 8 * (j + 1) ≤ fs)
+    (hfs16 : fs % 16 = 0) (hf : fs < 2 ^ 64) {steps : List (Fin 4096)}
+    (hsum : (steps.map Fin.val).sum = fs)
     (hjs : j < 4096) {src : Nat → Fin 32}
     {stores : List Instr} (hlen : stores.length = n)
     (hst : ∀ i (hi : i < n), ∃ hs, stores[i]'(by omega) = .str (src i) 31 ⟨i, hs⟩)
@@ -433,6 +484,27 @@ theorem run_frame {n j fs : Nat} (hj : n ≤ j) (hfs : 8 * (j + 1) ≤ fs) (hfs1
     rw [hout a fun i hi => hoth a ha i (by omega)]
     show store64 s1.mem (slotAddr s1.sp j) (s1.x 30) a = ms.mem a
     rw [store64_other _ _ _ _ (hoth a ha j (by omega))]
+
+/-- The run of the prologue's part after the check of the stack for a frame below 4096 bytes:
+`run_frame_steps` with the one step `fs`. -/
+theorem run_frame {n j fs : Nat} (hj : n ≤ j) (hfs : 8 * (j + 1) ≤ fs) (hfs16 : fs % 16 = 0)
+    (hf : fs < 4096) (hjs : j < 4096) (hj512 : j + 1 < 512) {src : Nat → Fin 32}
+    {stores : List Instr} (hlen : stores.length = n)
+    (hst : ∀ i (hi : i < n), ∃ hs, stores[i]'(by omega) = .str (src i) 31 ⟨i, hs⟩)
+    {entry : UInt64} {ms : State}
+    (hcode : CodeAt code entry ([.subImm 31 31 ⟨fs, hf⟩, .str 30 31 ⟨j, hjs⟩] ++ stores))
+    (hpc : ms.pc = entry) (hal : ms.sp % 16 = 0)
+    (hmap : ∀ j < fs, P.normal (ms.sp - UInt64.ofNat fs + UInt64.ofNat j) = true) :
+    ∃ s, Reach P code ms s ∧ s.pc = after entry (2 + n) ∧ s.sp = ms.sp - UInt64.ofNat fs ∧
+      (∀ q, s.x q = ms.x q) ∧ s.io = ms.io ∧ load64 s.mem (slotAddr s.sp j) = ms.x 30 ∧
+      (∀ i < n, load64 s.mem (slotAddr s.sp i) = ms.x (src i)) ∧
+      (∀ a, ¬ a - s.sp < UInt64.ofNat fs → s.mem a = ms.mem a) := by
+  have hsum : (([⟨fs, hf⟩] : List (Fin 4096)).map Fin.val).sum = fs := by simp
+  obtain ⟨s, hr, hp, hrest⟩ := run_frame_steps P code hj hfs hfs16 (by omega) hsum hjs hlen hst
+    (by simpa using hcode) hpc hal hmap
+  refine ⟨s, hr, ?_, hrest⟩
+  rw [hp]
+  congr 1
 
 /-! ## The epilogue -/
 
@@ -609,7 +681,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
   obtain ⟨hp8, hr1, hnum, hn, stores, body, fin, g, hsl, hsti, hl, hfin, hgc, his⟩ :=
     gen_function hg
   have hloc : ∀ t ∈ f.locals, ValRel t.zero 0 := fun t ht => ValRel_zero (hnum t ht)
-  obtain ⟨hfs, hfs16, hq16⟩ := frameSize_bounds hn
+  obtain ⟨hfs, hfs16, hq16⟩ := frameSize_reach hn
   obtain ⟨hl1, hl2, hl3⟩ := hstk.limit
   generalize hpd : f.params.length = p at *
   generalize hnd : p + f.locals.length = n at *
@@ -671,7 +743,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     rw [below_sp hl2 hfit]
     exact hstk.below _ (by omega)
   obtain ⟨s, hrs, hps, hsps, hxs, hos, h30, hslots, hmems⟩ :=
-    run_frame P code (n := n) (j := n + spillSlots) (fs := fs)
+    run_frame_steps P code (n := n) (j := n + spillSlots) (fs := fs)
       (src := fun i => if i < p then regOf i else 31)
       (by omega) hfs hfs16 (by omega) hsum hn hsl (fun i hi => hsti i (by omega)) cframe hpcc
       (by rw [hspc]; exact hstk.aligned) (by rw [hspc]; exact hmap)
