@@ -10,5 +10,6 @@ import Verified.Shim.Satisfies
 import Verified.Shim.Footprint
 import Verified.Shim.Trace
 import Verified.Shim.Descriptors
+import Verified.Shim.Utf8
 import Verified.Shim.Held
 import Verified.Shim.Streams

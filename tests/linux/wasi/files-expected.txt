@@ -1,0 +1,39 @@
+# The cases of the module of files-cases.py whose outputs from the executable and from the
+# Wasmtime host differ by the shim's specification: the scenario, the case's description, and the
+# reason, separated by tabs.  files-compare.py reads it.
+h	read 4 from 0	the handle form of fd_read accepts only the numbers that the shim holds, so descriptor 0 gives errno 8, where Wasmtime reads standard input
+h	write 2 to 2	the handle form of fd_write accepts only the numbers that the shim holds, so descriptor 2 gives errno 8, where Wasmtime writes to standard error
+m	open dir=3 path=b'status' follow=1 oflags=0 rights=2 fdflags=0	a write to a file of /proc opened for reading: Linux's write gives EBADF, errno 8, where Wasmtime answers 70 (spipe), since it writes at a position that it keeps itself
+p	open dir=3 path=b'sub' follow=1 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+p	open dir=3 path=b'.' follow=1 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+p	open dir=3 path=b'in' follow=0 oflags=2 rights=2 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+p	open dir=3 path=b'sub' follow=1 oflags=2 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+p	open dir=3 path=b'up' follow=0 oflags=2 rights=2 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sub' follow=0 oflags=0 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=0 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=0 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=0 oflags=2 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=2 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=0 oflags=2 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=2 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=0 oflags=4 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=4 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=0 oflags=4 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sub' follow=1 oflags=4 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'in' follow=0 oflags=2 rights=0 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'in' follow=0 oflags=2 rights=2 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'in' follow=0 oflags=2 rights=64 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'in' follow=0 oflags=2 rights=66 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sublink' follow=1 oflags=0 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sublink' follow=1 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sublink' follow=0 oflags=2 rights=0 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sublink' follow=1 oflags=2 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sublink' follow=0 oflags=2 rights=2 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sublink' follow=1 oflags=2 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sublink' follow=0 oflags=2 rights=64 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sublink' follow=0 oflags=2 rights=66 fdflags=0	directory with a lookup that does not follow a symbolic link: O_DIRECTORY with O_NOFOLLOW gives ENOTDIR, errno 54, where Wasmtime answers 32 (loop)
+f	open dir=3 path=b'sublink' follow=1 oflags=4 rights=0 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+f	open dir=3 path=b'sublink' follow=1 oflags=4 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+h	read 4 from 3, the preopened directory	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
+m	open dir=3 path=b'fd' follow=1 oflags=0 rights=2 fdflags=0	a read of a directory: Linux's read gives EISDIR, errno 31, where Wasmtime answers 8 (badf); the shim does not know whether a number names a directory
