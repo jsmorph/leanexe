@@ -11,8 +11,10 @@ Usage: uv run tests/linux/a64-wasi-clocks.py KIND PAGES A B FILE NOW
        uv run tests/linux/a64-wasi-clocks.py calls ELF TRACE CAP [clock ID | random PTR N]...
 
 For calls, TRACE holds the output of `strace -X raw -e raw=clock_gettime,getrandom` for a run of
-the executable ELF, whose memory's cap is CAP pages, and the run's calls of `clock_gettime` and
-`getrandom` must be those that the expectations after CAP give, in their order.  `clock ID` is one
+the executable ELF, whose memory's cap is CAP pages.  After the `execve` of the executable, the
+run may make no call but `clock_gettime`, `getrandom`, `write`, and `exit_group`, and its calls of
+`clock_gettime` and `getrandom` must be those that the expectations after CAP give, in their
+order.  `clock ID` is one
 `clock_gettime` of clock ID into the timespec, 1,040 bytes into the scratch that follows the area.
 `random PTR N` is a `getrandom` with flags 0 of the N bytes at guest address PTR, or at any address
 for a PTR of `-`, within the memory, which starts 4,096 bytes into the area that the second program
@@ -161,12 +163,17 @@ def calls(elf, trace, cap, expect):
     size = cap * 65536
     timespec = base + size + 1040
     seen = []
-    for line in open(trace):
+    lines = open(trace).read().splitlines()
+    if not lines or not lines[0].startswith("execve("):
+        return ["the trace does not begin with the execve of the executable"], seen
+    for line in lines[1:]:
         if line.startswith(("clock_gettime(", "getrandom(")):
             m = CALL.match(line)
             if m is None:
                 return [f"unread line {line.strip()}"], seen
             seen.append((m[1], [int(x, 0) for x in m[2].split(",")], int(m[3], 0)))
+        elif not line.startswith(("write(", "exit_group(", "+++ exited with ")):
+            return [f"a call or event other than those due: {line.strip()}"], seen
     pending = list(expect)
     rest = None
     for name, args, result in seen:

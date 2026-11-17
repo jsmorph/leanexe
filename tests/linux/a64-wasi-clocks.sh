@@ -11,9 +11,10 @@
 # status 0 with the errno of the table, the shim's trap with status 2, or, in the Wasmtime host, a
 # host function's error with status 1, and the checker must accept each output of status 0.  Each
 # executable runs once more natively under strace, with the status of its other runs, and the
-# checker requires the calls of the case and no other: for clocks 0 and 1, one `clock_gettime` of
-# the clock into the shim's timespec; for a random buffer of at least one byte, a `getrandom` of the
-# buffer with flags 0 and, after each short count, of the rest; and none for a trap or another case.
+# checker requires the calls of the case and no other but write and exit_group: for clocks 0 and 1,
+# one `clock_gettime` of the clock into the shim's timespec; for a random buffer of at least one
+# byte, a `getrandom` of the buffer with flags 0 and, after each short count, of the rest; and none
+# for a trap or another case.
 #
 # The table states the Wasmtime host's outcomes as Wasmtime 44 gives them.  They differ from the
 # executable's only for requests outside the WASI contract, where the shim's specification chose
@@ -192,8 +193,8 @@ while read -r name kind pages a b want wantw; do
   else set --; fi
   got=
   code=0
-  scoped "$mem" strace -X raw -e trace=clock_gettime,getrandom -e raw=clock_gettime,getrandom \
-    -o "$out/$name.strace" "$out/$name.elf" > /dev/null || code=$?
+  scoped "$mem" strace -X raw -e raw=clock_gettime,getrandom -o "$out/$name.strace" \
+    "$out/$name.elf" > /dev/null || code=$?
   if [ "$code" -eq "$wantc" ] && got=$(uv run tests/linux/a64-wasi-clocks.py calls \
       "$out/$name.elf" "$out/$name.strace" "$pages" "$@") &&
       { [ "$name" != r2g ] || [ "${got%% *}" -ge 2 ]; }
