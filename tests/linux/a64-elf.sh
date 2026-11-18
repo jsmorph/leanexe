@@ -11,11 +11,11 @@
 # from a pipe into which the script writes the message in pieces of 1, 3, 5, and 7 bytes, each
 # after a pause of PAUSE seconds, 0.2 unless set, and then the rest.  A message of at most
 # 8,800,000 bytes must give the flipped message and status 0, and a longer one status 64 and no
-# output.  On the host's processor, runs outside the theorems exercise the error paths: standard
-# input closed or a directory gives status 65 and no output, standard output closed or /dev/full
-# status 66, and a file size limit with SIGXFSZ ignored a short write and then EFBIG, so status
-# 66 after a prefix of the output.  A reader that closes standard output early ends the process
-# with SIGPIPE, status 141, which the theorems leave out.
+# output.  On the host's processor alone, runs exercise the error paths that flip_elf_any states:
+# standard input closed or a directory gives status 65 and no output, standard output closed or
+# /dev/full status 66, and a file size limit with SIGXFSZ ignored a short write and then EFBIG, so
+# status 66 after a prefix of the output.  A reader that closes standard output early ends the
+# process with SIGPIPE, status 141, which the theorems leave out.
 #
 # a64-elf emit also writes stamp.elf, the stamp program of tests/TestSupport/A64/StampElf.lean
 # around the same function, which reads the file stamp.in, runs the function on the realtime
