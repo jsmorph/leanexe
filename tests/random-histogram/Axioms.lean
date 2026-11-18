@@ -48,6 +48,7 @@ elab "check_random_histogram_axioms" : command => do
     ``Demos.RandomHistogram.render_bound,
     ``Demos.RandomHistogram.histogramSpec_sum,
     ``Demos.RandomHistogram.exec_main,
+    ``Demos.RandomHistogram.total_meets,
     ``Demos.RandomHistogram.command.start,
     ``Demos.RandomHistogram.command.validity,
     ``Demos.RandomHistogram.command.bytes]

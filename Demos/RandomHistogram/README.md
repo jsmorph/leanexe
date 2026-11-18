@@ -55,6 +55,7 @@ a module of 7,381 bytes that imports `fd_read`, `fd_write`, `proc_exit`, `args_s
 | `parseN_bound`, `histogram_bound`, `render_bound` | The generated bounds are 0, 136 bytes, and at most 17,136 bytes. |
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 76 ([the command's proof](CommandProof.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states ([the compiled command](CommandStart.lean)). |
+| `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) states the request over the events of a run, which
@@ -76,8 +77,9 @@ exit that the host rejects, after the events of a run of `main`; or (c) a trap o
 126 at which Wasmtime 44 rejects an exit.  The theorem admits the guest's trap because the generated
 theorem without it, `command.total`, takes a budget that bounds the heap that every prefix of
 `main` allocates, and the resource model charges each pass of the loop for its buffer and credits
-no release, so the charge grows with the number of passes and no budget covers every N.  A host may
-commit fewer bytes than the write offers, and the write's event records the count that it
+no release, so the charge grows with the number of passes and no budget covers every N.
+`total_meets` takes such a budget as a premise, with a host that traps nowhere along the run, and
+excludes (b) and (c).  A host may commit fewer bytes than the write offers, and the write's event records the count that it
 committed.  The status is then the write's errno, 0 when the write succeeded.
 
 The proof follows `main`.  A returned `args` result holds fewer than `2^32` bytes, the size that the
@@ -105,7 +107,7 @@ Linux executable of 69,632 bytes with `a64-wasi wasm`, which fails when `genWasi
 module.  It then runs the module in the Wasmtime host.  The runs with no argument, `0`, `abc`, `-5`,
 and `99999999999999999999` write nothing and exit with status 2.  The runs with N of 1, 9, 10, 512,
 513, 1,000, and 1,000,000 exit with status 0 and write ten decimal counts that sum to N.  It prints
-`random histogram axiom check passed for 13 theorems`, the executable's size, and `random histogram:
+`random histogram axiom check passed for 14 theorems`, the executable's size, and `random histogram:
 12 runs passed`.  The second command writes ten counts near 100,000, such as `100037`, `99394`, and
 `99853`, in about 0.1 s on an AArch64 host.  [The verified driver](../../tests/verified/run.sh) runs
 the 74 samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the

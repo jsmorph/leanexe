@@ -17,7 +17,9 @@ trap is one of three:
 The generated `command.start` theorem admits the guest's trap because its resource premise, a
 budget that bounds the heap that every prefix of `main` allocates, has no bound for every N: the
 resource model charges each pass of the loop for its buffer and credits no release, so the charge
-grows with the number of passes. -/
+grows with the number of passes.  `total_meets` takes that premise, with a host that traps nowhere
+along `main` and its exit, the premises of the generated `command.total`, and states that every run
+then ends with the accepted exit after events that meet `Meets`. -/
 
 namespace Demos.RandomHistogram
 
@@ -87,7 +89,43 @@ theorem start_ends {World : Type} {host : Host World} (world : Observed World)
     (fun _ membership => nomatch membership) initialized.2.1 (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => ends_of_result (results fuel enough)⟩
 
+/-- The accepted exit of every run, under the premises of the generated `command.total`: a budget
+that fits the free memory of the command's initial store and bounds the heap that every prefix of
+`main` allocates, and a host that traps nowhere along `main` and its exit.  Every run of `_start`
+with enough fuel then ends with the accepted exit with a status of at most 76, after events that
+meet `Meets`. -/
+theorem total_meets {World : Type} {host : Host World} (world : Observed World)
+    (targetHost : HostEnv (Observed World))
+    (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls))
+    {budget : Nat}
+    (room : (initialStaticHeap command.literalPool).Within
+      (PureTransport.erase (initialStore world)) command.pure.module budget)
+    (bounded : Resource.CallPrefixBound (observedHost host)
+      (.ofProg command.pure.program command.pure.funs) command.program .here 0 .nil world budget)
+    (safe : host.NoTrapsAlong (main.bind fun status => Action.exit (α := Unit) status)
+      world.world) :
+    ∃ bound, ∀ fuel ≥ bound, ∃ final code events,
+      run fuel command.module startIndex (initialStore world) [] targetHost = .Trap final exitTrap ∧
+        host.exited final.host.world = some code ∧ final.host.events = world.events ++ events ++
+          [.exit code] ∧ code.toNat ≤ 76 ∧ Meets host world.world events code := by
+  have initialized := command.initial world
+  obtain ⟨bound, exits⟩ := command.total valid initialized.1 rfl Separate.nil
+    ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩ (fun _ membership => nomatch membership)
+    initialized.2.1 (fun _ => ⟨room, bounded⟩) safe
+  refine ⟨bound, fun fuel enough => ?_⟩
+  have accepted : AcceptedExit host (main.bind fun status => Action.exit (α := Unit) status) world
+      (run fuel command.module startIndex (initialStore world) [] targetHost) := exits fuel enough
+  generalize run fuel command.module startIndex (initialStore world) [] targetHost = result
+    at accepted ⊢
+  cases result with
+  | Trap final message =>
+    obtain ⟨code, trace, rfl, execution, events, marker⟩ := accepted
+    obtain ⟨steps, rfl, small, meets⟩ := exec_main execution
+    exact ⟨final, code, steps, rfl, marker, by rw [events, List.append_assoc], small, meets⟩
+  | _ => exact accepted.elim
+
 #print axioms exec_main
 #print axioms start_ends
+#print axioms total_meets
 
 end Demos.RandomHistogram
