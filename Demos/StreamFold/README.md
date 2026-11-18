@@ -24,7 +24,7 @@ since the pending line is a prefix of a line whose `Room` holds, bounds the inpu
 read and the output buffer by a bound on the kernel's output, and bounds the line and total of
 a state at which a step stops.  The integer application proves its charges from these bounds and
 its limits on line length and total size, and the binary64 application from these bounds and its
-limit on line length, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution)
+limit on line length, as [the WASI manual](../../docs/wasi.md#process-theorems-and-applications)
 states.  The StreamFold theorems cover successful transfers only.  A returned I/O error stops the process with its errno, as `afterRead` and `afterWrite` state, and the application drivers test that case.
 
 ## Run time
