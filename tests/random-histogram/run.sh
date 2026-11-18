@@ -25,9 +25,10 @@
 # host opens its standard output file itself, so this run has no Wasmtime case.
 #
 # When RUNNERS holds `native`, the executable then runs with N of 1000 under strace, which must
-# show no call but getrandom, write, and exit_group, and two getrandom calls with flags 0, of 4,096
+# show no call but getrandom, write, and exit_group, two getrandom calls with flags 0, of 4,096
 # and 3,904 bytes, the 512 words of a full pass and the 488 words that remain, each answered with
-# all of its bytes.  The run under the file size limit under strace must make two writes: the first
+# all of its bytes, and one write of the output's bytes that took all of them.  The run under the
+# file size limit under strace must make two writes: the first
 # of the output's B bytes, which returns 12, and the second of the B - 12 bytes that remain, which
 # fails with EFBIG.  A run with `abc` under strace must make no call but exit_group.  The file
 # theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the executable
@@ -238,6 +239,11 @@ case " $RUNNERS " in
     done)
     [ "$requests" = "4096 0 4096 3904 0 3904 " ] ||
       fail strace "the getrandom calls (count, flags, result): $requests"
+    size=$(wc -c < "$out/native-1000-strace.stdout" | tr -d ' ')
+    writes=$(sed -n 's/^write(1, .*, \([0-9][0-9]*\)) *= *\(-\{0,1\}[0-9][0-9]*\).*$/\1 \2/p' \
+      "$trace" | tr '\n' ' ')
+    [ "$writes" = "$size $size " ] ||
+      fail strace "the writes (count, result) $writes of an output of $size bytes"
     cases=$((cases + 1))
     trace="$out/native-limited.strace"
     file="$out/native-limited-strace.stdout"
