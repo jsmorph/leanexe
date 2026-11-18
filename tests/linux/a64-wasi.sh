@@ -76,7 +76,7 @@ kernel_check() {
     status=1
   fi
 }
-kernel_check ImageFilesWasiElf 6
+kernel_check ImageFilesWasiElf 7
 kernel_check ImageFilesWasiEnviron 6
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
