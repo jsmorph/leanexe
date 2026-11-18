@@ -278,24 +278,48 @@ theorem readAll_loop {World : Type} {host : Host World} :
       | read_return _ _ next => cases next
       | read_trap _ _ => exact False.elim (ok _ (List.mem_singleton_self _))
 
-/-- The bytes of `suffix bytes start` are those of `bytes` from `start` on. -/
-theorem suffix_toList {bytes : Bytes} {start : UInt64} (small : bytes.data.size < 2 ^ 64)
-    (le : start.toNat ≤ bytes.data.size) :
-    (suffix bytes start).data.data.toList = bytes.data.data.toList.drop start.toNat := by
-  have count : (bytes.size - start).toNat = bytes.data.size - start.toNat := by
-    have wide : bytes.size.toNat = bytes.data.size := by
-      simp only [Bytes.size, UInt64.toNat_ofNat']
-      exact Nat.mod_eq_of_lt small
-    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, wide]; exact le), wide]
-  apply List.ext_getElem
-  · simp [suffix, count]
-  · intro i inside _
-    have below : i < bytes.data.size - start.toNat := by
-      simpa [suffix, count] using inside
-    have inRange : start.toNat + i < bytes.data.size := by omega
-    have mod : (start.toNat + i) % 18446744073709551616 = start.toNat + i :=
-      Nat.mod_eq_of_lt (by omega)
-    simp [suffix, Bytes.build, Bytes.get, mod, inRange, ByteArray.getElem_eq_getElem_data]
+/-- A run of `writeAll`'s loop from `written` bytes taken whose writes succeed, with more passes
+left than bytes, returns after writes to standard output that took the bytes from `written` on. -/
+theorem succeeded_run {World : Type} {host : Host World} {bytes : List UInt8}
+    (small : bytes.length < 2 ^ 64) {written : UInt64} {passes : Nat} {trace : List Wasi.Event}
+    {outcome : Outcome UInt64} (run : WriteAllRun host bytes written passes trace outcome) :
+    written.toNat ≤ bytes.length → bytes.length - written.toNat < passes →
+      (∀ e ∈ trace, Succeeded e) →
+      (∃ value, outcome = .returned value) ∧ committedWrites 1 trace = bytes.drop written.toNat ∧
+        ∀ e ∈ trace, ∃ offered reply, e = .write .stdout offered reply := by
+  induction run with
+  | done ended =>
+    intro _ _ _
+    exact ⟨⟨_, rfl⟩, by simp [committedWrites, List.drop_eq_nil_of_le ended], by simp⟩
+  | spent _ =>
+    intro _ enough _
+    omega
+  | @wrote written count passes offered events outcome left offers within rest ih =>
+    intro le enough ok
+    obtain ⟨_, positive⟩ : (0 : UInt64) = 0 ∧ count ≠ 0 := ok _ (List.mem_cons_self ..)
+    have nonzero : 0 < count.toNat := by
+      rcases Nat.eq_zero_or_pos count.toNat with same | pos
+      · exact absurd (UInt64.toNat_inj.mp (by simpa using same)) positive
+      · exact pos
+    have sum : (written + count).toNat = written.toNat + count.toNat := by
+      rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
+    obtain ⟨returned, writes, shape⟩ := ih (by omega) (by omega)
+      (fun e m => ok e (List.mem_cons_of_mem _ m))
+    refine ⟨returned, ?_, ?_⟩
+    · simp only [committedWrites, List.flatMap_cons] at writes ⊢
+      rw [writes, sum, ← List.drop_drop]
+      simp only [eventWrites, Output.fd, ↓reduceIte, Transfer.committed, offers,
+        List.take_append_drop]
+    · intro e member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact ⟨_, _, rfl⟩
+      · exact shape e member
+  | failed _ _ nonzero =>
+    intro _ _ ok
+    exact absurd (ok _ (List.mem_cons_self ..)).1 nonzero
+  | trapped =>
+    intro _ _ ok
+    exact (ok _ (List.mem_singleton_self _)).elim
 
 /-- A run of the loop of `writeAll bytes` from `written` bytes whose writes succeed returns when
 the passes left exceed the bytes left.  Its events are writes to standard output, which took the
@@ -306,81 +330,18 @@ theorem writeAll_loop {World : Type} {host : Host World} (bytes : Bytes)
     (tested : ∀ index written, test index written = decide (written < bytes.size))
     (stepped : ∀ index written, step index written =
       .write .stdout (suffix bytes written) fun reply =>
-        if reply.errno != 0 then exit reply.errno else .pure (written + reply.count)) :
-    ∀ (remaining index : Nat) (written : UInt64) {world trace outcome final},
-      written.toNat ≤ bytes.data.size → bytes.data.size - written.toNat < remaining →
-      LoopExec host remaining index written test step .pure world trace outcome final →
-      (∀ e ∈ trace, Succeeded e) →
-      (∃ value, outcome = .returned value) ∧
-        committedWrites 1 trace = bytes.data.data.toList.drop written.toNat ∧
-        ∀ e ∈ trace, ∃ offered reply, e = .write .stdout offered reply
-  | 0, _, _, _, _, _, _, _, enough, _, _ => absurd enough (Nat.not_lt_zero _)
-  | remaining + 1, index, written, _, _, _, _, le, enough, execution, ok => by
-    have wide : bytes.size.toNat = bytes.data.size := by
-      simp only [Bytes.size, UInt64.toNat_ofNat']
-      exact Nat.mod_eq_of_lt small
-    cases execution with
-    | stop test next =>
-      rw [tested] at test
-      have reached : bytes.data.size ≤ written.toNat := by
-        simp only [decide_eq_false_iff_not, UInt64.lt_iff_toNat_lt, wide] at test
-        omega
-      cases next
-      refine ⟨⟨_, rfl⟩, ?_, by simp⟩
-      simp [committedWrites, List.drop_eq_nil_of_le, reached]
-    | next _ step rest =>
-      rw [stepped] at step
-      cases step with
-      | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
-        obtain ⟨zero, positive⟩ : errno = 0 ∧ committed ≠ 0 :=
-          ok (.write .stdout (suffix bytes written) (.returned errno committed)) (by simp)
-        subst zero
-        simp only [writeResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true] at next
-        cases next
-        have bound := (host.write_bound reply).1
-        simp only [Transfer.committed] at bound
-        have suffixSize : (suffix bytes written).data.size = bytes.data.size - written.toNat := by
-          have := congrArg List.length (suffix_toList small le)
-          simpa using this
-        rw [suffixSize] at bound
-        have sum : (written + committed).toNat = written.toNat + committed.toNat := by
-          rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
-        have nonzero : 0 < committed.toNat := by
-          rcases Nat.eq_zero_or_pos committed.toNat with same | pos
-          · exact absurd (UInt64.toNat_inj.mp (by simpa using same)) positive
-          · exact pos
-        obtain ⟨returned, writes, shape⟩ := writeAll_loop bytes small tested stepped remaining
-          (index + 1) (written + committed) (by omega) (by omega) rest
-          (fun e m => ok e (List.mem_append_right _ m))
-        refine ⟨returned, ?_, ?_⟩
-        · rw [List.cons_append, List.nil_append]
-          simp only [committedWrites, List.flatMap_cons] at writes ⊢
-          rw [writes, sum, ← List.drop_drop]
-          simp only [eventWrites, Output.fd, ↓reduceIte, Transfer.committed, suffix_toList small le,
-            List.take_append_drop]
-        · intro e member
-          rcases List.mem_cons.mp member with rfl | member
-          · exact ⟨_, _, rfl⟩
-          · exact shape e (by simpa using member)
-    | exit _ step =>
-      rw [stepped] at step
-      cases step with
-      | @write_return _ _ _ _ _ _ _ _ _ errno committed _ next =>
-        obtain ⟨zero, _⟩ : errno = 0 ∧ committed ≠ 0 :=
-          ok (.write .stdout (suffix bytes written) (.returned errno committed)) (by simp)
-        subst zero
-        simp only [writeResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true] at next
-        cases next
-    | trap _ step =>
-      rw [stepped] at step
-      cases step with
-      | @write_return _ _ _ _ _ _ _ _ _ errno committed _ next =>
-        obtain ⟨zero, _⟩ : errno = 0 ∧ committed ≠ 0 :=
-          ok (.write .stdout (suffix bytes written) (.returned errno committed)) (by simp)
-        subst zero
-        simp only [writeResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true] at next
-        cases next
-      | write_trap _ => exact False.elim (ok _ (List.mem_singleton_self _))
+        if reply.errno != 0 then exit reply.errno else .pure (written + reply.count))
+    (remaining index : Nat) (written : UInt64) {world trace outcome final}
+    (le : written.toNat ≤ bytes.data.size) (enough : bytes.data.size - written.toNat < remaining)
+    (execution : LoopExec host remaining index written test step .pure world trace outcome final)
+    (ok : ∀ e ∈ trace, Succeeded e) :
+    (∃ value, outcome = .returned value) ∧
+      committedWrites 1 trace = bytes.data.data.toList.drop written.toNat ∧
+      ∀ e ∈ trace, ∃ offered reply, e = .write .stdout offered reply := by
+  have length : bytes.data.data.toList.length = bytes.data.size := by simp
+  exact succeeded_run (by omega)
+    (writeAll_loop_run bytes small tested stepped remaining index written le execution)
+    (by omega) (by omega) ok
 
 theorem committedReads_append (fd : UInt64) (first rest : List Wasi.Event) :
     committedReads fd (first ++ rest) = committedReads fd first ++ committedReads fd rest := by

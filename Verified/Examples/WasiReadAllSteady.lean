@@ -570,13 +570,7 @@ private theorem suffix_call_le (depth : UInt64) (env : Env [Ty.bytes, Ty.word]) 
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds depth).get FVar.here
       env ≤ 1004144 := by
   subst same
-  rw [suffix_charge]
-  have wide : bytes.size.toNat = bytes.data.size := by
-    simp only [Bytes.size, UInt64.toNat_ofNat']
-    exact Nat.mod_eq_of_lt (by omega)
-  have count : (bytes.size - start).toNat = bytes.data.size - start.toNat := by
-    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, wide]; exact le), wide]
-  rw [count]
+  rw [suffix_charge, suffix_count (by omega) le]
   exact (allocationCost_mono (show bytes.data.size - start.toNat ≤ 1004096 by omega)).trans
     (by decide)
 
