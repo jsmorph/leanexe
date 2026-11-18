@@ -70,9 +70,47 @@ theorem render_callSpec :
       have := Bytes.size_lt_of_borrowed h1
       omega)
 
+theorem parseStep_cost_le (m : LeanExe.Bytes) (st : Array UInt64) (i : UInt64) :
+    compiled.parseStep.cost (m, ⟨st⟩, i) ≤ 160 := by
+  rw [compiled.parseStep.cost_eq, Verified.paidGrowCost_eq]
+  split
+  · split <;> omega
+  · omega
+
+/-- `parse` charges the blocks of its state and its result and at most 160 bytes for each
+position: at most `176 n + 464` bytes for a manifest of `n` bytes. -/
+theorem parse_bound (m : LeanExe.Bytes) (hn : m.data.size < 2 ^ 32) :
+    compiled.parse.bound m ≤ 176 * m.data.size + 464 := by
+  have hs : m.size.toNat = m.data.size := LeanExe.Bytes.size_toNat m (by omega)
+  have hcount : (m.size + 1).toNat = m.data.size + 1 := by
+    rw [UInt64.toNat_add, hs]
+    simp only [UInt64.reduceToNat]
+    omega
+  have hsize := parse_loop_size m (by omega)
+  rw [compiled.parse.bound_eq, hcount]
+  refine le_trans (Nat.add_le_add_right (Nat.add_le_add_left
+    (Verified.loopCost_const_le 160 (fun a b => parseStep_cost_le m b a) _ _ _) _) _) ?_
+  simp only [Verified.blockCost_eq, Verified.growCost_eq, Verified.paidGrowCost_eq,
+    UInt64.reduceToNat]
+  have h0 : (Array.mk ([] : List UInt64)).size = 0 := rfl
+  split
+  · have hres : ((LeanExe.loop (m.size + 1) #[0, 1] fun i st => parseStep m st i).size.toUInt64 -
+        2).toNat ≤ 2 * m.data.size + 2 := by
+      generalize (LeanExe.loop (m.size + 1) #[0, 1] fun i st => parseStep m st i).size = z
+        at hsize ⊢
+      have hz : z.toUInt64.toNat = z := by
+        show (UInt64.ofNat z).toNat = z
+        exact toNat_ofNat (by omega)
+      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hz]; simp; omega), hz]
+      simp
+      omega
+    omega
+  · omega
+
 #print axioms parse_callSpec
 #print axioms hexMatches_callSpec
 #print axioms render_callSpec
 #print axioms render_bound
+#print axioms parse_bound
 
 end Demos.ManifestCheck

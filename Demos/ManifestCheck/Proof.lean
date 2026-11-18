@@ -695,4 +695,33 @@ theorem parse_eq (m : Bytes) (hn : m.data.size < 2 ^ 62) : parse m = parseSpec m
     rw [hfalse]
     rfl
 
+/-- The array that `parse`'s loop builds holds two words and two words for each line, and a
+manifest of `n` bytes has at most `n + 1` lines. -/
+theorem parse_loop_size (m : Bytes) (hn : m.data.size < 2 ^ 62) :
+    2 ≤ (LeanExe.loop (m.size + 1) #[0, 1] fun i st => parseStep m st i).size ∧
+      (LeanExe.loop (m.size + 1) #[0, 1] fun i st => parseStep m st i).size ≤
+        2 * m.data.size + 4 := by
+  have hs : m.size.toNat = m.data.size := Bytes.size_toNat m (by omega)
+  have hcount : (m.size + 1).toNat = m.data.size + 1 := by
+    rw [UInt64.toNat_add, hs]
+    simp only [UInt64.reduceToNat]
+    omega
+  obtain ⟨h1, -, h4⟩ := parse_from m (by omega) (m.data.size + 1) 0 0 #[] true
+    (by omega) (Nat.zero_le _) (Nat.zero_le _) (fun j h1 h2 => absurd h2 (by omega))
+  simp only [Nat.sub_zero, List.drop_zero, show UInt64.ofNat 0 = 0 from rfl] at h1 h4
+  have hinit : (#[0, 1] : Array UInt64) = enc (#[], 0, true) := rfl
+  rw [LeanExe.loop, hcount, hinit, loop_enc, fold_range (m.data.size + 1)
+    (fun i st => tupleStep m st (UInt64.ofNat i)), List.range_eq_range']
+  generalize (List.range' 0 (m.data.size + 1)).foldl
+    (fun st j => tupleStep m st (UInt64.ofNat j)) (#[], 0, true) = st at h1 h4
+  simp only [List.nil_append] at h1
+  have hsize : st.1.size = 2 * (linesFrom 0 (m.data.data.toList.splitOn 10)).length := by
+    rw [← Array.length_toList, h1, spanWords_length]
+  have hst : (enc st).size = 2 + 2 * (linesFrom 0 (m.data.data.toList.splitOn 10)).length := by
+    rw [show enc st = #[st.2.1, if st.2.2 then 1 else 0] ++ st.1 from rfl, Array.size_append,
+      hsize]
+    rfl
+  rw [hst]
+  constructor <;> omega
+
 end Demos.ManifestCheck
