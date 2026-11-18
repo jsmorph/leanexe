@@ -4,16 +4,17 @@ import LeanExe.Dialect.BytesLemmas
 import LeanExe.Dialect.Lemmas
 
 /-! The block-level SHA-256 computes FIPS 180-4.  `blocksFold data q s` is the copied
-implementation's hash value after the first `q` blocks of `data` from `s`.  `update_toVec32`
-states that the 32-bit words of `update h b` are `blocksFold` of the whole blocks of `b` from those
-of `h`, since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does
-(`byteBlock_toVec32`) and `compress_toVec32` gives each compression.  `blocksFold_append` splits a
-fold over a concatenation whose first part is whole blocks, and `blocksFold_append_tail` drops the
-bytes after the blocks that a fold reads.  `finish_bytes` states that `finish` from the hash value
-of a prefix of whole blocks gives the digest bytes of `Impl.sha256` of the whole message, through
+implementation's hash value after the first `q` blocks of `data` from `s`.  `update_toVec32` states
+that the 32-bit words of `update h b` are `blocksFold` of the whole blocks of `b` from those of `h`,
+since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does (`byteBlock_toVec32`)
+and `compress_toVec32` gives each compression.  `blocksFold_append` splits a fold over a
+concatenation whose first part is whole blocks, and `blocksFold_append_tail` drops the bytes after
+the blocks that a fold reads.  `finish_bytes` states that `finish` from the hash value of a prefix
+of whole blocks gives the digest bytes of `Impl.sha256` of the whole message, through
 `hashFrom_toVec32` and the packing of `pack` (`pack_bytes`), and `finish_spec` the digest of the
 transcription.  `stream_spec` composes them: hashing pieces of whole blocks with `update` from
-`iv256` and the remaining bytes with `finish` gives the digest of FIPS 180-4 of the concatenation. -/
+`iv256` and the remaining bytes with `finish` gives the digest of FIPS 180-4 of the concatenation.
+`digestBitVec_inj` states that two digests with the same bits are equal. -/
 
 namespace Library.Hashing.Sha256
 
@@ -103,7 +104,8 @@ theorem byteBlock_toVec32 (b : LeanExe.Bytes) (j : Nat) (hj : 64 * j + 64 ≤ 2 
 
 /-- The implementation's hash value after the first `q` blocks of `data`, from `s`. -/
 def blocksFold (data : ByteArray) (q : Nat) (s : SHS.SHA256.Impl.State) : SHS.SHA256.Impl.State :=
-  Nat.fold q (fun i _ acc => SHS.SHA256.Impl.compress acc (SHS.SHA256.Impl.toU32s (preBlock data i)))
+  Nat.fold q
+    (fun i _ acc => SHS.SHA256.Impl.compress acc (SHS.SHA256.Impl.toU32s (preBlock data i)))
     s
 
 theorem blocksFold_zero (data : ByteArray) (s : SHS.SHA256.Impl.State) :
@@ -117,7 +119,8 @@ theorem blocksFold_succ (data : ByteArray) (q : Nat) (s : SHS.SHA256.Impl.State)
 
 /-- Folds over two byte arrays whose first `q` blocks agree agree. -/
 theorem blocksFold_congr (d e : ByteArray) (s : SHS.SHA256.Impl.State) :
-    ∀ q, (∀ i, i < q → preBlock d i = preBlock e i) → blocksFold d q s = blocksFold e q s := by
+    ∀ q, (∀ i, i < q → preBlock d i = preBlock e i) →
+      blocksFold d q s = blocksFold e q s := by
   intro q
   induction q with
   | zero => intro _; rw [blocksFold_zero, blocksFold_zero]
@@ -224,7 +227,8 @@ theorem byteAt_pack (b : LeanExe.Bytes) (hb : b.data.size + 8 < 2 ^ 64) (i : Nat
       Nat.mod_eq_of_lt (by omega)
     rw [UInt64.toNat_shiftRight, UInt64.toNat_add, hs]
     simp [Nat.shiftRight_eq_div_pow, hlt]
-  obtain ⟨q, r, rfl, hr⟩ : ∃ q r, i = 8 * q + r ∧ r < 8 := ⟨i / 8, i % 8, by omega, by omega⟩
+  obtain ⟨q, r, rfl, hr⟩ : ∃ q r, i = 8 * q + r ∧ r < 8 :=
+    ⟨i / 8, i % 8, by omega, by omega⟩
   rw [byteAt_eq _ _ _ hr]
   unfold pack
   rw [LeanExe.Dialect.build_get (by rw [hcount]; omega), packWord_eq b q (by omega),
@@ -402,7 +406,8 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
       omega
   have hj : joinAll pieces =
       pieces.foldl (fun a piece => a ++ piece.data) ByteArray.empty := rfl
-  obtain ⟨hwhole, hstate⟩ := key pieces ByteArray.empty iv256 whole rfl (by rw [← hj]; omega) rfl
+  obtain ⟨hwhole, hstate⟩ :=
+    key pieces ByteArray.empty iv256 whole rfl (by rw [← hj]; omega) rfl
   rw [← hj] at hwhole hstate
   exact finish_spec (joinAll pieces) ((joinAll pieces).size / 64) (by omega) _ hstate b len hlen hl
 

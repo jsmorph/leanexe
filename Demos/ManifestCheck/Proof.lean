@@ -3,17 +3,17 @@ import Demos.ManifestCheck.Spec
 import LeanExe.Dialect.BytesLemmas
 import LeanExe.Dialect.Lemmas
 
-/-! The pure core equals its specification: `parse_eq`, `hexMatches_eq`, and `render_eq`, each for
-a byte string whose size leaves room for the program's positions below `2^64`.
+/-! The pure core equals its specification: `parse_eq`, `hexMatches_eq`, and `render_eq`, each for a
+byte string whose size leaves room for the program's positions below `2^64`.
 
 `hexValue_eq` reads `hexValue` through `isHex` and `hexDigit`, and `loop_and` writes a loop that
-ands a test over the indices as `List.all`.  `parse_eq` follows the lines with `tupleStep`, the step of
-`parseStep` on a state of three parts, which `parseStep` computes on the state's encoding in one
-array (`parseStep_enc`).  `tupleStep` keeps its state at a byte other than a newline
-(`plain_step`), and at the newline or the end that closes a line it adds the line's positions and
-the test of its format (`close_step`, `lineOk_eq`).  `parse_from` proves by strong induction on the
-positions that remain that the loop from a position inside a line adds the positions of the lines
-that `linesFrom` gives for the pieces from the line's start, split at newlines. -/
+ands a test over the indices as `List.all`.  `parse_eq` follows the lines with `tupleStep`, the step
+of `parseStep` on a state of three parts, which `parseStep` computes on the state's encoding in one
+array (`parseStep_enc`).  `tupleStep` keeps its state at a byte other than a newline (`plain_step`),
+and at the newline or the end that closes a line it adds the line's positions and the test of its
+format (`close_step`, `lineOk_eq`).  `parse_from` proves by strong induction on the positions that
+remain that the loop from a position inside a line adds the positions of the lines that `linesFrom`
+gives for the pieces from the line's start, split at newlines. -/
 
 namespace Demos.ManifestCheck
 
@@ -330,7 +330,8 @@ theorem parseStep_enc (st : Array UInt64 × UInt64 × Bool) (i : UInt64) :
       simp [enc, Array.getElem_append_left]
     simp only [h0, h1]
     split
-    · have hok : ((if ok then (1 : UInt64) else 0) == 1 && lineOk m s i) = (ok && lineOk m s i) := by
+    · have hok : ((if ok then (1 : UInt64) else 0) == 1 && lineOk m s i) =
+          (ok && lineOk m s i) := by
         cases ok <;> simp
       rw [hok]
       apply Array.toList_inj.mp
@@ -634,7 +635,8 @@ theorem parse_eq (m : Bytes) (hn : m.data.size < 2 ^ 62) : parse m = parseSpec m
     simp
     omega
   have hsizeW : (enc ((spanWords ls).toArray, s,
-      ls.all fun l => decide (WellFormed l.2))).size.toUInt64 = UInt64.ofNat (2 * ls.length + 2) := by
+      ls.all fun l => decide (WellFormed l.2))).size.toUInt64 =
+        UInt64.ofNat (2 * ls.length + 2) := by
     rw [hsize]
   have hne : (UInt64.ofNat (2 * ls.length + 2) != 2) = decide (ls ≠ []) := by
     by_cases he : ls = []

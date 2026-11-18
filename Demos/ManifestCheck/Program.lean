@@ -12,9 +12,9 @@ after its last byte, ends the current line, and a line of at least one byte adds
 and the test `lineOk` of its format.  The state is one array, which the loop moves from pass to
 pass and updates in place, since the code copies an array that a tuple holds at each pass.
 `hexMatches` compares the 64 bytes of a line's digits with the 32 bytes of a digest, after a test
-that the 64 bytes lie within the manifest, so that no position wraps.  `render` builds the output line from the name's bytes and the bytes of `: OK` or
-`: FAILED` and a newline, which it computes from their positions, since the program has no byte
-literal. -/
+that the 64 bytes lie within the manifest, so that no position wraps.  `render` builds the output
+line from the name's bytes and the bytes of `: OK` or `: FAILED` and a newline, which it computes
+from their positions, since the program has no byte literal. -/
 
 namespace Demos.ManifestCheck
 
