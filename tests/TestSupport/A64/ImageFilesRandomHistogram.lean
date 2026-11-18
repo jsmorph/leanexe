@@ -190,9 +190,11 @@ most the count that it offered (`Full`), X0 and `ls` meet `Counts`.  When `parse
 arguments, no layer event precedes `exit_group`, and X0 is 2.  Otherwise the events are calls of
 `getrandom`, each of at most 4,096 bytes with flags 0, followed by calls of `write` of descriptor
 1, the bytes that `getrandom` returned hold exactly N little-endian words `w`, the counts of
-`histogramSpec w` sum to N, and the bytes that the writes took form a prefix of
-`renderSpec (histogramSpec w)`.  X0 is 0 exactly when they are the whole output, and otherwise 77
-or the errno of the error number that the last `write` returned. -/
+`histogramSpec w` sum to N, each write offered the bytes of `renderSpec (histogramSpec w)` that
+the writes before it did not take, and the bytes that the writes took form a prefix of that
+output.  X0 is 0 exactly when they are the whole output.  Otherwise X0 is 77 after one write for
+each of the loop's passes, each of which returned at most its count, or the errno of the error
+number that the last `write` returned. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
     (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)

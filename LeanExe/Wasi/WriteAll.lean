@@ -4,22 +4,25 @@ import LeanExe.Wasi.Semantics
 passes.  Each pass that finds bytes left offers them, `suffix bytes written`, and adds the count
 that the write returned to `written`, so a short write is followed by a write of the rest.  A
 write that returns an errno ends the run with the exit of that errno.  The loop returns the number
-of bytes that the writes took, which falls short of `bytes.size` only when the passes run out,
-which takes a write that took no byte.
+of bytes that the writes took, which falls short of `bytes.size` only when the passes run out.
 
 `WriteAllRun host bytes written passes events outcome` states the events and the outcome of every
 run of the loop under `host` from `written` bytes taken with `passes` passes left, and
 `writeAll_run` proves it of every run of `writeAll bytes`, from 0 with `bytes.size + 1` passes.
 `stdoutTaken` collects the bytes that the writes of a trace to standard output took when they
-returned errno 0.  `WriteAllRun.taken` states that a run that returns `value` took, in writes
-that each returned errno 0, the bytes from `written` up to `value`, and that a run that exits
-does so with the errno, from 1 to 76, of its last write, after taking fewer than the bytes from
-`written` on.  `WriteAllRun.trapped_write` states that a run that traps under a host that accepts every
-status below 126 has a trapped write. -/
+returned errno 0, and `Offered bytes taken events` states that each event is a write to standard
+output that offered the bytes of `bytes` after those that the writes before it took.
+`WriteAllRun.taken` states that a run that returns `value` made writes that each returned errno 0,
+offered the bytes that remained, and took the bytes from `written` up to `value`, one write for
+each pass when `value` falls short of the bytes.  A run that exits does so with the errno, from 1
+to 76, of its last write, after taking fewer than the bytes from `written` on.
+`WriteAllRun.trapped_write` states that a run that traps under a host that accepts every status
+below 126 has a trapped write. -/
 
 namespace LeanExe.Wasi
 
-/-- The bytes of `bytes` from `start` on. -/
+/-- The bytes of `bytes` from `start` on, for a start of at most `bytes.size`; above it the count
+`bytes.size - start` wraps. -/
 def suffix (bytes : Bytes) (start : UInt64) : Bytes :=
   Bytes.build (bytes.size - start) fun i => bytes.get (start + i)
 
@@ -71,6 +74,14 @@ def stdoutTaken (events : List Event) : List UInt8 := events.flatMap Event.stdou
 
 theorem stdoutTaken_append (first rest : List Event) :
     stdoutTaken (first ++ rest) = stdoutTaken first ++ stdoutTaken rest := List.flatMap_append
+
+/-- `Offered bytes taken events`: each event of `events` is a write to standard output that
+offered the bytes of `bytes` after the first `taken` and those that the writes before it took. -/
+def Offered (bytes : List UInt8) : Nat → List Event → Prop
+  | _, [] => True
+  | taken, e :: rest => (∃ offered reply, e = .write .stdout offered reply ∧
+      offered.data.data.toList = bytes.drop taken) ∧
+    Offered bytes (taken + e.stdoutTaken.length) rest
 
 /-- The runs of the loop of `writeAll` under `host` over the bytes `bytes` from `written` bytes
 taken with `passes` passes left: their events and outcomes.  The loop returns `written` when no
@@ -223,11 +234,13 @@ theorem exitStatus_of_lt {code : UInt64} (small : code.toNat < 2 ^ 32) :
   omega
 
 /-- A run of the loop of `writeAll` over `bytes` from `written` bytes taken, at most `bytes`'s
-length, that returns `value` took, in writes to standard output that each returned errno 0, the
-bytes from `written` up to `value`, at most `bytes`'s length.  A run that exits does so with a
-status `code` from 1 to 76 after events that end with a write that returned the errno `code` and
-the exit, every write before which returned errno 0, and the bytes that the writes took form a
-prefix of the bytes from `written` on that leaves at least one byte. -/
+length, that returns `value` made writes to standard output that each returned errno 0 and offered
+the bytes that remained, and took the bytes from `written` up to `value`, at most `bytes`'s length.
+When `value` falls short of `bytes`'s length, the run made one write for each of its passes.  A
+run that exits does so with a status `code` from 1 to 76 after events that end with a write that
+returned the errno `code` and the exit, every write before which returned errno 0, each write
+offered the bytes that remained, and the bytes that the writes took form a prefix of the bytes
+from `written` on that leaves at least one byte. -/
 theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8}
     (small : bytes.length < 2 ^ 64) {written : UInt64} {passes : Nat} {events : List Event}
     {outcome : Outcome UInt64} (run : WriteAllRun host bytes written passes events outcome) :
@@ -235,12 +248,15 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
       (∀ value, outcome = .returned value →
         (∀ e ∈ events, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
         written.toNat ≤ value.toNat ∧ value.toNat ≤ bytes.length ∧
-        stdoutTaken events = (bytes.drop written.toNat).take (value.toNat - written.toNat)) ∧
+        stdoutTaken events = (bytes.drop written.toNat).take (value.toNat - written.toNat) ∧
+        Offered bytes written.toNat events ∧
+        (value.toNat < bytes.length → events.length = passes)) ∧
       (∀ code, outcome = .exited code →
         code ≠ 0 ∧ code.toNat ≤ 76 ∧
         (∃ before offered count, events =
             before ++ [.write .stdout offered (.returned code count), .exit code] ∧
-          ∀ e ∈ before, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+          (∀ e ∈ before, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+          Offered bytes written.toNat (before ++ [.write .stdout offered (.returned code count)])) ∧
         stdoutTaken events <+: bytes.drop written.toNat ∧
         written.toNat + (stdoutTaken events).length < bytes.length) := by
   induction run with
@@ -248,12 +264,13 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
     intro le
     refine ⟨fun value same => ?_, fun _ same => by cases same⟩
     cases same
-    exact ⟨fun _ member => (nomatch member), Nat.le_refl _, le, by simp⟩
+    exact ⟨fun _ member => (nomatch member), Nat.le_refl _, le, by simp, trivial,
+      fun short => absurd short (by omega)⟩
   | spent left =>
     intro le
     refine ⟨fun value same => ?_, fun _ same => by cases same⟩
     cases same
-    exact ⟨fun _ member => (nomatch member), Nat.le_refl _, le, by simp⟩
+    exact ⟨fun _ member => (nomatch member), Nat.le_refl _, le, by simp, trivial, fun _ => rfl⟩
   | @wrote written count passes offered events outcome left offers within rest ih =>
     intro le
     have sum : (written + count).toNat = written.toNat + count.toNat := by
@@ -262,12 +279,17 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
     have first : (Event.write .stdout offered (.returned 0 count)).stdoutTaken =
         (bytes.drop written.toNat).take count.toNat := by
       simp [Event.stdoutTaken, offers]
+    have firstLength :
+        (Event.write .stdout offered (.returned 0 count)).stdoutTaken.length = count.toNat := by
+      rw [first, List.length_take, List.length_drop]
+      omega
     have divided : bytes.drop written.toNat =
         (bytes.drop written.toNat).take count.toNat ++ bytes.drop (written + count).toNat := by
       rw [sum, ← List.drop_drop, List.take_append_drop]
     refine ⟨fun value same => ?_, fun code same => ?_⟩
-    · obtain ⟨shape, low, high, taken⟩ := returned value same
-      refine ⟨fun e member => ?_, by omega, high, ?_⟩
+    · obtain ⟨shape, low, high, taken, offeredRest, counted⟩ := returned value same
+      refine ⟨fun e member => ?_, by omega, high, ?_, ⟨⟨offered, _, rfl, offers⟩, ?_⟩,
+        fun short => by rw [List.length_cons, counted short]⟩
       · rcases List.mem_cons.mp member with rfl | member
         · exact ⟨_, _, rfl⟩
         · exact shape e member
@@ -275,14 +297,18 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
         have whole : value.toNat - written.toNat = count.toNat +
             (value.toNat - (written.toNat + count.toNat)) := by omega
         rw [whole, List.take_add]
-    · obtain ⟨nonzero, valid, ⟨before, offered', count', shape, earlier⟩, prefix_, bound⟩ :=
-        exited code same
+      · rw [firstLength, ← sum]
+        exact offeredRest
+    · obtain ⟨nonzero, valid, ⟨before, offered', count', shape, earlier, offeredRest⟩, prefix_,
+        bound⟩ := exited code same
       refine ⟨nonzero, valid, ⟨.write .stdout offered (.returned 0 count) :: before, offered',
-        count', by rw [shape]; rfl, ?_⟩, ?_, ?_⟩
+        count', by rw [shape]; rfl, ?_, ⟨⟨offered, _, rfl, offers⟩, ?_⟩⟩, ?_, ?_⟩
       · intro e member
         rcases List.mem_cons.mp member with rfl | member
         · exact ⟨_, _, rfl⟩
         · exact earlier e member
+      · rw [firstLength, ← sum]
+        exact offeredRest
       · obtain ⟨tail, extended⟩ := prefix_
         have whole : (bytes.drop written.toNat).take count.toNat ++ stdoutTaken events <+:
             (bytes.drop written.toNat).take count.toNat ++ bytes.drop (written + count).toNat :=
@@ -296,8 +322,6 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
   | @failed written errno count passes offered events outcome left offers nonzero valid ended =>
     intro _
     obtain ⟨_, _, ended⟩ := ended
-    have first : (Event.write .stdout offered (.returned errno count)).stdoutTaken = [] := by
-      simp [Event.stdoutTaken, nonzero]
     refine ⟨fun value same => ?_, fun code same => ?_⟩
     · subst same
       cases ended
@@ -305,13 +329,15 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
       cases ended with
       | exit _ =>
         rw [exitStatus_of_lt (by omega)]
-        refine ⟨nonzero, valid, ⟨[], offered, count, rfl, fun _ member => (nomatch member)⟩, ?_, ?_⟩
+        refine ⟨nonzero, valid, ⟨[], offered, count, rfl, fun _ member => (nomatch member),
+          ⟨⟨offered, _, rfl, offers⟩, trivial⟩⟩, ?_, ?_⟩
         · simp [Event.stdoutTaken, nonzero]
         · simp [Event.stdoutTaken, nonzero]
           omega
   | trapped left offers =>
     intro _
     exact ⟨fun _ same => (by cases same), fun _ same => by cases same⟩
+
 
 /-- A run of the loop of `writeAll` that traps under a host that accepts every exit status below
 126 has a trapped write to standard output. -/

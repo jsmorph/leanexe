@@ -377,15 +377,15 @@ theorem render_size (counts : Array UInt64) : (render counts).data.size ≤ 210 
   simpa [ByteArray.size] using hsize
 
 /-- A run of `writeAll out` followed by `main`'s test of the bytes written, for an output of at most
-210 bytes, meets `Written`: when it returns a status, with its events, and when it exits, with its
-events before the exit.  A returned status is 0 or 77, and an exit status lies from 1 to 76. -/
+210 bytes, meets `Written`: when it returns a status, 0 or 77, with its events, and when it exits,
+with a status from 1 to 76, with its events before the exit. -/
 theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out.data.size ≤ 210)
     {world final : World} {trace : List Event} {outcome : Outcome UInt64}
     (run : Exec host (Action.bind (writeAll out) fun written =>
       Action.pure (if written < out.size then 77 else 0)) world trace outcome final) :
     (∀ status, outcome = .returned status →
-      status.toNat ≤ 77 ∧ Written out.data.data.toList trace status) ∧
-    (∀ code, outcome = .exited code → code.toNat ≤ 76 ∧
+      (status = 0 ∨ status = 77) ∧ Written out.data.data.toList trace status) ∧
+    (∀ code, outcome = .exited code → code ≠ 0 ∧ code.toNat ≤ 76 ∧
       ∃ writes, trace = writes ++ [.exit code] ∧ Written out.data.data.toList writes code) := by
   obtain ⟨after, writes, middle, tail, writeRun, cont, rfl⟩ := Exec.unbind (writeAll out) run
   have length : out.data.data.toList.length = out.data.size := by simp
@@ -395,8 +395,8 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
     exact Nat.mod_eq_of_lt (by omega)
   cases middle with
   | returned value =>
-    obtain ⟨shape, -, high, taken⟩ := facts.1 value rfl
-    simp only [UInt64.toNat_zero, List.drop_zero, Nat.sub_zero] at taken
+    obtain ⟨shape, -, high, taken, offeredAll, counted⟩ := facts.1 value rfl
+    simp only [UInt64.toNat_zero, List.drop_zero, Nat.sub_zero] at taken offeredAll
     change Exec host (Action.pure (if value < out.size then 77 else 0)) after tail outcome final
       at cont
     obtain ⟨rfl, rfl⟩ := exec_pure cont
@@ -411,7 +411,8 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
       have below : value.toNat < out.data.size := by
         rw [UInt64.lt_iff_toNat_lt, wide] at short
         exact short
-      refine ⟨by decide, by rw [taken]; exact List.take_prefix _ _, ?_, .inl ⟨shape, .inr rfl⟩⟩
+      refine ⟨.inr rfl, offeredAll, by rw [taken]; exact List.take_prefix _ _, ?_,
+        .inl ⟨shape, .inr ⟨rfl, by rw [counted (by omega), length]⟩⟩⟩
       refine ⟨fun same => absurd same (by decide), fun whole => ?_⟩
       have := congrArg List.length whole
       omega
@@ -419,21 +420,23 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
       have above : out.data.size ≤ value.toNat := by
         rw [UInt64.lt_iff_toNat_lt, wide] at short
         omega
-      refine ⟨by decide, by rw [taken]; exact List.take_prefix _ _, ?_, .inl ⟨shape, .inl rfl⟩⟩
+      refine ⟨.inl rfl, offeredAll, by rw [taken]; exact List.take_prefix _ _, ?_,
+        .inl ⟨shape, .inl rfl⟩⟩
       exact ⟨fun _ => by rw [taken, List.take_of_length_le (by omega)], fun _ => rfl⟩
   | exited code =>
     obtain ⟨rfl, rfl, rfl⟩ := cont
-    obtain ⟨nonzero, valid, ⟨before, offered, count, shape, earlier⟩, prefix_, bound⟩ :=
-      facts.2 code rfl
+    obtain ⟨nonzero, valid, ⟨before, offered, count, shape, earlier, offeredBefore⟩, prefix_,
+      bound⟩ := facts.2 code rfl
+    simp only [UInt64.toNat_zero] at offeredBefore
     refine ⟨fun _ same => (by cases same), fun code' same => ?_⟩
     cases same
     have dropped : stdoutTaken (before ++ [.write .stdout offered (.returned code count)]) =
         stdoutTaken writes := by
       rw [shape]
       simp [stdoutTaken_append, Event.stdoutTaken, nonzero]
-    refine ⟨valid, before ++ [.write .stdout offered (.returned code count)],
-      by rw [List.append_nil, shape]; simp, ?_, ?_,
-      .inr ⟨nonzero, before, offered, count, rfl, earlier⟩⟩
+    refine ⟨nonzero, valid, before ++ [.write .stdout offered (.returned code count)],
+      by rw [List.append_nil, shape]; simp, offeredBefore, ?_, ?_,
+      .inr ⟨nonzero, valid, before, offered, count, rfl, earlier⟩⟩
     · rw [dropped]
       simpa using prefix_
     · rw [dropped]
@@ -462,8 +465,8 @@ theorem Draws.length {r : UInt64} {events : List Event} {bytes : List UInt8} {er
     omega
 
 /-- Every run of `main` that returns a status has a status of at most 77 and events that meet
-`Meets`, and every run that exits does so from `writeAll` with a status of at most 76 and events
-that meet `Meets` followed by the exit. -/
+`Meets`, and every run that exits does so with a status of at most 76 and events that meet `Meets`
+followed by the exit. -/
 theorem main_runs {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {outcome : Outcome UInt64} (run : Exec host main world trace outcome final) :
     (∀ status, outcome = .returned status → status.toNat ≤ 77 ∧ Meets host world trace status) ∧
@@ -555,13 +558,14 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
             have tail := write_tail (render_size s.1) cont2
             rw [rendered] at tail
             refine ⟨fun status h => ?_, fun code h => ?_⟩
-            · obtain ⟨small, written⟩ := tail.1 status h
+            · obtain ⟨kind, written⟩ := tail.1 status h
+              have small : status.toNat ≤ 77 := by rcases kind with rfl | rfl <;> decide
               refine ⟨small, a, pre, _, after, rfl, argsRun, fun e => absurd hz e,
                 fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
               rw [hn]
               exact ⟨draws, bytes, errno, post, rfl, drawsOk, fun e => absurd he e,
                 fun _ => ⟨wlen, sum, written⟩⟩
-            · obtain ⟨small, writes, rfl, written⟩ := tail.2 code h
+            · obtain ⟨-, small, writes, rfl, written⟩ := tail.2 code h
               refine ⟨small, pre ++ (draws ++ writes), by simp, a, pre, _, after, rfl, argsRun,
                 fun e => absurd hz e, fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
               rw [hn]
@@ -573,7 +577,8 @@ exit status `code` has the events of `Meets` followed by the exit: the status is
 `args`, 2 for a refused argument, the errno of a failed `random_get`, or, after the calls of
 `random_get` returned the N words `w`, whose counts sum to N, the status of the writes of
 `renderSpec (histogramSpec w)` that `Written` states: 0 exactly when they took every byte of it,
-the errno of a write that failed, or 77 when the writes used up their passes.  The status is at
+the errno of a write that failed, or 77 after one write for each of the loop's passes with bytes
+unwritten.  Each write offered the bytes that the writes before it did not take.  The status is at
 most 77. -/
 theorem exec_main {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {code : UInt64}

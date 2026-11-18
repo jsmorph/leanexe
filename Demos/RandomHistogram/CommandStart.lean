@@ -10,8 +10,8 @@ trap is one of three:
   (`exec_main`): the status is the errno of `args`, 2 for a refused argument, the errno of a
   failed `random_get`, or the status of the writes of `renderSpec (histogramSpec w)` that
   `Written` states, with `w` the N words that the calls of `random_get` returned, whose counts
-  sum to N: 0 exactly when the writes took every byte, the errno of a failed write, or 77 when
-  the writes used up their passes;
+  sum to N: 0 exactly when the writes took every byte, the errno of a failed write, or 77 after
+  one write for each of the loop's passes with bytes unwritten;
 - a trap of the host, or an exit that the host rejects, after the events of a run of `main` and
   its exit;
 - a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
