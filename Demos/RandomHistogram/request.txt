@@ -1,0 +1,14 @@
+Takes an integer N > 0 on the command line.  Gets N random numbers.  For M in [0,9], emits the count of those numbers that are M mod 10.  So we get 10 numbers on stdout; they sum to N.
+
+Choices the user approved:
+- A random number is a 64-bit little-endian word of the bytes `random_get` returns.
+- The program draws the N words by a loop that asks `randomGet` for at most 512 words (4,096 bytes) per call, so memory stays constant for any N.
+- N is the first argument after the program name, written as decimal digits only, with 1 ≤ N < 2^64.  A missing argument, any other character, 0, or an overflow writes nothing and ends with status 2.
+- An errno of a call ends the run with that errno as its status.
+- The output is ten lines: the counts for M = 0 to 9 in order, each in decimal followed by a newline.
+- The status is 0 on success.
+
+The pure core has three functions, each with its own specification:
+- parseN, from the argument bytes to N or a refusal;
+- histogram, from a sequence of 64-bit words to ten counts;
+- render, from ten counts to the ten lines.
