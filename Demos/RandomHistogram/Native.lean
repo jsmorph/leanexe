@@ -12,7 +12,15 @@ only the store's globals and memory and the cap, so they hold at every cap up to
 `linux_footprint_native` states that every Talos run of `_start` from that store under the
 shim's environment with enough fuel has the footprint of `Footprint`: the layer events are images
 of the run's WASI trace, which ends at an accepted exit, a rejected exit, a trap of the shim, or a
-trap of the guest after a prefix of `main`. -/
+trap of the guest after a prefix of `main`.
+
+`linux_footprint_bounded` states the footprint without a guest trap for a launch whose arguments'
+strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes and whose
+N is at most `drawLimit`, at a cap whose pages hold `budget` above the heap's start.  The shim
+answers `args_sizes_get` with the count and size of the launch's arguments (`linux_sizes`) and
+`args_get` with the arguments (`linux_strings`), so the block that the reply asks for fits
+`argsLimit` (`reportedSize_le`) and `parseN` reads N from it, and `call_prefix_bound` gives the
+budget premise from `body_bounded`. -/
 
 namespace Demos.RandomHistogram
 

@@ -1,5 +1,5 @@
 import TestSupport.A64.WasiElf
-import Demos.RandomHistogram.Native
+import Demos.RandomHistogram.NativeCounts
 import LeanExe.A64.File
 
 /-!
@@ -26,6 +26,15 @@ and writes within the cap's linear memory or into the timespec, and the writes o
 trace of an `Exec` run that ends at an accepted exit, whose status X0 holds, at an exit that the
 shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a `Prefix` run of the
 action, with X0 at 2.
+
+`histogram_elf_counts` is the corollary for the file, for every reply sequence, from arguments
+whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
+Linux requires of every process, and whose N is at most `drawLimit`, the largest N for which the
+resource model's charge of `main` fits the executable's 4,096 pages.  When every `getrandom` of
+the trace returned the count that it asked for and every `write` the count that it offered, X0 and
+the trace meet `Counts`.  `wasiElf_footprint_with` gives the run from `linux_footprint_bounded`,
+the footprint without a guest trap, and `linux_exec_counts` gives the status and `Counts` from the
+`Exec` run that the footprint names.
 -/
 
 namespace TestSupport.A64.ImageFilesRandomHistogram
@@ -108,11 +117,68 @@ theorem histogram_elf (R : Linux.Replies) (p : Proc) {args environ : List (List 
   · exact .inr (.inr (.inl h))
   · exact .inr (.inr (.inr h))
 
+/-- The random histogram's corollary for `histogram.elf`.  For every reply sequence `R`, a process
+started as for `histogram_elf` with arguments whose strings, each with its zero byte, and
+eight-byte pointers take at most `argsLimit` bytes, 6 MiB, and whose N is at most `drawLimit`,
+12,839,935, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
+trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
+`getrandom` of `ls` returned the count that it asked for and every `write` the count that it
+offered (`Full`), X0 and `ls` meet `Counts`: for N of 0, no call and status 2, and otherwise
+exactly N little-endian words `w` in the bytes that `getrandom` returned, counts of
+`histogramSpec w` that sum to N, the bytes of `renderSpec (histogramSpec w)` written to descriptor
+1, and status 0. -/
+theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
+    {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
+    (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)
+    (hl : ElfLoaded (byteAt histogramElfBytes) p.core.mem)
+    (hstack : InitialStack args environ p.core.sp top p.core.mem)
+    (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
+    ∃ q, ProcReachWith Linux.table R (wasiPlatform histogramLayout p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords histogramLayout)) p q ∧
+      fetchFrom p.core.mem elfEntry (elfWords histogramLayout) q.core.pc = some svcWord ∧
+      q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
+      ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
+        (Full ls → Counts args ls (q.core.x 0)) := by
+  have himp : command.module.imports = ABI.importsWith command.sysCalls := by
+    rw [command.module, compile_imports_with]
+  have hsu : startup (needsCheck (command.module.imports.drop 3))
+      (wasiScratch command.module startIndex wasiRoom wasiCap) R = ([], some false) := by
+    rw [himp]
+    rfl
+  have hR : (fun j => R (([] : List Linux.Event).length + j)) = R := funext fun j => by simp
+  obtain ⟨q, rq, cq, x8q, ioq, hq⟩ :=
+    wasiElf_footprint_with histogram_elf_file
+      (histogram_elf_segments.trans histogram_elf_layout.symm) himp calls_supported (by decide)
+      histogram_elf_room R p
+      (fun l₀ granted h => by
+        rw [hsu] at h
+        cases h
+        rw [hR]
+        exact linux_footprint_bounded arm64Flags _ ⟨args, environ, false⟩ R small drawn
+          (by decide) budget_fits)
+      hl hstack hpc htr
+  rw [hsu] at hq
+  obtain ⟨T, ls, w, trq, himg, hcar, -, hend⟩ := hq
+  rw [List.nil_append] at trq
+  rw [hR] at hend
+  refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun full => ?_⟩
+  rcases hend with ⟨c, h, hx⟩ | ⟨h, -⟩ | ⟨h, -⟩ | ⟨impossible, -⟩
+  · obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg full
+    cases exited
+    rw [hx]
+    exact counts
+  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg full
+    cases exited
+  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg full
+    cases exited
+  · cases impossible
+
 #print axioms histogram_elf_file
 #print axioms histogram_elf_segments
 #print axioms histogram_elf_layout
 #print axioms histogram_elf_entry
 #print axioms histogram_elf_room
 #print axioms histogram_elf
+#print axioms histogram_elf_counts
 
 end TestSupport.A64.ImageFilesRandomHistogram

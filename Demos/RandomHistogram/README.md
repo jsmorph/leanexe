@@ -79,8 +79,9 @@ theorem without it, `command.total`, takes a budget that bounds the heap that ev
 `main` allocates, and the resource model charges each pass of the loop for its buffer and credits
 no release, so the charge grows with the number of passes and no budget covers every N.
 `total_meets` takes such a budget as a premise, with a host that traps nowhere along the run, and
-excludes (b) and (c).  A host may commit fewer bytes than the write offers, and the write's event records the count that it
-committed.  The status is then the write's errno, 0 when the write succeeded.
+excludes (b) and (c).  A host may commit fewer bytes than the write offers, and the write's event
+records the count that it committed.  The status is then the write's errno, 0 when the write
+succeeded.
 
 The proof follows `main`.  A returned `args` result holds fewer than `2^32` bytes, the size that the
 reporter's four-byte word gives (`args_returned`), so `parseN` computes `parseSpec` on it.
@@ -90,29 +91,93 @@ counts are the fold of `countWord` over the drawn words, since `tally` counts th
 to those before it (`words_append`).  The fold from ten zero counts is `histogram` of the words
 (`histogram_list`), and `histogram_eq` and `render_eq` give the specification's output.
 
+## The native executable writes the counts
+
+`genWasiElf` writes the command's AArch64 Linux executable, `command.elf`, of 69,632 bytes, from
+the module, with the stubs of the shim for the stream functions, `args_sizes_get`, `args_get`, and
+`random_get`, and a linear memory of 4,096 pages.  Under strace, the executable makes only
+`getrandom`, `write`, and `exit_group` calls.  The theorems of the next table lie in
+[the executable's theorems](../../tests/TestSupport/A64/ImageFilesRandomHistogram.lean), which
+`tests/linux/a64-wasi.sh` elaborates beside the file, and in [the charge of `main`](Budget.lean),
+[the footprints](Native.lean), and [the corollary under the shim](NativeCounts.lean).
+
+| Theorem | Statement |
+|---|---|
+| `histogram_elf_file`, `histogram_elf_segments`, `histogram_elf_layout`, `histogram_elf_entry`, `histogram_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
+| `histogram_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
+| `body_bounded`, `budget_fits`, `budget_full` | Every run and every prefix of `main`'s body charges at most `budget` when the arguments' block fits `argsLimit` and N is at most `drawLimit`, and `budget` fits the executable's 4,096 pages above the heap's start, with no room for one more pass. |
+| `linux_footprint_bounded` | Under the shim's host with such arguments, every run of `_start` ends without a guest trap. |
+| `linux_exec_counts` | Under the shim's host, a run of `main` and its exit with such arguments whose layer events meet `Full` ends at the accepted exit, and its status and layer events meet `Counts`. |
+| `histogram_elf_counts` | For every reply sequence, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and whose N is at most `drawLimit` reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Counts`. |
+
+`Full ls` holds when every `getrandom` of the layer events `ls` returned the count that it asked for
+and every `write` the count of bytes that it offered.  `Counts args ls status` states the request
+over the layer events.  With N the value that `parseSpec` reads from the arguments, each followed by
+a zero byte: when N is 0, the process made no call and exited with status 2.  Otherwise the bytes
+that `getrandom` returned hold exactly N little-endian words `w`, the counts of `histogramSpec w`
+sum to N, the bytes written to descriptor 1 are `renderSpec (histogramSpec w)`, and the status is 0.
+Linux's replies meet `Full` when no call fails or is interrupted.  getrandom(2) returns every byte
+of a read of up to 256 bytes once the urandom source is initialized and gives no such guarantee for
+a larger read, such as the command's reads of 4,096 bytes, which a signal may cut short.  A write of
+at most 210 bytes to a regular file or a blocking pipe takes all of them unless it fails or a signal
+interrupts it (write(2), pipe(7)).
+
+The corollary bounds N because the resource model charges each pass of the loop for its buffer and
+credits no release.  `drawLimit`, 12,839,935, is the largest N for which `budget` fits the
+executable's memory: 6,291,504 bytes for the block of `args` and each of its seven copies, 408 bytes
+for three copies of the counts, at most 17,136 bytes for `render`, and 8,696 bytes for each of the
+`N / 512 + 1` passes.  `argsLimit`, 6 MiB, is the bound that Linux places on the strings and
+pointers of `argv` and `envp` together, so every process that Linux starts meets the premise on
+the arguments.  A resource model that credits a released buffer would cover every N, at the cost of
+a change to the shared definitions of `Verified/Wasi/` and a proof that the allocator reuses a
+released block.
+
+The proof composes three parts.  `body_bounded` follows `main`'s reflected body with the rules of
+`Verified/Wasi/ResourceRules.lean`, and `loop_bounded` bounds the loop's passes from counts of ten
+words, which every pass keeps (`loop_kept`, `tally_size`).  `linux_footprint_bounded` gives the
+budget premise of the generated `command.start` from the shim's replies to `args_sizes_get` and
+`args_get`.  `linux_exec_counts` excludes the trapped runs: a trapped run of `main` has a trapped
+`args_sizes_get`, `args_get`, `random_get`, or write (`main_trapped`), whose image no layer events
+that meet `Full` give (`image_untrapped`), and an exit of a status of at most 76 is accepted.  For
+the accepted exit, `exec_main` gives `Meets`, and the images of its events give the bytes that
+`getrandom` returned (`draws_full`) and the bytes written (`write_full`).
+
 ## Building, running, and testing
 
 ```sh
 tests/random-histogram/run.sh
-build/tools/leanexe-wasmtime-host --arg histogram --arg 1000000 \
-  run build/random-histogram/command.wasm
+build/tools/leanexe-wasmtime-host --arg histogram --arg 1000 run build/random-histogram/command.wasm
+build/random-histogram/command.elf 1000
+qemu-aarch64 build/random-histogram/command.elf 1000
+tests/linux/a64-wasi.sh
 tests/verified/run.sh --cases randomHistogram
 tests/native/verified.sh --module randomHistogram
 ```
 
 [The demo's driver](../../tests/random-histogram/run.sh) checks the hashes of the reviewed
 specification and samples, elaborates [the theorem statements](../../tests/random-histogram/Axioms.lean)
-and requires the three axioms, emits and validates the command's module, and writes its AArch64
-Linux executable of 69,632 bytes with `a64-wasi wasm`, which fails when `genWasiElf` rejects the
-module.  It then runs the module in the Wasmtime host.  The runs with no argument, `0`, `abc`, `-5`,
-and `99999999999999999999` write nothing and exit with status 2.  The runs with N of 1, 9, 10, 512,
-513, 1,000, and 1,000,000 exit with status 0 and write ten decimal counts that sum to N.  It prints
-`random histogram axiom check passed for 14 theorems`, the executable's size, and `random histogram:
-12 runs passed`.  The second command writes ten counts near 100,000, such as `100037`, `99394`, and
-`99853`, in about 0.1 s on an AArch64 host.  [The verified driver](../../tests/verified/run.sh) runs
-the 74 samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the
-specifications, and each case of `histogram` and `render` requires two blocks to stay allocated
-after the call, the argument's and the result's.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
+and requires the three axioms, emits and validates the command's module, and writes its executable
+with `a64-wasi wasm`, which fails when `genWasiElf` rejects the module.  It then runs the command in
+the Wasmtime host, on the host's processor, which must be AArch64 Linux, and under `qemu-aarch64`.
+The runs with no argument, `0`, `abc`, `-5`, and `99999999999999999999` write nothing and exit with
+status 2.  The runs with N of 1, 9, 10, 512, 513, 1,000, and 1,000,000 exit with status 0 and write
+ten decimal counts that sum to N.  A native run with N of 1,000 under strace makes no call but
+`getrandom`, `write`, and `exit_group`, and two `getrandom` calls with flags 0, of 4,096 and 3,904
+bytes, each answered with all of its bytes.  The driver prints `random histogram axiom check passed
+for 14 theorems`, the executable's size, and `random histogram: 37 runs passed`.
+
+The second, third, and fourth commands run the module, the executable, and the executable under
+QEMU's user-mode emulator with N of 1,000, after the driver has written them.  Each writes ten
+lines, the counts of the words whose residue mod 10 is 0, 1, and so on to 9, each in decimal without
+a leading zero, which sum to N, and exits with status 0.  One run of the executable wrote `97`, `97`,
+`96`, `94`, `88`, `102`, `109`, `99`, `113`, and `105`.
+
+`tests/linux/a64-wasi.sh` writes the executable again, from the module that `tools/Emit.lean`
+emits, and elaborates the executable's theorems beside it, which requires the three axioms of each.
+[The verified driver](../../tests/verified/run.sh) runs the 74 samples of [the verified
+cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and each case of
+`histogram` and `render` requires two blocks to stay allocated after the call, the argument's and
+the result's.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
 module's translation to C, compiled with CompCert, and `tests/baremetal/verified.sh --module
 randomHistogram` runs them on that translation under QEMU without an operating system.  All 74 pass
 in each.
@@ -122,9 +187,11 @@ in each.
 [The flat call example](../../Verified/Examples/WasiSys.lean) calls `args` and `randomGet` in a
 command, and [its total theorem](../../Verified/Examples/WasiSysTotal.lean) bounds the copies of the
 argument bytes.  [The readAll message corollary](../../Verified/Examples/WasiReadAllMessage.lean)
-states the output and status of a command over the events of every run, as `exec_main` does.
-[The running maximum](../../Examples/RunningMax/README.md) is a run of the verified-request skill on
-words, and [the ranked-choice tabulator](../Rcv/README.md) states call theorems over buffers.
+states the output and status of a command over the events of every run, as `exec_main` does, and
+[its executable's theorems](../../tests/TestSupport/A64/ImageFilesWasiElf.lean) state it for a
+native executable, as `histogram_elf_counts` does.  [The running
+maximum](../../Examples/RunningMax/README.md) is a run of the verified-request skill on words, and
+[the ranked-choice tabulator](../Rcv/README.md) states call theorems over buffers.
 
 ## References
 
@@ -132,3 +199,7 @@ words, and [the ranked-choice tabulator](../Rcv/README.md) states call theorems 
 - [Verified WASI Manual](../../docs/wasi.md)
 - [`Verified.Call`](../../Verified/Call.lean)
 - [WASI Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx)
+- [Linux `fs/exec.c`, v6.12](https://github.com/torvalds/linux/blob/v6.12/fs/exec.c)
+- [getrandom(2)](https://man7.org/linux/man-pages/man2/getrandom.2.html)
+- [write(2)](https://man7.org/linux/man-pages/man2/write.2.html)
+- [pipe(7)](https://man7.org/linux/man-pages/man7/pipe.7.html)

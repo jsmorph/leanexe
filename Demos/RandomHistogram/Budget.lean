@@ -2,7 +2,27 @@ import Demos.RandomHistogram.CommandStart
 import Demos.RandomHistogram.Compiled
 import Verified.Examples.WasiSysTotal
 
-/-! The resource model's charge of the random-residue histogram's `main`.  -/
+/-! The resource model's charge of the random-residue histogram's `main`, the budget that the
+generated `command.start` without guest traps and `command.total` take as a bound on every prefix
+of `main`.
+
+`body_bounded` bounds every run and every prefix of `main`'s body by `budget` for every host whose
+successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose successful
+`args_get` replies hold a buffer from which `parseN` reads at most `drawLimit`.  The model charges
+a copy of an owned value at each use after which the value stays live, and it credits no release.
+The charge of `main` therefore holds the block of `args` and seven copies of the argument bytes,
+the loop's initial counts and two copies of the final counts, the charge of `render`, and
+`passCharge` for each of the loop's at most `N / 512 + 1` passes: two copies of the counts, the
+block of `random_get`'s buffer of at most 4,096 bytes, and a copy of that buffer and of the counts
+for the test of the call's errno.  `loop_bounded` bounds a loop whose passes each charge at most a
+constant from the states of an invariant, here counts of ten words, which every returned pass
+keeps (`loop_kept`).
+
+`budget_fits` states that the budget fits the 4,096 pages of the native executable above the
+heap's start at byte 4,096, and `budget_full` that one more pass does not, so `drawLimit`,
+12,839,935, is the largest N for which this budget fits.  `argsLimit`, 6 MiB, is the bound that
+Linux 4.13 and later place on the strings and pointers of `argv` and `envp` together
+(`bprm_stack_limits` of `fs/exec.c`). -/
 
 namespace Demos.RandomHistogram
 

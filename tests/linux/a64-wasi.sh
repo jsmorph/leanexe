@@ -97,7 +97,7 @@ mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-wasi \
   TestSupport.A64.WasiElf Verified.Examples.WasiReadAllNative \
   Verified.Examples.WasiSysEnvironNative Verified.Examples.WasiClockRandomNative \
-  Verified.Examples.WasiSysNative Demos.RandomHistogram.Native LeanExe.A64.File
+  Verified.Examples.WasiSysNative Demos.RandomHistogram.NativeCounts LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-wasi emit "$out" || status=1
 chmod +x "$out/readall.elf" "$out/environ.elf" "$out/args.elf" "$out/clockrandom.elf" \
@@ -139,7 +139,7 @@ kernel_check ImageFilesWasiElf 7
 kernel_check ImageFilesWasiEnviron 6
 kernel_check ImageFilesWasiClockElf 6
 kernel_check ImageFilesWasiSys 6
-kernel_check ImageFilesRandomHistogram 6
+kernel_check ImageFilesRandomHistogram 7
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"
