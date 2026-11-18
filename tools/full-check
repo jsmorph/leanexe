@@ -13,8 +13,8 @@
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
-#   4. tests/wasi/run.sh, tests/wasi/sys-run.sh, and, on an AArch64 Linux host,
-#      tests/linux/sys-run.sh;
+#   4. tests/wasi/run.sh, tests/wasi/sys-run.sh, tests/random-histogram/run.sh, and, on an
+#      AArch64 Linux host, tests/linux/sys-run.sh;
 #   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh, tests/native/clight-rocq.sh on the programs of step 3, and
@@ -476,6 +476,13 @@ step_wasi() {
   cell=""
   if [ "$code" -eq 0 ]; then
     cell=$(last '^flat call Wasmtime cases passed: ([0-9]+)$' '\1 cases passed' "$log")
+  fi
+  record "$step" "$(outcome)" "$seconds" "$cell"
+  step='`tests/random-histogram/run.sh`'
+  run 4-random-histogram tests/random-histogram/run.sh
+  cell=""
+  if [ "$code" -eq 0 ]; then
+    cell=$(last '^random histogram: ([0-9]+) runs passed$' '\1 runs passed' "$log")
   fi
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
