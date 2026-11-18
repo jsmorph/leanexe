@@ -75,8 +75,8 @@
 # histogram.elf from it with a64-wasi wasm, and Lean elaborates
 # tests/TestSupport/A64/ImageFilesRandomHistogram.lean beside them, so that the kernel checks that
 # histogram.elf holds the bytes that genWasiElf gives for the command's module and proves the
-# executable's theorems.  tests/random-histogram/run.sh runs that executable.  The products lie in
-# OUT, build/linux/a64-wasi unless set.
+# executable's theorems.  tests/random-histogram/run.sh writes the executable from the same module
+# with the same commands and runs it.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)

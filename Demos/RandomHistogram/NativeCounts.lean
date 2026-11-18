@@ -6,16 +6,18 @@ events of a run under `linuxHost`.
 
 `Full ls` states that every `getrandom` of the layer events `ls` returned the count that it asked
 for and every `write` the count of bytes that it offered.  `randomData ls` collects the bytes that
-the `getrandom` events returned, and `Counts args ls status` states what the request asks of a
-run with the arguments `args`, the layer events `ls`, and the exit status `status`.  With `N` the
-value that `parseSpec` reads from the arguments, each followed by a zero byte: when `N` is 0, the
-run made no call and exited with status 2.  Otherwise the bytes that `getrandom` returned hold
-exactly N little-endian words `w`, the counts of `histogramSpec w` sum to N, the bytes written to
-descriptor 1 are `renderSpec (histogramSpec w)`, and the status is 0.
+the `getrandom` events returned, and `Counts args ls status` states the layer events and the exit
+status that the request asks of a run whose calls succeed, with the arguments `args`.  With N the
+value that `parseSpec` reads from the arguments, each followed by a zero byte: when `parseSpec`
+refuses the arguments, no layer event precedes `exit_group`, and the status is 2.  Otherwise the
+events are calls of `getrandom`, each of at most 4,096 bytes with flags 0, followed by one `write`
+of descriptor 1, the bytes that `getrandom` returned hold exactly N little-endian words `w`, the
+counts of `histogramSpec w` sum to N, the bytes written to descriptor 1 are
+`renderSpec (histogramSpec w)`, and the status is 0.
 
 `linux_exec_counts` proves `Counts` for every `Exec` run of `main` and its exit under the shim's
 host, from a launch whose arguments' strings and eight-byte pointers take at most `argsLimit`
-bytes, whose layer events, the images of its WASI events, meet `Full`; such a run ends at the
+bytes, whose layer events, the images of its WASI events, meet `Full`, and such a run ends at the
 accepted exit.  A run that traps would have a trapped `args_sizes_get`, `args_get`,
 `random_get`, or `fd_write` (`main_trapped`), whose image no event sequence that meets `Full`
 gives (`image_untrapped`), and the exit of a status of at most 76 is accepted. -/
@@ -35,18 +37,27 @@ def Full (ls : List Linux.Event) : Prop :=
   ∀ e ∈ ls, (e.call = Linux.getrandomCall → e.ret = Linux.arg e.args 1) ∧
     (e.call = Linux.writeCall → e.ret = Linux.arg e.args 2)
 
-/-- What the request asks of a run with the arguments `args`, each followed by a zero byte in the
-buffer from which `parseSpec` reads N, whose layer events are `ls` and whose exit status is
-`status`: for N of 0, no call and status 2, and otherwise exactly N words `w` in the bytes that
-`getrandom` returned, counts of `histogramSpec w` that sum to N, the bytes of
-`renderSpec (histogramSpec w)` written to descriptor 1, and status 0. -/
+/-- A `getrandom` of at most 4,096 bytes with flags 0. -/
+def Drawing (e : Linux.Event) : Prop :=
+  e.call = Linux.getrandomCall ∧ (Linux.arg e.args 1).toNat ≤ 4096 ∧ Linux.arg e.args 2 = 0
+
+/-- The layer events `ls` and the exit status `status` that the request asks of a run whose calls
+succeed, with the arguments `args`, each followed by a zero byte in the buffer from which
+`parseSpec` reads N.  When `parseSpec` refuses the arguments, no layer event precedes `exit_group`,
+and the status is 2.  Otherwise the events are calls of `getrandom`, each of at most 4,096 bytes
+with flags 0, followed by one `write` of descriptor 1, the bytes that `getrandom` returned hold
+exactly N words `w`, the counts of `histogramSpec w` sum to N, the bytes written to descriptor 1
+are `renderSpec (histogramSpec w)`, and the status is 0. -/
 def Counts (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) : Prop :=
   (parseSpec (bytesOfList (stringsBytes args)) = 0 → ls = [] ∧ status = 2) ∧
   (parseSpec (bytesOfList (stringsBytes args)) ≠ 0 →
+    (∃ draws write, ls = draws ++ [write] ∧ (∀ e ∈ draws, Drawing e) ∧
+      write.call = Linux.writeCall ∧ Linux.arg write.args 0 = 1) ∧
     (words (randomData ls)).length = (parseSpec (bytesOfList (stringsBytes args))).toNat ∧
     ((histogramSpec (words (randomData ls)).toArray).toList.map UInt64.toNat).sum =
       (parseSpec (bytesOfList (stringsBytes args))).toNat ∧
-    Linux.writeData 1 ls = (renderSpec (histogramSpec (words (randomData ls)).toArray)).data.data.toList ∧
+    Linux.writeData 1 ls =
+      (renderSpec (histogramSpec (words (randomData ls)).toArray)).data.data.toList ∧
     status = 0)
 
 /-! ## Trapped runs of `main` -/
@@ -162,13 +173,15 @@ theorem images_mem {F : OpenFlags} {L : ShimLayout} {I : Launch} :
     · obtain ⟨before, l, found, sub⟩ := images_mem rest e member
       exact ⟨before, l, found, fun x m => List.mem_append_right _ (sub x m)⟩
 
-/-- A `random_get` whose `getrandom` events return the counts that they ask for returns errno 0
-with the bytes of the first event's output region, the only event. -/
+/-- A `random_get` of `length` bytes whose `getrandom` events return the counts that they ask for
+returns errno 0: with no event and no byte when `length` is 0, and otherwise with one event, a
+`getrandom` of `length` bytes with flags 0, and the bytes of its output region. -/
 theorem random_full {a : UInt64} {length : Nat} {l : List Linux.Event}
     {reply : Transfer (List Bytes)} (calls : RandomCalls a length 0 [] l reply) (full : Full l)
     (small : length < 2 ^ 64) :
     (l = [] ∧ length = 0 ∧ reply = .returned 0 [bytesOfList []]) ∨
       ∃ e, l = [e] ∧ e.call = Linux.getrandomCall ∧ e.ret.toNat = length ∧
+        Linux.arg e.args 1 = UInt64.ofNat length ∧ Linux.arg e.args 2 = 0 ∧
         reply = .returned 0 [bytesOfList e.output] := by
   rcases l with _ | ⟨e, rest⟩
   · obtain ⟨done, rfl⟩ := calls
@@ -181,7 +194,7 @@ theorem random_full {a : UInt64} {length : Nat} {l : List Linux.Event}
       exact Nat.mod_eq_of_lt small
     rw [ite_eq_right (by omega)] at going
     obtain ⟨rfl, rfl⟩ := going
-    refine .inr ⟨_, rfl, rfl, retNat, ?_⟩
+    refine .inr ⟨_, rfl, rfl, retNat, by simp [Linux.arg], rfl, ?_⟩
     simp [randomLast, retNat]
 
 /-- No event sequence that meets `Full` is the image of a trapped `args_sizes_get`, `args_get`,
@@ -210,8 +223,8 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
         split at image
         · rename_i length
           obtain ⟨a, calls⟩ := image
-          rcases random_full calls full length.toNat_lt with ⟨-, -, reply⟩ | ⟨_, -, -, -, reply⟩ <;>
-            cases reply
+          rcases random_full calls full length.toNat_lt with
+            ⟨-, -, reply⟩ | ⟨_, -, -, -, -, -, reply⟩ <;> cases reply
         · exact image
   | write output bytes reply =>
     cases reply with
@@ -249,8 +262,8 @@ theorem linux_sizes_fit {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux
   rw [ite_eq_left fit] at reply
   exact ⟨(Transfer.returned.inj reply).1, (Transfer.returned.inj reply).2⟩
 
-/-- Under the shim's host, an `args_get` reply is errno 0 with the arguments, each followed by a
-zero byte. -/
+/-- Under the shim's host, a returned `args_get` reply is errno 0 with the arguments, each followed
+by a zero byte. -/
 theorem linux_strings_any {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
     {world after : LinuxWorld} {errno : UInt64} {got : List LeanExe.Bytes}
     (step : (linuxHost F L I R).sys world Call.argsGet [] (.returned errno got) after) :
@@ -314,16 +327,16 @@ theorem writeData_append (ls ls' : List Linux.Event) :
   simp [Linux.writeData, List.flatMap_append]
 
 /-- The images of the calls of `Draws` whose `getrandom` events meet `Full`: every call returned
-errno 0, the bytes that `getrandom` returned are those that the calls collected, and nothing was
-written. -/
+errno 0, the bytes that `getrandom` returned are those that the calls collected, nothing was
+written, and every event is a `getrandom` of at most 4,096 bytes with flags 0. -/
 theorem draws_full {F : OpenFlags} {L : ShimLayout} {I : Launch} :
     ∀ {r : UInt64} {draws : List Event} {bytes : List UInt8} {errno : UInt64}
       {events ls : List Linux.Event}, Draws r draws bytes errno →
       Images F L I events draws ls → Full ls →
-      errno = 0 ∧ randomData ls = bytes ∧ Linux.writeData 1 ls = []
+      errno = 0 ∧ randomData ls = bytes ∧ Linux.writeData 1 ls = [] ∧ ∀ e ∈ ls, Drawing e
   | _, _, _, _, _, _, .done, images, _ => by
     cases images
-    exact ⟨rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, fun _ member => nomatch member⟩
   | _, _, _, _, _, _, .failed _ failed, images, full => by
     cases images with
     | cons image rest =>
@@ -332,7 +345,8 @@ theorem draws_full {F : OpenFlags} {L : ShimLayout} {I : Launch} :
       rw [sysImage_random] at image
       obtain ⟨a, calls⟩ := image
       rw [List.append_nil] at full
-      rcases random_full calls full (UInt64.toNat_lt _) with ⟨-, -, reply⟩ | ⟨_, -, -, -, reply⟩ <;>
+      rcases random_full calls full (UInt64.toNat_lt _) with
+        ⟨-, -, reply⟩ | ⟨_, -, -, -, -, -, reply⟩ <;>
         exact absurd (Transfer.returned.inj reply).1 failed
   | r, _, _, _, _, _, .drew nonzero size rest, images, full => by
     cases images with
@@ -340,35 +354,42 @@ theorem draws_full {F : OpenFlags} {L : ShimLayout} {I : Launch} :
       obtain ⟨-, image⟩ := image
       rw [sysImage_random] at image
       obtain ⟨a, calls⟩ := image
-      obtain ⟨errnoZero, restData, restWrites⟩ :=
+      obtain ⟨errnoZero, restData, restWrites, restDrawing⟩ :=
         draws_full rest restImages (full.sub fun x m => List.mem_append_right _ m)
       rcases random_full calls (full.sub fun x m => List.mem_append_left _ m)
-          (UInt64.toNat_lt _) with ⟨-, zero, -⟩ | ⟨e, rfl, call, retNat, reply⟩
+          (UInt64.toNat_lt _) with ⟨-, zero, -⟩ | ⟨e, rfl, call, retNat, asked, flags, reply⟩
       · rw [toNat_eight_min] at zero
         exact absurd (UInt64.toNat_inj.mp (by simp only [UInt64.toNat_zero]; omega)) nonzero
       · have same := (List.cons.inj (Transfer.returned.inj reply).2).1
         subst same
         rw [toNat_eight_min] at retNat
         rw [bytesOfList_size] at size
-        refine ⟨errnoZero, ?_, ?_⟩
+        refine ⟨errnoZero, ?_, ?_, fun x member => ?_⟩
         · rw [List.singleton_append, ← List.singleton_append, randomData_append, restData]
           simp [randomData, call, retNat, ← size, bytesOfList]
         · have other : Linux.getrandomCall ≠ Linux.writeCall := by decide
           rw [List.singleton_append, ← List.singleton_append, writeData_append, restWrites]
           simp [Linux.writeData, Linux.Event.writeBytes, call, other]
+        · rcases List.mem_cons.mp member with rfl | member
+          · refine ⟨call, ?_, flags⟩
+            rw [asked, UInt64.ofNat_toNat, toNat_eight_min]
+            omega
+          · exact restDrawing x member
 
-/-- The image of the write of `bytes` to standard output whose `write` event meets `Full` returned
-errno 0 and took all of `bytes`. -/
+/-- The image of the write of `bytes` to standard output whose `write` event meets `Full` is one
+`write` of descriptor 1, which returned errno 0 and took all of `bytes`. -/
 theorem write_full {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
     {bytes : LeanExe.Bytes} {code count : UInt64} {l : List Linux.Event}
     (image : Image F L I events (.write .stdout bytes (.returned code count)) l) (full : Full l) :
-    code = 0 ∧ Linux.writeData 1 l = bytes.data.data.toList ∧ randomData l = [] := by
+    code = 0 ∧ Linux.writeData 1 l = bytes.data.data.toList ∧ randomData l = [] ∧
+      ∃ x, l = [x] ∧ x.call = Linux.writeCall ∧ Linux.arg x.args 0 = 1 := by
   obtain ⟨x, a, rfl, call, args, inputs, -, small, reply⟩ := image
   have answered := (full x (List.mem_singleton_self _)).2 call
   simp only [args, Linux.arg, List.getD_cons_succ, List.getD_cons_zero] at answered
   rw [answered] at reply
   simp only [writeReply, le_refl, ↓reduceIte] at reply
-  refine ⟨(Transfer.returned.inj reply).1, ?_, ?_⟩
+  refine ⟨(Transfer.returned.inj reply).1, ?_, ?_, x, rfl, call,
+    by simp [args, Linux.arg, Output.fd]⟩
   · have wide : (UInt64.ofNat bytes.data.size).toNat = bytes.data.size :=
       UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
     simp [Linux.writeData, Linux.Event.writeBytes, call, args, inputs, answered, Linux.arg,
@@ -432,18 +453,18 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
         obtain ⟨draws, bytes, errno, post, rfl, drawn, -, succeeded⟩ := accepted aZero nonzero
         obtain ⟨ld, lw, rfl, drawImages, postImages⟩ :=
           Verified.Examples.WasiReadAll.images_split restImages
-        obtain ⟨errnoZero, drawData, drawWrites⟩ :=
+        obtain ⟨errnoZero, drawData, drawWrites, drawing⟩ :=
           draws_full drawn drawImages (full.sub fun x m => List.mem_append_left _ m)
         obtain ⟨length, sum, count, rfl⟩ := succeeded errnoZero
         cases postImages with
         | cons image tail =>
           cases tail
           simp only [List.append_nil] at full ⊢
-          obtain ⟨rfl, written, noRandom⟩ :=
+          obtain ⟨rfl, written, noRandom, x, rfl, call, fd⟩ :=
             write_full image (full.sub fun x m => List.mem_append_right _ m)
           rw [randomData_append, drawData, noRandom, List.append_nil, writeData_append,
             drawWrites, written, List.nil_append]
-          exact ⟨length, sum, rfl, rfl⟩
+          exact ⟨⟨_, x, rfl, drawing, call, fd⟩, length, sum, rfl, rfl⟩
 
 #print axioms main_trapped
 #print axioms image_untrapped

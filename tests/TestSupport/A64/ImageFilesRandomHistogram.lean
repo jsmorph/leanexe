@@ -29,12 +29,12 @@ action, with X0 at 2.
 
 `histogram_elf_counts` is the corollary for the file, for every reply sequence, from arguments
 whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
-Linux requires of every process, and whose N is at most `drawLimit`, the largest N for which the
-resource model's charge of `main` fits the executable's 4,096 pages.  When every `getrandom` of
-the trace returned the count that it asked for and every `write` the count that it offered, X0 and
-the trace meet `Counts`.  `wasiElf_footprint_with` gives the run from `linux_footprint_bounded`,
-the footprint without a guest trap, and `linux_exec_counts` gives the status and `Counts` from the
-`Exec` run that the footprint names.
+Linux requires of every process, and whose N is at most `drawLimit`, the largest N for which
+`budget`, the bound of `body_bounded` at arguments of `argsLimit` bytes, fits the executable's
+4,096 pages.  When every `getrandom` of the trace returned the count that it asked for and every
+`write` the count that it offered, X0 and the trace meet `Counts`.  `wasiElf_footprint_with`
+gives the run from `linux_footprint_bounded`, the footprint without a guest trap, and
+`linux_exec_counts` gives the status and `Counts` from the `Exec` run that the footprint names.
 -/
 
 namespace TestSupport.A64.ImageFilesRandomHistogram
@@ -123,10 +123,11 @@ eight-byte pointers take at most `argsLimit` bytes, 6 MiB, and whose N is at mos
 12,839,935, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
 `getrandom` of `ls` returned the count that it asked for and every `write` the count that it
-offered (`Full`), X0 and `ls` meet `Counts`: for N of 0, no call and status 2, and otherwise
-exactly N little-endian words `w` in the bytes that `getrandom` returned, counts of
-`histogramSpec w` that sum to N, the bytes of `renderSpec (histogramSpec w)` written to descriptor
-1, and status 0. -/
+offered (`Full`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the arguments, no layer
+event precedes `exit_group`, and X0 is 2.  Otherwise the events are calls of `getrandom`, each of
+at most 4,096 bytes with flags 0, followed by one `write` of descriptor 1, the bytes that
+`getrandom` returned hold exactly N little-endian words `w`, the counts of `histogramSpec w` sum to
+N, the bytes written to descriptor 1 are `renderSpec (histogramSpec w)`, and X0 is 0. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
     (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)

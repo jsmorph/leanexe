@@ -15,14 +15,14 @@ the loop's initial counts and two copies of the final counts, the charge of `ren
 `passCharge` for each of the loop's at most `N / 512 + 1` passes: two copies of the counts, the
 block of `random_get`'s buffer of at most 4,096 bytes, and a copy of that buffer and of the counts
 for the test of the call's errno.  `loop_bounded` bounds a loop whose passes each charge at most a
-constant from the states of an invariant, here counts of ten words, which every returned pass
-keeps (`loop_kept`).
+constant from the states of an invariant that every pass keeps, here counts of ten words, and
+`loop_kept` states that the loop's returned state keeps the invariant.
 
 `budget_fits` states that the budget fits the 4,096 pages of the native executable above the
 heap's start at byte 4,096, and `budget_full` that one more pass does not, so `drawLimit`,
-12,839,935, is the largest N for which this budget fits.  `argsLimit`, 6 MiB, is the bound that
-Linux 4.13 and later place on the strings and pointers of `argv` and `envp` together
-(`bprm_stack_limits` of `fs/exec.c`). -/
+12,839,935, is the largest N for which this budget fits.  Linux 4.13 and later limit the strings
+and pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
+`fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12). -/
 
 namespace Demos.RandomHistogram
 
