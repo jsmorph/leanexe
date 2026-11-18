@@ -9,13 +9,15 @@ the `open_how` flags that the shim gives each open of the flag scenario.
 Usage: files-cases.py MODULE.wat CASES.txt FLAGS.txt
 
 The module imports the three stream functions, then `path_open`, `fd_close`, `fd_read`, and
-`fd_write`, the last two in their handle forms.  It reads one byte from standard input, the
-scenario, and runs the scenario's cases one after another.  It writes to standard output through
-`fd_write` with the iovec at address 0 and the count at address 8, as the stream stub requires:
-the byte 0xFE at the start of each case, the byte 0xFF at the start of each call's record, and
-then the call's errno as one byte.  A read's record adds, after errno 0, the count and the
-buffer's 8 bytes, which hold 0xCC bytes before the call, and a write's record the count.  An open
-that succeeds is followed by the probe of the descriptor: a read of 4 bytes, a write of the 2
+`fd_write`, the last two in their handle forms, and `fd_prestat_get`.  It reads one byte from
+standard input, the scenario, and runs the scenario's cases one after another.  It writes to
+standard output through `fd_write` with the iovec at address 0 and the count at address 8, as the
+stream stub requires: the byte 0xFE at the start of each case, the byte 0xFF at the start of each
+call's record, and then the call's errno as one byte.  A read's or a write's record adds the 4
+bytes at the count's pointer, which hold 0xDD bytes before the call, and a read's record adds,
+after errno 0, the buffer's 8 bytes, which hold 0xCC bytes before the call.  A record of
+`fd_prestat_get` adds, after errno 0, the record's 8 bytes, which hold zeros before the call.  An
+open that succeeds is followed by the probe of the descriptor: a read of 4 bytes, a write of the 2
 bytes `xy`, and a close.  The module never writes a descriptor's number, since the Wasmtime host
 and the executable number descriptors differently.
 
@@ -26,14 +28,18 @@ Scenarios, by the byte read:
        a file, a directory, a missing name, and symbolic links to the file and the directory, and
        every `fdflags` value on the file;
   'c'  closes of descriptors that the shim holds and does not hold, double closes, the close of
-       the preopened directory, and an open after it;
-  'h'  reads and writes on handles: at the end of a file, of zero bytes, at the end of memory, on
-       descriptors opened for reading or writing only, and on descriptors that the shim does not
-       hold;
+       the preopened directory, an open after it, and `fd_prestat_get` of descriptor 3 before and
+       after the closes;
+  'h'  reads and writes on handles: at the end of a file, of zero bytes, at the end of memory, with
+       the iovec in the memory's last 8 bytes, on descriptors opened for reading or writing only,
+       and on descriptors that the shim does not hold;
   'm'  opens under descriptor 3 of magic links and of a file, for a preopened /proc/self;
-  'l'  opens of `f` without closes until an open fails, at most 1,100;
-  '1' to '6'  a request that the shim refuses with a trap: an iovec count of 2, an iovec, a
-       buffer, or a count's pointer beyond memory, and a path or a result's pointer beyond memory.
+  'l'  opens of `f` without closes until an open fails, at most 1,100, and then the close of
+       descriptor 1,023;
+  '1' to '9'  a request that the shim refuses with a trap: an iovec count of 2, an iovec, a
+       buffer, or a count's pointer beyond memory, a path or a result's pointer beyond memory, an
+       iovec 7 bytes before the memory's end, a count's pointer 3 bytes before it, and an iovec
+       count of 2 on a descriptor that the shim does not hold.
 
 CASES.txt holds one line for each case, its scenario, its index, and its description, separated
 by tabs.  FLAGS.txt holds, for each open of scenario 'f' that reaches `openat2`, in order, the path
@@ -101,6 +107,7 @@ ORDER = [
     (3, b"f\x00", 0, 2), (3, b"f\x00", 3, 0), (3, b"f\x00", 0, 0), (3, b"a" * 4096, 0, 0),
     (3, b"a" * 4095, 0, 0), (3, b"a" * 4096 + b"\x00", 0, 0), (3, b"\xff" * 4096, 0, 16),
     (3, b"f", 2, 2), (3, b"f", 2 | 8, 0), (3, b"f", 2 | 4, 0), (3, b"f", 2 | 1, 0),
+    (3, b"f", 3, 2),
 ]
 
 MAGIC = [b"fd/0", b"fd/1", b"exe", b"cwd", b"cwd/f", b"root/etc/hostname", b"fd", b"status"]
@@ -175,6 +182,7 @@ def build() -> tuple[str, list[str], list[str]]:
         return f"(local.set {into} (call $openf (i64.const {rights})))"
 
     for description, code in [
+        ("prestat 3", "(call $prestat (i32.const 3))"),
         ("close 4, which the shim does not hold", "(call $close (i32.const 4))"),
         ("close 1023", "(call $close (i32.const 1023))"),
         ("close 1024", "(call $close (i32.const 1024))"),
@@ -192,7 +200,9 @@ def build() -> tuple[str, list[str], list[str]]:
         ("close a", "(call $close (local.get $a))"),
         ("close b", "(call $close (local.get $b))"),
         ("close b again", "(call $close (local.get $b))"),
+        ("prestat 3 after the closes of a and b", "(call $prestat (i32.const 3))"),
         ("close 3, the preopened directory", "(call $close (i32.const 3))"),
+        ("prestat 3 after its close", "(call $prestat (i32.const 3))"),
         ("close 3 again", "(call $close (i32.const 3))"),
         ("open f after the close of 3", openf(2, "$a")),
         ("read 3 after its close", "(call $read (i32.const 3) (i32.const 4))"),
@@ -215,6 +225,8 @@ def build() -> tuple[str, list[str], list[str]]:
         ("write 1 to w", f"(call $write (local.get $w) (i32.const {xy}) (i32.const 1))"),
         ("read 4 from r into the end of memory", "(call $edge (local.get $r))"),
         ("write 1 to w with the count at the end of memory", "(call $edgeCount (local.get $w))"),
+        ("read 4 from r with the iovec in the last 8 bytes of memory",
+         "(call $edgeIovec (local.get $r))"),
         ("read 4 from 0", "(call $read (i32.const 0) (i32.const 4))"),
         ("write 2 to 2", f"(call $write (i32.const 2) (i32.const {xy}) (i32.const 2))"),
         ("read 4 from 3, the preopened directory", "(call $read (i32.const 3) (i32.const 4))"),
@@ -228,9 +240,14 @@ def build() -> tuple[str, list[str], list[str]]:
         m.case("h", description, code)
 
     m.case("l", "opens of f without closes", "(call $limit)")
+    m.case("l", "close 1023 after the opens", "(call $close (i32.const 1023))")
     for k, what in enumerate(["an iovec count of 2", "an iovec beyond memory",
                               "a buffer beyond memory", "a count's pointer beyond memory",
-                              "a path beyond memory", "a result's pointer beyond memory"], 1):
+                              "a path beyond memory", "a result's pointer beyond memory",
+                              "an iovec 7 bytes before the memory's end",
+                              "a count's pointer 3 bytes before the memory's end",
+                              "an iovec count of 2 on a descriptor that the shim does not hold"],
+                             1):
         m.case(str(k), what, f"(call $trap (i32.const {k}))")
 
     functions = []
@@ -261,6 +278,8 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (func $h_read (param i32 i32 i32 i32) (result i32)))",
         '  (import "wasi_snapshot_preview1" "fd_write"',
         "    (func $h_write (param i32 i32 i32 i32) (result i32)))",
+        '  (import "wasi_snapshot_preview1" "fd_prestat_get"',
+        "    (func $fd_prestat_get (param i32 i32) (result i32)))",
         f'  (memory (export "memory") {MEMORY // 65536})',
         *m.data,
         "",
@@ -301,9 +320,9 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (local.set $e (call $h_read (local.get $fd) (i32.const 32) (i32.const 1)",
         "      (i32.const 40)))",
         "    (call $emit (local.get $e))",
-        "    (if (i32.eq (local.get $e) (i32.const 0)) (then",
-        "      (call $emit (i32.load (i32.const 40)))",
-        "      (call $emits (i32.const 64) (i32.const 8)))))",
+        "    (call $emits (i32.const 40) (i32.const 4))",
+        "    (if (i32.eq (local.get $e) (i32.const 0))",
+        "      (then (call $emits (i32.const 64) (i32.const 8)))))",
         "",
         "  ;; A write of the $n bytes at $p to $fd.",
         "  (func $write (param $fd i32) (param $p i32) (param $n i32)",
@@ -315,8 +334,17 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (local.set $e (call $h_write (local.get $fd) (i32.const 32) (i32.const 1)",
         "      (i32.const 40)))",
         "    (call $emit (local.get $e))",
+        "    (call $emits (i32.const 40) (i32.const 4)))",
+        "",
+        "  ;; fd_prestat_get of $fd with the record at 24.",
+        "  (func $prestat (param $fd i32)",
+        "    (local $e i32)",
+        "    (call $emit (i32.const 0xff))",
+        "    (i64.store (i32.const 24) (i64.const 0))",
+        "    (local.set $e (call $fd_prestat_get (local.get $fd) (i32.const 24)))",
+        "    (call $emit (local.get $e))",
         "    (if (i32.eq (local.get $e) (i32.const 0))",
-        "      (then (call $emit (i32.load (i32.const 40))))))",
+        "      (then (call $emits (i32.const 24) (i32.const 8)))))",
         "",
         "  ;; The close of $fd.",
         "  (func $close (param $fd i32)",
@@ -363,6 +391,18 @@ def build() -> tuple[str, list[str], list[str]]:
         f"      (i32.const {MEMORY - 4})))",
         f"    (call $emits (i32.const {MEMORY - 4}) (i32.const 4)))",
         "",
+        "  ;; A read of 4 bytes from $fd with the iovec in the last 8 bytes of memory.",
+        "  (func $edgeIovec (param $fd i32)",
+        "    (call $emit (i32.const 0xff))",
+        f"    (i32.store (i32.const {MEMORY - 8}) (i32.const 64))",
+        f"    (i32.store (i32.const {MEMORY - 4}) (i32.const 4))",
+        "    (i64.store (i32.const 64) (i64.const 0xcccccccccccccccc))",
+        "    (i32.store (i32.const 40) (i32.const 0xdddddddd))",
+        f"    (call $emit (call $h_read (local.get $fd) (i32.const {MEMORY - 8}) (i32.const 1)",
+        "      (i32.const 40)))",
+        "    (call $emits (i32.const 40) (i32.const 4))",
+        "    (call $emits (i32.const 64) (i32.const 8)))",
+        "",
         "  ;; Opens of f without closes until one fails, at most 1,100.",
         "  (func $limit (local $k i64)",
         "    (block $out (loop $more",
@@ -398,7 +438,16 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (if (i32.eq (local.get $which) (i32.const 6)) (then",
         f"      (call $emit (call $path_open (i32.const 3) (i32.const 1) (i32.const {f_at})",
         "        (i32.const 1) (i32.const 0) (i64.const 2) (i64.const 0) (i32.const 0)",
-        f"        (i32.const {MEMORY - 3}))))))",
+        f"        (i32.const {MEMORY - 3})))))",
+        "    (if (i32.eq (local.get $which) (i32.const 7)) (then",
+        f"      (call $emit (call $h_read (local.get $fd) (i32.const {MEMORY - 7}) (i32.const 1)",
+        "        (i32.const 40)))))",
+        "    (if (i32.eq (local.get $which) (i32.const 8)) (then",
+        "      (call $emit (call $h_read (local.get $fd) (i32.const 32) (i32.const 1)",
+        f"        (i32.const {MEMORY - 3})))))",
+        "    (if (i32.eq (local.get $which) (i32.const 9)) (then",
+        "      (call $emit (call $h_read (i32.const 99) (i32.const 32) (i32.const 2)",
+        "        (i32.const 40))))))",
         "",
         *functions,
         '  (func (export "_start") (local $s i32)',

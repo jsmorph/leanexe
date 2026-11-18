@@ -18,19 +18,23 @@
 # host's but for the cases that tests/linux/wasi/files-expected.txt lists with the specification's
 # reason, and the directories afterwards must agree.  The scenario of magic links runs with
 # /proc/self as descriptor 3 and as the host's directory, and the scenario of closes runs once
-# more with descriptor 3 closed and no directory in the host.
+# more with descriptor 3 closed and no directory in the host.  Under strace, the reads, writes,
+# closes, and openat2 calls of the scenarios of closes and handles must name only standard streams
+# and descriptors that the shim holds, which tests/linux/wasi/files-names.py checks.
 #
 # QEMU 8.2.2 answers openat2 with ENOSYS, so each run under qemu-aarch64 must equal the native run
 # with strace injecting ENOSYS into every openat2.  With 1,024 descriptors the opens without closes
-# end with errno 29 after 1,020 opens, and with 2,048 the 1,021st open returns descriptor 1,024,
-# which ends the run with the shim's trap, status 2.  Each request that the shim refuses with a
+# end with errno 29 after 1,020 opens, and the close of descriptor 1,023 then returns errno 0, and
+# with 2,048 the 1,021st open returns descriptor 1,024, which ends the run with the shim's trap,
+# status 2.  Each request that the shim refuses with a
 # trap ends the run with status 2 after the open that precedes it.  strace -X raw shows the open_how
 # record of every openat2 of the flag scenario, which must hold the flags of openFlagsWord, the mode
 # 0666 exactly for O_CREAT, and the resolution 0xa, and the raw arguments of each openat2 name
 # descriptor 3, the path buffer and the record in the shim's scratch, and the size 24.  strace's
 # fault injection makes openat2 return EAGAIN, after which the shim retries while fewer than four
 # calls were made, and descriptor 1,024 or 4,096, which ends the run with status 2, and makes close
-# fail with EIO, which gives errno 29, or return 5, which ends the run with status 2.  The products
+# fail with EIO, which gives errno 29, or return 5, which ends the run with status 2.  The result
+# -4,095 of openat2, close, read, or write gives errno 29.  The products
 # lie in OUT, build/linux/a64-wasi-files unless set.  With --runs DIR, the script builds and checks
 # nothing and runs the executables and modules that an earlier run left in DIR, on a host that needs
 # neither Lean nor wasm-tools.
@@ -57,7 +61,7 @@ elif [ $# -eq 0 ]; then
   tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Examples.WasiFiles \
     Verified.Examples.WasiFiles.command.module "$out/files.wasm"
   cp tests/linux/wasi/files-expected.txt tests/linux/wasi/files-compare.py \
-    tests/linux/wasi/files-flags.py "$out/"
+    tests/linux/wasi/files-flags.py tests/linux/wasi/files-names.py "$out/"
   if tools/leanrun --timeout 60m --memory-high "${CHECK_MEM:-20G}" lake env sh -c \
       'cd "$1" && lean "$2"' sh "$out" "$root/tests/TestSupport/A64/ImageFilesWasiFiles.lean" \
       >"$out/check.log" 2>&1 &&
@@ -173,8 +177,17 @@ want_status "scenario c without a preopened directory in the Wasmtime host" "$co
 uv run "$out/files-compare.py" "$out/cases.txt" "$out/files-expected.txt" c \
   "scenario c without descriptor 3 against the Wasmtime host" "$runs/n-c0.out" "$runs/w-c0.out" ||
   status=1
+# The descriptors that the calls name.
+for s in c h; do
+  fixture "$runs/s-$s"
+  code=0
+  limited strace -o "$runs/s-$s.log" -e trace=openat,openat2,close,read,write -e signal=none \
+    "$out/cases.elf" <"$runs/in-$s" >"$runs/s-$s.out" 3<"$runs/s-$s" || code=$?
+  want_status "scenario $s under strace" "$code" 0
+  uv run "$out/files-names.py" "scenario $s" "$runs/s-$s.log" || status=1
+done
 # Under QEMU against the native run with ENOSYS injected into every openat2.
-for s in p f c h 1 2 3 4 5 6; do
+for s in p f c h 1 2 3 4 5 6 7 8 9; do
   printf %s "$s" >"$runs/in-$s"
   fixture "$runs/q-$s"
   code=0
@@ -197,9 +210,9 @@ printf l >"$runs/in-l"
 code=0
 (ulimit -n 1024 && limited "$out/cases.elf" <"$runs/in-l" >"$runs/n-l.out" 3<"$runs/n-l") ||
   code=$?
-if [ "$code" -eq 0 ] && [ "$(stat -c %s "$runs/n-l.out")" -eq 2043 ] &&
-    [ "$(tail -c 1 "$runs/n-l.out" | od -An -tu1 | tr -d ' ')" = 29 ]; then
-  echo "pass: 1,024 descriptors: 1,020 opens and then errno 29"
+if [ "$code" -eq 0 ] && [ "$(stat -c %s "$runs/n-l.out")" -eq 2046 ] &&
+    [ "$(tail -c 4 "$runs/n-l.out" | od -An -tu1 | tr -s ' ')" = " 29 254 255 0" ]; then
+  echo "pass: 1,024 descriptors: 1,020 opens, errno 29, and the close of 1,023"
 else
   echo "fail: 1,024 descriptors: status $code, $(stat -c %s "$runs/n-l.out") bytes"
   status=1
@@ -215,7 +228,7 @@ else
 fi
 # The requests that the shim refuses with a trap.
 printf '\376\377\000\377' >"$runs/trap.want"
-for k in 1 2 3 4 5 6; do
+for k in 1 2 3 4 5 6 7 8 9; do
   fixture "$runs/n-$k"
   code=0
   limited "$out/cases.elf" <"$runs/in-$k" >"$runs/n-$k.out" 3<"$runs/n-$k" || code=$?
@@ -244,7 +257,8 @@ fi
 fault() {
   local name=$1 inject=$2 want=$3 calls=$4 code=0
   fixture "$runs/fault-$name"
-  limited strace -f -o "$runs/fault-$name.log" -e trace=openat2,close -e inject="$inject" \
+  limited strace -f -o "$runs/fault-$name.log" -e trace=openat2,close,read,write \
+    -e inject="$inject" \
     "$out/files.elf" </dev/null >"$runs/fault-$name.out" 3<"$runs/fault-$name" || code=$?
   local made
   made=$(grep -c 'openat2(' "$runs/fault-$name.log" || true)
@@ -262,4 +276,8 @@ fault d1024 openat2:retval=1024:when=1 2 1
 fault d4096 openat2:retval=4096:when=1 2 1
 fault eio close:error=EIO:when=2 29 ""
 fault five close:retval=5:when=2 2 ""
+fault max-openat2 openat2:error=4095:when=1 29 1
+fault max-close close:error=4095:when=2 29 ""
+fault max-read read:error=4095:when=1 29 ""
+fault max-write write:error=4095:when=1 29 ""
 exit "$status"
