@@ -606,9 +606,11 @@ def portCases : IO Unit := do
       {_root_.Demos.RandomChoice.parseSpec (b, i)}"
   for (n, w) in _root_.Demos.RandomChoice.pickSamples do
     IO.println s!"randomChoice|pick|i64|i64:{n} i64:{w}|{_root_.Demos.RandomChoice.pickSpec (n, w)}|0"
+  -- An empty buffer has no block, so the render of no values leaves only the argument's block.
   for values in _root_.Demos.RandomChoice.renderSamples do
     IO.println s!"randomChoice|render|bytes|{arrayArg values}|\
-      {HeapSums.hex (_root_.Demos.RandomChoice.renderSpec values)}|2"
+      {HeapSums.hex (_root_.Demos.RandomChoice.renderSpec values)}|\
+      {if values.isEmpty then 1 else 2}"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"
