@@ -15,7 +15,9 @@ digit `d` that would bring the value `v` to `10 v + d ≥ 2^64` counts as a bad 
 zero bytes does not wrap.
 
 `pick` accepts `w` when `n ≠ 0` and `w ≥ (0 - n) % n`, the word `2^64 mod n`, since
-`0 - n = 2^64 - n` in word arithmetic, and returns `w % n + 1`, at most `n`.
+`0 - n = 2^64 - n` in word arithmetic, and returns `w % n + 1`, at most `n`.  `choose`, a helper for
+the WASI command, pushes the nonzero picks of the little-endian words of a buffer, which the random
+histogram's `wordAt` reads, until it holds a given number of them.
 
 `render` computes the size of the text, `textSize`, builds an array of that many words, and folds
 `putLine` over the values, which writes the decimal digits of each value and a newline into the

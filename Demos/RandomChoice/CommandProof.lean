@@ -3,6 +3,12 @@ import Demos.RandomChoice.Proof
 import Demos.RandomChoice.Unbiased
 import Demos.RandomHistogram.CommandProof
 
+/-! Facts for the WASI command's theorem that depend on no call.  `choose_eq` states that `choose`
+keeps the picks of the accepted little-endian words of a buffer, in order, at most a given number
+of them.  `cap_count` states that at most a `2^-512` part of the sequences of the `512 · passes K`
+words of the cap's passes hold fewer than K accepted words, from `short_count`, since
+`512 · (K / 128 + 3) ≥ 4 K + 1024`. -/
+
 namespace Demos.RandomChoice
 
 open LeanExe LeanExe.Wasi
