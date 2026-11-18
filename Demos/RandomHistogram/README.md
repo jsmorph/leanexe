@@ -50,7 +50,7 @@ than the largest WASI errno, so it differs from 2 and from every errno that the 
 Otherwise the status is 0.  The loop's state holds the counts, which the compiled code updates in
 place, and the code releases each pass's buffer after `tally` reads it.  No theorem states that the
 heap of a run stays constant, since the resource model credits no release, and no run tests it
-beyond N of 1,000,000.  `verified_compile_wasi` writes a module of 7,809 bytes that imports
+beyond N of 1,000,000.  `verified_compile_wasi` writes a module of 5,977 bytes that imports
 `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words

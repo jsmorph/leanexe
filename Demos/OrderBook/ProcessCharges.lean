@@ -194,9 +194,9 @@ private partial def envValueAt (env : Lean.Expr) (i : Nat) : MetaM (Option Lean.
 open Lean Meta Simp in
 /-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
 `Env.cons`, a definitional step.  The effect bodies split the state's 13 fields at their entry,
-and each level of the environment holds the previous level twice, so the elaborator's conversion of a
-call's arguments to the state unfolds a tree exponential in the depth, while `simp` applies this
-step once to each shared subterm. -/
+and each level of the environment holds the previous level twice, so the elaborator's conversion
+of a call's arguments to the state unfolds a tree exponential in the depth, while `simp` applies
+this step once to each shared subterm. -/
 simproc ↓ envGetOfIndex (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let (``Env.get, #[_, _, env, x]) := e.getAppFnArgs | return .continue
   let (``Var.ofIndex, #[_, _, i, _]) := x.getAppFnArgs | return .continue

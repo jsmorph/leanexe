@@ -128,11 +128,11 @@ def withLoopState {α : Type} (context : Ctx) (nativeType : Lean.Expr) (shape : 
         env }
       next index state { context with pure := pureContext }
 
-/-- The reflection of `native` in `context` with each variable of `xs` that has a pair type and holds
-no sum of heap values bound to its components first by `Command.letPair`.  The components replace
-the variable in `native` and are split in turn, and `inner` reflects the action that remains.  The
-variable dies at the split, so the code moves an owned pair into its components, and every later
-use names a component. -/
+/-- The reflection of `native` in `context`, in which `Command.letPair` first binds the components
+of each variable of `xs` that has a pair type and is not a sum that holds heap values.  The
+components replace the variable in `native` and are split in turn, and `inner` reflects the action
+that remains.  The variable dies at the split, so the code moves an owned pair into its
+components, and every later use names a component. -/
 partial def splitThen (context : Ctx) (xs : List Lean.Expr) (native : Lean.Expr)
     (inner : Ctx → Lean.Expr → MetaM Reflection) : MetaM Reflection := do
   match xs with

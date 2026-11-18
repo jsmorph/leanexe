@@ -71,7 +71,8 @@ def letPairEnv (pair : Var sourceContext (.pair first second)) (env : Env source
   .cons (env.get pair).2 (.cons (env.get pair).1 env)
 
 /-- The charge of a `letPair` before its body: the copy of an owned pair that stays live. -/
-def letPairCost (modes : List Mode) (live : Nat → Bool) (pair : Var sourceContext (.pair first second))
+def letPairCost (modes : List Mode) (live : Nat → Bool)
+    (pair : Var sourceContext (.pair first second))
     (body : Command pureSigs effectSigs (second :: first :: sourceContext) result)
     (env : Env sourceContext) : Nat :=
   pair.cost modes (fun i => live i || body.uses (i + 2)) (env.get pair)

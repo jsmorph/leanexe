@@ -36,7 +36,8 @@ theorem Command.code_spec_with {calls : List LeanExe.Wasi.Call}
       exact command_loop_spec_with facts sourceHost stepSpec
   | sys operation form args inputs =>
     exact command_sys_spec_with facts sourceHost operation form args inputs
-  | letPair pair body bodySpec => exact command_letPair_spec_with facts sourceHost pair body bodySpec
+  | letPair pair body bodySpec =>
+    exact command_letPair_spec_with facts sourceHost pair body bodySpec
 
 theorem Command.code_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
