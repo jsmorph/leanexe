@@ -1,6 +1,6 @@
 # Verified Compiler Manual
 
-This manual describes the verified compiler's pure dialect, the `verified_compile` command and its generated theorems, allocation and depth bounds, the Wasmtime and WebGPU hosts, tests, examples, and the runner `tools/leanrun`.  [The WASI manual](wasi.md) describes the separate `verified_compile_wasi` command for native Lean actions with stdin, stdout, stderr, and exit.  [The README](../README.md) describes the repository and its artifacts.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
+This manual describes the verified compiler's pure dialect, the `verified_compile` command and its generated theorems, allocation and depth bounds, the Wasmtime and WebGPU hosts, programs that call WASI Preview 1 and their AArch64 Linux executables, tests, examples, and the runner `tools/leanrun`.  [The WASI manual](wasi.md) describes in detail the separate `verified_compile_wasi` command, which compiles Lean actions that read and write the standard streams, make the other calls of WASI Preview 1, open files under a preopened directory, and exit, and [the AArch64 document](a64-bare-metal.md#the-linux-target) describes the Linux executables that the AArch64 back end writes.  [The README](../README.md) describes the repository and its artifacts.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
 
 ## Compiler, theorems, and trusted base
 
@@ -27,7 +27,7 @@ theorems for both float widths, word division, tail recursion, and call chains.
 
 ### Trusted base
 
-[The trusted-base document](trusted-base.md#wasm-webassembly-modules-of-the-verified-compiler) lists the trusted components of every artifact, with the check and the source of each.  The trusted base is Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [the module emitter](../tools/Emit.lean) performs.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [the runtime facts](../Verified/RuntimeFacts.lean), which states that `top` plus a bound is at most the memory cap, the allocation bound of [the bound definitions](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The kernel checks the reflected equations, bound equations, and compiler proofs.
+[The trusted-base document](trusted-base.md#wasm-webassembly-modules-of-the-verified-compiler) lists the trusted components of every artifact, with the check and the source of each.  The trusted base is Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [the module emitter](../tools/Emit.lean) performs.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [the runtime facts](../Verified/RuntimeFacts.lean), which states that `top` plus a bound is at most the memory cap, the allocation bound of [the bound definitions](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The kernel checks the reflected equations, bound equations, and compiler proofs.  The theorems of a WASI program add the model of the WASI host that [the trusted-base document's WASI section](trusted-base.md#wasi-wasi-preview-1-modules) lists, and those of its AArch64 Linux executable add the model of the Linux process that [its A64L section](trusted-base.md#a64l-aarch64-linux-executables) lists.
 
 A statement's meaning comes from the definitions that it unfolds to.  In `LeanExe/Pipeline/` these are `Implements`, `ImplementsA`, and `Satisfies`, with `Separate`, `Apart`, and `Moved`; the class `Represent` and its instances, among them those of [the byte representation](../LeanExe/Pipeline/Bytes.lean) and [the flat records](../LeanExe/Pipeline/FlatRecords.lean); `Encode` and `EncodeWellFormed`; `Node` with `NodeOwned`, `NodeBorrowed`, and the record and slot predicates that they use, in [the `Implements` definitions](../LeanExe/Pipeline/Implements.lean); and the `Heap` predicates of [the runtime model](../LeanExe/Pipeline/Runtime.lean).  These definitions use definitions in other directories: `UInt64Array.At` in [the array lemmas](../LeanExe/ProofKit/Array.lean), which fixes the layout of every array; `FreeNode`, `freeHead`, `FreeNode.region`, and `FreeListAt` in [the free list](../LeanExe/Runtime/FreeList.lean); `regionsDisjoint` in [the model of release trees](../LeanExe/Runtime/Tree.lean); and `LeanExe.Bytes` in [the byte dialect](../LeanExe/Dialect/Bytes.lean).  A statement over a type with an `Encode` or `Flat` instance also uses that instance, which a reader finds beside the type unless the `Implements` definitions give it, as they give `Encode (List UInt64)` and `Flat Bool UInt64`, or [the `Int64` representation](../LeanExe/Pipeline/Int64.lean) gives it, as it gives `Flat Int64 UInt64`, which states that an `Int64` is the word `x.toUInt64`.  The namespace `LeanExe.Pipeline` does not mark trust: modules in other directories, such as [the release proof](../LeanExe/ProofKit/ReleaseTree.lean), declare names in it, and the files under `LeanExe/Pipeline/` also hold lemmas.  A lemma, in any directory, can only make a proof fail and never changes what a statement says.
 
@@ -47,7 +47,7 @@ under their buffer, count, and invocation bounds, and `Dispatch.executions` exte
 
 The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the pure reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.  [The WASI compiler](wasi.md#callable-and-command-modules) permits larger acyclic effectful helpers under its separate call-chain stack check.
 
-`p.initial` proves that the modeled initial store meets the allocator invariant and the cap and holds the tables.  With a nonempty literal pool, it also proves the pool's static contents and heap region.  A later call must establish separation from its consumed argument blocks.  The proofs do not cover real engine instantiation and host executables.  WASI compilation proves guest I/O sequencing under explicit host assumptions, as [the WASI proof premises](wasi.md#execution-proofs-and-their-premises) describe.  The floating-point theorems describe the WebAssembly deterministic profile.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
+`p.initial` proves that the modeled initial store meets the allocator invariant and the cap and holds the tables.  With a nonempty literal pool, it also proves the pool's static contents and heap region.  A later call must establish separation from its consumed argument blocks.  The proofs do not cover real engine instantiation or the host programs that run the modules, such as the Wasmtime host.  The WASI theorems state a program's ordered I/O in Talos's semantics under the host assumptions that [the WASI proof premises](wasi.md#execution-proofs-and-their-premises) describe, and the theorems of a WASI command's Linux executable state its run in a model of the Linux process, whose agreement with Linux no theorem states.  The floating-point theorems describe the WebAssembly deterministic profile.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
 
 ## The dialect
 
@@ -101,7 +101,7 @@ For a program without literals, [the empty-pool equality](../Verified/LiteralCod
 the module that `compileWith` produces: the table segments are its only data, its memory size and
 heap start depend only on the tables, and its functions use the empty pool.
 `tests/verified/run.sh --check-bytes DIRECTORY` compares the emitted modules with saved reference
-modules, such as those of an earlier build of the verified compiler.  [The WASI manual](wasi.md) describes these bytes in stream actions and the separate I/O compilation command.
+modules, such as those of an earlier build of the verified compiler.  [The WASI manual](wasi.md#packed-bytes) describes the same byte values in actions, where reads return them and writes and calls take them.
 
 ### Expressions
 
@@ -334,9 +334,72 @@ The command adds the program, the module, and every theorem in one step, and the
 
 ### `verified_compile_wasi`
 
-`import Verified.Wasi` provides a separate frontend for `LeanExe.Wasi.Action` definitions.  Its callable form is `verified_compile_wasi p := [pureHelper, actionHelper, action]`.  Adding `(main := main)` selects a closed `Action UInt64`, exports `_start`, and passes main's returned status to `proc_exit`.  The native API uses ordinary `do` notation, UInt64 lengths and counts, packed bytes, bounded loops, and acyclic effectful helpers.  Pure helpers use this manual's dialect and recursion rules.
+`import Verified.Wasi` provides a separate frontend for `LeanExe.Wasi.Action` definitions.  Its callable form, `verified_compile_wasi p := [pureHelper, actionHelper, action]`, exports each listed action.  Adding `(main := main)` selects a closed `Action UInt64`, exports `_start`, and passes main's returned status to `proc_exit`.  An action uses ordinary `do` notation, UInt64 lengths and counts, packed bytes, bounded loops, and acyclic effectful helpers, and its pure helpers use this manual's dialect and recursion rules.
 
-Generated callable `.implements` and command `.start` theorems concern the exported wrappers with their hidden depth and table arguments.  They relate each sufficiently fueled target execution to a native source execution with the same ordered effects, world, and result, or to a source prefix on a permitted guest resource trap.  Conditional `.total` theorems require free memory for allocation, `Resource.CallPrefixBound` for the typed program, and `host.NoTrapsAlong` the native action.  Host traps and rejected exits remain terminal outcomes of the general refinement theorem.  [The WASI manual](wasi.md) defines the generated declarations, ownership and scratch premises, modeled initial store, and host policies.
+Every module imports the stream functions `fd_read`, `fd_write`, and `proc_exit`, through which `readSome`, `readAll`, `writeStdoutSome`, `writeStderrSome`, and `exit` use the standard streams and end the process.  Every other function of `wasi_snapshot_preview1` but `sock_recv` and `sock_send` is a flat call, which [the call table](../LeanExe/Wasi/CallTable.lean) describes by its import name, the core form of each parameter, and the call that reports the sizes of its regions, and which `tools/wasi-calls.py` generates from the pinned witx.  `LeanExe.Wasi` gives each flat call a typed function, such as `clockTimeGet`, `randomGet`, `fdPrestatGet`, `fdRead`, `fdWrite`, and `pathUnlinkFile`, except `args_get` and `environ_get`, which `args` and `environ` make after their reporters, `path_open` and `fd_close`, which only `withOpen` makes, and `fd_renumber`, which no program makes.  A typed function takes words, byte strings, and handles and returns the errno with the call's results, the command reflects it to one `Command.sys` command, and the module imports, after the stream functions, the flat calls that the program makes, `p.sysCalls`, in the order of their first use.  [The WASI manual's section on flat calls](wasi.md#flat-preview-1-calls) lists the typed functions, their results, and the arguments that they reject before a call.
+
+A program reaches a descriptor only through a `Handle`: `Handle.preopened`, descriptor 3, the directory that the host preopens, or the handle that `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` binds.  `withOpen` calls `path_open` for `path` under `dir`, runs `body` on the new handle, and closes it with `fd_close` when the body returns, and its result pairs the body's result with the close's errno, or the result of `onError` with 0 when the open fails.  The handle check `Command.HandleCheck`, which the command decides in the kernel for each program as `p.handlesChecked`, refuses a `path_open` or an `fd_close` outside `withOpen` and a descriptor argument other than a bracket's handle and `Handle.preopened`.  From it the command proves `p.handles`, or `p.f.handles` for each export of a callable program, which states that every run keeps each use of a handle between its open and its close, as [the WASI manual's section on handles](wasi.md#handles) describes.
+
+`main` of [the files command](../Verified/Examples/WasiFiles.lean) writes the file `f` under the preopened directory in one bracket, reads it back in another, and writes the bytes that it read and the directory's name to the standard output:
+
+```lean
+import Verified.Wasi
+
+namespace Verified.Examples.WasiFiles
+
+open LeanExe LeanExe.Wasi
+
+def main : Action UInt64 := do
+  let written ← withOpen .preopened 0 bytes![102] 9 64 0 0
+    (fun errno => pure errno) fun file => do
+      let sent ← fdWrite file bytes![104, 105]
+      pure sent.errno
+  if written.1 != 0 then
+    pure written.1
+  else if written.2 != 0 then
+    pure written.2
+  else
+    let read ← withOpen .preopened 0 bytes![102] 0 2 0 0
+      (fun errno => pure errno) fun file => do
+        let got ← fdRead file 16
+        if got.errno != 0 then
+          pure got.errno
+        else
+          let _ ← writeStdoutSome got.bytes
+          pure 0
+    if read.1 != 0 then
+      pure read.1
+    else if read.2 != 0 then
+      pure read.2
+    else
+      let prestat ← fdPrestatGet .preopened
+      if prestat.errno != 0 then
+        pure prestat.errno
+      else
+        let name ← fdPrestatDirName .preopened prestat.prNameLen
+        if name.errno != 0 then
+          pure name.errno
+        else
+          let _ ← writeStdoutSome name.bytes
+          pure 0
+
+verified_compile_wasi command (main := main) := [main]
+
+end Verified.Examples.WasiFiles
+```
+
+The first bracket opens `f`, whose name is the byte 102, with the open flags `creat` and `trunc`, 9, and the right `fd_write`, 64, and the second opens it with the right `fd_read`, 2.  The first component of each bracket's result is the errno of its body or of `onError`, and the second is the errno of its close.  These commands build the command, write its module, and run it in [the Wasmtime host](#the-wasmtime-host) with an empty directory preopened, where it writes `hi.` and exits with status 0:
+
+```sh
+tools/leanrun --timeout 30m lake build Verified.Examples.WasiFiles
+mkdir -p build/wasi/dir
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean \
+  Verified.Examples.WasiFiles Verified.Examples.WasiFiles.command.module build/wasi/files.wasm
+wasm-tools validate build/wasi/files.wasm
+build/tools/leanexe-wasmtime-host --dir build/wasi/dir run build/wasi/files.wasm
+```
+
+The generated callable `.implements` and command `.start` theorems concern the exported wrappers with their hidden depth and table arguments.  For every host environment that satisfies `hostSpec host`, or `hostSpecWith host p.sysCalls` for a program with flat calls, they relate each sufficiently fueled target execution to a native source execution with the same ordered effects, world, and result, or to a source prefix on a permitted guest resource trap.  Host traps and rejected exits remain terminal outcomes of these theorems.  The conditional `.total` theorems require free memory for allocation, `Resource.CallPrefixBound` for the typed program, and `host.NoTrapsAlong` the native action.  [The WASI manual](wasi.md) defines the generated declarations, the ownership and scratch premises, the modeled initial store, and the host policies, and [WASI programs and their executables](#wasi-programs-and-their-executables) lists the theorems with their premises.
 
 ### Generated declarations
 
@@ -561,7 +624,7 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 
 A host releases an object it owns by calling the export `release` with the pointer.  `release` traps when the header lacks the magic number or the count is not 1, so a second release of one pointer traps.  The host also has test commands for the allocator (`release-reuse`, `free-alias`, `temp-byte-call`, `temp-array-call`, `noarg-temp-reuse`, and `allocator-grows`), which [`tools/wasmtime-host.c`](../tools/wasmtime-host.c) documents.
 
-Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run MODULE.wasm` enables WASI and calls `_start`.  `--stdin-file`, `--stdout-file`, and `--stderr-file` give the guest's streams, which the guest otherwise inherits from the host.  `--control-file` receives the host's own output, the control records, which otherwise go to the host's stdout.  [The WASI manual](wasi.md#wasmtime-host) states which combinations each mode requires.  In WASI mode, the control output of a failed run ends with `wasi-exit N`, `trap`, or `error`, and in `run` mode the host writes records only to a control file.  Without `--wasi`, the host writes no outcome records, and its status and stderr report a failure.
+Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run MODULE.wasm` enables WASI and calls `_start`.  `--stdin-file`, `--stdout-file`, and `--stderr-file` give the guest's streams, which the guest otherwise inherits from the host.  `--arg VALUE` appends `VALUE` to the guest's arguments, the first of which takes the place of a program's name, `--env NAME=VALUE` adds a variable to the guest's environment, and `--dir PATH`, given at most once, preopens the directory `PATH` as descriptor 3 under the name `.` with the rights to read and write its directories and files.  `--control-file` receives the host's own output, the control records, which otherwise go to the host's stdout.  [The WASI manual](wasi.md#wasmtime-host) states which combinations each mode requires.  In WASI mode, the control output of a failed run ends with `wasi-exit N`, `trap`, or `error`, and in `run` mode the host writes records only to a control file.  Without `--wasi`, the host writes no outcome records, and its status and stderr report a failure.
 
 | Record | Meaning | Host status |
 |---|---|---|
@@ -571,6 +634,22 @@ Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run
 | `wasi-exit N` | Call of `proc_exit` by the guest with a status `N` that Wasmtime accepts. | `N` modulo 256 |
 | `trap` | Trap in the export that the mode or a script `call` command calls. | 2 |
 | `error` | Any other failure after the control output opens: a Wasmtime error, a rejected exit status, a trap in `alloc`, `reset`, or module initialization, a malformed result, or a host failure. | 1 |
+
+### Linux executables of WASI commands
+
+The AArch64 back end writes a WASI command as a static Linux executable for AArch64, which runs without a WebAssembly engine.  `genWasiElf` of [`LeanExe/A64/Wasi.lean`](../LeanExe/A64/Wasi.lean) compiles the module's functions to A64 code and implements each import with a stub that makes Linux system calls through `SVC #0`, as the shim's specification `linuxEnv` of [`Verified/Shim/Satisfies.lean`](../Verified/Shim/Satisfies.lean) states the import's function.  The generator accepts a command whose flat calls lie in `shimCalls`, the calls that `clockTimeGet`, `randomGet`, `argsSizesGet`, `args`, `environSizesGet`, `environ`, `withOpen`, `fdRead`, `fdWrite`, `fdPrestatGet`, and `fdPrestatDirName` make, and it rejects any other import with the message `an import NAME with no stub`.  Its functions may have frames of 4,096 bytes or more, which the bare-metal programs exclude, as [the AArch64 document's section on WASI commands](a64-bare-metal.md#wasi-commands) describes with the executable's layout and stubs.
+
+The executable `a64-wasi` of the Lake package writes the files.  `a64-wasi wasm IN OUT` writes to `OUT` the executable of the module file `IN`, with `_start` at the module's export of that name, a linear memory of 4,096 pages, and a stack of 65,536 bytes, and `a64-wasi module IN OUT CAP` writes it with a linear memory of `CAP` pages and prints the address of the module's area.  `a64-wasi emit DIR` writes the executables of the tests, as [its source](../tests/TestSupport/A64/WasiElfMain.lean) describes.  After the commands of [`verified_compile_wasi`](#verified_compile_wasi), these commands write the files command's executable and run it on an AArch64 Linux host with the directory as descriptor 3:
+
+```sh
+tools/leanrun --timeout 60m lake build a64-wasi
+tools/leanrun --timeout 30m lake env .lake/build/bin/a64-wasi wasm build/wasi/files.wasm \
+  build/wasi/files.elf
+chmod +x build/wasi/files.elf
+build/wasi/files.elf 3<build/wasi/dir
+```
+
+The command's arguments and environment are those that Linux places on the process's initial stack, so `args_get` returns the program's path first.  When the module imports `path_open`, `fd_close`, `fd_read` or `fd_write` on a handle, `fd_prestat_get`, or `fd_prestat_dir_name`, the executable checks descriptor 3 with `openat` before `_start`: a directory there becomes the preopened directory, a closed descriptor 3 or one that is not a directory leaves the process without one, and every other result, such as descriptor 0, which Linux returns when the standard input is closed, ends the run with status 67.  The process exits with the status that the command passes to `proc_exit`, with 1 for a status of 126 or more, which the shim rejects as Wasmtime 44 does, and with 2 after a trap of the guest or of the shim.  The shim follows the Wasmtime host in its errnos and in the order of its checks, and [the table of the shim's differences](wasi.md#the-linux-shims-specification) lists the replies in which it differs, such as errno 31 (`isdir`) for a read of a directory, where Wasmtime answers 8 (`badf`).  Under `qemu-aarch64` 8.2.2, QEMU's user-mode emulator, which the tests also use, each `path_open` gives errno 29 (`io`), since QEMU answers `openat2` with `ENOSYS`.
 
 ## Proving
 
