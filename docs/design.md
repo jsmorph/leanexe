@@ -29,13 +29,7 @@ The `Verified` library is the verified compiler, written as a Lean function over
 | Tables | Data segments from the heap base, read as borrowed parameters, with wrappers that pass their addresses and `compileWith_initialStore` for the initial store. |
 | Composition | Typed program reuse and call relocation transfer source meanings across modules.  Generated scalar store-preservation proofs support calls from other compiled programs.  [The composition API](../Verified/README.md#module-composition) describes the rules and examples. |
 
-`verified_compile_wasi` adds effectful compilation for `LeanExe.Wasi.Action`, with stdin reads,
-stdout and stderr writes, bounded loops, and exit.  It reflects actions into typed effectful code
-and compiles them to core WebAssembly using `fd_read`, `fd_write`, and `proc_exit` from WASI
-Preview 1.  Exported-entry proofs relate target execution to native actions, including returned
-values, terminal outcomes, committed effects, and a joint ordered trace.  [The WASI manual](wasi.md)
-states the API, host assumptions, and conditional total-execution premises.  [The WASI design](verified-wasi-design.md)
-records the architecture and reviewed decisions.
+`verified_compile_wasi` adds effectful compilation for `LeanExe.Wasi.Action`, with stdin reads, stdout and stderr writes, bounded loops, exit, and the other functions of WASI Preview 1, among them clocks, random bytes, arguments, the environment, and files that `withOpen` opens.  It reflects actions into typed effectful code and compiles them to core WebAssembly that imports `fd_read`, `fd_write`, and `proc_exit` and then the calls that the program uses.  Exported-entry proofs relate target execution to native actions, including returned values, terminal outcomes, committed effects, and a joint ordered trace.  [The WASI manual](wasi.md) states the API, host assumptions, and conditional total-execution premises.  [The WASI design](verified-wasi-design.md) records the architecture and reviewed decisions.
 
 `LeanExe/Linux/` describes Linux's calls independently of the architecture: `tools/linux-calls.py` generates the table of described calls from syzkaller's description of Linux, and the rule `step` states the frame of each call over memory, with the kernel's replies as a parameter.  [The shim's specification](wasi.md#the-linux-shims-specification), in `Verified/Shim/`, implements the stream imports and the flat calls of Preview 1 with requests of that layer and no instruction set, and `shim_footprint` composes it with the WASI compiler's theorem.  The AArch64 back end writes a WASI command as a static Linux executable whose imports are stubs of the shim, and `Verified/ShimA64/` proves the stubs and states the run of each executable to `exit_group` for every sequence of the kernel's replies, as [the AArch64 document's section on WASI commands](a64-bare-metal.md#wasi-commands) describes.
 
