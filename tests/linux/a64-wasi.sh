@@ -75,7 +75,8 @@
 # histogram.elf from it with a64-wasi wasm, and Lean elaborates
 # tests/TestSupport/A64/ImageFilesRandomHistogram.lean beside them, so that the kernel checks that
 # histogram.elf holds the bytes that genWasiElf gives for the command's module and proves the
-# executable's theorems.  tests/random-histogram/run.sh writes the executable from the same module
+# executable's theorems, among them a process and replies for which the premises of the
+# executable's corollary hold.  tests/random-histogram/run.sh writes the executable from the same module
 # with the same commands and runs it.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
@@ -139,7 +140,7 @@ kernel_check ImageFilesWasiElf 7
 kernel_check ImageFilesWasiEnviron 6
 kernel_check ImageFilesWasiClockElf 6
 kernel_check ImageFilesWasiSys 6
-kernel_check ImageFilesRandomHistogram 7
+kernel_check ImageFilesRandomHistogram 9
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"
