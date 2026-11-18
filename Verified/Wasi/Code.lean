@@ -7,6 +7,14 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi
 
+/-- The releases after the stores of a pair's components, as `Expr.letPair` makes them: the first
+component, at `base`, and then the second, after it, each when the pair is owned and the body does
+not use the component. -/
+def letPairReleaseCode (first second : Ty) (mode : Mode) (base : Nat) (firstUsed secondUsed : Bool) :
+    Program :=
+  (if mode = .owned ∧ firstUsed = false then releaseCode first base else []) ++
+    (if mode = .owned ∧ secondUsed = false then releaseCode second (base + first.width) else [])
+
 /-- Command code uses final module indices.  Pure fragments, copies, and releases undergo the
 relocation past the module's imports once.  Normal returns leave owned result words on the stack.  Local
 zero holds the incoming depth, and `live` identifies context values retained afterward. -/
@@ -97,6 +105,15 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
         (inputs.map fun input => (slots.getD input.index default).loc) base ++
       Relocation.programWith calls (releaseWhere context slots
         (fun i => (inputs.any fun input => i == input.index) && !live i))
+  | _, _, .letPair (first := first) (second := second) pair body =>
+    let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
+    Relocation.programWith calls ((Expr.var (S := pureSigs) pair).code (pool := pool) h slots
+        (base + first.width + second.width) (fun i => live i || body.uses (i + 2))) ++
+      storeCode h (base + first.width) second.types ++ storeCode h base first.types ++
+      Relocation.programWith calls (letPairReleaseCode first second mode base (body.uses 1)
+        (body.uses 0)) ++
+      body.codeWith calls (pool := pool) source h (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots)
+        (base + first.width + second.width) (shift 2 live)
 
 /-- Command code of a module without imported calls. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)

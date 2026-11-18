@@ -2,9 +2,10 @@ import Verified.Wasi
 
 /-! Kernel tests of the handle check and the axiom audit of its theorems.  The kernel decides the
 check of hand-written commands: it refuses `fd_close` and `path_open` outside a bracket, a `.handle`
-argument bound to a word other than 3 or to a pair's component under its `letPair`, and a helper
-call whose argument for a marked parameter is not a marked variable, and it accepts a `.handle`
-argument bound to 3, alone or under one or two `letPair`s, a helper call with a marked variable, and
+argument bound to a word other than 3 or to a pair's component under its `letPair`, a pair's
+component that `Command.letPair` binds, and a helper call whose argument for a marked parameter is
+not a marked variable, and it accepts a `.handle` argument bound to 3, alone, under one or two
+`letPair`s, or in the body of a `Command.letPair`, a helper call with a marked variable, and
 a bracket nested in the body of another, whose inner open takes the outer handle.  It accepts an
 `fd_read` and a `poll_oneoff` whose handle argument, the descriptor of the iovec call and the handle
 field of the read subscription, is a marked variable, and refuses both with an unmarked one.  It
@@ -111,6 +112,19 @@ example : (Command.bind (Command.ret (Expr.letPair (.var .here) (Expr.word 5))) 
 example : (Command.bind (Command.ret (Expr.letPair (.var .here) (.var (.there .here))))
     (sync .here) : Command [] [] [.pair .word .bytes] (.value .word)).handleCheck [] .plain
       [false] = false := by
+  decide +kernel
+
+/-- A `.handle` argument bound to the word 3 in the body of a `Command.letPair`, which binds the
+pair's components unmarked. -/
+example : (Command.letPair .here (Command.bind (Command.ret (Expr.word 3)) (sync .here)) :
+    Command [] [] [.pair .word .bytes] (.value .word)).handleCheck [] .plain [false] = true := by
+  decide +kernel
+
+/-- A `.handle` argument that is the first component of a pair, which `Command.letPair` binds
+unmarked. -/
+example : (Command.letPair .here (sync (.there .here)) :
+    Command [] [] [.pair .word .word] (.value .word)).handleCheck [] .plain [false] =
+      false := by
   decide +kernel
 
 /-- `fd_read` of the marked directory. -/
@@ -336,8 +350,8 @@ verified_compile_wasi bytesCommand (main := bytesMain) := [bytesMain]
 
 open LeanExe in
 /-- A program that opens a file under the preopened directory after `args`, whose `ArgsResult`
-stays in scope.  The reflector binds the directory to the literal 3 under three `letPair`s, one
-for the result and one for each component that is itself a pair. -/
+stays in scope.  The reflector splits the `ArgsResult` into its components where `args` binds it,
+and binds the directory to the literal 3, whose operand names no variable, without `letPair`s. -/
 def argsMain : Action UInt64 := do
   let arguments ← args
   let read ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0

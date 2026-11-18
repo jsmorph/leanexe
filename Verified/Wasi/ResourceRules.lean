@@ -103,6 +103,11 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
           final →
         sysCostWith form operation (args.map env.get) (inputs.map env.get) trace ≤ budget) →
       conclusion
+  | .letPair pair body =>
+      ∀ bodyBudget, letPairCost modes live pair body env + bodyBudget ≤ budget →
+        Bounded host pure program depth (letPairModes pair modes) (shift 2 live) body
+          (letPairEnv pair env) bodyBudget →
+        conclusion
 
 theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -150,6 +155,10 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
     obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ _ execution
     exact ⟨by omega, by simp only [initFits, valid, Bool.true_and]⟩
   | sys execution => exact fun bound _ => ⟨bound _ _ _ _ execution, rfl⟩
+  | letPair execution =>
+    intro bodyBudget total bounded
+    obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ _ execution
+    exact ⟨by omega, valid⟩
 
 theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -205,6 +214,10 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
     intro loopBudget total initFits _
     exact ⟨by omega, initFits⟩
   | sys progress => exact fun _ bound => ⟨bound _ _ _ _ progress, rfl⟩
+  | letPair progress =>
+    intro bodyBudget total bounded
+    obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
+    exact ⟨by omega, valid⟩
 
 theorem bounded_of_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -225,6 +238,74 @@ theorem Bounded.mono {World : Type} {host : Host World} {pure : PureContext pure
     fun _ _ _ _ _ _ progress => by
       obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
       exact ⟨by omega, valid⟩⟩
+
+/-- A `letPair` is bounded by its charge before the body and a bound on its body. -/
+theorem Bounded.letPair {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {bodyBudget budget : Nat} (cost : letPairCost modes live pair body env + bodyBudget ≤ budget)
+    (bounded : Bounded host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) bodyBudget) :
+    Bounded host pure program depth modes live (.letPair pair body) env budget :=
+  bounded_of_rule fun _ _ rule => rule bodyBudget cost bounded
+
+/-- A `letPair` that charges nothing before its body, one of a borrowed pair or of a pair that dies
+there, is bounded by a bound on its body. -/
+theorem Bounded.letPair_free {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {budget : Nat} (free : letPairCost modes live pair body env = 0)
+    (bounded : Bounded host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) budget) :
+    Bounded host pure program depth modes live (.letPair pair body) env budget :=
+  Bounded.letPair (by omega) bounded
+
+/-- Reduces `Bounded` of each `letPair` at the head of a command to `Bounded` of its body, for a
+pair that is borrowed or that dies at the `letPair`, whose charge `decide` evaluates to 0. -/
+macro "letPair_free" : tactic => `(tactic|
+  repeat (refine Verified.Wasi.Resource.Bounded.letPair_free (by
+    first
+      | exact Verified.Wasi.Resource.letPairCost_borrowed (by decide)
+      | exact Verified.Wasi.Resource.letPairCost_dead (by decide)) ?_))
+
+/-- What a run of a `letPair` that returns a value gives: a run of its body that returns it. -/
+private def LetPairReturn {World : Type} (host : Host World) (pure : PureContext pureSigs)
+    (program : EffectProg pureSigs effectSigs) (depth : UInt64) (modes : List Mode)
+    (live : Nat → Bool) : {context : List Ty} → {result : ResultTy} →
+      Command pureSigs effectSigs context result → Env context → Outcome result.denote → Prop
+  | _, _, .letPair pair body, env, .returned value =>
+    Returns host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) value
+  | _, _, _, _, _ => True
+
+private theorem letPairReturn {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth modes live context result}
+    {command : Command pureSigs effectSigs context result} {env : Env context}
+    {world trace outcome final spent fits}
+    (run : ResourceExec host pure program depth modes live command env world trace outcome final
+      spent fits) :
+    LetPairReturn host pure program depth modes live command env outcome := by
+  cases run with
+  | letPair execution =>
+    cases outcome with
+    | returned value => exact ⟨_, _, _, _, _, execution⟩
+    | exited => trivial
+    | trapped => trivial
+  | _ => trivial
+
+/-- A run of a `letPair` that returns a value is a run of its body that returns it. -/
+theorem Returns.letPair {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {value : result.denote}
+    (returns : Returns host pure program depth modes live (.letPair pair body) env value) :
+    Returns host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) value := by
+  obtain ⟨_, _, _, _, _, run⟩ := returns
+  exact letPairReturn run
 
 theorem word_readCost (pure : PureContext pureSigs) (depth : UInt64) (modes : List Mode)
     (live : Nat → Bool) (capacity : UInt64) (env : Env context) :

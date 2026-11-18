@@ -32,6 +32,11 @@ def Command.demands : {context : List Ty} → {result : ResultTy} →
     count.demands (fun i => all i || initial.uses i) false index ||
       initial.demands all true index
   | _, _, .sys _ _ _ _, _, _ => false
+  | _, _, .letPair pair body, live, index =>
+    let inner := shift 2 live
+    (Expr.var (S := pureSigs) pair).demands (fun i => live i || body.uses (i + 2))
+        (body.demands inner 0 || body.demands inner 1) index ||
+      body.demands inner (index + 2)
 
 def Command.paramChoice {params : List Ty} {result : ResultTy}
     (body : Command pureSigs effectSigs params result) : List Mode :=

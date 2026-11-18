@@ -114,6 +114,11 @@ def RuleAt {World : Type} (host : Host World) (pure : PureContext pureSigs)
         LoopBoundedAt host pure program depth modes live test step env
           (count.denote pure.funs env).toNat 0 (initial.denote pure.funs env) world loopBudget →
         conclusion
+  | .letPair pair body =>
+      ∀ bodyBudget, letPairCost modes live pair body env + bodyBudget ≤ budget →
+        BoundedAt host pure program depth (letPairModes pair modes) (shift 2 live) body
+          (letPairEnv pair env) world bodyBudget →
+        conclusion
   | command => Rule host pure program depth modes live command env spent fits budget
 
 theorem exec_rule_at {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -163,6 +168,10 @@ theorem exec_rule_at {World : Type} {host : Host World} {pure : PureContext pure
   | write => exact rule
   | exit => exact rule
   | sys => exact rule
+  | letPair execution =>
+    intro bodyBudget total bounded
+    obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ execution
+    exact ⟨by omega, valid⟩
 
 theorem prefix_rule_at {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -222,6 +231,10 @@ theorem prefix_rule_at {World : Type} {host : Host World} {pure : PureContext pu
   | readAll => exact rule
   | exit_charge => exact rule
   | sys => exact rule
+  | letPair progress =>
+    intro bodyBudget total bounded
+    obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ progress
+    exact ⟨by omega, valid⟩
 
 theorem boundedAt_of_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth modes live context result}
@@ -233,6 +246,39 @@ theorem boundedAt_of_rule {World : Type} {host : Host World} {pure : PureContext
     BoundedAt host pure program depth modes live command env world budget :=
   ⟨fun _ _ _ _ _ execution => applyRule _ _ (exec_rule_at budget execution),
     fun _ _ _ _ _ progress => applyRule _ _ (prefix_rule_at budget progress)⟩
+
+/-- A `letPair` is bounded from a world by its charge before the body and a bound on its body
+from that world. -/
+theorem BoundedAt.letPair {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {world : World} {bodyBudget budget : Nat}
+    (cost : letPairCost modes live pair body env + bodyBudget ≤ budget)
+    (bounded : BoundedAt host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) world bodyBudget) :
+    BoundedAt host pure program depth modes live (.letPair pair body) env world budget :=
+  boundedAt_of_rule fun _ _ rule => rule bodyBudget cost bounded
+
+/-- A `letPair` that charges nothing before its body is bounded from a world by a bound on its
+body from that world. -/
+theorem BoundedAt.letPair_free {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {world : World} {budget : Nat} (free : letPairCost modes live pair body env = 0)
+    (bounded : BoundedAt host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) world budget) :
+    BoundedAt host pure program depth modes live (.letPair pair body) env world budget :=
+  BoundedAt.letPair (by omega) bounded
+
+/-- Reduces `BoundedAt` of each `letPair` at the head of a command to `BoundedAt` of its body, for a
+pair that is borrowed or that dies at the `letPair`, whose charge `decide` evaluates to 0. -/
+macro "letPairAt_free" : tactic => `(tactic|
+  repeat (refine Verified.Wasi.Resource.BoundedAt.letPair_free (by
+    first
+      | exact Verified.Wasi.Resource.letPairCost_borrowed (by decide)
+      | exact Verified.Wasi.Resource.letPairCost_dead (by decide)) ?_))
 
 /-- The facts about a call's parts from which every run and every prefix of it from `world` uses at
 most `budget` and has enough frames: for the first function, a frame at the call's depth and a

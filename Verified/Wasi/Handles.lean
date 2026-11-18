@@ -677,6 +677,11 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
         · refine Action.Handles.sys_other member close renumber notOpen
             (by simp [handleArgs_nil]) fun got => ?_
           split <;> rfl
+  | letPair pair body ih =>
+    intro stage marks h
+    cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
+    intro env stack hEnv
+    exact ih .plain _ h _ stack hEnv.cons_false.cons_false
 
 theorem Command.handles_plain (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     {helpers : List (List Bool)} (safe : effectFuns.HandlesSafe helpers) {marks : List Bool}

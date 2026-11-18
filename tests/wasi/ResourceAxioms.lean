@@ -6,6 +6,8 @@ import Verified.Wasi.CostBindUnit
 import Verified.Wasi.CostBindValue
 import Verified.Wasi.CostTotal
 import LeanExe.Wasi.NoTrapPrefix
+import Verified.Wasi.CommandLetPair
+import Verified.Wasi.ResourceRulesAt
 
 open Lean Elab Command in
 elab "check_wasi_resource_axioms" : command => do
@@ -82,6 +84,10 @@ elab "check_wasi_resource_axioms" : command => do
     ``Verified.Wasi.cost_command_exit_spec,
     ``Verified.Wasi.cost_command_bind_unit_spec,
     ``Verified.Wasi.cost_command_bind_value_spec,
+    ``Verified.Wasi.cost_command_letPair_spec_with,
+    ``Verified.Wasi.Resource.Bounded.letPair,
+    ``Verified.Wasi.Resource.BoundedAt.letPair,
+    ``Verified.Wasi.Resource.Returns.letPair,
     ``Verified.Wasi.CostFunctionResult.return_or_accepted_exit,
     ``Verified.Wasi.CostEffectSpec.return_or_accepted_exit,
     ``LeanExe.Wasi.Exec.not_trapped,

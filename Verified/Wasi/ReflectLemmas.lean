@@ -245,6 +245,30 @@ theorem loop_rel (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
   · intro native flat same
     exact .pure same
 
+/-- A relation of a body at the components of a pair gives one of `letPair` of the pair's variable,
+whose meaning is the body's at the components of the variable's value. -/
+theorem letPair_rel {α β γ : Type} {first second : Ty} (pureFuns : Funs pureSigs)
+    (effectFuns : EffectFuns effectSigs) (env : Env context)
+    (pair : Var context (.pair first second))
+    (body : Command pureSigs effectSigs (second :: first :: context) result)
+    (φa : α → first.denote) (φb : β → second.denote) (P : α × β)
+    (relation : γ → result.denote → Prop) (native : α → β → Action γ)
+    (hPair : env.get pair = (φa P.1, φb P.2))
+    (hBody : ∀ a b, Action.Rel relation (native a b)
+      (body.denote pureFuns effectFuns (.cons (φb b) (.cons (φa a) env)))) :
+    Action.Rel relation (native P.1 P.2)
+      ((Command.letPair pair body).denote pureFuns effectFuns env) := by
+  change Action.Rel relation (native P.1 P.2)
+    (body.denote pureFuns effectFuns (.cons (env.get pair).2 (.cons (env.get pair).1 env)))
+  rw [hPair]
+  exact hBody P.1 P.2
+
+/-- A relation of an action holds of an equal action. -/
+theorem rel_eta {α β : Type} {relation : α → β → Prop} {left right : Action α}
+    {target : Action β} (related : Action.Rel relation left target) (same : left = right) :
+    Action.Rel relation right target :=
+  same ▸ related
+
 theorem call_rel (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (callee : EffectVar effectSigs signature)
     (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i))

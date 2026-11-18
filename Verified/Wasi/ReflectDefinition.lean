@@ -42,7 +42,7 @@ def reflectDefinition (base name : Name) (context : Ctx) (tables : List StaticTa
       env }
     withStaticTables pureContext tables fun bindings tableContext => do
       let bodyContext := { context with pure := tableContext, tables := bindings }
-      let reflected ← reflect bodyContext body
+      let reflected ← splitThen bodyContext params.toList body reflect
       let source ← instantiateMVars reflected.src
       if source.hasExprMVar || source.hasLevelMVar || source.hasFVar then
         throwError "verified_compile_wasi: {name}'s source body remains open"

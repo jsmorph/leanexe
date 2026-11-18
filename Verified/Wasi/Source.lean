@@ -75,6 +75,9 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
   | sys (call : Call) (form : SysForm) (args : List (Var context .word))
       (inputs : List (Var context .bytes)) :
       Command pureSigs effectSigs context (.value form.ty)
+  | letPair (pair : Var context (.pair first second))
+      (body : Command pureSigs effectSigs (second :: first :: context) result) :
+      Command pureSigs effectSigs context result
 
 def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs) :
     {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
@@ -107,6 +110,8 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
         (fun index state => step.denote pureFuns effectFuns (.cons state (.cons index env)))
   | _, _, .sys operation form args inputs, env =>
       form.runWith operation (args.map env.get) (inputs.map env.get)
+  | _, _, .letPair pair body, env =>
+      body.denote pureFuns effectFuns (.cons (env.get pair).2 (.cons (env.get pair).1 env))
 
 structure EffectFunc (pureSigs : List Sig) (effectSigs : List EffectSig) where
   name : String
