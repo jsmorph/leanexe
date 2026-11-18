@@ -49,9 +49,10 @@ def countWord (counts : Array UInt64) (w : UInt64) : Array UInt64 :=
 def histogram (ws : Array UInt64) : Array UInt64 :=
   ws.foldl (fun counts w => countWord counts w) (LeanExe.build 10 fun _ => 0)
 
-/-- The little-endian word of the eight bytes of `bytes` from position `p`. -/
+/-- The little-endian word of the eight bytes of `bytes` from position `p`, by Horner's rule from
+the most significant byte, `p + 7`. -/
 def wordAt (bytes : Bytes) (p : UInt64) : UInt64 :=
-  LeanExe.loop 8 0 fun t w => w + (bytes.get (p + t) <<< (8 * t))
+  LeanExe.loop 8 0 fun t w => 256 * w + bytes.get (p + 7 - t)
 
 /-- `counts` with the residues of the little-endian words of `bytes` counted. -/
 def tally (counts : Array UInt64) (bytes : Bytes) : Array UInt64 :=

@@ -39,7 +39,7 @@ theorem loop_bytes {α : Type} (bytes : Bytes) (h : bytes.data.size < 2 ^ 64) (i
       have hk64 : k < 2 ^ 64 := by omega
       have hget : bytes.get (UInt64.ofNat k) = bytes.data[k].toUInt64 := by
         simp only [Bytes.get, UInt64.toNat_ofNat_of_lt' hk64, hk, ↓reduceDIte]
-      rw [List.take_succ, List.foldl_append, ← hs, hget]
+      rw [List.take_add_one, List.foldl_append, ← hs, hget]
       have hlen : k < bytes.data.data.toList.length := by simpa using hk
       rw [List.getElem?_eq_getElem hlen]
       simp [ByteArray.getElem_eq_getElem_data])
@@ -151,7 +151,7 @@ theorem fold_argument (arg : List UInt8) (h : (0 : UInt8) ∉ arg) :
     · obtain ⟨⟨h48, h57⟩, hsmall⟩ := hc.mp hcond
       refine ⟨10 * v + (b.toUInt64 - 48), ok, ?_, ?_, ?_⟩
       · simp only [byteStep]
-        rw [parseStep_one v ok _ _ hbne, if_pos hcond]
+        rw [parseStep_one v ok _ _ hbne, ite_eq_left hcond]
         simp
       · rw [hall]
         constructor
@@ -171,7 +171,7 @@ theorem fold_argument (arg : List UInt8) (h : (0 : UInt8) ∉ arg) :
         omega
     · refine ⟨v, false, ?_, ?_, fun e => absurd e (by simp)⟩
       · simp only [byteStep]
-        rw [parseStep_one v ok _ _ hbne, if_neg hcond]
+        rw [parseStep_one v ok _ _ hbne, ite_eq_right hcond]
         simp
       · simp only [Bool.false_eq_true, false_iff]
         rw [hall]
@@ -199,71 +199,86 @@ theorem split_first {α : Type} [DecidableEq α] (a : α) :
       simp only [List.mem_cons, not_or]
       exact ⟨fun e => hx e.symm, hs⟩
 
+theorem argument_none {l : List UInt8} (h : (0 : UInt8) ∉ l) : argument l = none := by
+  simp [argument, List.splitOn_eq_singleton h]
+
+theorem argument_missing {name rest : List UInt8} (hname : (0 : UInt8) ∉ name)
+    (hrest : (0 : UInt8) ∉ rest) : argument (name ++ 0 :: rest) = none := by
+  simp [argument, List.splitOn_append_cons_self_of_not_mem hname, List.splitOn_eq_singleton hrest]
+
+theorem argument_some {name arg : List UInt8} (hname : (0 : UInt8) ∉ name)
+    (harg : (0 : UInt8) ∉ arg) (tail : List UInt8) :
+    argument (name ++ 0 :: (arg ++ 0 :: tail)) = some arg := by
+  unfold argument
+  rw [List.splitOn_append_cons_self_of_not_mem hname,
+    List.splitOn_append_cons_self_of_not_mem harg]
+  cases e : tail.splitOn 0 with
+  | nil => exact absurd e (List.splitOn_ne_nil _ _)
+  | cons first more => rfl
+
 /-- `parseN` computes `parseSpec` on every buffer of fewer than `2^64` bytes. -/
 theorem parseN_eq (args : Bytes) (h : args.data.size < 2 ^ 64) : parseN args = parseSpec args := by
   unfold parseN parseSpec
   rw [loop_bytes args h]
-  generalize hl : args.data.data.toList = l
+  generalize args.data.data.toList = l
   change (if (l.foldl byteStep (0, 0, true, false)).1 == 2 && _ && _ && _ != 0 then _ else _) = _
   by_cases h0 : (0 : UInt8) ∈ l
   · obtain ⟨name, rest, rfl, hname⟩ := split_first 0 l h0
     rw [List.foldl_append, fold_phase0 0 true false name hname, List.foldl_cons]
     have hstep : byteStep (0, 0, true, false) 0 = (1, 0, true, false) := by decide
-    rw [hstep, List.splitOn_append_cons_self_of_not_mem hname]
+    rw [hstep]
     by_cases h1 : (0 : UInt8) ∈ rest
     · obtain ⟨arg, tail, rfl, harg⟩ := split_first 0 rest h1
       obtain ⟨v, ok, hfold, hok, hv⟩ := fold_argument arg harg
       rw [List.foldl_append, hfold, List.foldl_cons]
       have hstep2 : byteStep (1, v, ok, decide (arg ≠ [])) 0 = (2, v, ok, decide (arg ≠ [])) := by
         simp [byteStep, parseStep]
-      rw [hstep2, fold_phase2, List.splitOn_append_cons_self_of_not_mem harg]
-      obtain ⟨first, more, hsplit⟩ : ∃ first more, tail.splitOn 0 = first :: more := by
-        cases e : tail.splitOn 0 with
-        | nil => exact absurd e (List.splitOn_ne_nil _ _)
-        | cons first more => exact ⟨first, more, rfl⟩
-      rw [hsplit]
-      simp only [argument, Option.bind_eq_bind, Option.bind_some, decimal]
-      change (if ((2 : UInt64) == 2 && ok && decide (arg ≠ []) && v != 0) = true then v else 0) = _
+      rw [hstep2, fold_phase2, argument_some hname harg tail]
+      change (if ((2 : UInt64) == 2 && ok && decide (arg ≠ []) && v != 0) = true then v else 0) =
+        (match (if arg ≠ [] ∧ ∀ b ∈ arg, 48 ≤ b ∧ b ≤ 57 then some (numeral arg) else none) with
+          | some n => if 1 ≤ n ∧ n < 2 ^ 64 then UInt64.ofNat n else 0
+          | none => 0)
       by_cases hokt : ok = true
-      · have hvn := hv hokt
-        obtain ⟨hdig, hlt⟩ := hok.mp hokt
+      · obtain ⟨hdig, hlt⟩ := hok.mp hokt
+        have hvn := hv hokt
         by_cases hne : arg = []
         · subst hne
           simp
-        · have hnum : numeral arg = arg.foldl (fun value b => 10 * value + (b.toNat - 48)) 0 := rfl
-          rw [← hnum]
-          simp only [hokt, hne, ne_eq, not_false_eq_true, hdig, implies_true, and_self,
-            ↓reduceIte, Option.bind_some, decide_true, Bool.and_true, beq_self_eq_true,
-            Bool.true_and, bne_iff_ne]
+        · rw [ite_eq_left (show arg ≠ [] ∧ ∀ b ∈ arg, 48 ≤ b ∧ b ≤ 57 from ⟨hne, hdig⟩)]
+          have hb : ((2 : UInt64) == 2 && ok && decide (arg ≠ []) && v != 0) = (v != 0) := by
+            simp [hokt, hne]
+          rw [hb]
           by_cases hz : v = 0
-          · have : numeral arg = 0 := by rw [← hvn, hz]; rfl
-            simp [hz, this]
+          · have hzero : numeral arg = 0 := by rw [← hvn, hz]; rfl
+            simp [hz, hzero]
           · have hpos : 1 ≤ numeral arg := by
               have : v.toNat ≠ 0 := fun e => hz (UInt64.toNat_inj.mp (by simpa using e))
               omega
-            rw [if_pos hz, if_pos ⟨hpos, hlt⟩]
+            have hvz : (v != 0) = true := by simpa using hz
+            rw [ite_eq_left hvz]
+            show v = if 1 ≤ numeral arg ∧ numeral arg < 2 ^ 64 then UInt64.ofNat (numeral arg) else 0
+            rw [ite_eq_left ⟨hpos, hlt⟩]
             apply UInt64.toNat_inj.mp
             rw [hvn, UInt64.toNat_ofNat_of_lt' hlt]
       · have hokf : ok = false := by simpa using hokt
-        have hnum : numeral arg = arg.foldl (fun value b => 10 * value + (b.toNat - 48)) 0 := rfl
-        rw [← hnum]
-        simp only [hokf, Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+        have hb : ((2 : UInt64) == 2 && ok && decide (arg ≠ []) && v != 0) = false := by
+          simp [hokf]
+        rw [hb]
+        simp only [Bool.false_eq_true, ↓reduceIte]
         by_cases hgood : arg ≠ [] ∧ ∀ b ∈ arg, 48 ≤ b ∧ b ≤ 57
-        · rw [if_pos hgood]
+        · rw [ite_eq_left hgood]
           have hge : ¬ numeral arg < 2 ^ 64 := fun hlt => hokt (hok.mpr ⟨hgood.2, hlt⟩)
-          simp [hge]
-        · rw [if_neg hgood]
-          rfl
+          show (0 : UInt64) =
+            if 1 ≤ numeral arg ∧ numeral arg < 2 ^ 64 then UInt64.ofNat (numeral arg) else 0
+          rw [ite_eq_right (fun hc => hge hc.2)]
+        · rw [ite_eq_right hgood]
     · obtain ⟨v, ok, hfold, -, -⟩ := fold_argument rest h1
-      rw [hfold, List.splitOn_eq_singleton h1]
-      simp [argument]
-  · rw [fold_phase0 0 true false l h0, List.splitOn_eq_singleton h0]
-    simp [argument]
+      rw [hfold, argument_missing hname h1]
+      rfl
+  · rw [fold_phase0 0 true false l h0, argument_none h0]
+    rfl
 
 /-! ## histogram -/
-
-/-- The predicate of a word whose residue mod 10 is `m`. -/
-abbrev residue (m : Nat) (w : UInt64) : Bool := decide (w.toNat % 10 = m)
 
 theorem residue_toNat (w : UInt64) : (w % 10).toNat = w.toNat % 10 := by
   simp [UInt64.toNat_mod]
@@ -273,7 +288,8 @@ whose residue is `m`. -/
 theorem fold_countWord :
     ∀ (l : List UInt64) (c : Array UInt64), c.size = 10 →
       (l.foldl countWord c).size = 10 ∧
-        ∀ m < 10, (l.foldl countWord c)[m]! = c[m]! + UInt64.ofNat (l.countP (residue m))
+        ∀ m < 10, (l.foldl countWord c)[m]! =
+          c[m]! + UInt64.ofNat (l.countP fun w => decide (w.toNat % 10 = m))
   | [], c, hc => ⟨hc, fun m _ => by simp⟩
   | w :: l, c, hc => by
     rw [List.foldl_cons]
@@ -281,63 +297,61 @@ theorem fold_countWord :
     have hsize : (countWord c w).size = 10 := by simp [countWord, hc]
     obtain ⟨hs, hget⟩ := fold_countWord l (countWord c w) hsize
     refine ⟨hs, fun m hm10 => ?_⟩
-    rw [hget m hm10, countWord]
-    simp only
+    rw [hget m hm10]
+    simp only [countWord]
     rw [LeanExe.Dialect.get_set _ _ _ _ (by omega), List.countP_cons, residue_toNat]
     by_cases he : m = w.toNat % 10
     · subst he
-      simp only [↓reduceIte, decide_true]
-      rw [Nat.cast_add, UInt64.ofNat_add]
-      simp only [Nat.cast_ofNat, UInt64.ofNat_one]
-      ring
-    · have : (w.toNat % 10 = m) = False := by simp; omega
-      simp [he, this]
+      rw [ite_eq_left rfl, ite_eq_left (decide_eq_true rfl)]
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+      omega
+    · have hne : decide (w.toNat % 10 = m) = false := decide_eq_false fun e => he e.symm
+      rw [ite_eq_right he, hne]
+      simp
 
 /-- `histogram` computes `histogramSpec` on every array. -/
 theorem histogram_eq (ws : Array UInt64) : histogram ws = histogramSpec ws := by
-  have hzero : (LeanExe.build 10 fun _ => (0 : UInt64)).size = 10 := by
-    simp [LeanExe.Dialect.build_size]
+  have hzero : (LeanExe.build 10 fun _ => (0 : UInt64)).size = 10 :=
+    LeanExe.Dialect.build_size _ _
   obtain ⟨hs, hget⟩ := fold_countWord ws.toList _ hzero
-  unfold histogram
+  show ws.foldl countWord (LeanExe.build 10 fun _ => 0) = histogramSpec ws
   rw [← Array.foldl_toList]
   apply Array.ext
-  · simp [hs, histogramSpec]
-  · intro m h1 h2
-    have hm : m < 10 := by simpa [hs] using h1
-    have := hget m hm
-    rw [LeanExe.Dialect.build_get (by simpa using hm), Nat.zero_add] at this
-    rw [getElem!_pos _ m h1] at this
-    simp [histogramSpec, this]
-    rfl
+  · rw [hs]
+    simp [histogramSpec]
+  · intro m h1 _
+    have hm : m < 10 := by rw [hs] at h1; exact h1
+    have e := hget m hm
+    rw [LeanExe.Dialect.build_get (show m < (10 : UInt64).toNat by simpa using hm),
+      getElem!_pos _ m h1] at e
+    rw [e]
+    simp [histogramSpec]
 
 /-- The counts of `histogramSpec` sum to the number of words, for an array of fewer than `2^64`
 words. -/
 theorem histogramSpec_sum (ws : Array UInt64) (h : ws.size < 2 ^ 64) :
     ((histogramSpec ws).toList.map UInt64.toNat).sum = ws.size := by
-  have hcount : ∀ m, (ws.toList.countP fun w => w.toNat % 10 = m) < 2 ^ 64 := fun m =>
-    lt_of_le_of_lt (List.countP_le_length) (by simpa using h)
+  have hcount : ∀ m, (ws.toList.countP fun w => decide (w.toNat % 10 = m)) < 2 ^ 64 := fun m =>
+    lt_of_le_of_lt List.countP_le_length (by simpa using h)
   have hsum : ∀ l : List UInt64,
-      ((List.range 10).map fun m => l.countP fun w => w.toNat % 10 = m).sum = l.length := by
+      ((List.range 10).map fun m => l.countP fun w => decide (w.toNat % 10 = m)).sum =
+        l.length := by
     intro l
     induction l with
     | nil => simp
     | cons w l ih =>
       simp only [List.countP_cons, List.length_cons]
-      rw [show ((List.range 10).map fun m =>
-          (l.countP fun w => w.toNat % 10 = m) + if decide (w.toNat % 10 = m) = true then 1 else 0) =
-          List.zipWith (· + ·) ((List.range 10).map fun m => l.countP fun w => w.toNat % 10 = m)
-            ((List.range 10).map fun m => if w.toNat % 10 = m then 1 else 0) by
-        simp [List.range_succ]]
-      rw [List.sum_zipWith_add (by simp), ih]
+      rw [List.sum_map_add, ih]
       have hr : w.toNat % 10 < 10 := Nat.mod_lt _ (by decide)
       congr 1
       generalize w.toNat % 10 = r at hr
-      interval_cases r <;> simp [List.range_succ]
+      interval_cases r <;> decide
   have hlist : (histogramSpec ws).toList.map UInt64.toNat =
-      (List.range 10).map fun m => ws.toList.countP fun w => w.toNat % 10 = m := by
+      (List.range 10).map fun m => ws.toList.countP fun w => decide (w.toNat % 10 = m) := by
     apply List.ext_getElem
     · simp [histogramSpec]
-    · intro i h1 h2
+    · intro i h1 _
       simp only [histogramSpec, List.getElem_map, Array.getElem_toList, Array.getElem_ofFn,
         List.getElem_range]
       exact UInt64.toNat_ofNat_of_lt' (hcount i)
@@ -364,13 +378,15 @@ theorem appendLine_toList (text : Array UInt64) (c : UInt64) :
         simp only [UInt64.reduceToNat]
         omega
       have hlen : k < (digitWords c.toNat).length := by omega
-      rw [Array.toList_push, ht, List.take_succ, List.getElem?_eq_getElem hlen, List.append_assoc]
-      congr 2
-      have := hget k
-      rw [List.getElem?_eq_getElem hlen, if_pos (by omega)] at this
-      simp only [Option.toList_some, List.cons.injEq, and_true]
-      rw [digitByte_eq, hidx]
-      exact (Option.some.inj this).symm)
+      have hdigit : digitByte c (digitCount c - 1 - UInt64.ofNat k) =
+          (digitWords c.toNat)[k] := by
+        have := hget k
+        rw [List.getElem?_eq_getElem hlen, ite_eq_left (by omega)] at this
+        rw [digitByte_eq, hidx]
+        exact (Option.some.inj this).symm
+      rw [Array.toList_push, ht, List.take_add_one, List.getElem?_eq_getElem hlen, List.append_assoc,
+        hdigit]
+      rfl)
   rw [hL] at key
   unfold appendLine
   simp only
@@ -381,45 +397,61 @@ bytes. -/
 theorem digitWords_bytes (n : Nat) :
     (digitWords n).map UInt64.toUInt8 = (toString n).toList.map fun c => c.toNat.toUInt8 := by
   rw [digitWords, List.map_map]
-  have : (toString n).toList = Nat.toDigits 10 n := Nat.toList_repr n
-  rw [this]
+  have hs : (toString n).toList = Nat.toDigits 10 n := Nat.toList_repr
+  rw [hs]
   apply List.map_congr_left
-  intro ch hch
-  have hdig := Nat.isDigit_of_mem_toDigits (by decide) (by decide) hch
-  simp only [Function.comp_apply]
+  intro ch _
   apply UInt8.toNat_inj.mp
-  simp [Char.isDigit] at hdig
-  simp [Char.toUInt8, Char.toNat]
+  simp only [Function.comp_apply, UInt64.toNat_toUInt8, UInt8.toNat_toUInt64, Char.toUInt8,
+    UInt32.toNat_toUInt8, Nat.toUInt8, UInt8.toNat_ofNat', Char.toNat]
+  omega
 
-/-- `render` computes `renderSpec` on every array. -/
-theorem render_eq (counts : Array UInt64) : render counts = renderSpec counts := by
+/-- The words of `render`'s array: the digit words of each of the ten counts, each followed by a
+newline. -/
+theorem render_text (counts : Array UInt64) :
+    (LeanExe.loop 10 (#[] : Array UInt64) fun m t => appendLine t counts[m.toNat]!).toList =
+      (List.range 10).flatMap fun m => digitWords (counts.getD m 0).toNat ++ [10] := by
   have key := LeanExe.Dialect.loop_induction (n := 10) (init := (#[] : Array UInt64))
     (f := fun m t => appendLine t counts[m.toNat]!)
     (fun k t => t.toList = (List.range k).flatMap fun m =>
       digitWords (counts.getD m 0).toNat ++ [10]) (by simp)
     (by
       intro k t hk ht
-      simp only [UInt64.reduceToNat] at hk
-      rw [appendLine_toList, ht, List.range_succ, List.flatMap_append, List.flatMap_singleton,
-        List.append_assoc]
-      congr 3
-      rw [UInt64.toNat_ofNat_of_lt' (by omega)]
-      simp [Array.getD_eq_getD_getElem?, getElem!_def])
-  simp only [UInt64.reduceToNat] at key
-  obtain ⟨t, ht, key⟩ : ∃ t, LeanExe.loop 10 (#[] : Array UInt64)
-      (fun m t => appendLine t counts[m.toNat]!) = t ∧ t.toList = (List.range 10).flatMap
-        fun m => digitWords (counts.getD m 0).toNat ++ [10] := ⟨_, rfl, key⟩
+      have hk' : k < 10 := hk
+      have hc : counts[(UInt64.ofNat k).toNat]! = counts.getD k 0 := by
+        rw [UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)]
+        simp only [getElem!_def, Array.getD_eq_getD_getElem?]
+        cases counts[k]? <;> rfl
+      show (appendLine t counts[(UInt64.ofNat k).toNat]!).toList = _
+      rw [appendLine_toList, ht, hc, List.range_succ, List.flatMap_append, List.flatMap_singleton,
+        List.append_assoc])
+  exact key
+
+/-- A buffer built from the words of an array holds their low bytes. -/
+theorem build_words (t : Array UInt64) (h : t.size < 2 ^ 64) :
+    Bytes.build t.size.toUInt64 (fun i => t[i.toNat]!) = ⟨⟨(t.toList.map UInt64.toUInt8).toArray⟩⟩ := by
+  have hn : t.size.toUInt64.toNat = t.size := LeanExe.Dialect.size_toUInt64 t h
+  unfold Bytes.build
+  congr 2
+  apply Array.toList_inj.mp
+  rw [Array.toList_ofFn, List.toList_toArray]
+  apply List.ext_getElem
+  · simp [hn]
+  · intro i h1 _
+    have hi : i < t.size := by simpa [hn] using h1
+    rw [List.getElem_ofFn, List.getElem_map, Array.getElem_toList]
+    show (t[(UInt64.ofNat i).toNat]!).toUInt8 = _
+    rw [UInt64.toNat_ofNat_of_lt' (hi.trans h), getElem!_pos t i hi]
+
+/-- `render` computes `renderSpec` on every array. -/
+theorem render_eq (counts : Array UInt64) : render counts = renderSpec counts := by
+  obtain ⟨t, ht⟩ : ∃ t, LeanExe.loop 10 (#[] : Array UInt64)
+      (fun m t => appendLine t counts[m.toNat]!) = t := ⟨_, rfl⟩
+  have key := render_text counts
+  rw [ht] at key
   have hrender : render counts = Bytes.build t.size.toUInt64 fun i => t[i.toNat]! := by
-    rw [← ht]
-    rfl
-  have hspec : ((List.range 10).flatMap fun m =>
-      (toString (counts.getD m 0).toNat).toList.map (fun c => c.toNat.toUInt8) ++ [10]) =
-      t.toList.map UInt64.toUInt8 := by
-    rw [key, List.map_flatMap]
-    congr 1
-    funext m
-    rw [List.map_append, digitWords_bytes]
-    rfl
+    unfold render
+    simp only [ht]
   have hsize : t.size < 2 ^ 64 := by
     have hlen : t.toList.length ≤ 210 := by
       rw [key, List.length_flatMap]
@@ -434,19 +466,11 @@ theorem render_eq (counts : Array UInt64) : render counts = renderSpec counts :=
         _ = 210 := by decide
     simp only [Array.length_toList] at hlen
     omega
-  have hn : t.size.toUInt64.toNat = t.size := LeanExe.Dialect.size_toUInt64 t hsize
-  rw [hrender]
+  rw [hrender, build_words t hsize, key, List.map_flatMap]
   unfold renderSpec
-  rw [hspec]
-  show (⟨⟨Array.ofFn fun i => (t[(UInt64.ofNat i.val).toNat]!).toUInt8⟩⟩ : Bytes) = _
-  congr 2
-  apply Array.toList_inj.mp
-  rw [Array.toList_ofFn, List.toList_toArray]
-  apply List.ext_getElem
-  · simp [hn]
-  · intro i h1 h2
-    have hi : i < t.size := by simpa [hn] using h1
-    rw [List.getElem_ofFn, List.getElem_map, Array.getElem_toList,
-      UInt64.toNat_ofNat_of_lt' (hi.trans hsize), getElem!_pos t i hi]
+  refine congrArg (fun l : List UInt8 => (⟨⟨l.toArray⟩⟩ : Bytes)) ?_
+  refine congrArg (fun f => List.flatMap f (List.range 10)) (funext fun m => ?_)
+  rw [List.map_append, digitWords_bytes]
+  rfl
 
 end Demos.RandomHistogram
