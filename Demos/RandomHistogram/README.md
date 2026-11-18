@@ -109,10 +109,7 @@ and `99999999999999999999` write nothing and exit with status 2.  The runs with 
 513, 1,000, and 1,000,000 exit with status 0 and write ten decimal counts that sum to N.  It prints
 `random histogram axiom check passed for 14 theorems`, the executable's size, and `random histogram:
 12 runs passed`.  The second command writes ten counts near 100,000, such as `100037`, `99394`, and
-`99853`, in about 0.1 s on an AArch64 host.  The same command with N of 1,000,000,000 exits with
-status 0 after 51 s with a resident set of 18 MB, and its counts sum to N.  Its 1,953,125 passes
-would need about 8 GB if each kept its buffer of 4,096 bytes, more than the module's linear memory
-of at most 4 GiB holds.  [The verified driver](../../tests/verified/run.sh) runs
+`99853`, in about 0.1 s on an AArch64 host.  [The verified driver](../../tests/verified/run.sh) runs
 the 74 samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the
 specifications, and each case of `histogram` and `render` requires two blocks to stay allocated
 after the call, the argument's and the result's.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
