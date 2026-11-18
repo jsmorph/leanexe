@@ -180,8 +180,11 @@ import Demos.Rcv.TabulateProgram
 import Demos.Rcv.TabulateProof
 import Demos.Rcv.Variants
 import Demos.Rcv.Winner
+import Demos.RandomHistogram.Budget
 import Demos.RandomHistogram.CommandStart
 import Demos.RandomHistogram.Compiled
+import Demos.RandomHistogram.Native
+import Demos.RandomHistogram.NativeCounts
 import Demos.Sgp4.Box
 import Demos.Sgp4.BoxFlat
 import Demos.Sgp4.BoxSound
