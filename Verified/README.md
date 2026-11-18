@@ -584,16 +584,19 @@ whole-store theorems apply at the combined module's indices, and its
 
 `import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
 `LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
-The [native API](../LeanExe/Wasi/Action.lean) provides reads of the standard input, writes of the
-standard output and error, exit, bounded loops, and `Action.sys`, which makes one flat call, a
+The [native API](../LeanExe/Wasi/Action.lean) provides reads of the standard input, among them
+[`readAll`](../LeanExe/Wasi/ReadAll.lean), which reads the whole input, writes of the standard
+output and error, exit, bounded loops, and `Action.sys`, which makes one flat call, a call of a
 function of `wasi_snapshot_preview1` that [the call table](../LeanExe/Wasi/CallTable.lean)
 describes.  [The generated typed functions](../LeanExe/Wasi/SysCalls.lean) and the typed functions
 and `withOpen` of [`LeanExe/Wasi/Sys.lean`](../LeanExe/Wasi/Sys.lean) make their calls through
-`Action.sys`, and the command reflects each flat call to one `Command.sys`.  Each primitive read or write makes at most
-one WASI import call, and the host may use several operating-system calls for one import.  Source
-code handles errnos and short transfers.  Effect helpers form an acyclic graph and share the
-guarded-call depth with pure callees.  [The WASI manual](../docs/wasi.md) states the API and the
-generated declarations.
+`Action.sys`, and the command reflects each flat call to one `Command.sys`.  Each primitive read
+or write makes at most one WASI import call, and the host may use several operating-system calls
+for one import.  Source code handles errnos and short transfers.  Effect helpers form an acyclic
+graph and share the guarded-call depth with pure callees.  [The WASI manual](../docs/wasi.md)
+states the API and the generated declarations, and [the Linux shim](#the-linux-shim) and [the
+shim on AArch64](#the-shim-on-aarch64) describe `Verified/Shim/` and `Verified/ShimA64/`, which
+implement the imports with Linux's calls.
 
 | Proof stage | Declaration or predicate | Result |
 |---|---|---|
@@ -619,6 +622,17 @@ refinement retains terminal host failures and resource prefixes with their commi
 `Bounded` and `Rule` of [the resource rules](Wasi/ResourceRules.lean) bound a command's charge
 from every world, and `BoundedAt` and `RuleAt` of [the rules from one
 world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.
+
+`readAll limit` compiles to `Command.readAll`, whose [fixed code](Wasi/ReadAllCode.lean) in the
+calling function uses six scratch locals, allocates one buffer of `limit + 4,096` bytes, and calls
+`fd_read` on the buffer's unused tail until a read returns an errno or no bytes or the bytes held
+exceed the limit.  [The loop's proof](Wasi/ReadAllLoop.lean) relates the bytes held to a run of
+the source loop, [the buffer lemmas](Wasi/ReadAllBuffer.lean) state that a read keeps the buffer's
+header and appends its bytes, and `command_readAll_spec_with` and
+`cost_command_readAll_spec_with` of [the command's rules](Wasi/ReadAllCommand.lean) give the
+command's correctness and its charge, `readAllCost` of [the charge](Wasi/ReadAllCost.lean).
+[The WASI design](../docs/verified-wasi-design.md#reads-writes-and-exit) gives the reason for a
+command of its own.
 
 The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
 retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
@@ -665,7 +679,7 @@ assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted
 emitted modules, and [the flat call tests](../tests/wasi/sys-run.sh) check the call table against
 the witx and run every flat call in Wasmtime.
 
-## The Linux shim
+### The Linux shim
 
 `Verified/Shim/` specifies, at the level of the Linux call layer, the WASI host that the native
 executables implement with Linux system calls.  Its environment `linuxEnv F L I replies calls` gives each stream
@@ -695,7 +709,7 @@ the replies in which the shim and the Wasmtime host differ.
 | [`Streams.lean`](Shim/Streams.lean) | Runs without flat calls, whose images and runs read neither the open flags nor the launch. |
 | [`Utf8.lean`](Shim/Utf8.lean) | `verify₂_iff`, `verify₃_iff`, and `verify₄_iff`, which state core's UTF-8 checks as the conditions of Table 3-7 of the Unicode Standard. |
 
-## The shim on AArch64
+### The shim on AArch64
 
 `Verified/ShimA64/` proves that the stubs of the executables that `genWasiElf` of
 [`LeanExe/A64/Wasi.lean`](../LeanExe/A64/Wasi.lean) writes implement `linuxEnv arm64Flags`, and
