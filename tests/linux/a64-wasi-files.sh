@@ -18,7 +18,9 @@
 # host's but for the cases that tests/linux/wasi/files-expected.txt lists with the specification's
 # reason, and the directories afterwards must agree.  The scenario of magic links runs with
 # /proc/self as descriptor 3 and as the host's directory, and the scenario of closes runs once
-# more with descriptor 3 closed and no directory in the host.  Under strace, the reads, writes,
+# more with descriptor 3 closed and no directory in the host.  The scenario of the clocks calls
+# fd_prestat_dir_name, fd_close, fd_read, fd_write, and path_open on descriptor 1,024 after each
+# clock_time_get, which writes the scratch's timespec where the byte of descriptor 1,024 would lie.  Under strace, the reads, writes,
 # closes, and openat2 calls of the scenarios of closes and handles must name only standard streams
 # and descriptors that the shim holds, which tests/linux/wasi/files-names.py checks.
 #
@@ -138,7 +140,7 @@ listing "$runs/n-files" >"$runs/n-files.list"
 listing "$runs/w-files" >"$runs/w-files.list"
 same_file "files native: the Wasmtime host's directory" "$runs/n-files.list" "$runs/w-files.list"
 # The scenarios of the cases module: native against the Wasmtime host, case by case.
-for s in p f c h; do
+for s in p f c h t; do
   fixture "$runs/n-$s"
   fixture "$runs/w-$s"
   printf %s "$s" >"$runs/in-$s"
@@ -178,7 +180,7 @@ uv run "$out/files-compare.py" "$out/cases.txt" "$out/files-expected.txt" c \
   "scenario c without descriptor 3 against the Wasmtime host" "$runs/n-c0.out" "$runs/w-c0.out" ||
   status=1
 # The descriptors that the calls name.
-for s in c h; do
+for s in c h t; do
   fixture "$runs/s-$s"
   code=0
   limited strace -o "$runs/s-$s.log" -e trace=openat,openat2,close,read,write -e signal=none \
@@ -187,7 +189,7 @@ for s in c h; do
   uv run "$out/files-names.py" "scenario $s" "$runs/s-$s.log" || status=1
 done
 # Under QEMU against the native run with ENOSYS injected into every openat2.
-for s in p f c h 1 2 3 4 5 6 7 8 9; do
+for s in p f c h t 1 2 3 4 5 6 7 8 9; do
   printf %s "$s" >"$runs/in-$s"
   fixture "$runs/q-$s"
   code=0

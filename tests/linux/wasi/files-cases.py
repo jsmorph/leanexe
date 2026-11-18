@@ -9,7 +9,8 @@ the `open_how` flags that the shim gives each open of the flag scenario.
 Usage: files-cases.py MODULE.wat CASES.txt FLAGS.txt
 
 The module imports the three stream functions, then `path_open`, `fd_close`, `fd_read`, and
-`fd_write`, the last two in their handle forms, and `fd_prestat_get`.  It reads one byte from
+`fd_write`, the last two in their handle forms, `fd_prestat_get`, `clock_time_get`, and
+`fd_prestat_dir_name`.  It reads one byte from
 standard input, the scenario, and runs the scenario's cases one after another.  It writes to
 standard output through `fd_write` with the iovec at address 0 and the count at address 8, as the
 stream stub requires: the byte 0xFE at the start of each case, the byte 0xFF at the start of each
@@ -34,6 +35,9 @@ Scenarios, by the byte read:
        the iovec in the memory's last 8 bytes, on descriptors opened for reading or writing only,
        and on descriptors that the shim does not hold;
   'm'  opens under descriptor 3 of magic links and of a file, for a preopened /proc/self;
+  't'  after `clock_time_get` of clocks 0 and 1, which writes the scratch's timespec at the place
+       of the byte of descriptor 1,024, `fd_prestat_dir_name`, `fd_close`, `fd_read`, `fd_write`,
+       and `path_open` on descriptor 1,024, which the shim does not hold;
   'l'  opens of `f` without closes until an open fails, at most 1,100, and then the close of
        descriptor 1,023;
   '1' to '9'  a request that the shim refuses with a trap: an iovec count of 2, an iovec, a
@@ -239,6 +243,16 @@ def build() -> tuple[str, list[str], list[str]]:
     ]:
         m.case("h", description, code)
 
+    for clock in [0, 1]:
+        m.case("t", f"clock {clock}", f"(call $clock (i32.const {clock}))")
+        m.case("t", f"prestat name of 1024 after clock {clock}", "(call $dirName (i32.const 1024))")
+        m.case("t", f"close 1024 after clock {clock}", "(call $close (i32.const 1024))")
+        m.case("t", f"read 4 from 1024 after clock {clock}",
+               "(call $read (i32.const 1024) (i32.const 4))")
+        m.case("t", f"write 2 to 1024 after clock {clock}",
+               f"(call $write (i32.const 1024) (i32.const {xy}) (i32.const 2))")
+        m.open("t", 1024, b"f", 1, 0, 2, 0)
+
     m.case("l", "opens of f without closes", "(call $limit)")
     m.case("l", "close 1023 after the opens", "(call $close (i32.const 1023))")
     for k, what in enumerate(["an iovec count of 2", "an iovec beyond memory",
@@ -280,6 +294,10 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (func $h_write (param i32 i32 i32 i32) (result i32)))",
         '  (import "wasi_snapshot_preview1" "fd_prestat_get"',
         "    (func $fd_prestat_get (param i32 i32) (result i32)))",
+        '  (import "wasi_snapshot_preview1" "clock_time_get"',
+        "    (func $clock_time_get (param i32 i64 i32) (result i32)))",
+        '  (import "wasi_snapshot_preview1" "fd_prestat_dir_name"',
+        "    (func $fd_prestat_dir_name (param i32 i32 i32) (result i32)))",
         f'  (memory (export "memory") {MEMORY // 65536})',
         *m.data,
         "",
@@ -345,6 +363,20 @@ def build() -> tuple[str, list[str], list[str]]:
         "    (call $emit (local.get $e))",
         "    (if (i32.eq (local.get $e) (i32.const 0))",
         "      (then (call $emits (i32.const 24) (i32.const 8)))))",
+        "",
+        "  ;; clock_time_get of the clock $id with the time at 200, whose value differs between",
+        "  ;; runs: the errno.",
+        "  (func $clock (param $id i32)",
+        "    (call $emit (i32.const 0xff))",
+        "    (call $emit (call $clock_time_get (local.get $id) (i64.const 0) (i32.const 200))))",
+        "",
+        "  ;; fd_prestat_dir_name of $fd with a buffer of 1 byte at 208, 0 before the call: the errno",
+        "  ;; and the buffer.",
+        "  (func $dirName (param $fd i32)",
+        "    (call $emit (i32.const 0xff))",
+        "    (i32.store8 (i32.const 208) (i32.const 0))",
+        "    (call $emit (call $fd_prestat_dir_name (local.get $fd) (i32.const 208) (i32.const 1)))",
+        "    (call $emits (i32.const 208) (i32.const 1)))",
         "",
         "  ;; The close of $fd.",
         "  (func $close (param $fd i32)",
