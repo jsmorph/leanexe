@@ -98,7 +98,7 @@ theorem total_meets {World : Type} {host : Host World} (world : Observed World)
     (targetHost : HostEnv (Observed World))
     (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls))
     {budget : Nat}
-    (room : (initialStaticHeap command.literalPool).Within
+    (room : (Verified.initialStaticHeap command.literalPool).Within
       (PureTransport.erase (initialStore world)) command.pure.module budget)
     (bounded : Resource.CallPrefixBound (observedHost host)
       (.ofProg command.pure.program command.pure.funs) command.program .here 0 .nil world budget)

@@ -9,9 +9,9 @@ events of a run, `LeanExe.Wasi.Event`, which record each call with the reply tha
 states the calls of `random_get` of a run that draws `r` words, at most 512 a call, and the bytes
 that they returned.  `Meets host world events code` states what the request asks of a run from
 `world` whose events before its exit are `events` and whose exit status is `code`.  The run starts
-with the events of a call of `args`, which returned `a`.  An errno of `args` is the status, and nothing else happens.
-Otherwise, when `parseSpec` refuses the argument buffer, the status is 2, and nothing else happens.
-Otherwise the run draws `N = parseSpec a.bytes` words.  A call of `random_get` that returns an
+with the events of a call of `args`, which returned `a`.  An errno of `args` is the status, and no
+other event follows.  When `parseSpec` refuses the argument buffer, the status is 2, and no other
+event follows.  Otherwise the run draws `N = parseSpec a.bytes` words.  A call of `random_get` that returns an
 errno ends the run with that errno as the status and no write.  When every call returns errno 0,
 the bytes hold exactly N words `w`, the counts of `histogramSpec w` sum to N, and the run makes one
 write to stdout, of `renderSpec (histogramSpec w)`, whose errno is the status. -/

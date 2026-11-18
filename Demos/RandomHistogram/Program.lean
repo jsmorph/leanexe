@@ -14,9 +14,9 @@ since `2^64 - 1 = 10 · 1844674407370955161 + 5`.
 
 `histogram` folds `countWord` over the words from ten zero counts, and `tally`, the running
 histogram of the WASI command, folds `countWord` over the little-endian words of a buffer, which
-`wordAt` reads.  `render` pushes the decimal digits of each of the ten counts and a newline onto an
-array of bytes, one to a word, with the library's `digitCount` and `digitByte`, and builds the
-output buffer from that array. -/
+`wordAt` reads by Horner's rule.  `render` pushes the decimal digits of each of the ten counts and
+a newline onto an array of bytes, one to a word, with the library's `digitCount` and `digitByte`,
+and builds the output buffer from that array. -/
 
 namespace Demos.RandomHistogram
 
