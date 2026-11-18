@@ -183,7 +183,7 @@ theorem histogram_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (
 /-- The random histogram's corollary for `histogram.elf`.  For every reply sequence `R`, a process
 started as for `histogram_elf` with arguments whose strings, each with its zero byte, and
 eight-byte pointers take at most `argsLimit` bytes, 6 MiB, and whose N is at most `drawLimit`,
-12,836,351, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
+32,378,879, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
 `getrandom` of `ls` returned the count that it asked for and every `write` an error number or at
 most the count that it offered (`Full`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the
