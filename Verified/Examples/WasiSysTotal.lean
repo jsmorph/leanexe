@@ -6,17 +6,17 @@ import Verified.FieldsArgs
 
 /-! `_start` of `Verified.Examples.WasiSys.command` exits with an accepted status for every host
 whose successful `args_sizes_get` replies ask for blocks of at most `limit` bytes, with `limit` at
-most 252,640,960, every host environment satisfying `hostSpecWith host command.sysCalls`, and
+most 4,294,897,328, every host environment satisfying `hostSpecWith host command.sysCalls`, and
 every world, when the host does not trap along `main` and its exit (`total_of_bound`).  The
 theorem discharges the heap, budget, and memory premises of the generated `command.total`.
 
-The budget bounds the heap that `main` allocates (`body_bounded`).  The reflected body binds the
-result of `args` and destructures it in every later expression, and `Expr.allocs` charges a copy
-of an owned variable that stays live, so each use but the last copies the argument bytes, of
-which a returned `args` result holds at most `limit` (`args_bytes_le`).  The result of
-`randomGet 16` is copied twice in the same way, and a returned result holds at most 16 bytes
-(`random_bytes_le`).  With the literal pool's 4,096 bytes, the budget fits 65,535 pages exactly
-when `limit` is at most 252,640,960 (`initial_within`). -/
+The budget bounds the heap that `main` allocates (`body_bounded`).  The reflected body splits the
+results of `args` and of `randomGet 16` into their components where `main` binds them, so no later
+expression copies them, and the charge of `main` holds the block of `args`, which the reporter's
+reply asks for, the four results of `wordBytes`, and the buffer of `randomGet 16`.  A returned
+`args` result holds at most `limit` bytes (`args_bytes_le`), and a returned `randomGet 16` result
+at most 16 (`random_bytes_le`).  With the literal pool's 4,096 bytes, the budget fits 65,535 pages
+exactly when `limit` is at most 4,294,897,328 (`initial_within`). -/
 
 namespace Verified.Examples.WasiSys
 
@@ -24,10 +24,9 @@ open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime Verified Verifie
   Verified.Wasi.Resource
 
 /-- A bound on the heap that `main` allocates when the reporter's replies ask for blocks of at
-most `limit` bytes: the block of `args` and 16 copies of the argument bytes, at most
-`Bytes.allocationCost limit` each, the four results of `wordBytes` (56 bytes each), and the buffer
-of `randomGet 16` and two copies of it (64 bytes each). -/
-def budget (limit : Nat) : Nat := 17 * Bytes.allocationCost limit + 416
+most `limit` bytes: the block of `args`, at most `Bytes.allocationCost limit`, the four results of
+`wordBytes` (56 bytes each), and the buffer of `randomGet 16` (64 bytes). -/
+def budget (limit : Nat) : Nat := Bytes.allocationCost limit + 288
 
 open Lean Meta in
 /-- The value at `index` of an environment given as a chain of `Env.cons`. -/
@@ -188,40 +187,6 @@ private theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : 
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact returnFact run
 
-private theorem returns_args {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    {host : Host World} {limit : Nat}
-    (bound : ∀ world outputs after,
-      host.sys world Call.argsGet.reporterCall [] (.returned 0 outputs) after →
-        reportedSize outputs ≤ limit)
-    {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs} {depth : UInt64}
-    {modes : List Mode} {live : Nat → Bool} {context : List Ty} {env : Env context}
-    {value : UInt64 × UInt64 × UInt64 × LeanExe.Bytes}
-    (returns : Returns (observedHost host) pure program depth modes live
-      (.sys Call.argsGet .reported [] []) env value) :
-    value.2.2.2.data.size ≤ limit := by
-  obtain ⟨_, _, _, execution⟩ := returns_fact returns
-  exact args_bytes_le (host := observedHost host) (values := [])
-    (fun _ _ _ permitted => bound _ _ _ permitted.1) execution
-
-private theorem returns_random {World : Type} {pureSigs : List Sig}
-    {effectSigs : List EffectSig} {host : Host World} {pure : PureContext pureSigs}
-    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
-    {live : Nat → Bool} {context : List Ty} {capacity : Expr pureSigs context .word}
-    {args : List (Var (.word :: context) .word)} {env : Env context}
-    {value : UInt64 × LeanExe.Bytes}
-    (returns : Returns host pure program depth modes live
-      (.bind (.ret capacity) (.sys Call.randomGet (.flat 0 true) args [])) env value)
-    (sixteen : args.map (Env.cons (capacity.denote pure.funs env) env).get = [16]) :
-    value.2.data.size ≤ 16 := by
-  obtain ⟨_, first, next⟩ := returns_fact returns value rfl
-  have same : _ = capacity.denote pure.funs env := returns_fact first
-  subst same
-  obtain ⟨_, _, _, execution⟩ := returns_fact next
-  change Exec host ((SysForm.flat 0 true).runWith Call.randomGet
-    (args.map (Env.cons (capacity.denote pure.funs env) env).get) []) _ _ _ _ at execution
-  rw [sixteen] at execution
-  exact random_bytes_le execution
-
 /-- The cost of an `if` whose branches have one budget. -/
 private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
     (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
@@ -237,7 +202,8 @@ private theorem random_charge {values : List UInt64} (sixteen : values = [16])
 variables, and leaves the copies to `omega`. -/
 local macro "charge" : tactic => `(tactic|
   (simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
-      Expr.mode, coerceCost, Ty.copyCost, envGet, Expr.denote, Args.get_cons_zero', argsSum,
+      Expr.mode, coerceCost, Ty.copyCost, envGet, letPairEnv, letPairModes, modeAt, Expr.denote,
+      Args.get_cons_zero', argsSum,
       callCredits, wordBytes_charge, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
    omega))
 
@@ -284,77 +250,71 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   have reported := reported_rule_observed (host := host) (call := Call.argsGet) (values := [])
     bound (Nat.le_refl (Bytes.allocationCost limit))
   unfold budget
-  bind_bound (Bytes.allocationCost limit) (16 * Bytes.allocationCost limit + 416)
+  bind_bound (Bytes.allocationCost limit) 288
   · apply bounded_of_rule
     intro _ _ rule
     exact rule reported.1 reported.2
-  intro arguments returned
-  have argumentSize := returns_args bound returned
+  intro arguments _
   obtain ⟨_, _, _, bytes⟩ := arguments
-  have copy : Bytes.allocationCost bytes.data.size ≤ Bytes.allocationCost limit :=
-    allocationCost_mono argumentSize
-  generalize Bytes.allocationCost limit = A at copy ⊢
-  ite_bound (15 * A + 416)
+  letPair_free
+  ite_bound 288
   · ret_bound
-  bind_bound A (14 * A + 416)
-  · bind_bound A 0
-    · ret_bound
-    · intro _ _
-      write_bound
+  bind_bound 0 288
+  · write_bound
   intro _ _
-  bind_bound 0 (14 * A + 416)
+  bind_bound 0 288
   · flat_bound
   intro _ _
-  ite_bound (13 * A + 416)
+  ite_bound 288
   · ret_bound
-  bind_bound (A + 56) (12 * A + 360)
-  · bind_bound (A + 56) 0
+  bind_bound 56 232
+  · bind_bound 56 0
     · ret_bound
     · intro _ _
       write_bound
   intro _ _
-  bind_bound (A + 56) (11 * A + 304)
-  · bind_bound (A + 56) 0
+  bind_bound 56 176
+  · bind_bound 56 0
     · ret_bound
     · intro _ _
       write_bound
   intro _ _
-  bind_bound (2 * A) (9 * A + 304)
-  · bind_bound A A
+  bind_bound 0 176
+  · bind_bound 0 0
     · ret_bound
     · intro _ _
-      bind_bound A 0
+      bind_bound 0 0
       · ret_bound
       · intro _ _
         flat_bound
   intro _ _
-  ite_bound (8 * A + 304)
+  ite_bound 176
   · ret_bound
-  bind_bound (A + 56) (7 * A + 248)
-  · bind_bound (A + 56) 0
+  bind_bound 56 120
+  · bind_bound 56 0
     · ret_bound
     · intro _ _
       write_bound
   intro _ _
-  bind_bound (2 * A) (5 * A + 248)
-  · bind_bound A A
+  bind_bound 0 120
+  · bind_bound 0 0
     · ret_bound
     · intro _ _
-      bind_bound A 0
+      bind_bound 0 0
       · ret_bound
       · intro _ _
         flat_bound
   intro _ _
-  ite_bound (4 * A + 248)
+  ite_bound 120
   · ret_bound
-  bind_bound (A + 56) (3 * A + 192)
-  · bind_bound (A + 56) 0
+  bind_bound 56 64
+  · bind_bound 56 0
     · ret_bound
     · intro _ _
       write_bound
   intro _ _
-  bind_bound (A + 64) (2 * A + 128)
-  · bind_bound A 64
+  bind_bound 64 0
+  · bind_bound 0 64
     · ret_bound
     · intro capacity returned
       have sixteen : capacity = (16 : UInt64) := returns_fact returned
@@ -363,18 +323,13 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
       intro _ _ rule
       exact rule (fun _ trace _ _ _ => random_charge rfl trace)
         (fun _ trace _ _ _ => random_charge rfl trace)
-  intro random returned
-  have randomSize := returns_random returned rfl
+  intro random _
   obtain ⟨_, randomBytes⟩ := random
-  have randomCopy : Bytes.allocationCost randomBytes.data.size ≤ 64 :=
-    allocationCost_mono randomSize
-  ite_bound (A + 64)
+  letPair_free
+  ite_bound 0
   · ret_bound
-  bind_bound (A + 64) 0
-  · bind_bound (A + 64) 0
-    · ret_bound
-    · intro _ _
-      write_bound
+  bind_bound 0 0
+  · write_bound
   intro _ _
   ret_bound
 
@@ -390,29 +345,29 @@ theorem call_prefix_bound {World : Type} {host : Host World} {limit : Nat}
   exact call_prefix_rule (budget limit) progress rfl ((body_bounded bound).2 world)
 
 /-- The budget fits the heap above the literal pool's 4,096 bytes when `limit` is at most
-252,640,960: 4,096 bytes, 17 blocks of 252,641,008 bytes, and 416 bytes are 4,294,901,648 bytes,
-at most the 4,294,901,760 bytes of 65,535 pages, and the limit 252,640,961 exceeds them. -/
+4,294,897,328: 4,096 bytes, a block of 4,294,897,376 bytes, and 288 bytes are the 4,294,901,760
+bytes of 65,535 pages, and the limit 4,294,897,329 exceeds them. -/
 theorem initial_within {World : Type} (world : Observed World) {limit : Nat}
-    (small : limit ≤ 252640960) :
+    (small : limit ≤ 4294897328) :
     (initialStaticHeap command.literalPool).Within
       (PureTransport.erase (compileInitialStoreWith command.sysCalls command.pure.module
         command.program command.entries command.mainEntry command.literalPool world))
       command.pure.module (budget limit) := by
   have cost := allocationCost_mono small
-  have largest : Bytes.allocationCost 252640960 = 252641008 := by decide
+  have largest : Bytes.allocationCost 4294897328 = 4294897376 := by decide
   change 4096 + budget limit ≤ 65536 * 65535
   unfold budget
   omega
 
 /-- `_start` exits with an accepted status for every host whose successful `args_sizes_get`
-replies ask for blocks of at most `limit` bytes, with `limit` at most 252,640,960, every host
+replies ask for blocks of at most `limit` bytes, with `limit` at most 4,294,897,328, every host
 environment satisfying `hostSpecWith host command.sysCalls`, and every world, when the host does
 not trap along `main` and its exit. -/
 theorem total_of_bound {World : Type} {host : Host World} {limit : Nat}
     (bound : ∀ world outputs after,
       host.sys world Call.argsGet.reporterCall [] (.returned 0 outputs) after →
         reportedSize outputs ≤ limit)
-    (small : limit ≤ 252640960) (world : Observed World)
+    (small : limit ≤ 4294897328) (world : Observed World)
     (targetHost : HostEnv (Observed World))
     (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls))
     (safe : host.NoTrapsAlong (main.bind fun status => (Action.exit status : Action Unit))

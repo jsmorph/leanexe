@@ -58,6 +58,13 @@ def Command.fragments (h : Nat) (slots : List Slot) (base : Nat) (live : Nat →
   | context, _, .sys _ _ _ inputs =>
     [releaseWhere context slots
       (fun i => (inputs.any fun input => i == input.index) && !live i)]
+  | _, _, .letPair (first := first) (second := second) pair body =>
+    let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
+    [(Expr.var (S := pureSigs) pair).code (pool := pool) h slots (base + first.width + second.width)
+        (fun i => live i || body.uses (i + 2)),
+      letPairReleaseCode first second mode base (body.uses 1) (body.uses 0)] ++
+      body.fragments h (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots)
+        (base + first.width + second.width) (shift 2 live) pool
 
 /-- A command is ready for a module that imports `calls` when its fragments have the encoder's
 form and call only source functions, and when `calls` holds the calls of its `sys` commands. -/

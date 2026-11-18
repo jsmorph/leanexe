@@ -52,6 +52,7 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
     count.uses index || initial.uses index || test.uses (index + 2) || step.uses (index + 2)
   | _, _, .sys _ _ args inputs, index =>
     (inputs.any fun input => index == input.index) || args.any fun arg => index == arg.index
+  | _, _, .letPair pair body, index => index == pair.index || body.uses (index + 2)
 
 def Command.literals : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Bytes.Literal
@@ -65,6 +66,7 @@ def Command.literals : {context : List Ty} → {result : ResultTy} →
   | _, _, .exit code => code.literals
   | _, _, .loop count initial test step =>
     count.literals ++ initial.literals ++ test.literals ++ step.literals
+  | _, _, .letPair _ body => body.literals
 
 def Command.Covered (command : Command pureSigs effectSigs context result)
     (pool : Bytes.LiteralPool) : Prop := command.literals ⊆ pool.values
@@ -81,6 +83,7 @@ def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
   | _, _, .exit code => code.placeArgs
   | _, _, .loop count initial test step =>
     count.placeArgs && initial.placeArgs && test.placeArgs && step.placeArgs
+  | _, _, .letPair _ body => body.placeArgs
 
 /-- Whether each `sys` command has a call that the compiler supports, in its form, with one
 argument for each argument parameter, one input variable for each `input` parameter among them,
@@ -90,6 +93,7 @@ def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} �
   | _, _, .bind first next => first.callsReady calls && next.callsReady calls
   | _, _, .ite _ yes no => yes.callsReady calls && no.callsReady calls
   | _, _, .loop _ _ _ step => step.callsReady calls
+  | _, _, .letPair _ body => body.callsReady calls
   | _, _, .sys operation form args inputs =>
     operation.compiled && operation.form == form &&
       args.length + inputs.length == operation.argCount &&
@@ -103,6 +107,7 @@ def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
   | _, _, .bind first next => first.callsUsed ++ next.callsUsed
   | _, _, .ite _ yes no => yes.callsUsed ++ no.callsUsed
   | _, _, .loop _ _ _ step => step.callsUsed
+  | _, _, .letPair _ body => body.callsUsed
   | _, _, .sys operation _ _ _ => operation.uses
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
   | _, _, .write _ _ | _, _, .exit _ => []
@@ -137,6 +142,11 @@ theorem Command.covered_bind
     (pool : Bytes.LiteralPool) :
     (Command.bind first next).Covered pool ↔ first.Covered pool ∧ next.Covered pool := by
   simp only [Command.Covered, Command.literals, List.append_subset]
+
+theorem Command.covered_letPair (pair : Var context (.pair first second))
+    (body : Command pureSigs effectSigs (second :: first :: context) result)
+    (pool : Bytes.LiteralPool) :
+    (Command.letPair pair body).Covered pool ↔ body.Covered pool := Iff.rfl
 
 theorem Command.covered_ite (condition : Expr pureSigs context .bool)
     (yes no : Command pureSigs effectSigs context result) (pool : Bytes.LiteralPool) :

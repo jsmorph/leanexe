@@ -20,14 +20,13 @@ descriptor in nonblocking mode, which may take from 1 to `n` bytes, a write to a
 full disk or at `RLIMIT_FSIZE`, and a write that a signal interrupts after some bytes.
 
 `budget_bounded` bounds the resource model's charge of `main` under the replies of the class with
-`M` at 4,096 by `budget`, 250 times the 1,004,144 bytes that a block of 1,004,096 bytes charges:
-the buffer of `readAll`, three copies of the input, and the suffix that `writeAll` allocates at
-each pass.  `Expr.allocs` charges a copy of the input at each use after which it stays live: the
-test of its errno, the argument of `writeAll`, and the test of its size, since the reflected
-branches of that test destructure the input again.  Each write of the class takes at least 4,096
-bytes or the rest, so `writeAll` makes at most 246 passes for the at most 1,004,096 bytes that
-`readAll` returns.  The proof's bound of one block for each pass needs a minimum of 3,818 bytes at
-the native cap of 4,096 pages, and the class takes 4,096.  The charge depends on the replies, so
+`M` at 4,096 by `budget`, 247 times the 1,004,144 bytes that a block of 1,004,096 bytes charges:
+the buffer of `readAll` and the suffix that `writeAll` allocates at each pass.  The reflector
+splits the result of `readAll` into its errno and its bytes where `main` binds it, so no later use
+copies the input.  Each write of the class takes at least 4,096 bytes or the rest, so `writeAll`
+makes at most 246 passes for the at most 1,004,096 bytes that `readAll` returns.  The proof's
+bound of one block for each pass needs a minimum of 3,775 bytes at the native cap of 4,096 pages,
+and the class takes 4,096.  The charge depends on the replies, so
 the bound follows from the worlds that the runs reach (`Verified/Wasi/ResourceRulesAt.lean`), with
 the class carried along the run as `SteadyAlong`.  The budget fits the 65,535 pages of the module
 and the 4,096 pages of the native executable.
@@ -528,10 +527,9 @@ end Loop
 
 /-! ## The budget of `main` -/
 
-/-- The budget of `main` under the class with `M` at 4,096: 250 times the 1,004,144 bytes that a
-block of 1,004,096 bytes charges, for `readAll`'s buffer, three copies of the input, and at most
-246 suffixes. -/
-def budget : Nat := 250 * 1004144
+/-- The budget of `main` under the class with `M` at 4,096: 247 times the 1,004,144 bytes that a
+block of 1,004,096 bytes charges, for `readAll`'s buffer and at most 246 suffixes. -/
+def budget : Nat := 247 * 1004144
 
 open Lean Meta in
 /-- The value at `index` of an environment given as a chain of `Env.cons`. -/
@@ -581,7 +579,8 @@ local macro "charge" : tactic => `(tactic|
       PureContext.argumentCost, PureContext.loopInitCost, PureContext.loopCountCost,
       PureContext.loopTestCost, Expr.allocs, Var.cost, Var.ownedCost, Expr.ownedCost, Expr.mode,
       coerceCost, Ty.copyCost, envGet, Expr.denote, Args.get_cons_zero', argsSum, callCredits,
-      suffix_charge, ResultTy.bindEnv, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
+      suffix_charge, ResultTy.bindEnv, letPairEnv, letPairModes, modeAt, Nat.add_zero,
+      Nat.zero_add, ↓reduceIte, ite_self] <;>
    omega))
 
 /-- Proves the frames of an expression that calls no function that takes the call depth. -/
@@ -608,39 +607,28 @@ theorem budget_bounded {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.
   refine call_prefix_rule_at budget progress rfl ?_
   apply boundedAt_of_rule
   intro _ _ rule
-  refine rule 1004144 (249 * 1004144) (by decide) ?_ ?_
+  refine rule 1004144 (246 * 1004144) (by decide) ?_ ?_
   · apply Bounded.at
     apply bounded_of_rule
     intro _ _ rule
     exact rule (by decide) (by fits)
   intro _ input after _ _ readRun
   have size : input.2.data.size ≤ 1004096 := Returns.readAll_size ⟨_, _, _, _, _, readRun⟩
-  have copy : Bytes.allocationCost input.2.data.size ≤ 1004144 :=
-    (allocationCost_mono size).trans (by decide)
   have afterRead : SteadyAlong _ _ _ _ := SteadyAlong.bind_next safe readRun.erase
+  letPairAt_free
   apply boundedAt_of_rule
   intro _ _ rule
-  refine rule (248 * 1004144) (248 * 1004144) (ite_cost (by charge)) (by fits) (fun _ => ?_)
+  refine rule (246 * 1004144) (246 * 1004144) (ite_cost (by charge)) (by fits) (fun _ => ?_)
     (fun no => ?_)
   · apply Bounded.at
     ret_bound
   have afterTest : SteadyAlong _ _ _ _ := SteadyAlong.ite_no afterRead no
   apply boundedAt_of_rule
   intro _ _ rule
-  refine rule (247 * 1004144) 1004144 (by omega) ?_ ?_
-  · apply boundedAt_of_rule
-    intro _ _ rule
-    refine rule 1004144 (246 * 1004144) (by omega) ?_ ?_
-    · apply Bounded.at
-      ret_bound
-    intro _ bytes _ _ _ copyRun
-    obtain ⟨_, same, rfl⟩ := exec_pure_shape copyRun.erase
-    have held : bytes = input.2 := Outcome.returned.inj same
-    subst held
-    have atLoop : SteadyAlong _ _ _ _ :=
+  refine rule (246 * 1004144) 0 (by omega) ?_ ?_
+  · have atLoop : SteadyAlong _ _ _ _ :=
       SteadyAlong.loop_command (pure := .ofProg command.pure.program command.pure.funs)
-        (SteadyAlong.call_here
-          (SteadyAlong.bind_next (SteadyAlong.bind_first afterTest) copyRun.erase))
+        (SteadyAlong.call_here (SteadyAlong.bind_first afterTest))
     apply boundedAt_of_rule
     intro _ _ rule
     refine rule (246 * 1004144) (by charge) rfl (callBoundedAt_here (by decide) ?_)

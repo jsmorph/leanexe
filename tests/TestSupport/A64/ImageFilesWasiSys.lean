@@ -47,11 +47,11 @@ theorem sys_elf_file : bytesOk (genWasiElf command.module sysStart wasiRoom wasi
     sysElfBytes sysElfSize = true := by decide +kernel
 
 theorem sys_elf_segments : elfSegments (byteAt sysElfBytes) =
-    [⟨1, 5, 0, 0x400000, 20560, 20560⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 13564, 13564⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem sys_elf_layout : elfSegmentsOf sysLayout =
-    [⟨1, 5, 0, 0x400000, 20560, 20560⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 13564, 13564⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem sys_elf_entry : elfEntryOf (byteAt sysElfBytes) = wasiEntry.toNat := by

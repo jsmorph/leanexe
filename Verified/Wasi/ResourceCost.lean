@@ -60,6 +60,37 @@ def bindLive (intermediate : ResultTy)
     (live : Nat → Bool) (index : Nat) : Bool :=
   live index || next.uses (index + intermediate.bindCount)
 
+/-- The modes of the context of a `letPair`'s body: each component has the mode of the pair. -/
+def letPairModes (pair : Var sourceContext (.pair first second)) (modes : List Mode) : List Mode :=
+  modeAt modes pair.index :: modeAt modes pair.index :: modes
+
+/-- The environment of a `letPair`'s body: the pair's second component as variable 0 and its first
+as variable 1. -/
+def letPairEnv (pair : Var sourceContext (.pair first second)) (env : Env sourceContext) :
+    Env (second :: first :: sourceContext) :=
+  .cons (env.get pair).2 (.cons (env.get pair).1 env)
+
+/-- The charge of a `letPair` before its body: the copy of an owned pair that stays live. -/
+def letPairCost (modes : List Mode) (live : Nat → Bool)
+    (pair : Var sourceContext (.pair first second))
+    (body : Command pureSigs effectSigs (second :: first :: sourceContext) result)
+    (env : Env sourceContext) : Nat :=
+  pair.cost modes (fun i => live i || body.uses (i + 2)) (env.get pair)
+
+theorem letPairCost_borrowed {modes : List Mode} {live : Nat → Bool}
+    {pair : Var sourceContext (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: sourceContext) result}
+    {env : Env sourceContext} (borrowed : modeAt modes pair.index = .borrowed) :
+    letPairCost modes live pair body env = 0 := by
+  simp [letPairCost, Var.cost, borrowed]
+
+theorem letPairCost_dead {modes : List Mode} {live : Nat → Bool}
+    {pair : Var sourceContext (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: sourceContext) result}
+    {env : Env sourceContext} (dead : (live pair.index || body.uses (pair.index + 2)) = false) :
+    letPairCost modes live pair body env = 0 := by
+  simp [letPairCost, Var.cost, dead]
+
 def argumentMoves (signature : EffectSig) (modes : List Mode) (live : Nat → Bool)
     (args : (i : Fin signature.params.length) → Expr pureSigs sourceContext (signature.params.get i))
     (index : Fin signature.params.length) : Bool :=

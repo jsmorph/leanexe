@@ -193,10 +193,10 @@ private partial def envValueAt (env : Lean.Expr) (i : Nat) : MetaM (Option Lean.
 
 open Lean Meta Simp in
 /-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
-`Env.cons`, a definitional step.  The effect bodies destructure the state's 13 fields, and each
-level of the environment holds the previous level twice, so the elaborator's conversion of a
-call's arguments to the state unfolds a tree exponential in the depth, while `simp` applies this
-step once to each shared subterm. -/
+`Env.cons`, a definitional step.  The effect bodies split the state's 13 fields at their entry,
+and each level of the environment holds the previous level twice, so the elaborator's conversion
+of a call's arguments to the state unfolds a tree exponential in the depth, while `simp` applies
+this step once to each shared subterm. -/
 simproc ↓ envGetOfIndex (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let (``Env.get, #[_, _, env, x]) := e.getAppFnArgs | return .continue
   let (``Var.ofIndex, #[_, _, i, _]) := x.getAppFnArgs | return .continue
@@ -212,7 +212,7 @@ local macro "condition_fits" : tactic =>
 /-- Rewrites the values of an effect body's destructured state to the fields of the state. -/
 local macro "read_state" : tactic =>
   `(tactic| try simp only [Expr.denote, Env.ofFn, Args.get_cons_zero, Args.get_cons_zero',
-    Args.get_cons_succ, Args.denote, envGetOfIndex, sourceState])
+    Args.get_cons_succ, Args.denote, letPairEnv, envGetOfIndex, sourceState])
 
 /-- An `if` whose branches are at most 0, for any decision procedure.  The cost of the stopping
 branch's status is such an `if`.  `read_state` rewrites its condition by definitional steps and
@@ -258,6 +258,7 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
       (entryModes io.writeStep.func.params io.writeStep.func.modes) (fun _ => false)
       io.writeStep.func.body (.cons (sourceState s) .nil) (writeCharge s) := by
   rw [writeModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (io.pureSources.remainingOutput.bound s) (stateTy.copyCost (sourceState s))
@@ -301,6 +302,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
       (entryModes io.readStep.func.params io.readStep.func.modes) (fun _ => false)
       io.readStep.func.body (.cons (sourceState s) .nil) (readCharge R s) := by
   rw [readModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (Verified.Wasi.readCost 4096) _ (Nat.le_refl _) ?_ ?_
@@ -314,6 +316,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
     exact Nat.le_refl _
   · intro value returns
     have size : value.2.data.size ≤ 4096 := Returns.read_size returns
+    letPair_free
     apply bounded_of_rule
     intro spent fits rule
     refine rule ?_ rfl
@@ -335,6 +338,7 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
       (entryModes io.step.func.params io.step.func.modes) (fun _ => false) io.step.func.body
       (.cons (sourceState s) .nil) (stepBudget R s) := by
   rw [stepModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (writeCharge s) (restCharge R s) ?_ rfl ?_ ?_

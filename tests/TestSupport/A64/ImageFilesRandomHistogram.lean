@@ -65,11 +65,11 @@ theorem histogram_elf_file : bytesOk (genWasiElf command.module startIndex wasiR
     histogramElfBytes histogramElfSize = true := by decide +kernel
 
 theorem histogram_elf_segments : elfSegments (byteAt histogramElfBytes) =
-    [⟨1, 5, 0, 0x400000, 27388, 27388⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 21628, 21628⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem histogram_elf_layout : elfSegmentsOf histogramLayout =
-    [⟨1, 5, 0, 0x400000, 27388, 27388⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 21628, 21628⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem histogram_elf_entry : elfEntryOf (byteAt histogramElfBytes) = wasiEntry.toNat := by
@@ -183,7 +183,7 @@ theorem histogram_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (
 /-- The random histogram's corollary for `histogram.elf`.  For every reply sequence `R`, a process
 started as for `histogram_elf` with arguments whose strings, each with its zero byte, and
 eight-byte pointers take at most `argsLimit` bytes, 6 MiB, and whose N is at most `drawLimit`,
-12,836,351, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
+32,378,879, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
 `getrandom` of `ls` returned the count that it asked for and every `write` an error number or at
 most the count that it offered (`Full`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the
@@ -233,7 +233,7 @@ def witnessStack : List UInt8 :=
 zeros elsewhere; from `2^32` on, `witnessStack` and zeros after it. -/
 def witnessMem (a : UInt64) : UInt8 :=
   if a.toNat < 2 ^ 32 then
-    if 0x400000 ≤ a.toNat ∧ a.toNat < 0x400000 + 27388 then
+    if 0x400000 ≤ a.toNat ∧ a.toNat < 0x400000 + 21628 then
       byteAt histogramElfBytes (a.toNat - 0x400000)
     else if 0x410000 ≤ a.toNat ∧ a.toNat < 0x410000 + 4096 then
       byteAt histogramElfBytes (0x10000 + (a.toNat - 0x410000))

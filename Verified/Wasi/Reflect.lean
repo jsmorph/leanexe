@@ -147,7 +147,10 @@ where
     let first ← reflect context firstNative
     let firstType ← actionResultType (← inferType firstNative)
     withResultValue context first.result firstType fun value bodyContext => do
-      let next ← reflect bodyContext (nextNative.beta #[value])
+      let split := match first.result with
+        | .unit => []
+        | .value _ => [value]
+      let next ← splitThen bodyContext split (nextNative.beta #[value]) reflect
       if next.src.containsFVar value.fvarId! then
         throwError "verified_compile_wasi: an action binding escaped its source context"
       let nextProof ← mkLambdaFVars #[value] next.proof
@@ -265,7 +268,7 @@ where
     let initialReflection ← pureOperand context initial
     withLoopState context type shape fun index state callbackContext => do
       let test ← pureOperand callbackContext (testNative.beta #[index, state])
-      let step ← reflect callbackContext (stepNative.beta #[index, state])
+      let step ← splitThen callbackContext [state] (stepNative.beta #[index, state]) reflect
       if test.src.containsFVar index.fvarId! || test.src.containsFVar state.fvarId! ||
           step.src.containsFVar index.fvarId! || step.src.containsFVar state.fvarId! then
         throwError "verified_compile_wasi: a loop callback escaped its source context"

@@ -15,7 +15,7 @@ no flat call, so the trace of no run of it holds one.
 `linux_footprint_native_bounded` states the footprint without a guest trap for a budget that fits
 the cap and bounds every typed resource prefix of `main`, and `linux_footprint_steady` instantiates
 it with `budget` of `Verified/Examples/WasiReadAllSteady.lean` for the reply sequences of the class
-`Steady` with `M` at 4,096, at every cap from 3,831 to 65,535 pages.  `Steady.streams` states that
+`Steady` with `M` at 4,096, at every cap from 3,785 to 65,535 pages.  `Steady.streams` states that
 the class does not depend on the open flags or the launch.
 -/
 
@@ -89,10 +89,10 @@ theorem linux_footprint_native_bounded (F : OpenFlags) (L : ShimLayout) (I : Lau
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
 /-- For a reply sequence of the class with `M` at 4,096, every run of `_start` from `nativeStore`
-at a cap from 3,831 to 65,535 pages has the footprint of `linux_footprint_native` without a guest
+at a cap from 3,785 to 65,535 pages has the footprint of `linux_footprint_native` without a guest
 trap. -/
 theorem linux_footprint_steady (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
-    {cap : Nat} (hcap : cap ≤ 65535) (large : 3831 ≤ cap) (steady : Steady F L I 4096 R) :
+    {cap : Nat} (hcap : cap ≤ 65535) (large : 3785 ≤ cap) (steady : Steady F L I 4096 R) :
     ∃ bound, ∀ fuel ≥ bound,
       Footprint F L I R (main.bind fun status => Action.exit status) nativeWorld false
         (run fuel command.module (Wrappers.effectIndex command.pure.module 2)

@@ -8,10 +8,11 @@ and passes only marked variables at `.handle` positions and for the marked param
 holds the marks of the parameters of each effect function that the command may call, in the
 order of their signatures.  A variable is marked when it is the handle of a bracket, when a `ret`
 of the literal 3, `Handle.preopened`, binds it, or when it is a marked parameter of the function
-whose body the check reads; every other binding gives an unmarked variable.  The literal may stand
-as the body of `letPair` bindings: the reflector puts around each operand that is not a variable a
-`letPair` of each variable of type `.pair` in scope and of each component of such a variable that
-is itself a `.pair`.  The check refuses
+whose body the check reads; every other binding, the components that `Command.letPair` binds
+among them, gives an unmarked variable.  The literal may stand as the body of `Expr.letPair`
+bindings: the reflector puts around an operand that is not a variable a `letPair` of each variable
+of type `.pair` that the operand names and of each component of such a variable that is itself a
+`.pair`.  The check refuses
 
 1. a `sys` command whose call, or whose reporter in the form `reported`, is not one of the
    descriptions of `Call.table`, which `tools/wasi-calls.py` generates from the witx;
@@ -223,6 +224,8 @@ def Command.handleCheck (helpers : List (List Bool)) :
     handleCheck helpers .plain (false :: false :: marks) step
   | _, _, .plain, marks, .sys operation form args inputs =>
     sysMarked marks operation form (args.map Var.index) inputs.length
+  | _, _, .plain, marks, .letPair _ body =>
+    handleCheck helpers .plain (false :: false :: marks) body
   | _, _, .plain, _, .unit | _, _, .plain, _, .ret _ | _, _, .plain, _, .read _
   | _, _, .plain, _, .readAll _ | _, _, .plain, _, .write _ _ | _, _, .plain, _, .exit _ => true
   | _, _, .opened, marks, .ite condition yes no =>

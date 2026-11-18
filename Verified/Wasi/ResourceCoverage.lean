@@ -126,6 +126,11 @@ theorem command_coverage {World : Type} {host : Host World} {pure : PureContext 
   | sys operation form args inputs =>
     intro depth modes live env world trace outcome final execution
     exact ⟨_, _, .sys execution⟩
+  | letPair pair body bodyCovered =>
+    intro depth modes live env world trace outcome final execution
+    obtain ⟨_, _, execution⟩ := bodyCovered depth (letPairModes pair modes) (shift 2 live)
+      (letPairEnv pair env) _ _ _ _ execution
+    exact ⟨_, _, .letPair execution⟩
 
 theorem program_calls_covered {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) : CallsCovered host pure program := by

@@ -12,6 +12,7 @@ elab "check_wasi_compiler_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[
     ``Verified.Wasi.command_bind_value_spec,
+    ``Verified.Wasi.command_letPair_spec_with,
     ``Verified.Wasi.Command.code_spec,
     ``Verified.Wasi.ArgumentsAfter.call_budget,
     ``Verified.Wasi.call_arguments_allowed,

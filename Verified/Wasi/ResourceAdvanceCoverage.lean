@@ -80,6 +80,11 @@ theorem command_advance_coverage {World : Type} {host : Host World} {pure : Pure
   | sys operation form args inputs =>
     intro depth modes live env world trace residual after advance
     exact ⟨_, _, .sys advance.toPrefix⟩
+  | letPair pair body bodyCovered =>
+    intro depth modes live env world trace residual after advance
+    obtain ⟨_, _, progress⟩ := bodyCovered depth (letPairModes pair modes) (shift 2 live)
+      (letPairEnv pair env) _ _ _ _ advance
+    exact ⟨_, _, .letPair progress⟩
 
 theorem program_calls_advance_covered {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) : CallsAdvanceCovered host pure program := by

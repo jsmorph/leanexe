@@ -50,7 +50,7 @@ than the largest WASI errno, so it differs from 2 and from every errno that the 
 Otherwise the status is 0.  The loop's state holds the counts, which the compiled code updates in
 place, and the code releases each pass's buffer after `tally` reads it.  No theorem states that the
 heap of a run stays constant, since the resource model credits no release, and no run tests it
-beyond N of 1,000,000.  `verified_compile_wasi` writes a module of 7,809 bytes that imports
+beyond N of 1,000,000.  `verified_compile_wasi` writes a module of 5,977 bytes that imports
 `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
@@ -158,17 +158,18 @@ process before `exit_group` unless it ignores them (write(2)), and the model of 
 no signal.
 
 The corollary bounds N because the resource model charges each pass of the loop for the blocks that
-it allocates and credits no release.  `drawLimit`, 12,836,351, is the largest N for which `budget`
-fits the executable's memory: 6,291,504 bytes for the block of `args` and each of its seven copies,
-408 bytes for three copies of the counts, at most 17,136 bytes for `render`, 55,704 bytes for the
-at most 211 passes of `writeAll`, each of which charges the block of at most 210 bytes, 264 bytes,
-and 8,696 bytes for each of the `N / 512 + 1` passes.  Linux 4.13 and later limit the strings and
+it allocates and credits no release.  The compiler splits the result of `args`, the loop's state,
+and the result of `randomGet` into their components where `main` binds them, so no later use
+copies them, and a pass charges only the buffer of `random_get`.  `drawLimit`, 32,378,879, is the
+largest N for which `budget` fits the executable's memory: 6,291,504 bytes for the block of
+`args`, 136 bytes for the counts, at most 17,136 bytes for `render`, 55,704 bytes for the at most
+211 passes of `writeAll`, each of which charges the block of at most 210 bytes, 264 bytes, and
+4,144 bytes for each of the `N / 512 + 1` passes.  Linux 4.13 and later limit the strings and
 pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
 `fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12), so every process that Linux starts meets the
-premise on the arguments.  A corollary for every N needs a resource model that credits every block
-that a pass releases, the buffer and the copies of the counts and of the buffer, which changes the
-shared definitions of `Verified/Wasi/` and needs a proof that the allocator reuses a released
-block.
+premise on the arguments.  A corollary for every N needs a pass that allocates nothing, a draw into
+a buffer that the loop's state carries, or a resource model that credits every block that a pass
+releases.
 
 The proof composes three parts.  `body_bounded` follows `main`'s reflected body with the rules of
 `Verified/Wasi/ResourceRules.lean`, and `loop_bounded` bounds the loop's passes from counts of ten
@@ -245,7 +246,7 @@ in each.
 ## Related examples
 
 [The flat call example](../../Verified/Examples/WasiSys.lean) calls `args` and `randomGet` in a
-command, and [its total theorem](../../Verified/Examples/WasiSysTotal.lean) bounds the copies of the
+command, and [its total theorem](../../Verified/Examples/WasiSysTotal.lean) bounds the block of the
 argument bytes.  [The readAll message corollary](../../Verified/Examples/WasiReadAllMessage.lean)
 states the output and status of a command over the events of every run, as `exec_main` does, with
 the same write loop, and [its executable's theorems](../../tests/TestSupport/A64/ImageFilesWasiElf.lean)

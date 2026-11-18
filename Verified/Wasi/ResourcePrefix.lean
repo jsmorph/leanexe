@@ -145,6 +145,13 @@ inductive ResourcePrefix {World : Type} (host : Host World) (pure : PureContext 
       ResourcePrefix host pure program depth modes live (.sys operation form args inputs) env world
         trace residual final
         (sysCostWith form operation (args.map env.get) (inputs.map env.get) trace) true
+  | letPair {program : EffectProg pureSigs effectSigs} {pair : Var context (.pair first second)}
+      {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+      {residual : Action result.denote}
+      (progress : ResourcePrefix host pure program depth (letPairModes pair modes) (shift 2 live)
+        body (letPairEnv pair env) world trace residual final spent fits) :
+      ResourcePrefix host pure program depth modes live (.letPair pair body) env world trace
+        residual final (letPairCost modes live pair body env + spent) fits
 
 inductive ResourceCallPrefix {World : Type} (host : Host World) (pure : PureContext pureSigs) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
@@ -344,7 +351,7 @@ theorem ResourcePrefix.erase {World : Type} {host : Host World} {pure : PureCont
     Prefix host (command.denote pure.funs (program.funs pure.funs) env) world trace residual final := by
   refine ResourcePrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -354,7 +361,7 @@ theorem ResourceCallPrefix.erase {World : Type} {host : Host World} {pure : Pure
     Prefix host ((program.funs pure.funs).get callee env) world trace residual final := by
   refine ResourceCallPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : PureContext pureSigs}
@@ -368,7 +375,7 @@ theorem ResourceLoopPrefix.erase {World : Type} {host : Host World} {pure : Pure
       world trace residual final := by
   refine ResourceLoopPrefix.rec (motive_1 := PrefixErasure host pure)
     (motive_2 := CallPrefixErasure host pure) (motive_3 := LoopPrefixErasure host pure)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ progress
   wasi_resource_prefix_erasure_steps
 
 def PrefixBound {World : Type} (host : Host World) (pure : PureContext pureSigs)
@@ -418,6 +425,32 @@ theorem PrefixBound.readAll {World : Type} {host : Host World} {pure : PureConte
     pure.readAllCost depth modes live limit env ≤ budget ∧
       pure.exprFits depth limit env = true :=
   bounded _ _ _ _ _ (.readAll (Prefix.refl _ world))
+
+/-- A bound on every prefix of a `letPair` bounds its charge before the body. -/
+theorem PrefixBound.letPair_charge {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.letPair pair body) env world
+      budget) :
+    letPairCost modes live pair body env ≤ budget := by
+  have bound := (bounded _ _ _ _ _ (.letPair (.refl program depth _ _ body _ world))).1
+  omega
+
+/-- A bound on every prefix of a `letPair` bounds every prefix of its body by the rest. -/
+theorem PrefixBound.letPair_body {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {pair : Var context (.pair first second)}
+    {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
+    {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.letPair pair body) env world
+      budget) :
+    PrefixBound host pure program depth (letPairModes pair modes) (shift 2 live) body
+      (letPairEnv pair env) world (budget - letPairCost modes live pair body env) := by
+  intro trace residual final spent fits progress
+  obtain ⟨bound, valid⟩ := bounded _ _ _ _ _ (.letPair progress)
+  exact ⟨by omega, valid⟩
 
 theorem PrefixBound.sys {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}

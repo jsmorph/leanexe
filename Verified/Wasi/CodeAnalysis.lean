@@ -13,7 +13,8 @@ def EffectSig.callMoves (signature : EffectSig) (slots : List Slot) (live : Nat 
 
 /-- Scratch positions above the incoming context.  Every value result is owned.  Binds and
 branches reserve their result words before child scratch.  Loops reserve count, index, and
-state words, then share callback scratch. -/
+state words, then share callback scratch.  A `letPair` reserves its components' words before the
+scratch of the pair's copy and of its body. -/
 def Command.width : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Nat
   | _, _, .unit => 0
@@ -33,5 +34,7 @@ def Command.width : {context : List Ty} → {result : ResultTy} →
     max count.width (max (1 + max initial.width (copyWidth type))
       (2 + type.width + max test.width step.width))
   | _, _, .sys _ form _ _ => form.width
+  | _, _, .letPair (first := first) (second := second) _ body =>
+    first.width + second.width + max (Ty.pair first second).copyScratch body.width
 
 end Verified.Wasi

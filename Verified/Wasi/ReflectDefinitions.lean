@@ -89,10 +89,13 @@ def fromEquation (context : Ctx) (shape : ResultShape) (native source equation :
     #[← shape.fn nativeType, ← mkEqSymm equation]
   checkedReflection context shape native source proof
 
+/-- The reflection of a pure operand, with each variable of a pair type that the operand names
+destructured first, as `reflectSplit` destructures it. -/
 def pureOperand (context : Ctx) (value : Lean.Expr) : MetaM Verified.Reflect.Reflection := do
   let (normalized, equation) ← normalizeTables context.bindings context.tables value
+  let named := (context.pure.vars.map Prod.fst).filter fun x => normalized.containsFVar x.fvarId!
   let reflected ← if normalized.isFVar then Verified.Reflect.reflect context.pure normalized
-    else Verified.Reflect.reflect.reflectSplit context.pure (context.pure.vars.map Prod.fst) normalized
+    else Verified.Reflect.reflect.reflectSplit context.pure named normalized
   return reflected.as (← restate reflected.proof equation) value
 
 def withResultValue {α : Type} (context : Ctx) (shape : ResultShape) (nativeType : Lean.Expr)
@@ -124,6 +127,54 @@ def withLoopState {α : Type} (context : Ctx) (nativeType : Lean.Expr) (shape : 
         ctx := consCtx shape.ty indexContext
         env }
       next index state { context with pure := pureContext }
+
+/-- The reflection of `native` in `context`, in which `Command.letPair` first binds the components
+of each variable of `xs` that has a pair type and is not a sum that holds heap values.  The
+components replace the variable in `native` and are split in turn, and `inner` reflects the action
+that remains.  The variable dies at the split, so the code moves an owned pair into its
+components, and every later use names a component. -/
+partial def splitThen (context : Ctx) (xs : List Lean.Expr) (native : Lean.Expr)
+    (inner : Ctx → Lean.Expr → MetaM Reflection) : MetaM Reflection := do
+  match xs with
+  | [] => inner context native
+  | x :: rest =>
+    let type ← inferType x
+    let .pair first second ← tyOf type | splitThen context rest native inner
+    if ← heapSum? type then return ← splitThen context rest native inner
+    let view ← pairView context.pure.base type
+    let pairReflection ← Verified.Reflect.reflect context.pure x
+    unless pairReflection.src.isAppOf ``Expr.var do
+      throwError "verified_compile_wasi: {x} is not a variable of the context"
+    let pairVar := pairReflection.src.getAppArgs.back!
+    let firstShape ← shapeOf view.α
+    let secondShape ← shapeOf view.β
+    withLocalDeclD `a view.α fun a => withLocalDeclD `b view.β fun b => do
+      let firstContext := consCtx first context.pure.ctx
+      let firstEnv ← mkAppOptM ``Env.cons
+        #[some context.pure.ctx, some (tyExpr first), some (firstShape.apply a),
+          some context.pure.env]
+      let env ← mkAppOptM ``Env.cons
+        #[some firstContext, some (tyExpr second), some (secondShape.apply b), some firstEnv]
+      let pureContext := { context.pure with
+        vars := (b, second) :: (a, first) :: context.pure.vars
+        ctx := consCtx second firstContext
+        env }
+      let bodyNative := native.replaceFVar x (← view.rebuild a b)
+      let body ← splitThen { context with pure := pureContext } (b :: a :: rest) bodyNative inner
+      if body.src.containsFVar a.fvarId! || body.src.containsFVar b.fvarId! then
+        throwError "verified_compile_wasi: a component of a split escaped its source context"
+      let source ← mkAppM ``Command.letPair #[pairVar, body.src]
+      let nativeType ← actionResultType (← inferType native)
+      let proof ← mkAppM ``letPair_rel
+        #[context.pure.funs, context.funs, context.pure.env, pairVar, body.src,
+          ← firstShape.fn view.α, ← secondShape.fn view.β, view.pair x,
+          ← graphExpr body.result nativeType, ← mkLambdaFVars #[a, b] bodyNative,
+          ← mkEqRefl (← mkAppM ``Env.get #[context.pure.env, pairVar]),
+          ← mkLambdaFVars #[a, b] body.proof]
+      -- The view's eta law at the identity, whose values lie in `Type`, unlike the actions.
+      let identity ← withLocalDeclD `y type fun y => mkLambdaFVars #[y] y
+      let eta ← mkCongrArg (← mkLambdaFVars #[x] native) (← view.eta identity x)
+      checkedReflection context body.result native source (← mkAppM ``rel_eta #[proof, eta])
 
 partial def effectVarAt (signatures : Lean.Expr) (index : Nat) : MetaM Lean.Expr := do
   let (``List.cons, #[_, signature, rest]) := signatures.getAppFnArgs

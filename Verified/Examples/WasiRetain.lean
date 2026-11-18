@@ -14,8 +14,9 @@ verified_compile_wasi compiled := [retain]
 
 def step : Command [] [] [.bytes, .word] (.value .bytes) :=
   .bind (.read (.word 1))
-    (.bind (.write .stdout (.there .here))
-      (.ret (.letPair (.var (.there .here)) (.var .here))))
+    (.letPair .here
+      (.bind (.write .stdout (.there (.there (.there .here))))
+        (.ret (.var (.there .here)))))
 
 def body : Command [] [] [] (.value .bytes) :=
   .loop (.word 2) (.bytesLiteral []) (.bool true) step

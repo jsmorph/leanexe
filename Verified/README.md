@@ -635,6 +635,15 @@ command's correctness and its charge, `readAllCost` of [the charge](Wasi/ReadAll
 [The WASI design](../docs/verified-wasi-design.md#typed-commands-and-reflection) gives the reason
 for a command of its own.
 
+The command splits a value of a pair type where the action binds it, the result of a bind, a
+loop's state at the start of each step, and a tuple parameter at a function's entry, into
+`Command.letPair`, whose code is that of `Expr.letPair (.var pair)`: the pair's code, which moves
+an owned pair that dies there, the stores of its components, and the releases of the owned
+components that the body does not use.  [The binding's rules](Wasi/CommandLetPair.lean) prove the
+code in three parts, `wp_letPair_head_with`, `wp_letPair_tail_with`, and `After.letPair`, and
+give `command_letPair_spec_with` and `cost_command_letPair_spec_with`, with the charge
+`Resource.letPairCost`, the copy of an owned pair that stays live.
+
 The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
 retained caller regions must lie apart from them.  Returned bytes have owned allocation roots,
 and their logical lengths may be smaller than the retained capacity after a short read.

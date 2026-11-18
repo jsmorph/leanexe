@@ -6,6 +6,7 @@ import Verified.Wasi.CostBindValue
 import Verified.Wasi.CostConditionalSpec
 import Verified.Wasi.CostLoopSpec
 import Verified.Wasi.SysCommand
+import Verified.Wasi.CommandLetPair
 
 namespace Verified.Wasi
 
@@ -36,6 +37,8 @@ theorem Command.cost_code_spec_with {calls : List LeanExe.Wasi.Call}
   | loop count initial test step stepSpec => exact cost_command_loop_spec_with facts sourceHost stepSpec
   | sys operation form args inputs =>
     exact cost_command_sys_spec_with facts sourceHost operation form args inputs
+  | letPair pair body bodySpec =>
+    exact cost_command_letPair_spec_with facts sourceHost pair body bodySpec
 
 theorem Command.cost_code_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
