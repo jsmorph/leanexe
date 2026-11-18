@@ -843,7 +843,7 @@ Every check has `tests/verified/run.sh` among its inputs.  The Lean inputs of a 
 
 ### WASI and Linux tests
 
-The WASI drivers run on any host with the Wasmtime host and `wasm-tools`.  The scripts of `tests/linux/` need an AArch64 Linux host with `qemu-aarch64`, QEMU's user-mode emulator, and most of them also `strace`.  A script that writes an executable with theorems elaborates the theorems' module in the kernel against the file that it wrote, runs the executable on the host's processor and under `qemu-aarch64`, and, for a WASI command, compares each run with the Wasmtime host's run of the command's module.  [The WASI manual's tests](wasi.md#tests) and [the AArch64 document's runs](a64-bare-metal.md#runs) give the cases and their results.
+The WASI drivers need the Wasmtime host and `wasm-tools`.  The scripts of `tests/linux/` need an AArch64 Linux host with `qemu-aarch64`, QEMU's user-mode emulator, and those of WASI commands also the Wasmtime host, `wasm-tools`, and `strace`.  A script that writes an executable with theorems elaborates the theorems' module in the kernel against the file that it wrote, runs the executable on the host's processor and under `qemu-aarch64`, and, for a WASI command, compares each run with the Wasmtime host's run of the command's module.  [The WASI manual's tests](wasi.md#tests) and [the AArch64 document's runs](a64-bare-metal.md#runs) give the cases and their results.
 
 | Script | What it tests |
 |---|---|
@@ -858,7 +858,7 @@ The WASI drivers run on any host with the Wasmtime host and `wasm-tools`.  The s
 | [`tests/linux/a64-wasi-preopen.sh`](../tests/linux/a64-wasi-preopen.sh) | Writes `prestat.elf` and elaborates its theorems, and runs it and a module that asks about descriptor numbers up to `2^32 - 1` with descriptor 3 a directory, closed, and a file, and with faults injected into the check of descriptor 3. |
 | [`tests/linux/a64-wasi-files.sh`](../tests/linux/a64-wasi-files.sh) | Writes `files.elf` and elaborates its theorems, and runs it and the scenarios of `path_open`, `fd_close`, and the handle forms, among them open flags, closes, magic links, the descriptor limit of 1,024, and faults injected into `openat2` and `close`. |
 
-`tests/linux/a64-wasi-preopen.sh --runs DIR` and `tests/linux/a64-wasi-files.sh --runs DIR` build and check nothing and run the executables and modules that a run of the script left in `DIR`, on a host that needs neither Lean nor `wasm-tools`.  The full check runs `tests/wasi/run.sh`, `tests/wasi/sys-run.sh`, and, on an AArch64 Linux host, `tests/linux/sys-run.sh`.  The other scripts of `tests/linux/` run separately, each from the repository's root without arguments.
+`tests/linux/a64-wasi-preopen.sh --runs DIR` and `tests/linux/a64-wasi-files.sh --runs DIR` build and check nothing and run the executables and modules that a run of the script left in `DIR`, on a host that needs neither Lean nor `wasm-tools`.  The full check runs `tests/wasi/run.sh`, `tests/wasi/sys-run.sh`, and, on an AArch64 Linux host, `tests/linux/sys-run.sh`.  No driver runs the other scripts of `tests/linux/`, which take no arguments but `--runs DIR`.
 
 ### The full check
 
