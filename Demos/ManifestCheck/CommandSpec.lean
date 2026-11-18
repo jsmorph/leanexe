@@ -117,4 +117,32 @@ inductive FileCheck (name hex : List UInt8) : List Event → Bool → Prop
       FileCheck name hex (.sys .pathOpen (openArgs name) (.returned 0 outputs) :: events ++
         [.sys .fdClose [.word (openedDescriptor outputs)] (.returned closeErrno committed)]) ok
 
+/-- Confinement: every open of `events` is the open of `openArgs n` under descriptor 3, read-only,
+for `n` the manifest's name `name` or the name of a line of the manifest's bytes `manifest`. -/
+def Confined (name manifest : List UInt8) (events : List Event) : Prop :=
+  ∀ args reply, Event.sys .pathOpen args reply ∈ events →
+    ∃ n, args = openArgs n ∧ (n = name ∨ ∃ l ∈ lines manifest, n = l.2.drop 66)
+
+/-- The use of descriptors: the calls of `args`, opens that return an errno, opens that return
+errno 0 followed by reads of the opened descriptor and then its close, and writes to the standard
+output.  Each descriptor is closed before the next open and before the end of the events, and no
+event writes to another descriptor. -/
+inductive Handled : List Event → Prop
+  | nil : Handled []
+  | write {offered : Bytes} {reply : Transfer UInt64} {rest : List Event} (tail : Handled rest) :
+      Handled (.write .stdout offered reply :: rest)
+  | argsCall {call : Call} {args : List Arg} {reply : Transfer (List Bytes)} {rest : List Event}
+      (named : call = .argsSizesGet ∨ call = .argsGet) (tail : Handled rest) :
+      Handled (.sys call args reply :: rest)
+  | refused {args : List Arg} {errno : UInt64} {outputs : List Bytes} {rest : List Event}
+      (nonzero : errno ≠ 0) (tail : Handled rest) :
+      Handled (.sys .pathOpen args (.returned errno outputs) :: rest)
+  | bracket {args : List Arg} {outputs : List Bytes} {reads : List Event}
+      {closed : Transfer (List Bytes)} {rest : List Event}
+      (reading : ∀ e ∈ reads, ∃ reply,
+        e = .sys .fdRead (readArgs (openedDescriptor outputs)) reply)
+      (tail : Handled rest) :
+      Handled (.sys .pathOpen args (.returned 0 outputs) :: (reads ++
+        .sys .fdClose [.word (openedDescriptor outputs)] closed :: rest))
+
 end Demos.ManifestCheck

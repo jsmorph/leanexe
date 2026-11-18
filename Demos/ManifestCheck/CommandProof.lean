@@ -963,4 +963,67 @@ theorem checkFile_run {World : Type} {host : Host World} {name : Bytes}
     exact ⟨0, outputs, .inr ⟨rfl, events, bytes, ending, closeErrno, committed, htrace, reads,
       hsmall, hdigest, hflag, hclose⟩⟩
 
+/-- The check of the line of `m` from position `start` to position `stop`, a line in the format:
+`withOpen` of the line's name around `hashFile` makes the events of `FileCheck` for the line, and
+its verdict is the program's test of the reads, the close, and the digits. -/
+theorem entry_check {World : Type} {host : Host World} (m : Bytes) (hm : m.data.size < 2 ^ 32)
+    (start stop : Nat) (hss : start ≤ stop) (hstop : stop ≤ m.data.size)
+    (hline : WellFormed ((m.data.data.toList.drop start).take (stop - start)))
+    {world final : World} {trace : List Event} {outcome : Outcome ((Words4 × Bool) × UInt64)}
+    (run : Exec host (withOpen .preopened 1
+      (slice m (UInt64.ofNat start + 66) (UInt64.ofNat stop - UInt64.ofNat start - 66)) 0 2 0 0
+      (fun _ => pure ((⟨0, 0, 0, 0⟩ : Words4), false)) fun file => hashFile file)
+      world trace outcome final) :
+    (∀ c, outcome ≠ .exited c) ∧ ∀ r, outcome = .returned r →
+      FileCheck (((m.data.data.toList.drop start).take (stop - start)).drop 66)
+        ((m.data.data.toList.drop start).take (stop - start)) trace
+        (r.1.2 && r.2 == 0 && hexMatches m (UInt64.ofNat start) r.1.1) := by
+  have hlen : 67 ≤ stop - start := by
+    have := hline.1
+    simp only [List.length_take, List.length_drop, Array.length_toList,
+      ByteArray.size_data] at this
+    omega
+  have hs66 : UInt64.ofNat start + 66 = UInt64.ofNat (start + 66) := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_add, toNat_ofNat (by omega), toNat_ofNat (by omega)]
+    simp only [UInt64.reduceToNat]
+    omega
+  have hcount : UInt64.ofNat stop - UInt64.ofNat start - 66 =
+      UInt64.ofNat (stop - start - 66) := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_sub_of_le _ _ (by
+        rw [UInt64.le_iff_toNat_le, UInt64.toNat_sub_of_le _ _ (by
+          rw [UInt64.le_iff_toNat_le, toNat_ofNat (by omega), toNat_ofNat (by omega)]; omega),
+          toNat_ofNat (by omega), toNat_ofNat (by omega)]
+        first | omega | (simp only [UInt64.reduceToNat]; omega) | simp only [UInt64.reduceToNat]),
+      UInt64.toNat_sub_of_le _ _ (by
+        rw [UInt64.le_iff_toNat_le, toNat_ofNat (by omega), toNat_ofNat (by omega)]; omega),
+      toNat_ofNat (by omega), toNat_ofNat (by omega), toNat_ofNat (by omega)]
+    first | omega | (simp only [UInt64.reduceToNat]; omega) | simp only [UInt64.reduceToNat]
+  rw [hs66, hcount] at run
+  have hname : (slice m (UInt64.ofNat (start + 66))
+      (UInt64.ofNat (stop - start - 66))).data.data.toList =
+      ((m.data.data.toList.drop start).take (stop - start)).drop 66 := by
+    rw [slice_toList m _ _ (by omega) (by omega), List.drop_take, List.drop_drop]
+  have hnsize : (slice m (UInt64.ofNat (start + 66))
+      (UInt64.ofNat (stop - start - 66))).data.size < 2 ^ 32 := by
+    have := congrArg List.length hname
+    simp only [Array.length_toList, ByteArray.size_data, List.length_drop, List.length_take]
+      at this
+    omega
+  obtain ⟨noExit, returned⟩ := checkFile_run hnsize run
+  refine ⟨noExit, fun r e => ?_⟩
+  obtain ⟨errno, outputs, failed | opened⟩ := returned r e
+  · obtain ⟨hne, htrace, hflag⟩ := failed
+    rw [htrace, hname, hflag]
+    exact .refused hne
+  · obtain ⟨-, events, bytes, ending, closeErrno, committed, htrace, reads, hsmall, hdigest, hflag,
+      hclose⟩ := opened
+    rw [htrace, hname]
+    refine .opened reads ?_
+    rw [Bool.and_eq_true, Bool.and_eq_true, hflag, hclose, hexMatches_eq m _ _ (by omega),
+      hexMatchesSpec_iff m start (stop - start) (by omega) (by omega), hdigest,
+      digestOf_iff _ _ hsmall]
+    simp only [decide_eq_true_eq, beq_iff_eq, and_assoc]
+
 end Demos.ManifestCheck
