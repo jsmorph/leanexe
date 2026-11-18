@@ -81,8 +81,8 @@ that `Call.pathOpen` rejects, in the order of the arguments: 61 (`overflow`) for
 `0xf`, `rightsBase` and `rightsInheriting` outside `0x3fffffff`, and `fdflags` outside `0x1f`.
 Otherwise it runs `body` with the new descriptor, and when `body` returns, it calls `fd_close` on
 the descriptor and returns `body`'s result with the errno of `fd_close`.  A body that exits or
-traps ends the process with the descriptor open, and Wasmtime closes it at exit.  Programs open
-and close descriptors only through `withOpen`.
+traps ends the process with the descriptor open, and Wasmtime closes it when the host deletes the
+store.  Programs open and close descriptors only through `withOpen`.
 
 `verified_compile_wasi` reflects `withOpen` as one shape of the existing commands, which
 `Verified.Wasi.Command.HandleCheck` recognizes.  With the argument variables `d`, `f`, `o`, `b`,

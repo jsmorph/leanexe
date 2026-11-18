@@ -2,14 +2,14 @@ import Verified.Examples.WasiFiles
 import Verified.Shim
 
 /-!
-The footprint theorem at the specification level for the command of increment 3 of the shim,
-which writes a file in one bracket of `withOpen` and reads it back in another, and reads the
-preopened directory's record and name.  The shim implements every flat call that the command
-imports (`calls_supported`).  For every choice of open flags, layout, launch, and reply sequence,
-every Talos run of `_start` from the command's initial store, with no layer events, no exit marker,
-and no recorded outputs, under the shim's environment with enough fuel has the footprint of
-`Footprint` (`linux_footprint`), and the layer events of every such run name only standard
-streams and the descriptor numbers that the shim holds open (`linux_names`).
+The footprint theorem at the specification level for the files command of
+`Verified.Examples.WasiFiles`, which writes a file in one bracket of `withOpen` and reads it back in
+another, and reads the preopened directory's record and name.  The shim implements every flat
+call that the command imports (`calls_supported`).  For every choice of open flags, layout,
+launch, and reply sequence, every Talos run of `_start` from the command's initial store, with no
+layer events, no exit marker, and no recorded outputs, under the shim's environment with enough
+fuel has the footprint of `Footprint` (`linux_footprint`), and the layer events of every such run
+name only standard streams and the descriptor numbers that the shim holds open (`linux_names`).
 -/
 
 namespace Verified.Examples.WasiFiles
