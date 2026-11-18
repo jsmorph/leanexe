@@ -43,9 +43,10 @@ builds the output line from the name's bytes and the bytes of `: OK` or `: FAILE
 which `suffixByte` computes from their positions.  [The verified compilation](Compiled.lean) writes
 a module that exports `parse`, `hexMatches`, and `render` as functions 6, 8, and 10.
 
-[The streaming SHA-256](../../Library/Hashing/Sha256/README.md#implementation) of the library hashes a
-message that arrives in pieces: `update` compresses the whole blocks of a byte string into the hash
-value, and `finish` pads the bytes after the last whole block with the length of the whole message.
+[The streaming SHA-256](../../Library/Hashing/Sha256/README.md#implementation) of the library
+hashes a message that arrives in pieces: `update` compresses the whole blocks of a byte string into
+the hash value, and `finish` pads the bytes after the last whole block with the length of the whole
+message.
 
 ## The core computes its specification
 
@@ -66,22 +67,22 @@ state to a state of three parts, on which the induction runs.
 ## Confinement
 
 The specification admits every name, absolute names and names with `..` among them, because both
-hosts resolve each open of a name under the preopened directory beneath that directory.  [The Linux shim's
-specification](../../Verified/Shim/Replies.lean) makes every `path_open` an `openat2` call whose
-`open_how` record, `openHowBytes`, holds the resolution flags `RESOLVE_BENEATH` and
+hosts resolve each open of a name under the preopened directory beneath that directory.  [The Linux
+shim's specification](../../Verified/Shim/Replies.lean) makes every `path_open` an `openat2` call
+whose `open_how` record, `openHowBytes`, holds the resolution flags `RESOLVE_BENEATH` and
 `RESOLVE_NO_MAGICLINKS` (10), and the AArch64 stub of `path_open` in
 [`LeanExe/A64/WasiFiles.lean`](../../LeanExe/A64/WasiFiles.lean) writes that record (`openHow`) and
-calls `openat2` up to four times after `EAGAIN` (`openCalls`), which `run_openHow` of
-[the stub's proof](../../Verified/ShimA64/OpenHow.lean) proves.  The shim never falls back to
-`openat`: `ENOSYS` gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of a
-resolution that leaves the directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an
-absolute name, a `..` that leaves the directory, and a symbolic link, absolute or relative, whose
-target lies outside it, and `RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's
-Wasmtime host preopens the directory with `wasi_config_preopen_dir` of
-[`tools/wasmtime-host.c`](../../tools/wasmtime-host.c), and Wasmtime resolves names with cap-std,
-which confines them as well.  A confinement theorem of a command can therefore state the names
-that the command asks the host to open, relative to descriptor 3, and rely on the host's resolution
-for the rest, which no theorem of the repository states for Linux's kernel.
+calls `openat2` up to four times after `EAGAIN` (`openCalls`), which `run_openHow` of [the stub's
+proof](../../Verified/ShimA64/OpenHow.lean) proves.  The shim never falls back to `openat`: `ENOSYS`
+gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of a resolution that leaves the
+directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an absolute name, a `..` that
+leaves the directory, and a symbolic link, absolute or relative, whose target lies outside it, and
+`RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's Wasmtime host preopens the
+directory with `wasi_config_preopen_dir` of [`tools/wasmtime-host.c`](../../tools/wasmtime-host.c),
+and Wasmtime resolves names with cap-std, which confines them as well.  A confinement theorem of a
+command can therefore state the names that the command asks the host to open, relative to descriptor
+3, and rely on the host's resolution for the rest, which no theorem of the repository states for
+Linux's kernel.
 
 ## Building and testing
 
