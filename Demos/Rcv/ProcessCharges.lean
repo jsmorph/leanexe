@@ -88,6 +88,7 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
       (entryModes io.writeStep.func.params io.writeStep.func.modes) (fun _ => false)
       io.writeStep.func.body (.cons (sourceState s) .nil) (writeCharge s) := by
   rw [writeModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (io.pureSources.remainingOutput.bound s) (stateTy.copyCost (sourceState s))
@@ -124,6 +125,7 @@ theorem step_body_bounded {World : Type} (host : Host World) (s : State) :
       (entryModes io.step.func.params io.step.func.modes) (fun _ => false) io.step.func.body
       (.cons (sourceState s) .nil) (stepBudget s) := by
   rw [stepModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (writeCharge s) (stateTy.copyCost (sourceState s)) ?_ rfl ?_ ?_
@@ -171,6 +173,7 @@ theorem begin_body_bounded {World : Type} (host : Host World) :
     decide
   · intro value returns
     have size := Returns.readAll_size returns
+    letPair_free
     apply bounded_of_rule
     intro spent fits rule
     refine rule ?_ rfl

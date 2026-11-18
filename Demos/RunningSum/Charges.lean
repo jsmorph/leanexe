@@ -365,6 +365,7 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
       (entryModes io.writeStep.func.params io.writeStep.func.modes) (fun _ => false)
       io.writeStep.func.body (.cons (sourceState state) .nil) (writeCharge state) := by
   rw [writeModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (io.pureSources.remainingOutput.bound state) (stateTy.copyCost (sourceState state))
@@ -401,6 +402,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
       (entryModes io.readStep.func.params io.readStep.func.modes) (fun _ => false)
       io.readStep.func.body (.cons (sourceState state) .nil) (readCharge state) := by
   rw [readModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (Verified.Wasi.readCost 4096) _ (Nat.le_refl _) ?_ ?_
@@ -413,6 +415,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
     exact Nat.le_refl _
   · intro value returns
     have size : value.2.data.size ≤ 4096 := Returns.read_size returns
+    letPair_free
     apply bounded_of_rule
     intro spent fits rule
     refine rule ?_ rfl
@@ -432,6 +435,7 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
       (entryModes io.step.func.params io.step.func.modes) (fun _ => false) io.step.func.body
       (.cons (sourceState state) .nil) (stepBudget state) := by
   rw [stepModes]
+  letPair_free
   apply bounded_of_rule
   intro spent fits rule
   refine rule (writeCharge state) (inputCharge state) ?_ rfl ?_ ?_

@@ -263,12 +263,13 @@ theorem Bounded.letPair_free {World : Type} {host : Host World} {pure : PureCont
   Bounded.letPair (by omega) bounded
 
 /-- Reduces `Bounded` of each `letPair` at the head of a command to `Bounded` of its body, for a
-pair that is borrowed or that dies at the `letPair`, whose charge `decide` evaluates to 0. -/
+pair that is borrowed or that dies at the `letPair`, which `rfl` shows by reducing the pair's mode
+or its liveness. -/
 macro "letPair_free" : tactic => `(tactic|
   repeat (refine Verified.Wasi.Resource.Bounded.letPair_free (by
     first
-      | exact Verified.Wasi.Resource.letPairCost_borrowed (by decide)
-      | exact Verified.Wasi.Resource.letPairCost_dead (by decide)) ?_))
+      | exact Verified.Wasi.Resource.letPairCost_borrowed rfl
+      | exact Verified.Wasi.Resource.letPairCost_dead rfl) ?_))
 
 /-- What a run of a `letPair` that returns a value gives: a run of its body that returns it. -/
 private def LetPairReturn {World : Type} (host : Host World) (pure : PureContext pureSigs)

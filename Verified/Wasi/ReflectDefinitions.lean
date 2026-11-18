@@ -171,7 +171,9 @@ partial def splitThen (context : Ctx) (xs : List Lean.Expr) (native : Lean.Expr)
           ← graphExpr body.result nativeType, ← mkLambdaFVars #[a, b] bodyNative,
           ← mkEqRefl (← mkAppM ``Env.get #[context.pure.env, pairVar]),
           ← mkLambdaFVars #[a, b] body.proof]
-      let eta ← view.eta (← mkLambdaFVars #[x] native) x
+      -- The view's eta law at the identity, whose values lie in `Type`, unlike the actions.
+      let identity ← withLocalDeclD `y type fun y => mkLambdaFVars #[y] y
+      let eta ← mkCongrArg (← mkLambdaFVars #[x] native) (← view.eta identity x)
       checkedReflection context body.result native source (← mkAppM ``rel_eta #[proof, eta])
 
 partial def effectVarAt (signatures : Lean.Expr) (index : Nat) : MetaM Lean.Expr := do

@@ -273,12 +273,13 @@ theorem BoundedAt.letPair_free {World : Type} {host : Host World} {pure : PureCo
   BoundedAt.letPair (by omega) bounded
 
 /-- Reduces `BoundedAt` of each `letPair` at the head of a command to `BoundedAt` of its body, for a
-pair that is borrowed or that dies at the `letPair`, whose charge `decide` evaluates to 0. -/
+pair that is borrowed or that dies at the `letPair`, which `rfl` shows by reducing the pair's mode
+or its liveness. -/
 macro "letPairAt_free" : tactic => `(tactic|
   repeat (refine Verified.Wasi.Resource.BoundedAt.letPair_free (by
     first
-      | exact Verified.Wasi.Resource.letPairCost_borrowed (by decide)
-      | exact Verified.Wasi.Resource.letPairCost_dead (by decide)) ?_))
+      | exact Verified.Wasi.Resource.letPairCost_borrowed rfl
+      | exact Verified.Wasi.Resource.letPairCost_dead rfl) ?_))
 
 /-- The facts about a call's parts from which every run and every prefix of it from `world` uses at
 most `budget` and has enough frames: for the first function, a frame at the call's depth and a

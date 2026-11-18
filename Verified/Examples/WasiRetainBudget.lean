@@ -6,25 +6,27 @@ namespace Verified.Examples.WasiRetain
 open LeanExe LeanExe.Wasi Verified Verified.Wasi Verified.Wasi.Resource
 
 private def returnRead : Command [] []
-    [.elem (.prod .word .word), .pair .word .bytes, .bytes, .word] (.value .bytes) :=
-  .ret (.letPair (.var (.there .here)) (.var .here))
+    [.elem (.prod .word .word), .bytes, .word, .pair .word .bytes, .bytes, .word] (.value .bytes) :=
+  .ret (.var (.there .here))
 
-private def writePrevious : Command [] [] [.pair .word .bytes, .bytes, .word] (.value .bytes) :=
-  .bind (.write .stdout (.there .here)) returnRead
+private def writePrevious :
+    Command [] [] [.bytes, .word, .pair .word .bytes, .bytes, .word] (.value .bytes) :=
+  .bind (.write .stdout (.there (.there (.there .here)))) returnRead
 
 private theorem returnRead_bounded {World : Type} (host : Host World) (pure : PureContext [])
     (depth : UInt64) (live : Nat → Bool)
-    (env : Env [.elem (.prod .word .word), .pair .word .bytes, .bytes, .word]) :
-    Bounded host pure .nil depth [.owned, .owned, .owned, .borrowed]
-      (shift 1 (shift 1 live)) returnRead env 0 := by
+    (env : Env [.elem (.prod .word .word), .bytes, .word, .pair .word .bytes, .bytes, .word]) :
+    Bounded host pure .nil depth [.owned, .owned, .owned, .owned, .owned, .borrowed]
+      (shift 1 (shift 2 (shift 1 live))) returnRead env 0 := by
   apply bounded_of_rule
   intro spent fits rule
   exact rule (by change 0 ≤ 0; omega) rfl
 
 private theorem writePrevious_bounded {World : Type} (host : Host World) (pure : PureContext [])
-    (depth : UInt64) (live : Nat → Bool) (env : Env [.pair .word .bytes, .bytes, .word]) :
-    Bounded host pure .nil depth [.owned, .owned, .borrowed]
-      (shift 1 live) writePrevious env 0 := by
+    (depth : UInt64) (live : Nat → Bool)
+    (env : Env [.bytes, .word, .pair .word .bytes, .bytes, .word]) :
+    Bounded host pure .nil depth [.owned, .owned, .owned, .owned, .borrowed]
+      (shift 2 (shift 1 live)) writePrevious env 0 := by
   apply bounded_of_rule
   intro spent fits rule
   apply rule 0 0 (by omega)
@@ -47,6 +49,7 @@ private theorem step_bounded {World : Type} (host : Host World) (pure : PureCont
       simp [Verified.Wasi.readCost, UInt64.reduceToNat, Verified.Bytes.allocationCost]
     · rfl
   · intro value _
+    letPair_free
     exact writePrevious_bounded host pure depth live _
 
 private theorem loop_exec_bound {World : Type} {host : Host World} {pure : PureContext []}
