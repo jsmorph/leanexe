@@ -19,7 +19,11 @@
     "t.x 17 = s.x 17 or t.x 18 = s.x 18 for every run of the module's code",
     "M.StubSim S n ps rs hf entry for a stub that reads the scratch or Linux's initial stack",
     "a loop of A64 code over a zero-terminated string or a vector of pointers",
-    "∀ q, KeptReg q → u.x q = s.x q from the frame lemmas of a run's segments"
+    "∀ q, KeptReg q → u.x q = s.x q from the frame lemmas of a run's segments",
+    "a stub's run from its entry on one platform before the machine's StubSim",
+    "a loop of getrandom calls in a stub against Verified.Shim.randomLoop",
+    "a stub that writes the shim's scratch, kept by ScratchOnly",
+    "environment already contains, at a merge of two branches that declared the same lemma"
   ],
   "modules": [
     "LeanExe.A64.Proof.MachineSim",
@@ -113,7 +117,21 @@
     "Verified.ShimA64.ScratchHolds.frame",
     "Verified.ShimA64.writeList_outside",
     "Verified.ShimA64.stubEntry_of",
-    "Verified.ShimA64.flatStub_sim"
+    "Verified.ShimA64.flatStub_sim",
+    "Verified.ShimA64.StubEnd",
+    "Verified.ShimA64.KeptOutside",
+    "Verified.ShimA64.LoopEnd",
+    "Verified.ShimA64.LoopEnd.cons",
+    "Verified.ShimA64.stubResult_of_end",
+    "Verified.ShimA64.clockStubs_call",
+    "Verified.ShimA64.ScratchOnly",
+    "Verified.ShimA64.ScratchOnly.storeRel",
+    "Verified.ShimA64.ScratchOnly.high",
+    "LeanExe.A64.step_madd",
+    "Verified.ShimA64.typed_i32x2",
+    "Verified.ShimA64.StoreRel.congrArea",
+    "Verified.Shim.randomLoop",
+    "Verified.Shim.shimCalls"
   ],
   "examples": [
     "LeanExe.A64.Machine.instr_sim",
@@ -131,6 +149,14 @@
     "LeanExe.A64.run_pointerLoop",
     "LeanExe.A64.run_copyPass",
     "LeanExe.A64.run_sizesStub",
-    "LeanExe.A64.run_stringsStub"
+    "LeanExe.A64.run_stringsStub",
+    "Verified.ShimA64.clockStub_run",
+    "Verified.ShimA64.randomStub_run",
+    "Verified.ShimA64.randomLoop_run",
+    "Verified.ShimA64.clockStub_sim",
+    "Verified.ShimA64.randomStub_sim",
+    "Verified.ShimA64.clockStubs_sim",
+    "Verified.ShimA64.closeStub_sim",
+    "Verified.ShimA64.openStub_sim"
   ]
 }

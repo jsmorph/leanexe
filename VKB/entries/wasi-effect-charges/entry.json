@@ -14,7 +14,10 @@
     "Returns host pure program depth modes live (.sys call form args inputs) env value",
     "dependent elimination failed in cases on a ResourceExec of a fixed command",
     "Env.get env (Var.ofIndex Γ i h) over an environment built by ResultTy.bindEnv",
-    "@ite Nat c d b b in the budget of the ite rule"
+    "@ite Nat c d b b in the budget of the ite rule",
+    "a resource bound of a loop whose number of passes depends on the host's replies, such as writeAll's",
+    "Verified.Wasi.Resource.BoundedAt host pure program depth modes live command env world budget",
+    "a charge that a source branch does not explain, from a variable that the reflected branch keeps live"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -27,7 +30,9 @@
     "Verified.Wasi.SysRule",
     "Verified.Wasi.SysWords",
     "LeanExe.Wasi.Sys",
-    "Verified.Examples.WasiSys"
+    "Verified.Examples.WasiSys",
+    "Verified.Wasi.ResourceRulesAt",
+    "Verified.Examples.WasiReadAllSteady"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -64,7 +69,16 @@
     "Verified.Wasi.Resource.ResourceExec",
     "Verified.Wasi.ResultTy.bindEnv",
     "Verified.Wasi.SysForm.ty",
-    "Verified.Env.get"
+    "Verified.Env.get",
+    "Verified.Wasi.Resource.CallPrefixBound",
+    "Verified.Wasi.Resource.BoundedAt",
+    "Verified.Wasi.Resource.LoopBoundedAt",
+    "Verified.Wasi.Resource.CallBoundedAt",
+    "Verified.Wasi.Resource.RuleAt",
+    "Verified.Wasi.Resource.boundedAt_of_rule",
+    "Verified.Wasi.Resource.Bounded.at",
+    "Verified.Wasi.Resource.call_prefix_rule_at",
+    "Verified.Wasi.Resource.callBoundedAt_here"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -81,7 +95,20 @@
     "Demos.OrderBook.Process.step_prefix_bound",
     "Demos.OrderBook.Process.initial_entry",
     "Demos.OrderBook.Process.begin_bounded",
-    "Verified.Examples.WasiSys.main"
+    "Verified.Examples.WasiSys.main",
+    "Verified.Examples.WasiReadAll.main",
+    "Verified.Examples.WasiReadAll.linux_message",
+    "Verified.Examples.WasiReadAll.budget_bounded",
+    "Verified.Examples.WasiReadAll.WriteLoop.bounded",
+    "Verified.Examples.WasiReadAll.SteadyAlong",
+    "Verified.Examples.WasiReadAll.SteadyAlong.bind_next",
+    "Verified.Examples.WasiReadAll.SteadyAlong.ite_no",
+    "Verified.Examples.WasiReadAll.SteadyAlong.call_here",
+    "Verified.Examples.WasiReadAll.SteadyAlong.loop_command",
+    "Verified.Examples.WasiReadAll.steady_bounded",
+    "Verified.Examples.WasiReadAll.Steady",
+    "Verified.Examples.WasiReadAll.WriteLoop.exec_bound",
+    "Verified.Examples.WasiReadAll.WriteLoop.prefix_bound"
   ],
   "unimported": {
     "Verified/Examples/WasiSysTotal.lean": [

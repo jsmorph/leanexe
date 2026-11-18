@@ -7,7 +7,9 @@
     "an edit of a reference or a translation that must change nothing else",
     "a trusted translation at negative or extreme operands",
     "a comparison of a specification with an independent implementation such as RCTab",
-    "a tool that exits with status 0 when it fails"
+    "a tool that exits with status 0 when it fails",
+    "Function FPAdd32 could not be found when processing --abstract option, from an IR copy older than its diff",
+    "a trace made again that differs from the recorded one in the order of a struct's fields"
   ],
   "modules": [
     "LeanExe.M7.Isla.Check"

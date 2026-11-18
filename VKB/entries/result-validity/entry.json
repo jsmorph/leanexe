@@ -4,9 +4,17 @@
     "a report that a build, a driver, or the full check passed",
     "a theorem's axiom report before acceptance",
     "a result of an earlier commit reused at a later one",
-    "a stale output file or an untested exit status in a driver"
+    "a stale output file or an untested exit status in a driver",
+    "an axiom report that spans three lines for a theorem with a long name",
+    "(kernel) application type mismatch from decide +kernel against a stale build of an import"
   ],
-  "modules": [],
-  "declarations": [],
-  "examples": []
+  "modules": [
+    "Demos.OrderBook.ProcessModule"
+  ],
+  "declarations": [
+    "Std.Format.defWidth"
+  ],
+  "examples": [
+    "Demos.OrderBook.Process.stackFits"
+  ]
 }

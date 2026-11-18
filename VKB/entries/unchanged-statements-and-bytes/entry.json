@@ -21,7 +21,9 @@
     "sysCostWith form call values [] = sysCost form call values, an equation of functions",
     "(inputs.any f || args.any g) at inputs := [] against a hypothesis about args.any g",
     "a second rule for an instruction that an existing step relation already runs, such as SVC #0 through the Linux call layer",
-    "a constructor added to an inductive type that existing statements name"
+    "a constructor added to an inductive type that existing statements name",
+    "a frame of 4,096 bytes or more in the A64 back end, whose SUB of SP takes an immediate below 4096",
+    "SP - frame wraps in the stack check when SP lies below the frame"
   ],
   "modules": [
     "LeanExe.A64.Proof.Shift",
@@ -43,7 +45,10 @@
     "Verified.Wasi.Wrappers",
     "Verified.Wasi.SysCommand",
     "LeanExe.A64.Proof.StampImage",
-    "LeanExe.A64.Proof.MachineSim"
+    "LeanExe.A64.Proof.MachineSim",
+    "LeanExe.A64.Proof.Function",
+    "LeanExe.A64.Proof.Program",
+    "LeanExe.A64.Wasi"
   ],
   "declarations": [
     "LeanExe.A64.genImage",
@@ -127,7 +132,23 @@
     "LeanExe.A64.ProcReachWith.trace_sys",
     "LeanExe.A64.Event",
     "LeanExe.A64.Machine",
-    "LeanExe.A64.bare"
+    "LeanExe.A64.bare",
+    "LeanExe.A64.genFunction",
+    "LeanExe.A64.frameSteps",
+    "LeanExe.A64.stackCmp",
+    "LeanExe.A64.run_sp_down",
+    "LeanExe.A64.run_sp_up",
+    "LeanExe.A64.run_check_wide",
+    "LeanExe.A64.StackOk",
+    "LeanExe.A64.gen_function_small",
+    "LeanExe.A64.run_frame",
+    "LeanExe.A64.run_epilogue",
+    "LeanExe.A64.run_frame_steps",
+    "LeanExe.A64.run_epilogue_steps",
+    "LeanExe.A64.framesSmall",
+    "LeanExe.A64.genProgramWith_frames",
+    "LeanExe.A64.programWith_sim",
+    "LeanExe.A64.genWasiProgram"
   ],
   "examples": [
     "TestSupport.M7.Sha.sha_loop",

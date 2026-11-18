@@ -13,7 +13,9 @@
     "a model of a floating-point program that reproduces its results bit for bit",
     "a claimed optimum of a design measurement",
     "a design note that specifies code against a reference engine, such as the order of a host's checks",
-    "a check of the reference that an invariant of the code decides, which no case distinguishes"
+    "a check of the reference that an invariant of the code decides, which no case distinguishes",
+    "wrong stubs of system calls that differ only at replies Linux never gives",
+    "a wrong request that Linux refuses with the errno of the shim's own refusal"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -22,7 +24,8 @@
     "Library.Trees.Avl.Proof",
     "Library.Trees.AvlDelete.Spec",
     "Verified.Shim.Replies",
-    "Verified.ShimA64"
+    "Verified.ShimA64",
+    "LeanExe.A64.Proof.WasiPreopen"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -40,9 +43,14 @@
     "Verified.Shim.openCheck",
     "LeanExe.A64.StoreRel",
     "Verified.ShimA64.sizesInvoke_eq",
-    "Verified.ShimA64.stringsInvoke_eq"
+    "Verified.ShimA64.stringsInvoke_eq",
+    "Verified.Shim.NamesHeld",
+    "Verified.Shim.footprint_namesHeld"
   ],
   "examples": [
-    "Library.Sorting.Quicksort.quicksort_eq"
+    "Library.Sorting.Quicksort.quicksort_eq",
+    "Verified.ShimA64.clockStub_run",
+    "Verified.ShimA64.randomStub_run",
+    "LeanExe.A64.run_preopenCheck"
   ]
 }

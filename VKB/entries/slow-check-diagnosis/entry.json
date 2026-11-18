@@ -15,7 +15,8 @@
     "Tactic `decide` failed ... did not reduce to `isTrue` or `isFalse`, stuck at an irreducible definition, while #eval decide gives true",
     "several declarations of one proof each evaluate p.translation of verified_compile",
     "(kernel) deep recursion detected from decide +kernel of ∀ x ∈ l, p x over a long list",
-    "a kernel check after unfold of a definition that matches on a loop"
+    "a kernel check after unfold of a definition that matches on a loop",
+    "heartbeats of an unchanged proof rise after a definition that a hypothesis names grows, from congr's search of the hypotheses"
   ],
   "modules": [
     "Lean.AddDecl",

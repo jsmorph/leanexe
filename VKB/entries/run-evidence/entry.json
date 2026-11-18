@@ -10,7 +10,11 @@
     "a step that a test skips under an emulator, with a reason that names the emulator's version",
     "an environment with empty strings, strings without '=', or repeated names under qemu-aarch64",
     "a run of an executable with an empty argument vector",
-    "a test that expects SIGPIPE, status 141, run inside a systemd service"
+    "a test that expects SIGPIPE, status 141, run inside a systemd service",
+    "runs of a stub at requests that the compiled commands never make, such as pointers past the memory's end",
+    "a comparison with Wasmtime that reports a difference no specification predicts, such as the padding of fd_prestat_get's record",
+    "strace's fault injection of a result that no launch produces, such as openat returning 3",
+    "a stub whose outputs are right while its calls' arguments are wrong"
   ],
   "modules": [
     "LeanExe.M7.Proof.Board"

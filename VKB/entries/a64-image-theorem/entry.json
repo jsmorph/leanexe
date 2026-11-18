@@ -24,7 +24,9 @@
     "an allocation of inMax + 33 bytes against the bound of alloc_spec_runs",
     "the run of a WASI command's static Linux executable for AArch64 from its entry to exit_group",
     "the initial SP that Linux gives a process, after a runtime that sets SP before main",
-    "an address in the data segment of genElfWith, whose layout depends on the program's length"
+    "an address in the data segment of genElfWith, whose layout depends on the program's length",
+    "the startup routine's outcome of a WASI executable that checks descriptor 3, status 67 or the granted launch",
+    "a WASI executable's theorem without a guest trap for a class of reply sequences"
   ],
   "modules": [
     "LeanExe.A64.Proof.ProgramRuns",
@@ -59,7 +61,8 @@
     "LeanExe.A64.Proof.StampImage",
     "LeanExe.A64.Proof.Linux",
     "Verified.ShimA64",
-    "Verified.Examples.WasiReadAllNative"
+    "Verified.Examples.WasiReadAllNative",
+    "LeanExe.A64.Proof.WasiPreopen"
   ],
   "declarations": [
     "LeanExe.A64.ProgramRuns",
@@ -163,7 +166,10 @@
     "LeanExe.A64.IReach.of_reach'",
     "LeanExe.A64.elfLayoutOf",
     "LeanExe.A64.scratchAddr",
-    "LeanExe.A64.storeWords"
+    "LeanExe.A64.storeWords",
+    "LeanExe.A64.needsCheck",
+    "LeanExe.A64.startup",
+    "Verified.ShimA64.wasiElf_footprint_with"
   ],
   "examples": [
     "TestSupport.A64.Gcd.runs",
@@ -195,7 +201,8 @@
     "TestSupport.A64.Uart.uart_runs",
     "Verified.ShimA64.wasiElf_run",
     "Verified.ShimA64.wasiElf_footprint",
-    "Verified.Examples.WasiReadAll.linux_footprint_native"
+    "Verified.Examples.WasiReadAll.linux_footprint_native",
+    "Verified.Examples.WasiReadAll.linux_footprint_steady"
   ],
   "unimported": {
     "tests/TestSupport/A64/ImageFilesUart.lean": [
@@ -231,7 +238,8 @@
       "TestSupport.A64.StampElf.stamp_elf_runs_any"
     ],
     "tests/TestSupport/A64/ImageFilesWasiElf.lean": [
-      "TestSupport.A64.ImageFilesWasiElf.readall_elf"
+      "TestSupport.A64.ImageFilesWasiElf.readall_elf",
+      "TestSupport.A64.ImageFilesWasiElf.readall_elf_message"
     ],
     "tests/TestSupport/A64/ImageFilesWasiEnviron.lean": [
       "TestSupport.A64.ImageFilesWasiEnviron.environ_elf"

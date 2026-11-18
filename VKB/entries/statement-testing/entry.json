@@ -9,7 +9,8 @@
     "a statement for every function with stated properties, such as every interpretation with Closed and Stable",
     "false variants of a statement that its test must reject",
     "a native test of a statement that evaluates a Boolean restatement of the theorem",
-    "a statement test that evaluates with #eval during elaboration"
+    "a statement test that evaluates with #eval during elaboration",
+    "a conclusion that a wrong program meets, such as the events of a run that omit the count of each read"
   ],
   "modules": [
     "Demos.Bms.Theorems",
@@ -18,7 +19,8 @@
     "Library.Random.Sampling.Proof",
     "Demos.Rcv.Batch",
     "Demos.Rcv.Maine.Rounds",
-    "Demos.Frames.TimeSound"
+    "Demos.Frames.TimeSound",
+    "Verified.Examples.WasiReadAllMessage"
   ],
   "declarations": [
     "Demos.Bms.Spec.Permitted",
@@ -35,6 +37,8 @@
     "Library.Graphs.Dijkstra.dijkstra_spec",
     "Library.Random.Sampling.shuffle_count",
     "Demos.Rcv.Batch.run_batch_winner",
-    "Demos.Frames.timeScales_sound"
+    "Demos.Frames.timeScales_sound",
+    "Verified.Examples.WasiReadAll.Copies",
+    "Verified.Examples.WasiReadAll.linux_exec_message"
   ]
 }
