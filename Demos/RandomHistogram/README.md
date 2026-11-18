@@ -10,9 +10,9 @@ call so that its memory stays constant, N is the first argument after the progra
 decimal digits with 1 ≤ N < 2^64, a refused argument writes nothing and ends with status 2, the
 errno of a failed call is the status, and the output is ten lines of decimal counts.
 
-The pure core has three functions, each with a specification in [the specification](Spec.lean),
-which [the verified-request skill](../../.claude/skills/verified-request/SKILL.md) produced and
-reviewed.  `parseSpec` reads N from the buffer that WASI's `args_get` fills, in which each argument
+The pure core has three functions, whose specifications [the specification](Spec.lean) states,
+written and reviewed by the method of [the verified-request
+skill](../../.claude/skills/verified-request/SKILL.md).  `parseSpec` reads N from the buffer that WASI's `args_get` fills, in which each argument
 follows the program name and ends with a zero byte, and returns 0, which no valid N equals, for a
 refusal.  `histogramSpec` counts the words of an array by their residue mod 10, each word read as an
 unsigned integer.  `renderSpec` writes ten lines from the first ten elements of an array, in Lean's
@@ -29,8 +29,8 @@ second named four classes that no sample covers, which the review lists.
 [The program](Program.lean) holds the three functions in the verified compiler's dialect.
 `parseN` reads the buffer once with a state of four parts: the zero bytes seen, the value of the
 argument's digits, whether every byte so far is a digit and the value stays below `2^64`, and
-whether the argument has a byte.  It tests each digit against `2^64 - 1 = 10 · 1844674407370955161
-+ 5` before it adds the digit.  `histogram` folds `countWord` over the words from ten zero counts.
+whether the argument has a byte.  Before it adds a digit, it tests the digit against
+`2^64 - 1 = 10 · 1844674407370955161 + 5`.  `histogram` folds `countWord` over the words from ten zero counts.
 `render` pushes the digits of each count onto an array with `digitCount` and `digitByte` of [the
 library's `Int64` text](../../Library/Numerics/Decimal/Int64Text/README.md) and builds the output
 buffer from that array.  [The verified compilation](Compiled.lean) writes a module that exports
@@ -40,9 +40,10 @@ buffer from that array.  [The verified compilation](Compiled.lean) writes a modu
 of at most `N / 512 + 1` passes, each of which calls `randomGet` for `8 · min r 512` bytes, with `r`
 the words still to draw, and adds the residues of the buffer's little-endian words to the counts
 with `tally`.  It then writes `render` of the counts to stdout in one write.  The loop's state holds
-the counts, which the compiled code updates in place, and each pass releases its buffer, so the
-command's memory stays the same for every N.  `verified_compile_wasi` writes a module of 7,381 bytes
-that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
+the counts, which the compiled code updates in place, and the code releases each pass's buffer after
+`tally` reads it, so the heap that a run uses does not grow with N.  `verified_compile_wasi` writes
+a module of 7,381 bytes that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`,
+`args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
 
@@ -69,8 +70,8 @@ reply that the host's contracts allow, errnos of `args_sizes_get`, `args_get`, `
 write included.
 
 `start_ends` composes `exec_main` with the generated `command.start`.  A run of `_start` ends in one
-of three ways: the accepted exit, after events that meet `Meets`, a trap of the host or an exit
-that the host rejects, after the events of a run of `main`, or a trap of the guest at
+of three ways: (a) the accepted exit, after events that meet `Meets`; (b) a trap of the host or an
+exit that the host rejects, after the events of a run of `main`; or (c) a trap of the guest at
 `unreachable`, after a prefix of `main`.  The status of an accepted exit is at most 76, below the
 126 at which Wasmtime 44 rejects an exit.  The theorem admits the guest's trap because the generated
 theorem without it, `command.total`, takes a budget that bounds the heap that every prefix of
@@ -106,10 +107,13 @@ and `99999999999999999999` write nothing and exit with status 2.  The runs with 
 513, 1,000, and 1,000,000 exit with status 0 and write ten decimal counts that sum to N.  It prints
 `random histogram axiom check passed for 13 theorems`, the executable's size, and `random histogram:
 12 runs passed`.  The second command writes ten counts near 100,000, such as `100037`, `99394`, and
-`99853`, in about 0.1 s on an AArch64 host.  [The verified driver](../../tests/verified/run.sh) runs the
-74 samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the
-specifications, and [the native driver](../../tests/native/verified.sh) runs them on the module's
-translation to C, compiled with CompCert.
+`99853`, in about 0.1 s on an AArch64 host.  [The verified driver](../../tests/verified/run.sh) runs
+the 74 samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the
+specifications, and each case of `histogram` and `render` requires two blocks to stay allocated
+after the call, the argument's and the result's.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
+module's translation to C, compiled with CompCert, and `tests/baremetal/verified.sh --module
+randomHistogram` runs them on that translation under QEMU without an operating system.  All 74 pass
+in each.
 
 ## Related examples
 

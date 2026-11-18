@@ -36,8 +36,8 @@ covers, which step 7 of the skill records without new samples:
 | `histogram` | Counts above `2^32` |
 | `render` | The boundaries `10^k - 1` and `10^k` for `k` = 4, 6, 7, 8, and 10 to 17, and `10^18 - 1` |
 
-The program tests for overflow before each digit, and `parseN_eq` proves it equal to the
-specification on every buffer, so the second class reaches no sample and no program error.  The
-review noted that the request's choices outside the three functions, the reading of the bytes as
+The program tests each digit against the bound before it adds the digit, and `parseN_eq` proves the
+program equal to the specification on every buffer, so an error of the program in the second class
+would contradict that theorem.  The review noted that the request's choices outside the three functions, the reading of the bytes as
 little-endian words, the loop of at most 512 words, the statuses, and the output's stream, belong to
 the command's theorem, which [the command's specification](CommandSpec.lean) states.
