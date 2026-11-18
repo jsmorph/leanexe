@@ -12,15 +12,24 @@
 # argument, `0`, `abc`, `-5`, `+5`, or a 20-digit value above 2^64 must write nothing and exit
 # with status 2.  A run with N of 1, 9, 10, 512, 513, 1000, or 1000000, with `007`, or with `5`
 # followed by the argument `extra` must exit with status 0 and write ten lines, each a decimal
-# count without a leading zero, whose sum is N, 7 for `007` and 5 for `5 extra`.  No run may write
-# to stderr.  A runner is a function `run_RUNNER OUT ARG...` that runs the command with the
-# arguments ARG after the program name, writes its stdout to OUT and its stderr to OUT.stderr, and
-# returns the command's status.
+# count without a leading zero, whose sum is N, 7 for `007` and 5 for `5 extra`.  A run with N of
+# 1000 and standard output /dev/full must exit with status 51, `nospc`, the errno of the write that
+# failed.  No run may write to stderr.  A runner is a function `run_RUNNER OUT ARG...` that runs the
+# command with the arguments ARG after the program name, writes its stdout to OUT and its stderr to
+# OUT.stderr, and returns the command's status.
+#
+# On the native and QEMU runners, a run with N of 1000 appends its output to a file of 500 bytes
+# under a file size limit, RLIMIT_FSIZE, of 512 bytes, with SIGXFSZ ignored.  Linux takes 12 bytes
+# of the first write and fails the next with EFBIG, so the run must exit with status 22, `fbig`,
+# and leave the file at 512 bytes, which end with 12 bytes of digits and newlines.  The Wasmtime
+# host opens its standard output file itself, so this run has no Wasmtime case.
 #
 # When RUNNERS holds `native`, the executable then runs with N of 1000 under strace, which must
 # show no call but getrandom, write, and exit_group, and two getrandom calls with flags 0, of 4,096
 # and 3,904 bytes, the 512 words of a full pass and the 488 words that remain, each answered with
-# all of its bytes.  A run with `abc` under strace must make no call but exit_group.  The file
+# all of its bytes.  The run under the file size limit under strace must make two writes: the first
+# of the output's B bytes, which returns 12, and the second of the B - 12 bytes that remain, which
+# fails with EFBIG.  A run with `abc` under strace must make no call but exit_group.  The file
 # theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the executable
 # from the same module with the same commands.
 #
@@ -149,7 +158,52 @@ drawn() {
   cases=$((cases + 1))
 }
 
+# full RUNNER: the run with N of 1000 and standard output /dev/full exits with status 51 and writes
+# nothing to stderr.
+full() {
+  runner=$1
+  err="$out/$runner-full.stderr"
+  status=0
+  case $runner in
+    wasm)
+      timeout 600s "$host" --arg histogram --arg 1000 --stdout-file /dev/full run "$module" \
+        2> "$err" || status=$? ;;
+    native) timeout 600s "$elf" 1000 > /dev/full 2> "$err" || status=$? ;;
+    qemu) timeout 600s "$qemu" "$elf" 1000 > /dev/full 2> "$err" || status=$? ;;
+  esac
+  [ "$status" -eq 51 ] || fail "$runner full" "status $status, expected 51"
+  [ ! -s "$err" ] || fail "$runner full" "output on stderr"
+  cases=$((cases + 1))
+}
+
+# limited RUNNER COMMAND...: COMMAND with the argument 1000 appends its output to a file of 500
+# spaces under a file size limit of 512 bytes with SIGXFSZ ignored.  It must exit with status 22,
+# write nothing to stderr, and leave the 500 spaces followed by 12 bytes of digits and newlines.
+limited() {
+  runner=$1
+  shift
+  file="$out/$runner-limited.stdout"
+  printf '%500s' '' > "$file"
+  status=0
+  (trap '' XFSZ; ulimit -f 1; exec timeout 600s "$@" 1000 >> "$file" 2> "$file.stderr") ||
+    status=$?
+  [ "$status" -eq 22 ] || fail "$runner limited" "status $status, expected 22"
+  [ "$(wc -c < "$file" | tr -d ' ')" -eq 512 ] ||
+    fail "$runner limited" "the file does not hold 512 bytes"
+  [ "$(head -c 500 "$file" | tr -d ' ' | wc -c | tr -d ' ')" -eq 0 ] ||
+    fail "$runner limited" "the first 500 bytes changed"
+  [ "$(tail -c 12 "$file" | tr -d '0123456789\n' | wc -c | tr -d ' ')" -eq 0 ] ||
+    fail "$runner limited" "the last 12 bytes are not digits and newlines"
+  [ ! -s "$file.stderr" ] || fail "$runner limited" "output on stderr"
+  cases=$((cases + 1))
+}
+
 for runner in $RUNNERS; do
+  full "$runner"
+  case $runner in
+    native) limited native "$elf" ;;
+    qemu) limited qemu "$qemu" "$elf" ;;
+  esac
   refused "$runner" none
   refused "$runner" zero 0
   refused "$runner" letters abc
@@ -184,6 +238,20 @@ case " $RUNNERS " in
     done)
     [ "$requests" = "4096 0 4096 3904 0 3904 " ] ||
       fail strace "the getrandom calls (count, flags, result): $requests"
+    cases=$((cases + 1))
+    trace="$out/native-limited.strace"
+    file="$out/native-limited-strace.stdout"
+    printf '%500s' '' > "$file"
+    status=0
+    (trap '' XFSZ; exec strace -e trace=write -o "$trace" sh -c 'ulimit -f 1; exec "$0" 1000' \
+      "$elf" >> "$file") || status=$?
+    [ "$status" -eq 22 ] || fail strace "status $status of the limited run"
+    writes=$(sed -n 's/^write(1, .*, \([0-9][0-9]*\)) *= *\(-\{0,1\}[0-9][0-9]*\).*$/\1 \2/p' \
+      "$trace" | tr '\n' ' ')
+    set -- $writes
+    [ "$#" -eq 4 ] && [ "$2" -eq 12 ] && [ "$3" -eq "$(($1 - 12))" ] && [ "$4" -eq -1 ] &&
+      grep -q 'EFBIG' "$trace" ||
+      fail strace "the writes (count, result) of the limited run: $writes"
     cases=$((cases + 1))
     trace="$out/native-letters.strace"
     status=0
