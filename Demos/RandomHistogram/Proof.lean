@@ -443,30 +443,31 @@ theorem build_words (t : Array UInt64) (h : t.size < 2 ^ 64) :
     show (t[(UInt64.ofNat i).toNat]!).toUInt8 = _
     rw [UInt64.toNat_ofNat_of_lt' (hi.trans h), getElem!_pos t i hi]
 
+/-- `render`'s array holds at most 210 words: ten lines of at most 20 digits and a newline. -/
+theorem render_text_size (counts : Array UInt64) :
+    (LeanExe.loop 10 (#[] : Array UInt64) fun m t => appendLine t counts[m.toNat]!).size ≤ 210 := by
+  rw [← Array.length_toList, render_text, List.length_flatMap]
+  have hline : ∀ m ∈ List.range 10,
+      (digitWords (counts.getD m 0).toNat ++ [10]).length ≤ 21 := by
+    intro m _
+    have := digitWords_length_le _ (counts.getD m 0).toNat_lt
+    simp only [List.length_append, List.length_singleton]
+    omega
+  calc ((List.range 10).map fun m => (digitWords (counts.getD m 0).toNat ++ [10]).length).sum
+      ≤ ((List.range 10).map fun _ => 21).sum := List.sum_le_sum (fun m hm => hline m hm)
+    _ = 210 := by decide
+
 /-- `render` computes `renderSpec` on every array. -/
 theorem render_eq (counts : Array UInt64) : render counts = renderSpec counts := by
+  have hsize := render_text_size counts
   obtain ⟨t, ht⟩ : ∃ t, LeanExe.loop 10 (#[] : Array UInt64)
       (fun m t => appendLine t counts[m.toNat]!) = t := ⟨_, rfl⟩
   have key := render_text counts
-  rw [ht] at key
+  rw [ht] at key hsize
   have hrender : render counts = Bytes.build t.size.toUInt64 fun i => t[i.toNat]! := by
     unfold render
     simp only [ht]
-  have hsize : t.size < 2 ^ 64 := by
-    have hlen : t.toList.length ≤ 210 := by
-      rw [key, List.length_flatMap]
-      have hline : ∀ m ∈ List.range 10,
-          (digitWords (counts.getD m 0).toNat ++ [10]).length ≤ 21 := by
-        intro m _
-        have := digitWords_length_le _ (counts.getD m 0).toNat_lt
-        simp only [List.length_append, List.length_singleton]
-        omega
-      calc ((List.range 10).map fun m => (digitWords (counts.getD m 0).toNat ++ [10]).length).sum
-          ≤ ((List.range 10).map fun _ => 21).sum := List.sum_le_sum (fun m hm => hline m hm)
-        _ = 210 := by decide
-    simp only [Array.length_toList] at hlen
-    omega
-  rw [hrender, build_words t hsize, key, List.map_flatMap]
+  rw [hrender, build_words t (by omega), key, List.map_flatMap]
   unfold renderSpec
   refine congrArg (fun l : List UInt8 => (⟨⟨l.toArray⟩⟩ : Bytes)) ?_
   refine congrArg (fun f => List.flatMap f (List.range 10)) (funext fun m => ?_)

@@ -85,6 +85,8 @@ import Examples.TreeLookup.Spec
 import Examples.Lookup.Spec
 import Examples.RunningMax.Spec
 import Examples.RunningMax.Samples
+import Demos.RandomHistogram.Spec
+import Demos.RandomHistogram.Samples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
@@ -166,7 +168,6 @@ def arrayArg (xs : Array UInt64) : String :=
 /-- The host's output for an array result. -/
 def arrayOut (xs : Array UInt64) : String :=
   "[" ++ ", ".intercalate (xs.toList.map toString) ++ "]"
-
 def boolArg (b : Bool) : String := if b then "i64:1" else "i64:0"
 
 def bit (b : Bool) : Nat := if b then 1 else 0
@@ -589,6 +590,15 @@ def portCases : IO Unit := do
   for xs in _root_.Examples.RunningMax.samples do
     IO.println s!"runningMax|compute|array-u64|{arrayArg xs}|\
       {arrayOut (_root_.Examples.RunningMax.expected xs)}|2"
+  for b in _root_.Demos.RandomHistogram.parseSamples do
+    IO.println s!"randomHistogram|parseN|i64|bytes:{HeapSums.hex b}|\
+      {_root_.Demos.RandomHistogram.parseSpec b}"
+  for ws in _root_.Demos.RandomHistogram.histogramSamples do
+    IO.println s!"randomHistogram|histogram|array-u64|{arrayArg ws}|\
+      {arrayOut (_root_.Demos.RandomHistogram.histogramSpec ws)}|2"
+  for counts in _root_.Demos.RandomHistogram.renderSamples do
+    IO.println s!"randomHistogram|render|bytes|{arrayArg counts}|\
+      {HeapSums.hex (_root_.Demos.RandomHistogram.renderSpec counts)}|2"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"

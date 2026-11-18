@@ -211,7 +211,7 @@ theorem args_returned {World : Type} {host : Host World} {world final : World}
               rw [host.sys_reports (call := Call.argsGet) reporter rfl] at permitted
               exact permitted
             rcases got with _ | ⟨shown, _ | ⟨_, _⟩⟩ <;> simp at gotShape
-            refine ⟨by decide, ?_⟩
+            refine ⟨Nat.zero_le _, ?_⟩
             simp only [sysReply, ↓reduceIte, Reply.bytes, List.getElem?_cons_zero,
               Option.getD_some]
             omega
@@ -449,11 +449,10 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
             obtain ⟨rfl, rfl⟩ := exec_pure cont2
             refine ⟨fun _ h => (nomatch h), fun status h => ?_⟩
             cases h
-            refine ⟨by rw [hs]; exact errnoValid, a, pre, draws, after, rfl, argsRun,
+            refine ⟨by rw [hs]; exact errnoValid, a, pre, draws ++ [], after, rfl, argsRun,
               fun e => absurd hz e, fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
             rw [hn]
-            exact ⟨draws, bytes, errno, [], (List.append_nil _).symm, drawsOk,
-              fun _ => ⟨hs, rfl⟩, fun e => absurd e he⟩
+            exact ⟨draws, bytes, errno, [], rfl, drawsOk, fun _ => ⟨hs, rfl⟩, fun e => absurd e he⟩
           · rename_i succeeded
             have he : errno = 0 := by rw [← hs]; simpa using succeeded
             have counted := hcounts he
@@ -477,7 +476,8 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
               rw [hn]
               refine ⟨draws, bytes, errno, _, rfl, drawsOk, fun e => absurd he e, fun _ => ?_⟩
               refine ⟨wlen, ?_, count, ?_⟩
-              · rw [histogramSpec_sum _ (by simp [wlen]), List.size_toArray, wlen]
+              · rw [histogramSpec_sum _ (by rw [List.size_toArray, wlen]; exact n.toNat_lt),
+                  List.size_toArray, wlen]
               · rw [← rendered]
                 rfl
 

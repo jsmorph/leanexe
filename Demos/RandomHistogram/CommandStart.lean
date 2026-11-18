@@ -70,7 +70,7 @@ theorem ends_of_result {World : Type} {host : Host World} {heap : Heap}
       subst terminal
       exact .inr (.inl execution)
   | resource final trace residual _ progress =>
-    obtain ⟨progress, events⟩ := prefix_observed progress
+    obtain ⟨progress, events⟩ := Verified.Shim.prefix_observed progress
     exact ⟨trace, events, .inr (.inr ⟨rfl, residual, progress⟩)⟩
 
 /-- Every run of `_start` from the command's initial store with enough fuel ends as `Ends` states,
