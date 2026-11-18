@@ -17,16 +17,16 @@
 # for a trap or another case.
 #
 # The table states the Wasmtime host's outcomes as Wasmtime 44 gives them.  They differ from the
-# executable's only for requests outside the WASI contract, where the shim's specification chose
-# otherwise, and for the case of 2 GiB, which Wasmtime refuses: a clock of 4 or more, a time's
-# pointer beyond the memory, or a random buffer beyond it is the shim's trap and a host function's
-# error in Wasmtime; a pointer beyond the memory for clock 2 is the shim's trap and errno 8 in
-# Wasmtime; a time's pointer that is not a multiple of 8 gets the time from the shim and an error
-# from Wasmtime; random_get of no byte past the memory's end is the shim's trap and errno 0 in
-# Wasmtime; and random_get of more than 2^26 bytes fills the buffer in the shim and is an error in
-# Wasmtime, whose get-random-bytes takes at most 67,108,864 bytes.  The case of 2 GiB must make at
-# least two calls of getrandom, since Linux returns fewer bytes than the first asks for.  The
-# products lie in OUT, build/linux/a64-wasi-clocks unless set.
+# executable's only for requests outside the premises of the calls' specifications, where the
+# shim's specification chose otherwise, and for the case of 2 GiB, which Wasmtime refuses: a clock
+# of 4 or more, a time's pointer beyond the memory, or a random buffer beyond it is the shim's trap
+# and a host function's error in Wasmtime; a pointer beyond the memory for clock 2 is the shim's
+# trap and errno 8 in Wasmtime; a time's pointer that is not a multiple of 8 gets the time from the
+# shim and an error from Wasmtime; random_get of no byte past the memory's end is the shim's trap
+# and errno 0 in Wasmtime; and random_get of more than 2^26 bytes fills the buffer in the shim and
+# is an error in Wasmtime, whose get-random-bytes takes at most 67,108,864 bytes.  The case of
+# 2 GiB must make at least two calls of getrandom, since Linux returns fewer bytes than the first
+# asks for.  The products lie in OUT, build/linux/a64-wasi-clocks unless set.
 # Usage: tests/linux/a64-wasi-clocks.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)

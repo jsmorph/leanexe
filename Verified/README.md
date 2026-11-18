@@ -598,7 +598,7 @@ generated declarations.
 | Proof stage | Declaration or predicate | Result |
 |---|---|---|
 | [Pure transport](Wasi/PureTransportSpecs.lean) | `runs_transport_with` | Relocated pure code computes the same values and preserves the host world in a module with the stream imports and the flat calls `calls`. |
-| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec_with` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
+| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec_with` | Every command constructor preserves ownership and caller regions outside the command's scratch bytes, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
 | [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith_with` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
 | [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run_with` | Each exported wrapper executes the original Lean action after supplying depth zero and hidden table addresses. |
 | [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run_with` | `_start` executes the selected closed action, then requests its returned status as an exit. |
@@ -620,10 +620,10 @@ refinement retains terminal host failures and resource prefixes with their commi
 from every world, and `BoundedAt` and `RuleAt` of [the rules from one
 world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.
 
-The [host specification](Wasi/HostSpec.lean) reserves scratch `[0, 16)`.  Input read regions and
+The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
 retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
 and their logical lengths may be smaller than the retained capacity after a short read.
-`hostSpecWith host calls` adds to the stream functions' `hostSpec host` the contract
+`hostSpecWith host calls` adds to the stream functions' `hostSpec host` the host's specification
 `sysContract host call` of each flat call, whose premise `SysRequest` admits a request that fits
 the call's parameters and that `Call.reject` accepts, whose inputs lie in memory, and whose
 output regions lie in memory at multiples of their alignments, end below `2^32`, and lie apart
@@ -632,9 +632,10 @@ from one another and from the inputs.  The [source correspondence](../LeanExe/Wa
 through native flattening.
 
 [The `sys` command](Wasi/SysCommand.lean) compiles a flat call in one of the forms of
-[`SysForm`](Wasi/SysForm.lean): a flat form with at most one output buffer and two result words,
-a record form, a reported form for `args_get` and `environ_get`, the iovec forms of `fd_read`,
-`fd_pread`, `fd_write`, and `fd_pwrite`, and a poll form for `poll_oneoff`.
+[`SysForm`](Wasi/SysForm.lean): `.flat` for a call with at most one output buffer and two result
+words, `.record` for a call that writes a record, `.reported` for `args_get` and `environ_get`,
+`.iovecRead` and `.iovecWrite` for `fd_read`, `fd_pread`, `fd_write`, and `fd_pwrite`, and
+`.poll` for `poll_oneoff`.
 `command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against `sysContract`,
 and [the rule premises](Wasi/SysRule.lean) bound its charge, a reported call's by
 `reported_rule_observed` from a bound on the sizes that its reporter's replies give.
@@ -675,18 +676,18 @@ guest's memory and the shim's scratch, the launch `I` with the process's argumen
 environment, and whether descriptor 3 is a directory that the launcher grants, and the replies
 `replies` of the layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a
 reply when the layer events that it appends are an `Image` of the WASI event, carry their replies,
-and write within the guest's `2^32` bytes or into the scratch's timespec (`WritesWithin`).  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
+and write within the guest's `2^32` bytes or into the timespec of the shim's scratch (`WritesWithin`).  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
 states the specification, and [its differences from Wasmtime](../docs/wasi.md#differences-from-wasmtime)
 the replies in which the shim and the Wasmtime host differ.
 
 | Module | Content |
 |---|---|
-| [`Memory.lean`](Shim/Memory.lean) | `ShimLayout` and `shimMemory`, the guest's linear memory and the scratch as the layer sees them, and the layer events of each request: `step_read`, `step_write`, `step_random`, `step_clock`, `step_openat2`, and `step_close`. |
+| [`Memory.lean`](Shim/Memory.lean) | `ShimLayout` and `shimMemory`, the guest's linear memory and the shim's scratch as the layer sees them, and the layer events of each request: `step_read`, `step_write`, `step_random`, `step_clock`, `step_openat2`, and `step_close`. |
 | [`Replies.lean`](Shim/Replies.lean) | `errnoOf`, Wasmtime 44's table of Linux's error numbers, the WASI replies that the shim builds from results, `OpenFlags`, `Launch`, the descriptors that the shim holds, `openNumbers` and `preopened`, `openCheck`, and the `open_how` record. |
 | [`Host.lean`](Shim/Host.lean) | `Image`, `Images`, `shimCalls`, `WritesWithin`, `Carried`, `LinuxWorld`, and `linuxHost`. |
-| [`Env.lean`](Shim/Env.lean) | The stream functions as Talos host functions, with their contracts. |
-| [`SysEnv.lean`](Shim/SysEnv.lean) | What the flat calls share: `sysAnswer`, `placeReply`, `MemFrame`, and `sys_contract_of`, which reduces a call's contract to the shim's step, the frame of its output regions, and its outputs. |
-| [`Clocks.lean`](Shim/Clocks.lean), [`Strings.lean`](Shim/Strings.lean), [`Files.lean`](Shim/Files.lean) | The functions of `clock_time_get` and `random_get`, of the arguments and the environment, and of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, `fd_prestat_get`, and `fd_prestat_dir_name`, each with its contract. |
+| [`Env.lean`](Shim/Env.lean) | The stream functions as Talos host functions, with the proofs that they meet the host's specification. |
+| [`SysEnv.lean`](Shim/SysEnv.lean) | What the flat calls share: `sysAnswer`, `placeReply`, `MemFrame`, and `sys_contract_of`, which reduces the call's specification to the shim's step, the frame of its output regions, and its outputs. |
+| [`Clocks.lean`](Shim/Clocks.lean), [`Strings.lean`](Shim/Strings.lean), [`Files.lean`](Shim/Files.lean) | The functions of `clock_time_get` and `random_get`, of the arguments and the environment, and of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, `fd_prestat_get`, and `fd_prestat_dir_name`, each with the proof that it meets the call's specification. |
 | [`Satisfies.lean`](Shim/Satisfies.lean) | `linuxEnv`, and `linuxEnv_satisfies`, which proves that it satisfies `hostSpecWith (linuxHost F L I replies) calls` when every call of `calls` lies in `shimCalls`. |
 | [`Footprint.lean`](Shim/Footprint.lean) | `Footprint`, and `shim_footprint`, which composes `compiled_native_start_run_with` with `linuxEnv_satisfies`: every run of `_start` with enough fuel traps with layer events that are images of a WASI trace of the command's action. |
 | [`Trace.lean`](Shim/Trace.lean) | `committedReads` and `committedWrites`, and `Images.readData` and `Images.writeData`, which equate them with the bytes that the layer's reads and writes of a descriptor moved. |
@@ -701,7 +702,7 @@ the replies in which the shim and the Wasmtime host differ.
 it joins that result to the run of an executable.  [The shim's machine](ShimA64/Machine.lean)
 `shimMachine` makes the process of the Linux call layer's A64 binding a machine of the A64
 simulation theorem, with the relation `TraceRel` between the shim's world and the process's trace
-and the relation `ScratchHolds` between the world and the scratch and Linux's initial stack.  Each
+and the relation `ScratchHolds` between the world and the shim's scratch and Linux's initial stack.  Each
 stub's theorem states `Machine.StubSim` on that machine for its import's host function, and
 `wasiElf_run` composes them with the simulation of the module's code.  [The AArch64 document's
 section on WASI commands](../docs/a64-bare-metal.md#wasi-commands) describes the executable, the
@@ -714,7 +715,7 @@ stubs, and the proofs.
 | [`Strings.lean`](ShimA64/Strings.lean) | `sizesStub_sim` and `stringsStub_sim`, the stubs of the arguments and the environment, which read Linux's initial stack. |
 | [`Clocks.lean`](ShimA64/Clocks.lean) | `clockStub_sim` and `randomStub_sim`, from the runs `clockStub_run`, `randomLoop_run`, and `randomStub_run`. |
 | [`Preopen.lean`](ShimA64/Preopen.lean) | `prestatStub_sim` and `dirNameStub_sim`, the stubs of the preopened directory. |
-| [`Files.lean`](ShimA64/Files.lean), [`Handles.lean`](ShimA64/Handles.lean), [`Open.lean`](ShimA64/Open.lean) | `held_byte`, which relates the scratch's byte of a descriptor to `openNumbers`, and `closeStub_sim`, `handleReadStub_sim`, `handleWriteStub_sim`, and `openStub_sim`, the stubs of the files under the preopened directory. |
+| [`Files.lean`](ShimA64/Files.lean), [`Handles.lean`](ShimA64/Handles.lean), [`Open.lean`](ShimA64/Open.lean) | `held_byte`, which relates the byte of a descriptor in the shim's scratch to `openNumbers`, and `closeStub_sim`, `handleReadStub_sim`, `handleWriteStub_sim`, and `openStub_sim`, the stubs of the files under the preopened directory. |
 | [`OpenHow.lean`](ShimA64/OpenHow.lean), [`Utf8.lean`](ShimA64/Utf8.lean) | `run_openHow`, the run of the code that writes the `open_how` record, and `utf8Scan_iff`, which equates the stub's UTF-8 check with core's. |
 | [`Flat.lean`](ShimA64/Flat.lean) | `flatStub_sim`, the simulation of each stub of `flatStubs` for its call of `shimCalls`. |
 | [`Elf.lean`](ShimA64/Elf.lean) | `nativeStore`, `wasiElf_run`, `wasiElf_footprint_with`, and `wasiElf_footprint`, the run of the executable from its entry to `exit_group`. |
