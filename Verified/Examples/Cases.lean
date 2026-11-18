@@ -87,6 +87,8 @@ import Examples.RunningMax.Spec
 import Examples.RunningMax.Samples
 import Demos.RandomHistogram.Spec
 import Demos.RandomHistogram.Samples
+import Demos.RandomChoice.Spec
+import Demos.RandomChoice.Samples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
@@ -599,6 +601,14 @@ def portCases : IO Unit := do
   for counts in _root_.Demos.RandomHistogram.renderSamples do
     IO.println s!"randomHistogram|render|bytes|{arrayArg counts}|\
       {HeapSums.hex (_root_.Demos.RandomHistogram.renderSpec counts)}|2"
+  for (b, i) in _root_.Demos.RandomChoice.parseSamples do
+    IO.println s!"randomChoice|parseArg|i64|bytes:{HeapSums.hex b} i64:{i}|\
+      {_root_.Demos.RandomChoice.parseSpec (b, i)}"
+  for (n, w) in _root_.Demos.RandomChoice.pickSamples do
+    IO.println s!"randomChoice|pick|i64|i64:{n} i64:{w}|{_root_.Demos.RandomChoice.pickSpec (n, w)}|0"
+  for values in _root_.Demos.RandomChoice.renderSamples do
+    IO.println s!"randomChoice|render|bytes|{arrayArg values}|\
+      {HeapSums.hex (_root_.Demos.RandomChoice.renderSpec values)}|2"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"

@@ -92,6 +92,7 @@ Demos.Rcv.Compiled:Demos.Rcv.Program.compiled.module:rcvCount
 Demos.Rcv.Tabulate:Demos.Rcv.TabulateProgram.compiled.module:rcvTabulate
 Demos.Rcv.Maine.Tabulate:Demos.Rcv.Maine.TabulateProgram.compiled.module:rcvMaine
 Demos.RandomHistogram.Compiled:Demos.RandomHistogram.compiled.module:randomHistogram
+Demos.RandomChoice.Compiled:Demos.RandomChoice.compiled.module:randomChoice
 Library.Random.Lcg.Verified:Library.Random.Lcg.compiled.module:lcg
 Library.Random.ParkMiller.Verified:Library.Random.ParkMiller.compiled.module:parkmiller
 Library.Random.Xorshift.Verified:Library.Random.Xorshift.compiled.module:xorshift
