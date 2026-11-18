@@ -2,6 +2,7 @@ import LeanExe.Dialect.Bytes
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 import Library.Numerics.Decimal.Int64Text.Program
+import Demos.RandomHistogram.Program
 
 /-! The pure core of the unbiased random choice in the verified compiler's dialect.
 
@@ -47,6 +48,13 @@ def parseArg (args : Bytes) (index : UInt64) : UInt64 :=
 /-- The value in [1, n] of the word `w`, or 0 when `w` is rejected. -/
 def pick (n w : UInt64) : UInt64 :=
   if n != 0 && (0 - n) % n ≤ w then w % n + 1 else 0
+
+/-- The picks of the accepted little-endian words of `bytes` for the range [1, n], in order, at most
+`limit` of them.  The random histogram's `wordAt` reads each word. -/
+def choose (n : UInt64) (bytes : Bytes) (limit : UInt64) : Array UInt64 :=
+  LeanExe.loop (bytes.size / 8) (#[] : Array UInt64) fun j picks =>
+    let v := pick n (RandomHistogram.wordAt bytes (8 * j))
+    if v != 0 && picks.size.toUInt64 < limit then picks.push v else picks
 
 /-- The number of bytes of the lines of `values`: the digits of each value and a newline. -/
 def textSize (values : Array UInt64) : UInt64 :=
