@@ -123,15 +123,16 @@ the bytes that `getrandom` returned hold exactly N little-endian words `w`, the 
 and the status is 0.
 
 Linux's replies meet `Full` when standard output is a regular file or a blocking pipe, no call
-fails, and no write reaches a full disk or `RLIMIT_FSIZE`.  getrandom(2) guarantees every byte of a
-read of up to 256 bytes once the urandom source is initialized, and Linux 6.12's
-`get_random_bytes_user` returns every byte of a read of at most a page, which the command's reads of
-at most 4,096 bytes are, unless the copy faults.  A write of at most `PIPE_BUF`, 4,096 bytes, to a
-blocking pipe takes all of its bytes, and the command writes at most 210 (pipe(7)).  A write to a
-regular file can take fewer bytes at a full disk or at `RLIMIT_FSIZE`, and `RLIMIT_FSIZE` and a
-pipe whose reader closed raise signals that end the process before `exit_group` (write(2)).  Today
-a short write ends the run with status 0 and part of the ten lines, since `main` writes once with
-`writeStdoutSome`, whose errno is 0 for a short count, and `Meets` admits that run.
+fails, and no write reaches a full disk or `RLIMIT_FSIZE`.  getrandom(2) guarantees every byte of
+a read of up to 256 bytes once the urandom source is initialized, and Linux 6.12's
+`get_random_bytes_user` returns every byte of a read of at most a page unless the copy faults.
+Each of the command's reads asks for at most 4,096 bytes.  A write of at most `PIPE_BUF`, 4,096
+bytes, to a blocking pipe takes all of its bytes, and the command writes at most 210 (pipe(7)).  A
+write to a regular file can take fewer bytes at a full disk or at `RLIMIT_FSIZE`, and
+`RLIMIT_FSIZE` and a pipe whose reader closed raise signals that end the process before
+`exit_group` (write(2)).  A short write ends the run with status 0 and part of the ten lines, since
+`main` writes once with `writeStdoutSome`, whose errno is 0 for a short count, and `Meets` admits
+that run.
 
 The corollary bounds N because the resource model charges each pass of the loop for the blocks that
 it allocates and credits no release.  `drawLimit`, 12,839,935, is the largest N for which `budget`
