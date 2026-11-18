@@ -79,7 +79,7 @@ theorem below_slots {sp : UInt64} {i j n : Nat} (hi : i < j)
 /-- The bytes of slot `i` of the frame at `sp` lie at or above `sp`. -/
 theorem slot_le {sp : UInt64} {i k : Nat} (hsp : sp.toNat < 2 ^ 63) (hi : i < 512) (hk : k < 8) :
     sp.toNat ≤ (slotAddr sp i + UInt64.ofNat k).toNat := by
-  have := le_slot (sp := sp) (i := i) (m := 0) (k := k) hk hsp hi (Nat.zero_le _)
+  have := le_slot (sp := sp) (i := i) (m := 0) (k := k) hk hsp (by omega) (Nat.zero_le _)
   omega
 
 /-! ## The calls before the read loop -/

@@ -71,12 +71,13 @@ structure StackOk (P : Platform) (s : State) : Prop where
 
 /-- The frame at `SP` of a function with `n` locals, parameters included: SP is a multiple of 16,
 the bytes of the locals, of the spill slots above them, and of the return address's slot above
-those are Normal memory, the frame has fewer than 512 slots, and the stack's limit in X18 lies
-from 4096 up to SP, with the bytes from it to SP Normal memory, while SP lies below `2 ^ 63`. -/
+those are Normal memory, the frame's slots lie within the 4096 that `LDR` and `STR` reach from SP,
+and the stack's limit in X18 lies from 4096 up to SP, with the bytes from it to SP Normal memory,
+while SP lies below `2 ^ 63`. -/
 structure FrameOk (P : Platform) (n : Nat) (s : State) : Prop where
   aligned : s.sp % 16 = 0
   mapped : ∀ j < 8 * (n + spillSlots + 1), P.normal (s.sp + UInt64.ofNat j) = true
-  bound : n + spillSlots + 1 < 512
+  bound : n + spillSlots < 4096
   limit : 4096 ≤ (s.x 18).toNat ∧ (s.x 18).toNat ≤ s.sp.toNat ∧ s.sp.toNat < 2 ^ 63
   below : ∀ j < (s.sp - s.x 18).toNat, P.normal (s.x 18 + UInt64.ofNat j) = true
 
@@ -131,7 +132,7 @@ theorem Inv.mapped {P : Platform} {lts σ : List ValueType} {sl : Locals} {s : S
   fun j hj => h.frame.mapped j (by omega)
 
 theorem Inv.bound {P : Platform} {lts σ : List ValueType} {sl : Locals} {s : State}
-    (h : Inv P lts σ sl s) : lts.length < 512 := by
+    (h : Inv P lts σ sl s) : lts.length < 4096 := by
   have := h.frame.bound; omega
 
 theorem Inv.len {P : Platform} {lts σ : List ValueType} {sl : Locals} {s : State}
