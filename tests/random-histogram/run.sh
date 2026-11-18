@@ -28,11 +28,11 @@
 # show no call but getrandom, write, and exit_group, two getrandom calls with flags 0, of 4,096
 # and 3,904 bytes, the 512 words of a full pass and the 488 words that remain, each answered with
 # all of its bytes, and one write of the output's bytes that took all of them.  The run under the
-# file size limit under strace must make two writes: the first
-# of the output's B bytes, which returns 12, and the second of the B - 12 bytes that remain, which
-# fails with EFBIG.  A run with `abc` under strace must make no call but exit_group.  The file
-# theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the executable
-# from the same module with the same commands.
+# file size limit under strace must make two writes: the first returns 12, and the second offers
+# 12 bytes fewer than the first and fails with EFBIG.  The run with N of 1000 checks that the first
+# write offers the whole output.  A run with `abc` under strace must make no call but exit_group.
+# The file theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the
+# executable from the same module with the same commands.
 #
 # The pure module's samples run in `tests/verified/run.sh --cases randomHistogram`.
 # Usage: tests/random-histogram/run.sh

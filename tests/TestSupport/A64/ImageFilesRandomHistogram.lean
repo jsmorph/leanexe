@@ -194,7 +194,7 @@ arguments, no layer event precedes `exit_group`, and X0 is 2.  Otherwise the eve
 the writes before it did not take, and the bytes that the writes took form a prefix of that
 output.  X0 is 0 exactly when they are the whole output.  Otherwise X0 is 77 after one write for
 each of the loop's passes, each of which returned at most its count, or the errno of the error
-number that the last `write` returned. -/
+number that the last `write` returned, every `write` before which returned at most its count. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
     (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)

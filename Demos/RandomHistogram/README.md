@@ -222,8 +222,7 @@ writes to stderr.  A native run with N of 1,000 under strace makes only `getrand
 `exit_group` calls, two of them `getrandom` with flags 0, of 4,096 and 3,904 bytes, each answered
 with all of its bytes, and one `write` of the whole output that takes all of it.  The run under
 the file size limit under strace makes two writes: the first
-offers the whole output and takes 12 bytes, and the second offers the bytes that remain and fails
-with `EFBIG`.  A native run with `abc` under strace makes only `exit_group`.  The driver prints
+takes 12 bytes, and the second offers 12 bytes fewer than the first and fails with `EFBIG`.  A native run with `abc` under strace makes only `exit_group`.  The driver prints
 `random histogram axiom check passed for 14 theorems`, the executable's size, and
 `random histogram: 53 runs passed`.
 

@@ -434,8 +434,9 @@ theorem draws_full {F : OpenFlags} {L : ShimLayout} {I : Launch} :
 
 
 /-- The image of a write to standard output that returned is one `write` of descriptor 1, which
-took the bytes that the write took, and holds no `getrandom`.  When the write returned an errno,
-the `write` returned an error number whose errno is the write's. -/
+took the bytes that the write took, whose input holds the bytes that the write offered, and holds
+no `getrandom`.  When the write returned errno 0, the `write` returned at most its count, and when
+the write returned an errno, the `write` returned an error number whose errno is the write's. -/
 theorem write_image {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
     {offered : LeanExe.Bytes} {errno count : UInt64} {l : List Linux.Event}
     (image : Image F L I events (.write .stdout offered (.returned errno count)) l) :
