@@ -5,7 +5,7 @@ import LeanExe.A64.Proof.Bits
 The simulation of the instructions that store locals and push constants: `localSet`,
 `localTee`, `constI64`, and `const`.  A store writes the frame slot of its local with `STR`,
 which leaves the other slots and the memory outside the frame unchanged because slots lie 8 bytes
-apart and the frame holds fewer than 512 of them.  A constant is `MOVZ` and three `MOVK`, which
+apart and the frame holds at most 4096 of them.  A constant is `MOVZ` and three `MOVK`, which
 build the value 16 bits at a time.
 -/
 
@@ -35,14 +35,14 @@ theorem toNat_slot (sp : UInt64) (i : Nat) :
 
 /-- The bytes of slot `i` of a frame at `sp` below `2 ^ 63` lie at or above the end of its first
 `m ≤ i` slots. -/
-theorem le_slot {sp : UInt64} {i k m : Nat} (hk : k < 8) (hsp : sp.toNat < 2 ^ 63) (hi : i < 512)
+theorem le_slot {sp : UInt64} {i k m : Nat} (hk : k < 8) (hsp : sp.toNat < 2 ^ 63) (hi : i < 4096)
     (hm : m ≤ i) : sp.toNat + 8 * m ≤ (slotAddr sp i + UInt64.ofNat k).toNat := by
   rw [UInt64.toNat_add, toNat_slot, UInt64.toNat_ofNat']
   simp only [Nat.reducePow] at *
   omega
 
-/-- Two distinct slots of a frame of fewer than 512 lie at least 8 bytes apart. -/
-theorem slot_apart {sp : UInt64} {i j : Nat} (hi : i < 512) (hj : j < 512) (hne : i ≠ j) :
+/-- Two distinct slots of a frame of at most 4096 lie at least 8 bytes apart. -/
+theorem slot_apart {sp : UInt64} {i j : Nat} (hi : i < 4096) (hj : j < 4096) (hne : i ≠ j) :
     ∀ k < 8, ¬ slotAddr sp j + UInt64.ofNat k - slotAddr sp i < 8 := by
   intro k hk
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, UInt64.toNat_add, toNat_slot sp i,
@@ -53,7 +53,7 @@ theorem slot_apart {sp : UInt64} {i j : Nat} (hi : i < 512) (hj : j < 512) (hne 
   omega
 
 /-- A store to a slot leaves the bytes outside the frame unchanged. -/
-theorem slot_inside {sp a : UInt64} {i n : Nat} (hi : i < n) (hn : n < 512)
+theorem slot_inside {sp a : UInt64} {i n : Nat} (hi : i < n) (hn : n ≤ 4096)
     (h : ¬ a - sp < UInt64.ofNat (8 * n)) : ¬ a - slotAddr sp i < 8 := by
   intro hc
   apply h
@@ -70,7 +70,7 @@ theorem slot_inside {sp a : UInt64} {i n : Nat} (hi : i < n) (hn : n < 512)
 
 /-- A byte below the stack's limit lies outside every slot of a frame at or above the limit. -/
 theorem below_slot {a sp lim : UInt64} {i : Nat} (hl : lim.toNat ≤ sp.toNat)
-    (hsp : sp.toNat < 2 ^ 63) (hi : i < 512) (ha : a.toNat < lim.toNat) :
+    (hsp : sp.toNat < 2 ^ 63) (hi : i < 4096) (ha : a.toNat < lim.toNat) :
     ¬ a - slotAddr sp i < 8 := by
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, toNat_slot]
   have : (8 : UInt64).toNat = 8 := rfl
@@ -102,7 +102,7 @@ theorem StackRel.congr {s s' : State} {vs : List Value} (h : StackRel s vs)
 
 /-- After `STR` of `w` into slot `i`, the locals with `v` at `i` are related, when `w` holds `v`. -/
 theorem LocalsRel.store {s : State} {ls : List Value} (h : LocalsRel s ls) {i : Nat}
-    (hi : i < ls.length) (hn : ls.length < 512) {v : Value} {w : UInt64} (hv : ValRel v w) :
+    (hi : i < ls.length) (hn : ls.length < 4096) {v : Value} {w : UInt64} (hv : ValRel v w) :
     LocalsRel { s with mem := store64 s.mem (s.sp + UInt64.ofNat (8 * i)) w, pc := s.pc + 4 }
       (ls.set i v) := by
   intro j hj
@@ -206,7 +206,7 @@ theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
         fun k _ => rfl, hsr.congr rfl rfl fun b hb => ?_⟩
       · simp [hpc, after]
       · intro b hb'
-        have hin := slot_inside hi hinv.bound (hinv.frame.outside (by omega) hb')
+        have hin := slot_inside hi (Nat.le_of_lt hinv.bound) (hinv.frame.outside (by omega) hb')
         rw [slotAddr, ← ofNat_mul8] at hin
         exact store64_other _ _ _ _ hin
       · refine ⟨?_, ?_, ?_, hinv.frame.congr rfl rfl, ?_, ?_⟩

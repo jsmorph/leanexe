@@ -1,4 +1,5 @@
 import Verified.Examples.WasiReadAllShim
+import Verified.Examples.WasiReadAllSteady
 import Verified.ShimA64.Elf
 
 /-!
@@ -10,6 +11,12 @@ allocator's heap, the literal pool, and the cap, read only the store's globals a
 cap, so they hold at every cap up to 65,535, and `linux_footprint_native` states the footprint of
 `linux_footprint` for runs from that store.  `main_streams` states that the command's action makes
 no flat call, so the trace of no run of it holds one.
+
+`linux_footprint_native_bounded` states the footprint without a guest trap for a budget that fits
+the cap and bounds every typed resource prefix of `main`, and `linux_footprint_steady` instantiates
+it with `budget` of `Verified/Examples/WasiReadAllSteady.lean` for the reply sequences of the class
+`Steady` with `M` at 4,096, at every cap from 3,831 to 65,535 pages.  `Steady.streams` states that
+the class does not depend on the open flags or the launch.
 -/
 
 namespace Verified.Examples.WasiReadAll
@@ -49,7 +56,51 @@ theorem main_streams : StreamAction (main.bind fun status => Action.exit (α := 
           fun _ => trivial⟩
       · split <;> trivial
 
+/-- The class of reply sequences does not depend on the open flags or the launch, since `main` makes
+no flat call. -/
+theorem Steady.streams {F F' : OpenFlags} {L : ShimLayout} {I I' : Launch} {M : Nat}
+    {R : Linux.Replies} (steady : Steady F L I M R) : Steady F' L I' M R :=
+  fun progress =>
+    steady (Prefix.streams rfl rfl progress (Prefix.streamTrace progress main_streams))
+
+/-- The footprint of `linux_footprint_native` without a guest trap, for a budget that fits between
+the heap's start at byte 4,096 and the end of the cap's `cap` pages and bounds the heap that every
+prefix of `main` allocates under the shim's host with the replies `replies`. -/
+theorem linux_footprint_native_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
+    (replies : Linux.Replies) {cap budget : Nat} (hcap : cap ≤ 65535)
+    (room : 4096 + budget ≤ 65536 * cap)
+    (bounded : Resource.CallPrefixBound (observedHost (linuxHost F L I replies))
+      (.ofProg command.pure.program command.pure.funs) command.program
+      .here 0 .nil nativeWorld budget) :
+    ∃ bound, ∀ fuel ≥ bound,
+      Footprint F L I replies (main.bind fun status => Action.exit status) nativeWorld false
+        (run fuel command.module (Wrappers.effectIndex command.pure.module 2)
+          (nativeStore command.module cap nativeWorld) [] (linuxEnv F L I replies [])) := by
+  have initialized := command.initial nativeWorld
+  have hat := initialized.1
+  obtain ⟨bound, results⟩ := command.start (host := linuxHost F L I replies) (aborts := false)
+    (initial := nativeStore command.module cap nativeWorld) (budget := budget)
+    (linuxEnv_satisfies F L I replies [] (fun _ member => nomatch member) _
+      (by simp [compile_imports, ABI.imports_length]))
+    ⟨hat.globals, hat.freeList, hat.base, hat.top, hat.pages, hat.above, hat.below⟩ rfl
+    Separate.nil ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩
+    (fun _ membership => nomatch membership) hcap
+    (fun _ => ⟨by change 4096 + budget ≤ 65536 * cap; exact room, bounded⟩)
+  exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
+
+/-- For a reply sequence of the class with `M` at 4,096, every run of `_start` from `nativeStore`
+at a cap from 3,831 to 65,535 pages has the footprint of `linux_footprint_native` without a guest
+trap. -/
+theorem linux_footprint_steady (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
+    {cap : Nat} (hcap : cap ≤ 65535) (large : 3831 ≤ cap) (steady : Steady F L I 4096 R) :
+    ∃ bound, ∀ fuel ≥ bound,
+      Footprint F L I R (main.bind fun status => Action.exit status) nativeWorld false
+        (run fuel command.module (Wrappers.effectIndex command.pure.module 2)
+          (nativeStore command.module cap nativeWorld) [] (linuxEnv F L I R [])) :=
+  linux_footprint_native_bounded F L I R hcap (by unfold budget; omega) (steady_bounded steady rfl)
+
 end Verified.Examples.WasiReadAll
 
 #print axioms Verified.Examples.WasiReadAll.linux_footprint_native
 #print axioms Verified.Examples.WasiReadAll.main_streams
+#print axioms Verified.Examples.WasiReadAll.linux_footprint_steady

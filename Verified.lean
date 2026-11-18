@@ -118,6 +118,7 @@ import Verified.Examples.WasiReadAll
 import Verified.Shim
 import Verified.Examples.WasiReadAllShim
 import Verified.Examples.WasiReadAllMessage
+import Verified.Examples.WasiReadAllSteady
 import Verified.Examples.WasiSysShim
 import Verified.Examples.WasiFilesShim
 import Verified.ShimA64
