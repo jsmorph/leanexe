@@ -177,17 +177,6 @@ theorem sysInvoke_strings (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies
   cases v <;> simp (config := { decide := true }) only [sysInvoke, StringVector.stringsCall,
     StringVector.strings, ↓reduceIte]
 
-/-- Two values of type `i32` from their typing. -/
-theorem typed_i32x2 {args : List Value} (hlen : args.length = 2)
-    (hty : Typed [.i32, .i32] args) : ∃ a0 a1 : UInt32, args = [.i32 a0, .i32 a1] := by
-  match args, hlen, hty with
-  | [v0, v1], _, ⟨t0, t1, _⟩ =>
-    obtain ⟨a0, rfl⟩ : ∃ a, v0 = .i32 a := by
-      cases v0 <;> first | exact ⟨_, rfl⟩ | exact t0.elim
-    obtain ⟨a1, rfl⟩ : ∃ a, v1 = .i32 a := by
-      cases v1 <;> first | exact ⟨_, rfl⟩ | exact t1.elim
-    exact ⟨a0, a1, rfl⟩
-
 theorem toUInt64_ofNat (x : UInt32) : x.toUInt64 = UInt64.ofNat x.toNat := by
   apply UInt64.toNat_inj.mp
   rw [UInt32.toNat_toUInt64,

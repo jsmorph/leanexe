@@ -1,4 +1,6 @@
 import Verified.Examples.WasiReadAll
+import Verified.Examples.WasiClockRandom
+import Verified.Examples.WasiSys
 import Verified.Examples.WasiSysEnviron
 import Verified.Examples.WasiPrestat
 import Verified.Examples.WasiFiles
@@ -13,8 +15,12 @@ pages, and a stack of `wasiRoom` bytes: `readAllElf` of the readAll command of
 `Verified.Examples.WasiSysEnviron`, which writes its environment, `argsElf` of the command of
 `TestSupport.A64.WasiArgs`, which writes its arguments, `prestatElf` of the prestat command of
 `Verified.Examples.WasiPrestat`, which writes what the host answers about the preopened directory,
-and `filesElf` of the files command of `Verified.Examples.WasiFiles`, which writes a file under
-the preopened directory and reads it back.
+`clockRandomElf` of the clock and random command of `Verified.Examples.WasiClockRandom`,
+`sysElf` of the flat call example of `Verified.Examples.WasiSys`, which writes its arguments, their
+count and size, two clocks' readings, and random bytes, and `filesElf` of the files command of
+`Verified.Examples.WasiFiles`, which writes a file under the preopened directory and reads it
+back.  `moduleElf` writes the executable of any module with an export `_start`, with the same
+stack and a given cap.
 -/
 
 namespace TestSupport.A64.WasiElf
@@ -35,6 +41,22 @@ open Verified.Examples.WasiReadAll in
 /-- The executable of the readAll command. -/
 def readAllElf : Except String (List UInt8 × ElfLayout) :=
   genWasiElf command.module readAllStart wasiRoom wasiCap
+
+open Verified.Examples.WasiClockRandom in
+/-- The index of `_start` in the clock and random command's module. -/
+def clockRandomStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
+
+open Verified.Examples.WasiClockRandom in
+/-- The executable of the clock and random command. -/
+def clockRandomElf : Except String (List UInt8 × ElfLayout) :=
+  genWasiElf command.module clockRandomStart wasiRoom wasiCap
+
+/-- The executable of the module `m`, whose export `_start` names the function to run, with a
+memory's cap of `cap` pages. -/
+def moduleElf (m : Wasm.Module) (cap : Nat) : Except String (List UInt8 × ElfLayout) :=
+  match m.exports.find? (·.name = "_start") with
+  | some e => genWasiElf m e.funcIdx wasiRoom cap
+  | none => throw "no export _start"
 
 open Verified.Examples.WasiSysEnviron in
 /-- The index of `_start` in the environment command's module. -/
@@ -62,6 +84,15 @@ open Verified.Examples.WasiPrestat in
 /-- The executable of the prestat command. -/
 def prestatElf : Except String (List UInt8 × ElfLayout) :=
   genWasiElf command.module prestatStart wasiRoom wasiCap
+
+open Verified.Examples.WasiSys in
+/-- The index of `_start` in the flat call example's module. -/
+def sysStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
+
+open Verified.Examples.WasiSys in
+/-- The executable of the flat call example. -/
+def sysElf : Except String (List UInt8 × ElfLayout) :=
+  genWasiElf command.module sysStart wasiRoom wasiCap
 
 open Verified.Examples.WasiFiles in
 /-- The index of `_start` in the files command's module. -/

@@ -312,13 +312,6 @@ theorem step_ldrb {s : State} {t n : Fin 32} (ht : t.val < 31) (hn : n.val < 31)
   rw [e] at he
   exact step_setX P code ht hc he
 
-/-- A step of `MADD Xd, Xn, Xm, Xa`. -/
-theorem step_madd {s : State} {d n m r : Fin 32} (hd : d.val < 31)
-    (hc : code s.pc = some (encode (.madd d n m r))) :
-    ∃ t, Reach P code s t ∧ t.pc = s.pc + 4 ∧ t.x d = s.x r + s.x n * s.x m ∧
-      (∀ q : Fin 32, q ≠ d → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io :=
-  step_setX P code hd hc rfl
-
 /-- A step of `ADD Xd, Xn, #k` with registers other than SP and the immediate's value `k`. -/
 theorem step_addK {s : State} {d n : Fin 32} {imm : Fin 4096} {k : Nat} (hd : d.val < 31)
     (hn : n.val < 31) (hc : code s.pc = some (encode (.addImm d n imm))) (hk : imm.val = k) :

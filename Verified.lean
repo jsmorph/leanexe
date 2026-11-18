@@ -118,12 +118,15 @@ import Verified.Examples.WasiReadAll
 import Verified.Shim
 import Verified.Examples.WasiReadAllShim
 import Verified.Examples.WasiReadAllMessage
+import Verified.Examples.WasiReadAllSteady
 import Verified.Examples.WasiSysShim
 import Verified.Examples.WasiFilesShim
 import Verified.ShimA64
 import Verified.Examples.WasiReadAllNative
 import Verified.Examples.WasiPrestatNative
 import Verified.Examples.WasiSysEnvironNative
+import Verified.Examples.WasiSysNative
+import Verified.Examples.WasiClockRandomNative
 import Verified.Examples.WasiFilesNative
 import Verified.AlignedAccess
 import Verified.AlignedArrayCopy

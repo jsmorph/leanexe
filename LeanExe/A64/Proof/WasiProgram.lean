@@ -275,7 +275,7 @@ theorem genStubs_code {code : UInt64 → Option UInt32} {svc tr en : UInt64} {sc
       subst hg
       have hc := CodeAt.split code hcode hl
       obtain ⟨hlen, hent⟩ := genStubs_code (j := j + 1) h2 hc.2
-      refine ⟨by simp [stubsSize, hl, hlen, Nat.add_comm], fun c hc' => ?_⟩
+      refine ⟨by simp [stubsSize, hl, hlen], fun c hc' => ?_⟩
       rcases List.mem_cons.mp hc' with rfl | hc'
       · exact ⟨0, by simp, is₀, a, by simp, h1, hc.1⟩
       · obtain ⟨i, hi, is', b, hce, hgi, hci⟩ := hent c hc'

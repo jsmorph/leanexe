@@ -2,6 +2,7 @@ import LeanExe.A64.Elf
 import LeanExe.Wasi.CallTable
 import LeanExe.A64.WasiPreopen
 import LeanExe.A64.WasiStrings
+import LeanExe.A64.WasiClocks
 import LeanExe.A64.WasiFiles
 
 /-!
@@ -25,6 +26,7 @@ startup routine is the check of descriptor 3 of `LeanExe/A64/WasiPreopen.lean` f
 flat imports read the shim's descriptor state (`needsCheck`), and a return for every other
 module.  The flat stubs of `flatStubs` are the string stubs of `LeanExe/A64/WasiStrings.lean`,
 those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, the stubs of
+`clock_time_get` and `random_get` of `LeanExe/A64/WasiClocks.lean`, the stubs of
 `fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`, and the stubs of
 `path_open`, `fd_close`, and `fd_read` and `fd_write` on a handle of `LeanExe/A64/WasiFiles.lean`.
 The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
@@ -248,6 +250,26 @@ def stringStubs : List FlatStub :=
       size := stringsStubSize .environ,
       gen := fun a _ tr _ scratch => stringsStub .environ a tr scratch }]
 
+/-- The import of `clock_time_get`. -/
+def clockImport : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name := "clock_time_get",
+    params := [.i32, .i64, .i32], results := [.i32] }
+
+/-- The import of `random_get`. -/
+def randomImport : ImportDecl := pointerPairImport "random_get"
+
+/-- The stub of `clock_time_get` as the generator places it. -/
+def clockFlat : FlatStub :=
+  ⟨LeanExe.Wasi.Call.clockTimeGet, clockImport, clockStubSize, clockStub⟩
+
+/-- The stub of `random_get` as the generator places it. -/
+def randomFlat : FlatStub :=
+  ⟨LeanExe.Wasi.Call.randomGet, randomImport, randomStubSize,
+    fun a svc tr en _ => randomStub a svc tr en⟩
+
+/-- The stubs of `clock_time_get` and `random_get` of `LeanExe/A64/WasiClocks.lean`. -/
+def clockStubs : List FlatStub := [clockFlat, randomFlat]
+
 /-- The import of the flat call `name` of Preview 1 with a descriptor, a pointer, and a length as
 `i32` and an errno. -/
 def pointerLengthImport (name : String) : ImportDecl :=
@@ -286,8 +308,9 @@ def fileStubs : List FlatStub :=
       size := handleStubSize, gen := handleStub 64 }]
 
 /-- The flat calls whose stubs the generator implements: those of the arguments and the
-environment, those of the preopened directory, and those of the files under it. -/
-def flatStubs : List FlatStub := stringStubs ++ preopenStubs ++ fileStubs
+environment, of the clocks and random bytes, of the preopened directory, and of the
+files under it. -/
+def flatStubs : List FlatStub := stringStubs ++ clockStubs ++ preopenStubs ++ fileStubs
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=

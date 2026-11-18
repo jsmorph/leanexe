@@ -1,3 +1,5 @@
+import Verified.ShimA64.Strings
+import Verified.ShimA64.Clocks
 import Verified.ShimA64.Preopen
 import Verified.ShimA64.Open
 
@@ -7,10 +9,11 @@ stub of `flatStubs` at its address meets `Machine.StubSim` on `shimMachine` for 
 `linuxEnv` of every call of `shimCalls` whose import is the stub's.  `wasiElf_run` takes the
 simulation of every flat import of a module from it.  `flatStubs` lists the stubs of the arguments
 and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.lean` proves, and
-the stubs of the preopened directory, whose cases `preopenStub_sim` of
-`Verified/ShimA64/Preopen.lean` proves, and the stubs of the files under it, whose cases
-`fileStub_sim` of `Verified/ShimA64/Open.lean` proves.  Each increment that adds a stub to `flatStubs` adds its
-case here.
+those of `clock_time_get` and `random_get`, whose cases `clockStubs_sim` of
+`Verified/ShimA64/Clocks.lean` proves, the stubs of the preopened directory, whose cases
+`preopenStub_sim` of `Verified/ShimA64/Preopen.lean` proves, and the stubs of the files under it,
+whose cases `fileStub_sim` of `Verified/ShimA64/Open.lean` proves.  Each increment that adds a stub
+to `flatStubs` adds its case here.
 -/
 
 namespace Verified.ShimA64
@@ -28,7 +31,8 @@ variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ t
 /-- The code of a stub of `flatStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
 the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
 area, stands for the shim's function of the call `c` of `shimCalls` whose import is the stub's,
-when the area and the scratch lie in the data segment. -/
+when the area and the scratch lie in the data segment, the UART lies outside the module's Normal
+memory, and the cap's linear memory lies within the machine's `size` bytes. -/
 theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Call}
     (hc : c ∈ shimCalls) (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat)
     {a svc en : UInt64} {is : List Instr}
@@ -42,8 +46,9 @@ theorem flatStub_sim {s : FlatStub} (hs : s ∈ flatStubs) {c : LeanExe.Wasi.Cal
       s.decl.params s.decl.results
       (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
   simp only [flatStubs, List.mem_append] at hs
-  rcases hs with (hs | hs) | hs
+  rcases hs with ((hs | hs) | hs) | hs
   · exact stringStub_sim hs hc hd S n hg hcode hGb hdata hU
+  · exact clockStubs_sim hs hc hd S n hg hcode hsvc hen hGb hdata hsize
   · exact preopenStub_sim hs hc hd S n hg hcode hGb hdata
   · exact fileStub_sim hs hc hd S n hg hcode hsvc hen hGb hdata hU hsize
 

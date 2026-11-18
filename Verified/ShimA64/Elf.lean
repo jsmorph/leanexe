@@ -25,8 +25,10 @@ which sets status 2 and branches to the exit word.  From there the runtime makes
 `wasiElf_run` states this for every reply sequence and every fuel at which Talos's run of `_start`
 traps: the process's trace holds the startup's events and the layer events of the final world,
 each of which writes within the native cap's linear memory or is a `clock_gettime` into the
-timespec, and X0 holds the status.  `wasiElf_footprint` takes the trap from a footprint premise,
-which excludes a return of `_start` and every run that does not finish.  The module's flat imports
+timespec, and X0 holds the status.  `wasiElf_footprint_with` takes the trap from a footprint
+premise for the reply sequence after the startup's and the launch that the startup grants, which
+excludes a return of `_start` and every run that does not finish, and `wasiElf_footprint` takes
+it from a premise for every reply sequence and launch.  The module's flat imports
 are those of calls of `shimCalls` whose stubs `flatStubs` lists, and `flatStub_sim` gives the
 simulation of each.
 -/
@@ -781,31 +783,27 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
           · exact hzero0 19 (by decide) (by decide)
           · rfl)
 
-/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
-Talos's runs of `_start` from `nativeStore` under the shim's environment with the module's flat
-calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
-fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments
-`args` and the environment `environ` on its initial stack.  When the startup routine's outcome is
-`none`, the trace holds the startup's events `l₀` and X0 holds 67.  Otherwise the outcome
-`granted` gives the launch `⟨args, environ, granted⟩`, and the trace holds `l₀` and then the
-layer events `ls`, the images of the WASI events `T` of a run of `action` under `linuxHost` with
-the replies after the startup's, from a world with no events: each event holds its reply of `R`
-from call `l₀.length` on, and each writes within the `cap` pages of linear memory or is a
-`clock_gettime` into the timespec.  The run is an accepted exit whose status X0 holds, an exit
-whose status the shim rejects, with X0 at 1, a trap of the shim at a request that it refuses or a
-result outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix
-of `action`, with X0 at 2. -/
-theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
+/-- The executable of `genWasiElf` reaches `exit_group` for the reply sequence `R` when, after
+every outcome `(l₀, some granted)` of the startup routine, Talos's runs of `_start` from
+`nativeStore` under the shim's environment with the module's flat calls `calls`, which lie in
+`shimCalls`, have the footprint of the action `action` with enough fuel, for arm64's open flags,
+the launch `⟨args, environ, granted⟩`, and the replies of `R` after the startup's.  The
+conclusion is that of `wasiElf_footprint`. -/
+theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
     (himp : m.imports = ABI.importsWith calls) (hsup : ∀ c ∈ calls, c ∈ shimCalls)
     (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
     {action : Action Unit} {aborts : Bool}
-    (hfoot : ∀ I R, ∃ bound, ∀ fuel ≥ bound,
-      Footprint arm64Flags (wasiShimLayout m k room cap) I R action nativeWorld aborts
-        (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
-          (linuxEnv arm64Flags (wasiShimLayout m k room cap) I R calls)))
     (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)} {top : UInt64}
+    (hfoot : ∀ l₀ granted,
+      startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R = (l₀, some granted) →
+      ∃ bound, ∀ fuel ≥ bound,
+        Footprint arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+          (fun j => R (l₀.length + j)) action nativeWorld aborts
+          (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
+            (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+              (fun j => R (l₀.length + j)) calls)))
     (hl : ElfLoaded (byteAt nb) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -840,7 +838,7 @@ theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb
       hl hstack hpc htr (fun l g h => by rw [hsu] at h; cases h)
     rw [hsu] at hq
     exact ⟨q, rq, cq, x8q, ioq, hq⟩
-  obtain ⟨bound, hb⟩ := hfoot ⟨args, environ, granted⟩ (fun j => R (l₀.length + j))
+  obtain ⟨bound, hb⟩ := hfoot l₀ granted hsu
   have hf := hb bound (Nat.le_refl _)
   cases hr : Wasm.run bound m k (nativeStore m cap nativeWorld) []
       (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
@@ -896,5 +894,60 @@ theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb
       · exact absurd h.symm d7
       · exact .inr (.inr (.inr ⟨hab, hpre, hx0⟩))
   | _ => rw [hr] at hf; exact hf.elim
+
+/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
+Talos's runs of `_start` from `nativeStore` under the shim's environment with the module's flat
+calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
+fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments
+`args` and the environment `environ` on its initial stack.  When the startup routine's outcome is
+`none`, the trace holds the startup's events `l₀` and X0 holds 67.  Otherwise the outcome
+`granted` gives the launch `⟨args, environ, granted⟩`, and the trace holds `l₀` and then the
+layer events `ls`, the images of the WASI events `T` of a run of `action` under `linuxHost` with
+the replies after the startup's, from a world with no events: each event holds its reply of `R`
+from call `l₀.length` on, and each writes within the `cap` pages of linear memory or is a
+`clock_gettime` into the timespec.  The run is an accepted exit whose status X0 holds, an exit
+whose status the shim rejects, with X0 at 1, a trap of the shim at a request that it refuses or a
+result outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix
+of `action`, with X0 at 2. -/
+theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
+    {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
+    (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
+    (himp : m.imports = ABI.importsWith calls) (hsup : ∀ c ∈ calls, c ∈ shimCalls)
+    (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
+    {action : Action Unit} {aborts : Bool}
+    (hfoot : ∀ I R, ∃ bound, ∀ fuel ≥ bound,
+      Footprint arm64Flags (wasiShimLayout m k room cap) I R action nativeWorld aborts
+        (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
+          (linuxEnv arm64Flags (wasiShimLayout m k room cap) I R calls)))
+    (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)} {top : UInt64}
+    (hl : ElfLoaded (byteAt nb) p.core.mem)
+    (hstack : InitialStack args environ p.core.sp top p.core.mem)
+    (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
+    ∃ q, ProcReachWith Linux.table R (wasiPlatform (wasiLayout m k room cap) p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
+      fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
+        some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
+      match startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R with
+      | (l₀, none) => q.trace = l₀.map A64.Event.sys ∧ q.core.x 0 = 67
+      | (l₀, some granted) =>
+        ∃ T ls w, q.trace = (l₀ ++ ls).map A64.Event.sys ∧
+          Images arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩ [] T ls ∧
+          Carried R l₀.length ls ∧
+          (∀ e ∈ ls, WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
+          ((∃ c, Exec (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
+            (aborts = true ∧ (∃ residual,
+              Prefix (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                  ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+                action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) :=
+  wasiElf_footprint_with hk hseg himp hsup hroom16 hroom R p (fun _ _ _ => hfoot _ _) hl hstack
+    hpc htr
 
 end Verified.ShimA64

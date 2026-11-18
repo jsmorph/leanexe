@@ -12,14 +12,15 @@ Writes of count 0 are excluded because they can use up `writeAll`'s passes with 
 two of them for an input of one byte, while the run still exits with `statusOf` of the input.
 
 `exec_message` proves these facts over the WASI trace, for every host that rejects only statuses
-of 126 or more.  `linux_exec_message` carries them to the layer events of an `Exec` run under
-`linuxHost` and the `Images` of its trace, with the premises on the replies stated as predicates
-over those events, `ReadsSucceed` and `WritesAdvance`, as `LeanExe/Linux/Replies.lean` states its
-predicates.  It takes no other premise, so it applies to every run of a footprint that ends in an
-accepted exit, a rejected exit, or a trap of the shim, a binding's footprint of a native run among
-them.  A footprint that admits a guest trap after a prefix gives no `Exec` run for that case.
-Excluding the trap takes a footprint without guest traps, which holds only for a reply sequence
-that meets the budget premise below at the footprint's memory cap.
+of 126 or more.  `linux_exec_succeeded` carries them to the layer events of an `Exec` run under
+`linuxHost` and the `Images` of its trace when the WASI events meet `Succeeded`, and
+`linux_exec_message` when the layer events meet `ReadsSucceed` and `WritesAdvance`, predicates
+over the events in the form of `LeanExe/Linux/Replies.lean`.  Neither takes another premise, so
+both apply to every run of a footprint that ends in an accepted exit, a rejected exit, or a trap
+of the shim, a binding's footprint of a native run among them.  A footprint that admits a guest
+trap after a prefix gives no `Exec` run for that case.  Excluding the trap takes a footprint
+without guest traps, which holds for a reply sequence that meets the budget premise below at the
+footprint's memory cap.
 
 `linux_message` composes `linux_exec_message` with the command's `start` theorem without guest
 traps.  For every reply sequence and every budget that fits between the heap's start at byte 4,096
@@ -28,8 +29,10 @@ those replies, every run of `_start` with enough fuel traps, and when the final 
 the two predicates, the trap is the accepted exit with that status.  The budget is the resource
 model's: it charges the suffix that `writeAll` allocates for each write and credits no release, so
 the charge grows with the number of writes, and for an input of 100,000 bytes written one byte at
-a time the suffixes alone charge more than the 65,535 pages hold.  No theorem bounds readAll's
-charge, so no reply sequence is shown to meet the budget premise.
+a time the suffixes alone charge more than the 65,535 pages hold.
+`Verified/Examples/WasiReadAllSteady.lean` meets the premise for the reply sequences of its class
+`Steady` with `M` at 4,096: each read returns at most its count, and each write of `n` bytes at
+most `n`, at least 1, and at least `min 4096 n`.
 -/
 
 namespace Verified.Examples.WasiReadAll
@@ -503,23 +506,21 @@ theorem exec_message {World : Type} {host : Host World}
     unfold statusOf at high
     split at high <;> simp at high
 
-/-- Under the shim's host, every run of `main` and its exit whose layer events, the images of its
-WASI events, hold no `read` that fails and no `write` that fails or returns 0 exits with
-`statusOf` of the bytes that its reads of descriptor 0 returned, and its layer events meet
-`Copies`. -/
-theorem linux_exec_message {F : OpenFlags} {L : ShimLayout} {I : Launch}
+/-- Under the shim's host, every run of `main` and its exit whose WASI events meet `Succeeded`
+exits with `statusOf` of the bytes that the reads of descriptor 0 in the images `ls` of its events
+returned, and `ls` meets `Copies`. -/
+theorem linux_exec_succeeded {F : OpenFlags} {L : ShimLayout} {I : Launch}
     {replies : Linux.Replies} {world final : LinuxWorld} {trace : List Wasi.Event}
     {outcome : Outcome Unit} {ls : List Linux.Event}
     (execution : Exec (linuxHost F L I replies) (main.bind fun status => Action.exit status)
       world trace outcome final)
-    (images : Images F L I world.events trace ls) (reads : ReadsSucceed ls)
-    (writes : WritesAdvance ls) :
+    (images : Images F L I world.events trace ls) (ok : ∀ e ∈ trace, Succeeded e) :
     outcome = .exited (statusOf (Linux.readData 0 ls)) ∧ Copies ls := by
   have readEq := images.readData 0
   have writeEq := images.writeData 1
   obtain ⟨exited, copied, size, before, last, writeTrace, code, rfl, nonempty, beforeBound, ends,
     writeShape⟩ := exec_message (host := linuxHost F L I replies) (fun rejected => rejected.1)
-      execution (images_succeeded images reads writes)
+      execution ok
   refine ⟨by rw [readEq]; exact exited, ?_⟩
   unfold Copies
   refine ⟨by rw [readEq, writeEq]; exact copied, by rw [readEq]; exact size, ?_⟩
@@ -548,6 +549,20 @@ theorem linux_exec_message {F : OpenFlags} {L : ShimLayout} {I : Launch}
       rcases ends with empty | exceeds
       · exact .inl (by rw [lastBytes]; exact List.length_eq_zero_iff.mp (by simpa using empty))
       · exact .inr (by rw [readEq]; exact exceeds)
+
+/-- Under the shim's host, every run of `main` and its exit whose layer events, the images of its
+WASI events, hold no `read` that fails and no `write` that fails or returns 0 exits with
+`statusOf` of the bytes that its reads of descriptor 0 returned, and its layer events meet
+`Copies`. -/
+theorem linux_exec_message {F : OpenFlags} {L : ShimLayout} {I : Launch}
+    {replies : Linux.Replies} {world final : LinuxWorld} {trace : List Wasi.Event}
+    {outcome : Outcome Unit} {ls : List Linux.Event}
+    (execution : Exec (linuxHost F L I replies) (main.bind fun status => Action.exit status)
+      world trace outcome final)
+    (images : Images F L I world.events trace ls) (reads : ReadsSucceed ls)
+    (writes : WritesAdvance ls) :
+    outcome = .exited (statusOf (Linux.readData 0 ls)) ∧ Copies ls :=
+  linux_exec_succeeded execution images (images_succeeded images reads writes)
 
 /-- The footprint of `linux_footprint` without a guest trap, for a budget that fits between the
 heap's start at byte 4,096 and the end of the module's 65,535 pages and bounds the heap that every

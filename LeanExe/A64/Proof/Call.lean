@@ -139,7 +139,7 @@ theorem x31 (s : State) : s.x 31 = 0 := by
 theorem run_strs {o d : Nat} {src : Nat → Fin 32} {stores : List Instr}
     (hlen : stores.length = d)
     (hst : ∀ j (hj : j < d), ∃ hs, stores[j]'(by omega) = .str (src j) 31 ⟨o + j, hs⟩)
-    (hb : o + d ≤ 512) {a : UInt64} {ms : State} (hcode : CodeAt code a stores)
+    (hb : o + d ≤ 4096) {a : UInt64} {ms : State} (hcode : CodeAt code a stores)
     (hpc : ms.pc = a) (hal : ms.sp % 16 = 0)
     (hmap : ∀ j < 8 * (o + d), P.normal (ms.sp + UInt64.ofNat j) = true) :
     ∃ s, Reach P code ms s ∧ s.pc = after a d ∧ s.sp = ms.sp ∧ (∀ q, s.x q = ms.x q) ∧
@@ -185,7 +185,7 @@ theorem run_ldrs {o d : Nat} {dst : Nat → Fin 32} {loads : List Instr}
     (hlen : loads.length = d)
     (hld : ∀ j (hj : j < d), ∃ hs, loads[j]'(by omega) = .ldr (dst j) 31 ⟨o + j, hs⟩)
     (hdst : ∀ j < d, (dst j).val < 31) (hinj : ∀ i < d, ∀ j < d, dst i = dst j → i = j)
-    (hb : o + d ≤ 512) {a : UInt64} {ms : State} (hcode : CodeAt code a loads)
+    (hb : o + d ≤ 4096) {a : UInt64} {ms : State} (hcode : CodeAt code a loads)
     (hpc : ms.pc = a) (hal : ms.sp % 16 = 0)
     (hmap : ∀ j < 8 * (o + d), P.normal (ms.sp + UInt64.ofNat j) = true) :
     ∃ s, Reach P code ms s ∧ s.pc = after a d ∧ s.sp = ms.sp ∧ s.mem = ms.mem ∧
@@ -469,7 +469,7 @@ theorem sim_call (f k : Nat) : M.InstrSim (f + 1) (.call k) := by
         (by rw [p3, after_after])
         (by rw [sp3, hsp']; exact hinv.aligned)
         (fun j hj => by rw [sp3, hsp']; exact hinv.frame.mapped j (by omega))
-      have hcal : ∀ i < 512, load64 (M.core q').mem (slotAddr (M.core q).sp i) =
+      have hcal : ∀ i < 4096, load64 (M.core q').mem (slotAddr (M.core q).sp i) =
           load64 s1.mem (slotAddr (M.core q).sp i) := by
         intro i hi
         apply load64_congr
