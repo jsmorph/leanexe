@@ -587,9 +587,9 @@ whole-store theorems apply at the combined module's indices, and its
 The [native API](../LeanExe/Wasi/Action.lean) provides reads of the standard input, writes of the
 standard output and error, exit, bounded loops, and `Action.sys`, which makes one flat call, a
 function of `wasi_snapshot_preview1` that [the call table](../LeanExe/Wasi/CallTable.lean)
-describes.  [The typed functions](../LeanExe/Wasi/SysCalls.lean) and `withOpen` of
-[`LeanExe/Wasi/Sys.lean`](../LeanExe/Wasi/Sys.lean) make their calls through `Action.sys`, and the
-command reflects each flat call to one `Command.sys`.  Each primitive read or write makes at most
+describes.  [The generated typed functions](../LeanExe/Wasi/SysCalls.lean) and the typed functions
+and `withOpen` of [`LeanExe/Wasi/Sys.lean`](../LeanExe/Wasi/Sys.lean) make their calls through
+`Action.sys`, and the command reflects each flat call to one `Command.sys`.  Each primitive read or write makes at most
 one WASI import call, and the host may use several operating-system calls for one import.  Source
 code handles errnos and short transfers.  Effect helpers form an acyclic graph and share the
 guarded-call depth with pure callees.  [The WASI manual](../docs/wasi.md) states the API and the
@@ -666,16 +666,16 @@ the witx and run every flat call in Wasmtime.
 
 ## The Linux shim
 
-`Verified/Shim/` specifies the WASI host that the native executables implement with Linux system
-calls, with no instruction set.  Its environment `linuxEnv F L I replies calls` gives each stream
+`Verified/Shim/` specifies, at the level of the Linux call layer, the WASI host that the native
+executables implement with Linux system calls.  Its environment `linuxEnv F L I replies calls` gives each stream
 function and each flat call of `shimCalls` a Talos host function that makes its requests of
 [the Linux call layer](../LeanExe/Linux/Call.lean) through the layer's rule `Linux.step`.  The
 parameters are the open flags `F` that differ between architectures, the layout `L` of the
 guest's memory and the shim's scratch, the launch `I` with the process's arguments, its
 environment, and whether descriptor 3 is a directory that the launcher grants, and the replies
 `replies` of the layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a
-reply when the layer events that it appends are an `Image` of the WASI event and carry their
-replies.  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
+reply when the layer events that it appends are an `Image` of the WASI event, carry their replies,
+and write within the guest's `2^32` bytes or into the scratch's timespec (`WritesWithin`).  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
 states the specification and its differences from the Wasmtime host.
 
 | Module | Content |
@@ -718,8 +718,8 @@ stubs, and the proofs.
 | [`Flat.lean`](ShimA64/Flat.lean) | `flatStub_sim`, the simulation of each stub of `flatStubs` for its call of `shimCalls`. |
 | [`Elf.lean`](ShimA64/Elf.lean) | `nativeStore`, `wasiElf_run`, `wasiElf_footprint_with`, and `wasiElf_footprint`, the run of the executable from its entry to `exit_group`. |
 
-The theorems of each executable lie in a module of `tests/TestSupport/A64/` that its test script
-elaborates against the written file, such as `files_elf` of
+The theorems of each executable that has them lie in a module of `tests/TestSupport/A64/` that its
+test script elaborates against the written file, such as `files_elf` of
 [`ImageFilesWasiFiles.lean`](../tests/TestSupport/A64/ImageFilesWasiFiles.lean).  Each applies
 `wasiElf_footprint` or `wasiElf_footprint_with` to a footprint of the command at the executable's
 memory cap, which a module of `Verified/Examples` proves from the command's generated theorem.
