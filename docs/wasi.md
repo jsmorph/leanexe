@@ -86,7 +86,7 @@ The functions of `wasi_snapshot_preview1` other than the stream functions and `p
 
 Each description has a typed function of its own, except `args_get` and `environ_get`, which `args` and `environ` call after their reporters, `path_open` and `fd_close`, which only `withOpen` calls, as [the handles](#handles) describe, and `fd_renumber`, which no program calls.  The typed functions share one action, `Action.sys call args next`.  A typed function takes each descriptor as a `Handle`, each word, enum, and flags argument as `UInt64`, each string as `Bytes`, and the capacity of an output buffer as `UInt64`.  It returns the errno for a function without results, `WordResult` for one result word, `ArgsSizes` for the two result words of `environ_sizes_get`, `BytesResult` for an output buffer, and `BytesCountResult` for an output buffer and the count of bytes that the call wrote into it (`fd_readdir` and `path_readlink`).  `BytesCountResult` holds the whole buffer, of which the call wrote the first `count` bytes.  A function that writes a record returns `FdstatResult`, `FilestatResult`, or `PrestatResult`: the errno and each field of the record as a `UInt64`, named after the witx field.
 
-`Action.run` and the compiled code reject an argument before the call, without a host request, by the first rule of `Call.reject` that applies in parameter order:
+`Action.run` and the compiled code reject an argument before the call, without a host request, by the first rule of `Call.reject` that applies in parameter order.  Wasmtime 44 traps on an enum or flags argument outside its type before the function runs, and the rejection keeps such arguments from reaching it.  The rules give these errnos:
 
 | Parameter | Rejected argument | Errno |
 |---|---|---|
@@ -97,7 +97,7 @@ Each description has a typed function of its own, except `args_get` and `environ
 | String | A length of `2^32` or more | 61 |
 | Output buffer | A capacity of `2^32` or more | 61 |
 
-Wasmtime 44 traps on an enum or flags argument outside its type before the function runs, and the rejection keeps such arguments from reaching it.  `args` and `environ` call a reporter and then the reported call, and they are written by hand, as are `clockTimeGet`, `randomGet`, and `argsSizesGet`:
+`args` and `environ` call a reporter and then the reported call, and they are written by hand, as are `clockTimeGet`, `randomGet`, and `argsSizesGet`:
 
 | Function | Type | Behavior |
 |---|---|---|
@@ -171,7 +171,7 @@ A callable host configures stdio before invoking an export and may invoke anothe
 |---|---|
 | `p.program`, `p.funs` | Typed effect program and its action meanings. |
 | `p.pure.program`, `p.pure.module` | Typed pure helpers and their import-free module. |
-| `p.pureSources.prefix_k` | The pure program of the first `k + 1` pure helpers, as [`p.prefix_k`](verified-manual.md#generated-declarations) describes; `p.pure.program` is the last. |
+| `p.pureSources.prefix_k` | The pure program of the first `k + 1` pure helpers, as [`p.prefix_k`](verified-manual.md#generated-declarations) describes.  `p.pure.program` is the last. |
 | `p.f.func`, `p.f.callee` | Typed effect function and its reference in the complete program. |
 | `p.f.related` | Original Lean action corresponds to the typed function's meaning, including its result representation. |
 | `p.literalPool` | Shared raw byte-literal pool. |
