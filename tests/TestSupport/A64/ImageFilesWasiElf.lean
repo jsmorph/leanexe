@@ -61,11 +61,11 @@ theorem readall_elf_file : bytesOk (genWasiElf command.module readAllStart wasiR
     readAllElfBytes readAllElfSize = true := by decide +kernel
 
 theorem readall_elf_segments : elfSegments (byteAt readAllElfBytes) =
-    [⟨1, 5, 0, 0x400000, 11620, 11620⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 10684, 10684⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem readall_elf_layout : elfSegmentsOf readAllLayout =
-    [⟨1, 5, 0, 0x400000, 11620, 11620⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 10684, 10684⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem readall_elf_entry : elfEntryOf (byteAt readAllElfBytes) = wasiEntry.toNat := by
