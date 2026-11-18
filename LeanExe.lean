@@ -169,6 +169,7 @@ import LeanExe.M7.Proof.Store
 import LeanExe.M7.Proof.Straight
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes
+import LeanExe.Pipeline.BytesSize
 import LeanExe.Pipeline.FileBytes
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
