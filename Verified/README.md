@@ -676,7 +676,8 @@ environment, and whether descriptor 3 is a directory that the launcher grants, a
 `replies` of the layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a
 reply when the layer events that it appends are an `Image` of the WASI event, carry their replies,
 and write within the guest's `2^32` bytes or into the scratch's timespec (`WritesWithin`).  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
-states the specification and its differences from the Wasmtime host.
+states the specification, and [its differences from Wasmtime](../docs/wasi.md#differences-from-wasmtime)
+the replies in which the shim and the Wasmtime host differ.
 
 | Module | Content |
 |---|---|
