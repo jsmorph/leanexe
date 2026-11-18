@@ -1,0 +1,17 @@
+The user's words:
+unbiased random choice: rejection sampling, with a theorem that every output value has the same number of accepted words
+
+The plan's interface:
+- `choose N K` takes decimal N and K, with 1 ≤ N < 2^64 and 1 ≤ K < 2^64.
+- It writes K lines, each the decimal of an integer uniform on [1, N].
+- A refused argument writes nothing and ends with status 2.
+- The errno of a failed call is the status.
+
+The plan's method:
+- The command draws 64-bit little-endian words with `random_get`, in batches of at most 512 words a call.
+- It accepts a word w when w ≥ 2^64 mod N, which `(0 - N) % N` computes in UInt64 arithmetic, and outputs (w mod N) + 1.  The accepted set has 2^64 - (2^64 mod N) words, a multiple of N.
+
+The functions of the pure core, a choice of this run, each with its own specification:
+- parseArg, from the argument bytes and an argument's position to its value or a refusal;
+- pick, from N and a word to the word's value in [1, N] or its rejection;
+- render, from a sequence of values to their lines.

@@ -26,3 +26,5 @@ import Demos.RandomHistogram.Budget
 import Demos.RandomHistogram.Native
 import Demos.RandomHistogram.NativeCounts
 import Demos.ManifestCheck.Compiled
+import Demos.RandomChoice.Compiled
+import Demos.RandomChoice.Unbiased

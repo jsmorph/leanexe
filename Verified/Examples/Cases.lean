@@ -89,6 +89,8 @@ import Demos.RandomHistogram.Spec
 import Demos.RandomHistogram.Samples
 import Demos.ManifestCheck.Spec
 import Demos.ManifestCheck.Samples
+import Demos.RandomChoice.Spec
+import Demos.RandomChoice.Samples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
@@ -611,6 +613,16 @@ def portCases : IO Unit := do
   for (name, ok) in _root_.Demos.ManifestCheck.renderSamples do
     IO.println s!"manifestCheck|render|bytes|bytes:{HeapSums.hex name} i64:{if ok then 1 else 0}|\
       {HeapSums.hex (_root_.Demos.ManifestCheck.renderSpec (name, ok))}|2"
+  for (b, i) in _root_.Demos.RandomChoice.parseSamples do
+    IO.println s!"randomChoice|parseArg|i64|bytes:{HeapSums.hex b} i64:{i}|\
+      {_root_.Demos.RandomChoice.parseSpec (b, i)}"
+  for (n, w) in _root_.Demos.RandomChoice.pickSamples do
+    IO.println s!"randomChoice|pick|i64|i64:{n} i64:{w}|{_root_.Demos.RandomChoice.pickSpec (n, w)}|0"
+  -- An empty buffer has no block, so the render of no values leaves only the argument's block.
+  for values in _root_.Demos.RandomChoice.renderSamples do
+    IO.println s!"randomChoice|render|bytes|{arrayArg values}|\
+      {HeapSums.hex (_root_.Demos.RandomChoice.renderSpec values)}|\
+      {if values.isEmpty then 1 else 2}"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"
