@@ -2,7 +2,6 @@ import Demos.Rcv.Maine.Tabulate
 import Demos.Rcv.Maine.TabulateProof
 import Verified.Call
 import Verified.Congr
-import LeanExe.Pipeline.BytesSize
 
 /-!
 The call theorems of the Maine module.  `count_callSpec` is the call theorem over words: from a
@@ -11,7 +10,7 @@ with a borrowed word array, returns without a trap the words of `Demos.Rcv.Maine
 `tabulate_callSpec` is T1 over bytes: from a ready store with room for `compiled.tabulate.bound b`
 bytes, function 64 returns without a trap an owned buffer of the bytes of
 `Demos.Rcv.Maine.reportFile` of the bytes of `b`.  A buffer that a store holds has fewer than
-`2 ^ 32` bytes (`LeanExe.Pipeline.Bytes.size_lt_of_borrowed`), which `tabulate_eq` needs.  `readContest_callSpec`,
+`2 ^ 32` bytes (`size_lt_of_borrowed`), which `tabulate_eq` needs.  `readContest_callSpec`,
 `printReport_callSpec`, and `printError_callSpec` state that functions 47, 61, and 63 compute the
 shared reader's result words and the Maine printers.  `tabulate_trapFree` states
 `compiled.tabulate.trapFree` for the Maine report of a file, and `tabulate_native` carries it to the
@@ -21,7 +20,6 @@ C translation.
 namespace Demos.Rcv.Maine.TabulateProgram
 
 open LeanExe LeanExe.Pipeline Demos.Rcv.ReadProgram
-open LeanExe.Pipeline.Bytes (size_lt_of_borrowed)
 
 theorem exports :
     ({ name := "count", funcIdx := 22 } : Wasm.Export) ∈ compiled.module.exports ∧
@@ -30,6 +28,16 @@ theorem exports :
     ({ name := "printError", funcIdx := 63 } : Wasm.Export) ∈ compiled.module.exports ∧
     ({ name := "tabulate", funcIdx := 64 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
+
+/-- A buffer that a store holds has fewer than `2 ^ 32` bytes. -/
+theorem size_lt_of_borrowed {heap : Heap} {store : Wasm.Store Unit} {params : List Wasm.Value}
+    {b : Bytes} (h : Represent.borrowed heap store params b) : b.data.size < 2 ^ 32 := by
+  obtain ⟨root, length, -, hrep⟩ := h
+  rcases hrep.buffer with ⟨-, h0⟩ | hbuf
+  · omega
+  · have h1 := hbuf.object.address
+    have h2 := hbuf.capacity
+    omega
 
 /-- The Maine report of the file `b` as a buffer. -/
 def tabulateSpec (b : Bytes) : Bytes := ⟨⟨(Demos.Rcv.Maine.reportFile (bytesOf b)).toArray⟩⟩

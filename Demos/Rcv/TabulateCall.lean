@@ -2,7 +2,6 @@ import Demos.Rcv.Tabulate
 import Demos.Rcv.TabulateProof
 import Verified.Call
 import Verified.Congr
-import LeanExe.Pipeline.BytesSize
 
 /-!
 The call theorems of the Oakland tabulator's module.  `exports` gives the function indices of the
@@ -10,8 +9,8 @@ exports `count`, `readContest`, `printReport`, `printError`, and `tabulate`.  `t
 T1 over bytes: from a ready store with room for `compiled.tabulate.bound b` bytes, function 63,
 called with a borrowed buffer `b`, returns without a trap an owned buffer of the bytes of
 `reportFile` of the bytes of `b`, the error report of a malformed file and the printed count of a
-well-formed one.  A buffer that a store holds has fewer than `2 ^ 32` bytes
-(`LeanExe.Pipeline.Bytes.size_lt_of_borrowed`), which `tabulate_eq` needs.  `readContest_callSpec` states the reader's result words for function 47,
+well-formed one.  A buffer that a store holds has fewer than `2 ^ 32` bytes (`size_lt_of_borrowed`),
+which `tabulate_eq` needs.  `readContest_callSpec` states the reader's result words for function 47,
 and `printReport_callSpec` and `printError_callSpec` state that functions 60 and 62 compute the
 printers, which `printReport_eq` and `printError_eq` equate with the report of a structure from its
 file and its count's words and with the error report.  `tabulate_trapFree` states
@@ -22,7 +21,6 @@ translation.
 namespace Demos.Rcv.TabulateProgram
 
 open LeanExe LeanExe.Pipeline Demos.Rcv.ReadProgram Demos.Rcv.PrintProgram
-open LeanExe.Pipeline.Bytes (size_lt_of_borrowed)
 
 theorem exports :
     ({ name := "count", funcIdx := 22 } : Wasm.Export) ∈ compiled.module.exports ∧
@@ -31,6 +29,16 @@ theorem exports :
     ({ name := "printError", funcIdx := 62 } : Wasm.Export) ∈ compiled.module.exports ∧
     ({ name := "tabulate", funcIdx := 63 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
+
+/-- A buffer that a store holds has fewer than `2 ^ 32` bytes. -/
+theorem size_lt_of_borrowed {heap : Heap} {store : Wasm.Store Unit} {params : List Wasm.Value}
+    {b : Bytes} (h : Represent.borrowed heap store params b) : b.data.size < 2 ^ 32 := by
+  obtain ⟨root, length, -, hrep⟩ := h
+  rcases hrep.buffer with ⟨-, h0⟩ | hbuf
+  · omega
+  · have h1 := hbuf.object.address
+    have h2 := hbuf.capacity
+    omega
 
 /-- The report of the file `b` as a buffer. -/
 def tabulateSpec (b : Bytes) : Bytes := ⟨⟨(Spec.reportFile (bytesOf b)).toArray⟩⟩
