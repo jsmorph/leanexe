@@ -12,9 +12,9 @@ errno of a failed call is the status, and the output is ten lines of decimal cou
 
 The pure core has three functions, whose specifications [the specification](Spec.lean) states,
 written and reviewed by the method of [the verified-request
-skill](../../.claude/skills/verified-request/SKILL.md).  `parseSpec` reads N from the buffer that WASI's `args_get` fills, in which each argument
-follows the program name and ends with a zero byte, and returns 0, which no valid N equals, for a
-refusal.  `histogramSpec` counts the words of an array by their residue mod 10, each word read as an
+skill](../../.claude/skills/verified-request/SKILL.md).  `parseSpec` reads N from the buffer that
+WASI's `args_get` fills, in which each argument follows the program name and ends with a zero byte,
+and returns 0, which no valid N equals, for a refusal.  `histogramSpec` counts the words of an array by their residue mod 10, each word read as an
 unsigned integer.  `renderSpec` writes ten lines from the first ten elements of an array, in Lean's
 decimal form of a natural number, each followed by the byte 10.  The specification's comment records
 each choice that the request leaves open: the program name and the arguments after the first are
@@ -29,9 +29,9 @@ second named four classes that no sample covers, which the review lists.
 [The program](Program.lean) holds the three functions in the verified compiler's dialect.
 `parseN` reads the buffer once with a state of four parts: the zero bytes seen, the value of the
 argument's digits, whether every byte so far is a digit and the value stays below `2^64`, and
-whether the argument has a byte.  Before it adds a digit, it tests the digit against
-`2^64 - 1 = 10 · 1844674407370955161 + 5`.  `histogram` folds `countWord` over the words from ten zero counts.
-`render` pushes the digits of each count onto an array with `digitCount` and `digitByte` of [the
+whether the argument has a byte.  Before it adds a digit `d` to the value `v`, it tests whether
+`10 v + d` stays below `2^64` through `2^64 - 1 = 10 · 1844674407370955161 + 5`, which needs no
+wider word.  `histogram` folds `countWord` over the words from ten zero counts.  `render` pushes the digits of each count onto an array with `digitCount` and `digitByte` of [the
 library's `Int64` text](../../Library/Numerics/Decimal/Int64Text/README.md) and builds the output
 buffer from that array.  [The verified compilation](Compiled.lean) writes a module that exports
 `parseN`, `histogram`, and `render` as functions 3, 5, and 9.
