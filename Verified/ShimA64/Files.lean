@@ -2,20 +2,23 @@ import Verified.ShimA64.Preopen
 import LeanExe.A64.Proof.WasiFiles
 
 /-!
-The stubs of `fd_close` and of `fd_read` and `fd_write` on a handle against the shim's host
-environment: each stub of `LeanExe/A64/WasiFiles.lean` meets `Machine.StubSim` for its function of
-`linuxEnv` on `shimMachine`.  The stubs read and write the shim's scratch, which lies outside the
-module's platform, so their runs lie on the process's platform `wasiPlatform`, and each statement
-takes the scratch's place, `areaSize` bytes above the area, and its bytes' being Normal memory
-there.  The byte of a descriptor number in the scratch is nonzero exactly when the shim holds the
-number (`held_byte`), so a stub's test of the byte decides membership in `openNumbers`.  A request
-that the specification's function refuses reaches the trap stub with the store unchanged, or
-returns errno 8 for a number that the shim does not hold.  An accepted one reaches `SVC #0` with
-the call whose event the specification's function records, and the result reaches the return
-with the WASI reply or the trap stub.  At a return the scratch's bytes follow `openNumbers` and
-`preopened` of the world's new events: a `close` clears the number's byte, and the preopen flag
-for descriptor 3, whatever its result (`ScratchHolds.close`), and a `read` or `write` changes
-neither (`ScratchHolds.quiet`).
+The scratch's bytes of the shim's descriptors, the ends of a stub on `shimMachine`, and the stub
+of `fd_close` of `LeanExe/A64/WasiFiles.lean` against the shim's host environment.  A descriptor
+number of at most 1,023 whose byte in the scratch is nonzero is exactly a number that the shim
+holds (`held_byte`), so a stub's test of the bound and of the byte decides membership in
+`openNumbers`.  A `close` of a number below 1,024 keeps `ScratchHolds` when the memory clears the
+number's byte, and the preopen flag for descriptor 3, whatever the call's result
+(`ScratchHolds.close`).  `ScratchOnly` states that a memory differs from another only in the
+scratch, which keeps the store relation (`ScratchOnly.storeRel`) and every byte from the stack's
+limit up (`ScratchOnly.high`).  `shim_return` and `shim_trap` end a stub's run with a return or in
+the trap stub.
+
+`closeStub_sim` proves that the stub of `fd_close` meets `Machine.StubSim` for `closeInvoke` on
+`shimMachine`.  The stub reads and writes the scratch, which lies outside the module's platform,
+so its runs lie on the process's platform `wasiPlatform`, and the statement takes the scratch's
+place, `areaSize` bytes above the area, in the data segment.  A number that the shim does not hold
+returns errno 8 with no call.  Otherwise the stub reaches `SVC #0` with the `close` whose event
+`closeInvoke` records, and the result reaches the return with the WASI reply or the trap stub.
 -/
 
 namespace Verified.ShimA64
@@ -67,9 +70,9 @@ theorem scratch_ne {G : Scratch} {i j : Nat}
   simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow] at this
   omega
 
-/-- A `close` of a number that the shim holds keeps the scratch's relation to the shim's
-descriptor state when the memory clears the number's byte, and the preopen flag for descriptor 3,
-and keeps every other byte. -/
+/-- A `close` of a number below 1,024 keeps the scratch's relation to the shim's descriptor state
+when the memory clears the number's byte, and the preopen flag for descriptor 3, and keeps every
+other byte. -/
 theorem ScratchHolds.close {G : Scratch} {I : Launch} {sp₀ top : UInt64}
     {events : List Linux.Event} {mem mem' : UInt64 → UInt8} {e : Linux.Event} {d : UInt64}
     (h : ScratchHolds G I sp₀ top events mem) (hclose : e.call = Linux.closeCall)
@@ -191,7 +194,7 @@ theorem ScratchOnly.store8 {G : Scratch} (m : UInt64 → UInt8) {j : Nat} (v : U
   omega
 
 /-- A memory that differs from the process's only in the scratch, which follows the area, keeps the
-store relation and every byte from the stack's limit up. -/
+store relation. -/
 theorem ScratchOnly.storeRel {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
     {st : Store α} {s s' : State} {G : Scratch} (h : StoreRel P cap gts st s)
     (hGb : G.base = s.x 17 + UInt64.ofNat (areaSize cap)) (h17 : s'.x 17 = s.x 17)
@@ -204,6 +207,8 @@ theorem ScratchOnly.storeRel {P : Platform} {cap : Nat} {gts : List ValueType} {
   rw [hGb]
   omega
 
+/-- A memory that differs from another only in the scratch keeps every byte from a limit at or
+above the scratch's end up. -/
 theorem ScratchOnly.high {G : Scratch} {m m' : UInt64 → UInt8} (hm : ScratchOnly G m m')
     {lim : UInt64} (hlim : G.base.toNat + scratchSize ≤ lim.toNat) {a : UInt64}
     (ha : lim.toNat ≤ a.toNat) : m' a = m a :=

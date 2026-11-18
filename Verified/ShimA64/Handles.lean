@@ -284,7 +284,8 @@ theorem shim_errno {S : Shared} {n : Nat} {st : Store (Observed LinuxWorld)} {q 
 
 /-! ## `fd_read` on a handle -/
 
-/-- The stub of `fd_read` on a handle stands for the shim's `fd_read`. -/
+/-- The stub of `fd_read` on a handle stands for the shim's `fd_read` on a handle,
+`handleReadInvoke`. -/
 theorem handleReadStub_sim (S : Shared) (n : Nat) {hr svc en : UInt64} {is : List Instr}
     (hg : handleStub 63 hr svc S.trapUnreachable en (areaSize S.cap) = .ok is)
     (hcode : CodeAt code hr is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
@@ -591,7 +592,8 @@ theorem handleReadStub_sim (S : Shared) (n : Nat) {hr svc en : UInt64} {is : Lis
 
 /-! ## `fd_write` on a handle -/
 
-/-- The stub of `fd_write` on a handle stands for the shim's `fd_write`. -/
+/-- The stub of `fd_write` on a handle stands for the shim's `fd_write` on a handle,
+`handleWriteInvoke`. -/
 theorem handleWriteStub_sim (S : Shared) (n : Nat) {hw svc en : UInt64} {is : List Instr}
     (hg : handleStub 64 hw svc S.trapUnreachable en (areaSize S.cap) = .ok is)
     (hcode : CodeAt code hw is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
