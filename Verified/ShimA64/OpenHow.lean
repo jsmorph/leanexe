@@ -1,6 +1,7 @@
 import Verified.Shim
 import LeanExe.A64.Proof.WasiStubs
 import LeanExe.A64.Proof.WasiStrings
+import Verified.ShimA64.Clocks
 import LeanExe.A64.WasiFiles
 
 /-!
@@ -12,7 +13,7 @@ proof splits the words at their forward branches: `run_openHowAccess` computes `
 access mode, `run_openHowCreate` the creation flags and `O_DIRECTORY`, and `run_openHowTail`
 `O_APPEND`, `O_NONBLOCK`, and `O_NOFOLLOW`, through runs such as `run_andCbzOrr` of a test
 followed by an `ORR` into X24.  `openHow_flags` equates the word that they leave in X24 with
-`openFlagsWord arm64Flags` by cases on the tested bits, and `store64_writeList` gives the bytes
+`openFlagsWord arm64Flags` by cases on the tested bits, and `store64_wasiBytes` gives the bytes
 that each `STR` of a word writes.
 -/
 
@@ -22,45 +23,18 @@ open LeanExe LeanExe.A64 Verified.Shim
 
 /-! ## Bytes of words -/
 
-/-- Byte `k` of fewer than `2 ^ 64` bytes written from `a` lies at `a + k`. -/
-theorem writeList_at : ∀ (m : UInt64 → UInt8) (a : UInt64) (bs : List UInt8) (k : Nat)
-    (hk : k < bs.length), bs.length < 2 ^ 64 → writeList m a bs (a + UInt64.ofNat k) = bs[k]
-  | _, _, [], _, hk, _ => absurd hk (Nat.not_lt_zero _)
-  | m, a, v :: bs, 0, _, hl => by
-    show writeList (store8 m a v) (a + 1) bs (a + UInt64.ofNat 0) = v
-    rw [add_ofNat_zero, writeList_other _ bs (a + 1) a ?_]
-    · simp [store8]
-    · simp only [List.length_cons] at hl
-      have ha := a.toNat_lt
-      simp only [UInt64.toNat_sub, UInt64.toNat_add, UInt64.reduceToNat, Nat.reducePow] at *
-      omega
-  | m, a, v :: bs, k + 1, hk, hl => by
-    have hk' : k < bs.length := by simpa using hk
-    show writeList (store8 m a v) (a + 1) bs (a + UInt64.ofNat (k + 1)) = bs[k]
-    rw [← LeanExe.Linux.succ_ofNat a k]
-    exact writeList_at (store8 m a v) (a + 1) bs k hk' (Nat.lt_of_succ_lt hl)
-
 /-- Byte `k` of a word, below 8, in the machine's form and in the specification's form. -/
 theorem byteOf_word (w : UInt64) {k : Nat} (hk : k < 8) :
     LeanExe.A64.byteOf w k = Verified.Wasi.byteOf w.toNat k := by
   apply UInt8.toNat_inj.mp
   rw [LeanExe.A64.byteOf_toNat w hk, Verified.Wasi.byteOf_toNat]
 
-/-- A `store64` writes the word's eight little-endian bytes. -/
-theorem store64_writeList (m : UInt64 → UInt8) (a w : UInt64) :
+/-- A `store64` writes the word's eight little-endian bytes in the specification's form. -/
+theorem store64_wasiBytes (m : UInt64 → UInt8) (a w : UInt64) :
     store64 m a w = writeList m a ((List.range 8).map (Verified.Wasi.byteOf w.toNat)) := by
-  funext b
-  by_cases h : b - a < 8
-  · obtain ⟨k, hk, rfl⟩ : ∃ k, k < 8 ∧ b = a + UInt64.ofNat k :=
-      ⟨(b - a).toNat, UInt64.lt_iff_toNat_lt.mp h,
-        by rw [UInt64.ofNat_toNat, UInt64.add_comm, UInt64.sub_add_cancel]⟩
-    rw [store64_byteOf m a w hk,
-      writeList_at m a ((List.range 8).map (Verified.Wasi.byteOf w.toNat)) k (by simpa using hk)
-        (by simp),
-      List.getElem_map, List.getElem_range]
-    exact byteOf_word w hk
-  · have hk : ¬ (b - a).toNat < 8 := fun h' => h (UInt64.lt_iff_toNat_lt.mpr h')
-    rw [store64_other m a w b h, writeList_other m _ a b (by simpa using hk)]
+  rw [store64_writeList]
+  congr 1
+  exact List.map_congr_left fun k hk => byteOf_word w (List.mem_range.mp hk)
 
 /-- Three `store64` of consecutive words write their 24 little-endian bytes. -/
 theorem store64_three (m : UInt64 → UInt8) (A w1 w2 w3 : UInt64) :
@@ -68,8 +42,8 @@ theorem store64_three (m : UInt64 → UInt8) (A w1 w2 w3 : UInt64) :
       writeList m A ((List.range 8).map (Verified.Wasi.byteOf w1.toNat) ++
         (List.range 8).map (Verified.Wasi.byteOf w2.toNat) ++
         (List.range 8).map (Verified.Wasi.byteOf w3.toNat)) := by
-  rw [writeList_append, writeList_append, ← store64_writeList, ← store64_writeList,
-    ← store64_writeList]
+  rw [writeList_append, writeList_append, ← store64_wasiBytes, ← store64_wasiBytes,
+    ← store64_wasiBytes]
   simp only [List.length_append, List.length_map, List.length_range]
 
 /-! ## The flags word -/
@@ -212,15 +186,6 @@ theorem step_orrReg {s : State} {d n m : Fin 32} (hd : d.val < 31)
     ∃ t, Reach P code s t ∧ t.pc = s.pc + 4 ∧ t.x d = s.x n ||| s.x m ∧
       (∀ q : Fin 32, q ≠ d → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io :=
   step_setX P code hd hc rfl
-
-/-- A step of `STR Xt, [Xn, #(8 * i)]` to Normal memory, with a base other than SP. -/
-theorem step_str {s : State} {t n : Fin 32} {i : Nat} (hi : i < 4096) (hn : n.val < 31)
-    (hc : code s.pc = some (encode (.str t n ⟨i, hi⟩)))
-    (hmap : ∀ k < 8, P.normal (s.x n + UInt64.ofNat (8 * i + k)) = true) :
-    ∃ u, Reach P code s u ∧ u.pc = s.pc + 4 ∧ (∀ q : Fin 32, u.x q = s.x q) ∧ u.sp = s.sp ∧
-      u.io = s.io ∧ u.mem = store64 s.mem (s.x n + UInt64.ofNat (8 * i)) (s.x t) :=
-  ⟨_, reach_exec P code hc (exec_str_base P hi hn hmap) (.refl _), rfl, fun _ => rfl, rfl, rfl,
-    rfl⟩
 
 /-- `MOVZ Xt, #m` and `AND Xd, Xr, Xt`: X`d` holds X`r` masked by `m`. -/
 theorem run_movzAnd {a : UInt64} {d r t : Fin 32} {m : Fin 65536} (hd : d.val < 31)
@@ -707,7 +672,7 @@ theorem run_openHowStores {a : UInt64} {g : Fin 524288}
   simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c4 c5 c6
   have cs : CodeAt code (after a 1) [.movz 9 0 0, .cbz 25 g, .movz 9 438 0] := by
     simpa using CodeAt.drop_take code hcode 1 3 (by simp)
-  obtain ⟨u1, r1, p1, k1, sp1, io1, m1⟩ := step_str P code (s := s) (t := 24) (n := 20)
+  obtain ⟨u1, r1, p1, k1, sp1, m1, io1⟩ := step_str P code (s := s) (t := 24) (n := 20)
     (i := 132) (by decide) (by decide) (by rw [hpc]; exact c0)
     (fun k hk => by rw [show 8 * 132 + k = 1056 + k by omega]; exact hmap k (by omega))
   obtain ⟨u2, r2, p2, x2, k2, sp2, m2, io2⟩ := run_movzCbz P code (t := 9) (r := 25) (v0 := 0)
@@ -717,14 +682,14 @@ theorem run_openHowStores {a : UInt64} {g : Fin 524288}
     show UInt64.ofNat (438 : Fin 65536).val = 438 from rfl, k1 25] at x2
   have q2 : u2.pc = after a 4 := by rw [p2, after_after]
   have h20 : u2.x 20 = s.x 20 := by rw [k2 20 (by decide), k1]
-  obtain ⟨u3, r3, p3, k3, sp3, io3, m3⟩ := step_str P code (s := u2) (t := 9) (n := 20)
+  obtain ⟨u3, r3, p3, k3, sp3, m3, io3⟩ := step_str P code (s := u2) (t := 9) (n := 20)
     (i := 133) (by decide) (by decide) (by rw [q2]; exact c4)
     (fun k hk => by
       rw [h20, show 8 * 133 + k = 1056 + (8 + k) by omega]; exact hmap (8 + k) (by omega))
   obtain ⟨u4, r4, p4, x4, k4, sp4, m4, io4⟩ := step_movz P code (s := u3) (d := 9) (imm := 10)
     (hw := 0) (by decide) (by rw [p3, q2, ← after_succ]; exact c5)
   rw [movz0_val, show UInt64.ofNat (10 : Fin 65536).val = 10 from rfl] at x4
-  obtain ⟨u5, r5, p5, k5, sp5, io5, m5⟩ := step_str P code (s := u4) (t := 9) (n := 20)
+  obtain ⟨u5, r5, p5, k5, sp5, m5, io5⟩ := step_str P code (s := u4) (t := 9) (n := 20)
     (i := 134) (by decide) (by decide) (by rw [p4, p3, q2, ← after_succ, ← after_succ]; exact c6)
     (fun k hk => by
       rw [k4 20 (by decide), k3, h20, show 8 * 134 + k = 1056 + (16 + k) by omega]

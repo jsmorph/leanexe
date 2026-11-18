@@ -1,4 +1,5 @@
 import LeanExe.A64.Proof.WasiStubs
+import LeanExe.A64.Proof.WasiClocks
 import LeanExe.A64.WasiFiles
 
 /-!
@@ -327,12 +328,6 @@ theorem step_ldrbAt {s : State} {t n : Fin 32} {imm : Fin 4096} (ht : t.val < 31
       (∀ q : Fin 32, q ≠ t → u.x q = s.x q) ∧ u.sp = s.sp ∧ u.mem = s.mem ∧ u.io = s.io :=
   step_setX P code ht hc (exec_ldrb_base P hn hmap)
 
-/-- A step of `SUB Xd, Xn, #imm` with registers other than SP. -/
-theorem step_subImm {s : State} {d n : Fin 32} {imm : Fin 4096} (hd : d.val < 31)
-    (hn : n.val < 31) (hc : code s.pc = some (encode (.subImm d n imm))) :
-    ∃ t, Reach P code s t ∧ t.pc = s.pc + 4 ∧ t.x d = s.x n - UInt64.ofNat imm.val ∧
-      (∀ q : Fin 32, q ≠ d → t.x q = s.x q) ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io :=
-  step_setX P code hd hc (exec_subImm_x P hd hn)
 
 /-- `SUBS XZR, Xr, #imm` and `B.HS` to `tB`: the branch is taken when X`r` lies at or above
 `imm`. -/

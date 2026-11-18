@@ -243,8 +243,7 @@ theorem readList_writeList (m : UInt64 → UInt8) (a : UInt64) (bs : List UInt8)
     readList (LeanExe.A64.writeList m a bs) a n = bs := by
   subst hn
   exact readList_eq _ a bs fun j hj => by
-    rw [Verified.ShimA64.writeList_at m a bs j hj h]
-    simp [hj]
+    rw [writeList_at m bs a j hj h]
 
 theorem readList_writeList_apart (m : UInt64 → UInt8) (a b : UInt64) (bs : List UInt8) (n : Nat)
     (h : ∀ j < n, ¬ (b + UInt64.ofNat j - a).toNat < bs.length) :

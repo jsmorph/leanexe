@@ -1,4 +1,5 @@
 import LeanExe.A64.WasiPreopen
+import LeanExe.A64.WasiClocks
 
 /-!
 The stubs of `fd_close`, of `fd_read` and `fd_write` on a handle, and of `path_open`, which follow
@@ -15,7 +16,8 @@ The stub of `fd_close` returns errno 8 (`badf`) for a descriptor that the shim d
 (`heldTest`).  Otherwise it calls `close`, clears the descriptor's byte, and clears the preopen
 flag when the descriptor is 3, whatever the result, since Linux releases the descriptor before it
 reports an error.  A result of 0 returns errno 0, a negated error number its errno through the
-routine of errnos at `en` (`errnoTail`), and any other result reaches the trap stub `tr`.
+routine of errnos at `en` (`errorTail` of `LeanExe/A64/WasiClocks.lean`), and any other result
+reaches the trap stub `tr`.
 
 `handleStub nr` is the stub of `fd_read` for `nr` 63 and of `fd_write` for `nr` 64 on a handle.
 It reaches `tr` unless the request names one iovec whose eight bytes, whose buffer, and whose
@@ -49,13 +51,6 @@ namespace LeanExe.A64
 /-- The guest's address `X17 + 4096 + Xp` in X`d`. -/
 def guestAddr (d p : Fin 32) : List Instr := [.addReg d 17 p, .addImm d d 4095, .addImm d d 1]
 
-/-- The handling of a result in X0 that is no count, placed at `a`, with the trap stub at `tr` and
-the routine of errnos at `en`: the errno of a negated error number returned to X19, and a branch
-to `tr` for any other result. -/
-def errnoTail (a tr en : UInt64) : GenM (List Instr) := do
-  return [.subReg 12 31 0, .subsImm 31 12 4095, .bcond 8 (← cbField (after a 2) tr),
-    .orrReg 0 31 12, .bl (← bField (after a 4) en), .ret 19]
-
 /-- The four bytes of the low 32 bits of X0 stored at the guest's address in X`p`, through X16 and
 X12. -/
 def wordStore (p : Fin 32) : List Instr :=
@@ -71,7 +66,7 @@ at `svc`, the trap stub at `tr`, the routine of errnos at `en`, and the scratch 
 above the area. -/
 def closeStub (a svc tr en : UInt64) (scratch : Nat) : GenM (List Instr) := do
   let held ← heldTest (after a 5) (after a 28) 0
-  let tail ← errnoTail (after a 20) tr en
+  let tail ← errorTail (after a 20) tr en
   return scratchAddr scratch ++ held ++
     [.orrReg 19 31 30, .orrReg 21 31 0, .movz 8 57 0, .bl (← bField (after a 13) svc),
       .addReg 10 20 21, .strb 31 10 16, .subsImm 31 21 3,
@@ -83,10 +78,10 @@ def closeStub (a svc tr en : UInt64) (scratch : Nat) : GenM (List Instr) := do
 
 /-- The handling of the call's result in X0, placed at `a`, with the length in X11, the count's
 pointer in X3, the trap stub at `tr`, and the routine of errnos at `en`: a result at most the
-length stored at the count's pointer and errno 0 returned to X19, and `errnoTail` for every other
+length stored at the count's pointer and errno 0 returned to X19, and `errorTail` for every other
 result. -/
 def countTail (a tr en : UInt64) : GenM (List Instr) := do
-  let tail ← errnoTail (after a 13) tr en
+  let tail ← errorTail (after a 13) tr en
   return [.subsReg 31 0 11, .bcond 8 (← cbField (after a 1) (after a 13))] ++ wordStore 3 ++
     [.movz 0 0 0, .ret 19] ++ tail
 
@@ -234,9 +229,9 @@ def openCalls (a svc : UInt64) : GenM (List Instr) := do
 /-- The handling of the last `openat2`'s result in X0, placed at `a`, with the result's pointer in
 X21, the scratch's address in X20, the trap stub at `tr`, and the routine of errnos at `en`: a
 descriptor below 1,024 sets its byte in the scratch, is stored at the result's pointer, and
-returns errno 0 to X19, and `errnoTail` handles every other result. -/
+returns errno 0 to X19, and `errorTail` handles every other result. -/
 def openResult (a tr en : UInt64) : GenM (List Instr) := do
-  let tail ← errnoTail (after a 16) tr en
+  let tail ← errorTail (after a 16) tr en
   return [.subsImm 31 0 1023, .bcond 8 (← cbField (after a 1) (after a 16)), .addReg 10 20 0,
     .movz 9 1 0, .strb 9 10 16] ++ wordStore 21 ++ [.movz 0 0 0, .ret 19] ++ tail
 

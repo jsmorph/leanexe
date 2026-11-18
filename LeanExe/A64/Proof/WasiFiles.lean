@@ -1,4 +1,5 @@
 import LeanExe.A64.Proof.WasiPreopen
+import LeanExe.A64.Proof.WasiClocks
 import LeanExe.A64.WasiFiles
 
 /-!
@@ -20,25 +21,12 @@ open Wasm
 
 /-! ## The generator's parts -/
 
-theorem errnoTail_ok {a tr en : UInt64} {is : List Instr} (hg : errnoTail a tr en = .ok is) :
-    ∃ g2 g4, cbField (after a 2) tr = .ok g2 ∧ bField (after a 4) en = .ok g4 ∧
-      is = [.subReg 12 31 0, .subsImm 31 12 4095, .bcond 8 g2, .orrReg 0 31 12, .bl g4,
-        .ret 19] := by
-  unfold errnoTail at hg
-  cases h2 : cbField (after a 2) tr with
-  | error err => simp [h2, bind, Except.bind] at hg
-  | ok g2 =>
-  cases h4 : bField (after a 4) en with
-  | error err => simp [h2, h4, bind, Except.bind] at hg
-  | ok g4 =>
-  simp only [h2, h4, bind, Except.bind, pure, Except.pure, Except.ok.injEq] at hg
-  exact ⟨g2, g4, rfl, rfl, hg.symm⟩
 
 theorem countTail_ok {a tr en : UInt64} {is : List Instr} (hg : countTail a tr en = .ok is) :
-    ∃ g1 tail, cbField (after a 1) (after a 13) = .ok g1 ∧ errnoTail (after a 13) tr en = .ok tail ∧
+    ∃ g1 tail, cbField (after a 1) (after a 13) = .ok g1 ∧ errorTail (after a 13) tr en = .ok tail ∧
       is = [.subsReg 31 0 11, .bcond 8 g1] ++ wordStore 3 ++ [.movz 0 0 0, .ret 19] ++ tail := by
   unfold countTail at hg
-  cases ht : errnoTail (after a 13) tr en with
+  cases ht : errorTail (after a 13) tr en with
   | error err => simp [ht, bind, Except.bind] at hg
   | ok tail =>
   cases h1 : cbField (after a 1) (after a 13) with
@@ -50,7 +38,7 @@ theorem countTail_ok {a tr en : UInt64} {is : List Instr} (hg : countTail a tr e
 theorem closeStub_ok {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     (hg : closeStub a svc tr en sc = .ok is) :
     ∃ held tail g13 g17 g19, heldTest (after a 5) (after a 28) 0 = .ok held ∧
-      errnoTail (after a 20) tr en = .ok tail ∧ bField (after a 13) svc = .ok g13 ∧
+      errorTail (after a 20) tr en = .ok tail ∧ bField (after a 13) svc = .ok g13 ∧
       cbField (after a 17) (after a 19) = .ok g17 ∧ cbField (after a 19) (after a 26) = .ok g19 ∧
       is = scratchAddr sc ++ held ++
         [.orrReg 19 31 30, .orrReg 21 31 0, .movz 8 57 0, .bl g13, .addReg 10 20 21,
@@ -60,7 +48,7 @@ theorem closeStub_ok {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   cases hh : heldTest (after a 5) (after a 28) 0 with
   | error err => simp [hh, bind, Except.bind] at hg
   | ok held =>
-  cases ht : errnoTail (after a 20) tr en with
+  cases ht : errorTail (after a 20) tr en with
   | error err => simp [hh, ht, bind, Except.bind] at hg
   | ok tail =>
   cases h13 : bField (after a 13) svc with
@@ -117,7 +105,7 @@ theorem closeStub_length {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     (hg : closeStub a svc tr en sc = .ok is) : is.length = closeStubSize := by
   obtain ⟨held, tail, g13, g17, g19, hh, ht, -, -, -, rfl⟩ := closeStub_ok hg
   obtain ⟨_, _, _, _, rfl⟩ := heldTest_ok hh
-  obtain ⟨_, _, _, _, rfl⟩ := errnoTail_ok ht
+  obtain ⟨_, _, _, _, rfl⟩ := errorTail_ok ht
   rfl
 
 theorem handleStub_length {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
@@ -128,7 +116,7 @@ theorem handleStub_length {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is
   obtain ⟨_, _, rfl⟩ := rangeCheck_ok h3
   obtain ⟨_, _, _, _, rfl⟩ := heldTest_ok hh
   obtain ⟨_, tail', _, ht', rfl⟩ := countTail_ok ht
-  obtain ⟨_, _, _, _, rfl⟩ := errnoTail_ok ht'
+  obtain ⟨_, _, _, _, rfl⟩ := errorTail_ok ht'
   rfl
 
 section Runs
@@ -137,54 +125,25 @@ variable (P : Platform) (code : UInt64 → Option UInt32)
 
 /-! ## The handling of an error -/
 
-/-- The handling of a result in X0 that is no count, from `a`, with the return address in X19:
-when the negation of the result is at most 4095, the return with its errno, and otherwise the trap
-stub `tr`.  X0, X12, and X30 change, and the memory, SP, and the UART's state keep their values. -/
-theorem run_errnoTail {a tr en : UInt64} {is : List Instr} (hg : errnoTail a tr en = .ok is)
+/-- `run_errorTail` of `LeanExe/A64/Proof/WasiClocks.lean` as two cases: the handling of a result
+in X0 that is no count, from `a`, with the return address in X19, returns its errno when the
+negation of the result is at most 4095 and reaches the trap stub `tr` otherwise.  X0, X12, and X30
+change, and the memory, SP, and the UART's state keep their values. -/
+theorem run_errnoTail {a tr en : UInt64} {is : List Instr} (hg : errorTail a tr en = .ok is)
     (hcode : CodeAt code a is) (hen : CodeAt code en errnoRoutine) {s : State}
     (hpc : s.pc = a) :
     ∃ t, Reach P code s t ∧ t.sp = s.sp ∧ t.mem = s.mem ∧ t.io = s.io ∧
       (∀ q : Fin 32, q ≠ 0 → q ≠ 12 → q ≠ 30 → t.x q = s.x q) ∧
       ((0 - s.x 0 ≤ 4095 ∧ t.pc = s.x 19 ∧ t.x 0 = errnoLookup errnoTable (0 - s.x 0)) ∨
         (4095 < 0 - s.x 0 ∧ t.pc = tr)) := by
-  obtain ⟨g2, g4, hg2, hg4, rfl⟩ := errnoTail_ok hg
-  have c0 := hcode 0 (by simp)
-  have c3 := hcode 3 (by simp)
-  have c4 := hcode 4 (by simp)
-  have c5 := hcode 5 (by simp)
-  simp only [List.getElem_cons_zero, List.getElem_cons_succ, after_zero] at c0 c3 c4 c5
-  have c12 : CodeAt code (after a 1) [.subsImm 31 12 4095, .bcond 8 g2] := by
-    simpa using CodeAt.drop_take code hcode 1 2 (by simp)
-  obtain ⟨u1, r1, p1, x1, k1, sp1, m1, io1⟩ := step_subReg P code (s := s) (d := 12) (n := 31)
-    (m := 0) (by decide) (by rw [hpc]; exact c0)
-  have hx1 : u1.x 12 = 0 - s.x 0 := by rw [x1]; rfl
-  have q1 : u1.pc = after a 1 := by rw [p1, hpc, after_one]
-  obtain ⟨u2, r2, p2, k2, sp2, m2, io2⟩ := run_hiImm P code (r := 12) (imm := 4095) (tB := tr)
-    (by decide) c12 (by rw [after_after]; exact cbField_target hg2) q1
-  have e4095 : UInt64.ofNat (4095 : Fin 4096).val = 4095 := by decide
-  rw [e4095, hx1] at p2
-  have hkeep2 : ∀ q : Fin 32, q ≠ 12 → u2.x q = s.x q := fun q hq => by rw [k2, k1 q hq]
-  by_cases hbig : 4095 < 0 - s.x 0
-  · rw [ite_eq_left hbig] at p2
-    exact ⟨u2, r1.trans r2, by rw [sp2, sp1], by rw [m2, m1], by rw [io2, io1],
-      fun q _ h12 _ => hkeep2 q h12, .inr ⟨hbig, p2⟩⟩
-  · rw [ite_eq_right hbig, after_after] at p2
-    obtain ⟨u3, r3, p3, x3, k3, sp3, m3, io3⟩ := step_mov P code (s := u2) (d := 0) (m := 12)
-      (by decide) (by rw [p2]; exact c3)
-    have q3 : u3.pc = after a 4 := by rw [p3, p2, ← after_succ]
-    obtain ⟨u4, r4, p4, x4, k4, sp4, m4, io4⟩ := step_bl P code (s := u3) (target := en)
-      (by rw [q3]; exact c4) (by rw [q3]; exact bField_target hg4)
-    obtain ⟨u5, r5, p5, x5, k5, sp5, m5, io5⟩ := run_errnoRoutine P code hen p4
-    have q5 : u5.pc = after a 5 := by rw [p5, x4, q3, ← after_succ]
-    obtain ⟨u6, r6, p6, k6, sp6, m6, io6⟩ := step_ret P code (s := u5) (n := 19)
-      (by rw [q5]; exact c5)
-    refine ⟨u6, r1.trans (r2.trans (r3.trans (r4.trans (r5.trans r6)))),
-      by rw [sp6, sp5, sp4, sp3, sp2, sp1], by rw [m6, m5, m4, m3, m2, m1],
-      by rw [io6, io5, io4, io3, io2, io1],
-      fun q h0 h12 h30 => by rw [k6, k5 q h0, k4 q h30, k3 q h0, hkeep2 q h12],
-      .inl ⟨UInt64.not_lt.mp hbig, ?_, ?_⟩⟩
-    · rw [p6, k5 19 (by decide), k4 19 (by decide), k3 19 (by decide), hkeep2 19 (by decide)]
-    · rw [k6, x5, k4 0 (by decide), x3, k2, hx1]
+  obtain ⟨g1, g2, h1, h2, rfl⟩ := errorTail_ok hg
+  obtain ⟨t, r, sp, m, io, k, hc⟩ := run_errorTail P code hcode h1 h2 hen hpc
+  refine ⟨t, r, sp, m, io, k, ?_⟩
+  by_cases h : 0 - s.x 0 ≤ 4095
+  · rw [ite_eq_left h] at hc
+    exact .inl ⟨h, hc⟩
+  · rw [ite_eq_right h] at hc
+    exact .inr ⟨UInt64.not_le.mp h, hc⟩
 
 /-! ## A word stored at a guest address -/
 
@@ -309,7 +268,7 @@ theorem run_closeFront {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
       else t.pc = s.x 30 ∧ t.x 0 = 8 := by
   obtain ⟨held, tail, g13, g17, g19, hh, ht, h13, h17, h19, rfl⟩ := closeStub_ok hg
   obtain ⟨g1, g4, hg1, hg4, rfl⟩ := heldTest_ok hh
-  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errnoTail_ok ht
+  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errorTail_ok ht
   have cS : CodeAt code a (scratchAddr sc) := by
     simpa [after_zero, scratchAddr, movImm] using CodeAt.drop_take code hcode 0 5
       (by simp [scratchAddr, movImm])
@@ -386,7 +345,7 @@ theorem run_closeBack {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
         (s.x 0 ≠ 0 ∧ 4095 < 0 - s.x 0 ∧ t.pc = tr)) := by
   obtain ⟨held, tail, g13, g17, g19, hh, ht, h13, h17, h19, rfl⟩ := closeStub_ok hg
   obtain ⟨g1, g4, hg1, hg4, rfl⟩ := heldTest_ok hh
-  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errnoTail_ok ht
+  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errorTail_ok ht
   have c14 := hcode 14 (by simp [scratchAddr, movImm])
   have c15 := hcode 15 (by simp [scratchAddr, movImm])
   have c18 := hcode 18 (by simp [scratchAddr, movImm])
@@ -504,7 +463,7 @@ theorem run_handleFront {nr : Fin 65536} {a svc tr en : UInt64} {sc : Nat} {is :
   obtain ⟨f3, hf3, rfl⟩ := rangeCheck_ok h3
   obtain ⟨e1, e4, he1, he4, rfl⟩ := heldTest_ok hh
   obtain ⟨d1, tail', hd1, ht', rfl⟩ := countTail_ok ht
-  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errnoTail_ok ht'
+  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errorTail_ok ht'
   have c01 : CodeAt code a [.subsImm 31 2 1, .bcond 1 g1] := by
     simpa [after_zero, scratchAddr, movImm, wordStore, store32] using
       CodeAt.drop_take code hcode 0 2 (by simp [scratchAddr, movImm, wordStore, store32])
@@ -742,11 +701,11 @@ theorem openCalls_ok {a svc : UInt64} {is : List Instr} (hg : openCalls a svc = 
 
 theorem openResult_ok {a tr en : UInt64} {is : List Instr} (hg : openResult a tr en = .ok is) :
     ∃ g1 tail, cbField (after a 1) (after a 16) = .ok g1 ∧
-      errnoTail (after a 16) tr en = .ok tail ∧
+      errorTail (after a 16) tr en = .ok tail ∧
       is = [.subsImm 31 0 1023, .bcond 8 g1, .addReg 10 20 0, .movz 9 1 0, .strb 9 10 16] ++
         wordStore 21 ++ [.movz 0 0 0, .ret 19] ++ tail := by
   unfold openResult at hg
-  cases ht : errnoTail (after a 16) tr en with
+  cases ht : errorTail (after a 16) tr en with
   | error err => simp [ht, bind, Except.bind] at hg
   | ok tail =>
   cases h1 : cbField (after a 1) (after a 16) with

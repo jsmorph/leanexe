@@ -115,7 +115,7 @@ theorem openStub_length {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
   obtain ⟨_, _, _, _, rfl⟩ := pathCopy_ok hc
   obtain ⟨_, _, _, _, _, _, _, _, rfl⟩ := openCalls_ok hl
   obtain ⟨_, _, _, ht, rfl⟩ := openResult_ok hr
-  obtain ⟨_, _, _, _, rfl⟩ := errnoTail_ok ht
+  obtain ⟨_, _, _, _, rfl⟩ := errorTail_ok ht
   simp [utf8Check_length hu, openHow_length hw, scratchAddr, movImm, wordStore, store32, openStubSize]
 
 section Runs
@@ -166,7 +166,7 @@ theorem openStub_code {a svc tr en : UInt64} {sc : Nat} {is : List Instr}
     rfl
   have lr : result.length = 22 := by
     obtain ⟨_, _, _, ht, rfl⟩ := openResult_ok hr
-    obtain ⟨_, _, _, _, rfl⟩ := errnoTail_ok ht
+    obtain ⟨_, _, _, _, rfl⟩ := errorTail_ok ht
     rfl
   have ls : (scratchAddr sc).length = 5 := rfl
   have cE := CodeAt.split code hcode (n := 226) (by simp [ls, l1, l2, lu, lh, lz, lc, lw, ll, lr])

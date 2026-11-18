@@ -1,4 +1,5 @@
 import Verified.ShimA64.Preopen
+import Verified.ShimA64.Clocks
 import LeanExe.A64.Proof.WasiFiles
 
 /-!
@@ -143,32 +144,6 @@ theorem ScratchHolds.close {G : Scratch} {I : Launch} {sp₀ top : UInt64}
       simp only [hn, ne_eq, hjd, not_false_eq_true, true_and]
 
 /-! ## Memory outside the area -/
-
-/-- The store relation holds after code that keeps X17, X18, and the area's bytes. -/
-theorem StoreRel.congrArea {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
-    {st : Store α} {s s' : State} (h : StoreRel P cap gts st s) (h17 : s'.x 17 = s.x 17)
-    (h18 : s'.x 18 = s.x 18)
-    (hmem : ∀ j < areaSize cap, s'.mem (s.x 17 + UInt64.ofNat j) = s.mem (s.x 17 + UInt64.ofNat j)) :
-    StoreRel P cap gts st s' := by
-  have hgl := h.types.length
-  have hg := h.glen
-  refine ⟨h.caps, h.cap_lt, h.glen, h.pages, ?_, h.types, ?_, ?_, ?_, ?_⟩
-  · rw [h17, load64_congr (m := s'.mem) (m' := s.mem) fun k hk =>
-      hmem k (by unfold areaSize; omega)]
-    exact h.size
-  · intro i hi
-    rw [h17, load64_congr (m := s'.mem) (m' := s.mem) fun k hk => by
-      rw [add_ofNat_add]
-      exact hmem _ (by unfold areaSize; omega)]
-    exact h.globals i hi
-  · intro j hj
-    rw [h17, hmem _ (by unfold areaSize; omega)]
-    exact h.bytes j hj
-  · intro j hj
-    rw [h17]
-    exact h.mapped j hj
-  · rw [h17, h18]
-    exact h.below
 
 /-- `m'` keeps every byte of `m` outside the scratch `G`. -/
 def ScratchOnly (G : Scratch) (m m' : UInt64 → UInt8) : Prop :=
@@ -356,7 +331,7 @@ theorem closeStub_sim (S : Shared) (n : Nat) {cl svc en : UInt64} {is : List Ins
   -- the call
   obtain ⟨held, tail, g13, g17, g19, hh, ht, h13, h17', h19, his⟩ := closeStub_ok hg
   obtain ⟨e1, e4, he1, he4, rfl⟩ := heldTest_ok hh
-  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errnoTail_ok ht
+  obtain ⟨t2, t4, ht2, ht4, rfl⟩ := errorTail_ok ht
   have cbl : code (after cl 13) = some (encode (.bl g13)) := by
     have := hcode 13 (by rw [his]; simp [scratchAddr, movImm])
     simpa [his, scratchAddr, movImm] using this
