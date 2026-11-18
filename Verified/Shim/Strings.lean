@@ -6,9 +6,9 @@ call.  `sizesInvoke strings` stores the count and the size of `strings` at the t
 pointers, or answers errno 61 when either reaches `2^32`; `stringsInvoke strings` writes the
 pointers to the strings at `argv` and the strings with their terminating zeros at `buf`, as
 Wasmtime 44 lays them out, or traps when the count or the size reaches `2^32`.  The strings are
-the arguments or the environment of `Launch`.  `sizes_contract` and `strings_contract` prove the
-contracts of `linuxHost F L I replies` for a call with the parameters of the sizes and of the
-strings, given its image.
+the arguments or the environment of `Launch`.  `sizes_contract` and `strings_contract` prove, for
+the host `linuxHost F L I replies`, the specification of a call with the parameters of the sizes
+and of the strings, given the call's image.
 -/
 
 namespace Verified.Shim

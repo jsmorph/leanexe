@@ -5,7 +5,7 @@ import Verified.Wasi.NestedBytes
 iovec, a 64-bit word for `fd_pread` and `fd_pwrite`, and the result word.  The code tests the
 handle and the iovec's capacity or input length, writes the element at scratch address 0, pushes
 the handle, the element's address 0 and the count 1, the offset, and the result word's address 8,
-and calls the import, whose contract gives the frame of the buffer and the result word. -/
+and calls the import, whose specification gives the frame of the buffer and the result word. -/
 
 namespace Verified.Wasi
 
@@ -292,9 +292,9 @@ theorem call_stack_take {call : LeanExe.Wasi.Call} {args : List Value} (values :
     rfl
 
 /-- The host call of a read whose element lies at scratch address 0 and whose buffer lies at
-`root`: the code pushes the core arguments and calls the import, and the contract gives the errno,
-the frame of the buffer and the result word, and on errno 0 the buffer at `root` and the count at
-scratch address 8. -/
+`root`: the code pushes the core arguments and calls the import, and the call's specification
+gives the errno, the frame of the buffer and the result word, and on errno 0 the buffer at `root`
+and the count at scratch address 8. -/
 theorem wp_iovec_read_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m : Module}
     {host : Host World} {env : HostEnv (Observed World)} {store : Store (Observed World)}
     {s : Locals} {call : LeanExe.Wasi.Call} {offset : Bool} {handleLocal : Nat}
@@ -425,8 +425,8 @@ theorem wp_iovec_read_call_with {calls : List LeanExe.Wasi.Call} {World : Type} 
     exact (contract _ _ (hRequest _)).elim
 
 /-- The host call of a write whose element lies at scratch address 0 and whose bytes lie at
-`root`: the code pushes the core arguments and calls the import, and the contract gives the errno,
-the frame of the result word, and on errno 0 the count at scratch address 8. -/
+`root`: the code pushes the core arguments and calls the import, and the call's specification
+gives the errno, the frame of the result word, and on errno 0 the count at scratch address 8. -/
 theorem wp_iovec_write_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m : Module}
     {host : Host World} {env : HostEnv (Observed World)} {store : Store (Observed World)}
     {s : Locals} {call : LeanExe.Wasi.Call} {offset : Bool} {handleLocal : Nat}

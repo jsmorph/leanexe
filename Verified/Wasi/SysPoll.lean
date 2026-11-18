@@ -64,8 +64,9 @@ theorem wp_fields_reject {α : Type} {m : Module} {st : Store α} {env : HostEnv
 /-! ## The host call -/
 
 /-- The host call of a `poll` request whose subscriptions lie at `pointer` and whose events follow
-them: the code pushes the core arguments and calls the import, and the contract gives the errno,
-the frame of the events and the result word, and on errno 0 the events and the count. -/
+them: the code pushes the core arguments and calls the import, and the call's specification
+gives the errno, the frame of the events and the result word, and on errno 0 the events and the
+count. -/
 theorem wp_poll_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m : Module}
     {host : Host World} {env : HostEnv (Observed World)} {store : Store (Observed World)}
     {s : Locals} {call : LeanExe.Wasi.Call} {records : List (List Field)} {values : List UInt64}

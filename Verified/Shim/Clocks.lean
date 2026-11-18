@@ -6,7 +6,8 @@ The shim's `clock_time_get` and `random_get`.  `clockInvoke` answers clocks 0 an
 holds the cleared timespec, and stores the time at the result's pointer on success; clocks 2 and 3
 give errno 8 without a call.  `randomInvoke` fills the buffer with the `getrandom` calls of
 `randomLoop`, each asking for the bytes that remain, whose events and memories `step_random`
-gives.  `clock_contract` and `random_contract` prove the contracts of `linuxHost F L I replies`.
+gives.  `clock_contract` and `random_contract` prove the calls' specifications for the host
+`linuxHost F L I replies`.
 -/
 
 namespace Verified.Shim

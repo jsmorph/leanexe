@@ -10,8 +10,8 @@ in the scratch, whose events `step_openat2` gives, and stores the descriptor on 
 `closeInvoke` makes one `close`.  `handleReadInvoke` and `handleWriteInvoke` read the iovec
 element at the request's pointer and make one `read` or `write` of the handle's descriptor
 through the layer's rule, and store the count on success.  The prestat functions make no call:
-descriptor 3 is the directory `.` while `preopened I events` holds.  Each `*_contract` proves the
-contract of `linuxHost F L I replies` for its call.
+descriptor 3 is the directory `.` while `preopened I events` holds.  Each `*_contract` proves its
+call's specification for the host `linuxHost F L I replies`.
 -/
 
 namespace Verified.Shim

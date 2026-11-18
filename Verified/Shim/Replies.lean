@@ -64,8 +64,8 @@ theorem errnoOf_valid (x : UInt64) : (errnoOf x).toNat ≤ 76 ∧ errnoOf x ≠ 
   unfold errnoOf
   split <;> decide
 
-/-- The message of a trap of the shim: a request that no contract admits, or a Linux result that
-Linux never gives for the request. -/
+/-- The message of a trap of the shim: a request that no specification admits, or a Linux result
+that Linux never gives for the request. -/
 def shimTrap : String := "linux shim"
 
 /-- The message of an exit status of 126 or more, which the shim rejects. -/

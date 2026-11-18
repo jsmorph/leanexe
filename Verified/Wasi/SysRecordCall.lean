@@ -355,9 +355,9 @@ theorem record_request {World : Type} {before : Store (Observed World)} {call : 
     omega
 
 /-- The host call of a record request whose pointers are the inputs' roots and `pointer`: the
-argument code pushes the core arguments and the record pointer, the request satisfies the call's
-premise, and the contract gives the errno, the frame of the record, and on errno 0 the record at
-`pointer`. -/
+argument code pushes the core arguments and the record pointer, the request satisfies the premise
+of the call's specification, which gives the errno, the frame of the record, and on errno 0 the
+record at `pointer`. -/
 theorem wp_sys_record_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m : Module}
     {host : Host World} {env : HostEnv (Observed World)} {store : Store (Observed World)}
     {s : Locals} {call : LeanExe.Wasi.Call} {params : List Param} {size align : Nat}

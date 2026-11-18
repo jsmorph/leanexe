@@ -1,14 +1,14 @@
 import Verified.Shim.Host
 
 /-!
-The shim's stream functions as Talos host functions, and their proofs against the WASI contracts.
-`readFn`, `writeFn`, and `exitFn` implement `fd_read`, `fd_write`, and `proc_exit` as the shim
-does: they check a request as the contract's premise states it, make the request's `read` or
-`write` through the layer's rule `Linux.step` on `shimMemory L` with the reply to the call that
-the world's events count, append the layer event to the world and the WASI event to the observed
-events, and give the WASI reply of the event, storing the count at guest address 8 only on
-success.  A request that fails a check traps with `shimTrap` and changes nothing.
-`read_contract`, `write_contract`, and `exit_contract` prove the contracts of
+The shim's stream functions as Talos host functions, and their proofs against the host's
+specification.  `readFn`, `writeFn`, and `exitFn` implement `fd_read`, `fd_write`, and `proc_exit`
+as the shim does: they check a request as the specification's premise states it, make the
+request's `read` or `write` through the layer's rule `Linux.step` on `shimMemory L` with the reply
+to the call that the world's events count, append the layer event to the world and the WASI event
+to the observed events, and give the WASI reply of the event, storing the count at guest address 8
+only on success.  A request that fails a check traps with `shimTrap` and changes nothing.
+`read_contract`, `write_contract`, and `exit_contract` prove the calls' specifications for the host
 `linuxHost F L I replies`.  `readEvent_writesWithin` bounds a read's output region by the
 memory's size at the call, the bound that a binding whose store stays within a native cap carries
 to the run.

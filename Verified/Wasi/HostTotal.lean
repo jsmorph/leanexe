@@ -72,7 +72,7 @@ theorem oracle_sound (total : host.Total) : total.oracle.Sound host where
           (Classical.choose_spec ((total.exit world code).resolve_left accepted))
 
 /-- A total host has a host environment that satisfies `hostSpec host` for every module with the
-three WASI imports. -/
+three stream imports. -/
 theorem satisfiable (total : host.Total) (target : Wasm.Module)
     (imports : target.imports = ABI.imports) :
     ∃ targetHost : HostEnv (Observed World), targetHost.Satisfies target (hostSpec host) :=
@@ -141,7 +141,7 @@ theorem writeRequest (world : World) (output : Output) (bytes : LeanExe.Bytes)
       write32_bytes_outside _ _ _ (Or.inr (by simp; omega))]
     rfl
 
-/-- Every host environment that satisfies `hostSpec host` for a module with the three WASI
+/-- Every host environment that satisfies `hostSpec host` for a module with the three stream
 imports answers each request that the one-iovec ABI expresses with its payload at address 16. -/
 theorem of_satisfies {targetHost : HostEnv (Observed World)} {target : Wasm.Module}
     (valid : targetHost.Satisfies target (hostSpec host)) (imports : target.imports = ABI.imports) :

@@ -1,7 +1,7 @@
 import Verified.Wasi.HostMemory
 import Interpreter.Wasm.Host.Registry
 
-/-! A Talos host for the three WASI imports from an oracle that answers each request of an
+/-! A Talos host for the three stream imports from an oracle that answers each request of an
 abstract host.  The imports decode the one-iovec arguments from guest memory, as the specifications
 of `hostSpec` describe, query the oracle for the reply and the next world, place the read payload
 and the count in guest memory, and append the event.  `env_satisfies` proves that the environment

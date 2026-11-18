@@ -571,8 +571,8 @@ theorem wp_sys_flat_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
 
 /-- The code of a flat call, from the argument words in their locals to the errno, the result
 words, and the buffer's root and length on the stack.  A rejected request returns its errno
-without a call; an accepted request runs the call, whose contract gives the reply, the frame, and
-the outputs. -/
+without a call; an accepted request runs the call, whose specification gives the reply, the frame,
+and the outputs. -/
 theorem wp_sys_flat_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
     (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)

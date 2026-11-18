@@ -292,11 +292,11 @@ def ShownAt (mem : Mem) : List Region → List LeanExe.Bytes → Prop
       | output :: rest => Bytes.At mem region.pointer.toUInt64 output ∧ ShownAt mem regions rest
     else ShownAt mem regions outputs
 
-/-- The premise of a flat call's contract: the core arguments lower an accepted request that fits
-the call's parameters with the given pointers, the inputs lie at their pointers, and the output
-regions, of the sizes the world reports for reported regions, lie in memory, end below `2^32`, and
-have aligned pointers, apart from one another and from the inputs.  Inputs may overlap one
-another, since the host only reads them. -/
+/-- The premise of a flat call's specification: the core arguments lower an accepted request that
+fits the call's parameters with the given pointers, the inputs lie at their pointers, and the
+output regions, of the sizes the world reports for reported regions, lie in memory, end below
+`2^32`, and have aligned pointers, apart from one another and from the inputs.  Inputs may overlap
+one another, since the host only reads them. -/
 structure SysRequest (before : Store (Observed World)) (args : List Value) (call : Call)
     (request : List Arg) (pointers : List UInt32) (sizes : List Nat) : Prop where
   fits : argsFit call.params request = true
@@ -313,9 +313,9 @@ structure SysRequest (before : Store (Observed World)) (args : List Value) (call
     ∀ place ∈ inputPlaces call.params request pointers,
       LeanExe.Runtime.regionsDisjoint region.span (place.1.toNat, place.2.data.size)
 
-/-- The contract of a flat call: for the request that the core arguments lower, the host changes
-memory only in the output regions and, on return, gives the errno and leaves each shown output in
-its region.  Both outcomes follow the observed host's relation. -/
+/-- The host's specification of a flat call: for the request that the core arguments lower, the
+host changes memory only in the output regions and, on return, gives the errno and leaves each
+shown output in its region.  Both outcomes follow the observed host's relation. -/
 def sysContract (host : Host World) (call : Call) : HostContract (Observed World) :=
   fun before args result => ∀ request pointers,
     SysRequest before args call request pointers (host.reported before.host.world call) →

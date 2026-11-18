@@ -4,12 +4,12 @@ import Verified.Wasi.OracleSys
 /-!
 What the shim's flat calls share.  A flat call's function checks the request, makes its layer
 calls, and gives `sysAnswer`: the store with the memory after the calls, the layer events and the
-WASI event appended, and the reply's errno or trap.  `sys_contract_of` reduces the contract of
-`sysContract` for such an answer to three facts about the call: the shim's step in the host's
-relation, a memory that differs from the store's only in the request's output regions, and on
-errno 0 the outputs in their regions.  `placeReply` writes the result words of a successful reply,
-`MemFrame` states which bytes a memory keeps, and `argsFit_takes` reads a request's arguments off
-its description.
+WASI event appended, and the reply's errno or trap.  `sys_contract_of` reduces the call's
+specification `sysContract` for such an answer to three facts about the call: the shim's step in
+the host's relation, a memory that differs from the store's only in the request's output regions,
+and on errno 0 the outputs in their regions.  `placeReply` writes the result words of a successful
+reply, `MemFrame` states which bytes a memory keeps, and `argsFit_takes` reads a request's
+arguments off its description.
 -/
 
 namespace Verified.Shim
@@ -92,9 +92,9 @@ theorem placeReply_returned (mem : Mem) (place : List Bytes → List (UInt32 × 
     (outputs : List Bytes) : placeReply mem place (.returned 0 outputs) = placeAll mem (place outputs) :=
   rfl
 
-/-- The contract of a flat call for a function whose result for every request that the contract
-admits is an answer of the shim, from the shim's step in the host's relation, the memory's frame,
-and the outputs in their regions on errno 0. -/
+/-- The specification of a flat call for a function whose result for every request that the
+specification's premise admits is an answer of the shim, from the shim's step in the host's
+relation, the memory's frame, and the outputs in their regions on errno 0. -/
 theorem sys_contract_of {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : Linux.Replies}
     {call : Call} {before : Store (Observed LinuxWorld)} {args : List Value}
     {result : HostResult (Observed LinuxWorld)}

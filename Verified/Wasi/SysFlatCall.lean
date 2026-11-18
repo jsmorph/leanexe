@@ -295,8 +295,8 @@ abbrev flatRegionsWith (call : LeanExe.Wasi.Call) (sizes : List Nat) (values : L
 
 /-- The host call of a flat request with inputs whose pointers are the inputs' roots, the buffer's
 root, and the scratch addresses 0 and 8: the argument code pushes the core arguments, the request
-satisfies the call's premise, and the contract gives the errno, the frame of the request's
-regions, and the shown outputs. -/
+satisfies the premise of the call's specification, which gives the errno, the frame of the
+request's regions, and the shown outputs. -/
 theorem wp_sys_flat_call_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {m : Module} {host : Host World} {env : HostEnv (Observed World)}
     {store : Store (Observed World)} {s : Locals} {call : LeanExe.Wasi.Call} {locs : List Nat}
@@ -497,8 +497,9 @@ theorem flat_regions_apart {root : UInt32} {sizes : List Nat} :
   simpa only [List.map_nil, flatArgsWith_nil, flatPointersWith_nil] using apart
 
 /-- The host call of a flat request whose pointers are the buffer's root and the scratch addresses
-0 and 8: the argument code pushes the core arguments, the request satisfies the call's premise,
-and the contract gives the errno, the frame of the request's regions, and the shown outputs. -/
+0 and 8: the argument code pushes the core arguments, the request satisfies the premise of the
+call's specification, which gives the errno, the frame of the request's regions, and the shown
+outputs. -/
 theorem wp_sys_flat_call_with {calls : List LeanExe.Wasi.Call} {World : Type} {m : Module}
     {host : Host World} {env : HostEnv (Observed World)} {store : Store (Observed World)}
     {s : Locals} {call : LeanExe.Wasi.Call} {locs : List Nat} {values : List UInt64}

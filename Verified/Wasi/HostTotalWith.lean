@@ -351,7 +351,8 @@ variable {World : Type} {host : Host World} {calls : List Call}
 
 open Classical in
 /-- An oracle that chooses a permitted reply to each fitting, accepted request of a call in
-`calls`.  Any other request gets a trap with an empty message, which no contract constrains. -/
+`calls`.  Any other request gets a trap with an empty message, which no specification
+constrains. -/
 noncomputable def sysOracle (total : host.TotalFor calls) : OracleSys.Oracle World where
   reply world call request :=
     if valid : call ∈ calls ∧ argsFit call.params request = true ∧
@@ -369,7 +370,7 @@ theorem sysOracle_sound (total : host.TotalFor calls) : total.sysOracle.Sound ho
     (Classical.choose_spec (total.sys call member world request fits accepted))
 
 /-- A host total for `calls` has a host environment that satisfies `hostSpecWith host calls` for
-every module that imports the calls `calls` after the three WASI imports. -/
+every module that imports the calls `calls` after the three stream imports. -/
 theorem satisfiableWith (total : host.TotalFor calls) (target : Wasm.Module)
     (imports : target.imports = ABI.importsWith calls) :
     ∃ targetHost : HostEnv (Observed World),
@@ -431,7 +432,7 @@ theorem satisfies_streams {targetHost : HostEnv (Observed World)} {target : Wasm
   rw [List.getElem?_append_left (by simp only [List.length_cons, List.length_nil]; omega)]
 
 /-- Every host environment that satisfies `hostSpecWith host calls` for a module that imports the
-calls `calls` after the three WASI imports answers each stream request that the one-iovec ABI
+calls `calls` after the three stream imports answers each stream request that the one-iovec ABI
 expresses with its payload at address 16, and each fitting, accepted request of a call in `calls`
 whose inputs and regions fit below `2^32` when laid out from address 16. -/
 theorem of_satisfiesWith {targetHost : HostEnv (Observed World)} {target : Wasm.Module}

@@ -68,9 +68,9 @@ theorem sys_contract {call : Call} (member : call ∈ shimCalls) (before : Store
   · exact prestat_contract F L I replies before args
   · exact dirName_contract F L I replies before args
 
-/-- The shim's environment satisfies the contracts of `linuxHost F L I replies` for every module
-with at most the three stream imports and the flat calls `calls`, all of which the shim
-implements. -/
+/-- The shim's environment satisfies the host's specification
+`hostSpecWith (linuxHost F L I replies) calls` for every module with at most the three stream
+imports and the flat calls `calls`, all of which the shim implements. -/
 theorem linuxEnv_satisfies (calls : List Call) (supported : ∀ call ∈ calls, call ∈ shimCalls)
     (m : Wasm.Module) (imports : m.imports.length ≤ 3 + calls.length) :
     (linuxEnv F L I replies calls).Satisfies m (hostSpecWith (linuxHost F L I replies) calls) := by
