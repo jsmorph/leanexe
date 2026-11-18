@@ -90,12 +90,23 @@ theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
           ((∃ residual, Prefix (linuxHost F readAllShimLayout I R)
             (main.bind fun status => Action.exit (α := Unit) status) nativeWorld.world T
             residual w) ∧ q.core.x 0 = 2)) := by
-  obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hwq, hend⟩ :=
+  have himp : command.module.imports = ABI.importsWith [] := by
+    rw [command.module, compile_imports]
+    rfl
+  obtain ⟨q, rq, cq, x8q, ioq, hq⟩ :=
     wasiElf_footprint (calls := []) readall_elf_file
-      (readall_elf_segments.trans readall_elf_layout.symm)
-      (by rw [command.module, compile_imports]; rfl) (fun _ h => nomatch h) (by decide)
-      readall_elf_room
+      (readall_elf_segments.trans readall_elf_layout.symm) himp (fun _ h => nomatch h)
+      (by decide) readall_elf_room
       (fun I R => linux_footprint_native arm64Flags _ I R (by decide)) R p hl hstack hpc htr
+  have hsu : startup (needsCheck (command.module.imports.drop 3))
+      (wasiScratch command.module readAllStart wasiRoom wasiCap) R = ([], some false) := by
+    rw [himp]
+    rfl
+  rw [hsu] at hq
+  obtain ⟨T, ls, w, trq, himg, hcar, hwq, hend⟩ := hq
+  rw [List.nil_append] at trq
+  have hR : (fun j => R (([] : List Linux.Event).length + j)) = R := funext fun j => by simp
+  rw [hR] at hend
   have hT : StreamTrace T := by
     rcases hend with ⟨_, h, -⟩ | ⟨h, -⟩ | ⟨h, -⟩ | ⟨-, ⟨_, h⟩, -⟩
     · exact Exec.streamTrace h main_streams

@@ -2,6 +2,7 @@ import Verified.Examples.WasiReadAll
 import Verified.Examples.WasiClockRandom
 import Verified.Examples.WasiSys
 import Verified.Examples.WasiSysEnviron
+import Verified.Examples.WasiPrestat
 import TestSupport.A64.WasiArgs
 import LeanExe.A64.Wasi
 
@@ -11,11 +12,12 @@ its module, with `_start` at the index that the compiler gives it, a memory's ca
 pages, and a stack of `wasiRoom` bytes: `readAllElf` of the readAll command of
 `Verified.Examples.WasiReadAll`, `environElf` of the environment command of
 `Verified.Examples.WasiSysEnviron`, which writes its environment, `argsElf` of the command of
-`TestSupport.A64.WasiArgs`, which writes its arguments, `clockRandomElf` of the clock and random
-command of `Verified.Examples.WasiClockRandom`, and `sysElf` of the flat call example of
-`Verified.Examples.WasiSys`, which writes its arguments, their count and size, two clocks'
-readings, and random bytes.  `moduleElf` writes the executable of any module with an export
-`_start`, with the same stack and a given cap.
+`TestSupport.A64.WasiArgs`, which writes its arguments, `prestatElf` of the prestat command of
+`Verified.Examples.WasiPrestat`, which writes what the host answers about the preopened directory,
+`clockRandomElf` of the clock and random command of `Verified.Examples.WasiClockRandom`, and
+`sysElf` of the flat call example of `Verified.Examples.WasiSys`, which writes its arguments, their
+count and size, two clocks' readings, and random bytes.  `moduleElf` writes the executable of any
+module with an export `_start`, with the same stack and a given cap.
 -/
 
 namespace TestSupport.A64.WasiElf
@@ -70,6 +72,15 @@ open TestSupport.A64.WasiArgs in
 /-- The executable of the arguments command. -/
 def argsElf : Except String (List UInt8 × ElfLayout) :=
   genWasiElf command.module argsStart wasiRoom wasiCap
+
+open Verified.Examples.WasiPrestat in
+/-- The index of `_start` in the prestat command's module, after its three effect functions. -/
+def prestatStart : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 3
+
+open Verified.Examples.WasiPrestat in
+/-- The executable of the prestat command. -/
+def prestatElf : Except String (List UInt8 × ElfLayout) :=
+  genWasiElf command.module prestatStart wasiRoom wasiCap
 
 open Verified.Examples.WasiSys in
 /-- The index of `_start` in the flat call example's module. -/

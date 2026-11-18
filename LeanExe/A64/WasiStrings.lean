@@ -14,7 +14,8 @@ sets X9 to one of them, and `StringVector` names which.
 The scan piece counts the strings of the vector at X9 in X12 and sums their sizes, each string's
 length plus one, in X13, until it reaches the vector's terminating 0.  It stops and branches to its
 overflow target when the sum reaches `2^32`, which covers a count of `2^32` or more, since each
-string adds at least 1, and keeps every sum below `2^64` whatever the pointers.
+string adds at least 1.  Each string of Linux's initial stack ends below `2^63`, so the test after
+each string keeps every sum below `2^64` however the pointers alias one another.
 
 `sizesStub` follows the shim's `sizesInvoke`: it requires the count's pointer in X0 and the size's
 in X1 to leave four bytes within the guest's memory, whose size it reads from the area's first word
@@ -24,9 +25,9 @@ order, and returns 0.  `stringsStub` follows `stringsInvoke`: it scans the vecto
 the trap stub when the scan overflows, then requires the pointers' array at X0 and the buffer at
 X1 to lie within the memory, and then writes in two passes, first the address of each string's
 copy into the array, then each string with its zero byte into the buffer, and returns 0.  The
-stubs keep X17, X18, SP, and X30, use no stack, and write X0, X9 to X16, X20, and the guest's
-memory.  Every store into the guest's memory goes through X16, whose value plus 4,092 is the byte's
-address, as `resultTail` stores its count.
+stubs keep X17, X18, SP, and X30, use no stack, and write X0, X9 to X16, X20, the flags, and the
+guest's memory.  Every store into the guest's memory goes through X16, whose value plus 4,092 is
+the byte's address, as `resultTail` stores its count.
 -/
 
 namespace LeanExe.A64

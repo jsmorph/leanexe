@@ -1,5 +1,6 @@
 import LeanExe.A64.Elf
 import LeanExe.Wasi.CallTable
+import LeanExe.A64.WasiPreopen
 import LeanExe.A64.WasiStrings
 import LeanExe.A64.WasiClocks
 
@@ -19,8 +20,13 @@ functions' entries for the others.  The header's entry, `wasiEntry`, is the pref
 #0; B elfEntry`, which keeps the initial SP that Linux gives the process, the address of `argc`,
 in X2 while the runtime sets SP to the stack's top.  `main` saves X30, sets the stack's limit in
 X18 `room` bytes below its frame, stores X2 at the start of the shim's scratch, calls the startup
-routine, a return, and then `_start`, function `k`, which takes and returns nothing, and returns
-0.  The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
+routine and then `_start`, function `k`, which takes and returns nothing, and returns 0.  The
+startup routine is the check of descriptor 3 of `LeanExe/A64/WasiPreopen.lean` for a module whose
+flat imports read the shim's descriptor state (`needsCheck`), and a return for every other
+module.  The flat stubs of `flatStubs` are the string stubs of `LeanExe/A64/WasiStrings.lean`,
+those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, and the stubs of
+`fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`.
+The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 
 The shim's scratch occupies the `scratchSize` bytes from the area's end, at `X17 + areaSize cap`,
@@ -213,9 +219,6 @@ runtime's entry. -/
 def wasiPrefix (a : UInt64) : GenM (List Instr) := do
   return [.addImm 2 31 0, .b (← bField (after a 1) elfEntry)]
 
-/-- The startup routine: a return. -/
-def wasiStartup : List Instr := [.ret 30]
-
 /-- The stub of a flat call as the generator places it: the call, the import that the stub
 implements, its number of instructions, and its generator, which takes the stub's address, the
 routine `SVC #0; RET`, the trap stub, the routine of errnos, and the scratch's offset from the
@@ -264,9 +267,22 @@ def randomFlat : FlatStub :=
 /-- The stubs of `clock_time_get` and `random_get` of `LeanExe/A64/WasiClocks.lean`. -/
 def clockStubs : List FlatStub := [clockFlat, randomFlat]
 
+/-- The import of the flat call `name` of Preview 1 with a descriptor, a pointer, and a length as
+`i32` and an errno. -/
+def pointerLengthImport (name : String) : ImportDecl :=
+  { «module» := "wasi_snapshot_preview1", name, params := [.i32, .i32, .i32], results := [.i32] }
+
+/-- The stubs of `fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`,
+which read the preopen flag and the held bytes of the scratch. -/
+def preopenStubs : List FlatStub :=
+  [{ call := .fdPrestatGet, decl := pointerPairImport "fd_prestat_get", size := prestatStubSize,
+      gen := fun a _ tr _ scratch => prestatStub a tr scratch },
+    { call := .fdPrestatDirName, decl := pointerLengthImport "fd_prestat_dir_name",
+      size := dirNameStubSize, gen := fun a _ tr _ scratch => dirNameStub a tr scratch }]
+
 /-- The flat calls whose stubs the generator implements: those of the arguments and the
-environment, of the clocks, and of random bytes. -/
-def flatStubs : List FlatStub := stringStubs ++ clockStubs
+environment, of the clocks and random bytes, and of the preopened directory. -/
+def flatStubs : List FlatStub := stringStubs ++ clockStubs ++ preopenStubs
 
 /-- The stub of `flatStubs` that implements the import `d`, or an error when it holds none. -/
 def flatStubFor (d : ImportDecl) : GenM FlatStub :=
@@ -381,7 +397,8 @@ def genWasiProgram (m : Module) (k : Nat) (svc base room : UInt64) (cap : Nat) :
   let fs := wasiFuncs m
   let flat := stubEntries (wasiFlatAt a) 3 stubs
   let startAt := stubsEnd (wasiFlatAt a) stubs
-  let first := after startAt wasiStartup.length
+  let startup ← wasiStartupCode (needsCheck (m.imports.drop 3)) startAt svc base (areaSize cap)
+  let first := after startAt startup.length
   let callee := wasiTable (wasiReadAt a) (wasiWriteAt a) (wasiExitAt a) flat first fs
   let entry ← match entryIn (wasiSig flat fs) first fs k with
     | some (e, [], []) => pure e
@@ -397,7 +414,7 @@ def genWasiProgram (m : Module) (k : Nat) (svc base room : UInt64) (cap : Nat) :
   let tr ← trapStub (wasiTrapAt a) base
   let sts ← genStubs svc (wasiTrapAt a) (wasiErrnoAt a) (areaSize cap) (wasiFlatAt a) stubs
   let fns ← genFunctions callee S first fs
-  let body := pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns
+  let body := pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ startup ++ fns
   unless body.all Instr.keepsX18 do throw "an instruction after main that writes X18"
   let prog := main ++ body
   unless prog.all Instr.keepsX17 do throw "an instruction that writes X17"

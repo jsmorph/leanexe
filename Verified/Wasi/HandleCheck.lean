@@ -8,7 +8,10 @@ and passes only marked variables at `.handle` positions and for the marked param
 holds the marks of the parameters of each effect function that the command may call, in the
 order of their signatures.  A variable is marked when it is the handle of a bracket, when a `ret`
 of the literal 3, `Handle.preopened`, binds it, or when it is a marked parameter of the function
-whose body the check reads; every other binding gives an unmarked variable.  The check refuses
+whose body the check reads; every other binding gives an unmarked variable.  The literal may stand
+as the body of `letPair` bindings: the reflector puts around each operand that is not a variable a
+`letPair` of each variable of type `.pair` in scope and of each component of such a variable that
+is itself a `.pair`.  The check refuses
 
 1. a `sys` command whose call, or whose reporter in the form `reported`, is not one of the
    descriptions of `Call.table`, which `tools/wasi-calls.py` generates from the witx;
@@ -61,6 +64,13 @@ def Expr.isOpenedPart (first : Bool) : Expr pureSigs context type → Bool
 def Expr.isWord (word : UInt64) : Expr pureSigs context type → Bool
   | .word value => value == word
   | _ => false
+
+/-- Whether the expression is the literal 3, `Handle.preopened`, alone or as the body of `letPair`
+bindings, which do not change its value. -/
+def Expr.isPreopened : {context : List Ty} → {type : Ty} → Expr pureSigs context type → Bool
+  | _, _, .word value => value == 3
+  | _, _, .letPair _ body => body.isPreopened
+  | _, _, _ => false
 
 /-- Whether the expression is the variable with index `index`. -/
 def Expr.isVar (index : Nat) : Expr pureSigs context type → Bool
@@ -146,9 +156,10 @@ def ResultTy.hasValue : ResultTy → Bool
   | .unit => false
   | .value _ => true
 
-/-- Whether the command is `ret` of the literal 3, which binds `Handle.preopened`. -/
+/-- Whether the command is `ret` of the literal 3, alone or under `letPair` bindings, which binds
+`Handle.preopened`. -/
 def Command.preopened : Command pureSigs effectSigs context result → Bool
-  | .ret value => value.isWord 3
+  | .ret value => value.isPreopened
   | _ => false
 
 /-- Whether the command is the open of a bracket: `Call.pathOpen` in the form `.flat 1 false` with

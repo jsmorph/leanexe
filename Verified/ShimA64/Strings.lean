@@ -209,10 +209,10 @@ variable {R : Linux.Replies} {L : ElfLayout} {G : Scratch} {I : Launch} {sp₀ t
   {hL : L.area.toNat + L.dataMem ≤ 2 ^ 32} {hG : G.base.toNat + scratchSize < 2 ^ 64}
   {base : UInt64} {size : Nat}
 
-/-- What the stubs of the vector `v` read at a state of the shim's machine that holds a store of
-`cap` pages, with the arguments `c` and `d` in X0 and X1, the scratch at the area's end, and the
-scratch within the data segment: the scratch's first word holds the initial SP, whose initial
-stack holds the launch's strings on the process's platform. -/
+/-- What the stubs of the vector `v` read at a state of the shim's machine that holds a store whose
+memory has the cap `cap`, with the arguments `c` and `d` in X0 and X1, the scratch at the area's
+end, and the scratch within the data segment: the scratch's first word holds the initial SP, whose
+initial stack holds the launch's strings on the process's platform. -/
 theorem stubEntry_of {cap : Nat} {gts : List ValueType} {st : Store (Observed LinuxWorld)}
     {q : Proc} (v : StringVector)
     (hsr : (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).SR cap gts st
@@ -465,7 +465,7 @@ theorem elfPlatform_uart (hU : (modulePlatform L G).normal (modulePlatform L G).
     omega
   simpa [modulePlatform, hne] using hU
 
-/-- The flat call of `shimCalls` whose name is `name`. -/
+/-- Each name of the stubs of `stringStubs` names one call of `shimCalls`. -/
 theorem shimCall_named {c : Call} (hc : c ∈ shimCalls) :
     (c.name = "args_sizes_get" → c = Call.argsSizesGet) ∧
       (c.name = "args_get" → c = Call.argsGet) ∧
