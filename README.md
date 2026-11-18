@@ -284,7 +284,7 @@ USART3 holds one received byte, so each window that runs while bytes may arrive 
 |---|---|
 | [Verified compiler manual](docs/verified-manual.md) | Dialect, declarations that `verified_compile` adds, bounds, Linux executables of WASI commands, tests, and examples. |
 | [Verified compiler internals](Verified/README.md) | Code scheme, proof structure, and reflector. |
-| [WASI manual](docs/wasi.md) | Native action and byte APIs, flat calls, handles, nested calls, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, the Linux shim's specification, and tests. |
+| [WASI manual](docs/wasi.md) | Native action and byte APIs, flat calls, handles, nested calls, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, process theorems, the Linux shim's specification and its differences from Wasmtime, and tests. |
 | [WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
 | [Wasm-to-C translator design](docs/native-translator.md) | C subset and its Lean semantics, translation, `p.f.native`, translation without the alignment test, trusted base of the native path, and milestones. |
 | [Bare-metal design](docs/native-bare-metal.md) | Generated `main`, whole-program theorem, Rocq step to Asm, startup code, inputs, stack bound, trusted base, and tests. |
