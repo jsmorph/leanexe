@@ -828,7 +828,8 @@ close's event. -/
 theorem withOpen_run {World α : Type} {host : Host World} {name : Bytes}
     (hname : name.data.size < 2 ^ 32) {fallback : UInt64 → α} {body : Handle → Action α}
     {world final : World} {trace : List Event} {outcome : Outcome (α × UInt64)}
-    (bodyNoExit : ∀ fd w t (o : Outcome α) f, Exec host (body ⟨fd⟩) w t o f → ∀ c, o ≠ .exited c)
+    (bodyNoExit : ∀ (fd : UInt64) w t (o : Outcome α) f, fd.toNat < 2 ^ 32 →
+      Exec host (body ⟨fd⟩) w t o f → ∀ c, o ≠ .exited c)
     (run : Exec host (withOpen .preopened 1 name 0 2 0 0 (fun errno => pure (fallback errno)) body)
       world trace outcome final) :
     (∀ c, outcome ≠ .exited c) ∧ ∀ r, outcome = .returned r → ∃ errno outputs,
@@ -851,7 +852,7 @@ theorem withOpen_run {World α : Type} {host : Host World} {name : Bytes}
       have hReply : sysReply 0 committed = ⟨0, committed⟩ := rfl
       simp only [hReply, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
       obtain ⟨closing, first, middle, rest, bodyRun, closeRun, rfl⟩ := Exec.unbind _ next
-      have noExit := bodyNoExit _ _ _ _ _ bodyRun
+      have noExit := bodyNoExit _ _ _ _ _ small bodyRun
       cases middle with
       | exited c => exact absurd rfl (noExit c)
       | trapped m =>
@@ -878,5 +879,88 @@ theorem withOpen_run {World α : Type} {host : Host World} {name : Bytes}
       refine ⟨(fun _ e => nomatch e), fun r e => ?_⟩
       cases e
       exact ⟨errno, committed, .inl ⟨zero, rfl, rfl⟩⟩
+
+/-! ## The verdict -/
+
+theorem getD_take_drop (l : List UInt8) (start len j : Nat) (hj : j < len) :
+    ((l.drop start).take len).getD j 0 = l.getD (start + j) 0 := by
+  rw [List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD, List.getElem?_take, if_pos hj,
+    List.getElem?_drop]
+
+/-- `hexMatchesSpec` from a position states that the line from that position has the hex digits of
+the digest's bytes. -/
+theorem hexMatchesSpec_iff (m : Bytes) (start len : Nat) (hlen : 64 ≤ len) (hs : start < 2 ^ 64)
+    (d : Words4) :
+    hexMatchesSpec (m, UInt64.ofNat start, d) = true ↔
+      HexDigits ((m.data.data.toList.drop start).take len) (d.bytes 32) := by
+  unfold hexMatchesSpec HexDigits
+  dsimp only
+  rw [List.all_eq_true, toNat_ofNat hs]
+  constructor
+  · intro h k hk
+    have := h k (List.mem_range.mpr hk)
+    simp only [Bool.and_eq_true, beq_iff_eq] at this
+    rw [getD_take_drop _ _ _ _ (by omega), getD_take_drop _ _ _ _ (by omega),
+      ← getElem!_pos (d.bytes 32) k hk]
+    exact this
+  · intro h k hk
+    have hk' := List.mem_range.mp hk
+    obtain ⟨h1, h2⟩ := h k hk'
+    rw [getD_take_drop _ _ _ _ (by omega)] at h1
+    rw [getD_take_drop _ _ _ _ (by omega), ← Nat.add_assoc] at h2
+    rw [getElem!_pos (d.bytes 32) k hk']
+    simp only [Bool.and_eq_true, beq_iff_eq]
+    exact ⟨h1, h2⟩
+
+/-- The hex digits give the digest of FIPS 180-4 of the bytes exactly when they give the
+implementation's digest bytes, since distinct digests have distinct bits. -/
+theorem digestOf_iff (line bytes : List UInt8) (hsmall : bytes.length < 2 ^ 61) :
+    DigestOf line bytes ↔ HexDigits line (SHS.SHA256.Impl.sha256 (bytesOf bytes).data) := by
+  constructor
+  · rintro ⟨d, small, hd, hbits⟩
+    rw [← SHS.Equiv.SHA256.sha256_correct _ small] at hbits
+    rwa [digestBitVec_inj _ _ hbits] at hd
+  · intro h
+    exact ⟨_, hsmall, h, SHS.Equiv.SHA256.sha256_correct (bytesOf bytes).data hsmall⟩
+
+theorem bytesOf_toList (b : Bytes) : bytesOf b.data.data.toList = b := by
+  cases b
+  rw [show bytesOf _ = ⟨(bytesOf _).data⟩ from rfl, bytesOf_data]
+
+/-- A run of the check of one file, `withOpen` around `hashFile`, never exits, and when it returns,
+it made the open's event and, after an open that returned errno 0, the reads of `FileReads` and
+the close's event, with the digest and the flag of `hashFile_run`. -/
+theorem checkFile_run {World : Type} {host : Host World} {name : Bytes}
+    (hname : name.data.size < 2 ^ 32) {world final : World} {trace : List Event}
+    {outcome : Outcome ((Words4 × Bool) × UInt64)}
+    (run : Exec host (withOpen .preopened 1 name 0 2 0 0
+      (fun _ => pure ((⟨0, 0, 0, 0⟩ : Words4), false)) fun file => hashFile file)
+      world trace outcome final) :
+    (∀ c, outcome ≠ .exited c) ∧ ∀ r, outcome = .returned r → ∃ errno outputs,
+      (errno ≠ 0 ∧ trace = [.sys .pathOpen (openArgs name.data.data.toList)
+        (.returned errno outputs)] ∧ r.1.2 = false) ∨
+      (errno = 0 ∧ ∃ events bytes ending closeErrno committed,
+        trace = .sys .pathOpen (openArgs name.data.data.toList) (.returned 0 outputs) :: events ++
+          [.sys .fdClose [.word (openedDescriptor outputs)] (.returned closeErrno committed)] ∧
+        FileReads (openedDescriptor outputs) 35184372088831 events bytes ending ∧
+        bytes.length < 2 ^ 61 ∧ r.1.1.bytes 32 = SHS.SHA256.Impl.sha256 (bytesOf bytes).data ∧
+        r.1.2 = decide (ending = .eof) ∧ r.2 = closeErrno) := by
+  have hargs : openArgs name.data.data.toList =
+      [.word 3, .word 1, .bytes name, .word 0, .word 2, .word 0, .word 0] := by
+    rw [openArgs, bytesOf_toList]
+  rw [hargs]
+  obtain ⟨noExit, returned⟩ := withOpen_run (fallback := fun _ => ((⟨0, 0, 0, 0⟩ : Words4), false))
+    (body := fun file => hashFile file) hname
+    (fun fd _ _ _ _ hfd bodyRun => (hashFile_run hfd bodyRun).1) run
+  refine ⟨noExit, fun r e => ?_⟩
+  obtain ⟨errno, outputs, failed | opened⟩ := returned r e
+  · obtain ⟨hne, htrace, rfl⟩ := failed
+    exact ⟨errno, outputs, .inl ⟨hne, htrace, rfl⟩⟩
+  · obtain ⟨rfl, small, events, after, closing, closeErrno, committed, htrace, bodyRun, hclose⟩ :=
+      opened
+    obtain ⟨-, hashed⟩ := hashFile_run small bodyRun
+    obtain ⟨bytes, ending, reads, hsmall, hdigest, hflag⟩ := hashed r.1 rfl
+    exact ⟨0, outputs, .inr ⟨rfl, events, bytes, ending, closeErrno, committed, htrace, reads,
+      hsmall, hdigest, hflag, hclose⟩⟩
 
 end Demos.ManifestCheck

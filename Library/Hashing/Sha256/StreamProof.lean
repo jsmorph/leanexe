@@ -407,3 +407,8 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
   exact finish_spec (joinAll pieces) ((joinAll pieces).size / 64) (by omega) _ hstate b len hlen hl
 
 end Library.Hashing.Sha256
+
+#print axioms Library.Hashing.Sha256.stream_spec
+#print axioms Library.Hashing.Sha256.finish_spec
+#print axioms Library.Hashing.Sha256.update_toVec32
+#print axioms Library.Hashing.Sha256.digestBitVec_inj
