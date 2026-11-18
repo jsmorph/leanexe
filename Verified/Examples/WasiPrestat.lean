@@ -3,9 +3,7 @@ import Verified.Wasi
 /-! A command that writes what the host answers about the preopened directory, each number as
 eight little-endian bytes: the errno, the tag, and the name's length of `fd_prestat_get`, and then,
 for buffers of 0, 1, and 2 bytes, the errno of `fd_prestat_dir_name` and the buffer.  The status is
-0.  Each call lies in a function of its own, since the handle check refuses a function that passes
-`Handle.preopened` to a call after a call of `fd_prestat_dir_name`, whose result the reflector
-represents as a pair of a word and bytes. -/
+0.  Each call lies in a function of its own. -/
 
 namespace Verified.Examples.WasiPrestat
 

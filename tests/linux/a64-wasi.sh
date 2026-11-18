@@ -32,7 +32,7 @@
 # computes.  Bytes outside UTF-8 run natively and under QEMU against the computed bytes alone.
 # Through tests/linux/execve.py, an environment with empty strings, a string without '=', and a
 # repeated name runs natively only, since QEMU 8.2.2's user mode rebuilds the guest's environment
-# with envlist_setenv, which drops a string without '=' and keeps the last entry of a name
+# with envlist_setenv, which drops a string without '=' and keeps the first entry of a name
 # (util/envlist.c and linux-user/main.c); an empty argv also runs natively, for which Linux gives
 # argv[0] as an empty string (do_execveat_common of fs/exec.c).  strace must show that environ.elf
 # and args.elf make no call but write and exit_group.
