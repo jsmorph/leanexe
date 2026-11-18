@@ -173,10 +173,10 @@ end Param
 
 /-- The errno that rejects the arguments of the fields `fields`, in order, or 0: 61 (`overflow`)
 for a value of `2^(8 width)` or more, where `width` is the field's width.  Wasmtime 44 reads the
-subscriptions from memory and answers an invalid tag, clock, or flags word with errno 28 and a
-descriptor that names no file of the subscription's kind with errno 8, so a field has no other
-rule.  It traps on a subscription array that is not aligned, which the compiled code never
-passes. -/
+subscriptions from memory and answers an invalid tag or flags word, or a clock other than the
+realtime and monotonic clocks, with errno 28 and a descriptor that names no file of the
+subscription's kind with errno 8, so a field has no other rule.  It traps on a subscription array
+that is not aligned, which the compiled code never passes. -/
 def rejectFields : List Field → List Arg → UInt64
   | field :: fields, arg :: args =>
     if arg.value.toNat < 2 ^ (8 * field.width) then rejectFields fields args else 61

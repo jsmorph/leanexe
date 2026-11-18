@@ -101,7 +101,7 @@ For a program without literals, [the empty-pool equality](../Verified/LiteralCod
 the module that `compileWith` produces: the table segments are its only data, its memory size and
 heap start depend only on the tables, and its functions use the empty pool.
 `tests/verified/run.sh --check-bytes DIRECTORY` compares the emitted modules with saved reference
-modules, such as those of another build of the verified compiler.  [The WASI manual](wasi.md#packed-bytes) describes the same byte values in actions, which reads and flat calls return and writes and flat calls take.
+modules, such as those of another build of the verified compiler.  [The WASI manual](wasi.md#packed-bytes) describes the same byte values in actions: reads and flat calls return them, and writes and flat calls take them.
 
 ### Expressions
 
@@ -340,7 +340,7 @@ Every module imports the stream functions, `fd_read` of descriptor 0, `fd_write`
 
 Apart from the standard streams, which the stream functions use, a program reaches a descriptor only through a `Handle`: `Handle.preopened`, descriptor 3, the directory that the host preopens, or the handle that `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` binds.  `withOpen` calls `path_open` for `path` under `dir`, runs `body` on the new handle, and closes it with `fd_close` when the body returns, and its result pairs the body's result with the close's errno, or the result of `onError` with 0 when the open fails.  The handle check `Command.HandleCheck` refuses a call that is not a description of `Call.table`, a `path_open`, `fd_close`, or `fd_renumber` outside the shape that `withOpen` reflects to, and a handle argument other than a bracket's handle, a variable that a `ret` of the literal 3 binds, alone or under `letPair` bindings (`Command.preopened` and `Expr.isPreopened`), or a `Handle` parameter of the helper being checked.  `verified_compile_wasi` decides the check in the kernel for each program as `p.handlesChecked` and proves from it `p.handles`, or `p.f.handles` for each export of a callable program, which states that every run keeps each use of a handle between its open and its close, as [the WASI manual's section on handles](wasi.md#handles) describes.
 
-`main` of [the files command](../Verified/Examples/WasiFiles.lean) writes the file `f` under the preopened directory in one bracket, reads it back in another, and writes the bytes that it read and the directory's name to the standard output:
+`main` of [the files command](../Verified/Examples/WasiFiles.lean) writes the file `f` under the preopened directory in one bracket, reads it back in another, and writes the bytes that it read and the directory's name to the standard output.  The first bracket opens `f`, whose name is the byte 102, with the open flags `creat` and `trunc`, 9, and the right `fd_write`, 64, and the second opens it with the right `fd_read`, 2.  The first component of each bracket's result is the errno of its body or of `onError`, and the second is the errno of its close:
 
 ```lean
 import Verified.Wasi
@@ -388,7 +388,7 @@ verified_compile_wasi command (main := main) := [main]
 end Verified.Examples.WasiFiles
 ```
 
-The first bracket opens `f`, whose name is the byte 102, with the open flags `creat` and `trunc`, 9, and the right `fd_write`, 64, and the second opens it with the right `fd_read`, 2.  The first component of each bracket's result is the errno of its body or of `onError`, and the second is the errno of its close.  These shell commands build the files command, write its module, and run it in [the Wasmtime host](#the-wasmtime-host) with an empty directory preopened, where it writes `hi.` and exits with status 0:
+These shell commands build the files command, write its module, and run it in [the Wasmtime host](#the-wasmtime-host) with an empty directory preopened.  The build passes `--memory-high 8G`, as the test scripts do.  The run writes `hi.`, the file's two bytes followed by the preopened directory's name, and exits with status 0:
 
 ```sh
 tools/leanrun --timeout 30m --memory-high 8G lake build Verified.Examples.WasiFiles
@@ -845,7 +845,7 @@ Every check has `tests/verified/run.sh` among its inputs.  The Lean inputs of a 
 
 ### WASI and Linux tests
 
-Every script but `tests/linux/sys-run.sh` builds Lean modules, and the scripts of `tests/linux/` need an AArch64 Linux host with `qemu-aarch64`, QEMU's user-mode emulator.  A script that writes an executable with theorems elaborates the theorems' module in the kernel against the file that it wrote and runs the executable on the host's processor and under `qemu-aarch64`.  A script of WASI commands compares the runs from files with the Wasmtime host's runs of the command's module, and it compares the others, such as runs from pipes, with closed streams, under QEMU without `openat2`, and at the descriptor limit, with outputs and statuses that it computes.  [The WASI manual's tests](wasi.md#tests) and the AArch64 document's [runs](a64-bare-metal.md#runs) and [WASI commands](a64-bare-metal.md#wasi-commands) give the cases and their results.
+Every script but `tests/linux/sys-run.sh` builds Lean modules, and the scripts of `tests/linux/` need an AArch64 Linux host with `qemu-aarch64`, QEMU's user-mode emulator.  A script that writes an executable with theorems has Lean elaborate the theorems' module against the file that it wrote, and the kernel check it, and runs the executable on the host's processor and under `qemu-aarch64`.  A script of WASI commands compares the runs from files with the Wasmtime host's runs of the command's module, and it compares the others, such as runs from pipes, with closed streams, under QEMU without `openat2`, and at the descriptor limit, with outputs and statuses that it computes.  [The WASI manual's tests](wasi.md#tests) and the AArch64 document's [runs](a64-bare-metal.md#runs) and [WASI commands](a64-bare-metal.md#wasi-commands) give the cases and their results.
 
 | Script | Tools beyond Lean | What it tests |
 |---|---|---|
@@ -860,7 +860,7 @@ Every script but `tests/linux/sys-run.sh` builds Lean modules, and the scripts o
 | [`tests/linux/a64-wasi-preopen.sh`](../tests/linux/a64-wasi-preopen.sh) | The Wasmtime host, `wasm-tools`, `qemu-aarch64`, and `strace` | Writes `prestat.elf` and elaborates its theorems, and runs it and a module that asks about descriptor numbers up to `2^32 - 1` with descriptor 3 a directory, closed, and a file, and with faults injected into the check of descriptor 3. |
 | [`tests/linux/a64-wasi-files.sh`](../tests/linux/a64-wasi-files.sh) | The Wasmtime host, `wasm-tools`, `qemu-aarch64`, `strace`, and `uv` | Writes `files.elf` and elaborates its theorems, and runs it and the scenarios of `path_open`, `fd_close`, and the handle forms, among them open flags, closes, magic links, the descriptor limit of 1,024, and faults injected into `openat2` and `close`. |
 
-`tests/linux/a64-wasi-preopen.sh --runs DIR` and `tests/linux/a64-wasi-files.sh --runs DIR` build and check nothing and run the executables and modules that a run of the script left in `DIR`, on a host that needs neither Lean nor `wasm-tools`.  The other scripts of `tests/linux/` take no arguments.  The full check runs `tests/wasi/run.sh`, `tests/wasi/sys-run.sh`, and, on an AArch64 Linux host, `tests/linux/sys-run.sh`, and no driver runs the other scripts of `tests/linux/`.
+`tests/linux/a64-wasi-preopen.sh --runs DIR` and `tests/linux/a64-wasi-files.sh --runs DIR` build and check nothing and run the executables and modules that a run of the script left in `DIR`, on a host that needs neither Lean nor `wasm-tools`.  `tests/linux/sys-run.sh` takes an optional directory of syzlang files, and the other scripts of `tests/linux/` take no arguments.  The full check runs `tests/wasi/run.sh`, `tests/wasi/sys-run.sh`, and, on an AArch64 Linux host, `tests/linux/sys-run.sh`, and no driver runs the other scripts of `tests/linux/`.
 
 ### The full check
 

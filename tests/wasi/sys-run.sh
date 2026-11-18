@@ -1,7 +1,7 @@
 #!/bin/sh
 # Tests the flat WASI calls: checks the call descriptions against the pinned witx, runs the frame
 # test module in the Wasmtime host with several argument lists, runs the frame test of every flat
-# function with a fresh preopened directory and the frame tests with seeded faults, runs the
+# call with a fresh preopened directory and the frame tests with seeded faults, runs the
 # rejection sweep of the enum and flags parameters, and checks that Wasmtime traps on a clock id
 # outside the clock enum.  Usage: tests/wasi/sys-run.sh [WITX_DIR]
 #

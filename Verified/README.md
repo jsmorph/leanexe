@@ -624,18 +624,19 @@ from every world, and `BoundedAt` and `RuleAt` of [the rules from one
 world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.
 
 `readAll limit` compiles to `Command.readAll`, whose [fixed code](Wasi/ReadAllCode.lean) in the
-calling function uses six scratch locals, allocates one buffer of `limit + 4,096` bytes, and calls
-`fd_read` on the buffer's unused tail until a read returns an errno or no bytes or the bytes held
-exceed the limit.  [The loop's proof](Wasi/ReadAllLoop.lean) relates the bytes held to a run of
+calling function uses six `i64` locals.  For a limit below `2^32 - 4096`, it allocates one buffer
+of `limit + 4096` bytes and calls `fd_read` on the buffer's unused tail until a read returns an
+errno or no bytes or the bytes held exceed the limit, and for a limit of `2^32 - 4096` or more it
+gives errno 61 without a buffer.  [The loop's proof](Wasi/ReadAllLoop.lean) relates the bytes held to a run of
 the source loop, [the buffer lemmas](Wasi/ReadAllBuffer.lean) state that a read keeps the buffer's
 header and appends its bytes, and `command_readAll_spec_with` and
 `cost_command_readAll_spec_with` of [the command's rules](Wasi/ReadAllCommand.lean) give the
 command's correctness and its charge, `readAllCost` of [the charge](Wasi/ReadAllCost.lean).
-[The WASI design](../docs/verified-wasi-design.md#reads-writes-and-exit) gives the reason for a
-command of its own.
+[The WASI design](../docs/verified-wasi-design.md#typed-commands-and-reflection) gives the reason
+for a command of its own.
 
 The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
-retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
+retained caller regions must lie apart from them.  Returned bytes have owned allocation roots,
 and their logical lengths may be smaller than the retained capacity after a short read.
 `hostSpecWith host calls` adds to the stream functions' `hostSpec host` the host's specification
 `sysContract host call` of each flat call, whose premise `SysRequest` admits a request that fits

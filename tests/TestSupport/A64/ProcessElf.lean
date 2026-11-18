@@ -12,9 +12,9 @@ sum and the floating-point running sum, with one each.  `genWasiElf` accepts eac
 room of `procRoom` bytes (`orderbook_elf_ok`, `running_sum_elf_ok`, `running_sumfp_elf_ok`), and
 the room holds each module's stack bound, the premise `hroom` of
 `Verified.ShimA64.wasiElf_run` and `Verified.ShimA64.wasiElf_footprint` (`orderbook_room`,
-`running_sum_room`, `running_sumfp_room`).  The kernel evaluates the generator and the bounds,
-and one check of the module took 3 min 39 s and 19.7 GB, so no root of the full check imports
-the module, and `lake build TestSupport.A64.ProcessElf` checks it.
+`running_sum_room`, `running_sumfp_room`).  The kernel evaluates the generator and the bounds in
+this module alone, which no root of the full check imports, and
+`lake build TestSupport.A64.ProcessElf` checks it.
 -/
 
 namespace TestSupport.A64.ProcessElf
