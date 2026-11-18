@@ -584,20 +584,30 @@ whole-store theorems apply at the combined module's indices, and its
 
 `import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
 `LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
-The [native API](../LeanExe/Wasi/Action.lean) provides stdin reads, stdout and stderr writes,
-exit, and bounded loops.  Each primitive read or write makes at most one WASI import call.
-The host may use several operating-system calls for one import.  Source code handles errnos
-and short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
-pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated declarations.
+The [native API](../LeanExe/Wasi/Action.lean) provides reads of the standard input, writes of the
+standard output and error, exit, bounded loops, and `Action.sys`, which makes one flat call, a
+function of `wasi_snapshot_preview1` that [the call table](../LeanExe/Wasi/CallTable.lean)
+describes.  [The typed functions](../LeanExe/Wasi/SysCalls.lean) and `withOpen` of
+[`LeanExe/Wasi/Sys.lean`](../LeanExe/Wasi/Sys.lean) make their calls through `Action.sys`, and the
+command reflects each flat call to one `Command.sys`.  Each primitive read or write makes at most
+one WASI import call, and the host may use several operating-system calls for one import.  Source
+code handles errnos and short transfers.  Effect helpers form an acyclic graph and share the
+guarded-call depth with pure callees.  [The WASI manual](../docs/wasi.md) states the API and the
+generated declarations.
 
 | Proof stage | Declaration or predicate | Result |
 |---|---|---|
-| [Pure transport](Wasi/PureTransportSpecs.lean) | `Calls` | Relocated pure code computes the same values and preserves the host world in a module with the three WASI imports. |
-| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
-| [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
-| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | Each exported wrapper executes the original Lean action after supplying depth zero and hidden table addresses. |
-| [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run` | `_start` executes the selected closed action, then requests its returned status as an exit. |
-| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | Initialization of the assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
+| [Pure transport](Wasi/PureTransportSpecs.lean) | `runs_transport_with` | Relocated pure code computes the same values and preserves the host world in a module with the stream imports and the flat calls `calls`. |
+| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec_with` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
+| [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith_with` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
+| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run_with` | Each exported wrapper executes the original Lean action after supplying depth zero and hidden table addresses. |
+| [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run_with` | `_start` executes the selected closed action, then requests its returned status as an exit. |
+| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore_with` | Initialization of the assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
+
+Each theorem of the table takes the list `calls` of the module's flat calls, which the module
+imports after `fd_read`, `fd_write`, and `proc_exit`.  The theorem of the same name without the
+suffix `_with` states it for a module with the stream imports alone.  A program without
+flat calls compiles to such a module and receives the theorems of that instance.
 
 The [resource model](Wasi/ResourcePrefix.lean) charges allocation and checks pure-call fits along
 source execution prefixes, including a read's full requested capacity before its reply.  A
@@ -606,20 +616,115 @@ generated `total` theorem requires `Heap.Within` and `Resource.CallPrefixBound`,
 including acceptance of reached exits.  Callable totality gives a return or accepted exit.
 [Command totality](Wasi/CommandTotal.lean) gives an accepted exit.  Without those premises,
 refinement retains terminal host failures and resource prefixes with their committed effects.
+`Bounded` and `Rule` of [the resource rules](Wasi/ResourceRules.lean) bound a command's charge
+from every world, and `BoundedAt` and `RuleAt` of [the rules from one
+world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.
 
 The [host specification](Wasi/HostSpec.lean) reserves scratch `[0, 16)`.  Input read regions and
 retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
 and their logical lengths may be smaller than the retained capacity after a short read.
-The [source correspondence](../LeanExe/Wasi/RelatedExec.lean) and
+`hostSpecWith host calls` adds to the stream functions' `hostSpec host` the contract
+`sysContract host call` of each flat call, whose premise `SysRequest` admits a request that fits
+the call's parameters and that `Call.reject` accepts, whose inputs lie in memory, and whose
+output regions lie in memory at multiples of their alignments, end below `2^32`, and lie apart
+from one another and from the inputs.  The [source correspondence](../LeanExe/Wasi/RelatedExec.lean) and
 [prefix correspondence](../LeanExe/Wasi/RelatedPrefix.lean) preserve ordered events and worlds
 through native flattening.
+
+[The `sys` command](Wasi/SysCommand.lean) compiles a flat call in one of the forms of
+[`SysForm`](Wasi/SysForm.lean): a flat form with at most one output buffer and two result words,
+a record form, a reported form for `args_get` and `environ_get`, the iovec forms of `fd_read`,
+`fd_pread`, `fd_write`, and `fd_pwrite`, and a poll form for `poll_oneoff`.
+`command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against `sysContract`,
+and [the rule premises](Wasi/SysRule.lean) bound its charge, a reported call's by
+`reported_rule_observed` from a bound on the sizes that its reporter's replies give.
+[The flat call host](Wasi/OracleSys.lean) builds a Talos host environment from an oracle, and
+[the totality module for calls](Wasi/HostTotalWith.lean) proves that `hostSpecWith host calls`
+has a satisfying environment when `Host.TotalFor host calls` holds and that every satisfying
+environment answers each request that the ABI lays out below `2^32`.  `tools/wasi-calls.py`
+generates [the reflection equations](Wasi/ReflectSysCalls.lean) of the typed functions with the
+call table.
+
+[The handle check](Wasi/HandleCheck.lean) `Command.HandleCheck` refuses a call that is not a
+description of `Call.table`, a `path_open`, `fd_close`, or `fd_renumber` outside the shape that
+[the bracket's reflection](Wasi/ReflectBracket.lean) gives `withOpen`, and a handle argument other
+than a bracket's handle, a variable bound to 3, or a `Handle` parameter of the helper being
+checked.  [The handle theorems](Wasi/Handles.lean) `Command.handles_exec` and
+`Command.handles_prefix` give `WellBracketed` traces for every command that passes the check, and
+`EffectProg.bracketRuns` gives the `Action.BracketRuns` that the command states as `p.handles` and
+`p.f.handles`.  `withOpen_closes` states the events and the result of each bracket that returns
+normally.
 
 The [public command](Wasi/ReflectCommand.lean) supplies finite profile/readiness proofs and
 constructs a scalar module-typing proof through the [validity proof generator](../LeanExe/Encoding/ValidityProof.lean).
 Each accepted module receives `Spec.Validity.Module`, checked encoding and decoding, and native
 entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
 Real engine instantiation, host conformance, file emission, and host progress remain external
-assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and emitted modules.
+assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and
+emitted modules, and [the flat call tests](../tests/wasi/sys-run.sh) check the call table against
+the witx and run every flat call in Wasmtime.
+
+## The Linux shim
+
+`Verified/Shim/` specifies the WASI host that the native executables implement with Linux system
+calls, with no instruction set.  Its environment `linuxEnv F L I replies calls` gives each stream
+function and each flat call of `shimCalls` a Talos host function that makes its requests of
+[the Linux call layer](../LeanExe/Linux/Call.lean) through the layer's rule `Linux.step`.  The
+parameters are the open flags `F` that differ between architectures, the layout `L` of the
+guest's memory and the shim's scratch, the launch `I` with the process's arguments, its
+environment, and whether descriptor 3 is a directory that the launcher grants, and the replies
+`replies` of the layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a
+reply when the layer events that it appends are an `Image` of the WASI event and carry their
+replies.  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
+states the specification and its differences from the Wasmtime host.
+
+| Module | Content |
+|---|---|
+| [`Memory.lean`](Shim/Memory.lean) | `ShimLayout` and `shimMemory`, the guest's linear memory and the scratch as the layer sees them, and the layer events of each request: `step_read`, `step_write`, `step_random`, `step_clock`, `step_openat2`, and `step_close`. |
+| [`Replies.lean`](Shim/Replies.lean) | `errnoOf`, Wasmtime 44's table of Linux's error numbers, the WASI replies that the shim builds from results, `OpenFlags`, `Launch`, the descriptors that the shim holds, `openNumbers` and `preopened`, `openCheck`, and the `open_how` record. |
+| [`Host.lean`](Shim/Host.lean) | `Image`, `Images`, `shimCalls`, `WritesWithin`, `Carried`, `LinuxWorld`, and `linuxHost`. |
+| [`Env.lean`](Shim/Env.lean) | The stream functions as Talos host functions, with their contracts. |
+| [`SysEnv.lean`](Shim/SysEnv.lean) | What the flat calls share: `sysAnswer`, `placeReply`, `MemFrame`, and `sys_contract_of`, which reduces a call's contract to the shim's step, the frame of its output regions, and its outputs. |
+| [`Clocks.lean`](Shim/Clocks.lean), [`Strings.lean`](Shim/Strings.lean), [`Files.lean`](Shim/Files.lean) | The functions of `clock_time_get` and `random_get`, of the arguments and the environment, and of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, `fd_prestat_get`, and `fd_prestat_dir_name`, each with its contract. |
+| [`Satisfies.lean`](Shim/Satisfies.lean) | `linuxEnv`, and `linuxEnv_satisfies`, which proves that it satisfies `hostSpecWith (linuxHost F L I replies) calls` when every call of `calls` lies in `shimCalls`. |
+| [`Footprint.lean`](Shim/Footprint.lean) | `Footprint`, and `shim_footprint`, which composes `compiled_native_start_run_with` with `linuxEnv_satisfies`: every run of `_start` with enough fuel traps with layer events that are images of a WASI trace of the command's action. |
+| [`Trace.lean`](Shim/Trace.lean) | `committedReads` and `committedWrites`, and `Images.readData` and `Images.writeData`, which equate them with the bytes that the layer's reads and writes of a descriptor moved. |
+| [`Descriptors.lean`](Shim/Descriptors.lean), [`Held.lean`](Shim/Held.lean) | `NamesHeld` and `footprint_namesHeld`, which states that the layer events of every run that `Footprint` describes name only the standard streams and the numbers that the shim holds open, and how one layer event changes `openNumbers` and `preopened`. |
+| [`Streams.lean`](Shim/Streams.lean) | Runs without flat calls, whose images and runs read neither the open flags nor the launch. |
+| [`Utf8.lean`](Shim/Utf8.lean) | `verify₂_iff`, `verify₃_iff`, and `verify₄_iff`, which state core's UTF-8 checks as the conditions of Table 3-7 of the Unicode Standard. |
+
+## The shim on AArch64
+
+`Verified/ShimA64/` proves that the stubs of the executables that `genWasiElf` of
+[`LeanExe/A64/Wasi.lean`](../LeanExe/A64/Wasi.lean) writes implement `linuxEnv arm64Flags`, and
+it joins that result to the run of an executable.  [The shim's machine](ShimA64/Machine.lean)
+`shimMachine` makes the process of the Linux call layer's A64 binding a machine of the A64
+simulation theorem, with the relation `TraceRel` between the shim's world and the process's trace
+and the relation `ScratchHolds` between the world and the scratch and Linux's initial stack.  Each
+stub's theorem states `Machine.StubSim` on that machine for its import's host function, and
+`wasiElf_run` composes them with the simulation of the module's code.  [The AArch64 document's
+section on WASI commands](../docs/a64-bare-metal.md#wasi-commands) describes the executable, the
+stubs, and the proofs.
+
+| Module | Content |
+|---|---|
+| [`Machine.lean`](ShimA64/Machine.lean) | `shimLayout`, `WritesLinear`, `WritesNative`, `TraceRel`, `ScratchHolds`, and `shimMachine`. |
+| [`Stubs.lean`](ShimA64/Stubs.lean) | `readStub_sim`, `writeStub_sim`, and `exitStub_sim`, the stubs of the stream functions. |
+| [`Strings.lean`](ShimA64/Strings.lean) | `sizesStub_sim` and `stringsStub_sim`, the stubs of the arguments and the environment, which read Linux's initial stack. |
+| [`Clocks.lean`](ShimA64/Clocks.lean) | `clockStub_sim` and `randomStub_sim`, from the runs `clockStub_run`, `randomLoop_run`, and `randomStub_run`. |
+| [`Preopen.lean`](ShimA64/Preopen.lean) | `prestatStub_sim` and `dirNameStub_sim`, the stubs of the preopened directory. |
+| [`Files.lean`](ShimA64/Files.lean), [`Handles.lean`](ShimA64/Handles.lean), [`Open.lean`](ShimA64/Open.lean) | `held_byte`, which relates the scratch's byte of a descriptor to `openNumbers`, and `closeStub_sim`, `handleReadStub_sim`, `handleWriteStub_sim`, and `openStub_sim`, the stubs of the files under the preopened directory. |
+| [`OpenHow.lean`](ShimA64/OpenHow.lean), [`Utf8.lean`](ShimA64/Utf8.lean) | `run_openHow`, the run of the code that writes the `open_how` record, and `utf8Scan_iff`, which equates the stub's UTF-8 check with core's. |
+| [`Flat.lean`](ShimA64/Flat.lean) | `flatStub_sim`, the simulation of each stub of `flatStubs` for its call of `shimCalls`. |
+| [`Elf.lean`](ShimA64/Elf.lean) | `nativeStore`, `wasiElf_run`, `wasiElf_footprint_with`, and `wasiElf_footprint`, the run of the executable from its entry to `exit_group`. |
+
+The theorems of each executable lie in a module of `tests/TestSupport/A64/` that its test script
+elaborates against the written file, such as `files_elf` of
+[`ImageFilesWasiFiles.lean`](../tests/TestSupport/A64/ImageFilesWasiFiles.lean).  Each applies
+`wasiElf_footprint` or `wasiElf_footprint_with` to a footprint of the command at the executable's
+memory cap, which a module of `Verified/Examples` proves from the command's generated theorem.
+[The manual](../docs/verified-manual.md#wasi-programs-and-their-executables) lists these theorems
+with their premises.
 
 ## WGSL kernels
 
