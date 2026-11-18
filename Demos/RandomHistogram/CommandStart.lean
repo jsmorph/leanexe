@@ -6,10 +6,10 @@ host's contracts for the module's imports, `hostSpecWith host command.sysCalls`,
 every run of `_start` from the command's initial store with enough fuel traps (`start_ends`).  The
 trap is one of three:
 
-- the accepted exit, with a status `code`, after the events of `Meets` (`exec_main`): the status
-  is the errno of `args`, 2 for a refused argument, the errno of a failed `random_get`, or the
-  errno of the one write of `renderSpec (histogramSpec w)`, with `w` the N words that the calls of
-  `random_get` returned, whose counts sum to N;
+- the accepted exit, with a status `code` of at most 76, after the events of `Meets`
+  (`exec_main`): the status is the errno of `args`, 2 for a refused argument, the errno of a
+  failed `random_get`, or the errno of the one write of `renderSpec (histogramSpec w)`, with `w`
+  the N words that the calls of `random_get` returned, whose counts sum to N;
 - a trap of the host, or an exit that the host rejects, after the events of a run of `main` and
   its exit;
 - a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
@@ -32,14 +32,15 @@ def initialStore {World : Type} (world : Observed World) : Store (Observed World
 def startIndex : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
 
 /-- How a run of `_start` from the observed world `initial` ends: a trap whose final world adds the
-events `trace` to those of `initial`, after an accepted exit with a status `code` whose events meet
-`Meets`, after a trap of the host or a rejected exit, or, at `unreachable`, after a prefix of
-`main` and its exit. -/
+events `trace` to those of `initial`, after an accepted exit with a status `code` of at most 76
+whose events meet `Meets`, after a trap of the host or a rejected exit, or, at `unreachable`, after
+a prefix of `main` and its exit. -/
 def Ends {World : Type} (host : Host World) (initial : Observed World) :
     Result (Observed World) → Prop
   | .Trap final message => ∃ trace, final.host.events = initial.events ++ trace ∧
       ((∃ code, message = exitTrap ∧ host.exited final.host.world = some code ∧
-          ∃ events, trace = events ++ [.exit code] ∧ Meets host initial.world events code) ∨
+          ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 76 ∧
+            Meets host initial.world events code) ∨
         (Exec host (main.bind fun status => Action.exit (α := Unit) status) initial.world trace
           (.trapped message) final.host.world) ∨
         (message = "unreachable" ∧ ∃ residual,
@@ -63,8 +64,8 @@ theorem ends_of_result {World : Type} {host : Host World} {heap : Heap}
     cases outcome with
     | returned value => exact terminal.elim
     | exited code =>
-      obtain ⟨steps, htrace, meets⟩ := exec_main execution
-      exact .inl ⟨code, terminal, execution.exited_marker, steps, htrace, meets⟩
+      obtain ⟨steps, htrace, small, meets⟩ := exec_main execution
+      exact .inl ⟨code, terminal, execution.exited_marker, steps, htrace, small, meets⟩
     | trapped cause =>
       change message = cause at terminal
       subst terminal

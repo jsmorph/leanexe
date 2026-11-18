@@ -485,12 +485,12 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
 exit status `code` has the events of `Meets` followed by the exit: the status is the errno of
 `args`, 2 for a refused argument, the errno of a failed `random_get`, or the errno of the one write
 of `renderSpec (histogramSpec w)`, where `w` are the N words that the calls returned, whose counts
-sum to N. -/
+sum to N.  The status is at most 76. -/
 theorem exec_main {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {code : UInt64}
     (execution : Exec host (main.bind fun status => Action.exit (α := Unit) status) world trace
       (.exited code) final) :
-    ∃ events, trace = events ++ [.exit code] ∧ Meets host world events code := by
+    ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 76 ∧ Meets host world events code := by
   obtain ⟨after, events, middle, rest, mainRun, cont, rfl⟩ := Exec.unbind main execution
   obtain ⟨noExit, meets⟩ := main_runs mainRun
   cases middle with
@@ -504,6 +504,6 @@ theorem exec_main {World : Type} {host : Host World} {world final : World} {trac
     cases cont with
     | exit _ =>
       rw [exitStatus_small small]
-      exact ⟨events, rfl, hm⟩
+      exact ⟨events, rfl, small, hm⟩
 
 end Demos.RandomHistogram
