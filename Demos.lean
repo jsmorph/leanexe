@@ -182,6 +182,7 @@ import Demos.Rcv.Variants
 import Demos.Rcv.Winner
 import Demos.RandomHistogram.CommandStart
 import Demos.RandomHistogram.Compiled
+import Demos.RandomHistogram.Native
 import Demos.Sgp4.Box
 import Demos.Sgp4.BoxFlat
 import Demos.Sgp4.BoxSound

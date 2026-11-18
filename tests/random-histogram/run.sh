@@ -6,12 +6,19 @@
 # Quot.sound, and emits and validates the command's module.  It writes the module's AArch64 Linux
 # executable with `a64-wasi wasm`, which fails when genWasiElf rejects the module.
 #
-# It then runs the command with each runner of RUNNERS, by default `wasm`, the module in the
-# Wasmtime host.  A run with no argument, `0`, `abc`, `-5`, or a 20-digit value above 2^64 must
-# write nothing and exit with status 2.  A run with N of 1, 9, 10, 512, 513, 1000, or 1000000 must
-# exit with status 0 and write ten lines, each a decimal count without a leading zero, whose sum is
-# N.  A runner is a function `run_RUNNER OUT ARG...` that runs the command with the arguments ARG
-# after the program name, writes its stdout to OUT, and returns the command's status.
+# It then runs the command with each runner of RUNNERS, by default `wasm native qemu`: the module in
+# the Wasmtime host, the executable on the host's processor, which must be AArch64 Linux, and the
+# executable under qemu-aarch64, QEMU's user-mode emulator, or QEMU_USER when set.  A run with no
+# argument, `0`, `abc`, `-5`, or a 20-digit value above 2^64 must write nothing and exit with
+# status 2.  A run with N of 1, 9, 10, 512, 513, 1000, or 1000000 must exit with status 0 and write
+# ten lines, each a decimal count without a leading zero, whose sum is N.  A runner is a function
+# `run_RUNNER OUT ARG...` that runs the command with the arguments ARG after the program name,
+# writes its stdout to OUT, and returns the command's status.
+#
+# When RUNNERS holds `native`, the executable then runs with N of 1000 under strace, which must
+# show no call but getrandom, write, and exit_group, and two getrandom calls with flags 0, of 4,096
+# and 3,904 bytes, the 512 words of a full pass and the 488 words that remain, each answered with
+# all of its bytes.  The file theorems of the executable are checked in tests/linux/a64-wasi.sh.
 #
 # The pure module's samples run in `tests/verified/run.sh --cases randomHistogram`.
 # Usage: tests/random-histogram/run.sh
@@ -21,12 +28,33 @@ if ! command -v wasm-tools > /dev/null 2>&1; then
   printf 'wasm-tools is not on the search path\n' >&2
   exit 1
 fi
+RUNNERS=${RUNNERS:-wasm native qemu}
+qemu=${QEMU_USER:-/usr/bin/qemu-aarch64}
+for runner in $RUNNERS; do
+  case $runner in
+    native)
+      if [ "$(uname -s) $(uname -m)" != "Linux aarch64" ]; then
+        printf 'the native runner needs an AArch64 Linux host\n' >&2
+        exit 1
+      fi
+      if ! command -v strace > /dev/null 2>&1; then
+        printf 'strace is not on the search path\n' >&2
+        exit 1
+      fi ;;
+    qemu)
+      if [ ! -x "$qemu" ]; then
+        printf 'Missing QEMU user-mode emulator: %s\n' "$qemu" >&2
+        exit 1
+      fi ;;
+  esac
+done
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
 out="$root/build/random-histogram"
 host="$root/build/tools/leanexe-wasmtime-host"
 module="$out/command.wasm"
+elf="$out/command.elf"
 mkdir -p "$out"
 
 if [ ! -x "$host" ]; then
@@ -48,9 +76,10 @@ tools/leanrun --timeout 10m lake env lean tests/random-histogram/Axioms.lean
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Demos.RandomHistogram.Command \
   Demos.RandomHistogram.command.module "$module"
 wasm-tools validate "$module"
-tools/leanrun --timeout 10m lake env .lake/build/bin/a64-wasi wasm "$module" "$out/command.elf" ||
+tools/leanrun --timeout 10m lake env .lake/build/bin/a64-wasi wasm "$module" "$elf" ||
   fail elf "genWasiElf rejects the module"
-printf 'genWasiElf: %s bytes\n' "$(wc -c < "$out/command.elf" | tr -d ' ')"
+chmod +x "$elf"
+printf 'genWasiElf: %s bytes\n' "$(wc -c < "$elf" | tr -d ' ')"
 
 # run_wasm OUT ARG...: runs the module in the Wasmtime host with the program name `histogram` and
 # the arguments ARG, and returns its status.
@@ -66,7 +95,20 @@ run_wasm() {
   timeout 600s "$host" "$@" --stdout-file "$stdout" run "$module" 2> "$stdout.stderr"
 }
 
-RUNNERS=${RUNNERS:-wasm}
+# run_native OUT ARG...: runs the executable on the host's processor with the arguments ARG.
+run_native() {
+  stdout=$1
+  shift
+  timeout 600s "$elf" "$@" > "$stdout" 2> "$stdout.stderr"
+}
+
+# run_qemu OUT ARG...: runs the executable under QEMU's user-mode emulator with the arguments ARG.
+run_qemu() {
+  stdout=$1
+  shift
+  timeout 600s "$qemu" "$elf" "$@" > "$stdout" 2> "$stdout.stderr"
+}
+
 cases=0
 
 # refused RUNNER NAME ARG...: the run writes nothing and exits with status 2.
@@ -108,5 +150,24 @@ for runner in $RUNNERS; do
     drawn "$runner" "$n"
   done
 done
+
+case " $RUNNERS " in
+  *" native "*)
+    trace="$out/native-1000.strace"
+    status=0
+    strace -e raw=getrandom -o "$trace" "$elf" 1000 > "$out/native-1000-strace.stdout" ||
+      status=$?
+    [ "$status" -eq 0 ] || fail strace "status $status"
+    calls=$(sed -n '/^execve(/,$p' "$trace" | tail -n +2 | sed '/^+++/d; s/(.*//' | sort -u |
+      tr '\n' ' ')
+    [ "$calls" = "exit_group getrandom write " ] || fail strace "the calls $calls"
+    requests=$(sed -n 's/^getrandom([^,]*, *\([^,]*\), *\([^)]*\)) *= *\([^ ]*\)$/\1 \2 \3/p' \
+        "$trace" | while read -r count flags result; do
+      printf '%d %d %d ' "$((count))" "$((flags))" "$((result))"
+    done)
+    [ "$requests" = "4096 0 4096 3904 0 3904 " ] ||
+      fail strace "the getrandom calls (count, flags, result): $requests"
+    cases=$((cases + 1)) ;;
+esac
 
 printf 'random histogram: %s runs passed\n' "$cases"

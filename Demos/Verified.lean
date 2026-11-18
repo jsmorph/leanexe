@@ -22,3 +22,4 @@ import Demos.Rcv.Maine.TabulateBound
 import Demos.Rcv.Maine.ProcessAxioms
 import Demos.RandomHistogram.Compiled
 import Demos.RandomHistogram.CommandStart
+import Demos.RandomHistogram.Native
