@@ -6,10 +6,12 @@ host's contracts for the module's imports, `hostSpecWith host command.sysCalls`,
 every run of `_start` from the command's initial store with enough fuel traps (`start_ends`).  The
 trap is one of three:
 
-- the accepted exit, with a status `code` of at most 76, after the events of `Meets`
+- the accepted exit, with a status `code` of at most 77, after the events of `Meets`
   (`exec_main`): the status is the errno of `args`, 2 for a refused argument, the errno of a
-  failed `random_get`, or the errno of the one write of `renderSpec (histogramSpec w)`, with `w`
-  the N words that the calls of `random_get` returned, whose counts sum to N;
+  failed `random_get`, or the status of the writes of `renderSpec (histogramSpec w)` that
+  `Written` states, with `w` the N words that the calls of `random_get` returned, whose counts
+  sum to N: 0 exactly when the writes took every byte, the errno of a failed write, or 77 when
+  the writes used up their passes;
 - a trap of the host, or an exit that the host rejects, after the events of a run of `main` and
   its exit;
 - a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
@@ -31,17 +33,17 @@ def initialStore {World : Type} (world : Observed World) : Store (Observed World
     command.mainEntry command.literalPool world
 
 /-- The index of `_start` in the command's module. -/
-def startIndex : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 1
+def startIndex : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.module 2
 
 /-- How a run of `_start` from the observed world `initial` ends: a trap whose final world adds the
-events `trace` to those of `initial`, after an accepted exit with a status `code` of at most 76
+events `trace` to those of `initial`, after an accepted exit with a status `code` of at most 77
 whose events meet `Meets`, after a trap of the host or a rejected exit, or, at `unreachable`, after
 a prefix of `main` and its exit. -/
 def Ends {World : Type} (host : Host World) (initial : Observed World) :
     Result (Observed World) → Prop
   | .Trap final message => ∃ trace, final.host.events = initial.events ++ trace ∧
       ((∃ code, message = exitTrap ∧ host.exited final.host.world = some code ∧
-          ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 76 ∧
+          ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 77 ∧
             Meets host initial.world events code) ∨
         (Exec host (main.bind fun status => Action.exit (α := Unit) status) initial.world trace
           (.trapped message) final.host.world) ∨
@@ -92,7 +94,7 @@ theorem start_ends {World : Type} {host : Host World} (world : Observed World)
 /-- The accepted exit of every run, under the premises of the generated `command.total`: a budget
 that fits the free memory of the command's initial store and bounds the heap that every prefix of
 `main` allocates, and a host that traps nowhere along `main` and its exit.  Every run of `_start`
-with enough fuel then ends with the accepted exit with a status of at most 76, after events that
+with enough fuel then ends with the accepted exit with a status of at most 77, after events that
 meet `Meets`. -/
 theorem total_meets {World : Type} {host : Host World} (world : Observed World)
     (targetHost : HostEnv (Observed World))
@@ -107,7 +109,7 @@ theorem total_meets {World : Type} {host : Host World} (world : Observed World)
     ∃ bound, ∀ fuel ≥ bound, ∃ final code events,
       run fuel command.module startIndex (initialStore world) [] targetHost = .Trap final exitTrap ∧
         host.exited final.host.world = some code ∧ final.host.events = world.events ++ events ++
-          [.exit code] ∧ code.toNat ≤ 76 ∧ Meets host world.world events code := by
+          [.exit code] ∧ code.toNat ≤ 77 ∧ Meets host world.world events code := by
   have initialized := command.initial world
   obtain ⟨bound, exits⟩ := command.total valid initialized.1 rfl Separate.nil
     ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩ (fun _ membership => nomatch membership)

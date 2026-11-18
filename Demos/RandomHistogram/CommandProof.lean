@@ -13,7 +13,10 @@ fewer than `2^32` bytes (`args_returned`), so `parseN` computes `parseSpec` on i
 `tally` counts the little-endian words of a buffer (`tally_eq`, `wordAt_eq`) and the words of a
 concatenation of whole words are the words of its parts (`words_append`).  The counts are then
 `histogram` of the words, so `render` of them is `renderSpec (histogramSpec w)` by `histogram_eq`
-and `render_eq`. -/
+and `render_eq`, at most 210 bytes (`render_size`).  `write_tail` gives the writes of `Written`
+from `WriteAllRun.taken` of `LeanExe/Wasi/WriteAll.lean`: a run of `writeAll` that returns `v`
+took the first `v` bytes of the output, so `main`'s test `v < B` returns 77 exactly when bytes
+remain, and a run that exits does so with the errno of its last write. -/
 
 namespace Demos.RandomHistogram
 
@@ -359,6 +362,89 @@ theorem draw_loop {World : Type} {host : Host World} {test : UInt64 → DrawStat
           rw [hcounts e, tally_eq counts buffer (by omega),
             words_append (by simp [hsize]), List.foldl_append]
 
+/-! ## The writes -/
+
+/-- The output of `render` holds at most 210 bytes. -/
+theorem render_size (counts : Array UInt64) : (render counts).data.size ≤ 210 := by
+  have hsize := render_text_size counts
+  obtain ⟨t, ht⟩ : ∃ t, LeanExe.loop 10 (#[] : Array UInt64)
+      (fun m t => appendLine t counts[m.toNat]!) = t := ⟨_, rfl⟩
+  rw [ht] at hsize
+  have hrender : render counts = Bytes.build t.size.toUInt64 fun i => t[i.toNat]! := by
+    unfold render
+    simp only [ht]
+  rw [hrender, build_words t (by omega)]
+  simpa [ByteArray.size] using hsize
+
+/-- A run of `writeAll out` followed by `main`'s test of the bytes written, for an output of at most
+210 bytes, meets `Written`: when it returns a status, with its events, and when it exits, with its
+events before the exit.  A returned status is 0 or 77, and an exit status lies from 1 to 76. -/
+theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out.data.size ≤ 210)
+    {world final : World} {trace : List Event} {outcome : Outcome UInt64}
+    (run : Exec host (Action.bind (writeAll out) fun written =>
+      Action.pure (if written < out.size then 77 else 0)) world trace outcome final) :
+    (∀ status, outcome = .returned status →
+      status.toNat ≤ 77 ∧ Written out.data.data.toList trace status) ∧
+    (∀ code, outcome = .exited code → code.toNat ≤ 76 ∧
+      ∃ writes, trace = writes ++ [.exit code] ∧ Written out.data.data.toList writes code) := by
+  obtain ⟨after, writes, middle, tail, writeRun, cont, rfl⟩ := Exec.unbind (writeAll out) run
+  have length : out.data.data.toList.length = out.data.size := by simp
+  have facts := (writeAll_run (by omega) writeRun).taken (by rw [length]; omega) (by simp)
+  have wide : out.size.toNat = out.data.size := by
+    simp only [Bytes.size, UInt64.toNat_ofNat']
+    exact Nat.mod_eq_of_lt (by omega)
+  cases middle with
+  | returned value =>
+    obtain ⟨shape, -, high, taken⟩ := facts.1 value rfl
+    simp only [UInt64.toNat_zero, List.drop_zero, Nat.sub_zero] at taken
+    change Exec host (Action.pure (if value < out.size then 77 else 0)) after tail outcome final
+      at cont
+    obtain ⟨rfl, rfl⟩ := exec_pure cont
+    have takenLength : (stdoutTaken writes).length = value.toNat := by
+      rw [taken, List.length_take]
+      omega
+    refine ⟨fun status same => ?_, fun _ same => (by cases same)⟩
+    cases same
+    rw [List.append_nil]
+    by_cases short : value < out.size
+    · rw [ite_eq_left short]
+      have below : value.toNat < out.data.size := by
+        rw [UInt64.lt_iff_toNat_lt, wide] at short
+        exact short
+      refine ⟨by decide, by rw [taken]; exact List.take_prefix _ _, ?_, .inl ⟨shape, .inr rfl⟩⟩
+      refine ⟨fun same => absurd same (by decide), fun whole => ?_⟩
+      have := congrArg List.length whole
+      omega
+    · rw [ite_eq_right short]
+      have above : out.data.size ≤ value.toNat := by
+        rw [UInt64.lt_iff_toNat_lt, wide] at short
+        omega
+      refine ⟨by decide, by rw [taken]; exact List.take_prefix _ _, ?_, .inl ⟨shape, .inl rfl⟩⟩
+      exact ⟨fun _ => by rw [taken, List.take_of_length_le (by omega)], fun _ => rfl⟩
+  | exited code =>
+    obtain ⟨rfl, rfl, rfl⟩ := cont
+    obtain ⟨nonzero, valid, ⟨before, offered, count, shape, earlier⟩, prefix_, bound⟩ :=
+      facts.2 code rfl
+    refine ⟨fun _ same => (by cases same), fun code' same => ?_⟩
+    cases same
+    have dropped : stdoutTaken (before ++ [.write .stdout offered (.returned code count)]) =
+        stdoutTaken writes := by
+      rw [shape]
+      simp [stdoutTaken_append, Event.stdoutTaken, nonzero]
+    refine ⟨valid, before ++ [.write .stdout offered (.returned code count)],
+      by rw [List.append_nil, shape]; simp, ?_, ?_,
+      .inr ⟨nonzero, before, offered, count, rfl, earlier⟩⟩
+    · rw [dropped]
+      simpa using prefix_
+    · rw [dropped]
+      refine ⟨fun same => absurd same nonzero, fun whole => ?_⟩
+      have := congrArg List.length whole
+      simp only [UInt64.toNat_zero, Nat.zero_add] at bound
+      omega
+  | trapped message =>
+    obtain ⟨rfl, rfl, rfl⟩ := cont
+    exact ⟨fun _ same => (by cases same), fun _ same => by cases same⟩
+
 /-! ## `main` -/
 
 /-- The bytes that `Draws` collects with errno 0 hold exactly the drawn words. -/
@@ -375,17 +461,14 @@ theorem Draws.length {r : UInt64} {events : List Event} {bytes : List UInt8} {er
     rw [hsize, ih hz, hsub]
     omega
 
-theorem exitStatus_small {code : UInt64} (h : code.toNat ≤ 76) : exitStatus code = code := by
-  apply UInt64.toNat_inj.mp
-  simp only [exitStatus_toNat]
-  omega
-
-/-- Every run of `main` never exits, and when it returns a status, the status is at most 76 and
-its events meet `Meets`. -/
+/-- Every run of `main` that returns a status has a status of at most 77 and events that meet
+`Meets`, and every run that exits does so from `writeAll` with a status of at most 76 and events
+that meet `Meets` followed by the exit. -/
 theorem main_runs {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {outcome : Outcome UInt64} (run : Exec host main world trace outcome final) :
-    (∀ c, outcome ≠ .exited c) ∧
-      ∀ status, outcome = .returned status → status.toNat ≤ 76 ∧ Meets host world trace status := by
+    (∀ status, outcome = .returned status → status.toNat ≤ 77 ∧ Meets host world trace status) ∧
+    (∀ code, outcome = .exited code → code.toNat ≤ 76 ∧
+      ∃ events, trace = events ++ [.exit code] ∧ Meets host world events code) := by
   obtain ⟨after, pre, middle, rest, argsRun, cont, rfl⟩ := Exec.unbind args run
   obtain ⟨argsNoExit, argsFacts⟩ := args_returned argsRun
   cases middle with
@@ -402,9 +485,9 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
     · rename_i nonzero
       have hne : a.errno ≠ 0 := by simpa using nonzero
       obtain ⟨rfl, rfl⟩ := exec_pure cont
-      refine ⟨fun _ h => (nomatch h), fun status h => ?_⟩
+      refine ⟨fun status h => ?_, fun _ h => (nomatch h)⟩
       cases h
-      exact ⟨aValid, a, pre, [], after, rfl, argsRun, fun _ => ⟨rfl, rfl⟩,
+      exact ⟨by omega, a, pre, [], after, rfl, argsRun, fun _ => ⟨rfl, rfl⟩,
         fun e => absurd e hne, fun e => absurd e hne⟩
     · rename_i zero
       have hz : a.errno = 0 := by simpa using zero
@@ -414,7 +497,7 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
       · rename_i refused
         have hp : parseSpec a.bytes = 0 := by simpa using refused
         obtain ⟨rfl, rfl⟩ := exec_pure cont
-        refine ⟨fun _ h => (nomatch h), fun status h => ?_⟩
+        refine ⟨fun status h => ?_, fun _ h => (nomatch h)⟩
         cases h
         exact ⟨by decide, a, pre, [], after, rfl, argsRun, fun e => absurd hz e,
           fun _ _ => ⟨rfl, rfl⟩, fun _ e => absurd hp e⟩
@@ -447,9 +530,9 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
           · rename_i failed
             have he : errno ≠ 0 := by rw [← hs]; simpa using failed
             obtain ⟨rfl, rfl⟩ := exec_pure cont2
-            refine ⟨fun _ h => (nomatch h), fun status h => ?_⟩
+            refine ⟨fun status h => ?_, fun _ h => (nomatch h)⟩
             cases h
-            refine ⟨by rw [hs]; exact errnoValid, a, pre, draws ++ [], after, rfl, argsRun,
+            refine ⟨by rw [hs]; omega, a, pre, draws ++ [], after, rfl, argsRun,
               fun e => absurd hz e, fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
             rw [hn]
             exact ⟨draws, bytes, errno, [], rfl, drawsOk, fun _ => ⟨hs, rfl⟩, fun e => absurd e he⟩
@@ -460,50 +543,60 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
             have wlen : (words bytes).length = n.toNat := by
               rw [words_length, hlen]
               omega
+            have sum : ((histogramSpec (words bytes).toArray).toList.map UInt64.toNat).sum =
+                n.toNat := by
+              rw [histogramSpec_sum _ (by rw [List.size_toArray, wlen]; exact n.toNat_lt),
+                List.size_toArray, wlen]
             have rendered : render s.1 = renderSpec (histogramSpec (words bytes).toArray) := by
               rw [counted, ← histogram_list, histogram_eq, render_eq]
-            change Exec host (.write .stdout (render s.1) fun result => .pure result.errno)
+            change Exec host (Action.bind (writeAll (render s.1)) fun written =>
+                Action.pure (if written < (render s.1).size then 77 else 0))
               loopAfter post outcome final at cont2
-            cases cont2 with
-            | write_trap _ => exact ⟨fun _ h => (nomatch h), fun _ h => (nomatch h)⟩
-            | @write_return _ _ _ _ _ _ _ _ _ werrno count permitted next =>
-              obtain ⟨rfl, rfl⟩ := exec_pure next
-              refine ⟨fun _ h => (nomatch h), fun status h => ?_⟩
-              cases h
-              have werrnoValid : werrno.toNat ≤ 76 := (host.write_bound permitted).2
-              refine ⟨by simpa [writeResult] using werrnoValid, a, pre, _, after, rfl, argsRun,
+            have tail := write_tail (render_size s.1) cont2
+            rw [rendered] at tail
+            refine ⟨fun status h => ?_, fun code h => ?_⟩
+            · obtain ⟨small, written⟩ := tail.1 status h
+              refine ⟨small, a, pre, _, after, rfl, argsRun, fun e => absurd hz e,
+                fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
+              rw [hn]
+              exact ⟨draws, bytes, errno, post, rfl, drawsOk, fun e => absurd he e,
+                fun _ => ⟨wlen, sum, written⟩⟩
+            · obtain ⟨small, writes, rfl, written⟩ := tail.2 code h
+              refine ⟨small, pre ++ (draws ++ writes), by simp, a, pre, _, after, rfl, argsRun,
                 fun e => absurd hz e, fun _ e => absurd (hn.symm.trans e) hp, fun _ _ => ?_⟩
               rw [hn]
-              refine ⟨draws, bytes, errno, _, rfl, drawsOk, fun e => absurd he e, fun _ => ?_⟩
-              refine ⟨wlen, ?_, count, ?_⟩
-              · rw [histogramSpec_sum _ (by rw [List.size_toArray, wlen]; exact n.toNat_lt),
-                  List.size_toArray, wlen]
-              · rw [← rendered]
-                rfl
+              exact ⟨draws, bytes, errno, writes, rfl, drawsOk, fun e => absurd he e,
+                fun _ => ⟨wlen, sum, written⟩⟩
 
 /-- Every run of the command's `main` followed by its exit, under every host, that ends with the
 exit status `code` has the events of `Meets` followed by the exit: the status is the errno of
-`args`, 2 for a refused argument, the errno of a failed `random_get`, or the errno of the one write
-of `renderSpec (histogramSpec w)`, where `w` are the N words that the calls returned, whose counts
-sum to N.  The status is at most 76. -/
+`args`, 2 for a refused argument, the errno of a failed `random_get`, or, after the calls of
+`random_get` returned the N words `w`, whose counts sum to N, the status of the writes of
+`renderSpec (histogramSpec w)` that `Written` states: 0 exactly when they took every byte of it,
+the errno of a write that failed, or 77 when the writes used up their passes.  The status is at
+most 77. -/
 theorem exec_main {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {code : UInt64}
     (execution : Exec host (main.bind fun status => Action.exit (α := Unit) status) world trace
       (.exited code) final) :
-    ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 76 ∧ Meets host world events code := by
+    ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 77 ∧ Meets host world events code := by
   obtain ⟨after, events, middle, rest, mainRun, cont, rfl⟩ := Exec.unbind main execution
-  obtain ⟨noExit, meets⟩ := main_runs mainRun
+  obtain ⟨returned, exited⟩ := main_runs mainRun
   cases middle with
-  | exited c => exact absurd rfl (noExit c)
+  | exited c =>
+    obtain ⟨rfl, same, -⟩ := cont
+    obtain ⟨small, steps, rfl, meets⟩ := exited c rfl
+    cases same
+    exact ⟨steps, by rw [List.append_nil], by omega, meets⟩
   | trapped m =>
     obtain ⟨-, h, -⟩ := cont
     cases h
   | returned status =>
-    obtain ⟨small, hm⟩ := meets status rfl
+    obtain ⟨small, hm⟩ := returned status rfl
     change Exec host (Action.exit status) after rest (.exited code) final at cont
     cases cont with
     | exit _ =>
-      rw [exitStatus_small small]
+      rw [exitStatus_of_lt (by omega)]
       exact ⟨events, rfl, small, hm⟩
 
 end Demos.RandomHistogram

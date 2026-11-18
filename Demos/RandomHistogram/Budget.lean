@@ -11,16 +11,20 @@ successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose 
 `args_get` replies hold a buffer from which `parseN` reads at most `drawLimit`.  The model charges
 a copy of an owned value at each use after which the value stays live, and it credits no release.
 The charge of `main` therefore holds the block of `args` and seven copies of the argument bytes,
-the loop's initial counts and two copies of the final counts, the charge of `render`, and
-`passCharge` for each of the loop's at most `N / 512 + 1` passes: two copies of the counts, the
-block of `random_get`'s buffer of at most 4,096 bytes, and a copy of that buffer and of the counts
-for the test of the call's errno.  `loop_bounded` bounds a loop whose passes each charge at most a
-constant from the states of an invariant that every pass keeps, here counts of ten words, and
-`loop_kept` states that the loop's returned state keeps the invariant.
+the loop's initial counts and two copies of the final counts, the charge of `render`, the charge
+of `writeAll` on the output, `writeCharge`, and `passCharge` for each of the loop's at most
+`N / 512 + 1` passes: two copies of the counts, the block of `random_get`'s buffer of at most
+4,096 bytes, and a copy of that buffer and of the counts for the test of the call's errno.
+`loop_bounded` bounds a loop whose passes each charge at most a constant from the states of an
+invariant that every pass keeps, and `loop_kept` states that the loop's returned state keeps the
+invariant.  The invariant of the draw loop is counts of ten words.  The invariant of `writeAll`'s
+loop is a count of bytes written of at most the output's 210 bytes, which a pass keeps since a
+write takes at most the bytes that it offered (`write_count_le`), so each of its at most 211
+passes charges at most the block of 210 bytes, 264 bytes (`writeAll_bounded`), under every host.
 
 `budget_fits` states that the budget fits the 4,096 pages of the native executable above the
 heap's start at byte 4,096, and `budget_full` that one more pass does not, so `drawLimit`,
-12,839,935, is the largest N for which this budget fits.  Linux 4.13 and later limit the strings
+12,836,351, is the largest N for which this budget fits.  Linux 4.13 and later limit the strings
 and pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
 `fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12). -/
 
@@ -156,17 +160,23 @@ for which the budget holds: 6 MiB, the most that Linux lets the strings and poin
 def argsLimit : Nat := 6291456
 
 /-- The largest N for which the budget fits the native executable's memory. -/
-def drawLimit : Nat := 12839935
+def drawLimit : Nat := 12836351
 
 /-- The charge of one pass of the loop: two copies of the counts' block of 136 bytes for the
 expressions before the call, the block of the call's buffer of at most 4,096 bytes, 4,144 bytes,
 and a copy of that buffer and of the counts for the test of the call's errno. -/
 def passCharge : Nat := 8696
 
+/-- The charge of `writeAll` on the at most 210 bytes of `render`: at most 211 passes, each of which
+charges the block of the bytes not yet written, at most 264 bytes. -/
+def writeCharge : Nat := 211 * 264
+
 /-- A bound on the charge of `main`: the block of `args` and seven copies of the argument bytes,
 the loop's initial counts and two copies of the final counts, 136 bytes each, the charge of
-`render`, at most 17,136 bytes, and a pass for each of the at most `drawLimit / 512 + 1` passes. -/
-def budget : Nat := 8 * Bytes.allocationCost argsLimit + 17544 + (drawLimit / 512 + 1) * passCharge
+`render`, at most 17,136 bytes, the charge of `writeAll`, and a pass for each of the at most
+`drawLimit / 512 + 1` passes. -/
+def budget : Nat :=
+  8 * Bytes.allocationCost argsLimit + 17544 + writeCharge + (drawLimit / 512 + 1) * passCharge
 
 theorem budget_fits : 4096 + budget ≤ 65536 * 4096 := by decide
 
@@ -200,7 +210,7 @@ private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total 
 /-- `parseN` allocates nothing. -/
 theorem parseN_charge (env : Env [Ty.bytes]) :
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get
-      FVar.here.there.there.there.there.there.there.there env = 0 := by
+      FVar.here.there.there.there.there.there.there.there.there env = 0 := by
   cases env with
   | cons bytes rest =>
     cases rest
@@ -209,7 +219,7 @@ theorem parseN_charge (env : Env [Ty.bytes]) :
 /-- `tally` allocates nothing. -/
 theorem tally_charge (env : Env [Ty.array Elem.word, Ty.bytes]) :
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get
-      FVar.here.there.there.there.there env = 0 := by
+      FVar.here.there.there.there.there.there env = 0 := by
   cases env with
   | cons counts rest =>
     cases rest with
@@ -233,8 +243,28 @@ private theorem exec_pure_value {World α : Type} {host : Host World} {result va
 
 /-- The charge of a call of `render`. -/
 theorem render_charge (counts : Array UInt64) :
-    ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get FVar.here
+    ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get FVar.here.there
       (Env.cons counts Env.nil) = command.pureSources.render.bound counts :=
+  rfl
+
+/-- The reflected `render` is `render`. -/
+theorem render_reflected (counts : Array UInt64) :
+    (PureContext.ofProg command.pure.program command.pure.funs).funs.get FVar.here.there
+      (Env.cons counts Env.nil) = render counts := by
+  rw [← command.pureSources.render.denote_eq]
+  rfl
+
+/-- The charge of a call of `suffix`: the block of the bytes from `start` on. -/
+theorem suffix_charge (depth : UInt64) (bytes : Bytes) (start : UInt64) :
+    ((PureContext.ofProg command.pure.program command.pure.funs).callBounds depth).get FVar.here
+      (Env.cons bytes (Env.cons start Env.nil)) = Bytes.allocationCost (bytes.size - start).toNat :=
+  (command.pureSources.suffix.bound_eq bytes start).trans rfl
+
+/-- The reflected `suffix` is `suffix`. -/
+theorem suffix_reflected (bytes : Bytes) (start : UInt64) :
+    (PureContext.ofProg command.pure.program command.pure.funs).funs.get FVar.here
+      (Env.cons bytes (Env.cons start Env.nil)) = suffix bytes start := by
+  rw [← command.pureSources.suffix.denote_eq]
   rfl
 
 /-- The command's `render` charges at most 17,136 bytes, as the pure core's does. -/
@@ -281,7 +311,7 @@ theorem random_bytes_le {World : Type} {host : Host World} {r : UInt64} {world f
 /-- The reflected `parseN` is `parseN`. -/
 theorem parseN_reflected (bytes : Bytes) :
     (PureContext.ofProg command.pure.program command.pure.funs).funs.get
-      FVar.here.there.there.there.there.there.there.there (Env.cons bytes Env.nil) =
+      FVar.here.there.there.there.there.there.there.there.there (Env.cons bytes Env.nil) =
       parseN bytes := by
   rw [← command.pureSources.parseN.denote_eq]
   rfl
@@ -289,7 +319,7 @@ theorem parseN_reflected (bytes : Bytes) :
 /-- The reflected `tally` is `tally`. -/
 theorem tally_reflected (counts : Array UInt64) (bytes : Bytes) :
     (PureContext.ofProg command.pure.program command.pure.funs).funs.get
-      FVar.here.there.there.there.there (Env.cons counts (Env.cons bytes Env.nil)) =
+      FVar.here.there.there.there.there.there (Env.cons counts (Env.cons bytes Env.nil)) =
       tally counts bytes := by
   rw [← command.pureSources.tally.denote_eq]
   rfl
@@ -334,10 +364,10 @@ theorem args_got {World : Type} {host : Host World} {values : List UInt64}
   exact ⟨_, _, _, getter, rfl⟩
 
 /-- What a run of a command with the outcome `outcome` gives about its parts: a `ret` returns the
-value of its expression, a `sys` command ends as a run of its action, a `bind` that returns has a
-first command that returns and a second command that returns the same value, an `ite` that
-returns has a branch that returns the same value, and a loop that returns has a run of its passes
-that returns the same value. -/
+value of its expression, a `sys` command, a `write`, and an `exit` end as runs of their actions, a
+`bind` that returns has a first command that returns and a second command that returns the same
+value, an `ite` that returns has a branch that returns the same value, and a loop that returns has
+a run of its passes that returns the same value. -/
 def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
     (host : Host World) (pure : PureContext pureSigs) (program : EffectProg pureSigs effectSigs)
     (depth : UInt64) (modes : List Mode) (live : Nat → Bool) :
@@ -360,6 +390,11 @@ def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig
         ResourceLoopExec host pure program depth modes live test step env
           (count.denote pure.funs env).toNat 0 (initial.denote pure.funs env) world trace
           (.returned returned) final spent fits
+  | _, _, .write output bytes, env, outcome => ∃ world trace final,
+      Exec host ((Command.write output bytes).denote pure.funs (program.funs pure.funs) env) world
+        trace outcome final
+  | _, _, .exit code, env, outcome => ∃ world trace final,
+      Exec host (Action.exit (code.denote pure.funs env)) world trace outcome final
   | _, _, _, _, _ => True
 
 theorem returnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
@@ -392,6 +427,8 @@ theorem returnFact {World : Type} {pureSigs : List Sig} {effectSigs : List Effec
     intro _ same
     subst same
     exact ⟨_, _, _, _, _, execution⟩
+  | write execution => exact ⟨_, _, _, execution⟩
+  | exit execution => exact ⟨_, _, _, execution⟩
   | _ => trivial
 
 theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
@@ -410,11 +447,12 @@ theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List Eff
 variables, and leaves the copies to `omega`. -/
 local macro "charge" : tactic => `(tactic|
   (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.loopInitCost,
-      PureContext.loopCountCost, PureContext.loopTestCost, Expr.allocs, Var.cost, Var.ownedCost,
-      Expr.ownedCost, Expr.mode, coerceCost, Ty.copyCost, envGet, Expr.denote, Args.get_cons_zero',
-      Args.get_cons_zero, Env.ofFn, argsSum, callCredits, ResultTy.bindEnv, loopEnv, loopModes,
-      parseN_charge, tally_charge, render_charge, allocCost, Elem.width, sumBelow,
-      UInt64.reduceToNat, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
+      PureContext.loopCountCost, PureContext.loopTestCost, PureContext.argumentCost, Expr.allocs,
+      Var.cost, Var.ownedCost, Expr.ownedCost, Expr.mode, coerceCost, Ty.copyCost, envGet,
+      Expr.denote, Args.get_cons_zero', Args.get_cons_zero, Args.get_cons_succ, Env.ofFn, argsSum,
+      callCredits, ResultTy.bindEnv, loopEnv, loopModes, parseN_charge, tally_charge,
+      render_charge, allocCost, Elem.width, sumBelow, UInt64.reduceToNat, Nat.add_zero,
+      Nat.zero_add, ↓reduceIte, ite_self] <;>
    omega))
 
 /-- Proves that a step of the loop keeps the counts' size at 10. -/
@@ -466,6 +504,109 @@ local macro "ite_bound " branch:term:max : tactic => `(tactic|
    intro _ _ rule
    refine rule $branch $branch (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun _ => ?_)))
 
+/-- A write of `bytes` that returns returns a count of at most the bytes' size. -/
+theorem write_count_le {World : Type} {host : Host World} {bytes : Bytes} {world final : World}
+    {trace : List Event} {value : UInt64 × UInt64}
+    (run : Exec host (Action.bind (writeStdoutSome bytes) fun result =>
+      Action.pure (result.errno, result.count)) world trace (.returned value) final) :
+    value.2.toNat ≤ bytes.data.size := by
+  change Exec host (.write .stdout bytes fun result => Action.pure (result.errno, result.count))
+    world trace (.returned value) final at run
+  cases run with
+  | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
+    have bound := (host.write_bound reply).1
+    simp only [Transfer.committed] at bound
+    rw [exec_pure_value next]
+    simp only [writeResult]
+    split
+    · simpa using bound
+    · simp
+
+/-- A call of `suffix` on at most 210 bytes from a start within them charges at most 264 bytes, the
+block of 210 bytes. -/
+theorem suffix_call_le (depth : UInt64) (env : Env [Ty.bytes, Ty.word]) (bytes : Bytes)
+    (start : UInt64) (same : env = .cons bytes (.cons start .nil))
+    (small : bytes.data.size ≤ 210) (le : start.toNat ≤ bytes.data.size) :
+    ((PureContext.ofProg command.pure.program command.pure.funs).callBounds depth).get FVar.here
+      env ≤ 264 := by
+  subst same
+  rw [suffix_charge, suffix_count (by omega) le]
+  exact (allocationCost_mono (show bytes.data.size - start.toNat ≤ 210 by omega)).trans
+    (by decide)
+
+/-- `writeAll` on at most 210 bytes charges at most `writeCharge`: at most 211 passes, each of which
+charges the block of the bytes from `written` on, at most 264 bytes, since every write takes at most
+the bytes that it offered. -/
+theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64} (output : Bytes)
+    (env : Env [Ty.bytes]) (same : env = .cons output .nil) (small : output.data.size ≤ 210) :
+    Bounded host (.ofProg command.pure.program command.pure.funs) .nil depth
+      (entryModes command.writeAll.func.params command.writeAll.func.modes) (fun _ => false)
+      command.writeAll.func.body env writeCharge := by
+  subst same
+  have wide : output.size.toNat = output.data.size := by
+    simp only [Bytes.size, UInt64.toNat_ofNat']
+    exact Nat.mod_eq_of_lt (by omega)
+  apply bounded_of_rule
+  intro _ _ rule
+  refine rule writeCharge (by unfold writeCharge; charge) ?_ ?_
+  · simp only [PureContext.loopInitFits, Bool.and_eq_true]
+    exact ⟨Expr.fits_of_depthCalls _ _ _ (by decide) _,
+      Expr.fits_of_depthCalls _ _ _ (by decide) _⟩
+  refine LoopBounded.mono (loop_bounded (type := .word) (t := 0) (s := 264)
+    (fun written : UInt64 => written.toNat ≤ output.data.size) ?_ ?_ ?_ ?_ _ _ _ ?_) ?_
+  · intro index written _
+    charge
+  · intro index written _
+    exact Expr.fits_of_depthCalls _ _ _ (by decide) _
+  · intro index written held
+    have held' : written.toNat ≤ output.data.size := held
+    bind_bound 264 0
+    · bind_bound 264 0
+      · apply bounded_of_rule
+        intro _ _ rule
+        refine rule ?_ (by fits)
+        simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
+          coerceCost, Args.get_cons_zero', Args.get_cons_succ, argsSum, callCredits, Nat.add_zero,
+          Nat.zero_add, ↓reduceIte]
+        rw [Ty.copyCost_of_scalar _ _ (by decide), Nat.zero_add]
+        exact suffix_call_le _ _ output written rfl small held'
+      · intro _ _
+        write_bound
+    · intro _ _
+      ite_bound 0
+      · ret_bound
+      · ret_bound
+  · intro index written next held returned
+    have held' : written.toNat ≤ output.data.size := held
+    obtain ⟨reply, first, rest⟩ := returns_fact returned next rfl
+    obtain ⟨buffer, made, writing⟩ := returns_fact first reply rfl
+    have hbuffer : buffer = suffix output written := by
+      have value := returns_fact made
+      simp only [ReturnFact] at value
+      rw [value]
+      simp [Expr.denote, envGet, Env.ofFn, Args.get_cons_zero', suffix_reflected, loopEnv]
+      rfl
+    obtain ⟨_, _, _, execution⟩ := returns_fact writing
+    have counted : reply.2.toNat ≤ buffer.data.size := write_count_le (bytes := buffer) execution
+    have offered := congrArg List.length (suffix_toList (bytes := output) (start := written)
+      (by omega) held')
+    simp only [Array.length_toList, ByteArray.size_data, List.length_drop] at offered
+    rw [hbuffer, offered] at counted
+    rcases returns_fact rest next rfl with yes | no
+    · obtain ⟨_, _, _, execution⟩ := returns_fact yes
+      cases execution
+    · have value := returns_fact no
+      simp only [ReturnFact] at value
+      rw [value]
+      show (written + reply.2).toNat ≤ output.data.size
+      rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
+      omega
+  · simp [Expr.denote]
+  · show (output.size + 1).toNat * (0 + 264) + 0 ≤ writeCharge
+    rw [UInt64.toNat_add, wide, UInt64.toNat_one, Nat.mod_eq_of_lt (by omega)]
+    unfold writeCharge
+    omega
+
 /-- Every run and every prefix of `main`'s body charges at most `budget` for every host whose
 successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose successful
 `args_get` replies hold a buffer from which `parseN` reads at most `drawLimit`. -/
@@ -475,15 +616,16 @@ theorem body_bounded {World : Type} {host : Host World}
         reportedSize outputs ≤ argsLimit)
     (drawn : ∀ world got after, host.sys world Call.argsGet [] (.returned 0 got) after →
       (parseN ((sysReply 0 got).bytes 0)).toNat ≤ drawLimit) :
-    Bounded (observedHost host) (.ofProg command.pure.program command.pure.funs) .nil 0 []
-      (fun _ => false) command.main.func.body .nil budget := by
+    Bounded (observedHost host) (.ofProg command.pure.program command.pure.funs)
+      (.cons command.writeAll.func .nil) 0 [] (fun _ => false) command.main.func.body .nil
+      budget := by
   have reported := reported_rule_observed (host := host) (call := Call.argsGet) (values := [])
     bound (Nat.le_refl (Bytes.allocationCost argsLimit))
-  unfold budget
+  unfold budget writeCharge
   generalize hA : Bytes.allocationCost argsLimit = A at reported ⊢
-  have room : (drawLimit / 512 + 1) * passCharge = 25078 * 8696 := by decide
+  have room : (drawLimit / 512 + 1) * passCharge = 25071 * 8696 := by decide
   rw [room]
-  bind_bound A (7 * A + 17544 + 25078 * 8696)
+  bind_bound A (7 * A + 17544 + 55704 + 25071 * 8696)
   · apply bounded_of_rule
     intro _ _ rule
     exact rule reported.1 reported.2
@@ -501,12 +643,12 @@ theorem body_bounded {World : Type} {host : Host World}
   have copy : Bytes.allocationCost bytes.data.size ≤ A := hA ▸ allocationCost_mono size
   apply bounded_of_rule
   intro _ _ rule
-  refine rule (6 * A + 17544 + 25078 * 8696) (6 * A + 17544 + 25078 * 8696)
+  refine rule (6 * A + 17544 + 55704 + 25071 * 8696) (6 * A + 17544 + 55704 + 25071 * 8696)
     (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun chosen => ?_)
   · ret_bound
   have ok : errno = 0 := by simpa [Expr.denote, envGet, CmpOp.apply] using chosen
   have small : (parseN bytes).toNat ≤ drawLimit := parsed ok
-  bind_bound A (5 * A + 17544 + 25078 * 8696)
+  bind_bound A (5 * A + 17544 + 55704 + 25071 * 8696)
   · ret_bound
   intro n returnedN
   have hn : n = parseN bytes := by
@@ -515,12 +657,12 @@ theorem body_bounded {World : Type} {host : Host World}
     rw [value, parseN_reflected]
     rfl
   subst hn
-  ite_bound (4 * A + 17544 + 25078 * 8696)
+  ite_bound (4 * A + 17544 + 55704 + 25071 * 8696)
   · ret_bound
-  bind_bound (2 * A + 136 + 25078 * 8696) (2 * A + 17408)
+  bind_bound (2 * A + 136 + 25071 * 8696) (2 * A + 17408 + 55704)
   · apply bounded_of_rule
     intro _ _ rule
-    refine rule (25078 * 8696) (by charge) ?_ ?_
+    refine rule (25071 * 8696) (by charge) ?_ ?_
     · simp only [PureContext.loopInitFits, Bool.and_eq_true]
       exact ⟨Expr.fits_of_depthCalls _ _ _ (by decide) _,
         Expr.fits_of_depthCalls _ _ _ (by decide) _⟩
@@ -577,14 +719,14 @@ theorem body_bounded {World : Type} {host : Host World}
       · ret_bound
     · kept_tac
     · initial_tac
-    · show ((parseN bytes / 512 + 1).toNat * (0 + 8696) + 0 ≤ 25078 * 8696)
+    · show ((parseN bytes / 512 + 1).toNat * (0 + 8696) + 0 ≤ 25071 * 8696)
       have count : ((parseN bytes) / 512 + 1).toNat = (parseN bytes).toNat / 512 + 1 := by
         rw [UInt64.toNat_add, UInt64.toNat_div]
         simp only [UInt64.reduceToNat]
         have := (parseN bytes).toNat_lt
         omega
       rw [count]
-      have : (parseN bytes).toNat / 512 + 1 ≤ 25078 := by
+      have : (parseN bytes).toNat / 512 + 1 ≤ 25071 := by
         unfold drawLimit at small
         omega
       exact Nat.add_le_add_right (Nat.mul_le_mul_right _ this) _
@@ -597,14 +739,28 @@ theorem body_bounded {World : Type} {host : Host World}
   obtain ⟨counts, left, errno⟩ := drawn
   have drawnSize' : counts.size = 10 := drawnSize
   have renderBound := render_bound_command counts
-  ite_bound (A + 17272)
+  ite_bound (A + 17272 + 55704)
   · ret_bound
-  bind_bound (A + 17272) 0
-  · bind_bound (A + 17272) 0
-    · ret_bound
-    · intro _ _
-      write_bound
+  bind_bound (A + 17272) 55704
+  · ret_bound
+  intro output returnedOutput
+  have hout : output = render counts := by
+    have value := returns_fact returnedOutput
+    simp only [ReturnFact] at value
+    rw [value]
+    simp [Expr.denote, envGet, Env.ofFn, Args.get_cons_zero', render_reflected]
+    rfl
+  have outputSize : output.data.size ≤ 210 := by
+    rw [hout]
+    exact render_size counts
+  bind_bound 55704 0
+  · apply bounded_of_rule
+    intro _ _ rule
+    exact rule 55704 (by charge) rfl
+      (callBounded_here (by decide) (writeAll_bounded output _ rfl outputSize))
   · intro _ _
-    ret_bound
+    apply bounded_of_rule
+    intro _ _ rule
+    exact rule (by charge) (by fits)
 
 end Demos.RandomHistogram
