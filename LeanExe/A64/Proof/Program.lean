@@ -156,11 +156,13 @@ theorem genFunction_length {callee : Table}
     {S : Shared} {entry : UInt64} {f : Function} {is : List Instr}
     (hg : genFunction callee S entry f = .ok is) :
     is.length = functionSize (sigOf callee) f := by
-  obtain ⟨-, -, -, hf, hn, stores, body, fin, g, hsl, -, hl, -, -, rfl⟩ := gen_function hg
+  obtain ⟨-, -, -, hn, stores, body, fin, g, hsl, -, hl, -, -, rfl⟩ := gen_function hg
   have hs := (genList_size _ _ _ f.body body fin hl).1
   simp only [List.map_cons, List.map_nil, List.length_nil, Ctl.arity_mk,
     List.length_reverse] at hs
-  simp only [List.length_append, List.length_cons, List.length_nil, hsl, hs, functionSize]
+  simp only [List.length_append, List.length_cons, List.length_nil, List.length_map, hsl, hs,
+    functionSize]
+  all_goals omega
 
 /-! ## The layout of the functions -/
 
@@ -332,6 +334,10 @@ theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
   | error e => simp [hfs, bind, Except.bind] at hg
   | ok fs =>
       simp only [hfs, bind, Except.bind] at hg
+      cases hsm : framesSmall fs with
+      | false => simp [hsm, throw, throwThe, MonadExceptOf.throw] at hg
+      | true =>
+      simp only [hsm, ↓reduceIte, pure, Except.pure] at hg
       generalize hfirst : after (after base 1) mainLen = first at hg
       generalize hT : endOf (sigIn (callTargets m k) fs) first fs = T at hg
       cases hen : entryIn (sigIn (callTargets m k) fs) first fs k with
@@ -369,6 +375,19 @@ theorem gen_programWith {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
                     rfl, rfl, hT.symm, hen, hps, hmn, hfn, ?_, hb1, hb2, hb3, hb4⟩
                   rw [← hg]
                   simp [List.append_assoc]
+
+/-- The functions of a program of `genProgramWith` have frames below 4096 bytes. -/
+theorem genProgramWith_frames {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
+    {m : Module} {k : Nat} {base : UInt64} {cap : Nat} {bytes : Bool} {is : List Instr}
+    (hg : genProgramWith mainLen mainGen m k base cap bytes = .ok is)
+    {fs : List (Nat × Function)} (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs) :
+    framesSmall fs = true := by
+  obtain ⟨gts, -, -, -, -, -, -, -, -, -, -, -, -, hok, hgt, hgl, -⟩ := gen_programWith hg
+  cases hsm : framesSmall fs with
+  | true => rfl
+  | false =>
+      simp [genProgramWith, hok, hgt, hgl, hfs, hsm, bind, Except.bind, pure, Except.pure,
+        throw, throwThe, MonadExceptOf.throw] at hg
 
 theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
     {cap : Nat} {o : Output} {is : List Instr}
@@ -1101,7 +1120,9 @@ theorem programWith_sim {mainLen : Nat} {mainGen : UInt64 → GenM (List Instr)}
   cases hf'
   simp only [Prod.mk.injEq] at hpk
   rw [hpk.1] at hps
-  obtain ⟨-, -, -, hff, -⟩ := gen_function hgk
+  have hff : frameSize (f.params.length + f.locals.length) < 4096 := by
+    have := List.all_eq_true.mp (genProgramWith_frames hg hfs) _ hkm
+    simpa using this
   have htab : ∀ j c, tableOf (callTargets m k) first fs j = some c → ∃ f is,
       m.funcs[j]? = some f ∧ c.2 = (f.params, f.results) ∧
       genFunction (tableOf (callTargets m k) first fs)

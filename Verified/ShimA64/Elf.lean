@@ -6,11 +6,16 @@ The executable of `genWasiElf` from its entry to `exit_group`.  Linux enters the
 prefix `wasiEntry` with SP at the initial stack (`InitialStack`), and the prefix keeps that SP in
 X2 and branches to the runtime of `genElfEntry`, which reaches `main` (`elfEntry_main`) with X2
 and the memory unchanged.  `main` stores X2 in the scratch's first word, calls the startup
-routine, which returns at once, and calls `_start` (`run_wasiFront`, `run_wasiStart`) with the
-module's initial store at the native cap in the area, `nativeStore`.  There the shim's machine
-holds the store: the loader's zeros give the scratch's preopen flag and held bytes for a launch
-without a preopened directory, and the initial stack lies from `2^32` up, where no instruction
-before `_start` stores.
+routine, and calls `_start` (`run_wasiFront`, `run_wasiStart`) with the module's initial store at
+the native cap in the area, `nativeStore`.  The startup routine is a return when no flat import of
+the module reads the shim's descriptor state, and the check of descriptor 3 otherwise
+(`run_preopenCheck`), whose layer events and outcome `startup` gives.  An outcome of `none` ends
+the run at the exit word with status 67.  After every other outcome the startup routine returns
+with the preopen flag and the byte of descriptor 3 set exactly when the check granted the
+directory, and the launch grants descriptor 3 accordingly.  At `_start` the shim's machine holds
+the store, with the startup's events before the world's in the trace and the replies after them:
+the loader's zeros and the startup's writes give the scratch's preopen flag and held bytes, and
+the initial stack lies from `2^32` up, where no instruction before `_start` stores.
 The simulation of `_start` over `shimMachine`, whose code map `wasiCode` holds the routine
 `SVC #0; RET` and the program after `main`, none of whose instructions writes X17 or X18, follows
 Talos's run of `_start` under the shim's environment.  When
@@ -18,14 +23,14 @@ that run traps at an accepted exit or a rejected one, the process stands at the 
 the status in X0, and when it traps in the shim or the guest, the process stands at the trap stub,
 which sets status 2 and branches to the exit word.  From there the runtime makes `exit_group`.
 `wasiElf_run` states this for every reply sequence and every fuel at which Talos's run of `_start`
-traps: the process's trace holds the layer events of the final world, each of which writes within
-the native cap's linear memory or is a `clock_gettime` into the timespec, and X0 holds the status.
-`wasiElf_footprint_with` takes the trap from a footprint premise for one reply sequence and the
-launch of the initial stack, which excludes a return of `_start` and every run that does not
-finish, and `wasiElf_footprint` takes it from a premise for every reply sequence and launch.
-The module's flat imports are those of calls of `shimCalls` whose stubs `flatStubs` lists, and
-`flatStub_sim` gives the simulation of each.  The startup
-routine makes no check of descriptor 3, so the launch grants no preopened directory.
+traps: the process's trace holds the startup's events and the layer events of the final world,
+each of which writes within the native cap's linear memory or is a `clock_gettime` into the
+timespec, and X0 holds the status.  `wasiElf_footprint_with` takes the trap from a footprint
+premise for the reply sequence after the startup's and the launch that the startup grants, which
+excludes a return of `_start` and every run that does not finish, and `wasiElf_footprint` takes
+it from a premise for every reply sequence and launch.  The module's flat imports
+are those of calls of `shimCalls` whose stubs `flatStubs` lists, and `flatStub_sim` gives the
+simulation of each.
 -/
 
 namespace Verified.ShimA64
@@ -124,16 +129,18 @@ theorem elf_zero {nb : Nat} {L : ElfLayout} {mem : UInt64 → UInt8}
     omega
   rw [e, this]
 
-/-- The executable of `genWasiElf` from its entry to `exit_group`, for every reply sequence `R` and
-every fuel at which Talos's run of `_start` from `nativeStore` under the shim's environment traps
-with the store `final` and the message `msg`: the run of `ProcReachWith` over
-`LeanExe.Linux.table` on the platform of the data segment and the initial stack reaches `SVC #0`
-with X8 at 94, its trace holds the layer events of the final world, each of which writes within
-the `cap` pages of linear memory or is a `clock_gettime` into the timespec, and X0 holds the
-accepted exit's status, 1 for a rejected exit, or 2 for a trap of the shim or of the guest.  The
-premises are the kernel's check of the file, its program headers, the module's imports, whose flat
-calls `calls` lie in `shimCalls`, a stack's room that is a multiple of 16 and holds
-`wasiStackBound`, the loader's placement of the file, Linux's initial stack of the arguments
+/-- The executable of `genWasiElf` from its entry to `exit_group`, for every reply sequence `R`.
+The run of `ProcReachWith` over `LeanExe.Linux.table` on the platform of the data segment and the
+initial stack reaches `SVC #0` with X8 at 94.  When the startup routine's outcome is `none`, its
+trace holds the startup's events and X0 holds 67.  After every other outcome, for a fuel at which
+Talos's run of `_start` from `nativeStore` traps with the store `final` and the message `msg`
+under the shim's environment of the launch that the outcome grants and of the replies after the
+startup's, the trace holds the startup's events and the layer events of the final world, each of
+which writes within the `cap` pages of linear memory or is a `clock_gettime` into the timespec,
+and X0 holds the accepted exit's status, 1 for a rejected exit, or 2 for a trap of the shim or of
+the guest.  The premises are the kernel's check of the file, its program headers, the module's
+imports, whose flat calls `calls` lie in `shimCalls`, a stack's room that is a multiple of 16 and
+holds `wasiStackBound`, the loader's placement of the file, Linux's initial stack of the arguments
 `args` and the environment `environ` at SP, the program counter at the entry, and an empty
 trace. -/
 theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
@@ -146,31 +153,39 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = [])
     {fuel : Nat} {final : Store (Observed LinuxWorld)} {msg : String}
-    (hres : Wasm.run fuel m k (nativeStore m cap nativeWorld) []
-      (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R calls) =
-        .Trap final msg) :
+    (hres : ∀ l₀ granted,
+      startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R = (l₀, some granted) →
+      Wasm.run fuel m k (nativeStore m cap nativeWorld) []
+        (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+          (fun j => R (l₀.length + j)) calls) = .Trap final msg) :
     ∃ q, ProcReachWith Linux.table R (wasiPlatform (wasiLayout m k room cap) p.core.sp top)
         (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
         some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-      q.trace = final.host.world.events.map A64.Event.sys ∧
-      (∀ e ∈ final.host.world.events,
-        WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
-      ((msg = exitTrap ∧ ∃ c, final.host.world.exited = some c ∧ q.core.x 0 = c) ∨
-        (msg = exitRejected ∧ q.core.x 0 = 1) ∨
-        ((msg = shimTrap ∨ msg = "unreachable" ∨ msg = "out of bounds memory access" ∨
-          msg = "integer divide by zero") ∧ q.core.x 0 = 2)) := by
+      match startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R with
+      | (l₀, none) => q.trace = l₀.map A64.Event.sys ∧ q.core.x 0 = 67
+      | (l₀, some _) =>
+        q.trace = (l₀ ++ final.host.world.events).map A64.Event.sys ∧
+        (∀ e ∈ final.host.world.events,
+          WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
+        ((msg = exitTrap ∧ ∃ c, final.host.world.exited = some c ∧ q.core.x 0 = c) ∨
+          (msg = exitRejected ∧ q.core.x 0 = 1) ∨
+          ((msg = shimTrap ∨ msg = "unreachable" ∨ msg = "out of bounds memory access" ∨
+            msg = "integer divide by zero") ∧ q.core.x 0 = 2)) := by
   obtain ⟨bytes, L, hg, -, hbyte⟩ := of_bytesOk hk
   have hL : wasiLayout m k room cap = L := by simp only [wasiLayout, hg]
+  have hWS : wasiScratch m k room cap = ⟨L.area + UInt64.ofNat (areaSize cap)⟩ := by
+    simp only [wasiScratch, hL]
   have hLS : wasiShimLayout m k room cap =
       shimLayout L.area ⟨L.area + UInt64.ofNat (areaSize cap)⟩ := by
     simp only [wasiShimLayout, wasiScratch, hL]
   rw [hL] at hseg ⊢
-  rw [hLS] at hres ⊢
+  simp only [hLS, hWS] at hres
+  rw [hLS, hWS]
   generalize hG : (⟨L.area + UInt64.ofNat (areaSize cap)⟩ : Scratch) = G at hres ⊢
   obtain ⟨prog, -, hprog, hLeq, hbound, hpre, -, -⟩ := gen_elfEntry hg
-  obtain ⟨stubs, gts, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem, hroom32, hok, hgt, hgl,
-    hen, hmg, hpg, hrdg, hwrg, hexg, htrg, hstsg, hfg, his, hall18, hall⟩ :=
+  obtain ⟨stubs, gts, sup, e, main, pre, rd, wr, ex, tr, sts, fns, himp', hmem, hroom32, hok,
+    hgt, hgl, hsu, hen, hmg, hpg, hrdg, hwrg, hexg, htrg, hstsg, hfg, his, hall18, hall⟩ :=
     gen_wasiProgram hprog
   -- the flat imports: one stub of `flatStubs` for each call of `calls`
   have hcallsEq : calls.map ABI.callImport = stubs.map (·.decl) := by
@@ -241,15 +256,15 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   have lm := wasiMain_length hmg
   rw [his] at hprogC hall
   have cm := CodeAt.split _ hprogC (n := 20) (by simp [lm])
-  have hall17 : (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns).all
+  have hall17 : (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ sup ++ fns).all
       Instr.keepsX17 = true := by
     rw [List.all_append, Bool.and_eq_true] at hall
     exact hall.2
   have hplen : prog.length = 20 +
-      (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns).length := by
+      (pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ sup ++ fns).length := by
     rw [his, List.length_append, lm]
   generalize hb :
-    pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ wasiStartup ++ fns = body
+    pre ++ rd ++ wr ++ ex ++ tr ++ errnoRoutine ++ sts ++ sup ++ fns = body
     at cm hall17 hall18 hplen
   have hA : (after (after elfExitWord 1) 20).toNat + 4 * body.length < 2 ^ 55 := by
     have : (after (after elfExitWord 1) 20).toNat = elfBase.toNat + 176 + 72 + 80 := by decide
@@ -280,8 +295,8 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   obtain ⟨fx1, gx3, hfx1, hgx3, rfl⟩ := exitStub_ok hexg
   obtain ⟨gt, hgt1, rfl⟩ := trapStub_ok htrg
   rw [← hb] at cAll
-  have c7 := CodeAt.split W cAll (n := 205 + sts.length)
-    (by simp [lr, lw, errnoRoutine, errnoTable, wasiStartup] <;> omega)
+  have c7 := CodeAt.split W cAll (n := 204 + sts.length + sup.length)
+    (by simp [lr, lw, errnoRoutine, errnoTable] <;> omega)
   have c6 := CodeAt.split W c7.1 (n := 204 + sts.length)
     (by simp [lr, lw, errnoRoutine, errnoTable] <;> omega)
   have c6s := CodeAt.split W c6.1 (n := 204) (by simp [lr, lw, errnoRoutine, errnoTable])
@@ -297,9 +312,9 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
   have lsts := (genStubs_code (j := 3) hstsg csts).1
   have hsend : stubsEnd (wasiFlatAt A) stubs = after A (20 + (204 + sts.length)) := by
     rw [stubsEnd_eq, wasiFlatAt, after_after, lsts, ← Nat.add_assoc]
-  have cfns : CodeAt W (after (stubsEnd (wasiFlatAt A) stubs) wasiStartup.length) fns := by
-    rw [hsend, after_after, show 20 + (204 + sts.length) + wasiStartup.length =
-      20 + (205 + sts.length) by simp [wasiStartup] <;> omega]
+  have cfns : CodeAt W (after (stubsEnd (wasiFlatAt A) stubs) sup.length) fns := by
+    rw [hsend, after_after, show 20 + (204 + sts.length) + sup.length =
+      20 + (204 + sts.length + sup.length) by omega]
     exact c7.2
   -- the run of the prefix
   have cpre0 := hWsub _ _ (CodeAt.cons.mp c1'.1).1
@@ -322,16 +337,10 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
         rw [hpc1, hjump]) (show elfEntry.toNat < 2 ^ 55 by decide)
     exact .next s1 (.next s2 (.refl _))
   have hPe := elfPlatform_le_wasi L p.core.sp top
-  -- the machine and its calls
-  let I : Launch := ⟨args, environ, false⟩
+  -- the machine's parameters
   let S : Shared :=
     { trapUnreachable := wasiTrapAt A, trapBounds := wasiTrapAt A, trapDiv := wasiTrapAt A,
       trapStack := wasiTrapAt A, cap, globalTypes := gts, byteStores := true }
-  have hRl : (fun j => R (([] : List Linux.Event).length + j)) = R :=
-    funext fun j => by simp
-  rw [← hRl] at hres
-  let M := shimMachine R L G I p.core.sp top [] calls W hdomW hkW hk18W hLL hGG elfExitWord
-    (cap * 65536)
   let need := wasiStackNeed m (m.funcs.length + 1)
   have h64 : m.memIs64 = false := memIs64_of_areaOk hok
   have hUm : (modulePlatform L G).normal (modulePlatform L G).uart = false := by
@@ -342,43 +351,6 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
     show areaSize cap + 5184 ≤ L.dataMem
     rw [hdm]
     omega
-  have hflat : ∀ c ∈ stubEntries (wasiFlatAt A) 3 stubs, ∃ imp hf,
-      m.imports[c.1]? = some imp ∧ M.env.funcs[c.1]? = some hf ∧
-      c.2.2 = (imp.params, imp.results) ∧
-      M.StubSim S (need c.1) imp.params imp.results hf c.2.1 := by
-    intro c hc
-    obtain ⟨i, hi, is', b, rfl, hgi, hci⟩ := (genStubs_code hstsg csts).2 c hc
-    have hic : i < calls.length := by omega
-    have himpi : m.imports[3 + i]? = some stubs[i].decl := by
-      rw [himp', List.getElem?_append_right (by simp [streamImports])]
-      simp [streamImports, hi]
-    have henvi : M.env.funcs[3 + i]? = some (sysFn arm64Flags (shimLayout L.area G) I
-        (fun j => R (([] : List Linux.Event).length + j)) calls[i]) := by
-      show (linuxEnv arm64Flags (shimLayout L.area G) I
-        (fun j => R (([] : List Linux.Event).length + j)) calls).funcs[3 + i]? = _
-      simp [linuxEnv, hic, Nat.add_comm]
-    have hdi : ABI.callImport calls[i] = stubs[i].decl := by
-      have := congrArg (fun l => l[i]?) hcallsEq
-      simpa [hic, hi] using this
-    refine ⟨stubs[i].decl, _, himpi, henvi, rfl, ?_⟩
-    exact flatStub_sim (hmem _ (List.getElem_mem hi)) (hsup _ (List.getElem_mem hic)) hdi S
-      (need (3 + i)) hgi hci hsvcW c5.2 hGb hdataW hUm (Nat.le_refl _)
-  have hcalls := wasi_calls_ok M (need := need) (flat := stubEntries (wasiFlatAt A) 3 stubs)
-    (by rw [himp']; rfl) h64
-    (fun _ => hUm) rfl
-    (readStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
-      (base := elfExitWord) (size := cap * 65536) S (need 0) hrdg c1'.2 hsvcW c5.2 hUm
-      (Nat.le_refl _))
-    (writeStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
-      (base := elfExitWord) (size := cap * 65536) S (need 1) hwrg c2.2 hsvcW c5.2 hUm)
-    (exitStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := [])
-      (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
-      (base := elfExitWord) (size := cap * 65536) S (need 2)
-      (is := [.subsImm 31 0 126, .bcond 3 fx1, .movz 0 1 0, .b gx3]) hexg c3.2)
-    hflat hfg cfns
-    (fun k f hle hf => wasiStackNeed_ok (definedFunc_of hle hf) _)
   -- the end of a run: the exit word, or the trap stub and then the exit word
   have hp0w : ProcReachWith Linux.table R (wasiPlatform L p.core.sp top)
       (fetchFrom p.core.mem elfEntry (elfWords L)) p p0 :=
@@ -420,7 +392,7 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
       show s2.x 0 = 2
       rw [x2, x01]
       decide
-  -- `main` up to the entry of `_start`
+  -- `main` up to the entry of the startup routine
   have hsp16 : (p0.core.sp - 16).toNat = p0.core.sp.toNat - 16 := by
     rw [toNat_sub_le (by show 16 ≤ _; omega)]
     rfl
@@ -428,174 +400,395 @@ theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len :
       (elfPlatform L).normal a = true := fun a h1 h2 => by
     simp only [elfPlatform, decide_eq_true_eq, UInt64.le_iff_toNat_le]
     exact ⟨h1, h2⟩
-  have hscrE : ∀ k < 8, (elfPlatform L).normal
-      (p0.core.x 17 + UInt64.ofNat (areaSize cap) + UInt64.ofNat k) = true := by
-    intro k hk
-    rw [h17, add_ofNat_add]
-    have e : (L.area + UInt64.ofNat (areaSize cap + k)).toNat =
-        L.area.toNat + areaSize cap + k := by
-      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.reducePow]
+  have hscrN : ∀ j < scratchSize, (elfPlatform L).normal (G.base + UInt64.ofNat j) = true := by
+    intro j hj
+    have e : (G.base + UInt64.ofNat j).toNat = L.area.toNat + areaSize cap + j := by
+      rw [UInt64.toNat_add, UInt64.toNat_ofNat', hGbase]
+      unfold scratchSize at hj
+      simp only [Nat.reducePow]
       omega
     apply hnormal
     · rw [e]
       omega
     · rw [e, hdm]
+      unfold scratchSize at hj
       omega
+  have hscrE : ∀ k < 8, (elfPlatform L).normal
+      (p0.core.x 17 + UInt64.ofNat (areaSize cap) + UInt64.ofNat k) = true := by
+    intro k hk
+    rw [h17, show L.area + UInt64.ofNat (areaSize cap) = G.base by rw [← hG]]
+    exact hscrN k (by unfold scratchSize; omega)
   obtain ⟨t0, rt0, pt0, x30t0, spt0, x18t0, x17t0, iot0, memt0⟩ :=
     run_wasiFront (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) hmg cm.1 pc0 hal
       (fun j hj => by
       rw [stack_main p0.core.sp (room + UInt64.ofNat scratchSize) j]
       exact hstk _ (by omega)) hscrE
-  have cst := hWsub _ _ (CodeAt.cons.mp c6.2).1
-  obtain ⟨t1, rt1, pt1, kt1, spt1, memt1, iot1⟩ :=
-    step_ret (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) (s := t0) (n := 30)
-    (by rw [pt0, hsend]; exact cst)
-  rw [x30t0] at pt1
-  obtain ⟨t, rt, pt, x30t, kt, spt, memt, iot⟩ :=
-    run_wasiStart (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) hmg cm.1 pt1
-  let q1 : Proc := { p0 with core := t }
-  have hq1 : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
-      (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q1 :=
-    ProcRunWith.ofReach f0 ((rt0.trans (rt1.trans rt)).le hPe)
-  have tx17 : t.x 17 = L.area := by rw [kt 17 (by decide), kt1, x17t0, h17]
-  have tx18 : t.x 18 = p0.core.sp - 16 - room := by rw [kt 18 (by decide), kt1, x18t0]
-  have tsp : t.sp = p0.core.sp - 16 := by rw [spt, spt1, spt0]
-  have tmem : t.mem = store64 (store64 p.core.mem (slotAddr (p0.core.sp - 16) 0) (p0.core.x 30))
-      G.base p.core.sp := by
-    rw [memt, memt1, memt0, hmem0, hm1, h17, hx20, hx21, ← hG]
-  have tio : t.io = p.core.io := by rw [iot, iot1, iot0, hio0]; rfl
-  have hlim : (p0.core.sp - 16 - room).toNat = p0.core.sp.toNat - 16 - room.toNat := by
-    rw [toNat_sub_le (by rw [hsp16]; omega), hsp16]
-  have hd1 : (t.sp - t.x 18).toNat = room.toNat := by
-    rw [tsp, tx18, toNat_sub_le (by rw [hlim, hsp16]; omega), hlim, hsp16]
-    omega
-  have hareaG : G.base.toNat = L.area.toNat + areaSize cap := hGbase
-  have hstk1 : StackOk (modulePlatform L G) t := by
-    refine ⟨by rw [tsp]; exact sub_aligned (k := 16) hal (by decide), ?_, ?_⟩
-    · rw [tsp, tx18, hlim, hsp16]
-      unfold areaSize at hsp
-      omega
-    · intro j hj
-      rw [hd1] at hj
-      have e : (t.x 18 + UInt64.ofNat j).toNat = p0.core.sp.toNat - 16 - room.toNat + j := by
-        rw [UInt64.toNat_add, UInt64.toNat_ofNat', tx18, hlim]
-        simp only [Nat.reducePow]
-        omega
-      refine modulePlatform_normal (hnormal _ (by rw [e]; omega) (by rw [e, hdm]; omega))
-        (.inr (by rw [e, hareaG]; unfold scratchSize; omega))
-  -- the store at the entry of `_start`
   have hslot : slotAddr (p0.core.sp - 16) 0 = p0.core.sp - 16 := by simp [slotAddr]
-  rw [hslot] at tmem
+  have tmem0 : t0.mem = store64 (store64 p.core.mem (p0.core.sp - 16) (p0.core.x 30))
+      G.base p.core.sp := by
+    rw [memt0, hmem0, hm1, h17, hx20, hx21, ← hG, hslot]
+  have hareaG : G.base.toNat = L.area.toNat + areaSize cap := hGbase
   have hGtop : G.base.toNat + 5184 + 16 + room.toNat ≤ p0.core.sp.toNat := by
     rw [hareaG, hsp]
     omega
   have hsp32 : p0.core.sp.toNat ≤ 2 ^ 32 := by
     rw [hsp]
     exact hLL'
-  have hbelowG : ∀ a : UInt64, a.toNat < G.base.toNat → t.mem a = p.core.mem a := by
+  have hbelowG0 : ∀ a : UInt64, a.toNat < G.base.toNat → t0.mem a = p.core.mem a := by
     intro a ha
-    rw [tmem, store64_other _ _ _ _ (not_within8 (.inl ha) (by omega)),
+    rw [tmem0, store64_other _ _ _ _ (not_within8 (.inl ha) (by omega)),
       store64_other _ _ _ _ (not_within8 (.inl (by rw [hsp16]; omega)) (by rw [hsp16]; omega))]
-  have habove32 : ∀ a : UInt64, 2 ^ 32 ≤ a.toNat → t.mem a = p.core.mem a := by
+  have habove0 : ∀ a : UInt64, 2 ^ 32 ≤ a.toNat → t0.mem a = p.core.mem a := by
     intro a ha
-    rw [tmem, store64_other _ _ _ _ (not_within8 (.inr (by omega)) (by omega)),
+    rw [tmem0, store64_other _ _ _ _ (not_within8 (.inr (by omega)) (by omega)),
       store64_other _ _ _ _ (not_within8 (.inr (by rw [hsp16]; omega)) (by rw [hsp16]; omega))]
-  have hzero : ∀ j, 8 ≤ j → j < 1040 → t.mem (G.base + UInt64.ofNat j) = 0 := by
+  have hGj : ∀ j, j < scratchSize → (G.base + UInt64.ofNat j).toNat = G.base.toNat + j := by
+    intro j hj
+    rw [UInt64.toNat_add, UInt64.toNat_ofNat']
+    unfold scratchSize at hj
+    simp only [Nat.reducePow]
+    omega
+  have hzero0 : ∀ j, 8 ≤ j → j < 1040 → t0.mem (G.base + UInt64.ofNat j) = 0 := by
     intro j h1 h2
-    have e : (G.base + UInt64.ofNat j).toNat = G.base.toNat + j := by
-      rw [UInt64.toNat_add, UInt64.toNat_ofNat']
-      simp only [Nat.reducePow]
-      omega
-    rw [tmem, store64_other _ _ _ _ (not_within8 (.inr (by rw [e]; omega)) (by omega)),
+    have e := hGj j (by unfold scratchSize; omega)
+    rw [tmem0, store64_other _ _ _ _ (not_within8 (.inr (by rw [e]; omega)) (by omega)),
       store64_other _ _ _ _ (not_within8 (.inl (by rw [e, hsp16]; omega))
         (by rw [hsp16]; omega)), ← hG]
     show p.core.mem (L.area + UInt64.ofNat (areaSize cap) + UInt64.ofNat j) = 0
     rw [add_ofNat_add]
     exact elf_zero hl hseg (by rw [hdf]; omega) (by rw [hdm]; omega) (by omega)
-  have hsr1 : M.SR S.cap S.globalTypes (nativeStore m cap nativeWorld) q1 := by
-    refine ⟨StoreRel.mapHost (storeRel_init (modulePlatform L G) hok hgt hgl (fun j hj => ?_)
-      (fun j hj => ?_) ?_) _, f0, tx17,
-      ?_, ⟨by show p0.trace = _; rw [tr0]; rfl, fun e he => nomatch he⟩, ?_⟩
-    · show t.mem (t.x 17 + UInt64.ofNat j) = _
-      have hlt : (L.area + UInt64.ofNat j).toNat < G.base.toNat := by
+  have hsaved0 : load64 t0.mem G.base = p.core.sp := by
+    rw [tmem0]
+    exact load64_store64_same _ _ _
+  -- from the return of the startup routine to the end of the run
+  have cont : ∀ (l₀ : List Linux.Event) (granted : Bool) (pS : Proc),
+      startup (needsCheck (m.imports.drop 3)) G R = (l₀, some granted) →
+      ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords L)) p0 pS →
+      pS.fpcr = fpcrValue → pS.core.pc = after A 15 → pS.core.sp = t0.sp →
+      pS.core.x 17 = t0.x 17 → pS.core.x 18 = t0.x 18 → pS.core.io = t0.io →
+      pS.trace = l₀.map A64.Event.sys →
+      (∀ a : UInt64, a ≠ G.base + 8 → a ≠ G.base + 19 → a ≠ G.base + 1080 →
+        a ≠ G.base + 1081 → pS.core.mem a = t0.mem a) →
+      pS.core.mem (G.base + 8) = (if granted then 1 else 0) →
+      pS.core.mem (G.base + 19) = (if granted then 1 else 0) →
+      ∃ q, ProcReachWith Linux.table R (wasiPlatform L p.core.sp top)
+          (fetchFrom p.core.mem elfEntry (elfWords L)) p q ∧
+        fetchFrom p.core.mem elfEntry (elfWords L) q.core.pc = some svcWord ∧
+        q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
+        q.trace = (l₀ ++ final.host.world.events).map A64.Event.sys ∧
+        (∀ e ∈ final.host.world.events, WritesNative (shimLayout L.area G) (cap * 65536) e) ∧
+        ((msg = exitTrap ∧ ∃ c, final.host.world.exited = some c ∧ q.core.x 0 = c) ∨
+          (msg = exitRejected ∧ q.core.x 0 = 1) ∨
+          ((msg = shimTrap ∨ msg = "unreachable" ∨ msg = "out of bounds memory access" ∨
+            msg = "integer divide by zero") ∧ q.core.x 0 = 2)) := by
+    intro l₀ granted pS hsuS hrunS hfS hpcS hspS h17S h18S hioS htrS hmS hflS hhS
+    -- the machine and its calls
+    let I : Launch := ⟨args, environ, granted⟩
+    let M := shimMachine R L G I p.core.sp top l₀ calls W hdomW hkW hk18W hLL hGG elfExitWord
+      (cap * 65536)
+    have hflat : ∀ c ∈ stubEntries (wasiFlatAt A) 3 stubs, ∃ imp hf,
+        m.imports[c.1]? = some imp ∧ M.env.funcs[c.1]? = some hf ∧
+        c.2.2 = (imp.params, imp.results) ∧
+        M.StubSim S (need c.1) imp.params imp.results hf c.2.1 := by
+      intro c hc
+      obtain ⟨i, hi, is', b, rfl, hgi, hci⟩ := (genStubs_code hstsg csts).2 c hc
+      have hic : i < calls.length := by omega
+      have himpi : m.imports[3 + i]? = some stubs[i].decl := by
+        rw [himp', List.getElem?_append_right (by simp [streamImports])]
+        simp [streamImports, hi]
+      have henvi : M.env.funcs[3 + i]? = some (sysFn arm64Flags (shimLayout L.area G) I
+          (fun j => R (l₀.length + j)) calls[i]) := by
+        show (linuxEnv arm64Flags (shimLayout L.area G) I
+          (fun j => R (l₀.length + j)) calls).funcs[3 + i]? = _
+        simp [linuxEnv, hic, Nat.add_comm]
+      have hdi : ABI.callImport calls[i] = stubs[i].decl := by
+        have := congrArg (fun l => l[i]?) hcallsEq
+        simpa [hic, hi] using this
+      refine ⟨stubs[i].decl, _, himpi, henvi, rfl, ?_⟩
+      exact flatStub_sim (hmem _ (List.getElem_mem hi)) (hsup _ (List.getElem_mem hic)) hdi S
+        (need (3 + i)) hgi hci hsvcW c5.2 hGb hdataW hUm (Nat.le_refl _)
+    have hcalls := wasi_calls_ok M (need := need) (flat := stubEntries (wasiFlatAt A) 3 stubs)
+      (by rw [himp']; rfl) h64
+      (fun _ => hUm) rfl
+      (readStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top) (l₀ := l₀)
+        (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL) (hG := hGG)
+        (base := elfExitWord) (size := cap * 65536) S (need 0) hrdg c1'.2 hsvcW c5.2 hUm
+        (Nat.le_refl _))
+      (writeStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top)
+        (l₀ := l₀) (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL)
+        (hG := hGG) (base := elfExitWord) (size := cap * 65536) S (need 1) hwrg c2.2 hsvcW c5.2
+        hUm)
+      (exitStub_sim (R := R) (L := L) (G := G) (I := I) (sp₀ := p.core.sp) (top := top)
+        (l₀ := l₀) (calls := calls) (code := W) (hdom := hdomW) (hk := hkW) (hL := hLL)
+        (hG := hGG) (base := elfExitWord) (size := cap * 65536) S (need 2)
+        (is := [.subsImm 31 0 126, .bcond 3 fx1, .movz 0 1 0, .b gx3]) hexg c3.2)
+      hflat hfg cfns
+      (fun k f hle hf => wasiStackNeed_ok (definedFunc_of hle hf) _)
+    -- `main` from the return of the startup routine to the entry of `_start`
+    obtain ⟨t, rt, pt, x30t, kt, spt, memt, iot⟩ :=
+      run_wasiStart (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) hmg cm.1 hpcS
+    let q1 : Proc := { pS with core := t }
+    have hq1 : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q1 :=
+      ProcRunWith.trans hdom' hrunS (ProcRunWith.ofReach hfS (rt.le hPe))
+    have tx17 : t.x 17 = L.area := by rw [kt 17 (by decide), h17S, x17t0, h17]
+    have tx18 : t.x 18 = p0.core.sp - 16 - room := by rw [kt 18 (by decide), h18S, x18t0]
+    have tsp : t.sp = p0.core.sp - 16 := by rw [spt, hspS, spt0]
+    have tio : t.io = p.core.io := by rw [iot, hioS, iot0, hio0]; rfl
+    have hlim : (p0.core.sp - 16 - room).toNat = p0.core.sp.toNat - 16 - room.toNat := by
+      rw [toNat_sub_le (by rw [hsp16]; omega), hsp16]
+    have hd1 : (t.sp - t.x 18).toNat = room.toNat := by
+      rw [tsp, tx18, toNat_sub_le (by rw [hlim, hsp16]; omega), hlim, hsp16]
+      omega
+    have hstk1 : StackOk (modulePlatform L G) t := by
+      refine ⟨by rw [tsp]; exact sub_aligned (k := 16) hal (by decide), ?_, ?_⟩
+      · rw [tsp, tx18, hlim, hsp16]
+        unfold areaSize at hsp
+        omega
+      · intro j hj
+        rw [hd1] at hj
+        have e : (t.x 18 + UInt64.ofNat j).toNat = p0.core.sp.toNat - 16 - room.toNat + j := by
+          rw [UInt64.toNat_add, UInt64.toNat_ofNat', tx18, hlim]
+          simp only [Nat.reducePow]
+          omega
+        refine modulePlatform_normal (hnormal _ (by rw [e]; omega) (by rw [e, hdm]; omega))
+          (.inr (by rw [e, hareaG]; unfold scratchSize; omega))
+    -- the memory at the entry of `_start`: the startup routine wrote only the scratch's flag,
+    -- the byte of descriptor 3, and the path buffer
+    have hne : ∀ j, j < scratchSize → ∀ i, i < scratchSize → i ≠ j →
+        G.base + UInt64.ofNat i ≠ G.base + UInt64.ofNat j := fun j hj i hi h e => by
+      have := congrArg UInt64.toNat e
+      rw [hGj i hi, hGj j hj] at this
+      omega
+    have hmS' : ∀ a : UInt64, a.toNat < G.base.toNat ∨ G.base.toNat + 1082 ≤ a.toNat →
+        t.mem a = t0.mem a := by
+      intro a ha
+      rw [memt]
+      have hG8 : (G.base + 8).toNat = G.base.toNat + 8 := hGj 8 (by decide)
+      have hG19 : (G.base + 19).toNat = G.base.toNat + 19 := hGj 19 (by decide)
+      have hG80 : (G.base + 1080).toNat = G.base.toNat + 1080 := hGj 1080 (by decide)
+      have hG81 : (G.base + 1081).toNat = G.base.toNat + 1081 := hGj 1081 (by decide)
+      refine hmS a ?_ ?_ ?_ ?_ <;> intro e <;> have := congrArg UInt64.toNat e <;> omega
+    have hbelowG : ∀ a : UInt64, a.toNat < G.base.toNat → t.mem a = p.core.mem a :=
+      fun a ha => by rw [hmS' a (.inl ha), hbelowG0 a ha]
+    have habove32 : ∀ a : UInt64, 2 ^ 32 ≤ a.toNat → t.mem a = p.core.mem a :=
+      fun a ha => by
+        rw [hmS' a (.inr (by omega)), habove0 a ha]
+    have hsr1 : M.SR S.cap S.globalTypes (nativeStore m cap nativeWorld) q1 := by
+      refine ⟨StoreRel.mapHost (storeRel_init (modulePlatform L G) hok hgt hgl (fun j hj => ?_)
+        (fun j hj => ?_) ?_) _, hfS, tx17,
+        ?_, ⟨by show pS.trace = (l₀ ++ []).map A64.Event.sys; rw [htrS, List.append_nil],
+          fun e he => nomatch he⟩, ?_⟩
+      · show t.mem (t.x 17 + UInt64.ofNat j) = _
+        have hlt : (L.area + UInt64.ofNat j).toNat < G.base.toNat := by
+          rw [UInt64.toNat_add, UInt64.toNat_ofNat', hareaG]
+          simp only [Nat.reducePow]
+          omega
+        rw [tx17, hbelowG _ hlt, ← hm1, ← hmem0]
+        exact hdata j hj
+      · show (modulePlatform L G).normal (t.x 17 + UInt64.ofNat j) = true
+        rw [tx17]
+        refine modulePlatform_normal (hamap j hj) (.inl ?_)
         rw [UInt64.toNat_add, UInt64.toNat_ofNat', hareaG]
         simp only [Nat.reducePow]
         omega
-      rw [tx17, hbelowG _ hlt, ← hm1, ← hmem0]
-      exact hdata j hj
-    · show (modulePlatform L G).normal (t.x 17 + UInt64.ofNat j) = true
-      rw [tx17]
-      refine modulePlatform_normal (hamap j hj) (.inl ?_)
-      rw [UInt64.toNat_add, UInt64.toNat_ofNat', hareaG]
-      simp only [Nat.reducePow]
+      · show (t.x 17).toNat + areaSize cap ≤ (t.x 18).toNat
+        rw [tx17, tx18, hlim, ← hareaG]
+        omega
+      · show L.area.toNat + areaSize cap + scratchSize ≤ (t.x 18).toNat
+        rw [tx18, hlim, hsp]
+        unfold scratchSize
+        omega
+      · show ScratchHolds G I p.core.sp top [] t.mem
+        obtain ⟨hon, hpo⟩ := openNumbers_nil I
+        refine ⟨?_, hstack.congr habove32, ?_, fun d hd => ?_⟩
+        · show load64 t.mem G.base = p.core.sp
+          rw [← hsaved0]
+          refine load64_congr fun i hi => ?_
+          rw [memt]
+          exact hmS _ (hne 8 (by decide) i (by unfold scratchSize; omega) (by omega))
+            (hne 19 (by decide) i (by unfold scratchSize; omega) (by omega))
+            (hne 1080 (by decide) i (by unfold scratchSize; omega) (by omega))
+            (hne 1081 (by decide) i (by unfold scratchSize; omega) (by omega))
+        · show t.mem (G.base + 8) = _
+          rw [hpo, memt]
+          exact hflS
+        · show t.mem (G.base + UInt64.ofNat (16 + d)) = _
+          rw [hon, memt]
+          unfold descriptorLimit at hd
+          by_cases h3 : d = 3
+          · subst h3
+            show pS.core.mem (G.base + 19) = _
+            rw [hhS]
+            show (if granted then (1 : UInt8) else 0) =
+              if UInt64.ofNat 3 ∈ (if granted = true then [(3 : UInt64)] else []) then 1 else 0
+            cases granted <;> decide
+          · have hnin : UInt64.ofNat d ∉ (if I.preopen then [(3 : UInt64)] else []) := by
+              intro hm
+              split at hm
+              · rw [List.mem_singleton] at hm
+                apply h3
+                have := congrArg UInt64.toNat hm
+                simp only [UInt64.toNat_ofNat', UInt64.reduceToNat, Nat.reducePow] at this
+                omega
+              · exact List.not_mem_nil hm
+            rw [ite_eq_right hnin]
+            have hb : G.base + UInt64.ofNat (16 + d) ≠ G.base + 8 :=
+              hne 8 (by decide) (16 + d) (by unfold scratchSize; omega) (by omega)
+            have hb19 : G.base + UInt64.ofNat (16 + d) ≠ G.base + 19 :=
+              hne 19 (by decide) (16 + d) (by unfold scratchSize; omega) (by omega)
+            have hb80 : G.base + UInt64.ofNat (16 + d) ≠ G.base + 1080 :=
+              hne 1080 (by decide) (16 + d) (by unfold scratchSize; omega) (by omega)
+            have hb81 : G.base + UInt64.ofNat (16 + d) ≠ G.base + 1081 :=
+              hne 1081 (by decide) (16 + d) (by unfold scratchSize; omega) (by omega)
+            rw [hmS _ hb hb19 hb80 hb81]
+            exact hzero0 (16 + d) (by omega) (by omega)
+    -- the call of `_start`
+    obtain ⟨f, fis, hmemf, hpr, hgen, hcd⟩ := gen_functions W (sigOf_wasiTable _ _ _ _ _ _) hfg
+      cfns _ (entryIn_mem hen)
+    obtain ⟨hle, hf⟩ := mem_wasiFuncs hmemf
+    simp only [Prod.mk.injEq] at hpr
+    obtain ⟨hpar, hrsl⟩ := hpr
+    have hout := Machine.run_outcome M hle h64 hf hgen hcd (hcalls fuel)
+      (wasiStackNeed_ok (definedFunc_of hle hf) _) (nativeStore m cap nativeWorld) [] q1
+      (by rw [← hpar]; exact Nat.le_refl _) (by rw [← hpar]; exact trivial) pt hstk1 hsr1
+      (by rw [← hpar]; exact ⟨by simp, fun i hi => by simp at hi⟩)
+    rw [← hpar, ← hrsl] at hout
+    have hres' : Wasm.run fuel m (k, e, ([] : List ValueType), ([] : List ValueType)).1
+        (nativeStore m cap nativeWorld) [] M.env = .Trap final msg := hres l₀ granted hsuS
+    unfold Machine.CallOutcome at hout
+    rw [hres'] at hout
+    rcases hout with ⟨hov, -⟩ | hro
+    · change (t.sp - t.x 18).toNat < wasiStackBound m k at hov
       omega
-    · show (t.x 17).toNat + areaSize cap ≤ (t.x 18).toNat
-      rw [tx17, tx18, hlim, ← hareaG]
+    obtain ⟨q', rq', ioq', hend, hfq', htr'⟩ := hro
+    have hrun' : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q' :=
+      ProcRunWith.trans hdom' hq1 (ProcRunWith.mono hWsub rq')
+    have hio' : q'.core.io = p.core.io := by
+      change q'.core.io = t.io at ioq'
+      rw [ioq', tio]
+    obtain ⟨htrq, hwq⟩ := htr'
+    rcases hend with hta | hse
+    · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := trapAt q' hfq' hrun' (by
+        rcases hta with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, h⟩ <;> exact h)
+      refine ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq, .inr (.inr ⟨?_, x0z⟩)⟩
+      rcases hta with ⟨h, -⟩ | ⟨h, -⟩ | ⟨h, -⟩
+      · exact .inr (.inl h)
+      · exact .inr (.inr (.inl h))
+      · exact .inr (.inr (.inr h))
+    rcases hse with ⟨hm, c, hc, hpcq, hx0⟩ | ⟨hm, hpcq, hx0⟩ | ⟨hm, hpcq⟩
+    · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := exitAt q' hrun' hpcq
+      exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
+        .inl ⟨hm, c, hc, by rw [x0z, hx0]⟩⟩
+    · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := exitAt q' hrun' hpcq
+      exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
+        .inr (.inl ⟨hm, by rw [x0z, hx0]⟩)⟩
+    · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := trapAt q' hfq' hrun' hpcq
+      exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
+        .inr (.inr ⟨.inl hm, x0z⟩)⟩
+  -- the startup routine
+  have hrun0 : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
+      (fetchFrom p.core.mem elfEntry (elfWords L)) p0 { p0 with core := t0 } :=
+    ProcRunWith.ofReach f0 (rt0.le hPe)
+  have cst : CodeAt (fetchFrom p.core.mem elfEntry (elfWords L)) (stubsEnd (wasiFlatAt A) stubs)
+      sup := by
+    rw [hsend]
+    exact fun i hi => hWsub _ _ (c6.2 i hi)
+  cases hc : needsCheck (m.imports.drop 3)
+  · -- no check: the routine is a return
+    rw [wasiStartupCode, hc, ite_eq_right (by decide)] at hsu
+    obtain rfl := Except.ok.inj hsu
+    have hsuF : startup (needsCheck (m.imports.drop 3)) G R = ([], some false) := by
+      rw [startup, hc, ite_eq_right (by decide)]
+    obtain ⟨t1, rt1, pt1, kt1, spt1, memt1, iot1⟩ :=
+      step_ret (elfPlatform L) (fetchFrom p.core.mem elfEntry (elfWords L)) (s := t0) (n := 30)
+      (by rw [pt0]; exact (CodeAt.cons.mp cst).1)
+    rw [x30t0] at pt1
+    obtain ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩ := cont [] false { p0 with core := t1 } hsuF
+      (ProcRunWith.trans hdom' hrun0 (ProcRunWith.ofReach (p := { p0 with core := t0 }) f0
+        (rt1.le hPe))) f0 pt1 spt1
+      (kt1 17) (kt1 18) iot1 (by show p0.trace = _; rw [tr0]; rfl)
+      (fun a _ _ _ _ => by show t1.mem a = _; rw [memt1])
+      (by show t1.mem _ = _; rw [memt1]; exact hzero0 8 (by decide) (by decide))
+      (by show t1.mem _ = _; rw [memt1]; exact hzero0 19 (by decide) (by decide))
+    rw [show startup false G R = ([], some false) from rfl]
+    exact ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩
+  · -- the check of descriptor 3
+    rw [wasiStartupCode, hc, ite_eq_left rfl] at hsu
+    have hGp : p0.core.x 17 + UInt64.ofNat (areaSize cap) = G.base := by rw [h17, hGb]
+    have hUw : (wasiPlatform L p.core.sp top).normal (wasiPlatform L p.core.sp top).uart =
+        false := by
+      have hab := hstack.above
+      have hu : (elfPlatform L).uart = 0 := rfl
+      show ((elfPlatform L).normal (elfPlatform L).uart ||
+        decide (p.core.sp ≤ (elfPlatform L).uart ∧ (elfPlatform L).uart < top)) = false
+      rw [hU, hu, Bool.false_or, decide_eq_false_iff_not]
+      intro h
+      have := UInt64.le_iff_toNat_le.mp h.1
+      simp only [UInt64.toNat_zero] at this
       omega
-    · show L.area.toNat + areaSize cap + scratchSize ≤ (t.x 18).toNat
-      rw [tx18, hlim, hsp]
-      unfold scratchSize
-      omega
-    · show ScratchHolds G I p.core.sp top [] t.mem
-      refine ⟨?_, hstack.congr habove32, ?_, fun d hd => ?_⟩
-      · show load64 t.mem G.base = p.core.sp
-        rw [tmem]
-        exact load64_store64_same _ _ _
-      · exact hzero 8 (by decide) (by decide)
-      · have hn : UInt64.ofNat d ∉ openNumbers I [] := by simp [openNumbers, Linux.openAfter, I]
-        rw [if_neg hn]
-        exact hzero (16 + d) (by omega) (by unfold descriptorLimit at hd; omega)
-  -- the call of `_start`
-  obtain ⟨f, fis, hmemf, hpr, hgen, hcd⟩ := gen_functions W (sigOf_wasiTable _ _ _ _ _ _) hfg
-    cfns _ (entryIn_mem hen)
-  obtain ⟨hle, hf⟩ := mem_wasiFuncs hmemf
-  simp only [Prod.mk.injEq] at hpr
-  obtain ⟨hpar, hrsl⟩ := hpr
-  have hout := Machine.run_outcome M hle h64 hf hgen hcd (hcalls fuel)
-    (wasiStackNeed_ok (definedFunc_of hle hf) _) (nativeStore m cap nativeWorld) [] q1
-    (by rw [← hpar]; exact Nat.le_refl _) (by rw [← hpar]; exact trivial) pt hstk1 hsr1
-    (by rw [← hpar]; exact ⟨by simp, fun i hi => by simp at hi⟩)
-  rw [← hpar, ← hrsl] at hout
-  have hres' : Wasm.run fuel m (k, e, ([] : List ValueType), ([] : List ValueType)).1
-      (nativeStore m cap nativeWorld) [] M.env = .Trap final msg := hres
-  unfold Machine.CallOutcome at hout
-  rw [hres'] at hout
-  rcases hout with ⟨hov, -⟩ | hro
-  · change (t.sp - t.x 18).toNat < wasiStackBound m k at hov
-    omega
-  obtain ⟨q', rq', ioq', hend, hfq', htr'⟩ := hro
-  have hrun' : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
-      (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q' :=
-    ProcRunWith.trans hdom' hq1 (ProcRunWith.mono hWsub rq')
-  have hio' : q'.core.io = p.core.io := by
-    change q'.core.io = t.io at ioq'
-    rw [ioq', tio]
-  obtain ⟨htrq, hwq⟩ := htr'
-  rw [List.nil_append] at htrq
-  rcases hend with hta | hse
-  · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := trapAt q' hfq' hrun' (by
-      rcases hta with ⟨-, h⟩ | ⟨-, h⟩ | ⟨-, h⟩ <;> exact h)
-    refine ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq, .inr (.inr ⟨?_, x0z⟩)⟩
-    rcases hta with ⟨h, -⟩ | ⟨h, -⟩ | ⟨h, -⟩
-    · exact .inr (.inl h)
-    · exact .inr (.inr (.inl h))
-    · exact .inr (.inr (.inr h))
-  rcases hse with ⟨hm, c, hc, hpcq, hx0⟩ | ⟨hm, hpcq, hx0⟩ | ⟨hm, hpcq⟩
-  · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := exitAt q' hrun' hpcq
-    exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
-      .inl ⟨hm, c, hc, by rw [x0z, hx0]⟩⟩
-  · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := exitAt q' hrun' hpcq
-    exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
-      .inr (.inl ⟨hm, by rw [x0z, hx0]⟩)⟩
-  · obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := trapAt q' hfq' hrun' hpcq
-    exact ⟨z, rz, cz, x8z, by rw [iz, hio'], by rw [tz, htrq], hwq,
-      .inr (.inr ⟨.inl hm, x0z⟩)⟩
+    have hscrW : ∀ j < scratchSize, (wasiPlatform L p.core.sp top).normal
+        (G.base + UInt64.ofNat j) = true := fun j hj => hPe.normal _ (hscrN j hj)
+    have hlen0 : ({ p0 with core := t0 } : Proc).trace.length = 0 := by
+      show p0.trace.length = 0
+      rw [tr0]
+      rfl
+    obtain ⟨q, rq, fq, ioq, trq, hq⟩ := run_preopenCheck (T := Linux.table) (R := R)
+      (P := wasiPlatform L p.core.sp top) hsu cst
+      (OpsAt.drop (l1 := [.ins (.movz 8 63 0)]) hrdC) (by decide) (by decide) hdom' hbase' hUw
+      (p := { p0 with core := t0 }) pt0 f0
+      (by show (t0.x 30).toNat < _; rw [x30t0]; exact hdom' _ _ (cm.1 15 (by rw [lm]; decide)))
+      (G := G.base) (by show t0.x 17 + _ = _; rw [x17t0, hGp]) hlen0
+      (fun j hj => hscrW _ (by unfold scratchSize; omega)) (hscrW 8 (by decide))
+      (hscrW 19 (by decide))
+    have hsuT : startup (needsCheck (m.imports.drop 3)) G R = preopenRun (G.base + 1080) R 0 := by
+      rw [startup, hc, ite_eq_left rfl]
+      rfl
+    have hrunq : ProcRunWith Linux.table R (wasiPlatform L p.core.sp top)
+        (fetchFrom p.core.mem elfEntry (elfWords L)) p0 q :=
+      ProcRunWith.trans hdom' hrun0 (ProcRunWith.ofWith rq fq)
+    rw [show startup true G R = preopenRun (G.base + 1080) R 0 from rfl]
+    generalize hpr : preopenRun (G.base + 1080) R 0 = pr at trq hq hsuT ⊢
+    rcases pr with ⟨l₀, outcome⟩
+    have htrq : q.trace = l₀.map A64.Event.sys := by
+      rw [trq]
+      show p0.trace ++ _ = _
+      rw [tr0, List.nil_append]
+    cases outcome with
+    | none =>
+      obtain ⟨pq, xq⟩ := hq
+      obtain ⟨z, rz, cz, x8z, iz, tz, x0z⟩ := exitAt q hrunq pq
+      refine ⟨z, rz, cz, x8z, ?_, by rw [tz, htrq], by rw [x0z, xq]⟩
+      rw [iz, ioq]
+      show t0.io = _
+      rw [iot0, hio0]
+      rfl
+    | some granted =>
+      obtain ⟨pq, spq, x17q, x18q, mq⟩ := hq
+      have hpcq : q.core.pc = after A 15 := by rw [pq]; exact x30t0
+      exact cont l₀ granted q hsuT hrunq fq hpcq spq x17q x18q ioq htrq
+        (fun a h8 h19 h80 h81 => by
+          rw [mq]
+          exact preopenMem_other _ _ _ h80 h81 h8 h19)
+        (by
+          rw [mq, preopenMem_flag]
+          cases granted
+          · exact hzero0 8 (by decide) (by decide)
+          · rfl)
+        (by
+          rw [mq, preopenMem_held3]
+          cases granted
+          · exact hzero0 19 (by decide) (by decide)
+          · rfl)
 
-/-- The executable of `genWasiElf` reaches `exit_group` for the reply sequence `R` when Talos's
-runs of `_start` from `nativeStore` under the shim's environment with `R` and the module's flat
-calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
-fuel, for arm64's open flags and the launch `⟨args, environ, false⟩`.  The conclusion is that of
-`wasiElf_footprint`. -/
+/-- The executable of `genWasiElf` reaches `exit_group` for the reply sequence `R` when, after
+every outcome `(l₀, some granted)` of the startup routine, Talos's runs of `_start` from
+`nativeStore` under the shim's environment with the module's flat calls `calls`, which lie in
+`shimCalls`, have the footprint of the action `action` with enough fuel, for arm64's open flags,
+the launch `⟨args, environ, granted⟩`, and the replies of `R` after the startup's.  The
+conclusion is that of `wasiElf_footprint`. -/
 theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
@@ -603,11 +796,14 @@ theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat
     (hroom16 : room.toNat % 16 = 0) (hroom : wasiStackBound m k ≤ room.toNat)
     {action : Action Unit} {aborts : Bool}
     (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)} {top : UInt64}
-    (hfoot : ∃ bound, ∀ fuel ≥ bound,
-      Footprint arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R action
-        nativeWorld aborts
-        (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
-          (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R calls)))
+    (hfoot : ∀ l₀ granted,
+      startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R = (l₀, some granted) →
+      ∃ bound, ∀ fuel ≥ bound,
+        Footprint arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+          (fun j => R (l₀.length + j)) action nativeWorld aborts
+          (Wasm.run fuel m k (nativeStore m cap nativeWorld) []
+            (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+              (fun j => R (l₀.length + j)) calls)))
     (hl : ElfLoaded (byteAt nb) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -615,31 +811,50 @@ theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat
         (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
         some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧
-        Images arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ [] T ls ∧
-        Carried R 0 ls ∧
-        (∀ e ∈ ls, WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
-        ((∃ c, Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
-          (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
-          (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
-          (aborts = true ∧ (∃ residual,
-            Prefix (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-              action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) := by
-  obtain ⟨bound, hb⟩ := hfoot
+      match startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R with
+      | (l₀, none) => q.trace = l₀.map A64.Event.sys ∧ q.core.x 0 = 67
+      | (l₀, some granted) =>
+        ∃ T ls w, q.trace = (l₀ ++ ls).map A64.Event.sys ∧
+          Images arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩ [] T ls ∧
+          Carried R l₀.length ls ∧
+          (∀ e ∈ ls, WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
+          ((∃ c, Exec (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
+            (aborts = true ∧ (∃ residual,
+              Prefix (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                  ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+                action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) := by
+  generalize hsu : startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R = su
+  rcases su with ⟨l₀, _ | granted⟩
+  · obtain ⟨q, rq, cq, x8q, ioq, hq⟩ := wasiElf_run (fuel := 0)
+      (final := nativeStore m cap nativeWorld) (msg := "") hk hseg himp hsup hroom16 hroom R p
+      hl hstack hpc htr (fun l g h => by rw [hsu] at h; cases h)
+    rw [hsu] at hq
+    exact ⟨q, rq, cq, x8q, ioq, hq⟩
+  obtain ⟨bound, hb⟩ := hfoot l₀ granted hsu
   have hf := hb bound (Nat.le_refl _)
   cases hr : Wasm.run bound m k (nativeStore m cap nativeWorld) []
-      (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R calls) with
+      (linuxEnv arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+        (fun j => R (l₀.length + j)) calls) with
   | Trap final msg =>
     rw [hr] at hf
     obtain ⟨T, ls, hev, himg, hcar, -, -, hcls⟩ := hf
     have hev' : final.host.world.events = ls := hev
-    obtain ⟨q, rq, cq, x8q, ioq, trq, hwq, hend⟩ := wasiElf_run hk hseg himp hsup hroom16 hroom R p
-      hl hstack hpc htr hr
+    obtain ⟨q, rq, cq, x8q, ioq, hq⟩ := wasiElf_run (fuel := bound) (final := final) (msg := msg)
+      hk hseg himp hsup hroom16 hroom R p hl hstack hpc htr
+      (fun l g h => by rw [hsu] at h; cases h; exact hr)
+    rw [hsu] at hq
+    obtain ⟨trq, hwq, hend⟩ := hq
     rw [hev'] at trq hwq
-    refine ⟨q, rq, cq, x8q, ioq, T, ls, final.host.world, trq, himg, hcar, hwq, ?_⟩
+    refine ⟨q, rq, cq, x8q, ioq, T, ls, final.host.world, trq, himg,
+      (Carried.shift R l₀.length 0 ls).mp hcar, hwq, ?_⟩
     have d1 : exitTrap ≠ exitRejected := by decide
     have d2 : exitTrap ≠ shimTrap := by decide
     have d3 : exitTrap ≠ "unreachable" := by decide
@@ -683,15 +898,17 @@ theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat
 /-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
 Talos's runs of `_start` from `nativeStore` under the shim's environment with the module's flat
 calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
-fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments `args` and the environment
-`environ` on its initial stack, and the launch `⟨args, environ, false⟩` grants no preopened
-directory.  The process's trace holds the layer events `ls`, the images of the WASI events `T` of
-a run of `action` under `linuxHost` from a world with no events: each event holds its reply of
-`R`, and each writes within the `cap` pages of linear memory or is a `clock_gettime` into the
-timespec.  The run is an accepted exit whose status X0 holds, an exit whose status the shim
-rejects, with X0 at 1, a trap of the shim at a request that it refuses or a result outside Linux's
-range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix of `action`, with X0
-at 2. -/
+fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments
+`args` and the environment `environ` on its initial stack.  When the startup routine's outcome is
+`none`, the trace holds the startup's events `l₀` and X0 holds 67.  Otherwise the outcome
+`granted` gives the launch `⟨args, environ, granted⟩`, and the trace holds `l₀` and then the
+layer events `ls`, the images of the WASI events `T` of a run of `action` under `linuxHost` with
+the replies after the startup's, from a world with no events: each event holds its reply of `R`
+from call `l₀.length` on, and each writes within the `cap` pages of linear memory or is a
+`clock_gettime` into the timespec.  The run is an accepted exit whose status X0 holds, an exit
+whose status the shim rejects, with X0 at 1, a trap of the shim at a request that it refuses or a
+result outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix
+of `action`, with X0 at 2. -/
 theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))
@@ -710,20 +927,27 @@ theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb
         (fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap))) p q ∧
       fetchFrom p.core.mem elfEntry (elfWords (wasiLayout m k room cap)) q.core.pc =
         some svcWord ∧ q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-      ∃ T ls w, q.trace = ls.map A64.Event.sys ∧
-        Images arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ [] T ls ∧
-        Carried R 0 ls ∧
-        (∀ e ∈ ls, WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
-        ((∃ c, Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
-          (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
-          (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-            action nativeWorld.world T (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
-          (aborts = true ∧ (∃ residual,
-            Prefix (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, false⟩ R)
-              action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) :=
-  wasiElf_footprint_with hk hseg himp hsup hroom16 hroom R p (hfoot ⟨args, environ, false⟩ R) hl
-    hstack hpc htr
+      match startup (needsCheck (m.imports.drop 3)) (wasiScratch m k room cap) R with
+      | (l₀, none) => q.trace = l₀.map A64.Event.sys ∧ q.core.x 0 = 67
+      | (l₀, some granted) =>
+        ∃ T ls w, q.trace = (l₀ ++ ls).map A64.Event.sys ∧
+          Images arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩ [] T ls ∧
+          Carried R l₀.length ls ∧
+          (∀ e ∈ ls, WritesNative (wasiShimLayout m k room cap) (cap * 65536) e) ∧
+          ((∃ c, Exec (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.exited c) w ∧ q.core.x 0 = c) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped exitRejected) w ∧ q.core.x 0 = 1) ∨
+            (Exec (linuxHost arm64Flags (wasiShimLayout m k room cap) ⟨args, environ, granted⟩
+                (fun j => R (l₀.length + j)))
+              action nativeWorld.world T (.trapped shimTrap) w ∧ q.core.x 0 = 2) ∨
+            (aborts = true ∧ (∃ residual,
+              Prefix (linuxHost arm64Flags (wasiShimLayout m k room cap)
+                  ⟨args, environ, granted⟩ (fun j => R (l₀.length + j)))
+                action nativeWorld.world T residual w) ∧ q.core.x 0 = 2)) :=
+  wasiElf_footprint_with hk hseg himp hsup hroom16 hroom R p (fun _ _ _ => hfoot _ _) hl hstack
+    hpc htr
 
 end Verified.ShimA64

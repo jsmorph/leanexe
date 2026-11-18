@@ -448,8 +448,7 @@ theorem stampProgram_run {R : Replies} {m : Module} {k : Nat} {fk : Function}
     show t4.x 17 + t4.x 0 + UInt64.ofNat 2048 + UInt64.ofNat 2048 = _
     rw [harea', hx04, show area' + root = area' + UInt64.ofNat root.toNat by
       rw [UInt64.ofNat_toNat], add_ofNat_add, add_ofNat_add]
-    congr 2
-    omega
+    exact congrArg (fun x => area' + UInt64.ofNat x) (by omega)
   have hsp8 : t8.sp = SPf := by rw [sp8, sp7, sp6]; exact hsp4
   have hmem8 : t8.mem = store64 t4.mem (slotAddr SPf 1) root := by
     rw [mem8, mem7, mem6]

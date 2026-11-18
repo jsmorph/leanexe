@@ -29,12 +29,23 @@
 # values of 120,000 bytes, and the arguments with argv[0] alone, an empty argv[0], empty arguments
 # among others, 3,000 arguments, and eight arguments of 120,000 bytes, natively and under QEMU,
 # each against the Wasmtime host with --env or --arg and against the bytes that the script
-# computes.  Bytes outside UTF-8 run natively and under QEMU against the computed bytes alone, and
-# through tests/linux/execve.py natively, an environment with empty strings, a string without '=',
-# and a repeated name, and an empty argv, for which Linux gives argv[0] as an empty string: QEMU's
-# user mode rebuilds the guest's environment and drops such entries.  strace must show that
-# environ.elf and args.elf make no call but write and exit_group.  The products lie in OUT,
-# build/linux/a64-wasi unless set.
+# computes.  Bytes outside UTF-8 run natively and under QEMU against the computed bytes alone.
+# Through tests/linux/execve.py, an environment with empty strings, a string without '=', and a
+# repeated name runs natively only, since QEMU 8.2.2's user mode rebuilds the guest's environment
+# with envlist_setenv, which drops a string without '=' and keeps the last entry of a name
+# (util/envlist.c and linux-user/main.c); an empty argv also runs natively, for which Linux gives
+# argv[0] as an empty string (do_execveat_common of fs/exec.c).  strace must show that environ.elf
+# and args.elf make no call but write and exit_group.
+#
+# The commands of the verified compiler pass regions that lie apart and far from the memory's end,
+# so the script also runs the modules of tests/TestSupport/A64/WasiStringEdges.lean, each of
+# which calls args_sizes_get or args_get once with chosen pointers and writes the errno and a
+# window of its memory: regions that overlap, regions that end at the memory's end, and regions one
+# byte past it, which must trap with status 2 and write nothing.  Each runs natively and under
+# QEMU with the arguments p, the empty string, and abc, against the output that
+# tests/linux/strings-edges.py computes from the shim's specification, which writes every pointer
+# and then every string: Wasmtime 44 writes each pointer and then its string, so the two differ
+# when the regions overlap.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -302,8 +313,43 @@ only_writes() {
     status=1
   fi
 }
-env -i A=1 B=2 strace -f -X raw -o "$out/environ.strace" "$out/environ.elf" >/dev/null
-only_writes environ.elf "$out/environ.strace"
-strace -f -X raw -o "$out/args.strace" "$out/args.elf" x y >/dev/null
-only_writes args.elf "$out/args.strace"
+c=0
+env -i A=1 B=2 strace -f -X raw -o "$out/environ.strace" "$out/environ.elf" >/dev/null || c=$?
+if [ "$c" -eq 0 ]; then
+  only_writes environ.elf "$out/environ.strace"
+else
+  echo "fail: environ.elf under strace: status $c"
+  status=1
+fi
+c=0
+strace -f -X raw -o "$out/args.strace" "$out/args.elf" x y >/dev/null || c=$?
+if [ "$c" -eq 0 ]; then
+  only_writes args.elf "$out/args.strace"
+else
+  echo "fail: args.elf under strace: status $c"
+  status=1
+fi
+c=0
+uv run tests/linux/strings-edges.py "$out/edges.txt" "$out" p '' abc >"$out/edges.want" || c=$?
+if [ "$c" -ne 0 ]; then
+  echo "fail: the expected outputs of the edge cases: status $c"
+  status=1
+fi
+while read -r name want; do
+  chmod +x "$out/$name.elf"
+  for how in native qemu; do
+    c=0
+    if [ "$how" = native ]; then
+      scoped bash -c 'exec -a p "$0" "" abc' "$out/$name.elf" >"$out/$name.$how" || c=$?
+    else
+      scoped "$qemu" -0 p "$out/$name.elf" "" abc >"$out/$name.$how" || c=$?
+    fi
+    if [ "$c" -eq "$want" ] && cmp -s "$out/$name.want" "$out/$name.$how"; then
+      echo "pass: $name $how: status $c and $(stat -c %s "$out/$name.$how") bytes, as specified"
+    else
+      echo "fail: $name $how: status $c where $want is due, or the output differs"
+      status=1
+    fi
+  done
+done <"$out/edges.want"
 exit "$status"

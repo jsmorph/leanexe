@@ -17,7 +17,9 @@
     "Spec x (f x) and Spec x r → Spec x r' → r = r'",
     "the funcIdx of an export, which differs from the position of its definition in the list of verified_compile",
     "Verified.CallSpec compiled.module compiled.tables k (fun xs : Array Float => (f xs).map Float.toBits) compiled.f.bound",
-    "∃ x : Trajectory, x.AdmittedUntil p q c t"
+    "∃ x : Trajectory, x.AdmittedUntil p q c t",
+    "Verified.Master compiled.module compiled.tables name B D R",
+    "command.start at the initial store with a native executable's cap"
   ],
   "modules": [
     "Library.Numerics.Float64.Bessel.BesselBytes",
@@ -47,7 +49,10 @@
     "Library.Combinatorics.NextPermutation.Compiled",
     "Demos.Energy.Window",
     "Demos.Energy.Compose",
-    "Demos.Energy.Authorize"
+    "Demos.Energy.Authorize",
+    "Verified.Master",
+    "Library.Numerics.Arithmetic.Gcd.Master",
+    "Verified.Examples.WasiReadAllNative"
   ],
   "declarations": [
     "Verified.tables_at",
@@ -67,7 +72,11 @@
     "Wasm.Runs.mono",
     "LeanExe.Pipeline.Heap.Within.mono",
     "Verified.call_on",
-    "Verified.implementsA_congr"
+    "Verified.implementsA_congr",
+    "Verified.Master",
+    "Verified.Master.of_trapFree",
+    "Verified.ImplementsTables.ofA",
+    "Verified.ShimA64.nativeStore"
   ],
   "examples": [
     "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call",
@@ -110,7 +119,11 @@
     "Demos.Energy.Authorize.authorizeWith_admits",
     "Demos.Energy.Spec.operates_exists",
     "Demos.Energy.Spec.run_sound",
-    "Demos.Energy.Spec.operation_sound"
+    "Demos.Energy.Spec.operation_sound",
+    "Library.Numerics.Arithmetic.Gcd.gcd_master",
+    "Library.Numerics.Arithmetic.Gcd.gcd_export",
+    "Library.Numerics.Arithmetic.Gcd.gcd_eq",
+    "Verified.Examples.WasiReadAll.linux_footprint_native"
   ],
   "unimported": {
     "Demos/Screening/Call.lean": [
