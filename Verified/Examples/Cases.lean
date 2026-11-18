@@ -87,6 +87,8 @@ import Examples.RunningMax.Spec
 import Examples.RunningMax.Samples
 import Demos.RandomHistogram.Spec
 import Demos.RandomHistogram.Samples
+import Demos.ManifestCheck.Spec
+import Demos.ManifestCheck.Samples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
@@ -599,6 +601,16 @@ def portCases : IO Unit := do
   for counts in _root_.Demos.RandomHistogram.renderSamples do
     IO.println s!"randomHistogram|render|bytes|{arrayArg counts}|\
       {HeapSums.hex (_root_.Demos.RandomHistogram.renderSpec counts)}|2"
+  for m in _root_.Demos.ManifestCheck.parseSamples do
+    IO.println s!"manifestCheck|parse|array-u64|bytes:{HeapSums.hex m}|\
+      {arrayOut (_root_.Demos.ManifestCheck.parseSpec m)}|2"
+  for (m, start, d) in _root_.Demos.ManifestCheck.hexMatchesSamples do
+    IO.println s!"manifestCheck|hexMatches|i64|bytes:{HeapSums.hex m} i64:{start} i64:{d.w0} \
+      i64:{d.w1} i64:{d.w2} i64:{d.w3}|\
+      {if _root_.Demos.ManifestCheck.hexMatchesSpec (m, start, d) then 1 else 0}|1"
+  for (name, ok) in _root_.Demos.ManifestCheck.renderSamples do
+    IO.println s!"manifestCheck|render|bytes|bytes:{HeapSums.hex name} i64:{if ok then 1 else 0}|\
+      {HeapSums.hex (_root_.Demos.ManifestCheck.renderSpec (name, ok))}|2"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"

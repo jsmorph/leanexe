@@ -1,0 +1,16 @@
+A SHA-256 manifest checker like `sha256sum -c`, with theorems about its verdicts, the files it may open, and its handles.
+
+The plan the user approved:
+- `check MANIFEST` opens MANIFEST under the preopened directory and reads it.
+- For each line in `sha256sum`'s format, `HEX  NAME`, it opens NAME read-only under the same directory, reads it to the end through a streaming SHA-256, and closes it.
+- It writes `NAME: OK` or `NAME: FAILED` for each line.
+- It exits with status 0 when every file matches, 1 when any fails, and the errno when a call on the manifest fails.
+
+The theorems state three properties of every run:
+- verdict: each output line says OK exactly when the SHA-256 of the bytes the host returned for that file equals the manifest's digest, and the status is 0 exactly when every line says OK;
+- confinement: every `path_open` is relative to descriptor 3, with read-only rights, and names the manifest or a name listed in it, in the form the specification allows;
+- handles: each descriptor is closed before the next open and before the exit, and the only writes go to descriptor 1.
+
+The output is written with a loop that continues after short writes, with status 0 only when every byte is written.
+
+The pure core has three functions, each with its own specification: the manifest parser, the hex comparison, and the line rendering.
