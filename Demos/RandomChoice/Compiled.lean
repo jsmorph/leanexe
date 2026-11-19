@@ -1,7 +1,8 @@
-import Demos.RandomChoice.Proof
+import Demos.RandomChoice.PicksProof
 import LeanExe.Pipeline.BytesSize
 import Verified.Call
 import Verified.ChargeFacts
+import Verified.Congr
 import Verified.Reflect.Command
 
 /-! The verified compiler's module of the pure core.  The call theorems compose the generated
@@ -9,20 +10,26 @@ import Verified.Reflect.Command
 bound, export `parseArg`, function 3, returns `parseSpec` of a borrowed buffer and a position,
 export `pick`, function 4, returns `pickSpec` of two words, and export `render`, function 9,
 returns `renderSpec` of a borrowed array, each without a trap.  A buffer that a store holds has
-fewer than `2^32` bytes, which `parseArg_eq` needs, and an array that a store holds lies below
-byte `2^32`, so it has fewer than `2^29` words, which `render_eq` needs. -/
+fewer than `2^32` bytes, which `parseArg_eq` and `putPicks_eq` need, and an array that a store holds
+lies below byte `2^32`, so it has fewer than `2^29` words, which `render_eq` needs.  Export
+`putPicks`, function 12, consumes the buffer that the caller moves to it, so `putPicks_implements`
+states its theorem as `ImplementsA` of a moved buffer, as straight insertion's theorem states it of
+a moved array: it returns `putPicksSpec` without a trap, writing the lines into the moved buffer's
+block, and it allocates nothing (`putPicks_bound`). -/
 
 namespace Demos.RandomChoice
 
 open LeanExe.Pipeline Library.Numerics.Decimal.Int64Text
 
 verified_compile compiled :=
-  [parseStep, parseArg, pick, digitCount, digitByte, textSize, putLine, render]
+  [parseStep, parseArg, pick, digitCount, digitByte, textSize, putLine, render,
+    RandomHistogram.wordAt, putLineBytes, putPicks]
 
 theorem exports :
     ({ name := "parseArg", funcIdx := 3 } : Wasm.Export) ∈ compiled.module.exports ∧
     ({ name := "pick", funcIdx := 4 } : Wasm.Export) ∈ compiled.module.exports ∧
-    ({ name := "render", funcIdx := 9 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "render", funcIdx := 9 } : Wasm.Export) ∈ compiled.module.exports ∧
+    ({ name := "putPicks", funcIdx := 12 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 /-- `parseArg` cannot abort and allocates nothing. -/
@@ -71,9 +78,27 @@ theorem render_callSpec :
     (fun _ _ _ h => h) (fun _ _ _ _ _ h => h)
     fun _ _ _ values ⟨_, _, hvalues⟩ => render_eq values (by have := hvalues.values.1; omega)
 
+/-- `putPicks` allocates nothing: every `Bytes.set` writes into the moved buffer's block. -/
+theorem putPicks_bound (out : LeanExe.Bytes) (n : UInt64) (draw : LeanExe.Bytes)
+    (limit : UInt64) : compiled.putPicks.bound ({ val := out }, n, draw, limit) = 0 :=
+  compiled.putPicks.bound_eq out n draw limit
+
+/-- Function 12, called with a buffer that the caller moves, a word, a borrowed buffer, and a word,
+returns `putPicksSpec` of them without a trap. -/
+theorem putPicks_implements :
+    ImplementsA false compiled.module 12
+      (fun x : Moved LeanExe.Bytes × UInt64 × LeanExe.Bytes × UInt64 =>
+        putPicksSpec (x.1.val, x.2.1, x.2.2.1, x.2.2.2))
+      (fun x heap store => heap.Within store compiled.module (compiled.putPicks.bound x))
+      (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.putPicks.bound x) :=
+  Verified.implementsA_congr compiled.putPicks.trapFree fun _ _ _ x ⟨_, _, _, _, _, _, _, _, _, _, _, hdraw, _⟩ =>
+    putPicks_eq x.1.val x.2.1 x.2.2.1 x.2.2.2 (Bytes.size_lt_of_borrowed hdraw)
+
 #print axioms parseArg_callSpec
 #print axioms pick_callSpec
 #print axioms render_callSpec
 #print axioms render_bound
+#print axioms putPicks_implements
+#print axioms putPicks_bound
 
 end Demos.RandomChoice
