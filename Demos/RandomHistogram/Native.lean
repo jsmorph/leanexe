@@ -1,5 +1,6 @@
 import Demos.RandomHistogram.Budget
 import Verified.Shim
+import Verified.Shim.Args
 import Verified.ShimA64.Elf
 
 /-! The footprint theorem of the random-residue histogram's command at the memory cap of a native
@@ -17,9 +18,9 @@ trap of the guest after a prefix of `main`.
 `linux_footprint_bounded` states the footprint without a guest trap for a launch whose arguments'
 strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, for every
 N, at a cap whose pages hold `budget` above the heap's start.  The shim answers `args_sizes_get`
-with the count and size of the launch's arguments (`linux_sizes`), so the block that the reply
-asks for fits `argsLimit` (`reportedSize_le`), and `call_prefix_bound` gives the budget premise
-from `body_bounded`. -/
+with the count and size of the launch's arguments (`linux_sizes` of `Verified/Shim/Args.lean`),
+so the block that the reply asks for fits `argsLimit` (`reportedSize_le`), and
+`call_prefix_bound` gives the budget premise from `body_bounded`. -/
 
 namespace Demos.RandomHistogram
 
@@ -44,48 +45,6 @@ theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (fun _ membership => nomatch membership) hcap (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
-/-- Under the shim's host, a successful `args_sizes_get` reply holds the count and the size of the
-launch's arguments. -/
-theorem linux_sizes {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {world after : LinuxWorld} {outputs : List LeanExe.Bytes}
-    (step : (linuxHost F L I R).sys world Call.argsSizesGet [] (.returned 0 outputs) after) :
-    outputs = sizesOutputs I.args := by
-  obtain ⟨l, ⟨-, image⟩, -, -, -⟩ := step
-  rw [sysImage_argsSizes] at image
-  obtain ⟨-, -, reply⟩ := image
-  unfold sizesReply at reply
-  split at reply
-  · exact (Transfer.returned.inj reply).2
-  · exact absurd (Transfer.returned.inj reply).1 (by decide)
-
-theorem length_le_stringsSize (strings : List (List UInt8)) :
-    strings.length ≤ stringsSize strings := by
-  induction strings with
-  | nil => simp [stringsSize]
-  | cons s rest ih =>
-    simp only [stringsSize, List.map_cons, List.sum_cons, List.length_cons] at ih ⊢
-    omega
-
-/-- The block that the arguments ask for, with a pointer of four bytes for each and three bytes of
-alignment, fits `argsLimit` when the strings and eight-byte pointers of the arguments do. -/
-theorem reportedSize_le {strings : List (List UInt8)}
-    (small : stringsSize strings + 8 * strings.length ≤ argsLimit) :
-    Resource.reportedSize (sizesOutputs strings) ≤ argsLimit := by
-  have least := length_le_stringsSize strings
-  have size : stringsSize strings < 2 ^ (8 * 4) := by unfold argsLimit at small; omega
-  have count : strings.length < 2 ^ (8 * 4) := by unfold argsLimit at small; omega
-  simp only [Resource.reportedSize, sizesOutputs, Reply.word, List.getElem?_cons_succ,
-    List.getElem?_cons_zero, Option.map_some, Option.getD_some,
-    littleEndian_leBytes (by decide) size, littleEndian_leBytes (by decide) count]
-  rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
-    UInt64.toNat_ofNat']
-  simp only [UInt64.reduceToNat]
-  rcases strings with _ | ⟨s, rest⟩
-  · simp [stringsSize, argsLimit]
-  · simp only [List.length_cons] at small least count size ⊢
-    unfold argsLimit at small ⊢
-    omega
-
 /-- The budget of `main` holds under the shim's host for a launch whose strings and eight-byte
 pointers of its arguments take at most `argsLimit` bytes. -/
 theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
@@ -97,7 +56,7 @@ theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Lin
   have bound : ∀ world outputs after, (linuxHost F L I R).sys world Call.argsGet.reporterCall []
       (.returned 0 outputs) after → Resource.reportedSize outputs ≤ argsLimit := fun _ _ _ step => by
     rw [linux_sizes step]
-    exact reportedSize_le small
+    exact reportedSize_le (by decide) (by decide) small
   intro trace residual final spent fits progress
   exact Resource.call_prefix_rule budget progress rfl ((body_bounded bound).2 world)
 

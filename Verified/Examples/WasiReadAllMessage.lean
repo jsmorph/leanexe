@@ -1,4 +1,5 @@
 import Verified.Examples.WasiReadAllShim
+import Verified.Shim.Images
 
 /-!
 readAll's message corollary at the shim's specification level.  Under `linuxHost`, a run of
@@ -107,19 +108,6 @@ theorem images_succeeded {F : OpenFlags} {L : ShimLayout} {I : Launch}
         (fun x m => writes x (List.mem_append_left _ m))
     · exact ih (fun x m => reads x (List.mem_append_right _ m))
         (fun x m => writes x (List.mem_append_right _ m)) e member
-
-theorem images_split {F : OpenFlags} {L : ShimLayout} {I : Launch} :
-    ∀ {events : List Linux.Event} {first rest : List Wasi.Event} {ls : List Linux.Event},
-      Images F L I events (first ++ rest) ls →
-        ∃ l l', ls = l ++ l' ∧ Images F L I events first l ∧ Images F L I (events ++ l) rest l'
-  | _, [], _, ls, h => ⟨[], ls, rfl, .nil, by simpa using h⟩
-  | _, _ :: _, _, _, h => by
-    rw [List.cons_append] at h
-    cases h with
-    | cons image tail =>
-      obtain ⟨l, l', rfl, first, rest⟩ := images_split tail
-      exact ⟨_ ++ l, l', by rw [List.append_assoc], .cons image first,
-        by rwa [← List.append_assoc]⟩
 
 theorem images_reads {F : OpenFlags} {L : ShimLayout} {I : Launch}
     {events : List Linux.Event} {trace : List Wasi.Event} {ls : List Linux.Event}
