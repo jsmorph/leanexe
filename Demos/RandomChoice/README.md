@@ -71,12 +71,14 @@ writes a module that exports `parseArg`, `pick`, `render`, and `putPicks` as fun
 | `short_count` | For N ≥ 1 and M ≥ 4 K + 1024, at most `2^(64 M - 512)` of the `2^(64 M)` sequences of M words hold fewer than K accepted words. |
 
 The counting theorems assume no probability.  When the host's words are independent and uniform
-on [0, 2^64), the first K accepted words are independent and uniform on the accepted set, since
-whether a word is accepted depends on that word alone, so `picks_count` gives each sequence of K
-values the probability `⌊2^64 / N⌋^K / (N · ⌊2^64 / N⌋)^K = N^(-K)`: the output is uniform on
-[1, N]^K.  Under the same assumption, `accepted_half` makes each word accepted with probability at
-least 1/2, and `short_count` bounds by `2^-512` the probability that M words hold fewer than K
-accepted ones.
+on [0, 2^64), `picks_count` and `accepted_count` give a sequence of K accepted words the picks o
+with probability `⌊2^64 / N⌋^K / (N · ⌊2^64 / N⌋)^K = N^(-K)`.  The output of a run with status 0
+is the picks of the first K accepted words, and those words are independent and uniform on the
+accepted set, since whether a word is accepted depends on that word alone, so the output is
+uniform on [1, N]^K.  No theorem states that last step, which conditions on the run's status and
+on the positions of the accepted words.  Under the same assumption, `accepted_half` makes each word
+accepted with probability at least 1/2, and `short_count` bounds by `2^-512` the probability that
+M words hold fewer than K accepted ones.
 
 `pick_count` rests on the accepted words forming the interval [2^64 mod N, 2^64), whose length is
 `N · ⌊2^64 / N⌋`.  Mathlib's `Nat.count_modEq_card` counts the naturals below a bound that have a
@@ -92,7 +94,8 @@ sequences are equal only when the sequences are.
 ## The command writes K values uniform on [1, N]
 
 [The command](Command.lean) is `main : Action UInt64`.  It calls `args` and `parseArg` for N and K
-and then a loop of at most `passes K = K / 128 + 3` passes, while values remain and no call failed.
+and then a loop of at most `passes K = K / 128 + 3` passes, while values remain and no pass has
+set a status: the errno of a failed call, or 78 for a stalled write.
 The loop's state is the values still to choose, the status of a failed call, a draw buffer of 4,096
 bytes, and an output buffer of 10,752 bytes, which hold the lines of 512 values of at most 20
 digits.  Each pass draws 512 words into the whole draw buffer with `randomGet`, writes the lines of
@@ -101,21 +104,22 @@ the picks of their accepted words, at most the values that remain, into the outp
 [the shared write loop](../../LeanExe/Wasi/WriteAll.lean), which follows a short write with a
 write of the bytes that remain and exits with the errno of a write that fails.  The loop carries
 both buffers through its state by moves: `random_get` fills the draw buffer, `putPicks` writes the
-output buffer in place, and `writeAll` reads it in place, so a pass allocates nothing.  The status is the errno of `args`, 2 for a
-refused N or K, the errno of a failed `random_get` or write, 78 when the writes of a pass took fewer
-bytes than offered until `writeAll`'s passes ran out, 77 when the loop's passes ran out with values
-still to choose, and 0 when the passes chose and wrote K values.  Every errno lies from 0 to 76, so
-77 and 78 differ from 2 and from every errno that the run can return.
+output buffer in place, and `writeAll` reads it in place, so a pass allocates nothing.  The status
+is the errno of `args`, 2 for a refused N or K, the errno of a failed `random_get` or write, 78 when
+the writes of a pass took fewer bytes than offered until `writeAll`'s passes ran out, 77 when the
+loop's passes ran out with values still to choose, and 0 when the passes chose and wrote K values.
+Every errno lies from 0 to 76, so 77 and 78 differ from 2 and from every errno that the run can
+return.
 
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Every run of `main` followed by its exit, under every host, that ends with the exit status `code` has events that meet `Meets` followed by the exit, and `code` is at most 78 ([the command's proof](CommandProof.lean)). |
-| `meets_output` | A run whose events meet `Meets` with status 0 wrote `outputOf N chosen` for the K-tuple `chosen` of the first K accepted words that its passes drew ([the output](Output.lean)). |
+| `meets_output` | The events of a run that meet `Meets` with status 0 start with a run of `args` that returns N and K, both nonzero, and write `outputOf N chosen` to standard output, for the K-tuple `chosen` of the first K accepted words that the passes drew ([the output](Output.lean)).  With `exec_main` and `output_count`, it gives the count of the request: for every K and every sequence o of K values in [1, N], exactly `⌊2^64 / N⌋^K` K-tuples of accepted words make `main` write the lines of o. |
 | `start_ends` | For every host, every host environment that satisfies the host's contracts for the module's imports, and every world, every run of `_start` with enough fuel ends with the accepted exit after events that meet `Meets`, with a trap of the host or a rejected exit, or with a trap of the guest at `unreachable` after a prefix of `main` ([the command's theorem](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total`, a budget that fits the free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every run ends with the accepted exit after events that meet `Meets`. |
 | `body_bounded` | Every run and every prefix of `main`'s body charges at most `budget`, 6,306,448 bytes, for every N and K, under every host whose successful `args_sizes_get` replies ask for at most `argsLimit` bytes ([the budget](Budget.lean)). |
 | `total_meets_every` | For every N and K, under every such host that traps nowhere along `main` and its exit, every run of `_start` from the command's initial store ends with the accepted exit after events that meet `Meets`, from `total_meets` with `body_bounded` and `initial_within`. |
-| `cap_count` | At most a `2^-512` part of the sequences of the `512 · passes K` words of the cap's passes hold fewer than K accepted words, from `short_count`, since `512 · (K / 128 + 3) ≥ 4 K + 1024`. |
+| `cap_count` | At most a `2^-512` part of the sequences of the `512 · passes K` words of the cap's passes hold fewer than K accepted words, from `short_count`, since `512 · (K / 128 + 3) ≥ 4 K + 1024`.  It counts tuples of words with `accepts`, and no theorem relates them to the list of words that `Meets` gives a run at the cap. |
 
 The resource model charges a copy of an owned value at each use after which the value stays live,
 and it credits no release.  `budget` holds the block of `args` at the random histogram's limit
@@ -123,7 +127,8 @@ and it credits no release.  `budget` holds the block of `args` at the random his
 10,800 bytes with their headers.  A pass charges nothing: the call of `random_get` takes the draw
 buffer's variable, which dies there, without a copy, `putPicks` takes the output buffer as owned
 and has a generated bound of 0, and `writeAll` borrows the output buffer and charges nothing in
-each of its passes.  The budget therefore does not depend on N or K.
+each of its passes.  The proof of `body_bounded` bounds the loop with a charge of 0 for each pass,
+so the budget does not depend on N or K, and the statement bounds the whole body.
 
 `Meets host world events code` states the events of `args`, the status 2 for a refused N or K with
 no other event, and otherwise the passes of `Rounds`: each pass calls `random_get` for 4,096 bytes
@@ -144,14 +149,18 @@ tests/native/verified.sh --module randomChoice
 
 [The demo's driver](../../tests/random-choice/run.sh) checks the hashes of the reviewed
 specifications and samples, builds the demo's modules, elaborates [the theorem
-statements](../../tests/random-choice/Axioms.lean), which requires the three axioms of each, emits
-the command's module, and runs it in the Wasmtime host.  The runs refuse invalid arguments with
-status 2, exit with status 51, `nospc`, when standard output is `/dev/full`, and write K values in
-[1, N] for N of 1, 6, `2^63 + 1`, at which `2^63 - 1` words of `2^64` are rejected, and
-`2^64 - 1`, with K up to 1,000,000.  [The verified driver](../../tests/verified/run.sh) runs the 159
-samples of [the verified cases](../../Verified/Examples/Cases.lean) in Wasmtime against the
-specifications, and [the native driver](../../tests/native/verified.sh) runs the same cases on the
-module's translation to C, compiled with CompCert.
+statements](../../tests/random-choice/Axioms.lean), which requires that each theorem use only the
+three axioms, emits the command's module, and runs it in the Wasmtime host.  The runs refuse invalid
+arguments with status 2, exit with status 51, `nospc`, when standard output is `/dev/full`, and
+write K values in [1, N] for N of 1, 6, `2^63 + 1`, at which `2^63 - 1` words of `2^64` are
+rejected, and `2^64 - 1`, with K up to 1,000,000.  The command's module has 5,895 bytes.  On the
+AArch64 test host, three runs under `/usr/bin/time -v` with N = `2^64 - 1` and standard output in a
+file took from 0.26 to 0.28 seconds for K = 1,000,000, with a maximum resident set of 16,024 to
+16,752 KiB, and from 15,680 to 16,408 KiB for K = 1,000, so the resident set does not grow with K.
+[The verified driver](../../tests/verified/run.sh) runs the 159 samples of [the verified
+cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and [the native
+driver](../../tests/native/verified.sh) runs the same cases on the module's translation to C,
+compiled with CompCert.
 
 ## Related examples
 

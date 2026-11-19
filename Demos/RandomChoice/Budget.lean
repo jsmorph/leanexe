@@ -15,8 +15,9 @@ with their headers.  A pass of the loop charges nothing: `random_get` fills the 
 variable dies at the call, without a copy, `putPicks` takes the output buffer, which dies at the
 call, as owned and writes it in place, with a generated bound of 0 (`putPicks_charge`), and it
 reads the draw buffer, which it borrows, and `writeAll` borrows the output buffer and charges
-nothing (`writeAll_bounded`).  `loop_bounded` of `Verified/Wasi/ResourceRules.lean` bounds the
-loop of the passes and the loop of `writeAll`, and the tactics of
+nothing (`writeAll_bounded`).  The proof of `body_bounded` applies `loop_bounded` of
+`Verified/Wasi/ResourceRules.lean` with a charge of 0 for each pass to the loop of the passes and
+to the loop of `writeAll`, so the bound holds for every number of passes, and the tactics of
 `Verified/Wasi/BudgetTactics.lean` apply the rules of the other commands.
 
 `initial_within` states that the budget fits the free memory of the command's initial store, and

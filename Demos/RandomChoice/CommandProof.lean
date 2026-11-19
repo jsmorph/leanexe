@@ -203,7 +203,8 @@ theorem Rounds.status_le {n r : UInt64} {p : Nat} {events : List Event} {bytes :
 
 /-- A run of the loop of `writeAll` over `text` from `written` bytes makes the writes of `Writes`
 with its passes left.  When it returns `v`, the status is `stalledStatus` when `v` falls short of
-the text and 0 otherwise, and when it exits, it exits with the errno of the write that failed. -/
+the text and 0 otherwise.  When it exits, it exits with a nonzero status `c` that `Writes` gives
+the writes before the exit. -/
 theorem writes_of_run {World : Type} {host : Host World} {text : List UInt8}
     (small : text.length < 2 ^ 64) {written : UInt64} {passes : Nat} {events : List Event}
     {outcome : Outcome UInt64} (run : WriteAllRun host text written passes events outcome) :
@@ -292,7 +293,7 @@ theorem pass_put (n r : UInt64) {out draw bytes : Bytes} (hout : out.data.size =
     simp only [passPicks, List.length_take]
     have : (accepted n (RandomHistogram.words bytes.data.data.toList)).length ≤ 512 := by
       rw [← hwords]
-      exact (List.length_filter_le _ _).trans (by simp [accepted])
+      exact (List.length_filter_le _ _).trans (by simp)
     omega
   have htext : (passText n r bytes).length ≤ 10752 := by
     rw [passText, renderSpec_toList]
@@ -310,7 +311,8 @@ theorem pass_put (n r : UInt64) {out draw bytes : Bytes} (hout : out.data.size =
           out.data.data.toList.drop (passText n r bytes).length).toArray⟩⟩,
         UInt64.ofNat (passText n r bytes).length, UInt64.ofNat (passPicks n r bytes).length) := by
     unfold putPicksSpec
-    simp only [hvalues] <;> rfl
+    simp only [hvalues]
+    rfl
   have hol : out.data.data.toList.length = 10752 := by simp [hout]
   have hlen : (UInt64.ofNat (passText n r bytes).length).toNat = (passText n r bytes).length :=
     UInt64.toNat_ofNat_of_lt' (by omega)
@@ -394,8 +396,8 @@ theorem loop_stopped {World : Type} {host : Host World}
 
 /-- The loop of `main` from `r` values to choose, with a draw buffer of 4,096 bytes and an output
 buffer of 10,752 bytes, makes the passes of `Rounds`.  When it returns, the status that `main`
-gives its final state is the passes' status, and when it exits, it exits with the errno of the
-write that failed. -/
+gives its final state is the passes' status.  When it exits, it exits with the status that
+`Rounds` gives the events before the exit. -/
 theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
     {test : UInt64 → ChooseState → Bool} {step : UInt64 → ChooseState → Action ChooseState}
     (tested : ∀ i s, test i s = (s.1 != 0 && s.2.1 == 0)) (stepped : ChooseStep n step) :

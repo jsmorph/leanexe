@@ -3,12 +3,13 @@ import Library.Numerics.Decimal.Int64Text.Inverse
 
 /-! The output of the WASI command and the count of `picks_count`.  `outputOf n ws` is the text
 that `main` writes for the K accepted words `ws`: the lines of their picks.  A run whose events meet
-`Meets` with status 0 writes `outputOf n ws` for the K-tuple `ws` of the first K accepted words that
-its passes drew (`meets_output`).  `renderSpec` is injective (`renderSpec_inj`), since the digits of
-a value hold no byte 10 and determine the value, so for every K and every sequence `o` of K values
-in [1, N] the K-tuples of accepted words that `main` turns into `outputOf` of `o` are those whose
-picks are `o`, and `picks_count` counts them: `⌊2^64 / N⌋^K` of them (`output_count`).  No K-tuple
-of accepted words gives a sequence with a value outside [1, N] (`output_count_outside`). -/
+`Meets` with status 0 writes `outputOf N ws` to standard output, for the arguments N and K that it
+read and the K-tuple `ws` of the first K accepted words that its passes drew (`meets_output`).
+`renderSpec` is injective (`renderSpec_inj`), since the digits of a value hold no byte 10 and
+determine the value.  For every K and every sequence `o` of K values in [1, N], the K-tuples of
+accepted words that `main` turns into the lines of `o` are therefore those whose picks are `o`, and
+`picks_count` counts them: `⌊2^64 / N⌋^K` of them (`output_count`).  No K-tuple of accepted words
+gives a sequence with a value outside [1, N] (`output_count_outside`). -/
 
 namespace Demos.RandomChoice
 
@@ -88,8 +89,8 @@ theorem renderSpec_inj : ∀ {a b : List UInt64},
 
 /-! ## The count -/
 
-/-- For every K and every sequence `o` of K values in [1, N], exactly `⌊2^64 / N⌋^K` K-tuples of
-accepted words give the text `outputOf` of the picks `o`. -/
+/-- For every K and every sequence `o` of K values in [1, N], exactly `⌊2^64 / N⌋^K` K-tuples `ws`
+of accepted words have `outputOf N ws` equal to the lines of `o`. -/
 theorem output_count (n : UInt64) (K : Nat) (o : Fin K → UInt64)
     (ho : ∀ i, 1 ≤ (o i).toNat ∧ (o i).toNat ≤ n.toNat) :
     (Finset.univ.filter fun ws : Fin K → UInt64 =>
@@ -110,7 +111,8 @@ theorem output_count (n : UInt64) (K : Nat) (o : Fin K → UInt64)
     unfold outputOf
     rw [hfun]
 
-/-- No K-tuple of accepted words gives the text of a sequence with a value outside [1, N]. -/
+/-- For every sequence `o` of K values with a value outside [1, N], no K-tuple `ws` of accepted words
+has `outputOf N ws` equal to the lines of `o`. -/
 theorem output_count_outside (n : UInt64) (K : Nat) (o : Fin K → UInt64)
     (ho : ∃ i, ¬(1 ≤ (o i).toNat ∧ (o i).toNat ≤ n.toNat)) :
     (Finset.univ.filter fun ws : Fin K → UInt64 =>
@@ -172,20 +174,56 @@ theorem first_picks (n : UInt64) (K : Nat) (ws : List UInt64) (hK : K ≤ (accep
     unfold outputOf
     rw [hlist]
 
-/-- A run whose events meet `Meets` with status 0 wrote `outputOf N chosen` for the K-tuple
-`chosen` of the first K accepted words that its passes drew. -/
+/-- The events of a run of `args` write nothing: they are `args_sizes_get` and `args_get`. -/
+theorem args_writes {World : Type} {host : Host World} {world final : World}
+    {trace : List Event} {outcome : Outcome ArgsResult}
+    (run : Exec host args world trace outcome final) :
+    Verified.Shim.committedWrites 1 trace = [] := by
+  have quiet : ∀ (call : Call) (sent : List Arg) (reply : Transfer (List Bytes)),
+      call ≠ Call.fdWrite → Verified.Shim.eventWrites 1 (.sys call sent reply) = [] := by
+    intro call sent reply ne
+    cases reply <;> simp [Verified.Shim.eventWrites, ne]
+  unfold args at run
+  cases run with
+  | sys_reject fits => exact absurd (by decide) fits
+  | sys_trap =>
+    rw [committedWrites_cons, quiet _ _ _ (by decide)]
+    rfl
+  | sys_return _ _ next =>
+    beta_reduce at next
+    rw [committedWrites_cons, quiet _ _ _ (by decide), List.nil_append]
+    split at next
+    · cases next
+      rfl
+    · split at next
+      · cases next
+        rfl
+      · cases next with
+        | sys_reject fits => exact absurd (by decide) fits
+        | sys_trap =>
+          rw [committedWrites_cons, quiet _ _ _ (by decide)]
+          rfl
+        | sys_return _ _ next =>
+          beta_reduce at next
+          rw [committedWrites_cons, quiet _ _ _ (by decide), List.nil_append]
+          split at next <;> cases next <;> rfl
+
+/-- A run whose events meet `Meets` with status 0 read the arguments N and K, both nonzero, with
+`args`, and its events wrote `outputOf N chosen` to standard output for the K-tuple `chosen` of the
+first K accepted words that its passes drew. -/
 theorem meets_output {World : Type} {host : Host World} {world : World} {events : List Event}
     (meets : Meets host world events 0) :
-    ∃ (a : ArgsResult) (pre rest : List Event) (bytes : List UInt8)
+    ∃ (a : ArgsResult) (pre rest : List Event) (middle : World) (bytes : List UInt8)
       (chosen : Fin (parseSpec (a.bytes, 2)).toNat → UInt64),
-      events = pre ++ rest ∧ parseSpec (a.bytes, 1) ≠ 0 ∧ parseSpec (a.bytes, 2) ≠ 0 ∧
+      events = pre ++ rest ∧ Exec host args world pre (.returned a) middle ∧ a.errno = 0 ∧
+      parseSpec (a.bytes, 1) ≠ 0 ∧ parseSpec (a.bytes, 2) ≠ 0 ∧
       Rounds (parseSpec (a.bytes, 1)) (parseSpec (a.bytes, 2))
         (passes (parseSpec (a.bytes, 2))).toNat rest bytes 0 ∧
       (∀ i, accepts (parseSpec (a.bytes, 1)) (chosen i) = true) ∧
       List.ofFn chosen = ((RandomHistogram.words bytes).filter fun w =>
         accepts (parseSpec (a.bytes, 1)) w).take (parseSpec (a.bytes, 2)).toNat ∧
-      Verified.Shim.committedWrites 1 rest = outputOf (parseSpec (a.bytes, 1)) chosen := by
-  obtain ⟨a, pre, rest, middle, hevents, -, herrno, hrefused, hruns⟩ := meets
+      Verified.Shim.committedWrites 1 events = outputOf (parseSpec (a.bytes, 1)) chosen := by
+  obtain ⟨a, pre, rest, middle, hevents, hargs, herrno, hrefused, hruns⟩ := meets
   have hz : a.errno = 0 := by
     by_contra h
     exact h (herrno h).1.symm
@@ -194,7 +232,8 @@ theorem meets_output {World : Type} {host : Host World} {world : World} {events 
   obtain ⟨bytes, rounds, hzero, -⟩ := hruns hz hn hk
   obtain ⟨hwritten, hle⟩ := hzero rfl
   obtain ⟨chosen, hacc, hfirst, htext⟩ := first_picks _ _ _ hle
-  exact ⟨a, pre, rest, bytes, chosen, hevents, hn, hk, rounds, hacc, hfirst,
-    hwritten.trans htext⟩
+  refine ⟨a, pre, rest, middle, bytes, chosen, hevents, hargs, hz, hn, hk, rounds, hacc, hfirst, ?_⟩
+  rw [hevents, committedWrites_append, args_writes hargs, List.nil_append]
+  exact hwritten.trans htext
 
 end Demos.RandomChoice

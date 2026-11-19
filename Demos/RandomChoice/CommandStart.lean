@@ -15,11 +15,13 @@ trap is one of three:
   its exit;
 - a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
 
-The generated `command.start` theorem admits the guest's trap because its resource premise, a
-budget that bounds the heap that every prefix of `main` allocates, may fail for the memory at hand.
-`total_meets` takes that premise, with a host that traps nowhere along `main` and its exit, the
-premises of the generated `command.total`, and states that every run then ends with the accepted
-exit after events that meet `Meets`. -/
+The generated `command.start` theorem admits the guest's trap because it takes no bound on the
+heap that `main` allocates.  `total_meets` takes such a bound, a budget that bounds every prefix of
+`main` and fits the free memory of the initial store, with a host that traps nowhere along `main`
+and its exit and the premises of the generated `command.total`.  It states that every run then ends
+with the accepted exit after events that meet `Meets`.  `total_meets_every` of `Budget.lean` proves
+the budget's two premises for every host whose `args_sizes_get` replies ask for at most `argsLimit`
+bytes. -/
 
 namespace Demos.RandomChoice
 

@@ -4,7 +4,8 @@ import LeanExe.Wasi.WriteAll
 
 /-! The WASI command of the unbiased random choice.  `main` reads the arguments with `args`, and N
 and K, arguments 1 and 2, with `parseArg`.  It then runs a loop of at most `K / 128 + 3` passes
-while values remain to choose and no call failed.  The loop's state is the values still to choose,
+while values remain to choose and no pass has set a status: the errno of a failed call, or 78 for
+a stalled write.  The loop's state is the values still to choose,
 the status of a failed call, a draw buffer of 4,096 bytes, and an output buffer of 10,752 bytes,
 which hold the lines of 512 values of at most 20 digits.  Each pass draws 512 words into the whole
 draw buffer with `randomGet`, writes the lines of the picks of their accepted words, at most the
@@ -12,7 +13,8 @@ values that remain, into the output buffer with `putPicks`, and writes the windo
 buffer that those lines fill with `writeAll`, which continues after short writes and exits with
 the errno of a write that fails.  The loop carries both buffers through its state by moves,
 `randomGet` and `putPicks` write into them in place, and `writeAll` reads the output buffer in
-place.
+place.  `body_bounded` of `Budget.lean` bounds the charge of `main` by a constant: a pass charges
+nothing.
 
 The status is the errno of `args`, 2 when `parseArg` refuses N or K, the errno of a failed
 `randomGet` or write, 78 when the writes of a pass took fewer bytes than offered until
