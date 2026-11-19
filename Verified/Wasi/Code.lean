@@ -159,10 +159,10 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
 
 /-- `Command.codeWith` with the variables live after the command as a bitmask, together with the
 command's `useMask`, in one pass: the code of a command without subcommands is its `codeWith`
-under `live.testBit`, and a command with subcommands computes its masks from theirs.  A loop's
-step reads the loop's state, so the loop computes the step's mask before the step's code.
-`Command.codeMask_eq` equates the two, and `EffectFunc.functionWith` calls this one, which the
-kernel evaluates in time linear in the command. -/
+under `live.testBit`, and a command with subcommands computes its masks from theirs.  The
+variables live after a loop's step include those that the step reads, since the step runs again,
+so the loop computes the step's mask before the step's code.  `Command.codeMask_eq` equates the
+two, and `EffectFunc.functionWith` calls this one. -/
 def Command.codeMask (calls : List Call) (source : Wasm.Module) (h : Nat) (slots : List Slot)
     (base : Nat) (live : Nat) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →
