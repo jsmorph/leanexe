@@ -1069,41 +1069,4 @@ theorem openStub_sim (S : Shared) (n : Nat) {op svc en : UInt64} {is : List Inst
     simp only [sysAnswer, sysResult]
     exact shim_trap hrch hio4 p4 hf3 ⟨htrace, hwithin⟩
 
-/-! ## The file stubs of `flatStubs` -/
-
-theorem shimCall_files {c : Call} (hc : c ∈ shimCalls) :
-    (c.name = "path_open" → c = Call.pathOpen) ∧ (c.name = "fd_close" → c = Call.fdClose) ∧
-      (c.name = "fd_read" → c = Call.fdRead) ∧ (c.name = "fd_write" → c = Call.fdWrite) := by
-  revert c
-  decide
-
-/-- The code of a stub of `fileStubs` at `a`, generated with the routine `SVC #0; RET` at `svc`,
-the trap stub, the routine of errnos at `en`, and the scratch `areaSize S.cap` bytes above the
-area, stands for the shim's function of the call `c` of `shimCalls` whose import is the stub's,
-when the area and the scratch lie in the data segment.  `flatStub_sim` takes its cases for these
-stubs from here. -/
-theorem fileStub_sim {s : FlatStub} (hs : s ∈ fileStubs) {c : Call} (hc : c ∈ shimCalls)
-    (hd : ABI.callImport c = s.decl) (S : Shared) (n : Nat) {a svc en : UInt64}
-    {is : List Instr} (hg : s.gen a svc S.trapUnreachable en (areaSize S.cap) = .ok is)
-    (hcode : CodeAt code a is) (hsvc : OpsAt code svc [.svc, .ins (.ret 30)])
-    (hen : CodeAt code en errnoRoutine) (hGb : G.base = L.area + UInt64.ofNat (areaSize S.cap))
-    (hdata : areaSize S.cap + scratchSize ≤ L.dataMem)
-    (hU : (modulePlatform L G).normal (modulePlatform L G).uart = false)
-    (hsize : S.cap * 65536 ≤ size) :
-    (shimMachine R L G I sp₀ top l₀ calls code hdom hk hk18 hL hG base size).StubSim S n
-      s.decl.params s.decl.results
-      (sysFn arm64Flags (shimLayout L.area G) I (fun j => R (l₀.length + j)) c) a := by
-  have hn : c.name = s.decl.name := congrArg ImportDecl.name hd
-  obtain ⟨n1, n2, n3, n4⟩ := shimCall_files hc
-  simp only [fileStubs, List.mem_cons, List.not_mem_nil, or_false] at hs
-  rcases hs with rfl | rfl | rfl | rfl
-  · obtain rfl := n1 hn
-    exact openStub_sim S n hg hcode hsvc hen hGb hdata hU
-  · obtain rfl := n2 hn
-    exact closeStub_sim S n hg hcode hsvc hen hGb hdata hU
-  · obtain rfl := n3 hn
-    exact handleReadStub_sim S n hg hcode hsvc hen hGb hdata hU hsize
-  · obtain rfl := n4 hn
-    exact handleWriteStub_sim S n hg hcode hsvc hen hGb hdata hU
-
 end Verified.ShimA64

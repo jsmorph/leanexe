@@ -17,15 +17,15 @@ least `scratchSize` bytes above the area's end, so that a stub's write of the sc
 there, changes no byte from SP up, as a stub's return requires.  Its relation `TraceRel` between
 the shim's world and the process's trace states that the trace holds the startup's events `l₀`
 and then the world's layer events, each of which writes within the `size` bytes of linear memory
-from the guest's byte 0 or is a `clock_gettime` into the timespec (`WritesNative`).  Its memory
-relation `ScratchHolds` states that the scratch's first word holds `sp₀`, that the initial stack
-holds the launch's arguments and environment, and that the preopen flag and the byte of each
-descriptor number below 1,024 follow `preopened` and `openNumbers` of the world's events.
-`ScratchHolds` reads only the scratch and bytes from `2^32` up, which `modulePlatform` leaves
-out, so the module's code cannot change it (`ScratchHolds.frame`).  A trap of the shim ends at the
-trap stub, and an exit, accepted or rejected, at the exit word `base` with its status in X0,
-`ShimEnd`.  `errnoOf_lookup` states the shim's `errnoOf` as the table that the stubs' routine
-of errnos reads.
+from the guest's byte 0 or is a `clock_gettime` into the timespec or a `statx` into the `statx`
+record (`WritesNative`).  Its memory relation `ScratchHolds` states that the scratch's first word
+holds `sp₀`, that the initial stack holds the launch's arguments and environment, and that the
+preopen flag and the byte of each descriptor number below 1,024 follow `preopened` and
+`openNumbers` of the world's events.  `ScratchHolds` reads only the scratch and bytes from `2^32`
+up, which `modulePlatform` leaves out, so the module's code cannot change it
+(`ScratchHolds.frame`).  A trap of the shim ends at the trap stub, and an exit, accepted or
+rejected, at the exit word `base` with its status in X0, `ShimEnd`.  `errnoOf_lookup` states the
+shim's `errnoOf` as the table that the stubs' routine of errnos reads.
 -/
 
 namespace Verified.ShimA64
@@ -44,26 +44,33 @@ theorem WritesLinear.writesWithin {L : ShimLayout} {size : Nat} {e : Linux.Event
     (h : WritesLinear L size e) : WritesWithin L size e := fun g hg => .inl (h g hg)
 
 /-- The event `e` writes within the `size` bytes from the guest's byte 0, or it is a
-`clock_gettime` whose output region is the timespec. -/
+`clock_gettime` whose output region is the timespec, or a `statx` whose output region is the
+`statx` record. -/
 def WritesNative (L : ShimLayout) (size : Nat) (e : Linux.Event) : Prop :=
   WritesLinear L size e ∨ (e.call = Linux.clockGettimeCall ∧
-    Linux.outputRegions e.args 0 e.call.params = [(L.timespec, 16)])
+    Linux.outputRegions e.args 0 e.call.params = [(L.timespec, 16)]) ∨
+    (e.call = Linux.statxCall ∧ Linux.outputRegions e.args 0 e.call.params = [(L.statx, 256)])
 
 theorem WritesNative.writesWithin {L : ShimLayout} {size : Nat} {e : Linux.Event}
     (h : WritesNative L size e) : WritesWithin L size e := by
-  rcases h with h | ⟨-, h⟩
+  rcases h with h | ⟨-, h⟩ | ⟨-, h⟩
   · exact h.writesWithin
   · intro g hg
     rw [h, List.mem_singleton] at hg
     exact .inr (.inl hg)
+  · intro g hg
+    rw [h, List.mem_singleton] at hg
+    exact .inr (.inr hg)
 
-/-- An event of a call other than `clock_gettime` that writes as `WritesNative` admits writes
-within the `size` bytes from the guest's byte 0. -/
+/-- An event of a call other than `clock_gettime` and `statx` that writes as `WritesNative` admits
+writes within the `size` bytes from the guest's byte 0. -/
 theorem WritesNative.linear {L : ShimLayout} {size : Nat} {e : Linux.Event}
-    (h : WritesNative L size e) (hc : e.call ≠ Linux.clockGettimeCall) : WritesLinear L size e := by
-  rcases h with h | ⟨h, -⟩
+    (h : WritesNative L size e) (hc : e.call ≠ Linux.clockGettimeCall)
+    (hs : e.call ≠ Linux.statxCall) : WritesLinear L size e := by
+  rcases h with h | ⟨h, -⟩ | ⟨h, -⟩
   · exact h
   · exact absurd h hc
+  · exact absurd h hs
 
 /-- A read's output region lies within every size that holds its buffer. -/
 theorem readEvent_writesLinear (L : ShimLayout) (mem : Mem) (fd : UInt64)

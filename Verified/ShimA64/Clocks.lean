@@ -1349,7 +1349,7 @@ theorem clockStub_sim (S : Shared) (n : Nat) {ck svc en : UInt64} {is : List Ins
     hrun
   · subst he
     exact ⟨rfl, fun h => absurd h (by decide : Linux.clockGettimeCall ≠ Linux.closeCall),
-      .inr ⟨rfl, outputs_clock _ _⟩⟩
+      .inr (.inl ⟨rfl, outputs_clock _ _⟩)⟩
   · have e : (G.base + UInt64.ofNat j).toNat = G.base.toNat + j := by
       rw [UInt64.toNat_add, UInt64.toNat_ofNat']
       simp only [Nat.reducePow] at hLA ⊢

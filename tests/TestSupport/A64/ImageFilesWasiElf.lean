@@ -124,7 +124,8 @@ theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
     · exact Exec.streamTrace h main_streams
     · exact Prefix.streamTrace h main_streams
   refine ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, Images.streams himg hT [], hcar,
-    fun e he => (hwq e he).linear ?_, himg.readData 0, himg.writeData 1, ?_⟩
+    fun e he => (hwq e he).linear ?_ ?_, himg.readData 0, himg.writeData 1, ?_⟩
+  · rcases Images.streamCalls himg hT e he with h | h <;> rw [h] <;> decide
   · rcases Images.streamCalls himg hT e he with h | h <;> rw [h] <;> decide
   rcases hend with ⟨c, h, hx⟩ | ⟨h, hx⟩ | ⟨h, hx⟩ | ⟨-, ⟨residual, h⟩, hx⟩
   · exact .inl ⟨c, Exec.streams rfl rfl rfl h hT, hx⟩

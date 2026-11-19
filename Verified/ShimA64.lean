@@ -10,3 +10,4 @@ import Verified.ShimA64.Handles
 import Verified.ShimA64.OpenHow
 import Verified.ShimA64.Utf8
 import Verified.ShimA64.Open
+import Verified.ShimA64.Filestat
