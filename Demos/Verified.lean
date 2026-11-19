@@ -30,4 +30,6 @@ import Demos.RandomChoice.Compiled
 import Demos.RandomChoice.Budget
 import Demos.RandomChoice.CommandStart
 import Demos.RandomChoice.Output
+import Demos.RandomChoice.Native
+import Demos.RandomChoice.NativeChoices
 import Demos.RandomChoice.Unbiased
