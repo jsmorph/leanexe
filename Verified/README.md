@@ -659,7 +659,10 @@ through native flattening.
 [`SysForm`](Wasi/SysForm.lean): `.flat` for a call with at most one output buffer and two result
 words, `.record` for a call that writes a record, `.reported` for `args_get` and `environ_get`,
 `.iovecRead` and `.iovecWrite` for `fd_read`, `fd_pread`, `fd_write`, and `fd_pwrite`, and
-`.poll` for `poll_oneoff`.
+`.poll` for `poll_oneoff`.  A call with an output buffer writes into a window of a buffer that the
+program passes, which [the window definitions](../LeanExe/Wasi/Window.lean) clamp to the buffer,
+and [the fill proofs](Wasi/SysFill.lean) and `wp_sys_take_with` cover the take of the buffer, the
+call, and the window that the code zeroes after an errno.
 `command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against `sysContract`,
 and [the rule premises](Wasi/SysRule.lean) bound its charge, a reported call's by
 `reported_rule_observed` from a bound on the sizes that its reporter's replies give.
