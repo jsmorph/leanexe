@@ -1,11 +1,13 @@
 import Demos.RandomChoice.Compiled
-import Demos.RandomChoice.CommandProof
+import Demos.RandomChoice.CommandStart
+import Demos.RandomChoice.Output
 
 /-! The theorem statements and the axiom audit of the unbiased random choice.  The call theorems
 are restated here against the specifications, as `tools/verified-request-check` states the call
 theorem of a request: `Verified.CallSpec` of the pure module, its tables, the export's function
 index, the specification, and the generated bound.  The counting theorems are restated with their
-statements.  The check fails when a theorem uses an axiom other than `propext`, `Classical.choice`, and
+statements, and the command's theorem as `Ends` of every sufficiently fueled run of `_start`.  The
+check fails when a theorem uses an axiom other than `propext`, `Classical.choice`, and
 `Quot.sound`. -/
 
 namespace RandomChoiceCheck
@@ -35,6 +37,14 @@ theorem perRun (n : UInt64) (K : Nat) (o : Fin K → UInt64)
       ∀ i, accepts n (ws i) = true ∧ pickSpec (n, ws i) = o i).card = (2 ^ 64 / n.toNat) ^ K :=
   picks_count n K o ho
 
+theorem perOutput (n : UInt64) (K : Nat) (o : Fin K → UInt64)
+    (ho : ∀ i, 1 ≤ (o i).toNat ∧ (o i).toNat ≤ n.toNat) :
+    (Finset.univ.filter fun ws : Fin K → UInt64 =>
+      (∀ i, accepts n (ws i) = true) ∧
+        outputOf n ws = (renderSpec (List.ofFn o).toArray).data.data.toList).card =
+      (2 ^ 64 / n.toNat) ^ K :=
+  output_count n K o ho
+
 theorem acceptance (n : UInt64) (hn : n ≠ 0) :
     2 ^ 63 ≤ (Finset.univ.filter fun w : UInt64 => accepts n w = true).card :=
   accepted_half n hn
@@ -44,6 +54,14 @@ theorem capReached (n k : UInt64) (hn : n ≠ 0) :
       (Finset.univ.filter fun i => accepts n (ws i) = true).card < k.toNat).card ≤
         2 ^ (64 * (512 * (passes k).toNat)) :=
   cap_count n k hn
+
+theorem commandRun {World : Type} {host : LeanExe.Wasi.Host World}
+    (world : Verified.Wasi.Observed World) (targetHost : Wasm.HostEnv (Verified.Wasi.Observed World))
+    (valid : targetHost.Satisfies command.module
+      (Verified.Wasi.hostSpecWith host command.sysCalls)) :
+    ∃ bound, ∀ fuel ≥ bound,
+      Ends host world (Wasm.run fuel command.module startIndex (initialStore world) [] targetHost) :=
+  start_ends world targetHost valid
 
 end RandomChoiceCheck
 
@@ -56,15 +74,26 @@ elab "check_random_choice_axioms" : command => do
     ``RandomChoiceCheck.renderCall,
     ``RandomChoiceCheck.perWord,
     ``RandomChoiceCheck.perRun,
+    ``RandomChoiceCheck.perOutput,
     ``RandomChoiceCheck.acceptance,
     ``RandomChoiceCheck.capReached,
+    ``RandomChoiceCheck.commandRun,
     ``Demos.RandomChoice.exports,
     ``Demos.RandomChoice.parseArg_bound,
     ``Demos.RandomChoice.pick_bound,
     ``Demos.RandomChoice.render_bound,
+    ``Demos.RandomChoice.putPicks_eq,
+    ``Demos.RandomChoice.putPicks_implements,
+    ``Demos.RandomChoice.putPicks_bound,
     ``Demos.RandomChoice.accepted_count,
     ``Demos.RandomChoice.short_count,
-    ``Demos.RandomChoice.choose_eq,
+    ``Demos.RandomChoice.output_count_outside,
+    ``Demos.RandomChoice.meets_output,
+    ``Demos.RandomChoice.exec_main,
+    ``Demos.RandomChoice.total_meets,
+    ``Demos.RandomChoice.command.start,
+    ``Demos.RandomChoice.command.validity,
+    ``Demos.RandomChoice.command.bytes,
     ``Demos.RandomChoice.compiled.bytes]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do

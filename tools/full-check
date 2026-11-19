@@ -489,8 +489,7 @@ step_wasi() {
   run 4-random-choice tests/random-choice/run.sh
   cell=""
   if [ "$code" -eq 0 ]; then
-    cell=$(last '^.*random choice axiom check passed for ([0-9]+) theorems$' \
-      'axioms of \1 theorems' "$log")
+    cell=$(last '^random choice: ([0-9]+) runs passed$' '\1 runs passed' "$log")
   fi
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
