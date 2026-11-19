@@ -1409,6 +1409,47 @@ theorem digestOf_iff (line bytes : List UInt8) (hsmall : bytes.length < 2 ^ 61) 
 theorem endCode_eof (ending : Ending) : (endCode ending == 1) = decide (ending = .eof) := by
   cases ending <;> simp [endCode]
 
+/-- The name that the check of the line of `m` from position `start` to position `stop`, a line in
+the format, copies with `slice`: the line's bytes after its first 66, fewer than `2^32` of them. -/
+theorem entry_name (m : Bytes) (hm : m.data.size < 2 ^ 32) (start stop : Nat) (hss : start ≤ stop)
+    (hstop : stop ≤ m.data.size)
+    (hline : WellFormed ((m.data.data.toList.drop start).take (stop - start))) :
+    (slice m (UInt64.ofNat start + 66)
+        (UInt64.ofNat stop - UInt64.ofNat start - 66)).data.data.toList =
+      ((m.data.data.toList.drop start).take (stop - start)).drop 66 ∧
+    (slice m (UInt64.ofNat start + 66)
+        (UInt64.ofNat stop - UInt64.ofNat start - 66)).data.size < 2 ^ 32 := by
+  have hlen : 67 ≤ stop - start := by
+    have := hline.1
+    simp only [List.length_take, List.length_drop, Array.length_toList,
+      ByteArray.size_data] at this
+    omega
+  have hs66 : UInt64.ofNat start + 66 = UInt64.ofNat (start + 66) := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_add, toNat_ofNat (by omega), toNat_ofNat (by omega)]
+    simp only [UInt64.reduceToNat]
+    omega
+  have hcount : UInt64.ofNat stop - UInt64.ofNat start - 66 =
+      UInt64.ofNat (stop - start - 66) := by
+    apply UInt64.toNat_inj.mp
+    have h1 : (UInt64.ofNat stop - UInt64.ofNat start).toNat = stop - start := by
+      rw [UInt64.toNat_sub_of_le _ _ (by
+        rw [UInt64.le_iff_toNat_le, toNat_ofNat (by omega), toNat_ofNat (by omega)]; omega),
+        toNat_ofNat (by omega), toNat_ofNat (by omega)]
+    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, h1]; simp; omega), h1,
+      toNat_ofNat (by omega)]
+    simp
+  rw [hs66, hcount]
+  have hname : (slice m (UInt64.ofNat (start + 66))
+      (UInt64.ofNat (stop - start - 66))).data.data.toList =
+      ((m.data.data.toList.drop start).take (stop - start)).drop 66 := by
+    rw [slice_toList m _ _ (by omega) (by omega), List.drop_take, List.drop_drop]
+  refine ⟨hname, ?_⟩
+  have := congrArg List.length hname
+  simp only [Array.length_toList, ByteArray.size_data, List.length_drop, List.length_take]
+    at this
+  omega
+
 /-- The check of the line of `m` from position `start` to position `stop`, a line in the format:
 `withOpen` of the line's name around `hashFile` makes the events of `FileCheck` for the line, and
 its verdict is the program's test of the reads, the close, and the digits. -/
@@ -1433,32 +1474,7 @@ theorem entry_check {World : Type} {host : Host World} (m : Bytes) (hm : m.data.
     simp only [List.length_take, List.length_drop, Array.length_toList,
       ByteArray.size_data] at this
     omega
-  have hs66 : UInt64.ofNat start + 66 = UInt64.ofNat (start + 66) := by
-    apply UInt64.toNat_inj.mp
-    rw [UInt64.toNat_add, toNat_ofNat (by omega), toNat_ofNat (by omega)]
-    simp only [UInt64.reduceToNat]
-    omega
-  have hcount : UInt64.ofNat stop - UInt64.ofNat start - 66 =
-      UInt64.ofNat (stop - start - 66) := by
-    apply UInt64.toNat_inj.mp
-    have h1 : (UInt64.ofNat stop - UInt64.ofNat start).toNat = stop - start := by
-      rw [UInt64.toNat_sub_of_le _ _ (by
-        rw [UInt64.le_iff_toNat_le, toNat_ofNat (by omega), toNat_ofNat (by omega)]; omega),
-        toNat_ofNat (by omega), toNat_ofNat (by omega)]
-    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, h1]; simp; omega), h1,
-      toNat_ofNat (by omega)]
-    simp
-  rw [hs66, hcount] at run ⊢
-  have hname : (slice m (UInt64.ofNat (start + 66))
-      (UInt64.ofNat (stop - start - 66))).data.data.toList =
-      ((m.data.data.toList.drop start).take (stop - start)).drop 66 := by
-    rw [slice_toList m _ _ (by omega) (by omega), List.drop_take, List.drop_drop]
-  have hnsize : (slice m (UInt64.ofNat (start + 66))
-      (UInt64.ofNat (stop - start - 66))).data.size < 2 ^ 32 := by
-    have := congrArg List.length hname
-    simp only [Array.length_toList, ByteArray.size_data, List.length_drop, List.length_take]
-      at this
-    omega
+  obtain ⟨hname, hnsize⟩ := entry_name m hm start stop hss hstop hline
   obtain ⟨noExit, results⟩ := checkFile_run hnsize hsize run
   refine ⟨hname, noExit, fun r e => ?_⟩
   obtain ⟨hbuf, errno, outputs, failed | opened⟩ := results r e
@@ -1906,6 +1922,34 @@ theorem checks_loop {World : Type} {host : Host World} (m : Bytes) (hm : m.data.
         rw [hcons, List.append_nil]
         exact .stalled check lw
 
+/-- The loop of `checkLines` on a manifest that the pure core accepts makes a pass for each of its
+lines. -/
+theorem parse_passes (m : Bytes) (hm : m.data.size < 2 ^ 32)
+    (accepted : lines m.data.data.toList ≠ [] ∧ ∀ l ∈ lines m.data.data.toList, WellFormed l.2) :
+    ((parse m).size.toUInt64 >>> 1).toNat = (lines m.data.data.toList).length := by
+  have hlsmall := lines_length m.data.data.toList
+  have hlenm : m.data.data.toList.length = m.data.size := by simp
+  rw [parse_accepted m hm accepted, List.size_toArray, spanWords_length]
+  show (UInt64.ofNat (2 * (lines m.data.data.toList).length) >>> 1).toNat = _
+  rw [UInt64.toNat_shiftRight, toNat_ofNat (by omega)]
+  simp [Nat.shiftRight_eq_div_pow]
+
+/-- A manifest that the pure core accepts gives at least one position. -/
+theorem parse_size_ne (m : Bytes) (hm : m.data.size < 2 ^ 32)
+    (accepted : lines m.data.data.toList ≠ [] ∧ ∀ l ∈ lines m.data.data.toList, WellFormed l.2) :
+    (parse m).size.toUInt64 ≠ 0 := by
+  have hlenm := lines_length m.data.data.toList
+  have hml : m.data.data.toList.length = m.data.size := by simp
+  intro zero
+  have h0 := congrArg UInt64.toNat zero
+  rw [parse_accepted m hm accepted, List.size_toArray, spanWords_length] at h0
+  have : (2 * (lines m.data.data.toList).length).toUInt64.toNat =
+      2 * (lines m.data.data.toList).length := toNat_ofNat (by omega)
+  rw [this] at h0
+  have hpos := List.length_pos_iff.mpr accepted.1
+  rw [UInt64.toNat_zero] at h0
+  omega
+
 /-- A run of `checkLines` on a manifest that the pure core accepts makes the events of `Checks` for
 its lines, from no verdict: when it returns, with the status that it returns, and when it exits,
 followed by the exit. -/
@@ -1917,18 +1961,11 @@ theorem checkLines_run {World : Type} {host : Host World} (m : Bytes) (hm : m.da
     (∀ v, outcome = .returned v → Checks ((lines m.data.data.toList).map (·.2)) true trace v) ∧
     (∀ code, outcome = .exited code → ∃ events, trace = events ++ [.exit code] ∧
       code.toNat ≤ 76 ∧ Checks ((lines m.data.data.toList).map (·.2)) true events code) := by
-  have hlsmall := lines_length m.data.data.toList
-  have hlenm : m.data.data.toList.length = m.data.size := by simp
   unfold checkLines at run
   obtain ⟨after, first, middle, rest, loopRun, cont, rfl⟩ := Exec.unbind _ run
   cases loopRun with
   | loop loopRun =>
-  have hcount : ((parse m).size.toUInt64 >>> 1).toNat = (lines m.data.data.toList).length := by
-    rw [parse_accepted m hm accepted, List.size_toArray, spanWords_length]
-    show (UInt64.ofNat (2 * (lines m.data.data.toList).length) >>> 1).toNat = _
-    rw [UInt64.toNat_shiftRight, toNat_ofNat (by omega)]
-    simp [Nat.shiftRight_eq_div_pow]
-  rw [hcount] at loopRun
+  rw [parse_passes m hm accepted] at loopRun
   obtain ⟨returned, exited⟩ := checks_loop m hm accepted (fun _ _ => rfl) (fun _ _ => rfl) _ 0
     buffer 0 (by simp) hsize (.inl rfl) loopRun
   cases middle with
@@ -2424,21 +2461,11 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
                 generalize got.1.2.2 = buffer' at cont2 rbuf
                 subst hmb
                 have hm : m.data.size < 2 ^ 32 := by simpa using hmsmall
-                have hlenm := lines_length m.data.data.toList
-                have hml : m.data.data.toList.length = m.data.size := by simp
                 by_cases acc : lines m.data.data.toList ≠ [] ∧
                     ∀ l ∈ lines m.data.data.toList, WellFormed l.2
                 · split at cont2
                   · rename_i hsz
-                    exfalso
-                    have h0 := congrArg UInt64.toNat (eq_of_beq hsz)
-                    rw [parse_accepted m hm acc, List.size_toArray, spanWords_length] at h0
-                    have : (2 * (lines m.data.data.toList).length).toUInt64.toNat =
-                        2 * (lines m.data.data.toList).length := toNat_ofNat (by omega)
-                    rw [this] at h0
-                    have hpos := List.length_pos_iff.mpr acc.1
-                    rw [UInt64.toNat_zero] at h0
-                    omega
+                    exact absurd (eq_of_beq hsz) (parse_size_ne m hm acc)
                   · obtain ⟨creturns, cexits⟩ := checkLines_run m hm acc rbuf cont2
                     have refusedNot : (lines m.data.data.toList = [] ∨
                         ∃ l ∈ lines m.data.data.toList, ¬ WellFormed l.2) → False := by

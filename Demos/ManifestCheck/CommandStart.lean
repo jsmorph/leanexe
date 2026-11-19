@@ -1,4 +1,4 @@
-import Demos.ManifestCheck.CommandProof
+import Demos.ManifestCheck.CommandPrefix
 import Verified.Shim.Footprint
 
 /-! The theorems of the compiled command.  For every host, every host environment that satisfies
@@ -9,8 +9,9 @@ world, every run of `_start` from the command's initial store with enough fuel t
 - the accepted exit, with a status `code` of at most 77, after the events of `Meets`
   (`exec_main`);
 - a trap of the host, or an exit that the host rejects, after the events of a run of `main` and
-  its exit;
-- a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
+  its exit that meet `SoFar` (`trapped_soFar`);
+- a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit that
+  meet `SoFar` (`prefix_soFar`).
 
 The generated `command.start` theorem admits the guest's trap because its resource premise, a
 budget that bounds the heap that every prefix of `main` allocates, depends on the host's replies:
@@ -34,7 +35,7 @@ def startIndex : Nat := Wrappers.effectIndexWith command.sysCalls command.pure.m
 /-- How a run of `_start` from the observed world `initial` ends: a trap whose final world adds the
 events `trace` to those of `initial`, after an accepted exit with a status `code` of at most 77
 whose events meet `Meets`, after a trap of the host or a rejected exit, or, at `unreachable`, after
-a prefix of `main` and its exit. -/
+a prefix of `main` and its exit.  In the last two cases `trace` meets `SoFar`. -/
 def Ends {World : Type} (host : Host World) (initial : Observed World) :
     Result (Observed World) → Prop
   | .Trap final message => ∃ trace, final.host.events = initial.events ++ trace ∧
@@ -42,10 +43,10 @@ def Ends {World : Type} (host : Host World) (initial : Observed World) :
           ∃ events, trace = events ++ [.exit code] ∧ code.toNat ≤ 77 ∧
             Meets host initial.world events code) ∨
         (Exec host (main.bind fun status => Action.exit (α := Unit) status) initial.world trace
-          (.trapped message) final.host.world) ∨
-        (message = "unreachable" ∧ ∃ residual,
+          (.trapped message) final.host.world ∧ SoFar host initial.world trace) ∨
+        (message = "unreachable" ∧ (∃ residual,
           Prefix host (main.bind fun status => Action.exit (α := Unit) status) initial.world trace
-            residual final.host.world))
+            residual final.host.world) ∧ SoFar host initial.world trace))
   | _ => False
 
 /-- `main`'s argument: the table of SHA-256's round constants, which the compiled module holds in its
@@ -116,10 +117,10 @@ theorem ends_of_result {World : Type} {host : Host World} {heap : Heap}
     | trapped cause =>
       change message = cause at terminal
       subst terminal
-      exact .inr (.inl execution)
+      exact .inr (.inl ⟨execution, trapped_soFar execution⟩)
   | resource final trace residual _ progress =>
     obtain ⟨progress, events⟩ := Verified.Shim.prefix_observed progress
-    exact ⟨trace, events, .inr (.inr ⟨rfl, residual, progress⟩)⟩
+    exact ⟨trace, events, .inr (.inr ⟨rfl, ⟨residual, progress⟩, prefix_soFar progress⟩)⟩
 
 /-- Every run of `_start` from the command's initial store with enough fuel ends as `Ends` states,
 for every host, every host environment that satisfies the host's contracts, and every world. -/

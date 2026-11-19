@@ -33,7 +33,14 @@ digest of FIPS 180-4 of the bytes that the reads returned (`DigestOf`).  After a
 pure core accepts, the status is 0 exactly when every line's output line was written whole and
 every verdict is OK, 1 when a verdict is FAILED and every output line was written whole, 77 after
 writes of an output line, one more than its bytes, that each returned errno 0 and left bytes, and
-the errno of a write that failed. -/
+the errno of a write that failed.
+
+`SoFar host world events` states what the request asks of the events of a run that stopped before
+its exit, at a trap of the host, at an exit that the host rejected, or at a trap of the guest.
+`ConfinedSoFar` states `Confined` of them for the buffer that `args` returned and the bytes that
+the reads of the manifest returned, and `HandledSoFar` states that they are those of `Handled`
+followed by those of `Unfinished`: none, an open that returned errno 0 with calls on its descriptor
+and no close, an open that trapped, or an exit that the host rejected. -/
 
 namespace Demos.ManifestCheck
 
@@ -332,5 +339,42 @@ def Meets {World : Type} (host : Host World) (world : World) (events : List Even
     (code : UInt64) : Prop :=
   ∃ (a : ArgsResult) (manifest : List UInt8), Run host world a manifest events code ∧
     Confined a.bytes.data.data.toList manifest events ∧ Handled events
+
+/-- The events at the end of a run that stopped before its exit: none, an open that returned errno
+0 followed by calls on the descriptor that it opened and no close, an open that trapped, or an
+exit that the host rejected. -/
+inductive Unfinished : List Event → Prop
+  | empty : Unfinished []
+  | opened {args : List Arg} {outputs : List Bytes} {inner : List Event}
+      (calls : ∀ e ∈ inner, OnDescriptor (openedDescriptor outputs) e) :
+      Unfinished (.sys .pathOpen args (.returned 0 outputs) :: inner)
+  | openTrapped {args : List Arg} {message : String} {committed : List Bytes} :
+      Unfinished [.sys .pathOpen args (.trapped message committed)]
+  | exitRejected {code : UInt64} {message : String} : Unfinished [.exitTrap code message]
+
+/-- The use of descriptors of a run that stopped before its exit: the events of `Handled`, whose
+brackets are closed, followed by those of `Unfinished`. -/
+def HandledSoFar (events : List Event) : Prop :=
+  ∃ closed rest, events = closed ++ rest ∧ Handled closed ∧ Unfinished rest
+
+/-- Confinement of the events `events` of a run from `world` that stopped before its exit: no
+event is an open, or the events start with those of a run of `args` that returned `a`, and
+`Confined` holds of them for `a`'s buffer and the bytes `manifest`.  These are the bytes of a
+`ManifestRun` with status 0 that follows the events of `args`, the bytes that the reads of the
+manifest returned, or no bytes. -/
+def ConfinedSoFar {World : Type} (host : Host World) (world : World) (events : List Event) :
+    Prop :=
+  (∀ arguments reply, Event.sys .pathOpen arguments reply ∉ events) ∨
+    ∃ (a : ArgsResult) (pre rest : List Event) (middle : World) (manifest : List UInt8),
+      events = pre ++ rest ∧ Exec host args world pre (.returned a) middle ∧
+      (manifest = [] ∨ ∃ name opening post, rest = opening ++ post ∧
+        ManifestRun name opening 0 manifest) ∧
+      Confined a.bytes.data.data.toList manifest events
+
+/-- What the request asks of the events `events` of a run from `world` that stopped before its
+exit, at a trap of the host, at an exit that the host rejected, or at a trap of the guest:
+confinement, `ConfinedSoFar`, and the use of descriptors, `HandledSoFar`. -/
+def SoFar {World : Type} (host : Host World) (world : World) (events : List Event) : Prop :=
+  ConfinedSoFar host world events ∧ HandledSoFar events
 
 end Demos.ManifestCheck

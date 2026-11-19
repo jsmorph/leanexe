@@ -116,9 +116,10 @@ read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main`, or a guest trap at `unreachable` after a prefix of `main` ([the compiled command](CommandStart.lean)). |
+| `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main` whose events meet `SoFar`, or a guest trap at `unreachable` after a prefix of `main` whose events meet `SoFar` ([the compiled command](CommandStart.lean)). |
+| `stops_soFar`, `trapped_soFar`, `prefix_soFar` | Under every host, the events of every run of `main` followed by its exit that stops before the exit, a run that traps or a prefix of a run, meet `SoFar` ([the runs that stop](CommandPrefix.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
-| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)).  The theorems state `Meets` of the runs that end with the accepted exit, and of a run that traps they state only that it is a run or a prefix of `main`. |
+| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)).  The theorems state `Meets` of the runs that end with the accepted exit and `SoFar` of the runs that trap. |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) holds three properties of a run's events, which
@@ -138,6 +139,15 @@ its close, and writes to standard output, so each descriptor is closed before th
 before the exit.  [The review](review.md) records the decisions of the cases that the request
 leaves open.
 
+`SoFar` states confinement and the use of descriptors of the events of a run that stops before its
+exit: at a trap of the host, at an exit that the host rejects, or at a trap of the guest.
+`ConfinedSoFar` states `Confined` of the events for the buffer that `args` returned and the bytes
+that the reads of the manifest returned, the bytes of a `ManifestRun` with status 0 after the
+events of `args`, or no bytes when the events hold no such run.  An open of a line's name therefore
+follows the whole reading of the manifest.  `HandledSoFar` states that the events are those of
+`Handled` followed by those of `Unfinished`: none, an open that returned errno 0 followed by calls
+on its descriptor and no close, an open that trapped, or an exit that the host rejected.
+
 The proof follows `main`.  `argument_cases` relates the program's test of the argument buffer to
 `OneArgument`.  `manifest_loop` follows the reads of the manifest: a read places the window's
 output at the window's start (`splice_take`), so the buffer's first bytes are those that the reads
@@ -155,6 +165,17 @@ on the lines, from the positions that `parse` gives (`parse_accepted`, `entry_ge
 `meets_of` assembles `Run`, `Confined`, and `Handled` from the parts.  `main` takes the table of
 SHA-256's round constants, which the module holds in its static data, as its argument, and
 `table_rep` and `table_scratch` give the generated theorems the table's representation.
+
+`stops_soFar` follows `main` again, with the lemmas of [the runs that
+stop](../../Verified/Wasi/Stops.lean): a run of `Action.bind first next` that stops is a run of
+`first` that stops, or a run of `first` that returns followed by a run of `next` that stops
+(`Stops.bind`).  The parts that return have the events that the lemmas above give, and a part that
+stops has only the events that `Every` allows of it: the calls of `args`, the calls on the
+descriptor of a bracket's body (`readManifest_every`, `hashFile_every`), and the writes of
+`writeAll` with at most one rejected exit at their end (`writeAll_stops`).  `withOpen_stops` gives
+the events of a bracket that stops, `checks_stops` those of the loop of `checkLines`, and
+`confined_of` assembles `ConfinedSoFar` from the run of `args`, the `ManifestRun`, and the opens
+of the lines that follow it.
 
 ## Memory
 
