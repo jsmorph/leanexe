@@ -13,12 +13,13 @@ value at each use after which the value stays live, and it credits no release.  
 `main` holds the block of `args`, the copy of the argument that names the manifest, the read buffer
 of 65,536 bytes, the charge of `readManifest`, that of `parse`, and that of `checkLines`.
 
-`readManifest` charges the record block of `fd_filestat_get` and the call of `readBytes`, which
-builds the manifest's buffer of the reported size and whose read passes charge nothing.  A run of
-the reflected call of `readManifest` that returns is a run of `readManifest` that returns the same
-value (`ResourceCall.erase` and `command.readManifest.related`), and with status 0 its manifest has
-the reported size (`readManifest_size`, from `readBytes_run` of `CommandProof.lean`), so `parse`
-charges at most `176 M + 464` bytes.  `hashFile` charges the block of `finish`'s last words, at
+`readManifest` charges the call of `readBytes`, which builds the manifest's buffer of the reported
+size and whose read passes charge nothing.  Its call of `fd_filestat_get` charges nothing, since a
+record call places its record in the call area.  A run of the reflected call of `readManifest` that
+returns is a run of `readManifest` that returns the same value (`ResourceCall.erase` and
+`command.readManifest.related`), and with status 0 its manifest has the reported size
+(`readManifest_size`, from `readBytes_run` of `CommandProof.lean`), so `parse` charges at most
+`176 M + 464` bytes.  `hashFile` charges the block of `finish`'s last words, at
 most `blockCost 8`, and its read passes charge nothing.  `writeAll` charges nothing
 (`writeAll_bounded`).
 
@@ -33,7 +34,7 @@ of a charge for each index, and `lines_charge_le` bounds that sum for the lines 
 `n` bytes by `4 (n + 1)`: the lines are disjoint pieces of the manifest, so their lengths with one
 byte each sum to at most `n + 1` (`lines_total`), and each line has at least 67 bytes.
 
-`budget_le` gives the closed form `budget M ≤ 181 M + 12,649,235`.  `prefix_bound` gives the
+`budget_le` gives the closed form `budget M ≤ 181 M + 12,649,115`.  `prefix_bound` gives the
 budget premise of `total_meets` from `body_bounded`, and `total_meets_budget` states `total_meets`
 with the premises on the host's replies in its place.  Linux 4.13 and later limit the strings and
 pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
@@ -56,13 +57,12 @@ def checkBudget (n : Nat) : Nat := 4 * (n + 1)
 
 /-- A bound on the charge of `main` for an argument block of at most `argsLimit` bytes and a
 manifest of at most `M` bytes: the block of `args`, the copy of the argument, the read buffer, the
-record block of `fd_filestat_get` and the manifest's buffer, the charge of `parse`, and that of
-`checkLines`. -/
+manifest's buffer, the charge of `parse`, and that of `checkLines`. -/
 def budget (M : Nat) : Nat :=
-  2 * Bytes.allocationCost argsLimit + 65584 + (120 + Bytes.allocationCost M) + (176 * M + 464) +
+  2 * Bytes.allocationCost argsLimit + 65584 + Bytes.allocationCost M + (176 * M + 464) +
     checkBudget M
 
-theorem budget_le (M : Nat) : budget M ≤ 181 * M + 12649235 := by
+theorem budget_le (M : Nat) : budget M ≤ 181 * M + 12649115 := by
   have h := allocationCost_le M
   have hA : Bytes.allocationCost argsLimit = 6291504 := by decide
   unfold budget checkBudget
@@ -660,8 +660,8 @@ theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
     trivial
   · simp
 
-/-- `readManifest` charges the record block of `fd_filestat_get`, 120 bytes, and the call of
-`readBytes` on a size that a successful reply reported, at most `M` bytes. -/
+/-- `readManifest` charges the call of `readBytes` on a size that a successful reply of
+`fd_filestat_get` reported, at most `M` bytes.  The call of `fd_filestat_get` charges nothing. -/
 theorem readManifest_bounded {World : Type} {host : Host World} {M : Nat}
     (statBound : ∀ world args outputs after,
       host.sys world Call.fdFilestatGet args (.returned 0 outputs) after →
@@ -670,14 +670,9 @@ theorem readManifest_bounded {World : Type} {host : Host World} {M : Nat}
     Bounded host (.ofProg command.pure.program command.pure.funs)
       (.cons command.readBytes.func .nil) 1
       (entryModes command.readManifest.func.params command.readManifest.func.modes)
-      (fun _ => false) command.readManifest.func.body env (120 + Bytes.allocationCost M) := by
-  apply bounded_of_rule
-  intro _ _ rule
-  refine rule 120 (Bytes.allocationCost M) (by omega) ?_ ?_
-  · apply bounded_of_rule
-    intro _ _ rule
-    exact rule (fun _ _ _ _ _ => by rw [filestat_block]; simp only [PureContext.sysTakeCost]; omega)
-      (fun _ _ _ _ _ => by rw [filestat_block]; simp only [PureContext.sysTakeCost]; omega)
+      (fun _ => false) command.readManifest.func.body env (Bytes.allocationCost M) := by
+  bind_bound 0 (Bytes.allocationCost M)
+  · sys_bound
   intro stat returned
   obtain ⟨_, _, _, statRun⟩ := returns_fact returned
   apply bounded_of_rule
@@ -838,7 +833,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   unfold budget checkBudget
   generalize hA : Bytes.allocationCost argsLimit = A at reported ⊢
   generalize hB : Bytes.allocationCost M = B
-  bind_bound A (A + 65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1))
+  bind_bound A (A + 65584 + B + (176 * M + 464) + 4 * (M + 1))
   · apply bounded_of_rule
     intro _ _ rule
     exact rule reported.1 reported.2
@@ -848,9 +843,9 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   have hbytes : bytes.data.size ≤ argsLimit :=
     Verified.Examples.WasiSys.args_bytes_le observedArgs argsRun
   letPair_free
-  ite_bound (A + 65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1))
+  ite_bound (A + 65584 + B + (176 * M + 464) + 4 * (M + 1))
   · ret_bound
-  bind_bound 0 (A + 65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1))
+  bind_bound 0 (A + 65584 + B + (176 * M + 464) + 4 * (M + 1))
   · ret_bound
   intro (scan : UInt64 × UInt64 × UInt64) returnedScan
   have hscan := returns_fact returnedScan
@@ -860,8 +855,8 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   subst hscan
   apply bounded_of_rule
   intro _ _ rule
-  refine rule (A + 65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1))
-    (A + 65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1)) (ite_cost (by charge)) (by fits)
+  refine rule (A + 65584 + B + (176 * M + 464) + 4 * (M + 1))
+    (A + 65584 + B + (176 * M + 464) + 4 * (M + 1)) (ite_cost (by charge)) (by fits)
     (fun _ => ?_) (fun accepted => ?_)
   · ret_bound
   have haccept : ((argScan bytes).1 != 2 || bytes.get (bytes.size - 1) != 0) = false := by
@@ -871,10 +866,10 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   have hcopy := allocationCost_mono
     ((name_size_le bytes (by unfold argsLimit at hbytes; omega) haccept).trans hbytes)
   rw [hA] at hcopy
-  bind_bound A (65584 + (120 + B) + (176 * M + 464) + 4 * (M + 1))
+  bind_bound A (65584 + B + (176 * M + 464) + 4 * (M + 1))
   · ret_bound
   intro _ _
-  bind_bound 65584 ((120 + B) + (176 * M + 464) + 4 * (M + 1))
+  bind_bound 65584 (B + (176 * M + 464) + 4 * (M + 1))
   · ret_bound
   intro (buffer : LeanExe.Bytes) returnedBuffer
   have hbuffer : buffer.data.size = 65536 := by
@@ -882,30 +877,30 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
     simp only [ReturnFact, Expr.denote] at h
     rw [h, build_size]
     rfl
-  bind_bound (120 + B) ((176 * M + 464) + 4 * (M + 1))
-  · ret_first (120 + B)
-    ret_first (120 + B)
-    ret_first (120 + B)
-    ret_first (120 + B)
-    ret_first (120 + B)
-    ret_first (120 + B)
+  bind_bound B ((176 * M + 464) + 4 * (M + 1))
+  · ret_first B
+    ret_first B
+    ret_first B
+    ret_first B
+    ret_first B
+    ret_first B
     apply bounded_of_rule
     intro _ _ rule
-    refine rule 0 (120 + B) (by omega) ?_ ?_
+    refine rule 0 B (by omega) ?_ ?_
     · sys_bound
     intro _ _
-    ite_bound (120 + B)
-    · bind_bound (120 + B) 0
+    ite_bound B
+    · bind_bound B 0
       · ret_bound
       · intro _ _
         ret_bound
-    · ret_first (120 + B)
+    · ret_first B
       apply bounded_of_rule
       intro _ _ rule
-      refine rule (120 + B) 0 (by omega) ?_ ?_
+      refine rule B 0 (by omega) ?_ ?_
       · apply bounded_of_rule
         intro _ _ rule
-        refine rule (120 + B) (by charge) rfl ?_
+        refine rule B (by charge) rfl ?_
         rw [← hB]
         exact callBounded_there (callBounded_there (callBounded_there
           (callBounded_here (by decide) (readManifest_bounded observedStat _))))

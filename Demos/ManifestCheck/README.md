@@ -171,7 +171,7 @@ which `hexMatchesSpec_iff` and `digestOf_iff` relate to `DigestOf`, and `line_wr
 on the lines, from the positions that `parse` gives (`parse_accepted`, `entry_get`), and
 `meets_of` assembles `Run`, `Confined`, and `Handled` from the parts.  `main` takes the table of
 SHA-256's round constants, which the module holds in its static data, as its argument, and
-`table_rep` and `table_scratch` give the generated theorems the table's representation.
+`table_rep` and `table_low` give the generated theorems the table's representation.
 
 `stops_soFar` follows `main` again, with the lemmas of [the runs that
 stop](../../Verified/Wasi/Stops.lean): a run of `Action.bind first next` that stops is a run of
@@ -203,14 +203,16 @@ bounds every run and every prefix of `main`'s body by `budget M` under every hos
 `args_sizes_get` replies report at most `argsLimit` bytes, 6 MiB, the most that Linux lets the
 strings and pointers of `argv` and `envp` take, and whose successful `fd_filestat_get` replies
 report a size of at most `M` bytes.  `budget M` sums the block of `args` and the copy of the
-manifest's name, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the record block
-of `fd_filestat_get`, the manifest's buffer of at most `M` bytes, the charge of `parse`, at most
-`176 M + 464` bytes, and the charge of `checkLines`, at most `4 (M + 1)` bytes.  The charge of
-`checkLines` follows the lines: a pass charges at most four bytes for each byte of its line and the
-newline after it (`loop_bounded_sum`), and the lines with their newlines hold at most one byte more
-than the manifest (`lines_total`).  A pass of the reads of a file, of the reads of the manifest,
-and of `writeAll` charges nothing, and `budget_le` states `budget M ≤ 181 M + 12,649,235`, and `initial_within` states
-that the budget fits the 65,535 pages of the module's cap for every `M` of at most 23,000,000.
+manifest's name, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the manifest's
+buffer of at most `M` bytes, the charge of `parse`, at most `176 M + 464` bytes, and the charge of
+`checkLines`, at most `4 (M + 1)` bytes.  The call of `fd_filestat_get` charges nothing, since a
+record call places its record in the call area of low memory.  The charge of `checkLines` follows
+the lines: a pass charges at most four bytes for each byte of its line and the newline after it
+(`loop_bounded_sum`), and the lines with their newlines hold at most one byte more than the
+manifest (`lines_total`).  A pass of the reads of a file, of the reads of the manifest, and of
+`writeAll` charges nothing.  `budget_le` states `budget M ≤ 181 M + 12,649,115`, and
+`initial_within` states that the budget fits the 65,535 pages of the module's cap for every `M` of
+at most 23,000,000.
 
 ## Confinement
 

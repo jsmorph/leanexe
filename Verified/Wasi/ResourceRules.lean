@@ -659,12 +659,6 @@ theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
 
 theorem allocationCost_zero : Bytes.allocationCost 0 = 0 := rfl
 
-/-- The call of `fd_filestat_get` charges 120 bytes for the block of its record, 71 bytes. -/
-theorem filestat_block (trace : List Event) :
-    sysCost (.record 8) Call.fdFilestatGet trace = 120 := by
-  simp only [sysCost]
-  decide
-
 /-- A descriptor that `fd_filestat_get` does not reject lies below `2^32`. -/
 theorem filestat_fd {fd : UInt64} (fits : Call.fdFilestatGet.reject [.word fd] = 0) :
     fd.toNat < 2 ^ 32 := by
