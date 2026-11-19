@@ -223,3 +223,33 @@ Classes that no statement excludes, after this review: programs that differ only
 memory that no statement constrains; runs whose replies fail `StatBounded`, of which the corollary
 states nothing; and the kernel's resolution of names, which the traces show for the names of the
 driver.
+
+## Second review of the executable's theorems
+
+A fifth fresh agent reviewed the revised statements, the responses above, the guide's sections, and
+the driver by the same method.  Its model of `InRange`, `nameCheck`, and `NMeets`, of the shim,
+and of the command ran 52 wrong programs on 904 scenarios: 15 manifests, among them line names
+that the shim's checks refuse, about 60 fault cases each, with one, three, and four `EAGAIN`
+results, failed and short reads, failed closes, short and failed writes, times before 1970,
+descriptors up to 1,023, and descriptor 3 not granted, and ten argument lists with and without
+descriptor 3.  The right program met `InRange` and `NMeets` in all 904 scenarios, and `NMeets`
+rejected 50 of the 52 wrong programs.  It found the responses above held in the Lean text, and no
+defect of a statement.
+
+| Finding | Response |
+|---|---|
+| The guide's example of a reply that fails `StatBounded` needs seconds that keep each time below `2^64` nanoseconds, since a larger time gives errno 61 | Adopted |
+| The section on confinement credited the retries after `EAGAIN` to `run_openHow`, which states the record | Adopted: it cites `run_openLoop` and `openStub_sim` and says that the stub calls `openat2` again after each `EAGAIN` of the first three |
+| The section on confinement said that the driver shows Wasmtime refusing each name that leaves the directory with errno 63, which it checks only for the manifest named with `..`; the lines give FAILED | Adopted |
+| The docstrings of `run_native` and `handled_native` and the module docstring of the corollary omitted premises, and the module docstring called each WASI event's image unique | Adopted |
+| `NFileReads`'s docstring described each read as one of `window done` bytes, where each read takes the window after the bytes of the reads before it | Adopted |
+| `NManifestBody`'s docstring and the guide said that any time of `2^64` nanoseconds or more gives status 61, where `Overflows` reads the access, modification, and reported birth times | Adopted |
+| The guide did not say that the corollary covers manifests of at most 1 MiB | Adopted |
+
+Two wrong programs met every statement and check.  A program that tests a line's name for a zero
+byte and for its length in another order makes no call and writes FAILED either way, since a
+refused line discards its errno.  A program that opens the checked files with the rights
+`manifestRights` makes the same Linux events, since the open flags depend only on `fd_write`, and
+`Confined` at WASI excludes it.  A program that reads a file in full before hashing it, with the
+same reads, meets `NMeets`, and `manifest_elf_meets` excludes it only through the guest trap of a
+file that outgrows the executable's 4,096 pages.

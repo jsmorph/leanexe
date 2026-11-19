@@ -5,7 +5,8 @@ import Verified.Shim.Images
 import Verified.Shim.Args
 
 /-! The manifest checker's specification at the Linux call layer from its specification at WASI.
-Each WASI event of the command has, under `linuxHost` with the results of `InRange`, one image:
+Each WASI event of the command has, under `linuxHost` with the results of `InRange`, images of
+these forms:
 `path_open` the `openat2` calls of `Opening` (`open_native`), `fd_filestat_get` one `statx`
 (`stat_native`), `fd_read` on a handle one `read` (`read_native`), `fd_close` one `close`
 (`close_native`), and a write to standard output one `write` of descriptor 1 (`write_native`).
@@ -16,9 +17,10 @@ constructors, and `run_native` and `handled_native` translate `Run` and `Handled
 
 Under a host that rejects only exit statuses of 126 or more, a run of `main` and its exit that
 traps has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
-`main`), and no call of the command whose image has results in Linux's range traps
-(`image_untrapped`).  `linux_exec_meets` combines these with `exec_main`: every run under
-`linuxHost` from a launch whose arguments have no zero byte and fit `argsLimit`, and whose layer
+`main`), and for a launch whose arguments fit the shim's limit (`stringsFit`), no call of the
+command whose image has results in Linux's range traps (`image_untrapped`).  `linux_exec_meets`
+combines these with `exec_main`: every run under `linuxHost` from a world without layer events and
+a launch whose arguments have no zero byte and fit `argsLimit`, and whose layer
 events have results in Linux's range (`InRange`) and `read` outputs as long as the counts that they
 ask for (`Sized`), ends at an accepted exit whose status and layer events meet `NMeets`. -/
 
@@ -1103,7 +1105,8 @@ theorem oneArgument_args {args : List (List UInt8)} (noZero : ∀ s ∈ args, (0
 
 /-- `Run` at WASI under the shim's host gives `NRun` of the images, for arguments without zero
 bytes whose strings and eight-byte pointers take at most `argsLimit` bytes, after events after
-which the shim holds descriptor 3 exactly when the launch grants it. -/
+which the shim holds descriptor 3 exactly when the launch grants it, when the images have results
+in Linux's range (`InRange`) and `read` outputs as long as their counts (`Sized`). -/
 theorem run_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
     {world : LinuxWorld} {a : ArgsResult} {manifest : List UInt8} {events : List Event}
     {code : UInt64} {before ls : List Linux.Event}
@@ -1264,8 +1267,10 @@ theorem onDescriptor_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd : 
     · exact first x m
     · exact more x m
 
-/-- `Handled` at WASI gives `NHandled` of the images, and every `openat2` among them opens a name
-that the WASI open of its image names, beneath descriptor 3. -/
+/-- `Handled` at WASI gives `NHandled` of the images with results in Linux's range (`InRange`),
+when every `path_open` of the events opens a name read-only with the rights `manifestRights` or
+`fileRights`, and every `openat2` among the images opens, beneath descriptor 3, a name that the
+WASI open of its image names. -/
 theorem handled_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {P : List UInt8 → Prop} :
     ∀ {events : List Event} {before ls : List Linux.Event},
       Handled events → Images F L I before events ls → InRange ls →

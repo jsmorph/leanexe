@@ -146,8 +146,9 @@ inductive NManifestReads (fd : UInt64) (size : Nat) :
 
 /-- `NManifestBody fd events status bytes`: `events` are those of the reading of the manifest open
 at descriptor `fd`, `status` is its status, and, when the status is 0, `bytes` are the manifest's
-bytes.  The `statx` comes first: an error number ends the reading with its errno, and a timestamp
-of `2^64` nanoseconds or more, or a size of `2^32` bytes or more, ends it with status 61
+bytes.  The `statx` comes first: an error number ends the reading with its errno, and an access,
+modification, or reported birth time of `2^64` nanoseconds or more, or a size of `2^32` bytes or
+more, ends it with status 61
 (`overflow`).  Otherwise the reads of `NManifestReads` follow for a buffer of the size that it
 reported, and a status other than 0 ends the reading.  When the bytes fill the buffer, a last read
 of 65,536 bytes follows, and the status is its errno for an error number, 1 when it returned bytes,
@@ -195,8 +196,9 @@ inductive NManifestRun (held : Bool) (name : List UInt8) :
 /-! ## The checks -/
 
 /-- `NFileReads fd r done events bytes ending`: `events` are at most `r` reads of descriptor `fd`
-after the bytes `done`, each of `window done` bytes, the bytes of the read buffer of 65,536 bytes
-after those that it holds, and `bytes` are the bytes that they returned.  Each read but the last
+after the bytes `done`, each of the bytes of the read buffer of 65,536 bytes after those that the
+reads before it left in the buffer, `window` of the bytes read so far, and `bytes` are the bytes
+that they returned.  Each read but the last
 returned a count of one byte or more, which is no error number.  The last returned 0 (`eof`) or an
 error number (`failed`), or `r` reads returned bytes (`cut`). -/
 inductive NFileReads (fd : UInt64) : Nat → List UInt8 → List Linux.Event → List UInt8 → Ending →

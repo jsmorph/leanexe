@@ -226,20 +226,22 @@ shim's specification](../../Verified/Shim/Replies.lean) makes every `path_open` 
 whose `open_how` record, `openHowBytes`, holds the resolution flags `RESOLVE_BENEATH` and
 `RESOLVE_NO_MAGICLINKS` (10), and the AArch64 stub of `path_open` in
 [`LeanExe/A64/WasiFiles.lean`](../../LeanExe/A64/WasiFiles.lean) writes that record (`openHow`) and
-calls `openat2` up to four times after `EAGAIN` (`openCalls`), which `run_openHow` of [the stub's
-proof](../../Verified/ShimA64/OpenHow.lean) proves.  The shim never falls back to `openat`: `ENOSYS`
-gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of a resolution that leaves the
-directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an absolute name, a `..` that
-leaves the directory, and a symbolic link, absolute or relative, whose target lies outside it, and
-`RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's Wasmtime host preopens the
-directory with `wasi_config_preopen_dir` of [`tools/wasmtime-host.c`](../../tools/wasmtime-host.c),
-and Wasmtime resolves names with cap-std, which confines them as well.  `Confined` therefore
-states the names that the command asks the host to open, relative to descriptor 3, and relies on the
-host's resolution for the rest, which no theorem of the repository states for Linux's kernel.  The
-driver's runs show Wasmtime 44 refusing a name with `..` that leaves the directory, an absolute
-name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -c` reads, and its
-traces of the native executable show Linux refusing the `openat2` of each of these names with
-`EXDEV`.
+calls `openat2` up to four times, again after each `EAGAIN` of the first three (`openCalls`), which
+`run_openHow` of [the record's proof](../../Verified/ShimA64/OpenHow.lean) and `run_openLoop` and
+`openStub_sim` of [the stub's proof](../../Verified/ShimA64/Open.lean) prove.  The shim never falls
+back to `openat`: `ENOSYS` gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of a
+resolution that leaves the directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an
+absolute name, a `..` that leaves the directory, and a symbolic link, absolute or relative, whose
+target lies outside it, and `RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's
+Wasmtime host preopens the directory with `wasi_config_preopen_dir` of
+[`tools/wasmtime-host.c`](../../tools/wasmtime-host.c), and Wasmtime resolves names with cap-std,
+which confines them as well.  `Confined` therefore states the names that the command asks the host
+to open, relative to descriptor 3, and relies on the host's resolution for the rest, which no
+theorem of the repository states for Linux's kernel.  In the driver's runs a manifest named with a
+`..` that leaves the directory gives status 63 (`perm`), and a line that names a file through such a
+`..`, by an absolute name, or through a link out of the directory gives FAILED, where `sha256sum -c`
+reads the file.  The driver's traces of the native executable show Linux refusing the `openat2` of
+each of these names with `EXDEV`.
 
 ## The native executable checks the manifest
 
@@ -278,13 +280,13 @@ as the fourth.  A read before the last of a file or of the manifest returned a c
 more.  A line's verdict is OK exactly when its opening returned a descriptor, a `read` returned 0
 before any `read` returned an error number, the `close` returned 0, and the line's digits give the
 digest of the bytes that the reads returned.  Each other errno is the shim's `errnoOf` of a negated
-error number, and a `statx` that reports a time of `2^64` nanoseconds or more, as each time before
-1970 does, or a size of `2^32` bytes or more gives status 61.  `NConfined` states that every
-`openat2` is relative to descriptor 3 with the flags `O_RDONLY | O_CLOEXEC` and the resolution
-`RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`, and names the argument or the name of a line of an
-accepted manifest.  `NHandled` states that the events are `openat2` calls that returned an error
-number, brackets of an `openat2` that returned a descriptor, `read` and `statx` calls of that
-descriptor, and its `close`, and writes to descriptor 1.
+error number, and a `statx` that reports an access, modification, or birth time of `2^64`
+nanoseconds or more, as each such time before 1970 does, or a size of `2^32` bytes or more gives
+status 61.  `NConfined` states that every `openat2` is relative to descriptor 3 with the flags
+`O_RDONLY | O_CLOEXEC` and the resolution `RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`, and names the
+argument or the name of a line of an accepted manifest.  `NHandled` states that the events are
+`openat2` calls that returned an error number, brackets of an `openat2` that returned a descriptor,
+`read` and `statx` calls of that descriptor, and its `close`, and writes to descriptor 1.
 
 `InRange ls` states the results that Linux gives for the command's calls and that the shim
 accepts.  A `read` or a `write` returns an error number or at most its count (read(2), write(2)), a
@@ -299,18 +301,20 @@ descriptor of 1,024 or more.  Since no `openat2` returns 3 and no `close` names 
 descriptor 3 throughout the run exactly when the check granted it.  `Sized`, that each `read`'s
 output holds as many bytes as the `read` asked for, follows from `Carried`.
 
-`StatBounded M R` states the premise of `body_bounded` on `fd_filestat_get` over the replies:
-every reply of `R` that the shim's `filestatReply` reads as a `statx` record with errno 0 reports a
-size of at most `M` bytes.  `linuxHost` answers a `fd_filestat_get` at any world from the reply
-whose index is the number of the world's layer events, and `body_bounded` covers every world, so
-the premise covers every reply of `R`, those to the command's other calls among them.  The
-corollary therefore holds for reply sequences whose every reply meets the bound, a stronger
-premise than a bound on the size that the manifest's `statx` reports, and real runs can fail it.
-A `read` that returns 0 leaves its window's bytes in place, and the reply that `Carried` records
-for it holds those bytes.  A file whose last 65,536 bytes hold a size above 1 MiB where a `statx`
-record holds `stx_size`, and nanoseconds below `10^9` where it holds the times, gives such a reply
-at its last `read`, and the corollary states nothing of that run, whose verdict is correct.  A
-premise on the `statx` events of the run alone needs a budget that follows the run's worlds.
+`StatBounded M R` states the premise of `body_bounded` on `fd_filestat_get` over the replies: every
+reply of `R` that the shim's `filestatReply` reads as a `statx` record with errno 0 reports a size
+of at most `M` bytes.  `linuxHost` answers a `fd_filestat_get` at any world from the reply whose
+index is the number of the world's layer events, and `body_bounded` covers every world, so the
+premise covers every reply of `R`, those to the command's other calls among them.  The corollary
+therefore covers manifests of at most 1 MiB, `manifestLimit`, and holds for reply sequences whose
+every reply meets the bound, a stronger premise than a bound on the size that the manifest's `statx`
+reports, and real runs can fail it.  A `read` that returns 0 leaves its window's bytes in place, and
+the reply that `Carried` records for it holds those bytes.  A file whose last 65,536 bytes hold a
+size above 1 MiB where a `statx` record holds `stx_size`, and, where it holds the times, seconds
+that keep each time that the shim reads below `2^64` nanoseconds and nanoseconds below `10^9`, gives
+such a reply at its last `read`, and the corollary states nothing of that run, whose verdict is
+correct.  A premise on the `statx` events of the run alone needs a budget that follows the run's
+worlds.
 
 The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
 budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
