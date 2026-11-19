@@ -12,6 +12,7 @@ import Verified.Wasi.CommandCallSpec
 import Verified.Wasi.CommandBindSpec
 import Verified.Wasi.CommandConditionalSpec
 import Verified.Wasi.CommandLoopSpec
+import Verified.Wasi.ReadCommand
 
 open Lean Elab Command in
 elab "check_command_axioms" : command => do
@@ -79,7 +80,7 @@ elab "check_command_axioms" : command => do
     ``Verified.Wasi.After.release,
     ``Verified.Wasi.command_unit_spec,
     ``Verified.Wasi.command_ret_spec,
-    ``Verified.Wasi.command_read_spec,
+    ``Verified.Wasi.command_read_spec_with,
     ``Verified.Wasi.command_write_spec,
     ``Verified.Wasi.command_exit_spec,
     ``Verified.Wasi.wp_call_after_arguments,

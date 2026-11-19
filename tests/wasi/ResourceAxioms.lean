@@ -8,6 +8,7 @@ import Verified.Wasi.CostTotal
 import LeanExe.Wasi.NoTrapPrefix
 import Verified.Wasi.CommandLetPair
 import Verified.Wasi.ResourceRulesAt
+import Verified.Wasi.ReadCommand
 
 open Lean Elab Command in
 elab "check_wasi_resource_axioms" : command => do
