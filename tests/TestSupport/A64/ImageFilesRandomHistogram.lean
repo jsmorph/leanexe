@@ -1,4 +1,5 @@
 import TestSupport.A64.WasiElf
+import TestSupport.A64.ElfWitness
 import Demos.RandomHistogram.NativeCounts
 import LeanExe.A64.File
 
@@ -37,8 +38,9 @@ without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_counts` 
 and `Counts` from the `Exec` run that the footprint names.
 
 `histogram_elf_witness` shows that the corollary's premises and `Full` hold together.  The process
-`witnessProc` holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of
-the arguments `oneArgs`, `h` and `1`, with no environment.  Under the replies `fullReplies`, which
+holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
+arguments `oneArgs`, `h` and `1`, with no environment, as `loadedMem` of
+`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies `fullReplies`, which
 answer the `getrandom` of the run's one word with 8 zero bytes and its `write` with every byte of
 `oneOutput`, the process reaches `exit_group` with X0 at 0 after layer events that meet `Full` and
 `Counts`.
@@ -47,7 +49,7 @@ answer the `getrandom` of the run's one word with 8 zero bytes and its `write` w
 namespace TestSupport.A64.ImageFilesRandomHistogram
 
 open LeanExe LeanExe.A64 LeanExe.Wasi Verified.Wasi Verified.Shim Verified.ShimA64
-  Demos.RandomHistogram TestSupport.A64.WasiElf
+  Demos.RandomHistogram TestSupport.A64.WasiElf TestSupport.A64.ElfWitness
 
 def histogramElfBytes : Nat := file_nat% "histogram.elf"
 def histogramElfSize : Nat := file_size% "histogram.elf"
@@ -219,72 +221,6 @@ theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List
 
 /-! ## The premises hold together -/
 
-/-- The initial stack of the arguments `oneArgs` at `2^32`: `argc`, 2; the pointers to `h` at
-`2^32 + 40` and to `1` at `2^32 + 42`; the zero words that end `argv` and `envp`; and the strings
-`h` and `1`, each with its zero byte. -/
-def witnessStack : List UInt8 :=
-  [2, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 1, 0, 0, 0, 42, 0, 0, 0, 1, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104, 0, 49, 0]
-
-/-- The memory of the witness: below `2^32`, the file's segments as Linux's loader places them and
-zeros elsewhere; from `2^32` on, `witnessStack` and zeros after it. -/
-def witnessMem (a : UInt64) : UInt8 :=
-  if a.toNat < 2 ^ 32 then
-    if 0x400000 ≤ a.toNat ∧ a.toNat < 0x400000 + 22008 then
-      byteAt histogramElfBytes (a.toNat - 0x400000)
-    else if 0x410000 ≤ a.toNat ∧ a.toNat < 0x410000 + 4096 then
-      byteAt histogramElfBytes (0x10000 + (a.toNat - 0x410000))
-    else 0
-  else witnessStack.getD (a.toNat - 2 ^ 32) 0
-
-/-- The top of the witness's initial stack. -/
-def witnessTop : UInt64 := 2 ^ 32 + 4096
-
-/-- The process of the witness: the program counter at the entry, SP at `2^32`, every other
-register 0, the memory `witnessMem`, and no event. -/
-def witnessProc : Proc :=
-  ⟨⟨fun _ => 0, fun _ => 0, 2 ^ 32, wasiEntry, false, false, false, false, witnessMem,
-    ⟨[], 0, 0⟩⟩, 0, []⟩
-
-theorem witness_loaded : ElfLoaded (byteAt histogramElfBytes) witnessProc.core.mem := by
-  intro seg member _ j inside
-  rw [histogram_elf_segments] at member
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl
-  · simp only at inside ⊢
-    have wide : (UInt64.ofNat (0x400000 + j)).toNat = 0x400000 + j :=
-      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-    simp only [witnessProc, witnessMem, wide]
-    rw [ite_eq_left (by omega), ite_eq_left (by omega), ite_eq_left (by omega)]
-    exact congrArg (byteAt histogramElfBytes) (by omega)
-  · simp only at inside ⊢
-    have wide : (UInt64.ofNat (0x410000 + j)).toNat = 0x410000 + j :=
-      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-    simp only [witnessProc, witnessMem, wide]
-    rw [ite_eq_left (by omega), ite_eq_right (by omega)]
-    by_cases low : j < 4096
-    · rw [ite_eq_left (by omega), ite_eq_left low]
-      exact congrArg (byteAt histogramElfBytes) (by omega)
-    · rw [ite_eq_right (by omega), ite_eq_right low]
-
-theorem witness_stack :
-    InitialStack oneArgs [] witnessProc.core.sp witnessTop witnessProc.core.mem where
-  above := by decide
-  below := by decide
-  words := by decide
-  argc := by decide +kernel
-  argv := by
-    intro i h
-    unfold StringAt
-    have : i = 0 ∨ i = 1 := by
-      simp only [oneArgs, List.length_cons, List.length_nil] at h
-      omega
-    rcases this with rfl | rfl <;>
-      simp only [oneArgs, List.getElem_cons_zero, List.getElem_cons_succ] <;> decide +kernel
-  argvEnd := by decide +kernel
-  envp := fun _ h => absurd h (Nat.not_lt_zero _)
-  envpEnd := by decide +kernel
-
 /-- The premises of `histogram_elf_counts` and `Full` hold together.  For the replies
 `fullReplies`, the process `witnessProc`, the arguments `oneArgs`, which give N of 1, no
 environment, and the stack's top `witnessTop`, every premise of the corollary holds, and the
@@ -305,10 +241,16 @@ theorem histogram_elf_witness :
           Counts args ls (q.core.x 0) ∧ q.core.x 0 = 0 := by
   have parsed : parseSpec (bytesOfList (stringsBytes oneArgs)) = 1 := by decide
   have small : stringsSize oneArgs + 8 * oneArgs.length ≤ argsLimit := by decide
-  refine ⟨fullReplies, witnessProc, oneArgs, [], witnessTop, parsed, small,
-    witness_loaded, witness_stack, rfl, rfl, ?_⟩
+  have loaded : ElfLoaded (byteAt histogramElfBytes)
+      (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack) :=
+    loadedMem_loaded histogram_elf_segments (by decide) (by decide) (by decide)
+  have stack : InitialStack oneArgs [] (2 ^ 32) witnessTop
+      (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack) :=
+    loadedMem_stack (byteAt histogramElfBytes) 22008 4096
+  refine ⟨fullReplies, witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack),
+    oneArgs, [], witnessTop, parsed, small, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    histogram_elf_runs fullReplies witnessProc small witness_loaded witness_stack rfl rfl
+    histogram_elf_runs fullReplies _ small loaded stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨exited, full⟩ := fullReplies_run h himg hcar
