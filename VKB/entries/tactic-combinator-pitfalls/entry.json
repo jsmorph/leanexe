@@ -133,8 +133,6 @@
     "UInt64.toNat_ofNat",
     "UInt64.toNat_ofNat_of_lt'",
     "UInt64.reduceToNat",
-    "Verified.Wasi.recordAddress",
-    "Verified.Wasi.recordAddress_spec",
     "Lean.Parser.Tactic.location",
     "Lean.Parser.Term.structInst",
     "Lean.Parser.Term.argument",

@@ -17,7 +17,8 @@
     "@ite Nat c d b b in the budget of the ite rule",
     "a resource bound of a loop whose number of passes depends on the host's replies, such as writeAll's",
     "Verified.Wasi.Resource.BoundedAt host pure program depth modes live command env world budget",
-    "a charge that a source branch does not explain, from a variable that the reflected branch keeps live"
+    "a charge that a source branch does not explain, from a variable that the reflected branch keeps live",
+    "a resource bound of a loop of record calls or polls"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -33,7 +34,8 @@
     "Verified.Examples.WasiSys",
     "Verified.Wasi.ResourceRulesAt",
     "Verified.Examples.WasiReadAllSteady",
-    "LeanExe.Wasi.WriteAll"
+    "LeanExe.Wasi.WriteAll",
+    "Verified.Examples.WasiRecordLoop"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -85,7 +87,10 @@
     "LeanExe.Wasi.writeAll",
     "Verified.Examples.WasiReadAll.writeAll_bounded",
     "Verified.Examples.WasiReadAll.body_bounded",
-    "Verified.Wasi.Resource.Returns.bind_ret"
+    "Verified.Wasi.Resource.Returns.bind_ret",
+    "Verified.Wasi.sysCost",
+    "Verified.Wasi.ABI.callArea",
+    "LeanExe.Wasi.callFits"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -107,7 +112,9 @@
     "Verified.Examples.WasiReadAll.linux_message",
     "Verified.Examples.WasiReadAll.budget_bounded",
     "Verified.Examples.WasiReadAll.SteadyAlong",
-    "Verified.Examples.WasiReadAll.Steady"
+    "Verified.Examples.WasiReadAll.Steady",
+    "Verified.Examples.WasiRecordLoop.body_bounded",
+    "Verified.Examples.WasiRecordLoop.call_prefix_bound"
   ],
   "unimported": {
     "Verified/Examples/WasiSysTotal.lean": [

@@ -82,7 +82,8 @@
     "Verified.Wasi.wp_release_context_with",
     "Wasm.wp_append",
     "Verified.Evolves.mono",
-    "Verified.Wasi.CommandResult.trap_live"
+    "Verified.Wasi.CommandResult.trap_live",
+    "Verified.Wasi.ABI.low"
   ],
   "examples": [
     "Verified.releaseStep",
