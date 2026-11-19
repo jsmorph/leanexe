@@ -7,7 +7,8 @@ import LeanExe.A64.Proof.WasiLaunch
 The A64 binding of the shim: the process of the Linux call layer's binding as the machine of the
 A64 simulation under the shim's environment `linuxEnv arm64Flags`.  `shimLayout area G` places the
 guest's byte 0 4096 bytes above the area at `area`, where the A64 back end keeps the memory's
-bytes, and the scratch's timespec, `open_how` record, and path buffer in the scratch `G`.
+bytes, and the scratch's timespec, `open_how` record, path buffer, and `statx` record in the
+scratch `G`.
 
 `shimMachine` is `withMachine` with the module's code on `modulePlatform L G`, the data segment
 without the scratch, and the process on `wasiPlatform L sp₀ top`, the data segment and the initial
@@ -33,7 +34,7 @@ open Wasm LeanExe LeanExe.A64 LeanExe.Wasi Verified.Wasi Verified.Shim
 
 /-- The shim's layout in an executable whose area lies at `area` and whose scratch is `G`. -/
 def shimLayout (area : UInt64) (G : Scratch) : ShimLayout :=
-  ⟨area + UInt64.ofNat 4096, G.timespec, G.openHow, G.path⟩
+  ⟨area + UInt64.ofNat 4096, G.timespec, G.openHow, G.path, G.statx⟩
 
 /-- The output regions of the event `e` lie within the `size` bytes from the guest's byte 0. -/
 def WritesLinear (L : ShimLayout) (size : Nat) (e : Linux.Event) : Prop :=
@@ -54,7 +55,7 @@ theorem WritesNative.writesWithin {L : ShimLayout} {size : Nat} {e : Linux.Event
   · exact h.writesWithin
   · intro g hg
     rw [h, List.mem_singleton] at hg
-    exact .inr hg
+    exact .inr (.inl hg)
 
 /-- An event of a call other than `clock_gettime` that writes as `WritesNative` admits writes
 within the `size` bytes from the guest's byte 0. -/

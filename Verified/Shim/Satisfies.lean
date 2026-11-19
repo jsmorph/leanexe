@@ -32,6 +32,7 @@ def sysInvoke (call : Call) :
   else if call = Call.fdWrite then handleWriteInvoke L I replies
   else if call = Call.fdPrestatGet then prestatInvoke I
   else if call = Call.fdPrestatDirName then dirNameInvoke I
+  else if call = Call.fdFilestatGet then filestatInvoke L I replies
   else fun before _ => .Trap before shimTrap
 
 def sysFn (call : Call) : HostFn (Observed LinuxWorld) where
@@ -49,8 +50,8 @@ theorem sys_contract {call : Call} (member : call ∈ shimCalls) (before : Store
     sysContract (linuxHost F L I replies) call before args
       (sysInvoke F L I replies call before args) := by
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-    simp (config := { decide := true }) only [sysInvoke, ↓reduceIte]
+  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl <;> simp (config := { decide := true }) only [sysInvoke, ↓reduceIte]
   · exact clock_contract F L I replies before args
   · exact random_contract F L I replies before args
   · exact sizes_contract F L I replies rfl
@@ -67,6 +68,7 @@ theorem sys_contract {call : Call} (member : call ∈ shimCalls) (before : Store
   · exact handleWrite_contract F L I replies before args
   · exact prestat_contract F L I replies before args
   · exact dirName_contract F L I replies before args
+  · exact filestat_contract F L I replies before args
 
 /-- The shim's environment satisfies the host's specification
 `hostSpecWith (linuxHost F L I replies) calls` for every module with at most the three stream

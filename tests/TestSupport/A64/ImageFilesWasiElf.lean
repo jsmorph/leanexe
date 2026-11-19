@@ -127,10 +127,10 @@ theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
     fun e he => (hwq e he).linear ?_, himg.readData 0, himg.writeData 1, ?_⟩
   · rcases Images.streamCalls himg hT e he with h | h <;> rw [h] <;> decide
   rcases hend with ⟨c, h, hx⟩ | ⟨h, hx⟩ | ⟨h, hx⟩ | ⟨-, ⟨residual, h⟩, hx⟩
-  · exact .inl ⟨c, Exec.streams rfl rfl h hT, hx⟩
-  · exact .inr (.inl ⟨Exec.streams rfl rfl h hT, hx⟩)
-  · exact .inr (.inr (.inl ⟨Exec.streams rfl rfl h hT, hx⟩))
-  · exact .inr (.inr (.inr ⟨⟨residual, Prefix.streams rfl rfl h hT⟩, hx⟩))
+  · exact .inl ⟨c, Exec.streams rfl rfl rfl h hT, hx⟩
+  · exact .inr (.inl ⟨Exec.streams rfl rfl rfl h hT, hx⟩)
+  · exact .inr (.inr (.inl ⟨Exec.streams rfl rfl rfl h hT, hx⟩))
+  · exact .inr (.inr (.inr ⟨⟨residual, Prefix.streams rfl rfl rfl h hT⟩, hx⟩))
 
 /-- readAll's message corollary for `readall.elf`.  For every choice of open flags `F`, launch `I`,
 and reply sequence `R` of the class `Steady F readAllShimLayout I R`, which answers each read with

@@ -22,12 +22,13 @@ bytes of an output region before a call depend on the store, which the WASI even
 carry, so `Image` leaves them free.  `Images events es ls` states that `ls`
 concatenates an image of each event of `es` in order, each after `events` and the images before
 it, and `WritesWithin L size e` that each output region of `e` lies in the `size` bytes from the
-guest's byte 0 or is the scratch's timespec.
+guest's byte 0 or is the scratch's timespec or `statx` record.
 
 `linuxHost F L I replies` relates a world and a WASI request to a reply and a world exactly when
 the layer events that it appends are an image of the WASI event after the world's events, each
 holds its reply of `replies`, counted from the number of events so far, and each writes within
-the `2^32` bytes from the guest's byte 0, the guest's address space, or into the timespec.  The
+the `2^32` bytes from the guest's byte 0, the guest's address space, or into the timespec or the
+`statx` record.  The
 host accepts an exit status below 126, which sets the exit marker, and rejects a status of 126 or
 more, as the repository's Wasmtime host does.  The sizes of the regions of `args_get` and
 `environ_get` come from `I`.  The world records the outputs of every successful flat call by its
@@ -146,6 +147,19 @@ def HandleWriteImage (opened : List UInt64) (args : List Arg) (reply : Transfer 
     else l = [] ∧ reply = .returned 8 [zeros 4]
   | _ => False
 
+/-- `fd_filestat_get` makes one `statx` of its descriptor with the empty path, which the scratch's
+path buffer holds as its zero, into the scratch's `statx` record, which the stub clears before the
+call, when `opened` holds the descriptor, and refuses it with errno 8 (`badf`) otherwise. -/
+def FilestatImage (L : ShimLayout) (opened : List UInt64) (args : List Arg)
+    (reply : Transfer (List Bytes)) (l : List Linux.Event) : Prop :=
+  match args with
+  | [.word fd] =>
+    if fd ∈ opened then ∃ ret output,
+      l = [⟨Linux.statxCall, [fd, L.path, statxFlags, statxMask, L.statx], [[0]],
+        List.replicate 256 0, ret, output⟩] ∧ reply = filestatReply ret output
+    else l = [] ∧ reply = .returned 8 [zeros 64]
+  | _ => False
+
 /-- `fd_prestat_get` makes no call. -/
 def PrestatImage (preopened : Bool) (args : List Arg) (reply : Transfer (List Bytes))
     (l : List Linux.Event) : Prop :=
@@ -178,13 +192,14 @@ def SysImage (F : OpenFlags) (L : ShimLayout) (I : Launch) (events : List Linux.
   else if call = Call.fdPrestatGet then PrestatImage (preopened I events) args reply l
   else if call = Call.fdPrestatDirName then
     DirNameImage (preopened I events) (openNumbers I events) args reply l
+  else if call = Call.fdFilestatGet then FilestatImage L (openNumbers I events) args reply l
   else False
 
 /-- The flat calls that the shim implements. -/
 def shimCalls : List Call :=
   [Call.clockTimeGet, Call.randomGet, Call.argsSizesGet, Call.argsGet, Call.environSizesGet,
     Call.environGet, Call.pathOpen, Call.fdClose, Call.fdRead, Call.fdWrite, Call.fdPrestatGet,
-    Call.fdPrestatDirName]
+    Call.fdPrestatDirName, Call.fdFilestatGet]
 
 /-- The layer events `l` that the shim makes for the WASI event `e` after the layer events
 `events`, with the buffer's address `a` and a read's prior bytes free. -/
@@ -210,10 +225,10 @@ inductive Images (F : OpenFlags) (L : ShimLayout) (I : Launch) :
         Images F L I events (e :: es) (l ++ ls)
 
 /-- Each output region of the event `e` lies in the `size` bytes from the guest's byte 0, counted
-modulo `2^64`, or is the scratch's timespec. -/
+modulo `2^64`, or is the scratch's timespec or its `statx` record. -/
 def WritesWithin (L : ShimLayout) (size : Nat) (e : Linux.Event) : Prop :=
   ∀ g ∈ Linux.outputRegions e.args 0 e.call.params,
-    L.offset g.1 + g.2 ≤ size ∨ g = (L.timespec, 16)
+    L.offset g.1 + g.2 ≤ size ∨ g = (L.timespec, 16) ∨ g = (L.statx, 256)
 
 /-- The event `e` holds the reply `r`: its result, and the reply's bytes over its output region,
 as `Linux.step` records them. -/
@@ -247,7 +262,7 @@ def LinuxWorld.answer (w : LinuxWorld) (l : List Linux.Event) (e : Wasi.Event) :
 
 /-- The shim answers the WASI event `e` from the world `w` with the world `w'`: it appends an
 image of `e` whose events hold the replies from call `w.events.length` on and write within the
-guest's address space or into the timespec. -/
+guest's address space or into the timespec or the `statx` record. -/
 def ShimStep (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (w : LinuxWorld) (e : Wasi.Event) (w' : LinuxWorld) : Prop :=
   ∃ l, Image F L I w.events e l ∧ Carried replies w.events.length l ∧
@@ -327,13 +342,18 @@ theorem sysImage_dirName :
       DirNameImage (preopened I events) (openNumbers I events) args reply l := by
   simp (config := { decide := true }) only [SysImage, ↓reduceIte]
 
+theorem sysImage_filestat :
+    SysImage F L I events Call.fdFilestatGet args reply l =
+      FilestatImage L (openNumbers I events) args reply l := by
+  simp (config := { decide := true }) only [SysImage, ↓reduceIte]
+
 /-- Only the calls of `shimCalls` have images. -/
 theorem sysImage_mem {call : Call} (h : SysImage F L I events call args reply l) :
     call ∈ shimCalls := by
   by_contra outside
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false, not_or] at outside
-  obtain ⟨c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12⟩ := outside
-  simp only [SysImage, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, ↓reduceIte] at h
+  obtain ⟨c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13⟩ := outside
+  simp only [SysImage, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, ↓reduceIte] at h
 
 end Calls
 
@@ -464,6 +484,18 @@ theorem prestatReply_shape (preopened : Bool) (fd : UInt64) :
   unfold prestatReply ReplyShape
   split_ifs <;> simp [Transfer.committed, Transfer.validErrno]
 
+theorem filestatBytes_size (output : List UInt8) : (filestatBytes output).data.size = 64 := by
+  simp [filestatBytes]
+
+theorem filestatReply_shape (ret : UInt64) (output : List UInt8) :
+    ReplyShape [64] (filestatReply ret output) := by
+  unfold filestatReply ReplyShape
+  split_ifs
+  · split
+    · split_ifs <;> simp [Transfer.committed, Transfer.validErrno]
+    · simp [Transfer.committed, Transfer.validErrno, filestatBytes_size]
+  all_goals simp [Transfer.committed, Transfer.validErrno]
+
 theorem dirNameReply_shape {preopened : Bool} {opened : List UInt64} {fd capacity : UInt64}
     {reply : Transfer (List Bytes)} (h : DirNameReply preopened opened fd capacity reply) :
     ReplyShape [capacity.toNat] reply := by
@@ -485,7 +517,8 @@ theorem sysImage_shape {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : 
     ReplyShape (call.outputSizes (shimReported I reports call) args) reply := by
   have member := sysImage_mem image
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl
   · rw [sysImage_clock] at image
     unfold ClockImage at image
     split at image
@@ -571,6 +604,16 @@ theorem sysImage_shape {F : OpenFlags} {L : ShimLayout} {I : Launch} {replies : 
     · obtain ⟨rfl, image⟩ := image
       exact dirNameReply_shape image
     · exact image.elim
+  · rw [sysImage_filestat] at image
+    unfold FilestatImage at image
+    split at image
+    · change ReplyShape [64] reply
+      split at image
+      · obtain ⟨ret, output, rfl, rfl⟩ := image
+        exact filestatReply_shape ret output
+      · obtain ⟨rfl, rfl⟩ := image
+        simp [ReplyShape, Transfer.committed, Transfer.validErrno]
+    · exact image.elim
 
 /-- The outputs of a successful `args_sizes_get` or `environ_sizes_get` in an image are those of
 `I`. -/
@@ -581,7 +624,8 @@ theorem sysImage_reporter {F : OpenFlags} {L : ShimLayout} {I : Launch}
       (call.name = "environ_sizes_get" → outputs = sizesOutputs I.environ) := by
   have member := sysImage_mem image
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl <;>
     first
     | exact ⟨fun named => absurd named (by decide), fun named => absurd named (by decide)⟩
     | skip

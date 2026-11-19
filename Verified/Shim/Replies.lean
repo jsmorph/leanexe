@@ -300,6 +300,68 @@ def handleWriteReply (count ret : UInt64) : Transfer (List Bytes) :=
   else if Linux.isError ret then .returned (errnoOf (0 - ret)) [zeros 4]
   else .trapped shimTrap [zeros 4]
 
+/-- The little-endian value of the `width` bytes from byte `offset` of `output`. -/
+def fieldAt (output : List UInt8) (offset width : Nat) : Nat :=
+  Linux.leValue ((output.drop offset).take width)
+
+/-- The WASI file type of a `statx` mode, from its bits `S_IFMT` as Wasmtime 44 maps cap-std's
+file type: `S_IFCHR` gives `character_device` (2), `S_IFDIR` `directory` (3), `S_IFBLK`
+`block_device` (1), `S_IFREG` `regular_file` (4), `S_IFLNK` `symbolic_link` (7), and every other
+type, a FIFO or a socket among them, `unknown` (0). -/
+def filetypeOf (mode : Nat) : Nat :=
+  match mode / 4096 % 16 with
+  | 2 => 2
+  | 4 => 3
+  | 6 => 1
+  | 8 => 4
+  | 10 => 7
+  | _ => 0
+
+/-- The time in nanoseconds of the `statx_timestamp` at byte `offset` of `output`: its eight bytes
+of seconds, read without a sign, times `10^9`, plus its four bytes of nanoseconds. -/
+def stampTime (output : List UInt8) (offset : Nat) : Nat :=
+  fieldAt output offset 8 * 10 ^ 9 + fieldAt output (offset + 8) 4
+
+/-- Whether the `statx_timestamp` at byte `offset` of `output` has nanoseconds below `10^9`. -/
+def stampValid (output : List UInt8) (offset : Nat) : Bool :=
+  decide (fieldAt output (offset + 8) 4 < 10 ^ 9)
+
+/-- Whether the `statx` record `output` reports the birth time: bit `STATX_BTIME` (`0x800`) of its
+mask. -/
+def hasBirth (output : List UInt8) : Bool := fieldAt output 0 4 / 2048 % 2 == 1
+
+/-- The offsets of the timestamps of the `statx` record `output` that `fd_filestat_get` reports,
+in the order in which the shim converts them: `stx_atime`, `stx_mtime`, and `stx_btime` when the
+record reports it. -/
+def stampOffsets (output : List UInt8) : List Nat :=
+  [64, 112] ++ if hasBirth output then [80] else []
+
+/-- The 64 bytes of `filestat` for the `statx` record `output`: `dev` 1, as Wasmtime 44 gives,
+`ino` from `stx_ino`, `filetype` from `stx_mode` with its seven bytes of padding as zeros, `nlink`
+from `stx_nlink`, `size` from `stx_size`, `atim` from `stx_atime`, `mtim` from `stx_mtime`, and
+`ctim` from `stx_btime` when the record reports it and 0 otherwise, as Wasmtime 44 gives the
+creation time, each as eight little-endian bytes. -/
+def filestatBytes (output : List UInt8) : Bytes :=
+  bytesOfList ([1, fieldAt output 32 8, filetypeOf (fieldAt output 28 2), fieldAt output 16 4,
+    fieldAt output 40 8, stampTime output 64, stampTime output 112,
+    if hasBirth output then stampTime output 80 else 0].flatMap fun v =>
+      (List.range 8).map (byteOf v))
+
+/-- The reply to `fd_filestat_get` whose `statx` returned `ret` with the record `output`.  For a
+result of 0 the shim converts the timestamps of `stampOffsets` in order, and the first that has
+nanoseconds of `10^9` or more, which Linux never gives, traps, and the first whose time reaches
+`2^64` nanoseconds, a time before 1970 among them, gives errno 61 (`overflow`).  Otherwise the
+reply is `filestatBytes`.  A negated error number gives its errno, and any other result traps. -/
+def filestatReply (ret : UInt64) (output : List UInt8) : Transfer (List Bytes) :=
+  if ret = 0 then
+    match (stampOffsets output).find? fun o => !stampValid output o || 2 ^ 64 ≤ stampTime output o
+    with
+    | some o =>
+      if stampValid output o then .returned 61 [zeros 64] else .trapped shimTrap [zeros 64]
+    | none => .returned 0 [filestatBytes output]
+  else if Linux.isError ret then .returned (errnoOf (0 - ret)) [zeros 64]
+  else .trapped shimTrap [zeros 64]
+
 /-- The reply to `fd_prestat_get` of `fd`: a directory whose name has one byte for descriptor 3
 while it is the preopened directory, and errno 8 (`badf`) otherwise, as Wasmtime 44 answers. -/
 def prestatReply (preopened : Bool) (fd : UInt64) : Transfer (List Bytes) :=

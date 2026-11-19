@@ -92,7 +92,7 @@ theorem openCalls_calls {L : ShimLayout} {dir : UInt64} {path how : List UInt8}
         cases member
 
 /-- The calls of an image of a flat call other than the handle forms of `fd_read` and
-`fd_write`: `clock_gettime`, `getrandom`, `openat2`, and `close`. -/
+`fd_write`: `clock_gettime`, `getrandom`, `openat2`, `close`, and `statx`. -/
 theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch}
     {events : List Linux.Event} {call : Call} {args : List Arg} {reply : Transfer (List Bytes)}
     {l : List Linux.Event} (image : SysImage F L I events call args reply l)
@@ -102,11 +102,13 @@ theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch}
   have member := sysImage_mem image
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
   have distinct : ∀ x : Linux.Event, x.call ∈ [Linux.clockGettimeCall, Linux.getrandomCall,
-      Linux.openat2Call, Linux.closeCall] → x.call ≠ Linux.readCall ∧ x.call ≠ Linux.writeCall := by
+      Linux.openat2Call, Linux.closeCall, Linux.statxCall] →
+        x.call ≠ Linux.readCall ∧ x.call ≠ Linux.writeCall := by
     intro x listed
     simp only [List.mem_cons, List.not_mem_nil, or_false] at listed
-    rcases listed with same | same | same | same <;> rw [same] <;> decide
-  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    rcases listed with same | same | same | same | same <;> rw [same] <;> decide
+  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl
   · rw [sysImage_clock] at image
     unfold ClockImage at image
     split at image
@@ -179,6 +181,18 @@ theorem sysImage_calls {F : OpenFlags} {L : ShimLayout} {I : Launch}
     · obtain ⟨rfl, _⟩ := image
       intro x member
       cases member
+    · exact image.elim
+  · rw [sysImage_filestat] at image
+    unfold FilestatImage at image
+    split at image
+    · split at image
+      · obtain ⟨_, _, rfl, _⟩ := image
+        intro x member
+        obtain rfl := List.mem_singleton.mp member
+        exact distinct _ (by simp)
+      · obtain ⟨rfl, _⟩ := image
+        intro x member
+        cases member
     · exact image.elim
 
 theorem fdWrite_ne_fdRead : Call.fdWrite ≠ Call.fdRead := by decide

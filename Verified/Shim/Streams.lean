@@ -7,9 +7,9 @@ and `StreamAction a` that the action `a` contains none, through every continuati
 such a trace, the images that `Images` admits read none of the open flags, the layout, the
 launch, and the earlier layer events (`Images.streams`), each layer event is a `read` or a
 `write` (`Images.streamCalls`), and an `Exec` or `Prefix` run under `linuxHost F L I R` is one
-under `linuxHost F' L' I' R` when the layouts agree on the guest's byte 0 and on the timespec
-(`Exec.streams`, `Prefix.streams`), since such a run uses only the host's stream relations and its
-exits, which read the layout only through `WritesWithin`.
+under `linuxHost F' L' I' R` when the layouts agree on the guest's byte 0, the timespec, and the
+`statx` record (`Exec.streams`, `Prefix.streams`), since such a run uses only the host's stream
+relations and its exits, which read the layout only through `WritesWithin`.
 -/
 
 namespace Verified.Shim
@@ -209,16 +209,17 @@ theorem Images.streamCalls {F : OpenFlags} {L : ShimLayout} {I : Launch}
     · exact ih hT.of_cons x hx
 
 /-- A `read` or `write` step of `linuxHost` under one choice of open flags, layout, and launch is
-one under another whose layout has the same guest's byte 0 and timespec. -/
+one under another whose layout has the same guest's byte 0, timespec, and `statx` record. -/
 theorem shimStep_streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch}
     {R : Linux.Replies} (hbase : L'.base = L.base) (htime : L'.timespec = L.timespec)
-    {w w' : LinuxWorld} {e : Wasi.Event} (he : ∀ call args reply, e ≠ .sys call args reply)
+    (hstatx : L'.statx = L.statx) {w w' : LinuxWorld} {e : Wasi.Event}
+    (he : ∀ call args reply, e ≠ .sys call args reply)
     (h : ShimStep F L I R w e w') : ShimStep F' L' I' R w e w' := by
   obtain ⟨l, image, carried, within, rfl⟩ := h
   have hw : ∀ x, WritesWithin L (2 ^ 32) x → WritesWithin L' (2 ^ 32) x := by
     intro x hx g hg
     have hoff : L'.offset g.1 = L.offset g.1 := by simp only [ShimLayout.offset, hbase]
-    rw [hoff, htime]
+    rw [hoff, htime, hstatx]
     exact hx g hg
   refine ⟨l, ?_, carried, fun x hx => hw x (within x hx), rfl⟩
   cases e with
@@ -229,13 +230,14 @@ theorem shimStep_streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch}
   | sys call args reply => exact absurd rfl (he call args reply)
 
 /-- An `Exec` run without flat calls under `linuxHost F L I R` is one under `linuxHost F' L' I' R`
-when the layouts have the same guest's byte 0 and timespec. -/
+when the layouts have the same guest's byte 0, timespec, and `statx` record. -/
 theorem Exec.streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch} {R : Linux.Replies}
-    (hbase : L'.base = L.base) (htime : L'.timespec = L.timespec) {α : Type}
+    (hbase : L'.base = L.base) (htime : L'.timespec = L.timespec) (hstatx : L'.statx = L.statx)
+    {α : Type}
     {action : Action α} {world final : LinuxWorld} {trace : List Wasi.Event}
     {outcome : Outcome α} (h : Exec (linuxHost F L I R) action world trace outcome final)
     (hT : StreamTrace trace) : Exec (linuxHost F' L' I' R) action world trace outcome final := by
-  have step := @shimStep_streams F F' L L' I I' R hbase htime
+  have step := @shimStep_streams F F' L L' I I' R hbase htime hstatx
   refine Exec.rec
     (motive_1 := fun {α} action world trace outcome final _ =>
       StreamTrace trace → Exec (linuxHost F' L' I' R) action world trace outcome final)
@@ -280,13 +282,15 @@ theorem Exec.streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch} {R :
     exact .trap hTest (ih hT)
 
 /-- A `Prefix` run without flat calls under `linuxHost F L I R` is one under
-`linuxHost F' L' I' R` when the layouts have the same guest's byte 0 and timespec. -/
+`linuxHost F' L' I' R` when the layouts have the same guest's byte 0, timespec, and `statx`
+record. -/
 theorem Prefix.streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch} {R : Linux.Replies}
-    (hbase : L'.base = L.base) (htime : L'.timespec = L.timespec) {α : Type}
+    (hbase : L'.base = L.base) (htime : L'.timespec = L.timespec) (hstatx : L'.statx = L.statx)
+    {α : Type}
     {action residual : Action α} {world final : LinuxWorld} {trace : List Wasi.Event}
     (h : Prefix (linuxHost F L I R) action world trace residual final) (hT : StreamTrace trace) :
     Prefix (linuxHost F' L' I' R) action world trace residual final := by
-  have step := @shimStep_streams F F' L L' I I' R hbase htime
+  have step := @shimStep_streams F F' L L' I I' R hbase htime hstatx
   induction h with
   | refl => exact .refl _ _
   | read_reject hCapacity => exact .read_reject hCapacity
