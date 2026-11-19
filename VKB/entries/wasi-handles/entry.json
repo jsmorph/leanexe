@@ -13,7 +13,7 @@
     "a statement over descriptor numbers in a trace when the host reuses numbers",
     "the close of a bracket that returns normally inside a run that later exits",
     "the errno that withOpen returns after a rejected, failed, or successful open",
-    "the binding of Handle.preopened under letPair in the scope of a pair, such as the BytesResult of fdPrestatDirName",
+    "the binding of Handle.preopened under letPair in the scope of a pair, such as the FillResult of fdPrestatDirName",
     "Handle.preopened passed to an effect helper, refused as an argument that is not a marked variable"
   ],
   "modules": [
@@ -61,8 +61,7 @@
     "LeanExe.Wasi.fdPrestatDirName",
     "LeanExe.Wasi.randomGet",
     "Verified.Wasi.EffectProg.handleCheck",
-    "LeanExe.Wasi.BytesResult",
-    "LeanExe.Wasi.RandomResult",
+    "LeanExe.Wasi.FillResult",
     "Verified.Expr.isPreopened",
     "Verified.Expr.isPreopened_denote",
     "Verified.Wasi.Command.preopened_handles",

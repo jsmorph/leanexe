@@ -114,7 +114,6 @@
     "Verified/Examples/WasiSysTotal.lean": [
       "Verified.Examples.WasiSys.budget",
       "Verified.Examples.WasiSys.args_bytes_le",
-      "Verified.Examples.WasiSys.random_bytes_le",
       "Verified.Examples.WasiSys.body_bounded"
     ]
   }
