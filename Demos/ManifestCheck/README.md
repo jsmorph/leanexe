@@ -82,8 +82,9 @@ pure core refuses, which gives status 1.
 `checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
 copies the name from the manifest with `slice`, opens it under the preopened directory with the
 right `fd_read` alone, hashes the file with `hashFile`, closes it, compares the digest with the
-line's digits with `hexMatches`, and writes `render` of the name and the verdict with `writeAll` of
-[the shared write loop](../../LeanExe/Wasi/WriteAll.lean).  Every open names descriptor 3, the flag
+line's digits with `hexMatches`, and writes `render` of the name and the verdict with
+`writeAll line 0 line.size` of [the shared write loop](../../LeanExe/Wasi/WriteAll.lean), which
+writes the window of the line that remains after a short write.  Every open names descriptor 3, the flag
 `symlink_follow`, no open flags, no inherited rights, and no descriptor flags.  `hashFile` reads
 the file into the window of the read buffer after the bytes that it holds, and when a read fills
 the buffer it compresses the buffer's 1,024 blocks into the hash value with `update` and starts
@@ -105,7 +106,7 @@ whose bytes disagree with its size or that the pure core refuses.  After a manif
 accepts, the status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of
 an output line stop with bytes left, which ends the checks, and the errno of a write that fails,
 with which `writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
-`verified_compile_wasi` writes a module of 18,028 bytes that imports `fd_read` twice, as the stream
+`verified_compile_wasi` writes a module of 17,962 bytes that imports `fd_read` twice, as the stream
 read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`,
 `fd_close`, `args_sizes_get`, and `args_get`.
 
@@ -116,6 +117,7 @@ read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main`, or a guest trap at `unreachable` after a prefix of `main` ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
+| `body_bounded`, `prefix_bound`, `total_meets_budget` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and a manifest size of at most `M` bytes, and `total_meets` holds with these two premises in place of the bound on the heap ([the budget](Budget.lean)). |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) holds three properties of a run's events, which
@@ -162,6 +164,19 @@ file and of the manifest fill windows of the buffers that their loops carry by m
 copies a byte beyond what the host writes into the window, and the memory does not depend on the
 sizes of the files checked.  The resource model credits no release, so its charge sums the blocks
 of every line.
+
+[The budget](Budget.lean) states that charge as a function of the manifest's size.  `body_bounded`
+bounds every run and every prefix of `main`'s body by `budget M` under every host whose successful
+`args_sizes_get` replies report at most `argsLimit` bytes, 6 MiB, the most that Linux lets the
+strings and pointers of `argv` and `envp` take, and whose successful `fd_filestat_get` replies
+report a size of at most `M` bytes.  `budget M` sums the block of `args` and the copy of the
+manifest's name, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the record block
+of `fd_filestat_get`, the manifest's buffer of at most `M` bytes, the charge of `parse`, at most
+`176 M + 464` bytes, and the charge of `checkLines`, at most `4 (M + 1)` bytes.  The charge of
+`checkLines` follows the lines: a pass charges at most four bytes for each byte of its line and the
+newline after it (`loop_bounded_sum`), and the lines with their newlines hold at most one byte more
+than the manifest (`lines_total`).  A pass of the reads of a file, of the reads of the manifest,
+and of `writeAll` charges nothing, and `budget_le` states `budget M ≤ 181 M + 12,649,235`.
 
 ## Confinement
 
