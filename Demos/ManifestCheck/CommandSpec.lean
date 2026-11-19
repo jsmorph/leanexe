@@ -1,0 +1,321 @@
+import Demos.ManifestCheck.Spec
+import Library.Hashing.Sha2.Equiv.SHA256.Main
+import LeanExe.Wasi.Bracket
+import LeanExe.Wasi.Semantics
+import LeanExe.Wasi.Sys
+import LeanExe.Wasi.WriteAll
+
+/-! The specification of the runs of the manifest checker's WASI command, in terms of the events of
+a run, `LeanExe.Wasi.Event`, which record each call with the reply that the host gave.
+
+`Meets host world events code` states what the request asks of a run from `world` whose events
+before its exit are `events` and whose status is `code`.  It holds three properties.
+
+- `Run`, the verdicts and the status.  The run starts with the events of `args`.  An errno of
+  `args` is the status, and an argument buffer without exactly one argument after the program name
+  (`OneArgument`) gives status 1, each with no other event.  `ManifestRun` states the open of the
+  manifest that the argument names, the call of `fd_filestat_get` on its descriptor, the reads of
+  its bytes, and its close, and the status that they give: the errno of a call that fails, or 1 when
+  the bytes number fewer or more than the size that `fd_filestat_get` reported.  A manifest
+  without a line, or with a line outside `sha256sum`'s format, gives status 1.  Otherwise `Checks`
+  states the check of each line in order: `FileCheck`, the open of its name, the reads of the file,
+  its close, and its verdict, and then `LineWrites`, the writes of its output line.
+- `Confined`: every `path_open` is relative to descriptor 3, with read-only rights, and names the
+  argument or the name of a line of the manifest.
+- `Handled`: the run's events are those of `args`, opens that fail, brackets of an open that
+  returns errno 0, calls on its descriptor, and its close, and writes to standard output.
+
+A line's verdict is OK exactly when the open of its name returned errno 0, a read returned no bytes
+before any read returned an errno, the close returned errno 0, and the line's digits give the
+digest of FIPS 180-4 of the bytes that the reads returned (`DigestOf`).  The status is 0 exactly
+when every line's output line was written whole and every verdict is OK, 1 when one verdict is
+FAILED and every output line was written whole, 77 when the writes of an output line ended with
+bytes left, and the errno of a write that failed. -/
+
+namespace Demos.ManifestCheck
+
+open LeanExe LeanExe.Wasi SHS.Equiv.SHA256.Digest SHS.Equiv.SHA256.Padding.ByteDecoding
+  SHS.Equiv.SHA256.Pipeline
+
+/-- The bytes `bs` as a byte string. -/
+def bytesOf (bs : List UInt8) : Bytes := ⟨⟨bs.toArray⟩⟩
+
+/-- The argument buffer `buffer` holds a program name and exactly one argument, `name`, each
+followed by a zero byte. -/
+def OneArgument (buffer name : List UInt8) : Prop :=
+  ∃ program, buffer = program ++ 0 :: (name ++ [0]) ∧ (0 : UInt8) ∉ program ∧ (0 : UInt8) ∉ name
+
+/-- The rights of the manifest's open: `fd_read` (2) and `fd_filestat_get` (`2^21`). -/
+def manifestRights : UInt64 := 2097154
+
+/-- The rights of the open of a checked file: `fd_read` (2). -/
+def fileRights : UInt64 := 2
+
+/-- The arguments of the open of `name` with the rights `rights`: the directory 3, the flag
+`symlink_follow` (1), no open flags, no inherited rights, and no descriptor flags. -/
+def openArgs (rights : UInt64) (name : List UInt8) : List Arg :=
+  [.word 3, .word 1, .bytes (bytesOf name), .word 0, .word rights, .word 0, .word 0]
+
+/-- The event of a read of descriptor `fd` into a window of `length` bytes that returned `errno` and
+the outputs `outputs`. -/
+def readEvent (fd length errno : UInt64) (outputs : List Bytes) : Event :=
+  .sys .fdRead [.word fd, .space length] (.returned errno outputs)
+
+/-- The bytes that a read into a window of `length` bytes returned with errno 0 and the outputs
+`outputs`: the first bytes of the window, as many as the count that the host returned, and at most
+`length`. -/
+def returned (length : UInt64) (outputs : List Bytes) : List UInt8 :=
+  ((⟨0, outputs⟩ : Reply).bytes 0).data.data.toList.take
+    (min ((⟨0, outputs⟩ : Reply).word 1) length).toNat
+
+/-- The event of `fd_filestat_get` of descriptor `fd` that returned `errno` and `outputs`. -/
+def statEvent (fd errno : UInt64) (outputs : List Bytes) : Event :=
+  .sys .fdFilestatGet [.word fd] (.returned errno outputs)
+
+/-- The size that a reply of `fd_filestat_get` with errno 0 and the outputs `outputs` reports: the
+field `size` of the record `filestat`, its eight bytes from byte 32. -/
+def statSize (outputs : List Bytes) : UInt64 := (⟨0, outputs⟩ : Reply).field 0 32 8
+
+/-- `ManifestReads fd size held events bytes status`: `events` are the reads of descriptor `fd`
+into a buffer of `size` bytes after the bytes `held`, each into the window of the bytes that
+follow those already read, and `bytes` are `held` followed by the bytes that they returned.  Each
+read but the last returned errno 0 and at least one byte.  The reads end with status 0 when the
+bytes fill the buffer, 1 when a read returned no bytes before, and the errno of a read that failed.
+-/
+inductive ManifestReads (fd : UInt64) (size : Nat) :
+    List UInt8 → List Event → List UInt8 → UInt64 → Prop
+  | full {held : List UInt8} (filled : held.length = size) :
+      ManifestReads fd size held [] held 0
+  | short {held : List UInt8} {outputs : List Bytes} (left : held.length < size)
+      (empty : returned (UInt64.ofNat (size - held.length)) outputs = []) :
+      ManifestReads fd size held [readEvent fd (UInt64.ofNat (size - held.length)) 0 outputs] held 1
+  | failed {held : List UInt8} {errno : UInt64} {outputs : List Bytes} (left : held.length < size)
+      (nonzero : errno ≠ 0) :
+      ManifestReads fd size held
+        [readEvent fd (UInt64.ofNat (size - held.length)) errno outputs] held errno
+  | more {held : List UInt8} {outputs : List Bytes} {events : List Event} {bytes : List UInt8}
+      {status : UInt64} (left : held.length < size)
+      (nonempty : returned (UInt64.ofNat (size - held.length)) outputs ≠ [])
+      (rest : ManifestReads fd size (held ++ returned (UInt64.ofNat (size - held.length)) outputs)
+        events bytes status) :
+      ManifestReads fd size held
+        (readEvent fd (UInt64.ofNat (size - held.length)) 0 outputs :: events) bytes status
+
+/-- `ManifestBody fd events status bytes`: `events` are those of the reading of the manifest open at
+descriptor `fd`, `status` is its status, and, when the status is 0, `bytes` are the manifest's
+bytes.  The call of `fd_filestat_get` comes first, and its errno ends the reading.  Otherwise the
+reads of `ManifestReads` follow for a buffer of the size that it reported, and a status other than
+0 ends the reading.  When the bytes fill the buffer, a last read of 65,536 bytes follows, and the
+status is its errno, 1 when it returned bytes, and 0 when it returned none. -/
+inductive ManifestBody (fd : UInt64) : List Event → UInt64 → List UInt8 → Prop
+  | statFailed {errno : UInt64} {outputs : List Bytes} (nonzero : errno ≠ 0) :
+      ManifestBody fd [statEvent fd errno outputs] errno []
+  | stopped {outputs : List Bytes} {events : List Event} {held : List UInt8} {status : UInt64}
+      (reads : ManifestReads fd (statSize outputs).toNat [] events held status)
+      (nonzero : status ≠ 0) :
+      ManifestBody fd (statEvent fd 0 outputs :: events) status []
+  | probed {outputs : List Bytes} {events : List Event} {bytes : List UInt8} {errno : UInt64}
+      {last : List Bytes} (reads : ManifestReads fd (statSize outputs).toNat [] events bytes 0) :
+      ManifestBody fd (statEvent fd 0 outputs :: events ++ [readEvent fd 65536 errno last])
+        (if errno ≠ 0 then errno else if returned 65536 last ≠ [] then 1 else 0) bytes
+
+/-- `ManifestRun name events status bytes`: `events` are those of the open of the manifest `name`,
+its reading, and its close, `status` is their status, and, when the status is 0, `bytes` are the
+manifest's bytes.  An open that returns an errno ends with that errno.  Otherwise the events of
+`ManifestBody` follow on the opened descriptor, and its close, and the status is that of the body
+when it is not 0, and else the errno of the close. -/
+inductive ManifestRun (name : List UInt8) : List Event → UInt64 → List UInt8 → Prop
+  | refused {errno : UInt64} {outputs : List Bytes} (nonzero : errno ≠ 0) :
+      ManifestRun name [.sys .pathOpen (openArgs manifestRights name) (.returned errno outputs)]
+        errno []
+  | opened {outputs : List Bytes} {body : List Event} {status closeErrno : UInt64}
+      {bytes : List UInt8} {committed : List Bytes}
+      (reading : ManifestBody (openedDescriptor outputs) body status bytes) :
+      ManifestRun name
+        (.sys .pathOpen (openArgs manifestRights name) (.returned 0 outputs) :: body ++
+          [.sys .fdClose [.word (openedDescriptor outputs)] (.returned closeErrno committed)])
+        (if status ≠ 0 then status else closeErrno) bytes
+
+/-- How the reads of a checked file ended: a read returned no bytes, a read returned an errno, or
+the reads stopped before either. -/
+inductive Ending where
+  | eof
+  | failed (errno : UInt64)
+  | cut
+  deriving DecidableEq
+
+/-- The length of the window of a read of a checked file after the bytes `done`: the bytes of the
+read buffer of 65,536 bytes after those that it holds, `done.length % 65536`. -/
+def window (done : List UInt8) : UInt64 := UInt64.ofNat (65536 - done.length % 65536)
+
+/-- `FileReads fd r done events bytes ending`: `events` are at most `r` reads of descriptor `fd`
+after the bytes `done`, each into the window of `window` of the bytes before it, and `bytes` are
+the bytes that they returned.  Each read but the last returned errno 0 and at least one byte.  The
+last read returned no bytes (`eof`) or an errno (`failed`), or `r` reads returned bytes (`cut`). -/
+inductive FileReads (fd : UInt64) : Nat → List UInt8 → List Event → List UInt8 → Ending → Prop
+  | cut {done : List UInt8} : FileReads fd 0 done [] [] .cut
+  | eof {r : Nat} {done : List UInt8} {outputs : List Bytes}
+      (empty : returned (window done) outputs = []) :
+      FileReads fd (r + 1) done [readEvent fd (window done) 0 outputs] [] .eof
+  | failed {r : Nat} {done : List UInt8} {errno : UInt64} {outputs : List Bytes}
+      (nonzero : errno ≠ 0) :
+      FileReads fd (r + 1) done [readEvent fd (window done) errno outputs] [] (.failed errno)
+  | more {r : Nat} {done : List UInt8} {outputs : List Bytes} {events : List Event}
+      {bytes : List UInt8} {ending : Ending} (nonempty : returned (window done) outputs ≠ [])
+      (rest : FileReads fd r (done ++ returned (window done) outputs) events bytes ending) :
+      FileReads fd (r + 1) done (readEvent fd (window done) 0 outputs :: events)
+        (returned (window done) outputs ++ bytes) ending
+
+/-- The 64 hex digits of `hex` give the 32 bytes `d`, two digits to a byte, the high half first. -/
+def HexDigits (hex : List UInt8) (d : Vector UInt8 32) : Prop :=
+  ∀ k (hk : k < 32), hexValue (hex.getD (2 * k) 0) = some (d[k].toNat / 16) ∧
+    hexValue (hex.getD (2 * k + 1) 0) = some (d[k].toNat % 16)
+
+/-- The hex digits of `hex` give the SHA-256 digest of FIPS 180-4 of the bits of `bytes`, which
+number fewer than `2^61` bytes. -/
+def DigestOf (hex bytes : List UInt8) : Prop :=
+  ∃ (d : Vector UInt8 32) (small : (bytesOf bytes).data.size < 2 ^ 61), HexDigits hex d ∧
+    digestBitVec d = SHS.SHA256.sha256 (bytesToBitMessage (bytesOf bytes).data)
+      (bitLen_lt_of_size_lt _ small)
+
+/-- `FileCheck name line events ok`: `events` are those of the check of the line `line`, whose name
+is `name`, and `ok` is its verdict.  An open that returns an errno ends the check with the verdict
+false.  Otherwise the reads of `FileReads` follow, at most `2^45 - 1` of them, and the close of the
+descriptor, and the verdict holds exactly when a read returned no bytes before any read returned an
+errno, the close returned errno 0, and the line's digits give the digest of the bytes that the reads
+returned. -/
+inductive FileCheck (name line : List UInt8) : List Event → Bool → Prop
+  | refused {errno : UInt64} {outputs : List Bytes} (nonzero : errno ≠ 0) :
+      FileCheck name line [.sys .pathOpen (openArgs fileRights name) (.returned errno outputs)]
+        false
+  | opened {outputs : List Bytes} {events : List Event} {bytes : List UInt8} {ending : Ending}
+      {closeErrno : UInt64} {committed : List Bytes} {ok : Bool}
+      (reads : FileReads (openedDescriptor outputs) 35184372088831 [] events bytes ending)
+      (verdict : ok = true ↔ ending = .eof ∧ closeErrno = 0 ∧ DigestOf line bytes) :
+      FileCheck name line (.sys .pathOpen (openArgs fileRights name) (.returned 0 outputs) ::
+        events ++ [.sys .fdClose [.word (openedDescriptor outputs)] (.returned closeErrno committed)])
+        ok
+
+/-- How the writes of an output line ended: every byte was taken, the writes stopped with bytes
+left, or a write returned an errno. -/
+inductive WriteEnd where
+  | all
+  | stalled
+  | failed (errno : UInt64)
+  deriving DecidableEq
+
+/-- `LineWrites text writes ending`: `writes` are writes to standard output, each of which offered
+the bytes of `text` after those that the writes before it took (`Offered`).  With `all`, each
+returned errno 0 and they took every byte of `text`.  With `stalled`, each returned errno 0, they
+number one more than the bytes of `text`, and the bytes that they took are a prefix of `text` that
+leaves bytes.  With `failed errno`, the last returned the errno `errno`, from 1 to 76, each before
+it returned errno 0, and the bytes that they took are a prefix of `text` that leaves bytes. -/
+def LineWrites (text : List UInt8) (writes : List Event) : WriteEnd → Prop
+  | .all => Offered text 0 writes ∧
+      (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+      stdoutTaken writes = text
+  | .stalled => Offered text 0 writes ∧
+      (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+      writes.length = text.length + 1 ∧ stdoutTaken writes <+: text ∧
+      (stdoutTaken writes).length < text.length
+  | .failed errno => Offered text 0 writes ∧ errno ≠ 0 ∧ errno.toNat ≤ 76 ∧
+      (∃ before offered count, writes = before ++ [.write .stdout offered (.returned errno count)] ∧
+        ∀ e ∈ before, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+      stdoutTaken writes <+: text ∧ (stdoutTaken writes).length < text.length
+
+/-- The bytes of the output line of `name` with the verdict `ok`. -/
+def lineText (name : List UInt8) (ok : Bool) : List UInt8 :=
+  (renderSpec (bytesOf name, ok)).data.data.toList
+
+/-- `Checks lines allOk events code`: `events` are those of the checks of the lines `lines`, after
+lines whose verdicts were all OK exactly when `allOk` holds, and `code` is the status that ends
+them.  Each check is that of `FileCheck` for the line and its name, the bytes after its first 66,
+followed by the writes of its output line, `lineText`.  The status is 0 when every line said OK
+and 1 otherwise after the writes of every line took every byte, 77 when the writes of a line
+stalled, and the errno of a write that failed, which end the checks. -/
+inductive Checks : List (List UInt8) → Bool → List Event → UInt64 → Prop
+  | done {allOk : Bool} : Checks [] allOk [] (if allOk then 0 else 1)
+  | line {line : List UInt8} {rest : List (List UInt8)} {allOk ok : Bool}
+      {fileEvents writes restEvents : List Event} {code : UInt64}
+      (check : FileCheck (line.drop 66) line fileEvents ok)
+      (wrote : LineWrites (lineText (line.drop 66) ok) writes .all)
+      (more : Checks rest (allOk && ok) restEvents code) :
+      Checks (line :: rest) allOk (fileEvents ++ writes ++ restEvents) code
+  | stalled {line : List UInt8} {rest : List (List UInt8)} {allOk ok : Bool}
+      {fileEvents writes : List Event}
+      (check : FileCheck (line.drop 66) line fileEvents ok)
+      (wrote : LineWrites (lineText (line.drop 66) ok) writes .stalled) :
+      Checks (line :: rest) allOk (fileEvents ++ writes) 77
+  | failed {line : List UInt8} {rest : List (List UInt8)} {allOk ok : Bool}
+      {fileEvents writes : List Event} {errno : UInt64}
+      (check : FileCheck (line.drop 66) line fileEvents ok)
+      (wrote : LineWrites (lineText (line.drop 66) ok) writes (.failed errno)) :
+      Checks (line :: rest) allOk (fileEvents ++ writes) errno
+
+/-- The verdicts and statuses of a run from `world` whose events before its exit are `events` and
+whose status is `code`, under the host `host`: the events of `args`, which returned `a`, followed
+by those of `ManifestRun` for the buffer's one argument, which gave the manifest's bytes `manifest`
+with status 0, and then by those of `Checks` for its lines.  An errno of `args` is the status, and
+a buffer without exactly one argument after the program name gives status 1, each with no other
+event.  A status of `ManifestRun` other than 0 is the run's, and a manifest without a line or with
+a line outside the format gives status 1, each with no other event. -/
+def Run {World : Type} (host : Host World) (world : World) (a : ArgsResult)
+    (manifest : List UInt8) (events : List Event) (code : UInt64) : Prop :=
+  ∃ (pre rest : List Event) (middle : World),
+    events = pre ++ rest ∧ Exec host args world pre (.returned a) middle ∧
+    (a.errno ≠ 0 → code = a.errno ∧ rest = []) ∧
+    (a.errno = 0 → (∀ name, ¬ OneArgument a.bytes.data.data.toList name) →
+      code = 1 ∧ rest = []) ∧
+    (a.errno = 0 → ∀ name, OneArgument a.bytes.data.data.toList name →
+      ∃ opening post status, rest = opening ++ post ∧ ManifestRun name opening status manifest ∧
+        (status ≠ 0 → code = status ∧ post = []) ∧
+        (status = 0 → (lines manifest = [] ∨ ∃ l ∈ lines manifest, ¬ WellFormed l.2) →
+          code = 1 ∧ post = []) ∧
+        (status = 0 → lines manifest ≠ [] → (∀ l ∈ lines manifest, WellFormed l.2) →
+          Checks ((lines manifest).map (·.2)) true post code))
+
+/-- Confinement: every open of `events` is relative to descriptor 3, with the flag
+`symlink_follow`, no open flags, the read-only rights `manifestRights` or `fileRights`, no inherited
+rights, and no descriptor flags, and names the one argument of the argument buffer `buffer` with
+the rights `manifestRights` or the name of a line of the manifest's bytes `manifest`, the bytes
+after its first 66, with the rights `fileRights`. -/
+def Confined (buffer manifest : List UInt8) (events : List Event) : Prop :=
+  ∀ args reply, Event.sys .pathOpen args reply ∈ events →
+    ∃ name, (args = openArgs manifestRights name ∧ OneArgument buffer name) ∨
+      (args = openArgs fileRights name ∧ ∃ l ∈ lines manifest, name = l.2.drop 66)
+
+/-- The event `e` is a call on descriptor `fd`: a read or `fd_filestat_get`. -/
+def OnDescriptor (fd : UInt64) (e : Event) : Prop :=
+  (∃ length reply, e = .sys .fdRead [.word fd, .space length] reply) ∨
+    ∃ reply, e = .sys .fdFilestatGet [.word fd] reply
+
+/-- The use of descriptors: the events are the calls of `args`, opens that return an errno, opens
+that return errno 0 followed by calls on the opened descriptor and then its close, and writes to
+standard output.  Each descriptor is closed before the next open and before the end of the events,
+and no event writes to another descriptor. -/
+inductive Handled : List Event → Prop
+  | nil : Handled []
+  | write {offered : Bytes} {reply : Transfer UInt64} {rest : List Event} (tail : Handled rest) :
+      Handled (.write .stdout offered reply :: rest)
+  | argsCall {call : Call} {args : List Arg} {reply : Transfer (List Bytes)} {rest : List Event}
+      (named : call = .argsSizesGet ∨ call = .argsGet) (tail : Handled rest) :
+      Handled (.sys call args reply :: rest)
+  | refused {args : List Arg} {errno : UInt64} {outputs : List Bytes} {rest : List Event}
+      (nonzero : errno ≠ 0) (tail : Handled rest) :
+      Handled (.sys .pathOpen args (.returned errno outputs) :: rest)
+  | bracket {args : List Arg} {outputs : List Bytes} {inner : List Event}
+      {closed : Transfer (List Bytes)} {rest : List Event}
+      (calls : ∀ e ∈ inner, OnDescriptor (openedDescriptor outputs) e) (tail : Handled rest) :
+      Handled (.sys .pathOpen args (.returned 0 outputs) :: (inner ++
+        .sys .fdClose [.word (openedDescriptor outputs)] closed :: rest))
+
+/-- What the request asks of a run from `world` whose events before its exit are `events` and
+whose status is `code`: the verdicts and statuses of `Run`, for the arguments `a` that `args`
+returned and the bytes `manifest` of the manifest; confinement, every open naming the buffer's
+argument or the name of a line of the manifest; and the use of descriptors of `Handled`. -/
+def Meets {World : Type} (host : Host World) (world : World) (events : List Event)
+    (code : UInt64) : Prop :=
+  ∃ (a : ArgsResult) (manifest : List UInt8), Run host world a manifest events code ∧
+    Confined a.bytes.data.data.toList manifest events ∧ Handled events
+
+end Demos.ManifestCheck
