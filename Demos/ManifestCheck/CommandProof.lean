@@ -1528,19 +1528,20 @@ theorem WriteAllRun.shape {World : Type} {host : Host World} {bytes : List UInt8
         exact some
   | trapped _ _ => exact ⟨(fun _ e => nomatch e), fun _ e => nomatch e⟩
 
-/-- A run of `writeAll text` makes the writes of `LineWrites`: when it returns `v`, those of
-`stalled` when `v` falls short of the text and of `all` otherwise, and when it exits, those of
-`failed` with its status, followed by the exit. -/
+/-- A run of `writeAll text 0 text.size` makes the writes of `LineWrites`: when it returns `v`,
+those of `stalled` when `v` falls short of the text and of `all` otherwise, and when it exits,
+those of `failed` with its status, followed by the exit. -/
 theorem line_writes {World : Type} {host : Host World} {text : Bytes}
     (small : text.data.size < 2 ^ 32) {world final : World} {trace : List Event}
-    {outcome : Outcome UInt64} (run : Exec host (writeAll text) world trace outcome final) :
+    {outcome : Outcome UInt64}
+    (run : Exec host (writeAll text 0 text.size) world trace outcome final) :
     (∀ v, outcome = .returned v →
       LineWrites text.data.data.toList trace (if v < text.size then .stalled else .all)) ∧
     (∀ code, outcome = .exited code → ∃ writes, trace = writes ++ [.exit code] ∧
       LineWrites text.data.data.toList writes (.failed code)) := by
   have length : text.data.data.toList.length = text.data.size := by simp
   have wide : text.size.toNat = text.data.size := Bytes.size_toNat text (by omega)
-  have wrun := writeAll_run (by omega) run
+  have wrun := writeAll_run_whole (by omega) run
   have facts := wrun.taken (by rw [length]; omega) (by simp)
   have shape := WriteAllRun.shape wrun
   refine ⟨fun v e => ?_, fun code e => ?_⟩
@@ -1735,7 +1736,7 @@ def checkStep (m : Bytes) (entries : Array UInt64) (j : UInt64) (s : CheckState)
     (fun _ => pure ((⟨0, 0, 0, 0⟩ : Words4), (0 : UInt64), s.1)) fun file => hashFile file s.1
   let ok := checked.1.2.1 == 1 && checked.2 == 0 && hexMatches m start checked.1.1
   let line := render name ok
-  let written ← writeAll line
+  let written ← writeAll line 0 line.size
   pure (checked.1.2.2, (if ok then s.2.1 else 1), (if written < line.size then 1 else 0))
 
 /-- A step of `checkLines`'s loop on line `j` of a manifest that the pure core accepts: when it

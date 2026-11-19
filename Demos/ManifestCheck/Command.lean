@@ -16,8 +16,8 @@ manifest, and `main` parses it with `parse`.
 `checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
 opens the line's name under the preopened directory, hashes the file with `hashFile`, closes it,
 compares the digest with the line's digits with `hexMatches`, and writes `render` of the name and
-the verdict with `writeAll`, which continues after short writes and exits with the errno of a
-write that fails.  `hashFile` reads the file with `fdRead` into the window of the read buffer after
+the verdict with `writeAll` over the whole line, which writes the window that remains after a short
+write and exits with the errno of a write that fails.  `hashFile` reads the file with `fdRead` into the window of the read buffer after
 the bytes that it holds, and when a read fills the buffer it compresses the buffer's 1,024 blocks
 into the hash value with `update` and starts again at its first byte.  When a read returns no
 bytes, it compresses the whole blocks that the buffer holds and passes the bytes after them to
@@ -134,7 +134,7 @@ def checkLines (m : Bytes) (entries : Array UInt64) (buffer : Bytes) : Action UI
       (fun _ => pure ((⟨0, 0, 0, 0⟩ : Words4), (0 : UInt64), s.1)) fun file => hashFile file s.1
     let ok := checked.1.2.1 == 1 && checked.2 == 0 && hexMatches m start checked.1.1
     let line := render name ok
-    let written ← writeAll line
+    let written ← writeAll line 0 line.size
     pure (checked.1.2.2, (if ok then s.2.1 else 1), (if written < line.size then 1 else 0))
   if s.2.2 != 0 then pure 77 else pure s.2.1
 
@@ -167,6 +167,6 @@ verified_compile_wasi command (main := main) :=
   [isHex, hexDigit, lineOk, parseStep, parse, digestByte, hexMatches, suffixByte, render, bswap,
     paddedWord, loadBlock, roundStep, advance, compress, hashFrom, byteWord, byteBlock, updateWith,
     packWord, pack, finishWith, update, finish, slice, argStep, argScan, readBytes, readManifest,
-    hashFile, suffix, writeAll, checkLines, main]
+    hashFile, writeAll, checkLines, main]
 
 end Demos.ManifestCheck
