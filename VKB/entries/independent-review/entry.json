@@ -15,7 +15,8 @@
     "a design note that specifies code against a reference engine, such as the order of a host's checks",
     "a check of the reference that an invariant of the code decides, which no case distinguishes",
     "wrong stubs of system calls that differ only at replies Linux never gives",
-    "a wrong request that Linux refuses with the errno of the shim's own refusal"
+    "a wrong request that Linux refuses with the errno of the shim's own refusal",
+    "a statement of a write loop's output that wrong loops meet"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -25,7 +26,9 @@
     "Library.Trees.AvlDelete.Spec",
     "Verified.Shim.Replies",
     "Verified.ShimA64",
-    "LeanExe.A64.Proof.WasiPreopen"
+    "LeanExe.A64.Proof.WasiPreopen",
+    "LeanExe.Wasi.WriteAll",
+    "Demos.RandomHistogram.NativeCounts"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -45,12 +48,15 @@
     "Verified.ShimA64.sizesInvoke_eq",
     "Verified.ShimA64.stringsInvoke_eq",
     "Verified.Shim.NamesHeld",
-    "Verified.Shim.footprint_namesHeld"
+    "Verified.Shim.footprint_namesHeld",
+    "LeanExe.Wasi.Offered",
+    "LeanExe.Wasi.writeAll"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq",
     "Verified.ShimA64.clockStub_run",
     "Verified.ShimA64.randomStub_run",
-    "LeanExe.A64.run_preopenCheck"
+    "LeanExe.A64.run_preopenCheck",
+    "Demos.RandomHistogram.OfferedLayer"
   ]
 }

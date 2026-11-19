@@ -1,0 +1,47 @@
+{
+  "id": "bytes-set-in-place",
+  "goals": [
+    "LeanExe.Bytes.set buffer index byte",
+    "(b.set p x).data.data.toList.getD i 0",
+    "a loop whose state carries a buffer that each pass writes in place",
+    "a pure function that renders text into an owned buffer and returns it",
+    "ImplementsA false compiled.module k (fun x : Moved LeanExe.Bytes × … => …)",
+    "Verified.Expr.bytesSet"
+  ],
+  "modules": [
+    "Verified.AlignedBytes",
+    "Verified.AlignedCorollaries",
+    "Verified.Examples.BytesSet",
+    "Demos.RandomChoice.PicksProof",
+    "Demos.RandomChoice.Compiled"
+  ],
+  "declarations": [
+    "LeanExe.Bytes.set",
+    "LeanExe.Bytes.data_size_set",
+    "Verified.Expr.bytesSet",
+    "Verified.Var.ownedCode",
+    "Verified.Var.ownedCost",
+    "Verified.Expr.allocs",
+    "Verified.CallSpec",
+    "Verified.implementsA_congr",
+    "Verified.specX_bytesSet",
+    "Verified.spec_bytesSet",
+    "Verified.specX_ownedVar",
+    "LeanExe.ProofKit.wpX_iff_cons",
+    "Verified.Bytes.wpX_storeWord",
+    "Verified.After.writeByte",
+    "Verified.Ty.AlignedVal.bytesBlock",
+    "Demos.RandomChoice.set_getD",
+    "Demos.RandomChoice.putLineBytes_getD",
+    "Demos.RandomChoice.list_eq_of_getD",
+    "Demos.RandomChoice.bytes_eq_of_toList"
+  ],
+  "examples": [
+    "Verified.Examples.BytesSet.fillFrom",
+    "Verified.Examples.BytesSet.setKept",
+    "Demos.RandomChoice.putPicks",
+    "Demos.RandomChoice.putPicks_eq",
+    "Demos.RandomChoice.putPicks_bound",
+    "Demos.RandomChoice.putPicks_implements"
+  ]
+}

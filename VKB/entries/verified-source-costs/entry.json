@@ -14,7 +14,9 @@
     "verified_compile: unsupported term f … for a listed definition that calls a wrapper",
     "verified_compile: unsupported term T for a table passed with a computed argument",
     "(kernel) constant has already been declared 'p.f.func' from two listed definitions whose names end alike",
-    "a loop step that chooses among updates of an array field of the loop state"
+    "a loop step that chooses among updates of an array field of the loop state",
+    "a loop whose state is a tuple that holds an array, charged a copy of the array at every pass",
+    "a text built by pushes, charged 80 bytes for each byte"
   ],
   "modules": [
     "Verified.Reflect.Command",
@@ -29,7 +31,12 @@
     "Demos.Euler.VerifiedCall",
     "Demos.OrderBook.Verified",
     "Demos.Energy.Loop",
-    "Library.HashTables.LinearProbing.Compiled"
+    "Library.HashTables.LinearProbing.Compiled",
+    "Demos.ManifestCheck.Compiled",
+    "Demos.ManifestCheck.Proof",
+    "Demos.RandomHistogram.Compiled",
+    "Demos.RandomChoice.Compiled",
+    "Demos.RandomChoice.Proof"
   ],
   "declarations": [
     "Verified.Expr.paramChoice",
@@ -48,7 +55,11 @@
     "Verified.Reflect.wrapperShape?",
     "Demos.Orbit.lambertBoundsWith",
     "Demos.Sgp4.sgp4BoxAroundWith",
-    "LeanExe.repeatWhile"
+    "LeanExe.repeatWhile",
+    "Verified.paidGrowCost",
+    "Verified.blockCost",
+    "LeanExe.Dialect.get_set",
+    "LeanExe.Bytes.set"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -64,7 +75,21 @@
     "Demos.Energy.gwTickWith",
     "Library.HashTables.LinearProbing.close",
     "Demos.Orbit.lambertBounds",
-    "Demos.Sgp4.sgp4BoxAround"
+    "Demos.Sgp4.sgp4BoxAround",
+    "Demos.ManifestCheck.parse",
+    "Demos.ManifestCheck.parseStep",
+    "Demos.ManifestCheck.parseStep_cost_le",
+    "Demos.ManifestCheck.enc",
+    "Demos.ManifestCheck.parseStep_enc",
+    "Demos.ManifestCheck.loop_enc",
+    "Demos.ManifestCheck.tupleStep",
+    "Demos.RandomHistogram.appendLine_cost_le",
+    "Demos.RandomChoice.render",
+    "Demos.RandomChoice.textSize",
+    "Demos.RandomChoice.putLine",
+    "Demos.RandomChoice.render_bound",
+    "Demos.RandomChoice.putLine_get",
+    "Demos.RandomChoice.fill_fold"
   ],
   "unimported": {
     "Demos/Conjunction/Box.lean": [

@@ -8,7 +8,9 @@
     "Spec.crc32 bs = crc32Eval bs for a transcription over polynomials",
     "ref x = spec x for the expected values of test cases",
     "a reference in another language for a definition without published vectors",
-    "a native run of a specification on test files before its reader exists"
+    "a native run of a specification on test files before its reader exists",
+    "a streaming SHA-256 over pieces read into one buffer",
+    "blocksFold (pre ++ c) k s = blocksFold pre k s times out"
   ],
   "modules": [
     "Library.Hashing.Sha256.Proof",
@@ -22,7 +24,9 @@
     "Library.Hashing.XxHash64.Proof",
     "Library.Combinatorics.DancingLinks.Count",
     "TestSupport.Modules.MillerRabin",
-    "Demos.Rcv.Spec"
+    "Demos.Rcv.Spec",
+    "Library.Hashing.Sha256.StreamProof",
+    "Demos.ManifestCheck.CommandProof"
   ],
   "declarations": [
     "SHS.SHA256.Impl.sha256",
@@ -34,7 +38,17 @@
     "Library.Hashing.Sha3.Spec.keccakP_eq_run",
     "Library.Hashing.Sha3.Spec.rhoSteps_table2",
     "Demos.Rcv.Spec.write",
-    "Demos.Rcv.Contest.WellFormed"
+    "Demos.Rcv.Contest.WellFormed",
+    "Library.Hashing.Sha256.blocksFold",
+    "Library.Hashing.Sha256.update_toVec32",
+    "Library.Hashing.Sha256.blocksFold_append",
+    "Library.Hashing.Sha256.blocksFold_append_tail",
+    "Library.Hashing.Sha256.finish_bytes",
+    "Library.Hashing.Sha256.update",
+    "Library.Hashing.Sha256.finish",
+    "Library.Hashing.Sha256.digestBitVec_inj",
+    "Library.Hashing.Sha256.blocksFold_congr",
+    "ByteArray.append"
   ],
   "examples": [
     "Library.Hashing.Sha256.sha256_bytes",
@@ -47,6 +61,11 @@
     "Library.Combinatorics.DancingLinks.countRef_eq",
     "Library.Numerics.Arithmetic.MillerRabin.refPow_eq",
     "Library.Numerics.Arithmetic.MillerRabin.powModRef_eq",
-    "Library.Numerics.Arithmetic.MillerRabin.testRef_eq"
+    "Library.Numerics.Arithmetic.MillerRabin.testRef_eq",
+    "Demos.ManifestCheck.hashFile",
+    "Demos.ManifestCheck.Hashed",
+    "Demos.ManifestCheck.Hashed.part",
+    "Demos.ManifestCheck.Hashed.full",
+    "Demos.ManifestCheck.hashed_finish"
   ]
 }

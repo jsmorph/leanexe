@@ -15,7 +15,8 @@
     "@ite Nat c d₁ A A' + k ≤ m * (@ite _ c d₂ B B').2.size",
     "Verified.Tail.costAt step charge (Verified.Tail.rank step wf x + 1) x ≤ _",
     "compiled.f.bound x = other.f.bound x for two compilations of the same functions",
-    "min U (K + L) + G ≤ c where L bounds the size of an array that a loop builds"
+    "min U (K + L) + G ≤ c where L bounds the size of an array that a loop builds",
+    "omega fails on a loopCost term that a have restated with its own binders"
   ],
   "modules": [
     "Verified.BoundFacts",
@@ -41,7 +42,9 @@
     "Demos.Rcv.VerifiedCall",
     "Demos.Rcv.Maine.TabulateBound",
     "Demos.Rcv.ProcessCharges",
-    "Verified.TailTransport"
+    "Verified.TailTransport",
+    "Demos.RandomHistogram.Compiled",
+    "Demos.ManifestCheck.Compiled"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -74,7 +77,10 @@
     "Verified.Tail.rank_lt",
     "Demos.Rcv.Refine.rounds_size",
     "Demos.Rcv.Program.min_bound",
-    "Demos.Rcv.Maine.TabulateProgram.tail_cost_congr"
+    "Demos.Rcv.Maine.TabulateProgram.tail_cost_congr",
+    "Nat.add_le_add",
+    "Nat.add_le_add_left",
+    "Nat.add_le_add_right"
   ],
   "examples": [
     "Demos.Slew.Bound.plan_bound",
@@ -108,6 +114,10 @@
     "Demos.Rcv.TabulateProgram.count_bound_eq",
     "Demos.Rcv.TabulateProgram.readContest_bound",
     "Demos.Rcv.Maine.TabulateProgram.tabulate_bound",
-    "Demos.Rcv.Process.tabulate_bound_eq"
+    "Demos.Rcv.Process.tabulate_bound_eq",
+    "Demos.RandomHistogram.render_bound",
+    "Demos.RandomHistogram.appendLine_cost_le",
+    "Demos.ManifestCheck.parse_bound",
+    "Demos.ManifestCheck.parse_loop_size"
   ]
 }

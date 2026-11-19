@@ -13,7 +13,10 @@
     "conditions on p.translation of verified_compile, each of which recomputes the translation",
     "(kernel) deep recursion detected from decide +kernel of ∀ x ∈ l, p x or of an equality of long lists",
     "List.lookup of every occurrence of an identifier in a long list of declarations",
-    "the kernel runs a computation after unfold of a definition whose body matches on it"
+    "the kernel runs a computation after unfold of a definition whose body matches on it",
+    "a code generator that passes a live-variable function down a term and asks a use walk about each variable",
+    "a kernel check whose time grows as the cube of the program's length",
+    "verified_compile_wasi whose kernel time and memory stay high after its emitted code shrinks"
   ],
   "modules": [
     "Verified.Source",
@@ -25,7 +28,12 @@
     "LeanExe.Native.Translate",
     "LeanExe.Native.Proof.Init",
     "LeanExe.Dialect.RepeatWhile",
-    "Demos.Euler.Buffered"
+    "Demos.Euler.Buffered",
+    "Verified.Wasi.Code",
+    "Verified.Wasi.CommandReady",
+    "Verified.Wasi.EffectAnalysis",
+    "Verified.Wasi.ReflectEncoding",
+    "Verified.Wasi.ReflectValidity"
   ],
   "declarations": [
     "Verified.Expr.uses",
@@ -44,7 +52,22 @@
     "List.hasDecEq",
     "List.all",
     "LeanExe.repeatWhile",
-    "Demos.Euler.Buffered.runFromInto"
+    "Demos.Euler.Buffered.runFromInto",
+    "Verified.Wasi.Command.useMask",
+    "Verified.Wasi.Command.useMask_testBit",
+    "Verified.Wasi.Command.codeMask",
+    "Verified.Wasi.Command.codeMask_eq",
+    "Verified.Wasi.Command.codeWith",
+    "Verified.Wasi.Command.fragmentsMask_eq",
+    "Verified.Wasi.EffectFunc.functionWith_body",
+    "Verified.Wasi.testBit_or_eq",
+    "Verified.Wasi.testBit_shiftRight_eq",
+    "Verified.Wasi.testBit_shiftLeft_eq",
+    "Verified.Wasi.testBit_one_eq",
+    "Verified.shift",
+    "Nat.testBit",
+    "Verified.Wasi.Reflect.emitEncoding",
+    "Verified.Wasi.Reflect.emitValidity"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",

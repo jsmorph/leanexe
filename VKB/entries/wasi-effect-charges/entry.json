@@ -18,7 +18,11 @@
     "a resource bound of a loop whose number of passes depends on the host's replies, such as writeAll's",
     "Verified.Wasi.Resource.BoundedAt host pure program depth modes live command env world budget",
     "a charge that a source branch does not explain, from a variable that the reflected branch keeps live",
-    "a resource bound of a loop of record calls or polls"
+    "a resource bound of a loop of record calls or polls",
+    "a budget of a WASI command whose loop carries its buffers through its state",
+    "rule_charge, rule_bind, and the other tactics of Verified/Wasi/BudgetTactics.lean",
+    "Verified.Wasi.Resource.Bounded of a Command.letPair",
+    "a resource bound of a loop whose pass charge depends on the pass's index"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -35,7 +39,12 @@
     "Verified.Wasi.ResourceRulesAt",
     "Verified.Examples.WasiReadAllSteady",
     "LeanExe.Wasi.WriteAll",
-    "Verified.Examples.WasiRecordLoop"
+    "Verified.Examples.WasiRecordLoop",
+    "Verified.Examples.WasiSysTotal",
+    "Verified.Wasi.BudgetTactics",
+    "Demos.RandomHistogram.Budget",
+    "Demos.RandomChoice.Budget",
+    "Demos.ManifestCheck.Budget"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -90,7 +99,31 @@
     "Verified.Wasi.Resource.Returns.bind_ret",
     "Verified.Wasi.sysCost",
     "Verified.Wasi.ABI.callArea",
-    "LeanExe.Wasi.callFits"
+    "LeanExe.Wasi.callFits",
+    "Verified.Wasi.Command.letPair",
+    "Verified.Wasi.Reflect.splitThen",
+    "Verified.Wasi.Reflect.pureOperand",
+    "Verified.Wasi.Resource.letPairEnv",
+    "Verified.Wasi.Resource.envGet",
+    "Verified.Wasi.Resource.ReturnFact",
+    "Verified.Wasi.Resource.returnFact",
+    "Verified.Wasi.Resource.returns_fact",
+    "Verified.sumBelow_const",
+    "Verified.Wasi.Resource.ite_cost",
+    "Verified.Wasi.Resource.letPairCost",
+    "Verified.Wasi.Resource.Bounded.letPair",
+    "Verified.Wasi.Resource.BoundedAt.letPair",
+    "Verified.Wasi.Resource.Bounded.letPair_free",
+    "Verified.Wasi.Resource.BoundedAt.letPair_free",
+    "Verified.Wasi.Resource.letPairCost_borrowed",
+    "Verified.Wasi.Resource.letPairCost_dead",
+    "Verified.Wasi.Resource.Returns.letPair",
+    "Verified.Wasi.Resource.loop_bounded_sum",
+    "Verified.Wasi.Resource.passSum",
+    "Verified.Wasi.Resource.passSum_le",
+    "Verified.Prog.flags",
+    "Verified.Examples.WasiSys.budget",
+    "Verified.Examples.WasiSys.args_bytes_le"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -114,13 +147,13 @@
     "Verified.Examples.WasiReadAll.SteadyAlong",
     "Verified.Examples.WasiReadAll.Steady",
     "Verified.Examples.WasiRecordLoop.body_bounded",
-    "Verified.Examples.WasiRecordLoop.call_prefix_bound"
-  ],
-  "unimported": {
-    "Verified/Examples/WasiSysTotal.lean": [
-      "Verified.Examples.WasiSys.budget",
-      "Verified.Examples.WasiSys.args_bytes_le",
-      "Verified.Examples.WasiSys.body_bounded"
-    ]
-  }
+    "Verified.Examples.WasiRecordLoop.call_prefix_bound",
+    "Verified.Examples.WasiSys.body_bounded",
+    "Demos.RandomHistogram.body_bounded",
+    "Demos.RandomChoice.body_bounded",
+    "Demos.RandomChoice.total_meets_every",
+    "Demos.ManifestCheck.lines_total",
+    "Demos.ManifestCheck.checkLines_bounded",
+    "Demos.ManifestCheck.flags_toList"
+  ]
 }

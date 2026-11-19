@@ -6,12 +6,15 @@
     "Verified.Wasi.Resource.Bounded host pure program depth modes live (Verified.Wasi.Command.readAll limit) env budget",
     "a WASI program that needs its whole standard input before it computes",
     "a process whose run time grows with the square of its input",
-    "(kernel) deep recursion detected at a generated start or total theorem of a program that reads by recursion on a fuel"
+    "(kernel) deep recursion detected at a generated start or total theorem of a program that reads by recursion on a fuel",
+    "a command that reads a named file whole into a buffer of the reported size",
+    "a reported file size of 2^32 or more that Call.reject refuses without an event"
   ],
   "modules": [
     "Demos.Rcv.ProcessCompiledCorrect",
     "Verified.Examples.WasiReadAll",
-    "Demos.Rcv.Maine.ProcessCompiledCorrect"
+    "Demos.Rcv.Maine.ProcessCompiledCorrect",
+    "Demos.ManifestCheck.Budget"
   ],
   "declarations": [
     "LeanExe.Wasi.readAll",
@@ -26,7 +29,8 @@
     "Verified.Wasi.Resource.PrefixBound.readAll",
     "Demos.Rcv.Process.Compiled",
     "Demos.Rcv.Process.beginWith_report",
-    "Demos.Rcv.Process.beginWith_long"
+    "Demos.Rcv.Process.beginWith_long",
+    "LeanExe.Wasi.Call.reject"
   ],
   "examples": [
     "Demos.Rcv.Process.begin_report",
@@ -40,6 +44,12 @@
     "Demos.Rcv.Process.Compiled.terminates_of_room",
     "Demos.Rcv.Process.Compiled.exits_long_of_room",
     "Demos.Rcv.Maine.Process.initial_terminates",
-    "Demos.Rcv.Maine.Process.initial_exits_long"
+    "Demos.Rcv.Maine.Process.initial_exits_long",
+    "Demos.ManifestCheck.readBytes",
+    "Demos.ManifestCheck.readManifest",
+    "Demos.ManifestCheck.ManifestReads",
+    "Demos.ManifestCheck.ManifestBody",
+    "Demos.ManifestCheck.ManifestBody.tooLarge",
+    "Demos.ManifestCheck.budget"
   ]
 }

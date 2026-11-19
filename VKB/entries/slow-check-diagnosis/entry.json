@@ -16,7 +16,9 @@
     "several declarations of one proof each evaluate p.translation of verified_compile",
     "(kernel) deep recursion detected from decide +kernel of ∀ x ∈ l, p x over a long list",
     "a kernel check after unfold of a definition that matches on a loop",
-    "heartbeats of an unchanged proof rise after a definition that a hypothesis names grows, from congr's search of the hypotheses"
+    "heartbeats of an unchanged proof rise after a definition that a hypothesis names grows, from congr's search of the hypotheses",
+    "(deterministic) timeout at whnf, maximum number of heartbeats (200000) has been reached, at a declaration's first line",
+    "unfolding counts whose growth with the program's size names the costly definition"
   ],
   "modules": [
     "Lean.AddDecl",
@@ -27,13 +29,21 @@
     "LeanExe.A64.Isla.Check",
     "LeanExe.A64.Isla.Walk",
     "LeanExe.Wasi.ReadAll",
-    "LeanExe.Native.Translate"
+    "LeanExe.Native.Translate",
+    "Verified.Wasi.SysCommand",
+    "Verified.Wasi.EffectAnalysis"
   ],
   "declarations": [
     "Lean.addDecl",
     "IO.FS.withFile",
     "LeanExe.Wasi.Action.loop",
-    "LeanExe.Native.initStores"
+    "LeanExe.Native.initStores",
+    "Verified.Wasi.wp_sys_command_with",
+    "Verified.Wasi.wp_sys_plain_with",
+    "Verified.Wasi.wp_sys_take_with",
+    "Verified.Wasi.wp_sys_released_with",
+    "Verified.Wasi.Command.uses",
+    "Verified.releaseWhere"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",

@@ -14,7 +14,9 @@
     "(deterministic) timeout at whnf from a show over a chain of let-bound machine states",
     "(deterministic) timeout at whnf from rfl when both sides reach Reply.field by different paths",
     "rw or simp only that does not find UInt64.ofNat 4092 in a step's result holding UInt64.ofNat ↑(4092 : Fin 4096)",
-    "maximum recursion depth from rfl on x + UInt64.ofNat 4092 + 1 = x + UInt64.ofNat 4093"
+    "maximum recursion depth from rfl on x + UInt64.ofNat 4092 + 1 = x + UInt64.ofNat 4093",
+    "maximum recursion depth in a concrete run over LeanExe.Bytes.build 4096 fun _ => 0",
+    "(List.range g.2).map r.bytes = (List.range 4096).map f"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -38,7 +40,10 @@
     "LeanExe.A64.Proof.Relation",
     "Verified.Wasi.ReflectSysCalls",
     "LeanExe.A64.Proof.Memory32",
-    "LeanExe.A64.Proof.WasiStrings"
+    "LeanExe.A64.Proof.WasiStrings",
+    "Demos.RandomHistogram.NativeCounts",
+    "Demos.RandomChoice.NativeChoices",
+    "Verified.Wasi.BudgetTactics"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -65,7 +70,14 @@
     "LeanExe.A64.step_strb",
     "LeanExe.A64.step_lsrImm",
     "LeanExe.A64.step_addK",
-    "LeanExe.A64.add_ofNat_add"
+    "LeanExe.A64.add_ofNat_add",
+    "LeanExe.Bytes.window_fst",
+    "LeanExe.Linux.Replies",
+    "List.map_const'",
+    "List.reduceReplicate",
+    "Verified.sumBelow_const",
+    "Verified.sumBelow",
+    "LeanExe.Wasi.Action.pure"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -84,6 +96,8 @@
     "LeanExe.A64.run_growWide_size",
     "LeanExe.A64.run_growWide_cmp",
     "Verified.Wasi.Reflect.fdFdstatGet_eq",
-    "LeanExe.A64.run_strb4"
+    "LeanExe.A64.run_strb4",
+    "Demos.RandomHistogram.fullReplies_run",
+    "Demos.RandomChoice.witness_random"
   ]
 }
