@@ -77,7 +77,11 @@ where it stays live, a reader or a call releases an owned variable that dies the
 binding, and a loop release the owned variables that die without a use.  Recursive values also have
 borrowed and owned modes, with copying, release, and reuse described [below](#recursive-records).
 The code generator determines which variables each subexpression reads from the bitmask `Expr.useMask`
-through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  A pair has one mode, and a
+through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  The functions of a module
+call [`Expr.codeMask`](Compile.lean), which receives the variables live after an expression as a
+bitmask and releases the variables that die with `releaseMask`, a walk of the context that stops at
+the highest variable released, and `Expr.codeMask_eq` of [the mask equations](CodeMask.lean)
+equates it with `Expr.code`, which the proofs unfold.  A pair has one mode, and a
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
 the elements.

@@ -1,4 +1,4 @@
-import Verified.Compile
+import Verified.CodeMask
 import Verified.LiteralCoverage
 
 namespace Verified
@@ -43,7 +43,7 @@ theorem bodyFunction_empty_pool {S : List Sig} {params : List Ty} {result : Ty}
     (modes : List Mode) (body : Expr S params result) (depth : Bool) (typeIdx address : Nat) :
     bodyFunction modes body depth typeIdx ⟨address, []⟩ =
       bodyFunction modes body depth typeIdx Bytes.LiteralPool.empty := by
-  simp only [bodyFunction, Expr.code_empty_pool]
+  simp only [bodyFunction, Expr.codeMask_eq, Expr.code_empty_pool]
 
 theorem TailBody.code_empty_pool {S : List Sig} {params Γ : List Ty} {result : Ty}
     (body : TailBody S params result Γ) (modes : List Mode)
@@ -62,7 +62,8 @@ theorem Prog.functions_empty_pool (prog : Prog S) (address : Nat) :
   | consRec func rest ih =>
     simp only [Prog.functions, ih, RecFunc.function, bodyFunction_empty_pool]
   | consTail func _ _ _ rest ih =>
-    simp only [Prog.functions, ih, TailFunc.function, TailBody.code_empty_pool]
+    simp only [Prog.functions, ih, TailFunc.function, TailBody.codeMask_eq,
+      TailBody.code_empty_pool]
 
 theorem compileWith_eq_empty_of_no_literals {minPages : Nat} (prog : Prog S)
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))

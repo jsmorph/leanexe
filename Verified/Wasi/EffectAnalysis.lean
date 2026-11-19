@@ -1,5 +1,5 @@
 import Verified.Wasi.Source
-import Verified.Compile
+import Verified.CodeMask
 
 namespace Verified.Wasi
 
@@ -123,25 +123,19 @@ theorem Command.useMask_testBit (command : Command pureSigs effectSigs context r
     simp only [Command.useMask, Command.uses, Nat.testBit_or, Nat.testBit_shiftRight,
       testBit_one_shiftLeft, bodyIh, Nat.add_comm]
 
-theorem testBit_or_eq (a b : Nat) : Nat.testBit (a ||| b) = fun i => a.testBit i || b.testBit i :=
-  funext fun _ => Nat.testBit_or ..
+theorem testBit_varsMask_eq (vars : List (Var context type)) :
+    Nat.testBit (varsMask vars) = fun i => vars.any fun var => i == var.index :=
+  funext (varsMask_testBit vars)
 
-theorem testBit_shiftRight_eq (a k : Nat) : Nat.testBit (a >>> k) = fun i => a.testBit (i + k) :=
-  funext fun i => by rw [Nat.testBit_shiftRight, Nat.add_comm]
-
-theorem testBit_shiftLeft_eq (a k : Nat) : Nat.testBit (a <<< k) = shift k a.testBit := by
+/-- The bits of a list's mask past a bound variable, as the release after a `sys` command with a
+buffer tests them. -/
+theorem testBit_varsMask_shiftLeft_one_eq (vars : List (Var context type)) :
+    Nat.testBit (varsMask vars <<< 1) = fun i => vars.any fun var => i == var.index + 1 := by
   funext i
-  rw [Nat.testBit_shiftLeft, shift]
-  by_cases below : i < k
-  · simp [below, Nat.not_le.mpr below]
-  · simp [below, Nat.le_of_not_lt below]
-
-theorem testBit_one_eq : Nat.testBit 1 = fun i => i == 0 := by
-  funext i
-  simpa using testBit_one_shiftLeft 0 i
-
-theorem testBit_zero_eq : Nat.testBit 0 = fun _ => false :=
-  funext Nat.zero_testBit
+  rw [testBit_shiftLeft_eq, shift]
+  cases i with
+  | zero => simp
+  | succ i => simp [varsMask_testBit]
 
 /-- The variables live after the take of a `sys` command's buffer: those live after the command,
 and its inputs and word arguments, which the call reads. -/
