@@ -16,7 +16,7 @@
 # OUT and its stderr to OUT.stderr, and returns the command's status.  Each run's output lines must
 # be the verdicts of GNU `sha256sum -c` on the same manifest in the same directory, whose "FAILED
 # open or read" counts as FAILED.  The directory holds a short file, an empty file, a file whose
-# name has spaces, a file of 5 MiB and 17 bytes that takes 81 reads, a file whose bytes differ from
+# name has spaces, a file of 5 MiB and 17 bytes that takes 82 reads, a file whose bytes differ from
 # its manifest's digest, a symbolic link to a file in the directory, and a symbolic link to a file
 # outside it.  A manifest of files that match, with a name through `sub/..`, a binary-mode line, and
 # a line without a final newline, must give `NAME: OK` for each line and status 0.  A manifest that
@@ -37,10 +37,21 @@
 # O_RDONLY and O_CLOEXEC, and the resolution flags RESOLVE_BENEATH and RESOLVE_NO_MAGICLINKS, every
 # `statx` an empty path with AT_EMPTY_PATH and the mask STATX_ALL (0xfff), and every `write`
 # descriptor 1.  Every `read`, `statx`, and `close` must name the descriptor that the last `openat`
-# or `openat2` returned, which a `close` must end before the next open and before the exit.  The `openat2` of each
-# name that leaves the directory, through `..`, as an absolute name, or through the link, must fail
-# in the kernel with EXDEV.  The file theorems of the executable are checked in
-# tests/linux/a64-wasi.sh, which writes the executable from the same module with the same commands.
+# or `openat2` returned, which a `close` must end before the next open and before the exit.  The
+# `openat2` of each name that leaves the directory, through `..`, as an absolute name, or through
+# the link, must fail in the kernel with EXDEV.
+#
+# Five native runs on the manifest of files that match replace results with strace's injection.  When
+# the third `read`, the first of a.txt, fails with EIO, a.txt must give FAILED and the other lines
+# OK, with status 1.  When the first three `openat2` calls fail with EAGAIN, the fourth opens the
+# manifest, and the run must write the verdicts of the run without injection, with status 0.  When
+# the first four fail with EAGAIN, the run must stop after them with status 29 (`io`), the shim's
+# errno for EAGAIN, and write nothing.  When the manifest's `close`, the first `close` after the
+# startup's, fails with EIO, the run must write nothing and exit with status 29 (`io`).  When every
+# `write` returns 0, the run must make 11 writes of a.txt's line of 10 bytes, each offering the
+# whole line, and exit with status 77 without output.  The file theorems of the executable are
+# checked in tests/linux/a64-wasi.sh, which writes the executable from the same module with the same
+# commands.
 #
 # The pure module's samples run in `tests/verified/run.sh --cases manifestCheck`.
 # Usage: tests/manifest-check/run.sh
@@ -336,6 +347,24 @@ traced() {
   cases=$((cases + 1))
 }
 
+# injected NAME STATUS EXPECTED INJECTION: the run on good.sha256 under strace with the injection
+# INJECTION exits with STATUS, writes the bytes of the file EXPECTED, and writes nothing to stderr.
+# Its trace is left in $out/native-NAME.strace.
+injected() {
+  name=$1
+  want=$2
+  expect=$3
+  trace="$out/native-$name.strace"
+  stdout="$out/native-$name.stdout"
+  status=0
+  strace -o "$trace" -e "inject=$4" "$elf" good.sha256 > "$stdout" 2> "$stdout.stderr" 3< "$dir" ||
+    status=$?
+  [ "$status" -eq "$want" ] || fail "strace $name" "status $status, expected $want"
+  cmp -s "$stdout" "$expect" || fail "strace $name" "the output differs from $expect"
+  [ ! -s "$stdout.stderr" ] || fail "strace $name" "output on stderr"
+  cases=$((cases + 1))
+}
+
 case " $RUNNERS " in
   *" native "*)
     traced good 0
@@ -343,7 +372,21 @@ case " $RUNNERS " in
     for leaving in ../outside/secret.txt "$out/outside/secret.txt" outside-link; do
       grep -q "^openat2(3, \"$leaving\", .* = -1 EXDEV " "$out/native-mixed.calls" ||
         fail "strace mixed" "the openat2 of $leaving does not fail with EXDEV"
-    done ;;
+    done
+    sed '1s/: OK$/: FAILED/' "$out/good.expected" > "$out/read-failed.expected"
+    : > "$out/nothing.expected"
+    injected read-failed 1 "$out/read-failed.expected" read:error=EIO:when=3
+    injected again-3 0 "$out/good.expected" openat2:error=EAGAIN:when=1..3
+    [ "$(grep -c '^openat2(3, "good.sha256", .* = -1 EAGAIN ' "$out/native-again-3.strace")" \
+      -eq 3 ] || fail "strace again-3" "the manifest's opens are not three EAGAIN and a descriptor"
+    injected again-4 29 "$out/nothing.expected" openat2:error=EAGAIN:when=1..4
+    [ "$(grep -c '^openat2(' "$out/native-again-4.strace")" -eq 4 ] ||
+      fail "strace again-4" "the run does not stop after four openat2 calls"
+    injected close-failed 29 "$out/nothing.expected" close:error=EIO:when=2
+    injected stalled 77 "$out/nothing.expected" write:retval=0
+    [ "$(grep -c '^write(' "$out/native-stalled.strace")" -eq 11 ] &&
+      [ "$(grep -c '^write(1, "a.txt: OK\\n", 10) *= 0 ' "$out/native-stalled.strace")" -eq 11 ] ||
+      fail "strace stalled" "the writes are not 11 offers of a.txt's line" ;;
 esac
 
 printf 'manifest check: %s runs passed, %s verdicts agree with sha256sum -c\n' "$cases" "$verdicts"

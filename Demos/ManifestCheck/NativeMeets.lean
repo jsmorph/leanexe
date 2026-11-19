@@ -62,6 +62,7 @@ theorem openCalls_native {L : ShimLayout} {name : List UInt8} :
       ∃ errno outputs, reply = .returned errno outputs ∧
         ∃ retries last, l = retries ++ [last] ∧ retries.length + calls ≤ 3 ∧
           (∀ e ∈ l, OpensBeneath name e) ∧ (∀ e ∈ retries, e.ret = 0 - 11) ∧
+          (last.ret = 0 - 11 → retries.length + calls = 3) ∧
           ((last.ret.toNat < 1024 ∧ errno = 0 ∧ openedDescriptor outputs = last.ret) ∨
             (Linux.isError last.ret = true ∧ errno = errnoOf (0 - last.ret)))
   | _, [], _, _, h, _ => h.elim
@@ -71,17 +72,22 @@ theorem openCalls_native {L : ShimLayout} {name : List UInt8} :
         [name ++ [0], readOnlyHow], [], ret, []⟩ := ⟨rfl, rfl, rfl⟩
     split at rest
     · rename_i again
-      obtain ⟨errno, outputs, rfl, retries, last, rfl, count, all, eagain, ending⟩ :=
+      obtain ⟨errno, outputs, rfl, retries, last, rfl, count, all, eagain, full, ending⟩ :=
         openCalls_native (by omega) rest (fun x m => range x (List.mem_cons_of_mem _ m))
       refine ⟨errno, outputs, rfl, _ :: retries, last, rfl, by simp; omega, fun x m => ?_,
-        fun x m => ?_, ending⟩
+        fun x m => ?_, fun h => by have := full h; simp; omega, ending⟩
       · rcases List.mem_cons.mp m with rfl | m
         · exact opens
         · exact all x m
       · rcases List.mem_cons.mp m with rfl | m
         · exact again.1
         · exact eagain x m
-    · obtain ⟨rfl, rfl⟩ := rest
+    · rename_i notAgain
+      obtain ⟨rfl, rfl⟩ := rest
+      have full : ret = 0 - 11 → ([] : List Linux.Event).length + calls = 3 := fun h => by
+        have : ¬ calls < 3 := fun low => notAgain ⟨h, low⟩
+        simp only [List.length_nil]
+        omega
       have inRange := (range _ (List.mem_singleton_self _)).2.1 rfl
       have all : ∀ x ∈ [(⟨Linux.openat2Call, [3, L.path, L.openHow, 24],
           [name ++ [0], readOnlyHow], [], ret, []⟩ : Linux.Event)], OpensBeneath name x := by
@@ -90,31 +96,45 @@ theorem openCalls_native {L : ShimLayout} {name : List UInt8} :
         exact opens
       have none : ∀ x ∈ ([] : List Linux.Event), x.ret = 0 - 11 := fun x m => nomatch m
       have count : ([] : List Linux.Event).length + calls ≤ 3 := by simp; omega
-      rcases openReply_ranged inRange with ⟨low, same⟩ | ⟨error, _, same⟩
-      · refine ⟨_, _, same, [], _, rfl, count, all, none, ?_⟩
+      rcases openReply_ranged (inRange.imp_right And.right) with ⟨low, same⟩ | ⟨error, _, same⟩
+      · refine ⟨_, _, same, [], _, rfl, count, all, none, full, ?_⟩
         exact .inl ⟨low, rfl, openedDescriptor_leBytes low⟩
-      · refine ⟨_, _, same, [], _, rfl, count, all, none, ?_⟩
+      · refine ⟨_, _, same, [], _, rfl, count, all, none, full, ?_⟩
         exact .inr ⟨error, rfl⟩
 
+/-- The shim's checks of an open beneath descriptor 3 depend on the numbers that it holds only
+through descriptor 3. -/
+theorem openCheck_held {opened : List UInt64} {held : Bool} (three : 3 ∈ opened ↔ held = true)
+    (name : List UInt8) : openCheck opened 3 0 (bytesOf name) 0 = nameCheck held name := by
+  unfold nameCheck openCheck
+  cases held with
+  | true => simp [three.mpr rfl]
+  | false =>
+    have absent : (3 : UInt64) ∉ opened := fun m => absurd (three.mp m) (by decide)
+    simp [absent]
+
 /-- The image of the command's `path_open` of `name` under directory 3, read-only, with results in
-Linux's range: a reply returned with an errno and the descriptor of `Opening`. -/
+Linux's range, when the shim holds descriptor 3 exactly when `held`: a reply returned with an errno
+and the descriptor of `Opening`. -/
 theorem open_native {F : OpenFlags} {L : ShimLayout} {opened : List UInt64} {rights : UInt64}
-    {name : List UInt8} {reply : Transfer (List Bytes)} {l : List Linux.Event}
-    (hr : rights = manifestRights ∨ rights = fileRights)
+    {held : Bool} {name : List UInt8} {reply : Transfer (List Bytes)} {l : List Linux.Event}
+    (hr : rights = manifestRights ∨ rights = fileRights) (three : 3 ∈ opened ↔ held = true)
     (image : OpenImage F L opened (openArgs rights name) reply l) (range : InRange l) :
     ∃ errno outputs, reply = .returned errno outputs ∧
-      Opening name l errno (openedDescriptor outputs) := by
+      Opening held name l errno (openedDescriptor outputs) := by
   simp only [OpenImage, openArgs] at image
   have path : (bytesOf name).data.data.toList = name := by simp [bytesOf]
-  rw [path, openHow_readOnly F hr] at image
-  by_cases checked : openCheck opened 3 0 (bytesOf name) 0 = 0
+  rw [path, openHow_readOnly F hr, openCheck_held three] at image
+  by_cases checked : nameCheck held name = 0
   · rw [ite_eq_left checked] at image
-    obtain ⟨errno, outputs, same, retries, last, split, count, all, eagain, ending⟩ :=
+    obtain ⟨errno, outputs, same, retries, last, split, count, all, eagain, full, ending⟩ :=
       openCalls_native (by omega) image range
-    exact ⟨errno, outputs, same, .inr ⟨retries, last, split, by omega, all, eagain, ending⟩⟩
+    exact ⟨errno, outputs, same,
+      .inr ⟨checked, retries, last, split, by omega, all, eagain,
+        fun h => by have := full h; omega, ending⟩⟩
   · rw [ite_eq_right checked] at image
     obtain ⟨empty, same⟩ := image
-    exact ⟨_, _, same, .inl ⟨empty, checked⟩⟩
+    exact ⟨_, _, same, .inl ⟨empty, rfl, checked⟩⟩
 
 /-- An event of a call that opens no descriptor and is no `close` keeps the numbers that the shim
 holds. -/
@@ -137,10 +157,10 @@ theorem held_quiet (I : Launch) (events : List Linux.Event) :
 
 /-- An opening that gives errno 0 leaves its descriptor, below 1,024, among the numbers that the
 shim holds. -/
-theorem Opening.held {name : List UInt8} {l : List Linux.Event} {fd : UInt64}
-    (h : Opening name l 0 fd) (I : Launch) (events : List Linux.Event) :
+theorem Opening.held {held : Bool} {name : List UInt8} {l : List Linux.Event} {fd : UInt64}
+    (h : Opening held name l 0 fd) (I : Launch) (events : List Linux.Event) :
     fd.toNat < 1024 ∧ fd ∈ openNumbers I (events ++ l) := by
-  rcases h with ⟨-, nonzero⟩ | ⟨retries, last, rfl, -, all, eagain, ending⟩
+  rcases h with ⟨-, -, nonzero⟩ | ⟨-, retries, last, rfl, -, all, eagain, -, ending⟩
   · exact absurd rfl nonzero
   rcases ending with ⟨low, -, rfl⟩ | ⟨-, zero⟩
   · refine ⟨low, ?_⟩
@@ -218,9 +238,9 @@ theorem stat_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List
     · exact .inr (.inl ⟨rfl, beyond, filestatReply_over valid beyond⟩)
     · exact .inr (.inr ⟨rfl, fits, filestatReply_fits valid fits⟩)
 
-/-- The image of an `fd_read` on a descriptor that the shim holds, with a result in Linux's range:
-one `read` of `ReadOf`, whose reply is the errno of an error number or, with errno 0, the bytes
-that it returned. -/
+/-- The image of an `fd_read` of fewer than `2^32` bytes on a descriptor that the shim holds, with a
+result in Linux's range: one `read` of `ReadOf`, whose reply is the errno of an error number or,
+with errno 0, the bytes that it returned. -/
 theorem read_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
     {fd length : UInt64} {reply : Transfer (List Bytes)} {l : List Linux.Event}
     (held : fd ∈ openNumbers I events) (small : length.toNat < 2 ^ 32)
@@ -438,7 +458,7 @@ theorem manifestReads_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd :
   | _, _, _, _, before, _, .more left nonempty rest, images, range, sized, held => by
     obtain ⟨l, others, rfl, image, more⟩ := images_cons images
     obtain ⟨e, rfl, read, ending⟩ := read_cases held image range.left sized.left
-    rcases ending with ⟨nonzero, -⟩ | ⟨-, -, bytes, zero⟩
+    rcases ending with ⟨nonzero, -⟩ | ⟨-, fine, bytes, zero⟩
     · exact absurd rfl nonzero
     have keep : fd ∈ openNumbers I (before ++ [e]) := by
       rw [held_quiet I before (l := [e])
@@ -450,7 +470,7 @@ theorem manifestReads_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd :
       have := mt zero.mpr nonempty
       rw [← UInt64.toNat_inj, UInt64.toNat_zero] at this
       omega
-    refine ⟨.more left read positive tail, fun x m => ?_⟩
+    refine ⟨.more left read fine positive tail, fun x m => ?_⟩
     rcases List.mem_append.mp m with m | m
     · rw [List.mem_singleton.mp m]
       exact ⟨read.1, read.2.1⟩
@@ -629,7 +649,7 @@ theorem fileReads_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd : UIn
   | _, _, _, _, _, before, _, .more nonempty rest, images, range, sized, held => by
     obtain ⟨l, others, rfl, image, more⟩ := images_cons images
     obtain ⟨e, rfl, read, ending⟩ := read_cases held image range.left sized.left
-    rcases ending with ⟨nonzero, -⟩ | ⟨-, -, bytes, zero⟩
+    rcases ending with ⟨nonzero, -⟩ | ⟨-, fine, bytes, zero⟩
     · exact absurd rfl nonzero
     have keep : fd ∈ openNumbers I (before ++ [e]) := by
       rw [held_quiet I before (l := [e])
@@ -641,7 +661,7 @@ theorem fileReads_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd : UIn
       have := mt zero.mpr nonempty
       rw [← UInt64.toNat_inj, UInt64.toNat_zero] at this
       omega
-    refine ⟨.more read positive tail, fun x m => ?_⟩
+    refine ⟨.more read fine positive tail, fun x m => ?_⟩
     rcases List.mem_append.mp m with m | m
     · rw [List.mem_singleton.mp m]
       exact ⟨read.1, read.2.1⟩
@@ -653,33 +673,113 @@ theorem fileReads_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd : UIn
 /-- The image of the command's `path_open` that returned `errno` and `outputs` is an opening of
 `Opening`. -/
 theorem open_cases {F : OpenFlags} {L : ShimLayout} {I : Launch} {before : List Linux.Event}
-    {rights : UInt64} {name : List UInt8} {errno : UInt64} {outputs : List Bytes}
+    {held : Bool} {rights : UInt64} {name : List UInt8} {errno : UInt64} {outputs : List Bytes}
     {l : List Linux.Event} (hr : rights = manifestRights ∨ rights = fileRights)
+    (three : 3 ∈ openNumbers I before ↔ held = true)
     (image : Image F L I before (.sys .pathOpen (openArgs rights name) (.returned errno outputs)) l)
-    (range : InRange l) : Opening name l errno (openedDescriptor outputs) := by
+    (range : InRange l) : Opening held name l errno (openedDescriptor outputs) := by
   obtain ⟨-, sys⟩ := image
   rw [sysImage_open] at sys
-  obtain ⟨errno', outputs', same, opening⟩ := open_native hr sys range
+  obtain ⟨errno', outputs', same, opening⟩ := open_native hr three sys range
   obtain ⟨rfl, rfl⟩ := Transfer.returned.inj same
   exact opening
 
 /-- An opening that gives an errno other than 0 is one for every descriptor. -/
-theorem Opening.refuse {name : List UInt8} {l : List Linux.Event} {errno fd : UInt64}
-    (h : Opening name l errno fd) (nonzero : errno ≠ 0) (fd' : UInt64) :
-    Opening name l errno fd' := by
-  rcases h with ⟨empty, -⟩ | ⟨retries, last, split, count, all, eagain, ending⟩
-  · exact .inl ⟨empty, nonzero⟩
-  · refine .inr ⟨retries, last, split, count, all, eagain, ?_⟩
+theorem Opening.refuse {held : Bool} {name : List UInt8} {l : List Linux.Event}
+    {errno fd : UInt64} (h : Opening held name l errno fd) (nonzero : errno ≠ 0) (fd' : UInt64) :
+    Opening held name l errno fd' := by
+  rcases h with ⟨empty, check, -⟩ |
+    ⟨check, retries, last, split, count, all, eagain, full, ending⟩
+  · exact .inl ⟨empty, check, nonzero⟩
+  · refine .inr ⟨check, retries, last, split, count, all, eagain, full, ?_⟩
     rcases ending with ⟨-, zero, -⟩ | ending
     · exact absurd zero nonzero
     · exact .inr ending
 
 /-- The events of an opening are `openat2` calls. -/
-theorem Opening.calls {name : List UInt8} {l : List Linux.Event} {errno fd : UInt64}
-    (h : Opening name l errno fd) : ∀ x ∈ l, OpensBeneath name x := by
-  rcases h with ⟨rfl, -⟩ | ⟨retries, last, rfl, -, all, -, -⟩
+theorem Opening.calls {held : Bool} {name : List UInt8} {l : List Linux.Event}
+    {errno fd : UInt64} (h : Opening held name l errno fd) : ∀ x ∈ l, OpensBeneath name x := by
+  rcases h with ⟨rfl, -, -⟩ | ⟨-, retries, last, rfl, -, all, -, -, -⟩
   · exact fun _ m => nomatch m
   · exact all
+
+/-- The events `l` open descriptors only with `openat2` and close no descriptor 3. -/
+def Spares3 (l : List Linux.Event) : Prop :=
+  ∀ x ∈ l, (x.call.opens = true → x.call = Linux.openat2Call) ∧
+    (x.call = Linux.closeCall → (Linux.arg x.args 0).toNat < 2 ^ 32 ∧ Linux.arg x.args 0 ≠ 3)
+
+theorem Spares3.append {a b : List Linux.Event} (ha : Spares3 a) (hb : Spares3 b) :
+    Spares3 (a ++ b) := fun x m => by
+  rcases List.mem_append.mp m with m | m
+  · exact ha x m
+  · exact hb x m
+
+/-- Events of `read`, `statx`, `write`, and `openat2` spare descriptor 3. -/
+theorem spares3_quiet {l : List Linux.Event}
+    (h : ∀ x ∈ l, x.call = Linux.readCall ∨ x.call = Linux.statxCall ∨
+      x.call = Linux.writeCall ∨ x.call = Linux.openat2Call) : Spares3 l := fun x m => by
+  rcases h x m with c | c | c | c <;> rw [c] <;>
+    exact ⟨by decide, fun same => absurd same (by decide)⟩
+
+/-- An opening's descriptor whose `openat2` result lies in Linux's range is 4 or more. -/
+theorem Opening.low {held : Bool} {name : List UInt8} {l : List Linux.Event} {fd : UInt64}
+    (h : Opening held name l 0 fd) (range : InRange l) : 4 ≤ fd.toNat := by
+  rcases h with ⟨-, -, nonzero⟩ | ⟨-, retries, last, rfl, -, all, -, -, ending⟩
+  · exact absurd rfl nonzero
+  rcases ending with ⟨low, -, rfl⟩ | ⟨-, zero⟩
+  · have member : last ∈ retries ++ [last] := List.mem_append_right _ (List.mem_singleton_self _)
+    rcases (range last member).2.1 (all last member).1 with error | ⟨four, -⟩
+    · simp only [Linux.isError, decide_eq_true_eq] at error
+      omega
+    · exact four
+  · exact absurd zero.symm (errnoOf_valid _).2
+
+/-- The `close` of a descriptor from 4 below 1,024 spares descriptor 3. -/
+theorem spares3_close {fd : UInt64} {c : Linux.Event} (close : CloseOf fd c) (low : 4 ≤ fd.toNat)
+    (high : fd.toNat < 1024) : Spares3 [c] := fun x m => by
+  rw [List.mem_singleton.mp m, close.1, close.2]
+  refine ⟨by decide, fun _ => ⟨by omega, fun same => ?_⟩⟩
+  rw [same] at low
+  exact absurd low (by decide)
+
+/-- Events that spare descriptor 3, with results in Linux's range, keep it among the numbers that
+the shim holds or away from them. -/
+theorem spares3_three (I : Launch) : ∀ (events : List Linux.Event) {l : List Linux.Event},
+    InRange l → Spares3 l →
+      ((3 : UInt64) ∈ openNumbers I (events ++ l) ↔ (3 : UInt64) ∈ openNumbers I events)
+  | events, [], _, _ => by rw [List.append_nil]
+  | events, x :: l, range, spares => by
+    have step : (3 : UInt64) ∈ openNumbers I (events ++ [x]) ↔
+        (3 : UInt64) ∈ openNumbers I events := by
+      obtain ⟨opens, closes⟩ := spares x (List.mem_cons_self ..)
+      by_cases o : x.call.opens = true
+      · have call := opens o
+        have notClose : x.call ≠ Linux.closeCall := by rw [call]; decide
+        rcases (range x (List.mem_cons_self ..)).2.1 call with error | ⟨low, high⟩
+        · have big : ¬ (x.call.opens = true ∧ x.ret.toNat < 2 ^ 31) := by
+            rintro ⟨-, small⟩
+            simp only [Linux.isError, decide_eq_true_eq] at error
+            omega
+          rw [(openNumbers_append_quiet I events big notClose).1]
+        · rw [(openNumbers_append_open I events o (by unfold descriptorLimit; exact high)).1 3]
+          refine ⟨fun h => ?_, .inr⟩
+          rcases h with same | m
+          · rw [← same] at low
+            exact absurd low (by decide)
+          · exact m
+      · by_cases c : x.call = Linux.closeCall
+        · obtain ⟨small, other⟩ := closes c
+          rw [(openNumbers_append_close I events c rfl small).1 3]
+          exact ⟨And.right, fun m => ⟨fun same => other same.symm, m⟩⟩
+        · rw [(openNumbers_append_quiet I events (fun both => o both.1) c).1]
+    have rest := spares3_three I (events ++ [x]) (l := l)
+      (fun y m => range y (List.mem_cons_of_mem _ m))
+      (fun y m => spares y (List.mem_cons_of_mem _ m))
+    rw [show events ++ x :: l = events ++ [x] ++ l by simp, rest, step]
+
+theorem NLineWrites.spares3 {text : List UInt8} {writes : List Linux.Event} {ending : WriteEnd}
+    (h : NLineWrites text writes ending) : Spares3 writes :=
+  spares3_quiet fun x m => .inr (.inr (.inl (h.2.1 x m).1))
 
 /-- The image of the command's `fd_close` of a descriptor that the shim holds that returned
 `errno` is one `close` whose `closeErrno` is `errno`. -/
@@ -699,19 +799,21 @@ theorem closeErrno_zero (ret : UInt64) : closeErrno ret = 0 ↔ ret = 0 := by
   · rename_i nonzero
     exact ⟨fun h => absurd h (errnoOf_valid _).2, fun h => absurd h nonzero⟩
 
-/-- `FileCheck` at WASI gives `NFileCheck` of the images. -/
+/-- `FileCheck` at WASI gives `NFileCheck` of the images, which spare descriptor 3. -/
 theorem fileCheck_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {name line : List UInt8}
-    {events : List Event} {ok : Bool} {before ls : List Linux.Event}
+    {events : List Event} {ok : Bool} {before ls : List Linux.Event} {held : Bool}
+    (three : 3 ∈ openNumbers I before ↔ held = true)
     (check : FileCheck name line events ok) (images : Images F L I before events ls)
-    (range : InRange ls) (sized : Sized ls) : NFileCheck name line ls ok := by
+    (range : InRange ls) (sized : Sized ls) : NFileCheck held name line ls ok ∧ Spares3 ls := by
   cases check with
   | refused nonzero =>
-    have opening := open_cases (.inr rfl) (images_single images) range
-    exact .refused (opening.refuse nonzero 0) nonzero
+    have opening := open_cases (.inr rfl) three (images_single images) range
+    exact ⟨.refused (opening.refuse nonzero 0) nonzero,
+      spares3_quiet fun x m => .inr (.inr (.inr (opening.calls x m).1))⟩
   | @opened outputs events bytes ending closeErrno committed ok reads verdict =>
     obtain ⟨lo, rest, rfl, openImage, restImages⟩ := images_cons images
-    have opening := open_cases (.inr rfl) openImage range.left
-    obtain ⟨-, held⟩ := opening.held I before
+    have opening := open_cases (.inr rfl) three openImage range.left
+    obtain ⟨high, held⟩ := opening.held I before
     obtain ⟨lr, lc, rfl, readImages, closeImages⟩ := images_split restImages
     have rangeRest := range.right
     have sizedRest := sized.right
@@ -721,23 +823,30 @@ theorem fileCheck_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {name lin
       exact held
     obtain ⟨c, rfl, close, errno⟩ := close_cases held' (images_single closeImages)
       rangeRest.right
-    rw [← List.append_assoc]
-    refine .opened opening reading close ?_
+    have spares : Spares3 (lo ++ (lr ++ [c])) :=
+      (spares3_quiet fun x m => .inr (.inr (.inr (opening.calls x m).1))).append
+        ((spares3_quiet fun x m => .inl (calls x m).1).append
+          (spares3_close close (opening.low range.left) high))
+    rw [← List.append_assoc] at spares ⊢
+    refine ⟨.opened opening reading close ?_, spares⟩
     rw [verdict, errno, closeErrno_zero]
 
-/-- `ManifestRun` at WASI gives `NManifestRun` of the images. -/
+/-- `ManifestRun` at WASI gives `NManifestRun` of the images, which spare descriptor 3. -/
 theorem manifestRun_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {name : List UInt8}
     {events : List Event} {status : UInt64} {bytes : List UInt8} {before ls : List Linux.Event}
+    {held : Bool} (three : 3 ∈ openNumbers I before ↔ held = true)
     (run : ManifestRun name events status bytes) (images : Images F L I before events ls)
-    (range : InRange ls) (sized : Sized ls) : NManifestRun name ls status bytes := by
+    (range : InRange ls) (sized : Sized ls) :
+    NManifestRun held name ls status bytes ∧ Spares3 ls := by
   cases run with
   | refused nonzero =>
-    have opening := open_cases (.inl rfl) (images_single images) range
-    exact .refused (opening.refuse nonzero 0) nonzero
+    have opening := open_cases (.inl rfl) three (images_single images) range
+    exact ⟨.refused (opening.refuse nonzero 0) nonzero,
+      spares3_quiet fun x m => .inr (.inr (.inr (opening.calls x m).1))⟩
   | @opened outputs body status closeErrno bytes committed reading =>
     obtain ⟨lo, rest, rfl, openImage, restImages⟩ := images_cons images
-    have opening := open_cases (.inl rfl) openImage range.left
-    obtain ⟨-, held⟩ := opening.held I before
+    have opening := open_cases (.inl rfl) three openImage range.left
+    obtain ⟨high, held⟩ := opening.held I before
     obtain ⟨lb, lc, rfl, bodyImages, closeImages⟩ := images_split restImages
     have rangeRest := range.right
     have sizedRest := sized.right
@@ -748,8 +857,16 @@ theorem manifestRun_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {name :
       exact held
     obtain ⟨c, rfl, close, errno⟩ := close_cases held' (images_single closeImages)
       rangeRest.right
+    have spares : Spares3 (lo ++ (lb ++ [c])) :=
+      (spares3_quiet fun x m => .inr (.inr (.inr (opening.calls x m).1))).append
+        ((spares3_quiet fun x m => by
+          rcases (calls x m).1 with h | h
+          · exact .inl h
+          · exact .inr (.inl h)).append
+          (spares3_close close (opening.low range.left) high))
     rw [errno, ← List.append_assoc]
-    exact .opened opening shown close
+    rw [← List.append_assoc] at spares
+    exact ⟨.opened opening shown close, spares⟩
 
 
 /-! ## The writes -/
@@ -908,29 +1025,31 @@ theorem lineWrites_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {text : 
 
 
 /-- `Checks` at WASI gives `NChecks` of the images. -/
-theorem checks_native {F : OpenFlags} {L : ShimLayout} {I : Launch} :
+theorem checks_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {held : Bool} :
     ∀ {lines : List (List UInt8)} {allOk : Bool} {events : List Event} {code : UInt64}
-      {before ls : List Linux.Event},
+      {before ls : List Linux.Event}, (3 ∈ openNumbers I before ↔ held = true) →
       Checks lines allOk events code → Images F L I before events ls → InRange ls → Sized ls →
-      NChecks lines allOk ls code
-  | _, _, _, _, _, _, .done, images, _, _ => by
+      NChecks held lines allOk ls code
+  | _, _, _, _, _, _, _, .done, images, _, _ => by
     rw [images_nil images]
     exact .done
-  | _, _, _, _, _, _, .line check wrote more, images, range, sized => by
+  | _, _, _, _, before, _, three, .line check wrote more, images, range, sized => by
     obtain ⟨lfw, lr, rfl, fwImages, restImages⟩ := images_split images
     obtain ⟨lf, lw, rfl, fileImages, writeImages⟩ := images_split fwImages
     have rangeFW := range.left
     have sizedFW := sized.left
-    exact .line (fileCheck_native check fileImages rangeFW.left sizedFW.left)
-      (lineWrites_native wrote writeImages rangeFW.right)
-      (checks_native more restImages range.right sized.right)
-  | _, _, _, _, _, _, .stalled check wrote, images, range, sized => by
+    obtain ⟨fileCheck, spares⟩ := fileCheck_native three check fileImages rangeFW.left sizedFW.left
+    have writes := lineWrites_native wrote writeImages rangeFW.right
+    have three' : 3 ∈ openNumbers I (before ++ (lf ++ lw)) ↔ held = true :=
+      (spares3_three I before rangeFW (spares.append writes.spares3)).trans three
+    exact .line fileCheck writes (checks_native three' more restImages range.right sized.right)
+  | _, _, _, _, _, _, three, .stalled check wrote, images, range, sized => by
     obtain ⟨lf, lw, rfl, fileImages, writeImages⟩ := images_split images
-    exact .stalled (fileCheck_native check fileImages range.left sized.left)
+    exact .stalled (fileCheck_native three check fileImages range.left sized.left).1
       (lineWrites_native wrote writeImages range.right)
-  | _, _, _, _, _, _, .failed check wrote, images, range, sized => by
+  | _, _, _, _, _, _, three, .failed check wrote, images, range, sized => by
     obtain ⟨lf, lw, rfl, fileImages, writeImages⟩ := images_split images
-    exact .failed (fileCheck_native check fileImages range.left sized.left)
+    exact .failed (fileCheck_native three check fileImages range.left sized.left).1
       (lineWrites_native wrote writeImages range.right)
 
 /-! ## The run -/
@@ -983,15 +1102,17 @@ theorem oneArgument_args {args : List (List UInt8)} (noZero : ∀ s ∈ args, (0
     exact ⟨program, by simp [stringsBytes], noZero program (by simp), noZero name (by simp)⟩
 
 /-- `Run` at WASI under the shim's host gives `NRun` of the images, for arguments without zero
-bytes whose strings and eight-byte pointers take at most `argsLimit` bytes. -/
+bytes whose strings and eight-byte pointers take at most `argsLimit` bytes, after events after
+which the shim holds descriptor 3 exactly when the launch grants it. -/
 theorem run_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
     {world : LinuxWorld} {a : ArgsResult} {manifest : List UInt8} {events : List Event}
     {code : UInt64} {before ls : List Linux.Event}
     (noZero : ∀ s ∈ I.args, (0 : UInt8) ∉ s)
     (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
+    (three : 3 ∈ openNumbers I before ↔ I.preopen = true)
     (run : Run (linuxHost F L I R) world a manifest events code)
     (images : Images F L I before events ls) (range : InRange ls) (sized : Sized ls) :
-    NRun I.args manifest ls code := by
+    NRun I.preopen I.args manifest ls code := by
   obtain ⟨pre, rest, middle, rfl, argsRun, -, noArg, oneArg⟩ := run
   obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args (by decide) (by decide) small argsRun
   obtain ⟨lp, lr, rfl, preImages, restImages⟩ := images_split images
@@ -1014,14 +1135,21 @@ theorem run_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Repl
     obtain ⟨opening, post, status, rfl, manifestRun, failed, rejected, accepted⟩ :=
       oneArg aZero name one
     obtain ⟨lo, lq, rfl, openImages, postImages⟩ := images_split restImages
-    refine ⟨lo, lq, status, rfl,
-      manifestRun_native manifestRun openImages range.left sized.left, fun nonzero => ?_,
+    have threeStart : 3 ∈ openNumbers I (before ++ []) ↔ I.preopen = true := by
+      rw [List.append_nil]
+      exact three
+    obtain ⟨manifestShown, spares⟩ :=
+      manifestRun_native threeStart manifestRun openImages range.left sized.left
+    have threePost : 3 ∈ openNumbers I (before ++ [] ++ lo) ↔ I.preopen = true :=
+      (spares3_three I _ range.left spares).trans threeStart
+    refine ⟨lo, lq, status, rfl, manifestShown, fun nonzero => ?_,
       fun zero bad => ?_, fun zero nonempty all => ?_⟩
     · obtain ⟨rfl, rfl⟩ := failed nonzero
       exact ⟨rfl, images_nil postImages⟩
     · obtain ⟨rfl, rfl⟩ := rejected zero bad
       exact ⟨rfl, images_nil postImages⟩
-    · exact checks_native (accepted zero nonempty all) postImages range.right sized.right
+    · exact checks_native threePost (accepted zero nonempty all) postImages range.right
+        sized.right
 
 theorem openArgs_rights {r r' : UInt64} {name name' : List UInt8}
     (h : openArgs r name = openArgs r' name') : r = r' ∧ name = name' := by
@@ -1079,10 +1207,10 @@ theorem confined_accepted {World : Type} {host : Host World} {world : World} {a 
 theorem isError_eagain : Linux.isError (0 - 11) = true := by decide
 
 /-- The events of a refused opening are `openat2` calls that returned an error number. -/
-theorem Opening.refusedCalls {name : List UInt8} {l : List Linux.Event} {errno fd : UInt64}
-    (h : Opening name l errno fd) (nonzero : errno ≠ 0) :
+theorem Opening.refusedCalls {held : Bool} {name : List UInt8} {l : List Linux.Event}
+    {errno fd : UInt64} (h : Opening held name l errno fd) (nonzero : errno ≠ 0) :
     ∀ x ∈ l, x.call = Linux.openat2Call ∧ Linux.isError x.ret = true := by
-  rcases h with ⟨rfl, -⟩ | ⟨retries, last, rfl, -, all, eagain, ending⟩
+  rcases h with ⟨rfl, -, -⟩ | ⟨-, retries, last, rfl, -, all, eagain, -, ending⟩
   · exact fun _ m => nomatch m
   intro x m
   refine ⟨(all x m).1, ?_⟩
@@ -1174,10 +1302,11 @@ theorem handled_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {P : List U
   | _, before, _, @Handled.refused args errno outputs rest nonzero tail, images, range, names => by
     obtain ⟨l, others, rfl, image, more⟩ := images_cons images
     obtain ⟨name, hr, pname⟩ := names _ _ (List.mem_cons_self ..)
-    have opening : Opening name l errno (openedDescriptor outputs) := by
+    have opening : Opening (decide (3 ∈ openNumbers I before)) name l errno
+        (openedDescriptor outputs) := by
       rcases hr with rfl | rfl
-      · exact open_cases (.inl rfl) image range.left
-      · exact open_cases (.inr rfl) image range.left
+      · exact open_cases (.inl rfl) (by simp) image range.left
+      · exact open_cases (.inr rfl) (by simp) image range.left
     obtain ⟨handled, opens⟩ := handled_native tail more range.right
       (fun args reply m => names args reply (List.mem_cons_of_mem _ m))
     refine ⟨NHandled.refusedAll (opening.refusedCalls nonzero) handled, fun x m c => ?_⟩
@@ -1188,10 +1317,11 @@ theorem handled_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {P : List U
       names => by
     obtain ⟨lo, others, rfl, image, more⟩ := images_cons images
     obtain ⟨name, hr, pname⟩ := names _ _ (List.mem_cons_self ..)
-    have opening : Opening name lo 0 (openedDescriptor outputs) := by
+    have opening : Opening (decide (3 ∈ openNumbers I before)) name lo 0
+        (openedDescriptor outputs) := by
       rcases hr with rfl | rfl
-      · exact open_cases (.inl rfl) image range.left
-      · exact open_cases (.inr rfl) image range.left
+      · exact open_cases (.inl rfl) (by simp) image range.left
+      · exact open_cases (.inr rfl) (by simp) image range.left
     obtain ⟨-, held⟩ := opening.held I before
     obtain ⟨li, lc, rfl, innerImages, closeImages⟩ := images_split more
     obtain ⟨lcl, lrest, rfl, closeImage, restImages⟩ := images_cons closeImages
@@ -1206,7 +1336,7 @@ theorem handled_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {P : List U
     obtain ⟨handled, opens⟩ := handled_native tail restImages rangeTail.right
       (fun args reply m => names args reply
         (List.mem_cons_of_mem _ (List.mem_append_right _ (List.mem_cons_of_mem _ m))))
-    rcases opening with ⟨-, nonzero⟩ | ⟨retries, last, rfl, -, all, eagain, ending⟩
+    rcases opening with ⟨-, -, nonzero⟩ | ⟨-, retries, last, rfl, -, all, eagain, -, ending⟩
     · exact absurd rfl nonzero
     rcases ending with ⟨low, -, same⟩ | ⟨-, zero⟩
     swap
@@ -1523,11 +1653,12 @@ theorem openCalls_returned {L : ShimLayout} {dir : UInt64} {path how : List UInt
     split at rest
     · exact openCalls_returned rest (fun x m => range x (List.mem_cons_of_mem _ m))
     · obtain ⟨rfl, same⟩ := rest
-      rcases openReply_ranged ((range _ (List.mem_singleton_self _)).2.1 rfl) with
+      rcases openReply_ranged (((range _ (List.mem_singleton_self _)).2.1 rfl).imp_right
+          And.right) with
         ⟨_, reply⟩ | ⟨_, _, reply⟩ <;> rw [reply] at same <;> cases same
 
-/-- No call of the command's events has an image with results in Linux's range whose reply
-trapped. -/
+/-- For a launch whose arguments fit the shim's limit (`stringsFit`), no call of the command's
+events has an image with results in Linux's range whose reply trapped. -/
 theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
     {e : Event} {l : List Linux.Event} (image : Image F L I events e l) (trapped : TrappedCall e)
     (command : CommandEvent e) (range : InRange l) (fit : stringsFit I.args = true) : False := by
@@ -1625,18 +1756,26 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
   | exit => exact trapped
   | exitTrap => exact trapped
 
-/-- Under the shim's host, every run of `main` and its exit from a launch whose arguments have no
-zero byte and whose strings and eight-byte pointers take at most `argsLimit` bytes, whose layer
-events, the images of its WASI events, have results in Linux's range, ends at the accepted exit,
-and its layer events and status meet `NMeets`. -/
+/-- The shim holds descriptor 3 before any layer event exactly when the launch grants it. -/
+theorem three_initial (I : Launch) : 3 ∈ openNumbers I [] ↔ I.preopen = true := by
+  unfold openNumbers
+  cases h : I.preopen <;> simp [Linux.openAfter, descriptorLimit]
+
+/-- Under the shim's host, every run of `main` and its exit from a world without layer events and
+a launch whose arguments have no zero byte and whose strings and eight-byte pointers take at most
+`argsLimit` bytes, whose layer events, the images of its WASI events, have results in Linux's range
+(`InRange`) and `read` outputs as long as the counts that they ask for (`Sized`), ends at the
+accepted exit, and its layer events and status meet `NMeets` for the launch's grant of
+descriptor 3. -/
 theorem linux_exec_meets {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
     {world final : LinuxWorld} {T : List Event} {outcome : Outcome Unit} {ls : List Linux.Event}
+    (fresh : world.events = [])
     (noZero : ∀ s ∈ I.args, (0 : UInt8) ∉ s)
     (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
     (execution : Exec (linuxHost F L I R) (main.bind fun status => Action.exit status) world T
       outcome final)
     (images : Images F L I world.events T ls) (range : InRange ls) (sized : Sized ls) :
-    ∃ c, outcome = .exited c ∧ NMeets I.args ls c := by
+    ∃ c, outcome = .exited c ∧ NMeets I.preopen I.args ls c := by
   have fit := stringsFit_of_le (by decide) small
   have accepts : ∀ {world code message final}, (linuxHost F L I R).exitTrap world code message
       final → 126 ≤ code.toNat := fun rejected => rejected.1
@@ -1663,7 +1802,8 @@ theorem linux_exec_meets {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linu
       exact image
     subst exitEmpty
     rw [List.append_nil] at range sized ⊢
-    have nrun := run_native noZero small run eventImages range sized
+    have nrun := run_native noZero small (by rw [fresh]; exact three_initial I) run eventImages
+      range sized
     have accepted := confined_accepted run confined
     refine ⟨c, rfl, manifest, nrun, ?_⟩
     obtain ⟨pre, rest, middle, -, argsRun, -, -, -⟩ := run

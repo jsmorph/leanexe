@@ -36,8 +36,9 @@ prefix of the action, with X0 at 2.
 `manifest_elf_meets` is the corollary for the file, for every reply sequence, from arguments
 whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
 Linux requires of every process, and for replies that meet `StatBounded manifestLimit`, whose
-budget fits the executable's 4,096 pages (`budget_fits`).  When the check grants descriptor 3 and
-the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets`.
+budget fits the executable's 4,096 pages (`budget_fits`).  When the check does not end the run and
+the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets`
+for the check's grant of descriptor 3.
 `manifest_elf_runs` gives the run from `linux_footprint_bounded`, the footprint without a guest
 trap, through `wasiElf_footprint_with`, and `linux_exec_meets` gives the status and `NMeets` from
 the `Exec` run that the footprint names.
@@ -147,7 +148,7 @@ theorem manifest_elf (R : Linux.Replies) (p : Proc) {args environ : List (List U
     · exact .inr (.inr (.inr h))
 
 /-- The runs of the file from arguments and replies within the limits of the corollary: when the
-check grants descriptor 3, the process reaches `exit_group` after the check's events and the
+check does not end the run, the process reaches `exit_group` after the check's events and the
 layer events `ls`, which hold their replies, and `ls` are the images of the WASI events `T` of an
 `Exec` run of the command's action that ends at an accepted exit, whose status X0 holds, at an
 exit that the shim rejects, or at a trap of the shim. -/
@@ -207,10 +208,10 @@ each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes,
 `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  When the check of
 descriptor 3 ends the run, the trace holds its events and X0 is 67.  Otherwise the trace holds the
 check's events and then the layer events `ls`, each of which holds its reply of `R`, and when the
-results of `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets`: the manifest that the
-reads of the opened manifest returned, the verdicts that the writes of descriptor 1 offered and
-took, the status, the confinement of every `openat2` to descriptor 3 with RESOLVE_BENEATH, and the
-handles of the `read`, `statx`, and `close` calls. -/
+results of `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets` for the check's grant
+of descriptor 3: the manifest that the reads of the opened manifest returned, the verdicts that the
+writes of descriptor 1 offered and took, the status, the confinement of every `openat2` to
+descriptor 3 with RESOLVE_BENEATH, and the handles of the `read`, `statx`, and `close` calls. -/
 theorem manifest_elf_meets (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
     (bounded : StatBounded manifestLimit R)
@@ -223,9 +224,9 @@ theorem manifest_elf_meets (R : Linux.Replies) (p : Proc) {args environ : List (
       q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
       match preopenRun manifestScratch.path R 0 with
       | (l₀, none) => q.trace = l₀.map A64.Event.sys ∧ q.core.x 0 = 67
-      | (l₀, some _) =>
+      | (l₀, some granted) =>
         ∃ ls, q.trace = (l₀ ++ ls).map A64.Event.sys ∧ Carried R l₀.length ls ∧
-          (InRange ls → NMeets args ls (q.core.x 0)) := by
+          (InRange ls → NMeets granted args ls (q.core.x 0)) := by
   obtain ⟨q, rq, cq, x8q, ioq, hq⟩ := manifest_elf_runs R p small bounded hl hstack hpc htr
   refine ⟨q, rq, cq, x8q, ioq, ?_⟩
   generalize preopenRun manifestScratch.path R 0 = pr at hq ⊢
@@ -237,13 +238,14 @@ theorem manifest_elf_meets (R : Linux.Replies) (p : Proc) {args environ : List (
       obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem m
       exact (hstack.argv i hi).2.2.1
     rcases hend with ⟨c, h, hx⟩ | h | h
-    · obtain ⟨c', exited, meets⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
+    · obtain ⟨c', exited, meets⟩ :=
+        linux_exec_meets rfl noZero small h himg range (Carried.sized hcar)
       cases exited
       rw [hx]
       exact meets
-    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
+    · obtain ⟨_, exited, -⟩ := linux_exec_meets rfl noZero small h himg range (Carried.sized hcar)
       cases exited
-    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
+    · obtain ⟨_, exited, -⟩ := linux_exec_meets rfl noZero small h himg range (Carried.sized hcar)
       cases exited
 
 /-! ## The premises hold together -/
@@ -318,7 +320,7 @@ theorem manifest_elf_witness :
         q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
         ∃ l₀ ls, preopenRun manifestScratch.path R 0 = (l₀, some true) ∧
           q.trace = (l₀ ++ ls).map A64.Event.sys ∧ Carried R l₀.length ls ∧ InRange ls ∧
-          NMeets args ls (q.core.x 0) := by
+          NMeets true args ls (q.core.x 0) := by
   have small : stringsSize witnessArgs + 8 * witnessArgs.length ≤ argsLimit := by decide
   have loaded : ElfLoaded (byteAt manifestElfBytes)
       (loadedMem (byteAt manifestElfBytes) 61680 8712 witnessStack) :=
