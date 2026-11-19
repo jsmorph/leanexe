@@ -97,15 +97,15 @@ theorem afterWrite_within {state : BufferState Acc} (within : Within size state)
     · exact ⟨within.input, Nat.zero_le _⟩
     · exact ⟨within.input, within.output⟩
 
-theorem afterRead_within {state : BufferState Acc} (within : Within size state)
+theorem afterBytes_within {state : BufferState Acc} (within : Within size state)
     {errno : UInt64} {bytes : Bytes} (bound : bytes.data.size ≤ (4096 : UInt64).toNat) :
-    Within size (afterRead state (readResult errno bytes)).state := by
+    Within size (afterBytes state (readResult errno bytes)).state := by
   by_cases zero : errno = 0
   · subst zero
-    simp only [afterRead, readResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true]
+    simp only [afterBytes, readResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true]
     exact ⟨by simpa using bound, within.output⟩
   · have failed : (errno != 0) = true := by simpa using zero
-    simp only [afterRead, readResult, failed, ↓reduceIte]
+    simp only [afterBytes, readResult, failed, ↓reduceIte]
     exact within
 
 include kernelOutput in
@@ -135,15 +135,14 @@ theorem step_within {World : Type} {host : Host World} {state : BufferState Acc}
     · cases eof : state.eof with
       | false =>
           have code : step kernel state = readStep state := by simp [step, pending, remaining, eof]
-          rw [code] at execution
-          change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead state reply))
-            world trace (.returned next) final at execution
+          rw [code, readStep_eq] at execution
           cases execution with
           | read_reject capacity continuation =>
               exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-          | read_return capacity operation continuation =>
+          | read_return capacity operation size first continuation =>
               cases continuation
-              exact afterRead_within within (host.read_bound operation).1
+              rw [afterRead_fresh state size first]
+              exact afterBytes_within within (host.read_bound operation).1
       | true =>
           by_cases empty : state.line.size.toUInt64 = 0
           · have code : step kernel state = .pure ⟨false, 0, state⟩ := by
@@ -202,11 +201,11 @@ theorem afterWrite_stopped {state : BufferState Acc} {reply : WriteResult}
   · exact fun _ => rfl
   · split <;> exact fun impossible => Bool.noConfusion impossible
 
-theorem afterRead_stopped {state : BufferState Acc} {reply : ReadResult}
-    (stopped : (afterRead state reply).running = false) :
-    (afterRead state reply).state = state := by
+theorem afterBytes_stopped {state : BufferState Acc} {reply : ReadResult}
+    (stopped : (afterBytes state reply).running = false) :
+    (afterBytes state reply).state = state := by
   revert stopped
-  unfold afterRead
+  unfold afterBytes
   split
   · exact fun _ => rfl
   · exact fun impossible => Bool.noConfusion impossible
@@ -266,15 +265,14 @@ theorem streamFuture_stopped (spec : KernelSpec kernel) (bound : Nat)
     · cases eof : state.eof with
       | false =>
           have code : step kernel state = readStep state := by simp [step, pending, remaining, eof]
-          rw [code] at execution
-          change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead state reply))
-            world trace (.returned next) final at execution
+          rw [code, readStep_eq] at execution
           cases execution with
           | read_reject capacity continuation =>
               exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-          | read_return capacity operation continuation =>
+          | read_return capacity operation size first continuation =>
               cases continuation
-              rw [afterRead_stopped stopped]
+              rw [afterRead_fresh state size first] at stopped ⊢
+              rw [afterBytes_stopped stopped]
               exact before
       | true =>
           by_cases empty : state.line.size.toUInt64 = 0

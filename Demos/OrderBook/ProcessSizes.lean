@@ -103,18 +103,17 @@ theorem step_stopped_state {host : Host World} {rep : Ghost → World → Prop}
         cases stopped
   · cases eof : s.eof with
     | false =>
-        rw [step_read pending eof] at execution
-        change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead s reply))
-          world trace (.returned next) final at execution
+        rw [step_read pending eof, readStep_eq] at execution
         cases execution with
         | read_reject capacity continuation =>
             exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-        | read_return capacity operation continuation =>
+        | read_return capacity operation size first continuation =>
             cases continuation
+            rw [afterRead_fresh s size first] at stopped
             obtain ⟨bytes, _, replyEq, _, _, _⟩ := progress.read_reply ready operation
             cases replyEq
             simp only [readResult, ↓reduceIte] at stopped
-            rw [(afterRead_running s _).1] at stopped
+            rw [(afterBytes_running s _).1] at stopped
             cases stopped
     | true =>
         rw [step_stop pending eof] at execution

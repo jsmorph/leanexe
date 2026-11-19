@@ -25,7 +25,8 @@ as `-0e0`, infinities as `Infinity` or `-Infinity`, and NaN as `NaN`.  A first i
 | `1e16`, `1`, `-1e16` | `1e16`, `1e16`, `0e0` |
 | `Infinity`, `-Infinity`, `1` | `Infinity`, `NaN`, `NaN` |
 
-The process reads chunks of at most 4,096 bytes, retains a partial line across reads, and finishes
+The process reads chunks of at most 4,096 bytes, each into a fresh buffer, keeps a copy of the
+bytes read, retains a partial line across reads, and finishes
 pending output before processing the next line.  Short writes retain the unwritten suffix.
 Successful zero-byte writes retry that suffix.  Each completed line produces output before the
 next blocking read.  Invalid input exits with status 28 and preserves preceding output.  A

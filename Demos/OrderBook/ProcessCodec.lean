@@ -241,7 +241,7 @@ on. -/
 theorem tailBytes_words (carry input : Bytes) (start : UInt64)
     (total : carry.data.size + input.data.size < 2 ^ 64)
     (le : start.toNat ≤ carry.data.size + input.data.size) :
-    byteWords (tailBytes carry input start) =
+    byteWords (tailBytes carry input input.size start) =
       (byteWords carry ++ byteWords input).drop start.toNat := by
   have carryNat : carry.size.toNat = carry.data.size := Bytes.size_toNat carry (by omega)
   have inputNat : input.size.toNat = input.data.size := Bytes.size_toNat input (by omega)
@@ -339,10 +339,92 @@ theorem eventBytes_words (words : Array UInt64) (small : 8 * words.size < 2 ^ 64
     rw [quotient, remainder, getElem!_pos words (i / 8) (by omega),
       shift_byte _ (i % 8) (Nat.mod_lt i (by decide))]
 
+/-! ## A batch over the first bytes of a buffer -/
+
+/-- Byte `i` of the carry followed by the first `committed.size` bytes of a buffer that begins with
+`committed`, below their number, is byte `i` of the carry followed by `committed`. -/
+theorem byteAt_prefix (carry : Bytes) {buffer committed : Bytes}
+    (first : buffer.data.extract 0 committed.data.size = committed.data)
+    (small : committed.data.size < 2 ^ 64) {i : UInt64}
+    (below : i.toNat < (carry.size + committed.size).toNat) :
+    byteAt carry buffer i = byteAt carry committed i := by
+  unfold byteAt
+  split
+  · rfl
+  · rename_i outside
+    have le := UInt64.not_lt.mp outside
+    have leNat := UInt64.le_iff_toNat_le.mp le
+    have committedNat : committed.size.toNat = committed.data.size :=
+      Bytes.size_toNat committed small
+    have carryLt := UInt64.toNat_lt carry.size
+    rw [UInt64.toNat_add, committedNat] at below
+    have index : (i - carry.size).toNat < committed.data.size := by
+      rw [UInt64.toNat_sub_of_le _ _ le]
+      by_cases fits : carry.size.toNat + committed.data.size < 2 ^ 64
+      · rw [Nat.mod_eq_of_lt fits] at below
+        omega
+      · rw [Nat.mod_eq_sub_mod (by omega), Nat.mod_eq_of_lt (by omega)] at below
+        omega
+    have extractSize := congrArg ByteArray.size first
+    rw [ByteArray.size_extract] at extractSize
+    have inBuffer : (i - carry.size).toNat < buffer.data.size := by omega
+    simp only [Bytes.get, index, inBuffer, ↓reduceDIte]
+    rw [Demos.StreamFold.getElem_of_extract first index inBuffer]
+
+/-- A batch over the first `committed.size` bytes of a buffer that begins with `committed`, whose
+words lie in the carry and those bytes, is the batch over `committed`. -/
+theorem runWords_prefix (s : State) {buffer committed : Bytes} (count : UInt64) (eof : Bool)
+    (first : buffer.data.extract 0 committed.data.size = committed.data)
+    (small : committed.data.size < 2 ^ 64)
+    (words : 8 * count.toNat ≤ (s.carry.size + committed.size).toNat) :
+    runWords s buffer committed.size count eof = runWords s committed committed.size count eof := by
+  have sumLt := UInt64.toNat_lt (s.carry.size + committed.size)
+  have startNat : (8 * count).toNat = 8 * count.toNat := by
+    rw [UInt64.toNat_mul]
+    simp only [UInt64.reduceToNat]
+    exact Nat.mod_eq_of_lt (by omega)
+  have wordsEq : wordsOf s.carry buffer count = wordsOf s.carry committed count := by
+    unfold wordsOf LeanExe.build
+    congr 1
+    funext j
+    have jBound := j.isLt
+    dsimp only
+    rw [loop_byteAt, loop_byteAt]
+    congr 2
+    apply List.map_congr_left
+    intro k hk
+    have kBound := List.mem_range.mp hk
+    have index : (8 * UInt64.ofNat j.val + UInt64.ofNat k).toNat = 8 * j.val + k := by
+      rw [UInt64.toNat_add, UInt64.toNat_mul, ofNat_toNat_small (n := j.val) (by omega),
+        ofNat_toNat_small (n := k) (by omega)]
+      simp only [UInt64.reduceToNat]
+      rw [Nat.mod_eq_of_lt (by omega : 8 * j.val < 2 ^ 64),
+        Nat.mod_eq_of_lt (by omega : 8 * j.val + k < 2 ^ 64)]
+    rw [byteAt_prefix s.carry first small (by rw [index]; omega)]
+  have tailEq : tailBytes s.carry buffer committed.size (8 * count) =
+      tailBytes s.carry committed committed.size (8 * count) := by
+    have countNat : (s.carry.size + committed.size - 8 * count).toNat =
+        (s.carry.size + committed.size).toNat - 8 * count.toNat := by
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [startNat]; exact words)),
+        startNat]
+    unfold tailBytes Bytes.build
+    congr 3
+    funext i
+    dsimp only
+    have iBound : i.val < (s.carry.size + committed.size).toNat - 8 * count.toNat := by
+      have := i.isLt
+      omega
+    have index : (8 * count + UInt64.ofNat i.val).toNat = 8 * count.toNat + i.val := by
+      rw [UInt64.toNat_add, startNat, ofNat_toNat_small (n := i.val) (by omega)]
+      exact Nat.mod_eq_of_lt (by omega)
+    rw [byteAt_prefix s.carry first small (by rw [index]; omega)]
+  unfold runWords
+  rw [wordsEq, tailEq]
+
 /-! ## Sizes -/
 
-theorem tailBytes_size (carry input : Bytes) (start : UInt64) :
-    (tailBytes carry input start).data.size = (carry.size + input.size - start).toNat := by
+theorem tailBytes_size (carry input : Bytes) (used start : UInt64) :
+    (tailBytes carry input used start).data.size = (carry.size + used - start).toNat := by
   simp [tailBytes]
 
 theorem eventBytes_size (words : Array UInt64) :

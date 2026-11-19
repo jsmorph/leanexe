@@ -54,17 +54,18 @@ def wordsOf (carry input : Bytes) (count : UInt64) : Array UInt64 :=
 def eventBytes (words : Array UInt64) : Bytes :=
   Bytes.build (8 * words.size.toUInt64) fun i => words[(i / 8).toNat]! >>> (8 * (i % 8))
 
-/-- The bytes of `carry` followed by those of `input`, from byte `start` on. -/
-def tailBytes (carry input : Bytes) (start : UInt64) : Bytes :=
-  Bytes.build (carry.size + input.size - start) fun i => byteAt carry input (start + i)
+/-- The bytes of `carry` followed by the first `used` bytes of `input`, from byte `start` on. -/
+def tailBytes (carry input : Bytes) (used start : UInt64) : Bytes :=
+  Bytes.build (carry.size + used - start) fun i => byteAt carry input (start + i)
 
-/-- The first `count` words of the carry followed by `input`, through the book, with the bytes
-after them as the carry, their event bytes as the output, and `eof` as the EOF flag. -/
-def runWords (s : State) (input : Bytes) (count : UInt64) (eof : Bool) : ProcessStep State :=
+/-- The first `count` words of the carry followed by the first `used` bytes of `input`, through
+the book, with the bytes after them as the carry, their event bytes as the output, and `eof` as the
+EOF flag. -/
+def runWords (s : State) (input : Bytes) (used count : UInt64) (eof : Bool) : ProcessStep State :=
   let r := Program.run s.oid s.acct s.qty s.lvl s.nxt s.head s.tail s.nextId s.count
     (wordsOf s.carry input count)
   ⟨true, 0, ⟨r.1.oid, r.1.acct, r.1.qty, r.1.lvl, r.1.nxt, r.1.head, r.1.tail, r.1.nextId,
-    r.1.count, tailBytes s.carry input (8 * count), eventBytes r.2, 0, eof⟩⟩
+    r.1.count, tailBytes s.carry input used (8 * count), eventBytes r.2, 0, eof⟩⟩
 
 /-- The bytes of the output that remain to be written: the window of the output from `written`
 to its end, which `writeStep` writes in place. -/
@@ -79,20 +80,20 @@ def afterWrite (s : State) (reply : WriteResult) : ProcessStep State :=
     ⟨true, 0, { s with output := Bytes.empty, written := 0 }⟩
   else ⟨true, 0, { s with written := s.written + reply.count }⟩
 
-/-- The step after a read that returned `reply`: an errno stops the process with it, an empty read
-runs the whole words of the carry at EOF, and other bytes run the whole records of the carry
-followed by them. -/
-def afterRead (s : State) (reply : ReadResult) : ProcessStep State :=
+/-- The step after a read into a buffer that returned `reply`: an errno stops the process with it,
+an empty read runs the whole words of the carry at EOF, and other bytes, the first `reply.count`
+bytes of the buffer, run the whole records of the carry followed by them. -/
+def afterRead (s : State) (reply : FillResult) : ProcessStep State :=
   if reply.errno != 0 then ⟨false, reply.errno, s⟩
-  else if reply.bytes.size == 0 then runWords s Bytes.empty (s.carry.size / 8) true
-  else runWords s reply.bytes (7 * ((s.carry.size + reply.bytes.size) / 56)) false
+  else if reply.count == 0 then runWords s reply.buffer 0 (s.carry.size / 8) true
+  else runWords s reply.buffer reply.count (7 * ((s.carry.size + reply.count) / 56)) false
 
 def writeStep (s : State) : Action (ProcessStep State) := do
   let reply ← writeStdout s.output s.written (s.output.size - s.written)
   pure (afterWrite s reply)
 
 def readStep (s : State) : Action (ProcessStep State) := do
-  let reply ← readSome 4096
+  let reply ← readStdin (Bytes.build 4096 fun _ => 0) 0 4096
   pure (afterRead s reply)
 
 /-- One step: a write while output remains, otherwise after EOF a stop with status 0 when the carry

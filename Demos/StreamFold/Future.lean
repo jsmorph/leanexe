@@ -95,22 +95,22 @@ theorem streamFuture_readStep {host : Host World} {rep : StreamPosition → Worl
       RankLt (rank (fun position => position.input.length) StreamPosition.zeroWrites next.state
         nextPosition) (rank (fun position => position.input.length) StreamPosition.zeroWrites state
         position) := by
-  change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead state reply))
-    world trace (.returned next) final at execution
+  rw [readStep_eq] at execution
   cases execution with
   | read_reject capacity continuation =>
       exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-  | read_return capacity operation continuation =>
+  | read_return capacity operation size first continuation =>
       cases continuation
+      rw [afterRead_fresh state size first]
       obtain ⟨bytes, nextPosition, replyEq, nextRep, input, eof, output⟩ :=
         streams.read_reply represented operation
       cases replyEq
       simp only [readResult, ↓reduceIte]
       have length := congrArg List.length input
       simp only [List.length_append, byteWords_length] at length
-      exact ⟨nextPosition, nextRep, by simp [afterRead], by simp [afterRead],
-        streamFuture_afterRead spec future _ (host.read_bound operation).1 exhausted input eof
-          output, rank_afterRead _ _ reading (by omega) (fun nonempty => by omega)⟩
+      exact ⟨nextPosition, nextRep, by simp [afterBytes], by simp [afterBytes],
+        streamFuture_afterBytes spec future _ (host.read_bound operation).1 exhausted input eof
+          output, rank_afterBytes _ _ reading (by omega) (fun nonempty => by omega)⟩
 
 theorem streamFuture_empty_line {state : BufferState Acc} {position : StreamPosition}
     {history expected : List Bytes} {status : UInt64}

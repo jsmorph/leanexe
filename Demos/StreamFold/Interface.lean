@@ -71,16 +71,26 @@ def afterWrite (state : BufferState Acc) (reply : WriteResult) : ProcessStep (Bu
       ⟨true, 0, { state with output := Bytes.empty, written := 0 }⟩
     else ⟨true, 0, { state with written }⟩
 
-def afterRead (state : BufferState Acc) (reply : ReadResult) : ProcessStep (BufferState Acc) :=
+/-- The step after a read that returned the bytes of `reply`. -/
+def afterBytes (state : BufferState Acc) (reply : ReadResult) : ProcessStep (BufferState Acc) :=
   if reply.errno != 0 then ⟨false, reply.errno, state⟩
   else ⟨true, 0, { state with input := reply.bytes, cursor := 0, eof := reply.bytes.size == 0 }⟩
+
+/-- The bytes that the read of `reply` placed at the start of its buffer. -/
+def filled (reply : FillResult) : Bytes := Bytes.build reply.count fun i => reply.buffer.get i
+
+/-- The step after a read into a buffer that returned `reply`: the state's input is a copy of the
+bytes read, the first `reply.count` bytes of the buffer. -/
+def afterRead (state : BufferState Acc) (reply : FillResult) : ProcessStep (BufferState Acc) :=
+  if reply.errno != 0 then ⟨false, reply.errno, state⟩
+  else ⟨true, 0, { state with input := filled reply, cursor := 0, eof := reply.count == 0 }⟩
 
 def writeStep (state : BufferState Acc) : Action (ProcessStep (BufferState Acc)) := do
   let reply ← writeStdout state.output state.written (state.output.size - state.written)
   pure (afterWrite state reply)
 
 def readStep (state : BufferState Acc) : Action (ProcessStep (BufferState Acc)) := do
-  let reply ← readSome 4096
+  let reply ← readStdin (Bytes.build 4096 fun _ => 0) 0 4096
   pure (afterRead state reply)
 
 def step (kernel : Kernel Acc) (state : BufferState Acc) : Action (ProcessStep (BufferState Acc)) :=

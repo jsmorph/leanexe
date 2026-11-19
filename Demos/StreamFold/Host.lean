@@ -70,24 +70,23 @@ theorem readStep_advances {host : Host World} {rep : Ghost → World → Prop}
     (eof : state.eof = false)
     (execution : LeanExe.Wasi.Exec host (readStep state) world trace (.returned next) final) :
     Advances rep unread zeroWrites state ghost next final := by
-  change LeanExe.Wasi.Exec host
-    (.read 4096 fun reply => .pure (afterRead state reply))
-    world trace (.returned next) final at execution
+  rw [readStep_eq] at execution
   cases execution with
   | read_reject capacity continuation =>
       exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-  | read_return capacity operation continuation =>
+  | read_return capacity operation size first continuation =>
       cases continuation
+      rw [afterRead_fresh state size first]
       obtain ⟨bytes, nextGhost, replyEq, nextRep, inputLe, nonemptyDrop⟩ :=
         progress.read_reply ready operation
       cases replyEq
       simp only [readResult, ↓reduceIte]
       have bytesBound := (host.read_bound operation).1
-      refine ⟨nextGhost, nextRep, afterRead_safe safe _ bytesBound, ?_, ?_⟩
+      refine ⟨nextGhost, nextRep, afterBytes_safe safe _ bytesBound, ?_, ?_⟩
       · intro stopped
-        simp [afterRead] at stopped
+        simp [afterBytes] at stopped
       · intro _
-        exact rank_afterRead unread zeroWrites eof inputLe nonemptyDrop
+        exact rank_afterBytes unread zeroWrites eof inputLe nonemptyDrop
 
 theorem step_advances (spec : KernelSpec kernel) {host : Host World} {rep : Ghost → World → Prop}
     {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites)
@@ -151,10 +150,11 @@ theorem step_exists {host : Host World} {rep : Ghost → World → Prop}
     · cases eof : state.eof with
       | false =>
           obtain ⟨bytes, final, operation⟩ := progress.read_available ghost world ready
-          refine ⟨afterRead state ⟨0, bytes⟩, [.read 4096 (.returned 0 bytes)], final, ?_⟩
+          refine ⟨afterRead state (freshFill (readReply 0 bytes (readRange bytes 4096))),
+            [.read 4096 (.returned 0 bytes)], final, ?_⟩
           have code : step kernel state = readStep state := by simp [step, pending, remaining, eof]
-          rw [code]
-          exact .read_return (by decide) operation (.pure final _)
+          rw [code, readStep_eq]
+          exact .read_returned (by decide) operation (.pure final _)
       | true =>
           by_cases line : state.line.size.toUInt64 = 0
           · refine ⟨⟨false, 0, state⟩, [], world, ?_⟩
@@ -197,13 +197,11 @@ theorem step_returned {host : Host World} {rep : Ghost → World → Prop}
     · cases eof : state.eof with
       | false =>
           have code : step kernel state = readStep state := by simp [step, pending, remaining, eof]
-          rw [code] at execution
-          change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead state reply))
-            world trace outcome final at execution
+          rw [code, readStep_eq] at execution
           cases execution with
           | read_reject capacity continuation =>
               exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-          | read_return capacity operation continuation =>
+          | read_return capacity operation size first continuation =>
               cases continuation
               exact ⟨_, rfl⟩
           | read_trap capacity operation =>

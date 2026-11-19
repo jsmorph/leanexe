@@ -99,12 +99,11 @@ theorem afterWrite_bound_le (state : State) (reply : WriteResult) :
   · omega
   · split <;> omega
 
-theorem afterRead_bound_le (state : State) (reply : ReadResult) :
+theorem afterRead_bound_le (state : State) (reply : FillResult) :
     io.pureSources.afterRead.bound (state, reply) ≤ stateTy.copyCost (sourceState state) +
-      copyBytes state.total.digits.size state.line.size reply.bytes.data.size
+      copyBytes state.total.digits.size state.line.size reply.count.toNat
         state.output.data.size := by
   rw [io.pureSources.afterRead.bound_eq, state_copyCost]
-  unfold afterRead
   split <;>
     simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes] <;>
     omega
@@ -330,10 +329,10 @@ window allocates nothing. -/
 def writeCharge (state : State) : Nat :=
   stateTy.copyCost (sourceState state)
 
-/-- The charge of the read step from `state`: the read and the copies of the state and of the
-state with the bytes read. -/
+/-- The charge of the read step from `state`: the read's buffer of 4,096 bytes, which the read
+fills in place, and the copies of the state and of the state with a copy of the bytes read. -/
 def readCharge (state : State) : Nat :=
-  Verified.Wasi.readCost 4096 + (stateTy.copyCost (sourceState state) +
+  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState state) +
     copyBytes state.total.digits.size state.line.size 4096 state.output.data.size)
 
 /-- The charge of the step from `state` at the end of the input. -/
@@ -394,16 +393,43 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule (Verified.Wasi.readCost 4096) _ (Nat.le_refl _) ?_ ?_
+  refine rule (Bytes.allocationCost 4096) _ (Nat.le_refl _) ?_ ?_
   · apply bounded_of_rule
     intro spent fits rule
-    refine rule ?_ rfl
-    simp +decide only [PureContext.readCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
-      Var.cost, ↓reduceIte, Nat.add_zero, Nat.zero_add]
-    show Verified.Wasi.readCost 4096 ≤ _
-    exact Nat.le_refl _
+    refine rule (Bytes.allocationCost 4096) 0 (Nat.le_of_eq (Nat.add_zero _)) ?_ ?_
+    · apply bounded_of_rule
+      intro spent fits rule
+      refine rule ?_ (Expr.fits_of_depthCalls _ _ _ (by decide) _)
+      simp only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Expr.mode, coerceCost,
+        Expr.denote, UInt64.reduceToNat, reduceCtorEq, false_and, ↓reduceIte, Nat.add_zero,
+        Nat.zero_add]
+      rw [sumBelow_zero (fun _ => rfl)]
+      omega
+    · intro _ _
+      repeat (first
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule 0 0 (Nat.le_refl _) ?_ ?_)
+        | (intro _ _)
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule ?_
+           simp +decide only [PureContext.sysTakeCost, PureContext.ownedCost, PureContext.exprCost,
+             PureContext.ofProg, Expr.allocs, Var.cost, Expr.mode, coerceCost, sysTakeLive, shift,
+             ↓reduceIte, Nat.add_zero, Nat.zero_add])
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule ?_ rfl
+           simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
+             Expr.allocs, Var.cost, Expr.mode, coerceCost, Ty.copyCost, Ty.copyCost_of_scalar,
+             ↓reduceIte, Nat.add_zero, Nat.zero_add]))
   · intro value returns
-    have size : value.2.data.size ≤ 4096 := Returns.read_size returns
+    have read := (Returns.read_size (Returns.bind_ret (Returns.bind_ret
+      (Returns.bind_ret returns)))).1
+    have size : value.2.1.toNat ≤ 4096 := by
+      change value.2.1.toNat ≤ (Bytes.build 4096 fun _ => 0).data.size at read
+      rw [Bytes.data_size_build] at read
+      exact read
     letPair_free
     apply bounded_of_rule
     intro spent fits rule
@@ -411,7 +437,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
-    show io.pureSources.afterRead.bound (state, ⟨value.1, value.2⟩) ≤ _
+    show io.pureSources.afterRead.bound (state, ⟨value.1, value.2.1, value.2.2⟩) ≤ _
     refine le_trans (afterRead_bound_le state _) ?_
     have bytes := allocationCost_mono size
     dsimp only
@@ -545,7 +571,6 @@ theorem stepBudget_le {L D : Nat} {state : State} (sized : Sized L D state)
   have copy := sized.copyCost
   have inputCost := allocationCost_le state.input.data.size
   have outputCost := allocationCost_le state.output.data.size
-  have readFull : Verified.Wasi.readCost 4096 = 4144 := by decide
   have bufferCost : Bytes.allocationCost 4096 = 4144 := by decide
   unfold stepBudget inputCharge endCharge
   split

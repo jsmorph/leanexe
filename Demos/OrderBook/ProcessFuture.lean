@@ -102,7 +102,7 @@ theorem future_runWords {input : List UInt64}
       s.carry.data.size + bytes.data.size - 8 * count.toNat < 56)
     (carryEnded : eof = true → next.input = [] ∧
       s.carry.data.size + bytes.data.size - 8 * count.toNat < 8) :
-    Future input (runWords s bytes count eof).state next
+    Future input (runWords s bytes bytes.size count eof).state next
       (processed ++ (byteWords s.carry ++ byteWords bytes).take (8 * count.toNat)) := by
   obtain ⟨wholeRecords, carrySmall⟩ := future.reading reading
   have total : s.carry.data.size + bytes.data.size < 2 ^ 64 := by omega
@@ -114,9 +114,10 @@ theorem future_runWords {input : List UInt64}
   generalize hL : byteWords s.carry ++ byteWords bytes = L at split
   have lengthL : L.length = s.carry.data.size + bytes.data.size := by
     rw [← hL, List.length_append, byteWords_length, byteWords_length]
-  have kept : byteWords (tailBytes s.carry bytes (8 * count)) = L.drop (8 * count.toNat) := by
+  have kept : byteWords (tailBytes s.carry bytes bytes.size (8 * count)) =
+      L.drop (8 * count.toNat) := by
     rw [tailBytes_words s.carry bytes (8 * count) total (by omega), hL, startNat]
-  have keptSize : (tailBytes s.carry bytes (8 * count)).data.size =
+  have keptSize : (tailBytes s.carry bytes bytes.size (8 * count)).data.size =
       s.carry.data.size + bytes.data.size - 8 * count.toNat := by
     have := congrArg List.length kept
     rw [byteWords_length, List.length_drop, lengthL] at this
@@ -151,12 +152,13 @@ theorem future_runWords {input : List UInt64}
     omega
   obtain ⟨i1, i2, i3, i4⟩ := batch_refines future.inv future.book_eq recordsWhole
     (wordsOf s.carry bytes count) (by rw [wordsOf_size]; omega) batchIds
-  obtain ⟨-, -, bookEq, carryEq, outputEq, writtenEq, eofEq⟩ := runWords_fields s bytes count eof
-  have safe := runWords_safe s bytes count eof
+  obtain ⟨-, -, bookEq, carryEq, outputEq, writtenEq, eofEq⟩ :=
+    runWords_fields s bytes bytes.size count eof
+  have safe := runWords_safe s bytes bytes.size count eof
   generalize Program.run (book s).oid (book s).acct (book s).qty (book s).lvl (book s).nxt
     (book s).head (book s).tail (book s).nextId (book s).count (wordsOf s.carry bytes count) = r
     at i1 i2 i3 i4 bookEq outputEq
-  generalize (runWords s bytes count eof).state = t
+  generalize (runWords s bytes bytes.size count eof).state = t
     at bookEq carryEq outputEq writtenEq eofEq safe ⊢
   rw [wordsOf_size] at i4
   have eventsSmall : 8 * r.2.size < 2 ^ 64 := by
@@ -210,7 +212,7 @@ theorem future_read {input : List UInt64}
     (reading : s.eof = false) (bytes : Bytes) (nonempty : bytes.data.size ≠ 0)
     (bound : bytes.data.size ≤ 4096) (consumed : position.input = byteWords bytes ++ next.input)
     (sameOutput : next.output = position.output) :
-    ∃ processed', Future input (afterRead s ⟨0, bytes⟩).state next processed' := by
+    ∃ processed', Future input (afterBytes s ⟨0, bytes⟩).state next processed' := by
   obtain ⟨_, carrySmall⟩ := future.reading reading
   have bytesNat : bytes.size.toNat = bytes.data.size := Bytes.size_toNat bytes (by omega)
   have carryNat : s.carry.size.toNat = s.carry.data.size := Bytes.size_toNat s.carry (by omega)
@@ -225,7 +227,7 @@ theorem future_read {input : List UInt64}
     simp only [UInt64.reduceToNat]
     rw [Nat.mod_eq_of_lt (by omega : s.carry.data.size + bytes.data.size < 2 ^ 64),
       Nat.mod_eq_of_lt (by omega)]
-  rw [afterRead_ok, test]
+  rw [afterBytes_ok, test]
   simp only [Bool.false_eq_true, ↓reduceIte]
   refine ⟨_, future_runWords ids future finished reading bytes _ false bound ?_ ?_ sameOutput
     ?_ ?_⟩
@@ -247,7 +249,7 @@ theorem future_eof {input : List UInt64}
     (reading : s.eof = false) (bytes : Bytes) (empty : bytes.data.size = 0)
     (noInput : position.input = []) (consumed : position.input = byteWords bytes ++ next.input)
     (sameOutput : next.output = position.output) :
-    ∃ processed', Future input (afterRead s ⟨0, bytes⟩).state next processed' := by
+    ∃ processed', Future input (afterBytes s ⟨0, bytes⟩).state next processed' := by
   obtain ⟨_, carrySmall⟩ := future.reading reading
   have carryNat : s.carry.size.toNat = s.carry.data.size := Bytes.size_toNat s.carry (by omega)
   have test : (bytes.size == 0) = true := by
@@ -259,7 +261,7 @@ theorem future_eof {input : List UInt64}
     rw [UInt64.toNat_div, carryNat]
     rfl
   have emptyData : Bytes.empty.data.size = 0 := rfl
-  rw [afterRead_ok, test]
+  rw [afterBytes_ok, test]
   simp only [↓reduceIte]
   refine ⟨_, future_runWords ids future finished reading Bytes.empty _ true
     (by rw [emptyData]; omega) ?_ ?_ sameOutput ?_ ?_⟩
@@ -283,7 +285,7 @@ theorem future_readStep {input : List UInt64}
     (consumed : position.input = byteWords bytes ++ next.input)
     (atEof : bytes.data.size = 0 → position.input = [])
     (sameOutput : next.output = position.output) :
-    ∃ processed', Future input (afterRead s ⟨0, bytes⟩).state next processed' := by
+    ∃ processed', Future input (afterBytes s ⟨0, bytes⟩).state next processed' := by
   by_cases empty : bytes.data.size = 0
   · exact future_eof ids future finished reading bytes empty (atEof empty) consumed sameOutput
   · exact future_read ids future finished reading bytes empty bound consumed sameOutput
@@ -363,21 +365,20 @@ theorem future_step {World : Type} {host : Host World} {rep : StreamPosition →
         exact ⟨position, represented, (fun impossible => by cases impossible),
           fun _ => ⟨status, output, noInput⟩⟩
     | false =>
-        rw [step_read pending eof] at execution
-        change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead s reply))
-          world trace (.returned next) final at execution
+        rw [step_read pending eof, readStep_eq] at execution
         cases execution with
         | read_reject capacity continuation =>
             exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-        | read_return capacity operation continuation =>
+        | read_return capacity operation size first continuation =>
             cases continuation
+            rw [afterRead_fresh s size first]
             obtain ⟨bytes, nextPosition, replyEq, nextRep, consumed, atEof, sameOutput⟩ :=
               streams.read_reply represented operation
             cases replyEq
             simp only [readResult, ↓reduceIte]
             refine ⟨nextPosition, nextRep, fun _ => future_readStep ids future pending eof
               (host.read_bound operation).1 consumed atEof sameOutput, fun stopped => ?_⟩
-            rw [(afterRead_running s _).1] at stopped
+            rw [(afterBytes_running s _).1] at stopped
             cases stopped
 
 end Demos.OrderBook.Process

@@ -37,7 +37,7 @@ theorem StreamFuture.of_consumed {state next : (BufferState Acc)} {position next
   · have completed := future.completion
     rwa [split, Model.outcome_append_ok _ executed] at completed
 
-theorem streamFuture_afterRead {state : (BufferState Acc)} {position nextPosition : StreamPosition}
+theorem streamFuture_afterBytes {state : (BufferState Acc)} {position nextPosition : StreamPosition}
     {history expected : List Bytes} {status : UInt64}
     (future : StreamFuture spec state position history expected status)
     (bytes : Bytes) (bound : bytes.data.size ≤ (4096 : UInt64).toNat)
@@ -45,7 +45,7 @@ theorem streamFuture_afterRead {state : (BufferState Acc)} {position nextPositio
     (input : position.input = byteWords bytes ++ nextPosition.input)
     (eof : bytes.data.size = 0 → position.input = [])
     (output : nextPosition.output = position.output) :
-    StreamFuture spec (afterRead state ⟨0, bytes⟩).state nextPosition history expected status := by
+    StreamFuture spec (afterBytes state ⟨0, bytes⟩).state nextPosition history expected status := by
   have sizeBound : bytes.data.size < UInt64.size := by
     have count : (4096 : UInt64).toNat = 4096 := rfl
     have size : UInt64.size = 18446744073709551616 := rfl
@@ -60,25 +60,25 @@ theorem streamFuture_afterRead {state : (BufferState Acc)} {position nextPositio
       simp [Bytes.size, empty]
   have remaining : remainingInput state position = position.input := by
     simp only [remainingInput, unreadWords_empty future.safe exhausted, List.nil_append]
-  have nextRemaining : remainingInput (afterRead state ⟨0, bytes⟩).state nextPosition =
+  have nextRemaining : remainingInput (afterBytes state ⟨0, bytes⟩).state nextPosition =
       byteWords bytes ++ nextPosition.input := by
-    simp [remainingInput, unreadWords, afterRead]
-  apply StreamFuture.of_consumed spec future [] (afterRead_safe future.safe bytes bound)
+    simp [remainingInput, unreadWords, afterBytes]
+  apply StreamFuture.of_consumed spec future [] (afterBytes_safe future.safe bytes bound)
   · exact future.normal
   · intro atEof
-    simpa only [afterRead, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
+    simpa only [afterBytes, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
       beq_iff_eq, bytesZero] using atEof
   · intro atEof
     have empty : bytes.data.size = 0 := by
-      simpa only [afterRead, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
+      simpa only [afterBytes, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
         beq_iff_eq, bytesZero] using atEof
     have noInput := eof empty
     rw [noInput] at input
     exact (List.append_eq_nil_iff.mp input.symm).2
-  · simpa only [afterRead, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
+  · simpa only [afterBytes, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
       remainingOutput, output] using future.output
   · simpa only [List.nil_append, remaining, nextRemaining] using input
-  · simp [afterRead, bufferModel]
+  · simp [afterBytes, bufferModel]
 
 theorem streamFuture_afterWrite {state : (BufferState Acc)} {position nextPosition : StreamPosition}
     {history expected : List Bytes} {status : UInt64}

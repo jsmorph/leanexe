@@ -13,7 +13,8 @@ canonical form.  Blank lines, spaces, and other bytes cause exit status 28.  The
 output from preceding valid lines and stops before processing another line.  For input `12`, `-5`,
 and `20` on separate lines, output is `12`, `7`, and `27` on separate lines.
 
-The program reads chunks of at most 4,096 bytes.  It retains a partial line across reads and
+The program reads chunks of at most 4,096 bytes, each into a fresh buffer, and keeps a copy of the
+bytes read.  It retains a partial line across reads and
 finishes pending output before processing the next line, so each completed line produces output
 before the next blocking read.  A short successful write retains the unwritten suffix.  A
 successful zero-byte write retries that suffix.  A returned I/O error stops the Wasm module with

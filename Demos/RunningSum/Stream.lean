@@ -47,17 +47,21 @@ def afterWrite (state : State) (reply : WriteResult) : ProcessStep State :=
     else
       ⟨true, 0, { state with written }⟩
 
-def afterRead (state : State) (reply : ReadResult) : ProcessStep State :=
+/-- The step after a read into a buffer that returned `reply`: the state's input is a copy of the
+bytes read, the first `reply.count` bytes of the buffer. -/
+def afterRead (state : State) (reply : FillResult) : ProcessStep State :=
   if reply.errno != 0 then ⟨false, reply.errno, state⟩
   else
-    ⟨true, 0, { state with input := reply.bytes, cursor := 0, eof := reply.bytes.size == 0 }⟩
+    ⟨true, 0, { state with
+      input := Bytes.build reply.count (fun i => reply.buffer.get i), cursor := 0,
+      eof := reply.count == 0 }⟩
 
 def writeStep (state : State) : Action (ProcessStep State) := do
   let reply ← writeStdout state.output state.written (state.output.size - state.written)
   pure (afterWrite state reply)
 
 def readStep (state : State) : Action (ProcessStep State) := do
-  let reply ← readSome 4096
+  let reply ← readStdin (Bytes.build 4096 fun _ => 0) 0 4096
   pure (afterRead state reply)
 
 def step (state : State) : Action (ProcessStep State) :=

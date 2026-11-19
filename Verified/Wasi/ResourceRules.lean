@@ -312,6 +312,45 @@ theorem Returns.letPair {World : Type} {host : Host World} {pure : PureContext p
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact letPairReturn run
 
+/-- What a run of a `ret` that returns a value gives: the value of its expression. -/
+private def RetValue (pure : PureContext pureSigs) : {context : List Ty} → {result : ResultTy} →
+    Command pureSigs effectSigs context result → Env context → Outcome result.denote → Prop
+  | _, _, .ret value, env, .returned returned => returned = value.denote pure.funs env
+  | _, _, _, _, _ => True
+
+private theorem retValue {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {context : List Ty} {result : ResultTy}
+    {command : Command pureSigs effectSigs context result} {env : Env context}
+    {world trace outcome final spent fits}
+    (run : ResourceExec host pure program depth modes live command env world trace outcome final
+      spent fits) :
+    RetValue pure command env outcome := by
+  cases run with
+  | ret => rfl
+  | _ => trivial
+
+/-- A run of a `bind` whose first command is a `ret` that returns a value is a run of the next
+command that returns it, from the environment with the value of the `ret`.  The reflector binds
+each argument of an effect command that is not a variable this way, so a read's result reaches
+`Returns.read_size` through one application for each such argument. -/
+theorem Returns.bind_ret {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {context : List Ty} {type : Ty} {result : ResultTy}
+    {value : Expr pureSigs context type}
+    {next : Command pureSigs effectSigs (type :: context) result} {env : Env context}
+    {returned : result.denote}
+    (returns : Returns host pure program depth modes live (.bind (.ret value) next) env returned) :
+    Returns host pure program depth (.owned :: modes) (shift 1 live) next
+      (.cons (value.denote pure.funs env) env) returned := by
+  obtain ⟨_, _, _, _, _, run⟩ := returns
+  cases run with
+  | bind_return first rest =>
+    have same := retValue first
+    dsimp only [RetValue] at same
+    rw [same] at rest
+    exact ⟨_, _, _, _, _, rest⟩
+
 def CallRule {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (world : World) : {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
     {signature : EffectSig} → EffectVar effectSigs signature → UInt64 → Env signature.params →

@@ -55,11 +55,11 @@ theorem rank_completeLine (unread zeroWrites : Ghost → Nat) (ghost : Ghost)
     apply Prod.Lex.right
     exact Prod.Lex.left _ _ (show (0 : Nat) < 1 by decide)
 
-theorem rank_afterRead (unread zeroWrites : Ghost → Nat) {before after : Ghost}
+theorem rank_afterBytes (unread zeroWrites : Ghost → Nat) {before after : Ghost}
     {state : (BufferState Acc)} {bytes : Bytes} (eof : state.eof = false)
     (unreadLe : unread after ≤ unread before)
     (nonempty : bytes.data.size ≠ 0 → unread after < unread before) :
-    RankLt (rank unread zeroWrites (afterRead state ⟨0, bytes⟩).state after)
+    RankLt (rank unread zeroWrites (afterBytes state ⟨0, bytes⟩).state after)
       (rank unread zeroWrites state before) := by
   by_cases decreased : unread after < unread before
   · exact Prod.Lex.left _ _ decreased
@@ -69,7 +69,7 @@ theorem rank_afterRead (unread zeroWrites : Ghost → Nat) {before after : Ghost
       · exact empty
       · exact False.elim (decreased (nonempty empty))
     have bytesSize : bytes.size = 0 := by simp [Bytes.size, empty]
-    simp only [afterRead, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
+    simp only [afterBytes, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
     unfold rank
     simp only [same, eof, bytesSize, beq_self_eq_true, ↓reduceIte]
     apply Prod.Lex.right

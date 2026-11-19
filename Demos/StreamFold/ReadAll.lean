@@ -55,27 +55,31 @@ private theorem readAllLoop_stream {World : Type} {host : Host World}
     cases execution with
     | stop test _ => simp [readAllTest] at test
     | exit _ step =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit _ reply)) _ _ _ _
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit _ ⟨reply.errno, reply.bytes⟩)) _ _ _ _
         at step
       cases step with
       | read_reject capacity _ => exact absurd capacity (by decide)
-      | read_return _ _ next => cases next
+      | read_return _ _ _ _ next => cases next
     | trap _ step =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit _ reply)) _ _ _ _
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit _ ⟨reply.errno, reply.bytes⟩)) _ _ _ _
         at step
       cases step with
       | read_reject capacity _ => exact absurd capacity (by decide)
-      | read_return _ _ next => cases next
+      | read_return _ _ _ _ next => cases next
       | read_trap _ operation =>
         obtain ⟨_, _, impossible, _⟩ := streams.read_reply represented operation
         cases impossible
     | next _ step rest =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit _ reply)) _ _ _ _
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit _ ⟨reply.errno, reply.bytes⟩)) _ _ _ _
         at step
       cases step with
       | read_reject capacity _ => exact absurd capacity (by decide)
-      | @read_return _ _ _ _ after _ _ _ errno committed _ operation next =>
+      | @read_return _ _ _ _ after _ _ _ errno committed _ _ operation _ _ next =>
         cases next
+        rw [readAllStep_reply] at rest
         obtain ⟨bytes, nextPosition, replyEq, nextRep, consumed, atEof, sameOutput⟩ :=
           streams.read_reply represented operation
         cases replyEq

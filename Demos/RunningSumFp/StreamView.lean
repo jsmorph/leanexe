@@ -1,4 +1,5 @@
 import Demos.RunningSumFp.Stream
+import Demos.StreamFold.Control
 import Demos.StreamFold.Map
 import LeanExe.Wasi.ProcessRelated
 
@@ -53,9 +54,9 @@ theorem buffer_afterWrite (state : State) (reply : WriteResult) :
   · rfl
   · split <;> rfl
 
-theorem buffer_afterRead (state : State) (reply : ReadResult) :
+theorem buffer_afterRead (state : State) (reply : FillResult) :
     bufferResult (afterRead state reply) = StreamFold.afterRead (bufferState state) reply := by
-  dsimp only [afterRead, StreamFold.afterRead, bufferResult, bufferState]
+  dsimp only [afterRead, StreamFold.afterRead, StreamFold.filled, bufferResult, bufferState]
   split <;> rfl
 
 private theorem result_related {native : ProcessStep State}
@@ -81,9 +82,12 @@ theorem buffer_step_related (state : State) :
         · exact .pure ⟨rfl, rfl, rfl⟩
         · exact .pure (result_related (buffer_completeLine state).symm)
       · change Action.Rel _
-          (.read 4096 fun reply => .pure (afterRead state reply))
-          (.read 4096 fun reply => .pure (StreamFold.afterRead (bufferState state) reply))
-        exact .read 4096 fun reply => .pure (result_related (buffer_afterRead state reply).symm)
+          (Action.bind (readStdin (Bytes.build 4096 fun _ => 0) 0 4096) fun reply =>
+            .pure (afterRead state reply))
+          (Action.bind (readStdin (Bytes.build 4096 fun _ => 0) 0 4096) fun reply =>
+            .pure (StreamFold.afterRead (bufferState state) reply))
+        rw [StreamFold.bind_readStdin_fresh, StreamFold.bind_readStdin_fresh]
+        exact .read 4096 fun reply => .pure (result_related (buffer_afterRead state _).symm)
 
 theorem buffer_related : Process.Rel (fun native flat => flat = bufferState native)
     process (StreamFold.process lineKernel (0 : Float)) := by

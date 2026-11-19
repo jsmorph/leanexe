@@ -73,14 +73,13 @@ theorem future_advances {World : Type} {host : Host World} {rep : StreamPosition
         cases execution
         exact ⟨position, represented, fun impossible => by cases impossible⟩
     | false =>
-        rw [step_read pending eof] at execution
-        change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead s reply))
-          world trace (.returned next) final at execution
+        rw [step_read pending eof, readStep_eq] at execution
         cases execution with
         | read_reject capacity continuation =>
             exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-        | read_return capacity operation continuation =>
+        | read_return capacity operation size first continuation =>
             cases continuation
+            rw [afterRead_fresh s size first]
             obtain ⟨bytes, nextPosition, replyEq, nextRep, consumed, atEof, sameOutput⟩ :=
               streams.read_reply represented operation
             cases replyEq
@@ -90,7 +89,7 @@ theorem future_advances {World : Type} {host : Host World} {rep : StreamPosition
             exact ⟨nextPosition, nextRep, fun _ =>
               ⟨future_readStep ids future pending eof (host.read_bound operation).1 consumed atEof
                 sameOutput,
-                rank_afterRead _ _ eof (by omega) (fun _ => by omega)⟩⟩
+                rank_afterBytes _ _ eof (by omega) (fun _ => by omega)⟩⟩
 
 /-- The invariant of the charges: the state has a future for the input. -/
 def ChargeInv (input : List UInt64) (s : State) (position : StreamPosition) : Prop :=

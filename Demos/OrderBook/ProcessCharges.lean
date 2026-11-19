@@ -48,8 +48,8 @@ computes them once, so that the charges of the effect bodies read a list rather 
 `Prog.flags`, which the elaborator would do over the bodies of every earlier function at each
 call. -/
 theorem flags_toList : io.pure.program.flags.toList =
-    [([false, false], false), ([false, false], false), ([false, false, false, false], false),
-      ([false, false, false], false), ([false], false),
+    [([false, false], false), ([false, false], false), ([false, false, false, false, false], false),
+      ([false, false, false, false], false), ([false], false),
       ([false, false, false], false), ([], false),
       ([true, true, true, true, true, true, true, false, false, false], false),
       ([true, true, true, true, true, true, true, false, false, true, false, false], false),
@@ -81,10 +81,10 @@ theorem runWords_bound_le {R : Nat} {s : State}
     (runLe : ∀ ws : Array UInt64, ws.size ≤ 518 →
       io.pureSources.run.bound (⟨s.oid⟩, ⟨s.acct⟩, ⟨s.qty⟩, ⟨s.lvl⟩, ⟨s.nxt⟩, ⟨s.head⟩, ⟨s.tail⟩,
         s.nextId, s.count, ws) ≤ R)
-    (carrySmall : s.carry.data.size < 56) (input : Bytes) (count : UInt64) (eof : Bool)
-    (inputSize : input.data.size ≤ 4096)
-    (countLe : 8 * count.toNat ≤ s.carry.data.size + input.data.size) :
-    io.pureSources.runWords.bound (s, input, count, eof) ≤ batchCharge R s := by
+    (carrySmall : s.carry.data.size < 56) (input : Bytes) (used count : UInt64) (eof : Bool)
+    (usedSize : used.toNat ≤ 4096)
+    (countLe : 8 * count.toNat ≤ s.carry.data.size + used.toNat) :
+    io.pureSources.runWords.bound (s, input, used, count, eof) ≤ batchCharge R s := by
   have countSmall : count.toNat ≤ 518 := by omega
   have wordsSize : (wordsOf s.carry input count).size ≤ 518 := by
     rw [wordsOf_size]
@@ -96,17 +96,14 @@ theorem runWords_bound_le {R : Nat} {s : State}
     (wordsOf s.carry input count)).2.size ≤ _ at events
   have carryNat : s.carry.size.toNat = s.carry.data.size :=
     Bytes.size_toNat s.carry (Nat.lt_of_lt_of_le carrySmall (by decide))
-  have inputNat : input.size.toNat = input.data.size :=
-    Bytes.size_toNat input (Nat.lt_of_le_of_lt inputSize (by decide))
   have startNat : (8 * count).toNat = 8 * count.toNat := by
     rw [UInt64.toNat_mul]
     simp only [UInt64.reduceToNat]
     exact Nat.mod_eq_of_lt (by omega)
-  have sumNat : (s.carry.size + input.size).toNat = s.carry.data.size + input.data.size := by
-    rw [UInt64.toNat_add, carryNat, inputNat]
+  have sumNat : (s.carry.size + used).toNat = s.carry.data.size + used.toNat := by
+    rw [UInt64.toNat_add, carryNat]
     exact Nat.mod_eq_of_lt (by omega)
-  have keptNat : (s.carry.size + input.size - 8 * count).toNat ≤
-      s.carry.data.size + input.data.size := by
+  have keptNat : (s.carry.size + used - 8 * count).toNat ≤ s.carry.data.size + used.toNat := by
     rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [startNat, sumNat]; omega)),
       startNat, sumNat]
     omega
@@ -117,7 +114,7 @@ theorem runWords_bound_le {R : Nat} {s : State}
     have := toUInt64_toNat_le (Program.run s.oid s.acct s.qty s.lvl s.nxt s.head s.tail s.nextId
       s.count (wordsOf s.carry input count)).2.size
     exact Nat.le_trans (Nat.mod_le _ _) (by omega)
-  have kept := allocationCost_mono (Nat.le_trans keptNat (Nat.add_le_add_left inputSize _))
+  have kept := allocationCost_mono (Nat.le_trans keptNat (Nat.add_le_add_left usedSize _))
   have eventCost := allocationCost_mono eventsNat
   rw [io.pureSources.runWords.bound_eq, io.pureSources.wordsOf.bound_eq,
     io.pureSources.tailBytes.bound_eq, io.pureSources.eventBytes.bound_eq]
@@ -125,41 +122,38 @@ theorem runWords_bound_le {R : Nat} {s : State}
   unfold batchCharge
   omega
 
-/-- The bound of `afterRead` for every reply of at most 4,096 bytes: a copy of the state at an
-errno and a batch otherwise. -/
+/-- The bound of `afterRead` for every reply with a count of at most 4,096: a copy of the state at
+an errno and a batch otherwise. -/
 theorem afterRead_bound_le {R : Nat} {s : State}
     (runLe : ∀ ws : Array UInt64, ws.size ≤ 518 →
       io.pureSources.run.bound (⟨s.oid⟩, ⟨s.acct⟩, ⟨s.qty⟩, ⟨s.lvl⟩, ⟨s.nxt⟩, ⟨s.head⟩, ⟨s.tail⟩,
         s.nextId, s.count, ws) ≤ R)
-    (carrySmall : s.carry.data.size < 56) (reply : ReadResult)
-    (size : reply.bytes.data.size ≤ 4096) :
+    (carrySmall : s.carry.data.size < 56) (reply : FillResult)
+    (size : reply.count.toNat ≤ 4096) :
     io.pureSources.afterRead.bound (s, reply) ≤
       stateTy.copyCost (sourceState s) + batchCharge R s := by
   have carryNat : s.carry.size.toNat = s.carry.data.size :=
     Bytes.size_toNat s.carry (Nat.lt_of_lt_of_le carrySmall (by decide))
-  have bytesNat : reply.bytes.size.toNat = reply.bytes.data.size :=
-    Bytes.size_toNat reply.bytes (Nat.lt_of_le_of_lt size (by decide))
   rw [io.pureSources.afterRead.bound_eq]
   split
   · rw [state_copyCost]
     simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes]
     omega
   · split
-    · have emptySize : Bytes.empty.data.size = 0 := rfl
-      have countNat : (s.carry.size / 8).toNat = s.carry.data.size / 8 := by
+    · have countNat : (s.carry.size / 8).toNat = s.carry.data.size / 8 := by
         rw [UInt64.toNat_div, carryNat]
         rfl
-      have batch := runWords_bound_le runLe carrySmall Bytes.empty (s.carry.size / 8) true
-        (by rw [emptySize]; decide) (by rw [countNat, emptySize]; omega)
+      have batch := runWords_bound_le runLe carrySmall reply.buffer 0 (s.carry.size / 8) true
+        (by decide) (by rw [countNat, UInt64.toNat_zero]; omega)
       omega
-    · have countNat : (7 * ((s.carry.size + reply.bytes.size) / 56)).toNat =
-          7 * ((s.carry.data.size + reply.bytes.data.size) / 56) := by
-        rw [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, carryNat, bytesNat]
+    · have countNat : (7 * ((s.carry.size + reply.count) / 56)).toNat =
+          7 * ((s.carry.data.size + reply.count.toNat) / 56) := by
+        rw [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, carryNat]
         simp only [UInt64.reduceToNat]
-        rw [Nat.mod_eq_of_lt (by omega : s.carry.data.size + reply.bytes.data.size < 2 ^ 64),
+        rw [Nat.mod_eq_of_lt (by omega : s.carry.data.size + reply.count.toNat < 2 ^ 64),
           Nat.mod_eq_of_lt (by omega)]
-      have batch := runWords_bound_le runLe carrySmall reply.bytes
-        (7 * ((s.carry.size + reply.bytes.size) / 56)) false size (by rw [countNat]; omega)
+      have batch := runWords_bound_le runLe carrySmall reply.buffer reply.count
+        (7 * ((s.carry.size + reply.count) / 56)) false size (by rw [countNat]; omega)
       omega
 
 /-- The charge of `begin`: the arrays of the empty book. -/
@@ -230,9 +224,10 @@ window allocates nothing. -/
 def writeCharge (s : State) : Nat :=
   stateTy.copyCost (sourceState s)
 
-/-- The charge of the read step from `s`: the read buffer, and a copy of the state or a batch. -/
+/-- The charge of the read step from `s`: the read's buffer of 4,096 bytes, which the read fills in
+place, and a copy of the state or a batch over the buffer's first bytes. -/
 def readCharge (R : Nat) (s : State) : Nat :=
-  Verified.Wasi.readCost 4096 + (stateTy.copyCost (sourceState s) + batchCharge R s)
+  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState s) + batchCharge R s)
 
 /-- The charge of the step from `s` when no output remains: a copy of the state at EOF and a read
 otherwise. -/
@@ -295,17 +290,43 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule (Verified.Wasi.readCost 4096) _ (Nat.le_refl _) ?_ ?_
+  refine rule (Bytes.allocationCost 4096) _ (Nat.le_refl _) ?_ ?_
   · apply bounded_of_rule
     intro spent fits rule
-    refine rule ?_ rfl
-    simp +decide only [PureContext.readCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
-      Var.cost, ↓reduceIte, Nat.add_zero, Nat.zero_add]
-    read_state
-    show Verified.Wasi.readCost 4096 ≤ _
-    exact Nat.le_refl _
+    refine rule (Bytes.allocationCost 4096) 0 (Nat.le_of_eq (Nat.add_zero _)) ?_ ?_
+    · apply bounded_of_rule
+      intro spent fits rule
+      refine rule ?_ (Expr.fits_of_depthCalls _ _ _ (by decide) _)
+      simp only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Expr.mode, coerceCost,
+        Expr.denote, UInt64.reduceToNat, reduceCtorEq, false_and, ↓reduceIte, Nat.add_zero,
+        Nat.zero_add]
+      rw [sumBelow_zero (fun _ => rfl)]
+      omega
+    · intro _ _
+      repeat (first
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule 0 0 (Nat.le_refl _) ?_ ?_)
+        | (intro _ _)
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule ?_
+           simp +decide only [PureContext.sysTakeCost, PureContext.ownedCost, PureContext.exprCost,
+             PureContext.ofProg, Expr.allocs, Var.cost, Expr.mode, coerceCost, sysTakeLive, shift,
+             ↓reduceIte, Nat.add_zero, Nat.zero_add])
+        | (apply bounded_of_rule
+           intro spent fits rule
+           refine rule ?_ rfl
+           simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
+             Expr.allocs, Var.cost, Expr.mode, coerceCost, Ty.copyCost, Ty.copyCost_of_scalar,
+             ↓reduceIte, Nat.add_zero, Nat.zero_add]))
   · intro value returns
-    have size : value.2.data.size ≤ 4096 := Returns.read_size returns
+    have read := (Returns.read_size (Returns.bind_ret
+      (Returns.bind_ret (Returns.bind_ret returns)))).1
+    have size : value.2.1.toNat ≤ 4096 := by
+      change value.2.1.toNat ≤ (Bytes.build 4096 fun _ => 0).data.size at read
+      rw [Bytes.data_size_build] at read
+      exact read
     letPair_free
     apply bounded_of_rule
     intro spent fits rule
@@ -315,8 +336,8 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
       Var.cost, Expr.mode, argsSum, callCredits, Flags.params, flags_toList, FVar.index,
       ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
     read_state
-    show io.pureSources.afterRead.bound (s, ⟨value.1, value.2⟩) ≤ _
-    exact afterRead_bound_le runLe carrySmall ⟨value.1, value.2⟩ size
+    show io.pureSources.afterRead.bound (s, ⟨value.1, value.2.1, value.2.2⟩) ≤ _
+    exact afterRead_bound_le runLe carrySmall ⟨value.1, value.2.1, value.2.2⟩ size
 
 set_option maxHeartbeats 4000000 in
 theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : State}
@@ -426,7 +447,7 @@ theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s �
   have output := allocationCost_le s.output.data.size
   have carry := allocationCost_le (s.carry.data.size + 4096)
   have events := allocationCost_le (8 * (7 * 5122 * 74))
-  have readFull : Verified.Wasi.readCost 4096 = 4144 := by decide
+  have buffer : Bytes.allocationCost 4096 = 4144 := by decide
   have := sized.carry
   have := sized.output
   have limit : outputLimit = 16982112 := by decide

@@ -135,25 +135,26 @@ theorem afterWrite_conservation {s : State} (safe : Safe s) (count : UInt64)
 /-! ## Batches -/
 
 /-- The fields of the state after a batch. -/
-theorem runWords_fields (s : State) (input : Bytes) (count : UInt64) (eof : Bool) :
-    (runWords s input count eof).running = true ∧ (runWords s input count eof).status = 0 ∧
-      book (runWords s input count eof).state =
+theorem runWords_fields (s : State) (input : Bytes) (used count : UInt64) (eof : Bool) :
+    (runWords s input used count eof).running = true ∧
+      (runWords s input used count eof).status = 0 ∧
+      book (runWords s input used count eof).state =
         (Program.run (book s).oid (book s).acct (book s).qty (book s).lvl (book s).nxt
           (book s).head (book s).tail (book s).nextId (book s).count
           (wordsOf s.carry input count)).1 ∧
-      (runWords s input count eof).state.carry = tailBytes s.carry input (8 * count) ∧
-      (runWords s input count eof).state.output =
+      (runWords s input used count eof).state.carry = tailBytes s.carry input used (8 * count) ∧
+      (runWords s input used count eof).state.output =
         eventBytes (Program.run (book s).oid (book s).acct (book s).qty (book s).lvl (book s).nxt
           (book s).head (book s).tail (book s).nextId (book s).count
           (wordsOf s.carry input count)).2 ∧
-      (runWords s input count eof).state.written = 0 ∧
-      (runWords s input count eof).state.eof = eof :=
+      (runWords s input used count eof).state.written = 0 ∧
+      (runWords s input used count eof).state.eof = eof :=
   ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-theorem runWords_safe (s : State) (input : Bytes) (count : UInt64) (eof : Bool) :
-    Safe (runWords s input count eof).state := by
-  obtain ⟨-, -, -, -, output, written, -⟩ := runWords_fields s input count eof
-  generalize (runWords s input count eof).state = t at output written
+theorem runWords_safe (s : State) (input : Bytes) (used count : UInt64) (eof : Bool) :
+    Safe (runWords s input used count eof).state := by
+  obtain ⟨-, -, -, -, output, written, -⟩ := runWords_fields s input used count eof
+  generalize (runWords s input used count eof).state = t at output written
   have size : t.output.data.size < UInt64.size := by
     rw [output, eventBytes_size]
     exact UInt64.toNat_lt _
@@ -164,32 +165,91 @@ theorem runWords_safe (s : State) (input : Bytes) (count : UInt64) (eof : Bool) 
     rw [written, UInt64.lt_iff_toNat_lt, Bytes.size_toNat _ size, UInt64.toNat_zero]
     omega
 
-theorem afterRead_ok (s : State) (bytes : Bytes) :
-    afterRead s ⟨0, bytes⟩ =
-      if bytes.size == 0 then runWords s Bytes.empty (s.carry.size / 8) true
-      else runWords s bytes (7 * ((s.carry.size + bytes.size) / 56)) false := by
-  simp [afterRead]
+/-- The step after a read that returned the bytes of `reply`, which `afterRead` takes from the
+buffer of a read step. -/
+def afterBytes (s : State) (reply : ReadResult) : ProcessStep State :=
+  if reply.errno != 0 then ⟨false, reply.errno, s⟩
+  else if reply.bytes.size == 0 then runWords s Bytes.empty 0 (s.carry.size / 8) true
+  else runWords s reply.bytes reply.bytes.size (7 * ((s.carry.size + reply.bytes.size) / 56)) false
 
-theorem afterRead_safe (s : State) (bytes : Bytes) : Safe (afterRead s ⟨0, bytes⟩).state := by
-  rw [afterRead_ok]
-  split <;> exact runWords_safe _ _ _ _
+/-- The step after the read of a step is the step after the bytes read. -/
+theorem afterRead_fresh (s : State) {errno : UInt64} {committed range : Bytes}
+    (size : range.data.size = (4096 : UInt64).toNat)
+    (first : errno = 0 → range.data.extract 0 committed.data.size = committed.data) :
+    afterRead s (Demos.StreamFold.freshFill (readReply errno committed range)) =
+      afterBytes s (readResult errno committed) := by
+  by_cases zero : errno = 0
+  · subst zero
+    have bound := Demos.StreamFold.fresh_le size (first rfl)
+    have spliced := Demos.StreamFold.fresh_splice_prefix size (first rfl)
+    have committedNat : committed.size.toNat = committed.data.size :=
+      Bytes.size_toNat committed (by omega)
+    have carryLt := UInt64.toNat_lt s.carry.size
+    simp only [afterRead, afterBytes, Demos.StreamFold.freshFill_zero, readResult, ↓reduceIte,
+      bne_self_eq_false, Bool.false_eq_true]
+    by_cases empty : committed.size = 0
+    · have emptyData : committed.data.size = 0 := by
+        rw [← committedNat, empty, UInt64.toNat_zero]
+      have emptyBytes : committed = Bytes.empty := by
+        cases committed with
+        | mk data =>
+            have : data = ByteArray.empty := ByteArray.size_eq_zero_iff.mp emptyData
+            rw [this]
+            rfl
+      simp only [empty, beq_self_eq_true, ↓reduceIte]
+      subst emptyBytes
+      have below : 8 * (s.carry.size / 8).toNat ≤ (s.carry.size + Bytes.empty.size).toNat := by
+        rw [UInt64.toNat_div, Bytes.size_empty, UInt64.add_zero]
+        simp only [UInt64.reduceToNat]
+        omega
+      have batch := runWords_prefix s (s.carry.size / 8) true spliced (by decide) below
+      rw [Bytes.size_empty] at batch
+      exact batch
+    · have nonzero : (committed.size == 0) = false := by simpa using empty
+      simp only [nonzero, Bool.false_eq_true, ↓reduceIte]
+      have below : 8 * (7 * ((s.carry.size + committed.size) / 56)).toNat ≤
+          (s.carry.size + committed.size).toNat := by
+        have sumLt := UInt64.toNat_lt (s.carry.size + committed.size)
+        rw [UInt64.toNat_mul, UInt64.toNat_div]
+        simp only [UInt64.reduceToNat]
+        omega
+      exact runWords_prefix s (7 * ((s.carry.size + committed.size) / 56)) false spliced
+        (by omega) below
+  · have failed : (errno != 0) = true := by simpa using zero
+    simp only [afterRead, afterBytes, Demos.StreamFold.freshFill, readReply, readResult,
+      FillResult.of, zero, failed, ↓reduceIte]
 
-theorem afterRead_running (s : State) (bytes : Bytes) :
-    (afterRead s ⟨0, bytes⟩).running = true ∧ (afterRead s ⟨0, bytes⟩).status = 0 := by
-  rw [afterRead_ok]
-  split <;> exact ⟨(runWords_fields _ _ _ _).1, (runWords_fields _ _ _ _).2.1⟩
+theorem readStep_eq (s : State) :
+    readStep s = .read 4096 fun reply =>
+      .pure (afterRead s (Demos.StreamFold.freshFill reply)) :=
+  Demos.StreamFold.bind_readStdin_fresh _
 
-theorem afterRead_eof (s : State) (bytes : Bytes) :
-    (afterRead s ⟨0, bytes⟩).state.eof = (bytes.size == 0) := by
-  rw [afterRead_ok]
+theorem afterBytes_ok (s : State) (bytes : Bytes) :
+    afterBytes s ⟨0, bytes⟩ =
+      if bytes.size == 0 then runWords s Bytes.empty 0 (s.carry.size / 8) true
+      else runWords s bytes bytes.size (7 * ((s.carry.size + bytes.size) / 56)) false := by
+  simp [afterBytes]
+
+theorem afterBytes_safe (s : State) (bytes : Bytes) : Safe (afterBytes s ⟨0, bytes⟩).state := by
+  rw [afterBytes_ok]
+  split <;> exact runWords_safe _ _ _ _ _
+
+theorem afterBytes_running (s : State) (bytes : Bytes) :
+    (afterBytes s ⟨0, bytes⟩).running = true ∧ (afterBytes s ⟨0, bytes⟩).status = 0 := by
+  rw [afterBytes_ok]
+  split <;> exact ⟨(runWords_fields _ _ _ _ _).1, (runWords_fields _ _ _ _ _).2.1⟩
+
+theorem afterBytes_eof (s : State) (bytes : Bytes) :
+    (afterBytes s ⟨0, bytes⟩).state.eof = (bytes.size == 0) := by
+  rw [afterBytes_ok]
   split
   · rename_i empty
     rw [empty]
-    exact (runWords_fields _ _ _ _).2.2.2.2.2.2
+    exact (runWords_fields _ _ _ _ _).2.2.2.2.2.2
   · rename_i nonempty
     simp only [Bool.not_eq_true] at nonempty
     rw [nonempty]
-    exact (runWords_fields _ _ _ _).2.2.2.2.2.2
+    exact (runWords_fields _ _ _ _ _).2.2.2.2.2.2
 
 /-! ## Rank -/
 
@@ -206,10 +266,10 @@ theorem rank_wellFounded : WellFounded RankLt := rankOrder.wf
 def rank (unread zeroWrites : Ghost → Nat) (s : State) (ghost : Ghost) : Rank :=
   (unread ghost, if s.eof then 0 else 1, s.output.data.size - s.written.toNat, zeroWrites ghost)
 
-theorem rank_afterRead (unread zeroWrites : Ghost → Nat) {before after : Ghost}
+theorem rank_afterBytes (unread zeroWrites : Ghost → Nat) {before after : Ghost}
     {s : State} {bytes : Bytes} (eof : s.eof = false) (unreadLe : unread after ≤ unread before)
     (nonempty : bytes.data.size ≠ 0 → unread after < unread before) :
-    RankLt (rank unread zeroWrites (afterRead s ⟨0, bytes⟩).state after)
+    RankLt (rank unread zeroWrites (afterBytes s ⟨0, bytes⟩).state after)
       (rank unread zeroWrites s before) := by
   by_cases decreased : unread after < unread before
   · exact Prod.Lex.left _ _ decreased
@@ -219,8 +279,8 @@ theorem rank_afterRead (unread zeroWrites : Ghost → Nat) {before after : Ghost
       · exact empty
       · exact False.elim (decreased (nonempty empty))
     have bytesSize : bytes.size = 0 := by simp [Bytes.size, empty]
-    have nextEof : (afterRead s ⟨0, bytes⟩).state.eof = true := by
-      simp [afterRead_eof, bytesSize]
+    have nextEof : (afterBytes s ⟨0, bytes⟩).state.eof = true := by
+      simp [afterBytes_eof, bytesSize]
     unfold rank
     rw [same, nextEof, eof]
     apply Prod.Lex.right
@@ -310,24 +370,23 @@ theorem readStep_advances {host : Host World} {rep : Ghost → World → Prop}
     {next : ProcessStep State} (ready : rep ghost world) (eof : s.eof = false)
     (execution : LeanExe.Wasi.Exec host (readStep s) world trace (.returned next) final) :
     Advances rep unread zeroWrites s ghost next final := by
-  change LeanExe.Wasi.Exec host
-    (.read 4096 fun reply => .pure (afterRead s reply))
-    world trace (.returned next) final at execution
+  rw [readStep_eq] at execution
   cases execution with
   | read_reject capacity continuation =>
       exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-  | read_return capacity operation continuation =>
+  | read_return capacity operation size first continuation =>
       cases continuation
+      rw [afterRead_fresh s size first]
       obtain ⟨bytes, nextGhost, replyEq, nextRep, inputLe, nonemptyDrop⟩ :=
         progress.read_reply ready operation
       cases replyEq
       simp only [readResult, ↓reduceIte]
-      refine ⟨nextGhost, nextRep, afterRead_safe s _, ?_, ?_⟩
+      refine ⟨nextGhost, nextRep, afterBytes_safe s _, ?_, ?_⟩
       · intro stopped
-        rw [(afterRead_running s _).1] at stopped
+        rw [(afterBytes_running s _).1] at stopped
         cases stopped
       · intro _
-        exact rank_afterRead unread zeroWrites eof inputLe nonemptyDrop
+        exact rank_afterBytes unread zeroWrites eof inputLe nonemptyDrop
 
 theorem step_write {s : State} (pending : s.written < s.output.size) :
     step s = writeStep s := by
@@ -382,9 +441,10 @@ theorem step_exists {host : Host World} {rep : Ghost → World → Prop}
   · cases eof : s.eof with
     | false =>
         obtain ⟨bytes, final, operation⟩ := progress.read_available ghost world ready
-        refine ⟨afterRead s ⟨0, bytes⟩, [.read 4096 (.returned 0 bytes)], final, ?_⟩
-        rw [step_read pending eof]
-        exact .read_return (by decide) operation (.pure final _)
+        refine ⟨afterRead s (Demos.StreamFold.freshFill (readReply 0 bytes (readRange bytes 4096))),
+          [.read 4096 (.returned 0 bytes)], final, ?_⟩
+        rw [step_read pending eof, readStep_eq]
+        exact .read_returned (by decide) operation (.pure final _)
     | true =>
         refine ⟨⟨false, if s.carry.size == 0 then 0 else 28, s⟩, [], world, ?_⟩
         rw [step_stop pending eof]
@@ -411,13 +471,11 @@ theorem step_returned {host : Host World} {rep : Ghost → World → Prop}
         cases impossible
   · cases eof : s.eof with
     | false =>
-        rw [step_read pending eof] at execution
-        change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead s reply))
-          world trace outcome final at execution
+        rw [step_read pending eof, readStep_eq] at execution
         cases execution with
         | read_reject capacity continuation =>
             exact False.elim ((by decide : ¬ 2 ^ 32 ≤ (4096 : UInt64).toNat) capacity)
-        | read_return capacity operation continuation =>
+        | read_return capacity operation size first continuation =>
             cases continuation
             exact ⟨_, rfl⟩
         | read_trap capacity operation =>

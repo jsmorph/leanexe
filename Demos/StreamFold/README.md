@@ -1,6 +1,6 @@
 # Stream fold
 
-StreamFold holds the line-stream process of [Running sum](../RunningSum/README.md) and [the binary64 running sum](../RunningSumFp/README.md), with the proofs that both applications share.  A line kernel of type `Kernel Acc` maps an accumulator and a line to a validity bit, the next accumulator, and the bytes to write for the line.  `process kernel seed` reads chunks of at most 4,096 bytes, retains a partial line across reads, and writes the output of each line before it consumes more input.  It stops with status 28 at the first line that the kernel rejects, and with status 0 at EOF.  Each application states its own process and relates it to `process` by `Process.Rel` in its stream view.
+StreamFold holds the line-stream process of [Running sum](../RunningSum/README.md) and [the binary64 running sum](../RunningSumFp/README.md), with the proofs that both applications share.  A line kernel of type `Kernel Acc` maps an accumulator and a line to a validity bit, the next accumulator, and the bytes to write for the line.  `process kernel seed` reads chunks of at most 4,096 bytes, retains a partial line across reads, and writes the output of each line before it consumes more input.  Each read step reads into a fresh buffer of 4,096 bytes and keeps in the state a copy of the bytes read, which the process entry copies with the state after the step.  It stops with status 28 at the first line that the kernel rejects, and with status 0 at EOF.  Each application states its own process and relates it to `process` by `Process.Rel` in its stream view.
 
 ## Model
 
@@ -36,7 +36,7 @@ The folded state holds the pending line, and the process entry copies the state 
 | Module | Contents |
 |---|---|
 | [Interface](Interface.lean) | Kernel, buffered state, process, and byte model. |
-| [Control](Control.lean), [ranks](Rank.lean), and [host progress](Host.lean) | Buffer safety, the termination rank, and `process_terminates`. |
+| [Control](Control.lean), [ranks](Rank.lean), and [host progress](Host.lean) | The read of a step, buffer safety, the termination rank, and `process_terminates`.  `afterRead_fresh` states that the step after the read of a step is `afterBytes` of the bytes read. |
 | [Bytes](Bytes.lean) | Byte words of buffers and the accounting of partial writes. |
 | [Model proofs](Model.lean) | `outcome` over appended input, the line split, `foldOutcome`, `LineValues`, and the safety of the model from `LineRooms`. |
 | [Buffer](Buffer.lean) | Input loop as a prefix of the model, through acceptance or rejection. |

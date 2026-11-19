@@ -18,7 +18,7 @@ private def check (input expected : String) (requests : List Request)
         events := [] } }
   let some entry := target.findExport "_start"
     | throw (IO.userError "Missing running-sumfp entry")
-  let result := exec 4096 target initial {} [.call entry] (env target)
+  let result := exec 8192 target initial {} [.call entry] (env target)
   let .Trap final cause := result
     | throw (IO.userError "Running sumfp did not reach a terminal outcome")
   equal "terminal message" cause message
