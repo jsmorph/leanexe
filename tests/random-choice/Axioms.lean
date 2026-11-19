@@ -1,14 +1,15 @@
 import Demos.RandomChoice.Compiled
 import Demos.RandomChoice.Budget
 import Demos.RandomChoice.Output
+import Demos.RandomChoice.NativeChoices
 
 /-! The theorem statements and the axiom audit of the unbiased random choice.  The call theorems
 are restated here against the specifications, as `tools/verified-request-check` states the call
 theorem of a request: `Verified.CallSpec` of the pure module, its tables, the export's function
 index, the specification, and the generated bound.  The counting theorems are restated with their
 statements, and the command's theorem as `Ends` of every sufficiently fueled run of `_start`.  The
-check fails when a theorem uses an axiom other than `propext`, `Classical.choice`, and
-`Quot.sound`. -/
+check also names the theorems of the command's runs under the Linux shim.  It fails when a
+theorem uses an axiom other than `propext`, `Classical.choice`, and `Quot.sound`. -/
 
 namespace RandomChoiceCheck
 
@@ -93,6 +94,12 @@ elab "check_random_choice_axioms" : command => do
     ``Demos.RandomChoice.total_meets,
     ``Demos.RandomChoice.body_bounded,
     ``Demos.RandomChoice.total_meets_every,
+    ``Demos.RandomChoice.calls_supported,
+    ``Demos.RandomChoice.linux_footprint_native,
+    ``Demos.RandomChoice.linux_footprint_bounded,
+    ``Demos.RandomChoice.budget_fits,
+    ``Demos.RandomChoice.linux_exec_choices,
+    ``Demos.RandomChoice.witness_run,
     ``Demos.RandomChoice.command.start,
     ``Demos.RandomChoice.command.validity,
     ``Demos.RandomChoice.command.bytes,

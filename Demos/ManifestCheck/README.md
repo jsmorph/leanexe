@@ -49,13 +49,13 @@ hashes a message that arrives in pieces: `update` compresses the whole blocks of
 the hash value, and `finish` pads the bytes after the last whole block with the length of the whole
 message.
 
-## The core computes its specification
+## The pure core computes its specification
 
 | Theorem | Statement |
 |---|---|
 | `parse_eq`, `hexMatches_eq`, `render_eq` | Each program equals its specification, for a manifest of fewer than `2^62` bytes, a manifest of fewer than `2^64` bytes, and a name of fewer than `2^64 - 9` bytes ([the proof](Proof.lean)). |
 | `parse_callSpec`, `hexMatches_callSpec`, `render_callSpec` | `Verified.CallSpec compiled.module compiled.tables K spec compiled.f.bound` for `K` = 6, 8, and 10: called with borrowed arguments from a ready store with room for the bound, the function returns the specification's value without a trap and leaves a ready store ([the compilation](Compiled.lean)). |
-| `parse_bound`, `hexMatches_bound`, `render_bound` | The generated bounds are at most `176 n + 464` bytes for a manifest of `n` bytes, 0, and at most `n + 64` bytes for a name of `n` bytes. |
+| `parse_bound`, `hexMatches_bound`, `render_bound` | The generated bounds are at most `176 n + 464` bytes for a manifest of `n` bytes, 0, and at most `n + 64` bytes for a name of `n` bytes, for `n` below `2^32`. |
 | `update_toVec32`, `finish_spec`, `stream_spec` | The streaming SHA-256 computes the digest of the transcription of FIPS 180-4 for the whole message ([the library's proof](../../Library/Hashing/Sha256/StreamProof.lean)). |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `parse_eq`
@@ -65,7 +65,7 @@ induction on the positions that remain that the loop adds the positions of the l
 `linesFrom` gives for the pieces of the rest.  `parseStep_enc` relates the array of the program's
 state to a state of three parts, on which the induction runs.
 
-## The command checks every line
+## The command
 
 [The command](Command.lean) is `main : Action UInt64`.  It reads its one argument with `args` and
 `argScan`, builds a read buffer of 65,536 bytes, and opens the manifest of that name under the
@@ -75,26 +75,26 @@ more, for which a read's length does not fit its 32 bits, with status 61 (`overf
 builds a buffer of the reported size and reads the manifest into it with `fdRead`, each read into
 the window after the bytes already read, until the buffer is full, a read returns no bytes, or a
 read returns an errno.  A last read into the read buffer tests that the manifest has no byte after
-them, so a manifest whose bytes number fewer or more than its size gives status 1, as do a FIFO,
-a file of `/proc` that reports size 0, and a file being appended to.  The bracket
-closes the manifest, and `parse` gives the positions of its lines, or none for a manifest that the
-pure core refuses, which gives status 1.
+them, so a manifest whose bytes number fewer or more than its size gives status 1, as do a FIFO, a
+file of `/proc` that reports size 0, and a file being appended to.  The bracket closes the
+manifest, and `parse` gives the positions of its lines, or none for a manifest that the pure core
+refuses, which gives status 1.
 
 `checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
 copies the name from the manifest with `slice`, opens it under the preopened directory with the
 right `fd_read` alone, hashes the file with `hashFile`, closes it, compares the digest with the
 line's digits with `hexMatches`, and writes `render` of the name and the verdict with
 `writeAll line 0 line.size` of [the shared write loop](../../LeanExe/Wasi/WriteAll.lean), which
-writes the window of the line that remains after a short write.  Every open names descriptor 3, the flag
-`symlink_follow`, no open flags, no inherited rights, and no descriptor flags.  `hashFile` reads
-the file into the window of the read buffer after the bytes that it holds, and when a read fills
-the buffer it compresses the buffer's 1,024 blocks into the hash value with `update` and starts
-again at the buffer's first byte.  When a read returns no bytes, it compresses the whole blocks
-that the buffer holds and passes the bytes after them to `finish` with the file's length.  Its loop
-makes at most `2^45 - 1` reads of at most 65,536 bytes each, so the bytes that it hashes number
-fewer than `2^61`, the limit of SHA-256's length field.  The read buffer moves from pass to pass
-and into each bracket and out of it, and the windows of the reads are its bytes, so no pass of a
-read loop builds a buffer.
+writes the window of the line that remains after a short write.  Every open names descriptor 3, the
+flag `symlink_follow`, no open flags, no inherited rights, and no descriptor flags.  `hashFile`
+reads the file into the window of the read buffer after the bytes that it holds, and when a read
+fills the buffer it compresses the buffer's 1,024 blocks into the hash value with `update` and
+starts again at the buffer's first byte.  When a read returns no bytes, it compresses the whole
+blocks that the buffer holds and passes the bytes after them to `finish` with the file's length.
+Its loop makes at most `2^45 - 1` reads of at most 65,536 bytes each, so the bytes that it hashes
+number fewer than `2^61`, the limit of SHA-256's length field.  The read buffer moves from pass to
+pass and into each bracket and out of it, and the windows of the reads are its bytes, so no pass of
+a read loop builds a buffer.
 
 A line's verdict is OK when the open of its name returned errno 0, a read returned no bytes before
 any read returned an errno, the close returned errno 0, and the line's digits give the digest of
@@ -107,9 +107,9 @@ whose bytes disagree with its size or that the pure core refuses.  After a manif
 accepts, the status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of
 an output line stop with bytes left, which ends the checks, and the errno of a write that fails,
 with which `writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
-`verified_compile_wasi` writes a module of 17,962 bytes that imports `fd_read` twice, as the stream
-read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`,
-`fd_close`, `args_sizes_get`, and `args_get`.
+`verified_compile_wasi` writes a module that imports `fd_read` twice, as the stream read of the ABI
+and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`, `fd_close`,
+`args_sizes_get`, and `args_get`.
 
 ## The command meets the request
 
@@ -119,7 +119,6 @@ read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main` whose events meet `SoFar`, or a guest trap at `unreachable` after a prefix of `main` whose events meet `SoFar` ([the compiled command](CommandStart.lean)). |
 | `stops_soFar`, `trapped_soFar`, `prefix_soFar` | Under every host, the events of every run of `main` followed by its exit that stops without an accepted exit, a run that traps or a prefix of a run, meet `SoFar`: confinement, the use of descriptors, and the verdicts of the output lines written before the stop ([the runs that stop](CommandPrefix.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
-| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)).  The theorems state `Meets` of the runs that end with the accepted exit and `SoFar` of the runs that trap. |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) holds three properties of a run's events, which
@@ -136,8 +135,8 @@ transcription of FIPS 180-4 for the bytes that the reads returned.  `Confined` s
 argument or the name of a line of the manifest in the format.  `Handled` states that the events
 are calls of `args_sizes_get` and `args_get`, opens that fail, brackets of an open, calls on its
 descriptor, and its close, and writes to standard output, so each descriptor is closed before the
-next open and before the exit.  [The review](review.md) records the decisions of the cases that the request
-leaves open.
+next open and before the exit.  [The review](review.md) records the decisions of the cases that the
+request leaves open.
 
 `SoFar` states the three properties of the events of a run that stops without an accepted exit:
 at a trap of the host, at an exit that the host rejects, or at a trap of the guest.
@@ -182,18 +181,22 @@ descriptor of a bracket's body (`readManifest_every`, `hashFile_every`).  `write
 the writes of a run of `writeAll` that stops, each of which offers the bytes of the output line
 that the writes before it did not take, with at most one rejected exit at their end.
 `withOpen_stops` gives the events of a bracket that stops, which write nothing to standard output.
-`LinesSoFar` carries the opens, the use of descriptors, and `ChecksSoFar` through the loop of
-`checkLines` (`step_stops`, `checks_stops`), and `confined_of` and `soFar_of` assemble
+`LinesSoFar` states the opens, the use of descriptors, and `ChecksSoFar` after each pass of the
+loop of `checkLines` (`step_stops`, `checks_stops`), and `confined_of` and `soFar_of` assemble
 `ConfinedSoFar` and `VerdictsSoFar` from the run of `args`, the `ManifestRun`, and the checks of
 the lines that follow it.  A run that stops after `main` returned has the events of `Meets`, whose
 `Checks` give `ChecksSoFar` (`Checks.soFar`, `verdicts_of_meets`).
 
 ## Memory
 
+| Theorem | Statement |
+|---|---|
+| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)). |
+
 The command holds the block of `args`, the read buffer of 65,536 bytes, the manifest's buffer of
 the size that `fd_filestat_get` reports, the positions that `parse` gives, and for each line the
 name's copy, the output line of `render`, and the eight words that `finish` packs.  The reads of a
-file and of the manifest fill windows of the buffers that their loops carry by moves, so no read
+file and of the manifest fill windows of the buffers that their loops keep in their states and move, so no read
 copies a byte beyond what the host writes into the window, and the memory does not depend on the
 sizes of the files checked.  The resource model credits no release, so its charge sums the blocks
 of every line.
@@ -235,44 +238,53 @@ host's resolution for the rest, which no theorem of the repository states for Li
 driver's runs show Wasmtime 44 refusing a name with `..` that leaves the directory, an absolute
 name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -c` reads.
 
-## Building and testing
+## Building, running, and testing
 
 ```sh
-sha256sum -c Demos/ManifestCheck/spec.sha256
-tools/leanrun --timeout 60m lake build Demos.ManifestCheck.Compiled
+tests/manifest-check/run.sh
+build/tools/leanexe-wasmtime-host --dir build/manifest-check/dir --arg check --arg good.sha256 \
+  run build/manifest-check/command.wasm
 tests/verified/run.sh --cases manifestCheck
-tools/leanrun --timeout 10m lake env lean Demos/ManifestCheck/File.lean
 tests/native/verified.sh --module manifestCheck
 tests/baremetal/verified.sh --module manifestCheck
-tools/leanrun --timeout 60m lake build Demos.ManifestCheck.CommandStart
-tests/manifest-check/run.sh
 ```
 
-The first command checks that the specification and the samples are the reviewed ones.
+[The demo's driver](../../tests/manifest-check/run.sh) checks the hashes of the reviewed
+specification and samples, builds the demo's modules, elaborates [the theorem
+statements](../../tests/manifest-check/Axioms.lean), which requires that each theorem use only the
+three axioms, emits and validates the command's module, and runs it in the Wasmtime host over a
+preopened test directory.  It compares each output line with the verdict of GNU `sha256sum -c` on
+the same manifest, which reads every name that the manifest lists, and requires FAILED for each
+name that leaves the directory.  The runs cover matching files, a changed file, a missing file, an
+empty file, a file of 5 MiB and 17 bytes that takes 81 reads, a name with spaces, a binary-mode
+line, links inside and outside the directory, names with `..` inside and outside it, an absolute
+name, a malformed and an empty manifest, no argument and two arguments, a missing manifest and one
+outside the directory, and a standard output on `/dev/full`.  No run writes to stderr.  The driver
+prints `manifest check axiom check passed for 23 theorems` and
+`manifest check: 9 runs passed, 13 verdicts agree with sha256sum -c`.
+
+The second command runs the module on the manifest `good.sha256` of the driver's test directory,
+after the driver has written both.  It writes `a.txt: OK`, `empty: OK`, `name with spaces: OK`,
+`big.bin: OK`, `sub/../a.txt: OK`, and `inside-link: OK`, one to a line, and exits with status 0.
+The manifest's last line has no final newline, and its `big.bin` line is in binary mode.
+
 [The verified driver](../../tests/verified/run.sh) runs the 99 samples of [the verified
 cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and each case
 requires the blocks that stay allocated after the call: the manifest's and the result's for
-`parse`, the manifest's for `hexMatches`, and the name's and the result's for `render`.  [The file
-theorems](File.lean) state that `build/verified/manifestCheck.wasm`, which the driver writes, holds
-the module.  The native driver runs the same cases on the module's translation to C, compiled with
-CompCert, and the bare-metal driver on that translation under QEMU without an operating system.
-
-[The command's driver](../../tests/manifest-check/run.sh) elaborates [the theorem
-statements](../../tests/manifest-check/Axioms.lean) and checks their axioms, emits and validates
-the module, and runs it in the Wasmtime host over a preopened test directory.  It compares each
-output line with the verdict of GNU `sha256sum -c` on the same manifest, which reads every name
-that the manifest lists, and requires FAILED for each name that leaves the directory.  The runs
-cover matching files, a changed file, a missing file, an empty file, a file of 5 MiB and 17 bytes
-read in 81 chunks, a name with spaces, a binary-mode line, links inside and outside the directory,
-names with `..` inside and outside it, an absolute name, a malformed and an empty manifest, no
-argument and two arguments, a missing manifest and one outside the directory, and a standard
-output on `/dev/full`.
+`parse`, the manifest's for `hexMatches`, and the name's and the result's for `render`.  It checks
+[the file theorems](File.lean), which state that `build/verified/manifestCheck.wasm`, which it
+writes, holds the module.  The native driver runs the same cases on the module's translation to C,
+compiled with CompCert, and the bare-metal driver on that translation under QEMU without an
+operating system.
 
 ## Related examples
 
 [The random-residue histogram](../RandomHistogram/README.md) is a run of the same method on a
-parser of the command line, and [the SHA-256 guide](../../Library/Hashing/Sha256/README.md) states
-the library's theorems.
+parser of the command line, and [the unbiased random choice](../RandomChoice/README.md) keeps its
+buffers in its loop's state in the same way.  [The SHA-256
+guide](../../Library/Hashing/Sha256/README.md) states the library's theorems, and [the files
+command](../../Verified/Examples/WasiFiles.lean) opens, reads, and writes files under the
+preopened directory with `withOpen`.
 
 ## References
 

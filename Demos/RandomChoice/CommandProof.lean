@@ -14,7 +14,8 @@ picks of the reply's accepted words, at most the values that remain, which `pass
 `putPicks_eq`, and the window of the output buffer from position 0 that the count of bytes names
 holds those lines.  The loop of `writeAll` makes the
 writes of `Writes` (`writes_of_run`), and the loop of `main` makes the passes of `Rounds`
-(`draw_loop`).  `Rounds.output` gives the bytes written by passes that end with status 0,
+(`draw_loop`), or, when it traps under a host that rejects no exit status below 126, a trapped
+`random_get` or write.  `Rounds.output` gives the bytes written by passes that end with status 0,
 `renderSpec` of the first K picks of the accepted words that they drew, and `Rounds.cap` the words
 of passes that reach the cap.  `cap_count` bounds the part of the word sequences of the cap's passes
 that hold fewer than K accepted words, from `short_count`, since `512 · (K / 128 + 3) ≥ 4 K + 1024`.
@@ -397,7 +398,9 @@ theorem loop_stopped {World : Type} {host : Host World}
 /-- The loop of `main` from `r` values to choose, with a draw buffer of 4,096 bytes and an output
 buffer of 10,752 bytes, makes the passes of `Rounds`.  When it returns, the status that `main`
 gives its final state is the passes' status.  When it exits, it exits with the status that
-`Rounds` gives the events before the exit. -/
+`Rounds` gives the events before the exit.  When it traps under a host that rejects no exit
+status below 126, its events hold a trapped `random_get` of 4,096 bytes or a trapped write to
+standard output. -/
 theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
     {test : UInt64 → ChooseState → Bool} {step : UInt64 → ChooseState → Action ChooseState}
     (tested : ∀ i s, test i s = (s.1 != 0 && s.2.1 == 0)) (stepped : ChooseStep n step) :
@@ -407,12 +410,17 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
       LoopExec host remaining index (r, 0, draw, out) test step .pure world trace outcome final →
       (∀ s, outcome = .returned s → ∃ bytes, Rounds n r remaining trace bytes (finalStatus s)) ∧
       (∀ c, outcome = .exited c → ∃ events bytes, trace = events ++ [.exit c] ∧
-        Rounds n r remaining events bytes c)
+        Rounds n r remaining events bytes c) ∧
+      ((∀ {world code message final}, host.exitTrap world code message final →
+          126 ≤ code.toNat) →
+        ∀ m, outcome = .trapped m → ∃ e ∈ trace,
+          (∃ committed, e = .sys .randomGet [.space 4096] (.trapped m committed)) ∨
+            ∃ offered committed, e = .write .stdout offered (.trapped m committed))
   | 0, _, r, draw, out, _, _, _, _, _, _, run => by
     cases run with
     | zero next =>
       obtain ⟨rfl, rfl⟩ := RandomHistogram.exec_pure next
-      refine ⟨fun s h => ?_, fun _ h => (nomatch h)⟩
+      refine ⟨fun s h => ?_, fun _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
       cases h
       by_cases hr : r = 0
       · subst hr
@@ -428,10 +436,50 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
       obtain ⟨rfl, rfl⟩ := RandomHistogram.exec_pure next
       have hr : r = 0 := by simpa [tested] using test
       subst hr
-      refine ⟨fun s h => ?_, fun _ h => (nomatch h)⟩
+      refine ⟨fun s h => ?_, fun _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
       cases h
       exact ⟨[], .done⟩
-    | trap _ _ => exact ⟨fun _ h => (nomatch h), fun _ h => (nomatch h)⟩
+    | trap _ step =>
+      refine ⟨fun _ h => (nomatch h), fun _ h => (nomatch h), fun accepts m h => ?_⟩
+      cases h
+      rw [stepped] at step
+      change Exec host (.sys .randomGet [.space (draw.windowLength 0 4096)] _) _ _ _ _ at step
+      rw [hWindow] at step
+      cases step with
+      | sys_reject fits => exact absurd random_accepted fits
+      | sys_trap => exact ⟨_, List.mem_singleton_self _, .inl ⟨_, rfl⟩⟩
+      | @sys_return _ _ _ _ _ _ _ _ _ errno committed _ permitted next =>
+        have shape : committed.map (·.data.size) = [4096] := (host.sys_bound permitted).1
+        by_cases zero : errno = 0
+        · subst zero
+          rcases committed with _ | ⟨bytes, _ | ⟨_, _⟩⟩ <;> simp at shape
+          have hFill : passFill (r, 0, draw, out) (sysReply 0 [bytes]) =
+              ⟨0, 4096, draw.splice 0 bytes⟩ := by
+            simp [passFill, FillResult.of, sysReply, Reply.bytes, Bytes.window, hWindow]
+          beta_reduce at next
+          rw [hFill] at next
+          simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
+          obtain ⟨hsize', -⟩ := pass_put n r hout hdraw shape
+          generalize putPicks out n (draw.splice 0 bytes) r = put at hsize' next
+          obtain ⟨_, wtrace, woutcome, ktrace, wrun, krun, rfl⟩ := Exec.unbind _ next
+          cases woutcome with
+          | returned w =>
+            change Exec host (if w < put.2.1 then .pure _ else .pure _) _ ktrace _ _ at krun
+            split at krun <;> cases krun
+          | exited c =>
+            obtain ⟨-, h, -⟩ := krun
+            cases h
+          | trapped m' =>
+            obtain ⟨rfl, h, -⟩ := krun
+            cases h
+            obtain ⟨offered, committed, member⟩ :=
+              (writeAll_run (by omega) wrun).trapped_write accepts _ rfl
+            exact ⟨_, List.mem_cons_of_mem _ (List.mem_append_left _ member), .inr ⟨_, _, rfl⟩⟩
+        · have hErrno : (passFill (r, 0, draw, out) (sysReply errno committed)).errno = errno := by
+            simp [passFill, FillResult.of, sysReply, zero]
+          beta_reduce at next
+          rw [ite_eq_left (by simp [hErrno, zero])] at next
+          cases next
     | next test step rest =>
       have hr : r ≠ 0 := by simpa [tested] using test
       rw [stepped] at step
@@ -480,7 +528,7 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
             cases hs
             rw [ite_eq_left hstall] at writes
             obtain ⟨rfl, rfl⟩ := loop_stopped tested (r, 78, _, put.1) (by simp) rest
-            refine ⟨fun s h => ?_, fun _ h => (nomatch h)⟩
+            refine ⟨fun s h => ?_, fun _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
             cases h
             have hs : finalStatus (r, 78, draw.splice 0 bytes, put.1) = stalledStatus := rfl
             rw [hs]
@@ -491,13 +539,15 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
             cases hs
             rw [ite_eq_right hstall] at writes
             rw [hpicks] at rest
-            obtain ⟨returned, exited⟩ :=
+            obtain ⟨returned, exited, trapped⟩ :=
               draw_loop tested stepped remaining (index + 1) _ _ _ hsplice hsize' rest
-            refine ⟨fun s h => ?_, fun c h => ?_⟩
+            refine ⟨fun s h => ?_, fun c h => ?_, fun accepts m h => ?_⟩
             · obtain ⟨bytes', rounds⟩ := returned s h
               exact ⟨_, by simpa using Rounds.drew hr shape writes rounds⟩
             · obtain ⟨events, bytes', rfl, rounds⟩ := exited c h
               exact ⟨_, _, by simp, Rounds.drew hr shape writes rounds⟩
+            · obtain ⟨e, member, kind⟩ := trapped accepts m h
+              exact ⟨e, List.mem_append_right _ member, kind⟩
         · have hErrno : (passFill (r, 0, draw, out) (sysReply errno committed)).errno = errno := by
             simp [passFill, FillResult.of, sysReply, zero]
           beta_reduce at next
@@ -506,7 +556,7 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
           cases hs
           rw [hErrno] at rest
           obtain ⟨rfl, rfl⟩ := loop_stopped tested (r, errno, _, out) (by simp [zero]) rest
-          refine ⟨fun s h => ?_, fun _ h => (nomatch h)⟩
+          refine ⟨fun s h => ?_, fun _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
           cases h
           have hs : finalStatus (r, errno, (passFill (r, 0, draw, out) (sysReply errno committed)).buffer,
               out) = errno := by simp [finalStatus, zero]
@@ -548,7 +598,7 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
             obtain ⟨rfl, h, -⟩ := krun
             cases h
             obtain ⟨events, rfl, hc, writes⟩ := wfacts.2 _ rfl
-            refine ⟨fun _ h => (nomatch h), fun c h => ?_⟩
+            refine ⟨fun _ h => (nomatch h), fun c h => ?_, fun _ _ h => (nomatch h)⟩
             cases h
             exact ⟨_, bytes.data.data.toList, by simp,
               Rounds.writeEnded (p := remaining) hr shape writes hc⟩
@@ -632,7 +682,7 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
         | loop loopRun =>
         have hpasses : (k / 128 + 3).toNat = (passes k).toNat := rfl
         rw [hpasses] at loopRun
-        obtain ⟨loopReturned, loopExited⟩ := draw_loop (n := n) (fun _ _ => rfl) (fun _ _ => rfl)
+        obtain ⟨loopReturned, loopExited, -⟩ := draw_loop (n := n) (fun _ _ => rfl) (fun _ _ => rfl)
           _ 0 k _ _ (by simp) (by simp) loopRun
         cases drawn with
         | exited c =>
