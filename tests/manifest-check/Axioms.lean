@@ -1,3 +1,4 @@
+import Demos.ManifestCheck.Budget
 import Demos.ManifestCheck.Compiled
 import Demos.ManifestCheck.CommandStart
 
@@ -48,6 +49,9 @@ elab "check_manifest_check_axioms" : command => do
     ``Demos.ManifestCheck.render_bound,
     ``Demos.ManifestCheck.exec_main,
     ``Demos.ManifestCheck.total_meets,
+    ``Demos.ManifestCheck.body_bounded,
+    ``Demos.ManifestCheck.prefix_bound,
+    ``Demos.ManifestCheck.total_meets_budget,
     ``Demos.ManifestCheck.command.start,
     ``Demos.ManifestCheck.command.validity,
     ``Demos.ManifestCheck.command.bytes,
