@@ -13,8 +13,8 @@ test `v < 1844674407370955161 ∨ (v = 1844674407370955161 ∧ d ≤ 5)` decides
 since `2^64 - 1 = 10 · 1844674407370955161 + 5`.
 
 `histogram` folds `countWord` over the words from ten zero counts, and `tally`, the running
-histogram of the WASI command, folds `countWord` over the little-endian words of a buffer, which
-`wordAt` reads by Horner's rule.  `render` pushes the decimal digits of each of the ten counts and
+histogram of the WASI command, folds `countWord` over the first `count` little-endian words of a
+buffer, which `wordAt` reads by Horner's rule.  `render` pushes the decimal digits of each of the ten counts and
 a newline onto an array of bytes, one to a word, with the library's `digitCount` and `digitByte`,
 and builds the output buffer from that array. -/
 
@@ -54,9 +54,9 @@ the most significant byte, `p + 7`. -/
 def wordAt (bytes : Bytes) (p : UInt64) : UInt64 :=
   LeanExe.loop 8 0 fun t w => 256 * w + bytes.get (p + 7 - t)
 
-/-- `counts` with the residues of the little-endian words of `bytes` counted. -/
-def tally (counts : Array UInt64) (bytes : Bytes) : Array UInt64 :=
-  LeanExe.loop (bytes.size / 8) counts fun j c => countWord c (wordAt bytes (8 * j))
+/-- `counts` with the residues of the first `count` little-endian words of `bytes` counted. -/
+def tally (counts : Array UInt64) (bytes : Bytes) (count : UInt64) : Array UInt64 :=
+  LeanExe.loop count counts fun j c => countWord c (wordAt bytes (8 * j))
 
 /-- `text` followed by the decimal digits of `c` and a newline, one byte to a word. -/
 def appendLine (text : Array UInt64) (c : UInt64) : Array UInt64 :=

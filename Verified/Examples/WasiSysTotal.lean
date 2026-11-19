@@ -11,12 +11,12 @@ every world, when the host does not trap along `main` and its exit (`total_of_bo
 theorem discharges the heap, budget, and memory premises of the generated `command.total`.
 
 The budget bounds the heap that `main` allocates (`body_bounded`).  The reflected body splits the
-results of `args` and of `randomGet 16` into their components where `main` binds them, so no later
+results of `args` and of `randomGet` into their components where `main` binds them, so no later
 expression copies them, and the charge of `main` holds the block of `args`, which the reporter's
-reply asks for, the four results of `wordBytes`, and the buffer of `randomGet 16`.  A returned
-`args` result holds at most `limit` bytes (`args_bytes_le`), and a returned `randomGet 16` result
-at most 16 (`random_bytes_le`).  With the literal pool's 4,096 bytes, the budget fits 65,535 pages
-exactly when `limit` is at most 4,294,897,328 (`initial_within`). -/
+reply asks for, the four results of `wordBytes`, and the buffer of 16 bytes that `main` builds for
+`randomGet`, which the call fills in place and charges nothing.  A returned `args` result holds at
+most `limit` bytes (`args_bytes_le`).  With the literal pool's 4,096 bytes, the budget fits 65,535
+pages exactly when `limit` is at most 4,294,897,328 (`initial_within`). -/
 
 namespace Verified.Examples.WasiSys
 
@@ -25,7 +25,7 @@ open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime Verified Verifie
 
 /-- A bound on the heap that `main` allocates when the reporter's replies ask for blocks of at
 most `limit` bytes: the block of `args`, at most `Bytes.allocationCost limit`, the four results of
-`wordBytes` (56 bytes each), and the buffer of `randomGet 16` (64 bytes). -/
+`wordBytes` (56 bytes each), and the buffer of 16 bytes for `randomGet` (64 bytes). -/
 def budget (limit : Nat) : Nat := Bytes.allocationCost limit + 288
 
 open Lean Meta in
@@ -81,8 +81,8 @@ theorem args_bytes_le {World : Type} {host : Host World} {limit : Nat}
         reportedSize outputs ≤ limit)
     {values : List UInt64} {world final : World} {trace : List Event}
     {value : UInt64 × UInt64 × UInt64 × LeanExe.Bytes}
-    (run : Exec host (SysForm.reported.run Call.argsGet values) world trace (.returned value)
-      final) :
+    (run : Exec host (SysForm.reported.runWith Call.argsGet values [] []) world trace
+      (.returned value) final) :
     value.2.2.2.data.size ≤ limit := by
   obtain ⟨errno, sizes, middle, rest, reporter, next⟩ := exec_sys_returned run rfl
   split at next
@@ -119,24 +119,6 @@ theorem args_bytes_le {World : Type} {host : Host World} {limit : Nat}
     List.getElem?_cons_zero, Option.getD_some]
   omega
 
-/-- A returned `randomGet 16` result holds at most 16 bytes, the capacity of its output. -/
-theorem random_bytes_le {World : Type} {host : Host World} {world final : World}
-    {trace : List Event} {value : UInt64 × LeanExe.Bytes}
-    (run : Exec host ((SysForm.flat 0 true).runWith Call.randomGet [16] []) world trace
-      (.returned value) final) :
-    value.2.data.size ≤ 16 := by
-  obtain ⟨errno, committed, after, rest, permitted, next⟩ := exec_sys_returned run rfl
-  rw [exec_pure_value next]
-  have shape : committed.map (·.data.size) = [16] := (host.sys_bound permitted).1
-  change ((sysReply errno committed).bytes 0).data.size ≤ 16
-  rcases committed with _ | ⟨buffer, _ | ⟨_, _⟩⟩ <;> simp at shape
-  by_cases zero : errno = 0
-  · subst zero
-    simp [sysReply, Reply.bytes, shape]
-  · have empty : (sysReply errno [buffer]).outputs = [] := ite_eq_right zero
-    simp only [Reply.bytes, empty, List.getElem?_nil, Option.getD_none]
-    exact Nat.zero_le _
-
 /-- What a run of a command with outcome `outcome` implies, for the forms whose results the charge
 of `main` reads: a `ret` returns the value of its expression, a `sys` command ends as a run of its
 action, and a `bind` that returns has a first command that returns and a second command that
@@ -147,9 +129,9 @@ private def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List E
     {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
       Env context → Outcome result.denote → Prop
   | _, _, .ret value, env, .returned returned => returned = value.denote pure.funs env
-  | _, _, .sys operation form args inputs, env, outcome => ∃ world trace final,
-      Exec host (form.runWith operation (args.map env.get) (inputs.map env.get)) world trace
-        outcome final
+  | _, _, .sys operation form args inputs buffers, env, outcome => ∃ world trace final,
+      Exec host (form.runWith operation (args.map env.get) (inputs.map env.get)
+        (buffers.map env.get)) world trace outcome final
   | _, _, .bind (intermediate := intermediate) first next, env, outcome => ∀ returned,
       outcome = .returned returned → ∃ value,
         Returns host pure program depth modes (bindLive intermediate next live) first env value ∧
@@ -192,17 +174,12 @@ private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total 
     (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
   cases decision <;> exact bound
 
-/-- The charge of `randomGet` on the capacity 16. -/
-private theorem random_charge {values : List UInt64} (sixteen : values = [16])
-    (trace : List Event) : sysCostWith (.flat 0 true) Call.randomGet values [] trace ≤ 64 := by
-  subst sixteen
-  simp [sysCostWith, flatCapacityWith, Call.randomGet, readCost, Bytes.allocationCost]
-
 /-- Proves a bound on the charge of an expression: evaluates its liveness tests, reads its
 variables, and leaves the copies to `omega`. -/
 local macro "charge" : tactic => `(tactic|
   (simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
       Expr.mode, coerceCost, Ty.copyCost, envGet, letPairEnv, letPairModes, modeAt, Expr.denote,
+      sysTakeLive,
       Args.get_cons_zero', argsSum,
       callCredits, wordBytes_charge, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
    omega))
@@ -228,6 +205,22 @@ local macro "flat_bound" : tactic => `(tactic|
    intro _ _ rule
    exact rule (fun _ _ _ _ _ => Nat.zero_le _) (fun _ _ _ _ _ => Nat.zero_le _)))
 
+/-- Proves `Bounded` of a `sys` command whose call charges nothing and whose take moves its
+buffer or has none. -/
+local macro "sys_bound" : tactic => `(tactic|
+  (apply bounded_of_rule
+   intro _ _ rule
+   exact rule (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)
+     (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)))
+
+/-- Proves `Bounded` of a command of `bind`s, `ret`s, and `sys` commands that charge nothing. -/
+local macro "free_bound" : tactic => `(tactic|
+  (repeat (first
+    | (apply bounded_of_rule; intro _ _ rule; refine rule 0 0 (by omega) ?_ ?_)
+    | (intro _ _)
+    | ret_bound
+    | sys_bound)))
+
 /-- Reduces `Bounded` of a `bind` to its parts with the budgets `first` and `next`. -/
 local macro "bind_bound " first:term:max next:term:max : tactic => `(tactic|
   (apply bounded_of_rule
@@ -248,6 +241,7 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
     Bounded (observedHost host) (.ofProg command.pure.program command.pure.funs) .nil 0 []
       (fun _ => false) command.main.func.body .nil (budget limit) := by
   have reported := reported_rule_observed (host := host) (call := Call.argsGet) (values := [])
+    (inputs := []) (buffers := [])
     bound (Nat.le_refl (Bytes.allocationCost limit))
   unfold budget
   bind_bound (Bytes.allocationCost limit) 288
@@ -314,17 +308,12 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
       write_bound
   intro _ _
   bind_bound 64 0
-  · bind_bound 0 64
+  · bind_bound 64 0
     · ret_bound
-    · intro capacity returned
-      have sixteen : capacity = (16 : UInt64) := returns_fact returned
-      subst sixteen
-      apply bounded_of_rule
-      intro _ _ rule
-      exact rule (fun _ trace _ _ _ => random_charge rfl trace)
-        (fun _ trace _ _ _ => random_charge rfl trace)
+    · intro _ _
+      free_bound
   intro random _
-  obtain ⟨_, randomBytes⟩ := random
+  obtain ⟨_, _, randomBuffer⟩ := random
   letPair_free
   ite_bound 0
   · ret_bound

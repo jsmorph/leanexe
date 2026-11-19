@@ -3,10 +3,12 @@ import Verified.Wasi
 import LeanExe.Wasi.WriteAll
 
 /-! The WASI command of the random-residue histogram.  `main` reads the arguments with `args` and N
-from them with `parseN`.  It then draws N words with `randomGet`, at most 512 words, 4,096 bytes, a
-call, and counts their residues into a running histogram with `tally`.  The loop's state is the
-counts, the words still to draw, and the errno of a failed call, and the loop's count, `N / 512 + 1`,
-exceeds the number of calls it needs.  Last, `main` writes `render` of the counts to stdout with
+from them with `parseN`.  It then draws N words with `randomGet` into a buffer of 4,096 bytes, at
+most 512 words a call from the buffer's start, and counts the residues of each call's words into a
+running histogram with `tally`.  The loop's state is the counts, the buffer, the words still to
+draw, and the errno of a failed call, and the loop's count, `N / 512 + 1`, exceeds the number of
+calls it needs.  The loop allocates the buffer once, before its first pass, and each call fills it
+in place.  Last, `main` writes `render` of the counts to stdout with
 `writeAll` of `LeanExe/Wasi/WriteAll.lean`, which follows a short write with a write of the bytes
 that remain and exits with the errno of a write that fails.
 
@@ -28,16 +30,18 @@ def main : Action UInt64 := do
     if n == 0 then
       pure 2
     else
-      let drawn ← Wasi.loop (n / 512 + 1) (LeanExe.build 10 fun _ => (0 : UInt64), n, (0 : UInt64))
-          (fun _ state => state.2.1 != 0) fun _ state => do
-        let count := min state.2.1 512
-        let random ← randomGet (8 * count)
+      let drawn ← Wasi.loop (n / 512 + 1)
+          (LeanExe.build 10 fun _ => (0 : UInt64), Bytes.build 4096 fun _ => 0, n, (0 : UInt64))
+          (fun _ state => state.2.2.1 != 0) fun _ state => do
+        let count := min state.2.2.1 512
+        let random ← randomGet state.2.1 0 (8 * count)
         if random.errno != 0 then
-          pure (state.1, (0 : UInt64), random.errno)
+          pure (state.1, random.buffer, (0 : UInt64), random.errno)
         else
-          pure (tally state.1 random.bytes, state.2.1 - count, (0 : UInt64))
-      if drawn.2.2 != 0 then
-        pure drawn.2.2
+          pure (tally state.1 random.buffer count, random.buffer, state.2.2.1 - count,
+            (0 : UInt64))
+      if drawn.2.2.2 != 0 then
+        pure drawn.2.2.2
       else
         let output := render drawn.1
         let written ← writeAll output

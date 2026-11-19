@@ -27,11 +27,10 @@ trace of an `Exec` run that ends at an accepted exit, whose status X0 holds, at 
 shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a `Prefix` run of the
 action, with X0 at 2.
 
-`histogram_elf_counts` is the corollary for the file, for every reply sequence, from arguments
-whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
-Linux requires of every process, and whose N is at most `drawLimit`, the largest N for which
-`budget`, the bound of `body_bounded` at arguments of `argsLimit` bytes, fits the executable's
-4,096 pages.  When every `getrandom` of the trace returned the count that it asked for and every
+`histogram_elf_counts` is the corollary for the file, for every reply sequence and every N, from
+arguments whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit`
+bytes, as Linux requires of every process.  `budget`, the bound of `body_bounded` at arguments of
+`argsLimit` bytes, fits the executable's 4,096 pages.  When every `getrandom` of the trace returned the count that it asked for and every
 `write` returned an error number or at most the count that it offered (`Full`), X0 and the trace
 meet `Counts`.  `histogram_elf_runs` gives the run from `linux_footprint_bounded`, the footprint
 without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_counts` gives the status
@@ -132,7 +131,6 @@ WASI events `T` of an `Exec` run of the command's action that ends at an accepte
 status X0 holds, at an exit that the shim rejects, or at a trap of the shim. -/
 theorem histogram_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
-    (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)
     (hl : ElfLoaded (byteAt histogramElfBytes) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -166,8 +164,8 @@ theorem histogram_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (
         rw [hsu] at h
         cases h
         rw [hR]
-        exact linux_footprint_bounded arm64Flags _ ⟨args, environ, false⟩ R small drawn
-          (by decide) budget_fits)
+        exact linux_footprint_bounded arm64Flags _ ⟨args, environ, false⟩ R small (by decide)
+          budget_fits)
       hl hstack hpc htr
   rw [hsu] at hq
   obtain ⟨T, ls, w, trq, himg, hcar, -, hend⟩ := hq
@@ -182,8 +180,8 @@ theorem histogram_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (
 
 /-- The random histogram's corollary for `histogram.elf`.  For every reply sequence `R`, a process
 started as for `histogram_elf` with arguments whose strings, each with its zero byte, and
-eight-byte pointers take at most `argsLimit` bytes, 6 MiB, and whose N is at most `drawLimit`,
-32,378,879, reaches `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  Its
+eight-byte pointers take at most `argsLimit` bytes, 6 MiB, reaches `SVC #0` with X8 at 94,
+`exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
 `getrandom` of `ls` returned the count that it asked for and every `write` an error number or at
 most the count that it offered (`Full`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the
@@ -197,7 +195,6 @@ each of the loop's passes, each of which returned at most its count, or the errn
 number that the last `write` returned, every `write` before which returned at most its count. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
-    (drawn : (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit)
     (hl : ElfLoaded (byteAt histogramElfBytes) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -208,7 +205,7 @@ theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List
       ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
         (Full ls → Counts args ls (q.core.x 0)) := by
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    histogram_elf_runs R p small drawn hl hstack hpc htr
+    histogram_elf_runs R p small hl hstack hpc htr
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun full => ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg full
@@ -297,7 +294,6 @@ theorem histogram_elf_witness :
     ∃ (R : Linux.Replies) (p : Proc) (args environ : List (List UInt8)) (top : UInt64),
       parseSpec (bytesOfList (stringsBytes args)) = 1 ∧
       stringsSize args + 8 * args.length ≤ argsLimit ∧
-      (parseSpec (bytesOfList (stringsBytes args))).toNat ≤ drawLimit ∧
       ElfLoaded (byteAt histogramElfBytes) p.core.mem ∧
       InitialStack args environ p.core.sp top p.core.mem ∧ p.core.pc = wasiEntry ∧
       p.trace = [] ∧
@@ -309,13 +305,10 @@ theorem histogram_elf_witness :
           Counts args ls (q.core.x 0) ∧ q.core.x 0 = 0 := by
   have parsed : parseSpec (bytesOfList (stringsBytes oneArgs)) = 1 := by decide
   have small : stringsSize oneArgs + 8 * oneArgs.length ≤ argsLimit := by decide
-  have drawn : (parseSpec (bytesOfList (stringsBytes oneArgs))).toNat ≤ drawLimit := by
-    rw [parsed]
-    decide
-  refine ⟨fullReplies, witnessProc, oneArgs, [], witnessTop, parsed, small, drawn,
+  refine ⟨fullReplies, witnessProc, oneArgs, [], witnessTop, parsed, small,
     witness_loaded, witness_stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    histogram_elf_runs fullReplies witnessProc small drawn witness_loaded witness_stack rfl rfl
+    histogram_elf_runs fullReplies witnessProc small witness_loaded witness_stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨exited, full⟩ := fullReplies_run h himg hcar

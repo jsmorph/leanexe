@@ -141,7 +141,7 @@ theorem loop_trapped {World : Type} {host : Host World} {test : UInt64 → DrawS
     | trap _ step =>
       rw [stepped] at step
       cases step with
-      | sys_reject fits => exact absurd (randomGet_accepted _) fits
+      | sys_reject fits => exact absurd (randomGet_window_accepted _ _) fits
       | sys_trap => exact ⟨_, List.mem_singleton_self _, .inr (.inr rfl)⟩
       | sys_return _ _ next =>
         beta_reduce at next
@@ -180,7 +180,7 @@ theorem main_trapped {World : Type} {host : Host World}
       obtain ⟨e, member, trapped⟩ := loop_trapped (fun _ _ => rfl) _ _ _ loopRun
       exact ⟨e, List.mem_append_right _ (List.mem_append_left _ member), trapped⟩
     | returned s =>
-      change Exec host (if s.2.2 != 0 then Action.pure s.2.2 else _) loopAfter post _ final
+      change Exec host (if s.2.2.2 != 0 then Action.pure s.2.2.2 else _) loopAfter post _ final
         at cont2
       split at cont2
       · cases cont2
@@ -719,12 +719,23 @@ theorem random_one {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List 
     rw [filled]
     rfl
 
-/-- The output of the run with N of 1 under `fullReplies`: `render` of the counts of the word
-that its 8 zero bytes hold is `oneOutput`. -/
-theorem one_rendered :
-    render (tally (LeanExe.build 10 fun _ => 0) (bytesOfList (List.replicate 8 0))) =
-      oneOutput := by
-  rw [tally_eq _ _ (by decide)]
+/-- The loop's buffer after the one call of the run with N of 1 under `fullReplies`: 4,096 zero
+bytes with the reply's 8 zero bytes at its start. -/
+def oneBuffer : LeanExe.Bytes :=
+  (Bytes.build 4096 fun _ => 0).splice 0 (bytesOfList (List.replicate 8 0))
+
+/-- The output of the run with N of 1 under `fullReplies`: `render` of the counts of the word that
+the first 8 bytes of `oneBuffer` hold is `oneOutput`. -/
+theorem one_rendered : render (tally (LeanExe.build 10 fun _ => 0) oneBuffer 1) = oneOutput := by
+  have size : (bytesOfList (List.replicate 8 0)).data.size = 8 := by
+    rw [bytesOfList_size]
+    rfl
+  have big : oneBuffer.data.size = 4096 := (Bytes.splice_size (by simp [size])).trans (by simp)
+  rw [tally_eq _ _ _ (by rw [big]; decide) (by rw [big]; decide)]
+  have hTake : 8 * (1 : UInt64).toNat = (bytesOfList (List.replicate 8 0)).data.size := by
+    rw [size]
+    rfl
+  rw [hTake, oneBuffer, splice_take (by simp [size])]
   have zero : words (bytesOfList (List.replicate 8 0)).data.data.toList = [0] := by decide
   rw [zero, ← histogram_list, histogram_eq, render_eq]
   rfl
@@ -776,7 +787,9 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
   | stop test _ => simp at test
   | exit _ step => exact (step_not_exited (i := UInt64.ofNat 0) (fun _ _ => rfl) step).elim
   | trap _ step =>
-    change Exec _ (.sys .randomGet [.space (8 * min (1 : UInt64) 512)] _) _ _ _ _ at step
+    change Exec _ (.sys .randomGet [.space ((Bytes.build 4096 fun _ => (0 : UInt64)).windowLength 0
+      (8 * min (1 : UInt64) 512))] _) _ _ _ _ at step
+    rw [window_draw (by simp) 1] at step
     cases step with
     | sys_reject fits => exact absurd (randomGet_accepted 1) fits
     | sys_trap _ _ =>
@@ -789,7 +802,9 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
       simp only [Action.bind] at next
       split at next <;> cases next
   | next _ step rest =>
-    change Exec _ (.sys .randomGet [.space (8 * min (1 : UInt64) 512)] _) _ _ _ _ at step
+    change Exec _ (.sys .randomGet [.space ((Bytes.build 4096 fun _ => (0 : UInt64)).windowLength 0
+      (8 * min (1 : UInt64) 512))] _) _ _ _ _ at step
+    rw [window_draw (by simp) 1] at step
     cases step with
     | sys_reject fits => exact absurd (randomGet_accepted 1) fits
     | @sys_return _ _ _ _ _ _ _ _ _ errno committed _ _ next =>
@@ -798,8 +813,25 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
     obtain ⟨⟨e0, rfl, drawCall, drawFull⟩, answered⟩ :=
       random_one image (by rw [List.append_assoc] at carried'; exact carried')
     obtain ⟨rfl, rfl⟩ := Transfer.returned.inj answered
-    change Exec _ (Action.pure (tally (LeanExe.build 10 fun _ => (0 : UInt64))
-      (bytesOfList (List.replicate 8 0)), (1 : UInt64) - min 1 512, (0 : UInt64))) _ _ _ _ at next
+    have fillErrno : ∀ (buffer bytes : LeanExe.Bytes) (start count used : UInt64),
+        (FillResult.of buffer start count (sysReply 0 [bytes]).errno used
+          ((sysReply 0 [bytes]).bytes 0)).errno = 0 := by
+      intro buffer bytes start count used
+      simp [FillResult.of, sysReply]
+    have fillBuffer : ∀ (buffer bytes : LeanExe.Bytes) (start count used : UInt64),
+        (FillResult.of buffer start count (sysReply 0 [bytes]).errno used
+          ((sysReply 0 [bytes]).bytes 0)).buffer =
+          buffer.splice (buffer.window start count).1 bytes := by
+      intro buffer bytes start count used
+      simp [FillResult.of, sysReply, Reply.bytes]
+    simp only [Action.bind, fillErrno, fillBuffer, Bytes.window_fst, UInt64.toNat_zero,
+      Nat.zero_min, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
+    rw [show min (1 : UInt64) 512 = 1 by decide,
+      show (Bytes.build 4096 fun _ => (0 : UInt64)).splice 0 (bytesOfList (List.replicate 8 0)) =
+        oneBuffer from rfl] at next
+    generalize hCounts : tally (LeanExe.build 10 fun _ => (0 : UInt64)) oneBuffer 1 = counts
+      at next
+    generalize oneBuffer = buffer at next
     cases next
     cases rest with
     | zero next =>
@@ -807,11 +839,10 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
     obtain rfl := images_nil (show Images F L ⟨oneArgs, environ, granted⟩ _ [] _ from drawRest)
     change Exec _ (if (0 : UInt64) != 0 then _ else _) loopAfter post middle after at cont2
     rw [ite_eq_right (by decide)] at cont2
-    change Exec _ (Action.bind (writeAll (render (tally (LeanExe.build 10 fun _ => (0 : UInt64))
-        (bytesOfList (List.replicate 8 0))))) fun written => Action.pure (if written < (render
-          (tally (LeanExe.build 10 fun _ => (0 : UInt64)) (bytesOfList (List.replicate 8 0)))).size
-        then 77 else 0)) loopAfter post middle after at cont2
-    rw [one_rendered] at cont2
+    change Exec _ (Action.bind (writeAll (render counts)) fun written =>
+        Action.pure (if written < (render counts).size then 77 else 0)) loopAfter post middle after
+      at cont2
+    rw [← hCounts, one_rendered] at cont2
     obtain ⟨writeAfter, writes, written, tail, writeRun, cont3, rfl⟩ :=
       Exec.unbind (writeAll oneOutput) cont2
     obtain ⟨lws, ltl, rfl, writeImages, tailImages⟩ :=

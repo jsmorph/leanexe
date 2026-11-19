@@ -9,9 +9,11 @@ exit status meets the request (`exec_main`): its events are those of `Meets` fol
 
 The proof follows `main`.  A returned `args` result has an errno of at most 76 and a buffer of
 fewer than `2^32` bytes (`args_returned`), so `parseN` computes `parseSpec` on it.  The loop of
-`main` draws the words of `Draws` and holds the counts of their residues (`draw_loop`), since
-`tally` counts the little-endian words of a buffer (`tally_eq`, `wordAt_eq`) and the words of a
-concatenation of whole words are the words of its parts (`words_append`).  The counts are then
+`main` draws the words of `Draws` into the buffer of 4,096 bytes that its state carries and holds
+the counts of their residues (`draw_loop`).  A call that returns errno 0 places the reply's bytes
+at the buffer's start (`splice_take`), `tally` counts the first words of the buffer (`tally_eq`,
+`wordAt_eq`), and the words of a concatenation of whole words are the words of its parts
+(`words_append`).  The counts are then
 `histogram` of the words, so `render` of them is `renderSpec (histogramSpec w)` by `histogram_eq`
 and `render_eq`, at most 210 bytes (`render_size`).  `write_tail` gives the writes of `Written`
 from `WriteAllRun.taken` of `LeanExe/Wasi/WriteAll.lean`: a run of `writeAll` that returns `v`
@@ -103,36 +105,56 @@ theorem wordAt_eq (bytes : Bytes) (p : Nat) (hp : p + 8 ≤ bytes.data.size)
   rw [UInt64.toNat_ofNat_of_lt' hlt]
   exact key.1
 
-/-- `tally` counts the residues of the little-endian words of a buffer. -/
-theorem tally_eq (counts : Array UInt64) (bytes : Bytes) (hs : bytes.data.size < 2 ^ 64) :
-    tally counts bytes = (words bytes.data.data.toList).foldl countWord counts := by
-  have hn : (bytes.size / 8).toNat = bytes.data.size / 8 := by
-    rw [UInt64.toNat_div, Bytes.size_toNat bytes hs]
-    rfl
-  have hlen : (words bytes.data.data.toList).length = bytes.data.size / 8 := by
-    simp [words_length]
-  have key := LeanExe.Dialect.loop_induction (n := bytes.size / 8) (init := counts)
+/-- `tally` counts the residues of the first `count` little-endian words of a buffer. -/
+theorem tally_eq (counts : Array UInt64) (bytes : Bytes) (count : UInt64)
+    (hc : 8 * count.toNat ≤ bytes.data.size) (hs : bytes.data.size < 2 ^ 64) :
+    tally counts bytes count =
+      (words (bytes.data.data.toList.take (8 * count.toNat))).foldl countWord counts := by
+  have hlen : (words (bytes.data.data.toList.take (8 * count.toNat))).length = count.toNat := by
+    simp only [words_length, List.length_take, Array.length_toList, ByteArray.size_data]
+    omega
+  have key := LeanExe.Dialect.loop_induction (n := count) (init := counts)
     (f := fun j c => countWord c (wordAt bytes (8 * j)))
-    (fun k c => c = ((words bytes.data.data.toList).take k).foldl countWord counts) (by simp)
+    (fun k c => c =
+      ((words (bytes.data.data.toList.take (8 * count.toNat))).take k).foldl countWord counts)
+    (by simp)
     (by
-      intro k c hk hc
-      rw [hn] at hk
+      intro k c hk hc'
       have h8 : (8 : UInt64) * UInt64.ofNat k = UInt64.ofNat (8 * k) := by
         apply UInt64.toNat_inj.mp
         simp only [UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat, Nat.reducePow]
         omega
-      have hw := words_getElem bytes.data.data.toList k (by omega)
-      have htake : (words bytes.data.data.toList).take (k + 1) =
-          (words bytes.data.data.toList).take k ++ [(words bytes.data.data.toList)[k]'(by omega)] := by
+      have hw := words_getElem (bytes.data.data.toList.take (8 * count.toNat)) k (by omega)
+      have htake : (words (bytes.data.data.toList.take (8 * count.toNat))).take (k + 1) =
+          (words (bytes.data.data.toList.take (8 * count.toNat))).take k ++
+            [(words (bytes.data.data.toList.take (8 * count.toNat)))[k]'(by omega)] := by
         rw [List.take_add_one, List.getElem?_eq_getElem (by omega)]
         rfl
+      have hchunk : ((bytes.data.data.toList.take (8 * count.toNat)).drop (8 * k)).take 8 =
+          (bytes.data.data.toList.drop (8 * k)).take 8 := by
+        rw [List.drop_take, List.take_take]
+        congr 1
+        omega
       show countWord c (wordAt bytes (8 * UInt64.ofNat k)) = _
-      rw [h8, wordAt_eq bytes (8 * k) (by omega) hs, hc, htake, List.foldl_append, hw]
+      rw [h8, wordAt_eq bytes (8 * k) (by omega) hs, hc', htake, List.foldl_append, hw, hchunk]
       rfl)
-  rw [hn] at key
-  rw [show tally counts bytes =
-      LeanExe.loop (bytes.size / 8) counts (fun j c => countWord c (wordAt bytes (8 * j))) from rfl,
+  rw [show tally counts bytes count =
+      LeanExe.loop count counts (fun j c => countWord c (wordAt bytes (8 * j))) from rfl,
     key, List.take_of_length_le (by omega)]
+
+/-- The first bytes of a buffer with `bytes` placed at its start are `bytes`. -/
+theorem splice_take {buffer bytes : Bytes} (h : bytes.data.size ≤ buffer.data.size) :
+    (buffer.splice 0 bytes).data.data.toList.take bytes.data.size = bytes.data.data.toList := by
+  have hSize := Bytes.splice_size (first := 0) (by omega : 0 + bytes.data.size ≤ buffer.data.size)
+  apply List.ext_getElem
+  · simp only [List.length_take, Array.length_toList, ByteArray.size_data, hSize]
+    omega
+  · intro i h1 h2
+    have hi : i < bytes.data.size := by simpa using h2
+    rw [List.getElem_take, Array.getElem_toList, Array.getElem_toList,
+      ← ByteArray.getElem_eq_getElem_data, ← ByteArray.getElem_eq_getElem_data,
+      Bytes.splice_get_inside (by omega) (Nat.zero_le _) (by omega)]
+    simp
 
 /-- `histogram` of an array is the fold of `countWord` over its words from ten zero counts. -/
 theorem histogram_list (ws : List UInt64) :
@@ -221,9 +243,9 @@ theorem args_returned {World : Type} {host : Host World} {world final : World}
 
 /-! ## The loop of `main` -/
 
-/-- The state of `main`'s loop: the counts, the words still to draw, and the errno of a failed
-call. -/
-abbrev DrawState := Array UInt64 × UInt64 × UInt64
+/-- The state of `main`'s loop: the counts, the buffer, the words still to draw, and the errno of a
+failed call. -/
+abbrev DrawState := Array UInt64 × Bytes × UInt64 × UInt64
 
 theorem toNat_min512 (r : UInt64) : (min r 512).toNat = min r.toNat 512 := by
   show (if r ≤ 512 then r else 512).toNat = _
@@ -249,13 +271,32 @@ theorem randomGet_accepted (r : UInt64) : Call.randomGet.reject [.space (8 * min
   generalize 8 * min r 512 = c at h8 ⊢
   simp [Call.reject, Call.randomGet, rejectArgs, Param.takesArg, Param.reject, Arg.capacity, h8]
 
+/-- `random_get` of a window of at most `8 · min r 512` bytes of any buffer is accepted. -/
+theorem randomGet_window_accepted (buffer : Bytes) (r : UInt64) :
+    Call.randomGet.reject [.space (buffer.windowLength 0 (8 * min r 512))] = 0 := by
+  have h8 : (buffer.windowLength 0 (8 * min r 512)).toNat < 4294967296 := by
+    rw [Bytes.windowLength_toNat, Bytes.window_snd, toNat_eight_min]
+    omega
+  generalize buffer.windowLength 0 (8 * min r 512) = c at h8 ⊢
+  simp [Call.reject, Call.randomGet, rejectArgs, Param.takesArg, Param.reject, Arg.capacity, h8]
+
+/-- The window of `8 · min r 512` bytes from the start of a buffer of 4,096 bytes is all of them. -/
+theorem window_draw {buffer : Bytes} (size : buffer.data.size = 4096) (r : UInt64) :
+    buffer.windowLength 0 (8 * min r 512) = 8 * min r 512 := by
+  apply UInt64.toNat_inj.mp
+  rw [Bytes.windowLength_toNat, Bytes.window_snd, toNat_eight_min, size]
+  simp only [UInt64.toNat_zero]
+  omega
+
 /-- A loop of `main` from a state with no word to draw returns that state and has no event. -/
 theorem loop_stopped {World : Type} {host : Host World} {test : UInt64 → DrawState → Bool}
     {step : UInt64 → DrawState → Action DrawState}
-    (tested : ∀ i s, test i s = (s.2.1 != 0)) (counts : Array UInt64) (errno : UInt64) :
+    (tested : ∀ i s, test i s = (s.2.2.1 != 0)) (counts : Array UInt64) (buffer : Bytes)
+    (errno : UInt64) :
     ∀ {remaining index world trace} {outcome : Outcome DrawState} {final},
-      LoopExec host remaining index (counts, 0, errno) test step .pure world trace outcome final →
-      trace = [] ∧ outcome = .returned (counts, 0, errno)
+      LoopExec host remaining index (counts, buffer, 0, errno) test step .pure world trace outcome
+        final →
+      trace = [] ∧ outcome = .returned (counts, buffer, 0, errno)
   | 0, _, _, _, _, _, run => by
     cases run with
     | zero next => exact exec_pure next
@@ -266,12 +307,20 @@ theorem loop_stopped {World : Type} {host : Host World} {test : UInt64 → DrawS
     | exit test => simp [tested] at test
     | trap test => simp [tested] at test
 
+/-- The fill of `main`'s call of `randomGet` on the state `s` from the reply `reply`. -/
+def drawFill (s : DrawState) (reply : Reply) : FillResult :=
+  FillResult.of s.2.1 0 (8 * min s.2.2.1 512) reply.errno
+    (s.2.1.windowLength 0 (8 * min s.2.2.1 512)) (reply.bytes 0)
+
 /-- A step of `main`'s loop, written out. -/
 def DrawStep (step : UInt64 → DrawState → Action DrawState) : Prop :=
   ∀ i (s : DrawState), step i s =
-    .sys .randomGet [.space (8 * min s.2.1 512)] fun reply =>
-      if reply.errno != 0 then .pure (s.1, 0, reply.errno)
-      else .pure (tally s.1 (reply.bytes 0), s.2.1 - min s.2.1 512, 0)
+    .sys .randomGet [.space (s.2.1.windowLength 0 (8 * min s.2.2.1 512))] fun reply =>
+      if (drawFill s reply).errno != 0 then
+        .pure (s.1, (drawFill s reply).buffer, 0, (drawFill s reply).errno)
+      else
+        .pure (tally s.1 (drawFill s reply).buffer (min s.2.2.1 512), (drawFill s reply).buffer,
+          s.2.2.1 - min s.2.2.1 512, 0)
 
 /-- A step of `main`'s loop never exits. -/
 theorem step_not_exited {World : Type} {host : Host World} {step} (stepped : DrawStep step)
@@ -279,34 +328,36 @@ theorem step_not_exited {World : Type} {host : Host World} {step} (stepped : Dra
     (run : Exec host (step i s) world trace (.exited code) final) : False := by
   rw [stepped] at run
   cases run with
-  | sys_reject fits => exact fits (randomGet_accepted _)
+  | sys_reject fits => exact fits (randomGet_window_accepted _ _)
   | sys_return _ _ next =>
     beta_reduce at next
     split at next
     · cases next
     · cases next
 
-/-- The loop of `main` from `r` words to draw, with enough passes left, never exits, and when it
-returns, it made the calls of `Draws r`, its state holds their errno, which is at most 76, and,
-when that errno is 0, the counts of the residues of the words that the calls returned. -/
+/-- The loop of `main` from `r` words to draw and a buffer of 4,096 bytes, with enough passes
+left, never exits, and when it returns, it made the calls of `Draws r`, its state holds their
+errno, which is at most 76, and, when that errno is 0, the counts of the residues of the words that
+the calls returned. -/
 theorem draw_loop {World : Type} {host : Host World} {test : UInt64 → DrawState → Bool}
     {step : UInt64 → DrawState → Action DrawState}
-    (tested : ∀ i s, test i s = (s.2.1 != 0)) (stepped : DrawStep step) :
-    ∀ (remaining index : Nat) (counts : Array UInt64) (r : UInt64)
+    (tested : ∀ i s, test i s = (s.2.2.1 != 0)) (stepped : DrawStep step) :
+    ∀ (remaining index : Nat) (counts : Array UInt64) (buffer : Bytes) (r : UInt64)
       {world trace} {outcome : Outcome DrawState} {final},
-      r.toNat ≤ 512 * remaining →
-      LoopExec host remaining index (counts, r, 0) test step .pure world trace outcome final →
+      buffer.data.size = 4096 → r.toNat ≤ 512 * remaining →
+      LoopExec host remaining index (counts, buffer, r, 0) test step .pure world trace outcome
+        final →
       (∀ c, outcome ≠ .exited c) ∧
-      ∀ s, outcome = .returned s → ∃ bytes errno, Draws r trace bytes errno ∧ s.2.2 = errno ∧
+      ∀ s, outcome = .returned s → ∃ bytes errno, Draws r trace bytes errno ∧ s.2.2.2 = errno ∧
         errno.toNat ≤ 76 ∧ (errno = 0 → s.1 = (words bytes).foldl countWord counts)
-  | 0, _, counts, r, _, _, _, _, enough, run => by
+  | 0, _, counts, buffer, r, _, _, _, _, _, enough, run => by
     have hr : r = 0 := UInt64.toNat_inj.mp (by simp; omega)
     subst hr
-    obtain ⟨rfl, rfl⟩ := loop_stopped tested counts 0 run
+    obtain ⟨rfl, rfl⟩ := loop_stopped tested counts buffer 0 run
     refine ⟨fun _ h => (nomatch h), fun s h => ?_⟩
     cases h
     exact ⟨[], 0, .done, rfl, by decide, fun _ => rfl⟩
-  | remaining + 1, index, counts, r, _, _, _, _, enough, run => by
+  | remaining + 1, index, counts, buffer, r, _, _, _, _, size, enough, run => by
     cases run with
     | stop test next =>
       obtain ⟨rfl, rfl⟩ := exec_pure next
@@ -321,6 +372,10 @@ theorem draw_loop {World : Type} {host : Host World} {test : UInt64 → DrawStat
       have hr : r ≠ 0 := by simpa [tested] using test
       have hrn : r.toNat ≠ 0 := fun e => hr (UInt64.toNat_inj.mp (by simpa using e))
       rw [stepped] at step
+      have hWindow : buffer.windowLength 0 (8 * min r 512) = 8 * min r 512 := window_draw size r
+      change Exec host (.sys .randomGet [.space (buffer.windowLength 0 (8 * min r 512))] _) _ _ _ _
+        at step
+      rw [hWindow] at step
       cases step with
       | sys_reject fits => exact absurd (randomGet_accepted r) fits
       | @sys_return _ _ _ _ _ _ _ _ _ errno committed _ permitted next =>
@@ -330,37 +385,54 @@ theorem draw_loop {World : Type} {host : Host World} {test : UInt64 → DrawStat
         beta_reduce at next
         split at next
         · rename_i nonzero
-          have hne : errno ≠ 0 := by simpa [sysReply] using nonzero
+          have hne : errno ≠ 0 := by
+            intro hz
+            subst hz
+            simp [drawFill, FillResult.of, sysReply] at nonzero
+          have hErrno : (drawFill (counts, buffer, r, 0) (sysReply errno committed)).errno =
+              errno := by
+            simp [drawFill, FillResult.of, sysReply, hne]
           obtain ⟨rfl, hs⟩ := exec_pure next
           cases hs
-          obtain ⟨rfl, rfl⟩ := loop_stopped tested counts errno rest
+          rw [hErrno] at rest
+          obtain ⟨rfl, rfl⟩ := loop_stopped tested counts _ errno rest
           refine ⟨fun _ h => (nomatch h), fun s h => ?_⟩
           cases h
           exact ⟨[], errno, .failed hr hne, rfl, errnoValid, fun e => absurd e hne⟩
         · rename_i zero
-          have hz : errno = 0 := by simpa [sysReply] using zero
+          have hz : errno = 0 := by
+            by_contra hne
+            simp [drawFill, FillResult.of, sysReply, hne] at zero
           subst hz
           obtain ⟨rfl, hs⟩ := exec_pure next
           cases hs
-          rcases committed with _ | ⟨buffer, _ | ⟨_, _⟩⟩
+          rcases committed with _ | ⟨bytes, _ | ⟨_, _⟩⟩
           · simp at shape
           rotate_left
           · simp at shape
           have hmin := toNat_min512 r
-          have hsize : buffer.data.size = 8 * min r.toNat 512 :=
-            (List.cons.inj (shape : [buffer.data.size] = _)).1.trans (toNat_eight_min r)
+          have hsize : bytes.data.size = 8 * min r.toNat 512 :=
+            (List.cons.inj (shape : [bytes.data.size] = _)).1.trans (toNat_eight_min r)
           have hsub : (r - min r 512).toNat = r.toNat - min r.toNat 512 := by
             rw [UInt64.toNat_sub_of_le _ _ (by
               rw [UInt64.le_iff_toNat_le, hmin]
               omega), hmin]
+          have hFill : (drawFill (counts, buffer, r, 0) (sysReply 0 [bytes])).buffer =
+              buffer.splice 0 bytes := by
+            simp [drawFill, FillResult.of, sysReply, Reply.bytes, Bytes.window]
+          have spliced : (buffer.splice 0 bytes).data.size = 4096 :=
+            (Bytes.splice_size (by omega)).trans size
+          rw [hFill] at rest
           obtain ⟨noExit, returned⟩ := draw_loop tested stepped remaining (index + 1)
-            (tally counts buffer) (r - min r 512) (by rw [hsub]; omega) rest
+            (tally counts (buffer.splice 0 bytes) (min r 512)) (buffer.splice 0 bytes)
+            (r - min r 512) spliced (by rw [hsub]; omega) rest
           refine ⟨noExit, fun s h => ?_⟩
-          obtain ⟨bytes, errno, draws, hs, hvalid, hcounts⟩ := returned s h
-          refine ⟨buffer.data.data.toList ++ bytes, errno, .drew hr hsize draws, hs, hvalid,
+          obtain ⟨drawn, errno, draws, hs, hvalid, hcounts⟩ := returned s h
+          refine ⟨bytes.data.data.toList ++ drawn, errno, .drew hr hsize draws, hs, hvalid,
             fun e => ?_⟩
-          rw [hcounts e, tally_eq counts buffer (by omega),
-            words_append (by simp [hsize]), List.foldl_append]
+          have hTake : 8 * (min r 512).toNat = bytes.data.size := by rw [hmin, hsize]
+          rw [hcounts e, tally_eq counts _ _ (by rw [spliced, hmin]; omega) (by omega), hTake,
+            splice_take (by omega), words_append (by simp [hsize]), List.foldl_append]
 
 /-! ## The writes -/
 
@@ -518,8 +590,8 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
             omega
           rw [this]
           omega
-        obtain ⟨loopNoExit, loopFacts⟩ := draw_loop (fun _ _ => rfl) (fun _ _ => rfl) _ 0 _ n
-          passes loopRun
+        obtain ⟨loopNoExit, loopFacts⟩ := draw_loop (fun _ _ => rfl) (fun _ _ => rfl) _ 0 _ _ n
+          (by simp) passes loopRun
         cases drawn with
         | exited c => exact absurd rfl (loopNoExit c)
         | trapped m =>
@@ -527,8 +599,8 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
           exact ⟨fun _ h => (nomatch h), fun _ h => (nomatch h)⟩
         | returned s =>
           obtain ⟨bytes, errno, drawsOk, hs, errnoValid, hcounts⟩ := loopFacts s rfl
-          change Exec host (if s.2.2 != 0 then Action.pure s.2.2 else _) loopAfter post outcome
-            final at cont2
+          change Exec host (if s.2.2.2 != 0 then Action.pure s.2.2.2 else _) loopAfter post
+            outcome final at cont2
           split at cont2
           · rename_i failed
             have he : errno ≠ 0 := by rw [← hs]; simpa using failed

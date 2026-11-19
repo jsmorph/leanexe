@@ -15,12 +15,11 @@ of the run's WASI trace, which ends at an accepted exit, a rejected exit, a trap
 trap of the guest after a prefix of `main`.
 
 `linux_footprint_bounded` states the footprint without a guest trap for a launch whose arguments'
-strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes and whose
-N is at most `drawLimit`, at a cap whose pages hold `budget` above the heap's start.  The shim
-answers `args_sizes_get` with the count and size of the launch's arguments (`linux_sizes`) and
-`args_get` with the arguments (`linux_strings`), so the block that the reply asks for fits
-`argsLimit` (`reportedSize_le`) and `parseN` reads N from it, and `call_prefix_bound` gives the
-budget premise from `body_bounded`. -/
+strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, for every
+N, at a cap whose pages hold `budget` above the heap's start.  The shim answers `args_sizes_get`
+with the count and size of the launch's arguments (`linux_sizes`), so the block that the reply
+asks for fits `argsLimit` (`reportedSize_le`), and `call_prefix_bound` gives the budget premise
+from `body_bounded`. -/
 
 namespace Demos.RandomHistogram
 
@@ -59,20 +58,6 @@ theorem linux_sizes {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Rep
   · exact (Transfer.returned.inj reply).2
   · exact absurd (Transfer.returned.inj reply).1 (by decide)
 
-/-- Under the shim's host, a successful `args_get` reply holds the launch's arguments, each
-followed by a zero byte. -/
-theorem linux_strings {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {world after : LinuxWorld} {got : List LeanExe.Bytes}
-    (step : (linuxHost F L I R).sys world Call.argsGet [] (.returned 0 got) after) :
-    got = [bytesOfList (stringsBytes I.args)] := by
-  obtain ⟨l, ⟨-, image⟩, -, -, -⟩ := step
-  rw [sysImage_args] at image
-  obtain ⟨-, -, reply⟩ := image
-  unfold stringsReply at reply
-  split at reply
-  · exact (Transfer.returned.inj reply).2
-  · cases reply
-
 theorem length_le_stringsSize (strings : List (List UInt8)) :
     strings.length ≤ stringsSize strings := by
   induction strings with
@@ -102,10 +87,9 @@ theorem reportedSize_le {strings : List (List UInt8)}
     omega
 
 /-- The budget of `main` holds under the shim's host for a launch whose strings and eight-byte
-pointers of its arguments take at most `argsLimit` bytes and whose N is at most `drawLimit`. -/
+pointers of its arguments take at most `argsLimit` bytes. -/
 theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
     (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
-    (drawn : (parseSpec (bytesOfList (stringsBytes I.args))).toNat ≤ drawLimit)
     (world : Observed LinuxWorld) :
     Resource.CallPrefixBound (observedHost (linuxHost F L I R))
       (.ofProg command.pure.program command.pure.funs) command.program .here 0 .nil world
@@ -114,27 +98,14 @@ theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Lin
       (.returned 0 outputs) after → Resource.reportedSize outputs ≤ argsLimit := fun _ _ _ step => by
     rw [linux_sizes step]
     exact reportedSize_le small
-  have parsed : ∀ world got after, (linuxHost F L I R).sys world Call.argsGet []
-      (.returned 0 got) after → (parseN ((sysReply 0 got).bytes 0)).toNat ≤ drawLimit :=
-    fun _ _ _ step => by
-      rw [linux_strings step]
-      have small : (bytesOfList (stringsBytes I.args)).data.size < 2 ^ 64 := by
-        rw [bytesOfList_size]
-        rw [stringsBytes_length]
-        unfold argsLimit at small
-        omega
-      show (parseN (bytesOfList (stringsBytes I.args))).toNat ≤ drawLimit
-      rw [parseN_eq _ small]
-      exact drawn
   intro trace residual final spent fits progress
-  exact Resource.call_prefix_rule budget progress rfl ((body_bounded bound parsed).2 world)
+  exact Resource.call_prefix_rule budget progress rfl ((body_bounded bound).2 world)
 
 /-- The footprint of `linux_footprint_native` without a guest trap, at a cap whose pages hold the
 budget above the heap's start at byte 4,096, for a launch whose arguments meet the premises of
 `call_prefix_bound`. -/
 theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
-    (R : Linux.Replies) (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
-    (drawn : (parseSpec (bytesOfList (stringsBytes I.args))).toNat ≤ drawLimit) {cap : Nat}
+    (R : Linux.Replies) (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit) {cap : Nat}
     (hcap : cap ≤ 65535) (room : 4096 + budget ≤ 65536 * cap) :
     ∃ bound, ∀ fuel ≥ bound,
       Footprint F L I R (main.bind fun status => Action.exit status) nativeWorld false
@@ -150,7 +121,7 @@ theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
     Separate.nil ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩
     (fun _ membership => nomatch membership) hcap
     (fun _ => ⟨by change 4096 + budget ≤ 65536 * cap; exact room,
-      call_prefix_bound F L I R small drawn _⟩)
+      call_prefix_bound F L I R small _⟩)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I R (results fuel enough)⟩
 
 #print axioms calls_supported
