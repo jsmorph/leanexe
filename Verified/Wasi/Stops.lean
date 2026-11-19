@@ -106,13 +106,15 @@ theorem Stops.exit {code : UInt64} (h : Stops host (Action.exit code : Action α
     | exitTrap _ => exact .inr ⟨_, rfl⟩
 
 /-- A run of a read that stops makes no event, makes a run of its continuation on the rejection of
-the read's capacity that stops, makes the read's event followed by a run of its continuation on the
-reply that stops, or makes the read's event that trapped. -/
-theorem Stops.read {capacity : UInt64} {next : ReadResult → Action α}
+the read's capacity that stops, makes the read's event followed by a run that stops of its
+continuation on the reply with some range of the read's region, or makes the read's event that
+trapped. -/
+theorem Stops.read {capacity : UInt64} {next : ReadReply → Action α}
     (h : Stops host (.read capacity next) world trace) :
-    trace = [] ∨ Stops host (next ⟨61, Bytes.empty⟩) world trace ∨
-      (∃ errno committed after rest, trace = .read capacity (.returned errno committed) :: rest ∧
-        Stops host (next (readResult errno committed)) after rest) ∨
+    trace = [] ∨ Stops host (next ⟨61, Bytes.empty, Bytes.empty⟩) world trace ∨
+      (∃ errno committed range after rest,
+        trace = .read capacity (.returned errno committed) :: rest ∧
+        Stops host (next (readReply errno committed range)) after rest) ∨
       ∃ message committed, trace = [.read capacity (.trapped message committed)] := by
   rcases h with ⟨residual, after, run⟩ | ⟨message, final, run⟩
   · rcases prefix_uncons run.progress with ⟨-, rfl, -⟩ |
@@ -120,10 +122,11 @@ theorem Stops.read {capacity : UInt64} {next : ReadResult → Action α}
     · exact .inl rfl
     · cases step with
       | read_reject => exact .inr (.inl (.inl ⟨_, _, progress.toPrefix⟩))
-      | read_return => exact .inr (.inr (.inl ⟨_, _, _, _, rfl, .inl ⟨_, _, progress.toPrefix⟩⟩))
+      | read_return =>
+        exact .inr (.inr (.inl ⟨_, _, _, _, _, rfl, .inl ⟨_, _, progress.toPrefix⟩⟩))
   · cases run with
     | read_reject _ next => exact .inr (.inl (.inr ⟨_, _, next⟩))
-    | read_return _ _ next => exact .inr (.inr (.inl ⟨_, _, _, _, rfl, .inr ⟨_, _, next⟩⟩))
+    | read_return _ _ _ _ next => exact .inr (.inr (.inl ⟨_, _, _, _, _, rfl, .inr ⟨_, _, next⟩⟩))
     | read_trap => exact .inr (.inr (.inr ⟨_, _, rfl⟩))
 
 /-- A run of a write that stops makes no event, makes the write's event followed by a run of its
@@ -247,7 +250,7 @@ theorem Every.stops {ok : Event → Prop} {World : Type} {host : Host World} :
     nomatch member
   | read capacity next ih =>
     intro world trace every h e member
-    rcases h.read with rfl | rejected | ⟨errno, committed, after, rest, rfl, more⟩ |
+    rcases h.read with rfl | rejected | ⟨errno, committed, range, after, rest, rfl, more⟩ |
         ⟨message, committed, rfl⟩
     · nomatch member
     · exact ih _ (every.2 _) rejected e member
