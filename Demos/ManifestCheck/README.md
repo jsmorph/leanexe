@@ -9,8 +9,9 @@ directory, reads it to its end through a streaming SHA-256, closes it, and write
 `NAME: FAILED`.  The status is 0 when every file matches, 1 when one fails, and the errno when a
 call on the manifest fails.  This directory holds the pure core of the checker, the functions that
 parse the manifest, compare a line's digits with a digest, and render an output line, with their
-reviewed specifications and call theorems, and the WASI command around them, with theorems about
-its verdicts, the files that it opens, and its descriptors.
+reviewed specifications and call theorems, the WASI command around them, with theorems about its
+verdicts, the files that it opens, and its descriptors, and the command's AArch64 Linux executable,
+with the same theorems over Linux's system calls.
 
 The pure core has three functions, whose specifications [the specification](Spec.lean) states,
 written and reviewed by the method of [the verified-request
@@ -97,19 +98,19 @@ pass and into each bracket and out of it, and the windows of the reads are its b
 a read loop builds a buffer.
 
 A line's verdict is OK when the open of its name returned errno 0, a read returned no bytes before
-any read returned an errno, the close returned errno 0, and the line's digits give the digest of
-the bytes that the reads returned.  A file that fails to open, a read that returns an errno before
-the file's end, a failed close, and reads that stop after `2^45 - 1` reads give FAILED, and the
-checks continue.  The status is the errno of `args`, 1 for an argument buffer without exactly one
-argument after the program name, the errno of the manifest's open, of `fdFilestatGet`, of one of
-its reads, or of its close, 61 for a reported size of `2^32` bytes or more, and 1 for a manifest
-whose bytes disagree with its size or that the pure core refuses.  After a manifest that the core
-accepts, the status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of
-an output line stop with bytes left, which ends the checks, and the errno of a write that fails,
-with which `writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
-`verified_compile_wasi` writes a module that imports `fd_read` twice, as the stream read of the ABI
-and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`, `fd_close`,
-`args_sizes_get`, and `args_get`.
+any read returned an errno, the close returned errno 0, and the line's digits give the digest of the
+bytes that the reads returned.  A file that fails to open, a read that returns an errno before the
+file's end, a failed close, and reads that stop after `2^45 - 1` reads give FAILED, and the checks
+continue.  The status is the errno of `args`, 1 for an argument buffer without exactly one argument
+after the program name, the errno of the manifest's open, of `fdFilestatGet`, of one of its reads,
+or of its close, 61 for a reported size of `2^32` bytes or more, and 1 for a manifest whose bytes
+disagree with its size or that the pure core refuses.  After a manifest that the core accepts, the
+status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of an output line
+stop with bytes left, which ends the checks, and the errno of a write that fails, with which
+`writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
+`verified_compile_wasi` writes a module of 17,882 bytes that imports `fd_read` twice, as the stream
+read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`,
+`fd_close`, `args_sizes_get`, and `args_get`.
 
 ## The command meets the request
 
@@ -236,7 +237,91 @@ and Wasmtime resolves names with cap-std, which confines them as well.  `Confine
 states the names that the command asks the host to open, relative to descriptor 3, and relies on the
 host's resolution for the rest, which no theorem of the repository states for Linux's kernel.  The
 driver's runs show Wasmtime 44 refusing a name with `..` that leaves the directory, an absolute
-name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -c` reads.
+name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -c` reads, and its
+traces of the native executable show Linux refusing the `openat2` of each of these names with
+`EXDEV`.
+
+## The native executable checks the manifest
+
+`genWasiElf` writes the command's AArch64 Linux executable of 74,248 bytes from the module, with
+the shim's stubs for the stream functions, `args_sizes_get`, `args_get`, `path_open`, `fd_close`,
+`fd_read` on a handle, and `fd_filestat_get`, and a linear memory of 4,096 pages.  The module
+imports `path_open`, so the executable first checks descriptor 3 with `openat` of `.` and closes
+the result, and a directory there becomes the preopened directory.  `tests/linux/a64-wasi.sh`
+writes the executable as `manifest.elf` and elaborates the theorems of the file beside it, and the
+demo's driver writes it from the same module with the same commands as
+`build/manifest-check/command.elf` and runs it.  The theorems of the next table lie in [the
+executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean), [the
+footprints](Native.lean), and [the corollary under the shim](NativeMeets.lean), and [the
+specification over Linux events](NativeSpec.lean) states `InRange` and `NMeets`.
+
+| Theorem | Statement |
+|---|---|
+| `manifest_elf_file`, `manifest_elf_segments`, `manifest_elf_layout`, `manifest_elf_entry`, `manifest_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
+| `manifest_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`.  When the check of descriptor 3 ends the run, X0 is 67.  Otherwise the trace holds the check's events and then the layer events of a run of `main` and its exit under the shim's host with the process's arguments, which name only standard streams and the descriptors that the shim holds open: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
+| `linux_footprint_bounded`, `budget_fits` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and replies that meet `StatBounded M`, at a cap of at most 65,535 pages that holds `budget M` above the static heap's top, every run of `_start` with enough fuel ends without a guest trap.  The budget for a manifest of `manifestLimit` bytes, 1 MiB, fits the executable's 4,096 pages. |
+| `linux_exec_meets` | Under the shim's host, with arguments without a zero byte whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `InRange` and `Sized` ends at the accepted exit, and its status and layer events meet `NMeets`. |
+| `manifest_elf_meets` | For every reply sequence that meets `StatBounded manifestLimit`, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when the check grants descriptor 3 and the layer events meet `InRange`, X0 and the events meet `NMeets`. |
+| `manifest_elf_witness` | The premises of `manifest_elf_meets` and `InRange` hold together: for the replies `witnessReplies`, the arguments `h` and `1`, and a process that holds the file and the initial stack, the check grants descriptor 3, and the process reaches `exit_group` after layer events that meet `InRange` and, with X0, `NMeets`. |
+
+`NMeets args ls code` restates `Meets` over the layer events `ls`, which record each Linux call's
+arguments, the bytes of its input regions, the bytes of its output region, and its result.  `NRun`
+states the verdicts and the status as `Run` does: the opening of the manifest, its `statx`, its
+reads, and its `close` (`NManifestRun`), and for each line of an accepted manifest the opening of
+its name, the reads of the file, its `close`, and the writes of its output line to descriptor 1
+(`NChecks`).  An opening (`Opening`) is at most four `openat2` calls, each but the last of which
+returned `EAGAIN`, or no call when the shim's checks refuse the name.  A line's
+verdict is OK exactly when its opening returned a descriptor, a `read` returned 0 before any
+`read` returned an error number, the `close` returned 0, and the line's digits give the digest of
+the bytes that the reads returned.  Each errno is the shim's `errnoOf` of a negated error number,
+and a `statx` that reports a time of `2^64` nanoseconds or more, as each time before 1970 does, or
+a size of `2^32` bytes or more gives status 61.  `NConfined` states that every `openat2` is
+relative to descriptor 3 with the flags `O_RDONLY | O_CLOEXEC` and the resolution
+`RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`, and names the argument or the name of a line of an
+accepted manifest.  `NHandled` states that the events are `openat2` calls that returned an error
+number, brackets of an `openat2` that returned a descriptor, `read` and `statx` calls of that
+descriptor, and its `close`, and writes to descriptor 1.
+
+`InRange ls` states the results that Linux gives for the command's calls.  A `read` or a `write`
+returns an error number or at most its count (read(2), write(2)), a `close` 0 or an error number,
+and a `statx` an error number or 0, with nanoseconds below `10^9` in each time (statx(2)).  An
+`openat2` returns an error number or the lowest descriptor that the process does not hold (open(2)),
+which lies below 1,024 while the process holds fewer than 1,024 descriptors, as the usual soft
+limit of `RLIMIT_NOFILE` ensures.  The shim traps for a descriptor of 1,024 or more.  `Sized`, that
+each `read`'s output holds as many bytes as the `read` asked for, follows from `Carried`.
+`StatBounded M R` states the premise of `body_bounded` on `fd_filestat_get` over the replies:
+every reply of `R` that the shim's `filestatReply` reads as a `statx` record with errno 0 reports a
+size of at most `M` bytes.  `linuxHost` answers a `fd_filestat_get` at any world from the reply
+whose index is the number of the world's layer events, and `body_bounded` covers every world, so
+the premise covers every reply of `R`, those to the command's other calls among them.  The
+corollary therefore holds for reply sequences whose every reply meets the bound, a stronger
+premise than a bound on the size that the manifest's `statx` reports.
+
+The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
+budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
+since the shim answers `args_sizes_get` with the count and size of the launch's arguments
+(`linux_sizes`, `reportedSize_le`) and `fd_filestat_get` with the size of a reply that meets
+`StatBounded M` (`linux_stat_bound`).  `linux_exec_meets` excludes the trapped runs.  Under a host
+that rejects only exit statuses of 126 or more, as the shim does, a trapped run of `main` and its
+exit has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
+`main`), and no call of the command whose image meets `InRange` traps (`image_untrapped`).  For
+the accepted exit, `exec_main` gives `Meets`, and `run_native` and `handled_native` translate `Run`
+and `Handled` through the image of each WASI event: `path_open` gives the `openat2` calls of
+`Opening` (`open_native`), `fd_filestat_get` one `statx` (`stat_native`), `fd_read` on a handle one
+`read` (`read_native`), `fd_close` one `close` (`close_native`), and a write to standard output one
+`write` of descriptor 1 (`write_native`).  A descriptor that an `openat2` returned stays among the
+numbers that the shim holds until its `close` (`Opening.held`, `held_quiet`), so the calls on it
+reach Linux, and `confined_accepted` gives the names of `NConfined` from `Confined`.
+
+`manifest_elf_witness` gives the premises: a memory that holds the file's two segments below
+`2^32` and the initial stack of `h` and `1` at `2^32` (`loadedMem` of [the shared
+witness](../../tests/TestSupport/A64/ElfWitness.lean)), and the replies `witnessReplies`, which
+answer the check's `openat` with descriptor 4, its `close` with 0, and every later call with
+`-ENOENT`.  Every layer event after the check returns an error number, so `InRange` holds, and of
+the replies that the shim reads as `statx` records, only the `close`'s gives errno 0, and its zero
+bytes report a size of 0, so `StatBounded manifestLimit` holds.  The kernel evaluates no run of
+the executable: the footprint theorem gives the process's run, and the proof reasons over its
+events.
 
 ## Building, running, and testing
 
@@ -244,6 +329,9 @@ name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -
 tests/manifest-check/run.sh
 build/tools/leanexe-wasmtime-host --dir build/manifest-check/dir --arg check --arg good.sha256 \
   run build/manifest-check/command.wasm
+build/manifest-check/command.elf good.sha256 3< build/manifest-check/dir
+qemu-aarch64 build/manifest-check/command.elf good.sha256 3< build/manifest-check/dir
+tests/linux/a64-wasi.sh
 tests/verified/run.sh --cases manifestCheck
 tests/native/verified.sh --module manifestCheck
 tests/baremetal/verified.sh --module manifestCheck
@@ -252,21 +340,42 @@ tests/baremetal/verified.sh --module manifestCheck
 [The demo's driver](../../tests/manifest-check/run.sh) checks the hashes of the reviewed
 specification and samples, builds the demo's modules, elaborates [the theorem
 statements](../../tests/manifest-check/Axioms.lean), which requires that each theorem use only the
-three axioms, emits and validates the command's module, and runs it in the Wasmtime host over a
-preopened test directory.  It compares each output line with the verdict of GNU `sha256sum -c` on
-the same manifest, which reads every name that the manifest lists, and requires FAILED for each
-name that leaves the directory.  The runs cover matching files, a changed file, a missing file, an
+three axioms, emits and validates the command's module, and writes its executable with `a64-wasi
+wasm`, which fails when `genWasiElf` rejects the module.  It then runs the command in the Wasmtime
+host over a preopened test directory, on the host's processor, which must be AArch64 Linux, with the
+directory open as descriptor 3, and under `qemu-aarch64`, QEMU's user-mode emulator, or `QEMU_USER`
+when set, which must be QEMU 9.2 or later, the first release that implements `openat2`.  `RUNNERS`
+selects among the three.  Each run's output lines must be the verdicts of GNU `sha256sum -c` on the
+same manifest, which reads every name that the manifest lists, with FAILED for each name that leaves
+the directory.  In each runner the runs cover matching files, a changed file, a missing file, an
 empty file, a file of 5 MiB and 17 bytes that takes 81 reads, a name with spaces, a binary-mode
 line, links inside and outside the directory, names with `..` inside and outside it, an absolute
 name, a malformed and an empty manifest, no argument and two arguments, a missing manifest and one
-outside the directory, and a standard output on `/dev/full`.  No run writes to stderr.  The driver
-prints `manifest check axiom check passed for 23 theorems` and
-`manifest check: 9 runs passed, 13 verdicts agree with sha256sum -c`.
+outside the directory, and a standard output on `/dev/full`.  No run writes to stderr.
+
+Natively, the driver runs the manifests of matching files and of mixed verdicts under strace.  The
+traces hold only `openat`, `openat2`, `read`, `statx`, `close`, `write`, and `exit_group`.  The one
+`openat` opens `.` beneath descriptor 3 with `O_DIRECTORY`, the startup's check, and every
+`openat2` opens a name beneath descriptor 3 with `O_RDONLY | O_CLOEXEC` and the resolution
+`RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`.  Every `statx` passes the empty path with
+`AT_EMPTY_PATH` and the mask `STATX_ALL`, every `write` names descriptor 1, and every `read`,
+`statx`, and `close` names the descriptor that the last open returned, which a `close` ends before
+the next open and before the exit.  The `openat2` of `../outside/secret.txt`, of the absolute name,
+and of the link out of the directory fails in the kernel with `EXDEV`.  With
+`QEMU_USER=~/qemu-9.2/bin/qemu-aarch64`, QEMU 9.2.4 built from source, the driver prints
+`manifest check axiom check passed for 23 theorems`, the module's size, 17,882 bytes, the
+executable's size, 74,248 bytes, and its SHA-256,
+204e28743ab1d9e40136218d1da96786b265fffd8c76bdb22315c10fe02d5c12, and
+`manifest check: 29 runs passed, 39 verdicts agree with sha256sum -c`.
 
 The second command runs the module on the manifest `good.sha256` of the driver's test directory,
-after the driver has written both.  It writes `a.txt: OK`, `empty: OK`, `name with spaces: OK`,
-`big.bin: OK`, `sub/../a.txt: OK`, and `inside-link: OK`, one to a line, and exits with status 0.
-The manifest's last line has no final newline, and its `big.bin` line is in binary mode.
+after the driver has written both, and the third and fourth run the executable on it natively and
+under QEMU, with the directory open as descriptor 3.  Each writes `a.txt: OK`, `empty: OK`, `name
+with spaces: OK`, `big.bin: OK`, `sub/../a.txt: OK`, and `inside-link: OK`, one to a line, and exits
+with status 0. The manifest's last line has no final newline, and its `big.bin` line is in binary
+mode. `tests/linux/a64-wasi.sh` writes the executable from the module that `tools/Emit.lean` emits
+and elaborates [the executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean)
+beside it, which requires the three axioms of each.
 
 [The verified driver](../../tests/verified/run.sh) runs the 99 samples of [the verified
 cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and each case
