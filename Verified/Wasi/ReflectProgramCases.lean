@@ -19,7 +19,7 @@ def helper (index : UInt64) : Action UInt64 := pure (boundLookup index + pureByt
 def caller (index : UInt64) : Action UInt64 := do
   let read ← readSome 1
   let value ← helper (index + read.bytes.get 0)
-  let write ← writeStdoutSome bytes![65, 0, 255]
+  let write ← writeStdout bytes![65, 0, 255] 0 3
   pure (value + write.count)
 
 def main : Action UInt64 := caller 0
@@ -35,7 +35,7 @@ structure Packet where
 instance : Flat Packet (UInt64 × LeanExe.Bytes) := ⟨fun packet => (packet.count, packet.bytes)⟩
 
 def packetHelper (packet : Packet) : Action UInt64 := do
-  let write ← writeStdoutSome packet.bytes
+  let write ← writeStdout packet.bytes 0 packet.bytes.size
   pure (packet.count + write.count)
 
 def argumentCaller : Action UInt64 := do

@@ -57,27 +57,17 @@ theorem readAll_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
   rfl
 
 theorem write_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (output : Output) (bytes : Var context .bytes) (value : LeanExe.Bytes)
-    (hValue : env.get bytes = value) :
-    (Command.write output bytes).denote pureFuns effectFuns env =
+    (env : Env context) (output : Output) (buffer : Var context .bytes)
+    (start count : Var context .word) (bufferValue : LeanExe.Bytes) (startValue countValue : UInt64)
+    (hBuffer : env.get buffer = bufferValue) (hStart : env.get start = startValue)
+    (hCount : env.get count = countValue) :
+    (Command.write output buffer start count).denote pureFuns effectFuns env =
       flattenAction (Flat.flat : WriteResult → UInt64 × UInt64)
         (match output with
-        | .stdout => writeStdoutSome value
-        | .stderr => writeStderrSome value) := by
-  cases output <;> rw [Command.denote, hValue] <;> rfl
-
-theorem write_value_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (output : Output) (bytes : Expr pureSigs context .bytes)
-    (value : LeanExe.Bytes) (hValue : bytes.denote pureFuns env = value) :
-    (Command.bind (Command.ret bytes) (Command.write output .here)).denote
-      pureFuns effectFuns env =
-      flattenAction (Flat.flat : WriteResult → UInt64 × UInt64)
-        (match output with
-        | .stdout => writeStdoutSome value
-        | .stderr => writeStderrSome value) := by
-  cases output <;>
-    simp only [Command.denote, Action.bind, ResultTy.bindEnv, flattenAction,
-      writeStdoutSome, writeStderrSome, hValue] <;> rfl
+        | .stdout => writeStdout bufferValue startValue countValue
+        | .stderr => writeStderr bufferValue startValue countValue) := by
+  subst hBuffer hStart hCount
+  cases output <;> rw [Command.denote] <;> rfl
 
 theorem clockTimeGet_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
     (env : Env context) (id precision : Var context .word) (idValue precisionValue : UInt64)

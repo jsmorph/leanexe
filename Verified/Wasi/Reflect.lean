@@ -79,28 +79,22 @@ partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection 
       #[context.pure.funs, context.funs, context.pure.env, reflected.src, limit,
         ← userProof context.pure reflected]
     return ← fromEquation context result expression source equation
-  if function == ``writeStdoutSome || function == ``writeStderrSome then
-    let bytes := args.back!
-    let output := mkConst (if function == ``writeStdoutSome then ``Output.stdout else ``Output.stderr)
-    let reflected ← pureOperand context bytes
-    let hValue ← userProof context.pure reflected
-    if reflected.src.isAppOf ``Expr.var then
-      let sourceVar := reflected.src.getAppArgs.back!
-      let source ← mkAppOptM ``Command.write
-        #[some context.pure.sigs, some context.sigs, some context.pure.ctx, some output, some sourceVar]
-      let equation ← mkAppM ``write_eq
-        #[context.pure.funs, context.funs, context.pure.env, output, sourceVar, bytes, hValue]
-      return ← fromEquation context result expression source equation
-    let first ← mkAppOptM ``Command.ret
-      #[some context.pure.sigs, some context.sigs, some context.pure.ctx,
-        some (tyExpr .bytes), some reflected.src]
-    let sourceContext := consCtx .bytes context.pure.ctx
-    let sourceVar := mkApp2 (mkConst ``Var.here) (tyExpr .bytes) context.pure.ctx
-    let next ← mkAppOptM ``Command.write
-      #[some context.pure.sigs, some context.sigs, some sourceContext, some output, some sourceVar]
-    let source ← mkAppM ``Command.bind #[first, next]
-    let equation ← mkAppM ``write_value_eq
-      #[context.pure.funs, context.funs, context.pure.env, output, reflected.src, bytes, hValue]
+  if function == ``writeStdout || function == ``writeStderr then
+    unless args.size == 3 do
+      throwError "verified_compile_wasi: {function} requires all 3 arguments"
+    let output := mkConst (if function == ``writeStdout then ``Output.stdout else ``Output.stderr)
+    let reflected ← args.toList.mapM (pureOperand context)
+    let bind := reflected.map fun argument => !argument.src.isAppOf ``Expr.var
+    if bind.any id then
+      return ← reflectAs (← bindArgs expression.getAppFn args.toList bind #[] #[]) expression
+    let places := reflected.map fun argument => argument.src.getAppArgs.back!
+    let source ← mkAppOptM ``Command.write
+      #[some context.pure.sigs, some context.sigs, some context.pure.ctx, some output,
+        some places[0]!, some places[1]!, some places[2]!]
+    let proofs ← reflected.mapM (userProof context.pure)
+    let equation ← mkAppM ``write_eq
+      (#[context.pure.funs, context.funs, context.pure.env, output] ++ places.toArray ++ args ++
+        proofs.toArray)
     return ← fromEquation context result expression source equation
   if function == ``LeanExe.Wasi.exit || function == ``Action.exit then
     let code := args.back!

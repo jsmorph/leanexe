@@ -23,28 +23,28 @@ def main : Action UInt64 := do
   if prestat.errno != 0 then
     pure prestat.errno
   else
-    let _ ← writeStdoutSome (wordBytes prestat.tag)
-    let _ ← writeStdoutSome (wordBytes prestat.prNameLen)
+    let _ ← writeStdout (wordBytes prestat.tag) 0 8
+    let _ ← writeStdout (wordBytes prestat.prNameLen) 0 8
     let directory ← fdFdstatGet .preopened
     if directory.errno != 0 then
       pure directory.errno
     else
-      let _ ← writeStdoutSome (wordBytes directory.fsFiletype)
-      let _ ← writeStdoutSome (wordBytes directory.fsFlags)
-      let _ ← writeStdoutSome (wordBytes directory.fsRightsBase)
-      let _ ← writeStdoutSome (wordBytes directory.fsRightsInheriting)
+      let _ ← writeStdout (wordBytes directory.fsFiletype) 0 8
+      let _ ← writeStdout (wordBytes directory.fsFlags) 0 8
+      let _ ← writeStdout (wordBytes directory.fsRightsBase) 0 8
+      let _ ← writeStdout (wordBytes directory.fsRightsInheriting) 0 8
       let status ← fdFilestatGet .preopened
       if status.errno != 0 then
         pure status.errno
       else
-        let _ ← writeStdoutSome (wordBytes status.dev)
-        let _ ← writeStdoutSome (wordBytes status.ino)
-        let _ ← writeStdoutSome (wordBytes status.filetype)
-        let _ ← writeStdoutSome (wordBytes status.nlink)
-        let _ ← writeStdoutSome (wordBytes status.size)
-        let _ ← writeStdoutSome (wordBytes status.atim)
-        let _ ← writeStdoutSome (wordBytes status.mtim)
-        let _ ← writeStdoutSome (wordBytes status.ctim)
+        let _ ← writeStdout (wordBytes status.dev) 0 8
+        let _ ← writeStdout (wordBytes status.ino) 0 8
+        let _ ← writeStdout (wordBytes status.filetype) 0 8
+        let _ ← writeStdout (wordBytes status.nlink) 0 8
+        let _ ← writeStdout (wordBytes status.size) 0 8
+        let _ ← writeStdout (wordBytes status.atim) 0 8
+        let _ ← writeStdout (wordBytes status.mtim) 0 8
+        let _ ← writeStdout (wordBytes status.ctim) 0 8
         let written ← withOpen .preopened 0 bytes![102] 1 1073741823 1073741823 1
           (fun errno => pure errno) fun file => do
             let sized ← fdFilestatSetSize file 4294967301
@@ -55,34 +55,34 @@ def main : Action UInt64 := do
               if fileFlags.errno != 0 then
                 pure fileFlags.errno
               else
-                let _ ← writeStdoutSome (wordBytes fileFlags.fsFiletype)
-                let _ ← writeStdoutSome (wordBytes fileFlags.fsFlags)
-                let _ ← writeStdoutSome (wordBytes fileFlags.fsRightsBase)
-                let _ ← writeStdoutSome (wordBytes fileFlags.fsRightsInheriting)
+                let _ ← writeStdout (wordBytes fileFlags.fsFiletype) 0 8
+                let _ ← writeStdout (wordBytes fileFlags.fsFlags) 0 8
+                let _ ← writeStdout (wordBytes fileFlags.fsRightsBase) 0 8
+                let _ ← writeStdout (wordBytes fileFlags.fsRightsInheriting) 0 8
                 let fileStatus ← fdFilestatGet file
                 if fileStatus.errno != 0 then
                   pure fileStatus.errno
                 else
-                  let _ ← writeStdoutSome (wordBytes fileStatus.dev)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.ino)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.filetype)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.nlink)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.size)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.atim)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.mtim)
-                  let _ ← writeStdoutSome (wordBytes fileStatus.ctim)
+                  let _ ← writeStdout (wordBytes fileStatus.dev) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.ino) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.filetype) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.nlink) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.size) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.atim) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.mtim) 0 8
+                  let _ ← writeStdout (wordBytes fileStatus.ctim) 0 8
                   let pathStatus ← pathFilestatGet .preopened 0 bytes![102]
                   if pathStatus.errno != 0 then
                     pure pathStatus.errno
                   else
-                    let _ ← writeStdoutSome (wordBytes pathStatus.dev)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.ino)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.filetype)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.nlink)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.size)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.atim)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.mtim)
-                    let _ ← writeStdoutSome (wordBytes pathStatus.ctim)
+                    let _ ← writeStdout (wordBytes pathStatus.dev) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.ino) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.filetype) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.nlink) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.size) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.atim) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.mtim) 0 8
+                    let _ ← writeStdout (wordBytes pathStatus.ctim) 0 8
                     pure 0
         if written.1 != 0 then
           pure written.1

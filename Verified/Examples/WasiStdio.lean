@@ -8,7 +8,7 @@ def copySome (capacity : UInt64) : Action UInt64 := do
   if input.errno != 0 then
     pure input.errno
   else
-    let output ← writeStdoutSome input.bytes
+    let output ← writeStdout input.bytes 0 input.bytes.size
     pure output.errno
 
 def main : Action UInt64 := copySome 4096

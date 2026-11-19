@@ -3,7 +3,8 @@ import Verified.Wasi.ResourcePrefix
 /-! Compositional bounds on the resource semantics of effect commands.  `Bounded` states that every
 run and every prefix of a command uses at most a budget and has enough frames, and `Rule` gives,
 for each form of command, the facts about its parts from which that follows.  A bound on an effect
-function's body follows by `bounded_of_rule` at each command. -/
+function's body follows by `bounded_of_rule` at each command.  `loop_bounded` bounds a loop whose
+passes each charge at most a constant from the states of an invariant that every pass keeps. -/
 
 namespace Verified.Wasi.Resource
 
@@ -62,7 +63,7 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
       pure.exprFits depth capacity env = true → conclusion
   | .readAll limit => pure.readAllCost depth modes live limit env ≤ budget →
       pure.exprFits depth limit env = true → conclusion
-  | .write _ _ => conclusion
+  | .write _ _ _ _ => conclusion
   | .exit code => pure.exprCost depth modes live code env ≤ budget →
       pure.exprFits depth code env = true → conclusion
   | .bind (intermediate := intermediate) first next =>
@@ -508,5 +509,103 @@ theorem Returns.readAll_size {World : Type} {host : Host World} {pure : PureCont
     value.2.data.size ≤ (limit.denote pure.funs env).toNat + 4096 := by
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact exec_readReturns run
+
+
+/-! ## Loops with a bounded charge for each pass -/
+
+section Loop
+
+variable {World : Type} {host : Host World} {pureSigs : List Sig} {effectSigs : List EffectSig}
+  {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs} {depth : UInt64}
+  {modes : List Mode} {live : Nat → Bool} {context : List Ty} {type : Ty}
+  {test : Expr pureSigs (type :: .word :: context) .bool}
+  {step : Command pureSigs effectSigs (type :: .word :: context) (.value type)}
+  {env : Env context}
+
+/-- A loop whose test charges at most `t` and whose step is bounded by `s` from every state of
+the invariant `held`, which every returned step keeps, charges at most `t + s` for each pass and
+`t` for the last test. -/
+theorem loop_bounded (held : type.denote → Prop) {t s : Nat}
+    (testCost : ∀ index state, held state →
+      pure.loopTestCost depth modes live test step env index state ≤ t)
+    (testFits : ∀ index state, held state → pure.loopTestFits depth test env index state = true)
+    (stepBounded : ∀ index state, held state →
+      Bounded host pure program depth (loopModes .owned modes) (shift 2 (loopLive test step live))
+        step (loopEnv env index state) s)
+    (kept : ∀ index state next, held state →
+      Returns host pure program depth (loopModes .owned modes) (shift 2 (loopLive test step live))
+        step (loopEnv env index state) next → held next) :
+    ∀ remaining index state, held state →
+      LoopBounded host pure program depth modes live test step env remaining index state
+        (remaining * (t + s) + t) := by
+  intro remaining
+  induction remaining with
+  | zero =>
+    intro index state _
+    refine ⟨fun _ _ _ _ _ _ run => ?_, fun _ _ _ _ _ _ progress => ?_⟩
+    · cases run
+      exact ⟨Nat.zero_le _, rfl⟩
+    · cases progress with
+      | refl => exact ⟨Nat.zero_le _, rfl⟩
+      | returned execution =>
+        cases execution
+        exact ⟨Nat.zero_le _, rfl⟩
+  | succ remaining ih =>
+    intro index state current
+    have more : (remaining + 1) * (t + s) + t = remaining * (t + s) + t + (t + s) := by
+      rw [Nat.succ_mul]
+      omega
+    have cost := testCost index state current
+    have valid := testFits index state current
+    have exec : ∀ world trace outcome final spent fits,
+        ResourceLoopExec host pure program depth modes live test step env (remaining + 1) index
+          state world trace outcome final spent fits →
+        spent ≤ (remaining + 1) * (t + s) + t ∧ fits = true := by
+      intro _ _ _ _ _ _ run
+      rw [more]
+      cases run with
+      | stop chosen => exact ⟨by omega, valid⟩
+      | next chosen stepRun restRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        obtain ⟨restCost, restFits⟩ := (ih (index + 1) _
+          (kept index state _ current ⟨_, _, _, _, _, stepRun⟩)).1 _ _ _ _ _ _ restRun
+        rw [valid, stepFits, restFits]
+        exact ⟨by omega, rfl⟩
+      | exit chosen stepRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        rw [valid, stepFits]
+        exact ⟨by omega, rfl⟩
+      | trap chosen stepRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        rw [valid, stepFits]
+        exact ⟨by omega, rfl⟩
+    refine ⟨exec, fun _ _ _ _ _ _ progress => ?_⟩
+    cases progress with
+    | refl => exact ⟨Nat.zero_le _, rfl⟩
+    | test_charge => exact ⟨by rw [more]; omega, valid⟩
+    | returned execution => exact exec _ _ _ _ _ _ execution
+    | step chosen progress =>
+      obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).2 _ _ _ _ _ _ progress
+      rw [valid, stepFits, more]
+      exact ⟨by omega, rfl⟩
+    | next chosen stepRun progress =>
+      obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+      obtain ⟨restCost, restFits⟩ := (ih (index + 1) _
+        (kept index state _ current ⟨_, _, _, _, _, stepRun⟩)).2 _ _ _ _ _ _ progress
+      rw [valid, stepFits, restFits, more]
+      exact ⟨by omega, rfl⟩
+
+theorem LoopBounded.mono {remaining index : Nat} {state : type.denote} {budget larger : Nat}
+    (bounded : LoopBounded host pure program depth modes live test step env remaining index state
+      budget) (le : budget ≤ larger) :
+    LoopBounded host pure program depth modes live test step env remaining index state larger :=
+  ⟨fun _ _ _ _ _ _ run => by
+      obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ _ run
+      exact ⟨by omega, valid⟩,
+    fun _ _ _ _ _ _ progress => by
+      obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
+      exact ⟨by omega, valid⟩⟩
+
+end Loop
 
 end Verified.Wasi.Resource

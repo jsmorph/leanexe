@@ -35,10 +35,12 @@ inductive ResourceExec {World : Type} (host : Host World) (pure : PureContext pu
       ResourceExec host pure program depth modes live (.readAll limit) env world trace outcome final
         (pure.readAllCost depth modes live limit env) (pure.exprFits depth limit env)
   | write {program : EffectProg pureSigs effectSigs}
-      {output : Output} {bytes : Var context .bytes} {env : Env context}
-      (execution : Exec host ((Command.write output bytes).denote pure.funs (program.funs pure.funs) env)
+      {output : Output} {buffer : Var context .bytes} {start count : Var context .word}
+      {env : Env context}
+      (execution : Exec host ((Command.write output buffer start count).denote pure.funs
+        (program.funs pure.funs) env)
         world trace outcome final) :
-      ResourceExec host pure program depth modes live (.write output bytes) env
+      ResourceExec host pure program depth modes live (.write output buffer start count) env
         world trace outcome final 0 true
   | exit {program : EffectProg pureSigs effectSigs}
       {code : Expr pureSigs context .word} {env : Env context}

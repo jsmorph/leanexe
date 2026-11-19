@@ -14,7 +14,7 @@ def signedStep (x : Int64) : Action Int64 := do
     pure (-x)
   else
     let y := x / 3 - 7
-    let output ← writeStdoutSome (Bytes.build 1 fun _ => y.toUInt64 &&& 255)
+    let output ← writeStdout (Bytes.build 1 fun _ => y.toUInt64 &&& 255) 0 1
     if output.errno != 0 then pure x else pure y
 
 def main : Action UInt64 := do

@@ -5,10 +5,18 @@ namespace Verified.Examples.WasiCodegen
 
 open LeanExe.Wasi Verified.Wasi
 
+/-- Writes the bytes of variable 0 to `output`, with the window from 0 of the bytes' size, and
+returns the count. -/
+private def writeHere (output : Output) :
+    Command [] effectSigs (.bytes :: context) (.value .word) :=
+  .bind (.ret (.word 0))
+    (.bind (.ret (.bytesSize (.there .here)))
+      (.bind (.write output (.there (.there .here)) (.there .here) .here)
+        (.ret (.proj .here (.snd .here)))))
+
 private def writeBytes (output : Output) (bytes : List UInt8) :
     Command [] effectSigs context (.value .word) :=
-  .bind (.ret (.bytesLiteral bytes))
-    (.bind (.write output .here) (.ret (.proj .here (.snd .here))))
+  .bind (.ret (.bytesLiteral bytes)) (writeHere output)
 
 def writeLiteral (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   name := "writeLiteral"
@@ -23,8 +31,7 @@ def echo (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   modes := [.borrowed]
   result := .value .word
   body := .bind (.read (.var .here))
-    (.bind (.ret (.letPair (.var .here) (.var .here)))
-      (.bind (.write .stdout .here) (.ret (.proj .here (.snd .here)))))
+    (.bind (.ret (.letPair (.var .here) (.var .here))) (writeHere .stdout))
 
 def discardRead (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   name := "discardRead"
@@ -54,8 +61,7 @@ def helper (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   params := [.word]
   modes := [.borrowed]
   result := .value .word
-  body := .bind (.ret (.bytesBuild (.word 1) (.var (.there .here))))
-    (.bind (.write .stdout .here) (.ret (.proj .here (.snd .here))))
+  body := .bind (.ret (.bytesBuild (.word 1) (.var (.there .here)))) (writeHere .stdout)
 
 def bindHelper (effectSigs : List EffectSig) :
     EffectFunc [] ((helper effectSigs).sig :: effectSigs) where

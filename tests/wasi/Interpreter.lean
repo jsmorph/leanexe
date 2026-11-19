@@ -48,8 +48,8 @@ private def primitives : IO Unit := do
     let _ ← action
     let oversized ← readSome 4294967296
     let failed ← readSome 1
-    let short ← writeStdoutSome bytes![65, 66]
-    let error ← writeStderrSome bytes![67]
+    let short ← writeStdout bytes![65, 66] 0 2
+    let error ← writeStderr bytes![67] 0 1
     pure (oversized.errno, failed.bytes.size, short.count, error.errno, error.count)
   returned (61, 0, 1, 29, 0) (← program.run host)
   check ((← calls.get) == #[.read 0, .read 0, .read 1,
@@ -59,7 +59,7 @@ private def loops : IO Unit := do
   let calls ← IO.mkRef #[]
   let host := recordHost calls
   let step (index state : UInt64) : Action UInt64 := do
-    let _ ← writeStdoutSome (Bytes.build 1 (fun _ => index))
+    let _ ← writeStdout (Bytes.build 1 (fun _ => index)) 0 1
     pure (state + 1)
   returned 9 (← (loop 0 9 (fun _ _ => true) step).run host)
   returned 9 (← (loop 18446744073709551615 9 (fun _ _ => false) step).run host)
@@ -72,9 +72,9 @@ private def terminals : IO Unit := do
   let host := recordHost calls
   let program : Action UInt64 := do
     let _ ← loop 4 0 (fun _ _ => true) fun index state => do
-      let _ ← writeStdoutSome (Bytes.build 1 (fun _ => index))
+      let _ ← writeStdout (Bytes.build 1 (fun _ => index)) 0 1
       if index == 1 then exit 4294967303 else pure (state + 1)
-    let _ ← writeStderrSome bytes![99]
+    let _ ← writeStderr bytes![99] 0 1
     pure 42
   match ← program.run host with
   | .exited code => check (code == 7) "exit did not preserve the low 32 bits"
@@ -118,9 +118,9 @@ private def streams : IO Unit := do
   let program : Action (UInt64 × UInt64 × UInt64 × UInt64) := do
     let zero ← readSome 0
     let data ← readSome 3
-    let written ← writeStdoutSome data.bytes
-    let _ ← writeStdoutSome Bytes.empty
-    let diagnostic ← writeStderrSome bytes![128, 0]
+    let written ← writeStdout data.bytes 0 data.bytes.size
+    let _ ← writeStdout Bytes.empty 0 0
+    let diagnostic ← writeStderr bytes![128, 0] 0 2
     let eof ← readSome 3
     pure (zero.bytes.size, written.count, diagnostic.count, eof.bytes.size)
   returned (0, 3, 2, 0) (← program.run host)
@@ -130,7 +130,7 @@ private def streams : IO Unit := do
   let stream := { IO.FS.Stream.ofBuffer output with
     write := fun _ => zeroCalls.modify fun (writes, flushes) => (writes + 1, flushes)
     flush := zeroCalls.modify fun (writes, flushes) => (writes, flushes + 1) }
-  let emptyWrite : Action WriteResult := writeStdoutSome Bytes.empty
+  let emptyWrite : Action WriteResult := writeStdout Bytes.empty 0 0
   match ← emptyWrite.run (NativeHost.ofStreams (IO.FS.Stream.ofBuffer input) stream stream) with
   | .returned result => check (result.errno == 0 && result.count == 0) "empty write result"
   | _ => throw (IO.userError "empty stream write did not return")
@@ -138,8 +138,8 @@ private def streams : IO Unit := do
   let failure := IO.userError "flush failed after writing"
   let failingStream := { IO.FS.Stream.ofBuffer output with flush := throw failure }
   let interrupted : Action Unit := do
-    let _ ← writeStdoutSome bytes![17]
-    let _ ← writeStderrSome bytes![99]
+    let _ ← writeStdout bytes![17] 0 1
+    let _ ← writeStderr bytes![99] 0 1
     pure ()
   let caught ← try
     let _ ← interrupted.run (NativeHost.ofStreams (IO.FS.Stream.ofBuffer input)
@@ -221,7 +221,8 @@ private def flatCalls : IO Unit := do
   catch error => pure (error.toString == "WASI native host returned an invalid args_get reply")
   check unreported "an args_get reply without a reporter reply was accepted"
   let stopped := { host with sys := fun _ _ => pure (.trapped "clock stopped" [bytes![0, 0, 0, 0, 0, 0, 0, 0]]) }
-  trapped "clock stopped" (← (do let _ ← clockTimeGet 0 1; writeStdoutSome bytes![1]).run stopped)
+  trapped "clock stopped"
+    (← (do let _ ← clockTimeGet 0 1; writeStdout bytes![1] 0 1).run stopped)
   trapped "wasi clock_time_get: the native host does not serve it"
     (← (clockTimeGet 0 1).run (recordHost calls))
   check ((← calls.get).isEmpty) "a flat call reached the stream host"
