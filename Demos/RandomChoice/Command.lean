@@ -8,11 +8,11 @@ while values remain to choose and no call failed.  The loop's state is the value
 the status of a failed call, a draw buffer of 4,096 bytes, and an output buffer of 10,752 bytes,
 which hold the lines of 512 values of at most 20 digits.  Each pass draws 512 words into the whole
 draw buffer with `randomGet`, writes the lines of the picks of their accepted words, at most the
-values that remain, into the output buffer with `putPicks`, and writes those lines with `writeAll`,
-which continues after short writes and exits with the errno of a write that fails.  The loop
-carries both buffers through its state by moves, and `randomGet` and `putPicks` write into them in
-place.  `filled` copies the lines from the output buffer for `writeAll`, which writes a whole
-buffer.
+values that remain, into the output buffer with `putPicks`, and writes the window of the output
+buffer that those lines fill with `writeAll`, which continues after short writes and exits with
+the errno of a write that fails.  The loop carries both buffers through its state by moves,
+`randomGet` and `putPicks` write into them in place, and `writeAll` reads the output buffer in
+place.
 
 The status is the errno of `args`, 2 when `parseArg` refuses N or K, the errno of a failed
 `randomGet` or write, 78 when the writes of a pass took fewer bytes than offered until
@@ -23,10 +23,6 @@ when the passes chose and wrote K values.  Every errno lies from 0 to 76, so 77 
 namespace Demos.RandomChoice
 
 open LeanExe LeanExe.Wasi Library.Numerics.Decimal.Int64Text
-
-/-- The first `count` bytes of `bytes`. -/
-def filled (bytes : Bytes) (count : UInt64) : Bytes :=
-  Bytes.build count fun i => bytes.get i
 
 def main : Action UInt64 := do
   let arguments ← args
@@ -46,7 +42,7 @@ def main : Action UInt64 := do
           pure (state.1, random.errno, random.buffer, state.2.2.2)
         else
           let put := putPicks state.2.2.2 n random.buffer state.1
-          let written ← writeAll (filled put.1 put.2.1)
+          let written ← writeAll put.1 0 put.2.1
           if written < put.2.1 then
             pure (state.1, (78 : UInt64), random.buffer, put.1)
           else
@@ -60,6 +56,6 @@ def main : Action UInt64 := do
 
 verified_compile_wasi command (main := main) :=
   [parseStep, parseArg, pick, RandomHistogram.wordAt, digitCount, digitByte, putLineBytes,
-    putPicks, filled, suffix, writeAll, main]
+    putPicks, writeAll, main]
 
 end Demos.RandomChoice

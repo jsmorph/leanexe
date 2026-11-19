@@ -11,7 +11,8 @@ The proof follows `main`.  A returned `args` result has a buffer of fewer than `
 `parseArg` computes `parseSpec` on it.  A call of `random_get` that returns errno 0 fills the whole
 draw buffer with the reply's 4,096 bytes (`splice_whole`), so `putPicks` writes the lines of the
 picks of the reply's accepted words, at most the values that remain, which `pass_put` derives from
-`putPicks_eq`, and `filled` copies those lines (`filled_toList`).  The loop of `writeAll` makes the
+`putPicks_eq`, and the window of the output buffer from position 0 that the count of bytes names
+holds those lines.  The loop of `writeAll` makes the
 writes of `Writes` (`writes_of_run`), and the loop of `main` makes the passes of `Rounds`
 (`draw_loop`).  `Rounds.output` gives the bytes written by passes that end with status 0,
 `renderSpec` of the first K picks of the accepted words that they drew, and `Rounds.cap` the words
@@ -262,21 +263,6 @@ theorem writes_of_run {World : Type} {host : Host World} {text : List UInt8}
 
 /-! ## A pass -/
 
-/-- The first `count` bytes of a buffer that holds at least `count` bytes. -/
-theorem filled_toList (b : Bytes) (c : UInt64) (h : c.toNat ≤ b.data.size) :
-    (filled b c).data.data.toList = b.data.data.toList.take c.toNat := by
-  have hc := c.toNat_lt
-  have hlen : (filled b c).data.data.toList.length = c.toNat := by simp [filled]
-  apply List.ext_getElem
-  · rw [hlen, List.length_take]
-    simp
-    omega
-  · intro i h1 h2
-    have hi : i < c.toNat := hlen ▸ h1
-    have hib : i < b.data.size := by omega
-    have hmod : i % 18446744073709551616 = i := Nat.mod_eq_of_lt (by omega)
-    simp [filled, Bytes.build, Bytes.get, hmod, hib, ByteArray.getElem_eq_getElem_data]
-
 /-- A reply of the draw buffer's size fills the whole buffer. -/
 theorem splice_whole {draw bytes : Bytes} (h : bytes.data.size = draw.data.size) :
     (draw.splice 0 bytes).data.data.toList = bytes.data.data.toList := by
@@ -286,15 +272,17 @@ theorem splice_whole {draw bytes : Bytes} (h : bytes.data.size = draw.data.size)
 
 /-- What a pass of `main`'s loop from `r` values to choose makes of the output buffer `out` and the
 draw buffer after `random_get` placed the reply `bytes` in it: the output buffer keeps its size,
-the count of bytes is that of `passText`, the count of values that of `passPicks`, and `filled`
-copies `passText`, which fits the output buffer. -/
+the count of bytes is that of `passText`, the count of values that of `passPicks`, and the window
+of the output buffer from position 0 of that count holds `passText`, which fits the buffer. -/
 theorem pass_put (n r : UInt64) {out draw bytes : Bytes} (hout : out.data.size = 10752)
     (hdraw : draw.data.size = 4096) (hbytes : bytes.data.size = 4096) :
     (putPicks out n (draw.splice 0 bytes) r).1.data.size = 10752 ∧
       (putPicks out n (draw.splice 0 bytes) r).2.1 = UInt64.ofNat (passText n r bytes).length ∧
       (putPicks out n (draw.splice 0 bytes) r).2.2 = UInt64.ofNat (passPicks n r bytes).length ∧
-      (filled (putPicks out n (draw.splice 0 bytes) r).1
+      ((putPicks out n (draw.splice 0 bytes) r).1.range 0
         (putPicks out n (draw.splice 0 bytes) r).2.1).data.data.toList = passText n r bytes ∧
+      ((putPicks out n (draw.splice 0 bytes) r).1.window 0
+        (putPicks out n (draw.splice 0 bytes) r).2.1).2 = (passText n r bytes).length ∧
       (passText n r bytes).length ≤ 10752 := by
   have hsplice := splice_whole (draw := draw) (bytes := bytes) (by omega)
   have hsize := Bytes.splice_size (buffer := draw) (bytes := bytes) (first := 0) (by omega)
@@ -327,19 +315,24 @@ theorem pass_put (n r : UInt64) {out draw bytes : Bytes} (hout : out.data.size =
   have hlen : (UInt64.ofNat (passText n r bytes).length).toNat = (passText n r bytes).length :=
     UInt64.toNat_ofNat_of_lt' (by omega)
   rw [heq, hspec, hol, List.take_of_length_le htext]
-  refine ⟨?_, rfl, rfl, ?_, htext⟩
-  · show (passText n r bytes ++
-      out.data.data.toList.drop (passText n r bytes).length).toArray.size = 10752
-    rw [List.size_toArray, List.length_append, List.length_drop, hol]
+  set B : Bytes := ⟨⟨(passText n r bytes ++
+    out.data.data.toList.drop (passText n r bytes).length).toArray⟩⟩ with hBdef
+  have hBlist : B.data.data.toList =
+      passText n r bytes ++ out.data.data.toList.drop (passText n r bytes).length := rfl
+  have hBsize : B.data.size = 10752 := by
+    have := congrArg List.length hBlist
+    simp only [Array.length_toList, ByteArray.size_data, List.length_append, List.length_drop,
+      hol] at this
     omega
-  · rw [filled_toList _ _ (by
-      show (UInt64.ofNat (passText n r bytes).length).toNat ≤ (passText n r bytes ++
-        out.data.data.toList.drop (passText n r bytes).length).toArray.size
-      rw [hlen, List.size_toArray, List.length_append]
-      omega)]
-    show (passText n r bytes ++ out.data.data.toList.drop (passText n r bytes).length).take
-      (UInt64.ofNat (passText n r bytes).length).toNat = _
-    rw [hlen, List.take_left' rfl]
+  have hW : (B.window 0 (UInt64.ofNat (passText n r bytes).length)).2 =
+      (passText n r bytes).length := by
+    rw [Bytes.window_snd, hBsize, hlen]
+    simp only [UInt64.toNat_zero]
+    omega
+  refine ⟨hBsize, rfl, rfl, ?_, hW, htext⟩
+  rw [Bytes.range_toList, hW, Bytes.window_fst]
+  simp only [UInt64.toNat_zero, Nat.zero_min, List.drop_zero]
+  rw [hBlist, List.take_left' rfl]
 
 /-! ## The loop of `main` -/
 
@@ -358,8 +351,8 @@ def ChooseStep (n : UInt64) (step : UInt64 → ChooseState → Action ChooseStat
       if (passFill s reply).errno != 0 then
         .pure (s.1, (passFill s reply).errno, (passFill s reply).buffer, s.2.2.2)
       else
-        (writeAll (filled (putPicks s.2.2.2 n (passFill s reply).buffer s.1).1
-            (putPicks s.2.2.2 n (passFill s reply).buffer s.1).2.1)).bind fun written =>
+        (writeAll (putPicks s.2.2.2 n (passFill s reply).buffer s.1).1 0
+            (putPicks s.2.2.2 n (passFill s reply).buffer s.1).2.1).bind fun written =>
           if written < (putPicks s.2.2.2 n (passFill s reply).buffer s.1).2.1 then
             .pure (s.1, 78, (passFill s reply).buffer,
               (putPicks s.2.2.2 n (passFill s reply).buffer s.1).1)
@@ -456,22 +449,16 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
           beta_reduce at next
           rw [hFill] at next
           simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
-          obtain ⟨hsize', hcount, hpicks, hfilled, htext⟩ := pass_put n r hout hdraw shape
+          obtain ⟨hsize', hcount, hpicks, hfilled, hW, htext⟩ := pass_put n r hout hdraw shape
           have hsplice : (draw.splice 0 bytes).data.size = 4096 :=
             (Bytes.splice_size (by omega)).trans hdraw
-          generalize putPicks out n (draw.splice 0 bytes) r = put at hsize' hcount hpicks hfilled next
+          generalize putPicks out n (draw.splice 0 bytes) r = put
+            at hsize' hcount hpicks hfilled hW next
           obtain ⟨_, wtrace, woutcome, ktrace, wrun, krun, rfl⟩ := Exec.unbind _ next
-          have hsmall : (filled put.1 put.2.1).data.size + 1 < 2 ^ 64 := by
-            have := congrArg List.length hfilled
-            simp only [Array.length_toList, ByteArray.size_data] at this
-            omega
-          have wfacts := writes_of_run (by rw [hfilled]; omega) (writeAll_run hsmall wrun)
-            (by simp)
-          rw [hfilled] at wfacts
-          have hlen : (filled put.1 put.2.1).data.size = (passText n r bytes).length := by
-            have := congrArg List.length hfilled
-            simpa using this
-          simp only [hlen, UInt64.toNat_zero, List.drop_zero] at wfacts
+          have wfacts := writes_of_run (by rw [hfilled]; omega)
+            (writeAll_run (by omega) wrun) (by simp)
+          rw [hfilled, hW] at wfacts
+          simp only [UInt64.toNat_zero, List.drop_zero] at wfacts
           cases woutcome with
           | exited c =>
             obtain ⟨-, h, -⟩ := krun
@@ -541,20 +528,13 @@ theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
           beta_reduce at next
           rw [hFill] at next
           simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at next
-          obtain ⟨-, -, -, hfilled, htext⟩ := pass_put n r hout hdraw shape
-          generalize putPicks out n (draw.splice 0 bytes) r = put at hfilled next
+          obtain ⟨hsize', -, -, hfilled, hW, htext⟩ := pass_put n r hout hdraw shape
+          generalize putPicks out n (draw.splice 0 bytes) r = put at hsize' hfilled hW next
           obtain ⟨_, wtrace, woutcome, ktrace, wrun, krun, rfl⟩ := Exec.unbind _ next
-          have hsmall : (filled put.1 put.2.1).data.size + 1 < 2 ^ 64 := by
-            have := congrArg List.length hfilled
-            simp only [Array.length_toList, ByteArray.size_data] at this
-            omega
-          have wfacts := writes_of_run (by rw [hfilled]; omega) (writeAll_run hsmall wrun)
-            (by simp)
-          rw [hfilled] at wfacts
-          have hlen : (filled put.1 put.2.1).data.size = (passText n r bytes).length := by
-            have := congrArg List.length hfilled
-            simpa using this
-          simp only [hlen, UInt64.toNat_zero, List.drop_zero] at wfacts
+          have wfacts := writes_of_run (by rw [hfilled]; omega)
+            (writeAll_run (by omega) wrun) (by simp)
+          rw [hfilled, hW] at wfacts
+          simp only [UInt64.toNat_zero, List.drop_zero] at wfacts
           cases woutcome with
           | returned w =>
             change Exec host (if w < put.2.1 then .pure _ else .pure _) _ ktrace _ _ at krun
