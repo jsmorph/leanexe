@@ -1,4 +1,5 @@
 import Verified.Source
+import Verified.Wasi.ABI
 import LeanExe.Wasi.Sys
 
 /-! The forms of flat call that `Command.sys` compiles, with the result type and the action of
@@ -9,8 +10,8 @@ arguments are the window's start and count, and the result holds the errno, the 
 fill, and the buffer, as `FillResult.of` states.  A `reported` call writes two regions whose sizes
 its reporter returns: the code runs the reporter, tests the sizes, and runs the call, and the
 result holds the errno, the reporter's two words, and the bytes of the shown region.  A `record`
-call takes word arguments and inputs and writes one record into a block that the code allocates
-and releases; its result holds the errno and one word for each of the record's fields.
+call takes word arguments and inputs and writes one record into the call area; its result holds
+the errno and one word for each of the record's fields.
 
 An `iovecRead` call reads into a window of a buffer that the command takes, through an array of
 one iovec, and its result is a fill's, whose count is the reply's count clamped to the window's
@@ -80,12 +81,11 @@ def fillValue (result : FillResult) : (wordsBytesTy 2).denote :=
 
 /-- The i64 locals that the code of a `sys` command uses from its base: six for a flat, reported,
 or iovec read call, eight for an iovec write, whose window takes two before the six, for a record
-call the errno, the block's root, the record pointer, and one for each field, and for a `poll` call
-the errno, the block's root, the subscriptions' pointer, the number of events, and the five fields
-of the first event. -/
+call the errno, the record pointer, and one for each field, and for a `poll` call the errno, the
+subscriptions' pointer, the number of events, and the five fields of the first event. -/
 def SysForm.width : SysForm → Nat
-  | .record fields => fields + 3
-  | .poll => 9
+  | .record fields => fields + 2
+  | .poll => 8
   | .iovecWrite => 8
   | _ => 6
 
@@ -213,10 +213,10 @@ def Param.argKind : Param → Bool
   | _ => false
 
 /-- Whether the code compiles a record of `size` bytes at alignment `align`: the size and the
-alignment are positive, the block of `size + align - 1` bytes lies below `2^32`, and each field
-lies inside the record with a width of 1, 2, 4, or 8 bytes. -/
+alignment are positive, and each field lies inside the record with a width of 1, 2, 4, or 8
+bytes. -/
 def recordFits (size align : Nat) (fields : List (Nat × Nat)) : Bool :=
-  decide (0 < size) && decide (0 < align) && decide (size + align ≤ 4294967296) &&
+  decide (0 < size) && decide (0 < align) &&
     fields.all fun field =>
       (field.2 == 1 || field.2 == 2 || field.2 == 4 || field.2 == 8) &&
         decide (field.1 + field.2 ≤ size)
@@ -238,13 +238,23 @@ def iovecParams (isInput offset : Bool) : List Param :=
   [.handle, .iovec isInput] ++ (if offset then [.word64] else []) ++ [.result32]
 
 /-- Whether the code compiles a `poll` call of `records`: there is at least one record, the
-records fit, each field has a width of 1, 2, 4, or 8 bytes, and the block of the subscriptions and
-the events, `80 n + 7` bytes for `n` records, lies below `2^32`. -/
+records fit, and each field has a width of 1, 2, 4, or 8 bytes. -/
 def subscriptionsFit (records : List (List Field)) : Bool :=
   decide (0 < records.length) && recordsFit records &&
     records.all (fun fields => fields.all fun field =>
-      field.width == 1 || field.width == 2 || field.width == 4 || field.width == 8) &&
-    decide (80 * records.length + 8 ≤ 4294967296)
+      field.width == 1 || field.width == 2 || field.width == 4 || field.width == 8)
+
+/-- Whether the record or the subscriptions and events of `call` fit the call area at its start,
+aligned: a record of at most 160 bytes whose alignment divides 16, and subscriptions and events of
+80 bytes for each record, which the area's start aligns to 8. -/
+def callFits (call : Call) : Bool :=
+  (match Verified.Wasi.recordOf call.params with
+    | some (size, align, _) =>
+      decide (size ≤ Verified.Wasi.ABI.callArea.2) && Verified.Wasi.ABI.callArea.1 % align == 0
+    | none => true) &&
+  (match subscriptionsOf call.params with
+    | some records => decide (80 * records.length ≤ Verified.Wasi.ABI.callArea.2)
+    | none => true)
 
 /-- Whether the parameter takes one word argument: each parameter that takes one argument, except
 an input and `iovec true`, which take bytes. -/
@@ -315,11 +325,10 @@ def form (call : Call) : Verified.Wasi.SysForm :=
 
 /-- Whether `Command.sys` compiles the call: a flat call has flat parameters or inputs, at most
 one output, and at most two result words, or one with an output; a record call has words, enums,
-flags, and inputs
-followed by one record that `recordFits` admits; a reported call writes the argument pointers and
-the argument bytes that `args_get` and `environ_get` write; an iovec call has the parameters of
-`iovecParams`; and a `poll` call has subscriptions that `subscriptionsFit` admits and the result
-word. -/
+flags, and inputs followed by one record that `recordFits` admits and the call area holds; a
+reported call writes the argument pointers and the argument bytes that `args_get` and
+`environ_get` write; an iovec call has the parameters of `iovecParams`; and a `poll` call has
+subscriptions that `subscriptionsFit` admits and the call area holds, and the result word. -/
 def compiled (call : Call) : Bool :=
   match call.reporter with
   | some _ => call.params == [.reported 4 4 false, .reported 1 1 true]
@@ -327,7 +336,8 @@ def compiled (call : Call) : Bool :=
     match Verified.Wasi.recordOf call.params with
     | some (size, align, fields) =>
       call.params.getLast? == some (.record size align fields) &&
-        call.params.dropLast.all Param.argKind && recordFits size align fields
+        call.params.dropLast.all Param.argKind && recordFits size align fields &&
+        callFits call
     | none =>
       if call.params.contains (.iovec false) then
         call.params == iovecParams false false || call.params == iovecParams false true
@@ -336,7 +346,8 @@ def compiled (call : Call) : Bool :=
       else
         match subscriptionsOf call.params with
         | some records =>
-          call.params == [.subscriptions records, .result32] && subscriptionsFit records
+          call.params == [.subscriptions records, .result32] && subscriptionsFit records &&
+            callFits call
         | none => call.params.all Param.inputKind && decide (call.params.count .output ≤ 1) &&
             decide (call.params.countP Param.isResult ≤
               (if call.params.contains .output then 1 else 2))

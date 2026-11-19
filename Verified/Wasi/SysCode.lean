@@ -24,10 +24,9 @@ its buffer's root at `base + 3` and length at `base + 4`.  The code calls the re
 words at scratch addresses 0 and 8, tests the sizes, allocates one block for the shown region and
 the hidden region after it at the next multiple of 4, and calls the import.
 
-A record call keeps its errno at `base`, its block's root at `base + 1`, the record pointer at
-`base + 2`, and its fields from `base + 3`.  The code tests the arguments, allocates a block of
-`size + align - 1` bytes, passes its root rounded up to a multiple of `align` as the record pointer,
-calls the import, on errno 0 loads each field from the record, and releases the block.
+A record call keeps its errno at `base`, the record pointer at `base + 1`, and its fields from
+`base + 2`.  The code tests the arguments, sets the record pointer to the start of the call area,
+calls the import, and on errno 0 loads each field from the record.
 
 An iovec call writes its element, the window's address and length, at scratch addresses 0 and 4
 with the code of the stream calls, `metadataCode`, which also sets the word at 8 to 0, passes the
@@ -36,12 +35,11 @@ fill, whose count is the count that the host returns clamped to the window's len
 keeps the window's address and length of its input at `base` and `base + 1`, its errno at
 `base + 2`, and the count written at `base + 3`.
 
-A `poll` call keeps its errno at `base`, its block's root at `base + 1`, the subscriptions'
-pointer at `base + 2`, the number of events at `base + 3`, and the fields of the first event from
-`base + 4`.  The code allocates a block of `80 n + 7` bytes for `n` subscriptions, rounds its root
-up to a multiple of 8, zeroes the `48 n` bytes of the subscriptions and stores each field, places
-the events after the subscriptions, calls the import, on errno 0 loads the number of events,
-moves the pointer to the events, and loads the fields of the first event, and releases the block.
+A `poll` call keeps its errno at `base`, the subscriptions' pointer at `base + 1`, the number of
+events at `base + 2`, and the fields of the first event from `base + 3`.  The code sets the
+pointer to the start of the call area, zeroes the `48 n` bytes of the `n` subscriptions and stores
+each field, places the events after the subscriptions, calls the import, and on errno 0 loads the
+number of events, moves the pointer to the events, and loads the fields of the first event.
 -/
 
 namespace Verified.Wasi
@@ -326,34 +324,25 @@ def zeroLocalsCode (first : Nat) : Nat → Program
   | 0 => []
   | count + 1 => .constI64 0 :: .localSet first :: zeroLocalsCode (first + 1) count
 
-/-- The record pointer: the block's root in `base + 1` rounded up to a multiple of `align`, from
-the root plus `align - 1`, which the code keeps in `base + 2`. -/
-def recordAddressCode (base align : Nat) : Program :=
-  [.localGet (base + 1), .constI64 (UInt64.ofNat (align - 1)), .addI64, .localSet (base + 2),
-   .localGet (base + 2), .localGet (base + 2), .constI64 (UInt64.ofNat align), .remUI64, .subI64,
-   .localSet (base + 2)]
-
-/-- The code of an accepted record request: the allocation of the block, the record pointer, the
-call, the loads of the fields on errno 0, and the release of the block. -/
+/-- The code of an accepted record request: the record pointer at the start of the call area, the
+call, and the loads of the fields on errno 0. -/
 def sysRecordCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (words inputs : List Nat) (base size align : Nat) (fields : List (Nat × Nat)) : Program :=
-  [.constI64 (UInt64.ofNat (size + align - 1)), .call (3 + calls.length), .localSet (base + 1)] ++
-    recordAddressCode base align ++
+    (words inputs : List Nat) (base : Nat) (fields : List (Nat × Nat)) : Program :=
+  [.constI64 (UInt64.ofNat ABI.callArea.1), .localSet (base + 1)] ++
     sysLowerInputsCode call.params words inputs (base + 1) 0 ++
-    [.localGet (base + 2), .wrapI64, .call (3 + calls.idxOf call), .extendUI32, .localSet base,
-     .localGet base, .eqzI64, .iff 0 0 (recordLoadCode (base + 2) fields (base + 3)) [] [] []] ++
-    discardReadCodeWith calls (base + 1)
+    [.localGet (base + 1), .wrapI64, .call (3 + calls.idxOf call), .extendUI32, .localSet base,
+     .localGet base, .eqzI64, .iff 0 0 (recordLoadCode (base + 1) fields (base + 2)) [] [] []]
 
 def sysRecordCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (words inputs : List Nat) (base : Nat) : Program :=
   match recordOf call.params with
-  | some (size, align, fields) =>
+  | some (_, _, fields) =>
     sysRejectInputsCode call.params words inputs ++
-      .localSet base :: zeroLocalsCode (base + 3) fields.length ++
+      .localSet base :: zeroLocalsCode (base + 2) fields.length ++
       [.localGet base, .eqzI64,
-       .iff 0 0 (sysRecordCallCodeWith calls call words inputs base size align fields) [] [] [],
+       .iff 0 0 (sysRecordCallCodeWith calls call words inputs base fields) [] [] [],
        .localGet base] ++
-      (List.range fields.length).map (fun index => .localGet (base + 3 + index))
+      (List.range fields.length).map (fun index => .localGet (base + 2 + index))
   | none => []
 
 /-! ## Calls with an array of one element -/
@@ -469,34 +458,32 @@ def fieldStoresCode (pointer : Nat) : List Field → List Nat → Program
       fieldStoreCode pointer field.offset field.width [.localGet (locs.headD 0)] ++
         fieldStoresCode pointer fields locs.tail
 
-/-- The code of an accepted `poll` request: the allocation of the block, the subscriptions'
-pointer, the subscriptions, the call, on errno 0 the loads of the number of events and of the
-fields of the first event, and the release of the block. -/
+/-- The code of an accepted `poll` request: the subscriptions' pointer at the start of the call
+area, the subscriptions, the call, and on errno 0 the loads of the number of events and of the
+fields of the first event. -/
 def sysPollCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (records : List (List Field)) (locs : List Nat) (base : Nat) : Program :=
-  [.constI64 (UInt64.ofNat (80 * records.length + 7)), .call (3 + calls.length),
-   .localSet (base + 1)] ++
-    recordAddressCode base 8 ++ zeroWordsCode (base + 2) 0 (6 * records.length) ++
-    fieldStoresCode (base + 2) (placedFields 0 records) locs ++
-    [.localGet (base + 2), .wrapI64,
-     .localGet (base + 2), .constI64 (UInt64.ofNat (48 * records.length)), .addI64, .wrapI64,
+  [.constI64 (UInt64.ofNat ABI.callArea.1), .localSet (base + 1)] ++
+    zeroWordsCode (base + 1) 0 (6 * records.length) ++
+    fieldStoresCode (base + 1) (placedFields 0 records) locs ++
+    [.localGet (base + 1), .wrapI64,
+     .localGet (base + 1), .constI64 (UInt64.ofNat (48 * records.length)), .addI64, .wrapI64,
      .const (UInt32.ofNat records.length), .const 0,
      .call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
-     .iff 0 0 ([.const 0, .load32 0, .extendUI32, .localSet (base + 3),
-       .localGet (base + 2), .constI64 (UInt64.ofNat (48 * records.length)), .addI64,
-       .localSet (base + 2)] ++ recordLoadCode (base + 2) eventFields (base + 4)) [] [] []] ++
-    discardReadCodeWith calls (base + 1)
+     .iff 0 0 ([.const 0, .load32 0, .extendUI32, .localSet (base + 2),
+       .localGet (base + 1), .constI64 (UInt64.ofNat (48 * records.length)), .addI64,
+       .localSet (base + 1)] ++ recordLoadCode (base + 1) eventFields (base + 3)) [] [] []]
 
 def sysPollCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (locs : List Nat) (base : Nat) : Program :=
   match subscriptionsOf call.params with
   | some records =>
     fieldsRejectCode (argFields records) locs ++
-      .localSet base :: zeroLocalsCode (base + 3) 6 ++
+      .localSet base :: zeroLocalsCode (base + 2) 6 ++
       [.localGet base, .eqzI64,
        .iff 0 0 (sysPollCallCodeWith calls call records locs base) [] [] [],
        .localGet base] ++
-      (List.range 6).map (fun index => .localGet (base + 3 + index))
+      (List.range 6).map (fun index => .localGet (base + 2 + index))
   | none => []
 
 /-- The code of a `sys` command from the locals of its word variables, the root locals of its

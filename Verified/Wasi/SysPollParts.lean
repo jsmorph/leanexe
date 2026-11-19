@@ -67,20 +67,18 @@ theorem poll_sizes (records : List (List Field)) (sizes : List Nat) (args : List
     outputSizesOf [.subscriptions records, .result32] sizes args = [32 * records.length, 4] := by
   simp [outputSizesOf]
 
-/-- The facts that `subscriptionsFit` gives: there is a record, the records fit, each placed field
-has a width of 1, 2, 4, or 8 bytes and lies inside the subscriptions, and the block lies below
-`2^32`. -/
+/-- The facts that `subscriptionsFit` gives: there is a record, the records fit, and each placed
+field has a width of 1, 2, 4, or 8 bytes and lies inside the subscriptions. -/
 theorem subscriptionsFit_facts {records : List (List Field)}
     (h : subscriptionsFit records = true) :
     0 < records.length ∧ recordsFit records = true ∧
       (∀ field ∈ placedFields 0 records,
         (field.width = 1 ∨ field.width = 2 ∨ field.width = 4 ∨ field.width = 8) ∧
-          field.offset + field.width ≤ 48 * records.length) ∧
-      80 * records.length + 8 ≤ 4294967296 := by
+          field.offset + field.width ≤ 48 * records.length) := by
   simp only [subscriptionsFit, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true,
     Bool.or_eq_true, beq_iff_eq] at h
-  obtain ⟨⟨⟨nonempty, fits⟩, widths⟩, block⟩ := h
-  refine ⟨nonempty, fits, fun field member => ⟨?_, ?_⟩, block⟩
+  obtain ⟨⟨nonempty, fits⟩, widths⟩ := h
+  refine ⟨nonempty, fits, fun field member => ⟨?_, ?_⟩⟩
   · have hPlaced : ∀ (base : Nat) (records : List (List Field)),
         (∀ fields ∈ records, ∀ field ∈ fields,
           ((field.width = 1 ∨ field.width = 2) ∨ field.width = 4) ∨ field.width = 8) →

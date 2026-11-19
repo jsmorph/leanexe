@@ -2,12 +2,11 @@ import Verified.Bytes.Allocation
 import Verified.Wasi.SysForm
 import LeanExe.Wasi.Semantics
 
-/-! The heap that a `sys` command allocates.  A flat call and an iovec call allocate nothing, since
-a fill writes into the buffer that the command takes, a reported call allocates one block after its
-reporter returns, whose size follows from the reporter's reply in the trace, a record call
-allocates the block of its record, and a `poll` call allocates the block of its subscriptions and
-events.  `flatCapacity` and `flatCapacityWith` give the length of the output of a call's lowered
-words. -/
+/-! The heap that a `sys` command allocates.  A reported call allocates one block after its
+reporter returns, whose size follows from the reporter's reply in the trace.  The other forms
+allocate nothing: a fill writes into the buffer that the command takes, and a record call and a
+`poll` call place their regions in the call area.  `flatCapacity` and `flatCapacityWith` give the
+length of the output of a call's lowered words. -/
 
 namespace Verified.Wasi
 
@@ -48,28 +47,12 @@ def reportedBlock : List Event → Option UInt64
     else none
   | _ => none
 
-/-- The bytes of the block of a record call: the record's size and `align - 1` bytes in which to
-align it. -/
-def recordBlock (params : List Param) : Nat :=
-  match recordOf params with
-  | some (size, align, _) => size + align - 1
-  | none => 0
-
-/-- The bytes of the block of a `poll` call: 48 for each subscription, 32 for its event, and 7 in
-which to align the subscriptions. -/
-def pollBlock (params : List Param) : Nat :=
-  match subscriptionsOf params with
-  | some records => 80 * records.length + 7
-  | none => 0
-
 /-- The heap that the call of a `sys` command allocates, from the trace of its run. -/
 def sysCost : SysForm → LeanExe.Wasi.Call → List Event → Nat
   | .reported, _, trace =>
     match reportedBlock trace with
     | some size => Bytes.allocationCost size.toNat
     | none => 0
-  | .record _, call, _ => Bytes.allocationCost (recordBlock call.params)
-  | .poll, call, _ => Bytes.allocationCost (pollBlock call.params)
-  | .flat .., _, _ | .iovecRead, _, _ | .iovecWrite, _, _ => 0
+  | .flat .., _, _ | .record _, _, _ | .iovecRead, _, _ | .iovecWrite, _, _ | .poll, _, _ => 0
 
 end Verified.Wasi

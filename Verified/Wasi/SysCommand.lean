@@ -464,19 +464,18 @@ theorem plain_of_record {params : List Param} {size align : Nat} {fields : List 
 
 /-- The code of a record `sys` command gives a `ValueResult`. -/
 theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {targetHost : HostEnv (Observed World)} {context : List Ty}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {targetHost : HostEnv (Observed World)} {context : List Ty}
     {env : Env context} {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
     {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {aborts : Bool}
-    {budget : Nat} {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
+    {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
     {inputs : List (Var context .bytes)} {buffers : List LeanExe.Bytes} {params : List Param}
     {size align : Nat} {fields : List (Nat × Nat)}
     (hHost : targetHost.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf operation]? = some operation)
     (hParams : operation.params = params ++ [.record size align fields])
     (hKinds : params.all Param.argKind = true) (hFits : recordFits size align fields = true)
+    (hArea : size ≤ ABI.callArea.2 ∧ ABI.callArea.1 % align = 0)
     (hCount : args.length = operation.argWords)
     (hInputCount : inputs.length = operation.inputCount)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
@@ -485,14 +484,7 @@ theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (usedInputs : ∀ input ∈ inputs, liveIn input.index = true)
     (at_ : heap.At (PureTransport.erase initial))
-    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (low : locals.params.length ≤ base) (room : base + (fields.length + 3) ≤ locals.positions)
-    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
-      ∀ trace residual final, Prefix (observedHost host)
-        ((SysForm.record fields.length).runWith operation (args.map env.get) (inputs.map env.get)
-          buffers)
-        initial.host trace residual final →
-        sysCost (.record fields.length) operation trace ≤ budget) :
+    (low : locals.params.length ≤ base) (room : base + (fields.length + 2) ≤ locals.positions) :
     wp target (sysRecordCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc)
         (inputs.map fun input => (slots.getD input.index default).loc) base)
@@ -522,45 +514,27 @@ theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type
       cases param <;> simp_all [Param.argKind, Param.takesBytes]
   have hRecord : recordOf operation.params = some (size, align, fields) := by
     rw [hParams]; exact recordOf_record size align fields hKinds
-  have hBlock : recordBlock operation.params = size + align - 1 := by
-    simp [recordBlock, hRecord]
-  obtain ⟨hSize, hAlign, hBlockBound⟩ := recordFits_bounds hFits
-  have hBlockNat : (UInt64.ofNat (size + align - 1)).toNat = size + align - 1 :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
   rw [← List.append_nil (sysRecordCodeWith calls operation _ _ base)]
-  refine wp_sys_record_with (aborts := aborts) runtime layout profile hImports sourceHost hHost
-    hCall hParams hKinds hFits held
+  refine wp_sys_record_with hImports hHost hCall hParams hKinds hFits hArea held
     (by rw [List.length_map, hCount, Call.argWords, argWords_plain plain]; rfl)
     (fun place member => Or.inl (below place member)) heldItems hItemCount
     (fun place member => Or.inl (belowInputs place member))
     (fun item member => by
       obtain ⟨length, rep, apart⟩ := reps item member
-      exact ⟨length, rep, fun r hr => (apart r hr).1⟩) at_ cap low (by omega) ?_ ?_ ?_ ?_
-  · intro hAbort
-    obtain ⟨within, bound⟩ := resources hAbort
-    have hCost := bound [] _ _ (Prefix.refl _ initial.host)
-    simp only [sysCost, hBlock] at hCost
-    have hCostEq := Verified.Bytes.allocationCost_eq (count := UInt64.ofNat (size + align - 1))
-      (by rw [hBlockNat]; omega) (by rw [hBlockNat]; omega)
-    rw [hBlockNat] at hCostEq
-    rw [hCostEq] at hCost
-    exact (within.mono hCost).room cap
-  · intro hAbort final sameWorld
-    exact .trapped final _ (CommandResult.resource_refl hAbort sameWorld)
-  · intro heap' final finalLocals trace reply execution step top outside
+      exact ⟨length, rep, fun r hr => (apart r hr).1⟩) at_ low (by omega) ?_ ?_
+  · intro final finalLocals trace reply execution step outside
     rw [wp_nil]
     have hLength := recordWords_length hRecord reply
     have exec := execution.bind (rest := []) (next := fun reply =>
       Action.pure (SysForm.value (.record fields.length)
         (reply.errno :: recordWords operation.params reply) .empty)) (Exec.pure final.host _)
     rw [List.append_nil, ← hArgs, ← record_run_bind] at exec
-    refine .returned _ heap' final finalLocals
-      ((reply.errno :: recordWords operation.params reply).map Value.i64) trace exec ?_ ?_
-    · refine sys_after vars apart selected step (outside.frame (by omega)) ?_ rfl
-      simp only [SysForm.ty, SysForm.value, Ty.Rep]
-      exact (wordsElem_values _ _ (by simp [hLength])).symm
-    · simp only [sysCost, hBlock]
-      exact top
+    refine .returned _ heap final finalLocals
+      ((reply.errno :: recordWords operation.params reply).map Value.i64) trace exec ?_
+      (by simp [sysCost])
+    refine sys_after vars apart selected step (outside.frame (by omega)) ?_ rfl
+    simp only [SysForm.ty, SysForm.value, Ty.Rep]
+    exact (wordsElem_values _ _ (by simp [hLength])).symm
   · intro final message trace execution
     have exec := execution.bind (rest := []) (next := fun reply =>
       Action.pure (SysForm.value (.record fields.length)
@@ -713,31 +687,23 @@ theorem wp_sys_iovec_window_result_with {calls : List LeanExe.Wasi.Call} {World 
 
 /-- The code of a `poll` command gives a `ValueResult`. -/
 theorem wp_sys_poll_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {targetHost : HostEnv (Observed World)} {context : List Ty}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {targetHost : HostEnv (Observed World)} {context : List Ty}
     {env : Env context} {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
     {heap : Heap} {initial : Store (Observed World)} {locals : Locals} {aborts : Bool}
-    {budget : Nat} {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
+    {operation : LeanExe.Wasi.Call} {args : List (Var context .word)}
     {buffers : List LeanExe.Bytes} {records : List (List Field)}
     (hHost : targetHost.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf operation]? = some operation)
     (hParams : operation.params = [.subscriptions records, .result32])
-    (hFit : subscriptionsFit records = true)
+    (hFit : subscriptionsFit records = true) (hArea : 80 * records.length ≤ ABI.callArea.2)
     (hCount : args.length = operation.argWords)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (at_ : heap.At (PureTransport.erase initial))
-    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (low : locals.params.length ≤ base) (room : base + 9 ≤ locals.positions)
-    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
-      ∀ trace residual final, Prefix (observedHost host)
-        (SysForm.poll.runWith operation (args.map env.get) [] buffers) initial.host trace
-        residual final →
-        sysCost .poll operation trace ≤ budget) :
+    (low : locals.params.length ≤ base) (room : base + 8 ≤ locals.positions) :
     wp target (sysPollCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc) base)
       (ValueResult host env slots liveIn live base SysForm.poll.ty
@@ -750,41 +716,21 @@ theorem wp_sys_poll_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
   have hArgs : sysArgs operation.params (args.map env.get) [] buffers =
       flatArgsWith operation.params (args.map env.get) [] :=
     sysArgs_plain plain (by rw [List.length_map, hCount]; rfl) (by rw [hParams]; rfl)
-  have hBlock : pollBlock operation.params = 80 * records.length + 7 := by
-    rw [hParams]; rfl
-  obtain ⟨_, _, _, hBlockBound⟩ := subscriptionsFit_facts hFit
-  have hBlockNat : (UInt64.ofNat (80 * records.length + 7)).toNat = 80 * records.length + 7 :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
   rw [← List.append_nil (sysPollCodeWith calls operation _ base)]
-  refine wp_sys_poll_with (aborts := aborts) runtime layout profile hImports sourceHost hHost
-    hCall hParams hFit held
+  refine wp_sys_poll_with hImports hHost hCall hParams hFit hArea held
     (by rw [List.length_map, hCount, Call.argWords, argWords_plain plain]; rfl)
-    below at_ cap low room ?_ ?_ ?_ ?_
-  · intro hAbort
-    obtain ⟨within, bound⟩ := resources hAbort
-    have hCost := bound [] _ _ (Prefix.refl _ initial.host)
-    simp only [sysCost, hBlock] at hCost
-    have hCostEq := Verified.Bytes.allocationCost_eq
-      (count := UInt64.ofNat (80 * records.length + 7)) (by rw [hBlockNat]; omega)
-      (by rw [hBlockNat]; omega)
-    rw [hBlockNat] at hCostEq
-    rw [hCostEq] at hCost
-    exact (within.mono hCost).room cap
-  · intro hAbort final sameWorld
-    exact .trapped final _ (CommandResult.resource_refl hAbort sameWorld)
-  · intro heap' final finalLocals trace reply execution step top outside
+    below at_ low room ?_ ?_
+  · intro final finalLocals trace reply execution step outside
     rw [wp_nil]
     have exec := execution.bind (rest := []) (next := fun reply =>
       Action.pure (SysForm.value .poll (reply.errno :: pollWords reply) .empty))
       (Exec.pure final.host _)
     rw [List.append_nil, ← hArgs, ← poll_run_bind] at exec
-    refine .returned _ heap' final finalLocals ((reply.errno :: pollWords reply).map Value.i64)
-      trace exec ?_ ?_
-    · refine sys_after vars apart selected step (outside.frame (by omega)) ?_ rfl
-      simp only [SysForm.ty, SysForm.value, Ty.Rep]
-      exact (wordsElem_values _ _ rfl).symm
-    · simp only [sysCost, hBlock]
-      exact top
+    refine .returned _ heap final finalLocals ((reply.errno :: pollWords reply).map Value.i64)
+      trace exec ?_ (by simp [sysCost])
+    refine sys_after vars apart selected step (outside.frame (by omega)) ?_ rfl
+    simp only [SysForm.ty, SysForm.value, Ty.Rep]
+    exact (wordsElem_values _ _ rfl).symm
   · intro final message trace execution
     have exec := execution.bind (rest := []) (next := fun reply =>
       Action.pure (SysForm.value .poll (reply.errno :: pollWords reply) .empty)) ⟨rfl, rfl, rfl⟩
@@ -967,7 +913,9 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
             simp only [LeanExe.Wasi.Call.compiled, hReporter, hRecord, hRead, hWrite,
               hSubscriptions, Bool.false_eq_true, ite_false, Bool.and_eq_true, beq_iff_eq]
               at compiled
-            obtain ⟨hParams, hFit⟩ := compiled
+            obtain ⟨⟨hParams, hFit⟩, hArea⟩ := compiled
+            simp only [callFits, hRecord, hSubscriptions, Bool.true_and, decide_eq_true_eq]
+              at hArea
             have hAny : operation.params.any Param.isSubscriptions = true := by
               rw [hParams]; rfl
             have hForm : form = .poll := by
@@ -979,8 +927,8 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
               apply List.eq_nil_of_length_eq_zero
               rw [inputCount, poll_inputCount hParams]
             subst hNoInputs
-            exact wp_sys_poll_result_with runtime layout profile hImports sourceHost hHost hCall
-              hParams hFit hCount vars apart selected used at_ cap low room resources
+            exact wp_sys_poll_result_with hImports hHost hCall hParams hFit hArea hCount vars
+              apart selected used at_ low room
           | none =>
             simp only [LeanExe.Wasi.Call.compiled, hReporter, hRecord, hRead, hWrite,
               hSubscriptions, Bool.false_eq_true, ite_false, Bool.and_eq_true,
@@ -1029,15 +977,15 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
         rw [← formEq]
         simp only [LeanExe.Wasi.Call.form, hReporter, hRecord]
       subst hForm
-      obtain ⟨hParams, hKinds, hFits⟩ := record_params compiled hReporter hRecord
+      obtain ⟨hParams, hKinds, hFits, hArea⟩ := record_params compiled hReporter hRecord
       have hNoBuffers : buffers = [] := by
         apply List.eq_nil_of_length_eq_zero
         rw [bufferCount, LeanExe.Wasi.Call.bufferCount, hParams]
         exact bufferCount_record hKinds
       subst hNoBuffers
-      exact wp_sys_record_result_with runtime layout profile hImports sourceHost hHost
-        (uses operation (by simp [LeanExe.Wasi.Call.uses, hReporter])) hParams hKinds hFits
-        hCount inputCount vars apart selected used usedInputs at_ cap low room resources
+      exact wp_sys_record_result_with hImports hHost
+        (uses operation (by simp [LeanExe.Wasi.Call.uses, hReporter])) hParams hKinds hFits hArea
+        hCount inputCount vars apart selected used usedInputs at_ low room
   | some name =>
     have hForm : form = .reported := by
       rw [← formEq, LeanExe.Wasi.Call.form, hReporter]
@@ -1178,7 +1126,7 @@ theorem bufferCount_le_one {call : LeanExe.Wasi.Call} (compiled : call.compiled 
   · split at compiled
     · rename_i size align fields hRecord
       simp only [Bool.and_eq_true, beq_iff_eq] at compiled
-      obtain ⟨⟨hLast, hKinds⟩, _⟩ := compiled
+      obtain ⟨⟨⟨hLast, hKinds⟩, _⟩, _⟩ := compiled
       obtain ⟨prefix', hPrefix⟩ := List.getLast?_eq_some_iff.mp hLast
       rw [hPrefix, List.dropLast_concat] at hKinds
       rw [hPrefix, bufferCount_record hKinds]
@@ -1192,7 +1140,7 @@ theorem bufferCount_le_one {call : LeanExe.Wasi.Call} (compiled : call.compiled 
         · split at compiled
           · rename_i records _
             simp only [Bool.and_eq_true, beq_iff_eq] at compiled
-            rw [compiled.1]
+            rw [compiled.1.1]
             simp [Param.takesBuffer]
           · simp only [Bool.and_eq_true, decide_eq_true_eq] at compiled
             rw [bufferCount_flat compiled.1.1]

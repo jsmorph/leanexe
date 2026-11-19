@@ -2,9 +2,8 @@ import Verified.Wasi.SysReportedCall
 
 /-! The parts of the code of a record call.  Its parameters are words, enums, flags, and inputs
 followed by the record, so the argument test and the lowering of the parameters before the record
-are those of a flat call.  The record pointer rounds the block's root up to the record's alignment,
-the request places the record at that pointer after the inputs, and the loads read each field with
-loads of its width. -/
+are those of a flat call.  The request places the record at the start of the call area after the
+inputs, and the loads read each field with loads of its width. -/
 
 namespace Verified.Wasi
 
@@ -232,56 +231,41 @@ theorem flatPointersWith_args {root : UInt32} {slot : Nat} :
     | output | result32 | result64 | reported | record | iovec | subscriptions =>
       simp [Param.argKind] at kinds
 
-/-- The parameters of a call that `compiled` admits with a record. -/
+/-- The parameters of a call that `compiled` admits with a record, and the record's place in the
+call area. -/
 theorem record_params {call : Call} {size align : Nat} {fields : List (Nat × Nat)}
     (hCompiled : call.compiled = true) (hReporter : call.reporter = none)
     (hRecord : recordOf call.params = some (size, align, fields)) :
     call.params = call.params.dropLast ++ [.record size align fields] ∧
-      call.params.dropLast.all Param.argKind = true ∧ recordFits size align fields = true := by
+      call.params.dropLast.all Param.argKind = true ∧ recordFits size align fields = true ∧
+      size ≤ ABI.callArea.2 ∧ ABI.callArea.1 % align = 0 := by
   simp only [Call.compiled, hReporter, hRecord, Bool.and_eq_true, beq_iff_eq] at hCompiled
-  obtain ⟨⟨hLast, hKinds⟩, hFits⟩ := hCompiled
+  obtain ⟨⟨⟨hLast, hKinds⟩, hFits⟩, hArea⟩ := hCompiled
+  simp only [callFits, hRecord, Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at hArea
   obtain ⟨prefix', hPrefix⟩ := List.getLast?_eq_some_iff.mp hLast
-  refine ⟨?_, hKinds, hFits⟩
+  refine ⟨?_, hKinds, hFits, hArea.1⟩
   rw [hPrefix, List.dropLast_concat]
 
-/-! ## The record pointer -/
-
-/-- The record pointer of a block at `root`: `root + align - 1` rounded down to a multiple of
-`align`. -/
-def recordAddress (root : UInt64) (align : Nat) : UInt64 :=
-  (root + UInt64.ofNat (align - 1)) - (root + UInt64.ofNat (align - 1)) % UInt64.ofNat align
-
-theorem recordAddress_spec {root : UInt64} {align : Nat} (hAlign : 0 < align)
-    (hRoom : root.toNat + align ≤ 4294967296) :
-    root.toNat ≤ (recordAddress root align).toNat ∧
-      (recordAddress root align).toNat + 1 ≤ root.toNat + align ∧
-      (recordAddress root align).toNat % align = 0 := by
-  have hAlign1 : (UInt64.ofNat (align - 1)).toNat = align - 1 :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  have hAlignN : (UInt64.ofNat align).toNat = align :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  have hSum : (root + UInt64.ofNat (align - 1)).toNat = root.toNat + (align - 1) := by
-    rw [UInt64.toNat_add, hAlign1]
-    exact Nat.mod_eq_of_lt (by omega)
-  have hRem : ((root + UInt64.ofNat (align - 1)) % UInt64.ofNat align).toNat =
-      (root.toNat + (align - 1)) % align := by
-    rw [UInt64.toNat_mod, hSum, hAlignN]
-  have hEq : (recordAddress root align).toNat =
-      (root.toNat + (align - 1)) - (root.toNat + (align - 1)) % align := by
-    rw [recordAddress, UInt64.toNat_sub_of_le _ _ (by
-      rw [UInt64.le_iff_toNat_le, hRem, hSum]; exact Nat.mod_le _ _), hSum, hRem]
-  have hMod := Nat.mod_lt (root.toNat + (align - 1)) hAlign
-  have hDiv := Nat.div_add_mod (root.toNat + (align - 1)) align
-  rw [hEq]
-  generalize hA : root.toNat + (align - 1) = a at hMod hDiv
-  generalize hR : a % align = r at hMod hDiv
-  generalize hQ : a / align = q at hDiv
-  generalize hT : align * q = t at hDiv
-  have hMul : a - r = t := by omega
-  refine ⟨by omega, by omega, ?_⟩
-  rw [hMul, ← hT, Nat.mul_mod_right]
-
 /-! ## The request and the call -/
+
+/-- A frame whose writable region is the low memory is a step that keeps every region apart from
+the low memory: the heap's free blocks lie above it. -/
+theorem GuestFrame.lowStep {World : Type} {before after : Store World} {heap : Heap}
+    (h : GuestFrame before after [ABI.low]) (hHeap : heap.At (PureTransport.erase before)) :
+    Step heap (PureTransport.erase before) (fun region => regionsDisjoint region ABI.low)
+      heap (PureTransport.erase after) [] :=
+  (h.step hHeap fun node hNode region member => by
+    rw [List.mem_singleton] at member
+    subst member
+    have := hHeap.above node hNode
+    right
+    dsimp only [FreeNode.region, ABI.low]
+    omega).mono
+    (fun _ apart region member => by
+      rw [List.mem_singleton] at member
+      subst member
+      exact apart)
+    (fun _ member => member)
 
 /-- A record request with the inputs at their roots and the record at `pointer`. -/
 theorem record_request {World : Type} {before : Store (Observed World)} {call : Call}

@@ -2,8 +2,8 @@ import Verified.Wasi.SysPollParts
 
 /-! The code of a `poll` call, from the argument test to the errno, the number of events, and the
 fields of the first event on the stack: the test of the fields' words, the locals of the result
-set to 0, the accepted call with its block, and the pushes.  The block is released after the call
-whatever the errno, so the result holds no heap value. -/
+set to 0, the accepted call with the subscriptions and the events in the call area, and the
+pushes.  The call allocates nothing, so the result holds no heap value. -/
 
 namespace Verified.Wasi
 
@@ -238,182 +238,114 @@ theorem eventFields_fit {size : Nat} (hSize : 32 ≤ size) : fieldsFit size even
   simp only [eventFields, List.mem_cons, List.not_mem_nil, or_false] at member
   rcases member with rfl | rfl | rfl | rfl | rfl <;> simp <;> omega
 
-/-- An accepted `poll` request: the allocation of the block, the subscriptions' pointer, the
-subscriptions, the call, the loads of the number of events and of the first event's fields on
-errno 0, and the release of the block, with the continuation `K` of the enclosing `iff`. -/
+/-- An accepted `poll` request: the subscriptions' pointer at the start of the call area, the
+subscriptions, the call, and the loads of the number of events and of the first event's fields on
+errno 0, with the continuation `K` of the enclosing `iff`. -/
 theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
     {call : LeanExe.Wasi.Call} {records : List (List Field)} {locs : List Nat}
-    {values : List UInt64} {s0 s : Locals} {base : Nat} {aborts : Bool}
-    {K : Assertion (Observed World)}
+    {values : List UInt64} {s0 s : Locals} {base : Nat} {K : Assertion (Observed World)}
     (hHost : env.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf call]? = some call)
     (hParams : call.params = [.subscriptions records, .result32])
-    (hFit : subscriptionsFit records = true)
+    (hFit : subscriptionsFit records = true) (hArea : 80 * records.length ≤ ABI.callArea.2)
     (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
     (hLength : values.length = (argFields records).length)
     (hAccepted : rejectFields (argFields records) (values.map .word) = 0)
     (hLocs : ∀ place ∈ locs, place < base)
     (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s0.params.length ≤ base) (hHigh : base + 9 ≤ s0.positions)
-    (hOutside : LocalsOutside s0 s base 9)
-    (hZero : ∀ i, i < 6 → s.get (base + 3 + i) = some (.i64 0))
-    (hRoom : aborts = false → heap.Room (PureTransport.erase initial) source
-      (allocSize (UInt64.ofNat (80 * records.length + 7))))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → K (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (sF : Locals)
-      (errno : UInt64) (outputs : List LeanExe.Bytes),
+    (hLow : s0.params.length ≤ base) (hHigh : base + 8 ≤ s0.positions)
+    (hOutside : LocalsOutside s0 s base 8)
+    (hZero : ∀ i, i < 6 → s.get (base + 2 + i) = some (.i64 0))
+    (hNext : ∀ (final : Store (Observed World)) (sF : Locals) (errno : UInt64)
+      (outputs : List LeanExe.Bytes),
       (observedHost host).sys initial.host call (values.map .word) (.returned errno outputs)
         final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
-        heap' (PureTransport.erase final) [] →
-      heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
-      LocalsOutside s0 sF base 9 → sF.values = s.values →
+        heap (PureTransport.erase final) [] →
+      LocalsOutside s0 sF base 8 → sF.values = s.values →
       sF.get base = some (.i64 errno) →
-      (∀ i, i < 6 → sF.get (base + 3 + i) =
+      (∀ i, i < 6 → sF.get (base + 2 + i) =
         some (.i64 ((pollWords (sysReply errno outputs)).getD i 0))) →
       K (.Fallthrough final sF))
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (outputs : List LeanExe.Bytes),
       (observedHost host).sys initial.host call (values.map .word) (.trapped message outputs)
         final.host → K (.Trap final message)) :
     wp target (sysPollCallCodeWith calls call records locs base) K initial s env := by
-  obtain ⟨hNonempty, hFits, hWidths, hBlock⟩ := subscriptionsFit_facts hFit
-  have hBlockNat : (UInt64.ofNat (80 * records.length + 7)).toNat = 80 * records.length + 7 :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  have hCostEq := Verified.Bytes.allocationCost_eq
-    (count := UInt64.ofNat (80 * records.length + 7)) (by rw [hBlockNat]; omega)
-    (by rw [hBlockNat]; omega)
-  rw [hBlockNat] at hCostEq
-  have hPositions : base + 9 ≤ s0.params.length + s0.locals.length := by
+  obtain ⟨hNonempty, hFits, hWidths⟩ := subscriptionsFit_facts hFit
+  have hPointer : (UInt64.ofNat ABI.callArea.1).toNat = ABI.callArea.1 := rfl
+  have hStart : ABI.callArea.1 = 16 := rfl
+  have hEnd : ABI.callArea.1 + ABI.callArea.2 ≤ 4096 := by decide
+  have hPositions : base + 8 ≤ s0.params.length + s0.locals.length := by
     have := hHigh
     simp only [Locals.positions] at this
     omega
-  have bound := fun (t : Locals) (outside : LocalsOutside s0 t base 9) i
-    (hi : base ≤ i) (hi' : i < base + 9) =>
+  have bound := fun (t : Locals) (outside : LocalsOutside s0 t base 8) i
+    (hi : base ≤ i) (hi' : i < base + 8) =>
     outside.bounds hLow (by omega) hi hi'
-  -- The allocation of the block.
+  have hMemory : (UInt64.ofNat ABI.callArea.1).toNat + 80 * records.length ≤
+      initial.mem.pages * 65536 := by
+    have := hHeap.base
+    have := hHeap.top
+    change _ ≤ (PureTransport.erase initial).mem.pages * 65536
+    omega
+  -- The subscriptions' pointer.
   simp only [sysPollCallCodeWith, List.append_assoc, List.cons_append, List.nil_append,
     wp_constI64_cons]
-  refine wp_alloc_frame_with (s := s) (values := s.values) runtime layout profile hImports
-    sourceHost hHeap (by rw [hBlockNat]; omega) hCap hRoom hResource ?_
-  intro allocated hHeapFits hStore hWorld
-  obtain ⟨hAllocate, hBuffer, hCapacity, hTopAlloc⟩ :=
-    read_allocation_buffer hHeap (by rw [hBlockNat]; omega) hHeapFits hStore
-  let root := FixedArrayAllocate.root heap.top
-    (allocSize (UInt64.ofNat (80 * records.length + 7))) heap.free
-  have hBefore : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.low)
-      (heap.allocate (allocSize (UInt64.ofNat (80 * records.length + 7))))
-      (PureTransport.erase allocated) (Bytes.regions (PureTransport.erase allocated) root) := by
-    have hRoot : root ≠ 0 := hBuffer.nonzero
-    rw [Bytes.regions, ite_eq_right hRoot]
-    exact hAllocate.mono
-      (keep' := fun region => regionsDisjoint region ABI.low)
-      (fresh' := [block (PureTransport.erase allocated) root])
-      (fun _ _ => True.intro) (fun _ h => h)
-  have hReady : ReadReady (heap.allocate (allocSize (UInt64.ofNat (80 * records.length + 7))))
-      (PureTransport.erase allocated) root (UInt64.ofNat (80 * records.length + 7)) :=
-    Or.inr ⟨_, hBuffer, hCapacity⟩
-  have hRootAddress := hReady.address
-  have hRootMemory := hReady.memory hBefore.at_
-  rw [hBlockNat] at hRootAddress hRootMemory
-  have hRootBase : 16 ≤ root.toNat := by
-    have h : 4096 + 48 ≤ root.toNat := hBuffer.object.base
-    omega
   have b1 := bound s hOutside (base + 1) (by omega) (by omega)
   refine wp_localSet_local b1.1 b1.2 ?_
-  let sA := setLocal { s with values := s.values } (base + 1) (.i64 root)
-  have outsideA : LocalsOutside s0 sA base 9 :=
+  let sC := setLocal { s with values := s.values } (base + 1) (.i64 (UInt64.ofNat ABI.callArea.1))
+  have outsideC : LocalsOutside s0 sC base 8 :=
     (hOutside.values s.values).set hLow (by omega) (by omega)
-  have hRootA : sA.get (base + 1) = some (.i64 root) :=
+  have hPointerC : sC.get (base + 1) = some (.i64 (UInt64.ofNat ABI.callArea.1)) :=
     Locals.get_setLocal_same (s := { s with values := s.values }) b1.1 b1.2
-  have hOtherA : ∀ j, j ≠ base + 1 → sA.get j = s.get j := fun j hj =>
+  have hOtherC : ∀ j, j ≠ base + 1 → sC.get j = s.get j := fun j hj =>
     Locals.get_setLocal_ne (s := { s with values := s.values }) b1.1 hj
-  change wp target (recordAddressCode base 8 ++ _) K allocated sA env
-  -- The subscriptions' pointer.
-  simp only [recordAddressCode, List.cons_append, List.nil_append, wp_localGet_cons, hRootA,
-    wp_constI64_cons, wp_addI64_cons]
-  have b2 := bound sA outsideA (base + 2) (by omega) (by omega)
-  refine wp_localSet_local b2.1 b2.2 ?_
-  let sB := setLocal { sA with values := sA.values } (base + 2)
-    (.i64 (root + UInt64.ofNat (8 - 1)))
-  have hGetB : sB.get (base + 2) = some (.i64 (root + UInt64.ofNat (8 - 1))) :=
-    Locals.get_setLocal_same (s := { sA with values := sA.values }) b2.1 b2.2
-  have outsideB : LocalsOutside s0 sB base 9 :=
-    (outsideA.values sA.values).set hLow (by omega) (by omega)
-  change wp target (.localGet (base + 2) :: _) K allocated sB env
-  simp only [wp_localGet_cons, hGetB, Locals.get_values, wp_constI64_cons, wp_remUI64_cons,
-    show UInt64.ofNat 8 ≠ 0 by decide, ite_false, wp_subI64_cons]
-  have b2B := bound sB outsideB (base + 2) (by omega) (by omega)
-  refine wp_localSet_local b2B.1 b2B.2 ?_
-  let pointer := recordAddress root 8
-  let sC := setLocal { sB with values := sB.values } (base + 2) (.i64 pointer)
-  have hPointerC : sC.get (base + 2) = some (.i64 pointer) :=
-    Locals.get_setLocal_same (s := { sB with values := sB.values }) b2B.1 b2B.2
-  have hOtherC : ∀ j, j ≠ base + 2 → sC.get j = sA.get j := fun j hj =>
-    (Locals.get_setLocal_ne (s := { sB with values := sB.values }) b2B.1 hj).trans
-      (Locals.get_setLocal_ne (s := { sA with values := sA.values }) b2.1 hj)
-  have outsideC : LocalsOutside s0 sC base 9 :=
-    (outsideB.values sB.values).set hLow (by omega) (by omega)
-  have hOtherCs : ∀ j, j ≠ base + 1 → j ≠ base + 2 → sC.get j = s.get j := fun j h1 h2 =>
-    (hOtherC j h2).trans (hOtherA j h1)
-  have hRootC : sC.get (base + 1) = some (.i64 root) := (hOtherC (base + 1) (by omega)).trans hRootA
-  obtain ⟨hPointerLow, hPointerHigh, hAligned⟩ : root.toNat ≤ pointer.toNat ∧
-      pointer.toNat + 1 ≤ root.toNat + 8 ∧ pointer.toNat % 8 = 0 :=
-    recordAddress_spec (root := root) (align := 8) (by decide) (by omega)
   have hHeldC := held_transfer hHeld fun place member =>
-    hOtherCs place (by have := hLocs place member; omega) (by have := hLocs place member; omega)
+    hOtherC place (by have := hLocs place member; omega)
   -- The subscriptions.
-  have hBlockFit : pointer.toNat + 80 * records.length ≤ allocated.mem.pages * 65536 := by
-    change _ ≤ (PureTransport.erase allocated).mem.pages * 65536
-    omega
-  change wp target (zeroWordsCode (base + 2) 0 (6 * records.length) ++ _) K allocated sC env
-  refine wp_zero_words (before := allocated.mem) (size := 48 * records.length) hPointerC
-    (by omega) (by omega) (6 * records.length) 0 allocated _ (BlockAt.refl allocated.mem _ _)
+  change wp target (zeroWordsCode (base + 1) 0 (6 * records.length) ++ _) K initial sC env
+  refine wp_zero_words (before := initial.mem) (size := 48 * records.length) hPointerC
+    (by omega) (by omega) (6 * records.length) 0 initial _ (BlockAt.refl initial.mem _ _)
     (by omega) ?_
   intro zeroed hZeroed
-  refine wp_field_stores (before := allocated.mem) (size := 48 * records.length) hPointerC
-    (by omega) (by omega) (placedFields 0 records) locs values { allocated with mem := zeroed } []
+  refine wp_field_stores (before := initial.mem) (size := 48 * records.length) hPointerC
+    (by omega) (by omega) (placedFields 0 records) locs values { initial with mem := zeroed } []
     hHeldC (by rw [hLength]; rfl) hWidths (hZeroed.congr fun i hi => ?_) ?_
   · simp only [blockFold, List.foldl_nil]
     exact ite_eq_left (by omega)
   intro stored hStored
-  have hSubscriptions : Bytes.At stored pointer (subscriptionBytes records (values.map .word)) := by
+  have hSubscriptions : Bytes.At stored (UInt64.ofNat ABI.callArea.1)
+      (subscriptionBytes records (values.map .word)) := by
     have h := hStored.at_ (bytes := subscriptionBytes records (values.map .word))
       (subscriptionBytes_size _ _) (fun i hi => by
         rw [subscriptionBytes_get, List.nil_append]
         rfl) (by omega) (by omega)
     rwa [UInt64.ofNat_toNat] at h
-  have hStoresFrame : GuestFrame allocated { allocated with mem := stored }
-      [(pointer.toNat, 48 * records.length)] := hStored.frame
-  let middle : Store (Observed World) := { allocated with mem := stored }
+  have hStoresFrame : GuestFrame initial { initial with mem := stored }
+      [((UInt64.ofNat ABI.callArea.1).toNat, 48 * records.length)] := hStored.frame
+  let middle : Store (Observed World) := { initial with mem := stored }
   change wp target _ K middle sC env
   -- The host call.
-  refine wp_poll_call_with (pointer := pointer) hImports hHost hCall hParams hFits hLength
-    hAccepted hPointerC hSubscriptions (by rw [hStoresFrame.pages]; exact hBlockFit) (by omega)
-    hAligned (by omega) ?_ ?_
+  refine wp_poll_call_with hImports hHost hCall hParams hFits hLength hAccepted hPointerC
+    hSubscriptions (by rw [hStoresFrame.pages]; exact hMemory) (by omega)
+    (by rw [hPointer, hStart]) (by omega) ?_ ?_
   · intro after errno outputs hSys hFrame hShown
-    have hFrame' : GuestFrame allocated after
-        [ABI.scratch, (root.toNat, (UInt64.ofNat (80 * records.length + 7)).toNat)] := by
+    have hFrame' : GuestFrame initial after [ABI.low] := by
       refine (hStoresFrame.cover fun region member => ?_).trans
         (hFrame.cover fun region member => ?_)
       · rw [List.mem_singleton] at member
         subst member
-        exact ⟨_, List.mem_cons_of_mem _ (List.mem_singleton_self _), by simp only; omega,
-          by simp only; rw [hBlockNat]; omega⟩
+        exact ⟨ABI.low, List.mem_singleton_self _, Nat.zero_le _,
+          by show (UInt64.ofNat ABI.callArea.1).toNat + 48 * records.length ≤ 0 + 4096; omega⟩
       · simp only [List.mem_cons, List.not_mem_nil, or_false] at member
         rcases member with rfl | rfl
-        · exact ⟨_, List.mem_cons_of_mem _ (List.mem_singleton_self _), by simp only; omega,
-            by simp only; rw [hBlockNat]; omega⟩
-        · exact ⟨ABI.scratch, List.mem_cons_self .., by decide, by decide⟩
-    have hStep := hReady.frame_step hBefore hFrame'
-    have hEmpty := hReady.empty_rep hBefore.at_ hFrame'
+        · exact ⟨ABI.low, List.mem_singleton_self _, Nat.zero_le _,
+            by show (UInt64.ofNat ABI.callArea.1).toNat + 48 * records.length +
+              32 * records.length ≤ 0 + 4096; omega⟩
+        · exact ⟨ABI.low, List.mem_singleton_self _, by decide, by decide⟩
+    have hStep := hFrame'.lowStep hHeap
     have hBound := (observedHost host).sys_bound hSys
     have hErrno : errno.toNat ≤ 76 := hBound.2
     have hOutputSizes : outputs.map (fun output => output.data.size) =
@@ -423,8 +355,7 @@ theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
         hBound.1
       rw [h, hParams, poll_sizes]
     have hSys' : (observedHost host).sys initial.host call (values.map .word)
-        (.returned errno outputs) after.host := by
-      rw [← hWorld]; exact hSys
+        (.returned errno outputs) after.host := hSys
     simp only [wp_extendUI32_cons, sys_extend_errno hErrno]
     have bE := bound sC outsideC base le_rfl (by omega)
     refine wp_localSet_local bE.1 bE.2 ?_
@@ -433,32 +364,8 @@ theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Locals.get_setLocal_same (s := { sC with values := sC.values }) bE.1 bE.2
     have hOtherE : ∀ j, j ≠ base → sE.get j = sC.get j := fun j hj =>
       Locals.get_setLocal_ne (s := { sC with values := sC.values }) bE.1 hj
-    have outsideE : LocalsOutside s0 sE base 9 :=
+    have outsideE : LocalsOutside s0 sE base 8 :=
       (outsideC.values sC.values).set hLow le_rfl (by omega)
-    have hRootE : sE.get (base + 1) = some (.i64 root) :=
-      (hOtherE (base + 1) (by omega)).trans hRootC
-    -- The release of the block and the end of the accepted branch.
-    have release : ∀ sL : Locals, LocalsOutside s0 sL base 9 →
-        sL.values = s.values → sL.get base = some (.i64 errno) →
-        sL.get (base + 1) = some (.i64 root) →
-        (∀ i, i < 6 → sL.get (base + 3 + i) =
-          some (.i64 ((pollWords (sysReply errno outputs)).getD i 0))) →
-        wp target (discardReadCodeWith calls (base + 1)) K after sL env := by
-      intro sL outsideL valuesL errnoL rootL wordsL
-      have b1L := bound sL outsideL (base + 1) (by omega) (by omega)
-      rw [← List.append_nil (discardReadCodeWith calls (base + 1))]
-      refine wp_discard_read_with runtime layout profile hImports sourceHost hStep.at_ hEmpty rootL
-        b1L.1 b1L.2 ?_
-      intro released hReleased hReleasedWorld
-      rw [wp_nil]
-      refine hNext _ released (setLocal sL (base + 1) (.i64 0)) errno outputs
-        (by rw [hReleasedWorld]; exact hSys')
-        (read_discard_step hStep hEmpty hReleased)
-        (by rw [read_discard_top hStep.at_ hEmpty, hCostEq]; exact hTopAlloc)
-        (outsideL.set hLow (by omega) (by omega)) valuesL
-        ((Locals.get_setLocal_ne b1L.1 (by omega)).trans errnoL) ?_
-      intro i hi
-      exact (Locals.get_setLocal_ne b1L.1 (by omega)).trans (wordsL i hi)
     change wp target (.localGet base :: _) K after sE env
     refine wp_localGet_get hGetE ?_
     simp only [wp_eqzI64_cons]
@@ -474,116 +381,108 @@ theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
       simp only [wp_const_cons, wp_load32_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
       rw [ite_eq_right (by
         have hp := hFrame'.pages
+        have := hHeap.base
+        have := hHeap.top
         change ¬(0 + 0 + 4 > after.mem.pages * 65536)
+        change _ ≤ (PureTransport.erase initial).mem.pages * 65536 at this
+        change _ = (PureTransport.erase initial).mem.pages at hp
         omega)]
       simp only [wp_extendUI32_cons]
       rw [hCountWord]
-      have b3 := bound sE outsideE (base + 3) (by omega) (by omega)
-      refine wp_localSet_local b3.1 b3.2 ?_
-      let sF := setLocal { sE with values := sE.values } (base + 3) (.i64 (littleEndian count))
-      have hGetF : sF.get (base + 3) = some (.i64 (littleEndian count)) :=
-        Locals.get_setLocal_same (s := { sE with values := sE.values }) b3.1 b3.2
-      have hOtherF : ∀ j, j ≠ base + 3 → sF.get j = sE.get j := fun j hj =>
-        Locals.get_setLocal_ne (s := { sE with values := sE.values }) b3.1 hj
-      have outsideF : LocalsOutside s0 sF base 9 :=
+      have b2 := bound sE outsideE (base + 2) (by omega) (by omega)
+      refine wp_localSet_local b2.1 b2.2 ?_
+      let sF := setLocal { sE with values := sE.values } (base + 2) (.i64 (littleEndian count))
+      have hGetF : sF.get (base + 2) = some (.i64 (littleEndian count)) :=
+        Locals.get_setLocal_same (s := { sE with values := sE.values }) b2.1 b2.2
+      have hOtherF : ∀ j, j ≠ base + 2 → sF.get j = sE.get j := fun j hj =>
+        Locals.get_setLocal_ne (s := { sE with values := sE.values }) b2.1 hj
+      have outsideF : LocalsOutside s0 sF base 8 :=
         (outsideE.values sE.values).set hLow (by omega) (by omega)
-      have hPointerF : sF.get (base + 2) = some (.i64 pointer) :=
-        (hOtherF (base + 2) (by omega)).trans ((hOtherE (base + 2) (by omega)).trans hPointerC)
-      change wp target (.localGet (base + 2) :: _) _ after sF env
+      have hPointerF : sF.get (base + 1) = some (.i64 (UInt64.ofNat ABI.callArea.1)) :=
+        (hOtherF (base + 1) (by omega)).trans ((hOtherE (base + 1) (by omega)).trans hPointerC)
+      change wp target (.localGet (base + 1) :: _) _ after sF env
       simp only [wp_localGet_cons, hPointerF, wp_constI64_cons, wp_addI64_cons]
-      have b2F := bound sF outsideF (base + 2) (by omega) (by omega)
-      refine wp_localSet_local b2F.1 b2F.2 ?_
-      let sG := setLocal { sF with values := sF.values } (base + 2)
-        (.i64 (pointer + UInt64.ofNat (48 * records.length)))
-      have hPointerG : sG.get (base + 2) =
-          some (.i64 (pointer + UInt64.ofNat (48 * records.length))) :=
-        Locals.get_setLocal_same (s := { sF with values := sF.values }) b2F.1 b2F.2
-      have hOtherG : ∀ j, j ≠ base + 2 → sG.get j = sF.get j := fun j hj =>
-        Locals.get_setLocal_ne (s := { sF with values := sF.values }) b2F.1 hj
-      have outsideG : LocalsOutside s0 sG base 9 :=
+      have b1F := bound sF outsideF (base + 1) (by omega) (by omega)
+      refine wp_localSet_local b1F.1 b1F.2 ?_
+      let sG := setLocal { sF with values := sF.values } (base + 1)
+        (.i64 (UInt64.ofNat ABI.callArea.1 + UInt64.ofNat (48 * records.length)))
+      have hPointerG : sG.get (base + 1) =
+          some (.i64 (UInt64.ofNat ABI.callArea.1 + UInt64.ofNat (48 * records.length))) :=
+        Locals.get_setLocal_same (s := { sF with values := sF.values }) b1F.1 b1F.2
+      have hOtherG : ∀ j, j ≠ base + 1 → sG.get j = sF.get j := fun j hj =>
+        Locals.get_setLocal_ne (s := { sF with values := sF.values }) b1F.1 hj
+      have outsideG : LocalsOutside s0 sG base 8 :=
         (outsideF.values sF.values).set hLow (by omega) (by omega)
-      change wp target (recordLoadCode (base + 2) eventFields (base + 4)) _ after sG env
+      change wp target (recordLoadCode (base + 1) eventFields (base + 3)) _ after sG env
       have hEventsLength : eventFields.length = 5 := rfl
-      rw [← List.append_nil (recordLoadCode (base + 2) eventFields (base + 4))]
-      refine wp_record_loads eventFields (base + 4) sG [] _ hPointerG hEventsAt
+      rw [← List.append_nil (recordLoadCode (base + 1) eventFields (base + 3))]
+      refine wp_record_loads eventFields (base + 3) sG [] _ hPointerG hEventsAt
         (eventFields_fit (by rw [hEventsSize]; omega)) (by left; omega)
         (by rw [outsideG.params]; omega)
         (by rw [outsideG.params, outsideG.length, hEventsLength]; omega) ?_
       intro sL outsideL heldL
       simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
-      refine release _ ?_ rfl ?_ ?_ ?_
+      refine hNext after _ errno [events, count] hSys' hStep ?_ rfl ?_ ?_
       · exact outsideG.trans ((outsideL.widen (by omega) (by rw [hEventsLength])).values _)
       · rw [Locals.get_values, outsideL.others base (by omega), hOtherG base (by omega),
           hOtherF base (by omega)]
         exact hGetE
-      · rw [Locals.get_values, outsideL.others (base + 1) (by omega),
-          hOtherG (base + 1) (by omega), hOtherF (base + 1) (by omega)]
-        exact hRootE
       · intro i hi
         rw [Locals.get_values,
           show sysReply errno [events, count] = ⟨errno, [events, count]⟩ by
             simp [sysReply, hZeroErrno], pollWords_reply]
         cases i with
         | zero =>
-          rw [Nat.add_zero, outsideL.others (base + 3) (by omega),
-            hOtherG (base + 3) (by omega)]
+          rw [Nat.add_zero, outsideL.others (base + 2) (by omega),
+            hOtherG (base + 2) (by omega)]
           exact hGetF
         | succ i =>
-          rw [show base + 3 + (i + 1) = base + 4 + i by omega,
+          rw [show base + 2 + (i + 1) = base + 3 + i by omega,
             heldL i (by rw [hEventsLength]; omega), List.getD_cons_succ]
     · rw [ite_eq_right (by simp [hZeroErrno] : ¬((if errno = 0 then (1 : UInt32) else 0) ≠ 0))]
       simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
-      refine release _ outsideE rfl hGetE hRootE ?_
+      refine hNext after _ errno outputs hSys' hStep outsideE rfl hGetE ?_
       intro i hi
       rw [show sysReply errno outputs = ⟨errno, []⟩ by simp [sysReply, hZeroErrno],
         pollWords_empty]
-      exact (hOtherE (base + 3 + i) (by omega)).trans
-        ((hOtherCs (base + 3 + i) (by omega) (by omega)).trans (hZero i hi))
+      exact (hOtherE (base + 2 + i) (by omega)).trans
+        ((hOtherC (base + 2 + i) (by omega)).trans (hZero i hi))
   · intro after message outputs hSys
-    exact hTrap after message outputs (by rw [← hWorld]; exact hSys)
+    exact hTrap after message outputs hSys
 
 /-- The code of a `poll` call, from the words of its fields in their locals to the errno, the
 number of events, and the fields of the first event on the stack.  A rejected request returns its
-errno without a call; an accepted request allocates the block, writes the subscriptions, runs the
-call, loads the results on errno 0, and releases the block. -/
+errno without a call; an accepted request writes the subscriptions into the call area, runs the
+call, and loads the results on errno 0. -/
 theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
     {call : LeanExe.Wasi.Call} {records : List (List Field)} {locs : List Nat}
     {values : List UInt64} {s : Locals} {base : Nat} {rest : Program}
-    {Q : Assertion (Observed World)} {aborts : Bool}
+    {Q : Assertion (Observed World)}
     (hHost : env.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf call]? = some call)
     (hParams : call.params = [.subscriptions records, .result32])
-    (hFit : subscriptionsFit records = true)
+    (hFit : subscriptionsFit records = true) (hArea : 80 * records.length ≤ ABI.callArea.2)
     (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
     (hCount : values.length = call.wordCount)
     (hLocs : ∀ place ∈ locs, place < base)
     (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s.params.length ≤ base) (hHigh : base + 9 ≤ s.positions)
-    (hRoom : aborts = false → heap.Room (PureTransport.erase initial) source
-      (allocSize (UInt64.ofNat (80 * records.length + 7))))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
-      (trace : List Event) (reply : Reply),
+    (hLow : s.params.length ≤ base) (hHigh : base + 8 ≤ s.positions)
+    (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
+      (reply : Reply),
       Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
         initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
-        heap' (PureTransport.erase final) [] →
-      heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
-      LocalsOutside s finalLocals base 9 →
+        heap (PureTransport.erase final) [] →
+      LocalsOutside s finalLocals base 8 →
       wp target rest Q final { finalLocals with values :=
         ((reply.errno :: pollWords reply).map Value.i64).reverse ++ s.values } env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
       Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
         initial.host trace (.trapped message) final.host → Q (.Trap final message)) :
     wp target (sysPollCodeWith calls call locs base ++ rest) Q initial s env := by
-  have hPositions : base + 9 ≤ s.params.length + s.locals.length := by
+  have hPositions : base + 8 ≤ s.params.length + s.locals.length := by
     have := hHigh
     simp only [Locals.positions] at this
     omega
@@ -601,51 +500,49 @@ theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
     rw [hArgs, hParams, poll_reject, hRejectEq]
   refine wp_localSet_local hLow (by omega) ?_
   let s1 := setLocal { s with values := s.values } base (.i64 reject)
-  have outside1 : LocalsOutside s s1 base 9 :=
-    ((LocalsOutside.refl s base 9).values s.values).set hLow le_rfl (by omega)
+  have outside1 : LocalsOutside s s1 base 8 :=
+    ((LocalsOutside.refl s base 8).values s.values).set hLow le_rfl (by omega)
   have hGet1 : s1.get base = some (.i64 reject) :=
     Locals.get_setLocal_same (s := { s with values := s.values }) hLow (by omega)
-  change wp target (zeroLocalsCode (base + 3) 6 ++ _) Q initial s1 env
-  refine wp_zero_locals 6 (base + 3) s1 (by rw [outside1.params]; omega)
+  change wp target (zeroLocalsCode (base + 2) 6 ++ _) Q initial s1 env
+  refine wp_zero_locals 6 (base + 2) s1 (by rw [outside1.params]; omega)
     (by rw [outside1.params, outside1.length]; omega) ?_
   intro s2 outside2 values2 zeros2
-  have outside2' : LocalsOutside s s2 base 9 :=
+  have outside2' : LocalsOutside s s2 base 8 :=
     outside1.trans (outside2.widen (by omega) (by omega))
   have hGet2 : s2.get base = some (.i64 reject) := (outside2.others base (by omega)).trans hGet1
   have held2 := held_transfer hHeld fun place member =>
     outside2'.others place (.inl (hLocs place member))
   simp only [wp_localGet_cons, hGet2, wp_eqzI64_cons, wp_iff_control_types]
   refine wp_iff_cons rfl ?_
-  have finish : ∀ (final : Store (Observed World)) (sF : Locals) (heap' : Heap)
-      (trace : List Event) (reply : Reply),
+  have finish : ∀ (final : Store (Observed World)) (sF : Locals) (trace : List Event)
+      (reply : Reply),
       Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
         initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
-        heap' (PureTransport.erase final) [] →
-      heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
-      LocalsOutside s sF base 9 →
+        heap (PureTransport.erase final) [] →
+      LocalsOutside s sF base 8 →
       sF.get base = some (.i64 reply.errno) →
-      (∀ i, i < 6 → sF.get (base + 3 + i) = some (.i64 ((pollWords reply).getD i 0))) →
+      (∀ i, i < 6 → sF.get (base + 2 + i) = some (.i64 ((pollWords reply).getD i 0))) →
       wp target (.localGet base :: ((List.range 6).map
-        (fun index => .localGet (base + 3 + index)) ++ rest)) Q final
+        (fun index => .localGet (base + 2 + index)) ++ rest)) Q final
         { sF with values := s.values } env := by
-    intro final sF heap' trace reply execution step top outsideF errnoF wordsF
+    intro final sF trace reply execution step outsideF errnoF wordsF
     simp only [wp_localGet_cons, Locals.get_values, errnoF]
     rw [show (6 : Nat) = (pollWords reply).length from rfl]
-    refine wp_push_words (pollWords reply) (base + 3) _ (fun i hi => wordsF i hi) ?_
+    refine wp_push_words (pollWords reply) (base + 2) _ (fun i hi => wordsF i hi) ?_
     simpa only [List.map_cons, List.reverse_cons, List.append_assoc, List.singleton_append,
       List.cons_append, List.nil_append] using
-      hNext heap' final { sF with values := s.values } trace reply execution step top
+      hNext final { sF with values := s.values } trace reply execution step
         (outsideF.values s.values)
   by_cases hAccepted : reject = 0
   · rw [ite_eq_left (by simp [hAccepted] : (if reject = 0 then (1 : UInt32) else 0) ≠ 0)]
     have hRejectZero : call.reject (values.map .word) = 0 := by
       rw [← hArgs, hReject, hAccepted]
     change wp target (sysPollCallCodeWith calls call records locs base) _ initial s2 env
-    refine wp_sys_poll_accept_with (s0 := s) runtime layout profile hImports sourceHost hHost
-      hCall hParams hFit held2 hLength (by rw [hRejectEq, hAccepted]) hLocs hHeap hCap hLow
-      hHigh outside2' zeros2 hRoom hResource ?_ ?_
-    · intro heap' final sF errno outputs hSys hStep hTop outsideF valuesF errnoF wordsF
+    refine wp_sys_poll_accept_with (s0 := s) hImports hHost hCall hParams hFit hArea held2 hLength
+      (by rw [hRejectEq, hAccepted]) hLocs hHeap hLow hHigh outside2' zeros2 ?_ ?_
+    · intro final sF errno outputs hSys hStep outsideF valuesF errnoF wordsF
       simp only [List.take_zero, List.nil_append, List.drop_zero, values2]
       have execution : Exec (observedHost host)
           (.sys call (flatArgsWith call.params values []) Action.pure) initial.host
@@ -653,8 +550,7 @@ theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
           (.returned (sysReply errno outputs)) final.host := by
         rw [hArgs]
         exact .sys_return hRejectZero hSys (.pure final.host _)
-      exact finish final sF heap' _ (sysReply errno outputs) execution hStep hTop outsideF errnoF
-        wordsF
+      exact finish final sF _ (sysReply errno outputs) execution hStep outsideF errnoF wordsF
     · intro final message outputs hSys
       exact hTrap final message _ (by rw [hArgs]; exact .sys_trap hRejectZero hSys)
   · rw [ite_eq_right (by simp [hAccepted] :
@@ -664,8 +560,7 @@ theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
       rw [hReject]; exact hAccepted
     have hReply : (⟨call.reject (flatArgsWith call.params values []), []⟩ : Reply) =
         ⟨reject, []⟩ := by rw [hReject]
-    refine finish initial s2 heap [] ⟨reject, []⟩ ?_ (Step.refl hHeap _) (by omega) outside2'
-      hGet2 ?_
+    refine finish initial s2 [] ⟨reject, []⟩ ?_ (Step.refl hHeap _) outside2' hGet2 ?_
     · rw [← hReply]
       exact .sys_reject hRejectNe (.pure initial.host _)
     · intro i hi
