@@ -20,28 +20,28 @@ def main : Action UInt64 := do
   if arguments.errno != 0 then
     pure arguments.errno
   else
-    let _ ← writeStdoutSome arguments.bytes
+    let _ ← writeStdout arguments.bytes 0 arguments.bytes.size
     let sizes ← argsSizesGet
     if sizes.errno != 0 then
       pure sizes.errno
     else
-      let _ ← writeStdoutSome (wordBytes sizes.count)
-      let _ ← writeStdoutSome (wordBytes sizes.size)
+      let _ ← writeStdout (wordBytes sizes.count) 0 8
+      let _ ← writeStdout (wordBytes sizes.size) 0 8
       let wall ← clockTimeGet 0 0
       if wall.errno != 0 then
         pure wall.errno
       else
-        let _ ← writeStdoutSome (wordBytes wall.time)
+        let _ ← writeStdout (wordBytes wall.time) 0 8
         let time ← clockTimeGet 1 0
         if time.errno != 0 then
           pure time.errno
         else
-          let _ ← writeStdoutSome (wordBytes time.time)
+          let _ ← writeStdout (wordBytes time.time) 0 8
           let random ← randomGet (Bytes.build 16 fun _ => 0) 0 16
           if random.errno != 0 then
             pure random.errno
           else
-            let _ ← writeStdoutSome random.buffer
+            let _ ← writeStdout random.buffer 0 random.buffer.size
             pure 0
 
 verified_compile_wasi command (main := main) := [wordBytes, main]

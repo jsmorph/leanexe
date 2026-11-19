@@ -32,7 +32,8 @@ theorem Command.cost_code_spec_with {calls : List LeanExe.Wasi.Call}
   | call callee args => exact cost_command_call_spec_with facts effectCalls sourceHost callee args
   | read capacity => exact cost_command_read_spec_with facts sourceHost capacity
   | readAll limit => exact cost_command_readAll_spec_with facts sourceHost limit
-  | write output bytes => exact cost_command_write_spec_with facts sourceHost output bytes
+  | write output buffer start count =>
+    exact cost_command_write_spec_with facts sourceHost output buffer start count
   | exit status => exact cost_command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec => exact cost_command_loop_spec_with facts sourceHost stepSpec
   | sys operation form args inputs buffers =>

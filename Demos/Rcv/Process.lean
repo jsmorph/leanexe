@@ -26,9 +26,10 @@ def limit : UInt64 := 50000000
 /-- The status for an input of more than `limit` bytes: WASI's errno `fbig`, file too large. -/
 def tooLong : UInt64 := 22
 
-/-- The bytes of the output that remain to be written. -/
+/-- The bytes of the output that remain to be written: the window of the output from `written`
+to its end, which `writeStep` writes in place. -/
 def remainingOutput (s : State) : Bytes :=
-  Bytes.build (s.output.size - s.written) fun i => s.output.get (s.written + i)
+  s.output.range s.written (s.output.size - s.written)
 
 /-- The step after a write that returned `reply`: an errno stops the process with it, a write that
 completes the output clears it, and a shorter write advances `written`. -/
@@ -45,7 +46,7 @@ def started (input : ReadResult) : ProcessStep State :=
   else ⟨true, 0, ⟨TabulateProgram.tabulate input.bytes, 0⟩⟩
 
 def writeStep (s : State) : Action (ProcessStep State) := do
-  let reply ← writeStdoutSome (remainingOutput s)
+  let reply ← writeStdout s.output s.written (s.output.size - s.written)
   pure (afterWrite s reply)
 
 /-- One step: a write while output remains, and otherwise a stop with status 0. -/

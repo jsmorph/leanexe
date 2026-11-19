@@ -1,4 +1,5 @@
 import LeanExe.Wasi.Calls
+import LeanExe.Wasi.Window
 
 namespace LeanExe.Wasi
 
@@ -107,9 +108,15 @@ end Action
 
 def readSome (capacity : UInt64) : Action ReadResult := .read capacity .pure
 
-def writeStdoutSome (bytes : Bytes) : Action WriteResult := .write .stdout bytes .pure
+/-- Calls `fd_write` once for stdout with the bytes of the window of `buffer` that `start` and
+`count` name. -/
+def writeStdout (buffer : Bytes) (start count : UInt64) : Action WriteResult :=
+  .write .stdout (buffer.range start count) .pure
 
-def writeStderrSome (bytes : Bytes) : Action WriteResult := .write .stderr bytes .pure
+/-- Calls `fd_write` once for stderr with the bytes of the window of `buffer` that `start` and
+`count` name. -/
+def writeStderr (buffer : Bytes) (start count : UInt64) : Action WriteResult :=
+  .write .stderr (buffer.range start count) .pure
 
 def exit (code : UInt64) : Action α := .exit code
 

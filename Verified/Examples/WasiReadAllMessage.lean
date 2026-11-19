@@ -27,12 +27,9 @@ traps.  For every reply sequence and every budget that fits between the heap's s
 and the end of the module's 65,535 pages and bounds every typed resource prefix of `main` under
 those replies, every run of `_start` with enough fuel traps, and when the final layer events meet
 the two predicates, the trap is the accepted exit with that status.  The budget is the resource
-model's: it charges the suffix that `writeAll` allocates for each write and credits no release, so
-the charge grows with the number of writes, and for an input of 100,000 bytes written one byte at
-a time the suffixes alone charge more than the 65,535 pages hold.
-`Verified/Examples/WasiReadAllSteady.lean` meets the premise for the reply sequences of its class
-`Steady` with `M` at 4,096: each read returns at most its count, and each write of `n` bytes at
-most `n`, at least 1, and at least `min 4096 n`.
+model's.  `writeAll` writes windows of the input in place and charges nothing, so the block of
+`readAll`'s buffer bounds every prefix under every reply sequence, as `budget_bounded` of
+`Verified/Examples/WasiReadAllSteady.lean` states.
 -/
 
 namespace Verified.Examples.WasiReadAll
@@ -321,28 +318,6 @@ theorem succeeded_run {World : Type} {host : Host World} {bytes : List UInt8}
     intro _ _ ok
     exact (ok _ (List.mem_singleton_self _)).elim
 
-/-- A run of the loop of `writeAll bytes` from `written` bytes whose writes succeed returns when
-the passes left exceed the bytes left.  Its events are writes to standard output, which took the
-bytes of `bytes` from `written` on. -/
-theorem writeAll_loop {World : Type} {host : Host World} (bytes : Bytes)
-    (small : bytes.data.size < 2 ^ 64) {test : UInt64 → UInt64 → Bool}
-    {step : UInt64 → UInt64 → Action UInt64}
-    (tested : ∀ index written, test index written = decide (written < bytes.size))
-    (stepped : ∀ index written, step index written =
-      .write .stdout (suffix bytes written) fun reply =>
-        if reply.errno != 0 then exit reply.errno else .pure (written + reply.count))
-    (remaining index : Nat) (written : UInt64) {world trace outcome final}
-    (le : written.toNat ≤ bytes.data.size) (enough : bytes.data.size - written.toNat < remaining)
-    (execution : LoopExec host remaining index written test step .pure world trace outcome final)
-    (ok : ∀ e ∈ trace, Succeeded e) :
-    (∃ value, outcome = .returned value) ∧
-      committedWrites 1 trace = bytes.data.data.toList.drop written.toNat ∧
-      ∀ e ∈ trace, ∃ offered reply, e = .write .stdout offered reply := by
-  have length : bytes.data.data.toList.length = bytes.data.size := by simp
-  exact succeeded_run (by omega)
-    (writeAll_loop_run bytes small tested stepped remaining index written le execution)
-    (by omega) (by omega) ok
-
 theorem committedReads_append (fd : UInt64) (first rest : List Wasi.Event) :
     committedReads fd (first ++ rest) = committedReads fd first ++ committedReads fd rest := by
   simp [committedReads]
@@ -417,19 +392,13 @@ theorem exec_message {World : Type} {host : Host World}
   have wide : bytes.size.toNat = bytes.data.size := by
     simp only [Bytes.size, UInt64.toNat_ofNat']
     exact Nat.mod_eq_of_lt (by omega)
-  have passes : (bytes.size + 1).toNat = bytes.data.size + 1 := by
-    rw [UInt64.toNat_add, wide, UInt64.toNat_one]
-    exact Nat.mod_eq_of_lt (by omega)
   have length : bytes.data.data.toList.length = bytes.data.size := by simp
   change Exec host (if (0 : UInt64) != 0 then _ else _) _ _ _ _ at restRun
   simp only [bne_self_eq_false, Bool.false_eq_true, ↓reduceIte] at restRun
   obtain ⟨_, writeTrace, written, finishTrace, writeRun, finishRun, rfl⟩ :=
-    Exec.unbind (writeAll bytes) restRun
-  change Exec host (.loop (bytes.size + 1) 0 _ _ .pure) _ _ _ _ at writeRun
-  cases writeRun with
-  | loop loopRun =>
-  obtain ⟨⟨_, rfl⟩, writeBytes, writeShape⟩ := writeAll_loop bytes (by omega) (fun _ _ => rfl)
-    (fun _ _ => rfl) _ 0 0 (by simp) (by rw [passes]; omega) loopRun
+    Exec.unbind (writeAll bytes 0 bytes.size) restRun
+  obtain ⟨⟨_, rfl⟩, writeBytes, writeShape⟩ := succeeded_run (by omega)
+    (writeAll_run_whole (by omega) writeRun) (by simp) (by rw [length, UInt64.toNat_zero]; omega)
     (fun e m => ok e (by simp [m]))
   simp only [UInt64.toNat_zero, List.drop_zero] at writeBytes
   have finish : (if limit < bytes.size then (Action.pure 1 : Action UInt64) else .pure 0) =

@@ -15,10 +15,6 @@ namespace Verified.Examples.WasiSysPrestat
 
 open LeanExe LeanExe.Wasi
 
-/-- The first `count` bytes of `buffer`: the bytes that a fill placed from the window's start. -/
-def filled (buffer : Bytes) (count : UInt64) : Bytes :=
-  Bytes.build count fun index => buffer.get index
-
 def main : Action UInt64 := do
   let prestat ← fdPrestatGet .preopened
   if prestat.errno != 0 then
@@ -39,7 +35,7 @@ def main : Action UInt64 := do
             if back.errno != 0 then
               pure back.errno
             else
-              let _ ← writeStdoutSome (filled back.buffer back.count)
+              let _ ← writeStdout back.buffer 0 back.count
               pure 0
       if copied.1 != 0 then
         pure copied.1
@@ -48,6 +44,6 @@ def main : Action UInt64 := do
       else
         pathUnlinkFile .preopened bytes![112]
 
-verified_compile_wasi command (main := main) := [filled, main]
+verified_compile_wasi command (main := main) := [main]
 
 end Verified.Examples.WasiSysPrestat

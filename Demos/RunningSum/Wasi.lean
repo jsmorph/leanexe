@@ -15,6 +15,6 @@ instance : Flat (ProcessStep State) (Bool × UInt64 × State) :=
 set_option Elab.async false
 verified_compile_wasi io :=
   [zero, parse, magnitudeLess, combineMagnitude, add, render, initial, completeLine, consumeInput,
-    remainingOutput, afterWrite, afterRead, writeStep, readStep, step, begin]
+    afterWrite, afterRead, writeStep, readStep, step, begin]
 
 end Demos.RunningSum

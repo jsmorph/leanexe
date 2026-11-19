@@ -11,7 +11,11 @@ private def returnRead : Command [] []
 
 private def writePrevious :
     Command [] [] [.bytes, .word, .pair .word .bytes, .bytes, .word] (.value .bytes) :=
-  .bind (.write .stdout (.there (.there (.there .here)))) returnRead
+  .bind
+    (.bind (.ret (.word 0))
+      (.bind (.ret (.bytesSize (.there (.there (.there (.there .here))))))
+        (.write .stdout (.there (.there (.there (.there (.there .here))))) (.there .here) .here)))
+    returnRead
 
 private theorem returnRead_bounded {World : Type} (host : Host World) (pure : PureContext [])
     (depth : UInt64) (live : Nat → Bool)
@@ -32,7 +36,21 @@ private theorem writePrevious_bounded {World : Type} (host : Host World) (pure :
   apply rule 0 0 (by omega)
   · apply bounded_of_rule
     intro spent fits rule
-    exact rule
+    apply rule 0 0 (by omega)
+    · apply bounded_of_rule
+      intro spent fits rule
+      exact rule (by change 0 ≤ 0; omega) rfl
+    · intro value _
+      apply bounded_of_rule
+      intro spent fits rule
+      apply rule 0 0 (by omega)
+      · apply bounded_of_rule
+        intro spent fits rule
+        exact rule (by change 0 ≤ 0; omega) rfl
+      · intro value _
+        apply bounded_of_rule
+        intro spent fits rule
+        exact rule
   · intro value _
     exact returnRead_bounded host pure depth live _
 

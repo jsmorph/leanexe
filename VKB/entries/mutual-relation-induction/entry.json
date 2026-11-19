@@ -21,14 +21,18 @@
     "LeanExe.Native.Proof.Export",
     "LeanExe.Native.Proof.Quiet",
     "LeanExe.Native.Clight.Clight",
-    "Verified.Examples.WasiReadAllMessage"
+    "Verified.Examples.WasiReadAllMessage",
+    "LeanExe.Wasi.WriteAll"
   ],
   "declarations": [
     "LeanExe.Wasi.Exec",
     "LeanExe.Wasi.LoopExec",
     "LClight.eval_expr",
     "LClight.eval_lvalue",
-    "LeanExe.Wasi.Exec.unbind"
+    "LeanExe.Wasi.Exec.unbind",
+    "LeanExe.Wasi.writeAll_loop_run",
+    "LeanExe.Wasi.writeAll_run_whole",
+    "Verified.Examples.WasiReadAll.succeeded_run"
   ],
   "examples": [
     "LeanExe.Wasi.Exec.not_trapped",
@@ -43,8 +47,7 @@
     "LeanExe.Native.exec_quiet",
     "LeanExe.Native.funcall_quiet",
     "Verified.Examples.WasiReadAll.exec_message",
-    "Verified.Examples.WasiReadAll.readAll_loop",
-    "Verified.Examples.WasiReadAll.writeAll_loop"
+    "Verified.Examples.WasiReadAll.readAll_loop"
   ],
   "unimported": {
     "LeanExe/Native/ClightN/Exec.lean": [

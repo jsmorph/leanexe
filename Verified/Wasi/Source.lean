@@ -65,7 +65,7 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
       Command pureSigs effectSigs context (.value (.pair .word .bytes))
   | readAll (limit : Expr pureSigs context .word) :
       Command pureSigs effectSigs context (.value (.pair .word .bytes))
-  | write (output : Output) (bytes : Var context .bytes) :
+  | write (output : Output) (buffer : Var context .bytes) (start count : Var context .word) :
       Command pureSigs effectSigs context (.value (.elem (.prod .word .word)))
   | exit (code : Expr pureSigs context .word) : Command pureSigs effectSigs context result
   | loop (count : Expr pureSigs context .word) (initial : Expr pureSigs context type)
@@ -98,10 +98,10 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
   | _, _, .readAll limit, env =>
       Action.bind (LeanExe.Wasi.readAll (limit.denote pureFuns env)) fun result =>
         .pure (result.errno, result.bytes)
-  | _, _, .write output bytes, env =>
+  | _, _, .write output buffer start count, env =>
       Action.bind (match output with
-        | .stdout => writeStdoutSome (env.get bytes)
-        | .stderr => writeStderrSome (env.get bytes)) fun result =>
+        | .stdout => writeStdout (env.get buffer) (env.get start) (env.get count)
+        | .stderr => writeStderr (env.get buffer) (env.get start) (env.get count)) fun result =>
           .pure (result.errno, result.count)
   | _, _, .exit code, env => .exit (code.denote pureFuns env)
   | _, _, .loop count initial test step, env =>

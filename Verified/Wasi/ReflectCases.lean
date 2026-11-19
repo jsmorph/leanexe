@@ -9,7 +9,7 @@ def unit : Action Unit := pure ()
 
 def readWrite : Action WriteResult := do
   let result ← readSome 3
-  writeStdoutSome result.bytes
+  writeStdout result.bytes 0 result.bytes.size
 
 def discardRead : Action Unit := do
   let _ ← readSome 1
@@ -25,11 +25,12 @@ def exitCase : Action Unit := LeanExe.Wasi.exit 7
 
 def pureByteLet : Action WriteResult := do
   let bytes := bytes![65, 0, 255]
-  writeStderrSome bytes
+  writeStderr bytes 0 bytes.size
 
 def branch : Action WriteResult := do
   let result ← readSome 2
-  if result.errno == 0 then writeStdoutSome result.bytes else writeStderrSome bytes![]
+  if result.errno == 0 then writeStdout result.bytes 0 result.bytes.size
+  else writeStderr bytes![] 0 0
 
 def wordLoop : Action UInt64 :=
   LeanExe.Wasi.loop 3 0 (fun index _ => decide (index < 2))
@@ -45,10 +46,10 @@ def recordLoop : Action State :=
   LeanExe.Wasi.loop 3 (State.mk 0 bytes![65, 0, 255])
     (fun index state => decide (index < 3) && decide (state.count < 100))
     (fun index state => do
-      let _ ← writeStdoutSome state.bytes
+      let _ ← writeStdout state.bytes 0 state.bytes.size
       pure { state with count := state.count + index + 1 })
 
-def helper : Action WriteResult := writeStdoutSome bytes![]
+def helper : Action WriteResult := writeStdout bytes![] 0 0
 
 def throughHelper : Action Unit := do
   let _ ← helper

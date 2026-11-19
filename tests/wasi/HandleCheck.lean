@@ -345,7 +345,7 @@ def bytesMain : Action UInt64 := do
     (fun _ => pure Bytes.empty) fun file => do
       let got ← fdRead file (Bytes.build 16 fun _ => 0) 0 16
       pure got.buffer
-  let _ ← writeStdoutSome read.1
+  let _ ← writeStdout read.1 0 read.1.size
   pure read.2
 
 verified_compile_wasi bytesCommand (main := bytesMain) := [bytesMain]

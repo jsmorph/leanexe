@@ -184,7 +184,7 @@ theorem main_trapped {World : Type} {host : Host World}
         at cont2
       split at cont2
       · cases cont2
-      change Exec host (Action.bind (writeAll (render s.1)) fun written =>
+      change Exec host (Action.bind (writeAll (render s.1) 0 (render s.1).size) fun written =>
           Action.pure (if written < (render s.1).size then 77 else 0))
         loopAfter post _ final at cont2
       obtain ⟨writeAfter, writes, middle, tail, writeRun, cont3, rfl⟩ := Exec.unbind _ cont2
@@ -200,7 +200,7 @@ theorem main_trapped {World : Type} {host : Host World}
         cases same
         have small := render_size s.1
         obtain ⟨offered, committed, member⟩ :=
-          (writeAll_run (by omega) writeRun).trapped_write accepts _ rfl
+          (writeAll_run_whole (by omega) writeRun).trapped_write accepts _ rfl
         exact ⟨_, List.mem_append_right _ (List.mem_append_right _
           (List.mem_append_left _ member)), trivial⟩
 
@@ -839,12 +839,12 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
     obtain rfl := images_nil (show Images F L ⟨oneArgs, environ, granted⟩ _ [] _ from drawRest)
     change Exec _ (if (0 : UInt64) != 0 then _ else _) loopAfter post middle after at cont2
     rw [ite_eq_right (by decide)] at cont2
-    change Exec _ (Action.bind (writeAll (render counts)) fun written =>
+    change Exec _ (Action.bind (writeAll (render counts) 0 (render counts).size) fun written =>
         Action.pure (if written < (render counts).size then 77 else 0)) loopAfter post middle after
       at cont2
     rw [← hCounts, one_rendered] at cont2
     obtain ⟨writeAfter, writes, written, tail, writeRun, cont3, rfl⟩ :=
-      Exec.unbind (writeAll oneOutput) cont2
+      Exec.unbind (writeAll oneOutput 0 oneOutput.size) cont2
     obtain ⟨lws, ltl, rfl, writeImages, tailImages⟩ :=
       Verified.Examples.WasiReadAll.images_split postImages
     have later : Carried fullReplies 1 (lws ++ (ltl ++ lx)) := by
@@ -876,7 +876,7 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
           exact ⟨rfl, rfl, rfl⟩
       | exitTrap rejected => exact absurd rejected.1 (by decide)
     have length : oneOutput.data.data.toList.length = oneOutput.data.size := by simp
-    cases writeAll_run (by omega) writeRun with
+    cases writeAll_run_whole (by omega) writeRun with
     | done ended =>
       cases writeImages
       rw [UInt64.toNat_zero] at ended

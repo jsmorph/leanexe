@@ -52,11 +52,11 @@ theorem prestat_elf_file : bytesOk (genWasiElf command.module prestatStart wasiR
     prestatElfBytes prestatElfSize = true := by decide +kernel
 
 theorem prestat_elf_segments : elfSegments (byteAt prestatElfBytes) =
-    [⟨1, 5, 0, 0x400000, 11816, 11816⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 12524, 12524⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem prestat_elf_layout : elfSegmentsOf prestatLayout =
-    [⟨1, 5, 0, 0x400000, 11816, 11816⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 12524, 12524⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem prestat_elf_entry : elfEntryOf (byteAt prestatElfBytes) = wasiEntry.toNat := by

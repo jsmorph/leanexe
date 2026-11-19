@@ -22,7 +22,7 @@ verified_compile_wasi io :=
     decRound, decParse, hexParse, pow10Float, fastPath, parse64,
     limbsOf, quotAt, range, found, nearest, clamp, startExp, shortest, numDigits, digitAt,
     digitsFrom, byte1, noBytes, zeros, sciLayoutW, ecmaLayoutW, fixed, special, print64With,
-    print64, stripCR, parse, render, initial, completeLine, consumeInput, remainingOutput,
+    print64, stripCR, parse, render, initial, completeLine, consumeInput,
     afterWrite, afterRead, writeStep, readStep, step, begin]
 
 end Demos.RunningSumFp

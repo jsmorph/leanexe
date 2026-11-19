@@ -1,61 +1,38 @@
 import LeanExe.Wasi.Semantics
 
-/-! `writeAll bytes` writes `bytes` to standard output with a loop of at most `bytes.size + 1`
-passes.  Each pass that finds bytes left offers them, `suffix bytes written`, and adds the count
-that the write returned to `written`, so a short write is followed by a write of the rest.  A
-write that returns an errno ends the run with the exit of that errno.  The loop returns the number
-of bytes that the writes took, which falls short of `bytes.size` only when the passes run out.
+/-! `writeAll buffer start count` writes the bytes of the window of `buffer` that `start` and
+`count` name to standard output with a loop of at most the window's length plus one passes.  It
+computes the window's first position and length as words, as `Bytes.window` states them.  Each
+pass that finds bytes left writes the window of the same buffer that starts `written` bytes past
+the first position and holds the bytes that remain, and adds the count that the write returned to
+`written`, so a short write is followed by a write of the rest.  No pass copies the buffer.  A write that returns an errno ends the run with the exit
+of that errno.  The loop returns the number of bytes that the writes took, which falls short of
+the window's length only when the passes run out.
 
 `WriteAllRun host bytes written passes events outcome` states the events and the outcome of every
-run of the loop under `host` from `written` bytes taken with `passes` passes left, and
-`writeAll_run` proves it of every run of `writeAll bytes`, from 0 with `bytes.size + 1` passes.
-`stdoutTaken` collects the bytes that the writes of a trace to standard output took when they
-returned errno 0, and `Offered bytes taken events` states that each event is a write to standard
-output that offered the bytes of `bytes` after those that the writes before it took.
-`WriteAllRun.taken` states that a run that returns `value` made writes that each returned errno 0,
-offered the bytes that remained, and took the bytes from `written` up to `value`, one write for
-each pass when `value` falls short of the bytes.  A run that exits does so with the errno, from 1
-to 76, of its last write, after taking fewer than the bytes from `written` on.
-`WriteAllRun.trapped_write` states that a run that traps under a host that accepts every status
-below 126 has a trapped write. -/
+run of the loop under `host` over the bytes `bytes` from `written` bytes taken with `passes`
+passes left, and `writeAll_run` proves it of every run of `writeAll buffer start count`, over the
+window's bytes from 0 with the window's length plus one passes.  `writeAll_run_whole` states the
+case of the whole buffer, a start of 0 and a count of its size.  `stdoutTaken` collects the bytes
+that the writes of a trace to standard output took when they returned errno 0, and
+`Offered bytes taken events` states that each event is a write to standard output that offered the
+bytes of `bytes` after those that the writes before it took.  `WriteAllRun.taken` states that a
+run that returns `value` made writes that each returned errno 0, offered the bytes that remained,
+and took the bytes from `written` up to `value`, one write for each pass when `value` falls short
+of the bytes.  A run that exits does so with the errno, from 1 to 76, of its last write, after
+taking fewer than the bytes from `written` on.  `WriteAllRun.trapped_write` states that a run that
+traps under a host that accepts every status below 126 has a trapped write. -/
 
 namespace LeanExe.Wasi
 
-/-- The bytes of `bytes` from `start` on, for a start of at most `bytes.size`; above it the count
-`bytes.size - start` wraps. -/
-def suffix (bytes : Bytes) (start : UInt64) : Bytes :=
-  Bytes.build (bytes.size - start) fun i => bytes.get (start + i)
-
-/-- Writes `bytes` to stdout, continuing after short writes, and exits with the errno of a write
-that fails. -/
-def writeAll (bytes : Bytes) : Action UInt64 :=
-  loop (bytes.size + 1) 0 (fun _ written => written < bytes.size) fun _ written => do
-    let reply ← writeStdoutSome (suffix bytes written)
+/-- Writes the bytes of the window of `buffer` that `start` and `count` name to stdout, continuing
+after short writes, and exits with the errno of a write that fails. -/
+def writeAll (buffer : Bytes) (start count : UInt64) : Action UInt64 :=
+  let first := min start buffer.size
+  let length := min count (buffer.size - first)
+  loop (length + 1) 0 (fun _ written => written < length) fun _ written => do
+    let reply ← writeStdout buffer (first + written) (length - written)
     if reply.errno != 0 then exit reply.errno else pure (written + reply.count)
-
-/-- The count of bytes of `suffix bytes start`: those of `bytes` from `start` on. -/
-theorem suffix_count {bytes : Bytes} {start : UInt64} (small : bytes.data.size < 2 ^ 64)
-    (le : start.toNat ≤ bytes.data.size) :
-    (bytes.size - start).toNat = bytes.data.size - start.toNat := by
-  have wide : bytes.size.toNat = bytes.data.size := by
-    simp only [Bytes.size, UInt64.toNat_ofNat']
-    exact Nat.mod_eq_of_lt small
-  rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, wide]; exact le), wide]
-
-/-- The bytes of `suffix bytes start` are those of `bytes` from `start` on. -/
-theorem suffix_toList {bytes : Bytes} {start : UInt64} (small : bytes.data.size < 2 ^ 64)
-    (le : start.toNat ≤ bytes.data.size) :
-    (suffix bytes start).data.data.toList = bytes.data.data.toList.drop start.toNat := by
-  have count := suffix_count small le
-  apply List.ext_getElem
-  · simp [suffix, count]
-  · intro i inside _
-    have below : i < bytes.data.size - start.toNat := by
-      simpa [suffix, count] using inside
-    have inRange : start.toNat + i < bytes.data.size := by omega
-    have mod : (start.toNat + i) % 18446744073709551616 = start.toNat + i :=
-      Nat.mod_eq_of_lt (by omega)
-    simp [suffix, Bytes.build, Bytes.get, mod, inRange, ByteArray.getElem_eq_getElem_data]
 
 /-- The bytes that the event `e` took as a write to standard output: the first bytes that it
 offered, as many as its count, when it returned errno 0, and none otherwise. -/
@@ -115,46 +92,51 @@ inductive WriteAllRun {World : Type} (host : Host World) (bytes : List UInt8) :
       WriteAllRun host bytes written (passes + 1)
         [.write .stdout offered (.trapped message committed)] (.trapped message)
 
-/-- Every run of the loop of `writeAll bytes` from `written` bytes taken, at most `bytes`'s size,
-meets `WriteAllRun`. -/
-theorem writeAll_loop_run {World : Type} {host : Host World} (bytes : Bytes)
-    (small : bytes.data.size < 2 ^ 64) {test : UInt64 → UInt64 → Bool}
+/-- Every run of the loop of `writeAll buffer start count` from `written` bytes taken, at most the
+window's length, meets `WriteAllRun` over the window's bytes. -/
+theorem writeAll_loop_run {World : Type} {host : Host World} (buffer : Bytes) (start count : UInt64)
+    (small : buffer.data.size < 2 ^ 64) {test : UInt64 → UInt64 → Bool}
     {step : UInt64 → UInt64 → Action UInt64}
-    (tested : ∀ index written, test index written = decide (written < bytes.size))
+    (tested : ∀ index written, test index written =
+      decide (written < min count (buffer.size - min start buffer.size)))
     (stepped : ∀ index written, step index written =
-      .write .stdout (suffix bytes written) fun reply =>
+      .write .stdout (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)) fun reply =>
         if reply.errno != 0 then exit reply.errno else .pure (written + reply.count)) :
     ∀ (remaining index : Nat) (written : UInt64) {world trace outcome final},
-      written.toNat ≤ bytes.data.size →
+      written.toNat ≤ (buffer.window start count).2 →
       LoopExec host remaining index written test step .pure world trace outcome final →
-      WriteAllRun host bytes.data.data.toList written remaining trace outcome
+      WriteAllRun host (buffer.range start count).data.data.toList written remaining trace outcome
   | 0, _, written, _, _, _, _, _, execution => by
     cases execution with
     | zero next =>
       cases next
-      by_cases ended : bytes.data.data.toList.length ≤ written.toNat
+      by_cases ended : (buffer.range start count).data.data.toList.length ≤ written.toNat
       · exact .done ended
       · exact .spent (by omega)
   | remaining + 1, index, written, _, _, _, _, le, execution => by
-    have wide : bytes.size.toNat = bytes.data.size := by
-      simp only [Bytes.size, UInt64.toNat_ofNat']
-      exact Nat.mod_eq_of_lt small
-    have length : bytes.data.data.toList.length = bytes.data.size := by simp
-    have offers := suffix_toList small le
-    have offered : (suffix bytes written).data.size = bytes.data.size - written.toNat := by
+    have hLength := (buffer.window_of_words small start count).2
+    have hWindow := buffer.window_le start count
+    have length : (buffer.range start count).data.data.toList.length =
+        (buffer.window start count).2 := by
+      simp
+    have offers := buffer.range_after small le
+    have offered : (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)).data.size =
+          (buffer.window start count).2 - written.toNat := by
       have := congrArg List.length offers
-      simpa using this
+      simpa [length] using this
     cases execution with
     | stop test next =>
       cases next
       rw [tested] at test
       refine .done ?_
-      simp only [decide_eq_false_iff_not, UInt64.lt_iff_toNat_lt, wide] at test
+      simp only [decide_eq_false_iff_not, UInt64.lt_iff_toNat_lt, hLength] at test
       omega
     | next test step rest =>
       rw [tested] at test
-      have left : written.toNat < bytes.data.size := by
-        simpa [UInt64.lt_iff_toNat_lt, wide] using test
+      have left : written.toNat < (buffer.window start count).2 := by
+        simpa [UInt64.lt_iff_toNat_lt, hLength] using test
       rw [stepped] at step
       cases step with
       | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
@@ -167,7 +149,7 @@ theorem writeAll_loop_run {World : Type} {host : Host World} (bytes : Bytes)
           have sum : (written + committed).toNat = written.toNat + committed.toNat := by
             rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
           exact .wrote (by omega) offers (by omega)
-            (writeAll_loop_run bytes small tested stepped remaining (index + 1)
+            (writeAll_loop_run buffer start count small tested stepped remaining (index + 1)
               (written + committed) (by omega) rest)
         · have failing : ((writeResult errno committed).errno != 0) = true := by
             simp [writeResult, zero]
@@ -176,8 +158,8 @@ theorem writeAll_loop_run {World : Type} {host : Host World} (bytes : Bytes)
           cases next
     | exit test step =>
       rw [tested] at test
-      have left : written.toNat < bytes.data.size := by
-        simpa [UInt64.lt_iff_toNat_lt, wide] using test
+      have left : written.toNat < (buffer.window start count).2 := by
+        simpa [UInt64.lt_iff_toNat_lt, hLength] using test
       rw [stepped] at step
       cases step with
       | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
@@ -192,8 +174,8 @@ theorem writeAll_loop_run {World : Type} {host : Host World} (bytes : Bytes)
           exact .failed (by omega) offers zero (host.write_bound reply).2 ⟨_, _, next⟩
     | trap test step =>
       rw [tested] at test
-      have left : written.toNat < bytes.data.size := by
-        simpa [UInt64.lt_iff_toNat_lt, wide] using test
+      have left : written.toNat < (buffer.window start count).2 := by
+        simpa [UInt64.lt_iff_toNat_lt, hLength] using test
       rw [stepped] at step
       cases step with
       | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
@@ -208,24 +190,40 @@ theorem writeAll_loop_run {World : Type} {host : Host World} (bytes : Bytes)
           exact .failed (by omega) offers zero (host.write_bound reply).2 ⟨_, _, next⟩
       | write_trap _ => exact .trapped (by omega) offers
 
-/-- Every run of `writeAll bytes` meets `WriteAllRun` from 0 bytes taken with `bytes.size + 1`
-passes. -/
-theorem writeAll_run {World : Type} {host : Host World} {bytes : Bytes}
-    (small : bytes.data.size + 1 < 2 ^ 64) {world : World} {trace : List Event}
+/-- Every run of `writeAll buffer start count` meets `WriteAllRun` over the window's bytes from 0
+bytes taken with the window's length plus one passes. -/
+theorem writeAll_run {World : Type} {host : Host World} {buffer : Bytes} {start count : UInt64}
+    (small : buffer.data.size + 1 < 2 ^ 64) {world : World} {trace : List Event}
     {outcome : Outcome UInt64} {final : World}
-    (execution : Exec host (writeAll bytes) world trace outcome final) :
-    WriteAllRun host bytes.data.data.toList 0 (bytes.data.size + 1) trace outcome := by
-  have wide : bytes.size.toNat = bytes.data.size := by
-    simp only [Bytes.size, UInt64.toNat_ofNat']
+    (execution : Exec host (writeAll buffer start count) world trace outcome final) :
+    WriteAllRun host (buffer.range start count).data.data.toList 0
+      ((buffer.window start count).2 + 1) trace outcome := by
+  have hLength := (buffer.window_of_words (by omega) start count).2
+  have hWindow := buffer.window_le start count
+  have passes : (min count (buffer.size - min start buffer.size) + 1).toNat =
+      (buffer.window start count).2 + 1 := by
+    rw [UInt64.toNat_add, hLength, UInt64.toNat_one]
     exact Nat.mod_eq_of_lt (by omega)
-  have passes : (bytes.size + 1).toNat = bytes.data.size + 1 := by
-    rw [UInt64.toNat_add, wide, UInt64.toNat_one]
-    exact Nat.mod_eq_of_lt small
-  change Exec host (.loop (bytes.size + 1) 0 _ _ .pure) world trace outcome final at execution
+  change Exec host (.loop (min count (buffer.size - min start buffer.size) + 1) 0 _ _ .pure)
+    world trace outcome final at execution
   cases execution with
   | loop run =>
     rw [passes] at run
-    exact writeAll_loop_run bytes (by omega) (fun _ _ => rfl) (fun _ _ => rfl) _ 0 0 (by simp) run
+    exact writeAll_loop_run buffer start count (by omega) (fun _ _ => rfl) (fun _ _ => rfl) _ 0 0
+      (by simp) run
+
+/-- Every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes` from 0
+bytes taken with `bytes`'s size plus one passes. -/
+theorem writeAll_run_whole {World : Type} {host : Host World} {bytes : Bytes}
+    (small : bytes.data.size + 1 < 2 ^ 64) {world : World} {trace : List Event}
+    {outcome : Outcome UInt64} {final : World}
+    (execution : Exec host (writeAll bytes 0 bytes.size) world trace outcome final) :
+    WriteAllRun host bytes.data.data.toList 0 (bytes.data.size + 1) trace outcome := by
+  have run := writeAll_run small execution
+  have hLength : (bytes.window 0 bytes.size).2 = bytes.data.size := by
+    rw [Bytes.window_snd, bytes.size_toNat (by omega)]
+    simp
+  rwa [bytes.range_zero_size (by omega), hLength] at run
 
 theorem exitStatus_of_lt {code : UInt64} (small : code.toNat < 2 ^ 32) :
     exitStatus code = code := by

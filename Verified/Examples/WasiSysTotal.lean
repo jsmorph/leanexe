@@ -199,6 +199,14 @@ local macro "write_bound" : tactic => `(tactic|
    intro _ _ rule
    exact rule))
 
+/-- Proves `Bounded` of the bindings of a write's window, which charge nothing, and the write. -/
+local macro "window_bound" : tactic => `(tactic|
+  (repeat (first
+    | (apply bounded_of_rule; intro _ _ rule; refine rule 0 0 (by omega) ?_ ?_)
+    | (intro _ _)
+    | ret_bound
+    | write_bound)))
+
 /-- Proves `Bounded` of a flat call without an output, which charges nothing. -/
 local macro "flat_bound" : tactic => `(tactic|
   (apply bounded_of_rule
@@ -254,7 +262,7 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   ite_bound 288
   · ret_bound
   bind_bound 0 288
-  · write_bound
+  · window_bound
   intro _ _
   bind_bound 0 288
   · flat_bound
@@ -265,13 +273,13 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   · bind_bound 56 0
     · ret_bound
     · intro _ _
-      write_bound
+      window_bound
   intro _ _
   bind_bound 56 176
   · bind_bound 56 0
     · ret_bound
     · intro _ _
-      write_bound
+      window_bound
   intro _ _
   bind_bound 0 176
   · bind_bound 0 0
@@ -288,7 +296,7 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   · bind_bound 56 0
     · ret_bound
     · intro _ _
-      write_bound
+      window_bound
   intro _ _
   bind_bound 0 120
   · bind_bound 0 0
@@ -305,7 +313,7 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   · bind_bound 56 0
     · ret_bound
     · intro _ _
-      write_bound
+      window_bound
   intro _ _
   bind_bound 64 0
   · bind_bound 64 0
@@ -318,7 +326,7 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
   ite_bound 0
   · ret_bound
   bind_bound 0 0
-  · write_bound
+  · window_bound
   intro _ _
   ret_bound
 

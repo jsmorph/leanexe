@@ -33,8 +33,10 @@ def consumeInput (state : State) : ProcessStep State :=
       if byte == 10 then completeLine next
       else ⟨true, 0, { next with line := next.line.push byte }⟩
 
+/-- The bytes of the output that remain to be written: the window of the output from `written`
+to its end, which `writeStep` writes in place. -/
 def remainingOutput (state : State) : Bytes :=
-  Bytes.build (state.output.size - state.written) fun i => state.output.get (state.written + i)
+  state.output.range state.written (state.output.size - state.written)
 
 def afterWrite (state : State) (reply : WriteResult) : ProcessStep State :=
   if reply.errno != 0 then ⟨false, reply.errno, state⟩
@@ -51,7 +53,7 @@ def afterRead (state : State) (reply : ReadResult) : ProcessStep State :=
     ⟨true, 0, { state with input := reply.bytes, cursor := 0, eof := reply.bytes.size == 0 }⟩
 
 def writeStep (state : State) : Action (ProcessStep State) := do
-  let reply ← writeStdoutSome (remainingOutput state)
+  let reply ← writeStdout state.output state.written (state.output.size - state.written)
   pure (afterWrite state reply)
 
 def readStep (state : State) : Action (ProcessStep State) := do

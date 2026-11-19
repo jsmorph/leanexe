@@ -43,14 +43,14 @@ of at most `N / 512 + 1` passes over a buffer of 4,096 bytes that the loop's sta
 pass calls `randomGet` on the window of the buffer's first `8 · min r 512` bytes, with `r` the
 words still to draw, and adds the residues of the window's little-endian words to the counts with
 `tally`.  It then writes `render` of the counts to stdout with `writeAll` of [the shared write
-loop](../../LeanExe/Wasi/WriteAll.lean), which readAll also uses: a loop of at most `B + 1` passes
-for the B bytes of the output, each of which writes the bytes that the writes before it did not
-take.  A write that returns an errno ends the run with that errno as the status.  When the passes
+loop](../../LeanExe/Wasi/WriteAll.lean), which readAll also uses, over the window of the whole
+output: a loop of at most `B + 1` passes for the B bytes of the output, each of which writes in
+place the window of the output that the writes before it did not take.  A write that returns an errno ends the run with that errno as the status.  When the passes
 run out with bytes unwritten, which takes a write that took no byte, the status is 77, one more
 than the largest WASI errno, so it differs from 2 and from every errno that the run can return.
 Otherwise the status is 0.  The loop's state holds the counts and the buffer, which the compiled
 code updates in place: the host writes each call's bytes into the buffer, and a pass allocates
-nothing, as `body_bounded` below states.  `verified_compile_wasi` writes a module of 6,338 bytes
+nothing, as `body_bounded` below states.  `verified_compile_wasi` writes a module of 6,272 bytes
 that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
@@ -62,7 +62,7 @@ that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, a
 | `parseN_callSpec`, `histogram_callSpec`, `render_callSpec` | `Verified.CallSpec compiled.module compiled.tables K spec compiled.f.bound` for `K` = 3, 5, and 9: called with a borrowed argument from a ready store with room for the bound, the function returns the specification's value without a trap and leaves a ready store ([the compilation](Compiled.lean)). |
 | `parseN_bound`, `histogram_bound`, `render_bound` | The generated bounds are 0, 136 bytes, and at most 17,136 bytes. |
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `writeAll_run`, `WriteAllRun.taken`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes` meets `WriteAllRun`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
+| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
 
@@ -124,7 +124,7 @@ shim](NativeCounts.lean).
 |---|---|
 | `histogram_elf_file`, `histogram_elf_segments`, `histogram_elf_layout`, `histogram_elf_entry`, `histogram_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
 | `histogram_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
-| `body_bounded`, `writeAll_bounded`, `budget_fits` | Every run and every prefix of `main`'s body charges at most `budget` under a host whose replies give an argument block of at most `argsLimit` bytes, for every N, `writeAll` on the output charges at most `writeCharge` under every host, and `budget` fits the executable's 4,096 pages above the heap's start. |
+| `body_bounded`, `writeAll_bounded`, `budget_fits` | Every run and every prefix of `main`'s body charges at most `budget` under a host whose replies give an argument block of at most `argsLimit` bytes, for every N, `writeAll` charges nothing under every host, and `budget` fits the executable's 4,096 pages above the heap's start. |
 | `linux_footprint_bounded` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
 | `linux_exec_counts` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `Full` ends at the accepted exit, and its status and layer events meet `Counts`. |
 | `histogram_elf_counts` | For every reply sequence and every N, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Counts`. |
@@ -161,18 +161,18 @@ The corollary holds for every N because a pass of the loop allocates nothing.  T
 the result of `args`, the loop's state, and the result of `randomGet` into their components where
 `main` binds them, so no later use copies them.  `random_get` fills the buffer that the loop's
 state carries, and the command takes the buffer's variable, which dies at the call, without a copy.
-`budget`, 6,368,624 bytes, holds 6,291,504 bytes for the block of `args`, 136 bytes for the counts,
-4,144 bytes for the buffer, at most 17,136 bytes for `render`, and 55,704 bytes for the at most 211
-passes of `writeAll`, each of which charges the block of at most 210 bytes, 264 bytes.  Linux 4.13
+`budget`, 6,312,920 bytes, holds 6,291,504 bytes for the block of `args`, 136 bytes for the counts,
+4,144 bytes for the buffer, and at most 17,136 bytes for `render`.  `writeAll` charges nothing,
+since each of its passes writes a window of the output in place.  Linux 4.13
 and later limit the strings and pointers of `argv` and `envp` together to at most 6 MiB,
 `argsLimit` (`get_arg_page` of `fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12), so every
 process that Linux starts meets the premise on the arguments.
 
 The proof composes three parts.  `body_bounded` follows `main`'s reflected body with the rules of
 `Verified/Wasi/ResourceRules.lean`, and `loop_bounded` bounds the loop's passes, each of which
-charges nothing.  `writeAll_bounded` bounds `writeAll`'s passes with `loop_bounded` from a count of
-bytes written of at most the output's size, which every pass keeps, since a write takes at most the
-bytes that it offered (`write_count_le`).  `linux_footprint_bounded` gives the budget premise of the
+charges nothing.  `writeAll_bounded` bounds `writeAll`'s passes with `loop_bounded`: each binds the
+start and the count of the window that remains, words, and writes the window in place, so it
+charges nothing.  `linux_footprint_bounded` gives the budget premise of the
 generated `command.start` from the shim's replies to `args_sizes_get`.
 `linux_exec_counts` excludes the trapped runs.  Under a host that accepts every status below 126,
 as the shim does, a trapped run of `main` has a trapped `args_sizes_get`, `args_get`,

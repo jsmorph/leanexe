@@ -17,9 +17,9 @@ def main : Action UInt64 := do
   if found.errno != 0 then
     pure found.errno
   else
-    let _ ← writeStdoutSome (wordBytes found.count)
-    let _ ← writeStdoutSome (wordBytes found.size)
-    let _ ← writeStdoutSome found.bytes
+    let _ ← writeStdout (wordBytes found.count) 0 8
+    let _ ← writeStdout (wordBytes found.size) 0 8
+    let _ ← writeStdout found.bytes 0 found.bytes.size
     pure 0
 
 verified_compile_wasi command (main := main) := [wordBytes, main]

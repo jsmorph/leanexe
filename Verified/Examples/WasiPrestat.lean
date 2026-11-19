@@ -16,16 +16,16 @@ def wordBytes (word : UInt64) : Bytes :=
 /-- Writes the errno and the fields of the record of the preopened directory. -/
 def record : Action UInt64 := do
   let found ← fdPrestatGet .preopened
-  let _ ← writeStdoutSome (wordBytes found.errno)
-  let _ ← writeStdoutSome (wordBytes found.tag)
-  let _ ← writeStdoutSome (wordBytes found.prNameLen)
+  let _ ← writeStdout (wordBytes found.errno) 0 8
+  let _ ← writeStdout (wordBytes found.tag) 0 8
+  let _ ← writeStdout (wordBytes found.prNameLen) 0 8
   pure found.errno
 
 /-- Writes the errno and the buffer of the preopened directory's name into `capacity` bytes. -/
 def name (capacity : UInt64) : Action UInt64 := do
   let found ← fdPrestatDirName .preopened (Bytes.build capacity fun _ => 0) 0 capacity
-  let _ ← writeStdoutSome (wordBytes found.errno)
-  let _ ← writeStdoutSome found.buffer
+  let _ ← writeStdout (wordBytes found.errno) 0 8
+  let _ ← writeStdout found.buffer 0 found.buffer.size
   pure found.errno
 
 def main : Action UInt64 := do

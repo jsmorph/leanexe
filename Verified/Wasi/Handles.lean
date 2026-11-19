@@ -662,7 +662,7 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     refine Action.Handles.bind_iff.mpr ((Action.Handles.readAll stack _).mono ?_)
     rintro _ after rfl
     rfl
-  | write output bytes =>
+  | write output buffer start count =>
     intro stage marks h
     cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
     intro env stack _
