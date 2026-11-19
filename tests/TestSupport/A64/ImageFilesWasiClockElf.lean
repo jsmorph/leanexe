@@ -50,11 +50,11 @@ theorem clockrandom_elf_file :
     clockRandomElfBytes clockRandomElfSize = true := by decide +kernel
 
 theorem clockrandom_elf_segments : elfSegments (byteAt clockRandomElfBytes) =
-    [⟨1, 5, 0, 0x400000, 13208, 13208⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 14480, 14480⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem clockrandom_elf_layout : elfSegmentsOf clockRandomLayout =
-    [⟨1, 5, 0, 0x400000, 13208, 13208⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 14480, 14480⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem clockrandom_elf_entry : elfEntryOf (byteAt clockRandomElfBytes) = wasiEntry.toNat := by

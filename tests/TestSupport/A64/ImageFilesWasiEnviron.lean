@@ -49,11 +49,11 @@ theorem environ_elf_file : bytesOk (genWasiElf command.module environStart wasiR
     environElfBytes environElfSize = true := by decide +kernel
 
 theorem environ_elf_segments : elfSegments (byteAt environElfBytes) =
-    [⟨1, 5, 0, 0x400000, 10836, 10836⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 11256, 11256⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem environ_elf_layout : elfSegmentsOf environLayout =
-    [⟨1, 5, 0, 0x400000, 10836, 10836⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
+    [⟨1, 5, 0, 0x400000, 11256, 11256⟩, ⟨1, 6, 0x10000, 0x410000, 4096, 268510288⟩] := by
   decide +kernel
 
 theorem environ_elf_entry : elfEntryOf (byteAt environElfBytes) = wasiEntry.toNat := by
