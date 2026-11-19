@@ -39,19 +39,19 @@ buffer from that array.  [The verified compilation](Compiled.lean) writes a modu
 `parseN`, `histogram`, and `render` as functions 3, 5, and 9.
 
 [The command](Command.lean) is `main : Action UInt64`.  It calls `args` and `parseN` and then a loop
-of at most `N / 512 + 1` passes, each of which calls `randomGet` for `8 · min r 512` bytes, with `r`
-the words still to draw, and adds the residues of the buffer's little-endian words to the counts
-with `tally`.  It then writes `render` of the counts to stdout with `writeAll` of [the shared write
+of at most `N / 512 + 1` passes over a buffer of 4,096 bytes that the loop's state carries.  Each
+pass calls `randomGet` on the window of the buffer's first `8 · min r 512` bytes, with `r` the
+words still to draw, and adds the residues of the window's little-endian words to the counts with
+`tally`.  It then writes `render` of the counts to stdout with `writeAll` of [the shared write
 loop](../../LeanExe/Wasi/WriteAll.lean), which readAll also uses: a loop of at most `B + 1` passes
 for the B bytes of the output, each of which writes the bytes that the writes before it did not
 take.  A write that returns an errno ends the run with that errno as the status.  When the passes
 run out with bytes unwritten, which takes a write that took no byte, the status is 77, one more
 than the largest WASI errno, so it differs from 2 and from every errno that the run can return.
-Otherwise the status is 0.  The loop's state holds the counts, which the compiled code updates in
-place, and the code releases each pass's buffer after `tally` reads it.  No theorem states that the
-heap of a run stays constant, since the resource model credits no release, and no run tests it
-beyond N of 1,000,000.  `verified_compile_wasi` writes a module of 5,977 bytes that imports
-`fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
+Otherwise the status is 0.  The loop's state holds the counts and the buffer, which the compiled
+code updates in place: the host writes each call's bytes into the buffer, and a pass allocates
+nothing, as `body_bounded` below states.  `verified_compile_wasi` writes a module of 6,338 bytes
+that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
 
@@ -91,8 +91,7 @@ exit that the host rejects, after the events of a run of `main`; or (c) a trap o
 `unreachable`, after a prefix of `main`.  The status of an accepted exit is at most 77, below the
 126 at which Wasmtime 44 rejects an exit.  The theorem admits the guest's trap because the generated
 theorem without it, `command.total`, takes a budget that bounds the heap that every prefix of
-`main` allocates, and the resource model charges each pass of the loop for its buffer and credits
-no release, so the charge grows with the number of passes and no budget covers every N.
+`main` allocates, and that heap holds the block of `args`, whose size the host's replies set.
 `total_meets` takes such a budget as a premise, with a host that traps nowhere along the run, and
 excludes (b) and (c).  No theorem shows that the premises of `total_meets` hold together;
 `histogram_elf_witness` does so for the native corollary below.
@@ -100,14 +99,15 @@ excludes (b) and (c).  No theorem shows that the premises of `total_meets` hold 
 The proof follows `main`.  A returned `args` result holds fewer than `2^32` bytes, the size that the
 reporter's four-byte word gives (`args_returned`), so `parseN` computes `parseSpec` on it.
 `draw_loop` proves by induction on the passes that the loop makes the calls of `Draws` and that its
-counts are the fold of `countWord` over the drawn words, since `tally` counts the words that
-`wordAt` reads by Horner's rule (`tally_eq`, `wordAt_eq`) and a buffer of whole words adds its words
-to those before it (`words_append`).  The fold from ten zero counts is `histogram` of the words
-(`histogram_list`), and `histogram_eq` and `render_eq` give the specification's output, of at most
-210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken`: a returned count
-`v` is the length of the bytes taken, a prefix of the output that each write extended from where
-the writes before it stopped, so the test `v < B` gives 77 exactly when bytes remain, which takes
-one write for each pass, and an exit carries the errno of the write that failed.
+counts are the fold of `countWord` over the drawn words.  A call that returns errno 0 places the
+reply's bytes at the buffer's start (`splice_take`), `tally` counts the first words of the buffer,
+which `wordAt` reads by Horner's rule (`tally_eq`, `wordAt_eq`), and a reply of whole words adds its
+words to those before it (`words_append`).  The fold from ten zero counts is `histogram` of the
+words (`histogram_list`), and `histogram_eq` and `render_eq` give the specification's output, of at
+most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken`: a returned
+count `v` is the length of the bytes taken, a prefix of the output that each write extended from
+where the writes before it stopped, so the test `v < B` gives 77 exactly when bytes remain, which
+takes one write for each pass, and an exit carries the errno of the write that failed.
 
 ## The native executable writes the counts
 
@@ -124,10 +124,10 @@ shim](NativeCounts.lean).
 |---|---|
 | `histogram_elf_file`, `histogram_elf_segments`, `histogram_elf_layout`, `histogram_elf_entry`, `histogram_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
 | `histogram_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
-| `body_bounded`, `writeAll_bounded`, `budget_fits`, `budget_full` | Every run and every prefix of `main`'s body charges at most `budget` under a host whose replies give an argument block of at most `argsLimit` bytes and an N of at most `drawLimit`, `writeAll` on the output charges at most `writeCharge` under every host, and `budget` fits the executable's 4,096 pages above the heap's start, with no room for one more pass. |
-| `linux_footprint_bounded` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and whose N is at most `drawLimit`, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
+| `body_bounded`, `writeAll_bounded`, `budget_fits` | Every run and every prefix of `main`'s body charges at most `budget` under a host whose replies give an argument block of at most `argsLimit` bytes, for every N, `writeAll` on the output charges at most `writeCharge` under every host, and `budget` fits the executable's 4,096 pages above the heap's start. |
+| `linux_footprint_bounded` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
 | `linux_exec_counts` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `Full` ends at the accepted exit, and its status and layer events meet `Counts`. |
-| `histogram_elf_counts` | For every reply sequence, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and whose N is at most `drawLimit` reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Counts`. |
+| `histogram_elf_counts` | For every reply sequence and every N, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Counts`. |
 | `fullReplies_run`, `histogram_elf_witness` | The premises of `histogram_elf_counts` and `Full` hold together: for the replies `fullReplies`, the arguments `h` and `1`, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `Full` and `Counts`. |
 
 `Full ls` holds when every `getrandom` of the layer events `ls` returned the count that it asked for
@@ -157,27 +157,23 @@ disk stays full or the limit holds.
 process before `exit_group` unless it ignores them (write(2)), and the model of Linux's replies has
 no signal.
 
-The corollary bounds N because the resource model charges each pass of the loop for the blocks that
-it allocates and credits no release.  The compiler splits the result of `args`, the loop's state,
-and the result of `randomGet` into their components where `main` binds them, so no later use
-copies them, and a pass charges only the buffer of `random_get`.  `drawLimit`, 32,378,879, is the
-largest N for which `budget` fits the executable's memory: 6,291,504 bytes for the block of
-`args`, 136 bytes for the counts, at most 17,136 bytes for `render`, 55,704 bytes for the at most
-211 passes of `writeAll`, each of which charges the block of at most 210 bytes, 264 bytes, and
-4,144 bytes for each of the `N / 512 + 1` passes.  Linux 4.13 and later limit the strings and
-pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
-`fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12), so every process that Linux starts meets the
-premise on the arguments.  A corollary for every N needs a pass that allocates nothing, a draw into
-a buffer that the loop's state carries, or a resource model that credits every block that a pass
-releases.
+The corollary holds for every N because a pass of the loop allocates nothing.  The compiler splits
+the result of `args`, the loop's state, and the result of `randomGet` into their components where
+`main` binds them, so no later use copies them.  `random_get` fills the buffer that the loop's
+state carries, and the command takes the buffer's variable, which dies at the call, without a copy.
+`budget`, 6,368,624 bytes, holds 6,291,504 bytes for the block of `args`, 136 bytes for the counts,
+4,144 bytes for the buffer, at most 17,136 bytes for `render`, and 55,704 bytes for the at most 211
+passes of `writeAll`, each of which charges the block of at most 210 bytes, 264 bytes.  Linux 4.13
+and later limit the strings and pointers of `argv` and `envp` together to at most 6 MiB,
+`argsLimit` (`get_arg_page` of `fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12), so every
+process that Linux starts meets the premise on the arguments.
 
 The proof composes three parts.  `body_bounded` follows `main`'s reflected body with the rules of
-`Verified/Wasi/ResourceRules.lean`, and `loop_bounded` bounds the loop's passes from counts of ten
-words, which every pass keeps (`tally_size`), and `loop_kept` gives the counts of ten words after
-the loop.  `writeAll_bounded` bounds `writeAll`'s passes with `loop_bounded` from a count of bytes
-written of at most the output's size, which every pass keeps, since a write takes at most the bytes
-that it offered (`write_count_le`).  `linux_footprint_bounded` gives the budget premise of the
-generated `command.start` from the shim's replies to `args_sizes_get` and `args_get`.
+`Verified/Wasi/ResourceRules.lean`, and `loop_bounded` bounds the loop's passes, each of which
+charges nothing.  `writeAll_bounded` bounds `writeAll`'s passes with `loop_bounded` from a count of
+bytes written of at most the output's size, which every pass keeps, since a write takes at most the
+bytes that it offered (`write_count_le`).  `linux_footprint_bounded` gives the budget premise of the
+generated `command.start` from the shim's replies to `args_sizes_get`.
 `linux_exec_counts` excludes the trapped runs.  Under a host that accepts every status below 126,
 as the shim does, a trapped run of `main` has a trapped `args_sizes_get`, `args_get`,
 `random_get`, or write (`main_trapped`), whose image no layer events that meet `Full` give
@@ -191,7 +187,8 @@ bytes that they returned (`draws_full`), and the writes, the bytes that they off
 replies `fullReplies`, which answer call 0 with 8 zero bytes and every later call with the size of
 `oneOutput`, the output for one word of residue 0.  `fullReplies_run` follows `main` under those
 replies: `args` returns the arguments, N is 1, the one `getrandom` asks for 8 bytes and returns 8
-(`random_one`), `render` gives `oneOutput` (`one_rendered`), the first write offers all of it and
+(`random_one`), the call places them at the start of the loop's buffer, `oneBuffer`, and `render`
+gives `oneOutput` (`one_rendered`), the first write offers all of it and
 takes all of it, and the run exits with status 0.  The kernel evaluates no run of the executable:
 the footprint theorem gives the process's run, and the proof reasons over its events.
 
