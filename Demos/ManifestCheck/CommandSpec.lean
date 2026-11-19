@@ -35,13 +35,20 @@ every verdict is OK, 1 when a verdict is FAILED and every output line was writte
 writes of an output line, one more than its bytes, that each returned errno 0 and left bytes, and
 the errno of a write that failed.
 
-`SoFar host world events` states confinement and the use of descriptors of the events of a run
-that stopped without an accepted exit: at a trap of the host, at an exit that the host rejected, or
-at a trap of the guest.  `ConfinedSoFar` states `Confined` of them for the buffer that `args`
-returned and the bytes of a `ManifestRun` with status 0 that follows the events of `args` and
-whose manifest the pure core accepts, or for no bytes.  `HandledSoFar` states that they are those
-of `Handled` followed by those of `Unfinished`: none, an open that returned errno 0 with calls on
-its descriptor and no close, an open that trapped, or an exit that the host rejected. -/
+`SoFar host world events` states the three properties of the events of a run that stopped
+without an accepted exit: at a trap of the host, at an exit that the host rejected, or at a trap of
+the guest.  `ConfinedSoFar` states `Confined` of them for the buffer that `args` returned and the
+bytes of a `ManifestRun` with status 0 that follows the events of `args` and whose manifest the
+pure core accepts, or for no bytes.  `HandledSoFar` states that they are those of `Handled`
+followed by those of `Unfinished`: none, an open that returned errno 0 with calls on its descriptor
+and no close, an open that trapped, or an exit that the host rejected.  `VerdictsSoFar` states
+that no event writes to standard output, or that the events are those of `args`, of a
+`ManifestRun` with status 0 of a manifest that the pure core accepts, and of `ChecksSoFar` for its
+lines, followed by events that write nothing to standard output.  `ChecksSoFar` states the checks
+of the first lines as `Checks` states them, each with its verdict and the writes of its whole
+output line, followed by none or by the `FileCheck` of the next line and writes that offer the
+bytes of its output line, with that line's verdict, after those that the writes before them
+took. -/
 
 namespace Demos.ManifestCheck
 
@@ -374,10 +381,53 @@ def ConfinedSoFar {World : Type} (host : Host World) (world : World) (events : L
         ∀ l ∈ lines manifest, WellFormed l.2) ∧
       Confined a.bytes.data.data.toList manifest events
 
-/-- Confinement, `ConfinedSoFar`, and the use of descriptors, `HandledSoFar`, of the events
-`events` of a run from `world` that stopped without an accepted exit: at a trap of the host, at an
-exit that the host rejected, or at a trap of the guest. -/
+/-- No event of `events` writes to standard output. -/
+def Quiet (events : List Event) : Prop :=
+  ∀ offered reply, Event.write .stdout offered reply ∉ events
+
+/-- `ChecksSoFar lines events`: `events` are those of the checks of the first lines of `lines` in
+order, each the events of `FileCheck` for the line and its name followed by the writes of its
+output line with the verdict of `FileCheck`, which took every byte, as `Checks` states them.  They
+are followed by no event, or by the events of `FileCheck` for the next line and writes of its
+output line with that verdict, each of which offered at least one byte, the bytes of the output
+line after those that the writes before it took. -/
+inductive ChecksSoFar : List (List UInt8) → List Event → Prop
+  | none {lines : List (List UInt8)} : ChecksSoFar lines []
+  | line {line : List UInt8} {rest : List (List UInt8)} {ok : Bool}
+      {fileEvents writes restEvents : List Event}
+      (check : FileCheck (line.drop 66) line fileEvents ok)
+      (wrote : LineWrites (lineText (line.drop 66) ok) writes .all)
+      (more : ChecksSoFar rest restEvents) :
+      ChecksSoFar (line :: rest) (fileEvents ++ writes ++ restEvents)
+  | writing {line : List UInt8} {rest : List (List UInt8)} {ok : Bool}
+      {fileEvents writes : List Event}
+      (check : FileCheck (line.drop 66) line fileEvents ok)
+      (offered : Offered (lineText (line.drop 66) ok) 0 writes)
+      (some : ∀ e ∈ writes, WroteSome e) :
+      ChecksSoFar (line :: rest) (fileEvents ++ writes)
+
+/-- The verdicts of the events `events` of a run from `world` that stopped without an accepted
+exit: no event writes to standard output, or the events are those of a run of `args` whose buffer
+holds one argument, `name`, of a `ManifestRun` of `name` with status 0 whose manifest has at least
+one line and every line in the format, of `ChecksSoFar` for the manifest's lines, and of events that
+write nothing to standard output.  Every write to standard output therefore offers bytes of the
+output line of a line of the manifest with the verdict of its `FileCheck`, which the digest of the
+bytes that the host returned for the line's file decides. -/
+def VerdictsSoFar {World : Type} (host : Host World) (world : World) (events : List Event) :
+    Prop :=
+  Quiet events ∨
+    ∃ (a : ArgsResult) (pre : List Event) (middle : World) (name : List UInt8)
+      (opening : List Event) (manifest : List UInt8) (checked tail : List Event),
+      events = pre ++ opening ++ checked ++ tail ∧ Exec host args world pre (.returned a) middle ∧
+      OneArgument a.bytes.data.data.toList name ∧ ManifestRun name opening 0 manifest ∧
+      lines manifest ≠ [] ∧ (∀ l ∈ lines manifest, WellFormed l.2) ∧
+      ChecksSoFar ((lines manifest).map (·.2)) checked ∧ Quiet tail
+
+/-- The three properties of the events `events` of a run from `world` that stopped without an
+accepted exit, at a trap of the host, at an exit that the host rejected, or at a trap of the guest:
+confinement, `ConfinedSoFar`, the use of descriptors, `HandledSoFar`, and the verdicts,
+`VerdictsSoFar`. -/
 def SoFar {World : Type} (host : Host World) (world : World) (events : List Event) : Prop :=
-  ConfinedSoFar host world events ∧ HandledSoFar events
+  ConfinedSoFar host world events ∧ HandledSoFar events ∧ VerdictsSoFar host world events
 
 end Demos.ManifestCheck

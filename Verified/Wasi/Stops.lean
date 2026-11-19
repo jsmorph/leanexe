@@ -13,8 +13,9 @@ prefix apart at its first step, and `prefix_unbind` gives the prefixes of `Actio
 `Every ok action` states that `ok` holds of every event that the action makes in a run that stops:
 of each read, write, and call for every reply, and of each exit that the host rejects.
 `Every.stops` gives `ok` of every event of such a run.  `writeAll_stops` gives the events of a run
-of `writeAll` that stops: writes to standard output, followed by at most one exit that the host
-rejected. -/
+of `writeAll` that stops: writes to standard output, each of which offered at least one byte, the
+bytes of the window after those that the writes before it took, followed by at most one exit that
+the host rejected. -/
 
 namespace Verified.Wasi
 
@@ -315,70 +316,115 @@ theorem Every.returns {ok : Event → Prop} {World : Type} {host : Host World} {
 
 /-! ## `writeAll` -/
 
-/-- A run that stops of the passes of a loop, each of which writes to standard output and exits
-with the write's errno when it is not 0, makes writes to standard output followed by at most one
-exit that the host rejected. -/
-theorem writes_stop {World : Type} {host : Host World} {test : UInt64 → UInt64 → Bool}
+/-- A run that stops of the passes of the loop of `writeAll buffer start count` from `written`
+bytes taken, at most the window's length, makes writes to standard output, each of which offered at
+least one byte, the bytes of the window after those that the writes before it took, followed by at
+most one exit that the host rejected. -/
+theorem writeAll_loop_stops {World : Type} {host : Host World} (buffer : Bytes)
+    (start count : UInt64) (small : buffer.data.size < 2 ^ 64) {test : UInt64 → UInt64 → Bool}
     {step : UInt64 → UInt64 → Action UInt64}
-    (stepped : ∀ index written, ∃ offered, step index written =
-      .write .stdout offered fun reply =>
+    (tested : ∀ index written, test index written =
+      decide (written < min count (buffer.size - min start buffer.size)))
+    (stepped : ∀ index written, step index written =
+      .write .stdout (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)) fun reply =>
         if reply.errno != 0 then Action.exit reply.errno else .pure (written + reply.count)) :
     ∀ (remaining index : Nat) (written : UInt64) {world : World} {trace : List Event},
+      written.toNat ≤ (buffer.window start count).2 →
       Stops host (resumeLoop test step .pure remaining index written) world trace →
       ∃ writes, (trace = writes ∨ ∃ code message, trace = writes ++ [.exitTrap code message]) ∧
-        ∀ e ∈ writes, ∃ offered reply, e = .write .stdout offered reply := by
-  intro remaining
-  induction remaining with
-  | zero =>
-    intro index written world trace h
-    exact ⟨[], .inl h.pure, fun _ member => nomatch member⟩
-  | succ remaining ih =>
-    intro index written world trace h
+        Offered (buffer.range start count).data.data.toList written.toNat writes ∧
+        ∀ e ∈ writes, ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0
+  | 0, _, _, _, _, _, h => ⟨[], .inl h.pure, trivial, fun _ member => nomatch member⟩
+  | remaining + 1, index, written, _, _, le, h => by
+    have hLength := (buffer.window_of_words small start count).2
+    have hWindow := buffer.window_le start count
+    have length : (buffer.range start count).data.data.toList.length =
+        (buffer.window start count).2 := by
+      simp
+    have offers := buffer.range_after small le
+    have offeredSize : (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)).data.size =
+          (buffer.window start count).2 - written.toNat := by
+      have := congrArg List.length offers
+      simpa [length] using this
     simp only [resumeLoop] at h
     split at h
-    · obtain ⟨offered, same⟩ := stepped (UInt64.ofNat index) written
+    · rename_i passes
+      rw [tested] at passes
+      have left : written.toNat < (buffer.window start count).2 := by
+        simpa [UInt64.lt_iff_toNat_lt, hLength] using passes
+      have first : ∀ reply, ∃ offered reply', Event.write .stdout (buffer.range
+          (min start buffer.size + written) (min count (buffer.size - min start buffer.size) -
+            written)) reply = .write .stdout offered reply' ∧ offered.data.size ≠ 0 :=
+        fun reply => ⟨_, reply, rfl, by omega⟩
       rcases h.bind with inside | ⟨value, done, rest, between, rfl, stepRun, more⟩
-      · rw [same] at inside
+      · rw [stepped] at inside
         rcases inside.write with rfl | ⟨errno, committed, after, rest, rfl, reply⟩ |
             ⟨message, committed, rfl⟩
-        · exact ⟨[], .inl rfl, fun _ member => nomatch member⟩
-        · have one : ∀ e ∈ [Event.write .stdout offered (.returned errno committed)],
-              ∃ offered reply, e = .write .stdout offered reply := fun e member => by
-            rw [List.mem_singleton.mp member]
-            exact ⟨_, _, rfl⟩
+        · exact ⟨[], .inl rfl, trivial, fun _ member => nomatch member⟩
+        · have one : ∀ e ∈ [Event.write .stdout (buffer.range (min start buffer.size + written)
+              (min count (buffer.size - min start buffer.size) - written))
+                (.returned errno committed)],
+              ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0 :=
+            fun e member => by
+              rw [List.mem_singleton.mp member]
+              exact first _
           split at reply
           · rcases reply.exit with rfl | ⟨message, rfl⟩
-            · exact ⟨_, .inl rfl, one⟩
-            · exact ⟨_, .inr ⟨_, message, rfl⟩, one⟩
+            · exact ⟨[_], .inl rfl, ⟨⟨_, _, rfl, offers⟩, trivial⟩, one⟩
+            · exact ⟨[_], .inr ⟨_, message, rfl⟩, ⟨⟨_, _, rfl, offers⟩, trivial⟩, one⟩
           · rw [reply.pure]
-            exact ⟨_, .inl rfl, one⟩
-        · refine ⟨[_], .inl rfl, fun e member => ?_⟩
+            exact ⟨[_], .inl rfl, ⟨⟨_, _, rfl, offers⟩, trivial⟩, one⟩
+        · refine ⟨[_], .inl rfl, ⟨⟨_, _, rfl, offers⟩, trivial⟩, fun e member => ?_⟩
           rw [List.mem_singleton.mp member]
-          exact ⟨_, _, rfl⟩
-      · rw [same] at stepRun
+          exact first _
+      · rw [stepped] at stepRun
         cases stepRun with
-        | @write_return _ _ _ _ _ _ _ _ _ errno committed _ next =>
-          dsimp only at next
-          split at next
-          · cases next
-          · cases next
-            obtain ⟨writes, shape, all⟩ := ih _ _ more
-            have all' : ∀ e ∈ Event.write .stdout offered (.returned errno committed) :: writes,
-                ∃ offered reply, e = .write .stdout offered reply := fun e member => by
-              rcases List.mem_cons.mp member with rfl | member
-              · exact ⟨_, _, rfl⟩
+        | @write_return _ _ _ _ _ _ _ _ _ errno committed reply next =>
+          by_cases zero : errno = 0
+          · subst zero
+            simp only [writeResult, ↓reduceIte, bne_self_eq_false, Bool.false_eq_true] at next
+            cases next
+            have bound := (host.write_bound reply).1
+            simp only [Transfer.committed, offeredSize] at bound
+            have sum : (written + committed).toNat = written.toNat + committed.toNat := by
+              rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
+            obtain ⟨writes, shape, offered, all⟩ := writeAll_loop_stops buffer start count small
+              tested stepped remaining (index + 1) (written + committed) (by omega) more
+            have taken : (Event.write .stdout (buffer.range (min start buffer.size + written)
+                (min count (buffer.size - min start buffer.size) - written))
+                  (.returned 0 committed)).stdoutTaken.length = committed.toNat := by
+              simp only [Event.stdoutTaken, ↓reduceIte, offers, List.length_take,
+                List.length_drop, length]
+              omega
+            refine ⟨.write .stdout _ (.returned 0 committed) :: writes, ?_,
+              ⟨⟨_, _, rfl, offers⟩, ?_⟩, fun e member => ?_⟩
+            · rcases shape with rfl | ⟨code, message, rfl⟩
+              · exact .inl rfl
+              · exact .inr ⟨code, message, rfl⟩
+            · rw [taken, ← sum]
+              exact offered
+            · rcases List.mem_cons.mp member with rfl | member
+              · exact first _
               · exact all e member
-            rcases shape with rfl | ⟨code, message, rfl⟩
-            · exact ⟨_, .inl rfl, all'⟩
-            · exact ⟨_, .inr ⟨code, message, rfl⟩, all'⟩
-    · exact ⟨[], .inl h.pure, fun _ member => nomatch member⟩
+          · have failing : ((writeResult errno committed).errno != 0) = true := by
+              simp [writeResult, zero]
+            dsimp only at next
+            rw [ite_eq_left failing] at next
+            cases next
+    · exact ⟨[], .inl h.pure, trivial, fun _ member => nomatch member⟩
 
-/-- A run of `writeAll` that stops makes writes to standard output, followed by at most one exit
-that the host rejected. -/
+/-- A run of `writeAll buffer start count` that stops makes writes to standard output, each of which
+offered at least one byte, the bytes of the window that `start` and `count` name after those that
+the writes before it took, followed by at most one exit that the host rejected. -/
 theorem writeAll_stops {World : Type} {host : Host World} {buffer : Bytes} {start count : UInt64}
-    {world : World} {trace : List Event} (h : Stops host (writeAll buffer start count) world trace) :
+    (small : buffer.data.size < 2 ^ 64) {world : World} {trace : List Event}
+    (h : Stops host (writeAll buffer start count) world trace) :
     ∃ writes, (trace = writes ∨ ∃ code message, trace = writes ++ [.exitTrap code message]) ∧
-      ∀ e ∈ writes, ∃ offered reply, e = .write .stdout offered reply :=
-  writes_stop (fun _ _ => ⟨_, rfl⟩) _ 0 0 (Stops.loop h)
+      Offered (buffer.range start count).data.data.toList 0 writes ∧
+      ∀ e ∈ writes, ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0 :=
+  writeAll_loop_stops buffer start count small (fun _ _ => rfl) (fun _ _ => rfl) _ 0 0
+    (by simp) (Stops.loop h)
 
 end Verified.Wasi
