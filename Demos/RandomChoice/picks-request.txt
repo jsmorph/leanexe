@@ -1,0 +1,10 @@
+The user's words for the WASI command `choose N K` of request.txt, which a pure function
+`putPicks` serves:
+
+The command's memory must not depend on N or K.
+- The loop carries one draw buffer and one output buffer through its state by moves.
+- `randomGet buffer start count` fills a window of the draw buffer in place.
+- The accepted picks are rendered into the output buffer in place, and only the filled window is
+  written.
+- If that needs a pure function that renders into an owned buffer, add it, specify it, and have
+  its specification reviewed.
