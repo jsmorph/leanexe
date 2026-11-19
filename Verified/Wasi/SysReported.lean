@@ -57,18 +57,18 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
         Q (.Trap final "unreachable"))
     (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
       (errno count size root length : UInt64) (output : LeanExe.Bytes) (trace : List Event),
-      Exec (observedHost host) (SysForm.reported.run call values) initial.host trace
+      Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host trace
         (.returned (wordsBytesValue 3 [errno, count, size] output)) final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap' (PureTransport.erase final) root length output →
-      heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call values trace →
+      heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call trace →
       ReadAllOutside base s finalLocals →
       wp target rest Q final { finalLocals with values :=
         ([errno, count, size].map Value.i64 ++ [Value.i64 root, Value.i64 length]).reverse ++
           s.values } env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (SysForm.reported.run call values) initial.host trace
+      Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host trace
         (.trapped message) final.host → Q (.Trap final message)) :
     wp target (sysReportedCodeWith calls call base ++ rest) Q initial s env := by
   have hPositions : base + 6 ≤ s.params.length + s.locals.length := by
@@ -155,13 +155,13 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
     -- The pushes after the outer `iff`.
     have finish : ∀ (final : Store (Observed World)) (sF : Locals) (heap' : Heap)
         (e c z root length : UInt64) (output : LeanExe.Bytes) (trace : List Event),
-        Exec (observedHost host) (SysForm.reported.run call values) initial.host trace
+        Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host trace
           (.returned (wordsBytesValue 3 [e, c, z] output)) final.host →
         Step heap (PureTransport.erase initial)
           (fun region => regionsDisjoint region ABI.scratch)
           heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
         Bytes.Rep heap' (PureTransport.erase final) root length output →
-        heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call values trace →
+        heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call trace →
         ReadAllOutside base s sF →
         sF.get base = some (.i64 e) → sF.get (base + 1) = some (.i64 c) →
         sF.get (base + 2) = some (.i64 z) → sF.get (base + 3) = some (.i64 root) →
@@ -284,7 +284,7 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
             rw [UInt64.lt_iff_toNat_lt, hBlockNat] at this
             simp only [UInt64.reduceToNat] at this ⊢
             omega)
-        have hExec : Exec (observedHost host) (SysForm.reported.run call values) initial.host
+        have hExec : Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host
             [.sys call.reporterCall [] (.returned errno [word0, word1])]
             (.returned (wordsBytesValue 3 [61, 0, 0] LeanExe.Bytes.empty)) after.host := by
           refine .sys_return hFits hSys ?_
@@ -443,7 +443,7 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
 
     · rw [ite_eq_right (by simp [hZero] : ¬((if errno = 0 then (1 : UInt32) else 0) ≠ 0))]
       simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
-      have hExec : Exec (observedHost host) (SysForm.reported.run call values) initial.host
+      have hExec : Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host
           [.sys call.reporterCall [] (.returned errno outputs)]
           (.returned (wordsBytesValue 3 [errno, 0, 0] LeanExe.Bytes.empty)) after.host := by
         refine .sys_return hFits hSys ?_

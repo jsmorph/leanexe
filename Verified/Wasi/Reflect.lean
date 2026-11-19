@@ -13,10 +13,10 @@ open LeanExe.Wasi
 `generatedSysOperations`. -/
 def sysOperation? (function : Name) : Option SysOperation :=
   if function == ``LeanExe.Wasi.clockTimeGet then
-    some ⟨``LeanExe.Wasi.Call.clockTimeGet, flatForm 1 false, [false, false],
+    some ⟨``LeanExe.Wasi.Call.clockTimeGet, flatForm 1 false, [.word, .word],
       ``Verified.Wasi.Reflect.clockTimeGet_eq⟩
   else if function == ``LeanExe.Wasi.randomGet then
-    some ⟨``LeanExe.Wasi.Call.randomGet, flatForm 0 true, [false],
+    some ⟨``LeanExe.Wasi.Call.randomGet, flatForm 0 true, [.buffer, .word, .word],
       ``Verified.Wasi.Reflect.randomGet_eq⟩
   else if function == ``LeanExe.Wasi.argsSizesGet then
     some ⟨``LeanExe.Wasi.Call.argsSizesGet, flatForm 2 false, [],
@@ -171,15 +171,15 @@ where
     if bind.any id then
       return ← reflectAs (← bindArgs original.getAppFn nativeArgs.toList bind #[] #[]) original
     let places := reflected.map fun argument => argument.src.getAppArgs.back!
-    let kinds := places.zip operation.inputs
-    let words := kinds.filterMap fun (place, input) => if input then none else some place
-    let inputs := kinds.filterMap fun (place, input) => if input then some place else none
+    let kinds := places.zip operation.kinds
+    let ofKind := fun (kind : ArgKind) =>
+      kinds.filterMap fun (place, other) => if other == kind then some place else none
     let wordType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .word)
     let bytesType := mkApp2 (mkConst ``Var) context.pure.ctx (tyExpr .bytes)
     let source ← mkAppOptM ``Command.sys
       #[some context.pure.sigs, some context.sigs, some context.pure.ctx,
-        some (mkConst operation.call), some operation.form, some (listExpr wordType words),
-        some (listExpr bytesType inputs)]
+        some (mkConst operation.call), some operation.form, some (listExpr wordType (ofKind .word)),
+        some (listExpr bytesType (ofKind .input)), some (listExpr bytesType (ofKind .buffer))]
     let proofs ← reflected.mapM (userProof context.pure)
     let equation ← mkAppM operation.equation
       (#[context.pure.funs, context.funs, context.pure.env] ++ places.toArray ++ nativeArgs ++

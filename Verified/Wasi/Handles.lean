@@ -245,17 +245,17 @@ theorem fieldHandles_marked {marks : List Bool} {env : Env context} {stack : Lis
       · exact fieldHandles_marked hEnv fields args rest marked.2 fd member
     · exact fieldHandles_marked hEnv fields args rest marked.2 fd member
 
-theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack : List UInt64}
+theorem handleArgs_sysArgs {marks : List Bool} {env : Env context} {stack : List UInt64}
     (hEnv : EnvMarked marks env stack) :
-    ∀ (params : List Param) (args : List (Var context .word)) (inputs : List LeanExe.Bytes),
+    ∀ (params : List Param) (args : List (Var context .word))
+      (inputs buffers : List LeanExe.Bytes),
       handlesMarked marks params (args.map Var.index) = true →
-        inputs.length = params.countP Param.takesBytes →
-        ∀ fd ∈ handleArgs params (flatArgsWith params (args.map env.get) inputs),
+        ∀ fd ∈ handleArgs params (sysArgs params (args.map env.get) inputs buffers),
           fd = 3 ∨ fd ∈ stack
   | [], _, _, _, _ => by
     intro fd member
     simp [handleArgs] at member
-  | param :: params, args, inputs, marked, count => by
+  | param :: params, args, inputs, buffers, marked => by
     intro fd member
     cases param with
     | handle =>
@@ -263,76 +263,105 @@ theorem handleArgs_flatArgsWith {marks : List Bool} {env : Env context} {stack :
       | nil => simp [handlesMarked] at marked
       | cons arg args =>
         simp only [handlesMarked, ite_true, List.map_cons, Bool.and_eq_true] at marked
-        simp only [List.map_cons, flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-          List.head?_cons, Option.map_some, Option.toList_some, List.headD_cons, List.tail_cons,
-          Arg.value, List.drop_succ_cons, List.drop_zero, List.singleton_append,
-          List.mem_cons] at member
+        change fd ∈ handleArgs (.handle :: params)
+          (.word (env.get arg) :: sysArgs params (args.map env.get) inputs buffers) at member
+        simp only [handleArgs, Param.handleWords, Param.argCount, List.head?_cons,
+          Option.map_some, Option.toList_some, Arg.value, List.drop_succ_cons, List.drop_zero,
+          List.singleton_append, List.mem_cons] at member
         rcases member with same | member
         · subst same
           exact hEnv.get arg marked.1
-        · exact handleArgs_flatArgsWith hEnv params args inputs marked.2
-            (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+        · exact handleArgs_sysArgs hEnv params args inputs buffers marked.2 fd member
     | input =>
-      cases inputs with
-      | nil => simp [List.countP_cons, Param.takesBytes] at count
-      | cons input inputs =>
-        simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord,
-          Bool.false_eq_true] at marked
-        simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-          List.drop_succ_cons, List.drop_zero, List.nil_append] at member
-        exact handleArgs_flatArgsWith hEnv params args inputs marked
-          (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+      simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords, List.drop_zero] at marked
+      change fd ∈ handleArgs (.input :: params)
+        (.bytes (inputs.headD .empty) :: sysArgs params (args.map env.get) inputs.tail buffers)
+        at member
+      simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+        List.drop_zero, List.nil_append] at member
+      exact handleArgs_sysArgs hEnv params args inputs.tail buffers marked fd member
+    | output =>
+      simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords] at marked
+      change fd ∈ handleArgs (.output :: params)
+        (.space ((buffers.headD .empty).windowLength ((args.map env.get).headD 0)
+            ((args.map env.get).tail.headD 0)) ::
+          sysArgs params ((args.map env.get).drop 2) inputs buffers.tail) at member
+      simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+        List.drop_zero, List.nil_append] at member
+      rw [← List.map_drop] at member marked
+      exact handleArgs_sysArgs hEnv params (args.drop 2) inputs buffers.tail marked fd member
     | iovec isInput =>
       cases isInput with
-      | true =>
-        cases inputs with
-        | nil => simp [List.countP_cons, Param.takesBytes] at count
-        | cons input inputs =>
-          simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord,
-            Bool.false_eq_true] at marked
-          simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-            List.drop_succ_cons, List.drop_zero, List.nil_append] at member
-          exact handleArgs_flatArgsWith hEnv params args inputs marked
-            (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
       | false =>
-        simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
-          ite_true] at marked
-        simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-          List.drop_succ_cons, List.drop_zero, List.nil_append] at member
-        rw [← List.map_tail] at member marked
-        exact handleArgs_flatArgsWith hEnv params args.tail inputs marked
-          (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
-    | word32 | word64 | enum32 _ | flags32 _ | flags64 _ | output =>
-      simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
-        ite_true] at marked
-      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-        List.drop_succ_cons, List.drop_zero, List.nil_append] at member
-      rw [← List.map_tail] at member marked
-      exact handleArgs_flatArgsWith hEnv params args.tail inputs marked
-        (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+        simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords] at marked
+        change fd ∈ handleArgs (.iovec false :: params)
+          (.space ((buffers.headD .empty).windowLength ((args.map env.get).headD 0)
+              ((args.map env.get).tail.headD 0)) ::
+            sysArgs params ((args.map env.get).drop 2) inputs buffers.tail) at member
+        simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+          List.drop_zero, List.nil_append] at member
+        rw [← List.map_drop] at member marked
+        exact handleArgs_sysArgs hEnv params (args.drop 2) inputs buffers.tail marked fd member
+      | true =>
+        simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords] at marked
+        change fd ∈ handleArgs (.iovec true :: params)
+          (.bytes ((inputs.headD .empty).range ((args.map env.get).headD 0)
+              ((args.map env.get).tail.headD 0)) ::
+            sysArgs params ((args.map env.get).drop 2) inputs.tail buffers) at member
+        simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+          List.drop_zero, List.nil_append] at member
+        rw [← List.map_drop] at member marked
+        exact handleArgs_sysArgs hEnv params (args.drop 2) inputs.tail buffers marked fd member
+    | word32 | word64 | enum32 _ | flags32 _ | flags64 _ =>
+      simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords, Param.argCount] at marked
+      cases args with
+      | nil =>
+        change fd ∈ handleArgs _
+          (.word 0 :: sysArgs params [] inputs buffers)
+          at member
+        simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+          List.drop_zero, List.nil_append] at member
+        exact handleArgs_sysArgs hEnv params [] inputs buffers marked fd member
+      | cons arg args =>
+        change fd ∈ handleArgs _
+          (.word (env.get arg) :: sysArgs params (args.map env.get) inputs buffers) at member
+        simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_succ_cons,
+          List.drop_zero, List.nil_append] at member
+        simp only [List.map_cons, List.drop_succ_cons, List.drop_zero] at marked
+        exact handleArgs_sysArgs hEnv params args inputs buffers marked fd member
     | result32 | result64 | reported _ _ _ | record _ _ _ =>
-      simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
-        Bool.false_eq_true] at marked
-      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount, List.drop_zero,
+      simp only [handlesMarked, reduceCtorEq, ite_false, Param.argWords, Param.argCount,
+        List.drop_zero] at marked
+      change fd ∈ handleArgs _ (sysArgs params (args.map env.get) inputs buffers)
+        at member
+      simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_zero,
         List.nil_append] at member
-      exact handleArgs_flatArgsWith hEnv params args inputs marked
-        (by simpa [List.countP_cons, Param.takesBytes] using count) fd member
+      exact handleArgs_sysArgs hEnv params args inputs buffers marked fd member
     | subscriptions records =>
-      simp only [handlesMarked, reduceCtorEq, ite_false, Param.takesWord, Param.takesArg,
-        Bool.false_eq_true, Bool.and_eq_true] at marked
+      simp only [handlesMarked, reduceCtorEq, ite_false, Bool.and_eq_true] at marked
       have hLength := fieldsMarked_length marked.1
       simp only [List.length_map] at hLength
-      have hTake : (((args.map env.get).take (argFields records).length).map Arg.word).length =
+      have hTake : ((args.map env.get).take (argFields records).length).length =
           (argFields records).length := by
-        simp only [List.length_map, List.length_take]
+        simp only [List.length_take, List.length_map]
         omega
-      simp only [flatArgsWith, handleArgs, Param.handleWords, Param.argCount,
-        List.drop_left' hTake, List.mem_append] at member
+      change fd ∈ handleArgs (.subscriptions records :: params)
+        (flatArgsWith (.subscriptions records :: params)
+          ((args.map env.get).take (argFields records).length ++
+            lowerWords params ((args.map env.get).drop (argFields records).length) buffers)
+          (lowerInputs params ((args.map env.get).drop (argFields records).length) inputs))
+        at member
+      simp only [flatArgsWith, List.take_left' hTake, List.drop_left' hTake] at member
+      have hMapped : (((args.map env.get).take (argFields records).length).map Arg.word).length =
+          (argFields records).length := by
+        rw [List.length_map, hTake]
+      simp only [handleArgs, Param.handleWords, Param.argCount, List.drop_left' hMapped,
+        List.mem_append] at member
       rcases member with words | rest
       · exact fieldHandles_marked hEnv (argFields records) args _ marked.1 fd words
       · rw [← List.map_drop] at rest marked
-        exact handleArgs_flatArgsWith hEnv params (args.drop (argFields records).length) inputs
-          marked.2 (by simpa [List.countP_cons, Param.takesBytes] using count) fd rest
+        exact handleArgs_sysArgs hEnv params (args.drop (argFields records).length) inputs
+          buffers marked.2 fd rest
 
 /-- Each helper, called with arguments whose marked parameters hold 3 or numbers on a stack, keeps
 the discipline of `withOpen` and returns to that stack. -/
@@ -402,13 +431,13 @@ theorem Command.isOpen_handles (pureFuns : Funs pureSigs) (effectFuns : EffectFu
         (errno ≠ 0 → after = stack) ∧
         (errno = 0 → word.toNat < 2 ^ 32 ∧ after = word :: stack) := by
   cases first <;> simp only [Command.isOpen, Bool.false_eq_true] at hOpen
-  case sys operation form args inputs =>
-    simp only [Bool.and_eq_true, beq_iff_eq] at hOpen
-    obtain ⟨⟨rfl, rfl⟩, single⟩ := hOpen
+  case sys operation form args inputs buffers =>
+    simp only [Bool.and_eq_true, beq_iff_eq, List.isEmpty_iff] at hOpen
+    obtain ⟨⟨⟨rfl, rfl⟩, single⟩, rfl⟩ := hOpen
     obtain ⟨path, rfl⟩ := List.length_eq_one_iff.mp single
     simp only [Command.openMarked] at hMarked
     have handles :=
-      handleArgs_flatArgsWith hEnv Call.pathOpen.params args [env.get path] hMarked rfl
+      handleArgs_sysArgs hEnv Call.pathOpen.params args [env.get path] [] hMarked
     refine And.intro (fun rejected => ⟨Call.pathOpen.reject _, 0, rfl, fun _ => rfl,
       fun zero => absurd zero rejected⟩) (fun _ => And.intro ?_ fun errno outputs fits => ?_)
     · exact callAllowed_of_handles pathOpen_table (by decide) (by decide) handles
@@ -446,9 +475,9 @@ theorem Command.isClose_handles (pureFuns : Funs pureSigs) (effectFuns : EffectF
     Action.Handles (word :: stack) (first.denote pureFuns effectFuns env)
       fun _ after => after = stack := by
   cases first <;> simp only [Command.isClose, Bool.false_eq_true] at h
-  case sys operation form args inputs =>
+  case sys operation form args inputs buffers =>
     simp only [Bool.and_eq_true, beq_iff_eq, List.isEmpty_iff] at h
-    obtain ⟨⟨⟨rfl, rfl⟩, rfl⟩, indices⟩ := h
+    obtain ⟨⟨⟨⟨rfl, rfl⟩, rfl⟩, rfl⟩, indices⟩ := h
     obtain ⟨handle, rfl⟩ :=
       List.length_eq_one_iff.mp (by simpa using congrArg List.length indices)
     simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true] at indices
@@ -648,19 +677,20 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
     intro env stack hEnv
     exact And.intro (fun index state => ih .plain _ h _ stack hEnv.cons_false.cons_false)
       fun _ => rfl
-  | sys operation form args inputs =>
+  | sys operation form args inputs buffers =>
     intro stage marks h
     cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
     intro env stack hEnv
     simp only [sysMarked, Bool.and_eq_true, beq_iff_eq] at h
-    obtain ⟨⟨⟨⟨⟨member, reporterMember⟩, named⟩, reporter⟩, marked⟩, count⟩ := h
+    obtain ⟨⟨⟨⟨⟨⟨member, reporterMember⟩, named⟩, reporter⟩, marked⟩, _⟩, _⟩ := h
     obtain ⟨close, renumber, notOpen⟩ := bracketCallNames_not_mem named
     obtain ⟨reporterClose, reporterRenumber, reporterOpen⟩ := bracketCallNames_not_mem reporter
-    have handles := handleArgs_flatArgsWith hEnv operation.params args (inputs.map env.get) marked
-      (by simpa [Call.inputCount] using count)
+    have handles := handleArgs_sysArgs hEnv operation.params args (inputs.map env.get)
+      (buffers.map env.get) marked
     cases form with
     | flat words bytes =>
-      exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
+      cases bytes <;>
+        exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
     | record fields =>
       exact Action.Handles.sys_other member close renumber notOpen handles fun _ => rfl
     | iovecRead | iovecWrite | poll =>

@@ -117,11 +117,11 @@ theorem witness_reporter_bound :
 
 theorem witness_rule (values : List UInt64) :
     (∀ world trace outcome final, Exec (observedHost witness)
-      (SysForm.reported.run Call.argsGet values) world trace outcome final →
-        sysCost .reported Call.argsGet values trace ≤ Verified.Bytes.allocationCost 3) ∧
+      (SysForm.reported.runWith Call.argsGet values [] []) world trace outcome final →
+        sysCost .reported Call.argsGet trace ≤ Verified.Bytes.allocationCost 3) ∧
     (∀ world trace residual final, Prefix (observedHost witness)
-      (SysForm.reported.run Call.argsGet values) world trace residual final →
-        sysCost .reported Call.argsGet values trace ≤ Verified.Bytes.allocationCost 3) :=
+      (SysForm.reported.runWith Call.argsGet values [] []) world trace residual final →
+        sysCost .reported Call.argsGet trace ≤ Verified.Bytes.allocationCost 3) :=
   Resource.reported_rule_observed (host := witness) (call := Call.argsGet) (values := values)
     (limit := 3) (budget := Verified.Bytes.allocationCost 3) witness_reporter_bound (Nat.le_refl _)
 

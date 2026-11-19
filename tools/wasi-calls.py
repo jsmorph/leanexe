@@ -203,7 +203,7 @@ class Function:
             elif isinstance(resolved, list) and resolved[0] == "list" and resolved[1] in IOVECS:
                 is_input = IOVECS[resolved[1]]
                 kinds.append(("iovec", is_input))
-                self.arguments.append("bytes" if is_input else "capacity")
+                self.arguments += ["bytes" if is_input else "buffer", "start", "count"]
             elif is_pointer(resolved) and resolved[2] == "$subscription":
                 rest = params[index + 1:index + 3]
                 if [p[2] for p in rest] != [["@witx", "pointer", "$event"], "$size"]:
@@ -218,7 +218,7 @@ class Function:
                     index += 1
                 elif resolved[1] == "pointer" and sized and pointee == "u8":
                     kinds.append(("output",))
-                    self.arguments.append(following[1])
+                    self.arguments += ["buffer", "start", "count"]
                     index += 1
                 elif is_pointer(pointee):
                     kinds.append(("reported", 4, 4, False))
@@ -438,9 +438,9 @@ RESULT_TYPES = {
     ("result32",): "WordResult",
     ("result64",): "WordResult",
     ("result32", "result32"): "ArgsSizes",
-    ("output",): "BytesResult",
-    ("output", "result32"): "BytesCountResult",
-    ("buffer", "result32"): "BytesResult",
+    ("output",): "FillResult",
+    ("output", "result32"): "FillResult",
+    ("buffer", "result32"): "FillResult",
     ("events", "result32"): "PollResult",
 }
 
@@ -477,8 +477,12 @@ def result_value(function):
     if shapes == ["record"]:
         fields = [f"reply.field 0 {offset} {width}" for _, offset, width in outputs(function)[0][3]]
         return "⟨reply.errno, " + ", ".join(fields) + "⟩"
-    if shapes == ["buffer", "result32"]:
-        return "⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩"
+    if shapes == ["output"]:
+        return ["buffer", "start", "count", "reply.errno", "(buffer.windowLength start count)",
+                "(reply.bytes 0)"]
+    if shapes in (["output", "result32"], ["buffer", "result32"]):
+        return ["buffer", "start", "count", "reply.errno",
+                "(min (reply.word 1) (buffer.windowLength start count))", "(reply.bytes 0)"]
     if shapes == ["events", "result32"]:
         fields = [f"reply.field 0 {offset} {width}" for _, offset, width in function.events]
         return "⟨reply.errno, reply.word 1, " + ", ".join(fields) + "⟩"
@@ -487,47 +491,69 @@ def result_value(function):
     return "⟨reply.errno, " + ", ".join(parts) + "⟩"
 
 
-ARGUMENT_TYPES = {"input": "Bytes", "handle": "Handle", "iovec true": "Bytes"}
+ARGUMENT_TYPES = {"input": "Bytes", "handle": "Handle", "buffer": "Bytes", "written": "Bytes"}
 
 
 def argument_kinds(function):
     """The kind of each argument of the typed function, in order: the kind of its parameter, or
-    ("word",) or ("handle",) for a word or handle field of a subscription."""
+    ("word",) or ("handle",) for a word or handle field of a subscription.  An output and the
+    buffer of an iovec take three arguments, ("buffer",) and the words of the window's start and
+    count, and the buffer of a ciovec takes ("written",) and the two words."""
     kinds = []
     for kind in function.kinds:
         if kind[0] == "subscriptions":
             kinds += [(source,) for record in kind[1] for _, _, source in record
                       if isinstance(source, str)]
+        elif kind in (("output",), ("iovec", False)):
+            kinds += [("buffer",), ("word",), ("word",)]
+        elif kind == ("iovec", True):
+            kinds += [("written",), ("word",), ("word",)]
         elif kind[0] not in ("result32", "result64", "record", "reported"):
             kinds.append(kind)
     return kinds
 
 
-def argument_type(kind):
-    """The key of ARGUMENT_TYPES of an argument's kind."""
-    return "iovec true" if kind == ("iovec", True) else kind[0]
-
-
 def takes_bytes(kind):
-    return kind == ("input",) or kind == ("iovec", True)
+    """Whether an argument of this kind is bytes that the call reads: an input or the bytes of a
+    ciovec."""
+    return kind in (("input",), ("written",))
 
 
-def argument_term(name, kind):
+def argument_class(kind):
+    """The class of an argument in `reflect`'s table: a word, an input, or a buffer."""
     if takes_bytes(kind):
-        return f".bytes {name}"
-    if kind in (("output",), ("iovec", False)):
-        return f".space {name}"
-    if kind[0] == "handle":
-        return f".word {name}.fd"
-    return f".word {name}"
+        return "input"
+    if kind == ("buffer",):
+        return "buffer"
+    return "word"
+
+
+def call_arguments(function):
+    """The arguments of the call in the typed function: one for each argument, except that the
+    buffer of a window and its start and count give one."""
+    names = [camel(name) for name in function.arguments]
+    takes = argument_kinds(function)
+    terms, index = [], 0
+    while index < len(takes):
+        kind, name = takes[index], names[index]
+        if kind in (("buffer",), ("written",)):
+            start, count = names[index + 1], names[index + 2]
+            terms.append(f".space ({name}.windowLength {start} {count})" if kind == ("buffer",)
+                         else f".bytes ({name}.range {start} {count})")
+            index += 3
+            continue
+        terms.append(f".bytes {name}" if kind == ("input",)
+                     else f".word {name}.fd" if kind[0] == "handle" else f".word {name}")
+        index += 1
+    return terms
 
 
 def typed_function(function):
     takes = argument_kinds(function)
     names = [camel(name) for name in function.arguments]
-    binders = [f"({name} : {ARGUMENT_TYPES.get(argument_type(kind), 'UInt64')})"
+    binders = [f"({name} : {ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
                for name, kind in zip(names, takes)]
-    args = [argument_term(name, kind) for name, kind in zip(names, takes)]
+    args = call_arguments(function)
     head = f"def {function.typed}" + "".join(" " + b for b in binders) + \
         f" : Action {result_type(function)} :="
     lines = [head] if len(head) <= WIDTH else \
@@ -535,7 +561,9 @@ def typed_function(function):
     lines = [line.replace(",", "") for line in lines] if len(head) > WIDTH else lines
     lines += wrap(f"  .sys .{function.lean} [", args, f"] fun reply =>", 4)
     value = result_value(function)
-    if value.startswith("⟨"):
+    if isinstance(value, list):
+        lines += wrap("    .pure (FillResult.of ", value, ")", 6, separator="")
+    elif value.startswith("⟨"):
         lines += wrap("    .pure ⟨", value[1:-1].split(", "), "⟩", 6)
     else:
         lines.append(f"    .pure {value}")
@@ -567,11 +595,15 @@ def render_typed(flat):
         "`path_open`,",
         "`fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes "
         "descriptors.",
-        "`fdRead` and `fdPread` read into a fresh buffer of the capacity and return the bytes "
-        "read: the",
-        "prefix of the buffer whose length is the count that the host returns, clamped to the "
-        "capacity.",
-        "`fdWrite` and `fdPwrite` return the count written.  `pollClock`, `pollRead`, and "
+        "A call with an output buffer takes a buffer and the start and the count of a window, "
+        "fills the",
+        "window, and returns a `FillResult`: on errno 0 its count, the window's length for "
+        "`fdPrestatDirName`",
+        "and the host's count clamped to it for the others, and the buffer with the bytes that "
+        "the host wrote",
+        "in the window.  `fdWrite` and `fdPwrite` take bytes and the start and the count of a "
+        "window, write",
+        "the window's bytes, and return the count written.  `pollClock`, `pollRead`, and "
         "`pollWrite` return",
         "the errno, the number of events, and the fields of the first event.  The first "
         "subscription of each",
@@ -595,8 +627,7 @@ FLATTEN = {
     "UInt64": "(fun value : UInt64 => value)",
     "WordResult": "(Flat.flat : WordResult → UInt64 × UInt64)",
     "ArgsSizes": "(Flat.flat : ArgsSizes → UInt64 × UInt64 × UInt64)",
-    "BytesResult": "(Flat.flat : BytesResult → UInt64 × LeanExe.Bytes)",
-    "BytesCountResult": "(Flat.flat : BytesCountResult → UInt64 × UInt64 × LeanExe.Bytes)",
+    "FillResult": "(Flat.flat : FillResult → UInt64 × UInt64 × LeanExe.Bytes)",
 }
 
 
@@ -668,13 +699,13 @@ def variable(name):
 def reflection_equation(function):
     takes = argument_kinds(function)
     names = [camel(name) for name in function.arguments]
-    inputs = [takes_bytes(kind) for kind in takes]
+    classes = [argument_class(kind) for kind in takes]
     handles = [name for name, kind in zip(names, takes) if kind[0] == "handle"]
-    variables = [f"({variable(name)} : Var context .{'bytes' if input else 'word'})"
-                 for name, input in zip(names, inputs)]
+    variables = [f"({variable(name)} : Var context .{'word' if kind == 'word' else 'bytes'})"
+                 for name, kind in zip(names, classes)]
     values = [f"({name}Value : "
-              f"{'LeanExe.Bytes' if takes_bytes(kind) else ARGUMENT_TYPES.get(kind[0], 'UInt64')})"
-              for name, kind in zip(names, takes)]
+              f"{'LeanExe.Bytes' if kind != 'word' else ARGUMENT_TYPES.get(take[0], 'UInt64')})"
+              for name, kind, take in zip(names, classes, takes)]
     hypotheses = [f"(h{name[0].upper() + name[1:]} : env.get {variable(name)} = {name}Value"
                   f"{'.fd' if name in handles else ''})"
                   for name in names]
@@ -686,12 +717,12 @@ def reflection_equation(function):
                       separator="")
     else:
         lines.append("    (env : Env context) :")
-    word_list = ", ".join(variable(name) for name, input in zip(names, inputs) if not input)
-    input_list = ", ".join(variable(name) for name, input in zip(names, inputs) if input)
+    lists = {kind: ", ".join(variable(name) for name, other in zip(names, classes) if other == kind)
+             for kind in ("word", "input", "buffer")}
     tokens = ["(Command.sys", "(pureSigs := pureSigs)", "(effectSigs := effectSigs)"]
     tokens += [] if names else ["(context := context)"]
-    tokens += [f"Call.{function.lean}", term,
-               f"[{word_list}]", f"[{input_list}]).denote", "pureFuns", "effectFuns", "env", "="]
+    tokens += [f"Call.{function.lean}", term, f"[{lists['word']}]", f"[{lists['input']}]",
+               f"[{lists['buffer']}]).denote", "pureFuns", "effectFuns", "env", "="]
     lines += wrap("    ", tokens, "", 6, separator="")
     call = [f"({function.typed}"] + [f"{name}Value" for name in names]
     call[-1] += ")"
@@ -711,10 +742,10 @@ def reflection_equation(function):
 
 def operation_entry(function):
     takes = argument_kinds(function)
-    inputs = ", ".join("true" if takes_bytes(kind) else "false" for kind in takes)
+    kinds = ", ".join(f".{argument_class(kind)}" for kind in takes)
     _, expression = form(function)
     return (f"(``LeanExe.Wasi.{function.typed}, ⟨``LeanExe.Wasi.Call.{function.lean},\n"
-            f"    {expression}, [{inputs}], ``{function.typed}_eq⟩)")
+            f"    {expression}, [{kinds}], ``{function.typed}_eq⟩)")
 
 
 def render_reflect(flat):

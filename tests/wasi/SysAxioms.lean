@@ -1,16 +1,20 @@
 import Verified.Examples.WasiSys
 
-/-! The axiom audit of the flat calls: the marshalling theorems of `Command.sys`, the program
-theorems with imported calls, the reflection equations of the typed calls, the resource rule of a
-reported call, the host totality theorems for `hostSpecWith`, and the generated theorems of the flat
-call example use only `propext`, `Classical.choice`, and `Quot.sound`. -/
+/-! The axiom audit of the flat calls: the marshalling theorems of `Command.sys`, among them the
+fill of a call's window, the program theorems with imported calls, the reflection equations of the
+typed calls, the resource rule of a reported call, the host totality theorems for `hostSpecWith`,
+and the generated theorems of the flat call example use only `propext`, `Classical.choice`, and
+`Quot.sound`. -/
 
 open Lean Elab Command in
 elab "check_wasi_sys_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[
     ``Verified.Wasi.flatArgs_fit,
-    ``Verified.Wasi.wp_sys_flat_with,
+    ``Verified.Wasi.wp_sys_flat_inputs_with,
+    ``Verified.Wasi.wp_sys_flat_fill_with,
+    ``Verified.Wasi.wp_sys_flat_fill_result_with,
+    ``LeanExe.Bytes.splice_get_inside,
     ``Verified.Wasi.wp_sys_reported_with,
     ``Verified.Wasi.command_sys_spec_with,
     ``Verified.Wasi.cost_command_sys_spec_with,

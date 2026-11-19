@@ -35,6 +35,15 @@ def PureContext.ownedCost (context : PureContext signatures) (depth : UInt64)
   context.exprCost depth modes live value env +
     coerceCost type (value.mode modes) .owned (value.denote context.funs env)
 
+/-- The charge of a `sys` command before its call: the charge of the take of its buffer, when it
+has one, which copies a buffer that stays live or that it borrows. -/
+def PureContext.sysTakeCost (context : PureContext signatures) (depth : UInt64)
+    (modes : List Mode) (live : Nat → Bool) (args : List (Var sourceContext .word))
+    (inputs buffers : List (Var sourceContext .bytes)) (env : Env sourceContext) : Nat :=
+  match buffers with
+  | [] => 0
+  | buffer :: _ => context.ownedCost depth modes (sysTakeLive live args inputs) (Expr.var buffer) env
+
 def PureContext.exprFits (context : PureContext signatures) (depth : UInt64)
     (value : Expr signatures sourceContext type) (env : Env sourceContext) : Bool :=
   value.fits context.funs (context.callFits depth) env

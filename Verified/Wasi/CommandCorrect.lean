@@ -34,8 +34,8 @@ theorem Command.code_spec_with {calls : List LeanExe.Wasi.Call}
   | exit status => exact command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec =>
       exact command_loop_spec_with facts sourceHost stepSpec
-  | sys operation form args inputs =>
-    exact command_sys_spec_with facts sourceHost operation form args inputs
+  | sys operation form args inputs buffers =>
+    exact command_sys_spec_with facts sourceHost operation form args inputs buffers
   | letPair pair body bodySpec =>
     exact command_letPair_spec_with facts sourceHost pair body bodySpec
 

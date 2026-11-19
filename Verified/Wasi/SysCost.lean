@@ -2,11 +2,12 @@ import Verified.Wasi.ReadCost
 import Verified.Wasi.SysForm
 import LeanExe.Wasi.Semantics
 
-/-! The heap that a `sys` command allocates.  A flat call allocates the buffer of its output, a
-reported call allocates one block after its reporter returns, whose size follows from the
-reporter's reply in the trace, and a record call allocates the block of its record.  An iovec
-read allocates the buffer of its capacity, its second word; an iovec write allocates nothing; and
-a `poll` call allocates the block of its subscriptions and events. -/
+/-! The heap that a `sys` command allocates.  A flat call and an iovec call allocate nothing, since
+a fill writes into the buffer that the command takes, a reported call allocates one block after its
+reporter returns, whose size follows from the reporter's reply in the trace, a record call
+allocates the block of its record, and a `poll` call allocates the block of its subscriptions and
+events.  `flatCapacity` and `flatCapacityWith` give the length of the output of a call's lowered
+words. -/
 
 namespace Verified.Wasi
 
@@ -61,39 +62,14 @@ def pollBlock (params : List Param) : Nat :=
   | some records => 80 * records.length + 7
   | none => 0
 
-def sysCost : SysForm → LeanExe.Wasi.Call → List UInt64 → List Event → Nat
-  | .flat .., call, values, _ =>
-    match flatCapacity call.params values with
-    | some capacity => readCost capacity
-    | none => 0
-  | .reported, _, _, trace =>
+/-- The heap that the call of a `sys` command allocates, from the trace of its run. -/
+def sysCost : SysForm → LeanExe.Wasi.Call → List Event → Nat
+  | .reported, _, trace =>
     match reportedBlock trace with
     | some size => Bytes.allocationCost size.toNat
     | none => 0
-  | .record _, call, _, _ => Bytes.allocationCost (recordBlock call.params)
-  | .iovecRead, _, values, _ => readCost (values.getD 1 0)
-  | .iovecWrite, _, _, _ => 0
-  | .poll, call, _, _ => Bytes.allocationCost (pollBlock call.params)
-
-/-- The heap that a `sys` command allocates, with the bytes of its input variables. -/
-def sysCostWith : SysForm → LeanExe.Wasi.Call → List UInt64 → List LeanExe.Bytes → List Event → Nat
-  | .flat .., call, values, inputs, _ =>
-    match flatCapacityWith call.params values inputs with
-    | some capacity => readCost capacity
-    | none => 0
-  | .reported, call, values, _, trace => sysCost .reported call values trace
-  | .record _, call, _, _, _ => Bytes.allocationCost (recordBlock call.params)
-  | .iovecRead, _, values, _, _ => readCost (values.getD 1 0)
-  | .iovecWrite, _, _, _, _ => 0
-  | .poll, call, _, _, _ => Bytes.allocationCost (pollBlock call.params)
-
-theorem sysCostWith_nil (form : SysForm) (call : LeanExe.Wasi.Call) (values : List UInt64) :
-    sysCostWith form call values [] = sysCost form call values := by
-  funext trace
-  cases form with
-  | flat words bytes => simp only [sysCostWith, sysCost, flatCapacityWith_nil]
-  | reported => rfl
-  | record => rfl
-  | iovecRead | iovecWrite | poll => rfl
+  | .record _, call, _ => Bytes.allocationCost (recordBlock call.params)
+  | .poll, call, _ => Bytes.allocationCost (pollBlock call.params)
+  | .flat .., _, _ | .iovecRead, _, _ | .iovecWrite, _, _ => 0
 
 end Verified.Wasi

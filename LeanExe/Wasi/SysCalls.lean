@@ -6,9 +6,11 @@ Typed functions of the flat Preview 1 functions, which `tools/wasi-calls.py` gen
 pinned witx with the descriptions of `LeanExe/Wasi/CallTable.lean`.  A record result holds the
 errno and the record's fields as words.  A descriptor parameter takes a `Handle`.  `path_open`,
 `fd_close`, and `fd_renumber` have no typed function: only `withOpen` opens and closes descriptors.
-`fdRead` and `fdPread` read into a fresh buffer of the capacity and return the bytes read: the
-prefix of the buffer whose length is the count that the host returns, clamped to the capacity.
-`fdWrite` and `fdPwrite` return the count written.  `pollClock`, `pollRead`, and `pollWrite` return
+A call with an output buffer takes a buffer and the start and the count of a window, fills the
+window, and returns a `FillResult`: on errno 0 its count, the window's length for `fdPrestatDirName`
+and the host's count clamped to it for the others, and the buffer with the bytes that the host wrote
+in the window.  `fdWrite` and `fdPwrite` take bytes and the start and the count of a window, write
+the window's bytes, and return the count written.  `pollClock`, `pollRead`, and `pollWrite` return
 the errno, the number of events, and the fields of the first event.  The first subscription of each
 carries the userdata 1, and the clock subscription of `pollRead` and `pollWrite` the userdata 2.
 The generator's check fails when this file differs from its output.
@@ -87,29 +89,37 @@ def fdFilestatSetTimes (fd : Handle) (atim : UInt64) (mtim : UInt64)
   .sys .fdFilestatSetTimes [.word fd.fd, .word atim, .word mtim, .word fstFlags] fun reply =>
     .pure reply.errno
 
-def fdPread (fd : Handle) (capacity : UInt64) (offset : UInt64) : Action BytesResult :=
-  .sys .fdPread [.word fd.fd, .space capacity, .word offset] fun reply =>
-    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
+def fdPread (fd : Handle) (buffer : Bytes) (start : UInt64) (count : UInt64)
+    (offset : UInt64) : Action FillResult :=
+  .sys .fdPread [.word fd.fd, .space (buffer.windowLength start count), .word offset] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno
+      (min (reply.word 1) (buffer.windowLength start count)) (reply.bytes 0))
 
 def fdPrestatGet (fd : Handle) : Action PrestatResult :=
   .sys .fdPrestatGet [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.field 0 0 1, reply.field 0 4 4⟩
 
-def fdPrestatDirName (fd : Handle) (pathLen : UInt64) : Action BytesResult :=
-  .sys .fdPrestatDirName [.word fd.fd, .space pathLen] fun reply =>
-    .pure ⟨reply.errno, reply.bytes 0⟩
+def fdPrestatDirName (fd : Handle) (buffer : Bytes) (start : UInt64)
+    (count : UInt64) : Action FillResult :=
+  .sys .fdPrestatDirName [.word fd.fd, .space (buffer.windowLength start count)] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno (buffer.windowLength start count)
+      (reply.bytes 0))
 
-def fdPwrite (fd : Handle) (bytes : Bytes) (offset : UInt64) : Action WordResult :=
-  .sys .fdPwrite [.word fd.fd, .bytes bytes, .word offset] fun reply =>
+def fdPwrite (fd : Handle) (bytes : Bytes) (start : UInt64) (count : UInt64)
+    (offset : UInt64) : Action WordResult :=
+  .sys .fdPwrite [.word fd.fd, .bytes (bytes.range start count), .word offset] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def fdRead (fd : Handle) (capacity : UInt64) : Action BytesResult :=
-  .sys .fdRead [.word fd.fd, .space capacity] fun reply =>
-    .pure ⟨reply.errno, reply.prefixBytes 0 (reply.word 1)⟩
+def fdRead (fd : Handle) (buffer : Bytes) (start : UInt64) (count : UInt64) : Action FillResult :=
+  .sys .fdRead [.word fd.fd, .space (buffer.windowLength start count)] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno
+      (min (reply.word 1) (buffer.windowLength start count)) (reply.bytes 0))
 
-def fdReaddir (fd : Handle) (bufLen : UInt64) (cookie : UInt64) : Action BytesCountResult :=
-  .sys .fdReaddir [.word fd.fd, .space bufLen, .word cookie] fun reply =>
-    .pure ⟨reply.errno, reply.bytes 0, reply.word 1⟩
+def fdReaddir (fd : Handle) (buffer : Bytes) (start : UInt64) (count : UInt64)
+    (cookie : UInt64) : Action FillResult :=
+  .sys .fdReaddir [.word fd.fd, .space (buffer.windowLength start count), .word cookie] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno
+      (min (reply.word 1) (buffer.windowLength start count)) (reply.bytes 0))
 
 def fdSeek (fd : Handle) (offset : UInt64) (whence : UInt64) : Action WordResult :=
   .sys .fdSeek [.word fd.fd, .word offset, .word whence] fun reply =>
@@ -123,8 +133,8 @@ def fdTell (fd : Handle) : Action WordResult :=
   .sys .fdTell [.word fd.fd] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
-def fdWrite (fd : Handle) (bytes : Bytes) : Action WordResult :=
-  .sys .fdWrite [.word fd.fd, .bytes bytes] fun reply =>
+def fdWrite (fd : Handle) (bytes : Bytes) (start : UInt64) (count : UInt64) : Action WordResult :=
+  .sys .fdWrite [.word fd.fd, .bytes (bytes.range start count)] fun reply =>
     .pure ⟨reply.errno, reply.word 0⟩
 
 def pathCreateDirectory (fd : Handle) (path : Bytes) : Action UInt64 :=
@@ -149,9 +159,12 @@ def pathLink (oldFd : Handle) (oldFlags : UInt64) (oldPath : Bytes) (newFd : Han
     .bytes newPath] fun reply =>
     .pure reply.errno
 
-def pathReadlink (fd : Handle) (path : Bytes) (bufLen : UInt64) : Action BytesCountResult :=
-  .sys .pathReadlink [.word fd.fd, .bytes path, .space bufLen] fun reply =>
-    .pure ⟨reply.errno, reply.bytes 0, reply.word 1⟩
+def pathReadlink (fd : Handle) (path : Bytes) (buffer : Bytes) (start : UInt64)
+    (count : UInt64) : Action FillResult :=
+  .sys .pathReadlink [.word fd.fd, .bytes path,
+    .space (buffer.windowLength start count)] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno
+      (min (reply.word 1) (buffer.windowLength start count)) (reply.bytes 0))
 
 def pathRemoveDirectory (fd : Handle) (path : Bytes) : Action UInt64 :=
   .sys .pathRemoveDirectory [.word fd.fd, .bytes path] fun reply =>

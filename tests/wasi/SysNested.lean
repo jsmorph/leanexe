@@ -4,14 +4,16 @@ import Verified.Examples.WasiSysNested
 
 /-! Native runs of the typed functions of `fd_read`, `fd_pread`, `fd_write`, `fd_pwrite`, and
 `poll_oneoff` through a scripted host.  The host replies to each call with an errno and the outputs
-that the script gives, recording each call's name and arguments.  A read returns the prefix of the
-buffer of the count that the host returns, all of the buffer when the count exceeds the capacity,
-and a poll returns the count and the fields of the first event at their witx offsets and widths,
-written below as constants.  An argument that does not fit its field gives errno 61 without a call,
-a reply with an errno leaves every result 0 or empty, and an event array one byte short raises an
-`IO.Error`.  The `main` of `Verified.Examples.WasiSysNested`, run against a host whose `fd_close`
-returns errno 8, returns the status 8, and 5 when `fd_write` in the bracket's body also returns
-errno 5, so that the body's errno precedes the close's; neither run removes the file. -/
+that the script gives, recording each call's name and arguments.  A read passes the host a space of
+the window's length, clamped to the buffer, and returns the buffer with the host's bytes in the
+window and the count that the host returns, or the window's length when the count exceeds it.  A
+write passes the bytes of its window.  A poll returns the count and the fields of the first event
+at their witx offsets and widths, written below as constants.  An argument that does not fit its
+field gives errno 61 without a call, a reply with an errno leaves every word 0 and a read's window
+0, and an event array one byte short raises an `IO.Error`.  The `main` of
+`Verified.Examples.WasiSysNested`, run against a host whose `fd_close` returns errno 8, returns the
+status 8, and 5 when `fd_write` in the bracket's body also returns errno 5, so that the body's
+errno precedes the close's; neither run removes the file. -/
 
 open LeanExe LeanExe.Wasi
 
@@ -23,6 +25,12 @@ private def check (condition : Bool) (message : String) : IO Unit :=
 /-- The bytes `1, 2, …, size`. -/
 private def counting (size : Nat) : Bytes :=
   ⟨⟨((List.range size).map fun index => (index + 1).toUInt8).toArray⟩⟩
+
+/-- `size` bytes of 255. -/
+private def full (size : Nat) : Bytes := ⟨⟨Array.replicate size 255⟩⟩
+
+/-- `size` bytes of 0. -/
+private def blank (size : Nat) : Bytes := ⟨⟨Array.replicate size 0⟩⟩
 
 /-- The four little-endian bytes of `value`. -/
 private def word32 (value : Nat) : Bytes :=
@@ -60,8 +68,12 @@ private def result {α : Type} (action : Action α) (host : NativeHost) : IO α 
   | .returned value => pure value
   | _ => throw (IO.userError "expected a return")
 
-private def bytesOf (result : BytesResult) : UInt64 × List UInt8 :=
-  (result.errno, result.bytes.data.toList)
+private def fillOf (result : FillResult) : UInt64 × UInt64 × List UInt8 :=
+  (result.errno, result.count, result.buffer.data.toList)
+
+/-- The bytes of `parts` in order. -/
+private def joined (parts : List Bytes) : List UInt8 :=
+  parts.flatMap fun part => part.data.toList
 
 private def wordOf (result : WordResult) : List UInt64 := [result.errno, result.value]
 
@@ -94,20 +106,31 @@ private def checkCall (calls : IO.Ref (Array (String × List Arg))) (expected : 
 def main : IO Unit := do
   let calls ← IO.mkRef (#[] : Array (String × List Arg))
   let file : Handle := ⟨5⟩
-  let read ← result (fdRead file 16) (scripted calls 0 [counting 16, word32 10])
-  check (bytesOf read == (0, (counting 10).data.toList)) s!"fd_read {bytesOf read}"
+  let read ← result (fdRead file (full 20) 2 16) (scripted calls 0 [counting 16, word32 10])
+  check (fillOf read == (0, 10, joined [full 2, counting 16, full 2])) s!"fd_read {fillOf read}"
   checkCall calls ["fd_read", "word 5", "space 16"]
-  let clamped ← result (fdRead file 16) (scripted calls 0 [counting 16, word32 20])
-  check (bytesOf clamped == (0, (counting 16).data.toList)) s!"fd_read clamped {bytesOf clamped}"
-  let pread ← result (fdPread file 8 5) (scripted calls 0 [counting 8, word32 8])
-  check (bytesOf pread == (0, (counting 8).data.toList)) s!"fd_pread {bytesOf pread}"
+  let clamped ← result (fdRead file (full 16) 0 16) (scripted calls 0 [counting 16, word32 20])
+  check (fillOf clamped == (0, 16, joined [counting 16])) s!"fd_read clamped {fillOf clamped}"
+  let tail ← result (fdRead file (full 16) 10 16) (scripted calls 0 [counting 6, word32 6])
+  check (fillOf tail == (0, 6, joined [full 10, counting 6])) s!"fd_read at 10 {fillOf tail}"
+  checkCall calls ["fd_read", "word 5", "space 6"]
+  let beyond ← result (fdRead file (full 4) 9 3) (scripted calls 0 [blank 0, word32 0])
+  check (fillOf beyond == (0, 0, joined [full 4])) s!"fd_read past the end {fillOf beyond}"
+  checkCall calls ["fd_read", "word 5", "space 0"]
+  let pread ← result (fdPread file (full 8) 0 8 5) (scripted calls 0 [counting 8, word32 8])
+  check (fillOf pread == (0, 8, joined [counting 8])) s!"fd_pread {fillOf pread}"
   checkCall calls ["fd_pread", "word 5", "space 8", "word 5"]
-  let failed ← result (fdRead file 16) (scripted calls 8 [counting 16, word32 10])
-  check (bytesOf failed == (8, [])) s!"fd_read after an errno {bytesOf failed}"
-  let written ← result (fdWrite file bytes![104, 105, 10]) (scripted calls 0 [word32 3])
+  let failed ← result (fdRead file (full 20) 2 16) (scripted calls 8 [counting 16, word32 10])
+  check (fillOf failed == (8, 0, joined [full 2, blank 16, full 2]))
+    s!"fd_read after an errno {fillOf failed}"
+  let written ← result (fdWrite file bytes![0, 104, 105, 10, 0] 1 3)
+    (scripted calls 0 [word32 3])
   check (wordOf written == [0, 3]) s!"fd_write {wordOf written}"
   checkCall calls ["fd_write", "word 5", "bytes [104, 105, 10]"]
-  let pwritten ← result (fdPwrite file bytes![104, 105] 7) (scripted calls 0 [word32 2])
+  let cut ← result (fdWrite file bytes![104, 105] 1 9) (scripted calls 0 [word32 1])
+  check (wordOf cut == [0, 1]) s!"fd_write clamped {wordOf cut}"
+  checkCall calls ["fd_write", "word 5", "bytes [105]"]
+  let pwritten ← result (fdPwrite file bytes![104, 105] 0 2 7) (scripted calls 0 [word32 2])
   check (wordOf pwritten == [0, 2]) s!"fd_pwrite {wordOf pwritten}"
   checkCall calls ["fd_pwrite", "word 5", "bytes [104, 105]", "word 7"]
   let clock ← result (pollClock 1 0 0 0) (scripted calls 0 [counting 32, word32 1])
@@ -122,8 +145,9 @@ def main : IO Unit := do
   let pollFailed ← result (pollRead file 1 1000) (scripted calls 28 [counting 64, word32 2])
   check (pollOf pollFailed == [28, 0, 0, 0, 0, 0, 0]) s!"poll after an errno {pollOf pollFailed}"
   let made := (← calls.get).size
-  let capacity ← result (fdRead file 4294967296) (scripted calls 0 [])
-  check (bytesOf capacity == (61, [])) s!"fd_read of capacity 2^32 {bytesOf capacity}"
+  let descriptorRead ← result (fdRead ⟨4294967296⟩ (full 4) 0 4) (scripted calls 0 [])
+  check (fillOf descriptorRead == (61, 0, joined [blank 4]))
+    s!"fd_read of descriptor 2^32 {fillOf descriptorRead}"
   let clockId ← result (pollClock 4294967296 0 0 0) (scripted calls 0 [])
   check (pollOf clockId == [61, 0, 0, 0, 0, 0, 0]) s!"pollClock of clock 2^32 {pollOf clockId}"
   let flags ← result (pollClock 1 0 0 65536) (scripted calls 0 [])
@@ -143,7 +167,7 @@ def main : IO Unit := do
     check (status == expected && made.back? == some "fd_close" &&
         !made.contains "path_unlink_file")
       s!"the example after a failed close and {failing}: status {status}, calls {made}"
-  IO.println "nested call native cases passed: 17"
+  IO.println "nested call native cases passed: 20"
 
 end SysNestedTest
 

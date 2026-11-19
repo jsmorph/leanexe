@@ -17,7 +17,10 @@ def letPairReleaseCode (first second : Ty) (mode : Mode) (base : Nat)
 
 /-- Command code uses final module indices.  Pure fragments, copies, and releases undergo the
 relocation past the module's imports once.  Normal returns leave owned result words on the stack.  Local
-zero holds the incoming depth, and `live` identifies context values retained afterward. -/
+zero holds the incoming depth, and `live` identifies context values retained afterward.  A `sys`
+command with a buffer takes the buffer as a `ret` of its variable takes it, which moves an owned
+buffer that dies there and copies it otherwise, stores its root and size at `base`, and runs the
+call with the buffer as variable 0, which the call consumes. -/
 def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →
@@ -100,11 +103,26 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
           [] []] ++
       Relocation.programWith calls (releaseWhere context slots (fun i => used i && !live i)) ++
       loadCode h state type.types
-  | context, _, .sys operation form args inputs =>
-    sysInputsCodeWith calls operation form (args.map fun arg => (slots.getD arg.index default).loc)
-        (inputs.map fun input => (slots.getD input.index default).loc) base ++
-      Relocation.programWith calls (releaseWhere context slots
-        (fun i => (inputs.any fun input => i == input.index) && !live i))
+  | context, _, .sys operation form args inputs buffers =>
+    match buffers with
+    | [] =>
+      sysInputsCodeWith calls operation form
+          (args.map fun arg => (slots.getD arg.index default).loc)
+          (inputs.map fun input => (slots.getD input.index default).loc) [] base ++
+        Relocation.programWith calls (releaseWhere context slots
+          (fun i => (inputs.any fun input => i == input.index) && !live i))
+    | buffer :: _ =>
+      Relocation.programWith calls ((Expr.var (S := pureSigs) buffer).code (pool := pool) h slots
+          (base + Ty.bytes.width) (sysTakeLive live args inputs) ++
+        coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+          (base + Ty.bytes.width)) ++
+        storeCode h base Ty.bytes.types ++
+        sysInputsCodeWith calls operation form
+          (args.map fun arg => (slots.getD arg.index default).loc)
+          (inputs.map fun input => (slots.getD input.index default).loc) [base]
+          (base + Ty.bytes.width) ++
+        Relocation.programWith calls (releaseWhere (.bytes :: context) (⟨base, .owned⟩ :: slots)
+          (fun i => (inputs.any fun input => i == input.index + 1) && !shift 1 live i))
   | _, _, .letPair (first := first) (second := second) pair body =>
     let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
     Relocation.programWith calls ((Expr.var (S := pureSigs) pair).code (pool := pool) h slots

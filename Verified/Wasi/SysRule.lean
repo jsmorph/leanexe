@@ -4,12 +4,12 @@ import Verified.Wasi.Observed
 import LeanExe.Wasi.PrefixProgress
 
 /-! The premises of the resource rule of a `sys` command.  The rule bounds the command's charge on
-every run and every prefix that the host permits.  A flat call's charge does not depend on the
-trace, so a bound for every trace gives both premises.  A reported call's charge is the
-allocation cost of the block that its reporter's reply asks for, and the first event of every run
-and every nonempty prefix is that reply, so a bound on the blocks of the replies the host permits
-gives both premises.  For the observed host of a run, the permitted replies are those of the base
-host. -/
+every run and every prefix that the host permits.  A charge that does not depend on the trace, as
+that of every form but `reported`, has a bound for every trace, which gives both premises.  A
+reported call's charge is the allocation cost of the block that its reporter's reply asks for, and
+the first event of every run and every nonempty prefix is that reply, so a bound on the blocks of
+the replies the host permits gives both premises.  For the observed host of a run, the permitted
+replies are those of the base host. -/
 
 namespace Verified.Wasi.Resource
 
@@ -60,13 +60,13 @@ def reportedSize (outputs : List LeanExe.Bytes) : Nat :=
 /-- The charge of a reported call on a trace that is empty or starts with a reply of its reporter
 that `host` permits in `world` is at most the allocation cost of `limit`, when every successful
 reply that `host` permits there asks for a block of at most `limit` bytes. -/
-theorem reported_cost_le {World : Type} {host : Host World} {call : Call} {values : List UInt64}
+theorem reported_cost_le {World : Type} {host : Host World} {call : Call}
     {limit : Nat} {world : World} {trace : List Event}
     (bound : ∀ outputs after, host.sys world call.reporterCall [] (.returned 0 outputs) after →
       reportedSize outputs ≤ limit)
     (first : trace = [] ∨ ∃ reply middle rest, trace = .sys call.reporterCall [] reply :: rest ∧
       host.sys world call.reporterCall [] reply middle) :
-    sysCost .reported call values trace ≤ Bytes.allocationCost limit := by
+    sysCost .reported call trace ≤ Bytes.allocationCost limit := by
   rcases first with rfl | ⟨reply, middle, rest, rfl, permitted⟩
   · simp [sysCost, reportedBlock]
   · cases reply with
@@ -81,27 +81,27 @@ theorem reported_cost_le {World : Type} {host : Host World} {call : Call} {value
         exact Nat.zero_le _
 
 /-- The premises of the rule of a `sys` command from a bound on its charge on every trace. -/
-theorem sys_rule_of_bound {World : Type} {host : Host World} {form : SysForm} {call : Call}
-    {values : List UInt64} {budget : Nat}
-    (bound : ∀ trace, sysCost form call values trace ≤ budget) :
-    (∀ world trace outcome final, Exec host (form.run call values) world trace outcome final →
-      sysCost form call values trace ≤ budget) ∧
-    (∀ world trace residual final, Prefix host (form.run call values) world trace residual final →
-      sysCost form call values trace ≤ budget) :=
+theorem sys_rule_of_bound {World α : Type} {host : Host World} {action : Action α}
+    {cost : List Event → Nat} {budget : Nat} (bound : ∀ trace, cost trace ≤ budget) :
+    (∀ world trace outcome final, Exec host action world trace outcome final →
+      cost trace ≤ budget) ∧
+    (∀ world trace residual final, Prefix host action world trace residual final →
+      cost trace ≤ budget) :=
   ⟨fun _ trace _ _ _ => bound trace, fun _ trace _ _ _ => bound trace⟩
 
 /-- The premises of the rule of a reported call, when every successful reply of its reporter that
 `host` permits asks for a block of at most `limit` bytes, and the allocation cost of `limit` is
 within the budget. -/
 theorem reported_rule {World : Type} {host : Host World} {call : Call} {values : List UInt64}
-    {limit budget : Nat}
+    {inputs buffers : List LeanExe.Bytes} {limit budget : Nat}
     (bound : ∀ world outputs after, host.sys world call.reporterCall [] (.returned 0 outputs) after →
       reportedSize outputs ≤ limit)
     (enough : Bytes.allocationCost limit ≤ budget) :
-    (∀ world trace outcome final, Exec host (SysForm.reported.run call values) world trace outcome
-      final → sysCost .reported call values trace ≤ budget) ∧
-    (∀ world trace residual final, Prefix host (SysForm.reported.run call values) world trace
-      residual final → sysCost .reported call values trace ≤ budget) := by
+    (∀ world trace outcome final, Exec host (SysForm.reported.runWith call values inputs buffers)
+      world trace outcome final → sysCost .reported call trace ≤ budget) ∧
+    (∀ world trace residual final, Prefix host
+      (SysForm.reported.runWith call values inputs buffers) world trace residual final →
+        sysCost .reported call trace ≤ budget) := by
   have accepted : call.reporterCall.reject [] = 0 := rfl
   refine ⟨fun world trace outcome final run => ?_, fun world trace residual final progress => ?_⟩
   · exact (reported_cost_le (bound world) (.inr (exec_sys_first accepted run))).trans enough
@@ -112,14 +112,16 @@ theorem reported_rule {World : Type} {host : Host World} {call : Call} {values :
 /-- `reported_rule` for the observed host of a run, from a bound on the replies of the base
 host. -/
 theorem reported_rule_observed {World : Type} {host : Host World} {call : Call}
-    {values : List UInt64} {limit budget : Nat}
+    {values : List UInt64} {inputs buffers : List LeanExe.Bytes} {limit budget : Nat}
     (bound : ∀ world outputs after, host.sys world call.reporterCall [] (.returned 0 outputs) after →
       reportedSize outputs ≤ limit)
     (enough : Bytes.allocationCost limit ≤ budget) :
-    (∀ world trace outcome final, Exec (observedHost host) (SysForm.reported.run call values) world
-      trace outcome final → sysCost .reported call values trace ≤ budget) ∧
-    (∀ world trace residual final, Prefix (observedHost host) (SysForm.reported.run call values)
-      world trace residual final → sysCost .reported call values trace ≤ budget) :=
+    (∀ world trace outcome final, Exec (observedHost host)
+      (SysForm.reported.runWith call values inputs buffers) world trace outcome final →
+        sysCost .reported call trace ≤ budget) ∧
+    (∀ world trace residual final, Prefix (observedHost host)
+      (SysForm.reported.runWith call values inputs buffers) world trace residual final →
+        sysCost .reported call trace ≤ budget) :=
   reported_rule (fun _ outputs _ permitted => bound _ outputs _ permitted.1) enough
 
 end Verified.Wasi.Resource

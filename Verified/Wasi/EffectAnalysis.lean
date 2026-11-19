@@ -50,13 +50,20 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
   | _, _, .exit code, index => code.uses index
   | _, _, .loop count initial test step, index =>
     count.uses index || initial.uses index || test.uses (index + 2) || step.uses (index + 2)
-  | _, _, .sys _ _ args inputs, index =>
-    (inputs.any fun input => index == input.index) || args.any fun arg => index == arg.index
+  | _, _, .sys _ _ args inputs buffers, index =>
+    (buffers.any fun buffer => index == buffer.index) ||
+      ((inputs.any fun input => index == input.index) || args.any fun arg => index == arg.index)
   | _, _, .letPair pair body, index => index == pair.index || body.uses (index + 2)
+
+/-- The variables live after the take of a `sys` command's buffer: those live after the command,
+and its inputs and word arguments, which the call reads. -/
+def sysTakeLive (live : Nat → Bool) (args : List (Var context .word))
+    (inputs : List (Var context .bytes)) (i : Nat) : Bool :=
+  live i || ((inputs.any fun input => i == input.index) || args.any fun arg => i == arg.index)
 
 def Command.literals : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Bytes.Literal
-  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ => []
+  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ _ => []
   | _, _, .ret value => value.literals
   | _, _, .bind first next => first.literals ++ next.literals
   | _, _, .ite condition yes no => condition.literals ++ yes.literals ++ no.literals
@@ -73,7 +80,7 @@ def Command.Covered (command : Command pureSigs effectSigs context result)
 
 def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Bool
-  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ => true
+  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ _ => true
   | _, _, .ret value => value.placeArgs
   | _, _, .bind first next => first.placeArgs && next.placeArgs
   | _, _, .ite condition yes no => condition.placeArgs && yes.placeArgs && no.placeArgs
@@ -85,19 +92,19 @@ def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
     count.placeArgs && initial.placeArgs && test.placeArgs && step.placeArgs
   | _, _, .letPair _ body => body.placeArgs
 
-/-- Whether each `sys` command has a call that the compiler supports, in its form, with one
-argument for each argument parameter, one input variable for each `input` parameter among them,
-and whether `calls` holds the calls that its code uses. -/
+/-- Whether each `sys` command has a call that the compiler supports, in its form, with the word
+arguments of `Call.argWords`, one input variable for each input parameter, one buffer variable for
+each parameter that fills a buffer, and whether `calls` holds the calls that its code uses. -/
 def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Bool
   | _, _, .bind first next => first.callsReady calls && next.callsReady calls
   | _, _, .ite _ yes no => yes.callsReady calls && no.callsReady calls
   | _, _, .loop _ _ _ step => step.callsReady calls
   | _, _, .letPair _ body => body.callsReady calls
-  | _, _, .sys operation form args inputs =>
-    operation.compiled && operation.form == form &&
-      args.length + inputs.length == operation.argCount &&
-      inputs.length == operation.inputCount && operation.uses.all calls.contains
+  | _, _, .sys operation form args inputs buffers =>
+    operation.compiled && operation.form == form && args.length == operation.argWords &&
+      inputs.length == operation.inputCount && buffers.length == operation.bufferCount &&
+      operation.uses.all calls.contains
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
   | _, _, .write _ _ | _, _, .exit _ => true
 
@@ -108,7 +115,7 @@ def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
   | _, _, .ite _ yes no => yes.callsUsed ++ no.callsUsed
   | _, _, .loop _ _ _ step => step.callsUsed
   | _, _, .letPair _ body => body.callsUsed
-  | _, _, .sys operation _ _ _ => operation.uses
+  | _, _, .sys operation _ _ _ _ => operation.uses
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
   | _, _, .write _ _ | _, _, .exit _ => []
 

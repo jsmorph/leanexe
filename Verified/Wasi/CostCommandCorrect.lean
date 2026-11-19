@@ -35,8 +35,8 @@ theorem Command.cost_code_spec_with {calls : List LeanExe.Wasi.Call}
   | write output bytes => exact cost_command_write_spec_with facts sourceHost output bytes
   | exit status => exact cost_command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec => exact cost_command_loop_spec_with facts sourceHost stepSpec
-  | sys operation form args inputs =>
-    exact cost_command_sys_spec_with facts sourceHost operation form args inputs
+  | sys operation form args inputs buffers =>
+    exact cost_command_sys_spec_with facts sourceHost operation form args inputs buffers
   | letPair pair body bodySpec =>
     exact cost_command_letPair_spec_with facts sourceHost pair body bodySpec
 

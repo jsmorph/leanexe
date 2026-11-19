@@ -6,10 +6,18 @@ argument words from the locals of the argument variables, the root and the lengt
 from the two locals of its variable, and uses the i64 locals from `base` that `SysForm.width`
 counts.
 
-A flat call keeps its errno at `base`, its buffer's root at `base + 1` and length at `base + 2`,
-and its result words at `base + 3` and `base + 4`.  The code tests the arguments, allocates the
-buffer, pushes the core arguments with the result words at scratch addresses 0 and 8, calls the
-import, and on errno 0 loads the result words and keeps the buffer, or otherwise releases it.
+A flat call keeps its errno at `base` and its result words at `base + 3` and `base + 4`, which
+it sets to 0 with `base + 1` and `base + 2`.  The code tests the arguments, pushes the core
+arguments with the result words at scratch addresses 0 and 8, calls the import, and on errno 0
+loads the result words.
+
+A call that fills a window of a buffer takes the buffer's root and size from the two locals from
+`root`.  It keeps its errno at `base`, the window's address at `base + 1`, the window's length at
+`base + 2`, the count of the fill at `base + 3`, and the index of the zero fill at `base + 4`.  The
+code computes the window, tests the arguments with the window's length in place of its start and
+count, calls the import with the window's address and length, on errno 0 sets the count, and after
+an errno, of the host or of the test, stores 0 into the window's bytes.  It pushes the errno, the
+count, and the buffer's root and size.
 
 A reported call keeps its errno at `base`, the reporter's words at `base + 1` and `base + 2`, and
 its buffer's root at `base + 3` and length at `base + 4`.  The code calls the reporter with its
@@ -21,13 +29,12 @@ A record call keeps its errno at `base`, its block's root at `base + 1`, the rec
 `size + align - 1` bytes, passes its root rounded up to a multiple of `align` as the record pointer,
 calls the import, on errno 0 loads each field from the record, and releases the block.
 
-An iovec call writes its element, the buffer's pointer and length, at scratch addresses 0 and 4
+An iovec call writes its element, the window's address and length, at scratch addresses 0 and 4
 with the code of the stream calls, `metadataCode`, which also sets the word at 8 to 0, passes the
-element's address 0 and the count 1, and places its result word at scratch address 8.
-A read keeps its errno at `base`, its buffer's root at `base + 1`, the number of bytes read at
-`base + 2`, and the count that the host returns at `base + 3`: it allocates the buffer as a flat
-call does, keeps the count, at most the capacity, as the buffer's length on errno 0, and otherwise
-releases the buffer.  A write keeps its errno at `base` and the count written at `base + 1`.
+element's address 0 and the count 1, and places its result word at scratch address 8.  A read is a
+fill, whose count is the count that the host returns clamped to the window's length.  A write
+keeps the window's address and length of its input at `base` and `base + 1`, its errno at
+`base + 2`, and the count written at `base + 3`.
 
 A `poll` call keeps its errno at `base`, its block's root at `base + 1`, the subscriptions'
 pointer at `base + 2`, the number of events at `base + 3`, and the fields of the first event from
@@ -66,9 +73,9 @@ def sysRejectCode : List Param → List Nat → Program
   | .word64 :: params, _ :: locals => sysRejectCode params locals
   | _ :: params, locals => sysRejectCode params locals
 
-/-- Pushes the core arguments of a flat call: each word from its local, the buffer's root from
-`root` and its capacity from its local, and the scratch address `slot` of each result word in
-turn. -/
+/-- Pushes the core arguments of a flat call: each word from its local, the window's address from
+`root` and its length from its local, and the scratch address `slot` of each result word in turn.
+-/
 def sysLowerCode : List Param → List Nat → Nat → Nat → Program
   | [], _, _, _ => []
   | .word32 :: params, place :: locals, root, slot
@@ -97,66 +104,64 @@ def sysLoadCode : List Param → Nat → Nat → Program
       sysLoadCode params (slot + 8) (target + 1)
   | _ :: params, slot, target => sysLoadCode params slot target
 
-/-- The local of the argument that gives the output's capacity. -/
-def outputLocal : List Param → List Nat → Option Nat
-  | [], _ => none
-  | .output :: _, place :: _ => some place
-  | param :: params, locals =>
-    if param.takesArg then outputLocal params locals.tail else outputLocal params locals
+/-- Pushes the word in local `count`, or the word in local `capacity` when the count is at least
+the capacity. -/
+def minCode (count capacity : Nat) : Program :=
+  [.localGet count, .localGet capacity, .geUI64,
+   .iff 0 1 [.localGet capacity] [.localGet count] [] [.i64]]
 
-/-- Allocates the output buffer of `capacity` bytes, or takes `(0, 0)` for no bytes. -/
-def sysAllocateCodeWith (calls : List LeanExe.Wasi.Call) (capacity root : Nat) : Program :=
-  [.localGet capacity, .eqzI64,
-   .iff 0 1 [.constI64 0] [.localGet capacity, .call (3 + calls.length)] [] [.i64],
-   .localSet root]
+/-- Leaves in `target` the address of the window of a buffer and in `target + 1` its length, from
+the buffer's root in local `root` and size in `root + 1` and the window's start in local `start`
+and count in local `count`: the first position, the start or the size when that is smaller, in
+`target`, the bytes from it to the end in `target + 1`, the length, the count or those bytes when
+they are fewer, in `target + 1`, and the root plus the first position in `target`. -/
+def windowCode (root start count target : Nat) : Program :=
+  minCode start (root + 1) ++
+    [.localSet target, .localGet (root + 1), .localGet target, .subI64, .localSet (target + 1)] ++
+    minCode count (target + 1) ++
+    [.localSet (target + 1), .localGet root, .localGet target, .addI64, .localSet target]
 
-/-- The allocation of the output buffer, when the call has an output. -/
-def sysAllocateBufferWith (calls : List LeanExe.Wasi.Call) (buffer : Option Nat) (base : Nat) :
-    Program :=
-  match buffer with
-  | some capacity => sysAllocateCodeWith calls capacity (base + 1)
-  | none => []
+/-- Stores 0 into the bytes from the address in local `pointer` whose number is in local
+`length`, with the index in local `index`. -/
+def zeroCode (pointer length index : Nat) : Program :=
+  [.constI64 0, .localSet index,
+   .block 0 0 [.loop 0 0
+     [.localGet index, .localGet length, .geUI64, .br_if 1,
+      .localGet pointer, .localGet index, .addI64, .wrapI64, .const 0, .store8 0,
+      .localGet index, .constI64 1, .addI64, .localSet index, .br 0] [] []] [] []]
 
-/-- The code that keeps the output buffer's capacity as its length. -/
-def sysKeepCode (buffer : Option Nat) (base : Nat) : Program :=
-  match buffer with
-  | some capacity => [.localGet capacity, .localSet (base + 2)]
-  | none => []
+/-- The end of a fill: after an errno, the zero fill of the window whose address and length are
+in `base + 1` and `base + 2`, and then the pushes of the errno, the count, and the buffer's root
+and size from the two locals from `root`. -/
+def fillTailCode (root base : Nat) : Program :=
+  [.localGet base, .eqzI64, .iff 0 0 [] (zeroCode (base + 1) (base + 2) (base + 4)) [] [],
+   .localGet base, .localGet (base + 3), .localGet root, .localGet (root + 1)]
 
-/-- The code that releases the output buffer after an errno. -/
-def sysDiscardCodeWith (calls : List LeanExe.Wasi.Call) (buffer : Option Nat) (base : Nat) :
-    Program :=
-  match buffer with
-  | some _ => discardReadCodeWith calls (base + 1)
-  | none => []
+/-- The locals of the words of a call's arguments from the locals of a command's word variables:
+the locals of each parameter in turn, with the locals of the start and the count of a window
+replaced by `length` for an output or `iovec false`, and dropped for `iovec true`. -/
+def lowerLocs : List Param → List Nat → Nat → List Nat
+  | [], _, _ => []
+  | .output :: params, locs, length | .iovec false :: params, locs, length =>
+    length :: lowerLocs params (locs.drop 2) length
+  | .iovec true :: params, locs, length => lowerLocs params (locs.drop 2) length
+  | .word32 :: params, locs, length
+  | .handle :: params, locs, length
+  | .word64 :: params, locs, length
+  | .enum32 _ :: params, locs, length
+  | .flags32 _ :: params, locs, length
+  | .flags64 _ :: params, locs, length =>
+    locs.headD 0 :: lowerLocs params locs.tail length
+  | .subscriptions records :: params, locs, length =>
+    locs.take (argFields records).length ++
+      lowerLocs params (locs.drop (argFields records).length) length
+  | _ :: params, locs, length => lowerLocs params locs length
 
-/-- The code that pushes the output buffer's root and length. -/
-def sysPushBytesCode (buffer : Option Nat) (base : Nat) : Program :=
-  match buffer with
-  | some _ => [.localGet (base + 1), .localGet (base + 2)]
-  | none => []
-
-/-- The code of an accepted flat request: the allocation, the call, and the results. -/
-def sysFlatCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (locals : List Nat) (base : Nat) (buffer : Option Nat) : Program :=
-  sysAllocateBufferWith calls buffer base ++ sysLowerCode call.params locals (base + 1) 0 ++
-    [.call (3 + calls.idxOf call), .extendUI32, .localSet base,
-     .localGet base, .eqzI64,
-     .iff 0 0 (sysLoadCode call.params 0 (base + 3) ++ sysKeepCode buffer base)
-       (sysDiscardCodeWith calls buffer base) [] []]
-
-def sysFlatCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (locals : List Nat) (base : Nat) : Program :=
-  sysRejectCode call.params locals ++
-    [.localSet base, .constI64 0, .localSet (base + 1), .constI64 0, .localSet (base + 2),
-     .constI64 0, .localSet (base + 3), .constI64 0, .localSet (base + 4),
-     .localGet base, .eqzI64,
-     .iff 0 0 (sysFlatCallCodeWith calls call locals base (outputLocal call.params locals))
-       [] [] [],
-     .localGet base] ++
-    (List.range (call.params.countP Param.isResult)).map
-      (fun index => .localGet (base + 3 + index)) ++
-    sysPushBytesCode (outputLocal call.params locals) base
+/-- The locals of the start and the count of the first window that a buffer fills. -/
+def windowLocs : List Param → List Nat → Nat × Nat
+  | [], _ => (0, 0)
+  | .output :: _, locs | .iovec false :: _, locs => (locs.headD 0, locs.tail.headD 0)
+  | param :: params, locs => windowLocs params (locs.drop param.argWords)
 
 /-- The hidden region's address on the stack as an i32: the end of the shown region rounded up to
 a multiple of 4, from the end plus 3, which the code keeps in `base + 4`. -/
@@ -233,8 +238,8 @@ def sysRejectInputsCode : List Param → List Nat → List Nat → Program
   | _ :: params, words, inputs => sysRejectInputsCode params words inputs
 
 /-- Pushes the core arguments of a flat call: each word from its local, each input's root and
-length from its two locals, the buffer's root from `root` and its capacity from its local, and the
-scratch address `slot` of each result word in turn. -/
+length from its two locals, the window's address from `root` and its length from its local, and
+the scratch address `slot` of each result word in turn. -/
 def sysLowerInputsCode : List Param → List Nat → List Nat → Nat → Nat → Program
   | [], _, _, _, _ => []
   | .input :: params, words, place :: inputs, root, slot =>
@@ -256,24 +261,12 @@ def sysLowerInputsCode : List Param → List Nat → List Nat → Nat → Nat �
     [.const (UInt32.ofNat slot)] ++ sysLowerInputsCode params words inputs root (slot + 8)
   | _ :: params, words, inputs, root, slot => sysLowerInputsCode params words inputs root slot
 
-/-- The local of the word argument that gives the output's capacity. -/
-def outputLocalInputs : List Param → List Nat → List Nat → Option Nat
-  | [], _, _ => none
-  | .output :: _, place :: _, _ => some place
-  | .input :: params, words, _ :: inputs => outputLocalInputs params words inputs
-  | param :: params, words, inputs =>
-    if param.takesArg then outputLocalInputs params words.tail inputs
-    else outputLocalInputs params words inputs
-
 /-- The code of an accepted flat request with inputs. -/
 def sysFlatCallInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (words inputs : List Nat) (base : Nat) (buffer : Option Nat) : Program :=
-  sysAllocateBufferWith calls buffer base ++
-    sysLowerInputsCode call.params words inputs (base + 1) 0 ++
+    (words inputs : List Nat) (base : Nat) : Program :=
+  sysLowerInputsCode call.params words inputs (base + 1) 0 ++
     [.call (3 + calls.idxOf call), .extendUI32, .localSet base,
-     .localGet base, .eqzI64,
-     .iff 0 0 (sysLoadCode call.params 0 (base + 3) ++ sysKeepCode buffer base)
-       (sysDiscardCodeWith calls buffer base) [] []]
+     .localGet base, .eqzI64, .iff 0 0 (sysLoadCode call.params 0 (base + 3)) [] [] []]
 
 def sysFlatInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (words inputs : List Nat) (base : Nat) : Program :=
@@ -281,12 +274,31 @@ def sysFlatInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.
     [.localSet base, .constI64 0, .localSet (base + 1), .constI64 0, .localSet (base + 2),
      .constI64 0, .localSet (base + 3), .constI64 0, .localSet (base + 4),
      .localGet base, .eqzI64,
-     .iff 0 0 (sysFlatCallInputsCodeWith calls call words inputs base
-       (outputLocalInputs call.params words inputs)) [] [] [],
+     .iff 0 0 (sysFlatCallInputsCodeWith calls call words inputs base) [] [] [],
      .localGet base] ++
     (List.range (call.params.countP Param.isResult)).map
-      (fun index => .localGet (base + 3 + index)) ++
-    sysPushBytesCode (outputLocalInputs call.params words inputs) base
+      (fun index => .localGet (base + 3 + index))
+
+/-- The count of a fill of a flat call: the window's length in `base + 2` for a call without a
+result word, and otherwise the result word in `base + 3` clamped to that length. -/
+def fillCountCode (words base : Nat) : Program :=
+  if words = 0 then [.localGet (base + 2), .localSet (base + 3)]
+  else minCode (base + 3) (base + 2) ++ [.localSet (base + 3)]
+
+/-- The code of a flat call that fills the window of the buffer whose root and size lie in the two
+locals from `root`, from the locals `words` of the command's word variables and `inputs` of its
+inputs. -/
+def sysFlatFillCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (words inputs : List Nat) (root base : Nat) : Program :=
+  windowCode root (windowLocs call.params words).1 (windowLocs call.params words).2 (base + 1) ++
+    sysRejectInputsCode call.params (lowerLocs call.params words (base + 2)) inputs ++
+    [.localSet base, .constI64 0, .localSet (base + 3), .localGet base, .eqzI64,
+     .iff 0 0 (sysLowerInputsCode call.params (lowerLocs call.params words (base + 2)) inputs
+         (base + 1) 0 ++
+       [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
+        .iff 0 0 (sysLoadCode call.params 0 (base + 3) ++
+          fillCountCode (call.params.countP Param.isResult) base) [] [] []]) [] [] []] ++
+    fillTailCode root base
 
 /-- Pushes the field of `width` bytes at `offset` of the record whose pointer is in local
 `pointer`: one byte load for a width of 1, two for a width of 2, a 32-bit load for 4, and a 64-bit
@@ -362,34 +374,29 @@ def iovecLowerCode (handle : Nat) (offset : Option Nat) : Program :=
      | some place => [.localGet place]
      | none => []) ++ [.const 8]
 
-/-- Pushes the word in local `count`, or the word in local `capacity` when the count is at least
-the capacity. -/
-def minCode (count capacity : Nat) : Program :=
-  [.localGet count, .localGet capacity, .geUI64,
-   .iff 0 1 [.localGet capacity] [.localGet count] [] [.i64]]
+/-- Loads the count that the host left at scratch address 8 into `base + 3` and clamps it to the
+window's length in `base + 2`. -/
+def readCountCode (base : Nat) : Program :=
+  [.const 8, .load32 0, .extendUI32, .localSet (base + 3)] ++ minCode (base + 3) (base + 2) ++
+    [.localSet (base + 3)]
 
-/-- Loads the count that the host left at scratch address 8 into `base + 3` and sets `base + 2` to
-the count, or to the capacity in local `capacity` when the count is at least the capacity. -/
-def readCountCode (capacity base : Nat) : Program :=
-  [.const 8, .load32 0, .extendUI32, .localSet (base + 3)] ++ minCode (base + 3) capacity ++
-    [.localSet (base + 2)]
-
-/-- The code of an accepted read: the allocation of the buffer, the element, the call, and on
-errno 0 the number of bytes read, or otherwise the release of the buffer.  The words of a read are
-the handle, the capacity, and the offset of `fd_pread`. -/
+/-- The code of an accepted read: the element of the window, the call, and on errno 0 the count.
+The words of a read are the handle, the window's start and count, and the offset of `fd_pread`. -/
 def sysIovecReadCallCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
     (locs : List Nat) (base : Nat) : Program :=
-  sysAllocateCodeWith calls (locs.getD 1 0) (base + 1) ++ metadataCode (base + 1) (locs.getD 1 0) ++
-    iovecLowerCode (locs.getD 0 0) locs[2]? ++
+  metadataCode (base + 1) (base + 2) ++ iovecLowerCode (locs.getD 0 0) locs[3]? ++
     [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
-     .iff 0 0 (readCountCode (locs.getD 1 0) base) (discardReadCodeWith calls (base + 1)) [] []]
+     .iff 0 0 (readCountCode base) [] [] []]
 
+/-- The code of a read that fills the window of the buffer whose root and size lie in the two
+locals from `root`. -/
 def sysIovecReadCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (locs : List Nat) (base : Nat) : Program :=
-  iovecRejectCode (locs.getD 0 0) (locs.getD 1 0) ++
-    .localSet base :: zeroLocalsCode (base + 1) 3 ++
-    [.localGet base, .eqzI64, .iff 0 0 (sysIovecReadCallCodeWith calls call locs base) [] [] [],
-     .localGet base, .localGet (base + 1), .localGet (base + 2)]
+    (locs : List Nat) (root base : Nat) : Program :=
+  windowCode root (locs.getD 1 0) (locs.getD 2 0) (base + 1) ++
+    iovecRejectCode (locs.getD 0 0) (base + 2) ++
+    [.localSet base, .constI64 0, .localSet (base + 3), .localGet base, .eqzI64,
+     .iff 0 0 (sysIovecReadCallCodeWith calls call locs base) [] [] []] ++
+    fillTailCode root base
 
 /-- The code of an accepted write: the element of the input, the call, and on errno 0 the count.
 The words of a write are the handle and the offset of `fd_pwrite`, and its input is the bytes. -/
@@ -407,6 +414,14 @@ def sysIovecWriteCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.
     [.localGet base, .eqzI64,
      .iff 0 0 (sysIovecWriteCallCodeWith calls call locs inputs base) [] [] [],
      .localGet base, .localGet (base + 1)]
+
+/-- The code of a write of the window of the input whose root and length lie in the two locals
+from `input`: the window's address and length at `base` and `base + 1`, and the write of the bytes
+there, with the handle and the offset of `fd_pwrite` from `locs`. -/
+def sysIovecWindowCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
+    (locs : List Nat) (input base : Nat) : Program :=
+  windowCode input (locs.getD 1 0) (locs.getD 2 0) base ++
+    sysIovecWriteCodeWith calls call (locs.getD 0 0 :: locs.drop 3) [base] (base + 2)
 
 /-! ## Calls of `poll_oneoff` -/
 
@@ -484,24 +499,17 @@ def sysPollCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
       (List.range 6).map (fun index => .localGet (base + 3 + index))
   | none => []
 
-def sysCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
-    (locals : List Nat) (base : Nat) : Program :=
-  match form with
-  | .flat .. => sysFlatCodeWith calls call locals base
-  | .reported => sysReportedCodeWith calls call base
-  | .record _ => sysRecordCodeWith calls call locals [] base
-  | .iovecRead => sysIovecReadCodeWith calls call locals base
-  | .iovecWrite => sysIovecWriteCodeWith calls call locals [] base
-  | .poll => sysPollCodeWith calls call locals base
-
+/-- The code of a `sys` command from the locals of its word variables, the root locals of its
+input variables, and the root locals of its buffers. -/
 def sysInputsCodeWith (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call) (form : SysForm)
-    (words inputs : List Nat) (base : Nat) : Program :=
+    (words inputs buffers : List Nat) (base : Nat) : Program :=
   match form with
-  | .flat .. => sysFlatInputsCodeWith calls call words inputs base
+  | .flat _ false => sysFlatInputsCodeWith calls call words inputs base
+  | .flat _ true => sysFlatFillCodeWith calls call words inputs (buffers.headD 0) base
   | .reported => sysReportedCodeWith calls call base
   | .record _ => sysRecordCodeWith calls call words inputs base
-  | .iovecRead => sysIovecReadCodeWith calls call words base
-  | .iovecWrite => sysIovecWriteCodeWith calls call words inputs base
+  | .iovecRead => sysIovecReadCodeWith calls call words (buffers.headD 0) base
+  | .iovecWrite => sysIovecWindowCodeWith calls call words (inputs.headD 0) base
   | .poll => sysPollCodeWith calls call words base
 
 theorem sysRejectInputsCode_nil : ∀ (params : List Param) (words : List Nat),
@@ -517,33 +525,5 @@ theorem sysLowerInputsCode_nil : ∀ (params : List Param) (words : List Nat) (r
   | param :: params, words, root, slot => by
     cases param <;> cases words <;>
       simp only [sysLowerInputsCode, sysLowerCode, sysLowerInputsCode_nil params]
-
-theorem outputLocalInputs_nil : ∀ (params : List Param) (words : List Nat),
-    outputLocalInputs params words [] = outputLocal params words
-  | [], _ => rfl
-  | param :: params, words => by
-    cases param <;> cases words <;>
-      simp only [outputLocalInputs, outputLocal, outputLocalInputs_nil params]
-
-theorem sysFlatCallInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (words : List Nat) (base : Nat) (buffer : Option Nat) :
-    sysFlatCallInputsCodeWith calls call words [] base buffer =
-      sysFlatCallCodeWith calls call words base buffer := by
-  simp only [sysFlatCallInputsCodeWith, sysFlatCallCodeWith, sysLowerInputsCode_nil]
-
-theorem sysFlatInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (words : List Nat) (base : Nat) :
-    sysFlatInputsCodeWith calls call words [] base = sysFlatCodeWith calls call words base := by
-  simp only [sysFlatInputsCodeWith, sysFlatCodeWith, sysFlatCallInputsCodeWith_nil,
-    sysRejectInputsCode_nil, outputLocalInputs_nil]
-
-theorem sysInputsCodeWith_nil (calls : List LeanExe.Wasi.Call) (call : LeanExe.Wasi.Call)
-    (form : SysForm) (words : List Nat) (base : Nat) :
-    sysInputsCodeWith calls call form words [] base = sysCodeWith calls call form words base := by
-  cases form with
-  | flat => simp only [sysInputsCodeWith, sysCodeWith, sysFlatInputsCodeWith_nil]
-  | reported => rfl
-  | record => rfl
-  | iovecRead | iovecWrite | poll => rfl
 
 end Verified.Wasi

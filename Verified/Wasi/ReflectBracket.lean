@@ -60,12 +60,12 @@ theorem withOpen_rel (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectS
         fdflagsValue onError body)
       ((Command.bind
         (Command.sys Call.pathOpen (.flat 1 false)
-          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path])
+          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path] [])
         (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
           (Command.bind onError' errorLast)
           (Command.bind (Command.ret (.proj .here (.snd .here)))
             (Command.bind body'
-              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
                 closeLast))))).denote pureFuns effectFuns env) := by
   obtain ⟨dirValue⟩ := dirValue
   change env.get dir = dirValue at hDir
@@ -119,12 +119,12 @@ theorem withOpen_rel_mk (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
         fdflagsValue onError body)
       ((Command.bind
         (Command.sys Call.pathOpen (.flat 1 false)
-          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path])
+          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path] [])
         (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
           (Command.bind onError' (Command.ret (.mk (.var .here) (.word 0))))
           (Command.bind (Command.ret (.proj .here (.snd .here)))
             (Command.bind body'
-              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
                 (Command.ret (.mk (.var (.there .here)) (.var .here)))))))).denote
         pureFuns effectFuns env) :=
   withOpen_rel pureFuns effectFuns env dir dirflags path oflags rightsBase rightsInheriting fdflags
@@ -160,12 +160,12 @@ theorem withOpen_rel_pair (pureFuns : Funs pureSigs) (effectFuns : EffectFuns ef
         fdflagsValue onError body)
       ((Command.bind
         (Command.sys Call.pathOpen (.flat 1 false)
-          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path])
+          [dir, dirflags, oflags, rightsBase, rightsInheriting, fdflags] [path] [])
         (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
           (Command.bind onError' (Command.ret (.pair (.var .here) (.word 0))))
           (Command.bind (Command.ret (.proj .here (.snd .here)))
             (Command.bind body'
-              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+              (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
                 (Command.ret (.pair (.var (.there .here)) (.var .here)))))))).denote
         pureFuns effectFuns env) :=
   withOpen_rel pureFuns effectFuns env dir dirflags path oflags rightsBase rightsInheriting fdflags

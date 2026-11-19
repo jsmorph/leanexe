@@ -4,133 +4,14 @@ import Verified.Wasi.ReadDiscard
 import Verified.Wasi.ReadInvoke
 import Verified.Wasi.RuntimeFrame
 
-/-! Parts of the code of a flat call: the local and the capacity of its output, the allocation of
-the output buffer, and the buffer and frame that the host call leaves. -/
+/-! Parts of a flat call: the capacity of its output, and the output and the frame that the host
+call leaves. -/
 
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-/-- The allocation of the output buffer: none for a capacity of 0, and otherwise one buffer of
-the capacity, or a resource trap. -/
-theorem wp_sys_allocate_with {calls : List LeanExe.Wasi.Call}
-    {World : Type} {source target : Module}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {targetHost : HostEnv World}
-    {heap : Heap} {store : Store World} {s : Locals} {capacityLocal rootLocal : Nat}
-    {capacity : UInt64} {rest : Program} {Q : Assertion World} {aborts : Bool}
-    (hHeap : heap.At (PureTransport.erase store))
-    (hCount : capacity.toNat ≤ 4294967296)
-    (hCap : (PureTransport.erase store).memoryCap source 0 ≤ 65535)
-    (hCapacity : s.get capacityLocal = some (.i64 capacity))
-    (hLow : s.params.length ≤ rootLocal) (hHigh : rootLocal < s.params.length + s.locals.length)
-    (hRoom : capacity ≠ 0 → aborts = false →
-      heap.Room (PureTransport.erase store) source (allocSize capacity))
-    (hTrap : aborts = true → ∀ final : Store World,
-      final.host = store.host → Q (.Trap final "unreachable"))
-    (hZero : capacity = 0 →
-      wp target rest Q store (setLocal s rootLocal (.i64 0)) targetHost)
-    (hAllocated : capacity ≠ 0 → ∀ final : Store World, heap.Fits (allocSize capacity) →
-      PureTransport.erase final =
-        heap.allocateStore (PureTransport.erase store) (allocSize capacity) 1 →
-      final.host = store.host →
-      wp target rest Q final
-        (setLocal s rootLocal
-          (.i64 (FixedArrayAllocate.root heap.top (allocSize capacity) heap.free))) targetHost) :
-    wp target (sysAllocateCodeWith calls capacityLocal rootLocal ++ rest) Q store s targetHost := by
-  by_cases hNull : capacity = 0
-  · subst capacity
-    simp only [sysAllocateCodeWith, List.cons_append, List.nil_append, wp_localGet_cons,
-      hCapacity, wp_eqzI64_cons, ite_true, wp_iff_control_types]
-    refine wp_iff_cons rfl ?_
-    rw [ite_eq_left (by decide : (1 : UInt32) ≠ 0)]
-    simp only [wp_constI64_cons, wp_nil, List.take_succ_cons, List.take_zero,
-      List.cons_append, List.nil_append, List.drop_zero]
-    exact wp_localSet_local hLow hHigh (hZero rfl)
-  · simp only [sysAllocateCodeWith, List.cons_append, List.nil_append, wp_localGet_cons,
-      hCapacity, wp_eqzI64_cons, ite_eq_right hNull, wp_iff_control_types]
-    refine wp_iff_cons rfl ?_
-    rw [ite_eq_right (by decide : ¬((0 : UInt32) ≠ 0))]
-    simp only [wp_localGet_cons, Locals.get_values, hCapacity]
-    refine wp_alloc_frame_with (s := s) (values := s.values)
-      runtime layout profile hImports sourceHost hHeap hCount hCap (hRoom hNull) ?_ ?_
-    · intro hAbort final hWorld
-      exact hTrap hAbort final hWorld
-    · intro final hFits hStore hWorld
-      simp only [wp_nil, List.take_succ_cons, List.take_zero, List.cons_append,
-        List.nil_append, List.drop_zero]
-      exact wp_localSet_local hLow hHigh (hAllocated hNull final hFits hStore hWorld)
-
 /-! ## Calls with inputs -/
-
-/-- A flat call with inputs without an output has no output local and no capacity; one with an
-output reads its capacity from a word local. -/
-theorem outputLocalInputs_spec {s : Locals} :
-    ∀ (params : List Param) (locs : List Nat) (values : List UInt64) (inputLocs : List Nat)
-      (inputs : List LeanExe.Bytes),
-    params.all Param.inputKind = true →
-    List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values →
-    values.length = params.countP Param.takesWord →
-    inputLocs.length = params.count .input → inputs.length = params.count .input →
-    (outputLocalInputs params locs inputLocs = none ∧
-        flatCapacityWith params values inputs = none ∧ params.contains .output = false) ∨
-      ∃ place capacity, outputLocalInputs params locs inputLocs = some place ∧
-        flatCapacityWith params values inputs = some capacity ∧
-        s.get place = some (.i64 capacity) ∧ place ∈ locs ∧ params.contains .output = true
-  | [], _, _, _, _, _, _, _, _, _ => Or.inl ⟨rfl, rfl, rfl⟩
-  | param :: params, locs, values, inputLocs, inputs, kinds, held, count, inputLocCount,
-      inputCount => by
-    simp only [List.all_cons, Bool.and_eq_true] at kinds
-    cases param with
-    | reported | record | iovec | subscriptions => simp [Param.inputKind, Param.flatKind] at kinds
-    | input =>
-      cases inputLocs with
-      | nil => simp at inputLocCount
-      | cons inputLoc inputLocs =>
-        cases inputs with
-        | nil => simp at inputCount
-        | cons input inputs =>
-          rcases outputLocalInputs_spec params locs values inputLocs inputs kinds.2 held
-              (by simpa [Param.takesWord, List.countP_cons] using count)
-              (by simpa [List.count_cons] using inputLocCount)
-              (by simpa [List.count_cons] using inputCount) with
-            ⟨none', capacity, contains⟩ | ⟨place, capacity, found, found', get, member, contains⟩
-          · exact Or.inl ⟨by simpa [outputLocalInputs] using none',
-              by simpa [flatCapacityWith] using capacity, by simpa using contains⟩
-          · exact Or.inr ⟨place, capacity, by simpa [outputLocalInputs] using found,
-              by simpa [flatCapacityWith] using found', get, member, by simpa using contains⟩
-    | result32 | result64 =>
-      rcases outputLocalInputs_spec params locs values inputLocs inputs kinds.2 held
-          (by simpa [Param.takesWord, Param.takesArg, List.countP_cons] using count)
-          (by simpa [List.count_cons] using inputLocCount)
-          (by simpa [List.count_cons] using inputCount) with
-        ⟨none', capacity, contains⟩ | ⟨place, capacity, found, found', get, member, contains⟩
-      · exact Or.inl ⟨by simpa [outputLocalInputs, Param.takesArg] using none',
-          by simpa [flatCapacityWith, Param.takesArg] using capacity, by simpa using contains⟩
-      · exact Or.inr ⟨place, capacity, by simpa [outputLocalInputs, Param.takesArg] using found,
-          by simpa [flatCapacityWith, Param.takesArg] using found', get, member,
-          by simpa using contains⟩
-    | output =>
-      cases held with
-      | nil => simp [Param.takesWord, Param.takesArg, List.countP_cons] at count
-      | @cons place value locs' values' get held' =>
-        exact Or.inr ⟨place, value, rfl, by simp [flatCapacityWith], get, List.mem_cons_self ..,
-          by simp⟩
-    | word32 | handle | word64 | enum32 | flags32 | flags64 =>
-      cases held with
-      | nil => simp [Param.takesWord, Param.takesArg, List.countP_cons] at count
-      | @cons place value locs' values' get held' =>
-        rcases outputLocalInputs_spec params locs' values' inputLocs inputs kinds.2 held'
-            (by simpa [Param.takesWord, Param.takesArg, List.countP_cons] using count)
-            (by simpa [List.count_cons] using inputLocCount)
-            (by simpa [List.count_cons] using inputCount) with
-          ⟨none', capacity, contains⟩ | ⟨place', capacity, found, found', get', member, contains⟩
-        · exact Or.inl ⟨by simpa [outputLocalInputs, Param.takesArg] using none',
-            by simpa [flatCapacityWith, Param.takesArg] using capacity, by simpa using contains⟩
-        · exact Or.inr ⟨place', capacity, by simpa [outputLocalInputs, Param.takesArg] using found,
-            by simpa [flatCapacityWith, Param.takesArg] using found', get',
-            List.mem_cons_of_mem _ member, by simpa using contains⟩
 
 /-- An accepted request with inputs has an output capacity below `2 ^ 32`. -/
 theorem flatCapacityWith_small :
@@ -270,24 +151,6 @@ theorem flat_frame_cover_inputs {World : Type} {before after : Store World}
       omega
 
 /-! ## Calls without inputs -/
-
-/-- A flat call without an output has no output local and no capacity; a flat call with one
-reads its capacity from an argument local. -/
-theorem outputLocal_spec {s : Locals} :
-    ∀ (params : List Param) (locs : List Nat) (values : List UInt64),
-    params.all Param.flatKind = true →
-    List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values →
-    values.length = params.countP Param.takesArg →
-    (outputLocal params locs = none ∧ flatCapacity params values = none ∧
-        params.contains .output = false) ∨
-      ∃ place capacity, outputLocal params locs = some place ∧
-        flatCapacity params values = some capacity ∧ s.get place = some (.i64 capacity) ∧
-        place ∈ locs ∧ params.contains .output = true := by
-  intro params locs values kinds held count
-  have spec := outputLocalInputs_spec params locs values [] [] (inputKind_of_flat kinds) held
-    (by rw [countP_takesWord_of_flat kinds]; exact count)
-    (by rw [count_input_of_flat kinds]; rfl) (by rw [count_input_of_flat kinds]; rfl)
-  simpa only [outputLocalInputs_nil, flatCapacityWith_nil] using spec
 
 /-- An accepted request has an output capacity below `2 ^ 32`. -/
 theorem flatCapacity_small :

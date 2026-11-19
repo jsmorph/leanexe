@@ -3,8 +3,9 @@ import Verified.Wasi
 /-! A command that writes a file with the iovec calls, reads it back, and polls a clock and the
 file.  `main` opens the file `n` under `Handle.preopened` with `withOpen`, created and truncated,
 and in the bracket's body writes `abcdef` with `fdWrite`, writes `XY` at offset 6 with `fdPwrite`,
-reads up to 16 bytes at offset 0 with `fdPread`, which gives `abcdefXY`, and up to 16 bytes from
-the position that the first write left with `fdRead`, which gives `XY`, and writes both to stdout.
+reads up to 16 bytes at offset 0 into a buffer of 16 bytes with `fdPread`, which gives `abcdefXY`,
+and up to 16 bytes from the position that the first write left with `fdRead`, which gives `XY`, and
+writes the bytes of both reads to stdout.
 It then polls the monotonic clock with timeout 0 with `pollClock` and, after `fdSeek` moves the
 position back to 0, the file's readiness to read with `pollRead`, with a monotonic timeout of one
 second, and writes the count and the first event's userdata, error, type, `nbytes`, and flags of
@@ -20,27 +21,31 @@ open LeanExe LeanExe.Wasi
 def wordBytes (word : UInt64) : Bytes :=
   Bytes.build 8 fun index => word >>> (8 * index)
 
+/-- The first `count` bytes of `buffer`: the bytes that a fill placed from the window's start. -/
+def filled (buffer : Bytes) (count : UInt64) : Bytes :=
+  Bytes.build count fun index => buffer.get index
+
 def main : Action UInt64 := do
   let done ← withOpen .preopened 0 bytes![110] 9 1073741823 1073741823 0
     (fun errno => pure errno) fun file => do
-      let written ← fdWrite file bytes![97, 98, 99, 100, 101, 102]
+      let written ← fdWrite file bytes![97, 98, 99, 100, 101, 102] 0 6
       if written.errno != 0 then
         pure written.errno
       else
-        let placed ← fdPwrite file bytes![88, 89] 6
+        let placed ← fdPwrite file bytes![88, 89] 0 2 6
         if placed.errno != 0 then
           pure placed.errno
         else
-          let whole ← fdPread file 16 0
+          let whole ← fdPread file (Bytes.build 16 fun _ => 0) 0 16 0
           if whole.errno != 0 then
             pure whole.errno
           else
-            let rest ← fdRead file 16
+            let rest ← fdRead file (Bytes.build 16 fun _ => 0) 0 16
             if rest.errno != 0 then
               pure rest.errno
             else
-              let _ ← writeStdoutSome whole.bytes
-              let _ ← writeStdoutSome rest.bytes
+              let _ ← writeStdoutSome (filled whole.buffer whole.count)
+              let _ ← writeStdoutSome (filled rest.buffer rest.count)
               let clock ← pollClock 1 0 0 0
               if clock.errno != 0 then
                 pure clock.errno
@@ -73,6 +78,6 @@ def main : Action UInt64 := do
   else
     pathUnlinkFile .preopened bytes![110]
 
-verified_compile_wasi command (main := main) := [wordBytes, main]
+verified_compile_wasi command (main := main) := [wordBytes, filled, main]
 
 end Verified.Examples.WasiSysNested

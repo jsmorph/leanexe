@@ -340,7 +340,7 @@ Every module imports the stream functions, `fd_read` of descriptor 0, `fd_write`
 
 Apart from the standard streams, which the stream functions use, a program reaches a descriptor only through a `Handle`: `Handle.preopened`, descriptor 3, the directory that the host preopens, or the handle that `withOpen dir dirflags path oflags rightsBase rightsInheriting fdflags onError body` binds.  `withOpen` calls `path_open` for `path` under `dir`, runs `body` on the new handle, and closes it with `fd_close` when the body returns, and its result pairs the body's result with the close's errno, or the result of `onError` with 0 when the open fails.  The handle check `Command.HandleCheck` refuses a call that is not a description of `Call.table`, a `path_open`, `fd_close`, or `fd_renumber` outside the shape that `withOpen` reflects to, and a handle argument other than a bracket's handle, a variable that a `ret` of the literal 3 binds, alone or under `letPair` bindings (`Command.preopened` and `Expr.isPreopened`), or a `Handle` parameter of the helper being checked.  `verified_compile_wasi` decides the check in the kernel for each program as `p.handlesChecked` and proves from it `p.handles`, or `p.f.handles` for each export of a callable program, which states that every run keeps each use of a handle between its open and its close, as [the WASI manual's section on handles](wasi.md#handles) describes.
 
-`main` of [the files command](../Verified/Examples/WasiFiles.lean) writes the file `f` under the preopened directory in one bracket, reads it back in another, and writes the bytes that it read and the directory's name to the standard output.  The first bracket opens `f`, whose name is the byte 102, with the open flags `creat` and `trunc`, 9, and the right `fd_write`, 64, and the second opens it with the right `fd_read`, 2.  The first component of each bracket's result is the errno of its body or of `onError`, and the second is the errno of its close:
+`main` of [the files command](../Verified/Examples/WasiFiles.lean) writes the file `f` under the preopened directory in one bracket, reads it back in another, and writes the bytes that it read and the directory's name to the standard output.  The first bracket opens `f`, whose name is the byte 102, with the open flags `creat` and `trunc`, 9, and the right `fd_write`, 64, and the second opens it with the right `fd_read`, 2.  The read fills a buffer of 16 bytes that `main` builds, and `filled` gives the bytes that the read placed.  The first component of each bracket's result is the errno of its body or of `onError`, and the second is the errno of its close:
 
 ```lean
 import Verified.Wasi
@@ -349,10 +349,14 @@ namespace Verified.Examples.WasiFiles
 
 open LeanExe LeanExe.Wasi
 
+/-- The first `count` bytes of `buffer`: the bytes that a fill placed from the window's start. -/
+def filled (buffer : Bytes) (count : UInt64) : Bytes :=
+  Bytes.build count fun index => buffer.get index
+
 def main : Action UInt64 := do
   let written ← withOpen .preopened 0 bytes![102] 9 64 0 0
     (fun errno => pure errno) fun file => do
-      let sent ← fdWrite file bytes![104, 105]
+      let sent ← fdWrite file bytes![104, 105] 0 2
       pure sent.errno
   if written.1 != 0 then
     pure written.1
@@ -361,11 +365,11 @@ def main : Action UInt64 := do
   else
     let read ← withOpen .preopened 0 bytes![102] 0 2 0 0
       (fun errno => pure errno) fun file => do
-        let got ← fdRead file 16
+        let got ← fdRead file (Bytes.build 16 fun _ => 0) 0 16
         if got.errno != 0 then
           pure got.errno
         else
-          let _ ← writeStdoutSome got.bytes
+          let _ ← writeStdoutSome (filled got.buffer got.count)
           pure 0
     if read.1 != 0 then
       pure read.1
@@ -376,14 +380,15 @@ def main : Action UInt64 := do
       if prestat.errno != 0 then
         pure prestat.errno
       else
-        let name ← fdPrestatDirName .preopened prestat.prNameLen
+        let name ← fdPrestatDirName .preopened (Bytes.build prestat.prNameLen fun _ => 0) 0
+          prestat.prNameLen
         if name.errno != 0 then
           pure name.errno
         else
-          let _ ← writeStdoutSome name.bytes
+          let _ ← writeStdoutSome name.buffer
           pure 0
 
-verified_compile_wasi command (main := main) := [main]
+verified_compile_wasi command (main := main) := [filled, main]
 
 end Verified.Examples.WasiFiles
 ```

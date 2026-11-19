@@ -1,5 +1,6 @@
 import LeanExe.Wasi.Action
 import LeanExe.Wasi.CallTable
+import LeanExe.Wasi.Window
 
 /-!
 Typed operations for flat WASI calls.  Each returns a structure whose `errno` field is the call's
@@ -7,8 +8,10 @@ errno, 0 on success; the other fields hold the call's results on success and are
 an errno.  An argument that does not fit the call's core type, a length of `2^32` or more, gives
 errno 61 (`overflow`) without a call, and an enum value outside its enum or a flags value with a
 bit outside its flags gives errno 28 (`inval`) without a call, since Wasmtime 44 traps on such a
-value.  `LeanExe/Wasi/SysCalls.lean` holds the generated typed functions of the other flat calls,
-whose results are the structures below or a record's fields.
+value.  A call with an output buffer fills a window of a buffer that the caller passes, which
+`LeanExe/Wasi/Window.lean` defines, and returns the buffer in a `FillResult`, with the window's
+bytes set to 0 after an errno.  `LeanExe/Wasi/SysCalls.lean` holds the generated typed functions of
+the other flat calls, whose results are the structures below or a record's fields.
 -/
 
 namespace LeanExe.Wasi
@@ -16,10 +19,6 @@ namespace LeanExe.Wasi
 structure ClockResult where
   errno : UInt64
   time : UInt64
-
-structure RandomResult where
-  errno : UInt64
-  bytes : Bytes
 
 structure ArgsSizes where
   errno : UInt64
@@ -37,17 +36,22 @@ structure WordResult where
   errno : UInt64
   value : UInt64
 
-/-- The errno and the buffer of a call with an output buffer. -/
-structure BytesResult where
+/-- The result of a call that fills a window of a caller's buffer: the errno, the number of bytes
+that the call placed from the window's start, and the buffer.  After an errno the count is 0 and the
+window's bytes are 0. -/
+structure FillResult where
   errno : UInt64
-  bytes : Bytes
-
-/-- The errno, the buffer, and the number of the buffer's bytes that the call used, of a call with
-an output buffer and a result word.  The bytes after `count` hold the buffer's earlier content. -/
-structure BytesCountResult where
-  errno : UInt64
-  bytes : Bytes
   count : UInt64
+  buffer : Bytes
+
+/-- The result of a call that filled the window of `buffer` that `start` and `count` name: on
+errno 0 the count `used` and `buffer` with the window's bytes replaced by `bytes`, the whole region
+that the host wrote, and after an errno the count 0 and `buffer` with the window's bytes set to 0.
+-/
+def FillResult.of (buffer : Bytes) (start count errno used : UInt64) (bytes : Bytes) :
+    FillResult :=
+  if errno = 0 then ⟨0, used, buffer.splice (buffer.window start count).1 bytes⟩
+  else ⟨errno, 0, buffer.clear start count⟩
 
 /-- The result of `poll_oneoff`: the errno, the number of events, and the fields of the first
 event, its userdata, its error, its type (0 for a clock, 1 for a read, 2 for a write), and the
@@ -89,12 +93,12 @@ store.  Programs open and close descriptors only through `withOpen`.
 `i`, and `g` and the path variable `p`, the shape is
 
 ```
-bind (sys Call.pathOpen (.flat 1 false) [d, f, o, b, i, g] [p])
+bind (sys Call.pathOpen (.flat 1 false) [d, f, o, b, i, g] [p] [])
   (ite (cmp .ne (proj (var 0) (fst here)) (word 0))
     (bind onError' (ret (mk (var 0) (word 0))))
     (bind (ret (proj (var 0) (snd here)))
       (bind body'
-        (bind (sys Call.fdClose (.flat 0 false) [var 1] []) (ret (mk (var 1) (var 0)))))))
+        (bind (sys Call.fdClose (.flat 0 false) [var 1] [] []) (ret (mk (var 1) (var 0)))))))
 ```
 
 where `onError'` is the reflection of `onError` applied to the errno, the first component of the
@@ -117,9 +121,12 @@ errno 28 without a call. -/
 def clockTimeGet (id precision : UInt64) : Action ClockResult :=
   .sys .clockTimeGet [.word id, .word precision] fun reply => .pure ⟨reply.errno, reply.word 0⟩
 
-/-- `random_get` into a fresh buffer of `length` bytes. -/
-def randomGet (length : UInt64) : Action RandomResult :=
-  .sys .randomGet [.space length] fun reply => .pure ⟨reply.errno, reply.bytes 0⟩
+/-- `random_get` into the window of `buffer` that `start` and `count` name.  The count of the
+result is the window's length. -/
+def randomGet (buffer : Bytes) (start count : UInt64) : Action FillResult :=
+  .sys .randomGet [.space (buffer.windowLength start count)] fun reply =>
+    .pure (FillResult.of buffer start count reply.errno (buffer.windowLength start count)
+      (reply.bytes 0))
 
 /-- `args_sizes_get`: the number of program arguments and the bytes they occupy with a zero byte
 after each. -/

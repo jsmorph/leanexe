@@ -33,12 +33,12 @@ def bracket {effectSigs : List EffectSig} {context : List Ty} {element : Elem}
     (body : Command [] effectSigs (.word :: .elem (.prod .word .word) :: context)
       (.value (.elem element))) :
     Command [] effectSigs context (.value (.elem (.prod element .word))) :=
-  .bind (.sys Call.pathOpen (.flat 1 false) args [path])
+  .bind (.sys Call.pathOpen (.flat 1 false) args [path] [])
     (.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
       (.bind onError (.ret (.mk (.var .here) (.word 0))))
       (.bind (.ret (.proj .here (.snd .here)))
         (.bind body
-          (.bind (.sys Call.fdClose (.flat 0 false) [.there .here] [])
+          (.bind (.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
             (.ret (.mk (.var (.there .here)) (.var .here)))))))
 
 /-- The context of the brackets below: a flags word, the preopened directory, and a path. -/
@@ -47,7 +47,7 @@ abbrev outer : List Ty := [.word, .word, .bytes]
 /-- `fd_sync` of a variable. -/
 def sync {effectSigs : List EffectSig} {context : List Ty} (handle : Var context .word) :
     Command [] effectSigs context (.value .word) :=
-  .sys Call.fdSync (.flat 0 false) [handle] []
+  .sys Call.fdSync (.flat 0 false) [handle] [] []
 
 /-- A bracket under the preopened directory whose body syncs its handle. -/
 def single : Command [] [] outer (.value (.elem (.prod .word .word))) :=
@@ -73,12 +73,12 @@ example : single.handleCheck [] .plain [false, false, false] = false := by decid
 
 /-- `fd_close` outside a bracket, of a marked variable. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdClose (.flat 0 false)
-    [.there .here] [] : Command [] [] outer (.value .word)).handleCheck [] .plain
+    [.there .here] [] [] : Command [] [] outer (.value .word)).handleCheck [] .plain
       [false, true, false] = false := by decide +kernel
 
 /-- `path_open` outside a bracket: its result is not tested. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) [.there .here, .here, .here, .here, .here, .here] [.there (.there .here)])
+    (.flat 1 false) [.there .here, .here, .here, .here, .here, .here] [.there (.there .here)] [])
     (Command.ret (Expr.proj .here (.snd .here))) : Command [] [] outer (.value .word)).handleCheck
       [] .plain [false, true, false] = false := by decide +kernel
 
@@ -129,22 +129,24 @@ example : (Command.letPair .here (sync (.there .here)) :
 
 /-- `fd_read` of the marked directory. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRead .iovecRead
-    [.there .here, .here] [] : Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck
-      [] .plain [false, true, false] = true := by decide +kernel
+    [.there .here, .here, .here] [] [.there (.there .here)] :
+    Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck [] .plain
+      [false, true, false] = true := by decide +kernel
 
 /-- `fd_read` of an unmarked word. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRead .iovecRead
-    [.here, .here] [] : Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck
-      [] .plain [false, true, false] = false := by decide +kernel
+    [.here, .here, .here] [] [.there (.there .here)] :
+    Command [] [] outer (.value SysForm.iovecRead.ty)).handleCheck [] .plain
+      [false, true, false] = false := by decide +kernel
 
 /-- A read subscription of the marked directory. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .poll
-    [.there .here, .here, .here] [] : Command [] [] outer (.value SysForm.poll.ty)).handleCheck
+    [.there .here, .here, .here] [] [] : Command [] [] outer (.value SysForm.poll.ty)).handleCheck
       [] .plain [false, true, false] = true := by decide +kernel
 
 /-- A read subscription of an unmarked word, whose clock words are the marked directory. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.pollOneoffRead .poll
-    [.here, .there .here, .there .here] [] :
+    [.here, .there .here, .there .here] [] [] :
     Command [] [] outer (.value SysForm.poll.ty)).handleCheck
       [] .plain [false, true, false] = false := by decide +kernel
 
@@ -164,7 +166,7 @@ def onErrnoPair :
 
 /-- W1: `fd_renumber` of two marked variables. -/
 example : (Command.sys (pureSigs := []) (effectSigs := []) Call.fdRenumber (.flat 0 false)
-    [.there .here, .there .here] [] : Command [] [] outer (.value .word)).handleCheck [] .plain
+    [.there .here, .there .here] [] [] : Command [] [] outer (.value .word)).handleCheck [] .plain
       [false, true, false] = false := by decide +kernel
 
 /-- A hand-written description of `fd_write` whose descriptor is `.word32`. -/
@@ -172,7 +174,7 @@ def fakeWrite : Call := { name := "fd_write", params := [.word32, .iovec true, .
 
 /-- W2: `fakeWrite` with the word 1, which is not one of the generated descriptions. -/
 example : (Command.bind (Command.ret (Expr.word 1))
-    (Command.sys fakeWrite .iovecWrite [.here] [.there .here]) :
+    (Command.sys fakeWrite .iovecWrite [.here, .here, .here] [.there .here] []) :
     Command [] [] [.bytes] (.value SysForm.iovecWrite.ty)).handleCheck [] .plain [false] =
       false := by decide +kernel
 
@@ -181,7 +183,7 @@ def fakeClose : Call := { name := "fd_close", params := [.word32] }
 
 /-- W2b: `fakeClose` with the word 1. -/
 example : (Command.bind (Command.ret (Expr.word 1))
-    (Command.sys fakeClose (.flat 0 false) [.here] []) :
+    (Command.sys fakeClose (.flat 0 false) [.here] [] []) :
     Command [] [] [] (.value (SysForm.flat 0 false).ty)).handleCheck [] .plain [] = false := by
   decide +kernel
 
@@ -194,13 +196,13 @@ def fakePoll : Call :=
 
 /-- W2c: `fakePoll` with the word 1. -/
 example : (Command.bind (Command.ret (Expr.word 1))
-    (Command.sys fakePoll .poll [.here] []) :
+    (Command.sys fakePoll .poll [.here] [] []) :
     Command [] [] [] (.value SysForm.poll.ty)).handleCheck [] .plain [] = false := by
   decide +kernel
 
 /-- W3: a bracket without the close. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) openArgs [.there (.there .here)])
+    (.flat 1 false) openArgs [.there (.there .here)] [])
     (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrnoPair
       (Command.bind (Command.ret (.proj .here (.snd .here)))
         (Command.bind (sync .here) (Command.ret (.mk (.var .here) (.word 0)))))) :
@@ -210,12 +212,12 @@ example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pa
 
 /-- W4: a bracket whose close takes the preopened directory. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) openArgs [.there (.there .here)])
+    (.flat 1 false) openArgs [.there (.there .here)] [])
     (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrnoPair
       (Command.bind (Command.ret (.proj .here (.snd .here)))
         (Command.bind (sync .here)
           (Command.bind (Command.sys Call.fdClose (.flat 0 false)
-              [.there (.there (.there (.there .here)))] [])
+              [.there (.there (.there (.there .here)))] [] [])
             (Command.ret (.mk (.var (.there .here)) (.var .here))))))) :
     Command [] [] outer (.value (.elem (.prod .word .word)))).handleCheck [] .plain
       [false, true, false] = false := by
@@ -234,11 +236,11 @@ example : (Command.bind (bracket openArgs (.there (.there .here)) onErrno
 
 /-- W7: the branches of the errno test swapped. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) openArgs [.there (.there .here)])
+    (.flat 1 false) openArgs [.there (.there .here)] [])
     (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
       (Command.bind (Command.ret (.proj .here (.snd .here)))
         (Command.bind (sync .here)
-          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
             (Command.ret (.mk (.var (.there .here)) (.var .here))))))
       onErrnoPair) :
     Command [] [] outer (.value (.elem (.prod .word .word)))).handleCheck [] .plain
@@ -247,7 +249,7 @@ example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pa
 
 /-- W8: `fd_close` of the handle inside the body. -/
 example : (bracket openArgs (.there (.there .here)) onErrno
-    (Command.sys Call.fdClose (.flat 0 false) [.here] [])).handleCheck [] .plain
+    (Command.sys Call.fdClose (.flat 0 false) [.here] [] [])).handleCheck [] .plain
       [false, true, false] = false := by decide +kernel
 
 /-- W9: the error continuation passes the failed open's descriptor word to `fd_sync`. -/
@@ -257,11 +259,11 @@ example : (bracket (effectSigs := []) openArgs (.there (.there .here))
 
 /-- A bracket whose last command returns the body's result without the close's errno. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) openArgs [.there (.there .here)])
+    (.flat 1 false) openArgs [.there (.there .here)] [])
     (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrno
       (Command.bind (Command.ret (.proj .here (.snd .here)))
         (Command.bind (sync .here)
-          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
             (Command.ret (Expr.var (.there .here))))))) :
     Command [] [] outer (.value .word)).handleCheck [] .plain [false, true, false] = false := by
   decide +kernel
@@ -272,11 +274,11 @@ def closedWith
     (last : Command [] [] (.word :: .word :: .word :: .elem (.prod .word .word) :: outer)
       (.value (.elem (.prod .word .word)))) :
     Command [] [] outer (.value (.elem (.prod .word .word))) :=
-  .bind (.sys Call.pathOpen (.flat 1 false) openArgs [.there (.there .here)])
+  .bind (.sys Call.pathOpen (.flat 1 false) openArgs [.there (.there .here)] [])
     (.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0)) onErrnoPair
       (.bind (.ret (.proj .here (.snd .here)))
         (.bind (sync .here)
-          (.bind (.sys Call.fdClose (.flat 0 false) [.there .here] []) last))))
+          (.bind (.sys Call.fdClose (.flat 0 false) [.there .here] [] []) last))))
 
 /-- The last command that `reflect` writes: the body's result with the close's errno. -/
 example : (closedWith (.ret (.mk (.var (.there .here)) (.var .here)))).handleCheck [] .plain
@@ -296,12 +298,12 @@ example : (closedWith (.ret (.mk (.var (.there .here)) (.var (.there (.there .he
 
 /-- A bracket whose body syncs its handle and returns bytes, so that its pairs are `pair`. -/
 example : (Command.bind (Command.sys (pureSigs := []) (effectSigs := []) Call.pathOpen
-    (.flat 1 false) openArgs [.there (.there .here)])
+    (.flat 1 false) openArgs [.there (.there .here)] [])
     (Command.ite (.cmp .ne (.proj .here (.fst .here)) (.word 0))
       (Command.bind (Command.ret .bytesEmpty) (Command.ret (.pair (.var .here) (.word 0))))
       (Command.bind (Command.ret (.proj .here (.snd .here)))
         (Command.bind (Command.bind (sync .here) (Command.ret .bytesEmpty))
-          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [])
+          (Command.bind (Command.sys Call.fdClose (.flat 0 false) [.there .here] [] [])
             (Command.ret (.pair (.var (.there .here)) (.var .here))))))) :
     Command [] [] outer (.value (.pair .bytes .word))).handleCheck [] .plain
       [false, true, false] = true := by
@@ -341,8 +343,8 @@ open LeanExe in
 def bytesMain : Action UInt64 := do
   let read ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0
     (fun _ => pure Bytes.empty) fun file => do
-      let got ← fdRead file 16
-      pure got.bytes
+      let got ← fdRead file (Bytes.build 16 fun _ => 0) 0 16
+      pure got.buffer
   let _ ← writeStdoutSome read.1
   pure read.2
 
@@ -356,7 +358,7 @@ def argsMain : Action UInt64 := do
   let arguments ← args
   let read ← withOpen .preopened 0 bytes![102] 0 1073741823 1073741823 0
     (fun errno => pure errno) fun file => do
-      let got ← fdRead file 16
+      let got ← fdRead file (Bytes.build 16 fun _ => 0) 0 16
       pure got.errno
   if arguments.errno != 0 then
     pure arguments.errno

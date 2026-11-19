@@ -31,7 +31,11 @@ def Command.demands : {context : List Ty} → {result : ResultTy} →
     let all := fun i => live i || test.uses (i + 2) || step.uses (i + 2)
     count.demands (fun i => all i || initial.uses i) false index ||
       initial.demands all true index
-  | _, _, .sys _ _ _ _, _, _ => false
+  | _, _, .sys _ _ args inputs buffers, live, index =>
+    match buffers with
+    | [] => false
+    | buffer :: _ =>
+      (Expr.var (S := pureSigs) buffer).demands (sysTakeLive live args inputs) true index
   | _, _, .letPair pair body, live, index =>
     let inner := shift 2 live
     (Expr.var (S := pureSigs) pair).demands (fun i => live i || body.uses (i + 2))

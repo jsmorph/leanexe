@@ -55,9 +55,18 @@ def Command.fragments (h : Nat) (slots : List Slot) (base : Nat) (live : Nat →
       releaseWhere context slots (fun i => used i && !live i)] ++
       step.fragments h (⟨state, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: captured)
         scratch (shift 2 all) pool
-  | context, _, .sys _ _ _ inputs =>
-    [releaseWhere context slots
-      (fun i => (inputs.any fun input => i == input.index) && !live i)]
+  | context, _, .sys _ _ args inputs buffers =>
+    match buffers with
+    | [] =>
+      [releaseWhere context slots
+        (fun i => (inputs.any fun input => i == input.index) && !live i)]
+    | buffer :: _ =>
+      [(Expr.var (S := pureSigs) buffer).code (pool := pool) h slots (base + Ty.bytes.width)
+          (sysTakeLive live args inputs) ++
+        coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+          (base + Ty.bytes.width),
+        releaseWhere (.bytes :: context) (⟨base, .owned⟩ :: slots)
+          (fun i => (inputs.any fun input => i == input.index + 1) && !shift 1 live i)]
   | _, _, .letPair (first := first) (second := second) pair body =>
     let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
     [(Expr.var (S := pureSigs) pair).code (pool := pool) h slots (base + first.width + second.width)

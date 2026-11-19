@@ -2,20 +2,26 @@ import Verified.Source
 import LeanExe.Wasi.Sys
 
 /-! The forms of flat call that `Command.sys` compiles, with the result type and the action of
-each.  A `flat` call takes word arguments and inputs, passes at most one output buffer, and returns
-at most two result words, which the code places in the scratch area; its result holds the errno,
-the result words, and the buffer's bytes when it has a buffer.  A `reported` call writes two regions
-whose sizes its reporter returns: the code runs the reporter, tests the sizes, and runs the call,
-and the result holds the errno, the reporter's two words, and the bytes of the shown region.  A
-`record` call takes word arguments and inputs and writes one record into a block that the code
-allocates and releases; its result holds the errno and one word for each of the record's fields.
+each.  A `flat` call takes word arguments and inputs and returns at most two result words, which
+the code places in the scratch area; its result holds the errno and the result words.  A `flat`
+call with an output fills a window of a buffer that the command takes: the output's two word
+arguments are the window's start and count, and the result holds the errno, the count of the
+fill, and the buffer, as `FillResult.of` states.  A `reported` call writes two regions whose sizes
+its reporter returns: the code runs the reporter, tests the sizes, and runs the call, and the
+result holds the errno, the reporter's two words, and the bytes of the shown region.  A `record`
+call takes word arguments and inputs and writes one record into a block that the code allocates
+and releases; its result holds the errno and one word for each of the record's fields.
 
-An `iovecRead` call reads into a fresh buffer of the capacity that its argument gives, through an
-array of one iovec, and its result holds the errno and the bytes read: the prefix of the buffer
-whose length is the reply's count, clamped to the capacity.  An `iovecWrite` call writes the bytes
-of its input through an array of one ciovec, and its result holds the errno and the count written.
-A `poll` call is a `poll_oneoff` of the subscriptions that its description fixes, and its result
-holds the errno, the number of events, and the fields of the first event.
+An `iovecRead` call reads into a window of a buffer that the command takes, through an array of
+one iovec, and its result is a fill's, whose count is the reply's count clamped to the window's
+length.  An `iovecWrite` call writes the bytes of a window of its input through an array of one
+ciovec, and its result holds the errno and the count written.  A `poll` call is a `poll_oneoff` of
+the subscriptions that its description fixes, and its result holds the errno, the number of
+events, and the fields of the first event.
+
+A command's word arguments hold two words, the start and the count, for each window: each
+`output` and `iovec` parameter.  `lowerWords` and `lowerInputs` replace them by the window's length
+and the window's bytes, which `flatArgsWith` turns into the call's arguments.
 -/
 
 namespace Verified.Wasi
@@ -51,30 +57,36 @@ def wordsBytesValue : (count : Nat) → List UInt64 → LeanExe.Bytes → (words
 
 def SysForm.ty : SysForm → Ty
   | .flat words false => .elem (wordsElem words)
-  | .flat words true => wordsBytesTy (words + 1)
+  | .flat _ true => wordsBytesTy 2
   | .reported => wordsBytesTy 3
   | .record fields => .elem (wordsElem fields)
-  | .iovecRead => wordsBytesTy 1
+  | .iovecRead => wordsBytesTy 2
   | .iovecWrite => .elem (wordsElem 1)
   | .poll => .elem (wordsElem 6)
 
 /-- The result of a form from its words, the errno first, and its bytes. -/
 def SysForm.value : (form : SysForm) → List UInt64 → LeanExe.Bytes → form.ty.denote
   | .flat words false, values, _ => wordsValue words values
-  | .flat words true, values, bytes => wordsBytesValue (words + 1) values bytes
+  | .flat _ true, values, bytes => wordsBytesValue 2 values bytes
   | .reported, values, bytes => wordsBytesValue 3 values bytes
   | .record fields, values, _ => wordsValue fields values
-  | .iovecRead, values, bytes => wordsBytesValue 1 values bytes
+  | .iovecRead, values, bytes => wordsBytesValue 2 values bytes
   | .iovecWrite, values, _ => wordsValue 1 values
   | .poll, values, _ => wordsValue 6 values
 
+/-- The value of a fill's result: the errno, the count, and the buffer. -/
+def fillValue (result : FillResult) : (wordsBytesTy 2).denote :=
+  wordsBytesValue 2 [result.errno, result.count] result.buffer
+
 /-- The i64 locals that the code of a `sys` command uses from its base: six for a flat, reported,
-or iovec call, for a record call the errno, the block's root, the record pointer, and one for each
-field, and for a `poll` call the errno, the block's root, the subscriptions' pointer, the number of
-events, and the five fields of the first event. -/
+or iovec read call, eight for an iovec write, whose window takes two before the six, for a record
+call the errno, the block's root, the record pointer, and one for each field, and for a `poll` call
+the errno, the block's root, the subscriptions' pointer, the number of events, and the five fields
+of the first event. -/
 def SysForm.width : SysForm → Nat
   | .record fields => fields + 3
   | .poll => 9
+  | .iovecWrite => 8
   | _ => 6
 
 /-- The offset and width of each field of an event of `poll_oneoff` that a `poll` result holds: the
@@ -167,6 +179,13 @@ def resultBytes : List Param → Reply → Nat → LeanExe.Bytes
   | .record .. :: params, reply, index => resultBytes params reply (index + 1)
   | _ :: params, reply, index => resultBytes params reply index
 
+/-- The count of a fill of a flat call with result words `words`: the first word clamped to the
+window's `length`, or the length for a call without result words. -/
+def fillCount (words : List UInt64) (length : UInt64) : UInt64 :=
+  match words with
+  | [] => length
+  | word :: _ => min word length
+
 end Verified.Wasi
 
 namespace LeanExe.Wasi
@@ -238,8 +257,26 @@ def Param.takesBytes : Param → Bool
   | .input | .iovec true => true
   | _ => false
 
-/-- The number of word arguments that the parameter takes. -/
+/-- Whether the parameter takes a buffer that the call fills: an output or `iovec false`. -/
+def Param.takesBuffer : Param → Bool
+  | .output | .iovec false => true
+  | _ => false
+
+/-- Whether the parameter is a window's: an output or an iovec. -/
+def Param.isWindow : Param → Bool
+  | .output | .iovec _ => true
+  | _ => false
+
+/-- The number of word arguments that the parameter takes after its window's words become the
+window's length: one for an output and for `iovec false`. -/
 def Param.wordCount (param : Param) : Nat := if param.takesBytes then 0 else param.argCount
+
+/-- The number of word arguments of a command that the parameter takes: two, the start and the
+count of the window, for an output and an iovec, none for an input, and `argCount` otherwise. -/
+def Param.argWords : Param → Nat
+  | .output | .iovec _ => 2
+  | .input => 0
+  | param => param.argCount
 
 namespace Call
 
@@ -256,6 +293,12 @@ def wordCount (call : Call) : Nat := (call.params.map Param.wordCount).sum
 /-- The number of inputs of a call. -/
 def inputCount (call : Call) : Nat := call.params.countP Param.takesBytes
 
+/-- The number of word arguments of a `sys` command of the call. -/
+def argWords (call : Call) : Nat := (call.params.map Param.argWords).sum
+
+/-- The number of buffers of a `sys` command of the call. -/
+def bufferCount (call : Call) : Nat := call.params.countP Param.takesBuffer
+
 def form (call : Call) : Verified.Wasi.SysForm :=
   match call.reporter with
   | some _ => .reported
@@ -271,7 +314,8 @@ def form (call : Call) : Verified.Wasi.SysForm :=
           (call.params.contains .output)
 
 /-- Whether `Command.sys` compiles the call: a flat call has flat parameters or inputs, at most
-one output, and at most two result words; a record call has words, enums, flags, and inputs
+one output, and at most two result words, or one with an output; a record call has words, enums,
+flags, and inputs
 followed by one record that `recordFits` admits; a reported call writes the argument pointers and
 the argument bytes that `args_get` and `environ_get` write; an iovec call has the parameters of
 `iovecParams`; and a `poll` call has subscriptions that `subscriptionsFit` admits and the result
@@ -294,7 +338,8 @@ def compiled (call : Call) : Bool :=
         | some records =>
           call.params == [.subscriptions records, .result32] && subscriptionsFit records
         | none => call.params.all Param.inputKind && decide (call.params.count .output ≤ 1) &&
-            decide (call.params.countP Param.isResult ≤ 2)
+            decide (call.params.countP Param.isResult ≤
+              (if call.params.contains .output then 1 else 2))
 
 /-- The calls that a module must import for a `sys` command of `call`, in order of use. -/
 def uses (call : Call) : List Call :=
@@ -349,13 +394,85 @@ namespace Verified.Wasi
 
 open LeanExe.Wasi
 
-/-- The action of a `sys` command of `call` in `form` on the words of its argument variables. -/
-def SysForm.run : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → Action form.ty.denote
-  | .flat words bytes, call, values =>
-    .sys call (flatArgs call.params values) fun reply =>
-      .pure (SysForm.value (.flat words bytes) (reply.errno :: resultWords call.params reply 0)
-        (resultBytes call.params reply 0))
-  | .reported, call, _ =>
+/-- The words of the call's arguments from the words of a command's word variables: the words
+of each parameter in turn, with the start and the count of a window replaced by the length of the
+window of the next of `buffers` for an output or `iovec false`, and dropped for `iovec true`, whose
+window becomes an input. -/
+def lowerWords : List Param → List UInt64 → List LeanExe.Bytes → List UInt64
+  | [], _, _ => []
+  | .output :: params, values, buffers | .iovec false :: params, values, buffers =>
+    (buffers.headD .empty).windowLength (values.headD 0) (values.tail.headD 0) ::
+      lowerWords params (values.drop 2) buffers.tail
+  | .iovec true :: params, values, buffers => lowerWords params (values.drop 2) buffers
+  | .word32 :: params, values, buffers
+  | .handle :: params, values, buffers
+  | .word64 :: params, values, buffers
+  | .enum32 _ :: params, values, buffers
+  | .flags32 _ :: params, values, buffers
+  | .flags64 _ :: params, values, buffers =>
+    values.headD 0 :: lowerWords params values.tail buffers
+  | .subscriptions records :: params, values, buffers =>
+    values.take (argFields records).length ++
+      lowerWords params (values.drop (argFields records).length) buffers
+  | _ :: params, values, buffers => lowerWords params values buffers
+
+/-- The inputs of the call's arguments from a command's word variables and input variables: each
+input, and for `iovec true` the window of the next input that its start and count name. -/
+def lowerInputs : List Param → List UInt64 → List LeanExe.Bytes → List LeanExe.Bytes
+  | [], _, _ => []
+  | .iovec true :: params, values, inputs =>
+    (inputs.headD .empty).range (values.headD 0) (values.tail.headD 0) ::
+      lowerInputs params (values.drop 2) inputs.tail
+  | .input :: params, values, inputs =>
+    inputs.headD .empty :: lowerInputs params values inputs.tail
+  | param :: params, values, inputs => lowerInputs params (values.drop param.argWords) inputs
+
+/-- The start and the count of the first window that a buffer fills, from a command's word
+variables. -/
+def windowWords : List Param → List UInt64 → UInt64 × UInt64
+  | [], _ => (0, 0)
+  | .output :: _, values | .iovec false :: _, values => (values.headD 0, values.tail.headD 0)
+  | param :: params, values => windowWords params (values.drop param.argWords)
+
+/-- The arguments of a call from the words of a command's word variables, the bytes of its input
+variables, and its buffers. -/
+def sysArgs (params : List Param) (values : List UInt64) (inputs buffers : List LeanExe.Bytes) :
+    List Arg :=
+  flatArgsWith params (lowerWords params values buffers) (lowerInputs params values inputs)
+
+/-- The result of a fill of a flat call from its reply: the window of `buffer` that the words name,
+filled with the bytes of the output, and the count, the first result word clamped to the window's
+length, or the length for a call without a result word. -/
+def flatFill (params : List Param) (values : List UInt64) (buffer : LeanExe.Bytes) (reply : Reply) :
+    FillResult :=
+  FillResult.of buffer (windowWords params values).1 (windowWords params values).2 reply.errno
+    (fillCount (resultWords params reply 0)
+      (buffer.windowLength (windowWords params values).1 (windowWords params values).2))
+    (resultBytes params reply 0)
+
+/-- The result of a fill of a read through an iovec from its reply: the window filled with the
+bytes of the buffer region, and the count that the host returns clamped to the window's length. -/
+def readFill (params : List Param) (values : List UInt64) (buffer : LeanExe.Bytes) (reply : Reply) :
+    FillResult :=
+  FillResult.of buffer (windowWords params values).1 (windowWords params values).2 reply.errno
+    (min (reply.word 1)
+      (buffer.windowLength (windowWords params values).1 (windowWords params values).2))
+    (reply.bytes 0)
+
+/-- The action of a `sys` command of `call` in `form` on the words of its word variables, the
+bytes of its input variables, and its buffers.  A reported call takes no arguments.  A fill
+returns the first buffer with the window that `windowWords` names filled, as `FillResult.of`
+states. -/
+def SysForm.runWith : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → List LeanExe.Bytes →
+    List LeanExe.Bytes → Action form.ty.denote
+  | .flat words false, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
+      .pure (SysForm.value (.flat words false) (reply.errno :: resultWords call.params reply 0)
+        .empty)
+  | .flat _ true, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
+      .pure (fillValue (flatFill call.params values (buffers.headD .empty) reply))
+  | .reported, call, _, _, _ =>
     .sys call.reporterCall [] fun sizes =>
       if sizes.errno != 0 then .pure (SysForm.value .reported [sizes.errno, 0, 0] .empty)
       else if 4294967296 ≤ sizes.word 1 + 4 * sizes.word 0 + 3 then
@@ -363,47 +480,17 @@ def SysForm.run : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → Act
       else .sys call [] fun got =>
         if got.errno != 0 then .pure (SysForm.value .reported [got.errno, 0, 0] .empty)
         else .pure (SysForm.value .reported [0, sizes.word 0, sizes.word 1] (got.bytes 0))
-  | .record fields, call, values =>
-    .sys call (flatArgs call.params values) fun reply =>
+  | .record fields, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
       .pure (SysForm.value (.record fields) (reply.errno :: recordWords call.params reply) .empty)
-  | .iovecRead, call, values =>
-    .sys call (flatArgs call.params values) fun reply =>
-      .pure (SysForm.value .iovecRead [reply.errno] (reply.prefixBytes 0 (reply.word 1)))
-  | .iovecWrite, call, values =>
-    .sys call (flatArgs call.params values) fun reply =>
+  | .iovecRead, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
+      .pure (fillValue (readFill call.params values (buffers.headD .empty) reply))
+  | .iovecWrite, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
       .pure (SysForm.value .iovecWrite [reply.errno, reply.word 0] .empty)
-  | .poll, call, values =>
-    .sys call (flatArgs call.params values) fun reply =>
+  | .poll, call, values, inputs, buffers =>
+    .sys call (sysArgs call.params values inputs buffers) fun reply =>
       .pure (SysForm.value .poll (reply.errno :: pollWords reply) .empty)
-
-/-- The action of a `sys` command of `call` in `form` on the words of its word variables and the
-bytes of its input variables.  A reported call takes no inputs. -/
-def SysForm.runWith : (form : SysForm) → LeanExe.Wasi.Call → List UInt64 → List LeanExe.Bytes →
-    Action form.ty.denote
-  | .flat words bytes, call, values, inputs =>
-    .sys call (flatArgsWith call.params values inputs) fun reply =>
-      .pure (SysForm.value (.flat words bytes) (reply.errno :: resultWords call.params reply 0)
-        (resultBytes call.params reply 0))
-  | .reported, call, values, _ => SysForm.run .reported call values
-  | .record fields, call, values, inputs =>
-    .sys call (flatArgsWith call.params values inputs) fun reply =>
-      .pure (SysForm.value (.record fields) (reply.errno :: recordWords call.params reply) .empty)
-  | .iovecRead, call, values, inputs =>
-    .sys call (flatArgsWith call.params values inputs) fun reply =>
-      .pure (SysForm.value .iovecRead [reply.errno] (reply.prefixBytes 0 (reply.word 1)))
-  | .iovecWrite, call, values, inputs =>
-    .sys call (flatArgsWith call.params values inputs) fun reply =>
-      .pure (SysForm.value .iovecWrite [reply.errno, reply.word 0] .empty)
-  | .poll, call, values, inputs =>
-    .sys call (flatArgsWith call.params values inputs) fun reply =>
-      .pure (SysForm.value .poll (reply.errno :: pollWords reply) .empty)
-
-theorem SysForm.runWith_nil (form : SysForm) (call : LeanExe.Wasi.Call) (values : List UInt64) :
-    form.runWith call values [] = form.run call values := by
-  cases form with
-  | flat words bytes => simp only [SysForm.runWith, SysForm.run, flatArgsWith_nil]
-  | reported => rfl
-  | record fields => simp only [SysForm.runWith, SysForm.run, flatArgsWith_nil]
-  | iovecRead | iovecWrite | poll => simp only [SysForm.runWith, SysForm.run, flatArgsWith_nil]
 
 end Verified.Wasi

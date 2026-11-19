@@ -151,9 +151,9 @@ private def streams : IO Unit := do
   check ((← error.get).data.data.toList == [128, 0]) "execution continued after flush failure"
 
 /-- Flat calls through `NativeHost.withSys`: the argument calls report the given arguments,
-the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 and oversized
-capacities errno 61 without a call while the largest accepted capacity reaches the host, replies of
-the wrong shape raise an `IO.Error`, among them a shown reported region whose size differs from the
+the clocks follow Wasmtime's errnos, clock ids outside the enum give errno 28 without a call,
+`random_get` fills the window of its buffer and passes the host the window's length, clamped to the
+buffer, as its capacity, replies of the wrong shape raise an `IO.Error`, among them a shown reported region whose size differs from the
 reporter's last reply or that no reporter reply precedes, and a trap ends the action. -/
 private def flatCalls : IO Unit := do
   let calls ← IO.mkRef #[]
@@ -182,16 +182,17 @@ private def flatCalls : IO Unit := do
       if 1700000000000000000 ≤ wall.time then 0 else 1]
   returned [0, 0, 0, 8, 0, 8, 28, 28, 0, 0] (← clocks.run host)
   let random : Action (List UInt64) := do
-    let filled ← randomGet 16
-    let zero ← randomGet 0
-    let wide ← randomGet 4294967296
-    pure [filled.errno, filled.bytes.size, zero.errno, zero.bytes.size, wide.errno, wide.bytes.size]
-  returned [0, 16, 0, 0, 61, 0] (← random.run host)
+    let filled ← randomGet (Bytes.build 16 fun _ => 0) 0 16
+    let zero ← randomGet (Bytes.build 4 fun _ => 0) 2 0
+    let tail ← randomGet (Bytes.build 16 fun _ => 0) 10 16
+    pure [filled.errno, filled.count, filled.buffer.size, zero.errno, zero.count,
+      zero.buffer.size, tail.errno, tail.count, tail.buffer.size]
+  returned [0, 16, 16, 0, 0, 4, 0, 6, 16] (← random.run host)
   let capacityMessage := fun (call : LeanExe.Wasi.Call) (args : List LeanExe.Wasi.Arg) =>
     s!"{call.name} {(args.head?.map Arg.capacity).getD 0}"
   let reached : NativeHost :=
     { host with sys := fun call args => pure (.trapped (capacityMessage call args) []) }
-  trapped "random_get 4294967295" (← (randomGet 4294967295).run reached)
+  trapped "random_get 6" (← (randomGet (Bytes.build 16 fun _ => 0) 10 16).run reached)
   let empty := (recordHost calls).withSys []
   match ← args.run empty with
   | .returned arguments =>

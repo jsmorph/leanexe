@@ -1,8 +1,9 @@
 import Verified.Examples.WasiSysNested
 
 /-! The axiom audit of the nested calls: the decoding of iovecs and subscriptions, the marshalling
-and command theorems of the forms `iovecRead`, `iovecWrite`, and `poll`, the handle theorem over
-flat arguments, the reflection equations of the seven typed functions of `fd_read`, `fd_pread`,
+and command theorems of the forms `iovecRead`, `iovecWrite`, and `poll`, the fill of a read's
+window and the window of a write, the take of a command's buffer, the handle theorem over flat
+arguments, the reflection equations of the seven typed functions of `fd_read`, `fd_pread`,
 `fd_write`, `fd_pwrite`, and `poll_oneoff`, and the generated theorems of
 `Verified.Examples.WasiSysNested`, its handle check and `handles` among them, use only `propext`,
 `Classical.choice`, and `Quot.sound`. -/
@@ -22,21 +23,23 @@ elab "check_sys_nested_axioms" : command => do
     ``Verified.Wasi.element_read,
     ``Verified.Wasi.subscription_fields_at,
     ``Verified.Wasi.readFields_args,
-    ``Verified.Wasi.handleArgs_flatArgsWith,
+    ``Verified.Wasi.handleArgs_sysArgs,
     ``Verified.Wasi.wp_iovec_read_call_with,
     ``Verified.Wasi.wp_iovec_write_call_with,
-    ``Verified.Wasi.wp_sys_iovec_read_accept_with,
-    ``Verified.Wasi.wp_sys_iovec_read_with,
+    ``Verified.Wasi.wp_sys_iovec_fill_with,
+    ``Verified.Wasi.wp_sys_iovec_window_with,
     ``Verified.Wasi.wp_sys_iovec_write_with,
     ``Verified.Wasi.wp_field_stores,
     ``Verified.Wasi.wp_fields_reject,
     ``Verified.Wasi.wp_poll_call_with,
     ``Verified.Wasi.wp_sys_poll_accept_with,
     ``Verified.Wasi.wp_sys_poll_with,
-    ``Verified.Wasi.wp_sys_iovec_read_result_with,
-    ``Verified.Wasi.wp_sys_iovec_write_result_with,
+    ``Verified.Wasi.wp_sys_iovec_fill_result_with,
+    ``Verified.Wasi.wp_sys_iovec_window_result_with,
     ``Verified.Wasi.wp_sys_poll_result_with,
     ``Verified.Wasi.wp_sys_result_with,
+    ``Verified.Wasi.wp_sys_take_with,
+    ``Verified.Wasi.wp_sys_command_with,
     ``Verified.Wasi.command_sys_spec_with,
     ``Verified.Wasi.cost_command_sys_spec_with,
     ``Verified.Examples.WasiSysNested.command.main.related,

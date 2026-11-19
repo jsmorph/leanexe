@@ -109,13 +109,14 @@ inductive ResourceExec {World : Type} (host : Host World) (pure : PureContext pu
         (pure.loopInitCost depth modes live count initial test step env + spent)
         (pure.loopInitFits depth count initial env && fits)
   | sys {program : EffectProg pureSigs effectSigs} {operation : LeanExe.Wasi.Call} {form : SysForm}
-      {args : List (Var context .word)} {inputs : List (Var context .bytes)} {env : Env context}
-      {outcome : Outcome (ResultTy.value form.ty).denote}
-      (execution : Exec host ((Command.sys operation form args inputs).denote pure.funs
+      {args : List (Var context .word)} {inputs buffers : List (Var context .bytes)}
+      {env : Env context} {outcome : Outcome (ResultTy.value form.ty).denote}
+      (execution : Exec host ((Command.sys operation form args inputs buffers).denote pure.funs
         (program.funs pure.funs) env) world trace outcome final) :
-      ResourceExec host pure program depth modes live (.sys operation form args inputs) env
-        world trace outcome final
-        (sysCostWith form operation (args.map env.get) (inputs.map env.get) trace) true
+      ResourceExec host pure program depth modes live (.sys operation form args inputs buffers)
+        env world trace outcome final
+        (sysCost form operation trace + pure.sysTakeCost depth modes live args inputs buffers env)
+        true
   | letPair {program : EffectProg pureSigs effectSigs} {pair : Var context (.pair first second)}
       {body : Command pureSigs effectSigs (second :: first :: context) result} {env : Env context}
       (execution : ResourceExec host pure program depth (letPairModes pair modes) (shift 2 live)

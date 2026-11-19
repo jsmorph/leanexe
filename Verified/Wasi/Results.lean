@@ -18,8 +18,6 @@ instance : Flat WriteResult (UInt64 × UInt64) := ⟨fun result => (result.errno
 
 instance : Flat ClockResult (UInt64 × UInt64) := ⟨fun result => (result.errno, result.time)⟩
 
-instance : Flat RandomResult (UInt64 × Bytes) := ⟨fun result => (result.errno, result.bytes)⟩
-
 instance : Flat ArgsSizes (UInt64 × UInt64 × UInt64) :=
   ⟨fun result => (result.errno, result.count, result.size)⟩
 
@@ -28,9 +26,6 @@ instance : Flat ArgsResult (UInt64 × UInt64 × UInt64 × Bytes) :=
 
 @[simp] theorem ClockResult.flat (result : ClockResult) :
     Flat.flat result = (result.errno, result.time) := rfl
-
-@[simp] theorem RandomResult.flat (result : RandomResult) :
-    Flat.flat result = (result.errno, result.bytes) := rfl
 
 @[simp] theorem ArgsSizes.flat (result : ArgsSizes) :
     Flat.flat result = (result.errno, result.count, result.size) := rfl
@@ -45,19 +40,14 @@ instance : Flat Handle UInt64 := ⟨Handle.fd⟩
 
 instance : Flat WordResult (UInt64 × UInt64) := ⟨fun result => (result.errno, result.value)⟩
 
-instance : Flat BytesResult (UInt64 × Bytes) := ⟨fun result => (result.errno, result.bytes)⟩
-
-instance : Flat BytesCountResult (UInt64 × UInt64 × Bytes) :=
-  ⟨fun result => (result.errno, result.count, result.bytes)⟩
+instance : Flat FillResult (UInt64 × UInt64 × Bytes) :=
+  ⟨fun result => (result.errno, result.count, result.buffer)⟩
 
 @[simp] theorem WordResult.flat (result : WordResult) :
     Flat.flat result = (result.errno, result.value) := rfl
 
-@[simp] theorem BytesResult.flat (result : BytesResult) :
-    Flat.flat result = (result.errno, result.bytes) := rfl
-
-@[simp] theorem BytesCountResult.flat (result : BytesCountResult) :
-    Flat.flat result = (result.errno, result.count, result.bytes) := rfl
+@[simp] theorem FillResult.flat (result : FillResult) :
+    Flat.flat result = (result.errno, result.count, result.buffer) := rfl
 
 theorem ReadResult.agree :
     Verified.Agree (inferInstance : Represent ReadResult)

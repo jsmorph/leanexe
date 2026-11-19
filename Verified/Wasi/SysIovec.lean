@@ -1,107 +1,16 @@
-import Verified.Wasi.SysIovecCall
-import Verified.Wasi.SysFlat
+import Verified.Wasi.SysFill
 
-/-! The code of an iovec call, from the argument test to the result on the stack.  A read tests
-the handle and the capacity, allocates the buffer, writes the element, runs the call, and on errno
-0 keeps the count, at most the capacity, as the buffer's length, or otherwise releases the buffer;
-its result holds the errno and the prefix of the buffer of that length.  A write tests the handle
-and the input's length, writes the element of the input, runs the call, and on errno 0 loads the
-count; its result holds the errno and the count. -/
+/-! The code of an iovec call, from the argument test to the result on the stack.  A read computes
+the window of its buffer, tests the handle and the window's length, writes the element of the
+window, runs the call, and on errno 0 clamps the count to the window's length; after an errno it
+stores 0 into the window, and its result holds the errno, the count, and the buffer.  A write
+computes the window of its input, tests the handle and the window's length, writes the element of
+the window, runs the call, and on errno 0 loads the count; its result holds the errno and the
+count. -/
 
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
-
-/-! ## The prefix of a buffer -/
-
-theorem prefixBytes_empty (errno count : UInt64) :
-    (⟨errno, []⟩ : Reply).prefixBytes 0 count = LeanExe.Bytes.empty := by
-  have hEmpty : ((⟨errno, []⟩ : Reply).bytes 0).data.extract 0 count.toNat = ByteArray.empty := by
-    apply ByteArray.size_eq_zero_iff.mp
-    simp [Reply.bytes, LeanExe.Bytes.empty, ByteArray.size_extract]
-  simp only [Reply.prefixBytes, hEmpty, LeanExe.Bytes.empty]
-
-theorem prefixBytes_size (buffer count : LeanExe.Bytes) (errno : UInt64) :
-    ((⟨errno, [buffer, count]⟩ : Reply).prefixBytes 0 ((⟨errno, [buffer, count]⟩ : Reply).word 1))
-      = ⟨buffer.data.extract 0 (littleEndian count).toNat⟩ := rfl
-
-/-- The first `count` bytes of bytes in memory lie at the same root. -/
-theorem bytes_at_prefix {mem : Mem} {root : UInt64} {bytes : LeanExe.Bytes}
-    (h : Bytes.At mem root bytes) (count : Nat) :
-    Bytes.At mem root ⟨bytes.data.extract 0 count⟩ := by
-  have hSize : (bytes.data.extract 0 count).size = min count bytes.data.size := by
-    rw [ByteArray.size_extract]; omega
-  have hAddress := h.address
-  have hMemory := h.memory
-  refine ⟨?_, ?_, fun i hi => ?_⟩
-  · change root.toNat + (bytes.data.extract 0 count).size ≤ 4294967296
-    rw [hSize]; omega
-  · change root.toNat + (bytes.data.extract 0 count).size ≤ mem.pages * 65536
-    rw [hSize]; omega
-  · change i < (bytes.data.extract 0 count).size at hi
-    change mem.bytes (root.toNat + i) = (bytes.data.extract 0 count)[i]
-    rw [ByteArray.getElem_extract, h.contents i (by rw [hSize] at hi; omega)]
-    simp
-
-/-- The number of bytes of a read: the count, or the capacity when the count is at least the
-capacity. -/
-def readLength (count capacity : UInt64) : UInt64 := if capacity ≤ count then capacity else count
-
-theorem readLength_toNat (count capacity : UInt64) :
-    (readLength count capacity).toNat = min count.toNat capacity.toNat := by
-  unfold readLength
-  split
-  · rename_i h
-    rw [UInt64.le_iff_toNat_le] at h
-    omega
-  · rename_i h
-    rw [UInt64.le_iff_toNat_le] at h
-    omega
-
-/-- A buffer of `capacity` bytes that holds `buffer` after a frame that writes it holds the prefix
-of `count` bytes, with the length `readLength count capacity`. -/
-theorem ReadReady.prefix_rep {World : Type} {before after : Store World} {heap : Heap}
-    {root capacity count : UInt64} {buffer : LeanExe.Bytes}
-    (h : ReadReady heap (PureTransport.erase before) root capacity)
-    (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity.toNat)])
-    (hData : Bytes.At after.mem root buffer) (hSize : buffer.data.size = capacity.toNat) :
-    Bytes.Rep heap (PureTransport.erase after) root (readLength count capacity)
-      ⟨buffer.data.extract 0 count.toNat⟩ := by
-  have hPrefixSize : (buffer.data.extract 0 count.toNat).size = min count.toNat capacity.toNat := by
-    rw [ByteArray.size_extract]; omega
-  have hLength : (readLength count capacity).toNat =
-      (⟨buffer.data.extract 0 count.toNat⟩ : LeanExe.Bytes).data.size := by
-    rw [readLength_toNat]
-    exact hPrefixSize.symm
-  rcases h with ⟨rfl, rfl⟩ | ⟨previous, hBuffer, hCapacity⟩
-  · refine ⟨hLength, .inl ⟨rfl, ?_⟩⟩
-    change (buffer.data.extract 0 count.toNat).size = 0
-    rw [hPrefixSize]
-    simp
-  · refine ⟨hLength, .inr ?_⟩
-    exact allocated_afterRead hBuffer hFrame (by rw [hPrefixSize]; omega)
-      (bytes_at_prefix hData count.toNat)
-
-/-- The code of the minimum leaves `readLength` of the count and the capacity. -/
-theorem wp_min_code {α : Type} {m : Module} {st : Store α} {env : HostEnv α} {s : Locals}
-    {countLocal capacityLocal : Nat} {count capacity : UInt64} {rest : Program}
-    {Q : Assertion α}
-    (hCount : s.get countLocal = some (.i64 count))
-    (hCapacity : s.get capacityLocal = some (.i64 capacity))
-    (h : wp m rest Q st { s with values := .i64 (readLength count capacity) :: s.values } env) :
-    wp m (minCode countLocal capacityLocal ++ rest) Q st s env := by
-  simp only [minCode, List.cons_append, List.nil_append, wp_localGet_cons, hCount,
-    Locals.get_values, hCapacity, wp_geUI64_cons, wp_iff_control_types]
-  refine wp_iff_cons rfl ?_
-  by_cases hLarge : capacity ≤ count
-  · rw [ite_eq_left (by simp [hLarge])]
-    simp only [wp_localGet_cons, hCapacity, wp_nil, List.take_succ_cons, List.take_zero,
-      List.cons_append, List.nil_append, List.drop_zero]
-    simpa only [readLength, hLarge, ite_true] using h
-  · rw [ite_eq_right (by simp [hLarge])]
-    simp only [wp_localGet_cons, hCount, wp_nil, List.take_succ_cons, List.take_zero,
-      List.cons_append, List.nil_append, List.drop_zero]
-    simpa only [readLength, hLarge, ite_false] using h
 
 theorem head_toList_of_length {places : List Nat} (h : places.length ≤ 1) :
     places.head?.toList = places := by
@@ -124,123 +33,230 @@ theorem iovec_held {s : Locals} {locs : List Nat} {values : List UInt64} {count 
 
 /-! ## Reads -/
 
-/-- An accepted read: the allocation of the buffer, the element, the call, and on errno 0 the
-length of the prefix, or otherwise the release of the buffer, with the continuation `K` of the
-enclosing `iff`. -/
-theorem wp_sys_iovec_read_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
-    {call : LeanExe.Wasi.Call} {offset : Bool} {handleLocal capacityLocal : Nat}
-    {extraLocs : List Nat} {handle capacity : UInt64} {extra : List UInt64}
-    {s0 s : Locals} {base : Nat} {aborts : Bool} {K : Assertion (Observed World)}
+theorem iovec_read_lower (offset : Bool) (handle start count : UInt64) (extra : List UInt64)
+    (buffer : LeanExe.Bytes) (hExtra : extra.length = if offset then 1 else 0) :
+    lowerWords (iovecParams false offset) (handle :: start :: count :: extra) [buffer] =
+        [handle, buffer.windowLength start count] ++ extra ∧
+      windowWords (iovecParams false offset) (handle :: start :: count :: extra) =
+        (start, count) := by
+  rcases iovec_extra hExtra with ⟨rfl, rfl⟩ | ⟨word, rfl, rfl⟩ <;> exact ⟨rfl, rfl⟩
+
+/-- The code of a read that fills the window of the buffer whose root and size lie in the two
+locals from `rootLocal`, from the handle, the window's start and count, and the offset of
+`fd_pread` in their locals to the errno, the count, and the buffer's root and size on the stack.
+A rejected request and an errno of the host leave the window's bytes 0. -/
+theorem wp_sys_iovec_fill_with {calls : List LeanExe.Wasi.Call} {World : Type}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
+    {call : LeanExe.Wasi.Call} {offset : Bool} {locs : List Nat} {values : List UInt64}
+    {rootLocal : Nat} {root size : UInt64} {buffer : LeanExe.Bytes}
+    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)}
     (hHost : env.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf call]? = some call)
     (hParams : call.params = iovecParams false offset)
-    (hExtra : extra.length = if offset then 1 else 0)
-    (hHandleSmall : handle.toNat < 4294967296) (hCapacitySmall : capacity.toNat < 4294967296)
-    (hHandle : s.get handleLocal = some (.i64 handle))
-    (hCapacity : s.get capacityLocal = some (.i64 capacity))
-    (hExtraHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) extraLocs
-      extra)
-    (hLocs : ∀ place ∈ handleLocal :: capacityLocal :: extraLocs, place < base)
+    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
+    (hCount : values.length = call.argWords)
+    (hLocs : ∀ place ∈ locs, place < base)
+    (hRoot : s.get rootLocal = some (.i64 root))
+    (hSize : s.get (rootLocal + 1) = some (.i64 size)) (hRootBelow : rootLocal + 2 ≤ base)
+    (hRep : Bytes.Rep heap (PureTransport.erase initial) root size buffer)
     (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
-    (hOutside : LocalsOutside s0 s base 4)
-    (e2 : s.get (base + 2) = some (.i64 0))
-    (hRoom : aborts = false → capacity ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → K (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (sF : Locals)
-      (errno root length : UInt64) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call
-        ([.word handle, .space capacity] ++ extra.map .word) (.returned errno outputs)
-        final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length
-        ((sysReply errno outputs).prefixBytes 0 ((sysReply errno outputs).word 1)) →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity →
-      LocalsOutside s0 sF base 4 → sF.values = s.values →
-      sF.get base = some (.i64 errno) → sF.get (base + 1) = some (.i64 root) →
-      sF.get (base + 2) = some (.i64 length) →
-      K (.Fallthrough final sF))
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call
-        ([.word handle, .space capacity] ++ extra.map .word) (.trapped message outputs)
-        final.host → K (.Trap final message)) :
-    wp target (sysAllocateCodeWith calls capacityLocal (base + 1) ++
-      metadataCode (base + 1) capacityLocal ++ iovecLowerCode handleLocal extraLocs.head? ++
-      [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
-       .iff 0 0 (readCountCode capacityLocal base) (discardReadCodeWith calls (base + 1)) [] []])
-      K initial s env := by
-  have hPositions : base + 6 ≤ s0.params.length + s0.locals.length := by
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
+      (reply : Reply),
+      Exec (observedHost host)
+        (.sys call (flatArgsWith call.params (lowerWords call.params values [buffer]) [])
+          Action.pure) initial.host trace (.returned reply) final.host →
+      Step heap (PureTransport.erase initial)
+        (fun r => regionsDisjoint r ABI.scratch ∧
+          ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
+        heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
+      Bytes.Rep heap (PureTransport.erase final) root size
+        (readFill call.params values buffer reply).buffer →
+      LocalsOutside s finalLocals base 6 →
+      wp target rest Q final { finalLocals with values :=
+        [Value.i64 size, .i64 root, .i64 (readFill call.params values buffer reply).count,
+          .i64 reply.errno] ++ s.values } env)
+    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
+      Exec (observedHost host)
+        (.sys call (flatArgsWith call.params (lowerWords call.params values [buffer]) [])
+          Action.pure) initial.host trace (.trapped message) final.host →
+      Q (.Trap final message)) :
+    wp target (sysIovecReadCodeWith calls call locs rootLocal base ++ rest) Q initial s env := by
+  have hPositions : base + 6 ≤ s.params.length + s.locals.length := by
     have := hHigh
     simp only [Locals.positions] at this
     omega
-  have bound := fun (t : Locals) (outside : LocalsOutside s0 t base 4) i
-    (hi : base ≤ i) (hi' : i < base + 4) => outside.bounds hLow (by omega) hi hi'
-  have hExtraLength : extraLocs.length ≤ 1 := by
-    rw [hExtraHeld.length_eq, hExtra]; split <;> omega
-  have hOffsetHeld : ∀ t : Locals, (∀ place ∈ extraLocs, t.get place = s.get place) →
-      List.Forall₂ (fun place value => t.get place = some (.i64 value))
-        extraLocs.head?.toList extra := by
-    intro t same
-    rw [head_toList_of_length hExtraLength]
-    exact held_transfer hExtraHeld same
-  -- The invocation from the state after the allocation.
-  have invoke : ∀ (before : Store (Observed World)) (heapA : Heap) (sA : Locals) (root : UInt64),
-      ReadReady heapA (PureTransport.erase before) root capacity →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heapA (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root) →
-      before.host = initial.host →
-      heapA.top.toNat ≤ heap.top.toNat + readCost capacity →
-      LocalsOutside s0 sA base 4 → sA.values = s.values →
-      sA.get (base + 1) = some (.i64 root) → sA.get (base + 2) = some (.i64 0) →
-      (∀ place ∈ handleLocal :: capacityLocal :: extraLocs, sA.get place = s.get place) →
-      wp target (metadataCode (base + 1) capacityLocal ++ (iovecLowerCode handleLocal
-        extraLocs.head? ++
-        [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
-         .iff 0 0 (readCountCode capacityLocal base) (discardReadCodeWith calls (base + 1))
-           [] []])) K before sA env := by
-    intro before heapA sA root hReady hBefore hWorld hTop outsideA valuesA rootA lengthA same
-    have hAddress := hReady.address
-    have hRootSmall : root.toNat < 4294967296 := by omega
-    have hRoot32 : root.toUInt32.toNat = root.toNat := by
-      rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hRootSmall]
-    have hCapacity32 : capacity.toUInt32.toNat = capacity.toNat := by
-      rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hCapacitySmall]
-    have hMemory : 16 ≤ before.mem.pages * 65536 := by
-      have hBase := hBefore.at_.base
-      have hBound := hBefore.at_.top
-      change 16 ≤ (PureTransport.erase before).mem.pages * 65536
-      omega
-    have hSeparate : 16 ≤ root.toNat ∨ (capacity = 0 ∧ root = 0) := by
-      rcases hReady with ⟨rfl, rfl⟩ | ⟨previous, hBuf, _⟩
-      · exact .inr ⟨rfl, rfl⟩
-      · exact .inl (by have := hBuf.object.base; omega)
-    have hCapacityA : sA.get capacityLocal = some (.i64 capacity) :=
-      (same capacityLocal (by simp)).trans hCapacity
-    have hHandleA : sA.get handleLocal = some (.i64 handle) :=
-      (same handleLocal (by simp)).trans hHandle
-    refine wp_metadata rootA hCapacityA hMemory ?_
-    let middle := initializeScratch before root.toUInt32 capacity.toUInt32
-    have hScratch : GuestFrame before middle [ABI.scratch] :=
-      GuestFrame.ofScratchWrites (initializeScratch_range before _ _)
-    have hPagesMiddle : middle.mem.pages = before.mem.pages := hScratch.pages
-    have hElement := element_written before root.toUInt32 capacity.toUInt32 hMemory
-    rw [hCapacity32] at hElement
-    refine wp_iovec_read_call_with (root := root) hImports hHost hCall hParams hExtra
-      hHandleSmall hCapacitySmall hHandleA
-      (hOffsetHeld sA fun place member => same place (by simp [member])) hElement
-      (by rw [hPagesMiddle]; exact hMemory)
-      (by rw [hPagesMiddle]; exact hReady.memory hBefore.at_) (by omega) hSeparate ?_ ?_
+  have hLength3 : values.length = 1 + (2 + if offset then 1 else 0) := by
+    rw [hCount, Call.argWords, hParams]
+    cases offset <;> rfl
+  obtain ⟨handleLocal, rest1, handle, rest2, rfl, rfl, hHandle, held1, length1⟩ :=
+    iovec_held hHeld hLength3
+  obtain ⟨startLocal, rest3, start, rest4, rfl, rfl, hStartLocal, held2, length2⟩ :=
+    iovec_held (count := 1 + if offset then 1 else 0) held1 (by rw [length1]; omega)
+  obtain ⟨countLocal, extraLocs, count, extra, rfl, rfl, hCountLocal, hExtraHeld, hExtra⟩ :=
+    iovec_held (count := if offset then 1 else 0) held2 (by omega)
+  obtain ⟨hLowerEq, hWindowWords⟩ := iovec_read_lower offset handle start count extra buffer hExtra
+  have hArgs : flatArgsWith call.params (lowerWords call.params
+      (handle :: start :: count :: extra) [buffer]) [] =
+      [.word handle, .space (buffer.windowLength start count)] ++ extra.map .word := by
+    rw [hParams, hLowerEq, iovec_read_args offset _ (by simp; omega)]
+    rfl
+  have hReadFill : ∀ reply, readFill call.params (handle :: start :: count :: extra) buffer reply =
+      FillResult.of buffer start count reply.errno
+        (min (reply.word 1) (buffer.windowLength start count)) (reply.bytes 0) := by
+    intro reply
+    simp only [readFill, hParams, hWindowWords]
+  obtain ⟨hFirst, hLength, hLengthEq⟩ := window_words hRep.length_eq start count
+  obtain ⟨_, _, hAddrNat, _, hFits, hMem, hSep⟩ := window_at hRep hHeap start count
+  have hWindowLe := buffer.window_le start count
+  generalize hP : root + windowFirstWord size start = P at hAddrNat hFits hMem hSep
+  generalize hLw : windowLengthWord size start count = Lw at hFits hMem hSep hLength hLengthEq
+  generalize hFirstNat : (buffer.window start count).1 = first at hFirst hAddrNat hWindowLe
+  generalize hLengthNat : (buffer.window start count).2 = length at hLength hWindowLe
+  have hPsmall : P.toNat < 4294967296 := by have := hFits; omega
+  have hLwSmall : Lw.toNat < 4294967296 := by have := hFits; omega
+  have hMemory : 16 ≤ initial.mem.pages * 65536 := by
+    have hBase := hHeap.base
+    have hBound := hHeap.top
+    change 16 ≤ (PureTransport.erase initial).mem.pages * 65536
+    omega
+  have hStartBelow := hLocs startLocal (by simp)
+  have hCountBelow := hLocs countLocal (by simp)
+  have hHandleBelow := hLocs handleLocal (by simp)
+  have afterCall : ∀ (final : Store (Observed World)) (sF : Locals) (trace : List Event)
+      (reply : Reply),
+      Exec (observedHost host)
+        (.sys call (flatArgsWith call.params (lowerWords call.params
+          (handle :: start :: count :: extra) [buffer]) []) Action.pure)
+        initial.host trace (.returned reply) final.host →
+      GuestFrame initial final [ABI.scratch, (root.toNat + first, length)] →
+      (reply.errno = 0 → (reply.bytes 0).data.size = length ∧
+        ∀ (i : Nat) (hi : i < (reply.bytes 0).data.size),
+          final.mem.bytes (root.toNat + first + i) = (reply.bytes 0).data[i]) →
+      LocalsOutside s sF base 6 → sF.values = s.values →
+      sF.get base = some (.i64 reply.errno) → sF.get (base + 1) = some (.i64 P) →
+      sF.get (base + 2) = some (.i64 Lw) →
+      sF.get (base + 3) = some (.i64
+        (readFill call.params (handle :: start :: count :: extra) buffer reply).count) →
+      wp target (fillTailCode rootLocal base ++ rest) Q final sF env := by
+    intro final sF trace reply execution frame output outsideF valuesF errnoF addressF lengthF
+      countF
+    have pagesF : final.mem.pages = initial.mem.pages := frame.pages
+    refine wp_fill_tail errnoF addressF lengthF countF
+      (by rw [outsideF.others _ (by omega)]; exact hRoot)
+      (by rw [outsideF.others _ (by omega)]; exact hSize) (by omega)
+      (by rw [outsideF.params]; omega) (by rw [outsideF.params, outsideF.length]; omega)
+      hFits (by rw [pagesF]; exact hMem) ?_
+    intro final' s' same zeros outside' values'
+    have hHost' : final'.host = final.host := by
+      by_cases hZero : reply.errno = 0
+      · rw [same hZero]
+      · have writes := (zeros hZero).1
+        rw [writes.1]
+    obtain ⟨hRep', hStep'⟩ := fill_after
+        (used := min (reply.word 1) (buffer.windowLength start count))
+      hRep hHeap (by rw [hFirstNat, hLengthNat]; exact frame)
+      (fun zero => by rw [hFirstNat, hLengthNat]; exact output zero) same
+      (fun nonzero => by
+        obtain ⟨writes, zeroBytes⟩ := zeros nonzero
+        rw [hFirstNat, hLengthNat]
+        rw [hAddrNat, hLength] at writes
+        refine ⟨writes, fun i hi => ?_⟩
+        have := zeroBytes i (by rw [hLength]; exact hi)
+        rwa [hAddrNat] at this)
+    rw [valuesF]
+    refine hNext final' s' trace reply (by rw [hHost']; exact execution) hStep' ?_
+      (outsideF.trans (outside'.widen (by omega) (by omega)))
+    rw [hReadFill]
+    exact hRep'
+  simp only [sysIovecReadCodeWith, List.getD_cons_zero, List.getD_cons_succ, List.append_assoc]
+  refine wp_window_code hRoot hSize hStartLocal hCountLocal (by omega) (by omega) (by omega)
+    (by omega) ?_
+  intro s1 outside1 values1 getP getL
+  rw [hP] at getP
+  rw [hLw] at getL
+  have handle1 : s1.get handleLocal = some (.i64 handle) := by
+    rw [outside1.others _ (by omega)]; exact hHandle
+  refine wp_iovec_reject handle1 getL ?_
+  generalize hRejectEq : (if handle.toNat < 2 ^ 32 then (if Lw.toNat < 2 ^ 32 then 0 else 61)
+    else 61 : UInt64) = reject
+  have hReject : call.reject ([.word handle, .space (buffer.windowLength start count)] ++
+      extra.map .word) = reject := by
+    change rejectArgs call.params _ = _
+    rw [hParams, iovec_reject false offset handle _ hExtra, ← hRejectEq, ← hLengthEq]
+    rfl
+  simp only [List.cons_append, List.nil_append]
+  have hLow1 : s1.params.length ≤ base := by rw [outside1.params]; exact hLow
+  refine wp_localSet_local hLow1 (by rw [outside1.params, outside1.length]; omega) ?_
+  let s2 := setLocal { s1 with values := s1.values } base (.i64 reject)
+  have hLow2 : s2.params.length ≤ base + 3 := by simp only [s2, setLocal]; omega
+  have hHigh2 : base + 3 < s2.params.length + s2.locals.length := by
+    simp only [s2, setLocal, List.length_set]; rw [outside1.params, outside1.length]; omega
+  refine wp_set_word hLow2 hHigh2 ?_
+  let s3 := setLocal s2 (base + 3) (.i64 0)
+  have get3 : ∀ j, s3.get j = if j = base + 3 then some (.i64 0)
+      else if j = base then some (.i64 reject) else s1.get j := by
+    intro j
+    by_cases h3 : j = base + 3
+    · subst h3
+      simp only [ite_true]
+      exact Locals.get_setLocal_same hLow2 hHigh2
+    · rw [ite_eq_right h3, Locals.get_setLocal_ne hLow2 h3]
+      by_cases h0 : j = base
+      · subst h0
+        simp only [ite_true]
+        exact Locals.get_setLocal_same (s := { s1 with values := s1.values }) hLow1
+          (by rw [outside1.params, outside1.length]; omega)
+      · rw [ite_eq_right h0]
+        exact Locals.get_setLocal_ne (s := { s1 with values := s1.values }) hLow1 h0
+  have outside3 : LocalsOutside s s3 base 6 := by
+    refine ⟨outside1.params, by simp only [s3, s2, setLocal, List.length_set]; exact outside1.length,
+      fun j hj => ?_⟩
+    rw [get3, ite_eq_right (by omega), ite_eq_right (by omega)]
+    exact outside1.others j (by omega)
+  have values3 : s3.values = s.values := values1
+  have errno3 : s3.get base = some (.i64 reject) := by rw [get3]; simp
+  have address3 : s3.get (base + 1) = some (.i64 P) := by rw [get3]; simpa using getP
+  have length3 : s3.get (base + 2) = some (.i64 Lw) := by rw [get3]; simpa using getL
+  have count3 : s3.get (base + 3) = some (.i64 0) := by rw [get3]; simp
+  have below3 : ∀ j, j < base → s3.get j = s.get j := fun j hj =>
+    outside3.others j (Or.inl hj)
+  change wp _ _ _ _ s3 _
+  simp only [wp_localGet_cons, errno3, wp_eqzI64_cons]
+  refine wp_iff_cons rfl ?_
+  by_cases hAccepted : reject = 0
+  · rw [ite_eq_left (by simp [hAccepted] : (if reject = 0 then (1 : UInt32) else 0) ≠ 0)]
+    have hHandleSmall : handle.toNat < 4294967296 := by
+      rw [← hRejectEq] at hAccepted
+      by_contra large
+      simp [large] at hAccepted
+    have hRejectZero : call.reject ([.word handle, .space (buffer.windowLength start count)] ++
+        extra.map .word) = 0 := by
+      rw [hReject, hAccepted]
+    simp only [sysIovecReadCallCodeWith, List.getD_cons_zero, List.getElem?_cons_succ,
+      List.append_assoc]
+    rw [show extraLocs[0]? = extraLocs.head? by cases extraLocs <;> rfl]
+    refine wp_metadata address3 length3 hMemory ?_
+    let middle := initializeScratch initial P.toUInt32 Lw.toUInt32
+    have hScratch : GuestFrame initial middle [ABI.scratch] :=
+      GuestFrame.ofScratchWrites (initializeScratch_range initial _ _)
+    have hPagesMiddle : middle.mem.pages = initial.mem.pages := hScratch.pages
+    have hElement := element_written initial P.toUInt32 Lw.toUInt32 hMemory
+    have hLw32 : Lw.toUInt32.toNat = Lw.toNat := by
+      rw [UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hLwSmall]
+    rw [hLw32] at hElement
+    have hExtraHeld3 := held_transfer hExtraHeld fun place member =>
+      below3 place (hLocs place (by simp [member]))
+    refine wp_iovec_read_call_with (root := P) (capacity := Lw) hImports hHost hCall hParams
+      hExtra hHandleSmall hLwSmall ((below3 handleLocal hHandleBelow).trans hHandle)
+      (by
+        rw [head_toList_of_length (by rw [hExtraHeld3.length_eq, hExtra]; split <;> omega)]
+        exact hExtraHeld3)
+      hElement (by rw [hPagesMiddle]; exact hMemory)
+      (by rw [hPagesMiddle]; exact hMem) hFits hSep ?_ ?_
     · intro after errno outputs hSys hFrame hShown
-      have hFrame' : GuestFrame before after [ABI.scratch, (root.toNat, capacity.toNat)] := by
+      have hFrame' : GuestFrame initial after [ABI.scratch, (P.toNat, Lw.toNat)] := by
         refine (hScratch.weaken fun region member => ?_).trans (hFrame.cover fun region member => ?_)
         · rw [List.mem_singleton] at member
           subst member
@@ -249,311 +265,133 @@ theorem wp_sys_iovec_read_accept_with {calls : List LeanExe.Wasi.Call} {World : 
           rcases member with rfl | rfl
           · exact ⟨_, List.mem_cons_of_mem _ (List.mem_singleton_self _), le_rfl, le_rfl⟩
           · exact ⟨ABI.scratch, List.mem_cons_self .., by decide, by decide⟩
-      have hStep := hReady.frame_step hBefore hFrame'
+      have hFrameWindow : GuestFrame initial after [ABI.scratch, (root.toNat + first, length)] := by
+        rw [hAddrNat, hLength] at hFrame'
+        exact hFrame'
       have hBound := (observedHost host).sys_bound hSys
       have hErrno : errno.toNat ≤ 76 := hBound.2
-      have hSizes : outputs.map (fun output => output.data.size) = [capacity.toNat, 4] := by
+      have hSizes : outputs.map (fun output => output.data.size) = [Lw.toNat, 4] := by
         have h : outputs.map (fun output => output.data.size) =
             outputSizesOf call.params (host.reported middle.host.world call)
-              ([.word handle, .space capacity] ++ extra.map .word) := hBound.1
-        rw [h, hParams, iovec_read_sizes offset handle capacity hExtra]
+              ([.word handle, .space Lw] ++ extra.map .word) := hBound.1
+        rw [h, hParams, iovec_read_sizes offset handle Lw hExtra]
       have hSys' : (observedHost host).sys initial.host call
-          ([.word handle, .space capacity] ++ extra.map .word) (.returned errno outputs)
-          after.host := by
-        rw [← hWorld]; exact hSys
+          ([.word handle, .space (buffer.windowLength start count)] ++ extra.map .word)
+          (.returned errno outputs) after.host := by
+        rw [← hLengthEq]; exact hSys
+      have hExec : Exec (observedHost host)
+          (.sys call (flatArgsWith call.params (lowerWords call.params
+            (handle :: start :: count :: extra) [buffer]) []) Action.pure) initial.host
+          [.sys call ([.word handle, .space (buffer.windowLength start count)] ++
+            extra.map .word) (.returned errno outputs)]
+          (.returned (sysReply errno outputs)) after.host := by
+        rw [hArgs]
+        exact .sys_return hRejectZero hSys' (.pure after.host _)
       simp only [wp_extendUI32_cons, sys_extend_errno hErrno]
-      have b0 := bound sA outsideA base le_rfl (by omega)
-      refine wp_localSet_local b0.1 b0.2 ?_
-      let sE := setLocal { sA with values := sA.values } base (.i64 errno)
-      have hGetE : sE.get base = some (.i64 errno) :=
-        Locals.get_setLocal_same (s := { sA with values := sA.values }) b0.1 b0.2
-      have hOtherE : ∀ j, j ≠ base → sE.get j = sA.get j := fun j hj =>
-        Locals.get_setLocal_ne (s := { sA with values := sA.values }) b0.1 hj
-      have outsideE : LocalsOutside s0 sE base 4 :=
-        (outsideA.values sA.values).set hLow le_rfl (by omega)
-      have hRootE : sE.get (base + 1) = some (.i64 root) := (hOtherE (base + 1) (by omega)).trans rootA
-      have hLengthE : sE.get (base + 2) = some (.i64 0) :=
-        (hOtherE (base + 2) (by omega)).trans lengthA
-      change wp target (.localGet base :: _) K after sE env
-      refine wp_localGet_get hGetE ?_
-      simp only [wp_eqzI64_cons]
+      have hLow3 : s3.params.length ≤ base := by rw [outside3.params]; exact hLow
+      have hHigh3 : base + 5 < s3.params.length + s3.locals.length := by
+        rw [outside3.params, outside3.length]; omega
+      refine wp_localSet_local hLow3 (by omega) ?_
+      let s4 := setLocal { s3 with values := s3.values } base (.i64 errno)
+      have get4 : ∀ j, j ≠ base → s4.get j = s3.get j := fun j hj =>
+        Locals.get_setLocal_ne (s := { s3 with values := s3.values }) hLow3 hj
+      have errno4 : s4.get base = some (.i64 errno) :=
+        Locals.get_setLocal_same (s := { s3 with values := s3.values }) hLow3 (by omega)
+      have outside4 : LocalsOutside s s4 base 6 :=
+        (outside3.values s3.values).set hLow le_rfl (by omega)
+      have hHigh4 : base + 3 < s4.params.length + s4.locals.length := by
+        rw [outside4.params, outside4.length]; omega
+      have hLow4 : s4.params.length ≤ base + 3 := by rw [outside4.params]; omega
+      change wp _ _ _ _ s4 _
+      simp only [wp_localGet_cons, errno4, wp_eqzI64_cons]
       refine wp_iff_cons rfl ?_
       by_cases hZero : errno = 0
       · rw [ite_eq_left (by simp [hZero] : (if errno = 0 then (1 : UInt32) else 0) ≠ 0)]
-        obtain ⟨buffer, count, rfl, hBufferAt, hCountAt⟩ := hShown hZero
+        obtain ⟨bytes, countBytes, rfl, hBytesAt, hCountAt⟩ := hShown hZero
         simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true] at hSizes
         obtain ⟨hBufferSize, hCountSize⟩ := hSizes
-        have hReply : sysReply errno [buffer, count] = ⟨errno, [buffer, count]⟩ := by
+        have hReply : sysReply errno [bytes, countBytes] = ⟨errno, [bytes, countBytes]⟩ := by
           simp [sysReply, hZero]
         have hCountWord := littleEndian_read32 hCountAt hCountSize
         have h8 : (8 : UInt64).toUInt32 = 8 := rfl
         rw [h8] at hCountWord
-        have hCapacityE : sE.get capacityLocal = some (.i64 capacity) :=
-          (hOtherE capacityLocal (by have := hLocs capacityLocal (by simp); omega)).trans
-            hCapacityA
-        have b3 := bound sE outsideE (base + 3) (by omega) (by omega)
-        have b2 := bound sE outsideE (base + 2) (by omega) (by omega)
-        simp only [readCountCode, List.cons_append, List.nil_append, wp_const_cons, wp_load32_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+        simp only [readCountCode, List.cons_append, List.nil_append, List.append_assoc,
+          wp_const_cons, wp_load32_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
         rw [ite_eq_right (by
-          have hp := hFrame'.pages
+          have hp := hFrameWindow.pages
           simp only [UInt32.reduceToNat, gt_iff_lt, not_lt]
           omega)]
         simp only [wp_extendUI32_cons]
         rw [hCountWord]
-        refine wp_localSet_local b3.1 b3.2 ?_
-        let sC := setLocal { sE with values := sE.values } (base + 3) (.i64 (littleEndian count))
-        have hGetC : sC.get (base + 3) = some (.i64 (littleEndian count)) :=
-          Locals.get_setLocal_same (s := { sE with values := sE.values }) b3.1 b3.2
-        have hOtherC : ∀ j, j ≠ base + 3 → sC.get j = sE.get j := fun j hj =>
-          Locals.get_setLocal_ne (s := { sE with values := sE.values }) b3.1 hj
-        have outsideC : LocalsOutside s0 sC base 4 :=
-          (outsideE.values sE.values).set hLow (by omega) (by omega)
-        have hCapacityC : sC.get capacityLocal = some (.i64 capacity) :=
-          (hOtherC capacityLocal (by have := hLocs capacityLocal (by simp); omega)).trans
-            hCapacityE
-        have hRepPrefix := hReady.prefix_rep (count := littleEndian count) hFrame' hBufferAt
-          hBufferSize
-        refine wp_min_code hGetC hCapacityC ?_
-        have b2C := bound sC outsideC (base + 2) (by omega) (by omega)
-        refine wp_localSet_local b2C.1 b2C.2 ?_
+        refine wp_localSet_local hLow4 hHigh4 ?_
+        let s5 := setLocal { s4 with values := s4.values } (base + 3)
+          (.i64 (littleEndian countBytes))
+        have word5 : s5.get (base + 3) = some (.i64 (littleEndian countBytes)) :=
+          Locals.get_setLocal_same (s := { s4 with values := s4.values }) hLow4 hHigh4
+        have get5 : ∀ j, j ≠ base + 3 → s5.get j = s4.get j := fun j hj =>
+          Locals.get_setLocal_ne (s := { s4 with values := s4.values }) hLow4 hj
+        have length5 : s5.get (base + 2) = some (.i64 Lw) := by
+          rw [get5 _ (by omega), get4 _ (by omega)]; exact length3
+        have outside5 : LocalsOutside s s5 base 6 :=
+          (outside4.values s4.values).set hLow (by omega) (by omega)
+        refine wp_min_code word5 length5 ?_
+        have hLow5 : s5.params.length ≤ base + 3 := by rw [outside5.params]; omega
+        have hHigh5 : base + 3 < s5.params.length + s5.locals.length := by
+          rw [outside5.params, outside5.length]; omega
+        refine wp_localSet_local hLow5 hHigh5 ?_
         simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
-        have hOther2 : ∀ j, j ≠ base + 2 → (setLocal { sC with values := sC.values } (base + 2)
-            (.i64 (readLength (littleEndian count) capacity))).get j = sC.get j :=
-          fun j hj => Locals.get_setLocal_ne (s := { sC with values := sC.values }) b2C.1 hj
-        refine hNext heapA after _ errno root (readLength (littleEndian count) capacity)
-          [buffer, count] hSys' hStep (by rw [hReply]; exact hRepPrefix) hTop ?_ ?_ ?_ ?_ ?_
-        · exact (((outsideC.values sC.values).set hLow (by omega) (by omega)).values _)
-        · exact valuesA
-        · rw [Locals.get_values, hOther2 base (by omega), hOtherC base (by omega)]
-          exact hGetE
-        · rw [Locals.get_values, hOther2 (base + 1) (by omega), hOtherC (base + 1) (by omega)]
-          exact hRootE
-        · rw [Locals.get_values]
-          exact Locals.get_setLocal_same (s := { sC with values := sC.values }) b2C.1 b2C.2
+        refine afterCall after _ _ (sysReply errno [bytes, countBytes]) hExec hFrameWindow
+          (fun _ => ?_) (((outside5.values _).set hLow (by omega) (by omega)).values _)
+          (by simp only [List.take_zero, List.nil_append, List.drop_zero]; exact values1)
+          ?_ ?_ ?_ ?_
+        · rw [hReply]
+          refine ⟨by
+            simp only [Reply.bytes, List.getElem?_cons_zero, Option.getD_some]
+            rw [hBufferSize, hLength], fun i hi => ?_⟩
+          have := hBytesAt.contents i hi
+          rw [hAddrNat] at this
+          exact this
+        · rw [Locals.get_values, Locals.get_setLocal_ne (s := { s5 with values := s5.values })
+            hLow5 (by omega), get5 _ (by omega)]
+          simpa [sysReply, hZero] using errno4
+        · rw [Locals.get_values, Locals.get_setLocal_ne (s := { s5 with values := s5.values })
+            hLow5 (by omega), get5 _ (by omega), get4 _ (by omega)]
+          exact address3
+        · rw [Locals.get_values, Locals.get_setLocal_ne (s := { s5 with values := s5.values })
+            hLow5 (by omega), length5]
+        · rw [Locals.get_values, Locals.get_setLocal_same (s := { s5 with values := s5.values })
+            hLow5 hHigh5, hReadFill, hReply]
+          simp only [FillResult.of, hZero, ite_true, readLength_eq_min, Reply.word, ← hLengthEq]
+          rfl
       · rw [ite_eq_right (by simp [hZero] : ¬((if errno = 0 then (1 : UInt32) else 0) ≠ 0))]
-        have hReply : sysReply errno outputs = ⟨errno, []⟩ := by simp [sysReply, hZero]
-        have hEmpty := hReady.empty_rep hBefore.at_ hFrame'
-        have b1 := bound sE outsideE (base + 1) (by omega) (by omega)
-        rw [← List.append_nil (discardReadCodeWith calls (base + 1))]
-        refine wp_discard_read_with runtime layout profile hImports sourceHost hStep.at_ hEmpty
-          hRootE b1.1 b1.2 ?_
-        intro final hStore hFinalWorld
         simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
-        have hFinalStep := read_discard_step hStep hEmpty hStore
-        have hFinalTop := read_discard_top hStep.at_ hEmpty
-        have hOtherD : ∀ j, j ≠ base + 1 → (setLocal sE (base + 1) (.i64 0)).get j = sE.get j :=
-          fun j hj => Locals.get_setLocal_ne b1.1 hj
-        refine hNext _ final _ errno 0 0 outputs (by rw [hFinalWorld]; exact hSys')
-          (by simpa only [Bytes.regions, ite_true] using hFinalStep) ?_
-          (by rw [hFinalTop]; exact hTop) ((outsideE.set hLow (by omega) (by omega)).values _) ?_
-          ?_ ?_ ?_
-        · rw [hReply, prefixBytes_empty]
-          exact Bytes.Rep.empty _ _
-        · exact valuesA
-        · rw [Locals.get_values, hOtherD base (by omega)]
-          exact hGetE
-        · rw [Locals.get_values]
-          exact Locals.get_setLocal_same b1.1 b1.2
-        · rw [Locals.get_values, hOtherD (base + 2) (by omega)]
-          exact hLengthE
-    · intro after message outputs hSys
-      exact hTrap after message outputs (by rw [← hWorld]; exact hSys)
-  -- The allocation of the buffer.
-  have hLowA := (bound s hOutside (base + 1) (by omega) (by omega)).1
-  have hHighA := (bound s hOutside (base + 1) (by omega) (by omega)).2
-  have afterAllocation : ∀ root : UInt64,
-      LocalsOutside s0 (setLocal s (base + 1) (.i64 root)) base 4 ∧
-      (setLocal s (base + 1) (.i64 root)).get (base + 1) = some (.i64 root) ∧
-      (∀ j, j ≠ base + 1 → (setLocal s (base + 1) (.i64 root)).get j = s.get j) :=
-    fun root => ⟨hOutside.set hLow (by omega) (by omega),
-      Locals.get_setLocal_same hLowA hHighA, fun j hj => Locals.get_setLocal_ne hLowA hj⟩
-  have sameAfter : ∀ root : UInt64, ∀ place ∈ handleLocal :: capacityLocal :: extraLocs,
-      (setLocal s (base + 1) (.i64 root)).get place = s.get place := by
-    intro root place member
-    exact (afterAllocation root).2.2 place (by have := hLocs place member; omega)
-  simp only [List.append_assoc]
-  refine wp_sys_allocate_with (capacityLocal := capacityLocal) (rootLocal := base + 1) runtime
-    layout profile hImports sourceHost hHeap (by omega) hCap hCapacity hLowA hHighA
-    (fun hNonzero hAbort => hRoom hAbort hNonzero) hResource ?_ ?_
-  · intro hZero
-    subst hZero
-    obtain ⟨outsideA, rootA, otherA⟩ := afterAllocation 0
-    exact invoke initial heap _ 0 (Or.inl ⟨rfl, rfl⟩)
-      (by simpa only [Bytes.regions, ite_true] using
-        Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch))
-      rfl (by simp) outsideA rfl rootA ((otherA (base + 2) (by omega)).trans e2) (sameAfter 0)
-  · intro hNonzero before hFits hStore hWorld
-    obtain ⟨hAllocate, hBuffer, hCapacityAt, hTopAlloc⟩ :=
-      read_allocation_buffer hHeap (by omega) hFits hStore
-    let root := FixedArrayAllocate.root heap.top (allocSize capacity) heap.free
-    obtain ⟨outsideA, rootA, otherA⟩ := afterAllocation root
-    have hBefore : Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        (heap.allocate (allocSize capacity)) (PureTransport.erase before)
-        (Bytes.regions (PureTransport.erase before) root) := by
-      have hRoot : root ≠ 0 := hBuffer.nonzero
-      rw [Bytes.regions, ite_eq_right hRoot]
-      exact hAllocate.mono
-        (keep' := fun region => regionsDisjoint region ABI.scratch)
-        (fresh' := [block (PureTransport.erase before) root])
-        (fun _ _ => True.intro) (fun _ h => h)
-    exact invoke before (heap.allocate (allocSize capacity)) _ root
-      (Or.inr ⟨_, hBuffer, hCapacityAt⟩) hBefore hWorld
-      (by rw [readCost_positive hCapacitySmall hNonzero]; exact hTopAlloc)
-      outsideA rfl rootA ((otherA (base + 2) (by omega)).trans e2) (sameAfter root)
-
-/-- The code of a read, from the words in their locals to the errno and the buffer's root and
-length on the stack.  A rejected request returns its errno without a call; an accepted request
-allocates the buffer, runs the call, keeps the prefix of the count, at most the capacity, on
-errno 0, and otherwise releases the buffer. -/
-theorem wp_sys_iovec_read_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
-    {call : LeanExe.Wasi.Call} {offset : Bool} {locs : List Nat} {values : List UInt64}
-    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)} {aborts : Bool}
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hCall : calls[calls.idxOf call]? = some call)
-    (hParams : call.params = iovecParams false offset)
-    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
-    (hCount : values.length = call.wordCount)
-    (hLocs : ∀ place ∈ locs, place < base)
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
-    (hRoom : aborts = false → (values.getD 1 0).toNat < 4294967296 → values.getD 1 0 ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize (values.getD 1 0)))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
-      (trace : List Event) (reply : Reply) (root length : UInt64),
-      Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
-        initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length (reply.prefixBytes 0 (reply.word 1)) →
-      heap'.top.toNat ≤ heap.top.toNat + readCost (values.getD 1 0) →
-      LocalsOutside s finalLocals base 4 →
-      wp target rest Q final { finalLocals with values :=
-        ([Value.i64 reply.errno] ++ [Value.i64 root, Value.i64 length]).reverse ++ s.values } env)
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
-        initial.host trace (.trapped message) final.host → Q (.Trap final message)) :
-    wp target (sysIovecReadCodeWith calls call locs base ++ rest) Q initial s env := by
-  have hPositions : base + 6 ≤ s.params.length + s.locals.length := by
-    have := hHigh
-    simp only [Locals.positions] at this
-    omega
-  have hLength : values.length = 1 + (1 + if offset then 1 else 0) := by
-    rw [hCount, iovec_wordCount hParams]; simp only [Bool.false_eq_true, ite_false]; omega
-  obtain ⟨handleLocal, rest1, handle, rest2, rfl, rfl, hHandle, held1, length1⟩ :=
-    iovec_held hHeld hLength
-  obtain ⟨capacityLocal, extraLocs, capacity, extra, rfl, rfl, hCapacity, hExtraHeld, hExtra⟩ :=
-    iovec_held held1 length1
-  have hArgs : flatArgsWith call.params (handle :: capacity :: extra) [] =
-      [.word handle, .space capacity] ++ extra.map .word := by
-    rw [hParams, iovec_read_args offset _ (by simp; omega)]
-    rfl
-  have hReject : call.reject ([.word handle, .space capacity] ++ extra.map .word) =
-      if handle.toNat < 2 ^ 32 then (if capacity.toNat < 2 ^ 32 then 0 else 61) else 61 := by
-    change rejectArgs call.params _ = _
-    rw [hParams, iovec_reject false offset handle _ hExtra]
-    rfl
-  simp only [sysIovecReadCodeWith, List.getD_cons_zero, List.getD_cons_succ, List.append_assoc,
-    List.cons_append]
-  refine wp_iovec_reject hHandle hCapacity ?_
-  generalize hRejectEq : (if handle.toNat < 2 ^ 32 then (if capacity.toNat < 2 ^ 32 then 0 else 61)
-    else 61 : UInt64) = reject
-  rw [hRejectEq] at hReject
-  refine wp_localSet_local hLow (by omega) ?_
-  let s1 := setLocal { s with values := s.values } base (.i64 reject)
-  have outside1 : LocalsOutside s s1 base 4 :=
-    ((LocalsOutside.refl s base 4).values s.values).set hLow le_rfl (by omega)
-  have hGet1 : s1.get base = some (.i64 reject) :=
-    Locals.get_setLocal_same (s := { s with values := s.values }) hLow (by omega)
-  change wp target (zeroLocalsCode (base + 1) 3 ++ _) Q initial s1 env
-  refine wp_zero_locals 3 (base + 1) s1 (by rw [outside1.params]; omega)
-    (by rw [outside1.params, outside1.length]; omega) ?_
-  intro s2 outside2 values2 zeros2
-  have outside2' : LocalsOutside s s2 base 4 := outside1.trans (outside2.widen (by omega) (by omega))
-  have hGet2 : s2.get base = some (.i64 reject) := (outside2.others base (by omega)).trans hGet1
-  have hLocs' : ∀ place ∈ handleLocal :: capacityLocal :: extraLocs, s2.get place = s.get place :=
-    fun place member => outside2'.others place (by have := hLocs place member; omega)
-  have hRoot2 : s2.get (base + 1) = some (.i64 0) := by simpa using zeros2 0 (by omega)
-  have hLength2 : s2.get (base + 2) = some (.i64 0) := by simpa using zeros2 1 (by omega)
-  simp only [wp_localGet_cons, hGet2, wp_eqzI64_cons, wp_iff_control_types]
-  refine wp_iff_cons rfl ?_
-  have finish : ∀ (final : Store (Observed World)) (sF : Locals) (heap' : Heap)
-      (trace : List Event) (reply : Reply) (root length : UInt64),
-      Exec (observedHost host)
-        (.sys call (flatArgsWith call.params (handle :: capacity :: extra) []) Action.pure)
-        initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length
-        (reply.prefixBytes 0 (reply.word 1)) →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity →
-      LocalsOutside s sF base 4 → sF.get base = some (.i64 reply.errno) →
-      sF.get (base + 1) = some (.i64 root) → sF.get (base + 2) = some (.i64 length) →
-      wp target (.localGet base :: .localGet (base + 1) :: .localGet (base + 2) :: rest) Q final
-        { sF with values := s.values } env := by
-    intro final sF heap' trace reply root length execution step rep top outsideF errnoF rootF
-      lengthF
-    simp only [wp_localGet_cons, Locals.get_values, errnoF, rootF, lengthF]
-    simpa only [List.singleton_append, List.reverse_cons, List.reverse_nil, List.nil_append,
-      List.cons_append, List.append_assoc] using
-      hNext heap' final { sF with values := s.values } trace reply root length execution step rep
-        top (outsideF.values s.values)
-  by_cases hAccepted : reject = 0
-  · rw [ite_eq_left (by simp [hAccepted] : (if reject = 0 then (1 : UInt32) else 0) ≠ 0)]
-    have hSmall : handle.toNat < 4294967296 ∧ capacity.toNat < 4294967296 := by
-      rw [← hRejectEq] at hAccepted
-      by_cases h1 : handle.toNat < 2 ^ 32
-      · by_cases h2 : capacity.toNat < 2 ^ 32
-        · exact ⟨h1, h2⟩
-        · rw [ite_eq_left h1, ite_eq_right h2] at hAccepted
-          exact absurd hAccepted (by decide)
-      · rw [ite_eq_right h1] at hAccepted
-        exact absurd hAccepted (by decide)
-    have hRejectZero : call.reject ([.word handle, .space capacity] ++ extra.map .word) = 0 := by
-      rw [hReject, hAccepted]
-    change wp target (sysIovecReadCallCodeWith calls call
-      (handleLocal :: capacityLocal :: extraLocs) base) _ initial s2 env
-    simp only [sysIovecReadCallCodeWith, List.getD_cons_zero, List.getD_cons_succ,
-      List.getElem?_cons_succ]
-    rw [show extraLocs[0]? = extraLocs.head? by cases extraLocs <;> rfl]
-    refine wp_sys_iovec_read_accept_with (s0 := s) runtime layout profile hImports sourceHost
-      hHost hCall hParams hExtra hSmall.1 hSmall.2 ((hLocs' handleLocal (by simp)).trans hHandle)
-      ((hLocs' capacityLocal (by simp)).trans hCapacity)
-      (held_transfer hExtraHeld fun place member => hLocs' place (by simp [member]))
-      hLocs hHeap hCap hLow hHigh outside2' hLength2
-      (fun hAbort hNonzero => hRoom hAbort hSmall.2 hNonzero) hResource ?_ ?_
-    · intro heap' final sF errno root length outputs hSys hStep hRep hTop outsideF valuesF
-        errnoF rootF lengthF
-      simp only [List.take_zero, List.nil_append, List.drop_zero, values2]
-      refine finish final sF heap'
-        [.sys call (flatArgsWith call.params (handle :: capacity :: extra) [])
-          (.returned errno outputs)]
-        (sysReply errno outputs) root length ?_ hStep hRep hTop outsideF errnoF rootF lengthF
-      rw [hArgs]
-      exact .sys_return hRejectZero hSys (.pure final.host _)
+        have hReply : sysReply errno outputs = ⟨errno, []⟩ := by simp [sysReply, hZero]
+        refine afterCall after _ _ (sysReply errno outputs) hExec hFrameWindow
+          (fun zero => absurd (by simpa [hReply] using zero) hZero) (outside4.values _)
+          (by simp only [List.take_zero, List.nil_append, List.drop_zero]; exact values1)
+          (by rw [Locals.get_values, hReply]; exact errno4) ?_ ?_ ?_
+        · rw [Locals.get_values, get4 _ (by omega)]
+          exact address3
+        · rw [Locals.get_values, get4 _ (by omega)]
+          exact length3
+        · rw [Locals.get_values, get4 _ (by omega), count3, hReadFill]
+          simp [FillResult.of, hReply, hZero]
     · intro final message outputs hSys
-      exact hTrap final message _ (by rw [hArgs]; exact .sys_trap hRejectZero hSys)
-  · rw [ite_eq_right (by simp [hAccepted] :
-      ¬((if reject = 0 then (1 : UInt32) else 0) ≠ 0))]
-    simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero, values2]
-    have hRejectNe : call.reject ([.word handle, .space capacity] ++ extra.map .word) ≠ 0 := by
+      exact hTrap final message _ (by
+        rw [hArgs]
+        exact .sys_trap hRejectZero (by rw [← hLengthEq]; exact hSys))
+  · rw [ite_eq_right (by simp [hAccepted] : ¬((if reject = 0 then (1 : UInt32) else 0) ≠ 0))]
+    simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero]
+    have hRejectNe : call.reject ([.word handle, .space (buffer.windowLength start count)] ++
+        extra.map .word) ≠ 0 := by
       rw [hReject]; exact hAccepted
-    refine finish initial s2 heap [] ⟨reject, []⟩ 0 0 ?_ ?_ ?_ (by omega) outside2' hGet2 hRoot2
-      hLength2
-    · rw [hArgs, ← hReject]
-      exact .sys_reject hRejectNe (.pure initial.host _)
-    · simpa only [Bytes.regions, ite_true] using
-        Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
-    · rw [prefixBytes_empty]
-      exact Bytes.Rep.empty _ _
+    refine afterCall initial _ [] ⟨reject, []⟩ (by
+        rw [hArgs, ← hReject]
+        exact .sys_reject hRejectNe (.pure initial.host _))
+      (GuestFrame.refl _ _) (fun zero => absurd zero hAccepted)
+      (outside3.values _) values3 errno3 address3 length3 ?_
+    rw [count3, hReadFill]
+    simp [FillResult.of, hAccepted]
 
 /-! ## Writes -/
 
@@ -577,9 +415,9 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hInputs : List.Forall₂ (InputHeld s) inputLocs inputs)
     (hInputCount : inputs.length = call.inputCount)
     (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base)
-    (hInputReps : ∀ input ∈ inputs, ∃ length,
-      Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+    (hInputAt : ∀ input ∈ inputs,
+      (Bytes.At initial.mem input.1 input.2 ∧ input.1.toNat < 4294967296) ∧
+        regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch)
     (hHeap : heap.At (PureTransport.erase initial))
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
     (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
@@ -684,9 +522,7 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
       [inputLocal] base) _ initial s2 env
     simp only [sysIovecWriteCallCodeWith, List.getD_cons_zero, List.getElem?_cons_succ]
     rw [show extraLocs[0]? = extraLocs.head? by cases extraLocs <;> rfl]
-    obtain ⟨⟨hInputAt, hRootSmall⟩, hApart, _⟩ :=
-      input_at_call (root := 0) (capacity := 0) (hInputReps input (List.mem_singleton_self _))
-        hRefl (Or.inl ⟨rfl, rfl⟩)
+    obtain ⟨⟨hInputAt, hRootSmall⟩, hApart⟩ := hInputAt input (List.mem_singleton_self _)
     have hRootLocal2 : s2.get inputLocal = some (.i64 input.1) :=
       (same2 inputLocal (by have := hInputLocs inputLocal (by simp); omega)).trans hRootLocal
     have hSizeLocal2 : s2.get (inputLocal + 1) = some (.i64 (LeanExe.Bytes.size input.2)) :=
@@ -811,5 +647,129 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
       outside2' hGet2 (by rw [hCount2]; simp [Reply.word])
     rw [hArgs, ← hReject]
     exact .sys_reject hRejectNe (.pure initial.host _)
+
+theorem iovec_write_lower (offset : Bool) (handle start count : UInt64) (extra : List UInt64)
+    (input : LeanExe.Bytes) (hExtra : extra.length = if offset then 1 else 0) :
+    lowerWords (iovecParams true offset) (handle :: start :: count :: extra) [] = handle :: extra ∧
+      lowerInputs (iovecParams true offset) (handle :: start :: count :: extra) [input] =
+        [input.range start count] := by
+  rcases iovec_extra hExtra with ⟨rfl, rfl⟩ | ⟨word, rfl, rfl⟩ <;> exact ⟨rfl, rfl⟩
+
+/-- The code of a write of the window of the input whose root and length lie in the two locals
+from `inputLocal`, from the handle, the window's start and count, and the offset of `fd_pwrite` in
+their locals to the errno and the count on the stack. -/
+theorem wp_sys_iovec_window_with {calls : List LeanExe.Wasi.Call} {World : Type}
+    {target : Module} {host : Host World}
+    (hImports : target.imports = ABI.importsWith calls) {env : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap}
+    {call : LeanExe.Wasi.Call} {offset : Bool} {locs : List Nat} {values : List UInt64}
+    {inputLocal : Nat} {root size : UInt64} {input : LeanExe.Bytes}
+    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)}
+    (hHost : env.Satisfies target (hostSpecWith host calls))
+    (hCall : calls[calls.idxOf call]? = some call)
+    (hParams : call.params = iovecParams true offset)
+    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
+    (hCount : values.length = call.argWords)
+    (hLocs : ∀ place ∈ locs, place < base)
+    (hRoot : s.get inputLocal = some (.i64 root))
+    (hSize : s.get (inputLocal + 1) = some (.i64 size)) (hInputBelow : inputLocal + 2 ≤ base)
+    (hRep : Bytes.Rep heap (PureTransport.erase initial) root size input)
+    (hHeap : heap.At (PureTransport.erase initial))
+    (hLow : s.params.length ≤ base) (hHigh : base + 8 ≤ s.positions)
+    (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
+      (reply : Reply),
+      Exec (observedHost host) (.sys call (sysArgs call.params values [input] []) Action.pure)
+        initial.host trace (.returned reply) final.host →
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+        heap (PureTransport.erase final) [] →
+      LocalsOutside s finalLocals base 8 →
+      wp target rest Q final { finalLocals with values :=
+        [Value.i64 (reply.word 0), Value.i64 reply.errno] ++ s.values } env)
+    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
+      Exec (observedHost host) (.sys call (sysArgs call.params values [input] []) Action.pure)
+        initial.host trace (.trapped message) final.host → Q (.Trap final message)) :
+    wp target (sysIovecWindowCodeWith calls call locs inputLocal base ++ rest) Q initial s env := by
+  have hPositions : base + 8 ≤ s.params.length + s.locals.length := by
+    have := hHigh
+    simp only [Locals.positions] at this
+    omega
+  have hLength3 : values.length = 1 + (2 + if offset then 1 else 0) := by
+    rw [hCount, Call.argWords, hParams]
+    cases offset <;> rfl
+  obtain ⟨handleLocal, rest1, handle, rest2, rfl, rfl, hHandle, held1, length1⟩ :=
+    iovec_held hHeld hLength3
+  obtain ⟨startLocal, rest3, start, rest4, rfl, rfl, hStartLocal, held2, length2⟩ :=
+    iovec_held (count := 1 + if offset then 1 else 0) held1 (by rw [length1]; omega)
+  obtain ⟨countLocal, extraLocs, count, extra, rfl, rfl, hCountLocal, hExtraHeld, hExtra⟩ :=
+    iovec_held (count := if offset then 1 else 0) held2 (by omega)
+  obtain ⟨hLowerWords, hLowerInputs⟩ := iovec_write_lower offset handle start count extra input
+    hExtra
+  have hArgs : sysArgs call.params (handle :: start :: count :: extra) [input] [] =
+      flatArgsWith call.params (handle :: extra)
+        ([((root + windowFirstWord size start), input.range start count)].map Prod.snd) := by
+    simp only [sysArgs, hParams, hLowerWords, hLowerInputs, List.map_cons, List.map_nil]
+  obtain ⟨hFirst, hLength, hLengthEq⟩ := window_words hRep.length_eq start count
+  obtain ⟨_, _, hAddrNat, _, hFits, _, hSep⟩ := window_at hRep hHeap start count
+  have hStartBelow := hLocs startLocal (by simp)
+  have hCountBelow := hLocs countLocal (by simp)
+  simp only [sysIovecWindowCodeWith, List.getD_cons_zero, List.getD_cons_succ, List.drop_succ_cons,
+    List.drop_zero, List.append_assoc]
+  refine wp_window_code hRoot hSize hStartLocal hCountLocal (by omega) (by omega) hLow
+    (by omega) ?_
+  intro s1 outside1 values1 getP getL
+  have hRangeSize : (input.range start count).data.size = (input.window start count).2 :=
+    LeanExe.Bytes.range_size input start count
+  have hSizeWord : windowLengthWord size start count =
+      LeanExe.Bytes.size (input.range start count) := by
+    rw [hLengthEq]
+    simp only [LeanExe.Bytes.windowLength, LeanExe.Bytes.size, hRangeSize]
+  have hRangeSmall : (input.range start count).data.size < 2 ^ 32 := by
+    rw [hRangeSize, ← hLength]
+    have := hFits
+    omega
+  have below1 : ∀ j, j < base → s1.get j = s.get j := fun j hj => outside1.others j (Or.inl hj)
+  have hAt := bytes_at_window (start := start) (count := count) (hRep.toAt hHeap)
+    hAddrNat
+  rw [show (PureTransport.erase initial).mem = initial.mem from rfl] at hAt
+  refine wp_sys_iovec_write_with (base := base + 2) (locs := handleLocal :: extraLocs)
+    (values := handle :: extra) (inputLocs := [base])
+    (inputs := [(root + windowFirstWord size start, input.range start count)]) hImports hHost
+    hCall hParams (.cons ((below1 _ (hLocs handleLocal (by simp))).trans hHandle)
+      (held_transfer hExtraHeld fun place member =>
+        below1 place (hLocs place (by simp [member]))))
+    (by rw [iovec_wordCount hParams]; simp [hExtra]; omega)
+    (fun place member => by
+      rcases List.mem_cons.mp member with same | member
+      · have := hLocs handleLocal (by simp)
+        omega
+      · have := hLocs place (by simp [member]); omega)
+    (.cons ⟨getP, by rw [getL, hSizeWord], hRangeSmall⟩ .nil)
+    (by rw [iovec_inputCount hParams]; rfl) (fun place member => by
+      rw [List.mem_singleton] at member
+      omega)
+    (fun item member => by
+      rw [List.mem_singleton] at member
+      subst member
+      dsimp only
+      refine ⟨⟨hAt, by have := hFits; omega⟩, ?_⟩
+      simp only [LeanExe.Runtime.regionsDisjoint, ABI.scratch, hRangeSize, ← hLength]
+      rcases hSep with high | ⟨zero, address⟩
+      · omega
+      · rw [address, zero]
+        simp)
+    hHeap (by rw [outside1.params]; omega)
+    (by
+      have := hHigh
+      simp only [Locals.positions] at this ⊢
+      rw [outside1.params, outside1.length]
+      omega) ?_ ?_
+  · intro final finalLocals trace reply execution step outsideF
+    rw [values1]
+    simpa only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append,
+      List.singleton_append] using
+      hNext final finalLocals trace reply (by rw [hArgs]; exact execution) step
+        ((outside1.widen (by omega) (by omega)).trans (outsideF.widen (by omega) (by omega)))
+  · intro final message trace execution
+    exact hTrap final message trace (by rw [hArgs]; exact execution)
 
 end Verified.Wasi

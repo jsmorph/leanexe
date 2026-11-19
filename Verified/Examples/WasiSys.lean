@@ -4,7 +4,7 @@ import Verified.Wasi
 stdout.  `main` reads the arguments with `args` and writes their bytes, each followed by a zero
 byte.  It then writes, as eight little-endian bytes each, the argument count and size that
 `argsSizesGet` reports, the time of clock 0 (realtime), and the time of clock 1 (monotonic), and
-last the 16 bytes of `randomGet 16`.  An errno of a call ends the run with that errno as its
+last the 16 random bytes that `randomGet` places in a buffer of 16 bytes.  An errno of a call ends the run with that errno as its
 status, and the status is 0 otherwise. -/
 
 namespace Verified.Examples.WasiSys
@@ -37,11 +37,11 @@ def main : Action UInt64 := do
           pure time.errno
         else
           let _ ← writeStdoutSome (wordBytes time.time)
-          let random ← randomGet 16
+          let random ← randomGet (Bytes.build 16 fun _ => 0) 0 16
           if random.errno != 0 then
             pure random.errno
           else
-            let _ ← writeStdoutSome random.bytes
+            let _ ← writeStdoutSome random.buffer
             pure 0
 
 verified_compile_wasi command (main := main) := [wordBytes, main]

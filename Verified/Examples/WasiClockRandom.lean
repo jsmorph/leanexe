@@ -23,12 +23,12 @@ def main : Action UInt64 := do
   let _ ← writeStdoutSome (wordBytes time.time)
   let cpu ← clockTimeGet 2 0
   let _ ← writeStdoutSome (wordBytes cpu.errno)
-  let small ← randomGet 16
+  let small ← randomGet (Bytes.build 16 fun _ => 0) 0 16
   let _ ← writeStdoutSome (wordBytes small.errno)
-  let _ ← writeStdoutSome small.bytes
-  let large ← randomGet 5000
+  let _ ← writeStdoutSome small.buffer
+  let large ← randomGet (Bytes.build 5000 fun _ => 0) 0 5000
   let _ ← writeStdoutSome (wordBytes large.errno)
-  let _ ← writeStdoutSome large.bytes
+  let _ ← writeStdoutSome large.buffer
   pure 0
 
 verified_compile_wasi command (main := main) := [wordBytes, main]

@@ -94,14 +94,17 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
         pure.loopInitFits depth count initial env = true →
         LoopBounded host pure program depth modes live test step env
           (count.denote pure.funs env).toNat 0 (initial.denote pure.funs env) loopBudget → conclusion
-  | .sys operation form args inputs =>
+  | .sys operation form args inputs buffers =>
       (∀ world trace outcome final, Exec host
-        (form.runWith operation (args.map env.get) (inputs.map env.get)) world trace outcome final →
-        sysCostWith form operation (args.map env.get) (inputs.map env.get) trace ≤ budget) →
+        (form.runWith operation (args.map env.get) (inputs.map env.get) (buffers.map env.get))
+          world trace outcome final →
+        sysCost form operation trace + pure.sysTakeCost depth modes live args inputs buffers env ≤
+          budget) →
       (∀ world trace residual final, Prefix host
-        (form.runWith operation (args.map env.get) (inputs.map env.get)) world trace residual
-          final →
-        sysCostWith form operation (args.map env.get) (inputs.map env.get) trace ≤ budget) →
+        (form.runWith operation (args.map env.get) (inputs.map env.get) (buffers.map env.get))
+          world trace residual final →
+        sysCost form operation trace + pure.sysTakeCost depth modes live args inputs buffers env ≤
+          budget) →
       conclusion
   | .letPair pair body =>
       ∀ bodyBudget, letPairCost modes live pair body env + bodyBudget ≤ budget →

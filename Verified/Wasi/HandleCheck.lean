@@ -119,8 +119,8 @@ def fieldsMarked (marks : List Bool) : List Field → List Nat → Bool
     (field.source != .handle || marks.getD index false) && fieldsMarked marks fields indices
 
 /-- Whether each `.handle` position of `params` takes a variable whose index `marks` marks, among
-the word arguments `indices`, which the parameters that take a word take in order, and the
-`subscriptions` parameters one for each field of `argFields`. -/
+the word arguments `indices`, which the parameters take in order, `Param.argWords` of each, and
+the `subscriptions` parameters one for each field of `argFields`. -/
 def handlesMarked (marks : List Bool) : List Param → List Nat → Bool
   | [], _ => true
   | param :: params, indices =>
@@ -128,23 +128,24 @@ def handlesMarked (marks : List Bool) : List Param → List Nat → Bool
       match indices with
       | [] => false
       | index :: rest => marks.getD index false && handlesMarked marks params rest
-    else if param.takesWord then handlesMarked marks params indices.tail
     else
       match param with
       | .subscriptions records =>
         fieldsMarked marks (argFields records) indices &&
           handlesMarked marks params (indices.drop (argFields records).length)
-      | _ => handlesMarked marks params indices
+      | _ => handlesMarked marks params (indices.drop param.argWords)
 
-/-- Whether a `sys` command of `call` in `form` with the word arguments `args` and `inputs` input
-variables passes the check outside a bracket.  The call is one of the generated descriptions of
-`Call.table`, and so is its reporter when the form is `reported`, so that the call's `.handle`
-positions are the descriptor parameters of the witx whatever source produced the command. -/
+/-- Whether a `sys` command of `call` in `form` with the word arguments `args`, `inputs` input
+variables, and `buffers` buffer variables passes the check outside a bracket.  The call is one of
+the generated descriptions of `Call.table`, and so is its reporter when the form is `reported`, so
+that the call's `.handle` positions are the descriptor parameters of the witx whatever source
+produced the command. -/
 def sysMarked (marks : List Bool) (call : Call) (form : SysForm) (args : List Nat)
-    (inputs : Nat) : Bool :=
+    (inputs buffers : Nat) : Bool :=
   Call.table.contains call && (form != .reported || Call.table.contains call.reporterCall) &&
     !bracketCallNames.contains call.name && !bracketCallNames.contains call.reporterCall.name &&
-    handlesMarked marks call.params args && inputs == call.inputCount
+    handlesMarked marks call.params args && inputs == call.inputCount &&
+    buffers == call.bufferCount
 
 /-- The marks of the context that a `bind` gives its second command: `mark` for the variable that
 the first command's value binds, if it binds one, before `marks`. -/
@@ -166,13 +167,14 @@ def Command.preopened : Command pureSigs effectSigs context result → Bool
 /-- Whether the command is the open of a bracket: `Call.pathOpen` in the form `.flat 1 false` with
 one input. -/
 def Command.isOpen : Command pureSigs effectSigs context result → Bool
-  | .sys operation form _ inputs =>
-    operation == Call.pathOpen && form == .flat 1 false && inputs.length == 1
+  | .sys operation form _ inputs buffers =>
+    operation == Call.pathOpen && form == .flat 1 false && inputs.length == 1 &&
+      buffers.isEmpty
   | _ => false
 
 /-- Whether the `.handle` positions of a `sys` command take marked variables. -/
 def Command.openMarked (marks : List Bool) : Command pureSigs effectSigs context result → Bool
-  | .sys operation _ args _ => handlesMarked marks operation.params (args.map Var.index)
+  | .sys operation _ args _ _ => handlesMarked marks operation.params (args.map Var.index)
   | _ => false
 
 /-- Whether the command is `ret` of the descriptor of the open, the binding of a bracket's handle.
@@ -184,8 +186,8 @@ def Command.isHandleRet : Command pureSigs effectSigs context result → Bool
 /-- Whether the command is the close of a bracket: `Call.fdClose` in the form `.flat 0 false` of
 variable 1, the handle after the body's result. -/
 def Command.isClose : Command pureSigs effectSigs context result → Bool
-  | .sys operation form args inputs =>
-    operation == Call.fdClose && form == .flat 0 false && inputs.isEmpty &&
+  | .sys operation form args inputs buffers =>
+    operation == Call.fdClose && form == .flat 0 false && inputs.isEmpty && buffers.isEmpty &&
       args.map Var.index == [1]
   | _ => false
 
@@ -222,8 +224,8 @@ def Command.handleCheck (helpers : List (List Bool)) :
         else true
   | _, _, .plain, marks, .loop _ _ _ step =>
     handleCheck helpers .plain (false :: false :: marks) step
-  | _, _, .plain, marks, .sys operation form args inputs =>
-    sysMarked marks operation form (args.map Var.index) inputs.length
+  | _, _, .plain, marks, .sys operation form args inputs buffers =>
+    sysMarked marks operation form (args.map Var.index) inputs.length buffers.length
   | _, _, .plain, marks, .letPair _ body =>
     handleCheck helpers .plain (false :: false :: marks) body
   | _, _, .plain, _, .unit | _, _, .plain, _, .ret _ | _, _, .plain, _, .read _

@@ -73,7 +73,7 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
       (step : Command pureSigs effectSigs (type :: .word :: context) (.value type)) :
       Command pureSigs effectSigs context (.value type)
   | sys (call : Call) (form : SysForm) (args : List (Var context .word))
-      (inputs : List (Var context .bytes)) :
+      (inputs buffers : List (Var context .bytes)) :
       Command pureSigs effectSigs context (.value form.ty)
   | letPair (pair : Var context (.pair first second))
       (body : Command pureSigs effectSigs (second :: first :: context) result) :
@@ -108,8 +108,8 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
       LeanExe.Wasi.loop (count.denote pureFuns env) (initial.denote pureFuns env)
         (fun index state => test.denote pureFuns (.cons state (.cons index env)))
         (fun index state => step.denote pureFuns effectFuns (.cons state (.cons index env)))
-  | _, _, .sys operation form args inputs, env =>
-      form.runWith operation (args.map env.get) (inputs.map env.get)
+  | _, _, .sys operation form args inputs buffers, env =>
+      form.runWith operation (args.map env.get) (inputs.map env.get) (buffers.map env.get)
   | _, _, .letPair pair body, env =>
       body.denote pureFuns effectFuns (.cons (env.get pair).2 (.cons (env.get pair).1 env))
 

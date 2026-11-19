@@ -1,25 +1,13 @@
 import Verified.Wasi.SysFlatInvoke
 import Verified.Wasi.ReadAllocation
 
-/-! The code of a flat call from the argument test to the result words on the stack: the test of
-the arguments, the locals set to 0, the accepted call with its buffer, and the pushes of the
-errno, the result words, and the buffer's root and length. -/
+/-! The code of a flat call without an output from the argument test to the result words on the
+stack: the test of the arguments, the locals set to 0, the accepted call, and the pushes of the
+errno and the result words. -/
 
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
-
-/-- The words that the code pushes for the output buffer. -/
-def pushedBytes (buffer : Option Nat) (root length : UInt64) : List Value :=
-  match buffer with
-  | some _ => [.i64 root, .i64 length]
-  | none => []
-
-/-- The heap that a flat call allocates. -/
-def flatCost (call : LeanExe.Wasi.Call) (values : List UInt64) : Nat :=
-  match flatCapacity call.params values with
-  | some capacity => readCost capacity
-  | none => 0
 
 theorem held_transfer {s s' : Locals} :
     ∀ {locs : List Nat} {values : List UInt64},
@@ -31,43 +19,23 @@ theorem held_transfer {s s' : Locals} :
     .cons ((same _ (List.mem_cons_self ..)).trans head)
       (held_transfer tail fun place member => same place (List.mem_cons_of_mem _ member))
 
-/-- The pushes of the errno, the result words, and the buffer's root and length. -/
+/-- The pushes of the errno and the result words. -/
 theorem wp_sys_flat_finish {α : Type} {m : Module} {st : Store α} {env : HostEnv α}
-    {rest : Program} {Q : Assertion α} {buffer : Option Nat} {base : Nat} {s : Locals}
-    {errno root length : UInt64} {words : List UInt64}
+    {rest : Program} {Q : Assertion α} {base : Nat} {s : Locals}
+    {errno : UInt64} {words : List UInt64}
     (hErrno : s.get base = some (.i64 errno))
     (hWords : ∀ i, i < words.length → s.get (base + 3 + i) = some (.i64 (words.getD i 0)))
-    (hRoot : buffer.isSome → s.get (base + 1) = some (.i64 root))
-    (hLength : buffer.isSome → s.get (base + 2) = some (.i64 length))
     (h : wp m rest Q st { s with values :=
-      ((errno :: words).map Value.i64 ++ pushedBytes buffer root length).reverse ++ s.values } env) :
+      ((errno :: words).map Value.i64).reverse ++ s.values } env) :
     wp m (.localGet base :: ((List.range words.length).map
-      (fun index => .localGet (base + 3 + index)) ++ (sysPushBytesCode buffer base ++ rest)))
-      Q st s env := by
+      (fun index => .localGet (base + 3 + index)) ++ rest)) Q st s env := by
   rw [wp_localGet_cons, hErrno]
   dsimp only
   refine wp_push_words words (base + 3) _ (fun i hi => by simpa using hWords i hi) ?_
-  cases buffer with
-  | none =>
-    simpa only [sysPushBytesCode, pushedBytes, List.nil_append, List.append_nil, List.map_cons,
-      List.reverse_cons, List.append_assoc, List.singleton_append] using h
-  | some place =>
-    simp only [sysPushBytesCode, List.cons_append, List.nil_append, wp_localGet_cons,
-      Locals.get_values, hRoot rfl, hLength rfl]
-    simpa only [pushedBytes, List.map_cons, List.reverse_append, List.reverse_cons,
-      List.reverse_nil, List.nil_append, List.cons_append, List.append_assoc,
-      List.singleton_append] using h
-
-
+  simpa only [List.map_cons, List.reverse_cons, List.append_assoc, List.singleton_append]
+    using h
 
 /-! ## Calls with inputs -/
-
-/-- The heap that a flat call with inputs allocates. -/
-def flatCostWith (call : LeanExe.Wasi.Call) (values : List UInt64)
-    (inputs : List LeanExe.Bytes) : Nat :=
-  match flatCapacityWith call.params values inputs with
-  | some capacity => readCost capacity
-  | none => 0
 
 theorem inputsHeld_transfer {s s' : Locals} :
     ∀ {places : List Nat} {inputs : List (UInt64 × LeanExe.Bytes)},
@@ -117,201 +85,38 @@ theorem input_at_call {World : Type} {initial before : Store World} {heap heapA 
       simp only [LeanExe.Runtime.regionsDisjoint]
       omega
 
-/-- An accepted flat request with inputs: the allocation of the output buffer, the host call, and
-the code after it, with the continuation `K` of the enclosing `iff`. -/
-theorem wp_sys_flat_accept_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
-    {call : LeanExe.Wasi.Call} {locs : List Nat} {values : List UInt64}
-    {inputLocs : List Nat} {inputs : List (UInt64 × LeanExe.Bytes)}
-    {s0 s : Locals} {base : Nat} {aborts : Bool} {K : Assertion (Observed World)}
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hCall : calls[calls.idxOf call]? = some call)
-    (hKinds : call.params.all Param.inputKind = true) (hOutputs : call.params.count .output ≤ 1)
-    (hResults : call.params.countP Param.isResult ≤ 2)
-    (hAccepted : call.reject (flatArgsWith call.params values (inputs.map Prod.snd)) = 0)
-    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
-    (hCount : values.length = call.wordCount)
-    (hLocs : ∀ place ∈ locs, place < base ∨ base + 6 ≤ place)
-    (hInputs : List.Forall₂ (InputHeld s) inputLocs inputs)
-    (hInputCount : inputs.length = call.inputCount)
-    (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base ∨ base + 6 ≤ place)
-    (hInputReps : ∀ input ∈ inputs, ∃ length,
-      Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
-    (hOutside : ReadAllOutside base s0 s)
-    (e1 : s.get (base + 1) = some (.i64 0)) (e2 : s.get (base + 2) = some (.i64 0))
-    (e3 : s.get (base + 3) = some (.i64 0)) (e4 : s.get (base + 4) = some (.i64 0))
-    (hRoom : aborts = false → ∀ capacity,
-      flatCapacityWith call.params values (inputs.map Prod.snd) = some capacity →
-      capacity.toNat < 4294967296 → capacity ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → K (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (sF : Locals)
-      (errno root length : UInt64) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call
-        (flatArgsWith call.params values (inputs.map Prod.snd)) (.returned errno outputs)
-        final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length
-        (resultBytes call.params (sysReply errno outputs) 0) →
-      heap'.top.toNat ≤ heap.top.toNat + flatCostWith call values (inputs.map Prod.snd) →
-      ReadAllOutside base s0 sF → sF.values = s.values →
-      sF.get base = some (.i64 errno) →
-      (∀ i, i < call.params.countP Param.isResult → sF.get (base + 3 + i) =
-        some (.i64 ((resultWords call.params (sysReply errno outputs) 0).getD i 0))) →
-      sF.get (base + 1) = some (.i64 root) → sF.get (base + 2) = some (.i64 length) →
-      K (.Fallthrough final sF))
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call
-        (flatArgsWith call.params values (inputs.map Prod.snd)) (.trapped message outputs)
-        final.host → K (.Trap final message)) :
-    wp target (sysFlatCallInputsCodeWith calls call locs inputLocs base
-      (outputLocalInputs call.params locs inputLocs)) K initial s env := by
-  have hPositions : base + 6 ≤ s0.params.length + s0.locals.length := by
-    have := hHigh
-    simp only [Locals.positions] at this
-    omega
-  have hInputCount' : inputs.length = call.params.count .input := by
-    rw [hInputCount, Call.inputCount_of_inputKind hKinds]
-  have hInputLocCount : inputLocs.length = call.params.count .input := by
-    rw [← hInputCount', hInputs.length_eq]
-  have bound := fun i (hi : base ≤ i) (hi' : i < base + 6) =>
-    hOutside.bounds hLow hHigh hi hi'
-  -- The invocation from the state after the allocation.
-  have invoke : ∀ (before : Store (Observed World)) (heapA : Heap) (sA : Locals)
-      (root capacity : UInt64) (buffer : Option Nat),
-      ((buffer = none ∧ flatCapacityWith call.params values (inputs.map Prod.snd) = none ∧
-          root = 0 ∧ capacity = 0) ∨
-        ∃ place, buffer = some place ∧
-          flatCapacityWith call.params values (inputs.map Prod.snd) = some capacity ∧
-          sA.get place = some (.i64 capacity) ∧ (place < base ∨ base + 6 ≤ place)) →
-      ReadReady heapA (PureTransport.erase before) root capacity →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heapA (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root) →
-      before.host = initial.host →
-      heapA.top.toNat ≤ heap.top.toNat + flatCostWith call values (inputs.map Prod.snd) →
-      ReadAllOutside base s0 sA → sA.values = s.values →
-      sA.get (base + 1) = some (.i64 root) → sA.get (base + 2) = some (.i64 0) →
-      sA.get (base + 3) = some (.i64 0) → sA.get (base + 4) = some (.i64 0) →
-      List.Forall₂ (fun place value => sA.get place = some (.i64 value)) locs values →
-      List.Forall₂ (InputHeld sA) inputLocs inputs →
-      wp target (sysLowerInputsCode call.params locs inputLocs (base + 1) 0 ++
-        [.call (3 + calls.idxOf call), .extendUI32, .localSet base, .localGet base, .eqzI64,
-         .iff 0 0 (sysLoadCode call.params 0 (base + 3) ++ sysKeepCode buffer base)
-           (sysDiscardCodeWith calls buffer base) [] []]) K before sA env := by
-    intro before heapA sA root capacity buffer hBuffer hReady hBefore hWorld hTop hOutsideA
-      hValuesA hRootA hLengthA hThreeA hFourA hHeldA hInputsA
-    have facts := fun input (member : input ∈ inputs) =>
-      input_at_call (hInputReps input member) hBefore hReady
-    exact wp_sys_flat_invoke_inputs_with (s0 := s0) runtime layout profile hImports sourceHost
-      hHost hCall hKinds hOutputs hResults hAccepted hHeldA hCount hInputsA hInputCount hBuffer
-      hReady hBefore hWorld hTop hLow hHigh hOutsideA hRootA hLengthA hThreeA hFourA
-      (fun input member => (facts input member).1)
-      (fun input member => (facts input member).2)
-      (fun heap' final sF errno root' length outputs hSys hStep hRep hTop' hOutsideF hValues =>
-        hNext heap' final sF errno root' length outputs hSys hStep hRep hTop' hOutsideF
-          (hValues.trans hValuesA))
-      hTrap
-  simp only [sysFlatCallInputsCodeWith, List.append_assoc]
-  rcases outputLocalInputs_spec call.params locs values inputLocs (inputs.map Prod.snd) hKinds
-      hHeld (by rw [hCount, Call.wordCount_of_inputKind hKinds]) hInputLocCount
-      (by simpa using hInputCount') with
-    ⟨hNone, hCapNone, _⟩ | ⟨place, capacity, hSome, hCapSome, hPlace, hMember, _⟩
-  · rw [hNone]
-    simp only [sysAllocateBufferWith, List.nil_append]
-    exact invoke initial heap s 0 0 none (Or.inl ⟨rfl, hCapNone, rfl, rfl⟩) (Or.inl ⟨rfl, rfl⟩)
-      (by simpa only [Bytes.regions, ite_true] using
-        Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch))
-      rfl (by simp [flatCostWith, hCapNone]) hOutside rfl e1 e2 e3 e4 hHeld hInputs
-  · rw [hSome]
-    simp only [sysAllocateBufferWith, List.append_assoc]
-    have hSmall := flatCapacityWith_small call.params values _ capacity hKinds
-      (by simpa using hInputCount') hAccepted hCapSome
-    have hPlaceOut := hLocs place hMember
-    have hLowA := (bound (base + 1) (by omega) (by omega)).1
-    have hHighA := (bound (base + 1) (by omega) (by omega)).2
-    have afterAllocation : ∀ root : UInt64,
-        ReadAllOutside base s0 (setLocal s (base + 1) (.i64 root)) ∧
-        (setLocal s (base + 1) (.i64 root)).get (base + 1) = some (.i64 root) ∧
-        (∀ j, j ≠ base + 1 → (setLocal s (base + 1) (.i64 root)).get j = s.get j) :=
-      fun root => ⟨hOutside.set hLow (by omega) (by omega),
-        Locals.get_setLocal_same hLowA hHighA, fun j hj => Locals.get_setLocal_ne hLowA hj⟩
-    have inputsAfter : ∀ root : UInt64,
-        List.Forall₂ (InputHeld (setLocal s (base + 1) (.i64 root))) inputLocs inputs := by
-      intro root
-      refine inputsHeld_transfer hInputs fun place member => ?_
-      have other := (afterAllocation root).2.2
-      rcases hInputLocs place member with h | h
-      · exact ⟨other place (by omega), other (place + 1) (by omega)⟩
-      · exact ⟨other place (by omega), other (place + 1) (by omega)⟩
-    refine wp_sys_allocate_with (capacityLocal := place) (rootLocal := base + 1) runtime layout
-      profile hImports sourceHost hHeap (by omega) hCap hPlace hLowA hHighA
-      (fun hNonzero hAbort => hRoom hAbort capacity hCapSome hSmall hNonzero)
-      hResource ?_ ?_
-    · intro hZero
-      subst hZero
-      obtain ⟨outsideA, rootA, otherA⟩ := afterAllocation 0
-      exact invoke initial heap _ 0 0 (some place)
-        (Or.inr ⟨place, rfl, hCapSome, (otherA place (by omega)).trans hPlace, hPlaceOut⟩)
-        (Or.inl ⟨rfl, rfl⟩)
-        (by simpa only [Bytes.regions, ite_true] using
-          Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch))
-        rfl (by simp [flatCostWith, hCapSome]) outsideA rfl rootA
-        ((otherA (base + 2) (by omega)).trans e2) ((otherA (base + 3) (by omega)).trans e3)
-        ((otherA (base + 4) (by omega)).trans e4)
-        (held_transfer hHeld fun place' member => otherA place' (by
-          rcases hLocs place' member with h | h <;> omega))
-        (inputsAfter 0)
-    · intro hNonzero before hFits hStore hWorld
-      obtain ⟨hAllocate, hBuffer, hCapacity, hTopAlloc⟩ :=
-        read_allocation_buffer hHeap (by omega) hFits hStore
-      let root := FixedArrayAllocate.root heap.top (allocSize capacity) heap.free
-      obtain ⟨outsideA, rootA, otherA⟩ := afterAllocation root
-      have hBefore : Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch)
-          (heap.allocate (allocSize capacity)) (PureTransport.erase before)
-          (Bytes.regions (PureTransport.erase before) root) := by
-        have hRoot : root ≠ 0 := hBuffer.nonzero
-        rw [Bytes.regions, ite_eq_right hRoot]
-        exact hAllocate.mono
-          (keep' := fun region => regionsDisjoint region ABI.scratch)
-          (fresh' := [block (PureTransport.erase before) root])
-          (fun _ _ => True.intro) (fun _ h => h)
-      exact invoke before (heap.allocate (allocSize capacity)) _ root capacity (some place)
-        (Or.inr ⟨place, rfl, hCapSome, (otherA place (by omega)).trans hPlace, hPlaceOut⟩)
-        (Or.inr ⟨_, hBuffer, hCapacity⟩) hBefore hWorld
-        (by simp only [flatCostWith, hCapSome]; rw [readCost_positive hSmall hNonzero]
-            exact hTopAlloc)
-        outsideA rfl rootA
-        ((otherA (base + 2) (by omega)).trans e2) ((otherA (base + 3) (by omega)).trans e3)
-        ((otherA (base + 4) (by omega)).trans e4)
-        (held_transfer hHeld fun place' member => otherA place' (by
-          rcases hLocs place' member with h | h <;> omega))
-        (inputsAfter root)
+/-- An input whose blocks lie apart from the scratch area lies at its root, apart from the
+scratch area. -/
+theorem input_at {World : Type} {initial : Store World} {heap : Heap}
+    {input : UInt64 × LeanExe.Bytes} (hHeap : heap.At (PureTransport.erase initial))
+    (hRep : ∃ length, Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
+      ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch) :
+    (Bytes.At initial.mem input.1 input.2 ∧ input.1.toNat < 4294967296) ∧
+      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch := by
+  obtain ⟨length, rep, apart⟩ := hRep
+  have at_ : Bytes.At initial.mem input.1 input.2 := rep.toAt hHeap
+  rcases rep.buffer with ⟨hNull, hEmpty⟩ | hBuffer
+  · rw [hNull] at at_ ⊢
+    refine ⟨⟨at_, by decide⟩, ?_⟩
+    simp [LeanExe.Runtime.regionsDisjoint, ABI.scratch, hEmpty]
+  · have hBase := hBuffer.object.base
+    have hAddress := hBuffer.object.address
+    have hCapacity := hBuffer.capacity
+    exact ⟨⟨at_, by omega⟩, by simp only [LeanExe.Runtime.regionsDisjoint, ABI.scratch]; omega⟩
 
-/-- The code of a flat call with inputs, from the argument words and the inputs in their locals
-to the errno, the result words, and the buffer's root and length on the stack. -/
+/-- The code of a flat call with inputs and without an output, from the argument words and the
+inputs in their locals to the errno and the result words on the stack.  A rejected request returns
+its errno without a call; an accepted request runs the call, whose specification gives the reply,
+the frame, and the outputs. -/
 theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
+    {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
+    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
     {call : LeanExe.Wasi.Call} {locs : List Nat} {values : List UInt64}
     {inputLocs : List Nat} {inputs : List (UInt64 × LeanExe.Bytes)}
-    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)} {aborts : Bool}
+    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)}
     (hHost : env.Satisfies target (hostSpecWith host calls))
     (hCall : calls[calls.idxOf call]? = some call)
-    (hKinds : call.params.all Param.inputKind = true) (hOutputs : call.params.count .output ≤ 1)
+    (hKinds : call.params.all Param.inputKind = true) (hOutputs : call.params.count .output = 0)
     (hResults : call.params.countP Param.isResult ≤ 2)
     (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
     (hCount : values.length = call.wordCount)
@@ -323,28 +128,17 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
         ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
     (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
-    (hRoom : aborts = false → ∀ capacity,
-      flatCapacityWith call.params values (inputs.map Prod.snd) = some capacity →
-      capacity.toNat < 4294967296 → capacity ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
-      (root length : UInt64) (trace : List Event) (reply : Reply),
+    (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
+      (reply : Reply),
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length (resultBytes call.params reply 0) →
-      heap'.top.toNat ≤ heap.top.toNat + flatCostWith call values (inputs.map Prod.snd) →
+        heap (PureTransport.erase final) [] →
       ReadAllOutside base s finalLocals →
       wp target rest Q final { finalLocals with values :=
-        ((reply.errno :: resultWords call.params reply 0).map Value.i64 ++
-          pushedBytes (outputLocalInputs call.params locs inputLocs) root length).reverse ++
-          s.values } env)
+        ((reply.errno :: resultWords call.params reply 0).map Value.i64).reverse ++ s.values } env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
@@ -357,6 +151,7 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
   have hInputCount' : inputs.length = call.params.count .input := by
     rw [hInputCount, Call.inputCount_of_inputKind hKinds]
   have hWordsLength := fun reply => resultWords_length reply call.params 0
+  have hNone := flatCapacityWith_none call.params values (inputs.map Prod.snd) hOutputs
   simp only [sysFlatInputsCodeWith, List.append_assoc]
   refine wp_sys_reject_inputs call.params locs values inputLocs inputs s _ Q hKinds hHeld
     (by rw [hCount, Call.wordCount_of_inputKind hKinds]) hInputs hInputCount' ?_
@@ -419,7 +214,6 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     exact Locals.get_setLocal_ne (s := { s with values := s.values }) q1.1 h0
   have e0 : s5.get base = some (.i64 reject) := by rw [g5]; simp
   have e1 : s5.get (base + 1) = some (.i64 0) := by rw [g5]; simp
-  have e2 : s5.get (base + 2) = some (.i64 0) := by rw [g5]; simp
   have e3 : s5.get (base + 3) = some (.i64 0) := by rw [g5]; simp
   have e4 : s5.get (base + 4) = some (.i64 0) := by rw [g5]; simp
   have eOut : ∀ j, (j < base ∨ base + 6 ≤ j) → s5.get j = s.get j := fun j hj =>
@@ -431,50 +225,43 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     · exact ⟨eOut place (by omega), eOut (place + 1) (by omega)⟩
   simp only [wp_localGet_cons, e0, wp_eqzI64_cons, wp_iff_control_types]
   refine wp_iff_cons rfl ?_
-  have finish : ∀ (final : Store (Observed World)) (sF : Locals) (heap' : Heap)
-      (root length : UInt64) (trace : List Event) (reply : Reply),
+  have finish : ∀ (final : Store (Observed World)) (sF : Locals) (trace : List Event)
+      (reply : Reply),
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length (resultBytes call.params reply 0) →
-      heap'.top.toNat ≤ heap.top.toNat + flatCostWith call values (inputs.map Prod.snd) →
+        heap (PureTransport.erase final) [] →
       ReadAllOutside base s sF →
       sF.get base = some (.i64 reply.errno) →
       (∀ i, i < call.params.countP Param.isResult → sF.get (base + 3 + i) =
         some (.i64 ((resultWords call.params reply 0).getD i 0))) →
-      sF.get (base + 1) = some (.i64 root) → sF.get (base + 2) = some (.i64 length) →
       wp target (.localGet base :: ((List.range (call.params.countP Param.isResult)).map
-        (fun index => .localGet (base + 3 + index)) ++
-        (sysPushBytesCode (outputLocalInputs call.params locs inputLocs) base ++ rest))) Q final
+        (fun index => .localGet (base + 3 + index)) ++ rest)) Q final
         { sF with values := s.values } env := by
-    intro final sF heap' root length trace reply execution step rep top outsideF errnoF wordsF
-      rootF lengthF
+    intro final sF trace reply execution step outsideF errnoF wordsF
     rw [← hWordsLength reply]
-    refine wp_sys_flat_finish (root := root) (length := length) errnoF
-      (fun i hi => wordsF i (by rw [← hWordsLength reply]; exact hi)) (fun _ => rootF)
-      (fun _ => lengthF) ?_
-    exact hNext heap' final { sF with values := s.values } root length trace reply execution
-      step rep top (outsideF.values s.values)
+    refine wp_sys_flat_finish errnoF
+      (fun i hi => wordsF i (by rw [← hWordsLength reply]; exact hi)) ?_
+    exact hNext final { sF with values := s.values } trace reply execution step
+      (outsideF.values s.values)
   by_cases hAccepted : reject = 0
   · rw [ite_eq_left (by simp [hAccepted] : (if reject = 0 then (1 : UInt32) else 0) ≠ 0)]
     have hRejectZero : call.reject (flatArgsWith call.params values (inputs.map Prod.snd)) = 0 := by
       change rejectArgs call.params (flatArgsWith call.params values (inputs.map Prod.snd)) = 0
       rw [hRejectEq]; exact hAccepted
-    refine wp_sys_flat_accept_inputs_with (s0 := s) runtime layout profile hImports sourceHost
-      hHost hCall hKinds hOutputs hResults hRejectZero held5 hCount hLocs inputs5 hInputCount
-      hInputLocs hInputReps hHeap hCap hLow hHigh (outside5.values _) e1 e2 e3 e4 hRoom ?_ ?_ ?_
-    · intro hAbort final hWorld
-      exact hResource hAbort final hWorld
-    · intro heap' final sF errno root length outputs hSys hStep hRep hTop hOutsideF _ hErrnoF
-        hWordsF hRootF hLengthF
+    have facts := fun input (member : input ∈ inputs) => input_at hHeap (hInputReps input member)
+    refine wp_sys_flat_invoke_inputs_with (s0 := s) hImports hHost hCall hKinds
+      (by omega) hResults hNone hRejectZero held5 hCount inputs5 hInputCount hHeap hLow hHigh
+      (outside5.values _) e1 e3 e4 (fun input member => (facts input member).1)
+      (fun input member => (facts input member).2) ?_ ?_
+    · intro final sF errno outputs hSys hStep hOutsideF _ hErrnoF hWordsF
       simp only [List.take_zero, List.nil_append, List.drop_zero]
-      exact finish final sF heap' root length
+      exact finish final sF
         [.sys call (flatArgsWith call.params values (inputs.map Prod.snd))
           (.returned errno outputs)]
-        (sysReply errno outputs) (.sys_return hRejectZero hSys (.pure final.host _)) hStep hRep
-        hTop hOutsideF hErrnoF hWordsF hRootF hLengthF
+        (sysReply errno outputs) (.sys_return hRejectZero hSys (.pure final.host _)) hStep
+        hOutsideF hErrnoF hWordsF
     · intro final message outputs hSys
       exact hTrap final message _ (.sys_trap hRejectZero hSys)
   · rw [ite_eq_right (by simp [hAccepted] :
@@ -488,142 +275,13 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
       change (⟨rejectArgs call.params (flatArgsWith call.params values (inputs.map Prod.snd)),
         []⟩ : Reply) = _
       rw [hRejectEq]
-    refine finish initial s5 heap 0 0 [] ⟨reject, []⟩ ?_ ?_ ?_ (by omega) outside5 e0 ?_ e1 e2
+    refine finish initial s5 [] ⟨reject, []⟩ ?_ (Step.refl hHeap _) outside5 e0 ?_
     · rw [← hReply]
       exact .sys_reject hReject (.pure initial.host _)
-    · simpa only [Bytes.regions, ite_true] using
-        Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
-    · rw [resultBytes_empty]
-      exact Bytes.Rep.empty heap (PureTransport.erase initial)
     · intro i hi
       rw [resultWords_empty]
       rcases (show i = 0 ∨ i = 1 by omega) with rfl | rfl
       · simpa [List.getD_eq_getElem?_getD, List.getElem?_replicate, hi] using e3
       · simpa [List.getD_eq_getElem?_getD, List.getElem?_replicate, hi] using e4
-
-/-! ## Calls without inputs -/
-
-theorem flatCostWith_nil (call : LeanExe.Wasi.Call) (values : List UInt64) :
-    flatCostWith call values [] = flatCost call values := by
-  simp only [flatCostWith, flatCost, flatCapacityWith_nil]
-
-/-- An accepted flat request: the allocation of the output buffer, the host call, and the code
-after it, with the continuation `K` of the enclosing `iff`. -/
-theorem wp_sys_flat_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
-    {call : LeanExe.Wasi.Call} {locs : List Nat} {values : List UInt64}
-    {s0 s : Locals} {base : Nat} {aborts : Bool} {K : Assertion (Observed World)}
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hCall : calls[calls.idxOf call]? = some call)
-    (hKinds : call.params.all Param.flatKind = true) (hOutputs : call.params.count .output ≤ 1)
-    (hResults : call.params.countP Param.isResult ≤ 2)
-    (hAccepted : call.reject (flatArgs call.params values) = 0)
-    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
-    (hCount : values.length = call.argCount)
-    (hLocs : ∀ place ∈ locs, place < base ∨ base + 6 ≤ place)
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
-    (hOutside : ReadAllOutside base s0 s)
-    (e1 : s.get (base + 1) = some (.i64 0)) (e2 : s.get (base + 2) = some (.i64 0))
-    (e3 : s.get (base + 3) = some (.i64 0)) (e4 : s.get (base + 4) = some (.i64 0))
-    (hRoom : aborts = false → ∀ capacity, flatCapacity call.params values = some capacity →
-      capacity.toNat < 4294967296 → capacity ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → K (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (sF : Locals)
-      (errno root length : UInt64) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call (flatArgs call.params values)
-        (.returned errno outputs) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length
-        (resultBytes call.params (sysReply errno outputs) 0) →
-      heap'.top.toNat ≤ heap.top.toNat + flatCost call values →
-      ReadAllOutside base s0 sF → sF.values = s.values →
-      sF.get base = some (.i64 errno) →
-      (∀ i, i < call.params.countP Param.isResult → sF.get (base + 3 + i) =
-        some (.i64 ((resultWords call.params (sysReply errno outputs) 0).getD i 0))) →
-      sF.get (base + 1) = some (.i64 root) → sF.get (base + 2) = some (.i64 length) →
-      K (.Fallthrough final sF))
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (outputs : List LeanExe.Bytes),
-      (observedHost host).sys initial.host call (flatArgs call.params values)
-        (.trapped message outputs) final.host → K (.Trap final message)) :
-    wp target (sysFlatCallCodeWith calls call locs base (outputLocal call.params locs)) K
-      initial s env := by
-  have hAccept := wp_sys_flat_accept_inputs_with (inputLocs := []) (inputs := []) (s0 := s0)
-    runtime layout profile hImports sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs
-    hResults (by simpa only [List.map_nil, flatArgsWith_nil] using hAccepted) hHeld
-    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
-      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount) hLocs .nil
-    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
-        rfl) (fun _ member => nomatch member)
-    (fun _ member => nomatch member) hHeap hCap hLow hHigh hOutside e1 e2 e3 e4
-    (by simpa only [List.map_nil, flatCapacityWith_nil] using hRoom) hResource
-    (by simpa only [List.map_nil, flatArgsWith_nil, flatCostWith_nil] using hNext)
-    (by simpa only [List.map_nil, flatArgsWith_nil] using hTrap)
-  simpa only [sysFlatCallInputsCodeWith_nil, outputLocalInputs_nil] using hAccept
-
-/-- The code of a flat call, from the argument words in their locals to the errno, the result
-words, and the buffer's root and length on the stack.  A rejected request returns its errno
-without a call; an accepted request runs the call, whose specification gives the reply, the frame,
-and the outputs. -/
-theorem wp_sys_flat_with {calls : List LeanExe.Wasi.Call} {World : Type}
-    {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap}
-    {call : LeanExe.Wasi.Call} {locs : List Nat} {values : List UInt64}
-    {s : Locals} {base : Nat} {rest : Program} {Q : Assertion (Observed World)} {aborts : Bool}
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hCall : calls[calls.idxOf call]? = some call)
-    (hKinds : call.params.all Param.flatKind = true) (hOutputs : call.params.count .output ≤ 1)
-    (hResults : call.params.countP Param.isResult ≤ 2)
-    (hHeld : List.Forall₂ (fun place value => s.get place = some (.i64 value)) locs values)
-    (hCount : values.length = call.argCount)
-    (hLocs : ∀ place ∈ locs, place < base ∨ base + 6 ≤ place)
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
-    (hRoom : aborts = false → ∀ capacity, flatCapacity call.params values = some capacity →
-      capacity.toNat < 4294967296 → capacity ≠ 0 →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
-      (root length : UInt64) (trace : List Event) (reply : Reply),
-      Exec (observedHost host) (.sys call (flatArgs call.params values) Action.pure) initial.host
-        trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length (resultBytes call.params reply 0) →
-      heap'.top.toNat ≤ heap.top.toNat + flatCost call values →
-      ReadAllOutside base s finalLocals →
-      wp target rest Q final { finalLocals with values :=
-        ((reply.errno :: resultWords call.params reply 0).map Value.i64 ++
-          pushedBytes (outputLocal call.params locs) root length).reverse ++ s.values } env)
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.sys call (flatArgs call.params values) Action.pure) initial.host
-        trace (.trapped message) final.host → Q (.Trap final message)) :
-    wp target (sysFlatCodeWith calls call locs base ++ rest) Q initial s env := by
-  have hFlat := wp_sys_flat_inputs_with (inputLocs := []) (inputs := []) (aborts := aborts)
-    runtime layout profile hImports sourceHost hHost hCall (inputKind_of_flat hKinds) hOutputs
-    hResults hHeld
-    (by rw [Call.wordCount_of_inputKind (inputKind_of_flat hKinds), countP_takesWord_of_flat hKinds,
-      ← Call.argCount_of_inputKind (inputKind_of_flat hKinds)]; exact hCount) hLocs .nil
-    (by rw [Call.inputCount_of_inputKind (inputKind_of_flat hKinds), count_input_of_flat hKinds]
-        rfl) (fun _ member => nomatch member)
-    (fun _ member => nomatch member) hHeap hCap hLow hHigh
-    (by simpa only [List.map_nil, flatCapacityWith_nil] using hRoom) hResource
-    (by simpa only [List.map_nil, flatArgsWith_nil, flatCostWith_nil, outputLocalInputs_nil]
-      using hNext)
-    (by simpa only [List.map_nil, flatArgsWith_nil] using hTrap)
-  simpa only [sysFlatInputsCodeWith_nil] using hFlat
 
 end Verified.Wasi
