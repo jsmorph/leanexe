@@ -250,7 +250,9 @@ theorem histogram_elf_witness :
   refine ⟨fullReplies, witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack),
     oneArgs, [], witnessTop, parsed, small, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    histogram_elf_runs fullReplies _ small loaded stack rfl rfl
+    histogram_elf_runs fullReplies
+      (witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack)) small loaded
+      stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨exited, full⟩ := fullReplies_run h himg hcar

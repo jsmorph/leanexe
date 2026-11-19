@@ -278,7 +278,10 @@ theorem choice_elf_witness :
     ElfWitness.witnessProc (ElfWitness.loadedMem (byteAt choiceElfBytes) 19916 4096 witnessStack),
     witnessArgs, [], ElfWitness.witnessTop, parsedN, parsedK, small, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    choice_elf_runs witnessReplies _ small loaded stack rfl rfl
+    choice_elf_runs witnessReplies
+      (ElfWitness.witnessProc
+        (ElfWitness.loadedMem (byteAt choiceElfBytes) 19916 4096 witnessStack))
+      small loaded stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨exited, full⟩ := witness_run h himg hcar
