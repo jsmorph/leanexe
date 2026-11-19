@@ -181,8 +181,8 @@ descriptor of a bracket's body (`readManifest_every`, `hashFile_every`).  `write
 the writes of a run of `writeAll` that stops, each of which offers the bytes of the output line
 that the writes before it did not take, with at most one rejected exit at their end.
 `withOpen_stops` gives the events of a bracket that stops, which write nothing to standard output.
-`LinesSoFar` carries the opens, the use of descriptors, and `ChecksSoFar` through the loop of
-`checkLines` (`step_stops`, `checks_stops`), and `confined_of` and `soFar_of` assemble
+`LinesSoFar` states the opens, the use of descriptors, and `ChecksSoFar` after each pass of the
+loop of `checkLines` (`step_stops`, `checks_stops`), and `confined_of` and `soFar_of` assemble
 `ConfinedSoFar` and `VerdictsSoFar` from the run of `args`, the `ManifestRun`, and the checks of
 the lines that follow it.  A run that stops after `main` returned has the events of `Meets`, whose
 `Checks` give `ChecksSoFar` (`Checks.soFar`, `verdicts_of_meets`).
@@ -196,7 +196,7 @@ the lines that follow it.  A run that stops after `main` returned has the events
 The command holds the block of `args`, the read buffer of 65,536 bytes, the manifest's buffer of
 the size that `fd_filestat_get` reports, the positions that `parse` gives, and for each line the
 name's copy, the output line of `render`, and the eight words that `finish` packs.  The reads of a
-file and of the manifest fill windows of the buffers that their loops carry by moves, so no read
+file and of the manifest fill windows of the buffers that their loops keep in their states and move, so no read
 copies a byte beyond what the host writes into the window, and the memory does not depend on the
 sizes of the files checked.  The resource model credits no release, so its charge sums the blocks
 of every line.
@@ -280,8 +280,8 @@ operating system.
 ## Related examples
 
 [The random-residue histogram](../RandomHistogram/README.md) is a run of the same method on a
-parser of the command line, and [the unbiased random choice](../RandomChoice/README.md) carries its
-buffers through its loop's state in the same way.  [The SHA-256
+parser of the command line, and [the unbiased random choice](../RandomChoice/README.md) keeps its
+buffers in its loop's state in the same way.  [The SHA-256
 guide](../../Library/Hashing/Sha256/README.md) states the library's theorems, and [the files
 command](../../Verified/Examples/WasiFiles.lean) opens, reads, and writes files under the
 preopened directory with `withOpen`.

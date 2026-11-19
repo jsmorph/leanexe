@@ -50,7 +50,7 @@ value's digits and newline into it with `putLine`, in place.  `putPicks` runs a 
 of the draw, which the random histogram's `wordAt` reads, whose state is the output buffer, the
 position after the lines written, and the number of picks.  For each accepted word below the limit
 it writes the line of the word's pick with `putLineBytes`, which writes each byte with
-`LeanExe.Bytes.set`.  The loop's state carries the buffer, and each `Bytes.set` is the buffer's last
+`LeanExe.Bytes.set`.  The loop's state holds the buffer, and each `Bytes.set` is the buffer's last
 use, so the compiled code writes into the buffer's block.  [The verified compilation](Compiled.lean)
 writes a module that exports `parseArg`, `pick`, `render`, and `putPicks` as functions 3, 4, 9, and
 12.
@@ -96,7 +96,7 @@ on the positions of the accepted words.  Under the same assumption, `accepted_ha
 accepted with probability at least 1/2, and `short_count` bounds by `2^-512` the probability that
 M words hold fewer than K accepted ones.
 
-`pick_count` uses the fact that the accepted words form the interval [2^64 mod N, 2^64), whose
+`pick_count` counts the words of each residue in the accepted interval [2^64 mod N, 2^64), whose
 length is `N · ⌊2^64 / N⌋`.  Mathlib's `Nat.count_modEq_card` counts the naturals below a bound that
 have a given residue, and its counts below `2^64` and below `2^64 mod N` differ by `⌊2^64 / N⌋` for
 every residue c < N (`residue_count`).  `short_count` bounds the count by the exponential moment:
@@ -118,8 +118,8 @@ buffer of 10,752 bytes, which hold the lines of 512 values of at most 20 digits.
 accepted words, at most the values that remain, into the output buffer with `putPicks`, and writes
 the window of the output buffer that those lines fill with `writeAll` of [the shared write
 loop](../../LeanExe/Wasi/WriteAll.lean), which follows a short write with a write of the bytes that
-remain and exits with the errno of a write that fails.  The loop carries both buffers through its
-state by moves: `random_get` fills the draw buffer, `putPicks` writes the output buffer in place,
+remain and exits with the errno of a write that fails.  The loop keeps both buffers in its state
+and moves them from pass to pass: `random_get` fills the draw buffer, `putPicks` writes the output buffer in place,
 and `writeAll` reads it in place, so a pass allocates nothing.
 
 The status is the errno of `args`, 2 for a refused N or K, the errno of a failed `random_get` or
@@ -215,8 +215,8 @@ case to pass.
 
 [The random-residue histogram](../RandomHistogram/README.md) draws random words in the same way,
 and this demo reuses its `wordAt`, `words`, its lemmas on argument buffers and words, and its
-shape of the command's theorems.  [The manifest checker](../ManifestCheck/README.md) carries one
-read buffer through its loops in the same way.  [The byte update
+shape of the command's theorems.  [The manifest checker](../ManifestCheck/README.md) keeps one
+read buffer in the states of its loops in the same way.  [The byte update
 examples](../../Verified/Examples/BytesSet.lean) count the allocations of `Bytes.set` in place and
 of a copy, and [the running maximum](../../Examples/RunningMax/README.md) is a run of the
 verified-request skill on words.

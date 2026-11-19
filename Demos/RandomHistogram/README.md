@@ -63,8 +63,8 @@ newline (`appendLine_toList`).
 loop of at most `N / 512 + 1` passes, whose state holds the counts, a buffer of 4,096 bytes, the
 words still to draw, and the errno of a failed call.  Each pass calls `randomGet` on the window of
 the buffer's first `8 · min r 512` bytes, with `r` the words still to draw, and adds the residues
-of the window's little-endian words to the counts with `tally`.  The loop carries the buffer
-through its state by moves: `random_get` fills the buffer in place, and `tally` reads it and
+of the window's little-endian words to the counts with `tally`.  The loop keeps the buffer
+in its state and moves it from pass to pass: `random_get` fills the buffer in place, and `tally` reads it and
 updates the counts in place, so a pass allocates nothing.  `main` then writes `render` of the
 counts to stdout with `writeAll` of [the shared write loop](../../LeanExe/Wasi/WriteAll.lean) over
 the window of the whole output: a loop of at most `B + 1` passes for the B bytes of the output,
@@ -126,7 +126,7 @@ words (`histogram_list`), and `histogram_eq` and `render_eq` give the specificat
 most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken`: a returned
 count `v` is the length of the bytes taken, a prefix of the output that each write extended from
 where the writes before it stopped, so the test `v < B` gives 77 exactly when bytes remain, which
-takes one write for each pass, and an exit carries the errno of the write that failed.
+takes one write for each pass, and an exit has the errno of the write that failed as its status.
 
 ## Memory
 
@@ -139,7 +139,7 @@ and it credits no release.  `budget`, 6,312,920 bytes, holds 6,291,504 bytes for
 `args`, 136 bytes for the counts, 4,144 bytes for the buffer, and at most 17,136 bytes for
 `render`, and it does not depend on N.  The compiler splits the result of `args`, the loop's state,
 and the result of `randomGet` into their components where `main` binds them, so no later use copies
-them, and `random_get` fills the buffer that the loop's state carries, whose variable dies at the
+them, and `random_get` fills the buffer of the loop's state, whose variable dies at the
 call, without a copy.  `writeAll` charges nothing, since each of its passes writes a window of the
 output in place.  Linux 4.13 and later limit the strings and pointers of `argv` and `envp` together
 to at most 6 MiB, `argsLimit` (`get_arg_page` of `fs/exec.c` in v4.13, `bprm_stack_limits` in
@@ -277,7 +277,7 @@ states the output and status of a command over the events of every run, as `exec
 the same write loop, and [its executable's theorems](../../tests/TestSupport/A64/ImageFilesWasiElf.lean)
 state it for a native executable, as `histogram_elf_counts` does.  [The unbiased random
 choice](../RandomChoice/README.md) draws words in the same way with `wordAt` and `words` of this
-demo, and [the manifest checker](../ManifestCheck/README.md) carries one read buffer through its
+demo, and [the manifest checker](../ManifestCheck/README.md) keeps one read buffer in the states of its
 loops.  [The running maximum](../../Examples/RunningMax/README.md) is a run of the verified-request
 skill on words, and [the ranked-choice tabulator](../Rcv/README.md) states call theorems over
 buffers.
