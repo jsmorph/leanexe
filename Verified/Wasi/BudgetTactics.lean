@@ -35,11 +35,6 @@ dsimproc_decl envGet (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let some value ← envValueAt env index | return .continue
   return .done value
 
-/-- The charge of an `if` whose branches charge the same. -/
-theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
-    (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
-  cases decision <;> exact bound
-
 /-- Proves a bound on the charge of an expression: evaluates its liveness tests, reads its
 variables, rewrites the charges of the pure functions that `charge_eqs` holds, and leaves the
 copies to `omega`. -/
