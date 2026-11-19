@@ -129,7 +129,7 @@ wrote K values.  Every errno lies from 0 to 76, so 77 and 78 differ from 2 and f
 the run can return.  `verified_compile_wasi` writes a module that imports `fd_read`, `fd_write`,
 `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
-## The command writes K values uniform on [1, N]
+## The command writes the picks of the first K accepted words
 
 | Theorem | Statement |
 |---|---|
@@ -174,11 +174,89 @@ and has a generated bound of 0, and `writeAll` borrows the output buffer and cha
 each of its passes.  The proof of `body_bounded` bounds the loop with a charge of 0 for each pass,
 so the budget does not depend on N or K, and the statement bounds the whole body.
 
+## The native executable writes the picks of the first K accepted words
+
+`genWasiElf` writes the command's AArch64 Linux executable of 69,632 bytes from the module, with
+the shim's stubs for the stream functions, `args_sizes_get`, `args_get`, and `random_get`, and a
+linear memory of 4,096 pages.  `tests/linux/a64-wasi.sh` writes it as `choice.elf` and elaborates
+the theorems of the file beside it, and the demo's driver writes it from the same module with the
+same commands as `build/random-choice/command.elf` and runs it.  The theorems of the next table lie
+in [the executable's theorems](../../tests/TestSupport/A64/ImageFilesRandomChoice.lean), [the
+footprints](Native.lean), and [the corollary under the shim](NativeChoices.lean).
+
+| Theorem | Statement |
+|---|---|
+| `choice_elf_file`, `choice_elf_segments`, `choice_elf_layout`, `choice_elf_entry`, `choice_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
+| `choice_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
+| `linux_footprint_bounded` | Under the shim's host, for every N and K, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
+| `linux_exec_choices` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `Full` ends at the accepted exit, and its status and layer events meet `Choices`. |
+| `choice_elf_choices` | For every reply sequence and every N and K, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Choices`. |
+| `witness_run`, `choice_elf_witness` | The premises of `choice_elf_choices` and `Full` hold together: for the replies `witnessReplies`, the arguments `c`, `1`, and `1`, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `Full` and `Choices`. |
+
+The random histogram's `Full ls` holds when every `getrandom` of the layer events `ls` returned the
+count that it asked for and every `write` returned an error number or at most the count of bytes
+that it offered, and its `randomData ls` collects the bytes that the `getrandom` events returned.
+`Mirrors x e` states that the layer event `e` is the one event that the shim makes for the WASI
+event `x` of such a run.  For a `random_get` of 4,096 bytes, `e` is a `getrandom` of 4,096 bytes
+with flags 0 that returned 4,096, whose output region holds the bytes of the call's reply, and for
+a write to standard output, `e` is a `write` of descriptor 1 whose input holds the write's bytes and
+whose result is the write's count, at most the bytes offered, or an error number whose WASI errno
+is the write's.  No layer event mirrors any other WASI event.
+
+`Choices args ls status` states the layer events and the status that the request asks of such a
+run, with N and K the values that `parseSpec` reads from arguments 1 and 2 (`argN`, `argK`).  When
+`parseSpec` refuses N or K, no layer event precedes `exit_group`, and the status is 2.  Otherwise
+the layer events mirror, one for one, WASI events that make the passes of `Rounds` from K values
+and `passes K` passes, whose random bytes are `randomData ls` and whose status is the run's.  Each
+pass is therefore a `getrandom` of 4,096 bytes followed by `write` calls, each of which offers the
+bytes of the pass's lines that the writes before it did not take.  The status is 0 only when the
+bytes that the writes took, `Linux.writeData 1 ls`, are `outputOf N chosen` for the K-tuple
+`chosen` of the first K accepted words of `randomData ls`, and 77 only when `randomData ls` holds
+the `512 · passes K` words of the cap's passes, fewer than K of them accepted.  `Rounds` gives the
+other statuses: 78 when the writes of a pass stalled, and the errno of a `write` that returned an
+error number.  With `output_count`, the status-0 case gives the count of the request for the
+executable: for every K and every sequence o of K values in [1, N], exactly `⌊2^64 / N⌋^K` K-tuples
+of accepted words make the process's writes take the lines of o.
+
+Linux's `write` returns an error number or at most the count that it was given (write(2)), so the
+condition on writes holds for every run.  getrandom(2) guarantees every byte of a read of up to 256
+bytes once the urandom source is initialized, and Linux 6.12's `get_random_bytes_user` returns
+every byte of a read of at most a page unless the copy faults.  Each of the command's reads asks
+for 4,096 bytes.  [The random histogram's guide](../RandomHistogram/README.md#the-native-executable-writes-the-counts)
+gives the signals and the limits under which a write takes fewer bytes than it offers.
+
+The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
+budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
+since the shim answers `args_sizes_get` with the count and size of the launch's arguments, and the
+budget does not depend on N or K, so the corollary holds for every N and K.  `linux_exec_choices`
+excludes the trapped runs.  Under a host that rejects no exit status below 126, as the shim does,
+the loop of `main` traps only at a trapped `random_get` of 4,096 bytes or a trapped write
+(`draw_loop`), so a trapped run of `main` has a trapped `args_sizes_get`, `args_get`,
+`random_get`, or write (`main_trapped`), whose image no layer events that meet `Full` give (the
+histogram's `image_untrapped`), and the exit of a status of at most 78 is accepted.  For the
+accepted exit, `exec_main` gives `Meets`, and the images of the events of `Rounds` mirror them and
+return the bytes that the passes drew (`rounds_mirrors`, from `random_mirror` and `write_mirror`).
+The writes of the images took the bytes that the writes of `Rounds` committed
+(`Images.writeData`), and `first_picks` gives the K-tuple of the first K accepted words.
+
+`choice_elf_witness` gives the premises: a memory that holds the file's two segments below `2^32`
+and the initial stack of `c`, `1`, and `1` at `2^32`, which `decide` checks byte by byte, and the
+replies `witnessReplies`, which answer call 0 with 4,096 zero bytes and every later call with 2.
+`witness_run` follows `main` under those replies: `args` returns the arguments, N and K are 1, the
+one `getrandom` asks for 4,096 bytes and returns them (`witness_random`), `putPicks` writes the line
+`1` (`pass_put` and `witness_text`), the one write offers its 2 bytes and takes both
+(`witness_write`), no value remains (`witness_loop`), and the run exits with status 0.  The kernel
+evaluates no run of the executable: the footprint theorem gives the process's run, and the proof
+reasons over its events.
+
 ## Building, running, and testing
 
 ```sh
 tests/random-choice/run.sh
 build/tools/leanexe-wasmtime-host --arg choose --arg 6 --arg 10 run build/random-choice/command.wasm
+build/random-choice/command.elf 6 10
+qemu-aarch64 build/random-choice/command.elf 6 10
+tests/linux/a64-wasi.sh
 tests/verified/run.sh --cases randomChoice
 tests/native/verified.sh --module randomChoice
 ```
@@ -186,23 +264,55 @@ tests/native/verified.sh --module randomChoice
 [The demo's driver](../../tests/random-choice/run.sh) checks the hashes of the reviewed
 specifications and samples, builds the demo's modules, elaborates [the theorem
 statements](../../tests/random-choice/Axioms.lean), which requires that each theorem use only the
-three axioms, emits and validates the command's module, and runs it in the Wasmtime host.  The runs
-with no argument, with N alone, with N or K of 0, and with letters, a sign, or a 20-digit value
-above 2^64 in either place write nothing and exit with status 2.  The runs of `choose N K` for N
-of 1, 6, `2^63 + 1`, at which `2^63 - 1` words of `2^64` are rejected, and `2^64 - 1`, with K up to
-1,000,000, for `007 3`, and for `6 5 extra` exit with status 0 and write K lines, each a decimal
-value without a leading zero in [1, N].  The run with N of 6 and K of 1,000,000 writes each of the
-six values, the run with N of 1 writes only the value 1, and a run with standard output `/dev/full`
-exits with status 51, `nospc`.  No run writes to stderr, and since the host draws its random bytes
-from the operating system, no run checks the values beyond their range.  The driver prints
-`random choice axiom check passed for 28 theorems` and `random choice: 21 runs passed`, with the
-elapsed time and the maximum resident set of the run with N of `2^64 - 1` and K of 1,000,000.
+three axioms, emits and validates the command's module, and writes its executable with
+`a64-wasi wasm`, which fails when `genWasiElf` rejects the module.  It then runs the command in the
+Wasmtime host, on the host's processor, which must be AArch64 Linux, and under `qemu-aarch64`.
+`RUNNERS` selects among the three, and `BUILD=no` runs the module and the executable that an
+earlier run wrote, without Lean.  In each runner, the runs with no argument, with N alone, with N
+or K of 0, and with letters, a sign, or a 20-digit value above 2^64 in either place write nothing
+and exit with status 2.  The runs of `choose N K` for N of 1, 6, `2^63 + 1`, at which `2^63 - 1`
+words of `2^64` are rejected, and `2^64 - 1`, with K up to 1,000,000, for `007 3`, and for
+`6 5 extra` exit with status 0 and write K lines, each a decimal value without a leading zero in
+[1, N].  The run with N of 6 and K of 1,000,000 writes each of the six values, the run with N of 1
+writes only the value 1, and a run with standard output `/dev/full` exits with status 51, `nospc`.
+Natively and under QEMU, a run of `choose 6 1000` whose standard output appends to a file of 500
+bytes under a file size limit of 512 bytes, with `SIGXFSZ` ignored, exits with status 22, `fbig`,
+and leaves the file at 512 bytes, the last 12 of them digits and newlines.  No run writes to stderr,
+and since the runs draw their random bytes from the operating system, no run checks the values
+beyond their range.
 
-The second command runs the module with N of 6 and K of 10, after the driver has written it.  It
-writes ten lines, each a value from 1 to 6 in decimal, and exits with status 0.  On the AArch64
-test host, three runs under `/usr/bin/time -v` with N = `2^64 - 1` and standard output in a file
+Natively, the driver runs the executable under strace and reads every `getrandom` and `write` with
+its undecoded arguments.  The runs of `choose 6 1000` and `choose 18446744073709551615 100000` make
+only `getrandom`, `write`, and `exit_group` calls.  Each `getrandom` passes the address of the
+first, 4,096 bytes, and flags 0 and returns 4,096, and each `write` is of descriptor 1, offers the
+bytes of its pass that the pass's earlier writes did not take, from the address of the run's first
+write plus the bytes that they took, and returns its count, so each pass makes one write.  The
+first run makes a `getrandom`, a write of 1,024 bytes, a `getrandom`, and a write of 976 bytes.
+Under the file size limit, the first write offers 1,024 bytes and returns 12, and the second passes
+the address plus 12, offers 1,012 bytes, and fails with `EFBIG`.  Two runs replace replies with
+strace's injection.  When every `getrandom` of `choose 6 1000` returns 4,096 without filling the
+buffer, the draw buffer keeps its zero bytes, which N of 6 rejects, and the run reaches the cap: ten
+`getrandom` calls, the `passes` of K = 1,000, no write, and status 77.  When every `write` of
+`choose 6 1` returns 0, the run makes three writes of its line's 2 bytes, the passes of `writeAll`,
+and exits with status 78.  A run with `abc` makes only `exit_group`.  The driver prints
+`random choice axiom check passed for 34 theorems`, the module's size, 5,851 bytes, the
+executable's size, 69,632 bytes, and its SHA-256,
+ce3a19326ee50a73b738542c649d7675602b2e82a9d9683cebc1d116a270e52d, and
+`random choice: 71 runs passed`, with the elapsed time and the maximum resident set of the run with
+N of `2^64 - 1` and K of 1,000,000 in each runner.
+
+The second, third, and fourth commands run the module, the executable, and the executable under
+QEMU's user-mode emulator with N of 6 and K of 10, after the driver has written them.  Each writes
+ten lines, each a value from 1 to 6 in decimal, and exits with status 0.  On the AArch64 test host,
+three runs of the module under `/usr/bin/time -v` with N = `2^64 - 1` and standard output in a file
 took from 0.26 to 0.28 seconds for K = 1,000,000, with a maximum resident set of 16,024 to 16,752
-KiB, and from 15,680 to 16,408 KiB for K = 1,000, so the resident set does not grow with K.
+KiB, and from 15,680 to 16,408 KiB for K = 1,000, so the resident set does not grow with K.  The
+executable's run with K = 1,000,000 on the same host, in a scope of one core, took 1.58 seconds
+with a maximum resident set of 1,496 KiB.
+
+`tests/linux/a64-wasi.sh` writes the executable from the module that `tools/Emit.lean` emits and
+elaborates [the executable's theorems](../../tests/TestSupport/A64/ImageFilesRandomChoice.lean)
+beside it, which requires the three axioms of each.
 
 [The verified driver](../../tests/verified/run.sh) runs the 159 samples of [the verified
 cases](../../Verified/Examples/Cases.lean), those of the pure core and of `putPicks`, in Wasmtime
@@ -214,8 +324,9 @@ case to pass.
 ## Related examples
 
 [The random-residue histogram](../RandomHistogram/README.md) draws random words in the same way,
-and this demo reuses its `wordAt`, `words`, its lemmas on argument buffers and words, and its
-shape of the command's theorems.  [The manifest checker](../ManifestCheck/README.md) keeps one
+and this demo reuses its `wordAt`, `words`, its lemmas on argument buffers and words, its `Full`,
+`randomData`, and lemmas on the shim's images, and its shape of the command's and the executable's
+theorems.  [The manifest checker](../ManifestCheck/README.md) keeps one
 read buffer in the states of its loops in the same way.  [The byte update
 examples](../../Verified/Examples/BytesSet.lean) count the allocations of `Bytes.set` in place and
 of a copy, and [the running maximum](../../Examples/RunningMax/README.md) is a run of the

@@ -101,3 +101,52 @@ samples: N ≥ 1 with a draw whose words are all rejected, a buffer that ends in
 more digits, and counts of `2^64` or more, which need a draw of more than `2^67` bytes.
 `putPicks_eq` proves the program equal to the specification on every draw of fewer than `2^32`
 bytes, so an error of the program in the first two classes would contradict it.
+
+# Review of the executable's theorems
+
+A fresh agent reviewed `Mirrors`, `Choices`, `linux_exec_choices`, `witness_run`, the footprints,
+`choice_elf`, `choice_elf_choices`, `choice_elf_witness`, the trapped case of `draw_loop`, and the
+driver's native and strace checks against [the request](request.txt), by the method of the
+knowledge base's entry on independent review.  It received the paths of the request, the theorems,
+the specifications, the shim's model, the driver, and a draft of the guide's section, wrote a model
+in Python of the shim's images under `Full`, of `Mirrors`, `Choices`, `Rounds`, and `Writes`, and of
+the command, and ran no Lean code.  On 2,000 random runs that meet `Full`, which reached status 0,
+refusals, the cap, stalls, and failed writes with ten error numbers, the right program met
+`Choices` in every run, and each of 38 wrong programs failed `Choices` in exactly the runs where its
+events or status differ from the right program's.  It found no defect of a statement: under `Full`,
+`Choices` fixes every observable property of a run but the addresses passed to `getrandom` and
+`write`, of which the request asks nothing.  It checked the witness's stack bytes against
+`InitialStack` and replayed the witness's run.
+
+| Finding | Response |
+|---|---|
+| The driver's comment claimed that every write offers the bytes of the pass that remain, which its check did not test, so writes of at most 1,024 bytes passed | Adopted: each later write of a pass must offer the bytes that the pass's earlier writes did not take, and with full returns a pass makes one write |
+| strace prints a zero argument as `0`, which the parser did not read, so a write of no byte, or a write of another descriptor, passed | Adopted: the parser reads `0`, records the descriptor, and fails when a `getrandom` or `write` line does not parse, and every write must be of descriptor 1 and offer at least one byte |
+| The summary of the first strace run checked the counts but not their order, so a program that draws every pass before writing passed | Adopted: the summary lists the calls in order, `g 1024 g 976` |
+| No driver run reaches the cap or a stall | Adopted: a run with strace's injection of a `getrandom` result of 4,096, which leaves the draw buffer at zero bytes, must reach the cap with status 77 after ten calls and no write, and a run with injected `write` results of 0 must stall with status 78 after three writes |
+| Decoding the bytes of each `getrandom` and recomputing the output would check the word order, the byte order, and the pick | Declined: `choice_elf_choices` states them, and the file theorem states that the driver's executable holds the bytes that `genWasiElf` gives |
+| `witness_run`'s docstring and the module comment stated events that the theorem does not conclude | Adopted: the docstring states the status and `Full`, and the comment names the events as the proof's |
+| The guide's heading claimed uniform values, which no theorem states | Adopted: the headings of the command's and the executable's sections name the picks of the first K accepted words |
+| The draft guide dropped getrandom(2)'s condition that the urandom source is initialized | Adopted |
+| "When N or K is 0" stood for a refusal of `parseSpec`, and `argN`'s docstring did not say that 0 marks one | Adopted |
+| `Mirrors`'s docstring used "count" for the length argument and the reply's count, and did not say that no other event mirrors anything | Adopted |
+| "A host that accepts every exit status below 126" stated more than the premise, that a rejected exit has a status of 126 or more | Adopted: "a host that rejects no exit status below 126" |
+| The draft guide credited `witness_text` with a fact of `putPicks` | Adopted: it cites `pass_put` and `witness_text` |
+| Lines of the driver and of the Lean files ran past 100 columns | Adopted for the new lines |
+
+The model also ran the driver's checks on the wrong programs.  Every runner detects K ± 1 lines,
+picks from 0, refusals with status 1, ignored or misreported failed writes, and writes to stderr.
+The native and QEMU runs under the file size limit detect a stall at a short write.  The strace runs
+detect draws of 2,048 bytes, other flags, other calls, rewrites after a short write, retries, one
+write per line, and draws before parsing.  With the adopted checks they also detect writes of at
+most 1,024 bytes, writes of no byte, draws of every pass before writing, picks of rejected words, a
+status 0 at the cap, other caps, and stalls after fewer passes of `writeAll`.  Words read last to
+first or big-endian and a threshold off by one change values only within [1, N], which no run
+checks beyond their range, and `choice_elf_choices` excludes them.
+
+Two classes of programs pass every statement and check.  Programs that differ only in the addresses
+that they pass, each constant within a run, meet `Choices`, which leaves the addresses free.
+For programs that differ only at replies outside `Full`, such as a short or failed `getrandom`,
+`choice_elf` fixes the calls of the shim, but no theorem states the output.  A write that fails with
+`EACCES` gives errno 2, `acces`, the status of a refused argument, so the status alone does not tell
+the two apart.  The events of `Choices` do, since a refusal has none.
