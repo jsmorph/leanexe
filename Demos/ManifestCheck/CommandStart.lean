@@ -70,12 +70,12 @@ theorem table_rep {World : Type} (world : Observed World) {modes : Nat → Verif
       rw [List.mem_singleton.mp hk]
       exact initialized.2.2.1 0 (by decide)) rfl
 
-/-- The table lies apart from the scratch bytes of the WASI calls. -/
-theorem table_scratch {World : Type} (world : Observed World) {modes : Nat → Verified.Mode}
+/-- The table lies apart from the low memory, the bytes below 4,096. -/
+theorem table_low {World : Type} (world : Observed World) {modes : Nat → Verified.Mode}
     (borrowed : modes 0 = .borrowed) :
     ∀ region ∈ Verified.Env.reads (PureTransport.erase (initialStore world)) modes
       [Value.i64 (Verified.tableAddr command.pure.tables 0)] mainArgs,
-      LeanExe.Runtime.regionsDisjoint ABI.scratch region := by
+      LeanExe.Runtime.regionsDisjoint ABI.low region := by
   intro region hregion
   have reads := Verified.Env.withTables_reads (store := PureTransport.erase (initialStore world))
     (tables := command.pure.tables) [⟨0, by decide⟩] (modes := modes)
@@ -88,10 +88,10 @@ theorem table_scratch {World : Type} (world : Observed World) {modes : Nat → V
         (fun k => Value.i64 (Verified.tableAddr command.pure.tables k.val)) ++ [])
       (Verified.Env.withTables command.pure.tables [⟨0, by decide⟩] Verified.Env.nil) := hregion
   rw [reads] at member
-  simp only [List.map_cons, List.map_nil, List.cons_append, List.nil_append, List.mem_cons,
-    List.mem_append] at member
+  simp only [List.map_cons, List.map_nil, List.cons_append, List.nil_append, List.mem_cons]
+    at member
   rcases member with rfl | member
-  · unfold LeanExe.Runtime.regionsDisjoint ABI.scratch
+  · unfold LeanExe.Runtime.regionsDisjoint ABI.low
     left
     decide
   · nomatch member
@@ -132,7 +132,7 @@ theorem start_ends {World : Type} {host : Host World} (world : Observed World)
   have initialized := command.initial world
   obtain ⟨bound, results⟩ := command.start (host := host) (aborts := true) (budget := 0) valid
     initialized.1 (table_rep world rfl) Separate.nil ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩
-    (table_scratch world rfl) initialized.2.1 (fun impossible => nomatch impossible)
+    (table_low world rfl) initialized.2.1 (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => ends_of_result (results fuel enough)⟩
 
 /-- The accepted exit of every run, under the premises of the generated `command.total`: a budget
@@ -157,7 +157,7 @@ theorem total_meets {World : Type} {host : Host World} (world : Observed World)
           [.exit code] ∧ code.toNat ≤ 77 ∧ Meets host world.world events code := by
   have initialized := command.initial world
   obtain ⟨bound, exits⟩ := command.total valid initialized.1 (table_rep world rfl) Separate.nil
-    ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩ (table_scratch world rfl) initialized.2.1
+    ⟨initialized.2.2.2, fun _ _ => Apart.nil⟩ (table_low world rfl) initialized.2.1
     (fun _ => ⟨room, bounded⟩) safe
   refine ⟨bound, fun fuel enough => ?_⟩
   have accepted : AcceptedExit host (main.bind fun status => Action.exit (α := Unit) status) world
