@@ -397,7 +397,7 @@ theorem joinFrom_size_le : ∀ (rest : List LeanExe.Bytes) (acc : ByteArray),
 /-- The bytes of `d` from its start to its end are `d`. -/
 theorem extract_all (d : ByteArray) : d.extract 0 d.size = d := by
   apply ByteArray.ext
-  simp [ByteArray.data_extract]
+  simp
 
 /-- Hashing pieces of whole blocks with `update` of all their blocks from `iv256`, and the bytes
 `b` that follow them with `finish` and the length of the whole message, gives the digest of the
