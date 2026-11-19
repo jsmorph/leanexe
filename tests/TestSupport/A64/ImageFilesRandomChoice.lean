@@ -1,4 +1,5 @@
 import TestSupport.A64.WasiElf
+import TestSupport.A64.ElfWitness
 import Demos.RandomChoice.NativeChoices
 import LeanExe.A64.File
 
@@ -37,8 +38,9 @@ run from `linux_footprint_bounded`, the footprint without a guest trap, through
 run that the footprint names.
 
 `choice_elf_witness` shows that the corollary's premises and `Full` hold together.  The process
-`witnessProc` holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of
-the arguments `witnessArgs`, `c`, `1`, and `1`, with no environment.  Under the replies
+holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
+arguments `witnessArgs`, `c`, `1`, and `1`, with no environment, as `loadedMem` of
+`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies
 `witnessReplies`, which answer the `getrandom` of the run's one pass with 4,096 zero bytes and its
 `write` of the line `1` with 2, the process reaches `exit_group` with X0 at 0 after layer events
 that meet `Full` and `Choices`.
@@ -226,49 +228,9 @@ def witnessStack : List UInt8 :=
     52, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     99, 0, 49, 0, 49, 0]
 
-/-- The memory of the witness: below `2^32`, the file's segments as Linux's loader places them and
-zeros elsewhere; from `2^32` on, `witnessStack` and zeros after it. -/
-def witnessMem (a : UInt64) : UInt8 :=
-  if a.toNat < 2 ^ 32 then
-    if 0x400000 ≤ a.toNat ∧ a.toNat < 0x400000 + 19916 then
-      byteAt choiceElfBytes (a.toNat - 0x400000)
-    else if 0x410000 ≤ a.toNat ∧ a.toNat < 0x410000 + 4096 then
-      byteAt choiceElfBytes (0x10000 + (a.toNat - 0x410000))
-    else 0
-  else witnessStack.getD (a.toNat - 2 ^ 32) 0
-
-/-- The top of the witness's initial stack. -/
-def witnessTop : UInt64 := 2 ^ 32 + 4096
-
-/-- The process of the witness: the program counter at the entry, SP at `2^32`, every other
-register 0, the memory `witnessMem`, and no event. -/
-def witnessProc : Proc :=
-  ⟨⟨fun _ => 0, fun _ => 0, 2 ^ 32, wasiEntry, false, false, false, false, witnessMem,
-    ⟨[], 0, 0⟩⟩, 0, []⟩
-
-theorem witness_loaded : ElfLoaded (byteAt choiceElfBytes) witnessProc.core.mem := by
-  intro seg member _ j inside
-  rw [choice_elf_segments] at member
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl
-  · simp only at inside ⊢
-    have wide : (UInt64.ofNat (0x400000 + j)).toNat = 0x400000 + j :=
-      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-    simp only [witnessProc, witnessMem, wide]
-    rw [ite_eq_left (by omega), ite_eq_left (by omega), ite_eq_left (by omega)]
-    exact congrArg (byteAt choiceElfBytes) (by omega)
-  · simp only at inside ⊢
-    have wide : (UInt64.ofNat (0x410000 + j)).toNat = 0x410000 + j :=
-      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-    simp only [witnessProc, witnessMem, wide]
-    rw [ite_eq_left (by omega), ite_eq_right (by omega)]
-    by_cases low : j < 4096
-    · rw [ite_eq_left (by omega), ite_eq_left low]
-      exact congrArg (byteAt choiceElfBytes) (by omega)
-    · rw [ite_eq_right (by omega), ite_eq_right low]
-
 theorem witness_stack :
-    InitialStack witnessArgs [] witnessProc.core.sp witnessTop witnessProc.core.mem where
+    InitialStack witnessArgs [] (2 ^ 32) ElfWitness.witnessTop (ElfWitness.stackMem witnessStack)
+      where
   above := by decide
   below := by decide
   words := by decide
@@ -308,10 +270,15 @@ theorem choice_elf_witness :
   have parsedK : argK witnessArgs = 1 := by decide +kernel
   have small : stringsSize witnessArgs + 8 * witnessArgs.length ≤
       Demos.RandomHistogram.argsLimit := by decide
-  refine ⟨witnessReplies, witnessProc, witnessArgs, [], witnessTop, parsedN, parsedK, small,
-    witness_loaded, witness_stack, rfl, rfl, ?_⟩
+  have loaded : ElfLoaded (byteAt choiceElfBytes)
+      (ElfWitness.loadedMem (byteAt choiceElfBytes) 19916 4096 witnessStack) :=
+    ElfWitness.loadedMem_loaded choice_elf_segments (by decide) (by decide)
+  have stack := ElfWitness.loadedMem_initial (byteAt choiceElfBytes) 19916 4096 witness_stack
+  refine ⟨witnessReplies,
+    ElfWitness.witnessProc (ElfWitness.loadedMem (byteAt choiceElfBytes) 19916 4096 witnessStack),
+    witnessArgs, [], ElfWitness.witnessTop, parsedN, parsedK, small, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    choice_elf_runs witnessReplies witnessProc small witness_loaded witness_stack rfl rfl
+    choice_elf_runs witnessReplies _ small loaded stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
   · obtain ⟨exited, full⟩ := witness_run h himg hcar

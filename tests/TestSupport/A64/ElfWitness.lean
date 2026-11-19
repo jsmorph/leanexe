@@ -3,15 +3,16 @@ import LeanExe.A64.Proof.WasiLaunch
 
 /-!
 A process that meets the premises of the file theorems of an executable that `genWasiElf` writes,
-for the witnesses of the executables' corollaries.  `loadedMem b t d stack` holds, below `2^32`,
-the `t` bytes of the text segment of the file `b` at 0x400000 and the `d` bytes of its data
-segment at 0x410000, as Linux's loader places the two segments that `genWasiElf` writes, with
-zeros elsewhere, and from `2^32` on the bytes `stack` and zeros after them.  `loadedMem_loaded`
-states that it meets `ElfLoaded` for a file whose program headers are those two segments.
+for the witnesses of the executables' corollaries.  `loadedMem b t d stack` holds, below `2^32`, the
+`t` bytes of the text segment of the file `b` at 0x400000 and the `d` bytes of its data segment at
+0x410000, as Linux's loader places the two segments that `genWasiElf` writes, with zeros elsewhere,
+and from `2^32` on the bytes `stack` and zeros after them.  `loadedMem_loaded` states that it meets
+`ElfLoaded` for a file whose program headers are those two segments, and `loadedMem_initial` that it
+meets `InitialStack` at SP `2^32` when `stackMem stack`, which holds only the stack, does.
 `witnessStack` is the initial stack at `2^32` of the arguments `witnessArgs`, `h` and `1`, with no
-environment, and `loadedMem_stack` states that `loadedMem` with that stack meets `InitialStack`
-with the top `witnessTop`.  `witnessProc` is the process with a memory, the program counter at the
-entry, SP at `2^32`, every other register 0, and no event.
+environment, and `loadedMem_stack` states that `loadedMem` with that stack meets `InitialStack` with
+the top `witnessTop`.  `witnessProc` is the process with a memory, the program counter at the entry,
+SP at `2^32`, every other register 0, and no event.
 -/
 
 namespace TestSupport.A64.ElfWitness
@@ -53,7 +54,7 @@ def witnessProc (mem : UInt64 → UInt8) : Proc :=
 theorem loadedMem_loaded {b : Nat → UInt8} {t d memsz : Nat} {stack : List UInt8}
     (segments : elfSegments b =
       [⟨1, 5, 0, 0x400000, t, t⟩, ⟨1, 6, 0x10000, 0x410000, d, memsz⟩])
-    (text : 0x400000 + t ≤ 0x410000) (data : d ≤ memsz) (high : 0x410000 + memsz ≤ 2 ^ 32) :
+    (text : 0x400000 + t ≤ 0x410000) (high : 0x410000 + memsz ≤ 2 ^ 32) :
     ElfLoaded b (loadedMem b t d stack) := by
   intro seg member _ j inside
   rw [segments] at member
@@ -93,9 +94,14 @@ theorem stackMem_stack :
   envp := fun _ h => absurd h (Nat.not_lt_zero _)
   envpEnd := by decide +kernel
 
+theorem loadedMem_initial {args environ : List (List UInt8)} {top : UInt64} {stack : List UInt8}
+    (b : Nat → UInt8) (t d : Nat) (h : InitialStack args environ (2 ^ 32) top (stackMem stack)) :
+    InitialStack args environ (2 ^ 32) top (loadedMem b t d stack) :=
+  h.congr fun a high => by
+    simp only [loadedMem, stackMem, Nat.not_lt.mpr high, ↓reduceIte]
+
 theorem loadedMem_stack (b : Nat → UInt8) (t d : Nat) :
     InitialStack witnessArgs [] (2 ^ 32) witnessTop (loadedMem b t d witnessStack) :=
-  stackMem_stack.congr fun a high => by
-    simp only [loadedMem, stackMem, Nat.not_lt.mpr high, ↓reduceIte]
+  loadedMem_initial b t d stackMem_stack
 
 end TestSupport.A64.ElfWitness

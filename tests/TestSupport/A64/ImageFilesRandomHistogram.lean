@@ -243,7 +243,7 @@ theorem histogram_elf_witness :
   have small : stringsSize oneArgs + 8 * oneArgs.length ≤ argsLimit := by decide
   have loaded : ElfLoaded (byteAt histogramElfBytes)
       (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack) :=
-    loadedMem_loaded histogram_elf_segments (by decide) (by decide) (by decide)
+    loadedMem_loaded histogram_elf_segments (by decide) (by decide)
   have stack : InitialStack oneArgs [] (2 ^ 32) witnessTop
       (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack) :=
     loadedMem_stack (byteAt histogramElfBytes) 22008 4096
