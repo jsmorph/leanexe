@@ -91,7 +91,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
         cases index with
         | zero =>
             change entry.state.paramMode .borrowed = .borrowed
-            cases entry.state <;> rfl
+            exact Ty.paramMode_borrowed _
         | succ index => rfl
       have takeWords : stateWords.take entry.state.width = stateWords := by
         rw [← memory.rep.length]

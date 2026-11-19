@@ -210,7 +210,7 @@ theorem Env.reads_bytesFields {Γ : List Ty} {tail : Env Γ} {modes : List Mode}
     unfold Verified.paramMode at h
     rw [h]
     simp only [List.ofFn_succ, List.flatten_cons, List.append_assoc]
-    cases mode <;> simp [Ty.paramMode, Ty.reads, Bytes.roots_regions]
+    cases mode <;> simp [Ty.reads, Bytes.roots_regions]
 
 theorem Env.moves_repeatZero {Γ : List Ty} {tail : Env Γ} {modes : List Mode}
     (store : Store Unit) (rest : List Value) (t : Ty) (mode : Mode) :
@@ -277,9 +277,9 @@ theorem treeFields_moves (store : Store Unit) (shape : TreeShape)
     (Env.cons (t := .treeHeader shape r) .unit _) = _
   rw [Env.moves_cons rfl]
   simp only [TreeShape.context, TreeShape.modes, paramModes, List.headD_cons, List.tail_cons,
-    List.getD_cons_zero, List.getD_cons_succ, Ty.paramMode]
+    List.getD_cons_zero, List.getD_cons_succ, Ty.paramMode_treeHeader]
   erw [hWords, hChildren, hArrays, hBuffers]
-  cases mode <;> simp [Ty.paramMode, Ty.pointers, Env.moves, List.ofFn_const, TreeShape.arrayTy]
+  cases mode <;> simp [Ty.pointers, Env.moves, List.ofFn_const, TreeShape.arrayTy]
 
 theorem treeFields_reads (store : Store Unit) (shape : TreeShape)
     (r : Fin shape.records) (mode : Mode) (p : UInt64)
@@ -333,9 +333,9 @@ theorem treeFields_reads (store : Store Unit) (shape : TreeShape)
     (Env.cons (t := .treeHeader shape r) .unit _) = _
   rw [Env.reads_cons rfl]
   simp only [TreeShape.context, TreeShape.modes, paramModes, List.headD_cons, List.tail_cons,
-    List.getD_cons_zero, List.getD_cons_succ, Ty.paramMode]
+    List.getD_cons_zero, List.getD_cons_succ, Ty.paramMode_treeHeader]
   erw [hWords, hChildren, hArrays, hBuffers]
-  cases mode <;> simp [Ty.paramMode, Ty.reads, Env.reads, List.ofFn_const, TreeShape.arrayTy]
+  cases mode <;> simp [Ty.reads, Env.reads, List.ofFn_const, TreeShape.arrayTy]
 
 theorem treeFields_reads_owned (store : Store Unit) (shape : TreeShape)
     (r : Fin shape.records) (p : UInt64)

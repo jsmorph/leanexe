@@ -171,6 +171,7 @@ treecore:Verified.Examples.TreeCore:Verified/Examples/TreeCoreFile.lean
 composition:Verified.Examples.Composition:Verified/Examples/CompositionFile.lean
 relocation:Verified.Examples.Relocation:Verified/Examples/RelocationFile.lean
 tuples:Verified.Examples.Tuples:Verified/Examples/TuplesFile.lean
+ownedtuples:Verified.Examples.OwnedTuples:Verified/Examples/OwnedTuplesFile.lean
 scale:Examples.Scale.Compiled:Examples/Scale/File.lean
 sumArray:Examples.SumArray.Compiled:Examples/SumArray/FileSum.lean
 folds:Examples.SumArray.Compiled:Examples/SumArray/FileFolds.lean

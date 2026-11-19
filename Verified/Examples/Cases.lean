@@ -57,6 +57,7 @@ import Verified.Examples.Sums
 import Examples.Shape.Cases
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
+import Verified.Examples.OwnedTuples
 import Verified.Examples.Records
 import Verified.Examples.Grids
 import Verified.Examples.Repeat
@@ -1195,6 +1196,10 @@ def main : IO Unit := do
     IO.println s!"modes|bumpKeep|{kinds}|{a}|{arrayOut k1} {arrayOut k2}|2|2"
     IO.println s!"byhand|dropArg|i64|{a} i64:7|7|0|1"
     IO.println s!"byhand|sizeOwned|i64|{a}|{xs.size}|0|1"
+    for k in ([0, 7, 18446744073709551615] : List UInt64) do
+      let pushed := arrayOut (OwnedTuples.pushPair (xs, k))
+      IO.println s!"ownedtuples|pushPair|array-u64|{a} i64:{k}|{pushed}|1|2"
+      IO.println s!"ownedtuples|countPair|i64|{a} i64:{k}|{OwnedTuples.countPair (xs, k)}|0|1"
     for ys in arrays do
       let c := arrayArg ys
       let (s1, s2) := Modes.swapPair (xs, ys)

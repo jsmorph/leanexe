@@ -118,7 +118,10 @@ theorem argsAny_true : {n : Nat} → {b : (i : Fin n) → Bool} → argsAny b = 
 theorem paramMode_owned : {ts : List Ty} → {ms : List Mode} → {i : Fin ts.length} →
     paramMode ts ms i = .owned → (ts.get i).scalar = false
   | t :: _, _, ⟨0, _⟩, h => by
-    cases t <;> first | rfl | simp [paramMode, paramModes, Ty.paramMode] at h
+    simp only [paramMode, paramModes, List.getD_cons_zero, Ty.paramMode] at h
+    show t.scalar = false
+    revert h
+    cases t.scalar <;> simp
   | _ :: ts, ms, ⟨i + 1, hi⟩, h =>
     paramMode_owned (ts := ts) (ms := ms.tail) (i := ⟨i, by simpa using hi⟩)
       (by simpa only [paramMode, paramModes, List.getD_cons_succ] using h)

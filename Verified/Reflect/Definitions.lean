@@ -4778,6 +4778,50 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
       (← mkAppOptM ``Agree.flat #[some userT, some β, none, none, none, none, none, some proof])
   | _, _ => throwError "verified_compile: the type {userT} does not have the shape of {tyExpr t}"
 
+/-- The flattening of a value of type `Moved native`, which the caller moves, to a moved value of
+`t`, and the proof that Lean's instance agrees with `Ty.movedInst t` along it, by the cases of
+`agreeTy`: `Agree.movedScalar` for a type without heap values, `Agree.refl` or `Agree.flatMoved`
+for an array, `Agree.refl` for bytes, `Agree.movedListTree` or `Agree.movedEncode` for a tree,
+`Agree.movedProd` for a pair, and `Agree.movedFlat` for a structure or a sum. -/
+partial def agreeMoved (native : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr) := do
+  let userT := mkApp (mkConst ``LeanExe.Pipeline.Moved) native
+  let inst ← userInst userT
+  let src := (mkApp (mkConst ``LeanExe.Pipeline.Moved) (mkApp (mkConst ``Ty.denote) (tyExpr t)),
+    mkApp (mkConst ``Ty.movedInst) (tyExpr t))
+  -- The agreement along the flattening that the proof states.
+  let along (proof : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
+    agreeAs userT inst src (← Core.betaReduce (← inferType proof).appArg!) proof
+  if t.scalar then
+    let some nativeScalar ← synthInstance? (mkApp (mkConst ``LeanExe.Pipeline.Scalar) native)
+      | throwError "verified_compile: Lean has no `Scalar` instance for {native}"
+    let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
+    let app ← mkAppOptM ``Agree.movedScalar #[some native,
+      some (mkApp (mkConst ``Ty.denote) (tyExpr t)), some nativeScalar,
+      some (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h), some (← flatFn native)]
+    let .forallE _ hTy _ _ ← inferType app | throwError "verified_compile: `Agree.movedScalar`"
+    return ← along (mkApp app (← eqByUnfolding hTy native))
+  match t, (← whnfR native).getAppFnArgs with
+  | .bytes, _ => agreeRefl userT inst src
+  | .tree _, (``List, #[_]) => along (mkConst ``Agree.movedListTree)
+  | .tree _, _ =>
+    let some layout ← recursiveLayout? native
+      | throwError "verified_compile: no recursive layout for {native}"
+    along (← mkAppM ``Agree.movedEncode
+      #[mkConst (layout.decl `toTree), mkConst (layout.decl `encoding)])
+  | .array _, (``Array, #[el]) =>
+    if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
+    let (φ, proof) ← agreeArray ``Agree.flatMoved el
+    agreeAs userT inst src φ proof
+  | .pair a b, (``Prod, #[ua, ub]) =>
+    along (← mkAppM ``Agree.movedProd #[(← agreeMoved ua a).2, (← agreeMoved ub b).2])
+  | .pair _ _, _ =>
+    let some (β, _) ← flatInstance? native
+      | throwError "verified_compile: the type {native} does not have the shape of {tyExpr t}"
+    let (_, proof) ← agreeMoved β t
+    along (← mkAppOptM ``Agree.movedFlat
+      #[some native, some β, none, none, none, none, some proof])
+  | _, _ => throwError "verified_compile: the type {native} does not have the shape of {tyExpr t}"
+
 /-- The flattening of an argument of type `userT`, a value of `t.argTy m`, and the proof of
 agreement with `t.argInst m`. -/
 def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.Expr) := do
@@ -4799,6 +4843,9 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
       | throwError "verified_compile: {a} is not an array"
     if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
     let (φ, proof) ← agreeArray ``Agree.flatMoved el
+    agreeAs userT inst src φ proof
+  | .pair _ _, .owned, (``LeanExe.Pipeline.Moved, #[native]) =>
+    let (φ, proof) ← agreeMoved native t
     agreeAs userT inst src φ proof
   | _, _, _ =>
     let (φ, proof) ← agreeTy userT t

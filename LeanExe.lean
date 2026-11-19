@@ -174,6 +174,7 @@ import LeanExe.Pipeline.FileBytes
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
 import LeanExe.Pipeline.Int64
+import LeanExe.Pipeline.MovedTuples
 import LeanExe.Pipeline.Records
 import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.Runtime
