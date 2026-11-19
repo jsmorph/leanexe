@@ -102,23 +102,6 @@ def sysLoadCode : List Param → Nat → Nat → Program
       sysLoadCode params (slot + 8) (target + 1)
   | _ :: params, slot, target => sysLoadCode params slot target
 
-/-- Pushes the word in local `count`, or the word in local `capacity` when the count is at least
-the capacity. -/
-def minCode (count capacity : Nat) : Program :=
-  [.localGet count, .localGet capacity, .geUI64,
-   .iff 0 1 [.localGet capacity] [.localGet count] [] [.i64]]
-
-/-- Leaves in `target` the address of the window of a buffer and in `target + 1` its length, from
-the buffer's root in local `root` and size in `root + 1` and the window's start in local `start`
-and count in local `count`: the first position, the start or the size when that is smaller, in
-`target`, the bytes from it to the end in `target + 1`, the length, the count or those bytes when
-they are fewer, in `target + 1`, and the root plus the first position in `target`. -/
-def windowCode (root start count target : Nat) : Program :=
-  minCode start (root + 1) ++
-    [.localSet target, .localGet (root + 1), .localGet target, .subI64, .localSet (target + 1)] ++
-    minCode count (target + 1) ++
-    [.localSet (target + 1), .localGet root, .localGet target, .addI64, .localSet target]
-
 /-- Stores 0 into the bytes from the address in local `pointer` whose number is in local
 `length`, with the index in local `index`. -/
 def zeroCode (pointer length index : Nat) : Program :=

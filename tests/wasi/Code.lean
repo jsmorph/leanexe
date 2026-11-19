@@ -18,8 +18,8 @@ def encodable (code : Wasm.Program) : Bool :=
 #guard encodable (copyOwnedCode 0 1 2)
 #guard encodable (buildCode 0 1 2 [.localGet 2])
 #guard encodable (literalCode 4096 [0, 255] 0)
-#guard encodable (Verified.Wasi.writeCode .stdout 0 1 2)
-#guard encodable (Verified.Wasi.writeCode .stderr 0 1 2)
+#guard encodable (Verified.Wasi.writeFunction .stdout 0).body
+#guard encodable (Verified.Wasi.writeFunction .stderr 0).body
 #guard encodable (Verified.Wasi.exitCode 0)
 #guard encodable (Verified.Wasi.readCallCode 0 1)
 #guard encodable (Verified.Wasi.discardReadCode 0)

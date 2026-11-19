@@ -15,8 +15,7 @@ def EffectSig.callMoves (signature : EffectSig) (slots : List Slot) (live : Nat 
 branches reserve their result words before child scratch.  Loops reserve count, index, and
 state words, then share callback scratch.  A `letPair` reserves its components' words before the
 scratch of the pair's copy and of its body.  A `sys` command with a buffer reserves the buffer's
-words before the scratch of its copy and of the call.  A write reserves the window's address and
-length. -/
+words before the scratch of its copy and of the call. -/
 def Command.width : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Nat
   | _, _, .unit => 0
@@ -31,7 +30,7 @@ def Command.width : {context : List Ty} → {result : ResultTy} →
   | _, _, .read buffer _ _ =>
     Ty.bytes.width + max (max (Expr.var (S := pureSigs) buffer).width (copyWidth .bytes)) 5
   | _, _, .readAll limit => max limit.width 6
-  | _, _, .write _ _ _ _ => 2
+  | _, _, .write _ _ _ _ => 0
   | _, _, .exit code => max code.width 1
   | _, _, .loop (type := type) count initial test step =>
     max count.width (max (1 + max initial.width (copyWidth type))
