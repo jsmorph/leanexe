@@ -157,6 +157,124 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
         (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + first.width + second.width)
         (shift 2 live)
 
+/-- `Command.codeWith` with the variables live after the command as a bitmask, together with the
+command's `useMask`, in one pass: the code of a command without subcommands is its `codeWith`
+under `live.testBit`, and a command with subcommands computes its masks from theirs.  A loop's
+step reads the loop's state, so the loop computes the step's mask before the step's code.
+`Command.codeMask_eq` equates the two, and `EffectFunc.functionWith` calls this one, which the
+kernel evaluates in time linear in the command. -/
+def Command.codeMask (calls : List Call) (source : Wasm.Module) (h : Nat) (slots : List Slot)
+    (base : Nat) (live : Nat) (pool : Bytes.LiteralPool) :
+    {context : List Ty} → {result : ResultTy} →
+    Command pureSigs effectSigs context result → Program × Nat
+  | _, _, command@.unit
+  | _, _, command@(.ret _)
+  | _, _, command@(.call _ _)
+  | _, _, command@(.read _ _ _)
+  | _, _, command@(.readAll _)
+  | _, _, command@(.write _ _ _ _)
+  | _, _, command@(.exit _)
+  | _, _, command@(.sys _ _ _ _ _) =>
+    (command.codeWith calls (pool := pool) source h slots base live.testBit, command.useMask)
+  | _, _, .bind (intermediate := .unit) first next =>
+    let after := next.codeMask calls source h slots base live pool
+    let before := first.codeMask calls source h slots base (live ||| after.2) pool
+    (before.1 ++ after.1, before.2 ||| after.2)
+  | _, _, .bind (intermediate := .value type) first next =>
+    let after := next.codeMask calls source h (⟨base, .owned⟩ :: slots) (base + type.width)
+      (live <<< 1) pool
+    let before := first.codeMask calls source h slots (base + type.width)
+      (live ||| after.2 >>> 1) pool
+    (before.1 ++ storeCode h base type.types ++
+        (if after.2.testBit 0 = false then Relocation.programWith calls (releaseCode type base)
+          else []) ++
+        after.1,
+      before.2 ||| after.2 >>> 1)
+  | context, result, .ite condition yes no =>
+    let yesCode := yes.codeMask calls source h slots (base + result.width) live pool
+    let noCode := no.codeMask calls source h slots (base + result.width) live pool
+    let mid := live ||| yesCode.2 ||| noCode.2
+    (Relocation.programWith calls (condition.code (pool := pool) h slots base mid.testBit) ++
+        [.eqzI64, .iff 0 0
+          (Relocation.programWith calls (releaseWhere context slots
+              (fun i => mid.testBit i && !(live ||| noCode.2).testBit i)) ++
+            noCode.1 ++ storeCode h base result.types)
+          (Relocation.programWith calls (releaseWhere context slots
+              (fun i => mid.testBit i && !(live ||| yesCode.2).testBit i)) ++
+            yesCode.1 ++ storeCode h base result.types) [] []] ++
+        loadCode h base result.types,
+      condition.useMask ||| yesCode.2 ||| noCode.2)
+  | context, _, .loop (type := type) count initial test step =>
+    let used := test.useMask >>> 2 ||| step.useMask >>> 2
+    let all := live ||| used
+    let captured := slots.map fun slot => { slot with mode := .borrowed }
+    let state := base + 2
+    let scratch := state + type.width
+    (Relocation.programWith calls (count.code (pool := pool) h slots base
+          (all ||| initial.useMask).testBit) ++
+        [.localSet base] ++
+        Relocation.programWith calls (initial.code (pool := pool) h slots (base + 1) all.testBit ++
+          coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) ++
+        storeCode h state type.types ++ [.constI64 0, .localSet (base + 1),
+          .block 0 0 [.loop 0 0
+            ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
+              Relocation.programWith calls (test.code (pool := pool) h
+                (⟨state, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: captured) scratch
+                (1 ||| all <<< 2).testBit) ++
+              [.eqzI64, .br_if 1] ++
+              (if step.useMask.testBit 0 = false then
+                Relocation.programWith calls (releaseCode type state) else []) ++
+              (step.codeMask calls source h
+                (⟨state, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: captured) scratch (all <<< 2)
+                pool).1 ++
+              storeCode h state type.types ++
+              [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
+            [] []] ++
+        Relocation.programWith calls (releaseWhere context slots
+          (fun i => used.testBit i && !live.testBit i)) ++
+        loadCode h state type.types,
+      count.useMask ||| initial.useMask ||| test.useMask >>> 2 ||| step.useMask >>> 2)
+  | _, _, .letPair (first := first) (second := second) pair body =>
+    let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
+    let bodyCode := body.codeMask calls source h
+      (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + first.width + second.width)
+      (live <<< 2) pool
+    (Relocation.programWith calls ((Expr.var (S := pureSigs) pair).code (pool := pool) h slots
+          (base + first.width + second.width) (live ||| bodyCode.2 >>> 2).testBit) ++
+        storeCode h (base + first.width) second.types ++ storeCode h base first.types ++
+        Relocation.programWith calls (letPairReleaseCode first second mode base
+          (bodyCode.2.testBit 1) (bodyCode.2.testBit 0)) ++
+        bodyCode.1,
+      1 <<< pair.index ||| bodyCode.2 >>> 2)
+
+theorem Command.codeMask_eq (calls : List Call) (source : Wasm.Module) (h : Nat)
+    (pool : Bytes.LiteralPool) (command : Command pureSigs effectSigs context result) :
+    ∀ (slots : List Slot) (base live : Nat),
+      command.codeMask calls source h slots base live pool =
+        (command.codeWith calls (pool := pool) source h slots base live.testBit,
+          command.useMask) := by
+  induction command with
+  | unit | ret | call | read | readAll | write | exit | sys => intro _ _ _; rfl
+  | @bind context intermediate result first next firstIh nextIh =>
+    intro slots base live
+    cases intermediate <;>
+      simp only [Command.codeMask, Command.codeWith, Command.useMask, ResultTy.bindCount,
+        Nat.shiftRight_zero, firstIh, nextIh, testBit_or_eq, testBit_shiftRight_eq,
+        testBit_shiftLeft_eq, Command.useMask_testBit]
+  | ite condition yes no yesIh noIh =>
+    intro slots base live
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, yesIh, noIh, testBit_or_eq,
+      Command.useMask_testBit]
+  | loop count initial test step stepIh =>
+    intro slots base live
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, stepIh, testBit_or_eq,
+      testBit_shiftRight_eq, testBit_shiftLeft_eq, testBit_one_eq, Command.useMask_testBit,
+      Expr.useMask_testBit, Expr.usesFast_eq]
+  | letPair pair body bodyIh =>
+    intro slots base live
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, bodyIh, testBit_or_eq,
+      testBit_shiftRight_eq, testBit_shiftLeft_eq, Command.useMask_testBit]
+
 /-- Command code of a module without imported calls. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) (pool : Bytes.LiteralPool) :
@@ -175,15 +293,28 @@ def EffectFunc.functionWith (calls : List Call) (source : Wasm.Module) (function
     (typeIdx : Nat) (pool : Bytes.LiteralPool) : Wasm.Function :=
   let slots := paramSlots function.params function.modes 1
   let h := function.positions
+  let body := function.body.codeMask calls source h slots (1 + widthSum function.params) 0 pool
   { params := codeParams function.params true
     locals := List.replicate function.body.width .i64 ++
       List.replicate h .f64 ++ List.replicate h .f32
     body := guardCode ++ paramCopyCode h 1 (function.params.flatMap Ty.types) ++
-      Relocation.programWith calls (releaseWhere function.params slots (fun i => !function.body.uses i)) ++
-      function.body.codeWith calls (pool := pool) source h slots (1 + widthSum function.params)
-        (fun _ => false)
+      Relocation.programWith calls (releaseWhere function.params slots
+        (fun i => !body.2.testBit i)) ++
+      body.1
     results := function.result.types
     typeIdx := some typeIdx }
+
+theorem EffectFunc.functionWith_body (calls : List Call) (source : Wasm.Module)
+    (function : EffectFunc pureSigs effectSigs) (typeIdx : Nat) (pool : Bytes.LiteralPool) :
+    (function.functionWith calls source typeIdx pool).body =
+      guardCode ++ paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
+        Relocation.programWith calls (releaseWhere function.params
+          (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) ++
+        function.body.codeWith calls (pool := pool) source function.positions
+          (paramSlots function.params function.modes 1) (1 + widthSum function.params)
+          (fun _ => false) := by
+  simp only [EffectFunc.functionWith, Command.codeMask_eq, Command.useMask_testBit,
+    testBit_zero_eq]
 
 def EffectFunc.function (source : Wasm.Module) (function : EffectFunc pureSigs effectSigs)
     (typeIdx : Nat) (pool : Bytes.LiteralPool) : Wasm.Function :=
