@@ -89,12 +89,13 @@ def runWith {α : Type} (reports : IO.Ref (List (String × List Bytes))) (action
   | .pure value => Pure.pure (.returned value)
   | .read capacity next => do
     if capacity ≥ 4294967296 then
-      return ← runWith reports (next ⟨61, Bytes.empty⟩) host
+      return ← runWith reports (next ⟨61, Bytes.empty, Bytes.empty⟩) host
     let reply ← host.read capacity
     if reply.committed.data.size > capacity.toNat ∨ ¬reply.validErrno then
       throw (IO.userError "WASI native host returned an invalid read reply")
     match reply with
-    | .returned errno committed => runWith reports (next (readResult errno committed)) host
+    | .returned errno committed =>
+      runWith reports (next (readReply errno committed (readRange committed capacity))) host
     | .trapped message _ => Pure.pure (.trapped message)
   | .write output bytes next => do
     let reply ← host.write output bytes

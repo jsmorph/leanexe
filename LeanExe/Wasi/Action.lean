@@ -7,6 +7,14 @@ structure ReadResult where
   errno : UInt64
   bytes : Bytes
 
+/-- What a read of standard input passes to its continuation: the errno, the bytes read, empty
+after an errno, and the bytes that the read's region holds after the call, its range, which begin
+with the bytes read after a success. -/
+structure ReadReply where
+  errno : UInt64
+  bytes : Bytes
+  range : Bytes
+
 structure WriteResult where
   errno : UInt64
   count : UInt64
@@ -22,7 +30,7 @@ def Output.fd : Output → UInt64
 
 inductive Action : Type → Type 1 where
   | pure {α : Type} (value : α) : Action α
-  | read {α : Type} (capacity : UInt64) (next : ReadResult → Action α) : Action α
+  | read {α : Type} (capacity : UInt64) (next : ReadReply → Action α) : Action α
   | write {α : Type} (output : Output) (bytes : Bytes)
       (next : WriteResult → Action α) : Action α
   | exit {α : Type} (code : UInt64) : Action α
@@ -106,7 +114,30 @@ instance : LawfulMonad Action :=
 
 end Action
 
-def readSome (capacity : UInt64) : Action ReadResult := .read capacity .pure
+/-- The result of a call that fills a window of a caller's buffer: the errno, the number of bytes
+that the call placed from the window's start, and the buffer.  After an errno the count is 0 and the
+window's bytes are 0. -/
+structure FillResult where
+  errno : UInt64
+  count : UInt64
+  buffer : Bytes
+
+/-- The result of a call that filled the window of `buffer` that `start` and `count` name: on
+errno 0 the count `used` and `buffer` with the window's bytes replaced by `bytes`, the whole region
+that the host wrote, and after an errno the count 0 and `buffer` with the window's bytes set to 0.
+-/
+def FillResult.of (buffer : Bytes) (start count errno used : UInt64) (bytes : Bytes) :
+    FillResult :=
+  if errno = 0 then ⟨0, used, buffer.splice (buffer.window start count).1 bytes⟩
+  else ⟨errno, 0, buffer.clear start count⟩
+
+/-- Calls `fd_read` once for stdin into the window of `buffer` that `start` and `count` name.  On
+errno 0 the result holds the number of bytes read and `buffer` with the window's bytes replaced by
+the read's range, whose first bytes are those read, and after an errno the count 0 and `buffer`
+with the window's bytes set to 0. -/
+def readStdin (buffer : Bytes) (start count : UInt64) : Action FillResult :=
+  .read (buffer.windowLength start count) fun reply =>
+    .pure (FillResult.of buffer start count reply.errno reply.bytes.size reply.range)
 
 /-- Calls `fd_write` once for stdout with the bytes of the window of `buffer` that `start` and
 `count` name. -/

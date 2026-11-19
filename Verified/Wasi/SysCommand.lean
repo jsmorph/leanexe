@@ -13,31 +13,32 @@ import Verified.Wasi.WriteCommand
 import Verified.Wasi.BindContext
 
 /-! The command `sys`: its code from the argument variables to the result words, with its
-correctness and its cost.  `SysResult` is the outcome that both specifications need: a returned
-value with the state after the command and the heap that the command allocated, or a trap that
-`CommandResult` accepts. -/
+correctness and its cost.  `ValueResult` is the outcome that both specifications need of a `sys`
+command or a read: a returned value with the state after the command and the heap that the command
+allocated, or a trap that `CommandResult` accepts.  `wp_take_with` composes the take of a buffer,
+which both commands make, with the code that consumes the taken buffer. -/
 
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-inductive SysResult {World : Type} {context : List Ty} (host : Host World) (env : Env context)
-    (slots : List Slot) (liveIn live : Nat → Bool) (base : Nat) (form : SysForm)
-    (action : Action form.ty.denote) (cost : List Event → Nat) (heap : Heap)
+inductive ValueResult {World : Type} {context : List Ty} (host : Host World) (env : Env context)
+    (slots : List Slot) (liveIn live : Nat → Bool) (base : Nat) (type : Ty)
+    (action : Action type.denote) (cost : List Event → Nat) (heap : Heap)
     (initial : Store (Observed World)) (locals : Locals) (aborts : Bool) :
     Continuation (Observed World) → Prop where
-  | returned (value : form.ty.denote) (finalHeap : Heap) (final : Store (Observed World))
+  | returned (value : type.denote) (finalHeap : Heap) (final : Store (Observed World))
       (finalLocals : Locals) (words : List Value) (trace : List Event)
       (execution : Exec (observedHost host) action initial.host trace (.returned value) final.host)
-      (after : After env slots liveIn live base heap initial locals (.value form.ty) value
+      (after : After env slots liveIn live base heap initial locals (.value type) value
         finalHeap final finalLocals words)
       (top : finalHeap.top.toNat ≤ heap.top.toNat + cost trace) :
-      SysResult host env slots liveIn live base form action cost heap initial locals aborts
+      ValueResult host env slots liveIn live base type action cost heap initial locals aborts
         (.Fallthrough final { finalLocals with values := words.reverse ++ locals.values })
   | trapped (final : Store (Observed World)) (message : String)
-      (result : CommandResult host env slots liveIn live base (.value form.ty) action heap initial
+      (result : CommandResult host env slots liveIn live base (.value type) action heap initial
         locals aborts (.Trap final message)) :
-      SysResult host env slots liveIn live base form action cost heap initial locals aborts
+      ValueResult host env slots liveIn live base type action cost heap initial locals aborts
         (.Trap final message)
 
 /-- The argument variables of a `sys` command hold their words in their locals below `base`. -/
@@ -114,7 +115,7 @@ theorem plain_of_inputKind {params : List Param} (kinds : params.all Param.input
   have := List.all_eq_true.mp kinds param member
   cases param <;> simp_all [Param.isWindow, Param.inputKind, Param.flatKind, List.count_eq_zero]
 
-/-- The code of a reported `sys` command gives a `SysResult`. -/
+/-- The code of a reported `sys` command gives a `ValueResult`. -/
 theorem wp_sys_reported_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
     (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
@@ -139,7 +140,7 @@ theorem wp_sys_reported_result_with {calls : List LeanExe.Wasi.Call} {World : Ty
         (SysForm.reported.runWith operation values [] []) initial.host trace residual final →
         sysCost .reported operation trace ≤ budget) :
     wp target (sysReportedCodeWith calls operation base)
-      (SysResult host env slots liveIn live base .reported
+      (ValueResult host env slots liveIn live base SysForm.reported.ty
         (SysForm.reported.runWith operation values [] []) (sysCost .reported operation)
         heap initial locals aborts)
       initial locals targetHost := by
@@ -258,7 +259,7 @@ theorem flat_run_bind_inputs (call : LeanExe.Wasi.Call) (words : Nat) (values : 
         .pure (SysForm.value (.flat words false) (reply.errno :: resultWords call.params reply 0)
           .empty) := rfl
 
-/-- The code of a flat `sys` command without an output gives a `SysResult`. -/
+/-- The code of a flat `sys` command without an output gives a `ValueResult`. -/
 theorem wp_sys_flat_result_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
     {targetHost : HostEnv (Observed World)} {context : List Ty}
@@ -283,8 +284,8 @@ theorem wp_sys_flat_result_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     wp target (sysFlatInputsCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc)
         (inputs.map fun input => (slots.getD input.index default).loc) base)
-      (SysResult host env slots liveIn live base
-        (.flat (operation.params.countP Param.isResult) false)
+      (ValueResult host env slots liveIn live base
+        (SysForm.flat (operation.params.countP Param.isResult) false).ty
         ((SysForm.flat (operation.params.countP Param.isResult) false).runWith operation
           (args.map env.get) (inputs.map env.get) buffers)
         (sysCost (.flat (operation.params.countP Param.isResult) false) operation)
@@ -347,7 +348,7 @@ theorem fillValue_blocks (store : Store Unit) (root size : UInt64) (result : Fil
       [.i64 root, .i64 size]) (fillValue result) = Bytes.regions store root :=
   wordsBytes_blocks store root size result.buffer 2 [result.errno, result.count] rfl
 
-/-- The code of a flat `sys` command that fills a window of its buffer gives a `SysResult`. -/
+/-- The code of a flat `sys` command that fills a window of its buffer gives a `ValueResult`. -/
 theorem wp_sys_flat_fill_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
     {targetHost : HostEnv (Observed World)} {context : List Ty}
@@ -376,8 +377,8 @@ theorem wp_sys_flat_fill_result_with {calls : List LeanExe.Wasi.Call} {World : T
         (args.map fun arg => (slots.getD arg.index default).loc)
         (inputs.map fun input => (slots.getD input.index default).loc)
         (slots.getD buffer.index default).loc base)
-      (SysResult host env slots liveIn live base
-        (.flat (operation.params.countP Param.isResult) true)
+      (ValueResult host env slots liveIn live base
+        (SysForm.flat (operation.params.countP Param.isResult) true).ty
         ((SysForm.flat (operation.params.countP Param.isResult) true).runWith operation
           (args.map env.get) (inputs.map env.get) [env.get buffer])
         (sysCost (.flat (operation.params.countP Param.isResult) true) operation)
@@ -461,7 +462,7 @@ theorem plain_of_record {params : List Param} {size align : Nat} {fields : List 
     subst member
     rfl
 
-/-- The code of a record `sys` command gives a `SysResult`. -/
+/-- The code of a record `sys` command gives a `ValueResult`. -/
 theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
     (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
@@ -495,7 +496,7 @@ theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type
     wp target (sysRecordCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc)
         (inputs.map fun input => (slots.getD input.index default).loc) base)
-      (SysResult host env slots liveIn live base (.record fields.length)
+      (ValueResult host env slots liveIn live base (SysForm.record fields.length).ty
         ((SysForm.record fields.length).runWith operation (args.map env.get) (inputs.map env.get)
           buffers)
         (sysCost (.record fields.length) operation) heap initial locals aborts)
@@ -585,7 +586,7 @@ theorem poll_run_bind (call : LeanExe.Wasi.Call) (values : List UInt64)
       Action.bind (.sys call (sysArgs call.params values inputs buffers) Action.pure) fun reply =>
         .pure (SysForm.value .poll (reply.errno :: pollWords reply) .empty) := rfl
 
-/-- The code of a read `sys` command that fills a window of its buffer gives a `SysResult`. -/
+/-- The code of a read `sys` command that fills a window of its buffer gives a `ValueResult`. -/
 theorem wp_sys_iovec_fill_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
     {targetHost : HostEnv (Observed World)} {context : List Ty}
@@ -608,7 +609,7 @@ theorem wp_sys_iovec_fill_result_with {calls : List LeanExe.Wasi.Call} {World : 
     wp target (sysIovecReadCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc)
         (slots.getD buffer.index default).loc base)
-      (SysResult host env slots liveIn live base .iovecRead
+      (ValueResult host env slots liveIn live base SysForm.iovecRead.ty
         (SysForm.iovecRead.runWith operation (args.map env.get) [] [env.get buffer])
         (sysCost .iovecRead operation) heap initial locals aborts)
       initial locals targetHost := by
@@ -649,7 +650,7 @@ theorem wp_sys_iovec_fill_result_with {calls : List LeanExe.Wasi.Call} {World : 
     rw [List.append_nil, ← hArgs] at exec
     exact .trapped final message (.terminal final trace (.trapped message) message exec rfl)
 
-/-- The code of a write `sys` command of a window of its input gives a `SysResult`. -/
+/-- The code of a write `sys` command of a window of its input gives a `ValueResult`. -/
 theorem wp_sys_iovec_window_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {target : Module} {host : Host World} (hImports : target.imports = ABI.importsWith calls)
     {targetHost : HostEnv (Observed World)} {context : List Ty}
@@ -671,7 +672,7 @@ theorem wp_sys_iovec_window_result_with {calls : List LeanExe.Wasi.Call} {World 
     wp target (sysIovecWindowCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc)
         (slots.getD input.index default).loc base)
-      (SysResult host env slots liveIn live base .iovecWrite
+      (ValueResult host env slots liveIn live base SysForm.iovecWrite.ty
         (SysForm.iovecWrite.runWith operation (args.map env.get) [env.get input] [])
         (sysCost .iovecWrite operation) heap initial locals aborts)
       initial locals targetHost := by
@@ -710,7 +711,7 @@ theorem wp_sys_iovec_window_result_with {calls : List LeanExe.Wasi.Call} {World 
     rw [List.append_nil, ← iovec_write_run_bind] at exec
     exact .trapped final message (.terminal final trace (.trapped message) message exec rfl)
 
-/-- The code of a `poll` command gives a `SysResult`. -/
+/-- The code of a `poll` command gives a `ValueResult`. -/
 theorem wp_sys_poll_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
     (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
@@ -739,7 +740,7 @@ theorem wp_sys_poll_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
         sysCost .poll operation trace ≤ budget) :
     wp target (sysPollCodeWith calls operation
         (args.map fun arg => (slots.getD arg.index default).loc) base)
-      (SysResult host env slots liveIn live base .poll
+      (ValueResult host env slots liveIn live base SysForm.poll.ty
         (SysForm.poll.runWith operation (args.map env.get) [] buffers)
         (sysCost .poll operation) heap initial locals aborts)
       initial locals targetHost := by
@@ -827,7 +828,7 @@ theorem bufferCount_record {params : List Param} {size align : Nat} {fields : Li
     subst member
     simp [Param.takesBuffer]
 
-/-- The code of a `sys` command gives a `SysResult`, with its input variables live after it.  The
+/-- The code of a `sys` command gives a `ValueResult`, with its input variables live after it.  The
 command consumes each buffer variable, which is owned, dies at the command, and is none of its
 inputs. -/
 theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
@@ -863,11 +864,11 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
         (args.map fun arg => (slots.getD arg.index default).loc)
         (inputs.map fun input => (slots.getD input.index default).loc)
         (buffers.map fun buffer => (slots.getD buffer.index default).loc) base)
-      (SysResult host env slots (fun i => live i ||
+      (ValueResult host env slots (fun i => live i ||
           ((buffers.any fun buffer => i == buffer.index) ||
             ((inputs.any fun input => i == input.index) || args.any fun arg => i == arg.index)))
         (fun i => (inputs.any fun input => i == input.index) || live i)
-        base form (form.runWith operation (args.map env.get) (inputs.map env.get)
+        base form.ty (form.runWith operation (args.map env.get) (inputs.map env.get)
           (buffers.map env.get))
         (sysCost form operation) heap initial locals aborts)
       initial locals targetHost := by
@@ -1072,7 +1073,7 @@ theorem CommandResult.trap_live {World : Type} {context : List Ty} {host : Host 
   | .resource _ trace residual allowed progress => .resource _ trace residual allowed progress
 
 /-- The code of a `sys` command without the take of a buffer and the release of its input
-variables that die give a `SysResult` for the variables live after the command. -/
+variables that die give a `ValueResult` for the variables live after the command. -/
 theorem wp_sys_released_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {source target : Module} {host : Host World}
     (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
@@ -1112,10 +1113,10 @@ theorem wp_sys_released_with {calls : List LeanExe.Wasi.Call} {World : Type}
         (buffers.map fun buffer => (slots.getD buffer.index default).loc) base ++
       Relocation.programWith calls (releaseWhere context slots
         (fun i => (inputs.any fun input => i == input.index) && !live i)))
-      (SysResult host env slots (fun i => live i ||
+      (ValueResult host env slots (fun i => live i ||
           ((buffers.any fun buffer => i == buffer.index) ||
             ((inputs.any fun input => i == input.index) || args.any fun arg => i == arg.index)))
-        live base form (form.runWith operation (args.map env.get) (inputs.map env.get)
+        live base form.ty (form.runWith operation (args.map env.get) (inputs.map env.get)
           (buffers.map env.get))
         (sysCost form operation) heap initial locals aborts)
       initial locals targetHost := by
@@ -1158,12 +1159,12 @@ theorem wp_sys_released_with {calls : List LeanExe.Wasi.Call} {World : Type}
     have resultAfter := After.release vars apart updated keptSelected liveSelected
       (evolution.mono retained)
     rw [wp_nil]
-    exact SysResult.returned value releasedHeap released
+    exact ValueResult.returned value releasedHeap released
       { finalLocals with values := words.reverse ++ locals.values } words trace
       (by rw [releasedWorld]; exact execution) resultAfter (by rw [topEq]; exact top)
   | trapped final message result =>
     simp only [Then]
-    exact SysResult.trapped final message (CommandResult.trap_live result)
+    exact ValueResult.trapped final message (CommandResult.trap_live result)
 
 theorem bufferCount_le_one {call : LeanExe.Wasi.Call} (compiled : call.compiled = true) :
     call.bufferCount ≤ 1 := by
@@ -1198,7 +1199,7 @@ theorem bufferCount_le_one {call : LeanExe.Wasi.Call} (compiled : call.compiled 
             exact compiled.1.2
 
 /-- The code of a `sys` command without a buffer, the call and the release of the input variables
-that die, gives a `SysResult`. -/
+that die, gives a `ValueResult`. -/
 theorem wp_sys_plain_with {calls : List LeanExe.Wasi.Call}
     {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
@@ -1236,8 +1237,8 @@ theorem wp_sys_plain_with {calls : List LeanExe.Wasi.Call}
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [] env ≤ budget) :
     wp target ((Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
         args inputs []).codeWith calls (pool := pool) source h slots base live)
-      (SysResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
-          (effectSigs := effectSigs) operation form args inputs []).uses i) live base form
+      (ValueResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
+          (effectSigs := effectSigs) operation form args inputs []).uses i) live base form.ty
         (form.runWith operation (args.map env.get) (inputs.map env.get) [])
         (fun trace => sysCost form operation trace +
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [] env)
@@ -1257,8 +1258,168 @@ theorem wp_sys_plain_with {calls : List LeanExe.Wasi.Call}
     facts.runtime facts.layout facts.profile facts.imports sourceHost valid callsOk vars scratch
     (fun _ member => nomatch member) at_ cap low hRoom resources fragment.1 fragment.2
 
+/-- The take of the buffer variable `buffer` into the two locals from `base`, as a `ret` of the
+variable takes it, which moves an owned buffer that dies there and copies it otherwise, followed by
+`inner`, the code that consumes the taken buffer as variable 0 of the extended context, gives the
+outcome of `inner` with a charge that adds the take's.  `takeLive` holds the variables live after
+the take, among them those that `inner` reads, and `bodyIn` the variables that `inner` reads or
+keeps in the extended context. -/
+theorem wp_take_with {calls : List LeanExe.Wasi.Call}
+    {source target : Wasm.Module}
+    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
+    {pool : Bytes.LiteralPool} {context : List Ty}
+    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
+    {World : Type} {host : Host World} {targetHost : HostEnv (Observed World)} {depth : UInt64}
+    {env : Env context} {slots : List Slot} {live takeLive bodyIn : Nat → Bool}
+    {h base width : Nat} {heap : Heap} {initial : Store (Observed World)} {locals : Locals}
+    {aborts : Bool} {budget : Nat} {type : Ty} {action : Action type.denote}
+    {cost : List Event → Nat} {buffer : Var context .bytes} {inner : Program}
+    (selected : ∀ i, live i = true → takeLive i = true)
+    (tailSelected : ∀ i, bodyIn (i + 1) = true → takeLive i = true)
+    (outputSelected : ∀ i, shift 1 live i = true → bodyIn i = true)
+    (depthParam : locals.params.head? = some (.i64 depth))
+    (positions : locals.positions = h)
+    (vars : Holds env slots (fun i => takeLive i || (Expr.var (S := pureSigs) buffer).uses i)
+      base heap (PureTransport.erase initial) locals)
+    (at_ : heap.At (PureTransport.erase initial))
+    (safe : pool.Safe env slots (fun i => takeLive i || (Expr.var (S := pureSigs) buffer).uses i)
+      heap (PureTransport.erase initial) locals)
+    (scratch : Holds.ApartFrom env slots
+      (fun i => takeLive i || (Expr.var (S := pureSigs) buffer).uses i)
+      (PureTransport.erase initial) locals ABI.scratch)
+    (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
+    (low : locals.params.length ≤ base)
+    (room : base + (Ty.bytes.width + max (max (Expr.var (S := pureSigs) buffer).width
+      (copyWidth .bytes)) width) ≤ h)
+    (takeForm : Encoding.ProgramForm ((Expr.var (S := pureSigs) buffer).code (pool := pool) h
+      slots (base + Ty.bytes.width) takeLive ++
+      coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+        (base + Ty.bytes.width)))
+    (takeClosed : Relocation.programClosed source.funcs.length
+      ((Expr.var (S := pureSigs) buffer).code (pool := pool) h slots (base + Ty.bytes.width)
+        takeLive ++
+      coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+        (base + Ty.bytes.width)) = true)
+    (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
+      ∀ trace residual final, Prefix (observedHost host) action initial.host trace residual final →
+        cost trace + pure.ownedCost depth (slots.map Slot.mode) takeLive
+          (Expr.var (S := pureSigs) buffer) env ≤ budget)
+    (hInner : ∀ (takeHeap : Heap) (takeStore : Store (Observed World)) (boundLocals : Locals)
+        (innerBudget : Nat),
+      Holds (.cons (env.get buffer) env) (⟨base, .owned⟩ :: slots) bodyIn
+        (base + Ty.bytes.width) takeHeap (PureTransport.erase takeStore) boundLocals →
+      Holds.ApartFrom (.cons (env.get buffer) env) (⟨base, .owned⟩ :: slots) bodyIn
+        (PureTransport.erase takeStore) boundLocals ABI.scratch →
+      takeHeap.At (PureTransport.erase takeStore) →
+      (PureTransport.erase takeStore).memoryCap source 0 ≤ 65535 →
+      boundLocals.params.length ≤ base + Ty.bytes.width →
+      base + Ty.bytes.width + width ≤ boundLocals.positions →
+      takeStore.host = initial.host →
+      (aborts = false → takeHeap.Within (PureTransport.erase takeStore) source innerBudget ∧
+        ∀ trace residual final, Prefix (observedHost host) action takeStore.host trace residual
+          final → cost trace ≤ innerBudget) →
+      wp target inner
+        (ValueResult host (.cons (env.get buffer) env) (⟨base, .owned⟩ :: slots) bodyIn
+          (shift 1 live) (base + Ty.bytes.width) type action cost takeHeap takeStore boundLocals
+          aborts)
+        takeStore boundLocals targetHost) :
+    wp target (Relocation.programWith calls ((Expr.var (S := pureSigs) buffer).code (pool := pool)
+        h slots (base + Ty.bytes.width) takeLive ++
+        coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+          (base + Ty.bytes.width)) ++
+        (storeCode h base Ty.bytes.types ++ inner))
+      (ValueResult host env slots (fun i => takeLive i || (Expr.var (S := pureSigs) buffer).uses i)
+        live base type action
+        (fun trace => cost trace + pure.ownedCost depth (slots.map Slot.mode) takeLive
+          (Expr.var (S := pureSigs) buffer) env)
+        heap initial locals aborts)
+      initial locals targetHost := by
+  have midSelected : ∀ i, takeLive i = true →
+      (takeLive i || (Expr.var (S := pureSigs) buffer).uses i) = true := by
+    intro i hi
+    simp [hi]
+  simp only [Ty.width] at room
+  have spec := (Expr.var (S := pureSigs) buffer).code_spec source pure.funs pure.flags
+    (pure.callBounds depth) (pure.callFits depth) sourceHost facts.runtime
+    (Calls.at facts.calls depth) (List.nil_subset _) (fun _ => depthParam) env slots [] takeLive
+  have hTakeCost : returnCost pure.funs pure.flags (pure.callBounds depth)
+      (Expr.var (S := pureSigs) buffer) env slots [] takeLive (PureTransport.erase initial)
+      locals = pure.ownedCost depth (slots.map Slot.mode) takeLive
+        (Expr.var (S := pureSigs) buffer) env :=
+    pure.returnCost_nil depth _ env slots _ _ locals
+  refine wp_return_with facts.runtime facts.layout facts.profile spec takeForm takeClosed positions
+    rfl (vars.mono (by simp only [Ty.width]; omega)) at_ safe cap
+    (by simp only [Ty.width]; omega) (by simp only [Ty.width]; omega) rfl ?_ ?_
+  · intro failure final sameWorld
+    cases aborts with
+    | true => exact ValueResult.trapped final _ (CommandResult.resource_refl rfl sameWorld)
+    | false =>
+      obtain ⟨within, bound⟩ := resources rfl
+      have hCost := bound [] _ _ (Prefix.refl _ initial.host)
+      have hWithin : heap.Within (PureTransport.erase initial) source
+          (returnCost pure.funs pure.flags (pure.callBounds depth)
+            (Expr.var (S := pureSigs) buffer) env slots [] takeLive
+            (PureTransport.erase initial) locals) := by
+        rw [hTakeCost]
+        exact within.mono (by omega)
+      have fitsVar : (Expr.var (S := pureSigs) buffer).fits pure.funs (pure.callFits depth)
+          env = true := rfl
+      simp [fitsVar, hWithin] at failure
+  · intro takeHeap takeStore takeLocals words takeAfter sameHost takeTop
+    have firstAfter := takeAfter.lower vars midSelected (by simp only [Ty.width]; omega)
+    have rep : Ty.bytes.Rep .owned takeHeap (PureTransport.erase takeStore) words
+        (env.get buffer) := firstAfter.rep
+    refine wp_storeCode words h base Ty.bytes.types takeLocals locals.values rep.typed
+      (firstAfter.frame.positions.trans positions)
+      (by rw [firstAfter.frame.params]; exact low)
+      (by rw [Ty.types_length, firstAfter.frame.positions, positions]; simp [Ty.width]; omega)
+      ?_
+    intro boundLocals frame held _
+    have frame' : Frame base takeLocals { boundLocals with values := locals.values } :=
+      ⟨frame.params, frame.length, frame.below, frame.below32⟩
+    have boundVars := bind_context_holds (bodyIn := bodyIn) firstAfter frame' held tailSelected
+    have boundScratch := bind_context_scratch (bodyIn := bodyIn) firstAfter vars scratch frame'
+      held midSelected tailSelected
+    have grows := takeTop rfl
+    rw [hTakeCost] at grows
+    have core := hInner takeHeap takeStore { boundLocals with values := locals.values }
+      (budget - pure.ownedCost depth (slots.map Slot.mode) takeLive
+        (Expr.var (S := pureSigs) buffer) env)
+      boundVars boundScratch takeAfter.step.at_ (by rw [takeAfter.step.cap source]; exact cap)
+      (by rw [frame'.params, firstAfter.frame.params]; simp [Ty.width]; omega)
+      (by rw [frame'.positions, firstAfter.frame.positions, positions]; simp [Ty.width]; omega)
+      sameHost
+      (fun noAbort => by
+        obtain ⟨within, bound⟩ := resources noAbort
+        have hTake := bound [] _ _ (Prefix.refl _ initial.host)
+        refine ⟨within.shift grows (by omega) (takeAfter.step.cap source), ?_⟩
+        intro trace residual final progress
+        have := bound trace residual final (by rw [← sameHost]; exact progress)
+        omega)
+    refine wp.conseq (fun continuation result => ?_) core
+    cases result with
+    | returned value finalHeap final finalLocals finalWords trace execution after top =>
+      have combined := After.bind_value vars scratch firstAfter frame' held after tailSelected
+        midSelected selected
+      refine ValueResult.returned value finalHeap final finalLocals finalWords trace ?_ combined
+        ?_
+      · rw [← sameHost]
+        exact execution
+      · omega
+    | trapped final message classification =>
+      refine ValueResult.trapped final message ?_
+      cases classification with
+      | terminal final trace outcome message execution terminal =>
+        refine CommandResult.terminal final trace outcome message ?_ terminal
+        rw [← sameHost]
+        exact execution
+      | resource final trace residual allowed progress =>
+        refine CommandResult.resource final trace residual allowed ?_
+        rw [← sameHost]
+        exact progress
+
 /-- The code of a `sys` command with a buffer, the take of the buffer, the call, and the release of
-the input variables that die, gives a `SysResult` whose charge adds the take's. -/
+the input variables that die, gives a `ValueResult` whose charge adds the take's. -/
 theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
     {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
@@ -1296,8 +1457,8 @@ theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [buffer] env ≤ budget) :
     wp target ((Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
         args inputs [buffer]).codeWith calls (pool := pool) source h slots base live)
-      (SysResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
-          (effectSigs := effectSigs) operation form args inputs [buffer]).uses i) live base form
+      (ValueResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
+          (effectSigs := effectSigs) operation form args inputs [buffer]).uses i) live base form.ty
         (form.runWith operation (args.map env.get) (inputs.map env.get) [env.get buffer])
         (fun trace => sysCost form operation trace +
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [buffer] env)
@@ -1314,12 +1475,6 @@ theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
     simp only [sysTakeLive, Expr.uses, Command.uses, List.any_cons, List.any_nil,
       Bool.or_false]
     cases live i <;> cases (i == buffer.index) <;> simp
-  have midSelected : ∀ i, sysTakeLive live args inputs i = true →
-      (live i || (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs)
-        operation form args inputs [buffer]).uses i) = true := by
-    intro i hi
-    rw [← congrFun takeEq i]
-    simp [hi]
   have selected : ∀ i, live i = true → sysTakeLive live args inputs i = true := by
     intro i hi
     simp [sysTakeLive, hi]
@@ -1336,21 +1491,9 @@ theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
   have outputSelected : ∀ i, shift 1 live i = true → bodyIn i = true := by
     intro i hi
     simp [bodyIn, hi]
-  change base + (Ty.bytes.width + max (max (Expr.var (S := pureSigs) buffer).width
-    (copyWidth .bytes)) form.width) ≤ h at room
-  simp only [Ty.width] at room
-  have spec := (Expr.var (S := pureSigs) buffer).code_spec source pure.funs pure.flags
-    (pure.callBounds depth) (pure.callFits depth) sourceHost facts.runtime
-    (Calls.at facts.calls depth) (List.nil_subset _) (fun _ => depthParam) env slots []
-    (sysTakeLive live args inputs)
-  have hTakeCost : returnCost pure.funs pure.flags (pure.callBounds depth)
-      (Expr.var (S := pureSigs) buffer) env slots [] (sysTakeLive live args inputs)
-      (PureTransport.erase initial) locals =
-      pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [buffer] env :=
-    pure.returnCost_nil depth _ env slots _ _ locals
-  have selEq : (fun i => ((inputs.map (Var.there (s := .bytes))).any fun input => i == input.index) &&
-      !shift 1 live i) = (fun i => (inputs.any fun input => i == input.index + 1) &&
-        !shift 1 live i) := by
+  have selEq : (fun i => ((inputs.map (Var.there (s := .bytes))).any fun input =>
+      i == input.index) && !shift 1 live i) =
+      (fun i => (inputs.any fun input => i == input.index + 1) && !shift 1 live i) := by
     funext i
     simp [List.any_map, Function.comp_def, Var.index]
   have codeEq : sysInputsCodeWith calls operation form
@@ -1372,104 +1515,45 @@ theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
         (fun i => (inputs.any fun input => i == input.index + 1) && !shift 1 live i)) := by
     rw [selEq]
     simp [List.map_map, Function.comp_def, Var.index]
+  have argsEq : (args.map (Var.there (s := .bytes))).map
+      (Env.get (.cons (env.get buffer) env)) = args.map env.get := by
+    simp only [List.map_map, Function.comp_def, Env.get]
+  have inputsEq : (inputs.map (Var.there (s := .bytes))).map
+      (Env.get (.cons (env.get buffer) env)) = inputs.map env.get := by
+    simp only [List.map_map, Function.comp_def, Env.get]
+  have buffersEq : ([.here] : List (Var (.bytes :: context) .bytes)).map
+      (Env.get (.cons (env.get buffer) env)) = [env.get buffer] := rfl
+  have readyExt : (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
+      (args.map (Var.there (s := .bytes))) (inputs.map (Var.there (s := .bytes)))
+      ([.here] : List (Var (.bytes :: context) .bytes))).callsReady calls = true := by
+    simpa only [Command.callsReady, List.length_map, List.length_cons, List.length_nil]
+      using callsOk
+  rw [← takeEq] at vars safe scratch ⊢
   simp only [Command.codeWith, List.append_assoc]
-  refine wp_return_with facts.runtime facts.layout facts.profile spec takeFragment.1
-    takeFragment.2 positions rfl (by rw [takeEq]; exact vars.mono (by omega)) at_
-    (by rw [takeEq]; exact safe) cap (by first | omega | (simp only [Ty.width]; omega))
-    (by first | omega | (simp only [Ty.width]; omega)) rfl ?_ ?_
-  · intro failure final sameWorld
-    cases aborts with
-    | true => exact SysResult.trapped final _ (CommandResult.resource_refl rfl sameWorld)
-    | false =>
-      obtain ⟨within, bound⟩ := resources rfl
-      have hCost := bound [] _ _ (Prefix.refl _ initial.host)
-      have hWithin : heap.Within (PureTransport.erase initial) source
-          (returnCost pure.funs pure.flags (pure.callBounds depth)
-            (Expr.var (S := pureSigs) buffer) env slots [] (sysTakeLive live args inputs)
-            (PureTransport.erase initial) locals) := by
-        rw [hTakeCost]
-        exact within.mono (by omega)
-      have fitsVar : (Expr.var (S := pureSigs) buffer).fits pure.funs (pure.callFits depth)
-          env = true := rfl
-      simp [fitsVar, hWithin] at failure
-  · intro takeHeap takeStore takeLocals words takeAfter sameHost takeTop
-    rw [takeEq] at takeAfter
-    have firstAfter := takeAfter.lower vars midSelected (by omega)
-    have rep : Ty.bytes.Rep .owned takeHeap (PureTransport.erase takeStore) words
-        (env.get buffer) := firstAfter.rep
-    refine wp_storeCode words h base Ty.bytes.types takeLocals locals.values rep.typed
-      (firstAfter.frame.positions.trans positions)
-      (by rw [firstAfter.frame.params]; exact low)
-      (by rw [Ty.types_length, firstAfter.frame.positions, positions]; simp [Ty.width]; omega)
-      ?_
-    intro boundLocals frame held _
-    have frame' : Frame base takeLocals { boundLocals with values := locals.values } :=
-      ⟨frame.params, frame.length, frame.below, frame.below32⟩
-    have boundVars := bind_context_holds (bodyIn := bodyIn) firstAfter frame' held tailSelected
-    have boundScratch := bind_context_scratch (bodyIn := bodyIn) firstAfter vars scratch frame'
-      held midSelected tailSelected
-    have readyExt : (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
-        (args.map (Var.there (s := .bytes))) (inputs.map (Var.there (s := .bytes)))
-        ([.here] : List (Var (.bytes :: context) .bytes))).callsReady calls = true := by
-      simpa only [Command.callsReady, List.length_map, List.length_cons, List.length_nil]
-        using callsOk
-    have grows := takeTop rfl
-    rw [hTakeCost] at grows
-    have core := wp_sys_released_with (budget := budget -
-        pure.sysTakeCost depth (slots.map Slot.mode) live args inputs [buffer] env)
-      facts.runtime facts.layout facts.profile facts.imports sourceHost valid readyExt
-      boundVars boundScratch
-      (fun b member => by
-        rw [List.mem_singleton] at member
-        subst member
-        refine ⟨rfl, by simp [shift, Var.index], fun input member => ?_⟩
-        obtain ⟨other, _, rfl⟩ := List.mem_map.mp member
-        simp [Var.index])
-      takeAfter.step.at_ (by rw [takeAfter.step.cap source]; exact cap)
-      (by rw [frame'.params, firstAfter.frame.params]; simp [Ty.width]; omega)
-      (by rw [frame'.positions, firstAfter.frame.positions, positions]; simp [Ty.width]; omega)
-      (fun noAbort => by
-        obtain ⟨within, bound⟩ := resources noAbort
-        have hTake := bound [] _ _ (Prefix.refl _ initial.host)
-        refine ⟨within.shift grows (by omega) (takeAfter.step.cap source), ?_⟩
-        intro trace residual final progress
-        have := bound trace residual final (by
-          rw [← sameHost]
-          simp only [List.map_map, Function.comp_def, Env.get, List.map_cons, List.map_nil]
-            at progress
-          exact progress)
-        omega)
-      (by rw [selEq]; exact releaseFragment.1) (by rw [selEq]; exact releaseFragment.2)
-    rw [codeEq] at core
-    refine wp.conseq (fun continuation result => ?_) core
-    cases result with
-    | returned value finalHeap final finalLocals finalWords trace execution after top =>
-      have combined := After.bind_value vars scratch firstAfter frame' held after tailSelected
-        midSelected selected
-      refine SysResult.returned value finalHeap final finalLocals finalWords trace ?_ combined ?_
-      · rw [← sameHost]
-        simp only [List.map_map, Function.comp_def, Env.get, List.map_cons, List.map_nil]
-          at execution
-        exact execution
-      · omega
-    | trapped final message classification =>
-      refine SysResult.trapped final message ?_
-      cases classification with
-      | terminal final trace outcome message execution terminal =>
-        refine CommandResult.terminal final trace outcome message ?_ terminal
-        rw [← sameHost]
-        simp only [List.map_map, Function.comp_def, Env.get, List.map_cons, List.map_nil]
-          at execution
-        exact execution
-      | resource final trace residual allowed progress =>
-        refine CommandResult.resource final trace residual allowed ?_
-        rw [← sameHost]
-        simp only [List.map_map, Function.comp_def, Env.get, List.map_cons, List.map_nil]
-          at progress
-        exact progress
+  refine wp_take_with facts sourceHost (bodyIn := bodyIn) (width := form.width) selected
+    tailSelected outputSelected depthParam positions vars at_ safe scratch cap low room
+    takeFragment.1 takeFragment.2 resources ?_
+  intro takeHeap takeStore boundLocals innerBudget boundVars boundScratch takeAt takeCap boundLow
+    boundRoom _ innerResources
+  have core := wp_sys_released_with (budget := innerBudget)
+    facts.runtime facts.layout facts.profile facts.imports sourceHost valid readyExt
+    boundVars boundScratch
+    (fun b member => by
+      rw [List.mem_singleton] at member
+      subst member
+      refine ⟨rfl, by simp [shift, Var.index], fun input member => ?_⟩
+      obtain ⟨other, _, rfl⟩ := List.mem_map.mp member
+      simp [Var.index])
+    takeAt takeCap boundLow boundRoom
+    (fun noAbort => by
+      rw [argsEq, inputsEq, buffersEq]
+      exact innerResources noAbort)
+    (by rw [selEq]; exact releaseFragment.1) (by rw [selEq]; exact releaseFragment.2)
+  rw [codeEq, argsEq, inputsEq, buffersEq] at core
+  exact core
 
 /-- The code of a `sys` command, the take of its buffer when it has one, the call, and the release
-of the input variables that die, gives a `SysResult` whose charge adds the take's. -/
+of the input variables that die, gives a `ValueResult` whose charge adds the take's. -/
 theorem wp_sys_command_with {calls : List LeanExe.Wasi.Call}
     {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
@@ -1507,8 +1591,8 @@ theorem wp_sys_command_with {calls : List LeanExe.Wasi.Call}
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs buffers env ≤ budget) :
     wp target ((Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
         args inputs buffers).codeWith calls (pool := pool) source h slots base live)
-      (SysResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
-          (effectSigs := effectSigs) operation form args inputs buffers).uses i) live base form
+      (ValueResult host env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
+          (effectSigs := effectSigs) operation form args inputs buffers).uses i) live base form.ty
         (form.runWith operation (args.map env.get) (inputs.map env.get) (buffers.map env.get))
         (fun trace => sysCost form operation trace +
           pure.sysTakeCost depth (slots.map Slot.mode) live args inputs buffers env)

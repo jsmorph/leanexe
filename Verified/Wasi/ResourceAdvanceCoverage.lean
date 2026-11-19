@@ -25,15 +25,15 @@ theorem command_advance_coverage {World : Type} {host : Host World} {pure : Pure
   induction command with
   | unit => intro depth modes live env world trace residual after advance; cases advance
   | ret value => intro depth modes live env world trace residual after advance; cases advance
-  | read capacity =>
+  | read buffer start count =>
     intro depth modes live env world trace residual after advance
     cases advance with
     | read_reject bound =>
-      exact ⟨_, _, .returned (.read program depth modes live capacity env
+      exact ⟨_, _, .returned (.read program depth modes live buffer start count env
         (.read_reject bound (.pure _ _)))⟩
-    | read_return bound reply =>
-      exact ⟨_, _, .returned (.read program depth modes live capacity env
-        (.read_return bound reply (.pure _ _)))⟩
+    | read_return bound reply size first =>
+      exact ⟨_, _, .returned (.read program depth modes live buffer start count env
+        (.read_return bound reply size first (.pure _ _)))⟩
   | readAll limit =>
     intro depth modes live env world trace residual after advance
     exact ⟨_, _, .readAll advance.toPrefix⟩

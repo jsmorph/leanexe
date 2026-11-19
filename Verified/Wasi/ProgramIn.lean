@@ -12,7 +12,7 @@ structure CompilerBaseWith (imported : List LeanExe.Wasi.Call) (source target : 
   calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool
   imports : target.imports = ABI.importsWith imported
   read : ∃ typeIndex, target.funcs[source.funcs.length]? =
-    some (readFunctionWith imported typeIndex)
+    some (readFunction typeIndex)
   stdout : ∃ typeIndex, target.funcs[source.funcs.length + 1]? =
     some (writeFunction .stdout typeIndex)
   stderr : ∃ typeIndex, target.funcs[source.funcs.length + 2]? =

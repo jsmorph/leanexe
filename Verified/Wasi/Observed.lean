@@ -53,8 +53,9 @@ theorem exec_observed {World : Type} {host : Host World} {action : Action α}
     exact ⟨.pure world.world value, (List.append_nil _).symm⟩
   · intro α capacity next world final trace outcome hCapacity _ ih
     exact ⟨.read_reject hCapacity ih.1, ih.2⟩
-  · intro α capacity next world after final trace outcome errno committed hCapacity hHost _ ih
-    refine ⟨.read_return hCapacity hHost.1 ih.1, ?_⟩
+  · intro α capacity next world after final trace outcome errno committed range hCapacity hHost
+      hRange hPrefix _ ih
+    refine ⟨.read_return hCapacity hHost.1 hRange hPrefix ih.1, ?_⟩
     rw [ih.2, hHost.2, List.append_assoc]
     rfl
   · intro α capacity next world after message committed hCapacity hHost

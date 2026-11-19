@@ -264,7 +264,7 @@ theorem exec_run {World : Type} {host : Host World} (action : Action α) :
     intro stack post world trace outcome final h hRun
     cases hRun with
     | read_reject _ hRun => exact ih _ (h _) hRun
-    | read_return _ _ hRun =>
+    | read_return _ _ _ _ hRun =>
       obtain ⟨after, hTrace, hPost⟩ := ih _ (h _) hRun
       exact ⟨after, .cons rfl hTrace, hPost⟩
     | read_trap _ _ => exact ⟨stack, .single rfl, fun _ h => nomatch h⟩
@@ -310,7 +310,7 @@ theorem prefix_run {World : Type} {host : Host World} {action residual : Action 
   induction hPrefix with
   | refl => intro stack post h; exact ⟨stack, .nil stack, h⟩
   | read_reject _ => intro stack post h; exact ⟨stack, .nil stack, h _⟩
-  | read_return _ _ => intro stack post h; exact ⟨stack, .single rfl, h _⟩
+  | read_return _ _ _ _ => intro stack post h; exact ⟨stack, .single rfl, h _⟩
   | write_return _ => intro stack post h; exact ⟨stack, .single rfl, h _⟩
   | loop =>
     intro stack post h

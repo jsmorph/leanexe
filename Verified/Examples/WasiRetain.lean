@@ -5,10 +5,10 @@ namespace Verified.Examples.WasiRetain
 open LeanExe LeanExe.Wasi Verified.Wasi
 
 def retain : Action Bytes :=
-  loop 2 bytes![] (fun _ _ => true) fun _ previous => do
-    let next ← readSome 1
+  loop 2 (Bytes.build 1 fun _ => 0) (fun _ _ => true) fun _ previous => do
     let _ ← writeStdout previous 0 previous.size
-    pure next.bytes
+    let next ← readStdin previous 0 1
+    pure next.buffer
 
 verified_compile_wasi compiled := [retain]
 

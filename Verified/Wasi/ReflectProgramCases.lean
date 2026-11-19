@@ -17,8 +17,8 @@ def pureByte (index : UInt64) : UInt64 := (bytes![9, 8]).get index
 def helper (index : UInt64) : Action UInt64 := pure (boundLookup index + pureByte 1)
 
 def caller (index : UInt64) : Action UInt64 := do
-  let read ← readSome 1
-  let value ← helper (index + read.bytes.get 0)
+  let read ← readStdin (Bytes.build 1 fun _ => 0) 0 1
+  let value ← helper (index + read.buffer.get 0)
   let write ← writeStdout bytes![65, 0, 255] 0 3
   pure (value + write.count)
 
@@ -39,9 +39,9 @@ def packetHelper (packet : Packet) : Action UInt64 := do
   pure (packet.count + write.count)
 
 def argumentCaller : Action UInt64 := do
-  let read ← readSome 2
-  let size ← borrowBytes read.bytes
-  let bytes ← ownBytes read.bytes
+  let read ← readStdin (Bytes.build 2 fun _ => 0) 0 2
+  let size ← borrowBytes read.buffer
+  let bytes ← ownBytes read.buffer
   let computed ← borrowBytes (LeanExe.Bytes.build 2 fun index => 65 + index)
   let packet ← packetHelper (Packet.mk size bytes)
   pure (size + computed + packet)

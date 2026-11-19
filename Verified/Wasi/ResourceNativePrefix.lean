@@ -14,7 +14,8 @@ theorem advance_bind_cases {World : Type} {host : Host World} {action : Action �
   | read capacity continuation =>
     cases advance with
     | read_reject bound => exact Or.inl ⟨_, .read_reject bound, rfl⟩
-    | read_return bound reply => exact Or.inl ⟨_, .read_return bound reply, rfl⟩
+    | read_return bound reply size first =>
+      exact Or.inl ⟨_, .read_return bound reply size first, rfl⟩
   | write output bytes continuation =>
     cases advance with
     | write_return reply => exact Or.inl ⟨_, .write_return reply, rfl⟩

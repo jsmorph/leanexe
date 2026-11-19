@@ -81,8 +81,9 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
     cases impossible
   · intro α capacity next world final trace outcome hCapacity run ih safe
     exact ih (safe.after (.read_reject hCapacity))
-  · intro α capacity next world after final trace outcome errno committed hCapacity reply run ih safe
-    exact ih (safe.after (.read_return hCapacity reply))
+  · intro α capacity next world after final trace outcome errno committed range hCapacity reply
+      size first run ih safe
+    exact ih (safe.after (.read_return hCapacity reply size first))
   · intro α capacity next world after message committed hCapacity reply safe
     exact False.elim (safe (.refl _ _) hCapacity reply)
   · intro α output bytes next world after final trace outcome errno committed reply run ih safe

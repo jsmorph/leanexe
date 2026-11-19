@@ -9,8 +9,8 @@ namespace Verified.Examples.WasiSigned
 open LeanExe LeanExe.Wasi
 
 def signedStep (x : Int64) : Action Int64 := do
-  let input ← readSome 8
-  if input.errno != 0 || input.bytes.size == 0 then
+  let input ← readStdin (Bytes.build 8 fun _ => 0) 0 8
+  if input.errno != 0 || input.count == 0 then
     pure (-x)
   else
     let y := x / 3 - 7

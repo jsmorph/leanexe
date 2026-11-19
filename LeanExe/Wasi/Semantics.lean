@@ -67,6 +67,11 @@ def Outcome.exitMarker (outcome : Outcome α) (initial : Option UInt64) : Option
 def readResult (errno : UInt64) (committed : Bytes) : ReadResult :=
   ⟨errno, if errno = 0 then committed else Bytes.empty⟩
 
+/-- The reply of a read that returned `errno` and `committed`, whose region holds `range` after
+the call. -/
+def readReply (errno : UInt64) (committed range : Bytes) : ReadReply :=
+  ⟨errno, if errno = 0 then committed else Bytes.empty, range⟩
+
 def writeResult (errno committed : UInt64) : WriteResult :=
   ⟨errno, if errno = 0 then committed else 0⟩
 
@@ -79,18 +84,23 @@ inductive Exec {World : Type} (host : Host World) :
     {α : Type} → Action α → World → List Event → Outcome α → World → Prop where
   | pure (world : World) (value : α) :
       Exec host (.pure value) world [] (.returned value) world
-  | read_reject {capacity : UInt64} {next : ReadResult → Action α} {world final trace outcome}
+  | read_reject {capacity : UInt64} {next : ReadReply → Action α} {world final trace outcome}
       (hCapacity : 2 ^ 32 ≤ capacity.toNat)
-      (hNext : Exec host (next ⟨61, Bytes.empty⟩) world trace outcome final) :
+      (hNext : Exec host (next ⟨61, Bytes.empty, Bytes.empty⟩) world trace outcome final) :
       Exec host (.read capacity next) world trace outcome final
-  | read_return {capacity : UInt64} {next : ReadResult → Action α}
-      {world after final trace outcome errno committed}
+  /-- A read that returns.  The continuation receives the bytes `range` that the read's region of
+  `capacity` bytes holds after the call, which begin with the bytes read on errno 0 and are
+  otherwise free: the host may leave any bytes after those it read. -/
+  | read_return {capacity : UInt64} {next : ReadReply → Action α}
+      {world after final trace outcome errno committed range}
       (hCapacity : capacity.toNat < 2 ^ 32)
       (hHost : host.read world capacity (.returned errno committed) after)
-      (hNext : Exec host (next (readResult errno committed)) after trace outcome final) :
+      (hRange : range.data.size = capacity.toNat)
+      (hPrefix : errno = 0 → range.data.extract 0 committed.data.size = committed.data)
+      (hNext : Exec host (next (readReply errno committed range)) after trace outcome final) :
       Exec host (.read capacity next) world
         (.read capacity (.returned errno committed) :: trace) outcome final
-  | read_trap {capacity : UInt64} {next : ReadResult → Action α}
+  | read_trap {capacity : UInt64} {next : ReadReply → Action α}
       {world after message committed}
       (hCapacity : capacity.toNat < 2 ^ 32)
       (hHost : host.read world capacity (.trapped message committed) after) :
@@ -201,10 +211,10 @@ theorem Exec.bind {World : Type} {host : Host World} {action : Action α}
   · intro α capacity continuation world after trace outcome hCapacity _ ih
     intro β rest result final next hNext
     exact .read_reject hCapacity (ih hNext)
-  · intro α capacity continuation world after final trace outcome errno committed
-      hCapacity hHost _ ih
+  · intro α capacity continuation world after final trace outcome errno committed range
+      hCapacity hHost hRange hPrefix _ ih
     intro β rest result final next hNext
-    exact .read_return hCapacity hHost (ih hNext)
+    exact .read_return hCapacity hHost hRange hPrefix (ih hNext)
   · intro α capacity continuation world after message committed hCapacity hHost
     intro β rest result final next hNext
     rcases hNext with ⟨rfl, rfl, rfl⟩
@@ -270,7 +280,8 @@ theorem Exec.exited_marker {World : Type} {host : Host World} {action : Action �
   · intro α world value; rfl
   · intro α capacity next world final trace outcome hCapacity hNext ih
     exact ih
-  · intro α capacity next world after final trace outcome errno committed hCapacity hHost hNext ih
+  · intro α capacity next world after final trace outcome errno committed range hCapacity hHost
+      hRange hPrefix hNext ih
     rw [host.read_exited hHost] at ih
     exact ih
   · intro α capacity next world after message committed hCapacity hHost
@@ -307,15 +318,68 @@ theorem Exec.exited_marker {World : Type} {host : Host World} {action : Action �
   · intro σ α remaining index state test step next world final trace message hTest hStep ih
     exact ih
 
-theorem readSome_overflow {World : Type} (host : Host World) (world : World) (capacity : UInt64)
-    (h : 2 ^ 32 ≤ capacity.toNat) :
-    Exec host (readSome capacity) world [] (.returned ⟨61, Bytes.empty⟩) world :=
-  .read_reject h (.pure world _)
-
 theorem loop_zero {World : Type} (host : Host World) (world : World) (init : σ)
     (test : UInt64 → σ → Bool) (step : UInt64 → σ → Action σ) :
     Exec host (loop 0 init test step) world [] (.returned init) world :=
   .loop (.zero (.pure world init))
+
+/-- The bytes `committed` followed by zeros to `capacity` bytes: a range that a read of capacity
+`capacity` may leave, used where the range does not matter. -/
+def readRange (committed : Bytes) (capacity : UInt64) : Bytes :=
+  ⟨committed.data ++ (Bytes.zeros (capacity.toNat - committed.data.size)).data⟩
+
+theorem readRange_size {committed : Bytes} {capacity : UInt64}
+    (h : committed.data.size ≤ capacity.toNat) :
+    (readRange committed capacity).data.size = capacity.toNat := by
+  simp only [readRange, ByteArray.size_append, Bytes.zeros_size]
+  omega
+
+theorem readRange_prefix (committed : Bytes) (capacity : UInt64) :
+    (readRange committed capacity).data.extract 0 committed.data.size = committed.data :=
+  ByteArray.extract_append_eq_left rfl
+
+/-- A read that returns gives an `Exec` step with the range `readRange`. -/
+theorem Exec.read_returned {World : Type} {host : Host World} {capacity : UInt64}
+    {next : ReadReply → Action α} {world after final trace outcome errno committed}
+    (hCapacity : capacity.toNat < 2 ^ 32)
+    (hHost : host.read world capacity (.returned errno committed) after)
+    (hNext : Exec host (next (readReply errno committed (readRange committed capacity))) after
+      trace outcome final) :
+    Exec host (.read capacity next) world
+      (.read capacity (.returned errno committed) :: trace) outcome final :=
+  .read_return hCapacity hHost (readRange_size (host.read_bound hHost).1)
+    (fun _ => readRange_prefix committed capacity) hNext
+
+/-- A read of stdin into a window that returns places at most the buffer's size and keeps the
+buffer's size. -/
+theorem readStdin_returns {World : Type} {host : Host World} {buffer : Bytes}
+    {start count : UInt64} {world trace result final}
+    (execution : Exec host (readStdin buffer start count) world trace (.returned result) final) :
+    result.count.toNat ≤ buffer.data.size ∧ result.buffer.data.size = buffer.data.size := by
+  have hWindow := buffer.window_le start count
+  unfold readStdin at execution
+  cases execution with
+  | read_reject _ next =>
+    cases next
+    simp only [FillResult.of, UInt64.reduceToNat, show (61 : UInt64) ≠ 0 by decide, ite_false]
+    exact ⟨Nat.zero_le _, Bytes.clear_size _ _ _⟩
+  | @read_return _ _ _ _ _ _ _ _ errno committed range _ hHost hRange _ next =>
+    cases next
+    have bound := (host.read_bound hHost).1
+    simp only [Transfer.committed, Bytes.windowLength_toNat] at bound hRange
+    by_cases zero : errno = 0
+    · subst zero
+      simp only [readReply, FillResult.of, ite_true]
+      refine ⟨?_, Bytes.splice_size (by rw [hRange]; exact hWindow)⟩
+      have small : committed.data.size < UInt64.size := by
+        have := Bytes.window_snd buffer start count
+        have := count.toNat_lt
+        rw [show UInt64.size = 18446744073709551616 from rfl]
+        omega
+      rw [Bytes.size, UInt64.toNat_ofNat_of_lt' small]
+      omega
+    · simp only [readReply, FillResult.of, zero, ite_false, UInt64.toNat_zero]
+      exact ⟨Nat.zero_le _, Bytes.clear_size _ _ _⟩
 
 theorem Host.read_zero {World : Type} {host : Host World} {world final : World}
     {reply : Transfer Bytes} (h : host.read world 0 reply final) :

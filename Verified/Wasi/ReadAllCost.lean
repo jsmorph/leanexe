@@ -1,4 +1,4 @@
-import Verified.Wasi.ReadCost
+import Verified.Bytes.Allocation
 
 /-! The charge of `readAll limit`: the allocation of its buffer of `limit + 4,096` bytes, or
 nothing for a limit that returns errno 61 before any allocation. -/

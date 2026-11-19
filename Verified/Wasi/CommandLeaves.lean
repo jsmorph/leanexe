@@ -2,7 +2,6 @@ import Verified.AlignedCorrect
 import Verified.Wasi.CommandCodeSpec
 import Verified.Wasi.CompilerFacts
 import Verified.Wasi.ReturnCommand
-import Verified.Wasi.ReadCommand
 import Verified.Wasi.WriteCommand
 import Verified.Wasi.ExitCommand
 
@@ -73,37 +72,6 @@ theorem command_write_spec {source target : Wasm.Module}
     (output : Output) (buffer : Var context .bytes) (start count : Var context .word) :
     CommandCodeSpec source target pure effects pool (.write output buffer start count) := by
   layout_instance command_write_spec_with
-
-theorem command_read_spec_with {calls : List LeanExe.Wasi.Call}
-    {source target : Wasm.Module}
-    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
-    {pool : Bytes.LiteralPool} {context : List Ty}
-    (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
-    (capacity : Expr pureSigs context .word) :
-    CommandCodeSpecWith calls source target pure effects pool (.read capacity) := by
-  intro World host targetHost depth env slots live h base heap initial locals
-    valid _ depthParam positions vars at_ safe scratch cap low room ready covered place
-  have fragment := ready.1 _ (List.mem_singleton_self _)
-  have spec := capacity.code_spec source pure.funs pure.flags (pure.callBounds depth)
-    (pure.callFits depth) sourceHost facts.runtime (Calls.at facts.calls depth) covered
-    (fun _ => depthParam) env slots [] live
-  have noCoerce : coerceCode h .word (capacity.mode (slots.map Slot.mode)) .owned base = [] := by
-    simp [coerceCode, Ty.scalar]
-  obtain ⟨typeIndex, lookup⟩ := facts.read
-  exact wp_command_read_with facts.runtime facts.layout facts.profile facts.imports lookup valid spec
-    (by simpa only [noCoerce, List.append_nil] using fragment.1)
-    (by simpa only [noCoerce, List.append_nil] using fragment.2)
-    positions rfl vars scratch at_ safe cap low
-    (by simpa only [Command.width, copyWidth, Ty.scalar, ite_true, Nat.max_zero] using room) place
-    (fun _ => rfl) (fun _ _ _ _ _ _ _ impossible => Bool.noConfusion impossible)
-
-theorem command_read_spec {source target : Wasm.Module}
-    {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
-    {pool : Bytes.LiteralPool} {context : List Ty}
-    (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
-    (capacity : Expr pureSigs context .word) :
-    CommandCodeSpec source target pure effects pool (.read capacity) := by
-  layout_instance command_read_spec_with
 
 theorem command_exit_spec_with {calls : List LeanExe.Wasi.Call}
     {source target : Wasm.Module}

@@ -2,8 +2,9 @@ import LeanExe.Wasi.Semantics
 
 /-! `readAll limit` reads the standard input into one byte string until a read returns an errno
 or no bytes, or until the string holds more than `limit` bytes.  It is a bounded loop of reads of
-capacity 4,096 through `readSome`, so `Exec`, `Prefix`, and the native interpreter give it the
-meaning of those reads, and its definition unfolds to one `loop` node whatever the limit.  The
+capacity 4,096, each of which keeps the bytes read and ignores the rest of its range, so `Exec`,
+`Prefix`, and the native interpreter give it the meaning of those reads, and its definition unfolds
+to one `loop` node whatever the limit.  The
 verified compiler compiles it to one buffer of `limit + 4,096` bytes whose unused tail receives
 each read. -/
 
@@ -46,7 +47,7 @@ def readAllStep (limit : UInt64) (state : ReadAllState) (reply : ReadResult) : R
 def readAllTest (_ : UInt64) (state : ReadAllState) : Bool := !state.done
 
 def readAllRead (limit : UInt64) (_ : UInt64) (state : ReadAllState) : Action ReadAllState :=
-  Action.bind (readSome 4096) fun reply => .pure (readAllStep limit state reply)
+  .read 4096 fun reply => .pure (readAllStep limit state ⟨reply.errno, reply.bytes⟩)
 
 def readAllResult (state : ReadAllState) : Action ReadResult := .pure ⟨state.errno, state.held⟩
 
@@ -65,7 +66,7 @@ theorem readAllRead_returned {World : Type} {host : Host World} {limit index : U
     (reply : host.read world 4096 (.returned errno committed) after) :
     Exec host (readAllRead limit index state) world [.read 4096 (.returned errno committed)]
       (.returned (readAllStep limit state (readResult errno committed))) after :=
-  .read_return (by decide) reply (.pure after _)
+  .read_returned (by decide) reply (.pure after _)
 
 theorem readAllRead_trapped {World : Type} {host : Host World} {limit index : UInt64}
     {state : ReadAllState} {world after : World} {message : String} {committed : Bytes}
@@ -100,6 +101,12 @@ theorem readAllStep_appended {limit : UInt64} {state : ReadAllState} {committed 
   simp only [readAllStep, readResult, ne_eq, not_true_eq_false, ↓reduceIte, nonempty,
     appendBytes_size]
 
+theorem readAllStep_reply (limit : UInt64) (state : ReadAllState) (errno : UInt64)
+    (committed range : Bytes) :
+    readAllStep limit state ⟨(readReply errno committed range).errno,
+      (readReply errno committed range).bytes⟩ = readAllStep limit state (readResult errno committed) :=
+  rfl
+
 private theorem readAllLoop_size {World : Type} {host : Host World} {limit : UInt64} :
     ∀ (remaining index : Nat) (state : ReadAllState),
       state.held.data.size ≤ limit.toNat + 4096 →
@@ -116,14 +123,15 @@ private theorem readAllLoop_size {World : Type} {host : Host World} {limit : UIn
     | stop _ next => cases next; exact bound
     | next test step rest =>
       have small := open_ (by simpa only [readAllTest, Bool.not_eq_true'] using test)
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit state reply))
-        _ _ _ _ at step
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit state ⟨reply.errno, reply.bytes⟩)) _ _ _ _ at step
       cases step with
       | read_reject capacity _ => exact absurd capacity (by decide)
-      | @read_return _ _ _ _ _ _ _ _ errno committed _ reply next =>
+      | @read_return _ _ _ _ _ _ _ _ errno committed _ _ reply _ _ next =>
         have size := (host.read_bound reply).1
         simp only [Transfer.committed, UInt64.reduceToNat] at size
         cases next
+        rw [readAllStep_reply] at rest
         refine readAllLoop_size remaining (index + 1) _ ?_ ?_ rest
         · by_cases failure : errno = 0
           · subst failure

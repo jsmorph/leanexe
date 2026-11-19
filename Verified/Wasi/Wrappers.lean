@@ -6,7 +6,7 @@ namespace Verified.Wasi.Wrappers
 open Wasm LeanExe.Wasi
 
 def readType : FuncType :=
-  { params := [.i64], results := [.i64, .i64, .i64] }
+  { params := [.i64, .i64], results := [.i64, .i64] }
 
 def writeType : FuncType :=
   { params := [.i64, .i64], results := [.i64, .i64] }
@@ -14,7 +14,7 @@ def writeType : FuncType :=
 def extensionWith (calls : List Call) (source : Wasm.Module) (next : Module.Extension) :
     Module.Extension :=
   { types := [readType, writeType] ++ next.types
-    funcs := [readFunctionWith calls (Module.extraTypeIndex source 0),
+    funcs := [readFunction (Module.extraTypeIndex source 0),
       writeFunction .stdout (Module.extraTypeIndex source 1),
       writeFunction .stderr (Module.extraTypeIndex source 1)] ++ next.funcs
     exports := next.exports.map fun entry => { entry with funcIdx := 3 + entry.funcIdx } }
@@ -60,7 +60,7 @@ variable {calls : List Call}
 
 theorem read_function_with (source : Wasm.Module) (next : Module.Extension) :
     (Module.assembleWith calls source (extensionWith calls source next)).funcs[source.funcs.length]? =
-      some (readFunctionWith calls (Module.extraTypeIndex source 0)) := by
+      some (readFunction (Module.extraTypeIndex source 0)) := by
   exact (Module.extra_function_with source (extensionWith calls source next) 0).trans rfl
 
 theorem stdout_function_with (source : Wasm.Module) (next : Module.Extension) :
@@ -77,7 +77,7 @@ theorem next_function_with (source : Wasm.Module) (next : Module.Extension) (ind
     (Module.assembleWith calls source (extensionWith calls source next)).funcs[source.funcs.length + (3 + index)]? =
       next.funcs[index]? := by
   rw [Module.extra_function_with]
-  change (readFunctionWith calls (Module.extraTypeIndex source 0) ::
+  change (readFunction (Module.extraTypeIndex source 0) ::
     writeFunction .stdout (Module.extraTypeIndex source 1) ::
     writeFunction .stderr (Module.extraTypeIndex source 1) :: next.funcs)[3 + index]? = _
   rw [Nat.add_comm 3 index]

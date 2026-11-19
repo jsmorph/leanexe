@@ -228,7 +228,7 @@ def Command.handleCheck (helpers : List (List Bool)) :
     sysMarked marks operation form (args.map Var.index) inputs.length buffers.length
   | _, _, .plain, marks, .letPair _ body =>
     handleCheck helpers .plain (false :: false :: marks) body
-  | _, _, .plain, _, .unit | _, _, .plain, _, .ret _ | _, _, .plain, _, .read _
+  | _, _, .plain, _, .unit | _, _, .plain, _, .ret _ | _, _, .plain, _, .read _ _ _
   | _, _, .plain, _, .readAll _ | _, _, .plain, _, .write _ _ _ _ | _, _, .plain, _, .exit _ => true
   | _, _, .opened, marks, .ite condition yes no =>
     condition.isErrnoTest && handleCheck helpers .plain marks yes &&

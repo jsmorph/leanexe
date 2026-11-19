@@ -1,4 +1,4 @@
-import Verified.Wasi.ReadCost
+import Verified.Bytes.Allocation
 import Verified.Wasi.SysForm
 import LeanExe.Wasi.Semantics
 

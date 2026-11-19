@@ -117,13 +117,13 @@ theorem succeeded_of_steady {action : Action α} {world trace outcome final}
     cases member
   · intro α capacity next world final trace outcome hCapacity run ih safe
     exact ih (safe.after (.read_reject hCapacity))
-  · intro α capacity next world after final trace outcome errno committed hCapacity reply run ih
-      safe e member
+  · intro α capacity next world after final trace outcome errno committed range hCapacity reply
+      size first run ih safe e member
     rcases List.mem_cons.mp member with rfl | member
     · obtain ⟨_, same⟩ := safe _ _ _ (.refl _ _) reply
       cases same
       rfl
-    · exact ih (safe.after (.read_return hCapacity reply)) e member
+    · exact ih (safe.after (.read_return hCapacity reply size first)) e member
   · intro α capacity next world after message committed hCapacity reply safe
     obtain ⟨_, same⟩ := safe _ _ _ (.refl _ _) reply
     cases same

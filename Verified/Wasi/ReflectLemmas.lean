@@ -41,11 +41,14 @@ theorem bind_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
   exact hNext value
 
 theorem read_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)
-    (env : Env context) (capacity : Expr pureSigs context .word) (value : UInt64)
-    (hValue : capacity.denote pureFuns env = value) :
-    (Command.read capacity).denote pureFuns effectFuns env =
-      flattenAction (Flat.flat : ReadResult → UInt64 × LeanExe.Bytes) (readSome value) := by
-  rw [Command.denote, hValue]
+    (env : Env context) (buffer : Var context .bytes) (start count : Var context .word)
+    (bufferValue : LeanExe.Bytes) (startValue countValue : UInt64)
+    (hBuffer : env.get buffer = bufferValue) (hStart : env.get start = startValue)
+    (hCount : env.get count = countValue) :
+    (Command.read buffer start count).denote pureFuns effectFuns env =
+      flattenAction (Flat.flat : FillResult → UInt64 × UInt64 × LeanExe.Bytes)
+        (readStdin bufferValue startValue countValue) := by
+  subst hBuffer hStart hCount
   rfl
 
 theorem readAll_eq (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSigs)

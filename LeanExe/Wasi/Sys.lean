@@ -36,23 +36,6 @@ structure WordResult where
   errno : UInt64
   value : UInt64
 
-/-- The result of a call that fills a window of a caller's buffer: the errno, the number of bytes
-that the call placed from the window's start, and the buffer.  After an errno the count is 0 and the
-window's bytes are 0. -/
-structure FillResult where
-  errno : UInt64
-  count : UInt64
-  buffer : Bytes
-
-/-- The result of a call that filled the window of `buffer` that `start` and `count` name: on
-errno 0 the count `used` and `buffer` with the window's bytes replaced by `bytes`, the whole region
-that the host wrote, and after an errno the count 0 and `buffer` with the window's bytes set to 0.
--/
-def FillResult.of (buffer : Bytes) (start count errno used : UInt64) (bytes : Bytes) :
-    FillResult :=
-  if errno = 0 then ⟨0, used, buffer.splice (buffer.window start count).1 bytes⟩
-  else ⟨errno, 0, buffer.clear start count⟩
-
 /-- The result of `poll_oneoff`: the errno, the number of events, and the fields of the first
 event, its userdata, its error, its type (0 for a clock, 1 for a read, 2 for a write), and the
 `nbytes` and flags of its `fd_readwrite`.  Wasmtime 44 writes the events of the subscriptions that

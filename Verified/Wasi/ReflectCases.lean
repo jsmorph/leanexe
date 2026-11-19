@@ -8,15 +8,15 @@ open LeanExe LeanExe.Wasi LeanExe.Pipeline
 def unit : Action Unit := pure ()
 
 def readWrite : Action WriteResult := do
-  let result ← readSome 3
-  writeStdout result.bytes 0 result.bytes.size
+  let result ← readStdin (Bytes.build 3 fun _ => 0) 0 3
+  writeStdout result.buffer 0 result.count
 
 def discardRead : Action Unit := do
-  let _ ← readSome 1
+  let _ ← readStdin (Bytes.build 1 fun _ => 0) 0 1
   pure ()
 
 def namedAction : Action Unit :=
-  let action := readSome 1
+  let action := readStdin (Bytes.build 1 fun _ => 0) 0 1
   do
     let _ ← action
     pure ()
@@ -28,8 +28,8 @@ def pureByteLet : Action WriteResult := do
   writeStderr bytes 0 bytes.size
 
 def branch : Action WriteResult := do
-  let result ← readSome 2
-  if result.errno == 0 then writeStdout result.bytes 0 result.bytes.size
+  let result ← readStdin (Bytes.build 2 fun _ => 0) 0 2
+  if result.errno == 0 then writeStdout result.buffer 0 result.count
   else writeStderr bytes![] 0 0
 
 def wordLoop : Action UInt64 :=

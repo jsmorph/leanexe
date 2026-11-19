@@ -59,8 +59,8 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
   | .unit => conclusion
   | .ret value => pure.ownedCost depth modes live value env ≤ budget →
       pure.exprFits depth value env = true → conclusion
-  | .read capacity => pure.readCost depth modes live capacity env ≤ budget →
-      pure.exprFits depth capacity env = true → conclusion
+  | .read buffer start count =>
+      pure.sysTakeCost depth modes live [start, count] [] [buffer] env ≤ budget → conclusion
   | .readAll limit => pure.readAllCost depth modes live limit env ≤ budget →
       pure.exprFits depth limit env = true → conclusion
   | .write _ _ _ _ => conclusion
@@ -122,7 +122,7 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
   cases execution with
   | unit => exact ⟨Nat.zero_le _, rfl⟩
   | ret => exact fun cost valid => ⟨cost, valid⟩
-  | read => exact fun cost valid => ⟨cost, valid⟩
+  | read => exact fun cost => ⟨cost, rfl⟩
   | readAll => exact fun cost valid => ⟨cost, valid⟩
   | write => exact ⟨Nat.zero_le _, rfl⟩
   | exit => exact fun cost valid => ⟨cost, valid⟩
@@ -174,7 +174,7 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
   | refl =>
     cases command <;> simp only [Rule] <;> intros <;> exact ⟨Nat.zero_le _, by trivial⟩
   | ret_charge => exact fun cost valid => ⟨cost, valid⟩
-  | read_charge => exact fun cost valid => ⟨cost, valid⟩
+  | read_charge => exact fun cost => ⟨cost, rfl⟩
   | readAll => exact fun cost valid => ⟨cost, valid⟩
   | exit_charge => exact fun cost valid => ⟨cost, valid⟩
   | returned execution => exact exec_rule budget execution
@@ -312,11 +312,6 @@ theorem Returns.letPair {World : Type} {host : Host World} {pure : PureContext p
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact letPairReturn run
 
-theorem word_readCost (pure : PureContext pureSigs) (depth : UInt64) (modes : List Mode)
-    (live : Nat → Bool) (capacity : UInt64) (env : Env context) :
-    pure.readCost depth modes live (.word capacity) env = Verified.Wasi.readCost capacity := by
-  simp only [PureContext.readCost, PureContext.exprCost, Expr.allocs, Expr.denote, Nat.zero_add]
-
 def CallRule {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (world : World) : {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
     {signature : EffectSig} → EffectVar effectSigs signature → UInt64 → Env signature.params →
@@ -442,12 +437,15 @@ theorem CallBounded.mono {World : Type} {host : Host World} {pure : PureContext 
       obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
       exact ⟨by omega, valid⟩⟩
 
-/-- What a run that returns a value implies: a read returns at most its capacity's bytes. -/
+/-- What a run that returns a value implies: a read places at most the buffer's size and keeps the
+buffer's size, and `readAll` returns at most its limit's bytes and 4,096 more. -/
 def ReadReturns (pure : PureContext pureSigs) {context : List Ty} {result : ResultTy}
     (command : Command pureSigs effectSigs context result)
     (env : Env context) (outcome : Outcome result.denote) : Prop :=
   match command, outcome with
-  | .read capacity, .returned value => value.2.data.size ≤ (capacity.denote pure.funs env).toNat
+  | .read buffer _ _, .returned value =>
+      value.2.1.toNat ≤ (env.get buffer).data.size ∧
+        value.2.2.data.size = (env.get buffer).data.size
   | .readAll limit, .returned value =>
       value.2.data.size ≤ (limit.denote pure.funs env).toNat + 4096
   | _, _ => True
@@ -459,21 +457,20 @@ theorem exec_readReturns {World : Type} {host : Host World} {pure : PureContext 
     (run : ResourceExec host pure program depth modes live command env world trace outcome final
       spent fits) : ReadReturns pure command env outcome := by
   cases run with
-  | read _ _ _ _ capacity env execution =>
-    change Exec host (.read (capacity.denote pure.funs env) fun result =>
-      .pure (result.errno, result.bytes)) _ _ _ _ at execution
-    cases execution with
-    | read_reject _ continuation =>
-      cases continuation
-      exact Nat.zero_le _
-    | read_return _ operation continuation =>
-      cases continuation
-      have bound := (host.read_bound operation).1
-      simp only [ReadReturns, readResult]
-      split
-      · exact bound
-      · exact Nat.zero_le _
-    | read_trap => trivial
+  | read _ _ _ _ buffer start count env execution =>
+    change Exec host (Action.bind (readStdin (env.get buffer) (env.get start) (env.get count))
+      fun result => .pure (fillValue result)) _ _ _ _ at execution
+    obtain ⟨_, _, middle, _, first, next, _⟩ := Exec.bind_iff.mp execution
+    cases middle with
+    | returned result =>
+      cases next
+      exact readStdin_returns first
+    | exited _ =>
+      obtain ⟨_, rfl, _⟩ := next
+      trivial
+    | trapped _ =>
+      obtain ⟨_, rfl, _⟩ := next
+      trivial
   | readAll _ _ _ _ limit env execution =>
     change Exec host (Action.bind (readAll (limit.denote pure.funs env)) fun result =>
       .pure (result.errno, result.bytes)) _ _ _ _ at execution
@@ -490,13 +487,14 @@ theorem exec_readReturns {World : Type} {host : Host World} {pure : PureContext 
       trivial
   | _ => trivial
 
-/-- A read returns at most its capacity's bytes. -/
+/-- A read places at most the buffer's size and keeps the buffer's size. -/
 theorem Returns.read_size {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
-    {live : Nat → Bool} {capacity : Expr pureSigs context .word} {env : Env context}
-    {value : (Ty.pair .word .bytes).denote}
-    (returns : Returns host pure program depth modes live (.read capacity) env value) :
-    value.2.data.size ≤ (capacity.denote pure.funs env).toNat := by
+    {live : Nat → Bool} {buffer : Var context .bytes} {start count : Var context .word}
+    {env : Env context} {value : (wordsBytesTy 2).denote}
+    (returns : Returns host pure program depth modes live (.read buffer start count) env value) :
+    value.2.1.toNat ≤ (env.get buffer).data.size ∧
+      value.2.2.data.size = (env.get buffer).data.size := by
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact exec_readReturns run
 

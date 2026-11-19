@@ -38,7 +38,8 @@ theorem Action.Rel.advance {World : Type} {host : Host World} {relation : α →
   | read capacity next =>
       cases advance with
       | read_reject bound => exact ⟨_, .read_reject bound, next _⟩
-      | read_return bound reply => exact ⟨_, .read_return bound reply, next _⟩
+      | read_return bound reply size first =>
+          exact ⟨_, .read_return bound reply size first, next _⟩
   | write output bytes next =>
       cases advance with
       | write_return reply => exact ⟨_, .write_return reply, next _⟩

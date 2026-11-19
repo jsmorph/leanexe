@@ -4,83 +4,102 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-inductive ReadRun {World : Type} (host : Host World) (heap : Heap)
-    (initial : Store (Observed World)) (capacity : UInt64) (aborts : Bool) :
-    Result (Observed World) → Prop where
-  | returned (heap' : Heap) (final : Store (Observed World)) (root length : UInt64)
-      (result : LeanExe.Wasi.ReadResult) (trace : List Event)
-      (execution : Exec (observedHost host) (readSome capacity)
-        initial.host trace (.returned result) final.host)
-      (step : Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root))
-      (bytes : Bytes.Rep heap' (PureTransport.erase final) root length result.bytes)
-      (top : heap'.top.toNat ≤ heap.top.toNat + readCost capacity) :
-      ReadRun host heap initial capacity aborts
-        (.Success [.i64 length, .i64 root, .i64 result.errno] final)
-  | hostTrap (heap' : Heap) (final : Store (Observed World)) (root : UInt64)
-      (message : String) (trace : List Event)
-      (execution : Exec (observedHost host) (readSome capacity)
-        initial.host trace (.trapped message) final.host)
-      (step : Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root))
-      (top : heap'.top.toNat ≤ heap.top.toNat + readCost capacity) :
-      ReadRun host heap initial capacity aborts (.Trap final message)
-  | resource {final : Store (Observed World)} (allowed : aborts = true)
-      (world : final.host = initial.host) :
-      ReadRun host heap initial capacity aborts (.Trap final "unreachable")
+def readLocals (pointer capacity : UInt64) : Locals :=
+  { params := [.i64 pointer, .i64 capacity], locals := [.i32 0], values := [] }
+
+/-- The outcomes of a call of the read wrapper with `pointer` and `capacity`: the host's read with
+the errno and the bytes read, which lie at `pointer` on errno 0, or the host's trap, each with
+the frame of the scratch bytes and the region. -/
+inductive ReadRun {World : Type} (host : Host World) (initial : Store (Observed World))
+    (pointer capacity : UInt64) : Result (Observed World) → Prop where
+  | returned (final : Store (Observed World)) (errno : UInt64) (committed : LeanExe.Bytes)
+      (read : (observedHost host).read initial.host capacity (.returned errno committed)
+        final.host)
+      (frame : GuestFrame initial final [ABI.scratch, (pointer.toNat, capacity.toNat)])
+      (data : errno = 0 → Bytes.At final.mem pointer committed) :
+      ReadRun host initial pointer capacity
+        (.Success [.i64 (if errno = 0 then committed.size else 0), .i64 errno] final)
+  | hostTrap (final : Store (Observed World)) (message : String) (committed : LeanExe.Bytes)
+      (read : (observedHost host).read initial.host capacity (.trapped message committed)
+        final.host)
+      (frame : GuestFrame initial final [ABI.scratch, (pointer.toNat, capacity.toNat)]) :
+      ReadRun host initial pointer capacity (.Trap final message)
 
 theorem readFunction_run_with {calls : List LeanExe.Wasi.Call}
-    {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64}
-    {index typeIdx : Nat} {aborts : Bool}
-    (hFunction : target.funcs[index]? = some (readFunctionWith calls typeIdx))
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hRoom : capacity.toNat < 4294967296 → capacity ≠ 0 → aborts = false →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity)) :
+    {World : Type} {m : Module} {host : Host World}
+    {env : HostEnv (Observed World)} {initial : Store (Observed World)}
+    {pointer capacity : UInt64} {index typeIdx : Nat}
+    (hImports : m.imports = ABI.importsWith calls)
+    (hFunction : m.funcs[index]? = some (readFunction typeIdx))
+    (hHost : env.Satisfies m (hostSpecWith host calls))
+    (hMemory : 16 ≤ initial.mem.pages * 65536)
+    (hBuffer : pointer.toNat + capacity.toNat ≤ initial.mem.pages * 65536)
+    (hAddress : pointer.toNat + capacity.toNat < 4294967296)
+    (hSeparate : capacity = 0 ∨ 16 ≤ pointer.toNat) :
     ∃ bound, ∀ fuel ≥ bound,
-      ReadRun host heap initial capacity aborts
-        (run fuel target (3 + calls.length + index) initial [.i64 capacity] env) := by
+      ReadRun host initial pointer capacity
+        (run fuel m (3 + calls.length + index) initial [.i64 capacity, .i64 pointer] env) := by
+  have hPointer : pointer.toNat < 4294967296 := by omega
+  have hCapacity : capacity.toNat < 4294967296 := by omega
+  have hPointerNat : pointer.toUInt32.toNat = pointer.toNat := by
+    rw [Memory.toUInt32_toNat, Nat.mod_eq_of_lt hPointer]
+  have hCapacityNat : capacity.toUInt32.toNat = capacity.toNat := by
+    rw [Memory.toUInt32_toNat, Nat.mod_eq_of_lt hCapacity]
+  have hPointerCast := read_narrow64 pointer hPointer
+  have hCapacityCast := read_narrow64 capacity hCapacity
   let Q : Assertion (Observed World) := fun continuation =>
     match continuation with
     | .Fallthrough final locals =>
-        ReadRun host heap initial capacity aborts (.Success (locals.values.take 3) final)
-    | .Trap final message => ReadRun host heap initial capacity aborts (.Trap final message)
+        ReadRun host initial pointer capacity (.Success (locals.values.take 2) final)
+    | .Trap final message => ReadRun host initial pointer capacity (.Trap final message)
     | _ => False
-  have hBody : wp target (readCodeWith calls 0 1 2 3 ++ []) Q initial
-      (readLocals capacity 0 0 0 []) env := by
-    refine wp_read_with runtime layout profile hImports sourceHost hHost hHeap hCap hRoom ?_ ?_ ?_
-    · intro hAllowed final hWorld
-      exact ReadRun.resource hAllowed hWorld
-    · intro heap' final root length result trace hExec hStep hRep hTop
-      simpa only [wp_nil, Q, readLocals_stack, List.take_succ_cons, List.take_zero] using
-        ReadRun.returned heap' final root length result trace hExec hStep hRep hTop
-    · intro final heap' root message trace hExec hStep hTop
-      exact ReadRun.hostTrap heap' final root message trace hExec hStep hTop
+  have hBody : wp m (readCode 0 1 2 ++ []) Q initial (readLocals pointer capacity) env := by
+    refine wp_read_wrapper_with (pointer := pointer.toUInt32) (capacity := capacity.toUInt32)
+      hImports hHost hMemory
+      (by rw [hPointerNat, hCapacityNat]; exact hBuffer)
+      (by rw [hPointerNat, hCapacityNat]; omega)
+      (by
+        rcases hSeparate with zero | high
+        · left
+          rw [zero]
+          rfl
+        · right
+          rw [hPointerNat]
+          exact high)
+      (by rw [hPointerCast]; rfl) (by rw [hCapacityCast]; rfl)
+      (by change 2 ≤ 2; omega) (by change 2 < 3; omega) ?_ ?_
+    · intro final errno committed hRead hFrame hData
+      rw [hCapacityCast] at hRead
+      rw [hPointerNat, hCapacityNat] at hFrame
+      simp only [wp_nil, Q]
+      change ReadRun host initial pointer capacity
+        (.Success [.i64 (if errno = 0 then committed.size else 0), .i64 errno] final)
+      exact .returned final errno committed hRead hFrame
+        (fun zero => by simpa only [hPointerCast] using hData zero)
+    · intro final message committed hRead hFrame
+      rw [hCapacityCast] at hRead
+      rw [hPointerNat, hCapacityNat] at hFrame
+      exact .hostTrap final message committed hRead hFrame
   simp only [List.append_nil] at hBody
   unfold wp at hBody
   obtain ⟨bound, hBound⟩ := hBody
-  have hImport : target.imports[3 + calls.length + index]? = none :=
+  have hImport : m.imports[3 + calls.length + index]? = none :=
     List.getElem?_eq_none (by rw [hImports, ABI.importsWith_length]; omega)
   refine ⟨bound, fun fuel hFuel => ?_⟩
   have hContinuation := hBound fuel hFuel
   rw [run_eq hImport]
   simp only [hImports, ABI.importsWith_length,
     show 3 + calls.length + index - (3 + calls.length) = index by omega, hFunction]
-  have hArgs : ([Value.i64 capacity].take (readFunctionWith calls typeIdx).numParams).reverse =
-      [Value.i64 capacity] := rfl
-  have hDrop : [Value.i64 capacity].drop (readFunctionWith calls typeIdx).numParams = [] := rfl
-  have hResults : (readFunctionWith calls typeIdx).results.length = 3 := rfl
-  have hCode : (readFunctionWith calls typeIdx).body = readCodeWith calls 0 1 2 3 := rfl
-  simp only [hArgs, hDrop, hResults, hCode, readFunction_locals_with, List.append_nil]
-  cases hExec : exec fuel target initial (readLocals capacity 0 0 0 [])
-      (readCodeWith calls 0 1 2 3) env with
+  have hArgs : ([Value.i64 capacity, Value.i64 pointer].take
+      (readFunction typeIdx).numParams).reverse = [Value.i64 pointer, Value.i64 capacity] := rfl
+  have hDrop : [Value.i64 capacity, Value.i64 pointer].drop
+      (readFunction typeIdx).numParams = [] := rfl
+  have hResults : (readFunction typeIdx).results.length = 2 := rfl
+  have hCode : (readFunction typeIdx).body = readCode 0 1 2 := rfl
+  have hLocals : (readFunction typeIdx).toLocals
+      [Value.i64 pointer, Value.i64 capacity] = readLocals pointer capacity := rfl
+  simp only [hArgs, hDrop, hResults, hCode, hLocals, List.append_nil]
+  cases hExec : exec fuel m initial (readLocals pointer capacity) (readCode 0 1 2) env with
   | Fallthrough final locals =>
       simpa only [Q, hExec] using hContinuation
   | Trap final message =>
@@ -97,54 +116,5 @@ theorem readFunction_run_with {calls : List LeanExe.Wasi.Call}
       exact False.elim (by simpa only [Q, hExec] using hContinuation)
   | Throwing tag values final locals =>
       exact False.elim (by simpa only [Q, hExec] using hContinuation)
-
-theorem readFunction_run {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64}
-    {index typeIdx : Nat} {aborts : Bool}
-    (hFunction : target.funcs[index]? = some (readFunction typeIdx))
-    (hHost : env.Satisfies target (hostSpec host))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hRoom : capacity.toNat < 4294967296 → capacity ≠ 0 → aborts = false →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity)) :
-    ∃ bound, ∀ fuel ≥ bound,
-      ReadRun host heap initial capacity aborts
-        (run fuel target (3 + index) initial [.i64 capacity] env) := by
-  layout_instance readFunction_run_with
-
-theorem readFunction_run_with_budget_with {calls : List LeanExe.Wasi.Call}
-    {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64} {index typeIdx : Nat}
-    (hFunction : target.funcs[index]? = some (readFunctionWith calls typeIdx))
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hBudget : heap.Within (PureTransport.erase initial) source (readCost capacity)) :
-    ∃ bound, ∀ fuel ≥ bound,
-      ReadRun host heap initial capacity false
-        (run fuel target (3 + calls.length + index) initial [.i64 capacity] env) :=
-  readFunction_run_with (calls := calls) runtime layout profile hImports sourceHost hFunction hHost hHeap hCap
-    (fun hSize hNonzero _ => read_room_of_budget hSize hNonzero hCap hBudget)
-
-theorem readFunction_run_with_budget {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64} {index typeIdx : Nat}
-    (hFunction : target.funcs[index]? = some (readFunction typeIdx))
-    (hHost : env.Satisfies target (hostSpec host))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hBudget : heap.Within (PureTransport.erase initial) source (readCost capacity)) :
-    ∃ bound, ∀ fuel ≥ bound,
-      ReadRun host heap initial capacity false
-        (run fuel target (3 + index) initial [.i64 capacity] env) := by
-  layout_instance readFunction_run_with_budget_with
 
 end Verified.Wasi

@@ -34,7 +34,11 @@ def Command.fragments (h : Nat) (slots : List Slot) (base : Nat) (live : Nat →
       else if signature.mode i = .owned then (args i).ownedCode h slots base kept
       else (args i).placeCode h slots),
       releaseWhere context slots (fun i => kept i && !live i)]
-  | _, _, .read capacity => [capacity.code (pool := pool) h slots base live]
+  | _, _, .read buffer start count =>
+    [(Expr.var (S := pureSigs) buffer).code (pool := pool) h slots (base + Ty.bytes.width)
+        (sysTakeLive live [start, count] []) ++
+      coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+        (base + Ty.bytes.width)]
   | _, _, .readAll limit => [limit.code (pool := pool) h slots base live]
   | context, _, .write _ buffer start count =>
     [releaseWhere context slots (fun i =>

@@ -4,11 +4,11 @@ namespace StdioExample
 open LeanExe LeanExe.Wasi
 
 def copySome (capacity : UInt64) : Action UInt64 := do
-  let input ← readSome capacity
+  let input ← readStdin (Bytes.build capacity fun _ => 0) 0 capacity
   if input.errno != 0 then
     pure input.errno
   else
-    let output ← writeStdout input.bytes 0 input.bytes.size
+    let output ← writeStdout input.buffer 0 input.count
     pure output.errno
 
 def main : Action UInt64 := copySome 4096

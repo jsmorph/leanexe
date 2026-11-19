@@ -651,7 +651,7 @@ theorem Command.handles (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effe
       exact value
     · have beyond : (callee.marks helpers).length ≤ index := by omega
       simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none beyond] at marked
-  | read capacity =>
+  | read buffer start count =>
     intro stage marks h
     cases stage <;> simp only [Command.handleCheck, Bool.false_eq_true] at h
     exact fun _ _ _ _ => rfl

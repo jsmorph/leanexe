@@ -15,11 +15,24 @@ def letPairReleaseCode (first second : Ty) (mode : Mode) (base : Nat)
   (if mode = .owned ∧ firstUsed = false then releaseCode first base else []) ++
     (if mode = .owned ∧ secondUsed = false then releaseCode second (base + first.width) else [])
 
+/-- The read of stdin into the window of the buffer whose root and size lie in the two locals
+from `root`, from the window's start and count in locals `start` and `count`: the window's address
+and length in `base + 1` and `base + 2`, the call of the read wrapper at `index`, the count in
+`base + 3`, the errno in `base`, and the end of a fill, which stores 0 into the window after an
+errno, with the index of the zero fill in `base + 4`, and pushes the errno, the count, and the
+buffer's root and size. -/
+def readFillCode (index root start count base : Nat) : Program :=
+  windowCode root start count (base + 1) ++
+    [.localGet (base + 1), .localGet (base + 2), .call index, .localSet (base + 3),
+     .localSet base] ++
+    fillTailCode root base
+
 /-- Command code uses final module indices.  Pure fragments, copies, and releases undergo the
 relocation past the module's imports once.  Normal returns leave owned result words on the stack.  Local
 zero holds the incoming depth, and `live` identifies context values retained afterward.  A write
 computes the window of its buffer in the locals at `base` and passes its address and length to
-the wrapper, which reads the buffer in place.  A `sys` command with a buffer takes the buffer as
+the wrapper, which reads the buffer in place.  A read and a `sys` command with a buffer take the
+buffer as
 a `ret` of its variable takes it, which moves an owned buffer that dies there and copies it
 otherwise, stores its root and size at `base`, and runs the call with the buffer as variable 0,
 which the call consumes. -/
@@ -65,9 +78,14 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
         else (args i).placeCode h slots)) ++
       [.call (Wrappers.effectIndexWith calls source callee.index)] ++
       Relocation.programWith calls (releaseWhere context slots (fun i => kept i && !live i))
-  | _, _, .read capacity =>
-    Relocation.programWith calls (capacity.code (pool := pool) h slots base live) ++
-      [.call (Wrappers.readIndexWith calls source)]
+  | _, _, .read buffer start count =>
+    Relocation.programWith calls ((Expr.var (S := pureSigs) buffer).code (pool := pool) h slots
+        (base + Ty.bytes.width) (sysTakeLive live [start, count] []) ++
+      coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode)) .owned
+        (base + Ty.bytes.width)) ++
+      storeCode h base Ty.bytes.types ++
+      readFillCode (Wrappers.readIndexWith calls source) base (slots.getD start.index default).loc
+        (slots.getD count.index default).loc (base + Ty.bytes.width)
   | _, _, .readAll limit =>
     Relocation.programWith calls (limit.code (pool := pool) h slots base live) ++ readAllCodeWith calls base
   | context, _, .write output buffer start count =>

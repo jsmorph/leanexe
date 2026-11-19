@@ -6,6 +6,7 @@ import Verified.Wasi.CostBindValue
 import Verified.Wasi.CostConditionalSpec
 import Verified.Wasi.CostLoopSpec
 import Verified.Wasi.SysCommand
+import Verified.Wasi.ReadCommand
 import Verified.Wasi.CommandLetPair
 
 namespace Verified.Wasi
@@ -30,7 +31,7 @@ theorem Command.cost_code_spec_with {calls : List LeanExe.Wasi.Call}
   | ite condition yes no yesSpec noSpec =>
       exact cost_command_ite_spec_with facts sourceHost yesSpec noSpec
   | call callee args => exact cost_command_call_spec_with facts effectCalls sourceHost callee args
-  | read capacity => exact cost_command_read_spec_with facts sourceHost capacity
+  | read buffer start count => exact cost_command_read_spec_with facts sourceHost buffer start count
   | readAll limit => exact cost_command_readAll_spec_with facts sourceHost limit
   | write output buffer start count =>
     exact cost_command_write_spec_with facts sourceHost output buffer start count

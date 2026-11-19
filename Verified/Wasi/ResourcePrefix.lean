@@ -25,10 +25,11 @@ inductive ResourcePrefix {World : Type} (host : Host World) (pure : PureContext 
         (pure.ownedCost depth modes live value env) (pure.exprFits depth value env)
   | read_charge (program : EffectProg pureSigs effectSigs)
       (depth : UInt64) (modes : List Mode) (live : Nat → Bool)
-      (capacity : Expr pureSigs context .word) (env : Env context) (world : World) :
-      ResourcePrefix host pure program depth modes live (.read capacity) env world []
-        ((Command.read capacity).denote pure.funs (program.funs pure.funs) env) world
-        (pure.readCost depth modes live capacity env) (pure.exprFits depth capacity env)
+      (buffer : Var context .bytes) (start count : Var context .word) (env : Env context)
+      (world : World) :
+      ResourcePrefix host pure program depth modes live (.read buffer start count) env world []
+        ((Command.read buffer start count).denote pure.funs (program.funs pure.funs) env) world
+        (pure.sysTakeCost depth modes live [start, count] [] [buffer] env) true
   | readAll {program : EffectProg pureSigs effectSigs}
       {limit : Expr pureSigs context .word} {env : Env context}
       {residual : Action (ResultTy.value (.pair .word .bytes)).denote}
@@ -413,10 +414,12 @@ theorem PrefixBound.ret {World : Type} {host : Host World} {pure : PureContext p
 
 theorem PrefixBound.read {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode} {live : Nat → Bool}
-    {capacity : Expr pureSigs context .word} {env : Env context} {world : World} {budget : Nat}
-    (bounded : PrefixBound host pure program depth modes live (.read capacity) env world budget) :
-    pure.readCost depth modes live capacity env ≤ budget ∧ pure.exprFits depth capacity env = true :=
-  bounded _ _ _ _ _ (.read_charge program depth modes live capacity env world)
+    {buffer : Var context .bytes} {start count : Var context .word} {env : Env context}
+    {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.read buffer start count) env world
+      budget) :
+    pure.sysTakeCost depth modes live [start, count] [] [buffer] env ≤ budget :=
+  (bounded _ _ _ _ _ (.read_charge program depth modes live buffer start count env world)).1
 
 theorem PrefixBound.readAll {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}

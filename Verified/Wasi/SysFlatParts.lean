@@ -1,7 +1,7 @@
 import Verified.Wasi.SysFlatLoads
 import Verified.Wasi.ReadReady
 import Verified.Wasi.ReadDiscard
-import Verified.Wasi.ReadInvoke
+import Verified.Wasi.ReadProof
 import Verified.Wasi.RuntimeFrame
 
 /-! Parts of a flat call: the capacity of its output, and the output and the frame that the host

@@ -23,4 +23,4 @@ def encodable (code : Wasm.Program) : Bool :=
 #guard encodable (Verified.Wasi.exitCode 0)
 #guard encodable (Verified.Wasi.readCallCode 0 1)
 #guard encodable (Verified.Wasi.discardReadCode 0)
-#guard encodable (Verified.Wasi.readCode 0 1 2 3)
+#guard encodable (Verified.Wasi.readCode 0 1 2)

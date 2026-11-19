@@ -1,5 +1,8 @@
 import Verified.Wasi.ReadAllProof
-import Verified.Wasi.ReadCommand
+import Verified.Wasi.CallWrappers
+import Verified.Wasi.AfterScratch
+import Verified.Wasi.CommandSpec
+import Verified.Wasi.Return
 import Verified.Wasi.CommandCodeSpec
 import Verified.Wasi.CostCodeSpec
 import Verified.Wasi.CompilerFacts
@@ -12,6 +15,22 @@ function, with its correctness and its cost. -/
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
+
+theorem read_result_rep {heap : Heap} {store : Store Unit} {root length errno : UInt64}
+    {bytes : LeanExe.Bytes} (rep : Bytes.Rep heap store root length bytes) :
+    (Ty.pair .word .bytes).Rep .owned heap store [.i64 errno, .i64 root, .i64 length]
+      (errno, bytes) := by
+  refine ⟨[.i64 errno], [.i64 root, .i64 length], rfl, rfl, ⟨root, length, rfl, rep⟩, ?_⟩
+  intro _ region member
+  exact nomatch member
+
+theorem read_result_regions (mode : Mode) (store : Store Unit) (root length errno : UInt64)
+    (bytes : LeanExe.Bytes) :
+    (Ty.pair .word .bytes).regions mode store [.i64 errno, .i64 root, .i64 length]
+      (errno, bytes) = Bytes.regions store root := by
+  cases mode <;>
+    change (Bytes.roots [.i64 root, .i64 length]).map (block store) = Bytes.regions store root
+  all_goals exact Bytes.roots_regions store root length
 
 theorem readAll_after {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {live : Nat → Bool} {base : Nat} {heap finalHeap : Heap}

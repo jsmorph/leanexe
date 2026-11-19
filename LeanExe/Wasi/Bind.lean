@@ -59,9 +59,10 @@ theorem Exec.unbind {World : Type} {host : Host World} (action : Action α) :
     | read_reject hCapacity hRun =>
       obtain ⟨after, first, middle, rest, hFirst, hRest, hTrace⟩ := ih _ hRun
       exact ⟨after, first, middle, rest, .read_reject hCapacity hFirst, hRest, hTrace⟩
-    | read_return hCapacity hHost hRun =>
+    | read_return hCapacity hHost hRange hPrefix hRun =>
       obtain ⟨after, first, middle, rest, hFirst, hRest, hTrace⟩ := ih _ hRun
-      exact ⟨after, _ :: first, middle, rest, .read_return hCapacity hHost hFirst, hRest,
+      exact ⟨after, _ :: first, middle, rest, .read_return hCapacity hHost hRange hPrefix hFirst,
+        hRest,
         by rw [hTrace]; rfl⟩
     | read_trap hCapacity hHost =>
       exact ⟨_, _, .trapped _, [], .read_trap hCapacity hHost, ⟨rfl, rfl, rfl⟩,

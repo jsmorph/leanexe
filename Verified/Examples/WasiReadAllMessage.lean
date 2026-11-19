@@ -220,12 +220,13 @@ theorem readAll_loop {World : Type} {host : Host World} :
     cases execution with
     | stop test => simp [readAllTest] at test
     | next _ step rest =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit ⟨0, held, false⟩ reply))
-        _ _ _ _ at step
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit ⟨0, held, false⟩ ⟨reply.errno, reply.bytes⟩)) _ _ _ _ at step
       cases step with
       | read_reject capacity => exact absurd capacity (by decide)
-      | @read_return _ _ _ _ _ _ _ _ errno committed _ reply next =>
+      | @read_return _ _ _ _ _ _ _ _ errno committed _ _ reply _ _ next =>
         cases next
+        rw [readAllStep_reply] at rest
         have zero : errno = 0 := ok (.read 4096 (.returned errno committed)) (by simp)
         subst zero
         by_cases empty : committed.data.size = 0
@@ -262,17 +263,17 @@ theorem readAll_loop {World : Type} {host : Host World} :
                 ByteArray.size_data] at bound ⊢
               omega
     | exit _ step =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit ⟨0, held, false⟩ reply))
-        _ _ _ _ at step
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit ⟨0, held, false⟩ ⟨reply.errno, reply.bytes⟩)) _ _ _ _ at step
       cases step with
       | read_reject capacity => exact absurd capacity (by decide)
-      | read_return _ _ next => cases next
+      | read_return _ _ _ _ next => cases next
     | trap _ step =>
-      change Exec host (.read 4096 fun reply => .pure (readAllStep limit ⟨0, held, false⟩ reply))
-        _ _ _ _ at step
+      change Exec host (.read 4096 fun reply =>
+        .pure (readAllStep limit ⟨0, held, false⟩ ⟨reply.errno, reply.bytes⟩)) _ _ _ _ at step
       cases step with
       | read_reject capacity => exact absurd capacity (by decide)
-      | read_return _ _ next => cases next
+      | read_return _ _ _ _ next => cases next
       | read_trap _ _ => exact False.elim (ok _ (List.mem_singleton_self _))
 
 /-- A run of `writeAll`'s loop from `written` bytes taken whose writes succeed, with more passes

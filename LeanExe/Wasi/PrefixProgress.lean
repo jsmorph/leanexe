@@ -4,15 +4,17 @@ namespace LeanExe.Wasi
 
 inductive PrefixAdvance {World : Type} (host : Host World) :
     {α : Type} → Action α → World → List Event → Action α → World → Prop where
-  | read_reject {capacity : UInt64} {next : ReadResult → Action α} {world}
+  | read_reject {capacity : UInt64} {next : ReadReply → Action α} {world}
       (capacityBound : 2 ^ 32 ≤ capacity.toNat) :
-      PrefixAdvance host (.read capacity next) world [] (next ⟨61, Bytes.empty⟩) world
-  | read_return {capacity : UInt64} {next : ReadResult → Action α}
-      {world after errno committed}
+      PrefixAdvance host (.read capacity next) world [] (next ⟨61, Bytes.empty, Bytes.empty⟩) world
+  | read_return {capacity : UInt64} {next : ReadReply → Action α}
+      {world after errno committed range}
       (capacityBound : capacity.toNat < 2 ^ 32)
-      (reply : host.read world capacity (.returned errno committed) after) :
+      (reply : host.read world capacity (.returned errno committed) after)
+      (rangeSize : range.data.size = capacity.toNat)
+      (rangePrefix : errno = 0 → range.data.extract 0 committed.data.size = committed.data) :
       PrefixAdvance host (.read capacity next) world [.read capacity (.returned errno committed)]
-        (next (readResult errno committed)) after
+        (next (readReply errno committed range)) after
   | write_return {output : Output} {bytes : Bytes} {next : WriteResult → Action α}
       {world after errno committed}
       (reply : host.write world output bytes (.returned errno committed) after) :
@@ -39,7 +41,7 @@ theorem toPrefix {World : Type} {host : Host World} {action residual : Action α
     Prefix host action world trace residual after := by
   cases advance with
   | read_reject bound => exact .read_reject bound
-  | read_return bound reply => exact .read_return bound reply
+  | read_return bound reply size first => exact .read_return bound reply size first
   | write_return reply => exact .write_return reply
   | loop => exact .loop
   | sys_reject fits => exact .sys_reject fits
@@ -52,7 +54,7 @@ theorem bind {World : Type} {host : Host World} {action residual : Action α}
       (Action.bind residual next) after := by
   cases advance with
   | read_reject bound => exact .read_reject bound
-  | read_return bound reply => exact .read_return bound reply
+  | read_return bound reply size first => exact .read_return bound reply size first
   | write_return reply => exact .write_return reply
   | loop =>
       rw [resumeLoop_bind]
@@ -102,7 +104,7 @@ theorem Prefix.progress {World : Type} {host : Host World} {action residual : Ac
   induction hPrefix with
   | refl => exact .refl _ _
   | read_reject bound => exact .advance (.read_reject bound)
-  | read_return bound reply => exact .advance (.read_return bound reply)
+  | read_return bound reply size first => exact .advance (.read_return bound reply size first)
   | write_return reply => exact .advance (.write_return reply)
   | loop => exact .advance .loop
   | bind _ ih => exact ih.bind

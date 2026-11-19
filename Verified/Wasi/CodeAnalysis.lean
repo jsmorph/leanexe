@@ -28,7 +28,8 @@ def Command.width : {context : List Ty} → {result : ResultTy} →
   | _, _, .call (signature := signature) _ args =>
     argsMax fun i =>
       if signature.mode i = .owned then copyWidth (signature.params.get i) else (args i).width
-  | _, _, .read capacity => capacity.width
+  | _, _, .read buffer _ _ =>
+    Ty.bytes.width + max (max (Expr.var (S := pureSigs) buffer).width (copyWidth .bytes)) 5
   | _, _, .readAll limit => max limit.width 6
   | _, _, .write _ _ _ _ => 2
   | _, _, .exit code => max code.width 1

@@ -307,7 +307,7 @@ theorem prefix_appended {α : Type} {F : OpenFlags} {L : ShimLayout} {I : Launch
   induction h with
   | refl => exact Appended.refl _
   | read_reject => exact Appended.refl _
-  | read_return _ host => exact ShimStep.appended host
+  | read_return _ host _ _ => exact ShimStep.appended host
   | write_return host => exact ShimStep.appended host
   | loop => exact Appended.refl _
   | bind _ ih => exact ih
@@ -323,7 +323,8 @@ theorem prefix_observed {α World : Type} {host : Host World} {action residual :
   induction h with
   | refl => exact ⟨.refl _ _, by simp⟩
   | read_reject capacity => exact ⟨.read_reject capacity, by simp⟩
-  | read_return capacity reply => exact ⟨.read_return capacity reply.1, reply.2⟩
+  | read_return capacity reply size first =>
+    exact ⟨.read_return capacity reply.1 size first, reply.2⟩
   | write_return reply => exact ⟨.write_return reply.1, reply.2⟩
   | loop => exact ⟨.loop, by simp⟩
   | bind _ ih => exact ⟨.bind ih.1, ih.2⟩

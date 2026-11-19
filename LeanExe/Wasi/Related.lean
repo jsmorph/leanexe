@@ -12,7 +12,7 @@ inductive Action.Rel : {α β : Type} → (α → β → Prop) → Action α →
   | pure {relation : α → β → Prop} {left right} (value : relation left right) :
       Rel relation (.pure left) (.pure right)
   | read {relation : α → β → Prop} (capacity : UInt64)
-      {left : ReadResult → Action α} {right : ReadResult → Action β}
+      {left : ReadReply → Action α} {right : ReadReply → Action β}
       (next : ∀ reply, Rel relation (left reply) (right reply)) :
       Rel relation (.read capacity left) (.read capacity right)
   | write {relation : α → β → Prop} (output : Output) (bytes : Bytes)

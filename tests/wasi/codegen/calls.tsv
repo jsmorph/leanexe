@@ -3,10 +3,8 @@ echo-full	echo	5	5	1	1	input.bin	input.bin	empty.bin
 echo-short	echo	2	2	1	1	input.bin	first-two.bin	empty.bin
 echo-eof	echo	5	0	1	1	empty.bin	empty.bin	empty.bin
 echo-zero	echo	0	0	0	0	input.bin	empty.bin	empty.bin
-echo-overflow	echo	4294967296	0	0	0	input.bin	empty.bin	empty.bin
 discard	discardRead	5	7	1	1	input.bin	empty.bin	empty.bin
 discard-eof	discardRead	5	7	1	1	empty.bin	empty.bin	empty.bin
-discard-overflow	discardRead	4294967296	7	0	0	input.bin	empty.bin	empty.bin
 branch-true	branch	1	1	1	1	empty.bin	y.bin	empty.bin
 branch-false	branch	0	1	1	1	empty.bin	empty.bin	n.bin
 loop-zero	wordLoop	0	0	0	0	empty.bin	empty.bin	empty.bin

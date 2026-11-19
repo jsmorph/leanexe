@@ -44,7 +44,8 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
   | _, _, .ite condition yes no, index =>
     condition.uses index || yes.uses index || no.uses index
   | _, _, .call _ args, index => argsAny fun i => (args i).uses index
-  | _, _, .read capacity, index => capacity.uses index
+  | _, _, .read buffer start count, index =>
+    index == buffer.index || (index == start.index || index == count.index)
   | _, _, .readAll limit, index => limit.uses index
   | _, _, .write _ buffer start count, index =>
     index == buffer.index || (index == start.index || index == count.index)
@@ -64,12 +65,11 @@ def sysTakeLive (live : Nat → Bool) (args : List (Var context .word))
 
 def Command.literals : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Bytes.Literal
-  | _, _, .unit | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => []
+  | _, _, .unit | _, _, .read _ _ _ | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => []
   | _, _, .ret value => value.literals
   | _, _, .bind first next => first.literals ++ next.literals
   | _, _, .ite condition yes no => condition.literals ++ yes.literals ++ no.literals
   | _, _, .call _ args => (List.ofFn fun i => (args i).literals).flatten
-  | _, _, .read capacity => capacity.literals
   | _, _, .readAll limit => limit.literals
   | _, _, .exit code => code.literals
   | _, _, .loop count initial test step =>
@@ -81,12 +81,11 @@ def Command.Covered (command : Command pureSigs effectSigs context result)
 
 def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Bool
-  | _, _, .unit | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => true
+  | _, _, .unit | _, _, .read _ _ _ | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => true
   | _, _, .ret value => value.placeArgs
   | _, _, .bind first next => first.placeArgs && next.placeArgs
   | _, _, .ite condition yes no => condition.placeArgs && yes.placeArgs && no.placeArgs
   | _, _, .call (signature := signature) _ args => signature.placeArgs args
-  | _, _, .read capacity => capacity.placeArgs
   | _, _, .readAll limit => limit.placeArgs
   | _, _, .exit code => code.placeArgs
   | _, _, .loop count initial test step =>
@@ -106,7 +105,7 @@ def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} �
     operation.compiled && operation.form == form && args.length == operation.argWords &&
       inputs.length == operation.inputCount && buffers.length == operation.bufferCount &&
       operation.uses.all calls.contains
-  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
+  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ _ _ | _, _, .readAll _
   | _, _, .write _ _ _ _ | _, _, .exit _ => true
 
 /-- The calls that the `sys` commands of a command use, in order, with repetitions. -/
@@ -117,7 +116,7 @@ def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
   | _, _, .loop _ _ _ step => step.callsUsed
   | _, _, .letPair _ body => body.callsUsed
   | _, _, .sys operation _ _ _ _ => operation.uses
-  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
+  | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ _ _ | _, _, .readAll _
   | _, _, .write _ _ _ _ | _, _, .exit _ => []
 
 /-- The calls that the `sys` commands of a program use, each once, in order of first use. -/

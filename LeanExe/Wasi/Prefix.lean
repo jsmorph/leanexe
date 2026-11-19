@@ -14,15 +14,17 @@ def resumeLoop (test : UInt64 → σ → Bool) (step : UInt64 → σ → Action 
 inductive Prefix {World : Type} (host : Host World) :
     {α : Type} → Action α → World → List Event → Action α → World → Prop where
   | refl (action : Action α) (world : World) : Prefix host action world [] action world
-  | read_reject {capacity : UInt64} {next : ReadResult → Action α} {world}
+  | read_reject {capacity : UInt64} {next : ReadReply → Action α} {world}
       (hCapacity : 2 ^ 32 ≤ capacity.toNat) :
-      Prefix host (.read capacity next) world [] (next ⟨61, Bytes.empty⟩) world
-  | read_return {capacity : UInt64} {next : ReadResult → Action α}
-      {world after errno committed}
+      Prefix host (.read capacity next) world [] (next ⟨61, Bytes.empty, Bytes.empty⟩) world
+  | read_return {capacity : UInt64} {next : ReadReply → Action α}
+      {world after errno committed range}
       (hCapacity : capacity.toNat < 2 ^ 32)
-      (hHost : host.read world capacity (.returned errno committed) after) :
+      (hHost : host.read world capacity (.returned errno committed) after)
+      (hRange : range.data.size = capacity.toNat)
+      (hPrefix : errno = 0 → range.data.extract 0 committed.data.size = committed.data) :
       Prefix host (.read capacity next) world [.read capacity (.returned errno committed)]
-        (next (readResult errno committed)) after
+        (next (readReply errno committed range)) after
   | write_return {output : Output} {bytes : Bytes} {next : WriteResult → Action α}
       {world after errno committed}
       (hHost : host.write world output bytes (.returned errno committed) after) :
@@ -121,9 +123,9 @@ theorem Prefix.complete {World : Type} {host : Host World} {action residual : Ac
   induction h with
   | refl => intro rest outcome final hRun; exact hRun
   | read_reject hCapacity => intro rest outcome final hRun; exact .read_reject hCapacity hRun
-  | read_return hCapacity hHost =>
+  | read_return hCapacity hHost hRange hPrefix =>
     intro rest outcome final hRun
-    exact .read_return hCapacity hHost hRun
+    exact .read_return hCapacity hHost hRange hPrefix hRun
   | write_return hHost =>
     intro rest outcome final hRun
     exact .write_return hHost hRun
@@ -191,8 +193,8 @@ theorem Exec.returned_prefix {World : Type} {host : Host World} (action : Action
     intro world trace value final hRun
     cases hRun with
     | read_reject hCapacity hRun => exact (Prefix.read_reject hCapacity).trans (ih _ hRun)
-    | read_return hCapacity hHost hRun =>
-      exact (Prefix.read_return hCapacity hHost).trans (ih _ hRun)
+    | read_return hCapacity hHost hRange hPrefix hRun =>
+      exact (Prefix.read_return hCapacity hHost hRange hPrefix).trans (ih _ hRun)
   | write output bytes next ih =>
     intro world trace value final hRun
     cases hRun with

@@ -61,14 +61,21 @@ partial def reflect (context : Ctx) (expression : Lean.Expr) : MetaM Reflection 
       return ← fromEquation context result expression source equation
   if function == ``Action.bind || function == ``Bind.bind then
     return ← reflectBind args[args.size - 2]! args.back! expression
-  if function == ``readSome then
-    let capacity := args.back!
-    let reflected ← pureOperand context capacity
+  if function == ``readStdin then
+    unless args.size == 3 do
+      throwError "verified_compile_wasi: readStdin requires all 3 arguments"
+    let reflected ← args.toList.mapM (pureOperand context)
+    let bind := reflected.map fun argument => !argument.src.isAppOf ``Expr.var
+    if bind.any id then
+      return ← reflectAs (← bindArgs expression.getAppFn args.toList bind #[] #[]) expression
+    let places := reflected.map fun argument => argument.src.getAppArgs.back!
     let source ← mkAppOptM ``Command.read
-      #[some context.pure.sigs, some context.sigs, some context.pure.ctx, some reflected.src]
+      #[some context.pure.sigs, some context.sigs, some context.pure.ctx,
+        some places[0]!, some places[1]!, some places[2]!]
+    let proofs ← reflected.mapM (userProof context.pure)
     let equation ← mkAppM ``read_eq
-      #[context.pure.funs, context.funs, context.pure.env, reflected.src, capacity,
-        ← userProof context.pure reflected]
+      (#[context.pure.funs, context.funs, context.pure.env] ++ places.toArray ++ args ++
+        proofs.toArray)
     return ← fromEquation context result expression source equation
   if function == ``readAll then
     let limit := args.back!

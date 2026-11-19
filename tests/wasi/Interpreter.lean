@@ -42,18 +42,18 @@ private def primitives : IO Unit := do
     write := fun output bytes => do
       calls.modify (·.push (.write output.fd bytes.data.data.toList))
       pure (.returned (if output = .stderr then 29 else 0) 1) }
-  let program : Action (UInt64 × UInt64 × UInt64 × UInt64 × UInt64) := do
-    let action := readSome 0
+  let program : Action (UInt64 × UInt64 × List UInt8 × UInt64 × UInt64 × UInt64) := do
+    let action := readStdin Bytes.empty 0 0
     let _ ← action
     let _ ← action
-    let oversized ← readSome 4294967296
-    let failed ← readSome 1
+    let clamped ← readStdin (Bytes.build 2 fun _ => 7) 1 5
     let short ← writeStdout bytes![65, 66] 0 2
     let error ← writeStderr bytes![67] 0 1
-    pure (oversized.errno, failed.bytes.size, short.count, error.errno, error.count)
-  returned (61, 0, 1, 29, 0) (← program.run host)
+    pure (clamped.errno, clamped.count, clamped.buffer.data.data.toList, short.count, error.errno,
+      error.count)
+  returned (29, 0, [7, 0], 1, 29, 0) (← program.run host)
   check ((← calls.get) == #[.read 0, .read 0, .read 1,
-    .write 1 [65, 66], .write 2 [67]]) "primitive order or overflow rejection"
+    .write 1 [65, 66], .write 2 [67]]) "primitive order or window clamp"
 
 private def loops : IO Unit := do
   let calls ← IO.mkRef #[]
@@ -116,13 +116,13 @@ private def streams : IO Unit := do
   let host := NativeHost.ofStreams (IO.FS.Stream.ofBuffer input)
     (IO.FS.Stream.ofBuffer output) (IO.FS.Stream.ofBuffer error)
   let program : Action (UInt64 × UInt64 × UInt64 × UInt64) := do
-    let zero ← readSome 0
-    let data ← readSome 3
-    let written ← writeStdout data.bytes 0 data.bytes.size
+    let zero ← readStdin Bytes.empty 0 0
+    let data ← readStdin (Bytes.build 4 fun _ => 9) 0 4
+    let written ← writeStdout data.buffer 0 data.count
     let _ ← writeStdout Bytes.empty 0 0
     let diagnostic ← writeStderr bytes![128, 0] 0 2
-    let eof ← readSome 3
-    pure (zero.bytes.size, written.count, diagnostic.count, eof.bytes.size)
+    let eof ← readStdin (Bytes.build 3 fun _ => 9) 0 3
+    pure (zero.count, written.count, diagnostic.count, eof.count)
   returned (0, 3, 2, 0) (← program.run host)
   check ((← output.get).data.data.toList == [0, 255, 65]) "stdout binary bytes"
   check ((← error.get).data.data.toList == [128, 0]) "stderr binary bytes"

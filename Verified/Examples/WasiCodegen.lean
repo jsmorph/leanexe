@@ -25,20 +25,30 @@ def writeLiteral (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   result := .value .word
   body := writeBytes .stdout [65, 0, 255]
 
+/-- Binds a buffer of as many zero bytes as variable 0 holds and the start 0, and reads stdin into
+the buffer's window from 0 of that count, which leaves the result over the start, the buffer, and
+the count. -/
+private def readZeros (next : Command [] effectSigs
+    (wordsBytesTy 2 :: .word :: .bytes :: .word :: context) (.value .word)) :
+    Command [] effectSigs (.word :: context) (.value .word) :=
+  .bind (.ret (.bytesBuild (.var .here) (.word 0)))
+    (.bind (.ret (.word 0)) (.bind (.read (.there .here) .here (.there (.there .here))) next))
+
 def echo (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   name := "echo"
   params := [.word]
   modes := [.borrowed]
   result := .value .word
-  body := .bind (.read (.var .here))
-    (.bind (.ret (.letPair (.var .here) (.var .here))) (writeHere .stdout))
+  body := readZeros (.letPair .here (.letPair .here
+    (.bind (.write .stdout .here (.there (.there (.there (.there (.there .here))))) (.there .here))
+      (.ret (.proj .here (.snd .here))))))
 
 def discardRead (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   name := "discardRead"
   params := [.word]
   modes := [.borrowed]
   result := .value .word
-  body := .bind (.read (.var .here)) (.ret (.word 7))
+  body := readZeros (.ret (.word 7))
 
 def branch (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
   name := "branch"

@@ -6,6 +6,7 @@ import Verified.Wasi.CommandBindValueSpec
 import Verified.Wasi.CommandConditionalSpec
 import Verified.Wasi.CommandLoopSpec
 import Verified.Wasi.SysCommand
+import Verified.Wasi.ReadCommand
 import Verified.Wasi.CommandLetPair
 
 namespace Verified.Wasi
@@ -28,7 +29,7 @@ theorem Command.code_spec_with {calls : List LeanExe.Wasi.Call}
   | ite condition yes no yesSpec noSpec =>
       exact command_ite_spec_with facts sourceHost yesSpec noSpec
   | call callee args => exact command_call_spec_with facts sourceHost callee args
-  | read capacity => exact command_read_spec_with facts sourceHost capacity
+  | read buffer start count => exact command_read_spec_with facts sourceHost buffer start count
   | readAll limit => exact command_readAll_spec_with facts sourceHost limit
   | write output buffer start count =>
     exact command_write_spec_with facts sourceHost output buffer start count

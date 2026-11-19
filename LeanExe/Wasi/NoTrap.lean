@@ -24,7 +24,8 @@ theorem Exec.not_trapped {World : Type} {host : Host World} {action : Action α}
     cases impossible
   · intro α capacity next world final trace outcome hCapacity run ih
     exact ih
-  · intro α capacity next world after final trace outcome errno committed hCapacity reply run ih
+  · intro α capacity next world after final trace outcome errno committed range hCapacity reply
+      size first run ih
     exact ih
   · intro α capacity next world after message committed hCapacity reply
     exact False.elim (safe.read reply)

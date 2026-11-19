@@ -102,15 +102,6 @@ theorem PureContext.returnWordCost_nil (pure : PureContext pureSigs) (depth : UI
       pure.exprCost depth (slots.map Slot.mode) live value env := by
   rw [pure.returnCost_nil, pure.word_ownedCost]
 
-theorem PureContext.readCost_compiler (pure : PureContext pureSigs) (depth : UInt64)
-    (slots : List Slot) (live : Nat → Bool) (capacity : Expr pureSigs context .word) (env : Env context)
-    (store : Store Unit) (locals : Locals) :
-    Verified.Wasi.returnCost pure.funs pure.flags (pure.callBounds depth) capacity env slots [] live store locals +
-        Verified.Wasi.readCost (capacity.denote pure.funs env) =
-      pure.readCost depth (slots.map Slot.mode) live capacity env := by
-  rw [pure.returnWordCost_nil]
-  rfl
-
 theorem PrefixBound.exit {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode} {live : Nat → Bool}
     {code : Expr pureSigs context .word} {env : Env context} {world : World} {budget : Nat}
@@ -140,18 +131,6 @@ theorem PrefixBound.ret_resources {World : Type} {host : Host World} {pure : Pur
       pure.exprFits depth value env = true := by
   rw [pure.returnCost_nil]
   exact ⟨within.mono bounded.ret.1, bounded.ret.2⟩
-
-theorem PrefixBound.read_resources {World : Type} {host : Host World} {pure : PureContext pureSigs}
-    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {slots : List Slot} {live : Nat → Bool}
-    {capacity : Expr pureSigs context .word} {env : Env context} {world : World} {budget : Nat}
-    {heap : Heap} {store : Store Unit} {source : Wasm.Module} (locals : Locals)
-    (bounded : PrefixBound host pure program depth (slots.map Slot.mode) live (.read capacity) env world budget)
-    (within : heap.Within store source budget) :
-    heap.Within store source
-      (Verified.Wasi.returnCost pure.funs pure.flags (pure.callBounds depth) capacity env slots [] live store locals +
-        Verified.Wasi.readCost (capacity.denote pure.funs env)) ∧ pure.exprFits depth capacity env = true := by
-  rw [pure.readCost_compiler]
-  exact ⟨within.mono bounded.read.1, bounded.read.2⟩
 
 theorem PureContext.readAllCost_compiler (pure : PureContext pureSigs) (depth : UInt64)
     (slots : List Slot) (live : Nat → Bool) (limit : Expr pureSigs context .word)

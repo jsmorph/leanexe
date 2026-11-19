@@ -121,7 +121,7 @@ theorem compile_read_with {calls : List LeanExe.Wasi.Call}
     (entries : List (EffectEntry effectSigs)) (main : Option (EffectMain effectSigs))
     (pool : Bytes.LiteralPool) :
     (compileCalls calls source program entries main pool).funcs[source.funcs.length]? =
-      some (readFunctionWith calls (Module.extraTypeIndex source 0)) := by
+      some (readFunction (Module.extraTypeIndex source 0)) := by
   cases main with
   | none => exact Wrappers.read_function_with source (program.callableExtensionWith calls source entries pool)
   | some main => exact Wrappers.read_function_with source (program.commandExtensionWith calls source main pool)

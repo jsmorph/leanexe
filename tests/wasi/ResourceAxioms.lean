@@ -14,8 +14,6 @@ elab "check_wasi_resource_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[
     ``Verified.Wasi.Resource.PureContext.returnCost_nil,
-    ``Verified.Wasi.Resource.PureContext.readCost_zero,
-    ``Verified.Wasi.Resource.PureContext.readCost_overflow,
     ``Verified.Wasi.Resource.ResourceExec.erase,
     ``Verified.Wasi.Resource.ResourceCall.erase,
     ``Verified.Wasi.Resource.ResourceLoopExec.erase,
@@ -69,9 +67,7 @@ elab "check_wasi_resource_axioms" : command => do
     ``Verified.Wasi.Resource.PureContext.loopTestCost_compiler,
     ``Verified.Wasi.Resource.PureContext.word_ownedCost,
     ``Verified.Wasi.Resource.PureContext.returnWordCost_nil,
-    ``Verified.Wasi.Resource.PureContext.readCost_compiler,
     ``Verified.Wasi.Resource.PrefixBound.ret_resources,
-    ``Verified.Wasi.Resource.PrefixBound.read_resources,
     ``Verified.Wasi.Resource.PrefixBound.write_resources,
     ``Verified.Wasi.Resource.PrefixBound.exit_resources,
     ``Verified.Wasi.CostCommandResult.erase,
@@ -79,7 +75,7 @@ elab "check_wasi_resource_axioms" : command => do
     ``Verified.Wasi.CostCommandCodeSpec.safety,
     ``Verified.Wasi.cost_command_unit_spec,
     ``Verified.Wasi.cost_command_ret_spec,
-    ``Verified.Wasi.cost_command_read_spec,
+    ``Verified.Wasi.cost_command_read_spec_with,
     ``Verified.Wasi.cost_command_write_spec,
     ``Verified.Wasi.cost_command_exit_spec,
     ``Verified.Wasi.cost_command_bind_unit_spec,

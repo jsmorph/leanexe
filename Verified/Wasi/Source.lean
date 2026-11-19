@@ -61,8 +61,8 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
   | call (callee : EffectVar effectSigs signature)
       (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
       Command pureSigs effectSigs context signature.result
-  | read (capacity : Expr pureSigs context .word) :
-      Command pureSigs effectSigs context (.value (.pair .word .bytes))
+  | read (buffer : Var context .bytes) (start count : Var context .word) :
+      Command pureSigs effectSigs context (.value (wordsBytesTy 2))
   | readAll (limit : Expr pureSigs context .word) :
       Command pureSigs effectSigs context (.value (.pair .word .bytes))
   | write (output : Output) (buffer : Var context .bytes) (start count : Var context .word) :
@@ -92,9 +92,9 @@ def Command.denote (pureFuns : Funs pureSigs) (effectFuns : EffectFuns effectSig
         else no.denote pureFuns effectFuns env
   | _, _, .call callee args, env =>
       effectFuns.get callee (Env.ofFn fun i => (args i).denote pureFuns env)
-  | _, _, .read capacity, env =>
-      Action.bind (readSome (capacity.denote pureFuns env)) fun result =>
-        .pure (result.errno, result.bytes)
+  | _, _, .read buffer start count, env =>
+      Action.bind (readStdin (env.get buffer) (env.get start) (env.get count)) fun result =>
+        .pure (fillValue result)
   | _, _, .readAll limit, env =>
       Action.bind (LeanExe.Wasi.readAll (limit.denote pureFuns env)) fun result =>
         .pure (result.errno, result.bytes)

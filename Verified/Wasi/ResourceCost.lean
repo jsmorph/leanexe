@@ -1,5 +1,4 @@
 import Verified.Wasi.Return
-import Verified.Wasi.ReadCost
 import Verified.Wasi.ReadAllCost
 
 namespace Verified.Wasi.Resource
@@ -47,12 +46,6 @@ def PureContext.sysTakeCost (context : PureContext signatures) (depth : UInt64)
 def PureContext.exprFits (context : PureContext signatures) (depth : UInt64)
     (value : Expr signatures sourceContext type) (env : Env sourceContext) : Bool :=
   value.fits context.funs (context.callFits depth) env
-
-def PureContext.readCost (context : PureContext signatures) (depth : UInt64)
-    (modes : List Mode) (live : Nat → Bool) (capacity : Expr signatures sourceContext .word)
-    (env : Env sourceContext) : Nat :=
-  context.exprCost depth modes live capacity env +
-    Verified.Wasi.readCost (capacity.denote context.funs env)
 
 def PureContext.readAllCost (context : PureContext signatures) (depth : UInt64)
     (modes : List Mode) (live : Nat → Bool) (limit : Expr signatures sourceContext .word)
@@ -146,17 +139,5 @@ theorem PureContext.returnCost_nil (context : PureContext signatures) (depth : U
       context.ownedCost depth (slots.map Slot.mode) live value env := by
   simp only [Verified.Wasi.returnCost, dyingPot_nil, Nat.zero_add,
     PureContext.ownedCost, PureContext.exprCost]
-
-theorem PureContext.readCost_zero (context : PureContext signatures) (depth : UInt64)
-    (modes : List Mode) (live : Nat → Bool) (capacity : Expr signatures sourceContext .word)
-    (env : Env sourceContext) (zero : capacity.denote context.funs env = 0) :
-    context.readCost depth modes live capacity env = context.exprCost depth modes live capacity env := by
-  rw [PureContext.readCost, zero, Verified.Wasi.readCost_zero, Nat.add_zero]
-
-theorem PureContext.readCost_overflow (context : PureContext signatures) (depth : UInt64)
-    (modes : List Mode) (live : Nat → Bool) (capacity : Expr signatures sourceContext .word)
-    (env : Env sourceContext) (overflow : 4294967296 ≤ (capacity.denote context.funs env).toNat) :
-    context.readCost depth modes live capacity env = context.exprCost depth modes live capacity env := by
-  rw [PureContext.readCost, Verified.Wasi.readCost_overflow overflow, Nat.add_zero]
 
 end Verified.Wasi.Resource

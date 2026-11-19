@@ -247,8 +247,9 @@ theorem Exec.streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch} {R :
     exact .pure world value
   · intro _ _ _ _ _ _ _ hCapacity _ ih hT
     exact .read_reject hCapacity (ih hT)
-  · intro _ _ _ _ _ _ _ _ _ _ hCapacity hHost _ ih hT
-    exact .read_return hCapacity (step (fun _ _ _ h => nomatch h) hHost) (ih hT.of_cons)
+  · intro _ _ _ _ _ _ _ _ _ _ _ hCapacity hHost hRange hPrefix _ ih hT
+    exact .read_return hCapacity (step (fun _ _ _ h => nomatch h) hHost) hRange hPrefix
+      (ih hT.of_cons)
   · intro _ _ _ _ _ _ _ hCapacity hHost _
     exact .read_trap hCapacity (step (fun _ _ _ h => nomatch h) hHost)
   · intro _ _ _ _ _ _ _ _ _ _ _ hHost _ ih hT
@@ -289,8 +290,8 @@ theorem Prefix.streams {F F' : OpenFlags} {L L' : ShimLayout} {I I' : Launch} {R
   induction h with
   | refl => exact .refl _ _
   | read_reject hCapacity => exact .read_reject hCapacity
-  | read_return hCapacity hHost =>
-    exact .read_return hCapacity (step (fun _ _ _ h => nomatch h) hHost)
+  | read_return hCapacity hHost hRange hPrefix =>
+    exact .read_return hCapacity (step (fun _ _ _ h => nomatch h) hHost) hRange hPrefix
   | write_return hHost => exact .write_return (step (fun _ _ _ h => nomatch h) hHost)
   | loop => exact .loop
   | bind _ ih => exact .bind (ih hT)

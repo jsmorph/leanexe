@@ -1,149 +1,92 @@
-import Verified.Wasi.ReadOverflow
-import Verified.Wasi.ReadCodeFacts
-import Verified.Wasi.ReadInvoke
-import Verified.Wasi.ReadCost
+import Verified.Wasi.ReadCall
+import Verified.Wasi.Write
 
 namespace Verified.Wasi
 
-open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
+open Wasm LeanExe.Wasi LeanExe.ProofKit
 
-theorem wp_read_with {calls : List LeanExe.Wasi.Call}
-    {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64}
-    {values : List Value} {rest : Program} {Q : Assertion (Observed World)} {aborts : Bool}
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hRoom : capacity.toNat < 4294967296 → capacity ≠ 0 → aborts = false →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (root length : UInt64)
-      (result : LeanExe.Wasi.ReadResult) (trace : List Event),
-      Exec (observedHost host) (readSome capacity) initial.host trace (.returned result) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length result.bytes →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity →
-      wp target rest Q final
-        (readLocals capacity root result.errno length
-          (.i64 length :: .i64 root :: .i64 result.errno :: values)) env)
-    (hTrap : ∀ (final : Store (Observed World)) (heap' : Heap) (root : UInt64)
-      (message : String) (trace : List Event),
-      Exec (observedHost host) (readSome capacity) initial.host trace (.trapped message) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity → Q (.Trap final message)) :
-    wp target (readCodeWith calls 0 1 2 3 ++ rest) Q initial (readLocals capacity 0 0 0 values) env := by
-  by_cases hOverflow : 4294967296 ≤ capacity.toNat
-  · refine wp_read_overflow_with hOverflow ?_
-    refine hNext heap initial 0 0 ⟨61, LeanExe.Bytes.empty⟩ []
-      (.read_reject hOverflow (.pure initial.host _)) ?_ (Bytes.Rep.empty _ _) ?_
-    · simpa only [Bytes.regions, ite_true] using
-        Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
-    · rw [readCost_overflow hOverflow]
-      omega
-  · have hSmall : capacity.toNat < 4294967296 := by omega
-    have hNotLarge : ¬((4294967296 : UInt64) ≤ capacity) := by
-      rw [UInt64.le_iff_toNat_le]
-      change ¬4294967296 ≤ capacity.toNat
-      omega
-    rw [readCode_parts_with]
-    simp only [List.cons_append, List.nil_append, wp_localGet_cons, readLocals_capacity,
-      readLocals_stack, wp_constI64_cons, wp_geUI64_cons, ge_iff_le,
-      ite_eq_right hNotLarge, wp_iff_control_types]
-    refine wp_iff_cons rfl ?_
+theorem read_narrow64 (word : UInt64) (h : word.toNat < 4294967296) :
+    word.toUInt32.toUInt64 = word := by
+  rw [UInt64.toUInt64_toUInt32]
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_mod, UInt64.reduceToNat, Nat.mod_eq_of_lt h]
+
+/-- The body of the read wrapper reads at most `capacity` bytes of stdin to `pointer` and leaves
+the errno and, on errno 0, the number of bytes read. -/
+theorem wp_read_wrapper_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {m : Module} {host : Host World}
+    {env : HostEnv (Observed World)} {store : Store (Observed World)} {s : Locals}
+    {pointer capacity : UInt32} {pointerSlot capacitySlot errnoSlot : Nat}
+    {rest : Program} {Q : Assertion (Observed World)}
+    (hImports : m.imports = ABI.importsWith calls)
+    (hHost : env.Satisfies m (hostSpecWith host calls))
+    (hMemory : 16 ≤ store.mem.pages * 65536)
+    (hBuffer : pointer.toNat + capacity.toNat ≤ store.mem.pages * 65536)
+    (hAddress : pointer.toNat + capacity.toNat ≤ 2 ^ 32)
+    (hSeparate : capacity = 0 ∨ 16 ≤ pointer.toNat)
+    (hPointerLocal : s.get pointerSlot = some (.i64 pointer.toUInt64))
+    (hCapacityLocal : s.get capacitySlot = some (.i64 capacity.toUInt64))
+    (hErrnoLow : s.params.length ≤ errnoSlot)
+    (hErrnoHigh : errnoSlot < s.params.length + s.locals.length)
+    (hNext : ∀ (final : Store (Observed World)) (errno : UInt64) (committed : LeanExe.Bytes),
+      (observedHost host).read store.host capacity.toUInt64
+        (.returned errno committed) final.host →
+      GuestFrame store final [ABI.scratch, (pointer.toNat, capacity.toNat)] →
+      (errno = 0 → Bytes.At final.mem pointer.toUInt64 committed) →
+      wp m rest Q final
+        { (setLocal s errnoSlot (.i32 errno.toUInt32)) with
+          values := (Value.i64 (if errno = 0 then committed.size else 0) ::
+            Value.i64 errno :: s.values) } env)
+    (hTrap : ∀ (final : Store (Observed World)) (message : String) (committed : LeanExe.Bytes),
+      (observedHost host).read store.host capacity.toUInt64
+        (.trapped message committed) final.host →
+      GuestFrame store final [ABI.scratch, (pointer.toNat, capacity.toNat)] →
+      Q (.Trap final message)) :
+    wp m (readCode pointerSlot capacitySlot errnoSlot ++ rest) Q store s env := by
+  simp only [readCode, List.append_assoc]
+  refine wp_read_call_with hImports hHost hMemory hBuffer hAddress hSeparate hPointerLocal
+    hCapacityLocal ?_ hTrap
+  intro final errno committed hRead hFrame hData
+  have hErrnoBound : errno.toNat ≤ 76 := ((observedHost host).read_bound hRead).2
+  have hSize : committed.data.size < 4294967296 := by
+    have hBound := ((observedHost host).read_bound hRead).1
+    simp only [Transfer.committed, UInt32.toNat_toUInt64] at hBound
+    have := capacity.toNat_lt
+    omega
+  have hErrno := narrow_word errno (by omega)
+  have hSizeCast : UInt64.ofNat (UInt32.ofNat committed.data.size).toNat = committed.size := by
+    rw [UInt32.toNat_ofNat_of_lt' (by change committed.data.size < 4294967296; exact hSize)]
+    rfl
+  simp only [List.cons_append, List.nil_append]
+  refine wp_localSet_local (s := s) (vs := s.values) hErrnoLow hErrnoHigh ?_
+  let finalLocals := setLocal { s with values := s.values } errnoSlot (.i32 errno.toUInt32)
+  have hErrnoLocal : finalLocals.get errnoSlot = some (.i32 errno.toUInt32) :=
+    Locals.get_setLocal_same hErrnoLow hErrnoHigh
+  change wp m _ Q final finalLocals env
+  simp only [wp_localGet_cons, hErrnoLocal, wp_extendUI32_cons, Locals.get_values,
+    hErrno, wp_eqz_cons, wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  by_cases hZero : errno = 0
+  · obtain ⟨hAt, hCount⟩ := hData hZero
+    simp only [hZero, UInt64.toUInt32_ofNat, ↓reduceIte]
+    rw [ite_eq_left (by decide : (1 : UInt32) ≠ 0)]
+    simp only [List.drop_zero, wp_const_cons, wp_load32_cons,
+      UInt32.reduceToNat, Nat.add_zero, UInt32.add_zero]
+    rw [ite_eq_right (by rw [hFrame.pages]; omega), hCount]
+    simp only [wp_extendUI32_cons, hSizeCast]
+    simpa only [wp_nil, List.take_succ_cons, List.take_zero, List.cons_append, List.nil_append,
+      List.drop_zero, finalLocals, setLocal, hZero, ↓reduceIte] using
+      hNext final errno committed hRead hFrame (fun _ => hAt)
+  · have hNarrowNe : errno.toUInt32 ≠ 0 := by
+      intro hNarrow
+      apply hZero
+      calc
+        errno = UInt64.ofNat errno.toUInt32.toNat := hErrno.symm
+        _ = 0 := by rw [hNarrow]; rfl
+    simp only [hNarrowNe, ite_false]
     rw [ite_eq_right (by decide : ¬((0 : UInt32) ≠ 0))]
-    simp only [readValidCodeWith, List.append_assoc]
-    refine wp_read_allocate_with runtime layout profile hImports sourceHost hHeap
-      (Nat.le_of_lt hSmall) hCap (fun hNonzero hFalse => hRoom hSmall hNonzero hFalse)
-      ?_ ?_ ?_
-    · intro hAbort final hWorld
-      exact hResource hAbort final hWorld
-    · intro hZero
-      have hReady : ReadReady heap (PureTransport.erase initial) 0 capacity :=
-        Or.inl ⟨rfl, hZero⟩
-      have hBefore : Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch)
-          heap (PureTransport.erase initial) (Bytes.regions (PureTransport.erase initial) 0) := by
-        simpa only [Bytes.regions, ite_true] using
-          Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
-      change wp target (readCallCode 1 0 ++ readResultCodeWith calls ++ []) _ initial
-        (readLocals capacity 0 0 0 values) env
-      refine wp_read_invoke_with (budget := readCost capacity)
-        runtime layout profile hImports sourceHost hHost hSmall hReady
-        hBefore rfl (by omega) ?_ ?_
-      · intro heap' final root length result trace hExec hStep hRep hTop
-        simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero,
-          readLocals_values, readLocals_stack]
-        exact wp_read_return (hNext heap' final root length result trace hExec hStep hRep hTop)
-      · intro final heap' message trace hExec hStep hTop
-        exact hTrap final heap' 0 message trace hExec hStep hTop
-    · intro hNonzero before hFits hStore hWorld
-      obtain ⟨hAllocate, hBuffer, hCapacity, hTop⟩ :=
-        read_allocation_buffer hHeap (Nat.le_of_lt hSmall) hFits hStore
-      let root := FixedArrayAllocate.root heap.top (allocSize capacity) heap.free
-      have hReady : ReadReady (heap.allocate (allocSize capacity))
-          (PureTransport.erase before) root capacity := Or.inr ⟨_, hBuffer, hCapacity⟩
-      have hBefore : Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch)
-          (heap.allocate (allocSize capacity)) (PureTransport.erase before)
-          (Bytes.regions (PureTransport.erase before) root) := by
-        have hRoot : root ≠ 0 := hBuffer.nonzero
-        rw [Bytes.regions, ite_eq_right hRoot]
-        exact hAllocate.mono
-          (keep' := fun region => regionsDisjoint region ABI.scratch)
-          (fresh' := [block (PureTransport.erase before) root])
-          (fun _ _ => True.intro) (fun _ h => h)
-      have hBudget : (heap.allocate (allocSize capacity)).top.toNat ≤
-          heap.top.toNat + readCost capacity := by
-        rw [readCost_positive hSmall hNonzero]
-        exact hTop
-      change wp target (readCallCode 1 0 ++ readResultCodeWith calls ++ []) _ before
-        (readLocals capacity root 0 0 values) env
-      refine wp_read_invoke_with (budget := readCost capacity)
-        runtime layout profile hImports sourceHost hHost hSmall hReady
-        hBefore hWorld hBudget ?_ ?_
-      · intro heap' final root' length result trace hExec hStep hRep hTop
-        simp only [wp_nil, List.take_zero, List.nil_append, List.drop_zero,
-          readLocals_values, readLocals_stack]
-        exact wp_read_return (hNext heap' final root' length result trace hExec hStep hRep hTop)
-      · intro final heap' message trace hExec hStep hTop
-        exact hTrap final heap' root message trace hExec hStep hTop
-
-theorem wp_read {World : Type} {source target : Module} {host : Host World}
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
-    (sourceHost : HostEnv Unit) {env : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {heap : Heap} {capacity : UInt64}
-    {values : List Value} {rest : Program} {Q : Assertion (Observed World)} {aborts : Bool}
-    (hHost : env.Satisfies target (hostSpec host))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
-    (hRoom : capacity.toNat < 4294967296 → capacity ≠ 0 → aborts = false →
-      heap.Room (PureTransport.erase initial) source (allocSize capacity))
-    (hResource : aborts = true → ∀ final : Store (Observed World),
-      final.host = initial.host → Q (.Trap final "unreachable"))
-    (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (root length : UInt64)
-      (result : LeanExe.Wasi.ReadResult) (trace : List Event),
-      Exec (observedHost host) (readSome capacity) initial.host trace (.returned result) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      Bytes.Rep heap' (PureTransport.erase final) root length result.bytes →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity →
-      wp target rest Q final
-        (readLocals capacity root result.errno length
-          (.i64 length :: .i64 root :: .i64 result.errno :: values)) env)
-    (hTrap : ∀ (final : Store (Observed World)) (heap' : Heap) (root : UInt64)
-      (message : String) (trace : List Event),
-      Exec (observedHost host) (readSome capacity) initial.host trace (.trapped message) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
-        heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
-      heap'.top.toNat ≤ heap.top.toNat + readCost capacity → Q (.Trap final message)) :
-    wp target (readCode 0 1 2 3 ++ rest) Q initial (readLocals capacity 0 0 0 values) env := by
-  layout_instance wp_read_with
+    simpa only [wp_simp, List.take_succ_cons, List.take_zero, List.cons_append, List.nil_append,
+      List.drop_zero, finalLocals, setLocal, hZero, ite_false] using
+      hNext final errno committed hRead hFrame (fun zero => absurd zero hZero)
 
 end Verified.Wasi

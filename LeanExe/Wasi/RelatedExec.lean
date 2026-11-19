@@ -66,9 +66,9 @@ theorem Action.Rel.exec {World : Type} {host : Host World} {relation : α → β
       | read_reject bound execution =>
           obtain ⟨result, execution, values⟩ := ih _ _ _ _ _ execution
           exact ⟨result, .read_reject bound execution, values⟩
-      | read_return bound hostReply execution =>
+      | read_return bound hostReply size first execution =>
           obtain ⟨result, execution, values⟩ := ih _ _ _ _ _ execution
-          exact ⟨result, .read_return bound hostReply execution, values⟩
+          exact ⟨result, .read_return bound hostReply size first execution, values⟩
       | read_trap bound hostReply => exact ⟨_, .read_trap bound hostReply, .trapped _⟩
   | write output bytes next ih =>
       intro world trace outcome final execution
