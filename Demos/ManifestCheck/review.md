@@ -123,14 +123,65 @@ and `budget_le`, and found no defect of the statements as Lean text.
 
 | Finding | Response |
 |---|---|
-| `Confined` and `Handled` hold only of runs that end with the accepted exit: `Ends` gives a run that traps only `Exec` or `Prefix` of `main`, so a program that opens an unlisted name and then exhausts the memory meets every statement for hosts outside the premises of `total_meets_budget` | Open: the request states the three properties of every run.  Stating `Confined` and a prefix form of `Handled` of every `Prefix` of `main` and adding them to the trap cases of `Ends` remains to do |
+| `Confined` and `Handled` hold only of runs that end with the accepted exit: `Ends` gives a run that traps only `Exec` or `Prefix` of `main`, so a program that opens an unlisted name and then exhausts the memory meets every statement for hosts outside the premises of `total_meets_budget` | Adopted: `SoFar` states the three properties of the events of every run that stops, and `Ends` gives it in its trap cases, as the next review records |
 | The premise on `fd_filestat_get` covers every reply, while the command asks it only of the manifest, so a host whose checked files report large sizes is excluded | Recorded in the docstrings of `body_bounded` and `total_meets_budget` |
 | No theorem showed that the premises of `total_meets_budget` hold together | Adopted: `initial_within` gives the bound on the heap for every `M` of at most 23,000,000 |
 | The docstrings of `checkBudget`, `budget`, `body_bounded`, `total_meets`, `total_meets_budget`, and `ManifestBody` claimed more or less than their Lean text | Adopted |
 | A manifest whose reported size differs from its bytes, such as a FIFO, a file of `/proc` that reports size 0, or a file being appended to, gives status 1 | Recorded: the command reads a manifest of the size that the host reports, and the guide states it |
 
-Classes that no statement excludes: the opens and writes of a run that traps, for the first
-finding's reason; an engine that refuses `memory.grow` below the cap, since the exclusion of the
-guest trap holds under Talos's semantics of memory growth; a read attempted at a size of `2^32` or
-more, whose events equal the command's; and, as before, the host's resolution of names and the
-relation between the bytes that it returns and the files on disk.
+Classes that no statement excluded at the time of this review: the opens and writes of a run that
+traps, for the first finding's reason; an engine that refuses `memory.grow` below the cap, since
+the exclusion of the guest trap holds under Talos's semantics of memory growth; a read attempted at
+a size of `2^32` or more, whose events equal the command's; and, as before, the host's resolution
+of names and the relation between the bytes that it returns and the files on disk.
+
+## Review of the statements for runs that stop
+
+A third fresh agent reviewed `SoFar`, `ConfinedSoFar`, `HandledSoFar`, `Unfinished`, the trap cases
+of `Ends`, and the statements of [the runs that stop](CommandPrefix.lean), by the same method and
+without the proofs.  It transcribed `SoFar` into Python predicates over event lists, with a second
+transcription that tries every split that the existentials allow, and wrote an oracle of the
+request's confinement and handles apart from the Lean text.  It ran them on the event lists of runs
+that stop: every prefix of a run, a trap of the host at each event, and a rejected exit after the
+last.  Of its model's 1,593 runs and 65,122 such lists, neither `SoFar` nor the oracle rejected
+any, and the two transcriptions agreed on 11,144.  It ran 32 wrong programs on 393 scenarios,
+542,074 lists.
+
+| Finding | Response |
+|---|---|
+| `Confined` accepted the bytes after the first 66 of every line of the manifest, in the format or not, so a run that stops could open the tail of a malformed line, the empty name among them | Adopted: the file case of `Confined` requires `WellFormed l.2`, which `Run` gives in `Meets` |
+| `SoFar` accepted the names of the lines in the format of a manifest that the pure core refuses for another line, which the command refuses before it opens a file | Adopted: the file case of `ConfinedSoFar` requires the condition under which `Run` checks the lines, `lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2` |
+| `SoFar` constrained no output line written before a stop, while the request states the verdict property of every run: a program that writes `b.bin: OK` for a changed file and then stops met it | Adopted: `VerdictsSoFar` is the third part of `SoFar` |
+| The module docstring said that `ConfinedSoFar` takes the bytes that the reads of the manifest returned, where it takes those of a `ManifestRun` with status 0 after `args`, or none | Adopted |
+| The docstrings of `SoFar` and the module called `SoFar` what the request asks, while it stated two properties, and "before its exit" described runs that end with a rejected exit | Adopted: "without an accepted exit" |
+| The docstrings of `writes_soFar`, `withOpen_stops`, `stalled_stops`, `step_stops`, `checks_stops`, and `checkLines_stops` claimed more than their Lean text, and those of `LinesSoFar`, `readManifest_every`, and `hashFile_every` less; a line of `Handled`'s docstring passed the line width | Adopted; `LinesSoFar` and `writeAll_stops` replace `writes_soFar` |
+
+`VerdictsSoFar` states that no event writes to standard output, or that the events are those of
+`args`, of a `ManifestRun` with status 0 of a manifest that the pure core accepts, and of
+`ChecksSoFar` for its lines, followed by events that write nothing to standard output.
+`ChecksSoFar` states the checks of the first lines as `Checks` states them, followed by none or by
+the `FileCheck` of the next line and writes that offer the bytes of its output line, with that
+line's verdict, after those that the writes before them took.  A check that stops before its writes
+writes nothing, so the statement needs no prefix form of the reads of a file or of the manifest.
+`writeAll_stops` of [the stopped-run lemmas](../../Verified/Wasi/Stops.lean) gives the bytes that
+each write of a run of `writeAll` that stops offers.
+
+The reviewer's transcription with the three changes, and an oracle of the verdict property
+written apart from the Lean text, accepted all 65,122 lists of the model, and the two
+transcriptions agreed on the same 11,144 lists.  The transcription rejected every list of the
+reviewer's wrong programs on which its oracle finds a violation, among them the opens of the bytes
+of a malformed line and of the names of a refused manifest.  On 52 programs of the three reviews,
+867,468 lists, it rejected the reviewer's program that writes OK for a changed file, and every list
+on which a written line holds a wrong verdict or wrong bytes: a missing file passed with the
+digest of no bytes, an ignored read error or close errno, a file hashed only in its first chunk,
+digits compared in one case, a write of no byte, and a line written in two fixed pieces whatever
+the first write took.  Like `Meets`, it also rejects lists that the request allows, once a write
+follows: a file read twice or the manifest reopened, and reads into windows other than the
+specification's.
+
+Classes that no statement excludes, after this review: in a run that stops, checks after the last
+write that write nothing, such as a file checked twice, output lines held back to the end, or
+checks continued after a stalled line, of which the oracle flags 7,330 lists, none with a wrong
+line written; reopening the manifest or reading a file twice before any write; the host's
+resolution of names; the relation between the bytes that the host returns and the files on disk; a
+read attempted at a size of `2^32` or more; and an engine that refuses `memory.grow` below the cap.
