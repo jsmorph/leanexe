@@ -75,11 +75,24 @@ theorem Command.checkReady_complete {source : Module} {h : Nat} {slots : List Sl
 
 def EffectFunc.checkReadyWith (calls : List LeanExe.Wasi.Call) (source : Module)
     (pool : Bytes.LiteralPool) (function : EffectFunc pureSigs effectSigs) : Bool :=
-  checkFragment source.funcs.length (releaseWhere function.params
-    (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) &&
-    (function.body.checkReadyWith calls source function.positions
-      (paramSlots function.params function.modes 1) (1 + widthSum function.params)
-      (fun _ => false) pool && function.body.placeArgs)
+  let slots := paramSlots function.params function.modes 1
+  let body := function.body.fragmentsMask function.positions slots (1 + widthSum function.params)
+    0 pool
+  checkFragment source.funcs.length (releaseWhere function.params slots
+      (fun i => !body.2.testBit i)) &&
+    (body.1.all (checkFragment source.funcs.length) && function.body.callsReady calls &&
+      function.body.placeArgs)
+
+theorem EffectFunc.checkReadyWith_eq (calls : List LeanExe.Wasi.Call) (source : Module)
+    (pool : Bytes.LiteralPool) (function : EffectFunc pureSigs effectSigs) :
+    function.checkReadyWith calls source pool =
+      (checkFragment source.funcs.length (releaseWhere function.params
+          (paramSlots function.params function.modes 1) (fun i => !function.body.uses i)) &&
+        (function.body.checkReadyWith calls source function.positions
+          (paramSlots function.params function.modes 1) (1 + widthSum function.params)
+          (fun _ => false) pool && function.body.placeArgs)) := by
+  simp only [EffectFunc.checkReadyWith, Command.checkReadyWith, Command.fragmentsMask_eq,
+    Command.useMask_testBit, testBit_zero_eq]
 
 def EffectFunc.checkReady (source : Module) (pool : Bytes.LiteralPool)
     (function : EffectFunc pureSigs effectSigs) : Bool :=
@@ -89,7 +102,7 @@ theorem EffectFunc.checkReadyWith_sound {calls : List LeanExe.Wasi.Call} {source
     {pool : Bytes.LiteralPool} {function : EffectFunc pureSigs effectSigs}
     (accepted : function.checkReadyWith calls source pool = true) :
     function.ReadyWith calls source pool := by
-  simp only [EffectFunc.checkReadyWith, Bool.and_eq_true] at accepted
+  simp only [EffectFunc.checkReadyWith_eq, Bool.and_eq_true] at accepted
   obtain ⟨form, closed⟩ := checkFragment_sound accepted.1
   exact ⟨form, closed, Command.checkReadyWith_sound accepted.2.1, accepted.2.2⟩
 
@@ -103,7 +116,7 @@ theorem EffectFunc.checkReadyWith_complete {calls : List LeanExe.Wasi.Call} {sou
     (ready : function.ReadyWith calls source pool) :
     function.checkReadyWith calls source pool = true := by
   obtain ⟨form, closed, body, place⟩ := ready
-  simp only [EffectFunc.checkReadyWith, Bool.and_eq_true]
+  simp only [EffectFunc.checkReadyWith_eq, Bool.and_eq_true]
   exact ⟨checkFragment_complete ⟨form, closed⟩, Command.checkReadyWith_complete body, place⟩
 
 theorem EffectFunc.checkReady_complete {source : Module} {pool : Bytes.LiteralPool}

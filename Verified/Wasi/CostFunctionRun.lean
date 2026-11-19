@@ -53,14 +53,7 @@ theorem cost_function_body_wp_with {calls : List LeanExe.Wasi.Call}
     wp target (function.functionWith calls source typeIdx pool).body
       (CostFunctionPost host pure (.cons function rest) .here depth args params heap initial aborts) initial
       ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: params)) targetHost := by
-  change wp target (guardCode ++
-    paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
-    Relocation.programWith calls (releaseWhere function.params (paramSlots function.params function.modes 1)
-      (fun i => !function.body.uses i)) ++
-    function.body.codeWith calls (pool := pool) source function.positions
-      (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))
-    (CostFunctionPost host pure (.cons function rest) .here depth args params heap initial aborts) initial
-    ((function.functionWith calls source typeIdx pool).toLocals (.i64 depth :: params)) targetHost
+  rw [EffectFunc.functionWith_body]
   refine wp_function_entry_framed_with (sourceHost := sourceHost)
     runtime layout profile form closed at_ rep separate input scratch poolApart ?_ ?_
   · intro high

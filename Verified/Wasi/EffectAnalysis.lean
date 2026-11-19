@@ -57,6 +57,92 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
       ((inputs.any fun input => index == input.index) || args.any fun arg => index == arg.index)
   | _, _, .letPair pair body, index => index == pair.index || body.uses (index + 2)
 
+/-- The variables of a list as a bitmask, whose bit `i` is set when variable `i` is in the
+list. -/
+def varsMask : List (Var context type) → Nat
+  | [] => 0
+  | var :: rest => 1 <<< var.index ||| varsMask rest
+
+/-- The variables that a command reads, as a bitmask whose bit `i` is set when it reads variable
+`i`: `Command.uses` as data.  The kernel evaluates the code generator in each program's byte
+theorems, and the generator learns the variables live after each command from these masks, each
+computed once from those of the command's parts, where `Command.uses` walks the rest of the
+program for each variable that it is asked about. -/
+def Command.useMask : {context : List Ty} → {result : ResultTy} →
+    Command pureSigs effectSigs context result → Nat
+  | _, _, .unit => 0
+  | _, _, .ret value => value.useMask
+  | _, _, .bind (intermediate := intermediate) first next =>
+    first.useMask ||| next.useMask >>> intermediate.bindCount
+  | _, _, .ite condition yes no => condition.useMask ||| yes.useMask ||| no.useMask
+  | _, _, .call _ args => argsMask fun i => (args i).useMask
+  | _, _, .read buffer start count =>
+    1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index)
+  | _, _, .readAll limit => limit.useMask
+  | _, _, .write _ buffer start count =>
+    1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index)
+  | _, _, .exit code => code.useMask
+  | _, _, .loop count initial test step =>
+    count.useMask ||| initial.useMask ||| test.useMask >>> 2 ||| step.useMask >>> 2
+  | _, _, .sys _ _ args inputs buffers => varsMask buffers ||| (varsMask inputs ||| varsMask args)
+  | _, _, .letPair pair body => 1 <<< pair.index ||| body.useMask >>> 2
+
+theorem _root_.Verified.Expr.useMask_testBit {Γ : List Ty} {t : Ty} (e : Expr pureSigs Γ t)
+    (i : Nat) : e.useMask.testBit i = e.uses i :=
+  Expr.usesFast_eq e i
+
+theorem varsMask_testBit (vars : List (Var context type)) (i : Nat) :
+    (varsMask vars).testBit i = vars.any fun var => i == var.index := by
+  induction vars with
+  | nil => simp [varsMask]
+  | cons var rest ih =>
+    simp only [varsMask, Nat.testBit_or, testBit_one_shiftLeft, ih, List.any_cons]
+
+theorem Command.useMask_testBit (command : Command pureSigs effectSigs context result) (i : Nat) :
+    command.useMask.testBit i = command.uses i := by
+  induction command generalizing i with
+  | unit => simp [Command.useMask, Command.uses]
+  | ret value => exact value.useMask_testBit i
+  | bind first next firstIh nextIh =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, Nat.testBit_shiftRight, firstIh,
+      nextIh, Nat.add_comm]
+  | ite condition yes no yesIh noIh =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, Expr.useMask_testBit, yesIh, noIh]
+  | call callee args =>
+    simp only [Command.useMask, Command.uses, argsMask_testBit, Expr.useMask_testBit]
+  | read buffer start count | write output buffer start count =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, testBit_one_shiftLeft]
+  | readAll limit => exact limit.useMask_testBit i
+  | exit code => exact code.useMask_testBit i
+  | loop count initial test step stepIh =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, Nat.testBit_shiftRight,
+      Expr.useMask_testBit, stepIh, Nat.add_comm]
+  | sys call form args inputs buffers =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, varsMask_testBit]
+  | letPair pair body bodyIh =>
+    simp only [Command.useMask, Command.uses, Nat.testBit_or, Nat.testBit_shiftRight,
+      testBit_one_shiftLeft, bodyIh, Nat.add_comm]
+
+theorem testBit_or_eq (a b : Nat) : Nat.testBit (a ||| b) = fun i => a.testBit i || b.testBit i :=
+  funext fun _ => Nat.testBit_or ..
+
+theorem testBit_shiftRight_eq (a k : Nat) : Nat.testBit (a >>> k) = fun i => a.testBit (i + k) :=
+  funext fun i => by rw [Nat.testBit_shiftRight, Nat.add_comm]
+
+theorem testBit_shiftLeft_eq (a k : Nat) : Nat.testBit (a <<< k) = shift k a.testBit := by
+  funext i
+  rw [Nat.testBit_shiftLeft, shift]
+  by_cases below : i < k
+  · simp [below, Nat.not_le.mpr below]
+  · simp [below, Nat.le_of_not_lt below]
+
+theorem testBit_one_eq : Nat.testBit 1 = fun i => i == 0 := by
+  funext i
+  simpa using testBit_one_shiftLeft 0 i
+
+theorem testBit_zero_eq : Nat.testBit 0 = fun _ => false :=
+  funext Nat.zero_testBit
+
 /-- The variables live after the take of a `sys` command's buffer: those live after the command,
 and its inputs and word arguments, which the call reads. -/
 def sysTakeLive (live : Nat → Bool) (args : List (Var context .word))
