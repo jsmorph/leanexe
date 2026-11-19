@@ -154,7 +154,7 @@ any, and the two transcriptions agreed on 11,144.  It ran 32 wrong programs on 3
 | `SoFar` constrained no output line written before a stop, while the request states the verdict property of every run: a program that writes `b.bin: OK` for a changed file and then stops met it | Adopted: `VerdictsSoFar` is the third part of `SoFar` |
 | The module docstring said that `ConfinedSoFar` takes the bytes that the reads of the manifest returned, where it takes those of a `ManifestRun` with status 0 after `args`, or none | Adopted |
 | The docstrings of `SoFar` and the module called `SoFar` what the request asks, while it stated two properties, and "before its exit" described runs that end with a rejected exit | Adopted: "without an accepted exit" |
-| The docstrings of `writes_soFar`, `withOpen_stops`, `stalled_stops`, `step_stops`, `checks_stops`, and `checkLines_stops` claimed more than their Lean text, and those of `LinesSoFar`, `readManifest_every`, and `hashFile_every` less; a line of `Handled`'s docstring passed the line width | Adopted; `LinesSoFar` and `writeAll_stops` replace `writes_soFar` |
+| The docstrings of `writes_soFar`, `withOpen_stops`, `stalled_stops`, `step_stops`, `checks_stops`, and `checkLines_stops` claimed more than their Lean text, and those of `LinesSoFar`, `readManifest_every`, and `hashFile_every` less; a line of `Handled`'s docstring passed the line width | Adopted.  `LinesSoFar` and `writeAll_stops` replace `writes_soFar` |
 
 `VerdictsSoFar` states that no event writes to standard output, or that the events are those of
 `args`, of a `ManifestRun` with status 0 of a manifest that the pure core accepts, and of
