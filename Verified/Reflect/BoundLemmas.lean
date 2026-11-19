@@ -52,6 +52,13 @@ theorem bytesGet_bound (x : Var Γ .bytes) {i : Expr S Γ .word} {IA : Nat}
     (Expr.bytesGet x i).allocs funs flags bounds modes paid live env = IA := by
   subst hi; rfl
 
+theorem bytesSet_bound (x : Var Γ .bytes) {i v : Expr S Γ .word} {IA VA XA : Nat}
+    (hi : i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env = IA)
+    (hv : v.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env = VA)
+    (hx : x.ownedCost modes live (env.get x) = XA) :
+    (Expr.bytesSet x i v).allocs funs flags bounds modes paid live env = IA + VA + XA := by
+  subst hi hv hx; rfl
+
 theorem leSize_bound {e : Elem} (x : Var Γ (.array e)) (i : Var Γ .word) :
     (Expr.leSize x i : Expr S Γ .bool).allocs funs flags bounds modes paid live env = 0 := rfl
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # The byte and literal examples translated to C.  native-verified build translates
-# Verified.Examples.Bytes and Verified.Examples.Literals, has clightgen read each C text back,
-# compares that Clight with the translation, and compiles the text with ccomp only when they
-# match; ccomp then links the object with its export tables and tools/native-host.c.  The cases of
-# tests/wasi/bytes.tsv, tests/wasi/literals.tsv, and tests/wasi/byte-traps.tsv, which
-# tests/wasi/run.sh checks with Wasmtime, must give the same lines and allocation counts natively,
-# and each trap case must stop at `unreachable`.  The build includes
+# Verified.Examples.Bytes, Verified.Examples.BytesSet, and Verified.Examples.Literals, has
+# clightgen read each C text back, compares that Clight with the translation, and compiles the
+# text with ccomp only when they match; ccomp then links the object with its export tables and
+# tools/native-host.c.  The cases of tests/wasi/bytes.tsv, tests/wasi/bytes-set.tsv,
+# tests/wasi/literals.tsv, and tests/wasi/byte-traps.tsv, which tests/wasi/run.sh checks with
+# Wasmtime, must give the same lines and allocation counts natively, and each trap case must stop
+# at `unreachable`.  The build includes
 # tests/TestSupport/Native/LiteralsNative.lean, which states the examples' native theorems.  CCOMP,
 # CLIGHTGEN, and CCOMP_STDLIB are as for tests/native/run.sh.
 # LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
@@ -23,10 +24,11 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/bytes
 cd "$root"
-tools/leanrun --timeout 60m lake build native-verified TestSupport.Native.LiteralsNative
+tools/leanrun --timeout 60m lake build native-verified TestSupport.Native.LiteralsNative \
+  Verified.Examples.BytesSet
 rm -rf "$out"
 mkdir -p "$out"
-for name in Bytes Literals; do
+for name in Bytes BytesSet Literals; do
   module=Verified.Examples.$name
   lower=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
   CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
@@ -56,6 +58,7 @@ check_cases() {
   if [ "$failed" -ne 0 ]; then status=1; fi
 }
 check_cases "$out/bytes" "$root/tests/wasi/bytes.tsv" bytes
+check_cases "$out/bytesset" "$root/tests/wasi/bytes-set.tsv" "byte updates"
 check_cases "$out/literals" "$root/tests/wasi/literals.tsv" literals
 count=0
 while IFS="$tab" read -r export_name arguments; do

@@ -65,6 +65,8 @@ theorem Expr.literals_rename (expr : Expr S Γ t) (renameVars : Renaming Γ Δ) 
     exact congrArg₂ List.append (ihCount renameVars) (ihElem renameVars.lift)
   | set x index value ihIndex ihValue =>
     exact congrArg₂ List.append (ihIndex renameVars) (ihValue renameVars)
+  | bytesSet x index value ihIndex ihValue =>
+    exact congrArg₂ List.append (ihIndex renameVars) (ihValue renameVars)
   | insertAt x index value ihIndex ihValue =>
     exact congrArg₂ List.append (ihIndex renameVars) (ihValue renameVars)
   | not value ih => exact ih renameVars
@@ -117,6 +119,7 @@ theorem Expr.literals_renameFuns (expr : Expr S Γ t)
   | bytesBuild count elem ihCount ihElem => exact congrArg₂ List.append ihCount ihElem
   | build count elem ihCount ihElem => exact congrArg₂ List.append ihCount ihElem
   | set x index value ihIndex ihValue => exact congrArg₂ List.append ihIndex ihValue
+  | bytesSet x index value ihIndex ihValue => exact congrArg₂ List.append ihIndex ihValue
   | insertAt x index value ihIndex ihValue => exact congrArg₂ List.append ihIndex ihValue
   | not value ih => exact ih
   | funary op value ih => exact ih

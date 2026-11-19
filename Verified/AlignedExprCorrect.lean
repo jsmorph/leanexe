@@ -171,6 +171,12 @@ theorem Expr.code_specInX {strict : Bool} {S : List Sig} (m : Module) (funs : Fu
     intro hCover hD
     exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| specX_bytesBuild hm hRA hRt (countSpec ((Expr.covered_bytesBuild hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
       (elemSpec ((Expr.covered_bytesBuild hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | bytesSet x i v iSpec vSpec =>
+    have iSpec := fun c d => specOfX (pool := pool) (iSpec c d)
+    have vSpec := fun c d => specOfX (pool := pool) (vSpec c d)
+    intro hCover hD
+    exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| specX_bytesSet hCopy x (iSpec ((Expr.covered_bytesSet hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec ((Expr.covered_bytesSet hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
   | set x i v iSpec vSpec =>
     have iSpec := fun c d => specOfX (pool := pool) (iSpec c d)
     have vSpec := fun c d => specOfX (pool := pool) (vSpec c d)

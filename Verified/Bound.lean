@@ -210,7 +210,7 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
   | _, _, .build count elem | _, _, .bytesBuild count elem =>
     count.grows flags || elem.grows flags
   | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
-  | _, _, .set _ i v => i.grows flags || v.grows flags
+  | _, _, .set _ i v | _, _, .bytesSet _ i v => i.grows flags || v.grows flags
   | _, _, .treeNode _ _ words arrays buffers children =>
     (argsAny fun i => (words i).grows flags) || (argsAny fun i => (children i).grows flags) ||
       (argsAny fun i => (arrays i).grows flags) || (argsAny fun i => (buffers i).grows flags)
@@ -709,6 +709,10 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
     count.allocs funs flags bounds modes paid all env + Bytes.allocationCost n +
       sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
         (shift 1 all) (.cons (UInt64.ofNat k) env)) n
+  | _, _, .bytesSet x i v, env =>
+    i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
+      v.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env +
+      x.ownedCost modes live (env.get x)
 
 /-- The modes of a function's parameters at entry. -/
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
@@ -905,7 +909,7 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
   | _, _, .bytesEmpty, _ | _, _, .bytesLiteral _, _ | _, _, .bytesSize _, _ => true
   | _, _, .bytesGet _ index, env => index.fits funs fits env
-  | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
+  | _, _, .set _ i v, env | _, _, .insertAt _ i v, env | _, _, .bytesSet _ i v, env =>
     i.fits funs fits env && v.fits funs fits env
   | _, _, .push _ v, env => v.fits funs fits env
   | _, _, .build count elem, env | _, _, .bytesBuild count elem, env =>

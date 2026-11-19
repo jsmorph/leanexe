@@ -16,6 +16,7 @@ import Verified.Wasi.HostSpec
 import Verified.Wasi.Scratch
 import LeanExe.Wasi.Prefix
 import Verified.Examples.Bytes
+import Verified.Examples.BytesSet
 import Verified.Examples.Literals
 import Verified.AlignedExprCorrect
 import Verified.AlignedCorollaries
@@ -63,6 +64,7 @@ elab "check_wasi_axioms" : command => do
     ``Verified.spec_bytesSize,
     ``Verified.spec_bytesGet,
     ``Verified.spec_bytesBuild,
+    ``Verified.spec_bytesSet,
     ``Verified.After.bytes_rep,
     ``Verified.After.ofValues,
     ``Verified.After.writeByte,
@@ -87,6 +89,12 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Examples.Bytes.compiled.buildFromOwned.implements,
     ``Verified.Examples.Bytes.compiled.buildFromSize.implements,
     ``Verified.Examples.Bytes.compiled.nestedBuild.implements,
+    ``Verified.Examples.BytesSet.compiled.bytes,
+    ``Verified.Examples.BytesSet.compiled.setByte.implements,
+    ``Verified.Examples.BytesSet.compiled.setTwice.implements,
+    ``Verified.Examples.BytesSet.compiled.fillFrom.implements,
+    ``Verified.Examples.BytesSet.compiled.setKept.implements,
+    ``Verified.Examples.BytesSet.compiled.setEmpty.implements,
     ``Verified.Examples.Literals.compiled.bytes,
     ``Verified.Examples.Literals.compiled.initial,
     ``Verified.Examples.Literals.compiled.constant.implements,

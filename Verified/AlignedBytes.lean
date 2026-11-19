@@ -18,7 +18,8 @@ allocation of its object makes 64-bit accesses, inside `alloc`, and the block it
 ends at multiples of 8 (`wpX_allocate`).  The byte loop of `copyCode` is free of 64-bit accesses
 and calls, so `wpX_append_free` transfers `wp_copy`.  `wpX_copyOwned` is `wp_copyOwned`, the copy
 of a buffer into a new object, under the flag; an owned buffer's alignment is that of its nonzero
-root's block.
+root's block.  `specX_bytesSet` writes one byte into an owned buffer, which keeps its block, so its
+alignment persists (`Ty.AlignedVal.bytesBlock`).
 -/
 
 namespace Verified.Bytes
@@ -966,5 +967,235 @@ theorem spec_bytesBuild {S : List Sig} {m : Module} {funs : Funs S} {flags : Fla
       (fun env slots paid live => CodeSpecX.false_iff.mpr (countSpec env slots paid live))
       (fun env slots paid live => CodeSpecX.false_iff.mpr (elemSpec env slots paid live)) env slots
       paid live)
+
+
+/-- An owned buffer stays aligned when the block of its root keeps its place and capacity. -/
+theorem Ty.AlignedVal.bytesBlock {store store' : Store Unit} {root l : UInt64}
+    {v v' : LeanExe.Bytes} (h : Ty.AlignedVal .owned store .bytes [.i64 root, .i64 l] v)
+    (hBlock : block store' root = block store root) :
+    Ty.AlignedVal .owned store' .bytes [.i64 root, .i64 l] v' := by
+  intro r hr
+  by_cases h0 : root = 0
+  · subst h0
+    simp [Ty.regions, Ty.blocks, Bytes.roots] at hr
+  · simp only [Ty.regions, Ty.blocks, Bytes.roots, h0, ite_false, List.map_cons, List.map_nil,
+      List.mem_singleton] at hr
+    subst hr
+    rw [hBlock]
+    exact h _ (by simp [Ty.regions, Ty.blocks, Bytes.roots, h0])
+
+/-- `x.set i v` of a buffer: the position in local `base`, the value in local `base + 1`, the
+buffer as owned, with its root in local `base + 2` and its length in local `base + 3`, which is
+`x`'s own block when `x` is owned and dies, and, when the position is below the length, the write
+of the value's low byte at the root plus the position. -/
+theorem specX_bytesSet {strict : Bool} {S : List Sig} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    (hCopy : CopyCodeX strict m host) {Γ : List Ty} (x : Var Γ .bytes) {i v : Expr S Γ .word}
+    (iSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host
+      pv i env slots paid live)
+    (vSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host
+      pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv
+      (Expr.bytesSet x i v) env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hAl hSafe hCap hBase hRoom
+    hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hcw : copyWidth Ty.bytes = 4 := rfl
+  have hi := Nat.le_max_left i.width (max (1 + v.width) (2 + copyWidth Ty.bytes))
+  have hv := (Nat.le_max_left (1 + v.width) (2 + copyWidth Ty.bytes)).trans
+    (Nat.le_max_right i.width _)
+  have hx := (Nat.le_max_right (1 + v.width) (2 + copyWidth Ty.bytes)).trans
+    (Nat.le_max_right i.width _)
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  have hT : (Expr.bytesSet x i v).allocs funs flags bounds (slots.map Slot.mode) paid live env =
+      i.allocs funs flags bounds (slots.map Slot.mode) paid
+          (fun j => live j || j == x.index || v.uses j) env +
+        v.allocs funs flags bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index)
+          env +
+        x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
+  have hdS : (Expr.bytesSet x i v).fits funs fits env = true →
+      i.fits funs fits env = true ∧ v.fits funs fits env = true :=
+    fun hd => by simpa [Expr.fits] using hd
+  have hUnpaid : (Expr.bytesSet x i v).paid flags (slots.map Slot.mode) paid live = false := rfl
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
+  -- The position, in local `base`.
+  have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
+      (live k || (Expr.bytesSet x i v).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact set_live_index _ _ _ _ h
+  -- The variables that die in the position, in the value, and at the write: the buffer, when it
+  -- dies there.
+  have hDiv : dyingPot store s env slots paid
+        (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => live k || k == x.index || v.uses k) +
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) +
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live ≤
+      dyingPot store s env slots paid (fun k => live k || (Expr.bytesSet x i v).uses k) live := by
+    rw [dyingPot_split _ (fun k => live k || k == x.index || v.uses k) live
+      (fun k h => hIn k (by simp [h])) (fun k h => by simp [h]),
+      dyingPot_split (fun k => live k || k == x.index || v.uses k) (fun k => live k || k == x.index)
+        live (fun k h => by simp [h]) (fun k h => by simp [h]),
+      dyingPot_congr (L0 := fun k => live k || (Expr.bytesSet x i v).uses k)
+        (L0' := fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => by simp only [Expr.uses, Bool.or_comm, Bool.or_left_comm])
+        fun _ => rfl]
+    omega
+  refine iSpec env slots paid _ h base heap store s hh hpv
+    (hVars.live_mono hIn) hAt (fun hs => (hAl hs).live_mono hIn) (hSafe.mono hIn) hCap hBase
+    (by omega) hPlace.1 _ _
+    (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
+      (fun _ => by simp [Expr.aborts])
+      fun _ hw => hw.mono (by rw [hT]; omega))
+    fun heap1 store1 s1 ws1 a1 hAlI hTopI => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_word] at hR1
+  subst hR1
+  refine After.storeWordX a1 le_rfl hBase (by rw [hh]; omega) fun e1 hI1 => ?_
+  set s1' : Locals := setLocal { s1 with values := s.values } base (.i64 (i.denote funs env))
+    with hs1'
+  have hp1 := e1.frame.params
+  have hh1 := e1.frame.positions.trans hh
+  -- The value, in local `base + 1`.
+  have hDv : ∀ s1'' : Locals, Evolves env slots (fun k => (live k || k == x.index || v.uses k) ||
+        i.uses k) (fun k => live k || k == x.index || v.uses k) base heap store s heap1 store1
+        s1'' →
+      dyingPot store1 s1'' env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) =
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) := fun _ e =>
+    dyingPot_evolves (hVars.live_mono hIn) e (fun k h => by simp [h]) _ _ fun _ h => h
+  have hAlV0 := fun (hs : strict = true) => HoldsA.evolves (hVars.live_mono hIn)
+    ((hAl hs).live_mono hIn) e1 (fun k h => by simp [h]) (hAlI hs).1.1
+  refine vSpec env slots paid _ h (base + 1) heap1 store1 _ hh1
+    (hp1.trans hpv) (e1.holds.mono (Nat.le_succ base)) e1.step.at_ hAlV0
+    ((hSafe.mono hIn).evolves (hVars.live_mono hIn) e1 (fun k hk => by simp [hk]))
+    (by rw [e1.step.cap m]; exact hCap)
+    (by rw [hp1]; omega) (by omega) hPlace.2 _ _
+    (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
+      (fun _ => by simp [Expr.aborts])
+      fun hd hw => by
+        have := hTopI (hdS (fits_of_not hd)).1
+        rw [hDv _ e1]
+        exact hw.shift (c1 := dyingPot store s env slots paid
+            (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+            (fun k => live k || k == x.index || v.uses k) +
+            i.allocs funs flags bounds (slots.map Slot.mode) paid
+              (fun j => live j || j == x.index || v.uses j) env)
+          (by omega) (by rw [hT]; omega) (e1.step.cap m))
+    fun heap2 store2 s2 ws2 a2 hAlV hTopV => ?_
+  have hR2 := a2.rep
+  simp only [Ty.rep_word] at hR2
+  subst hR2
+  refine After.storeWordX a2 le_rfl (by rw [hp1]; omega) (by rw [hh1]; omega) fun e2 hV2 => ?_
+  set s2' : Locals := setLocal { s2 with values := s1'.values } (base + 1)
+    (.i64 (v.denote funs env)) with hs2'
+  have hp2 := e2.frame.params.trans hp1
+  have hh2 := e2.frame.positions.trans hh1
+  have hI2 := (e2.frame.below base (by omega)).1.trans hI1
+  -- The buffer as owned, with its root in local `base + 2` and its length in local `base + 3`.
+  refine specX_ownedVar hCopy x hh2 (hp2.trans hpv)
+    ((e2.holds.mono (by omega)) : Holds env slots (fun k => live k || k == x.index) (base + 2)
+      heap2 store2 _) e2.step.at_
+    (fun hs => HoldsA.evolves (e1.holds.mono (Nat.le_succ base)) (hAlV0 hs) e2
+      (fun k h => by simp [h]) (hAlV hs).1.1)
+    (((hSafe.mono hIn).evolves (hVars.live_mono hIn) e1 (fun k hk => by simp [hk])).evolves
+      (e1.holds.mono (Nat.le_succ base)) e2 (fun k hk => by simp [hk]))
+    (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
+    (by rw [hp2]; omega) (by omega)
+    (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.of_le (by
+      have := hTopI (hdS (fits_of_not hd)).1; have h2 := hTopV (hdS (fits_of_not hd)).2
+      rw [hDv _ e1] at h2
+      rw [hT]; omega)
+      (by rw [e2.step.cap m, e1.step.cap m]))
+    fun heap3 store3 s3 ws3 a3 hAlO hTopO _ => ?_
+  obtain ⟨root, len, hws, -⟩ := a3.rep
+  subst hws
+  have hRep3 := a3.bytes_rep
+  have hLen : len.toNat = (env.get x).data.size := hRep3.length_eq
+  have hp3 : s3.params = s.params := a3.frame.params.trans hp2
+  have hh3 : s3.positions = h := a3.frame.positions.trans hh2
+  show wpX strict m _ Q store3 { s3 with values := .i64 len :: .i64 root :: s2'.values } host
+  -- The length, in local `base + 3`, and the root, in local `base + 2`.
+  have hLow3 : s3.params.length ≤ base + 3 := by rw [hp3]; omega
+  have hHigh3 : base + 3 < s3.positions := by rw [hh3]; omega
+  refine wpX_localSet_local hLow3 (Locals.lt_total hHigh3) ?_
+  set s3a : Locals := setLocal { s3 with values := .i64 root :: s2'.values } (base + 3)
+    (.i64 len) with hs3a
+  have hLow3a : s3a.params.length ≤ base + 2 := by
+    show s3.params.length ≤ _; rw [hp3]; omega
+  have hHigh3a : base + 2 < s3a.positions := by
+    rw [hs3a, Locals.positions_setLocal, Locals.positions_values, hh3]; omega
+  have hL3a : s3a.get (base + 3) = some (.i64 len) :=
+    Locals.get_setLocal_same (s := { s3 with values := .i64 root :: s2'.values }) hLow3
+      (Locals.lt_total hHigh3)
+  show wpX strict m (.localSet (base + 2) :: _) Q store3
+    { s3a with values := .i64 root :: s2'.values } host
+  refine wpX_localSet_local hLow3a (Locals.lt_total hHigh3a) ?_
+  set s4 : Locals := setLocal { s3a with values := s2'.values } (base + 2) (.i64 root) with hs4
+  have hF4 : Frame (base + 2) s3 s4 :=
+    (Frame.setValues hLow3 (by omega) hHigh3).trans (Frame.setValues hLow3a le_rfl hHigh3a)
+  have hR4 : s4.get (base + 2) = some (.i64 root) :=
+    Locals.get_setLocal_same (s := { s3a with values := s2'.values }) hLow3a
+      (Locals.lt_total hHigh3a)
+  have hL4 : s4.get (base + 3) = some (.i64 len) :=
+    (Locals.get_setLocal_ne (s := { s3a with values := s2'.values }) hLow3a (by omega)).trans
+      hL3a
+  have hI4 : s4.get base = some (.i64 (i.denote funs env)) :=
+    (hF4.below base (by omega)).1.trans ((a3.frame.below base (by omega)).1.trans hI2)
+  have hV4 : s4.get (base + 1) = some (.i64 (v.denote funs env)) :=
+    (hF4.below (base + 1) (by omega)).1.trans ((a3.frame.below (base + 1) (by omega)).1.trans hV2)
+  have a4 := a3.reframe hF4
+  -- The rest of the code, from the buffer after the write or without it.
+  have hFinish : ∀ (store5 : Store Unit) (value : LeanExe.Bytes),
+      After env slots (fun k => live k || k == x.index) live (base + 2) heap2 store2 s2' .bytes
+        .owned value heap3 store5 s4 [.i64 root, .i64 len] →
+      value = (env.get x).set (i.denote funs env) (v.denote funs env) →
+      block store5 root = block store3 root →
+      wpX strict m rest Q store5 { s4 with values := .i64 len :: .i64 root :: s.values } host := by
+    intro store5 value aX hValue hBlock
+    subst hValue
+    have aX1 := aX.lower e2.holds (by omega) fun k h => by simp [h]
+    have aX2 := After.prepend (e1.holds.mono (Nat.le_succ base)) e2 aX1
+      (fun k h => by simp [h]) fun k h => by simp [h]
+    have aX3 := After.prepend (hVars.live_mono hIn) e1 (aX2.lower e1.holds (Nat.le_succ base)
+      fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
+    exact hNext heap3 store5 s4 [.i64 root, .i64 len] (aX3.liveIn hIn)
+      (fun hs => ⟨HoldsA.after hVars (hAl hs) (aX3.liveIn hIn) (fun k h => by simp [h])
+          (hAlO hs).1.1, Ty.AlignedVal.bytesBlock (hAlO hs).2 hBlock⟩)
+      fun hd => by
+        have := hTopI (hdS hd).1; have h2 := hTopV (hdS hd).2
+        rw [hDv _ e1] at h2
+        rw [hUnpaid, hT]
+        simp only [Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
+        omega
+  have hLess : i.denote funs env < len ↔ (i.denote funs env).toNat < (env.get x).data.size := by
+    rw [UInt64.lt_iff_toNat_lt, hLen]
+  show wpX strict m _ Q store3 s4 host
+  simp only [wpX_localGet_cons, Locals.get_values, hI4, hL4, wpX_ltUI64_cons]
+  refine wpX_iff_cons rfl ?_
+  by_cases hc : (i.denote funs env).toNat < (env.get x).data.size
+  · -- The write of the value's low byte.
+    rw [ite_eq_left (by simp [hLess.mpr hc])]
+    have hBuffer : Heap.Buffer heap3 store3 root (env.get x) :=
+      hRep3.buffer.resolve_left fun hEmpty => by have := hEmpty.2; omega
+    simp only [wpX_localGet_cons, Locals.get_values, hR4, hI4, wpX_addI64_cons]
+    rw [wpX_wrapI64_cons]
+    simp only [wrap_toUInt32, wpX_localGet_cons, Locals.get_values, hV4]
+    refine Bytes.wpX_storeWord a3.step.at_ hBuffer hc ?_
+    rw [wpX_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, wpX_localGet_cons,
+      Locals.get_values, hR4, hL4]
+    exact hFinish _ _ (a4.writeByte hc (v.denote funs env).toUInt8)
+      (by unfold LeanExe.Bytes.set; rw [dite_eq_left hc] <;> rfl)
+      (block_eq (hBuffer.write_step a3.step.at_ (i.denote funs env) hc
+        (v.denote funs env).toUInt8).2)
+  · rw [ite_eq_right (by simp [hLess, hc])]
+    rw [wpX_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, wpX_localGet_cons,
+      Locals.get_values, hR4, hL4]
+    exact hFinish _ _ a4 (by unfold LeanExe.Bytes.set; rw [dite_eq_right hc]) rfl
 
 end Verified

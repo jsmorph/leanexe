@@ -91,7 +91,13 @@ empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns 
 index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
 result and stores each callback's low eight bits.  Its proof keeps live captures, callback
 allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
-and counts of at least `2^32` trap before allocating the result.  The [WASI compiler](../docs/wasi.md)
+and counts of at least `2^32` trap before allocating the result.  `Expr.bytesSet`, the reflection of
+`LeanExe.Bytes.set`, takes the buffer as owned, which moves an owned buffer that dies there and
+copies any other, and stores the value's low eight bits at the position when the position is below
+the length, so an update at the last use of an owned buffer writes into its block.  Its proof,
+`specX_bytesSet` of [the buffers under the flag](AlignedBytes.lean), writes the byte with
+`Heap.Buffer.write`, which keeps the block, and [the update examples](Examples/BytesSet.lean)
+count the allocations of updates in place and of a copy.  The [WASI compiler](../docs/wasi.md)
 uses these buffers for stdin, stdout, and stderr.
 
 `bytes![65, 0, 255]` reflects to `Expr.bytesLiteral`.  The macro accepts numerals from 0 through

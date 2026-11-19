@@ -22,7 +22,7 @@ theorem Expr.isPlace_renameFuns {S T : List Sig} (ρ : FunRenaming S T) (e : Exp
 
 theorem Expr.mode_renameFuns {S T : List Sig} (ρ : FunRenaming S T) (e : Expr S Γ t)
     (modes : List Mode) : (e.renameFuns ρ).mode modes = e.mode modes := by
-  induction e generalizing modes <;> simp_all [Expr.renameFuns, Expr.mode]
+  induction e generalizing modes <;> first | rfl | simp_all [Expr.renameFuns, Expr.mode]
 
 theorem Expr.paidVar_renameFuns {S T : List Sig} (ρ : FunRenaming S T) (e : Expr S Γ t)
     (paid : List Bool) : (e.renameFuns ρ).paidVar paid = e.paidVar paid := by

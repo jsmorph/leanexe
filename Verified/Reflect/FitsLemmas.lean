@@ -99,6 +99,11 @@ theorem bytesGet_fits (x : Var Γ .bytes) {i : Expr S Γ .word} {I : Bool}
     (hi : i.fits funs fits env = I) : (Expr.bytesGet x i).fits funs fits env = I := by
   subst hi; rfl
 
+theorem bytesSet_fits (x : Var Γ .bytes) {i v : Expr S Γ .word} {I V : Bool}
+    (hi : i.fits funs fits env = I) (hv : v.fits funs fits env = V) :
+    (Expr.bytesSet x i v).fits funs fits env = (I && V) := by
+  subst hi hv; rfl
+
 theorem eraseAt_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
     (hi : i.fits funs fits env = I) : (Expr.eraseAt x i).fits funs fits env = I := by
   subst hi; rfl

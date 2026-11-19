@@ -1,0 +1,15 @@
+setByte	bytes	bytes:0001ff80 i64:1 i64:4660	0034ff80	1	0
+setByte	bytes	bytes:0001ff80 i64:3 i64:18446744073709551615	0001ffff	1	0
+setByte	bytes	bytes:0001ff80 i64:4 i64:7	0001ff80	1	0
+setByte	bytes	bytes:0001ff80 i64:18446744073709551615 i64:7	0001ff80	1	0
+setByte	bytes	bytes: i64:0 i64:7	_	1	0
+setTwice	bytes	bytes:0001ff80 i64:0 i64:3 i64:16	1001ff11	1	0
+setTwice	bytes	bytes:0001ff80 i64:9 i64:2 i64:16	00011180	1	0
+setTwice	bytes	bytes:0001ff80 i64:1 i64:1 i64:255	0000ff80	1	0
+fillFrom	bytes	bytes:0001ff80 i64:250	fafbfcfd	1	0
+fillFrom	bytes	bytes:000000000000000000 i64:254	feff00010203040506	1	0
+fillFrom	bytes	bytes: i64:5	_	1	0
+setKept	i64	bytes:0001ff80 i64:2 i64:4660	65332	2	1
+setKept	i64	bytes:0001ff80 i64:4 i64:1	0	2	1
+setKept	i64	bytes: i64:0 i64:1	0	1	0
+setEmpty	bytes	i64:0 i64:5	_	0	0

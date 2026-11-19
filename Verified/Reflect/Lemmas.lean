@@ -416,6 +416,12 @@ theorem bytesGet_eq (x : Var Γ .bytes) {i : Expr S Γ .word} {I : UInt64}
     (Expr.bytesGet x i).denote funs env = (env.get x).get I := by
   subst hi; rfl
 
+/-- An update of a byte variable, which leaves it unchanged past its end. -/
+theorem bytesSet_eq (x : Var Γ .bytes) {i v : Expr S Γ .word} {I V : UInt64}
+    (hi : i.denote funs env = I) (hv : v.denote funs env = V) :
+    (Expr.bytesSet x i v).denote funs env = (env.get x).set I V := by
+  subst hi hv; rfl
+
 /-! The array operations on an array of structures, whose source value is the array of the
 elements' flattenings. -/
 
