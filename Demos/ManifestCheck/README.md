@@ -9,7 +9,8 @@ directory, reads it to its end through a streaming SHA-256, closes it, and write
 `NAME: FAILED`.  The status is 0 when every file matches, 1 when one fails, and the errno when a
 call on the manifest fails.  This directory holds the pure core of the checker, the functions that
 parse the manifest, compare a line's digits with a digest, and render an output line, with their
-reviewed specifications and call theorems.  The WASI command around them is not part of it.
+reviewed specifications and call theorems, and the WASI command around them, with theorems about
+its verdicts, the files that it opens, and its descriptors.
 
 The pure core has three functions, whose specifications [the specification](Spec.lean) states,
 written and reviewed by the method of [the verified-request
@@ -64,6 +65,104 @@ induction on the positions that remain that the loop adds the positions of the l
 `linesFrom` gives for the pieces of the rest.  `parseStep_enc` relates the array of the program's
 state to a state of three parts, on which the induction runs.
 
+## The command checks every line
+
+[The command](Command.lean) is `main : Action UInt64`.  It reads its one argument with `args` and
+`argScan`, builds a read buffer of 65,536 bytes, and opens the manifest of that name under the
+preopened directory with `withOpen`, with the rights `fd_read` and `fd_filestat_get`.
+`readManifest` asks the manifest's size with `fdFilestatGet` and answers a size of `2^32` bytes or
+more, for which a read's length does not fit its 32 bits, with status 61 (`overflow`).  `readBytes`
+builds a buffer of the reported size and reads the manifest into it with `fdRead`, each read into
+the window after the bytes already read, until the buffer is full, a read returns no bytes, or a
+read returns an errno.  A last read into the read buffer tests that the manifest has no byte after
+them, so a manifest whose bytes number fewer or more than its size gives status 1.  The bracket
+closes the manifest, and `parse` gives the positions of its lines, or none for a manifest that the
+pure core refuses, which gives status 1.
+
+`checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
+copies the name from the manifest with `slice`, opens it under the preopened directory with the
+right `fd_read` alone, hashes the file with `hashFile`, closes it, compares the digest with the
+line's digits with `hexMatches`, and writes `render` of the name and the verdict with `writeAll` of
+[the shared write loop](../../LeanExe/Wasi/WriteAll.lean).  Every open names descriptor 3, the flag
+`symlink_follow`, no open flags, no inherited rights, and no descriptor flags.  `hashFile` reads
+the file into the window of the read buffer after the bytes that it holds, and when a read fills
+the buffer it compresses the buffer's 1,024 blocks into the hash value with `update` and starts
+again at the buffer's first byte.  When a read returns no bytes, it compresses the whole blocks
+that the buffer holds and passes the bytes after them to `finish` with the file's length.  Its loop
+makes at most `2^45 - 1` reads of at most 65,536 bytes each, so the bytes that it hashes number
+fewer than `2^61`, the limit of SHA-256's length field.  The read buffer moves from pass to pass
+and into each bracket and out of it, and the windows of the reads are its bytes, so no pass of a
+read loop builds a buffer.
+
+A line's verdict is OK when the open of its name returned errno 0, a read returned no bytes before
+any read returned an errno, the close returned errno 0, and the line's digits give the digest of
+the bytes that the reads returned.  A file that fails to open, a read that returns an errno before
+the file's end, a failed close, and reads that stop after `2^45 - 1` reads give FAILED, and the
+checks continue.  The status is the errno of `args`, 1 for an argument buffer without exactly one
+argument after the program name, the errno of the manifest's open, of `fdFilestatGet`, of one of
+its reads, or of its close, 61 for a reported size of `2^32` bytes or more, and 1 for a manifest
+whose bytes disagree with its size or that the pure core refuses.  After a manifest that the core
+accepts, the status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of
+an output line stop with bytes left, which ends the checks, and the errno of a write that fails,
+with which `writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
+`verified_compile_wasi` writes a module of 18,028 bytes that imports `fd_read` twice, as the stream
+read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`,
+`fd_close`, `args_sizes_get`, and `args_get`.
+
+## The command meets the request
+
+| Theorem | Statement |
+|---|---|
+| `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
+| `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main`, or a guest trap at `unreachable` after a prefix of `main` ([the compiled command](CommandStart.lean)). |
+| `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
+
+The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
+[the command's specification](CommandSpec.lean) holds three properties of a run's events, which
+record each call and the host's reply.  `Run` states the verdicts and the status: the events of
+`args`, then `ManifestRun`, the open of the manifest, the call of `fd_filestat_get`, the reads of
+`ManifestReads` and the last read, and the close, and then `Checks`, which states for each line of
+the manifest in order `FileCheck`, the open of its name, the reads of `FileReads`, and the close,
+with the verdict above, followed by `LineWrites`, the writes of its output line,
+`renderSpec (name, ok)`.  Each write offers at least one byte, the bytes of the line that the writes
+before it did not take, and the writes of a line number at most one more than its bytes.  The
+verdict is OK exactly when `DigestOf` holds: the line's 64 hex digits give the digest of the
+transcription of FIPS 180-4 for the bytes that the reads returned.  `Confined` states that every
+`path_open` names descriptor 3, the read-only rights `manifestRights` or `fileRights`, and the
+argument or the name of a line of the manifest.  `Handled` states that the events are calls of
+`args_sizes_get` and `args_get`, opens that fail, brackets of an open, calls on its descriptor, and
+its close, and writes to standard output, so each descriptor is closed before the next open and
+before the exit.  [The review](review.md) records the decisions of the cases that the request
+leaves open.
+
+The proof follows `main`.  `argument_cases` relates the program's test of the argument buffer to
+`OneArgument`.  `manifest_loop` follows the reads of the manifest: a read places the window's
+output at the window's start (`splice_take`), so the buffer's first bytes are those that the reads
+returned, and a buffer that the reads fill holds the manifest.  `readBytes_run` and
+`readManifest_run` add the last read and the call of `fd_filestat_get`.  `Hashed` relates the state
+of `hashFile`'s loop to the bytes that its reads returned: the hash value after their whole buffers
+of 65,536 bytes, and the bytes after those, which the read buffer holds from its start.
+`Hashed.part` and `Hashed.full` keep it across a read, through `update_toVec32` and
+`blocksFold_append`, `hashed_finish` gives the digest bytes of `SHS.SHA256.Impl.sha256` through
+`finish_bytes`, and `hash_loop` follows the loop by induction on its passes.  `withOpen_run` gives
+the events of a bracket, `entry_check` those of `FileCheck` for a line with the program's verdict,
+which `hexMatchesSpec_iff` and `digestOf_iff` relate to `DigestOf`, and `line_writes` those of
+`LineWrites` from `WriteAllRun.taken`.  `checks_loop` follows the loop of `checkLines` by induction
+on the lines, from the positions that `parse` gives (`parse_accepted`, `entry_get`), and
+`meets_of` assembles `Run`, `Confined`, and `Handled` from the parts.  `main` takes the table of
+SHA-256's round constants, which the module holds in its static data, as its argument, and
+`table_rep` and `table_scratch` give the generated theorems the table's representation.
+
+## Memory
+
+The command holds the block of `args`, the read buffer of 65,536 bytes, the manifest's buffer of
+the size that `fd_filestat_get` reports, the positions that `parse` gives, and for each line the
+name's copy, the output line of `render`, and the eight words that `finish` packs.  The reads of a
+file and of the manifest fill windows of the buffers that their loops carry by moves, so no read
+copies a byte beyond what the host writes into the window, and the memory does not depend on the
+sizes of the files checked.  The resource model credits no release, so its charge sums the blocks
+of every line.
+
 ## Confinement
 
 The specification admits every name, absolute names and names with `..` among them, because both
@@ -79,10 +178,11 @@ directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an absolu
 leaves the directory, and a symbolic link, absolute or relative, whose target lies outside it, and
 `RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's Wasmtime host preopens the
 directory with `wasi_config_preopen_dir` of [`tools/wasmtime-host.c`](../../tools/wasmtime-host.c),
-and Wasmtime resolves names with cap-std, which confines them as well.  A confinement theorem of a
-command can therefore state the names that the command asks the host to open, relative to descriptor
-3, and rely on the host's resolution for the rest, which no theorem of the repository states for
-Linux's kernel.
+and Wasmtime resolves names with cap-std, which confines them as well.  `Confined` therefore
+states the names that the command asks the host to open, relative to descriptor 3, and relies on the
+host's resolution for the rest, which no theorem of the repository states for Linux's kernel.  The
+driver's runs show Wasmtime 44 refusing a name with `..` that leaves the directory, an absolute
+name, and a link out of the directory with errno 63 (`perm`), which `sha256sum -c` reads.
 
 ## Building and testing
 
@@ -93,6 +193,8 @@ tests/verified/run.sh --cases manifestCheck
 tools/leanrun --timeout 10m lake env lean Demos/ManifestCheck/File.lean
 tests/native/verified.sh --module manifestCheck
 tests/baremetal/verified.sh --module manifestCheck
+tools/leanrun --timeout 60m lake build Demos.ManifestCheck.CommandStart
+tests/manifest-check/run.sh
 ```
 
 The first command checks that the specification and the samples are the reviewed ones.
@@ -103,6 +205,17 @@ requires the blocks that stay allocated after the call: the manifest's and the r
 theorems](File.lean) state that `build/verified/manifestCheck.wasm`, which the driver writes, holds
 the module.  The native driver runs the same cases on the module's translation to C, compiled with
 CompCert, and the bare-metal driver on that translation under QEMU without an operating system.
+
+[The command's driver](../../tests/manifest-check/run.sh) elaborates [the theorem
+statements](../../tests/manifest-check/Axioms.lean) and checks their axioms, emits and validates
+the module, and runs it in the Wasmtime host over a preopened test directory.  It compares each
+output line with the verdict of GNU `sha256sum -c` on the same manifest, which reads every name
+that the manifest lists, and requires FAILED for each name that leaves the directory.  The runs
+cover matching files, a changed file, a missing file, an empty file, a file of 5 MiB and 17 bytes
+read in 81 chunks, a name with spaces, a binary-mode line, links inside and outside the directory,
+names with `..` inside and outside it, an absolute name, a malformed and an empty manifest, no
+argument and two arguments, a missing manifest and one outside the directory, and a standard
+output on `/dev/full`.
 
 ## Related examples
 
