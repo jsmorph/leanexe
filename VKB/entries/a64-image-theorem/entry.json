@@ -169,7 +169,8 @@
     "LeanExe.A64.storeWords",
     "LeanExe.A64.needsCheck",
     "LeanExe.A64.startup",
-    "Verified.ShimA64.wasiElf_footprint_with"
+    "Verified.ShimA64.wasiElf_footprint_with",
+    "Verified.Examples.WasiReadAll.linux_footprint_budget"
   ],
   "examples": [
     "TestSupport.A64.Gcd.runs",
@@ -201,8 +202,7 @@
     "TestSupport.A64.Uart.uart_runs",
     "Verified.ShimA64.wasiElf_run",
     "Verified.ShimA64.wasiElf_footprint",
-    "Verified.Examples.WasiReadAll.linux_footprint_native",
-    "Verified.Examples.WasiReadAll.linux_footprint_steady"
+    "Verified.Examples.WasiReadAll.linux_footprint_native"
   ],
   "unimported": {
     "tests/TestSupport/A64/ImageFilesUart.lean": [

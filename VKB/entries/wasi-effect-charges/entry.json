@@ -32,7 +32,8 @@
     "LeanExe.Wasi.Sys",
     "Verified.Examples.WasiSys",
     "Verified.Wasi.ResourceRulesAt",
-    "Verified.Examples.WasiReadAllSteady"
+    "Verified.Examples.WasiReadAllSteady",
+    "LeanExe.Wasi.WriteAll"
   ],
   "declarations": [
     "Verified.Wasi.Resource.Bounded",
@@ -78,7 +79,12 @@
     "Verified.Wasi.Resource.boundedAt_of_rule",
     "Verified.Wasi.Resource.Bounded.at",
     "Verified.Wasi.Resource.call_prefix_rule_at",
-    "Verified.Wasi.Resource.callBoundedAt_here"
+    "Verified.Wasi.Resource.callBoundedAt_here",
+    "Verified.Wasi.Resource.loop_bounded",
+    "LeanExe.Wasi.writeStdout",
+    "LeanExe.Wasi.writeAll",
+    "Verified.Examples.WasiReadAll.writeAll_bounded",
+    "Verified.Examples.WasiReadAll.body_bounded"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -99,16 +105,8 @@
     "Verified.Examples.WasiReadAll.main",
     "Verified.Examples.WasiReadAll.linux_message",
     "Verified.Examples.WasiReadAll.budget_bounded",
-    "Verified.Examples.WasiReadAll.WriteLoop.bounded",
     "Verified.Examples.WasiReadAll.SteadyAlong",
-    "Verified.Examples.WasiReadAll.SteadyAlong.bind_next",
-    "Verified.Examples.WasiReadAll.SteadyAlong.ite_no",
-    "Verified.Examples.WasiReadAll.SteadyAlong.call_here",
-    "Verified.Examples.WasiReadAll.SteadyAlong.loop_command",
-    "Verified.Examples.WasiReadAll.steady_bounded",
-    "Verified.Examples.WasiReadAll.Steady",
-    "Verified.Examples.WasiReadAll.WriteLoop.exec_bound",
-    "Verified.Examples.WasiReadAll.WriteLoop.prefix_bound"
+    "Verified.Examples.WasiReadAll.Steady"
   ],
   "unimported": {
     "Verified/Examples/WasiSysTotal.lean": [
