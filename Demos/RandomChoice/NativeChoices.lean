@@ -11,10 +11,11 @@ that it offered, as Linux's `write` does, and its `randomData ls` collects the b
 `getrandom` events returned.  `Mirrors x e` states that the layer event `e` is the one event that
 the shim makes for the WASI event `x` of such a run: a `getrandom` of 4,096 bytes with flags 0 that
 returned 4,096 for a `random_get` of 4,096 bytes that returned errno 0 and the event's output, or a
-`write` of descriptor 1 that offered a write's bytes and whose result gives the write's reply.
-`Choices args ls status` states the layer events and the exit status that the request asks of a
-run with the arguments `args`, from which `argN` and `argK` read N and K.  When N or K is 0, no
-layer event precedes `exit_group`, and the status is 2.  Otherwise the layer events mirror, one for
+`write` of descriptor 1 that offered a write's bytes and whose result gives the write's reply.  No
+layer event mirrors any other WASI event.  `Choices args ls status` states the layer events and
+the exit status that the request asks of a run with the arguments `args`, from which `argN` and
+`argK` read N and K, 0 for a refusal.  When `parseSpec` refuses N or K, no layer event precedes
+`exit_group`, and the status is 2.  Otherwise the layer events mirror, one for
 one, WASI events that make the passes of `Rounds` from K values and `passes K` passes, whose random
 bytes are `randomData ls` and whose status is the run's.  The status is 0 only when the writes of
 `ls` took `outputOf N chosen` for the K-tuple `chosen` of the first K accepted words of
@@ -33,9 +34,9 @@ accepted words make the writes take the lines of `o`.
 
 `witness_run` shows that the premises can hold together.  The replies `witnessReplies` answer call
 0 with 4,096 zero bytes and every later call with 2.  Under them, every run of `main` and its exit
-with the arguments `witnessArgs`, which give N and K of 1, makes a `getrandom` of 4,096 bytes and a
-`write` of the line `1`, each answered in full, ends at the accepted exit with status 0, and has
-layer events that meet `Full`. -/
+with the arguments `witnessArgs`, which give N and K of 1, ends at the accepted exit with status 0
+and has layer events that meet `Full`.  Its proof follows the run: a `getrandom` of 4,096 bytes
+answered in full and a `write` of the line `1` that takes both of its bytes. -/
 
 namespace Demos.RandomChoice
 
@@ -43,20 +44,20 @@ open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline Verified.Wasi Verified.Shim
 open RandomHistogram (Full randomData)
 
 /-- N: the value that `parseSpec` reads from argument 1 of the arguments `args`, each followed by a
-zero byte. -/
+zero byte, and 0 when it refuses the argument. -/
 def argN (args : List (List UInt8)) : UInt64 := parseSpec (bytesOfList (stringsBytes args), 1)
 
 /-- K: the value that `parseSpec` reads from argument 2 of the arguments `args`, each followed by a
-zero byte. -/
+zero byte, and 0 when it refuses the argument. -/
 def argK (args : List (List UInt8)) : UInt64 := parseSpec (bytesOfList (stringsBytes args), 2)
 
 /-- `Mirrors x e`: the layer event `e` is the one event that the shim makes for the WASI event `x`
 of a run whose `getrandom` calls return every byte.  For a `random_get` of 4,096 bytes, `e` is a
 `getrandom` of 4,096 bytes with flags 0 that returned 4,096, and the call returned errno 0 and the
 bytes of `e`'s output.  For a write to standard output, `e` is a `write` of descriptor 1 whose input
-holds the write's bytes and whose count is their number.  When the write returned errno 0, the
-`write` returned the write's count, at most that number, and otherwise an error number whose errno
-is the write's. -/
+holds the write's bytes and whose length argument is their number.  When the write returned errno
+0, the `write` returned the write's count, at most that number, and otherwise an error number whose
+errno is the write's.  No layer event mirrors any other WASI event. -/
 def Mirrors : Event → Linux.Event → Prop
   | .sys call sent (.returned errno outputs), e =>
     call = Call.randomGet ∧ sent = [.space 4096] ∧ e.call = Linux.getrandomCall ∧
@@ -72,13 +73,13 @@ def Mirrors : Event → Linux.Event → Prop
 
 /-- The layer events `ls` and the exit status `status` that the request asks of a run whose
 `getrandom` calls return every byte, with the arguments `args`, from which `argN` and `argK` read
-N and K.  When N or K is 0, no layer event precedes `exit_group`, and the status is 2.  Otherwise
-the layer events mirror, one for one, WASI events that make the passes of `Rounds` from K values
-and `passes K` passes, whose random bytes are those that the `getrandom` events of `ls` returned and
-whose status is `status`.  The status is 0 only when the writes of `ls` took `outputOf N chosen`,
-the lines of the picks of the K-tuple `chosen` of the first K accepted words of those bytes, and it
-is `capStatus` only when those bytes hold the `512 · passes K` words of the cap's passes, fewer than
-K of them accepted. -/
+N and K.  When `parseSpec` refuses N or K, so that `argN` or `argK` is 0, no layer event precedes
+`exit_group`, and the status is 2.  Otherwise the layer events mirror, one for one, WASI events
+that make the passes of `Rounds` from K values and `passes K` passes, whose random bytes are those
+that the `getrandom` events of `ls` returned and whose status is `status`.  The status is 0 only
+when the writes of `ls` took `outputOf N chosen`, the lines of the picks of the K-tuple `chosen` of
+the first K accepted words of those bytes, and it is `capStatus` only when those bytes hold the
+`512 · passes K` words of the cap's passes, fewer than K of them accepted. -/
 def Choices (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) : Prop :=
   ((argN args = 0 ∨ argK args = 0) → ls = [] ∧ status = 2) ∧
   (argN args ≠ 0 → argK args ≠ 0 →
@@ -202,7 +203,8 @@ theorem rounds_mirrors {F : OpenFlags} {L : ShimLayout} {I : Launch} {n : UInt64
   | _, _, _, _, _, _, _, .writeEnded _ size writes _, images, full => by
     cases images with
     | cons image rest =>
-      obtain ⟨e, rfl, mirror⟩ := random_mirror image (full.sub fun x m => List.mem_append_left _ m)
+      obtain ⟨e, rfl, mirror⟩ :=
+        random_mirror image (full.sub fun x m => List.mem_append_left _ m)
       obtain ⟨mirrors, data⟩ := writes_mirrors writes rest
       refine ⟨.cons mirror mirrors, ?_⟩
       rw [RandomHistogram.randomData_append, data, List.append_nil, randomData_draw mirror size]
@@ -211,7 +213,8 @@ theorem rounds_mirrors {F : OpenFlags} {L : ShimLayout} {I : Launch} {n : UInt64
     | cons image rest =>
       obtain ⟨lw, lr, rfl, writeImages, roundImages⟩ :=
         Verified.Examples.WasiReadAll.images_split rest
-      obtain ⟨e, rfl, mirror⟩ := random_mirror image (full.sub fun x m => List.mem_append_left _ m)
+      obtain ⟨e, rfl, mirror⟩ :=
+        random_mirror image (full.sub fun x m => List.mem_append_left _ m)
       obtain ⟨writeMirrors, writeRandom⟩ := writes_mirrors writes writeImages
       obtain ⟨roundMirrors, roundRandom⟩ := rounds_mirrors rounds roundImages
         (full.sub fun x m => List.mem_append_right _ (List.mem_append_right _ m))
@@ -221,7 +224,7 @@ theorem rounds_mirrors {F : OpenFlags} {L : ShimLayout} {I : Launch} {n : UInt64
 
 /-! ## Trapped runs of `main` -/
 
-/-- A trapped run of `main` under a host that accepts every exit status below 126 has a trapped
+/-- A trapped run of `main` under a host that rejects no exit status below 126 has a trapped
 `args_sizes_get`, `args_get`, `random_get`, or write. -/
 theorem main_trapped {World : Type} {host : Host World}
     (accepts : ∀ {world code message final}, host.exitTrap world code message final →
@@ -406,7 +409,8 @@ theorem witness_write {F : OpenFlags} {L : ShimLayout} {I : Launch} {before : Li
 with the arguments `witnessArgs` and the replies `witnessReplies`, whose layer events start at call
 0: it returns a state with no value left and no status, and its layer events meet `Full`. -/
 theorem witness_step {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt8)}
-    {granted : Bool} {step : UInt64 → ChooseState → Action ChooseState} (stepped : ChooseStep 1 step)
+    {granted : Bool} {step : UInt64 → ChooseState → Action ChooseState}
+    (stepped : ChooseStep 1 step)
     {i : UInt64} {world after : LinuxWorld} {trace : List Event} {outcome : Outcome ChooseState}
     {before l rest : List Linux.Event}
     (run : Exec (linuxHost F L ⟨witnessArgs, environ, granted⟩ witnessReplies)
@@ -488,7 +492,8 @@ theorem witness_step {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt
           or_false] at member
         rcases member with rfl | rfl
         · exact drawFull' _ (List.mem_singleton_self _)
-        · exact ⟨fun drawing => absurd (writeCall.symm.trans drawing) other, fun _ => .inr took⟩
+        · exact ⟨fun drawing => absurd (writeCall.symm.trans drawing) other,
+            fun _ => .inr took⟩
       | wrote left' => simp at left'
       | failed left' => simp at left'
       | trapped left' => simp at left'
@@ -549,8 +554,7 @@ theorem witness_loop {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt
 
 /-- Under the shim's host with the arguments `witnessArgs` and the replies `witnessReplies`, every
 run of `main` and its exit ends at the accepted exit with status 0, and its layer events, the
-images of its WASI events, meet `Full`: a `getrandom` of 4,096 bytes and a `write` of the line `1`,
-each answered in full. -/
+images of its WASI events, meet `Full`. -/
 theorem witness_run {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt8)}
     {granted : Bool} {world final : LinuxWorld} {T : List Event} {outcome : Outcome Unit}
     {ls : List Linux.Event}

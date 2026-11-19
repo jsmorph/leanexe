@@ -14,7 +14,7 @@ picks of the reply's accepted words, at most the values that remain, which `pass
 `putPicks_eq`, and the window of the output buffer from position 0 that the count of bytes names
 holds those lines.  The loop of `writeAll` makes the
 writes of `Writes` (`writes_of_run`), and the loop of `main` makes the passes of `Rounds`
-(`draw_loop`), or, when it traps under a host that accepts every exit status below 126, a trapped
+(`draw_loop`), or, when it traps under a host that rejects no exit status below 126, a trapped
 `random_get` or write.  `Rounds.output` gives the bytes written by passes that end with status 0,
 `renderSpec` of the first K picks of the accepted words that they drew, and `Rounds.cap` the words
 of passes that reach the cap.  `cap_count` bounds the part of the word sequences of the cap's passes
@@ -398,7 +398,7 @@ theorem loop_stopped {World : Type} {host : Host World}
 /-- The loop of `main` from `r` values to choose, with a draw buffer of 4,096 bytes and an output
 buffer of 10,752 bytes, makes the passes of `Rounds`.  When it returns, the status that `main`
 gives its final state is the passes' status.  When it exits, it exits with the status that
-`Rounds` gives the events before the exit.  When it traps under a host that accepts every exit
+`Rounds` gives the events before the exit.  When it traps under a host that rejects no exit
 status below 126, its events hold a trapped `random_get` of 4,096 bytes or a trapped write to
 standard output. -/
 theorem draw_loop {World : Type} {host : Host World} {n : UInt64}
