@@ -88,9 +88,10 @@ inductive Exec {World : Type} (host : Host World) :
       (hCapacity : 2 ^ 32 ≤ capacity.toNat)
       (hNext : Exec host (next ⟨61, Bytes.empty, Bytes.empty⟩) world trace outcome final) :
       Exec host (.read capacity next) world trace outcome final
-  /-- A read that returns.  The continuation receives the bytes `range` that the read's region of
+  /-- The continuation of a read that returns receives the bytes `range` that the read's region of
   `capacity` bytes holds after the call, which begin with the bytes read on errno 0 and are
-  otherwise free: the host may leave any bytes after those it read. -/
+  otherwise free, since Preview 1 states neither which bytes of the region the host writes nor
+  what the bytes after the count hold. -/
   | read_return {capacity : UInt64} {next : ReadReply → Action α}
       {world after final trace outcome errno committed range}
       (hCapacity : capacity.toNat < 2 ^ 32)
@@ -323,8 +324,10 @@ theorem loop_zero {World : Type} (host : Host World) (world : World) (init : σ)
     Exec host (loop 0 init test step) world [] (.returned init) world :=
   .loop (.zero (.pure world init))
 
-/-- The bytes `committed` followed by zeros to `capacity` bytes: a range that a read of capacity
-`capacity` may leave, used where the range does not matter. -/
+/-- The bytes `committed` followed by zeros to `capacity` bytes, a range that a read of capacity
+`capacity` that returns `committed` may leave when `committed` fits the capacity.  `readAll` ignores
+the range, and the native interpreter gives it to every read, so a program run natively sees zeros
+after the bytes read where Wasmtime 44 leaves the bytes that the window held before the read. -/
 def readRange (committed : Bytes) (capacity : UInt64) : Bytes :=
   ⟨committed.data ++ (Bytes.zeros (capacity.toNat - committed.data.size)).data⟩
 
@@ -380,6 +383,28 @@ theorem readStdin_returns {World : Type} {host : Host World} {buffer : Bytes}
       omega
     · simp only [readReply, FillResult.of, zero, ite_false, UInt64.toNat_zero]
       exact ⟨Nat.zero_le _, Bytes.clear_size _ _ _⟩
+
+/-- A read of stdin whose host returns errno 0 with the bytes `committed` places them at the
+window's start of the result's buffer and returns their number. -/
+theorem readStdin_placed {World : Type} {host : Host World} {buffer : Bytes}
+    {start count : UInt64} {world final : World} {result : FillResult} {committed : Bytes}
+    (execution : Exec host (readStdin buffer start count) world
+      [.read (buffer.windowLength start count) (.returned 0 committed)] (.returned result) final) :
+    result.errno = 0 ∧ result.count = committed.size ∧
+      result.buffer.data.extract (buffer.window start count).1
+        ((buffer.window start count).1 + committed.data.size) = committed.data := by
+  unfold readStdin at execution
+  cases execution with
+  | read_reject _ next => cases next
+  | read_return _ hHost hRange hPrefix next =>
+    cases next
+    have bound := (host.read_bound hHost).1
+    simp only [Transfer.committed, Bytes.windowLength_toNat] at bound hRange
+    refine ⟨by simp [readReply, FillResult.of], by simp [readReply, FillResult.of], ?_⟩
+    simp only [readReply, FillResult.of, ite_true]
+    rw [Bytes.splice_extract (by rw [hRange]; exact buffer.window_le start count)
+      (by rw [hRange]; exact bound)]
+    exact hPrefix rfl
 
 theorem Host.read_zero {World : Type} {host : Host World} {world final : World}
     {reply : Transfer Bytes} (h : host.read world 0 reply final) :

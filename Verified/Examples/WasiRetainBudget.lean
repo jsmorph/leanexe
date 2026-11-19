@@ -5,32 +5,17 @@ namespace Verified.Examples.WasiRetain
 
 open LeanExe LeanExe.Wasi Verified Verified.Wasi Verified.Wasi.Resource
 
-private def returnRead : Command [] []
-    [.elem (.prod .word .word), .bytes, .word, .pair .word .bytes, .bytes, .word] (.value .bytes) :=
-  .ret (.var (.there .here))
+/-- Closes a goal about the charge of an expression by unfolding the charge's definitions. -/
+local macro "charge" : tactic => `(tactic|
+  (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.loopInitCost,
+      PureContext.loopCountCost, PureContext.loopTestCost, Expr.allocs, Var.cost, Expr.mode,
+      coerceCost, Ty.copyCost, Expr.denote, loopEnv, loopModes, modeAt, sumBelow,
+      UInt64.reduceToNat, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
+   omega))
 
-private def writePrevious :
-    Command [] [] [.bytes, .word, .pair .word .bytes, .bytes, .word] (.value .bytes) :=
-  .bind
-    (.bind (.ret (.word 0))
-      (.bind (.ret (.bytesSize (.there (.there (.there (.there .here))))))
-        (.write .stdout (.there (.there (.there (.there (.there .here))))) (.there .here) .here)))
-    returnRead
-
-private theorem returnRead_bounded {World : Type} (host : Host World) (pure : PureContext [])
-    (depth : UInt64) (live : Nat → Bool)
-    (env : Env [.elem (.prod .word .word), .bytes, .word, .pair .word .bytes, .bytes, .word]) :
-    Bounded host pure .nil depth [.owned, .owned, .owned, .owned, .owned, .borrowed]
-      (shift 1 (shift 2 (shift 1 live))) returnRead env 0 := by
-  apply bounded_of_rule
-  intro spent fits rule
-  exact rule (by change 0 ≤ 0; omega) rfl
-
-private theorem writePrevious_bounded {World : Type} (host : Host World) (pure : PureContext [])
-    (depth : UInt64) (live : Nat → Bool)
-    (env : Env [.bytes, .word, .pair .word .bytes, .bytes, .word]) :
-    Bounded host pure .nil depth [.owned, .owned, .owned, .owned, .borrowed]
-      (shift 2 (shift 1 live)) writePrevious env 0 := by
+private theorem step_bounded {World : Type} (host : Host World) (pure : PureContext [])
+    (depth : UInt64) (outer : Nat → Bool) (env : Env [.bytes, .word]) :
+    Bounded host pure .nil depth [.owned, .borrowed] (shift 2 outer) step env 0 := by
   apply bounded_of_rule
   intro spent fits rule
   apply rule 0 0 (by omega)
@@ -52,23 +37,31 @@ private theorem writePrevious_bounded {World : Type} (host : Host World) (pure :
         intro spent fits rule
         exact rule
   · intro value _
-    exact returnRead_bounded host pure depth live _
-
-private theorem step_bounded {World : Type} (host : Host World) (pure : PureContext [])
-    (depth : UInt64) (live : Nat → Bool) (env : Env [.bytes, .word]) :
-    Bounded host pure .nil depth [.owned, .borrowed] live step env 56 := by
-  apply bounded_of_rule
-  intro spent fits rule
-  apply rule 56 0 (by omega)
-  · apply bounded_of_rule
+    apply bounded_of_rule
     intro spent fits rule
-    apply rule
-    · rw [word_readCost]
-      simp [Verified.Wasi.readCost, UInt64.reduceToNat, Verified.Bytes.allocationCost]
-    · rfl
-  · intro value _
-    letPair_free
-    exact writePrevious_bounded host pure depth live _
+    apply rule 0 0 (by omega)
+    · apply bounded_of_rule
+      intro spent fits rule
+      apply rule 0 0 (by omega)
+      · apply bounded_of_rule
+        intro spent fits rule
+        exact rule (by change 0 ≤ 0; omega) rfl
+      · intro value _
+        apply bounded_of_rule
+        intro spent fits rule
+        apply rule 0 0 (by omega)
+        · apply bounded_of_rule
+          intro spent fits rule
+          exact rule (by change 0 ≤ 0; omega) rfl
+        · intro value _
+          apply bounded_of_rule
+          intro spent fits rule
+          exact rule (by change 0 ≤ 0; omega)
+    · intro value _
+      letPair_free
+      apply bounded_of_rule
+      intro spent fits rule
+      exact rule (by change 0 ≤ 0; omega) rfl
 
 private theorem loop_exec_bound {World : Type} {host : Host World} {pure : PureContext []}
     {depth : UInt64} {live : Nat → Bool}
@@ -76,7 +69,7 @@ private theorem loop_exec_bound {World : Type} {host : Host World} {pure : PureC
     {trace : List Event} {outcome : Outcome Bytes} {spent : Nat} {fits : Bool}
     (execution : ResourceLoopExec host pure .nil depth [] live (.bool true) step .nil
       remaining index state world trace outcome final spent fits) :
-    spent ≤ remaining * 56 ∧ fits = true := by
+    spent ≤ 0 ∧ fits = true := by
   induction remaining generalizing index state world trace outcome final spent fits with
   | zero => cases execution; exact ⟨by omega, rfl⟩
   | succ remaining ih =>
@@ -102,7 +95,7 @@ private theorem loop_prefix_bound {World : Type} {host : Host World} {pure : Pur
     {trace : List Event} {residual : Action Bytes} {spent : Nat} {fits : Bool}
     (progress : ResourceLoopPrefix host pure .nil depth [] live (.bool true) step .nil
       remaining index state world trace residual final spent fits) :
-    spent ≤ remaining * 56 ∧ fits = true := by
+    spent ≤ 0 ∧ fits = true := by
   induction remaining generalizing index state world trace residual final spent fits with
   | zero => cases progress with
     | refl => exact ⟨by omega, rfl⟩
@@ -123,25 +116,24 @@ private theorem loop_prefix_bound {World : Type} {host : Host World} {pure : Pur
       exact ⟨by omega, by simp only [stepFits, restFits, Bool.true_and]⟩
 
 private theorem body_bounded {World : Type} (host : Host World) (pure : PureContext [])
-    (depth : UInt64) : Bounded host pure .nil depth [] (fun _ => false) body .nil 112 := by
+    (depth : UInt64) : Bounded host pure .nil depth [] (fun _ => false) body .nil 56 := by
   apply bounded_of_rule
   intro spent fits rule
-  apply rule 112
-  · change 0 + 112 ≤ 112
-    omega
+  apply rule 0
+  · charge
   · rfl
   · exact ⟨fun _ _ _ _ _ _ execution => loop_exec_bound execution,
       fun _ _ _ _ _ _ progress => loop_prefix_bound progress⟩
 
 theorem body_prefix_bound {World : Type} (host : Host World) (pure : PureContext [])
     (depth : UInt64) (world : World) :
-    PrefixBound host pure .nil depth [] (fun _ => false) body .nil world 112 :=
+    PrefixBound host pure .nil depth [] (fun _ => false) body .nil world 56 :=
   (body_bounded host pure depth).2 world
 
 theorem call_prefix_bound {World : Type} (host : Host World) (world : World) :
     CallPrefixBound host (.ofProg compiled.pure.program compiled.pure.funs)
-      compiled.program compiled.retain.callee 0 .nil world 112 := by
+      compiled.program compiled.retain.callee 0 .nil world 56 := by
   intro trace residual final spent fits progress
-  exact call_prefix_rule 112 progress rfl (body_prefix_bound host _ 0 world)
+  exact call_prefix_rule 56 progress rfl (body_prefix_bound host _ 0 world)
 
 end Verified.Examples.WasiRetain

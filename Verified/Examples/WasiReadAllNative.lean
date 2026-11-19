@@ -47,7 +47,7 @@ theorem main_streams : StreamAction (main.bind fun status => Action.exit (α := 
   refine StreamAction.bind _ ?_ fun input => ?_
   · unfold readAll
     split
-    · exact ⟨fun _ _ => StreamAction.bind _ (fun _ => trivial) fun _ => trivial, fun _ => trivial⟩
+    · exact ⟨fun _ _ _ => trivial, fun _ => trivial⟩
     · trivial
   · split
     · trivial

@@ -215,6 +215,8 @@ elab "check_wasi_axioms" : command => do
     ``LeanExe.Wasi.readRange_prefix,
     ``LeanExe.Wasi.Exec.read_returned,
     ``LeanExe.Wasi.readStdin_returns,
+    ``LeanExe.Wasi.readStdin_placed,
+    ``LeanExe.Bytes.splice_extract,
     ``LeanExe.Wasi.loop_zero,
     ``LeanExe.Wasi.Host.read_zero]
   for theoremName in theorems do

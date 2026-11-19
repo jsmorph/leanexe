@@ -92,7 +92,7 @@ theorem Exec.streamTrace {World : Type} {host : Host World} {α : Type} {action 
     exact StreamTrace.nil
   · intro _ _ _ _ _ _ _ _ _ ih ha
     exact ih (ha _)
-  · intro _ _ _ _ _ _ _ _ _ _ _ _ _ ih ha
+  · intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ih ha
     exact .cons (fun _ _ _ h => nomatch h) (ih (ha _))
   · intro _ _ _ _ _ _ _ _ _ _
     exact .cons (fun _ _ _ h => nomatch h) .nil

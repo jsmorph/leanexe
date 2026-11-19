@@ -427,7 +427,7 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
       simpa only [UInt64.le_iff_toNat_le, UInt32.toNat_toUInt64] using hle
     have hrr : readReply len.toUInt64 rk.ret ((List.range len.toNat).map rk.bytes) =
         .returned 0 (bytesOfList (((List.range len.toNat).map rk.bytes).take rk.ret.toNat)) := by
-      unfold readReply
+      unfold Shim.readReply
       rw [if_pos (by rw [UInt32.toNat_toUInt64]; exact hret)]
     rw [hrr]
     dsimp only
@@ -491,7 +491,7 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
         hgt).mpr h4095
     have hrr : readReply len.toUInt64 rk.ret ((List.range len.toNat).map rk.bytes) =
         .returned (errnoOf (0 - rk.ret)) Bytes.empty := by
-      unfold readReply
+      unfold Shim.readReply
       rw [if_neg hnot, if_pos hErr]
     rw [hrr]
     dsimp only
@@ -536,7 +536,7 @@ theorem readStub_sim (S : Shared) (n : Nat) {rd svc en : UInt64} {is : List Inst
           (UInt64.not_le.mpr hbig)
     have hrr : readReply len.toUInt64 rk.ret ((List.range len.toNat).map rk.bytes) =
         .trapped shimTrap Bytes.empty := by
-      unfold readReply
+      unfold Shim.readReply
       rw [if_neg hnot, if_neg (by rw [hErr]; decide)]
     rw [hrr]
     dsimp only

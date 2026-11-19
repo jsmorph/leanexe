@@ -255,7 +255,7 @@ theorem exec_appended {α : Type} {F : OpenFlags} {L : ShimLayout} {I : Launch}
     exact ⟨Appended.refl w, fun _ impossible => by cases impossible⟩
   · intro α capacity next w final trace outcome _ _ ih
     exact ih
-  · intro α capacity next w after final trace outcome errno committed _ host _ ih
+  · intro α capacity next w after final trace outcome errno committed range _ host _ _ _ ih
     exact ⟨(ShimStep.appended host).trans ih.1, ih.2⟩
   · intro α capacity next w after message committed _ host
     refine ⟨ShimStep.appended host, fun cause same => ?_⟩

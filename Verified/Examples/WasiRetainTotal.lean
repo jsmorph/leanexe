@@ -7,8 +7,8 @@ open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime Verified Verified.Wasi
 theorem initial_within {World : Type} (world : Observed World) :
     (initialStaticHeap compiled.literalPool).Within
       (PureTransport.erase (compileInitialStore compiled.pure.module compiled.program
-        compiled.entries none compiled.literalPool world)) compiled.pure.module 112 := by
-  change 4096 + 112 ≤ 65536 * 65535
+        compiled.entries none compiled.literalPool world)) compiled.pure.module 56 := by
+  change 4096 + 56 ≤ 65536 * 65535
   decide
 
 theorem retain_total {World : Type} (host : Host World) (world : Observed World)
@@ -25,7 +25,7 @@ theorem retain_total {World : Type} (host : Host World) (world : Observed World)
   have initialized := compiled.initial world
   apply compiled.retain.total (host := host) (targetHost := targetHost)
     (initial := initial) (heap := initialStaticHeap compiled.literalPool)
-    (visibleWords := []) (budget := 112)
+    (visibleWords := []) (budget := 56)
   · rfl
   · exact valid
   · exact initialized.1

@@ -13,17 +13,17 @@ def retain : Action Bytes :=
 verified_compile_wasi compiled := [retain]
 
 def step : Command [] [] [.bytes, .word] (.value .bytes) :=
-  .bind (.read (.word 1))
-    (.letPair .here
-      (.bind
-        (.bind (.ret (.word 0))
-          (.bind (.ret (.bytesSize (.there (.there (.there (.there .here))))))
-            (.write .stdout (.there (.there (.there (.there (.there .here))))) (.there .here)
-              .here)))
-        (.ret (.var (.there .here)))))
+  .bind
+    (.bind (.ret (.word 0))
+      (.bind (.ret (.bytesSize (.there .here)))
+        (.write .stdout (.there (.there .here)) (.there .here) .here)))
+    (.bind (intermediate := .value (wordsBytesTy 2))
+      (.bind (.ret (.word 0))
+        (.bind (.ret (.word 1)) (.read (.there (.there (.there .here))) (.there .here) .here)))
+      (.letPair .here (.letPair .here (.ret (.var .here)))))
 
 def body : Command [] [] [] (.value .bytes) :=
-  .loop (.word 2) (.bytesLiteral []) (.bool true) step
+  .loop (.word 2) (.bytesBuild (.word 1) (.word 0)) (.bool true) step
 
 theorem source_body : compiled.retain.func.body = body := by rfl
 

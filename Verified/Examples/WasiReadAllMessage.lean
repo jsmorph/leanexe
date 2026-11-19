@@ -83,7 +83,7 @@ theorem image_succeeded {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
     obtain ⟨x, a, rfl, call, args, _, rfl⟩ := image
     have within := reads x (List.mem_singleton_self x) call
     simp only [args, Linux.arg, List.getD_cons_succ, List.getD_cons_zero] at within
-    simp only [readReply, within, ↓reduceIte, Succeeded]
+    simp only [Shim.readReply, within, ↓reduceIte, Succeeded]
   | write output bytes reply =>
     obtain ⟨x, a, rfl, call, args, _, _, _, rfl⟩ := image
     obtain ⟨positive, within⟩ := writes x (List.mem_singleton_self x) call

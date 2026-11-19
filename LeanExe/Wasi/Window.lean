@@ -273,6 +273,23 @@ theorem range_from_size (buffer : Bytes) (small : buffer.data.size < 2 ^ 64) {st
     (buffer.range start (buffer.size - start)).data.size = buffer.data.size - start.toNat := by
   rw [range_size, (buffer.window_from small le).2]
 
+/-- The bytes of a splice at the positions of the replacing bytes are the replacing bytes. -/
+theorem splice_extract {buffer bytes : Bytes} {first n : Nat}
+    (h : first + bytes.data.size ≤ buffer.data.size) (hn : n ≤ bytes.data.size) :
+    (buffer.splice first bytes).data.extract first (first + n) = bytes.data.extract 0 n := by
+  apply ByteArray.ext
+  apply Array.ext
+  · simp only [ByteArray.size_data, ByteArray.size_extract, splice_size h]
+    omega
+  · intro i hLeft hRight
+    have hi : i < n := by
+      simp only [ByteArray.size_data, ByteArray.size_extract] at hRight
+      omega
+    have hSplice := splice_get_inside (i := first + i) h (by omega) (by omega)
+    simp only [Nat.add_sub_cancel_left] at hSplice
+    simp only [ByteArray.data_extract, Array.getElem_extract, Nat.zero_add]
+    simpa only [ByteArray.getElem_eq_getElem_data] using hSplice
+
 theorem clear_size (buffer : Bytes) (start count : UInt64) :
     (buffer.clear start count).data.size = buffer.data.size :=
   splice_size (by rw [zeros_size]; exact buffer.window_le start count)

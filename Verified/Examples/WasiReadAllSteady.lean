@@ -201,7 +201,7 @@ theorem Steady.along {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Re
     change (R after.events.length).ret.toNat ≤ capacity.toNat at answers
     rw [← carries.1] at answers
     refine ⟨bytesOfList (e.output.take e.ret.toNat), ?_⟩
-    simp only [readReply, answers, ↓reduceIte]
+    simp only [Shim.readReply, answers, ↓reduceIte]
   | write output bytes next =>
     intro reply final step
     obtain ⟨l, ⟨e, a, rfl, _, _, _, _, small, rfl⟩, ⟨carries, _⟩, _, _⟩ := step
